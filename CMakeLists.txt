@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 project(BharatOS C ASM)
 
 # Architecture selection
-set(ARCH "x86_64" CACHE STRING "Target architecture (x86_64, riscv)")
+set(ARCH "x86_64" CACHE STRING "Target architecture (x86_64, riscv, arm64)")
 
 # OS Profile Configuration (Scalability)
 set(OS_PROFILE "DESKTOP" CACHE STRING "Target profile (RTOS, EDGE, DESKTOP)")
@@ -21,5 +21,5 @@ endif()
 # Add subdirectories
 add_subdirectory(kernel)
 add_subdirectory(lib)
-# add_subdirectory(drivers)
+add_subdirectory(drivers)
 add_subdirectory(subsys)

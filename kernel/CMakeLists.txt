@@ -5,11 +5,12 @@ project(BharatOS_Kernel C ASM)
 include_directories(include)
 
 # Core Kernel Subsystems
-set(KERNEL_SRCS
+set(KERNEL_SOURCES
     src/main.c
     src/mm/pmm.c
     src/mm/vmm.c
     src/ipc/multikernel.c
+    src/ipc/zero_copy_io.c
 )
 
 # Architecture selection
