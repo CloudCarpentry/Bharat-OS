@@ -29,3 +29,9 @@ We explicitly deferred Windows and BSD. We selected Linux as the primary future 
 ### Negative
 
 - **Adoption Friction**: Early adopters cannot simply run existing proprietary container images on Day 1 without strict POSIX compliance or static recompilation via the Unikernel toolchain.
+
+## Technical Implementation of POSIX Compatibility
+
+To support cross-compilation and ensure a robust POSIX compatibility layer (the "Linux Personality"), we have adopted a strategy of using conditional guards for core POSIX types in our internal headers (e.g., `lib/posix/include/unistd.h`).
+
+Types such as `ssize_t`, `pid_t`, and `off_t` are wrapped in `#ifndef` guards (e.g., `_SSIZE_T_DEFINED_`). This prevents redefinition conflicts between Bharat-OS internal headers and the standard libraries provided by cross-compilation toolchains, allowing us to maintain a clean microkernel abstraction while seamlessly supporting the Linux ABI.
