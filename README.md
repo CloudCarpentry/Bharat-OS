@@ -1,89 +1,74 @@
 # Bharat-OS
 
-A scalable, POSIX-compatible microkernel operating system built from scratch, designed to support multiple hardware architectures (x86, RISC-V, Shakti, GPUs, NPUs) and host subsystems (Linux, Windows, BSD, Darwin).
+<p align="center">
+  <img src="assets/branding/logo-icon.png" alt="Bharat-OS logo" width="140" />
+</p>
 
-## The Vision & Scope
+<p align="center">
+  <img src="assets/branding/banner-dark.png" alt="Bharat-OS banner" />
+</p>
 
-Bharat-OS avoids the trap of "trying to be everything." We explicitly separate the fundamental kernel architecture from experimental research and deferred subsystems.
+A verification-first, capability-based microkernel OS focused on a small auditable core, strong isolation, and phased growth toward cloud and real-time profiles.
 
-### The Fundamental Core (v1 Spine)
+## Review Findings (What needed to change first)
 
-- **Verification-First Microkernel**: A tiny, auditable foundation (inspired by seL4) providing only thread scheduling, capabilities, and basic IPC. Immune to memory-unsafe sprawl.
-- **Multikernel Architecture**: Lockless inter-core messaging (inspired by Barrelfish). Treats high-core-count CPUs as distributed systems to prevent shared-memory bus contention.
-- **Permissive Toolchain**: Built exclusively with LLVM/Clang and musl libc to guarantee an MIT/Apache licensing stance. Avoids GNU/GPL components natively.
-- **Phased Architecture Support**: Initial bring-up targets: x86_64 and RISC-V under QEMU. ARM64 is planned once the common boot, paging, and interrupt abstractions stabilize.
+- The previous README referenced directories (`drivers/`, `services/`, `profiles/`) that are not currently present in this repository.
+- Core architecture and ADR navigation was spread across `docs/architecture/`, `docs/decisions/`, and `docs/adr/` with no single entry point.
+- The architecture + ADR relationship (what is current v1 scope vs experimental horizon) needed one explicit navigation path for new contributors.
+- Branding assets existed under `assets/branding/` but were not used in documentation.
 
-## Two Official Product Lines
+## Vision and Scope
 
-To avoid contradictory performance goals, the identical v1 microkernel is deployed as two distinct system profiles:
+Bharat-OS intentionally avoids "build everything at once." We split work into:
 
-1. **Bharat-RT (Real-Time)**: Bounded latency, predictable scheduling, and static capability allocation. Optimized strictly for aerospace, defense grids, and embedded IoT.
-2. **Bharat-Cloud (Throughput)**: Elasticity, rich virtualization, and massive I/O pipelines. Optimized for data centers, POSIX server virtualization, and multi-GPU CXL fabrics.
+- **v1 Core Spine (in-scope):** boot flow, memory, scheduler scaffolding, capability model, IPC, HAL foundation.
+- **Deferred Research Horizon (out-of-scope for v1 correctness):** advanced compatibility layers, distributed memory/fabric features, and non-essential experimental modules.
 
-### Supported Personalities & Modes (Bharat-Cloud)
+This keeps the Trusted Computing Base (TCB) small and makes formal verification tractable.
 
-- **Cloud-Native Unikernels**: Optional single-address-space/library-OS deployment mode for statically linked trusted workloads.
+## Current v1 Architecture Highlights
 
-### Research Horizons & Future Expansion (Deferred)
+- **Verification-first microkernel core:** minimal ring-0 responsibilities.
+- **Capability security model:** authority is explicit and non-ambient.
+- **IPC-centric service model:** drivers and higher-level services remain isolated in user space.
+- **Phased architecture bring-up:** x86_64 and riscv64 first, with arm64 support evolving through shared HAL abstractions.
 
-- **Linux Subsystem**: Compatibility subsystems are future research modules, beginning with a Linux syscall personality.
-- **CXL & Accelerator Fabrics**: Future-facing native awareness of CXL 3.x memory pooling.
-- **AI-Aware Tuning via User-Space**: The kernel exports telemetry, tunables, and policy hooks, allowing user-space daemons to run ML heuristics and push bounded policy updates, preserving kernel determinism.
-- **Hardware Enclaves**: SGX/TrustZone cryptographic abstraction.
-- **Advanced File Systems**: ZFS-inspired native formats with inline deduplication and CoW.
+For architecture details, see [`docs/architecture/README.md`](docs/architecture/README.md).
 
-## Project Structure
+## Repository Structure (Current)
 
-- `kernel/`: Core microkernel source (hardware abstraction, IPC, capability model, thread scheduling).
-- `lib/`: Standard C library (e.g., musl or FreeBSD libc) and common APIs.
-- `drivers/`: Hardware device drivers (run in isolated user-space).
-- `services/`: Future subsystem, accelerator, and POSIX native endpoints.
-- `tools/`: Build tools, scripts, and host utilities.
-- `subsys/`: Subsystem compatibility layers.
-- `profiles/`: Build policies splitting the core into `rt/` (Real-Time) and `cloud/` products.
-- `docs/`: Technical documentation, architectural specs, and ADRs.
+- `kernel/` — core kernel headers + source (boot, HAL, MM, IPC, scheduler scaffolding).
+- `subsys/` — subsystem compatibility interfaces and manager scaffolding.
+- `lib/` — shared interfaces and library-level headers.
+- `tools/` — VM/bootstrap helper scripts.
+- `assets/branding/` — project logo, banner, and branding guide.
+- `docs/architecture/` — architecture specifications.
+- `docs/decisions/` and `docs/adr/` — architectural decision records (ADRs).
 
-## Current Implementation Status
+## Documentation Map
 
-We are currently in the **Architectural Scaffolding Phase**. The following core subsystem APIs and C-headers form the **v1 bootable core**:
+- **Architecture index:** [`docs/architecture/README.md`](docs/architecture/README.md)
+- **ADR index/process:** [`docs/adr/README.md`](docs/adr/README.md)
+- **Accepted ADR set:** [`docs/decisions/`](docs/decisions)
+- **Build & run:** [`BUILD.md`](BUILD.md)
 
-- **Kernel Core & HW Abstraction (`kernel/`)**:
-  - `hal_cpu.c` (x86_64, RISC-V) - CPU architecture interrupt handling and HAL layer.
-  - `boot/x86_64/multiboot2.h` & `boot/riscv/sbi.h` - Kernel entry interfaces for UEFI and OpenSBI.
-  - `mm/pmm.c` & `mm/vmm.c` - Physical Bitmap Allocator and Demand Paging Virtual Memory managers.
-  - `sched.h` - Process and Thread scheduling structures.
-- **Advanced Paradigms**:
-  - `multikernel.h` - Lockless URPC rings for Inter-Core IPC.
-  - `unikernel.h` - Direct-to-metal Library OS compilation flags.
-  - `capability_model.h` - Capability tokens for the verification scope bounding.
-- **Profiles (`profiles/`)**:
-  - `rt/policy.h` - Hard real-time scheduler constraints scaffolding.
-  - `cloud/policy.h` - High-throughput environment scaffolding.
-- **Emulation Tooling (`tools/`)**:
-  - `generate_vm.py` - Scaffolds QEMU execution VMs for all supported hardware architectures.
+## Implementation Status
 
-> _Initial API sketches exist for future storage (BFS/VFS), clustering (CXL/RDMA), accelerators (GPU/NPU in `services/accel/`), and hardware enclaves, but they are explicitly restricted from the v1 bootable core namespace._
+The repository is in an **architectural scaffolding + early bring-up stage**.
 
-## Implementation Roadmap
+Present code focuses on:
 
-### Phase 1: The Core Spine (Current Focus)
+- Boot interfaces for x86_64/riscv.
+- PMM/VMM scaffolding.
+- Core HAL and subsystem headers.
+- Experimental namespace separation under `kernel/include/experimental/` (as captured in ADR-007).
 
-- Construct the Multiboot2 (for x86) and SBI (for RISC-V) entry stubs.
-- Build the physical memory allocator and basic demand paging.
-- Establish the Core-to-Core lockless URPC messaging mechanisms.
+## Roadmap (Condensed)
 
-### Phase 2: Personalities & Standard APIs
+1. **Core bring-up stability:** boot reliability, memory correctness, and baseline IPC paths.
+2. **Personality and subsystem maturation:** user-space API shaping and compatibility scaffolds.
+3. **Deferred expansion:** advanced fabrics, richer personalities, and broader hardware acceleration paths.
 
-- Flesh out standard POSIX abstractions.
-- Prototype the Unikernel (Library OS) static-linking compiler flags.
-- Establish the Linux Syscall translation tables.
+## Build and Emulation
 
-### Phase 3+: Deferred & Research Horizons
-
-- Porting complex storage (BFS/VFS).
-- ML-tuned real-time schedulers in user-space via bounded kernel policy hooks.
-- CXL device enumeration and distributed node tracking.
-
-## Building & Emulating
-
-Please see [BUILD.md](./BUILD.md) for complete, cross-platform instructions on how to install the required LLVM/Clang and CMake toolchains across **Linux, macOS, and Windows**, compile Bharat-OS, and run the automated QEMU emulation scripts.
+See [`BUILD.md`](BUILD.md) for setup and cross-platform build/emulation workflow.
