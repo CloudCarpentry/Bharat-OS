@@ -29,6 +29,16 @@ typedef int32_t pid_t;
 typedef int64_t off_t;
 #endif
 
+#ifndef _UID_T_DEFINED_
+#define _UID_T_DEFINED_
+typedef uint32_t uid_t;
+#endif
+
+#ifndef _GID_T_DEFINED_
+#define _GID_T_DEFINED_
+typedef uint32_t gid_t;
+#endif
+
 // Standard File Descriptors
 #define STDIN_FILENO  0
 #define STDOUT_FILENO 1
@@ -43,6 +53,13 @@ int close(int fd);
 void _exit(int status);
 int fork(void);
 int execve(const char *pathname, char *const argv[], char *const envp[]);
+
+/*
+ * Process IDs in Bharat-OS map directly onto microkernel task instances.
+ * Under the hood, these tasks are controlled and identified by Capability Tokens
+ * (capability_t). The traditional getpid() call is a user-space abstraction that
+ * returns the capability ID representing the caller's own execution context.
+ */
 pid_t getpid(void);
 
 // Syscall wrapper (translates POSIX to Microkernel IPC)

@@ -38,6 +38,13 @@ typedef struct {
     uint32_t    value;          /* New priority level or target Node ID */
 } ai_suggestion_t;
 
+// Struct to make heuristic weights configurable
+typedef struct {
+    uint64_t penalty_threshold;
+    uint32_t weight_ipc_latency;
+    uint32_t weight_cache_miss;
+} ai_heuristic_config_t;
+
 typedef struct {
     uint32_t thread_id;
     uint8_t  priority;
