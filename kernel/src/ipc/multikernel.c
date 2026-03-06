@@ -1,4 +1,5 @@
 #include "../../include/advanced/multikernel.h"
+#include "../../include/atomic.h"
 #include <stddef.h>
 
 /**
@@ -11,10 +12,6 @@
 #define URPC_ERR_FULL -1
 #define URPC_ERR_EMPTY -2
 
-// Internal helper for atomic memory fence (ensure ordering).
-// This is compiler-specific. In GCC/Clang:
-#define smp_mb() __sync_synchronize()
-
 void urpc_init_ring(urpc_ring_t* ring, urpc_msg_t* buffer_ptr, uint32_t ring_size) {
     if (!ring || !buffer_ptr) return;
     ring->buffer = buffer_ptr;
@@ -26,6 +23,15 @@ void urpc_init_ring(urpc_ring_t* ring, urpc_msg_t* buffer_ptr, uint32_t ring_siz
 int urpc_send(urpc_ring_t* ring, const urpc_msg_t* msg) {
     if (!ring || !msg) return URPC_ERR_EMPTY;
     
+    // Check if the ring is full before attempting any fastpath or shared memory write
+    // This maintains the fail-fast mechanism to prevent deadlocks in highly parallel profiles.
+    uint32_t current_head = ring->head;
+    uint32_t next_head = (current_head + 1) % ring->capacity;
+
+    if (next_head == ring->tail) {
+        return URPC_ERR_FULL;
+    }
+
     // Optimization for small payloads (<= 64 bits / 8 bytes)
     // Send via register message (architectural fast path)
     if (msg->payload_size <= 8) {
@@ -57,14 +63,6 @@ int urpc_send(urpc_ring_t* ring, const urpc_msg_t* msg) {
         return URPC_SUCCESS; // Bypass shared memory
     }
 
-    uint32_t current_head = ring->head;
-    uint32_t next_head = (current_head + 1) % ring->capacity;
-    
-    // Check if the ring is full
-    if (next_head == ring->tail) {
-        return URPC_ERR_FULL;
-    }
-    
     // Copy the message into the ring
     ring->buffer[current_head] = *msg;
     

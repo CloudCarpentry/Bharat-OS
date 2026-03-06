@@ -1,5 +1,7 @@
 #include "../../include/mm.h"
 #include "../../include/numa.h"
+#include "../../include/atomic.h"
+#include "../../include/profile.h"
 #include <stddef.h>
 #include <stdint.h>
 
@@ -27,7 +29,7 @@ static pmm_node_data_t node_data[MAX_NUMA_NODES];
 // Internal helper to clear a bit in the bitmap
 static inline void clear_page_used(pmm_node_data_t* data, size_t index) {
     uint64_t mask = 1ULL << (index % 64);
-    __sync_fetch_and_and(&data->bitmap[index / 64], ~mask);
+    atomic64_fetch_and_and(&data->bitmap[index / 64], ~mask);
 }
 
 // Internal helper to check a bit
@@ -36,8 +38,9 @@ static inline int is_page_used(pmm_node_data_t* data, size_t index) {
 }
 
 int mm_pmm_init(void* memory_map, uint32_t map_size) {
-    // Basic mock of NUMA nodes. In a real system, we'd parse ACPI SRAT.
-    active_numa_nodes = 2; // Assume 2 nodes for demonstration
+    // Bootstrap Phase: Initially start with a single "Default Node" (Node 0)
+    // before fully parsing NUMA.
+    active_numa_nodes = 1;
 
     for (uint32_t i = 0; i < active_numa_nodes; i++) {
         numa_nodes[i].node_id = i;
@@ -65,9 +68,13 @@ int mm_pmm_init(void* memory_map, uint32_t map_size) {
         for (size_t j = 1; j < (MAX_PAGES_PER_NODE / 2); j++) {
             clear_page_used(data, j);
             data->ref_counts[j] = 0;
-            __sync_fetch_and_add(&node->free_pages, 1);
+            atomic64_fetch_and_add_ptr(&node->free_pages, 1);
         }
     }
+
+    // After bootstrap, in a full implementation we would parse ACPI SRAT or SBI maps
+    // to discover additional nodes and update active_numa_nodes accordingly.
+    // active_numa_nodes = discover_numa_topology();
 
     return 0; // Success
 }
@@ -95,10 +102,10 @@ phys_addr_t mm_alloc_page(uint32_t preferred_numa_node) {
                     uint64_t mask = 1ULL << bit_idx;
 
                     // Atomically set the bit. If the previous state didn't have the bit set, we successfully claimed it.
-                    if (!(__sync_fetch_and_or(&data->bitmap[i], mask) & mask)) {
+                    if (!(atomic64_fetch_and_or(&data->bitmap[i], mask) & mask)) {
                         size_t page_index = (i * 64) + bit_idx;
                         data->ref_counts[page_index] = 1;
-                        __sync_fetch_and_sub(&node->free_pages, 1);
+                        atomic64_fetch_and_sub_ptr(&node->free_pages, 1);
                         return node->start_addr + (page_index * PAGE_SIZE);
                     }
                 }
@@ -117,11 +124,11 @@ void mm_free_page(phys_addr_t page) {
             pmm_node_data_t* data = (pmm_node_data_t*)node->allocator_metadata;
 
             if (is_page_used(data, index)) {
-                uint16_t old_ref = __sync_fetch_and_sub(&data->ref_counts[index], 1);
+                uint16_t old_ref = atomic16_fetch_and_sub(&data->ref_counts[index], 1);
 
                 if (old_ref == 1) { // It dropped to 0
                     clear_page_used(data, index);
-                    __sync_fetch_and_add(&node->free_pages, 1);
+                    atomic64_fetch_and_add_ptr(&node->free_pages, 1);
                 }
             }
             return;
@@ -139,7 +146,7 @@ void mm_inc_page_ref(phys_addr_t page) {
             pmm_node_data_t* data = (pmm_node_data_t*)node->allocator_metadata;
 
             if (is_page_used(data, index)) {
-                __sync_fetch_and_add(&data->ref_counts[index], 1);
+                atomic16_fetch_and_add(&data->ref_counts[index], 1);
             }
             return;
         }
