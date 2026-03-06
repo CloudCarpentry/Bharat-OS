@@ -14,6 +14,24 @@
 typedef uint64_t phys_addr_t;
 typedef uint64_t virt_addr_t;
 
+#include "list.h"
+
+// Page metadata structure for Buddy Allocator
+typedef struct page {
+    list_head_t list;
+    uint16_t ref_count;
+    uint16_t numa_node;
+    uint32_t flags;
+    // For buddy system: an order field or similar can be kept, or inferred.
+    // For simplicity, we can keep the order in the list if needed,
+    // but typically a page's block order is stored in metadata.
+    int order;
+} page_t;
+
+// Convert page struct pointer back to physical address
+phys_addr_t page_to_phys(page_t *page);
+page_t *phys_to_page(phys_addr_t phys);
+
 // NUMA Node Definition
 typedef struct {
     uint32_t node_id;
