@@ -18,7 +18,7 @@ void hal_cpu_disable_interrupts(void) {
 }
 
 void hal_init(void) {
-    // Setup trap vectors (mtvec)
+    // Setup trap vectors (stvec) for Supervisor mode
     // Setup SBI console if running in Supervisor mode, or physical UART if Machine mode
 }
 

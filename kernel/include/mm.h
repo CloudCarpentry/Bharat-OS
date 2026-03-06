@@ -42,6 +42,11 @@ typedef struct {
 int mm_vmm_map_page(address_space_t* as, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags);
 int mm_vmm_unmap_page(address_space_t* as, virt_addr_t vaddr);
 
+// Forward declaration for capability_token_t is not straightforward because it's a typedef
+// of an anonymous struct in formal_verif.h. So we include it directly.
+#include "advanced/formal_verif.h"
+int vmm_map_device_mmio(virt_addr_t vaddr, phys_addr_t paddr, capability_t* cap, int is_npu);
+
 // Create a new empty hardware address space
 address_space_t* mm_create_address_space(void);
 
