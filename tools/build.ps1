@@ -1,0 +1,94 @@
+#Requires -Version 5.1
+<#
+.SYNOPSIS
+    Bharat-OS kernel build and QEMU run script for Windows (PowerShell 5+)
+.PARAMETER Arch
+    Target architecture: x86_64 (default), riscv64
+.PARAMETER Clean
+    Remove the build directory before building
+.PARAMETER Run
+    Boot the compiled kernel in QEMU after a successful build
+.EXAMPLE
+    .\tools\build.ps1
+    .\tools\build.ps1 -Arch riscv64
+    .\tools\build.ps1 -Arch x86_64 -Clean -Run
+#>
+param(
+    [ValidateSet("x86_64", "riscv64")]
+    [string]$Arch = "x86_64",
+    [switch]$Clean = $false,
+    [switch]$Run = $false
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+$Root = Split-Path -Parent $PSScriptRoot
+$BuildDir = "$Root\build\$Arch"
+$OutELF = "$BuildDir\kernel.elf"
+$Toolchain = "$Root\cmake\toolchains\$Arch-elf.cmake"
+
+# ── Ensure LLVM tools are on PATH ─────────────────────────────────────────
+$llvmBin = "C:\Program Files\LLVM\bin"
+if ((Test-Path $llvmBin) -and ($env:PATH -notlike "*LLVM*")) {
+    $env:PATH = "$llvmBin;$env:PATH"
+}
+
+function inf([string]$m) { Write-Host "  [.] $m" -ForegroundColor Cyan }
+function ok([string]$m) { Write-Host "  [+] $m" -ForegroundColor Green }
+function fail([string]$m) { Write-Host "  [!] $m" -ForegroundColor Red; exit 1 }
+
+Write-Host ""
+Write-Host "  Bharat-OS Build  (arch: $Arch)" -ForegroundColor DarkYellow
+Write-Host "  ────────────────────────────────" -ForegroundColor DarkYellow
+Write-Host ""
+
+# ── Verify toolchain exists ────────────────────────────────────────────────
+if (-not (Test-Path $Toolchain)) { fail "Toolchain not found: $Toolchain" }
+
+# ── Clean ──────────────────────────────────────────────────────────────────
+if ($Clean -and (Test-Path $BuildDir)) {
+    inf "Cleaning $BuildDir"
+    Remove-Item $BuildDir -Recurse -Force
+}
+
+# ── Configure (only if no cache exists) ────────────────────────────────────
+if (-not (Test-Path "$BuildDir\CMakeCache.txt")) {
+    inf "Configuring (CMake)"
+    $cmakeArgs = @(
+        "-S", "$Root\kernel",
+        "-B", $BuildDir,
+        "-DCMAKE_TOOLCHAIN_FILE=$Toolchain",
+        "-G", "Ninja",
+        "--no-warn-unused-cli"
+    )
+    & cmake @cmakeArgs
+    if ($LASTEXITCODE -ne 0) { fail "CMake configure failed" }
+}
+
+# ── Build ──────────────────────────────────────────────────────────────────
+inf "Building kernel.elf"
+& cmake --build $BuildDir --target kernel.elf
+if ($LASTEXITCODE -ne 0) { fail "Build failed" }
+
+$sizeKB = [math]::Round((Get-Item $OutELF).Length / 1KB, 1)
+ok "kernel.elf -> $OutELF  ($sizeKB KB)"
+
+# ── QEMU ──────────────────────────────────────────────────────────────────
+if ($Run) {
+    $qemuExe = switch ($Arch) {
+        "x86_64" { "C:\Program Files\qemu\qemu-system-x86_64.exe" }
+        "riscv64" { "C:\Program Files\qemu\qemu-system-riscv64.exe" }
+    }
+    if (-not (Test-Path $qemuExe)) { fail "QEMU not found at: $qemuExe" }
+
+    Write-Host ""
+    ok "Booting in QEMU (press Ctrl+A then X to quit)..."
+    Write-Host ""
+
+    $qemuArgs = switch ($Arch) {
+        "x86_64" { @("-kernel", $OutELF, "-m", "256M", "-nographic", "-serial", "mon:stdio", "-no-reboot") }
+        "riscv64" { @("-machine", "virt", "-kernel", $OutELF, "-m", "256M", "-nographic", "-serial", "mon:stdio", "-no-reboot") }
+    }
+    & $qemuExe @qemuArgs
+}
