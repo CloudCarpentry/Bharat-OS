@@ -22,11 +22,24 @@
 #define PAGE_RW      2
 #define PAGE_PS      (1 << 7)   /* large (2 MiB) page */
 
-/* ── Multiboot2 header ────────────────────────────────────────────────────
- * Must be 32-bit aligned and in the first 32 KiB of the image.
+/* ── Multiboot 1 constants ──────────────────────────────────────────────── */
+#define MB1_MAGIC    0x1BADB002
+#define MB1_FLAGS    0x00000003  /* ALIGN + MEMINFO */
+
+/* ── Boot Headers (Multiboot 1 & 2 + PVH ELF Note) ─────────────────────
+ * Must be in the first 8 KiB (v1) or 32 KiB (v2) of the image.
  */
 .section .multiboot, "a"
 .align 8
+
+/* Multiboot 1 Header */
+mb1_header:
+    .long MB1_MAGIC
+    .long MB1_FLAGS
+    .long -(MB1_MAGIC + MB1_FLAGS)
+
+.align 8
+/* Multiboot 2 Header */
 mb2_start:
     .long  MB2_MAGIC
     .long  MB2_ARCH_X86
@@ -37,6 +50,18 @@ mb2_start:
     .short 0
     .long  8
 mb2_end:
+
+.align 8
+/* PVH ELF Note (Requirement for QEMU -kernel to load 64-bit ELF) 
+ * Specifically looking for type XEN_ELFNOTE_PHYS32_ENTRY (18)
+ */
+.section .note.Xen, "a", @note
+.align 4
+    .long 4              /* name len ("Xen\0") */
+    .long 4              /* desc len (entry address) */
+    .long 18             /* type (XEN_ELFNOTE_PHYS32_ENTRY) */
+    .ascii "Xen\0"
+    .long _start         /* entry point (physical address) */
 
 /* ── Minimal bootstrap page tables (identity-map first 1 GiB) ────────────
  * All in .bss — zeroed by the boot code itself before use.
