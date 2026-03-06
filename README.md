@@ -8,6 +8,8 @@
   <img src="assets/branding/banner-dark.png" alt="Bharat-OS banner" />
 </p>
 
+<p align="center"><em>Official Bharat-OS logo and banner assets</em></p>
+
 A verification-first, capability-based microkernel OS focused on a small auditable core, strong isolation, and phased growth toward cloud and real-time profiles.
 
 ## Review Findings (What needed to change first)
@@ -34,6 +36,36 @@ This keeps the Trusted Computing Base (TCB) small and makes formal verification 
 - **Phased architecture bring-up:** x86_64 and riscv64 first, with arm64 support evolving through shared HAL abstractions.
 
 For architecture details, see [`docs/architecture/README.md`](docs/architecture/README.md).
+
+## Architecture Design (v1 Blueprint)
+
+```text
+┌──────────────────────────────────────────────────────────────────┐
+│                      User Space / Services                       │
+│  Drivers  |  Filesystems  |  Network Stack  |  Runtime Services │
+└───────────────▲────────────────────────▲─────────────────────────┘
+                │ Capability-guarded IPC │
+┌───────────────┴────────────────────────┴─────────────────────────┐
+│                    Microkernel (Trusted Core)                    │
+│  Scheduling  |  IPC Routing  |  Capability Checks  |  VM/PMM API │
+└───────────────▲────────────────────────▲─────────────────────────┘
+                │ HAL interfaces         │
+┌───────────────┴────────────────────────┴─────────────────────────┐
+│                              HAL                                 │
+│       Interrupts  |  Timer  |  MMU  |  Device/Platform Glue     │
+└───────────────▲────────────────────────▲─────────────────────────┘
+                │                        │
+         ┌──────┴──────┐          ┌──────┴──────┐
+         │   x86_64    │          │   riscv64   │  (+ arm64 planned)
+         └─────────────┘          └─────────────┘
+```
+
+Design principles represented above:
+
+- **Small trusted core:** keep privileged code minimal for easier auditing and verification.
+- **Capability-mediated communication:** every cross-boundary interaction is explicit and enforceable.
+- **Portability by HAL:** architecture-specific details are isolated so higher layers remain stable.
+- **Service isolation:** drivers and services stay in user space and interact via IPC contracts.
 
 ## Repository Structure (Current)
 
@@ -68,6 +100,26 @@ Present code focuses on:
 1. **Core bring-up stability:** boot reliability, memory correctness, and baseline IPC paths.
 2. **Personality and subsystem maturation:** user-space API shaping and compatibility scaffolds.
 3. **Deferred expansion:** advanced fabrics, richer personalities, and broader hardware acceleration paths.
+
+## Execution Plan (Near-term)
+
+### Phase 1 — Stabilize Core
+
+- Harden boot path and early memory initialization checks.
+- Add focused kernel self-tests for capability tables and IPC routing.
+- Document invariants that verification work depends on.
+
+### Phase 2 — Expand Isolated Services
+
+- Introduce first user-space service reference implementations.
+- Define stable interface contracts between kernel and subsystems.
+- Add emulator-based integration checks for scheduler + IPC behavior.
+
+### Phase 3 — Platform and Personality Growth
+
+- Extend arm64 bring-up through shared HAL contracts.
+- Mature subsystem personalities behind capability boundaries.
+- Track deferred features as ADR-backed experiments before merge.
 
 ## Build and Emulation
 
