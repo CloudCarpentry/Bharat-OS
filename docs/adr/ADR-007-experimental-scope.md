@@ -4,6 +4,11 @@
 **Status:** Accepted
 **Author:** Divyang Panchasara
 
+## Related Documentation
+
+- Architecture index: [`docs/architecture/README.md`](../architecture/README.md)
+- ADR index/process: [`docs/adr/README.md`](README.md)
+
 ---
 
 ## Context
