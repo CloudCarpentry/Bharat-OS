@@ -8,8 +8,26 @@
  */
 
 #include <stddef.h>
+#include <stdint.h>
 
-typedef int ssize_t;
+/* Use conditional guards to prevent redefinition errors
+ * when building with standard toolchains.
+ */
+
+#ifndef _SSIZE_T_DEFINED_
+#define _SSIZE_T_DEFINED_
+typedef intptr_t ssize_t;
+#endif
+
+#ifndef _PID_T_DEFINED_
+#define _PID_T_DEFINED_
+typedef int32_t pid_t;
+#endif
+
+#ifndef _OFF_T_DEFINED_
+#define _OFF_T_DEFINED_
+typedef int64_t off_t;
+#endif
 
 // Standard File Descriptors
 #define STDIN_FILENO  0
@@ -25,6 +43,7 @@ int close(int fd);
 void _exit(int status);
 int fork(void);
 int execve(const char *pathname, char *const argv[], char *const envp[]);
+pid_t getpid(void);
 
 // Syscall wrapper (translates POSIX to Microkernel IPC)
 long syscall(long number, ...);
