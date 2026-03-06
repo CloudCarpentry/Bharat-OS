@@ -65,6 +65,7 @@ Setting `CMAKE_SYSTEM_NAME=Generic` in the toolchain file is what prevents CMake
 cmake/toolchains/
   x86_64-elf.cmake   ← x86_64 bare-metal (QEMU)
   riscv64-elf.cmake  ← RISC-V 64-bit bare-metal (QEMU)
+  arm64-elf.cmake    ← ARM64 bare-metal (compile validation)
 ```
 
 ---
@@ -89,6 +90,12 @@ chmod +x tools/build.sh
 
 # Build RISC-V 64-bit
 ./tools/build.sh riscv64
+
+# Build ARM64 (compile-only scaffold)
+./tools/build.sh arm64
+
+# Override boot knobs
+./tools/build.sh x86_64 --boot-gui=OFF --hw=vm
 ```
 
 **Windows (PowerShell 5+ or pwsh)**
@@ -105,6 +112,12 @@ chmod +x tools/build.sh
 
 # Build RISC-V 64-bit
 .\tools\build.ps1 -Arch riscv64
+
+# Build ARM64 (compile-only scaffold)
+.\tools\build.ps1 -Arch arm64
+
+# Override boot knobs
+.\tools\build.ps1 -Arch x86_64 -BootGui OFF -HardwareProfile vm
 ```
 
 ---
@@ -167,11 +180,11 @@ qemu-system-riscv64 -machine virt \
 
 ## Supported Architectures
 
-| Arch      | Status                                    | QEMU Machine                        |
-| --------- | ----------------------------------------- | ----------------------------------- |
-| `x86_64`  | ✅ Active                                 | `qemu-system-x86_64 -kernel`        |
-| `riscv64` | 🔧 Planned (RISC-V SBI boot stub pending) | `qemu-system-riscv64 -machine virt` |
-| `arm64`   | 🔬 Experimental stub only                 | N/A                                 |
+| Arch      | Status                                     | QEMU Machine                        |
+| --------- | ------------------------------------------ | ----------------------------------- |
+| `x86_64`  | ✅ Active                                  | `qemu-system-x86_64 -kernel`        |
+| `riscv64` | ✅ Cross-compile validated                  | `qemu-system-riscv64 -machine virt` |
+| `arm64`   | ✅ Cross-compile validated (runtime pending) | N/A                                 |
 
 ---
 
@@ -188,3 +201,13 @@ qemu-system-riscv64 -machine virt \
 
 **Windows: `ninja` not found by CMake**
 → Install Ninja via winget (see above) or set path: `$env:Path += ";C:\path\to\ninja"`.
+
+
+## Boot-time configuration
+
+You can tune early boot behavior without source edits:
+
+- `BHARAT_BOOT_GUI` (`ON`/`OFF`): enables boot-to-GUI handoff metadata.
+- `BHARAT_BOOT_HW_PROFILE` (`generic`, `desktop`, `server`, `vm`, `laptop`): picks hardware profile compile definitions for boot policy and defaults.
+
+These are wired through both build scripts and raw CMake cache entries.

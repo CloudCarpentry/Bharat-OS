@@ -12,12 +12,15 @@
     .\tools\build.ps1
     .\tools\build.ps1 -Arch riscv64
     .\tools\build.ps1 -Arch x86_64 -Clean -Run
+    .\tools\build.ps1 -Arch x86_64 -BootGui OFF -HardwareProfile vm
 #>
 param(
-    [ValidateSet("x86_64", "riscv64")]
+    [ValidateSet("x86_64", "riscv64", "arm64")]
     [string]$Arch = "x86_64",
     [switch]$Clean = $false,
-    [switch]$Run = $false
+    [switch]$Run = $false,
+    [ValidateSet("ON", "OFF")][string]$BootGui = "ON",
+    [ValidateSet("generic", "desktop", "server", "vm", "laptop")][string]$HardwareProfile = "generic"
 )
 
 Set-StrictMode -Version Latest
@@ -59,6 +62,8 @@ if (-not (Test-Path "$BuildDir\CMakeCache.txt")) {
         "-S", "$Root\kernel",
         "-B", $BuildDir,
         "-DCMAKE_TOOLCHAIN_FILE=$Toolchain",
+        "-DBHARAT_BOOT_GUI=$BootGui",
+        "-DBHARAT_BOOT_HW_PROFILE=$HardwareProfile",
         "-G", "Ninja",
         "--no-warn-unused-cli"
     )
@@ -79,7 +84,9 @@ if ($Run) {
     $qemuExe = switch ($Arch) {
         "x86_64" { "C:\Program Files\qemu\qemu-system-x86_64.exe" }
         "riscv64" { "C:\Program Files\qemu\qemu-system-riscv64.exe" }
+        "arm64" { "" }
     }
+    if ($Arch -eq "arm64") { fail "QEMU run is not wired for arm64 yet; build completed successfully." }
     if (-not (Test-Path $qemuExe)) { fail "QEMU not found at: $qemuExe" }
 
     Write-Host ""
@@ -89,6 +96,7 @@ if ($Run) {
     $qemuArgs = switch ($Arch) {
         "x86_64" { @("-kernel", $OutELF, "-m", "256M", "-nographic", "-serial", "mon:stdio", "-no-reboot") }
         "riscv64" { @("-machine", "virt", "-kernel", $OutELF, "-m", "256M", "-nographic", "-serial", "mon:stdio", "-no-reboot") }
+        "arm64" { @() }
     }
     & $qemuExe @qemuArgs
 }
