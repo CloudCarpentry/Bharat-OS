@@ -1,0 +1,3 @@
+@echo off
+echo Starting Bharat-OS (arm64) Emulation VM...
+qemu-system-aarch64 -M virt -cpu cortex-a57 -m 2048 -smp 4 -kernel ../build/kernel/kernel.elf -nographic
