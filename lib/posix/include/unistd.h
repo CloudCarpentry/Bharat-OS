@@ -10,7 +10,6 @@
 #include <stddef.h>
 
 typedef int ssize_t;
-typedef unsigned int size_t;
 
 // Standard File Descriptors
 #define STDIN_FILENO  0
