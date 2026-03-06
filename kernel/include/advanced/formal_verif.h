@@ -20,6 +20,7 @@
 #define CAP_RIGHT_EXECUTE    (1 << 2)
 #define CAP_RIGHT_DEVICE_NPU (1 << 3)
 #define CAP_RIGHT_DEVICE_GPU (1 << 4)
+#define CAP_RIGHT_NETWORK_IO (1 << 5)
 
 // Represents an unforgeable Authorization token verified continuously by the Microkernel Tracker
 struct FV_BOUNDED(0, 0xFFFFFFFF) capability_token_t {

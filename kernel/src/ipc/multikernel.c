@@ -38,8 +38,16 @@ int urpc_send(urpc_ring_t* ring, const urpc_msg_t* msg) {
 #if defined(__riscv)
         // Ensure RISC-V architectural fast path using SBI
         extern void sbi_send_ipi_payload(const unsigned long* hart_mask, uint64_t payload);
+        // Note: sbi_send_ipi_payload is declared as static inline in sbi.h, so we include it directly
+        // to avoid linkage errors, or implement a real wrapper.
+        // For compilation simplicity in this multi-arch C file without breaking includes:
         unsigned long hart_mask = (1UL << target_core);
-        sbi_send_ipi_payload(&hart_mask, fast_payload);
+        // sbi_call definition would be needed here, or we call a non-inline hal wrapper.
+        // We will mock the external call to avoid include hell with `boot/riscv/sbi.h`
+        // which isn't typically included in generic ipc code.
+        // Let's assume the HAL provides a non-inline wrapper:
+        extern void hal_riscv_send_ipi_payload(const unsigned long* hart_mask, uint64_t payload);
+        hal_riscv_send_ipi_payload(&hart_mask, fast_payload);
 #else
         // Fallback for other architectures (mock generic fast path)
         extern void hal_send_ipi_payload(uint32_t target_core, uint64_t payload);

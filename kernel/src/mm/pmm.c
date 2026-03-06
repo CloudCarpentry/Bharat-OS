@@ -77,7 +77,9 @@ phys_addr_t mm_alloc_page(uint32_t preferred_numa_node) {
         preferred_numa_node = 0; // Fallback
     }
 
-    uint32_t start_node = (preferred_numa_node == NUMA_NODE_ANY) ? 0 : preferred_numa_node;
+    // Attempt allocation from the local node first (NUMA aware scaling)
+    uint32_t start_node = (preferred_numa_node == NUMA_NODE_ANY) ? numa_get_current_node() : preferred_numa_node;
+    if (start_node >= active_numa_nodes) start_node = 0;
 
     for (uint32_t attempt = 0; attempt < active_numa_nodes; attempt++) {
         uint32_t node_id = (start_node + attempt) % active_numa_nodes;

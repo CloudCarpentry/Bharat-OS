@@ -50,4 +50,19 @@ int io_setup_ring(uint32_t entries, io_ring_t* out_ring);
 // Submit accumulated entries in the Submission Queue
 int io_submit_sqes(io_ring_t* ring);
 
+// Zero-Copy Direct Device Access for OpenRAN UP (User Plane)
+#include "advanced/formal_verif.h"
+
+// Defines a shared memory region mapping a NIC's hardware queues directly to user-space
+typedef struct {
+    void* rx_ring_base;
+    void* tx_ring_base;
+    uint32_t ring_size_bytes;
+    uint32_t msix_vector;
+} zero_copy_nic_ring_t;
+
+// Maps the hardware network interface ring buffers directly to the requesting task
+// Requires CAP_RIGHT_DEVICE_GPU or a newly defined CAP_RIGHT_NETWORK_IO
+int io_setup_zero_copy_nic_ring(uint32_t nic_device_id, zero_copy_nic_ring_t* out_ring, capability_t* cap);
+
 #endif // BHARAT_IO_H
