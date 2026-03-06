@@ -32,6 +32,15 @@ int vmm_init() {
 int vmm_map_page(virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
     if (!kernel_page_directory) return -1;
     
+    // Support Copy-on-Write (CoW) implementation
+    if (flags & PAGE_COW) {
+        // Increment the physical page reference count
+        mm_inc_page_ref(paddr);
+
+        // Remove write permission from the hardware translation flags
+        flags &= ~CAP_RIGHT_WRITE;
+    }
+
     // Stub: This relies entirely on hardware architecture specifics.
     // E.g., for x86_64 this would resolve the PML4 -> PDPT -> PD -> PT layers.
     
