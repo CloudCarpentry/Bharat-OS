@@ -3,36 +3,44 @@
 #include <unistd.h>
 // Include the new AI scheduler headers
 // Note: In a real build system, the include path might need to be adjusted
-#include <ai_sched.h>
+#include <advanced/ai_sched.h>
+#include <advanced/multikernel.h>
 
 // User-space AI Governor
 // Represents the Predictive Resource Scheduling & Intelligent Power Management mechanisms
 // Uses heuristics/ML inference to model application behavior and communicates with kernel via IPC
 
-// Thresholds for the cost function
-#define PENALTY_THRESHOLD 5000
-#define WEIGHT_IPC_LATENCY 2
-#define WEIGHT_CACHE_MISS 10
-
-// Placeholder for an IPC call to the Scheduler Control Endpoint
-void send_suggestion_to_kernel(ai_suggestion_t* suggestion) {
-    // In a full implementation, this would use the Capability-based IPC model
-    // to send a message to a "Scheduler Control Endpoint".
+// Send suggestion to kernel via Lockless URPC messaging spine
+void send_suggestion_to_kernel(ai_suggestion_t* suggestion, urpc_ring_t* control_ring) {
     printf("[AI Governor IPC] Sending action %d for target %u (value: %u)\n",
            suggestion->action, suggestion->target_id, suggestion->value);
+
+    // This uses the Capability-based IPC model to send a message to a "Scheduler Control Endpoint".
+    urpc_msg_t msg = {0};
+    msg.msg_type = 1; // e.g., MSG_TYPE_AI_SUGGESTION
+    msg.payload_size = sizeof(ai_suggestion_t);
+
+    // Pack the suggestion into the 64-byte payload
+    ((ai_suggestion_t*)msg.payload_data)[0] = *suggestion;
+
+    int status = urpc_send(control_ring, &msg);
+    if (status == -1) {
+        // Handle ring buffer full scenario to maintain fail-fast semantics
+        printf("[AI Governor IPC] WARNING: Control ring buffer full. Suggestion dropped.\n");
+    }
 }
 
-void ai_governor_suggest_action(uint32_t thread_id, kernel_telemetry_t* telemetry) {
+void ai_governor_suggest_action(uint32_t thread_id, kernel_telemetry_t* telemetry, ai_heuristic_config_t* config, urpc_ring_t* control_ring) {
     // Calculate Penalty Score
     // Penalty = (IPC Latency * Weight) + (Cache Miss Rate * Weight)
     // This is a simple heuristic cost function. High IPC latency and cache misses
     // often indicate poor NUMA placement or resource contention.
-    uint64_t penalty_score = (telemetry->ipc_latency_ns * WEIGHT_IPC_LATENCY) +
-                             (telemetry->cache_miss_rate * WEIGHT_CACHE_MISS);
+    uint64_t penalty_score = (telemetry->ipc_latency_ns * config->weight_ipc_latency) +
+                             (telemetry->cache_miss_rate * config->weight_cache_miss);
 
     printf("[AI Governor] Thread %u - Penalty Score: %lu\n", thread_id, penalty_score);
 
-    if (penalty_score > PENALTY_THRESHOLD) {
+    if (penalty_score > config->penalty_threshold) {
         printf("[AI Governor] High penalty detected. Suggesting Task Migration.\n");
         ai_suggestion_t suggestion;
         suggestion.action = AI_ACTION_MIGRATE_TASK;
@@ -40,7 +48,7 @@ void ai_governor_suggest_action(uint32_t thread_id, kernel_telemetry_t* telemetr
         // Suggest migrating to a different NUMA node (e.g., node 0 if currently on node 1, or vice versa)
         suggestion.value = (telemetry->numa_node_id == 0) ? 1 : 0;
 
-        send_suggestion_to_kernel(&suggestion);
+        send_suggestion_to_kernel(&suggestion, control_ring);
     } else if (telemetry->cpu_usage_pct > 80) {
         printf("[AI Governor] High CPU usage detected. Suggesting Priority Adjustment.\n");
         ai_suggestion_t suggestion;
@@ -48,12 +56,23 @@ void ai_governor_suggest_action(uint32_t thread_id, kernel_telemetry_t* telemetr
         suggestion.target_id = thread_id;
         suggestion.value = 1; // Increase priority level
 
-        send_suggestion_to_kernel(&suggestion);
+        send_suggestion_to_kernel(&suggestion, control_ring);
     }
 }
 
 void run_ai_inference_loop() {
     printf("[AI Governor] Starting predictive resource scheduling loop...\n");
+
+    // Configuration for the heuristic
+    ai_heuristic_config_t config = {
+        .penalty_threshold = 5000,
+        .weight_ipc_latency = 2,
+        .weight_cache_miss = 10
+    };
+
+    // Mock channel setup for IPC
+    urpc_ring_t control_ring = {0};
+    // In a real scenario, this ring buffer would be mapped in cache-aligned shared memory
 
     // Mock telemetry for testing the heuristic
     kernel_telemetry_t mock_telemetry_1 = {
@@ -77,17 +96,19 @@ void run_ai_inference_loop() {
         // or received via an IPC endpoint from the kernel.
 
         printf("--- Evaluating Thread 1001 ---\n");
-        ai_governor_suggest_action(1001, &mock_telemetry_1);
+        ai_governor_suggest_action(1001, &mock_telemetry_1, &config, &control_ring);
 
         printf("--- Evaluating Thread 1002 ---\n");
-        ai_governor_suggest_action(1002, &mock_telemetry_2);
+        ai_governor_suggest_action(1002, &mock_telemetry_2, &config, &control_ring);
 
         // Sleep to simulate inference interval
         sleep(2);
     }
 }
 
+#ifndef TESTING
 int main(int argc, char** argv) {
     run_ai_inference_loop();
     return 0;
 }
+#endif
