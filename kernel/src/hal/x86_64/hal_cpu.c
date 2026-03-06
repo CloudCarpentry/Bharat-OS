@@ -18,3 +18,7 @@ void hal_cpu_disable_interrupts(void) {
 void hal_init(void) {
     // Setup IDT, GDT for x86_64
 }
+
+void hal_tlb_flush(unsigned long long vaddr) {
+    __asm__ volatile("invlpg (%0)" :: "r"(vaddr) : "memory");
+}

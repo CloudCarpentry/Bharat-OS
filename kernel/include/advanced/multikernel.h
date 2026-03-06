@@ -10,6 +10,19 @@
  * running independently on each physical CPU core to allow lockless scaling on massive hardware.
  */
 
+typedef struct {
+    uint32_t msg_type;
+    uint32_t payload_size;
+    uint64_t payload_data[8]; // Max 64 bytes in shared memory ring
+} urpc_msg_t;
+
+typedef struct {
+    urpc_msg_t* buffer;
+    uint32_t capacity;
+    volatile uint32_t head;
+    volatile uint32_t tail;
+} urpc_ring_t;
+
 // A Message Channel connecting two independent kernel instances on different cores
 typedef struct {
     uint32_t sender_core_id;
@@ -17,7 +30,7 @@ typedef struct {
     
     // Lockless URPC (User-level Remote Procedure Call) Ring Buffer
     // Mapped in cache-aligned shared memory between the two cores
-    void* urpc_ring;
+    urpc_ring_t* urpc_ring;
     uint32_t ring_size;
 } mk_channel_t;
 

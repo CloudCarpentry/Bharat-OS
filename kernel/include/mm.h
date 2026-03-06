@@ -31,6 +31,9 @@ int mm_pmm_init(void* memory_map, uint32_t map_size);
 phys_addr_t mm_alloc_page(uint32_t preferred_numa_node);
 void mm_free_page(phys_addr_t page);
 
+// Support for Copy-on-Write (CoW) page reference counting
+void mm_inc_page_ref(phys_addr_t page);
+
 // Virtual Memory Management (Architecture agnostic paging)
 typedef struct {
     phys_addr_t root_table; // CR3 on x86, satp on RISC-V
