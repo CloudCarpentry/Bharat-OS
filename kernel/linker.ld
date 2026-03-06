@@ -25,6 +25,12 @@ SECTIONS
         KEEP(*(.multiboot))
     }
 
+    /* ── ELF Notes (PVH entry point info) ───────────────────────────── */
+    .note ALIGN(4) :
+    {
+        KEEP(*(.note.*))
+    }
+
     /* ── Read-only text ──────────────────────────────────────────────── */
     .text ALIGN(4096) :
     {
@@ -61,6 +67,5 @@ SECTIONS
     {
         *(.comment)
         *(.eh_frame)
-        *(.note*)
     }
 }
