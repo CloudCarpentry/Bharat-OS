@@ -4,8 +4,38 @@
 
 // RISC-V Specific HAL Implementation (RV64 / Shakti)
 
+void hal_serial_init(void) {
+    // OpenSBI console is already available; no additional UART init required.
+}
+
+void hal_serial_write_char(char c) {
+    sbi_console_putchar((int)c);
+}
+
+void hal_serial_write(const char* s) {
+    if (!s) {
+        return;
+    }
+
+    while (*s != '\0') {
+        if (*s == '\n') {
+            sbi_console_putchar('\r');
+        }
+        sbi_console_putchar(*s++);
+    }
+}
+
+int hal_serial_read_char(void) {
+    return sbi_console_getchar();
+}
+
 void hal_riscv_send_ipi_payload(const unsigned long* hart_mask, uint64_t payload) {
     sbi_send_ipi_payload(hart_mask, payload);
+}
+
+void hal_send_ipi_payload(uint32_t target_core, uint64_t payload) {
+    unsigned long hart_mask = (1UL << target_core);
+    hal_riscv_send_ipi_payload(&hart_mask, payload);
 }
 
 void hal_cpu_halt(void) {
@@ -36,6 +66,7 @@ void hal_cpu_disable_interrupts(void) {
 void hal_init(void) {
     // Setup trap vectors (stvec) for Supervisor mode
     // Setup SBI console if running in Supervisor mode, or physical UART if Machine mode
+    hal_serial_init();
 }
 
 void hal_tlb_flush(unsigned long long vaddr) {

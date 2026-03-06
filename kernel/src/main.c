@@ -17,14 +17,19 @@ static const char* kernel_boot_hw_profile(void) {
 
 // Basic entry point for the microkernel
 void kernel_main(void) {
-    (void)kernel_boot_hw_profile();
+    const char* profile = kernel_boot_hw_profile();
 
     // 1. Initialize hardware architecture (CPU)
     hal_init();
 
+    hal_serial_write("[bharat] kernel_main reached\n");
+    hal_serial_write("[bharat] hw_profile=");
+    hal_serial_write(profile);
+    hal_serial_write("\n");
 #if BHARAT_BOOT_GUI
-    // Boot GUI hand-off point for a future userspace compositor.
-    // Intentionally lightweight in ring-0 to preserve fast boot and small TCB.
+    hal_serial_write("[bharat] boot_gui=ON\n");
+#else
+    hal_serial_write("[bharat] boot_gui=OFF\n");
 #endif
 
     // 2. Initialize memory management (Paging, Physical Allocator)
