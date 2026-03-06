@@ -1,37 +1,48 @@
-#include "kernel.h"
 #include "hal/hal.h"
+#include "kernel.h"
 
-static const char* kernel_boot_hw_profile(void) {
-#if defined(BHARAT_BOOT_HW_PROFILE_desktop)
-    return "desktop";
-#elif defined(BHARAT_BOOT_HW_PROFILE_server)
-    return "server";
-#elif defined(BHARAT_BOOT_HW_PROFILE_vm)
-    return "vm";
-#elif defined(BHARAT_BOOT_HW_PROFILE_laptop)
-    return "laptop";
+/* Bring-up debug: COM1 serial output, visible in QEMU -nographic */
+#ifdef __x86_64__
+#include "hal/serial.h"
+#define KPRINT(s) serial_puts(s)
 #else
-    return "generic";
+#define KPRINT(s) ((void)0)
+#endif
+
+static const char *kernel_boot_hw_profile(void) {
+#if defined(BHARAT_BOOT_HW_PROFILE_desktop)
+  return "desktop";
+#elif defined(BHARAT_BOOT_HW_PROFILE_server)
+  return "server";
+#elif defined(BHARAT_BOOT_HW_PROFILE_vm)
+  return "vm";
+#elif defined(BHARAT_BOOT_HW_PROFILE_laptop)
+  return "laptop";
+#else
+  return "generic";
 #endif
 }
 
 // Basic entry point for the microkernel
 void kernel_main(void) {
-    (void)kernel_boot_hw_profile();
+  KPRINT("\n");
+  KPRINT("  ██████╗ ██╗  ██╗ █████╗ ██████╗  █████╗ ████████╗\n");
+  KPRINT("  ██╔══██╗██║  ██║██╔══██╗██╔══██╗██╔══██╗╚══██╔══╝\n");
+  KPRINT("  ██████╔╝███████║███████║██████╔╝███████║   ██║\n");
+  KPRINT("  ██╔══██╗██╔══██║██╔══██║██╔══██╗██╔══██║   ██║\n");
+  KPRINT("  ██████╔╝██║  ██║██║  ██║██║  ██║██║  ██║   ██║\n");
+  KPRINT("  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝  ╚═╝\n");
+  KPRINT("\n");
+  KPRINT("  Bharat-OS  v0.1-dev  (x86_64 bring-up)\n");
+  KPRINT("  Verification-first microkernel — made in India\n");
+  KPRINT("\n");
+  KPRINT("  [HAL] Initialising hardware...\n");
+  hal_init();
+  KPRINT("  [HAL] Ready.\n");
+  KPRINT("  [MK]  Entering halt loop (no scheduler yet).\n");
+  KPRINT("\n");
 
-    // 1. Initialize hardware architecture (CPU)
-    hal_init();
-
-#if BHARAT_BOOT_GUI
-    // Boot GUI hand-off point for a future userspace compositor.
-    // Intentionally lightweight in ring-0 to preserve fast boot and small TCB.
-#endif
-
-    // 2. Initialize memory management (Paging, Physical Allocator)
-    // 3. Initialize IPC mechanisms and threading
-
-    // Halt the CPU loop
-    while (1) {
-        hal_cpu_halt();
-    }
+  while (1) {
+    hal_cpu_halt();
+  }
 }

@@ -3,6 +3,19 @@ project(BharatOS_Kernel C ASM)
 
 set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 
+# ── Force ld.lld as the linker — MUST be set in CMakeLists (not toolchain)
+# to survive CMake's platform-specific link rule generation.
+find_program(LLD_LINKER NAMES ld.lld HINTS
+    "C:/Program Files/LLVM/bin"
+    "/usr/bin" "/usr/local/bin" "/opt/homebrew/bin"
+)
+if(NOT LLD_LINKER)
+    message(FATAL_ERROR "ld.lld not found, install LLD (see BUILD.md)")
+endif()
+set(CMAKE_C_LINK_EXECUTABLE   "<CMAKE_LINKER> <LINK_FLAGS> <OBJECTS> -o <TARGET>")
+set(CMAKE_ASM_LINK_EXECUTABLE "<CMAKE_LINKER> <LINK_FLAGS> <OBJECTS> -o <TARGET>")
+set(CMAKE_LINKER "${LLD_LINKER}")
+
 # ── Toolchain file provides all compiler/linker settings.
 # Pass -DCMAKE_TOOLCHAIN_FILE=../cmake/toolchains/<arch>-elf.cmake at configure time.
 # See BUILD.md for exact commands for each platform.
@@ -86,17 +99,14 @@ target_compile_options(kernel.elf PRIVATE
     $<$<COMPILE_LANGUAGE:C>:-Werror=implicit-function-declaration>
 )
 
+# ── Linker options (native ld.lld flags — we call ld.lld directly)
+# NOTE: LINKER: / -Wl, prefixes are for clang driver and DON'T work here.
+# Use native ld.lld flags directly: --nopie, -T, --build-id, --fatal-warnings
 target_link_options(kernel.elf PRIVATE
     "-nostdlib"
-    "-static"
-    "LINKER:-no-pie"
-    "LINKER:--fatal-warnings"
-)
-
-# Linker script
-# Linker script + options
-target_link_options(kernel.elf PRIVATE
-    "LINKER:-T,${LINKER_SCRIPT}"
-    "LINKER:--build-id=none"
-    "LINKER:--no-dynamic-linker"
+    "--no-pie"
+    "--fatal-warnings"
+    "-T" "${LINKER_SCRIPT}"
+    "--build-id=none"
+    "--no-dynamic-linker"
 )
