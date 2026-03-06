@@ -48,6 +48,8 @@ int mk_send_message(mk_channel_t *channel, uint32_t msg_type, void *payload,
 int mk_poll_messages(mk_channel_t *channel);
 
 // Low-level Lockless URPC messaging spine API
-int urpc_send(urpc_ring_t *ring, const urpc_msg_t *msg);
+void urpc_init_ring(urpc_ring_t* ring, urpc_msg_t* buffer_ptr, uint32_t ring_size);
+int urpc_send(urpc_ring_t* ring, urpc_msg_t* msg);
+int urpc_receive(urpc_ring_t* ring, urpc_msg_t* out_msg);
 
 #endif // BHARAT_MULTIKERNEL_H

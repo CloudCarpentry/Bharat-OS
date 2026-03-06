@@ -183,7 +183,7 @@ qemu-system-riscv64 -machine virt \
 | Arch      | Status                                     | QEMU Machine                        |
 | --------- | ------------------------------------------ | ----------------------------------- |
 | `x86_64`  | ✅ Active                                  | `qemu-system-x86_64 -kernel`        |
-| `riscv64` | ✅ Cross-compile validated                  | `qemu-system-riscv64 -machine virt` |
+| `riscv64` | ✅ Cross-compile validated (incl. Shakti RV64 profile) | `qemu-system-riscv64 -machine virt` |
 | `arm64`   | ✅ Cross-compile validated (runtime pending) | N/A                                 |
 
 
