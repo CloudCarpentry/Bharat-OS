@@ -69,7 +69,49 @@ sudo pacman -S cmake ninja clang llvm lld qemu-desktop
 
 ---
 
-## Compiling the OS
+## Quick Start with `bosh` (Recommended)
+
+`bosh` is the Bharat-OS shell launcher. It sets the correct environment variables,
+cross-compiler prefix and PATH before handing control back to your preferred shell.
+
+### Linux / macOS (bash/zsh)
+
+```bash
+# Make the launcher executable (one-time)
+chmod +x tools/bosh
+
+# Start an interactive build session
+./tools/bosh
+
+# OR run a single build command non-interactively
+BHARAT_ARCH=riscv ./tools/bosh cmake --build build/riscv --target kernel.elf
+```
+
+### Windows (PowerShell)
+
+```powershell
+# Start an interactive build session
+.\tools\bosh.ps1
+
+# Build for a specific arch
+.\tools\bosh.ps1 -Arch riscv
+
+# Use the module commands directly after importing
+Import-Module .\tools\BharatOS.psm1
+bharat-build -Arch x86_64
+bharat-run   -Arch x86_64
+bharat-clean
+```
+
+### Available PowerShell Module Commands
+
+| Command                          | Description                        |
+| -------------------------------- | ---------------------------------- |
+| `bharat-build [-Arch] [-Clean]`  | Configure and compile `kernel.elf` |
+| `bharat-run   [-Arch] [-Memory]` | Boot kernel in QEMU                |
+| `bharat-clean [-Arch]`           | Remove build artifacts             |
+
+---
 
 Once the tools are installed and present in your `PATH`, open your terminal (PowerShell, Bash, or Zsh), navigate to the `Bharat-OS` project root directory, and run the following commands.
 

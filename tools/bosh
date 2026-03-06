@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# bosh — Bharat-OS Shell Launcher
+# Detects the current environment and drops into the correct shell with
+# the Bharat-OS build environment pre-loaded.
+#
+# Usage:
+#   ./tools/bosh [command]        Run a single command and exit
+#   ./tools/bosh                  Start an interactive session
+
+set -euo pipefail
+
+BHARAT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+BHARAT_ARCH="${BHARAT_ARCH:-x86_64}"
+
+# ── Colour palette ──────────────────────────────────────────────────────────
+SAFFRON="\033[38;2;255;153;51m"
+GREEN="\033[38;2;19;136;8m"
+RESET="\033[0m"
+
+banner() {
+    echo -e "${SAFFRON}╔══════════════════════════════════════════╗${RESET}"
+    echo -e "${SAFFRON}║  Bharat-OS Build Shell                   ║${RESET}"
+    echo -e "${SAFFRON}║  ${GREEN}Verified. Sovereign. Open.${SAFFRON}               ║${RESET}"
+    echo -e "${SAFFRON}╚══════════════════════════════════════════╝${RESET}"
+    echo -e "  Root : ${BHARAT_ROOT}"
+    echo -e "  Arch : ${GREEN}${BHARAT_ARCH}${RESET}"
+    echo ""
+}
+
+# ── Environment setup ────────────────────────────────────────────────────────
+export BHARAT_ROOT
+export BHARAT_BUILD_DIR="${BHARAT_ROOT}/build/${BHARAT_ARCH}"
+export PATH="${BHARAT_ROOT}/tools:${PATH}"
+
+# Cross-compiler prefix detection
+case "${BHARAT_ARCH}" in
+    x86_64)   export CROSS_COMPILE="x86_64-elf-" ;;
+    riscv*)   export CROSS_COMPILE="riscv64-unknown-elf-" ;;
+    arm64)    export CROSS_COMPILE="aarch64-elf-" ;;
+    *)        echo "Unknown BHARAT_ARCH: ${BHARAT_ARCH}"; exit 1 ;;
+esac
+
+# ── Dispatch ─────────────────────────────────────────────────────────────────
+if [[ $# -gt 0 ]]; then
+    # Non-interactive: run the given command
+    exec "$@"
+else
+    # Interactive: print banner then hand off to preferred shell
+    banner
+    SHELL_BIN="${SHELL:-/bin/bash}"
+    PS1="[\033[38;2;255;153;51mbharat-os \033[38;2;19;136;8m${BHARAT_ARCH}\033[0m]\$ " \
+        exec "${SHELL_BIN}" --norc --noprofile
+fi
