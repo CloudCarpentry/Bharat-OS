@@ -28,7 +28,7 @@ To achieve a machine-checked proof (e.g., via Isabelle/HOL):
 
 ## Scope Exclusion
 
-We explicitely **do not** formally verify:
+For v1, we explicitly **do not** formally verify:
 
 - Any file system (BFS, VFS).
 - Network stacks (TCP/IP).
