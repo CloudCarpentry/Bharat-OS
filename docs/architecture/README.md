@@ -23,6 +23,7 @@ This folder captures the current architectural baseline for Bharat-OS.
 - [`ipc-model.md`](ipc-model.md)
 - [`memory-model.md`](memory-model.md)
 - [`driver-model.md`](driver-model.md)
+- [`storage-and-sandbox-strategy.md`](storage-and-sandbox-strategy.md)
 - [`verification-scope.md`](verification-scope.md)
 
 ### User-space strategy and deferred surfaces
