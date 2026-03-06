@@ -1,6 +1,12 @@
 #include "hal/hal.h"
 
+#include "../../boot/riscv/sbi.h"
+
 // RISC-V Specific HAL Implementation (RV64 / Shakti)
+
+void hal_riscv_send_ipi_payload(const unsigned long* hart_mask, uint64_t payload) {
+    sbi_send_ipi_payload(hart_mask, payload);
+}
 
 void hal_cpu_halt(void) {
     // Wait for interrupt instruction
@@ -18,7 +24,7 @@ void hal_cpu_disable_interrupts(void) {
 }
 
 void hal_init(void) {
-    // Setup trap vectors (mtvec)
+    // Setup trap vectors (stvec) for Supervisor mode
     // Setup SBI console if running in Supervisor mode, or physical UART if Machine mode
 }
 

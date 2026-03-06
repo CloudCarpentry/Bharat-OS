@@ -12,6 +12,9 @@
 #define SBI_EXT_TIME 0x54494D45
 #define SBI_EXT_IPI  0x735049
 #define SBI_EXT_RFNC 0x52464E43
+#define SBI_EXT_CONSOLE_PUTCHAR 0x01
+#define SBI_EXT_CONSOLE_GETCHAR 0x02
+#define SBI_EXT_SRST 0x53525354 // System Reset Extension
 
 // SBI Return Structure
 typedef struct {
@@ -38,6 +41,21 @@ static inline sbi_ret_t sbi_call(long ext, long fid, long arg0, long arg1, long 
     return ret;
 }
 
+// Console I/O wrappers
+static inline void sbi_console_putchar(int ch) {
+    sbi_call(SBI_EXT_CONSOLE_PUTCHAR, 0, ch, 0, 0);
+}
+
+static inline int sbi_console_getchar(void) {
+    sbi_ret_t ret = sbi_call(SBI_EXT_CONSOLE_GETCHAR, 0, 0, 0, 0);
+    return ret.error;
+}
+
+// Power Management wrapper (System Reset / Shutdown)
+static inline void sbi_system_reset(uint32_t reset_type, uint32_t reset_reason) {
+    sbi_call(SBI_EXT_SRST, 0, reset_type, reset_reason, 0);
+}
+
 // Request the firmware to set the next timer interrupt
 static inline void sbi_set_timer(uint64_t stime_value) {
     sbi_call(SBI_EXT_TIME, 0, stime_value, 0, 0);
@@ -46,6 +64,13 @@ static inline void sbi_set_timer(uint64_t stime_value) {
 // Send an Inter-Processor Interrupt (IPI) to wake up other CPU cores
 static inline void sbi_send_ipi(const unsigned long* hart_mask) {
     sbi_call(SBI_EXT_IPI, 0, (long)hart_mask, 0, 0);
+}
+
+// Send an IPI with payload (Assuming a custom SBI extension or future standard)
+#define SBI_EXT_IPI_PAYLOAD 0x73504A
+
+static inline void sbi_send_ipi_payload(const unsigned long* hart_mask, uint64_t payload) {
+    sbi_call(SBI_EXT_IPI_PAYLOAD, 0, (long)hart_mask, (long)payload, 0);
 }
 
 // Kernel Entry point launched by OpenSBI
