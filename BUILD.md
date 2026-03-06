@@ -1,179 +1,190 @@
-# Building Bharat-OS Locally (Cross-Platform)
+# Building Bharat-OS
 
-Since Bharat-OS strictly avoids GNU/GPL components (to maintain an MIT-permissive license structure), we do not use the standard `gcc` (GNU Compiler Collection) or `make` toolchains.
-
-Instead, we use the **LLVM/Clang** ecosystem alongside **CMake**.
-
-## Required Tools
-
-1. **CMake** (v3.20+): The build system generator.
-2. **Ninja**: A fast build system (alternative to GNU Make).
-3. **Clang / LLVM**: The C compiler and linker used to target x86_64, RISC-V, and ARM64.
-4. **QEMU**: The hardware emulator to boot and test the OS.
+Bharat-OS uses **LLVM/Clang** and **LLD** exclusively (no GCC/GNU Make), keeping the entire toolchain MIT-permissive. Build scripts work identically on Windows, WSL, Linux, macOS, and BSD.
 
 ---
 
-## Installation on Windows (Native)
+## Prerequisites
 
-You can easily install all the required tools on Windows using `winget` (Windows Package Manager) from PowerShell.
+| Tool        | Version | Purpose                          |
+| ----------- | ------- | -------------------------------- |
+| CMake       | ≥ 3.20  | Build system generator           |
+| Clang + LLD | ≥ 16    | C compiler + linker (bare-metal) |
+| Ninja       | any     | Fast build backend               |
+| QEMU        | any     | Hardware emulator for testing    |
 
-Open PowerShell as Administrator and run:
+### Install on Windows (PowerShell as Administrator)
 
 ```powershell
-# 1. Install CMake
 winget install -e --id Kitware.CMake
-
-# 2. Install Ninja Build System
-winget install -e --id Ninja-build.Ninja
-
-# 3. Install LLVM / Clang
 winget install -e --id LLVM.LLVM
-
-# 4. Install QEMU (for testing the OS)
+winget install -e --id Ninja-build.Ninja
 winget install -e --id SoftwareFreedomConservancy.QEMU
 ```
 
-_Note: You may need to restart your terminal after installation so that the tools are available in your system `PATH`._
+> Restart your terminal after installation so tools appear in `PATH`.
 
----
-
-## Installation on macOS
-
-Using [Homebrew](https://brew.sh/):
-
-```bash
-# Install CMake, Ninja, LLVM, and QEMU
-brew install cmake ninja llvm qemu
-
-# Note: macOS Homebrew installs LLVM alongside Apple Clang.
-# Make sure to put the brew LLVM in your path or explicitly reference it:
-# export PATH="/opt/homebrew/opt/llvm/bin:$PATH"
-```
-
----
-
-## Installation on Linux
-
-### Debian / Ubuntu
+### Install on Ubuntu / Debian / WSL
 
 ```bash
 sudo apt update
-sudo apt install cmake ninja-build clang llvm lld qemu-system-x86 qemu-system-arm qemu-system-misc
+sudo apt install -y cmake ninja-build clang lld qemu-system-x86 qemu-system-misc
 ```
 
-### Arch Linux
+### Install on Arch Linux
 
 ```bash
-sudo pacman -S cmake ninja clang llvm lld qemu-desktop
+sudo pacman -S cmake ninja clang lld qemu-desktop
+```
+
+### Install on macOS (Homebrew)
+
+```bash
+brew install cmake ninja llvm qemu
+export PATH="$(brew --prefix llvm)/bin:$PATH"   # add to ~/.zshrc
+```
+
+### Install on FreeBSD / NetBSD / OpenBSD
+
+```bash
+# FreeBSD
+pkg install cmake ninja llvm qemu-system-x86_64
+
+# OpenBSD
+pkg_add cmake ninja llvm qemu
 ```
 
 ---
 
-## Quick Start with `bosh` (Recommended)
+## How the Build System Works
 
-`bosh` is the Bharat-OS shell launcher. It sets the correct environment variables,
-cross-compiler prefix and PATH before handing control back to your preferred shell.
+All compiler and linker settings are isolated in **CMake toolchain files** under `cmake/toolchains/`.
+Setting `CMAKE_SYSTEM_NAME=Generic` in the toolchain file is what prevents CMake from injecting host-OS-specific flags (MSVC import libs on Windows, macOS rpaths, etc.). This is the same pattern used by Zephyr, seL4, and other bare-metal kernel projects.
 
-### Linux / macOS (bash/zsh)
-
-```bash
-# Make the launcher executable (one-time)
-chmod +x tools/bosh
-
-# Start an interactive build session
-./tools/bosh
-
-# OR run a single build command non-interactively
-BHARAT_ARCH=riscv ./tools/bosh cmake --build build/riscv --target kernel.elf
+```
+cmake/toolchains/
+  x86_64-elf.cmake   ← x86_64 bare-metal (QEMU)
+  riscv64-elf.cmake  ← RISC-V 64-bit bare-metal (QEMU)
 ```
 
-### Windows (PowerShell)
+---
+
+## Building (All Platforms)
+
+### Option A — Convenience scripts (Recommended)
+
+**Linux / macOS / WSL / BSD (bash)**
+
+```bash
+chmod +x tools/build.sh
+
+# Build x86_64
+./tools/build.sh x86_64
+
+# Build and boot in QEMU
+./tools/build.sh x86_64 --run
+
+# Clean build + QEMU
+./tools/build.sh x86_64 --clean --run
+
+# Build RISC-V 64-bit
+./tools/build.sh riscv64
+```
+
+**Windows (PowerShell 5+ or pwsh)**
 
 ```powershell
-# Start an interactive build session
-.\tools\bosh.ps1
+# Build x86_64
+.\tools\build.ps1
 
-# Build for a specific arch
-.\tools\bosh.ps1 -Arch riscv
+# Build and boot in QEMU
+.\tools\build.ps1 -Arch x86_64 -Run
 
-# Use the module commands directly after importing
-Import-Module .\tools\BharatOS.psm1
-bharat-build -Arch x86_64
-bharat-run   -Arch x86_64
-bharat-clean
+# Clean build + QEMU
+.\tools\build.ps1 -Arch x86_64 -Clean -Run
+
+# Build RISC-V 64-bit
+.\tools\build.ps1 -Arch riscv64
 ```
-
-### Available PowerShell Module Commands
-
-| Command                          | Description                        |
-| -------------------------------- | ---------------------------------- |
-| `bharat-build [-Arch] [-Clean]`  | Configure and compile `kernel.elf` |
-| `bharat-run   [-Arch] [-Memory]` | Boot kernel in QEMU                |
-| `bharat-clean [-Arch]`           | Remove build artifacts             |
 
 ---
 
-Once the tools are installed and present in your `PATH`, open your terminal (PowerShell, Bash, or Zsh), navigate to the `Bharat-OS` project root directory, and run the following commands.
+### Option B — Raw CMake commands
 
-### Step 1: Configure the Build System
-
-Use CMake to generate Ninja build files. We will explicitly tell it to use the `clang` compiler.
-
-**For x86_64:**
+Same commands work on every platform:
 
 ```bash
-cmake -B build -G Ninja -DCMAKE_C_COMPILER=clang -DARCH=x86_64 -DOS_PROFILE=DESKTOP
+# x86_64
+cmake -S kernel -B build/x86_64 \
+      -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/x86_64-elf.cmake \
+      -G Ninja
+
+cmake --build build/x86_64 --target kernel.elf
+
+# RISC-V 64-bit
+cmake -S kernel -B build/riscv64 \
+      -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/riscv64-elf.cmake \
+      -G Ninja
+
+cmake --build build/riscv64 --target kernel.elf
 ```
 
-**For ARM64:**
-
-```bash
-cmake -B build -G Ninja -DCMAKE_C_COMPILER=clang -DARCH=arm64 -DOS_PROFILE=DESKTOP
-```
-
-**For RISC-V:**
-
-```bash
-cmake -B build -G Ninja -DCMAKE_C_COMPILER=clang -DARCH=riscv -DOS_PROFILE=RTOS
-```
-
-### Step 2: Compile the Code
-
-Once configured, tell Ninja to execute the build inside the `build/` directory:
-
-```bash
-cmake --build build
-```
-
-This will produce our standalone kernel executable at:
-`build/kernel/kernel.elf`
-
----
-
-## Testing / Emulating the OS
-
-We built a custom Python script to automatically generate the emulation launch scripts for QEMU.
-
-### Step 1: Generate the Launch Script
-
-Run this script from the workspace root:
-
-```bash
-python3 tools/generate_vm.py --arch x86_64 --memory 2048 --cores 4
-```
-
-### Step 2: Boot the OS!
-
-This generates a launcher script in your folder (`run_vm_x86_64.bat` on Windows, or `run_vm_x86_64.sh` on macOS/Linux). Just execute it to boot the newly compiled Bharat-OS kernel inside QEMU!
-
-**Windows:**
+On **Windows**, use the same commands from PowerShell — CMake finds Clang automatically from `C:\Program Files\LLVM\bin`. If Clang is not on `PATH`, pass the compiler explicitly:
 
 ```powershell
-.\run_vm_x86_64.bat
+cmake -S kernel -B build/x86_64 `
+      -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/x86_64-elf.cmake `
+      -DCMAKE_C_COMPILER="C:/Program Files/LLVM/bin/clang.exe" `
+      -G Ninja
 ```
 
-**macOS / Linux:**
+---
+
+## Running in QEMU
 
 ```bash
-./run_vm_x86_64.sh
+# x86_64 — serial output to terminal
+qemu-system-x86_64 -kernel build/x86_64/kernel.elf \
+    -m 256M -nographic -serial mon:stdio -no-reboot
+
+# RISC-V 64-bit
+qemu-system-riscv64 -machine virt \
+    -kernel build/riscv64/kernel.elf \
+    -m 256M -nographic -serial mon:stdio -no-reboot
 ```
+
+> Press **Ctrl+A then X** to quit QEMU.
+
+---
+
+## Build Output
+
+| File                      | Description                                 |
+| ------------------------- | ------------------------------------------- |
+| `build/<arch>/kernel.elf` | Bare-metal ELF image, loadable by GRUB/QEMU |
+
+---
+
+## Supported Architectures
+
+| Arch      | Status                                    | QEMU Machine                        |
+| --------- | ----------------------------------------- | ----------------------------------- |
+| `x86_64`  | ✅ Active                                 | `qemu-system-x86_64 -kernel`        |
+| `riscv64` | 🔧 Planned (RISC-V SBI boot stub pending) | `qemu-system-riscv64 -machine virt` |
+| `arm64`   | 🔬 Experimental stub only                 | N/A                                 |
+
+---
+
+## Troubleshooting
+
+**`clang not found` (CMake error)**
+→ Install LLVM (see above). On macOS, also run `export PATH="$(brew --prefix llvm)/bin:$PATH"`.
+
+**`ld.lld not found`**
+→ Install `lld`. On Ubuntu: `sudo apt install lld`. On macOS: included with Homebrew LLVM.
+
+**QEMU: `-nographic` freezes**
+→ Press Ctrl+A then X to exit. Or use `-serial stdio` without `-nographic` to open a separate window.
+
+**Windows: `ninja` not found by CMake**
+→ Install Ninja via winget (see above) or set path: `$env:Path += ";C:\path\to\ninja"`.
