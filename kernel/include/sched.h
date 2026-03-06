@@ -29,6 +29,10 @@ typedef struct {
     thread_state_t state;
     uint32_t priority;
     
+    // Priority Inheritance (Hard-RT / OpenRAN profile)
+    uint32_t base_priority;
+    void* waiting_on_lock; // Mutex the thread is waiting for
+
     // Time slicing metadata
     uint64_t time_slice_ms;
     uint64_t cpu_time_consumed;
@@ -52,5 +56,14 @@ kthread_t* thread_create(kprocess_t* parent, void (*entry_point)(void));
 
 // Context Switching
 void sched_yield(void);
+
+// Priority Inheritance support
+void sched_inherit_priority(kthread_t* thread, uint32_t new_priority);
+void sched_restore_priority(kthread_t* thread);
+
+#ifdef Profile_RTOS
+// Tickless operation for Hard-RT OpenRAN
+void sched_disable_tick_for_core(uint32_t core_id);
+#endif
 
 #endif // BHARAT_SCHED_H

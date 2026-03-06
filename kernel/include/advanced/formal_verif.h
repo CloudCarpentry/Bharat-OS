@@ -14,15 +14,25 @@
 #define FV_NON_NULL __attribute__((nonnull))
 #define FV_PRECONDITION(expr) __attribute__((annotate("fv_pre(" #expr ")")))
 
+// Capability Rights Definitions
+#define CAP_RIGHT_READ       (1 << 0)
+#define CAP_RIGHT_WRITE      (1 << 1)
+#define CAP_RIGHT_EXECUTE    (1 << 2)
+#define CAP_RIGHT_DEVICE_NPU (1 << 3)
+#define CAP_RIGHT_DEVICE_GPU (1 << 4)
+#define CAP_RIGHT_NETWORK_IO (1 << 5)
+
 // Represents an unforgeable Authorization token verified continuously by the Microkernel Tracker
-typedef struct FV_BOUNDED(0, 0xFFFFFFFF) {
+struct FV_BOUNDED(0, 0xFFFFFFFF) capability_token_t {
     uint32_t capability_id;
     uint32_t target_object_id;
     uint32_t rights_mask;
-} capability_token_t;
+};
+
+typedef struct capability_token_t capability_token_t;
 
 // Shorthand for capability tokens used across the system
-typedef capability_token_t capability_t;
+typedef struct capability_token_t capability_t;
 
 // A formally verified context switch that mathematically guarantees 
 // register scrubbing to prevent side-channel data leaks between processes

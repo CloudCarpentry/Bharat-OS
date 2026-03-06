@@ -1,6 +1,7 @@
 #include "../../include/mm.h"
 #include "../../include/numa.h"
 #include "../../include/hal/hal.h"
+#include "../../include/advanced/formal_verif.h"
 #include <stddef.h>
 
 /*
@@ -35,6 +36,18 @@ int vmm_map_page(virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
     // E.g., for x86_64 this would resolve the PML4 -> PDPT -> PD -> PT layers.
     
     return 0; // Success stub
+}
+
+int vmm_map_device_mmio(virt_addr_t vaddr, phys_addr_t paddr, capability_t* cap, int is_npu) {
+    if (!cap) return -1;
+
+    // Enforce capability gating for AI Hardware
+    uint32_t required_right = is_npu ? CAP_RIGHT_DEVICE_NPU : CAP_RIGHT_DEVICE_GPU;
+    if ((cap->rights_mask & required_right) == 0) {
+        return -2; // Unauthorized access
+    }
+
+    return vmm_map_page(vaddr, paddr, CAP_RIGHT_READ | CAP_RIGHT_WRITE);
 }
 
 int vmm_unmap_page(virt_addr_t vaddr) {
