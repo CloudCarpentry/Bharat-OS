@@ -21,3 +21,7 @@ void hal_init(void) {
     // Set Vector Base Address Register (VBAR_EL1)
     // Configure MMU (TCR_EL1, MAIR_EL1)
 }
+
+void hal_tlb_flush(unsigned long long vaddr) {
+    __asm__ volatile("tlbi vae1is, %0\n\tdsb sy\n\tisb" :: "r"(vaddr >> 12) : "memory");
+}

@@ -2,6 +2,7 @@
 #define BHARAT_HAL_GPU_H
 
 #include "hal/hal.h"
+#include "../advanced/formal_verif.h"
 
 /* 
  * GPU Hardware Abstraction Layer Base 
@@ -19,13 +20,13 @@ typedef struct {
 int hal_gpu_enumerate(gpu_device_t* devices, int max_devices);
 
 // Initialize a specific GPU context
-int hal_gpu_init(gpu_device_t* gpu);
+int hal_gpu_init(gpu_device_t* gpu, capability_t* cap);
 
 // Basic graphics output (Framebuffer) if supported
 int hal_gpu_set_mode(gpu_device_t* gpu, uint32_t width, uint32_t height, uint32_t bpp);
 void* hal_gpu_get_framebuffer(gpu_device_t* gpu);
 
 // Submit raw compute queue standard instruction buffer (abstracted OpenCL/Vulkan backend queue)
-int hal_gpu_submit_compute(gpu_device_t* gpu, void* cmd_buffer, uint32_t size);
+int hal_gpu_submit_compute(gpu_device_t* gpu, void* cmd_buffer, uint32_t size, capability_t* cap);
 
 #endif // BHARAT_HAL_GPU_H
