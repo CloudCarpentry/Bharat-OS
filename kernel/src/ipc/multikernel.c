@@ -30,18 +30,21 @@ int urpc_send(urpc_ring_t* ring, const urpc_msg_t* msg) {
     // Send via register message (architectural fast path)
     if (msg->payload_size <= 8) {
         // Concrete implementation logic for register message passing
-        // For example, on RISC-V this could invoke sbi_send_ipi or write to an IPI mailbox
-        // Here we mock a generic fast path HAL function call
-        extern void hal_send_ipi_payload(uint32_t target_core, uint64_t payload);
-
-        // Assuming ring is associated with a specific remote core in a full design
-        // For demonstration, we just call the abstract HAL function.
         uint64_t fast_payload = msg->payload_data[0];
 
-        // We'd extract the target core ID from the mk_channel_t, but since urpc_send
-        // takes the ring directly, we assume target_core is known or passed elsewhere.
-        // For now, just call the conceptual fast path and return success.
-        hal_send_ipi_payload(0 /* target_core placeholder */, fast_payload);
+        // Target core id placeholder (in real implementation extracted from ring metadata)
+        uint32_t target_core = 0;
+
+#if defined(__riscv)
+        // Ensure RISC-V architectural fast path using SBI
+        extern void sbi_send_ipi_payload(const unsigned long* hart_mask, uint64_t payload);
+        unsigned long hart_mask = (1UL << target_core);
+        sbi_send_ipi_payload(&hart_mask, fast_payload);
+#else
+        // Fallback for other architectures (mock generic fast path)
+        extern void hal_send_ipi_payload(uint32_t target_core, uint64_t payload);
+        hal_send_ipi_payload(target_core, fast_payload);
+#endif
 
         return URPC_SUCCESS; // Bypass shared memory
     }

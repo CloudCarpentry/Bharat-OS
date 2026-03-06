@@ -48,6 +48,13 @@ static inline void sbi_send_ipi(const unsigned long* hart_mask) {
     sbi_call(SBI_EXT_IPI, 0, (long)hart_mask, 0, 0);
 }
 
+// Send an IPI with payload (Assuming a custom SBI extension or future standard)
+#define SBI_EXT_IPI_PAYLOAD 0x73504A
+
+static inline void sbi_send_ipi_payload(const unsigned long* hart_mask, uint64_t payload) {
+    sbi_call(SBI_EXT_IPI_PAYLOAD, 0, (long)hart_mask, (long)payload, 0);
+}
+
 // Kernel Entry point launched by OpenSBI
 void kernel_main(uint64_t hartid, uint64_t device_tree_ptr);
 
