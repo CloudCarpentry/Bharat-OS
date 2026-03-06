@@ -186,6 +186,7 @@ qemu-system-riscv64 -machine virt \
 | `riscv64` | ✅ Cross-compile validated                  | `qemu-system-riscv64 -machine virt` |
 | `arm64`   | ✅ Cross-compile validated (runtime pending) | N/A                                 |
 
+
 ---
 
 ## Portability Matrix
@@ -209,6 +210,7 @@ To run the AI governor in user space during development or testing:
 1. **Build the subsystem:** The governor is located in `subsys/src/ai_governor.c`. Ensure it is built using the same bare-metal toolchain provided in `cmake/toolchains/`. (Note: A testing wrapper can also be built as a standalone binary on the host to simulate telemetry).
 2. **Execute integration tests:** Run the tests located in the `tests/` directory (e.g., `test_ai_governor`) to verify IPC message formatting and URPC ring behavior before booting the full kernel image in QEMU.
 3. **Boot in Emulator:** Once built into the root filesystem image (pending storage subsystem availability), the microkernel will spawn the AI governor as a capability-restricted task upon boot.
+
 
 ---
 
