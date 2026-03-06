@@ -14,13 +14,23 @@ void hal_cpu_halt(void) {
 }
 
 void hal_cpu_enable_interrupts(void) {
+#ifdef CONFIG_RISCV_M_MODE
+    // Set MIE (Machine Interrupt Enable) bit in mstatus CSR
+    __asm__ volatile("csrsi mstatus, 8");
+#else
     // Set SIE (Supervisor Interrupt Enable) bit in sstatus CSR
     __asm__ volatile("csrsi sstatus, 2");
+#endif
 }
 
 void hal_cpu_disable_interrupts(void) {
+#ifdef CONFIG_RISCV_M_MODE
+    // Clear MIE (Machine Interrupt Enable) bit in mstatus CSR
+    __asm__ volatile("csrci mstatus, 8");
+#else
     // Clear SIE (Supervisor Interrupt Enable) bit in sstatus CSR
     __asm__ volatile("csrci sstatus, 2");
+#endif
 }
 
 void hal_init(void) {

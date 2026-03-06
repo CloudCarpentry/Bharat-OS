@@ -24,6 +24,9 @@ typedef struct {
     void* allocator_metadata;
 } numa_node_t;
 
+// Virtual Memory Page Flags
+#define PAGE_COW 0x100 // Copy-on-Write Flag
+
 // Initialize physical memory allocator natively using Multiboot/SBI memory maps
 int mm_pmm_init(void* memory_map, uint32_t map_size);
 

@@ -22,3 +22,9 @@ void hal_init(void) {
 void hal_tlb_flush(unsigned long long vaddr) {
     __asm__ volatile("invlpg (%0)" :: "r"(vaddr) : "memory");
 }
+
+void hal_send_ipi_payload(uint32_t target_core, uint64_t payload) {
+    (void)target_core;
+    (void)payload;
+    // TODO: program local APIC/x2APIC ICR for inter-core notification.
+}
