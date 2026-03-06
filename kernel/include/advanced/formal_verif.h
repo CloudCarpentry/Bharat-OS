@@ -21,6 +21,9 @@ typedef struct FV_BOUNDED(0, 0xFFFFFFFF) {
     uint32_t rights_mask;
 } capability_token_t;
 
+// Shorthand for capability tokens used across the system
+typedef capability_token_t capability_t;
+
 // A formally verified context switch that mathematically guarantees 
 // register scrubbing to prevent side-channel data leaks between processes
 void fv_secure_context_switch(void* next_thread_frame);

@@ -1,4 +1,6 @@
 #include "../../include/mm.h"
+#include "../../include/numa.h"
+#include "../../include/hal/hal.h"
 #include <stddef.h>
 
 /*
@@ -13,7 +15,7 @@ static void* kernel_page_directory;
 
 int vmm_init() {
     // 1. Ask the physical memory manager for a single 4KB page to hold the Root Directory
-    phys_addr_t root_dir_phys = pmm_alloc_page();
+    phys_addr_t root_dir_phys = mm_alloc_page(NUMA_NODE_ANY);
     
     if (root_dir_phys == 0) {
         return -1; // Failed to allocate root page directory
@@ -40,5 +42,8 @@ int vmm_unmap_page(virt_addr_t vaddr) {
     
     // Stub: Remove the hardware mapping and translation cache (TLB) flush
     
+    // TLB Coherency: Ensure hardware removes the cached translation
+    hal_tlb_flush(vaddr);
+
     return 0; // Success stub
 }
