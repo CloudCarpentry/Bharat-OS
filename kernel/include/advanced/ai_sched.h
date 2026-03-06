@@ -10,7 +10,40 @@
  * (e.g., 5G handover or 4K video streams) to ramp up semiconductor frequency pre-emptively.
  */
 
+/**
+ * @brief Real-time telemetry data provided to the AI Governor.
+ * This struct forms the input vector for scheduling heuristics.
+ */
 typedef struct {
+    uint32_t cpu_usage_pct;     /* CPU utilization (0-100) */
+    uint64_t ipc_latency_ns;    /* Average IPC latency in nanoseconds */
+    uint32_t cache_miss_rate;   /* Cache misses per 1k instructions */
+    uint32_t context_switches;  /* Frequency of thread swaps */
+    uint8_t  numa_node_id;      /* Originating NUMA node */
+} kernel_telemetry_t;
+
+/**
+ * @brief Actions suggested by the AI Governor to the Kernel.
+ */
+typedef enum {
+    AI_ACTION_NONE = 0,
+    AI_ACTION_MIGRATE_TASK,     /* Move task to different core/node */
+    AI_ACTION_ADJUST_PRIORITY,  /* Dynamic priority scaling */
+    AI_ACTION_THROTTLE_CORE     /* Power management for thermal efficiency */
+} ai_action_t;
+
+typedef struct {
+    ai_action_t action;
+    uint32_t    target_id;      /* Thread ID or Core ID */
+    uint32_t    value;          /* New priority level or target Node ID */
+} ai_suggestion_t;
+
+typedef struct {
+    uint32_t thread_id;
+    uint8_t  priority;
+    kernel_telemetry_t metrics; /* Nested telemetry for this context */
+    void* private_data;
+
     uint64_t total_cycles;
     uint64_t total_instructions;
     float current_cpi;
