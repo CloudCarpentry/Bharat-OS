@@ -12,11 +12,22 @@ static inline void spin_lock_init(spinlock_t* lock) {
     atomic_set(&lock->locked, 0);
 }
 
+static inline void spin_wait_hint(void) {
+#if defined(__x86_64__) || defined(__i386__)
+    __asm__ volatile("pause" ::: "memory");
+#elif defined(__riscv)
+    __asm__ volatile("nop" ::: "memory");
+#elif defined(__aarch64__)
+    __asm__ volatile("yield" ::: "memory");
+#else
+    __asm__ volatile("" ::: "memory");
+#endif
+}
+
 static inline void spin_lock(spinlock_t* lock) {
     while (__sync_lock_test_and_set(&lock->locked.value, 1)) {
-        // Pause instruction to prevent semiconductor pipeline stalls
-        // and reduce localized thermal power consumption
-        __asm__ volatile("pause" ::: "memory");
+        // Architecture-specific wait hint to reduce contention/power.
+        spin_wait_hint();
     }
 }
 

@@ -28,6 +28,16 @@ for arg in "$@"; do
     esac
 done
 
+case "${BOOT_GUI}" in
+    ON|OFF) ;;
+    *) err "Invalid --boot-gui value '${BOOT_GUI}'. Allowed: ON, OFF" ;;
+esac
+
+case "${BOOT_HW}" in
+    generic|desktop|server|vm|laptop) ;;
+    *) err "Invalid --hw value '${BOOT_HW}'. Allowed: generic, desktop, server, vm, laptop" ;;
+esac
+
 BHARAT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BUILD_DIR="${BHARAT_ROOT}/build/${ARCH}"
 OUT_ELF="${BUILD_DIR}/kernel.elf"
@@ -61,16 +71,14 @@ if [ "${CLEAN}" = "true" ] && [ -d "${BUILD_DIR}" ]; then
 fi
 
 # ── Configure ────────────────────────────────────────────────────────────────
-if [ ! -f "${BUILD_DIR}/CMakeCache.txt" ]; then
-    inf "Configuring (CMake)"
-    cmake -S "${BHARAT_ROOT}/kernel" \
-          -B "${BUILD_DIR}" \
-          -DCMAKE_TOOLCHAIN_FILE="${BHARAT_ROOT}/${TOOLCHAIN}" \
-          -DBHARAT_BOOT_GUI="${BOOT_GUI}" \
-          -DBHARAT_BOOT_HW_PROFILE="${BOOT_HW}" \
-          -G Ninja \
-          --no-warn-unused-cli
-fi
+inf "Configuring (CMake)"
+cmake -S "${BHARAT_ROOT}/kernel" \
+      -B "${BUILD_DIR}" \
+      -DCMAKE_TOOLCHAIN_FILE="${BHARAT_ROOT}/${TOOLCHAIN}" \
+      -DBHARAT_BOOT_GUI="${BOOT_GUI}" \
+      -DBHARAT_BOOT_HW_PROFILE="${BOOT_HW}" \
+      -G Ninja \
+      --no-warn-unused-cli
 
 # ── Build ─────────────────────────────────────────────────────────────────────
 inf "Building kernel.elf"
