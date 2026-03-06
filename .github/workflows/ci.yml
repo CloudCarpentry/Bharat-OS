@@ -1,0 +1,66 @@
+name: CI — Build & Boot Check
+
+on:
+  push:
+    branches: ["ci"]
+  pull_request:
+    branches: ["ci"]
+
+jobs:
+  build-x86_64:
+    name: Build kernel (x86_64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cross-compilation toolchain
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y cmake ninja-build clang lld \
+            qemu-system-x86 grub-pc-bin xorriso
+
+      - name: Configure (x86_64)
+        run: |
+          cmake -S kernel -B build/x86_64 \
+            -DARCH=x86_64 \
+            -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" \
+            -G Ninja
+
+      - name: Build kernel.elf
+        run: cmake --build build/x86_64 --target kernel.elf
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kernel-x86_64
+          path: build/x86_64/kernel.elf
+
+  build-riscv64:
+    name: Build kernel (riscv64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install RISC-V toolchain
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y cmake ninja-build clang lld \
+            gcc-riscv64-linux-gnu qemu-system-riscv
+
+      - name: Configure (riscv64)
+        run: |
+          cmake -S kernel -B build/riscv64 \
+            -DARCH=riscv \
+            -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" \
+            -G Ninja
+
+      - name: Build kernel.elf
+        run: cmake --build build/riscv64 --target kernel.elf
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kernel-riscv64
+          path: build/riscv64/kernel.elf
