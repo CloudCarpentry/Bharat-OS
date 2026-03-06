@@ -20,6 +20,28 @@ The Bharat-OS microkernel provides **no graphics primitives**. A display server 
 
 ---
 
+
+## Performance Model for Deferred User-Space GUI
+
+To preserve microkernel isolation while delivering desktop/mobile-class graphics performance, Bharat-OS adopts a split execution model:
+
+1. **Zero-copy framebuffer sharing**
+   - GPU memory allocations remain kernel-tracked objects, but are exported to `fbsrv`/`bharat-wm` as revocable capabilities.
+   - User-space maps the shared surfaces directly and performs all scene graph + draw logic out of kernel.
+   - Buffer handoff between Wayland clients and compositor is done by shared memory handle passing (capability transfer), not memcpy.
+
+2. **Kernel compositing fast-path**
+   - Normal composition policy stays in user-space, but the kernel may expose a hardware-overlay submission fast-path for trivial layers (cursor plane, full-screen video plane, static background).
+   - This avoids extra round-trips for simple flips while still enforcing capability checks on which task can target which plane.
+
+3. **GPU-accelerated render backend**
+   - `gpu.h` HAL is expected to support explicit modern APIs (Vulkan-class queue model) so the compositor can do blur, transparency, and HiDPI scaling in shaders.
+   - Software fallback remains possible for bring-up, but not as the steady-state desktop/mobile path.
+
+This keeps GUI policy out of Ring-0 while allowing near-native throughput on modern SoCs.
+
+---
+
 ## Phase 1 — Framebuffer Output (Bring-up)
 
 The first graphics milestone is a simple linear framebuffer:
