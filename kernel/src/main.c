@@ -1,9 +1,10 @@
 #include "hal/hal.h"
 #include "kernel.h"
 
-/* Bring-up debug: serial output, visible with QEMU -nographic */
+/* Bring-up debug: COM1 serial output, visible in QEMU -nographic */
 #ifdef __x86_64__
-#define KPRINT(s) hal_serial_write(s)
+#include "hal/serial.h"
+#define KPRINT(s) serial_puts(s)
 #else
 #define KPRINT(s) ((void)0)
 #endif
