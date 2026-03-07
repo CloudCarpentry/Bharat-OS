@@ -95,6 +95,7 @@ set(KERNEL_SRCS
     ${ARCH_HAL_EXTRA}
     src/mm/pmm.c
     src/mm/early_alloc.c
+    src/mm/slab.c
     src/mm/vmm.c
     src/mm/numa.c
     src/ipc/endpoint_ipc.c

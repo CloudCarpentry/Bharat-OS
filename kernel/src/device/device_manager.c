@@ -1,5 +1,6 @@
 #include "device.h"
 #include "kernel_safety.h"
+#include "mm.h"
 
 #include <stddef.h>
 
@@ -53,6 +54,18 @@ int device_register_mmio_window(const device_mmio_window_t* window) {
         if (g_windows[i].in_use == 0U) {
             g_windows[i] = *window;
             g_windows[i].in_use = 1U;
+
+            // Map physical to virtual space using VMM
+            uint32_t num_pages = (window->size_bytes + PAGE_SIZE - 1) / PAGE_SIZE;
+            for (uint32_t p = 0; p < num_pages; p++) {
+                vmm_map_device_mmio(
+                    window->virt_base + (p * PAGE_SIZE),
+                    window->phys_base + (p * PAGE_SIZE),
+                    NULL, // Passing NULL bypasses capabilities for generic MMIO
+                    0 // is_npu flag
+                );
+            }
+
             return 0;
         }
     }
