@@ -53,10 +53,10 @@ if(ARCH STREQUAL "x86_64")
     set(BOOT_SRC src/boot/x86_64/boot.S)
     set(ARCH_HAL src/hal/x86_64/hal_cpu.c)
 elseif(ARCH STREQUAL "riscv64")
-    set(BOOT_SRC "")  # RISC-V SBI boot stub — future milestone
+    set(BOOT_SRC src/boot/riscv64/boot.S)
     set(ARCH_HAL src/hal/riscv/hal_cpu.c)
 elseif(ARCH STREQUAL "arm64")
-    set(BOOT_SRC "")  # ARM64 EFI boot stub — future milestone
+    set(BOOT_SRC src/boot/arm64/boot.S)
     set(ARCH_HAL src/hal/arm64/hal_cpu.c)
 endif()
 
