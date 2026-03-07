@@ -21,8 +21,9 @@ target_compile_options(subsys_manager PRIVATE -ffreestanding -nostdlib -Wall)
 option(BHARAT_BUILD_AI_GOVERNOR "Build ai_governor user-space demo executable" ON)
 if(BHARAT_BUILD_AI_GOVERNOR)
     add_executable(ai_governor ${AI_GOVERNOR_SOURCES})
+    target_link_libraries(ai_governor PRIVATE subsys_manager)
     target_include_directories(ai_governor PRIVATE
-        ${CMAKE_SOURCE_DIR}/kernel/include
+        ${CMAKE_SOURCE_DIR}/../kernel/include
     )
 endif()
 # Might need host headers if it's considered user-space mock,

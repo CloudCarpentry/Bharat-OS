@@ -2,6 +2,7 @@
 #define BHARAT_SUBSYS_H
 
 #include <stdint.h>
+#include "../../kernel/include/capability.h"
 
 /*
  * Bharat-OS Subsystem Abstraction Interface
@@ -32,6 +33,9 @@ typedef struct {
     uint64_t memory_limit_mb;
     uint32_t cpu_core_allocation_mask;
     
+    // The root capability representing this subsystem's isolated domain.
+    uint32_t root_domain_cap;
+
     // Status
     int is_running;
 } subsys_instance_t;
