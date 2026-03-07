@@ -8,36 +8,8 @@
  */
 
 #include <stddef.h>
-#include <stdint.h>
 
-/* Use conditional guards to prevent redefinition errors
- * when building with standard toolchains.
- */
-
-#ifndef _SSIZE_T_DEFINED_
-#define _SSIZE_T_DEFINED_
-typedef intptr_t ssize_t;
-#endif
-
-#ifndef _PID_T_DEFINED_
-#define _PID_T_DEFINED_
-typedef int32_t pid_t;
-#endif
-
-#ifndef _OFF_T_DEFINED_
-#define _OFF_T_DEFINED_
-typedef int64_t off_t;
-#endif
-
-#ifndef _UID_T_DEFINED_
-#define _UID_T_DEFINED_
-typedef uint32_t uid_t;
-#endif
-
-#ifndef _GID_T_DEFINED_
-#define _GID_T_DEFINED_
-typedef uint32_t gid_t;
-#endif
+#include <sys/types.h>
 
 // Standard File Descriptors
 #define STDIN_FILENO  0
