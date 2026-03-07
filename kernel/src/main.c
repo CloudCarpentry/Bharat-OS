@@ -1,15 +1,17 @@
+#include "advanced/ai_kernel_bridge.h"
+#include "advanced/ai_sched.h"
+#include "advanced/multikernel.h"
+#include "device.h"
 #include "hal/hal.h"
 #include "kernel.h"
 #include "mm.h"
-#include "advanced/multikernel.h"
-#include "advanced/ai_sched.h"
-#include "advanced/ai_kernel_bridge.h"
-#include "trap.h"
-#include "device.h"
 #include "numa.h"
+#include "trap.h"
 
-#include <stdint.h>
+
 #include <stddef.h>
+#include <stdint.h>
+
 
 #if defined(__riscv)
 #include "hal/riscv_bsp.h"
@@ -50,29 +52,47 @@ static const char *kernel_boot_hw_profile(void) {
 static void hello_service_task(const kernel_capability_t *cap,
                                const kernel_ipc_msg_t *request,
                                kernel_ipc_msg_t *reply) {
-  if (!cap || !request || !reply) return;
+  if (!cap || !request || !reply)
+    return;
 
   reply->msg_id = request->msg_id;
   if ((cap->rights_mask & CAP_RIGHT_IPC_ENDPOINT) == 0U) {
     reply->msg_len = 11U;
-    reply->payload[0] = 'D'; reply->payload[1] = 'E'; reply->payload[2] = 'N';
-    reply->payload[3] = 'I'; reply->payload[4] = 'E'; reply->payload[5] = 'D';
-    reply->payload[6] = ':'; reply->payload[7] = 'I'; reply->payload[8] = 'P';
-    reply->payload[9] = 'C'; reply->payload[10] = '\0';
+    reply->payload[0] = 'D';
+    reply->payload[1] = 'E';
+    reply->payload[2] = 'N';
+    reply->payload[3] = 'I';
+    reply->payload[4] = 'E';
+    reply->payload[5] = 'D';
+    reply->payload[6] = ':';
+    reply->payload[7] = 'I';
+    reply->payload[8] = 'P';
+    reply->payload[9] = 'C';
+    reply->payload[10] = '\0';
     return;
   }
 
   reply->msg_len = 13U;
-  reply->payload[0] = 'h'; reply->payload[1] = 'e'; reply->payload[2] = 'l';
-  reply->payload[3] = 'l'; reply->payload[4] = 'o'; reply->payload[5] = '-';
-  reply->payload[6] = 'a'; reply->payload[7] = 'c'; reply->payload[8] = 'k';
-  reply->payload[9] = ':'; reply->payload[10] = 'o'; reply->payload[11] = 'k';
+  reply->payload[0] = 'h';
+  reply->payload[1] = 'e';
+  reply->payload[2] = 'l';
+  reply->payload[3] = 'l';
+  reply->payload[4] = 'o';
+  reply->payload[5] = '-';
+  reply->payload[6] = 'a';
+  reply->payload[7] = 'c';
+  reply->payload[8] = 'k';
+  reply->payload[9] = ':';
+  reply->payload[10] = 'o';
+  reply->payload[11] = 'k';
   reply->payload[12] = '\0';
 }
 
 static void kernel_phase2_hello_service_smoke(void) {
-  kernel_capability_t service_cap = { .cap_id = 1U, .rights_mask = CAP_RIGHT_IPC_ENDPOINT };
-  kernel_ipc_msg_t request = { .msg_id = 1U, .msg_len = 6U, .payload = {'h', 'e', 'l', 'l', 'o', '\0'} };
+  kernel_capability_t service_cap = {.cap_id = 1U,
+                                     .rights_mask = CAP_RIGHT_IPC_ENDPOINT};
+  kernel_ipc_msg_t request = {
+      .msg_id = 1U, .msg_len = 6U, .payload = {'h', 'e', 'l', 'l', 'o', '\0'}};
   kernel_ipc_msg_t reply = {0};
 
   KPRINT("P2: hello service launched\n");
@@ -118,15 +138,16 @@ static void kernel_ai_publish_telemetry(void) {
 
   msg.msg_type = AI_MSG_TYPE_TELEMETRY;
   msg.payload_size = sizeof(kernel_telemetry_t);
-  ((kernel_telemetry_t*)msg.payload_data)[0] = telemetry;
+  ((kernel_telemetry_t *)msg.payload_data)[0] = telemetry;
   (void)urpc_send(g_scheduler_ai_channel.urpc_ring, &msg);
 }
 
 static void kernel_ai_governor_tick(void) {
   urpc_msg_t msg = {0};
   while (urpc_receive(g_scheduler_ai_channel.urpc_ring, &msg) == 0) {
-    if (msg.msg_type == AI_MSG_TYPE_SUGGESTION && msg.payload_size >= sizeof(ai_suggestion_t)) {
-      ai_suggestion_t* suggestion = (ai_suggestion_t*)msg.payload_data;
+    if (msg.msg_type == AI_MSG_TYPE_SUGGESTION &&
+        msg.payload_size >= sizeof(ai_suggestion_t)) {
+      ai_suggestion_t *suggestion = (ai_suggestion_t *)msg.payload_data;
       if (ai_kernel_apply_suggestion(suggestion) == 0) {
         KPRINT("  [AI]  Scheduler suggestion applied.\n");
       } else {
@@ -138,7 +159,7 @@ static void kernel_ai_governor_tick(void) {
 
 #if defined(__x86_64__)
 #include "boot/x86_64/multiboot2.h"
-void kernel_main(uint32_t magic, multiboot_information_t* mb_info) {
+void kernel_main(uint32_t magic, multiboot_information_t *mb_info) {
 #elif defined(__riscv)
 void kernel_main(uint64_t hart_id, uintptr_t fdt_ptr) {
 #else
@@ -150,7 +171,13 @@ void kernel_main(void) {
   hal_riscv_set_boot_info(hart_id, (uint64_t)fdt_ptr);
 #endif
 
-  KPRINT("\nBharat-OS kernel boot\n");
+  KPRINT("\n");
+  KPRINT("  ____  _                          _          ____   ____  \n");
+  KPRINT(" | __ )| |__   __ _ _ __ __ _ _| |_       / ___| / ___| \n");
+  KPRINT(" |  _ \| '_ \\ / _` | '__/ _` | '__/ _` |_____| |  _  \\___ \\ \n");
+  KPRINT(" | |_) | | | | (_| | | | (_| | | | (_| |_____| |_| |  ___) |\n");
+  KPRINT(" |____/|_| |_|\\__,_|_|  \\__,_|_|  \\__,_|      \\____| |____/ \n");
+  KPRINT("\nBharat-OS kernel boot (v3.2 bring-up)\n");
   KPRINT("  [HAL] Initialising hardware...\n");
   hal_init();
   KPRINT("  [HAL] Ready.\n");
