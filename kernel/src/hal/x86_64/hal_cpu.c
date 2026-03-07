@@ -71,6 +71,62 @@ void hal_cpu_halt(void) {
     __asm__ volatile("hlt");
 }
 
+void hal_cpu_reboot(void) {
+    // Attempt a reboot using 8042 keyboard controller
+    x86_outb(0x64, 0xFE);
+    while (1) {
+        __asm__ volatile("hlt");
+    }
+}
+
+static void print_hex(uint64_t val) {
+    char buf[17];
+    buf[16] = '\0';
+    for (int i = 15; i >= 0; i--) {
+        uint8_t nibble = val & 0xF;
+        buf[i] = nibble < 10 ? '0' + nibble : 'a' + (nibble - 10);
+        val >>= 4;
+    }
+    hal_serial_write("0x");
+    hal_serial_write(buf);
+}
+
+void hal_cpu_dump_state(void) {
+    uint64_t cr2, cr3, rbp, rsp;
+    __asm__ volatile("mov %%cr2, %0" : "=r"(cr2));
+    __asm__ volatile("mov %%cr3, %0" : "=r"(cr3));
+    __asm__ volatile("mov %%rbp, %0" : "=r"(rbp));
+    __asm__ volatile("mov %%rsp, %0" : "=r"(rsp));
+
+    hal_serial_write("\n--- x86_64 CPU State Dump ---\n");
+    hal_serial_write("CR2: "); print_hex(cr2); hal_serial_write("\n");
+    hal_serial_write("CR3: "); print_hex(cr3); hal_serial_write("\n");
+    hal_serial_write("RSP: "); print_hex(rsp); hal_serial_write("\n");
+    hal_serial_write("RBP: "); print_hex(rbp); hal_serial_write("\n");
+
+    hal_serial_write("\nStack Trace (Frame Pointers):\n");
+    uint64_t current_rbp = rbp;
+    int depth = 0;
+    while (current_rbp != 0 && current_rbp >= 0x1000 && depth < 10) {
+        uint64_t* frame = (uint64_t*)current_rbp;
+        uint64_t next_rbp = frame[0];
+        uint64_t ret_addr = frame[1];
+
+        hal_serial_write("  [");
+        char depth_str[2] = {(char)('0' + depth), '\0'};
+        hal_serial_write(depth_str);
+        hal_serial_write("] pc="); print_hex(ret_addr);
+        hal_serial_write(" fp="); print_hex(next_rbp); hal_serial_write("\n");
+
+        if (next_rbp <= current_rbp) {
+            break; // Stop if frame pointer is not strictly increasing
+        }
+        current_rbp = next_rbp;
+        depth++;
+    }
+    hal_serial_write("-----------------------------\n");
+}
+
 void hal_cpu_enable_interrupts(void) {
     __asm__ volatile("sti");
 }

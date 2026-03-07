@@ -62,6 +62,15 @@ SECTIONS
         bss_end = .;
     }
 
+    /* ── Persistent Storage Region (Crash Logs) ──────────────────────── */
+    .pstore ALIGN(4096) (NOLOAD) :
+    {
+        _pstore_start = .;
+        *(.pstore)
+        . = . + 4096; /* Reserve 4KB for crash logs */
+        _pstore_end = .;
+    }
+
     /* Export the end of the kernel image for early allocator */
     . = ALIGN(4096);
     kernel_end = .;
