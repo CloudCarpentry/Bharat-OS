@@ -31,10 +31,10 @@ typedef enum {
  */
 typedef enum {
     AI_ACTION_NONE = 0,
-    AI_ACTION_MIGRATE_TASK,     /* Move task to different core/node */
-    AI_ACTION_ADJUST_PRIORITY,  /* Dynamic priority scaling */
-    AI_ACTION_THROTTLE_CORE,    /* Power management for thermal efficiency */
-    AI_ACTION_KILL_TASK         /* Suspend or destroy memory-hungry task */
+    AI_ACTION_MIGRATE_TASK,
+    AI_ACTION_ADJUST_PRIORITY,
+    AI_ACTION_THROTTLE_CORE,
+    AI_ACTION_KILL_TASK
 } ai_action_t;
 
 typedef struct {
