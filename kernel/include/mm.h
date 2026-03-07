@@ -44,6 +44,7 @@ typedef struct {
 
 // Virtual Memory Page Flags
 #define PAGE_COW 0x100 // Copy-on-Write Flag
+#define PAGE_USER 0x200 // User accessible flag
 
 // Buddy Allocator page flags
 #define PAGE_FLAG_RESERVED  (1 << 0)

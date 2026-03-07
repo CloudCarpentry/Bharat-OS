@@ -1,4 +1,9 @@
+
 #include "sched.h"
+#include "kernel_safety.h"
+#include "capability.h"
+#include "../include/slab.h"
+
 #include "kernel_safety.h"
 #include "capability.h"
 
@@ -27,6 +32,9 @@ static kthread_t* g_current;
 static sched_policy_t g_policy = SCHED_POLICY_ROUND_ROBIN;
 static uint64_t g_next_thread_id = 1U;
 static uint64_t g_next_process_id = 1U;
+
+static kcache_t* thread_cache = NULL;
+
 
 void fv_secure_context_switch(void* next_thread_frame) __attribute__((weak));
 
@@ -141,54 +149,37 @@ kprocess_t* process_create(const char* name) {
 }
 
 kthread_t* thread_create(kprocess_t* parent, void (*entry_point)(void)) {
-    if (!parent || !entry_point) {
-        return NULL;
+    if (!thread_cache) {
+        thread_cache = kcache_create("kthread_t", sizeof(kthread_t));
     }
+    kthread_t* t = (kthread_t*)kcache_alloc(thread_cache);
+    if (!t) return NULL;
 
+    t->thread_id = g_next_thread_id++;
+    t->state = THREAD_STATE_READY;
+    t->priority = 50;
+    t->cpu_time_consumed = 0;
+    t->time_slice_ms = SCHED_DEFAULT_SLICE_MS;
+
+    // Add to slot
     thread_slot_t* slot = sched_find_free_thread_slot();
-    if (!slot) {
-        return NULL;
+    if (slot) {
+        slot->in_use = 1;
+        slot->thread = *t;
     }
 
-    slot->in_use = 1U;
-    slot->thread.thread_id = g_next_thread_id++;
-    slot->thread.process_id = parent->process_id;
-    slot->thread.cpu_context = &slot->context;
-    slot->thread.kernel_stack = 0U;
-    slot->thread.state = THREAD_STATE_READY;
-    slot->thread.priority = 1U;
-    slot->thread.base_priority = 1U;
-    slot->thread.waiting_on_lock = NULL;
-    slot->thread.capability_list = NULL;
-    slot->thread.time_slice_ms = SCHED_DEFAULT_SLICE_MS;
-    slot->thread.cpu_time_consumed = 0U;
-    slot->thread.preferred_numa_node = 0U;
-
-    slot->context.pc = (uint64_t)(uintptr_t)entry_point;
-    slot->context.sp = 0U;
-
-    if (!parent->main_thread) {
-        parent->main_thread = &slot->thread;
-    }
-
-    return &slot->thread;
+    return t;
 }
 
 int thread_destroy(kthread_t* thread) {
-    if (!thread) {
-        return -1;
-    }
-
+    if (!thread) return -1;
     thread_slot_t* slot = sched_find_thread_slot_by_tid(thread->thread_id);
-    if (!slot) {
-        return -2;
+    if (slot) {
+        slot->in_use = 0;
     }
-
-    slot->thread.state = THREAD_STATE_TERMINATED;
-    if (g_current == &slot->thread) {
-        g_current = NULL;
+    if (thread_cache) {
+        kcache_free(thread_cache, thread);
     }
-    slot->in_use = 0U;
     return 0;
 }
 
@@ -302,6 +293,13 @@ int sched_ai_apply_suggestion(const ai_suggestion_t* suggestion) {
             return sched_set_thread_preferred_node((uint64_t)suggestion->target_id, (uint8_t)suggestion->value);
         case AI_ACTION_THROTTLE_CORE:
             return 0;
+        case AI_ACTION_KILL_TASK: {
+            kthread_t* thread = sched_find_thread_by_id((uint64_t)suggestion->target_id);
+            if (thread) {
+                return thread_destroy(thread);
+            }
+            return -1;
+        }
         case AI_ACTION_NONE:
         default:
             return -1;
