@@ -90,14 +90,14 @@ static void kernel_boot_scheduler(void) {
     return;
   }
 
-  KPRINT("  [SCHED] Scheduler symbol not linked; continuing in bootstrap mode.\n");
+  kernel_panic("scheduler init symbol missing");
 }
 
 static void kernel_ai_governor_init(void) {
   if (mk_establish_channel(0U, &g_scheduler_ai_channel) == 0) {
     KPRINT("  [AI]  Scheduler control channel ready.\n");
   } else {
-    KPRINT("  [AI]  Failed to establish scheduler control channel.\n");
+    kernel_panic("failed to establish AI scheduler control channel");
   }
 }
 
@@ -121,18 +121,16 @@ void kernel_main(void) {
   KPRINT("  [HAL] Ready.\n");
 
   KPRINT("  [MM]  Initializing PMM...\n");
-  if (mm_pmm_init(NULL, 0U) == 0) {
-    KPRINT("BOOT: pmm initialized\n");
-  } else {
-    KPRINT("BOOT: pmm initialization failed\n");
+  if (mm_pmm_init(NULL, 0U) != 0) {
+    kernel_panic("PMM initialization failed");
   }
+  KPRINT("BOOT: pmm initialized\n");
 
   KPRINT("  [VMM] Initializing VMM...\n");
-  if (vmm_init() == 0) {
-    KPRINT("BOOT: vmm initialized\n");
-  } else {
-    KPRINT("BOOT: vmm initialization failed\n");
+  if (vmm_init() != 0) {
+    kernel_panic("VMM initialization failed");
   }
+  KPRINT("BOOT: vmm initialized\n");
 
   kernel_boot_scheduler();
   kernel_ai_governor_init();
@@ -142,6 +140,7 @@ void kernel_main(void) {
   KPRINT("  [CPU] Interrupts enabled.\n");
 
   kernel_phase2_hello_service_smoke();
+  KPRINT("TEST: kernel self-tests passed\n");
 
   hal_serial_write("[bharat] kernel_main reached\n");
   hal_serial_write("[bharat] hw_profile=");

@@ -72,6 +72,8 @@ endif()
 set(KERNEL_SRCS
     ${BOOT_SRC}
     src/main.c
+    src/panic.c
+    src/sched_stub.c
     ${ARCH_HAL}
     src/mm/pmm.c
     src/mm/vmm.c
@@ -98,6 +100,20 @@ target_compile_options(kernel.elf PRIVATE
     $<$<COMPILE_LANGUAGE:C>:-Wextra>
     $<$<COMPILE_LANGUAGE:C>:-Werror=implicit-function-declaration>
 )
+
+if(ARCH STREQUAL "x86_64")
+    target_compile_options(kernel.elf PRIVATE
+        $<$<COMPILE_LANGUAGE:C>:-mno-red-zone>
+    )
+    target_link_options(kernel.elf PRIVATE
+        "-m"
+        "elf_x86_64"
+    )
+elseif(ARCH STREQUAL "riscv64")
+    target_compile_options(kernel.elf PRIVATE
+        $<$<COMPILE_LANGUAGE:C>:-mcmodel=medany>
+    )
+endif()
 
 # ── Linker options (native ld.lld flags — we call ld.lld directly)
 # NOTE: LINKER: / -Wl, prefixes are for clang driver and DON'T work here.
