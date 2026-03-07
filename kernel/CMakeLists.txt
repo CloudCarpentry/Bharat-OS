@@ -76,6 +76,7 @@ set(KERNEL_SRCS
     src/sched_stub.c
     ${ARCH_HAL}
     src/mm/pmm.c
+    src/mm/early_alloc.c
     src/mm/vmm.c
     src/mm/numa.c
     src/ipc/multikernel.c

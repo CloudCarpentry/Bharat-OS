@@ -3,14 +3,18 @@
 #include "../../include/atomic.h"
 #include "../../include/profile.h"
 #include "../../include/spinlock.h"
+#include "early_alloc.h"
+
+// Multiboot only for x86_64
+#if defined(__x86_64__)
+#include "../boot/x86_64/multiboot2.h"
+#endif
 
 #include <stddef.h>
 #include <stdint.h>
 
-#define MAX_ORDER 11
+#define MAX_ORDER 12 // allows order 11 -> 2048 pages -> 8MB, and order 9 -> 512 pages -> 2MB
 #define MAX_NUMA_NODES 4
-#define MAX_PHYS_PAGES 1048576
-#define MAX_PAGES_PER_NODE (MAX_PHYS_PAGES / MAX_NUMA_NODES)
 #define PMM_RECLAIM_BATCH 32U
 #define PMM_LOW_WATERMARK_PAGES 128U
 
@@ -22,15 +26,14 @@ typedef struct {
     uint32_t reclaim_count;
 } zone_t;
 
-static page_t global_pages[MAX_PHYS_PAGES];
+static page_t* global_pages_ptrs[MAX_NUMA_NODES];
 static zone_t numa_zones[MAX_NUMA_NODES];
 static numa_node_t numa_nodes[MAX_NUMA_NODES];
 static uint32_t active_numa_nodes;
 
 phys_addr_t page_to_phys(page_t *page) {
-    size_t global_index = (size_t)(page - global_pages);
-    uint32_t node_id = (uint32_t)(global_index / MAX_PAGES_PER_NODE);
-    size_t node_index = global_index % MAX_PAGES_PER_NODE;
+    uint32_t node_id = page->numa_node;
+    size_t node_index = (size_t)(page - global_pages_ptrs[node_id]);
     return numa_nodes[node_id].start_addr + (node_index * PAGE_SIZE);
 }
 
@@ -40,7 +43,7 @@ page_t *phys_to_page(phys_addr_t phys) {
         phys_addr_t end = node->start_addr + (node->total_pages * PAGE_SIZE);
         if (phys >= node->start_addr && phys < end) {
             size_t node_index = (size_t)((phys - node->start_addr) / PAGE_SIZE);
-            return &global_pages[(i * MAX_PAGES_PER_NODE) + node_index];
+            return &global_pages_ptrs[i][node_index];
         }
     }
     return NULL;
@@ -75,15 +78,18 @@ static void* pmm_alloc_pages_order(int order, uint32_t numa_node) {
 
             while (level > order) {
                 --level;
-                page_t *buddy = page + (1 << level);
+                size_t offset = (1ULL << level);
+                page_t *buddy = page + offset;
                 buddy->order = level;
                 buddy->ref_count = 0;
+                buddy->flags = 0;
                 list_add(&buddy->list, &zone->free_list[level]);
                 zone->free_count[level]++;
             }
 
             page->order = order;
             page->ref_count = 1;
+            page->flags = PAGE_FLAG_KERNEL; // By default give kernel pages
             spin_unlock(&zone->lock);
             return (void *)(uintptr_t)page_to_phys(page);
         }
@@ -99,6 +105,7 @@ static void* pmm_alloc_pages_order(int order, uint32_t numa_node) {
         zone->free_count[order]--;
         page->order = order;
         page->ref_count = 1;
+        page->flags = PAGE_FLAG_KERNEL;
         spin_unlock(&zone->lock);
         return (void *)(uintptr_t)page_to_phys(page);
     }
@@ -107,49 +114,7 @@ static void* pmm_alloc_pages_order(int order, uint32_t numa_node) {
     return NULL;
 }
 
-int mm_pmm_init(void* memory_map, uint32_t map_size) {
-    (void)memory_map;
-    (void)map_size;
-
-    active_numa_nodes = 2U;
-
-    for (uint32_t i = 0; i < active_numa_nodes; ++i) {
-        numa_nodes[i].node_id = i;
-        numa_nodes[i].start_addr = (phys_addr_t)i * (MAX_PAGES_PER_NODE * PAGE_SIZE);
-        numa_nodes[i].total_pages = MAX_PAGES_PER_NODE;
-        numa_nodes[i].free_pages = 0;
-        numa_nodes[i].allocator_metadata = &numa_zones[i];
-
-        zone_t *zone = &numa_zones[i];
-        spin_lock_init(&zone->lock);
-        zone->reclaim_count = 0U;
-
-        for (int order = 0; order < MAX_ORDER; ++order) {
-            list_init(&zone->free_list[order]);
-            zone->free_count[order] = 0;
-        }
-
-        for (size_t j = 0; j < MAX_PAGES_PER_NODE; ++j) {
-            page_t *p = &global_pages[(i * MAX_PAGES_PER_NODE) + j];
-            p->ref_count = 1;
-            p->numa_node = (uint16_t)i;
-            p->flags = 0;
-            p->order = -1;
-            list_init(&p->list);
-        }
-    }
-
-    for (uint32_t i = 0; i < active_numa_nodes; ++i) {
-        for (size_t j = 16; j < (MAX_PAGES_PER_NODE / 3U); ++j) {
-            phys_addr_t phys = numa_nodes[i].start_addr + ((phys_addr_t)j * PAGE_SIZE);
-            mm_free_page(phys);
-        }
-    }
-
-    return 0;
-}
-
-phys_addr_t mm_alloc_page(uint32_t preferred_numa_node) {
+phys_addr_t mm_alloc_pages_order(int order, uint32_t preferred_numa_node, uint32_t flags) {
     uint32_t home = preferred_numa_node;
 
     if (preferred_numa_node == NUMA_NODE_ANY || preferred_numa_node >= active_numa_nodes) {
@@ -160,18 +125,195 @@ phys_addr_t mm_alloc_page(uint32_t preferred_numa_node) {
     for (uint32_t attempt = 0; attempt < active_numa_nodes; ++attempt) {
         uint32_t node_id = (home + attempt) % active_numa_nodes;
 
-        if (numa_nodes[node_id].free_pages < PMM_LOW_WATERMARK_PAGES) {
+        // If not enough free pages and nothing to reclaim, continue
+        if (numa_nodes[node_id].free_pages < (1ULL << order)) {
             pmm_reclaim_one_node(node_id);
+            if (numa_nodes[node_id].free_pages < (1ULL << order)) continue;
         }
 
-        void *addr = pmm_alloc_pages_order(0, node_id);
+        void *addr = pmm_alloc_pages_order(order, node_id);
         if (addr) {
-            atomic64_fetch_and_sub_ptr(&numa_nodes[node_id].free_pages, 1U);
+            atomic64_fetch_and_sub_ptr(&numa_nodes[node_id].free_pages, (1ULL << order));
+            page_t* page = phys_to_page((phys_addr_t)(uintptr_t)addr);
+            if (page) {
+                page->flags = flags;
+            }
             return (phys_addr_t)(uintptr_t)addr;
         }
     }
 
     return 0;
+}
+
+static void mark_page_free(phys_addr_t phys) {
+    page_t *p = phys_to_page(phys);
+    if (!p) {
+        return;
+    }
+    p->ref_count = 1;
+    p->order = 0; // Ensure initial order is 0 when freed into the buddy system!
+    mm_free_page(phys);
+}
+
+int mm_pmm_init(void* memory_map, uint32_t map_size) {
+    if (!memory_map) return -1;
+
+    phys_addr_t highest_addr = 0;
+    phys_addr_t lowest_addr = (phys_addr_t)-1;
+
+#if defined(__x86_64__)
+    multiboot_information_t* mb_info = (multiboot_information_t*)memory_map;
+    uint32_t total_size = mb_info->total_size;
+
+    // First pass: find available memory bounds
+    uint8_t* tag_ptr = (uint8_t*)mb_info + 8; // skip information header
+    while (tag_ptr < (uint8_t*)mb_info + total_size) {
+        multiboot_tag_t* tag = (multiboot_tag_t*)tag_ptr;
+        if (tag->type == MULTIBOOT_TAG_TYPE_END) {
+            break;
+        }
+
+        if (tag->type == MULTIBOOT_TAG_TYPE_MMAP) {
+            multiboot_tag_mmap_t* mmap_tag = (multiboot_tag_mmap_t*)tag;
+            uint32_t entry_size = mmap_tag->entry_size;
+            if (entry_size < sizeof(multiboot_mmap_entry_t)) {
+                entry_size = sizeof(multiboot_mmap_entry_t);
+            }
+
+            // Fix: the size field in multiboot_tag_mmap_t includes the tag header itself
+            uint32_t num_entries = 0;
+            if (mmap_tag->size > 16) { // 16 is size of multiboot_tag_mmap_t base struct
+                num_entries = (mmap_tag->size - 16) / entry_size;
+            }
+
+            for (uint32_t i = 0; i < num_entries; i++) {
+                multiboot_mmap_entry_t* entry = (multiboot_mmap_entry_t*)((uint8_t*)mmap_tag->entries + (i * entry_size));
+                if (entry->type == MULTIBOOT_MEMORY_AVAILABLE) {
+                    if (entry->addr < lowest_addr) lowest_addr = entry->addr;
+                    if (entry->addr + entry->len > highest_addr) highest_addr = entry->addr + entry->len;
+                }
+            }
+        }
+
+        // Align to 8 bytes per multiboot2 spec
+        uint32_t tag_size = tag->size;
+        if (tag_size < 8) tag_size = 8;
+        uint32_t aligned_size = (tag_size + 7) & ~7;
+        if (aligned_size == 0) break; // Prevent infinite loop on bad struct
+        tag_ptr += aligned_size;
+    }
+#endif
+
+    if (highest_addr == 0) return -1; // No memory found
+
+    early_alloc_init(0); // Uses _end
+
+    // For now, assign everything to NUMA node 0
+    active_numa_nodes = 1U;
+
+    // Ensure start is page aligned
+    lowest_addr = lowest_addr & ~(PAGE_SIZE - 1);
+
+    // Calculate total pages
+    uint64_t total_pages = (highest_addr - lowest_addr) / PAGE_SIZE;
+
+    numa_nodes[0].node_id = 0;
+    numa_nodes[0].start_addr = lowest_addr;
+    numa_nodes[0].total_pages = total_pages;
+    numa_nodes[0].free_pages = 0;
+    numa_nodes[0].allocator_metadata = &numa_zones[0];
+
+    // Allocate page structures for Node 0
+    size_t page_array_size = total_pages * sizeof(page_t);
+    global_pages_ptrs[0] = (page_t*)early_alloc(page_array_size, PAGE_SIZE);
+
+    if (!global_pages_ptrs[0]) {
+        return -1;
+    }
+
+    zone_t *zone = &numa_zones[0];
+    spin_lock_init(&zone->lock);
+    zone->reclaim_count = 0U;
+
+    for (int order = 0; order < MAX_ORDER; ++order) {
+        list_init(&zone->free_list[order]);
+        zone->free_count[order] = 0;
+    }
+
+    // Initialize all pages as reserved/allocated (ref_count = 1)
+    for (size_t j = 0; j < total_pages; ++j) {
+        page_t *p = &global_pages_ptrs[0][j];
+        p->ref_count = 1;
+        p->numa_node = 0;
+        p->flags = PAGE_FLAG_RESERVED;
+        p->order = -1;
+        list_init(&p->list);
+    }
+
+    // Determine the safe start address for available memory.
+    // It must be strictly after the kernel _end and the early allocator bump ptr.
+    phys_addr_t early_mem_end = early_alloc_get_current_ptr();
+    early_mem_end = (early_mem_end + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1); // Page align up
+
+#if defined(__x86_64__)
+    // Second pass: free available memory pages to the buddy allocator
+    tag_ptr = (uint8_t*)mb_info + 8;
+    while (tag_ptr < (uint8_t*)mb_info + total_size) {
+        multiboot_tag_t* tag = (multiboot_tag_t*)tag_ptr;
+        if (tag->type == MULTIBOOT_TAG_TYPE_END) {
+            break;
+        }
+
+        if (tag->type == MULTIBOOT_TAG_TYPE_MMAP) {
+            multiboot_tag_mmap_t* mmap_tag = (multiboot_tag_mmap_t*)tag;
+            uint32_t entry_size = mmap_tag->entry_size;
+            if (entry_size < sizeof(multiboot_mmap_entry_t)) {
+                entry_size = sizeof(multiboot_mmap_entry_t);
+            }
+            uint32_t num_entries = 0;
+            if (mmap_tag->size > 16) {
+                num_entries = (mmap_tag->size - 16) / entry_size;
+            }
+
+            for (uint32_t i = 0; i < num_entries; i++) {
+                multiboot_mmap_entry_t* entry = (multiboot_mmap_entry_t*)((uint8_t*)mmap_tag->entries + (i * entry_size));
+                if (entry->type == MULTIBOOT_MEMORY_AVAILABLE) {
+                    phys_addr_t region_start = entry->addr;
+                    phys_addr_t region_end = entry->addr + entry->len;
+
+                    // Skip the physical region where kernel and early boot data live
+                    // Multiboot loaded us at 1MB, early allocator works past _end.
+                    // For safety, assume 0 to early_mem_end is completely off limits.
+                    if (region_start < early_mem_end) {
+                        region_start = early_mem_end;
+                    }
+
+                    // Align start up, end down
+                    region_start = (region_start + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
+                    region_end = region_end & ~(PAGE_SIZE - 1);
+
+                    if (region_start < region_end) {
+                        for (phys_addr_t p = region_start; p < region_end; p += PAGE_SIZE) {
+                            mark_page_free(p);
+                        }
+                    }
+                }
+            }
+        }
+
+        uint32_t tag_size = tag->size;
+        if (tag_size < 8) tag_size = 8;
+        uint32_t aligned_size = (tag_size + 7) & ~7;
+        if (aligned_size == 0) break;
+        tag_ptr += aligned_size;
+    }
+#endif
+
+    return 0;
+}
+
+phys_addr_t mm_alloc_page(uint32_t preferred_numa_node) {
+    return mm_alloc_pages_order(0, preferred_numa_node, PAGE_FLAG_KERNEL);
 }
 
 void mm_free_page(phys_addr_t page_addr) {
@@ -197,10 +339,26 @@ void mm_free_page(phys_addr_t page_addr) {
     spin_lock(&zone->lock);
     while (order < (MAX_ORDER - 1)) {
         size_t buddy_index = node_index ^ (1ULL << order);
-        size_t global_idx = (node_id * MAX_PAGES_PER_NODE) + buddy_index;
-        page_t *buddy = &global_pages[global_idx];
+        if (buddy_index >= numa_nodes[node_id].total_pages) {
+            break;
+        }
+
+        page_t *buddy = &global_pages_ptrs[node_id][buddy_index];
 
         if (buddy->ref_count > 0U || buddy->order != order) {
+            break;
+        }
+
+        // Check if buddy is in free list
+        int found = 0;
+        list_head_t *pos;
+        for (pos = zone->free_list[order].next; pos != &zone->free_list[order]; pos = pos->next) {
+            if (pos == &buddy->list) {
+                found = 1;
+                break;
+            }
+        }
+        if (!found) {
             break;
         }
 
@@ -217,11 +375,12 @@ void mm_free_page(phys_addr_t page_addr) {
 
     page->order = order;
     page->ref_count = 0;
+    page->flags = 0;
     list_add(&page->list, &zone->free_list[order]);
     zone->free_count[order]++;
     spin_unlock(&zone->lock);
 
-    atomic64_fetch_and_add_ptr(&numa_nodes[node_id].free_pages, 1U);
+    atomic64_fetch_and_add_ptr(&numa_nodes[node_id].free_pages, (1ULL << order));
 }
 
 #ifndef Profile_RTOS

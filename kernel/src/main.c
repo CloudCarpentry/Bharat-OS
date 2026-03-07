@@ -112,7 +112,12 @@ static void kernel_ai_governor_tick(void) {
   }
 }
 
+#if defined(__x86_64__)
+#include "boot/x86_64/multiboot2.h"
+void kernel_main(uint32_t magic, multiboot_information_t* mb_info) {
+#else
 void kernel_main(void) {
+#endif
   const char *profile = kernel_boot_hw_profile();
 
   KPRINT("\nBharat-OS kernel boot\n");
@@ -121,9 +126,20 @@ void kernel_main(void) {
   KPRINT("  [HAL] Ready.\n");
 
   KPRINT("  [MM]  Initializing PMM...\n");
+
+#if defined(__x86_64__)
+  if (magic != MULTIBOOT2_BOOTLOADER_MAGIC) {
+    kernel_panic("Invalid multiboot magic");
+  }
+
+  if (mm_pmm_init(mb_info, mb_info->total_size) != 0) {
+    kernel_panic("PMM initialization failed");
+  }
+#else
   if (mm_pmm_init(NULL, 0U) != 0) {
     kernel_panic("PMM initialization failed");
   }
+#endif
   KPRINT("BOOT: pmm initialized\n");
 
   KPRINT("  [VMM] Initializing VMM...\n");
