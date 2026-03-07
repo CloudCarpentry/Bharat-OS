@@ -14,7 +14,10 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/x86_64-elf.cmake",
-        "BHARAT_KERNEL_HARDENING": "ON"
+        "BHARAT_KERNEL_HARDENING": "ON",
+        "BHARAT_ARCH_FAMILY": "X86",
+        "BHARAT_ARCH_BITS": "64",
+        "BHARAT_ARCH_VARIANT": "GENERIC"
       }
     },
     {
@@ -25,7 +28,10 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/riscv64-elf.cmake",
-        "BHARAT_KERNEL_HARDENING": "ON"
+        "BHARAT_KERNEL_HARDENING": "ON",
+        "BHARAT_ARCH_FAMILY": "RISCV",
+        "BHARAT_ARCH_BITS": "64",
+        "BHARAT_ARCH_VARIANT": "GENERIC"
       }
     },
     {
@@ -36,7 +42,10 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/arm64-elf.cmake",
-        "BHARAT_KERNEL_HARDENING": "ON"
+        "BHARAT_KERNEL_HARDENING": "ON",
+        "BHARAT_ARCH_FAMILY": "ARM",
+        "BHARAT_ARCH_BITS": "64",
+        "BHARAT_ARCH_VARIANT": "GENERIC"
       }
     },
     {
@@ -45,7 +54,10 @@
       "inherits": "riscv64-elf-debug",
       "binaryDir": "${sourceDir}/build-riscv64-shakti-e",
       "cacheVariables": {
-        "BHARAT_RISCV_SOC_PROFILE": "shakti-e"
+        "BHARAT_RISCV_SOC_PROFILE": "shakti-e",
+        "BHARAT_ARCH_FAMILY": "RISCV",
+        "BHARAT_ARCH_BITS": "64",
+        "BHARAT_ARCH_VARIANT": "SHAKTI"
       }
     },
     {
@@ -54,7 +66,10 @@
       "inherits": "riscv64-elf-debug",
       "binaryDir": "${sourceDir}/build-riscv64-shakti-c",
       "cacheVariables": {
-        "BHARAT_RISCV_SOC_PROFILE": "shakti-c"
+        "BHARAT_RISCV_SOC_PROFILE": "shakti-c",
+        "BHARAT_ARCH_FAMILY": "RISCV",
+        "BHARAT_ARCH_BITS": "64",
+        "BHARAT_ARCH_VARIANT": "SHAKTI"
       }
     },
     {
@@ -63,7 +78,10 @@
       "inherits": "riscv64-elf-debug",
       "binaryDir": "${sourceDir}/build-riscv64-shakti-i",
       "cacheVariables": {
-        "BHARAT_RISCV_SOC_PROFILE": "shakti-i"
+        "BHARAT_RISCV_SOC_PROFILE": "shakti-i",
+        "BHARAT_ARCH_FAMILY": "RISCV",
+        "BHARAT_ARCH_BITS": "64",
+        "BHARAT_ARCH_VARIANT": "SHAKTI"
       }
     },
     {
@@ -72,7 +90,8 @@
       "generator": "Unix Makefiles",
       "binaryDir": "${sourceDir}/build-tests",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug"
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BHARAT_BUILD_AI_GOVERNOR": "OFF"
       }
     },
     {
@@ -84,7 +103,10 @@
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/riscv64-elf-gcc.cmake",
         "BHARAT_KERNEL_HARDENING": "ON",
-        "BHARAT_RISCV_BUILD_PAYLOAD_BIN": "ON"
+        "BHARAT_RISCV_BUILD_PAYLOAD_BIN": "ON",
+        "BHARAT_ARCH_FAMILY": "RISCV",
+        "BHARAT_ARCH_BITS": "64",
+        "BHARAT_ARCH_VARIANT": "GENERIC"
       }
     },
     {
@@ -93,7 +115,48 @@
       "inherits": "riscv64-elf-gcc-debug",
       "binaryDir": "${sourceDir}/build-riscv64-shakti-e-gcc",
       "cacheVariables": {
-        "BHARAT_RISCV_SOC_PROFILE": "shakti-e"
+        "BHARAT_RISCV_SOC_PROFILE": "shakti-e",
+        "BHARAT_ARCH_FAMILY": "RISCV",
+        "BHARAT_ARCH_BITS": "64",
+        "BHARAT_ARCH_VARIANT": "SHAKTI"
+      }
+    },
+    {
+      "name": "desktop-x86_64-linuxlike",
+      "displayName": "x86_64 Desktop Linux-like Profile",
+      "inherits": "x86_64-elf-debug",
+      "binaryDir": "${sourceDir}/build-desktop-x86_64",
+      "cacheVariables": {
+        "BHARAT_DEVICE_PROFILE": "DESKTOP",
+        "BHARAT_PERSONALITY_PROFILE": "LINUX",
+        "BHARAT_ISA_BASELINE": "x86_64_v2",
+        "BHARAT_ISA_FEATURES": "avx2;fma;aes",
+        "BHARAT_ACCELERATOR_CLASSES": "gpu",
+        "BHARAT_PLATFORM_FIRMWARE": "ACPI"
+      }
+    },
+    {
+      "name": "edge-arm64-maclike",
+      "displayName": "arm64 Edge Mac-like Profile",
+      "inherits": "arm64-elf-debug",
+      "binaryDir": "${sourceDir}/build-edge-arm64",
+      "cacheVariables": {
+        "BHARAT_DEVICE_PROFILE": "EDGE",
+        "BHARAT_PERSONALITY_PROFILE": "MAC",
+        "BHARAT_ACCELERATOR_CLASSES": "npu;crypto"
+      }
+    },
+    {
+      "name": "mobile-riscv64-shakti-linuxlike",
+      "displayName": "riscv64 Shakti Mobile Linux-like Profile",
+      "inherits": "riscv64-shakti-e-debug",
+      "binaryDir": "${sourceDir}/build-mobile-riscv64",
+      "cacheVariables": {
+        "BHARAT_DEVICE_PROFILE": "MOBILE",
+        "BHARAT_PERSONALITY_PROFILE": "LINUX",
+        "BHARAT_ISA_BASELINE": "rv64gc",
+        "BHARAT_ISA_FEATURES": "v;zba;zbb",
+        "BHARAT_ACCELERATOR_CLASSES": "gpu;dsp"
       }
     }
   ],

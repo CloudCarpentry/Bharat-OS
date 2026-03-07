@@ -11,11 +11,14 @@
 #define SCHED_MAX_THREADS 64U
 #define SCHED_MAX_PROCESSES 32U
 #define SCHED_DEFAULT_SLICE_MS 10U
+#define SCHED_MAX_CORES 8U
+#define SCHED_MAX_PENDING_SUGGESTIONS 64U
 
 typedef struct {
     uint8_t in_use;
     kthread_t thread;
     cpu_context_t context;
+    ai_sched_context_t ai_ctx;
 } thread_slot_t;
 
 typedef struct {
@@ -23,18 +26,38 @@ typedef struct {
     kprocess_t process;
 } process_slot_t;
 
+typedef struct {
+    ai_suggestion_t queue[SCHED_MAX_PENDING_SUGGESTIONS];
+    uint32_t head;
+    uint32_t tail;
+} suggestion_queue_t;
+
 static thread_slot_t g_threads[SCHED_MAX_THREADS];
 static process_slot_t g_processes[SCHED_MAX_PROCESSES];
+static sched_core_t g_cores[SCHED_MAX_CORES];
 
 static kthread_t* g_current;
 static sched_policy_t g_policy = SCHED_POLICY_ROUND_ROBIN;
 static uint64_t g_next_thread_id = 1U;
 static uint64_t g_next_process_id = 1U;
+static uint64_t g_sched_ticks = 0U;
+static uint64_t g_sched_context_switches = 0U;
+static suggestion_queue_t g_pending_suggestions;
 
 static kcache_t* thread_cache = NULL;
 
 
 void fv_secure_context_switch(void* next_thread_frame) __attribute__((weak));
+
+uint32_t numa_active_node_count(void) __attribute__((weak));
+
+static uint32_t sched_numa_node_count(void) {
+    if (numa_active_node_count) {
+        uint32_t count = numa_active_node_count();
+        return (count == 0U) ? 1U : count;
+    }
+    return 1U;
+}
 
 static thread_slot_t* sched_find_thread_slot_by_tid(uint64_t tid) {
     for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_threads); ++i) {
@@ -63,6 +86,37 @@ static process_slot_t* sched_find_free_process_slot(void) {
     return NULL;
 }
 
+static uint32_t sched_run_queue_depth(void) {
+    uint32_t count = 0U;
+    for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_threads); ++i) {
+        if (g_threads[i].in_use != 0U && g_threads[i].thread.state == THREAD_STATE_READY) {
+            ++count;
+        }
+    }
+    return count;
+}
+
+static int sched_suggestion_dequeue(ai_suggestion_t* out) {
+    if (!out) {
+        return -1;
+    }
+
+    if (g_pending_suggestions.head == g_pending_suggestions.tail) {
+        return -1;
+    }
+
+    *out = g_pending_suggestions.queue[g_pending_suggestions.tail];
+    g_pending_suggestions.tail = (g_pending_suggestions.tail + 1U) % SCHED_MAX_PENDING_SUGGESTIONS;
+    return 0;
+}
+
+static void sched_process_pending_ai_suggestions(void) {
+    ai_suggestion_t suggestion = {0};
+    while (sched_suggestion_dequeue(&suggestion) == 0) {
+        (void)sched_ai_apply_suggestion(&suggestion);
+    }
+}
+
 static kthread_t* sched_pick_next_ready(void) {
     size_t start = 0U;
     kthread_t* best = NULL;
@@ -80,12 +134,31 @@ static kthread_t* sched_pick_next_ready(void) {
             continue;
         }
 
+        if (g_policy == SCHED_POLICY_EDF && g_threads[idx].thread.rt_attr.deadline_ms > 0U) {
+            if (!best || g_threads[idx].thread.rt_attr.deadline_ms < best->rt_attr.deadline_ms) {
+                best = &g_threads[idx].thread;
+            }
+            continue;
+        }
+
         if (!best || g_threads[idx].thread.priority > best->priority) {
             best = &g_threads[idx].thread;
         }
     }
 
     return best;
+}
+
+static void sched_update_telemetry(kthread_t* thread) {
+    if (!thread || !thread->ai_sched_ctx) {
+        return;
+    }
+
+    ai_sched_collect_sample(thread->ai_sched_ctx,
+                            thread->time_slice_ms,
+                            thread->cpu_time_consumed,
+                            sched_run_queue_depth(),
+                            (uint32_t)thread->context_switch_count);
 }
 
 static void sched_switch_to(kthread_t* next) {
@@ -98,7 +171,10 @@ static void sched_switch_to(kthread_t* next) {
     }
 
     next->state = THREAD_STATE_RUNNING;
+    next->context_switch_count++;
+    g_sched_context_switches++;
     g_current = next;
+    g_cores[0].current = next;
 
     if (fv_secure_context_switch) {
         fv_secure_context_switch(next->cpu_context);
@@ -112,11 +188,18 @@ void sched_init(void) {
     for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_processes); ++i) {
         g_processes[i].in_use = 0U;
     }
+    for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_cores); ++i) {
+        g_cores[i] = (sched_core_t){ .core_id = (uint32_t)i, .current = NULL, .total_ticks = 0U, .throttled = 0U };
+    }
 
     g_current = NULL;
     g_next_thread_id = 1U;
     g_next_process_id = 1U;
     g_policy = SCHED_POLICY_ROUND_ROBIN;
+    g_sched_ticks = 0U;
+    g_sched_context_switches = 0U;
+    g_pending_suggestions.head = 0U;
+    g_pending_suggestions.tail = 0U;
 }
 
 kprocess_t* process_create(const char* name) {
@@ -193,15 +276,51 @@ int thread_destroy(kthread_t* thread) {
 }
 
 void sched_yield(void) {
+    sched_process_pending_ai_suggestions();
     kthread_t* next = sched_pick_next_ready();
     if (next) {
         sched_switch_to(next);
     }
 }
 
+void sched_sleep(uint64_t millis) {
+    if (!g_current) {
+        return;
+    }
+
+    g_current->wake_deadline_ms = g_sched_ticks + millis;
+    g_current->state = THREAD_STATE_SLEEPING;
+    sched_yield();
+}
+
+void sched_wakeup(kthread_t* thread) {
+    if (!thread) {
+        return;
+    }
+
+    if (thread->state == THREAD_STATE_SLEEPING) {
+        thread->state = THREAD_STATE_READY;
+        thread->wake_deadline_ms = 0U;
+    }
+}
+
 void sched_on_timer_tick(void) {
+    g_sched_ticks++;
+    g_cores[0].total_ticks++;
+
+    for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_threads); ++i) {
+        if (g_threads[i].in_use != 0U && g_threads[i].thread.state == THREAD_STATE_SLEEPING &&
+            g_threads[i].thread.wake_deadline_ms <= g_sched_ticks) {
+            sched_wakeup(&g_threads[i].thread);
+        }
+    }
+
+    sched_process_pending_ai_suggestions();
+
     if (g_current) {
         g_current->cpu_time_consumed++;
+        sched_update_telemetry(g_current);
+
         if (g_current->cpu_time_consumed >= g_current->time_slice_ms) {
             g_current->cpu_time_consumed = 0U;
             sched_yield();
@@ -218,7 +337,6 @@ kthread_t* sched_current_thread(void) {
 
 void sched_set_policy(sched_policy_t policy) {
     g_policy = policy;
-    (void)g_policy; // current implementation keeps RR semantics for both profiles.
 }
 
 int sched_sys_thread_create(kprocess_t* parent, void (*entry_point)(void), uint64_t* out_tid) {
@@ -265,8 +383,7 @@ kthread_t* sched_find_thread_by_id(uint64_t tid) {
     return slot ? &slot->thread : NULL;
 }
 
-int sched_set_thread_priority(uint64_t tid, uint32_t new_priority) {
-    kthread_t* thread = sched_find_thread_by_id(tid);
+int sched_adjust_priority(kthread_t* thread, uint32_t new_priority) {
     if (!thread) {
         return -1;
     }
@@ -279,27 +396,47 @@ int sched_set_thread_priority(uint64_t tid, uint32_t new_priority) {
     return 0;
 }
 
-int sched_set_thread_preferred_node(uint64_t tid, uint8_t node_id) {
-    kthread_t* thread = sched_find_thread_by_id(tid);
+int sched_set_thread_priority(uint64_t tid, uint32_t new_priority) {
+    return sched_adjust_priority(sched_find_thread_by_id(tid), new_priority);
+}
+
+int sched_migrate_task(kthread_t* thread, uint32_t new_node) {
     if (!thread) {
         return -1;
     }
 
-    thread->preferred_numa_node = node_id;
+    if (new_node >= sched_numa_node_count()) {
+        return -2;
+    }
+
+    thread->preferred_numa_node = (uint8_t)new_node;
     return 0;
 }
 
+int sched_set_thread_preferred_node(uint64_t tid, uint8_t node_id) {
+    return sched_migrate_task(sched_find_thread_by_id(tid), node_id);
+}
+
+int sched_throttle_core(uint32_t core_id) {
+    if (core_id >= SCHED_MAX_CORES) {
+        return -1;
+    }
+
+    g_cores[core_id].throttled = 1U;
+    return 0;
+}
 
 int sched_ai_apply_suggestion(const ai_suggestion_t* suggestion) {
     if (!suggestion) {
         return -1;
     }
 
+    kthread_t* thread = sched_find_thread_by_id((uint64_t)suggestion->target_id);
     switch (suggestion->action) {
         case AI_ACTION_ADJUST_PRIORITY:
-            return sched_set_thread_priority((uint64_t)suggestion->target_id, suggestion->value);
+            return sched_adjust_priority(thread, suggestion->value);
         case AI_ACTION_MIGRATE_TASK:
-            return sched_set_thread_preferred_node((uint64_t)suggestion->target_id, (uint8_t)suggestion->value);
+            return sched_migrate_task(thread, suggestion->value);
         case AI_ACTION_THROTTLE_CORE:
             return 0; // Throttle core not implemented fully in stub
         case AI_ACTION_KILL_TASK: {
@@ -313,6 +450,21 @@ int sched_ai_apply_suggestion(const ai_suggestion_t* suggestion) {
         default:
             return -1;
     }
+}
+
+int sched_enqueue_ai_suggestion(const ai_suggestion_t* suggestion) {
+    if (!suggestion) {
+        return -1;
+    }
+
+    uint32_t next = (g_pending_suggestions.head + 1U) % SCHED_MAX_PENDING_SUGGESTIONS;
+    if (next == g_pending_suggestions.tail) {
+        return -2;
+    }
+
+    g_pending_suggestions.queue[g_pending_suggestions.head] = *suggestion;
+    g_pending_suggestions.head = next;
+    return 0;
 }
 
 #ifdef Profile_RTOS

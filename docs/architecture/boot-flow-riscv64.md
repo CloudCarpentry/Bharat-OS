@@ -6,6 +6,28 @@ Unlike x86, RISC-V enforces strict privilege levels (M-Mode, S-Mode, U-Mode). Th
 
 ## Sequence
 
+```mermaid
+sequenceDiagram
+    participant Hardware as BootROM (M-Mode)
+    participant SBI as SBI Firmware (M-Mode)
+    participant Stub as Assembly Stub (_start) (S-Mode)
+    participant Kernel as Microkernel (kernel_main)
+    participant User as Root User Task
+
+    Hardware->>SBI: Bring up HART, init RAM
+    SBI->>SBI: Setup trap delegation
+    SBI->>SBI: Discover hardware (DeviceTree)
+    SBI->>SBI: Load kernel binary
+    SBI->>Stub: mret (Drop to S-Mode)
+    Stub->>Stub: Setup supervisor stack (sp)
+    Stub->>Kernel: Call kernel_main(hartid, dtb_ptr)
+    Kernel->>Kernel: Parse FDT/DTB
+    Kernel->>Kernel: Init PMM and VMM (satp for Sv39/48)
+    Kernel->>Kernel: Configure trap vectors (stvec)
+    Kernel->>Kernel: Wake secondary HARTs (sbi_send_ipi)
+    Kernel->>User: Handover capabilities & Start
+```
+
 1. **Hardware / BootROM (M-Mode)**: Initial silicon brings up the primary HART (Hardware Thread), initializes RAM, and jumps to the SBI firmware.
 2. **SBI Firmware (OpenSBI / RustSBI) (M-Mode)**:
    - Sets up trap delegation so traps pass immediately down to the OS.

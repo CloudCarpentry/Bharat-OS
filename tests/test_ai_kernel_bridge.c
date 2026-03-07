@@ -17,9 +17,9 @@ int main(void) {
     kprocess_t proc;
     proc.process_id = 1;
 
-    kthread_t* t = thread_create(&proc, thread_entry);
+    kthread_t* t = thread_create(proc, thread_entry);
     assert(t != NULL);
-    kthread_t* t2 = thread_create(&proc, thread_entry);
+    kthread_t* t2 = thread_create(proc, thread_entry);
     assert(t2 != NULL);
 
     ai_suggestion_t priority = {
@@ -59,9 +59,28 @@ int main(void) {
     assert(migrated != NULL);
     assert(migrated->preferred_numa_node == 1U);
 
+    capability_table_t* caps = (capability_table_t*)proc->security_sandbox_ctx;
+    assert(caps != NULL);
+
+    uint32_t send_cap = 0U;
+    uint32_t recv_cap = 0U;
+    assert(ai_kernel_create_governor_endpoint(caps, &send_cap, &recv_cap) == 0);
+
+    ai_suggestion_t queued = {
+        .action = AI_ACTION_ADJUST_PRIORITY,
+        .target_id = (uint32_t)t->thread_id,
+        .value = 9U,
+    };
+    assert(ipc_endpoint_send(caps, send_cap, &queued, sizeof(queued)) == IPC_OK);
+    assert(ai_kernel_ingest_suggestion_ipc(caps, recv_cap) == 0);
+
+    sched_on_timer_tick();
+    assert(t->priority == 9U);
+
     kernel_telemetry_t telemetry = {0};
     assert(ai_kernel_collect_telemetry(&telemetry) == 0);
     assert(telemetry.ipc_latency_ns > 0U);
+    assert(telemetry.context_switches > 0U);
 
     printf("AI kernel bridge tests passed.\n");
     return 0;
