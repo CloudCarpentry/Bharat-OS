@@ -2,9 +2,9 @@
 #define BHARAT_CONFIG_H
 
 /* Architecture Family */
-/* #undef BHARAT_ARCH_X86 */
+#define BHARAT_ARCH_X86 1
 /* #undef BHARAT_ARCH_ARM */
-#define BHARAT_ARCH_RISCV 1
+/* #undef BHARAT_ARCH_RISCV */
 
 /* Architecture Bitness */
 /* #undef BHARAT_ARCH_32BIT */

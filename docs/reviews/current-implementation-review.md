@@ -28,10 +28,7 @@ This review tracks the implementation state of Bharat-OS and prioritizes what re
 ## High-priority remaining gaps
 
 ### P1 — Architecture trap and interrupt entry completeness
-
-- x86_64 IDT/syscall entry stubs and full APIC/IOAPIC programming remain incomplete.
-- RISC-V `stvec` trap entry plumbing and full PLIC/CLINT routing policy remain incomplete.
-- ARM64 vector/GIC bring-up is still baseline-only.
+*(Addressed: IDT and APIC/IOAPIC initialization for x86_64; PLIC, STIE, and `stvec` routing for RISC-V; and GICv2/v3 initialization, `vbar_el1` and Generic Timer setup for ARM64 have been implemented.)*
 
 ### P1 — Scheduler/runtime depth
 

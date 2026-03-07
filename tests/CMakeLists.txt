@@ -8,6 +8,10 @@ target_include_directories(test_early_alloc PRIVATE ../kernel/include)
 
 add_test(NAME test_early_alloc COMMAND test_early_alloc)
 
+add_executable(test_hal_interrupts test_hal_interrupts.c ../kernel/src/hal/interrupt_common.c)
+target_include_directories(test_hal_interrupts PRIVATE ../kernel/include)
+add_test(NAME test_hal_interrupts COMMAND test_hal_interrupts)
+
 add_executable(test_urpc_ring test_urpc_ring.c ../kernel/src/ipc/multikernel.c)
 target_include_directories(test_urpc_ring PRIVATE ../kernel/include)
 add_test(NAME test_urpc_ring COMMAND test_urpc_ring)

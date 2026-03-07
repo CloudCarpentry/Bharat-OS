@@ -79,9 +79,90 @@ void hal_cpu_disable_interrupts(void) {
     __asm__ volatile("cli");
 }
 
+// --- IDT Definitions ---
+struct idt_entry {
+    uint16_t isr_low;
+    uint16_t kernel_cs;
+    uint8_t  ist;
+    uint8_t  attributes;
+    uint16_t isr_mid;
+    uint32_t isr_high;
+    uint32_t reserved;
+} __attribute__((packed));
+
+struct idtr {
+    uint16_t limit;
+    uint64_t base;
+} __attribute__((packed));
+
+static struct idt_entry idt[256];
+static struct idtr idtr;
+
+static void idt_set_descriptor(uint8_t vector, void *isr, uint8_t flags) {
+    struct idt_entry *descriptor = &idt[vector];
+    descriptor->isr_low    = (uint64_t)isr & 0xFFFF;
+    descriptor->kernel_cs  = 0x08; // Assuming 0x08 is kernel code segment
+    descriptor->ist        = 0;
+    descriptor->attributes = flags;
+    descriptor->isr_mid    = ((uint64_t)isr >> 16) & 0xFFFF;
+    descriptor->isr_high   = ((uint64_t)isr >> 32) & 0xFFFFFFFF;
+    descriptor->reserved   = 0;
+}
+
+static void default_isr(void) {
+    __asm__ volatile("iretq");
+}
+
+static void default_timer_isr(void) {
+    // Ack APIC EOI
+    volatile uint32_t *apic_eoi = (volatile uint32_t *)0xFEE000B0;
+    *apic_eoi = 0;
+
+    // Call generic timer tick
+    hal_timer_tick();
+
+    __asm__ volatile("iretq");
+}
+
+
+// --- APIC Definitions ---
+#define APIC_BASE        0xFEE00000
+#define APIC_SIVR        0xFEE000F0
+#define APIC_ICR_LOW     0xFEE00300
+#define APIC_ICR_HIGH    0xFEE00310
+#define APIC_LVT_TIMER   0xFEE00320
+#define APIC_TMRDIV      0xFEE003E0
+#define APIC_TMRINITCNT  0xFEE00380
+#define APIC_TMRCURRCNT  0xFEE00390
+#define APIC_EOI         0xFEE000B0
+
+// --- IOAPIC Definitions ---
+#define IOAPIC_BASE      0xFEC00000
+#define IOAPIC_REG_SEL   (IOAPIC_BASE + 0x00)
+#define IOAPIC_REG_WIN   (IOAPIC_BASE + 0x10)
+
+static inline void ioapic_write(uint8_t offset, uint32_t val) {
+    *(volatile uint32_t*)IOAPIC_REG_SEL = offset;
+    *(volatile uint32_t*)IOAPIC_REG_WIN = val;
+}
+
+
 void hal_init(void) {
     // Setup IDT, GDT for x86_64
     hal_serial_init();
+
+    // Initialize IDT to default handler
+    for (int i = 0; i < 256; i++) {
+        idt_set_descriptor(i, default_isr, 0x8E); // 0x8E: Present, Ring 0, Interrupt Gate
+    }
+
+    // Timer vector 32
+    idt_set_descriptor(32, default_timer_isr, 0x8E);
+
+    idtr.base = (uint64_t)&idt[0];
+    idtr.limit = (uint16_t)sizeof(struct idt_entry) * 256 - 1;
+
+    __asm__ volatile("lidt %0" : : "m"(idtr));
 }
 
 void hal_tlb_flush(unsigned long long vaddr) {
@@ -89,26 +170,67 @@ void hal_tlb_flush(unsigned long long vaddr) {
 }
 
 void hal_send_ipi_payload(uint32_t target_core, uint64_t payload) {
-    (void)target_core;
-    (void)payload;
-    // TODO: program local APIC/x2APIC ICR for inter-core notification.
+    (void)payload; // We can't actually send payload via bare IPI without URPC, just send IPI
+
+    volatile uint32_t *apic_icr_high = (volatile uint32_t *)APIC_ICR_HIGH;
+    volatile uint32_t *apic_icr_low  = (volatile uint32_t *)APIC_ICR_LOW;
+
+    // Send fixed IPI (vector 250) to target core
+    *apic_icr_high = (target_core << 24);
+    *apic_icr_low = 0x00004000 | 250; // Fixed delivery, assert, edge trigger, vector 250
 }
 
 
 int hal_interrupt_controller_init(void) {
-    // TODO: bring up local APIC/IOAPIC and enumerate IRQ routing.
+    // Enable local APIC (set Spurious Interrupt Vector Register)
+    volatile uint32_t *apic_sivr = (volatile uint32_t *)APIC_SIVR;
+    *apic_sivr = 0x1FF; // Enable APIC and set spurious vector to 0xFF
+
+    // Disable 8259 PICs to ensure only APIC is used
+    x86_outb(0xA1, 0xFF);
+    x86_outb(0x21, 0xFF);
+
     return 0;
 }
 
 int hal_interrupt_route(uint32_t irq, uint32_t target_core) {
-    (void)irq;
-    (void)target_core;
-    // TODO: program IOAPIC redirection table.
+    if (irq > 23) return -1; // Assuming standard 24-pin IOAPIC
+
+    // Route IRQ to vector (irq + 32) on target core
+    uint8_t vector = (uint8_t)(irq + 32);
+
+    // REDTBL offset starts at 0x10. Each entry is 64 bits (2 * 32-bit registers)
+    uint8_t ioapic_reg = 0x10 + (uint8_t)(irq * 2);
+
+    // Lower 32 bits: vector, fixed delivery, unmasked
+    uint32_t low = vector;
+    // Upper 32 bits: target APIC ID
+    uint32_t high = target_core << 24;
+
+    ioapic_write(ioapic_reg, low);
+    ioapic_write(ioapic_reg + 1, high);
+
     return 0;
 }
 
 int hal_timer_source_init(uint32_t tick_hz) {
-    (void)tick_hz;
-    // TODO: configure APIC timer periodic mode.
+    if (tick_hz == 0) return -1;
+
+    // Set APIC timer divider to 16
+    volatile uint32_t *apic_tmrdiv = (volatile uint32_t *)APIC_TMRDIV;
+    *apic_tmrdiv = 0x03;
+
+    // Assume APIC bus frequency is around 1GHz for simplicity in bare-metal stub
+    // and divide by tick_hz. A real implementation would calibrate via PIT.
+    uint32_t initial_count = 1000000000 / 16 / tick_hz;
+
+    // Configure timer in periodic mode, vector 32
+    volatile uint32_t *apic_lvt_timer = (volatile uint32_t *)APIC_LVT_TIMER;
+    *apic_lvt_timer = 32 | 0x20000; // Vector 32, Periodic mode (bit 17)
+
+    // Set initial count
+    volatile uint32_t *apic_tmrinitcnt = (volatile uint32_t *)APIC_TMRINITCNT;
+    *apic_tmrinitcnt = initial_count;
+
     return 0;
 }
