@@ -7,6 +7,7 @@
 #include "trap.h"
 #include "device.h"
 #include "numa.h"
+#include "sched.h"
 
 #include <stdint.h>
 #include <stddef.h>
@@ -18,7 +19,6 @@
 #define KPRINT(s) hal_serial_write(s)
 #define CAP_RIGHT_IPC_ENDPOINT 0x1U
 
-void sched_init(void) __attribute__((weak));
 
 typedef struct {
   uint32_t cap_id;
@@ -127,8 +127,8 @@ static void kernel_ai_governor_tick(void) {
   while (urpc_receive(g_scheduler_ai_channel.urpc_ring, &msg) == 0) {
     if (msg.msg_type == AI_MSG_TYPE_SUGGESTION && msg.payload_size >= sizeof(ai_suggestion_t)) {
       ai_suggestion_t* suggestion = (ai_suggestion_t*)msg.payload_data;
-      if (ai_kernel_apply_suggestion(suggestion) == 0) {
-        KPRINT("  [AI]  Scheduler suggestion applied.\n");
+      if (sched_enqueue_ai_suggestion(suggestion) == 0) {
+        KPRINT("  [AI]  Scheduler suggestion queued.\n");
       } else {
         KPRINT("  [AI]  Scheduler suggestion rejected.\n");
       }
