@@ -20,7 +20,6 @@
 #define KPRINT(s) hal_serial_write(s)
 #define CAP_RIGHT_IPC_ENDPOINT 0x1U
 
-void sched_init(void) __attribute__((weak));
 
 typedef struct {
   uint32_t cap_id;
@@ -149,7 +148,7 @@ static void kernel_ai_governor_tick(void) {
         msg.payload_size >= sizeof(ai_suggestion_t)) {
       ai_suggestion_t *suggestion = (ai_suggestion_t *)msg.payload_data;
       if (ai_kernel_apply_suggestion(suggestion) == 0) {
-        KPRINT("  [AI]  Scheduler suggestion applied.\n");
+        KPRINT("  [AI]  Scheduler suggestion accepted.\n");
       } else {
         KPRINT("  [AI]  Scheduler suggestion rejected.\n");
       }

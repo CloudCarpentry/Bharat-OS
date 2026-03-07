@@ -28,6 +28,13 @@ This document summarizes the current kernel baseline for capability tables and I
 - URPC ring init enforces minimum capacity and non-null backing storage.
 - Send/receive validate ring configuration and return typed status codes (`URPC_ERR_INVALID`, `URPC_ERR_EMPTY`, `URPC_ERR_FULL`).
 
+## AI scheduler control-plane IPC
+
+- Kernel exposes capability-secured endpoint creation for governor control (`ai_kernel_create_governor_endpoint`).
+- Incoming endpoint payloads are parsed as `ai_suggestion_t` and validated before enqueue (`ai_kernel_ingest_suggestion_ipc`).
+- Scheduler consumes queued suggestions in timer/scheduling path, not directly in IPC receive path.
+- Migration validation is bounded by available NUMA nodes and action type checks.
+
 ## User-space syscall API surface
 
 - Endpoint create/send/receive are exposed as syscall IDs and wrapped by user header API (`lib/include/ipc_user.h`).
