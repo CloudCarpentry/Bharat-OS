@@ -3,22 +3,6 @@ project(BharatOS_Kernel C ASM)
 
 set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 
-# ── Linker selection (toolchain-provided linker preferred)
-# If the toolchain did not define CMAKE_LINKER, fallback to ld.lld.
-if(NOT CMAKE_LINKER)
-    find_program(LLD_LINKER NAMES ld.lld HINTS
-        "C:/Program Files/LLVM/bin"
-        "/usr/bin" "/usr/local/bin" "/opt/homebrew/bin"
-    )
-    if(NOT LLD_LINKER)
-        message(FATAL_ERROR "No linker configured and ld.lld not found (see BUILD.md)")
-    endif()
-    set(CMAKE_LINKER "${LLD_LINKER}")
-endif()
-
-set(CMAKE_C_LINK_EXECUTABLE   "<CMAKE_LINKER> <LINK_FLAGS> <OBJECTS> -o <TARGET>")
-set(CMAKE_ASM_LINK_EXECUTABLE "<CMAKE_LINKER> <LINK_FLAGS> <OBJECTS> -o <TARGET>")
-
 # ── Toolchain file provides all compiler/linker settings.
 # Pass -DCMAKE_TOOLCHAIN_FILE=../cmake/toolchains/<arch>-elf.cmake at configure time.
 # See BUILD.md for exact commands for each platform.
@@ -153,14 +137,14 @@ if(BHARAT_KERNEL_ASLR)
         $<$<COMPILE_LANGUAGE:C>:-fpie>
     )
     target_link_options(kernel.elf PRIVATE
-        "--pie"
+        "LINKER:--pie"
     )
 else()
     target_compile_options(kernel.elf PRIVATE
         $<$<COMPILE_LANGUAGE:C>:-fno-pie>
     )
     target_link_options(kernel.elf PRIVATE
-        "--no-pie"
+        "LINKER:--no-pie"
     )
 endif()
 
@@ -169,8 +153,7 @@ if(ARCH STREQUAL "x86_64")
         $<$<COMPILE_LANGUAGE:C>:-mno-red-zone>
     )
     target_link_options(kernel.elf PRIVATE
-        "-m"
-        "elf_x86_64"
+        "LINKER:-m,elf_x86_64"
     )
 elseif(ARCH STREQUAL "riscv64")
     target_compile_options(kernel.elf PRIVATE
@@ -178,15 +161,15 @@ elseif(ARCH STREQUAL "riscv64")
     )
 endif()
 
-# ── Linker options (native ld.lld flags — we call ld.lld directly)
-# NOTE: LINKER: / -Wl, prefixes are for clang driver and DON'T work here.
-# Use native ld.lld flags directly: --nopie, -T, --build-id, --fatal-warnings
+# ── Linker options
+# Use LINKER: so CMake can translate options correctly when linking via the
+# compiler driver across clang/gcc and host/cross presets.
 target_link_options(kernel.elf PRIVATE
     "-nostdlib"
-    "--fatal-warnings"
-    "-T" "${LINKER_SCRIPT}"
-    "--build-id=none"
-    "--no-dynamic-linker"
+    "LINKER:--fatal-warnings"
+    "LINKER:-T,${LINKER_SCRIPT}"
+    "LINKER:--build-id=none"
+    "LINKER:--no-dynamic-linker"
 )
 
 
