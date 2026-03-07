@@ -3,9 +3,7 @@
 #include "kernel_safety.h"
 #include "capability.h"
 #include "../include/slab.h"
-
-#include "kernel_safety.h"
-#include "capability.h"
+#include "advanced/formal_verif.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -156,19 +154,30 @@ kthread_t* thread_create(kprocess_t* parent, void (*entry_point)(void)) {
     if (!t) return NULL;
 
     t->thread_id = g_next_thread_id++;
+    t->process_id = parent->process_id;
     t->state = THREAD_STATE_READY;
-    t->priority = 50;
-    t->cpu_time_consumed = 0;
+    t->priority = 1U;
+    t->base_priority = 1U;
+    t->cpu_time_consumed = 0U;
     t->time_slice_ms = SCHED_DEFAULT_SLICE_MS;
+    t->preferred_numa_node = 0U;
 
-    // Add to slot
     thread_slot_t* slot = sched_find_free_thread_slot();
     if (slot) {
-        slot->in_use = 1;
+        slot->in_use = 1U;
         slot->thread = *t;
+        slot->context.pc = (uint64_t)(uintptr_t)entry_point;
+        slot->context.sp = 0U;
+        slot->thread.cpu_context = &slot->context;
+
+        if (!parent->main_thread) {
+            parent->main_thread = &slot->thread;
+        }
+        return &slot->thread;
     }
 
-    return t;
+    kcache_free(thread_cache, t);
+    return NULL;
 }
 
 int thread_destroy(kthread_t* thread) {
@@ -292,7 +301,7 @@ int sched_ai_apply_suggestion(const ai_suggestion_t* suggestion) {
         case AI_ACTION_MIGRATE_TASK:
             return sched_set_thread_preferred_node((uint64_t)suggestion->target_id, (uint8_t)suggestion->value);
         case AI_ACTION_THROTTLE_CORE:
-            return 0;
+            return 0; // Throttle core not implemented fully in stub
         case AI_ACTION_KILL_TASK: {
             kthread_t* thread = sched_find_thread_by_id((uint64_t)suggestion->target_id);
             if (thread) {
