@@ -64,11 +64,12 @@ void run_ai_inference_loop() {
     printf("[AI Governor] Starting predictive resource scheduling loop...\n");
 
     // Configuration for the heuristic
-    ai_heuristic_config_t config = {
-        .penalty_threshold = 5000,
-        .weight_ipc_latency = 2,
-        .weight_cache_miss = 10
-    };
+    ai_heuristic_config_t config = {0};
+    if (ai_heuristic_config_load(&config) != 0) {
+        config.penalty_threshold = 5000;
+        config.weight_ipc_latency = 2;
+        config.weight_cache_miss = 10;
+    }
 
     // Mock channel setup for IPC
     urpc_ring_t control_ring = {0};
