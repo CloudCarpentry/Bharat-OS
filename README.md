@@ -101,6 +101,16 @@ Present code focuses on:
 2. **Personality and subsystem maturation:** user-space API shaping and compatibility scaffolds.
 3. **Deferred expansion:** advanced fabrics, richer personalities, and broader hardware acceleration paths.
 
+## v1 Kernel Functionality Tiers
+
+For scope control, Bharat-OS classifies kernel functionality into three explicit tiers:
+
+- **Tier A (must exist for v1 bootable spine):** boot/handoff, serial, panic path, PMM, allocator, VMM scaffold, traps/interrupts, timer, idle thread, scheduler scaffold, capability-table basics, endpoint IPC basics, self-test harness.
+- **Tier B (before claiming microkernel prototype):** user task creation, address-space abstraction, isolated user-space service, driver-boundary stub, syscall/trap contract, basic fault isolation, structured boot event codes.
+- **Tier C (explicitly deferred):** GUI/shell, network stack, richer filesystem work, AI governor, advanced personalities, distributed/fabric features, and arm64 runtime support.
+
+See [`docs/architecture/kernel-functionality-tiers-v1.md`](docs/architecture/kernel-functionality-tiers-v1.md) for canonical definitions.
+
 ## Execution Plan (Near-term)
 
 ### Phase 1 — Stabilize Core
