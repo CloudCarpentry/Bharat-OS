@@ -1,8 +1,8 @@
 name: CI - Build and QEMU Smoke
 
-on:
-  push:
-  pull_request:
+# on:
+#   push:
+#   pull_request:
 
 jobs:
   build:
