@@ -43,7 +43,7 @@ function fail([string]$m) { Write-Host "  [!] $m" -ForegroundColor Red; exit 1 }
 
 Write-Host ""
 Write-Host "  Bharat-OS Build  (arch: $Arch)" -ForegroundColor DarkYellow
-Write-Host "  ────────────────────────────────" -ForegroundColor DarkYellow
+Write-Host "  --------------------------------" -ForegroundColor DarkYellow
 Write-Host ""
 
 # ── Verify toolchain exists ────────────────────────────────────────────────
@@ -76,17 +76,27 @@ inf "Building kernel.elf"
 & cmake --build $BuildDir --target kernel.elf
 if ($LASTEXITCODE -ne 0) { fail "Build failed" }
 
+# ── Convert to 32-bit ELF for x86_64 (Requirement for Multiboot) ──────────
+$KernelBinary = $OutELF
+if ($Arch -eq "x86_64") {
+    $OutELF32 = "$BuildDir\kernel32.elf"
+    inf "Converting to 32-bit ELF (Multiboot compatibility)"
+    & llvm-objcopy -I elf64-x86-64 -O elf32-i386 $OutELF $OutELF32
+    if ($LASTEXITCODE -ne 0) { fail "ELF conversion failed" }
+    $KernelBinary = $OutELF32
+}
+
 $sizeKB = [math]::Round((Get-Item $OutELF).Length / 1KB, 1)
 ok "kernel.elf -> $OutELF  ($sizeKB KB)"
+if ($Arch -eq "x86_64") { ok "kernel32.elf -> $OutELF32" }
 
 # ── QEMU ──────────────────────────────────────────────────────────────────
 if ($Run) {
     $qemuExe = switch ($Arch) {
         "x86_64" { "C:\Program Files\qemu\qemu-system-x86_64.exe" }
         "riscv64" { "C:\Program Files\qemu\qemu-system-riscv64.exe" }
-        "arm64" { "" }
+        "arm64" { "C:\Program Files\qemu\qemu-system-aarch64.exe" }
     }
-    if ($Arch -eq "arm64") { fail "QEMU run is not wired for arm64 yet; build completed successfully." }
     if (-not (Test-Path $qemuExe)) { fail "QEMU not found at: $qemuExe" }
 
     Write-Host ""
@@ -94,9 +104,9 @@ if ($Run) {
     Write-Host ""
 
     $qemuArgs = switch ($Arch) {
-        "x86_64" { @("-kernel", $OutELF, "-m", "256M", "-nographic", "-serial", "mon:stdio", "-no-reboot") }
+        "x86_64" { @("-kernel", $KernelBinary, "-m", "256M", "-nographic", "-serial", "mon:stdio", "-no-reboot") }
         "riscv64" { @("-machine", "virt", "-kernel", $OutELF, "-m", "256M", "-nographic", "-serial", "mon:stdio", "-no-reboot") }
-        "arm64" { @() }
+        "arm64" { @("-machine", "virt", "-cpu", "cortex-a53", "-kernel", $OutELF, "-m", "256M", "-nographic", "-serial", "mon:stdio", "-no-reboot") }
     }
     & $qemuExe @qemuArgs
 }
