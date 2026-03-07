@@ -1,0 +1,6 @@
+# ninja log v5
+2	31	1772912825072334025	CMakeFiles/subsys_manager.dir/src/win_compat.c.o	f3f7819f783bb2f
+2	46	1772912825088334025	CMakeFiles/subsys_manager.dir/src/linux_compat.c.o	60de2cd957ce1a57
+1	53	1772912825096334025	CMakeFiles/subsys_manager.dir/src/manager.c.o	786efcc61096300
+1	72	1772912846320333786	libsubsys_manager.a	df309e1f4a1fe53b
+2	151	1772912846404333785	CMakeFiles/ai_governor.dir/src/ai_governor.c.o	53b2cdfe09d89efb
