@@ -62,6 +62,11 @@ SECTIONS
         bss_end = .;
     }
 
+    /* Export the end of the kernel image for early allocator */
+    . = ALIGN(4096);
+    kernel_end = .;
+    _end = .;
+
     /* Discard DWARF / comment noise from the final binary */
     /DISCARD/ :
     {
