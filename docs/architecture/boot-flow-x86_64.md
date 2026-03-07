@@ -6,6 +6,28 @@ The x86_64 architecture is highly legacy-encumbered. Bharat-OS targets modern UE
 
 ## Sequence
 
+```mermaid
+sequenceDiagram
+    participant UEFI as UEFI Firmware
+    participant Bootloader as Bootloader (GRUB2/Limine)
+    participant Stub as Assembly Stub (_start)
+    participant Kernel as Microkernel (kernel_main)
+    participant User as Root User Task (init)
+
+    UEFI->>Bootloader: Load from ESP
+    Bootloader->>Bootloader: Setup basic 64-bit page table
+    Bootloader->>Bootloader: Collect Memory Map & Framebuffer
+    Bootloader->>Stub: Jump to _start (with Multiboot2 magic)
+    Stub->>Stub: Setup initial kernel stack
+    Stub->>Kernel: Call kernel_main(magic, info_ptr)
+    Kernel->>Kernel: Parse Multiboot2 tags (Physical Memory)
+    Kernel->>Kernel: pmm_init() (Physical Memory Manager)
+    Kernel->>Kernel: idt_init() (Interrupts)
+    Kernel->>Kernel: vmm_init() (Virtual Memory Manager)
+    Kernel->>User: Handover capabilities & Start
+    User->>User: Spawn Personality Servers & Drivers
+```
+
 1. **UEFI Firmware**: Initializes the hardware, maps standard ACPI tables, and loads the bootloader from the ESP (EFI System Partition).
 2. **Bootloader (GRUB2/Limine)**:
    - Reads the ELF64 Bharat-OS kernel binary.

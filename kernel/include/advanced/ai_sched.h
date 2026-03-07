@@ -57,8 +57,8 @@ typedef struct {
 
     uint64_t total_cycles;
     uint64_t total_instructions;
-    float current_cpi;
-    float historical_cpi_window[10];
+    uint32_t current_cpi;
+    uint32_t historical_cpi_window[10];
     uint32_t window_index;
     uint32_t predicted_complexity;
 } ai_sched_context_t;
