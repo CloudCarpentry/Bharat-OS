@@ -28,7 +28,8 @@ typedef enum {
     AI_ACTION_NONE = 0,
     AI_ACTION_MIGRATE_TASK,
     AI_ACTION_ADJUST_PRIORITY,
-    AI_ACTION_THROTTLE_CORE
+    AI_ACTION_THROTTLE_CORE,
+    AI_ACTION_KILL_TASK
 } ai_action_t;
 
 typedef struct {

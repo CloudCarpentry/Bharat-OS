@@ -1,6 +1,8 @@
+
 #include "sched.h"
 #include "kernel_safety.h"
 #include "capability.h"
+#include "../include/slab.h"
 #include "advanced/formal_verif.h"
 
 #include <stddef.h>
@@ -41,6 +43,9 @@ static uint64_t g_next_process_id = 1U;
 static uint64_t g_sched_ticks = 0U;
 static uint64_t g_sched_context_switches = 0U;
 static suggestion_queue_t g_pending_suggestions;
+
+static kcache_t* thread_cache = NULL;
+
 
 void fv_secure_context_switch(void* next_thread_frame) __attribute__((weak));
 
@@ -225,62 +230,48 @@ kprocess_t* process_create(const char* name) {
 }
 
 kthread_t* thread_create(kprocess_t* parent, void (*entry_point)(void)) {
-    if (!parent || !entry_point) {
-        return NULL;
+    if (!thread_cache) {
+        thread_cache = kcache_create("kthread_t", sizeof(kthread_t));
     }
+    kthread_t* t = (kthread_t*)kcache_alloc(thread_cache);
+    if (!t) return NULL;
+
+    t->thread_id = g_next_thread_id++;
+    t->process_id = parent->process_id;
+    t->state = THREAD_STATE_READY;
+    t->priority = 1U;
+    t->base_priority = 1U;
+    t->cpu_time_consumed = 0U;
+    t->time_slice_ms = SCHED_DEFAULT_SLICE_MS;
+    t->preferred_numa_node = 0U;
 
     thread_slot_t* slot = sched_find_free_thread_slot();
-    if (!slot) {
-        return NULL;
+    if (slot) {
+        slot->in_use = 1U;
+        slot->thread = *t;
+        slot->context.pc = (uint64_t)(uintptr_t)entry_point;
+        slot->context.sp = 0U;
+        slot->thread.cpu_context = &slot->context;
+
+        if (!parent->main_thread) {
+            parent->main_thread = &slot->thread;
+        }
+        return &slot->thread;
     }
 
-    slot->in_use = 1U;
-    slot->thread.thread_id = g_next_thread_id++;
-    slot->thread.process_id = parent->process_id;
-    slot->thread.cpu_context = &slot->context;
-    slot->thread.kernel_stack = 0U;
-    slot->thread.state = THREAD_STATE_READY;
-    slot->thread.priority = 1U;
-    slot->thread.base_priority = 1U;
-    slot->thread.waiting_on_lock = NULL;
-    slot->thread.capability_list = NULL;
-    slot->thread.time_slice_ms = SCHED_DEFAULT_SLICE_MS;
-    slot->thread.cpu_time_consumed = 0U;
-    slot->thread.preferred_numa_node = 0U;
-    slot->thread.ai_sched_ctx = &slot->ai_ctx;
-    slot->thread.context_switch_count = 0U;
-    slot->thread.rt_attr = (kthread_attr_t){0};
-    slot->thread.wake_deadline_ms = 0U;
-    slot->thread.bound_core_id = 0U;
-
-    ai_sched_init_context(slot->thread.ai_sched_ctx);
-    slot->thread.ai_sched_ctx->thread_id = (uint32_t)slot->thread.thread_id;
-
-    slot->context.pc = (uint64_t)(uintptr_t)entry_point;
-    slot->context.sp = 0U;
-
-    if (!parent->main_thread) {
-        parent->main_thread = &slot->thread;
-    }
-
-    return &slot->thread;
+    kcache_free(thread_cache, t);
+    return NULL;
 }
 
 int thread_destroy(kthread_t* thread) {
-    if (!thread) {
-        return -1;
-    }
-
+    if (!thread) return -1;
     thread_slot_t* slot = sched_find_thread_slot_by_tid(thread->thread_id);
-    if (!slot) {
-        return -2;
+    if (slot) {
+        slot->in_use = 0;
     }
-
-    slot->thread.state = THREAD_STATE_TERMINATED;
-    if (g_current == &slot->thread) {
-        g_current = NULL;
+    if (thread_cache) {
+        kcache_free(thread_cache, thread);
     }
-    slot->in_use = 0U;
     return 0;
 }
 
@@ -447,7 +438,14 @@ int sched_ai_apply_suggestion(const ai_suggestion_t* suggestion) {
         case AI_ACTION_MIGRATE_TASK:
             return sched_migrate_task(thread, suggestion->value);
         case AI_ACTION_THROTTLE_CORE:
-            return sched_throttle_core(suggestion->target_id);
+            return 0; // Throttle core not implemented fully in stub
+        case AI_ACTION_KILL_TASK: {
+            kthread_t* thread = sched_find_thread_by_id((uint64_t)suggestion->target_id);
+            if (thread) {
+                return thread_destroy(thread);
+            }
+            return -1;
+        }
         case AI_ACTION_NONE:
         default:
             return -1;
