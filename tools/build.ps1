@@ -87,9 +87,32 @@ inf "Building kernel.elf"
 if ($Payload -and $Arch -eq "riscv64") {
     & cmake --build $BuildDir --target kernel.payload.bin
     if ($LASTEXITCODE -ne 0) { fail "Build failed (payload)" }
+    $sizeKB = [math]::Round((Get-Item "$BuildDir\payload.bin").Length / 1KB, 1)
+    ok "payload.bin -> $BuildDir\payload.bin  ($sizeKB KB)"
+
+    if ($env:OPENSBI_DIR -and (Test-Path $env:OPENSBI_DIR)) {
+        inf "Building OpenSBI fw_payload.elf (requires wsl/make or cross-compiler in PATH)"
+        # Use simple make command, assumes Windows has a GNU make compatible environment
+        # or bash available if building OpenSBI. For now, executing via bash or make
+        try {
+            # Try to build using make directly if available
+            & make -C "$env:OPENSBI_DIR" PLATFORM=generic CROSS_COMPILE=riscv64-unknown-elf- FW_PAYLOAD_PATH="$BuildDir\payload.bin" O="$BuildDir\opensbi" | Out-Null
+            if ($LASTEXITCODE -eq 0 -and (Test-Path "$BuildDir\opensbi\platform\generic\firmware\fw_payload.elf")) {
+                Copy-Item "$BuildDir\opensbi\platform\generic\firmware\fw_payload.elf" "$BuildDir\fw_payload.elf"
+                $sizeKB_fw = [math]::Round((Get-Item "$BuildDir\fw_payload.elf").Length / 1KB, 1)
+                ok "fw_payload.elf -> $BuildDir\fw_payload.elf  ($sizeKB_fw KB)"
+            } else {
+                inf "OpenSBI build failed or fw_payload.elf not generated."
+            }
+        } catch {
+            inf "Make not found, skipping OpenSBI build."
+        }
+    }
 } else {
     & cmake --build $BuildDir --target kernel.elf
     if ($LASTEXITCODE -ne 0) { fail "Build failed" }
+    $sizeKB = [math]::Round((Get-Item $OutELF).Length / 1KB, 1)
+    ok "kernel.elf -> $OutELF  ($sizeKB KB)"
 }
 
 # ── Convert to 32-bit ELF for x86_64 (Requirement for Multiboot) ──────────
@@ -102,13 +125,7 @@ if ($Arch -eq "x86_64") {
     $KernelBinary = $OutELF32
 }
 
-if ($Payload -and $Arch -eq "riscv64") {
-    $sizeKB = [math]::Round((Get-Item "$BuildDir\payload.bin").Length / 1KB, 1)
-    ok "payload.bin -> $BuildDir\payload.bin  ($sizeKB KB)"
-} else {
-    $sizeKB = [math]::Round((Get-Item $OutELF).Length / 1KB, 1)
-    ok "kernel.elf -> $OutELF  ($sizeKB KB)"
-}
+if ($Arch -eq "x86_64") { ok "kernel32.elf -> $OutELF32" }
 
 if ($Arch -eq "x86_64") { ok "kernel32.elf -> $OutELF32" }
 
@@ -131,7 +148,11 @@ if ($Run) {
         $qemuArgs += @("-kernel", $KernelBinary, "-m", "256M", "-nographic", "-serial", "mon:stdio", "-no-reboot")
     } elseif ($Arch -eq "riscv64") {
         if ($Payload) {
-            $qemuArgs += @("-machine", $Machine, "-bios", "$BuildDir\payload.bin", "-m", "256M", "-nographic", "-serial", "mon:stdio", "-no-reboot")
+            if (Test-Path "$BuildDir\fw_payload.elf") {
+                $qemuArgs += @("-machine", $Machine, "-bios", "none", "-kernel", "$BuildDir\fw_payload.elf", "-m", "256M", "-nographic", "-serial", "mon:stdio", "-no-reboot")
+            } else {
+                $qemuArgs += @("-machine", $Machine, "-bios", "$BuildDir\payload.bin", "-m", "256M", "-nographic", "-serial", "mon:stdio", "-no-reboot")
+            }
         } else {
             $qemuArgs += @("-machine", $Machine, "-kernel", $OutELF, "-m", "256M", "-nographic", "-serial", "mon:stdio", "-no-reboot")
         }
