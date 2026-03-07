@@ -1,0 +1,25 @@
+name: kernel-ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  kernel-and-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure x86_64 kernel build
+        run: cmake --preset x86_64-elf-debug
+      - name: Build kernel.elf
+        run: cmake --build --preset build-x86_64-kernel
+      - name: Configure host tests
+        run: cmake --preset tests-host
+      - name: Build host tests
+        run: cmake --build --preset build-tests
+      - name: Run unit tests
+        run: ctest --preset run-tests
+      - name: Configure clang-tidy check
+        run: cmake -S . -B build-tidy -DBHARAT_ENABLE_CLANG_TIDY=ON -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/x86_64-elf.cmake
+      - name: Build kernel with clang-tidy
+        run: cmake --build build-tidy --target kernel.elf

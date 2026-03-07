@@ -23,10 +23,16 @@ This folder captures the current architectural baseline for Bharat-OS.
 - [`capability-model.md`](capability-model.md)
 - [`kernel-object-model.md`](kernel-object-model.md)
 - [`ipc-model.md`](ipc-model.md)
+- [`capability-and-ipc-baseline.md`](capability-and-ipc-baseline.md)
 - [`memory-model.md`](memory-model.md)
+- [`multiprocessor-and-numa-baseline.md`](multiprocessor-and-numa-baseline.md)
+- [`scheduler-and-threading.md`](scheduler-and-threading.md)
+- [`syscall-trap-gates.md`](syscall-trap-gates.md)
 - [`driver-model.md`](driver-model.md)
+- [`hardware-abstraction-and-drivers-baseline.md`](hardware-abstraction-and-drivers-baseline.md)
 - [`storage-and-sandbox-strategy.md`](storage-and-sandbox-strategy.md)
 - [`verification-scope.md`](verification-scope.md)
+- [`threat-model-and-mac.md`](threat-model-and-mac.md)
 
 ### User-space strategy and deferred surfaces
 
