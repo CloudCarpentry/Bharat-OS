@@ -1,0 +1,2 @@
+test_hal_interrupts 1 0.00296582
+---
