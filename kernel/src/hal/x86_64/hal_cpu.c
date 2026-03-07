@@ -53,6 +53,11 @@ void hal_serial_write(const char* s) {
     }
 }
 
+// Added to intercept serial writes if needed by generic KPRINT
+void serial_puts(const char* s) {
+    hal_serial_write(s);
+}
+
 int hal_serial_read_char(void) {
     // Data ready bit
     if ((x86_inb(COM1_PORT + 5) & 0x01U) == 0U) {
