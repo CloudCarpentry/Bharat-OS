@@ -93,3 +93,22 @@ void hal_send_ipi_payload(uint32_t target_core, uint64_t payload) {
     (void)payload;
     // TODO: program local APIC/x2APIC ICR for inter-core notification.
 }
+
+
+int hal_interrupt_controller_init(void) {
+    // TODO: bring up local APIC/IOAPIC and enumerate IRQ routing.
+    return 0;
+}
+
+int hal_interrupt_route(uint32_t irq, uint32_t target_core) {
+    (void)irq;
+    (void)target_core;
+    // TODO: program IOAPIC redirection table.
+    return 0;
+}
+
+int hal_timer_source_init(uint32_t tick_hz) {
+    (void)tick_hz;
+    // TODO: configure APIC timer periodic mode.
+    return 0;
+}

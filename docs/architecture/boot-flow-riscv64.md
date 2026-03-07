@@ -23,3 +23,14 @@ Unlike x86, RISC-V enforces strict privilege levels (M-Mode, S-Mode, U-Mode). Th
    - Uses `sbi_send_ipi` `ecall` to wake up secondary HARTs (Multicore Boot).
    - Starts the Root User Task.
 5. **Root Task Handover**: The capability system takes over execution, proceeding similarly to x86.
+
+
+## Shakti BSP baseline (E/C/I class)
+
+Current code includes a board-profile baseline used during early S-mode bring-up:
+
+- `BHARAT_RISCV_SOC_PROFILE` selects `qemu-virt`, `shakti-e`, `shakti-c`, or `shakti-i` at configure time.
+- `hal_init()` resolves a profile-specific BSP descriptor (UART/PLIC/CLINT/DRAM ranges) and stores it as active board config.
+- `kernel_main(hartid, fdt_ptr)` now consumes OpenSBI boot arguments and passes them to HAL boot-info tracking.
+
+This is intentionally a transition layer while full DTB parsing and page-table-backed MMIO mapping are completed.

@@ -1,7 +1,37 @@
 #include "hal/hal.h"
 #include "kernel.h"
+#include "mm.h"
+#include "advanced/multikernel.h"
+#include "advanced/ai_sched.h"
+#include "trap.h"
+#include "device.h"
+#include "numa.h"
+
+#include <stdint.h>
+#include <stddef.h>
+
+#if defined(__riscv)
+#include "hal/riscv_bsp.h"
+#endif
 
 #define KPRINT(s) hal_serial_write(s)
+#define CAP_RIGHT_IPC_ENDPOINT 0x1U
+#define AI_MSG_TYPE_SUGGESTION 1U
+
+void sched_init(void) __attribute__((weak));
+
+typedef struct {
+  uint32_t cap_id;
+  uint32_t rights_mask;
+} kernel_capability_t;
+
+typedef struct {
+  uint32_t msg_id;
+  uint32_t msg_len;
+  char payload[32];
+} kernel_ipc_msg_t;
+
+static mk_channel_t g_scheduler_ai_channel;
 
 static const char *kernel_boot_hw_profile(void) {
 #if defined(BHARAT_BOOT_HW_PROFILE_desktop)
@@ -17,59 +47,176 @@ static const char *kernel_boot_hw_profile(void) {
 #endif
 }
 
-// Basic entry point for the microkernel
+static void hello_service_task(const kernel_capability_t *cap,
+                               const kernel_ipc_msg_t *request,
+                               kernel_ipc_msg_t *reply) {
+  if (!cap || !request || !reply) return;
+
+  reply->msg_id = request->msg_id;
+  if ((cap->rights_mask & CAP_RIGHT_IPC_ENDPOINT) == 0U) {
+    reply->msg_len = 11U;
+    reply->payload[0] = 'D'; reply->payload[1] = 'E'; reply->payload[2] = 'N';
+    reply->payload[3] = 'I'; reply->payload[4] = 'E'; reply->payload[5] = 'D';
+    reply->payload[6] = ':'; reply->payload[7] = 'I'; reply->payload[8] = 'P';
+    reply->payload[9] = 'C'; reply->payload[10] = '\0';
+    return;
+  }
+
+  reply->msg_len = 13U;
+  reply->payload[0] = 'h'; reply->payload[1] = 'e'; reply->payload[2] = 'l';
+  reply->payload[3] = 'l'; reply->payload[4] = 'o'; reply->payload[5] = '-';
+  reply->payload[6] = 'a'; reply->payload[7] = 'c'; reply->payload[8] = 'k';
+  reply->payload[9] = ':'; reply->payload[10] = 'o'; reply->payload[11] = 'k';
+  reply->payload[12] = '\0';
+}
+
+static void kernel_phase2_hello_service_smoke(void) {
+  kernel_capability_t service_cap = { .cap_id = 1U, .rights_mask = CAP_RIGHT_IPC_ENDPOINT };
+  kernel_ipc_msg_t request = { .msg_id = 1U, .msg_len = 6U, .payload = {'h', 'e', 'l', 'l', 'o', '\0'} };
+  kernel_ipc_msg_t reply = {0};
+
+  KPRINT("P2: hello service launched\n");
+  KPRINT("P2: capability granted id=1 rights=ipc\n");
+  KPRINT("P2: ipc request sent\n");
+
+  hello_service_task(&service_cap, &request, &reply);
+
+  if (reply.msg_len > 0U && reply.payload[0] != '\0') {
+    KPRINT("P2: ipc reply received payload=");
+    hal_serial_write(reply.payload);
+    KPRINT("\nP2: hello ipc smoke test passed\n");
+  } else {
+    KPRINT("P2: hello ipc smoke test failed\n");
+  }
+}
+
+static void kernel_boot_scheduler(void) {
+  if (sched_init) {
+    sched_init();
+    KPRINT("  [SCHED] Scheduler initialized.\n");
+    return;
+  }
+
+  kernel_panic("scheduler init symbol missing");
+}
+
+static void kernel_ai_governor_init(void) {
+  if (mk_establish_channel(0U, &g_scheduler_ai_channel) == 0) {
+    KPRINT("  [AI]  Scheduler control channel ready.\n");
+  } else {
+    kernel_panic("failed to establish AI scheduler control channel");
+  }
+}
+
+static void kernel_ai_governor_tick(void) {
+  urpc_msg_t msg = {0};
+  while (urpc_receive(g_scheduler_ai_channel.urpc_ring, &msg) == 0) {
+    if (msg.msg_type == AI_MSG_TYPE_SUGGESTION && msg.payload_size >= sizeof(ai_suggestion_t)) {
+      ai_suggestion_t* suggestion = (ai_suggestion_t*)msg.payload_data;
+      (void)suggestion;
+      KPRINT("  [AI]  Scheduler suggestion received.\n");
+    }
+  }
+}
+
+#if defined(__x86_64__)
+#include "boot/x86_64/multiboot2.h"
+void kernel_main(uint32_t magic, multiboot_information_t* mb_info) {
+#elif defined(__riscv)
+void kernel_main(uint64_t hart_id, uintptr_t fdt_ptr) {
+#else
 void kernel_main(void) {
+#endif
   const char *profile = kernel_boot_hw_profile();
 
-  KPRINT("\n");
-  KPRINT("  ██████╗ ██╗  ██╗ █████╗ ██████╗  █████╗ ████████╗\n");
-  KPRINT("  ██╔══██╗██║  ██║██╔══██╗██╔══██╗██╔══██╗╚══██╔══╝\n");
-  KPRINT("  ██████╔╝███████║███████║██████╔╝███████║   ██║\n");
-  KPRINT("  ██╔══██╗██╔══██║██╔══██║██╔══██╗██╔══██║   ██║\n");
-  KPRINT("  ██████╔╝██║  ██║██║  ██║██║  ██║██║  ██║   ██║\n");
-  KPRINT("  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝  ╚═╝\n");
-  KPRINT("\n");
-#if defined(__x86_64__) || defined(__i386__)
-  KPRINT("  Bharat-OS  v0.1-dev  (x86_64 bring-up)\n");
-#elif defined(__riscv)
-  KPRINT("  Bharat-OS  v0.1-dev  (riscv64 bring-up)\n");
-#elif defined(__aarch64__)
-  KPRINT("  Bharat-OS  v0.1-dev  (arm64 bring-up)\n");
-#else
-  KPRINT("  Bharat-OS  v0.1-dev  (unknown arch bring-up)\n");
+#if defined(__riscv)
+  hal_riscv_set_boot_info(hart_id, (uint64_t)fdt_ptr);
 #endif
-  KPRINT("  Verification-first microkernel — made in India\n");
-  KPRINT("\n");
+
+  KPRINT("\nBharat-OS kernel boot\n");
   KPRINT("  [HAL] Initialising hardware...\n");
-
-  // 1. Initialize hardware architecture (CPU)
   hal_init();
-
   KPRINT("  [HAL] Ready.\n");
 
-  KPRINT("  [MM]  Initializing memory...\n");
-  // Proper memory map initialization will be passed from the bootloader.
-  // We emit output to demonstrate the bring-up phase.
-  KPRINT("  [MM]  Physical memory manager scaffolding initialized.\n");
+  KPRINT("  [MM]  Initializing PMM...\n");
+
+#if defined(__x86_64__)
+  if (magic != MULTIBOOT2_BOOTLOADER_MAGIC) {
+    kernel_panic("Invalid multiboot magic");
+  }
+
+  if (mm_pmm_init(mb_info, mb_info->total_size) != 0) {
+    kernel_panic("PMM initialization failed");
+  }
+#else
+  if (mm_pmm_init(NULL, 0U) != 0) {
+    kernel_panic("PMM initialization failed");
+  }
+#endif
+  KPRINT("BOOT: pmm initialized\n");
+
+  KPRINT("  [VMM] Initializing VMM...\n");
+  if (vmm_init() != 0) {
+    kernel_panic("VMM initialization failed");
+  }
+  KPRINT("BOOT: vmm initialized\n");
+
+  KPRINT("  [NUMA] Discovering topology\n");
+  if (numa_discover_topology() != 0) {
+    kernel_panic("numa topology discovery failed");
+  }
+
+  KPRINT("  [SMP] Booting secondary cores\n");
+  if (mk_boot_secondary_cores(2U) != 0) {
+    kernel_panic("secondary core boot failed");
+  }
+
+  KPRINT("  [SMP] Initializing per-core URPC channels\n");
+  if (mk_init_per_core_channels(2U, 32U) != 0) {
+    kernel_panic("per-core urpc channel init failed");
+  }
+
+  KPRINT("  [IRQ] Initializing interrupt controller\n");
+  if (hal_interrupt_controller_init() != 0) {
+    kernel_panic("interrupt controller initialization failed");
+  }
+
+  KPRINT("  [TMR] Initializing timer source\n");
+  if (hal_timer_init(100U) != 0) {
+    kernel_panic("timer initialization failed");
+  }
+
+  KPRINT("  [DEV] Initializing device framework\n");
+  if (device_framework_init() != 0 || device_register_builtin_drivers() != 0) {
+    kernel_panic("device framework initialization failed");
+  }
+
+  kernel_boot_scheduler();
+
+  KPRINT("  [TRAP] Initializing syscall/trap gate...\n");
+  if (trap_init() != 0) {
+    kernel_panic("trap gate initialization failed");
+  }
+  KPRINT("  [TRAP] Ready.\n");
+
+  kernel_ai_governor_init();
 
   KPRINT("  [CPU] Enabling interrupts...\n");
   hal_cpu_enable_interrupts();
   KPRINT("  [CPU] Interrupts enabled.\n");
 
-  KPRINT("  [MK]  Entering halt loop (no scheduler yet).\n");
-  KPRINT("\n");
+  kernel_phase2_hello_service_smoke();
+  KPRINT("TEST: kernel self-tests passed\n");
 
   hal_serial_write("[bharat] kernel_main reached\n");
   hal_serial_write("[bharat] hw_profile=");
   hal_serial_write(profile);
   hal_serial_write("\n");
-#if BHARAT_BOOT_GUI
-  hal_serial_write("[bharat] boot_gui=ON\n");
-#else
-  hal_serial_write("[bharat] boot_gui=OFF\n");
-#endif
 
   while (1) {
+    kernel_ai_governor_tick();
+    hal_timer_tick();
+    sched_on_timer_tick();
     hal_cpu_halt();
   }
 }

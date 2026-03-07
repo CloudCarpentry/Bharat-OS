@@ -1,0 +1,4 @@
+Checks: '-*,bugprone-*,clang-analyzer-*,performance-*,portability-*'
+WarningsAsErrors: ''
+HeaderFilterRegex: 'kernel/include/.*|kernel/src/.*|tests/.*'
+FormatStyle: none

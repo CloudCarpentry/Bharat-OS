@@ -35,3 +35,16 @@ For v1, we explicitly **do not** formally verify:
 - ML-Heuristic Daemons.
 - Linux Subsystem translating daemons.
   These are considered untrusted user-space applications and are strictly contained by the capability system enforced by the verified TCB.
+
+
+## Living verification hooks
+
+Current CI-oriented checks for Tier-A baseline:
+
+- unit tests for early allocator, URPC ring, scheduler, trap/syscall path, capability+endpoint IPC, device framework, and multikernel topology,
+- optional `clang-tidy` static-analysis build path (`BHARAT_ENABLE_CLANG_TIDY`),
+- cross-target CMake presets for x86_64/riscv64/arm64 kernel builds.
+
+- integration-style Tier-A syscall/IPC/thread lifecycle test (`test_tier_a_integration`).
+- Shakti profile compile presets (`riscv64-shakti-{e,c,i}-debug`) to validate BSP-profile build wiring.
+- RISC-V/OpenSBI payload artifact generation (`kernel.payload.bin`) for Shakti-targeted preset builds.

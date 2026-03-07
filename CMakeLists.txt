@@ -18,6 +18,17 @@ else()
     message(STATUS "Configuring for DESKTOP profile. Enabling full subsystem capabilities.")
 endif()
 
+option(BHARAT_ENABLE_CLANG_TIDY "Enable clang-tidy static analysis for C targets" OFF)
+if(BHARAT_ENABLE_CLANG_TIDY)
+    find_program(BHARAT_CLANG_TIDY NAMES clang-tidy)
+    if(BHARAT_CLANG_TIDY)
+        set(CMAKE_C_CLANG_TIDY "${BHARAT_CLANG_TIDY}")
+        message(STATUS "clang-tidy enabled: ${BHARAT_CLANG_TIDY}")
+    else()
+        message(WARNING "BHARAT_ENABLE_CLANG_TIDY=ON but clang-tidy not found")
+    endif()
+endif()
+
 # Add subdirectories
 add_subdirectory(kernel)
 add_subdirectory(lib)

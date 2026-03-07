@@ -1,0 +1,177 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 20,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "x86_64-elf-debug",
+      "displayName": "x86_64 ELF Debug",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build-x86_64",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/x86_64-elf.cmake",
+        "BHARAT_KERNEL_HARDENING": "ON"
+      }
+    },
+    {
+      "name": "riscv64-elf-debug",
+      "displayName": "riscv64 ELF Debug",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build-riscv64",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/riscv64-elf.cmake",
+        "BHARAT_KERNEL_HARDENING": "ON"
+      }
+    },
+    {
+      "name": "arm64-elf-debug",
+      "displayName": "arm64 ELF Debug",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build-arm64",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/arm64-elf.cmake",
+        "BHARAT_KERNEL_HARDENING": "ON"
+      }
+    },
+    {
+      "name": "riscv64-shakti-e-debug",
+      "displayName": "riscv64 ELF Debug (Shakti E)",
+      "inherits": "riscv64-elf-debug",
+      "binaryDir": "${sourceDir}/build-riscv64-shakti-e",
+      "cacheVariables": {
+        "BHARAT_RISCV_SOC_PROFILE": "shakti-e"
+      }
+    },
+    {
+      "name": "riscv64-shakti-c-debug",
+      "displayName": "riscv64 ELF Debug (Shakti C)",
+      "inherits": "riscv64-elf-debug",
+      "binaryDir": "${sourceDir}/build-riscv64-shakti-c",
+      "cacheVariables": {
+        "BHARAT_RISCV_SOC_PROFILE": "shakti-c"
+      }
+    },
+    {
+      "name": "riscv64-shakti-i-debug",
+      "displayName": "riscv64 ELF Debug (Shakti I)",
+      "inherits": "riscv64-elf-debug",
+      "binaryDir": "${sourceDir}/build-riscv64-shakti-i",
+      "cacheVariables": {
+        "BHARAT_RISCV_SOC_PROFILE": "shakti-i"
+      }
+    },
+    {
+      "name": "tests-host",
+      "displayName": "Host unit tests",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build-tests",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "riscv64-elf-gcc-debug",
+      "displayName": "riscv64 ELF Debug (GCC)",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build-riscv64-gcc",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/riscv64-elf-gcc.cmake",
+        "BHARAT_KERNEL_HARDENING": "ON",
+        "BHARAT_RISCV_BUILD_PAYLOAD_BIN": "ON"
+      }
+    },
+    {
+      "name": "riscv64-shakti-e-gcc-debug",
+      "displayName": "riscv64 ELF Debug (Shakti E, GCC)",
+      "inherits": "riscv64-elf-gcc-debug",
+      "binaryDir": "${sourceDir}/build-riscv64-shakti-e-gcc",
+      "cacheVariables": {
+        "BHARAT_RISCV_SOC_PROFILE": "shakti-e"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "build-x86_64-kernel",
+      "configurePreset": "x86_64-elf-debug",
+      "targets": [
+        "kernel.elf"
+      ]
+    },
+    {
+      "name": "build-riscv64-kernel",
+      "configurePreset": "riscv64-elf-debug",
+      "targets": [
+        "kernel.elf",
+        "kernel.payload.bin"
+      ]
+    },
+    {
+      "name": "build-arm64-kernel",
+      "configurePreset": "arm64-elf-debug",
+      "targets": [
+        "kernel.elf"
+      ]
+    },
+    {
+      "name": "build-riscv64-shakti-e-kernel",
+      "configurePreset": "riscv64-shakti-e-debug",
+      "targets": [
+        "kernel.elf",
+        "kernel.payload.bin"
+      ]
+    },
+    {
+      "name": "build-riscv64-shakti-c-kernel",
+      "configurePreset": "riscv64-shakti-c-debug",
+      "targets": [
+        "kernel.elf",
+        "kernel.payload.bin"
+      ]
+    },
+    {
+      "name": "build-riscv64-shakti-i-kernel",
+      "configurePreset": "riscv64-shakti-i-debug",
+      "targets": [
+        "kernel.elf",
+        "kernel.payload.bin"
+      ]
+    },
+    {
+      "name": "build-tests",
+      "configurePreset": "tests-host"
+    },
+    {
+      "name": "build-riscv64-gcc-kernel",
+      "configurePreset": "riscv64-elf-gcc-debug",
+      "targets": [
+        "kernel.elf",
+        "kernel.payload.bin"
+      ]
+    },
+    {
+      "name": "build-riscv64-shakti-e-gcc-kernel",
+      "configurePreset": "riscv64-shakti-e-gcc-debug",
+      "targets": [
+        "kernel.elf",
+        "kernel.payload.bin"
+      ]
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "run-tests",
+      "configurePreset": "tests-host",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}

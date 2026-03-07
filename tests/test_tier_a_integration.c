@@ -1,0 +1,78 @@
+#include <assert.h>
+#include <stdint.h>
+#include <stdio.h>
+
+#include "../kernel/include/capability.h"
+#include "../kernel/include/ipc_endpoint.h"
+#include "../kernel/include/trap.h"
+
+static address_space_t g_as = { .root_table = 0x1000U };
+
+address_space_t* mm_create_address_space(void) {
+    return &g_as;
+}
+
+phys_addr_t mm_alloc_page(uint32_t preferred_numa_node) {
+    (void)preferred_numa_node;
+    return 0;
+}
+
+void mm_free_page(phys_addr_t page) {
+    (void)page;
+}
+
+int vmm_map_page(virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
+    (void)vaddr;
+    (void)paddr;
+    (void)flags;
+    return 0;
+}
+
+int vmm_unmap_page(virt_addr_t vaddr) {
+    (void)vaddr;
+    return 0;
+}
+
+void user_entry(void) {}
+
+int main(void) {
+    sched_init();
+    assert(trap_init() == 0);
+
+    uint64_t tid = 0;
+    assert(syscall_dispatch(SYSCALL_THREAD_CREATE,
+                            (uint64_t)(uintptr_t)user_entry,
+                            (uint64_t)(uintptr_t)&tid,
+                            0, 0, 0, 0) == 0);
+    assert(tid != 0);
+
+    uint32_t send_cap = 0;
+    uint32_t recv_cap = 0;
+    assert(syscall_dispatch(SYSCALL_ENDPOINT_CREATE,
+                            (uint64_t)(uintptr_t)&send_cap,
+                            (uint64_t)(uintptr_t)&recv_cap,
+                            0, 0, 0, 0) == 0);
+
+    const char payload[] = {'t', 'i', 'e', 'r', '-', 'a'};
+    assert(syscall_dispatch(SYSCALL_ENDPOINT_SEND,
+                            send_cap,
+                            (uint64_t)(uintptr_t)payload,
+                            sizeof(payload),
+                            0, 0, 0) == 0);
+
+    uint8_t out[16] = {0};
+    uint32_t out_len = 0;
+    assert(syscall_dispatch(SYSCALL_ENDPOINT_RECEIVE,
+                            recv_cap,
+                            (uint64_t)(uintptr_t)out,
+                            sizeof(out),
+                            (uint64_t)(uintptr_t)&out_len,
+                            0, 0) == 0);
+    assert(out_len == sizeof(payload));
+    assert(out[0] == 't' && out[5] == 'a');
+
+    assert(syscall_dispatch(SYSCALL_THREAD_DESTROY, tid, 0, 0, 0, 0, 0) == 0);
+
+    printf("Tier-A integration test passed.\n");
+    return 0;
+}

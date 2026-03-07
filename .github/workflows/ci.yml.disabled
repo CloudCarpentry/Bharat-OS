@@ -1,0 +1,183 @@
+name: CI — Build & QEMU Evidence
+
+# on:
+#   push:
+#     branches: ["main"]
+#   pull_request:
+#     branches: ["main"]
+
+jobs:
+  qemu-smoke-x86_64:
+    name: qemu-smoke-x86_64
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y cmake ninja-build clang lld qemu-system-x86
+
+      - name: Configure (x86_64)
+        run: |
+          cmake -S kernel -B build/x86_64 \
+            -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/cmake/toolchains/x86_64-elf.cmake \
+            -G Ninja
+
+      - name: Build kernel.elf (x86_64)
+        run: cmake --build build/x86_64 --target kernel.elf
+
+      - name: Boot QEMU smoke check (banner)
+        run: |
+          tools/ci/run_qemu_check.sh x86_64 build/x86_64/kernel.elf build/logs/qemu-smoke-x86_64.log \
+            "Bharat-OS  v0.1-dev  (x86_64 bring-up)"
+
+      - name: Upload smoke log
+        uses: actions/upload-artifact@v4
+        with:
+          name: qemu-smoke-x86_64-log
+          path: build/logs/qemu-smoke-x86_64.log
+
+  qemu-selftest-x86_64:
+    name: qemu-selftest-x86_64
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y cmake ninja-build clang lld qemu-system-x86
+
+      - name: Configure (x86_64)
+        run: |
+          cmake -S kernel -B build/x86_64 \
+            -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/cmake/toolchains/x86_64-elf.cmake \
+            -G Ninja
+
+      - name: Build kernel.elf (x86_64)
+        run: cmake --build build/x86_64 --target kernel.elf
+
+      - name: Boot QEMU self-test marker check
+        run: |
+          tools/ci/run_qemu_check.sh x86_64 build/x86_64/kernel.elf build/logs/qemu-selftest-x86_64.log \
+            "BOOT: pmm initialized" \
+            "BOOT: vmm initialized" \
+            "TEST: kernel self-tests passed"
+
+      - name: Upload self-test log
+        uses: actions/upload-artifact@v4
+        with:
+          name: qemu-selftest-x86_64-log
+          path: build/logs/qemu-selftest-x86_64.log
+
+  unit-tests:
+    name: run-unit-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install toolchain
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y cmake ninja-build clang lld
+      - name: Build & Run Tests
+        run: |
+          mkdir -p build-tests
+          cd build-tests
+          cmake .. -G Ninja
+          ninja
+          ctest --output-on-failure
+
+  qemu-ipc-x86_64:
+    name: qemu-ipc-x86_64
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y cmake ninja-build clang lld qemu-system-x86
+
+      - name: Configure (x86_64)
+        run: |
+          cmake -S kernel -B build/x86_64 \
+            -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/cmake/toolchains/x86_64-elf.cmake \
+            -G Ninja
+
+      - name: Build kernel.elf (x86_64)
+        run: cmake --build build/x86_64 --target kernel.elf
+
+      - name: Boot QEMU IPC marker check
+        run: |
+          tools/ci/run_qemu_check.sh x86_64 build/x86_64/kernel.elf build/logs/qemu-ipc-x86_64.log \
+            "P2: hello service launched" \
+            "P2: capability granted id=1 rights=ipc" \
+            "P2: ipc request sent" \
+            "P2: ipc reply received payload=hello-ack:ok" \
+            "P2: hello ipc smoke test passed"
+
+      - name: Upload IPC log
+        uses: actions/upload-artifact@v4
+        with:
+          name: qemu-ipc-x86_64-log
+          path: build/logs/qemu-ipc-x86_64.log
+
+  build-riscv64:
+    name: build-riscv64
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y cmake ninja-build clang lld qemu-system-misc
+
+      - name: Configure (riscv64)
+        run: |
+          cmake -S kernel -B build/riscv64 \
+            -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/cmake/toolchains/riscv64-elf.cmake \
+            -G Ninja
+
+      - name: Build kernel.elf (riscv64)
+        run: cmake --build build/riscv64 --target kernel.elf
+
+      - name: Upload riscv64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kernel-riscv64
+          path: build/riscv64/kernel.elf
+
+  qemu-smoke-riscv64:
+    name: qemu-smoke-riscv64
+    runs-on: ubuntu-latest
+    needs: [build-riscv64]
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y cmake ninja-build clang lld qemu-system-misc
+
+      - name: Configure (riscv64)
+        run: |
+          cmake -S kernel -B build/riscv64 \
+            -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/cmake/toolchains/riscv64-elf.cmake \
+            -G Ninja
+
+      - name: Build kernel.elf (riscv64)
+        run: cmake --build build/riscv64 --target kernel.elf
+
+      - name: Boot QEMU smoke check (riscv64)
+        run: |
+          tools/ci/run_qemu_check.sh riscv64 build/riscv64/kernel.elf build/logs/qemu-smoke-riscv64.log \
+            "Bharat-OS  v0.1-dev  (riscv64 bring-up)"
+
+      - name: Upload riscv64 smoke log
+        uses: actions/upload-artifact@v4
+        with:
+          name: qemu-smoke-riscv64-log
+          path: build/logs/qemu-smoke-riscv64.log

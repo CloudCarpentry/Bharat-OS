@@ -14,7 +14,7 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
 
-set(CMAKE_C_FLAGS_INIT "-ffreestanding -fno-builtin -fno-stack-protector -fno-pic -fno-pie -mcmodel=medany")
+set(CMAKE_C_FLAGS_INIT "-ffreestanding -fno-builtin -fno-stack-protector -fno-pic -fno-pie")
 set(CMAKE_ASM_FLAGS_INIT "-ffreestanding -fno-pic -fno-pie")
 
 set(CMAKE_EXE_LINKER_FLAGS_INIT "-nostdlib")

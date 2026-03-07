@@ -1,6 +1,6 @@
 # Building Bharat-OS
 
-Bharat-OS uses **LLVM/Clang** and **LLD** exclusively (no GCC/GNU Make), keeping the entire toolchain MIT-permissive. Build scripts work identically on Windows, WSL, Linux, macOS, and BSD.
+Bharat-OS primarily uses **LLVM/Clang** + **LLD** for cross-arch reproducibility, with an optional **riscv64-unknown-elf-gcc** flow for Shakti/OpenSBI firmware packaging. Build scripts work identically on Windows, WSL, Linux, macOS, and BSD.
 
 ---
 
@@ -64,8 +64,9 @@ Setting `CMAKE_SYSTEM_NAME=Generic` in the toolchain file is what prevents CMake
 ```
 cmake/toolchains/
   x86_64-elf.cmake   ← x86_64 bare-metal (QEMU)
-  riscv64-elf.cmake  ← RISC-V 64-bit bare-metal (QEMU)
-  arm64-elf.cmake    ← ARM64 bare-metal (compile validation)
+  riscv64-elf.cmake      ← RISC-V 64-bit bare-metal (Clang/LLD)
+  riscv64-elf-gcc.cmake  ← RISC-V 64-bit bare-metal (GCC/OpenSBI payload flow)
+  arm64-elf.cmake        ← ARM64 bare-metal (compile validation)
 ```
 
 ---
@@ -122,20 +123,53 @@ chmod +x tools/build.sh
 
 ---
 
+
+### Option C — CMake Presets (cross-arch)
+
+The repository includes `CMakePresets.json` for cross compilation and tests:
+
+```bash
+# Configure and build x86_64 kernel
+cmake --preset x86_64-elf-debug
+cmake --build --preset build-x86_64-kernel
+
+# Configure and build riscv64 kernel
+cmake --preset riscv64-elf-debug
+cmake --build --preset build-riscv64-kernel
+
+# Shakti-focused RISC-V profiles (Clang/LLD)
+cmake --preset riscv64-shakti-e-debug && cmake --build --preset build-riscv64-shakti-e-kernel
+cmake --preset riscv64-shakti-c-debug && cmake --build --preset build-riscv64-shakti-c-kernel
+cmake --preset riscv64-shakti-i-debug && cmake --build --preset build-riscv64-shakti-i-kernel
+
+# Shakti/OpenSBI-friendly GCC presets (produces payload.bin)
+cmake --preset riscv64-elf-gcc-debug && cmake --build --preset build-riscv64-gcc-kernel
+cmake --preset riscv64-shakti-e-gcc-debug && cmake --build --preset build-riscv64-shakti-e-gcc-kernel
+
+# Configure and build arm64 kernel
+cmake --preset arm64-elf-debug
+cmake --build --preset build-arm64-kernel
+
+# Host unit tests
+cmake --preset tests-host
+cmake --build --preset build-tests
+ctest --preset run-tests
+```
+
 ### Option B — Raw CMake commands
 
 Same commands work on every platform:
 
 ```bash
 # x86_64
-cmake -S kernel -B build/x86_64 \
+cmake -S . -B build/x86_64 \
       -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/x86_64-elf.cmake \
       -G Ninja
 
 cmake --build build/x86_64 --target kernel.elf
 
 # RISC-V 64-bit
-cmake -S kernel -B build/riscv64 \
+cmake -S . -B build/riscv64 \
       -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/riscv64-elf.cmake \
       -G Ninja
 
@@ -145,7 +179,7 @@ cmake --build build/riscv64 --target kernel.elf
 On **Windows**, use the same commands from PowerShell — CMake finds Clang automatically from `C:\Program Files\LLVM\bin`. If Clang is not on `PATH`, pass the compiler explicitly:
 
 ```powershell
-cmake -S kernel -B build/x86_64 `
+cmake -S . -B build/x86_64 `
       -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/x86_64-elf.cmake `
       -DCMAKE_C_COMPILER="C:/Program Files/LLVM/bin/clang.exe" `
       -G Ninja
@@ -211,6 +245,38 @@ To run the AI governor in user space during development or testing:
 2. **Execute integration tests:** Run the tests located in the `tests/` directory (e.g., `test_ai_governor`) to verify IPC message formatting and URPC ring behavior before booting the full kernel image in QEMU.
 3. **Boot in Emulator:** Once built into the root filesystem image (pending storage subsystem availability), the microkernel will spawn the AI governor as a capability-restricted task upon boot.
 
+
+---
+
+
+## Shakti toolchain and OpenSBI packaging
+
+For Shakti boards, install the Shakti RISC-V toolchain (recommended prebuilt installer) and expose binaries in `PATH`:
+
+```bash
+# example: toolchain paths from shakti-tools installer
+export PATH=$PATH:/opt/shakti/riscv64/bin:/opt/shakti/riscv64/riscv64-unknown-elf/bin
+which riscv64-unknown-elf-gcc
+which riscv64-unknown-elf-objcopy
+```
+
+Build Bharat-OS payload artifacts for OpenSBI:
+
+```bash
+cmake --preset riscv64-shakti-e-gcc-debug
+cmake --build --preset build-riscv64-shakti-e-gcc-kernel
+# outputs kernel.elf + kernel.payload.bin
+```
+
+Package with OpenSBI (example):
+
+```bash
+# in opensbi checkout
+make PLATFORM=generic FW_PAYLOAD_PATH=/workspace/Bharat-OS/build-riscv64-shakti-e-gcc/kernel/kernel.elf
+# or use payload.bin in board-specific flash/image pipeline
+```
+
+At runtime OpenSBI passes `(hartid, fdt_ptr)` to Bharat-OS `_start` / `kernel_main` on RISC-V.
 
 ---
 
