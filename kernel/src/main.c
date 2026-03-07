@@ -20,7 +20,6 @@
 #define KPRINT(s) hal_serial_write(s)
 #define CAP_RIGHT_IPC_ENDPOINT 0x1U
 
-void sched_init(void) __attribute__((weak));
 
 typedef struct {
   uint32_t cap_id;
@@ -111,13 +110,8 @@ static void kernel_phase2_hello_service_smoke(void) {
 }
 
 static void kernel_boot_scheduler(void) {
-  if (sched_init) {
-    sched_init();
-    KPRINT("  [SCHED] Scheduler initialized.\n");
-    return;
-  }
-
-  kernel_panic("scheduler init symbol missing");
+  sched_init();
+  KPRINT("  [SCHED] Scheduler initialized.\n");
 }
 
 static void kernel_ai_governor_init(void) {
@@ -149,7 +143,7 @@ static void kernel_ai_governor_tick(void) {
         msg.payload_size >= sizeof(ai_suggestion_t)) {
       ai_suggestion_t *suggestion = (ai_suggestion_t *)msg.payload_data;
       if (ai_kernel_apply_suggestion(suggestion) == 0) {
-        KPRINT("  [AI]  Scheduler suggestion applied.\n");
+        KPRINT("  [AI]  Scheduler suggestion accepted.\n");
       } else {
         KPRINT("  [AI]  Scheduler suggestion rejected.\n");
       }
@@ -174,7 +168,7 @@ void kernel_main(void) {
   KPRINT("\n");
   KPRINT("  ____  _                          _          ____   ____  \n");
   KPRINT(" | __ )| |__   __ _ _ __ __ _ _| |_       / ___| / ___| \n");
-  KPRINT(" |  _ \| '_ \\ / _` | '__/ _` | '__/ _` |_____| |  _  \\___ \\ \n");
+  KPRINT(" |  _ \\| '_ \\ / _` | '__/ _` | '__/ _` |_____| |  _  \\___ \\ \n");
   KPRINT(" | |_) | | | | (_| | | | (_| | | | (_| |_____| |_| |  ___) |\n");
   KPRINT(" |____/|_| |_|\\__,_|_|  \\__,_|_|  \\__,_|      \\____| |____/ \n");
   KPRINT("\nBharat-OS kernel boot (v3.2 bring-up)\n");

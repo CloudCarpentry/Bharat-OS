@@ -19,6 +19,9 @@ param(
     [string]$Arch = "x86_64",
     [switch]$Clean = $false,
     [switch]$Run = $false,
+    [switch]$DebugQemu = $false,
+    [switch]$Payload = $false,
+    [string]$Machine = "virt",
     [ValidateSet("ON", "OFF")][string]$BootGui = "ON",
     [ValidateSet("generic", "desktop", "server", "vm", "laptop")][string]$HardwareProfile = "generic"
 )
@@ -28,8 +31,16 @@ $ErrorActionPreference = "Stop"
 
 $Root = Split-Path -Parent $PSScriptRoot
 $BuildDir = "$Root\build\$Arch"
+if ($Payload -and $Arch -eq "riscv64") {
+    $BuildDir = "$Root\build\$Arch-gcc"
+}
+
 $OutELF = "$BuildDir\kernel.elf"
+
 $Toolchain = "$Root\cmake\toolchains\$Arch-elf.cmake"
+if ($Payload -and $Arch -eq "riscv64") {
+    $Toolchain = "$Root\cmake\toolchains\riscv64-elf-gcc.cmake"
+}
 
 # ── Ensure LLVM tools are on PATH ─────────────────────────────────────────
 $llvmBin = "C:\Program Files\LLVM\bin"
@@ -73,8 +84,13 @@ if (-not (Test-Path "$BuildDir\CMakeCache.txt")) {
 
 # ── Build ──────────────────────────────────────────────────────────────────
 inf "Building kernel.elf"
-& cmake --build $BuildDir --target kernel.elf
-if ($LASTEXITCODE -ne 0) { fail "Build failed" }
+if ($Payload -and $Arch -eq "riscv64") {
+    & cmake --build $BuildDir --target kernel.payload.bin
+    if ($LASTEXITCODE -ne 0) { fail "Build failed (payload)" }
+} else {
+    & cmake --build $BuildDir --target kernel.elf
+    if ($LASTEXITCODE -ne 0) { fail "Build failed" }
+}
 
 # ── Convert to 32-bit ELF for x86_64 (Requirement for Multiboot) ──────────
 $KernelBinary = $OutELF
@@ -86,8 +102,14 @@ if ($Arch -eq "x86_64") {
     $KernelBinary = $OutELF32
 }
 
-$sizeKB = [math]::Round((Get-Item $OutELF).Length / 1KB, 1)
-ok "kernel.elf -> $OutELF  ($sizeKB KB)"
+if ($Payload -and $Arch -eq "riscv64") {
+    $sizeKB = [math]::Round((Get-Item "$BuildDir\payload.bin").Length / 1KB, 1)
+    ok "payload.bin -> $BuildDir\payload.bin  ($sizeKB KB)"
+} else {
+    $sizeKB = [math]::Round((Get-Item $OutELF).Length / 1KB, 1)
+    ok "kernel.elf -> $OutELF  ($sizeKB KB)"
+}
+
 if ($Arch -eq "x86_64") { ok "kernel32.elf -> $OutELF32" }
 
 # ── QEMU ──────────────────────────────────────────────────────────────────
@@ -103,10 +125,24 @@ if ($Run) {
     ok "Booting in QEMU (press Ctrl+A then X to quit)..."
     Write-Host ""
 
-    $qemuArgs = switch ($Arch) {
-        "x86_64" { @("-kernel", $KernelBinary, "-m", "256M", "-nographic", "-serial", "mon:stdio", "-no-reboot") }
-        "riscv64" { @("-machine", "virt", "-kernel", $OutELF, "-m", "256M", "-nographic", "-serial", "mon:stdio", "-no-reboot") }
-        "arm64" { @("-machine", "virt", "-cpu", "cortex-a53", "-kernel", $OutELF, "-m", "256M", "-nographic", "-serial", "mon:stdio", "-no-reboot") }
+    $qemuArgs = @()
+
+    if ($Arch -eq "x86_64") {
+        $qemuArgs += @("-kernel", $KernelBinary, "-m", "256M", "-nographic", "-serial", "mon:stdio", "-no-reboot")
+    } elseif ($Arch -eq "riscv64") {
+        if ($Payload) {
+            $qemuArgs += @("-machine", $Machine, "-bios", "$BuildDir\payload.bin", "-m", "256M", "-nographic", "-serial", "mon:stdio", "-no-reboot")
+        } else {
+            $qemuArgs += @("-machine", $Machine, "-kernel", $OutELF, "-m", "256M", "-nographic", "-serial", "mon:stdio", "-no-reboot")
+        }
+    } elseif ($Arch -eq "arm64") {
+        $qemuArgs += @("-machine", $Machine, "-cpu", "cortex-a53", "-kernel", $OutELF, "-m", "256M", "-nographic", "-serial", "mon:stdio", "-no-reboot")
     }
+
+    if ($DebugQemu) {
+        inf "GDB Server enabled on tcp::1234. Waiting for debugger..."
+        $qemuArgs += @("-s", "-S")
+    }
+
     & $qemuExe @qemuArgs
 }

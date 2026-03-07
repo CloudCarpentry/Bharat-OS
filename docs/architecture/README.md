@@ -47,3 +47,7 @@ Architecture docs describe both:
 - **Deferred/experimental directions** (documented for design continuity).
 
 The ADR set is the source of truth whenever scope or priority conflicts arise.
+
+## Related ADR updates
+
+- [`docs/decisions/ADR-008-ai-scheduler-plugin-contract.md`](../decisions/ADR-008-ai-scheduler-plugin-contract.md)

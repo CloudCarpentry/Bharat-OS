@@ -1,0 +1,49 @@
+#ifndef BHARAT_CONFIG_H
+#define BHARAT_CONFIG_H
+
+/* Architecture Family */
+#cmakedefine BHARAT_ARCH_X86 1
+#cmakedefine BHARAT_ARCH_ARM 1
+#cmakedefine BHARAT_ARCH_RISCV 1
+
+/* Architecture Bitness */
+#cmakedefine BHARAT_ARCH_32BIT 1
+#cmakedefine BHARAT_ARCH_64BIT 1
+
+/* Architecture Variant */
+#cmakedefine BHARAT_ARCH_VARIANT_GENERIC 1
+#cmakedefine BHARAT_ARCH_VARIANT_SHAKTI 1
+
+/* Device Profile */
+#cmakedefine BHARAT_PROFILE_DESKTOP 1
+#cmakedefine BHARAT_PROFILE_MOBILE 1
+#cmakedefine BHARAT_PROFILE_EDGE 1
+#cmakedefine BHARAT_PROFILE_DATACENTER 1
+#cmakedefine BHARAT_PROFILE_NETWORK_APPLIANCE 1
+#cmakedefine BHARAT_PROFILE_DRONE 1
+#cmakedefine BHARAT_PROFILE_ROBOT 1
+#cmakedefine BHARAT_PROFILE_RTOS 1
+
+/* Personality Profile */
+#cmakedefine BHARAT_PERSONALITY_NONE 1
+#cmakedefine BHARAT_PERSONALITY_LINUX 1
+#cmakedefine BHARAT_PERSONALITY_WINDOWS 1
+#cmakedefine BHARAT_PERSONALITY_MAC 1
+
+/* ISA Baseline */
+#cmakedefine BHARAT_ISA_BASELINE_X86_64_V2 1
+#cmakedefine BHARAT_ISA_BASELINE_RV64GC 1
+/* ... add more baselines as needed ... */
+
+/* ISA Features (Dynamic based on CMake lists) */
+/* The build system will pass these as compile definitions */
+/* For example: -DBHARAT_ISA_FEATURE_AVX2=1 */
+
+/* Hardware Accelerators (Dynamic based on CMake lists) */
+/* For example: -DBHARAT_ACCEL_GPU=1 */
+
+/* Platform Firmware */
+#cmakedefine BHARAT_PLATFORM_ACPI 1
+#cmakedefine BHARAT_PLATFORM_FDT 1
+
+#endif /* BHARAT_CONFIG_H */
