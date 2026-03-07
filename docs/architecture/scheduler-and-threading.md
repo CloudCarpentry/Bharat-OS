@@ -2,6 +2,31 @@
 
 This document captures the current baseline implementation for scheduler/threading in the kernel.
 
+```mermaid
+flowchart TD
+    subgraph ThreadLifecycle["Thread Lifecycle"]
+        direction LR
+        Create[thread_create] --> Ready[Ready Queue]
+        Ready --> Running[Running]
+        Running --> Blocked[Blocked/Sleep]
+        Blocked --> Ready
+        Running --> Destroy[thread_destroy]
+    end
+
+    subgraph SchedulerTick["Scheduler Tick (sched_on_timer_tick)"]
+        Tick[Timer Tick] --> Telemetry[Update Telemetry]
+        Telemetry --> AI[Process AI Suggestions]
+        AI --> Dispatch[Context Switch]
+        Dispatch --> Running
+    end
+
+    subgraph AIActions["AI Scheduler Actions"]
+        AI --> Migrate[Migrate Task]
+        AI --> Priority[Adjust Priority]
+        AI --> Throttle[Throttle Core]
+    end
+```
+
 ## Implemented in this baseline
 
 - Static in-kernel process/thread registries.

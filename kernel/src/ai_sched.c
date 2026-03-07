@@ -38,7 +38,11 @@ void ai_sched_update_telemetry(ai_sched_context_t* ctx, uint64_t cycles_delta, u
     ctx->total_instructions += inst_delta;
 
     if (inst_delta != 0U) {
-        ctx->current_cpi = (float)cycles_delta / (float)inst_delta;
+        // Use integer arithmetic (CPI * 100) instead of floats for bare-metal portability
+        // to avoid soft-float libgcc dependencies.
+        ctx->current_cpi = (uint32_t)((cycles_delta * 100U) / inst_delta);
+    } else {
+        ctx->current_cpi = 0;
     }
 
     ctx->historical_cpi_window[ctx->window_index % 10U] = ctx->current_cpi;
@@ -53,15 +57,15 @@ void ai_sched_predict_and_scale(ai_sched_context_t* ctx) {
         return;
     }
 
-    float cpi_sum = 0.0f;
+    uint32_t cpi_sum = 0;
     for (uint32_t i = 0; i < 10U; ++i) {
         cpi_sum += ctx->historical_cpi_window[i];
     }
 
-    float cpi_avg = cpi_sum / 10.0f;
-    if (cpi_avg > 2.0f) {
+    uint32_t cpi_avg = cpi_sum / 10U;
+    if (cpi_avg > 200U) {
         ctx->predicted_complexity = 2U;
-    } else if (cpi_avg > 1.0f) {
+    } else if (cpi_avg > 100U) {
         ctx->predicted_complexity = 1U;
     } else {
         ctx->predicted_complexity = 0U;

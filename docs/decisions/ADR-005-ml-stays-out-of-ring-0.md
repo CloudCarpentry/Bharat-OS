@@ -16,6 +16,26 @@ While the OS supports AI-aware tuning, we architecturally enforce a strict separ
 - **Mechanism (Ring-0)**: The microkernel exports rich hardware telemetry, performance counters, and bounded policy tuning hooks (e.g., setting a CPU timeslice coefficient or page eviction threshold).
 - **Policy (Ring-3 User-Space)**: ML heuristic daemons (RL agents) run as unprivileged tasks in user-space. They observe the telemetry and invoke capabilities to adjust the bounded tuning hooks.
 
+```mermaid
+flowchart TD
+    subgraph Userspace["Ring-3 User-Space (Policy)"]
+        AI[AI Governor Daemon]
+        Model[ML/Heuristic Model]
+        AI <--> Model
+    end
+
+    subgraph Kernel["Ring-0 Microkernel (Mechanism)"]
+        Sched[Scheduler & Dispatcher]
+        Tele[Hardware Telemetry/PMCs]
+        Hooks[Bounded Tuning Hooks]
+    end
+
+    Tele -- "1. Export Telemetry (URPC/Shared Mem)" --> AI
+    AI -- "2. Evaluate & Decide" --> AI
+    AI -- "3. Adjust Hooks (Capability IPC)" --> Hooks
+    Hooks --> Sched
+```
+
 ## Consequences
 
 ### Positive
