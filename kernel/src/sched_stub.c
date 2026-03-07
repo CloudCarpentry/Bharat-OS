@@ -59,6 +59,8 @@ static process_slot_t* sched_find_free_process_slot(void) {
 
 static kthread_t* sched_pick_next_ready(void) {
     size_t start = 0U;
+    kthread_t* best = NULL;
+
     if (g_current) {
         thread_slot_t* cur = sched_find_thread_slot_by_tid(g_current->thread_id);
         if (cur) {
@@ -68,12 +70,16 @@ static kthread_t* sched_pick_next_ready(void) {
 
     for (size_t attempt = 0U; attempt < BHARAT_ARRAY_SIZE(g_threads); ++attempt) {
         size_t idx = (start + attempt) % BHARAT_ARRAY_SIZE(g_threads);
-        if (g_threads[idx].in_use != 0U && g_threads[idx].thread.state == THREAD_STATE_READY) {
-            return &g_threads[idx].thread;
+        if (g_threads[idx].in_use == 0U || g_threads[idx].thread.state != THREAD_STATE_READY) {
+            continue;
+        }
+
+        if (!best || g_threads[idx].thread.priority > best->priority) {
+            best = &g_threads[idx].thread;
         }
     }
 
-    return NULL;
+    return best;
 }
 
 static void sched_switch_to(kthread_t* next) {
@@ -156,6 +162,7 @@ kthread_t* thread_create(kprocess_t* parent, void (*entry_point)(void)) {
     slot->thread.capability_list = NULL;
     slot->thread.time_slice_ms = SCHED_DEFAULT_SLICE_MS;
     slot->thread.cpu_time_consumed = 0U;
+    slot->thread.preferred_numa_node = 0U;
 
     slot->context.pc = (uint64_t)(uintptr_t)entry_point;
     slot->context.sp = 0U;
@@ -251,6 +258,54 @@ void sched_restore_priority(kthread_t* thread) {
     }
 
     thread->priority = thread->base_priority;
+}
+
+kthread_t* sched_find_thread_by_id(uint64_t tid) {
+    thread_slot_t* slot = sched_find_thread_slot_by_tid(tid);
+    return slot ? &slot->thread : NULL;
+}
+
+int sched_set_thread_priority(uint64_t tid, uint32_t new_priority) {
+    kthread_t* thread = sched_find_thread_by_id(tid);
+    if (!thread) {
+        return -1;
+    }
+
+    if (new_priority > SCHED_MAX_PRIORITY) {
+        new_priority = SCHED_MAX_PRIORITY;
+    }
+
+    thread->priority = new_priority;
+    return 0;
+}
+
+int sched_set_thread_preferred_node(uint64_t tid, uint8_t node_id) {
+    kthread_t* thread = sched_find_thread_by_id(tid);
+    if (!thread) {
+        return -1;
+    }
+
+    thread->preferred_numa_node = node_id;
+    return 0;
+}
+
+
+int sched_ai_apply_suggestion(const ai_suggestion_t* suggestion) {
+    if (!suggestion) {
+        return -1;
+    }
+
+    switch (suggestion->action) {
+        case AI_ACTION_ADJUST_PRIORITY:
+            return sched_set_thread_priority((uint64_t)suggestion->target_id, suggestion->value);
+        case AI_ACTION_MIGRATE_TASK:
+            return sched_set_thread_preferred_node((uint64_t)suggestion->target_id, (uint8_t)suggestion->value);
+        case AI_ACTION_THROTTLE_CORE:
+            return 0;
+        case AI_ACTION_NONE:
+        default:
+            return -1;
+    }
 }
 
 #ifdef Profile_RTOS

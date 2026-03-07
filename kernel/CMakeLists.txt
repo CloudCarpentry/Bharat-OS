@@ -88,6 +88,7 @@ endif()
 set(KERNEL_SRCS
     ${BOOT_SRC}
     src/main.c
+    src/ai_kernel_bridge.c
     src/panic.c
     src/sched_stub.c
     ${ARCH_HAL}

@@ -3,6 +3,7 @@
 #include "mm.h"
 #include "advanced/multikernel.h"
 #include "advanced/ai_sched.h"
+#include "advanced/ai_kernel_bridge.h"
 #include "trap.h"
 #include "device.h"
 #include "numa.h"
@@ -16,7 +17,6 @@
 
 #define KPRINT(s) hal_serial_write(s)
 #define CAP_RIGHT_IPC_ENDPOINT 0x1U
-#define AI_MSG_TYPE_SUGGESTION 1U
 
 void sched_init(void) __attribute__((weak));
 
@@ -108,13 +108,30 @@ static void kernel_ai_governor_init(void) {
   }
 }
 
+static void kernel_ai_publish_telemetry(void) {
+  urpc_msg_t msg = {0};
+  kernel_telemetry_t telemetry = {0};
+
+  if (ai_kernel_collect_telemetry(&telemetry) != 0) {
+    return;
+  }
+
+  msg.msg_type = AI_MSG_TYPE_TELEMETRY;
+  msg.payload_size = sizeof(kernel_telemetry_t);
+  ((kernel_telemetry_t*)msg.payload_data)[0] = telemetry;
+  (void)urpc_send(g_scheduler_ai_channel.urpc_ring, &msg);
+}
+
 static void kernel_ai_governor_tick(void) {
   urpc_msg_t msg = {0};
   while (urpc_receive(g_scheduler_ai_channel.urpc_ring, &msg) == 0) {
     if (msg.msg_type == AI_MSG_TYPE_SUGGESTION && msg.payload_size >= sizeof(ai_suggestion_t)) {
       ai_suggestion_t* suggestion = (ai_suggestion_t*)msg.payload_data;
-      (void)suggestion;
-      KPRINT("  [AI]  Scheduler suggestion received.\n");
+      if (ai_kernel_apply_suggestion(suggestion) == 0) {
+        KPRINT("  [AI]  Scheduler suggestion applied.\n");
+      } else {
+        KPRINT("  [AI]  Scheduler suggestion rejected.\n");
+      }
     }
   }
 }
@@ -214,6 +231,7 @@ void kernel_main(void) {
   hal_serial_write("\n");
 
   while (1) {
+    kernel_ai_publish_telemetry();
     kernel_ai_governor_tick();
     hal_timer_tick();
     sched_on_timer_tick();

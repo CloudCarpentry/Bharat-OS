@@ -2,7 +2,6 @@
 #define BHARAT_AI_SCHED_H
 
 #include <stdint.h>
-#include "../sched.h"
 
 /*
  * Bharat-OS AI-Native Resource Governor
@@ -21,6 +20,11 @@ typedef struct {
     uint32_t context_switches;  /* Frequency of thread swaps */
     uint8_t  numa_node_id;      /* Originating NUMA node */
 } kernel_telemetry_t;
+
+typedef enum {
+    AI_MSG_TYPE_SUGGESTION = 1U,
+    AI_MSG_TYPE_TELEMETRY = 2U,
+} ai_msg_type_t;
 
 /**
  * @brief Actions suggested by the AI Governor to the Kernel.

@@ -17,7 +17,7 @@ void send_suggestion_to_kernel(ai_suggestion_t* suggestion, urpc_ring_t* control
 
     // This uses the Capability-based IPC model to send a message to a "Scheduler Control Endpoint".
     urpc_msg_t msg = {0};
-    msg.msg_type = 1; // e.g., MSG_TYPE_AI_SUGGESTION
+    msg.msg_type = AI_MSG_TYPE_SUGGESTION;
     msg.payload_size = sizeof(ai_suggestion_t);
 
     // Pack the suggestion into the 64-byte payload
