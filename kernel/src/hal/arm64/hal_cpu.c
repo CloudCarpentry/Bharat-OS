@@ -76,3 +76,21 @@ void hal_init(void) {
 void hal_tlb_flush(unsigned long long vaddr) {
     __asm__ volatile("tlbi vae1is, %0\n\tdsb sy\n\tisb" :: "r"(vaddr >> 12) : "memory");
 }
+
+
+int hal_interrupt_controller_init(void) {
+    // TODO: initialize GIC distributor/redistributor.
+    return 0;
+}
+
+int hal_interrupt_route(uint32_t irq, uint32_t target_core) {
+    (void)irq;
+    (void)target_core;
+    return 0;
+}
+
+int hal_timer_source_init(uint32_t tick_hz) {
+    (void)tick_hz;
+    // TODO: configure generic timer CNTP/CNTV periodic tick.
+    return 0;
+}

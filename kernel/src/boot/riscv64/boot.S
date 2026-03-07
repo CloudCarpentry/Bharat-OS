@@ -10,9 +10,10 @@
 .section .text.init
 .global _start
 _start:
-    /* Only allow hart 0 to boot the kernel initially */
-    csrr t0, mhartid
-    bnez t0, .halt_loop
+    /* Only allow hart 0 to boot the kernel initially.
+     * OpenSBI passes hartid in a0.
+     */
+    bnez a0, .halt_loop
 
     /* Setup stack */
     la sp, stack_top
