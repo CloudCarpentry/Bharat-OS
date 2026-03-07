@@ -1,3 +1,16 @@
-test_hal_interrupts 1 0.00296582
-test_panic 2 0.00128793
+test_panic 4 0.00060179
+test_early_alloc 4 0.000533262
+test_hal_interrupts 4 0.000633499
+test_urpc_ring 4 0.000620129
+test_scheduler 4 0.00052385
+test_trap_syscall 4 0.000536957
+test_capability_ipc 4 0.000592402
+test_device_framework 4 0.000572144
+test_multikernel_topology 4 0.000532003
+test_capability_misuse 3 0.000677709
+test_memory_edgecases 4 0.000541078
+test_tier_a_integration 3 0.000742096
+test_riscv_shakti_bsp 3 0.000686806
+test_ai_governor 3 0.000692195
+test_ai_kernel_bridge 3 0.000721744
 ---

@@ -83,3 +83,5 @@ int vmm_map_device_mmio(virt_addr_t vaddr, phys_addr_t paddr, capability_t* cap,
 address_space_t* mm_create_address_space(void);
 
 #endif // BHARAT_MM_H
+
+void tlb_shootdown(virt_addr_t vaddr);
