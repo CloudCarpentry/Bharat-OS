@@ -59,7 +59,7 @@ int ai_kernel_apply_suggestion(const ai_suggestion_t* suggestion) {
         }
     }
 
-    return sched_ai_apply_suggestion(suggestion);
+    return sched_enqueue_ai_suggestion(suggestion);
 }
 
 int ai_kernel_collect_telemetry(kernel_telemetry_t* out) {

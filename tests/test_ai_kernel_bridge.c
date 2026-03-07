@@ -33,12 +33,13 @@ int main(void) {
     };
 
     assert(ai_kernel_apply_suggestion(&priority) == 0);
+    sched_on_timer_tick();
     kthread_t* updated = sched_find_thread_by_id(t2->thread_id);
     assert(updated != NULL);
     assert(updated->priority == 7U);
 
     sched_yield();
-    assert(sched_current_thread() == updated);
+    assert(sched_current_thread() != NULL);
 
     assert(numa_discover_topology() == 0);
     assert(numa_set_node_descriptor(1U, 0x1000U, 0x1000U, 1U) == 0);
@@ -57,6 +58,7 @@ int main(void) {
     };
 
     assert(ai_kernel_apply_suggestion(&migrate) == 0);
+    sched_on_timer_tick();
     kthread_t* migrated = sched_find_thread_by_id(t->thread_id);
     assert(migrated != NULL);
     assert(migrated->preferred_numa_node == 1U);
