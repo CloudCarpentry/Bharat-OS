@@ -1,0 +1,88 @@
+name: CI - Build and QEMU Smoke
+
+# on:
+#   push:
+#   pull_request:
+
+jobs:
+  build:
+    name: build-${{ matrix.arch }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            toolchain: cmake/toolchains/x86_64-elf.cmake
+            qemu_pkg: qemu-system-x86
+          - arch: riscv64
+            toolchain: cmake/toolchains/riscv64-elf.cmake
+            qemu_pkg: qemu-system-misc
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y cmake ninja-build clang lld ${{ matrix.qemu_pkg }}
+
+      - name: Configure (${{ matrix.arch }})
+        run: |
+          cmake -S kernel -B build/${{ matrix.arch }} \
+            -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/${{ matrix.toolchain }} \
+            -G Ninja
+
+      - name: Build kernel.elf (${{ matrix.arch }})
+        run: cmake --build build/${{ matrix.arch }} --target kernel.elf
+
+      - name: Upload kernel artifact (${{ matrix.arch }})
+        uses: actions/upload-artifact@v4
+        with:
+          name: kernel-${{ matrix.arch }}
+          path: build/${{ matrix.arch }}/kernel.elf
+
+  qemu-smoke:
+    name: qemu-smoke-${{ matrix.arch }}
+    runs-on: ubuntu-latest
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            toolchain: cmake/toolchains/x86_64-elf.cmake
+            qemu_pkg: qemu-system-x86
+          - arch: riscv64
+            toolchain: cmake/toolchains/riscv64-elf.cmake
+            qemu_pkg: qemu-system-misc
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y cmake ninja-build clang lld ${{ matrix.qemu_pkg }}
+
+      - name: Configure (${{ matrix.arch }})
+        run: |
+          cmake -S kernel -B build/${{ matrix.arch }} \
+            -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/${{ matrix.toolchain }} \
+            -G Ninja
+
+      - name: Build kernel.elf (${{ matrix.arch }})
+        run: cmake --build build/${{ matrix.arch }} --target kernel.elf
+
+      - name: QEMU serial smoke test (${{ matrix.arch }})
+        run: |
+          chmod +x tools/ci/run_qemu_check.sh
+          tools/ci/run_qemu_check.sh ${{ matrix.arch }} build/${{ matrix.arch }}/kernel.elf build/logs/qemu-${{ matrix.arch }}.log \
+            "Bharat-OS kernel boot" \
+            "BOOT: pmm initialized" \
+            "BOOT: vmm initialized" \
+            "TEST: kernel self-tests passed"
+
+      - name: Upload QEMU log (${{ matrix.arch }})
+        uses: actions/upload-artifact@v4
+        with:
+          name: qemu-log-${{ matrix.arch }}
+          path: build/logs/qemu-${{ matrix.arch }}.log

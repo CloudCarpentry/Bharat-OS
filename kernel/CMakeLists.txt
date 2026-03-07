@@ -3,18 +3,21 @@ project(BharatOS_Kernel C ASM)
 
 set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 
-# ── Force ld.lld as the linker — MUST be set in CMakeLists (not toolchain)
-# to survive CMake's platform-specific link rule generation.
-find_program(LLD_LINKER NAMES ld.lld HINTS
-    "C:/Program Files/LLVM/bin"
-    "/usr/bin" "/usr/local/bin" "/opt/homebrew/bin"
-)
-if(NOT LLD_LINKER)
-    message(FATAL_ERROR "ld.lld not found, install LLD (see BUILD.md)")
+# ── Linker selection (toolchain-provided linker preferred)
+# If the toolchain did not define CMAKE_LINKER, fallback to ld.lld.
+if(NOT CMAKE_LINKER)
+    find_program(LLD_LINKER NAMES ld.lld HINTS
+        "C:/Program Files/LLVM/bin"
+        "/usr/bin" "/usr/local/bin" "/opt/homebrew/bin"
+    )
+    if(NOT LLD_LINKER)
+        message(FATAL_ERROR "No linker configured and ld.lld not found (see BUILD.md)")
+    endif()
+    set(CMAKE_LINKER "${LLD_LINKER}")
 endif()
+
 set(CMAKE_C_LINK_EXECUTABLE   "<CMAKE_LINKER> <LINK_FLAGS> <OBJECTS> -o <TARGET>")
 set(CMAKE_ASM_LINK_EXECUTABLE "<CMAKE_LINKER> <LINK_FLAGS> <OBJECTS> -o <TARGET>")
-set(CMAKE_LINKER "${LLD_LINKER}")
 
 # ── Toolchain file provides all compiler/linker settings.
 # Pass -DCMAKE_TOOLCHAIN_FILE=../cmake/toolchains/<arch>-elf.cmake at configure time.
@@ -55,6 +58,7 @@ if(ARCH STREQUAL "x86_64")
 elseif(ARCH STREQUAL "riscv64")
     set(BOOT_SRC src/boot/riscv64/boot.S)
     set(ARCH_HAL src/hal/riscv/hal_cpu.c)
+    set(ARCH_HAL_EXTRA src/hal/riscv/shakti_bsp.c)
 elseif(ARCH STREQUAL "arm64")
     set(BOOT_SRC src/boot/arm64/boot.S)
     set(ARCH_HAL src/hal/arm64/hal_cpu.c)
@@ -68,16 +72,41 @@ elseif(ARCH STREQUAL "arm64")
     set(LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/linker_arm64.ld")
 endif()
 
+if(ARCH STREQUAL "riscv64")
+    option(BHARAT_RISCV_BUILD_PAYLOAD_BIN "Emit payload.bin from kernel.elf for OpenSBI packaging" ON)
+    set(BHARAT_RISCV_SOC_PROFILE "qemu-virt" CACHE STRING "RISC-V SoC profile (qemu-virt, shakti-e, shakti-c, shakti-i)")
+    set_property(CACHE BHARAT_RISCV_SOC_PROFILE PROPERTY STRINGS qemu-virt shakti-e shakti-c shakti-i)
+
+    if(NOT BHARAT_RISCV_SOC_PROFILE MATCHES "^(qemu-virt|shakti-e|shakti-c|shakti-i)$")
+        message(FATAL_ERROR "Invalid BHARAT_RISCV_SOC_PROFILE='${BHARAT_RISCV_SOC_PROFILE}'. Allowed: qemu-virt, shakti-e, shakti-c, shakti-i")
+    endif()
+
+    add_compile_definitions(BHARAT_RISCV_SOC_PROFILE_STR="${BHARAT_RISCV_SOC_PROFILE}")
+endif()
+
 # ── Core kernel sources ──────────────────────────────────────────────────────
 set(KERNEL_SRCS
     ${BOOT_SRC}
     src/main.c
+    src/panic.c
+    src/sched_stub.c
     ${ARCH_HAL}
+    ${ARCH_HAL_EXTRA}
     src/mm/pmm.c
+    src/mm/early_alloc.c
     src/mm/vmm.c
     src/mm/numa.c
+    src/ipc/endpoint_ipc.c
+    src/capability.c
     src/ipc/multikernel.c
     src/lib/string.c
+    src/stack_protector.c
+    src/device/builtin_drivers.c
+    src/device/device_manager.c
+    src/hal/timer_common.c
+    src/hal/interrupt_common.c
+    src/trap/trap.c
+    src/multicore.c
 )
 
 # ── Kernel ELF ──────────────────────────────────────────────────────────────
@@ -92,21 +121,88 @@ set_target_properties(kernel.elf PROPERTIES
 target_compile_options(kernel.elf PRIVATE
     $<$<COMPILE_LANGUAGE:C>:-ffreestanding>
     $<$<COMPILE_LANGUAGE:C>:-fno-builtin>
-    $<$<COMPILE_LANGUAGE:C>:-fno-stack-protector>
     $<$<COMPILE_LANGUAGE:C>:-fno-pic>
     $<$<COMPILE_LANGUAGE:C>:-Wall>
     $<$<COMPILE_LANGUAGE:C>:-Wextra>
     $<$<COMPILE_LANGUAGE:C>:-Werror=implicit-function-declaration>
 )
 
+option(BHARAT_KERNEL_HARDENING "Enable kernel hardening compile/link options" ON)
+option(BHARAT_KERNEL_ASLR "Build kernel as PIE for KASLR-friendly relocation experiments" OFF)
+
+if(BHARAT_KERNEL_HARDENING)
+    target_compile_options(kernel.elf PRIVATE
+        $<$<COMPILE_LANGUAGE:C>:-fstack-protector-strong>
+        $<$<COMPILE_LANGUAGE:C>:-fno-strict-aliasing>
+        $<$<COMPILE_LANGUAGE:C>:-fno-delete-null-pointer-checks>
+    )
+    target_link_options(kernel.elf PRIVATE
+        "-z"
+        "noexecstack"
+    )
+else()
+    target_compile_options(kernel.elf PRIVATE
+        $<$<COMPILE_LANGUAGE:C>:-fno-stack-protector>
+    )
+endif()
+
+if(BHARAT_KERNEL_ASLR)
+    target_compile_options(kernel.elf PRIVATE
+        $<$<COMPILE_LANGUAGE:C>:-fpie>
+    )
+    target_link_options(kernel.elf PRIVATE
+        "--pie"
+    )
+else()
+    target_compile_options(kernel.elf PRIVATE
+        $<$<COMPILE_LANGUAGE:C>:-fno-pie>
+    )
+    target_link_options(kernel.elf PRIVATE
+        "--no-pie"
+    )
+endif()
+
+if(ARCH STREQUAL "x86_64")
+    target_compile_options(kernel.elf PRIVATE
+        $<$<COMPILE_LANGUAGE:C>:-mno-red-zone>
+    )
+    target_link_options(kernel.elf PRIVATE
+        "-m"
+        "elf_x86_64"
+    )
+elseif(ARCH STREQUAL "riscv64")
+    target_compile_options(kernel.elf PRIVATE
+        $<$<COMPILE_LANGUAGE:C>:-mcmodel=medany>
+    )
+endif()
+
 # ── Linker options (native ld.lld flags — we call ld.lld directly)
 # NOTE: LINKER: / -Wl, prefixes are for clang driver and DON'T work here.
 # Use native ld.lld flags directly: --nopie, -T, --build-id, --fatal-warnings
 target_link_options(kernel.elf PRIVATE
     "-nostdlib"
-    "--no-pie"
     "--fatal-warnings"
     "-T" "${LINKER_SCRIPT}"
     "--build-id=none"
     "--no-dynamic-linker"
 )
+
+
+if(ARCH STREQUAL "riscv64" AND BHARAT_RISCV_BUILD_PAYLOAD_BIN)
+    if(NOT CMAKE_OBJCOPY)
+        find_program(CMAKE_OBJCOPY NAMES llvm-objcopy riscv64-unknown-elf-objcopy)
+    endif()
+
+    if(NOT CMAKE_OBJCOPY)
+        message(WARNING "objcopy not found; payload.bin target disabled")
+    else()
+        add_custom_command(
+            OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/payload.bin"
+            COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:kernel.elf> "${CMAKE_CURRENT_BINARY_DIR}/payload.bin"
+            DEPENDS kernel.elf
+            COMMENT "Generating OpenSBI payload.bin from kernel.elf"
+            VERBATIM
+        )
+        add_custom_target(kernel.payload.bin ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/payload.bin")
+    endif()
+endif()

@@ -45,11 +45,17 @@ typedef struct {
 // Virtual Memory Page Flags
 #define PAGE_COW 0x100 // Copy-on-Write Flag
 
+// Buddy Allocator page flags
+#define PAGE_FLAG_RESERVED  (1 << 0)
+#define PAGE_FLAG_KERNEL    (1 << 1)
+#define PAGE_FLAG_USER      (1 << 2)
+
 // Initialize physical memory allocator natively using Multiboot/SBI memory maps
 int mm_pmm_init(void* memory_map, uint32_t map_size);
 
 // Base Page Allocation (NUMA aware)
 phys_addr_t mm_alloc_page(uint32_t preferred_numa_node);
+phys_addr_t mm_alloc_pages_order(int order, uint32_t preferred_numa_node, uint32_t flags);
 void mm_free_page(phys_addr_t page);
 
 // Support for Copy-on-Write (CoW) page reference counting
@@ -59,6 +65,10 @@ void mm_inc_page_ref(phys_addr_t page);
 typedef struct {
     phys_addr_t root_table; // CR3 on x86, satp on RISC-V
 } address_space_t;
+
+int vmm_init(void);
+int vmm_map_page(virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags);
+int vmm_unmap_page(virt_addr_t vaddr);
 
 int mm_vmm_map_page(address_space_t* as, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags);
 int mm_vmm_unmap_page(address_space_t* as, virt_addr_t vaddr);
