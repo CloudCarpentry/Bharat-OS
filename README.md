@@ -112,6 +112,7 @@ Present code focuses on:
 ### Phase 2 — Expand Isolated Services
 
 - Introduce first user-space service reference implementations.
+- Add a tiny `hello` service runtime smoke test (launch task, grant one capability, send one IPC, receive one reply, print serial success).
 - Define stable interface contracts between kernel and subsystems.
 - Add emulator-based integration checks for scheduler + IPC behavior.
 
