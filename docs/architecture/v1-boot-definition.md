@@ -83,3 +83,25 @@ Bring-up tasks should land in this sequence:
 11. Minimal endpoint IPC smoke test
 
 This ordering is the default dependency chain for v1 x86_64 bring-up and the template for riscv64 parity.
+
+## Phase 2 runtime proof: hello service (user space)
+
+After Phase 1 boot stability is reached, v1 must prove the capability-mediated IPC model with one tiny user-space interaction:
+
+1. Launch one trivial user-space `hello` task/service.
+2. Grant it exactly one IPC endpoint capability.
+3. Send one IPC request message from the kernel/root task side.
+4. Receive one reply from the `hello` service.
+5. Print success on serial console.
+
+This is the first runtime proof point for the microkernel claim (capability + IPC behavior), not just compile/boot text output.
+
+### Required Phase 2 serial evidence
+
+- `P2: hello service launched`
+- `P2: capability granted id=<id> rights=ipc`
+- `P2: ipc request sent`
+- `P2: ipc reply received`
+- `P2: hello ipc smoke test passed`
+
+Exact token spelling may change, but these semantics must stay machine-detectable.

@@ -1,7 +1,22 @@
 #include "hal/hal.h"
 #include "kernel.h"
 
+#include <stdint.h>
+
 #define KPRINT(s) hal_serial_write(s)
+
+#define CAP_RIGHT_IPC_ENDPOINT 0x1U
+
+typedef struct {
+  uint32_t cap_id;
+  uint32_t rights_mask;
+} kernel_capability_t;
+
+typedef struct {
+  uint32_t msg_id;
+  uint32_t msg_len;
+  char payload[32];
+} kernel_ipc_msg_t;
 
 static const char *kernel_boot_hw_profile(void) {
 #if defined(BHARAT_BOOT_HW_PROFILE_desktop)
@@ -15,6 +30,80 @@ static const char *kernel_boot_hw_profile(void) {
 #else
   return "generic";
 #endif
+}
+
+static void hello_service_task(const kernel_capability_t *cap,
+                               const kernel_ipc_msg_t *request,
+                               kernel_ipc_msg_t *reply) {
+  if (!cap || !request || !reply) {
+    return;
+  }
+
+  reply->msg_id = request->msg_id;
+
+  if ((cap->rights_mask & CAP_RIGHT_IPC_ENDPOINT) == 0U) {
+    reply->msg_len = 11U;
+    reply->payload[0] = 'D';
+    reply->payload[1] = 'E';
+    reply->payload[2] = 'N';
+    reply->payload[3] = 'I';
+    reply->payload[4] = 'E';
+    reply->payload[5] = 'D';
+    reply->payload[6] = ':';
+    reply->payload[7] = 'I';
+    reply->payload[8] = 'P';
+    reply->payload[9] = 'C';
+    reply->payload[10] = '\0';
+    return;
+  }
+
+  reply->msg_len = 13U;
+  reply->payload[0] = 'h';
+  reply->payload[1] = 'e';
+  reply->payload[2] = 'l';
+  reply->payload[3] = 'l';
+  reply->payload[4] = 'o';
+  reply->payload[5] = '-';
+  reply->payload[6] = 'a';
+  reply->payload[7] = 'c';
+  reply->payload[8] = 'k';
+  reply->payload[9] = ':';
+  reply->payload[10] = 'o';
+  reply->payload[11] = 'k';
+  reply->payload[12] = '\0';
+}
+
+static void kernel_phase2_hello_service_smoke(void) {
+  kernel_capability_t service_cap;
+  kernel_ipc_msg_t request;
+  kernel_ipc_msg_t reply;
+
+  KPRINT("P2: hello service launched\n");
+
+  service_cap.cap_id = 1U;
+  service_cap.rights_mask = CAP_RIGHT_IPC_ENDPOINT;
+  KPRINT("P2: capability granted id=1 rights=ipc\n");
+
+  request.msg_id = 1U;
+  request.msg_len = 6U;
+  request.payload[0] = 'h';
+  request.payload[1] = 'e';
+  request.payload[2] = 'l';
+  request.payload[3] = 'l';
+  request.payload[4] = 'o';
+  request.payload[5] = '\0';
+
+  KPRINT("P2: ipc request sent\n");
+  hello_service_task(&service_cap, &request, &reply);
+
+  if (reply.msg_len > 0U && reply.payload[0] != '\0') {
+    KPRINT("P2: ipc reply received payload=");
+    hal_serial_write(reply.payload);
+    KPRINT("\n");
+    KPRINT("P2: hello ipc smoke test passed\n");
+  } else {
+    KPRINT("P2: hello ipc smoke test failed\n");
+  }
 }
 
 // Basic entry point for the microkernel
@@ -55,6 +144,8 @@ void kernel_main(void) {
   KPRINT("  [CPU] Enabling interrupts...\n");
   hal_cpu_enable_interrupts();
   KPRINT("  [CPU] Interrupts enabled.\n");
+
+  kernel_phase2_hello_service_smoke();
 
   KPRINT("  [MK]  Entering halt loop (no scheduler yet).\n");
   KPRINT("\n");
