@@ -1,6 +1,6 @@
 OUTPUT_FORMAT("elf64-littleriscv")
 OUTPUT_ARCH(riscv)
-ENTRY(kernel_main)
+ENTRY(_start)
 
 SECTIONS
 {
@@ -24,7 +24,7 @@ SECTIONS
         *(.data.*)
     }
 
-    .bss ALIGN(4096) :
+    .bss ALIGN(65536) :
     {
         bss_start = .;
         *(.bss)
