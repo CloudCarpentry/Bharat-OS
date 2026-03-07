@@ -8,7 +8,7 @@
 static urpc_msg_t last_sent_message = {0};
 static int urpc_send_called = 0;
 
-int urpc_send(urpc_ring_t* ring, urpc_msg_t* msg) {
+int urpc_send(urpc_ring_t* ring, const urpc_msg_t* msg) {
     urpc_send_called++;
     last_sent_message = *msg;
     return 0;
@@ -41,7 +41,7 @@ int main() {
     ai_governor_suggest_action(1001, &telemetry_high_penalty, &config, &mock_ring);
 
     assert(urpc_send_called == 1);
-    assert(last_sent_message.msg_type == 1);
+    assert(last_sent_message.msg_type == AI_MSG_TYPE_SUGGESTION);
     assert(last_sent_message.payload_size == sizeof(ai_suggestion_t));
 
     ai_suggestion_t* sent_suggestion_1 = (ai_suggestion_t*)last_sent_message.payload_data;
@@ -63,7 +63,7 @@ int main() {
     ai_governor_suggest_action(1002, &telemetry_high_cpu, &config, &mock_ring);
 
     assert(urpc_send_called == 1);
-    assert(last_sent_message.msg_type == 1);
+    assert(last_sent_message.msg_type == AI_MSG_TYPE_SUGGESTION);
     assert(last_sent_message.payload_size == sizeof(ai_suggestion_t));
 
     ai_suggestion_t* sent_suggestion_2 = (ai_suggestion_t*)last_sent_message.payload_data;

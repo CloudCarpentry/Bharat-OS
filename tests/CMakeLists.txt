@@ -47,3 +47,12 @@ add_test(NAME test_tier_a_integration COMMAND test_tier_a_integration)
 add_executable(test_riscv_shakti_bsp test_riscv_shakti_bsp.c ../kernel/src/hal/riscv/shakti_bsp.c)
 target_include_directories(test_riscv_shakti_bsp PRIVATE ../kernel/include)
 add_test(NAME test_riscv_shakti_bsp COMMAND test_riscv_shakti_bsp)
+
+add_executable(test_ai_governor test_ai_governor.c ../subsys/src/ai_governor.c)
+target_include_directories(test_ai_governor PRIVATE ../kernel/include)
+target_compile_definitions(test_ai_governor PRIVATE TESTING=1)
+add_test(NAME test_ai_governor COMMAND test_ai_governor)
+
+add_executable(test_ai_kernel_bridge test_ai_kernel_bridge.c ../kernel/src/ai_kernel_bridge.c ../kernel/src/sched_stub.c ../kernel/src/mm/numa.c)
+target_include_directories(test_ai_kernel_bridge PRIVATE ../kernel/include)
+add_test(NAME test_ai_kernel_bridge COMMAND test_ai_kernel_bridge)

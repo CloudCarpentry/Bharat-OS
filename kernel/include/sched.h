@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include "mm.h"
+#include "advanced/ai_sched.h"
 
 /*
  * Bharat-OS Process & Thread Management
@@ -20,6 +21,8 @@ typedef enum {
     SCHED_POLICY_ROUND_ROBIN = 0,
     SCHED_POLICY_CLOUD_FAIR  = 1
 } sched_policy_t;
+
+#define SCHED_MAX_PRIORITY 31U
 
 typedef struct {
     uint64_t regs[16];
@@ -48,6 +51,7 @@ typedef struct {
     void* capability_list;
     uint64_t time_slice_ms;
     uint64_t cpu_time_consumed;
+    uint8_t preferred_numa_node;
 } kthread_t;
 
 typedef struct {
@@ -72,6 +76,12 @@ void sched_yield(void);
 void sched_on_timer_tick(void);
 kthread_t* sched_current_thread(void);
 void sched_set_policy(sched_policy_t policy);
+
+// AI governor integration helpers
+kthread_t* sched_find_thread_by_id(uint64_t tid);
+int sched_set_thread_priority(uint64_t tid, uint32_t new_priority);
+int sched_set_thread_preferred_node(uint64_t tid, uint8_t node_id);
+int sched_ai_apply_suggestion(const ai_suggestion_t* suggestion);
 
 // System-call style entry points used by trap/syscall layer
 int sched_sys_thread_create(kprocess_t* parent, void (*entry_point)(void), uint64_t* out_tid);
