@@ -7,7 +7,6 @@
 #include "trap.h"
 #include "device.h"
 #include "numa.h"
-#include "sched.h"
 
 #include <stdint.h>
 #include <stddef.h>
@@ -127,8 +126,8 @@ static void kernel_ai_governor_tick(void) {
   while (urpc_receive(g_scheduler_ai_channel.urpc_ring, &msg) == 0) {
     if (msg.msg_type == AI_MSG_TYPE_SUGGESTION && msg.payload_size >= sizeof(ai_suggestion_t)) {
       ai_suggestion_t* suggestion = (ai_suggestion_t*)msg.payload_data;
-      if (sched_enqueue_ai_suggestion(suggestion) == 0) {
-        KPRINT("  [AI]  Scheduler suggestion queued.\n");
+      if (ai_kernel_apply_suggestion(suggestion) == 0) {
+        KPRINT("  [AI]  Scheduler suggestion accepted.\n");
       } else {
         KPRINT("  [AI]  Scheduler suggestion rejected.\n");
       }
