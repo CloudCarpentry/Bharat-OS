@@ -3,9 +3,16 @@
 #include "mm.h"
 #include "advanced/multikernel.h"
 #include "advanced/ai_sched.h"
+#include "trap.h"
+#include "device.h"
+#include "numa.h"
 
 #include <stdint.h>
 #include <stddef.h>
+
+#if defined(__riscv)
+#include "hal/riscv_bsp.h"
+#endif
 
 #define KPRINT(s) hal_serial_write(s)
 #define CAP_RIGHT_IPC_ENDPOINT 0x1U
@@ -115,10 +122,16 @@ static void kernel_ai_governor_tick(void) {
 #if defined(__x86_64__)
 #include "boot/x86_64/multiboot2.h"
 void kernel_main(uint32_t magic, multiboot_information_t* mb_info) {
+#elif defined(__riscv)
+void kernel_main(uint64_t hart_id, uintptr_t fdt_ptr) {
 #else
 void kernel_main(void) {
 #endif
   const char *profile = kernel_boot_hw_profile();
+
+#if defined(__riscv)
+  hal_riscv_set_boot_info(hart_id, (uint64_t)fdt_ptr);
+#endif
 
   KPRINT("\nBharat-OS kernel boot\n");
   KPRINT("  [HAL] Initialising hardware...\n");
@@ -148,7 +161,44 @@ void kernel_main(void) {
   }
   KPRINT("BOOT: vmm initialized\n");
 
+  KPRINT("  [NUMA] Discovering topology\n");
+  if (numa_discover_topology() != 0) {
+    kernel_panic("numa topology discovery failed");
+  }
+
+  KPRINT("  [SMP] Booting secondary cores\n");
+  if (mk_boot_secondary_cores(2U) != 0) {
+    kernel_panic("secondary core boot failed");
+  }
+
+  KPRINT("  [SMP] Initializing per-core URPC channels\n");
+  if (mk_init_per_core_channels(2U, 32U) != 0) {
+    kernel_panic("per-core urpc channel init failed");
+  }
+
+  KPRINT("  [IRQ] Initializing interrupt controller\n");
+  if (hal_interrupt_controller_init() != 0) {
+    kernel_panic("interrupt controller initialization failed");
+  }
+
+  KPRINT("  [TMR] Initializing timer source\n");
+  if (hal_timer_init(100U) != 0) {
+    kernel_panic("timer initialization failed");
+  }
+
+  KPRINT("  [DEV] Initializing device framework\n");
+  if (device_framework_init() != 0 || device_register_builtin_drivers() != 0) {
+    kernel_panic("device framework initialization failed");
+  }
+
   kernel_boot_scheduler();
+
+  KPRINT("  [TRAP] Initializing syscall/trap gate...\n");
+  if (trap_init() != 0) {
+    kernel_panic("trap gate initialization failed");
+  }
+  KPRINT("  [TRAP] Ready.\n");
+
   kernel_ai_governor_init();
 
   KPRINT("  [CPU] Enabling interrupts...\n");
@@ -165,6 +215,8 @@ void kernel_main(void) {
 
   while (1) {
     kernel_ai_governor_tick();
+    hal_timer_tick();
+    sched_on_timer_tick();
     hal_cpu_halt();
   }
 }

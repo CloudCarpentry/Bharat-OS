@@ -156,6 +156,7 @@ static void mark_page_free(phys_addr_t phys) {
 }
 
 int mm_pmm_init(void* memory_map, uint32_t map_size) {
+    (void)map_size;
     if (!memory_map) return -1;
 
     phys_addr_t highest_addr = 0;
