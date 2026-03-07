@@ -14,6 +14,7 @@ This folder captures the current architectural baseline for Bharat-OS.
 ### Boot and bring-up
 
 - [`v1-boot-definition.md`](v1-boot-definition.md)
+- [`kernel-functionality-tiers-v1.md`](kernel-functionality-tiers-v1.md)
 - [`boot-flow-x86_64.md`](boot-flow-x86_64.md)
 - [`boot-flow-riscv64.md`](boot-flow-riscv64.md)
 

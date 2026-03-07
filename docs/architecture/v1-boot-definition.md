@@ -105,3 +105,17 @@ This is the first runtime proof point for the microkernel claim (capability + IP
 - `P2: hello ipc smoke test passed`
 
 Exact token spelling may change, but these semantics must stay machine-detectable.
+
+## Scope guardrails (explicit defer list)
+
+The following areas are **not** v1 boot-success blockers and remain deferred while Tier A/B kernel work is completed:
+
+- GUI compositor and desktop shell
+- Full network stack
+- Rich filesystem feature work
+- AI governor runtime integration
+- Advanced personality layers
+- Distributed/fabric architecture work
+- arm64 runtime boot parity
+
+For full must/should/deferred classification, see [`kernel-functionality-tiers-v1.md`](kernel-functionality-tiers-v1.md).
