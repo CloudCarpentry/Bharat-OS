@@ -78,6 +78,19 @@ if [ "${PAYLOAD}" = "true" ] && [ "${ARCH}" = "riscv64" ]; then
     cmake --build "${BUILD_DIR}" --target kernel.payload.bin
     SIZE=$(du -sh "${BUILD_DIR}/payload.bin" 2>/dev/null | cut -f1)
     ok "payload.bin → ${BUILD_DIR}/payload.bin  (${SIZE})"
+
+    if [ -n "${OPENSBI_DIR:-}" ] && [ -d "${OPENSBI_DIR}" ]; then
+        inf "Building OpenSBI fw_payload.elf"
+        make -C "${OPENSBI_DIR}" \
+            PLATFORM=generic \
+            CROSS_COMPILE=riscv64-unknown-elf- \
+            FW_PAYLOAD_PATH="${BUILD_DIR}/payload.bin" \
+            O="${BUILD_DIR}/opensbi" \
+            > /dev/null
+        cp "${BUILD_DIR}/opensbi/platform/generic/firmware/fw_payload.elf" "${BUILD_DIR}/fw_payload.elf"
+        SIZE=$(du -sh "${BUILD_DIR}/fw_payload.elf" 2>/dev/null | cut -f1)
+        ok "fw_payload.elf → ${BUILD_DIR}/fw_payload.elf  (${SIZE})"
+    fi
 else
     cmake --build "${BUILD_DIR}" --target kernel.elf
     SIZE=$(du -sh "${OUT_ELF}" 2>/dev/null | cut -f1)
@@ -131,17 +144,26 @@ EOF2
             ;;
         riscv64)
             if [ "${PAYLOAD}" = "true" ]; then
-                # Example: payload.bin run flow, requires fw_payload integration generally,
-                # but we'll try to boot it as a bios/kernel depending on QEMU capability.
-                # For generic virt, QEMU can take kernel or bios.
-                qemu-system-riscv64 \
-                    -machine "${MACHINE}" \
-                    -bios "${BUILD_DIR}/payload.bin" \
-                    -m 256M \
-                    -nographic \
-                    -serial mon:stdio \
-                    -no-reboot \
-                    "${DEBUG_ARGS[@]}"
+                if [ -f "${BUILD_DIR}/fw_payload.elf" ]; then
+                    qemu-system-riscv64 \
+                        -machine "${MACHINE}" \
+                        -bios none \
+                        -kernel "${BUILD_DIR}/fw_payload.elf" \
+                        -m 256M \
+                        -nographic \
+                        -serial mon:stdio \
+                        -no-reboot \
+                        "${DEBUG_ARGS[@]}"
+                else
+                    qemu-system-riscv64 \
+                        -machine "${MACHINE}" \
+                        -bios "${BUILD_DIR}/payload.bin" \
+                        -m 256M \
+                        -nographic \
+                        -serial mon:stdio \
+                        -no-reboot \
+                        "${DEBUG_ARGS[@]}"
+                fi
             else
                 qemu-system-riscv64 \
                     -machine "${MACHINE}" \
