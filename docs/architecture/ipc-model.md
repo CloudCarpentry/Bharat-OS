@@ -6,6 +6,30 @@ Because Bharat-OS is a microkernel, almost all OS services (file systems, networ
 
 We utilize two distinct IPC models to serve both deterministic bounds (Bharat-RT) and massive scalability (Bharat-Cloud).
 
+```mermaid
+flowchart LR
+    subgraph Userspace["User Space"]
+        Client[Client Task]
+        Server[Server Task]
+    end
+
+    subgraph Kernel["Microkernel"]
+        Endpoint[IPC Endpoint]
+    end
+
+    subgraph MultiCore["Multikernel Architecture (Cross-Core)"]
+        CoreA[Core A]
+        CoreB[Core B]
+        RingBuffer[(Shared Ring Buffer)]
+    end
+
+    Client -- "1. Sync Send (Registers)" --> Endpoint
+    Endpoint -- "2. Sync Receive" --> Server
+
+    CoreA -- "Lockless URPC" --> RingBuffer
+    RingBuffer -- "Lockless URPC" --> CoreB
+```
+
 ## 1. Synchronous Endpoint IPC (The Microkernel Standard)
 
 Fast, blocking, unbuffered message passing used for capability delegation and strict procedural calls.

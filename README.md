@@ -39,25 +39,31 @@ For architecture details, see [`docs/architecture/README.md`](docs/architecture/
 
 ## Architecture Design (v1 Blueprint)
 
-```text
-┌──────────────────────────────────────────────────────────────────┐
-│                      User Space / Services                       │
-│  Drivers  |  Filesystems  |  Network Stack  |  Runtime Services │
-└───────────────▲────────────────────────▲─────────────────────────┘
-                │ Capability-guarded IPC │
-┌───────────────┴────────────────────────┴─────────────────────────┐
-│                    Microkernel (Trusted Core)                    │
-│  Scheduling  |  IPC Routing  |  Capability Checks  |  VM/PMM API │
-└───────────────▲────────────────────────▲─────────────────────────┘
-                │ HAL interfaces         │
-┌───────────────┴────────────────────────┴─────────────────────────┐
-│                              HAL                                 │
-│       Interrupts  |  Timer  |  MMU  |  Device/Platform Glue     │
-└───────────────▲────────────────────────▲─────────────────────────┘
-                │                        │
-         ┌──────┴──────┐          ┌──────┴──────┐
-         │   x86_64    │          │   riscv64   │  (+ arm64 planned)
-         └─────────────┘          └─────────────┘
+```mermaid
+flowchart TD
+    subgraph Userspace["User Space / Services"]
+        direction LR
+        D[Drivers] --- F[Filesystems] --- N[Network Stack] --- R[Runtime Services]
+    end
+
+    subgraph Microkernel["Microkernel (Trusted Core)"]
+        direction LR
+        S[Scheduling] --- I[IPC Routing] --- C[Capability Checks] --- V[VM/PMM API]
+    end
+
+    subgraph HAL["Hardware Abstraction Layer (HAL)"]
+        direction LR
+        Int[Interrupts] --- T[Timer] --- M[MMU] --- Plat[Device/Platform Glue]
+    end
+
+    subgraph Hardware["Hardware Platforms"]
+        direction LR
+        X86[x86_64] --- RISCV[riscv64] -.-> ARM[arm64 planned]
+    end
+
+    Userspace <-->|Capability-guarded IPC| Microkernel
+    Microkernel <-->|HAL interfaces| HAL
+    HAL <--> Hardware
 ```
 
 Design principles represented above:

@@ -2,6 +2,28 @@
 
 Bharat-OS primarily uses **LLVM/Clang** + **LLD** for cross-arch reproducibility, with an optional **riscv64-unknown-elf-gcc** flow for Shakti/OpenSBI firmware packaging. Build scripts work identically on Windows, WSL, Linux, macOS, and BSD.
 
+```mermaid
+flowchart TD
+    subgraph BuildSystem["Build System"]
+        A[Source Code] -->|CMake| B(Build Generator)
+    end
+
+    subgraph Toolchains["Cross-Platform Toolchains"]
+        B -->|x86_64-elf.cmake| X86[LLVM/Clang x86_64]
+        B -->|riscv64-elf.cmake| RV[LLVM/Clang riscv64]
+        B -.->|riscv64-elf-gcc.cmake| RVGCC[GCC riscv64 - Optional Payload]
+        B -->|arm64-elf.cmake| ARM[LLVM/Clang arm64]
+    end
+
+    subgraph Output["Output Artifacts"]
+        X86 --> O1[kernel.elf]
+        X86 --> O4[kernel32.elf Multiboot]
+        RV --> O2[kernel.elf]
+        RVGCC -.-> O5[payload.bin for OpenSBI]
+        ARM --> O3[kernel.elf]
+    end
+```
+
 ---
 
 ## Prerequisites
@@ -97,6 +119,15 @@ chmod +x tools/build.sh
 
 # Override boot knobs
 ./tools/build.sh x86_64 --boot-gui=OFF --hw=vm
+
+# Run RISC-V with specific QEMU machine (e.g., sifive_u)
+./tools/build.sh riscv64 --machine=sifive_u --run
+
+# Build RISC-V GCC OpenSBI payload
+./tools/build.sh riscv64 --payload
+
+# Run with GDB debug server enabled
+./tools/build.sh x86_64 --run --debug
 ```
 
 **Windows (PowerShell 5+ or pwsh)**
@@ -119,6 +150,15 @@ chmod +x tools/build.sh
 
 # Override boot knobs
 .\tools\build.ps1 -Arch x86_64 -BootGui OFF -HardwareProfile vm
+
+# Run RISC-V with specific QEMU machine
+.\tools\build.ps1 -Arch riscv64 -Machine sifive_u -Run
+
+# Build RISC-V GCC OpenSBI payload
+.\tools\build.ps1 -Arch riscv64 -Payload
+
+# Run with GDB debug server enabled
+.\tools\build.ps1 -Arch x86_64 -Run -DebugQemu
 ```
 
 ---
