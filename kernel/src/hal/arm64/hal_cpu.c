@@ -51,6 +51,69 @@ void hal_cpu_halt(void) {
     __asm__ volatile("wfi");
 }
 
+void hal_cpu_reboot(void) {
+    // Attempt system reset using PSCI
+    __asm__ volatile(
+        "ldr x0, =0x84000009\n" // PSCI_SYSTEM_RESET
+        "hvc #0\n"
+    );
+    while (1) {
+        __asm__ volatile("wfi");
+    }
+}
+
+static void print_hex(uint64_t val) {
+    char buf[17];
+    buf[16] = '\0';
+    for (int i = 15; i >= 0; i--) {
+        uint8_t nibble = val & 0xF;
+        buf[i] = nibble < 10 ? '0' + nibble : 'a' + (nibble - 10);
+        val >>= 4;
+    }
+    hal_serial_write("0x");
+    hal_serial_write(buf);
+}
+
+void hal_cpu_dump_state(void) {
+    uint64_t far_el1, esr_el1, elr_el1, spsr_el1, x29, sp;
+    __asm__ volatile("mrs %0, far_el1" : "=r"(far_el1));
+    __asm__ volatile("mrs %0, esr_el1" : "=r"(esr_el1));
+    __asm__ volatile("mrs %0, elr_el1" : "=r"(elr_el1));
+    __asm__ volatile("mrs %0, spsr_el1" : "=r"(spsr_el1));
+    __asm__ volatile("mov %0, x29" : "=r"(x29));
+    __asm__ volatile("mov %0, sp" : "=r"(sp));
+
+    hal_serial_write("\n--- ARM64 CPU State Dump ---\n");
+    hal_serial_write("FAR_EL1: "); print_hex(far_el1); hal_serial_write("\n");
+    hal_serial_write("ESR_EL1: "); print_hex(esr_el1); hal_serial_write("\n");
+    hal_serial_write("ELR_EL1: "); print_hex(elr_el1); hal_serial_write("\n");
+    hal_serial_write("SPSR_EL1: "); print_hex(spsr_el1); hal_serial_write("\n");
+    hal_serial_write("FP (x29): "); print_hex(x29); hal_serial_write("\n");
+    hal_serial_write("SP: "); print_hex(sp); hal_serial_write("\n");
+
+    hal_serial_write("\nStack Trace (Frame Pointers):\n");
+    uint64_t current_fp = x29;
+    int depth = 0;
+    while (current_fp != 0 && current_fp >= 0x1000 && depth < 10) {
+        uint64_t* frame = (uint64_t*)current_fp;
+        uint64_t next_fp = frame[0];
+        uint64_t ret_addr = frame[1];
+
+        hal_serial_write("  [");
+        char depth_str[2] = {(char)('0' + depth), '\0'};
+        hal_serial_write(depth_str);
+        hal_serial_write("] pc="); print_hex(ret_addr);
+        hal_serial_write(" fp="); print_hex(next_fp); hal_serial_write("\n");
+
+        if (next_fp <= current_fp) {
+            break; // Stop if frame pointer is not strictly increasing
+        }
+        current_fp = next_fp;
+        depth++;
+    }
+    hal_serial_write("-----------------------------\n");
+}
+
 void hal_cpu_enable_interrupts(void) {
     // Enable IRQ and FIQ
     __asm__ volatile("msr daifclr, #3");

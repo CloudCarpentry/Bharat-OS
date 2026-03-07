@@ -61,6 +61,65 @@ void hal_cpu_halt(void) {
     __asm__ volatile("wfi");
 }
 
+void hal_cpu_reboot(void) {
+    sbi_system_reset(0, 0);
+    while (1) {
+        __asm__ volatile("wfi");
+    }
+}
+
+static void print_hex(uint64_t val) {
+    char buf[17];
+    buf[16] = '\0';
+    for (int i = 15; i >= 0; i--) {
+        uint8_t nibble = val & 0xF;
+        buf[i] = nibble < 10 ? '0' + nibble : 'a' + (nibble - 10);
+        val >>= 4;
+    }
+    hal_serial_write("0x");
+    hal_serial_write(buf);
+}
+
+void hal_cpu_dump_state(void) {
+    uint64_t sepc, scause, stval, sstatus, fp, sp;
+    __asm__ volatile("csrr %0, sepc" : "=r"(sepc));
+    __asm__ volatile("csrr %0, scause" : "=r"(scause));
+    __asm__ volatile("csrr %0, stval" : "=r"(stval));
+    __asm__ volatile("csrr %0, sstatus" : "=r"(sstatus));
+    __asm__ volatile("mv %0, s0" : "=r"(fp));
+    __asm__ volatile("mv %0, sp" : "=r"(sp));
+
+    hal_serial_write("\n--- RISC-V CPU State Dump ---\n");
+    hal_serial_write("SEPC: "); print_hex(sepc); hal_serial_write("\n");
+    hal_serial_write("SCAUSE: "); print_hex(scause); hal_serial_write("\n");
+    hal_serial_write("STVAL: "); print_hex(stval); hal_serial_write("\n");
+    hal_serial_write("SSTATUS: "); print_hex(sstatus); hal_serial_write("\n");
+    hal_serial_write("FP: "); print_hex(fp); hal_serial_write("\n");
+    hal_serial_write("SP: "); print_hex(sp); hal_serial_write("\n");
+
+    hal_serial_write("\nStack Trace (Frame Pointers):\n");
+    uint64_t current_fp = fp;
+    int depth = 0;
+    while (current_fp != 0 && current_fp >= 0x1000 && depth < 10) {
+        uint64_t* frame = (uint64_t*)(current_fp - 16); // Previous fp is at fp-16, ra at fp-8
+        uint64_t next_fp = frame[0];
+        uint64_t ret_addr = frame[1];
+
+        hal_serial_write("  [");
+        char depth_str[2] = {(char)('0' + depth), '\0'};
+        hal_serial_write(depth_str);
+        hal_serial_write("] pc="); print_hex(ret_addr);
+        hal_serial_write(" fp="); print_hex(next_fp); hal_serial_write("\n");
+
+        if (next_fp <= current_fp) {
+            break; // Stop if frame pointer is not strictly increasing
+        }
+        current_fp = next_fp;
+        depth++;
+    }
+    hal_serial_write("-----------------------------\n");
+}
+
 void hal_cpu_enable_interrupts(void) {
 #ifdef CONFIG_RISCV_M_MODE
     // Set MIE (Machine Interrupt Enable) bit in mstatus CSR

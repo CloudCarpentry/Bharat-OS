@@ -33,6 +33,14 @@ SECTIONS
         bss_end = .;
     }
 
+    .pstore ALIGN(4096) (NOLOAD) :
+    {
+        _pstore_start = .;
+        *(.pstore)
+        . = . + 4096; /* Reserve 4KB for crash logs */
+        _pstore_end = .;
+    }
+
     . = ALIGN(4096);
     _end = .;
 

@@ -6,6 +6,10 @@ enable_testing()
 add_executable(test_early_alloc test_early_alloc.c)
 target_include_directories(test_early_alloc PRIVATE ../kernel/include)
 
+add_executable(test_panic test_panic.c ../kernel/src/panic.c)
+target_include_directories(test_panic PRIVATE ../kernel/include)
+add_test(NAME test_panic COMMAND test_panic)
+
 add_test(NAME test_early_alloc COMMAND test_early_alloc)
 
 add_executable(test_hal_interrupts test_hal_interrupts.c ../kernel/src/hal/interrupt_common.c)

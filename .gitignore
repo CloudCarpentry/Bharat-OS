@@ -36,3 +36,8 @@ compile_commands.json
 *.swp
 *~
 .DS_Store
+
+# Logs
+*.log
+out.log
+out.txt

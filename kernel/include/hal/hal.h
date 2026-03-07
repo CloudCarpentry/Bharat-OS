@@ -10,6 +10,8 @@
 
 // CPU operations that must be implemented by each target architecture
 void hal_cpu_halt(void);
+void hal_cpu_reboot(void);
+void hal_cpu_dump_state(void);
 void hal_cpu_enable_interrupts(void);
 void hal_cpu_disable_interrupts(void);
 void hal_init(void);
