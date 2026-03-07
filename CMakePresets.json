@@ -72,7 +72,8 @@
       "generator": "Unix Makefiles",
       "binaryDir": "${sourceDir}/build-tests",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug"
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BHARAT_BUILD_AI_GOVERNOR": "OFF"
       }
     },
     {

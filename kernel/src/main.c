@@ -110,13 +110,8 @@ static void kernel_phase2_hello_service_smoke(void) {
 }
 
 static void kernel_boot_scheduler(void) {
-  if (sched_init) {
-    sched_init();
-    KPRINT("  [SCHED] Scheduler initialized.\n");
-    return;
-  }
-
-  kernel_panic("scheduler init symbol missing");
+  sched_init();
+  KPRINT("  [SCHED] Scheduler initialized.\n");
 }
 
 static void kernel_ai_governor_init(void) {
@@ -173,7 +168,7 @@ void kernel_main(void) {
   KPRINT("\n");
   KPRINT("  ____  _                          _          ____   ____  \n");
   KPRINT(" | __ )| |__   __ _ _ __ __ _ _| |_       / ___| / ___| \n");
-  KPRINT(" |  _ \| '_ \\ / _` | '__/ _` | '__/ _` |_____| |  _  \\___ \\ \n");
+  KPRINT(" |  _ \\| '_ \\ / _` | '__/ _` | '__/ _` |_____| |  _  \\___ \\ \n");
   KPRINT(" | |_) | | | | (_| | | | (_| | | | (_| |_____| |_| |  ___) |\n");
   KPRINT(" |____/|_| |_|\\__,_|_|  \\__,_|_|  \\__,_|      \\____| |____/ \n");
   KPRINT("\nBharat-OS kernel boot (v3.2 bring-up)\n");
