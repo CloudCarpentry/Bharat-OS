@@ -6,6 +6,8 @@ include_directories(include)
 # Subsystem manager daemon/library
 set(SUBSYS_SOURCES
     src/manager.c
+    src/linux_compat.c
+    src/win_compat.c
 )
 
 # AI Governor daemon (Predictive Resource Scheduling)
