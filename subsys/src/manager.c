@@ -1,20 +1,31 @@
 #include "subsys.h"
+#include "linux_compat.h"
+#include "win_compat.h"
 
-// Basic stub implementation for the subsystem manager
+static uint32_t next_subsys_id = 1;
+
 int subsys_create(subsys_type_t type, subsys_exec_mode_t mode, subsys_instance_t* out_instance) {
     if (!out_instance) return -1;
-    
-    out_instance->subsys_id = 1; // dummy ID
+
+    out_instance->subsys_id = next_subsys_id++;
     out_instance->type = type;
     out_instance->exec_mode = mode;
+    out_instance->memory_limit_mb = 0;
+    out_instance->cpu_core_allocation_mask = 0;
     out_instance->is_running = 0;
-    
-    return 0; // Success
+
+    switch (type) {
+        case SUBSYS_TYPE_LINUX:
+            return linux_subsys_init(out_instance);
+        case SUBSYS_TYPE_WINDOWS:
+            return winnt_subsys_init(out_instance);
+        default:
+            return 0;
+    }
 }
 
 int subsys_load_env(subsys_instance_t* instance, const char* root_path) {
-    if (!instance) return -1;
-    // Load rootfs...
+    if (!instance || !root_path) return -1;
     return 0;
 }
 

@@ -60,6 +60,10 @@ typedef struct {
     phys_addr_t root_table; // CR3 on x86, satp on RISC-V
 } address_space_t;
 
+int vmm_init(void);
+int vmm_map_page(virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags);
+int vmm_unmap_page(virt_addr_t vaddr);
+
 int mm_vmm_map_page(address_space_t* as, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags);
 int mm_vmm_unmap_page(address_space_t* as, virt_addr_t vaddr);
 
