@@ -10,6 +10,7 @@
 // Represents the Predictive Resource Scheduling & Intelligent Power Management mechanisms
 // Uses heuristics/ML inference to model application behavior and communicates with kernel via IPC
 
+
 // Send suggestion to kernel via Lockless URPC messaging spine
 void send_suggestion_to_kernel(ai_suggestion_t* suggestion, urpc_ring_t* control_ring) {
     printf("[AI Governor IPC] Sending action %d for target %u (value: %u)\n",

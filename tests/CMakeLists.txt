@@ -53,6 +53,6 @@ target_include_directories(test_ai_governor PRIVATE ../kernel/include)
 target_compile_definitions(test_ai_governor PRIVATE TESTING=1)
 add_test(NAME test_ai_governor COMMAND test_ai_governor)
 
-add_executable(test_ai_kernel_bridge test_ai_kernel_bridge.c ../kernel/src/ai_kernel_bridge.c ../kernel/src/sched_stub.c ../kernel/src/ai_sched.c ../kernel/src/mm/numa.c ../kernel/src/capability.c ../kernel/src/ipc/endpoint_ipc.c)
+add_executable(test_ai_kernel_bridge test_ai_kernel_bridge.c ../kernel/src/ai_kernel_bridge.c ../kernel/src/sched_stub.c ../kernel/src/mm/numa.c ../kernel/src/mm/pmm.c ../kernel/src/mm/vmm.c ../kernel/src/mm/early_alloc.c ../kernel/src/hal/x86_64/hal_cpu.c)
 target_include_directories(test_ai_kernel_bridge PRIVATE ../kernel/include)
 add_test(NAME test_ai_kernel_bridge COMMAND test_ai_kernel_bridge)
