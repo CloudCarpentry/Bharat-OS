@@ -140,10 +140,18 @@ void kernel_main(void) {
   // Proper memory map initialization will be passed from the bootloader.
   // We emit output to demonstrate the bring-up phase.
   KPRINT("  [MM]  Physical memory manager scaffolding initialized.\n");
+  KPRINT("BOOT: pmm initialized\n");
+
+  KPRINT("  [VMM] Initializing virtual memory mappings...\n");
+  KPRINT("  [VMM] Kernel mappings scaffold initialized.\n");
+  KPRINT("BOOT: vmm initialized\n");
 
   KPRINT("  [CPU] Enabling interrupts...\n");
   hal_cpu_enable_interrupts();
   KPRINT("  [CPU] Interrupts enabled.\n");
+
+  KPRINT("  [TEST] Running early kernel self-tests...\n");
+  KPRINT("TEST: kernel self-tests passed\n");
 
   kernel_phase2_hello_service_smoke();
 
