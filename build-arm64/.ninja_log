@@ -1,0 +1,27 @@
+# ninja log v5
+2	58	1772912683433820063	kernel/CMakeFiles/kernel.elf.dir/src/main.c.obj	b97169cd391062bc
+4	64	1772912683441820062	kernel/CMakeFiles/kernel.elf.dir/src/panic.c.obj	8ec323f8959c8883
+3	71	1772912683449820062	kernel/CMakeFiles/kernel.elf.dir/src/ai_kernel_bridge.c.obj	26f623c29a20232
+3	75	1772912683449820062	kernel/CMakeFiles/kernel.elf.dir/src/ai_sched.c.obj	4f0d5de23ede3496
+8	75	1772912683449820062	kernel/CMakeFiles/kernel.elf.dir/src/sched_stub.c.obj	f936c870b50bd846
+75	122	1772912683497820062	kernel/CMakeFiles/kernel.elf.dir/src/mm/vmm.c.obj	1d4043e2f9cba092
+75	140	1772912683517820062	kernel/CMakeFiles/kernel.elf.dir/src/mm/slab.c.obj	b20a3a187a461086
+71	143	1772912683517820062	kernel/CMakeFiles/kernel.elf.dir/src/mm/early_alloc.c.obj	80fa9a0155b034fb
+64	155	1772912683525820062	kernel/CMakeFiles/kernel.elf.dir/src/mm/pmm.c.obj	ec4d117bb5484a3b
+122	160	1772912683537820061	kernel/CMakeFiles/kernel.elf.dir/src/mm/numa.c.obj	7daab778a8f698d3
+2	165	1772912683533820061	kernel/CMakeFiles/kernel.elf.dir/src/boot/arm64/boot.S.obj	45f74d9ef874fd1e
+59	173	1772912683545820061	kernel/CMakeFiles/kernel.elf.dir/src/hal/arm64/hal_cpu.c.obj	61a66e594c8911fc
+143	190	1772912683565820061	kernel/CMakeFiles/kernel.elf.dir/src/capability.c.obj	afb3f1acf159ea37
+165	201	1772912683577820061	kernel/CMakeFiles/kernel.elf.dir/src/stack_protector.c.obj	84b8867d15ceeb14
+140	206	1772912683581820061	kernel/CMakeFiles/kernel.elf.dir/src/ipc/endpoint_ipc.c.obj	2a2febec3ffc242a
+190	232	1772912683609820061	kernel/CMakeFiles/kernel.elf.dir/src/device/device_manager.c.obj	c78c4c32b9d22886
+160	234	1772912683605820061	kernel/CMakeFiles/kernel.elf.dir/src/lib/string.c.obj	6573a5422de2e9e2
+206	243	1772912683617820060	kernel/CMakeFiles/kernel.elf.dir/src/hal/interrupt_common.c.obj	b3a2be827d54a5e5
+173	248	1772912683617820060	kernel/CMakeFiles/kernel.elf.dir/src/device/builtin_drivers.c.obj	b3b43ea3ab7ed96f
+155	254	1772912683629820060	kernel/CMakeFiles/kernel.elf.dir/src/ipc/multikernel.c.obj	82d405df677feb9f
+201	258	1772912683633820060	kernel/CMakeFiles/kernel.elf.dir/src/hal/timer_common.c.obj	d3c6a6de09aaad2a
+234	272	1772912683649820060	kernel/CMakeFiles/kernel.elf.dir/src/multicore.c.obj	3e5cf53b33f9b5b7
+232	277	1772912683653820060	kernel/CMakeFiles/kernel.elf.dir/src/trap/trap.c.obj	d55f0e83a8404de8
+277	341	1772912683713820059	kernel/kernel.elf	3b3d98a156373a7b
+2	44	1772912693281819952	kernel/CMakeFiles/kernel.elf.dir/src/hal/arm64/hal_cpu.c.obj	61a66e594c8911fc
+44	94	1772912693329819951	kernel/kernel.elf	3b3d98a156373a7b
