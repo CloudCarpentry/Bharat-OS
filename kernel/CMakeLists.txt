@@ -107,7 +107,7 @@ set(KERNEL_SRCS
     src/trace/trace.c
     src/arch/capabilities.c
     src/profile/${KERNEL_PROFILE_LOWER}/profile.c
-    src/board/qemu-virt-${CMAKE_SYSTEM_PROCESSOR}/board.c
+    src/board/qemu-virt-${ARCH}/board.c
     src/ai_kernel_bridge.c
     src/ai_sched.c
     src/panic.c

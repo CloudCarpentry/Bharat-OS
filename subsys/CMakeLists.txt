@@ -8,6 +8,7 @@ set(SUBSYS_SOURCES
     src/manager.c
     src/linux_compat.c
     src/win_compat.c
+    src/automotive.c
 )
 
 # AI Governor daemon (Predictive Resource Scheduling)
