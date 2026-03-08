@@ -35,11 +35,16 @@ typedef enum {
   URPC_ERR_INVAL = -5, // To match the review suggestion
 } urpc_status_t;
 
+// Single-Producer / Single-Consumer (SPSC) lockless ring buffer.
+// Queue ownership rules:
+// - The Producer exclusively owns and updates the `head` index.
+// - The Consumer exclusively owns and updates the `tail` index.
+// - Memory ordering relies on C11 acquire/release semantics rather than seq_cst.
 typedef struct {
   urpc_msg_t *buffer;
   uint32_t capacity;
-  volatile uint32_t head BHARAT_ALIGNED_CACHE; // Producer owned
-  volatile uint32_t tail BHARAT_ALIGNED_CACHE; // Consumer owned
+  volatile uint32_t head BHARAT_ALIGNED_CACHE; // Producer owned: Write-published with release
+  volatile uint32_t tail BHARAT_ALIGNED_CACHE; // Consumer owned: Read-observed with acquire
 } BHARAT_ALIGNED_CACHE urpc_ring_t;
 
 typedef struct {
@@ -52,8 +57,9 @@ typedef struct {
   uint32_t capacity;
 } mk_msg_pool_t;
 
-// A Message Channel connecting two independent kernel instances on different
-// cores
+// A Single-Producer / Single-Consumer (SPSC) Message Channel
+// connecting two independent kernel instances on different cores.
+// Currently mapped in a core-to-core topology matrix for Phase 1.
 typedef struct {
   uint32_t sender_core_id;
   uint32_t receiver_core_id;

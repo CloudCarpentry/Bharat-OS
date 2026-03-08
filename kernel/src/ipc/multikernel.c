@@ -52,15 +52,20 @@ int urpc_send(urpc_ring_t* ring, const urpc_msg_t* msg) {
         return URPC_ERR_INVAL;
     }
 
+    // Producer uniquely owns head, so relaxed load is safe locally.
     uint32_t head = atomic_load_explicit(&ring->head, memory_order_relaxed);
     uint32_t next_head = (head + 1U) % ring->capacity;
 
+    // Must acquire the tail to ensure previous consumer reads are visible before we overwrite the slot.
     uint32_t tail = atomic_load_explicit(&ring->tail, memory_order_acquire);
     if (next_head == tail) {
         return URPC_ERR_FULL;
     }
 
-    ring->buffer[head] = *msg; // No atomics needed for the payload as it's purely local until head is published
+    ring->buffer[head] = *msg; // Normal store; payload is not published to consumer yet.
+
+    // Publish head with release semantics. This ensures the payload store is visible
+    // to the consumer when they acquire this new head value.
     atomic_store_explicit(&ring->head, next_head, memory_order_release);
 
     if (msg->payload_size <= sizeof(uint64_t)) {
@@ -75,15 +80,21 @@ int urpc_receive(urpc_ring_t* ring, urpc_msg_t* out_msg) {
         return URPC_ERR_INVAL;
     }
 
+    // Consumer uniquely owns tail, relaxed load is safe locally.
     uint32_t tail = atomic_load_explicit(&ring->tail, memory_order_relaxed);
+
+    // Must acquire head to ensure the producer's payload writes are visible to us.
     uint32_t head = atomic_load_explicit(&ring->head, memory_order_acquire);
 
     if (tail == head) {
         return URPC_ERR_EMPTY;
     }
 
-    *out_msg = ring->buffer[tail];
+    *out_msg = ring->buffer[tail]; // Normal read; safely visible due to the acquire above.
     uint32_t next_tail = (tail + 1U) % ring->capacity;
+
+    // Publish tail with release semantics. This ensures our payload read is complete
+    // before the producer can see this new tail and overwrite the slot.
     atomic_store_explicit(&ring->tail, next_tail, memory_order_release);
 
     return URPC_SUCCESS;
@@ -218,6 +229,8 @@ int mk_send_message(mk_channel_t *channel, uint32_t msg_type, void *payload,
 
 // Drains the incoming message queue, hands messages to IPC/dispatch path,
 // and triggers scheduler wakeups if a waiter exists.
+// This is the intended delivery mechanism for Phase 2/3, designed to be called
+// from an interrupt-driven (IPI) context rather than relying purely on polling.
 int mk_ipc_deliver_from_channel(mk_channel_t *channel) {
     if (!channel || !channel->urpc_ring) {
         return URPC_ERR_INVALID;
@@ -240,7 +253,7 @@ int mk_ipc_deliver_from_channel(mk_channel_t *channel) {
 }
 
 int mk_poll_messages(mk_channel_t *channel) {
-    // Keep polling as fallback but use the unified delivery mechanism
+    // Polling fallback path for environments without robust IPI receiver hooks.
     return mk_ipc_deliver_from_channel(channel);
 }
 
