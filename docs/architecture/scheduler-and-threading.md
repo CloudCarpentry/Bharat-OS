@@ -65,6 +65,8 @@ The AI telemetry path is intentionally pluggable:
 
 This keeps scheduler mechanism portable across `x86_64`, `riscv64`, and `arm64` while allowing architecture-specific acceleration.
 
+This pluggable design is formalized by ADR-008 (`docs/decisions/ADR-008-ai-scheduler-plugin-contract.md`), which keeps scheduler mechanism portable and testable while permitting architecture/profile overrides.
+
 ## Deferred for production
 
 - Real per-core run queues and SMP load balancing.
