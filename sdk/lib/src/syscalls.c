@@ -12,3 +12,13 @@ int bharat_write(int fd, const void* buf, size_t count) {
     (void)buf;
     return (int)count;
 }
+
+int bharat_get_subsystem_caps(uint32_t* storage_caps, uint32_t* network_caps) {
+    if (storage_caps) {
+        *storage_caps = 0U;
+    }
+    if (network_caps) {
+        *network_caps = 0U;
+    }
+    return -38; // ENOSYS until syscall wire-up lands
+}
