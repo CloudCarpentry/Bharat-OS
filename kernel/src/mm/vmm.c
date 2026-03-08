@@ -6,6 +6,8 @@
 #include "../../include/sched.h"
 #include "../../include/capability.h"
 #include "../../include/mm_zswap.h"
+#include "../../include/mm/address_token.h"
+#include "../../include/security/isolation.h"
 
 // @cite L4 Microkernels: The Lessons from 20 Years of Research and Implementation (Klein & Andronick, 2016)
 // L4 minimal memory mapping model: Kernel only maps/unmaps physical pages, policy lives in user space.
@@ -92,6 +94,25 @@ int vmm_map_device_mmio(virt_addr_t vaddr, phys_addr_t paddr, capability_t* cap,
     uint32_t required_right = is_npu ? CAP_RIGHT_DEVICE_NPU : CAP_RIGHT_DEVICE_GPU;
     if ((cap->rights_mask & required_right) == 0U) {
         return -3; // ERR_CAP_DENIED
+    }
+
+    return mm_vmm_map_page(&kernel_space, vaddr, paddr, CAP_RIGHT_READ | CAP_RIGHT_WRITE);
+}
+
+int vmm_map_device_mmio_token(virt_addr_t vaddr, phys_addr_t paddr, uint64_t size, const bharat_addr_token_t* token, int is_npu) {
+    if (!token) {
+        return -3; // ERR_CAP_DENIED
+    }
+
+    // Validate the token for Read/Write MMIO access
+    int validation_res = bharat_addr_token_validate(token, paddr, size, ADDR_TOKEN_FLAG_READ | ADDR_TOKEN_FLAG_WRITE);
+    if (validation_res < 0) {
+        return -3; // ERR_CAP_DENIED
+    }
+
+    // Example checks, could expand class logic here
+    if (token->iso_class == ISOLATION_CLASS_USER && !is_npu) {
+       // Just as an example, user classes might not map GPU directly without extra capabilities
     }
 
     return mm_vmm_map_page(&kernel_space, vaddr, paddr, CAP_RIGHT_READ | CAP_RIGHT_WRITE);

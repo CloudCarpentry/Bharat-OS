@@ -10,6 +10,7 @@
 #include "multicore.h"
 #include "advanced/algo_matrix.h"
 #include "mm_zswap.h"
+#include "ipc_async.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -247,6 +248,10 @@ void kernel_main(void) {
     }
 
     kernel_boot_scheduler();
+
+    KPRINT("  [IPC] Initializing Async IPC subsystem...\n");
+    ipc_async_init();
+    KPRINT("  [IPC] Async IPC ready.\n");
 
     KPRINT("  [TRAP] Initializing syscall/trap gate...\n");
     if (trap_init() != 0) {

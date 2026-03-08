@@ -6,6 +6,7 @@
 #include "advanced/formal_verif.h"
 #include "hal/hal.h"
 #include "advanced/algo_matrix.h"
+#include "../../include/ipc_async.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -555,6 +556,9 @@ void sched_on_timer_tick(void) {
             sched_wakeup(&g_threads[i].thread);
         }
     }
+
+    // Call IPC subsystem hook to handle async cancellations/timeouts
+    ipc_async_check_timeouts(g_sched_ticks);
 
     sched_process_pending_ai_suggestions();
 
