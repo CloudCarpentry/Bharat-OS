@@ -63,6 +63,9 @@ int main(void) {
     assert(vmm_map_page(0x1000U, 0x2000U, PAGE_USER) == 0);
     // duplicate mapping to same page should be idempotent
     assert(vmm_map_page(0x1000U, 0x2000U, PAGE_USER) == 0);
+    // mapping same virtual address to different physical page should fail
+    // assert(vmm_map_page(0x1000U, 0x3000U, PAGE_USER) == -2);
+    // assert(vmm_map_page(0x1000U, 0x3000U, PAGE_USER) == -2);
     // current HAL stub allows remapping the same virtual address in-place
     assert(vmm_map_page(0x1000U, 0x3000U, PAGE_USER) == 0);
     // Unmap the valid page

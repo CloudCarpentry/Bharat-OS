@@ -88,10 +88,115 @@ int bharat_isolation_apply_sandbox(const bharat_sandbox_policy_t* policy,
     return 0;
 }
 
-int bharat_isolation_iommu_attach(uint32_t device_id, uint32_t process_id) {
-    (void)device_id;
-    (void)process_id;
-    /* TODO: Wire into architecture IOMMU driver when available. */
+struct bharat_iommu_domain {
+    bharat_iommu_domain_config_t config;
+    uint32_t id;
+    uint8_t used;
+};
+
+struct bharat_iommu_group {
+    uint32_t id;
+    bharat_iommu_domain_t* domain;
+    uint8_t used;
+};
+
+#define BHARAT_MAX_IOMMU_DOMAINS 32U
+#define BHARAT_MAX_IOMMU_GROUPS  64U
+
+static bharat_iommu_domain_t g_iommu_domains[BHARAT_MAX_IOMMU_DOMAINS];
+static bharat_iommu_group_t g_iommu_groups[BHARAT_MAX_IOMMU_GROUPS];
+
+int bharat_iommu_domain_create(const bharat_iommu_domain_config_t* cfg,
+                               bharat_iommu_domain_t** out_domain) {
+    uint32_t i;
+    if (!cfg || !out_domain) {
+        return -1;
+    }
+
+    for (i = 0; i < BHARAT_MAX_IOMMU_DOMAINS; ++i) {
+        if (!g_iommu_domains[i].used) {
+            g_iommu_domains[i].used = 1;
+            g_iommu_domains[i].id = i;
+            g_iommu_domains[i].config = *cfg;
+            *out_domain = &g_iommu_domains[i];
+            return 0;
+        }
+    }
+
+    return -1;
+}
+
+int bharat_iommu_domain_destroy(bharat_iommu_domain_t* domain) {
+    if (!domain || !domain->used) {
+        return -1;
+    }
+
+    domain->used = 0;
+    return 0;
+}
+
+int bharat_iommu_group_attach(bharat_iommu_group_t* group,
+                              bharat_iommu_domain_t* domain) {
+    if (!group || !domain) {
+        return -1;
+    }
+
+    group->domain = domain;
+    /* TODO: HAL call to actually attach hardware group to domain context */
+    return 0;
+}
+
+int bharat_iommu_group_detach(bharat_iommu_group_t* group) {
+    if (!group) {
+        return -1;
+    }
+
+    group->domain = (bharat_iommu_domain_t*)0;
+    /* TODO: HAL call to actually detach hardware group */
+    return 0;
+}
+
+int bharat_iommu_map(bharat_iommu_domain_t* domain,
+                     uint64_t iova,
+                     uint64_t phys,
+                     size_t size,
+                     uint64_t prot_flags) {
+    (void)domain;
+    (void)iova;
+    (void)phys;
+    (void)size;
+    (void)prot_flags;
+    /* TODO: HAL call to map page in IOMMU */
+    return 0;
+}
+
+int bharat_iommu_unmap(bharat_iommu_domain_t* domain,
+                       uint64_t iova,
+                       size_t size) {
+    (void)domain;
+    (void)iova;
+    (void)size;
+    /* TODO: HAL call to unmap page in IOMMU */
+    return 0;
+}
+
+int bharat_iommu_block_device(bharat_device_t* dev) {
+    (void)dev;
+    /* Default safe policy: untrusted DMA blocked */
+    /* TODO: HAL call to block device DMA */
+    return 0;
+}
+
+int bharat_iommu_get_group(bharat_device_t* dev,
+                           bharat_iommu_group_t** out_group) {
+    (void)dev;
+    if (!out_group) return -1;
+    /* Dummy allocation for now */
+    if (!g_iommu_groups[0].used) {
+        g_iommu_groups[0].used = 1;
+        g_iommu_groups[0].id = 0;
+    }
+    *out_group = &g_iommu_groups[0];
     return 0;
 }
 
