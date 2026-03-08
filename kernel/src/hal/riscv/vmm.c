@@ -1,4 +1,5 @@
 #include "../../../include/hal/vmm.h"
+#include "../../../include/hal/mmu_ops.h"
 #include "../../../include/numa.h"
 
 // Define direct map macros for early initialization.
@@ -103,6 +104,161 @@ int hal_vmm_map_page(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t padd
     l0_table->entries[vpn0] = ((aligned_paddr >> 12) << 10) | pte_flags;
 
     return 0;
+}
+
+// -----------------------------------------------------------------------------
+// mmu_ops_t Wrapper implementations
+// -----------------------------------------------------------------------------
+
+static phys_addr_t riscv_mmu_create_table(void) {
+    return hal_vmm_init_root();
+}
+
+static void riscv_mmu_destroy_table(phys_addr_t root) {
+    if (root) {
+        mm_free_page(root);
+    }
+}
+
+static phys_addr_t riscv_mmu_clone_kernel(phys_addr_t kernel_root) {
+    return hal_vmm_setup_address_space(kernel_root);
+}
+
+// Translate generic mmu_flags_t to RISC-V specific VMM flags
+static uint32_t flags_to_riscv(mmu_flags_t f) {
+    uint32_t flags = 0;
+    if (f & MMU_WRITE)   flags |= CAP_RIGHT_WRITE;
+    if (f & MMU_USER)    flags |= PAGE_USER;
+    if (f & MMU_COW)     flags |= PAGE_COW;
+    return flags;
+}
+
+// Translate RISC-V specific VMM flags to generic mmu_flags_t
+static mmu_flags_t riscv_to_flags(uint32_t flags) {
+    mmu_flags_t f = MMU_READ;
+    if (flags & CAP_RIGHT_WRITE) f |= MMU_WRITE;
+    if (flags & PAGE_USER)       f |= MMU_USER;
+    if (flags & PAGE_COW)        f |= MMU_COW;
+    return f;
+}
+
+static int riscv_mmu_map(phys_addr_t root, virt_addr_t virt, phys_addr_t phys,
+                         size_t size, mmu_flags_t flags) {
+    size_t mapped = 0;
+    while (mapped < size) {
+        int ret = hal_vmm_map_page(root, virt + mapped, phys + mapped, flags_to_riscv(flags));
+        if (ret < 0) return ret;
+        mapped += PAGE_SIZE;
+    }
+    return 0;
+}
+
+static int riscv_mmu_unmap(phys_addr_t root, virt_addr_t virt, size_t size, phys_addr_t *unmapped_phys) {
+    size_t unmapped = 0;
+    phys_addr_t first_phys = 0;
+
+    while (unmapped < size) {
+        phys_addr_t phys = 0;
+        int ret = hal_vmm_unmap_page(root, virt + unmapped, &phys);
+        if (ret < 0) return ret;
+        if (unmapped == 0) first_phys = phys;
+        unmapped += PAGE_SIZE;
+    }
+
+    if (unmapped_phys) {
+        *unmapped_phys = first_phys;
+    }
+    return 0;
+}
+
+static int riscv_mmu_protect(phys_addr_t root, virt_addr_t virt, size_t size, mmu_flags_t new_flags) {
+    size_t updated = 0;
+    while (updated < size) {
+        phys_addr_t phys = 0;
+        uint32_t old_flags = 0;
+        int ret = hal_vmm_get_mapping(root, virt + updated, &phys, &old_flags);
+        if (ret == 0 && phys != 0) {
+            hal_vmm_update_mapping(root, virt + updated, phys, flags_to_riscv(new_flags));
+        }
+        updated += PAGE_SIZE;
+    }
+    return 0;
+}
+
+static int riscv_mmu_query(phys_addr_t root, virt_addr_t virt, phys_addr_t *phys_out, mmu_flags_t *flags_out) {
+    uint32_t riscv_flags = 0;
+    int ret = hal_vmm_get_mapping(root, virt, phys_out, &riscv_flags);
+    if (ret == 0 && flags_out) {
+        *flags_out = riscv_to_flags(riscv_flags);
+    }
+    return ret;
+}
+
+static void riscv_mmu_activate(phys_addr_t root) {
+    // Mode 8 is Sv39
+    uintptr_t ppn = (uintptr_t)root >> 12;
+    uintptr_t satp = (8ULL << 60) | ppn;
+    asm volatile(
+        "csrw satp, %0\n"
+        "sfence.vma\n"
+        :: "r"(satp) : "memory"
+    );
+}
+
+static void riscv_mmu_deactivate(void) {
+    // Mode 0 is BARE
+    asm volatile(
+        "csrw satp, zero\n"
+        "sfence.vma\n"
+        ::: "memory"
+    );
+}
+
+static void riscv_mmu_tlb_flush_page(virt_addr_t virt) {
+    asm volatile(
+        "sfence.vma %0\n"
+        :: "r"(virt) : "memory"
+    );
+}
+
+static void riscv_mmu_tlb_flush_all(void) {
+    asm volatile("sfence.vma\n" ::: "memory");
+}
+
+static void riscv_mmu_tlb_flush_asid(uint16_t asid) {
+    asm volatile(
+        "sfence.vma zero, %0\n"
+        :: "r"(asid) : "memory"
+    );
+}
+
+static size_t riscv_huge_pages[] = {0x200000, 0x40000000, 0}; // 2MB, 1GB (for Sv39)
+
+mmu_ops_t riscv64_mmu_ops = {
+    .create_table     = riscv_mmu_create_table,
+    .destroy_table    = riscv_mmu_destroy_table,
+    .clone_kernel     = riscv_mmu_clone_kernel,
+    .map              = riscv_mmu_map,
+    .unmap            = riscv_mmu_unmap,
+    .protect          = riscv_mmu_protect,
+    .query            = riscv_mmu_query,
+    .activate         = riscv_mmu_activate,
+    .deactivate       = riscv_mmu_deactivate,
+    .tlb_flush_page   = riscv_mmu_tlb_flush_page,
+    .tlb_flush_all    = riscv_mmu_tlb_flush_all,
+    .tlb_flush_asid   = riscv_mmu_tlb_flush_asid,
+
+    .page_size        = 4096,
+    .huge_page_sizes  = riscv_huge_pages,
+    .levels           = 3, // Sv39
+    .has_nx           = true, // R/W/X bits are independent
+    .asid_bits        = 16, // Up to 16 bits in ASID field of satp
+    .has_user_kernel_split = false, // RISC-V uses shared address space
+};
+
+void riscv_mmu_detect(mmu_ops_t *ops) {
+    // Stub for runtime detection (e.g. probing satp for Sv48/Sv57)
+    (void)ops;
 }
 
 int hal_vmm_unmap_page(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t* unmapped_paddr) {

@@ -1,4 +1,5 @@
 #include "../../../include/hal/vmm.h"
+#include "../../../include/hal/mmu_ops.h"
 #include "../../../include/numa.h"
 
 #define P2V(x) ((void*)(uintptr_t)(x))
@@ -167,4 +168,147 @@ int hal_vmm_update_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_
 
     pt->entries[pt_idx] = aligned_paddr | VMM_FLAG_PRESENT | flags;
     return 0;
+}
+
+// -----------------------------------------------------------------------------
+// mmu_ops_t Wrapper implementations
+// -----------------------------------------------------------------------------
+
+static phys_addr_t x86_mmu_create_table(void) {
+    return hal_vmm_init_root();
+}
+
+static void x86_mmu_destroy_table(phys_addr_t root) {
+    // Basic stub - proper recursive table freeing requires walking the page tables.
+    // For now we just free the root if needed or leave unimplemented as per legacy behavior.
+    if (root) {
+        mm_free_page(root);
+    }
+}
+
+static phys_addr_t x86_mmu_clone_kernel(phys_addr_t kernel_root) {
+    return hal_vmm_setup_address_space(kernel_root);
+}
+
+// Translate generic mmu_flags_t to x86-specific VMM flags
+static uint32_t flags_to_x86(mmu_flags_t f) {
+    uint32_t pte = 0;
+    if (f & MMU_WRITE)   pte |= CAP_RIGHT_WRITE;
+    if (f & MMU_USER)    pte |= PAGE_USER;
+    if (f & MMU_COW)     pte |= PAGE_COW;
+    return pte;
+}
+
+// Translate x86-specific VMM flags to generic mmu_flags_t
+static mmu_flags_t x86_to_flags(uint32_t pte) {
+    mmu_flags_t f = MMU_READ;
+    if (pte & CAP_RIGHT_WRITE) f |= MMU_WRITE;
+    if (pte & PAGE_USER)       f |= MMU_USER;
+    if (pte & PAGE_COW)        f |= MMU_COW;
+    return f;
+}
+
+static int x86_mmu_map(phys_addr_t root, virt_addr_t virt, phys_addr_t phys,
+                       size_t size, mmu_flags_t flags) {
+    // x86 HAL map operates on single pages. We iterate over the size.
+    size_t mapped = 0;
+    while (mapped < size) {
+        int ret = hal_vmm_map_page(root, virt + mapped, phys + mapped, flags_to_x86(flags));
+        if (ret < 0) return ret;
+        mapped += PAGE_SIZE;
+    }
+    return 0;
+}
+
+static int x86_mmu_unmap(phys_addr_t root, virt_addr_t virt, size_t size, phys_addr_t *unmapped_phys) {
+    size_t unmapped = 0;
+    phys_addr_t first_phys = 0;
+
+    while (unmapped < size) {
+        phys_addr_t phys = 0;
+        int ret = hal_vmm_unmap_page(root, virt + unmapped, &phys);
+        if (ret < 0) return ret;
+        if (unmapped == 0) first_phys = phys;
+        unmapped += PAGE_SIZE;
+    }
+
+    if (unmapped_phys) {
+        *unmapped_phys = first_phys;
+    }
+    return 0;
+}
+
+static int x86_mmu_protect(phys_addr_t root, virt_addr_t virt, size_t size, mmu_flags_t new_flags) {
+    size_t updated = 0;
+    while (updated < size) {
+        phys_addr_t phys = 0;
+        uint32_t old_flags = 0;
+        int ret = hal_vmm_get_mapping(root, virt + updated, &phys, &old_flags);
+        if (ret == 0 && phys != 0) {
+            hal_vmm_update_mapping(root, virt + updated, phys, flags_to_x86(new_flags));
+        }
+        updated += PAGE_SIZE;
+    }
+    return 0;
+}
+
+static int x86_mmu_query(phys_addr_t root, virt_addr_t virt, phys_addr_t *phys_out, mmu_flags_t *flags_out) {
+    uint32_t x86_flags = 0;
+    int ret = hal_vmm_get_mapping(root, virt, phys_out, &x86_flags);
+    if (ret == 0 && flags_out) {
+        *flags_out = x86_to_flags(x86_flags);
+    }
+    return ret;
+}
+
+static void x86_mmu_activate(phys_addr_t root) {
+    __asm__ volatile("mov %0, %%cr3" :: "r"((uintptr_t)root) : "memory");
+}
+
+static void x86_mmu_deactivate(void) {
+    // No-op or switch to kernel root
+}
+
+static void x86_mmu_tlb_flush_page(virt_addr_t virt) {
+    __asm__ volatile("invlpg (%0)" :: "r"(virt) : "memory");
+}
+
+static void x86_mmu_tlb_flush_all(void) {
+    uintptr_t cr3;
+    __asm__ volatile("mov %%cr3, %0" : "=r"(cr3));
+    __asm__ volatile("mov %0, %%cr3" :: "r"(cr3) : "memory");
+}
+
+static void x86_mmu_tlb_flush_asid(uint16_t asid) {
+    (void)asid; // Not using PCID in baseline right now
+}
+
+static size_t x86_huge_pages[] = {0x200000, 0x40000000, 0}; // 2MB, 1GB
+
+mmu_ops_t x86_64_mmu_ops = {
+    .create_table     = x86_mmu_create_table,
+    .destroy_table    = x86_mmu_destroy_table,
+    .clone_kernel     = x86_mmu_clone_kernel,
+    .map              = x86_mmu_map,
+    .unmap            = x86_mmu_unmap,
+    .protect          = x86_mmu_protect,
+    .query            = x86_mmu_query,
+    .activate         = x86_mmu_activate,
+    .deactivate       = x86_mmu_deactivate,
+    .tlb_flush_page   = x86_mmu_tlb_flush_page,
+    .tlb_flush_all    = x86_mmu_tlb_flush_all,
+    .tlb_flush_asid   = x86_mmu_tlb_flush_asid,
+
+    .page_size        = 4096,
+    .huge_page_sizes  = x86_huge_pages,
+    .levels           = 4,
+    .has_nx           = true,
+    .asid_bits        = 0, // Not using PCID initially
+    .has_user_kernel_split = false, // x86 usually uses a shared address space with user/supervisor bits
+};
+
+void x86_mmu_detect(mmu_ops_t *ops) {
+    // Stub for CPUID detection (e.g., 1GB pages, LA57)
+    // Could read CPUID to modify ops->levels or ops->huge_page_sizes
+    (void)ops;
 }

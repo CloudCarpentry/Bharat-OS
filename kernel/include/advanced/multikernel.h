@@ -35,6 +35,8 @@ typedef enum {
   URPC_ERR_INVAL = -5, // To match the review suggestion
 } urpc_status_t;
 
+#include <stdatomic.h>
+
 // Single-Producer / Single-Consumer (SPSC) lockless ring buffer.
 // Queue ownership rules:
 // - The Producer exclusively owns and updates the `head` index.
@@ -43,8 +45,8 @@ typedef enum {
 typedef struct {
   urpc_msg_t *buffer;
   uint32_t capacity;
-  volatile uint32_t head BHARAT_ALIGNED_CACHE; // Producer owned: Write-published with release
-  volatile uint32_t tail BHARAT_ALIGNED_CACHE; // Consumer owned: Read-observed with acquire
+  _Atomic uint32_t head BHARAT_ALIGNED_CACHE; // Producer owned: Write-published with release
+  _Atomic uint32_t tail BHARAT_ALIGNED_CACHE; // Consumer owned: Read-observed with acquire
 } BHARAT_ALIGNED_CACHE urpc_ring_t;
 
 typedef struct {
