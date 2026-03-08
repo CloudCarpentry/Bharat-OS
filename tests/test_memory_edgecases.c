@@ -64,6 +64,7 @@ int main(void) {
     // duplicate mapping to same page should be idempotent
     assert(vmm_map_page(0x1000U, 0x2000U, PAGE_USER) == 0);
     // mapping same virtual address to different physical page should fail
+    // assert(vmm_map_page(0x1000U, 0x3000U, PAGE_USER) == -2);
     assert(vmm_map_page(0x1000U, 0x3000U, PAGE_USER) == -2);
     // Unmap the valid page
     //assert(vmm_unmap_page(0x1000U) == 0);
@@ -156,4 +157,3 @@ int hal_vmm_update_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_
     return -1;
 }
 
-void mm_inc_page_ref(phys_addr_t page) { (void)page; }

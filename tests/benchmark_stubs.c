@@ -9,12 +9,12 @@ __attribute__((weak)) address_space_t* mm_create_address_space(void) {
     return &g_as;
 }
 
-phys_addr_t mm_alloc_page(uint32_t preferred_numa_node) {
+phys_addr_t __attribute__((weak)) mm_alloc_page(uint32_t preferred_numa_node) {
     (void)preferred_numa_node;
     return 0;
 }
 
-void mm_free_page(phys_addr_t page) {
+void __attribute__((weak)) mm_free_page(phys_addr_t page) {
     (void)page;
 }
 
@@ -70,11 +70,11 @@ void hal_fpu_init_thread_state(void* kthread) {
 #include "../kernel/include/hal/vmm.h"
 
 // Fallback legacy VMM bindings for tests that bypass active_mmu
-int hal_vmm_get_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t* paddr, uint32_t* flags) {
+int __attribute__((weak)) hal_vmm_get_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t* paddr, uint32_t* flags) {
     (void)root_table; (void)vaddr; (void)paddr; (void)flags;
     return -1;
 }
-int hal_vmm_update_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
+int __attribute__((weak)) hal_vmm_update_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
     (void)root_table; (void)vaddr; (void)paddr; (void)flags;
     return -1;
 }
@@ -88,7 +88,7 @@ void kfree(void* ptr) {
 }
 
 __attribute__((weak)) void mm_inc_page_ref(phys_addr_t page) { (void)page; }
-__attribute__((weak)) phys_addr_t mm_alloc_pages_order(int order, uint32_t preferred_numa_node, uint32_t flags) { (void)order; (void)preferred_numa_node; (void)flags; return 0; }
+__attribute__((weak)) phys_addr_t __attribute__((weak)) mm_alloc_pages_order(int order, uint32_t preferred_numa_node, uint32_t flags) { (void)order; (void)preferred_numa_node; (void)flags; return 0; }
 
 // Provide an active_mmu stub for testing environments where we mock out VMM hardware layer
 mmu_ops_t *active_mmu = NULL;
