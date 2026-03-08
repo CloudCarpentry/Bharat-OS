@@ -5,6 +5,7 @@
 #include "../../include/advanced/formal_verif.h"
 #include "../../include/sched.h"
 #include "../../include/capability.h"
+#include "../../include/mm_zswap.h"
 
 // @cite L4 Microkernels: The Lessons from 20 Years of Research and Implementation (Klein & Andronick, 2016)
 // L4 minimal memory mapping model: Kernel only maps/unmaps physical pages, policy lives in user space.
@@ -64,6 +65,10 @@ int mm_vmm_unmap_page(address_space_t* as, virt_addr_t vaddr) {
     }
 
     if (paddr != 0) {
+        // Only reclaim to zswap if it isn't completely free, but here unmap means we might free it.
+        // Assuming page reclaim daemon calls a function to explicitly compress. Let's just hook zswap in cow fault for uncompression.
+        // If unmapping user page, try to reclaim it (for the sake of PoC).
+        // Actually, normally the reclaim daemon does `zswap_store_page(paddr)`.
         mm_free_page(paddr);
     }
 

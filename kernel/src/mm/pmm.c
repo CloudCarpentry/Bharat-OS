@@ -23,8 +23,8 @@
 
 typedef struct {
     spinlock_t lock;
-    list_head_t free_list[MAX_ORDER];
-    size_t free_count[MAX_ORDER];
+    list_head_t free_list[MAX_ORDER][CONFIG_MM_CACHE_COLORS_DEFAULT];
+    size_t free_count[MAX_ORDER][CONFIG_MM_CACHE_COLORS_DEFAULT];
     phys_addr_t reclaim_pool[PMM_RECLAIM_BATCH];
     uint32_t reclaim_count;
 } zone_t;
@@ -69,32 +69,48 @@ static void pmm_reclaim_one_node(uint32_t node_id) {
     spin_unlock(&zone->lock);
 }
 
-static void* pmm_alloc_pages_order(int order, uint32_t numa_node) {
+static inline uint32_t get_page_color(phys_addr_t phys) {
+    return (phys / PAGE_SIZE) % CONFIG_MM_CACHE_COLORS_DEFAULT;
+}
+
+static void* pmm_alloc_pages_order_colored(int order, uint32_t numa_node, mm_color_config_t *color_config) {
     zone_t *zone = &numa_zones[numa_node];
 
     spin_lock(&zone->lock);
-    for (int level = order; level < MAX_ORDER; ++level) {
-        if (!list_empty(&zone->free_list[level])) {
-            page_t *page = list_entry(zone->free_list[level].next, page_t, list);
-            list_del(&page->list);
-            zone->free_count[level]--;
 
-            while (level > order) {
-                --level;
-                size_t offset = (1ULL << level);
-                page_t *buddy = page + offset;
-                buddy->order = level;
-                buddy->ref_count = 0;
-                buddy->flags = 0;
-                list_add(&buddy->list, &zone->free_list[level]);
-                zone->free_count[level]++;
+    int start_color = 0;
+    int end_color = CONFIG_MM_CACHE_COLORS_DEFAULT - 1;
+
+    for (int level = order; level < MAX_ORDER; ++level) {
+        for (int c = start_color; c <= end_color; ++c) {
+            if (color_config && color_config->policy != MM_COLOR_POLICY_NONE && color_config->policy != MM_COLOR_POLICY_PREFERRED) {
+                if ((color_config->color_mask & (1U << c)) == 0) continue;
             }
 
-            page->order = order;
-            page->ref_count = 1;
-            page->flags = PAGE_FLAG_KERNEL; // By default give kernel pages
-            spin_unlock(&zone->lock);
-            return (void *)(uintptr_t)page_to_phys(page);
+            if (!list_empty(&zone->free_list[level][c])) {
+                page_t *page = list_entry(zone->free_list[level][c].next, page_t, list);
+                list_del(&page->list);
+                zone->free_count[level][c]--;
+
+                while (level > order) {
+                    --level;
+                    size_t offset = (1ULL << level);
+                    page_t *buddy = page + offset;
+                    buddy->order = level;
+                    buddy->ref_count = 0;
+                    buddy->flags = 0;
+
+                    uint32_t buddy_color = get_page_color(page_to_phys(buddy));
+                    list_add(&buddy->list, &zone->free_list[level][buddy_color]);
+                    zone->free_count[level][buddy_color]++;
+                }
+
+                page->order = order;
+                page->ref_count = 1;
+                page->flags = PAGE_FLAG_KERNEL; // By default give kernel pages
+                spin_unlock(&zone->lock);
+                return (void *)(uintptr_t)page_to_phys(page);
+            }
         }
     }
     spin_unlock(&zone->lock);
@@ -102,22 +118,28 @@ static void* pmm_alloc_pages_order(int order, uint32_t numa_node) {
     pmm_reclaim_one_node(numa_node);
 
     spin_lock(&zone->lock);
-    if (!list_empty(&zone->free_list[order])) {
-        page_t *page = list_entry(zone->free_list[order].next, page_t, list);
-        list_del(&page->list);
-        zone->free_count[order]--;
-        page->order = order;
-        page->ref_count = 1;
-        page->flags = PAGE_FLAG_KERNEL;
-        spin_unlock(&zone->lock);
-        return (void *)(uintptr_t)page_to_phys(page);
+    for (int c = start_color; c <= end_color; ++c) {
+        if (color_config && color_config->policy != MM_COLOR_POLICY_NONE && color_config->policy != MM_COLOR_POLICY_PREFERRED) {
+             if ((color_config->color_mask & (1U << c)) == 0) continue;
+        }
+
+        if (!list_empty(&zone->free_list[order][c])) {
+            page_t *page = list_entry(zone->free_list[order][c].next, page_t, list);
+            list_del(&page->list);
+            zone->free_count[order][c]--;
+            page->order = order;
+            page->ref_count = 1;
+            page->flags = PAGE_FLAG_KERNEL;
+            spin_unlock(&zone->lock);
+            return (void *)(uintptr_t)page_to_phys(page);
+        }
     }
     spin_unlock(&zone->lock);
 
     return NULL;
 }
 
-phys_addr_t mm_alloc_pages_order(int order, uint32_t preferred_numa_node, uint32_t flags) {
+phys_addr_t pmm_alloc_pages_colored(int order, uint32_t preferred_numa_node, uint32_t flags, mm_color_config_t *color_config) {
     uint32_t home = preferred_numa_node;
 
     if (preferred_numa_node == NUMA_NODE_ANY || preferred_numa_node >= active_numa_nodes) {
@@ -134,7 +156,7 @@ phys_addr_t mm_alloc_pages_order(int order, uint32_t preferred_numa_node, uint32
             if (numa_nodes[node_id].free_pages < (1ULL << order)) continue;
         }
 
-        void *addr = pmm_alloc_pages_order(order, node_id);
+        void *addr = pmm_alloc_pages_order_colored(order, node_id, color_config);
         if (addr) {
             atomic64_fetch_and_sub_ptr(&numa_nodes[node_id].free_pages, (1ULL << order));
             page_t* page = phys_to_page((phys_addr_t)(uintptr_t)addr);
@@ -142,6 +164,24 @@ phys_addr_t mm_alloc_pages_order(int order, uint32_t preferred_numa_node, uint32
                 page->flags = flags;
             }
             return (phys_addr_t)(uintptr_t)addr;
+        }
+    }
+
+    // Attempt fallback for preferred policy if strict is not requested
+    if (color_config && color_config->policy == MM_COLOR_POLICY_PREFERRED) {
+        // Try allocating without color constraint
+        for (uint32_t attempt = 0; attempt < active_numa_nodes; ++attempt) {
+            uint32_t node_id = (home + attempt) % active_numa_nodes;
+            mm_color_config_t no_color_config = { .policy = MM_COLOR_POLICY_NONE, .domain = MM_DOMAIN_DEFAULT, .color_mask = 0xFFFFFFFF };
+            void *addr = pmm_alloc_pages_order_colored(order, node_id, &no_color_config);
+            if (addr) {
+                atomic64_fetch_and_sub_ptr(&numa_nodes[node_id].free_pages, (1ULL << order));
+                page_t* page = phys_to_page((phys_addr_t)(uintptr_t)addr);
+                if (page) {
+                    page->flags = flags;
+                }
+                return (phys_addr_t)(uintptr_t)addr;
+            }
         }
     }
 
@@ -153,7 +193,7 @@ phys_addr_t mm_alloc_pages_order(int order, uint32_t preferred_numa_node, uint32
     // Attempt one last time
     for (uint32_t attempt = 0; attempt < active_numa_nodes; ++attempt) {
         uint32_t node_id = (home + attempt) % active_numa_nodes;
-        void *addr = pmm_alloc_pages_order(order, node_id);
+        void *addr = pmm_alloc_pages_order_colored(order, node_id, color_config);
         if (addr) {
             atomic64_fetch_and_sub_ptr(&numa_nodes[node_id].free_pages, (1ULL << order));
             page_t* page = phys_to_page((phys_addr_t)(uintptr_t)addr);
@@ -176,6 +216,16 @@ phys_addr_t mm_alloc_pages_order(int order, uint32_t preferred_numa_node, uint32
 
     return 0;
 }
+
+phys_addr_t mm_alloc_pages_order(int order, uint32_t preferred_numa_node, uint32_t flags) {
+    kthread_t* current = sched_current_thread();
+    mm_color_config_t *color_config = NULL;
+    if (current) {
+        color_config = &current->mm_color_policy;
+    }
+    return pmm_alloc_pages_colored(order, preferred_numa_node, flags, color_config);
+}
+
 
 static void mark_page_free(phys_addr_t phys) {
     page_t *p = phys_to_page(phys);
@@ -252,8 +302,10 @@ int mm_pmm_init(void* memory_map, uint32_t map_size) {
                         zone->reclaim_count = 0U;
 
                         for (int order = 0; order < MAX_ORDER; ++order) {
-                            list_init(&zone->free_list[order]);
-                            zone->free_count[order] = 0;
+                            for (int color = 0; color < CONFIG_MM_CACHE_COLORS_DEFAULT; ++color) {
+                                list_init(&zone->free_list[order][color]);
+                                zone->free_count[order][color] = 0;
+                            }
                         }
 
                         for (size_t j = 0; j < total_pages; ++j) {
@@ -375,8 +427,9 @@ void mm_free_page(phys_addr_t page_addr) {
 
         // Check if buddy is in free list
         int found = 0;
+        uint32_t buddy_color = get_page_color(page_to_phys(buddy));
         list_head_t *pos;
-        for (pos = zone->free_list[order].next; pos != &zone->free_list[order]; pos = pos->next) {
+        for (pos = zone->free_list[order][buddy_color].next; pos != &zone->free_list[order][buddy_color]; pos = pos->next) {
             if (pos == &buddy->list) {
                 found = 1;
                 break;
@@ -387,7 +440,7 @@ void mm_free_page(phys_addr_t page_addr) {
         }
 
         list_del(&buddy->list);
-        zone->free_count[order]--;
+        zone->free_count[order][buddy_color]--;
 
         if (buddy_index < node_index) {
             page = buddy;
@@ -400,8 +453,10 @@ void mm_free_page(phys_addr_t page_addr) {
     page->order = order;
     page->ref_count = 0;
     page->flags = 0;
-    list_add(&page->list, &zone->free_list[order]);
-    zone->free_count[order]++;
+
+    uint32_t page_color = get_page_color(page_to_phys(page));
+    list_add(&page->list, &zone->free_list[order][page_color]);
+    zone->free_count[order][page_color]++;
     spin_unlock(&zone->lock);
 
     atomic64_fetch_and_add_ptr(&numa_nodes[node_id].free_pages, (1ULL << order));

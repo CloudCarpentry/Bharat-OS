@@ -121,6 +121,27 @@ int main(void) {
 #include <stdlib.h>
 #include <string.h>
 
+// Stubs for NUMA page migration dependencies
+phys_addr_t pmm_alloc_pages_colored(int order, uint32_t preferred_numa_node, uint32_t flags, mm_color_config_t *color_config) {
+    (void)order; (void)preferred_numa_node; (void)flags; (void)color_config;
+    return 0;
+}
+phys_addr_t mm_alloc_pages_order(int order, uint32_t preferred_numa_node, uint32_t flags) {
+    (void)order; (void)preferred_numa_node; (void)flags;
+    return 0;
+}
+int hal_vmm_get_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t* paddr, uint32_t* flags) {
+    (void)root_table; (void)vaddr; (void)paddr; (void)flags;
+    return -1;
+}
+int hal_vmm_update_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
+    (void)root_table; (void)vaddr; (void)paddr; (void)flags;
+    return -1;
+}
+void tlb_shootdown(virt_addr_t vaddr) {
+    (void)vaddr;
+}
+
 // Some tests were crashing on free() because thread_destroy called kcache_free on pointers that weren't allocated by kcache_alloc (like stack/global variables in tests).
 // Since these are stub tests without full memory management setup, let's just make kcache_free a no-op for tests.
 kcache_t* kcache_create(const char* name, size_t size) {
@@ -142,6 +163,3 @@ void kcache_free(kcache_t* cache, void* obj) {
 uint32_t hal_cpu_get_id(void) { return 0; }
 void hal_cpu_halt(void) { }
 
-void default_timer_isr(void) {
-    /* Mock implementation for testing trap.c generic timer tick handling */
-}
