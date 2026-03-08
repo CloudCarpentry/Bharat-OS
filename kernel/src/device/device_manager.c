@@ -147,3 +147,14 @@ int device_dispatch_irq(uint32_t irq) {
 
     return 0;
 }
+
+int device_driver_registered(device_class_t class_id, uint32_t device_id) {
+    for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_drivers); ++i) {
+        if (g_drivers[i].name != NULL &&
+            g_drivers[i].class_id == class_id &&
+            g_drivers[i].device_id == device_id) {
+            return 1;
+        }
+    }
+    return 0;
+}
