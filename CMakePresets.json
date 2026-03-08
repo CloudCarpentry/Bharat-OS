@@ -9,7 +9,7 @@
     {
       "name": "x86_64-elf-debug",
       "displayName": "x86_64 ELF Debug",
-      "generator": "Unix Makefiles",
+      "generator": "Ninja",
       "binaryDir": "${sourceDir}/build-x86_64",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
@@ -23,7 +23,7 @@
     {
       "name": "riscv64-elf-debug",
       "displayName": "riscv64 ELF Debug",
-      "generator": "Unix Makefiles",
+      "generator": "Ninja",
       "binaryDir": "${sourceDir}/build-riscv64",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
@@ -37,7 +37,7 @@
     {
       "name": "arm64-elf-debug",
       "displayName": "arm64 ELF Debug",
-      "generator": "Unix Makefiles",
+      "generator": "Ninja",
       "binaryDir": "${sourceDir}/build-arm64",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
@@ -87,7 +87,7 @@
     {
       "name": "tests-host",
       "displayName": "Host unit tests",
-      "generator": "Unix Makefiles",
+      "generator": "Ninja",
       "binaryDir": "${sourceDir}/build-tests",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
@@ -97,7 +97,7 @@
     {
       "name": "riscv64-elf-gcc-debug",
       "displayName": "riscv64 ELF Debug (GCC)",
-      "generator": "Unix Makefiles",
+      "generator": "Ninja",
       "binaryDir": "${sourceDir}/build-riscv64-gcc",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
