@@ -120,6 +120,7 @@ set(KERNEL_SRCS
     src/mm/slab.c
     src/mm/vmm.c
     src/mm/numa.c
+    src/mm/zswap.c
     src/ipc/endpoint_ipc.c
     src/capability.c
     src/ipc/multikernel.c
