@@ -1,4 +1,5 @@
 #include "hal/hal.h"
+#include "secure_boot.h"
 
 #include <stdint.h>
 
@@ -12,6 +13,20 @@
 
 static inline volatile uint32_t* pl011_reg(uintptr_t offset) {
     return (volatile uint32_t*)(PL011_BASE + offset);
+}
+
+int hal_secure_boot_arch_check(const bharat_boot_policy_t* policy) {
+    if (!policy) {
+        return -1;
+    }
+
+    if (policy->security_level == BHARAT_BOOT_SECURITY_ENFORCED) {
+#if !defined(BHARAT_PLATFORM_FDT)
+        return -2;
+#endif
+    }
+
+    return 0;
 }
 
 void hal_serial_init(void) {

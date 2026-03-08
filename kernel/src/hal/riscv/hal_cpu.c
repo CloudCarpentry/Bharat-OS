@@ -1,6 +1,7 @@
 #include "hal/hal.h"
 #include "hal/riscv_bsp.h"
 #include "advanced/ai_sched.h"
+#include "secure_boot.h"
 
 #include "../../boot/riscv/sbi.h"
 
@@ -8,6 +9,18 @@
 
 static uint64_t g_boot_hart_id;
 static uint64_t g_boot_fdt_ptr;
+
+int hal_secure_boot_arch_check(const bharat_boot_policy_t* policy) {
+    if (!policy) {
+        return -1;
+    }
+
+    if (policy->security_level == BHARAT_BOOT_SECURITY_ENFORCED && g_boot_fdt_ptr == 0U) {
+        return -2;
+    }
+
+    return 0;
+}
 
 void hal_riscv_set_boot_info(uint64_t hart_id, uint64_t fdt_ptr) {
     g_boot_hart_id = hart_id;
