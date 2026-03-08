@@ -1,5 +1,6 @@
 #include "hal/hal.h"
 #include "hal/riscv_bsp.h"
+#include "advanced/ai_sched.h"
 
 #include "../../boot/riscv/sbi.h"
 
@@ -248,4 +249,38 @@ uint32_t hal_cpu_get_id(void) {
     // Read mhartid (assuming machine mode or standard supervisor mode access via OpenSBI/SBI)
     // Here we'll just return the boot hart id for simplicity. Ideally we read sscratch or use sbi.
     return (uint32_t)g_boot_hart_id;
+}
+
+#define SCHED_MAX_THREADS 64U
+
+typedef struct {
+    uint64_t last_cycles;
+    uint64_t last_instr;
+} pmc_state_t;
+
+static pmc_state_t g_pmc_state[SCHED_MAX_THREADS] = {0};
+
+int ai_sched_arch_sample_pmc(uint32_t thread_id, ai_pmc_sample_t* out_sample) {
+    if (!out_sample) {
+        return -1;
+    }
+
+    if (thread_id >= SCHED_MAX_THREADS) {
+        return -1;
+    }
+
+    uint64_t cycles = 0;
+    uint64_t instr = 0;
+
+    __asm__ volatile("csrr %0, cycle" : "=r"(cycles));
+    __asm__ volatile("csrr %0, instret" : "=r"(instr));
+
+    out_sample->available = 1U;
+    out_sample->cycles_delta = cycles - g_pmc_state[thread_id].last_cycles;
+    out_sample->instructions_delta = instr - g_pmc_state[thread_id].last_instr;
+
+    g_pmc_state[thread_id].last_cycles = cycles;
+    g_pmc_state[thread_id].last_instr = instr;
+
+    return 0;
 }
