@@ -1,0 +1,7 @@
+#ifndef BHARAT_BOARD_QEMU_VIRT_X86_64_H
+#define BHARAT_BOARD_QEMU_VIRT_X86_64_H
+
+#define BOARD_NAME "QEMU Virt x86_64"
+#define UART_BASE 0x3F8
+
+#endif

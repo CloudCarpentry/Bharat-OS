@@ -1,6 +1,7 @@
 #ifndef BHARAT_ARCH_CAPABILITIES_H
 #define BHARAT_ARCH_CAPABILITIES_H
 
+#include <stdint.h>
 #if __has_include("bharat_config.h")
 #include "bharat_config.h"
 #endif
@@ -8,47 +9,40 @@
 /*
  * ISA Capability Layer
  * AVX2, NEON, SVE, RVV, crypto extensions.
- * Allows generic fallback + optimized dispatch.
+ * Allows generic fallback + optimized dispatch via runtime capability descriptor.
  */
 
+typedef struct {
+    uint32_t has_avx2   : 1;
+    uint32_t has_fma    : 1;
+    uint32_t has_aes    : 1;
+    uint32_t has_vector : 1;
+    uint32_t has_crypto : 1;
+} arch_capabilities_t;
+
+extern arch_capabilities_t g_arch_caps;
+
+// Call early in boot to detect features via CPUID or dtb/misa
+void arch_capabilities_init(void);
+
 static inline int arch_has_feature_avx2(void) {
-#if defined(BHARAT_ISA_FEATURE_AVX2)
-    return 1;
-#else
-    return 0;
-#endif
+    return g_arch_caps.has_avx2;
 }
 
 static inline int arch_has_feature_fma(void) {
-#if defined(BHARAT_ISA_FEATURE_FMA)
-    return 1;
-#else
-    return 0;
-#endif
+    return g_arch_caps.has_fma;
 }
 
 static inline int arch_has_feature_aes(void) {
-#if defined(BHARAT_ISA_FEATURE_AES)
-    return 1;
-#else
-    return 0;
-#endif
+    return g_arch_caps.has_aes;
 }
 
 static inline int arch_has_feature_vector(void) {
-#if defined(BHARAT_ISA_FEATURE_V)
-    return 1;
-#else
-    return 0;
-#endif
+    return g_arch_caps.has_vector;
 }
 
 static inline int arch_has_feature_crypto(void) {
-#if defined(BHARAT_ISA_FEATURE_K) || defined(BHARAT_ISA_FEATURE_ZBA) || defined(BHARAT_ISA_FEATURE_ZBB)
-    return 1;
-#else
-    return 0;
-#endif
+    return g_arch_caps.has_crypto;
 }
 
 #endif /* BHARAT_ARCH_CAPABILITIES_H */
