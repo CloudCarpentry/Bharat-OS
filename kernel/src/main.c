@@ -17,6 +17,7 @@
 #include "security/isolation.h"
 #include "security/policy.h"
 #include "power_thermal_perf.h"
+#include "subsystem_profile.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -52,6 +53,12 @@ static const char *kernel_boot_hw_profile(void) {
   return "vm";
 #elif defined(BHARAT_BOOT_HW_PROFILE_laptop)
   return "laptop";
+#elif defined(BHARAT_BOOT_HW_PROFILE_mobile)
+  return "mobile";
+#elif defined(BHARAT_BOOT_HW_PROFILE_datacenter)
+  return "datacenter";
+#elif defined(BHARAT_BOOT_HW_PROFILE_network_appliance)
+  return "network_appliance";
 #else
   return "generic";
 #endif
@@ -190,6 +197,38 @@ void kernel_main(void) {
     KPRINT("  [HAL] Initialising hardware on BSP...\n");
     hal_init();
     KPRINT("  [HAL] Ready.\n");
+
+    KPRINT("  [PROFILE] Applying hardware profile hooks...\n");
+    profile_init();
+
+    bharat_subsystems_init(profile);
+    KPRINT("  [SUBSYS] Storage subsystem profiled.\n");
+    if (bharat_storage_has(BHARAT_STORAGE_NVME)) {
+      KPRINT("    - storage: NVMe enabled\n");
+    }
+    if (bharat_storage_has(BHARAT_STORAGE_AHCI_SATA)) {
+      KPRINT("    - storage: AHCI/SATA enabled\n");
+    }
+    if (bharat_storage_has(BHARAT_STORAGE_EMMC_SD)) {
+      KPRINT("    - storage: eMMC/SD enabled\n");
+    }
+    if (bharat_storage_has(BHARAT_STORAGE_FLASH_MTD)) {
+      KPRINT("    - storage: flash/MTD enabled\n");
+    }
+    if (bharat_storage_has(BHARAT_STORAGE_RAMDISK)) {
+      KPRINT("    - storage: RAM disk enabled\n");
+    }
+
+    KPRINT("  [SUBSYS] Network subsystem profiled.\n");
+    if (bharat_network_has(BHARAT_NET_LIGHTWEIGHT_STACK)) {
+      KPRINT("    - network: lightweight embedded stack\n");
+    }
+    if (bharat_network_has(BHARAT_NET_FULL_TCPIP_STACK)) {
+      KPRINT("    - network: full TCP/IP stack\n");
+    }
+    if (bharat_network_has(BHARAT_NET_ZERO_COPY_PATH)) {
+      KPRINT("    - network: zero-copy packet path (profile-ready)\n");
+    }
 
     KPRINT("  [SEC] Running secure-boot verification...\n");
     if (bharat_secure_boot_verify_early() != 0) {

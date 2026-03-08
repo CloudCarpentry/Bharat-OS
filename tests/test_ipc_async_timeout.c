@@ -19,6 +19,11 @@ void sched_wakeup(kthread_t* thread) {
     g_wakeup_count++;
 }
 
+void sched_wakeup_with_priority(kthread_t* thread, uint32_t wakeup_priority) {
+    (void)wakeup_priority;
+    sched_wakeup(thread);
+}
+
 int main(void) {
     ipc_async_init();
 
@@ -26,9 +31,11 @@ int main(void) {
     thread.state = THREAD_STATE_BLOCKED;
 
     g_ticks = 10;
-    ipc_async_request_t* req = ipc_async_request_create(&thread, 7U, 5U);
+    ipc_async_request_t* req = ipc_async_request_create_ex(&thread, 7U, 5U, 12U, 1U);
     assert(req != NULL);
     assert(req->deadline_ticks == 15U);
+    assert(req->qos_priority == 12U);
+    assert(req->deterministic == 1U);
 
     ipc_async_check_timeouts(14U);
     assert(req->in_use == 1U);
