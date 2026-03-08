@@ -12,6 +12,10 @@
 
 typedef struct vfs_node vfs_node_t;
 
+#define VFS_OPEN_READ  0x1
+#define VFS_OPEN_WRITE 0x2
+#define VFS_OPEN_RDWR  (VFS_OPEN_READ | VFS_OPEN_WRITE)
+
 // Backing storage class for a node/mount
 typedef enum {
     VFS_BACKEND_FILESYSTEM = 0,
@@ -83,5 +87,9 @@ int vfs_register_driver(const vfs_driver_info_t* info);
 
 // Lookup a registered driver descriptor by name.
 const vfs_driver_info_t* vfs_get_driver(const char* name);
+
+#ifdef TESTING
+void vfs_test_reset_state(void);
+#endif
 
 #endif // BHARAT_VFS_H

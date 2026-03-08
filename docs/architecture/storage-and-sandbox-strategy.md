@@ -109,12 +109,29 @@ Recommended defaults:
 
 ## Suggested implementation milestones
 
+### Phase 1 (must ship first): block + POSIX filesystem baseline
+
 1. Extend VFS metadata to identify backend type (filesystem, block, blob).
-2. Add filesystem driver capability registry.
-3. Introduce sandbox filesystem policies with path-prefix rules.
-4. Implement mount namespace + mount option enforcement.
-5. Expand POSIX layer with `openat`/`statat` and errno parity tests.
-6. Add blob mount prototype with immutable object reads.
+2. Implement block-device plumbing (virtio-blk/NVMe path) with basic buffering/cache management.
+3. Ship one stable POSIX-style filesystem driver first (ext2/ext4-like or FAT-like), including mount handling.
+4. Expand POSIX layer with `openat*`/`stat*`, `read/write`, `renameat2`, link semantics, and errno parity tests.
+5. Validate desktop and edge root-FS boot/profile flows on this baseline.
+
+This phase is the minimum viable storage stack. Without a mature block path, cache behavior, and mount semantics, higher-level storage backends cannot be made reliable.
+
+### Phase 2: blob/object backend on top of VFS
+
+6. Implement `VFS_BACKEND_BLOB` as a separate mount backend (not as a replacement for block filesystems).
+7. Use namespace paths such as `/blob/remote/<provider>/<bucket>/<key>` and expose immutable read descriptors first.
+8. Stage writes via temporary objects plus commit/rename flow, but keep initial release read-mostly to reduce risk.
+9. Start with S3-compatible providers via userspace service + capability-guarded IPC (MinIO first target, then Ceph RGW/OpenIO compatibility).
+
+### Phase 3 (deferred/experimental): advanced distributed and CoW filesystems
+
+10. Keep BFS/DFS in experimental scope until Phase 1 + Phase 2 are complete and production-tested.
+11. Only then scope CoW snapshots/dedup/encryption trees and distributed replication/RDMA coordination.
+
+Rationale: BFS/DFS are multi-year efforts and should not block a bootable, testable system with a working root filesystem and pragmatic object-storage story.
 
 ## Success metrics
 

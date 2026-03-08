@@ -1,4 +1,5 @@
 #include "secure_boot.h"
+#include "security/audit.h"
 
 static const bharat_boot_policy_t g_boot_policy = {
 #if defined(BHARAT_BOOT_HW_PROFILE_rtos)
@@ -43,4 +44,12 @@ int bharat_secure_boot_verify_early(void) {
     }
 
     return hal_secure_boot_arch_check(&g_boot_policy);
+}
+
+int bharat_secure_boot_stage_hook(bharat_boot_stage_t stage, uint64_t measurement) {
+    return bharat_audit_record(BHARAT_AUDIT_EVENT_BOOT_MEASURE,
+                               0U,
+                               0,
+                               (uint64_t)stage,
+                               measurement);
 }

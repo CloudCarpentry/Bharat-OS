@@ -12,6 +12,11 @@
 #include "mm_zswap.h"
 #include "ipc_async.h"
 #include "secure_boot.h"
+#include "security/audit.h"
+#include "security/credentials.h"
+#include "security/isolation.h"
+#include "security/policy.h"
+#include "power_thermal_perf.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -190,6 +195,11 @@ void kernel_main(void) {
     if (bharat_secure_boot_verify_early() != 0) {
       kernel_panic("secure-boot verification failed");
     }
+    (void)bharat_audit_init();
+    (void)bharat_credentials_init();
+    (void)bharat_isolation_init();
+    (void)bharat_policy_init(BHARAT_POLICY_MODE_ENFORCING);
+    (void)bharat_secure_boot_stage_hook(BHARAT_BOOT_STAGE_KERNEL, 0xB4AA7001ULL);
     KPRINT("  [SEC] Secure-boot policy accepted.\n");
 
     KPRINT("  [ALGO] Initializing Capability Matrix...\n");
@@ -227,6 +237,11 @@ void kernel_main(void) {
       KPRINT("BOOT: zswap initialized\n");
     } else {
       KPRINT("BOOT: zswap skipped (fast-boot policy)\n");
+    }
+
+    KPRINT("  [PTP] Initializing power/thermal/perf manager\n");
+    if (ptp_init() != 0) {
+      kernel_panic("power/thermal/perf init failed");
     }
 
     KPRINT("  [NUMA] Discovering topology\n");

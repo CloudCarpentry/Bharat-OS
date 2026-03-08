@@ -135,6 +135,9 @@ set(KERNEL_SRCS
     src/mm/numa.c
     src/mm/zswap.c
     src/security/isolation.c
+    src/security/credentials.c
+    src/security/policy.c
+    src/security/audit.c
     src/security/secure_boot.c
     src/ipc/endpoint_ipc.c
     src/ipc/async_ipc.c
@@ -148,8 +151,11 @@ set(KERNEL_SRCS
     src/device/pci.c
     src/hal/timer_common.c
     src/hal/interrupt_common.c
+    src/power_thermal_perf.c
     src/trap/trap.c
     src/multicore.c
+    src/fs/vfs.c
+    src/fs/blob_backend.c
 )
 
 # ── Kernel ELF ──────────────────────────────────────────────────────────────
