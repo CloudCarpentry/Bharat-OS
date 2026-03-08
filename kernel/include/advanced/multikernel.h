@@ -23,6 +23,7 @@ typedef enum {
   URPC_ERR_EMPTY = -2,
   URPC_ERR_INVALID = -3,
   URPC_ERR_NO_CHANNEL = -4,
+  URPC_ERR_INVAL = -5, // To match the review suggestion
 } urpc_status_t;
 
 typedef struct {

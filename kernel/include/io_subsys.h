@@ -61,6 +61,15 @@ typedef struct {
     uint32_t msix_vector;
 } zero_copy_nic_ring_t;
 
+// Typed errors for zero-copy NIC IO mapping
+typedef enum {
+    IO_SUCCESS = 0,
+    IO_ERR_INVALID_ARG = -1,
+    IO_ERR_UNAUTHORIZED = -2,
+    IO_ERR_DEVICE_NOT_FOUND = -3,
+    IO_ERR_MAPPING_FAILED = -4,
+} io_status_t;
+
 // Maps the hardware network interface ring buffers directly to the requesting task
 // Requires CAP_RIGHT_DEVICE_GPU or a newly defined CAP_RIGHT_NETWORK_IO
 int io_setup_zero_copy_nic_ring(uint32_t nic_device_id, zero_copy_nic_ring_t* out_ring, capability_t* cap);

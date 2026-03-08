@@ -30,7 +30,7 @@ static int urpc_ring_config_valid(const urpc_ring_t* ring) {
 
 int urpc_init_ring(urpc_ring_t* ring, urpc_msg_t* buffer_ptr, uint32_t ring_size) {
     if (!ring || !buffer_ptr || ring_size < 2U) {
-        return URPC_ERR_INVALID;
+        return URPC_ERR_INVAL;
     }
 
     ring->buffer = buffer_ptr;
@@ -42,11 +42,11 @@ int urpc_init_ring(urpc_ring_t* ring, urpc_msg_t* buffer_ptr, uint32_t ring_size
 
 int urpc_send(urpc_ring_t* ring, const urpc_msg_t* msg) {
     if (!urpc_ring_config_valid(ring) || !msg) {
-        return URPC_ERR_INVALID;
+        return URPC_ERR_INVAL;
     }
 
     if (msg->payload_size > sizeof(msg->payload_data)) {
-        return URPC_ERR_INVALID;
+        return URPC_ERR_INVAL;
     }
 
     uint32_t head = ring->head;
@@ -69,7 +69,7 @@ int urpc_send(urpc_ring_t* ring, const urpc_msg_t* msg) {
 
 int urpc_receive(urpc_ring_t* ring, urpc_msg_t* out_msg) {
     if (!urpc_ring_config_valid(ring) || !out_msg) {
-        return URPC_ERR_INVALID;
+        return URPC_ERR_INVAL;
     }
 
     uint32_t tail = ring->tail;

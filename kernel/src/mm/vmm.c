@@ -86,10 +86,12 @@ int mm_vmm_unmap_page(address_space_t* as, virt_addr_t vaddr) {
         return -1;
     }
 
-    uint64_t pml4_idx = (vaddr >> 39) & 0x1FF;
-    uint64_t pdp_idx = (vaddr >> 30) & 0x1FF;
-    uint64_t pd_idx = (vaddr >> 21) & 0x1FF;
-    uint64_t pt_idx = (vaddr >> 12) & 0x1FF;
+    virt_addr_t aligned_vaddr = align_down(vaddr);
+
+    uint64_t pml4_idx = (aligned_vaddr >> 39) & 0x1FF;
+    uint64_t pdp_idx = (aligned_vaddr >> 30) & 0x1FF;
+    uint64_t pd_idx = (aligned_vaddr >> 21) & 0x1FF;
+    uint64_t pt_idx = (aligned_vaddr >> 12) & 0x1FF;
 
     pml4_t* pml4 = (pml4_t*)P2V(as->root_table);
     if ((pml4->entries[pml4_idx] & VMM_FLAG_PRESENT) == 0) return -2;
@@ -99,9 +101,15 @@ int mm_vmm_unmap_page(address_space_t* as, virt_addr_t vaddr) {
     if ((pd->entries[pd_idx] & VMM_FLAG_PRESENT) == 0) return -2;
     pt_t* pt = (pt_t*)P2V(pd->entries[pd_idx] & ~0xFFFULL);
 
+    // Decrement reference count for the physical page being unmapped
+    phys_addr_t paddr = pt->entries[pt_idx] & ~0xFFFULL;
+    if (paddr != 0) {
+        mm_free_page(paddr); // Assuming mm_free_page correctly handles ref counts
+    }
+
     pt->entries[pt_idx] = 0;
 
-    hal_tlb_flush(vaddr);
+    tlb_shootdown(aligned_vaddr);
     return 0;
 }
 
@@ -183,6 +191,13 @@ int vmm_handle_cow_fault(address_space_t* as, virt_addr_t vaddr) {
     // Decrement old page reference
     mm_free_page(old_phys);
 
-    hal_tlb_flush(vaddr);
+    tlb_shootdown(vaddr);
     return 0;
+}
+
+// TLB Shootdown stub
+// For now, this just flushes the local TLB.
+// In the future, this will use IPIs to inform other cores to flush their TLBs.
+void tlb_shootdown(virt_addr_t vaddr) {
+    hal_tlb_flush((unsigned long long)vaddr);
 }

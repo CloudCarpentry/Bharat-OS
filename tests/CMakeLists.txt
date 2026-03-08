@@ -32,8 +32,9 @@ add_executable(test_capability_ipc test_capability_ipc.c ../kernel/src/capabilit
 target_include_directories(test_capability_ipc PRIVATE ../kernel/include)
 add_test(NAME test_capability_ipc COMMAND test_capability_ipc)
 
-add_executable(test_device_framework test_device_framework.c ../kernel/src/device/device_manager.c ../kernel/src/device/builtin_drivers.c ../kernel/src/ipc/zero_copy_io.c ../kernel/src/capability.c ../kernel/src/sched_stub.c ../kernel/src/ai_sched.c)
+add_executable(test_device_framework test_device_framework.c ../kernel/src/device/device_manager.c ../kernel/src/device/builtin_drivers.c ../kernel/src/device/pci.c ../kernel/src/ipc/zero_copy_io.c ../kernel/src/capability.c ../kernel/src/sched_stub.c ../kernel/src/ai_sched.c)
 target_include_directories(test_device_framework PRIVATE ../kernel/include)
+target_compile_definitions(test_device_framework PRIVATE TESTING=1)
 add_test(NAME test_device_framework COMMAND test_device_framework)
 
 add_executable(test_multikernel_topology test_multikernel_topology.c ../kernel/src/ipc/multikernel.c ../kernel/src/mm/numa.c)
@@ -61,6 +62,6 @@ target_include_directories(test_ai_governor PRIVATE ../kernel/include)
 target_compile_definitions(test_ai_governor PRIVATE TESTING=1)
 add_test(NAME test_ai_governor COMMAND test_ai_governor)
 
-add_executable(test_ai_kernel_bridge test_ai_kernel_bridge.c ../kernel/src/ai_kernel_bridge.c ../kernel/src/sched_stub.c ../kernel/src/mm/numa.c ../kernel/src/mm/pmm.c ../kernel/src/mm/vmm.c ../kernel/src/mm/early_alloc.c ../kernel/src/hal/x86_64/hal_cpu.c)
+add_executable(test_ai_kernel_bridge test_ai_kernel_bridge.c ../kernel/src/ai_kernel_bridge.c ../kernel/src/sched_stub.c ../kernel/src/mm/numa.c ../kernel/src/mm/pmm.c ../kernel/src/mm/vmm.c ../kernel/src/mm/early_alloc.c ../kernel/src/hal/x86_64/hal_cpu.c ../kernel/src/ipc/endpoint_ipc.c ../kernel/src/ai_sched.c ../kernel/src/hal/timer_common.c ../kernel/src/capability.c)
 target_include_directories(test_ai_kernel_bridge PRIVATE ../kernel/include)
 add_test(NAME test_ai_kernel_bridge COMMAND test_ai_kernel_bridge)

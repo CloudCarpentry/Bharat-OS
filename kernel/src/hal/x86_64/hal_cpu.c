@@ -290,3 +290,10 @@ int hal_timer_source_init(uint32_t tick_hz) {
 
     return 0;
 }
+
+uint32_t hal_cpu_get_id(void) {
+    // Return Local APIC ID (using CPUID for simplicity here)
+    uint32_t ebx;
+    __asm__ volatile("cpuid" : "=b"(ebx) : "a"(1) : "ecx", "edx");
+    return ebx >> 24;
+}

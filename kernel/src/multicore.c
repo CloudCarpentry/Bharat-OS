@@ -24,3 +24,8 @@ int multicore_boot_secondary_cores(uint32_t core_count) {
 
     return 0;
 }
+void smp_init(void) {
+    // Placeholder for AP local state initialization
+    // For example: setting up CPU-local data, local APIC, IDT,
+    // scheduler run queue, TLB context, and URPC endpoints.
+}

@@ -34,3 +34,6 @@ int hal_timer_source_init(uint32_t tick_hz);
 void hal_tlb_flush(unsigned long long vaddr);
 
 #endif // BHARAT_HAL_H
+
+// Get logical CPU ID
+uint32_t hal_cpu_get_id(void);

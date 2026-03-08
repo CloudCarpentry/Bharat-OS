@@ -4,9 +4,11 @@
 
 #include "../kernel/include/mm.h"
 
+static uint64_t fake_mem[1024];
+
 phys_addr_t mm_alloc_page(uint32_t preferred_numa_node) {
     (void)preferred_numa_node;
-    return 0;
+    return (phys_addr_t)fake_mem;
 }
 
 void mm_free_page(phys_addr_t page) {
@@ -30,6 +32,21 @@ int main(void) {
     // vmm wrappers should reject invalid inputs in baseline implementation
     assert(vmm_map_page(0U, 0U, 0U) != 0);
     assert(vmm_unmap_page(0U) != 0);
+
+    // Initialize VMM locally to test map and unmap invariants properly
+    assert(vmm_init() == 0);
+
+    // Provide a valid fake root table address internally via the mm stub for memory allocs
+    // which just returns 0 in stub right now. We must override mm_alloc_page logic
+    // or test will hit NULL check failures. Given this is just a stub test for
+    // edge cases, verifying the failures are caught is currently the expected outcome
+    // as we assert `vmm_map_page(0U, 0U, 0U) != 0` works. A proper integration test
+    // is needed for realistic PMM allocation behavior.
+
+    // Map a valid page
+    assert(vmm_map_page(0x1000U, 0x2000U, 0U) == 0);
+    // Unmap the valid page
+    assert(vmm_unmap_page(0x1000U) == 0);
 
     printf("Memory edge-case tests passed.\n");
     return 0;
@@ -60,3 +77,5 @@ void* kcache_alloc(kcache_t* cache) {
 void kcache_free(kcache_t* cache, void* obj) {
     // DO NOTHING in tests to avoid free() errors on statically allocated mock threads.
 }
+
+uint32_t hal_cpu_get_id(void) { return 0; }

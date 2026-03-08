@@ -90,6 +90,7 @@ set(KERNEL_SRCS
     src/stack_protector.c
     src/device/builtin_drivers.c
     src/device/device_manager.c
+    src/device/pci.c
     src/hal/timer_common.c
     src/hal/interrupt_common.c
     src/trap/trap.c
@@ -151,6 +152,7 @@ endif()
 
 if(ARCH STREQUAL "x86_64")
     target_compile_options(kernel.elf PRIVATE
+        $<$<COMPILE_LANGUAGE:C>:-m64>
         $<$<COMPILE_LANGUAGE:C>:-mno-red-zone>
     )
     target_link_options(kernel.elf PRIVATE

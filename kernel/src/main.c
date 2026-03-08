@@ -7,7 +7,7 @@
 #include "mm.h"
 #include "numa.h"
 #include "trap.h"
-
+#include "multicore.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -172,90 +172,103 @@ void kernel_main(void) {
   KPRINT(" | |_) | | | | (_| | | | (_| | | | (_| |_____| |_| |  ___) |\n");
   KPRINT(" |____/|_| |_|\\__,_|_|  \\__,_|_|  \\__,_|      \\____| |____/ \n");
   KPRINT("\nBharat-OS kernel boot (v3.2 bring-up)\n");
-  KPRINT("  [HAL] Initialising hardware...\n");
-  hal_init();
-  KPRINT("  [HAL] Ready.\n");
 
-  KPRINT("  [MM]  Initializing PMM...\n");
+  uint32_t cpu_id = hal_cpu_get_id();
+  int is_bsp = (cpu_id == 0);
+
+  if (is_bsp) {
+    KPRINT("  [HAL] Initialising hardware on BSP...\n");
+    hal_init();
+    KPRINT("  [HAL] Ready.\n");
+
+    KPRINT("  [MM]  Initializing PMM...\n");
 
 #if defined(__x86_64__)
-  if (magic != MULTIBOOT2_BOOTLOADER_MAGIC) {
-    kernel_panic("Invalid multiboot magic");
-  }
+    if (magic != MULTIBOOT2_BOOTLOADER_MAGIC) {
+      kernel_panic("Invalid multiboot magic");
+    }
 
-  if (mm_pmm_init(mb_info, mb_info->total_size) != 0) {
-    kernel_panic("PMM initialization failed");
-  }
+    if (mm_pmm_init(mb_info, mb_info->total_size) != 0) {
+      kernel_panic("PMM initialization failed");
+    }
 #else
-  if (mm_pmm_init(NULL, 0U) != 0) {
-    kernel_panic("PMM initialization failed");
-  }
+    if (mm_pmm_init(NULL, 0U) != 0) {
+      kernel_panic("PMM initialization failed");
+    }
 #endif
-  KPRINT("BOOT: pmm initialized\n");
+    KPRINT("BOOT: pmm initialized\n");
 
-  KPRINT("  [VMM] Initializing VMM...\n");
-  if (vmm_init() != 0) {
-    kernel_panic("VMM initialization failed");
-  }
-  KPRINT("BOOT: vmm initialized\n");
+    KPRINT("  [VMM] Initializing VMM...\n");
+    if (vmm_init() != 0) {
+      kernel_panic("VMM initialization failed");
+    }
+    KPRINT("BOOT: vmm initialized\n");
 
-  KPRINT("  [NUMA] Discovering topology\n");
-  if (numa_discover_topology() != 0) {
-    kernel_panic("numa topology discovery failed");
-  }
+    KPRINT("  [NUMA] Discovering topology\n");
+    if (numa_discover_topology() != 0) {
+      kernel_panic("numa topology discovery failed");
+    }
 
-  KPRINT("  [SMP] Booting secondary cores\n");
-  if (mk_boot_secondary_cores(2U) != 0) {
-    kernel_panic("secondary core boot failed");
-  }
+    KPRINT("  [SMP] Booting secondary cores\n");
+    if (mk_boot_secondary_cores(2U) != 0) {
+      kernel_panic("secondary core boot failed");
+    }
 
-  KPRINT("  [SMP] Initializing per-core URPC channels\n");
-  if (mk_init_per_core_channels(2U, 32U) != 0) {
-    kernel_panic("per-core urpc channel init failed");
-  }
+    KPRINT("  [SMP] Initializing per-core URPC channels\n");
+    if (mk_init_per_core_channels(2U, 32U) != 0) {
+      kernel_panic("per-core urpc channel init failed");
+    }
 
-  KPRINT("  [IRQ] Initializing interrupt controller\n");
-  if (hal_interrupt_controller_init() != 0) {
-    kernel_panic("interrupt controller initialization failed");
-  }
+    KPRINT("  [IRQ] Initializing interrupt controller\n");
+    if (hal_interrupt_controller_init() != 0) {
+      kernel_panic("interrupt controller initialization failed");
+    }
 
-  KPRINT("  [TMR] Initializing timer source\n");
-  if (hal_timer_init(100U) != 0) {
-    kernel_panic("timer initialization failed");
-  }
+    KPRINT("  [TMR] Initializing timer source\n");
+    if (hal_timer_init(100U) != 0) {
+      kernel_panic("timer initialization failed");
+    }
 
-  KPRINT("  [DEV] Initializing device framework\n");
-  if (device_framework_init() != 0 || device_register_builtin_drivers() != 0) {
-    kernel_panic("device framework initialization failed");
-  }
+    KPRINT("  [DEV] Initializing device framework\n");
+    if (device_framework_init() != 0 || device_register_builtin_drivers() != 0) {
+      kernel_panic("device framework initialization failed");
+    }
 
-  kernel_boot_scheduler();
+    kernel_boot_scheduler();
 
-  KPRINT("  [TRAP] Initializing syscall/trap gate...\n");
-  if (trap_init() != 0) {
-    kernel_panic("trap gate initialization failed");
-  }
-  KPRINT("  [TRAP] Ready.\n");
+    KPRINT("  [TRAP] Initializing syscall/trap gate...\n");
+    if (trap_init() != 0) {
+      kernel_panic("trap gate initialization failed");
+    }
+    KPRINT("  [TRAP] Ready.\n");
 
-  kernel_ai_governor_init();
+    kernel_ai_governor_init();
 
-  KPRINT("  [CPU] Enabling interrupts...\n");
-  hal_cpu_enable_interrupts();
-  KPRINT("  [CPU] Interrupts enabled.\n");
+    KPRINT("  [CPU] Enabling interrupts...\n");
+    hal_cpu_enable_interrupts();
+    KPRINT("  [CPU] Interrupts enabled.\n");
 
-  kernel_phase2_hello_service_smoke();
-  KPRINT("TEST: kernel self-tests passed\n");
+    kernel_phase2_hello_service_smoke();
+    KPRINT("TEST: kernel self-tests passed\n");
 
-  hal_serial_write("[bharat] kernel_main reached\n");
-  hal_serial_write("[bharat] hw_profile=");
-  hal_serial_write(profile);
-  hal_serial_write("\n");
+    hal_serial_write("[bharat] kernel_main reached on BSP\n");
+    hal_serial_write("[bharat] hw_profile=");
+    hal_serial_write(profile);
+    hal_serial_write("\n");
 
-  while (1) {
-    kernel_ai_publish_telemetry();
-    kernel_ai_governor_tick();
-    hal_timer_tick();
-    sched_on_timer_tick();
-    hal_cpu_halt();
+    while (1) {
+      kernel_ai_publish_telemetry();
+      kernel_ai_governor_tick();
+      hal_timer_tick();
+      sched_on_timer_tick();
+      hal_cpu_halt();
+    }
+  } else {
+    // AP boot path
+    smp_init(); // Set up CPU-local data structures
+
+    while (1) {
+      hal_cpu_halt();
+    }
   }
 }
