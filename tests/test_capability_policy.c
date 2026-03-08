@@ -21,6 +21,13 @@ uint32_t hal_cpu_get_id(void) { return 0; }
 void hal_cpu_halt(void) { }
 void hal_send_ipi_payload(uint32_t target_core, uint64_t payload) { }
 
+phys_addr_t hal_vmm_init_root(void) { return 0x1000U; }
+int hal_vmm_map_page(void) { return 0; }
+void hal_vmm_unmap_page(void) {}
+void hal_vmm_setup_address_space(void) {}
+void hal_vmm_get_mapping(void) {}
+void hal_vmm_update_mapping(void) {}
+
 int main(void) {
     assert(vmm_init() == 0);
 

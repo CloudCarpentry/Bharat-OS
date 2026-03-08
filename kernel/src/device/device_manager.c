@@ -1,6 +1,7 @@
 #include "device.h"
 #include "kernel_safety.h"
 #include "mm.h"
+#include "advanced/algo_matrix.h"
 
 #include <stddef.h>
 
@@ -56,6 +57,8 @@ int device_register_mmio_window(const device_mmio_window_t* window) {
             g_windows[i].in_use = 1U;
 
             // Map physical to virtual space using VMM
+            // Only map if vmm_map_device_mmio is defined/available. For tests we mock/skip.
+            #ifndef TESTING
             uint32_t num_pages = (window->size_bytes + PAGE_SIZE - 1) / PAGE_SIZE;
             for (uint32_t p = 0; p < num_pages; p++) {
                 vmm_map_device_mmio(
@@ -65,7 +68,58 @@ int device_register_mmio_window(const device_mmio_window_t* window) {
                     0 // is_npu flag
                 );
             }
+            #endif
 
+            return 0;
+        }
+    }
+
+    return -2;
+}
+
+// Level 0: Reference generic O(N) linear search
+int device_lookup_mmio_window_l0(uint32_t class_id,
+                                 uint32_t device_id,
+                                 uint32_t window_id,
+                                 void* out_window) {
+    device_mmio_window_t* out = (device_mmio_window_t*)out_window;
+    if (!out) {
+        return -1;
+    }
+
+    for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_windows); ++i) {
+        if (g_windows[i].in_use != 0U &&
+            g_windows[i].class_id == class_id &&
+            g_windows[i].device_id == device_id &&
+            g_windows[i].window_id == window_id) {
+            *out = g_windows[i];
+            return 0;
+        }
+    }
+
+    return -2;
+}
+
+// Level 1: Optimized lookup (placeholder for an SMP-aware/hashed lookup logic)
+// In a full implementation, this might use per-class lock-free hash tables or an RCU list.
+// For PoC, we will implement it as a slightly optimized search (e.g. searching backwards or unrolling).
+int device_lookup_mmio_window_l1(uint32_t class_id,
+                                 uint32_t device_id,
+                                 uint32_t window_id,
+                                 void* out_window) {
+    device_mmio_window_t* out = (device_mmio_window_t*)out_window;
+    if (!out) {
+        return -1;
+    }
+
+    // Optimization: we could track how many are active and only scan that many,
+    // or unroll the loop. Let's do a simple reverse scan for demonstration of L1 logic.
+    for (int i = BHARAT_ARRAY_SIZE(g_windows) - 1; i >= 0; --i) {
+        if (g_windows[i].in_use != 0U &&
+            g_windows[i].class_id == class_id &&
+            g_windows[i].device_id == device_id &&
+            g_windows[i].window_id == window_id) {
+            *out = g_windows[i];
             return 0;
         }
     }
@@ -77,21 +131,11 @@ int device_lookup_mmio_window(device_class_t class_id,
                               uint32_t device_id,
                               uint32_t window_id,
                               device_mmio_window_t* out_window) {
-    if (!out_window) {
-        return -1;
+    if (g_search_ops.device_lookup_mmio_window) {
+        return g_search_ops.device_lookup_mmio_window(class_id, device_id, window_id, (void*)out_window);
     }
-
-    for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_windows); ++i) {
-        if (g_windows[i].in_use != 0U &&
-            g_windows[i].class_id == class_id &&
-            g_windows[i].device_id == device_id &&
-            g_windows[i].window_id == window_id) {
-            *out_window = g_windows[i];
-            return 0;
-        }
-    }
-
-    return -2;
+    // Fallback if matrix not initialized
+    return device_lookup_mmio_window_l0(class_id, device_id, window_id, (void*)out_window);
 }
 
 int device_dispatch_irq(uint32_t irq) {

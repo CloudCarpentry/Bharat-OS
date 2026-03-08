@@ -9,6 +9,13 @@
 #include "../kernel/include/numa.h"
 #include "../kernel/include/ipc_endpoint.h"
 
+void hal_vmm_init_root(void) {}
+int hal_vmm_map_page(void) { return 0; }
+void hal_vmm_unmap_page(void) {}
+void hal_vmm_setup_address_space(void) {}
+void hal_vmm_get_mapping(void) {}
+void hal_vmm_update_mapping(void) {}
+
 static void thread_entry(void) {}
 
 uint8_t g_per_core_stacks[32][16384];

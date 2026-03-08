@@ -2,6 +2,10 @@
 #include <stdint.h>
 #include <stdio.h>
 
+void default_timer_isr(void) {
+    // mock
+}
+
 #include "../kernel/include/capability.h"
 #include "../kernel/include/ipc_endpoint.h"
 #include "../kernel/include/trap.h"
