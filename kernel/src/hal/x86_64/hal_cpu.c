@@ -2,6 +2,13 @@
 #include "advanced/ai_sched.h"
 
 #include <stdint.h>
+#if __has_include("bharat_config.h")
+#include "bharat_config.h"
+#endif
+
+#ifndef MAX_SUPPORTED_CORES
+#define MAX_SUPPORTED_CORES 8U
+#endif
 
 // x86_64 Specific HAL Implementation
 
@@ -158,8 +165,8 @@ struct tss_entry_struct {
 
 typedef struct tss_entry_struct tss_entry_t;
 
-static tss_entry_t g_tss[64] = {0}; // Assumed MAX_SUPPORTED_CORES <= 64 for static init
-static uint8_t g_emergency_stacks[64][4096] __attribute__((aligned(16)));
+static tss_entry_t g_tss[MAX_SUPPORTED_CORES] = {0};
+static uint8_t g_emergency_stacks[MAX_SUPPORTED_CORES][4096] __attribute__((aligned(16)));
 
 extern uint8_t g_per_core_stacks[][16384];
 
@@ -267,7 +274,7 @@ void hal_init(void) {
     hal_serial_init();
 
     uint32_t core_id = hal_cpu_get_id();
-    if (core_id >= 64) core_id = 0; // Safeguard
+    if (core_id >= MAX_SUPPORTED_CORES) core_id = 0; // Safeguard
 
     // Setup GDT to include TSS
     // 0: Null
@@ -433,41 +440,10 @@ uint32_t hal_cpu_get_id(void) {
 
 #define SCHED_MAX_THREADS 64U
 
-typedef struct {
-    uint64_t last_cycles;
-    uint64_t last_instr;
-} pmc_state_t;
-
-static pmc_state_t g_pmc_state[SCHED_MAX_THREADS] = {0};
-
 int ai_sched_arch_sample_pmc(uint32_t thread_id, ai_pmc_sample_t* out_sample) {
-    if (!out_sample) {
-        return -1;
-    }
-
-    if (thread_id >= SCHED_MAX_THREADS) {
-        return -1;
-    }
-
-    uint64_t cycles = 0;
-
-    // Read rdtsc
-    uint32_t low, high;
-    __asm__ volatile("rdtsc" : "=a"(low), "=d"(high));
-    cycles = ((uint64_t)high << 32) | low;
-
-    uint64_t cycles_delta = cycles - g_pmc_state[thread_id].last_cycles;
-
-    // TODO: Program IA32_PERF_GLOBAL_CTRL and use rdpmc(1)
-    uint64_t instr_delta = cycles_delta / 2;
-
-    out_sample->available = 1U;
-    out_sample->cycles_delta = cycles_delta;
-    out_sample->instructions_delta = instr_delta;
-
-    g_pmc_state[thread_id].last_cycles = cycles;
-    // We mock instructions here
-    g_pmc_state[thread_id].last_instr += instr_delta;
-
-    return 0;
+    (void)thread_id;
+    (void)out_sample;
+    // Architecture-specific PMCs are currently un-implemented for x86_64
+    // Return an error/unsupported code (-1)
+    return -1;
 }
