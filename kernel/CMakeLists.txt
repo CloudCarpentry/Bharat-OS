@@ -104,6 +104,7 @@ set(KERNEL_SRCS
     src/ai_sched.c
     src/panic.c
     src/sched.c
+    src/algo_matrix.c
     ${ARCH_HAL}
     ${ARCH_HAL_EXTRA}
     src/mm/pmm.c
