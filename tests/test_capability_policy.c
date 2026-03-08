@@ -7,6 +7,18 @@
 #include "../kernel/include/mm.h"
 #include "../kernel/include/advanced/formal_verif.h"
 
+void ipc_async_check_timeouts(uint64_t current_ticks) {
+    (void)current_ticks;
+}
+
+int bharat_addr_token_validate(const bharat_addr_token_t* token,
+                               uint64_t request_paddr,
+                               uint64_t request_size,
+                               uint32_t request_perms) {
+    (void)token; (void)request_paddr; (void)request_size; (void)request_perms;
+    return 0;
+}
+
 // Stubs for linking
 phys_addr_t mm_alloc_page(uint32_t preferred_numa_node) {
     (void)preferred_numa_node;

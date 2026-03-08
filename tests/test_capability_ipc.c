@@ -5,6 +5,10 @@
 #include "../kernel/include/capability.h"
 #include "../kernel/include/ipc_endpoint.h"
 
+void ipc_async_check_timeouts(uint64_t current_ticks) {
+    (void)current_ticks;
+}
+
 static address_space_t g_as = { .root_table = 0x1000U };
 
 address_space_t* mm_create_address_space(void) {

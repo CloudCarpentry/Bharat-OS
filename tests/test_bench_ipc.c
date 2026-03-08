@@ -6,9 +6,15 @@
 #include "capability.h"
 #include "sched.h"
 
+#include "../kernel/include/ipc_async.h"
+
 // Mock device manager things needed for compilation
 uint32_t g_num_drivers = 0;
 uint32_t g_num_windows = 0;
+
+void ipc_async_check_timeouts(uint64_t current_ticks) {
+    (void)current_ticks;
+}
 
 void test_ipc_benchmark(void) {
     capability_table_t* table = cap_table_create();
@@ -59,14 +65,6 @@ phys_addr_t pmm_alloc_pages_colored(int order, uint32_t preferred_numa_node, uin
 phys_addr_t mm_alloc_pages_order(int order, uint32_t preferred_numa_node, uint32_t flags) {
     (void)order; (void)preferred_numa_node; (void)flags;
     return 0;
-}
-int hal_vmm_get_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t* paddr, uint32_t* flags) {
-    (void)root_table; (void)vaddr; (void)paddr; (void)flags;
-    return -1;
-}
-int hal_vmm_update_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
-    (void)root_table; (void)vaddr; (void)paddr; (void)flags;
-    return -1;
 }
 void tlb_shootdown(virt_addr_t vaddr) {
     (void)vaddr;

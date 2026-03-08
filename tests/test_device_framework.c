@@ -4,6 +4,11 @@
 
 #include "../kernel/include/device.h"
 #include "../kernel/include/io_subsys.h"
+#include "../kernel/include/ipc_async.h"
+
+void ipc_async_check_timeouts(uint64_t current_ticks) {
+    (void)current_ticks;
+}
 
 static address_space_t g_as = { .root_table = 0x1000U };
 

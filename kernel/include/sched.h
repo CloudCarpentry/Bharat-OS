@@ -121,6 +121,9 @@ int sched_sys_thread_destroy(uint64_t tid);
 void sched_inherit_priority(kthread_t* thread, uint32_t new_priority);
 void sched_restore_priority(kthread_t* thread);
 
+// Multikernel IPC integration stub
+void sched_notify_ipc_ready(uint32_t core_id, uint32_t msg_type);
+
 #ifdef Profile_RTOS
 // Tickless operation for Hard-RT OpenRAN
 void sched_disable_tick_for_core(uint32_t core_id);

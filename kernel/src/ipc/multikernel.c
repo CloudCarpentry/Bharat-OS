@@ -8,6 +8,7 @@
 // Barrelfish-inspired URPC messaging and state replication
 #include <stddef.h>
 #include <stdint.h>
+#include <stdatomic.h>
 
 #define MK_MAX_CHANNELS 16U
 #define MK_MAX_PAYLOAD_WORDS 8U
@@ -37,8 +38,8 @@ int urpc_init_ring(urpc_ring_t* ring, urpc_msg_t* buffer_ptr, uint32_t ring_size
 
     ring->buffer = buffer_ptr;
     ring->capacity = ring_size;
-    ring->head = 0U;
-    ring->tail = 0U;
+    atomic_store_explicit(&ring->head, 0U, memory_order_relaxed);
+    atomic_store_explicit(&ring->tail, 0U, memory_order_relaxed);
     return URPC_SUCCESS;
 }
 
@@ -51,16 +52,21 @@ int urpc_send(urpc_ring_t* ring, const urpc_msg_t* msg) {
         return URPC_ERR_INVAL;
     }
 
-    uint32_t head = ring->head;
+    // Producer uniquely owns head, so relaxed load is safe locally.
+    uint32_t head = atomic_load_explicit(&ring->head, memory_order_relaxed);
     uint32_t next_head = (head + 1U) % ring->capacity;
 
-    if (next_head == ring->tail) {
+    // Must acquire the tail to ensure previous consumer reads are visible before we overwrite the slot.
+    uint32_t tail = atomic_load_explicit(&ring->tail, memory_order_acquire);
+    if (next_head == tail) {
         return URPC_ERR_FULL;
     }
 
-    ring->buffer[head] = *msg;
-    smp_mb();
-    ring->head = next_head;
+    ring->buffer[head] = *msg; // Normal store; payload is not published to consumer yet.
+
+    // Publish head with release semantics. This ensures the payload store is visible
+    // to the consumer when they acquire this new head value.
+    atomic_store_explicit(&ring->head, next_head, memory_order_release);
 
     if (msg->payload_size <= sizeof(uint64_t)) {
         hal_send_ipi_payload(0U, msg->payload_data[0]);
@@ -74,14 +80,22 @@ int urpc_receive(urpc_ring_t* ring, urpc_msg_t* out_msg) {
         return URPC_ERR_INVAL;
     }
 
-    uint32_t tail = ring->tail;
-    if (tail == ring->head) {
+    // Consumer uniquely owns tail, relaxed load is safe locally.
+    uint32_t tail = atomic_load_explicit(&ring->tail, memory_order_relaxed);
+
+    // Must acquire head to ensure the producer's payload writes are visible to us.
+    uint32_t head = atomic_load_explicit(&ring->head, memory_order_acquire);
+
+    if (tail == head) {
         return URPC_ERR_EMPTY;
     }
 
-    smp_mb();
-    *out_msg = ring->buffer[tail];
-    ring->tail = (tail + 1U) % ring->capacity;
+    *out_msg = ring->buffer[tail]; // Normal read; safely visible due to the acquire above.
+    uint32_t next_tail = (tail + 1U) % ring->capacity;
+
+    // Publish tail with release semantics. This ensures our payload read is complete
+    // before the producer can see this new tail and overwrite the slot.
+    atomic_store_explicit(&ring->tail, next_tail, memory_order_release);
 
     return URPC_SUCCESS;
 }
@@ -213,22 +227,34 @@ int mk_send_message(mk_channel_t *channel, uint32_t msg_type, void *payload,
     return urpc_send(channel->urpc_ring, &msg);
 }
 
-int mk_poll_messages(mk_channel_t *channel) {
+// Drains the incoming message queue, hands messages to IPC/dispatch path,
+// and triggers scheduler wakeups if a waiter exists.
+// This is the intended delivery mechanism for Phase 2/3, designed to be called
+// from an interrupt-driven (IPI) context rather than relying purely on polling.
+int mk_ipc_deliver_from_channel(mk_channel_t *channel) {
     if (!channel || !channel->urpc_ring) {
         return URPC_ERR_INVALID;
     }
 
     int processed = 0;
     urpc_msg_t msg;
+
     while (urpc_receive(channel->urpc_ring, &msg) == URPC_SUCCESS) {
-        (void)msg;
         if (msg.msg_type == MK_MSG_TYPE_AI_SUGGESTION) {
             /* Scheduler control-plane hook placeholder. */
+        } else {
+            // Notify scheduler of IPC readiness / wake up waiting thread
+            sched_notify_ipc_ready(channel->receiver_core_id, msg.msg_type);
         }
         ++processed;
     }
 
     return processed;
+}
+
+int mk_poll_messages(mk_channel_t *channel) {
+    // Polling fallback path for environments without robust IPI receiver hooks.
+    return mk_ipc_deliver_from_channel(channel);
 }
 
 int mk_msg_pool_init(mk_msg_pool_t* pool, mk_message_slot_t* slots, uint32_t capacity) {

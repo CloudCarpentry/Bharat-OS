@@ -4,6 +4,10 @@
 
 #include "../kernel/include/trap.h"
 
+void ipc_async_check_timeouts(uint64_t current_ticks) {
+    (void)current_ticks;
+}
+
 void default_timer_isr(void) {
     // Stub for host-level tests
 }

@@ -6,7 +6,7 @@
 #include "advanced/formal_verif.h"
 #include "hal/hal.h"
 #include "advanced/algo_matrix.h"
-#include "../../include/ipc_async.h"
+#include "../include/ipc_async.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -698,6 +698,14 @@ int sched_enqueue_ai_suggestion(const ai_suggestion_t* suggestion) {
     g_pending_suggestions.queue[g_pending_suggestions.head] = *suggestion;
     g_pending_suggestions.head = next;
     return 0;
+}
+
+// Multikernel IPC integration stub
+void sched_notify_ipc_ready(uint32_t core_id, uint32_t msg_type) {
+    (void)core_id;
+    (void)msg_type;
+    // TODO: In Phase 2/3, this hook will map incoming messages to waiting threads
+    // and trigger sched_wakeup() or IPI wakeups for specific thread runqueues.
 }
 
 #ifdef Profile_RTOS
