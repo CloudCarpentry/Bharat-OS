@@ -11,6 +11,10 @@ static capability_table_t g_cap_tables[MAX_CAP_TABLES];
 static uint8_t g_cap_tables_used[MAX_CAP_TABLES];
 
 
+/*@
+  assigns \nothing;
+  ensures \result == 0 || \result == 1;
+*/
 static int cap_rights_valid(cap_object_type_t type, uint32_t rights) {
     switch (type) {
     case CAP_OBJ_ENDPOINT:
@@ -26,11 +30,22 @@ static int cap_rights_valid(cap_object_type_t type, uint32_t rights) {
     }
 }
 
+/*@
+  requires table != \null;
+  requires \valid(table);
+  assigns \nothing;
+  ensures \result == \null || \valid(\result);
+*/
 static capability_entry_t* cap_find_entry(capability_table_t* table, uint32_t cap_id) {
     if (!BHARAT_PTR_NON_NULL(table) || cap_id == 0U) {
         return NULL;
     }
 
+    /*@
+      loop invariant 0 <= i <= BHARAT_ARRAY_SIZE(table->entries);
+      loop assigns i;
+      loop variant BHARAT_ARRAY_SIZE(table->entries) - i;
+    */
     for (size_t i = 0; i < BHARAT_ARRAY_SIZE(table->entries); ++i) {
         capability_entry_t* e = &table->entries[i];
         if (e->in_use != 0U && e->id == cap_id) {
@@ -41,11 +56,21 @@ static capability_entry_t* cap_find_entry(capability_table_t* table, uint32_t ca
 }
 
 capability_table_t* cap_table_create(void) {
+    /*@
+      loop invariant 0 <= i <= BHARAT_ARRAY_SIZE(g_cap_tables);
+      loop assigns i, g_cap_tables_used[0..MAX_CAP_TABLES-1], g_cap_tables[0..MAX_CAP_TABLES-1];
+      loop variant BHARAT_ARRAY_SIZE(g_cap_tables) - i;
+    */
     for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_cap_tables); ++i) {
         if (g_cap_tables_used[i] == 0U) {
             g_cap_tables_used[i] = 1U;
             capability_table_t* t = &g_cap_tables[i];
             t->next_id = 1U;
+            /*@
+              loop invariant 0 <= j <= BHARAT_ARRAY_SIZE(t->entries);
+              loop assigns j, t->entries[0..BHARAT_ARRAY_SIZE(t->entries)-1].in_use;
+              loop variant BHARAT_ARRAY_SIZE(t->entries) - j;
+            */
             for (size_t j = 0; j < BHARAT_ARRAY_SIZE(t->entries); ++j) {
                 t->entries[j].in_use = 0U;
             }
@@ -83,6 +108,14 @@ int cap_table_grant(capability_table_t* table,
         return -3;
     }
 
+    uint32_t found_id = 0;
+    int ret = -2;
+
+    /*@
+      loop invariant 0 <= i <= BHARAT_ARRAY_SIZE(table->entries);
+      loop assigns i, table->entries[0..BHARAT_ARRAY_SIZE(table->entries)-1], table->next_id, found_id, ret;
+      loop variant BHARAT_ARRAY_SIZE(table->entries) - i;
+    */
     for (size_t i = 0; i < BHARAT_ARRAY_SIZE(table->entries); ++i) {
         capability_entry_t* e = &table->entries[i];
         if (e->in_use == 0U) {
@@ -91,14 +124,17 @@ int cap_table_grant(capability_table_t* table,
             e->type = type;
             e->rights = rights;
             e->object_ref = object_ref;
-            if (out_cap_id) {
-                *out_cap_id = e->id;
-            }
-            return 0;
+            found_id = e->id;
+            ret = 0;
+            break;
         }
     }
 
-    return -2;
+    if (ret == 0 && out_cap_id) {
+        *out_cap_id = found_id;
+    }
+
+    return ret;
 }
 
 int cap_table_lookup(const capability_table_t* table,
@@ -110,23 +146,36 @@ int cap_table_lookup(const capability_table_t* table,
         return -1;
     }
 
+    capability_entry_t found_entry = {0};
+    int ret = -4;
+
+    /*@
+      loop invariant 0 <= i <= BHARAT_ARRAY_SIZE(table->entries);
+      loop assigns i, found_entry, ret;
+      loop variant BHARAT_ARRAY_SIZE(table->entries) - i;
+    */
     for (size_t i = 0; i < BHARAT_ARRAY_SIZE(table->entries); ++i) {
         const capability_entry_t* e = &table->entries[i];
         if (e->in_use != 0U && e->id == cap_id) {
             if (required_type != CAP_OBJ_NONE && e->type != required_type) {
-                return -2;
+                ret = -2;
+                break;
             }
             if ((e->rights & required_rights) != required_rights) {
-                return -3;
+                ret = -3;
+                break;
             }
-            if (out_entry) {
-                *out_entry = *e;
-            }
-            return 0;
+            found_entry = *e;
+            ret = 0;
+            break;
         }
     }
 
-    return -4;
+    if (ret == 0 && out_entry) {
+        *out_entry = found_entry;
+    }
+
+    return ret;
 }
 
 int cap_table_delegate(capability_table_t* src,
