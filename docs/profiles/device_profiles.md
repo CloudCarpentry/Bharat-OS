@@ -2,6 +2,18 @@
 
 Bharat-OS supports multiple interaction models and required subsystems based on the specific device class. Instead of forcing a one-size-fits-all binary, we define these device profiles. Each profile establishes the base functionality required, ensuring optimal performance for its given domain.
 
+## Hardware MMU Quirks & Capabilities
+
+The following capabilities are mapped via `mmu_ops_t` and `boards.json` to configure the hardware memory management unit appropriately for each profile:
+* **`mmu_mode`**: Selects the specific translation format (e.g., `4_level_or_la57` for x86, `vmsav8_64` for ARM64, `sv39` for RISC-V).
+* **`granule`**: The baseline page size (usually `4k`, but ARM64 can support `16k` or `64k`).
+* **`has_iommu`**: Indicates whether an IOMMU is available for DMA isolation.
+* **`quirks`**: Board-specific deviations. Common quirks include:
+  * `coherent_dma`: Indicates whether the DMA controller is cache-coherent (if missing, software cache maintenance is required).
+  * `svpbmt_optional`: For RISC-V, indicates whether Page-Based Memory Types might be available.
+  * `rtos_strict`: Forces the OS to disable demand paging and pre-allocate all memory to guarantee deterministic latency.
+  * `no_mmu`: Indicates the device only has an MPU (e.g. Cortex-M).
+
 ## Headless Edge Device (`HEADLESS_EDGE_DEVICE`)
 Typically applies to network routers, gateways, server-like appliances, and remote compute nodes.
 

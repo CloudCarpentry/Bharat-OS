@@ -114,6 +114,7 @@ endif()
 # ── Core kernel sources ──────────────────────────────────────────────────────
 set(KERNEL_SRCS
     ${BOOT_SRC}
+    src/hal/arm32_mpu_vmm_mock.c
     src/main.c
     src/trace/trace.c
     src/arch/capabilities.c
@@ -126,6 +127,7 @@ set(KERNEL_SRCS
     src/algo_matrix.c
     ${ARCH_HAL}
     ${ARCH_HAL_EXTRA}
+    src/hal/mmu_init.c
     src/mm/pmm.c
     src/mm/early_alloc.c
     src/mm/slab.c

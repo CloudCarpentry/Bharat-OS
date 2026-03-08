@@ -1,4 +1,5 @@
 #include "../../../include/hal/vmm.h"
+#include "../../../include/hal/mmu_ops.h"
 #include "../../../include/numa.h"
 
 // Define direct map macros for early initialization.
@@ -151,6 +152,165 @@ int hal_vmm_map_page(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t padd
     pte->entries[pte_idx] = aligned_paddr | ARM64_MMU_DESCRIPTOR_PAGE | mmu_flags;
 
     return 0;
+}
+
+// -----------------------------------------------------------------------------
+// mmu_ops_t Wrapper implementations
+// -----------------------------------------------------------------------------
+
+static phys_addr_t arm64_mmu_create_table(void) {
+    return hal_vmm_init_root();
+}
+
+static void arm64_mmu_destroy_table(phys_addr_t root) {
+    if (root) {
+        mm_free_page(root);
+    }
+}
+
+static phys_addr_t arm64_mmu_clone_kernel(phys_addr_t kernel_root) {
+    return hal_vmm_setup_address_space(kernel_root);
+}
+
+// Translate generic mmu_flags_t to ARM64-specific VMM flags
+static uint32_t flags_to_arm64(mmu_flags_t f) {
+    uint32_t flags = 0;
+    if (f & MMU_WRITE)   flags |= CAP_RIGHT_WRITE;
+    if (f & MMU_USER)    flags |= PAGE_USER;
+    if (f & MMU_COW)     flags |= PAGE_COW;
+    return flags;
+}
+
+// Translate ARM64-specific VMM flags to generic mmu_flags_t
+static mmu_flags_t arm64_to_flags(uint32_t flags) {
+    mmu_flags_t f = MMU_READ;
+    if (flags & CAP_RIGHT_WRITE) f |= MMU_WRITE;
+    if (flags & PAGE_USER)       f |= MMU_USER;
+    if (flags & PAGE_COW)        f |= MMU_COW;
+    return f;
+}
+
+static int arm64_mmu_map(phys_addr_t root, virt_addr_t virt, phys_addr_t phys,
+                         size_t size, mmu_flags_t flags) {
+    size_t mapped = 0;
+    while (mapped < size) {
+        int ret = hal_vmm_map_page(root, virt + mapped, phys + mapped, flags_to_arm64(flags));
+        if (ret < 0) return ret;
+        mapped += PAGE_SIZE;
+    }
+    return 0;
+}
+
+static int arm64_mmu_unmap(phys_addr_t root, virt_addr_t virt, size_t size, phys_addr_t *unmapped_phys) {
+    size_t unmapped = 0;
+    phys_addr_t first_phys = 0;
+
+    while (unmapped < size) {
+        phys_addr_t phys = 0;
+        int ret = hal_vmm_unmap_page(root, virt + unmapped, &phys);
+        if (ret < 0) return ret;
+        if (unmapped == 0) first_phys = phys;
+        unmapped += PAGE_SIZE;
+    }
+
+    if (unmapped_phys) {
+        *unmapped_phys = first_phys;
+    }
+    return 0;
+}
+
+static int arm64_mmu_protect(phys_addr_t root, virt_addr_t virt, size_t size, mmu_flags_t new_flags) {
+    size_t updated = 0;
+    while (updated < size) {
+        phys_addr_t phys = 0;
+        uint32_t old_flags = 0;
+        int ret = hal_vmm_get_mapping(root, virt + updated, &phys, &old_flags);
+        if (ret == 0 && phys != 0) {
+            hal_vmm_update_mapping(root, virt + updated, phys, flags_to_arm64(new_flags));
+        }
+        updated += PAGE_SIZE;
+    }
+    return 0;
+}
+
+static int arm64_mmu_query(phys_addr_t root, virt_addr_t virt, phys_addr_t *phys_out, mmu_flags_t *flags_out) {
+    uint32_t arm64_flags = 0;
+    int ret = hal_vmm_get_mapping(root, virt, phys_out, &arm64_flags);
+    if (ret == 0 && flags_out) {
+        *flags_out = arm64_to_flags(arm64_flags);
+    }
+    return ret;
+}
+
+static void arm64_mmu_activate(phys_addr_t root) {
+    // For VMSAv8-64 TTBR0 is used for user space mappings and TTBR1 for kernel space.
+    // This wrapper assumes activating a single root table in TTBR0 for now, mirroring old behavior.
+    asm volatile(
+        "msr ttbr0_el1, %0\n"
+        "isb\n"
+        "tlbi vmalle1is\n"
+        "dsb ish\n"
+        "isb\n"
+        :: "r"((uintptr_t)root)
+    );
+}
+
+static void arm64_mmu_deactivate(void) {
+    // Usually means clearing TTBR0_EL1
+}
+
+static void arm64_mmu_tlb_flush_page(virt_addr_t virt) {
+    asm volatile(
+        "tlbi vale1is, %0\n"
+        "dsb ish\n"
+        "isb\n"
+        :: "r"(virt >> 12)
+    );
+}
+
+static void arm64_mmu_tlb_flush_all(void) {
+    asm volatile(
+        "tlbi vmalle1is\n"
+        "dsb ish\n"
+        "isb\n"
+    );
+}
+
+static void arm64_mmu_tlb_flush_asid(uint16_t asid) {
+    asm volatile(
+        "tlbi aside1is, %0\n"
+        "dsb ish\n"
+        :: "r"((uint64_t)asid << 48)
+    );
+}
+
+static size_t arm64_huge_pages[] = {0x200000, 0x40000000, 0}; // 2MB, 1GB
+
+mmu_ops_t arm64_mmu_ops = {
+    .create_table     = arm64_mmu_create_table,
+    .destroy_table    = arm64_mmu_destroy_table,
+    .clone_kernel     = arm64_mmu_clone_kernel,
+    .map              = arm64_mmu_map,
+    .unmap            = arm64_mmu_unmap,
+    .protect          = arm64_mmu_protect,
+    .query            = arm64_mmu_query,
+    .activate         = arm64_mmu_activate,
+    .deactivate       = arm64_mmu_deactivate,
+    .tlb_flush_page   = arm64_mmu_tlb_flush_page,
+    .tlb_flush_all    = arm64_mmu_tlb_flush_all,
+    .tlb_flush_asid   = arm64_mmu_tlb_flush_asid,
+
+    .page_size        = 4096,
+    .huge_page_sizes  = arm64_huge_pages,
+    .levels           = 4, // Assuming 4KB granule, 48-bit PA
+    .has_nx           = true,
+    .asid_bits        = 16, // Typical for ARMv8
+    .has_user_kernel_split = true, // TTBR0 vs TTBR1
+};
+
+void arm64_mmu_detect(mmu_ops_t *ops) {
+    // Stub for runtime detection (e.g. read id_aa64mmfr0_el1)
+    (void)ops;
 }
 
 int hal_vmm_unmap_page(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t* unmapped_paddr) {
