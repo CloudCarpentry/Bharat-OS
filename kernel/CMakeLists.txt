@@ -8,6 +8,31 @@ set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 # See BUILD.md for exact commands for each platform.
 
 include_directories(include)
+include_directories(include/generated)
+
+# ── Configuration Header ────────────────────────────────────────────────────
+# These variables are normally set in the root CMakeLists.txt. 
+# For kernel-only builds, we provide defaults if not set.
+if(NOT BHARAT_ARCH_X86)
+    set(BHARAT_ARCH_X86 1)
+endif()
+if(NOT BHARAT_ARCH_64BIT)
+    set(BHARAT_ARCH_64BIT 1)
+endif()
+if(NOT BHARAT_ARCH_VARIANT_GENERIC)
+    set(BHARAT_ARCH_VARIANT_GENERIC 1)
+endif()
+if(NOT BHARAT_PROFILE_DESKTOP)
+    set(BHARAT_PROFILE_DESKTOP 1)
+endif()
+if(NOT BHARAT_PERSONALITY_NONE)
+    set(BHARAT_PERSONALITY_NONE 1)
+endif()
+
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/bharat_config.h.in
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/generated/bharat_config.h
+)
 
 option(BHARAT_BOOT_GUI "Enable boot-time GUI handoff metadata" ON)
 set(BHARAT_BOOT_HW_PROFILE "generic" CACHE STRING "Boot hardware profile (generic, desktop, server, vm, laptop)")

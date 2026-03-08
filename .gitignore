@@ -1,7 +1,8 @@
 # Build directories
-build/
+build*/
 out/
 bin/
+kernel/include/generated/
 
 # Object files and libraries
 *.o
