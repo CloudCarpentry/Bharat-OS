@@ -12,27 +12,28 @@
 
 ---
 
-Bharat-OS is a next-generation distributed microkernel designed to scale across the entire computing spectrum—from **low-power edge devices** (watches, drones, robots) to **high-performance data centers**. It features a hardware-agnostic design with native support for indigenous architectures like **Shakti (RISC-V)**.
+Bharat-OS is a capability-oriented microkernel project with a multikernel direction. The repository currently delivers a **bootable and testable kernel baseline** plus architecture documentation for deferred and experimental tracks.
 
-## 🏗️ Architecture: Distributed & Scalable
+## Project status at a glance
 
-The kernel utilizes a "Multikernel" approach where different CPU cores or networked devices can operate as independent nodes while sharing a global resource view.
+| Area | Current status | Notes |
+| --- | --- | --- |
+| Capability model and IPC baseline | Implemented baseline | Capability tables, delegated rights checks, endpoint IPC + URPC scaffolding. |
+| Memory management | Partial baseline | PMM/buddy allocator and VMM mapping registry exist; full hardware page-table manager remains deferred. |
+| Scheduler and AI hook points | Implemented baseline | Timer-driven scheduler path with bounded AI suggestion ingestion/processing; full SMP runqueues/context switching remain deferred. |
+| Driver and HAL model | Implemented baseline | HAL contracts and driver framework scaffolding exist across x86_64, riscv64, arm64. |
+| Distributed/multikernel scale-out | Early baseline | Per-core URPC matrix and multicore bootstrap hooks exist; production-grade topology and transport tuning are deferred. |
 
-```mermaid
-graph TD
-    subgraph "Edge Device (e.g., Watch/Drone)"
-        A[Tier A: Base Microkernel] --> B[HAL: ARM32/RISC-V]
-        A --> C[Minimal PMM/VMM]
-    end
+For architecture-level details and deferred boundaries, see `docs/architecture/` and ADRs in `docs/decisions/`.
 
-    subgraph "Distributed Cluster / Data Center"
-        D[Tier B/C: Advanced Services] --> E[HAL: x86_64/ARM64]
-        D --> F[Distributed Shared Memory - DSM]
-        D --> G[RDMA / Cluster Bus]
-    end
+## Device Profiles & Use-cases
 
-    A <-- "Multikernel IPC" --> D
+Bharat-OS targets multiple deployment classes. These profiles describe **how the current baseline maps to real devices today**, and what is planned next:
 
+- **Mobile / Wearables (EDGE profile):** capability isolation, bounded footprint, and power-aware scheduling hooks are available now; production-grade power control policy is roadmap.
+- **Robotics / Drones (EDGE + RTOS-leaning):** deterministic IPC pathways and architecture portability are present; stronger real-time admission and fault-containment depth are roadmap.
+- **Network appliances / Edge gateways:** capability-mediated driver boundaries and multikernel messaging baseline are present; mature data-plane acceleration is roadmap.
+- **Data-center / clustered nodes:** NUMA/multicore scaffolding and URPC primitives are present; full distributed scheduling and high-scale service orchestration are roadmap.
 ```
 
 ### Key Technical Pillars
@@ -83,81 +84,78 @@ Bharat-OS is intentionally profile-driven instead of forcing one heavyweight ima
 
 ## 🧠 AI-Driven Resource Management
 
-Bharat-OS integrates AI directly into the kernel's decision-making process for power and compute efficiency, crucial for small devices.
+Detailed mapping is documented in [`docs/architecture/device-profiles-and-use-cases.md`](docs/architecture/device-profiles-and-use-cases.md).
 
-```mermaid
-sequenceDiagram
-    participant HW as Hardware (Sensors/Power)
-    participant AG as AI Governor (Subsystem)
-    participant AS as AI Scheduler (Kernel)
+## AI Features & Roadmap
 
-    HW->>AG: Power/Thermal Metrics
-    AG->>AS: Predict Optimal Profile
-    AS->>HW: Adjust Core Frequency / Task Migration
+Bharat-OS keeps AI policy outside ring-0 while exposing bounded kernel mechanisms:
 
-```
+### Implemented baseline
 
-* **AI Governor:** Monitors thermal and power metrics to extend battery life on wearables and drones.
-* **Predictive Scheduling:** Uses statistical models to predict task bursts and migrate workloads across the distributed cluster to prevent hot-spotting.
+- Kernel-side telemetry collection hooks and bounded AI suggestion queueing.
+- Scheduler action handling for migrate/priority/throttle suggestion types.
+- Capability-guarded governor control-plane endpoint.
+- Architecture/profile-neutral telemetry plugin contract (with fallback behavior when PMCs are unavailable).
 
----
+### Roadmap
 
-## 🛠️ Semiconductor & Board Support
+- Better telemetry quality (hardware PMC integrations per architecture).
+- Per-core runqueues + richer migration policy under SMP load.
+- Safety/verification hardening for AI-driven scheduling decisions.
+- Clearer user-space governor lifecycle, observability, and audit reporting.
 
-The kernel is optimized for various form factors and architectures:
+See [`docs/architecture/ai-scheduler-status-and-roadmap.md`](docs/architecture/ai-scheduler-status-and-roadmap.md) and [`docs/decisions/ADR-008-ai-scheduler-plugin-contract.md`](docs/decisions/ADR-008-ai-scheduler-plugin-contract.md).
 
-* **Shakti (RISC-V 32/64):** Specialized BSP for Indian-designed RISC-V processors.
-* **ARM (Mobile/Edge):** Support for Raspberry Pi and generic ARMv8-A platforms.
-* **Accelerator Support:** Native HAL headers for **NPU** and **GPU** offloading.
+## Core architecture themes
 
----
+- **Capability-based security:** object rights, delegation constraints, and explicit authority checks.
+- **Microkernel layering:** small kernel core with user-space policy and service growth path.
+- **Multikernel direction:** explicit messaging-oriented coordination across cores and eventually nodes.
+- **Profile-aware composition:** RTOS/EDGE/DESKTOP profile tuning with bounded kernel mechanisms.
 
-## 🚀 Getting Started
+## Build quick start
 
 ### Prerequisites
 
-* `cmake` (3.20+)
-* Cross-compilers: `gcc-arm-none-eabi`, `gcc-riscv64-unknown-elf`, or `clang` / `lld` (for bare-metal cross-compilation).
+- `cmake` (3.20+)
+- A supported cross toolchain such as:
+  - `riscv64-unknown-elf-*`
+  - `aarch64-none-elf-*`
+  - `x86_64-elf-*`
 
-### Build for Shakti RISC-V
+### Build examples
 
 ```bash
-# Build the bare-metal kernel image
+# RISC-V
 ./tools/build.sh riscv64
 
-# Alternatively, run on RISC-V QEMU with specific hardware (e.g. sifive_u)
-./tools/build.sh riscv64 --machine=sifive_u --run
-```
-
-### Build for ARM64 (Edge/Mobile)
-
-```bash
-# Compile ARM64 kernel
+# ARM64
 ./tools/build.sh arm64
-```
 
-### Build for x86_64 (Servers/Desktops)
-```bash
-# Build and run x86_64 kernel in QEMU
+# x86_64 (optionally run in QEMU)
 ./tools/build.sh x86_64 --run
 ```
-*(Note: Windows users can utilize the `.\tools\build.ps1` script instead)*
 
----
+Windows users can use `tools/build.ps1`.
 
-## 📂 Project Structure
+## Repository layout
 
-* `/kernel`: Core microkernel (Memory, IPC, AI Scheduler, HAL).
-* `/subsys`: Advanced layers like the **AI Governor** and user-space server compatibility stubs.
-* `/lib`: Shared userspace libraries.
-* `/tests`: Standalone C unit tests and host-based harness.
-* `/tools`: Build helper scripts, test wrappers, and QEMU configuration tools.
-* `/docs`: Architecture Decision Records (ADRs) and design documentation.
+- `kernel/` — microkernel core (MM, IPC, scheduler, HAL, capability system).
+- `subsys/` — subsystem services (including AI governor bridge layer).
+- `lib/` — shared user-space facing library surfaces.
+- `tests/` — host-based tests for kernel/runtime components.
+- `docs/` — architecture docs, ADRs, and implementation reviews.
 
-**Interested in contributing?** See [CONTRIBUTING.md](./CONTRIBUTING.md) for details on our capability-based security model or AI-native design.
+## Research references
 
-## Research & References
+This project aligns with established systems research and uses those works as design guidance:
 
+- Barrelfish multikernel model (messaging-first multicore OS design).
+- seL4 capability model and verification-oriented discipline.
+- L4-family microkernel separation and minimal trusted core concepts.
+- AI-assisted resource management literature (policy guidance in user space, bounded kernel enforcement).
+
+These references are informational guidance for architecture direction, not claims of feature parity.
 Bharat-OS draws inspiration from and builds upon research in AI-driven systems and microkernel architectures.
 
 ### Research Inspirations
