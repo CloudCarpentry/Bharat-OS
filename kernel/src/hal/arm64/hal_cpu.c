@@ -132,13 +132,11 @@ void hal_send_ipi_payload(uint32_t target_core, uint64_t payload) {
 
 // --- Trap / Interrupt Handling ---
 
-extern void vector_table_el1(void); // Defined in assembly, or we define a simple dummy one
-static uint8_t dummy_vector_table[2048] __attribute__((aligned(2048)));
+extern void vector_table_el1(void); // Defined in trap_entry.S
 
 void hal_init(void) {
     // Set Vector Base Address Register (VBAR_EL1)
-    // For now, point to a dummy aligned table if we don't have the real assembly one linked
-    __asm__ volatile("msr vbar_el1, %0" : : "r"((uint64_t)&dummy_vector_table));
+    __asm__ volatile("msr vbar_el1, %0" : : "r"((uint64_t)&vector_table_el1));
 
     // Configure MMU (TCR_EL1, MAIR_EL1)
     hal_serial_init();

@@ -172,7 +172,7 @@ static void parse_fdt(uint64_t fdt_ptr, riscv_bsp_config_t* cfg) {
             }
 
             depth--;
-            if (depth == 0) break;
+            if (depth <= 0) break;
         } else if (tag == FDT_PROP) {
             uint32_t len = fdt32_to_cpu(*p++);
             uint32_t nameoff = fdt32_to_cpu(*p++);
