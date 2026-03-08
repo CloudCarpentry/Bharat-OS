@@ -14,6 +14,10 @@ phys_addr_t __attribute__((weak)) mm_alloc_page(uint32_t preferred_numa_node) {
     return 0;
 }
 
+__attribute__((weak)) void cap_table_destroy(void* table) {
+    (void)table;
+}
+
 void __attribute__((weak)) mm_free_page(phys_addr_t page) {
     (void)page;
 }

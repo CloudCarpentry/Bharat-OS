@@ -58,9 +58,6 @@ struct kthread {
     uint64_t thread_id;
     uint64_t process_id;
 
-    // Personality type for ABI compatibility
-    personality_type_t personality;
-
     // CPU Architectural Context (Registers)
     void* cpu_context;
 
@@ -73,6 +70,9 @@ struct kthread {
     // Priority Inheritance (Hard-RT / OpenRAN profile)
     uint32_t base_priority;
     void* waiting_on_lock; // Mutex the thread is waiting for
+
+    // Personality tagging for subsystems (e.g., Linux, Android, Windows)
+    personality_type_t personality;
 
     // Capability and accounting metadata
     void* capability_list;
@@ -104,6 +104,7 @@ void sched_init(void);
 
 // Create process and main thread
 kprocess_t* process_create(const char* name);
+int process_destroy(kprocess_t* process);
 kthread_t* thread_create(kprocess_t* parent, void (*entry_point)(void));
 int thread_destroy(kthread_t* thread);
 

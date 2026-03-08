@@ -117,6 +117,7 @@ set(KERNEL_SRCS
     src/hal/arm32_mpu_vmm_mock.c
     src/main.c
     src/trace/trace.c
+    src/subsystem/profile.c
     src/arch/capabilities.c
     src/profile/${KERNEL_PROFILE_LOWER}/profile.c
     src/board/qemu-virt-${ARCH}/board.c

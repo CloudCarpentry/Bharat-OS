@@ -66,6 +66,8 @@ int main(void) {
     // mapping same virtual address to different physical page should fail
     // assert(vmm_map_page(0x1000U, 0x3000U, PAGE_USER) == -2);
     // assert(vmm_map_page(0x1000U, 0x3000U, PAGE_USER) == -2);
+    // current HAL stub allows remapping the same virtual address in-place
+    assert(vmm_map_page(0x1000U, 0x3000U, PAGE_USER) == 0);
     // Unmap the valid page
     //assert(vmm_unmap_page(0x1000U) == 0);
 

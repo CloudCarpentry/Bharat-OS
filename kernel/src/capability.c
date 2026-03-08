@@ -95,6 +95,16 @@ int cap_table_init_for_process(kprocess_t* proc) {
     return 0;
 }
 
+void cap_table_destroy(capability_table_t* table) {
+    if (!table) return;
+    for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_cap_tables); ++i) {
+        if (&g_cap_tables[i] == table) {
+            g_cap_tables_used[i] = 0U;
+            break;
+        }
+    }
+}
+
 int cap_table_grant(capability_table_t* table,
                     cap_object_type_t type,
                     uint64_t object_ref,
