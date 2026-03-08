@@ -21,4 +21,4 @@ set(SHAKTI_ARCH_FLAGS "-march=rv64imafdc -mabi=lp64d -mcmodel=medany")
 set(CMAKE_C_FLAGS_INIT "-ffreestanding -fno-builtin -fno-stack-protector -fno-pic -fno-pie ${SHAKTI_ARCH_FLAGS}")
 set(CMAKE_ASM_FLAGS_INIT "-ffreestanding -fno-pic -fno-pie ${SHAKTI_ARCH_FLAGS}")
 
-set(CMAKE_EXE_LINKER_FLAGS_INIT "-nostdlib")
+set(CMAKE_EXE_LINKER_FLAGS_INIT "-nostdlib -fuse-ld=lld")
