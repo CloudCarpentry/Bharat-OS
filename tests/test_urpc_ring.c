@@ -20,10 +20,10 @@ int main(void) {
     urpc_msg_t msg = { .msg_type = 7U, .payload_size = 8U, .payload_data = {0xABCDU} };
     urpc_msg_t out = {0};
 
-    assert(urpc_init_ring(NULL, buffer, 2U) == URPC_ERR_INVALID);
-    assert(urpc_init_ring(&ring, NULL, 2U) == URPC_ERR_INVALID);
-    assert(urpc_init_ring(&ring, buffer, 0U) == URPC_ERR_INVALID);
-    assert(urpc_init_ring(&ring, buffer, 1U) == URPC_ERR_INVALID);
+    assert(urpc_init_ring(NULL, buffer, 2U) == URPC_ERR_INVAL);
+    assert(urpc_init_ring(&ring, NULL, 2U) == URPC_ERR_INVAL);
+    assert(urpc_init_ring(&ring, buffer, 0U) == URPC_ERR_INVAL);
+    assert(urpc_init_ring(&ring, buffer, 1U) == URPC_ERR_INVAL);
     assert(urpc_init_ring(&ring, buffer, 2U) == URPC_SUCCESS);
 
     assert(urpc_receive(&ring, &out) == URPC_ERR_EMPTY);
@@ -38,8 +38,8 @@ int main(void) {
     assert(urpc_receive(&ring, &out) == URPC_ERR_EMPTY);
 
     ring.capacity = 0U;
-    assert(urpc_send(&ring, &msg) == URPC_ERR_INVALID);
-    assert(urpc_receive(&ring, &out) == URPC_ERR_INVALID);
+    assert(urpc_send(&ring, &msg) == URPC_ERR_INVAL);
+    assert(urpc_receive(&ring, &out) == URPC_ERR_INVAL);
 
     printf("URPC ring tests passed.\n");
     return 0;

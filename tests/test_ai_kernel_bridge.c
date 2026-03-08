@@ -16,10 +16,11 @@ int main(void) {
 
     kprocess_t proc;
     proc.process_id = 1;
+    cap_table_init_for_process(&proc); // Ensure caps are initialized
 
-    kthread_t* t = thread_create(proc, thread_entry);
+    kthread_t* t = thread_create(&proc, thread_entry);
     assert(t != NULL);
-    kthread_t* t2 = thread_create(proc, thread_entry);
+    kthread_t* t2 = thread_create(&proc, thread_entry);
     assert(t2 != NULL);
 
     ai_suggestion_t priority = {
@@ -59,7 +60,7 @@ int main(void) {
     assert(migrated != NULL);
     assert(migrated->preferred_numa_node == 1U);
 
-    capability_table_t* caps = (capability_table_t*)proc->security_sandbox_ctx;
+    capability_table_t* caps = (capability_table_t*)proc.security_sandbox_ctx;
     assert(caps != NULL);
 
     uint32_t send_cap = 0U;
@@ -107,7 +108,4 @@ void kcache_free(kcache_t* cache, void* obj) {
 
 
 
-int cap_table_init_for_process(kprocess_t* process) {
-    (void)process;
-    return 0;
-}
+// No longer stub cap_table_init_for_process because we pull in real capability.c

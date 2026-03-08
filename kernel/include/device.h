@@ -45,3 +45,5 @@ int device_dispatch_irq(uint32_t irq);
 int device_register_builtin_drivers(void);
 
 #endif // BHARAT_DEVICE_H
+
+int pci_discover_nic(device_mmio_window_t* rx_window, device_mmio_window_t* tx_window);

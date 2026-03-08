@@ -225,3 +225,9 @@ int hal_timer_source_init(uint32_t tick_hz) {
 
     return 0;
 }
+
+uint32_t hal_cpu_get_id(void) {
+    uint64_t mpidr;
+    __asm__ volatile("mrs %0, mpidr_el1" : "=r"(mpidr));
+    return (uint32_t)(mpidr & 0xFF);
+}

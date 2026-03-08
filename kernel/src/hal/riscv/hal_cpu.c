@@ -243,3 +243,9 @@ int hal_timer_source_init(uint32_t tick_hz) {
     sbi_set_timer(1000000ULL / (uint64_t)tick_hz);
     return 0;
 }
+
+uint32_t hal_cpu_get_id(void) {
+    // Read mhartid (assuming machine mode or standard supervisor mode access via OpenSBI/SBI)
+    // Here we'll just return the boot hart id for simplicity. Ideally we read sscratch or use sbi.
+    return (uint32_t)g_boot_hart_id;
+}
