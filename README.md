@@ -35,6 +35,59 @@ Bharat-OS targets multiple deployment classes. These profiles describe **how the
 - **Network appliances / Edge gateways:** capability-mediated driver boundaries and multikernel messaging baseline are present; mature data-plane acceleration is roadmap.
 - **Data-center / clustered nodes:** NUMA/multicore scaffolding and URPC primitives are present; full distributed scheduling and high-scale service orchestration are roadmap.
 
+### High-Level Architecture
+
+```mermaid
+graph TD
+    subgraph UserSpace [User-Space Domains]
+        subgraph Subsystems [Subsystems Model]
+            Console[Console Subsystem]
+            FB[Framebuffer & Embedded GUI]
+            Desktop[Desktop GUI Compositor]
+            Input[Input Subsystem]
+            Accel[Accelerator Subsystem]
+            EmbedServ[Embedded Services]
+        end
+
+        subgraph Drivers [User-Space Drivers]
+            NetworkDriver[Network Drivers]
+            StorageDriver[Storage Drivers]
+            DisplayDriver[Display Drivers]
+        end
+
+        subgraph Policy [System Policy & Governors]
+            AIGov[AI Governor]
+            MemPolicy[Memory Policy]
+        end
+
+        App[Applications]
+    end
+
+    subgraph Microkernel [Bharat-OS Microkernel Ring-0]
+        IPC[Capability-Based IPC & URPC]
+        Sched[Scheduler & AI Hooks]
+        VMM[VMM & Memory Registry]
+        Cap[Capability System]
+    end
+
+    subgraph Hardware [Hardware Abstraction Layer]
+        HAL[HAL x86_64 / arm64 / riscv64]
+    end
+
+    %% Relationships
+    App --> Subsystems
+    Subsystems <--> IPC
+    Drivers <--> IPC
+    Policy <--> IPC
+
+    AIGov -.->|AI Suggestions| Sched
+    MemPolicy -.->|Page Faults / Mapping| VMM
+
+    IPC <--> Cap
+
+    Microkernel <--> HAL
+```
+
 ### Key Technical Pillars
 
 * **Tiered Functionality:** The OS scales its footprint by activating specific Tiers. Small devices run **Tier A** (minimal core), while desktops and servers enable **Tiers B and C** for full POSIX and GUI support.
@@ -51,6 +104,72 @@ Bharat-OS targets multiple deployment classes. These profiles describe **how the
 | Synchronous and asynchronous IPC | Fast register-based endpoint IPC for low latency plus lockless ring-buffer URPC for cross-core multikernel messaging. |
 | User-space driver model | Drivers are unprivileged; capabilities gate MMIO/IRQ access and IOMMU policy hardens DMA boundaries, enabling restartable driver domains. |
 | Modular scheduler with AI hooks | Tick-driven scheduler collects telemetry and applies AI hints via ADR-008 plugin boundaries, with deterministic fallback when PMCs are unavailable. |
+
+#### Memory Management Architecture
+
+```mermaid
+graph TD
+    subgraph UserSpace [User-Space Memory Policy]
+        BharatRT[Bharat-RT Static / No-Paging]
+        BharatCloud[Bharat-Cloud Demand Paging & NUMA]
+    end
+
+    subgraph Microkernel [Bharat-OS Microkernel Ring-0]
+        VMM[Virtual Memory Management - Mapping Registry]
+        PMM[Physical Memory Management - Buddy Allocator]
+        Slab[Slab Allocator - kvmalloc/kvfree]
+    end
+
+    subgraph HAL [Hardware Abstraction Layer]
+        PageTable[Architecture Page Tables - x86_64 / arm64 / riscv64]
+    end
+
+    BharatRT -->|Mapping Requests| VMM
+    BharatCloud -->|Page Faults & Mapping Requests| VMM
+
+    VMM -->|Requires Physical Memory| PMM
+    VMM -->|Manipulates| PageTable
+
+    Slab -->|Allocates Metadata & Pages| VMM
+    Slab -->|Backed by| PMM
+```
+
+#### IPC & Messaging Architecture
+
+```mermaid
+graph TD
+    subgraph UserSpace [User-Space Domains]
+        Sender[Sender Domain]
+        Receiver[Receiver Domain]
+    end
+
+    subgraph Capability [Capability System]
+        CapTable[Capability Tables]
+        Checks[Delegated Rights Checks]
+    end
+
+    subgraph Microkernel [Bharat-OS Microkernel]
+        subgraph SyncIPC [Endpoint IPC]
+            RegisterPass[Register-based Message Passing]
+        end
+
+        subgraph AsyncIPC [URPC Multikernel Messaging]
+            RingBuffer[Lockless Ring-buffer]
+            MultiCore[Cross-core Transport]
+        end
+    end
+
+    Sender -->|Invoke Capability| CapTable
+    Receiver -->|Invoke Capability| CapTable
+
+    CapTable --> Checks
+    Checks -->|Verified Access| SyncIPC
+    Checks -->|Verified Access| AsyncIPC
+
+    RegisterPass -->|Low-latency delivery| Receiver
+    RingBuffer --> MultiCore
+    MultiCore -->|Distributed / NUMA delivery| Receiver
+```
 
 ### Device Profiles & Use-cases
 
@@ -114,6 +233,44 @@ Bharat-OS keeps AI policy outside ring-0 while exposing bounded kernel mechanism
 - Scheduler action handling for migrate/priority/throttle suggestion types.
 - Capability-guarded governor control-plane endpoint.
 - Architecture/profile-neutral telemetry plugin contract (with fallback behavior when PMCs are unavailable).
+
+#### Scheduler & AI Hooks Architecture
+
+```mermaid
+graph TD
+    subgraph UserSpace [User-Space Policy]
+        AIGov[AI Governor]
+        SystemProfile[Profile-Aware Heuristics - Tier A/B/C]
+        TelemetryCollection[Telemetry Ingestion]
+    end
+
+    subgraph Microkernel [Bharat-OS Microkernel Ring-0]
+        Sched[Tick-driven Scheduler]
+        Telemetry[Kernel Telemetry Collection - Cycles, Instructions, CPI]
+        AIHooks[Bounded AI Suggestion Queue - Migrate, Priority, Throttle]
+        Fallback[Deterministic Fallback - Round Robin]
+    end
+
+    subgraph Hardware [Hardware Abstraction Layer]
+        PMCs[Hardware PMCs - Architecture Specific]
+        Timer[Generic Timer Tick]
+    end
+
+    Timer -->|Tick Event| Sched
+    PMCs -->|Sample Counters| Telemetry
+
+    Sched --> Telemetry
+    Telemetry -->|Expose Metrics| TelemetryCollection
+
+    SystemProfile --> AIGov
+    TelemetryCollection --> AIGov
+
+    AIGov -->|Submit AI Suggestions| AIHooks
+    AIHooks -->|Validate Bounds| Sched
+
+    Sched -->|If PMCs / AI unavailable| Fallback
+    Sched -->|Context Switch| Hardware
+```
 
 ### Roadmap
 
