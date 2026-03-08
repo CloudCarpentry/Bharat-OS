@@ -220,15 +220,13 @@ static void default_isr(void) {
     __asm__ volatile("iretq");
 }
 
-static void default_timer_isr(void) {
+void default_timer_isr(void) {
     // Ack APIC EOI
     volatile uint32_t *apic_eoi = (volatile uint32_t *)0xFEE000B0;
     *apic_eoi = 0;
 
     // Call generic timer tick
     hal_timer_tick();
-
-    __asm__ volatile("iretq");
 }
 
 
