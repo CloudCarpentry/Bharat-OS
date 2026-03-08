@@ -141,14 +141,6 @@ if(BHARAT_ACCELERATOR_CLASSES)
 endif()
 
 
-# Generate the configuration header
-# NOTE: Ensure variables used by configure_file are set before this point
-configure_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/kernel/include/bharat_config.h.in
-    ${CMAKE_CURRENT_BINARY_DIR}/include/bharat_config.h
-)
-include_directories(${CMAKE_CURRENT_BINARY_DIR}/include)
-
 # Add subdirectories
 add_subdirectory(kernel)
 add_subdirectory(lib)
