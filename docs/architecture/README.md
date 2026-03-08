@@ -39,6 +39,7 @@ This folder captures the current architectural baseline for Bharat-OS.
 ### Deployment and user-space strategy
 
 - [`device-profiles-and-use-cases.md`](device-profiles-and-use-cases.md)
+- [`distributed-kernel-implementation-plan.md`](distributed-kernel-implementation-plan.md)
 
 ### User-space strategy and deferred surfaces
 
