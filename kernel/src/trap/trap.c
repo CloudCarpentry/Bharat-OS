@@ -16,10 +16,13 @@
 
 #if defined(__x86_64__)
 #define TRAP_CAUSE_SYSCALL 0x80U
+#define TRAP_CAUSE_TIMER_INT 32U
 #elif defined(__riscv)
 #define TRAP_CAUSE_SYSCALL 8U
+#define TRAP_CAUSE_TIMER_INT 0x8000000000000005ULL // Supervisor timer interrupt
 #else
 #define TRAP_CAUSE_SYSCALL 0xFFFFU
+#define TRAP_CAUSE_TIMER_INT 30U // Generic timer PPI on ARM
 #endif
 
 static kprocess_t g_syscall_proc;
@@ -131,6 +134,20 @@ long syscall_dispatch(syscall_id_t id,
 long trap_handle(trap_frame_t* frame) {
     if (!frame) {
         return TRAP_ERR_INVAL;
+    }
+
+    if (frame->cause == TRAP_CAUSE_TIMER_INT) {
+#if defined(__x86_64__)
+        void default_timer_isr(void);
+        default_timer_isr();
+#elif defined(__riscv)
+        void hal_timer_isr(void);
+        hal_timer_isr();
+#else
+        void hal_timer_isr(void);
+        hal_timer_isr();
+#endif
+        return 0;
     }
 
     if (frame->cause != TRAP_CAUSE_SYSCALL) {
