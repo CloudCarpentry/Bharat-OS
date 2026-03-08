@@ -2,37 +2,41 @@
 #define BHARAT_PROFILE_H
 
 /*
- * Bharat-OS Profile Management
- * Defines feature toggles and compilation options based on the
- * target personality layer or deployment environment.
+ * Bharat-OS profile selection and lightweight feature switches.
  *
- * Target profiles can be:
- * - PROFILE_OPENRAN: Hard real-time scheduling, zero-copy networking.
- * - PROFILE_AUTOMOBILE / PROFILE_DRONE: Safety critical, formal verification, RTOS defense.
- * - PROFILE_MOBILE: Aggressive CoW, AI power governors.
- * - PROFILE_DATACENTER: NUMA aware, high-throughput.
+ * This header intentionally keeps profile decisions build-time and small.
+ * Runtime policy knobs are represented by bharat_boot_active_policy().
  */
 
-// Example definition, this should be set by the build system (e.g., CMake)
-// #define CONFIG_PROFILE_MOBILE 1
+void profile_init(void);
 
 #if defined(CONFIG_PROFILE_OPENRAN)
-    #define FEATURE_HARD_REAL_TIME 1
-    #define FEATURE_ZERO_COPY_NET 1
+#define FEATURE_HARD_REAL_TIME 1
+#define FEATURE_ZERO_COPY_NET 1
 #endif
 
 #if defined(CONFIG_PROFILE_AUTOMOBILE) || defined(CONFIG_PROFILE_DRONE)
-    #define Profile_RTOS 1
-    #define FEATURE_SAFETY_CRITICAL 1
+#define Profile_RTOS 1
+#define FEATURE_SAFETY_CRITICAL 1
 #endif
 
 #if defined(CONFIG_PROFILE_MOBILE)
-    #define FEATURE_AGGRESSIVE_COW 1
-    #define FEATURE_AI_POWER_GOV 1
+#define FEATURE_AGGRESSIVE_COW 1
+#define FEATURE_AI_POWER_GOV 1
+#define FEATURE_BINDER_IPC_HOOKS 1
+#define FEATURE_SERVICE_MANAGER_HOOKS 1
 #endif
 
 #if defined(CONFIG_PROFILE_DATACENTER)
-    #define FEATURE_NUMA_AWARE 1
+#define FEATURE_NUMA_AWARE 1
+#define FEATURE_SCALABLE_SCHEDULER 1
+#define FEATURE_OBSERVABILITY_PIPELINE 1
+#endif
+
+#if defined(CONFIG_PROFILE_NETWORK_APPLIANCE)
+#define FEATURE_PACKET_FASTPATH 1
+#define FEATURE_FLOW_TABLE_ACCEL 1
+#define FEATURE_QOS_HOOKS 1
 #endif
 
 typedef enum {
@@ -41,7 +45,6 @@ typedef enum {
     PROFILE_TIER_C
 } SystemProfile;
 
-// Mock function to get system profile
 static inline SystemProfile get_system_profile(void) {
 #if defined(Profile_RTOS)
     return PROFILE_TIER_A;
@@ -52,4 +55,4 @@ static inline SystemProfile get_system_profile(void) {
 #endif
 }
 
-#endif // BHARAT_PROFILE_H
+#endif /* BHARAT_PROFILE_H */

@@ -52,6 +52,12 @@ static const char *kernel_boot_hw_profile(void) {
   return "vm";
 #elif defined(BHARAT_BOOT_HW_PROFILE_laptop)
   return "laptop";
+#elif defined(BHARAT_BOOT_HW_PROFILE_mobile)
+  return "mobile";
+#elif defined(BHARAT_BOOT_HW_PROFILE_datacenter)
+  return "datacenter";
+#elif defined(BHARAT_BOOT_HW_PROFILE_network_appliance)
+  return "network_appliance";
 #else
   return "generic";
 #endif
@@ -190,6 +196,9 @@ void kernel_main(void) {
     KPRINT("  [HAL] Initialising hardware on BSP...\n");
     hal_init();
     KPRINT("  [HAL] Ready.\n");
+
+    KPRINT("  [PROFILE] Applying hardware profile hooks...\n");
+    profile_init();
 
     KPRINT("  [SEC] Running secure-boot verification...\n");
     if (bharat_secure_boot_verify_early() != 0) {
