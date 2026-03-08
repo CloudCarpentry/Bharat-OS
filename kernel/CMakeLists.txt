@@ -151,6 +151,7 @@ set(KERNEL_SRCS
     src/device/pci.c
     src/hal/timer_common.c
     src/hal/interrupt_common.c
+    src/power_thermal_perf.c
     src/trap/trap.c
     src/multicore.c
     src/fs/vfs.c
