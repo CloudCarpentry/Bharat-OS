@@ -393,6 +393,14 @@ int sched_adjust_priority(kthread_t* thread, uint32_t new_priority) {
     }
 
     thread->priority = new_priority;
+
+    // Also update the priority in the thread_slot_t so that the change persists
+    // and is actually applied and visible in the run queue iteration.
+    thread_slot_t* slot = sched_find_thread_slot_by_tid(thread->thread_id);
+    if (slot) {
+        slot->thread.priority = new_priority;
+    }
+
     return 0;
 }
 
@@ -464,6 +472,14 @@ int sched_enqueue_ai_suggestion(const ai_suggestion_t* suggestion) {
 
     g_pending_suggestions.queue[g_pending_suggestions.head] = *suggestion;
     g_pending_suggestions.head = next;
+
+    if ((suggestion->action == AI_ACTION_ADJUST_PRIORITY ||
+         suggestion->action == AI_ACTION_MIGRATE_TASK) &&
+        g_current &&
+        g_current->thread_id == suggestion->target_id) {
+        sched_yield();
+    }
+
     return 0;
 }
 
