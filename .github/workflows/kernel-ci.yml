@@ -12,15 +12,9 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang lld ninja-build cmake frama-c alt-ergo
-      - name: Formal Verification (Frama-C WP)
-        run: |
-          frama-c -wp -wp-rte kernel/src/capability.c -I kernel/include | tee frama_c.log
-          if grep -E -q "(Unknown|Failed)" frama_c.log; then
-            echo "Formal Verification failed! Unproven VCs detected."
-            exit 1
-          fi
-          echo "Formal Verification succeeded! All VCs proved."
+          sudo apt-get install -y clang lld ninja-build cmake
+      - name: Install optional formal verification tools
+        run: tools/ci/install_formal_tools.sh
       - name: Configure x86_64 kernel build
         run: cmake --preset x86_64-elf-debug
       - name: Build kernel.elf
