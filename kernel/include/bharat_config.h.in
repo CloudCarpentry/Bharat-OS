@@ -48,4 +48,18 @@
 #cmakedefine BHARAT_PLATFORM_ACPI 1
 #cmakedefine BHARAT_PLATFORM_FDT 1
 
+
+/* Multikernel & URPC Configuration */
+#cmakedefine CONFIG_MULTIKERNEL 1
+#cmakedefine CONFIG_HETEROGENEOUS_CPU 1
+#cmakedefine CONFIG_URPC 1
+
+#ifndef BHARAT_CACHE_LINE_SIZE
+#define BHARAT_CACHE_LINE_SIZE 64
+#endif
+
+#ifndef BHARAT_ALIGNED_CACHE
+#define BHARAT_ALIGNED_CACHE __attribute__((aligned(BHARAT_CACHE_LINE_SIZE)))
+#endif
+
 #endif /* BHARAT_CONFIG_H */

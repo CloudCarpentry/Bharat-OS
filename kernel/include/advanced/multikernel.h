@@ -1,8 +1,17 @@
 #ifndef BHARAT_MULTIKERNEL_H
 #define BHARAT_MULTIKERNEL_H
 
+#if __has_include("bharat_config.h")
+#include "bharat_config.h"
+#endif
+
 #include "../sched.h"
 #include <stdint.h>
+
+// Fallback alignment macro if not defined by config system
+#ifndef BHARAT_ALIGNED_CACHE
+#define BHARAT_ALIGNED_CACHE __attribute__((aligned(64)))
+#endif
 
 /*
  * Bharat-OS Multikernel Architecture (Barrelfish Inspired)
@@ -29,9 +38,9 @@ typedef enum {
 typedef struct {
   urpc_msg_t *buffer;
   uint32_t capacity;
-  volatile uint32_t head;
-  volatile uint32_t tail;
-} urpc_ring_t;
+  volatile uint32_t head BHARAT_ALIGNED_CACHE; // Producer owned
+  volatile uint32_t tail BHARAT_ALIGNED_CACHE; // Consumer owned
+} BHARAT_ALIGNED_CACHE urpc_ring_t;
 
 typedef struct {
   uint8_t in_use;
@@ -53,7 +62,7 @@ typedef struct {
   // Mapped in cache-aligned shared memory between the two cores
   urpc_ring_t *urpc_ring;
   uint32_t ring_size;
-} mk_channel_t;
+} BHARAT_ALIGNED_CACHE mk_channel_t;
 
 // Multicore boot and channel matrix setup
 int mk_boot_secondary_cores(uint32_t core_count);
