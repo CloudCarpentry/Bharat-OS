@@ -5,6 +5,7 @@
 // Note: In a real build system, the include path might need to be adjusted
 #include <advanced/ai_sched.h>
 #include <advanced/multikernel.h>
+#include <profile.h>
 
 // User-space AI Governor
 // Represents the Predictive Resource Scheduling & Intelligent Power Management mechanisms
@@ -72,6 +73,23 @@ void run_ai_inference_loop() {
         config.weight_cache_miss = 10;
     }
 
+    SystemProfile profile = get_system_profile();
+    uint32_t sleep_interval_ms;
+
+    switch(profile) {
+        case PROFILE_TIER_A: // e.g., Watch / IoT
+            config.penalty_threshold = 10;   // Very strict on power
+            sleep_interval_ms = 500;  // Long sleep to save battery
+            break;
+        case PROFILE_TIER_C: // e.g., Data Center
+            config.penalty_threshold = 100;  // High performance throughput focus
+            sleep_interval_ms = 10;   // Frequent updates for low latency
+            break;
+        default: // Standard Desktop/Mobile
+            config.penalty_threshold = 50;
+            sleep_interval_ms = 100;
+    }
+
     // Mock channel setup for IPC
     urpc_ring_t control_ring = {0};
     // In a real scenario, this ring buffer would be mapped in cache-aligned shared memory
@@ -104,7 +122,7 @@ void run_ai_inference_loop() {
         ai_governor_suggest_action(1002, &mock_telemetry_2, &config, &control_ring);
 
         // Sleep to simulate inference interval
-        sleep(2);
+        usleep(sleep_interval_ms * 1000); // usleep takes microseconds
     }
 }
 
