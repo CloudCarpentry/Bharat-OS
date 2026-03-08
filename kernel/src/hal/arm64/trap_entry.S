@@ -2,46 +2,51 @@
 .align 11
 .global vector_table_el1
 
-// Macro for a vector table entry (must be 0x80 bytes apart)
-.macro VECTOR_ENTRY label
+/* 
+ * VECTOR_ENTRY_TYPE macro:
+ * 1. Allocates trap_frame_t on stack (288 bytes)
+ * 2. Saves x0, x1 immediately
+ * 3. Overwrites w0 with the trap type
+ * 4. Branches to trap_common_logic
+ */
+.macro VECTOR_ENTRY_TYPE type
 .align 7
-    b \label
+    sub sp, sp, #288
+    stp x0, x1, [sp, #0]
+    mov w0, #\type
+    str w0, [sp, #280] // frame->type
+    b trap_common_logic
 .endm
 
 vector_table_el1:
-    // Current EL with SP0 (Synchronous, IRQ, FIQ, SError)
-    VECTOR_ENTRY trap_common
-    VECTOR_ENTRY trap_common
-    VECTOR_ENTRY trap_common
-    VECTOR_ENTRY trap_common
+    /* Current EL with SP0 */
+    VECTOR_ENTRY_TYPE 0 // Sync
+    VECTOR_ENTRY_TYPE 1 // IRQ
+    VECTOR_ENTRY_TYPE 2 // FIQ
+    VECTOR_ENTRY_TYPE 3 // SError
+    
+    /* Current EL with SPx */
+    VECTOR_ENTRY_TYPE 0
+    VECTOR_ENTRY_TYPE 1
+    VECTOR_ENTRY_TYPE 2
+    VECTOR_ENTRY_TYPE 3
 
-    // Current EL with SPx
-    VECTOR_ENTRY trap_common
-    VECTOR_ENTRY trap_common
-    VECTOR_ENTRY trap_common
-    VECTOR_ENTRY trap_common
+    /* Lower EL using AArch64 */
+    VECTOR_ENTRY_TYPE 0 
+    VECTOR_ENTRY_TYPE 1
+    VECTOR_ENTRY_TYPE 2
+    VECTOR_ENTRY_TYPE 3
 
-    // Lower EL using AArch64
-    VECTOR_ENTRY trap_common
-    VECTOR_ENTRY trap_common
-    VECTOR_ENTRY trap_common
-    VECTOR_ENTRY trap_common
+    /* Lower EL using AArch32 */
+    VECTOR_ENTRY_TYPE 0
+    VECTOR_ENTRY_TYPE 1
+    VECTOR_ENTRY_TYPE 2
+    VECTOR_ENTRY_TYPE 3
 
-    // Lower EL using AArch32
-    VECTOR_ENTRY trap_common
-    VECTOR_ENTRY trap_common
-    VECTOR_ENTRY trap_common
-    VECTOR_ENTRY trap_common
-
-.global trap_common
-trap_common:
-    // We assume we are in EL1 and have switched to SP_EL1.
-    // Allocate 288 bytes on stack to form trap_frame_t
-    sub sp, sp, #288
-
-    // Save GPRs (x0-x30). x30 is LR.
-    // In ARM64, trap_frame_t has uint64_t gpr[31].
-    stp x0, x1, [sp, #0]
+.global trap_common_logic
+trap_common_logic:
+    /* Original x0, x1 are at [sp, #0] */
+    /* Store all other GPRs */
     stp x2, x3, [sp, #16]
     stp x4, x5, [sp, #32]
     stp x6, x7, [sp, #48]
@@ -56,62 +61,55 @@ trap_common:
     stp x24, x25, [sp, #192]
     stp x26, x27, [sp, #208]
     stp x28, x29, [sp, #224]
-    str x30, [sp, #240] // gpr[30]
-    // gpr[31] is unused in ARM64 typically, or mapped to SP. We'll leave it as 0 or ignore it.
+    str x30, [sp, #240]
 
-    // Calculate original SP (from before trap)
-    // If from user (EL0), SP is in SP_EL0.
-    // If from kernel (EL1), SP is what SP was before we did "sub sp, sp, #288"
+    /* Save system state registers */
     mrs x21, spsr_el1
-    and x22, x21, #0xF // M[3:0]
-    cmp x22, #0        // Is it EL0t (M=0b0000)?
-    b.ne 1f
-    // From EL0
-    mrs x20, sp_el0
-    b 2f
-1:
-    // From EL1
-    add x20, sp, #288
-2:
-    str x20, [sp, #248] // frame->sp
+    str x21, [sp, #272] // frame->status
 
-    // Read PC (ELR_EL1), Status (SPSR_EL1), Cause (ESR_EL1)
     mrs x20, elr_el1
     str x20, [sp, #256] // frame->pc
 
     mrs x20, esr_el1
     str x20, [sp, #264] // frame->cause
 
-    // SPSR_EL1 is already in x21
-    str x21, [sp, #272] // frame->status
+    /* Handle stack pointers and from_user flag */
+    and x22, x21, #0xF // M[3:0]
+    cmp x22, #0        // EL0t?
+    b.ne 1f
+    
+    /* From User Mode (EL0) */
+    mrs x20, sp_el0
+    mov w23, #1
+    b 2f
+1:
+    /* From Kernel Mode (EL1) */
+    add x20, sp, #288
+    mov w23, #0
+2:
+    str x20, [sp, #248] // frame->sp
+    str w23, [sp, #284] // frame->from_user (matches trap.h layout)
 
-    // Set from_user flag
-    // If M[3:0] == 0, then from_user = 1, else 0.
-    // x22 has M[3:0].
-    cmp x22, #0
-    cset w20, eq
-    strb w20, [sp, #280] // frame->from_user
-
-    // Call C handler
-    mov x0, sp // Pass pointer to trap_frame_t in x0
+    /* Call C Handler */
+    mov x0, sp
     bl trap_handle
 
-    // Restore state
-    ldr x20, [sp, #256] // frame->pc
+    /* Restore Architecture state */
+    ldr x20, [sp, #256] 
     msr elr_el1, x20
 
-    ldr x21, [sp, #272] // frame->status
+    ldr x21, [sp, #272]
     msr spsr_el1, x21
 
-    // Check if returning to user mode to restore SP_EL0
+    /* Restore User Stack if returning to EL0 */
     and x22, x21, #0xF
     cmp x22, #0
     b.ne 3f
-    ldr x20, [sp, #248] // frame->sp
+    ldr x20, [sp, #248]
     msr sp_el0, x20
 3:
 
-    // Restore GPRs
+    /* Restore GPRs */
     ldp x0, x1, [sp, #0]
     ldp x2, x3, [sp, #16]
     ldp x4, x5, [sp, #32]

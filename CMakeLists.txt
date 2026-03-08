@@ -4,9 +4,30 @@ project(BharatOS C ASM)
 enable_testing()
 
 # Architecture selection
-set(BHARAT_ARCH_FAMILY "X86" CACHE STRING "Target architecture family (X86, ARM, RISCV)")
-set(BHARAT_ARCH_BITS "64" CACHE STRING "Target architecture bitness (32, 64)")
-set(BHARAT_ARCH_VARIANT "GENERIC" CACHE STRING "Target architecture variant (GENERIC, SHAKTI, etc.)")
+# If not explicitly set, try to infer from CMAKE_SYSTEM_PROCESSOR or default to X86-64
+if(NOT DEFINED BHARAT_ARCH_FAMILY)
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "riscv")
+        set(BHARAT_ARCH_FAMILY "RISCV" CACHE STRING "Target architecture family")
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64" OR CMAKE_SYSTEM_PROCESSOR MATCHES "arm")
+        set(BHARAT_ARCH_FAMILY "ARM" CACHE STRING "Target architecture family")
+    else()
+        set(BHARAT_ARCH_FAMILY "X86" CACHE STRING "Target architecture family")
+    endif()
+endif()
+
+if(NOT DEFINED BHARAT_ARCH_BITS)
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "64")
+        set(BHARAT_ARCH_BITS "64" CACHE STRING "Target architecture bitness")
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "32")
+        set(BHARAT_ARCH_BITS "32" CACHE STRING "Target architecture bitness")
+    else()
+        set(BHARAT_ARCH_BITS "64" CACHE STRING "Target architecture bitness")
+    endif()
+endif()
+
+if(NOT DEFINED BHARAT_ARCH_VARIANT)
+    set(BHARAT_ARCH_VARIANT "GENERIC" CACHE STRING "Target architecture variant")
+endif()
 
 # Device Profile
 set(BHARAT_DEVICE_PROFILE "DESKTOP" CACHE STRING "Target device profile (DESKTOP, MOBILE, EDGE, DATACENTER, NETWORK_APPLIANCE, DRONE, ROBOT, RTOS, AUTOMOTIVE_ECU, AUTOMOTIVE_INFOTAINMENT)")

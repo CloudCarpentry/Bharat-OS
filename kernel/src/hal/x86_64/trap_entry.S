@@ -62,24 +62,11 @@ ISR_NOERRCODE 128
 
 .global trap_common
 trap_common:
-    # Build trap_frame_t. Size is 280 bytes.
-    # struct is: uint64_t gpr[31], sp, pc, cause, status, from_user(8bit)
-    subq $280, %rsp
+    # Build trap_frame_t. Size is 288 bytes.
+    # struct is: uint64_t gpr[31], sp, pc, cause, status, type(uint32), from_user(uint32)
+    subq $288, %rsp
 
-    # Store General Purpose Registers (map x86_64 to gpr[0..15])
-    # syscall_dispatch maps id to arg0, etc:
-    # arg0=rdi, arg1=rsi, arg2=rdx, arg3=rcx, arg4=r8, arg5=r9
-    # In trap.c:
-    #   rc = syscall_dispatch(gpr[0], gpr[1], gpr[2], gpr[3], gpr[4], gpr[5], gpr[6]);
-    # To map properly, let's use the SYSV ABI mapping to gpr[]:
-    # gpr[0] = id   = rax (in syscall)
-    # gpr[1] = arg0 = rdi
-    # gpr[2] = arg1 = rsi
-    # gpr[3] = arg2 = rdx
-    # gpr[4] = arg3 = rcx / r10 (user puts arg3 in r10 typically)
-    # gpr[5] = arg4 = r8
-    # gpr[6] = arg5 = r9
-
+    # Save General Purpose Registers (map x86_64 to gpr[0..14])
     movq %rax, 0(%rsp)     # gpr[0]
     movq %rdi, 8(%rsp)     # gpr[1]
     movq %rsi, 16(%rsp)    # gpr[2]
@@ -87,8 +74,6 @@ trap_common:
     movq %r10, 32(%rsp)    # gpr[4]
     movq %r8,  40(%rsp)    # gpr[5]
     movq %r9,  48(%rsp)    # gpr[6]
-
-    # Also save others for restoration
     movq %rcx, 56(%rsp)    # gpr[7]
     movq %r11, 64(%rsp)    # gpr[8]
     movq %rbx, 72(%rsp)    # gpr[9]
@@ -98,53 +83,57 @@ trap_common:
     movq %r14, 104(%rsp)   # gpr[13]
     movq %r15, 112(%rsp)   # gpr[14]
 
-    # Hardware pushed:
-    # [rsp+280] = Vector (cause)
-    # [rsp+288] = Error Code
-    # [rsp+296] = RIP (pc)
-    # [rsp+304] = CS
-    # [rsp+312] = RFLAGS (status)
-    # [rsp+320] = RSP (sp)
-    # [rsp+328] = SS
+    # Hardware/Stub pushed state (offsets relative to current rsp):
+    # [rsp+288] = Vector (cause)
+    # [rsp+296] = Error Code
+    # [rsp+304] = RIP (pc)
+    # [rsp+312] = CS
+    # [rsp+320] = RFLAGS (status)
+    # [rsp+328] = RSP (sp)
+    # [rsp+336] = SS
 
-    # Cause
-    movq 280(%rsp), %rax
-    movq %rax, 264(%rsp)   # trap_frame->cause
+    # pc
+    movq 304(%rsp), %rax
+    movq %rax, 256(%rsp)
 
-    # PC
-    movq 296(%rsp), %rax
-    movq %rax, 256(%rsp)   # trap_frame->pc
+    # sp
+    movq 328(%rsp), %rax
+    movq %rax, 248(%rsp)
 
-    # SP
+    # cause (vector number)
+    movq 288(%rsp), %rax
+    movq %rax, 264(%rsp)
+
+    # status (RFLAGS)
     movq 320(%rsp), %rax
-    movq %rax, 248(%rsp)   # trap_frame->sp
+    movq %rax, 272(%rsp)
 
-    # Status (RFLAGS)
-    movq 312(%rsp), %rax
-    movq %rax, 272(%rsp)   # trap_frame->status
+    # Determine type: Vector < 32 or Vector == 128 is SYNC (0), else IRQ (1)
+    movq 288(%rsp), %rax # Vector
+    cmpq $32, %rax
+    jb .L_is_sync
+    cmpq $128, %rax
+    je .L_is_sync
+    movl $1, 280(%rsp)   # IRQ (type is uint32_t)
+    jmp .L_type_done
+.L_is_sync:
+    movl $0, 280(%rsp)   # SYNC
+.L_type_done:
 
-    # from_user
-    movq 304(%rsp), %rax   # load CS
-    andq $3, %rax          # CS & 3
-    cmpq $3, %rax          # Is it user mode?
-    sete %al               # set al to 1 if equal, else 0
-    movb %al, 280(%rsp)    # trap_frame->from_user (actually it's at offset 280? Wait.)
+    # from_user: (CS & 3) == 3
+    movq 312(%rsp), %rax # CS
+    andq $3, %rax
+    cmpq $3, %rax
+    sete %al
+    movzx %al, %eax
+    movl %eax, 284(%rsp) # from_user (uint32_t)
 
-    # Struct offset check:
-    # 31 * 8 = 248 (gpr)
-    # 248 + 8 = 256 (sp)
-    # 256 + 8 = 264 (pc)
-    # 264 + 8 = 272 (cause)
-    # 272 + 8 = 280 (status)
-    # 280 + 1 = 281 (from_user)
-    # So from_user is at 280, cause is at 264, status is at 272, pc at 256, sp at 248. Correct.
-
-    movq %rsp, %rdi        # arg0 for trap_handle
+    movq %rsp, %rdi
     call trap_handle
 
-    # Reload values
+    # Reload pc in case it changed
     movq 256(%rsp), %rax
-    movq %rax, 296(%rsp)   # Restore RIP from trap_frame->pc
+    movq %rax, 304(%rsp)
 
     # Restore registers
     movq 0(%rsp), %rax
@@ -154,7 +143,6 @@ trap_common:
     movq 32(%rsp), %r10
     movq 40(%rsp), %r8
     movq 48(%rsp), %r9
-
     movq 56(%rsp), %rcx
     movq 64(%rsp), %r11
     movq 72(%rsp), %rbx
@@ -164,6 +152,7 @@ trap_common:
     movq 104(%rsp), %r14
     movq 112(%rsp), %r15
 
-    addq $296, %rsp        # Skip trap_frame, vector, and error code (280 + 8 + 8)
-
+    addq $304, %rsp # Skip trap_frame(288) + vector(8) + error_code(8) = 304? No.
+    # subq was 288. Vector is at 288. Error code at 296.
+    # Total to skip = 288 + 8 + 8 = 304. Yes.
     iretq

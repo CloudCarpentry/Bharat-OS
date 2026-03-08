@@ -23,6 +23,10 @@ set(AI_GOVERNOR_SOURCES
 add_library(subsys_manager STATIC ${SUBSYS_SOURCES})
 target_compile_options(subsys_manager PRIVATE -ffreestanding -nostdlib -Wall)
 
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "riscv")
+    target_compile_options(subsys_manager PRIVATE -mcmodel=medany)
+endif()
+
 option(BHARAT_BUILD_AI_GOVERNOR "Build ai_governor user-space demo executable" ON)
 if(BHARAT_BUILD_AI_GOVERNOR)
     add_executable(ai_governor ${AI_GOVERNOR_SOURCES})
