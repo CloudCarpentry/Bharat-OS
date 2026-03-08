@@ -47,7 +47,7 @@ target_include_directories(test_capability_ipc PRIVATE ../kernel/include)
 target_compile_definitions(test_capability_ipc PRIVATE TESTING=1)
 add_test(NAME test_capability_ipc COMMAND test_capability_ipc)
 
-add_executable(test_device_framework test_device_framework.c ../kernel/src/device/device_manager.c ../kernel/src/device/builtin_drivers.c ../kernel/src/device/pci.c ../kernel/src/ipc/zero_copy_io.c ../kernel/src/capability.c ../kernel/src/sched.c ../kernel/src/ai_sched.c ../kernel/src/algo_matrix.c ../kernel/src/mm/numa.c)
+add_executable(test_device_framework test_device_framework.c ../kernel/src/device/device_manager.c ../kernel/src/device/builtin_drivers.c ../kernel/src/subsystem/profile.c ../kernel/src/device/pci.c ../kernel/src/ipc/zero_copy_io.c ../kernel/src/capability.c ../kernel/src/sched.c ../kernel/src/ai_sched.c ../kernel/src/algo_matrix.c ../kernel/src/mm/numa.c)
 target_include_directories(test_device_framework PRIVATE ../kernel/include)
 target_compile_definitions(test_device_framework PRIVATE TESTING=1)
 add_test(NAME test_device_framework COMMAND test_device_framework)
@@ -85,48 +85,48 @@ target_include_directories(test_ai_kernel_bridge PRIVATE ../kernel/include)
 target_compile_definitions(test_ai_kernel_bridge PRIVATE TESTING=1)
 add_test(NAME test_ai_kernel_bridge COMMAND test_ai_kernel_bridge)
 
-add_executable(test_secure_boot_policy test_secure_boot_policy.c ../kernel/src/security/secure_boot.c)
+add_executable(test_secure_boot_policy test_secure_boot_policy.c ../kernel/src/security/secure_boot.c ../kernel/src/security/audit.c)
 target_include_directories(test_secure_boot_policy PRIVATE ../kernel/include)
 add_test(NAME test_secure_boot_policy COMMAND test_secure_boot_policy)
 
 add_executable(test_capability_policy test_capability_policy.c benchmark_stubs.c
-    ${CMAKE_SOURCE_DIR}/../kernel/src/mm/vmm.c
-    ${CMAKE_SOURCE_DIR}/../kernel/src/sched.c
-    ${CMAKE_SOURCE_DIR}/../kernel/src/capability.c
-    ${CMAKE_SOURCE_DIR}/../kernel/src/algo_matrix.c
-    ${CMAKE_SOURCE_DIR}/../kernel/src/device/device_manager.c
-    ${CMAKE_SOURCE_DIR}/../kernel/src/mm/numa.c
-    ${CMAKE_SOURCE_DIR}/../kernel/src/mm/zswap.c
+    ../kernel/src/mm/vmm.c
+    ../kernel/src/sched.c
+    ../kernel/src/capability.c
+    ../kernel/src/algo_matrix.c
+    ../kernel/src/device/device_manager.c
+    ../kernel/src/mm/numa.c
+    ../kernel/src/mm/zswap.c
 )
-target_include_directories(test_capability_policy PRIVATE ${CMAKE_SOURCE_DIR}/../kernel/include)
+target_include_directories(test_capability_policy PRIVATE ../kernel/include)
 add_test(NAME test_capability_policy COMMAND test_capability_policy)
 
 # Benchmarks
 
 add_executable(test_bench_ipc test_bench_ipc.c benchmark_stubs.c
-    ${CMAKE_SOURCE_DIR}/../kernel/src/benchmark/benchmark.c
-    ${CMAKE_SOURCE_DIR}/../kernel/src/ipc/endpoint_ipc.c
-    ${CMAKE_SOURCE_DIR}/../kernel/src/capability.c
-    ${CMAKE_SOURCE_DIR}/../kernel/src/sched.c
-    ${CMAKE_SOURCE_DIR}/../kernel/src/ai_sched.c
-    ${CMAKE_SOURCE_DIR}/../kernel/src/algo_matrix.c
-    ${CMAKE_SOURCE_DIR}/../kernel/src/device/device_manager.c
-    ${CMAKE_SOURCE_DIR}/../kernel/src/mm/numa.c
+    ../kernel/src/benchmark/benchmark.c
+    ../kernel/src/ipc/endpoint_ipc.c
+    ../kernel/src/capability.c
+    ../kernel/src/sched.c
+    ../kernel/src/ai_sched.c
+    ../kernel/src/algo_matrix.c
+    ../kernel/src/device/device_manager.c
+    ../kernel/src/mm/numa.c
 )
-target_include_directories(test_bench_ipc PRIVATE ${CMAKE_SOURCE_DIR}/../kernel/include)
+target_include_directories(test_bench_ipc PRIVATE ../kernel/include)
 target_compile_definitions(test_bench_ipc PRIVATE TESTING=1)
 add_test(NAME test_bench_ipc COMMAND test_bench_ipc)
 
 add_executable(test_bench_sched test_bench_sched.c benchmark_stubs.c
-    ${CMAKE_SOURCE_DIR}/../kernel/src/benchmark/benchmark.c
-    ${CMAKE_SOURCE_DIR}/../kernel/src/sched.c
-    ${CMAKE_SOURCE_DIR}/../kernel/src/ai_sched.c
-    ${CMAKE_SOURCE_DIR}/../kernel/src/capability.c
-    ${CMAKE_SOURCE_DIR}/../kernel/src/algo_matrix.c
-    ${CMAKE_SOURCE_DIR}/../kernel/src/device/device_manager.c
-    ${CMAKE_SOURCE_DIR}/../kernel/src/mm/numa.c
+    ../kernel/src/benchmark/benchmark.c
+    ../kernel/src/sched.c
+    ../kernel/src/ai_sched.c
+    ../kernel/src/capability.c
+    ../kernel/src/algo_matrix.c
+    ../kernel/src/device/device_manager.c
+    ../kernel/src/mm/numa.c
 )
-target_include_directories(test_bench_sched PRIVATE ${CMAKE_SOURCE_DIR}/../kernel/include)
+target_include_directories(test_bench_sched PRIVATE ../kernel/include)
 target_compile_definitions(test_bench_sched PRIVATE TESTING=1)
 add_test(NAME test_bench_sched COMMAND test_bench_sched)
 
