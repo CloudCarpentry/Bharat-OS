@@ -2,12 +2,6 @@
 #include <stdint.h>
 #include <stdio.h>
 
-void hal_vmm_init_root(void) {}
-int hal_vmm_map_page(void) { return 0; }
-void hal_vmm_unmap_page(void) {}
-void hal_vmm_setup_address_space(void) {}
-void hal_vmm_get_mapping(void) {}
-void hal_vmm_update_mapping(void) {}
 
 #include "../kernel/include/mm.h"
 
