@@ -77,6 +77,10 @@ target_include_directories(test_ai_kernel_bridge PRIVATE ../kernel/include)
 target_compile_definitions(test_ai_kernel_bridge PRIVATE TESTING=1)
 add_test(NAME test_ai_kernel_bridge COMMAND test_ai_kernel_bridge)
 
+add_executable(test_secure_boot_policy test_secure_boot_policy.c ../kernel/src/security/secure_boot.c)
+target_include_directories(test_secure_boot_policy PRIVATE ../kernel/include)
+add_test(NAME test_secure_boot_policy COMMAND test_secure_boot_policy)
+
 add_executable(test_capability_policy test_capability_policy.c
     ${CMAKE_SOURCE_DIR}/../kernel/src/mm/vmm.c
     ${CMAKE_SOURCE_DIR}/../kernel/src/sched.c

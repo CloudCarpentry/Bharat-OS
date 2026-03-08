@@ -1,5 +1,6 @@
 #include "hal/hal.h"
 #include "advanced/ai_sched.h"
+#include "secure_boot.h"
 
 #include <stdint.h>
 #if __has_include("bharat_config.h")
@@ -9,6 +10,20 @@
 #ifndef MAX_SUPPORTED_CORES
 #define MAX_SUPPORTED_CORES 8U
 #endif
+
+int hal_secure_boot_arch_check(const bharat_boot_policy_t* policy) {
+    if (!policy) {
+        return -1;
+    }
+
+    if (policy->security_level == BHARAT_BOOT_SECURITY_ENFORCED) {
+#if !defined(BHARAT_PLATFORM_ACPI)
+        return -2;
+#endif
+    }
+
+    return 0;
+}
 
 // x86_64 Specific HAL Implementation
 

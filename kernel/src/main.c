@@ -11,6 +11,7 @@
 #include "advanced/algo_matrix.h"
 #include "mm_zswap.h"
 #include "ipc_async.h"
+#include "secure_boot.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -163,6 +164,7 @@ void kernel_main(uint64_t hart_id, uintptr_t fdt_ptr) {
 void kernel_main(void) {
 #endif
   const char *profile = kernel_boot_hw_profile();
+  const bharat_boot_policy_t *boot_policy = bharat_boot_active_policy();
 
 #if defined(__riscv)
   hal_riscv_set_boot_info(hart_id, (uint64_t)fdt_ptr);
@@ -183,6 +185,12 @@ void kernel_main(void) {
     KPRINT("  [HAL] Initialising hardware on BSP...\n");
     hal_init();
     KPRINT("  [HAL] Ready.\n");
+
+    KPRINT("  [SEC] Running secure-boot verification...\n");
+    if (bharat_secure_boot_verify_early() != 0) {
+      kernel_panic("secure-boot verification failed");
+    }
+    KPRINT("  [SEC] Secure-boot policy accepted.\n");
 
     KPRINT("  [ALGO] Initializing Capability Matrix...\n");
     algo_matrix_init();
@@ -211,11 +219,15 @@ void kernel_main(void) {
     }
     KPRINT("BOOT: vmm initialized\n");
 
-    KPRINT("  [ZSWAP] Initializing Memory Compression...\n");
-    if (zswap_init() != 0) {
+    if (boot_policy->enable_zswap != 0U) {
+      KPRINT("  [ZSWAP] Initializing Memory Compression...\n");
+      if (zswap_init() != 0) {
         kernel_panic("ZSWAP initialization failed");
+      }
+      KPRINT("BOOT: zswap initialized\n");
+    } else {
+      KPRINT("BOOT: zswap skipped (fast-boot policy)\n");
     }
-    KPRINT("BOOT: zswap initialized\n");
 
     KPRINT("  [NUMA] Discovering topology\n");
     if (numa_discover_topology() != 0) {
@@ -223,12 +235,12 @@ void kernel_main(void) {
     }
 
     KPRINT("  [SMP] Booting secondary cores\n");
-    if (mk_boot_secondary_cores(2U) != 0) {
+    if (mk_boot_secondary_cores(boot_policy->smp_target_cores) != 0) {
       kernel_panic("secondary core boot failed");
     }
 
     KPRINT("  [SMP] Initializing per-core URPC channels\n");
-    if (mk_init_per_core_channels(2U, 32U) != 0) {
+    if (mk_init_per_core_channels(boot_policy->smp_target_cores, 32U) != 0) {
       kernel_panic("per-core urpc channel init failed");
     }
 
@@ -238,7 +250,7 @@ void kernel_main(void) {
     }
 
     KPRINT("  [TMR] Initializing timer source\n");
-    if (hal_timer_init(100U) != 0) {
+    if (hal_timer_init(boot_policy->timer_tick_hz) != 0) {
       kernel_panic("timer initialization failed");
     }
 
@@ -259,7 +271,9 @@ void kernel_main(void) {
     }
     KPRINT("  [TRAP] Ready.\n");
 
-    kernel_ai_governor_init();
+    if (boot_policy->enable_ai_governor != 0U) {
+      kernel_ai_governor_init();
+    }
 
     KPRINT("  [CPU] Enabling interrupts...\n");
     hal_cpu_enable_interrupts();
@@ -274,8 +288,10 @@ void kernel_main(void) {
     hal_serial_write("\n");
 
     while (1) {
-      kernel_ai_publish_telemetry();
-      kernel_ai_governor_tick();
+      if (boot_policy->enable_ai_governor != 0U) {
+        kernel_ai_publish_telemetry();
+        kernel_ai_governor_tick();
+      }
       hal_cpu_halt();
     }
   } else {

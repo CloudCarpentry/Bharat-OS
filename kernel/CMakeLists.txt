@@ -122,6 +122,7 @@ set(KERNEL_SRCS
     src/mm/numa.c
     src/mm/zswap.c
     src/security/isolation.c
+    src/security/secure_boot.c
     src/ipc/endpoint_ipc.c
     src/ipc/async_ipc.c
     src/ipc/ipc_timeout.c
