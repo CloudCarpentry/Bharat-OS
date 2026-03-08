@@ -155,6 +155,8 @@ set(KERNEL_SRCS
 # ── Kernel ELF ──────────────────────────────────────────────────────────────
 add_executable(kernel.elf ${KERNEL_SRCS})
 
+target_link_libraries(kernel.elf subsys_manager)
+
 set_target_properties(kernel.elf PROPERTIES
     OUTPUT_NAME "kernel.elf"
     SUFFIX ""

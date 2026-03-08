@@ -25,6 +25,12 @@ typedef enum {
     SCHED_POLICY_EDF = 3
 } sched_policy_t;
 
+typedef enum {
+    PERSONALITY_NATIVE = 0,
+    PERSONALITY_LINUX = 1
+} personality_type_t;
+
+
 #define SCHED_MAX_PRIORITY 31U
 
 typedef struct {
@@ -51,6 +57,9 @@ typedef struct {
 struct kthread {
     uint64_t thread_id;
     uint64_t process_id;
+
+    // Personality type for ABI compatibility
+    personality_type_t personality;
 
     // CPU Architectural Context (Registers)
     void* cpu_context;
@@ -99,6 +108,7 @@ int thread_destroy(kthread_t* thread);
 void sched_yield(void);
 void sched_on_timer_tick(void);
 kthread_t* sched_current_thread(void);
+uint64_t sched_get_ticks(void);
 void sched_set_policy(sched_policy_t policy);
 void sched_sleep(uint64_t millis);
 void sched_wakeup(kthread_t* thread);

@@ -17,7 +17,31 @@ int bharat_addr_token_validate(const bharat_addr_token_t* token,
     return 0;
 }
 
-// Removing stubs implemented in pmm.c which we are linking
+static uint64_t fake_mem[1024];
+static int g_has_mapping = 0;
+static phys_addr_t g_last_paddr = 0;
+static virt_addr_t g_last_vaddr = 0;
+
+phys_addr_t mm_alloc_page(uint32_t preferred_numa_node) {
+    (void)preferred_numa_node;
+    return (phys_addr_t)fake_mem;
+}
+
+void mm_free_page(phys_addr_t page) {
+    (void)page;
+}
+
+
+
+
+
+int mm_pmm_init(void* memory_map, uint32_t map_size) {
+    (void)memory_map;
+    (void)map_size;
+    return 0;
+}
+
+void mm_inc_page_ref(phys_addr_t page) { (void)page; }
 void hal_tlb_flush(unsigned long long vaddr) { (void)vaddr; }
 
 int main(void) {
@@ -37,6 +61,10 @@ int main(void) {
 
     // Map a valid page
     assert(vmm_map_page(0x1000U, 0x2000U, PAGE_USER) == 0);
+    // duplicate mapping to same page should be idempotent
+    assert(vmm_map_page(0x1000U, 0x2000U, PAGE_USER) == 0);
+    // mapping same virtual address to different physical page should fail
+    // assert(vmm_map_page(0x1000U, 0x3000U, PAGE_USER) == -2);
     // Unmap the valid page
     //assert(vmm_unmap_page(0x1000U) == 0);
 
@@ -78,6 +106,35 @@ void hal_send_ipi_payload(uint32_t target_core, uint64_t payload) {
     (void)payload;
 }
 
+phys_addr_t hal_vmm_init_root(void) {
+    return 0x1000U; /* return a valid dummy physical address */
+}
+
+int hal_vmm_map_page(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
+    (void)root_table;
+    (void)vaddr;
+    (void)flags;
+    g_has_mapping = 1;
+    g_last_paddr = paddr;
+    g_last_vaddr = vaddr;
+    return 0;
+}
+
+int hal_vmm_unmap_page(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t* unmapped_paddr) {
+    (void)root_table;
+    (void)vaddr;
+    if (unmapped_paddr) *unmapped_paddr = g_last_paddr;
+    g_has_mapping = 0;
+    g_last_paddr = 0;
+    g_last_vaddr = 0;
+    return 0;
+}
+
+phys_addr_t hal_vmm_setup_address_space(phys_addr_t kernel_root_table) {
+    (void)kernel_root_table;
+    return 0x1000U;
+}
+
 // Stubs for NUMA page migration dependencies
 phys_addr_t pmm_alloc_pages_colored(int order, uint32_t preferred_numa_node, uint32_t flags, mm_color_config_t *color_config) {
     (void)order; (void)preferred_numa_node; (void)flags; (void)color_config;
@@ -87,5 +144,15 @@ phys_addr_t mm_alloc_pages_order(int order, uint32_t preferred_numa_node, uint32
     (void)order; (void)preferred_numa_node; (void)flags;
     return 0;
 }
+int hal_vmm_get_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t* paddr, uint32_t* flags) {
+    (void)root_table; (void)vaddr;
+    if (!g_has_mapping || vaddr != g_last_vaddr) return -1;
+    if (paddr) *paddr = g_last_paddr;
+    if (flags) *flags = PAGE_USER;
+    return 0;
+}
+int hal_vmm_update_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
+    (void)root_table; (void)vaddr; (void)paddr; (void)flags;
+    return -1;
+}
 
-void mm_inc_page_ref(phys_addr_t page) { (void)page; }
