@@ -2,6 +2,13 @@
 #include "advanced/ai_sched.h"
 
 #include <stdint.h>
+#if __has_include("bharat_config.h")
+#include "bharat_config.h"
+#endif
+
+#ifndef MAX_SUPPORTED_CORES
+#define MAX_SUPPORTED_CORES 8U
+#endif
 
 // x86_64 Specific HAL Implementation
 
@@ -172,8 +179,8 @@ struct tss_entry_struct {
 
 typedef struct tss_entry_struct tss_entry_t;
 
-static tss_entry_t g_tss[64] = {0}; // Assumed MAX_SUPPORTED_CORES <= 64 for static init
-static uint8_t g_emergency_stacks[64][4096] __attribute__((aligned(16)));
+static tss_entry_t g_tss[MAX_SUPPORTED_CORES] = {0};
+static uint8_t g_emergency_stacks[MAX_SUPPORTED_CORES][4096] __attribute__((aligned(16)));
 
 extern uint8_t g_per_core_stacks[][16384];
 
@@ -281,7 +288,7 @@ void hal_init(void) {
     hal_serial_init();
 
     uint32_t core_id = hal_cpu_get_id();
-    if (core_id >= 64) core_id = 0; // Safeguard
+    if (core_id >= MAX_SUPPORTED_CORES) core_id = 0; // Safeguard
 
     // Setup GDT to include TSS
     // 0: Null
@@ -500,4 +507,5 @@ int ai_sched_arch_sample_pmc(uint32_t thread_id, ai_pmc_sample_t* out_sample) {
     g_pmc_state[thread_id].last_instr = instr;
 
     return 0;
+
 }

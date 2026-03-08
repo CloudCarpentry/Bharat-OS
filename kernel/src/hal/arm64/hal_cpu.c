@@ -127,7 +127,7 @@ void hal_cpu_disable_interrupts(void) {
 void hal_send_ipi_payload(uint32_t target_core, uint64_t payload) {
     (void)target_core;
     (void)payload;
-    // TODO: wire to GIC SGI path for ARM64 SMP systems.
+    // Explicit unsupported/no-op stub
 }
 
 // --- Trap / Interrupt Handling ---

@@ -53,6 +53,8 @@ void hal_riscv_send_ipi_payload(const unsigned long* hart_mask, uint64_t payload
 }
 
 void hal_send_ipi_payload(uint32_t target_core, uint64_t payload) {
+    // This is a real SBI-backed implementation, not a placeholder.
+    // Ensure the target_core ID maps 1:1 with the hartid used by SBI.
     unsigned long hart_mask = (1UL << target_core);
     hal_riscv_send_ipi_payload(&hart_mask, payload);
 }
