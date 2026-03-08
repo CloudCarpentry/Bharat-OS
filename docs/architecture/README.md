@@ -28,6 +28,7 @@ This folder captures the current architectural baseline for Bharat-OS.
 - [`memory-model.md`](memory-model.md)
 - [`multiprocessor-and-numa-baseline.md`](multiprocessor-and-numa-baseline.md)
 - [`scheduler-and-threading.md`](scheduler-and-threading.md)
+- [`realtime-automotive-robotics-subsystems.md`](realtime-automotive-robotics-subsystems.md)
 - [`ai-scheduler-status-and-roadmap.md`](ai-scheduler-status-and-roadmap.md)
 - [`syscall-trap-gates.md`](syscall-trap-gates.md)
 - [`driver-model.md`](driver-model.md)
