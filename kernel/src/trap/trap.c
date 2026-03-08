@@ -134,7 +134,16 @@ long trap_handle(trap_frame_t* frame) {
     }
 
     if (frame->cause != TRAP_CAUSE_SYSCALL) {
-        return TRAP_ERR_NOSYS;
+        if (frame->from_user == 0U) {
+            kernel_panic("Kernel exception");
+        } else {
+            kthread_t* current = sched_current_thread();
+            if (current) {
+                thread_destroy(current);
+            }
+            sched_yield();
+        }
+        return 0; // Return gracefully after handling exception (if user thread)
     }
 
     if (frame->from_user == 0U) {

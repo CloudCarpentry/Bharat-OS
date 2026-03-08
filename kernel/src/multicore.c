@@ -1,10 +1,21 @@
 #include "multicore.h"
+#include "bharat_config.h"
+#include "advanced/multikernel.h"
 
 #if defined(__riscv)
 #include "boot/riscv/sbi.h"
 #endif
 
+#define KERNEL_STACK_SIZE 16384 // 16 KiB
+uint8_t g_per_core_stacks[MAX_SUPPORTED_CORES][KERNEL_STACK_SIZE] __attribute__((aligned(16)));
+
+static uint32_t g_system_core_count = 1U;
+
 int multicore_boot_secondary_cores(uint32_t core_count) {
+    if (core_count > MAX_SUPPORTED_CORES) {
+        core_count = MAX_SUPPORTED_CORES;
+    }
+    g_system_core_count = core_count;
     if (core_count <= 1U) {
         return 0;
     }
@@ -24,8 +35,26 @@ int multicore_boot_secondary_cores(uint32_t core_count) {
 
     return 0;
 }
+#include "hal/hal.h"
+
 void smp_init(void) {
-    // Placeholder for AP local state initialization
-    // For example: setting up CPU-local data, local APIC, IDT,
-    // scheduler run queue, TLB context, and URPC endpoints.
+    uint32_t core_id = hal_cpu_get_id();
+
+    // Primary boot sequence setup
+    if (core_id == 0U) {
+        // Initialize URPC channels matrix for all cores.
+        // Using a default ring size of 1024 for example.
+        mk_init_per_core_channels(g_system_core_count, 1024U);
+    }
+
+    // Each core establishes its specific channels
+    for (uint32_t i = 0U; i < g_system_core_count; ++i) {
+        if (i != core_id) {
+            mk_channel_t chan;
+            mk_establish_channel(i, &chan);
+        }
+    }
+
+    // Further AP local state initialization (like scheduler run queue)
+    // will be handled here or inside specific architectural smp setup later.
 }

@@ -42,6 +42,8 @@
 /* Hardware Accelerators (Dynamic based on CMake lists) */
 /* For example: -DBHARAT_ACCEL_GPU=1 */
 
+#define MAX_SUPPORTED_CORES @BHARAT_MAX_CORES@
+
 /* Platform Firmware */
 #cmakedefine BHARAT_PLATFORM_ACPI 1
 #cmakedefine BHARAT_PLATFORM_FDT 1

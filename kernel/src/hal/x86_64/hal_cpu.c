@@ -136,7 +136,33 @@ void hal_cpu_disable_interrupts(void) {
     __asm__ volatile("cli");
 }
 
-// --- IDT Definitions ---
+// --- IDT / TSS Definitions ---
+
+struct tss_entry_struct {
+    uint32_t reserved0;
+    uint64_t rsp0;
+    uint64_t rsp1;
+    uint64_t rsp2;
+    uint64_t reserved1;
+    uint64_t ist1;
+    uint64_t ist2;
+    uint64_t ist3;
+    uint64_t ist4;
+    uint64_t ist5;
+    uint64_t ist6;
+    uint64_t ist7;
+    uint64_t reserved2;
+    uint16_t reserved3;
+    uint16_t iopb_offset;
+} __attribute__((packed));
+
+typedef struct tss_entry_struct tss_entry_t;
+
+static tss_entry_t g_tss[64] = {0}; // Assumed MAX_SUPPORTED_CORES <= 64 for static init
+static uint8_t g_emergency_stacks[64][4096] __attribute__((aligned(16)));
+
+extern uint8_t g_per_core_stacks[][16384];
+
 struct idt_entry {
     uint16_t isr_low;
     uint16_t kernel_cs;
@@ -165,6 +191,16 @@ static void idt_set_descriptor(uint8_t vector, void *isr, uint8_t flags) {
     descriptor->isr_high   = ((uint64_t)isr >> 32) & 0xFFFFFFFF;
     descriptor->reserved   = 0;
 }
+
+void isr0(void); void isr1(void); void isr2(void); void isr3(void);
+void isr4(void); void isr5(void); void isr6(void); void isr7(void);
+void isr8(void); void isr9(void); void isr10(void); void isr11(void);
+void isr12(void); void isr13(void); void isr14(void); void isr15(void);
+void isr16(void); void isr17(void); void isr18(void); void isr19(void);
+void isr20(void); void isr21(void); void isr22(void); void isr23(void);
+void isr24(void); void isr25(void); void isr26(void); void isr27(void);
+void isr28(void); void isr29(void); void isr30(void); void isr31(void);
+void isr32(void); void isr128(void);
 
 static void default_isr(void) {
     __asm__ volatile("iretq");
@@ -204,17 +240,113 @@ static inline void ioapic_write(uint8_t offset, uint32_t val) {
 }
 
 
+// --- GDT Definitions (TSS requires it) ---
+static uint64_t g_gdt[8];
+static struct {
+    uint16_t limit;
+    uint64_t base;
+} __attribute__((packed)) g_gdtr;
+
+static void gdt_set_descriptor(int index, uint64_t base, uint32_t limit, uint8_t access, uint8_t gran) {
+    if (index < 0 || index >= 8) return;
+    g_gdt[index] = (limit & 0xFFFFULL) | ((base & 0xFFFFFFULL) << 16) |
+                   ((uint64_t)access << 40) | (((uint64_t)limit & 0xF0000ULL) << 32) |
+                   (((uint64_t)gran & 0xFULL) << 52) | ((base & 0xFF000000ULL) << 32);
+}
+
+static void gdt_set_system_descriptor(int index, uint64_t base, uint32_t limit, uint8_t access) {
+    if (index < 0 || index >= 7) return; // Takes 2 slots (16 bytes)
+    g_gdt[index] = (limit & 0xFFFFULL) | ((base & 0xFFFFFFULL) << 16) |
+                   ((uint64_t)access << 40) | (((uint64_t)limit & 0xF0000ULL) << 32) |
+                   ((base & 0xFF000000ULL) << 32);
+    g_gdt[index+1] = (base >> 32);
+}
+
+
 void hal_init(void) {
-    // Setup IDT, GDT for x86_64
     hal_serial_init();
 
-    // Initialize IDT to default handler
+    uint32_t core_id = hal_cpu_get_id();
+    if (core_id >= 64) core_id = 0; // Safeguard
+
+    // Setup GDT to include TSS
+    // 0: Null
+    // 1: Kernel Code 64 (0x08)
+    // 2: Kernel Data 64 (0x10)
+    // 3: User Code 64   (0x18)
+    // 4: User Data 64   (0x20)
+    // 5: TSS (16-byte desc) (0x28)
+
+    g_gdt[0] = 0;
+    g_gdt[1] = 0x00af9a000000ffff; // KCode
+    g_gdt[2] = 0x00af92000000ffff; // KData
+    g_gdt[3] = 0x00affa000000ffff; // UCode
+    g_gdt[4] = 0x00aff2000000ffff; // UData
+
+    // Init TSS
+    tss_entry_t* tss = &g_tss[core_id];
+    tss->rsp0 = (uint64_t)g_per_core_stacks[core_id] + 16384;
+    tss->ist1 = (uint64_t)g_emergency_stacks[core_id] + 4096;
+    tss->iopb_offset = sizeof(tss_entry_t);
+
+    uint64_t tss_base = (uint64_t)tss;
+    gdt_set_system_descriptor(5, tss_base, sizeof(tss_entry_t)-1, 0x89); // 0x89 = Present, Ring 0, TSS
+
+    g_gdtr.base = (uint64_t)&g_gdt[0];
+    g_gdtr.limit = sizeof(g_gdt) - 1;
+
+    __asm__ volatile("lgdt %0" : : "m"(g_gdtr));
+
+    // Load TR
+    __asm__ volatile("ltr %w0" : : "r"(0x28)); // Segment index 5 = 5 * 8 = 0x28
+
+    // Initialize IDT
     for (int i = 0; i < 256; i++) {
         idt_set_descriptor(i, default_isr, 0x8E); // 0x8E: Present, Ring 0, Interrupt Gate
     }
 
+    // Set exception handlers
+    idt_set_descriptor(0, isr0, 0x8E);
+    idt_set_descriptor(1, isr1, 0x8E);
+    idt_set_descriptor(2, isr2, 0x8E);
+    idt_set_descriptor(3, isr3, 0x8E);
+    idt_set_descriptor(4, isr4, 0x8E);
+    idt_set_descriptor(5, isr5, 0x8E);
+    idt_set_descriptor(6, isr6, 0x8E);
+    idt_set_descriptor(7, isr7, 0x8E);
+    idt_set_descriptor(8, isr8, 0x8E);
+    // Double fault uses IST1
+    idt[8].ist = 1;
+
+    idt_set_descriptor(9, isr9, 0x8E);
+    idt_set_descriptor(10, isr10, 0x8E);
+    idt_set_descriptor(11, isr11, 0x8E);
+    idt_set_descriptor(12, isr12, 0x8E);
+    idt_set_descriptor(13, isr13, 0x8E);
+    idt_set_descriptor(14, isr14, 0x8E);
+    idt_set_descriptor(15, isr15, 0x8E);
+    idt_set_descriptor(16, isr16, 0x8E);
+    idt_set_descriptor(17, isr17, 0x8E);
+    idt_set_descriptor(18, isr18, 0x8E);
+    idt_set_descriptor(19, isr19, 0x8E);
+    idt_set_descriptor(20, isr20, 0x8E);
+    idt_set_descriptor(21, isr21, 0x8E);
+    idt_set_descriptor(22, isr22, 0x8E);
+    idt_set_descriptor(23, isr23, 0x8E);
+    idt_set_descriptor(24, isr24, 0x8E);
+    idt_set_descriptor(25, isr25, 0x8E);
+    idt_set_descriptor(26, isr26, 0x8E);
+    idt_set_descriptor(27, isr27, 0x8E);
+    idt_set_descriptor(28, isr28, 0x8E);
+    idt_set_descriptor(29, isr29, 0x8E);
+    idt_set_descriptor(30, isr30, 0x8E);
+    idt_set_descriptor(31, isr31, 0x8E);
+
     // Timer vector 32
-    idt_set_descriptor(32, default_timer_isr, 0x8E);
+    idt_set_descriptor(32, isr32, 0x8E);
+
+    // Syscall vector 0x80 (128) -> from user (DPL=3 -> 0xEE)
+    idt_set_descriptor(128, isr128, 0xEE);
 
     idtr.base = (uint64_t)&idt[0];
     idtr.limit = (uint16_t)sizeof(struct idt_entry) * 256 - 1;

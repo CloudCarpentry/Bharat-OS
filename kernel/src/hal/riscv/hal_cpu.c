@@ -143,30 +143,18 @@ void hal_cpu_disable_interrupts(void) {
 
 // --- Trap / Interrupt Handling ---
 
-extern void trap_vector(void); // Assuming there's an assembly trap vector somewhere, or we define a simple one
-// We'll define a simple C trap handler wrapper here to satisfy the linker if needed, but ideally we'd set stvec to a real asm handler
-static void simple_trap_vector(void) __attribute__((interrupt("supervisor")));
-static void simple_trap_vector(void) {
-    uint64_t scause;
-    __asm__ volatile("csrr %0, scause" : "=r"(scause));
-
-    // Check if it's a timer interrupt (Supervisor Timer Interrupt is cause 5)
-    if ((scause & 0x8000000000000000ULL) && (scause & 0x7FFFFFFFFFFFFFFFULL) == 5) {
-        // Clear timer interrupt by setting next timer
-        // This is a bit of a hack since we need tick_hz, but we'll use a default
-        sbi_set_timer(1000000ULL / 100ULL); // Assuming 100Hz
-        hal_timer_tick();
-    }
-}
+extern void trap_entry(void);
 
 void hal_init(void) {
     riscv_bsp_config_t cfg;
 
     // Setup trap vectors (stvec) for Supervisor mode.
 #ifdef CONFIG_RISCV_M_MODE
-    __asm__ volatile("csrw mtvec, %0" : : "r"((uint64_t)simple_trap_vector));
+    __asm__ volatile("csrw mtvec, %0" : : "r"((uint64_t)trap_entry));
 #else
-    __asm__ volatile("csrw stvec, %0" : : "r"((uint64_t)simple_trap_vector));
+    __asm__ volatile("csrw stvec, %0" : : "r"((uint64_t)trap_entry));
+    // Set sscratch to 0 to indicate we are initially in S-mode
+    __asm__ volatile("csrw sscratch, 0");
 #endif
 
     // Setup SBI console if running in Supervisor mode, or physical UART if Machine mode.

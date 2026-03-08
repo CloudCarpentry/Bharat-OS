@@ -28,6 +28,9 @@ endif()
 if(NOT BHARAT_PERSONALITY_NONE)
     set(BHARAT_PERSONALITY_NONE 1)
 endif()
+if(NOT BHARAT_MAX_CORES)
+    set(BHARAT_MAX_CORES 32)
+endif()
 
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bharat_config.h.in
@@ -63,14 +66,14 @@ endif()
 # ── Boot and HAL sources (arch-specific) ────────────────────────────────────
 if(ARCH STREQUAL "x86_64")
     set(BOOT_SRC src/boot/x86_64/boot.S)
-    set(ARCH_HAL src/hal/x86_64/hal_cpu.c)
+    set(ARCH_HAL src/hal/x86_64/hal_cpu.c src/hal/x86_64/trap_entry.S)
 elseif(ARCH STREQUAL "riscv64")
     set(BOOT_SRC src/boot/riscv64/boot.S)
-    set(ARCH_HAL src/hal/riscv/hal_cpu.c)
+    set(ARCH_HAL src/hal/riscv/hal_cpu.c src/hal/riscv/trap_entry.S)
     set(ARCH_HAL_EXTRA src/hal/riscv/shakti_bsp.c)
 elseif(ARCH STREQUAL "arm64")
     set(BOOT_SRC src/boot/arm64/boot.S)
-    set(ARCH_HAL src/hal/arm64/hal_cpu.c)
+    set(ARCH_HAL src/hal/arm64/hal_cpu.c src/hal/arm64/trap_entry.S)
 endif()
 
 if(ARCH STREQUAL "x86_64")
