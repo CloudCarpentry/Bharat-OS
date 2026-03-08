@@ -93,6 +93,7 @@ static void ensure_cache_init() {
 extern uint64_t g_sched_ticks;
 
 void numa_record_page_access(void* thread_ptr, uint64_t vaddr, numa_access_type_t access_type) {
+    (void)vaddr;
     (void)access_type;
     ensure_cache_init();
     kthread_t* thread = (kthread_t*)thread_ptr;
