@@ -6,6 +6,8 @@
 #include "../../include/sched.h"
 #include "../../include/capability.h"
 
+// @cite L4 Microkernels: The Lessons from 20 Years of Research and Implementation (Klein & Andronick, 2016)
+// L4 minimal memory mapping model: Kernel only maps/unmaps physical pages, policy lives in user space.
 #include <stddef.h>
 #include <stdint.h>
 

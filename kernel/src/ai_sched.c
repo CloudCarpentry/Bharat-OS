@@ -2,6 +2,8 @@
 
 #include <stddef.h>
 
+// @cite Integrating Artificial Intelligence into Operating Systems (Korshun et al., 2024)
+// @cite Enhancing Operating System Performance with AI (S. S. et al., 2025)
 static ai_heuristic_config_t g_ai_cfg = {
     .penalty_threshold = 5000U,
     .weight_ipc_latency = 2U,
