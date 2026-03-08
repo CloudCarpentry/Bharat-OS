@@ -85,3 +85,10 @@ void* kcache_alloc(kcache_t* cache) {
 void kcache_free(kcache_t* cache, void* obj) {
     // DO NOTHING in tests to avoid free() errors on statically allocated mock threads.
 }
+
+uint32_t hal_cpu_get_id(void) {
+    return 0;
+}
+
+void hal_cpu_halt(void) {
+}
