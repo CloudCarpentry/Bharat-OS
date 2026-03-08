@@ -1,0 +1,9 @@
+<<<<<<< SEARCH
+set(KERNEL_SRC
+    src/main.c
+=======
+set(KERNEL_SRC
+    src/main.c
+    src/trace/trace.c
+    src/board/${BHARAT_BOOT_HW}/board.c
+>>>>>>> REPLACE

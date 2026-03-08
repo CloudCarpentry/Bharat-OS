@@ -15,21 +15,59 @@
     .\tools\build.ps1 -Arch x86_64 -BootGui OFF -HardwareProfile vm
 #>
 param(
-    [ValidateSet("x86_64", "riscv64", "arm64")]
-    [string]$Arch = "x86_64",
+    [string]$Board = "",
+    [string]$Arch = "",
+    [string]$ToolchainOverride = "",
     [switch]$Clean = $false,
     [switch]$Run = $false,
     [switch]$DebugQemu = $false,
     [switch]$Payload = $false,
-    [string]$Machine = "virt",
+    [switch]$Flash = $false,
+    [string]$Machine = "",
     [ValidateSet("ON", "OFF")][string]$BootGui = "ON",
-    [ValidateSet("generic", "desktop", "server", "vm", "laptop")][string]$HardwareProfile = "generic"
+    [string]$HardwareProfile = "",
+    [string]$BootTier = ""
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $Root = Split-Path -Parent $PSScriptRoot
+
+$BoardsJsonPath = "$Root\tools\boards\boards.json"
+$BoardInfo = $null
+
+if ($Board -ne "") {
+    if (-not (Test-Path $BoardsJsonPath)) {
+        Write-Host "  [!] Error: boards.json not found at $BoardsJsonPath" -ForegroundColor Red
+        exit 1
+    }
+
+    $BoardsData = Get-Content $BoardsJsonPath | ConvertFrom-Json
+
+    if (-not $BoardsData.boards.PSObject.Properties.Match($Board).Count) {
+        Write-Host "  [!] Error: Board '$Board' not found in boards.json" -ForegroundColor Red
+        exit 1
+    }
+
+    $BoardInfo = $BoardsData.boards.$Board
+
+    if ($Arch -ne "" -and $Arch -ne $BoardInfo.arch) {
+        Write-Host "  [!] Error: Board '$Board' requires arch '$($BoardInfo.arch)', but arch '$Arch' was provided." -ForegroundColor Red
+        exit 1
+    }
+
+    $Arch = $BoardInfo.arch
+    if ($Machine -eq "") { $Machine = $BoardInfo.machine }
+    if ($HardwareProfile -eq "") { $HardwareProfile = $BoardInfo.hardware_profile }
+    if ($BootTier -eq "") { $BootTier = $BoardInfo.tier }
+}
+
+if ($Arch -eq "") { $Arch = "x86_64" }
+if ($Machine -eq "") { $Machine = "virt" }
+if ($HardwareProfile -eq "") { $HardwareProfile = "generic" }
+if ($BootTier -eq "") { $BootTier = "LINUX_LIKE" }
+
 $BuildDir = "$Root\build\$Arch"
 if ($Payload -and $Arch -eq "riscv64") {
     $BuildDir = "$Root\build\$Arch-gcc"
@@ -37,9 +75,29 @@ if ($Payload -and $Arch -eq "riscv64") {
 
 $OutELF = "$BuildDir\kernel.elf"
 
-$Toolchain = "$Root\cmake\toolchains\$Arch-elf.cmake"
-if ($Payload -and $Arch -eq "riscv64") {
-    $Toolchain = "$Root\cmake\toolchains\riscv64-elf-gcc.cmake"
+# Resolve Toolchain
+$Toolchain = ""
+if ($ToolchainOverride -ne "") {
+    if (Test-Path "$Root\cmake\toolchains\$Arch-$ToolchainOverride.cmake") {
+        $Toolchain = "$Root\cmake\toolchains\$Arch-$ToolchainOverride.cmake"
+    } elseif (Test-Path "$Root\$ToolchainOverride") {
+        $Toolchain = "$Root\$ToolchainOverride"
+    } elseif ($BoardInfo -ne $null -and $BoardInfo.toolchains -ne $null -and $BoardInfo.toolchains.$ToolchainOverride -ne $null) {
+        $Toolchain = "$Root\$($BoardInfo.toolchains.$ToolchainOverride)"
+    } else {
+        Write-Host "  [!] Error: Toolchain override '$ToolchainOverride' not found." -ForegroundColor Red
+        exit 1
+    }
+} elseif ($BoardInfo -ne $null -and $BoardInfo.default_toolchain -ne $null) {
+    $defTc = $BoardInfo.default_toolchain
+    $Toolchain = "$Root\$($BoardInfo.toolchains.$defTc)"
+} else {
+    if ($Arch -eq "x86_64") { $Toolchain = "$Root\cmake\toolchains\x86_64-elf.cmake" }
+    elseif ($Arch -eq "riscv64") {
+        if ($Payload) { $Toolchain = "$Root\cmake\toolchains\riscv64-elf-gcc.cmake" }
+        else { $Toolchain = "$Root\cmake\toolchains\riscv64-elf.cmake" }
+    }
+    elseif ($Arch -eq "arm64") { $Toolchain = "$Root\cmake\toolchains\arm64-elf.cmake" }
 }
 
 # ── Ensure LLVM tools are on PATH ─────────────────────────────────────────
@@ -75,6 +133,7 @@ if (-not (Test-Path "$BuildDir\CMakeCache.txt")) {
         "-DCMAKE_TOOLCHAIN_FILE=$Toolchain",
         "-DBHARAT_BOOT_GUI=$BootGui",
         "-DBHARAT_BOOT_HW_PROFILE=$HardwareProfile",
+        "-DBHARAT_BOOT_TIER=$BootTier",
         "-G", "Ninja",
         "--no-warn-unused-cli"
     )
@@ -128,6 +187,22 @@ if ($Arch -eq "x86_64") {
 if ($Arch -eq "x86_64") { ok "kernel32.elf -> $OutELF32" }
 
 if ($Arch -eq "x86_64") { ok "kernel32.elf -> $OutELF32" }
+
+# ── Flash ──────────────────────────────────────────────────────────────────
+if ($Flash) {
+    if ($BoardInfo -ne $null -and $BoardInfo.flash_script_dir -ne $null) {
+        $FlashScript = "$Root\$($BoardInfo.flash_script_dir)\flash.ps1"
+        if (Test-Path $FlashScript) {
+            inf "Flashing using script: $FlashScript"
+            & $FlashScript -KernelBinary $OutELF
+            if ($LASTEXITCODE -ne 0) { fail "Flash failed" }
+        } else {
+            fail "Flash script not found at $FlashScript"
+        }
+    } else {
+        fail "Flash requested, but no valid flash script dir configured for board."
+    }
+}
 
 # ── QEMU ──────────────────────────────────────────────────────────────────
 if ($Run) {
