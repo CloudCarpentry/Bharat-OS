@@ -96,7 +96,7 @@ struct kthread;
 
 typedef struct learned_task {
     uint64_t id;
-    float dynamic_weight; // AI/Learning adjusted weight
+    int32_t dynamic_weight; // AI/Learning adjusted weight (integer representation)
     int base_priority;
     struct kthread *kthread_ptr;
     struct learned_task *next;

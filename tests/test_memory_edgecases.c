@@ -109,3 +109,41 @@ void hal_send_ipi_payload(uint32_t target_core, uint64_t payload) {
     (void)target_core;
     (void)payload;
 }
+
+phys_addr_t hal_vmm_init_root(void) {
+    return 0x1000U; /* return a valid dummy physical address */
+}
+
+int hal_vmm_map_page(address_space_t *as, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
+    (void)as;
+    (void)vaddr;
+    (void)paddr;
+    (void)flags;
+    return 0;
+}
+
+int hal_vmm_unmap_page(address_space_t *as, virt_addr_t vaddr) {
+    (void)as;
+    (void)vaddr;
+    return 0;
+}
+
+int hal_vmm_setup_address_space(address_space_t *as) {
+    (void)as;
+    return 0;
+}
+
+int hal_vmm_get_mapping(address_space_t *as, virt_addr_t vaddr, phys_addr_t *out_paddr, uint32_t *out_flags) {
+    (void)as;
+    (void)vaddr;
+    (void)out_paddr;
+    (void)out_flags;
+    return -1;
+}
+
+int hal_vmm_update_mapping(address_space_t *as, virt_addr_t vaddr, uint32_t new_flags) {
+    (void)as;
+    (void)vaddr;
+    (void)new_flags;
+    return 0;
+}
