@@ -1,0 +1,19 @@
+--- kernel/src/sched.c
++++ kernel/src/sched.c
+@@ -176,7 +176,7 @@
+     if (!t) return NULL;
+
+     t->thread_id = g_next_thread_id++;
+-    t->process_id = parent->process_id;
++    t->process_id = parent ? parent->process_id : 0;
+     t->state = THREAD_STATE_READY;
+     t->priority = 1U;
+     t->base_priority = 1U;
+@@ -192,7 +192,7 @@
+         slot->thread.cpu_context = &slot->context;
+         list_init(&slot->list_node);
+
+-        if (!parent->main_thread) {
++        if (parent && !parent->main_thread) {
+             parent->main_thread = &slot->thread;
+         }

@@ -1,0 +1,10 @@
+--- kernel/src/sched.c
++++ kernel/src/sched.c
+@@ -387,6 +387,7 @@
+     }
+
+     thread->bound_core_id = new_node;
++    thread->preferred_numa_node = new_node;
+     if (thread->state == THREAD_STATE_READY) {
+         list_add(&slot->list_node, &g_runqueues[new_node].ready_queue[thread->priority]);
+     }

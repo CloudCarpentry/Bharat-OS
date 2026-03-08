@@ -87,3 +87,6 @@ int main() {
     printf("AI Governor Integration Tests passed successfully.\n");
     return 0;
 }
+
+uint32_t hal_cpu_get_id(void) { return 0; }
+void hal_cpu_halt(void) { }

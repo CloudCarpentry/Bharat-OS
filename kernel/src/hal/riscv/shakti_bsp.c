@@ -145,7 +145,7 @@ static void parse_fdt(uint64_t fdt_ptr, riscv_bsp_config_t* cfg) {
                     const uint32_t* cell = (const uint32_t*)reg_data;
 
                     if (ac == 2) {
-                        base = ((uint64_t)fdt32_to_cpu(cell[0]) << 32) | fdt32_to_cpu(cell[1]);
+                        base = ((uint64_t)(uint64_t)fdt32_to_cpu(cell[0]) << 32) | fdt32_to_cpu(cell[1]);
                         cell += 2;
                     } else if (ac == 1) {
                         base = fdt32_to_cpu(cell[0]);
@@ -153,7 +153,7 @@ static void parse_fdt(uint64_t fdt_ptr, riscv_bsp_config_t* cfg) {
                     }
 
                     if (sc == 2) {
-                        size = ((uint64_t)fdt32_to_cpu(cell[0]) << 32) | fdt32_to_cpu(cell[1]);
+                        size = ((uint64_t)(uint64_t)fdt32_to_cpu(cell[0]) << 32) | fdt32_to_cpu(cell[1]);
                     } else if (sc == 1) {
                         size = fdt32_to_cpu(cell[0]);
                     }
