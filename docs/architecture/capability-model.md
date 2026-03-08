@@ -19,3 +19,6 @@ A capability is an unforgeable, kernel-managed token that pairs an object refere
 
 - **Zero-Trust**: No ambient authority.
 - **Verifiability**: The flow of authority can be graph-analyzed at compile time to mathematically prove isolation between critical domains (e.g., separating networking stacks from AI cryptographic enclaves).
+
+
+> Reference: seL4 capability systems define a capability as an immutable reference paired with rights, where capability invocation is the authority path that enables least-privilege control.

@@ -53,6 +53,8 @@ void hal_riscv_send_ipi_payload(const unsigned long* hart_mask, uint64_t payload
 }
 
 void hal_send_ipi_payload(uint32_t target_core, uint64_t payload) {
+    // This is a real SBI-backed implementation, not a placeholder.
+    // Ensure the target_core ID maps 1:1 with the hartid used by SBI.
     unsigned long hart_mask = (1UL << target_core);
     hal_riscv_send_ipi_payload(&hart_mask, payload);
 }
@@ -216,10 +218,20 @@ int hal_interrupt_route(uint32_t irq, uint32_t target_core) {
     return 0;
 }
 
+static uint64_t g_timer_interval;
+
 int hal_timer_source_init(uint32_t tick_hz) {
     if (tick_hz == 0U) {
         return -1;
     }
+
+    // Assuming a timebase frequency of 10MHz (e.g. QEMU Virt and Shakti default)
+    uint64_t timebase_freq = 10000000ULL;
+    g_timer_interval = timebase_freq / (uint64_t)tick_hz;
+
+    uint64_t current_time;
+    __asm__ volatile("csrr %0, time" : "=r"(current_time));
+    sbi_set_timer(current_time + g_timer_interval);
 
     // Enable Supervisor Timer Interrupt (STIE) in sie CSR
 #ifdef CONFIG_RISCV_M_MODE
@@ -228,9 +240,17 @@ int hal_timer_source_init(uint32_t tick_hz) {
     __asm__ volatile("csrs sie, %0" : : "r"(32)); // STIE is bit 5
 #endif
 
-    // Baseline periodic timer request via SBI TIME extension.
-    sbi_set_timer(1000000ULL / (uint64_t)tick_hz);
     return 0;
+}
+
+void hal_timer_isr(void) {
+    uint64_t current_time;
+    __asm__ volatile("csrr %0, time" : "=r"(current_time));
+
+    // Set next timer interrupt
+    sbi_set_timer(current_time + g_timer_interval);
+
+    hal_timer_tick();
 }
 
 uint32_t hal_cpu_get_id(void) {

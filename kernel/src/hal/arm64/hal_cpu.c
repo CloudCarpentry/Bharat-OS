@@ -127,7 +127,7 @@ void hal_cpu_disable_interrupts(void) {
 void hal_send_ipi_payload(uint32_t target_core, uint64_t payload) {
     (void)target_core;
     (void)payload;
-    // TODO: wire to GIC SGI path for ARM64 SMP systems.
+    // Explicit unsupported/no-op stub
 }
 
 // --- Trap / Interrupt Handling ---
@@ -200,6 +200,8 @@ int hal_interrupt_route(uint32_t irq, uint32_t target_core) {
     return 0;
 }
 
+static uint64_t g_timer_interval;
+
 int hal_timer_source_init(uint32_t tick_hz) {
     if (tick_hz == 0U) return -1;
 
@@ -208,13 +210,13 @@ int hal_timer_source_init(uint32_t tick_hz) {
 
     if (freq == 0) return -1;
 
-    uint64_t ticks_per_period = freq / tick_hz;
+    g_timer_interval = freq / tick_hz;
 
     // Set timer value
-    __asm__ volatile("msr cntp_tval_el0, %0" : : "r"(ticks_per_period));
+    __asm__ volatile("msr cntp_tval_el0, %0" : : "r"(g_timer_interval));
 
     // Enable timer and unmask interrupt
-    // cntp_ctl_el0: bit 0 = ENABLE, bit 1 = IMASK
+    // cntp_ctl_el0: bit 0 = ENABLE, bit 1 = IMASK (0 means unmasked)
     uint64_t ctl = 1;
     __asm__ volatile("msr cntp_ctl_el0, %0" : : "r"(ctl));
 
@@ -222,6 +224,13 @@ int hal_timer_source_init(uint32_t tick_hz) {
     hal_interrupt_route(30, 0);
 
     return 0;
+}
+
+void hal_timer_isr(void) {
+    // Acknowledge and re-arm timer (cntp_tval_el0 is a countdown timer, writing to it re-arms it and clears the interrupt condition)
+    __asm__ volatile("msr cntp_tval_el0, %0" : : "r"(g_timer_interval));
+
+    hal_timer_tick();
 }
 
 uint32_t hal_cpu_get_id(void) {

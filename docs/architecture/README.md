@@ -43,6 +43,8 @@ This folder captures the current architectural baseline for Bharat-OS.
 
 - [`personality-layer.md`](personality-layer.md)
 - [`gui-strategy.md`](gui-strategy.md)
+- [`device-profiles.md`](device-profiles.md)
+- [`ai-scheduler-overview.md`](ai-scheduler-overview.md)
 
 ## Scope note
 

@@ -2,10 +2,19 @@
 #include "advanced/ai_sched.h"
 
 #include <stdint.h>
+#if __has_include("bharat_config.h")
+#include "bharat_config.h"
+#endif
+
+#ifndef MAX_SUPPORTED_CORES
+#define MAX_SUPPORTED_CORES 8U
+#endif
 
 // x86_64 Specific HAL Implementation
 
 #define COM1_PORT 0x3F8
+
+static void hal_cpu_pmc_init(void);
 
 static inline uint8_t x86_inb(uint16_t port) {
     uint8_t value;
@@ -15,6 +24,18 @@ static inline uint8_t x86_inb(uint16_t port) {
 
 static inline void x86_outb(uint16_t port, uint8_t value) {
     __asm__ volatile("outb %0, %1" : : "a"(value), "Nd"(port));
+}
+
+static inline void x86_wrmsr(uint32_t msr, uint64_t value) {
+    uint32_t low = (uint32_t)value;
+    uint32_t high = (uint32_t)(value >> 32);
+    __asm__ volatile("wrmsr" : : "c"(msr), "a"(low), "d"(high));
+}
+
+static inline uint64_t x86_rdpmc(uint32_t counter) {
+    uint32_t low, high;
+    __asm__ volatile("rdpmc" : "=a"(low), "=d"(high) : "c"(counter));
+    return ((uint64_t)high << 32) | low;
 }
 
 void hal_serial_init(void) {
@@ -158,8 +179,8 @@ struct tss_entry_struct {
 
 typedef struct tss_entry_struct tss_entry_t;
 
-static tss_entry_t g_tss[64] = {0}; // Assumed MAX_SUPPORTED_CORES <= 64 for static init
-static uint8_t g_emergency_stacks[64][4096] __attribute__((aligned(16)));
+static tss_entry_t g_tss[MAX_SUPPORTED_CORES] = {0};
+static uint8_t g_emergency_stacks[MAX_SUPPORTED_CORES][4096] __attribute__((aligned(16)));
 
 extern uint8_t g_per_core_stacks[][16384];
 
@@ -206,15 +227,13 @@ static void default_isr(void) {
     __asm__ volatile("iretq");
 }
 
-static void default_timer_isr(void) {
+void default_timer_isr(void) {
     // Ack APIC EOI
     volatile uint32_t *apic_eoi = (volatile uint32_t *)0xFEE000B0;
     *apic_eoi = 0;
 
     // Call generic timer tick
     hal_timer_tick();
-
-    __asm__ volatile("iretq");
 }
 
 
@@ -267,7 +286,7 @@ void hal_init(void) {
     hal_serial_init();
 
     uint32_t core_id = hal_cpu_get_id();
-    if (core_id >= 64) core_id = 0; // Safeguard
+    if (core_id >= MAX_SUPPORTED_CORES) core_id = 0; // Safeguard
 
     // Setup GDT to include TSS
     // 0: Null
@@ -344,6 +363,9 @@ void hal_init(void) {
 
     // Timer vector 32
     idt_set_descriptor(32, isr32, 0x8E);
+
+    // Initialize Performance Monitoring Counters
+    hal_cpu_pmc_init();
 
     // Syscall vector 0x80 (128) -> from user (DPL=3 -> 0xEE)
     idt_set_descriptor(128, isr128, 0xEE);
@@ -433,6 +455,20 @@ uint32_t hal_cpu_get_id(void) {
 
 #define SCHED_MAX_THREADS 64U
 
+#define MSR_IA32_PERFEVTSEL1      0x187
+#define MSR_IA32_PERF_GLOBAL_CTRL 0x38F
+#define ARCH_EVENT_INST_RETIRED   0xC0
+
+static void hal_cpu_pmc_init(void) {
+    // Program PMC1 to count Instructions Retired (Event 0xC0, Umask 0x00)
+    // Bit 16: USR, Bit 17: OS, Bit 22: EN
+    uint64_t evtsel = ARCH_EVENT_INST_RETIRED | (1ULL << 16) | (1ULL << 17) | (1ULL << 22);
+    x86_wrmsr(MSR_IA32_PERFEVTSEL1, evtsel);
+
+    // Enable PMC1 in GLOBAL_CTRL (Bit 1)
+    x86_wrmsr(MSR_IA32_PERF_GLOBAL_CTRL, (1ULL << 1));
+}
+
 typedef struct {
     uint64_t last_cycles;
     uint64_t last_instr;
@@ -456,18 +492,18 @@ int ai_sched_arch_sample_pmc(uint32_t thread_id, ai_pmc_sample_t* out_sample) {
     __asm__ volatile("rdtsc" : "=a"(low), "=d"(high));
     cycles = ((uint64_t)high << 32) | low;
 
-    uint64_t cycles_delta = cycles - g_pmc_state[thread_id].last_cycles;
+    uint64_t instr = x86_rdpmc(1);
 
-    // TODO: Program IA32_PERF_GLOBAL_CTRL and use rdpmc(1)
-    uint64_t instr_delta = cycles_delta / 2;
+    uint64_t cycles_delta = cycles - g_pmc_state[thread_id].last_cycles;
+    uint64_t instr_delta = instr - g_pmc_state[thread_id].last_instr;
 
     out_sample->available = 1U;
     out_sample->cycles_delta = cycles_delta;
     out_sample->instructions_delta = instr_delta;
 
     g_pmc_state[thread_id].last_cycles = cycles;
-    // We mock instructions here
-    g_pmc_state[thread_id].last_instr += instr_delta;
+    g_pmc_state[thread_id].last_instr = instr;
 
     return 0;
+
 }

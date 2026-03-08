@@ -1,5 +1,6 @@
 #include "hal/timer.h"
 #include "hal/hal.h"
+#include "sched.h"
 
 #include <stdint.h>
 
@@ -32,4 +33,5 @@ uint64_t hal_timer_monotonic_ticks(void) {
 void hal_timer_tick(void) {
     (void)g_tick_hz;
     g_ticks++;
+    sched_on_timer_tick();
 }
