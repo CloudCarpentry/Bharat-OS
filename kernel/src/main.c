@@ -16,6 +16,7 @@
 #include "security/credentials.h"
 #include "security/isolation.h"
 #include "security/policy.h"
+#include "power_thermal_perf.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -236,6 +237,11 @@ void kernel_main(void) {
       KPRINT("BOOT: zswap initialized\n");
     } else {
       KPRINT("BOOT: zswap skipped (fast-boot policy)\n");
+    }
+
+    KPRINT("  [PTP] Initializing power/thermal/perf manager\n");
+    if (ptp_init() != 0) {
+      kernel_panic("power/thermal/perf init failed");
     }
 
     KPRINT("  [NUMA] Discovering topology\n");
