@@ -22,6 +22,11 @@ set(BHARAT_ACCELERATOR_CLASSES "" CACHE STRING "Target accelerator classes as a 
 # Platform Firmware
 set(BHARAT_PLATFORM_FIRMWARE "" CACHE STRING "Target platform firmware (e.g., ACPI, FDT)")
 
+# Boot Hardware Profile
+set(BHARAT_BOOT_HW_PROFILE "generic" CACHE STRING "Boot hardware profile (generic, desktop, server, vm, laptop, edge, rtos)")
+set_property(CACHE BHARAT_BOOT_HW_PROFILE PROPERTY STRINGS generic desktop server vm laptop edge rtos)
+
+
 # For backward compatibility with existing CMake scripts (like tests, toolchains)
 if(BHARAT_ARCH_FAMILY STREQUAL "X86" AND BHARAT_ARCH_BITS STREQUAL "64")
     set(ARCH "x86_64")

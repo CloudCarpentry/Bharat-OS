@@ -38,12 +38,10 @@ configure_file(
 )
 
 option(BHARAT_BOOT_GUI "Enable boot-time GUI handoff metadata" ON)
-if(BHARAT_BOOT_HW_PROFILE STREQUAL "")
-    set(BHARAT_BOOT_HW_PROFILE "generic")
-endif()
 
-set(BHARAT_BOOT_HW_PROFILE "${BHARAT_BOOT_HW_PROFILE}" CACHE STRING "Boot hardware profile (generic, desktop, server, vm, laptop, edge, rtos)")
-set_property(CACHE BHARAT_BOOT_HW_PROFILE PROPERTY STRINGS generic desktop server vm laptop edge rtos)
+if(NOT DEFINED BHARAT_BOOT_HW_PROFILE OR "${BHARAT_BOOT_HW_PROFILE}" STREQUAL "")
+    message(FATAL_ERROR "BHARAT_BOOT_HW_PROFILE must not be empty")
+endif()
 
 if(BHARAT_BOOT_GUI)
     add_compile_definitions(BHARAT_BOOT_GUI=1)
