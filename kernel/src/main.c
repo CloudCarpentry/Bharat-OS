@@ -259,8 +259,6 @@ void kernel_main(void) {
     while (1) {
       kernel_ai_publish_telemetry();
       kernel_ai_governor_tick();
-      hal_timer_tick();
-      sched_on_timer_tick();
       hal_cpu_halt();
     }
   } else {
