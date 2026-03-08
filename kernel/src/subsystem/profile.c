@@ -8,6 +8,7 @@
 
 static bharat_storage_profile_t g_storage_profile;
 static bharat_network_profile_t g_network_profile;
+static bharat_filesystem_profile_t g_filesystem_profile;
 static int g_subsystems_ready;
 
 static int streq(const char *a, const char *b) {
@@ -81,9 +82,31 @@ static void set_compile_time_network_defaults(void) {
     g_network_profile.features = features;
 }
 
+static void set_compile_time_filesystem_defaults(void) {
+    uint32_t features = BHARAT_FS_VFS | BHARAT_FS_PAGE_CACHE | BHARAT_FS_WRITEBACK |
+                        BHARAT_FS_BLOCK_LAYER | BHARAT_FS_DRIVER_PLUGINS;
+
+#if defined(BHARAT_PROFILE_RTOS) || defined(BHARAT_PROFILE_EDGE) || defined(BHARAT_PROFILE_DRONE) || defined(BHARAT_PROFILE_ROBOT)
+    features |= BHARAT_FS_TMPFS | BHARAT_FS_RAMFS | BHARAT_FS_LITTLEFS | BHARAT_FS_FAT_LIKE;
+#endif
+
+#if defined(BHARAT_PROFILE_DESKTOP) || defined(BHARAT_PROFILE_DATACENTER) || defined(BHARAT_PROFILE_NETWORK_APPLIANCE)
+    features |= BHARAT_FS_TMPFS | BHARAT_FS_EXT_LIKE | BHARAT_FS_INITRAMFS | BHARAT_FS_DEVFS |
+                BHARAT_FS_PROCFS | BHARAT_FS_SYSFS;
+#endif
+
+#if defined(BHARAT_PROFILE_DATACENTER) || defined(BHARAT_PROFILE_NETWORK_APPLIANCE)
+    features |= BHARAT_FS_JOURNALING | BHARAT_FS_CRASH_RECOVERY_STRONG | BHARAT_FS_SCALABLE_WRITEBACK;
+#endif
+
+    g_filesystem_profile.features = features;
+
+}
+
 void bharat_subsystems_init(const char *boot_hw_profile) {
     set_compile_time_storage_defaults();
     set_compile_time_network_defaults();
+    set_compile_time_filesystem_defaults();
 
     if (streq(boot_hw_profile, "vm")) {
         g_storage_profile.features |= BHARAT_STORAGE_RAMDISK;
@@ -94,9 +117,21 @@ void bharat_subsystems_init(const char *boot_hw_profile) {
     } else if (streq(boot_hw_profile, "mobile")) {
         g_storage_profile.features |= BHARAT_STORAGE_EMMC_SD | BHARAT_STORAGE_FLASH_MTD;
         g_network_profile.features |= BHARAT_NET_WIFI | BHARAT_NET_LIGHTWEIGHT_STACK;
+        g_filesystem_profile.features |= BHARAT_FS_TMPFS | BHARAT_FS_RAMFS | BHARAT_FS_FAT_LIKE;
     } else if (streq(boot_hw_profile, "network_appliance")) {
         g_network_profile.features |= BHARAT_NET_ZERO_COPY_PATH | BHARAT_NET_ETHERNET;
         g_network_profile.features &= ~BHARAT_NET_WIFI;
+        g_filesystem_profile.features |= BHARAT_FS_EXT_LIKE | BHARAT_FS_JOURNALING |
+                                         BHARAT_FS_CRASH_RECOVERY_STRONG | BHARAT_FS_SCALABLE_WRITEBACK;
+    } else if (streq(boot_hw_profile, "embedded") || streq(boot_hw_profile, "edge") || streq(boot_hw_profile, "rtos")) {
+        g_filesystem_profile.features |= BHARAT_FS_TMPFS | BHARAT_FS_RAMFS | BHARAT_FS_LITTLEFS |
+                                         BHARAT_FS_FAT_LIKE;
+        g_filesystem_profile.features &= ~(BHARAT_FS_EXT_LIKE | BHARAT_FS_JOURNALING);
+    } else if (streq(boot_hw_profile, "datacenter")) {
+        g_filesystem_profile.features |= BHARAT_FS_TMPFS | BHARAT_FS_EXT_LIKE | BHARAT_FS_INITRAMFS |
+                                         BHARAT_FS_DEVFS | BHARAT_FS_PROCFS | BHARAT_FS_SYSFS |
+                                         BHARAT_FS_JOURNALING | BHARAT_FS_CRASH_RECOVERY_STRONG |
+                                         BHARAT_FS_SCALABLE_WRITEBACK;
     }
 
     g_subsystems_ready = 1;
@@ -114,10 +149,18 @@ const bharat_network_profile_t *bharat_network_active_profile(void) {
     return &g_network_profile;
 }
 
+const bharat_filesystem_profile_t *bharat_filesystem_active_profile(void) {
+    return &g_filesystem_profile;
+}
+
 int bharat_storage_has(uint32_t feature) {
     return (g_storage_profile.features & feature) != 0U;
 }
 
 int bharat_network_has(uint32_t feature) {
     return (g_network_profile.features & feature) != 0U;
+}
+
+int bharat_filesystem_has(uint32_t feature) {
+    return (g_filesystem_profile.features & feature) != 0U;
 }
