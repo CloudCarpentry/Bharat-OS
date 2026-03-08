@@ -8,6 +8,7 @@
 #include "numa.h"
 #include "trap.h"
 #include "multicore.h"
+#include "advanced/algo_matrix.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -180,6 +181,10 @@ void kernel_main(void) {
     KPRINT("  [HAL] Initialising hardware on BSP...\n");
     hal_init();
     KPRINT("  [HAL] Ready.\n");
+
+    KPRINT("  [ALGO] Initializing Capability Matrix...\n");
+    algo_matrix_init();
+    KPRINT("  [ALGO] Matrix Ready.\n");
 
     KPRINT("  [MM]  Initializing PMM...\n");
 

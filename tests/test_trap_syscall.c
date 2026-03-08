@@ -2,6 +2,10 @@
 #include <stdint.h>
 #include <stdio.h>
 
+void default_timer_isr(void) {
+    // mock
+}
+
 #include "../kernel/include/trap.h"
 
 static address_space_t g_as = { .root_table = 0x1000U };
@@ -137,3 +141,7 @@ void kcache_free(kcache_t* cache, void* obj) {
 
 uint32_t hal_cpu_get_id(void) { return 0; }
 void hal_cpu_halt(void) { }
+
+void default_timer_isr(void) {
+    /* Mock implementation for testing trap.c generic timer tick handling */
+}

@@ -2,6 +2,8 @@
 
 #include <stddef.h>
 
+// @cite Integrating Artificial Intelligence into Operating Systems (Korshun et al., 2024)
+// @cite Enhancing Operating System Performance with AI (S. S. et al., 2025)
 static ai_heuristic_config_t g_ai_cfg = {
     .penalty_threshold = 5000U,
     .weight_ipc_latency = 2U,
@@ -196,9 +198,13 @@ learned_task_t* select_and_update_queue(learned_task_t **head) {
     curr = *head;
     while (curr != NULL) {
         if (curr == best) {
-            curr->dynamic_weight -= 1.0f; // Penalty for being served (Fairness)
+            curr->dynamic_weight -= 1; // Penalty for being served (Fairness)
         } else {
-            curr->dynamic_weight += 0.1f; // "Learning" boost for waiting
+            /*
+             * Note: Originally this used floats (+= 0.1f).
+             * Replaced with a small integer increment to avoid soft-float libgcc dependencies.
+             */
+            curr->dynamic_weight += 1; // "Learning" boost for waiting
         }
         curr = curr->next;
     }

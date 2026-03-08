@@ -20,6 +20,7 @@ This folder captures the current architectural baseline for Bharat-OS.
 
 ### Core kernel architecture
 
+- [`kernel-api.md`](kernel-api.md)
 - [`capability-model.md`](capability-model.md)
 - [`kernel-object-model.md`](kernel-object-model.md)
 - [`ipc-model.md`](ipc-model.md)

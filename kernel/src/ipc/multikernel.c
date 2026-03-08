@@ -4,6 +4,8 @@
 #include "../../include/kernel_safety.h"
 #include "../../include/multicore.h"
 
+// @cite The Multikernel: A New OS Architecture for Scalable Multicore Systems (Baumann et al., 2009)
+// Barrelfish-inspired URPC messaging and state replication
 #include <stddef.h>
 #include <stdint.h>
 

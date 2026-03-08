@@ -62,16 +62,35 @@ Bharat-OS is intentionally profile-driven instead of forcing one heavyweight ima
 - **Robotics & UAVs:** mixed-criticality partitioning, dedicated-core workflows, and low-latency URPC messaging between control/perception tasks.
 - **Network appliances:** isolated user-space drivers plus fast-path packet processing and restart without whole-system panic.
 - **Datacenter/cloud:** multikernel-friendly scaling on many-core/NUMA systems with demand paging and policy-driven AI scheduling.
-- **Display strategy by device class:** explicit tiers for headless systems, serial/text console, framebuffer-first embedded UI, and full compositor desktop where hardware supports it.
+
+### Subsystem Model
+Bharat-OS defines explicit subsystem groups to ensure scalable and tailored functionality for every device class:
+
+* **Console Subsystem:** Serial and text console outputs for early bring-up, logging, and headless environments.
+* **Framebuffer & Embedded Graphics Subsystem:** The *primary* graphics path for small devices. Framebuffers are treated as a first-class target, offering deterministic rendering and software-rendered UI without dragging in a heavy GPU compositor.
+* **Input Subsystem:** Modular routing for keyboards, touch panels, rotary encoders, and GPIO buttons.
+* **Heterogeneous Accelerator Subsystem:** DMA engines, DSPs, NPUs, and ISP abstractions for edge AI and multimedia tasks.
+* **Embedded Device Services:** Kiosk shells, watchdog timers, OTA recovery, and lightweight local storage.
+* **Desktop Graphics Subsystem:** An advanced layer reserved for devices with capable hardware and full compositor needs.
+
+### Display & GUI Strategy
+
+Our display architecture explicitly rejects "desktop compositor or nothing". We define output subsystems in layers:
+
+1. **Headless:** Remote management and serial outputs (Tier 0).
+2. **Text console:** VGA/serial output for basic bring-up (Tier 1).
+3. **Framebuffer graphics:** Simple 2D display operations and robust device driver abstractions (Tier 2).
+4. **Embedded lightweight UI:** Direct-rendered widgets or lightweight toolkits tailored for kiosks and industrial panels (Tier 3).
+5. **Full compositor / desktop GUI:** Accelerated environments for workstations and advanced infotainment displays (Tier 4).
 
 ---
 
 ## 🧭 Roadmap (Condensed)
 
-- **Phase 1 (kernel spine):** boot stability, scheduler/memory correctness, timer+interrupts, SMP bring-up, tracing/observability.
-- **Phase 2 (device specialization):** edge/robotics/drone service packs, power management, secure update chain, sensor+actuator frameworks.
-- **Phase 3 (cloud/appliance):** NUMA/resource isolation, high-speed networking/storage, accelerator orchestration, virtualization hooks.
-- **Phase 4 (UX surfaces):** framebuffer and embedded UI first, richer compositor/desktop layers later.
+- **Phase 1 (kernel spine & core UI):** boot stability, scheduler/memory correctness, timer+interrupts, SMP bring-up, tracing/observability, **framebuffer core, simple 2D renderer, and text output.**
+- **Phase 2 (device specialization & embedded UI):** edge/robotics/drone service packs, power management, secure update chain, sensor+actuator frameworks, **touch/key input, and small-device UI toolkit.**
+- **Phase 3 (cloud/appliance & accelerators):** NUMA/resource isolation, high-speed networking/storage, accelerator orchestration (NPU/DSP/DMA), virtualization hooks.
+- **Phase 4 (advanced UX):** richer desktop compositor and full accelerated windowing environments.
 
 ### AI Features & Roadmap
 
@@ -160,6 +179,13 @@ Bharat-OS draws inspiration from and builds upon research in AI-driven systems a
 
 ### Research Inspirations
 
-- **Barrelfish multikernel model:** treats a machine as a distributed system of cores coordinated by explicit message passing; this directly informs Bharat-OS URPC and cross-core service decomposition.
-- **seL4 capability model and verification-first design:** capability invocation as the primary authority path and a small trusted kernel base inform Bharat-OS object-capability isolation goals.
-- **AI scheduling research:** workload-aware scheduling literature (including RL-driven resource managers) informs the long-term AI-governor and scheduler policy roadmap.
+- **Barrelfish multikernel model:** treats a machine as a distributed system of cores coordinated by explicit message passing; this directly informs Bharat-OS URPC and cross-core service decomposition. ([PDF](https://sigops.org/s/conferences/sosp/2009/papers/baumann-sosp09.pdf))
+- **seL4 capability model and verification-first design:** capability invocation as the primary authority path and a small trusted kernel base inform Bharat-OS object-capability isolation goals. ([PDF](https://sigops.org/s/conferences/sosp/2009/papers/klein-sosp09.pdf), [TOSEM PDF](https://trustworthy.systems/publications/nicta_full_text/7371.pdf))
+- **L4 Family Microkernels:** Surveys L4 evolution, emphasizing modularity; Bharat-OS builds on L4's IPC and driver isolation principles. ([PDF](https://trustworthy.systems/publications/nicta_full_text/8988.pdf))
+- **AI scheduling research:** workload-aware scheduling literature (including RL-driven resource managers) informs the long-term AI-governor and scheduler policy roadmap. ([arXiv](https://arxiv.org/abs/2403.01185), [IJMET PDF](https://iaeme.com/MasterAdmin/Journal_uploads/IJMET/VOLUME_11_ISSUE_12/IJMET_11_12_012.pdf))
+
+For a complete bibliography and BibTeX entries, see [`docs/papers.md`](docs/papers.md) and [`docs/references.bib`](docs/references.bib).
+
+### Phase 4 Verification Roadmap
+
+As part of Phase 4, we plan to integrate seL4 tools for verification. Our initial focus will be on Isabelle/HOL proofs for our core IPC primitives. We are actively seeking and welcome help from other developers on this roadmap. If you have experience in formal verification or theorem proving, please join us!

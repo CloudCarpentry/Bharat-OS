@@ -2,7 +2,9 @@
 #define BHARAT_ARCH_CAPABILITIES_H
 
 #include <stdint.h>
+#if __has_include("bharat_config.h")
 #include "bharat_config.h"
+#endif
 
 /*
  * ISA Capability Layer
