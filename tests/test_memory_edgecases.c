@@ -99,37 +99,7 @@ int main(void) {
 
 
 
-#include "../kernel/include/slab.h"
-#include <stdlib.h>
-#include <string.h>
-
-// Some tests were crashing on free() because thread_destroy called kcache_free on pointers that weren't allocated by kcache_alloc (like stack/global variables in tests).
-// Since these are stub tests without full memory management setup, let's just make kcache_free a no-op for tests.
-kcache_t* kcache_create(const char* name, size_t size) {
-    kcache_t* c = malloc(sizeof(kcache_t));
-    if(c) {
-        c->object_size = size;
-        c->name = name;
-    }
-    return c;
-}
-void* kcache_alloc(kcache_t* cache) {
-    if(!cache) return NULL;
-    return malloc(cache->object_size);
-}
-void kcache_free(kcache_t* cache, void* obj) {
-    // DO NOTHING in tests to avoid free() errors on statically allocated mock threads.
-}
-void* kmalloc(size_t size) {
-    return malloc(size);
-}
-void kfree(void* ptr) {
-    // DO NOTHING
-}
-
-uint32_t hal_cpu_get_id(void) { return 0; }
-
-void hal_cpu_halt(void) { }
+// benchmark_stubs.c handles memory stubs, hal_cpu_get_id, hal_cpu_halt
 
 void hal_send_ipi_payload(uint32_t target_core, uint64_t payload) {
     (void)target_core;
@@ -185,3 +155,5 @@ int hal_vmm_update_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_
     (void)root_table; (void)vaddr; (void)paddr; (void)flags;
     return -1;
 }
+
+void mm_inc_page_ref(phys_addr_t page) { (void)page; }

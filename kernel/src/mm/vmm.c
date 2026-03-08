@@ -2,6 +2,7 @@
 #include "../../include/numa.h"
 #include "../../include/hal/hal.h"
 #include "../../include/hal/vmm.h"
+#include "../../include/hal/mmu_ops.h"
 #include "../../include/advanced/formal_verif.h"
 #include "../../include/sched.h"
 #include "../../include/capability.h"
@@ -19,8 +20,23 @@
 
 static address_space_t kernel_space;
 
+// Helper to translate old VMM flags to new MMU flags
+static mmu_flags_t convert_vmm_flags(uint32_t flags) {
+    mmu_flags_t mmu_flags = MMU_READ;
+    if (flags & CAP_RIGHT_WRITE) mmu_flags |= MMU_WRITE;
+    if (flags & PAGE_USER)       mmu_flags |= MMU_USER;
+    if (flags & PAGE_COW)        mmu_flags |= MMU_COW;
+    return mmu_flags;
+}
+
 int vmm_init(void) {
-    phys_addr_t root_dir_phys = hal_vmm_init_root();
+    arch_mmu_init();
+
+    if (!active_mmu) {
+        return -1; // Fallback or unsupported architecture
+    }
+
+    phys_addr_t root_dir_phys = active_mmu->create_table();
     if (root_dir_phys == 0U) {
         return -1;
     }
@@ -53,12 +69,17 @@ int mm_vmm_map_page(address_space_t* as, virt_addr_t vaddr, phys_addr_t paddr, u
         flags &= ~CAP_RIGHT_WRITE;
     }
 
-    return hal_vmm_map_page(as->root_table, vaddr, paddr, flags);
+    mmu_flags_t mmu_flags = convert_vmm_flags(flags);
+    return active_mmu->map(as->root_table, vaddr, paddr, PAGE_SIZE, mmu_flags);
 }
 
 // Global TLB shootdown function
 void tlb_shootdown(virt_addr_t vaddr) {
-    hal_tlb_flush((unsigned long long)vaddr);
+    if (active_mmu && active_mmu->tlb_flush_page) {
+        active_mmu->tlb_flush_page(vaddr);
+    } else {
+        hal_tlb_flush((unsigned long long)vaddr);
+    }
 
     // IPI based shootdown for cores executing the same process (or system wide for kernel mappings)
     uint32_t current_core = hal_cpu_get_id();
@@ -75,7 +96,7 @@ int mm_vmm_unmap_page(address_space_t* as, virt_addr_t vaddr) {
     }
 
     phys_addr_t paddr = 0;
-    int ret = hal_vmm_unmap_page(as->root_table, vaddr, &paddr);
+    int ret = active_mmu->unmap(as->root_table, vaddr, PAGE_SIZE, &paddr);
     if (ret < 0) {
         return ret;
     }
@@ -133,7 +154,9 @@ int vmm_map_device_mmio_token(virt_addr_t vaddr, phys_addr_t paddr, uint64_t siz
 }
 
 address_space_t* mm_create_address_space(void) {
-    phys_addr_t root = hal_vmm_setup_address_space(kernel_space.root_table);
+    if (!active_mmu) return NULL;
+
+    phys_addr_t root = active_mmu->clone_kernel(kernel_space.root_table);
     if (root == 0U) {
         return NULL;
     }
@@ -153,10 +176,16 @@ int vmm_handle_cow_fault(address_space_t* as, virt_addr_t vaddr) {
     if (!as || as->root_table == 0U) return -1;
 
     phys_addr_t old_phys = 0;
-    uint32_t old_flags = 0;
+    mmu_flags_t old_mmu_flags = 0;
 
-    int ret = hal_vmm_get_mapping(as->root_table, vaddr, &old_phys, &old_flags);
+    int ret = active_mmu->query(as->root_table, vaddr, &old_phys, &old_mmu_flags);
     if (ret < 0 || old_phys == 0) return -2;
+
+    // Convert back if necessary or handle logic based on generic flags. For now we emulate the old behavior:
+    uint32_t old_flags = 0;
+    if (old_mmu_flags & MMU_WRITE) old_flags |= CAP_RIGHT_WRITE;
+    if (old_mmu_flags & MMU_USER)  old_flags |= PAGE_USER;
+    if (old_mmu_flags & MMU_COW)   old_flags |= PAGE_COW;
 
     // Allocate new page
     phys_addr_t new_phys = mm_alloc_page(NUMA_NODE_ANY);
@@ -171,8 +200,9 @@ int vmm_handle_cow_fault(address_space_t* as, virt_addr_t vaddr) {
 
     // Update mapping with Write permission, clear CoW
     uint32_t new_flags = (old_flags | CAP_RIGHT_WRITE) & ~PAGE_COW;
+    mmu_flags_t new_mmu_flags = convert_vmm_flags(new_flags);
 
-    ret = hal_vmm_update_mapping(as->root_table, vaddr, new_phys, new_flags);
+    ret = active_mmu->protect(as->root_table, vaddr, PAGE_SIZE, new_mmu_flags);
     if (ret < 0) {
         mm_free_page(new_phys);
         return ret;
