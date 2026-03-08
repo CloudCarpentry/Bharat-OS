@@ -35,6 +35,11 @@ int vmm_unmap_page(virt_addr_t vaddr) {
     return 0;
 }
 
+void kernel_panic(const char* msg) {
+    (void)msg;
+    // Mock kernel panic
+}
+
 void user_entry(void) {}
 
 int main(void) {
