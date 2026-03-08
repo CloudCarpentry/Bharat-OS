@@ -196,9 +196,13 @@ learned_task_t* select_and_update_queue(learned_task_t **head) {
     curr = *head;
     while (curr != NULL) {
         if (curr == best) {
-            curr->dynamic_weight -= 1.0f; // Penalty for being served (Fairness)
+            curr->dynamic_weight -= 1; // Penalty for being served (Fairness)
         } else {
-            curr->dynamic_weight += 0.1f; // "Learning" boost for waiting
+            /*
+             * Note: Originally this used floats (+= 0.1f).
+             * Replaced with a small integer increment to avoid soft-float libgcc dependencies.
+             */
+            curr->dynamic_weight += 1; // "Learning" boost for waiting
         }
         curr = curr->next;
     }
