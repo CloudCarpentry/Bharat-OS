@@ -18,6 +18,7 @@
 
 typedef struct {
     uint8_t in_use;
+    uint32_t next_free;
     kthread_t thread;
     cpu_context_t context;
     ai_sched_context_t ai_ctx;
@@ -26,6 +27,7 @@ typedef struct {
 
 typedef struct {
     uint8_t in_use;
+    uint32_t next_free;
     kprocess_t process;
 } process_slot_t;
 
@@ -59,6 +61,9 @@ static uint64_t g_sched_ticks = 0U;
 static uint64_t g_sched_context_switches = 0U;
 static suggestion_queue_t g_pending_suggestions;
 
+static uint32_t g_free_thread_head = UINT32_MAX;
+static uint32_t g_free_process_head = UINT32_MAX;
+
 static kcache_t* thread_cache = NULL;
 
 void fv_secure_context_switch(void* next_thread_frame) __attribute__((weak));
@@ -82,19 +87,19 @@ static thread_slot_t* sched_find_thread_slot_by_tid(uint64_t tid) {
 }
 
 static thread_slot_t* sched_find_free_thread_slot(void) {
-    for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_threads); ++i) {
-        if (g_threads[i].in_use == 0U) {
-            return &g_threads[i];
-        }
+    if (g_free_thread_head != UINT32_MAX) {
+        uint32_t index = g_free_thread_head;
+        g_free_thread_head = g_threads[index].next_free;
+        return &g_threads[index];
     }
     return NULL;
 }
 
 static process_slot_t* sched_find_free_process_slot(void) {
-    for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_processes); ++i) {
-        if (g_processes[i].in_use == 0U) {
-            return &g_processes[i];
-        }
+    if (g_free_process_head != UINT32_MAX) {
+        uint32_t index = g_free_process_head;
+        g_free_process_head = g_processes[index].next_free;
+        return &g_processes[index];
     }
     return NULL;
 }
@@ -107,11 +112,15 @@ static void sched_idle_task(void) {
 }
 
 void sched_init(void) {
+    g_free_thread_head = 0;
     for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_threads); ++i) {
         g_threads[i].in_use = 0U;
+        g_threads[i].next_free = (i + 1 < BHARAT_ARRAY_SIZE(g_threads)) ? (uint32_t)(i + 1) : UINT32_MAX;
     }
+    g_free_process_head = 0;
     for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_processes); ++i) {
         g_processes[i].in_use = 0U;
+        g_processes[i].next_free = (i + 1 < BHARAT_ARRAY_SIZE(g_processes)) ? (uint32_t)(i + 1) : UINT32_MAX;
     }
 
     g_next_thread_id = 1U;
@@ -158,15 +167,51 @@ kprocess_t* process_create(const char* name) {
 
     if (!slot->process.addr_space) {
         slot->in_use = 0U;
+
+        uint32_t slot_index = (uint32_t)(slot - g_processes);
+        slot->next_free = g_free_process_head;
+        g_free_process_head = slot_index;
+
         return NULL;
     }
 
     if (cap_table_init_for_process(&slot->process) != 0) {
         slot->in_use = 0U;
+
+        uint32_t slot_index = (uint32_t)(slot - g_processes);
+        slot->next_free = g_free_process_head;
+        g_free_process_head = slot_index;
+
         return NULL;
     }
 
     return &slot->process;
+}
+
+int process_destroy(kprocess_t* process) {
+    if (!process) return -1;
+
+    process_slot_t* slot = NULL;
+    for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_processes); ++i) {
+        if (g_processes[i].in_use != 0U && &g_processes[i].process == process) {
+            slot = &g_processes[i];
+            break;
+        }
+    }
+    if (!slot) return -1;
+
+    if (slot->process.security_sandbox_ctx) {
+        cap_table_destroy(slot->process.security_sandbox_ctx);
+        slot->process.security_sandbox_ctx = NULL;
+    }
+
+    slot->in_use = 0;
+
+    uint32_t slot_index = (uint32_t)(slot - g_processes);
+    slot->next_free = g_free_process_head;
+    g_free_process_head = slot_index;
+
+    return 0;
 }
 
 kthread_t* thread_create(kprocess_t* parent, void (*entry_point)(void)) {
@@ -227,6 +272,10 @@ int thread_destroy(kthread_t* thread) {
             list_del(&slot->list_node);
         }
         slot->in_use = 0;
+
+        uint32_t slot_index = (uint32_t)(slot - g_threads);
+        slot->next_free = g_free_thread_head;
+        g_free_thread_head = slot_index;
     }
     if (thread_cache) {
         kcache_free(thread_cache, thread);

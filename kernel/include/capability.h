@@ -48,6 +48,7 @@ capability_table_t* cap_table_create(void);
   ensures \result == 0 || \result == -1 || \result == -2;
 */
 int cap_table_init_for_process(kprocess_t* proc);
+void cap_table_destroy(capability_table_t* table);
 
 /*@
   requires table != \null;
