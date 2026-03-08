@@ -117,3 +117,12 @@ The kernel is optimized for various form factors and architectures:
 * `/docs`: Architecture Decision Records (ADRs) and design documentation.
 
 **Interested in contributing?** See [CONTRIBUTING.md](./CONTRIBUTING.md) for details on our capability-based security model or AI-native design.
+
+## Research & References
+
+Bharat-OS draws inspiration from and builds upon research in AI-driven systems and microkernel architectures:
+
+* **AI-Driven Scheduling**: Inspired by "DeepRM: RL-based Resource Management" (Mao et al.) and research on using Reinforcement Learning for OS process scheduling.
+* **Microkernel Design**: Built on principles from the L4 microkernel family and the seL4 formal verification project.
+* **Capability-based Security**: References the KeyKOS and EROS systems for fine-grained access control.
+* **Heterogeneous Computing**: Architecture influenced by the Barrelfish multikernel approach for modern, diverse hardware.

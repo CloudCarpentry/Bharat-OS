@@ -135,3 +135,73 @@ int ai_heuristic_config_store(const ai_heuristic_config_t* cfg) {
     g_ai_cfg = *cfg;
     return 0;
 }
+
+// Fallback mechanism & Learning-based priority queue
+
+ai_telemetry_status_t ai_telemetry = { .is_active = 0 };
+
+uint8_t ai_model_ready(void) {
+    // Mock implementation for model readiness
+    return 0;
+}
+
+// Mock prediction function for demonstration
+struct kthread* ai_model_predict_best(struct kthread *run_queue) {
+    (void)run_queue;
+    return NULL;
+}
+
+// Simple fallback scheduler
+struct kthread* fallback_scheduler(struct kthread *run_queue) {
+    if (run_queue == NULL) return NULL;
+    // In a real kthread_t, next would be handled via list_head_t.
+    // For the sake of this conceptual implementation, we'll return run_queue.
+    return run_queue;
+}
+
+// Main AI selection logic
+struct kthread* ai_sched_select_task(struct kthread *run_queue) {
+    // 1. Check if AI subsystem is active and model is loaded
+    if (!ai_telemetry.is_active || !ai_model_ready()) {
+        return fallback_scheduler(run_queue); // Immediate fallback
+    }
+
+    // 2. Attempt AI-based prediction
+    struct kthread *selected = ai_model_predict_best(run_queue);
+
+    // 3. Final safety check: if prediction fails, use fallback
+    if (selected == NULL) {
+        return fallback_scheduler(run_queue);
+    }
+
+    return selected;
+}
+
+// Selects task with highest weight and decays others (simple learning)
+learned_task_t* select_and_update_queue(learned_task_t **head) {
+    if (*head == NULL) return NULL;
+
+    learned_task_t *best = *head;
+    learned_task_t *curr = *head;
+
+    // Find task with highest dynamic weight
+    while (curr != NULL) {
+        if (curr->dynamic_weight > best->dynamic_weight) {
+            best = curr;
+        }
+        curr = curr->next;
+    }
+
+    // Learning Update: Reward the selected task, slightly boost others to prevent starvation
+    curr = *head;
+    while (curr != NULL) {
+        if (curr == best) {
+            curr->dynamic_weight -= 1.0f; // Penalty for being served (Fairness)
+        } else {
+            curr->dynamic_weight += 0.1f; // "Learning" boost for waiting
+        }
+        curr = curr->next;
+    }
+
+    return best;
+}

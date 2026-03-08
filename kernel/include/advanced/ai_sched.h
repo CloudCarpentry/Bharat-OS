@@ -82,4 +82,28 @@ void ai_sched_collect_sample(ai_sched_context_t* ctx,
 int ai_heuristic_config_load(ai_heuristic_config_t* out_cfg);
 int ai_heuristic_config_store(const ai_heuristic_config_t* cfg);
 
+typedef struct ai_telemetry_status {
+    uint8_t is_active;
+} ai_telemetry_status_t;
+
+extern ai_telemetry_status_t ai_telemetry;
+
+// Mock AI functions
+uint8_t ai_model_ready(void);
+
+// Task structure definitions for AI priority queue
+struct kthread;
+
+typedef struct learned_task {
+    uint64_t id;
+    float dynamic_weight; // AI/Learning adjusted weight
+    int base_priority;
+    struct kthread *kthread_ptr;
+    struct learned_task *next;
+} learned_task_t;
+
+struct kthread* fallback_scheduler(struct kthread *run_queue);
+struct kthread* ai_sched_select_task(struct kthread *run_queue);
+learned_task_t* select_and_update_queue(learned_task_t **head);
+
 #endif // BHARAT_AI_SCHED_H

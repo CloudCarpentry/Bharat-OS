@@ -35,4 +35,21 @@
     #define FEATURE_NUMA_AWARE 1
 #endif
 
+typedef enum {
+    PROFILE_TIER_A,
+    PROFILE_TIER_B,
+    PROFILE_TIER_C
+} SystemProfile;
+
+// Mock function to get system profile
+static inline SystemProfile get_system_profile(void) {
+#if defined(Profile_RTOS)
+    return PROFILE_TIER_A;
+#elif defined(FEATURE_NUMA_AWARE)
+    return PROFILE_TIER_C;
+#else
+    return PROFILE_TIER_B;
+#endif
+}
+
 #endif // BHARAT_PROFILE_H
