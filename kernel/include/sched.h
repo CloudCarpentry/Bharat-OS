@@ -99,6 +99,7 @@ int thread_destroy(kthread_t* thread);
 void sched_yield(void);
 void sched_on_timer_tick(void);
 kthread_t* sched_current_thread(void);
+uint64_t sched_get_ticks(void);
 void sched_set_policy(sched_policy_t policy);
 void sched_sleep(uint64_t millis);
 void sched_wakeup(kthread_t* thread);

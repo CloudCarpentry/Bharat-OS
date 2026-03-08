@@ -1,4 +1,5 @@
 #include "../../include/ipc_async.h"
+#include "../../include/sched.h"
 #include <stddef.h>
 
 #define MAX_ASYNC_REQUESTS 64U
@@ -21,10 +22,12 @@ ipc_async_request_t* ipc_async_request_create(kthread_t* thread, uint32_t endpoi
             g_async_requests[i].id = g_next_async_id++;
             g_async_requests[i].state = IPC_ASYNC_STATE_PENDING;
             g_async_requests[i].waiting_thread = thread;
-            // For simplicity, assuming 1 ms = 1 tick and using wake_deadline_ms as a proxy,
-            // but normally we would add timeout_ms to the current tick count.
-            (void)timeout_ms;
-            g_async_requests[i].deadline_ticks = thread->wake_deadline_ms; // Or pass current ticks + timeout
+            if (timeout_ms == 0U) {
+                g_async_requests[i].deadline_ticks = 0U;
+            } else {
+                uint64_t now = sched_get_ticks();
+                g_async_requests[i].deadline_ticks = now + timeout_ms;
+            }
             g_async_requests[i].endpoint_ref = endpoint_ref;
             return &g_async_requests[i];
         }

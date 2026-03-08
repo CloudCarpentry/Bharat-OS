@@ -21,6 +21,10 @@ target_include_directories(test_timer_common PRIVATE ../kernel/include)
 add_test(NAME test_timer_common COMMAND test_timer_common)
 
 add_executable(test_urpc_ring test_urpc_ring.c ../kernel/src/ipc/multikernel.c)
+add_executable(test_ipc_async_timeout test_ipc_async_timeout.c ../kernel/src/ipc/async_ipc.c ../kernel/src/ipc/ipc_timeout.c)
+target_include_directories(test_ipc_async_timeout PRIVATE ../kernel/include)
+add_test(NAME test_ipc_async_timeout COMMAND test_ipc_async_timeout)
+
 target_include_directories(test_urpc_ring PRIVATE ../kernel/include)
 add_test(NAME test_urpc_ring COMMAND test_urpc_ring)
 

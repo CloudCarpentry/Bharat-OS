@@ -22,9 +22,12 @@ int main(void) {
     int res = hal_interrupt_register(10, dummy_irq_handler, NULL);
     assert(res == 0);
 
+    assert(hal_interrupt_is_registered(10) == 1);
+
     // Test Dispatch
     hal_interrupt_dispatch(10);
     assert(dummy_irq_fired == 1);
+    assert(hal_interrupt_get_dispatch_count(10) == 1U);
 
     // Test Invalid Registration
     res = hal_interrupt_register(300, dummy_irq_handler, NULL);
@@ -33,6 +36,8 @@ int main(void) {
     // Test Unregister
     res = hal_interrupt_unregister(10);
     assert(res == 0);
+    assert(hal_interrupt_is_registered(10) == 0);
+    assert(hal_interrupt_get_dispatch_count(10) == 0U);
 
     dummy_irq_fired = 0;
     hal_interrupt_dispatch(10); // Should not fire
