@@ -1,4 +1,5 @@
 #include "hal/hal.h"
+#include "advanced/ai_sched.h"
 
 #include <stdint.h>
 
@@ -296,4 +297,45 @@ uint32_t hal_cpu_get_id(void) {
     uint32_t ebx;
     __asm__ volatile("cpuid" : "=b"(ebx) : "a"(1) : "ecx", "edx");
     return ebx >> 24;
+}
+
+#define SCHED_MAX_THREADS 64U
+
+typedef struct {
+    uint64_t last_cycles;
+    uint64_t last_instr;
+} pmc_state_t;
+
+static pmc_state_t g_pmc_state[SCHED_MAX_THREADS] = {0};
+
+int ai_sched_arch_sample_pmc(uint32_t thread_id, ai_pmc_sample_t* out_sample) {
+    if (!out_sample) {
+        return -1;
+    }
+
+    if (thread_id >= SCHED_MAX_THREADS) {
+        return -1;
+    }
+
+    uint64_t cycles = 0;
+
+    // Read rdtsc
+    uint32_t low, high;
+    __asm__ volatile("rdtsc" : "=a"(low), "=d"(high));
+    cycles = ((uint64_t)high << 32) | low;
+
+    uint64_t cycles_delta = cycles - g_pmc_state[thread_id].last_cycles;
+
+    // TODO: Program IA32_PERF_GLOBAL_CTRL and use rdpmc(1)
+    uint64_t instr_delta = cycles_delta / 2;
+
+    out_sample->available = 1U;
+    out_sample->cycles_delta = cycles_delta;
+    out_sample->instructions_delta = instr_delta;
+
+    g_pmc_state[thread_id].last_cycles = cycles;
+    // We mock instructions here
+    g_pmc_state[thread_id].last_instr += instr_delta;
+
+    return 0;
 }
