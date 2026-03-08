@@ -73,25 +73,31 @@ if ($Payload -and $Arch -eq "riscv64") {
     $BuildDir = "$Root\build\$Arch-gcc"
 }
 
-$OutELF = "$BuildDir\kernel.elf"
+$OutELF = "$BuildDir\kernel\kernel.elf"
+$OutELF32 = "$BuildDir\kernel\kernel32.elf"
 
 # Resolve Toolchain
 $Toolchain = ""
 if ($ToolchainOverride -ne "") {
     if (Test-Path "$Root\cmake\toolchains\$Arch-$ToolchainOverride.cmake") {
         $Toolchain = "$Root\cmake\toolchains\$Arch-$ToolchainOverride.cmake"
-    } elseif (Test-Path "$Root\$ToolchainOverride") {
+    }
+    elseif (Test-Path "$Root\$ToolchainOverride") {
         $Toolchain = "$Root\$ToolchainOverride"
-    } elseif ($BoardInfo -ne $null -and $BoardInfo.toolchains -ne $null -and $BoardInfo.toolchains.$ToolchainOverride -ne $null) {
+    }
+    elseif ($BoardInfo -ne $null -and $BoardInfo.toolchains -ne $null -and $BoardInfo.toolchains.$ToolchainOverride -ne $null) {
         $Toolchain = "$Root\$($BoardInfo.toolchains.$ToolchainOverride)"
-    } else {
+    }
+    else {
         Write-Host "  [!] Error: Toolchain override '$ToolchainOverride' not found." -ForegroundColor Red
         exit 1
     }
-} elseif ($BoardInfo -ne $null -and $BoardInfo.default_toolchain -ne $null) {
+}
+elseif ($BoardInfo -ne $null -and $BoardInfo.default_toolchain -ne $null) {
     $defTc = $BoardInfo.default_toolchain
     $Toolchain = "$Root\$($BoardInfo.toolchains.$defTc)"
-} else {
+}
+else {
     if ($Arch -eq "x86_64") { $Toolchain = "$Root\cmake\toolchains\x86_64-elf.cmake" }
     elseif ($Arch -eq "riscv64") {
         if ($Payload) { $Toolchain = "$Root\cmake\toolchains\riscv64-elf-gcc.cmake" }
@@ -128,7 +134,7 @@ if ($Clean -and (Test-Path $BuildDir)) {
 if (-not (Test-Path "$BuildDir\CMakeCache.txt")) {
     inf "Configuring (CMake)"
     $cmakeArgs = @(
-        "-S", "$Root\kernel",
+        "-S", "$Root",
         "-B", $BuildDir,
         "-DCMAKE_TOOLCHAIN_FILE=$Toolchain",
         "-DBHARAT_BOOT_GUI=$BootGui",
@@ -160,14 +166,17 @@ if ($Payload -and $Arch -eq "riscv64") {
                 Copy-Item "$BuildDir\opensbi\platform\generic\firmware\fw_payload.elf" "$BuildDir\fw_payload.elf"
                 $sizeKB_fw = [math]::Round((Get-Item "$BuildDir\fw_payload.elf").Length / 1KB, 1)
                 ok "fw_payload.elf -> $BuildDir\fw_payload.elf  ($sizeKB_fw KB)"
-            } else {
+            }
+            else {
                 inf "OpenSBI build failed or fw_payload.elf not generated."
             }
-        } catch {
+        }
+        catch {
             inf "Make not found, skipping OpenSBI build."
         }
     }
-} else {
+}
+else {
     & cmake --build $BuildDir --target kernel.elf
     if ($LASTEXITCODE -ne 0) { fail "Build failed" }
     $sizeKB = [math]::Round((Get-Item $OutELF).Length / 1KB, 1)
@@ -196,10 +205,12 @@ if ($Flash) {
             inf "Flashing using script: $FlashScript"
             & $FlashScript -KernelBinary $OutELF
             if ($LASTEXITCODE -ne 0) { fail "Flash failed" }
-        } else {
+        }
+        else {
             fail "Flash script not found at $FlashScript"
         }
-    } else {
+    }
+    else {
         fail "Flash requested, but no valid flash script dir configured for board."
     }
 }
@@ -221,17 +232,21 @@ if ($Run) {
 
     if ($Arch -eq "x86_64") {
         $qemuArgs += @("-kernel", $KernelBinary, "-m", "256M", "-nographic", "-serial", "mon:stdio", "-no-reboot")
-    } elseif ($Arch -eq "riscv64") {
+    }
+    elseif ($Arch -eq "riscv64") {
         if ($Payload) {
             if (Test-Path "$BuildDir\fw_payload.elf") {
                 $qemuArgs += @("-machine", $Machine, "-bios", "none", "-kernel", "$BuildDir\fw_payload.elf", "-m", "256M", "-nographic", "-serial", "mon:stdio", "-no-reboot")
-            } else {
+            }
+            else {
                 $qemuArgs += @("-machine", $Machine, "-bios", "$BuildDir\payload.bin", "-m", "256M", "-nographic", "-serial", "mon:stdio", "-no-reboot")
             }
-        } else {
+        }
+        else {
             $qemuArgs += @("-machine", $Machine, "-kernel", $OutELF, "-m", "256M", "-nographic", "-serial", "mon:stdio", "-no-reboot")
         }
-    } elseif ($Arch -eq "arm64") {
+    }
+    elseif ($Arch -eq "arm64") {
         $qemuArgs += @("-machine", $Machine, "-cpu", "cortex-a53", "-kernel", $OutELF, "-m", "256M", "-nographic", "-serial", "mon:stdio", "-no-reboot")
     }
 

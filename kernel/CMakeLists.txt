@@ -13,19 +13,19 @@ include_directories(include/generated)
 # ── Configuration Header ────────────────────────────────────────────────────
 # These variables are normally set in the root CMakeLists.txt. 
 # For kernel-only builds, we provide defaults if not set.
-if(NOT BHARAT_ARCH_X86)
+if(NOT DEFINED BHARAT_ARCH_X86)
     set(BHARAT_ARCH_X86 1)
 endif()
-if(NOT BHARAT_ARCH_64BIT)
+if(NOT DEFINED BHARAT_ARCH_64BIT)
     set(BHARAT_ARCH_64BIT 1)
 endif()
-if(NOT BHARAT_ARCH_VARIANT_GENERIC)
+if(NOT DEFINED BHARAT_ARCH_VARIANT_GENERIC)
     set(BHARAT_ARCH_VARIANT_GENERIC 1)
 endif()
-if(NOT BHARAT_PROFILE_DESKTOP)
+if(NOT DEFINED BHARAT_PROFILE_DESKTOP)
     set(BHARAT_PROFILE_DESKTOP 1)
 endif()
-if(NOT BHARAT_PERSONALITY_NONE)
+if(NOT DEFINED BHARAT_PERSONALITY_NONE)
     set(BHARAT_PERSONALITY_NONE 1)
 endif()
 if(NOT BHARAT_MAX_CORES)
@@ -158,6 +158,10 @@ set(KERNEL_SRCS
     src/multicore.c
     src/fs/vfs.c
     src/fs/blob_backend.c
+    src/apps/hello_world.c
+    src/apps/kernel_tester.c
+    src/tests/ktest_pmm.c
+    src/tests/ktest_slab.c
 )
 
 # ── Kernel ELF ──────────────────────────────────────────────────────────────

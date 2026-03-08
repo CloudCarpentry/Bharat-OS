@@ -78,10 +78,14 @@ trap_entry:
     sd t1, 272(sp)    # frame->status
     sd t2, 264(sp)    # frame->cause
 
+    # Determine type (IRQ if MSB of scause is 1)
+    srli t0, t2, 63
+    sw t0, 280(sp)    # frame->type (TRAP_TYPE_SYNC=0, TRAP_TYPE_IRQ=1)
+
     # Determine from_user (SPP bit in sstatus: bit 8)
     andi t0, t1, 0x100
-    seqz t0, t0       # If SPP == 0, seqz sets t0 to 1 (from_user). If SPP == 1, t0 is 0.
-    sb t0, 280(sp)    # frame->from_user
+    seqz t0, t0       # If SPP == 0, from_user = 1
+    sw t0, 284(sp)    # frame->from_user
 
     # Pass trap_frame_t pointer to C handler
     mv a0, sp

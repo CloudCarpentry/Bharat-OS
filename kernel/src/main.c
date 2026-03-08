@@ -1,28 +1,27 @@
 #include "advanced/ai_kernel_bridge.h"
 #include "advanced/ai_sched.h"
+#include "advanced/algo_matrix.h"
 #include "advanced/multikernel.h"
 #include "device.h"
 #include "hal/hal.h"
+#include "ipc_async.h"
 #include "kernel.h"
 #include "mm.h"
-#include "numa.h"
-#include "trap.h"
-#include "multicore.h"
-#include "advanced/algo_matrix.h"
 #include "mm_zswap.h"
-#include "ipc_async.h"
+#include "multicore.h"
+#include "numa.h"
+#include "power_thermal_perf.h"
+#include "profile.h"
 #include "secure_boot.h"
 #include "security/audit.h"
 #include "security/credentials.h"
 #include "security/isolation.h"
 #include "security/policy.h"
-#include "power_thermal_perf.h"
-#include "profile.h"
 #include "subsystem_profile.h"
+#include "trap.h"
 
 #include <stddef.h>
 #include <stdint.h>
-
 
 #if defined(__riscv)
 #include "hal/riscv_bsp.h"
@@ -30,7 +29,6 @@
 
 #define KPRINT(s) hal_serial_write(s)
 #define CAP_RIGHT_IPC_ENDPOINT 0x1U
-
 
 typedef struct {
   uint32_t cap_id;
@@ -105,11 +103,11 @@ static void hello_service_task(const kernel_capability_t *cap,
 }
 
 static void kernel_phase2_hello_service_smoke(void) {
-  kernel_capability_t service_cap = {.cap_id = 1U,
-                                     .rights_mask = CAP_RIGHT_IPC_ENDPOINT};
-  kernel_ipc_msg_t request = {
+  kernel_capability_t service_cap __attribute__((aligned(16))) = {
+      .cap_id = 1U, .rights_mask = CAP_RIGHT_IPC_ENDPOINT};
+  kernel_ipc_msg_t request __attribute__((aligned(16))) = {
       .msg_id = 1U, .msg_len = 6U, .payload = {'h', 'e', 'l', 'l', 'o', '\0'}};
-  kernel_ipc_msg_t reply = {0};
+  kernel_ipc_msg_t reply __attribute__((aligned(16))) = {0};
 
   KPRINT("P2: hello service launched\n");
   KPRINT("P2: capability granted id=1 rights=ipc\n");
@@ -173,6 +171,8 @@ static void kernel_ai_governor_tick(void) {
 void kernel_main(uint32_t magic, multiboot_information_t *mb_info) {
 #elif defined(__riscv)
 void kernel_main(uint64_t hart_id, uintptr_t fdt_ptr) {
+#elif defined(__aarch64__)
+void kernel_main(uintptr_t fdt_ptr) {
 #else
 void kernel_main(void) {
 #endif
@@ -182,6 +182,9 @@ void kernel_main(void) {
 #if defined(__riscv)
   hal_riscv_set_boot_info(hart_id, (uint64_t)fdt_ptr);
 #endif
+
+  /* Initialize serial early to allow KPRINT to work immediately */
+  hal_serial_init();
 
   KPRINT("\n");
   KPRINT("  ____  _                          _          ____   ____  \n");
@@ -259,7 +262,8 @@ void kernel_main(void) {
     (void)bharat_credentials_init();
     (void)bharat_isolation_init();
     (void)bharat_policy_init(BHARAT_POLICY_MODE_ENFORCING);
-    (void)bharat_secure_boot_stage_hook(BHARAT_BOOT_STAGE_KERNEL, 0xB4AA7001ULL);
+    (void)bharat_secure_boot_stage_hook(BHARAT_BOOT_STAGE_KERNEL,
+                                        0xB4AA7001ULL);
     KPRINT("  [SEC] Secure-boot policy accepted.\n");
 
     KPRINT("  [ALGO] Initializing Capability Matrix...\n");
@@ -269,15 +273,15 @@ void kernel_main(void) {
     KPRINT("  [MM]  Initializing PMM...\n");
 
 #if defined(__x86_64__)
-    if (magic != MULTIBOOT2_BOOTLOADER_MAGIC) {
-      kernel_panic("Invalid multiboot magic");
+    if (mm_pmm_init(magic, mb_info) != 0) {
+      kernel_panic("PMM initialization failed");
     }
-
-    if (mm_pmm_init(mb_info, mb_info->total_size) != 0) {
+#elif defined(__riscv) || defined(__aarch64__)
+    if (mm_pmm_init(0U, (void *)fdt_ptr) != 0) {
       kernel_panic("PMM initialization failed");
     }
 #else
-    if (mm_pmm_init(NULL, 0U) != 0) {
+    if (mm_pmm_init(0U, NULL) != 0) {
       kernel_panic("PMM initialization failed");
     }
 #endif
@@ -287,6 +291,13 @@ void kernel_main(void) {
     if (vmm_init() != 0) {
       kernel_panic("VMM initialization failed");
     }
+
+#if defined(__x86_64__)
+    // Map LAPIC and IOAPIC MMIO regions
+    vmm_map_page(0xFEE00000, 0xFEE00000, CAP_RIGHT_READ | CAP_RIGHT_WRITE);
+    vmm_map_page(0xFEC00000, 0xFEC00000, CAP_RIGHT_READ | CAP_RIGHT_WRITE);
+#endif
+
     KPRINT("BOOT: vmm initialized\n");
 
     if (boot_policy->enable_zswap != 0U) {
@@ -330,7 +341,8 @@ void kernel_main(void) {
     }
 
     KPRINT("  [DEV] Initializing device framework\n");
-    if (device_framework_init() != 0 || device_register_builtin_drivers() != 0) {
+    if (device_framework_init() != 0 ||
+        device_register_builtin_drivers() != 0) {
       kernel_panic("device framework initialization failed");
     }
 
@@ -357,10 +369,17 @@ void kernel_main(void) {
     kernel_phase2_hello_service_smoke();
     KPRINT("TEST: kernel self-tests passed\n");
 
-    hal_serial_write("[bharat] kernel_main reached on BSP\n");
     hal_serial_write("[bharat] hw_profile=");
     hal_serial_write(profile);
     hal_serial_write("\n");
+
+    /* Hello World Application */
+    extern void hello_world_app(void);
+    hello_world_app();
+
+    /* Kernel Tester Application - Perfection Phase */
+    extern void kernel_tester_app(void);
+    kernel_tester_app();
 
     while (1) {
       if (boot_policy->enable_ai_governor != 0U) {

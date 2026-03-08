@@ -32,6 +32,7 @@
 .section .multiboot, "a"
 .align 8
 
+.align 8
 /* Multiboot 1 Header */
 mb1_header:
     .long MB1_MAGIC
@@ -70,7 +71,7 @@ mb2_end:
 .align 4096
 pml4: .skip 4096
 pdpt: .skip 4096
-pdt:  .skip 4096      /* 512 × 2 MiB = 1 GiB */
+pdt:  .skip 4096 * 4  /* 2048 × 2 MiB = 4 GiB */
 
 /* 16 KiB bootstrap stack */
 .align 16
@@ -84,6 +85,8 @@ stack_top:
 .global _start
 _start:
     cli
+    movl %eax, %ebp
+    movl %ebx, %esi
     movl $stack_top, %esp   /* physical address — no arithmetic needed */
 
     /* Zero the three page-table pages */
@@ -99,9 +102,18 @@ _start:
     /* PDPT[0] → PDT (present + write) */
     movl $(pdt + PAGE_P + PAGE_RW), %eax
     movl %eax, pdpt
+    /* PDPT[1] → PDT2 (present + write) */
+    movl $(pdt + 4096 + PAGE_P + PAGE_RW), %eax
+    movl %eax, pdpt + 8
+    /* PDPT[2] → PDT3 (present + write) */
+    movl $(pdt + 8192 + PAGE_P + PAGE_RW), %eax
+    movl %eax, pdpt + 16
+    /* PDPT[3] → PDT4 (present + write) */
+    movl $(pdt + 12288 + PAGE_P + PAGE_RW), %eax
+    movl %eax, pdpt + 24
 
-    /* Fill PDT with 512 × 2 MiB identity pages */
-    movl $512,  %ecx
+    /* Fill 4 PDTs with 2048 × 2 MiB identity pages (4 GiB total) */
+    movl $2048, %ecx
     movl $pdt,  %edi
     movl $(PAGE_P + PAGE_RW + PAGE_PS), %eax
 .fill_pdt:
@@ -158,14 +170,19 @@ _start64:
     movw %ax, %fs
     movw %ax, %gs
 
-    /* Clear .bss (skip the page-table area which we already zeroed) */
-    movq $bss_start, %rdi
+    /* Clear .bss (starting AFTER our bootstrap area to avoid wiping page tables in use) */
+    movq $stack_top, %rdi
     movq $bss_end,   %rcx
     subq %rdi, %rcx
+    cmpq $0, %rcx
+    jle .no_clear
     xorb %al,  %al
     rep stosb
+.no_clear:
 
-    /* Call the C kernel — should never return */
+    /* Call the C kernel — pass Multiboot magic/info in rdi/rsi (SysV ABI) */
+    movl %ebp, %edi
+    movl %esi, %esi         /* Zero-extends to rsi */
     call kernel_main
 
 .hang:
