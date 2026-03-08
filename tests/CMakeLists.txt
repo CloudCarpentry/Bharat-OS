@@ -125,3 +125,9 @@ add_executable(test_bench_sched test_bench_sched.c benchmark_stubs.c
 target_include_directories(test_bench_sched PRIVATE ${CMAKE_SOURCE_DIR}/../kernel/include)
 target_compile_definitions(test_bench_sched PRIVATE TESTING=1)
 add_test(NAME test_bench_sched COMMAND test_bench_sched)
+
+
+add_executable(test_vfs_storage test_vfs_storage.c ../kernel/src/fs/vfs.c ../kernel/src/fs/blob_backend.c)
+target_include_directories(test_vfs_storage PRIVATE ../kernel/include)
+target_compile_definitions(test_vfs_storage PRIVATE TESTING=1)
+add_test(NAME test_vfs_storage COMMAND test_vfs_storage)

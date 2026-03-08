@@ -150,6 +150,8 @@ set(KERNEL_SRCS
     src/hal/interrupt_common.c
     src/trap/trap.c
     src/multicore.c
+    src/fs/vfs.c
+    src/fs/blob_backend.c
 )
 
 # ── Kernel ELF ──────────────────────────────────────────────────────────────
