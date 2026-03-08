@@ -32,6 +32,17 @@ if(NOT BHARAT_MAX_CORES)
     set(BHARAT_MAX_CORES 32)
 endif()
 
+# Multikernel Configuration Defaults
+if(NOT DEFINED CONFIG_MULTIKERNEL)
+    set(CONFIG_MULTIKERNEL 1)
+endif()
+if(NOT DEFINED CONFIG_HETEROGENEOUS_CPU)
+    set(CONFIG_HETEROGENEOUS_CPU 1)
+endif()
+if(NOT DEFINED CONFIG_URPC)
+    set(CONFIG_URPC 1)
+endif()
+
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bharat_config.h.in
     ${CMAKE_CURRENT_SOURCE_DIR}/include/generated/bharat_config.h

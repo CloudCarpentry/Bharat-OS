@@ -9,6 +9,11 @@ int multicore_boot_secondary_cores(uint32_t core_count) {
     return 0;
 }
 
+void sched_notify_ipc_ready(uint32_t core_id, uint32_t msg_type) {
+    (void)core_id;
+    (void)msg_type;
+}
+
 void hal_send_ipi_payload(uint32_t target_core, uint64_t payload) {
     (void)target_core;
     (void)payload;

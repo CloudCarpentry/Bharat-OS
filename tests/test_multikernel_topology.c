@@ -6,6 +6,11 @@
 #include "../kernel/include/numa.h"
 #include "../kernel/include/slab.h"
 
+void sched_notify_ipc_ready(uint32_t core_id, uint32_t msg_type) {
+    (void)core_id;
+    (void)msg_type;
+}
+
 // Stubs for NUMA page migration dependencies
 phys_addr_t pmm_alloc_pages_colored(int order, uint32_t preferred_numa_node, uint32_t flags, mm_color_config_t *color_config) {
     (void)order; (void)preferred_numa_node; (void)flags; (void)color_config;
