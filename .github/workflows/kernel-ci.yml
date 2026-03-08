@@ -13,6 +13,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y clang lld ninja-build cmake
+      - name: Install optional formal verification tools
+        run: tools/ci/install_formal_tools.sh
       - name: Configure x86_64 kernel build
         run: cmake --preset x86_64-elf-debug
       - name: Build kernel.elf
