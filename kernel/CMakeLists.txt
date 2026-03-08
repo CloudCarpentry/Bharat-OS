@@ -38,8 +38,12 @@ configure_file(
 )
 
 option(BHARAT_BOOT_GUI "Enable boot-time GUI handoff metadata" ON)
-set(BHARAT_BOOT_HW_PROFILE "generic" CACHE STRING "Boot hardware profile (generic, desktop, server, vm, laptop)")
-set_property(CACHE BHARAT_BOOT_HW_PROFILE PROPERTY STRINGS generic desktop server vm laptop)
+if(BHARAT_BOOT_HW_PROFILE STREQUAL "")
+    set(BHARAT_BOOT_HW_PROFILE "generic")
+endif()
+
+set(BHARAT_BOOT_HW_PROFILE "${BHARAT_BOOT_HW_PROFILE}" CACHE STRING "Boot hardware profile (generic, desktop, server, vm, laptop, edge, rtos)")
+set_property(CACHE BHARAT_BOOT_HW_PROFILE PROPERTY STRINGS generic desktop server vm laptop edge rtos)
 
 if(BHARAT_BOOT_GUI)
     add_compile_definitions(BHARAT_BOOT_GUI=1)
@@ -47,11 +51,13 @@ else()
     add_compile_definitions(BHARAT_BOOT_GUI=0)
 endif()
 
-if(NOT BHARAT_BOOT_HW_PROFILE MATCHES "^(generic|desktop|server|vm|laptop)$")
-    message(FATAL_ERROR "Invalid BHARAT_BOOT_HW_PROFILE='${BHARAT_BOOT_HW_PROFILE}'. Allowed: generic, desktop, server, vm, laptop")
+string(TOLOWER "${BHARAT_BOOT_HW_PROFILE}" KERNEL_PROFILE_LOWER)
+
+if(NOT KERNEL_PROFILE_LOWER MATCHES "^(generic|desktop|server|vm|laptop|edge|rtos)$")
+    message(FATAL_ERROR "Invalid BHARAT_BOOT_HW_PROFILE='${KERNEL_PROFILE_LOWER}'. Allowed: generic, desktop, server, vm, laptop, edge, rtos")
 endif()
 
-add_compile_definitions(BHARAT_BOOT_HW_PROFILE_${BHARAT_BOOT_HW_PROFILE}=1)
+add_compile_definitions(BHARAT_BOOT_HW_PROFILE_${KERNEL_PROFILE_LOWER}=1)
 
 # ── Architecture selection ──────────────────────────────────────────────────
 # Inferred from the toolchain file's CMAKE_SYSTEM_PROCESSOR, or set explicitly.
@@ -100,6 +106,10 @@ endif()
 set(KERNEL_SRCS
     ${BOOT_SRC}
     src/main.c
+    src/trace/trace.c
+    src/arch/capabilities.c
+    src/profile/${KERNEL_PROFILE_LOWER}/profile.c
+    src/board/qemu-virt-${CMAKE_SYSTEM_PROCESSOR}/board.c
     src/ai_kernel_bridge.c
     src/ai_sched.c
     src/panic.c
