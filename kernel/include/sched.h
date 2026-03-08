@@ -74,9 +74,6 @@ struct kthread {
     uint32_t base_priority;
     void* waiting_on_lock; // Mutex the thread is waiting for
 
-    // Personality tagging for subsystems (e.g., Linux, Android, Windows)
-    uint32_t personality;
-
     // Capability and accounting metadata
     void* capability_list;
     mm_color_config_t mm_color_policy;

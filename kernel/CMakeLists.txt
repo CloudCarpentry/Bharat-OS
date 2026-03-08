@@ -139,6 +139,7 @@ set(KERNEL_SRCS
     src/security/policy.c
     src/security/audit.c
     src/security/secure_boot.c
+    src/security/vfio.c
     src/ipc/endpoint_ipc.c
     src/ipc/async_ipc.c
     src/ipc/ipc_timeout.c
