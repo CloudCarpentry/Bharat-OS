@@ -82,3 +82,30 @@ add_executable(test_capability_policy test_capability_policy.c
 )
 target_include_directories(test_capability_policy PRIVATE ${CMAKE_SOURCE_DIR}/../kernel/include)
 add_test(NAME test_capability_policy COMMAND test_capability_policy)
+
+# Benchmarks
+
+add_executable(test_bench_ipc test_bench_ipc.c benchmark_stubs.c
+    ${CMAKE_SOURCE_DIR}/../kernel/src/benchmark/benchmark.c
+    ${CMAKE_SOURCE_DIR}/../kernel/src/ipc/endpoint_ipc.c
+    ${CMAKE_SOURCE_DIR}/../kernel/src/capability.c
+    ${CMAKE_SOURCE_DIR}/../kernel/src/sched.c
+    ${CMAKE_SOURCE_DIR}/../kernel/src/ai_sched.c
+    ${CMAKE_SOURCE_DIR}/../kernel/src/algo_matrix.c
+    ${CMAKE_SOURCE_DIR}/../kernel/src/device/device_manager.c
+)
+target_include_directories(test_bench_ipc PRIVATE ${CMAKE_SOURCE_DIR}/../kernel/include)
+target_compile_definitions(test_bench_ipc PRIVATE TESTING=1)
+add_test(NAME test_bench_ipc COMMAND test_bench_ipc)
+
+add_executable(test_bench_sched test_bench_sched.c benchmark_stubs.c
+    ${CMAKE_SOURCE_DIR}/../kernel/src/benchmark/benchmark.c
+    ${CMAKE_SOURCE_DIR}/../kernel/src/sched.c
+    ${CMAKE_SOURCE_DIR}/../kernel/src/ai_sched.c
+    ${CMAKE_SOURCE_DIR}/../kernel/src/capability.c
+    ${CMAKE_SOURCE_DIR}/../kernel/src/algo_matrix.c
+    ${CMAKE_SOURCE_DIR}/../kernel/src/device/device_manager.c
+)
+target_include_directories(test_bench_sched PRIVATE ${CMAKE_SOURCE_DIR}/../kernel/include)
+target_compile_definitions(test_bench_sched PRIVATE TESTING=1)
+add_test(NAME test_bench_sched COMMAND test_bench_sched)
