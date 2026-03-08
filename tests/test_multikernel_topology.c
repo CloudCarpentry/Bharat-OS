@@ -4,6 +4,43 @@
 
 #include "../kernel/include/advanced/multikernel.h"
 #include "../kernel/include/numa.h"
+#include "../kernel/include/slab.h"
+
+// Stubs for NUMA page migration dependencies
+phys_addr_t pmm_alloc_pages_colored(int order, uint32_t preferred_numa_node, uint32_t flags, mm_color_config_t *color_config) {
+    (void)order; (void)preferred_numa_node; (void)flags; (void)color_config;
+    return 0;
+}
+phys_addr_t mm_alloc_pages_order(int order, uint32_t preferred_numa_node, uint32_t flags) {
+    (void)order; (void)preferred_numa_node; (void)flags;
+    return 0;
+}
+int hal_vmm_get_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t* paddr, uint32_t* flags) {
+    (void)root_table; (void)vaddr; (void)paddr; (void)flags;
+    return -1;
+}
+int hal_vmm_update_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
+    (void)root_table; (void)vaddr; (void)paddr; (void)flags;
+    return -1;
+}
+void tlb_shootdown(virt_addr_t vaddr) {
+    (void)vaddr;
+}
+void mm_free_page(phys_addr_t page) {
+    (void)page;
+}
+kcache_t* kcache_create(const char* name, size_t size) {
+    (void)name; (void)size;
+    return NULL;
+}
+void* kcache_alloc(kcache_t* cache) {
+    (void)cache;
+    return NULL;
+}
+void kcache_free(kcache_t* cache, void* obj) {
+    (void)cache; (void)obj;
+}
+
 
 void hal_send_ipi_payload(uint32_t target_core, uint64_t payload) {
     (void)target_core;

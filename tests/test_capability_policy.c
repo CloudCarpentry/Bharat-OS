@@ -45,40 +45,45 @@ phys_addr_t hal_vmm_init_root(void) {
     return 0x1000U; /* return a valid dummy physical address */
 }
 
-int hal_vmm_map_page(address_space_t *as, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
-    (void)as;
+int hal_vmm_map_page(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
+    (void)root_table;
     (void)vaddr;
     (void)paddr;
     (void)flags;
     return 0;
 }
 
-int hal_vmm_unmap_page(address_space_t *as, virt_addr_t vaddr) {
-    (void)as;
+int hal_vmm_unmap_page(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t* unmapped_paddr) {
+    (void)root_table;
     (void)vaddr;
+    if (unmapped_paddr) *unmapped_paddr = 0x2000;
     return 0;
 }
 
-int hal_vmm_setup_address_space(address_space_t *as) {
-    (void)as;
-    return 0;
+phys_addr_t hal_vmm_setup_address_space(phys_addr_t kernel_root_table) {
+    (void)kernel_root_table;
+    return 0x1000U;
 }
 
-int hal_vmm_get_mapping(address_space_t *as, virt_addr_t vaddr, phys_addr_t *out_paddr, uint32_t *out_flags) {
-    (void)as;
-    (void)vaddr;
-    (void)out_paddr;
-    (void)out_flags;
+int hal_vmm_get_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t* paddr, uint32_t* flags) {
+    (void)root_table; (void)vaddr; (void)paddr; (void)flags;
     return -1;
 }
 
-int hal_vmm_update_mapping(address_space_t *as, virt_addr_t vaddr, uint32_t new_flags) {
-    (void)as;
-    (void)vaddr;
-    (void)new_flags;
-    return 0;
+int hal_vmm_update_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
+    (void)root_table; (void)vaddr; (void)paddr; (void)flags;
+    return -1;
 }
 
+// Stubs for NUMA page migration dependencies
+phys_addr_t pmm_alloc_pages_colored(int order, uint32_t preferred_numa_node, uint32_t flags, mm_color_config_t *color_config) {
+    (void)order; (void)preferred_numa_node; (void)flags; (void)color_config;
+    return 0;
+}
+phys_addr_t mm_alloc_pages_order(int order, uint32_t preferred_numa_node, uint32_t flags) {
+    (void)order; (void)preferred_numa_node; (void)flags;
+    return 0;
+}
 // Mocks
 #include "../kernel/include/slab.h"
 #include <stdlib.h>
@@ -96,6 +101,12 @@ void* kcache_alloc(kcache_t* cache) {
     return malloc(cache->object_size);
 }
 void kcache_free(kcache_t* cache, void* obj) {
+}
+void* kmalloc(size_t size) {
+    return malloc(size);
+}
+void kfree(void* ptr) {
+    // DO NOTHING
 }
 
 void ai_sched_collect_sample(ai_sched_context_t* ctx,

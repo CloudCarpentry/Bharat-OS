@@ -2,6 +2,7 @@
 #include "kernel_safety.h"
 #include "capability.h"
 #include "slab.h"
+#include "numa.h"
 #include "advanced/formal_verif.h"
 #include "hal/hal.h"
 #include "advanced/algo_matrix.h"
@@ -48,6 +49,7 @@ typedef struct {
     kthread_t* idle_thread;
     list_head_t ready_queue[MAX_PRIORITY_LEVELS];
     uint32_t active_weight;
+    uint32_t active_priority_mask;
     uint64_t total_ticks;
     uint32_t throttled;
 } core_runqueue_t;
@@ -157,6 +159,7 @@ void sched_init(void) {
             list_init(&g_runqueues[i].ready_queue[p]);
         }
         g_runqueues[i].active_weight = 0U;
+        g_runqueues[i].active_priority_mask = 0U;
         g_runqueues[i].total_ticks = 0U;
         g_runqueues[i].throttled = 0U;
     }
@@ -214,6 +217,9 @@ kthread_t* thread_create(kprocess_t* parent, void (*entry_point)(void)) {
     t->base_priority = 1U;
     t->cpu_time_consumed = 0U;
     t->time_slice_ms = SCHED_DEFAULT_SLICE_MS;
+    t->mm_color_policy.policy = MM_COLOR_POLICY_NONE;
+    t->mm_color_policy.domain = MM_DOMAIN_DEFAULT;
+    t->mm_color_policy.color_mask = 0xFFFFFFFF; // all colors allowed by default
     t->preferred_numa_node = 0U;
     t->bound_core_id = hal_cpu_get_id(); // Default to current core
     if (t->bound_core_id >= MAX_SUPPORTED_CORES) {
@@ -318,6 +324,24 @@ static uint32_t sched_run_queue_depth(uint32_t core_id) {
     return count;
 }
 
+static uint32_t sched_clamp_time_slice(uint64_t time_slice_ms) {
+    if (time_slice_ms < 2U) {
+        return 2U;
+    }
+    if (time_slice_ms > 20U) {
+        return 20U;
+    }
+    return (uint32_t)time_slice_ms;
+}
+
+static int sched_highest_active_priority(uint32_t core_id) {
+    uint32_t mask = g_runqueues[core_id].active_priority_mask;
+    if (mask == 0U) {
+        return -1;
+    }
+    return (int)(31U - (uint32_t)__builtin_clz(mask));
+}
+
 static void sched_update_telemetry(kthread_t* thread) {
     if (!thread || !thread->ai_sched_ctx) return;
     uint32_t core_id = hal_cpu_get_id();
@@ -326,6 +350,21 @@ static void sched_update_telemetry(kthread_t* thread) {
                             thread->cpu_time_consumed,
                             sched_run_queue_depth(core_id),
                             (uint32_t)thread->context_switch_count);
+
+    if (thread->state == THREAD_STATE_RUNNING) {
+        switch (thread->ai_sched_ctx->predicted_complexity) {
+            case 2U:
+                thread->time_slice_ms = sched_clamp_time_slice(thread->time_slice_ms + 1U);
+                break;
+            case 0U:
+                if (thread->time_slice_ms > 2U) {
+                    thread->time_slice_ms = sched_clamp_time_slice(thread->time_slice_ms - 1U);
+                }
+                break;
+            default:
+                break;
+        }
+    }
 }
 
 // Level 0: Reference generic O(N) iterative run-queue lookup
@@ -347,18 +386,28 @@ kthread_t* sched_pick_next_ready_l0(uint32_t core_id) {
 // int p = 31 - __builtin_clz(runqueue->active_priority_mask);
 // For this PoC, we will implement a slightly optimized loop or simulation.
 kthread_t* sched_pick_next_ready_l1(uint32_t core_id) {
-    // A full L1 would maintain a bitmap, but we'll optimize by quickly scanning
-    // or batching for SMP. In real life, `active_weight` or a `bitmap` would be checked.
-    for (int p = MAX_PRIORITY_LEVELS - 1; p >= 0; --p) {
-        if (!list_empty(&g_runqueues[core_id].ready_queue[p])) {
-            list_head_t* node = g_runqueues[core_id].ready_queue[p].next;
-            thread_slot_t* slot = list_entry(node, thread_slot_t, list_node);
-            list_del(node); // Dequeue
-            list_init(node);
-            return &slot->thread;
+    while (1) {
+        int p = sched_highest_active_priority(core_id);
+        if (p < 0) {
+            return g_runqueues[core_id].idle_thread;
         }
+
+        list_head_t* queue = &g_runqueues[core_id].ready_queue[(uint32_t)p];
+        if (list_empty(queue)) {
+            g_runqueues[core_id].active_priority_mask &= ~(1U << (uint32_t)p);
+            continue;
+        }
+
+        list_head_t* node = queue->next;
+        thread_slot_t* slot = list_entry(node, thread_slot_t, list_node);
+        list_del(node);
+        list_init(node);
+
+        if (list_empty(queue)) {
+            g_runqueues[core_id].active_priority_mask &= ~(1U << (uint32_t)p);
+        }
+        return &slot->thread;
     }
-    return g_runqueues[core_id].idle_thread;
 }
 
 kthread_t* sched_pick_next_ready(uint32_t core_id) {
@@ -375,6 +424,7 @@ void sched_enqueue_task_l0(kthread_t* thread, uint32_t core_id) {
     thread_slot_t* slot = sched_find_thread_slot_by_tid(thread->thread_id);
     if (slot && thread->priority < MAX_PRIORITY_LEVELS) {
         list_add(&slot->list_node, &g_runqueues[core_id].ready_queue[thread->priority]);
+        g_runqueues[core_id].active_priority_mask |= (1U << thread->priority);
     }
 }
 
@@ -383,9 +433,8 @@ void sched_enqueue_task_l1(kthread_t* thread, uint32_t core_id) {
     if (!thread) return;
     thread_slot_t* slot = sched_find_thread_slot_by_tid(thread->thread_id);
     if (slot && thread->priority < MAX_PRIORITY_LEVELS) {
-        // use list_add as list_add_tail is not present, we will adjust
         list_add(&slot->list_node, &g_runqueues[core_id].ready_queue[thread->priority]);
-        // Here we would also update the bitmask: `g_runqueues[core_id].active_mask |= (1 << thread->priority);`
+        g_runqueues[core_id].active_priority_mask |= (1U << thread->priority);
     }
 }
 
@@ -399,27 +448,29 @@ void sched_enqueue_task(kthread_t* thread, uint32_t core_id) {
 
 // Level 0 Dequeue
 void sched_dequeue_task_l0(kthread_t* thread, uint32_t core_id) {
-    (void)core_id;
     if (!thread) return;
     thread_slot_t* slot = sched_find_thread_slot_by_tid(thread->thread_id);
     if (slot && !list_empty(&slot->list_node)) {
+        uint32_t priority = thread->priority;
         list_del(&slot->list_node);
         list_init(&slot->list_node);
+        if (priority < MAX_PRIORITY_LEVELS && list_empty(&g_runqueues[core_id].ready_queue[priority])) {
+            g_runqueues[core_id].active_priority_mask &= ~(1U << priority);
+        }
     }
 }
 
 // Level 1 Dequeue (e.g. updating the active bitmap)
 void sched_dequeue_task_l1(kthread_t* thread, uint32_t core_id) {
-    (void)core_id;
     if (!thread) return;
     thread_slot_t* slot = sched_find_thread_slot_by_tid(thread->thread_id);
     if (slot && !list_empty(&slot->list_node)) {
+        uint32_t priority = thread->priority;
         list_del(&slot->list_node);
         list_init(&slot->list_node);
-        // Here we would update the bitmask if the queue is empty:
-        // if (list_empty(&g_runqueues[core_id].ready_queue[thread->priority])) {
-        //     g_runqueues[core_id].active_mask &= ~(1 << thread->priority);
-        // }
+        if (priority < MAX_PRIORITY_LEVELS && list_empty(&g_runqueues[core_id].ready_queue[priority])) {
+            g_runqueues[core_id].active_priority_mask &= ~(1U << priority);
+        }
     }
 }
 
@@ -435,6 +486,10 @@ static void sched_switch_to(kthread_t* next, uint32_t core_id) {
     if (!next) return;
 
     kthread_t* current = g_runqueues[core_id].current_thread;
+    if (current == next) {
+        current->state = THREAD_STATE_RUNNING;
+        return;
+    }
     if (current && current->state == THREAD_STATE_RUNNING && current != g_runqueues[core_id].idle_thread) {
         current->state = THREAD_STATE_READY;
         sched_enqueue_task(current, core_id);
@@ -508,6 +563,12 @@ void sched_on_timer_tick(void) {
         if (current) {
             current->cpu_time_consumed++;
             sched_update_telemetry(current);
+
+            if (current->cpu_time_consumed % 100 == 0) {
+                // Periodically balance NUMA memory (e.g. every 100 ticks)
+                // This triggers the deferred/worker evaluation logic without blocking heavily
+                numa_balance_thread_memory((void*)current);
+            }
 
             if (current->cpu_time_consumed >= current->time_slice_ms) {
                 current->cpu_time_consumed = 0U;
