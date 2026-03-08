@@ -16,7 +16,8 @@ typedef enum {
     SUBSYS_TYPE_WINDOWS = 2,
     SUBSYS_TYPE_BSD = 3,
     SUBSYS_TYPE_DARWIN = 4,
-    SUBSYS_TYPE_POSIX_NATIVE = 5
+    SUBSYS_TYPE_POSIX_NATIVE = 5,
+    SUBSYS_TYPE_ANDROID = 6
 } subsys_type_t;
 
 typedef enum {
