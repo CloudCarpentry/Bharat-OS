@@ -335,10 +335,14 @@ void sched_sleep(uint64_t millis) {
     sched_yield();
 }
 
-void sched_wakeup(kthread_t* thread) {
+void sched_wakeup_with_priority(kthread_t* thread, uint32_t wakeup_priority) {
     if (!thread) return;
 
-    if (thread->state == THREAD_STATE_SLEEPING) {
+    if (wakeup_priority <= SCHED_MAX_PRIORITY && wakeup_priority > thread->priority) {
+        thread->priority = wakeup_priority;
+    }
+
+    if (thread->state == THREAD_STATE_SLEEPING || thread->state == THREAD_STATE_BLOCKED) {
         thread->state = THREAD_STATE_READY;
         thread->wake_deadline_ms = 0U;
         thread_slot_t* slot = sched_find_thread_slot_by_tid(thread->thread_id);
@@ -347,6 +351,10 @@ void sched_wakeup(kthread_t* thread) {
             list_add(&slot->list_node, &g_runqueues[core].ready_queue[thread->priority]);
         }
     }
+}
+
+void sched_wakeup(kthread_t* thread) {
+    sched_wakeup_with_priority(thread, SCHED_MAX_PRIORITY + 1U);
 }
 
 

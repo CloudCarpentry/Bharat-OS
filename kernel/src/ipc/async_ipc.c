@@ -13,7 +13,11 @@ void ipc_async_init(void) {
     }
 }
 
-ipc_async_request_t* ipc_async_request_create(kthread_t* thread, uint32_t endpoint_ref, uint64_t timeout_ms) {
+ipc_async_request_t* ipc_async_request_create_ex(kthread_t* thread,
+                                                  uint32_t endpoint_ref,
+                                                  uint64_t timeout_ms,
+                                                  uint32_t qos_priority,
+                                                  uint8_t deterministic) {
     if (!thread) return NULL;
 
     for (uint32_t i = 0; i < MAX_ASYNC_REQUESTS; i++) {
@@ -29,10 +33,16 @@ ipc_async_request_t* ipc_async_request_create(kthread_t* thread, uint32_t endpoi
                 g_async_requests[i].deadline_ticks = now + timeout_ms;
             }
             g_async_requests[i].endpoint_ref = endpoint_ref;
+            g_async_requests[i].qos_priority = qos_priority;
+            g_async_requests[i].deterministic = deterministic ? 1U : 0U;
             return &g_async_requests[i];
         }
     }
     return NULL;
+}
+
+ipc_async_request_t* ipc_async_request_create(kthread_t* thread, uint32_t endpoint_ref, uint64_t timeout_ms) {
+    return ipc_async_request_create_ex(thread, endpoint_ref, timeout_ms, 0U, 0U);
 }
 
 void ipc_async_request_complete(ipc_async_request_t* req) {
@@ -41,7 +51,7 @@ void ipc_async_request_complete(ipc_async_request_t* req) {
         req->in_use = 0U;
         // Wake up thread if blocked
         if (req->waiting_thread && req->waiting_thread->state == THREAD_STATE_BLOCKED) {
-            sched_wakeup(req->waiting_thread);
+            sched_wakeup_with_priority(req->waiting_thread, req->qos_priority);
         }
     }
 }
@@ -51,7 +61,7 @@ void ipc_async_request_cancel(ipc_async_request_t* req) {
         req->state = IPC_ASYNC_STATE_CANCELLED;
         req->in_use = 0U;
         if (req->waiting_thread && req->waiting_thread->state == THREAD_STATE_BLOCKED) {
-            sched_wakeup(req->waiting_thread);
+            sched_wakeup_with_priority(req->waiting_thread, req->qos_priority);
         }
     }
 }
