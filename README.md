@@ -41,6 +41,44 @@ graph TD
 * **Multi-Architecture HAL:** Native support for `x86_64`, `ARMv8`, and notably **Shakti RISC-V**, ensuring performance on local semiconductor innovations.
 * **Distributed IPC:** A capability-based IPC model that treats local and remote system calls through a unified messaging interface.
 
+### Current v1 Architecture Highlights
+
+| Feature | Summary |
+| --- | --- |
+| Verification-first microkernel | Ring-0 keeps only boot flow, memory mapping, capability tables, IPC and scheduling scaffolding; most services run in isolated user-space domains. |
+| Capability-based security model | No global ACL/root model in kernel. Object access is capability-mediated (`invoke`, `grant`, `revoke`, `retype`) with zero-trust isolation. |
+| Flexible memory model | Kernel only maps/unmaps physical pages while policy lives in user space: Bharat-RT favors static/no-paging determinism; Bharat-Cloud favors demand paging, NUMA-awareness, and a path toward distributed shared memory. |
+| Synchronous + asynchronous IPC | Fast register-based synchronous endpoint IPC for low latency plus lockless ring-buffer URPC for cross-core multikernel messaging. |
+| User-space driver model | Drivers remain unprivileged. Capabilities gate MMIO/IRQ access and IOMMU policy hardens DMA boundaries; drivers are restartable via IPC boundaries. |
+| Modular scheduler with AI hooks | Tick-driven scheduler collects telemetry and applies AI hints through an architecture-neutral plugin contract (ADR-008), with deterministic fallbacks when PMCs are unavailable. |
+
+### Device Profiles & Use-cases
+
+Bharat-OS is intentionally profile-driven instead of forcing one heavyweight image on every board.
+
+- **Mobile & embedded:** revocable capabilities for sensor isolation, user-space driver recovery, and Bharat-RT static allocation for deterministic latency.
+- **Edge & IoT gateways:** small attack surface, real-time tuning, and hot-swappable network/USB drivers.
+- **Robotics & UAVs:** mixed-criticality partitioning, dedicated-core workflows, and low-latency URPC messaging between control/perception tasks.
+- **Network appliances:** isolated user-space drivers plus fast-path packet processing and restart without whole-system panic.
+- **Datacenter/cloud:** multikernel-friendly scaling on many-core/NUMA systems with demand paging and policy-driven AI scheduling.
+- **Display strategy by device class:** explicit tiers for headless systems, serial/text console, framebuffer-first embedded UI, and full compositor desktop where hardware supports it.
+
+---
+
+## 🧭 Roadmap (Condensed)
+
+- **Phase 1 (kernel spine):** boot stability, scheduler/memory correctness, timer+interrupts, SMP bring-up, tracing/observability.
+- **Phase 2 (device specialization):** edge/robotics/drone service packs, power management, secure update chain, sensor+actuator frameworks.
+- **Phase 3 (cloud/appliance):** NUMA/resource isolation, high-speed networking/storage, accelerator orchestration, virtualization hooks.
+- **Phase 4 (UX surfaces):** framebuffer and embedded UI first, richer compositor/desktop layers later.
+
+### AI Features & Roadmap
+
+- Current kernel scheduler tracks thread telemetry (`cycles`, `instructions`, `CPI`) and accepts AI suggestions through a bounded, testable path.
+- Architecture-specific PMCs can be sampled when available; deterministic approximations are used otherwise.
+- ADR-008 defines the plugin boundary so scheduler core remains portable while profile/architecture overrides evolve.
+- Near-term extensions include user-space AI governors, profile-aware scheduling heuristics, and accelerator-aware placement for edge/cloud workloads.
+
 ---
 
 ## 🧠 AI-Driven Resource Management
@@ -117,3 +155,13 @@ The kernel is optimized for various form factors and architectures:
 * `/docs`: Architecture Decision Records (ADRs) and design documentation.
 
 **Interested in contributing?** See [CONTRIBUTING.md](./CONTRIBUTING.md) for details on our capability-based security model or AI-native design.
+
+## Research & References
+
+Bharat-OS draws inspiration from and builds upon research in AI-driven systems and microkernel architectures.
+
+### Research Inspirations
+
+- **Barrelfish multikernel model:** treats a machine as a distributed system of cores coordinated by explicit message passing; this directly informs Bharat-OS URPC and cross-core service decomposition.
+- **seL4 capability model and verification-first design:** capability invocation as the primary authority path and a small trusted kernel base inform Bharat-OS object-capability isolation goals.
+- **AI scheduling research:** workload-aware scheduling literature (including RL-driven resource managers) informs the long-term AI-governor and scheduler policy roadmap.

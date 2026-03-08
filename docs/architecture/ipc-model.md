@@ -5,6 +5,8 @@
 Because Bharat-OS is a microkernel, almost all OS services (file systems, networking, drivers) run in isolated user-space domains. Thus, IPC performance is the most critical bottleneck.
 
 We utilize two distinct IPC models to serve both deterministic bounds (Bharat-RT) and massive scalability (Bharat-Cloud).
+The cross-core URPC path follows the multikernel principle popularized by Barrelfish: the machine is treated as a network of independent cores coordinated through explicit message passing rather than shared-kernel locks.
+
 
 ```mermaid
 flowchart LR
