@@ -34,7 +34,6 @@ Bharat-OS targets multiple deployment classes. These profiles describe **how the
 - **Robotics / Drones (EDGE + RTOS-leaning):** deterministic IPC pathways and architecture portability are present; stronger real-time admission and fault-containment depth are roadmap.
 - **Network appliances / Edge gateways:** capability-mediated driver boundaries and multikernel messaging baseline are present; mature data-plane acceleration is roadmap.
 - **Data-center / clustered nodes:** NUMA/multicore scaffolding and URPC primitives are present; full distributed scheduling and high-scale service orchestration are roadmap.
-```
 
 ### Key Technical Pillars
 
@@ -45,13 +44,13 @@ Bharat-OS targets multiple deployment classes. These profiles describe **how the
 ### Current v1 Architecture Highlights
 
 | Feature | Summary |
-| --- | --- |
-| Verification-first microkernel | Ring-0 keeps only boot flow, memory mapping, capability tables, IPC and scheduling scaffolding; most services run in isolated user-space domains. |
-| Capability-based security model | No global ACL/root model in kernel. Object access is capability-mediated (`invoke`, `grant`, `revoke`, `retype`) with zero-trust isolation. |
-| Flexible memory model | Kernel only maps/unmaps physical pages while policy lives in user space: Bharat-RT favors static/no-paging determinism; Bharat-Cloud favors demand paging, NUMA-awareness, and a path toward distributed shared memory. |
-| Synchronous + asynchronous IPC | Fast register-based synchronous endpoint IPC for low latency plus lockless ring-buffer URPC for cross-core multikernel messaging. |
-| User-space driver model | Drivers remain unprivileged. Capabilities gate MMIO/IRQ access and IOMMU policy hardens DMA boundaries; drivers are restartable via IPC boundaries. |
-| Modular scheduler with AI hooks | Tick-driven scheduler collects telemetry and applies AI hints through an architecture-neutral plugin contract (ADR-008), with deterministic fallbacks when PMCs are unavailable. |
+| :-- | :-- |
+| Verification-first microkernel | Ring-0 keeps boot flow, memory mapping, capability tables, IPC, and scheduler scaffolding; policy/services stay in isolated user-space domains. |
+| Capability-based security model | No global ACL/root model in kernel; object access is capability-mediated (`invoke`, `grant`, `revoke`, `retype`) with zero-trust isolation. |
+| Flexible memory model | Kernel maps/unmaps physical pages, while memory policy remains in user space (Bharat-RT static/no-paging; Bharat-Cloud demand paging + NUMA-aware path). |
+| Synchronous and asynchronous IPC | Fast register-based endpoint IPC for low latency plus lockless ring-buffer URPC for cross-core multikernel messaging. |
+| User-space driver model | Drivers are unprivileged; capabilities gate MMIO/IRQ access and IOMMU policy hardens DMA boundaries, enabling restartable driver domains. |
+| Modular scheduler with AI hooks | Tick-driven scheduler collects telemetry and applies AI hints via ADR-008 plugin boundaries, with deterministic fallback when PMCs are unavailable. |
 
 ### Device Profiles & Use-cases
 
