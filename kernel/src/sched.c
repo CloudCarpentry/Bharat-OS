@@ -21,6 +21,7 @@ typedef struct {
     cpu_context_t context;
     ai_sched_context_t ai_ctx;
     list_head_t list_node;
+    int16_t tid_hash_next;
 } thread_slot_t;
 
 typedef struct {
@@ -60,6 +61,16 @@ static suggestion_queue_t g_pending_suggestions;
 
 static kcache_t* thread_cache = NULL;
 
+static int16_t g_tid_hash_heads[256];
+
+static uint8_t sched_tid_hash(uint64_t tid) {
+    // Simple mixing hash
+    tid ^= tid >> 32;
+    tid ^= tid >> 16;
+    tid ^= tid >> 8;
+    return (uint8_t)(tid & 0xFF);
+}
+
 void fv_secure_context_switch(void* next_thread_frame) __attribute__((weak));
 uint32_t numa_active_node_count(void) __attribute__((weak));
 
@@ -72,9 +83,17 @@ static uint32_t sched_numa_node_count(void) {
 }
 
 static thread_slot_t* sched_find_thread_slot_by_tid(uint64_t tid) {
-    for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_threads); ++i) {
-        if (g_threads[i].in_use != 0U && g_threads[i].thread.thread_id == tid) {
-            return &g_threads[i];
+    uint8_t hash = sched_tid_hash(tid);
+    int16_t current = g_tid_hash_heads[hash];
+
+    while (current != -1) {
+        if (current >= 0 && current < BHARAT_ARRAY_SIZE(g_threads)) {
+            if (g_threads[current].in_use != 0U && g_threads[current].thread.thread_id == tid) {
+                return &g_threads[current];
+            }
+            current = g_threads[current].tid_hash_next;
+        } else {
+            break;
         }
     }
     return NULL;
@@ -108,9 +127,13 @@ static void sched_idle_task(void) {
 void sched_init(void) {
     for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_threads); ++i) {
         g_threads[i].in_use = 0U;
+        g_threads[i].tid_hash_next = -1;
     }
     for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_processes); ++i) {
         g_processes[i].in_use = 0U;
+    }
+    for (size_t i = 0; i < 256; ++i) {
+        g_tid_hash_heads[i] = -1;
     }
 
     g_next_thread_id = 1U;
@@ -203,6 +226,11 @@ kthread_t* thread_create(kprocess_t* parent, void (*entry_point)(void)) {
             parent->main_thread = &slot->thread;
         }
 
+        uint8_t hash = sched_tid_hash(t->thread_id);
+        int16_t index = (int16_t)(slot - g_threads);
+        slot->tid_hash_next = g_tid_hash_heads[hash];
+        g_tid_hash_heads[hash] = index;
+
         // Add to the local runqueue
         uint32_t core = slot->thread.bound_core_id;
         if (slot->thread.priority < MAX_PRIORITY_LEVELS) {
@@ -223,6 +251,26 @@ int thread_destroy(kthread_t* thread) {
         if (!list_empty(&slot->list_node)) {
             list_del(&slot->list_node);
         }
+
+        uint8_t hash = sched_tid_hash(thread->thread_id);
+        int16_t current = g_tid_hash_heads[hash];
+        int16_t prev = -1;
+        int16_t target = (int16_t)(slot - g_threads);
+
+        while (current != -1) {
+            if (current == target) {
+                if (prev == -1) {
+                    g_tid_hash_heads[hash] = slot->tid_hash_next;
+                } else {
+                    g_threads[prev].tid_hash_next = slot->tid_hash_next;
+                }
+                break;
+            }
+            prev = current;
+            current = g_threads[current].tid_hash_next;
+        }
+
+        slot->tid_hash_next = -1;
         slot->in_use = 0;
     }
     if (thread_cache) {

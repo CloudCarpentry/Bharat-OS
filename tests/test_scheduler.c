@@ -26,7 +26,58 @@ void mm_free_page(phys_addr_t page) {
 void thread_a(void) {}
 void thread_b(void) {}
 
-int main(void) {
+#include <time.h>
+#include <string.h>
+
+void run_benchmark() {
+    printf("Running scheduler benchmark...\n");
+
+    sched_init();
+    kprocess_t* p = process_create("bench");
+    assert(p != NULL);
+
+    kthread_t* threads[128];
+    uint64_t tids[128];
+    int count = 120; // high occupancy
+
+    for (int i = 0; i < count; i++) {
+        threads[i] = thread_create(p, thread_a);
+        assert(threads[i] != NULL);
+        tids[i] = threads[i]->thread_id;
+    }
+
+    struct timespec start, end;
+    clock_gettime(CLOCK_MONOTONIC, &start);
+
+    int iterations = 100000;
+    volatile kthread_t* found = NULL;
+
+    for (int iter = 0; iter < iterations; iter++) {
+        for (int i = 0; i < count; i++) {
+            found = sched_find_thread_by_id(tids[i]); // Existing
+        }
+        for (int i = 0; i < 20; i++) {
+            found = sched_find_thread_by_id(999999 + i); // Missing
+        }
+    }
+
+    clock_gettime(CLOCK_MONOTONIC, &end);
+
+    double elapsed = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
+    printf("Benchmark time: %.6f seconds\n", elapsed);
+
+    for (int i = 0; i < count; i++) {
+        thread_destroy(threads[i]);
+    }
+}
+
+int main(int argc, char** argv) {
+    if (argc > 1 && strcmp(argv[1], "--bench") == 0) {
+        run_benchmark();
+        return 0;
+    }
+
+    // Original main
     sched_init();
 
     kprocess_t* p = process_create("init");
