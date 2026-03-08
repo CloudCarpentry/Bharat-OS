@@ -62,8 +62,8 @@ endif()
 
 string(TOLOWER "${BHARAT_BOOT_HW_PROFILE}" KERNEL_PROFILE_LOWER)
 
-if(NOT KERNEL_PROFILE_LOWER MATCHES "^(generic|desktop|server|vm|laptop|edge|rtos)$")
-    message(FATAL_ERROR "Invalid BHARAT_BOOT_HW_PROFILE='${KERNEL_PROFILE_LOWER}'. Allowed: generic, desktop, server, vm, laptop, edge, rtos")
+if(NOT KERNEL_PROFILE_LOWER MATCHES "^(generic|desktop|server|vm|laptop|edge|rtos|mobile|datacenter|network_appliance)$")
+    message(FATAL_ERROR "Invalid BHARAT_BOOT_HW_PROFILE='${KERNEL_PROFILE_LOWER}'. Allowed: generic, desktop, server, vm, laptop, edge, rtos, mobile, datacenter, network_appliance")
 endif()
 
 add_compile_definitions(BHARAT_BOOT_HW_PROFILE_${KERNEL_PROFILE_LOWER}=1)
