@@ -109,6 +109,7 @@ uint64_t sched_get_ticks(void);
 void sched_set_policy(sched_policy_t policy);
 void sched_sleep(uint64_t millis);
 void sched_wakeup(kthread_t* thread);
+void sched_wakeup_with_priority(kthread_t* thread, uint32_t wakeup_priority);
 
 // AI governor integration helpers
 kthread_t* sched_find_thread_by_id(uint64_t tid);
