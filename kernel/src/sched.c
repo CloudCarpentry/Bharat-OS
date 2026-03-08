@@ -513,6 +513,11 @@ void sched_yield(void) {
     if (core_id >= MAX_SUPPORTED_CORES) return;
 
     sched_process_pending_ai_suggestions();
+    if (g_runqueues[core_id].throttled != 0U && g_runqueues[core_id].idle_thread) {
+        sched_switch_to(g_runqueues[core_id].idle_thread, core_id);
+        return;
+    }
+
     kthread_t* next = sched_pick_next_ready(core_id);
     if (next) {
         sched_switch_to(next, core_id);
@@ -543,6 +548,50 @@ void sched_wakeup(kthread_t* thread) {
     }
 }
 
+
+static uint32_t sched_core_queue_depth(uint32_t core_id) {
+    if (core_id >= MAX_SUPPORTED_CORES) {
+        return 0U;
+    }
+    return sched_run_queue_depth(core_id);
+}
+
+static void sched_balance_once(void) {
+    uint32_t busiest_core = 0U;
+    uint32_t idlest_core = 0U;
+    uint32_t max_depth = 0U;
+    uint32_t min_depth = UINT32_MAX;
+
+    for (uint32_t core = 0; core < MAX_SUPPORTED_CORES; ++core) {
+        if (g_runqueues[core].throttled != 0U) {
+            continue;
+        }
+        uint32_t depth = sched_core_queue_depth(core);
+        if (depth > max_depth) {
+            max_depth = depth;
+            busiest_core = core;
+        }
+        if (depth < min_depth) {
+            min_depth = depth;
+            idlest_core = core;
+        }
+    }
+
+    if (max_depth <= (min_depth + 1U) || busiest_core == idlest_core) {
+        return;
+    }
+
+    kthread_t* migrated = sched_pick_next_ready(busiest_core);
+    if (!migrated || migrated == g_runqueues[busiest_core].idle_thread) {
+        return;
+    }
+
+    migrated->bound_core_id = idlest_core;
+    migrated->preferred_numa_node = (uint8_t)idlest_core;
+    migrated->state = THREAD_STATE_READY;
+    sched_enqueue_task(migrated, idlest_core);
+}
+
 void sched_on_timer_tick(void) {
     g_sched_ticks++;
     uint32_t core_id = hal_cpu_get_id();
@@ -561,6 +610,10 @@ void sched_on_timer_tick(void) {
     ipc_async_check_timeouts(g_sched_ticks);
 
     sched_process_pending_ai_suggestions();
+
+    if ((g_sched_ticks % 16U) == 0U && core_id == 0U) {
+        sched_balance_once();
+    }
 
     if (core_id < MAX_SUPPORTED_CORES) {
         kthread_t* current = g_runqueues[core_id].current_thread;
@@ -589,6 +642,10 @@ kthread_t* sched_current_thread(void) {
     uint32_t core_id = hal_cpu_get_id();
     if (core_id >= MAX_SUPPORTED_CORES) return NULL;
     return g_runqueues[core_id].current_thread;
+}
+
+uint64_t sched_get_ticks(void) {
+    return g_sched_ticks;
 }
 
 void sched_set_policy(sched_policy_t policy) {

@@ -18,6 +18,9 @@ int bharat_addr_token_validate(const bharat_addr_token_t* token,
 }
 
 static uint64_t fake_mem[1024];
+static int g_has_mapping = 0;
+static phys_addr_t g_last_paddr = 0;
+static virt_addr_t g_last_vaddr = 0;
 
 phys_addr_t mm_alloc_page(uint32_t preferred_numa_node) {
     (void)preferred_numa_node;
@@ -58,6 +61,10 @@ int main(void) {
 
     // Map a valid page
     assert(vmm_map_page(0x1000U, 0x2000U, PAGE_USER) == 0);
+    // duplicate mapping to same page should be idempotent
+    assert(vmm_map_page(0x1000U, 0x2000U, PAGE_USER) == 0);
+    // mapping same virtual address to different physical page should fail
+    assert(vmm_map_page(0x1000U, 0x3000U, PAGE_USER) == -2);
     // Unmap the valid page
     //assert(vmm_unmap_page(0x1000U) == 0);
 
@@ -136,15 +143,20 @@ phys_addr_t hal_vmm_init_root(void) {
 int hal_vmm_map_page(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
     (void)root_table;
     (void)vaddr;
-    (void)paddr;
     (void)flags;
+    g_has_mapping = 1;
+    g_last_paddr = paddr;
+    g_last_vaddr = vaddr;
     return 0;
 }
 
 int hal_vmm_unmap_page(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t* unmapped_paddr) {
     (void)root_table;
     (void)vaddr;
-    if (unmapped_paddr) *unmapped_paddr = 0x2000;
+    if (unmapped_paddr) *unmapped_paddr = g_last_paddr;
+    g_has_mapping = 0;
+    g_last_paddr = 0;
+    g_last_vaddr = 0;
     return 0;
 }
 
@@ -163,8 +175,11 @@ phys_addr_t mm_alloc_pages_order(int order, uint32_t preferred_numa_node, uint32
     return 0;
 }
 int hal_vmm_get_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t* paddr, uint32_t* flags) {
-    (void)root_table; (void)vaddr; (void)paddr; (void)flags;
-    return -1;
+    (void)root_table; (void)vaddr;
+    if (!g_has_mapping || vaddr != g_last_vaddr) return -1;
+    if (paddr) *paddr = g_last_paddr;
+    if (flags) *flags = PAGE_USER;
+    return 0;
 }
 int hal_vmm_update_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
     (void)root_table; (void)vaddr; (void)paddr; (void)flags;

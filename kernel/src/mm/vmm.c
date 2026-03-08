@@ -34,6 +34,20 @@ int mm_vmm_map_page(address_space_t* as, virt_addr_t vaddr, phys_addr_t paddr, u
         return -1;
     }
 
+    if (((vaddr & (PAGE_SIZE - 1U)) != 0U) || ((paddr & (PAGE_SIZE - 1U)) != 0U)) {
+        return -1;
+    }
+
+    phys_addr_t existing_paddr = 0U;
+    uint32_t existing_flags = 0U;
+    if (hal_vmm_get_mapping(as->root_table, vaddr, &existing_paddr, &existing_flags) == 0) {
+        (void)existing_flags;
+        if (existing_paddr != paddr) {
+            return -2;
+        }
+        return 0;
+    }
+
     if ((flags & PAGE_COW) != 0U) {
         mm_inc_page_ref(paddr);
         flags &= ~CAP_RIGHT_WRITE;
