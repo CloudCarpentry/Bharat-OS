@@ -50,3 +50,24 @@ int main(void) {
     test_ipc_benchmark();
     return 0;
 }
+
+// Stubs for NUMA page migration dependencies
+phys_addr_t pmm_alloc_pages_colored(int order, uint32_t preferred_numa_node, uint32_t flags, mm_color_config_t *color_config) {
+    (void)order; (void)preferred_numa_node; (void)flags; (void)color_config;
+    return 0;
+}
+phys_addr_t mm_alloc_pages_order(int order, uint32_t preferred_numa_node, uint32_t flags) {
+    (void)order; (void)preferred_numa_node; (void)flags;
+    return 0;
+}
+int hal_vmm_get_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t* paddr, uint32_t* flags) {
+    (void)root_table; (void)vaddr; (void)paddr; (void)flags;
+    return -1;
+}
+int hal_vmm_update_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
+    (void)root_table; (void)vaddr; (void)paddr; (void)flags;
+    return -1;
+}
+void tlb_shootdown(virt_addr_t vaddr) {
+    (void)vaddr;
+}

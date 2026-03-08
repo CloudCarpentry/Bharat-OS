@@ -67,6 +67,7 @@ struct kthread {
 
     // Capability and accounting metadata
     void* capability_list;
+    mm_color_config_t mm_color_policy;
     uint64_t time_slice_ms;
     uint64_t cpu_time_consumed;
     uint8_t preferred_numa_node;
