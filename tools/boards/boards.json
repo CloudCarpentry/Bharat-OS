@@ -56,6 +56,44 @@
       "supports_flash": false,
       "memory_mb": 256,
       "smp": 4
+    },
+    "qemu-virt-riscv64-ecu": {
+      "arch": "riscv64",
+      "machine": "virt",
+      "cpu": "rv64",
+      "qemu_system": "qemu-system-riscv64",
+      "default_toolchain": "gcc",
+      "toolchains": {
+        "gcc": "cmake/toolchains/riscv64-gcc.cmake",
+        "llvm": "cmake/toolchains/riscv64-llvm.cmake"
+      },
+      "hardware_profile": "AUTOMOTIVE_ECU",
+      "tier": "LINUX_LIKE",
+      "boot_hw": "automotive_ecu",
+      "payload_format": "kernel-elf",
+      "flash_script_dir": "tools/boards/qemu-virt-riscv64",
+      "supports_flash": false,
+      "memory_mb": 256,
+      "smp": 4
+    },
+    "qemu-virt-arm64-ecu": {
+      "arch": "arm64",
+      "machine": "virt",
+      "cpu": "cortex-a72",
+      "qemu_system": "qemu-system-aarch64",
+      "default_toolchain": "gcc",
+      "toolchains": {
+        "gcc": "cmake/toolchains/arm64-gcc.cmake",
+        "llvm": "cmake/toolchains/arm64-llvm.cmake"
+      },
+      "hardware_profile": "AUTOMOTIVE_ECU",
+      "tier": "LINUX_LIKE",
+      "boot_hw": "automotive_ecu",
+      "payload_format": "kernel-elf",
+      "flash_script_dir": "tools/boards/qemu-virt-arm64",
+      "supports_flash": false,
+      "memory_mb": 256,
+      "smp": 4
     }
   }
 }

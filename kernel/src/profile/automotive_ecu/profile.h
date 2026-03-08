@@ -1,0 +1,6 @@
+#ifndef BHARAT_PROFILE_AUTOMOTIVE_ECU_H
+#define BHARAT_PROFILE_AUTOMOTIVE_ECU_H
+
+void profile_init(void);
+
+#endif // BHARAT_PROFILE_AUTOMOTIVE_ECU_H

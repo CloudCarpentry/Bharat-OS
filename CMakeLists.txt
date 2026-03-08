@@ -7,7 +7,7 @@ set(BHARAT_ARCH_BITS "64" CACHE STRING "Target architecture bitness (32, 64)")
 set(BHARAT_ARCH_VARIANT "GENERIC" CACHE STRING "Target architecture variant (GENERIC, SHAKTI, etc.)")
 
 # Device Profile
-set(BHARAT_DEVICE_PROFILE "DESKTOP" CACHE STRING "Target device profile (DESKTOP, MOBILE, EDGE, DATACENTER, NETWORK_APPLIANCE, DRONE, ROBOT, RTOS)")
+set(BHARAT_DEVICE_PROFILE "DESKTOP" CACHE STRING "Target device profile (DESKTOP, MOBILE, EDGE, DATACENTER, NETWORK_APPLIANCE, DRONE, ROBOT, RTOS, AUTOMOTIVE_ECU, AUTOMOTIVE_INFOTAINMENT)")
 
 # Personality Profile
 set(BHARAT_PERSONALITY_PROFILE "NONE" CACHE STRING "Target personality profile (NONE, LINUX, WINDOWS, MAC)")
@@ -23,8 +23,8 @@ set(BHARAT_ACCELERATOR_CLASSES "" CACHE STRING "Target accelerator classes as a 
 set(BHARAT_PLATFORM_FIRMWARE "" CACHE STRING "Target platform firmware (e.g., ACPI, FDT)")
 
 # Boot Hardware Profile
-set(BHARAT_BOOT_HW_PROFILE "generic" CACHE STRING "Boot hardware profile (generic, desktop, server, vm, laptop, edge, rtos)")
-set_property(CACHE BHARAT_BOOT_HW_PROFILE PROPERTY STRINGS generic desktop server vm laptop edge rtos)
+set(BHARAT_BOOT_HW_PROFILE "generic" CACHE STRING "Boot hardware profile (generic, desktop, server, vm, laptop, edge, rtos, automotive_ecu, automotive_infotainment)")
+set_property(CACHE BHARAT_BOOT_HW_PROFILE PROPERTY STRINGS generic desktop server vm laptop edge rtos automotive_ecu automotive_infotainment)
 
 
 # For backward compatibility with existing CMake scripts (like tests, toolchains)
@@ -101,6 +101,10 @@ elseif(BHARAT_DEVICE_PROFILE STREQUAL "ROBOT")
     set(BHARAT_PROFILE_ROBOT 1)
 elseif(BHARAT_DEVICE_PROFILE STREQUAL "RTOS")
     set(BHARAT_PROFILE_RTOS 1)
+elseif(BHARAT_DEVICE_PROFILE STREQUAL "AUTOMOTIVE_ECU")
+    set(BHARAT_PROFILE_AUTOMOTIVE_ECU 1)
+elseif(BHARAT_DEVICE_PROFILE STREQUAL "AUTOMOTIVE_INFOTAINMENT")
+    set(BHARAT_PROFILE_AUTOMOTIVE_INFOTAINMENT 1)
 endif()
 
 # Personality Profile
