@@ -1,6 +1,8 @@
 #include "capability.h"
 #include "kernel_safety.h"
 
+// @cite seL4: Formal Verification of an OS Kernel (Klein et al., 2009)
+// seL4 capability model and verification-oriented discipline
 #include <stddef.h>
 
 #define MAX_CAP_TABLES 32U
