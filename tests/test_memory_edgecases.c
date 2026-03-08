@@ -48,6 +48,29 @@ int main(void) {
     // Unmap the valid page
     //assert(vmm_unmap_page(0x1000U) == 0);
 
+    // Test vmm_map_device_mmio error paths and success paths
+    capability_t cap_npu = { .rights_mask = CAP_RIGHT_DEVICE_NPU };
+    capability_t cap_gpu = { .rights_mask = CAP_RIGHT_DEVICE_GPU };
+    capability_t cap_none = { .rights_mask = CAP_RIGHT_READ };
+
+    // 1. NULL capability should be denied (-3)
+    assert(vmm_map_device_mmio(0x3000U, 0x4000U, NULL, 1) == -3);
+
+    // 2. NPU request with GPU-only capability should be denied (-3)
+    assert(vmm_map_device_mmio(0x3000U, 0x4000U, &cap_gpu, 1) == -3);
+
+    // 3. GPU request with NPU-only capability should be denied (-3)
+    assert(vmm_map_device_mmio(0x3000U, 0x4000U, &cap_npu, 0) == -3);
+
+    // 4. NPU request with no device rights should be denied (-3)
+    assert(vmm_map_device_mmio(0x3000U, 0x4000U, &cap_none, 1) == -3);
+
+    // 5. Valid NPU request with NPU capability should succeed (0)
+    assert(vmm_map_device_mmio(0x3000U, 0x4000U, &cap_npu, 1) == 0);
+
+    // 6. Valid GPU request with GPU capability should succeed (0)
+    assert(vmm_map_device_mmio(0x4000U, 0x5000U, &cap_gpu, 0) == 0);
+
     printf("Memory edge-case tests passed.\n");
     return 0;
 }
