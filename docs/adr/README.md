@@ -4,7 +4,7 @@ This directory provides ADR process guidance and cross-links to accepted Bharat-
 
 ## ADR locations in this repository
 
-- `docs/decisions/` contains the primary accepted ADR series (`ADR-001` to `ADR-008`).
+- `docs/decisions/` contains the primary accepted ADR series (`ADR-001` to `ADR-009`).
 - `docs/adr/ADR-007-experimental-scope.md` extends that series with explicit v1 vs experimental boundary rules.
 
 ## Current accepted ADR index
@@ -17,6 +17,7 @@ This directory provides ADR process guidance and cross-links to accepted Bharat-
 6. [`docs/decisions/ADR-006-numa-awareness.md`](../decisions/ADR-006-numa-awareness.md)
 7. [`ADR-007-experimental-scope.md`](ADR-007-experimental-scope.md)
 8. [`docs/decisions/ADR-008-ai-scheduler-plugin-contract.md`](../decisions/ADR-008-ai-scheduler-plugin-contract.md)
+9. [`docs/decisions/ADR-009-documentation-status-and-claims.md`](../decisions/ADR-009-documentation-status-and-claims.md)
 
 ## ADR authoring expectations
 
