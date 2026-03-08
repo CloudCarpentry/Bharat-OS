@@ -135,3 +135,13 @@ add_executable(test_vfs_storage test_vfs_storage.c ../kernel/src/fs/vfs.c ../ker
 target_include_directories(test_vfs_storage PRIVATE ../kernel/include)
 target_compile_definitions(test_vfs_storage PRIVATE TESTING=1)
 add_test(NAME test_vfs_storage COMMAND test_vfs_storage)
+
+add_executable(test_subsystem_profile test_subsystem_profile.c ../kernel/src/subsystem/profile.c)
+target_include_directories(test_subsystem_profile PRIVATE ../kernel/include)
+target_compile_definitions(test_subsystem_profile PRIVATE BHARAT_PROFILE_DATACENTER=1 BHARAT_PERSONALITY_LINUX=1 BHARAT_ARCH_X86=1)
+add_test(NAME test_subsystem_profile COMMAND test_subsystem_profile)
+
+add_executable(test_builtin_drivers_profile test_builtin_drivers_profile.c ../kernel/src/device/device_manager.c ../kernel/src/device/builtin_drivers.c ../kernel/src/subsystem/profile.c ../kernel/src/algo_matrix.c)
+target_include_directories(test_builtin_drivers_profile PRIVATE ../kernel/include)
+target_compile_definitions(test_builtin_drivers_profile PRIVATE TESTING=1 BHARAT_PROFILE_DATACENTER=1 BHARAT_PERSONALITY_LINUX=1 BHARAT_ARCH_X86=1)
+add_test(NAME test_builtin_drivers_profile COMMAND test_builtin_drivers_profile)

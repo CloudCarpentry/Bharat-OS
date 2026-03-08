@@ -1,4 +1,5 @@
 #include "device.h"
+#include "subsystem_profile.h"
 
 #include <stddef.h>
 
@@ -109,33 +110,84 @@ int device_register_builtin_drivers(void) {
          .hw_feature_flags = DEVICE_HW_FEAT_VIRTIO_MODERN | DEVICE_HW_FEAT_RX_CSUM | DEVICE_HW_FEAT_TX_CSUM,
          .in_use = 1U},
     };
+    return device_register_driver(&driver);
+}
 
     static const device_mmio_window_t windows[] = {
         { .class_id = DEVICE_CLASS_ETHERNET, .device_id = 0U, .window_id = 0U, .phys_base = 0x40000000U, .virt_base = 0x8000000000U, .size_bytes = 0x10000U, .irq = 10U, .in_use = 1U },
         { .class_id = DEVICE_CLASS_ETHERNET, .device_id = 0U, .window_id = 1U, .phys_base = 0x40010000U, .virt_base = 0x8000010000U, .size_bytes = 0x10000U, .irq = 10U, .in_use = 1U },
         { .class_id = DEVICE_CLASS_VIRTIO, .device_id = 0U, .window_id = 0U, .phys_base = 0x40020000U, .virt_base = 0x8000020000U, .size_bytes = 0x10000U, .irq = 13U, .in_use = 1U },
     };
+    return device_register_mmio_window(&window);
+}
 
-    for (size_t i = 0; i < sizeof(drivers)/sizeof(drivers[0]); ++i) {
-        if (device_register_driver(&drivers[i]) != 0) {
-            return -1;
-        }
+int device_register_builtin_drivers(void) {
+    if (!bharat_subsystems_ready()) {
+        bharat_subsystems_init("generic");
     }
 
-    for (size_t i = 0; i < sizeof(devices)/sizeof(devices[0]); ++i) {
-        if (device_register_bus_device(&devices[i]) != 0) {
+    if (register_driver("uart0", DEVICE_CLASS_UART, 0U) != 0) {
+        return -1;
+    }
+    if (register_driver("spi0", DEVICE_CLASS_SPI, 0U) != 0) {
+        return -1;
+    }
+    if (register_driver("i2c0", DEVICE_CLASS_I2C, 0U) != 0) {
+        return -1;
+    }
+
+    if (bharat_storage_has(BHARAT_STORAGE_EMMC_SD)) {
+        if (register_driver("sdmmc0", DEVICE_CLASS_SDMMC, 0U) != 0) {
             return -2;
         }
     }
 
-    for (size_t i = 0; i < sizeof(windows)/sizeof(windows[0]); ++i) {
-        if (device_register_mmio_window(&windows[i]) != 0) {
+    if (bharat_storage_has(BHARAT_STORAGE_NVME)) {
+        if (register_driver("nvme0", DEVICE_CLASS_NVME, 0U) != 0) {
             return -3;
         }
     }
 
-    if (device_bind_drivers() != 0) {
-        return -4;
+    if (bharat_storage_has(BHARAT_STORAGE_AHCI_SATA)) {
+        if (register_driver("ahci0", DEVICE_CLASS_AHCI, 0U) != 0) {
+            return -4;
+        }
+    }
+
+    if (bharat_storage_has(BHARAT_STORAGE_FLASH_MTD)) {
+        if (register_driver("flash0", DEVICE_CLASS_FLASH, 0U) != 0) {
+            return -5;
+        }
+    }
+
+    if (bharat_storage_has(BHARAT_STORAGE_RAMDISK)) {
+        if (register_driver("ramdisk0", DEVICE_CLASS_RAMDISK, 0U) != 0) {
+            return -6;
+        }
+    }
+
+    if (bharat_network_has(BHARAT_NET_ETHERNET)) {
+        if (register_driver("eth0", DEVICE_CLASS_ETHERNET, 0U) != 0) {
+            return -7;
+        }
+        if (register_mmio(DEVICE_CLASS_ETHERNET, 0U, 0U, 0x40000000U, 0x8000000000U, 0x10000U, 10U) != 0) {
+            return -8;
+        }
+        if (register_mmio(DEVICE_CLASS_ETHERNET, 0U, 1U, 0x40010000U, 0x8000010000U, 0x10000U, 10U) != 0) {
+            return -8;
+        }
+    }
+
+    if (bharat_network_has(BHARAT_NET_VIRTIO)) {
+        if (register_driver("virtio-net0", DEVICE_CLASS_VIRTIO_NET, 0U) != 0) {
+            return -9;
+        }
+    }
+
+    if (bharat_network_has(BHARAT_NET_WIFI)) {
+        if (register_driver("wlan0", DEVICE_CLASS_WIFI, 0U) != 0) {
+            return -10;
+        }
     }
 
     return 0;

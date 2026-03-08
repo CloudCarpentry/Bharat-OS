@@ -23,6 +23,8 @@
 #cmakedefine BHARAT_PROFILE_DRONE 1
 #cmakedefine BHARAT_PROFILE_ROBOT 1
 #cmakedefine BHARAT_PROFILE_RTOS 1
+#cmakedefine BHARAT_PROFILE_AUTOMOTIVE_ECU 1
+#cmakedefine BHARAT_PROFILE_AUTOMOTIVE_INFOTAINMENT 1
 
 /* Personality Profile */
 #cmakedefine BHARAT_PERSONALITY_NONE 1

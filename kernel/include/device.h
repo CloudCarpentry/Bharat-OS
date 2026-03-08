@@ -11,6 +11,12 @@ typedef enum {
     DEVICE_CLASS_I2C,
     DEVICE_CLASS_SDMMC,
     DEVICE_CLASS_ETHERNET,
+    DEVICE_CLASS_NVME,
+    DEVICE_CLASS_AHCI,
+    DEVICE_CLASS_FLASH,
+    DEVICE_CLASS_RAMDISK,
+    DEVICE_CLASS_VIRTIO_NET,
+    DEVICE_CLASS_WIFI,
     DEVICE_CLASS_GPIO,
     DEVICE_CLASS_USB,
     DEVICE_CLASS_CAN,
@@ -129,6 +135,7 @@ int device_lookup_mmio_window(device_class_t class_id,
                               uint32_t window_id,
                               device_mmio_window_t* out_window);
 int device_dispatch_irq(uint32_t irq);
+int device_driver_registered(device_class_t class_id, uint32_t device_id);
 
 int device_register_bus_device(const device_desc_t* dev);
 int device_hotplug_add(const device_desc_t* dev);
