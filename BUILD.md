@@ -164,6 +164,46 @@ chmod +x tools/build.sh
 ---
 
 
+### Windows 11 + WSL validation flow (recommended)
+
+Use this sequence to verify both scripts on a Windows 11 Pro workstation:
+
+1. **Native PowerShell check (host Windows)**
+
+```powershell
+# from repo root
+.\tools\build.ps1 -Arch x86_64 -Clean
+.\tools\build.ps1 -Arch riscv64 -Clean
+.\tools\build.ps1 -Arch arm64 -Clean
+```
+
+2. **WSL bash check (inside Ubuntu/WSL)**
+
+```bash
+# from repo root
+./tools/build.sh x86_64 --clean
+./tools/build.sh riscv64 --clean
+./tools/build.sh arm64 --clean
+```
+
+3. **Runtime smoke check in QEMU**
+
+```powershell
+.\tools\build.ps1 -Arch x86_64 -Run
+.\tools\build.ps1 -Arch riscv64 -Run
+.\tools\build.ps1 -Arch arm64 -Run
+```
+
+```bash
+./tools/build.sh x86_64 --run
+./tools/build.sh riscv64 --run
+./tools/build.sh arm64 --run
+```
+
+> On Windows, `tools/build.ps1` expects QEMU at `C:\Program Files\qemu\` and auto-adds `C:\Program Files\LLVM\bin` to `PATH`.
+
+---
+
 ### Option C — CMake Presets (cross-arch)
 
 The repository includes `CMakePresets.json` for cross compilation and tests:
@@ -270,8 +310,8 @@ Bharat-OS exclusively relies on LLVM/Clang and LLD (version 16+) for bare-metal 
 | Architecture | Target Triple         | Compiler | Linker | Status      |
 | ------------ | --------------------- | -------- | ------ | ----------- |
 | `x86_64`     | `x86_64-elf`          | Clang 16+| LLD 16+| Active      |
-| `riscv64`    | `riscv64-elf`         | Clang 16+| LLD 16+| Planned     |
-| `arm64`      | `aarch64-elf`         | Clang 16+| LLD 16+| Experimental|
+| `riscv64`    | `riscv64-elf`         | Clang 16+| LLD 16+| Validated   |
+| `arm64`      | `aarch64-elf`         | Clang 16+| LLD 16+| Validated (build) |
 
 ---
 
