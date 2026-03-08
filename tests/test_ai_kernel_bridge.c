@@ -9,7 +9,6 @@
 #include "../kernel/include/numa.h"
 #include "../kernel/include/ipc_endpoint.h"
 
-
 static void thread_entry(void) {}
 
 uint8_t g_per_core_stacks[32][16384];
