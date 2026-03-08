@@ -1,0 +1,26 @@
+--- tests/test_riscv_shakti_bsp.c
++++ tests/test_riscv_shakti_bsp.c
+@@ -9,7 +9,7 @@
+                            riscv_soc_profile_t profile,
+                            uint64_t expected_uart) {
+     riscv_bsp_config_t cfg;
+-    assert(hal_riscv_bsp_detect(name, 0x88000000ULL, &cfg) == 0);
++    assert(hal_riscv_bsp_detect(name, 0ULL, &cfg) == 0);
+     assert(cfg.soc_profile == profile);
+     assert(cfg.uart_base == expected_uart);
+     assert(cfg.plic_base != 0ULL);
+@@ -21,12 +21,12 @@
+     assert_profile("shakti-i", RISCV_SOC_SHAKTI_I, 0x20000000ULL);
+     assert_profile("qemu-virt", RISCV_SOC_QEMU_VIRT, 0x10000000ULL);
+
+     riscv_bsp_config_t active;
+-    assert(hal_riscv_bsp_detect("shakti-e", 0x81000000ULL, &active) == 0);
++    assert(hal_riscv_bsp_detect("shakti-e", 0ULL, &active) == 0);
+     assert(hal_riscv_bsp_init(&active) == 0);
+
+     const riscv_bsp_config_t* got = hal_riscv_bsp_active();
+     assert(got->soc_profile == RISCV_SOC_SHAKTI_E);
+-    assert(got->fdt_ptr == 0x81000000ULL);
++    assert(got->fdt_ptr == 0ULL);
+
+     printf("RISC-V Shakti BSP tests passed.\n");

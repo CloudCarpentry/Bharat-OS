@@ -103,7 +103,7 @@ set(KERNEL_SRCS
     src/ai_kernel_bridge.c
     src/ai_sched.c
     src/panic.c
-    src/sched_stub.c
+    src/sched.c
     ${ARCH_HAL}
     ${ARCH_HAL_EXTRA}
     src/mm/pmm.c
