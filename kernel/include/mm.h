@@ -81,6 +81,9 @@ int mm_vmm_unmap_page(address_space_t* as, virt_addr_t vaddr);
 #include "advanced/formal_verif.h"
 int vmm_map_device_mmio(virt_addr_t vaddr, phys_addr_t paddr, capability_t* cap, int is_npu);
 
+#include "mm/address_token.h"
+int vmm_map_device_mmio_token(virt_addr_t vaddr, phys_addr_t paddr, uint64_t size, const bharat_addr_token_t* token, int is_npu);
+
 // Create a new empty hardware address space
 address_space_t* mm_create_address_space(void);
 
