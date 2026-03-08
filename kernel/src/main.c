@@ -9,6 +9,7 @@
 #include "trap.h"
 #include "multicore.h"
 #include "advanced/algo_matrix.h"
+#include "mm_zswap.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -208,6 +209,12 @@ void kernel_main(void) {
       kernel_panic("VMM initialization failed");
     }
     KPRINT("BOOT: vmm initialized\n");
+
+    KPRINT("  [ZSWAP] Initializing Memory Compression...\n");
+    if (zswap_init() != 0) {
+        kernel_panic("ZSWAP initialization failed");
+    }
+    KPRINT("BOOT: zswap initialized\n");
 
     KPRINT("  [NUMA] Discovering topology\n");
     if (numa_discover_topology() != 0) {

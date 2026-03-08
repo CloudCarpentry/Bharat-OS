@@ -15,6 +15,7 @@ typedef uint64_t phys_addr_t;
 typedef uint64_t virt_addr_t;
 
 #include "list.h"
+#include "mm_coloring.h"
 
 // Page metadata structure for Buddy Allocator
 typedef struct page {
@@ -57,6 +58,7 @@ int mm_pmm_init(void* memory_map, uint32_t map_size);
 // Base Page Allocation (NUMA aware)
 phys_addr_t mm_alloc_page(uint32_t preferred_numa_node);
 phys_addr_t mm_alloc_pages_order(int order, uint32_t preferred_numa_node, uint32_t flags);
+phys_addr_t pmm_alloc_pages_colored(int order, uint32_t preferred_numa_node, uint32_t flags, mm_color_config_t *color_config);
 void mm_free_page(phys_addr_t page);
 
 // Support for Copy-on-Write (CoW) page reference counting

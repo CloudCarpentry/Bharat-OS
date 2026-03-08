@@ -43,4 +43,21 @@ int numa_set_node_descriptor(memory_node_id_t node_id,
 int numa_get_node_descriptor(memory_node_id_t node_id, numa_node_descriptor_t* out_desc);
 uint32_t numa_active_node_count(void);
 
+// Deferred Page Migration & TLB Monitoring (NUMA-Aware Page Migration)
+typedef enum {
+    NUMA_ACCESS_READ = 0,
+    NUMA_ACCESS_WRITE = 1,
+    NUMA_ACCESS_EXECUTE = 2
+} numa_access_type_t;
+
+// To be called from page fault handler or TLB miss profiler
+void numa_record_page_access(void* thread, uint64_t vaddr, numa_access_type_t access_type);
+
+// To be called from a background worker thread or periodic scheduler hook
+void numa_select_migration_candidates(void* thread);
+void numa_balance_thread_memory(void* thread);
+
+// Core migration execution (called by worker)
+int numa_migrate_page(uint64_t vaddr, memory_node_id_t target_node, void* address_space);
+
 #endif // BHARAT_OS_NUMA_H

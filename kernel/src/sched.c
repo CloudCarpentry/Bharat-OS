@@ -2,6 +2,7 @@
 #include "kernel_safety.h"
 #include "capability.h"
 #include "slab.h"
+#include "numa.h"
 #include "advanced/formal_verif.h"
 #include "hal/hal.h"
 #include "advanced/algo_matrix.h"
@@ -216,6 +217,9 @@ kthread_t* thread_create(kprocess_t* parent, void (*entry_point)(void)) {
     t->base_priority = 1U;
     t->cpu_time_consumed = 0U;
     t->time_slice_ms = SCHED_DEFAULT_SLICE_MS;
+    t->mm_color_policy.policy = MM_COLOR_POLICY_NONE;
+    t->mm_color_policy.domain = MM_DOMAIN_DEFAULT;
+    t->mm_color_policy.color_mask = 0xFFFFFFFF; // all colors allowed by default
     t->preferred_numa_node = 0U;
     t->bound_core_id = hal_cpu_get_id(); // Default to current core
     if (t->bound_core_id >= MAX_SUPPORTED_CORES) {
@@ -559,6 +563,12 @@ void sched_on_timer_tick(void) {
         if (current) {
             current->cpu_time_consumed++;
             sched_update_telemetry(current);
+
+            if (current->cpu_time_consumed % 100 == 0) {
+                // Periodically balance NUMA memory (e.g. every 100 ticks)
+                // This triggers the deferred/worker evaluation logic without blocking heavily
+                numa_balance_thread_memory((void*)current);
+            }
 
             if (current->cpu_time_consumed >= current->time_slice_ms) {
                 current->cpu_time_consumed = 0U;
