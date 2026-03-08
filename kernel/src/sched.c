@@ -80,6 +80,7 @@ static uint8_t sched_tid_hash(uint64_t tid) {
 void fv_secure_context_switch(void* next_thread_frame) __attribute__((weak));
 uint32_t numa_active_node_count(void) __attribute__((weak));
 
+static uint32_t sched_numa_node_count(void) __attribute__((unused));
 static uint32_t sched_numa_node_count(void) {
     if (numa_active_node_count) {
         uint32_t count = numa_active_node_count();
@@ -93,7 +94,7 @@ static thread_slot_t* sched_find_thread_slot_by_tid(uint64_t tid) {
     int16_t current = g_tid_hash_heads[hash];
 
     while (current != -1) {
-        if (current >= 0 && current < BHARAT_ARRAY_SIZE(g_threads)) {
+        if (current >= 0 && current < (int16_t)BHARAT_ARRAY_SIZE(g_threads)) {
             if (g_threads[current].in_use != 0U && g_threads[current].thread.thread_id == tid) {
                 return &g_threads[current];
             }
@@ -409,6 +410,7 @@ void sched_dequeue_task_l0(kthread_t* thread, uint32_t core_id) {
 
 // Level 1 Dequeue (e.g. updating the active bitmap)
 void sched_dequeue_task_l1(kthread_t* thread, uint32_t core_id) {
+    (void)core_id;
     if (!thread) return;
     thread_slot_t* slot = sched_find_thread_slot_by_tid(thread->thread_id);
     if (slot && !list_empty(&slot->list_node)) {

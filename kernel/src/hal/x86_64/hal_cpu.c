@@ -266,6 +266,7 @@ static struct {
     uint64_t base;
 } __attribute__((packed)) g_gdtr;
 
+static void gdt_set_descriptor(int index, uint64_t base, uint32_t limit, uint8_t access, uint8_t gran) __attribute__((unused));
 static void gdt_set_descriptor(int index, uint64_t base, uint32_t limit, uint8_t access, uint8_t gran) {
     if (index < 0 || index >= 8) return;
     g_gdt[index] = (limit & 0xFFFFULL) | ((base & 0xFFFFFFULL) << 16) |
