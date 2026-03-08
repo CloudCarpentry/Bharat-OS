@@ -17,6 +17,7 @@
 #include "security/isolation.h"
 #include "security/policy.h"
 #include "power_thermal_perf.h"
+#include "profile.h"
 #include "subsystem_profile.h"
 
 #include <stddef.h>
@@ -228,6 +229,26 @@ void kernel_main(void) {
     }
     if (bharat_network_has(BHARAT_NET_ZERO_COPY_PATH)) {
       KPRINT("    - network: zero-copy packet path (profile-ready)\n");
+    }
+
+    KPRINT("  [SUBSYS] Filesystem subsystem profiled.\n");
+    if (bharat_filesystem_has(BHARAT_FS_VFS)) {
+      KPRINT("    - fs: VFS core enabled\n");
+    }
+    if (bharat_filesystem_has(BHARAT_FS_PAGE_CACHE)) {
+      KPRINT("    - fs: page cache enabled\n");
+    }
+    if (bharat_filesystem_has(BHARAT_FS_WRITEBACK)) {
+      KPRINT("    - fs: writeback layer enabled\n");
+    }
+    if (bharat_filesystem_has(BHARAT_FS_EXT_LIKE)) {
+      KPRINT("    - fs: ext-like driver target enabled\n");
+    }
+    if (bharat_filesystem_has(BHARAT_FS_LITTLEFS)) {
+      KPRINT("    - fs: littlefs class support enabled\n");
+    }
+    if (bharat_filesystem_has(BHARAT_FS_JOURNALING)) {
+      KPRINT("    - fs: journaling mode enabled\n");
     }
 
     KPRINT("  [SEC] Running secure-boot verification...\n");

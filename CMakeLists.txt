@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.20)
 project(BharatOS C ASM)
 
+enable_testing()
+
 # Architecture selection
 set(BHARAT_ARCH_FAMILY "X86" CACHE STRING "Target architecture family (X86, ARM, RISCV)")
 set(BHARAT_ARCH_BITS "64" CACHE STRING "Target architecture bitness (32, 64)")
@@ -49,6 +51,8 @@ message(STATUS "Configuring for Personality Profile: ${BHARAT_PERSONALITY_PROFIL
 message(STATUS "Architecture: ${BHARAT_ARCH_FAMILY}-${BHARAT_ARCH_BITS} (${BHARAT_ARCH_VARIANT})")
 
 option(BHARAT_ENABLE_CLANG_TIDY "Enable clang-tidy static analysis for C targets" OFF)
+option(BHARAT_BUILD_HOST_TESTS "Build host-side unit tests" OFF)
+
 if(BHARAT_ENABLE_CLANG_TIDY)
     find_program(BHARAT_CLANG_TIDY NAMES clang-tidy)
     if(BHARAT_CLANG_TIDY)
@@ -155,3 +159,7 @@ add_subdirectory(kernel)
 add_subdirectory(lib)
 add_subdirectory(drivers)
 add_subdirectory(subsys)
+
+if(BHARAT_BUILD_HOST_TESTS AND NOT CMAKE_CROSSCOMPILING)
+    add_subdirectory(tests)
+endif()

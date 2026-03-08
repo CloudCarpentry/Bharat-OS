@@ -1,5 +1,4 @@
 #include "android_compat.h"
-#include <stdio.h>
 
 /**
  * Android compatibility subsystem entry point.

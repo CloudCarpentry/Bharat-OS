@@ -48,3 +48,17 @@ This keeps the core generic while still adapting boot behavior to hardware role.
 - Default driver registration is now profile-gated in `device_register_builtin_drivers()`: drivers are only registered when their subsystem feature bit is active (for example NVMe, AHCI, Wi-Fi, virtio-net).
 - If subsystem policy has not been initialized yet, driver registration falls back to `generic` profile defaults to keep legacy boot and tests stable.
 - A userspace SDK API (`bharat_get_subsystem_caps`) is provided as a stable contract point for personalities and libraries; it currently returns `-ENOSYS` until the syscall path is wired, but this avoids ABI churn later.
+
+
+## Filesystem capability matrix (profile-driven)
+
+Filesystem support is now exposed as its own profile surface rather than a single
+monolithic toggle. The active feature bits separate architectural layers from
+filesystem-driver families:
+
+- foundational layers: VFS, page cache, writeback/buffer layer, block layer, pluggable drivers
+- minimal embedded/RTOS/edge profile: tmpfs/ramfs, littlefs-class support, FAT-like support
+- desktop/general purpose profile: ext-like target, tmpfs, initramfs, devfs/procfs/sysfs
+- datacenter/appliance profile: journaling mode, stronger crash-recovery policy bits, scalable writeback
+
+Runtime boot profile overrides can additionally force these modes (`embedded`, `edge`, `rtos`, `datacenter`) while preserving compile-time defaults.
