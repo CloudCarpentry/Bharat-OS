@@ -80,3 +80,43 @@ High-density compute focusing on throughput, isolation, and orchestration.
 * **Input Model:** IPMI, remote serial.
 * **Power/Thermal:** Rack-level thermal management.
 * **Accelerators:** Heavy reliance on datacenter GPUs and NPUs for ML workloads.
+
+## Automotive Safety RT (`BHARAT_PROFILE_AUTOMOTIVE_SAFETY_RT`)
+Used for the highest-criticality domain (watchdog and fail-safe logic).
+
+* **Required Subsystems:** Minimal boot path, hard RT scheduler class, watchdog chain, health monitor, emergency state transitions.
+* **Optional Subsystems:** Limited diagnostics output.
+* **Rendering Path:** None (headless).
+* **Input Model:** Sensor/health buses and supervisory interrupts.
+* **Power/Thermal:** Must remain operational across degraded conditions.
+* **Accelerators:** Typically none; prefers deterministic CPU execution.
+
+## Automotive Control (`BHARAT_PROFILE_AUTOMOTIVE_CONTROL`)
+Used for motion/powertrain and battery control domains.
+
+* **Required Subsystems:** Hard RT scheduler, timer subsystem, ADC/PWM/control drivers, control IPC, deterministic logging.
+* **Optional Subsystems:** Sensor fusion helpers and calibration services.
+* **Rendering Path:** None or minimal debug console.
+* **Input Model:** Real-time sensor feeds and control bus inputs.
+* **Power/Thermal:** Strict deterministic behavior over throughput.
+* **Accelerators:** Optional DSP support if bounded-latency integration is available.
+
+## Automotive Gateway (`BHARAT_PROFILE_AUTOMOTIVE_GATEWAY`)
+Used for ECU bridging and diagnostics routing.
+
+* **Required Subsystems:** CAN/CAN-FD, LIN, Ethernet/TSN stack, SOME/IP services, diagnostics and security policy enforcement.
+* **Optional Subsystems:** Telemetry buffering and fleet connectivity agents.
+* **Rendering Path:** Headless.
+* **Input Model:** Multi-bus packet and service traffic.
+* **Power/Thermal:** Continuous operation, high reliability.
+* **Accelerators:** Crypto offload and network acceleration if available.
+
+## Automotive AI Edge (`BHARAT_PROFILE_AUTOMOTIVE_AI_EDGE`)
+Used for central compute nodes running Linux companion workloads.
+
+* **Required Subsystems:** Companion-mode IPC, service runtime, telemetry/diagnostics bridge, secure update client.
+* **Optional Subsystems:** AI accelerator orchestration and multimedia services.
+* **Rendering Path:** Linux-managed HMI/infotainment path.
+* **Input Model:** Sensor fusion streams, cloud/connectivity endpoints.
+* **Power/Thermal:** Requires runtime power and thermal policy coordination.
+* **Accelerators:** NPU/GPU for perception and AI inference.

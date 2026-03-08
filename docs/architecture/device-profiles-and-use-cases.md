@@ -88,3 +88,24 @@ Bharat-OS uses profile-oriented tuning to keep a shared kernel spine while chang
 - Capability discipline aligns conceptually with seL4/L4-family authority modeling.
 
 These are architectural influences rather than claims of implementation equivalence.
+
+### 6) Automotive and EV distributed ECU systems
+
+**Current fit**
+
+- Capability-mediated isolation aligns with mixed-criticality domain boundaries.
+- Messaging-centric design aligns with ECU/domain decomposition and gateway routing.
+- Architecture portability supports central compute + peripheral ECU topologies.
+
+**Planned profile set**
+
+- `BHARAT_PROFILE_AUTOMOTIVE_SAFETY_RT`
+- `BHARAT_PROFILE_AUTOMOTIVE_CONTROL`
+- `BHARAT_PROFILE_AUTOMOTIVE_GATEWAY`
+- `BHARAT_PROFILE_AUTOMOTIVE_AI_EDGE`
+
+**Gaps / roadmap**
+
+- Stronger hard RT guarantees and formal jitter/latency acceptance thresholds.
+- Production-ready TSN/SOME-IP integration and deterministic network timing.
+- End-to-end secure boot/update and rollback lifecycle across distributed ECUs.
