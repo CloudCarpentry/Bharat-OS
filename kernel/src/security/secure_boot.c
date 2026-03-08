@@ -16,6 +16,27 @@ static const bharat_boot_policy_t g_boot_policy = {
     .smp_target_cores = 2U,
     .enable_zswap = 1U,
     .enable_ai_governor = 0U,
+#elif defined(BHARAT_BOOT_HW_PROFILE_mobile)
+    .security_level = BHARAT_BOOT_SECURITY_ENFORCED,
+    .perf_mode = BHARAT_BOOT_PERF_BALANCED,
+    .timer_tick_hz = 250U,
+    .smp_target_cores = 4U,
+    .enable_zswap = 1U,
+    .enable_ai_governor = 1U,
+#elif defined(BHARAT_BOOT_HW_PROFILE_datacenter)
+    .security_level = BHARAT_BOOT_SECURITY_MEASURED,
+    .perf_mode = BHARAT_BOOT_PERF_FAST,
+    .timer_tick_hz = 250U,
+    .smp_target_cores = 8U,
+    .enable_zswap = 1U,
+    .enable_ai_governor = 1U,
+#elif defined(BHARAT_BOOT_HW_PROFILE_network_appliance)
+    .security_level = BHARAT_BOOT_SECURITY_ENFORCED,
+    .perf_mode = BHARAT_BOOT_PERF_FAST,
+    .timer_tick_hz = 1000U,
+    .smp_target_cores = 4U,
+    .enable_zswap = 0U,
+    .enable_ai_governor = 0U,
 #elif defined(BHARAT_PROFILE_DRONE) || defined(BHARAT_PROFILE_ROBOT) || \
       defined(BHARAT_PROFILE_AUTOMOTIVE_ECU) || defined(BHARAT_PROFILE_AUTOMOTIVE_INFOTAINMENT)
     .security_level = BHARAT_BOOT_SECURITY_ENFORCED,

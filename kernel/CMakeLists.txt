@@ -62,8 +62,8 @@ endif()
 
 string(TOLOWER "${BHARAT_BOOT_HW_PROFILE}" KERNEL_PROFILE_LOWER)
 
-if(NOT KERNEL_PROFILE_LOWER MATCHES "^(generic|desktop|server|vm|laptop|edge|rtos)$")
-    message(FATAL_ERROR "Invalid BHARAT_BOOT_HW_PROFILE='${KERNEL_PROFILE_LOWER}'. Allowed: generic, desktop, server, vm, laptop, edge, rtos")
+if(NOT KERNEL_PROFILE_LOWER MATCHES "^(generic|desktop|server|vm|laptop|edge|rtos|mobile|datacenter|network_appliance)$")
+    message(FATAL_ERROR "Invalid BHARAT_BOOT_HW_PROFILE='${KERNEL_PROFILE_LOWER}'. Allowed: generic, desktop, server, vm, laptop, edge, rtos, mobile, datacenter, network_appliance")
 endif()
 
 add_compile_definitions(BHARAT_BOOT_HW_PROFILE_${KERNEL_PROFILE_LOWER}=1)
@@ -117,6 +117,7 @@ set(KERNEL_SRCS
     src/hal/arm32_mpu_vmm_mock.c
     src/main.c
     src/trace/trace.c
+    src/subsystem/profile.c
     src/arch/capabilities.c
     src/profile/${KERNEL_PROFILE_LOWER}/profile.c
     src/board/qemu-virt-${ARCH}/board.c
@@ -160,6 +161,8 @@ set(KERNEL_SRCS
 
 # ── Kernel ELF ──────────────────────────────────────────────────────────────
 add_executable(kernel.elf ${KERNEL_SRCS})
+
+target_link_libraries(kernel.elf subsys_manager)
 
 set_target_properties(kernel.elf PROPERTIES
     OUTPUT_NAME "kernel.elf"

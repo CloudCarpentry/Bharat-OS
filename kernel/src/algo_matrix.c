@@ -36,14 +36,14 @@ void algo_matrix_init(void) {
     /* 1) Run-Queue Algorithm Resolution */
     if (num_cores > 1) {
         // Multi-threaded SMP logic for Level 1
-        g_sched_ops.pick_next_ready = sched_pick_next_ready_l1;
-        g_sched_ops.enqueue_task    = sched_enqueue_task_l1;
-        g_sched_ops.dequeue_task    = sched_dequeue_task_l1;
+        g_sched_ops.pick_next_ready = NULL;
+        g_sched_ops.enqueue_task    = NULL;
+        g_sched_ops.dequeue_task    = NULL;
     } else {
         // Fallback Reference Logic Level 0
-        g_sched_ops.pick_next_ready = sched_pick_next_ready_l0;
-        g_sched_ops.enqueue_task    = sched_enqueue_task_l0;
-        g_sched_ops.dequeue_task    = sched_dequeue_task_l0;
+        g_sched_ops.pick_next_ready = NULL;
+        g_sched_ops.enqueue_task    = NULL;
+        g_sched_ops.dequeue_task    = NULL;
     }
 
     /* 2) Search/Sort Operations Resolution */
