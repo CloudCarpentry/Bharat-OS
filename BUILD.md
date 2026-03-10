@@ -26,55 +26,11 @@ flowchart TD
 
 ---
 
-## Prerequisites
+## Prerequisites & Environment Preparation
 
-| Tool        | Version | Purpose                          |
-| ----------- | ------- | -------------------------------- |
-| CMake       | ≥ 3.20  | Build system generator           |
-| Clang + LLD | ≥ 16    | C compiler + linker (bare-metal) |
-| Ninja       | any     | Fast build backend               |
-| QEMU        | any     | Hardware emulator for testing    |
+Before building Bharat-OS, you need to set up your development environment. We support Windows, WSL, Linux, macOS, and BSD. We also provide a complete setup script for **Coding Agent Environments** (e.g., Jules, Codex).
 
-### Install on Windows (PowerShell as Administrator)
-
-```powershell
-winget install -e --id Kitware.CMake
-winget install -e --id LLVM.LLVM
-winget install -e --id Ninja-build.Ninja
-winget install -e --id SoftwareFreedomConservancy.QEMU
-```
-
-> Restart your terminal after installation so tools appear in `PATH`.
-
-### Install on Ubuntu / Debian / WSL
-
-```bash
-sudo apt update
-sudo apt install -y cmake ninja-build clang lld qemu-system-x86 qemu-system-misc
-```
-
-### Install on Arch Linux
-
-```bash
-sudo pacman -S cmake ninja clang lld qemu-desktop
-```
-
-### Install on macOS (Homebrew)
-
-```bash
-brew install cmake ninja llvm qemu
-export PATH="$(brew --prefix llvm)/bin:$PATH"   # add to ~/.zshrc
-```
-
-### Install on FreeBSD / NetBSD / OpenBSD
-
-```bash
-# FreeBSD
-pkg install cmake ninja llvm qemu-system-x86_64
-
-# OpenBSD
-pkg_add cmake ninja llvm qemu
-```
+Please see the comprehensive **[Environment Preparation Guide](docs/ENV_PREP.md)** to install all necessary tools (`cmake`, `clang`, `lld`, `qemu`, `gcc`, `python3`, etc.) for your specific platform.
 
 ---
 
@@ -93,118 +49,67 @@ cmake/toolchains/
 
 ---
 
-## Building (All Platforms)
+## Architecture-Specific Build Guides
 
-### Option A — Convenience scripts (Recommended)
+Bharat-OS supports multiple architectures, each with specific build flows, run commands, and testing procedures.
 
-**Linux / macOS / WSL / BSD (bash)**
+For detailed instructions on how to build, run in QEMU, run SDK builds, and execute tests for a specific architecture, please refer to the corresponding guide:
 
-```bash
-chmod +x tools/build.sh
-
-# Build x86_64
-./tools/build.sh x86_64
-
-# Build and boot in QEMU
-./tools/build.sh x86_64 --run
-
-# Clean build + QEMU
-./tools/build.sh x86_64 --clean --run
-
-# Build RISC-V 64-bit
-./tools/build.sh riscv64
-
-# Build ARM64 (compile-only scaffold)
-./tools/build.sh arm64
-
-# Override boot knobs
-./tools/build.sh x86_64 --boot-gui=OFF --hw=vm
-
-# Run RISC-V with specific QEMU machine (e.g., sifive_u)
-./tools/build.sh riscv64 --machine=sifive_u --run
-
-# Build RISC-V GCC OpenSBI payload
-./tools/build.sh riscv64 --payload
-
-# Run with GDB debug server enabled
-./tools/build.sh x86_64 --run --debug
-```
-
-**Windows (PowerShell 5+ or pwsh)**
-
-```powershell
-# Build x86_64
-.\tools\build.ps1
-
-# Build and boot in QEMU
-.\tools\build.ps1 -Arch x86_64 -Run
-
-# Clean build + QEMU
-.\tools\build.ps1 -Arch x86_64 -Clean -Run
-
-# Build RISC-V 64-bit
-.\tools\build.ps1 -Arch riscv64
-
-# Build ARM64 (compile-only scaffold)
-.\tools\build.ps1 -Arch arm64
-
-# Override boot knobs
-.\tools\build.ps1 -Arch x86_64 -BootGui OFF -HardwareProfile vm
-
-# Run RISC-V with specific QEMU machine
-.\tools\build.ps1 -Arch riscv64 -Machine sifive_u -Run
-
-# Build RISC-V GCC OpenSBI payload
-.\tools\build.ps1 -Arch riscv64 -Payload
-
-# Run with GDB debug server enabled
-.\tools\build.ps1 -Arch x86_64 -Run -DebugQemu
-```
+- **[Building for x86_64](docs/BUILD_X86_64.md)**
+- **[Building for RISC-V 64-bit](docs/BUILD_RISCV64.md)**
+- **[Building for ARM64](docs/BUILD_ARM64.md)**
 
 ---
 
+## Testing & SDK Development
 
-### Windows 11 + WSL validation flow (recommended)
+### Validating Host-Side Tests (Windows & WSL/Linux)
 
-Use this sequence to verify both scripts on a Windows 11 Pro workstation:
+Bharat-OS includes a rich suite of host-side tests for core kernel logic, integration behavior, and hardware profiles. These tests execute natively on your host machine (Windows or Linux) bypassing the need for QEMU, making them extremely fast and useful for continuous integration. They utilize statically allocated memory to prevent MSVC stack overflow issues when running under Windows natively.
 
-1. **Native PowerShell check (host Windows)**
-
+**From Windows Native (PowerShell + MSVC/Clang):**
 ```powershell
-# from repo root
-.\tools\build.ps1 -Arch x86_64 -Clean
-.\tools\build.ps1 -Arch riscv64 -Clean
-.\tools\build.ps1 -Arch arm64 -Clean
+# Configure and build the host-side test suite
+cmake --preset tests-host
+cmake --build --preset build-tests
+
+# Run all tests natively
+ctest --preset run-tests
+
+# Run specifically the full integration subsystem tests
+cd build-tests
+ctest -R test_integration_core_subsys -V
+
+# Run specifically the edge/embedded profile tests
+ctest -R test_profile_edge -V
 ```
 
-2. **WSL bash check (inside Ubuntu/WSL)**
-
+**From WSL / Linux / macOS (Bash + GCC/Clang):**
 ```bash
-# from repo root
-./tools/build.sh x86_64 --clean
-./tools/build.sh riscv64 --clean
-./tools/build.sh arm64 --clean
+# Configure and build the host-side test suite
+cmake --preset tests-host
+cmake --build --preset build-tests
+
+# Run all tests
+ctest --preset run-tests
+
+# Run specific profile tests with verbose output
+cd build-tests
+ctest -R test_integration_core_subsys -V
+ctest -R test_profile_edge -V
 ```
 
-3. **Runtime smoke check in QEMU**
+### SDK Development (Planned)
 
-```powershell
-.\tools\build.ps1 -Arch x86_64 -Run
-.\tools\build.ps1 -Arch riscv64 -Run
-.\tools\build.ps1 -Arch arm64 -Run
-```
+Support for building a standalone SDK for the target architectures, including headers and pre-compiled libraries for user-space development, is currently planned.
 
-```bash
-./tools/build.sh x86_64 --run
-./tools/build.sh riscv64 --run
-./tools/build.sh arm64 --run
-```
+This will enable developers to link their C/C++ applications directly against the Bharat-OS POSIX compat layer or native capability interfaces, packaging their applications into a payload alongside the core kernel.
 
-> On Windows, `tools/build.ps1` expects QEMU at `C:\Program Files\qemu\` and auto-adds `C:\Program Files\LLVM\bin` to `PATH`.
+Future updates to the architecture guides will detail SDK packaging commands, test payloads, and user-space compilation instructions.
 
 ---
 
-### Option C — CMake Presets (cross-arch)
+### CMake Presets (cross-arch)
 
 The repository includes `CMakePresets.json` for cross compilation and tests:
 
@@ -234,55 +139,12 @@ cmake --build --preset build-arm64-kernel
 cmake --preset tests-host
 cmake --build --preset build-tests
 ctest --preset run-tests
+
+# Host integration and profile tests
+ctest --preset run-tests -R test_integration_core_subsys
+ctest --preset run-tests -R test_profile_edge
 ```
 
-### Option B — Raw CMake commands
-
-Same commands work on every platform:
-
-```bash
-# x86_64
-cmake -S . -B build/x86_64 \
-      -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/x86_64-elf.cmake \
-      -G Ninja
-
-cmake --build build/x86_64 --target kernel.elf
-
-# RISC-V 64-bit
-cmake -S . -B build/riscv64 \
-      -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/riscv64-elf.cmake \
-      -G Ninja
-
-cmake --build build/riscv64 --target kernel.elf
-```
-
-On **Windows**, use the same commands from PowerShell — CMake finds Clang automatically from `C:\Program Files\LLVM\bin`. If Clang is not on `PATH`, pass the compiler explicitly:
-
-```powershell
-cmake -S . -B build/x86_64 `
-      -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/x86_64-elf.cmake `
-      -DCMAKE_C_COMPILER="C:/Program Files/LLVM/bin/clang.exe" `
-      -G Ninja
-```
-
----
-
-## Running in QEMU
-
-```bash
-# x86_64 — serial output to terminal
-qemu-system-x86_64 -kernel build/x86_64/kernel.elf \
-    -m 256M -nographic -serial mon:stdio -no-reboot
-
-# RISC-V 64-bit
-qemu-system-riscv64 -machine virt \
-    -kernel build/riscv64/kernel.elf \
-    -m 256M -nographic -serial mon:stdio -no-reboot
-```
-
-> Press **Ctrl+A then X** to quit QEMU.
-
----
 
 ## Build Output
 
@@ -329,36 +191,6 @@ To run the AI governor in user space during development or testing:
 ---
 
 
-## Shakti toolchain and OpenSBI packaging
-
-For Shakti boards, install the Shakti RISC-V toolchain (recommended prebuilt installer) and expose binaries in `PATH`:
-
-```bash
-# example: toolchain paths from shakti-tools installer
-export PATH=$PATH:/opt/shakti/riscv64/bin:/opt/shakti/riscv64/riscv64-unknown-elf/bin
-which riscv64-unknown-elf-gcc
-which riscv64-unknown-elf-objcopy
-```
-
-Build Bharat-OS payload artifacts for OpenSBI:
-
-```bash
-cmake --preset riscv64-shakti-e-gcc-debug
-cmake --build --preset build-riscv64-shakti-e-gcc-kernel
-# outputs kernel.elf + kernel.payload.bin
-```
-
-Package with OpenSBI (example):
-
-```bash
-# in opensbi checkout
-make PLATFORM=generic FW_PAYLOAD_PATH=/workspace/Bharat-OS/build-riscv64-shakti-e-gcc/kernel/kernel.elf
-# or use payload.bin in board-specific flash/image pipeline
-```
-
-At runtime OpenSBI passes `(hartid, fdt_ptr)` to Bharat-OS `_start` / `kernel_main` on RISC-V.
-
----
 
 ## Troubleshooting
 
