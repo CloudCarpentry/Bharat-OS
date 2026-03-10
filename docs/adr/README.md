@@ -18,6 +18,7 @@ This directory provides ADR process guidance and cross-links to accepted Bharat-
 7. [`ADR-007-experimental-scope.md`](ADR-007-experimental-scope.md)
 8. [`docs/decisions/ADR-008-ai-scheduler-plugin-contract.md`](../decisions/ADR-008-ai-scheduler-plugin-contract.md)
 9. [`docs/decisions/ADR-009-documentation-status-and-claims.md`](../decisions/ADR-009-documentation-status-and-claims.md)
+10. [`docs/decisions/ADR-010-distributed-kernel-ownership.md`](../decisions/ADR-010-distributed-kernel-ownership.md)
 
 ## ADR authoring expectations
 
