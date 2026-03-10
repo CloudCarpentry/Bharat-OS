@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<USAGE
+Usage: $0 --target <shakti-board> --image <path/to/kernel.elf>
+USAGE
+}
+
+TARGET=""
+IMAGE=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --target) TARGET="${2:-}"; shift 2 ;;
+    --image) IMAGE="${2:-}"; shift 2 ;;
+    -h|--help) usage; exit 0 ;;
+    *) echo "Unknown arg: $1"; usage; exit 2 ;;
+  esac
+done
+
+[[ -n "$TARGET" && -n "$IMAGE" ]] || { usage; exit 2; }
+[[ "$TARGET" =~ ^shakti- ]] || { echo "--target must be shakti-*" >&2; exit 2; }
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+FLASH_SCRIPT="$ROOT_DIR/tools/boards/qemu-virt-riscv64/flash.sh"
+
+if [[ ! -f "$IMAGE" ]]; then
+  echo "Image not found: $IMAGE" >&2
+  exit 2
+fi
+
+if [[ -x "$FLASH_SCRIPT" ]]; then
+  "$FLASH_SCRIPT" "$IMAGE"
+  echo "[shakti/upload] Used fallback flash script: tools/boards/qemu-virt-riscv64/flash.sh"
+else
+  echo "No upload helper available for $TARGET yet." >&2
+  exit 1
+fi
