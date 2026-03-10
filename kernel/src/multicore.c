@@ -55,6 +55,7 @@ void smp_init(void) {
         }
     }
 
-    // Further AP local state initialization (like scheduler run queue)
-    // will be handled here or inside specific architectural smp setup later.
+    // Further AP local state initialization
+    // For phase 1, APs just need to enable interrupts and enter their scheduler tick
+    hal_cpu_enable_interrupts();
 }
