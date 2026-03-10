@@ -21,5 +21,8 @@ void ai_gov_main(void) {
     // Stub
 }
 
-// No main here so tests can link it.
-// If it's an app, it should be defined elsewhere or dynamically selected.
+// Ensure the build doesn't fail due to missing main when building as executable
+int main(void) {
+    ai_gov_main();
+    return 0;
+}

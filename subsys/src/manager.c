@@ -1,7 +1,6 @@
 #include "subsys.h"
 #include "../linux/linux_compat.h"
 #include "../windows/win_compat.h"
-#include "../android/android_compat.h"
 
 #ifndef MAX_SUPPORTED_CORES
 #define MAX_SUPPORTED_CORES 8U
@@ -38,8 +37,6 @@ int subsys_create(subsys_type_t type, subsys_exec_mode_t mode, subsys_instance_t
             return linux_subsys_init(out_instance);
         case SUBSYS_TYPE_WINDOWS:
             return winnt_subsys_init(out_instance);
-        case SUBSYS_TYPE_ANDROID:
-            return android_subsys_init(out_instance);
         default:
             return 0;
     }
