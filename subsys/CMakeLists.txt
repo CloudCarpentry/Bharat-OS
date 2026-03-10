@@ -10,10 +10,11 @@ set(SUBSYS_SOURCES
     linux/linux_compat.c
     windows/win_compat.c
     automotive/automotive.c
-    android/android_compat.c
-    android/binder_compat.c
-    android/ashmem_compat.c
-    android/android_service_manager.c
+    android/android_personality.c
+    android/android_process.c
+    android/android_boot.c
+    android/android_security.c
+    android/android_binder_dist.c
 )
 
 # AI Governor daemon (Predictive Resource Scheduling)
