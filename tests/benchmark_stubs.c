@@ -150,3 +150,18 @@ static mmu_ops_t stub_mmu_ops = {
 void arch_mmu_init(void) {
     active_mmu = &stub_mmu_ops;
 }
+
+
+__attribute__((weak)) void hal_tlb_flush(unsigned long long vaddr) {
+    (void)vaddr;
+}
+
+__attribute__((weak)) void hal_send_ipi_payload(uint32_t target_core, uint64_t payload) {
+    (void)target_core;
+    (void)payload;
+}
+
+__attribute__((weak)) int hal_timer_source_init(uint64_t period_ns) {
+    (void)period_ns;
+    return 0;
+}

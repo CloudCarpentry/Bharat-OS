@@ -76,6 +76,9 @@ void hal_cpu_halt(void) {}
 static void thread_a(void) {}
 static void thread_b(void) {}
 
+static int g_mutex_a;
+static int g_mutex_b;
+
 static void test_lifecycle_and_syscalls(void) {
   sched_init();
   kprocess_t *p = process_create("init");
@@ -130,6 +133,94 @@ static void test_sleep_wakeup(void) {
   assert(t->state == THREAD_STATE_READY || t->state == THREAD_STATE_RUNNING);
 }
 
+
+static void test_preempt_on_higher_priority_ready(void) {
+  sched_init();
+  kprocess_t *p = process_create("preempt");
+  assert(p != NULL);
+
+  kthread_t *low = thread_create(p, thread_a);
+  kthread_t *high = thread_create(p, thread_b);
+  assert(low && high);
+
+  assert(sched_set_thread_priority(low->thread_id, 2) == 0);
+  assert(sched_set_thread_priority(high->thread_id, 7) == 0);
+
+  sched_reschedule();
+  assert(sched_current_thread() == high);
+
+  sched_sleep(5);
+  sched_reschedule();
+  assert(sched_current_thread() != high);
+
+  sched_wakeup(high);
+  assert(high->state == THREAD_STATE_READY);
+
+  sched_on_timer_tick();
+  assert(sched_current_thread() == high);
+}
+
+static void test_policy_hooks_and_rr(void) {
+  sched_init();
+  kprocess_t *p = process_create("policy");
+  assert(p != NULL);
+
+  kthread_t *low = thread_create(p, thread_a);
+  kthread_t *high = thread_create(p, thread_b);
+  assert(low && high);
+
+  assert(sched_set_thread_priority(low->thread_id, 1) == 0);
+  assert(sched_set_thread_priority(high->thread_id, 9) == 0);
+
+  sched_set_policy(SCHED_POLICY_ROUND_ROBIN);
+  sched_reschedule();
+  assert(sched_current_thread() != high);
+
+  sched_set_policy(SCHED_POLICY_PRIORITY);
+  sched_reschedule();
+  assert(sched_current_thread() != NULL);
+
+  sched_set_policy(SCHED_POLICY_EDF);
+  sched_reschedule();
+  assert(sched_current_thread() != NULL);
+
+  sched_set_policy(SCHED_POLICY_RMS);
+  sched_reschedule();
+  assert(sched_current_thread() != NULL);
+}
+
+static void test_priority_inheritance_chain(void) {
+  sched_init();
+  kprocess_t *p = process_create("inherit");
+  assert(p != NULL);
+
+  kthread_t *low = thread_create(p, thread_a);
+  kthread_t *mid = thread_create(p, thread_a);
+  kthread_t *high = thread_create(p, thread_b);
+  assert(low && mid && high);
+
+  assert(sched_set_thread_priority(low->thread_id, 2) == 0);
+  low->base_priority = 2;
+  assert(sched_set_thread_priority(mid->thread_id, 4) == 0);
+  mid->base_priority = 4;
+  assert(sched_set_thread_priority(high->thread_id, 10) == 0);
+  high->base_priority = 10;
+
+  sched_on_mutex_acquire(low, &g_mutex_a);
+  sched_on_mutex_acquire(mid, &g_mutex_b);
+  sched_on_mutex_wait(low, &g_mutex_b);
+
+  sched_on_mutex_wait(high, &g_mutex_a);
+  assert(low->priority == high->priority);
+  assert(mid->priority == high->priority);
+
+  sched_on_mutex_release(low, &g_mutex_a);
+  assert(low->priority == low->base_priority);
+
+  sched_on_mutex_release(mid, &g_mutex_b);
+  assert(mid->priority == mid->base_priority);
+}
+
 static void test_affinity_migration_multicore(void) {
   sched_init();
   kprocess_t *p = process_create("smp");
@@ -182,6 +273,9 @@ int main(int argc, char **argv) {
   test_priority_round_robin();
   test_sleep_wakeup();
   test_affinity_migration_multicore();
+  test_preempt_on_higher_priority_ready();
+  test_policy_hooks_and_rr();
+  test_priority_inheritance_chain();
 
   printf("Scheduler tests passed.\n");
   return 0;
