@@ -50,7 +50,9 @@ typedef struct kthread kthread_t;
 typedef struct {
     uint32_t core_id;
     kthread_t* current;
+    kthread_t* idle;
     uint64_t total_ticks;
+    uint64_t context_switches;
     uint32_t throttled;
 } sched_core_t;
 
@@ -85,6 +87,7 @@ struct kthread {
     kthread_attr_t rt_attr;
     uint64_t wake_deadline_ms;
     uint32_t bound_core_id;
+    uint32_t affinity_mask;
 };
 
 typedef struct {
@@ -114,6 +117,9 @@ void sched_on_timer_tick(void);
 kthread_t* sched_current_thread(void);
 uint64_t sched_get_ticks(void);
 void sched_set_policy(sched_policy_t policy);
+void sched_reschedule(void);
+kthread_t* sched_current(void);
+int sched_enqueue(kthread_t* thread, uint32_t core_id);
 void sched_sleep(uint64_t millis);
 void sched_wakeup(kthread_t* thread);
 void sched_wakeup_with_priority(kthread_t* thread, uint32_t wakeup_priority);
@@ -131,6 +137,9 @@ int sched_throttle_core(uint32_t core_id);
 // System-call style entry points used by trap/syscall layer
 int sched_sys_thread_create(kprocess_t* parent, void (*entry_point)(void), uint64_t* out_tid);
 int sched_sys_thread_destroy(uint64_t tid);
+int sched_sys_sleep(uint64_t millis);
+int sched_sys_set_priority(uint64_t tid, uint32_t new_priority);
+int sched_sys_set_affinity(uint64_t tid, uint32_t affinity_mask);
 
 // Priority Inheritance support
 void sched_inherit_priority(kthread_t* thread, uint32_t new_priority);

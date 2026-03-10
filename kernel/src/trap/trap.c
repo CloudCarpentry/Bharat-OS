@@ -89,6 +89,12 @@ long syscall_dispatch(syscall_id_t id, uint64_t arg0, uint64_t arg1,
   case SYSCALL_SCHED_YIELD:
     sched_yield();
     return TRAP_SUCCESS;
+  case SYSCALL_SCHED_SLEEP:
+    return (long)sched_sys_sleep(arg0);
+  case SYSCALL_SCHED_SET_PRIORITY:
+    return (long)sched_sys_set_priority(arg0, (uint32_t)arg1);
+  case SYSCALL_SCHED_SET_AFFINITY:
+    return (long)sched_sys_set_affinity(arg0, (uint32_t)arg1);
   case SYSCALL_VMM_MAP_PAGE:
     return (long)vmm_map_page((virt_addr_t)arg0, (phys_addr_t)arg1,
                               (uint32_t)arg2);
