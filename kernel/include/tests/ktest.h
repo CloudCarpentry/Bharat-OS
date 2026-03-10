@@ -13,6 +13,20 @@ typedef struct {
   bool (*test_fn)(void);
 } ktest_case_t;
 
+typedef struct {
+  const char *name;
+  const char *group;
+  int (*run)(void);
+  uint8_t quick;
+  uint8_t critical;
+} kernel_test_t;
+
+#define REGISTER_KERNEL_TEST(t_name, t_group, func, quick_flag, crit_flag)     \
+  static const kernel_test_t __attribute__((used, section(".kern_tests")))     \
+      _test_##func = {t_name, t_group, func, quick_flag, crit_flag};
+
+void kernel_run_boot_tests(void);
+
 #define KTEST_ASSERT(cond, msg)                                                \
   if (!(cond)) {                                                               \
     KTEST_PRINT("  [FAIL] ");                                                  \

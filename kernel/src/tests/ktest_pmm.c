@@ -54,3 +54,12 @@ static ktest_case_t pmm_tests[] = {
 };
 
 void ktest_pmm_run(void) { ktest_run_suite("PMM Unit Tests", pmm_tests, 3); }
+
+static int boot_test_pmm_alloc(void) {
+  if (test_pmm_single_page_alloc_free()) {
+    return 0; // success
+  }
+  return -1;
+}
+
+REGISTER_KERNEL_TEST("pmm_alloc_free", "allocator", boot_test_pmm_alloc, 1, 1)

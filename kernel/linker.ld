@@ -43,6 +43,16 @@ SECTIONS
     {
         *(.rodata)
         *(.rodata.*)
+
+        . = ALIGN(8);
+        __kern_tests_start = .;
+        KEEP(*(.kern_tests))
+        __kern_tests_end = .;
+
+        . = ALIGN(8);
+        __subsys_tests_start = .;
+        KEEP(*(.subsys_tests))
+        __subsys_tests_end = .;
     }
 
     /* ── Initialized data ────────────────────────────────────────────── */
