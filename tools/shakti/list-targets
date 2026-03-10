@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+BOARDS_JSON="$ROOT_DIR/tools/boards/boards.json"
+
+python3 - "$BOARDS_JSON" <<'PY'
+import json,sys
+p=sys.argv[1]
+with open(p,'r',encoding='utf-8') as f:
+    data=json.load(f)
+boards=data.get('boards',{})
+for name,b in sorted(boards.items()):
+    if str(name).startswith('shakti-'):
+        print(f"{name}\tarch={b.get('arch','?')}\ttoolchain={b.get('default_toolchain','?')}")
+PY
