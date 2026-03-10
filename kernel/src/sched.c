@@ -7,6 +7,8 @@
 #include "kernel_safety.h"
 #include "list.h"
 #include "arch/context_switch.h"
+#include "arch/arch_ext_state.h"
+#include "arch/arch_cpu_caps.h"
 #include "slab.h"
 
 #include <stddef.h>
@@ -316,6 +318,16 @@ kthread_t *thread_create(kprocess_t *parent, void (*entry_point)(void)) {
   slot->thread.cpu_context = &slot->context;
   arch_prepare_initial_context(&slot->context, entry_point, stack_top);
 
+  // Initialize architecture-specific extended CPU state (e.g. FPU/Vector)
+  if (arch_ext_state_thread_init(&slot->thread) != 0) {
+    kfree(stack);
+    slot->in_use = 0U;
+    uint32_t idx = (uint32_t)(slot - g_threads);
+    slot->next_free = g_free_thread_head;
+    g_free_thread_head = idx;
+    return NULL;
+  }
+
   ai_sched_init_context(&slot->ai_ctx);
   slot->ai_ctx.thread_id = (uint32_t)slot->thread.thread_id;
   slot->thread.ai_sched_ctx = &slot->ai_ctx;
@@ -351,6 +363,9 @@ int thread_destroy(kthread_t *thread) {
   if (slot->is_sleeping != 0U) {
     sched_sleep_dequeue(slot);
   }
+
+  // Clean up architecture extended state
+  arch_ext_state_thread_destroy(thread);
 
   if (thread->capability_list) {
     cap_table_destroy(thread->capability_list);
@@ -539,11 +554,17 @@ static void sched_switch_to(kthread_t *next, uint32_t core_id) {
   cpu_context_t *prev_ctx = current ? (cpu_context_t*)current->cpu_context : NULL;
   cpu_context_t *next_ctx = (cpu_context_t*)next->cpu_context;
 
+  if (current) {
+    arch_ext_state_save(current);
+  }
+
   if (fv_secure_context_switch) {
     fv_secure_context_switch(next_ctx);
   } else {
     arch_context_switch(prev_ctx, next_ctx);
   }
+
+  arch_ext_state_restore(next);
 }
 
 void sched_wait_queue_init(wait_queue_t* queue) {

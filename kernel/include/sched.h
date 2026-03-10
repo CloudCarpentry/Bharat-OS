@@ -34,10 +34,13 @@ typedef enum {
 
 #define SCHED_MAX_PRIORITY 31U
 
+typedef struct arch_ext_state arch_ext_state_t;
+
 typedef struct {
     uint64_t regs[16];
     uint64_t pc;
     uint64_t sp;
+    arch_ext_state_t *ext;
 } cpu_context_t;
 
 typedef struct {

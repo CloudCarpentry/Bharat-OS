@@ -22,6 +22,9 @@
 #include "boot/boot_args.h"
 #include "tests/ktest.h"
 
+#include "arch/arch_ext_state.h"
+#include "arch/arch_cpu_caps.h"
+
 #include <stddef.h>
 #include <stdint.h>
 
@@ -127,6 +130,10 @@ static void kernel_phase2_hello_service_smoke(void) {
 }
 
 static void kernel_boot_scheduler(void) {
+  arch_cpu_caps_init();
+  arch_ext_state_boot_init();
+  KPRINT("  [ARCH]  CPU capabilities and extended state initialized.\n");
+
   sched_init();
   KPRINT("  [SCHED] Scheduler initialized.\n");
 }

@@ -20,6 +20,10 @@ typedef struct kcache {
 void* kmalloc(size_t size);
 void kfree(void* ptr);
 
+// Aligned kernel memory allocator
+void *kmem_aligned_alloc(size_t align, size_t size);
+void kmem_aligned_free(void *ptr);
+
 // Custom size cache allocator
 kcache_t* kcache_create(const char* name, size_t size);
 void* kcache_alloc(kcache_t* cache);

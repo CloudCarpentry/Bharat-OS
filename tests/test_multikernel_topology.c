@@ -34,19 +34,6 @@ void tlb_shootdown(virt_addr_t vaddr) {
 void mm_free_page(phys_addr_t page) {
     (void)page;
 }
-kcache_t* kcache_create(const char* name, size_t size) {
-    (void)name; (void)size;
-    return NULL;
-}
-void* kcache_alloc(kcache_t* cache) {
-    (void)cache;
-    return NULL;
-}
-void kcache_free(kcache_t* cache, void* obj) {
-    (void)cache; (void)obj;
-}
-
-
 void hal_send_ipi_payload(uint32_t target_core, uint64_t payload) {
     (void)target_core;
     (void)payload;
