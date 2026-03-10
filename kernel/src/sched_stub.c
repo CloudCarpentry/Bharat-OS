@@ -46,7 +46,6 @@ static suggestion_queue_t g_pending_suggestions;
 
 static kcache_t* thread_cache = NULL;
 
-
 void fv_secure_context_switch(void* next_thread_frame) __attribute__((weak));
 
 uint32_t numa_active_node_count(void) __attribute__((weak));
@@ -202,6 +201,51 @@ void sched_init(void) {
     g_pending_suggestions.tail = 0U;
 }
 
+void sched_wait_queue_init(wait_queue_t* queue) {
+    if (queue) {
+        queue->head = NULL;
+        queue->tail = NULL;
+    }
+}
+
+void sched_wait_queue_enqueue(wait_queue_t* queue, kthread_t* thread) {
+    if (!queue || !thread) {
+        return;
+    }
+
+    thread->next_waiter = NULL;
+
+    if (!queue->tail) {
+        queue->head = thread;
+        queue->tail = thread;
+    } else {
+        queue->tail->next_waiter = thread;
+        queue->tail = thread;
+    }
+}
+
+kthread_t* sched_wait_queue_dequeue(wait_queue_t* queue) {
+    if (!queue || !queue->head) {
+        return NULL;
+    }
+
+    kthread_t* thread = queue->head;
+
+    queue->head = thread->next_waiter;
+    if (!queue->head) {
+        queue->tail = NULL;
+    }
+
+    thread->next_waiter = NULL;
+    return thread;
+}
+
+void sched_block(void) {
+    if (g_current) {
+        g_current->state = THREAD_STATE_BLOCKED;
+    }
+}
+
 kprocess_t* process_create(const char* name) {
     (void)name;
 
@@ -298,7 +342,7 @@ void sched_wakeup(kthread_t* thread) {
         return;
     }
 
-    if (thread->state == THREAD_STATE_SLEEPING) {
+    if (thread->state == THREAD_STATE_SLEEPING || thread->state == THREAD_STATE_BLOCKED) {
         thread->state = THREAD_STATE_READY;
         thread->wake_deadline_ms = 0U;
     }
