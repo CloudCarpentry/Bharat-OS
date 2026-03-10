@@ -91,19 +91,38 @@ extern ai_telemetry_status_t ai_telemetry;
 // Mock AI functions
 uint8_t ai_model_ready(void);
 
+// Calibration
+void ai_sched_calibrate_silicon(void);
+
 // Task structure definitions for AI priority queue
 struct kthread;
 
 typedef struct learned_task {
     uint64_t id;
-    int32_t dynamic_weight; // AI/Learning adjusted weight (integer representation)
-    int base_priority;
+    int32_t base_weight;
+    uint64_t vruntime;
     struct kthread *kthread_ptr;
-    struct learned_task *next;
 } learned_task_t;
+
+#ifndef BHARAT_MAX_TASKS
+#if defined(Profile_DATACENTER) || defined(Profile_DESKTOP)
+#define BHARAT_MAX_TASKS 65536
+#elif defined(Profile_EDGE)
+#define BHARAT_MAX_TASKS 4096
+#else
+#define BHARAT_MAX_TASKS 1024
+#endif
+#endif
+
+typedef struct {
+    learned_task_t* nodes[BHARAT_MAX_TASKS];
+    uint32_t size;
+} learned_task_heap_t;
 
 struct kthread* fallback_scheduler(struct kthread *run_queue);
 struct kthread* ai_sched_select_task(struct kthread *run_queue);
-learned_task_t* select_and_update_queue(learned_task_t **head);
+void heap_insert(learned_task_heap_t *heap, learned_task_t *task);
+learned_task_t* heap_extract_min(learned_task_heap_t *heap);
+learned_task_t* select_and_update_queue(learned_task_heap_t *heap, learned_task_t *prev_task, uint64_t execution_time, uint64_t system_weight);
 
 #endif // BHARAT_AI_SCHED_H

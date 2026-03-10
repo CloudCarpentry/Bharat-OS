@@ -348,6 +348,10 @@ void kernel_main(void) {
 
     kernel_boot_scheduler();
 
+    KPRINT("  [AI] Calibrating hardware silicon metrics...\n");
+    ai_sched_calibrate_silicon();
+    KPRINT("  [AI] Calibration complete.\n");
+
     KPRINT("  [IPC] Initializing Async IPC subsystem...\n");
     ipc_async_init();
     KPRINT("  [IPC] Async IPC ready.\n");
