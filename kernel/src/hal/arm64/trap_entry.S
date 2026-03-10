@@ -90,6 +90,19 @@ trap_common_logic:
     str x20, [sp, #248] // frame->sp
     str w23, [sp, #284] // frame->from_user (matches trap.h layout)
 
+    /* If this is a syscall (SVC), esr_el1[31:26] == 0b010101 (0x15).
+     * The SVC instruction is always 4 bytes, so we increment ELR by 4 to return to the next instruction.
+     */
+    ldr x20, [sp, #264] // frame->cause (esr_el1)
+    lsr x20, x20, #26
+    cmp x20, #0x15
+    b.ne 10f
+
+    ldr x20, [sp, #256] // frame->pc
+    add x20, x20, #4
+    str x20, [sp, #256] // write back advanced pc
+10:
+
     /* Call C Handler */
     mov x0, sp
     bl trap_handle

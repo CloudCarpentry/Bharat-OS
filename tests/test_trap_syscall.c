@@ -4,6 +4,25 @@
 
 #include "../kernel/include/trap.h"
 
+void* kmalloc(size_t size) {
+    return malloc(size);
+}
+void kfree(void* ptr) {
+    free(ptr);
+}
+uint64_t hal_timer_monotonic_ticks(void) {
+    return 0;
+}
+void arch_prepare_initial_context(cpu_context_t* ctx, void (*entry)(void), uint64_t stack_top) {
+    (void)ctx;
+    (void)entry;
+    (void)stack_top;
+}
+void arch_context_switch(cpu_context_t* prev, cpu_context_t* next) {
+    (void)prev;
+    (void)next;
+}
+
 void ipc_async_check_timeouts(uint64_t current_ticks) {
     (void)current_ticks;
 }

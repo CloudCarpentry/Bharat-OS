@@ -84,10 +84,10 @@ int __attribute__((weak)) hal_vmm_update_mapping(phys_addr_t root_table, virt_ad
 }
 
 // kmalloc and kfree for testing
-void* kmalloc(size_t size) {
+void* __attribute__((weak)) kmalloc(size_t size) {
     return malloc(size);
 }
-void kfree(void* ptr) {
+void __attribute__((weak)) kfree(void* ptr) {
     free(ptr);
 }
 
@@ -164,4 +164,22 @@ __attribute__((weak)) void hal_send_ipi_payload(uint32_t target_core, uint64_t p
 __attribute__((weak)) int hal_timer_source_init(uint64_t period_ns) {
     (void)period_ns;
     return 0;
+}
+
+__attribute__((weak)) uint64_t hal_timer_monotonic_ticks(void) {
+    return 0;
+}
+
+__attribute__((weak)) void arch_prepare_initial_context(cpu_context_t* ctx, void (*entry)(void), uint64_t stack_top) {
+    (void)ctx;
+    (void)entry;
+    (void)stack_top;
+}
+
+__attribute__((weak)) void arch_context_switch(cpu_context_t* prev, cpu_context_t* next) {
+    (void)prev;
+    (void)next;
+}
+
+__attribute__((weak)) void sched_thread_exit_trampoline(void) {
 }

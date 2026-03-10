@@ -87,6 +87,16 @@ trap_entry:
     seqz t0, t0       # If SPP == 0, from_user = 1
     sw t0, 284(sp)    # frame->from_user
 
+    # Check if cause is a syscall (ecall). In RISC-V scause for ecall from U-mode is 8.
+    # If it is a syscall, we need to advance mepc/sepc by 4 so we return to the next instruction.
+    ld t2, 264(sp)    # frame->cause
+    li t3, 8
+    bne t2, t3, .L_skip_syscall_pc_adj
+    ld t0, 256(sp)    # frame->pc
+    addi t0, t0, 4
+    sd t0, 256(sp)    # write back advanced pc
+.L_skip_syscall_pc_adj:
+
     # Pass trap_frame_t pointer to C handler
     mv a0, sp
     call trap_handle
