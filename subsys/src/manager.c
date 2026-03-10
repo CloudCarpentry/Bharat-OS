@@ -50,11 +50,24 @@ int subsys_load_env(subsys_instance_t* instance, const char* root_path) {
     return 0;
 }
 
+#include "bharat/subsys_test.h"
+
 int subsys_start(subsys_instance_t* instance) {
     if (!instance) return -1;
 
     instance->cpu_core_allocation_mask =
         subsys_effective_cpu_mask(instance->cpu_core_allocation_mask);
+
+    if (instance->exec_mode == EXECUTION_MODE_TESTING) {
+        const char *subsys_name = "unknown";
+        switch (instance->type) {
+            case SUBSYS_TYPE_LINUX: subsys_name = "linux"; break;
+            case SUBSYS_TYPE_WINDOWS: subsys_name = "windows"; break;
+            case SUBSYS_TYPE_ANDROID: subsys_name = "android"; break;
+            default: break;
+        }
+        subsys_run_boot_tests(subsys_name);
+    }
 
     instance->is_running = 1;
     return 0;

@@ -32,6 +32,7 @@ typedef struct {
 } multiboot_tag_t;
 
 #define MULTIBOOT_TAG_TYPE_END               0
+#define MULTIBOOT_TAG_TYPE_CMDLINE           1
 #define MULTIBOOT_TAG_TYPE_MMAP              6
 
 #define MULTIBOOT_MEMORY_AVAILABLE           1
@@ -54,6 +55,12 @@ typedef struct {
     uint32_t entry_version;
     multiboot_mmap_entry_t entries[0];
 } multiboot_tag_mmap_t;
+
+typedef struct {
+    uint32_t type;
+    uint32_t size;
+    char string[0];
+} multiboot_tag_string_t;
 
 // Standard entry point called by the Bootloader (ASM -> C transition)
 void kernel_main(uint32_t magic, multiboot_information_t* mb_info);

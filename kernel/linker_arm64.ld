@@ -19,6 +19,17 @@ SECTIONS
         . = ALIGN(16);
         *(.rodata)
         *(.rodata.*)
+
+        . = ALIGN(16);
+        __kern_tests_start = .;
+        KEEP(*(.kern_tests))
+        __kern_tests_end = .;
+
+        . = ALIGN(16);
+        __subsys_tests_start = .;
+        KEEP(*(.subsys_tests))
+        __subsys_tests_end = .;
+
         . = ALIGN(16);
     }
 

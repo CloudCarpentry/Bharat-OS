@@ -22,7 +22,8 @@ typedef enum {
 
 typedef enum {
     EXECUTION_MODE_API_TRANSLATION = 1,
-    EXECUTION_MODE_VM = 2
+    EXECUTION_MODE_VM = 2,
+    EXECUTION_MODE_TESTING = 3
 } subsys_exec_mode_t;
 
 typedef struct {

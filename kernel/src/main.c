@@ -19,6 +19,8 @@
 #include "security/policy.h"
 #include "subsystem_profile.h"
 #include "trap.h"
+#include "boot/boot_args.h"
+#include "tests/ktest.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -185,6 +187,26 @@ void kernel_main(void) {
 
   /* Initialize serial early to allow KPRINT to work immediately */
   hal_serial_init();
+
+#if defined(__x86_64__)
+  if (magic == MULTIBOOT2_BOOTLOADER_MAGIC && mb_info != NULL) {
+    uint32_t total_size = mb_info->total_size;
+    uint8_t *tag_ptr = (uint8_t *)mb_info + 8;
+    while (tag_ptr < (uint8_t *)mb_info + total_size) {
+      multiboot_tag_t *tag = (multiboot_tag_t *)tag_ptr;
+      if (tag->type == MULTIBOOT_TAG_TYPE_END) {
+        break;
+      }
+      if (tag->type == MULTIBOOT_TAG_TYPE_CMDLINE) {
+        multiboot_tag_string_t *str_tag = (multiboot_tag_string_t *)tag;
+        boot_args_init(str_tag->string);
+      }
+      tag_ptr += ((tag->size + 7) & ~7);
+    }
+  }
+#else
+  // TODO: Add Device Tree parsing for ARM64/RISC-V bootargs
+#endif
 
   KPRINT("\n");
   KPRINT("  ____  _                          _          ____   ____  \n");
@@ -372,6 +394,9 @@ void kernel_main(void) {
 
     kernel_phase2_hello_service_smoke();
     KPRINT("TEST: kernel self-tests passed\n");
+
+    // Run registered boot tests
+    kernel_run_boot_tests();
 
     hal_serial_write("[bharat] hw_profile=");
     hal_serial_write(profile);
