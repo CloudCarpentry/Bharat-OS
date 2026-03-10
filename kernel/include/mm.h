@@ -64,6 +64,21 @@ phys_addr_t pmm_alloc_pages_colored(int order, uint32_t preferred_numa_node,
                                     mm_color_config_t *color_config);
 void mm_free_page(phys_addr_t page);
 
+typedef enum {
+    BHARAT_DMA_COHERENT      = 1u << 0,
+    BHARAT_DMA_UNCACHED      = 1u << 1,
+    BHARAT_DMA_WRITE_COMBINE = 1u << 2,
+    BHARAT_DMA_32BIT_ONLY    = 1u << 3,
+    BHARAT_DMA_ZERO          = 1u << 4,
+} bharat_dma_flags_t;
+
+int mm_alloc_dma_pages(size_t size,
+                       uint32_t preferred_numa_node,
+                       uint32_t dma_flags,
+                       phys_addr_t *out_phys,
+                       void **out_kernel_virt);
+int mm_free_dma_pages(phys_addr_t phys, void *kernel_virt, size_t size);
+
 // Support for Copy-on-Write (CoW) page reference counting
 void mm_inc_page_ref(phys_addr_t page);
 

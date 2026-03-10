@@ -134,6 +134,7 @@ set(KERNEL_SRCS
     ${ARCH_HAL_EXTRA}
     ${ARCH_CONTEXT_SWITCH}
     src/hal/mmu_init.c
+    src/hal/iommu_stub.c
     src/mm/pmm.c
     src/mm/early_alloc.c
     src/mm/slab.c
