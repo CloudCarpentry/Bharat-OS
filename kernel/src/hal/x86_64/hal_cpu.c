@@ -25,6 +25,18 @@ int hal_secure_boot_arch_check(const bharat_boot_policy_t *policy) {
   return 0;
 }
 
+void hal_core_notify(uint32_t target_core, uint64_t payload_or_reason) {
+  hal_send_ipi_payload(target_core, payload_or_reason);
+}
+
+void hal_core_wait_event(void) {
+  __asm__ volatile("hlt" : : : "memory");
+}
+
+void hal_core_poll_event(void) {
+  __asm__ volatile("pause" : : : "memory");
+}
+
 // x86_64 Specific HAL Implementation
 
 #define COM1_PORT 0x3F8

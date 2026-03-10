@@ -155,6 +155,8 @@ set(KERNEL_SRCS
     src/ipc/ipc_timeout.c
     src/capability.c
     src/ipc/multikernel.c
+    src/ipc/mk_dispatch.c
+    src/ipc/mk_proto.c
     src/lib/string.c
     src/stack_protector.c
     src/device/builtin_drivers.c

@@ -39,4 +39,9 @@ void hal_tlb_flush(unsigned long long vaddr);
 // Get logical CPU ID
 uint32_t hal_cpu_get_id(void);
 
+// Core notification abstraction
+void hal_core_notify(uint32_t target_core, uint64_t payload_or_reason);
+void hal_core_wait_event(void);
+void hal_core_poll_event(void);
+
 #endif // BHARAT_HAL_H

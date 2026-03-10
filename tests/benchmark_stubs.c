@@ -10,6 +10,11 @@ __attribute__((weak)) address_space_t* mm_create_address_space(void) {
     return &g_as;
 }
 
+__attribute__((weak)) void hal_core_notify(uint32_t target_core, uint64_t payload_or_reason) {
+    (void)target_core;
+    (void)payload_or_reason;
+}
+
 phys_addr_t __attribute__((weak)) mm_alloc_page(uint32_t preferred_numa_node) {
     (void)preferred_numa_node;
     return 0;

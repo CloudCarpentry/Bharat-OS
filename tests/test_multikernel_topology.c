@@ -55,7 +55,7 @@ int main(void) {
     urpc_msg_t out = {0};
 
     // Fill, drain, and wrap around
-    assert(urpc_send(c.urpc_ring, &msg) == URPC_SUCCESS);
+    assert(mk_send_message(&c, 1U, msg.payload_data, 8U) == URPC_SUCCESS);
     assert(urpc_send(c.urpc_ring, &msg) == URPC_SUCCESS);
     assert(urpc_send(c.urpc_ring, &msg) == URPC_SUCCESS);
     assert(urpc_send(c.urpc_ring, &msg) == URPC_ERR_FULL);
@@ -63,7 +63,7 @@ int main(void) {
     assert(urpc_receive(c.urpc_ring, &out) == URPC_SUCCESS);
     assert(urpc_receive(c.urpc_ring, &out) == URPC_SUCCESS);
 
-    assert(urpc_send(c.urpc_ring, &msg) == URPC_SUCCESS);
+    assert(mk_send_message(&c, 1U, msg.payload_data, 8U) == URPC_SUCCESS);
     assert(urpc_send(c.urpc_ring, &msg) == URPC_SUCCESS);
 
     int drained = 0;

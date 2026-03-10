@@ -23,11 +23,18 @@
 typedef struct {
   uint32_t msg_type;
   uint32_t payload_size;
+  uint32_t sender_core_id;
+  uint32_t receiver_core_id;
+  uint64_t msg_id;
+  uint64_t txn_id;
+  uint32_t flags;
+  uint32_t auth_token;
   uint64_t payload_data[8]; // Max 64 bytes in shared memory ring
 } urpc_msg_t;
 
 typedef enum {
   URPC_SUCCESS = 0,
+  URPC_SUCCESS_WOKE = 1,
   URPC_ERR_FULL = -1,
   URPC_ERR_EMPTY = -2,
   URPC_ERR_INVALID = -3,
