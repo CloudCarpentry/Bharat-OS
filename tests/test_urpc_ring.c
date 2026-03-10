@@ -32,7 +32,8 @@ int main(void) {
     assert(urpc_init_ring(&ring, buffer, 2U) == URPC_SUCCESS);
 
     assert(urpc_receive(&ring, &out) == URPC_ERR_EMPTY);
-    assert(urpc_send(&ring, &msg) == URPC_SUCCESS);
+    int status = urpc_send(&ring, &msg);
+    assert(status == URPC_SUCCESS || status == URPC_SUCCESS_WOKE);
     assert(urpc_send(&ring, &msg) == URPC_ERR_FULL);
 
     assert(urpc_receive(&ring, &out) == URPC_SUCCESS);

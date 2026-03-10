@@ -297,3 +297,15 @@ uint32_t hal_cpu_get_id(void) {
   __asm__ volatile("mrs %0, mpidr_el1" : "=r"(mpidr));
   return (uint32_t)(mpidr & 0xFF);
 }
+
+void hal_core_notify(uint32_t target_core, uint64_t payload_or_reason) {
+  hal_send_ipi_payload(target_core, payload_or_reason);
+}
+
+void hal_core_wait_event(void) {
+  __asm__ volatile("wfe" : : : "memory");
+}
+
+void hal_core_poll_event(void) {
+  // Polling check logic can be added here
+}

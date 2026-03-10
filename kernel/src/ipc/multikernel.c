@@ -3,6 +3,7 @@
 #include "../../include/hal/hal.h"
 #include "../../include/kernel_safety.h"
 #include "../../include/multicore.h"
+#include "../../include/ipc/mk_dispatch.h"
 
 // @cite The Multikernel: A New OS Architecture for Scalable Multicore Systems
 // (Baumann et al., 2009) Barrelfish-inspired URPC messaging and state
@@ -73,8 +74,8 @@ int urpc_send(urpc_ring_t *ring, const urpc_msg_t *msg) {
   // visible to the consumer when they acquire this new head value.
   atomic_store_explicit(&ring->head, next_head, memory_order_release);
 
-  if (msg->payload_size <= sizeof(uint64_t)) {
-    hal_send_ipi_payload(0U, msg->payload_data[0]);
+  if (head == tail) {
+    return URPC_SUCCESS_WOKE;
   }
 
   return URPC_SUCCESS;
@@ -220,6 +221,8 @@ int mk_send_message(mk_channel_t *channel, uint32_t msg_type, void *payload,
   urpc_msg_t msg = {0};
   msg.msg_type = msg_type;
   msg.payload_size = size;
+  msg.sender_core_id = channel->sender_core_id;
+  msg.receiver_core_id = channel->receiver_core_id;
 
   uint32_t words = size / sizeof(uint64_t);
   if ((size % sizeof(uint64_t)) != 0U) {
@@ -237,7 +240,12 @@ int mk_send_message(mk_channel_t *channel, uint32_t msg_type, void *payload,
     }
   }
 
-  return urpc_send(channel->urpc_ring, &msg);
+  int status = urpc_send(channel->urpc_ring, &msg);
+  if (status == URPC_SUCCESS_WOKE) {
+    hal_core_notify(channel->receiver_core_id, msg_type);
+    status = URPC_SUCCESS; // Normalize return code
+  }
+  return status;
 }
 
 // Drains the incoming message queue, hands messages to IPC/dispatch path,
@@ -253,13 +261,9 @@ int mk_ipc_deliver_from_channel(mk_channel_t *channel) {
   urpc_msg_t msg;
 
   while (urpc_receive(channel->urpc_ring, &msg) == URPC_SUCCESS) {
-    if (msg.msg_type == MK_MSG_TYPE_AI_SUGGESTION) {
-      /* Scheduler control-plane hook placeholder. */
-    } else {
-      // Notify scheduler of IPC readiness / wake up waiting thread
-      sched_notify_ipc_ready(channel->receiver_core_id, msg.msg_type);
+    if (mk_dispatch_message(channel, &msg) == 0) {
+      ++processed;
     }
-    ++processed;
   }
 
   return processed;
