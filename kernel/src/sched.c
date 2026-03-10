@@ -681,9 +681,6 @@ void sched_inherit_priority(kthread_t *thread, uint32_t new_priority) {
   if (!thread) {
     return;
   }
-  if (new_priority > SCHED_MAX_PRIORITY) {
-    new_priority = SCHED_MAX_PRIORITY;
-  }
   if (new_priority > thread->priority) {
     thread->priority = new_priority;
   }
