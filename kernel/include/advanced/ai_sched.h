@@ -91,6 +91,9 @@ extern ai_telemetry_status_t ai_telemetry;
 // Mock AI functions
 uint8_t ai_model_ready(void);
 
+// Calibration
+void ai_sched_calibrate_silicon(void);
+
 // Task structure definitions for AI priority queue
 struct kthread;
 

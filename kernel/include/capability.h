@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #include "sched.h"
+#include "spinlock.h"
 
 typedef enum {
     CAP_OBJ_NONE = 0,
@@ -23,17 +24,47 @@ typedef enum {
     CAP_PERM_DELEGATE  = (1U << 5),
 } cap_perm_t;
 
-typedef struct {
+typedef struct capability_entry {
+    uint8_t in_use;
     uint32_t id;
     cap_object_type_t type;
     uint32_t rights;
+    uint32_t flags;
     uint64_t object_ref;
-    uint8_t in_use;
-} capability_entry_t;
+
+} capability_entry_old_t;
 
 typedef struct {
+    struct capability_table* table;
+    uint32_t slot;
+    uint32_t generation;
+} cap_handle_t;
+
+// Redefine capability_entry_t with handles to avoid use-after-free
+typedef struct capability_entry_new {
+    uint8_t in_use;
+    uint32_t id;
+    cap_object_type_t type;
+    uint32_t rights;
+    uint32_t flags;
+    uint64_t object_ref;
+
+    cap_handle_t parent;       // Who delegated this to me?
+    cap_handle_t first_child;  // Who did I delegate this to?
+    cap_handle_t next_sibling; // Other capabilities delegated from the same parent
+
+    uint32_t generation;
+} capability_entry_new_t;
+
+// Replace old struct with new
+#define capability_entry_t capability_entry_new_t
+
+typedef struct capability_table {
     capability_entry_t entries[64];
     uint32_t next_id;
+    spinlock_t lock;
+    uint32_t owner_pid;
+    uint32_t numa_node;
 } capability_table_t;
 
 /*@
@@ -111,5 +142,7 @@ int cap_table_delegate(capability_table_t* src,
                        uint32_t cap_id,
                        uint32_t delegated_rights,
                        uint32_t* out_new_cap_id);
+
+int cap_table_revoke(capability_table_t* table, uint32_t cap_id);
 
 #endif // BHARAT_CAPABILITY_H
