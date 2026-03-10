@@ -7,6 +7,22 @@ add_executable(test_early_alloc test_early_alloc.c)
 target_include_directories(test_early_alloc PRIVATE ../kernel/include)
 
 add_executable(test_panic test_panic.c ../kernel/src/panic.c)
+
+add_executable(test_stress_concurrency test_stress_concurrency.c
+    benchmark_stubs.c
+    ../kernel/src/sched.c
+    ../kernel/src/ai_sched.c
+    ../kernel/src/capability.c
+    ../kernel/src/ipc/endpoint_ipc.c
+    ../kernel/src/algo_matrix.c
+    ../kernel/src/device/device_manager.c
+    ../kernel/src/mm/numa.c
+)
+target_include_directories(test_stress_concurrency PRIVATE ../kernel/include)
+target_compile_definitions(test_stress_concurrency PRIVATE TESTING=1)
+target_compile_options(test_stress_concurrency PRIVATE -g -O0)
+target_link_libraries(test_stress_concurrency PRIVATE pthread)
+add_test(NAME test_stress_concurrency COMMAND test_stress_concurrency)
 target_include_directories(test_panic PRIVATE ../kernel/include)
 add_test(NAME test_panic COMMAND test_panic)
 
@@ -101,6 +117,42 @@ add_executable(test_capability_policy test_capability_policy.c benchmark_stubs.c
 )
 target_include_directories(test_capability_policy PRIVATE ../kernel/include)
 add_test(NAME test_capability_policy COMMAND test_capability_policy)
+
+add_executable(test_posix test_posix.c ../subsys/linux/linux_compat.c)
+target_include_directories(test_posix PRIVATE ../kernel/include ../subsys/include)
+add_test(NAME test_posix COMMAND test_posix)
+
+add_executable(test_windows_compat_init test_windows_compat_init.c ../subsys/windows/win_compat.c)
+target_include_directories(test_windows_compat_init PRIVATE ../kernel/include ../subsys/include)
+add_test(NAME test_windows_compat_init COMMAND test_windows_compat_init)
+
+add_executable(test_vm_stress test_vm_stress.c benchmark_stubs.c ../kernel/src/mm/vmm.c)
+target_include_directories(test_vm_stress PRIVATE ../kernel/include)
+add_test(NAME test_vm_stress COMMAND test_vm_stress)
+
+add_executable(test_ipc_fuzz test_ipc_fuzz.c benchmark_stubs.c
+    ../kernel/src/sched.c
+    ../kernel/src/ai_sched.c
+    ../kernel/src/capability.c
+    ../kernel/src/ipc/endpoint_ipc.c
+    ../kernel/src/algo_matrix.c
+    ../kernel/src/device/device_manager.c
+    ../kernel/src/mm/numa.c
+)
+target_include_directories(test_ipc_fuzz PRIVATE ../kernel/include)
+add_test(NAME test_ipc_fuzz COMMAND test_ipc_fuzz)
+
+add_executable(test_security_isolation test_security_isolation.c benchmark_stubs.c
+    ../kernel/src/sched.c
+    ../kernel/src/ai_sched.c
+    ../kernel/src/capability.c
+    ../kernel/src/ipc/endpoint_ipc.c
+    ../kernel/src/algo_matrix.c
+    ../kernel/src/device/device_manager.c
+    ../kernel/src/mm/numa.c
+)
+target_include_directories(test_security_isolation PRIVATE ../kernel/include)
+add_test(NAME test_security_isolation COMMAND test_security_isolation)
 
 # Benchmarks
 

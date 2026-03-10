@@ -10,6 +10,10 @@ static ai_heuristic_config_t g_ai_cfg = {
     .weight_cache_miss = 10U,
 };
 
+// Hypothetical boot-time calibration
+static uint32_t g_silicon_alu_ipc = 0;
+static uint32_t g_silicon_mem_ipc = 0;
+
 int ai_sched_arch_sample_pmc(uint32_t thread_id, ai_pmc_sample_t* out_sample) __attribute__((weak));
 int ai_sched_arch_sample_pmc(uint32_t thread_id, ai_pmc_sample_t* out_sample) {
     (void)thread_id;
