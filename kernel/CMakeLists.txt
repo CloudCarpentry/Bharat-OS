@@ -117,6 +117,7 @@ endif()
 # ── Core kernel sources ──────────────────────────────────────────────────────
 set(KERNEL_SRCS
     ${BOOT_SRC}
+    src/boot/boot_args.c
     src/hal/arm32_mpu_vmm_mock.c
     src/main.c
     src/trace/trace.c
@@ -166,6 +167,7 @@ set(KERNEL_SRCS
     src/apps/kernel_tester.c
     src/tests/ktest_pmm.c
     src/tests/ktest_slab.c
+    src/tests/ktest_runner.c
 )
 
 # ── Kernel ELF ──────────────────────────────────────────────────────────────
