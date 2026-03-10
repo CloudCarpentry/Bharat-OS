@@ -1,5 +1,5 @@
 #include "bharat/drivers/can.h"
-#include <stdio.h> // Assuming print capability in driver environment for stubs
+ // Assuming print capability in driver environment for stubs
 
 static bool is_initialized = false;
 
