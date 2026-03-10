@@ -36,7 +36,7 @@ add_executable(test_timer_common test_timer_common.c ../kernel/src/hal/timer_com
 target_include_directories(test_timer_common PRIVATE ../kernel/include)
 add_test(NAME test_timer_common COMMAND test_timer_common)
 
-add_executable(test_urpc_ring test_urpc_ring.c ../kernel/src/ipc/multikernel.c)
+add_executable(test_urpc_ring test_urpc_ring.c benchmark_stubs.c ../kernel/src/ipc/multikernel.c ../kernel/src/ipc/mk_dispatch.c)
 add_executable(test_ipc_async_timeout test_ipc_async_timeout.c ../kernel/src/ipc/async_ipc.c ../kernel/src/ipc/ipc_timeout.c)
 target_include_directories(test_ipc_async_timeout PRIVATE ../kernel/include)
 add_test(NAME test_ipc_async_timeout COMMAND test_ipc_async_timeout)
@@ -68,7 +68,7 @@ target_include_directories(test_device_framework PRIVATE ../kernel/include)
 target_compile_definitions(test_device_framework PRIVATE TESTING=1)
 add_test(NAME test_device_framework COMMAND test_device_framework)
 
-add_executable(test_multikernel_topology test_multikernel_topology.c benchmark_stubs.c ../kernel/src/ipc/multikernel.c ../kernel/src/mm/numa.c)
+add_executable(test_multikernel_topology test_multikernel_topology.c benchmark_stubs.c ../kernel/src/ipc/multikernel.c ../kernel/src/ipc/mk_dispatch.c ../kernel/src/mm/numa.c)
 target_include_directories(test_multikernel_topology PRIVATE ../kernel/include)
 add_test(NAME test_multikernel_topology COMMAND test_multikernel_topology)
 
