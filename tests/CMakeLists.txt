@@ -142,6 +142,54 @@ add_executable(test_ipc_fuzz test_ipc_fuzz.c benchmark_stubs.c
 target_include_directories(test_ipc_fuzz PRIVATE ../kernel/include)
 add_test(NAME test_ipc_fuzz COMMAND test_ipc_fuzz)
 
+add_executable(test_ipc_sync_sender_wakeup test_ipc_sync_sender_wakeup.c benchmark_stubs.c
+    ../kernel/src/sched.c
+    ../kernel/src/ai_sched.c
+    ../kernel/src/capability.c
+    ../kernel/src/ipc/endpoint_ipc.c
+    ../kernel/src/algo_matrix.c
+    ../kernel/src/device/device_manager.c
+    ../kernel/src/mm/numa.c
+)
+target_include_directories(test_ipc_sync_sender_wakeup PRIVATE ../kernel/include)
+add_test(NAME test_ipc_sync_sender_wakeup COMMAND test_ipc_sync_sender_wakeup)
+
+add_executable(test_ipc_sync_receiver_wakeup test_ipc_sync_receiver_wakeup.c benchmark_stubs.c
+    ../kernel/src/sched.c
+    ../kernel/src/ai_sched.c
+    ../kernel/src/capability.c
+    ../kernel/src/ipc/endpoint_ipc.c
+    ../kernel/src/algo_matrix.c
+    ../kernel/src/device/device_manager.c
+    ../kernel/src/mm/numa.c
+)
+target_include_directories(test_ipc_sync_receiver_wakeup PRIVATE ../kernel/include)
+add_test(NAME test_ipc_sync_receiver_wakeup COMMAND test_ipc_sync_receiver_wakeup)
+
+add_executable(test_ipc_multiple_waiters_fifo test_ipc_multiple_waiters_fifo.c benchmark_stubs.c
+    ../kernel/src/sched.c
+    ../kernel/src/ai_sched.c
+    ../kernel/src/capability.c
+    ../kernel/src/ipc/endpoint_ipc.c
+    ../kernel/src/algo_matrix.c
+    ../kernel/src/device/device_manager.c
+    ../kernel/src/mm/numa.c
+)
+target_include_directories(test_ipc_multiple_waiters_fifo PRIVATE ../kernel/include)
+add_test(NAME test_ipc_multiple_waiters_fifo COMMAND test_ipc_multiple_waiters_fifo)
+
+add_executable(test_ipc_no_spurious_self_wakeup test_ipc_no_spurious_self_wakeup.c benchmark_stubs.c
+    ../kernel/src/sched.c
+    ../kernel/src/ai_sched.c
+    ../kernel/src/capability.c
+    ../kernel/src/ipc/endpoint_ipc.c
+    ../kernel/src/algo_matrix.c
+    ../kernel/src/device/device_manager.c
+    ../kernel/src/mm/numa.c
+)
+target_include_directories(test_ipc_no_spurious_self_wakeup PRIVATE ../kernel/include)
+add_test(NAME test_ipc_no_spurious_self_wakeup COMMAND test_ipc_no_spurious_self_wakeup)
+
 add_executable(test_security_isolation test_security_isolation.c benchmark_stubs.c
     ../kernel/src/sched.c
     ../kernel/src/ai_sched.c
