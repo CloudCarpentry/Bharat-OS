@@ -136,6 +136,7 @@ set(KERNEL_SRCS
     src/arch/${ARCH}/cpu_caps.c
     src/arch/${ARCH}/ext_state.c
     src/hal/mmu_init.c
+    src/hal/iommu_stub.c
     src/mm/pmm.c
     src/mm/early_alloc.c
     src/mm/slab.c

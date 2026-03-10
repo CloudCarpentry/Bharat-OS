@@ -142,6 +142,54 @@ add_executable(test_ipc_fuzz test_ipc_fuzz.c benchmark_stubs.c
 target_include_directories(test_ipc_fuzz PRIVATE ../kernel/include)
 add_test(NAME test_ipc_fuzz COMMAND test_ipc_fuzz)
 
+add_executable(test_ipc_sync_sender_wakeup test_ipc_sync_sender_wakeup.c benchmark_stubs.c
+    ../kernel/src/sched.c
+    ../kernel/src/ai_sched.c
+    ../kernel/src/capability.c
+    ../kernel/src/ipc/endpoint_ipc.c
+    ../kernel/src/algo_matrix.c
+    ../kernel/src/device/device_manager.c
+    ../kernel/src/mm/numa.c
+)
+target_include_directories(test_ipc_sync_sender_wakeup PRIVATE ../kernel/include)
+add_test(NAME test_ipc_sync_sender_wakeup COMMAND test_ipc_sync_sender_wakeup)
+
+add_executable(test_ipc_sync_receiver_wakeup test_ipc_sync_receiver_wakeup.c benchmark_stubs.c
+    ../kernel/src/sched.c
+    ../kernel/src/ai_sched.c
+    ../kernel/src/capability.c
+    ../kernel/src/ipc/endpoint_ipc.c
+    ../kernel/src/algo_matrix.c
+    ../kernel/src/device/device_manager.c
+    ../kernel/src/mm/numa.c
+)
+target_include_directories(test_ipc_sync_receiver_wakeup PRIVATE ../kernel/include)
+add_test(NAME test_ipc_sync_receiver_wakeup COMMAND test_ipc_sync_receiver_wakeup)
+
+add_executable(test_ipc_multiple_waiters_fifo test_ipc_multiple_waiters_fifo.c benchmark_stubs.c
+    ../kernel/src/sched.c
+    ../kernel/src/ai_sched.c
+    ../kernel/src/capability.c
+    ../kernel/src/ipc/endpoint_ipc.c
+    ../kernel/src/algo_matrix.c
+    ../kernel/src/device/device_manager.c
+    ../kernel/src/mm/numa.c
+)
+target_include_directories(test_ipc_multiple_waiters_fifo PRIVATE ../kernel/include)
+add_test(NAME test_ipc_multiple_waiters_fifo COMMAND test_ipc_multiple_waiters_fifo)
+
+add_executable(test_ipc_no_spurious_self_wakeup test_ipc_no_spurious_self_wakeup.c benchmark_stubs.c
+    ../kernel/src/sched.c
+    ../kernel/src/ai_sched.c
+    ../kernel/src/capability.c
+    ../kernel/src/ipc/endpoint_ipc.c
+    ../kernel/src/algo_matrix.c
+    ../kernel/src/device/device_manager.c
+    ../kernel/src/mm/numa.c
+)
+target_include_directories(test_ipc_no_spurious_self_wakeup PRIVATE ../kernel/include)
+add_test(NAME test_ipc_no_spurious_self_wakeup COMMAND test_ipc_no_spurious_self_wakeup)
+
 add_executable(test_security_isolation test_security_isolation.c benchmark_stubs.c
     ../kernel/src/sched.c
     ../kernel/src/ai_sched.c
@@ -231,3 +279,7 @@ add_executable(test_scheduler_hello_world test_scheduler_hello_world.c benchmark
 target_include_directories(test_scheduler_hello_world PRIVATE ../kernel/include)
 target_compile_definitions(test_scheduler_hello_world PRIVATE TESTING=1)
 add_test(NAME test_scheduler_hello_world COMMAND test_scheduler_hello_world)
+
+add_executable(test_dma_iommu test_dma_iommu.c ../kernel/src/security/isolation.c ../kernel/src/security/vfio.c ../kernel/src/security/audit.c)
+target_include_directories(test_dma_iommu PRIVATE ../kernel/include)
+add_test(NAME test_dma_iommu COMMAND test_dma_iommu)

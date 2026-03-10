@@ -79,6 +79,11 @@ int __attribute__((weak)) hal_vmm_get_mapping(phys_addr_t root_table, virt_addr_
     (void)root_table; (void)vaddr; (void)paddr; (void)flags;
     return -1;
 }
+
+int __attribute__((weak)) vmm_map_device_mmio(virt_addr_t vaddr, phys_addr_t paddr, capability_t *cap, int rw) {
+    (void)vaddr; (void)paddr; (void)cap; (void)rw;
+    return -1;
+}
 int __attribute__((weak)) hal_vmm_update_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
     (void)root_table; (void)vaddr; (void)paddr; (void)flags;
     return -1;

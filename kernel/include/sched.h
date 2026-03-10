@@ -60,6 +60,11 @@ typedef struct {
     uint32_t throttled;
 } sched_core_t;
 
+typedef struct {
+    kthread_t* head;
+    kthread_t* tail;
+} wait_queue_t;
+
 struct kthread {
     uint64_t thread_id;
     uint64_t process_id;
@@ -92,6 +97,9 @@ struct kthread {
     uint64_t wake_deadline_ms;
     uint32_t bound_core_id;
     uint32_t affinity_mask;
+
+    // Next thread in a wait queue
+    kthread_t* next_waiter;
 };
 
 typedef struct {
@@ -114,6 +122,14 @@ kprocess_t* process_create(const char* name);
 int process_destroy(kprocess_t* process);
 kthread_t* thread_create(kprocess_t* parent, void (*entry_point)(void));
 int thread_destroy(kthread_t* thread);
+
+// Wait Queues
+void sched_wait_queue_init(wait_queue_t* queue);
+void sched_wait_queue_enqueue(wait_queue_t* queue, kthread_t* thread);
+kthread_t* sched_wait_queue_dequeue(wait_queue_t* queue);
+
+// Wait Queue State
+void sched_block(void);
 
 // Context Switching
 void sched_yield(void);
