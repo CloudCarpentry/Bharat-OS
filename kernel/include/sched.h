@@ -15,7 +15,8 @@ typedef enum {
     THREAD_STATE_RUNNING,
     THREAD_STATE_BLOCKED,
     THREAD_STATE_SLEEPING,
-    THREAD_STATE_TERMINATED
+    THREAD_STATE_TERMINATED,
+    THREAD_STATE_DEG_PENDING
 } thread_state_t;
 
 typedef enum {
@@ -97,6 +98,9 @@ struct kthread {
     uint64_t wake_deadline_ms;
     uint32_t bound_core_id;
     uint32_t affinity_mask;
+
+    // Scheduling context for distributed execution groups (DEGs)
+    struct sched_context* sched_ctx;
 
     // Next thread in a wait queue
     kthread_t* next_waiter;
