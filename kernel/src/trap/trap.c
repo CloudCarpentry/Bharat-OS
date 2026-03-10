@@ -206,13 +206,5 @@ long trap_handle(trap_frame_t *frame) {
 
   frame->gpr[0] = (uint64_t)rc;
 
-#if defined(__riscv)
-  frame->pc += 4U;
-#elif defined(__x86_64__)
-  frame->pc += 2U;
-#else
-  frame->pc += 4U;
-#endif
-
   return rc;
 }

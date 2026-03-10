@@ -6,6 +6,8 @@
 #include "hal/hal.h"
 #include "kernel_safety.h"
 #include "list.h"
+#include "arch/context_switch.h"
+#include "slab.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -158,6 +160,16 @@ static void sched_idle_task(void) {
   }
 }
 
+void sched_thread_exit_trampoline(void) {
+  kthread_t *current = sched_current_thread();
+  if (current) {
+    (void)thread_destroy(current);
+  }
+  while (1) {
+    sched_yield();
+  }
+}
+
 void sched_init(void) {
   g_free_thread_head = 0U;
   for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_threads); ++i) {
@@ -182,6 +194,9 @@ void sched_init(void) {
     g_mutex_owners[i].owner = NULL;
   }
 
+  // Default bounds but could be derived later from actual core count logic.
+  // We initialize the runqueues unconditionally, but they are only actively used
+  // if hal_cpu_get_id() matches the core.
   kprocess_t *idle_process = process_create("idle_process");
   for (uint32_t core = 0; core < MAX_SUPPORTED_CORES; ++core) {
     g_runqueues[core].current_thread = NULL;
@@ -202,6 +217,8 @@ void sched_init(void) {
       idle->bound_core_id = core;
       idle->affinity_mask = (1U << core);
       g_runqueues[core].idle_thread = idle;
+      // Mark it as current initially so context switches won't panic
+      g_runqueues[core].current_thread = idle;
     }
   }
 }
@@ -283,9 +300,21 @@ kthread_t *thread_create(kprocess_t *parent, void (*entry_point)(void)) {
   slot->thread.wake_deadline_ms = 0U;
   slot->thread.context_switch_count = 0U;
 
-  slot->context.pc = (uint64_t)(uintptr_t)entry_point;
-  slot->context.sp = 0U;
+  #define KERNEL_STACK_SIZE 16384U
+  void *stack = kmalloc(KERNEL_STACK_SIZE);
+  if (!stack) {
+    slot->in_use = 0U;
+    uint32_t idx = (uint32_t)(slot - g_threads);
+    slot->next_free = g_free_thread_head;
+    g_free_thread_head = idx;
+    return NULL;
+  }
+
+  slot->thread.kernel_stack = (virt_addr_t)(uintptr_t)stack;
+  uint64_t stack_top = (uint64_t)(uintptr_t)stack + KERNEL_STACK_SIZE;
+
   slot->thread.cpu_context = &slot->context;
+  arch_prepare_initial_context(&slot->context, entry_point, stack_top);
 
   ai_sched_init_context(&slot->ai_ctx);
   slot->ai_ctx.thread_id = (uint32_t)slot->thread.thread_id;
@@ -326,6 +355,11 @@ int thread_destroy(kthread_t *thread) {
   if (thread->capability_list) {
     cap_table_destroy(thread->capability_list);
     thread->capability_list = NULL;
+  }
+
+  if (thread->kernel_stack) {
+    kfree((void*)(uintptr_t)thread->kernel_stack);
+    thread->kernel_stack = 0U;
   }
 
   slot->in_use = 0U;
@@ -487,6 +521,10 @@ static void sched_switch_to(kthread_t *next, uint32_t core_id) {
   }
 
   kthread_t *current = g_runqueues[core_id].current_thread;
+  if (current == next) {
+    return;
+  }
+
   if (current && current != g_runqueues[core_id].idle_thread &&
       current->state == THREAD_STATE_RUNNING) {
     (void)sched_enqueue(current, core_id);
@@ -498,8 +536,13 @@ static void sched_switch_to(kthread_t *next, uint32_t core_id) {
   g_runqueues[core_id].context_switches++;
   g_runqueues[core_id].current_thread = next;
 
+  cpu_context_t *prev_ctx = current ? (cpu_context_t*)current->cpu_context : NULL;
+  cpu_context_t *next_ctx = (cpu_context_t*)next->cpu_context;
+
   if (fv_secure_context_switch) {
-    fv_secure_context_switch(next->cpu_context);
+    fv_secure_context_switch(next_ctx);
+  } else {
+    arch_context_switch(prev_ctx, next_ctx);
   }
 }
 

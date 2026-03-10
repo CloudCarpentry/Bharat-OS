@@ -5,7 +5,5 @@ void ai_gov_main(void) {
     // Stub
 }
 
-int main() {
-    ai_gov_main();
-    return 0;
-}
+// No main here so tests can link it.
+// If it's an app, it should be defined elsewhere or dynamically selected.

@@ -115,6 +115,8 @@ void ai_sched_collect_sample(ai_sched_context_t* ctx,
 
         uint32_t active_ipc_x100;
 
+        extern uint32_t g_silicon_alu_ipc;
+        extern uint32_t g_silicon_mem_ipc;
         if (ctx->predicted_complexity == 2U) { // High complexity / memory-bound
             active_ipc_x100 = g_silicon_mem_ipc;
         } else if (ctx->predicted_complexity == 1U) { // Medium
@@ -177,8 +179,8 @@ int ai_heuristic_config_store(const ai_heuristic_config_t* cfg) {
 }
 
 // Hypothetical boot-time calibration
-static uint32_t g_silicon_alu_ipc = 0;
-static uint32_t g_silicon_mem_ipc = 0;
+uint32_t g_silicon_alu_ipc = 0;
+uint32_t g_silicon_mem_ipc = 0;
 
 // Ensure the chasing array avoids global optimization
 static volatile uint32_t g_chase[4096];
