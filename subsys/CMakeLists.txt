@@ -33,7 +33,7 @@ endif()
 
 option(BHARAT_BUILD_AI_GOVERNOR "Build ai_governor user-space demo executable" ON)
 if(BHARAT_BUILD_AI_GOVERNOR)
-    add_executable(ai_governor ${AI_GOVERNOR_SOURCES} ../kernel/src/ai_sched.c)
+    add_executable(ai_governor ${AI_GOVERNOR_SOURCES} ../kernel/src/ai_sched.c ../kernel/src/sched_deg.c ../kernel/src/sched_stub.c)
     target_link_libraries(ai_governor PRIVATE subsys_manager urpc c_posix_stub)
     target_include_directories(ai_governor PRIVATE
         ${CMAKE_SOURCE_DIR}/kernel/include

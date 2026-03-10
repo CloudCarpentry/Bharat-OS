@@ -1,4 +1,5 @@
 #include "sched.h"
+#include "sched_deg.h"
 
 #include "advanced/algo_matrix.h"
 #include "advanced/formal_verif.h"
@@ -610,6 +611,9 @@ void sched_block(void) {
   kthread_t *current = sched_current_thread();
   if (current) {
     current->state = THREAD_STATE_BLOCKED;
+    if (current->sched_ctx && current->sched_ctx->deg) {
+        deg_block_member(current, 0);
+    }
   }
 }
 
