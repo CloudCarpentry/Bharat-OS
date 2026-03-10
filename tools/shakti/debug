@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<USAGE
+Usage: $0 --target <shakti-board> [--elf <path>]
+
+Starts OpenOCD if board config exists and prints a matching GDB command.
+USAGE
+}
+
+TARGET=""
+ELF=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --target) TARGET="${2:-}"; shift 2 ;;
+    --elf) ELF="${2:-}"; shift 2 ;;
+    -h|--help) usage; exit 0 ;;
+    *) echo "Unknown arg: $1"; usage; exit 2 ;;
+  esac
+done
+
+[[ -n "$TARGET" ]] || { usage; exit 2; }
+[[ "$TARGET" =~ ^shakti- ]] || { echo "--target must be shakti-*" >&2; exit 2; }
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+CFG="$ROOT_DIR/platform/shakti/boards/${TARGET}/openocd.cfg"
+
+if [[ -f "$CFG" ]]; then
+  echo "Starting OpenOCD with $CFG"
+  openocd -f "$CFG"
+else
+  echo "No board OpenOCD config found at $CFG"
+  if [[ -n "$ELF" ]]; then
+    echo "Suggested: riscv64-unknown-elf-gdb $ELF -ex 'target extended-remote :3333'"
+  else
+    echo "Suggested: provide --elf and use riscv64-unknown-elf-gdb"
+  fi
+  exit 1
+fi
