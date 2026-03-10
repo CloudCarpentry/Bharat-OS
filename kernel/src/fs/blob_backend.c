@@ -10,15 +10,17 @@ typedef struct {
     size_t size;
 } blob_immutable_object_t;
 
-static int blob_read(vfs_node_t *node, uint64_t offset, void *buffer, size_t size) {
+#include "fs/file.h"
+
+static int blob_read(vfs_file_t *file, uint64_t offset, void *buffer, size_t size) {
     blob_immutable_object_t *obj;
     size_t i;
 
-    if (!node || !buffer || !node->fs_data) {
+    if (!file || !file->node || !buffer || !file->node->fs_data) {
         return -1;
     }
 
-    obj = (blob_immutable_object_t *)node->fs_data;
+    obj = (blob_immutable_object_t *)file->node->fs_data;
     if (offset >= obj->size) {
         return 0;
     }
@@ -34,8 +36,8 @@ static int blob_read(vfs_node_t *node, uint64_t offset, void *buffer, size_t siz
     return (int)size;
 }
 
-static int blob_write(vfs_node_t *node, uint64_t offset, const void *buffer, size_t size) {
-    (void)node;
+static int blob_write(vfs_file_t *file, uint64_t offset, const void *buffer, size_t size) {
+    (void)file;
     (void)offset;
     (void)buffer;
     (void)size;

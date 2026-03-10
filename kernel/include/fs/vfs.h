@@ -3,15 +3,16 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include "advanced/formal_verif.h" // For capability_t
 
 /*
  * Bharat-OS Virtual File System (VFS)
- * Provides a unified namespace for disparate file systems (ext4, BFS, FAT32)
- * and pseudo-devices (/dev, /proc).
+ * Provides a unified, personality-neutral namespace for storage objects.
+ * Features capability-based security, profile-driven backends, and
+ * abstraction over block, blob, and filesystem resources.
  */
 
-typedef struct vfs_node vfs_node_t;
-
+// Basic neutral flags
 #define VFS_OPEN_READ  0x1
 #define VFS_OPEN_WRITE 0x2
 #define VFS_OPEN_RDWR  (VFS_OPEN_READ | VFS_OPEN_WRITE)
@@ -24,7 +25,7 @@ typedef enum {
     VFS_BACKEND_PSEUDO
 } vfs_backend_type_t;
 
-// Mount feature capabilities for FS and storage providers
+// Mount feature capabilities (Feature set, NOT security tokens)
 typedef struct {
     uint32_t supports_journaling;
     uint32_t supports_snapshots;
@@ -42,51 +43,57 @@ typedef struct {
     vfs_feature_caps_t features;
 } vfs_driver_info_t;
 
+typedef struct vfs_node vfs_node_t;
+typedef struct vfs_mount vfs_mount_t;
+typedef struct vfs_file vfs_file_t;
 
-// File operations function pointers (Linux inode_operations style)
+// Personality-neutral file operations
 typedef struct {
-    int (*read)(vfs_node_t* node, uint64_t offset, void* buffer, size_t size);
-    int (*write)(vfs_node_t* node, uint64_t offset, const void* buffer, size_t size);
-    int (*open)(vfs_node_t* node, int flags);
-    int (*close)(vfs_node_t* node);
-    struct dirent* (*readdir)(vfs_node_t* node, uint32_t index);
+    int (*read)(vfs_file_t* file, uint64_t offset, void* buffer, size_t size);
+    int (*write)(vfs_file_t* file, uint64_t offset, const void* buffer, size_t size);
+    int (*open)(vfs_node_t* node, vfs_file_t* file, int flags);
+    int (*close)(vfs_file_t* file);
+    struct dirent* (*readdir)(vfs_file_t* file, uint32_t index);
     vfs_node_t* (*finddir)(vfs_node_t* node, const char* name);
-    int (*ioctl)(vfs_node_t* node, int request, void* arg);
+    int (*ioctl)(vfs_file_t* file, int request, void* arg);
+    int (*stat)(vfs_node_t* node, void* stat_buf); // Generic stat-like structure
 } vfs_operations_t;
 
+/*
+ * vfs_node_t: The canonical storage object.
+ * Represents a file, directory, or device. Does NOT contain ambient
+ * permissions, but rather links to the capability system via provenance.
+ */
 struct vfs_node {
     char name[256];
     uint32_t flags; // Type (file, dir, block device, pipe)
-    uint32_t permissions; // Capability-based security ACLs
-    uint32_t uid;
-    uint32_t gid;
+
+    // Ownership/Security Metadata
+    // The canonical object ID to which capabilities grant access
+    uint32_t object_id;
+    // Link to capability provenance/derivation tree
+    capability_t* provenance_cap;
+
     uint64_t size; // File size in bytes
     uint64_t inode; // FS specific inode number
-    vfs_backend_type_t backend_type; // Filesystem, block, blob, pseudo
+    vfs_backend_type_t backend_type;
     
-    // Function table routing calls to the specific file system implementation
     vfs_operations_t* ops;
-    
-    // Pointer to specific FS data (e.g., ext4_inode, bfs_node)
     void* fs_data;
 };
 
-// Global VFS Root mounting point
+// Global VFS Root mounting point (Legacy fallback or root namespace reference)
 extern vfs_node_t* vfs_root;
-
-// Mount a specific filesystem driver to a path in the VFS tree
-int vfs_mount(const char* target_path, vfs_node_t* fs_root);
-
-// Standard open/read/write wrappers abstracting away the vfs lookup
-int vfs_open(const char* path, int flags);
-int vfs_read(int fd, void* buffer, size_t size);
-int vfs_write(int fd, const void* buffer, size_t size);
 
 // Register a filesystem/storage driver with the VFS core.
 int vfs_register_driver(const vfs_driver_info_t* info);
 
 // Lookup a registered driver descriptor by name.
 const vfs_driver_info_t* vfs_get_driver(const char* name);
+
+// Path utilities
+int vfs_path_prefix_match(const char *path, const char *prefix);
+size_t vfs_strnlen(const char *s, size_t max_len);
 
 #ifdef TESTING
 void vfs_test_reset_state(void);
