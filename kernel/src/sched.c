@@ -43,6 +43,11 @@ typedef struct {
 } suggestion_queue_t;
 
 typedef struct {
+  void *mutex;
+  kthread_t *owner;
+} mutex_owner_entry_t;
+
+typedef struct {
   kthread_t *current_thread;
   kthread_t *idle_thread;
   list_head_t ready_queue[MAX_PRIORITY_LEVELS];
@@ -63,6 +68,8 @@ static uint64_t g_next_process_id = 1U;
 static uint64_t g_sched_ticks = 0U;
 static uint64_t g_sched_context_switches = 0U;
 static suggestion_queue_t g_pending_suggestions;
+
+static mutex_owner_entry_t g_mutex_owners[SCHED_MAX_THREADS];
 
 static uint32_t g_free_thread_head = UINT32_MAX;
 static uint32_t g_free_process_head = UINT32_MAX;
@@ -170,6 +177,10 @@ void sched_init(void) {
   g_sched_context_switches = 0U;
   g_pending_suggestions.head = 0U;
   g_pending_suggestions.tail = 0U;
+  for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_mutex_owners); ++i) {
+    g_mutex_owners[i].mutex = NULL;
+    g_mutex_owners[i].owner = NULL;
+  }
 
   kprocess_t *idle_process = process_create("idle_process");
   for (uint32_t core = 0; core < MAX_SUPPORTED_CORES; ++core) {
@@ -324,6 +335,49 @@ int thread_destroy(kthread_t *thread) {
   return 0;
 }
 
+static kthread_t *sched_find_mutex_owner(void *mutex) {
+  if (!mutex) {
+    return NULL;
+  }
+
+  for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_mutex_owners); ++i) {
+    if (g_mutex_owners[i].mutex == mutex) {
+      return g_mutex_owners[i].owner;
+    }
+  }
+
+  return NULL;
+}
+
+static void sched_register_mutex_owner(void *mutex, kthread_t *owner) {
+  if (!mutex) {
+    return;
+  }
+
+  for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_mutex_owners); ++i) {
+    if (g_mutex_owners[i].mutex == mutex || g_mutex_owners[i].mutex == NULL) {
+      g_mutex_owners[i].mutex = mutex;
+      g_mutex_owners[i].owner = owner;
+      return;
+    }
+  }
+}
+
+static void sched_unregister_mutex_owner(void *mutex, kthread_t *owner) {
+  if (!mutex) {
+    return;
+  }
+
+  for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_mutex_owners); ++i) {
+    if (g_mutex_owners[i].mutex == mutex &&
+        (owner == NULL || g_mutex_owners[i].owner == owner)) {
+      g_mutex_owners[i].mutex = NULL;
+      g_mutex_owners[i].owner = NULL;
+      return;
+    }
+  }
+}
+
 static int sched_suggestion_dequeue(ai_suggestion_t *out) {
   if (!out || g_pending_suggestions.head == g_pending_suggestions.tail) {
     return -1;
@@ -364,17 +418,33 @@ static void sched_update_telemetry(kthread_t *thread) {
 
 kthread_t *sched_pick_next_ready(uint32_t core_id) {
   core_id = sched_clamp_core(core_id);
-  for (int prio = (int)SCHED_MAX_PRIORITY; prio >= 0; --prio) {
-    list_head_t *head = &g_runqueues[core_id].ready_queue[prio];
-    if (!list_empty(head)) {
-      list_head_t *node = head->prev;
-      thread_slot_t *slot = list_entry(node, thread_slot_t, run_node);
-      list_del(node);
-      list_init(node);
-      slot->is_on_runqueue = 0U;
-      return &slot->thread;
+
+  if (g_policy == SCHED_POLICY_ROUND_ROBIN) {
+    for (int prio = 0; prio <= (int)SCHED_MAX_PRIORITY; ++prio) {
+      list_head_t *head = &g_runqueues[core_id].ready_queue[prio];
+      if (!list_empty(head)) {
+        list_head_t *node = head->prev;
+        thread_slot_t *slot = list_entry(node, thread_slot_t, run_node);
+        list_del(node);
+        list_init(node);
+        slot->is_on_runqueue = 0U;
+        return &slot->thread;
+      }
+    }
+  } else {
+    for (int prio = (int)SCHED_MAX_PRIORITY; prio >= 0; --prio) {
+      list_head_t *head = &g_runqueues[core_id].ready_queue[prio];
+      if (!list_empty(head)) {
+        list_head_t *node = head->prev;
+        thread_slot_t *slot = list_entry(node, thread_slot_t, run_node);
+        list_del(node);
+        list_init(node);
+        slot->is_on_runqueue = 0U;
+        return &slot->thread;
+      }
     }
   }
+
   return g_runqueues[core_id].idle_thread;
 }
 
@@ -559,6 +629,14 @@ void sched_on_timer_tick(void) {
   if (current->cpu_time_consumed >= current->time_slice_ms) {
     current->cpu_time_consumed = 0U;
     sched_reschedule();
+    return;
+  }
+
+  for (int prio = (int)SCHED_MAX_PRIORITY; prio > (int)current->priority; --prio) {
+    if (!list_empty(&g_runqueues[core].ready_queue[prio])) {
+      sched_reschedule();
+      return;
+    }
   }
 }
 
@@ -569,7 +647,11 @@ kthread_t *sched_current_thread(void) {
 kthread_t *sched_current(void) { return sched_current_thread(); }
 
 uint64_t sched_get_ticks(void) { return g_sched_ticks; }
-void sched_set_policy(sched_policy_t policy) { g_policy = policy; }
+void sched_set_policy(sched_policy_t policy) {
+  if (policy <= SCHED_POLICY_RMS) {
+    g_policy = policy;
+  }
+}
 
 int sched_sys_thread_create(kprocess_t *parent, void (*entry_point)(void), uint64_t *out_tid) {
   kthread_t *t = thread_create(parent, entry_point);
@@ -609,6 +691,41 @@ void sched_restore_priority(kthread_t *thread) {
     return;
   }
   thread->priority = thread->base_priority;
+}
+
+void sched_on_mutex_wait(kthread_t *waiter, void *mutex) {
+  if (!waiter || !mutex) {
+    return;
+  }
+
+  waiter->waiting_on_lock = mutex;
+
+  kthread_t *owner = sched_find_mutex_owner(mutex);
+  while (owner && owner != waiter && waiter->priority > owner->priority) {
+    sched_inherit_priority(owner, waiter->priority);
+    if (!owner->waiting_on_lock) {
+      break;
+    }
+    owner = sched_find_mutex_owner(owner->waiting_on_lock);
+  }
+}
+
+void sched_on_mutex_acquire(kthread_t *owner, void *mutex) {
+  if (!owner || !mutex) {
+    return;
+  }
+
+  owner->waiting_on_lock = NULL;
+  sched_register_mutex_owner(mutex, owner);
+}
+
+void sched_on_mutex_release(kthread_t *owner, void *mutex) {
+  if (!owner || !mutex) {
+    return;
+  }
+
+  sched_unregister_mutex_owner(mutex, owner);
+  sched_restore_priority(owner);
 }
 
 kthread_t *sched_find_thread_by_id(uint64_t tid) {

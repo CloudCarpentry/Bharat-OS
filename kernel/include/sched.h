@@ -22,7 +22,8 @@ typedef enum {
     SCHED_POLICY_ROUND_ROBIN = 0,
     SCHED_POLICY_CLOUD_FAIR  = 1,
     SCHED_POLICY_PRIORITY = 2,
-    SCHED_POLICY_EDF = 3
+    SCHED_POLICY_EDF = 3,
+    SCHED_POLICY_RMS = 4
 } sched_policy_t;
 
 typedef enum {
@@ -144,6 +145,9 @@ int sched_sys_set_affinity(uint64_t tid, uint32_t affinity_mask);
 // Priority Inheritance support
 void sched_inherit_priority(kthread_t* thread, uint32_t new_priority);
 void sched_restore_priority(kthread_t* thread);
+void sched_on_mutex_wait(kthread_t* waiter, void* mutex);
+void sched_on_mutex_acquire(kthread_t* owner, void* mutex);
+void sched_on_mutex_release(kthread_t* owner, void* mutex);
 
 // Multikernel IPC integration stub
 void sched_notify_ipc_ready(uint32_t core_id, uint32_t msg_type);

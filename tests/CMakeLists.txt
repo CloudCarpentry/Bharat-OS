@@ -92,6 +92,7 @@ add_test(NAME test_secure_boot_policy COMMAND test_secure_boot_policy)
 add_executable(test_capability_policy test_capability_policy.c benchmark_stubs.c
     ../kernel/src/mm/vmm.c
     ../kernel/src/sched.c
+    ../kernel/src/ai_sched.c
     ../kernel/src/capability.c
     ../kernel/src/algo_matrix.c
     ../kernel/src/device/device_manager.c
@@ -172,3 +173,9 @@ add_executable(test_profile_edge
 target_include_directories(test_profile_edge PRIVATE ../kernel/include ../subsys/include ../include)
 target_compile_definitions(test_profile_edge PRIVATE TESTING=1 BHARAT_PROFILE_EDGE=1)
 add_test(NAME test_profile_edge COMMAND test_profile_edge)
+
+
+add_executable(test_scheduler_hello_world test_scheduler_hello_world.c benchmark_stubs.c ../kernel/src/sched.c ../kernel/src/ai_sched.c ../kernel/src/capability.c ../kernel/src/algo_matrix.c ../kernel/src/device/device_manager.c ../kernel/src/mm/numa.c)
+target_include_directories(test_scheduler_hello_world PRIVATE ../kernel/include)
+target_compile_definitions(test_scheduler_hello_world PRIVATE TESTING=1)
+add_test(NAME test_scheduler_hello_world COMMAND test_scheduler_hello_world)

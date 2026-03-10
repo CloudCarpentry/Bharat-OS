@@ -105,6 +105,96 @@ graph TD
 | User-space driver model | Drivers are unprivileged; capabilities gate MMIO/IRQ access and IOMMU policy hardens DMA boundaries, enabling restartable driver domains. |
 | Modular scheduler with AI hooks | Tick-driven scheduler collects telemetry and applies AI hints via ADR-008 plugin boundaries, with deterministic fallback when PMCs are unavailable. |
 
+#### Multi-Personality Subsystem Architecture
+
+The Bharat-OS multi-personality strategy does not bake monolithic compatibility subsystems into the core kernel. Instead, it maintains a small, verifiable, distributed kernel that exposes personality-neutral primitives (tasks, memory objects, capabilities). Layered compatibility subsystems translate these core primitives into personality-specific abstractions (Linux POSIX, Android, Windows NT).
+
+```mermaid
+graph TD
+    subgraph Personalities [User-Space Personalities & Apps]
+        subgraph Android [Android Personality]
+            ART[ART/Dalvik Runtime]
+            Binder[Binder Compat]
+            Ashmem[Ashmem Shim]
+        end
+
+        subgraph Linux [Linux Personality]
+            POSIX[POSIX / VFS]
+            Signals[Signals / Futex]
+            ELF[ELF Loader]
+        end
+
+        subgraph Native [Bharat-OS Native]
+            NativeApps[Native Apps]
+            NativeServices[Native Services]
+        end
+    end
+
+    subgraph Microkernel [Bharat-OS Core Microkernel Ring-0]
+        CoreSched[Personality-Aware Scheduler]
+        CoreMM[Memory Mapping & Slab]
+        CoreIPC[URPC & Sync IPC]
+        CoreCap[Capability System]
+    end
+
+    ART --> Binder
+    ART --> Ashmem
+    Binder --> CoreIPC
+    Ashmem --> CoreMM
+
+    POSIX --> CoreMM
+    Signals --> CoreSched
+    ELF --> CoreMM
+
+    NativeApps --> NativeServices
+    NativeServices --> CoreIPC
+
+    Android -.->|Translated Syscalls| Microkernel
+    Linux -.->|Translated Syscalls| Microkernel
+    Native -.->|Native Invokes| Microkernel
+```
+
+#### Capability Model Architecture
+
+Bharat-OS enforces security through a mathematically verifiable Capability System. There are no global Access Control Lists (ACLs), user IDs, or root privileges inside the kernel. A capability is an unforgeable, kernel-managed token that pairs an object reference with a set of permitted operations.
+
+```mermaid
+graph TD
+    subgraph Thread [Thread Domain]
+        CSpace[Capability Space]
+        Cap1[Cap: Read/Write]
+        Cap2[Cap: Execute]
+        Cap3[Cap: Grant]
+
+        CSpace --> Cap1
+        CSpace --> Cap2
+        CSpace --> Cap3
+    end
+
+    subgraph Operations [Capability Operations]
+        Invoke[Invoke: Perform action]
+        Grant[Grant: Transfer over IPC]
+        Revoke[Revoke: Invalidate cap]
+        Retype[Retype: Convert memory]
+    end
+
+    subgraph KernelObjects [Kernel Objects]
+        Mem[Memory Frames]
+        EP[IPC Endpoints]
+        T[Threads]
+        U[Untyped Memory]
+    end
+
+    Cap1 --> Invoke
+    Cap2 --> Invoke
+    Cap3 --> Grant
+
+    Invoke --> Mem
+    Invoke --> EP
+    Grant --> T
+    Retype --> U
+```
+
 #### Memory Management Architecture
 
 ```mermaid
@@ -136,6 +226,8 @@ graph TD
 
 #### IPC & Messaging Architecture
 
+We utilize two distinct IPC models to serve both deterministic bounds (Bharat-RT) and massive scalability (Bharat-Cloud). **Synchronous Endpoint IPC** is fast, blocking, and unbuffered for strict procedural calls. **Lockless URPC** (User-level Remote Procedure Call) is designed for cross-core, multikernel messaging, scaling across high-core-count processors without shared-kernel locks.
+
 ```mermaid
 graph TD
     subgraph UserSpace [User-Space Domains]
@@ -149,13 +241,13 @@ graph TD
     end
 
     subgraph Microkernel [Bharat-OS Microkernel]
-        subgraph SyncIPC [Endpoint IPC]
+        subgraph SyncIPC [Synchronous Endpoint IPC]
             RegisterPass[Register-based Message Passing]
         end
 
-        subgraph AsyncIPC [URPC Multikernel Messaging]
-            RingBuffer[Lockless Ring-buffer]
-            MultiCore[Cross-core Transport]
+        subgraph AsyncIPC [Lockless URPC Multikernel Messaging]
+            RingBuffer[Lockless Shared Ring Buffer]
+            MultiCore[Cross-Core Interconnect Transport]
         end
     end
 
@@ -166,9 +258,47 @@ graph TD
     Checks -->|Verified Access| SyncIPC
     Checks -->|Verified Access| AsyncIPC
 
-    RegisterPass -->|Low-latency delivery| Receiver
+    RegisterPass -->|Low-latency Register Delivery| Receiver
     RingBuffer --> MultiCore
-    MultiCore -->|Distributed / NUMA delivery| Receiver
+    MultiCore -->|Async Distributed / NUMA Delivery| Receiver
+```
+
+### Hardware Profiles & Boot Flow
+
+Bharat-OS is intentionally profile-driven instead of forcing one heavyweight image on every board. Boot behavior and subsystem initialization are determined dynamically by the detected hardware profile.
+
+```mermaid
+graph LR
+    subgraph CoreBoot [Core Kernel Bring-up]
+        HAL[HAL & Arch Init] --> Cap[Capability Table Init]
+        Cap --> Sched[Scheduler Setup]
+    end
+
+    subgraph ProfileDispatch [Profile Detection]
+        Sched --> Detect{Hardware Profile}
+    end
+
+    subgraph RTOS [RTOS / Safety Profile]
+        Static[Static Memory Pools]
+        Watchdog[Watchdog / Health Monitor]
+        DetermSched[Deterministic Sched]
+    end
+
+    subgraph Edge [Edge / IoT Profile]
+        OTA[Secure Boot / OTA]
+        PwrMgmt[Power Management]
+        FB[Framebuffer UI]
+    end
+
+    subgraph Datacenter [Datacenter / Cloud Profile]
+        NUMA[NUMA-aware Memory]
+        ScaleSched[Scalable Runqueues]
+        Virt[VirtIO / VM Hooks]
+    end
+
+    Detect -->|RTOS| RTOS
+    Detect -->|Edge| Edge
+    Detect -->|Datacenter| Datacenter
 ```
 
 ### Device Profiles & Use-cases
