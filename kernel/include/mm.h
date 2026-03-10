@@ -27,6 +27,9 @@ typedef struct page {
   // For simplicity, we can keep the order in the list if needed,
   // but typically a page's block order is stored in metadata.
   int order;
+  // Ownership tracking
+  uint32_t owner_core_id;
+  uint64_t object_id;
 } page_t;
 
 // Convert page struct pointer back to physical address
@@ -85,6 +88,8 @@ void mm_inc_page_ref(phys_addr_t page);
 // Virtual Memory Management (Architecture agnostic paging)
 typedef struct {
   phys_addr_t root_table; // CR3 on x86, satp on RISC-V
+  uint32_t owner_core_id;
+  uint64_t object_id;
 } address_space_t;
 
 int vmm_init(void);

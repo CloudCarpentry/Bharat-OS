@@ -69,15 +69,85 @@ typedef struct {
 // A Single-Producer / Single-Consumer (SPSC) Message Channel
 // connecting two independent kernel instances on different cores.
 // Currently mapped in a core-to-core topology matrix for Phase 1.
+// Per-channel state machine
+typedef enum {
+  MK_CHANNEL_STATE_RESET,
+  MK_CHANNEL_STATE_INIT,
+  MK_CHANNEL_STATE_ESTABLISHED,
+  MK_CHANNEL_STATE_DEGRADED,
+  MK_CHANNEL_STATE_DRAINING,
+  MK_CHANNEL_STATE_FAILED
+} mk_channel_state_t;
+
+// Transaction state machine
+typedef enum {
+  MK_TXN_STATE_FREE,
+  MK_TXN_STATE_PENDING_SEND,
+  MK_TXN_STATE_SENT,
+  MK_TXN_STATE_ACKED,
+  MK_TXN_STATE_REPLIED,
+  MK_TXN_STATE_TIMED_OUT,
+  MK_TXN_STATE_CANCELLED
+} mk_txn_state_t;
+
 typedef struct {
   uint32_t sender_core_id;
   uint32_t receiver_core_id;
+  mk_channel_state_t state;
 
   // Lockless URPC (User-level Remote Procedure Call) Ring Buffer
   // Mapped in cache-aligned shared memory between the two cores
   urpc_ring_t *urpc_ring;
   uint32_t ring_size;
 } BHARAT_ALIGNED_CACHE mk_channel_t;
+
+// Transaction tracking structure
+typedef struct {
+  uint64_t txn_id;
+  uint32_t remote_core;
+  uint32_t msg_type;
+  mk_txn_state_t state;
+  uint64_t timeout_deadline;
+  uint32_t retry_count;
+  int completion_status;
+  // Could hold a reply buffer or continuation
+} mk_txn_t;
+
+// Message descriptor table entry
+typedef struct {
+  uint32_t msg_type;
+  uint32_t flags;
+  uint32_t min_payload_size;
+  uint32_t max_payload_size;
+  int (*handler_fn)(mk_channel_t *channel, urpc_msg_t *msg);
+  int reply_required;
+  int idempotent;
+  int owner_validation_required;
+} mk_msg_desc_t;
+
+// Built-in Control Messages (Transport Layer)
+#define MK_MSG_TYPE_ACK 0x1000
+#define MK_MSG_TYPE_NACK 0x1001
+
+// Ownership RPC Messages
+#define MK_MSG_FRAME_ALLOC_REQ    0x2000
+#define MK_MSG_FRAME_FREE_REQ     0x2001
+#define MK_MSG_FRAME_MAP_REQ      0x2002
+#define MK_MSG_FRAME_UNMAP_REQ    0x2003
+
+#define MK_MSG_PROC_CREATE_REQ    0x3000
+#define MK_MSG_PROC_DESTROY_REQ   0x3001
+#define MK_MSG_PROC_SIGNAL_REQ    0x3002
+
+#define MK_MSG_ASPACE_CREATE_REQ  0x4000
+#define MK_MSG_ASPACE_MAP_REQ     0x4001
+#define MK_MSG_ASPACE_PROTECT_REQ 0x4002
+#define MK_MSG_ASPACE_UNMAP_REQ   0x4003
+
+#define MK_MSG_CAP_GRANT_REQ      0x5000
+#define MK_MSG_CAP_REVOKE_REQ     0x5001
+#define MK_MSG_CAP_DERIVE_REQ     0x5002
+#define MK_MSG_CAP_LOOKUP_REQ     0x5003
 
 // Multicore boot and channel matrix setup
 int mk_boot_secondary_cores(uint32_t core_count);

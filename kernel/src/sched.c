@@ -239,6 +239,10 @@ kprocess_t *process_create(const char *name) {
   slot->process.main_thread = NULL;
   slot->process.security_sandbox_ctx = NULL;
 
+  // Explicit multikernel ownership metadata
+  slot->process.owner_core_id = hal_cpu_get_id();
+  slot->process.object_id = slot->process.process_id;
+
   if (!slot->process.addr_space || cap_table_init_for_process(&slot->process) != 0) {
     slot->in_use = 0U;
     uint32_t idx = (uint32_t)(slot - g_processes);
