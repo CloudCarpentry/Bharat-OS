@@ -24,6 +24,28 @@ int linux_subsys_init(subsys_instance_t* env) {
     return 0;
 }
 
+#include "bharat/subsys_test.h"
+
+int linux_syscall_handler(long sysno, long arg1, long arg2, long arg3, long arg4, long arg5, long arg6);
+
+static int test_linux_syscall_sanity(void) {
+    if (linux_syscall_handler(39, 0, 0, 0, 0, 0, 0) == -38) {
+        // ENOSYS when inactive, this is expected if we test before it's running
+        // Let's force it to be running to test getpid
+        subsys_instance_t dummy_env = { .type = SUBSYS_TYPE_LINUX, .is_running = 1 };
+        g_linux_instance = &dummy_env;
+        if (linux_syscall_handler(39, 0, 0, 0, 0, 0, 0) == 1) {
+            g_linux_instance = NULL; // Restore
+            return 0; // Success
+        }
+        g_linux_instance = NULL; // Restore
+        return -1;
+    }
+    return -1;
+}
+
+REGISTER_SUBSYS_TEST("linux", "syscall_translation_sanity", test_linux_syscall_sanity, 1, 1)
+
 // Placeholder mapping table for FDs
 static linux_fd_map_t fd_table[LINUX_MAX_FDS];
 static int next_fd = 3; // 0, 1, 2 reserved
