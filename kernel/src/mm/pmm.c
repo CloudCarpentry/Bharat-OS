@@ -453,6 +453,81 @@ phys_addr_t mm_alloc_page(uint32_t preferred_numa_node) {
   return mm_alloc_pages_order(0, preferred_numa_node, PAGE_FLAG_KERNEL);
 }
 
+int mm_alloc_dma_pages(size_t size, uint32_t preferred_numa_node,
+                       uint32_t dma_flags, phys_addr_t *out_phys,
+                       void **out_kernel_virt) {
+  if (size == 0 || !out_phys || !out_kernel_virt) {
+    return -1;
+  }
+
+  // Calculate required order
+  size_t num_pages = (size + PAGE_SIZE - 1) / PAGE_SIZE;
+  int order = 0;
+  while ((1ULL << order) < num_pages) {
+    order++;
+  }
+
+  if (order >= MAX_ORDER) {
+    return -1;
+  }
+
+  phys_addr_t phys = mm_alloc_pages_order(order, preferred_numa_node, PAGE_FLAG_KERNEL);
+  if (phys == 0) {
+    return -1;
+  }
+
+  if (dma_flags & BHARAT_DMA_32BIT_ONLY) {
+    if (phys + size > 0xFFFFFFFFULL) {
+      page_t *p = phys_to_page(phys);
+      if (p) {
+        p->order = order;
+      }
+      mm_free_page(phys);
+      return -1;
+    }
+  }
+
+  void *virt = (void *)(uintptr_t)phys; // Direct mapping assumption for simple implementation
+
+  if (dma_flags & BHARAT_DMA_ZERO) {
+    uint8_t *ptr = (uint8_t *)virt;
+    for (size_t i = 0; i < (1ULL << order) * PAGE_SIZE; i++) {
+      ptr[i] = 0;
+    }
+  }
+
+  *out_phys = phys;
+  *out_kernel_virt = virt;
+
+  // Cache/Coherency flags to be passed to hal mapping paths if we managed our own vmap
+  // For now we assume direct mapped kernel memory handles cacheability per region / via PAT/PMA later
+  (void)dma_flags;
+
+  return 0;
+}
+
+int mm_free_dma_pages(phys_addr_t phys, void *kernel_virt, size_t size) {
+  (void)kernel_virt; // Assuming direct mapping
+
+  if (phys == 0 || size == 0) {
+    return -1;
+  }
+
+  size_t num_pages = (size + PAGE_SIZE - 1) / PAGE_SIZE;
+  int order = 0;
+  while ((1ULL << order) < num_pages) {
+    order++;
+  }
+
+  page_t *p = phys_to_page(phys);
+  if (p) {
+    p->order = order;
+  }
+
+  mm_free_page(phys);
+  return 0;
+}
+
 void mm_free_page(phys_addr_t page_addr) {
   page_t *page = phys_to_page(page_addr);
   if (!page) {

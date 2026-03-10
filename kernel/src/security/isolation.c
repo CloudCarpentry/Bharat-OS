@@ -1,6 +1,7 @@
 #include "mm/address_token.h"
 #include "security/isolation.h"
 #include "security/audit.h"
+#include "hal/iommu.h"
 
 #define BHARAT_MAX_ISOLATED_PROCS 64U
 
@@ -92,12 +93,14 @@ struct bharat_iommu_domain {
     bharat_iommu_domain_config_t config;
     uint32_t id;
     uint8_t used;
+    hal_iommu_domain_t* hal_domain;
 };
 
 struct bharat_iommu_group {
     uint32_t id;
     bharat_iommu_domain_t* domain;
     uint8_t used;
+    hal_iommu_group_t* hal_group;
 };
 
 #define BHARAT_MAX_IOMMU_DOMAINS 32U
@@ -113,22 +116,35 @@ int bharat_iommu_domain_create(const bharat_iommu_domain_config_t* cfg,
         return -1;
     }
 
+    hal_iommu_domain_t* hal_domain = NULL;
+    int ret = hal_iommu_domain_create(cfg, &hal_domain);
+    if (ret < 0) {
+        return ret;
+    }
+
     for (i = 0; i < BHARAT_MAX_IOMMU_DOMAINS; ++i) {
         if (!g_iommu_domains[i].used) {
             g_iommu_domains[i].used = 1;
             g_iommu_domains[i].id = i;
             g_iommu_domains[i].config = *cfg;
+            g_iommu_domains[i].hal_domain = hal_domain;
             *out_domain = &g_iommu_domains[i];
             return 0;
         }
     }
 
+    hal_iommu_domain_destroy(hal_domain);
     return -1;
 }
 
 int bharat_iommu_domain_destroy(bharat_iommu_domain_t* domain) {
     if (!domain || !domain->used) {
         return -1;
+    }
+
+    if (domain->hal_domain) {
+        hal_iommu_domain_destroy(domain->hal_domain);
+        domain->hal_domain = NULL;
     }
 
     domain->used = 0;
@@ -141,8 +157,16 @@ int bharat_iommu_group_attach(bharat_iommu_group_t* group,
         return -1;
     }
 
+    if (group->domain) {
+        return -1; // Already attached
+    }
+
+    int ret = hal_iommu_group_attach(group->hal_group, domain->hal_domain);
+    if (ret < 0) {
+        return ret;
+    }
+
     group->domain = domain;
-    /* TODO: HAL call to actually attach hardware group to domain context */
     return 0;
 }
 
@@ -151,8 +175,16 @@ int bharat_iommu_group_detach(bharat_iommu_group_t* group) {
         return -1;
     }
 
+    if (!group->domain) {
+        return 0; // Not attached
+    }
+
+    int ret = hal_iommu_group_detach(group->hal_group);
+    if (ret < 0) {
+        return ret;
+    }
+
     group->domain = (bharat_iommu_domain_t*)0;
-    /* TODO: HAL call to actually detach hardware group */
     return 0;
 }
 
@@ -161,43 +193,48 @@ int bharat_iommu_map(bharat_iommu_domain_t* domain,
                      uint64_t phys,
                      size_t size,
                      uint64_t prot_flags) {
-    (void)domain;
-    (void)iova;
-    (void)phys;
-    (void)size;
-    (void)prot_flags;
-    /* TODO: HAL call to map page in IOMMU */
-    return 0;
+    if (!domain || !domain->used) {
+        return -1;
+    }
+
+    return hal_iommu_map(domain->hal_domain, iova, phys, size, prot_flags);
 }
 
 int bharat_iommu_unmap(bharat_iommu_domain_t* domain,
                        uint64_t iova,
                        size_t size) {
-    (void)domain;
-    (void)iova;
-    (void)size;
-    /* TODO: HAL call to unmap page in IOMMU */
-    return 0;
+    if (!domain || !domain->used) {
+        return -1;
+    }
+
+    return hal_iommu_unmap(domain->hal_domain, iova, size);
 }
 
 int bharat_iommu_block_device(bharat_device_t* dev) {
-    (void)dev;
-    /* Default safe policy: untrusted DMA blocked */
-    /* TODO: HAL call to block device DMA */
-    return 0;
+    return hal_iommu_block_device(dev);
 }
 
 int bharat_iommu_get_group(bharat_device_t* dev,
                            bharat_iommu_group_t** out_group) {
-    (void)dev;
     if (!out_group) return -1;
-    /* Dummy allocation for now */
-    if (!g_iommu_groups[0].used) {
-        g_iommu_groups[0].used = 1;
-        g_iommu_groups[0].id = 0;
+
+    hal_iommu_group_t* hal_group = NULL;
+    int ret = hal_iommu_get_group(dev, &hal_group);
+    if (ret < 0) {
+        return ret;
     }
-    *out_group = &g_iommu_groups[0];
-    return 0;
+
+    for (uint32_t i = 0; i < BHARAT_MAX_IOMMU_GROUPS; ++i) {
+        if (!g_iommu_groups[i].used) {
+            g_iommu_groups[i].used = 1;
+            g_iommu_groups[i].id = i;
+            g_iommu_groups[i].hal_group = hal_group;
+            *out_group = &g_iommu_groups[i];
+            return 0;
+        }
+    }
+
+    return -1;
 }
 
 int bharat_addr_token_validate(const bharat_addr_token_t* token,
