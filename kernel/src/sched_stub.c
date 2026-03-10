@@ -1,5 +1,6 @@
 
 #include "sched.h"
+#include "sched_deg.h"
 #include "kernel_safety.h"
 #include "capability.h"
 #include "../include/slab.h"
@@ -243,6 +244,9 @@ kthread_t* sched_wait_queue_dequeue(wait_queue_t* queue) {
 void sched_block(void) {
     if (g_current) {
         g_current->state = THREAD_STATE_BLOCKED;
+        if (g_current->sched_ctx && g_current->sched_ctx->deg) {
+            deg_block_member(g_current, 0);
+        }
     }
 }
 
@@ -532,3 +536,27 @@ void sched_disable_tick_for_core(uint32_t core_id) {
     (void)core_id;
 }
 #endif
+
+int sched_enqueue(kthread_t *thread, uint32_t core_id) {
+    (void)core_id;
+    if (!thread) {
+        return -1;
+    }
+
+    // Minimal stub for DEG enqueue support in tests
+    if (thread->sched_ctx && thread->sched_ctx->deg &&
+        (thread->sched_ctx->flags & SCHED_CTX_FLAG_STRICT_COSCHED)) {
+
+        if (thread->state != THREAD_STATE_DEG_PENDING && thread->state != THREAD_STATE_READY) {
+            thread->state = THREAD_STATE_DEG_PENDING;
+            deg_mark_ready(thread);
+
+            if (thread->state == THREAD_STATE_DEG_PENDING) {
+                return 0; // Not yet released
+            }
+        }
+    }
+
+    thread->state = THREAD_STATE_READY;
+    return 0;
+}

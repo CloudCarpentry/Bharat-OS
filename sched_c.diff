@@ -1,0 +1,100 @@
+<<<<<<< SEARCH
+#include "sched.h"
+#include "arch_context.h"
+=======
+#include "sched.h"
+#include "sched_deg.h"
+#include "arch_context.h"
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+int sched_enqueue(kthread_t *thread, uint32_t core_id) {
+  if (!thread || thread->priority >= MAX_PRIORITY_LEVELS) {
+    return -1;
+  }
+
+  thread_slot_t *slot = sched_find_thread_slot_by_tid(thread->thread_id);
+  if (!slot) {
+    return -1;
+  }
+
+  core_id = sched_clamp_core(core_id);
+
+  if (slot->is_on_runqueue != 0U) {
+    list_del(&slot->run_node);
+    list_init(&slot->run_node);
+    slot->is_on_runqueue = 0U;
+  }
+
+  list_add_tail(&slot->run_node, &g_runqueues[core_id].ready_queue[thread->priority]);
+  slot->is_on_runqueue = 1U;
+  thread->state = THREAD_STATE_READY;
+  thread->bound_core_id = core_id;
+
+  return 0;
+}
+=======
+int sched_enqueue(kthread_t *thread, uint32_t core_id) {
+  if (!thread || thread->priority >= MAX_PRIORITY_LEVELS) {
+    return -1;
+  }
+
+  thread_slot_t *slot = sched_find_thread_slot_by_tid(thread->thread_id);
+  if (!slot) {
+    return -1;
+  }
+
+  core_id = sched_clamp_core(core_id);
+
+  if (slot->is_on_runqueue != 0U) {
+    list_del(&slot->run_node);
+    list_init(&slot->run_node);
+    slot->is_on_runqueue = 0U;
+  }
+
+  // Handle Distributed Execution Group (DEG) logic
+  if (thread->sched_ctx && thread->sched_ctx->deg &&
+      (thread->sched_ctx->flags & SCHED_CTX_FLAG_STRICT_COSCHED)) {
+      dist_exec_group_t* deg = thread->sched_ctx->deg;
+
+      // If we are actively trying to release, do NOT mark ready again
+      // just let it pend until the group actually releases it.
+      if (thread->state != THREAD_STATE_DEG_PENDING && thread->state != THREAD_STATE_READY) {
+          thread->state = THREAD_STATE_DEG_PENDING;
+          deg_mark_ready(thread);
+
+          if (thread->state == THREAD_STATE_DEG_PENDING) {
+              // Not yet released, so don't enqueue to ready_queue yet.
+              // We just set the state to DEG_PENDING and return.
+              return 0;
+          }
+      }
+      // If it WAS DEG_PENDING and got released, it will be marked THREAD_STATE_READY by deg_release_if_ready.
+      // If it's already THREAD_STATE_READY (e.g. from deg_release_if_ready), we proceed to enqueue it normally.
+  }
+
+  list_add_tail(&slot->run_node, &g_runqueues[core_id].ready_queue[thread->priority]);
+  slot->is_on_runqueue = 1U;
+  thread->state = THREAD_STATE_READY;
+  thread->bound_core_id = core_id;
+
+  return 0;
+}
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+void sched_block(void) {
+  kthread_t *current = sched_current_thread();
+  if (current) {
+    current->state = THREAD_STATE_BLOCKED;
+  }
+}
+=======
+void sched_block(void) {
+  kthread_t *current = sched_current_thread();
+  if (current) {
+    current->state = THREAD_STATE_BLOCKED;
+    if (current->sched_ctx && current->sched_ctx->deg) {
+        deg_block_member(current, 0);
+    }
+  }
+}
+>>>>>>> REPLACE
