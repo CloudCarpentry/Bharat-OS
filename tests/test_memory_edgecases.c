@@ -35,9 +35,9 @@ void mm_free_page(phys_addr_t page) {
 
 
 
-int mm_pmm_init(void* memory_map, uint32_t map_size) {
+int mm_pmm_init(uint32_t magic, void* memory_map) {
+    (void)magic;
     (void)memory_map;
-    (void)map_size;
     return 0;
 }
 
