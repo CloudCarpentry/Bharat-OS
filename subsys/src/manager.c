@@ -1,7 +1,7 @@
 #include "subsys.h"
-#include "linux_compat.h"
-#include "win_compat.h"
-#include "android_compat.h"
+#include "../linux/linux_compat.h"
+#include "../windows/win_compat.h"
+#include "../android/android_compat.h"
 
 #ifndef MAX_SUPPORTED_CORES
 #define MAX_SUPPORTED_CORES 8U
