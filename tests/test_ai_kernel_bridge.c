@@ -116,3 +116,5 @@ int main(void) {
 
 
 // No longer stub cap_table_init_for_process because we pull in real capability.c
+void hal_tlb_flush(unsigned long long vaddr) { (void)vaddr; } void hal_send_ipi_payload(uint32_t target_core, uint64_t payload) {}
+void hal_timer_source_init(void) {}

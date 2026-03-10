@@ -180,6 +180,7 @@ add_subdirectory(kernel)
 add_subdirectory(lib)
 add_subdirectory(drivers)
 add_subdirectory(subsys)
+add_subdirectory(services)
 
 if(BHARAT_BUILD_HOST_TESTS AND NOT CMAKE_CROSSCOMPILING)
     add_subdirectory(tests)

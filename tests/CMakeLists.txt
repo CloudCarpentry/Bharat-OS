@@ -25,7 +25,7 @@ add_executable(test_ipc_async_timeout test_ipc_async_timeout.c ../kernel/src/ipc
 target_include_directories(test_ipc_async_timeout PRIVATE ../kernel/include)
 add_test(NAME test_ipc_async_timeout COMMAND test_ipc_async_timeout)
 
-add_executable(test_automotive_subsys test_automotive_subsys.c ../subsys/src/automotive.c)
+add_executable(test_automotive_subsys test_automotive_subsys.c ../subsys/automotive/automotive.c)
 target_include_directories(test_automotive_subsys PRIVATE ../subsys/include ../kernel/include)
 add_test(NAME test_automotive_subsys COMMAND test_automotive_subsys)
 
@@ -37,7 +37,7 @@ target_include_directories(test_scheduler PRIVATE ../kernel/include)
 target_compile_definitions(test_scheduler PRIVATE TESTING=1)
 add_test(NAME test_scheduler COMMAND test_scheduler)
 
-add_executable(test_trap_syscall test_trap_syscall.c ../kernel/src/trap/trap.c ../kernel/src/sched.c ../kernel/src/ai_sched.c ../kernel/src/capability.c ../kernel/src/ipc/endpoint_ipc.c ../kernel/src/algo_matrix.c ../kernel/src/device/device_manager.c ../kernel/src/mm/numa.c ../subsys/src/linux_compat.c)
+add_executable(test_trap_syscall test_trap_syscall.c ../kernel/src/trap/trap.c ../kernel/src/sched.c ../kernel/src/ai_sched.c ../kernel/src/capability.c ../kernel/src/ipc/endpoint_ipc.c ../kernel/src/algo_matrix.c ../kernel/src/device/device_manager.c ../kernel/src/mm/numa.c ../subsys/linux/linux_compat.c)
 target_include_directories(test_trap_syscall PRIVATE ../kernel/include)
 target_compile_definitions(test_trap_syscall PRIVATE TESTING=1)
 add_test(NAME test_trap_syscall COMMAND test_trap_syscall)
@@ -66,7 +66,7 @@ target_include_directories(test_memory_edgecases PRIVATE ../kernel/include)
 target_compile_definitions(test_memory_edgecases PRIVATE TESTING=1)
 add_test(NAME test_memory_edgecases COMMAND test_memory_edgecases)
 
-add_executable(test_tier_a_integration test_tier_a_integration.c ../kernel/src/trap/trap.c ../kernel/src/sched.c ../kernel/src/ai_sched.c ../kernel/src/capability.c ../kernel/src/ipc/endpoint_ipc.c ../kernel/src/algo_matrix.c ../kernel/src/device/device_manager.c ../kernel/src/mm/numa.c ../subsys/src/linux_compat.c)
+add_executable(test_tier_a_integration test_tier_a_integration.c ../kernel/src/trap/trap.c ../kernel/src/sched.c ../kernel/src/ai_sched.c ../kernel/src/capability.c ../kernel/src/ipc/endpoint_ipc.c ../kernel/src/algo_matrix.c ../kernel/src/device/device_manager.c ../kernel/src/mm/numa.c ../subsys/linux/linux_compat.c)
 target_include_directories(test_tier_a_integration PRIVATE ../kernel/include)
 target_compile_definitions(test_tier_a_integration PRIVATE TESTING=1)
 add_test(NAME test_tier_a_integration COMMAND test_tier_a_integration)
@@ -153,8 +153,8 @@ add_executable(test_integration_core_subsys
     benchmark_stubs.c
     ../kernel/src/device/device_manager.c
     ../kernel/src/algo_matrix.c
-    ../subsys/src/linux_compat.c
-    ../subsys/src/automotive.c
+    ../subsys/linux/linux_compat.c
+    ../subsys/automotive/automotive.c
     ../ui/fbui/core/fb_render.c
 )
 target_include_directories(test_integration_core_subsys PRIVATE ../kernel/include ../subsys/include ../include)
@@ -167,7 +167,7 @@ add_executable(test_profile_edge
     benchmark_stubs.c
     ../kernel/src/device/device_manager.c
     ../kernel/src/algo_matrix.c
-    ../subsys/src/automotive.c
+    ../subsys/automotive/automotive.c
     ../ui/fbui/core/fb_render.c
 )
 target_include_directories(test_profile_edge PRIVATE ../kernel/include ../subsys/include ../include)

@@ -1,5 +1,5 @@
 void linux_vfs_init(void);
-#include "../include/linux_compat.h"
+#include "linux_compat.h"
 
 #include <stddef.h>
 

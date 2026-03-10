@@ -6,13 +6,13 @@ include_directories(include)
 # Subsystem manager daemon/library
 set(SUBSYS_SOURCES
     src/manager.c
-    src/linux_compat.c
-    src/win_compat.c
-    src/automotive.c
-    src/android/android_compat.c
-    src/android/binder_compat.c
-    src/android/ashmem_compat.c
-    src/android/android_service_manager.c
+    linux/linux_compat.c
+    windows/win_compat.c
+    automotive/automotive.c
+    android/android_compat.c
+    android/binder_compat.c
+    android/ashmem_compat.c
+    android/android_service_manager.c
 )
 
 # AI Governor daemon (Predictive Resource Scheduling)
@@ -29,10 +29,11 @@ endif()
 
 option(BHARAT_BUILD_AI_GOVERNOR "Build ai_governor user-space demo executable" ON)
 if(BHARAT_BUILD_AI_GOVERNOR)
-    add_executable(ai_governor ${AI_GOVERNOR_SOURCES})
-    target_link_libraries(ai_governor PRIVATE subsys_manager)
+    add_executable(ai_governor ${AI_GOVERNOR_SOURCES} ../kernel/src/ai_sched.c)
+    target_link_libraries(ai_governor PRIVATE subsys_manager urpc)
     target_include_directories(ai_governor PRIVATE
-        ${CMAKE_SOURCE_DIR}/../kernel/include
+        ${CMAKE_SOURCE_DIR}/kernel/include
+        ${CMAKE_SOURCE_DIR}/lib/urpc
     )
 endif()
 # Might need host headers if it's considered user-space mock,
