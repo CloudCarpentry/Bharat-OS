@@ -145,3 +145,30 @@ add_executable(test_builtin_drivers_profile test_builtin_drivers_profile.c ../ke
 target_include_directories(test_builtin_drivers_profile PRIVATE ../kernel/include)
 target_compile_definitions(test_builtin_drivers_profile PRIVATE TESTING=1 BHARAT_PROFILE_DATACENTER=1 BHARAT_PERSONALITY_LINUX=1 BHARAT_ARCH_X86=1)
 add_test(NAME test_builtin_drivers_profile COMMAND test_builtin_drivers_profile)
+
+# Integration Subsystem Tests
+add_executable(test_integration_core_subsys
+    test_integration_core_subsys.c
+    benchmark_stubs.c
+    ../kernel/src/device/device_manager.c
+    ../kernel/src/algo_matrix.c
+    ../subsys/src/linux_compat.c
+    ../subsys/src/automotive.c
+    ../ui/fbui/core/fb_render.c
+)
+target_include_directories(test_integration_core_subsys PRIVATE ../kernel/include ../subsys/include ../include)
+target_compile_definitions(test_integration_core_subsys PRIVATE TESTING=1 BHARAT_PROFILE_DATACENTER=1 BHARAT_PERSONALITY_LINUX=1 BHARAT_ARCH_X86=1)
+add_test(NAME test_integration_core_subsys COMMAND test_integration_core_subsys)
+
+# Edge Profile Subsystem Tests
+add_executable(test_profile_edge
+    test_profile_edge.c
+    benchmark_stubs.c
+    ../kernel/src/device/device_manager.c
+    ../kernel/src/algo_matrix.c
+    ../subsys/src/automotive.c
+    ../ui/fbui/core/fb_render.c
+)
+target_include_directories(test_profile_edge PRIVATE ../kernel/include ../subsys/include ../include)
+target_compile_definitions(test_profile_edge PRIVATE TESTING=1 BHARAT_PROFILE_EDGE=1)
+add_test(NAME test_profile_edge COMMAND test_profile_edge)
