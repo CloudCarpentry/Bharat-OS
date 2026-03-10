@@ -10,6 +10,8 @@ typedef struct {
     uint8_t in_use;
     ipc_message_t msg;
     uint8_t has_msg;
+    wait_queue_t senders;
+    wait_queue_t receivers;
 } ipc_endpoint_t;
 
 static ipc_endpoint_t g_endpoints[MAX_ENDPOINTS];
@@ -34,6 +36,8 @@ int ipc_endpoint_create(capability_table_t* table, uint32_t* out_send_cap, uint3
             g_endpoints[i].in_use = 1U;
             g_endpoints[i].has_msg = 0U;
             g_endpoints[i].msg.msg_len = 0U;
+            sched_wait_queue_init(&g_endpoints[i].senders);
+            sched_wait_queue_init(&g_endpoints[i].receivers);
 
             if (cap_table_grant(table, CAP_OBJ_ENDPOINT, i, CAP_PERM_SEND | CAP_PERM_DELEGATE, out_send_cap) != 0) {
                 g_endpoints[i].in_use = 0U;
@@ -74,7 +78,8 @@ int ipc_endpoint_send(capability_table_t* table, uint32_t send_cap, const void* 
     if (ep->has_msg != 0U) {
         kthread_t* cur = sched_current_thread();
         if (cur) {
-            cur->state = THREAD_STATE_BLOCKED;
+            sched_wait_queue_enqueue(&ep->senders, cur);
+            sched_block();
         }
         return IPC_ERR_WOULD_BLOCK;
     }
@@ -85,6 +90,12 @@ int ipc_endpoint_send(capability_table_t* table, uint32_t send_cap, const void* 
     }
     ep->msg.msg_len = payload_len;
     ep->has_msg = 1U;
+
+    kthread_t* recv = sched_wait_queue_dequeue(&ep->receivers);
+    if (recv) {
+        sched_wakeup(recv);
+    }
+
     return IPC_OK;
 }
 
@@ -106,7 +117,8 @@ int ipc_endpoint_receive(capability_table_t* table, uint32_t recv_cap, void* out
     if (ep->has_msg == 0U) {
         kthread_t* cur = sched_current_thread();
         if (cur) {
-            cur->state = THREAD_STATE_BLOCKED;
+            sched_wait_queue_enqueue(&ep->receivers, cur);
+            sched_block();
         }
         return IPC_ERR_WOULD_BLOCK;
     }
@@ -124,9 +136,9 @@ int ipc_endpoint_receive(capability_table_t* table, uint32_t recv_cap, void* out
     ep->msg.msg_len = 0U;
     ep->has_msg = 0U;
 
-    kthread_t* cur = sched_current_thread();
-    if (cur && cur->state == THREAD_STATE_BLOCKED) {
-        cur->state = THREAD_STATE_READY;
+    kthread_t* sender = sched_wait_queue_dequeue(&ep->senders);
+    if (sender) {
+        sched_wakeup(sender);
     }
 
     return IPC_OK;

@@ -546,6 +546,52 @@ static void sched_switch_to(kthread_t *next, uint32_t core_id) {
   }
 }
 
+void sched_wait_queue_init(wait_queue_t* queue) {
+  if (queue) {
+    queue->head = NULL;
+    queue->tail = NULL;
+  }
+}
+
+void sched_wait_queue_enqueue(wait_queue_t* queue, kthread_t* thread) {
+  if (!queue || !thread) {
+    return;
+  }
+
+  thread->next_waiter = NULL;
+
+  if (!queue->tail) {
+    queue->head = thread;
+    queue->tail = thread;
+  } else {
+    queue->tail->next_waiter = thread;
+    queue->tail = thread;
+  }
+}
+
+kthread_t* sched_wait_queue_dequeue(wait_queue_t* queue) {
+  if (!queue || !queue->head) {
+    return NULL;
+  }
+
+  kthread_t* thread = queue->head;
+
+  queue->head = thread->next_waiter;
+  if (!queue->head) {
+    queue->tail = NULL;
+  }
+
+  thread->next_waiter = NULL;
+  return thread;
+}
+
+void sched_block(void) {
+  kthread_t *current = sched_current_thread();
+  if (current) {
+    current->state = THREAD_STATE_BLOCKED;
+  }
+}
+
 void sched_reschedule(void) {
   uint32_t core = sched_clamp_core(hal_cpu_get_id());
   sched_process_pending_ai_suggestions();
