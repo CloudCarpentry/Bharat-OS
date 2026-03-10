@@ -169,6 +169,12 @@ set(KERNEL_SRCS
     src/trap/trap.c
     src/multicore.c
     src/fs/vfs.c
+    src/fs/mount.c
+    src/fs/file.c
+    src/fs/namespace.c
+    src/fs/path.c
+    src/fs/block.c
+    src/fs/object_store.c
     src/fs/blob_backend.c
     src/apps/hello_world.c
     src/apps/kernel_tester.c
