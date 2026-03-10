@@ -20,7 +20,7 @@ int bharat_addr_token_validate(const bharat_addr_token_t* token,
 }
 
 // Stubs for linking
-int mm_pmm_init(void* memory_map, uint32_t map_size) { return 0; }
+int mm_pmm_init(uint32_t magic, void *memory_map) { return 0; }
 void hal_tlb_flush(unsigned long long vaddr) { (void)vaddr; }
 void hal_send_ipi_payload(uint32_t target_core, uint64_t payload) { }
 
@@ -49,3 +49,4 @@ void ai_sched_collect_sample(ai_sched_context_t* ctx,
                              uint64_t cpu_time_consumed,
                              uint32_t run_queue_depth,
                              uint32_t context_switches) {}
+void ai_sched_init_context(ai_sched_context_t* ctx) { (void)ctx; }

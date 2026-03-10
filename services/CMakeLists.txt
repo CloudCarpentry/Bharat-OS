@@ -1,0 +1,8 @@
+cmake_minimum_required(VERSION 3.20)
+project(BharatOS_Services C ASM)
+
+add_subdirectory(process_manager)
+add_subdirectory(vm_manager)
+add_subdirectory(file_system)
+add_subdirectory(drivers)
+add_subdirectory(crypto)
