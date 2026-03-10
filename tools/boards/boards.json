@@ -30,7 +30,9 @@
       "granule": "4k",
       "pa_bits": 40,
       "has_iommu": false,
-      "quirks": ["coherent_dma"],
+      "quirks": [
+        "coherent_dma"
+      ],
       "machine": "virt",
       "cpu": "cortex-a72",
       "qemu_system": "qemu-system-aarch64",
@@ -54,7 +56,9 @@
       "granule": "4k",
       "pa_bits": 56,
       "has_iommu": false,
-      "quirks": ["svpbmt_optional"],
+      "quirks": [
+        "svpbmt_optional"
+      ],
       "machine": "virt",
       "cpu": "rv64",
       "qemu_system": "qemu-system-riscv64",
@@ -78,7 +82,10 @@
       "granule": "4k",
       "pa_bits": 56,
       "has_iommu": false,
-      "quirks": ["svpbmt_optional", "rtos_strict"],
+      "quirks": [
+        "svpbmt_optional",
+        "rtos_strict"
+      ],
       "machine": "virt",
       "cpu": "rv64",
       "qemu_system": "qemu-system-riscv64",
@@ -102,7 +109,10 @@
       "granule": "4k",
       "pa_bits": 40,
       "has_iommu": false,
-      "quirks": ["coherent_dma", "rtos_strict"],
+      "quirks": [
+        "coherent_dma",
+        "rtos_strict"
+      ],
       "machine": "virt",
       "cpu": "cortex-a72",
       "qemu_system": "qemu-system-aarch64",
@@ -118,6 +128,60 @@
       "flash_script_dir": "tools/boards/qemu-virt-arm64",
       "supports_flash": false,
       "memory_mb": 256,
+      "smp": 4
+    },
+    "shakti-e": {
+      "arch": "riscv64",
+      "mmu_mode": "sv39",
+      "granule": "4k",
+      "pa_bits": 56,
+      "has_iommu": false,
+      "quirks": [
+        "svpbmt_optional"
+      ],
+      "machine": "virt",
+      "cpu": "rv64",
+      "qemu_system": "qemu-system-riscv64",
+      "default_toolchain": "shakti-elf",
+      "toolchains": {
+        "gcc": "cmake/toolchains/riscv64-gcc.cmake",
+        "llvm": "cmake/toolchains/riscv64-llvm.cmake",
+        "shakti-elf": "cmake/toolchains/riscv64-shakti-elf.cmake"
+      },
+      "hardware_profile": "EDGE",
+      "tier": "LINUX_LIKE",
+      "boot_hw": "edge",
+      "payload_format": "kernel-elf",
+      "flash_script_dir": "tools/boards/qemu-virt-riscv64",
+      "supports_flash": false,
+      "memory_mb": 256,
+      "smp": 1
+    },
+    "shakti-c": {
+      "arch": "riscv64",
+      "mmu_mode": "sv39",
+      "granule": "4k",
+      "pa_bits": 56,
+      "has_iommu": false,
+      "quirks": [
+        "svpbmt_optional"
+      ],
+      "machine": "virt",
+      "cpu": "rv64",
+      "qemu_system": "qemu-system-riscv64",
+      "default_toolchain": "shakti-elf",
+      "toolchains": {
+        "gcc": "cmake/toolchains/riscv64-gcc.cmake",
+        "llvm": "cmake/toolchains/riscv64-llvm.cmake",
+        "shakti-elf": "cmake/toolchains/riscv64-shakti-elf.cmake"
+      },
+      "hardware_profile": "EDGE",
+      "tier": "LINUX_LIKE",
+      "boot_hw": "edge",
+      "payload_format": "kernel-elf",
+      "flash_script_dir": "tools/boards/qemu-virt-riscv64",
+      "supports_flash": false,
+      "memory_mb": 1024,
       "smp": 4
     }
   }
