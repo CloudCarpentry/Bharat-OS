@@ -204,6 +204,44 @@ Use this sequence to verify both scripts on a Windows 11 Pro workstation:
 
 ---
 
+### Validating Host-Side Tests (Windows & WSL/Linux)
+
+Bharat-OS includes a rich suite of host-side tests for core kernel logic, integration behavior, and hardware profiles. These tests execute natively on your host machine (Windows or Linux) bypassing the need for QEMU, making them extremely fast and useful for continuous integration. They utilize statically allocated memory to prevent MSVC stack overflow issues when running under Windows natively.
+
+**From Windows Native (PowerShell + MSVC/Clang):**
+```powershell
+# Configure and build the host-side test suite
+cmake --preset tests-host
+cmake --build --preset build-tests
+
+# Run all tests natively
+ctest --preset run-tests
+
+# Run specifically the full integration subsystem tests
+cd build-tests
+ctest -R test_integration_core_subsys -V
+
+# Run specifically the edge/embedded profile tests
+ctest -R test_profile_edge -V
+```
+
+**From WSL / Linux / macOS (Bash + GCC/Clang):**
+```bash
+# Configure and build the host-side test suite
+cmake --preset tests-host
+cmake --build --preset build-tests
+
+# Run all tests
+ctest --preset run-tests
+
+# Run specific profile tests with verbose output
+cd build-tests
+ctest -R test_integration_core_subsys -V
+ctest -R test_profile_edge -V
+```
+
+---
+
 ### Option C — CMake Presets (cross-arch)
 
 The repository includes `CMakePresets.json` for cross compilation and tests:
@@ -234,6 +272,10 @@ cmake --build --preset build-arm64-kernel
 cmake --preset tests-host
 cmake --build --preset build-tests
 ctest --preset run-tests
+
+# Host integration and profile tests
+ctest --preset run-tests -R test_integration_core_subsys
+ctest --preset run-tests -R test_profile_edge
 ```
 
 ### Option B — Raw CMake commands
