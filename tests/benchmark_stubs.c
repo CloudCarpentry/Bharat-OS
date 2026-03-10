@@ -1,5 +1,6 @@
 #include "../kernel/include/sched.h"
 #include "../kernel/include/slab.h"
+#include "../kernel/include/arch/arch_ext_state.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -179,6 +180,23 @@ __attribute__((weak)) void arch_prepare_initial_context(cpu_context_t* ctx, void
 __attribute__((weak)) void arch_context_switch(cpu_context_t* prev, cpu_context_t* next) {
     (void)prev;
     (void)next;
+}
+
+__attribute__((weak)) int arch_ext_state_thread_init(kthread_t *t) {
+    (void)t;
+    return 0;
+}
+
+__attribute__((weak)) void arch_ext_state_thread_destroy(kthread_t *t) {
+    (void)t;
+}
+
+__attribute__((weak)) void arch_ext_state_save(kthread_t *t) {
+    (void)t;
+}
+
+__attribute__((weak)) void arch_ext_state_restore(kthread_t *t) {
+    (void)t;
 }
 
 __attribute__((weak)) void sched_thread_exit_trampoline(void) {

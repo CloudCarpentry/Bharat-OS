@@ -186,8 +186,7 @@ int ai_heuristic_config_store(const ai_heuristic_config_t* cfg) {
 }
 
 // Hypothetical boot-time calibration
-uint32_t g_silicon_alu_ipc = 0;
-uint32_t g_silicon_mem_ipc = 0;
+// Already declared static at the top
 
 // Ensure the chasing array avoids global optimization
 static volatile uint32_t g_chase[4096];

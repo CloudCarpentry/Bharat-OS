@@ -82,16 +82,16 @@ endif()
 if(ARCH STREQUAL "x86_64")
     set(BOOT_SRC src/boot/x86_64/boot.S)
     set(ARCH_HAL src/hal/x86_64/hal_cpu.c src/hal/x86_64/trap_entry.S src/hal/x86_64/vmm.c)
-    set(ARCH_CONTEXT_SWITCH src/arch/x86_64/context_switch.c)
+    set(ARCH_CONTEXT_SWITCH src/arch/x86_64/context_switch.c src/arch/x86_64/context_switch.S)
 elseif(ARCH STREQUAL "riscv64")
     set(BOOT_SRC src/boot/riscv64/boot.S)
     set(ARCH_HAL src/hal/riscv/hal_cpu.c src/hal/riscv/trap_entry.S src/hal/riscv/vmm.c)
     set(ARCH_HAL_EXTRA src/hal/riscv/shakti_bsp.c)
-    set(ARCH_CONTEXT_SWITCH src/arch/riscv64/context_switch.c src/arch/shakti/context_switch.c)
+    set(ARCH_CONTEXT_SWITCH src/arch/riscv64/context_switch.c src/arch/riscv64/context_switch.S)
 elseif(ARCH STREQUAL "arm64")
     set(BOOT_SRC src/boot/arm64/boot.S)
     set(ARCH_HAL src/hal/arm64/hal_cpu.c src/hal/arm64/trap_entry.S src/hal/arm64/vmm.c)
-    set(ARCH_CONTEXT_SWITCH src/arch/arm64/context_switch.c)
+    set(ARCH_CONTEXT_SWITCH src/arch/arm64/context_switch.c src/arch/arm64/context_switch.S)
 endif()
 
 if(ARCH STREQUAL "x86_64")
@@ -133,10 +133,13 @@ set(KERNEL_SRCS
     ${ARCH_HAL}
     ${ARCH_HAL_EXTRA}
     ${ARCH_CONTEXT_SWITCH}
+    src/arch/${ARCH}/cpu_caps.c
+    src/arch/${ARCH}/ext_state.c
     src/hal/mmu_init.c
     src/mm/pmm.c
     src/mm/early_alloc.c
     src/mm/slab.c
+    src/mm/kmem_aligned.c
     src/mm/vmm.c
     src/mm/numa.c
     src/mm/zswap.c

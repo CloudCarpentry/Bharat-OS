@@ -44,9 +44,3 @@ int main(void) {
     return 0;
 }
 
-void ai_sched_collect_sample(ai_sched_context_t* ctx,
-                             uint64_t time_slice_ms,
-                             uint64_t cpu_time_consumed,
-                             uint32_t run_queue_depth,
-                             uint32_t context_switches) {}
-void ai_sched_init_context(ai_sched_context_t* ctx) { (void)ctx; }

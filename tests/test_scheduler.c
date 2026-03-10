@@ -73,22 +73,6 @@ int hal_vmm_update_mapping(phys_addr_t root_table, virt_addr_t vaddr,
 }
 void tlb_shootdown(virt_addr_t vaddr) { (void)vaddr; }
 
-kcache_t *kcache_create(const char *name, size_t size) {
-  kcache_t *c = malloc(sizeof(kcache_t));
-  if (c) {
-    c->object_size = size;
-    c->name = name;
-  }
-  return c;
-}
-void *kcache_alloc(kcache_t *cache) {
-  return cache ? malloc(cache->object_size) : NULL;
-}
-void kcache_free(kcache_t *cache, void *obj) {
-  (void)cache;
-  free(obj);
-}
-
 uint32_t hal_cpu_get_id(void) { return g_mock_core_id; }
 void hal_cpu_halt(void) {}
 
