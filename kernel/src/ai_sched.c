@@ -42,7 +42,16 @@ void ai_sched_update_telemetry(ai_sched_context_t* ctx, uint64_t cycles_delta, u
     if (inst_delta != 0U) {
         // Use integer arithmetic (CPI * 100) instead of floats for bare-metal portability
         // to avoid soft-float libgcc dependencies.
-        ctx->current_cpi = (uint32_t)((cycles_delta * 100U) / inst_delta);
+
+        // To avoid both 64-bit overflow and truncation/precision loss,
+        // we use the whole and fractional parts algorithm:
+        // CPI * 100 = (cycles / inst) * 100 + ((cycles % inst) * 100) / inst
+
+        uint64_t whole_cpi = cycles_delta / inst_delta;
+        uint64_t remainder = cycles_delta % inst_delta;
+
+        uint64_t cpi_times_100 = (whole_cpi * 100U) + ((remainder * 100U) / inst_delta);
+        ctx->current_cpi = (uint32_t)cpi_times_100;
     } else {
         ctx->current_cpi = 0;
     }
@@ -179,35 +188,89 @@ struct kthread* ai_sched_select_task(struct kthread *run_queue) {
     return selected;
 }
 
-// Selects task with highest weight and decays others (simple learning)
-learned_task_t* select_and_update_queue(learned_task_t **head) {
-    if (*head == NULL) return NULL;
-
-    learned_task_t *best = *head;
-    learned_task_t *curr = *head;
-
-    // Find task with highest dynamic weight
-    while (curr != NULL) {
-        if (curr->dynamic_weight > best->dynamic_weight) {
-            best = curr;
+// Min-Heap operations for O(1) minimum selection and O(log N) insertion
+static void heap_sift_up(learned_task_heap_t *heap, uint32_t index) {
+    while (index > 0) {
+        uint32_t parent = (index - 1) / 2;
+        if (heap->nodes[parent]->vruntime <= heap->nodes[index]->vruntime) {
+            break;
         }
-        curr = curr->next;
+        learned_task_t *temp = heap->nodes[parent];
+        heap->nodes[parent] = heap->nodes[index];
+        heap->nodes[index] = temp;
+        index = parent;
+    }
+}
+
+static void heap_sift_down(learned_task_heap_t *heap, uint32_t index) {
+    while (1) {
+        uint32_t left = 2 * index + 1;
+        uint32_t right = 2 * index + 2;
+        uint32_t smallest = index;
+
+        if (left < heap->size && heap->nodes[left]->vruntime < heap->nodes[smallest]->vruntime) {
+            smallest = left;
+        }
+        if (right < heap->size && heap->nodes[right]->vruntime < heap->nodes[smallest]->vruntime) {
+            smallest = right;
+        }
+
+        if (smallest == index) {
+            break;
+        }
+
+        learned_task_t *temp = heap->nodes[index];
+        heap->nodes[index] = heap->nodes[smallest];
+        heap->nodes[smallest] = temp;
+        index = smallest;
+    }
+}
+
+void heap_insert(learned_task_heap_t *heap, learned_task_t *task) {
+    if (heap->size >= BHARAT_MAX_TASKS) {
+        return; // Heap full
+    }
+    heap->nodes[heap->size] = task;
+    heap_sift_up(heap, heap->size);
+    heap->size++;
+}
+
+learned_task_t* heap_extract_min(learned_task_heap_t *heap) {
+    if (heap->size == 0) {
+        return NULL;
     }
 
-    // Learning Update: Reward the selected task, slightly boost others to prevent starvation
-    curr = *head;
-    while (curr != NULL) {
-        if (curr == best) {
-            curr->dynamic_weight -= 1; // Penalty for being served (Fairness)
-        } else {
-            /*
-             * Note: Originally this used floats (+= 0.1f).
-             * Replaced with a small integer increment to avoid soft-float libgcc dependencies.
-             */
-            curr->dynamic_weight += 1; // "Learning" boost for waiting
-        }
-        curr = curr->next;
+    learned_task_t *min_task = heap->nodes[0];
+    heap->nodes[0] = heap->nodes[heap->size - 1];
+    heap->size--;
+
+    if (heap->size > 0) {
+        heap_sift_down(heap, 0);
     }
 
+    return min_task;
+}
+
+// Selects task with lowest vruntime (O(1)) and updates the previously running task
+learned_task_t* select_and_update_queue(learned_task_heap_t *heap, learned_task_t *prev_task, uint64_t execution_time, uint64_t system_weight) {
+    if (heap == NULL) return NULL;
+
+    // 1. O(1) Virtual Timeline Update for the previously executed task.
+    // In CFS, vruntime advances by (actual_execution_time * system_weight) / task_weight
+    if (prev_task != NULL) {
+        uint64_t weight = (prev_task->base_weight > 0) ? (uint64_t)prev_task->base_weight : 1ULL;
+        prev_task->vruntime += (execution_time * system_weight) / weight;
+
+        // Re-insert the previously running task back into the heap if it's still runnable
+        // (assuming the caller handles actual state transitions, we simply re-enqueue it here)
+        heap_insert(heap, prev_task);
+    }
+
+    if (heap->size == 0) return NULL;
+
+    // 2. Select the task with the lowest vruntime
+    learned_task_t *best = heap_extract_min(heap);
+
+    // The selected task is now "running" and is intentionally NOT put back in the heap yet.
     return best;
 }
