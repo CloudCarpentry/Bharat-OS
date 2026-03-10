@@ -18,12 +18,15 @@
 typedef struct {
     uint64_t container_id;
     uint32_t flags;
+    bharat_iommu_domain_t* domain;
+    uint32_t group_refcount;
 } bharat_vfio_container_t;
 
 typedef struct {
     uint32_t group_id;
     uint32_t flags;
     bharat_iommu_domain_t* domain;
+    bharat_iommu_group_t* iommu_group;
 } bharat_vfio_group_t;
 
 typedef struct {

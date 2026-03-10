@@ -231,3 +231,7 @@ add_executable(test_scheduler_hello_world test_scheduler_hello_world.c benchmark
 target_include_directories(test_scheduler_hello_world PRIVATE ../kernel/include)
 target_compile_definitions(test_scheduler_hello_world PRIVATE TESTING=1)
 add_test(NAME test_scheduler_hello_world COMMAND test_scheduler_hello_world)
+
+add_executable(test_dma_iommu test_dma_iommu.c ../kernel/src/security/isolation.c ../kernel/src/security/vfio.c ../kernel/src/security/audit.c)
+target_include_directories(test_dma_iommu PRIVATE ../kernel/include)
+add_test(NAME test_dma_iommu COMMAND test_dma_iommu)
