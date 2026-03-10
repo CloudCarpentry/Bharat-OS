@@ -1,75 +1,68 @@
-# Scheduler and Threading Baseline (v1)
+# Scheduler and Threading Baseline (v2)
 
-This document captures the current baseline implementation for scheduler/threading in the kernel.
+This document captures the current scheduler/threading implementation status in the kernel.
 
-```mermaid
-flowchart TD
-    subgraph ThreadLifecycle["Thread Lifecycle"]
-        direction LR
-        Create[thread_create] --> Ready[Ready Queue]
-        Ready --> Running[Running]
-        Running --> Blocked[Blocked/Sleep]
-        Blocked --> Ready
-        Running --> Destroy[thread_destroy]
-    end
+## Implemented in v2
 
-    subgraph SchedulerTick["Scheduler Tick (sched_on_timer_tick)"]
-        Tick[Timer Tick] --> Telemetry[Update Telemetry]
-        Telemetry --> AI[Process AI Suggestions]
-        AI --> Dispatch[Context Switch]
-        Dispatch --> Running
-    end
-
-    subgraph AIActions["AI Scheduler Actions"]
-        AI --> Migrate[Migrate Task]
-        AI --> Priority[Adjust Priority]
-        AI --> Throttle[Throttle Core]
-    end
-```
-
-## Implemented in this baseline
-
-- Static in-kernel process/thread registries.
-- Thread control block (TCB) metadata including:
-  - architectural context pointer,
-  - priority/base priority,
+- Architecture-neutral Thread Control Block (`kthread`) in `kernel/include/sched.h` with:
+  - architecture context pointer,
+  - base + effective priority,
   - scheduling state,
-  - capability list hook pointer,
-  - time-slice accounting,
-  - AI scheduler context pointer (`ai_sched_context_t*`).
-- Timer-tick driven dispatch (`sched_on_timer_tick`) with:
-  - bounded pending AI suggestion queue processing,
-  - per-thread telemetry sampling updates,
-  - sleep/wakeup state transitions.
-- Scheduler action handlers for AI suggestions:
-  - migrate task (`sched_migrate_task`),
-  - adjust priority (`sched_adjust_priority`),
-  - throttle core (`sched_throttle_core`).
-- Scheduler policy switch interface (`sched_set_policy`) with baseline RR/priority and EDF hooks.
-- Thread lifecycle operations:
-  - `thread_create`, `thread_destroy`,
-  - syscall-style wrappers `sched_sys_thread_create`, `sched_sys_thread_destroy`.
-- Context-switch hook integration via `fv_secure_context_switch` when available.
+  - capability list hook,
+  - time-slice and context-switch accounting,
+  - AI scheduler context,
+  - NUMA hint + CPU affinity mask.
+- Per-CPU scheduler state in `kernel/src/sched.c`:
+  - per-core priority run queues,
+  - per-core sleeping and blocked lists,
+  - per-core idle thread,
+  - per-core tick/context-switch counters.
+- Thread lifecycle syscall-style entry points:
+  - `sched_sys_thread_create`,
+  - `sched_sys_thread_destroy`,
+  - `sched_sys_sleep`,
+  - `sched_sys_set_priority`,
+  - `sched_sys_set_affinity`.
+- Scheduling behavior:
+  - priority-based round-robin dispatch,
+  - timer tick preemption,
+  - sleep/wakeup bookkeeping by deadline,
+  - CPU affinity-aware migration,
+  - basic work-stealing/load balancing pass.
+- Priority inheritance hooks:
+  - `sched_inherit_priority`,
+  - `sched_restore_priority`.
+- AI scheduling hook path:
+  - bounded pending AI suggestion queue,
+  - suggestion actions for reprioritize/migrate/throttle/kill,
+  - telemetry collection during tick handling.
+- Portable scheduler API surface:
+  - `sched_current`, `sched_enqueue`, `sched_reschedule`, and existing thread APIs.
 
-## Profile and architecture pluggability
+## Architecture-specific context switching hooks
 
-The AI telemetry path is intentionally pluggable:
+- Common interface in `kernel/include/arch/context_switch.h`:
+  - `arch_context_switch(cpu_context_t* prev, cpu_context_t* next)`
+  - `arch_prepare_initial_context(cpu_context_t* ctx, void (*entry)(void), uint64_t stack_top)`
+- Per-architecture implementations are now split under:
+  - `kernel/src/arch/x86_64/context_switch.c`
+  - `kernel/src/arch/arm64/context_switch.c`
+  - `kernel/src/arch/riscv64/context_switch.c`
+  - `kernel/src/arch/shakti/context_switch.c`
 
-- Scheduler core calls profile/arch-neutral collection helpers in `advanced/ai_sched.h`.
-- Architecture-specific PMCs are optional via `ai_sched_arch_sample_pmc(...)` override.
-- If PMCs are unavailable, telemetry uses deterministic approximation from:
-  - consumed time-slice,
-  - run queue depth,
-  - context-switch frequency.
-- Profile-specific scaling remains bounded at compile time (`RTOS`, `EDGE`, `DESKTOP`).
+These files provide a consistent call signature so scheduler code remains architecture-neutral.
 
-This keeps scheduler mechanism portable across `x86_64`, `riscv64`, and `arm64` while allowing architecture-specific acceleration.
+## Test and host validation
 
-This pluggable design is formalized by ADR-008 (`docs/decisions/ADR-008-ai-scheduler-plugin-contract.md`), which keeps scheduler mechanism portable and testable while permitting architecture/profile overrides.
+- Scheduler lifecycle, priority, sleep/wakeup, and affinity tests are covered by `tests/test_scheduler.c`.
+- Host-executable architecture matrix validation script:
+  - `tools/ci/run_scheduler_arch_matrix.sh`
+  - builds/runs scheduler-oriented tests,
+  - compiles each architecture context-switch source file from host.
 
-## Deferred for production
+## Remaining hardening items for production
 
-- Real per-core run queues and SMP load balancing.
-- Full architecture register save/restore and user-mode transitions.
-- Priority donation across lock ownership graph.
-- Full EDF/RMS admission control and deadline miss accounting.
+- Replace context-switch C placeholders with full save/restore assembly for integer/FPU/vector state.
+- Complete EDF/RMS admission/deadline accounting paths.
+- Add lock-graph-aware transitive priority donation for nested mutex ownership chains.
+- Expand NUMA-aware migration heuristics with topology distance/cost tables.
