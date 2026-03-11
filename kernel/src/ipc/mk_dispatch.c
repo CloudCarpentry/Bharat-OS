@@ -51,10 +51,46 @@ int mk_dispatch_message(mk_channel_t *channel, urpc_msg_t *msg) {
     }
 
     // 6. Action / routing
-    if (msg->msg_type == MK_MSG_TYPE_AI_SUGGESTION) {
-        /* Scheduler control-plane hook placeholder. */
-    } else {
-        sched_notify_ipc_ready(local_core, msg->msg_type);
+    switch (msg->msg_type) {
+        case MK_MSG_TYPE_ACK:
+        case MK_MSG_TYPE_NACK:
+            // Route to transaction table for ACK/NACK completion
+            break;
+
+        case MK_MSG_FRAME_ALLOC_REQ:
+        case MK_MSG_FRAME_FREE_REQ:
+        case MK_MSG_FRAME_MAP_REQ:
+        case MK_MSG_FRAME_UNMAP_REQ:
+            // Route to memory manager ownership RPC handlers
+            break;
+
+        case MK_MSG_PROC_CREATE_REQ:
+        case MK_MSG_PROC_DESTROY_REQ:
+        case MK_MSG_PROC_SIGNAL_REQ:
+            // Route to process manager ownership RPC handlers
+            break;
+
+        case MK_MSG_ASPACE_CREATE_REQ:
+        case MK_MSG_ASPACE_MAP_REQ:
+        case MK_MSG_ASPACE_PROTECT_REQ:
+        case MK_MSG_ASPACE_UNMAP_REQ:
+            // Route to address space manager ownership RPC handlers
+            break;
+
+        case MK_MSG_CAP_GRANT_REQ:
+        case MK_MSG_CAP_REVOKE_REQ:
+        case MK_MSG_CAP_DERIVE_REQ:
+        case MK_MSG_CAP_LOOKUP_REQ:
+            // Route to capability manager ownership RPC handlers
+            break;
+
+        case MK_MSG_TYPE_AI_SUGGESTION:
+            /* Scheduler control-plane hook placeholder. */
+            break;
+
+        default:
+            sched_notify_ipc_ready(local_core, msg->msg_type);
+            break;
     }
 
     return 0;

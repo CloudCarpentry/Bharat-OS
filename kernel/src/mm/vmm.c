@@ -168,6 +168,8 @@ address_space_t* mm_create_address_space(void) {
     }
 
     as->root_table = root;
+    as->owner_core_id = hal_cpu_get_id(); // The core creating it initially owns it
+    as->object_id = (uint64_t)(uintptr_t)as; // Simple object ID for now
     return as;
 }
 
