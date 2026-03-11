@@ -27,6 +27,7 @@ struct FV_BOUNDED(0, 0xFFFFFFFF) capability_token_t {
     uint32_t capability_id;
     uint32_t target_object_id;
     uint32_t rights_mask;
+    uint32_t owner_core_id;
 };
 
 typedef struct capability_token_t capability_token_t;

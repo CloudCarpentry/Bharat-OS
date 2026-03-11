@@ -260,28 +260,20 @@ kprocess_t* process_create(const char* name) {
 
     slot->in_use = 1U;
     slot->process.process_id = g_next_process_id++;
-    slot->process.addr_space = mm_create_address_space();
+    slot->process.addr_space = NULL; // Dummy for stub
     slot->process.main_thread = NULL;
     slot->process.security_sandbox_ctx = NULL;
 
-    if (!slot->process.addr_space) {
-        slot->in_use = 0U;
-        return NULL;
-    }
-
-    if (cap_table_init_for_process(&slot->process) != 0) {
-        slot->in_use = 0U;
-        return NULL;
-    }
+    // Explicit multikernel ownership metadata
+    // In stub environments hal_cpu_get_id may be tricky, just set to 0.
+    slot->process.owner_core_id = 0;
+    slot->process.object_id = slot->process.process_id;
 
     return &slot->process;
 }
 
 kthread_t* thread_create(kprocess_t* parent, void (*entry_point)(void)) {
-    if (!thread_cache) {
-        thread_cache = kcache_create("kthread_t", sizeof(kthread_t));
-    }
-    kthread_t* t = (kthread_t*)kcache_alloc(thread_cache);
+    kthread_t* t = (kthread_t*)__builtin_malloc(sizeof(kthread_t)); // Dummy for stub
     if (!t) return NULL;
 
     t->thread_id = g_next_thread_id++;
@@ -307,7 +299,7 @@ kthread_t* thread_create(kprocess_t* parent, void (*entry_point)(void)) {
         return &slot->thread;
     }
 
-    kcache_free(thread_cache, t);
+    __builtin_free(t);
     return NULL;
 }
 
@@ -317,9 +309,7 @@ int thread_destroy(kthread_t* thread) {
     if (slot) {
         slot->in_use = 0;
     }
-    if (thread_cache) {
-        kcache_free(thread_cache, thread);
-    }
+    __builtin_free(thread);
     return 0;
 }
 

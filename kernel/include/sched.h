@@ -116,6 +116,10 @@ typedef struct {
 
     // Capability-based security context would be linked here
     void* security_sandbox_ctx;
+
+    // Ownership tracking
+    uint32_t owner_core_id;
+    uint64_t object_id;
 } kprocess_t;
 
 // Scheduler Core

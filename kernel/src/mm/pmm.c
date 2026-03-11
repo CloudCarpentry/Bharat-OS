@@ -344,6 +344,8 @@ static void pmm_add_region(phys_addr_t base, size_t size) {
     p->numa_node = node_id;
     p->flags = PAGE_FLAG_RESERVED;
     p->order = -1;
+    p->owner_core_id = hal_cpu_get_id(); // Local core initially owns memory
+    p->object_id = 0;
     list_init(&p->list);
   }
 
