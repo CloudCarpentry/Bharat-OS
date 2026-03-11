@@ -1,14 +1,12 @@
-#ifndef BHARAT_HAL_INTERRUPT_H
-#define BHARAT_HAL_INTERRUPT_H
+#ifndef BHARAT_HAL_OLD_INTERRUPT_H
+#define BHARAT_HAL_OLD_INTERRUPT_H
 
-#include <stdint.h>
+#include "hal_irq.h"
 
-typedef void (*hal_irq_handler_t)(void* ctx);
+// Transitional wrapper for old hal.h
+int hal_interrupt_controller_init(void);
+int hal_interrupt_route(uint32_t irq, uint32_t target_core);
+uint32_t hal_interrupt_acknowledge(void);
+void hal_interrupt_end_of_interrupt(uint32_t irq);
 
-int hal_interrupt_register(uint32_t irq, hal_irq_handler_t handler, void* ctx);
-int hal_interrupt_unregister(uint32_t irq);
-void hal_interrupt_dispatch(uint32_t irq);
-uint64_t hal_interrupt_get_dispatch_count(uint32_t irq);
-int hal_interrupt_is_registered(uint32_t irq);
-
-#endif // BHARAT_HAL_INTERRUPT_H
+#endif // BHARAT_HAL_OLD_INTERRUPT_H

@@ -1,11 +1,9 @@
-#ifndef BHARAT_HAL_TIMER_H
-#define BHARAT_HAL_TIMER_H
+#ifndef BHARAT_HAL_OLD_TIMER_H
+#define BHARAT_HAL_OLD_TIMER_H
 
-#include <stdint.h>
+#include "hal_timer.h"
 
-int hal_timer_init(uint32_t tick_hz);
-int hal_timer_set_periodic(uint32_t tick_hz);
-uint64_t hal_timer_monotonic_ticks(void);
-void hal_timer_tick(void);
+// Transitional wrapper for old hal.h
+int hal_timer_source_init(uint32_t tick_hz);
 
-#endif // BHARAT_HAL_TIMER_H
+#endif // BHARAT_HAL_OLD_TIMER_H
