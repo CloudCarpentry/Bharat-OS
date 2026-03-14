@@ -11,7 +11,7 @@ include_directories(include)
 include_directories(include/generated)
 
 # ── Configuration Header ────────────────────────────────────────────────────
-# These variables are normally set in the root CMakeLists.txt. 
+# These variables are normally set in the root CMakeLists.txt.
 # For kernel-only builds, we provide defaults if not set.
 if(NOT DEFINED BHARAT_ARCH_X86)
     set(BHARAT_ARCH_X86 1)
@@ -125,10 +125,7 @@ set(KERNEL_SRCS
     src/subsystem/profile.c
     src/arch/capabilities.c
     src/profile/${KERNEL_PROFILE_LOWER}/profile.c
-    $<$<STREQUAL:${ARCH},x86_64>:src/board/qemu-virt-x86_64/board.c>
-    $<$<STREQUAL:${ARCH},arm64>:src/board/bcm2711-rpi4/board.c>
-    $<$<AND:$<STREQUAL:${ARCH},riscv64>,$<STREQUAL:${BHARAT_RISCV_SOC_PROFILE},qemu-virt>>:src/board/qemu-virt-riscv64/board.c>
-    $<$<AND:$<STREQUAL:${ARCH},riscv64>,$<NOT:$<STREQUAL:${BHARAT_RISCV_SOC_PROFILE},qemu-virt>>>:src/board/shakti-ref/board.c>
+    src/board/qemu-virt-${ARCH}/board.c
     src/ai_kernel_bridge.c
     src/ai_sched.c
     src/panic.c
