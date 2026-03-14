@@ -1,5 +1,5 @@
 #include "trace/trace.h"
-#include "hal/timer.h"
+#include "hal/hal_timer.h"
 #include "hal/serial.h"
 
 #define TRACE_BUFFER_SIZE 1024

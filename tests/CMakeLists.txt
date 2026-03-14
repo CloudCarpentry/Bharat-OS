@@ -34,9 +34,6 @@ add_executable(test_hal_interrupts test_hal_interrupts.c ../kernel/src/hal/inter
 target_include_directories(test_hal_interrupts PRIVATE ../kernel/include)
 add_test(NAME test_hal_interrupts COMMAND test_hal_interrupts)
 
-add_executable(test_timer_common test_timer_common.c ../kernel/src/hal/timer_common.c)
-target_include_directories(test_timer_common PRIVATE ../kernel/include)
-add_test(NAME test_timer_common COMMAND test_timer_common)
 
 add_executable(test_urpc_ring test_urpc_ring.c benchmark_stubs.c ../kernel/src/ipc/multikernel.c ../kernel/src/ipc/mk_dispatch.c)
 add_executable(test_ipc_async_timeout test_ipc_async_timeout.c ../kernel/src/ipc/async_ipc.c ../kernel/src/ipc/ipc_timeout.c)
@@ -89,7 +86,7 @@ target_include_directories(test_tier_a_integration PRIVATE ../kernel/include ../
 target_compile_definitions(test_tier_a_integration PRIVATE TESTING=1)
 add_test(NAME test_tier_a_integration COMMAND test_tier_a_integration)
 
-add_executable(test_riscv_shakti_bsp test_riscv_shakti_bsp.c ../kernel/src/hal/riscv/shakti_bsp.c)
+add_executable(test_riscv_shakti_bsp test_riscv_shakti_bsp.c ../kernel/src/hal/riscv/shakti_bsp.c ../kernel/src/hal/common/fdt_parser.c)
 target_include_directories(test_riscv_shakti_bsp PRIVATE ../kernel/include)
 add_test(NAME test_riscv_shakti_bsp COMMAND test_riscv_shakti_bsp)
 
@@ -244,7 +241,7 @@ target_compile_definitions(test_bench_sched PRIVATE TESTING=1)
 add_test(NAME test_bench_sched COMMAND test_bench_sched)
 
 
-add_executable(test_vfs_storage test_vfs_storage.c ../kernel/src/fs/vfs.c ../kernel/src/fs/blob_backend.c)
+add_executable(test_vfs_storage test_vfs_storage.c ../kernel/src/fs/vfs.c ../kernel/src/fs/blob_backend.c ../kernel/src/fs/mount.c ../kernel/src/fs/file.c ../kernel/src/fs/path.c ../kernel/src/lib/string.c)
 target_include_directories(test_vfs_storage PRIVATE ../kernel/include)
 target_compile_definitions(test_vfs_storage PRIVATE TESTING=1)
 add_test(NAME test_vfs_storage COMMAND test_vfs_storage)
@@ -295,3 +292,7 @@ add_test(NAME test_scheduler_hello_world COMMAND test_scheduler_hello_world)
 add_executable(test_dma_iommu test_dma_iommu.c ../kernel/src/security/isolation.c ../kernel/src/security/vfio.c ../kernel/src/security/audit.c)
 target_include_directories(test_dma_iommu PRIVATE ../kernel/include)
 add_test(NAME test_dma_iommu COMMAND test_dma_iommu)
+
+add_executable(test_smp_hal test_smp_hal.c)
+target_include_directories(test_smp_hal PRIVATE ../kernel/include)
+add_test(NAME test_smp_hal COMMAND test_smp_hal)

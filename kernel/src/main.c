@@ -1,3 +1,5 @@
+#include "hal/hal_irq.h"
+#include "hal/hal_timer.h"
 #include "advanced/ai_kernel_bridge.h"
 #include "advanced/ai_sched.h"
 #include "advanced/algo_matrix.h"
@@ -360,14 +362,10 @@ void kernel_main(void) {
     }
 
     KPRINT("  [IRQ] Initializing interrupt controller\n");
-    if (hal_interrupt_controller_init() != 0) {
-      kernel_panic("interrupt controller initialization failed");
-    }
+    hal_irq_init_boot();
 
     KPRINT("  [TMR] Initializing timer source\n");
-    if (hal_timer_init(boot_policy->timer_tick_hz) != 0) {
-      kernel_panic("timer initialization failed");
-    }
+    hal_timer_init();
 
     KPRINT("  [DEV] Initializing device framework\n");
     if (device_framework_init() != 0 ||

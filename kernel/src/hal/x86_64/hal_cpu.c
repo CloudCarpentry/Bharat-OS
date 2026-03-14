@@ -1,3 +1,4 @@
+#include "hal/hal_timer.h"
 #include "advanced/ai_sched.h"
 #include "hal/hal.h"
 #include "secure_boot.h"

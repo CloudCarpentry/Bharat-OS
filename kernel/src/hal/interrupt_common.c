@@ -1,4 +1,4 @@
-#include "hal/interrupt.h"
+#include "hal/hal_irq.h"
 #include "kernel_safety.h"
 
 #include <stddef.h>
