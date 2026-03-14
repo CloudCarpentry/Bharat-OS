@@ -100,6 +100,27 @@ phys_addr_t hal_vmm_init_root(void) {
     return root_dir_phys;
 }
 
+static uint64_t hal_get_ttbr0(void) {
+    uint64_t ttbr0;
+    __asm__ volatile("mrs %0, ttbr0_el1" : "=r"(ttbr0));
+    return ttbr0 & ~0xFFFULL;
+}
+
+static uint64_t hal_get_ttbr1(void) {
+    uint64_t ttbr1;
+    __asm__ volatile("mrs %0, ttbr1_el1" : "=r"(ttbr1));
+    return ttbr1 & ~0xFFFULL;
+}
+
+static void hal_tlbi_page(virt_addr_t vaddr) {
+    __asm__ volatile(
+        "tlbi vale1is, %0\n"
+        "dsb ish\n"
+        "isb\n"
+        :: "r"(vaddr >> 12)
+    );
+}
+
 // ARM64 Translation Table Level 0 -> L1 -> L2 -> L3
 int hal_vmm_map_page(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
     if (root_table == 0U || paddr == 0U) {
@@ -122,7 +143,7 @@ int hal_vmm_map_page(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t padd
         if (!new_pud) return -2;
         pud_t* pud_ptr = (pud_t*)P2V(new_pud);
         for(int i=0; i<512; i++) pud_ptr->entries[i] = 0;
-        pgd->entries[pgd_idx] = new_pud | ARM64_MMU_DESCRIPTOR_TABLE;
+        pgd->entries[pgd_idx] = new_pud | ARM64_MMU_DESCRIPTOR_TABLE | ARM64_MMU_FLAG_VALID;
     }
 
     pud_t* pud = (pud_t*)P2V(pgd->entries[pgd_idx] & ~0xFFFULL);
@@ -132,7 +153,7 @@ int hal_vmm_map_page(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t padd
         if (!new_pmd) return -2;
         pmd_t* pmd_ptr = (pmd_t*)P2V(new_pmd);
         for(int i=0; i<512; i++) pmd_ptr->entries[i] = 0;
-        pud->entries[pud_idx] = new_pmd | ARM64_MMU_DESCRIPTOR_TABLE;
+        pud->entries[pud_idx] = new_pmd | ARM64_MMU_DESCRIPTOR_TABLE | ARM64_MMU_FLAG_VALID;
     }
 
     pmd_t* pmd = (pmd_t*)P2V(pud->entries[pud_idx] & ~0xFFFULL);
@@ -142,7 +163,7 @@ int hal_vmm_map_page(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t padd
         if (!new_pte) return -2;
         pt_t* pte_ptr = (pt_t*)P2V(new_pte);
         for(int i=0; i<512; i++) pte_ptr->entries[i] = 0;
-        pmd->entries[pmd_idx] = new_pte | ARM64_MMU_DESCRIPTOR_TABLE;
+        pmd->entries[pmd_idx] = new_pte | ARM64_MMU_DESCRIPTOR_TABLE | ARM64_MMU_FLAG_VALID;
     }
 
     pt_t* pte = (pt_t*)P2V(pmd->entries[pmd_idx] & ~0xFFFULL);
@@ -150,6 +171,10 @@ int hal_vmm_map_page(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t padd
     // Create final Page Descriptor for L3 mapping
     uint64_t mmu_flags = convert_flags_to_arm64(flags);
     pte->entries[pte_idx] = aligned_paddr | ARM64_MMU_DESCRIPTOR_PAGE | mmu_flags;
+
+    if (root_table == hal_get_ttbr0() || root_table == hal_get_ttbr1()) {
+        hal_tlbi_page(aligned_vaddr);
+    }
 
     return 0;
 }
@@ -363,6 +388,11 @@ int hal_vmm_unmap_page(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t* u
     }
 
     pte->entries[pte_idx] = 0;
+
+    if (root_table == hal_get_ttbr0() || root_table == hal_get_ttbr1()) {
+        hal_tlbi_page(aligned_vaddr);
+    }
+
     return 0;
 }
 
@@ -443,6 +473,10 @@ int hal_vmm_update_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_
 
     uint64_t mmu_flags = convert_flags_to_arm64(flags);
     pte->entries[pte_idx] = aligned_paddr | ARM64_MMU_DESCRIPTOR_PAGE | mmu_flags;
+
+    if (root_table == hal_get_ttbr0() || root_table == hal_get_ttbr1()) {
+        hal_tlbi_page(aligned_vaddr);
+    }
 
     return 0;
 }

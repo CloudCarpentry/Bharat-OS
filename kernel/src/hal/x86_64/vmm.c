@@ -32,6 +32,16 @@ phys_addr_t hal_vmm_init_root(void) {
     return root_dir_phys;
 }
 
+static uint64_t hal_get_cr3(void) {
+    uint64_t cr3;
+    __asm__ volatile("mov %%cr3, %0" : "=r"(cr3));
+    return cr3 & ~0xFFFULL;
+}
+
+static void hal_invlpg(virt_addr_t vaddr) {
+    __asm__ volatile("invlpg (%0)" :: "r"(vaddr) : "memory");
+}
+
 int hal_vmm_map_page(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
     if (root_table == 0U || paddr == 0U) {
         return -1;
@@ -51,7 +61,9 @@ int hal_vmm_map_page(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t padd
         if (!new_pdp) return -2;
         pdp_t* pdp_ptr = (pdp_t*)P2V(new_pdp);
         for(int i=0; i<512; i++) pdp_ptr->entries[i] = 0;
-        pml4->entries[pml4_idx] = new_pdp | VMM_FLAG_PRESENT | (flags & PAGE_USER) | CAP_RIGHT_WRITE;
+        // User flag MUST propagate down the page table hierarchy.
+        // Same for RW. We set them broadly here, leaf restricts it.
+        pml4->entries[pml4_idx] = new_pdp | VMM_FLAG_PRESENT | PAGE_USER | CAP_RIGHT_WRITE;
     }
 
     pdp_t* pdp = (pdp_t*)P2V(pml4->entries[pml4_idx] & ~0xFFFULL);
@@ -60,7 +72,7 @@ int hal_vmm_map_page(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t padd
         if (!new_pd) return -2;
         pd_t* pd_ptr = (pd_t*)P2V(new_pd);
         for(int i=0; i<512; i++) pd_ptr->entries[i] = 0;
-        pdp->entries[pdp_idx] = new_pd | VMM_FLAG_PRESENT | (flags & PAGE_USER) | CAP_RIGHT_WRITE;
+        pdp->entries[pdp_idx] = new_pd | VMM_FLAG_PRESENT | PAGE_USER | CAP_RIGHT_WRITE;
     }
 
     pd_t* pd = (pd_t*)P2V(pdp->entries[pdp_idx] & ~0xFFFULL);
@@ -69,7 +81,7 @@ int hal_vmm_map_page(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t padd
         if (!new_pt) return -2;
         pt_t* pt_ptr = (pt_t*)P2V(new_pt);
         for(int i=0; i<512; i++) pt_ptr->entries[i] = 0;
-        pd->entries[pd_idx] = new_pt | VMM_FLAG_PRESENT | (flags & PAGE_USER) | CAP_RIGHT_WRITE;
+        pd->entries[pd_idx] = new_pt | VMM_FLAG_PRESENT | PAGE_USER | CAP_RIGHT_WRITE;
     }
 
     pt_t* pt = (pt_t*)P2V(pd->entries[pd_idx] & ~0xFFFULL);
@@ -79,6 +91,10 @@ int hal_vmm_map_page(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t padd
         final_flags |= (1ULL << 63);
     }
     pt->entries[pt_idx] = aligned_paddr | VMM_FLAG_PRESENT | final_flags;
+
+    if (root_table == hal_get_cr3()) {
+        hal_invlpg(aligned_vaddr);
+    }
 
     return 0;
 }
@@ -108,6 +124,11 @@ int hal_vmm_unmap_page(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t* u
     }
 
     pt->entries[pt_idx] = 0;
+
+    if (root_table == hal_get_cr3()) {
+        hal_invlpg(aligned_vaddr);
+    }
+
     return 0;
 }
 
@@ -179,6 +200,11 @@ int hal_vmm_update_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_
         final_flags |= (1ULL << 63);
     }
     pt->entries[pt_idx] = aligned_paddr | VMM_FLAG_PRESENT | final_flags;
+
+    if (root_table == hal_get_cr3()) {
+        hal_invlpg(aligned_vaddr);
+    }
+
     return 0;
 }
 

@@ -12,8 +12,8 @@ static arch_ext_state_desc_t g_arch_ext_desc = {
 
 void arch_ext_state_boot_init(void) {
     // Stub: Calculate XSAVE area size based on capabilities
-    g_arch_ext_desc.size = 0; // Temporarily 0 until FPU asm is written
-    g_arch_ext_desc.align = 64; // XSAVE demands 64-byte alignment
+    g_arch_ext_desc.size = 512; // Sufficient size
+    g_arch_ext_desc.align = 16; // 16-byte alignment
     g_arch_ext_desc.flags = ARCH_EXT_NONE;
 }
 
