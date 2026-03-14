@@ -82,28 +82,5 @@ static void arm32_mpu_tlb_flush_asid(uint16_t asid) {
     (void)asid;
 }
 
-mmu_ops_t arm32_mpu_ops = {
-    .create_table     = arm32_mpu_create_table,
-    .destroy_table    = arm32_mpu_destroy_table,
-    .clone_kernel     = arm32_mpu_clone_kernel,
-    .map              = arm32_mpu_map,
-    .unmap            = arm32_mpu_unmap,
-    .protect          = arm32_mpu_protect,
-    .query            = arm32_mpu_query,
-    .activate         = arm32_mpu_activate,
-    .deactivate       = arm32_mpu_deactivate,
-    .tlb_flush_page   = arm32_mpu_tlb_flush_page,
-    .tlb_flush_all    = arm32_mpu_tlb_flush_all,
-    .tlb_flush_asid   = arm32_mpu_tlb_flush_asid,
-
-    .page_size        = 32, // MPU regions can be as small as 32 bytes on some Cortex-M
-    .huge_page_sizes  = NULL,
-    .levels           = 1, // Flat
-    .has_nx           = true,
-    .asid_bits        = 0,
-    .has_user_kernel_split = false,
-};
-
-void arm32_mmu_detect(mmu_ops_t *ops) {
-    (void)ops;
-}
+// MPU is no longer exposed as an MMU.
+// These mock functions are preserved for the MPU profile but detached from mmu_ops_t.

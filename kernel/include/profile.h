@@ -40,10 +40,26 @@ void profile_init(void);
 #endif
 
 typedef enum {
+    MEM_MODEL_MMU,
+    MEM_MODEL_MPU,
+    MEM_MODEL_FLAT
+} MemoryModel;
+
+typedef enum {
     PROFILE_TIER_A,
     PROFILE_TIER_B,
     PROFILE_TIER_C
 } SystemProfile;
+
+static inline MemoryModel get_memory_model(void) {
+#if defined(CONFIG_MEM_MODEL_MPU)
+    return MEM_MODEL_MPU;
+#elif defined(CONFIG_MEM_MODEL_FLAT)
+    return MEM_MODEL_FLAT;
+#else
+    return MEM_MODEL_MMU;
+#endif
+}
 
 static inline SystemProfile get_system_profile(void) {
 #if defined(Profile_RTOS)

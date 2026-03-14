@@ -7,6 +7,9 @@
 
 #define VMM_FLAG_PRESENT 0x1U
 
+// Use a reserved bit in the 32-bit flags return to pass down NX to map/update
+#define X86_FLAG_NX (1U << 31)
+
 typedef struct {
     uint64_t entries[512];
 } pt_t, pd_t, pdp_t, pml4_t;
@@ -70,7 +73,12 @@ int hal_vmm_map_page(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t padd
     }
 
     pt_t* pt = (pt_t*)P2V(pd->entries[pd_idx] & ~0xFFFULL);
-    pt->entries[pt_idx] = aligned_paddr | VMM_FLAG_PRESENT | flags;
+
+    uint64_t final_flags = flags & ~X86_FLAG_NX;
+    if (flags & X86_FLAG_NX) {
+        final_flags |= (1ULL << 63);
+    }
+    pt->entries[pt_idx] = aligned_paddr | VMM_FLAG_PRESENT | final_flags;
 
     return 0;
 }
@@ -166,7 +174,11 @@ int hal_vmm_update_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_
     if ((pd->entries[pd_idx] & VMM_FLAG_PRESENT) == 0) return -2;
     pt_t* pt = (pt_t*)P2V(pd->entries[pd_idx] & ~0xFFFULL);
 
-    pt->entries[pt_idx] = aligned_paddr | VMM_FLAG_PRESENT | flags;
+    uint64_t final_flags = flags & ~X86_FLAG_NX;
+    if (flags & X86_FLAG_NX) {
+        final_flags |= (1ULL << 63);
+    }
+    pt->entries[pt_idx] = aligned_paddr | VMM_FLAG_PRESENT | final_flags;
     return 0;
 }
 
@@ -178,11 +190,27 @@ static phys_addr_t x86_mmu_create_table(void) {
     return hal_vmm_init_root();
 }
 
+static void x86_mmu_destroy_table_recursive(phys_addr_t table, int level) {
+    if (!table) return;
+
+    if (level > 1) {
+        pt_t* pt = (pt_t*)P2V(table);
+        for (int i = 0; i < (level == 4 ? 256 : 512); i++) { // Skip kernel half on pml4
+            if (pt->entries[i] & VMM_FLAG_PRESENT) {
+                if ((level == 3 || level == 2) && (pt->entries[i] & (1ULL << 7))) {
+                    // Huge page, don't recurse
+                    continue;
+                }
+                x86_mmu_destroy_table_recursive(pt->entries[i] & ~0xFFFULL, level - 1);
+            }
+        }
+    }
+    mm_free_page(table);
+}
+
 static void x86_mmu_destroy_table(phys_addr_t root) {
-    // Basic stub - proper recursive table freeing requires walking the page tables.
-    // For now we just free the root if needed or leave unimplemented as per legacy behavior.
     if (root) {
-        mm_free_page(root);
+        x86_mmu_destroy_table_recursive(root, 4);
     }
 }
 
@@ -196,6 +224,9 @@ static uint32_t flags_to_x86(mmu_flags_t f) {
     if (f & MMU_WRITE)   pte |= CAP_RIGHT_WRITE;
     if (f & MMU_USER)    pte |= PAGE_USER;
     if (f & MMU_COW)     pte |= PAGE_COW;
+    if (!(f & MMU_EXEC)) pte |= X86_FLAG_NX; // Pass NX down via reserved bit
+    if (f & MMU_NOCACHE) pte |= (1ULL << 4);  // PCD bit
+    if (f & MMU_DEVICE)  pte |= (1ULL << 4) | (1ULL << 3); // PCD | PWT
     return pte;
 }
 

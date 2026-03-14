@@ -114,9 +114,26 @@ static phys_addr_t riscv_mmu_create_table(void) {
     return hal_vmm_init_root();
 }
 
+static void riscv_mmu_destroy_table_recursive(phys_addr_t table, int level) {
+    if (!table) return;
+
+    if (level > 0) {
+        pte_table_t* pt = (pte_table_t*)P2V(table);
+        for (int i = 0; i < (level == 2 ? 256 : 512); i++) { // Skip top half on l2 (Sv39)
+            if (pt->entries[i] & RISCV_PTE_V) {
+                if ((pt->entries[i] & (RISCV_PTE_R | RISCV_PTE_W | RISCV_PTE_X)) != 0) {
+                    continue; // Leaf page, don't recurse
+                }
+                riscv_mmu_destroy_table_recursive((pt->entries[i] >> 10) << 12, level - 1);
+            }
+        }
+    }
+    mm_free_page(table);
+}
+
 static void riscv_mmu_destroy_table(phys_addr_t root) {
     if (root) {
-        mm_free_page(root);
+        riscv_mmu_destroy_table_recursive(root, 2); // Sv39 root is L2
     }
 }
 
@@ -124,12 +141,18 @@ static phys_addr_t riscv_mmu_clone_kernel(phys_addr_t kernel_root) {
     return hal_vmm_setup_address_space(kernel_root);
 }
 
+#define RISCV_PBMT_NC (1ULL << 61) // Non-cacheable (if Svpbmt is supported)
+#define RISCV_PBMT_IO (2ULL << 61) // IO/Device (if Svpbmt is supported)
+
 // Translate generic mmu_flags_t to RISC-V specific VMM flags
 static uint32_t flags_to_riscv(mmu_flags_t f) {
     uint32_t flags = 0;
     if (f & MMU_WRITE)   flags |= CAP_RIGHT_WRITE;
     if (f & MMU_USER)    flags |= PAGE_USER;
     if (f & MMU_COW)     flags |= PAGE_COW;
+    // We store DEVICE/NOCACHE in upper bits of flags to pass to convert_flags_to_riscv
+    if (f & MMU_DEVICE)  flags |= (1U << 30); // Use a high bit to signal device mem
+    if (f & MMU_NOCACHE) flags |= (1U << 31); // Use a high bit to signal nocache
     return flags;
 }
 
