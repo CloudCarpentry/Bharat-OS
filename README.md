@@ -19,12 +19,12 @@ Bharat-OS is a capability-oriented microkernel project with a multikernel direct
 | Area | Current status | Notes |
 | --- | --- | --- |
 | Capability model and IPC baseline | Implemented baseline | Capability tables, delegated rights checks, endpoint IPC + URPC scaffolding. |
-| Memory management | Partial baseline | PMM/buddy allocator and arch-specific page-table walkers (x86_64/arm64/riscv) exist for map/unmap/query; robust page-fault resolution and user-space pager flow remain deferred. |
+| Memory management | Partial baseline | PMM/buddy allocator and software mapping registry are in place; production-grade hardware page-table lifecycle, SMP-safe TLB discipline, demand paging/COW, NUMA policy, and DMA/IOMMU mapping lifecycle remain in progress. |
 | Scheduler and AI hook points | Implemented baseline | Timer-driven scheduler path with bounded AI suggestion ingestion/processing; full SMP runqueues/context switching remain deferred. |
 | Driver and HAL model | Implemented baseline | HAL contracts and driver framework scaffolding exist across x86_64, riscv64, arm64. |
 | Distributed/multikernel scale-out | Early baseline | Per-core URPC matrix and multicore bootstrap hooks exist; production-grade topology and transport tuning are deferred. |
 
-For architecture-level details and deferred boundaries, see `docs/architecture/` and ADRs in `docs/decisions/`.
+For architecture-level details and deferred boundaries, see `docs/architecture/` and ADRs in `docs/decisions/`. For the step-by-step closure plan, see `docs/architecture/memory-gap-closure-plan.md`.
 
 ## Device Profiles & Use-cases
 
