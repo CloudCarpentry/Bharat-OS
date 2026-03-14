@@ -1,9 +1,18 @@
-<<<<<<< SEARCH
-set(KERNEL_SRC
-    src/main.c
-=======
-set(KERNEL_SRC
-    src/main.c
-    src/trace/trace.c
-    src/board/${BHARAT_BOOT_HW}/board.c
->>>>>>> REPLACE
+--- kernel/CMakeLists.txt
++++ kernel/CMakeLists.txt
+@@ -82,6 +82,7 @@
+     set(BOOT_SRC src/boot/arm64/boot.S)
+     set(ARCH_HAL src/hal/arm64/hal_cpu.c src/hal/arm64/trap_entry.S src/hal/arm64/vmm.c)
+     set(ARCH_CONTEXT_SWITCH src/arch/arm64/context_switch.c src/arch/arm64/context_switch.S)
++    set(ARCH_HAL_EXTRA src/hal/arm64/topology_fdt.c)
+ endif()
+
+ if(ARCH STREQUAL "x86_64")
+@@ -118,6 +119,7 @@
+     src/sched_deg.c
+     src/algo_matrix.c
+     ${ARCH_HAL}
++    src/hal/common/fdt_parser.c
+     ${ARCH_HAL_EXTRA}
+     ${ARCH_CONTEXT_SWITCH}
+     src/arch/${ARCH}/cpu_caps.c

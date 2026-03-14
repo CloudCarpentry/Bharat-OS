@@ -92,6 +92,7 @@ elseif(ARCH STREQUAL "arm64")
     set(BOOT_SRC src/boot/arm64/boot.S)
     set(ARCH_HAL src/hal/arm64/hal_cpu.c src/hal/arm64/trap_entry.S src/hal/arm64/vmm.c src/hal/arm64/smmu.c)
     set(ARCH_CONTEXT_SWITCH src/arch/arm64/context_switch.c src/arch/arm64/context_switch.S)
+    set(ARCH_HAL_EXTRA src/hal/arm64/topology_fdt.c)
 endif()
 
 if(ARCH STREQUAL "x86_64")
@@ -124,7 +125,10 @@ set(KERNEL_SRCS
     src/subsystem/profile.c
     src/arch/capabilities.c
     src/profile/${KERNEL_PROFILE_LOWER}/profile.c
-    src/board/qemu-virt-${ARCH}/board.c
+    $<$<STREQUAL:${ARCH},x86_64>:src/board/qemu-virt-x86_64/board.c>
+    $<$<STREQUAL:${ARCH},arm64>:src/board/bcm2711-rpi4/board.c>
+    $<$<AND:$<STREQUAL:${ARCH},riscv64>,$<STREQUAL:${BHARAT_RISCV_SOC_PROFILE},qemu-virt>>:src/board/qemu-virt-riscv64/board.c>
+    $<$<AND:$<STREQUAL:${ARCH},riscv64>,$<NOT:$<STREQUAL:${BHARAT_RISCV_SOC_PROFILE},qemu-virt>>>:src/board/shakti-ref/board.c>
     src/ai_kernel_bridge.c
     src/ai_sched.c
     src/panic.c
@@ -132,6 +136,7 @@ set(KERNEL_SRCS
     src/sched_deg.c
     src/algo_matrix.c
     ${ARCH_HAL}
+    src/hal/common/fdt_parser.c
     ${ARCH_HAL_EXTRA}
     ${ARCH_CONTEXT_SWITCH}
     src/arch/${ARCH}/cpu_caps.c

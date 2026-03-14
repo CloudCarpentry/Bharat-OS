@@ -1,0 +1,33 @@
+--- kernel/src/hal/CMakeLists.txt
++++ kernel/src/hal/CMakeLists.txt
+@@ -1,5 +1,6 @@
+ # Provide basic HAL targets based on architecture
+
++add_library(hal_common STATIC common/fdt_parser.c)
+
+ if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64")
+     add_library(hal STATIC
+@@ -8,6 +9,7 @@
+         x86_64/hal_cpu.c
+         x86_64/vmm.c
+         x86_64/topology_acpi.c
++        common/fdt_parser.c
+     )
+ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64|aarch64")
+     add_library(hal STATIC
+@@ -17,6 +19,7 @@
+         arm64/hal_cpu.c
+         arm64/vmm.c
+         arm64/topology_fdt.c
++        common/fdt_parser.c
+     )
+ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "riscv64")
+     add_library(hal STATIC
+@@ -29,6 +32,7 @@
+         riscv64/boot_sbi.c
+         riscv64/topology_fdt.c
+         riscv/shakti_bsp.c
++        common/fdt_parser.c
+     )
+ else()
+     message(FATAL_ERROR "Unsupported architecture: ${CMAKE_SYSTEM_PROCESSOR}")
