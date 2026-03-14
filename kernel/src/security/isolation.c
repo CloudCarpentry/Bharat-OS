@@ -2,6 +2,8 @@
 #include "security/isolation.h"
 #include "security/audit.h"
 #include "hal/iommu.h"
+#include "profile.h"
+#include "device.h"
 
 #define BHARAT_MAX_ISOLATED_PROCS 64U
 
@@ -211,7 +213,25 @@ int bharat_iommu_unmap(bharat_iommu_domain_t* domain,
 }
 
 int bharat_iommu_block_device(bharat_device_t* dev) {
-    return hal_iommu_block_device(dev);
+    int ret = hal_iommu_block_device(dev);
+    if (ret == -1) { // -ENOSYS means no IOMMU
+        SystemProfile profile = get_system_profile();
+        MemoryModel model = get_memory_model();
+
+        if (model != MEM_MODEL_MMU) {
+            // MCU / MPU profile: Explicitly skip DMA-isolation promises, don't fail device
+            return 0;
+        }
+
+        if (profile == PROFILE_TIER_C) { // Datacenter/High-isolation
+            // Block DMA-capable devices if no IOMMU is present
+            return -1;
+        } else if (profile == PROFILE_TIER_B) { // Edge/Appliance
+            // Allow trusted-only operation
+            return 0;
+        }
+    }
+    return ret;
 }
 
 int bharat_iommu_get_group(bharat_device_t* dev,

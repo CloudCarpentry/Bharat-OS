@@ -162,9 +162,26 @@ static phys_addr_t arm64_mmu_create_table(void) {
     return hal_vmm_init_root();
 }
 
+static void arm64_mmu_destroy_table_recursive(phys_addr_t table, int level) {
+    if (!table) return;
+
+    if (level > 1) {
+        pt_t* pt = (pt_t*)P2V(table);
+        for (int i = 0; i < (level == 4 ? 256 : 512); i++) { // Skip kernel half on pgd
+            if (pt->entries[i] & ARM64_MMU_FLAG_VALID) {
+                if ((level == 3 || level == 2) && (pt->entries[i] & ARM64_MMU_DESCRIPTOR_TABLE) == ARM64_MMU_DESCRIPTOR_BLOCK) {
+                    continue; // Huge page block, don't recurse
+                }
+                arm64_mmu_destroy_table_recursive(pt->entries[i] & ~0xFFFULL, level - 1);
+            }
+        }
+    }
+    mm_free_page(table);
+}
+
 static void arm64_mmu_destroy_table(phys_addr_t root) {
     if (root) {
-        mm_free_page(root);
+        arm64_mmu_destroy_table_recursive(root, 4);
     }
 }
 
@@ -172,12 +189,17 @@ static phys_addr_t arm64_mmu_clone_kernel(phys_addr_t kernel_root) {
     return hal_vmm_setup_address_space(kernel_root);
 }
 
+#define ARM64_MMU_DEVICE_nGnRnE (0ULL << 2) // MAIR index 0 -> Device-nGnRnE
+#define ARM64_MMU_NOCACHE_MEM   (1ULL << 2) // MAIR index 1 -> Non-cacheable
+
 // Translate generic mmu_flags_t to ARM64-specific VMM flags
 static uint32_t flags_to_arm64(mmu_flags_t f) {
     uint32_t flags = 0;
     if (f & MMU_WRITE)   flags |= CAP_RIGHT_WRITE;
     if (f & MMU_USER)    flags |= PAGE_USER;
     if (f & MMU_COW)     flags |= PAGE_COW;
+    if (f & MMU_DEVICE)  flags |= ARM64_MMU_DEVICE_nGnRnE; // Will be handled in convert_flags_to_arm64
+    if (f & MMU_NOCACHE) flags |= ARM64_MMU_NOCACHE_MEM;
     return flags;
 }
 
