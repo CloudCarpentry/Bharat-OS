@@ -1,0 +1,45 @@
+.text
+.global arch_context_switch
+.type arch_context_switch, @function
+
+
+
+
+arch_context_switch:
+
+    cbz x0, .L_restore
+
+
+
+    stp x19, x20, [x0,
+    stp x21, x22, [x0,
+    stp x23, x24, [x0,
+    stp x25, x26, [x0,
+    stp x27, x28, [x0,
+    str x29,      [x0,
+
+
+    str x30,      [x0,
+
+
+    mov x9, sp
+    str x9,       [x0,
+
+.L_restore:
+
+    ldr x9,       [x1,
+    mov sp, x9
+
+
+    ldr x30,      [x1,
+
+
+    ldp x19, x20, [x1,
+    ldp x21, x22, [x1,
+    ldp x23, x24, [x1,
+    ldp x25, x26, [x1,
+    ldp x27, x28, [x1,
+    ldr x29,      [x1,
+
+
+    ret

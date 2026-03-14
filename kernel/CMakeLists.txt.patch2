@@ -1,0 +1,6 @@
+--- kernel/CMakeLists.txt
++++ kernel/CMakeLists.txt
+@@ -107,7 +107,17 @@
+     src/subsystem/profile.c
+     src/arch/capabilities.c
+     src/profile/${KERNEL_PROFILE_LOWER}/profile.c

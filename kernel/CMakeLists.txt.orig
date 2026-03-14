@@ -11,7 +11,7 @@ include_directories(include)
 include_directories(include/generated)
 
 # ── Configuration Header ────────────────────────────────────────────────────
-# These variables are normally set in the root CMakeLists.txt. 
+# These variables are normally set in the root CMakeLists.txt.
 # For kernel-only builds, we provide defaults if not set.
 if(NOT DEFINED BHARAT_ARCH_X86)
     set(BHARAT_ARCH_X86 1)
@@ -81,16 +81,16 @@ endif()
 # ── Boot and HAL sources (arch-specific) ────────────────────────────────────
 if(ARCH STREQUAL "x86_64")
     set(BOOT_SRC src/boot/x86_64/boot.S)
-    set(ARCH_HAL src/hal/x86_64/hal_cpu.c src/hal/x86_64/trap_entry.S src/hal/x86_64/vmm.c src/hal/x86_64/vtd_iommu.c)
+    set(ARCH_HAL src/hal/x86_64/hal_cpu.c src/hal/x86_64/trap_entry.S src/hal/x86_64/vmm.c)
     set(ARCH_CONTEXT_SWITCH src/arch/x86_64/context_switch.c src/arch/x86_64/context_switch.S)
 elseif(ARCH STREQUAL "riscv64")
     set(BOOT_SRC src/boot/riscv64/boot.S)
-    set(ARCH_HAL src/hal/riscv/hal_cpu.c src/hal/riscv/trap_entry.S src/hal/riscv/vmm.c src/hal/riscv/iopmp.c)
+    set(ARCH_HAL src/hal/riscv/hal_cpu.c src/hal/riscv/trap_entry.S src/hal/riscv/vmm.c)
     set(ARCH_HAL_EXTRA src/hal/riscv/shakti_bsp.c)
     set(ARCH_CONTEXT_SWITCH src/arch/riscv64/context_switch.c src/arch/riscv64/context_switch.S)
 elseif(ARCH STREQUAL "arm64")
     set(BOOT_SRC src/boot/arm64/boot.S)
-    set(ARCH_HAL src/hal/arm64/hal_cpu.c src/hal/arm64/trap_entry.S src/hal/arm64/vmm.c src/hal/arm64/smmu.c)
+    set(ARCH_HAL src/hal/arm64/hal_cpu.c src/hal/arm64/trap_entry.S src/hal/arm64/vmm.c)
     set(ARCH_CONTEXT_SWITCH src/arch/arm64/context_switch.c src/arch/arm64/context_switch.S)
     set(ARCH_HAL_EXTRA src/hal/arm64/topology_fdt.c)
 endif()
@@ -125,10 +125,7 @@ set(KERNEL_SRCS
     src/subsystem/profile.c
     src/arch/capabilities.c
     src/profile/${KERNEL_PROFILE_LOWER}/profile.c
-    $<$<STREQUAL:${ARCH},x86_64>:src/board/qemu-virt-x86_64/board.c>
-    $<$<STREQUAL:${ARCH},arm64>:src/board/bcm2711-rpi4/board.c>
-    $<$<AND:$<STREQUAL:${ARCH},riscv64>,$<STREQUAL:${BHARAT_RISCV_SOC_PROFILE},qemu-virt>>:src/board/qemu-virt-riscv64/board.c>
-    $<$<AND:$<STREQUAL:${ARCH},riscv64>,$<NOT:$<STREQUAL:${BHARAT_RISCV_SOC_PROFILE},qemu-virt>>>:src/board/shakti-ref/board.c>
+    src/board/qemu-virt-${ARCH}/board.c
     src/ai_kernel_bridge.c
     src/ai_sched.c
     src/panic.c
