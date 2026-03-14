@@ -56,7 +56,7 @@ int ipc_endpoint_create(capability_table_t* table, uint32_t* out_send_cap, uint3
     return IPC_ERR_NO_SPACE;
 }
 
-int ipc_endpoint_send(capability_table_t* table, uint32_t send_cap, const void* payload, uint32_t payload_len) {
+int ipc_endpoint_send(capability_table_t* table, uint32_t send_cap, const void* payload, uint32_t payload_len, uint64_t timeout_ticks) {
     if (!table || !payload || payload_len == 0U) {
         return IPC_ERR_INVALID;
     }
@@ -76,12 +76,27 @@ int ipc_endpoint_send(capability_table_t* table, uint32_t send_cap, const void* 
     }
 
     if (ep->has_msg != 0U) {
+        if (timeout_ticks == 0) {
+            return IPC_ERR_WOULD_BLOCK;
+        }
+
         kthread_t* cur = sched_current_thread();
         if (cur) {
+            cur->ipc_wakeup_reason = IPC_OK;
+            if (timeout_ticks != UINT64_MAX) {
+                cur->ipc_deadline_ticks = sched_get_ticks() + timeout_ticks;
+            } else {
+                cur->ipc_deadline_ticks = 0;
+            }
             sched_wait_queue_enqueue(&ep->senders, cur);
             sched_block();
+
+            if (cur->ipc_wakeup_reason != IPC_OK) {
+                return cur->ipc_wakeup_reason;
+            }
+        } else {
+            return IPC_ERR_WOULD_BLOCK;
         }
-        return IPC_ERR_WOULD_BLOCK;
     }
 
     const uint8_t* src = (const uint8_t*)payload;
@@ -93,13 +108,15 @@ int ipc_endpoint_send(capability_table_t* table, uint32_t send_cap, const void* 
 
     kthread_t* recv = sched_wait_queue_dequeue(&ep->receivers);
     if (recv) {
+        recv->ipc_wakeup_reason = IPC_OK;
+        recv->ipc_deadline_ticks = 0;
         sched_wakeup(recv);
     }
 
     return IPC_OK;
 }
 
-int ipc_endpoint_receive(capability_table_t* table, uint32_t recv_cap, void* out_payload, uint32_t out_payload_capacity, uint32_t* out_received_len) {
+int ipc_endpoint_receive(capability_table_t* table, uint32_t recv_cap, void* out_payload, uint32_t out_payload_capacity, uint32_t* out_received_len, uint64_t timeout_ticks) {
     if (!table || !out_payload || out_payload_capacity == 0U || !out_received_len) {
         return IPC_ERR_INVALID;
     }
@@ -115,12 +132,27 @@ int ipc_endpoint_receive(capability_table_t* table, uint32_t recv_cap, void* out
     }
 
     if (ep->has_msg == 0U) {
+        if (timeout_ticks == 0) {
+            return IPC_ERR_WOULD_BLOCK;
+        }
+
         kthread_t* cur = sched_current_thread();
         if (cur) {
+            cur->ipc_wakeup_reason = IPC_OK;
+            if (timeout_ticks != UINT64_MAX) {
+                cur->ipc_deadline_ticks = sched_get_ticks() + timeout_ticks;
+            } else {
+                cur->ipc_deadline_ticks = 0;
+            }
             sched_wait_queue_enqueue(&ep->receivers, cur);
             sched_block();
+
+            if (cur->ipc_wakeup_reason != IPC_OK) {
+                return cur->ipc_wakeup_reason;
+            }
+        } else {
+            return IPC_ERR_WOULD_BLOCK;
         }
-        return IPC_ERR_WOULD_BLOCK;
     }
 
     if (out_payload_capacity < ep->msg.msg_len) {
@@ -138,6 +170,8 @@ int ipc_endpoint_receive(capability_table_t* table, uint32_t recv_cap, void* out
 
     kthread_t* sender = sched_wait_queue_dequeue(&ep->senders);
     if (sender) {
+        sender->ipc_wakeup_reason = IPC_OK;
+        sender->ipc_deadline_ticks = 0;
         sched_wakeup(sender);
     }
 
