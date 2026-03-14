@@ -26,7 +26,9 @@ param(
     [string]$Machine = "",
     [ValidateSet("ON", "OFF")][string]$BootGui = "ON",
     [string]$HardwareProfile = "",
-    [string]$BootTier = ""
+    [string]$BootTier = "",
+    [string]$Profile = "desktop",
+    [string]$Personality = "none"
 )
 
 Set-StrictMode -Version Latest
@@ -68,9 +70,16 @@ if ($Machine -eq "") { $Machine = "virt" }
 if ($HardwareProfile -eq "") { $HardwareProfile = "generic" }
 if ($BootTier -eq "") { $BootTier = "LINUX_LIKE" }
 
-$BuildDir = "$Root\build\$Arch"
+$ProfileClean = $Profile -replace ',', '-'
+$PersonalityClean = $Personality -replace ',', '-'
+
+$BuildDir = "$Root\build\${Arch}_${ProfileClean}_${HardwareProfile}_${PersonalityClean}"
+if ($Board -ne "") {
+    $BuildDir = "${BuildDir}_${Board}"
+}
+
 if ($Payload -and $Arch -eq "riscv64") {
-    $BuildDir = "$Root\build\$Arch-gcc"
+    $BuildDir = "$BuildDir-gcc"
 }
 
 $OutELF = "$BuildDir\kernel\kernel.elf"
@@ -143,6 +152,23 @@ if (-not (Test-Path "$BuildDir\CMakeCache.txt")) {
         "-G", "Ninja",
         "--no-warn-unused-cli"
     )
+
+    if ($Profile -ne "") {
+        $Profiles = $Profile.Split(',')
+        foreach ($p in $Profiles) {
+            $pUpper = $p.ToUpper()
+            $cmakeArgs += "-DBHARAT_PROFILE_$pUpper=1"
+        }
+    }
+
+    if ($Personality -ne "") {
+        $Personalities = $Personality.Split(',')
+        foreach ($p in $Personalities) {
+            $pUpper = $p.ToUpper()
+            $cmakeArgs += "-DBHARAT_PERSONALITY_$pUpper=1"
+        }
+    }
+
     & cmake @cmakeArgs
     if ($LASTEXITCODE -ne 0) { fail "CMake configure failed" }
 }

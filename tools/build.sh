@@ -15,6 +15,8 @@ BOOT_GUI=""
 BOOT_HW="generic"
 MACHINE=""
 BOOT_TIER=""
+PROFILE="desktop"
+PERSONALITY="none"
 
 # Parse arguments
 for arg in "$@"; do
@@ -31,6 +33,8 @@ for arg in "$@"; do
         --hw=*) BOOT_HW="${arg#*=}" ;;
         --machine=*) MACHINE="${arg#*=}" ;;
         --tier=*) BOOT_TIER="${arg#*=}" ;;
+        --profile=*) PROFILE="${arg#*=}" ;;
+        --personality=*) PERSONALITY="${arg#*=}" ;;
         *)
             # If no equal sign, assume first argument is ARCH for backwards compatibility
             if [[ ! "$arg" == --* ]] && [[ -z "$ARCH_SET" ]]; then
@@ -41,7 +45,13 @@ for arg in "$@"; do
     esac
 done
 
-BUILD_DIR="build/${ARCH}"
+PROFILE_CLEAN="${PROFILE//,/-}"
+PERSONALITY_CLEAN="${PERSONALITY//,/-}"
+
+BUILD_DIR="build/${ARCH}_${PROFILE_CLEAN}_${BOOT_HW}_${PERSONALITY_CLEAN}"
+if [ -n "$BOARD" ]; then
+    BUILD_DIR="${BUILD_DIR}_${BOARD}"
+fi
 
 if [ "$CLEAN" = true ]; then
     echo "Cleaning build directory: ${BUILD_DIR}"
@@ -49,6 +59,18 @@ if [ "$CLEAN" = true ]; then
 fi
 
 CMAKE_ARGS=""
+
+IFS=',' read -ra PROFILE_ARR <<< "$PROFILE"
+for prof in "${PROFILE_ARR[@]}"; do
+    prof_upper=$(echo "$prof" | tr '[:lower:]' '[:upper:]')
+    CMAKE_ARGS="${CMAKE_ARGS} -DBHARAT_PROFILE_${prof_upper}=1"
+done
+
+IFS=',' read -ra PERSONALITY_ARR <<< "$PERSONALITY"
+for pers in "${PERSONALITY_ARR[@]}"; do
+    pers_upper=$(echo "$pers" | tr '[:lower:]' '[:upper:]')
+    CMAKE_ARGS="${CMAKE_ARGS} -DBHARAT_PERSONALITY_${pers_upper}=1"
+done
 
 if [ -n "$BOARD" ]; then
     # Map boards to appropriate profiles
