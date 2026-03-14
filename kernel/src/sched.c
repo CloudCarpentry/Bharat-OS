@@ -61,6 +61,7 @@ typedef struct {
   uint64_t total_ticks;
   uint64_t context_switches;
   uint32_t throttled;
+  spinlock_t lock;
 } core_runqueue_t;
 
 static core_runqueue_t g_runqueues[MAX_SUPPORTED_CORES];
@@ -80,6 +81,11 @@ static uint32_t g_free_thread_head = UINT32_MAX;
 static uint32_t g_free_process_head = UINT32_MAX;
 
 void fv_secure_context_switch(void *next_thread_frame) __attribute__((weak));
+
+void arch_post_switch(void) {
+  uint32_t core = sched_clamp_core(hal_cpu_get_id());
+  spinlock_release(&g_runqueues[core].lock);
+}
 
 static uint32_t sched_clamp_core(uint32_t core_id) {
   if (core_id >= MAX_SUPPORTED_CORES) {
@@ -143,6 +149,7 @@ int sched_enqueue(kthread_t *thread, uint32_t core_id) {
   }
 
   core_id = sched_clamp_core(core_id);
+  spinlock_acquire(&g_runqueues[core_id].lock);
 
   if (slot->is_on_runqueue != 0U) {
     list_del(&slot->run_node);
@@ -154,6 +161,8 @@ int sched_enqueue(kthread_t *thread, uint32_t core_id) {
   thread->state = THREAD_STATE_READY;
   list_add(&slot->run_node, &g_runqueues[core_id].ready_queue[thread->priority]);
   slot->is_on_runqueue = 1U;
+
+  spinlock_release(&g_runqueues[core_id].lock);
   return 0;
 }
 
@@ -207,6 +216,7 @@ void sched_init(void) {
     g_runqueues[core].total_ticks = 0U;
     g_runqueues[core].context_switches = 0U;
     g_runqueues[core].throttled = 0U;
+    spinlock_init(&g_runqueues[core].lock);
     list_init(&g_runqueues[core].sleeping_list);
     list_init(&g_runqueues[core].blocked_list);
     for (uint32_t p = 0; p < MAX_PRIORITY_LEVELS; ++p) {
@@ -537,17 +547,25 @@ kthread_t *sched_pick_next_ready_l1(uint32_t core_id) {
 
 static void sched_switch_to(kthread_t *next, uint32_t core_id) {
   if (!next) {
+    spinlock_release(&g_runqueues[core_id].lock);
     return;
   }
 
   kthread_t *current = g_runqueues[core_id].current_thread;
   if (current == next) {
+    spinlock_release(&g_runqueues[core_id].lock);
     return;
   }
 
   if (current && current != g_runqueues[core_id].idle_thread &&
       current->state == THREAD_STATE_RUNNING) {
-    (void)sched_enqueue(current, core_id);
+
+    thread_slot_t *slot = sched_find_thread_slot_by_tid(current->thread_id);
+    if (slot && slot->is_on_runqueue == 0U) {
+        current->state = THREAD_STATE_READY;
+        list_add(&slot->run_node, &g_runqueues[core_id].ready_queue[current->priority]);
+        slot->is_on_runqueue = 1U;
+    }
   }
 
   next->state = THREAD_STATE_RUNNING;
@@ -601,7 +619,19 @@ kthread_t* sched_wait_queue_dequeue(wait_queue_t* queue) {
   }
 
   kthread_t* thread = queue->head;
+  // Skip any threads that were already woken up by timeout (state != BLOCKED)
+  // or that had their next_waiter cleared by the timeout sweep.
+  while (thread && thread->state != THREAD_STATE_BLOCKED) {
+      thread = thread->next_waiter;
+      queue->head = thread;
+  }
 
+  if (!queue->head) {
+    queue->tail = NULL;
+    return NULL;
+  }
+
+  thread = queue->head;
   queue->head = thread->next_waiter;
   if (!queue->head) {
     queue->tail = NULL;
@@ -624,6 +654,8 @@ void sched_block(void) {
 void sched_reschedule(void) {
   uint32_t core = sched_clamp_core(hal_cpu_get_id());
   sched_process_pending_ai_suggestions();
+
+  spinlock_acquire(&g_runqueues[core].lock);
 
   if (g_runqueues[core].throttled != 0U && g_runqueues[core].idle_thread) {
     sched_switch_to(g_runqueues[core].idle_thread, core);
@@ -723,9 +755,24 @@ void sched_on_timer_tick(void) {
   g_runqueues[core].total_ticks++;
 
   for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_threads); ++i) {
-    if (g_threads[i].in_use != 0U && g_threads[i].thread.state == THREAD_STATE_SLEEPING &&
-        g_threads[i].thread.wake_deadline_ms <= g_sched_ticks) {
-      sched_wakeup(&g_threads[i].thread);
+    if (g_threads[i].in_use != 0U) {
+      if (g_threads[i].thread.state == THREAD_STATE_SLEEPING &&
+          g_threads[i].thread.wake_deadline_ms <= g_sched_ticks) {
+        sched_wakeup(&g_threads[i].thread);
+      }
+
+      if (g_threads[i].thread.state == THREAD_STATE_BLOCKED &&
+          g_threads[i].thread.ipc_deadline_ticks > 0 &&
+          g_threads[i].thread.ipc_deadline_ticks <= g_sched_ticks) {
+        g_threads[i].thread.ipc_wakeup_reason = -3; // IPC_ERR_WOULD_BLOCK or TIMEOUT
+        g_threads[i].thread.ipc_deadline_ticks = 0;
+
+        // Properly removing it from wait queues requires endpoint access.
+        // For now we set the state to READY so it can be scheduled.
+        // And we clear the next_waiter queue pointer to avoid corruption.
+        g_threads[i].thread.next_waiter = NULL;
+        sched_wakeup(&g_threads[i].thread);
+      }
     }
   }
 

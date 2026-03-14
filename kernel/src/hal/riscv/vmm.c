@@ -64,6 +64,17 @@ phys_addr_t hal_vmm_init_root(void) {
     return root_dir_phys;
 }
 
+static uint64_t hal_get_satp(void) {
+    uint64_t satp;
+    __asm__ volatile("csrr %0, satp" : "=r"(satp));
+    // Extracts physical address from satp (assuming Sv39, ppn is lower 44 bits)
+    return (satp & ((1ULL << 44) - 1)) << 12;
+}
+
+static void hal_sfence_vma(virt_addr_t vaddr) {
+    __asm__ volatile("sfence.vma %0" :: "r"(vaddr) : "memory");
+}
+
 int hal_vmm_map_page(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
     if (root_table == 0U || paddr == 0U) {
         return -1;
@@ -84,7 +95,7 @@ int hal_vmm_map_page(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t padd
         if (!new_l1) return -2;
         pte_table_t* l1_ptr = (pte_table_t*)P2V(new_l1);
         for(int i=0; i<512; i++) l1_ptr->entries[i] = 0;
-        l2_table->entries[vpn2] = ((new_l1 >> 12) << 10) | RISCV_PTE_V; // Directory entry has no R/W/X
+        l2_table->entries[vpn2] = ((new_l1 >> 12) << 10) | RISCV_PTE_V | RISCV_PTE_U; // Directory entry has no R/W/X
     }
 
     pte_table_t* l1_table = (pte_table_t*)P2V((l2_table->entries[vpn2] >> 10) << 12);
@@ -94,7 +105,7 @@ int hal_vmm_map_page(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t padd
         if (!new_l0) return -2;
         pte_table_t* l0_ptr = (pte_table_t*)P2V(new_l0);
         for(int i=0; i<512; i++) l0_ptr->entries[i] = 0;
-        l1_table->entries[vpn1] = ((new_l0 >> 12) << 10) | RISCV_PTE_V;
+        l1_table->entries[vpn1] = ((new_l0 >> 12) << 10) | RISCV_PTE_V | RISCV_PTE_U;
     }
 
     pte_table_t* l0_table = (pte_table_t*)P2V((l1_table->entries[vpn1] >> 10) << 12);
@@ -102,6 +113,10 @@ int hal_vmm_map_page(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t padd
     // Create final PTE for L0 (page mapping)
     uint64_t pte_flags = convert_flags_to_riscv(flags);
     l0_table->entries[vpn0] = ((aligned_paddr >> 12) << 10) | pte_flags;
+
+    if (root_table == hal_get_satp()) {
+        hal_sfence_vma(aligned_vaddr);
+    }
 
     return 0;
 }
@@ -308,6 +323,11 @@ int hal_vmm_unmap_page(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t* u
     }
 
     l0_table->entries[vpn0] = 0;
+
+    if (root_table == hal_get_satp()) {
+        hal_sfence_vma(aligned_vaddr);
+    }
+
     return 0;
 }
 
@@ -379,6 +399,10 @@ int hal_vmm_update_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_
 
     uint64_t pte_flags = convert_flags_to_riscv(flags);
     l0_table->entries[vpn0] = ((aligned_paddr >> 12) << 10) | pte_flags;
+
+    if (root_table == hal_get_satp()) {
+        hal_sfence_vma(aligned_vaddr);
+    }
 
     return 0;
 }

@@ -21,6 +21,21 @@ arch_context_switch:
     movq %r14, 32(%rdi)
     movq %r15, 40(%rdi)
 
+    # Save rflags
+    pushfq
+    popq %rax
+    movq %rax, 48(%rdi)
+
+    # Save FPU state if enabled (pointer at offset 400)
+    # The pointer is prev->ext (arch_ext_state_t *). If not NULL, save to it.
+    movq 400(%rdi), %rax
+    test %rax, %rax
+    jz .L_skip_fxsave
+    # Save FPU state using fxsave
+    # It requires 16-byte alignment, kmem_aligned_alloc gave us 64-byte alignment
+    fxsave (%rax)
+.L_skip_fxsave:
+
     # Save return address (which is currently on top of the stack)
     movq (%rsp), %rax
     movq %rax, 128(%rdi) # prev->pc
@@ -39,6 +54,18 @@ arch_context_switch:
     movq 128(%rsi), %rax # next->pc
     pushq %rax
 
+    # Restore rflags
+    movq 48(%rsi), %rax
+    pushq %rax
+    popfq
+
+    # Restore FPU state if enabled
+    movq 400(%rsi), %rax
+    test %rax, %rax
+    jz .L_skip_fxrstor
+    fxrstor (%rax)
+.L_skip_fxrstor:
+
     # Restore callee-saved registers
     movq 0(%rsi), %rbx
     movq 8(%rsi), %rbp
@@ -47,5 +74,24 @@ arch_context_switch:
     movq 32(%rsi), %r14
     movq 40(%rsi), %r15
 
-    # Return to next context
-    ret
+    # Release runqueue lock if necessary here (we'll implement this via a call hook)
+    pushq %rdi
+    pushq %rsi
+    # Align stack before C function call
+    # SysV ABI: %rsp must be 16-byte aligned *before* the call instruction.
+    movq %rsp, %rax
+    andq $0xFFFFFFFFFFFFFFF0, %rsp
+    # The stack is now 16-byte aligned. But if we push %rax, it becomes 8-byte aligned again.
+    # We must push %rax (8 bytes) and then subtract 8 bytes to maintain 16-byte alignment before 'call'.
+    pushq %rax
+    subq $8, %rsp
+    call arch_post_switch
+    addq $8, %rsp
+    popq %rax
+    movq %rax, %rsp
+    popq %rsi
+    popq %rdi
+
+    # Pop the return address into rax to maintain stack alignment, then jmp to it.
+    popq %rax
+    jmp *%rax

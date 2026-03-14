@@ -119,7 +119,7 @@ long syscall_dispatch(syscall_id_t id, uint64_t arg0, uint64_t arg1,
       return TRAP_ERR_INVAL;
     }
     return (long)ipc_endpoint_send(
-        table, (uint32_t)arg0, (const void *)(uintptr_t)arg1, (uint32_t)arg2);
+        table, (uint32_t)arg0, (const void *)(uintptr_t)arg1, (uint32_t)arg2, (uint64_t)arg3);
   }
   case SYSCALL_ENDPOINT_RECEIVE: {
     capability_table_t *table = trap_current_cap_table();
@@ -129,7 +129,7 @@ long syscall_dispatch(syscall_id_t id, uint64_t arg0, uint64_t arg1,
     }
     return (long)ipc_endpoint_receive(table, (uint32_t)arg0,
                                       (void *)(uintptr_t)arg1, (uint32_t)arg2,
-                                      out_len);
+                                      out_len, (uint64_t)arg4);
   }
   case SYSCALL_CAPABILITY_DELEGATE: {
     capability_table_t *table = trap_current_cap_table();
@@ -151,12 +151,40 @@ long trap_handle(trap_frame_t *frame) {
   }
 
 #if defined(__riscv)
+  if (frame->cause == 13 || frame->cause == 15) { // Load/Store page fault
+    kthread_t *current = sched_current_thread();
+    if (current && current->process_id != 0) {
+      uint64_t stval;
+      __asm__ volatile("csrr %0, stval" : "=r"(stval));
+      // Address space from current process
+      // For proper hardware demand-paging, we call into the VMM.
+      int rc = vmm_handle_cow_fault(g_syscall_proc.addr_space, stval);
+      if (rc == 0) {
+          return 0;
+      }
+    }
+  }
+
   if (frame->cause == TRAP_CAUSE_TIMER_INT) {
     void hal_timer_isr(void);
     hal_timer_isr();
     return 0;
   }
 #elif defined(__x86_64__)
+  if (frame->cause == 14) { // Page fault (#PF)
+    kthread_t *current = sched_current_thread();
+    if (current && current->process_id != 0) {
+      uint64_t cr2;
+      __asm__ volatile("mov %%cr2, %0" : "=r"(cr2));
+      // Address space from current process
+      // For proper hardware demand-paging, we call into the VMM.
+      int rc = vmm_handle_cow_fault(g_syscall_proc.addr_space, cr2);
+      if (rc == 0) {
+          return 0;
+      }
+    }
+  }
+
   if (frame->cause == TRAP_CAUSE_TIMER_INT) {
     void default_timer_isr(void);
     default_timer_isr();
@@ -173,6 +201,20 @@ long trap_handle(trap_frame_t *frame) {
     }
     hal_interrupt_end_of_interrupt(irq);
     return 0;
+  }
+  // ARM64 sync exception (page fault)
+  if (frame->type == TRAP_TYPE_SYNC) {
+    uint64_t ec = frame->cause >> 26;
+    if (ec == 0x24 || ec == 0x25) { // Data/Instruction abort
+      // Page fault handling
+      uint64_t far;
+      __asm__ volatile("mrs %0, far_el1" : "=r"(far));
+      // For proper hardware demand-paging, we call into the VMM.
+      int rc = vmm_handle_cow_fault(g_syscall_proc.addr_space, far);
+      if (rc == 0) {
+          return 0;
+      }
+    }
   }
 #endif
 

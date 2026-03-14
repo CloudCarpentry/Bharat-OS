@@ -38,10 +38,11 @@ typedef enum {
 typedef struct arch_ext_state arch_ext_state_t;
 
 typedef struct {
-    uint64_t regs[16];
-    uint64_t pc;
-    uint64_t sp;
-    arch_ext_state_t *ext;
+    uint64_t regs[16];     // Offset 0
+    uint64_t pc;           // Offset 128
+    uint64_t sp;           // Offset 136
+    uint64_t fpu_regs[32]; // Offset 144 (for inline FPU regs e.g. arm64 d8-d15, riscv fs0-fs11)
+    arch_ext_state_t *ext; // Offset 400
 } cpu_context_t;
 
 typedef struct {
@@ -104,6 +105,10 @@ struct kthread {
 
     // Next thread in a wait queue
     kthread_t* next_waiter;
+
+    // IPC blocking state
+    uint64_t ipc_deadline_ticks;
+    int ipc_wakeup_reason;
 };
 
 typedef struct {
