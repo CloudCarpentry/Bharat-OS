@@ -177,7 +177,7 @@ __attribute__((weak)) int hal_timer_source_init(uint64_t period_ns) {
     return 0;
 }
 
-__attribute__((weak)) uint64_t hal_timer_monotonic_ticks(void) {
+__attribute__((weak)) uint64_t _hal_timer_monotonic_ticks_stub(void) {
     return 0;
 }
 

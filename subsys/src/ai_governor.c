@@ -22,7 +22,9 @@ void ai_gov_main(void) {
 }
 
 // Ensure the build doesn't fail due to missing main when building as executable
+#ifndef TESTING
 int main(void) {
     ai_gov_main();
     return 0;
 }
+#endif

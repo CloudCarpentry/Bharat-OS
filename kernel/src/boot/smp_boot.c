@@ -1,3 +1,4 @@
+#include "hal/hal_ipi.h"
 #include "hal/hal_boot.h"
 #include "hal/hal_irq.h"
 #include "hal/hal_timer.h"
@@ -32,17 +33,12 @@ void secondary_entry_common(void) {
     g_core_state[core_id] = BOOT_EARLY;
 
     // Local interrupt controller init
-    if (hal_irq_init_cpu_local() != 0) {
-        g_core_state[core_id] = BOOT_FAILED;
-        goto halt_loop;
-    }
+    hal_irq_init_cpu_local(core_id);
+    hal_ipi_init_cpu_local(core_id);
     g_core_state[core_id] = BOOT_IRQ_READY;
 
     // Local timer init
-    if (hal_timer_init_cpu_local(1000) != 0) { // Default tick_hz
-        g_core_state[core_id] = BOOT_FAILED;
-        goto halt_loop;
-    }
+    hal_timer_init_cpu_local(core_id);
     g_core_state[core_id] = BOOT_TIMER_READY;
 
     // Bind URPC

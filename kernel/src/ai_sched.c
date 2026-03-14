@@ -1,5 +1,5 @@
 #include "advanced/ai_sched.h"
-#include "hal/timer.h"
+#include "hal/hal_timer.h"
 #include <stddef.h>
 
 // @cite Integrating Artificial Intelligence into Operating Systems (Korshun et al., 2024)

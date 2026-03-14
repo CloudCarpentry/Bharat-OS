@@ -2,21 +2,26 @@
 #define BHARAT_HAL_TIMER_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 // Initialize timer source on boot core
-int hal_timer_init(uint32_t tick_hz);
+void hal_timer_init(void);
 
 // Initialize per-core timer event source
-int hal_timer_init_cpu_local(uint32_t tick_hz);
+void hal_timer_init_cpu_local(uint32_t cpu_id);
 
 // Set mode
-int hal_timer_set_periodic(uint32_t tick_hz);
-int hal_timer_set_oneshot(uint64_t ns_delay);
+void hal_timer_program_periodic(uint64_t ns);
+void hal_timer_program_oneshot(uint64_t ns);
 
 // Read time
+uint64_t hal_timer_read_counter(void);
+uint64_t hal_timer_read_freq(void);
 uint64_t hal_timer_monotonic_ticks(void);
 
 // Trigger timer tick processing
 void hal_timer_tick(void);
 
-#endif
+bool hal_timer_is_per_cpu(void);
+
+#endif // BHARAT_HAL_TIMER_H

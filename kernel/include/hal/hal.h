@@ -3,8 +3,6 @@
 
 #include <stdint.h>
 
-#include "interrupt.h"
-#include "timer.h"
 
 /* Hardware Abstraction Layer Base Definitions */
 

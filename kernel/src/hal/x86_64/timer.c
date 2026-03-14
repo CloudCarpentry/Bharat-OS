@@ -18,30 +18,41 @@ static inline uint64_t rdtsc(void) {
     return ((uint64_t)hi << 32) | lo;
 }
 
-int hal_timer_init(uint32_t tick_hz) {
-    // Nothing needed for TSC source
-    return 0;
+void hal_timer_init(void) {
+    // Determine frequency, etc.
 }
 
-int hal_timer_init_cpu_local(uint32_t tick_hz) {
+void hal_timer_init_cpu_local(uint32_t cpu_id) {
+    (void)cpu_id;
     // Map LAPIC timer to vector 32, divide by 16
     lapic_write(LAPIC_TIMER_DIV_OFFSET, 0x03);
     lapic_write(LAPIC_TIMER_LVT_OFFSET, 32);
-    return 0;
 }
 
-int hal_timer_set_periodic(uint32_t tick_hz) {
+void hal_timer_program_periodic(uint64_t ns) {
+    uint32_t ticks = ns / 1000; // rough approximation for timer freq
     lapic_write(LAPIC_TIMER_LVT_OFFSET, 32 | 0x20000); // Periodic mode
-    lapic_write(LAPIC_TIMER_INIT_CNT_OFFSET, 1000000); // Example ticks
-    return 0;
+    lapic_write(LAPIC_TIMER_INIT_CNT_OFFSET, ticks);
 }
 
-int hal_timer_set_oneshot(uint64_t ns_delay) {
+void hal_timer_program_oneshot(uint64_t ns) {
+    uint32_t ticks = ns / 1000; // rough approximation for timer freq
     lapic_write(LAPIC_TIMER_LVT_OFFSET, 32); // One-shot mode
-    lapic_write(LAPIC_TIMER_INIT_CNT_OFFSET, ns_delay / 100); // Example conv
-    return 0;
+    lapic_write(LAPIC_TIMER_INIT_CNT_OFFSET, ticks);
+}
+
+uint64_t hal_timer_read_counter(void) {
+    return rdtsc();
+}
+
+uint64_t hal_timer_read_freq(void) {
+    return 1000000000ULL; // Return ~1GHz assuming generic TSC
 }
 
 uint64_t hal_timer_monotonic_ticks(void) {
     return rdtsc();
+}
+
+bool hal_timer_is_per_cpu(void) {
+    return true; // LAPIC timer is per CPU
 }
