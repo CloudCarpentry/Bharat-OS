@@ -81,16 +81,16 @@ endif()
 # ── Boot and HAL sources (arch-specific) ────────────────────────────────────
 if(ARCH STREQUAL "x86_64")
     set(BOOT_SRC src/boot/x86_64/boot.S)
-    set(ARCH_HAL src/hal/x86_64/hal_cpu.c src/hal/x86_64/trap_entry.S src/hal/x86_64/vmm.c src/hal/x86_64/vtd_iommu.c)
+    set(ARCH_HAL src/hal/x86_64/hal_cpu.c src/hal/x86_64/trap_entry.S src/hal/x86_64/vmm.c src/hal/x86_64/vtd_iommu.c src/hal/x86_64/apic.c src/hal/x86_64/timer.c)
     set(ARCH_CONTEXT_SWITCH src/arch/x86_64/context_switch.c src/arch/x86_64/context_switch.S)
 elseif(ARCH STREQUAL "riscv64")
     set(BOOT_SRC src/boot/riscv64/boot.S)
-    set(ARCH_HAL src/hal/riscv/hal_cpu.c src/hal/riscv/trap_entry.S src/hal/riscv/vmm.c src/hal/riscv/iopmp.c)
+    set(ARCH_HAL src/hal/riscv/hal_cpu.c src/hal/riscv/trap_entry.S src/hal/riscv/vmm.c src/hal/riscv/iopmp.c src/hal/riscv/plic.c src/hal/riscv/sbi_timer_ipi.c)
     set(ARCH_HAL_EXTRA src/hal/riscv/shakti_bsp.c)
     set(ARCH_CONTEXT_SWITCH src/arch/riscv64/context_switch.c src/arch/riscv64/context_switch.S)
 elseif(ARCH STREQUAL "arm64")
     set(BOOT_SRC src/boot/arm64/boot.S)
-    set(ARCH_HAL src/hal/arm64/hal_cpu.c src/hal/arm64/trap_entry.S src/hal/arm64/vmm.c src/hal/arm64/smmu.c)
+    set(ARCH_HAL src/hal/arm64/hal_cpu.c src/hal/arm64/trap_entry.S src/hal/arm64/vmm.c src/hal/arm64/smmu.c src/hal/arm64/gicv3.c src/hal/arm64/timer_generic.c)
     set(ARCH_CONTEXT_SWITCH src/arch/arm64/context_switch.c src/arch/arm64/context_switch.S)
     set(ARCH_HAL_EXTRA src/hal/arm64/topology_fdt.c)
 endif()
@@ -168,8 +168,10 @@ set(KERNEL_SRCS
     src/device/builtin_drivers.c
     src/device/device_manager.c
     src/device/pci.c
-    src/hal/timer_common.c
+
     src/hal/interrupt_common.c
+    src/hal/timer_common.c
+
     src/power_thermal_perf.c
     src/trap/trap.c
     src/multicore.c

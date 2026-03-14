@@ -2,7 +2,7 @@
 #include <assert.h>
 
 #include "hal/hal.h"
-#include "hal/interrupt.h"
+#include "hal/hal_irq.h"
 
 // Basic stubs to allow linking test on host
 void hal_serial_write(const char* s) { (void)s; }
