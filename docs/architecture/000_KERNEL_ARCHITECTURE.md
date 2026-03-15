@@ -149,20 +149,29 @@ Optimizations include:
 
 # Memory Management
 
+The memory subsystem is designed around a **3-plane Distributed VM Architecture** (see [ADR 008](../adr/008-distributed-vm-monitor-and-vm-spaces.md)) to natively support multikernel execution, diverse hardware profiles, and real-time constraints:
+
+1. **Plane A — Canonical Distributed VM Model (`vm_space_t`)**: This plane is the source of truth. It manages address spaces, mappings, capabilities, sharing rules, and generations. It explicitly tracks timing classes (Best-Effort, Soft RT, Hard RT) and hardware profiles (MMU, MPU, MMU+DMA isolation).
+2. **Plane B — URPC Monitor Protocol**: The distributed control plane. It propagates map/unmap/protect requests, handles remote invalidation (TLB shootdowns), and manages activation hints for thread migration across cores.
+3. **Plane C — Local Hardware Realization (`arch_vm_ops_t`)**: The silicon-facing data plane. Each core locally executes page-table writes, CR3/TTBR/satp activation, local TLB invalidation, and page-fault decoding.
+
 The memory subsystem handles:
 
-- virtual memory
-- page tables
-- page allocation
-- kernel heap
-- user memory protection
+- physical page allocation (PMM)
+- canonical distributed virtual memory (`vm_space_t`)
+- local page table realization
+- kernel heap and slab allocation
+- distributed memory coherence
+- user memory and device DMA isolation
 
 Features include:
 
 - huge page support
+- URPC-based remote TLB invalidation
+- strict generation-based coherence for revocation
 - NUMA memory allocation
 - cache-aware allocation
-- page coloring strategies
+- MPU/PMP fallback for hard-real-time and low-end systems
 
 ---
 
