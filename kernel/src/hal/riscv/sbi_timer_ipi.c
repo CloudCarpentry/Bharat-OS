@@ -69,11 +69,11 @@ void hal_ipi_send(uint32_t target_cpu, hal_ipi_reason_t reason) {
     // For now we map to standard IPI since reasons are typically processed softly.
     (void)reason;
     unsigned long hart_mask = (1UL << target_cpu);
-    sbi_send_ipi_payload(&hart_mask, 0); // Payload is ignored by basic SBI IPI
+    sbi_send_ipi(hart_mask, 0); // SBI v0.2+ IPI
 }
 
 void hal_ipi_broadcast(uint64_t mask, hal_ipi_reason_t reason) {
     (void)reason;
     unsigned long hart_mask = (unsigned long)mask;
-    sbi_send_ipi_payload(&hart_mask, 0);
+    sbi_send_ipi(hart_mask, 0); // SBI v0.2+ IPI
 }
