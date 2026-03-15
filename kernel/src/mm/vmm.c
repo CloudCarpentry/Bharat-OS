@@ -29,8 +29,39 @@ static mmu_flags_t convert_vmm_flags(uint32_t flags) {
     return mmu_flags;
 }
 
+#include "../../include/profile.h"
+#include "../../include/urpc/urpc_bootstrap.h"
+
+#define URPC_MSG_TLB_SHOOTDOWN 0x01
+
+void vmm_process_urpc_messages(void) {
+    uint32_t current_core = hal_cpu_get_id();
+    uint64_t msg;
+
+    // Drain messages
+    while (urpc_recv(current_core, &msg) == 0) {
+        uint64_t type = msg & 0xFFF; // Extract type from bottom 12 bits
+        virt_addr_t vaddr = (virt_addr_t)(msg & ~0xFFFULL); // Recover 4K aligned address
+
+        if (type == URPC_MSG_TLB_SHOOTDOWN) {
+            if (active_mmu && active_mmu->tlb_flush_page) {
+                active_mmu->tlb_flush_page(vaddr);
+            } else {
+                hal_tlb_flush((unsigned long long)vaddr);
+            }
+        }
+    }
+}
+
 int vmm_init(void) {
     arch_mmu_init();
+
+    if (get_memory_model() == MEM_MODEL_MPU || get_memory_model() == MEM_MODEL_FLAT) {
+        // MPU and FLAT memory models do not use traditional VMM page tables.
+        // Return 0 indicating success, but VMM operations will be no-ops or handled
+        // by specific MPU region managers not present in this generic VMM.
+        return 0;
+    }
 
     if (!active_mmu) {
         return -1; // Fallback or unsupported architecture
@@ -46,6 +77,10 @@ int vmm_init(void) {
 }
 
 int mm_vmm_map_page(address_space_t* as, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
+    if (get_memory_model() != MEM_MODEL_MMU) {
+        return 0; // No-op for MPU/FLAT
+    }
+
     if (!as || as->root_table == 0U || paddr == 0U) {
         return -1;
     }
@@ -73,7 +108,7 @@ int mm_vmm_map_page(address_space_t* as, virt_addr_t vaddr, phys_addr_t paddr, u
     return active_mmu->map(as->root_table, vaddr, paddr, PAGE_SIZE, mmu_flags);
 }
 
-// Global TLB shootdown function
+// Global TLB shootdown function via URPC
 void tlb_shootdown(virt_addr_t vaddr) {
     if (active_mmu && active_mmu->tlb_flush_page) {
         active_mmu->tlb_flush_page(vaddr);
@@ -81,16 +116,28 @@ void tlb_shootdown(virt_addr_t vaddr) {
         hal_tlb_flush((unsigned long long)vaddr);
     }
 
-    // IPI based shootdown for cores executing the same process (or system wide for kernel mappings)
+    // URPC based shootdown
     uint32_t current_core = hal_cpu_get_id();
+    // Pack message type into the bottom 12 bits (assuming vaddr is 4K aligned)
+    uint64_t msg = ((uint64_t)vaddr & ~0xFFFULL) | (URPC_MSG_TLB_SHOOTDOWN & 0xFFF);
+
     for (uint32_t i = 0; i < 8; ++i) { // MAX_SUPPORTED_CORES is 8
-        if (i != current_core) {
-            hal_send_ipi_payload(i, (uint64_t)vaddr);
+        if (i != current_core && urpc_is_ready(i)) {
+            // Attempt to send via URPC; if full, we could fall back to IPI
+            // but the architecture calls for URPC as the primary vehicle.
+            urpc_send(i, msg);
+            // We should also trigger an IPI to notify the remote core that a message
+            // is waiting in its queue, as URPC_send is just a queue primitive.
+            hal_send_ipi_payload(i, 0);
         }
     }
 }
 
 int mm_vmm_unmap_page(address_space_t* as, virt_addr_t vaddr) {
+    if (get_memory_model() != MEM_MODEL_MMU) {
+        return 0; // No-op for MPU/FLAT
+    }
+
     if (!as || as->root_table == 0U) {
         return -1;
     }
@@ -154,6 +201,17 @@ int vmm_map_device_mmio_token(virt_addr_t vaddr, phys_addr_t paddr, uint64_t siz
 }
 
 address_space_t* mm_create_address_space(void) {
+    if (get_memory_model() != MEM_MODEL_MMU) {
+        // For MPU/FLAT return a valid pointer, but no page tables are cloned.
+        address_space_t* as = (address_space_t*)(uintptr_t)mm_alloc_page(NUMA_NODE_ANY);
+        if (as) {
+            as->root_table = 0;
+            as->owner_core_id = hal_cpu_get_id();
+            as->object_id = (uint64_t)(uintptr_t)as;
+        }
+        return as;
+    }
+
     if (!active_mmu) return NULL;
 
     phys_addr_t root = active_mmu->clone_kernel(kernel_space.root_table);
@@ -175,6 +233,10 @@ address_space_t* mm_create_address_space(void) {
 
 // Copy-on-Write Fault Handler
 int vmm_handle_cow_fault(address_space_t* as, virt_addr_t vaddr) {
+    if (get_memory_model() != MEM_MODEL_MMU) {
+        return -1; // MPU/FLAT do not support demand paging / CoW
+    }
+
     if (!as || as->root_table == 0U) return -1;
 
     phys_addr_t old_phys = 0;
