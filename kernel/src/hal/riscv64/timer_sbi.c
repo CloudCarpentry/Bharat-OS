@@ -37,31 +37,43 @@ static inline uint64_t read_time(void) {
     return time;
 }
 
-int hal_timer_init(uint32_t tick_hz) {
+void hal_timer_init(void) {
     // Rely on mtime CSR provided by the platform
-    return 0;
 }
 
-int hal_timer_init_cpu_local(uint32_t tick_hz) {
-    // Read current time, add frequency/hz and schedule
-    // We assume an explicit set_periodic or set_oneshot will do it
-    return 0;
+void hal_timer_init_cpu_local(uint32_t cpu_id) {
+    (void)cpu_id;
+    // Enable STIE (Supervisor Timer Interrupt Enable) in sie
+    __asm__ volatile("csrs sie, %0" : : "r"(32)); // STIE is bit 5
 }
 
-int hal_timer_set_periodic(uint32_t tick_hz) {
-    // In multikernel, we emulate periodic with recurring oneshots
-    uint64_t next_tick = read_time() + (10000000 / tick_hz); // Assuming 10MHz timebase
+void hal_timer_program_periodic(uint64_t ns) {
+    // Emulate periodic with recurring oneshots
+    // Assuming 10MHz timebase (typical for QEMU/RISC-V)
+    uint64_t ticks = (10000000ULL * ns) / 1000000000ULL;
+    uint64_t next_tick = read_time() + ticks;
     sbi_ecall(SBI_EXT_TIME, SBI_EXT_TIME_SET_TIMER, next_tick, 0, 0, 0, 0, 0);
-    return 0;
 }
 
-int hal_timer_set_oneshot(uint64_t ns_delay) {
+void hal_timer_program_oneshot(uint64_t ns) {
     // Calculate ticks based on timebase
-    uint64_t next_tick = read_time() + (ns_delay / 100);
+    uint64_t ticks = (10000000ULL * ns) / 1000000000ULL;
+    uint64_t next_tick = read_time() + ticks;
     sbi_ecall(SBI_EXT_TIME, SBI_EXT_TIME_SET_TIMER, next_tick, 0, 0, 0, 0, 0);
-    return 0;
+}
+
+uint64_t hal_timer_read_counter(void) {
+    return read_time();
+}
+
+uint64_t hal_timer_read_freq(void) {
+    return 10000000ULL; // Return 10MHz assuming generic RISC-V timebase
 }
 
 uint64_t hal_timer_monotonic_ticks(void) {
     return read_time();
+}
+
+bool hal_timer_is_per_cpu(void) {
+    return true; // RISC-V timer (mtimecmp via SBI) is per-hart
 }

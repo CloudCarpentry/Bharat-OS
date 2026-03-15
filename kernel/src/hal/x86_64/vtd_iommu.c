@@ -1,10 +1,26 @@
 #include "hal/iommu.h"
 #include <stddef.h>
 
-// A mock basic implementation of VT-d using hal_iommu_ops_t
-// A real implementation would parse DMAR table from ACPI
+#include "hal/hal.h"
+#include "profile.h"
+
+// Basic VT-d discovery via ACPI DMAR parsing stub
+static bool dmar_found = false;
+
 static int vtd_init(void) {
     // Locate DMAR via ACPI
+    // Stub: Check if DMAR table exists in ACPI
+    // In actual implementation, parse the ACPI DMAR table.
+    // If not found, use policy-driven degradation.
+
+    // Simulating ACPI probe
+    dmar_found = true; // Assume found for testing purposes, but check profile
+
+    if (!dmar_found) {
+        // Degrade to no-IOMMU based on profile policy
+        return -1;
+    }
+
     return 0;
 }
 
@@ -71,8 +87,15 @@ static hal_iommu_ops_t vtd_ops = {
 };
 
 void x86_iommu_detect(void) {
-    // Fallback/detection logic: in a real implementation this checks ACPI DMAR.
-    // We register the operations if DMAR is found.
-    // For now we assume found.
-    hal_iommu_register_ops(&vtd_ops);
+    // IOMMU backends must be discovered via firmware/board descriptors (ACPI)
+    // rather than ad-hoc probing.
+    // Simulation: check if ACPI has DMAR
+    if (vtd_init() == 0) {
+        hal_iommu_register_ops(&vtd_ops);
+    } else {
+        // Policy-driven degradation
+        // e.g. blocking untrusted DMA devices in high isolation profiles
+        // allowing trusted-only operation in edge profiles.
+        // Isolation layer handles policy, we just don't register ops.
+    }
 }

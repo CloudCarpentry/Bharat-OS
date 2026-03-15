@@ -231,6 +231,11 @@ long trap_handle(trap_frame_t *frame) {
     return 0; // Return gracefully after handling exception (if user thread)
   }
 
+  // Before returning to user space, process any pending incoming URPC messages
+  // like TLB shootdowns to ensure consistency.
+  extern void vmm_process_urpc_messages(void);
+  vmm_process_urpc_messages();
+
   if (frame->from_user == 0U) {
     return TRAP_ERR_PERM;
   }

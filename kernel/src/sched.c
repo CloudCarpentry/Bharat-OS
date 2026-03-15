@@ -581,9 +581,16 @@ static void sched_switch_to(kthread_t *next, uint32_t core_id) {
     arch_ext_state_save(current);
   }
 
+    // Process incoming URPC messages before doing the switch
+    vmm_process_urpc_messages();
+
   if (fv_secure_context_switch) {
     fv_secure_context_switch(next_ctx);
   } else {
+        // The runqueue lock (g_runqueues[core_id].lock) is currently held.
+        // It will be explicitly released by arch_post_switch() which is
+        // called from the assembly arch_context_switch once we are on the
+        // next thread's stack.
     arch_context_switch(prev_ctx, next_ctx);
   }
 

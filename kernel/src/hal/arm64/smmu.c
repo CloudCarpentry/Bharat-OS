@@ -1,9 +1,21 @@
 #include "hal/iommu.h"
 #include <stddef.h>
 
-// Mock SMMU v2/v3 operations
+#include "hal/hal.h"
+#include "profile.h"
+
+static bool smmu_found = false;
+
+// SMMU v2/v3 operations
 static int smmu_init(void) {
-    // Locate via FDT
+    // Locate via FDT/ACPI IORT
+    // Stub: Parse FDT for "arm,smmu-v3" or "arm,mmu-500"
+    smmu_found = true; // Assume found for now
+
+    if (!smmu_found) {
+        // Degrade to no-IOMMU
+        return -1;
+    }
     return 0;
 }
 
@@ -69,6 +81,11 @@ static hal_iommu_ops_t smmu_ops = {
 };
 
 void arm64_iommu_detect(void) {
-    // Real implementation checks FDT for smmu.
-    hal_iommu_register_ops(&smmu_ops);
+    // IOMMU backends must be discovered via firmware/board descriptors (FDT/ACPI)
+    // rather than ad-hoc probing.
+    if (smmu_init() == 0) {
+        hal_iommu_register_ops(&smmu_ops);
+    } else {
+        // Policy-driven degradation handled by isolation layer
+    }
 }

@@ -1,9 +1,21 @@
 #include "hal/iommu.h"
 #include <stddef.h>
 
-// Mock IOPMP / RISC-V IOMMU operations
+#include "hal/hal.h"
+#include "profile.h"
+
+static bool iopmp_found = false;
+
+// IOPMP / RISC-V IOMMU operations
 static int iopmp_init(void) {
     // Locate via FDT/BSP
+    // Stub: Parse FDT for "riscv,iopmp" or similar
+    iopmp_found = true; // Assume found
+
+    if (!iopmp_found) {
+        // Degrade to no-IOMMU
+        return -1;
+    }
     return 0;
 }
 
@@ -69,6 +81,11 @@ static hal_iommu_ops_t iopmp_ops = {
 };
 
 void riscv_iommu_detect(void) {
-    // Real implementation checks FDT for iopmp.
-    hal_iommu_register_ops(&iopmp_ops);
+    // IOMMU backends must be discovered via firmware/board descriptors (FDT)
+    // rather than ad-hoc probing.
+    if (iopmp_init() == 0) {
+        hal_iommu_register_ops(&iopmp_ops);
+    } else {
+        // Policy-driven degradation handled by isolation layer
+    }
 }

@@ -50,6 +50,9 @@ arch_context_switch:
     ldr x29,      [x1, #80]
 
     // Call arch_post_switch to release runqueue lock
+    // It is called after switching the stack and basic state,
+    // but before executing user code or returning to the thread's execution path.
+    // Preserve x0, x1 as they might be used by the caller
     stp x0, x1, [sp, #-16]!
     stp x29, x30, [sp, #-16]!
     mov x29, sp

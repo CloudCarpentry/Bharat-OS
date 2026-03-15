@@ -91,15 +91,18 @@ arch_context_switch:
     ld s11, 88(a1)   # regs[11]
 
     # Call post switch hook to release runqueue lock
-    # We must preserve a0 and a1. Also need to ensure sp is 16-byte aligned.
-    # It should be 16-byte aligned already by C convention, but we'll just push them safely.
-    addi sp, sp, -16
+    # It is called after restoring the state, before returning.
+    # Ensure sp is 16-byte aligned, preserve ra (which is currently correct).
+    # Preserve a0, a1 as they might be used by the caller.
+    addi sp, sp, -32
     sd a0, 0(sp)
     sd a1, 8(sp)
+    sd ra, 16(sp)
     call arch_post_switch
+    ld ra, 16(sp)
     ld a1, 8(sp)
     ld a0, 0(sp)
-    addi sp, sp, 16
+    addi sp, sp, 32
 
     # Return
     ret
