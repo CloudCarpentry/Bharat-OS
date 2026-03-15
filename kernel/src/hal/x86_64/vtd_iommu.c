@@ -2,25 +2,85 @@
 #include <stddef.h>
 
 #include "hal/hal.h"
+#include "hal/hal_discovery.h"
+#include "device/irq_domain.h"
 #include "profile.h"
 
-// Basic VT-d discovery via ACPI DMAR parsing stub
+// Basic VT-d discovery via hal_discovery
 static bool dmar_found = false;
+static bool irq_remap_supported = false;
+static iommu_desc_t vtd_desc;
+
+// Forward declaration of MSI domain operations for VT-d Interrupt Remapping
+static int vtd_alloc_msi(msi_domain_t* domain, void* device, int count, msi_desc_t* desc_array);
+static void vtd_free_msi(msi_domain_t* domain, msi_desc_t* desc_array, int count);
+static int vtd_write_msg(msi_domain_t* domain, msi_desc_t* desc);
+
+static msi_domain_t vtd_msi_domain = {
+    .name = "vtd-irq-remap",
+    .base_domain = NULL,
+    .alloc_msi = vtd_alloc_msi,
+    .free_msi = vtd_free_msi,
+    .write_msg = vtd_write_msg,
+    .host_data = NULL
+};
 
 static int vtd_init(void) {
-    // Locate DMAR via ACPI
-    // Stub: Check if DMAR table exists in ACPI
-    // In actual implementation, parse the ACPI DMAR table.
-    // If not found, use policy-driven degradation.
+    system_discovery_t* disc = hal_get_system_discovery();
+    if (!disc) return -1;
 
-    // Simulating ACPI probe
-    dmar_found = true; // Assume found for testing purposes, but check profile
+    for (uint32_t i = 0; i < disc->iommu_count; i++) {
+        if (disc->iommus[i].type == IOMMU_VTD) {
+            dmar_found = true;
+            vtd_desc = disc->iommus[i];
+
+            // Bit 0 of DMAR flags is INTR_REMAP
+            if (vtd_desc.flags & 0x01) {
+                irq_remap_supported = true;
+                msi_domain_register(&vtd_msi_domain);
+            }
+            break;
+        }
+    }
 
     if (!dmar_found) {
-        // Degrade to no-IOMMU based on profile policy
         return -1;
     }
 
+    // Initialize DRHD registers, establish root entries and context tables
+    // (Hardware programming omitted for stub)
+
+    return 0;
+}
+
+static int vtd_alloc_msi(msi_domain_t* domain, void* device, int count, msi_desc_t* desc_array) {
+    (void)domain;
+    (void)device;
+    if (!irq_remap_supported) return -1;
+
+    // Allocate Interrupt Remapping Table Entries (IRTE)
+    // Populate desc_array with virtual IRQs
+    for (int i = 0; i < count; i++) {
+        desc_array[i].irq = 0x100 + i; // Stub VIRQ
+        // MSI message for VT-d Interrupt Remapping format
+        // Address points to VT-d remap window with Handle (IRTE index)
+        desc_array[i].msg.address = 0xFEE00000 | (1 << 4) /* SHV */ | (1 << 3) /* Remapped */;
+        desc_array[i].msg.data = i; // The IRTE index
+    }
+    return 0;
+}
+
+static void vtd_free_msi(msi_domain_t* domain, msi_desc_t* desc_array, int count) {
+    (void)domain;
+    (void)desc_array;
+    (void)count;
+    // Clear IRTEs
+}
+
+static int vtd_write_msg(msi_domain_t* domain, msi_desc_t* desc) {
+    (void)domain;
+    (void)desc;
+    // Modify IRTE if affinity changes
     return 0;
 }
 
