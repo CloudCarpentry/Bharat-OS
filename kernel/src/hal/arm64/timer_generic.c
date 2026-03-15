@@ -15,34 +15,45 @@ static inline void write_cntp_ctl(uint32_t val) {
     __asm__ volatile("msr cntp_ctl_el0, %0" : : "r" (val));
 }
 
-int hal_timer_init(uint32_t tick_hz) {
+void hal_timer_init(void) {
     // Generic timer is always on, frequency in CNTFRQ_EL0
-    return 0;
 }
 
-int hal_timer_init_cpu_local(uint32_t tick_hz) {
+void hal_timer_init_cpu_local(uint32_t cpu_id) {
+    (void)cpu_id;
     // Enable timer, unmask interrupt
     write_cntp_ctl(1);
-    return 0;
 }
 
-int hal_timer_set_periodic(uint32_t tick_hz) {
-    // We prefer one-shot, but for periodic we'd read frq and div
+void hal_timer_program_periodic(uint64_t ns) {
     uint64_t frq;
     __asm__ volatile("mrs %0, cntfrq_el0" : "=r" (frq));
-    write_cntp_tval(frq / tick_hz);
-    return 0;
+    uint32_t ticks = (uint32_t)((frq * ns) / 1000000000ULL);
+    write_cntp_tval(ticks);
 }
 
-int hal_timer_set_oneshot(uint64_t ns_delay) {
+void hal_timer_program_oneshot(uint64_t ns) {
     uint64_t frq;
     __asm__ volatile("mrs %0, cntfrq_el0" : "=r" (frq));
     // Calculate ticks from ns delay
-    uint32_t ticks = (frq / 1000000000) * ns_delay;
+    uint32_t ticks = (uint32_t)((frq * ns) / 1000000000ULL);
     write_cntp_tval(ticks);
-    return 0;
+}
+
+uint64_t hal_timer_read_counter(void) {
+    return read_cntpct();
+}
+
+uint64_t hal_timer_read_freq(void) {
+    uint64_t frq;
+    __asm__ volatile("mrs %0, cntfrq_el0" : "=r" (frq));
+    return frq;
 }
 
 uint64_t hal_timer_monotonic_ticks(void) {
     return read_cntpct();
+}
+
+bool hal_timer_is_per_cpu(void) {
+    return true; // ARM Generic Timer is per-core
 }

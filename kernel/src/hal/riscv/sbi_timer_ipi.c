@@ -23,21 +23,21 @@ void hal_timer_init_cpu_local(uint32_t cpu_id) {
 
 void hal_timer_program_periodic(uint64_t ns) {
     uint64_t current_time;
-    __asm__ volatile("csrr %0, time" : "=r"(current_time));
+    __asm__ volatile("rdtime %0" : "=r"(current_time));
     uint64_t ticks = (g_timer_timebase_freq * ns) / 1000000000ULL;
     sbi_set_timer(current_time + ticks);
 }
 
 void hal_timer_program_oneshot(uint64_t ns) {
     uint64_t current_time;
-    __asm__ volatile("csrr %0, time" : "=r"(current_time));
+    __asm__ volatile("rdtime %0" : "=r"(current_time));
     uint64_t ticks = (g_timer_timebase_freq * ns) / 1000000000ULL;
     sbi_set_timer(current_time + ticks);
 }
 
 uint64_t hal_timer_read_counter(void) {
     uint64_t current_time;
-    __asm__ volatile("csrr %0, time" : "=r"(current_time));
+    __asm__ volatile("rdtime %0" : "=r"(current_time));
     return current_time;
 }
 
