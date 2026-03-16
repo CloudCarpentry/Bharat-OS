@@ -13,6 +13,7 @@
 // @cite L4 Microkernels: The Lessons from 20 Years of Research and Implementation (Klein & Andronick, 2016)
 // L4 minimal memory mapping model: Kernel only maps/unmaps physical pages, policy lives in user space.
 #include <stddef.h>
+#include <stdbool.h>
 #include <stdint.h>
 
 #define P2V(x) ((void*)(uintptr_t)(x))
@@ -118,6 +119,8 @@ int mm_vmm_map_page(address_space_t* as, virt_addr_t vaddr, phys_addr_t paddr, u
 
 // Global TLB shootdown function via URPC
 void tlb_shootdown(virt_addr_t vaddr) {
+    enum { TLB_ACK_SPIN_LIMIT = 100000 };
+
     if (active_mmu && active_mmu->tlb_flush_page) {
         active_mmu->tlb_flush_page(vaddr);
     } else {
@@ -126,26 +129,48 @@ void tlb_shootdown(virt_addr_t vaddr) {
 
     uint32_t current_core = hal_cpu_get_id();
     uint64_t msg = urpc_pack_msg(URPC_TLB_INVAL, (uint64_t)vaddr);
+    bool waiting_for_ack[BHARAT_MAX_CPUS] = { false };
     int acks_needed = 0;
 
     for (uint32_t i = 0; i < BHARAT_MAX_CPUS; ++i) { 
         if (i != current_core && urpc_channel_get_state(i) == URPC_CHANNEL_BOUND) {
-            urpc_bootstrap_send(i, msg);
-            hal_send_ipi_payload(i, 0);
-            acks_needed++;
+            if (urpc_bootstrap_send(i, msg) == 0) {
+                hal_send_ipi_payload(i, 0);
+                waiting_for_ack[i] = true;
+                acks_needed++;
+            }
         }
     }
 
-    while (acks_needed > 0) {
+    int spin_count = 0;
+    while (acks_needed > 0 && spin_count < TLB_ACK_SPIN_LIMIT) {
+        bool progressed = false;
         uint64_t raw_msg;
         for (uint32_t i = 0; i < BHARAT_MAX_CPUS; ++i) {
             if (i != current_core && urpc_bootstrap_recv(i, &raw_msg) == 0) {
                 urpc_msg_type_t type;
-                urpc_unpack_msg(raw_msg, &type, NULL);
+                uint64_t payload;
+                urpc_unpack_msg(raw_msg, &type, &payload);
                 if (type == URPC_TLB_INVAL_ACK) {
-                    acks_needed--;
+                    if (waiting_for_ack[i]) {
+                        waiting_for_ack[i] = false;
+                        acks_needed--;
+                        progressed = true;
+                    }
+                } else if (type == URPC_TLB_INVAL) {
+                    virt_addr_t remote_vaddr = (virt_addr_t)payload;
+                    if (active_mmu && active_mmu->tlb_flush_page) {
+                        active_mmu->tlb_flush_page(remote_vaddr);
+                    } else {
+                        hal_tlb_flush((unsigned long long)remote_vaddr);
+                    }
+                    (void)urpc_bootstrap_send(i, urpc_pack_msg(URPC_TLB_INVAL_ACK, 0));
                 }
             }
+        }
+
+        if (!progressed) {
+            spin_count++;
         }
     }
 }
