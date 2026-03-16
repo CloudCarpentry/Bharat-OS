@@ -9,6 +9,7 @@ set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 
 include_directories(include)
 include_directories(include/generated)
+include_directories(${CMAKE_SOURCE_DIR}/include)
 
 # ── Configuration Header ────────────────────────────────────────────────────
 # These variables are normally set in the root CMakeLists.txt. 
@@ -119,6 +120,9 @@ endif()
 set(KERNEL_SRCS
     ${BOOT_SRC}
     src/boot/boot_args.c
+    src/boot/boot_ui_select.c
+    src/display/boot_video.c
+    src/display/display_handoff.c
     src/hal/arm32_mpu_vmm_mock.c
     src/main.c
     src/cpu_local.c
@@ -127,6 +131,8 @@ set(KERNEL_SRCS
     src/arch/capabilities.c
     src/profile/${KERNEL_PROFILE_LOWER}/profile.c
     $<$<STREQUAL:${ARCH},x86_64>:src/board/qemu-virt-x86_64/board.c>
+    $<$<STREQUAL:${ARCH},x86_64>:src/arch/x86_64/boot_video_efi.c>
+    $<$<STREQUAL:${ARCH},x86_64>:src/board/qemu-virt-x86_64/machine_display.c>
     $<$<STREQUAL:${ARCH},arm64>:src/board/bcm2711-rpi4/board.c>
     $<$<AND:$<STREQUAL:${ARCH},riscv64>,$<STREQUAL:${BHARAT_RISCV_SOC_PROFILE},qemu-virt>>:src/board/qemu-virt-riscv64/board.c>
     $<$<AND:$<STREQUAL:${ARCH},riscv64>,$<NOT:$<STREQUAL:${BHARAT_RISCV_SOC_PROFILE},qemu-virt>>>:src/board/shakti-ref/board.c>
