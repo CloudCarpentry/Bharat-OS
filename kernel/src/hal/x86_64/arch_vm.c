@@ -1,87 +1,116 @@
 #include "../../../include/mm/arch_vm.h"
 #include "../../../include/hal/hal.h"
 #include "../../../include/hal/mmu_ops.h"
+#include "../../../include/hal/x86_64/trap_frame_x86.h"
 #include "../../../include/mm.h"
 #include <stddef.h>
 #include <stdint.h>
 
-// Mock definitions for the underlying HW
-extern void write_cr3(phys_addr_t cr3);
-extern phys_addr_t read_cr3(void);
-extern void invlpg(uintptr_t addr);
+extern phys_addr_t vmm_get_kernel_root(void);
 
 static int x86_64_kernel_init(void) {
-    // Bootstrap the global higher-half mapping
+    // Kernel higher-half mapping is established in boot.S / mmu_init.c
+    // before this point. Nothing to do here.
     return 0;
 }
 
 static int x86_64_space_init(vm_space_t *space, vm_core_state_t *local) {
-    if (!space || !local) return -1;
+    if (!space || !local || !active_mmu) return -1;
 
-    // Allocate PML4 root table
-    // For MVP, just return a mocked value or reuse basic allocator
-    local->root_pa = 0x1000; // Mock PA
+    // Clone kernel page table so upper-half kernel mappings are shared
+    phys_addr_t root = active_mmu->clone_kernel(vmm_get_kernel_root());
+    if (!root) return -1;
+
+    local->root_pa = root;
+    local->core_id = hal_cpu_get_id();
     local->state = VM_REALIZE_VALID;
     return 0;
 }
 
 static void x86_64_space_destroy(vm_space_t *space, vm_core_state_t *local) {
-    if (!space || !local) return;
-    // Walk PML4, free PTs, free root
-    local->root_pa = 0;
+    if (!space || !local || !active_mmu) return;
+
+    if (local->root_pa) {
+        active_mmu->destroy_table(local->root_pa);
+        local->root_pa = 0;
+    }
     local->state = VM_REALIZE_NONE;
 }
 
 static int x86_64_map(vm_space_t *space, vm_core_state_t *local,
                       uintptr_t va, uintptr_t pa, size_t len,
                       uint64_t prot, uint64_t mem_type, uint64_t flags) {
-    (void)space; (void)local; (void)va; (void)pa; (void)len; (void)prot; (void)mem_type; (void)flags;
-    // Local PT write using PML4 -> PDPT -> PD -> PT logic
-    return 0;
+    (void)space; (void)mem_type; (void)flags;
+    if (!active_mmu || !local) return -1;
+    return active_mmu->map(local->root_pa, va, pa, len, (mmu_flags_t)prot);
 }
 
 static int x86_64_unmap(vm_space_t *space, vm_core_state_t *local,
                         uintptr_t va, size_t len) {
-    (void)space; (void)local; (void)va; (void)len;
-    // Remove local PT entries
-    // invlpg(va);
-    return 0;
+    (void)space;
+    if (!active_mmu || !local) return -1;
+    return active_mmu->unmap(local->root_pa, va, len, NULL);
 }
 
 static int x86_64_protect(vm_space_t *space, vm_core_state_t *local,
                           uintptr_t va, size_t len,
                           uint64_t prot, uint64_t mem_type) {
-    (void)space; (void)local; (void)va; (void)len; (void)prot; (void)mem_type;
-    // Modify existing local PT permissions
-    // invlpg(va);
-    return 0;
+    (void)space; (void)mem_type;
+    if (!active_mmu || !local) return -1;
+    return active_mmu->protect(local->root_pa, va, len, (mmu_flags_t)prot);
 }
 
 static int x86_64_activate(vm_space_t *space, vm_core_state_t *local) {
-    if (!space || !local) return -1;
+    (void)space;
+    if (!active_mmu || !local) return -1;
 
-    // In actual implementation: write_cr3(local->root_pa);
+    active_mmu->activate(local->root_pa);
+    if (active_mmu->tlb_flush_all) {
+        active_mmu->tlb_flush_all();
+    }
     return 0;
 }
 
 static int x86_64_invalidate_range(vm_space_t *space, vm_core_state_t *local,
                                    uintptr_t va, size_t len, uint64_t flags) {
-    (void)space; (void)local; (void)va; (void)len; (void)flags;
-    // Execute multiple invlpg
+    (void)space; (void)local; (void)flags;
+    if (!active_mmu || !active_mmu->tlb_flush_page) return -1;
+
+    size_t offset = 0;
+    while (offset < len) {
+        active_mmu->tlb_flush_page(va + offset);
+        offset += PAGE_SIZE;
+    }
     return 0;
 }
 
 static int x86_64_invalidate_all(vm_space_t *space, vm_core_state_t *local) {
     (void)space; (void)local;
-    // Reload CR3
-    // write_cr3(read_cr3());
+    if (!active_mmu || !active_mmu->tlb_flush_all) return -1;
+
+    active_mmu->tlb_flush_all();
     return 0;
 }
 
 static int x86_64_fault_decode(arch_trap_frame_t *tf, vm_fault_info_t *out) {
-    (void)tf; (void)out;
-    // Read CR2
-    // Decode error code
+    if (!tf || !out) return -1;
+
+    // Safe cast — trap_entry.S always builds a full x86_trap_frame_t on x86
+    const x86_trap_frame_t *x86tf = (const x86_trap_frame_t *)tf;
+
+    out->addr   = x86tf->cr2;
+    uint64_t ec     = x86tf->error_code;
+
+    bool is_present = (ec >> 0) & 1;   // 0 = not-present, 1 = protection
+    out->is_write   = (ec >> 1) & 1;   // write fault
+    out->is_user    = (ec >> 2) & 1;   // user mode
+    out->is_exec    = (ec >> 4) & 1;   // NX / instruction fetch
+
+    out->not_present = !is_present;
+    out->permission_fault = is_present;
+
+    out->arch_code = ec;
+
     return 0;
 }
 
