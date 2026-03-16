@@ -86,10 +86,13 @@ int mm_free_dma_pages(phys_addr_t phys, void *kernel_virt, size_t size);
 void mm_inc_page_ref(phys_addr_t page);
 
 // Virtual Memory Management (Architecture agnostic paging)
+#include "spinlock.h"
+
 typedef struct {
   phys_addr_t root_table; // CR3 on x86, satp on RISC-V
   uint32_t owner_core_id;
   uint64_t object_id;
+  spinlock_t lock;
 } address_space_t;
 
 int vmm_init(void);
