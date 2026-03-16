@@ -23,6 +23,7 @@
 #include "trap.h"
 #include "boot/boot_args.h"
 #include "tests/ktest.h"
+#include <bharat/cpu_local.h>
 
 #include "arch/arch_ext_state.h"
 #include "arch/arch_cpu_caps.h"
@@ -226,6 +227,8 @@ void kernel_main(void) {
   KPRINT("\nBharat-OS kernel boot (v3.2 bring-up)\n");
 
   uint32_t cpu_id = hal_cpu_get_id();
+  cpu_local_init(cpu_id);
+  
   int is_bsp = (cpu_id == 0);
 
   if (is_bsp) {
