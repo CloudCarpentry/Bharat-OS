@@ -219,8 +219,12 @@ void kernel_main(void) {
       tag_ptr += ((tag->size + 7) & ~7);
     }
 
-    // Phase 1 x86_64 Framebuffer parser hook
+    // Phase 1 x86_64 Framebuffer parser hook (Multiboot 2)
     x86_64_parse_multiboot_framebuffer(mb_info);
+  } else if (magic == 0x2BADB002 && mb_info != NULL) {
+    // Multiboot 1 parser fallback (QEMU -kernel passes Multiboot 1)
+    extern void x86_64_parse_multiboot1_framebuffer(void *mb_info);
+    x86_64_parse_multiboot1_framebuffer(mb_info);
   }
 #else
   // TODO: Add Device Tree parsing for ARM64/RISC-V bootargs
