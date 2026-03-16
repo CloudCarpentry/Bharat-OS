@@ -24,7 +24,7 @@ set(AI_GOVERNOR_SOURCES
 )
 
 add_library(subsys_manager STATIC ${SUBSYS_SOURCES})
-target_compile_options(subsys_manager PRIVATE -ffreestanding -nostdlib -Wall)
+target_compile_options(subsys_manager PRIVATE -ffreestanding -nostdlib -Wall -fno-pic -fno-pie)
 target_include_directories(subsys_manager PRIVATE
     ${CMAKE_SOURCE_DIR}/kernel/include
 )
@@ -43,6 +43,7 @@ if(BHARAT_BUILD_AI_GOVERNOR)
         ${CMAKE_SOURCE_DIR}/lib/posix/include
     )
     set_property(TARGET ai_governor PROPERTY POSITION_INDEPENDENT_CODE FALSE)
+    target_compile_options(ai_governor PRIVATE -fPIE -fPIC)
     target_link_options(ai_governor PRIVATE "-no-pie")
 endif()
 # Might need host headers if it's considered user-space mock,
