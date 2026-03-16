@@ -104,7 +104,7 @@ int main(void) {
                             (uint64_t)(uintptr_t)out,
                             sizeof(out),
                             (uint64_t)(uintptr_t)&out_len,
-                            0, 0) == 0);
+                            0, 0) == 0); // Receiver gets 7 params properly formatted already, so we just check. But we need to make sure the args match signature.
     assert(out_len == sizeof(payload));
     assert(out[0] == 't' && out[5] == 'a');
 
@@ -146,6 +146,7 @@ int hal_vmm_update_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_
     (void)root_table; (void)vaddr; (void)paddr; (void)flags;
     return -1;
 }
-void tlb_shootdown(virt_addr_t vaddr) {
+void tlb_shootdown(address_space_t *as, virt_addr_t vaddr) {
+    (void)as;
     (void)vaddr;
 }

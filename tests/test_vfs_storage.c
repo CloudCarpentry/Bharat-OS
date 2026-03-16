@@ -5,8 +5,14 @@
 #include "fs/blob_backend.h"
 #include "fs/vfs.h"
 
-static int mem_read(vfs_node_t *node, uint64_t offset, void *buffer, size_t size) {
-    const char *src = (const char *)node->fs_data;
+int __attribute__((weak)) vfs_mount(const char* path, vfs_node_t* root) { (void)path; (void)root; return -1; }
+int __attribute__((weak)) vfs_open(const char* path, int flags) { (void)path; (void)flags; return -1; }
+int __attribute__((weak)) vfs_read(int fd, void* buf, size_t count) { (void)fd; (void)buf; (void)count; return -1; }
+
+uint8_t g_memory_fs[1024] = {0};
+
+static int mem_read(vfs_file_t *file, uint64_t offset, void *buffer, size_t size) {
+    const char *src = (const char *)g_memory_fs;
     size_t len = strlen(src);
     if (offset >= len) {
         return 0;
@@ -18,8 +24,8 @@ static int mem_read(vfs_node_t *node, uint64_t offset, void *buffer, size_t size
     return (int)size;
 }
 
-static int mem_write(vfs_node_t *node, uint64_t offset, const void *buffer, size_t size) {
-    char *dst = (char *)node->fs_data;
+static int mem_write(vfs_file_t *file, uint64_t offset, const void *buffer, size_t size) {
+    char *dst = (char *)g_memory_fs;
     memcpy(dst + offset, buffer, size);
     return (int)size;
 }

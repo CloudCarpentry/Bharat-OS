@@ -1,6 +1,8 @@
 #include "../../include/mm/vm_space.h"
 #include "../../include/mm/arch_vm.h"
 #include "../../include/mm.h"
+#include "../../include/bharat/cpu_local.h"
+#include "../../include/mm.h"
 #include "../../include/monitor/mon_vm_ops.h"
 #include "../../include/hal/hal.h"
 #include <stddef.h>
@@ -130,6 +132,7 @@ int vm_activate_local(vm_space_t *space) {
         vm_core_state_t local_state = {0};
         local_state.core_id = core_id;
         active_arch_vm_ops->activate(space, &local_state);
+        core_set_current_as((address_space_t *)space);
     }
 
     spinlock_acquire(&space->lock);

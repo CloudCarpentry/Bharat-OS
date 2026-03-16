@@ -43,7 +43,13 @@ typedef struct cpu_local {
     struct kthread   *current;        // currently running thread
     struct kthread   *idle;           // per-core idle thread
     uintptr_t         kernel_stack;
-} cpu_local_t __attribute__((aligned(64)));  // cache-line aligned
+
+    // Active address space
+    uint64_t          current_as_id;
+    address_space_t  *current_as;
+} cpu_local_t;
+
+#define KERNEL_AS_ID 0
 
 // Provide an array of locals for all CPUs.
 extern cpu_local_t g_cpu_locals[MAX_CPUS];
@@ -72,6 +78,20 @@ static inline cpu_local_t *this_cpu(void) {
     extern uint32_t hal_get_cpu_id(void);
     return &g_cpu_locals[hal_get_cpu_id()];
 #endif
+}
+
+// Helpers for the current address space
+static inline uint64_t core_current_as_id(void) {
+    cpu_local_t* cpu = this_cpu();
+    return cpu ? cpu->current_as_id : KERNEL_AS_ID;
+}
+
+static inline void core_set_current_as(address_space_t *as) {
+    cpu_local_t* cpu = this_cpu();
+    if (cpu) {
+        cpu->current_as = as;
+        cpu->current_as_id = as ? as->object_id : KERNEL_AS_ID;
+    }
 }
 
 #endif // BHARAT_CPU_LOCAL_H

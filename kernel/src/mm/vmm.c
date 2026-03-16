@@ -37,6 +37,12 @@ static mmu_flags_t convert_vmm_flags(uint32_t flags) {
 #include "../../include/profile.h"
 #include "../../include/urpc/urpc_bootstrap.h"
 #include "bharat/urpc.h"
+#include "../../include/mm/mm_remote.h"
+#include "../../include/bharat/cpu_local.h"
+
+#ifndef KERNEL_AS_ID
+#define KERNEL_AS_ID 0
+#endif
 
 void vmm_process_urpc_messages(void) {
     uint32_t current_core = hal_cpu_get_id();
@@ -61,6 +67,21 @@ void vmm_process_urpc_messages(void) {
                 // Send ACK back
                 uint64_t ack_msg = urpc_pack_msg(URPC_TLB_INVAL_ACK, 0);
                 urpc_bootstrap_send(src, ack_msg);
+            } else if (type == URPC_MM_MAILBOX) {
+                // Structured MM Control Message
+                mm_mailbox_slot_t* mailbox = &g_mm_mailboxes[current_core];
+                if (mailbox->valid) {
+                    if (mailbox->msg.type == MM_MSG_TLB_FLUSH) {
+                        if (mailbox->msg.as_id == KERNEL_AS_ID || core_current_as_id() == mailbox->msg.as_id) {
+                            if (active_mmu && active_mmu->tlb_flush_page) {
+                                active_mmu->tlb_flush_page((virt_addr_t)mailbox->msg.va);
+                            } else {
+                                hal_tlb_flush((unsigned long long)mailbox->msg.va);
+                            }
+                        }
+                    }
+                    mailbox->valid = 0; // Clear it for next usage
+                }
             }
         }
     }
@@ -122,9 +143,7 @@ int mm_vmm_map_page(address_space_t* as, virt_addr_t vaddr, phys_addr_t paddr, u
 }
 
 // Global TLB shootdown function via URPC
-void tlb_shootdown(virt_addr_t vaddr) {
-    enum { TLB_ACK_SPIN_LIMIT = 100000 };
-
+void tlb_shootdown(address_space_t *as, virt_addr_t vaddr) {
     if (active_mmu && active_mmu->tlb_flush_page) {
         active_mmu->tlb_flush_page(vaddr);
     } else {
@@ -132,49 +151,11 @@ void tlb_shootdown(virt_addr_t vaddr) {
     }
 
     uint32_t current_core = hal_cpu_get_id();
-    uint64_t msg = urpc_pack_msg(URPC_TLB_INVAL, (uint64_t)vaddr);
-    bool waiting_for_ack[BHARAT_MAX_CPUS] = { false };
-    int acks_needed = 0;
+    uint64_t as_id = as ? as->object_id : KERNEL_AS_ID;
 
     for (uint32_t i = 0; i < BHARAT_MAX_CPUS; ++i) { 
         if (i != current_core && urpc_channel_get_state(i) == URPC_CHANNEL_BOUND) {
-            if (urpc_bootstrap_send(i, msg) == 0) {
-                hal_send_ipi_payload(i, 0);
-                waiting_for_ack[i] = true;
-                acks_needed++;
-            }
-        }
-    }
-
-    int spin_count = 0;
-    while (acks_needed > 0 && spin_count < TLB_ACK_SPIN_LIMIT) {
-        bool progressed = false;
-        uint64_t raw_msg;
-        for (uint32_t i = 0; i < BHARAT_MAX_CPUS; ++i) {
-            if (i != current_core && urpc_bootstrap_recv(i, &raw_msg) == 0) {
-                urpc_msg_type_t type;
-                uint64_t payload;
-                urpc_unpack_msg(raw_msg, &type, &payload);
-                if (type == URPC_TLB_INVAL_ACK) {
-                    if (waiting_for_ack[i]) {
-                        waiting_for_ack[i] = false;
-                        acks_needed--;
-                        progressed = true;
-                    }
-                } else if (type == URPC_TLB_INVAL) {
-                    virt_addr_t remote_vaddr = (virt_addr_t)payload;
-                    if (active_mmu && active_mmu->tlb_flush_page) {
-                        active_mmu->tlb_flush_page(remote_vaddr);
-                    } else {
-                        hal_tlb_flush((unsigned long long)remote_vaddr);
-                    }
-                    (void)urpc_bootstrap_send(i, urpc_pack_msg(URPC_TLB_INVAL_ACK, 0));
-                }
-            }
-        }
-
-        if (!progressed) {
-            spin_count++;
+            mm_remote_tlb_flush(i, as_id, vaddr);
         }
     }
 }
@@ -202,7 +183,7 @@ int mm_vmm_unmap_page(address_space_t* as, virt_addr_t vaddr) {
         mm_free_page(paddr);
     }
 
-    tlb_shootdown(vaddr);
+    tlb_shootdown(as, vaddr);
     return 0;
 }
 
@@ -321,6 +302,6 @@ int vmm_handle_cow_fault(address_space_t* as, virt_addr_t vaddr) {
     // Decrement old page reference
     mm_free_page(old_phys);
 
-    tlb_shootdown(vaddr);
+    tlb_shootdown(as, vaddr);
     return 0;
 }

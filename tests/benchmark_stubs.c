@@ -20,7 +20,9 @@ phys_addr_t __attribute__((weak)) mm_alloc_page(uint32_t preferred_numa_node) {
     return 0;
 }
 
-__attribute__((weak)) void cap_table_destroy(void* table) {
+#include "../kernel/include/capability.h"
+
+__attribute__((weak)) void cap_table_destroy(capability_table_t* table) {
     (void)table;
 }
 
@@ -77,6 +79,27 @@ void hal_fpu_init_thread_state(void* kthread) {
 }
 
 #include "../kernel/include/hal/mmu_ops.h"
+#include "../kernel/include/capability.h"
+#include "../kernel/include/bharat/cpu_local.h"
+#include "../kernel/include/mm/mm_remote.h"
+#include "../kernel/include/bharat/urpc.h"
+
+cpu_local_t g_cpu_locals[MAX_CPUS];
+__attribute__((weak)) void vmm_process_urpc_messages(void) {}
+
+urpc_channel_state_t __attribute__((weak)) urpc_channel_get_state(uint32_t target_core) { return URPC_CHANNEL_CLOSED; }
+int __attribute__((weak)) urpc_bootstrap_send(uint32_t target_core, uint64_t msg) { return -1; }
+int __attribute__((weak)) urpc_bootstrap_recv(uint32_t source_core, uint64_t* out_msg) { return -1; }
+
+__attribute__((weak)) void mm_remote_tlb_flush(uint32_t target_core, uint64_t as_id, virt_addr_t va) {
+    (void)target_core;
+    (void)as_id;
+    (void)va;
+}
+
+mm_mailbox_slot_t __attribute__((weak)) g_mm_mailboxes[64];
+
+uint64_t __attribute__((weak)) hal_timer_monotonic_ticks(void) { return 0; }
 #include "../kernel/include/hal/vmm.h"
 
 // Fallback legacy VMM bindings for tests that bypass active_mmu
@@ -194,6 +217,12 @@ __attribute__((weak)) void arch_context_switch(cpu_context_t* prev, cpu_context_
 
 __attribute__((weak)) int arch_ext_state_thread_init(kthread_t *t) {
     (void)t;
+    return 0;
+}
+
+int __attribute__((weak)) vmm_handle_cow_fault(address_space_t* as, virt_addr_t vaddr) {
+    (void)as;
+    (void)vaddr;
     return 0;
 }
 

@@ -7,6 +7,7 @@
 #include "list.h"
 #include "kernel_safety.h"
 #include "spinlock.h"
+#include <stdbool.h>
 
 /*
  * Bharat-OS Process & Thread Management
@@ -56,6 +57,12 @@ typedef struct {
 } kthread_attr_t;
 
 typedef struct kthread kthread_t;
+
+typedef enum {
+    THREAD_FAULT_NONE = 0,
+    THREAD_FAULT_SEGV,
+    THREAD_FAULT_STACK_OVERFLOW,
+} thread_fault_t;
 
 typedef struct sched_rq {
     kthread_t* current_thread;
@@ -116,7 +123,13 @@ struct kthread {
     // IPC blocking state
     uint64_t ipc_deadline_ticks;
     int ipc_wakeup_reason;
+
+    // Fault state
+    thread_fault_t pending_fault;
+    bool fault_pending;
 };
+
+int thread_raise_fault(kthread_t *thread, thread_fault_t fault);
 
 typedef struct {
     uint64_t process_id;
