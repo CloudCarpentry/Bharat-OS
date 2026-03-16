@@ -32,6 +32,9 @@ static mmu_flags_t convert_vmm_flags(uint32_t flags) {
 #include "../../include/profile.h"
 #include "../../include/urpc/urpc_bootstrap.h"
 
+// Explicit declaration as it may not be pulled in properly by headers in some environments
+int urpc_bootstrap_recv(uint32_t current_core, uint64_t *out_msg);
+
 #define URPC_MSG_TLB_SHOOTDOWN 0x01
 
 void vmm_process_urpc_messages(void) {
@@ -39,7 +42,7 @@ void vmm_process_urpc_messages(void) {
     uint64_t msg;
 
     // Drain messages
-    while (urpc_recv(current_core, &msg) == 0) {
+    while (urpc_bootstrap_recv(current_core, &msg) == 0) {
         uint64_t type = msg & 0xFFF; // Extract type from bottom 12 bits
         virt_addr_t vaddr = (virt_addr_t)(msg & ~0xFFFULL); // Recover 4K aligned address
 
@@ -121,11 +124,14 @@ void tlb_shootdown(virt_addr_t vaddr) {
     // Pack message type into the bottom 12 bits (assuming vaddr is 4K aligned)
     uint64_t msg = ((uint64_t)vaddr & ~0xFFFULL) | (URPC_MSG_TLB_SHOOTDOWN & 0xFFF);
 
+    extern int urpc_is_ready(uint32_t);
+    extern int urpc_bootstrap_send(uint32_t, uint64_t);
+
     for (uint32_t i = 0; i < 8; ++i) { // MAX_SUPPORTED_CORES is 8
         if (i != current_core && urpc_is_ready(i)) {
             // Attempt to send via URPC; if full, we could fall back to IPI
             // but the architecture calls for URPC as the primary vehicle.
-            urpc_send(i, msg);
+            urpc_bootstrap_send(i, msg);
             // We should also trigger an IPI to notify the remote core that a message
             // is waiting in its queue, as URPC_send is just a queue primitive.
             hal_send_ipi_payload(i, 0);
