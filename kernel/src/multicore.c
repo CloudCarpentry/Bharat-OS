@@ -27,7 +27,7 @@ int multicore_boot_secondary_cores(uint32_t core_count) {
     }
 
     if (hart_mask != 0UL) {
-        sbi_send_ipi(&hart_mask);
+        sbi_send_ipi(hart_mask, 0UL);
     }
 #else
     (void)core_count;

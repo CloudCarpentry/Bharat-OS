@@ -24,7 +24,7 @@
 
 /* ── Multiboot 1 constants ──────────────────────────────────────────────── */
 #define MB1_MAGIC    0x1BADB002
-#define MB1_FLAGS    0x00000003  /* ALIGN + MEMINFO */
+#define MB1_FLAGS    0x00000007  /* ALIGN + MEMINFO + VIDINFO */
 
 /* ── Boot Headers (Multiboot 1 & 2 + PVH ELF Note) ─────────────────────
  * Must be in the first 8 KiB (v1) or 32 KiB (v2) of the image.
@@ -38,6 +38,15 @@ mb1_header:
     .long MB1_MAGIC
     .long MB1_FLAGS
     .long -(MB1_MAGIC + MB1_FLAGS)
+    .long 0 /* header_addr */
+    .long 0 /* load_addr */
+    .long 0 /* load_end_addr */
+    .long 0 /* bss_end_addr */
+    .long 0 /* entry_addr */
+    .long 0 /* mode_type (0 = linear graphics) */
+    .long 1024 /* width */
+    .long 768 /* height */
+    .long 32 /* depth */
 
 .align 8
 /* Multiboot 2 Header */
@@ -46,7 +55,18 @@ mb2_start:
     .long  MB2_ARCH_X86
     .long  (mb2_end - mb2_start)
     .long  -(MB2_MAGIC + MB2_ARCH_X86 + (mb2_end - mb2_start))
+
+    /* Framebuffer Request Tag (Type 5) */
+    .align 8
+    .short 5            /* type = framebuffer */
+    .short 1            /* flags = optional */
+    .long  20           /* size = 20 bytes */
+    .long  1024         /* width */
+    .long  768          /* height */
+    .long  32           /* depth (bpp) */
+
     /* end tag */
+    .align 8
     .short 0
     .short 0
     .long  8
