@@ -1,4 +1,5 @@
 #include "sched.h"
+#include <bharat/cpu_local.h>
 #include "sched_deg.h"
 
 #include "advanced/algo_matrix.h"
@@ -19,7 +20,7 @@
 #define SCHED_MAX_THREADS 128U
 #define SCHED_MAX_PROCESSES 32U
 #define SCHED_DEFAULT_SLICE_MS 10U
-#define MAX_PRIORITY_LEVELS (SCHED_MAX_PRIORITY + 1U)
+
 #define SCHED_MAX_PENDING_SUGGESTIONS 64U
 #define SCHED_AFFINITY_ANY 0xFFFFFFFFU
 
@@ -52,19 +53,8 @@ typedef struct {
   kthread_t *owner;
 } mutex_owner_entry_t;
 
-typedef struct {
-  kthread_t *current_thread;
-  kthread_t *idle_thread;
-  list_head_t ready_queue[MAX_PRIORITY_LEVELS];
-  list_head_t sleeping_list;
-  list_head_t blocked_list;
-  uint64_t total_ticks;
-  uint64_t context_switches;
-  uint32_t throttled;
-  spinlock_t lock;
-} core_runqueue_t;
-
-static core_runqueue_t g_runqueues[MAX_SUPPORTED_CORES];
+// Removed core_runqueue_t definition from here as it's now in sched.h as sched_rq_t
+// Removed static core_runqueue_t g_runqueues
 static thread_slot_t g_threads[SCHED_MAX_THREADS];
 static process_slot_t g_processes[SCHED_MAX_PROCESSES];
 
@@ -91,7 +81,7 @@ static uint32_t sched_clamp_core(uint32_t core_id) {
 
 void arch_post_switch(void) {
   uint32_t core = sched_clamp_core(hal_cpu_get_id());
-  spin_unlock(&g_runqueues[core].lock);
+  spin_unlock(&g_cpu_locals[core].runqueue.lock);
 }
 
 static thread_slot_t *sched_find_thread_slot_by_tid(uint64_t tid) {
@@ -125,7 +115,7 @@ static void sched_sleep_enqueue(thread_slot_t *slot, uint32_t core_id) {
   if (!slot || slot->is_sleeping != 0U) {
     return;
   }
-  list_add(&slot->sleep_node, &g_runqueues[core_id].sleeping_list);
+  list_add(&slot->sleep_node, &g_cpu_locals[core_id].runqueue.sleeping_list);
   slot->is_sleeping = 1U;
 }
 
@@ -149,7 +139,7 @@ int sched_enqueue(kthread_t *thread, uint32_t core_id) {
   }
 
   core_id = sched_clamp_core(core_id);
-  spin_lock(&g_runqueues[core_id].lock);
+  spin_lock(&g_cpu_locals[core_id].runqueue.lock);
 
   if (slot->is_on_runqueue != 0U) {
     list_del(&slot->run_node);
@@ -159,16 +149,32 @@ int sched_enqueue(kthread_t *thread, uint32_t core_id) {
 
   thread->bound_core_id = core_id;
   thread->state = THREAD_STATE_READY;
-  list_add(&slot->run_node, &g_runqueues[core_id].ready_queue[thread->priority]);
+  list_add(&slot->run_node, &g_cpu_locals[core_id].runqueue.ready_queue[thread->priority]);
   slot->is_on_runqueue = 1U;
 
-  spin_unlock(&g_runqueues[core_id].lock);
+  spin_unlock(&g_cpu_locals[core_id].runqueue.lock);
   return 0;
 }
 
 static void sched_idle_task(void) {
   while (1) {
     hal_cpu_halt();
+  }
+}
+
+static void sched_monitor_task(void) {
+  uint32_t core_id = hal_cpu_get_id();
+  uint64_t last_check = 0;
+  while (1) {
+    uint64_t now = sched_get_ticks();
+    if (now - last_check >= 1000) {
+      last_check = now;
+      // Monitor logic placeholder
+      if (core_id == 0) {
+        // BSP monitor might do system-wide coordination
+      }
+    }
+    sched_yield();
   }
 }
 
@@ -211,16 +217,16 @@ void sched_init(void) {
   // if hal_cpu_get_id() matches the core.
   kprocess_t *idle_process = process_create("idle_process");
   for (uint32_t core = 0; core < MAX_SUPPORTED_CORES; ++core) {
-    g_runqueues[core].current_thread = NULL;
-    g_runqueues[core].idle_thread = NULL;
-    g_runqueues[core].total_ticks = 0U;
-    g_runqueues[core].context_switches = 0U;
-    g_runqueues[core].throttled = 0U;
-    spin_lock_init(&g_runqueues[core].lock);
-    list_init(&g_runqueues[core].sleeping_list);
-    list_init(&g_runqueues[core].blocked_list);
+    g_cpu_locals[core].runqueue.current_thread = NULL;
+    g_cpu_locals[core].runqueue.idle_thread = NULL;
+    g_cpu_locals[core].runqueue.total_ticks = 0U;
+    g_cpu_locals[core].runqueue.context_switches = 0U;
+    g_cpu_locals[core].runqueue.throttled = 0U;
+    spin_lock_init(&g_cpu_locals[core].runqueue.lock);
+    list_init(&g_cpu_locals[core].runqueue.sleeping_list);
+    list_init(&g_cpu_locals[core].runqueue.blocked_list);
     for (uint32_t p = 0; p < MAX_PRIORITY_LEVELS; ++p) {
-      list_init(&g_runqueues[core].ready_queue[p]);
+      list_init(&g_cpu_locals[core].runqueue.ready_queue[p]);
     }
 
     kthread_t *idle = thread_create(idle_process, sched_idle_task);
@@ -229,9 +235,20 @@ void sched_init(void) {
       idle->base_priority = 0U;
       idle->bound_core_id = core;
       idle->affinity_mask = (1U << core);
-      g_runqueues[core].idle_thread = idle;
+      g_cpu_locals[core].runqueue.idle_thread = idle;
       // Mark it as current initially so context switches won't panic
-      g_runqueues[core].current_thread = idle;
+      g_cpu_locals[core].runqueue.current_thread = idle;
+    }
+
+    // Create per-core monitor thread
+    kthread_t *monitor = thread_create(idle_process, sched_monitor_task);
+    if (monitor) {
+      monitor->priority = SCHED_MAX_PRIORITY; // Highest priority
+      monitor->base_priority = SCHED_MAX_PRIORITY;
+      monitor->bound_core_id = core;
+      monitor->affinity_mask = (1U << core);
+      // Wait for someone to enqueue it, or it will inherently enqueue in thread_create 
+      // since thread_create enqueues non-idle tasks.
     }
   }
 }
@@ -461,7 +478,7 @@ static void sched_process_pending_ai_suggestions(void) {
 static uint32_t sched_run_queue_depth(uint32_t core_id) {
   uint32_t count = 0U;
   for (uint32_t p = 0; p < MAX_PRIORITY_LEVELS; ++p) {
-    list_head_t *head = &g_runqueues[core_id].ready_queue[p];
+    list_head_t *head = &g_cpu_locals[core_id].runqueue.ready_queue[p];
     for (list_head_t *n = head->next; n != head; n = n->next) {
       ++count;
     }
@@ -485,7 +502,7 @@ kthread_t *sched_pick_next_ready(uint32_t core_id) {
 
   if (g_policy == SCHED_POLICY_ROUND_ROBIN) {
     for (int prio = 0; prio <= (int)SCHED_MAX_PRIORITY; ++prio) {
-      list_head_t *head = &g_runqueues[core_id].ready_queue[prio];
+      list_head_t *head = &g_cpu_locals[core_id].runqueue.ready_queue[prio];
       if (!list_empty(head)) {
         list_head_t *node = head->prev;
         thread_slot_t *slot = list_entry(node, thread_slot_t, run_node);
@@ -497,7 +514,7 @@ kthread_t *sched_pick_next_ready(uint32_t core_id) {
     }
   } else {
     for (int prio = (int)SCHED_MAX_PRIORITY; prio >= 0; --prio) {
-      list_head_t *head = &g_runqueues[core_id].ready_queue[prio];
+      list_head_t *head = &g_cpu_locals[core_id].runqueue.ready_queue[prio];
       if (!list_empty(head)) {
         list_head_t *node = head->prev;
         thread_slot_t *slot = list_entry(node, thread_slot_t, run_node);
@@ -509,7 +526,7 @@ kthread_t *sched_pick_next_ready(uint32_t core_id) {
     }
   }
 
-  return g_runqueues[core_id].idle_thread;
+  return g_cpu_locals[core_id].runqueue.idle_thread;
 }
 
 void sched_dequeue_task_l0(kthread_t *thread, uint32_t core_id) {
@@ -547,23 +564,23 @@ kthread_t *sched_pick_next_ready_l1(uint32_t core_id) {
 
 static void sched_switch_to(kthread_t *next, uint32_t core_id) {
   if (!next) {
-    spin_unlock(&g_runqueues[core_id].lock);
+    spin_unlock(&g_cpu_locals[core_id].runqueue.lock);
     return;
   }
 
-  kthread_t *current = g_runqueues[core_id].current_thread;
+  kthread_t *current = g_cpu_locals[core_id].runqueue.current_thread;
   if (current == next) {
-    spin_unlock(&g_runqueues[core_id].lock);
+    spin_unlock(&g_cpu_locals[core_id].runqueue.lock);
     return;
   }
 
-  if (current && current != g_runqueues[core_id].idle_thread &&
+  if (current && current != g_cpu_locals[core_id].runqueue.idle_thread &&
       current->state == THREAD_STATE_RUNNING) {
 
     thread_slot_t *slot = sched_find_thread_slot_by_tid(current->thread_id);
     if (slot && slot->is_on_runqueue == 0U) {
         current->state = THREAD_STATE_READY;
-        list_add(&slot->run_node, &g_runqueues[core_id].ready_queue[current->priority]);
+        list_add(&slot->run_node, &g_cpu_locals[core_id].runqueue.ready_queue[current->priority]);
         slot->is_on_runqueue = 1U;
     }
   }
@@ -571,8 +588,8 @@ static void sched_switch_to(kthread_t *next, uint32_t core_id) {
   next->state = THREAD_STATE_RUNNING;
   next->context_switch_count++;
   g_sched_context_switches++;
-  g_runqueues[core_id].context_switches++;
-  g_runqueues[core_id].current_thread = next;
+  g_cpu_locals[core_id].runqueue.context_switches++;
+  g_cpu_locals[core_id].runqueue.current_thread = next;
 
   cpu_context_t *prev_ctx = current ? (cpu_context_t*)current->cpu_context : NULL;
   cpu_context_t *next_ctx = (cpu_context_t*)next->cpu_context;
@@ -587,7 +604,7 @@ static void sched_switch_to(kthread_t *next, uint32_t core_id) {
   if (fv_secure_context_switch) {
     fv_secure_context_switch(next_ctx);
   } else {
-        // The runqueue lock (g_runqueues[core_id].lock) is currently held.
+        // The runqueue lock (g_cpu_locals[core_id].runqueue.lock) is currently held.
         // It will be explicitly released by arch_post_switch() which is
         // called from the assembly arch_context_switch once we are on the
         // next thread's stack.
@@ -662,10 +679,10 @@ void sched_reschedule(void) {
   uint32_t core = sched_clamp_core(hal_cpu_get_id());
   sched_process_pending_ai_suggestions();
 
-  spin_lock(&g_runqueues[core].lock);
+  spin_lock(&g_cpu_locals[core].runqueue.lock);
 
-  if (g_runqueues[core].throttled != 0U && g_runqueues[core].idle_thread) {
-    sched_switch_to(g_runqueues[core].idle_thread, core);
+  if (g_cpu_locals[core].runqueue.throttled != 0U && g_cpu_locals[core].runqueue.idle_thread) {
+    sched_switch_to(g_cpu_locals[core].runqueue.idle_thread, core);
     return;
   }
 
@@ -677,8 +694,8 @@ void sched_yield(void) { sched_reschedule(); }
 
 void sched_sleep(uint64_t millis) {
   uint32_t core = sched_clamp_core(hal_cpu_get_id());
-  kthread_t *current = g_runqueues[core].current_thread;
-  if (!current || current == g_runqueues[core].idle_thread) {
+  kthread_t *current = g_cpu_locals[core].runqueue.current_thread;
+  if (!current || current == g_cpu_locals[core].runqueue.idle_thread) {
     return;
   }
 
@@ -690,7 +707,7 @@ void sched_sleep(uint64_t millis) {
   current->wake_deadline_ms = g_sched_ticks + millis;
   current->state = THREAD_STATE_SLEEPING;
   sched_sleep_enqueue(slot, core);
-  g_runqueues[core].current_thread = NULL;
+  g_cpu_locals[core].runqueue.current_thread = NULL;
   sched_reschedule();
 }
 
@@ -743,7 +760,7 @@ static void sched_balance_once(void) {
   }
 
   kthread_t *candidate = sched_pick_next_ready(busiest);
-  if (!candidate || candidate == g_runqueues[busiest].idle_thread) {
+  if (!candidate || candidate == g_cpu_locals[busiest].runqueue.idle_thread) {
     return;
   }
 
@@ -759,7 +776,7 @@ static void sched_balance_once(void) {
 void sched_on_timer_tick(void) {
   g_sched_ticks++;
   uint32_t core = sched_clamp_core(hal_cpu_get_id());
-  g_runqueues[core].total_ticks++;
+  g_cpu_locals[core].runqueue.total_ticks++;
 
   for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_threads); ++i) {
     if (g_threads[i].in_use != 0U) {
@@ -789,7 +806,7 @@ void sched_on_timer_tick(void) {
     sched_balance_once();
   }
 
-  kthread_t *current = g_runqueues[core].current_thread;
+  kthread_t *current = g_cpu_locals[core].runqueue.current_thread;
   if (!current) {
     sched_reschedule();
     return;
@@ -805,7 +822,7 @@ void sched_on_timer_tick(void) {
   }
 
   for (int prio = (int)SCHED_MAX_PRIORITY; prio > (int)current->priority; --prio) {
-    if (!list_empty(&g_runqueues[core].ready_queue[prio])) {
+    if (!list_empty(&g_cpu_locals[core].runqueue.ready_queue[prio])) {
       sched_reschedule();
       return;
     }
@@ -813,7 +830,7 @@ void sched_on_timer_tick(void) {
 }
 
 kthread_t *sched_current_thread(void) {
-  return g_runqueues[sched_clamp_core(hal_cpu_get_id())].current_thread;
+  return g_cpu_locals[sched_clamp_core(hal_cpu_get_id())].runqueue.current_thread;
 }
 
 kthread_t *sched_current(void) { return sched_current_thread(); }
@@ -989,7 +1006,7 @@ int sched_throttle_core(uint32_t core_id) {
   if (core_id >= MAX_SUPPORTED_CORES) {
     return -1;
   }
-  g_runqueues[core_id].throttled = 1U;
+  g_cpu_locals[core_id].runqueue.throttled = 1U;
   return 0;
 }
 

@@ -1,5 +1,8 @@
 #include "capability.h"
+#include <bharat/cpu_local.h>
 #include "kernel_safety.h"
+#include "bharat/urpc.h"
+#include "hal/hal.h"
 
 // @cite seL4: Formal Verification of an OS Kernel (Klein et al., 2009)
 // seL4 capability model and verification-oriented discipline
@@ -7,7 +10,7 @@
 
 #define MAX_CAP_TABLES 32U
 
-static capability_table_t g_cap_tables[MAX_CAP_TABLES];
+
 static uint8_t g_cap_tables_used[MAX_CAP_TABLES];
 
 static inline void cap_lock_two_tables(capability_table_t* a, capability_table_t* b) {
@@ -82,14 +85,14 @@ static capability_entry_t* cap_find_entry(capability_table_t* table, uint32_t ca
 
 capability_table_t* cap_table_create(void) {
     /*@
-      loop invariant 0 <= i <= BHARAT_ARRAY_SIZE(g_cap_tables);
-      loop assigns i, g_cap_tables_used[0..MAX_CAP_TABLES-1], g_cap_tables[0..MAX_CAP_TABLES-1];
-      loop variant BHARAT_ARRAY_SIZE(g_cap_tables) - i;
+      loop invariant 0 <= i <= BHARAT_ARRAY_SIZE(g_cpu_locals);
+      loop assigns i, g_cap_tables_used[0..MAX_CAP_TABLES-1], g_cpu_locals[0..MAX_CAP_TABLES-1].cap_table;
+      loop variant BHARAT_ARRAY_SIZE(g_cpu_locals) - i;
     */
-    for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_cap_tables); ++i) {
+    for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_cpu_locals); ++i) {
         if (g_cap_tables_used[i] == 0U) {
             g_cap_tables_used[i] = 1U;
-            capability_table_t* t = &g_cap_tables[i];
+            capability_table_t* t = &g_cpu_locals[i].cap_table;
             spin_lock_init(&t->lock);
             t->next_id = 1U;
             t->numa_node = 0U; // Placeholder, would be set to actual node in full implementation
@@ -135,8 +138,8 @@ int cap_table_init_for_process(kprocess_t* proc) {
 
 void cap_table_destroy(capability_table_t* table) {
     if (!table) return;
-    for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_cap_tables); ++i) {
-        if (&g_cap_tables[i] == table) {
+    for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_cpu_locals); ++i) {
+        if (&g_cpu_locals[i].cap_table == table) {
             g_cap_tables_used[i] = 0U;
             break;
         }
@@ -467,6 +470,31 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
     stack[sp].slot = root_slot;
     stack[sp].generation = root_gen;
     sp++;
+
+    // Broadacst revocation to other cores via URPC
+    int acks_needed = 0;
+    for (uint32_t c = 0; c < BHARAT_MAX_CPUS; c++) {
+        if (c != hal_cpu_get_id() && urpc_channel_get_state(c) == URPC_CHANNEL_BOUND) {
+            urpc_bootstrap_send(c, urpc_pack_msg(URPC_CAP_REVOKE, cap_id));
+            acks_needed++;
+        }
+    }
+
+    // Wait for URPC_CAP_REVOKE_ACK synchronously
+    while (acks_needed > 0) {
+        uint64_t raw_msg;
+        for (uint32_t c = 0; c < BHARAT_MAX_CPUS; c++) {
+            if (c != hal_cpu_get_id() && urpc_bootstrap_recv(c, &raw_msg) == 0) {
+                urpc_msg_type_t type;
+                urpc_unpack_msg(raw_msg, &type, NULL);
+                if (type == URPC_CAP_REVOKE_ACK) {
+                    acks_needed--;
+                }
+                // Note: Other messages received here are dropped in this basic 
+                // synchronous loop to avoid deadlock. A full OS would queue them.
+            }
+        }
+    }
 
     while (sp > 0) {
         cap_handle_t frame = stack[--sp];

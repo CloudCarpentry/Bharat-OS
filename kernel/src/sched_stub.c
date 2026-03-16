@@ -35,7 +35,7 @@ typedef struct {
 
 static thread_slot_t g_threads[SCHED_MAX_THREADS];
 static process_slot_t g_processes[SCHED_MAX_PROCESSES];
-static sched_core_t g_cores[SCHED_MAX_CORES];
+static sched_rq_t g_cores[SCHED_MAX_CORES];
 
 static kthread_t* g_current;
 static sched_policy_t g_policy = SCHED_POLICY_ROUND_ROBIN;
@@ -174,10 +174,16 @@ static void sched_switch_to(kthread_t* next) {
     next->context_switch_count++;
     g_sched_context_switches++;
     g_current = next;
-    g_cores[0].current = next;
+    g_cores[0].current_thread = next;
 
     if (fv_secure_context_switch) {
         fv_secure_context_switch(next->cpu_context);
+    }
+}
+
+static void sched_monitor_task(void) {
+    while (1) {
+        sched_yield();
     }
 }
 
@@ -189,8 +195,12 @@ void sched_init(void) {
         g_processes[i].in_use = 0U;
     }
     for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_cores); ++i) {
-        g_cores[i] = (sched_core_t){ .core_id = (uint32_t)i, .current = NULL, .total_ticks = 0U, .throttled = 0U };
+        g_cores[i] = (sched_rq_t){ .current_thread = NULL, .total_ticks = 0U, .throttled = 0U };
     }
+
+    // Since this is a stub, we simulate creating a monitor thread for core 0
+    kprocess_t* stub_proc = process_create("stub_process");
+    thread_create(stub_proc, sched_monitor_task);
 
     g_current = NULL;
     g_next_thread_id = 1U;
@@ -273,7 +283,7 @@ kprocess_t* process_create(const char* name) {
 }
 
 kthread_t* thread_create(kprocess_t* parent, void (*entry_point)(void)) {
-    kthread_t* t = (kthread_t*)__builtin_malloc(sizeof(kthread_t)); // Dummy for stub
+    kthread_t* t = NULL; // Dummy for stub
     if (!t) return NULL;
 
     t->thread_id = g_next_thread_id++;
@@ -299,7 +309,7 @@ kthread_t* thread_create(kprocess_t* parent, void (*entry_point)(void)) {
         return &slot->thread;
     }
 
-    __builtin_free(t);
+    // __builtin_free(t);
     return NULL;
 }
 
@@ -309,7 +319,7 @@ int thread_destroy(kthread_t* thread) {
     if (slot) {
         slot->in_use = 0;
     }
-    __builtin_free(thread);
+    // __builtin_free(thread); // Dummy for stub
     return 0;
 }
 

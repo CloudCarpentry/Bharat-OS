@@ -34,9 +34,10 @@ void urpc_mark_ready(uint32_t core_id);
 int urpc_is_ready(uint32_t core_id);
 
 // Send a basic message (non-blocking, returns -1 if full)
-int urpc_send(uint32_t target_core, uint64_t msg);
+int urpc_bootstrap_send(uint32_t target_core, uint64_t msg);
 
 // Receive a basic message (non-blocking, returns -1 if empty)
-int urpc_recv(uint32_t source_core, uint64_t* out_msg);
+int urpc_bootstrap_recv(uint32_t source_core, uint64_t* out_msg);
+
 
 #endif // BHARAT_URPC_BOOTSTRAP_H

@@ -31,26 +31,31 @@ static mmu_flags_t convert_vmm_flags(uint32_t flags) {
 
 #include "../../include/profile.h"
 #include "../../include/urpc/urpc_bootstrap.h"
-
-// Explicit declaration as it may not be pulled in properly by headers in some environments
-int urpc_bootstrap_recv(uint32_t current_core, uint64_t *out_msg);
-
-#define URPC_MSG_TLB_SHOOTDOWN 0x01
+#include "bharat/urpc.h"
 
 void vmm_process_urpc_messages(void) {
     uint32_t current_core = hal_cpu_get_id();
     uint64_t msg;
 
-    // Drain messages
-    while (urpc_bootstrap_recv(current_core, &msg) == 0) {
-        uint64_t type = msg & 0xFFF; // Extract type from bottom 12 bits
-        virt_addr_t vaddr = (virt_addr_t)(msg & ~0xFFFULL); // Recover 4K aligned address
+    for (uint32_t src = 0; src < BHARAT_MAX_CPUS; src++) {
+        if (src == current_core) continue;
+        
+        while (urpc_bootstrap_recv(src, &msg) == 0) {
+            urpc_msg_type_t type;
+            uint64_t payload;
+            urpc_unpack_msg(msg, &type, &payload);
 
-        if (type == URPC_MSG_TLB_SHOOTDOWN) {
-            if (active_mmu && active_mmu->tlb_flush_page) {
-                active_mmu->tlb_flush_page(vaddr);
-            } else {
-                hal_tlb_flush((unsigned long long)vaddr);
+            if (type == URPC_TLB_INVAL) {
+                virt_addr_t vaddr = (virt_addr_t)payload;
+                if (active_mmu && active_mmu->tlb_flush_page) {
+                    active_mmu->tlb_flush_page(vaddr);
+                } else {
+                    hal_tlb_flush((unsigned long long)vaddr);
+                }
+                
+                // Send ACK back
+                uint64_t ack_msg = urpc_pack_msg(URPC_TLB_INVAL_ACK, 0);
+                urpc_bootstrap_send(src, ack_msg);
             }
         }
     }
@@ -119,22 +124,28 @@ void tlb_shootdown(virt_addr_t vaddr) {
         hal_tlb_flush((unsigned long long)vaddr);
     }
 
-    // URPC based shootdown
     uint32_t current_core = hal_cpu_get_id();
-    // Pack message type into the bottom 12 bits (assuming vaddr is 4K aligned)
-    uint64_t msg = ((uint64_t)vaddr & ~0xFFFULL) | (URPC_MSG_TLB_SHOOTDOWN & 0xFFF);
+    uint64_t msg = urpc_pack_msg(URPC_TLB_INVAL, (uint64_t)vaddr);
+    int acks_needed = 0;
 
-    extern int urpc_is_ready(uint32_t);
-    extern int urpc_bootstrap_send(uint32_t, uint64_t);
-
-    for (uint32_t i = 0; i < 8; ++i) { // MAX_SUPPORTED_CORES is 8
-        if (i != current_core && urpc_is_ready(i)) {
-            // Attempt to send via URPC; if full, we could fall back to IPI
-            // but the architecture calls for URPC as the primary vehicle.
+    for (uint32_t i = 0; i < BHARAT_MAX_CPUS; ++i) { 
+        if (i != current_core && urpc_channel_get_state(i) == URPC_CHANNEL_BOUND) {
             urpc_bootstrap_send(i, msg);
-            // We should also trigger an IPI to notify the remote core that a message
-            // is waiting in its queue, as URPC_send is just a queue primitive.
             hal_send_ipi_payload(i, 0);
+            acks_needed++;
+        }
+    }
+
+    while (acks_needed > 0) {
+        uint64_t raw_msg;
+        for (uint32_t i = 0; i < BHARAT_MAX_CPUS; ++i) {
+            if (i != current_core && urpc_bootstrap_recv(i, &raw_msg) == 0) {
+                urpc_msg_type_t type;
+                urpc_unpack_msg(raw_msg, &type, NULL);
+                if (type == URPC_TLB_INVAL_ACK) {
+                    acks_needed--;
+                }
+            }
         }
     }
 }

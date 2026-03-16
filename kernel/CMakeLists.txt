@@ -121,6 +121,7 @@ set(KERNEL_SRCS
     src/boot/boot_args.c
     src/hal/arm32_mpu_vmm_mock.c
     src/main.c
+    src/cpu_local.c
     src/trace/trace.c
     src/subsystem/profile.c
     src/arch/capabilities.c
@@ -137,6 +138,7 @@ set(KERNEL_SRCS
     src/algo_matrix.c
     ${ARCH_HAL}
     src/hal/common/fdt_parser.c
+    src/hal/common/discovery.c
     ${ARCH_HAL_EXTRA}
     ${ARCH_CONTEXT_SWITCH}
     src/arch/${ARCH}/cpu_caps.c
@@ -153,6 +155,7 @@ set(KERNEL_SRCS
     src/mm/mm_local.c
     src/mm/mm_remote.c
     src/urpc/urpc_bootstrap.c
+    src/urpc/urpc_channel.c
     src/security/isolation.c
     src/security/credentials.c
     src/security/policy.c
@@ -171,6 +174,7 @@ set(KERNEL_SRCS
     src/device/builtin_drivers.c
     src/device/device_manager.c
     src/device/pci.c
+    src/device/irq_domain.c
 
     src/hal/interrupt_common.c
     src/hal/timer_common.c
@@ -271,7 +275,7 @@ target_link_options(kernel.elf PRIVATE
     "LINKER:-T,${LINKER_SCRIPT}"
     "LINKER:--build-id=none"
     "LINKER:--no-dynamic-linker"
-    "-fuse-ld=bfd"
+    "-fuse-ld=lld"
 )
 
 
