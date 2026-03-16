@@ -21,6 +21,10 @@
 
 static address_space_t kernel_space;
 
+phys_addr_t vmm_get_kernel_root(void) {
+    return kernel_space.root_table;
+}
+
 // Helper to translate old VMM flags to new MMU flags
 static mmu_flags_t convert_vmm_flags(uint32_t flags) {
     mmu_flags_t mmu_flags = MMU_READ;
