@@ -46,7 +46,18 @@ mb2_start:
     .long  MB2_ARCH_X86
     .long  (mb2_end - mb2_start)
     .long  -(MB2_MAGIC + MB2_ARCH_X86 + (mb2_end - mb2_start))
+
+    /* Framebuffer Request Tag (Type 5) */
+    .align 8
+    .short 5            /* type = framebuffer */
+    .short 1            /* flags = optional */
+    .long  20           /* size = 20 bytes */
+    .long  1024         /* width */
+    .long  768          /* height */
+    .long  32           /* depth (bpp) */
+
     /* end tag */
+    .align 8
     .short 0
     .short 0
     .long  8
