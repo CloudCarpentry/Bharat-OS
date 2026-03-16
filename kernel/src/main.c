@@ -418,6 +418,10 @@ void kernel_main(void) {
     extern void kernel_tester_app(void);
     kernel_tester_app();
 
+    /* Bharat-OS Feature Showcase Demo */
+    extern void bharat_demo_app(void);
+    bharat_demo_app();
+
     while (1) {
       if (boot_policy->enable_ai_governor != 0U) {
         kernel_ai_publish_telemetry();

@@ -192,6 +192,7 @@ set(KERNEL_SRCS
     src/fs/blob_backend.c
     src/apps/hello_world.c
     src/apps/kernel_tester.c
+    src/apps/bharat_demo.c
     src/tests/ktest_pmm.c
     src/tests/ktest_slab.c
     src/tests/ktest_runner.c
