@@ -4,22 +4,39 @@
 
 void kernel_panic(const char *message);
 
+mm_mailbox_slot_t g_mm_mailboxes[64];
+
 // Remote TLB operations (fire-and-forget)
 void mm_remote_tlb_flush(uint32_t target_core, uint64_t as_id, virt_addr_t va) {
     // KASSERT(!in_urpc_handler() || !core_is_rt()); // RT cores shouldn't initiate blocking/complex remote requests inside handlers
-    // For MVP, pack MSG type (0x01 = URPC_MSG_TLB_SHOOTDOWN) and VA into a single 64-bit msg.
-    // In a full implementation, `as_id` must be part of the message payload so the receiver
-    // can verify if it still has that AS active.
-    uint64_t msg = ((uint64_t)va & ~0xFFFULL) | (0x01 & 0xFFF);
-    (void)as_id;
 
     // Check if the system is fully booted and urpc is ready before sending
     // Declare explicit binding since urpc_bootstrap.h might use different names.
     extern int urpc_is_ready(uint32_t);
     extern int urpc_bootstrap_send(uint32_t, uint64_t);
 
-    if (target_core != hal_cpu_get_id() && urpc_is_ready(target_core)) {
-        urpc_bootstrap_send(target_core, msg);
+    uint32_t current_core = hal_cpu_get_id();
+
+    if (target_core < 64 && target_core != current_core && urpc_is_ready(target_core)) {
+        // Prepare structured mailbox payload
+        mm_mailbox_slot_t* mailbox = &g_mm_mailboxes[target_core];
+
+        // Setup message
+        mailbox->msg.type = MM_MSG_TLB_FLUSH;
+        mailbox->msg.sender_core = current_core;
+        mailbox->msg.as_id = as_id;
+        mailbox->msg.va = (uint64_t)va;
+
+        mailbox->valid = 1;
+        mailbox->seq++;
+
+        // Send doorbell through bootstrap ring. We encode the type as URPC_MM_MAILBOX
+        // and payload could just be the target core, but for now we just pass 0
+        // since the receiver just reads its own local mailbox slot.
+        // We pack URPC_MM_MAILBOX as the type, payload is 0
+        uint64_t doorbell = ((uint64_t)URPC_MM_MAILBOX << 56) | 0;
+
+        urpc_bootstrap_send(target_core, doorbell);
         hal_send_ipi_payload(target_core, 0); // notify
     }
 }

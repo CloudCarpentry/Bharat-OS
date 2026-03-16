@@ -124,6 +124,7 @@ phys_addr_t mm_alloc_pages_order(int order, uint32_t preferred_numa_node, uint32
     (void)order; (void)preferred_numa_node; (void)flags;
     return 0;
 }
-void tlb_shootdown(virt_addr_t vaddr) {
+void tlb_shootdown(address_space_t *as, virt_addr_t vaddr) {
+    (void)as;
     (void)vaddr;
 }
