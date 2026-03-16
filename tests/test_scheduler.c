@@ -71,7 +71,7 @@ int hal_vmm_update_mapping(phys_addr_t root_table, virt_addr_t vaddr,
   (void)flags;
   return -1;
 }
-void tlb_shootdown(virt_addr_t vaddr) { (void)vaddr; }
+void tlb_shootdown(address_space_t *as, virt_addr_t vaddr) { (void)as; (void)vaddr; }
 
 uint32_t hal_cpu_get_id(void) { return g_mock_core_id; }
 void hal_cpu_halt(void) {}

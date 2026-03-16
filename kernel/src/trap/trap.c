@@ -167,7 +167,8 @@ long trap_handle(trap_frame_t *frame) {
         if (core_is_rt()) {
             kernel_panic("Stack overflow on RT core! Guard page hit.");
         } else {
-            kernel_panic("Stack overflow detected! Guard page hit.");
+            thread_raise_fault(current, THREAD_FAULT_STACK_OVERFLOW);
+            return 0;
         }
     }
 
@@ -197,7 +198,8 @@ long trap_handle(trap_frame_t *frame) {
         if (core_is_rt()) {
             kernel_panic("Stack overflow on RT core! Guard page hit.");
         } else {
-            kernel_panic("Stack overflow detected! Guard page hit.");
+            thread_raise_fault(current, THREAD_FAULT_STACK_OVERFLOW);
+            return 0;
         }
     }
 
@@ -242,7 +244,8 @@ long trap_handle(trap_frame_t *frame) {
           if (core_is_rt()) {
               kernel_panic("Stack overflow on RT core! Guard page hit.");
           } else {
-              kernel_panic("Stack overflow detected! Guard page hit.");
+              thread_raise_fault(current, THREAD_FAULT_STACK_OVERFLOW);
+              return 0;
           }
       }
 
@@ -261,9 +264,10 @@ long trap_handle(trap_frame_t *frame) {
     } else {
       kthread_t *current = sched_current_thread();
       if (current) {
-        thread_destroy(current);
+        thread_raise_fault(current, THREAD_FAULT_SEGV);
+      } else {
+        sched_yield();
       }
-      sched_yield();
     }
     return 0; // Return gracefully after handling exception (if user thread)
   }

@@ -32,12 +32,12 @@ void test_ipc_benchmark(void) {
     benchmark_start(&ctx, "IPC Send/Receive", BENCHMARK_LEVEL_0_REF, ITERATIONS);
 
     for (int i = 0; i < ITERATIONS; i++) {
-        res = ipc_endpoint_send(table, send_cap, payload, payload_len);
+        res = ipc_endpoint_send(table, send_cap, payload, payload_len, 0);
         assert(res == IPC_OK);
 
         uint8_t recv_payload[64];
         uint32_t recv_len = 0;
-        res = ipc_endpoint_receive(table, recv_cap, recv_payload, sizeof(recv_payload), &recv_len);
+        res = ipc_endpoint_receive(table, recv_cap, recv_payload, sizeof(recv_payload), &recv_len, 0);
         assert(res == IPC_OK);
         assert(recv_len == payload_len);
     }
@@ -66,6 +66,7 @@ phys_addr_t mm_alloc_pages_order(int order, uint32_t preferred_numa_node, uint32
     (void)order; (void)preferred_numa_node; (void)flags;
     return 0;
 }
-void tlb_shootdown(virt_addr_t vaddr) {
+void tlb_shootdown(address_space_t *as, virt_addr_t vaddr) {
+    (void)as;
     (void)vaddr;
 }

@@ -1051,3 +1051,16 @@ void sched_notify_ipc_ready(uint32_t core_id, uint32_t msg_type) {
   (void)core_id;
   (void)msg_type;
 }
+
+int thread_raise_fault(kthread_t *thread, thread_fault_t fault) {
+    if (!thread) return -1; // -EINVAL mapped
+
+    thread->pending_fault = fault;
+    thread->fault_pending = true;
+    thread->state = THREAD_STATE_TERMINATED; // Mark as doomed
+
+    /* TODO(personality/linux): translate THREAD_FAULT_SEGV / STACK_OVERFLOW to SIGSEGV */
+
+    sched_reschedule();
+    return 0;
+}
