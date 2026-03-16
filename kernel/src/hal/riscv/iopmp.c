@@ -1,5 +1,6 @@
 #include "hal/iommu.h"
 #include <stddef.h>
+#include <stdbool.h>
 
 #include "hal/hal.h"
 #include "profile.h"
