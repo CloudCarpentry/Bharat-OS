@@ -1,3 +1,4 @@
+#include <stddef.h>
 #include "hal/hal_irq.h"
 #include "hal/hal_boot.h"
 #include "hal/hal_discovery.h"
@@ -41,7 +42,7 @@ static int its_alloc_msi(msi_domain_t* domain, void* device, int count, msi_desc
         desc_array[i].msg.address = (uint64_t)(uintptr_t)g_its_base + 0x0040; // GITS_TRANSLATER
         desc_array[i].msg.data = desc_array[i].irq; // The EventID
     }
-    return 0;
+
 }
 
 static void its_free_msi(msi_domain_t* domain, msi_desc_t* desc_array, int count) {
@@ -60,7 +61,7 @@ static msi_domain_t its_msi_domain = {
     .host_data = NULL
 };
 
-int hal_irq_init_boot(void) {
+void hal_irq_init_boot(void) {
     system_discovery_t* disc = hal_get_system_discovery();
     if (disc) {
         for (uint32_t i = 0; i < disc->irq_ctrl_count; i++) {
@@ -83,10 +84,10 @@ int hal_irq_init_boot(void) {
     gicd_write(GICD_IGROUPR0, 0xFFFFFFFF);
     // Enable Group 1 interrupts
     gicd_write(GICD_CTLR, 2);
-    return 0;
+
 }
 
-int hal_irq_init_cpu_local(uint32_t cpu_id) {
+void hal_irq_init_cpu_local(uint32_t cpu_id) {
     (void)cpu_id;
     // Wake up the redistributor
     uint32_t waker = gicr_read(GICR_WAKER);
@@ -97,17 +98,17 @@ int hal_irq_init_cpu_local(uint32_t cpu_id) {
 
     // Group 1 routing for SGIs/PPIs
     gicr_write(GICR_IGROUPR0, 0xFFFFFFFF);
-    return 0;
+
 }
 
 int hal_irq_enable(uint32_t vector) {
     // Unmask logic
-    return 0;
+
 }
 
 int hal_irq_disable(uint32_t vector) {
     // Mask logic
-    return 0;
+
 }
 
 int hal_ipi_send(uint32_t cpu_id, uint32_t reason_vector) {
@@ -117,7 +118,7 @@ int hal_ipi_send(uint32_t cpu_id, uint32_t reason_vector) {
     uint64_t sgi_val = (aff1 << 16) | reason_vector << 24 | (1 << aff0);
     write_icc_sgi1r_el1(sgi_val);
     __asm__ volatile("isb; dsb sy");
-    return 0;
+
 }
 
 void hal_irq_eoi(uint32_t vector) {

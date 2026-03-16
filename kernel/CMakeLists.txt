@@ -264,6 +264,8 @@ if(ARCH STREQUAL "x86_64")
 elseif(ARCH STREQUAL "riscv64")
     target_compile_options(kernel.elf PRIVATE
         $<$<COMPILE_LANGUAGE:C>:-mcmodel=medany>
+        $<$<COMPILE_LANGUAGE:ASM>:-march=rv64g>
+        $<$<COMPILE_LANGUAGE:C>:-march=rv64g>
     )
 endif()
 
