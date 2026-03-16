@@ -2,6 +2,9 @@
 #include "tests/ktest.h"
 #include <stddef.h>
 
+#define REDZONE_MAGIC_START 0xDEADBEEF
+#define REDZONE_MAGIC_END   0xCAFEBABE
+
 
 bool test_kmalloc_basic(void) {
   void *p1 = kmalloc(32);

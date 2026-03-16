@@ -9,10 +9,16 @@
 #include "kernel.h"
 #include "kernel_safety.h"
 #include "mm.h"
+#include "mm/mm_local.h"
 
 
 #include <stddef.h>
+#include <stdbool.h>
 #include <stdint.h>
+
+#include "mm.h"
+int vmm_handle_cow_fault(address_space_t* as, virt_addr_t vaddr);
+extern bool core_is_rt(void);
 
 #define TRAP_SUCCESS 0L
 #define TRAP_ERR_INVAL (-22L)
@@ -153,9 +159,19 @@ long trap_handle(trap_frame_t *frame) {
 #if defined(__riscv)
   if (frame->cause == 13 || frame->cause == 15) { // Load/Store page fault
     kthread_t *current = sched_current_thread();
+    uint64_t stval;
+    __asm__ volatile("csrr %0, stval" : "=r"(stval));
+
+    // Check if it's a guard page hit
+    if (current && current->kernel_stack != 0 && stval >= current->kernel_stack && stval < current->kernel_stack + PAGE_SIZE) {
+        if (core_is_rt()) {
+            kernel_panic("Stack overflow on RT core! Guard page hit.");
+        } else {
+            kernel_panic("Stack overflow detected! Guard page hit.");
+        }
+    }
+
     if (current && current->process_id != 0) {
-      uint64_t stval;
-      __asm__ volatile("csrr %0, stval" : "=r"(stval));
       // Address space from current process
       // For proper hardware demand-paging, we call into the VMM.
       int rc = vmm_handle_cow_fault(g_syscall_proc.addr_space, stval);
@@ -173,9 +189,19 @@ long trap_handle(trap_frame_t *frame) {
 #elif defined(__x86_64__)
   if (frame->cause == 14) { // Page fault (#PF)
     kthread_t *current = sched_current_thread();
+    uint64_t cr2;
+    __asm__ volatile("mov %%cr2, %0" : "=r"(cr2));
+
+    // Check if it's a guard page hit
+    if (current && current->kernel_stack != 0 && cr2 >= current->kernel_stack && cr2 < current->kernel_stack + PAGE_SIZE) {
+        if (core_is_rt()) {
+            kernel_panic("Stack overflow on RT core! Guard page hit.");
+        } else {
+            kernel_panic("Stack overflow detected! Guard page hit.");
+        }
+    }
+
     if (current && current->process_id != 0) {
-      uint64_t cr2;
-      __asm__ volatile("mov %%cr2, %0" : "=r"(cr2));
       // Address space from current process
       // For proper hardware demand-paging, we call into the VMM.
       int rc = vmm_handle_cow_fault(g_syscall_proc.addr_space, cr2);
@@ -209,6 +235,17 @@ long trap_handle(trap_frame_t *frame) {
       // Page fault handling
       uint64_t far;
       __asm__ volatile("mrs %0, far_el1" : "=r"(far));
+
+      kthread_t *current = sched_current_thread();
+      // Check if it's a guard page hit
+      if (current && current->kernel_stack != 0 && far >= current->kernel_stack && far < current->kernel_stack + PAGE_SIZE) {
+          if (core_is_rt()) {
+              kernel_panic("Stack overflow on RT core! Guard page hit.");
+          } else {
+              kernel_panic("Stack overflow detected! Guard page hit.");
+          }
+      }
+
       // For proper hardware demand-paging, we call into the VMM.
       int rc = vmm_handle_cow_fault(g_syscall_proc.addr_space, far);
       if (rc == 0) {

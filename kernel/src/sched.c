@@ -82,16 +82,16 @@ static uint32_t g_free_process_head = UINT32_MAX;
 
 void fv_secure_context_switch(void *next_thread_frame) __attribute__((weak));
 
-void arch_post_switch(void) {
-  uint32_t core = sched_clamp_core(hal_cpu_get_id());
-  spinlock_release(&g_runqueues[core].lock);
-}
-
 static uint32_t sched_clamp_core(uint32_t core_id) {
   if (core_id >= MAX_SUPPORTED_CORES) {
     return 0U;
   }
   return core_id;
+}
+
+void arch_post_switch(void) {
+  uint32_t core = sched_clamp_core(hal_cpu_get_id());
+  spin_unlock(&g_runqueues[core].lock);
 }
 
 static thread_slot_t *sched_find_thread_slot_by_tid(uint64_t tid) {
@@ -149,7 +149,7 @@ int sched_enqueue(kthread_t *thread, uint32_t core_id) {
   }
 
   core_id = sched_clamp_core(core_id);
-  spinlock_acquire(&g_runqueues[core_id].lock);
+  spin_lock(&g_runqueues[core_id].lock);
 
   if (slot->is_on_runqueue != 0U) {
     list_del(&slot->run_node);
@@ -162,7 +162,7 @@ int sched_enqueue(kthread_t *thread, uint32_t core_id) {
   list_add(&slot->run_node, &g_runqueues[core_id].ready_queue[thread->priority]);
   slot->is_on_runqueue = 1U;
 
-  spinlock_release(&g_runqueues[core_id].lock);
+  spin_unlock(&g_runqueues[core_id].lock);
   return 0;
 }
 
@@ -216,7 +216,7 @@ void sched_init(void) {
     g_runqueues[core].total_ticks = 0U;
     g_runqueues[core].context_switches = 0U;
     g_runqueues[core].throttled = 0U;
-    spinlock_init(&g_runqueues[core].lock);
+    spin_lock_init(&g_runqueues[core].lock);
     list_init(&g_runqueues[core].sleeping_list);
     list_init(&g_runqueues[core].blocked_list);
     for (uint32_t p = 0; p < MAX_PRIORITY_LEVELS; ++p) {
@@ -547,13 +547,13 @@ kthread_t *sched_pick_next_ready_l1(uint32_t core_id) {
 
 static void sched_switch_to(kthread_t *next, uint32_t core_id) {
   if (!next) {
-    spinlock_release(&g_runqueues[core_id].lock);
+    spin_unlock(&g_runqueues[core_id].lock);
     return;
   }
 
   kthread_t *current = g_runqueues[core_id].current_thread;
   if (current == next) {
-    spinlock_release(&g_runqueues[core_id].lock);
+    spin_unlock(&g_runqueues[core_id].lock);
     return;
   }
 
@@ -662,7 +662,7 @@ void sched_reschedule(void) {
   uint32_t core = sched_clamp_core(hal_cpu_get_id());
   sched_process_pending_ai_suggestions();
 
-  spinlock_acquire(&g_runqueues[core].lock);
+  spin_lock(&g_runqueues[core].lock);
 
   if (g_runqueues[core].throttled != 0U && g_runqueues[core].idle_thread) {
     sched_switch_to(g_runqueues[core].idle_thread, core);

@@ -150,6 +150,9 @@ set(KERNEL_SRCS
     src/mm/vmm.c
     src/mm/numa.c
     src/mm/zswap.c
+    src/mm/mm_local.c
+    src/mm/mm_remote.c
+    src/urpc/urpc_bootstrap.c
     src/security/isolation.c
     src/security/credentials.c
     src/security/policy.c
@@ -268,6 +271,7 @@ target_link_options(kernel.elf PRIVATE
     "LINKER:-T,${LINKER_SCRIPT}"
     "LINKER:--build-id=none"
     "LINKER:--no-dynamic-linker"
+    "-fuse-ld=bfd"
 )
 
 
