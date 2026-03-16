@@ -22,6 +22,7 @@
 #include "subsystem_profile.h"
 #include "trap.h"
 #include "boot/boot_args.h"
+#include "bharat/boot_info.h"
 #include "tests/ktest.h"
 #include <bharat/cpu_local.h>
 
@@ -180,6 +181,10 @@ static void kernel_ai_governor_tick(void) {
 
 #if defined(__x86_64__)
 #include "boot/x86_64/multiboot2.h"
+
+// Forward declaration for x86_64 framebuffer parser
+extern void x86_64_parse_multiboot_framebuffer(multiboot_information_t *mb_info);
+
 void kernel_main(uint32_t magic, multiboot_information_t *mb_info) {
 #elif defined(__riscv)
 void kernel_main(uint64_t hart_id, uintptr_t fdt_ptr) {
@@ -213,6 +218,9 @@ void kernel_main(void) {
       }
       tag_ptr += ((tag->size + 7) & ~7);
     }
+
+    // Phase 1 x86_64 Framebuffer parser hook
+    x86_64_parse_multiboot_framebuffer(mb_info);
   }
 #else
   // TODO: Add Device Tree parsing for ARM64/RISC-V bootargs
@@ -377,6 +385,20 @@ void kernel_main(void) {
     }
 
     kernel_boot_scheduler();
+
+    KPRINT("  [UI] Resolving boot display...\n");
+    boot_ui_mode_t ui_mode = boot_ui_resolve_mode(PROFILE_DESKTOP);
+    if (ui_mode >= BOOT_UI_SIMPLE_FB) {
+      boot_video_handoff_t video_info = {0};
+      if (boot_video_collect(&video_info) == 0 && video_info.valid) {
+        uint32_t fb_cap_id = 0;
+        if (kernel_publish_boot_framebuffer(&video_info, &fb_cap_id) == 0) {
+          KPRINT("  [UI] Boot framebuffer capability published.\n");
+        } else {
+          KPRINT("  [UI] Boot framebuffer publishing failed. Falling back to text.\n");
+        }
+      }
+    }
 
     KPRINT("  [AI] Calibrating hardware silicon metrics...\n");
     ai_sched_calibrate_silicon();
