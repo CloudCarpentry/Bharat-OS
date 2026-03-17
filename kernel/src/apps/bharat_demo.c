@@ -98,8 +98,8 @@ static void demo_memory(void)
     DEMO_PRINT("  [VMM] Creating new address space...\n");
     address_space_t *as = mm_create_address_space();
     if (as != NULL) {
-        DEMO_PRINT("  [VMM]   OK  as.root_table=");
-        demo_print_hex(as->root_table);
+        DEMO_PRINT("  [VMM]   OK  as.root_pt=");
+        demo_print_hex(as->root_pt);
         DEMO_PRINT("\n");
     } else {
         DEMO_PRINT("  [VMM]   WARN: address space creation returned NULL.\n");

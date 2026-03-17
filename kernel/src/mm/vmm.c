@@ -22,7 +22,7 @@
 static address_space_t kernel_space;
 
 phys_addr_t vmm_get_kernel_root(void) {
-    return kernel_space.root_table;
+    return kernel_space.root_pt;
 }
 
 // Helper to translate old VMM flags to new MMU flags
@@ -106,7 +106,7 @@ int vmm_init(void) {
         return -1;
     }
 
-    kernel_space.root_table = root_dir_phys;
+    kernel_space.root_pt = root_dir_phys;
     return 0;
 }
 
@@ -115,7 +115,7 @@ int mm_vmm_map_page(address_space_t* as, virt_addr_t vaddr, phys_addr_t paddr, u
         return 0; // No-op for MPU/FLAT
     }
 
-    if (!as || as->root_table == 0U || paddr == 0U) {
+    if (!as || as->root_pt == 0U || paddr == 0U) {
         return -1;
     }
 
@@ -125,7 +125,7 @@ int mm_vmm_map_page(address_space_t* as, virt_addr_t vaddr, phys_addr_t paddr, u
 
     phys_addr_t existing_paddr = 0U;
     uint32_t existing_flags = 0U;
-    if (hal_vmm_get_mapping(as->root_table, vaddr, &existing_paddr, &existing_flags) == 0) {
+    if (hal_vmm_get_mapping(as->root_pt, vaddr, &existing_paddr, &existing_flags) == 0) {
         (void)existing_flags;
         if (existing_paddr != paddr) {
             return -2;
@@ -139,7 +139,7 @@ int mm_vmm_map_page(address_space_t* as, virt_addr_t vaddr, phys_addr_t paddr, u
     }
 
     mmu_flags_t mmu_flags = convert_vmm_flags(flags);
-    return active_mmu->map(as->root_table, vaddr, paddr, PAGE_SIZE, mmu_flags);
+    return active_mmu->map(as->root_pt, vaddr, paddr, PAGE_SIZE, mmu_flags);
 }
 
 // Global TLB shootdown function via URPC
@@ -165,12 +165,12 @@ int mm_vmm_unmap_page(address_space_t* as, virt_addr_t vaddr) {
         return 0; // No-op for MPU/FLAT
     }
 
-    if (!as || as->root_table == 0U) {
+    if (!as || as->root_pt == 0U) {
         return -1;
     }
 
     phys_addr_t paddr = 0;
-    int ret = active_mmu->unmap(as->root_table, vaddr, PAGE_SIZE, &paddr);
+    int ret = active_mmu->unmap(as->root_pt, vaddr, PAGE_SIZE, &paddr);
     if (ret < 0) {
         return ret;
     }
@@ -232,7 +232,7 @@ address_space_t* mm_create_address_space(void) {
         // For MPU/FLAT return a valid pointer, but no page tables are cloned.
         address_space_t* as = (address_space_t*)(uintptr_t)mm_alloc_page(NUMA_NODE_ANY);
         if (as) {
-            as->root_table = 0;
+            as->root_pt = 0;
             as->owner_core_id = hal_cpu_get_id();
             as->object_id = (uint64_t)(uintptr_t)as;
             spin_lock_init(&as->lock);
@@ -242,7 +242,7 @@ address_space_t* mm_create_address_space(void) {
 
     if (!active_mmu) return NULL;
 
-    phys_addr_t root = active_mmu->clone_kernel(kernel_space.root_table);
+    phys_addr_t root = active_mmu->clone_kernel(kernel_space.root_pt);
     if (root == 0U) {
         return NULL;
     }
@@ -253,7 +253,7 @@ address_space_t* mm_create_address_space(void) {
         return NULL;
     }
 
-    as->root_table = root;
+    as->root_pt = root;
     as->owner_core_id = hal_cpu_get_id(); // The core creating it initially owns it
     as->object_id = (uint64_t)(uintptr_t)as; // Simple object ID for now
     spin_lock_init(&as->lock);
@@ -266,7 +266,7 @@ int vmm_handle_cow_fault(address_space_t* as, virt_addr_t vaddr) {
         return -1; // MPU/FLAT do not support demand paging / CoW
     }
 
-    if (!as || as->root_table == 0U || !active_mmu) {
+    if (!as || as->root_pt == 0U || !active_mmu) {
         return -1;
     }
 
@@ -277,7 +277,7 @@ int vmm_handle_cow_fault(address_space_t* as, virt_addr_t vaddr) {
     phys_addr_t old_phys = 0;
     mmu_flags_t old_mmu_flags = 0;
 
-    int ret = active_mmu->query(as->root_table, aligned_vaddr, &old_phys, &old_mmu_flags);
+    int ret = active_mmu->query(as->root_pt, aligned_vaddr, &old_phys, &old_mmu_flags);
     if (ret < 0 || old_phys == 0) {
         spin_unlock(&as->lock);
         return -2;
@@ -314,17 +314,17 @@ int vmm_handle_cow_fault(address_space_t* as, virt_addr_t vaddr) {
 
     // Safest generic path if there is no explicit remap API: unmap + map
     phys_addr_t unmapped_phys = 0;
-    ret = active_mmu->unmap(as->root_table, aligned_vaddr, PAGE_SIZE, &unmapped_phys);
+    ret = active_mmu->unmap(as->root_pt, aligned_vaddr, PAGE_SIZE, &unmapped_phys);
     if (ret < 0) {
         mm_free_page(new_phys);
         spin_unlock(&as->lock);
         return ret;
     }
 
-    ret = active_mmu->map(as->root_table, aligned_vaddr, new_phys, PAGE_SIZE, new_mmu_flags);
+    ret = active_mmu->map(as->root_pt, aligned_vaddr, new_phys, PAGE_SIZE, new_mmu_flags);
     if (ret < 0) {
         // Attempt rollback
-        (void)active_mmu->map(as->root_table, aligned_vaddr, old_phys, PAGE_SIZE, old_mmu_flags);
+        (void)active_mmu->map(as->root_pt, aligned_vaddr, old_phys, PAGE_SIZE, old_mmu_flags);
         mm_free_page(new_phys);
         spin_unlock(&as->lock);
         return ret;
@@ -332,7 +332,7 @@ int vmm_handle_cow_fault(address_space_t* as, virt_addr_t vaddr) {
 
     spin_unlock(&as->lock);
 
-    tlb_shootdown(aligned_vaddr);
+    tlb_shootdown(as, aligned_vaddr);
 
     // Decrement old page reference (after we have updated the mapping)
     mm_free_page(old_phys);
