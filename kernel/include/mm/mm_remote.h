@@ -8,6 +8,31 @@
 
 // Operations that cross core boundaries via URPC (may be async)
 
+typedef enum {
+    MM_MSG_TLB_FLUSH = 1,
+    MM_MSG_AS_JOIN   = 2,
+    MM_MSG_AS_LEAVE  = 3,
+} mm_msg_type_t;
+
+typedef struct {
+    uint16_t type;
+    uint16_t flags;
+    uint32_t sender_core;
+    uint64_t as_id;
+    uint64_t va;
+} mm_urpc_tlb_msg_t;
+
+typedef struct {
+    volatile uint32_t seq;
+    volatile uint32_t valid;
+    mm_urpc_tlb_msg_t msg;
+} mm_mailbox_slot_t;
+
+#define URPC_MM_MAILBOX 0xFF
+
+// Array of mailboxes (one for each possible target core)
+extern mm_mailbox_slot_t g_mm_mailboxes[64];
+
 // Remote TLB operations (fire-and-forget)
 void mm_remote_tlb_flush(uint32_t target_core, uint64_t as_id, virt_addr_t va);
 void mm_remote_tlb_shootdown_mask(uint64_t core_membership_mask, uint64_t as_id, virt_addr_t va);

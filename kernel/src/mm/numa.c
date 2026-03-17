@@ -150,7 +150,7 @@ int numa_migrate_page(uint64_t vaddr, memory_node_id_t target_node, void* addres
     mm_free_page(old_phys);
 
     // 6. TLB shootdown
-    tlb_shootdown(vaddr);
+    tlb_shootdown(as, vaddr);
 
     return 0;
 }

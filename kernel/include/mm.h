@@ -122,4 +122,4 @@ void vmm_process_urpc_messages(void);
 
 #endif // BHARAT_MM_H
 
-void tlb_shootdown(virt_addr_t vaddr);
+void tlb_shootdown(address_space_t *as, virt_addr_t vaddr);

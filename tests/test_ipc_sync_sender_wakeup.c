@@ -15,7 +15,7 @@ phys_addr_t mm_alloc_page(uint32_t preferred_numa_node) { (void)preferred_numa_n
 void mm_free_page(phys_addr_t page) { (void)page; }
 phys_addr_t pmm_alloc_pages_colored(int order, uint32_t preferred_numa_node, uint32_t flags, mm_color_config_t *color_config) { return 0; }
 phys_addr_t mm_alloc_pages_order(int order, uint32_t preferred_numa_node, uint32_t flags) { return 0; }
-void tlb_shootdown(virt_addr_t vaddr) { (void)vaddr; }
+void tlb_shootdown(address_space_t *as, virt_addr_t vaddr) { (void)as; (void)vaddr; }
 
 
 static void dummy_entry(void) {}
@@ -44,7 +44,7 @@ void test_ipc_sync_sender_wakeup(void) {
     assert(sched_current_thread() == t_sender1);
 
     const char* msg1 = "msg1";
-    assert(ipc_endpoint_send(table, send_cap, msg1, 5) == IPC_OK);
+    assert(ipc_endpoint_send(table, send_cap, msg1, 5, 0) == IPC_OK);
 
     // Switch to sender2. Attempting to send should block it.
     while (sched_current_thread() != t_sender2) {
@@ -53,7 +53,7 @@ void test_ipc_sync_sender_wakeup(void) {
     assert(sched_current_thread() == t_sender2);
 
     const char* msg2 = "msg2";
-    assert(ipc_endpoint_send(table, send_cap, msg2, 5) == IPC_ERR_WOULD_BLOCK);
+    assert(ipc_endpoint_send(table, send_cap, msg2, 5, 0) == IPC_ERR_WOULD_BLOCK);
     assert(t_sender2->state == THREAD_STATE_BLOCKED);
 
     // Switch to receiver. Receiver receives first message.
@@ -65,7 +65,7 @@ void test_ipc_sync_sender_wakeup(void) {
 
     char buf[16];
     uint32_t len = 0;
-    assert(ipc_endpoint_receive(table, recv_cap, buf, sizeof(buf), &len) == IPC_OK);
+    assert(ipc_endpoint_receive(table, recv_cap, buf, sizeof(buf), &len, 0) == IPC_OK);
     assert(len == 5);
     assert(strcmp(buf, "msg1") == 0);
 

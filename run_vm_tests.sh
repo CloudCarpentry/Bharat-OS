@@ -5,6 +5,7 @@ clang -Ikernel/include -Ikernel/include/hal -D_GNU_SOURCE -g \
     kernel/src/tests/test_vm_space.c \
     kernel/src/mm/vm_space.c \
     kernel/src/mm/vm_mapping.c \
+    kernel/src/cpu_local.c \
     -o test_vm_space -Wno-implicit-function-declaration -Wno-int-conversion
 
 ./test_vm_space

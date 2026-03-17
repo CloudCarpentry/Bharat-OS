@@ -12,7 +12,7 @@ address_space_t g_as = { .root_table = 0x1000U };
 address_space_t* mm_create_address_space(void) { return &g_as; }
 phys_addr_t mm_alloc_page(uint32_t preferred_numa_node) { (void)preferred_numa_node; return 0; }
 void mm_free_page(phys_addr_t page) { (void)page; }
-void tlb_shootdown(virt_addr_t vaddr) { (void)vaddr; }
+void tlb_shootdown(address_space_t *as, virt_addr_t vaddr) { (void)as; (void)vaddr; }
 int hal_vmm_get_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t* paddr, uint32_t* flags) {
     (void)root_table; (void)vaddr; (void)paddr; (void)flags; return -1;
 }
@@ -52,12 +52,12 @@ static void test_ipc_bypass(void) {
     // Send a message using another capability table should fail (simulating trying to read an unauthorized cap)
     // Actually, ipc_endpoint_send relies on the passed table.
     // Let's assert that the capability is not found in t2.
-    int ret = ipc_endpoint_send(t2, send_cap, "hello", 5);
+    int ret = ipc_endpoint_send(t2, send_cap, "hello", 5, 0);
     assert(ret == IPC_ERR_PERM || ret == IPC_ERR_INVALID);
 
     // Forged Handle Test
     uint32_t forged_cap = send_cap + 100; // Unlikely to be valid
-    ret = ipc_endpoint_send(t, forged_cap, "hello", 5);
+    ret = ipc_endpoint_send(t, forged_cap, "hello", 5, 0);
     assert(ret == IPC_ERR_PERM || ret == IPC_ERR_INVALID);
 }
 
