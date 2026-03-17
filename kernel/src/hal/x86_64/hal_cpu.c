@@ -82,6 +82,45 @@ void hal_serial_init(void) {
   x86_outb(COM1_PORT + 4, 0x0B);
 }
 
+// Minimal VGA Text Mode Driver
+static uint16_t *vga_buffer = (uint16_t *)0xB8000;
+static int vga_col = 0;
+static int vga_row = 0;
+#define VGA_WIDTH 80
+#define VGA_HEIGHT 25
+
+static void vga_scroll(void) {
+  for (int y = 0; y < VGA_HEIGHT - 1; y++) {
+    for (int x = 0; x < VGA_WIDTH; x++) {
+      vga_buffer[y * VGA_WIDTH + x] = vga_buffer[(y + 1) * VGA_WIDTH + x];
+    }
+  }
+  for (int x = 0; x < VGA_WIDTH; x++) {
+    vga_buffer[(VGA_HEIGHT - 1) * VGA_WIDTH + x] = 0x0F00 | ' '; // White on black space
+  }
+}
+
+static void vga_write_char(char c) {
+  if (c == '\n') {
+    vga_col = 0;
+    vga_row++;
+  } else if (c == '\r') {
+    vga_col = 0;
+  } else {
+    vga_buffer[vga_row * VGA_WIDTH + vga_col] = 0x0F00 | (uint8_t)c;
+    vga_col++;
+    if (vga_col >= VGA_WIDTH) {
+      vga_col = 0;
+      vga_row++;
+    }
+  }
+
+  if (vga_row >= VGA_HEIGHT) {
+    vga_scroll();
+    vga_row = VGA_HEIGHT - 1;
+  }
+}
+
 void hal_serial_write_char(char c) {
   // Wait for transmit holding register empty
   while ((x86_inb(COM1_PORT + 5) & 0x20U) == 0U) {
@@ -98,8 +137,11 @@ void hal_serial_write(const char *s) {
   while (*s != '\0') {
     if (*s == '\n') {
       hal_serial_write_char('\r');
+      vga_write_char('\r');
     }
-    hal_serial_write_char(*s++);
+    hal_serial_write_char(*s);
+    vga_write_char(*s);
+    s++;
   }
 }
 

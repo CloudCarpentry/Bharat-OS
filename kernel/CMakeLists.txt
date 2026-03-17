@@ -88,6 +88,11 @@ elseif(ARCH STREQUAL "riscv64")
     set(BOOT_SRC src/boot/riscv64/boot.S)
     set(ARCH_HAL src/hal/riscv/hal_cpu.c src/hal/riscv/trap_entry.S src/hal/riscv/vmm.c src/hal/riscv/iopmp.c src/hal/riscv/plic.c src/hal/riscv/sbi_timer_ipi.c)
     set(ARCH_HAL_EXTRA src/hal/riscv/shakti_bsp.c)
+    # VirtIO GPU display driver: only for qemu-virt + GUI enabled
+    if(BHARAT_BOOT_GUI AND "${BHARAT_RISCV_SOC_PROFILE}" STREQUAL "qemu-virt")
+        list(APPEND ARCH_HAL src/hal/riscv/virtio_gpu.c)
+        add_compile_definitions(BHARAT_VIRTIO_GPU=1)
+    endif()
     set(ARCH_CONTEXT_SWITCH src/arch/riscv64/context_switch.c src/arch/riscv64/context_switch.S)
 elseif(ARCH STREQUAL "arm64")
     set(BOOT_SRC src/boot/arm64/boot.S)
@@ -120,9 +125,11 @@ endif()
 set(KERNEL_SRCS
     ${BOOT_SRC}
     src/boot/boot_args.c
-    src/boot/boot_ui_select.c
-    src/display/boot_video.c
-    src/display/display_handoff.c
+    $<$<BOOL:${BHARAT_BOOT_GUI}>:src/boot/boot_ui_select.c>
+    $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/boot_video.c>
+    $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/display_handoff.c>
+    $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/display_fallback.c>
+    $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/boot_gui.c>
     src/hal/arm32_mpu_vmm_mock.c
     src/main.c
     src/cpu_local.c

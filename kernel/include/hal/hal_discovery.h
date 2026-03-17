@@ -131,6 +131,8 @@ typedef struct {
     uint32_t irq;       // Overflow interrupt (if supported/routed)
 } pmu_desc_t;
 
+#include "bharat/display/boot_video.h"
+
 // --- Global System Discovery State ---
 
 typedef struct {
@@ -150,6 +152,8 @@ typedef struct {
 
     uint32_t pmu_count;
     pmu_desc_t pmus[BHARAT_MAX_PMUS];
+
+    boot_video_handoff_t boot_video;
 } system_discovery_t;
 
 // Retrieve the global discovery structure

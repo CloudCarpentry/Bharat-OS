@@ -23,6 +23,7 @@
 #include "trap.h"
 #include "boot/boot_args.h"
 #include "bharat/boot_info.h"
+#include "display/boot_gui_init.h"
 #include "tests/ktest.h"
 #include <bharat/cpu_local.h>
 
@@ -390,19 +391,14 @@ void kernel_main(void) {
 
     kernel_boot_scheduler();
 
-    KPRINT("  [UI] Resolving boot display...\n");
-    boot_ui_mode_t ui_mode = boot_ui_resolve_mode(PROFILE_DESKTOP);
-    if (ui_mode >= BOOT_UI_SIMPLE_FB) {
-      boot_video_handoff_t video_info = {0};
-      if (boot_video_collect(&video_info) == 0 && video_info.valid) {
-        uint32_t fb_cap_id = 0;
-        if (kernel_publish_boot_framebuffer(&video_info, &fb_cap_id) == 0) {
-          KPRINT("  [UI] Boot framebuffer capability published.\n");
-        } else {
-          KPRINT("  [UI] Boot framebuffer publishing failed. Falling back to text.\n");
-        }
-      }
+#if BHARAT_BOOT_GUI
+    KPRINT("  [UI] Initializing boot GUI...\n");
+    if (boot_gui_run() == 0) {
+      KPRINT("  [UI] Boot framebuffer active.\n");
+    } else {
+      KPRINT("  [UI] Boot GUI not available, text mode only.\n");
     }
+#endif /* BHARAT_BOOT_GUI */
 
     KPRINT("  [AI] Calibrating hardware silicon metrics...\n");
     ai_sched_calibrate_silicon();

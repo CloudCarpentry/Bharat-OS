@@ -277,7 +277,8 @@ if ($Run) {
             $qemuArgs += @("-machine", $Machine, "-kernel", $OutELF, "-m", "256M", "-serial", "mon:stdio", "-no-reboot")
         }
         if ($BootGui -eq "ON") {
-            $qemuArgs += @("-vga", "std")
+            # riscv64 virt machine has no legacy VGA; use VirtIO GPU (MMIO transport)
+            $qemuArgs += @("-device", "virtio-gpu-device")
         } else {
             $qemuArgs += @("-nographic")
         }
@@ -285,7 +286,8 @@ if ($Run) {
     elseif ($Arch -eq "arm64") {
         $qemuArgs += @("-machine", $Machine, "-cpu", "cortex-a53", "-kernel", $OutELF, "-m", "256M", "-serial", "mon:stdio", "-no-reboot")
         if ($BootGui -eq "ON") {
-            $qemuArgs += @("-vga", "std")
+            # arm64 virt machine has no legacy VGA; use VirtIO GPU which the virt machine supports
+            $qemuArgs += @("-device", "virtio-gpu-pci")
         } else {
             $qemuArgs += @("-nographic")
         }
