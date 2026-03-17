@@ -9,7 +9,7 @@
 
 // Mock dependencies
 void ipc_async_check_timeouts(uint64_t current_ticks) { (void)current_ticks; }
-static address_space_t g_as = { .root_table = 0x1000U };
+static address_space_t g_as = { .root_pt = 0x1000U };
 address_space_t* mm_create_address_space(void) { return &g_as; }
 phys_addr_t mm_alloc_page(uint32_t preferred_numa_node) { (void)preferred_numa_node; return 0; }
 void mm_free_page(phys_addr_t page) { (void)page; }

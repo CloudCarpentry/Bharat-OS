@@ -156,6 +156,7 @@ set(KERNEL_SRCS
     src/mm/slab.c
     src/mm/kmem_aligned.c
     src/mm/vmm.c
+    src/mm/aspace.c
     src/mm/numa.c
     src/mm/zswap.c
     src/mm/mm_local.c
@@ -299,7 +300,7 @@ if(ARCH STREQUAL "riscv64" AND BHARAT_RISCV_BUILD_PAYLOAD_BIN)
     else()
         add_custom_command(
             OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/payload.bin"
-            COMMAND llvm-objcopy -O binary $<TARGET_FILE:kernel.elf> "${CMAKE_CURRENT_BINARY_DIR}/payload.bin"
+            COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:kernel.elf> "${CMAKE_CURRENT_BINARY_DIR}/payload.bin"
             DEPENDS kernel.elf
             COMMENT "Generating OpenSBI payload.bin from kernel.elf"
             VERBATIM

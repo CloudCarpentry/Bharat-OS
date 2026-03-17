@@ -34,7 +34,7 @@ void arch_context_switch(cpu_context_t* prev, cpu_context_t* next) {
     (void)next;
 }
 
-static address_space_t g_as = { .root_table = 0x1000U };
+static address_space_t g_as = { .root_pt = 0x1000U };
 
 address_space_t* mm_create_address_space(void) {
     return &g_as;

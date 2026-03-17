@@ -126,7 +126,7 @@ int numa_migrate_page(uint64_t vaddr, memory_node_id_t target_node, void* addres
     // 2. Lookup old physical page
     phys_addr_t old_phys = 0;
     uint32_t old_flags = 0;
-    int ret = hal_vmm_get_mapping(as->root_table, vaddr, &old_phys, &old_flags);
+    int ret = hal_vmm_get_mapping(as->root_pt, vaddr, &old_phys, &old_flags);
     if (ret < 0 || old_phys == 0) {
         mm_free_page(new_phys);
         return -2;
@@ -140,7 +140,7 @@ int numa_migrate_page(uint64_t vaddr, memory_node_id_t target_node, void* addres
     }
 
     // 4. Update mapping
-    ret = hal_vmm_update_mapping(as->root_table, vaddr, new_phys, old_flags);
+    ret = hal_vmm_update_mapping(as->root_pt, vaddr, new_phys, old_flags);
     if (ret < 0) {
         mm_free_page(new_phys);
         return -3;
