@@ -426,6 +426,7 @@ void kernel_main(void) {
     KPRINT("TEST: kernel self-tests passed\n");
 
     // Run registered boot tests
+    extern void kernel_run_boot_tests(void);
     kernel_run_boot_tests();
 
     hal_serial_write("[bharat] hw_profile=");

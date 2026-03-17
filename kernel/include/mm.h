@@ -88,12 +88,8 @@ void mm_inc_page_ref(phys_addr_t page);
 // Virtual Memory Management (Architecture agnostic paging)
 #include "spinlock.h"
 
-typedef struct {
-  phys_addr_t root_table; // CR3 on x86, satp on RISC-V
-  uint32_t owner_core_id;
-  uint64_t object_id;
-  spinlock_t lock;
-} address_space_t;
+typedef struct vm_address_space address_space_t;
+#include "mm/aspace.h"
 
 int vmm_init(void);
 int vmm_map_page(virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags);

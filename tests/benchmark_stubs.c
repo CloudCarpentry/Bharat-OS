@@ -6,7 +6,7 @@
 
 // Using weak linking so that tests that include actual mm code won't complain about multiple definitions
 __attribute__((weak)) address_space_t* mm_create_address_space(void) {
-    static address_space_t g_as = { .root_table = 0x1000U };
+    static address_space_t g_as = { .root_pt = 0x1000U };
     return &g_as;
 }
 

@@ -34,7 +34,10 @@ boot_ui_mode_t boot_ui_resolve_mode(system_profile_t profile) {
 
     // Probe machine capabilities
     machine_display_caps_t caps = {0};
-    int ret = machine_get_display_caps(&caps);
+    int ret = -1;
+#if defined(__x86_64__) || defined(_M_X64)
+    ret = machine_get_display_caps(&caps);
+#endif
     if (ret != 0 || !caps.display_present || !caps.boot_gui_allowed) {
         return BOOT_UI_TEXT; // Or NONE
     }

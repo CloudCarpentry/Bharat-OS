@@ -6,7 +6,7 @@
 #include "../kernel/include/sched.h"
 
 static uint32_t g_mock_core_id = 0;
-static address_space_t g_as = {.root_table = 0x2000U};
+static address_space_t g_as = {.root_pt = 0x2000U};
 
 void ipc_async_check_timeouts(uint64_t current_ticks) { (void)current_ticks; }
 address_space_t *mm_create_address_space(void) { return &g_as; }
