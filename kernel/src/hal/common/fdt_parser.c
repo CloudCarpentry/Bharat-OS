@@ -255,6 +255,7 @@ int fdt_parse_discovery(const void* fdt_ptr, system_discovery_t* discovery) {
     int is_pcie = 0;
     int is_smmuv3 = 0;
     int is_pmu = 0;
+    int is_fb = 0;
 
     const void* reg_data = NULL;
     uint32_t reg_len = 0;
@@ -277,6 +278,7 @@ int fdt_parse_discovery(const void* fdt_ptr, system_discovery_t* discovery) {
             is_memory = str_starts_with(current_node_name, "memory@");
             is_cpu = str_starts_with(current_node_name, "cpu@");
             is_pcie = str_starts_with(current_node_name, "pcie@") || str_starts_with(current_node_name, "pci@");
+            is_fb = str_starts_with(current_node_name, "framebuffer@") || str_starts_with(current_node_name, "fb@");
 
             is_plic = 0;
             is_gicv3 = 0;
@@ -362,6 +364,12 @@ int fdt_parse_discovery(const void* fdt_ptr, system_discovery_t* discovery) {
                         discovery->iommus[discovery->iommu_count].base = base;
                         discovery->iommus[discovery->iommu_count].size = size;
                         discovery->iommu_count++;
+                    } else if (is_fb) {
+                        discovery->boot_video.phys_addr = base;
+                        discovery->boot_video.size = size;
+                        discovery->boot_video.path = BOOT_VIDEO_PATH_FIRMWARE_FB;
+                        discovery->boot_video.source = BOOT_VIDEO_SOURCE_DT_SIMPLEFB;
+                        discovery->boot_video.valid = true;
                     }
                 }
             }
@@ -404,6 +412,8 @@ int fdt_parse_discovery(const void* fdt_ptr, system_discovery_t* discovery) {
                              }
                              discovery->pmu_count++;
                          }
+                     } else if (str_eq(comp + c_len, "simple-framebuffer")) {
+                         is_fb = 1;
                      }
                      while(comp[c_len] != '\0' && c_len < len) c_len++;
                      c_len++;
@@ -419,8 +429,21 @@ int fdt_parse_discovery(const void* fdt_ptr, system_discovery_t* discovery) {
             } else if (str_eq(prop_name, "reg")) {
                 reg_data = prop_data;
                 reg_len = len;
-            } else if (str_eq(prop_name, "clock-frequency") && is_cpu) {
-                // Ignore for now
+            } else if (is_fb) {
+                if (str_eq(prop_name, "width")) {
+                    discovery->boot_video.width = fdt32_to_cpu(*(const uint32_t*)prop_data);
+                } else if (str_eq(prop_name, "height")) {
+                    discovery->boot_video.height = fdt32_to_cpu(*(const uint32_t*)prop_data);
+                } else if (str_eq(prop_name, "stride")) {
+                    discovery->boot_video.stride_bytes = fdt32_to_cpu(*(const uint32_t*)prop_data);
+                } else if (str_eq(prop_name, "format")) {
+                    const char* fmt = (const char*)prop_data;
+                    if (str_eq(fmt, "a8r8g8b8") || str_eq(fmt, "x8r8g8b8")) {
+                        discovery->boot_video.format = PIXEL_FORMAT_ARGB8888;
+                    } else if (str_eq(fmt, "r5g6b5")) {
+                        discovery->boot_video.format = PIXEL_FORMAT_RGB565;
+                    }
+                }
             }
         } else if (tag == FDT_NOP) {
             continue;
@@ -430,4 +453,4 @@ int fdt_parse_discovery(const void* fdt_ptr, system_discovery_t* discovery) {
     }
 
     return 0;
-}
+}

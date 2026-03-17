@@ -62,17 +62,25 @@ void hal_serial_write_char(char c) {
   sbi_console_putchar((int)c);
 }
 
+__attribute__((weak)) void hal_console_display_write(const char *s) {
+  (void)s;
+}
+
 void hal_serial_write(const char *s) {
   if (!s) {
     return;
   }
 
+  const char *orig = s;
   while (*s != '\0') {
     if (*s == '\n') {
       sbi_console_putchar('\r');
     }
-    sbi_console_putchar(*s++);
+    sbi_console_putchar(*s);
+    s++;
   }
+  /* Mirror to any registered display driver (weak no-op by default) */
+  hal_console_display_write(orig);
 }
 
 int hal_serial_read_char(void) { return sbi_console_getchar(); }

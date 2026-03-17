@@ -123,13 +123,62 @@ cmake -S . -B "${BUILD_DIR}" ${CMAKE_ARGS}
 cmake --build "${BUILD_DIR}"
 
 if [ "$RUN" = true ]; then
-    echo "Running in QEMU (if configured)..."
-    # Basic QEMU run command logic placeholder
-    if [ "$ARCH" == "riscv64" ]; then
-         qemu-system-riscv64 -M virt -kernel ${BUILD_DIR}/kernel/kernel.elf -nographic
-    elif [ "$ARCH" == "x86_64" ]; then
-         qemu-system-x86_64 -M q35 -kernel ${BUILD_DIR}/kernel/kernel.elf -nographic
+    echo "Running in QEMU..."
+
+    KERNEL_BIN="${BUILD_DIR}/kernel/kernel.elf"
+
+    # x86_64: convert to 32-bit ELF required by Multiboot
+    if [ "$ARCH" == "x86_64" ]; then
+        KERNEL_BIN="${BUILD_DIR}/kernel/kernel32.elf"
+        llvm-objcopy -I elf64-x86-64 -O elf32-i386 \
+            "${BUILD_DIR}/kernel/kernel.elf" "$KERNEL_BIN"
+    fi
+
+    if [ "$ARCH" == "x86_64" ]; then
+        GUI_ARGS=""
+        if [ "$BOOT_GUI" = "ON" ] || [ "$BOOT_GUI" = "true" ] || [ "$BOOT_GUI" = "1" ]; then
+            GUI_ARGS="-vga std"
+        else
+            GUI_ARGS="-nographic"
+        fi
+        qemu-system-x86_64 \
+            -kernel "$KERNEL_BIN" \
+            -m 256M \
+            -serial mon:stdio \
+            -no-reboot \
+            $GUI_ARGS
+
+    elif [ "$ARCH" == "riscv64" ]; then
+        GUI_ARGS=""
+        if [ "$BOOT_GUI" = "ON" ] || [ "$BOOT_GUI" = "true" ] || [ "$BOOT_GUI" = "1" ]; then
+            # riscv64 virt has no legacy VGA — VirtIO GPU is the correct device
+            GUI_ARGS="-device virtio-gpu-pci"
+        else
+            GUI_ARGS="-nographic"
+        fi
+        qemu-system-riscv64 \
+            -machine virt \
+            -kernel "$KERNEL_BIN" \
+            -m 256M \
+            -serial mon:stdio \
+            -no-reboot \
+            $GUI_ARGS
+
     elif [ "$ARCH" == "arm64" ]; then
-         qemu-system-aarch64 -M virt -cpu cortex-a72 -kernel ${BUILD_DIR}/kernel/kernel.elf -nographic
+        GUI_ARGS=""
+        if [ "$BOOT_GUI" = "ON" ] || [ "$BOOT_GUI" = "true" ] || [ "$BOOT_GUI" = "1" ]; then
+            # arm64 virt has no legacy VGA — VirtIO GPU is the correct device
+            GUI_ARGS="-device virtio-gpu-pci"
+        else
+            GUI_ARGS="-nographic"
+        fi
+        qemu-system-aarch64 \
+            -machine virt \
+            -cpu cortex-a72 \
+            -kernel "$KERNEL_BIN" \
+            -m 256M \
+            -serial mon:stdio \
+            -no-reboot \
+            $GUI_ARGS
     fi
 fi

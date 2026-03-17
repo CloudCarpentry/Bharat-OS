@@ -26,7 +26,7 @@ int linux_subsys_init(subsys_instance_t* env) {
 
 #include "bharat/subsys_test.h"
 
-int linux_syscall_handler(long sysno, long arg1, long arg2, long arg3, long arg4, long arg5, long arg6);
+long linux_syscall_handler(long sysno, long arg1, long arg2, long arg3, long arg4, long arg5, long arg6);
 
 static int test_linux_syscall_sanity(void) {
     if (linux_syscall_handler(39, 0, 0, 0, 0, 0, 0) == -38) {
@@ -73,7 +73,7 @@ void linux_vfs_init(void) {
 }
 
 
-int linux_syscall_handler(long sysno, long arg1, long arg2, long arg3, long arg4, long arg5, long arg6) {
+long linux_syscall_handler(long sysno, long arg1, long arg2, long arg3, long arg4, long arg5, long arg6) {
     (void)arg1;
     (void)arg2;
     (void)arg3;
