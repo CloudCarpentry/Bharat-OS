@@ -4,7 +4,7 @@
 #include "ipc_endpoint.h"
 
 uint32_t numa_active_node_count(void) __attribute__((weak));
-uint32_t numa_get_current_node(void) __attribute__((weak));
+#include "numa.h"
 
 static uint32_t ai_bridge_active_node_count(void) {
     if (numa_active_node_count) {

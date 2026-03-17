@@ -157,7 +157,10 @@ set(KERNEL_SRCS
     src/mm/kmem_aligned.c
     src/mm/vmm.c
     src/mm/aspace.c
+    src/mm/vm_object.c
+    src/mm/fault.c
     src/mm/numa.c
+    src/mm/numa_policy.c
     src/mm/zswap.c
     src/mm/mm_local.c
     src/mm/mm_remote.c

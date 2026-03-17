@@ -25,20 +25,36 @@ typedef struct {
     uint32_t fault_flags;
 } vm_fault_ctx_t;
 
+// Fault resolution flags (returned by object backend)
+#define VM_FAULT_HANDLED    0
+#define VM_FAULT_SIGSEGV   -1
+#define VM_FAULT_OOM       -2
+#define VM_FAULT_SIGBUS    -3
+
 typedef struct {
     int (*fault)(vm_object_t *obj, const vm_fault_ctx_t *ctx, uint64_t *out_phys_page);
     int (*writeback)(vm_object_t *obj, uint64_t page_offset);
+    int (*map_notify)(vm_object_t *obj, uint64_t offset, uint64_t len);
+    int (*unmap_notify)(vm_object_t *obj, uint64_t offset, uint64_t len);
     void (*release)(vm_object_t *obj);
 } vm_object_ops_t;
 
+#include "../../include/spinlock.h"
 struct vm_object {
     vm_object_kind_t kind;
     uint64_t size_bytes;
     uint32_t object_flags;
     uint32_t refcount;
+    spinlock_t lock;
     const vm_object_ops_t *ops;
-    void *backend;
+    void *backend_data;
 };
+
+int vm_object_create(vm_object_kind_t kind, uint64_t size, vm_object_t **out_obj);
+int vm_object_create_anon(uint64_t size, vm_object_t **out_obj);
+int vm_object_create_shared(uint64_t size, vm_object_t **out_obj);
+int vm_object_create_device(uint64_t phys_base, uint64_t size, vm_object_t **out_obj);
+int vm_object_create_dma(uint64_t size, vm_object_t **out_obj);
 
 int vm_object_ref(vm_object_t *obj);
 int vm_object_unref(vm_object_t *obj);

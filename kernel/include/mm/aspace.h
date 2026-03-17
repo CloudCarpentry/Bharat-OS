@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include "vm_object.h"
 #include "../../include/spinlock.h"
+#include "../../include/numa.h"
 #include "../../include/mm.h"
 
 #ifdef __cplusplus
@@ -19,6 +20,8 @@ typedef struct vm_region {
     uint32_t map_flags;
     vm_object_t *object;
     uint64_t object_offset;
+
+    numa_affinity_t numa_policy;
 
     // Region tree links (using simple intrusive linked list or RB-tree scaffold)
     // For now, intrusive linked list sorted by base address.
