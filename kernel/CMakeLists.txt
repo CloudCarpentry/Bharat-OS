@@ -133,7 +133,6 @@ set(KERNEL_SRCS
     $<$<STREQUAL:${ARCH},x86_64>:src/board/qemu-virt-x86_64/board.c>
     $<$<STREQUAL:${ARCH},x86_64>:src/arch/x86_64/boot_video_efi.c>
     $<$<STREQUAL:${ARCH},x86_64>:src/board/qemu-virt-x86_64/machine_display.c>
-    $<$<STREQUAL:${ARCH},arm64>:src/board/bcm2711-rpi4/machine_display.c>
     $<$<STREQUAL:${ARCH},arm64>:src/board/bcm2711-rpi4/board.c>
     $<$<AND:$<STREQUAL:${ARCH},riscv64>,$<STREQUAL:${BHARAT_RISCV_SOC_PROFILE},qemu-virt>>:src/board/qemu-virt-riscv64/board.c>
     $<$<AND:$<STREQUAL:${ARCH},riscv64>,$<NOT:$<STREQUAL:${BHARAT_RISCV_SOC_PROFILE},qemu-virt>>>:src/board/shakti-ref/board.c>
@@ -300,7 +299,7 @@ if(ARCH STREQUAL "riscv64" AND BHARAT_RISCV_BUILD_PAYLOAD_BIN)
     else()
         add_custom_command(
             OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/payload.bin"
-            COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:kernel.elf> "${CMAKE_CURRENT_BINARY_DIR}/payload.bin"
+            COMMAND llvm-objcopy -O binary $<TARGET_FILE:kernel.elf> "${CMAKE_CURRENT_BINARY_DIR}/payload.bin"
             DEPENDS kernel.elf
             COMMENT "Generating OpenSBI payload.bin from kernel.elf"
             VERBATIM
