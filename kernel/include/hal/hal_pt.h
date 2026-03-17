@@ -1,63 +1,37 @@
-#ifndef BHARAT_HAL_HAL_PT_H
-#define BHARAT_HAL_HAL_PT_H
+#ifndef BHARAT_HAL_PT_H
+#define BHARAT_HAL_PT_H
 
-#include <stddef.h>
 #include <stdint.h>
+#include <stddef.h>
+#include "../../include/mm.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+// Generic Page Table Flags
+#define HAL_PT_FLAG_READ    (1 << 0)
+#define HAL_PT_FLAG_WRITE   (1 << 1)
+#define HAL_PT_FLAG_EXEC    (1 << 2)
+#define HAL_PT_FLAG_USER    (1 << 3)
+#define HAL_PT_FLAG_GLOBAL  (1 << 4)
+#define HAL_PT_FLAG_NOCACHE (1 << 5)
+#define HAL_PT_FLAG_DEVICE  (1 << 6)
+#define HAL_PT_FLAG_COW     (1 << 7)
 
-typedef struct {
-    uint32_t read       : 1;
-    uint32_t write      : 1;
-    uint32_t exec       : 1;
-    uint32_t user       : 1;
-    uint32_t global     : 1;
-    uint32_t device     : 1;
-    uint32_t uncached   : 1;
-    uint32_t huge       : 1;
-    uint32_t cow        : 1;
-    uint32_t shareable  : 1;
-    uint32_t reserved   : 22;
-} hal_pt_perms_t;
+// Architecture-neutral Page Table Manager API
+typedef struct hal_pt_ops {
+    // Lifecycle
+    phys_addr_t (*create_address_space)(phys_addr_t kernel_root_table);
+    void        (*destroy_address_space)(phys_addr_t root_pt);
 
-typedef struct {
-    uint64_t phys_addr;
-    hal_pt_perms_t perms;
-    uint64_t page_size;
-} hal_pt_mapping_t;
+    // Mapping
+    int         (*map_page)(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags);
+    int         (*unmap_page)(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *unmapped_paddr);
+    int         (*protect_page)(phys_addr_t root_pt, virt_addr_t vaddr, uint32_t new_flags);
 
-typedef struct {
-    uint64_t root;
-    uint16_t asid;
-} hal_pt_aspace_t;
+    // Query
+    int         (*query_page)(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *paddr, uint32_t *flags);
+} hal_pt_ops_t;
 
-int hal_pt_aspace_create(hal_pt_aspace_t *out_aspace);
-int hal_pt_aspace_destroy(const hal_pt_aspace_t *aspace);
-int hal_pt_aspace_activate(const hal_pt_aspace_t *aspace);
+extern hal_pt_ops_t *active_hal_pt;
 
-int hal_pt_map(const hal_pt_aspace_t *aspace,
-               uint64_t virt_addr,
-               uint64_t phys_addr,
-               uint64_t length,
-               hal_pt_perms_t perms);
+void hal_pt_init(void);
 
-int hal_pt_unmap(const hal_pt_aspace_t *aspace,
-                 uint64_t virt_addr,
-                 uint64_t length);
-
-int hal_pt_protect(const hal_pt_aspace_t *aspace,
-                   uint64_t virt_addr,
-                   uint64_t length,
-                   hal_pt_perms_t perms);
-
-int hal_pt_query(const hal_pt_aspace_t *aspace,
-                 uint64_t virt_addr,
-                 hal_pt_mapping_t *out_mapping);
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif // BHARAT_HAL_HAL_PT_H
+#endif // BHARAT_HAL_PT_H

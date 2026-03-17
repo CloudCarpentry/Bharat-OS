@@ -332,7 +332,7 @@ int vmm_handle_cow_fault(address_space_t* as, virt_addr_t vaddr) {
 
     spin_unlock(&as->lock);
 
-    tlb_shootdown(aligned_vaddr);
+    tlb_shootdown(as, aligned_vaddr);
 
     // Decrement old page reference (after we have updated the mapping)
     mm_free_page(old_phys);

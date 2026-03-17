@@ -64,7 +64,7 @@ void kernel_tester_app(void) {
   ktest_slab_run();
 
   // 2. Functional/Dynamic Tests
-  KTEST_PRINT("--- Running Dynamic Tests ---\n");
+  KPRINT("--- Running Dynamic Tests ---\n");
   test_sched_yield_smoke();
   test_sched_sleep_smoke();
   test_pmm_stress();
