@@ -161,6 +161,7 @@ set(KERNEL_SRCS
     src/mm/fault.c
     src/mm/numa.c
     src/mm/numa_policy.c
+    src/mm/dma.c
     src/mm/zswap.c
     src/mm/mm_local.c
     src/mm/mm_remote.c

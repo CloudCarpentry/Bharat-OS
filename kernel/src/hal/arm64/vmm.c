@@ -348,7 +348,6 @@ int hal_vmm_get_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t* 
 }
 
 int hal_vmm_update_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
-    (void)paddr;
     if (!active_hal_pt) hal_pt_init();
 
     uint32_t pt_flags = HAL_PT_FLAG_READ;
@@ -360,7 +359,7 @@ int hal_vmm_update_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_
 
     pt_flags |= HAL_PT_FLAG_EXEC;
 
-    int ret = active_hal_pt->protect_page(root_table, vaddr, pt_flags);
+    int ret = active_hal_pt->map_page(root_table, vaddr, paddr, pt_flags);
 
     if (ret == 0 && (root_table == hal_get_ttbr0() || root_table == hal_get_ttbr1())) {
         if (active_hal_tlb) active_hal_tlb->flush_page_local(vaddr);
