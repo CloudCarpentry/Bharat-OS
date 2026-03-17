@@ -15,7 +15,7 @@ phys_addr_t mm_alloc_page(uint32_t preferred_numa_node) { (void)preferred_numa_n
 void mm_free_page(phys_addr_t page) { (void)page; }
 phys_addr_t pmm_alloc_pages_colored(int order, uint32_t preferred_numa_node, uint32_t flags, mm_color_config_t *color_config) { return 0; }
 phys_addr_t mm_alloc_pages_order(int order, uint32_t preferred_numa_node, uint32_t flags) { return 0; }
-void tlb_shootdown(virt_addr_t vaddr) { (void)vaddr; }
+void tlb_shootdown(address_space_t *as, virt_addr_t vaddr) { (void)as; (void)vaddr; }
 
 
 static void dummy_entry(void) {}
@@ -42,20 +42,20 @@ void test_ipc_multiple_waiters_fifo(void) {
     uint32_t len;
 
     while (sched_current_thread() != r1) { sched_yield(); }
-    assert(ipc_endpoint_receive(table, recv_cap, buf, sizeof(buf), &len) == IPC_ERR_WOULD_BLOCK);
+    assert(ipc_endpoint_receive(table, recv_cap, buf, sizeof(buf), &len, 0) == IPC_ERR_WOULD_BLOCK);
     assert(r1->state == THREAD_STATE_BLOCKED);
 
     while (sched_current_thread() != r2) { sched_yield(); }
-    assert(ipc_endpoint_receive(table, recv_cap, buf, sizeof(buf), &len) == IPC_ERR_WOULD_BLOCK);
+    assert(ipc_endpoint_receive(table, recv_cap, buf, sizeof(buf), &len, 0) == IPC_ERR_WOULD_BLOCK);
     assert(r2->state == THREAD_STATE_BLOCKED);
 
     while (sched_current_thread() != r3) { sched_yield(); }
-    assert(ipc_endpoint_receive(table, recv_cap, buf, sizeof(buf), &len) == IPC_ERR_WOULD_BLOCK);
+    assert(ipc_endpoint_receive(table, recv_cap, buf, sizeof(buf), &len, 0) == IPC_ERR_WOULD_BLOCK);
     assert(r3->state == THREAD_STATE_BLOCKED);
 
     // Switch to sender, and send one message
     while (sched_current_thread() != sender) { sched_yield(); }
-    assert(ipc_endpoint_send(table, send_cap, "msg", 4) == IPC_OK);
+    assert(ipc_endpoint_send(table, send_cap, "msg", 4, 0) == IPC_OK);
 
     // Check that exactly the FIRST blocked thread (r1) was woken
     assert(r1->state == THREAD_STATE_READY);
@@ -66,11 +66,11 @@ void test_ipc_multiple_waiters_fifo(void) {
     // If we send again, it should return IPC_ERR_WOULD_BLOCK since buffer size is 1.
     // So let's consume the message with r1 first, which should be able to run and empty the buffer.
     while (sched_current_thread() != r1) { sched_yield(); }
-    assert(ipc_endpoint_receive(table, recv_cap, buf, sizeof(buf), &len) == IPC_OK);
+    assert(ipc_endpoint_receive(table, recv_cap, buf, sizeof(buf), &len, 0) == IPC_OK);
 
     // Now send the second message
     while (sched_current_thread() != sender) { sched_yield(); }
-    assert(ipc_endpoint_send(table, send_cap, "msg", 4) == IPC_OK);
+    assert(ipc_endpoint_send(table, send_cap, "msg", 4, 0) == IPC_OK);
     assert(r2->state == THREAD_STATE_READY);
     assert(r3->state == THREAD_STATE_BLOCKED);
 
