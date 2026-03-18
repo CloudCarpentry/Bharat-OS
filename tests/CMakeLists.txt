@@ -351,3 +351,8 @@ add_executable(test_benchmark_hw_caps test_benchmark_hw_caps.c ../kernel/src/ben
 target_include_directories(test_benchmark_hw_caps PRIVATE ../kernel/include)
 target_compile_definitions(test_benchmark_hw_caps PRIVATE TESTING=1)
 add_test(NAME test_benchmark_hw_caps COMMAND test_benchmark_hw_caps)
+
+add_executable(test_vfs_ramfs test_vfs_ramfs.c ../kernel/src/fs/ramfs.c ../kernel/src/fs/vfs.c ../kernel/src/fs/mount.c ../kernel/src/fs/file.c ../kernel/src/fs/path.c ../kernel/src/lib/string.c)
+target_include_directories(test_vfs_ramfs PRIVATE ../kernel/include)
+target_compile_definitions(test_vfs_ramfs PRIVATE TESTING=1)
+add_test(NAME test_vfs_ramfs COMMAND test_vfs_ramfs)

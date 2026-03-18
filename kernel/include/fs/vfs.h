@@ -12,6 +12,9 @@
  * abstraction over block, blob, and filesystem resources.
  */
 
+// VFS Namespace Object ID for mount authority
+#define VFS_NAMESPACE_OBJECT_ID 0xFFFFFFFF
+
 // Basic neutral flags
 #define VFS_OPEN_READ  0x1
 #define VFS_OPEN_WRITE 0x2
@@ -46,6 +49,11 @@ typedef struct {
 typedef struct vfs_node vfs_node_t;
 typedef struct vfs_mount vfs_mount_t;
 typedef struct vfs_file vfs_file_t;
+
+struct dirent {
+    uint32_t d_ino;
+    char d_name[256];
+};
 
 // Personality-neutral file operations
 typedef struct {
