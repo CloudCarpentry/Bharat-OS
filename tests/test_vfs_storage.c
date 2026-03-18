@@ -4,6 +4,8 @@
 
 #include "fs/blob_backend.h"
 #include "fs/vfs.h"
+#include "fs/mount.h"
+#include "fs/file.h"
 
 int __attribute__((weak)) vfs_mount(const char* path, vfs_node_t* root) { (void)path; (void)root; return -1; }
 int __attribute__((weak)) vfs_open(const char* path, int flags) { (void)path; (void)flags; return -1; }
@@ -31,6 +33,9 @@ static int mem_write(vfs_file_t *file, uint64_t offset, const void *buffer, size
 }
 
 int main(void) {
+    // initialize g_memory_fs
+    strcpy((char*)g_memory_fs, "hello-kernel-vfs");
+
     vfs_node_t fs_root = {0};
     vfs_node_t blob_node = {0};
     vfs_operations_t fs_ops = {
@@ -52,8 +57,11 @@ int main(void) {
     fs_root.backend_type = VFS_BACKEND_FILESYSTEM;
     fs_root.ops = &fs_ops;
     fs_root.fs_data = fs_data;
+    fs_root.object_id = 1;
 
-    assert(vfs_mount("/", &fs_root) == 0);
+    capability_t dummy_cap = { .rights_mask = CAP_RIGHT_READ | CAP_RIGHT_WRITE, .target_object_id = 1 };
+
+    assert(vfs_mount_fs("/", &fs_root, &dummy_cap) == 0);
 
     assert(blob_backend_register_s3_driver() == 0);
     assert(vfs_get_driver("s3-compatible") != NULL);
@@ -62,22 +70,25 @@ int main(void) {
                                             "remote/minio/bucket/key",
                                             blob_data,
                                             sizeof(blob_data) - 1) == 0);
+    blob_node.object_id = 2;
 
-    assert(vfs_mount("/blob/remote/minio/bucket/key", &blob_node) == 0);
+    capability_t dummy_blob_cap = { .rights_mask = CAP_RIGHT_READ | CAP_RIGHT_WRITE, .target_object_id = 2 };
 
-    fd = vfs_open("/", VFS_OPEN_READ | VFS_OPEN_WRITE);
+    assert(vfs_mount_fs("/blob/remote/minio/bucket/key", &blob_node, &dummy_blob_cap) == 0);
+
+    assert(vfs_open_file("/", VFS_OPEN_READ | VFS_OPEN_WRITE, &dummy_cap, &fd) == 0);
     assert(fd >= 0);
-    assert(vfs_read(fd, read_buf, 5) == 5);
+    int read_bytes = vfs_read_file(fd, read_buf, 5, &dummy_cap);
+    assert(read_bytes == 5);
     assert(memcmp(read_buf, "hello", 5) == 0);
 
-    fd = vfs_open("/blob/remote/minio/bucket/key", VFS_OPEN_READ);
+    assert(vfs_open_file("/blob/remote/minio/bucket/key", VFS_OPEN_READ, &dummy_blob_cap, &fd) == 0);
     assert(fd >= 0);
     memset(read_buf, 0, sizeof(read_buf));
-    assert(vfs_read(fd, read_buf, sizeof(blob_data) - 1) == (int)(sizeof(blob_data) - 1));
+    assert(vfs_read_file(fd, read_buf, sizeof(blob_data) - 1, &dummy_blob_cap) == (int)(sizeof(blob_data) - 1));
     assert(memcmp(read_buf, blob_data, sizeof(blob_data) - 1) == 0);
 
-    fd = vfs_open("/blob/remote/minio/bucket/key", VFS_OPEN_WRITE);
-    assert(fd < 0);
+    assert(vfs_open_file("/blob/remote/minio/bucket/key", VFS_OPEN_WRITE, &dummy_blob_cap, &fd) == -1);
 
     puts("test_vfs_storage: PASS");
     return 0;
