@@ -13,7 +13,8 @@
 #endif
 
 #include "hal/hal.h"
-#define KPRINT(s) hal_serial_write(s)
+#include "bharat/console.h"
+#define KPRINT(s) console_write_raw(s)
 
 #include <stddef.h>
 #include <stdint.h>

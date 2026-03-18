@@ -3,8 +3,8 @@
 #include "../../include/hal/hal_tlb.h"
 #include "../../include/mm.h"
 #include "../../include/numa.h"
-extern void hal_serial_write(const char *str);
-#define KPRINT(s) hal_serial_write(s)
+#include "bharat/console.h"
+#define KPRINT(s) console_write_raw(s)
 
 #include "../../include/kernel.h"
 #include "../../include/bharat/boot_info.h"

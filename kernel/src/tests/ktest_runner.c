@@ -2,6 +2,7 @@
 #include "hal/hal.h"
 #include "kernel.h"
 #include "tests/ktest.h"
+#include "bharat/console.h"
 
 extern const kernel_test_t __kern_tests_start[];
 extern const kernel_test_t __kern_tests_end[];
@@ -75,7 +76,7 @@ void kernel_run_boot_tests(void) {
     }
   }
 
-  hal_serial_write("--- Running Boot Kernel Tests ---\n");
+  console_write_raw("--- Running Boot Kernel Tests ---\n");
 
   const kernel_test_t *test = __kern_tests_start;
   uint32_t passed = 0;
@@ -103,21 +104,21 @@ void kernel_run_boot_tests(void) {
     }
 
     if (should_run) {
-      hal_serial_write(" [TEST] ");
-      hal_serial_write(test->name);
-      hal_serial_write("... ");
+      console_write_raw(" [TEST] ");
+      console_write_raw(test->name);
+      console_write_raw("... ");
 
       int result = test->run();
 
       if (result == 0) {
-        hal_serial_write("PASSED\n");
+        console_write_raw("PASSED\n");
         passed++;
       } else {
-        hal_serial_write("FAILED\n");
+        console_write_raw("FAILED\n");
         failed++;
 
         if (test->critical) {
-          hal_serial_write("Critical test failed. ");
+          console_write_raw("Critical test failed. ");
           // Always panic on critical failure in boot tests
           kernel_panic("Critical boot test failed");
         } else if (fail_panic) {
@@ -131,5 +132,5 @@ void kernel_run_boot_tests(void) {
     test++;
   }
 
-  hal_serial_write("--- Boot Tests Complete ---\n");
+  console_write_raw("--- Boot Tests Complete ---\n");
 }
