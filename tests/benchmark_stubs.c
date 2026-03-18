@@ -117,6 +117,13 @@ int __attribute__((weak)) hal_vmm_update_mapping(phys_addr_t root_table, virt_ad
     return -1;
 }
 
+__attribute__((weak)) void hal_serial_write(const char *s) { (void)s; }
+__attribute__((weak)) void hal_serial_write_hex(uint64_t val) { (void)val; }
+__attribute__((weak)) void hal_cpu_dump_trap_frame(const void *trap_frame) { (void)trap_frame; }
+__attribute__((weak)) void hal_cpu_dump_state(void) {}
+__attribute__((weak)) void hal_cpu_disable_interrupts(void) {}
+__attribute__((weak)) void hal_cpu_reboot(void) {}
+
 // kmalloc and kfree for testing
 void* __attribute__((weak)) kmalloc(size_t size) {
     return malloc(size);

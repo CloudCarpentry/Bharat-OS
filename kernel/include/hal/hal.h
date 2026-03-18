@@ -10,6 +10,7 @@
 void hal_cpu_halt(void);
 void hal_cpu_reboot(void);
 void hal_cpu_dump_state(void);
+void hal_cpu_dump_trap_frame(const void *trap_frame);
 void hal_cpu_enable_interrupts(void);
 void hal_cpu_disable_interrupts(void);
 void hal_init(void);

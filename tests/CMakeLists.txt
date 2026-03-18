@@ -6,7 +6,7 @@ enable_testing()
 add_executable(test_early_alloc test_early_alloc.c)
 target_include_directories(test_early_alloc PRIVATE ../kernel/include)
 
-add_executable(test_panic test_panic.c ../kernel/src/panic.c)
+add_executable(test_panic test_panic.c benchmark_stubs.c ../kernel/src/panic.c ../kernel/src/fault_diag.c ../kernel/src/sched.c ../kernel/src/sched_deg.c ../kernel/src/ai_sched.c ../kernel/src/capability.c ../kernel/src/device/device_manager.c ../kernel/src/algo_matrix.c ../kernel/src/mm/pmm/numa.c)
 
 add_executable(test_stress_concurrency test_stress_concurrency.c
     benchmark_stubs.c
