@@ -85,6 +85,10 @@ int vfs_read_file(int fd, void* buffer, size_t size, capability_t* caller_cap) {
         return -1;
     }
 
+    if ((entry->flags & VFS_OPEN_READ) == 0) {
+        return -1;
+    }
+
     // TODO: Verify caller_cap matches entry->handle_cap rights when initialized
     if (!vfs_cap_allows_file(entry, caller_cap, CAP_RIGHT_READ)) {
         return -1;
