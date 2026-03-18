@@ -23,6 +23,7 @@ Bharat-OS is a capability-oriented microkernel project with a multikernel direct
 | Scheduler and AI hook points | Implemented baseline | Timer-driven scheduler path with bounded AI suggestion ingestion/processing; full SMP runqueues/context switching remain deferred. |
 | Driver and HAL model | Implemented baseline | HAL contracts and driver framework scaffolding exist across x86_64, riscv64, arm64. |
 | Distributed/multikernel scale-out | Early baseline | Per-core URPC matrix and multicore bootstrap hooks exist; production-grade topology and transport tuning are deferred. |
+| Diagnostics & Reliability | Implemented baseline | Structured kernel panic generation, architecture-specific trap/fault breadcrumbs, and PStore persistent recovery logging. |
 
 For architecture-level details and deferred boundaries, see `docs/architecture/` and ADRs in `docs/decisions/`. For the step-by-step closure plan, see `docs/architecture/memory-gap-closure-plan.md`.
 
@@ -38,11 +39,13 @@ Bharat-OS targets multiple deployment classes. These profiles describe **how the
 ### High-Level Architecture
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#ffcccc', 'edgeLabelBackground':'#ffffff'}}}%%
 graph TD
     subgraph UserSpace [User-Space Domains]
         subgraph Subsystems [Subsystems Model]
             Console[Console Subsystem]
             FB[Framebuffer & Embedded GUI]
+            FBUI[FBUI Widgets & Toolkit]
             Desktop[Desktop GUI Compositor]
             Input[Input Subsystem]
             Accel[Accelerator Subsystem]
@@ -68,6 +71,7 @@ graph TD
         Sched[Scheduler & AI Hooks]
         VMM[VMM & Memory Registry]
         Cap[Capability System]
+        Diag[Diagnostics & PStore]
     end
 
     subgraph Hardware [Hardware Abstraction Layer]
@@ -77,6 +81,7 @@ graph TD
     %% Relationships
     App --> Subsystems
     Subsystems <--> IPC
+    FB --> FBUI
     Drivers <--> IPC
     Policy <--> IPC
 
@@ -110,6 +115,7 @@ graph TD
 The Bharat-OS multi-personality strategy does not bake monolithic compatibility subsystems into the core kernel. Instead, it maintains a small, verifiable, distributed kernel that exposes personality-neutral primitives (tasks, memory objects, capabilities). Layered compatibility subsystems translate these core primitives into personality-specific abstractions (Linux POSIX, Android, Windows NT).
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#cceeff', 'edgeLabelBackground':'#ffffff'}}}%%
 graph TD
     subgraph Personalities [User-Space Personalities & Apps]
         subgraph Android [Android Personality]
@@ -159,6 +165,7 @@ graph TD
 Bharat-OS enforces security through a mathematically verifiable Capability System. There are no global Access Control Lists (ACLs), user IDs, or root privileges inside the kernel. A capability is an unforgeable, kernel-managed token that pairs an object reference with a set of permitted operations.
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#eebbff', 'edgeLabelBackground':'#ffffff'}}}%%
 graph TD
     subgraph Thread [Thread Domain]
         CSpace[Capability Space]
@@ -198,6 +205,7 @@ graph TD
 #### Memory Management Architecture
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#ddffcc', 'edgeLabelBackground':'#ffffff'}}}%%
 graph TD
     subgraph UserSpace [User-Space Memory Policy]
         BharatRT[Bharat-RT Static / No-Paging]
@@ -229,6 +237,7 @@ graph TD
 We utilize two distinct IPC models to serve both deterministic bounds (Bharat-RT) and massive scalability (Bharat-Cloud). **Synchronous Endpoint IPC** is fast, blocking, and unbuffered for strict procedural calls. **Lockless URPC** (User-level Remote Procedure Call) is designed for cross-core, multikernel messaging, scaling across high-core-count processors without shared-kernel locks.
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#ffeecc', 'edgeLabelBackground':'#ffffff'}}}%%
 graph TD
     subgraph UserSpace [User-Space Domains]
         Sender[Sender Domain]
@@ -268,6 +277,7 @@ graph TD
 Bharat-OS is intentionally profile-driven instead of forcing one heavyweight image on every board. Boot behavior and subsystem initialization are determined dynamically by the detected hardware profile.
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#ffccff', 'edgeLabelBackground':'#ffffff'}}}%%
 graph LR
     subgraph CoreBoot [Core Kernel Bring-up]
         HAL[HAL & Arch Init] --> Cap[Capability Table Init]
@@ -369,6 +379,7 @@ Bharat-OS keeps AI policy outside ring-0 while exposing bounded kernel mechanism
 #### Scheduler & AI Hooks Architecture
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#ccffdd', 'edgeLabelBackground':'#ffffff'}}}%%
 graph TD
     subgraph UserSpace [User-Space Policy]
         AIGov[AI Governor]
