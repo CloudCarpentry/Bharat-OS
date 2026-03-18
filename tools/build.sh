@@ -136,23 +136,28 @@ if [ "$RUN" = true ]; then
 
     if [ "$ARCH" == "x86_64" ]; then
         GUI_ARGS=""
+        SERIAL_ARGS="-serial mon:stdio"
         if [ "$BOOT_GUI" = "ON" ] || [ "$BOOT_GUI" = "true" ] || [ "$BOOT_GUI" = "1" ]; then
             GUI_ARGS="-vga std"
+            SERIAL_ARGS="-serial stdio -serial vc"
         else
             GUI_ARGS="-nographic"
         fi
         qemu-system-x86_64 \
             -kernel "$KERNEL_BIN" \
             -m 256M \
-            -serial mon:stdio \
+            $SERIAL_ARGS \
             -no-reboot \
             $GUI_ARGS
 
     elif [ "$ARCH" == "riscv64" ]; then
         GUI_ARGS=""
+        SERIAL_ARGS="-serial mon:stdio"
         if [ "$BOOT_GUI" = "ON" ] || [ "$BOOT_GUI" = "true" ] || [ "$BOOT_GUI" = "1" ]; then
             # riscv64 virt has no legacy VGA — VirtIO GPU is the correct device
             GUI_ARGS="-device virtio-gpu-pci"
+            # Route serial output to both the host terminal and a virtual console in the QEMU graphical window
+            SERIAL_ARGS="-serial stdio -serial vc"
         else
             GUI_ARGS="-nographic"
         fi
@@ -160,15 +165,18 @@ if [ "$RUN" = true ]; then
             -machine virt \
             -kernel "$KERNEL_BIN" \
             -m 256M \
-            -serial mon:stdio \
+            $SERIAL_ARGS \
             -no-reboot \
             $GUI_ARGS
 
     elif [ "$ARCH" == "arm64" ]; then
         GUI_ARGS=""
+        SERIAL_ARGS="-serial mon:stdio"
         if [ "$BOOT_GUI" = "ON" ] || [ "$BOOT_GUI" = "true" ] || [ "$BOOT_GUI" = "1" ]; then
             # arm64 virt has no legacy VGA — VirtIO GPU is the correct device
             GUI_ARGS="-device virtio-gpu-pci"
+            # Route serial output to both the host terminal and a virtual console in the QEMU graphical window
+            SERIAL_ARGS="-serial stdio -serial vc"
         else
             GUI_ARGS="-nographic"
         fi
@@ -177,7 +185,7 @@ if [ "$RUN" = true ]; then
             -cpu cortex-a72 \
             -kernel "$KERNEL_BIN" \
             -m 256M \
-            -serial mon:stdio \
+            $SERIAL_ARGS \
             -no-reboot \
             $GUI_ARGS
     fi
