@@ -130,8 +130,13 @@ set(KERNEL_SRCS
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/display_handoff.c>
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/display_fallback.c>
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/boot_gui.c>
+    ../kernel/display/fb_core.c
     src/hal/arm32_mpu_vmm_mock.c
     src/main.c
+    ../ui/fbui/core/fb_demo_app.c
+    ../ui/fbui/core/fb_events.c
+    ../ui/fbui/core/fb_render.c
+    ../ui/fbui/widgets/fb_widgets.c
     src/cpu_local.c
     src/trace/trace.c
     src/subsystem/profile.c
