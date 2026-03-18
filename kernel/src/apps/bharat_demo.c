@@ -342,10 +342,10 @@ static void demo_capability_cross_call(void)
     DEMO_PRINT("  [CAP]  Capability demo -- PASS\n");
 }
 
-/* ---------------------------------------------------------------------
- * ENTRY POINT - called from kernel/src/main.c after kernel_tester_app()
- * --------------------------------------------------------------------- */
-void bharat_demo_app(void)
+/* ─────────────────────────────────────────────────────────────────────
+ * ENTRY POINT – called from kernel/src/main.c after kernel_tester_app()
+ * ───────────────────────────────────────────────────────────────────── */
+void bharat_demo_app_legacy(void)
 {
     DEMO_PRINT("\n");
     DEMO_PRINT("  +----------------------------------------------------+\n");

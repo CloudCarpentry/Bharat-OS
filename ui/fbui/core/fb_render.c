@@ -1,7 +1,8 @@
 #include "bharat/ui/fb_render.h"
-#include <string.h>
 #include <stdint.h>
-#include <math.h>
+#include <stddef.h>
+
+extern void *memcpy(void *dest, const void *src, size_t n);
 
 /**
  * Initialize a new rendering context for a framebuffer device.

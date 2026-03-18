@@ -1,7 +1,6 @@
 #include "bharat/ui/fbui_widgets.h"
 #include "bharat/ui/fb_render.h"
 #include <stddef.h>
-#include <string.h>
 
 // Helper to determine if a point is within widget bounds
 bool fbui_widget_hit_test(const fbui_widget_t *w, int px, int py) {
@@ -167,4 +166,153 @@ fbui_widget_t* fbui_create_progress(int x, int y, int w, int h, float value) {
     prog->ops = &progress_ops;
     prog->bg_color = 0xFFEEEEEE;
     return prog;
+}
+
+/**
+ * SLIDER WIDGET
+ */
+typedef struct {
+    float value; // 0.0 to 1.0
+} fbui_slider_data_t;
+
+static void slider_draw(fbui_widget_t *w, fbui_render_context_t *ctx) {
+    if (!w->visible) return;
+
+    fbui_slider_data_t *sdata = (fbui_slider_data_t *)w->priv_data;
+    if (!sdata) return;
+
+    // Draw track
+    int track_h = w->height / 4;
+    int track_y = w->y + (w->height - track_h) / 2;
+    fbui_render_fill_rect(ctx, w->x, track_y, w->width, track_h, w->border_color);
+
+    // Draw thumb
+    int thumb_w = w->height / 2;
+    int thumb_x = w->x + (int)((w->width - thumb_w) * sdata->value);
+    uint32_t thumb_color = w->focused ? 0xFF00FF00 : w->fg_color;
+    fbui_render_fill_rect(ctx, thumb_x, w->y, thumb_w, w->height, thumb_color);
+}
+
+static bool slider_handle_event(fbui_widget_t *w, const fbui_event_t *ev) {
+    if (!w->visible) return false;
+
+    fbui_slider_data_t *sdata = (fbui_slider_data_t *)w->priv_data;
+    if (!sdata) return false;
+
+    if (ev->type == FBUI_EVENT_TOUCH_DOWN && fbui_widget_hit_test(w, ev->x, ev->y)) {
+        w->focused = true;
+        // Update value based on touch position
+        float new_val = (float)(ev->x - w->x) / (float)w->width;
+        if (new_val < 0.0f) new_val = 0.0f;
+        if (new_val > 1.0f) new_val = 1.0f;
+        sdata->value = new_val;
+        return true;
+    } else if (ev->type == FBUI_EVENT_TOUCH_MOVE && w->focused) {
+        float new_val = (float)(ev->x - w->x) / (float)w->width;
+        if (new_val < 0.0f) new_val = 0.0f;
+        if (new_val > 1.0f) new_val = 1.0f;
+        sdata->value = new_val;
+        return true;
+    } else if (ev->type == FBUI_EVENT_TOUCH_UP && w->focused) {
+        w->focused = false;
+        return true;
+    }
+    return false;
+}
+
+static const fbui_widget_ops_t slider_ops = {
+    .draw = slider_draw,
+    .handle_event = slider_handle_event
+};
+
+static fbui_widget_t _dummy_slider_pool[5];
+static fbui_slider_data_t _dummy_slider_data_pool[5];
+static int _slider_cnt = 0;
+
+fbui_widget_t* fbui_create_slider(int x, int y, int w, int h, float value) {
+    if (_slider_cnt >= 5) return NULL;
+    fbui_widget_t *slider = &_dummy_slider_pool[_slider_cnt];
+    fbui_slider_data_t *data = &_dummy_slider_data_pool[_slider_cnt++];
+
+    fbui_widget_init(slider, FBUI_WIDGET_SLIDER, x, y, w, h);
+    if (value < 0.0f) value = 0.0f;
+    if (value > 1.0f) value = 1.0f;
+    data->value = value;
+    slider->priv_data = data;
+    slider->ops = &slider_ops;
+    slider->fg_color = 0xFF555555; // Thumb color
+    slider->border_color = 0xFF888888; // Track color
+    return slider;
+}
+
+/**
+ * CHECKBOX WIDGET
+ */
+typedef struct {
+    bool checked;
+} fbui_checkbox_data_t;
+
+static void checkbox_draw(fbui_widget_t *w, fbui_render_context_t *ctx) {
+    if (!w->visible) return;
+
+    fbui_checkbox_data_t *cdata = (fbui_checkbox_data_t *)w->priv_data;
+    if (!cdata) return;
+
+    // Draw box
+    int box_size = w->height; // Make it square based on height
+    if (box_size > w->width) box_size = w->width;
+
+    fbui_render_fill_rect(ctx, w->x, w->y, box_size, box_size, w->border_color);
+    fbui_render_fill_rect(ctx, w->x + 2, w->y + 2, box_size - 4, box_size - 4, w->bg_color);
+
+    // Draw check if checked
+    if (cdata->checked) {
+        fbui_render_fill_rect(ctx, w->x + 4, w->y + 4, box_size - 8, box_size - 8, 0xFF00FF00); // Green check
+    }
+
+    // Draw label placeholder if text exists
+    if (w->text) {
+        fbui_render_fill_rect(ctx, w->x + box_size + 4, w->y + box_size / 4, 8, box_size / 2, w->fg_color);
+    }
+}
+
+static bool checkbox_handle_event(fbui_widget_t *w, const fbui_event_t *ev) {
+    if (!w->visible) return false;
+
+    fbui_checkbox_data_t *cdata = (fbui_checkbox_data_t *)w->priv_data;
+    if (!cdata) return false;
+
+    if (ev->type == FBUI_EVENT_TOUCH_DOWN && fbui_widget_hit_test(w, ev->x, ev->y)) {
+        w->focused = true;
+        return true;
+    } else if (ev->type == FBUI_EVENT_TOUCH_UP) {
+        if (w->focused && fbui_widget_hit_test(w, ev->x, ev->y)) {
+            cdata->checked = !cdata->checked; // Toggle
+        }
+        w->focused = false;
+        return true;
+    }
+    return false;
+}
+
+static const fbui_widget_ops_t checkbox_ops = {
+    .draw = checkbox_draw,
+    .handle_event = checkbox_handle_event
+};
+
+static fbui_widget_t _dummy_checkbox_pool[5];
+static fbui_checkbox_data_t _dummy_checkbox_data_pool[5];
+static int _checkbox_cnt = 0;
+
+fbui_widget_t* fbui_create_checkbox(int x, int y, int w, int h, bool checked) {
+    if (_checkbox_cnt >= 5) return NULL;
+    fbui_widget_t *checkbox = &_dummy_checkbox_pool[_checkbox_cnt];
+    fbui_checkbox_data_t *data = &_dummy_checkbox_data_pool[_checkbox_cnt++];
+
+    fbui_widget_init(checkbox, FBUI_WIDGET_CHECKBOX, x, y, w, h);
+    data->checked = checked;
+    checkbox->priv_data = data;
+    checkbox->ops = &checkbox_ops;
+    checkbox->bg_color = 0xFFFFFFFF; // White box interior
+    return checkbox;
 }
