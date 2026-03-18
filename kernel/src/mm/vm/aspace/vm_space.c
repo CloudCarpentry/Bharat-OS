@@ -55,7 +55,7 @@ int vm_space_create(vm_space_t **out, mem_profile_t profile, vm_timing_class_t t
     space->realized_cores = 0;
     space->pending_cores = 0;
     space->rt_ready_cores = 0;
-    space->home_monitor = hal_get_core_id();
+    space->home_monitor = hal_cpu_get_id();
 
     // Timing-specific policies
     space->require_prefault = (timing >= VM_TIMING_FIRM_RT);
@@ -135,7 +135,7 @@ int vm_prepare_rt_core(vm_space_t *space, uint32_t core_id) {
 int vm_activate_local(vm_space_t *space) {
     if (!space) return -1;
 
-    uint32_t core_id = hal_get_core_id();
+    uint32_t core_id = hal_cpu_get_id();
 
     // Ensure we are realized
     if (!(space->realized_cores & (1ULL << core_id))) {
