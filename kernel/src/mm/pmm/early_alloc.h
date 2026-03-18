@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include "../../include/mm.h"
+#include "mm.h"
 
 /* Initialize the early bump allocator with the start of free memory (usually _end) */
 void early_alloc_init(phys_addr_t start_addr);

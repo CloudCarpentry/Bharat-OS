@@ -324,3 +324,7 @@ add_test(NAME test_dma_iommu COMMAND test_dma_iommu)
 add_executable(test_smp_hal test_smp_hal.c)
 target_include_directories(test_smp_hal PRIVATE ../kernel/include)
 add_test(NAME test_smp_hal COMMAND test_smp_hal)
+
+add_executable(test_pmm_production test_pmm_production.c ../kernel/src/mm/pmm/pmm.c)
+target_include_directories(test_pmm_production PRIVATE ../kernel/include ../kernel/src)
+add_test(NAME test_pmm_production COMMAND test_pmm_production)

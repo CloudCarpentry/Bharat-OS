@@ -5,7 +5,7 @@
 #ifndef PMM_INTERNAL_H
 #define PMM_INTERNAL_H
 
-#include "../../include/mm/pmm.h"
-#include "../../include/spinlock.h"
+#include "mm/pmm.h"
+#include "spinlock.h"
 
 #endif
