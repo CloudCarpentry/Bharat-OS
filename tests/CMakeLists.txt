@@ -274,6 +274,11 @@ target_include_directories(test_vfs_storage PRIVATE ../kernel/include)
 target_compile_definitions(test_vfs_storage PRIVATE TESTING=1)
 add_test(NAME test_vfs_storage COMMAND test_vfs_storage)
 
+add_executable(test_vfs_file_caps test_vfs_file_caps.c ../kernel/src/fs/file.c ../kernel/src/fs/vfs.c ../kernel/src/fs/mount.c ../kernel/src/fs/path.c ../kernel/src/lib/string.c)
+target_include_directories(test_vfs_file_caps PRIVATE ../kernel/include)
+target_compile_definitions(test_vfs_file_caps PRIVATE TESTING=1)
+add_test(NAME test_vfs_file_caps COMMAND test_vfs_file_caps)
+
 add_executable(test_subsystem_profile test_subsystem_profile.c ../kernel/src/subsystem/profile.c)
 target_include_directories(test_subsystem_profile PRIVATE ../kernel/include)
 target_compile_definitions(test_subsystem_profile PRIVATE BHARAT_PROFILE_DATACENTER=1 BHARAT_PERSONALITY_LINUX=1 BHARAT_ARCH_X86=1)

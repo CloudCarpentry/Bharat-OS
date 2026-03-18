@@ -5,6 +5,33 @@
 
 static vfs_file_t g_open_files[VFS_MAX_OPEN_FILES];
 
+static int vfs_cap_allows(const vfs_file_t *entry, const capability_t *caller_cap, uint32_t required_right) {
+    if (!entry || !entry->node || !caller_cap) {
+        return 0;
+    }
+
+    // Must have the required right (if one is specified)
+    if (required_right != 0 && (caller_cap->rights_mask & required_right) == 0) {
+        return 0;
+    }
+
+    // Must be bound to the exact same object
+    if (caller_cap->target_object_id != entry->node->object_id) {
+        return 0;
+    }
+
+    // If handle_cap was properly initialized at open-time, check it
+    // Right now it's a TODO in vfs_open_file, but if it is populated (e.g., capability_id != 0),
+    // ensure caller_cap matches the handle's cap.
+    if (entry->handle_cap.capability_id != 0) {
+        if (caller_cap->capability_id != entry->handle_cap.capability_id) {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
 int vfs_open_file(const char* path, int flags, capability_t* caller_cap, int* out_fd) {
     size_t i;
     vfs_node_t *node;
@@ -63,7 +90,9 @@ int vfs_read_file(int fd, void* buffer, size_t size, capability_t* caller_cap) {
         return -1;
     }
 
-    // TODO: Verify caller_cap matches entry->handle_cap rights
+    if (!vfs_cap_allows(entry, caller_cap, CAP_RIGHT_READ)) {
+        return -1;
+    }
 
     bytes = entry->node->ops->read(entry, entry->offset, buffer, size);
     if (bytes > 0) {
@@ -93,7 +122,9 @@ int vfs_write_file(int fd, const void* buffer, size_t size, capability_t* caller
         return -1;
     }
 
-    // TODO: Verify caller_cap matches entry->handle_cap rights
+    if (!vfs_cap_allows(entry, caller_cap, CAP_RIGHT_WRITE)) {
+        return -1;
+    }
 
     bytes = entry->node->ops->write(entry, entry->offset, buffer, size);
     if (bytes > 0) {
@@ -114,7 +145,9 @@ int vfs_close_file(int fd, capability_t* caller_cap) {
         return -1;
     }
 
-    // TODO: Verify caller_cap
+    if (!vfs_cap_allows(entry, caller_cap, 0)) {
+        return -1;
+    }
 
     if (entry->node && entry->node->ops && entry->node->ops->close) {
         entry->node->ops->close(entry);
