@@ -35,6 +35,10 @@ target_include_directories(test_hal_interrupts PRIVATE ../kernel/include)
 add_test(NAME test_hal_interrupts COMMAND test_hal_interrupts)
 
 
+add_executable(test_urpc_init_channel test_urpc_init_channel.c ../lib/urpc/urpc.c)
+target_include_directories(test_urpc_init_channel PRIVATE ../lib/urpc)
+add_test(NAME test_urpc_init_channel COMMAND test_urpc_init_channel)
+
 add_executable(test_urpc_ring test_urpc_ring.c benchmark_stubs.c ../kernel/src/ipc/multikernel.c ../kernel/src/ipc/mk_dispatch.c)
 add_executable(test_ipc_async_timeout test_ipc_async_timeout.c ../kernel/src/ipc/async_ipc.c ../kernel/src/ipc/ipc_timeout.c)
 target_include_directories(test_ipc_async_timeout PRIVATE ../kernel/include)
@@ -127,6 +131,10 @@ add_test(NAME test_posix COMMAND test_posix)
 add_executable(test_windows_compat_init test_windows_compat_init.c ../subsys/windows/win_compat.c)
 target_include_directories(test_windows_compat_init PRIVATE ../kernel/include ../subsys/include)
 add_test(NAME test_windows_compat_init COMMAND test_windows_compat_init)
+
+add_executable(test_subsys_manager test_subsys_manager.c benchmark_stubs.c ../subsys/src/manager.c ../subsys/linux/linux_compat.c ../subsys/windows/win_compat.c ../subsys/src/subsys_test_runner.c ../kernel/src/boot/boot_args.c ../kernel/src/lib/string.c)
+target_include_directories(test_subsys_manager PRIVATE ../subsys/include ../kernel/include)
+add_test(NAME test_subsys_manager COMMAND test_subsys_manager)
 
 add_executable(test_vm_stress test_vm_stress.c benchmark_stubs.c ../kernel/src/mm/vmm_legacy/vmm.c)
 target_include_directories(test_vm_stress PRIVATE ../kernel/include)
@@ -329,3 +337,12 @@ add_test(NAME test_dma_iommu COMMAND test_dma_iommu)
 add_executable(test_smp_hal test_smp_hal.c)
 target_include_directories(test_smp_hal PRIVATE ../kernel/include)
 add_test(NAME test_smp_hal COMMAND test_smp_hal)
+
+add_executable(test_pmm_production test_pmm_production.c ../kernel/src/mm/pmm/pmm.c)
+target_include_directories(test_pmm_production PRIVATE ../kernel/include ../kernel/src)
+add_test(NAME test_pmm_production COMMAND test_pmm_production)
+
+add_executable(test_vfs_file_caps test_vfs_file_caps.c ../kernel/src/fs/vfs.c ../kernel/src/fs/mount.c ../kernel/src/fs/file.c ../kernel/src/fs/path.c ../kernel/src/lib/string.c)
+target_include_directories(test_vfs_file_caps PRIVATE ../kernel/include)
+target_compile_definitions(test_vfs_file_caps PRIVATE TESTING=1)
+add_test(NAME test_vfs_file_caps COMMAND test_vfs_file_caps)

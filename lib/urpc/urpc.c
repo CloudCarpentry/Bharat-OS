@@ -1,20 +1,27 @@
 #include "urpc.h"
 
+static uint32_t round_down_pow2_u32(uint32_t x) {
+    x |= x >> 1;
+    x |= x >> 2;
+    x |= x >> 4;
+    x |= x >> 8;
+    x |= x >> 16;
+    return x - (x >> 1);
+}
+
 int urpc_init_channel(urpc_channel_t* channel, void* shared_mem, uint32_t size_bytes) {
     if (!channel || !shared_mem || size_bytes < sizeof(urpc_msg_t)) {
         return URPC_ERR_INVALID;
     }
 
     uint32_t capacity = size_bytes / sizeof(urpc_msg_t);
-    // Ensure capacity is a power of 2 for fast modulo
-    if ((capacity & (capacity - 1)) != 0) {
-        // Fallback or bit hack to get previous power of 2
-        while ((capacity & (capacity - 1)) != 0) {
-            capacity = capacity & (capacity - 1);
-        }
-    }
 
     if (capacity == 0) return URPC_ERR_INVALID;
+
+    // Round capacity down to the previous power of two.
+    if ((capacity & (capacity - 1)) != 0) {
+        capacity = round_down_pow2_u32(capacity);
+    }
 
     channel->head = 0;
     channel->tail = 0;

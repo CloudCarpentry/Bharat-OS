@@ -30,7 +30,14 @@ typedef struct page {
   // Ownership tracking
   uint32_t owner_core_id;
   uint64_t object_id;
+
+  uint16_t zone;
+  uint16_t owner_class;
+  uint16_t pin_count;
+  uint16_t state;
 } page_t;
+
+typedef page_t page_frame_t;
 
 // Convert page struct pointer back to physical address
 phys_addr_t page_to_phys(page_t *page);
