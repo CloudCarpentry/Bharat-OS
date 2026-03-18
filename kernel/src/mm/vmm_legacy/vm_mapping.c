@@ -65,9 +65,9 @@ int vm_map(vm_space_t *space, const vm_map_req_t *req) {
     spinlock_release(&space->lock);
 
     // If local core is active, realize immediately
-    if (space->active_cores & (1ULL << hal_get_core_id())) {
+    if (space->active_cores & (1ULL << hal_cpu_get_id())) {
         if (active_arch_vm_ops && active_arch_vm_ops->map) {
-            vm_core_state_t local_state = { .core_id = hal_get_core_id() };
+            vm_core_state_t local_state = { .core_id = hal_cpu_get_id() };
             active_arch_vm_ops->map(space, &local_state, req->va, req->pa, req->len, req->prot, req->mem_type, req->map_flags);
         }
     }
@@ -102,9 +102,9 @@ int vm_unmap(vm_space_t *space, uintptr_t va, size_t len) {
     spinlock_release(&space->lock);
 
     // Local invalidation
-    if (space->active_cores & (1ULL << hal_get_core_id())) {
+    if (space->active_cores & (1ULL << hal_cpu_get_id())) {
         if (active_arch_vm_ops && active_arch_vm_ops->unmap) {
-            vm_core_state_t local_state = { .core_id = hal_get_core_id() };
+            vm_core_state_t local_state = { .core_id = hal_cpu_get_id() };
             active_arch_vm_ops->unmap(space, &local_state, va, len);
         }
     }
@@ -133,9 +133,9 @@ int vm_protect(vm_space_t *space, uintptr_t va, size_t len, uint64_t prot, uint6
 
     spinlock_release(&space->lock);
 
-    if (space->active_cores & (1ULL << hal_get_core_id())) {
+    if (space->active_cores & (1ULL << hal_cpu_get_id())) {
         if (active_arch_vm_ops && active_arch_vm_ops->protect) {
-            vm_core_state_t local_state = { .core_id = hal_get_core_id() };
+            vm_core_state_t local_state = { .core_id = hal_cpu_get_id() };
             active_arch_vm_ops->protect(space, &local_state, va, len, prot, mem_type);
         }
     }

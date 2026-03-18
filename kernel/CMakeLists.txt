@@ -86,7 +86,7 @@ if(ARCH STREQUAL "x86_64")
     set(ARCH_CONTEXT_SWITCH src/arch/x86_64/context_switch.c src/arch/x86_64/context_switch.S)
 elseif(ARCH STREQUAL "riscv64")
     set(BOOT_SRC src/boot/riscv64/boot.S)
-    set(ARCH_HAL src/hal/riscv/hal_cpu.c src/hal/riscv/trap_entry.S src/hal/riscv/vmm.c src/hal/riscv64/hal_pt_riscv64.c src/hal/hal_pt.c src/hal/riscv/iopmp.c src/hal/riscv/plic.c src/hal/riscv/sbi_timer_ipi.c)
+    set(ARCH_HAL src/hal/riscv/hal_cpu.c src/hal/riscv/boot/feature_probe.c src/hal/riscv/trap_entry.S src/hal/riscv/vmm.c src/hal/riscv64/hal_pt_riscv64.c src/hal/hal_pt.c src/hal/riscv/iopmp.c src/hal/riscv/plic.c src/hal/riscv/sbi_timer_ipi.c)
     set(ARCH_HAL_EXTRA src/hal/riscv/shakti_bsp.c)
     # VirtIO GPU display driver: only for qemu-virt + GUI enabled
     if(BHARAT_BOOT_GUI AND "${BHARAT_RISCV_SOC_PROFILE}" STREQUAL "qemu-virt")
@@ -202,6 +202,8 @@ set(KERNEL_SRCS
 
     src/power_thermal_perf.c
     src/trap/trap.c
+    src/fault_diag.c
+    src/monitor/mon_vm_service.c
     src/multicore.c
     src/fs/vfs.c
     src/fs/mount.c
