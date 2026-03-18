@@ -95,6 +95,13 @@ const vfs_driver_info_t* vfs_get_driver(const char* name);
 int vfs_path_prefix_match(const char *path, const char *prefix);
 size_t vfs_strnlen(const char *s, size_t max_len);
 
+// Compatibility wrappers (non-capability versions)
+int vfs_mount(const char* target_path, vfs_node_t* fs_root);
+int vfs_open(const char* path, int flags);
+int vfs_read(int fd, void* buffer, size_t size);
+int vfs_write(int fd, const void* buffer, size_t size);
+int vfs_close(int fd);
+
 #ifdef TESTING
 void vfs_test_reset_state(void);
 #endif

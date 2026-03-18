@@ -37,6 +37,7 @@ int vfs_mount_fs(const char* target_path, vfs_node_t* fs_root, capability_t* cal
     }
 
     vfs_strcpy(g_mounts[g_mount_count].target_path, target_path, sizeof(g_mounts[g_mount_count].target_path));
+    g_mounts[g_mount_count].target_path_len = vfs_strnlen(target_path, sizeof(g_mounts[g_mount_count].target_path));
     g_mounts[g_mount_count].root_node = fs_root;
 
     if (vfs_path_prefix_match(target_path, "/")) {
@@ -45,6 +46,11 @@ int vfs_mount_fs(const char* target_path, vfs_node_t* fs_root, capability_t* cal
 
     g_mount_count++;
     return 0;
+}
+
+int vfs_mount(const char* target_path, vfs_node_t* fs_root) {
+    capability_t dummy_cap = {0};
+    return vfs_mount_fs(target_path, fs_root, &dummy_cap);
 }
 
 vfs_node_t* vfs_resolve_mount_path(const char* path, capability_t* caller_cap) {
@@ -63,10 +69,7 @@ vfs_node_t* vfs_resolve_mount_path(const char* path, capability_t* caller_cap) {
             continue;
         }
 
-        size_t mount_len = 0;
-        while(mount_path[mount_len] != '\0' && mount_len < sizeof(g_mounts[i].target_path)) {
-            mount_len++;
-        }
+        size_t mount_len = g_mounts[i].target_path_len;
 
         if (mount_len >= best_len) {
             best_len = mount_len;
