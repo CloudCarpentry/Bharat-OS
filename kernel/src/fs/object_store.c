@@ -5,6 +5,23 @@
 static object_store_t* g_object_stores[MAX_OBJECT_STORES];
 static size_t g_object_store_count = 0;
 
+#ifdef TESTING
+void object_store_test_reset_state(void) {
+    g_object_store_count = 0;
+    for (int i = 0; i < MAX_OBJECT_STORES; i++) {
+        g_object_stores[i] = NULL;
+    }
+}
+#endif
+
+static int object_store_cap_allows_lookup(const capability_t* cap) {
+    if (!cap) {
+        return 0;
+    }
+
+    return (cap->rights_mask & CAP_RIGHT_READ) == CAP_RIGHT_READ;
+}
+
 int object_store_register(object_store_t* store, capability_t* cap) {
     if (!store || !cap) {
         return -1;
@@ -23,7 +40,9 @@ int object_store_lookup(const char* uri, object_store_t** out_store, capability_
         return -1;
     }
 
-    // TODO: Verify capability allows store access
+    if (!object_store_cap_allows_lookup(cap)) {
+        return -1;
+    }
 
     // Iterate through stores, returning match based on URI prefix
     for (size_t i = 0; i < g_object_store_count; i++) {
