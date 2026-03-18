@@ -332,3 +332,8 @@ add_test(NAME test_smp_hal COMMAND test_smp_hal)
 add_executable(test_pmm_production test_pmm_production.c ../kernel/src/mm/pmm/pmm.c)
 target_include_directories(test_pmm_production PRIVATE ../kernel/include ../kernel/src)
 add_test(NAME test_pmm_production COMMAND test_pmm_production)
+
+add_executable(test_vfs_file_caps test_vfs_file_caps.c ../kernel/src/fs/vfs.c ../kernel/src/fs/mount.c ../kernel/src/fs/file.c ../kernel/src/fs/path.c ../kernel/src/lib/string.c)
+target_include_directories(test_vfs_file_caps PRIVATE ../kernel/include)
+target_compile_definitions(test_vfs_file_caps PRIVATE TESTING=1)
+add_test(NAME test_vfs_file_caps COMMAND test_vfs_file_caps)
