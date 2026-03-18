@@ -300,6 +300,19 @@ int arm64_pt_query_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *pad
     return 0;
 }
 
+void arm64_init_hardening(void) {
+    uint64_t sctlr;
+    asm volatile("mrs %0, sctlr_el1" : "=r"(sctlr));
+    // PAN (Privileged Access Never) is typically bit 23 in SCTLR_EL1 (if ARMv8.1)
+    // For older cores, this might do nothing or trigger undef if PAN is not supported,
+    // so we need to read ID_AA64MMFR1_EL1 to check if PAN is supported.
+    uint64_t mmfr1;
+    asm volatile("mrs %0, id_aa64mmfr1_el1" : "=r"(mmfr1));
+    if ((mmfr1 >> 20) & 0xF) { // PAN supported
+        asm volatile("msr pan, #1"); // Turn on PAN
+    }
+}
+
 hal_pt_ops_t arm64_hal_pt_ops = {
     .create_address_space  = arm64_pt_create_address_space,
     .destroy_address_space = arm64_pt_destroy_address_space,

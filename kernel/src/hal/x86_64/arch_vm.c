@@ -10,7 +10,9 @@ extern phys_addr_t vmm_get_kernel_root(void);
 
 static int x86_64_kernel_init(void) {
     // Kernel higher-half mapping is established in boot.S / mmu_init.c
-    // before this point. Nothing to do here.
+    // before this point. We apply late Tier-2 hardware security hardening here.
+    extern void x86_64_init_hardening(void);
+    x86_64_init_hardening();
     return 0;
 }
 

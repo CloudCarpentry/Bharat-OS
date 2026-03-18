@@ -238,6 +238,27 @@ int x86_pt_query_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *paddr
     return 0;
 }
 
+static inline void write_cr4(uint64_t val) {
+    asm volatile("mov %0, %%cr4" :: "r"(val) : "memory");
+}
+
+static inline uint64_t read_cr4(void) {
+    uint64_t val;
+    asm volatile("mov %%cr4, %0" : "=r"(val) : "memory");
+    return val;
+}
+
+void x86_64_init_hardening(void) {
+    uint64_t cr4 = read_cr4();
+    // Enable SMEP (Supervisor Mode Execution Prevention)
+    // Bit 20 in CR4
+    cr4 |= (1ULL << 20);
+    // Enable SMAP (Supervisor Mode Access Prevention)
+    // Bit 21 in CR4
+    cr4 |= (1ULL << 21);
+    write_cr4(cr4);
+}
+
 hal_pt_ops_t x86_hal_pt_ops = {
     .create_address_space  = x86_pt_create_address_space,
     .destroy_address_space = x86_pt_destroy_address_space,
@@ -249,6 +270,8 @@ hal_pt_ops_t x86_hal_pt_ops = {
 
 // --- x86_64 TLB Operations ---
 
+extern bool g_x86_pcid_supported;
+
 static void x86_tlb_flush_page_local(virt_addr_t vaddr) {
     __asm__ volatile("invlpg (%0)" :: "r"(vaddr) : "memory");
 }
@@ -256,35 +279,43 @@ static void x86_tlb_flush_page_local(virt_addr_t vaddr) {
 static void x86_tlb_flush_all_local(void) {
     uintptr_t cr3;
     __asm__ volatile("mov %%cr3, %0" : "=r"(cr3));
+    if (g_x86_pcid_supported) {
+        cr3 &= ~(1ULL << 63); // Clear bit 63 to flush
+    }
     __asm__ volatile("mov %0, %%cr3" :: "r"(cr3) : "memory");
 }
 
 static void x86_tlb_flush_asid_local(uint16_t asid) {
-    (void)asid; // PCID not utilized yet
+    if (g_x86_pcid_supported) {
+        struct {
+            uint64_t pcid: 12;
+            uint64_t reserved: 52;
+        } desc = { .pcid = asid, .reserved = 0 };
+        __asm__ volatile("invpcid %0, %1" :: "m"(desc), "r"(1ULL) : "memory");
+    } else {
+        x86_tlb_flush_all_local();
+    }
 }
 
 static void x86_tlb_flush_page_remote(uint16_t target_core, uint16_t asid, virt_addr_t vaddr) {
-    // Stub: To be backed by URPC message
-    (void)target_core;
-    (void)asid;
-    (void)vaddr;
+    extern void mm_remote_tlb_flush(uint32_t target_core, uint64_t as_id, virt_addr_t va);
+    mm_remote_tlb_flush(target_core, asid, vaddr);
 }
 
 static void x86_tlb_flush_all_remote(uint16_t target_core, uint16_t asid) {
-    // Stub
-    (void)target_core;
-    (void)asid;
+    extern void mm_remote_tlb_flush(uint32_t target_core, uint64_t as_id, virt_addr_t va);
+    mm_remote_tlb_flush(target_core, asid, 0); // 0 signifies all
 }
 
 static void x86_tlb_flush_page_broadcast(uint16_t asid, virt_addr_t vaddr) {
-    // Stub: In x86 this typically iterates over CPUs and IPIs
-    (void)asid;
-    (void)vaddr;
+    extern void mm_remote_tlb_shootdown_mask(uint64_t core_membership_mask, uint64_t as_id, virt_addr_t va);
+    // Broadcast to all other cores
+    mm_remote_tlb_shootdown_mask(~0ULL, asid, vaddr);
 }
 
 static void x86_tlb_flush_all_broadcast(uint16_t asid) {
-    // Stub
-    (void)asid;
+    extern void mm_remote_tlb_shootdown_mask(uint64_t core_membership_mask, uint64_t as_id, virt_addr_t va);
+    mm_remote_tlb_shootdown_mask(~0ULL, asid, 0);
 }
 
 hal_tlb_ops_t x86_hal_tlb_ops = {
