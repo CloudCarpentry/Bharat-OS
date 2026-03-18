@@ -297,33 +297,48 @@ static void x86_tlb_flush_asid_local(uint16_t asid) {
     }
 }
 
+static void x86_tlb_flush_range_local(virt_addr_t start, size_t len) {
+    size_t offset = 0;
+    while (offset < len) {
+        x86_tlb_flush_page_local(start + offset);
+        offset += PAGE_SIZE; // assuming PAGE_SIZE is available or define it
+    }
+}
+
 static void x86_tlb_flush_page_remote(uint16_t target_core, uint16_t asid, virt_addr_t vaddr) {
-    extern void mm_remote_tlb_flush(uint32_t target_core, uint64_t as_id, virt_addr_t va);
-    mm_remote_tlb_flush(target_core, asid, vaddr);
+    // Legacy support via coordinator or direct if implemented
+    (void)target_core; (void)asid; (void)vaddr;
+}
+
+static void x86_tlb_flush_range_remote(uint16_t target_core, uint16_t asid, virt_addr_t start, size_t len) {
+    (void)target_core; (void)asid; (void)start; (void)len;
 }
 
 static void x86_tlb_flush_all_remote(uint16_t target_core, uint16_t asid) {
-    extern void mm_remote_tlb_flush(uint32_t target_core, uint64_t as_id, virt_addr_t va);
-    mm_remote_tlb_flush(target_core, asid, 0); // 0 signifies all
+    (void)target_core; (void)asid;
 }
 
 static void x86_tlb_flush_page_broadcast(uint16_t asid, virt_addr_t vaddr) {
-    extern void mm_remote_tlb_shootdown_mask(uint64_t core_membership_mask, uint64_t as_id, virt_addr_t va);
-    // Broadcast to all other cores
-    mm_remote_tlb_shootdown_mask(~0ULL, asid, vaddr);
+    (void)asid; (void)vaddr;
+}
+
+static void x86_tlb_flush_range_broadcast(uint16_t asid, virt_addr_t start, size_t len) {
+    (void)asid; (void)start; (void)len;
 }
 
 static void x86_tlb_flush_all_broadcast(uint16_t asid) {
-    extern void mm_remote_tlb_shootdown_mask(uint64_t core_membership_mask, uint64_t as_id, virt_addr_t va);
-    mm_remote_tlb_shootdown_mask(~0ULL, asid, 0);
+    (void)asid;
 }
 
 hal_tlb_ops_t x86_hal_tlb_ops = {
     .flush_page_local      = x86_tlb_flush_page_local,
+    .flush_range_local     = x86_tlb_flush_range_local,
     .flush_all_local       = x86_tlb_flush_all_local,
     .flush_asid_local      = x86_tlb_flush_asid_local,
     .flush_page_remote     = x86_tlb_flush_page_remote,
+    .flush_range_remote    = x86_tlb_flush_range_remote,
     .flush_all_remote      = x86_tlb_flush_all_remote,
     .flush_page_broadcast  = x86_tlb_flush_page_broadcast,
+    .flush_range_broadcast = x86_tlb_flush_range_broadcast,
     .flush_all_broadcast   = x86_tlb_flush_all_broadcast,
 };

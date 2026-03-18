@@ -148,8 +148,10 @@ int vm_activate_local(vm_space_t *space) {
     if (active_arch_vm_ops && active_arch_vm_ops->activate) {
         vm_core_state_t local_state = {0};
         local_state.core_id = core_id;
-        active_arch_vm_ops->activate(space, &local_state);
+        // Strictly ordered update to software active_aspace before hardware switch
         core_set_current_as((address_space_t *)space);
+        __asm__ volatile("" ::: "memory"); // Compiler memory barrier to prevent reordering
+        active_arch_vm_ops->activate(space, &local_state);
     }
 
     spinlock_acquire(&space->lock);

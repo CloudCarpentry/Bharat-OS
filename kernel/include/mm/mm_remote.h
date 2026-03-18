@@ -16,14 +16,20 @@ typedef enum {
 
 typedef struct {
     uint16_t type;
-    uint16_t flags;
+    uint16_t scope; // tlb_scope_t
     uint32_t sender_core;
     uint64_t as_id;
     uint64_t va;
+    uint64_t len;
+    uint64_t seq; // Request sequence
 } mm_urpc_tlb_msg_t;
 
+#include "../../include/spinlock.h"
+
 typedef struct {
-    volatile uint32_t seq;
+    spinlock_t lock;
+    volatile uint32_t req_seq;
+    volatile uint32_t ack_seq;
     volatile uint32_t valid;
     mm_urpc_tlb_msg_t msg;
 } mm_mailbox_slot_t;

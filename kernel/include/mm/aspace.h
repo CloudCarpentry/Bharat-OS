@@ -35,6 +35,8 @@ typedef struct vm_address_space {
     phys_addr_t root_pt;     // Hardware Page-Table Root (hal_pt compatible)
     spinlock_t lock;         // Serialization lock
 
+    volatile uint64_t tlb_seq; // Monotonically increasing sequence for TLB shootdowns
+
     vm_region_t *regions;    // Head of region tree / list
 
     uint64_t user_base;      // Min user VA
