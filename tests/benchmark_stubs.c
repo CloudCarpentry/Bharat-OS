@@ -125,6 +125,15 @@ void __attribute__((weak)) kfree(void* ptr) {
     free(ptr);
 }
 
+// Stubs for numa.c dependencies in tests
+#include "../kernel/include/hal/hal_pt.h"
+hal_pt_ops_t* active_hal_pt = NULL;
+
+void __attribute__((weak)) tlb_shootdown(address_space_t *as, virt_addr_t vaddr) {
+    (void)as;
+    (void)vaddr;
+}
+
 __attribute__((weak)) void mm_inc_page_ref(phys_addr_t page) { (void)page; }
 __attribute__((weak)) phys_addr_t __attribute__((weak)) mm_alloc_pages_order(int order, uint32_t preferred_numa_node, uint32_t flags) { (void)order; (void)preferred_numa_node; (void)flags; return 0; }
 

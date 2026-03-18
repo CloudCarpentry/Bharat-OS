@@ -1,4 +1,4 @@
-#include "../../include/numa.h"
+#include "../../../include/numa.h"
 
 #include <stddef.h>
 
@@ -59,10 +59,12 @@ uint32_t numa_active_node_count(void) {
     return g_active_nodes;
 }
 
-#include "../../include/sched.h"
-#include "../../include/slab.h"
-#include "../../include/hal/hal_pt.h"
-#include "../../include/hal/hal_tlb.h"
+#include "../../../include/numa.h"
+#include "../../../include/mm.h"
+#include "../../../include/hal/hal_pt.h"
+#include "../../../include/hal/hal_tlb.h"
+#include "../../../include/sched.h"
+#include "../../../include/slab.h"
 
 #define P2V(x) ((void*)(uintptr_t)(x))
 #define V2P(x) ((phys_addr_t)(uintptr_t)(x))

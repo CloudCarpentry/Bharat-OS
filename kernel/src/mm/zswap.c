@@ -17,12 +17,26 @@ typedef struct {
     size_t compressed_size;
 } zswap_entry_t;
 
-static list_head_t zswap_pool;
+#define ZSWAP_HASH_TABLE_SIZE 1024
+static list_head_t zswap_hash_table[ZSWAP_HASH_TABLE_SIZE];
+
+static list_head_t zswap_pool; // Keeping it for global tracking if needed, or we can just use hash table
 static spinlock_t zswap_lock;
 static size_t zswap_current_pool_bytes = 0;
 static size_t zswap_max_pool_bytes = 0;
 
 static kcache_t* zswap_entry_cache = NULL;
+
+static inline uint32_t zswap_hash(phys_addr_t page) {
+    // Simple hash function for physical addresses (usually page-aligned, so we shift right by 12)
+    uint64_t key = (uint64_t)page >> 12;
+    key ^= key >> 16;
+    key *= 0x85ebca6b;
+    key ^= key >> 13;
+    key *= 0xc2b2ae35;
+    key ^= key >> 16;
+    return key % ZSWAP_HASH_TABLE_SIZE;
+}
 
 // Very basic LZ4-like compression simulation logic as an actual LZ4 implementation requires complex structures
 // Fast run-length encoding (RLE) logic to represent simple compressibility and decompression latency.
@@ -76,6 +90,9 @@ int lz4_decompress(const uint8_t* src, size_t src_size, uint8_t* dst, size_t dst
 int zswap_init(void) {
 #if CONFIG_MM_ZSWAP == 1
     list_init(&zswap_pool);
+    for (int i = 0; i < ZSWAP_HASH_TABLE_SIZE; i++) {
+        list_init(&zswap_hash_table[i]);
+    }
     spin_lock_init(&zswap_lock);
     zswap_current_pool_bytes = 0;
 
@@ -129,8 +146,12 @@ int zswap_store_page(phys_addr_t page) {
     entry->original_paddr = page;
     entry->compressed_size = comp_size;
 
+    uint32_t idx = zswap_hash(page);
+
     spin_lock(&zswap_lock);
-    list_add(&entry->list, &zswap_pool);
+    list_add(&entry->list, &zswap_hash_table[idx]);
+    // Optionally keep in global pool too, but we will comment out zswap_pool usages to save memory
+    // list_add(&entry->pool_list, &zswap_pool);
     zswap_current_pool_bytes += comp_size;
     spin_unlock(&zswap_lock);
 
@@ -145,12 +166,15 @@ int zswap_load_page(phys_addr_t page) {
 #if CONFIG_MM_ZSWAP == 1
     if (!page) return -1;
 
+    uint32_t idx = zswap_hash(page);
+    list_head_t* head = &zswap_hash_table[idx];
+
     spin_lock(&zswap_lock);
 
     list_head_t* pos;
     zswap_entry_t* found_entry = NULL;
 
-    for (pos = zswap_pool.next; pos != &zswap_pool; pos = pos->next) {
+    for (pos = head->next; pos != head; pos = pos->next) {
         zswap_entry_t* entry = list_entry(pos, zswap_entry_t, list);
         if (entry->original_paddr == page) {
             found_entry = entry;
