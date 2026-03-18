@@ -26,7 +26,12 @@ int vfs_mount_fs(const char* target_path, vfs_node_t* fs_root, capability_t* cal
         return -1;
     }
 
-    // TODO: Verify caller_cap allows mounting at target_path
+    if (caller_cap->target_object_id != VFS_NAMESPACE_OBJECT_ID) {
+        return -1;
+    }
+    if ((caller_cap->rights_mask & CAP_RIGHT_WRITE) != CAP_RIGHT_WRITE) {
+        return -1;
+    }
 
     if (g_mount_count >= VFS_MAX_MOUNTS) {
         return -1;

@@ -49,7 +49,17 @@ int main(void) {
     fs_root.fs_data = fs_data;
     fs_root.object_id = 42;
 
-    capability_t mount_cap = {0};
+    capability_t mount_cap = {
+        .target_object_id = VFS_NAMESPACE_OBJECT_ID,
+        .rights_mask = CAP_RIGHT_WRITE,
+    };
+
+    capability_t bad_mount_cap = {
+        .target_object_id = 0,
+        .rights_mask = 0,
+    };
+
+    assert(vfs_mount_fs("/", &fs_root, &bad_mount_cap) == -1);
     assert(vfs_mount_fs("/", &fs_root, &mount_cap) == 0);
 
     capability_t good_cap = {
@@ -90,6 +100,14 @@ int main(void) {
 
     // Read should be denied when capability targets different object
     assert(vfs_read_file(fd, read_buf, 4, &bad_object_cap) == -1);
+
+    // Open read denied without read right
+    int denied_read_fd;
+    assert(vfs_open_file("/", VFS_OPEN_READ, &bad_rights_cap, &denied_read_fd) == -1);
+
+    // Open write denied without write right
+    int denied_write_fd;
+    assert(vfs_open_file("/", VFS_OPEN_WRITE, &bad_rights_cap, &denied_write_fd) == -1);
 
     // Read should succeed with good cap
     // Note: since our mem_write just copies to g_memory_fs without updating any size metadata,
