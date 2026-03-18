@@ -45,14 +45,19 @@ static mmu_flags_t convert_vmm_flags(uint32_t flags) {
 #define KERNEL_AS_ID 0
 #endif
 
-void vmm_process_urpc_messages(void) {
-    uint32_t current_core = hal_cpu_get_id();
+// Process URPC messages bound for this specific core only, with a strict budget to avoid infinite looping
+// in trap return or scheduler context. This is stage A of moving cross-core work to local monitor threads.
+void vmm_process_local_urpc_messages(uint32_t core_id) {
     uint64_t msg;
+    int messages_processed = 0;
+    const int MAX_MESSAGES_PER_TRAP = 16;
 
+    // Check all channels *sending to* this core_id
     for (uint32_t src = 0; src < BHARAT_MAX_CPUS; src++) {
-        if (src == current_core) continue;
+        if (src == core_id) continue;
         
-        while (urpc_bootstrap_recv(src, &msg) == 0) {
+        while (messages_processed < MAX_MESSAGES_PER_TRAP && urpc_bootstrap_recv(src, &msg) == 0) {
+            messages_processed++;
             urpc_msg_type_t type;
             uint64_t payload;
             urpc_unpack_msg(msg, &type, &payload);
@@ -70,7 +75,7 @@ void vmm_process_urpc_messages(void) {
                 urpc_bootstrap_send(src, ack_msg);
             } else if (type == URPC_MM_MAILBOX) {
                 // Structured MM Control Message
-                mm_mailbox_slot_t* mailbox = &g_mm_mailboxes[current_core];
+                mm_mailbox_slot_t* mailbox = &g_mm_mailboxes[core_id];
                 if (mailbox->valid) {
                     if (mailbox->msg.type == MM_MSG_TLB_FLUSH) {
                         if (mailbox->msg.as_id == KERNEL_AS_ID || core_current_as_id() == mailbox->msg.as_id) {
@@ -84,6 +89,11 @@ void vmm_process_urpc_messages(void) {
                     mailbox->valid = 0; // Clear it for next usage
                 }
             }
+        }
+
+        if (messages_processed >= MAX_MESSAGES_PER_TRAP) {
+            // Note: In Stage B, if we hit the limit, we should wake up the local monitor thread to finish draining.
+            break;
         }
     }
 }

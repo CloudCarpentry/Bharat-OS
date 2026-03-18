@@ -341,6 +341,7 @@ kthread_t *thread_create(kprocess_t *parent, void (*entry_point)(void)) {
 
   slot->thread.thread_id = g_next_thread_id++;
   slot->thread.process_id = parent ? parent->process_id : 0U;
+  slot->thread.process = parent;
   slot->thread.personality = PERSONALITY_NATIVE;
   slot->thread.state = THREAD_STATE_READY;
   slot->thread.priority = 1U;
@@ -621,7 +622,8 @@ static void sched_switch_to(kthread_t *next, uint32_t core_id) {
   }
 
     // Process incoming URPC messages before doing the switch
-    vmm_process_urpc_messages();
+    extern void vmm_process_local_urpc_messages(uint32_t core_id);
+    vmm_process_local_urpc_messages(core_id);
 
   if (fv_secure_context_switch) {
     fv_secure_context_switch(next_ctx);
@@ -877,6 +879,21 @@ kthread_t *sched_current_thread(void) {
 }
 
 kthread_t *sched_current(void) { return sched_current_thread(); }
+
+kprocess_t *sched_current_process(void) {
+  kthread_t *t = sched_current_thread();
+  return t ? t->process : NULL;
+}
+
+address_space_t *sched_current_aspace(void) {
+  kprocess_t *p = sched_current_process();
+  return p ? p->addr_space : NULL;
+}
+
+struct capability_table *sched_current_cap_table(void) {
+  kprocess_t *p = sched_current_process();
+  return p ? (struct capability_table *)p->security_sandbox_ctx : NULL;
+}
 
 uint64_t sched_get_ticks(void) { return g_sched_ticks; }
 void sched_set_policy(sched_policy_t policy) {
