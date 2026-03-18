@@ -35,6 +35,10 @@ target_include_directories(test_hal_interrupts PRIVATE ../kernel/include)
 add_test(NAME test_hal_interrupts COMMAND test_hal_interrupts)
 
 
+add_executable(test_urpc_init_channel test_urpc_init_channel.c ../lib/urpc/urpc.c)
+target_include_directories(test_urpc_init_channel PRIVATE ../lib/urpc)
+add_test(NAME test_urpc_init_channel COMMAND test_urpc_init_channel)
+
 add_executable(test_urpc_ring test_urpc_ring.c benchmark_stubs.c ../kernel/src/ipc/multikernel.c ../kernel/src/ipc/mk_dispatch.c)
 add_executable(test_ipc_async_timeout test_ipc_async_timeout.c ../kernel/src/ipc/async_ipc.c ../kernel/src/ipc/ipc_timeout.c)
 target_include_directories(test_ipc_async_timeout PRIVATE ../kernel/include)
