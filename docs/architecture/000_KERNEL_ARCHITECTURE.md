@@ -349,6 +349,17 @@ Security subsystems include:
 
 Future work may include:
 
+---
+
+# Diagnostics and Reliability
+
+Bharat-OS includes a robust and structured diagnostic system to capture state during critical faults:
+
+- **Structured Panic Context (`panic_context_t`)**: When a kernel panic occurs, the system generates a structured payload capturing the fault address, instruction pointer, stack pointer, core ID, thread ID, process ID, last system call, and the architecture-specific trap frame.
+- **Fault Breadcrumbs**: To aid in debugging complex state transitions, the kernel maintains a ring of breadcrumbs (e.g., the last executed system call number) which are attached to the panic context.
+- **PStore Persistent Recovery Logging**: Critical diagnostic information is written to a designated persistent storage (PStore) memory region before the system halts or reboots. This allows post-mortem analysis of the crash reason even after a hard reset.
+- **Architecture State Dumps**: Architecture-specific implementations dump detailed hardware states (e.g., segment registers, control registers) to the serial console and logs before halting.
+
 - capability-based security models
 - trusted execution support
 
