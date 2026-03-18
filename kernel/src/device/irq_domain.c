@@ -8,12 +8,18 @@
 static msi_domain_t* g_default_msi_domain = NULL;
 
 irq_domain_t* irq_domain_create(const char* name, uint32_t irq_base, uint32_t irq_count, void* host_data) {
+    (void)name;
+    (void)irq_base;
+    (void)irq_count;
+    (void)host_data;
     // A real implementation would allocate and track the domain
     // For now, return a dummy pointer
     return (irq_domain_t*)(uintptr_t)0x1234;
 }
 
 int irq_domain_map(irq_domain_t* domain, uint32_t virq, uint32_t hwirq) {
+    (void)virq;
+    (void)hwirq;
     if (!domain) return -1;
     // Map implementation
     return 0;

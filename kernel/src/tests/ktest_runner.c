@@ -81,6 +81,9 @@ void kernel_run_boot_tests(void) {
   uint32_t passed = 0;
   uint32_t failed = 0;
   uint32_t skipped = 0;
+  (void)passed;
+  (void)failed;
+  (void)skipped;
 
   while (test < __kern_tests_end) {
     bool should_run = false;
