@@ -111,6 +111,7 @@ add_executable(test_capability_policy test_capability_policy.c benchmark_stubs.c
     ../kernel/src/sched_deg.c
     ../kernel/src/ai_sched.c
     ../kernel/src/capability.c
+    ../kernel/src/ipc/endpoint_ipc.c
     ../kernel/src/algo_matrix.c
     ../kernel/src/device/device_manager.c
     ../kernel/src/mm/numa.c
@@ -232,6 +233,7 @@ add_executable(test_bench_sched test_bench_sched.c benchmark_stubs.c
     ../kernel/src/sched_deg.c
     ../kernel/src/ai_sched.c
     ../kernel/src/capability.c
+    ../kernel/src/ipc/endpoint_ipc.c
     ../kernel/src/algo_matrix.c
     ../kernel/src/device/device_manager.c
     ../kernel/src/mm/numa.c
@@ -239,6 +241,21 @@ add_executable(test_bench_sched test_bench_sched.c benchmark_stubs.c
 target_include_directories(test_bench_sched PRIVATE ../kernel/include)
 target_compile_definitions(test_bench_sched PRIVATE TESTING=1)
 add_test(NAME test_bench_sched COMMAND test_bench_sched)
+
+add_executable(test_bench_sched_timer_tick test_bench_sched_timer_tick.c benchmark_stubs.c
+    ../kernel/src/benchmark/benchmark.c
+    ../kernel/src/sched.c
+    ../kernel/src/sched_deg.c
+    ../kernel/src/ai_sched.c
+    ../kernel/src/capability.c
+    ../kernel/src/ipc/endpoint_ipc.c
+    ../kernel/src/algo_matrix.c
+    ../kernel/src/device/device_manager.c
+    ../kernel/src/mm/numa.c
+)
+target_include_directories(test_bench_sched_timer_tick PRIVATE ../kernel/include)
+target_compile_definitions(test_bench_sched_timer_tick PRIVATE TESTING=1)
+add_test(NAME test_bench_sched_timer_tick COMMAND test_bench_sched_timer_tick)
 
 
 add_executable(test_vfs_storage test_vfs_storage.c ../kernel/src/fs/vfs.c ../kernel/src/fs/blob_backend.c ../kernel/src/fs/mount.c ../kernel/src/fs/file.c ../kernel/src/fs/path.c ../kernel/src/lib/string.c)
