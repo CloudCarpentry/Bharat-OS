@@ -30,7 +30,7 @@
 
 static void demo_print_hex(uint64_t val)
 {
-    static const char hex_digit[16] = "0123456789abcdef";
+    static const char hex_digit[17] = "0123456789abcdef";
     char buf[19]; /* "0x" + 16 digits + NUL */
     buf[0]  = '0';
     buf[1]  = 'x';
