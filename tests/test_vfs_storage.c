@@ -61,7 +61,12 @@ int main(void) {
 
     capability_t dummy_cap = { .rights_mask = CAP_RIGHT_READ | CAP_RIGHT_WRITE, .target_object_id = 1 };
 
-    assert(vfs_mount_fs("/", &fs_root, &dummy_cap) == 0);
+    capability_t mount_cap = {
+        .target_object_id = VFS_NAMESPACE_OBJECT_ID,
+        .rights_mask = CAP_RIGHT_WRITE,
+    };
+
+    assert(vfs_mount_fs("/", &fs_root, &mount_cap) == 0);
 
     assert(blob_backend_register_s3_driver() == 0);
     assert(vfs_get_driver("s3-compatible") != NULL);
@@ -74,7 +79,7 @@ int main(void) {
 
     capability_t dummy_blob_cap = { .rights_mask = CAP_RIGHT_READ | CAP_RIGHT_WRITE, .target_object_id = 2 };
 
-    assert(vfs_mount_fs("/blob/remote/minio/bucket/key", &blob_node, &dummy_blob_cap) == 0);
+    assert(vfs_mount_fs("/blob/remote/minio/bucket/key", &blob_node, &mount_cap) == 0);
 
     assert(vfs_open_file("/", VFS_OPEN_READ | VFS_OPEN_WRITE, &dummy_cap, &fd) == 0);
     assert(fd >= 0);
@@ -89,6 +94,14 @@ int main(void) {
     assert(memcmp(read_buf, blob_data, sizeof(blob_data) - 1) == 0);
 
     assert(vfs_open_file("/blob/remote/minio/bucket/key", VFS_OPEN_WRITE, &dummy_blob_cap, &fd) == -1);
+
+    // Re-open blob file for reading but attempt to write to it to ensure VFS block backend checks it
+    assert(vfs_open_file("/blob/remote/minio/bucket/key", VFS_OPEN_READ, &dummy_blob_cap, &fd) == 0);
+    assert(fd >= 0);
+
+    // Explicit test: "blob write denied even if caller has write right"
+    capability_t malicious_blob_write_cap = { .rights_mask = CAP_RIGHT_READ | CAP_RIGHT_WRITE, .target_object_id = 2 };
+    assert(vfs_write_file(fd, "test", 4, &malicious_blob_write_cap) == -1);
 
     puts("test_vfs_storage: PASS");
     return 0;
