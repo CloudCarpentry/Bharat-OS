@@ -30,6 +30,10 @@ add_test(NAME test_panic COMMAND test_panic)
 
 add_test(NAME test_early_alloc COMMAND test_early_alloc)
 
+add_executable(test_tlb_shootdown test_tlb_shootdown.c ../kernel/src/mm/tlb_coordinator.c benchmark_stubs.c)
+target_include_directories(test_tlb_shootdown PRIVATE ../kernel/include)
+add_test(NAME test_tlb_shootdown COMMAND test_tlb_shootdown)
+
 add_executable(test_hal_interrupts test_hal_interrupts.c ../kernel/src/hal/interrupt_common.c)
 target_include_directories(test_hal_interrupts PRIVATE ../kernel/include)
 add_test(NAME test_hal_interrupts COMMAND test_hal_interrupts)
