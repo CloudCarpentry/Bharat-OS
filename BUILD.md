@@ -215,3 +215,29 @@ You can tune early boot behavior without source edits:
 - `BHARAT_BOOT_HW_PROFILE` (`generic`, `desktop`, `server`, `vm`, `laptop`): picks hardware profile compile definitions for boot policy and defaults.
 
 These are wired through both build scripts and raw CMake cache entries.
+
+### GUI and Serial Console Output (`-BootGui ON`)
+
+When `BHARAT_BOOT_GUI` is enabled (e.g. passing `-BootGui ON` to `build.ps1` or `--boot-gui=ON` to `build.sh`), QEMU is launched with a graphical window.
+
+To ensure early kernel logs are visible during UI development, the build scripts automatically route QEMU serial output to both your host terminal and a Virtual Console (`vc`) inside the QEMU GUI using the `-serial stdio -serial vc` flags.
+
+**Architecture specific behaviors with GUI enabled:**
+- **`x86_64`:** Uses standard VGA (`-vga std`). The serial `vc` output appears natively.
+- **`riscv64` & `arm64`:** These `virt` machines do not support legacy VGA. The build scripts use VirtIO GPU (`-device virtio-gpu-device` or `-device virtio-gpu-pci`). The kernel text output is displayed in a QEMU Virtual Console tab. *Note: If you are using the QEMU GTK/SDL UI, you can switch to the Virtual Console (usually via `View -> serial0` or `Ctrl-Alt-2`) to see the text logs if they don't appear immediately.*
+
+**Example Build Commands:**
+```powershell
+# Windows (PowerShell)
+# Build and run x86_64 with GUI enabled
+.\tools\build.ps1 -Arch x86_64 -Clean -Run -BootGui ON
+
+# Build and run RISC-V with GUI enabled
+.\tools\build.ps1 -Arch riscv64 -Clean -Run -BootGui ON
+```
+
+```bash
+# WSL / Linux / macOS (Bash)
+# Build and run ARM64 with GUI enabled
+./tools/build.sh --arch=arm64 --clean --run --boot-gui=ON
+```

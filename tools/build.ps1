@@ -259,7 +259,8 @@ if ($Run) {
     if ($Arch -eq "x86_64") {
         $qemuArgs += @("-kernel", $KernelBinary, "-m", "256M", "-serial", "mon:stdio", "-no-reboot")
         if ($BootGui -eq "ON") {
-            $qemuArgs += @("-vga", "std")
+            $qemuArgs = $qemuArgs -ne "-serial" -ne "mon:stdio"
+            $qemuArgs += @("-serial", "stdio", "-serial", "vc", "-vga", "std")
         } else {
             $qemuArgs += @("-nographic")
         }
@@ -278,7 +279,9 @@ if ($Run) {
         }
         if ($BootGui -eq "ON") {
             # riscv64 virt machine has no legacy VGA; use VirtIO GPU (MMIO transport)
-            $qemuArgs += @("-device", "virtio-gpu-device")
+            # Route serial output to both the host terminal and a virtual console in the QEMU graphical window
+            $qemuArgs = $qemuArgs -ne "-serial" -ne "mon:stdio" # Remove the default serial arg to replace it
+            $qemuArgs += @("-serial", "stdio", "-serial", "vc", "-device", "virtio-gpu-device")
         } else {
             $qemuArgs += @("-nographic")
         }
@@ -287,7 +290,9 @@ if ($Run) {
         $qemuArgs += @("-machine", $Machine, "-cpu", "cortex-a53", "-kernel", $OutELF, "-m", "256M", "-serial", "mon:stdio", "-no-reboot")
         if ($BootGui -eq "ON") {
             # arm64 virt machine has no legacy VGA; use VirtIO GPU which the virt machine supports
-            $qemuArgs += @("-device", "virtio-gpu-pci")
+            # Route serial output to both the host terminal and a virtual console in the QEMU graphical window
+            $qemuArgs = $qemuArgs -ne "-serial" -ne "mon:stdio" # Remove the default serial arg to replace it
+            $qemuArgs += @("-serial", "stdio", "-serial", "vc", "-device", "virtio-gpu-pci")
         } else {
             $qemuArgs += @("-nographic")
         }
