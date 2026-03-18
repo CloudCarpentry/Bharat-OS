@@ -28,7 +28,9 @@ typedef enum {
     FBUI_WIDGET_LABEL,
     FBUI_WIDGET_BUTTON,
     FBUI_WIDGET_PROGRESS,
-    FBUI_WIDGET_PANEL
+    FBUI_WIDGET_PANEL,
+    FBUI_WIDGET_SLIDER,
+    FBUI_WIDGET_CHECKBOX
 } fbui_widget_type_t;
 
 struct fbui_widget;
@@ -74,5 +76,7 @@ bool fbui_widget_hit_test(const fbui_widget_t *w, int px, int py);
 fbui_widget_t* fbui_create_button(int x, int y, int w, int h, const char *text);
 fbui_widget_t* fbui_create_label(int x, int y, int w, int h, const char *text);
 fbui_widget_t* fbui_create_progress(int x, int y, int w, int h, float value);
+fbui_widget_t* fbui_create_slider(int x, int y, int w, int h, float value);
+fbui_widget_t* fbui_create_checkbox(int x, int y, int w, int h, bool checked);
 
 #endif // BHARAT_FBUI_WIDGETS_H

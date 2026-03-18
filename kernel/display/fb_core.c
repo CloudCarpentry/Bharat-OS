@@ -1,5 +1,6 @@
 #include "bharat/display/display.h"
-#include <string.h>
+#include <stddef.h>
+#include <stdint.h>
 
 #define BHARAT_MAX_DISPLAYS 4
 

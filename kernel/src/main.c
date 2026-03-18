@@ -442,6 +442,10 @@ void kernel_main(void) {
     kernel_tester_app();
 
     /* Bharat-OS Feature Showcase Demo */
+    extern void bharat_demo_app_legacy(void);
+    bharat_demo_app_legacy();
+
+    /* FBUI Demo */
     extern void bharat_demo_app(void);
     bharat_demo_app();
 
