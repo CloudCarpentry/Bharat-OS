@@ -1,4 +1,5 @@
 #include "benchmark/benchmark.h"
+#include "arch/capabilities.h"
 #include <stdio.h>
 
 #if defined(__unix__) || defined(__linux__) || defined(__APPLE__)
@@ -59,6 +60,28 @@ void benchmark_stop(benchmark_ctx_t* ctx) {
     ctx->end_memory = benchmark_get_memory_usage();
 }
 
+static uint32_t benchmark_pack_hw_caps(void) {
+    uint32_t caps = 0;
+
+    if (g_arch_caps.has_avx2) {
+        caps |= (1u << 0);
+    }
+    if (g_arch_caps.has_fma) {
+        caps |= (1u << 1);
+    }
+    if (g_arch_caps.has_aes) {
+        caps |= (1u << 2);
+    }
+    if (g_arch_caps.has_vector) {
+        caps |= (1u << 3);
+    }
+    if (g_arch_caps.has_crypto) {
+        caps |= (1u << 4);
+    }
+
+    return caps;
+}
+
 void benchmark_record(const benchmark_ctx_t* ctx, benchmark_result_t* out_result) {
     if (!ctx || !out_result) return;
 
@@ -72,7 +95,7 @@ void benchmark_record(const benchmark_ctx_t* ctx, benchmark_result_t* out_result
     out_result->memory_overhead = (ctx->end_memory > ctx->start_memory) ? (ctx->end_memory - ctx->start_memory) : 0;
 
     out_result->level = ctx->level;
-    out_result->hw_caps = 0; // TODO: Fetch from `g_arch_caps` later
+    out_result->hw_caps = benchmark_pack_hw_caps();
 }
 
 void benchmark_print(const benchmark_result_t* result, const char* name) {
@@ -84,5 +107,17 @@ void benchmark_print(const benchmark_result_t* result, const char* name) {
     printf("Cycles    : %llu cycles/op\n", (unsigned long long)result->cycles);
     printf("Throughput: %llu ops/sec\n", (unsigned long long)result->throughput);
     printf("Mem Overhead: %llu bytes\n", (unsigned long long)result->memory_overhead);
+    printf("HW Caps   : 0x%08x", result->hw_caps);
+    if (result->hw_caps) {
+        printf(" (");
+        int first = 1;
+        if (result->hw_caps & (1u << 0)) { printf("%sAVX2", first ? "" : ", "); first = 0; }
+        if (result->hw_caps & (1u << 1)) { printf("%sFMA", first ? "" : ", "); first = 0; }
+        if (result->hw_caps & (1u << 2)) { printf("%sAES", first ? "" : ", "); first = 0; }
+        if (result->hw_caps & (1u << 3)) { printf("%sVector", first ? "" : ", "); first = 0; }
+        if (result->hw_caps & (1u << 4)) { printf("%sCrypto", first ? "" : ", "); first = 0; }
+        printf(")");
+    }
+    printf("\n");
     printf("---------------------------\n");
 }
