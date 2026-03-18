@@ -107,6 +107,14 @@ int main(void) {
     assert(vfs_open_file("/", VFS_OPEN_READ, &good_cap, &read_fd) == 0);
     assert(vfs_read_file(read_fd, read_buf, 4, &good_cap) == 4);
     assert(memcmp(read_buf, "test", 4) == 0);
+
+    // Verify that a file opened as write-only cannot be read from
+    int write_only_fd;
+    assert(vfs_open_file("/", VFS_OPEN_WRITE, &good_cap, &write_only_fd) == 0);
+    // Read should be denied because handle lacks VFS_OPEN_READ, even though good_cap has CAP_RIGHT_READ
+    assert(vfs_read_file(write_only_fd, read_buf, 4, &good_cap) == -1);
+    assert(vfs_close_file(write_only_fd, &good_cap) == 0);
+
     assert(vfs_close_file(read_fd, &good_cap) == 0);
 
     // Close should be denied for bad object
