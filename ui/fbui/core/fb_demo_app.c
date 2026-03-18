@@ -15,15 +15,6 @@
 #define DUMMY_FB_HEIGHT 240
 static uint32_t dummy_vram[DUMMY_FB_WIDTH * DUMMY_FB_HEIGHT];
 
-static bharat_display_mode_t dummy_mode = {
-    .width = DUMMY_FB_WIDTH,
-    .height = DUMMY_FB_HEIGHT,
-    .stride = DUMMY_FB_WIDTH * 4,
-    .bpp = 32,
-    .format = BHARAT_PIXEL_FORMAT_ARGB8888,
-    .refresh_rate = 60
-};
-
 static bharat_display_device_t dummy_display = {
     .name = "Dummy Display",
     .id = 0,
