@@ -4,7 +4,6 @@
 #include "../../../../include/mm.h"
 #include "../../../../include/numa.h"
 #include "../../../../include/mm/numa_policy.h"
-#include "../../../../include/console.h"
 #include "../../../../include/slab.h"
 
 // ============================================================================

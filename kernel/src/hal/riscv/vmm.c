@@ -18,10 +18,6 @@ typedef struct {
     uint64_t entries[512];
 } pte_table_t;
 
-static virt_addr_t align_down(virt_addr_t value) {
-    return value & ~(virt_addr_t)(PAGE_SIZE - 1U);
-}
-
 
 
 #include "../../../include/hal/hal_pt.h"
@@ -37,10 +33,6 @@ static uint64_t hal_get_satp(void) {
     __asm__ volatile("csrr %0, satp" : "=r"(satp));
     // Extracts physical address from satp (assuming Sv39, ppn is lower 44 bits)
     return (satp & ((1ULL << 44) - 1)) << 12;
-}
-
-static void hal_sfence_vma(virt_addr_t vaddr) {
-    __asm__ volatile("sfence.vma %0" :: "r"(vaddr) : "memory");
 }
 
 int hal_vmm_map_page(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {

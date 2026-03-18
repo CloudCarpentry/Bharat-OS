@@ -47,6 +47,8 @@ static void label_draw(fbui_widget_t *w, fbui_render_context_t *ctx) {
 }
 
 static bool label_handle_event(fbui_widget_t *w, const fbui_event_t *ev) {
+    (void)w;
+    (void)ev;
     return false; // Labels usually don't consume events
 }
 
