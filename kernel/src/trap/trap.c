@@ -39,8 +39,33 @@ extern bool core_is_rt(void);
 
 static kprocess_t g_syscall_proc;
 
+// Architectural guardrail: The `g_syscall_proc` singleton is a bootstrap fallback only.
+// In steady state, syscalls and faults must resolve authority against the current thread/process.
+// Cross-core URPC processing in the trap return path is strictly bounded and local.
+
 static capability_table_t *trap_current_cap_table(void) {
+  capability_table_t *table = sched_current_cap_table();
+  if (table) {
+    return table;
+  }
+  // Fallback for early bootstrap when no user context exists
   return (capability_table_t *)g_syscall_proc.security_sandbox_ctx;
+}
+
+static kprocess_t *trap_current_process(void) {
+  kprocess_t *proc = sched_current_process();
+  if (proc) {
+    return proc;
+  }
+  return &g_syscall_proc;
+}
+
+static address_space_t *trap_current_aspace(void) {
+  address_space_t *as = sched_current_aspace();
+  if (as) {
+    return as;
+  }
+  return g_syscall_proc.addr_space;
 }
 
 static int trap_user_ptr_valid(uint64_t ptr) {
@@ -91,7 +116,7 @@ long syscall_dispatch(syscall_id_t id, uint64_t arg0, uint64_t arg1,
       return TRAP_ERR_INVAL;
     }
     return (long)sched_sys_thread_create(
-        &g_syscall_proc, (void (*)(void))(uintptr_t)arg0, out_tid);
+        trap_current_process(), (void (*)(void))(uintptr_t)arg0, out_tid);
   }
   case SYSCALL_THREAD_DESTROY:
     return (long)sched_sys_thread_destroy(arg0);
@@ -187,7 +212,7 @@ long trap_handle(trap_frame_t *frame) {
     if (current && current->process_id != 0) {
       // Address space from current process
       // For proper hardware demand-paging, we call into the VMM.
-      int rc = vmm_handle_cow_fault(g_syscall_proc.addr_space, stval);
+      int rc = vmm_handle_cow_fault(trap_current_aspace(), stval);
       if (rc == 0) {
           return 0;
       }
@@ -229,7 +254,7 @@ long trap_handle(trap_frame_t *frame) {
     if (current && current->process_id != 0) {
       // Address space from current process
       // For proper hardware demand-paging, we call into the VMM.
-      int rc = vmm_handle_cow_fault(g_syscall_proc.addr_space, cr2);
+      int rc = vmm_handle_cow_fault(trap_current_aspace(), cr2);
       if (rc == 0) {
           return 0;
       }
@@ -284,7 +309,7 @@ long trap_handle(trap_frame_t *frame) {
       }
 
       // For proper hardware demand-paging, we call into the VMM.
-      int rc = vmm_handle_cow_fault(g_syscall_proc.addr_space, far);
+      int rc = vmm_handle_cow_fault(trap_current_aspace(), far);
       if (rc == 0) {
           return 0;
       }
@@ -316,8 +341,10 @@ long trap_handle(trap_frame_t *frame) {
 
   // Before returning to user space, process any pending incoming URPC messages
   // like TLB shootdowns to ensure consistency.
-  extern void vmm_process_urpc_messages(void);
-  vmm_process_urpc_messages();
+  // We process only local messages for the current core to maintain multikernel
+  // architecture separation.
+  extern void vmm_process_local_urpc_messages(uint32_t core_id);
+  vmm_process_local_urpc_messages(hal_cpu_get_id());
 
   if (frame->from_user == 0U) {
     return TRAP_ERR_PERM;

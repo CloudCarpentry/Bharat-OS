@@ -181,7 +181,7 @@ Bharat-OS embraces the multikernel architecture model (inspired by Barrelfish). 
 
 Features include:
 
-- **Per-CPU State (`cpu_local_t`)**: Each core maintains its own isolated runqueue, capability table, physical memory manager shard, and URPC endpoint configurations. Global arrays have been eliminated.
+- **Per-CPU State (`cpu_local_t`)**: Each core maintains its own isolated runqueue, capability table, physical memory manager shard, and URPC endpoint configurations. Bharat-OS currently uses a hybrid transitional model. Per-core ownership exists for core-local execution state, but global registries still remain for some kernel objects such as thread/process pools. The roadmap target is monitor-mediated per-core ownership and migration.
 - **Monitor Process**: A privileged monitor runs on every core. It acts as the local agent for cross-core coordination, handling URPC messages for memory mapping requests, capability revocations, and lifecycle events.
 - **Dynamic URPC Binding**: Inter-core IPC channels are established dynamically. A core discovers another through the topology and binds a lockless ring buffer using `URPC_BIND_REQ` and `URPC_BIND_ACK` protocols.
 - **System Knowledge Base (SKB)**: Hardware topology (NUMA nodes, L3 caches) is discovered during boot and registered in the SKB. The SKB router uses this topology to pick the optimal interconnect transport mechanism (e.g., pure shared memory URPC for co-located L3 caches vs IPI-assisted for remote NUMA nodes).
