@@ -154,6 +154,11 @@ set(KERNEL_SRCS
     src/sched.c
     src/sched_deg.c
     src/algo_matrix.c
+    src/console/console.c
+    src/console/utf8.c
+    src/console/serial_backend.c
+    src/console/fb_backend.c
+    ../kernel/console/fb_console.c
     ${ARCH_HAL}
     src/hal/common/fdt_parser.c
     src/hal/common/discovery.c
@@ -307,7 +312,7 @@ target_link_options(kernel.elf PRIVATE
     "LINKER:-T,${LINKER_SCRIPT}"
     "LINKER:--build-id=none"
     "LINKER:--no-dynamic-linker"
-    "-fuse-ld=lld"
+    ""
 )
 
 

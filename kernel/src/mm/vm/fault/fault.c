@@ -3,9 +3,9 @@
 #include "../../include/mm/vm_object.h"
 #include "../../include/mm.h"
 #include "../../include/hal/hal_pt.h"
+#include "bharat/console.h"
 
-extern void hal_serial_write(const char *str);
-#define KPRINT(s) hal_serial_write(s)
+#define KPRINT(s) console_write_raw(s)
 
 // Translates `vm_fault_event_t` access flags into the `vm_fault_ctx_t` format
 // and dispatches the fault to the VM object's backend ops.

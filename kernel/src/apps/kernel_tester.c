@@ -4,8 +4,9 @@
 #include "numa.h"
 #include "sched.h"
 #include "tests/ktest.h"
+#include "bharat/console.h"
 
-#define KPRINT(s) hal_serial_write(s)
+#define KPRINT(s) console_write_raw(s)
 
 extern void ktest_pmm_run(void);
 extern void ktest_slab_run(void);
