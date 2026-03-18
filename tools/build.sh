@@ -139,7 +139,7 @@ if [ "$RUN" = true ]; then
         SERIAL_ARGS="-serial mon:stdio"
         if [ "$BOOT_GUI" = "ON" ] || [ "$BOOT_GUI" = "true" ] || [ "$BOOT_GUI" = "1" ]; then
             GUI_ARGS="-vga std"
-            SERIAL_ARGS="-serial stdio -serial vc"
+            SERIAL_ARGS="-serial vc"
         else
             GUI_ARGS="-nographic"
         fi
@@ -156,8 +156,8 @@ if [ "$RUN" = true ]; then
         if [ "$BOOT_GUI" = "ON" ] || [ "$BOOT_GUI" = "true" ] || [ "$BOOT_GUI" = "1" ]; then
             # riscv64 virt has no legacy VGA — VirtIO GPU is the correct device
             GUI_ARGS="-device virtio-gpu-pci"
-            # Route serial output to both the host terminal and a virtual console in the QEMU graphical window
-            SERIAL_ARGS="-serial stdio -serial vc"
+            # Route serial output only to the virtual console in the QEMU graphical window
+            SERIAL_ARGS="-serial vc"
         else
             GUI_ARGS="-nographic"
         fi
@@ -175,8 +175,8 @@ if [ "$RUN" = true ]; then
         if [ "$BOOT_GUI" = "ON" ] || [ "$BOOT_GUI" = "true" ] || [ "$BOOT_GUI" = "1" ]; then
             # arm64 virt has no legacy VGA — VirtIO GPU is the correct device
             GUI_ARGS="-device virtio-gpu-pci"
-            # Route serial output to both the host terminal and a virtual console in the QEMU graphical window
-            SERIAL_ARGS="-serial stdio -serial vc"
+            # Route serial output only to the virtual console in the QEMU graphical window
+            SERIAL_ARGS="-serial vc"
         else
             GUI_ARGS="-nographic"
         fi
