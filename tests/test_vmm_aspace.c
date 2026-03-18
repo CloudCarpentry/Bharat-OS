@@ -1,0 +1,183 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <assert.h>
+#include "../kernel/include/mm/aspace.h"
+#include "../kernel/include/mm/vm_object.h"
+#include "../kernel/include/hal/hal_pt.h"
+
+#define TEST(name) void name()
+#define ASSERT_EQ(a, b) assert((a) == (b))
+#define ASSERT_NE(a, b) assert((a) != (b))
+#define ASSERT_NOT_NULL(a) assert((a) != NULL)
+#define VM_PROT_READ 1
+#define VM_PROT_WRITE 2
+
+extern void hal_pt_init(void);
+
+// Mocks for tests
+hal_pt_ops_t mock_pt_ops = {0};
+
+phys_addr_t mock_create_address_space(phys_addr_t root) {
+    return root;
+}
+
+void mock_destroy_address_space(phys_addr_t root) {
+    (void)root;
+}
+
+// In benchmark_stubs.c there's probably active_hal_pt.
+// We just assign to it.
+void hal_pt_init(void) {
+    mock_pt_ops.create_address_space = mock_create_address_space;
+    mock_pt_ops.destroy_address_space = mock_destroy_address_space;
+    active_hal_pt = &mock_pt_ops;
+}
+
+phys_addr_t vmm_get_kernel_root(void) {
+    return 0x1000;
+}
+
+TEST(aspace_overlap_rejected) {
+    printf("Running aspace_overlap_rejected...\n");
+    address_space_t *as = NULL;
+    ASSERT_EQ(0, aspace_create(&as, 0));
+
+    vm_object_t *obj = vm_object_create_anon(0x4000, 0);
+    ASSERT_NOT_NULL(obj);
+
+    ASSERT_EQ(0, aspace_region_attach(as, 0x100000, 0x2000, VM_PROT_READ, 0,
+                                      VM_INHERIT_COPY_META, obj, 0, NULL));
+
+    ASSERT_NE(0, aspace_region_attach(as, 0x101000, 0x2000, VM_PROT_READ, 0,
+                                      VM_INHERIT_COPY_META, obj, 0, NULL));
+
+    aspace_destroy(as);
+    vm_object_release(obj);
+    printf("Passed aspace_overlap_rejected\n");
+}
+
+TEST(aspace_shared_object_two_spaces) {
+    printf("Running aspace_shared_object_two_spaces...\n");
+    address_space_t *a = NULL, *b = NULL;
+    ASSERT_EQ(0, aspace_create(&a, 0));
+    ASSERT_EQ(0, aspace_create(&b, 0));
+
+    vm_object_t *obj = vm_object_create_shared(0x4000, 0);
+    ASSERT_NOT_NULL(obj);
+
+    uint32_t start_ref = obj->refcount;
+
+    ASSERT_EQ(0, aspace_region_attach(a, 0x200000, 0x2000, VM_PROT_READ|VM_PROT_WRITE, 0,
+                                      VM_INHERIT_SHARE, obj, 0, NULL));
+    ASSERT_EQ(0, aspace_region_attach(b, 0x300000, 0x2000, VM_PROT_READ|VM_PROT_WRITE, 0,
+                                      VM_INHERIT_SHARE, obj, 0, NULL));
+
+    vm_region_t *ra = aspace_lookup_region(a, 0x200100);
+    vm_region_t *rb = aspace_lookup_region(b, 0x300100);
+
+    ASSERT_NOT_NULL(ra);
+    ASSERT_NOT_NULL(rb);
+    ASSERT_EQ(ra->object, rb->object);
+    ASSERT_EQ(obj->refcount, start_ref + 2);
+
+    aspace_destroy(a);
+    aspace_destroy(b);
+    vm_object_release(obj);
+    printf("Passed aspace_shared_object_two_spaces\n");
+}
+
+TEST(aspace_clone_copies_metadata) {
+    printf("Running aspace_clone_copies_metadata...\n");
+    address_space_t *src = NULL, *dst = NULL;
+    ASSERT_EQ(0, aspace_create(&src, 0));
+
+    vm_object_t *anon = vm_object_create_anon(0x8000, 0);
+    vm_object_t *shared = vm_object_create_shared(0x4000, 0);
+
+    ASSERT_EQ(0, aspace_region_attach(src, 0x400000, 0x3000, VM_PROT_READ|VM_PROT_WRITE, 0,
+                                      VM_INHERIT_COPY_META, anon, 0x1000, NULL));
+    ASSERT_EQ(0, aspace_region_attach(src, 0x500000, 0x2000, VM_PROT_READ, 0,
+                                      VM_INHERIT_SHARE, shared, 0, NULL));
+
+    ASSERT_EQ(0, aspace_clone(src, &dst, 0));
+
+    vm_region_t *r1 = aspace_lookup_region(dst, 0x400100);
+    vm_region_t *r2 = aspace_lookup_region(dst, 0x500100);
+
+    ASSERT_NOT_NULL(r1);
+    ASSERT_NOT_NULL(r2);
+    ASSERT_EQ(r1->base, 0x400000u);
+    ASSERT_EQ(r1->length, 0x3000u);
+    ASSERT_EQ(r1->object, anon);
+    ASSERT_EQ(r1->object_offset, 0x1000u);
+
+    ASSERT_EQ(r2->object, shared);
+
+    aspace_destroy(dst);
+    aspace_destroy(src);
+    vm_object_release(anon);
+    vm_object_release(shared);
+    printf("Passed aspace_clone_copies_metadata\n");
+}
+
+TEST(aspace_teardown_releases_refs) {
+    printf("Running aspace_teardown_releases_refs...\n");
+    address_space_t *as = NULL, *clone = NULL;
+    ASSERT_EQ(0, aspace_create(&as, 0));
+
+    vm_object_t *obj = vm_object_create_shared(0x4000, 0);
+    ASSERT_NOT_NULL(obj);
+    ASSERT_EQ(obj->refcount, 1u);
+
+    ASSERT_EQ(0, aspace_region_attach(as, 0x600000, 0x2000, VM_PROT_READ, 0,
+                                      VM_INHERIT_SHARE, obj, 0, NULL));
+    ASSERT_EQ(obj->refcount, 2u);
+
+    ASSERT_EQ(0, aspace_clone(as, &clone, 0));
+    ASSERT_EQ(obj->refcount, 3u);
+
+    aspace_destroy(clone);
+    ASSERT_EQ(obj->refcount, 2u);
+
+    aspace_destroy(as);
+    ASSERT_EQ(obj->refcount, 1u);
+
+    vm_object_release(obj);
+    printf("Passed aspace_teardown_releases_refs\n");
+}
+
+TEST(aspace_lookup_authoritative_without_pt_mapping) {
+    printf("Running aspace_lookup_authoritative_without_pt_mapping...\n");
+    address_space_t *as = NULL;
+    ASSERT_EQ(0, aspace_create(&as, 0));
+
+    vm_object_t *obj = vm_object_create_anon(0x4000, 0);
+
+    ASSERT_EQ(0, aspace_region_attach(as, 0x700000, 0x2000, VM_PROT_READ|VM_PROT_WRITE, 0,
+                                      VM_INHERIT_COPY_META, obj, 0x100, NULL));
+
+    vm_region_t *r = aspace_lookup_region(as, 0x700100);
+    uint64_t off = 0;
+    vm_object_t *found = aspace_lookup_object(as, 0x700100, NULL, &off);
+
+    ASSERT_NOT_NULL(r);
+    ASSERT_EQ(found, obj);
+    ASSERT_EQ(off, 0x200u); // 0x100 (offset) + 0x100 (va - base)
+
+    aspace_destroy(as);
+    vm_object_release(obj);
+    printf("Passed aspace_lookup_authoritative_without_pt_mapping\n");
+}
+
+int main() {
+    hal_pt_init(); // Needs mock
+
+    aspace_overlap_rejected();
+    aspace_shared_object_two_spaces();
+    aspace_clone_copies_metadata();
+    aspace_teardown_releases_refs();
+    aspace_lookup_authoritative_without_pt_mapping();
+
+    printf("All ASPACE tests passed successfully!\n");
+    return 0;
+}
