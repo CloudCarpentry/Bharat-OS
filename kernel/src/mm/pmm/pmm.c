@@ -9,7 +9,7 @@
 
 // Multiboot only for x86_64
 #if defined(__x86_64__)
-#include "../boot/x86_64/multiboot2.h"
+#include "../../boot/x86_64/multiboot2.h"
 #endif
 
 #include "../../include/hal/hal.h"
