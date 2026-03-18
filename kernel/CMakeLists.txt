@@ -90,7 +90,7 @@ elseif(ARCH STREQUAL "riscv64")
     set(ARCH_HAL_EXTRA src/hal/riscv/shakti_bsp.c)
     # VirtIO GPU display driver: only for qemu-virt + GUI enabled
     if(BHARAT_BOOT_GUI AND "${BHARAT_RISCV_SOC_PROFILE}" STREQUAL "qemu-virt")
-        list(APPEND ARCH_HAL src/hal/riscv/virtio_gpu.c)
+        #list(APPEND ARCH_HAL src/hal/riscv/virtio_gpu.c)
         add_compile_definitions(BHARAT_VIRTIO_GPU=1)
     endif()
     set(ARCH_CONTEXT_SWITCH src/arch/riscv64/context_switch.c src/arch/riscv64/context_switch.S)
@@ -158,20 +158,23 @@ set(KERNEL_SRCS
     src/arch/${ARCH}/ext_state.c
     src/hal/mmu_init.c
     src/hal/iommu_stub.c
-    src/mm/pmm.c
-    src/mm/early_alloc.c
-    src/mm/slab.c
-    src/mm/kmem_aligned.c
-    src/mm/vmm.c
-    src/mm/aspace.c
-    src/mm/vm_object.c
-    src/mm/fault.c
-    src/mm/numa.c
-    src/mm/numa_policy.c
-    src/mm/dma.c
+    src/mm/pmm/pmm.c
+    src/mm/pmm/early_alloc.c
+    src/mm/pmm/slab.c
+    src/mm/pmm/kmem_aligned.c
+    src/mm/vmm_legacy/vmm.c
+    src/mm/vmm_legacy/vm_mapping.c
+    src/mm/vmm_legacy/vm_compat_vmm.c
+    src/mm/vm/aspace/aspace.c
+    src/mm/vm/aspace/vm_space.c
+    src/mm/vm/objects/vm_object.c
+    src/mm/vm/fault/fault.c
+    src/mm/pmm/numa.c
+    src/mm/pmm/numa_policy.c
+    src/mm/dma/dma.c
     src/mm/zswap.c
-    src/mm/mm_local.c
-    src/mm/mm_remote.c
+    src/mm/vmm_legacy/mm_local.c
+    src/mm/vmm_legacy/mm_remote.c
     src/urpc/urpc_bootstrap.c
     src/urpc/urpc_channel.c
     src/security/isolation.c

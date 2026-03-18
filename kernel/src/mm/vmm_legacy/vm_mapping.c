@@ -1,10 +1,28 @@
 #include "../../include/mm/vm_space.h"
-#include "../../include/mm/vm_mapping.h"
-#include "../../include/mm/arch_vm.h"
-#include "../../include/monitor/mon_vm_ops.h"
-#include "../../include/hal/hal.h"
-#include "../../include/mm.h"
+#include "../../../include/mm/vm_mapping.h"
+#include "../../../include/mm/vm_space.h"
+#include "../../../include/monitor/mon_vm_ops.h"
+#include "../../../include/hal/hal.h"
+#include "../../../include/mm.h"
+#include "../../../include/slab.h"
+#include "../../../include/spinlock.h"
+#include "../../../include/kernel_safety.h"
+#include "../../../include/multicore.h"
+#include "../../../include/mm/arch_vm.h"
 #include <stddef.h>
+
+// Mock hal_get_core_id if it's not defined
+#ifndef hal_get_core_id
+extern uint32_t hal_get_core_id(void);
+#endif
+
+// Mock spinlock_acquire/release if they are not defined in spinlock.h
+#ifndef spinlock_acquire
+#define spinlock_acquire spin_lock
+#endif
+#ifndef spinlock_release
+#define spinlock_release spin_unlock
+#endif
 
 int vm_map(vm_space_t *space, const vm_map_req_t *req) {
     if (!space || !req) return -1;

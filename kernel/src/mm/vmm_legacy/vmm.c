@@ -1,8 +1,9 @@
 #include "../../include/mm.h"
 #include "../../include/numa.h"
 #include "../../include/hal/hal.h"
-#include "../../include/hal/vmm.h"
-#include "../../include/hal/mmu_ops.h"
+#include "../../../include/hal/hal_pt.h"
+#include "../../../include/hal/hal_tlb.h"
+#include "../../../include/hal/mmu_ops.h"
 #include "../../include/advanced/formal_verif.h"
 #include "../../include/sched.h"
 #include "../../include/capability.h"
@@ -125,7 +126,7 @@ int mm_vmm_map_page(address_space_t* as, virt_addr_t vaddr, phys_addr_t paddr, u
 
     phys_addr_t existing_paddr = 0U;
     uint32_t existing_flags = 0U;
-    if (hal_vmm_get_mapping(as->root_pt, vaddr, &existing_paddr, &existing_flags) == 0) {
+    if (active_hal_pt && active_hal_pt->query_page(as->root_pt, vaddr, &existing_paddr, &existing_flags) == 0) {
         (void)existing_flags;
         if (existing_paddr != paddr) {
             return -2;

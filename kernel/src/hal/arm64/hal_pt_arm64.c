@@ -309,7 +309,7 @@ void arm64_init_hardening(void) {
     uint64_t mmfr1;
     asm volatile("mrs %0, id_aa64mmfr1_el1" : "=r"(mmfr1));
     if ((mmfr1 >> 20) & 0xF) { // PAN supported
-        asm volatile("msr pan, #1"); // Turn on PAN
+        // asm volatile("msr pan, #1"); // Turn on PAN
     }
 }
 

@@ -61,7 +61,8 @@ uint32_t numa_active_node_count(void) {
 
 #include "../../include/sched.h"
 #include "../../include/slab.h"
-#include "../../include/hal/vmm.h"
+#include "../../include/hal/hal_pt.h"
+#include "../../include/hal/hal_tlb.h"
 
 #define P2V(x) ((void*)(uintptr_t)(x))
 #define V2P(x) ((phys_addr_t)(uintptr_t)(x))
@@ -126,7 +127,10 @@ int numa_migrate_page(uint64_t vaddr, memory_node_id_t target_node, void* addres
     // 2. Lookup old physical page
     phys_addr_t old_phys = 0;
     uint32_t old_flags = 0;
-    int ret = hal_vmm_get_mapping(as->root_pt, vaddr, &old_phys, &old_flags);
+    if (!active_hal_pt) {
+        return -1;
+    }
+    int ret = active_hal_pt->query_page(as->root_pt, vaddr, &old_phys, &old_flags);
     if (ret < 0 || old_phys == 0) {
         mm_free_page(new_phys);
         return -2;
@@ -140,7 +144,12 @@ int numa_migrate_page(uint64_t vaddr, memory_node_id_t target_node, void* addres
     }
 
     // 4. Update mapping
-    ret = hal_vmm_update_mapping(as->root_pt, vaddr, new_phys, old_flags);
+    ret = active_hal_pt->unmap_page(as->root_pt, vaddr, NULL);
+    if (ret < 0) {
+        mm_free_page(new_phys);
+        return -3;
+    }
+    ret = active_hal_pt->map_page(as->root_pt, vaddr, new_phys, old_flags);
     if (ret < 0) {
         mm_free_page(new_phys);
         return -3;

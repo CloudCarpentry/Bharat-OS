@@ -1,8 +1,7 @@
-#include "../../include/mm.h"
-#include "../../include/hal/vmm.h"
-#include "../../include/mm/vm_space.h"
-#include "../../include/mm/vm_mapping.h"
-#include "../../include/mm/arch_vm.h"
+#include "../../../include/mm.h"
+#include "../../../include/mm/vm_space.h"
+#include "../../../include/mm/vm_mapping.h"
+#include "../../../include/mm/arch_vm.h"
 #include <stddef.h>
 
 /*

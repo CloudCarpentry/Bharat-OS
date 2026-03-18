@@ -244,7 +244,7 @@ static inline void write_cr4(uint64_t val) {
 
 static inline uint64_t read_cr4(void) {
     uint64_t val;
-    asm volatile("mov %%cr4, %0" : "=r"(val) : "memory");
+    asm volatile("mov %%cr4, %0" : "=r"(val));
     return val;
 }
 
