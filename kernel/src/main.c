@@ -26,6 +26,7 @@
 #include "display/boot_gui_init.h"
 #include "tests/ktest.h"
 #include <bharat/cpu_local.h>
+#include "bharat/console.h"
 
 #include "arch/arch_ext_state.h"
 #include "arch/arch_cpu_caps.h"
@@ -37,8 +38,10 @@
 #include "hal/riscv_bsp.h"
 #endif
 
-#define KPRINT(s) hal_serial_write(s)
+#define KPRINT(s) console_write_raw(s)
 #define CAP_RIGHT_IPC_ENDPOINT 0x1U
+
+extern void console_register_serial_backend(void);
 
 typedef struct {
   uint32_t cap_id;
@@ -127,7 +130,7 @@ static void kernel_phase2_hello_service_smoke(void) {
 
   if (reply.msg_len > 0U && reply.payload[0] != '\0') {
     KPRINT("P2: ipc reply received payload=");
-    hal_serial_write(reply.payload);
+    console_write_raw(reply.payload);
     KPRINT("\nP2: hello ipc smoke test passed\n");
   } else {
     KPRINT("P2: hello ipc smoke test failed\n");
@@ -201,8 +204,9 @@ void kernel_main(void) {
   hal_riscv_set_boot_info(hart_id, (uint64_t)fdt_ptr);
 #endif
 
-  /* Initialize serial early to allow KPRINT to work immediately */
-  hal_serial_init();
+  /* Initialize core console layer and serial backend early to allow KPRINT to work immediately */
+  console_init();
+  console_register_serial_backend();
 
 #if defined(__x86_64__)
   if (magic == MULTIBOOT2_BOOTLOADER_MAGIC && mb_info != NULL) {
@@ -398,6 +402,8 @@ void kernel_main(void) {
     } else {
       KPRINT("  [UI] Boot GUI not available, text mode only.\n");
     }
+    extern void console_register_fb_backend(void);
+    console_register_fb_backend();
 #endif /* BHARAT_BOOT_GUI */
 
     KPRINT("  [AI] Calibrating hardware silicon metrics...\n");
@@ -429,9 +435,9 @@ void kernel_main(void) {
     extern void kernel_run_boot_tests(void);
     kernel_run_boot_tests();
 
-    hal_serial_write("[bharat] hw_profile=");
-    hal_serial_write(profile);
-    hal_serial_write("\n");
+    console_write_raw("[bharat] hw_profile=");
+    console_write_raw(profile);
+    console_write_raw("\n");
 
     /* Hello World Application */
     extern void hello_world_app(void);

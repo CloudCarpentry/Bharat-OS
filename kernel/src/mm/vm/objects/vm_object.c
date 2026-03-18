@@ -2,7 +2,7 @@
 #include "../../include/mm.h"
 #include "../../include/numa.h"
 #include "../../include/mm/numa_policy.h"
-#include "../../include/console.h"
+#include "bharat/console.h"
 
 // Basic slab allocator or kmalloc substitute for region nodes
 #include "../../include/slab.h"
