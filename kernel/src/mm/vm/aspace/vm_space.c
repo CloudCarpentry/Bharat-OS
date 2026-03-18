@@ -1,11 +1,28 @@
-#include "../../include/mm/vm_space.h"
-#include "../../include/mm/arch_vm.h"
-#include "../../include/mm.h"
-#include "../../include/bharat/cpu_local.h"
-#include "../../include/mm.h"
-#include "../../include/monitor/mon_vm_ops.h"
-#include "../../include/hal/hal.h"
+#include "../../../../include/mm/vm_space.h"
+#include "../../../../include/mm/arch_vm.h"
+#include "../../../../include/mm.h"
+#include "../../../../include/monitor/mon_vm_ops.h"
+#include "../../../../include/hal/hal.h"
+#include "../../../../include/slab.h"
+#include "../../../../include/spinlock.h"
+#include "../../../../include/bharat/cpu_local.h"
 #include <stddef.h>
+
+// Mock hal_get_core_id if it's not defined
+#ifndef hal_get_core_id
+extern uint32_t hal_get_core_id(void);
+#endif
+
+// Mock spinlock_acquire/release if they are not defined in spinlock.h
+#ifndef spinlock_acquire
+#define spinlock_acquire spin_lock
+#endif
+#ifndef spinlock_release
+#define spinlock_release spin_unlock
+#endif
+#ifndef spinlock_init
+#define spinlock_init spin_lock_init
+#endif
 #include <stdint.h>
 
 const arch_vm_ops_t* active_arch_vm_ops = NULL;

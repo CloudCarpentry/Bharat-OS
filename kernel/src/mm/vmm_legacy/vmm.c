@@ -1,14 +1,15 @@
-#include "../../include/mm.h"
-#include "../../include/numa.h"
-#include "../../include/hal/hal.h"
-#include "../../include/hal/vmm.h"
-#include "../../include/hal/mmu_ops.h"
-#include "../../include/advanced/formal_verif.h"
-#include "../../include/sched.h"
-#include "../../include/capability.h"
-#include "../../include/mm_zswap.h"
-#include "../../include/mm/address_token.h"
-#include "../../include/security/isolation.h"
+#include "../../../include/mm.h"
+#include "../../../include/numa.h"
+#include "../../../include/hal/hal.h"
+#include "../../../include/hal/hal_pt.h"
+#include "../../../include/hal/hal_tlb.h"
+#include "../../../include/hal/mmu_ops.h"
+#include "../../../include/advanced/formal_verif.h"
+#include "../../../include/sched.h"
+#include "../../../include/capability.h"
+#include "../../../include/mm_zswap.h"
+#include "../../../include/mm/address_token.h"
+#include "../../../include/security/isolation.h"
 
 // @cite L4 Microkernels: The Lessons from 20 Years of Research and Implementation (Klein & Andronick, 2016)
 // L4 minimal memory mapping model: Kernel only maps/unmaps physical pages, policy lives in user space.
@@ -34,11 +35,11 @@ static mmu_flags_t convert_vmm_flags(uint32_t flags) {
     return mmu_flags;
 }
 
-#include "../../include/profile.h"
-#include "../../include/urpc/urpc_bootstrap.h"
-#include "bharat/urpc.h"
-#include "../../include/mm/mm_remote.h"
-#include "../../include/bharat/cpu_local.h"
+#include "../../../include/profile.h"
+#include "../../../include/urpc/urpc_bootstrap.h"
+#include "../../../include/bharat/urpc.h"
+#include "../../../include/mm/mm_remote.h"
+#include "../../../include/bharat/cpu_local.h"
 
 #ifndef KERNEL_AS_ID
 #define KERNEL_AS_ID 0
@@ -125,7 +126,7 @@ int mm_vmm_map_page(address_space_t* as, virt_addr_t vaddr, phys_addr_t paddr, u
 
     phys_addr_t existing_paddr = 0U;
     uint32_t existing_flags = 0U;
-    if (hal_vmm_get_mapping(as->root_pt, vaddr, &existing_paddr, &existing_flags) == 0) {
+    if (active_hal_pt && active_hal_pt->query_page(as->root_pt, vaddr, &existing_paddr, &existing_flags) == 0) {
         (void)existing_flags;
         if (existing_paddr != paddr) {
             return -2;
