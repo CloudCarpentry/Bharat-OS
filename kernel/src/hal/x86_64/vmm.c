@@ -203,8 +203,16 @@ static int x86_mmu_query(phys_addr_t root, virt_addr_t virt, phys_addr_t *phys_o
     return ret;
 }
 
+bool g_x86_pcid_supported = false;
+
 static void x86_mmu_activate(phys_addr_t root) {
-    __asm__ volatile("mov %0, %%cr3" :: "r"((uintptr_t)root) : "memory");
+    if (g_x86_pcid_supported) {
+        // Assume PCID is 1 for now if enabled
+        uintptr_t cr3 = ((uintptr_t)root) | 1;
+        __asm__ volatile("mov %0, %%cr3" :: "r"(cr3) : "memory");
+    } else {
+        __asm__ volatile("mov %0, %%cr3" :: "r"((uintptr_t)root) : "memory");
+    }
 }
 
 static void x86_mmu_deactivate(void) {
@@ -218,11 +226,24 @@ static void x86_mmu_tlb_flush_page(virt_addr_t virt) {
 static void x86_mmu_tlb_flush_all(void) {
     uintptr_t cr3;
     __asm__ volatile("mov %%cr3, %0" : "=r"(cr3));
+    if (g_x86_pcid_supported) {
+        // Clear bit 63 to flush
+        cr3 &= ~(1ULL << 63);
+    }
     __asm__ volatile("mov %0, %%cr3" :: "r"(cr3) : "memory");
 }
 
 static void x86_mmu_tlb_flush_asid(uint16_t asid) {
-    (void)asid; // Not using PCID in baseline right now
+    if (g_x86_pcid_supported) {
+        // Type 1 flush: single PCID
+        struct {
+            uint64_t pcid: 12;
+            uint64_t reserved: 52;
+        } desc = { .pcid = asid, .reserved = 0 };
+        __asm__ volatile("invpcid %0, %1" :: "m"(desc), "r"(1ULL) : "memory");
+    } else {
+        x86_mmu_tlb_flush_all();
+    }
 }
 
 static size_t x86_huge_pages[] = {0x200000, 0x40000000, 0}; // 2MB, 1GB
@@ -245,12 +266,27 @@ mmu_ops_t x86_64_mmu_ops = {
     .huge_page_sizes  = x86_huge_pages,
     .levels           = 4,
     .has_nx           = true,
-    .asid_bits        = 0, // Not using PCID initially
+    .asid_bits        = 12, // Using PCID
     .has_user_kernel_split = false, // x86 usually uses a shared address space with user/supervisor bits
 };
 
+// basic cpuid wrapper
+static inline void cpuid(uint32_t leaf, uint32_t subleaf, uint32_t *eax, uint32_t *ebx, uint32_t *ecx, uint32_t *edx) {
+    __asm__ volatile("cpuid" : "=a"(*eax), "=b"(*ebx), "=c"(*ecx), "=d"(*edx) : "0"(leaf), "2"(subleaf));
+}
+
 void x86_mmu_detect(mmu_ops_t *ops) {
-    // Stub for CPUID detection (e.g., 1GB pages, LA57)
-    // Could read CPUID to modify ops->levels or ops->huge_page_sizes
-    (void)ops;
+    uint32_t eax, ebx, ecx, edx;
+    cpuid(1, 0, &eax, &ebx, &ecx, &edx);
+    if (ecx & (1 << 17)) {
+        g_x86_pcid_supported = true;
+        // Enable PCID in CR4 (bit 17)
+        uint64_t cr4;
+        __asm__ volatile("mov %%cr4, %0" : "=r"(cr4));
+        cr4 |= (1ULL << 17);
+        __asm__ volatile("mov %0, %%cr4" :: "r"(cr4) : "memory");
+    } else {
+        g_x86_pcid_supported = false;
+        ops->asid_bits = 0;
+    }
 }

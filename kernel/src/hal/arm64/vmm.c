@@ -313,6 +313,9 @@ mmu_ops_t arm64_mmu_ops = {
 void arm64_mmu_detect(mmu_ops_t *ops) {
     // Stub for runtime detection (e.g. read id_aa64mmfr0_el1)
     (void)ops;
+
+    extern void arm64_init_hardening(void);
+    arm64_init_hardening();
 }
 
 int hal_vmm_unmap_page(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t* unmapped_paddr) {
