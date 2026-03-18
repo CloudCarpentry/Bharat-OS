@@ -12,16 +12,27 @@ typedef enum {
     CAP_OBJ_MEMORY = 2,
     CAP_OBJ_SCHED = 3,
     CAP_OBJ_PROCESS = 4,
+    CAP_OBJ_CRYPTO_ENDPOINT = 5,
+    CAP_OBJ_CRYPTO_DEVICE = 6,
+    CAP_OBJ_CRYPTO_KEY = 7,
+    CAP_OBJ_RNG = 8,
+    CAP_OBJ_SEALER = 9,
 } cap_object_type_t;
 
 typedef enum {
-    CAP_PERM_NONE      = 0,
-    CAP_PERM_SEND      = (1U << 0),
-    CAP_PERM_RECEIVE   = (1U << 1),
-    CAP_PERM_MAP       = (1U << 2),
-    CAP_PERM_UNMAP     = (1U << 3),
-    CAP_PERM_SCHEDULE  = (1U << 4),
-    CAP_PERM_DELEGATE  = (1U << 5),
+    CAP_PERM_NONE                 = 0,
+    CAP_PERM_SEND                 = (1U << 0),
+    CAP_PERM_RECEIVE              = (1U << 1),
+    CAP_PERM_MAP                  = (1U << 2),
+    CAP_PERM_UNMAP                = (1U << 3),
+    CAP_PERM_SCHEDULE             = (1U << 4),
+    CAP_PERM_DELEGATE             = (1U << 5),
+    CAP_PERM_CRYPT_USE            = (1U << 6),
+    CAP_PERM_CRYPT_DERIVE         = (1U << 7),
+    CAP_PERM_CRYPT_SIGN           = (1U << 8),
+    CAP_PERM_CRYPT_DECRYPT        = (1U << 9),
+    CAP_PERM_CRYPT_EXPORT_WRAPPED = (1U << 10),
+    CAP_PERM_CRYPT_ADMIN          = (1U << 11),
 } cap_perm_t;
 
 typedef struct capability_entry {
