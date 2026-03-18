@@ -6,6 +6,12 @@ void kernel_panic(const char *message);
 
 mm_mailbox_slot_t g_mm_mailboxes[64];
 
+void init_mm_mailboxes(void) {
+    for (int i = 0; i < 64; i++) {
+        spin_lock_init(&g_mm_mailboxes[i].lock);
+    }
+}
+
 // Remote TLB operations (fire-and-forget)
 void mm_remote_tlb_flush(uint32_t target_core, uint64_t as_id, virt_addr_t va) {
     // KASSERT(!in_urpc_handler() || !core_is_rt()); // RT cores shouldn't initiate blocking/complex remote requests inside handlers
@@ -28,7 +34,7 @@ void mm_remote_tlb_flush(uint32_t target_core, uint64_t as_id, virt_addr_t va) {
         mailbox->msg.va = (uint64_t)va;
 
         mailbox->valid = 1;
-        mailbox->seq++;
+        mailbox->req_seq++;
 
         // Send doorbell through bootstrap ring. We encode the type as URPC_MM_MAILBOX
         // and payload could just be the target core, but for now we just pass 0

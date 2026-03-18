@@ -79,12 +79,28 @@ void vmm_process_local_urpc_messages(uint32_t core_id) {
                 if (mailbox->valid) {
                     if (mailbox->msg.type == MM_MSG_TLB_FLUSH) {
                         if (mailbox->msg.as_id == KERNEL_AS_ID || core_current_as_id() == mailbox->msg.as_id) {
-                            if (active_mmu && active_mmu->tlb_flush_page) {
-                                active_mmu->tlb_flush_page((virt_addr_t)mailbox->msg.va);
-                            } else {
-                                hal_tlb_flush((unsigned long long)mailbox->msg.va);
+                            if (mailbox->msg.scope == TLB_SCOPE_PAGE) {
+                                if (active_mmu && active_mmu->tlb_flush_page) {
+                                    active_mmu->tlb_flush_page((virt_addr_t)mailbox->msg.va);
+                                } else if (active_hal_tlb && active_hal_tlb->flush_page_local) {
+                                    active_hal_tlb->flush_page_local((virt_addr_t)mailbox->msg.va);
+                                } else {
+                                    hal_tlb_flush((unsigned long long)mailbox->msg.va);
+                                }
+                            } else if (mailbox->msg.scope == TLB_SCOPE_RANGE) {
+                                if (active_hal_tlb && active_hal_tlb->flush_range_local) {
+                                    active_hal_tlb->flush_range_local((virt_addr_t)mailbox->msg.va, mailbox->msg.len);
+                                }
+                            } else if (mailbox->msg.scope == TLB_SCOPE_ASPACE || mailbox->msg.scope == TLB_SCOPE_ALL) {
+                                if (active_hal_tlb && active_hal_tlb->flush_asid_local) {
+                                    active_hal_tlb->flush_asid_local(mailbox->msg.as_id & 0xFFFF);
+                                } else if (active_mmu && active_mmu->tlb_flush_all) {
+                                    active_mmu->tlb_flush_all();
+                                }
                             }
                         }
+                        // Acknowledge the request sequence (not the AS tlb_seq)
+                        mailbox->ack_seq = mailbox->req_seq;
                     }
                     mailbox->valid = 0; // Clear it for next usage
                 }
