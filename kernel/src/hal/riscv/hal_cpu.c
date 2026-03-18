@@ -121,6 +121,34 @@ void hal_serial_write_hex(uint64_t val) {
   hal_serial_write(buf);
 }
 
+#include "trap.h"
+
+__attribute__((weak)) void hal_cpu_dump_trap_frame(const void *trap_frame) {
+  if (!trap_frame) {
+    return;
+  }
+  const trap_frame_t *tf = (const trap_frame_t *)trap_frame;
+  hal_serial_write("\n--- RISC-V Trap Frame Dump ---\n");
+  hal_serial_write("SCAUSE: ");
+  hal_serial_write_hex(tf->cause);
+  hal_serial_write("\n");
+  hal_serial_write("SEPC:   ");
+  hal_serial_write_hex(tf->pc);
+  hal_serial_write("\n");
+  hal_serial_write("SP:     ");
+  hal_serial_write_hex(tf->sp);
+  hal_serial_write("\n");
+  hal_serial_write("A0:     "); hal_serial_write_hex(tf->gpr[0]); hal_serial_write("\n");
+  hal_serial_write("A1:     "); hal_serial_write_hex(tf->gpr[1]); hal_serial_write("\n");
+  hal_serial_write("A2:     "); hal_serial_write_hex(tf->gpr[2]); hal_serial_write("\n");
+  hal_serial_write("A3:     "); hal_serial_write_hex(tf->gpr[3]); hal_serial_write("\n");
+  hal_serial_write("A4:     "); hal_serial_write_hex(tf->gpr[4]); hal_serial_write("\n");
+  hal_serial_write("A5:     "); hal_serial_write_hex(tf->gpr[5]); hal_serial_write("\n");
+  hal_serial_write("A6:     "); hal_serial_write_hex(tf->gpr[6]); hal_serial_write("\n");
+  hal_serial_write("A7:     "); hal_serial_write_hex(tf->gpr[7]); hal_serial_write("\n");
+  hal_serial_write("------------------------------\n");
+}
+
 void hal_cpu_dump_state(void) {
   uint64_t sepc, scause, stval, sstatus, fp, sp;
   __asm__ volatile("csrr %0, sepc" : "=r"(sepc));

@@ -88,6 +88,34 @@ void hal_serial_write_hex(uint64_t val) {
   hal_serial_write(buf);
 }
 
+#include "trap.h"
+
+__attribute__((weak)) void hal_cpu_dump_trap_frame(const void *trap_frame) {
+  if (!trap_frame) {
+    return;
+  }
+  const trap_frame_t *tf = (const trap_frame_t *)trap_frame;
+  hal_serial_write("\n--- ARM64 Trap Frame Dump ---\n");
+  hal_serial_write("CAUSE (ESR): ");
+  hal_serial_write_hex(tf->cause);
+  hal_serial_write("\n");
+  hal_serial_write("PC:          ");
+  hal_serial_write_hex(tf->pc);
+  hal_serial_write("\n");
+  hal_serial_write("SP:          ");
+  hal_serial_write_hex(tf->sp);
+  hal_serial_write("\n");
+  hal_serial_write("X0:          "); hal_serial_write_hex(tf->gpr[0]); hal_serial_write("\n");
+  hal_serial_write("X1:          "); hal_serial_write_hex(tf->gpr[1]); hal_serial_write("\n");
+  hal_serial_write("X2:          "); hal_serial_write_hex(tf->gpr[2]); hal_serial_write("\n");
+  hal_serial_write("X3:          "); hal_serial_write_hex(tf->gpr[3]); hal_serial_write("\n");
+  hal_serial_write("X4:          "); hal_serial_write_hex(tf->gpr[4]); hal_serial_write("\n");
+  hal_serial_write("X5:          "); hal_serial_write_hex(tf->gpr[5]); hal_serial_write("\n");
+  hal_serial_write("X6:          "); hal_serial_write_hex(tf->gpr[6]); hal_serial_write("\n");
+  hal_serial_write("X7:          "); hal_serial_write_hex(tf->gpr[7]); hal_serial_write("\n");
+  hal_serial_write("-----------------------------\n");
+}
+
 void hal_cpu_dump_state(void) {
   uint64_t far_el1, esr_el1, elr_el1, spsr_el1, x29, sp;
   __asm__ volatile("mrs %0, far_el1" : "=r"(far_el1));
