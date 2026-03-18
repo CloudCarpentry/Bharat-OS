@@ -197,6 +197,7 @@ set(KERNEL_SRCS
     src/ipc/async_ipc.c
     src/ipc/ipc_timeout.c
     src/capability.c
+    src/crypto/secure_mem.c
     src/ipc/multikernel.c
     src/ipc/mk_dispatch.c
     src/ipc/mk_proto.c
