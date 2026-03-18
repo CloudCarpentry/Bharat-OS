@@ -240,6 +240,15 @@ target_include_directories(test_bench_sched PRIVATE ../kernel/include)
 target_compile_definitions(test_bench_sched PRIVATE TESTING=1)
 add_test(NAME test_bench_sched COMMAND test_bench_sched)
 
+add_executable(test_vfs_mount_bench benchmark/test_vfs_mount_bench.c
+    ../kernel/src/benchmark/benchmark.c
+    ../kernel/src/fs/mount.c
+    ../kernel/src/fs/vfs.c
+    ../kernel/src/lib/string.c
+)
+target_include_directories(test_vfs_mount_bench PRIVATE ../kernel/include)
+target_compile_definitions(test_vfs_mount_bench PRIVATE TESTING=1)
+add_test(NAME test_vfs_mount_bench COMMAND test_vfs_mount_bench)
 
 add_executable(test_vfs_storage test_vfs_storage.c ../kernel/src/fs/vfs.c ../kernel/src/fs/blob_backend.c ../kernel/src/fs/mount.c ../kernel/src/fs/file.c ../kernel/src/fs/path.c ../kernel/src/lib/string.c)
 target_include_directories(test_vfs_storage PRIVATE ../kernel/include)

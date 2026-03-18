@@ -50,6 +50,15 @@ int vfs_open_file(const char* path, int flags, capability_t* caller_cap, int* ou
     return -1;
 }
 
+int vfs_open(const char* path, int flags) {
+    capability_t dummy_cap = {0};
+    int fd = -1;
+    if (vfs_open_file(path, flags, &dummy_cap, &fd) == 0) {
+        return fd;
+    }
+    return -1;
+}
+
 int vfs_read_file(int fd, void* buffer, size_t size, capability_t* caller_cap) {
     int bytes;
     vfs_file_t *entry;
@@ -70,6 +79,11 @@ int vfs_read_file(int fd, void* buffer, size_t size, capability_t* caller_cap) {
         entry->offset += (uint64_t)bytes;
     }
     return bytes;
+}
+
+int vfs_read(int fd, void* buffer, size_t size) {
+    capability_t dummy_cap = {0};
+    return vfs_read_file(fd, buffer, size, &dummy_cap);
 }
 
 int vfs_write_file(int fd, const void* buffer, size_t size, capability_t* caller_cap) {
@@ -102,6 +116,11 @@ int vfs_write_file(int fd, const void* buffer, size_t size, capability_t* caller
     return bytes;
 }
 
+int vfs_write(int fd, const void* buffer, size_t size) {
+    capability_t dummy_cap = {0};
+    return vfs_write_file(fd, buffer, size, &dummy_cap);
+}
+
 int vfs_close_file(int fd, capability_t* caller_cap) {
     vfs_file_t *entry;
 
@@ -123,6 +142,11 @@ int vfs_close_file(int fd, capability_t* caller_cap) {
     entry->in_use = 0;
     entry->node = NULL;
     return 0;
+}
+
+int vfs_close(int fd) {
+    capability_t dummy_cap = {0};
+    return vfs_close_file(fd, &dummy_cap);
 }
 
 #ifdef TESTING

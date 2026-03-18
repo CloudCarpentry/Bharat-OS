@@ -11,6 +11,7 @@
  */
 typedef struct vfs_mount {
     char target_path[256];      // The point in the VFS tree where this is mounted
+    size_t target_path_len;     // Cached length of target_path
     vfs_node_t* root_node;      // The root node of the mounted filesystem
     const vfs_driver_info_t* driver; // The driver backing this mount
 

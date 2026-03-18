@@ -4,8 +4,10 @@
 
 #include "fs/blob_backend.h"
 #include "fs/vfs.h"
+#include "fs/file.h"
 
-static int mem_read(vfs_node_t *node, uint64_t offset, void *buffer, size_t size) {
+static int mem_read(vfs_file_t *file, uint64_t offset, void *buffer, size_t size) {
+    vfs_node_t *node = file->node;
     const char *src = (const char *)node->fs_data;
     size_t len = strlen(src);
     if (offset >= len) {
@@ -18,7 +20,8 @@ static int mem_read(vfs_node_t *node, uint64_t offset, void *buffer, size_t size
     return (int)size;
 }
 
-static int mem_write(vfs_node_t *node, uint64_t offset, const void *buffer, size_t size) {
+static int mem_write(vfs_file_t *file, uint64_t offset, const void *buffer, size_t size) {
+    vfs_node_t *node = file->node;
     char *dst = (char *)node->fs_data;
     memcpy(dst + offset, buffer, size);
     return (int)size;
