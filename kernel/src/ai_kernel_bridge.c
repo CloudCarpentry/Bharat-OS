@@ -14,7 +14,7 @@ static uint32_t ai_bridge_active_node_count(void) {
 }
 
 static uint32_t ai_bridge_current_node(void) {
-    if (numa_get_current_node) {
+    if (&numa_get_current_node) {
         return numa_get_current_node();
     }
     return 0U;

@@ -1,6 +1,7 @@
 #include "fs/path.h"
 
 int vfs_validate_path_rights(const char* path, uint32_t required_rights, capability_t* cap) {
+    (void)required_rights;
     if (!path || !cap) {
         return -1;
     }

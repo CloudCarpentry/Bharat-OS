@@ -90,6 +90,7 @@ int vm_space_destroy(vm_space_t *space) {
 }
 
 int vm_realize_on_core(vm_space_t *space, uint32_t core_id, bool strict) {
+    (void)strict;
     if (!space) return -1;
 
     // Triggered locally or remotely to force a realization sync
