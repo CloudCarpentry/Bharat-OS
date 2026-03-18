@@ -121,24 +121,39 @@ static void demo_memory(void)
 /* Simple thread entry points ------------------------------------------------ */
 static volatile uint32_t g_hi_done  = 0U;
 static volatile uint32_t g_lo_done  = 0U;
+static volatile uint32_t g_hi_log_count = 0U;
+static volatile uint32_t g_lo_log_count = 0U;
+static const uint32_t g_sched_demo_log_limit = 1U;
 
 static void high_priority_thread(void)
 {
-    DEMO_PRINT("  [SCHED]   thread HI-PRI running.\n");
+    if (g_hi_log_count < g_sched_demo_log_limit) {
+        DEMO_PRINT("  [SCHED]   thread HI-PRI running.\n");
+        g_hi_log_count++;
+    }
     g_hi_done = 1U;
-    sched_yield();
+    while (1) {
+        sched_yield();
+    }
 }
 
 static void low_priority_thread(void)
 {
-    DEMO_PRINT("  [SCHED]   thread LO-PRI running.\n");
+    if (g_lo_log_count < g_sched_demo_log_limit) {
+        DEMO_PRINT("  [SCHED]   thread LO-PRI running.\n");
+        g_lo_log_count++;
+    }
     g_lo_done = 1U;
-    sched_yield();
+    while (1) {
+        sched_yield();
+    }
 }
 
 static void demo_scheduler(void)
 {
     demo_section("PROCESS & THREAD SCHEDULER");
+    g_hi_log_count = 0U;
+    g_lo_log_count = 0U;
 
     DEMO_PRINT("  [SCHED] Creating kernel process...\n");
     kprocess_t *proc = process_create("bharat-demo");
