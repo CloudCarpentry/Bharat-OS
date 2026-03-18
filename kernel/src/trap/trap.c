@@ -10,6 +10,7 @@
 #include "kernel_safety.h"
 #include "mm.h"
 #include "mm/mm_local.h"
+#include "fault_diag.h"
 
 
 #include <stddef.h>
@@ -162,10 +163,21 @@ long trap_handle(trap_frame_t *frame) {
     uint64_t stval;
     __asm__ volatile("csrr %0, stval" : "=r"(stval));
 
+    fault_diag_record_fault(stval, frame->cause);
+
     // Check if it's a guard page hit
     if (current && current->kernel_stack != 0 && stval >= current->kernel_stack && stval < current->kernel_stack + PAGE_SIZE) {
         if (core_is_rt()) {
-            kernel_panic("Stack overflow on RT core! Guard page hit.");
+            panic_context_t pctx = {
+                .message = "Stack overflow on RT core! Guard page hit.",
+                .cause_str = "stack_overflow/guard_page",
+                .cause_code = frame->cause,
+                .fault_addr = stval,
+                .ip = frame->pc,
+                .sp = frame->sp,
+                .trap_frame = frame
+            };
+            kernel_panic_ex(&pctx);
         } else {
             thread_raise_fault(current, THREAD_FAULT_STACK_OVERFLOW);
             return 0;
@@ -193,10 +205,21 @@ long trap_handle(trap_frame_t *frame) {
     uint64_t cr2;
     __asm__ volatile("mov %%cr2, %0" : "=r"(cr2));
 
+    fault_diag_record_fault(cr2, frame->cause);
+
     // Check if it's a guard page hit
     if (current && current->kernel_stack != 0 && cr2 >= current->kernel_stack && cr2 < current->kernel_stack + PAGE_SIZE) {
         if (core_is_rt()) {
-            kernel_panic("Stack overflow on RT core! Guard page hit.");
+            panic_context_t pctx = {
+                .message = "Stack overflow on RT core! Guard page hit.",
+                .cause_str = "stack_overflow/guard_page",
+                .cause_code = frame->cause,
+                .fault_addr = cr2,
+                .ip = frame->pc,
+                .sp = frame->sp,
+                .trap_frame = frame
+            };
+            kernel_panic_ex(&pctx);
         } else {
             thread_raise_fault(current, THREAD_FAULT_STACK_OVERFLOW);
             return 0;
@@ -238,11 +261,22 @@ long trap_handle(trap_frame_t *frame) {
       uint64_t far;
       __asm__ volatile("mrs %0, far_el1" : "=r"(far));
 
+      fault_diag_record_fault(far, frame->cause);
+
       kthread_t *current = sched_current_thread();
       // Check if it's a guard page hit
       if (current && current->kernel_stack != 0 && far >= current->kernel_stack && far < current->kernel_stack + PAGE_SIZE) {
           if (core_is_rt()) {
-              kernel_panic("Stack overflow on RT core! Guard page hit.");
+              panic_context_t pctx = {
+                .message = "Stack overflow on RT core! Guard page hit.",
+                .cause_str = "stack_overflow/guard_page",
+                .cause_code = frame->cause,
+                .fault_addr = far,
+                .ip = frame->pc,
+                .sp = frame->sp,
+                .trap_frame = frame
+              };
+              kernel_panic_ex(&pctx);
           } else {
               thread_raise_fault(current, THREAD_FAULT_STACK_OVERFLOW);
               return 0;
@@ -260,7 +294,15 @@ long trap_handle(trap_frame_t *frame) {
 
   if (frame->cause != TRAP_CAUSE_SYSCALL) {
     if (frame->from_user == 0U) {
-      kernel_panic("Kernel exception");
+      panic_context_t pctx = {
+          .message = "Kernel exception",
+          .cause_str = "unhandled_kernel_trap",
+          .cause_code = frame->cause,
+          .ip = frame->pc,
+          .sp = frame->sp,
+          .trap_frame = frame
+      };
+      kernel_panic_ex(&pctx);
     } else {
       kthread_t *current = sched_current_thread();
       if (current) {
@@ -280,6 +322,8 @@ long trap_handle(trap_frame_t *frame) {
   if (frame->from_user == 0U) {
     return TRAP_ERR_PERM;
   }
+
+  fault_diag_record_syscall(frame->gpr[0]);
 
   kthread_t *current = sched_current_thread();
   long rc = 0;

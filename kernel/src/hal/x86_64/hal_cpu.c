@@ -181,6 +181,34 @@ void hal_serial_write_hex(uint64_t val) {
   hal_serial_write(buf);
 }
 
+#include "trap.h"
+
+__attribute__((weak)) void hal_cpu_dump_trap_frame(const void *trap_frame) {
+  if (!trap_frame) {
+    return;
+  }
+  const trap_frame_t *tf = (const trap_frame_t *)trap_frame;
+  hal_serial_write("\n--- x86_64 Trap Frame Dump ---\n");
+  hal_serial_write("CAUSE: ");
+  hal_serial_write_hex(tf->cause);
+  hal_serial_write("\n");
+  hal_serial_write("PC:    ");
+  hal_serial_write_hex(tf->pc);
+  hal_serial_write("\n");
+  hal_serial_write("SP:    ");
+  hal_serial_write_hex(tf->sp);
+  hal_serial_write("\n");
+  // Dump some general registers, usually gpr[0]-gpr[5] hold arg0-arg5 in syscalls
+  hal_serial_write("RAX:   "); hal_serial_write_hex(tf->gpr[0]); hal_serial_write("\n");
+  hal_serial_write("RDI:   "); hal_serial_write_hex(tf->gpr[1]); hal_serial_write("\n");
+  hal_serial_write("RSI:   "); hal_serial_write_hex(tf->gpr[2]); hal_serial_write("\n");
+  hal_serial_write("RDX:   "); hal_serial_write_hex(tf->gpr[3]); hal_serial_write("\n");
+  hal_serial_write("RCX:   "); hal_serial_write_hex(tf->gpr[4]); hal_serial_write("\n");
+  hal_serial_write("R8:    "); hal_serial_write_hex(tf->gpr[5]); hal_serial_write("\n");
+  hal_serial_write("R9:    "); hal_serial_write_hex(tf->gpr[6]); hal_serial_write("\n");
+  hal_serial_write("------------------------------\n");
+}
+
 void hal_cpu_dump_state(void) {
   uint64_t cr2, cr3, rbp, rsp;
   __asm__ volatile("mov %%cr2, %0" : "=r"(cr2));
