@@ -31,9 +31,10 @@ typedef struct {
   cpu_context_t context;
   ai_sched_context_t ai_ctx;
   list_head_t run_node;
-  list_head_t sleep_node;
+  list_head_t wait_node; // Used for both sleeping_list and blocked_list
   uint8_t is_on_runqueue;
   uint8_t is_sleeping;
+  uint8_t is_blocked;
 } thread_slot_t;
 
 typedef struct {
@@ -112,10 +113,10 @@ static process_slot_t *sched_find_free_process_slot(void) {
 }
 
 static void sched_sleep_enqueue(thread_slot_t *slot, uint32_t core_id) {
-  if (!slot || slot->is_sleeping != 0U) {
+  if (!slot || slot->is_sleeping != 0U || slot->is_blocked != 0U) {
     return;
   }
-  list_add(&slot->sleep_node, &g_cpu_locals[core_id].runqueue.sleeping_list);
+  list_add(&slot->wait_node, &g_cpu_locals[core_id].runqueue.sleeping_list);
   slot->is_sleeping = 1U;
 }
 
@@ -123,9 +124,26 @@ static void sched_sleep_dequeue(thread_slot_t *slot) {
   if (!slot || slot->is_sleeping == 0U) {
     return;
   }
-  list_del(&slot->sleep_node);
-  list_init(&slot->sleep_node);
+  list_del(&slot->wait_node);
+  list_init(&slot->wait_node);
   slot->is_sleeping = 0U;
+}
+
+static void sched_block_enqueue(thread_slot_t *slot, uint32_t core_id) {
+  if (!slot || slot->is_sleeping != 0U || slot->is_blocked != 0U) {
+    return;
+  }
+  list_add(&slot->wait_node, &g_cpu_locals[core_id].runqueue.blocked_list);
+  slot->is_blocked = 1U;
+}
+
+static void sched_block_dequeue(thread_slot_t *slot) {
+  if (!slot || slot->is_blocked == 0U) {
+    return;
+  }
+  list_del(&slot->wait_node);
+  list_init(&slot->wait_node);
+  slot->is_blocked = 0U;
 }
 
 int sched_enqueue(kthread_t *thread, uint32_t core_id) {
@@ -319,6 +337,7 @@ kthread_t *thread_create(kprocess_t *parent, void (*entry_point)(void)) {
   slot->in_use = 1U;
   slot->is_on_runqueue = 0U;
   slot->is_sleeping = 0U;
+  slot->is_blocked = 0U;
 
   slot->thread.thread_id = g_next_thread_id++;
   slot->thread.process_id = parent ? parent->process_id : 0U;
@@ -365,7 +384,7 @@ kthread_t *thread_create(kprocess_t *parent, void (*entry_point)(void)) {
   slot->thread.ai_sched_ctx = &slot->ai_ctx;
 
   list_init(&slot->run_node);
-  list_init(&slot->sleep_node);
+  list_init(&slot->wait_node);
 
   if (parent && !parent->main_thread) {
     parent->main_thread = &slot->thread;
@@ -394,6 +413,9 @@ int thread_destroy(kthread_t *thread) {
   }
   if (slot->is_sleeping != 0U) {
     sched_sleep_dequeue(slot);
+  }
+  if (slot->is_blocked != 0U) {
+    sched_block_dequeue(slot);
   }
 
   // Clean up architecture extended state
@@ -666,12 +688,22 @@ kthread_t* sched_wait_queue_dequeue(wait_queue_t* queue) {
 }
 
 void sched_block(void) {
-  kthread_t *current = sched_current_thread();
+  uint32_t core = sched_clamp_core(hal_cpu_get_id());
+  kthread_t *current = g_cpu_locals[core].runqueue.current_thread;
   if (current) {
     current->state = THREAD_STATE_BLOCKED;
     if (current->sched_ctx && current->sched_ctx->deg) {
         deg_block_member(current, 0);
     }
+
+    if (current->ipc_deadline_ticks > 0) {
+      thread_slot_t *slot = sched_find_thread_slot_by_tid(current->thread_id);
+      if (slot) {
+        sched_block_enqueue(slot, core);
+      }
+    }
+
+    g_cpu_locals[core].runqueue.current_thread = NULL;
   }
 }
 
@@ -728,7 +760,12 @@ void sched_wakeup_with_priority(kthread_t *thread, uint32_t wakeup_priority) {
   if (thread->state == THREAD_STATE_SLEEPING || thread->state == THREAD_STATE_BLOCKED) {
     thread->state = THREAD_STATE_READY;
     thread->wake_deadline_ms = 0U;
-    sched_sleep_dequeue(slot);
+    if (slot->is_sleeping != 0U) {
+      sched_sleep_dequeue(slot);
+    }
+    if (slot->is_blocked != 0U) {
+      sched_block_dequeue(slot);
+    }
     (void)sched_enqueue(thread, thread->bound_core_id);
   }
 }
@@ -778,25 +815,31 @@ void sched_on_timer_tick(void) {
   uint32_t core = sched_clamp_core(hal_cpu_get_id());
   g_cpu_locals[core].runqueue.total_ticks++;
 
-  for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_threads); ++i) {
-    if (g_threads[i].in_use != 0U) {
-      if (g_threads[i].thread.state == THREAD_STATE_SLEEPING &&
-          g_threads[i].thread.wake_deadline_ms <= g_sched_ticks) {
-        sched_wakeup(&g_threads[i].thread);
-      }
+  list_head_t *sleep_head = &g_cpu_locals[core].runqueue.sleeping_list;
+  list_head_t *curr = sleep_head->next;
+  while (curr != sleep_head) {
+    thread_slot_t *slot = list_entry(curr, thread_slot_t, wait_node);
+    curr = curr->next;
+    if (slot->thread.state == THREAD_STATE_SLEEPING &&
+        slot->thread.wake_deadline_ms <= g_sched_ticks) {
+      sched_wakeup(&slot->thread);
+    }
+  }
 
-      if (g_threads[i].thread.state == THREAD_STATE_BLOCKED &&
-          g_threads[i].thread.ipc_deadline_ticks > 0 &&
-          g_threads[i].thread.ipc_deadline_ticks <= g_sched_ticks) {
-        g_threads[i].thread.ipc_wakeup_reason = -3; // IPC_ERR_WOULD_BLOCK or TIMEOUT
-        g_threads[i].thread.ipc_deadline_ticks = 0;
+  list_head_t *block_head = &g_cpu_locals[core].runqueue.blocked_list;
+  curr = block_head->next;
+  while (curr != block_head) {
+    thread_slot_t *slot = list_entry(curr, thread_slot_t, wait_node);
+    curr = curr->next;
+    if (slot->thread.state == THREAD_STATE_BLOCKED &&
+        slot->thread.ipc_deadline_ticks > 0 &&
+        slot->thread.ipc_deadline_ticks <= g_sched_ticks) {
+      slot->thread.ipc_wakeup_reason = -3; // IPC_ERR_WOULD_BLOCK or TIMEOUT
+      slot->thread.ipc_deadline_ticks = 0;
 
-        // Properly removing it from wait queues requires endpoint access.
-        // For now we set the state to READY so it can be scheduled.
-        // And we clear the next_waiter queue pointer to avoid corruption.
-        g_threads[i].thread.next_waiter = NULL;
-        sched_wakeup(&g_threads[i].thread);
-      }
+      // Unlink it from wait queues handled by endpoint access so we can awaken it
+      slot->thread.next_waiter = NULL;
+      sched_wakeup(&slot->thread);
     }
   }
 
