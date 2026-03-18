@@ -121,7 +121,7 @@ int vmm_map_device_mmio_token(virt_addr_t vaddr, phys_addr_t paddr,
 // Create a new empty hardware address space
 address_space_t *mm_create_address_space(void);
 
-void vmm_process_urpc_messages(void);
+void vmm_process_local_urpc_messages(uint32_t core_id);
 
 #endif // BHARAT_MM_H
 

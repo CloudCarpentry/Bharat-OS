@@ -57,6 +57,7 @@ typedef struct {
 } kthread_attr_t;
 
 typedef struct kthread kthread_t;
+typedef struct kprocess kprocess_t;
 
 typedef enum {
     THREAD_FAULT_NONE = 0,
@@ -84,6 +85,7 @@ typedef struct {
 struct kthread {
     uint64_t thread_id;
     uint64_t process_id;
+    kprocess_t* process;
 
     // CPU Architectural Context (Registers)
     void* cpu_context;
@@ -131,7 +133,7 @@ struct kthread {
 
 int thread_raise_fault(kthread_t *thread, thread_fault_t fault);
 
-typedef struct {
+struct kprocess {
     uint64_t process_id;
     address_space_t* addr_space;
     kthread_t* main_thread;
@@ -145,7 +147,7 @@ typedef struct {
     // Ownership tracking
     uint32_t owner_core_id;
     uint64_t object_id;
-} kprocess_t;
+};
 
 // Scheduler Core
 void sched_init(void);
@@ -155,6 +157,11 @@ kprocess_t* process_create(const char* name);
 int process_destroy(kprocess_t* process);
 kthread_t* thread_create(kprocess_t* parent, void (*entry_point)(void));
 int thread_destroy(kthread_t* thread);
+
+// Current Context Helpers
+kprocess_t* sched_current_process(void);
+address_space_t* sched_current_aspace(void);
+struct capability_table* sched_current_cap_table(void);
 
 // Wait Queues
 void sched_wait_queue_init(wait_queue_t* queue);
