@@ -371,3 +371,8 @@ add_executable(test_vfs_ramfs test_vfs_ramfs.c ../kernel/src/fs/ramfs.c ../kerne
 target_include_directories(test_vfs_ramfs PRIVATE ../kernel/include)
 target_compile_definitions(test_vfs_ramfs PRIVATE TESTING=1)
 add_test(NAME test_vfs_ramfs COMMAND test_vfs_ramfs)
+
+add_executable(test_vmm_aspace test_vmm_aspace.c benchmark_stubs.c ../kernel/src/mm/vm/aspace/aspace.c ../kernel/src/mm/vm/objects/vm_object.c)
+target_include_directories(test_vmm_aspace PRIVATE ../kernel/include)
+target_compile_definitions(test_vmm_aspace PRIVATE TESTING=1)
+add_test(NAME test_vmm_aspace COMMAND test_vmm_aspace)

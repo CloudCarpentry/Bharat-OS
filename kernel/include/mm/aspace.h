@@ -14,19 +14,19 @@ extern "C" {
 #endif
 
 typedef struct vm_region {
-    uint64_t base;
-    uint64_t length;
+    uintptr_t base;
+    size_t length;
+
     uint32_t prot;
     uint32_t map_flags;
-    vm_object_t *object;
+    vm_inherit_t inherit;
+
     uint64_t object_offset;
 
-    numa_affinity_t numa_policy;
+    struct vm_object *object;
 
-    // Region tree links (using simple intrusive linked list or RB-tree scaffold)
-    // For now, intrusive linked list sorted by base address.
-    struct vm_region *next;
     struct vm_region *prev;
+    struct vm_region *next;
 } vm_region_t;
 
 typedef struct vm_address_space {
@@ -38,27 +38,55 @@ typedef struct vm_address_space {
     volatile uint64_t tlb_seq; // Monotonically increasing sequence for TLB shootdowns
 
     vm_region_t *regions;    // Head of region tree / list
+    size_t region_count;
 
     uint64_t user_base;      // Min user VA
     uint64_t user_limit;     // Max user VA
+
+    uint32_t flags;
+    void *owner;             // process/container owner pointer
 } vm_address_space_t;
 
+typedef vm_address_space_t address_space_t;
+
 // Lifecycle
-int aspace_create(vm_address_space_t **out_aspace);
-int aspace_destroy(vm_address_space_t *aspace);
+int aspace_create(address_space_t **out_aspace, uint32_t flags);
+int aspace_destroy(address_space_t *aspace);
+int aspace_clone(address_space_t *src, address_space_t **out_clone, uint32_t clone_flags);
 
 // Region reservation and mapping
-int aspace_map_region(vm_address_space_t *aspace, uint64_t vaddr_hint, uint64_t length, uint32_t prot, uint32_t map_flags, vm_object_t *object, uint64_t object_offset, uint64_t *out_vaddr);
+int aspace_region_reserve(address_space_t *aspace,
+                          uintptr_t base,
+                          size_t length,
+                          uint32_t prot,
+                          uint32_t map_flags,
+                          vm_inherit_t inherit,
+                          vm_region_t **out_region);
 
-// Unmap and protect
+int aspace_region_attach(address_space_t *aspace,
+                         uintptr_t base,
+                         size_t length,
+                         uint32_t prot,
+                         uint32_t map_flags,
+                         vm_inherit_t inherit,
+                         vm_object_t *object,
+                         uint64_t object_offset,
+                         vm_region_t **out_region);
+
+int aspace_region_detach(address_space_t *aspace, uintptr_t base);
+
+// Unmap and protect (Legacy placeholders for now)
+int aspace_map_region(vm_address_space_t *aspace, uint64_t vaddr_hint, uint64_t length, uint32_t prot, uint32_t map_flags, vm_object_t *object, uint64_t object_offset, uint64_t *out_vaddr);
 int aspace_unmap_region(vm_address_space_t *aspace, uint64_t base, uint64_t length);
 int aspace_protect_region(vm_address_space_t *aspace, uint64_t base, uint64_t length, uint32_t new_prot);
-
-// Authoritative VA lookup
 int aspace_find_region(vm_address_space_t *aspace, uint64_t vaddr, vm_region_t **out_region);
 
+// Authoritative VA lookup
+vm_region_t *aspace_lookup_region(address_space_t *aspace, uintptr_t va);
+vm_object_t *aspace_lookup_object(address_space_t *aspace, uintptr_t va, vm_region_t **out_region, uint64_t *out_object_offset);
+
 // Utility: overlap check (mostly internal but exposed for testing)
-bool aspace_check_overlap(vm_address_space_t *aspace, uint64_t base, uint64_t length);
+bool aspace_check_overlap(address_space_t *aspace, uint64_t base, uint64_t length);
 
 #ifdef __cplusplus
 }
