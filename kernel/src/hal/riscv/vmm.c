@@ -174,15 +174,30 @@ static int riscv_mmu_query(phys_addr_t root, virt_addr_t virt, phys_addr_t *phys
     return ret;
 }
 
+// Ensure BHARAT_ASSERT is available or use equivalent panic
+extern void kernel_panic(const char *message);
+extern uint64_t g_riscv_satp_mode; // Phase 1 output
+
 static void riscv_mmu_activate(phys_addr_t root) {
     // Mode 8 is Sv39
+    if (g_riscv_satp_mode != 8) {
+        kernel_panic("hal_vmm_init_root called without confirmed Sv39 support");
+    }
+
     uintptr_t ppn = (uintptr_t)root >> 12;
-    uintptr_t satp = (8ULL << 60) | ppn;
+    uintptr_t satp = (8ULL << 60) | ppn; // 8 == SATP_MODE_SV39
     asm volatile(
         "csrw satp, %0\n"
         "sfence.vma\n"
         :: "r"(satp) : "memory"
     );
+
+    // Phase 2: Assert readback
+    uintptr_t readback;
+    asm volatile("csrr %0, satp" : "=r"(readback));
+    if ((readback >> 60) != 8) {
+        kernel_panic("SATP mode silently degraded after MMU activation");
+    }
 }
 
 static void riscv_mmu_deactivate(void) {
@@ -193,6 +208,8 @@ static void riscv_mmu_deactivate(void) {
         ::: "memory"
     );
 }
+
+extern bool g_riscv_asid_supported;
 
 static void riscv_mmu_tlb_flush_page(virt_addr_t virt) {
     asm volatile(
@@ -206,10 +223,14 @@ static void riscv_mmu_tlb_flush_all(void) {
 }
 
 static void riscv_mmu_tlb_flush_asid(uint16_t asid) {
-    asm volatile(
-        "sfence.vma zero, %0\n"
-        :: "r"(asid) : "memory"
-    );
+    if (!g_riscv_asid_supported) {
+        asm volatile("sfence.vma\n" ::: "memory");
+    } else {
+        asm volatile(
+            "sfence.vma zero, %0\n"
+            :: "r"(asid) : "memory"
+        );
+    }
 }
 
 static size_t riscv_huge_pages[] = {0x200000, 0x40000000, 0}; // 2MB, 1GB (for Sv39)
