@@ -130,7 +130,7 @@ set(KERNEL_SRCS
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/display_handoff.c>
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/display_fallback.c>
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/boot_gui.c>
-    src/hal/arm32_mpu_vmm_mock.c
+    $<$<STREQUAL:${ARCH},arm32>:src/hal/arm32_mpu_vmm_mock.c>
     src/main.c
     src/cpu_local.c
     src/trace/trace.c

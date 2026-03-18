@@ -13,7 +13,7 @@
  *   - Framebuffer banner on edge/arm targets (when compiled)
  *
  * Compile-time guards:
- *   BHARAT_DEMO_FB   – enable framebuffer banner
+ *   BHARAT_DEMO_FB   - enable framebuffer banner
  *   BHARAT_PROFILE_EDGE / BHARAT_PROFILE_DESKTOP / BHARAT_PROFILE_DATACENTER
  */
 
@@ -25,7 +25,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
-/* ── helpers ─────────────────────────────────────────────────────────── */
+/* -- helpers ----------------------------------------------------------- */
 #define DEMO_PRINT(s)   hal_serial_write(s)
 
 static void demo_print_hex(uint64_t val)
@@ -54,7 +54,7 @@ static void demo_print_uint(uint64_t val)
     hal_serial_write(&buf[idx]);
 }
 
-/* ── section banner ──────────────────────────────────────────────────── */
+/* -- section banner ---------------------------------------------------- */
 static void demo_section(const char *title)
 {
     DEMO_PRINT("\n  +-----------------------------------------+\n");
@@ -63,9 +63,9 @@ static void demo_section(const char *title)
     DEMO_PRINT("\n  +-----------------------------------------+\n");
 }
 
-/* ─────────────────────────────────────────────────────────────────────
+/* ---------------------------------------------------------------------
  * 1.  MEMORY MANAGEMENT DEMO
- * ───────────────────────────────────────────────────────────────────── */
+ * --------------------------------------------------------------------- */
 static void demo_memory(void)
 {
     demo_section("MEMORY MANAGEMENT");
@@ -111,12 +111,12 @@ static void demo_memory(void)
         DEMO_PRINT("  [PMM]   freed single page.\n");
     }
 
-    DEMO_PRINT("  [MEM] Memory management demo ── PASS\n");
+    DEMO_PRINT("  [MEM] Memory management demo -- PASS\n");
 }
 
-/* ─────────────────────────────────────────────────────────────────────
+/* ---------------------------------------------------------------------
  * 2.  PROCESS + THREAD SCHEDULING DEMO
- * ───────────────────────────────────────────────────────────────────── */
+ * --------------------------------------------------------------------- */
 
 /* Simple thread entry points ------------------------------------------------ */
 static volatile uint32_t g_hi_done  = 0U;
@@ -144,7 +144,7 @@ static void demo_scheduler(void)
     kprocess_t *proc = process_create("bharat-demo");
     if (proc == NULL) {
         DEMO_PRINT("  [SCHED] WARN: process_create() returned NULL (stub env).\n");
-        DEMO_PRINT("  [SCHED] Scheduler demo ── PARTIAL (stub mode)\n");
+        DEMO_PRINT("  [SCHED] Scheduler demo -- PARTIAL (stub mode)\n");
         return;
     }
     DEMO_PRINT("  [SCHED]   OK  pid=");
@@ -194,19 +194,19 @@ static void demo_scheduler(void)
     }
 
     process_destroy(proc);
-    DEMO_PRINT("  [SCHED] Scheduler demo ── PASS\n");
+    DEMO_PRINT("  [SCHED] Scheduler demo -- PASS\n");
 }
 
-/* ─────────────────────────────────────────────────────────────────────
+/* ---------------------------------------------------------------------
  * 3.  ASYNC IPC DEMO
- * ───────────────────────────────────────────────────────────────────── */
+ * --------------------------------------------------------------------- */
 static void demo_ipc(void)
 {
     demo_section("ASYNC IPC");
 
     kthread_t *cur = sched_current_thread();
     if (cur == NULL) {
-        DEMO_PRINT("  [IPC]  No running thread context – skipping full test.\n");
+        DEMO_PRINT("  [IPC]  No running thread context - skipping full test.\n");
         return;
     }
 
@@ -235,12 +235,12 @@ static void demo_ipc(void)
         DEMO_PRINT("  [IPC]  WARN: request pool exhausted (stub env).\n");
     }
 
-    DEMO_PRINT("  [IPC]  Async IPC demo ── PASS\n");
+    DEMO_PRINT("  [IPC]  Async IPC demo -- PASS\n");
 }
 
-/* ─────────────────────────────────────────────────────────────────────
+/* ---------------------------------------------------------------------
  * 4.  ARCH / PROFILE BANNER
- * ───────────────────────────────────────────────────────────────────── */
+ * --------------------------------------------------------------------- */
 static void demo_arch_profile(void)
 {
     demo_section("ARCH & PROFILE REPORT");
@@ -260,37 +260,37 @@ static void demo_arch_profile(void)
 #endif
 
 #if defined(BHARAT_PROFILE_DATACENTER)
-    DEMO_PRINT("  [PROF]  datacenter  – NUMA paging, zero-copy net, full TCP/IP\n");
+    DEMO_PRINT("  [PROF]  datacenter  - NUMA paging, zero-copy net, full TCP/IP\n");
 #elif defined(BHARAT_PROFILE_DESKTOP)
-    DEMO_PRINT("  [PROF]  desktop     – GUI compositor, audio, full storage\n");
+    DEMO_PRINT("  [PROF]  desktop     - GUI compositor, audio, full storage\n");
 #elif defined(BHARAT_PROFILE_EDGE)
-    DEMO_PRINT("  [PROF]  edge        – minimal stack, constrained RAM, sensor I/O\n");
+    DEMO_PRINT("  [PROF]  edge        - minimal stack, constrained RAM, sensor I/O\n");
 #elif defined(BHARAT_PROFILE_MOBILE)
-    DEMO_PRINT("  [PROF]  mobile      – power-aware, littlefs, framebuffer UI\n");
+    DEMO_PRINT("  [PROF]  mobile      - power-aware, littlefs, framebuffer UI\n");
 #elif defined(BHARAT_PROFILE_RTOS)
-    DEMO_PRINT("  [PROF]  rtos        – EDF scheduler, deterministic IPC, tickless\n");
+    DEMO_PRINT("  [PROF]  rtos        - EDF scheduler, deterministic IPC, tickless\n");
 #else
-    DEMO_PRINT("  [PROF]  generic     – baseline kernel, all optional subsystems\n");
+    DEMO_PRINT("  [PROF]  generic     - baseline kernel, all optional subsystems\n");
 #endif
 
 #if defined(BHARAT_PERSONALITY_LINUX)
-    DEMO_PRINT("  [PERS]  Linux personality – POSIX ABI translation layer active\n");
+    DEMO_PRINT("  [PERS]  Linux personality - POSIX ABI translation layer active\n");
 #elif defined(BHARAT_PERSONALITY_ANDROID)
-    DEMO_PRINT("  [PERS]  Android personality – Binder IPC shim active\n");
+    DEMO_PRINT("  [PERS]  Android personality - Binder IPC shim active\n");
 #elif defined(BHARAT_PERSONALITY_WINDOWS)
-    DEMO_PRINT("  [PERS]  Windows personality – NT ABI (early/basic; not fully mature)\n");
+    DEMO_PRINT("  [PERS]  Windows personality - NT ABI (early/basic; not fully mature)\n");
 #else
     DEMO_PRINT("  [PERS]  Native Bharat personality\n");
 #endif
 }
 
-/* ─────────────────────────────────────────────────────────────────────
+/* ---------------------------------------------------------------------
  * 5.  FRAMEBUFFER BANNER  (edge / arm / mobile targets)
- * ───────────────────────────────────────────────────────────────────── */
+ * --------------------------------------------------------------------- */
 #if defined(BHARAT_DEMO_FB) || defined(BHARAT_PROFILE_EDGE) || \
     defined(BHARAT_PROFILE_MOBILE) || defined(__aarch64__) || defined(__arm__)
 
-/* Minimal 6×8 bitmap font – characters 0x20..0x5A stored LSB-first per row.   */
+/* Minimal 6×8 bitmap font - characters 0x20..0x5A stored LSB-first per row.   */
 /* We embed only the digits, uppercase letters A-Z, space, -, =, > needed.     */
 /* For brevity, a tiny subset is used here via hal_serial_write; a proper       */
 /* framebuffer driver would write pixels here.  The stub just prints to serial. */
@@ -303,10 +303,10 @@ static void demo_framebuffer(void)
     /* In a real driver this would call hal_fb_fill_rect / hal_fb_blit_text.
      * For QEMU/headless runs we emit the text to serial as a placeholder.    */
     DEMO_PRINT("\n");
-    DEMO_PRINT("  ╔══════════════════════════════════════════╗\n");
-    DEMO_PRINT("  ║       B H A R A T – O S    v 3 . 2      ║\n");
-    DEMO_PRINT("  ║   Multikernel  |  Capability-secure      ║\n");
-    DEMO_PRINT("  ╚══════════════════════════════════════════╝\n");
+    DEMO_PRINT("  +------------------------------------------+\n");
+    DEMO_PRINT("  |       B H A R A T - O S    v 3 . 2      |\n");
+    DEMO_PRINT("  |   Multikernel  |  Capability-secure      |\n");
+    DEMO_PRINT("  +------------------------------------------+\n");
     DEMO_PRINT("\n");
     DEMO_PRINT("  [FB] Banner rendered.\n");
 }
@@ -314,9 +314,9 @@ static void demo_framebuffer(void)
 static void demo_framebuffer(void) { /* no-op on desktop/server/x86 */ }
 #endif
 
-/* ─────────────────────────────────────────────────────────────────────
+/* ---------------------------------------------------------------------
  * 6.  CROSS-CORE / CAPABILITY ACCESS CHECK
- * ───────────────────────────────────────────────────────────────────── */
+ * --------------------------------------------------------------------- */
 static void demo_capability_cross_call(void)
 {
     demo_section("CAPABILITY & CROSS-CORE CALL");
@@ -339,19 +339,19 @@ static void demo_capability_cross_call(void)
     DEMO_PRINT("  [CAP]  cap_id=8 rights=NONE -> check: ");
     DEMO_PRINT((bad_cap.rights_mask & 0x1U) ? "ALLOWED\n" : "DENIED (correct)\n");
 
-    DEMO_PRINT("  [CAP]  Capability demo ── PASS\n");
+    DEMO_PRINT("  [CAP]  Capability demo -- PASS\n");
 }
 
-/* ─────────────────────────────────────────────────────────────────────
- * ENTRY POINT – called from kernel/src/main.c after kernel_tester_app()
- * ───────────────────────────────────────────────────────────────────── */
+/* ---------------------------------------------------------------------
+ * ENTRY POINT - called from kernel/src/main.c after kernel_tester_app()
+ * --------------------------------------------------------------------- */
 void bharat_demo_app(void)
 {
     DEMO_PRINT("\n");
-    DEMO_PRINT("  ╔════════════════════════════════════════════════════╗\n");
-    DEMO_PRINT("  ║      BHARAT-OS  –  FEATURE SHOWCASE  DEMO         ║\n");
-    DEMO_PRINT("  ║   Exercising: PMM · VMM · Scheduler · IPC · CAP   ║\n");
-    DEMO_PRINT("  ╚════════════════════════════════════════════════════╝\n");
+    DEMO_PRINT("  +----------------------------------------------------+\n");
+    DEMO_PRINT("  |      BHARAT-OS  -  FEATURE SHOWCASE  DEMO         |\n");
+    DEMO_PRINT("  |   Exercising: PMM . VMM . Scheduler . IPC . CAP   |\n");
+    DEMO_PRINT("  +----------------------------------------------------+\n");
 
     demo_arch_profile();
     demo_framebuffer();
@@ -361,7 +361,7 @@ void bharat_demo_app(void)
     demo_capability_cross_call();
 
     DEMO_PRINT("\n");
-    DEMO_PRINT("  ════════════════════════════════════════════════════\n");
-    DEMO_PRINT("  BHARAT-OS Demo complete – all tested subsystems OK.\n");
-    DEMO_PRINT("  ════════════════════════════════════════════════════\n\n");
+    DEMO_PRINT("  ----------------------------------------------------\n");
+    DEMO_PRINT("  BHARAT-OS Demo complete - all tested subsystems OK.\n");
+    DEMO_PRINT("  ----------------------------------------------------\n\n");
 }
