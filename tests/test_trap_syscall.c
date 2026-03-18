@@ -31,7 +31,7 @@ void default_timer_isr(void) {
     // Stub for host-level tests
 }
 
-static address_space_t g_as = { .root_table = 0x1000U };
+static address_space_t g_as = { .root_pt = 0x1000U };
 
 address_space_t* mm_create_address_space(void) {
     return &g_as;
@@ -81,7 +81,7 @@ int main(void) {
     assert(rc == 0);
     assert(tid != 0);
 
-    assert(syscall_dispatch(SYSCALL_THREAD_DESTROY, tid, 0,0,0,0,0) == 0);
+    assert(syscall_dispatch(SYSCALL_THREAD_DESTROY, tid, 0, 0, 0, 0, 0) == 0);
 
     // Invalid pointer should be rejected.
     assert(syscall_dispatch(SYSCALL_THREAD_CREATE,
@@ -161,7 +161,8 @@ int hal_vmm_update_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_
     (void)root_table; (void)vaddr; (void)paddr; (void)flags;
     return -1;
 }
-void tlb_shootdown(virt_addr_t vaddr) {
+void tlb_shootdown(address_space_t *as, virt_addr_t vaddr) {
+    (void)as;
     (void)vaddr;
 }
 

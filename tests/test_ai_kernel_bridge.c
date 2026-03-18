@@ -96,7 +96,7 @@ int main(void) {
         .target_id = (uint32_t)t->thread_id,
         .value = 9U,
     };
-    assert(ipc_endpoint_send(caps, send_cap, &queued, sizeof(queued)) == IPC_OK);
+    assert(ipc_endpoint_send(caps, send_cap, &queued, sizeof(queued, 0), 0) == IPC_OK);
     assert(ai_kernel_ingest_suggestion_ipc(caps, recv_cap) == 0);
 
     sched_on_timer_tick();

@@ -20,9 +20,17 @@ typedef struct {
     uint32_t distance_cost;
 } numa_distance_t;
 
+// NUMA Memory Allocation Policies
+typedef enum {
+    NUMA_POLICY_LOCAL_PREFERRED = 0, // Prefer local node, fallback to others
+    NUMA_POLICY_INTERLEAVE      = 1, // Interleave pages across specified nodes
+    NUMA_POLICY_BIND            = 2, // Strictly allocate from a specific node
+} numa_policy_type_t;
+
 typedef struct {
-    memory_node_id_t preferred_node;
-    uint8_t strict_bind;
+    numa_policy_type_t policy;
+    memory_node_id_t target_node;    // Used for LOCAL_PREFERRED and BIND
+    uint16_t interleave_mask;        // Bitmask of nodes for INTERLEAVE
 } numa_affinity_t;
 
 typedef struct {

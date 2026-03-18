@@ -1,4 +1,5 @@
 #include "hal/hal.h"
+#include "hal/hal_timer.h"
 #include "secure_boot.h"
 
 #include <stdint.h>

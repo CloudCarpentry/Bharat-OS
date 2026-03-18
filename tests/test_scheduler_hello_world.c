@@ -6,7 +6,7 @@
 #include "../kernel/include/sched.h"
 
 static uint32_t g_mock_core_id = 0;
-static address_space_t g_as = {.root_table = 0x2000U};
+static address_space_t g_as = {.root_pt = 0x2000U};
 
 void ipc_async_check_timeouts(uint64_t current_ticks) { (void)current_ticks; }
 address_space_t *mm_create_address_space(void) { return &g_as; }
@@ -47,7 +47,7 @@ int hal_vmm_update_mapping(phys_addr_t root_table, virt_addr_t vaddr,
   (void)flags;
   return -1;
 }
-void tlb_shootdown(virt_addr_t vaddr) { (void)vaddr; }
+void tlb_shootdown(address_space_t *as, virt_addr_t vaddr) { (void)as; (void)vaddr; }
 
 uint32_t hal_cpu_get_id(void) { return g_mock_core_id; }
 void hal_cpu_halt(void) {}

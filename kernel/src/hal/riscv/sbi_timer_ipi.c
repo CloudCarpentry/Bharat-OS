@@ -23,21 +23,21 @@ void hal_timer_init_cpu_local(uint32_t cpu_id) {
 
 void hal_timer_program_periodic(uint64_t ns) {
     uint64_t current_time;
-    __asm__ volatile("csrr %0, time" : "=r"(current_time));
+    __asm__ volatile("rdtime %0" : "=r"(current_time));
     uint64_t ticks = (g_timer_timebase_freq * ns) / 1000000000ULL;
     sbi_set_timer(current_time + ticks);
 }
 
 void hal_timer_program_oneshot(uint64_t ns) {
     uint64_t current_time;
-    __asm__ volatile("csrr %0, time" : "=r"(current_time));
+    __asm__ volatile("rdtime %0" : "=r"(current_time));
     uint64_t ticks = (g_timer_timebase_freq * ns) / 1000000000ULL;
     sbi_set_timer(current_time + ticks);
 }
 
 uint64_t hal_timer_read_counter(void) {
     uint64_t current_time;
-    __asm__ volatile("csrr %0, time" : "=r"(current_time));
+    __asm__ volatile("rdtime %0" : "=r"(current_time));
     return current_time;
 }
 
@@ -45,7 +45,7 @@ uint64_t hal_timer_read_freq(void) {
     return g_timer_timebase_freq;
 }
 
-uint64_t hal_timer_monotonic_ticks(void) {
+uint64_t hal_timer_monotonic_ticks_arch(void) {
     return hal_timer_read_counter();
 }
 
@@ -69,11 +69,11 @@ void hal_ipi_send(uint32_t target_cpu, hal_ipi_reason_t reason) {
     // For now we map to standard IPI since reasons are typically processed softly.
     (void)reason;
     unsigned long hart_mask = (1UL << target_cpu);
-    sbi_send_ipi_payload(&hart_mask, 0); // Payload is ignored by basic SBI IPI
+    sbi_send_ipi(hart_mask, 0); // SBI v0.2+ IPI
 }
 
 void hal_ipi_broadcast(uint64_t mask, hal_ipi_reason_t reason) {
     (void)reason;
     unsigned long hart_mask = (unsigned long)mask;
-    sbi_send_ipi_payload(&hart_mask, 0);
+    sbi_send_ipi(hart_mask, 0); // SBI v0.2+ IPI
 }

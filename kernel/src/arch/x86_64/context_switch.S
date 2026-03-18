@@ -74,24 +74,21 @@ arch_context_switch:
     movq 32(%rsi), %r14
     movq 40(%rsi), %r15
 
-    # Release runqueue lock if necessary here (we'll implement this via a call hook)
-    pushq %rdi
+    # Release runqueue lock if necessary here via post-switch hook
+    # Note: `arch_post_switch` shouldn't take arguments, but we preserve registers just in case.
+    # Align stack before C function call (SysV ABI requires 16-byte alignment before 'call')
+    # Save volatile registers that we need after the call (like %rsi)
     pushq %rsi
-    # Align stack before C function call
-    # SysV ABI: %rsp must be 16-byte aligned *before* the call instruction.
-    movq %rsp, %rax
-    andq $0xFFFFFFFFFFFFFFF0, %rsp
-    # The stack is now 16-byte aligned. But if we push %rax, it becomes 8-byte aligned again.
-    # We must push %rax (8 bytes) and then subtract 8 bytes to maintain 16-byte alignment before 'call'.
-    pushq %rax
-    subq $8, %rsp
+    pushq %rbx                # Save %rbx on the stack so we don't clobber the context's saved value
+    movq %rsp, %rbx           # Temporarily save unaligned rsp
+    andq $-16, %rsp           # Align to 16 bytes
+    # The 'call' instruction pushes 8 bytes (RIP), so the stack will be (rsp % 16 == 8) on entry
+    # to the C function, which complies exactly with the System V AMD64 ABI.
     call arch_post_switch
-    addq $8, %rsp
-    popq %rax
-    movq %rax, %rsp
+    movq %rbx, %rsp           # Restore stack pointer to where the return address is
+    popq %rbx                 # Restore the true %rbx
     popq %rsi
-    popq %rdi
 
-    # Pop the return address into rax to maintain stack alignment, then jmp to it.
+    # Pop the return address into rax, then jmp to it.
     popq %rax
     jmp *%rax

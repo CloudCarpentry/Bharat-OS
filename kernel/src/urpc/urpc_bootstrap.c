@@ -53,7 +53,7 @@ int urpc_is_ready(uint32_t core_id) {
 }
 
 // Minimal Lockless Queue (SPMC/MPSC depends on usage, currently Single Producer Single Consumer per ring)
-int urpc_send(uint32_t target_core, uint64_t msg) {
+int urpc_bootstrap_send(uint32_t target_core, uint64_t msg) {
     if (target_core >= BHARAT_MAX_CPUS || !g_urpc_channels[target_core].is_bound) return -1;
 
     urpc_ring_t* ring = &g_urpc_channels[target_core].tx_ring;
@@ -72,7 +72,7 @@ int urpc_send(uint32_t target_core, uint64_t msg) {
     return 0;
 }
 
-int urpc_recv(uint32_t source_core, uint64_t* out_msg) {
+int urpc_bootstrap_recv(uint32_t source_core, uint64_t* out_msg) {
     if (source_core >= BHARAT_MAX_CPUS || !g_urpc_channels[source_core].is_bound) return -1;
     if (out_msg == NULL) return -1;
 

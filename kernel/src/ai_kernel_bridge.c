@@ -4,7 +4,7 @@
 #include "ipc_endpoint.h"
 
 uint32_t numa_active_node_count(void) __attribute__((weak));
-uint32_t numa_get_current_node(void) __attribute__((weak));
+#include "numa.h"
 
 static uint32_t ai_bridge_active_node_count(void) {
     if (numa_active_node_count) {
@@ -31,7 +31,7 @@ int ai_kernel_ingest_suggestion_ipc(capability_table_t* table, uint32_t recv_cap
 
     ai_suggestion_t suggestion = {0};
     uint32_t received_len = 0U;
-    int st = ipc_endpoint_receive(table, recv_cap, &suggestion, sizeof(suggestion), &received_len);
+    int st = ipc_endpoint_receive(table, recv_cap, &suggestion, sizeof(suggestion), &received_len, 0);
     if (st != IPC_OK) {
         return st;
     }

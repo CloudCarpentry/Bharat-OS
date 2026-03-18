@@ -49,9 +49,9 @@ uint64_t hal_timer_read_freq(void) {
     return 1000000000ULL; // Return ~1GHz assuming generic TSC
 }
 
-uint64_t hal_timer_monotonic_ticks(void) {
-    return rdtsc();
-}
+// uint64_t hal_timer_monotonic_ticks(void) {
+//     return rdtsc();
+// }
 
 bool hal_timer_is_per_cpu(void) {
     return true; // LAPIC timer is per CPU

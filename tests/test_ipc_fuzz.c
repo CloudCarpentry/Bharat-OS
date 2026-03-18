@@ -9,11 +9,11 @@
 #include "../kernel/include/sched.h"
 
 // Stubs for dependencies
-address_space_t g_as = { .root_table = 0x1000U };
+address_space_t g_as = { .root_pt = 0x1000U };
 address_space_t* mm_create_address_space(void) { return &g_as; }
 phys_addr_t mm_alloc_page(uint32_t preferred_numa_node) { (void)preferred_numa_node; return 0; }
 void mm_free_page(phys_addr_t page) { (void)page; }
-void tlb_shootdown(virt_addr_t vaddr) { (void)vaddr; }
+void tlb_shootdown(address_space_t *as, virt_addr_t vaddr) { (void)as; (void)vaddr; }
 int hal_vmm_get_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t* paddr, uint32_t* flags) {
     (void)root_table; (void)vaddr; (void)paddr; (void)flags; return -1;
 }
@@ -59,14 +59,14 @@ static void test_ipc_fuzzing(void) {
             }
 
             // Fuzz send
-            int ret = ipc_endpoint_send(t, send_cap, payload, payload_len);
+            int ret = ipc_endpoint_send(t, send_cap, payload, payload_len, 0);
 
             // Fuzz receive with varying buffer sizes
             uint32_t out_len = rand_r(&seed) % 1024;
             uint8_t* out = malloc(out_len);
             if (out) {
                 uint32_t actual_received = 0;
-                int recv_ret = ipc_endpoint_receive(t, recv_cap, out, out_len, &actual_received);
+                int recv_ret = ipc_endpoint_receive(t, recv_cap, out, out_len, &actual_received, 0);
                 (void)ret; (void)recv_ret; // Silence warnings, we just want to ensure it doesn't crash
                 free(out);
             }
@@ -75,7 +75,7 @@ static void test_ipc_fuzzing(void) {
 
         // Fuzz invalid capabilities
         uint32_t bad_cap = rand_r(&seed) % 10000;
-        ipc_endpoint_send(t, bad_cap, "test", 4);
+        ipc_endpoint_send(t, bad_cap, "test", 4, 0);
     }
 
     printf("IPC fuzzing test completed without crashing.\n");

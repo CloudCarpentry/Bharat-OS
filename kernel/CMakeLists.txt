@@ -9,6 +9,7 @@ set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 
 include_directories(include)
 include_directories(include/generated)
+include_directories(${CMAKE_SOURCE_DIR}/include)
 
 # ── Configuration Header ────────────────────────────────────────────────────
 # These variables are normally set in the root CMakeLists.txt. 
@@ -81,16 +82,21 @@ endif()
 # ── Boot and HAL sources (arch-specific) ────────────────────────────────────
 if(ARCH STREQUAL "x86_64")
     set(BOOT_SRC src/boot/x86_64/boot.S)
-    set(ARCH_HAL src/hal/x86_64/hal_cpu.c src/hal/x86_64/trap_entry.S src/hal/x86_64/vmm.c src/hal/x86_64/vtd_iommu.c src/hal/x86_64/apic.c src/hal/x86_64/timer.c)
+    set(ARCH_HAL src/hal/x86_64/hal_cpu.c src/hal/x86_64/trap_entry.S src/hal/x86_64/vmm.c src/hal/x86_64/hal_pt_x86_64.c src/hal/hal_pt.c src/hal/x86_64/vtd_iommu.c src/hal/x86_64/apic.c src/hal/x86_64/timer.c)
     set(ARCH_CONTEXT_SWITCH src/arch/x86_64/context_switch.c src/arch/x86_64/context_switch.S)
 elseif(ARCH STREQUAL "riscv64")
     set(BOOT_SRC src/boot/riscv64/boot.S)
-    set(ARCH_HAL src/hal/riscv/hal_cpu.c src/hal/riscv/trap_entry.S src/hal/riscv/vmm.c src/hal/riscv/iopmp.c src/hal/riscv/plic.c src/hal/riscv/sbi_timer_ipi.c)
+    set(ARCH_HAL src/hal/riscv/hal_cpu.c src/hal/riscv/trap_entry.S src/hal/riscv/vmm.c src/hal/riscv64/hal_pt_riscv64.c src/hal/hal_pt.c src/hal/riscv/iopmp.c src/hal/riscv/plic.c src/hal/riscv/sbi_timer_ipi.c)
     set(ARCH_HAL_EXTRA src/hal/riscv/shakti_bsp.c)
+    # VirtIO GPU display driver: only for qemu-virt + GUI enabled
+    if(BHARAT_BOOT_GUI AND "${BHARAT_RISCV_SOC_PROFILE}" STREQUAL "qemu-virt")
+        #list(APPEND ARCH_HAL src/hal/riscv/virtio_gpu.c)
+        add_compile_definitions(BHARAT_VIRTIO_GPU=1)
+    endif()
     set(ARCH_CONTEXT_SWITCH src/arch/riscv64/context_switch.c src/arch/riscv64/context_switch.S)
 elseif(ARCH STREQUAL "arm64")
     set(BOOT_SRC src/boot/arm64/boot.S)
-    set(ARCH_HAL src/hal/arm64/hal_cpu.c src/hal/arm64/trap_entry.S src/hal/arm64/vmm.c src/hal/arm64/smmu.c src/hal/arm64/gicv3.c src/hal/arm64/timer_generic.c)
+    set(ARCH_HAL src/hal/arm64/hal_cpu.c src/hal/arm64/trap_entry.S src/hal/arm64/vmm.c src/hal/arm64/hal_pt_arm64.c src/hal/hal_pt.c src/hal/arm64/smmu.c src/hal/arm64/gicv3.c src/hal/arm64/timer_generic.c)
     set(ARCH_CONTEXT_SWITCH src/arch/arm64/context_switch.c src/arch/arm64/context_switch.S)
     set(ARCH_HAL_EXTRA src/hal/arm64/topology_fdt.c)
 endif()
@@ -119,13 +125,21 @@ endif()
 set(KERNEL_SRCS
     ${BOOT_SRC}
     src/boot/boot_args.c
+    $<$<BOOL:${BHARAT_BOOT_GUI}>:src/boot/boot_ui_select.c>
+    $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/boot_video.c>
+    $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/display_handoff.c>
+    $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/display_fallback.c>
+    $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/boot_gui.c>
     src/hal/arm32_mpu_vmm_mock.c
     src/main.c
+    src/cpu_local.c
     src/trace/trace.c
     src/subsystem/profile.c
     src/arch/capabilities.c
     src/profile/${KERNEL_PROFILE_LOWER}/profile.c
     $<$<STREQUAL:${ARCH},x86_64>:src/board/qemu-virt-x86_64/board.c>
+    $<$<STREQUAL:${ARCH},x86_64>:src/arch/x86_64/boot_video_efi.c>
+    $<$<STREQUAL:${ARCH},x86_64>:src/board/qemu-virt-x86_64/machine_display.c>
     $<$<STREQUAL:${ARCH},arm64>:src/board/bcm2711-rpi4/board.c>
     $<$<AND:$<STREQUAL:${ARCH},riscv64>,$<STREQUAL:${BHARAT_RISCV_SOC_PROFILE},qemu-virt>>:src/board/qemu-virt-riscv64/board.c>
     $<$<AND:$<STREQUAL:${ARCH},riscv64>,$<NOT:$<STREQUAL:${BHARAT_RISCV_SOC_PROFILE},qemu-virt>>>:src/board/shakti-ref/board.c>
@@ -137,19 +151,32 @@ set(KERNEL_SRCS
     src/algo_matrix.c
     ${ARCH_HAL}
     src/hal/common/fdt_parser.c
+    src/hal/common/discovery.c
     ${ARCH_HAL_EXTRA}
     ${ARCH_CONTEXT_SWITCH}
     src/arch/${ARCH}/cpu_caps.c
     src/arch/${ARCH}/ext_state.c
     src/hal/mmu_init.c
     src/hal/iommu_stub.c
-    src/mm/pmm.c
-    src/mm/early_alloc.c
-    src/mm/slab.c
-    src/mm/kmem_aligned.c
-    src/mm/vmm.c
-    src/mm/numa.c
+    src/mm/pmm/pmm.c
+    src/mm/pmm/early_alloc.c
+    src/mm/pmm/slab.c
+    src/mm/pmm/kmem_aligned.c
+    src/mm/vmm_legacy/vmm.c
+    src/mm/vmm_legacy/vm_mapping.c
+    src/mm/vmm_legacy/vm_compat_vmm.c
+    src/mm/vm/aspace/aspace.c
+    src/mm/vm/aspace/vm_space.c
+    src/mm/vm/objects/vm_object.c
+    src/mm/vm/fault/fault.c
+    src/mm/pmm/numa.c
+    src/mm/pmm/numa_policy.c
+    src/mm/dma/dma.c
     src/mm/zswap.c
+    src/mm/vmm_legacy/mm_local.c
+    src/mm/vmm_legacy/mm_remote.c
+    src/urpc/urpc_bootstrap.c
+    src/urpc/urpc_channel.c
     src/security/isolation.c
     src/security/credentials.c
     src/security/policy.c
@@ -168,6 +195,7 @@ set(KERNEL_SRCS
     src/device/builtin_drivers.c
     src/device/device_manager.c
     src/device/pci.c
+    src/device/irq_domain.c
 
     src/hal/interrupt_common.c
     src/hal/timer_common.c
@@ -185,9 +213,11 @@ set(KERNEL_SRCS
     src/fs/blob_backend.c
     src/apps/hello_world.c
     src/apps/kernel_tester.c
+    src/apps/bharat_demo.c
     src/tests/ktest_pmm.c
     src/tests/ktest_slab.c
     src/tests/ktest_runner.c
+    src/tests/ktest_hal_pt.c
 )
 
 # ── Kernel ELF ──────────────────────────────────────────────────────────────
@@ -256,6 +286,8 @@ if(ARCH STREQUAL "x86_64")
 elseif(ARCH STREQUAL "riscv64")
     target_compile_options(kernel.elf PRIVATE
         $<$<COMPILE_LANGUAGE:C>:-mcmodel=medany>
+        $<$<COMPILE_LANGUAGE:ASM>:-march=rv64g>
+        $<$<COMPILE_LANGUAGE:C>:-march=rv64g>
     )
 endif()
 
@@ -268,6 +300,7 @@ target_link_options(kernel.elf PRIVATE
     "LINKER:-T,${LINKER_SCRIPT}"
     "LINKER:--build-id=none"
     "LINKER:--no-dynamic-linker"
+    "-fuse-ld=lld"
 )
 
 

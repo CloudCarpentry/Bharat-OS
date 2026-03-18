@@ -25,6 +25,6 @@ typedef struct {
 
 int linux_subsys_init(subsys_instance_t* env);
 int linux_map_fd_to_capability(subsys_instance_t* env, int linux_fd, uint32_t cap, linux_fd_type_t type);
-int linux_syscall_handler(long sysno, long arg1, long arg2, long arg3, long arg4, long arg5, long arg6);
+long linux_syscall_handler(long sysno, long arg1, long arg2, long arg3, long arg4, long arg5, long arg6);
 
 #endif // BHARAT_LINUX_COMPAT_H

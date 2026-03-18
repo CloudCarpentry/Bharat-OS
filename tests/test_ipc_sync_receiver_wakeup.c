@@ -9,13 +9,13 @@
 
 // Mock dependencies
 void ipc_async_check_timeouts(uint64_t current_ticks) { (void)current_ticks; }
-static address_space_t g_as = { .root_table = 0x1000U };
+static address_space_t g_as = { .root_pt = 0x1000U };
 address_space_t* mm_create_address_space(void) { return &g_as; }
 phys_addr_t mm_alloc_page(uint32_t preferred_numa_node) { (void)preferred_numa_node; return 0; }
 void mm_free_page(phys_addr_t page) { (void)page; }
 phys_addr_t pmm_alloc_pages_colored(int order, uint32_t preferred_numa_node, uint32_t flags, mm_color_config_t *color_config) { return 0; }
 phys_addr_t mm_alloc_pages_order(int order, uint32_t preferred_numa_node, uint32_t flags) { return 0; }
-void tlb_shootdown(virt_addr_t vaddr) { (void)vaddr; }
+void tlb_shootdown(address_space_t *as, virt_addr_t vaddr) { (void)as; (void)vaddr; }
 
 
 static void dummy_entry(void) {}
@@ -44,7 +44,7 @@ void test_ipc_sync_receiver_wakeup(void) {
 
     char buf[16];
     uint32_t len = 0;
-    assert(ipc_endpoint_receive(table, recv_cap, buf, sizeof(buf), &len) == IPC_ERR_WOULD_BLOCK);
+    assert(ipc_endpoint_receive(table, recv_cap, buf, sizeof(buf), &len, 0) == IPC_ERR_WOULD_BLOCK);
     assert(t_receiver->state == THREAD_STATE_BLOCKED);
 
     // Switch to sender.
@@ -55,7 +55,7 @@ void test_ipc_sync_receiver_wakeup(void) {
     assert(sched_current_thread() == t_sender);
 
     const char* msg = "msg";
-    assert(ipc_endpoint_send(table, send_cap, msg, 4) == IPC_OK);
+    assert(ipc_endpoint_send(table, send_cap, msg, 4, 0) == IPC_OK);
 
     // Now t_receiver should be READY.
     assert(t_receiver->state == THREAD_STATE_READY);

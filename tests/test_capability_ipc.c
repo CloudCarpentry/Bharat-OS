@@ -9,7 +9,7 @@ void ipc_async_check_timeouts(uint64_t current_ticks) {
     (void)current_ticks;
 }
 
-static address_space_t g_as = { .root_table = 0x1000U };
+static address_space_t g_as = { .root_pt = 0x1000U };
 
 address_space_t* mm_create_address_space(void) {
     return &g_as;
@@ -44,11 +44,11 @@ int main(void) {
     assert(ipc_endpoint_create(table, &send_cap, &recv_cap) == IPC_OK);
 
     const char* msg = "hello";
-    assert(ipc_endpoint_send(table, send_cap, msg, 5U) == IPC_OK);
+    assert(ipc_endpoint_send(table, send_cap, msg, 5U, 0) == IPC_OK);
 
     char out[16] = {0};
     uint32_t out_len = 0;
-    assert(ipc_endpoint_receive(table, recv_cap, out, sizeof(out), &out_len) == IPC_OK);
+    assert(ipc_endpoint_receive(table, recv_cap, out, sizeof(out), &out_len, 0) == IPC_OK);
     assert(out_len == 5U);
     assert(out[0] == 'h' && out[4] == 'o');
 
@@ -111,6 +111,7 @@ int hal_vmm_update_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_
     (void)root_table; (void)vaddr; (void)paddr; (void)flags;
     return -1;
 }
-void tlb_shootdown(virt_addr_t vaddr) {
+void tlb_shootdown(address_space_t *as, virt_addr_t vaddr) {
+    (void)as;
     (void)vaddr;
 }

@@ -149,20 +149,43 @@ Optimizations include:
 
 # Memory Management
 
+The memory subsystem is designed around a **3-plane Distributed VM Architecture** (see [ADR 008](../adr/008-distributed-vm-monitor-and-vm-spaces.md)) to natively support multikernel execution, diverse hardware profiles, and real-time constraints:
+
+1. **Plane A — Canonical Distributed VM Model (`vm_space_t`)**: This plane is the source of truth. It manages address spaces, mappings, capabilities, sharing rules, and generations. It explicitly tracks timing classes (Best-Effort, Soft RT, Hard RT) and hardware profiles (MMU, MPU, MMU+DMA isolation).
+2. **Plane B — URPC Monitor Protocol**: The distributed control plane. It propagates map/unmap/protect requests, handles remote invalidation (TLB shootdowns), and manages activation hints for thread migration across cores.
+3. **Plane C — Local Hardware Realization (`arch_vm_ops_t`)**: The silicon-facing data plane. Each core locally executes page-table writes, CR3/TTBR/satp activation, local TLB invalidation, and page-fault decoding.
+
 The memory subsystem handles:
 
-- virtual memory
-- page tables
-- page allocation
-- kernel heap
-- user memory protection
+- physical page allocation (PMM)
+- canonical distributed virtual memory (`vm_space_t`)
+- local page table realization
+- kernel heap and slab allocation
+- distributed memory coherence
+- user memory and device DMA isolation
 
 Features include:
 
 - huge page support
+- URPC-based remote TLB invalidation
+- strict generation-based coherence for revocation
 - NUMA memory allocation
 - cache-aware allocation
-- page coloring strategies
+- MPU/PMP fallback for hard-real-time and low-end systems
+
+---
+
+# Multikernel State Management
+
+Bharat-OS embraces the multikernel architecture model (inspired by Barrelfish). Rather than a single shared-state monolith, the system is designed as a distributed system of independent cores to maximize scalability and eliminate lock contention.
+
+Features include:
+
+- **Per-CPU State (`cpu_local_t`)**: Each core maintains its own isolated runqueue, capability table, physical memory manager shard, and URPC endpoint configurations. Global arrays have been eliminated.
+- **Monitor Process**: A privileged monitor runs on every core. It acts as the local agent for cross-core coordination, handling URPC messages for memory mapping requests, capability revocations, and lifecycle events.
+- **Dynamic URPC Binding**: Inter-core IPC channels are established dynamically. A core discovers another through the topology and binds a lockless ring buffer using `URPC_BIND_REQ` and `URPC_BIND_ACK` protocols.
+- **System Knowledge Base (SKB)**: Hardware topology (NUMA nodes, L3 caches) is discovered during boot and registered in the SKB. The SKB router uses this topology to pick the optimal interconnect transport mechanism (e.g., pure shared memory URPC for co-located L3 caches vs IPI-assisted for remote NUMA nodes).
+- **Message-Based Synchronization**: Critical operations like Capability Revocation and TLB Shootdowns are performed asynchronously using URPC broadcasts and acknowledgments (`URPC_TLB_INVAL`), avoiding expensive inter-processor interrupts with heavy spinlocks.
 
 ---
 

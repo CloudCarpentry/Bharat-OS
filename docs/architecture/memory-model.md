@@ -2,45 +2,45 @@
 
 ## Overview
 
-Bharat-OS delegates memory management policy entirely to user-space, keeping the kernel minimal. The kernel only provides the mechanisms to map and unmap physical pages to virtual addresses.
+Bharat-OS employs a **3-plane Distributed Virtual Memory Architecture** designed to span multiple nodes, hardware profiles (MMU/MPU), and real-time constraints, while delegating policy and resolution to user-space or URPC-based monitors where appropriate.
 
-## MMU Hardware Abstraction Layer (HAL)
+## The 3-Plane Architecture
 
-Bharat-OS utilizes a unified `mmu_ops_t` structure (`kernel/include/hal/mmu_ops.h`) to bridge architecture-independent VMM operations and architecture-specific hardware page tables. This decouples the VMM policy from the hardware implementation.
+See [ADR 008](../adr/008-distributed-vm-monitor-and-vm-spaces.md) for full context on this transition.
 
-### Layer Architecture
+### Plane A: Canonical Distributed VM Model
+The **source of truth** for virtual memory. Instead of one monolithic page-table object, the OS uses `vm_space_t` to track the canonical state of address spaces, mapping rules, generations, and profile compatibility. It knows if a mapping is meant for an MPU system, an MMU system, or an IOMMU isolated domain. It manages "Timing Classes" directly (`Best-Effort`, `Soft RT`, `Firm RT`, `Hard RT`).
+
+### Plane B: URPC Monitor Protocol
+The **distributed control plane**. Changes to the canonical `vm_space_t` (e.g., mapping adds, revokes, unmaps) increment a generation counter. The "Home Monitor" for that address space uses URPC messages (`MON_VM_MAP`, `MON_VM_UNMAP`, `MON_VM_TLB_INVALIDATE_RANGE`) to broadcast the change. Other cores ("Remote Monitors") receive these messages, update their local view, and return an ACK (in strict sync mode) or lazily realize them later (in lazy mode).
+
+### Plane C: Local Hardware Realization
+The **silicon-facing data plane**. Hardware page tables (or MPU regions) are strictly treated as **local, cached realizations** of the canonical state. The `arch_vm_ops_t` and `arch_mem_domain_ops_t` structures decouple the core VMM policy from architecture-specific mechanisms (e.g., writing x86_64 PML4 entries, configuring ARM64 TTBR0/1, or RISC-V Sv39 `satp` registers).
 
 ```
-┌─────────────────────────────────────────────────┐
-│           VMM Core (arch-independent)           │
-│   map_page(), unmap_page(), protect(), query()  │
-├─────────────────────────────────────────────────┤
-│              MMU Abstraction Layer              │
-│         struct mmu_ops  (vtable/HAL)            │
-├──────────┬──────────┬───────────┬───────────────┤
-│  x86_64  │ AArch64  │  RISC-V   │  ARM32 / SOC  │
-│  4-level │ 4-level  │  Sv39/48  │  2-level LPAE │
-│  PML4    │ TTBRx    │  SATP     │  TTBR0/1      │
-└──────────┴──────────┴───────────┴───────────────┘
+┌────────────────────────────────────────────────────────┐
+│ Plane A: Canonical VM (vm_space_t) - Source of Truth   │
+│   Manages capabilities, mappings, and timing classes   │
+├────────────────────────────────────────────────────────┤
+│ Plane B: URPC Monitor Protocol - Coordination          │
+│   MON_VM_MAP, MON_VM_UNMAP, Generation Sync, ACKs      │
+├────────────────────────────────────────────────────────┤
+│ Plane C: Hardware Realization (arch_vm_ops_t)          │
+├──────────┬──────────┬───────────┬───────────┬──────────┤
+│  x86_64  │ AArch64  │  RISC-V   │ ARM MPU   │ IOMMU    │
+│  PML4    │ TTBRx    │  SATP     │ Regions   │ Domains  │
+└──────────┴──────────┴───────────┴───────────┴──────────┘
 ```
 
-The generic Virtual Memory Manager (`kernel/src/mm/vmm.c`) requests page mappings and modifications using a set of architecture-agnostic flags (`mmu_flags_t` like `MMU_READ`, `MMU_WRITE`, `MMU_USER`). The underlying HAL converts these flags to format-specific mappings at boot.
+## Profiles and Timing Classes
 
-### Registration and Detection
+Memory allocation wildly diverges depending on the target profile, explicitly baked into the `vm_space_t`:
 
-At early boot, `arch_mmu_init()` identifies the active architecture and assigns a static baseline `mmu_ops_t` profile (e.g. `x86_64_mmu_ops`). It then runs an architecture-specific runtime detection routine (`x86_mmu_detect()`, `arm64_mmu_detect()`, etc.) to elevate capabilities if the hardware supports them (e.g., detecting 1GB huge pages via CPUID, or Sv48 paging on RISC-V).
+### Hard Real-Time (Bharat-RT)
+- **Profile:** MPU/PMP (`MEM_PROFILE_MPU_ONLY`) or Hard RT MMU (`MEM_PROFILE_MMU_BASIC`).
+- **Constraints:** Fully resident, pinned, and prefaulted mappings. No demand paging or runtime page-table allocation. Page faults in critical tasks are fatal. A core must achieve the `VM_REALIZE_RT_VALID` state before the scheduler dispatches a task.
 
-## The Two Product Lines
-
-Memory allocation wildly diverges depending on the target profile:
-
-### Bharat-RT (Real-Time Embedded)
-
-- **Static Allocation**: All memory for critical tasks is pre-allocated at boot time via capabilities.
-- **No Paging**: Demand paging is disabled. Page faults in critical tasks are considered fatal errors, ensuring perfectly bounded latency and deterministic execution.
-
-### Bharat-Cloud (High-Throughput Servers)
-
-- **Demand Paging**: Virtual pages are allocated lazily via page faults resolved by user-space pager daemons.
-- **NUMA Readiness**: The kernel interfaces are designed from Day 1 to support per-node descriptors, CPU-to-node affinity, and `memory_node_id` routing. _Note: v1 implementations execute as single-node entities; full NUMA memory-balancing policies are deferred to user-space heuristics in future versions._
-- **Distributed Shared Memory (DSM)**: Over CXL 3.x fabrics, the memory model can span across thousands of accelerator nodes seamlessly.
+### Cloud/Edge (Bharat-Cloud)
+- **Profile:** Distributed MMU (`MEM_PROFILE_MMU_DISTRIBUTED`) or DMA Isolated (`MEM_PROFILE_MMU_DMA_ISOLATED`).
+- **Constraints:** Demand paging, lazy realization of mappings, thread migration with remote fault recovery. Unmaps use strict generation-sync revocation to prevent use-after-free vulnerabilities. Full IOMMU/SMMU domain support.
+- **NUMA Readiness**: The kernel interfaces are designed from Day 1 to support per-node descriptors, CPU-to-node affinity, and `memory_node_id` routing.

@@ -22,7 +22,10 @@
 #include "subsystem_profile.h"
 #include "trap.h"
 #include "boot/boot_args.h"
+#include "bharat/boot_info.h"
+#include "display/boot_gui_init.h"
 #include "tests/ktest.h"
+#include <bharat/cpu_local.h>
 
 #include "arch/arch_ext_state.h"
 #include "arch/arch_cpu_caps.h"
@@ -179,6 +182,10 @@ static void kernel_ai_governor_tick(void) {
 
 #if defined(__x86_64__)
 #include "boot/x86_64/multiboot2.h"
+
+// Forward declaration for x86_64 framebuffer parser
+extern void x86_64_parse_multiboot_framebuffer(multiboot_information_t *mb_info);
+
 void kernel_main(uint32_t magic, multiboot_information_t *mb_info) {
 #elif defined(__riscv)
 void kernel_main(uint64_t hart_id, uintptr_t fdt_ptr) {
@@ -212,6 +219,13 @@ void kernel_main(void) {
       }
       tag_ptr += ((tag->size + 7) & ~7);
     }
+
+    // Phase 1 x86_64 Framebuffer parser hook (Multiboot 2)
+    x86_64_parse_multiboot_framebuffer(mb_info);
+  } else if (magic == 0x2BADB002 && mb_info != NULL) {
+    // Multiboot 1 parser fallback (QEMU -kernel passes Multiboot 1)
+    extern void x86_64_parse_multiboot1_framebuffer(void *mb_info);
+    x86_64_parse_multiboot1_framebuffer(mb_info);
   }
 #else
   // TODO: Add Device Tree parsing for ARM64/RISC-V bootargs
@@ -226,6 +240,8 @@ void kernel_main(void) {
   KPRINT("\nBharat-OS kernel boot (v3.2 bring-up)\n");
 
   uint32_t cpu_id = hal_cpu_get_id();
+  cpu_local_init(cpu_id);
+  
   int is_bsp = (cpu_id == 0);
 
   if (is_bsp) {
@@ -375,6 +391,15 @@ void kernel_main(void) {
 
     kernel_boot_scheduler();
 
+#if BHARAT_BOOT_GUI
+    KPRINT("  [UI] Initializing boot GUI...\n");
+    if (boot_gui_run() == 0) {
+      KPRINT("  [UI] Boot framebuffer active.\n");
+    } else {
+      KPRINT("  [UI] Boot GUI not available, text mode only.\n");
+    }
+#endif /* BHARAT_BOOT_GUI */
+
     KPRINT("  [AI] Calibrating hardware silicon metrics...\n");
     ai_sched_calibrate_silicon();
     KPRINT("  [AI] Calibration complete.\n");
@@ -401,6 +426,7 @@ void kernel_main(void) {
     KPRINT("TEST: kernel self-tests passed\n");
 
     // Run registered boot tests
+    extern void kernel_run_boot_tests(void);
     kernel_run_boot_tests();
 
     hal_serial_write("[bharat] hw_profile=");
@@ -414,6 +440,10 @@ void kernel_main(void) {
     /* Kernel Tester Application - Perfection Phase */
     extern void kernel_tester_app(void);
     kernel_tester_app();
+
+    /* Bharat-OS Feature Showcase Demo */
+    extern void bharat_demo_app(void);
+    bharat_demo_app();
 
     while (1) {
       if (boot_policy->enable_ai_governor != 0U) {

@@ -17,4 +17,12 @@ for arch_file in \
   echo "compiled ${arch_file}"
 done
 
+for core_file in \
+  "kernel/src/cpu_local.c" \
+  "kernel/src/urpc/urpc_channel.c" \
+  "subsys/src/skb/skb.c"; do
+  cc -std=c11 -I"${ROOT_DIR}/kernel/include" -I"${ROOT_DIR}/subsys/include" -c "${ROOT_DIR}/${core_file}" -o /tmp/$(basename "${core_file}").o
+  echo "compiled ${core_file}"
+done
+
 echo "scheduler arch matrix checks passed"

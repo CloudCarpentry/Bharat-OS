@@ -335,10 +335,12 @@ Our display architecture explicitly rejects "desktop compositor or nothing". We 
 
 ## 🧭 Roadmap (Condensed)
 
-- **Phase 1 (kernel spine & core UI):** boot stability, scheduler/memory correctness, timer+interrupts, SMP bring-up, tracing/observability, **framebuffer core, simple 2D renderer, and text output.**
-- **Phase 2 (device specialization & embedded UI):** edge/robotics/drone service packs, power management, secure update chain, sensor+actuator frameworks, **touch/key input, and small-device UI toolkit.**
-- **Phase 3 (cloud/appliance & accelerators):** NUMA/resource isolation, high-speed networking/storage, accelerator orchestration (NPU/DSP/DMA), virtualization hooks.
-- **Phase 4 (advanced UX):** richer desktop compositor and full accelerated windowing environments.
+The official roadmap for the multikernel migration and continuous evolution of Bharat-OS is detailed in [`ROADMAP.md`](ROADMAP.md). Highlights include:
+
+- **Phase 1 (Multikernel Foundation & UI):** Per-CPU capability and runqueue isolation, message-based TLB shootdowns, URPC topology maps (SKB), **framebuffer core**, and **text output.**
+- **Phase 2 (Device Specialization & Edge UI):** Hardware validation, AI predictive heuristics from PMC counters, **touch/key input**, and small-device UIs.
+- **Phase 3 (Cloud / Datacenter):** NUMA scale-up, Zero-copy networking, DMA/accelerator orchestrations.
+- **Phase 4 (Advanced UX & Vertification):** Full compositor environments and Isabelle/HOL formal verification layers.
 
 ### AI Features & Roadmap
 

@@ -4,6 +4,10 @@
 #include <stdint.h>
 #include "mm.h"
 #include "advanced/ai_sched.h"
+#include "list.h"
+#include "kernel_safety.h"
+#include "spinlock.h"
+#include <stdbool.h>
 
 /*
  * Bharat-OS Process & Thread Management
@@ -34,6 +38,7 @@ typedef enum {
 
 
 #define SCHED_MAX_PRIORITY 31U
+#define MAX_PRIORITY_LEVELS (SCHED_MAX_PRIORITY + 1U)
 
 typedef struct arch_ext_state arch_ext_state_t;
 
@@ -53,14 +58,23 @@ typedef struct {
 
 typedef struct kthread kthread_t;
 
-typedef struct {
-    uint32_t core_id;
-    kthread_t* current;
-    kthread_t* idle;
+typedef enum {
+    THREAD_FAULT_NONE = 0,
+    THREAD_FAULT_SEGV,
+    THREAD_FAULT_STACK_OVERFLOW,
+} thread_fault_t;
+
+typedef struct sched_rq {
+    kthread_t* current_thread;
+    kthread_t* idle_thread;
+    list_head_t ready_queue[MAX_PRIORITY_LEVELS];
+    list_head_t sleeping_list;
+    list_head_t blocked_list;
     uint64_t total_ticks;
     uint64_t context_switches;
     uint32_t throttled;
-} sched_core_t;
+    spinlock_t lock;
+} sched_rq_t;
 
 typedef struct {
     kthread_t* head;
@@ -109,7 +123,13 @@ struct kthread {
     // IPC blocking state
     uint64_t ipc_deadline_ticks;
     int ipc_wakeup_reason;
+
+    // Fault state
+    thread_fault_t pending_fault;
+    bool fault_pending;
 };
+
+int thread_raise_fault(kthread_t *thread, thread_fault_t fault);
 
 typedef struct {
     uint64_t process_id;

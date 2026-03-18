@@ -30,7 +30,14 @@ typedef struct page {
   // Ownership tracking
   uint32_t owner_core_id;
   uint64_t object_id;
+
+  uint16_t zone;
+  uint16_t owner_class;
+  uint16_t pin_count;
+  uint16_t state;
 } page_t;
+
+typedef page_t page_frame_t;
 
 // Convert page struct pointer back to physical address
 phys_addr_t page_to_phys(page_t *page);
@@ -86,11 +93,10 @@ int mm_free_dma_pages(phys_addr_t phys, void *kernel_virt, size_t size);
 void mm_inc_page_ref(phys_addr_t page);
 
 // Virtual Memory Management (Architecture agnostic paging)
-typedef struct {
-  phys_addr_t root_table; // CR3 on x86, satp on RISC-V
-  uint32_t owner_core_id;
-  uint64_t object_id;
-} address_space_t;
+#include "spinlock.h"
+
+typedef struct vm_address_space address_space_t;
+#include "mm/aspace.h"
 
 int vmm_init(void);
 int vmm_map_page(virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags);
@@ -115,6 +121,9 @@ int vmm_map_device_mmio_token(virt_addr_t vaddr, phys_addr_t paddr,
 // Create a new empty hardware address space
 address_space_t *mm_create_address_space(void);
 
+void vmm_process_urpc_messages(void);
+
 #endif // BHARAT_MM_H
 
-void tlb_shootdown(virt_addr_t vaddr);
+void tlb_shootdown(address_space_t *as, virt_addr_t vaddr);
+#define PAGE_EXEC 0x400

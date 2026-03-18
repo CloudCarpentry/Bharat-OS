@@ -257,23 +257,40 @@ if ($Run) {
     $qemuArgs = @()
 
     if ($Arch -eq "x86_64") {
-        $qemuArgs += @("-kernel", $KernelBinary, "-m", "256M", "-nographic", "-serial", "mon:stdio", "-no-reboot")
+        $qemuArgs += @("-kernel", $KernelBinary, "-m", "256M", "-serial", "mon:stdio", "-no-reboot")
+        if ($BootGui -eq "ON") {
+            $qemuArgs += @("-vga", "std")
+        } else {
+            $qemuArgs += @("-nographic")
+        }
     }
     elseif ($Arch -eq "riscv64") {
         if ($Payload) {
             if (Test-Path "$BuildDir\fw_payload.elf") {
-                $qemuArgs += @("-machine", $Machine, "-bios", "none", "-kernel", "$BuildDir\fw_payload.elf", "-m", "256M", "-nographic", "-serial", "mon:stdio", "-no-reboot")
+                $qemuArgs += @("-machine", $Machine, "-bios", "none", "-kernel", "$BuildDir\fw_payload.elf", "-m", "256M", "-serial", "mon:stdio", "-no-reboot")
             }
             else {
-                $qemuArgs += @("-machine", $Machine, "-bios", "$BuildDir\payload.bin", "-m", "256M", "-nographic", "-serial", "mon:stdio", "-no-reboot")
+                $qemuArgs += @("-machine", $Machine, "-bios", "$BuildDir\payload.bin", "-m", "256M", "-serial", "mon:stdio", "-no-reboot")
             }
         }
         else {
-            $qemuArgs += @("-machine", $Machine, "-kernel", $OutELF, "-m", "256M", "-nographic", "-serial", "mon:stdio", "-no-reboot")
+            $qemuArgs += @("-machine", $Machine, "-kernel", $OutELF, "-m", "256M", "-serial", "mon:stdio", "-no-reboot")
+        }
+        if ($BootGui -eq "ON") {
+            # riscv64 virt machine has no legacy VGA; use VirtIO GPU (MMIO transport)
+            $qemuArgs += @("-device", "virtio-gpu-device")
+        } else {
+            $qemuArgs += @("-nographic")
         }
     }
     elseif ($Arch -eq "arm64") {
-        $qemuArgs += @("-machine", $Machine, "-cpu", "cortex-a53", "-kernel", $OutELF, "-m", "256M", "-nographic", "-serial", "mon:stdio", "-no-reboot")
+        $qemuArgs += @("-machine", $Machine, "-cpu", "cortex-a53", "-kernel", $OutELF, "-m", "256M", "-serial", "mon:stdio", "-no-reboot")
+        if ($BootGui -eq "ON") {
+            # arm64 virt machine has no legacy VGA; use VirtIO GPU which the virt machine supports
+            $qemuArgs += @("-device", "virtio-gpu-pci")
+        } else {
+            $qemuArgs += @("-nographic")
+        }
     }
 
     if ($DebugQemu) {
