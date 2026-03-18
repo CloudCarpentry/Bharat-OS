@@ -1,6 +1,7 @@
 #include "fs/namespace.h"
 
 int vfs_namespace_create(vfs_namespace_t* parent, vfs_namespace_t** out_namespace, capability_t* cap) {
+    (void)parent;
     if (!out_namespace || !cap) {
         return -1;
     }

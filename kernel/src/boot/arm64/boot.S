@@ -27,6 +27,12 @@ _start:
     b 1b
 2:
 
+    /* Enable FPU/SIMD at EL1 */
+    mrs x1, cpacr_el1
+    orr x1, x1, #(3 << 20) /* FPEN bits 20:21 = 0b11 */
+    msr cpacr_el1, x1
+    isb
+
     /* Jump to C kernel_main */
     bl kernel_main
 

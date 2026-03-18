@@ -255,6 +255,7 @@ int fdt_parse_discovery(const void* fdt_ptr, system_discovery_t* discovery) {
     int is_pcie = 0;
     int is_smmuv3 = 0;
     int is_pmu = 0;
+    (void)is_pmu;
     int is_fb = 0;
 
     const void* reg_data = NULL;

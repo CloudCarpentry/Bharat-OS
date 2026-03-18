@@ -37,12 +37,12 @@ typedef struct {
     uint64_t entries[512];
 } pt_t, pmd_t, pud_t, pgd_t;
 
-static virt_addr_t align_down(virt_addr_t value) {
+__attribute__((unused)) static virt_addr_t align_down(virt_addr_t value) {
     return value & ~(virt_addr_t)(PAGE_SIZE - 1U);
 }
 
 // Convert architecture independent flags to ARM64 specific flags
-static uint64_t convert_flags_to_arm64(uint32_t flags) {
+__attribute__((unused)) static uint64_t convert_flags_to_arm64(uint32_t flags) {
     uint64_t mmu_flags = ARM64_MMU_FLAG_AF | ARM64_MMU_ATTR_NORMAL_MEM | ARM64_MMU_SH_INNER;
 
     // Permissions mapping
@@ -70,7 +70,7 @@ static uint64_t convert_flags_to_arm64(uint32_t flags) {
     return mmu_flags;
 }
 
-static uint32_t convert_arm64_to_flags(uint64_t mmu_flags) {
+__attribute__((unused)) static uint32_t convert_arm64_to_flags(uint64_t mmu_flags) {
     uint32_t flags = 0;
 
     uint64_t ap = mmu_flags & (3ULL << 6);
@@ -109,7 +109,7 @@ static uint64_t hal_get_ttbr1(void) {
     return ttbr1 & ~0xFFFULL;
 }
 
-static void hal_tlbi_page(virt_addr_t vaddr) {
+__attribute__((unused)) static void hal_tlbi_page(virt_addr_t vaddr) {
     __asm__ volatile(
         "tlbi vale1is, %0\n"
         "dsb ish\n"

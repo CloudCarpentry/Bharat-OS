@@ -8,11 +8,11 @@ static inline uint64_t read_cntpct(void) {
 }
 
 static inline void write_cntp_tval(uint32_t val) {
-    __asm__ volatile("msr cntp_tval_el0, %0" : : "r" (val));
+    __asm__ volatile("msr cntp_tval_el0, %x0" : : "r" ((uint64_t)val));
 }
 
 static inline void write_cntp_ctl(uint32_t val) {
-    __asm__ volatile("msr cntp_ctl_el0, %0" : : "r" (val));
+    __asm__ volatile("msr cntp_ctl_el0, %x0" : : "r" ((uint64_t)val));
 }
 
 void hal_timer_init(void) {

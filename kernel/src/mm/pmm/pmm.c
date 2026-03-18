@@ -700,7 +700,7 @@ int mm_pmm_init(uint32_t magic, void *memory_map) {
   // Zero-initialize PStore region if it exists
   extern char _pstore_start[];
   extern char _pstore_end[];
-  if (_pstore_start < _pstore_end) {
+  if ((uintptr_t)_pstore_start < (uintptr_t)_pstore_end) {
     size_t pstore_len = (size_t)(_pstore_end - _pstore_start);
     for (size_t i = 0; i < pstore_len; i++) {
       _pstore_start[i] = 0;
@@ -712,6 +712,7 @@ int mm_pmm_init(uint32_t magic, void *memory_map) {
 }
 
 phys_addr_t mm_alloc_page(uint32_t preferred_numa_node) {
+  (void)preferred_numa_node;
   pmm_block_t block;
   if (pmm_alloc_pages(0, PMM_ZONE_ANY, PMM_ALLOC_NONE, &block) == 0) {
     page_t *p = phys_to_page(block.phys_addr);
@@ -724,6 +725,7 @@ phys_addr_t mm_alloc_page(uint32_t preferred_numa_node) {
 int mm_alloc_dma_pages(size_t size, uint32_t preferred_numa_node,
                        uint32_t dma_flags, phys_addr_t *out_phys,
                        void **out_kernel_virt) {
+  (void)preferred_numa_node;
   if (size == 0 || !out_phys || !out_kernel_virt) {
     return -1;
   }
