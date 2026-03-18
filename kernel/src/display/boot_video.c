@@ -5,18 +5,15 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-// Collect display info by asking the machine-specific module to provide a boot_video_handoff_t
+// Collect display info by asking the machine-specific module to provide a
+// boot_video_handoff_t.
 int boot_video_collect(boot_video_handoff_t *out) {
     if (!out) return -1;
     out->valid = false;
 
-    // In Phase 1 x86_64, machine_probe_boot_video will be implemented
-    // in the board or machine logic, linking back to UEFI GOP or text mode
+    // machine_probe_boot_video is provided by each board/arch implementation.
     display_probe_result_t probe_res = {0};
-    int ret = -1;
-#if defined(__x86_64__) || defined(_M_X64)
-    ret = machine_probe_boot_video(&probe_res, out);
-#endif
+    int ret = machine_probe_boot_video(&probe_res, out);
     if (ret != 0 || !probe_res.usable) {
         return -1; // Fallback
     }
