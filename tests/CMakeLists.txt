@@ -128,6 +128,10 @@ add_executable(test_windows_compat_init test_windows_compat_init.c ../subsys/win
 target_include_directories(test_windows_compat_init PRIVATE ../kernel/include ../subsys/include)
 add_test(NAME test_windows_compat_init COMMAND test_windows_compat_init)
 
+add_executable(test_subsys_manager test_subsys_manager.c benchmark_stubs.c ../subsys/src/manager.c ../subsys/linux/linux_compat.c ../subsys/windows/win_compat.c ../subsys/src/subsys_test_runner.c ../kernel/src/boot/boot_args.c ../kernel/src/lib/string.c)
+target_include_directories(test_subsys_manager PRIVATE ../subsys/include ../kernel/include)
+add_test(NAME test_subsys_manager COMMAND test_subsys_manager)
+
 add_executable(test_vm_stress test_vm_stress.c benchmark_stubs.c ../kernel/src/mm/vmm_legacy/vmm.c)
 target_include_directories(test_vm_stress PRIVATE ../kernel/include)
 add_test(NAME test_vm_stress COMMAND test_vm_stress)
