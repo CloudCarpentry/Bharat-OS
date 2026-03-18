@@ -346,3 +346,8 @@ add_test(NAME test_smp_hal COMMAND test_smp_hal)
 add_executable(test_pmm_production test_pmm_production.c ../kernel/src/mm/pmm/pmm.c)
 target_include_directories(test_pmm_production PRIVATE ../kernel/include ../kernel/src)
 add_test(NAME test_pmm_production COMMAND test_pmm_production)
+
+add_executable(test_benchmark_hw_caps test_benchmark_hw_caps.c ../kernel/src/benchmark/benchmark.c ../kernel/src/arch/capabilities.c benchmark_stubs.c)
+target_include_directories(test_benchmark_hw_caps PRIVATE ../kernel/include)
+target_compile_definitions(test_benchmark_hw_caps PRIVATE TESTING=1)
+add_test(NAME test_benchmark_hw_caps COMMAND test_benchmark_hw_caps)
