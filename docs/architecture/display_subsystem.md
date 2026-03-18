@@ -30,8 +30,9 @@ This is the core target for many edge and embedded devices.
 
 ### 4. Tier 3: Embedded Lightweight UI
 For kiosks, industrial panels, and appliances, the UI lives just above the framebuffer.
-* A tiny toolkit of widgets: labels, buttons, progress bars, menus.
-* Scene/view management, directly routing touch/key events to focused components.
+* **FBUI Toolkit**: A lightweight toolkit of widgets currently implemented including labels, buttons, and progress bars.
+* **FBUI Render Context**: Implements software-rendered fills, blitting, and line drawing.
+* **FBUI Events**: Implements touch/key event routing, hit testing, and scene/view management.
 * No complex window management, just full-screen or simple layout partitions.
 
 ### 5. Tier 4: Desktop Graphics Subsystem
