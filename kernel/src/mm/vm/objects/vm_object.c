@@ -1,38 +1,35 @@
-#include "../../include/mm/vm_object.h"
-#include "../../include/mm.h"
-#include "../../include/numa.h"
-#include "../../include/mm/numa_policy.h"
-#include "../../include/console.h"
+#include "../../../../include/mm/vm_object.h"
+#include "../../../../include/mm/aspace.h"
+#include "../../../../include/mm.h"
+#include "../../../../include/numa.h"
+#include "../../../../include/mm/numa_policy.h"
+#include "../../../../include/console.h"
+#include "../../../../include/slab.h"
 
-// Basic slab allocator or kmalloc substitute for region nodes
-#include "../../include/slab.h"
+// ============================================================================
+// Internal Helpers
+// ============================================================================
 
-int vm_object_create(vm_object_kind_t kind, uint64_t size, vm_object_t **out_obj) {
-    if (!out_obj || size == 0) return -1;
-
+static vm_object_t *vm_object_alloc(vm_object_kind_t kind, size_t size, uint32_t flags) {
     vm_object_t *obj = (vm_object_t *)kmalloc(sizeof(vm_object_t));
-    if (!obj) return -2;
+    if (!obj) return NULL;
 
     obj->kind = kind;
-    obj->size_bytes = size;
-    obj->object_flags = 0;
+    obj->size = size;
+    obj->flags = flags;
     obj->refcount = 1;
-    spin_lock_init(&obj->lock);
     obj->ops = NULL;
-    obj->backend_data = NULL;
 
-    *out_obj = obj;
-    return 0;
+    return obj;
 }
 
-int vm_object_ref(vm_object_t *obj) {
-    if (!obj) return -1;
+void vm_object_retain(vm_object_t *obj) {
+    if (!obj) return;
     __atomic_fetch_add(&obj->refcount, 1, __ATOMIC_SEQ_CST);
-    return 0;
 }
 
-int vm_object_unref(vm_object_t *obj) {
-    if (!obj) return -1;
+void vm_object_release(vm_object_t *obj) {
+    if (!obj) return;
     uint32_t ref = __atomic_fetch_sub(&obj->refcount, 1, __ATOMIC_SEQ_CST);
     if (ref == 1) { // Was 1 before sub, now 0
         if (obj->ops && obj->ops->release) {
@@ -40,115 +37,116 @@ int vm_object_unref(vm_object_t *obj) {
         }
         kfree(obj);
     }
-    return 0;
 }
 
 // ============================================================================
-// Anonymous Memory Object (Zero-Fill-On-Demand)
+// Generic Stubs
 // ============================================================================
 
-static int anon_fault(vm_object_t *obj, const vm_fault_ctx_t *ctx, uint64_t *out_phys_page) {
-    if (!obj || !ctx || !out_phys_page) return VM_FAULT_SIGSEGV;
-
-    // Allocate a new physical page with NUMA awareness
-    numa_affinity_t local_policy = { .policy = NUMA_POLICY_LOCAL_PREFERRED, .target_node = NUMA_NODE_ANY };
-    phys_addr_t paddr = mm_alloc_page_policy(&local_policy);
-    if (paddr == 0) return VM_FAULT_OOM;
-
-    // Zero-Fill-On-Demand
-    // Assuming P2V maps all physical memory into a direct map region
-    #define P2V(x) ((void*)(uintptr_t)(x))
-    uint8_t *page_ptr = (uint8_t *)P2V(paddr);
-    for (int i = 0; i < PAGE_SIZE; i++) {
-        page_ptr[i] = 0;
-    }
-
-    *out_phys_page = paddr;
-    return VM_FAULT_HANDLED;
+static int vm_object_fault_stub(struct vm_object *obj, struct vm_region *region, uintptr_t fault_addr, uint32_t access, phys_addr_t *out_page, uint32_t *out_page_flags) {
+    (void)obj;
+    (void)region;
+    (void)fault_addr;
+    (void)access;
+    (void)out_page;
+    (void)out_page_flags;
+    return VM_FAULT_ENOSYS;
 }
 
-static void anon_release(vm_object_t *obj) {
-    // In a production kernel, the vm_object tracks the physical pages via a radix tree or list
-    // so they can be reclaimed or freed properly when the object dies or is truncated.
+static void vm_object_release_default(struct vm_object *obj) {
     (void)obj;
 }
+
+// ============================================================================
+// Anonymous Memory Object
+// ============================================================================
 
 static const vm_object_ops_t anon_ops = {
-    .fault = anon_fault,
-    .writeback = NULL,
-    .map_notify = NULL,
-    .unmap_notify = NULL,
-    .release = anon_release
+    .fault = vm_object_fault_stub,
+    .release = vm_object_release_default
 };
 
-int vm_object_create_anon(uint64_t size, vm_object_t **out_obj) {
-    int ret = vm_object_create(VM_OBJECT_ANON, size, out_obj);
-    if (ret == 0) {
-        (*out_obj)->ops = &anon_ops;
+vm_object_t *vm_object_create_anon(size_t size, uint32_t flags) {
+    vm_object_t *obj = vm_object_alloc(VM_OBJECT_ANON, size, flags);
+    if (obj) {
+        obj->ops = &anon_ops;
+        obj->u.anon.zero_fill = 1;
     }
-    return ret;
+    return obj;
 }
 
 // ============================================================================
-// Shared Anonymous Memory Object (Shared Memory / COW Base)
+// Shared Anonymous Memory Object
 // ============================================================================
-
-static int shared_fault(vm_object_t *obj, const vm_fault_ctx_t *ctx, uint64_t *out_phys_page) {
-    if (!obj || !ctx || !out_phys_page) return VM_FAULT_SIGSEGV;
-
-    spin_lock(&obj->lock);
-
-    numa_affinity_t local_policy = { .policy = NUMA_POLICY_LOCAL_PREFERRED, .target_node = NUMA_NODE_ANY };
-    phys_addr_t paddr = mm_alloc_page_policy(&local_policy);
-    if (paddr == 0) {
-        spin_unlock(&obj->lock);
-        return VM_FAULT_OOM;
-    }
-
-    uint8_t *page_ptr = (uint8_t *)P2V(paddr);
-    for (int i = 0; i < PAGE_SIZE; i++) {
-        page_ptr[i] = 0;
-    }
-
-    *out_phys_page = paddr;
-
-    spin_unlock(&obj->lock);
-    return VM_FAULT_HANDLED;
-}
-
-static void shared_release(vm_object_t *obj) {
-    (void)obj;
-}
 
 static const vm_object_ops_t shared_ops = {
-    .fault = shared_fault,
-    .writeback = NULL,
-    .map_notify = NULL,
-    .unmap_notify = NULL,
-    .release = shared_release
+    .fault = vm_object_fault_stub,
+    .release = vm_object_release_default
 };
 
-int vm_object_create_shared(uint64_t size, vm_object_t **out_obj) {
-    int ret = vm_object_create(VM_OBJECT_SHARED_ANON, size, out_obj);
-    if (ret == 0) {
-        (*out_obj)->ops = &shared_ops;
+vm_object_t *vm_object_create_shared(size_t size, uint32_t flags) {
+    vm_object_t *obj = vm_object_alloc(VM_OBJECT_SHARED, size, flags);
+    if (obj) {
+        obj->ops = &shared_ops;
+        obj->u.shared.shared_id = 0; // Placeholder
     }
-    return ret;
+    return obj;
 }
 
 // ============================================================================
-// Device/DMA Memory Objects (MMIO Stubs)
+// File Memory Object
 // ============================================================================
 
-int vm_object_create_device(uint64_t phys_base, uint64_t size, vm_object_t **out_obj) {
-    int ret = vm_object_create(VM_OBJECT_DEVICE, size, out_obj);
-    if (ret == 0) {
-        (*out_obj)->backend_data = (void*)(uintptr_t)phys_base;
+static const vm_object_ops_t file_ops = {
+    .fault = vm_object_fault_stub,
+    .release = vm_object_release_default
+};
+
+vm_object_t *vm_object_create_file(void *backing, uint64_t file_offset, size_t size, uint32_t flags) {
+    vm_object_t *obj = vm_object_alloc(VM_OBJECT_FILE, size, flags);
+    if (obj) {
+        obj->ops = &file_ops;
+        obj->u.file.backing = backing;
+        obj->u.file.file_offset = file_offset;
     }
-    return ret;
+    return obj;
 }
 
-int vm_object_create_dma(uint64_t size, vm_object_t **out_obj) {
-    int ret = vm_object_create(VM_OBJECT_DMA, size, out_obj);
-    return ret;
+// ============================================================================
+// Device Memory Object
+// ============================================================================
+
+static const vm_object_ops_t device_ops = {
+    .fault = vm_object_fault_stub,
+    .release = vm_object_release_default
+};
+
+vm_object_t *vm_object_create_device(phys_addr_t phys_base, size_t size, uint32_t cache_flags, uint32_t flags) {
+    vm_object_t *obj = vm_object_alloc(VM_OBJECT_DEVICE, size, flags);
+    if (obj) {
+        obj->ops = &device_ops;
+        obj->u.device.phys_base = phys_base;
+        obj->u.device.cache_flags = cache_flags;
+    }
+    return obj;
+}
+
+// ============================================================================
+// DMA Memory Object
+// ============================================================================
+
+static const vm_object_ops_t dma_ops = {
+    .fault = vm_object_fault_stub,
+    .release = vm_object_release_default
+};
+
+vm_object_t *vm_object_create_dma(phys_addr_t phys_base, size_t size, uint32_t dma_flags, uint32_t numa_node, uint32_t flags) {
+    vm_object_t *obj = vm_object_alloc(VM_OBJECT_DMA, size, flags);
+    if (obj) {
+        obj->ops = &dma_ops;
+        obj->u.dma.phys_base = phys_base;
+        obj->u.dma.dma_flags = dma_flags;
+        obj->u.dma.numa_node = numa_node;
+    }
+    return obj;
 }

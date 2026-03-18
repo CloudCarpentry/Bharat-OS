@@ -4,17 +4,31 @@
 #include <stddef.h>
 #include <stdint.h>
 
+// Forward declare phys_addr_t or include mm.h early
+#ifndef BHARAT_MM_H
+typedef uint64_t phys_addr_t;
+typedef uint64_t virt_addr_t;
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 typedef enum {
     VM_OBJECT_ANON = 0,
-    VM_OBJECT_SHARED_ANON,
+    VM_OBJECT_SHARED,
     VM_OBJECT_FILE,
     VM_OBJECT_DEVICE,
     VM_OBJECT_DMA,
 } vm_object_kind_t;
+
+typedef enum {
+    VM_INHERIT_NONE = 0,      // do not copy into clone
+    VM_INHERIT_SHARE,         // clone keeps same backing object
+    VM_INHERIT_COPY_META,     // clone copies metadata, still same object for now
+} vm_inherit_t;
+
+struct vm_region; // Forward declaration
 
 typedef struct vm_object vm_object_t;
 
@@ -30,34 +44,65 @@ typedef struct {
 #define VM_FAULT_SIGSEGV   -1
 #define VM_FAULT_OOM       -2
 #define VM_FAULT_SIGBUS    -3
+#define VM_FAULT_ENOSYS    -4
 
-typedef struct {
-    int (*fault)(vm_object_t *obj, const vm_fault_ctx_t *ctx, uint64_t *out_phys_page);
-    int (*writeback)(vm_object_t *obj, uint64_t page_offset);
-    int (*map_notify)(vm_object_t *obj, uint64_t offset, uint64_t len);
-    int (*unmap_notify)(vm_object_t *obj, uint64_t offset, uint64_t len);
-    void (*release)(vm_object_t *obj);
+typedef struct vm_object_ops {
+    int (*fault)(struct vm_object *obj,
+                 struct vm_region *region,
+                 uintptr_t fault_addr,
+                 uint32_t access,
+                 phys_addr_t *out_page,
+                 uint32_t *out_page_flags);
+
+    void (*release)(struct vm_object *obj);
 } vm_object_ops_t;
 
 #include "../../include/spinlock.h"
+#include "../../include/mm.h"
 struct vm_object {
     vm_object_kind_t kind;
-    uint64_t size_bytes;
-    uint32_t object_flags;
-    uint32_t refcount;
-    spinlock_t lock;
+    uint32_t flags;
+    size_t size;
+
+    volatile uint32_t refcount;
+
     const vm_object_ops_t *ops;
-    void *backend_data;
+
+    union {
+        struct {
+            uint32_t zero_fill;
+        } anon;
+
+        struct {
+            uint32_t shared_id;
+        } shared;
+
+        struct {
+            void *backing;          // vnode/file/inode/opaque handle
+            uint64_t file_offset;
+        } file;
+
+        struct {
+            phys_addr_t phys_base;
+            uint32_t cache_flags;
+        } device;
+
+        struct {
+            phys_addr_t phys_base;
+            uint32_t dma_flags;
+            uint32_t numa_node;
+        } dma;
+    } u;
 };
 
-int vm_object_create(vm_object_kind_t kind, uint64_t size, vm_object_t **out_obj);
-int vm_object_create_anon(uint64_t size, vm_object_t **out_obj);
-int vm_object_create_shared(uint64_t size, vm_object_t **out_obj);
-int vm_object_create_device(uint64_t phys_base, uint64_t size, vm_object_t **out_obj);
-int vm_object_create_dma(uint64_t size, vm_object_t **out_obj);
+vm_object_t *vm_object_create_anon(size_t size, uint32_t flags);
+vm_object_t *vm_object_create_shared(size_t size, uint32_t flags);
+vm_object_t *vm_object_create_file(void *backing, uint64_t file_offset, size_t size, uint32_t flags);
+vm_object_t *vm_object_create_device(phys_addr_t phys_base, size_t size, uint32_t cache_flags, uint32_t flags);
+vm_object_t *vm_object_create_dma(phys_addr_t phys_base, size_t size, uint32_t dma_flags, uint32_t numa_node, uint32_t flags);
 
-int vm_object_ref(vm_object_t *obj);
-int vm_object_unref(vm_object_t *obj);
+void vm_object_retain(vm_object_t *obj);
+void vm_object_release(vm_object_t *obj);
 
 #ifdef __cplusplus
 }
