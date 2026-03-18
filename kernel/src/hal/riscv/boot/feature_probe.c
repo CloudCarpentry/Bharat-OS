@@ -17,7 +17,7 @@ static inline void csr_write_satp(uintptr_t val) {
 
 static inline uintptr_t csr_read_satp(void) {
     uintptr_t val;
-    asm volatile("csrr %0, satp" : "=r"(val) : "memory");
+    asm volatile("csrr %0, satp" : "=r"(val) :: "memory");
     return val;
 }
 
