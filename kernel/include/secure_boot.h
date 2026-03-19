@@ -36,5 +36,7 @@ const bharat_boot_policy_t* bharat_boot_active_policy(void);
 int bharat_secure_boot_verify_early(void);
 int bharat_secure_boot_stage_hook(bharat_boot_stage_t stage, uint64_t measurement);
 int hal_secure_boot_arch_check(const bharat_boot_policy_t* policy);
+int bharat_secure_key_region_lock(uint64_t base, uint64_t size, uint32_t flags);
+int bharat_secure_key_region_unlock(uint64_t base, uint64_t size, uint32_t flags);
 
 #endif

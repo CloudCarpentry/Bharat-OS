@@ -108,6 +108,16 @@ Overall, while the architecture cleanly separates mechanisms (in the kernel) fro
 - **Missing Chain of Trust:** There is no HAL interface to verify bootloader-passed measurements or to restrict memory regions to secure enclaves.
 - **Key Management:** The kernel cannot securely lock memory or isolate cryptographic keys from the rest of the OS because secure memory primitives (like zero-on-free or TrustZone SMC calls) are missing from the HAL.
 
+### Immediate Interface Additions (2026-03)
+- Added common HAL contracts for:
+  - boot measurement retrieval and root-of-trust verification (`hal_secure_boot_get_measurements`, `hal_secure_boot_verify_measurements`);
+  - secure memory-region restriction/release (`hal_secure_mem_restrict_region`, `hal_secure_mem_release_region`);
+  - hardened crypto accelerator MMIO+DMA windows (`hal_secure_crypto_dma_window_config`, `hal_secure_crypto_dma_window_clear`).
+- Added kernel wrappers to lock/unlock key-bearing memory regions (`bharat_secure_key_region_lock`, `bharat_secure_key_region_unlock`).
+- `boot_trust_verify_evidence()` now attempts to refresh unknown trust evidence from HAL measurements before applying strict policy checks.
+
+> Note: these APIs are foundational and currently default to weak fallback stubs (`-1`) until architecture/board backends are implemented.
+
 ---
 
 ## 9. 32-bit Architecture Support (ARM32 / RV32)
