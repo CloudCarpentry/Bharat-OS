@@ -174,3 +174,38 @@ void hal_tlb_invalidate_all(void) {
         }
     }
 }
+
+// Mailbox processing loop relocated to central TLB authority layer
+void vmm_process_urpc_messages(void) {
+    uint32_t current_core = hal_cpu_get_id();
+    mm_mailbox_slot_t* mailbox = &g_mm_mailboxes[current_core];
+
+    uint32_t messages_processed = 0;
+    while (1) {
+        if (mailbox->valid) {
+            if (mailbox->req_seq != mailbox->ack_seq) {
+                if (mailbox->msg.type == MM_MSG_TLB_FLUSH) {
+                    if (mailbox->msg.as_id == KERNEL_AS_ID || core_current_as_id() == mailbox->msg.as_id) {
+                        if (mailbox->msg.scope == TLB_SCOPE_PAGE) {
+                            if (active_hal_tlb && active_hal_tlb->flush_page_local) {
+                                active_hal_tlb->flush_page_local((virt_addr_t)mailbox->msg.va);
+                            }
+                        } else if (mailbox->msg.scope == TLB_SCOPE_RANGE) {
+                            if (active_hal_tlb && active_hal_tlb->flush_range_local) {
+                                active_hal_tlb->flush_range_local((virt_addr_t)mailbox->msg.va, mailbox->msg.len);
+                            }
+                        } else if (mailbox->msg.scope == TLB_SCOPE_ASPACE || mailbox->msg.scope == TLB_SCOPE_ALL) {
+                            if (active_hal_tlb && active_hal_tlb->flush_asid_local) {
+                                active_hal_tlb->flush_asid_local(mailbox->msg.as_id & 0xFFFF);
+                            }
+                        }
+                    }
+                    mailbox->ack_seq = mailbox->req_seq;
+                }
+                mailbox->valid = 0;
+            }
+        }
+        messages_processed++;
+        if (messages_processed >= 100) break;
+    }
+}

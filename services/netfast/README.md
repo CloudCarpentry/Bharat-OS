@@ -10,5 +10,5 @@ Optional fast path for networking:
 This module is the high-performance data plane alternative designed for environments requiring low latency and high throughput, such as edge gateways and cloud nodes.
 
 ## Status
-* **Current:** Architectural stub.
-* **Roadmap:** Full capability-safe, hardware-accelerated, zero-copy fast path network stack.
+* **Current:** Architectural stub (placeholder `main` only).
+* **Roadmap:** Capability-safe, hardware-accelerated, zero-copy fast-path data plane.
