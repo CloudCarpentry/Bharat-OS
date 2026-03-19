@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stddef.h>
+#include <bharat/packet/packet.h>
 
 /* virtio_net.c
  *
@@ -11,7 +12,7 @@
    It doesn't implement full DMA/descriptor ring logic yet, but acts
    as the boundary for the netstack to interface with hardware eventually. */
 
-static void (*netstack_rx_cb)(const uint8_t *data, size_t len) = NULL;
+static void (*netstack_rx_cb)(packet_buf_t *pkt) = NULL;
 
 int virtio_net_init(void) {
     /* Initialize global driver state */
@@ -28,7 +29,7 @@ int virtio_net_bind(void *device) {
     return 0;
 }
 
-int virtio_net_start(void *device, void (*rx_callback)(const uint8_t *, size_t)) {
+int virtio_net_start(void *device, void (*rx_callback)(packet_buf_t *)) {
     /* Configure rings, transition to DRIVER_OK, register RX callback */
     netstack_rx_cb = rx_callback;
     return 0;
@@ -40,9 +41,11 @@ int virtio_net_stop(void *device) {
     return 0;
 }
 
-int virtio_net_tx(void *device, const void *buffer, size_t length) {
+int virtio_net_tx(void *device, packet_buf_t *pkt) {
     /* Enqueue buffer into virtqueue for transmission.
        For the Phase 2 mock, we can just print or simulate sending. */
+    // Note: hardware tx would claim ownership, unref upon completion
+    packet_unref(pkt);
     return 0;
 }
 
@@ -51,9 +54,22 @@ int virtio_net_poll(void *device) {
     return 0;
 }
 
+// Declare memcpy locally or include string.h as allowed by environment
+extern void *memcpy(void *dest, const void *src, size_t n);
+
 /* Simulated RX for host testing/mocking in Phase 2 */
 void virtio_net_mock_rx(const void *buffer, size_t length) {
     if (netstack_rx_cb) {
-        netstack_rx_cb((const uint8_t *)buffer, length);
+        packet_buf_t *pkt = packet_alloc();
+        if (pkt) {
+            // Check if packet fits in the buffer
+            if (length <= pkt->tail_len) {
+                memcpy(pkt->data, buffer, length);
+                pkt->data_len = length;
+                netstack_rx_cb(pkt);
+            } else {
+                packet_free(pkt); // Drop packet, too large
+            }
+        }
     }
 }

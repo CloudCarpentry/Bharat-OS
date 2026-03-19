@@ -17,6 +17,7 @@
 #define PACKET_FLAG_BCAST           (1 << 2)
 #define PACKET_FLAG_MCAST           (1 << 3)
 #define PACKET_FLAG_VLAN            (1 << 4)
+#define PACKET_FLAG_DMA_MAPPED      (1 << 5)
 
 /**
  * @brief A packet buffer descriptor.
@@ -25,7 +26,7 @@
  * The memory is typically managed by a slab/pool allocator, and ownership
  * is passed between domains (NIC drivers -> netstack -> user apps).
  */
-typedef struct {
+typedef struct packet_buf_s {
     uint8_t *data;         // Pointer to the start of the buffer
     uint16_t head_len;     // Headroom size (for adding headers)
     uint16_t tail_len;     // Tailroom size (for adding trailers)
@@ -33,9 +34,24 @@ typedef struct {
     uint32_t data_len;     // Length of valid data within the buffer
     uint32_t flags;        // Packet flags (checksum, offloads, etc.)
 
+    uint32_t refcount;     // Reference count
+    struct packet_buf_s *next; // For fragment chaining
+
     // Placeholder for ownership tracking or reference counting
     void *owner_ctx;
 } packet_buf_t;
 
-// Basic initialization contract (stub)
+// Basic initialization contract
 void libpacket_init(void);
+
+// Allocate a packet buffer from the pool
+packet_buf_t *packet_alloc(void);
+
+// Free or unref a packet buffer
+void packet_free(packet_buf_t *pkt);
+
+// Increment refcount
+void packet_ref(packet_buf_t *pkt);
+
+// Decrement refcount, free if 0
+void packet_unref(packet_buf_t *pkt);
