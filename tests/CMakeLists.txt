@@ -376,3 +376,20 @@ add_executable(test_vmm_aspace test_vmm_aspace.c benchmark_stubs.c ../kernel/src
 target_include_directories(test_vmm_aspace PRIVATE ../kernel/include)
 target_compile_definitions(test_vmm_aspace PRIVATE TESTING=1)
 add_test(NAME test_vmm_aspace COMMAND test_vmm_aspace)
+
+add_executable(test_netstack_phase2
+    test_netstack_phase2.c
+    ../services/netstack/src/netbuf.c
+    ../services/netstack/src/checksum.c
+    ../services/netstack/src/ethernet.c
+    ../services/netstack/src/arp.c
+    ../services/netstack/src/ipv4.c
+    ../services/netstack/src/icmp.c
+    ../services/netstack/src/udp.c
+    ../services/netstack/src/socket_table.c
+    ../services/netstack/src/loopback.c
+    ../services/netstack/src/driver_virtio_adapter.c
+    ../drivers/net/virtio_net.c
+)
+target_include_directories(test_netstack_phase2 PRIVATE ../services/netstack/src)
+add_test(NAME test_netstack_phase2 COMMAND test_netstack_phase2)
