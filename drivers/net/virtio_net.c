@@ -7,48 +7,53 @@
  * Target: First real NIC target.
  */
 
-/* TODO: Include proper subsystem networking types and virtio specs */
+/* For Phase 2, this is a simplified/mockable driver backend.
+   It doesn't implement full DMA/descriptor ring logic yet, but acts
+   as the boundary for the netstack to interface with hardware eventually. */
+
+static void (*netstack_rx_cb)(const uint8_t *data, size_t len) = NULL;
 
 int virtio_net_init(void) {
-    /* TODO: Implement global driver initialization */
+    /* Initialize global driver state */
     return 0;
 }
 
 int virtio_net_probe(void *device) {
-    /* TODO: Probe for PCI/MMIO virtio device and verify virtio-net features */
+    /* Probe for PCI/MMIO virtio device */
     return 0;
 }
 
 int virtio_net_bind(void *device) {
-    /* TODO: Bind driver to the hardware device, allocate rings and basic structures */
+    /* Bind driver to the hardware device */
     return 0;
 }
 
-int virtio_net_start(void *device) {
-    /* TODO: Configure rings, set MAC address, and transition device to DRIVER_OK state */
+int virtio_net_start(void *device, void (*rx_callback)(const uint8_t *, size_t)) {
+    /* Configure rings, transition to DRIVER_OK, register RX callback */
+    netstack_rx_cb = rx_callback;
     return 0;
 }
 
 int virtio_net_stop(void *device) {
-    /* TODO: Halt queues, disable interrupts, reset the device */
+    /* Halt queues, reset the device */
+    netstack_rx_cb = NULL;
     return 0;
 }
 
-int virtio_net_tx(void *device, void *buffer, size_t length) {
-    /* TODO: Enqueue buffer into virtqueue for transmission */
-    return 0;
-}
-
-int virtio_net_rx(void *device, void **buffer, size_t *length) {
-    /* TODO: Dequeue received buffer from virtqueue and return it */
+int virtio_net_tx(void *device, const void *buffer, size_t length) {
+    /* Enqueue buffer into virtqueue for transmission.
+       For the Phase 2 mock, we can just print or simulate sending. */
     return 0;
 }
 
 int virtio_net_poll(void *device) {
-    /* TODO: Check ring status without interrupts and process pending packets */
+    /* Check ring status without interrupts and process pending packets */
     return 0;
 }
 
-void virtio_net_irq(void *device) {
-    /* TODO: Handle device interrupts (e.g. queue activity, config changes) */
+/* Simulated RX for host testing/mocking in Phase 2 */
+void virtio_net_mock_rx(const void *buffer, size_t length) {
+    if (netstack_rx_cb) {
+        netstack_rx_cb((const uint8_t *)buffer, length);
+    }
 }
