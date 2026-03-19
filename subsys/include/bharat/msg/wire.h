@@ -1,9 +1,9 @@
 #ifndef BHARAT_MSG_WIRE_H
 #define BHARAT_MSG_WIRE_H
 
-#include "bharat/msg/types.h"
-#include "bharat/msg/flags.h"
-#include "bharat/msg/errors.h"
+#include "types.h"
+#include "flags.h"
+#include "errors.h"
 
 #ifdef __cplusplus
 extern "C" {

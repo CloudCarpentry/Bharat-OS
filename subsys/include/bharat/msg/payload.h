@@ -1,9 +1,8 @@
 #ifndef BHARAT_MSG_PAYLOAD_H
 #define BHARAT_MSG_PAYLOAD_H
 
-#include "bharat/msg/types.h"
-#include "bharat/msg/errors.h"
-#include <string.h>
+#include "types.h"
+#include "errors.h"
 
 #ifdef __cplusplus
 extern "C" {

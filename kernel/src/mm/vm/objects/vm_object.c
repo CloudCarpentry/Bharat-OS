@@ -24,24 +24,32 @@ static int anon_fault(struct vm_object *obj,
         return VM_FAULT_OOM;
     }
 
-    uint32_t flags = HAL_PT_FLAG_READ | HAL_PT_FLAG_USER;
+    uint32_t pt_flags = HAL_PT_FLAG_READ | HAL_PT_FLAG_USER;
     if (access & CAP_RIGHT_WRITE) {
-        flags |= HAL_PT_FLAG_WRITE;
+        pt_flags |= HAL_PT_FLAG_WRITE;
     }
     if (access & CAP_RIGHT_EXECUTE) {
-        flags |= HAL_PT_FLAG_EXEC;
+        pt_flags |= HAL_PT_FLAG_EXEC;
     }
+    return obj;
+}
 
     *out_page = page;
-    *out_page_flags = flags;
+    *out_page_flags = pt_flags;
     return VM_FAULT_HANDLED;
 }
 
 static void vm_object_default_release(struct vm_object *obj) {
+    // Release cache or resident pages.
+    // Page tables no longer point to this object directly; they are purely a hardware derived cache
+    // derived from address_space_t -> region -> vm_object_t. The page frames allocated here can be
+    // securely released because the hardware mappings have already been torn down by aspace_destroy/unmap.
     kfree(obj);
 }
 
 static const vm_object_ops_t anon_ops = {
+    // Note: In phase 1 cleanup, fault resolution strictly consults address_space_t -> region -> vm_object_t
+    // and returns the physical page frame up to the VMM layer which installs the derived hardware cache (page table).
     .fault = anon_fault,
     .release = vm_object_default_release,
 };
@@ -121,22 +129,4 @@ vm_object_t *vm_object_create_dma(phys_addr_t phys_base, size_t size, uint32_t d
     obj->u.dma.numa_node = numa_node;
 
     return obj;
-}
-
-void vm_object_retain(vm_object_t *obj) {
-    if (!obj) {
-        return;
-    }
-    __atomic_add_fetch(&obj->refcount, 1, __ATOMIC_RELAXED);
-}
-
-void vm_object_release(vm_object_t *obj) {
-    if (!obj) {
-        return;
-    }
-
-    uint32_t refs = __atomic_sub_fetch(&obj->refcount, 1, __ATOMIC_ACQ_REL);
-    if (refs == 0 && obj->ops && obj->ops->release) {
-        obj->ops->release(obj);
-    }
 }

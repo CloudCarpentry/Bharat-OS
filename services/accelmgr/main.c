@@ -1,4 +1,4 @@
-#include <stdio.h>
+
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -8,7 +8,7 @@
  */
 
 void init_accelmgr(void) {
-    printf("accelmgr: Initializing hardware accelerator abstraction service...\n");
+    //printf("accelmgr: Initializing hardware accelerator abstraction service...\n");
     // TODO: Register endpoint with servicemgr for GPU/NPU/DSP/FPGA capability provisioning
     // TODO: Initialize virtual queue brokers and memory registration stubs
 }
@@ -25,6 +25,6 @@ int main(int argc, char **argv) {
         break; // break for stub to avoid infinite loop
     }
 
-    printf("accelmgr: Exiting.\n");
+    //printf("accelmgr: Exiting.\n");
     return 0;
 }

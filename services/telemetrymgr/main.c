@@ -1,4 +1,4 @@
-#include <stdio.h>
+
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -8,7 +8,7 @@
  */
 
 void init_telemetrymgr(void) {
-    printf("telemetrymgr: Initializing system metrics and monitoring service...\n");
+    //printf("telemetrymgr: Initializing system metrics and monitoring service...\n");
     // TODO: Connect to coremgr, memmgr, and schedmgr for aggregate metric gathering
     // TODO: Create low-overhead logging ring buffers
 }
@@ -25,6 +25,6 @@ int main(int argc, char **argv) {
         break; // break for stub to avoid infinite loop
     }
 
-    printf("telemetrymgr: Exiting.\n");
+    //printf("telemetrymgr: Exiting.\n");
     return 0;
 }

@@ -1,5 +1,7 @@
+static void *memset(void *s, int c, unsigned long n) { unsigned char *p = s; while(n--) *p++ = (unsigned char)c; return s; }
+static void *memcpy(void *dest, const void *src, unsigned long n) { unsigned char *d = dest; const unsigned char *s = src; while (n--) *d++ = *s++; return dest; }
 #include "interface_table.h"
-#include <string.h>
+
 #include <stddef.h>
 
 static netmgr_iface_t g_interfaces[NETMGR_MAX_INTERFACES];

@@ -1,8 +1,8 @@
 #include <stdint.h>
-//#include <stdio.h>
+//
 #include <stdbool.h>
 
-#define printf(...)
+//#define printf(...)
 
 void *memset(void *s, int c, unsigned long n) {
     unsigned char *p = s;
@@ -35,17 +35,17 @@ int main(int argc, char** argv) {
     (void)argc;
     (void)argv;
 
-    printf("Starting Crypto Service Domain...\n");
+    //printf("Starting Crypto Service Domain...\n");
 
     drbg_init();
     key_store_init();
 
     if (register_crypto_endpoint() != 0) {
-        printf("Failed to register crypto endpoint capability.\n");
+        //printf("Failed to register crypto endpoint capability.\n");
         return -1;
     }
 
-    printf("Crypto service listening.\n");
+    //printf("Crypto service listening.\n");
 
     while (true) {
         crypto_request_msg_t req;

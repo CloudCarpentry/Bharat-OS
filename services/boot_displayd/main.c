@@ -2,11 +2,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-// Mock printf
-int printf(const char *format, ...) {
-    (void)format;
-    return 0;
-}
 
 // User space minimal boot_display service.
 // This service would be invoked with capabilities passed via IPC or env,
@@ -34,7 +29,7 @@ void draw_rect(fb_surface_t *fb, uint32_t x, uint32_t y, uint32_t w, uint32_t h,
 }
 
 int main(int argc, char **argv) {
-    printf("[boot_displayd] Starting early boot UI...\n");
+    //printf("[boot_displayd] Starting early boot UI...\n");
 
     // In a real system, we'd request the framebuffer memory mapped capability
     // capability_t fb_cap = get_capability("CAP_DISPLAY_FB");
@@ -62,7 +57,7 @@ int main(int argc, char **argv) {
         draw_rect(&mock_fb, pb_x, pb_y, pb_w / 3, pb_h, 0xFF00FF00); // 33% progress
     }
 
-    printf("[boot_displayd] Early UI rendered. Waiting for display handoff...\n");
+    //printf("[boot_displayd] Early UI rendered. Waiting for display handoff...\n");
 
     // Loop waiting for compositor or displayd takeover signals
     while (true) {
@@ -70,6 +65,6 @@ int main(int argc, char **argv) {
         break;
     }
 
-    printf("[boot_displayd] Handoff complete. Exiting.\n");
+    //printf("[boot_displayd] Handoff complete. Exiting.\n");
     return 0;
 }

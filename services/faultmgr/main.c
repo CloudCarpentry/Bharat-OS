@@ -1,4 +1,4 @@
-#include <stdio.h>
+
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -8,7 +8,7 @@
  */
 
 void init_faultmgr(void) {
-    printf("faultmgr: Initializing distributed crash containment service...\n");
+    //printf("faultmgr: Initializing distributed crash containment service...\n");
     // TODO: Track critical services via servicemgr
     // TODO: Wait for coremgr or telemetrymgr health alerts
 }
@@ -25,6 +25,6 @@ int main(int argc, char **argv) {
         break; // break for stub to avoid infinite loop
     }
 
-    printf("faultmgr: Exiting.\n");
+    //printf("faultmgr: Exiting.\n");
     return 0;
 }

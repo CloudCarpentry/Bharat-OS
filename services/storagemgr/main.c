@@ -1,4 +1,4 @@
-#include <stdio.h>
+
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -8,7 +8,7 @@
  */
 
 void init_storagemgr(void) {
-    printf("storagemgr: Initializing storage orchestration service...\n");
+    //printf("storagemgr: Initializing storage orchestration service...\n");
     // TODO: Link up with lower-level block drivers or file systems
     // TODO: Determine initial namespace/mount trees
 }
@@ -25,6 +25,6 @@ int main(int argc, char **argv) {
         break; // break for stub to avoid infinite loop
     }
 
-    printf("storagemgr: Exiting.\n");
+    //printf("storagemgr: Exiting.\n");
     return 0;
 }

@@ -1,3 +1,5 @@
+static void *memset(void *s, int c, unsigned long n) { unsigned char *p = s; while(n--) *p++ = (unsigned char)c; return s; }
+static void *memcpy(void *dest, const void *src, unsigned long n) { unsigned char *d = dest; const unsigned char *s = src; while (n--) *d++ = *s++; return dest; }
 #include "ipc_dispatch.h"
 #include "interface_table.h"
 #include "address_table.h"
@@ -6,7 +8,7 @@
 #include "driver_policy.h"
 #include "driver_health.h"
 #include "capability_checks.h"
-#include <string.h>
+
 #include <stddef.h>
 
 void netmgr_ipc_dispatch_init(void) {
