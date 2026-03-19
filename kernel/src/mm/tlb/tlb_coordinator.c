@@ -7,15 +7,12 @@
 #include "../../include/kernel.h"
 
 // Bring in the generated definitions
-#include "../../../services/monitor/generated/bharat_monitor_v1_types.h"
-#include "../../../subsys/include/bharat/msg/transport.h"
-#include "../../../subsys/include/bharat/msg/wire.h"
+#include "../../../../services/monitor/generated/bharat_monitor_v1_types.h"
+#include "../../../../subsys/include/bharat/msg/transport.h"
+#include "../../../../subsys/include/bharat/msg/wire.h"
 
 // Transport for core mock
-bharat_transport_t* transport_for_core(int core) {
-    (void)core;
-    return NULL;
-}
+extern bharat_transport_t* transport_for_core(int core);
 extern int bharat_monitor_v1_call_tlb_invalidate(bharat_transport_t* t, int dst, const bharat_monitor_v1_TlbInvalidateReq_t* req, void* ctx);
 
 typedef struct {
