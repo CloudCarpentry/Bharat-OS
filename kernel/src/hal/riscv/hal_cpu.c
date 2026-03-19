@@ -335,7 +335,7 @@ int hal_timer_source_init(uint32_t tick_hz) {
   return 0;
 }
 
-__attribute__((unused)) static void hal_timer_isr(void) {
+void hal_timer_isr(void) {
   uint64_t current_time;
   __asm__ volatile("csrr %0, time" : "=r"(current_time));
 

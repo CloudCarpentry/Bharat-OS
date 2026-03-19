@@ -11,7 +11,7 @@
 #define WORD_SIZE sizeof(uintptr_t)
 #define PREFETCH_THRESHOLD 256
 
-__attribute__((unused)) static void *memcpy(void *dest, const void *src, size_t n) {
+void *memcpy(void *dest, const void *src, size_t n) {
   unsigned char *d = (unsigned char *)dest;
   const unsigned char *s = (const unsigned char *)src;
 
@@ -71,7 +71,7 @@ __attribute__((unused)) static void *memcpy(void *dest, const void *src, size_t 
   return dest;
 }
 
-__attribute__((unused)) static void *memset(void *dest, int c, size_t n) {
+void *memset(void *dest, int c, size_t n) {
   unsigned char *d = (unsigned char *)dest;
   unsigned char v = (unsigned char)c;
 
@@ -131,7 +131,7 @@ __attribute__((unused)) static void *memset(void *dest, int c, size_t n) {
   return dest;
 }
 
-__attribute__((unused)) static void *memmove(void *dest, const void *src, size_t n) {
+void *memmove(void *dest, const void *src, size_t n) {
   unsigned char *d = (unsigned char *)dest;
   const unsigned char *s = (const unsigned char *)src;
 

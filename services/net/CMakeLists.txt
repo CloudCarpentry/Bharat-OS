@@ -10,10 +10,10 @@ add_executable(net_service
 target_include_directories(net_service PRIVATE
     ../../kernel/include
     ../../subsys/include
-    ../../lib/urpc
+    ../../lib/bharat_libtransport
 )
 
 
 
 # Link against subsystem and URPC
-target_link_libraries(net_service PRIVATE urpc subsys_manager c_posix_stub)
+target_link_libraries(net_service PRIVATE bharat_libtransport subsys_manager bharat_libcmin)

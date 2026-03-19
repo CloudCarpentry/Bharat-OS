@@ -375,7 +375,7 @@ static int arm64_pt_query_mapping(phys_addr_t root_pt, virt_addr_t vaddr, phys_a
     return 0;
 }
 
-__attribute__((unused)) static void arm64_init_hardening(void) {
+void arm64_init_hardening(void) {
     uint64_t sctlr;
     asm volatile("mrs %0, sctlr_el1" : "=r"(sctlr));
     // PAN (Privileged Access Never) is typically bit 23 in SCTLR_EL1 (if ARMv8.1)

@@ -191,7 +191,7 @@ static void boot_gui_fill_rect(uint32_t x, uint32_t y, uint32_t w, uint32_t h,
     }
 }
 
-__attribute__((unused)) static void boot_gui_draw_pixel(uint32_t x, uint32_t y, uint32_t rgba) {
+void boot_gui_draw_pixel(uint32_t x, uint32_t y, uint32_t rgba) {
     write_px(x, y, rgba);
 }
 

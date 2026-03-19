@@ -249,7 +249,7 @@ mmu_ops_t riscv64_mmu_ops = {
     .has_user_kernel_split = false, // RISC-V uses shared address space
 };
 
-__attribute__((unused)) static void riscv_mmu_detect(mmu_ops_t *ops) {
+void riscv_mmu_detect(mmu_ops_t *ops) {
     // Stub for runtime detection (e.g. probing satp for Sv48/Sv57)
     (void)ops;
 }

@@ -14,7 +14,7 @@ typedef struct {
     uint64_t entries[512];
 } pt_t, pd_t, pdp_t, pml4_t;
 
-__attribute__((unused)) static virt_addr_t align_down(virt_addr_t value) {
+virt_addr_t align_down(virt_addr_t value) {
     return value & ~(virt_addr_t)(PAGE_SIZE - 1U);
 }
 
@@ -32,7 +32,7 @@ static uint64_t hal_get_cr3(void) {
     return cr3 & ~0xFFFULL;
 }
 
-__attribute__((unused)) static void hal_invlpg(virt_addr_t vaddr) {
+void hal_invlpg(virt_addr_t vaddr) {
     __asm__ volatile("invlpg (%0)" :: "r"(vaddr) : "memory");
 }
 
@@ -275,7 +275,7 @@ static inline void cpuid(uint32_t leaf, uint32_t subleaf, uint32_t *eax, uint32_
     __asm__ volatile("cpuid" : "=a"(*eax), "=b"(*ebx), "=c"(*ecx), "=d"(*edx) : "0"(leaf), "2"(subleaf));
 }
 
-__attribute__((unused)) static void x86_mmu_detect(mmu_ops_t *ops) {
+void x86_mmu_detect(mmu_ops_t *ops) {
     uint32_t eax, ebx, ecx, edx;
     cpuid(1, 0, &eax, &ebx, &ecx, &edx);
     if (ecx & (1 << 17)) {

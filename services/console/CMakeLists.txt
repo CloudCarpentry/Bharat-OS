@@ -7,10 +7,10 @@ add_executable(console main.c)
 target_include_directories(console PRIVATE
     ../../kernel/include
     ../../subsys/include
-    ../../lib/urpc
+    ../../lib/bharat_libtransport
 )
 
 
 
 # Link against the subsystem manager and URPC libraries
-target_link_libraries(console PRIVATE urpc subsys_manager)
+target_link_libraries(console PRIVATE bharat_libtransport subsys_manager)

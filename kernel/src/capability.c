@@ -64,7 +64,7 @@ static int cap_rights_valid(cap_object_type_t type, uint32_t rights) {
   assigns \nothing;
   ensures \result == \null || \valid(\result);
 */
-__attribute__((unused)) static capability_entry_t* cap_find_entry(capability_table_t* table, uint32_t cap_id) {
+capability_entry_t* cap_find_entry(capability_table_t* table, uint32_t cap_id) {
     if (!BHARAT_PTR_NON_NULL(table) || cap_id == 0U) {
         return NULL;
     }
@@ -339,7 +339,7 @@ int cap_table_delegate(capability_table_t* src,
 
 // Helper to lock multiple tables in total order to prevent ABBA deadlocks.
 // We only support up to 4 tables at once (e.g. parent, table, prev, sibling).
-__attribute__((unused)) static inline void cap_lock_tables_sorted(capability_table_t** tables, size_t count) {
+inline void cap_lock_tables_sorted(capability_table_t** tables, size_t count) {
     // Simple insertion sort by NUMA then memory address
     for (size_t i = 1; i < count; i++) {
         capability_table_t* key = tables[i];
@@ -362,7 +362,7 @@ __attribute__((unused)) static inline void cap_lock_tables_sorted(capability_tab
     }
 }
 
-__attribute__((unused)) static inline void cap_unlock_tables_sorted(capability_table_t** tables, size_t count) {
+inline void cap_unlock_tables_sorted(capability_table_t** tables, size_t count) {
     // Unlock uniquely in reverse order
     capability_table_t* last_unlocked = NULL;
     for (int i = (int)count - 1; i >= 0; i--) {

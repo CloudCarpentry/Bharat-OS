@@ -219,22 +219,19 @@ set(KERNEL_SRCS
     $<$<STREQUAL:${ARCH},arm64>:src/board/bcm2711-rpi4/board.c>
     $<$<AND:$<STREQUAL:${ARCH},riscv64>,$<STREQUAL:${BHARAT_RISCV_SOC_PROFILE},qemu-virt>>:src/board/qemu-virt-riscv64/board.c>
     $<$<AND:$<STREQUAL:${ARCH},riscv64>,$<NOT:$<STREQUAL:${BHARAT_RISCV_SOC_PROFILE},qemu-virt>>>:src/board/shakti-ref/board.c>
-    ${ARCH_HAL}
-    src/hal/common/fdt_parser.c
-    src/hal/common/discovery.c
-    ${ARCH_HAL_EXTRA}
-    ${ARCH_CONTEXT_SWITCH}
-    ${ARCH_CPU_CAPS_SRC}
-    ${ARCH_EXT_STATE_SRC}
-    src/hal/mmu_init.c
-    src/hal/iommu_stub.c
-    src/hal/interrupt_common.c
-    src/hal/timer_common.c
     src/mm/dma/dma.c
     src/mm/zswap.c
     src/apps/hello_world.c
     src/apps/kernel_tester.c
     src/apps/bharat_demo.c
+    src/tests/ktest_runner.c
+    src/tests/ktest_pmm.c
+    src/tests/ktest_slab.c
+    src/tests/ktest_hal_pt.c
+    ../ui/fbui/core/fb_render.c
+    ../ui/fbui/core/fb_events.c
+    ../ui/fbui/core/fb_demo_app.c
+    ../ui/fbui/widgets/fb_widgets.c
 )
 
 # ── Identify active HAL configuration based on architecture
