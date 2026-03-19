@@ -15,5 +15,8 @@ Owns:
 - **NIC Queue Ownership**: Direct authority over NIC queues.
 
 ## Status
-* **Current:** Architectural stub.
-* **Roadmap:** Policy enforcement, interface capability delegation, and orchestration agent.
+* **Current:** Partial implementation.
+  - In-memory interface/address/route/neighbor and driver-health modules are implemented.
+  - IPC dispatcher handles control-plane opcodes and populates typed responses.
+  - Main daemon loop remains scaffolded; full runtime wiring and strict capability enforcement are still in progress.
+* **Roadmap:** Full policy orchestration, distributed control-plane integration, and production capability checks.

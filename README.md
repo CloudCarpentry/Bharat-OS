@@ -18,14 +18,16 @@ Bharat-OS is a capability-oriented microkernel project with a multikernel direct
 
 | Area | Current status | Notes |
 | --- | --- | --- |
-| Capability model and IPC baseline | Implemented baseline | Capability tables, delegated rights checks, endpoint IPC + URPC scaffolding. |
-| Memory management | Partial baseline | PMM/buddy allocator and software mapping registry are in place; production-grade hardware page-table lifecycle, SMP-safe TLB discipline, demand paging/COW, NUMA policy, and DMA/IOMMU mapping lifecycle remain in progress. |
-| Scheduler and AI hook points | Implemented baseline | Timer-driven scheduler path with bounded AI suggestion ingestion/processing; full SMP runqueues/context switching remain deferred. |
-| Driver and HAL model | Implemented baseline | HAL contracts and driver framework scaffolding exist across x86_64, riscv64, arm64. |
-| Distributed/multikernel scale-out | Early baseline | Per-core URPC matrix and multicore bootstrap hooks exist; production-grade topology and transport tuning are deferred. |
-| Diagnostics & Reliability | Implemented baseline | Structured kernel panic generation, architecture-specific trap/fault breadcrumbs, and PStore persistent recovery logging. |
+| Kernel architecture | Baseline implemented | Capability objects, syscall/uAPI surfaces, core scheduler hooks, and architecture-specific HAL paths are present for x86_64, riscv64, and arm64 builds. |
+| User-space service layer | Mixed (stubs + partial implementations) | Many services currently compile as lifecycle/event-loop stubs, while networking (`netmgr`, `netstack`) and crypto include concrete module logic. |
+| Networking split (`net` -> `netmgr` + `netstack`) | In progress | `netmgr` has control-plane tables + IPC op dispatch; `netstack` includes IPv4, ARP, ICMP, UDP, socket table, and loopback/ethernet paths. |
+| Build & test infrastructure | Active baseline | CMake presets/toolchains and host test integration are wired; architecture runtime maturity differs by target. |
+| Distributed/multikernel scale-out | Early baseline | Messaging-first direction is reflected in subsystem and service decomposition, but many production control-plane behaviors remain roadmap items. |
+| Documentation coverage | Expanded in this update | See `docs/current-code-status.md` for a code-backed implementation matrix across services/subsystems. |
 
 For architecture-level details and deferred boundaries, see `docs/architecture/` and ADRs in `docs/decisions/`. For the step-by-step closure plan, see `docs/architecture/memory-gap-closure-plan.md`. For our profile-driven, capability-safe communications and networking architecture, see [`docs/architecture/network-architecture.md`](docs/architecture/network-architecture.md).
+
+For a code-backed snapshot of what is implemented vs. stubbed right now, see [`docs/current-code-status.md`](docs/current-code-status.md).
 
 ## Device Profiles & Use-cases
 
