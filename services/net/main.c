@@ -5,6 +5,12 @@
 /*
  * Bharat-OS User-Space Network Service (L2/L3/L4)
  *
+ * [LEGACY / TRANSITIONAL]
+ * This monolithic network service is being deprecated. Its functionality
+ * will be decomposed into `services/netmgr` (control/policy plane) and
+ * `services/netstack` (data plane / IP stack) to better support the
+ * Bharat-OS profile-driven architecture.
+ *
  * Manages protocol stacks, IP addressing, sockets, and interacts with
  * physical network devices via capability-bounded zero-copy I/O rings.
  */

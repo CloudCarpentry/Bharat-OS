@@ -46,5 +46,8 @@ if(BHARAT_BUILD_AI_GOVERNOR)
     target_compile_options(ai_governor PRIVATE -fPIE -fPIC)
     target_link_options(ai_governor PRIVATE "-no-pie")
 endif()
+
+add_subdirectory(network)
+
 # Might need host headers if it's considered user-space mock,
 # for now compiled natively or with suitable toolchain for user-space

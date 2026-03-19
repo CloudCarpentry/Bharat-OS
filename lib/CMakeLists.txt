@@ -15,3 +15,6 @@ target_include_directories(urpc PUBLIC urpc)
 target_compile_options(urpc PRIVATE -ffreestanding -nostdlib -Wall)
 add_subdirectory(elf)
 add_subdirectory(syscall)
+
+add_subdirectory(net)
+add_subdirectory(packet)
