@@ -407,3 +407,29 @@ add_executable(test_netstack_phase2
 )
 target_include_directories(test_netstack_phase2 PRIVATE ../services/netstack/src)
 add_test(NAME test_netstack_phase2 COMMAND test_netstack_phase2)
+
+# Message/Wire Tests
+add_executable(test_wire_format test_wire_format.c)
+target_include_directories(test_wire_format PRIVATE ../subsys/include)
+target_link_libraries(test_wire_format PRIVATE msg)
+add_test(NAME test_wire_format COMMAND test_wire_format)
+
+add_executable(test_payload_codec test_payload_codec.c)
+target_include_directories(test_payload_codec PRIVATE ../subsys/include)
+target_link_libraries(test_payload_codec PRIVATE msg)
+add_test(NAME test_payload_codec COMMAND test_payload_codec)
+
+add_executable(test_capwire test_capwire.c)
+target_include_directories(test_capwire PRIVATE ../subsys/include)
+target_link_libraries(test_capwire PRIVATE capwire msg)
+add_test(NAME test_capwire COMMAND test_capwire)
+
+add_executable(test_ool test_ool.c)
+target_include_directories(test_ool PRIVATE ../subsys/include)
+target_link_libraries(test_ool PRIVATE ool_desc msg)
+add_test(NAME test_ool COMMAND test_ool)
+
+add_executable(test_transport_loopback test_transport_loopback.c)
+target_include_directories(test_transport_loopback PRIVATE ../subsys/include)
+target_link_libraries(test_transport_loopback PRIVATE transport msg)
+add_test(NAME test_transport_loopback COMMAND test_transport_loopback)

@@ -20,6 +20,7 @@ typedef enum {
     CAP_OBJ_NETDEV = 10,
     CAP_OBJ_NET_QUEUE = 11,
     CAP_OBJ_NET_BUFFER = 12,
+    CAP_OBJ_IMPORTED_PROXY = 13, // Remote/delegated capability on wire
 } cap_object_type_t;
 
 typedef enum {
