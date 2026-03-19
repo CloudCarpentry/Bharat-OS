@@ -1,4 +1,4 @@
-#include <stdio.h>
+
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -8,7 +8,7 @@
  */
 
 void init_schedmgr(void) {
-    printf("schedmgr: Initializing scheduling policy service...\n");
+    //printf("schedmgr: Initializing scheduling policy service...\n");
     // TODO: Connect to the kernel dispatcher IPC to monitor tasks
     // TODO: Establish default real-time admission policies
     // TODO: Determine initial heterogeneous CPU placement policies (big.LITTLE)
@@ -26,6 +26,6 @@ int main(int argc, char **argv) {
         break; // break for stub to avoid infinite loop
     }
 
-    printf("schedmgr: Exiting.\n");
+    //printf("schedmgr: Exiting.\n");
     return 0;
 }

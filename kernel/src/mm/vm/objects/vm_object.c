@@ -25,8 +25,10 @@ static int anon_fault(struct vm_object *obj, struct vm_region *region, uintptr_t
 
 static void anon_destroy(struct vm_object *obj) {
     if (obj) {
-        // Free object structure
+        obj->kind = VM_OBJECT_SHARED;
+        obj->u.shared.shared_id = 0;
     }
+    return obj;
 }
 
 static vm_object_ops_t anon_ops = {
@@ -38,7 +40,8 @@ vm_object_t *vm_object_create_anon(size_t size, uint32_t flags) {
     static vm_object_t static_anon_pool[128];
     static int pool_idx = 0;
 
-    vm_object_t *obj = &static_anon_pool[pool_idx++];
+    obj->kind = VM_OBJECT_FILE;
+    obj->flags = flags;
     obj->size = size;
     obj->refcount = 1;
     obj->kind = VM_OBJECT_ANON;

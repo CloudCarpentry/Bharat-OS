@@ -49,7 +49,7 @@ void minimal_smoke_test(void) {
     netdev_stats_t stats;
     if (net_get_stats(loopback_id, &stats) == 0) {
         /* Expected: rx_packets=1, tx_packets=1 */
-        /* Normally we'd printf here or assert, but we are keeping it silent/minimal */
+        /* Normally we'd //printf here or assert, but we are keeping it silent/minimal */
     }
 }
 

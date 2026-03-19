@@ -156,6 +156,7 @@ target_compile_options(bharat_mm_aspace PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreest
 
 add_library(bharat_mm_objects OBJECT
     src/mm/vm/objects/vm_object.c
+    src/mm/vm/objects/vm_object_refcount.c
 )
 target_include_directories(bharat_mm_objects PRIVATE include include/generated ${CMAKE_SOURCE_DIR}/include)
 target_compile_options(bharat_mm_objects PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
@@ -174,8 +175,9 @@ target_compile_options(bharat_mm_pt PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestandi
 
 add_library(bharat_mm_tlb OBJECT
     src/mm/tlb/tlb_coordinator.c
+    src/mm/tlb/monitor_client.c
 )
-target_include_directories(bharat_mm_tlb PRIVATE include include/generated ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(bharat_mm_tlb PRIVATE include include/generated ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/subsys/include)
 target_compile_options(bharat_mm_tlb PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
 
 if(BHARAT_ENABLE_MM_LEGACY_SHIMS)
@@ -313,7 +315,7 @@ if(BHARAT_ENABLE_MM_LEGACY_SHIMS)
     )
 endif()
 
-target_link_libraries(kernel.elf subsys_manager)
+target_link_libraries(kernel.elf subsys_manager msg)
 
 set_target_properties(kernel.elf PROPERTIES
     OUTPUT_NAME "kernel.elf"
