@@ -1,6 +1,12 @@
 # services/net (Legacy Network Monolith)
 
-**Status:** Legacy / Transitional
+## Status: Legacy / Transitional
+
+This module is being decomposed into:
+- services/netmgr (control plane)
+- services/netstack (data plane)
+
+Do not extend this module for new features.
 
 This is the original monolithic placeholder for the Bharat-OS network service.
 It attempted to combine routing policy, interface lifecycle, and data-plane packet processing into a single user-space domain.
