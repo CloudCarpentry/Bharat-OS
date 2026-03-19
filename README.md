@@ -20,6 +20,7 @@ Bharat-OS is a capability-oriented microkernel project with a multikernel direct
 | --- | --- | --- |
 | Kernel architecture | Baseline implemented | Capability objects, syscall/uAPI surfaces, core scheduler hooks, and architecture-specific HAL paths are present for x86_64, riscv64, and arm64 builds. |
 | User-space service layer | Mixed (stubs + partial implementations) | Many services currently compile as lifecycle/event-loop stubs, while networking (`netmgr`, `netstack`) and crypto include concrete module logic. |
+| Filesystem & Storage | Partial scaffold | VFS kernel headers present; `services/file_system` is a compiled stub. Persistent storage (FAT/littlefs) and OTA recovery support are roadmap items. |
 | Networking split (`net` -> `netmgr` + `netstack`) | In progress | `netmgr` has control-plane tables + IPC op dispatch; `netstack` includes IPv4, ARP, ICMP, UDP, socket table, and loopback/ethernet paths. |
 | Build & test infrastructure | Active baseline | CMake presets/toolchains and host test integration are wired; architecture runtime maturity differs by target. |
 | Distributed/multikernel scale-out | Early baseline | Messaging-first direction is reflected in subsystem and service decomposition, but many production control-plane behaviors remain roadmap items. |
@@ -331,6 +332,7 @@ Bharat-OS defines explicit subsystem groups to ensure scalable and tailored func
 * **Input Subsystem:** Modular routing for keyboards, touch panels, rotary encoders, and GPIO buttons.
 * **Heterogeneous Accelerator Subsystem:** DMA engines, DSPs, NPUs, and ISP abstractions for edge AI and multimedia tasks.
 * **Embedded Device Services:** Kiosk shells, watchdog timers, OTA recovery, and lightweight local storage.
+* **Filesystem & Storage Subsystem:** VFS abstraction mapping capability-based IO to block, blob, and persistent storage drivers (e.g., FAT, littlefs) necessary for stateful edge devices and OTA recovery.
 * **Desktop Graphics Subsystem:** An advanced layer reserved for devices with capable hardware and full compositor needs.
 
 ### Display & GUI Strategy
