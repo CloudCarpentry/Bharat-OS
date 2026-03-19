@@ -408,7 +408,7 @@ static inline uint64_t read_cr4(void) {
     return val;
 }
 
-__attribute__((unused)) static void x86_64_init_hardening(void) {
+void x86_64_init_hardening(void) {
     uint64_t cr4 = read_cr4();
     // Enable SMEP (Supervisor Mode Execution Prevention)
     // Bit 20 in CR4

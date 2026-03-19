@@ -24,7 +24,7 @@ static boot_video_handoff_t g_boot_video = {0};
 static bool g_boot_video_parsed = false;
 
 // Call this from kernel_main / boot discovery to capture the framebuffer tag
-__attribute__((unused)) static void x86_64_parse_multiboot_framebuffer(multiboot_information_t *mb_info) {
+void x86_64_parse_multiboot_framebuffer(multiboot_information_t *mb_info) {
     if (!mb_info) return;
 
     uint32_t total_size = mb_info->total_size;
@@ -96,7 +96,7 @@ typedef struct {
     uint8_t color_info[6];
 } multiboot1_info_t;
 
-__attribute__((unused)) static void x86_64_parse_multiboot1_framebuffer(void *mb_info) {
+void x86_64_parse_multiboot1_framebuffer(void *mb_info) {
     if (!mb_info) return;
     multiboot1_info_t* mbi = (multiboot1_info_t*)mb_info;
 

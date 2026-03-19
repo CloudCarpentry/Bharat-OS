@@ -312,7 +312,7 @@ int device_register_mmio_window(const device_mmio_window_t* window) {
     return -2;
 }
 
-static int device_lookup_mmio_window_l0(uint32_t class_id,
+int device_lookup_mmio_window_l0(uint32_t class_id,
                                  uint32_t device_id,
                                  uint32_t window_id,
                                  void* out_window) {
@@ -334,7 +334,7 @@ static int device_lookup_mmio_window_l0(uint32_t class_id,
     return -2;
 }
 
-static int device_lookup_mmio_window_l1(uint32_t class_id,
+int device_lookup_mmio_window_l1(uint32_t class_id,
                                  uint32_t device_id,
                                  uint32_t window_id,
                                  void* out_window) {

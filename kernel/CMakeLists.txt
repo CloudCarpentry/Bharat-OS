@@ -237,6 +237,14 @@ set(KERNEL_SRCS
     src/apps/hello_world.c
     src/apps/kernel_tester.c
     src/apps/bharat_demo.c
+    src/tests/ktest_runner.c
+    src/tests/ktest_pmm.c
+    src/tests/ktest_slab.c
+    src/tests/ktest_hal_pt.c
+    ../ui/fbui/core/fb_render.c
+    ../ui/fbui/core/fb_events.c
+    ../ui/fbui/core/fb_demo_app.c
+    ../ui/fbui/widgets/fb_widgets.c
 )
 
 # ── Identify active HAL configuration based on architecture
@@ -372,11 +380,10 @@ endif()
 target_link_options(kernel.elf PRIVATE
     "-nostdlib"
     "-no-pie" "-fno-pie"
+    "-fuse-ld=lld"
     "LINKER:--fatal-warnings"
-    "LINKER:--fuse-ld=lld"
     "LINKER:-T,${LINKER_SCRIPT}"
     "LINKER:--build-id=none"
-    ""
 )
 if(ARCH STREQUAL "riscv64" AND BHARAT_RISCV_BUILD_PAYLOAD_BIN)
     if(NOT CMAKE_OBJCOPY)

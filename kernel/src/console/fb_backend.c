@@ -26,6 +26,6 @@ static console_backend_t g_fb_backend = {
     .next = NULL
 };
 
-static void console_register_fb_backend(void) {
+void console_register_fb_backend(void) {
     console_register_backend(&g_fb_backend);
 }
