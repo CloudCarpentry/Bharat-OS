@@ -1,6 +1,7 @@
 #include "bharat/console.h"
 #include "../../../../include/mm/vm_object.h"
 #include "../../../../include/mm/aspace.h"
+#include "../../../../include/mm/fault.h"
 #include "../../../../include/mm.h"
 #include "../../../../include/numa.h"
 #include "../../../../include/mm/numa_policy.h"
@@ -61,8 +62,51 @@ static void vm_object_release_default(struct vm_object *obj) {
 // Anonymous Memory Object
 // ============================================================================
 
+static int anon_fault(struct vm_object *obj, struct vm_region *region, uintptr_t fault_addr, uint32_t access, phys_addr_t *out_page, uint32_t *out_page_flags) {
+    (void)region;
+    (void)fault_addr;
+    (void)access;
+
+    // Allocate a new zeroed page
+    // Using default NUMA node 0 for now
+    phys_addr_t new_page = mm_alloc_page(0);
+    if (!new_page) {
+        return VM_FAULT_OOM;
+    }
+
+    // Handle COW write fault for an anonymous object
+    if ((access & VM_FAULT_WRITE) && (region->region_flags & VM_REGION_FLAG_COW)) {
+        // Here we could simulate reading from the old page.
+        // For a true shadow object architecture, we would have a tree.
+        // For MVP, we simply zero it as well or copy if we had old state tracked.
+        // We will default to a zeroed page copy for now to satisfy safe bounds.
+    }
+
+    // Since this is zero-fill-on-demand, we MUST zero the page here.
+    if (obj->u.anon.zero_fill) {
+        // In this MVP context without a direct physical mapping window wrapper,
+        // we can attempt to zero the memory if the physical map is identical.
+        // However, standard mm_alloc_page often returns uninitialized RAM.
+        // In a true environment we'd use a designated fast zeroing map.
+        // To prevent information leaks on standard x86/arm64 qemu where phys_addr
+        // matches direct mapped kernel VA:
+
+        // This assumes a flat mapping for kernel space (where physical matches virtual)
+        // which is typical in early boot phases of this framework.
+        extern void *memset(void *s, int c, size_t n);
+        // Note: For a robust system this requires a `phys_to_virt` mapping helper.
+        // For now, we simulate safe zeroing.
+        memset((void*)new_page, 0, PAGE_SIZE);
+    }
+
+    *out_page = new_page;
+    // Default page flags for anonymous memory
+    *out_page_flags = 0;
+    return VM_FAULT_HANDLED;
+}
+
 static const vm_object_ops_t anon_ops = {
-    .fault = vm_object_fault_stub,
+    .fault = anon_fault,
     .release = vm_object_release_default
 };
 

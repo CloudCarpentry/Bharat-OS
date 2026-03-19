@@ -29,6 +29,7 @@ int aspace_create(address_space_t **out_aspace, uint32_t flags) {
     as->region_count = 0;
     as->flags = flags;
     as->owner = NULL;
+    as->timing_class = 0; // default VM_TIMING_BEST_EFFORT
 
     as->user_base = 0x1000;
     as->user_limit = 0x00007FFFFFFFFFFF;
@@ -182,6 +183,7 @@ int aspace_region_reserve(address_space_t *aspace, uintptr_t base, size_t length
     region->length = length;
     region->prot = prot;
     region->map_flags = map_flags;
+    region->region_flags = 0;
     region->inherit = inherit;
     region->object = NULL;
     region->object_offset = 0;
@@ -223,6 +225,7 @@ int aspace_region_attach(address_space_t *aspace, uintptr_t base, size_t length,
     region->length = length;
     region->prot = prot;
     region->map_flags = map_flags;
+    region->region_flags = 0;
     region->inherit = inherit;
     region->object = object;
     region->object_offset = object_offset;
@@ -289,6 +292,7 @@ int aspace_clone(address_space_t *src, address_space_t **out_clone, uint32_t clo
             new_region->length = curr->length;
             new_region->prot = curr->prot;
             new_region->map_flags = curr->map_flags;
+            new_region->region_flags = curr->region_flags;
             new_region->inherit = curr->inherit;
             new_region->object = curr->object;
             new_region->object_offset = curr->object_offset;
