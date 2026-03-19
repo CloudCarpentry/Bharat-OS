@@ -1,17 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
-project(BharatOS_NetStack_Service C)
+project(netstack C)
 
-add_executable(netstack main.c)
-
-target_include_directories(netstack PRIVATE
-    ../../kernel/include
-    ../../subsys/include
-    ../../lib/net/include
-    ../../lib/packet/include
-    ../../lib/urpc
-)
-
-target_compile_options(netstack PRIVATE -ffreestanding -nostdlib -Wall -Wextra)
-
-# Link against subsystem, URPC, and networking libs
-target_link_libraries(netstack PRIVATE urpc subsys_manager net packet)
+add_executable(netstack src/main.c)
+target_compile_options(netstack PRIVATE -Wall -ffreestanding -nostdlib -fPIE -fPIC)
+target_link_options(netstack PRIVATE -nostdlib -no-pie)
+# Link against necessary system primitives/stubs here in the future

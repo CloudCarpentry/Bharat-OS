@@ -1,14 +1,8 @@
-# services/netstack (Minimum Universal IP Stack)
+# Bharat-OS `services/netstack`
 
-**Status:** Stub / Baseline Target
+The minimum universal IP stack for Bharat-OS.
+Handles basic IPv4/IPv6, UDP, TCP, and ARP/NDP.
 
-This service provides the baseline IP stack for Bharat-OS. It serves as the standard path for devices that do not require high-speed bypass (like an appliance dataplane).
-
-## Scope
-* Ethernet, ARP, NDP.
-* IPv4, IPv6, ICMP.
-* UDP, TCP.
-* Fragmentation and reassembly.
-* Base forwarding path and socket endpoints.
-
-This service is distinct from the control plane (`services/netmgr`) and the optional zero-copy dataplane (`services/netfast`).
+## Status
+* **Current:** Architectural stub.
+* **Roadmap:** Full capability-safe, multi-queue IP networking stack baseline.

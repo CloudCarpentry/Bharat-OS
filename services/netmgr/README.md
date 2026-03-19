@@ -1,14 +1,8 @@
-# services/netmgr (Network Orchestration & Policy)
+# Bharat-OS `services/netmgr`
 
-**Status:** Stub / Baseline Target
+General network orchestration service.
+Owns interface lifecycle, routing policy distribution, and orchestration.
 
-This service owns the orchestration and policy plane for the Bharat-OS network stack.
-
-## Scope
-* Interface lifecycle (bringing links up/down).
-* DHCP and static IP configuration coordination.
-* Routing table ownership and policy distribution.
-* Firewall rule installation (to be enforced by the fast path or stack).
-* Profile activation and telemetry aggregation.
-
-This daemon stays message-heavy and capability-rich. It does **not** process packets in the data plane (see `services/netstack`).
+## Status
+* **Current:** Architectural stub.
+* **Roadmap:** Policy enforcement, interface capability delegation, and orchestration agent.

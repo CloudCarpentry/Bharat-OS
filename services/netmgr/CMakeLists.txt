@@ -1,17 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
-project(BharatOS_NetMgr_Service C)
+project(netmgr C)
 
-add_executable(netmgr main.c)
-
-target_include_directories(netmgr PRIVATE
-    ../../kernel/include
-    ../../subsys/include
-    ../../lib/net/include
-    ../../lib/packet/include
-    ../../lib/urpc
-)
-
-target_compile_options(netmgr PRIVATE -ffreestanding -nostdlib -Wall -Wextra)
-
-# Link against subsystem, URPC, and networking libs
-target_link_libraries(netmgr PRIVATE urpc subsys_manager net packet)
+add_executable(netmgr src/main.c)
+target_compile_options(netmgr PRIVATE -Wall -ffreestanding -nostdlib -fPIE -fPIC)
+target_link_options(netmgr PRIVATE -nostdlib -no-pie)
+# Link against necessary system primitives/stubs here in the future

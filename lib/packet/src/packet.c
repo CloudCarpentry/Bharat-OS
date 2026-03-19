@@ -1,5 +1,5 @@
-#include <bharat/packet/packet.h>
+#include <stddef.h>
 
-void libpacket_init(void) {
-    // Stub implementation for initialization
+void packet_init(void) {
+    // Scaffold init
 }
