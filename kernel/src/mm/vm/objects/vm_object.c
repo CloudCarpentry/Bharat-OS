@@ -1,196 +1,97 @@
-#include "bharat/console.h"
-#include "../../../../include/mm/vm_object.h"
-#include "../../../../include/mm/aspace.h"
-#include "../../../../include/mm/fault.h"
-#include "../../../../include/mm.h"
-#include "../../../../include/numa.h"
-#include "../../../../include/mm/numa_policy.h"
-#include "../../../../include/slab.h"
+#include "../../include/mm/vm_object.h"
+#include "../../include/mm/pmm.h"
+#include "../../include/mm/aspace.h"
+#include "../../include/hal/hal_pt.h"
+#include "../../include/hal/hal_tlb.h"
 
-// ============================================================================
-// Internal Helpers
-// ============================================================================
+// VM Object Backend - Anonymous Memory
 
-static vm_object_t *vm_object_alloc(vm_object_kind_t kind, size_t size, uint32_t flags) {
-    vm_object_t *obj = (vm_object_t *)kmalloc(sizeof(vm_object_t));
-    if (!obj) return NULL;
+static int anon_fault(vm_object_t *obj, address_space_t *aspace, virt_addr_t fault_addr, uint64_t offset, uint32_t flags) {
+    if (!obj || !aspace || !active_hal_pt) return -1;
 
-    obj->kind = kind;
-    obj->size = size;
-    obj->flags = flags;
-    obj->refcount = 1;
-    obj->ops = NULL;
+    virt_addr_t aligned_vaddr = fault_addr & ~(PAGE_SIZE - 1U);
+    mmu_flags_t mmu_flags = MMU_USER;
 
-    return obj;
-}
+    // Zero-fill-on-demand for anonymous memory
+    phys_addr_t paddr = 0;
 
-void vm_object_retain(vm_object_t *obj) {
-    if (!obj) return;
-    __atomic_fetch_add(&obj->refcount, 1, __ATOMIC_SEQ_CST);
-}
+    // Check if handling COW fault
+    if (flags & CAP_RIGHT_WRITE) {
+        phys_addr_t existing_paddr = 0;
+        mmu_flags_t existing_flags = 0;
 
-void vm_object_release(vm_object_t *obj) {
-    if (!obj) return;
-    uint32_t ref = __atomic_fetch_sub(&obj->refcount, 1, __ATOMIC_SEQ_CST);
-    if (ref == 1) { // Was 1 before sub, now 0
-        if (obj->ops && obj->ops->release) {
-            obj->ops->release(obj);
+        int query_res = active_hal_pt->query_page(aspace->root_pt, aligned_vaddr, &existing_paddr, &existing_flags);
+        if (query_res == 0 && (existing_flags & MMU_COW)) {
+            // Break COW
+            paddr = mm_alloc_page(NUMA_NODE_ANY);
+            if (!paddr) return -2;
+
+            uint8_t *src = (uint8_t *)P2V(existing_paddr);
+            uint8_t *dst = (uint8_t *)P2V(paddr);
+            __builtin_memcpy(dst, src, PAGE_SIZE);
+
+            mm_free_page(existing_paddr);
+
+            mmu_flags |= MMU_WRITE;
+            int ret = active_hal_pt->map_page(aspace->root_pt, aligned_vaddr, paddr, mmu_flags);
+            hal_tlb_invalidate_page(aspace, aligned_vaddr);
+            return ret;
         }
-        kfree(obj);
+    }
+
+    // Standard zero-fill allocation
+    paddr = mm_alloc_page(NUMA_NODE_ANY);
+    if (!paddr) return -3;
+
+    uint8_t *dst = (uint8_t *)P2V(paddr);
+    __builtin_memset(dst, 0, PAGE_SIZE);
+
+    if (flags & CAP_RIGHT_WRITE) mmu_flags |= MMU_WRITE;
+    if (flags & CAP_RIGHT_EXECUTE) mmu_flags |= MMU_EXECUTE;
+
+    int ret = active_hal_pt->map_page(aspace->root_pt, aligned_vaddr, paddr, mmu_flags);
+    if (ret == 0) {
+        __atomic_add_fetch(&obj->resident_pages, 1, __ATOMIC_SEQ_CST);
+        hal_tlb_invalidate_page(aspace, aligned_vaddr);
+    } else {
+        mm_free_page(paddr);
+    }
+
+    return ret;
+}
+
+static void anon_destroy(vm_object_t *obj) {
+    // Release cache or resident pages
+    // Simplified: in a real OS, we iterate the object's page cache array and free
+    if (obj) {
+        // Free object structure
     }
 }
 
-// ============================================================================
-// Generic Stubs
-// ============================================================================
-
-static int vm_object_fault_stub(struct vm_object *obj, struct vm_region *region, uintptr_t fault_addr, uint32_t access, phys_addr_t *out_page, uint32_t *out_page_flags) {
-    (void)obj;
-    (void)region;
-    (void)fault_addr;
-    (void)access;
-    (void)out_page;
-    (void)out_page_flags;
-    return VM_FAULT_ENOSYS;
-}
-
-static void vm_object_release_default(struct vm_object *obj) {
-    (void)obj;
-}
-
-// ============================================================================
-// Anonymous Memory Object
-// ============================================================================
-
-static int anon_fault(struct vm_object *obj, struct vm_region *region, uintptr_t fault_addr, uint32_t access, phys_addr_t *out_page, uint32_t *out_page_flags) {
-    (void)region;
-    (void)fault_addr;
-    (void)access;
-
-    // Allocate a new zeroed page
-    // Using default NUMA node 0 for now
-    phys_addr_t new_page = mm_alloc_page(0);
-    if (!new_page) {
-        return VM_FAULT_OOM;
-    }
-
-    // Handle COW write fault for an anonymous object
-    if ((access & VM_FAULT_WRITE) && (region->region_flags & VM_REGION_FLAG_COW)) {
-        // Here we could simulate reading from the old page.
-        // For a true shadow object architecture, we would have a tree.
-        // For MVP, we simply zero it as well or copy if we had old state tracked.
-        // We will default to a zeroed page copy for now to satisfy safe bounds.
-    }
-
-    // Since this is zero-fill-on-demand, we MUST zero the page here.
-    if (obj->u.anon.zero_fill) {
-        // In this MVP context without a direct physical mapping window wrapper,
-        // we can attempt to zero the memory if the physical map is identical.
-        // However, standard mm_alloc_page often returns uninitialized RAM.
-        // In a true environment we'd use a designated fast zeroing map.
-        // To prevent information leaks on standard x86/arm64 qemu where phys_addr
-        // matches direct mapped kernel VA:
-
-        // This assumes a flat mapping for kernel space (where physical matches virtual)
-        // which is typical in early boot phases of this framework.
-        extern void *memset(void *s, int c, size_t n);
-        // Note: For a robust system this requires a `phys_to_virt` mapping helper.
-        // For now, we simulate safe zeroing.
-        memset((void*)new_page, 0, PAGE_SIZE);
-    }
-
-    *out_page = new_page;
-    // Default page flags for anonymous memory
-    *out_page_flags = 0;
-    return VM_FAULT_HANDLED;
-}
-
-static const vm_object_ops_t anon_ops = {
+static vm_object_ops_t anon_ops = {
     .fault = anon_fault,
-    .release = vm_object_release_default
+    .destroy = anon_destroy,
 };
 
-vm_object_t *vm_object_create_anon(size_t size, uint32_t flags) {
-    vm_object_t *obj = vm_object_alloc(VM_OBJECT_ANON, size, flags);
-    if (obj) {
-        obj->ops = &anon_ops;
-        obj->u.anon.zero_fill = 1;
-    }
+vm_object_t *vm_object_create_anon(uint64_t size) {
+    // Allocate object metadata (for now simplified static allocation or kmem)
+    static vm_object_t static_anon_pool[128];
+    static int pool_idx = 0;
+
+    vm_object_t *obj = &static_anon_pool[pool_idx++];
+    obj->size = size;
+    obj->refcount = 1;
+    obj->resident_pages = 0;
+    obj->type = VM_OBJECT_ANON;
+    obj->ops = &anon_ops;
     return obj;
 }
 
-// ============================================================================
-// Shared Anonymous Memory Object
-// ============================================================================
-
-static const vm_object_ops_t shared_ops = {
-    .fault = vm_object_fault_stub,
-    .release = vm_object_release_default
-};
-
-vm_object_t *vm_object_create_shared(size_t size, uint32_t flags) {
-    vm_object_t *obj = vm_object_alloc(VM_OBJECT_SHARED, size, flags);
-    if (obj) {
-        obj->ops = &shared_ops;
-        obj->u.shared.shared_id = 0; // Placeholder
-    }
-    return obj;
+vm_object_t *vm_object_create_shared(uint64_t size) {
+    return vm_object_create_anon(size); // Placeholder
 }
 
-// ============================================================================
-// File Memory Object
-// ============================================================================
-
-static const vm_object_ops_t file_ops = {
-    .fault = vm_object_fault_stub,
-    .release = vm_object_release_default
-};
-
-vm_object_t *vm_object_create_file(void *backing, uint64_t file_offset, size_t size, uint32_t flags) {
-    vm_object_t *obj = vm_object_alloc(VM_OBJECT_FILE, size, flags);
-    if (obj) {
-        obj->ops = &file_ops;
-        obj->u.file.backing = backing;
-        obj->u.file.file_offset = file_offset;
-    }
-    return obj;
-}
-
-// ============================================================================
-// Device Memory Object
-// ============================================================================
-
-static const vm_object_ops_t device_ops = {
-    .fault = vm_object_fault_stub,
-    .release = vm_object_release_default
-};
-
-vm_object_t *vm_object_create_device(phys_addr_t phys_base, size_t size, uint32_t cache_flags, uint32_t flags) {
-    vm_object_t *obj = vm_object_alloc(VM_OBJECT_DEVICE, size, flags);
-    if (obj) {
-        obj->ops = &device_ops;
-        obj->u.device.phys_base = phys_base;
-        obj->u.device.cache_flags = cache_flags;
-    }
-    return obj;
-}
-
-// ============================================================================
-// DMA Memory Object
-// ============================================================================
-
-static const vm_object_ops_t dma_ops = {
-    .fault = vm_object_fault_stub,
-    .release = vm_object_release_default
-};
-
-vm_object_t *vm_object_create_dma(phys_addr_t phys_base, size_t size, uint32_t dma_flags, uint32_t numa_node, uint32_t flags) {
-    vm_object_t *obj = vm_object_alloc(VM_OBJECT_DMA, size, flags);
-    if (obj) {
-        obj->ops = &dma_ops;
-        obj->u.dma.phys_base = phys_base;
-        obj->u.dma.dma_flags = dma_flags;
-        obj->u.dma.numa_node = numa_node;
-    }
-    return obj;
+vm_object_t *vm_object_create_file(struct vfs_node *node, uint64_t size) {
+    (void)node; (void)size;
+    return NULL; // Stubbed for now
 }

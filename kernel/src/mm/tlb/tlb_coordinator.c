@@ -129,6 +129,7 @@ static void tlb_shootdown_sync(address_space_t *aspace, tlb_scope_t scope, virt_
     if (!aspace || !active_hal_tlb) return;
 
     uint32_t current_core = hal_cpu_get_id();
+
     uint32_t type;
     switch(scope) {
         case TLB_SCOPE_PAGE: type = 0; break;
@@ -141,6 +142,7 @@ static void tlb_shootdown_sync(address_space_t *aspace, tlb_scope_t scope, virt_
 
     // Process local flush
     if (cpu_mm_state[current_core].active_aspace_id == aspace->object_id || g_cpu_locals[current_core].current_as_id == aspace->object_id) {
+
         if (scope == TLB_SCOPE_PAGE && active_hal_tlb->flush_page_local) {
             active_hal_tlb->flush_page_local(va);
         } else if (scope == TLB_SCOPE_RANGE && active_hal_tlb->flush_range_local) {

@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.20)
 project(netmgr C)
 
+add_executable(netmgr src/main.c)
+target_compile_options(netmgr PRIVATE -Wall -ffreestanding -nostdlib )
 set(NETMGR_SOURCES
     src/main.c
     src/interface_table.c

@@ -4,7 +4,9 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
-#include <string.h>
+//#include <string.h>
+void *memset(void *s, int c, size_t n);
+void *memcpy(void *dest, const void *src, size_t n);
 
 /* A basic network buffer for Phase 2, similar in concept to sk_buff or pbuf,
    but strictly self-contained within netstack for now. */

@@ -2,7 +2,7 @@
 #include "checksum.h"
 #include "arp.h"
 #include "ipv4.h"
-#include <stdio.h>
+//#include <stdio.h>
 
 // Assuming basic interface config locally for Phase 2:
 uint8_t local_mac[ETH_ALEN] = {0x02, 0x00, 0x00, 0x00, 0x00, 0x01};

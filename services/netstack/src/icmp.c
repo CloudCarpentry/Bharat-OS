@@ -1,7 +1,7 @@
 #include "icmp.h"
 #include "ipv4.h"
 #include "checksum.h"
-#include <stdio.h>
+//#include <stdio.h>
 
 int icmp_rx(netbuf_t *nb, uint32_t src_ip, uint32_t dst_ip) {
     if (netbuf_len(nb) < sizeof(icmphdr_t)) {
