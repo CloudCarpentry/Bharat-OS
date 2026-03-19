@@ -1,16 +1,12 @@
 cmake_minimum_required(VERSION 3.20)
 project(BharatOS_Kernel C ASM)
-
 set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
-
 # ── Toolchain file provides all compiler/linker settings.
 # Pass -DCMAKE_TOOLCHAIN_FILE=../cmake/toolchains/<arch>-elf.cmake at configure time.
 # See BUILD.md for exact commands for each platform.
-
 include_directories(include)
 include_directories(include/generated)
 include_directories(${CMAKE_SOURCE_DIR}/include)
-
 # ── Configuration Header ────────────────────────────────────────────────────
 # These variables are normally set in the root CMakeLists.txt. 
 # For kernel-only builds, we provide defaults if not set.
@@ -32,7 +28,6 @@ endif()
 if(NOT BHARAT_MAX_CORES)
     set(BHARAT_MAX_CORES 32)
 endif()
-
 # Multikernel Configuration Defaults
 if(NOT DEFINED CONFIG_MULTIKERNEL)
     set(CONFIG_MULTIKERNEL 1)
@@ -43,32 +38,24 @@ endif()
 if(NOT DEFINED CONFIG_URPC)
     set(CONFIG_URPC 1)
 endif()
-
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bharat_config.h.in
     ${CMAKE_CURRENT_SOURCE_DIR}/include/generated/bharat_config.h
 )
-
 option(BHARAT_BOOT_GUI "Enable boot-time GUI handoff metadata" ON)
-
 if(NOT DEFINED BHARAT_BOOT_HW_PROFILE OR "${BHARAT_BOOT_HW_PROFILE}" STREQUAL "")
     message(FATAL_ERROR "BHARAT_BOOT_HW_PROFILE must not be empty")
 endif()
-
 if(BHARAT_BOOT_GUI)
     add_compile_definitions(BHARAT_BOOT_GUI=1)
 else()
     add_compile_definitions(BHARAT_BOOT_GUI=0)
 endif()
-
 string(TOLOWER "${BHARAT_BOOT_HW_PROFILE}" KERNEL_PROFILE_LOWER)
-
 if(NOT KERNEL_PROFILE_LOWER MATCHES "^(generic|desktop|server|vm|laptop|edge|rtos|mobile|datacenter|network_appliance)$")
     message(FATAL_ERROR "Invalid BHARAT_BOOT_HW_PROFILE='${KERNEL_PROFILE_LOWER}'. Allowed: generic, desktop, server, vm, laptop, edge, rtos, mobile, datacenter, network_appliance")
 endif()
-
 add_compile_definitions(BHARAT_BOOT_HW_PROFILE_${KERNEL_PROFILE_LOWER}=1)
-
 # ── Architecture selection ──────────────────────────────────────────────────
 # Prefer root-level ARCH selection when available, otherwise infer from processor.
 if(NOT DEFINED ARCH)
@@ -84,7 +71,6 @@ if(NOT DEFINED ARCH)
         set(ARCH "x86_64")
     endif()
 endif()
-
 # ── Boot and HAL sources (arch-specific) ────────────────────────────────────
 if(ARCH STREQUAL "x86_64")
     set(BOOT_SRC src/boot/x86_64/boot.S)
@@ -124,7 +110,6 @@ elseif(ARCH STREQUAL "arm32")
     set(ARCH_CPU_CAPS_SRC src/arch/arm64/cpu_caps.c)
     set(ARCH_EXT_STATE_SRC src/arch/arm64/ext_state.c)
 endif()
-
 if(ARCH STREQUAL "x86_64")
     set(LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/linker.ld")
 elseif(ARCH STREQUAL "riscv64")
@@ -136,25 +121,20 @@ elseif(ARCH STREQUAL "arm64")
 elseif(ARCH STREQUAL "arm32")
     set(LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/linker_arm64.ld")
 endif()
-
 if(ARCH STREQUAL "riscv64")
     option(BHARAT_RISCV_BUILD_PAYLOAD_BIN "Emit payload.bin from kernel.elf for OpenSBI packaging" ON)
     set(BHARAT_RISCV_SOC_PROFILE "qemu-virt" CACHE STRING "RISC-V SoC profile (qemu-virt, shakti-e, shakti-c, shakti-i)")
     set_property(CACHE BHARAT_RISCV_SOC_PROFILE PROPERTY STRINGS qemu-virt shakti-e shakti-c shakti-i)
-
     if(NOT BHARAT_RISCV_SOC_PROFILE MATCHES "^(qemu-virt|shakti-e|shakti-c|shakti-i)$")
         message(FATAL_ERROR "Invalid BHARAT_RISCV_SOC_PROFILE='${BHARAT_RISCV_SOC_PROFILE}'. Allowed: qemu-virt, shakti-e, shakti-c, shakti-i")
     endif()
-
     add_compile_definitions(BHARAT_RISCV_SOC_PROFILE_STR="${BHARAT_RISCV_SOC_PROFILE}")
 endif()
-
 # ── Memory Layer Options ──────────────────────────────────────────────────
 option(BHARAT_PROFILE_MMU_FULL "Full VM, demand paging, COW, shared memory" ON)
 option(BHARAT_PROFILE_MMU_LITE "Static/eager mappings only" OFF)
 option(BHARAT_PROFILE_MPU_ONLY "MPU regions only, no VM" OFF)
 option(BHARAT_ENABLE_MM_LEGACY_SHIMS "Build legacy VMM compat shims" ON)
-
 if(BHARAT_PROFILE_MMU_FULL)
     add_compile_definitions(BHARAT_PROFILE_MMU_FULL=1)
 elseif(BHARAT_PROFILE_MMU_LITE)
@@ -162,7 +142,6 @@ elseif(BHARAT_PROFILE_MMU_LITE)
 elseif(BHARAT_PROFILE_MPU_ONLY)
     add_compile_definitions(BHARAT_PROFILE_MPU_ONLY=1)
 endif()
-
 # ── Memory Subsystem Targets ──────────────────────────────────────────────
 add_library(bharat_mm_pmm OBJECT
     src/mm/pmm/pmm.c
@@ -174,40 +153,34 @@ add_library(bharat_mm_pmm OBJECT
 )
 target_include_directories(bharat_mm_pmm PRIVATE include include/generated ${CMAKE_SOURCE_DIR}/include)
 target_compile_options(bharat_mm_pmm PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
-
 add_library(bharat_mm_aspace OBJECT
     src/mm/vm/aspace/aspace.c
     src/mm/vm/aspace/vm_space.c
 )
 target_include_directories(bharat_mm_aspace PRIVATE include include/generated ${CMAKE_SOURCE_DIR}/include)
 target_compile_options(bharat_mm_aspace PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
-
 add_library(bharat_mm_objects OBJECT
     src/mm/vm/objects/vm_object.c
     src/mm/vm/objects/vm_object_refcount.c
 )
 target_include_directories(bharat_mm_objects PRIVATE include include/generated ${CMAKE_SOURCE_DIR}/include)
 target_compile_options(bharat_mm_objects PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
-
 add_library(bharat_mm_fault OBJECT
     src/mm/vm/fault/fault.c
 )
 target_include_directories(bharat_mm_fault PRIVATE include include/generated ${CMAKE_SOURCE_DIR}/include)
 target_compile_options(bharat_mm_fault PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
-
 add_library(bharat_mm_pt OBJECT
     src/mm/pt/pt_pool.c
 )
 target_include_directories(bharat_mm_pt PRIVATE include include/generated ${CMAKE_SOURCE_DIR}/include)
 target_compile_options(bharat_mm_pt PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
-
 add_library(bharat_mm_tlb OBJECT
     src/mm/tlb/tlb_coordinator.c
     src/mm/tlb/monitor_client.c
 )
 target_include_directories(bharat_mm_tlb PRIVATE include include/generated ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/subsys/include)
 target_compile_options(bharat_mm_tlb PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
-
 if(BHARAT_ENABLE_MM_LEGACY_SHIMS)
     add_library(bharat_mm_legacy OBJECT
         src/mm/legacy/vmm.c
@@ -219,7 +192,6 @@ if(BHARAT_ENABLE_MM_LEGACY_SHIMS)
     target_include_directories(bharat_mm_legacy PRIVATE include include/generated ${CMAKE_SOURCE_DIR}/include)
     target_compile_options(bharat_mm_legacy PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
 endif()
-
 # ── Core kernel sources ──────────────────────────────────────────────────────
 set(KERNEL_SRCS
     ${BOOT_SRC}
@@ -267,12 +239,9 @@ set(KERNEL_SRCS
     ${ARCH_EXT_STATE_SRC}
     src/hal/mmu_init.c
     src/hal/iommu_stub.c
-
     # Memory Layer (from object libraries below)
-
     src/mm/dma/dma.c
     src/mm/zswap.c
-
     src/urpc/urpc_bootstrap.c
     src/urpc/urpc_channel.c
     src/security/isolation.c
@@ -295,10 +264,8 @@ set(KERNEL_SRCS
     src/device/device_manager.c
     src/device/pci.c
     src/device/irq_domain.c
-
     src/hal/interrupt_common.c
     src/hal/timer_common.c
-
     src/power_thermal_perf.c
     src/trap/trap.c
     src/fault_diag.c
@@ -320,13 +287,11 @@ set(KERNEL_SRCS
     src/tests/ktest_runner.c
     src/tests/ktest_hal_pt.c
 )
-
 # ── Kernel ELF ──────────────────────────────────────────────────────────────
 add_executable(kernel.elf
     ${KERNEL_SRCS}
     $<TARGET_OBJECTS:bharat_mm_pmm>
 )
-
 if(NOT BHARAT_PROFILE_MPU_ONLY)
     target_sources(kernel.elf PRIVATE
         $<TARGET_OBJECTS:bharat_mm_aspace>
@@ -336,20 +301,16 @@ if(NOT BHARAT_PROFILE_MPU_ONLY)
         $<TARGET_OBJECTS:bharat_mm_tlb>
     )
 endif()
-
 if(BHARAT_ENABLE_MM_LEGACY_SHIMS)
     target_sources(kernel.elf PRIVATE
         $<TARGET_OBJECTS:bharat_mm_legacy>
     )
 endif()
-
 target_link_libraries(kernel.elf subsys_manager msg)
-
 set_target_properties(kernel.elf PROPERTIES
     OUTPUT_NAME "kernel.elf"
     SUFFIX ""
 )
-
 # Extra warnings for C sources only
 target_compile_options(kernel.elf PRIVATE
     $<$<COMPILE_LANGUAGE:C>:-ffreestanding>
@@ -359,10 +320,8 @@ target_compile_options(kernel.elf PRIVATE
     $<$<COMPILE_LANGUAGE:C>:-Wextra>
     $<$<COMPILE_LANGUAGE:C>:-Werror=implicit-function-declaration>
 )
-
 option(BHARAT_KERNEL_HARDENING "Enable kernel hardening compile/link options" ON)
 option(BHARAT_KERNEL_ASLR "Build kernel as PIE for KASLR-friendly relocation experiments" OFF)
-
 if(BHARAT_KERNEL_HARDENING)
     target_compile_options(kernel.elf PRIVATE
         $<$<COMPILE_LANGUAGE:C>:-fstack-protector-strong>
@@ -378,7 +337,6 @@ else()
         $<$<COMPILE_LANGUAGE:C>:-fno-stack-protector>
     )
 endif()
-
 if(BHARAT_KERNEL_ASLR)
     target_compile_options(kernel.elf PRIVATE
         $<$<COMPILE_LANGUAGE:C>:-fpie>
@@ -394,7 +352,6 @@ else()
         "LINKER:--no-pie"
     )
 endif()
-
 if(ARCH STREQUAL "x86_64")
     target_compile_options(kernel.elf PRIVATE
         $<$<COMPILE_LANGUAGE:C>:-m64>
@@ -416,7 +373,6 @@ elseif(ARCH STREQUAL "riscv32")
         $<$<COMPILE_LANGUAGE:C>:-march=rv32g>
     )
 endif()
-
 # ── Linker options
 # Use LINKER: so CMake can translate options correctly when linking via the
 # compiler driver across clang/gcc and host/cross presets.
@@ -424,17 +380,15 @@ target_link_options(kernel.elf PRIVATE
     "-nostdlib"
     "-no-pie" "-fno-pie"
     "LINKER:--fatal-warnings"
+    "LINKER:--fuse-ld=lld"
     "LINKER:-T,${LINKER_SCRIPT}"
     "LINKER:--build-id=none"
     ""
 )
-
-
 if(ARCH STREQUAL "riscv64" AND BHARAT_RISCV_BUILD_PAYLOAD_BIN)
     if(NOT CMAKE_OBJCOPY)
         find_program(CMAKE_OBJCOPY NAMES llvm-objcopy riscv64-unknown-elf-objcopy)
     endif()
-
     if(NOT CMAKE_OBJCOPY)
         message(WARNING "objcopy not found; payload.bin target disabled")
     else()
