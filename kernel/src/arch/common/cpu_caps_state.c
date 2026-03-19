@@ -1,7 +1,14 @@
 #include "arch/arch_cpu_caps.h"
 #include "arch/common/cpu_caps_state.h"
 #include "bharat/cpu_local.h"
-#include <string.h>
+#include <stddef.h>
+#include <stdint.h>
+
+// Forward declarations from kernel string functions (kernel/src/lib/string.c)
+void *memset(void *dest, int c, size_t n);
+
+// Forward declaration (defined arch-specifically in HAL)
+extern uint32_t hal_cpu_get_id(void);
 
 static arch_cpu_caps_record_t g_boot_cpu_caps;
 static arch_cpu_caps_record_t g_system_caps_all;
@@ -50,7 +57,7 @@ const arch_cpu_caps_record_t *arch_cpu_caps_boot(void) {
 }
 
 const arch_cpu_caps_record_t *arch_cpu_caps_current(void) {
-    unsigned int cpu_id = get_cpu_id();
+    unsigned int cpu_id = hal_cpu_get_id();
     if (cpu_id < MAX_CPUS) {
         return &g_per_cpu_caps[cpu_id];
     }

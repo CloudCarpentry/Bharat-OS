@@ -219,19 +219,21 @@ set(KERNEL_SRCS
     $<$<STREQUAL:${ARCH},arm64>:src/board/bcm2711-rpi4/board.c>
     $<$<AND:$<STREQUAL:${ARCH},riscv64>,$<STREQUAL:${BHARAT_RISCV_SOC_PROFILE},qemu-virt>>:src/board/qemu-virt-riscv64/board.c>
     $<$<AND:$<STREQUAL:${ARCH},riscv64>,$<NOT:$<STREQUAL:${BHARAT_RISCV_SOC_PROFILE},qemu-virt>>>:src/board/shakti-ref/board.c>
-    ${ARCH_HAL}
-    src/hal/common/fdt_parser.c
-    src/hal/common/discovery.c
-    ${ARCH_HAL_EXTRA}
-    ${ARCH_CONTEXT_SWITCH}
-    ${ARCH_CPU_CAPS_SRC}
+    # NOTE: HAL sources removed - compiled via hal/* library targets instead
+    # ${ARCH_HAL}
+    # src/hal/common/fdt_parser.c
+    # src/hal/common/discovery.c
+    # ${ARCH_HAL_EXTRA}
+    # ${ARCH_CONTEXT_SWITCH}
+    # ${ARCH_CPU_CAPS_SRC}
+    # arch/common source files (fixed string.h dependency)
     src/arch/common/cpu_caps_state.c
     src/arch/common/fastops_dispatch.c
-    ${ARCH_EXT_STATE_SRC}
-    src/hal/mmu_init.c
-    src/hal/iommu_stub.c
-    src/hal/interrupt_common.c
-    src/hal/timer_common.c
+    # ${ARCH_EXT_STATE_SRC}
+    # src/hal/mmu_init.c
+    # src/hal/iommu_stub.c
+    # src/hal/interrupt_common.c
+    # src/hal/timer_common.c
     src/mm/dma/dma.c
     src/mm/zswap.c
     src/apps/hello_world.c

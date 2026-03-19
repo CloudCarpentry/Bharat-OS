@@ -1,6 +1,10 @@
 #include "arch/fastops_dispatch.h"
 #include "arch/arch_cpu_caps.h"
-#include <string.h>
+#include <stddef.h>
+
+// Forward declarations from kernel string functions (kernel/src/lib/string.c)
+void *memset(void *dest, int c, size_t n);
+void *memcpy(void *dest, const void *src, size_t n);
 
 // Generic Fallbacks
 static void generic_page_zero(void *page) {
