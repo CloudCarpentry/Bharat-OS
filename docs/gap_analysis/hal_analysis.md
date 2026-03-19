@@ -94,6 +94,7 @@ Overall, while the architecture cleanly separates mechanisms (in the kernel) fro
 ### Identified Gaps
 - **Lack of Accelerator Discovery:** User-space subsystems and drivers cannot dynamically leverage hardware extensions or accelerators because the kernel does not probe or expose these capabilities.
 - **Static Assumption:** The system currently assumes a static baseline instruction set per build target, leading to unoptimized code on newer hardware and potential illegal instruction faults if features are used blindly without runtime probing.
+- **Internal Kernel Optimization:** The kernel itself fails to take advantage of advanced ISA extensions (e.g., using ARM NEON, RISC-V Vector `V` extension, or Intel AVX for fast page clearing, memory copying, or cryptographic hashing). It lacks the infrastructure to conditionally dispatch to optimized ASM routines or macros when these features are detected at runtime.
 
 ---
 
