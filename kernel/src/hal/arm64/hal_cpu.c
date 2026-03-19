@@ -313,7 +313,7 @@ int hal_timer_source_init(uint32_t tick_hz) {
   return 0;
 }
 
-__attribute__((unused)) static void hal_timer_isr(void) {
+void hal_timer_isr(void) {
   // Acknowledge and re-arm timer (cntp_tval_el0 is a countdown timer, writing
   // to it re-arms it and clears the interrupt condition)
   __asm__ volatile("msr cntp_tval_el0, %0" : : "r"(g_timer_interval));

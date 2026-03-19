@@ -11,5 +11,6 @@ add_library(bharatos_drivers STATIC
 )
 
 target_include_directories(bharatos_drivers PUBLIC include)
+target_link_libraries(bharatos_drivers PRIVATE bharat_kernel_buildopts bharat_freestanding bharat_libpacket)
 
 target_compile_options(bharatos_drivers PRIVATE -ffreestanding -nostdlib -Wall)
