@@ -85,7 +85,43 @@ Overall, while the architecture cleanly separates mechanisms (in the kernel) fro
 
 ---
 
-## 7. Conclusion and Recommendations
+## 7. Runtime Hardware & Feature Probing
+
+### Current State
+- **CPU Capabilities:** The files responsible for probing CPU features at runtime (`kernel/src/arch/*/cpu_caps.c`) across all architectures (x86_64, arm64, riscv64, shakti) contain empty stubs: `// Stub: Probe CPUID for x87, SSE, AVX, etc.`.
+- **System Discovery:** The `hal_discovery.c` structure exists to parse ACPI/FDT, but it only maps basic interrupt controllers and memory bounds. It does not actively parse or expose custom extensions (like RISC-V `V` vector extension, ARM SVE, or Intel AVX-512) to the kernel or user-space services.
+
+### Identified Gaps
+- **Lack of Accelerator Discovery:** User-space subsystems and drivers cannot dynamically leverage hardware extensions or accelerators because the kernel does not probe or expose these capabilities.
+- **Static Assumption:** The system currently assumes a static baseline instruction set per build target, leading to unoptimized code on newer hardware and potential illegal instruction faults if features are used blindly without runtime probing.
+
+---
+
+## 8. Hardware-Backed Security and Secure Boot
+
+### Current State
+- **Encryption & Secure Boot:** The HAL entirely lacks integration with hardware roots of trust (e.g., TPMs, ARM TrustZone, Intel SGX/TDX, RISC-V Keystone).
+- **Cryptographic Accelerators:** While the architectural roadmap mentions isolated crypto services, the HAL does not provide memory-mapped windows or DMA pathways specifically secured for cryptographic engines. The `fpga_mgr.c` stub mentions "secure boot requirement" in comments but lacks any implementation.
+
+### Identified Gaps
+- **Missing Chain of Trust:** There is no HAL interface to verify bootloader-passed measurements or to restrict memory regions to secure enclaves.
+- **Key Management:** The kernel cannot securely lock memory or isolate cryptographic keys from the rest of the OS because secure memory primitives (like zero-on-free or TrustZone SMC calls) are missing from the HAL.
+
+---
+
+## 9. 32-bit Architecture Support (ARM32 / RV32)
+
+### Current State
+- **ARM32:** The only trace of ARM32 support is a disconnected `arm32_mpu_vmm_mock.c` which implements empty, no-op wrappers for a Memory Protection Unit (MPU) rather than an MMU. It is explicitly marked as "detached from mmu_ops_t".
+- **RISC-V 32 (RV32):** There is no explicit RV32 context switching, page table logic (e.g., `sv32`), or HAL support. The repository heavily assumes 64-bit pointers and registers across its RISC-V and ARM implementations.
+
+### Identified Gaps
+- **Not Supported:** 32-bit architectures are effectively unsupported. The kernel assumes 64-bit page table structures, 64-bit atomic operations, and 64-bit context saving.
+- **Embedded RTOS Profile Limitations:** For deeply embedded Cortex-M (ARM32) or RV32 targets, the current HAL is too heavy and tightly coupled to 64-bit MMU assumptions. Significant refactoring is required to support pure MPU-based, 32-bit RTOS profiles.
+
+---
+
+## 10. Conclusion and Recommendations
 
 Bharat-OS has successfully laid down the architectural scaffolding for a multikernel, capability-based system. The mechanism-vs-policy boundaries are respected, and the abstractions (HAL interfaces) exist in the right places.
 
@@ -96,3 +132,5 @@ However, moving from a "bootable baseline" to a high-performance OS requires sys
 2. **Upgrade Synchronization Primitives:** Replace simple spinlocks with ticket/qspinlock variants and integrate architecture yield instructions.
 3. **Refine Interrupts:** Introduce MSI/MSI-X support and IRQ load balancing.
 4. **Optimize Context Switches:** Implement lazy FPU/Vector state saving to drastically reduce IPC and scheduling latency.
+5. **Implement Runtime Probing:** Populate `cpu_caps.c` to parse CPUID/FDT and expose hardware features to user-space services.
+6. **Establish Hardware Security Foundations:** Introduce HAL interfaces for TPM/TrustZone interaction to support the secure boot roadmap.
