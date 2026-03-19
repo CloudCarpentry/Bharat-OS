@@ -19,6 +19,25 @@ typedef struct __attribute__((packed)) {
     uint16_t h_proto;           /* packet type ID field */
 } ethhdr_t;
 
+static inline void eth_addr_copy(uint8_t *dst, const uint8_t *src) {
+    for (int i = 0; i < ETH_ALEN; i++) {
+        dst[i] = src[i];
+    }
+}
+
+static inline int eth_addr_equal(const uint8_t *a, const uint8_t *b) {
+    for (int i = 0; i < ETH_ALEN; i++) {
+        if (a[i] != b[i]) return 0;
+    }
+    return 1;
+}
+
+static inline void eth_addr_zero(uint8_t *dst) {
+    for (int i = 0; i < ETH_ALEN; i++) {
+        dst[i] = 0;
+    }
+}
+
 /* Parse incoming ethernet frame, sets pointers for upper layers, and dispatches.
    Returns 0 on success, negative error otherwise. */
 int ethernet_rx(netbuf_t *nb);
