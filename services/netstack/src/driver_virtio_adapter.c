@@ -2,18 +2,22 @@
 #include "ethernet.h"
 #include <stddef.h>
 
+#include <bharat/packet/packet.h>
+
 // Forward declare the driver entry points for Phase 2 integration
 extern int virtio_net_init(void);
 extern int virtio_net_probe(void *device);
 extern int virtio_net_bind(void *device);
-extern int virtio_net_start(void *device, void (*rx_callback)(const uint8_t *, size_t));
-extern int virtio_net_tx(void *device, const void *buffer, size_t length);
+extern int virtio_net_start(void *device, void (*rx_callback)(packet_buf_t *));
+extern int virtio_net_tx(void *device, packet_buf_t *pkt);
 
 // For simplicity, we assume a single device instance bound in the mock
 static void *mock_virtio_device = NULL;
 
-void virtio_adapter_rx(const uint8_t *data, size_t len) {
+void virtio_adapter_rx(packet_buf_t *pkt) {
+    size_t len = pkt->data_len;
     if (len > NETBUF_MAX_SIZE - NETBUF_DEFAULT_HEADROOM * 2) {
+        packet_unref(pkt);
         return; // Dropped, too large
     }
 
@@ -21,14 +25,22 @@ void virtio_adapter_rx(const uint8_t *data, size_t len) {
     netbuf_init(&nb);
 
     uint8_t *buf = netbuf_put(&nb, len);
-    if (!buf) return;
-    memcpy(buf, data, len);
+    if (!buf) {
+        packet_unref(pkt);
+        return;
+    }
+    memcpy(buf, pkt->data, len);
+
+    packet_unref(pkt);
 
     // Enter the network stack
     ethernet_rx(&nb);
 }
 
 int virtio_adapter_init(void) {
+    // Make sure libpacket is initialized before driver
+    libpacket_init();
+
     if (virtio_net_init() != 0) return -1;
     if (virtio_net_probe(mock_virtio_device) != 0) return -1;
     if (virtio_net_bind(mock_virtio_device) != 0) return -1;
@@ -37,5 +49,17 @@ int virtio_adapter_init(void) {
 }
 
 int virtio_adapter_tx(netbuf_t *nb) {
-    return virtio_net_tx(mock_virtio_device, netbuf_data(nb), netbuf_len(nb));
+    packet_buf_t *pkt = packet_alloc();
+    if (!pkt) return -1;
+
+    size_t len = netbuf_len(nb);
+    if (len > pkt->tail_len) {
+        packet_free(pkt);
+        return -1;
+    }
+
+    memcpy(pkt->data, netbuf_data(nb), len);
+    pkt->data_len = len;
+
+    return virtio_net_tx(mock_virtio_device, pkt);
 }

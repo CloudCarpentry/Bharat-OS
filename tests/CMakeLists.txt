@@ -400,12 +400,14 @@ add_executable(test_netstack_phase2
     ../services/netstack/src/ipv4.c
     ../services/netstack/src/icmp.c
     ../services/netstack/src/udp.c
+    ../services/netstack/src/tcp.c
     ../services/netstack/src/socket_table.c
     ../services/netstack/src/loopback.c
     ../services/netstack/src/driver_virtio_adapter.c
     ../drivers/net/virtio_net.c
+    ../lib/packet/src/packet.c
 )
-target_include_directories(test_netstack_phase2 PRIVATE ../services/netstack/src)
+target_include_directories(test_netstack_phase2 PRIVATE ../services/netstack/src ../lib/packet/include)
 add_test(NAME test_netstack_phase2 COMMAND test_netstack_phase2)
 target_link_options(test_early_alloc
 test_panic
