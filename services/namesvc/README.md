@@ -1,7 +1,7 @@
 # services/namesvc
 
 ## Purpose
-Name service / endpoint registry. Provides discovery, registration, versioning, and endpoint resolution for other services and apps. Makes URPC and endpoint IPC usable at system scale.
+Name service / endpoint registry. Provides discovery, registration, versioning, and endpoint resolution for other services and apps. Makes URPC and endpoint IPC usable at system scale. Works in tandem with `services/servicemgr` for clean distributed naming.
 
 ## Dependencies
 - **May depend on:** `lib/runtime`, `lib/ipc`, `lib/cap`, standard C library headers.
