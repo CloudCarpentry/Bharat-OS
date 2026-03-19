@@ -1,4 +1,4 @@
-#include <stdio.h>
+
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -8,7 +8,7 @@
  */
 
 void init_devmgr(void) {
-    printf("devmgr: Initializing central device enumeration and lifecycle service...\n");
+    //printf("devmgr: Initializing central device enumeration and lifecycle service...\n");
     // TODO: Register with servicemgr/namesvc
     // TODO: Discover root buses (PCIe, CXL)
     // TODO: Configure IOMMU domains / isolation policies
@@ -26,6 +26,6 @@ int main(int argc, char **argv) {
         break; // break for stub to avoid infinite loop
     }
 
-    printf("devmgr: Exiting.\n");
+    //printf("devmgr: Exiting.\n");
     return 0;
 }

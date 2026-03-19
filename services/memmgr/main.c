@@ -1,4 +1,4 @@
-#include <stdio.h>
+
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -8,7 +8,7 @@
  */
 
 void init_memmgr(void) {
-    printf("memmgr: Initializing user-space memory authority...\n");
+    //printf("memmgr: Initializing user-space memory authority...\n");
     // TODO: Connect to kernel mechanisms (e.g. wait on page faults queue)
     // TODO: Define initial memory pressure thresholds
     // TODO: Establish basic region and COW policies
@@ -26,6 +26,6 @@ int main(int argc, char **argv) {
         break; // break for stub to avoid infinite loop
     }
 
-    printf("memmgr: Exiting.\n");
+    //printf("memmgr: Exiting.\n");
     return 0;
 }

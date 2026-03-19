@@ -48,13 +48,18 @@ int bharat_msg_build_bytes(bharat_msg_builder_t* b, const uint8_t* data, uint32_
     b->off += sizeof(uint32_t);
 
     if (len > 0) {
-        memcpy(b->buf + b->off, data, len);
+        for (uint32_t i = 0; i < len; i++) {
+            (b->buf + b->off)[i] = data[i];
+        }
         b->off += len;
     }
     return BHARAT_MSG_OK;
 }
 
 int bharat_msg_build_string(bharat_msg_builder_t* b, const char* str) {
-    uint32_t len = str ? (uint32_t)strlen(str) : 0;
+    uint32_t len = 0;
+    if (str) {
+        while (str[len] != '\0') len++;
+    }
     return bharat_msg_build_bytes(b, (const uint8_t*)str, len);
 }

@@ -1,4 +1,4 @@
-#include <stdio.h>
+
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -8,7 +8,7 @@
  */
 
 void init_coremgr(void) {
-    printf("coremgr: Initializing Per-core monitor and control-plane coordinator...\n");
+    //printf("coremgr: Initializing Per-core monitor and control-plane coordinator...\n");
     // TODO: Register with namesvc or servicemgr
     // TODO: Establish local core topology map
     // TODO: Monitor core online/offline status
@@ -26,6 +26,6 @@ int main(int argc, char **argv) {
         break; // break for stub to avoid infinite loop
     }
 
-    printf("coremgr: Exiting.\n");
+    //printf("coremgr: Exiting.\n");
     return 0;
 }
