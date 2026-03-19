@@ -12,6 +12,8 @@
 #include "../../../subsys/include/bharat/msg/wire.h"
 
 // Transport for core mock
+bharat_transport_t* __attribute__((weak)) transport_for_core(int core);
+int __attribute__((weak)) bharat_monitor_v1_call_tlb_invalidate(bharat_transport_t* t, int dst, const bharat_monitor_v1_TlbInvalidateReq_t* req, void* ctx);
 extern bharat_transport_t* transport_for_core(int core);
 
 extern int bharat_monitor_v1_call_tlb_invalidate(
@@ -73,9 +75,9 @@ void vmm_send_tlb_invalidate(uint64_t aspace_id,
             continue;
 
         bharat_transport_t* t = transport_for_core(core);
-        if (t) {
-             // Call the monitor transport, wait for response
-             int ret = bharat_monitor_v1_call_tlb_invalidate(
+        if (t && bharat_monitor_v1_call_tlb_invalidate) {
+             // In a real implementation this would actually encode and send
+             bharat_monitor_v1_call_tlb_invalidate(
                 t,
                 core,
                 &req,
