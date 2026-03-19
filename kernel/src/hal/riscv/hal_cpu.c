@@ -62,7 +62,7 @@ void hal_serial_write_char(char c) {
   sbi_console_putchar((int)c);
 }
 
-__attribute__((weak)) void hal_console_display_write(const char *s) {
+static void hal_console_display_write(const char *s) {
   (void)s;
 }
 
@@ -85,7 +85,7 @@ void hal_serial_write(const char *s) {
 
 int hal_serial_read_char(void) { return sbi_console_getchar(); }
 
-void hal_riscv_send_ipi_payload(const unsigned long *hart_mask,
+static void hal_riscv_send_ipi_payload(const unsigned long *hart_mask,
                                 uint64_t payload) {
   sbi_send_ipi_payload(hart_mask, payload);
 }
@@ -335,7 +335,7 @@ int hal_timer_source_init(uint32_t tick_hz) {
   return 0;
 }
 
-void hal_timer_isr(void) {
+__attribute__((unused)) static void hal_timer_isr(void) {
   uint64_t current_time;
   __asm__ volatile("csrr %0, time" : "=r"(current_time));
 

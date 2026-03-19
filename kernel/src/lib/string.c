@@ -11,7 +11,7 @@
 #define WORD_SIZE sizeof(uintptr_t)
 #define PREFETCH_THRESHOLD 256
 
-void *memcpy(void *dest, const void *src, size_t n) {
+__attribute__((unused)) static void *memcpy(void *dest, const void *src, size_t n) {
   unsigned char *d = (unsigned char *)dest;
   const unsigned char *s = (const unsigned char *)src;
 
@@ -33,8 +33,8 @@ void *memcpy(void *dest, const void *src, size_t n) {
 
   /* If src is also word-aligned, we can do fast word copies */
   if (((uintptr_t)s & (WORD_SIZE - 1)) == 0) {
-    uintptr_t *wd = (uintptr_t *)d;
-    const uintptr_t *ws = (const uintptr_t *)s;
+    uintptr_t *wd = (uintptr_t *)((void *)d);
+    const uintptr_t *ws = (const uintptr_t *)((const void *)s);
 
     /* Unrolled loop (4 words per iteration) */
     while (n >= 4 * WORD_SIZE) {
@@ -71,7 +71,7 @@ void *memcpy(void *dest, const void *src, size_t n) {
   return dest;
 }
 
-void *memset(void *dest, int c, size_t n) {
+__attribute__((unused)) static void *memset(void *dest, int c, size_t n) {
   unsigned char *d = (unsigned char *)dest;
   unsigned char v = (unsigned char)c;
 
@@ -98,7 +98,7 @@ void *memset(void *dest, int c, size_t n) {
     wv |= wv << 32;
 #endif
 
-    uintptr_t *wd = (uintptr_t *)d;
+    uintptr_t *wd = (uintptr_t *)((void *)d);
 
     /* Unrolled loop (4 words per iteration) */
     while (n >= 4 * WORD_SIZE) {
@@ -131,7 +131,7 @@ void *memset(void *dest, int c, size_t n) {
   return dest;
 }
 
-void *memmove(void *dest, const void *src, size_t n) {
+__attribute__((unused)) static void *memmove(void *dest, const void *src, size_t n) {
   unsigned char *d = (unsigned char *)dest;
   const unsigned char *s = (const unsigned char *)src;
 
@@ -154,8 +154,8 @@ void *memmove(void *dest, const void *src, size_t n) {
     }
 
     if (((uintptr_t)s & (WORD_SIZE - 1)) == 0) {
-      uintptr_t *wd = (uintptr_t *)d;
-      const uintptr_t *ws = (const uintptr_t *)s;
+      uintptr_t *wd = (uintptr_t *)((void *)d);
+      const uintptr_t *ws = (const uintptr_t *)((const void *)s);
 
       while (n >= 4 * WORD_SIZE) {
         if (n >= PREFETCH_THRESHOLD) {
@@ -196,8 +196,8 @@ void *memmove(void *dest, const void *src, size_t n) {
     }
 
     if (((uintptr_t)s & (WORD_SIZE - 1)) == 0) {
-      uintptr_t *wd = (uintptr_t *)d;
-      const uintptr_t *ws = (const uintptr_t *)s;
+      uintptr_t *wd = (uintptr_t *)((void *)d);
+      const uintptr_t *ws = (const uintptr_t *)((const void *)s);
 
       while (n >= 4 * WORD_SIZE) {
         if (n >= PREFETCH_THRESHOLD) {

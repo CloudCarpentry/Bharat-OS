@@ -150,7 +150,7 @@ static const uint8_t g_font_8x16[96][16] = {
 
 static inline void write_pixel_32(uint32_t x, uint32_t y, uint32_t rgba) {
     uint8_t *row = (uint8_t *)g_gui.fb + (uintptr_t)y * g_gui.stride;
-    uint32_t *px = (uint32_t *)(row + x * 4U);
+    uint32_t *px = (uint32_t *)((void *)(row + x * 4U));
     *px = rgba;
 }
 
@@ -162,7 +162,7 @@ static inline void write_pixel_16(uint32_t x, uint32_t y, uint32_t rgba) {
     uint16_t rgb565 = (uint16_t)(((r >> 3) << 11) | ((g2 >> 2) << 5) | (b >> 3));
 
     uint8_t *row = (uint8_t *)g_gui.fb + (uintptr_t)y * g_gui.stride;
-    uint16_t *px = (uint16_t *)(row + x * 2U);
+    uint16_t *px = (uint16_t *)((void *)(row + x * 2U));
     *px = rgb565;
 }
 
@@ -178,7 +178,7 @@ static inline void write_px(uint32_t x, uint32_t y, uint32_t rgba) {
 
 /* ─── Public Drawing API ──────────────────────────────────────────────── */
 
-void boot_gui_fill_rect(uint32_t x, uint32_t y, uint32_t w, uint32_t h,
+static void boot_gui_fill_rect(uint32_t x, uint32_t y, uint32_t w, uint32_t h,
                         uint32_t rgba) {
     if (!g_gui.active) return;
     /* Clamp to framebuffer bounds */
@@ -191,11 +191,11 @@ void boot_gui_fill_rect(uint32_t x, uint32_t y, uint32_t w, uint32_t h,
     }
 }
 
-void boot_gui_draw_pixel(uint32_t x, uint32_t y, uint32_t rgba) {
+__attribute__((unused)) static void boot_gui_draw_pixel(uint32_t x, uint32_t y, uint32_t rgba) {
     write_px(x, y, rgba);
 }
 
-void boot_gui_draw_char(uint32_t x, uint32_t y, char c,
+static void boot_gui_draw_char(uint32_t x, uint32_t y, char c,
                         uint32_t fg, uint32_t bg) {
     if (c < 0x20 || c > 0x7E) c = '?';
     const uint8_t *glyph = g_font_8x16[(uint8_t)c - 0x20];
@@ -208,7 +208,7 @@ void boot_gui_draw_char(uint32_t x, uint32_t y, char c,
     }
 }
 
-void boot_gui_draw_str(uint32_t x, uint32_t y, const char *s,
+static void boot_gui_draw_str(uint32_t x, uint32_t y, const char *s,
                        uint32_t fg, uint32_t bg) {
     if (!s || !g_gui.active) return;
     uint32_t cx = x;

@@ -2,13 +2,13 @@ cmake_minimum_required(VERSION 3.20)
 project(BharatOS_Lib_Runtime C ASM)
 
 # Add the lib/runtime static library
-add_library(runtime STATIC src/runtime.c)
+add_library(bharat_libruntime STATIC src/runtime.c)
 
 # Set the public include directory
-target_include_directories(runtime PUBLIC include)
+target_include_directories(bharat_libruntime PUBLIC include)
 
 # Runtime depends on cap and ipc headers
-target_link_libraries(runtime PUBLIC cap ipc)
+target_link_libraries(bharat_libruntime PUBLIC cap ipc bharat_freestanding bharat_kernel_buildopts)
 
-# Keep the build freestanding and warning-clean
-target_compile_options(runtime PRIVATE -ffreestanding -nostdlib -Wall)
+# Alias for compatibility
+add_library(runtime ALIAS bharat_libruntime)

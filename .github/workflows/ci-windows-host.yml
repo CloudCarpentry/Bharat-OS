@@ -1,0 +1,27 @@
+name: Windows Host & Simulation (CI)
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  windows-build-test:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup LLVM/Clang
+        run: |
+          choco install -y llvm ninja
+
+      - name: Configure Host Tools (Debug)
+        run: cmake --preset windows-hosttools-debug
+
+      - name: Build Host Tools
+        run: cmake --build --preset windows-hosttools-debug
+
+      - name: Run Host Tests
+        run: ctest --preset windows-hosttools-debug

@@ -260,7 +260,7 @@ uint8_t ai_model_ready(void) {
 }
 
 // Mock prediction function for demonstration
-struct kthread* ai_model_predict_best(struct kthread *run_queue) {
+static struct kthread* ai_model_predict_best(struct kthread *run_queue) {
     (void)run_queue;
     return NULL;
 }

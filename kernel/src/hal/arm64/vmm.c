@@ -310,7 +310,7 @@ mmu_ops_t arm64_mmu_ops = {
     .has_user_kernel_split = true, // TTBR0 vs TTBR1
 };
 
-void arm64_mmu_detect(mmu_ops_t *ops) {
+__attribute__((unused)) static void arm64_mmu_detect(mmu_ops_t *ops) {
     // Stub for runtime detection (e.g. read id_aa64mmfr0_el1)
     (void)ops;
 

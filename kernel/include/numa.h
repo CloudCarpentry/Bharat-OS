@@ -41,8 +41,8 @@ typedef struct {
     uint8_t active;
 } numa_node_descriptor_t;
 
-int numa_discover_topology();
-memory_node_id_t numa_get_current_node();
+int numa_discover_topology(void);
+memory_node_id_t numa_get_current_node(void);
 
 int numa_set_node_descriptor(memory_node_id_t node_id,
                              uint64_t start_addr,

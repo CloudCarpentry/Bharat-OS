@@ -1,0 +1,7 @@
+add_library(k_cap OBJECT
+    ../../src/capability.c
+    ../../src/arch/capabilities.c
+)
+
+target_include_directories(k_cap PRIVATE ../../include ../../include/generated ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(k_cap PRIVATE bharat_freestanding bharat_kernel_buildopts)

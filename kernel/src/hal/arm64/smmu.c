@@ -81,7 +81,7 @@ static hal_iommu_ops_t smmu_ops = {
     .get_group = smmu_get_group
 };
 
-void arm64_iommu_detect(void) {
+__attribute__((unused)) static void arm64_iommu_detect(void) {
     // IOMMU backends must be discovered via firmware/board descriptors (FDT/ACPI)
     // rather than ad-hoc probing.
     if (smmu_init() == 0) {

@@ -1,0 +1,5 @@
+add_subdirectory(common)
+add_subdirectory(x86_64)
+add_subdirectory(arm64)
+add_subdirectory(riscv64)
+add_subdirectory(platforms/qemu)

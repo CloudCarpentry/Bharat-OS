@@ -44,3 +44,4 @@ out.log
 out.txt
 test_vm_space
 run_vm_tests.sh
+build/

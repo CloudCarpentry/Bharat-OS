@@ -193,9 +193,18 @@ if(BHARAT_ENABLE_MM_LEGACY_SHIMS)
     target_compile_options(bharat_mm_legacy PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
 endif()
 # ── Core kernel sources ──────────────────────────────────────────────────────
+add_subdirectory(src/core)
+add_subdirectory(src/sched)
+add_subdirectory(src/ipc)
+add_subdirectory(src/cap)
+add_subdirectory(src/trap)
+add_subdirectory(src/debug)
+add_subdirectory(src/init)
+add_subdirectory(src/fs)
+add_subdirectory(src/test)
+
 set(KERNEL_SRCS
     ${BOOT_SRC}
-    src/boot/boot_args.c
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/boot/boot_ui_select.c>
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/boot_video.c>
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/display_handoff.c>
@@ -203,15 +212,6 @@ set(KERNEL_SRCS
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/boot_gui.c>
     $<$<STREQUAL:${ARCH},arm32>:src/hal/arm32_mpu_vmm_mock.c>
     ../kernel/display/fb_core.c
-    src/main.c
-    ../ui/fbui/core/fb_demo_app.c
-    ../ui/fbui/core/fb_events.c
-    ../ui/fbui/core/fb_render.c
-    ../ui/fbui/widgets/fb_widgets.c
-    src/cpu_local.c
-    src/trace/trace.c
-    src/subsystem/profile.c
-    src/arch/capabilities.c
     src/profile/${KERNEL_PROFILE_LOWER}/profile.c
     $<$<STREQUAL:${ARCH},x86_64>:src/board/qemu-virt-x86_64/board.c>
     $<$<STREQUAL:${ARCH},x86_64>:src/arch/x86_64/boot_video_efi.c>
@@ -219,17 +219,6 @@ set(KERNEL_SRCS
     $<$<STREQUAL:${ARCH},arm64>:src/board/bcm2711-rpi4/board.c>
     $<$<AND:$<STREQUAL:${ARCH},riscv64>,$<STREQUAL:${BHARAT_RISCV_SOC_PROFILE},qemu-virt>>:src/board/qemu-virt-riscv64/board.c>
     $<$<AND:$<STREQUAL:${ARCH},riscv64>,$<NOT:$<STREQUAL:${BHARAT_RISCV_SOC_PROFILE},qemu-virt>>>:src/board/shakti-ref/board.c>
-    src/ai_kernel_bridge.c
-    src/ai_sched.c
-    src/panic.c
-    src/sched.c
-    src/sched_deg.c
-    src/algo_matrix.c
-    src/console/console.c
-    src/console/utf8.c
-    src/console/serial_backend.c
-    src/console/fb_backend.c
-    ../kernel/console/fb_console.c
     ${ARCH_HAL}
     src/hal/common/fdt_parser.c
     src/hal/common/discovery.c
@@ -239,59 +228,61 @@ set(KERNEL_SRCS
     ${ARCH_EXT_STATE_SRC}
     src/hal/mmu_init.c
     src/hal/iommu_stub.c
-    # Memory Layer (from object libraries below)
-    src/mm/dma/dma.c
-    src/mm/zswap.c
-    src/urpc/urpc_bootstrap.c
-    src/urpc/urpc_channel.c
-    src/security/isolation.c
-    src/security/credentials.c
-    src/security/policy.c
-    src/security/audit.c
-    src/security/secure_boot.c
-    src/security/vfio.c
-    src/ipc/endpoint_ipc.c
-    src/ipc/async_ipc.c
-    src/ipc/ipc_timeout.c
-    src/capability.c
-    src/crypto/secure_mem.c
-    src/ipc/multikernel.c
-    src/ipc/mk_dispatch.c
-    src/ipc/mk_proto.c
-    src/lib/string.c
-    src/stack_protector.c
-    src/device/builtin_drivers.c
-    src/device/device_manager.c
-    src/device/pci.c
-    src/device/irq_domain.c
     src/hal/interrupt_common.c
     src/hal/timer_common.c
-    src/power_thermal_perf.c
-    src/trap/trap.c
-    src/fault_diag.c
-    src/monitor/mon_vm_service.c
-    src/multicore.c
-    src/fs/vfs.c
-    src/fs/mount.c
-    src/fs/file.c
-    src/fs/namespace.c
-    src/fs/path.c
-    src/fs/block.c
-    src/fs/object_store.c
-    src/fs/blob_backend.c
+    src/mm/dma/dma.c
+    src/mm/zswap.c
     src/apps/hello_world.c
     src/apps/kernel_tester.c
     src/apps/bharat_demo.c
-    src/tests/ktest_pmm.c
-    src/tests/ktest_slab.c
-    src/tests/ktest_runner.c
-    src/tests/ktest_hal_pt.c
 )
+
+# ── Identify active HAL configuration based on architecture
+if(ARCH STREQUAL "x86_64")
+    set(ACTIVE_HAL_TARGETS
+        $<TARGET_OBJECTS:hal_common>
+        $<TARGET_OBJECTS:hal_x86_64_cpu>
+        $<TARGET_OBJECTS:hal_x86_64_mmu>
+        $<TARGET_OBJECTS:hal_x86_64_irq>
+        $<TARGET_OBJECTS:hal_x86_64_timer>
+    )
+elseif(ARCH STREQUAL "arm64" OR ARCH STREQUAL "arm32")
+    set(ACTIVE_HAL_TARGETS
+        $<TARGET_OBJECTS:hal_common>
+        $<TARGET_OBJECTS:hal_arm64_cpu>
+        $<TARGET_OBJECTS:hal_arm64_mmu>
+        $<TARGET_OBJECTS:hal_arm64_irq>
+        $<TARGET_OBJECTS:hal_arm64_timer>
+    )
+elseif(ARCH MATCHES "^riscv")
+    set(ACTIVE_HAL_TARGETS
+        $<TARGET_OBJECTS:hal_common>
+        $<TARGET_OBJECTS:hal_riscv64_cpu>
+        $<TARGET_OBJECTS:hal_riscv64_mmu>
+        $<TARGET_OBJECTS:hal_riscv64_irq>
+        $<TARGET_OBJECTS:hal_riscv64_timer>
+    )
+endif()
+
 # ── Kernel ELF ──────────────────────────────────────────────────────────────
 add_executable(kernel.elf
     ${KERNEL_SRCS}
     $<TARGET_OBJECTS:bharat_mm_pmm>
+    $<TARGET_OBJECTS:k_core>
+    $<TARGET_OBJECTS:k_sched>
+    $<TARGET_OBJECTS:k_ipc>
+    $<TARGET_OBJECTS:k_cap>
+    $<TARGET_OBJECTS:k_trap>
+    $<TARGET_OBJECTS:k_debug>
+    $<TARGET_OBJECTS:k_init>
+    $<TARGET_OBJECTS:k_fs>
+    ${ACTIVE_HAL_TARGETS}
 )
+
+if(BHARAT_ENABLE_KERNEL_SELFTESTS)
+    target_sources(kernel.elf PRIVATE $<TARGET_OBJECTS:k_test_support>)
+endif()
+
 if(NOT BHARAT_PROFILE_MPU_ONLY)
     target_sources(kernel.elf PRIVATE
         $<TARGET_OBJECTS:bharat_mm_aspace>
@@ -306,7 +297,7 @@ if(BHARAT_ENABLE_MM_LEGACY_SHIMS)
         $<TARGET_OBJECTS:bharat_mm_legacy>
     )
 endif()
-target_link_libraries(kernel.elf subsys_manager msg)
+target_link_libraries(kernel.elf subsys_manager bharat_libmsg bharat_kernel_buildopts)
 set_target_properties(kernel.elf PROPERTIES
     OUTPUT_NAME "kernel.elf"
     SUFFIX ""

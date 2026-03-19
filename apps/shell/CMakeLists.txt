@@ -1,0 +1,2 @@
+add_executable(app_shell shell.c)
+target_link_libraries(app_shell PRIVATE bharat_user_buildopts bharat_freestanding bharat_libcmin)

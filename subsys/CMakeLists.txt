@@ -1,55 +1,65 @@
 cmake_minimum_required(VERSION 3.20)
 project(BharatOS_Subsys C ASM)
 
-include_directories(include)
-
-# Subsystem manager daemon/library
-set(SUBSYS_SOURCES
+# ------------------------------------------------------------------------------
+# Subsystem Core
+# ------------------------------------------------------------------------------
+add_library(subsys_manager STATIC
     src/manager.c
     src/subsys_test_runner.c
     src/skb/skb.c
-    linux/linux_compat.c
-    windows/win_compat.c
-    automotive/automotive.c
+)
+target_include_directories(subsys_manager PUBLIC include ${CMAKE_SOURCE_DIR}/kernel/include)
+target_link_libraries(subsys_manager PUBLIC bharat_user_buildopts bharat_freestanding)
+
+# ------------------------------------------------------------------------------
+# Personality Shims
+# ------------------------------------------------------------------------------
+add_library(subsys_linux_personality STATIC linux/linux_compat.c)
+target_include_directories(subsys_linux_personality PUBLIC include ${CMAKE_SOURCE_DIR}/kernel/include)
+target_link_libraries(subsys_linux_personality PUBLIC bharat_user_buildopts bharat_freestanding)
+
+add_library(subsys_windows_personality STATIC windows/win_compat.c)
+target_include_directories(subsys_windows_personality PUBLIC include ${CMAKE_SOURCE_DIR}/kernel/include)
+target_link_libraries(subsys_windows_personality PUBLIC bharat_user_buildopts bharat_freestanding)
+
+add_library(subsys_automotive STATIC automotive/automotive.c)
+target_include_directories(subsys_automotive PUBLIC include ${CMAKE_SOURCE_DIR}/kernel/include)
+target_link_libraries(subsys_automotive PUBLIC bharat_user_buildopts bharat_freestanding)
+
+add_library(subsys_android STATIC
     android/android_personality.c
     android/android_process.c
     android/android_boot.c
     android/android_security.c
     android/android_binder_dist.c
 )
+target_include_directories(subsys_android PUBLIC include ${CMAKE_SOURCE_DIR}/kernel/include)
+target_link_libraries(subsys_android PUBLIC bharat_user_buildopts bharat_freestanding)
 
-# AI Governor daemon (Predictive Resource Scheduling)
-set(AI_GOVERNOR_SOURCES
-    src/ai_governor.c
-)
-
-add_library(subsys_manager STATIC ${SUBSYS_SOURCES})
-target_compile_options(subsys_manager PRIVATE -ffreestanding -nostdlib -Wall -fno-pic -fno-pie)
-target_include_directories(subsys_manager PRIVATE
-    ${CMAKE_SOURCE_DIR}/kernel/include
-)
-
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "riscv")
-    target_compile_options(subsys_manager PRIVATE -mcmodel=medany)
-endif()
-
+# ------------------------------------------------------------------------------
+# Daemons / Executables
+# ------------------------------------------------------------------------------
 option(BHARAT_BUILD_AI_GOVERNOR "Build ai_governor user-space demo executable" ON)
 if(BHARAT_BUILD_AI_GOVERNOR)
-    add_executable(ai_governor ${AI_GOVERNOR_SOURCES} ../kernel/src/ai_sched.c ../kernel/src/sched_deg.c ../kernel/src/sched_stub.c)
-    target_link_libraries(ai_governor PRIVATE subsys_manager urpc c_posix_stub)
+    add_executable(ai_governor
+        src/ai_governor.c
+        ../kernel/src/ai_sched.c
+        ../kernel/src/sched_deg.c
+        ../kernel/src/sched_stub.c
+    )
+    target_link_libraries(ai_governor PRIVATE
+        subsys_manager
+        bharat_libtransport
+        bharat_libcmin
+        bharat_user_buildopts
+        bharat_freestanding
+    )
     target_include_directories(ai_governor PRIVATE
         ${CMAKE_SOURCE_DIR}/kernel/include
-        ${CMAKE_SOURCE_DIR}/lib/urpc
-        ${CMAKE_SOURCE_DIR}/lib/posix/include
     )
-    set_property(TARGET ai_governor PROPERTY POSITION_INDEPENDENT_CODE FALSE)
-    target_compile_options(ai_governor PRIVATE -fno-pic -fno-pie)
-    target_link_options(ai_governor PRIVATE "-no-pie" "-fno-pie" "-fno-pic" "-Wl,-no-pie")
 endif()
 
 if(BHARAT_BUILD_NETWORK_STUBS)
     add_subdirectory(network)
 endif()
-
-# Might need host headers if it's considered user-space mock,
-# for now compiled natively or with suitable toolchain for user-space

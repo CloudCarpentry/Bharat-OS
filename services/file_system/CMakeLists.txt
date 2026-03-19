@@ -1,5 +1,3 @@
 add_executable(file_system main.c vfs_stub.c)
+target_link_libraries(file_system PRIVATE bharat_user_buildopts bharat_freestanding urpc subsys_manager)
 target_include_directories(file_system PRIVATE ../../kernel/include ../../subsys/include ../../lib/urpc)
-target_compile_options(file_system PRIVATE -ffreestanding -nostdlib -Wall)
-target_link_libraries(file_system PRIVATE urpc subsys_manager)
-target_link_options(file_system PRIVATE "-nostdlib" "-no-pie" "-fno-pie" "-no-pie" "-fno-pie")

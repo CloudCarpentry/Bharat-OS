@@ -1,26 +1,25 @@
 # Building Bharat-OS
 
-Bharat-OS primarily uses **LLVM/Clang** + **LLD** for cross-arch reproducibility, with an optional **riscv64-unknown-elf-gcc** flow for Shakti/OpenSBI firmware packaging. Build scripts work identically on Windows, WSL, Linux, macOS, and BSD.
+Bharat-OS utilizes a modern CMake Presets (`CMakePresets.json`) based workflow, allowing identical configuration and compilation paths on Windows, WSL, Linux, macOS, and BSD. We build entirely with **LLVM/Clang** + **LLD** for cross-arch reproducibility.
 
 ```mermaid
 flowchart TD
-    subgraph BuildSystem["Build System"]
+    subgraph BuildSystem["Build System (CMake Presets)"]
         A[Source Code] -->|CMake| B(Build Generator)
     end
 
     subgraph Toolchains["Cross-Platform Toolchains"]
-        B -->|x86_64-elf.cmake| X86[LLVM/Clang x86_64]
-        B -->|riscv64-elf.cmake| RV[LLVM/Clang riscv64]
-        B -.->|riscv64-elf-gcc.cmake| RVGCC[GCC riscv64 - Optional Payload]
-        B -->|arm64-elf.cmake| ARM[LLVM/Clang arm64]
+        B -->|host-linux-clang.cmake| HostL[Host Linux Clang]
+        B -->|host-windows-clang.cmake| HostW[Host Windows Clang]
+        B -->|x86_64-elf-clang.cmake| X86[LLVM/Clang x86_64]
+        B -->|riscv64-elf-clang.cmake| RV[LLVM/Clang riscv64]
+        B -->|aarch64-elf-clang.cmake| ARM[LLVM/Clang arm64]
     end
 
     subgraph Output["Output Artifacts"]
-        X86 --> O1[kernel.elf]
-        X86 --> O4[kernel32.elf Multiboot]
-        RV --> O2[kernel.elf]
-        RVGCC -.-> O5[payload.bin for OpenSBI]
-        ARM --> O3[kernel.elf]
+        X86 --> O1[kernel.elf + bharat_image]
+        RV --> O2[kernel.elf + bharat_image]
+        ARM --> O3[kernel.elf + bharat_image]
     end
 ```
 
@@ -28,36 +27,64 @@ flowchart TD
 
 ## Prerequisites & Environment Preparation
 
-Before building Bharat-OS, you need to set up your development environment. We support Windows, WSL, Linux, macOS, and BSD. We also provide a complete setup script for **Coding Agent Environments** (e.g., Jules, Codex).
+Before building Bharat-OS, you need to set up your development environment.
 
-Please see the comprehensive **[Environment Preparation Guide](docs/ENV_PREP.md)** to install all necessary tools (`cmake`, `clang`, `lld`, `qemu`, `gcc`, `python3`, etc.) for your specific platform.
+- CMake 3.20+
+- Ninja or Make
+- Clang & LLD (`llvm`, `clang`, `lld`)
+- QEMU (for running the kernel)
+- `yq` (Optional, used by the build wrappers `build.sh`/`build.ps1` to parse `build_config.yml`)
+
+Please see the comprehensive **[Environment Preparation Guide](docs/ENV_PREP.md)** for platform-specific instructions.
 
 ---
 
 ## How the Build System Works
 
-All compiler and linker settings are isolated in **CMake toolchain files** under `cmake/toolchains/`.
-Setting `CMAKE_SYSTEM_NAME=Generic` in the toolchain file is what prevents CMake from injecting host-OS-specific flags (MSVC import libs on Windows, macOS rpaths, etc.). This is the same pattern used by Zephyr, seL4, and other bare-metal kernel projects.
+All compiler and linker settings are isolated in **CMake toolchain files** under `cmake/toolchains/`. Target generation is mapped out via profiles in `CMakePresets.json`.
 
+We provide simple wrapper scripts (`build.sh` and `build.ps1`) that parse the target `build_config.yml` configuration and execute the underlying `cmake --preset` engine.
+
+### Helper Scripts (Recommended)
+
+Edit `build_config.yml` to define your target composition (e.g. arch, UI on/off, profile mapping). Then use the wrapper:
+
+```bash
+# Linux/Mac/WSL
+# Build the default_dev profile
+./build.sh default_dev
+
+# Build and run immediately in QEMU
+./build.sh default_dev --run
 ```
-cmake/toolchains/
-  x86_64-elf.cmake   ← x86_64 bare-metal (QEMU)
-  riscv64-elf.cmake      ← RISC-V 64-bit bare-metal (Clang/LLD)
-  riscv64-elf-gcc.cmake  ← RISC-V 64-bit bare-metal (GCC/OpenSBI payload flow)
-  arm64-elf.cmake        ← ARM64 bare-metal (compile validation)
+
+```powershell
+# Windows
+# Build the default_dev profile
+.\build.ps1 default_dev
+
+# Build and run
+.\build.ps1 default_dev -Run
 ```
 
----
+### Manual CMake Presets
 
-## Architecture-Specific Build Guides
+You can bypass the YAML wrapper and invoke the raw presets directly:
 
-Bharat-OS supports multiple architectures, each with specific build flows, run commands, and testing procedures.
+```bash
+# View available presets
+cmake --list-presets
 
-For detailed instructions on how to build, run in QEMU, run SDK builds, and execute tests for a specific architecture, please refer to the corresponding guide:
+# Configure for x86_64 dev target on Linux host
+cmake --preset linux-x86_64-dev-debug
 
-- **[Building for x86_64](docs/BUILD_X86_64.md)**
-- **[Building for RISC-V 64-bit](docs/BUILD_RISCV64.md)**
-- **[Building for ARM64](docs/BUILD_ARM64.md)**
+# Build the target image and dependencies
+cmake --build --preset linux-x86_64-dev-debug
+
+# Configure for Windows host tools
+cmake --preset windows-hosttools-debug
+cmake --build --preset windows-hosttools-debug
+```
 
 ---
 
@@ -65,85 +92,32 @@ For detailed instructions on how to build, run in QEMU, run SDK builds, and exec
 
 ### Validating Host-Side Tests (Windows & WSL/Linux)
 
-Bharat-OS includes a rich suite of host-side tests for core kernel logic, integration behavior, and hardware profiles. These tests execute natively on your host machine (Windows or Linux) bypassing the need for QEMU, making them extremely fast and useful for continuous integration. They utilize statically allocated memory to prevent MSVC stack overflow issues when running under Windows natively.
+Bharat-OS separates purely host-isolated unit tests from kernel self-tests. The host tests execute natively on your host machine (Windows or Linux) without QEMU, making them fast and suitable for CI.
 
-**From Windows Native (PowerShell + MSVC/Clang):**
+**Running host tests from the preset:**
+```bash
+# Configure the host profile (Linux example)
+cmake --preset linux-host-debug
+cmake --build --preset linux-host-debug
+
+# Run all test runners
+ctest --preset linux-host-debug
+```
+
+For Windows:
 ```powershell
-# Configure and build the host-side test suite
-cmake --preset tests-host
-cmake --build --preset build-tests
-
-# Run all tests natively
-ctest --preset run-tests
-
-# Run specifically the full integration subsystem tests
-cd build-tests
-ctest -R test_integration_core_subsys -V
-
-# Run specifically the edge/embedded profile tests
-ctest -R test_profile_edge -V
+cmake --preset windows-hosttools-debug
+cmake --build --preset windows-hosttools-debug
+ctest --preset windows-hosttools-debug
 ```
 
-**From WSL / Linux / macOS (Bash + GCC/Clang):**
-```bash
-# Configure and build the host-side test suite
-cmake --preset tests-host
-cmake --build --preset build-tests
+### Profile and Image Bundling
 
-# Run all tests
-ctest --preset run-tests
-
-# Run specific profile tests with verbose output
-cd build-tests
-ctest -R test_integration_core_subsys -V
-ctest -R test_profile_edge -V
-```
-
-### SDK Development (Planned)
-
-Support for building a standalone SDK for the target architectures, including headers and pre-compiled libraries for user-space development, is currently planned.
-
-This will enable developers to link their C/C++ applications directly against the Bharat-OS POSIX compat layer or native capability interfaces, packaging their applications into a payload alongside the core kernel.
-
-Future updates to the architecture guides will detail SDK packaging commands, test payloads, and user-space compilation instructions.
-
----
-
-### CMake Presets (cross-arch)
-
-The repository includes `CMakePresets.json` for cross compilation and tests:
-
-```bash
-# Configure and build x86_64 kernel
-cmake --preset x86_64-elf-debug
-cmake --build --preset build-x86_64-kernel
-
-# Configure and build riscv64 kernel
-cmake --preset riscv64-elf-debug
-cmake --build --preset build-riscv64-kernel
-
-# Shakti-focused RISC-V profiles (Clang/LLD)
-cmake --preset riscv64-shakti-e-debug && cmake --build --preset build-riscv64-shakti-e-kernel
-cmake --preset riscv64-shakti-c-debug && cmake --build --preset build-riscv64-shakti-c-kernel
-cmake --preset riscv64-shakti-i-debug && cmake --build --preset build-riscv64-shakti-i-kernel
-
-# Shakti/OpenSBI-friendly GCC presets (produces payload.bin)
-cmake --preset riscv64-elf-gcc-debug && cmake --build --preset build-riscv64-gcc-kernel
-cmake --preset riscv64-shakti-e-gcc-debug && cmake --build --preset build-riscv64-shakti-e-gcc-kernel
-
-# Configure and build arm64 kernel
-cmake --preset arm64-elf-debug
-cmake --build --preset build-arm64-kernel
-
-# Host unit tests
-cmake --preset tests-host
-cmake --build --preset build-tests
-ctest --preset run-tests
-
-# Host integration and profile tests
-ctest --preset run-tests -R test_integration_core_subsys
-ctest --preset run-tests -R test_profile_edge
-```
+During build execution, CMake groups your selected targets into bundles:
+- `bharat_services_bundle`: All compiled user-space daemon libraries.
+- `bharat_apps_bundle`: Leaf applications selected by your current `profiles/*.cmake` file.
+- `bharat_initramfs`: A mock tar packaging the root filesystem payloads.
+- `bharat_image`: The overarching target tying `kernel.elf` to the final bundled manifest.
 
 
 ## Build Output

@@ -1,2 +1,3 @@
 add_library(bharat_syscall STATIC syscall_stubs.c)
 target_include_directories(bharat_syscall PUBLIC ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(bharat_syscall PUBLIC bharat_freestanding bharat_kernel_buildopts)

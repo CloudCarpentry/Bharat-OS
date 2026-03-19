@@ -45,7 +45,7 @@ uint64_t hal_timer_read_freq(void) {
     return g_timer_timebase_freq;
 }
 
-uint64_t hal_timer_monotonic_ticks_arch(void) {
+__attribute__((unused)) static uint64_t hal_timer_monotonic_ticks_arch(void) {
     return hal_timer_read_counter();
 }
 

@@ -2,13 +2,13 @@ cmake_minimum_required(VERSION 3.20)
 project(BharatOS_Lib_IPC C ASM)
 
 # Add the lib/ipc static library
-add_library(ipc STATIC src/ipc.c)
+add_library(bharat_libipc STATIC src/ipc.c)
 
 # Set the public include directory
-target_include_directories(ipc PUBLIC include)
+target_include_directories(bharat_libipc PUBLIC include)
 
 # IPC depends on cap headers
-target_link_libraries(ipc PUBLIC cap)
+target_link_libraries(bharat_libipc PUBLIC cap bharat_freestanding bharat_kernel_buildopts)
 
-# Keep the build freestanding and warning-clean
-target_compile_options(ipc PRIVATE -ffreestanding -nostdlib -Wall)
+# Alias for compatibility
+add_library(ipc ALIAS bharat_libipc)

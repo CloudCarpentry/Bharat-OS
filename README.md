@@ -448,25 +448,34 @@ See:
 ### Prerequisites
 
 - `cmake` (3.20+)
-- A supported cross toolchain such as:
-  - `riscv64-unknown-elf-*`
-  - `aarch64-none-elf-*`
-  - `x86_64-elf-*`
+- Ninja or Make
+- A supported LLVM/Clang cross toolchain
+- `yq` (Optional, to parse `build_config.yml` via wrappers)
 
 ### Build examples
 
+Using the modern CMake presets and composition framework:
+
 ```bash
-# RISC-V
-./tools/build.sh riscv64
+# Use the wrapper scripts which read build_config.yml and execute the right presets
+./build.sh default_dev
 
-# ARM64
-./tools/build.sh arm64
-
-# x86_64 (optionally run in QEMU)
-./tools/build.sh x86_64 --run
+# Optionally build and immediately run the emulator
+./build.sh default_dev --run
 ```
 
-Windows users can use `tools/build.ps1`.
+Windows users can invoke the identical workflow:
+```powershell
+.\build.ps1 default_dev -Run
+```
+
+For advanced users, you can bypass the wrapper script and invoke the CMake Presets directly:
+```bash
+cmake --preset linux-x86_64-dev-debug
+cmake --build --preset linux-x86_64-dev-debug
+```
+
+Please see **[BUILD.md](BUILD.md)** for exhaustive details on presets and cross-compilation toolchains.
 
 ## Repository layout
 

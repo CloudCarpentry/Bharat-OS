@@ -24,19 +24,19 @@ static boot_video_handoff_t g_boot_video = {0};
 static bool g_boot_video_parsed = false;
 
 // Call this from kernel_main / boot discovery to capture the framebuffer tag
-void x86_64_parse_multiboot_framebuffer(multiboot_information_t *mb_info) {
+__attribute__((unused)) static void x86_64_parse_multiboot_framebuffer(multiboot_information_t *mb_info) {
     if (!mb_info) return;
 
     uint32_t total_size = mb_info->total_size;
     uint8_t *tag_ptr = (uint8_t *)mb_info + 8;
     while (tag_ptr < (uint8_t *)mb_info + total_size) {
-        multiboot_tag_t *tag = (multiboot_tag_t *)tag_ptr;
+        multiboot_tag_t *tag = (multiboot_tag_t *)((void *)tag_ptr);
         if (tag->type == MULTIBOOT_TAG_TYPE_END) {
             break;
         }
 
         if (tag->type == MULTIBOOT_TAG_TYPE_FRAMEBUFFER) {
-            multiboot_tag_framebuffer_t *fb_tag = (multiboot_tag_framebuffer_t *)tag;
+            multiboot_tag_framebuffer_t *fb_tag = (multiboot_tag_framebuffer_t *)((void *)tag);
 
             g_boot_video.valid = true;
             g_boot_video.path = BOOT_VIDEO_PATH_FIRMWARE_FB;
@@ -96,7 +96,7 @@ typedef struct {
     uint8_t color_info[6];
 } multiboot1_info_t;
 
-void x86_64_parse_multiboot1_framebuffer(void *mb_info) {
+__attribute__((unused)) static void x86_64_parse_multiboot1_framebuffer(void *mb_info) {
     if (!mb_info) return;
     multiboot1_info_t* mbi = (multiboot1_info_t*)mb_info;
 

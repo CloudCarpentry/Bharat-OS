@@ -60,7 +60,7 @@ static inline void x86_wrmsr(uint32_t msr, uint64_t value) {
   __asm__ volatile("wrmsr" : : "c"(msr), "a"(low), "d"(high));
 }
 
-static inline uint64_t x86_rdpmc(uint32_t counter) {
+__attribute__((unused)) static inline uint64_t x86_rdpmc(uint32_t counter) {
   uint32_t low, high;
   __asm__ volatile("rdpmc" : "=a"(low), "=d"(high) : "c"(counter));
   return ((uint64_t)high << 32) | low;
@@ -146,7 +146,7 @@ void hal_serial_write(const char *s) {
 }
 
 // Added to intercept serial writes if needed by generic KPRINT
-void serial_puts(const char *s) { hal_serial_write(s); }
+__attribute__((unused)) static void serial_puts(const char *s) { hal_serial_write(s); }
 
 int hal_serial_read_char(void) {
   // Data ready bit
@@ -354,7 +354,7 @@ void isr128(void);
 
 static void default_isr(void) { __asm__ volatile("iretq"); }
 
-void default_timer_isr(void) {
+__attribute__((unused)) static void default_timer_isr(void) {
   // Ack APIC EOI
   volatile uint32_t *apic_eoi = (volatile uint32_t *)0xFEE000B0;
   *apic_eoi = 0;

@@ -21,7 +21,7 @@ static inline uintptr_t csr_read_satp(void) {
     return val;
 }
 
-void riscv64_probe_satp_mode(void) {
+__attribute__((unused)) static void riscv64_probe_satp_mode(void) {
     // Attempt to write Sv39 mode with ASID=0, PPN=0
     // PPN=0 is safe — we're not activating translation, just testing mode acceptance
     uintptr_t probe = SATP_MODE_SV39 << SATP_MODE_SHIFT;

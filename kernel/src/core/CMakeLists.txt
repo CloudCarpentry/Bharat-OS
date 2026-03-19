@@ -1,0 +1,18 @@
+add_library(k_core OBJECT
+    ../../src/cpu_local.c
+    ../../src/multicore.c
+    ../../src/subsystem/profile.c
+    ../../src/ai_kernel_bridge.c
+    ../../src/security/isolation.c
+    ../../src/security/credentials.c
+    ../../src/security/policy.c
+    ../../src/security/audit.c
+    ../../src/security/secure_boot.c
+    ../../src/security/vfio.c
+    ../../src/lib/string.c
+    ../../src/stack_protector.c
+    ../../src/crypto/secure_mem.c
+)
+
+target_include_directories(k_core PRIVATE ../../include ../../include/generated ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(k_core PRIVATE bharat_freestanding bharat_kernel_buildopts)

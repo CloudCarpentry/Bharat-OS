@@ -213,7 +213,7 @@ void kernel_main(void) {
     uint32_t total_size = mb_info->total_size;
     uint8_t *tag_ptr = (uint8_t *)mb_info + 8;
     while (tag_ptr < (uint8_t *)mb_info + total_size) {
-      multiboot_tag_t *tag = (multiboot_tag_t *)tag_ptr;
+      multiboot_tag_t *tag = (multiboot_tag_t *)((void *)tag_ptr);
       if (tag->type == MULTIBOOT_TAG_TYPE_END) {
         break;
       }

@@ -1,0 +1,21 @@
+# Bharat-OS Build Configuration
+# Used by build.sh / build.ps1 wrappers
+
+builds:
+  default_dev:
+    preset: linux-x86_64-dev-debug
+    arch: x86_64
+    profile: DESKTOP
+    personality: NONE
+    board: qemu-virt
+    gui: true
+    run: false
+
+  edge_arm:
+    preset: linux-arm64-edge-release
+    arch: arm64
+    profile: EDGE
+    personality: LINUX
+    board: virt
+    gui: false
+    run: false
