@@ -81,4 +81,7 @@ void hal_pmu_snapshot(hal_pmu_snapshot_t* snapshot) {
     snapshot->cache_misses  = 0;
     snapshot->branch_instrs = 0;
     snapshot->branch_misses = 0;
+
+    snapshot->approximate = 1u;
+    snapshot->supported_events_mask = PMU_EVENT_MASK_CYCLES;
 }
