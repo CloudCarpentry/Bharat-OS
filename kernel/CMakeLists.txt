@@ -232,6 +232,7 @@ set(KERNEL_SRCS
     # ${ARCH_EXT_STATE_SRC}
     # src/hal/mmu_init.c
     # src/hal/iommu_stub.c
+    src/hal/dma_coherency.c
     # src/hal/interrupt_common.c
     # src/hal/timer_common.c
     src/mm/dma/dma.c
@@ -250,30 +251,35 @@ set(KERNEL_SRCS
 )
 
 # ── Identify active HAL configuration based on architecture
+set(ACTIVE_HAL_TARGETS)
+function(bharat_append_hal_object out_var target_name)
+    if(TARGET ${target_name})
+        list(APPEND ${out_var} $<TARGET_OBJECTS:${target_name}>)
+        set(${out_var} "${${out_var}}" PARENT_SCOPE)
+    endif()
+endfunction()
+
+bharat_append_hal_object(ACTIVE_HAL_TARGETS hal_common)
+
 if(ARCH STREQUAL "x86_64")
-    set(ACTIVE_HAL_TARGETS
-        $<TARGET_OBJECTS:hal_common>
-        $<TARGET_OBJECTS:hal_x86_64_cpu>
-        $<TARGET_OBJECTS:hal_x86_64_mmu>
-        $<TARGET_OBJECTS:hal_x86_64_irq>
-        $<TARGET_OBJECTS:hal_x86_64_timer>
-    )
+    bharat_append_hal_object(ACTIVE_HAL_TARGETS hal_x86_64_cpu)
+    bharat_append_hal_object(ACTIVE_HAL_TARGETS hal_x86_64_mmu)
+    bharat_append_hal_object(ACTIVE_HAL_TARGETS hal_x86_64_irq)
+    bharat_append_hal_object(ACTIVE_HAL_TARGETS hal_x86_64_timer)
 elseif(ARCH STREQUAL "arm64" OR ARCH STREQUAL "arm32")
-    set(ACTIVE_HAL_TARGETS
-        $<TARGET_OBJECTS:hal_common>
-        $<TARGET_OBJECTS:hal_arm64_cpu>
-        $<TARGET_OBJECTS:hal_arm64_mmu>
-        $<TARGET_OBJECTS:hal_arm64_irq>
-        $<TARGET_OBJECTS:hal_arm64_timer>
-    )
+    bharat_append_hal_object(ACTIVE_HAL_TARGETS hal_arm64_cpu)
+    bharat_append_hal_object(ACTIVE_HAL_TARGETS hal_arm64_mmu)
+    bharat_append_hal_object(ACTIVE_HAL_TARGETS hal_arm64_irq)
+    bharat_append_hal_object(ACTIVE_HAL_TARGETS hal_arm64_timer)
 elseif(ARCH MATCHES "^riscv")
-    set(ACTIVE_HAL_TARGETS
-        $<TARGET_OBJECTS:hal_common>
-        $<TARGET_OBJECTS:hal_riscv64_cpu>
-        $<TARGET_OBJECTS:hal_riscv64_mmu>
-        $<TARGET_OBJECTS:hal_riscv64_irq>
-        $<TARGET_OBJECTS:hal_riscv64_timer>
-    )
+    bharat_append_hal_object(ACTIVE_HAL_TARGETS hal_riscv64_cpu)
+    bharat_append_hal_object(ACTIVE_HAL_TARGETS hal_riscv64_mmu)
+    bharat_append_hal_object(ACTIVE_HAL_TARGETS hal_riscv64_irq)
+    bharat_append_hal_object(ACTIVE_HAL_TARGETS hal_riscv64_timer)
+endif()
+
+if(ACTIVE_HAL_TARGETS STREQUAL "")
+    message(WARNING "No HAL object targets were found in this configure context; continuing kernel-only configure without ACTIVE_HAL_TARGETS.")
 endif()
 
 # ── Kernel ELF ──────────────────────────────────────────────────────────────
