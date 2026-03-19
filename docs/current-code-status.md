@@ -48,7 +48,7 @@ It is intended to complement architecture roadmaps with a code-backed snapshot.
 | `drivers` | Stub | TODO-only main. |
 | `console` | Stub | Infinite loop with TODO URPC routing comments. |
 | `boot_displayd` | Partial demo implementation | Includes framebuffer rectangle drawing helper and mocked early UI flow. |
-| `file_system` | Partial scaffold | Calls `vfs_init()` and contains TODO mount/URPC flow. |
+| `file_system` | Partial scaffold | Calls `vfs_init()` and contains TODO mount/URPC flow. Roadmap includes FAT/littlefs support, persistent storage for IoT/edge, and OTA recovery. |
 | `crypto` | Partial implementation | Initializes DRBG/keystore and validates/dispatches protocol requests via service modules; IPC transport path is currently stubbed. |
 | `net` (legacy monolith) | Transitional + smoke-test logic | Control/data plane init and loopback smoke-test remain for compatibility. |
 | `netmgr` | Partial implementation | Initializes interface/address/route/neighbor/driver-health state and handles multiple IPC opcodes with capability checks. |
