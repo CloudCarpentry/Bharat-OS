@@ -4,6 +4,7 @@ project(BharatOS_Drivers C ASM)
 # Add driver subdirectories
 add_library(bharatos_drivers STATIC
     net/ptp_clock.c
+    net/virtio_net.c
     accel/fpga_mgr.c
     bus/cluster_bus.c
     src/automotive/can_loopback.c

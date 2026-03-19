@@ -24,4 +24,5 @@ option(BHARAT_BUILD_NETWORK_STUBS "Build network manager and stack user-space st
 if(BHARAT_BUILD_NETWORK_STUBS)
     add_subdirectory(netmgr)
     add_subdirectory(netstack)
+    add_subdirectory(netfast)
 endif()
