@@ -14,11 +14,15 @@ void *memcpy(void *dest, const void *src, size_t n);
 #define NETBUF_MAX_SIZE 2048
 #define NETBUF_DEFAULT_HEADROOM 256
 
+#define NETBUF_F_RX_CSUM_VALID   (1 << 0) // Hardware has validated relevant checksums
+#define NETBUF_F_TX_CSUM_OFFLOAD (1 << 1) // Request hardware to generate checksums
+
 typedef struct {
     uint8_t buffer[NETBUF_MAX_SIZE];
     uint16_t head;      // Offset to start of data
     uint16_t tail;      // Offset to end of data
     uint16_t size;      // Total capacity
+    uint32_t flags;     // Stack-level packet metadata and offload flags
 } netbuf_t;
 
 // Initialize a netbuf with default headroom

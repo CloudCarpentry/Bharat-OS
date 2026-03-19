@@ -10,13 +10,17 @@ int icmp_rx(netbuf_t *nb, uint32_t src_ip, uint32_t dst_ip) {
 
     icmphdr_t *icmph = (icmphdr_t *)netbuf_data(nb);
 
-    uint16_t orig_check = icmph->checksum;
-    icmph->checksum = 0;
-    if (orig_check != net_checksum(icmph, netbuf_len(nb))) {
+    // Skip software checksum verification if hardware already validated it.
+    // The NETBUF_F_RX_CSUM_VALID flag applies to the originally received packet.
+    if (!(nb->flags & NETBUF_F_RX_CSUM_VALID)) {
+        uint16_t orig_check = icmph->checksum;
+        icmph->checksum = 0;
+        if (orig_check != net_checksum(icmph, netbuf_len(nb))) {
+            icmph->checksum = orig_check;
+            return -1; // Checksum failed
+        }
         icmph->checksum = orig_check;
-        return -1; // Checksum failed
     }
-    icmph->checksum = orig_check;
 
     if (icmph->type == ICMP_ECHO) {
         // Prepare to send an echo reply. Keep the payload intact.

@@ -29,13 +29,16 @@ int ipv4_rx(netbuf_t *nb) {
     }
 
     // Verify Checksum
-    uint16_t orig_check = iph->check;
-    iph->check = 0;
-    if (orig_check != net_checksum(iph, header_len)) {
-        iph->check = orig_check; // Restore
-        return -1; // Checksum failed
+    // Skip software validation if hardware has already verified the checksum.
+    if (!(nb->flags & NETBUF_F_RX_CSUM_VALID)) {
+        uint16_t orig_check = iph->check;
+        iph->check = 0;
+        if (orig_check != net_checksum(iph, header_len)) {
+            iph->check = orig_check; // Restore
+            return -1; // Checksum failed
+        }
+        iph->check = orig_check;
     }
-    iph->check = orig_check;
 
     uint32_t dst_ip = iph->daddr;
     uint32_t src_ip = iph->saddr;
@@ -98,7 +101,15 @@ int ipv4_tx(netbuf_t *nb, uint32_t dst_ip, uint8_t protocol) {
     iph->daddr = dst_ip;
 
     iph->check = 0;
-    iph->check = net_checksum(iph, sizeof(iphdr_t));
+
+    // Support TX checksum offload if requested
+    if (nb->flags & NETBUF_F_TX_CSUM_OFFLOAD) {
+        // Leave checksum as 0, hardware will fill it in
+        // In reality, some drivers may require pseudo-header checksums,
+        // but for IP headers, 0 is typically sufficient.
+    } else {
+        iph->check = net_checksum(iph, sizeof(iphdr_t));
+    }
 
     // Routing decision
     if (src_ip == loopback_ip || dst_ip == loopback_ip || dst_ip == local_ip) {
