@@ -377,6 +377,20 @@ target_include_directories(test_vmm_aspace PRIVATE ../kernel/include)
 target_compile_definitions(test_vmm_aspace PRIVATE TESTING=1)
 add_test(NAME test_vmm_aspace COMMAND test_vmm_aspace)
 
+add_executable(test_pt_common_mm
+    mm/pt_common_tests.c
+    ../kernel/src/hal/hal_pt.c
+)
+target_include_directories(test_pt_common_mm PRIVATE ../kernel/include)
+add_test(NAME test_pt_common_mm COMMAND test_pt_common_mm)
+
+add_executable(test_pt_x86_64_mm
+    mm/pt_x86_64_tests.c
+    ../kernel/src/hal/x86_64/hal_pt_x86_64.c
+)
+target_include_directories(test_pt_x86_64_mm PRIVATE ../kernel/include)
+add_test(NAME test_pt_x86_64_mm COMMAND test_pt_x86_64_mm)
+
 add_executable(test_netstack_phase2
     test_netstack_phase2.c
     ../services/netstack/src/netbuf.c

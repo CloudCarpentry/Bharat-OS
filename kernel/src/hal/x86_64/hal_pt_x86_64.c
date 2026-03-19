@@ -2,6 +2,7 @@
 #include "../../../include/hal/hal_tlb.h"
 #include "../../../include/mm.h"
 #include "../../../include/numa.h"
+#include <stdbool.h>
 
 #define P2V(x) ((void*)(uintptr_t)(x))
 #define V2P(x) ((phys_addr_t)(uintptr_t)(x))
@@ -18,6 +19,7 @@
 #define X86_PT_NX       (1ULL << 63)
 
 #define X86_PAGE_MASK   (~0xFFFULL)
+#define X86_LARGE_2M_SIZE (1ULL << 21)
 
 typedef struct {
     uint64_t entries[512];
@@ -25,6 +27,19 @@ typedef struct {
 
 static virt_addr_t align_down(virt_addr_t value) {
     return value & X86_PAGE_MASK;
+}
+
+static bool table_empty(pt_t* table) {
+    for (size_t i = 0; i < 512; i++) {
+        if (table->entries[i] & X86_PT_PRESENT) {
+            return false;
+        }
+    }
+    return true;
+}
+
+static bool huge_2m_aligned(virt_addr_t va, phys_addr_t pa) {
+    return ((va | pa) & (X86_LARGE_2M_SIZE - 1ULL)) == 0ULL;
 }
 
 static uint64_t flags_to_x86(uint32_t flags) {
@@ -104,7 +119,7 @@ void x86_pt_destroy_address_space(phys_addr_t root_pt) {
     }
 }
 
-int x86_pt_map_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
+static int x86_pt_map_4k(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
     if (root_pt == 0U || paddr == 0U) return -1;
 
     virt_addr_t aligned_vaddr = align_down(vaddr);
@@ -145,6 +160,16 @@ int x86_pt_map_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t paddr, u
         pt_t* pt_ptr = (pt_t*)P2V(new_pt);
         for(int i=0; i<512; i++) pt_ptr->entries[i] = 0;
         pd->entries[pd_idx] = new_pt | dir_flags;
+    } else if (pd->entries[pd_idx] & X86_PT_HUGE) {
+        phys_addr_t huge_base = pd->entries[pd_idx] & ~((1ULL << 21) - 1ULL);
+        phys_addr_t new_pt = mm_alloc_page(NUMA_NODE_ANY);
+        if (!new_pt) return -2;
+        pt_t* split_pt = (pt_t*)P2V(new_pt);
+        uint64_t split_flags = (pd->entries[pd_idx] & ~X86_PAGE_MASK) & ~X86_PT_HUGE;
+        for (size_t i = 0; i < 512; i++) {
+            split_pt->entries[i] = (huge_base + (i * PAGE_SIZE)) | split_flags;
+        }
+        pd->entries[pd_idx] = new_pt | dir_flags;
     }
 
     pt_t* pt = (pt_t*)P2V(pd->entries[pd_idx] & X86_PAGE_MASK);
@@ -155,7 +180,7 @@ int x86_pt_map_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t paddr, u
     return 0;
 }
 
-int x86_pt_unmap_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *unmapped_paddr) {
+static int x86_pt_unmap_4k(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *unmapped_paddr) {
     if (root_pt == 0U) return -1;
 
     virt_addr_t aligned_vaddr = align_down(vaddr);
@@ -171,6 +196,21 @@ int x86_pt_unmap_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *unmap
     if ((pdp->entries[pdp_idx] & X86_PT_PRESENT) == 0) return -2;
     pt_t* pd = (pt_t*)P2V(pdp->entries[pdp_idx] & X86_PAGE_MASK);
     if ((pd->entries[pd_idx] & X86_PT_PRESENT) == 0) return -2;
+    if (pd->entries[pd_idx] & X86_PT_HUGE) {
+        if (unmapped_paddr) {
+            *unmapped_paddr = (pd->entries[pd_idx] & ~((1ULL << 21) - 1ULL)) + (pt_idx * PAGE_SIZE);
+        }
+        pd->entries[pd_idx] = 0;
+        if (table_empty(pd)) {
+            mm_free_page(pdp->entries[pdp_idx] & X86_PAGE_MASK);
+            pdp->entries[pdp_idx] = 0;
+            if (table_empty(pdp)) {
+                mm_free_page(pml4->entries[pml4_idx] & X86_PAGE_MASK);
+                pml4->entries[pml4_idx] = 0;
+            }
+        }
+        return 0;
+    }
     pt_t* pt = (pt_t*)P2V(pd->entries[pd_idx] & X86_PAGE_MASK);
 
     if ((pt->entries[pt_idx] & X86_PT_PRESENT) == 0) return -2;
@@ -181,10 +221,23 @@ int x86_pt_unmap_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *unmap
 
     pt->entries[pt_idx] = 0;
 
+    if (table_empty(pt)) {
+        mm_free_page(pd->entries[pd_idx] & X86_PAGE_MASK);
+        pd->entries[pd_idx] = 0;
+        if (table_empty(pd)) {
+            mm_free_page(pdp->entries[pdp_idx] & X86_PAGE_MASK);
+            pdp->entries[pdp_idx] = 0;
+            if (table_empty(pdp)) {
+                mm_free_page(pml4->entries[pml4_idx] & X86_PAGE_MASK);
+                pml4->entries[pml4_idx] = 0;
+            }
+        }
+    }
+
     return 0;
 }
 
-int x86_pt_protect_page(phys_addr_t root_pt, virt_addr_t vaddr, uint32_t new_flags) {
+static int x86_pt_protect_4k(phys_addr_t root_pt, virt_addr_t vaddr, uint32_t new_flags) {
     if (root_pt == 0U) return -1;
 
     virt_addr_t aligned_vaddr = align_down(vaddr);
@@ -200,6 +253,12 @@ int x86_pt_protect_page(phys_addr_t root_pt, virt_addr_t vaddr, uint32_t new_fla
     if ((pdp->entries[pdp_idx] & X86_PT_PRESENT) == 0) return -2;
     pt_t* pd = (pt_t*)P2V(pdp->entries[pdp_idx] & X86_PAGE_MASK);
     if ((pd->entries[pd_idx] & X86_PT_PRESENT) == 0) return -2;
+    if (pd->entries[pd_idx] & X86_PT_HUGE) {
+        uint64_t paddr_2m = pd->entries[pd_idx] & ~((1ULL << 21) - 1ULL);
+        uint64_t pte_flags = flags_to_x86(new_flags) | X86_PT_HUGE;
+        pd->entries[pd_idx] = paddr_2m | pte_flags;
+        return 0;
+    }
     pt_t* pt = (pt_t*)P2V(pd->entries[pd_idx] & X86_PAGE_MASK);
 
     if ((pt->entries[pt_idx] & X86_PT_PRESENT) == 0) return -2;
@@ -228,6 +287,14 @@ int x86_pt_query_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *paddr
     if ((pdp->entries[pdp_idx] & X86_PT_PRESENT) == 0) return -2;
     pt_t* pd = (pt_t*)P2V(pdp->entries[pdp_idx] & X86_PAGE_MASK);
     if ((pd->entries[pd_idx] & X86_PT_PRESENT) == 0) return -2;
+    if (pd->entries[pd_idx] & X86_PT_HUGE) {
+        if (paddr) *paddr = (pd->entries[pd_idx] & ~((1ULL << 21) - 1ULL)) + (pt_idx * PAGE_SIZE);
+        if (flags) {
+            *flags = x86_to_flags(pd->entries[pd_idx] & ~X86_PAGE_MASK);
+            *flags |= HAL_PT_FLAG_LARGE_2M;
+        }
+        return 0;
+    }
     pt_t* pt = (pt_t*)P2V(pd->entries[pd_idx] & X86_PAGE_MASK);
 
     if ((pt->entries[pt_idx] & X86_PT_PRESENT) == 0) return -2;
@@ -235,6 +302,99 @@ int x86_pt_query_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *paddr
     if (paddr) *paddr = pt->entries[pt_idx] & X86_PAGE_MASK;
     if (flags) *flags = x86_to_flags(pt->entries[pt_idx] & ~X86_PAGE_MASK);
 
+    return 0;
+}
+
+static int x86_pt_map_large_2m(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
+    uint64_t pml4_idx = (vaddr >> 39) & 0x1FF;
+    uint64_t pdp_idx = (vaddr >> 30) & 0x1FF;
+    uint64_t pd_idx = (vaddr >> 21) & 0x1FF;
+    pt_t* pml4 = (pt_t*)P2V(root_pt);
+    uint64_t dir_flags = X86_PT_PRESENT | X86_PT_RW | X86_PT_USER;
+
+    if ((pml4->entries[pml4_idx] & X86_PT_PRESENT) == 0) {
+        phys_addr_t new_pdp = mm_alloc_page(NUMA_NODE_ANY);
+        if (!new_pdp) return -2;
+        pt_t* pdp_ptr = (pt_t*)P2V(new_pdp);
+        for (int i = 0; i < 512; i++) pdp_ptr->entries[i] = 0;
+        pml4->entries[pml4_idx] = new_pdp | dir_flags;
+    }
+    pt_t* pdp = (pt_t*)P2V(pml4->entries[pml4_idx] & X86_PAGE_MASK);
+    if ((pdp->entries[pdp_idx] & X86_PT_PRESENT) == 0) {
+        phys_addr_t new_pd = mm_alloc_page(NUMA_NODE_ANY);
+        if (!new_pd) return -2;
+        pt_t* pd_ptr = (pt_t*)P2V(new_pd);
+        for (int i = 0; i < 512; i++) pd_ptr->entries[i] = 0;
+        pdp->entries[pdp_idx] = new_pd | dir_flags;
+    }
+    pt_t* pd = (pt_t*)P2V(pdp->entries[pdp_idx] & X86_PAGE_MASK);
+    if ((pd->entries[pd_idx] & X86_PT_PRESENT) && !(pd->entries[pd_idx] & X86_PT_HUGE)) {
+        mm_free_page(pd->entries[pd_idx] & X86_PAGE_MASK);
+    }
+    pd->entries[pd_idx] = (paddr & ~((1ULL << 21) - 1ULL)) | flags_to_x86(flags) | X86_PT_HUGE;
+    return 0;
+}
+
+int x86_pt_map_range(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t paddr, size_t size, uint32_t flags) {
+    size_t done = 0;
+    while (done < size) {
+        size_t remaining = size - done;
+        bool use_2m = (flags & HAL_PT_FLAG_LARGE_2M) &&
+                      remaining >= X86_LARGE_2M_SIZE &&
+                      huge_2m_aligned(vaddr + done, paddr + done);
+        int rc = use_2m
+            ? x86_pt_map_large_2m(root_pt, vaddr + done, paddr + done, flags)
+            : x86_pt_map_4k(root_pt, vaddr + done, paddr + done, flags & ~HAL_PT_FLAG_LARGE_2M);
+        if (rc != 0) {
+            return rc;
+        }
+        done += use_2m ? X86_LARGE_2M_SIZE : PAGE_SIZE;
+    }
+    return 0;
+}
+
+int x86_pt_unmap_range(phys_addr_t root_pt, virt_addr_t vaddr, size_t size) {
+    size_t done = 0;
+    while (done < size) {
+        int rc = x86_pt_unmap_4k(root_pt, vaddr + done, NULL);
+        if (rc != 0) return rc;
+        done += PAGE_SIZE;
+    }
+    return 0;
+}
+
+int x86_pt_protect_range(phys_addr_t root_pt, virt_addr_t vaddr, size_t size, uint32_t new_flags) {
+    size_t done = 0;
+    while (done < size) {
+        int rc = x86_pt_protect_4k(root_pt, vaddr + done, new_flags);
+        if (rc != 0) return rc;
+        done += PAGE_SIZE;
+    }
+    return 0;
+}
+
+int x86_pt_map_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
+    return x86_pt_map_range(root_pt, vaddr, paddr, PAGE_SIZE, flags & ~HAL_PT_FLAG_LARGE_2M);
+}
+
+int x86_pt_unmap_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *unmapped_paddr) {
+    if (unmapped_paddr) {
+        (void)x86_pt_query_page(root_pt, vaddr, unmapped_paddr, NULL);
+    }
+    int rc = x86_pt_unmap_range(root_pt, vaddr, PAGE_SIZE);
+    return rc;
+}
+
+int x86_pt_protect_page(phys_addr_t root_pt, virt_addr_t vaddr, uint32_t new_flags) {
+    return x86_pt_protect_range(root_pt, vaddr, PAGE_SIZE, new_flags);
+}
+
+int x86_pt_query_mapping(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *paddr, size_t *mapped_size, uint32_t *flags) {
+    int rc = x86_pt_query_page(root_pt, vaddr, paddr, flags);
+    if (rc != 0) return rc;
+    if (mapped_size) {
+        *mapped_size = (flags && (*flags & HAL_PT_FLAG_LARGE_2M)) ? X86_LARGE_2M_SIZE : PAGE_SIZE;
+    }
     return 0;
 }
 
@@ -266,6 +426,10 @@ hal_pt_ops_t x86_hal_pt_ops = {
     .unmap_page            = x86_pt_unmap_page,
     .protect_page          = x86_pt_protect_page,
     .query_page            = x86_pt_query_page,
+    .map_range             = x86_pt_map_range,
+    .unmap_range           = x86_pt_unmap_range,
+    .protect_range         = x86_pt_protect_range,
+    .query_mapping         = x86_pt_query_mapping,
 };
 
 // --- x86_64 TLB Operations ---

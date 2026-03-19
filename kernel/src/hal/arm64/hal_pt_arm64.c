@@ -2,6 +2,7 @@
 #include "../../../include/hal/hal_tlb.h"
 #include "../../../include/mm.h"
 #include "../../../include/numa.h"
+#include <stdbool.h>
 
 #define P2V(x) ((void*)(uintptr_t)(x))
 #define V2P(x) ((phys_addr_t)(uintptr_t)(x))
@@ -44,6 +45,15 @@ typedef struct {
 
 static virt_addr_t align_down(virt_addr_t value) {
     return value & ARM64_PAGE_MASK;
+}
+
+static bool table_empty(pt_t* table) {
+    for (size_t i = 0; i < 512; i++) {
+        if (table->entries[i] & ARM64_PT_VALID) {
+            return false;
+        }
+    }
+    return true;
 }
 
 static uint64_t flags_to_arm64(uint32_t flags) {
@@ -163,7 +173,7 @@ void arm64_pt_destroy_address_space(phys_addr_t root_pt) {
     }
 }
 
-int arm64_pt_map_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
+static int arm64_pt_map_4k(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
     if (root_pt == 0U || paddr == 0U) return -1;
 
     virt_addr_t aligned_vaddr = align_down(vaddr);
@@ -212,7 +222,7 @@ int arm64_pt_map_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t paddr,
     return 0;
 }
 
-int arm64_pt_unmap_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *unmapped_paddr) {
+static int arm64_pt_unmap_4k(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *unmapped_paddr) {
     if (root_pt == 0U) return -1;
 
     virt_addr_t aligned_vaddr = align_down(vaddr);
@@ -239,10 +249,23 @@ int arm64_pt_unmap_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *unm
     // Break-before-make remap path requires clearing the entry, then invalidating TLB
     pte->entries[pte_idx] = 0;
 
+    if (table_empty(pte)) {
+        mm_free_page(pmd->entries[pmd_idx] & ARM64_PAGE_MASK);
+        pmd->entries[pmd_idx] = 0;
+        if (table_empty(pmd)) {
+            mm_free_page(pud->entries[pud_idx] & ARM64_PAGE_MASK);
+            pud->entries[pud_idx] = 0;
+            if (table_empty(pud)) {
+                mm_free_page(pgd->entries[pgd_idx] & ARM64_PAGE_MASK);
+                pgd->entries[pgd_idx] = 0;
+            }
+        }
+    }
+
     return 0;
 }
 
-int arm64_pt_protect_page(phys_addr_t root_pt, virt_addr_t vaddr, uint32_t new_flags) {
+static int arm64_pt_protect_4k(phys_addr_t root_pt, virt_addr_t vaddr, uint32_t new_flags) {
     if (root_pt == 0U) return -1;
 
     virt_addr_t aligned_vaddr = align_down(vaddr);
@@ -300,6 +323,58 @@ int arm64_pt_query_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *pad
     return 0;
 }
 
+int arm64_pt_map_range(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t paddr, size_t size, uint32_t flags) {
+    size_t done = 0;
+    while (done < size) {
+        int rc = arm64_pt_map_4k(root_pt, vaddr + done, paddr + done, flags);
+        if (rc != 0) return rc;
+        done += PAGE_SIZE;
+    }
+    return 0;
+}
+
+int arm64_pt_unmap_range(phys_addr_t root_pt, virt_addr_t vaddr, size_t size) {
+    size_t done = 0;
+    while (done < size) {
+        int rc = arm64_pt_unmap_4k(root_pt, vaddr + done, NULL);
+        if (rc != 0) return rc;
+        done += PAGE_SIZE;
+    }
+    return 0;
+}
+
+int arm64_pt_protect_range(phys_addr_t root_pt, virt_addr_t vaddr, size_t size, uint32_t new_flags) {
+    size_t done = 0;
+    while (done < size) {
+        int rc = arm64_pt_protect_4k(root_pt, vaddr + done, new_flags);
+        if (rc != 0) return rc;
+        done += PAGE_SIZE;
+    }
+    return 0;
+}
+
+int arm64_pt_map_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
+    return arm64_pt_map_range(root_pt, vaddr, paddr, PAGE_SIZE, flags);
+}
+
+int arm64_pt_unmap_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *unmapped_paddr) {
+    if (unmapped_paddr) {
+        (void)arm64_pt_query_page(root_pt, vaddr, unmapped_paddr, NULL);
+    }
+    return arm64_pt_unmap_range(root_pt, vaddr, PAGE_SIZE);
+}
+
+int arm64_pt_protect_page(phys_addr_t root_pt, virt_addr_t vaddr, uint32_t new_flags) {
+    return arm64_pt_protect_range(root_pt, vaddr, PAGE_SIZE, new_flags);
+}
+
+int arm64_pt_query_mapping(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *paddr, size_t *mapped_size, uint32_t *flags) {
+    int rc = arm64_pt_query_page(root_pt, vaddr, paddr, flags);
+    if (rc != 0) return rc;
+    if (mapped_size) *mapped_size = PAGE_SIZE;
+    return 0;
+}
+
 void arm64_init_hardening(void) {
     uint64_t sctlr;
     asm volatile("mrs %0, sctlr_el1" : "=r"(sctlr));
@@ -320,6 +395,10 @@ hal_pt_ops_t arm64_hal_pt_ops = {
     .unmap_page            = arm64_pt_unmap_page,
     .protect_page          = arm64_pt_protect_page,
     .query_page            = arm64_pt_query_page,
+    .map_range             = arm64_pt_map_range,
+    .unmap_range           = arm64_pt_unmap_range,
+    .protect_range         = arm64_pt_protect_range,
+    .query_mapping         = arm64_pt_query_mapping,
 };
 
 static void arm64_tlb_flush_page_local(virt_addr_t vaddr) {
