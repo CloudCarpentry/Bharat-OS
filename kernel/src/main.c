@@ -6,6 +6,7 @@
 #include "advanced/multikernel.h"
 #include "device.h"
 #include "hal/hal.h"
+#include "hal/hal_discovery.h"
 #include "ipc_async.h"
 #include "kernel.h"
 #include "mm.h"
@@ -142,6 +143,7 @@ static void kernel_phase2_hello_service_smoke(void) {
 static void kernel_boot_scheduler(void) {
   arch_cpu_caps_init();
   arch_cpu_caps_system_finalize(); // Aggregates system_all and system_any
+  hal_discovery_publish_cpu_caps();
   fastops_dispatch_init();
   arch_ext_state_boot_init();
 
