@@ -1,0 +1,31 @@
+service bharat.cap.v1 = 2 {
+
+  rpc RemoteGrant(RemoteGrantReq) -> RemoteGrantResp {
+    qos = reliable;
+    timeout_ms = 200;
+    criticality = rt_ctl;
+  }
+
+  rpc RemoteRevoke(RemoteRevokeReq) -> RemoteRevokeResp {
+    qos = reliable;
+    timeout_ms = 200;
+    criticality = rt_ctl;
+  }
+}
+
+message RemoteGrantReq {
+  cap_descriptor cap;
+  u32 target_node;
+}
+
+message RemoteGrantResp {
+  u32 status;
+}
+
+message RemoteRevokeReq {
+  u64 cap_id;
+}
+
+message RemoteRevokeResp {
+  u32 status;
+}
