@@ -27,6 +27,7 @@ CMakeFiles/
 Makefile
 *.cmake
 !cmake/toolchains/*.cmake
+!cmake/modules/*.cmake
 cmake_install.cmake
 compile_commands.json
 .cache/

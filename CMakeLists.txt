@@ -38,6 +38,11 @@ message(STATUS "Configuring for Device Profile: ${BHARAT_DEVICE_PROFILE}")
 message(STATUS "Configuring for Personality Profile: ${BHARAT_PERSONALITY_PROFILE}")
 message(STATUS "Architecture: ${BHARAT_ARCH_FAMILY}-${BHARAT_ARCH_BITS} (${BHARAT_ARCH_VARIANT})")
 
+# On Windows with LLVM/Clang, explicitly use lld to avoid invoking missing 'ld' or 'gcc'
+if(WIN32)
+    add_link_options(-fuse-ld=lld)
+endif()
+
 if(ARCH STREQUAL "riscv64")
     add_compile_options(
         $<$<COMPILE_LANGUAGE:C>:-march=rv64g>

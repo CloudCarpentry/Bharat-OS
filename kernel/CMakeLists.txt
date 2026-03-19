@@ -367,11 +367,10 @@ endif()
 target_link_options(kernel.elf PRIVATE
     "-nostdlib"
     "-no-pie" "-fno-pie"
+    "-fuse-ld=lld"
     "LINKER:--fatal-warnings"
-    "LINKER:--fuse-ld=lld"
     "LINKER:-T,${LINKER_SCRIPT}"
     "LINKER:--build-id=none"
-    ""
 )
 if(ARCH STREQUAL "riscv64" AND BHARAT_RISCV_BUILD_PAYLOAD_BIN)
     if(NOT CMAKE_OBJCOPY)
