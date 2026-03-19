@@ -9,10 +9,16 @@
 // Bring in the generated definitions
 #include "../../../services/monitor/generated/bharat_monitor_v1_types.h"
 #include "../../../subsys/include/bharat/msg/transport.h"
+#include "../../../subsys/include/bharat/msg/wire.h"
 
 // Transport for core mock
 extern bharat_transport_t* transport_for_core(int core);
-extern int bharat_monitor_v1_call_tlb_invalidate(bharat_transport_t* t, int dst, const bharat_monitor_v1_tlb_invalidate_req_t* req, void* ctx);
+
+extern int bharat_monitor_v1_call_tlb_invalidate(
+    bharat_transport_t* t,
+    int dst,
+    const bharat_monitor_v1_TlbInvalidateReq_t* req,
+    void* ctx);
 
 typedef struct {
     uint64_t active_aspace_id;
@@ -46,7 +52,7 @@ void vmm_send_tlb_invalidate(uint64_t aspace_id,
                              uint64_t len,
                              uint32_t type)
 {
-    bharat_monitor_v1_tlb_invalidate_req_t req = {0};
+    bharat_monitor_v1_TlbInvalidateReq_t req = {0};
 
     req.aspace_id = aspace_id;
     req.va_start  = va;
@@ -68,21 +74,24 @@ void vmm_send_tlb_invalidate(uint64_t aspace_id,
 
         bharat_transport_t* t = transport_for_core(core);
         if (t) {
-             // In a real implementation this would actually encode and send
-             bharat_monitor_v1_call_tlb_invalidate(
+             // Call the monitor transport, wait for response
+             int ret = bharat_monitor_v1_call_tlb_invalidate(
                 t,
                 core,
                 &req,
                 NULL
             );
+
+            // Note: If ret < 0 or timeout, this could panic in strict/debug mode
+            // For now just continue (bounded completion ensures we wait for ack).
         }
     }
 }
 
 int monitor_handle_tlb_invalidate(
     void* ctx,
-    const bharat_monitor_v1_tlb_invalidate_req_t* req,
-    bharat_monitor_v1_tlb_invalidate_resp_t* resp)
+    const bharat_monitor_v1_TlbInvalidateReq_t* req,
+    bharat_monitor_v1_TlbInvalidateResp_t* resp)
 {
     uint32_t current_core = hal_cpu_get_id();
     cpu_mm_state_t* cpu = &cpu_mm_state[current_core];
@@ -178,6 +187,66 @@ void hal_tlb_invalidate_all(void) {
 // Mailbox processing loop relocated to central TLB authority layer
 void vmm_process_urpc_messages(void) {
     uint32_t current_core = hal_cpu_get_id();
+
+    // Process new transport messages
+    bharat_transport_t* t = transport_for_core(current_core);
+    if (t && t->ops && t->ops->recv) {
+        uint8_t buffer[256];
+        size_t rx_len = 0;
+        uint32_t limit = 0;
+
+        while (limit++ < 100) {
+            if (t->ops->poll) t->ops->poll(t, 0); // non-blocking
+            int ret = t->ops->recv(t, buffer, sizeof(buffer), &rx_len);
+            if (ret != BHARAT_MSG_OK || rx_len == 0) break;
+
+            bharat_msg_header_t hdr;
+            if (bharat_msg_header_decode(buffer, rx_len, &hdr) == BHARAT_MSG_OK) {
+                // Handle TlbInvalidate Request
+                if (hdr.service_id == 1 && hdr.opcode == 3 && bharat_msg_is_request(hdr.flags)) {
+                    if (rx_len >= BHARAT_MSG_HEADER_MIN_LEN + sizeof(bharat_monitor_v1_TlbInvalidateReq_t)) {
+                        uint8_t* payload = buffer + BHARAT_MSG_HEADER_MIN_LEN;
+                        bharat_monitor_v1_TlbInvalidateReq_t req;
+                        req.aspace_id = bharat_load_le64(payload + 0);
+                        req.va_start  = bharat_load_le64(payload + 8);
+                        req.length    = bharat_load_le64(payload + 16);
+                        req.type      = bharat_load_le32(payload + 24);
+                        req.generation= bharat_load_le32(payload + 28);
+
+                        bharat_monitor_v1_TlbInvalidateResp_t resp = {0};
+
+                        // Local execute and dispatch
+                        monitor_handle_tlb_invalidate(NULL, &req, &resp);
+
+                        // Ensure operations complete before ACK
+                        __asm__ volatile("": : :"memory");
+
+                        // Send response back
+                        bharat_msg_header_t tx_hdr = {0};
+                        tx_hdr.version_major = BHARAT_MSG_VERSION_MAJOR;
+                        tx_hdr.version_minor = BHARAT_MSG_VERSION_MINOR;
+                        tx_hdr.header_len    = BHARAT_MSG_HEADER_MIN_LEN;
+                        tx_hdr.service_id    = 1; // monitor_v1
+                        tx_hdr.opcode        = 3; // OP_TLBINVALIDATE
+                        tx_hdr.flags         = BHARAT_MSG_FLAG_RESPONSE;
+                        tx_hdr.request_id    = hdr.request_id; // Match sequence
+                        tx_hdr.dst_node      = hdr.src_node;
+                        tx_hdr.total_len     = BHARAT_MSG_HEADER_MIN_LEN + sizeof(bharat_monitor_v1_TlbInvalidateResp_t);
+
+                        uint8_t tx_buf[256];
+                        if (bharat_msg_header_encode(&tx_hdr, tx_buf, sizeof(tx_buf)) == BHARAT_MSG_OK) {
+                            bharat_store_le32(tx_buf + BHARAT_MSG_HEADER_MIN_LEN, resp.status);
+                            if (t->ops->send) {
+                                t->ops->send(t, tx_buf, tx_hdr.total_len);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Process legacy bootstrap g_mm_mailboxes (Fallback)
     mm_mailbox_slot_t* mailbox = &g_mm_mailboxes[current_core];
 
     uint32_t messages_processed = 0;
