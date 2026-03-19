@@ -73,7 +73,7 @@ int vm_space_destroy(vm_space_t *space) {
 
     spinlock_acquire(&space->lock);
 
-    // Revoke and unmap everything (strict)
+    // DEPRECATED: Legacy registry clean up
     vm_mapping_t *curr = space->mappings.head;
     while (curr) {
         vm_mapping_t *next = curr->next;
@@ -83,6 +83,8 @@ int vm_space_destroy(vm_space_t *space) {
     space->mappings.head = NULL;
 
     // TODO: Send MON_VM_SPACE_DESTROY to clean up remote realizations
+    // Note: True tear down logic should iterate `space->regions` but this object
+    // itself is a legacy distributed address space concept.
 
     spinlock_release(&space->lock);
     kfree(space);
@@ -102,7 +104,8 @@ int vm_realize_on_core(vm_space_t *space, uint32_t core_id, bool strict) {
         // Mock init
         active_arch_vm_ops->space_init(space, &local_state);
 
-        // Walk mappings and realize them
+        // Walk mappings and realize them (DEPRECATED PATH)
+        // Correct path is lazy faults or walk address_space_t -> regions.
         vm_mapping_t *curr = space->mappings.head;
         while (curr) {
             active_arch_vm_ops->map(space, &local_state, curr->va_start, curr->pa_start, curr->length, curr->prot, curr->mem_type, curr->flags);

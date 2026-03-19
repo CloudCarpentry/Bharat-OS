@@ -34,6 +34,7 @@ typedef struct vm_rt_reserve {
 } vm_rt_reserve_t;
 
 // Basic tree/db structure for mapping lookups (mocked as simple list for MVP)
+// DEPRECATED: Do not use mapping DB for semantic lookups. Use address_space_t regions.
 typedef struct {
     vm_mapping_t *head;
 } vm_mapping_db_t;
@@ -58,6 +59,9 @@ typedef struct vm_space {
     cap_handle_t owner_cap;
 
     vm_region_tree_t regions;
+
+    // DEPRECATED: Legacy registry shim field. Do not use for semantic decisions.
+    // Use address_space_t -> regions -> objects instead.
     vm_mapping_db_t mappings;
 
     cpu_mask_t allowed_cores;
