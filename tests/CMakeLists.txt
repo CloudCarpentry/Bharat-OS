@@ -3,9 +3,10 @@ project(BharatOS-Tests C)
 
 enable_testing()
 
-add_executable(test_early_alloc test_early_alloc.c)
-target_include_directories(test_early_alloc PRIVATE ../kernel/include)
+add_subdirectory(host)
 
+# The following legacy tests are preserved here but should eventually
+# migrate to kernel/src/test or tests/host as appropriate.
 add_executable(test_panic test_panic.c benchmark_stubs.c ../kernel/src/panic.c ../kernel/src/fault_diag.c ../kernel/src/sched.c ../kernel/src/sched_deg.c ../kernel/src/ai_sched.c ../kernel/src/capability.c ../kernel/src/device/device_manager.c ../kernel/src/algo_matrix.c ../kernel/src/mm/pmm/numa.c)
 
 add_executable(test_stress_concurrency test_stress_concurrency.c
@@ -27,8 +28,6 @@ target_link_libraries(test_stress_concurrency PRIVATE pthread)
 add_test(NAME test_stress_concurrency COMMAND test_stress_concurrency)
 target_include_directories(test_panic PRIVATE ../kernel/include)
 add_test(NAME test_panic COMMAND test_panic)
-
-add_test(NAME test_early_alloc COMMAND test_early_alloc)
 
 add_executable(test_tlb_shootdown test_tlb_shootdown.c ../kernel/src/mm/tlb_coordinator.c benchmark_stubs.c)
 target_include_directories(test_tlb_shootdown PRIVATE ../kernel/include)
@@ -409,7 +408,7 @@ add_executable(test_netstack_phase2
 )
 target_include_directories(test_netstack_phase2 PRIVATE ../services/netstack/src ../lib/packet/include)
 add_test(NAME test_netstack_phase2 COMMAND test_netstack_phase2)
-target_link_options(test_early_alloc
+target_link_options(
 test_panic
 test_stress_concurrency
 test_tlb_shootdown
@@ -470,21 +469,6 @@ add_executable(test_wire_format test_wire_format.c)
 target_include_directories(test_wire_format PRIVATE ../subsys/include)
 target_link_libraries(test_wire_format PRIVATE msg)
 add_test(NAME test_wire_format COMMAND test_wire_format)
-
-add_executable(test_payload_codec test_payload_codec.c)
-target_include_directories(test_payload_codec PRIVATE ../subsys/include)
-target_link_libraries(test_payload_codec PRIVATE msg)
-add_test(NAME test_payload_codec COMMAND test_payload_codec)
-
-add_executable(test_capwire test_capwire.c)
-target_include_directories(test_capwire PRIVATE ../subsys/include)
-target_link_libraries(test_capwire PRIVATE capwire msg)
-add_test(NAME test_capwire COMMAND test_capwire)
-
-add_executable(test_ool test_ool.c)
-target_include_directories(test_ool PRIVATE ../subsys/include)
-target_link_libraries(test_ool PRIVATE ool_desc msg)
-add_test(NAME test_ool COMMAND test_ool)
 
 add_executable(test_transport_loopback test_transport_loopback.c)
 target_include_directories(test_transport_loopback PRIVATE ../subsys/include)

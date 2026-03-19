@@ -7,6 +7,7 @@ set(SOURCES main.c)
 
 # Create executable
 add_executable(faultmgr ${SOURCES})
+    target_link_libraries(faultmgr PRIVATE bharat_user_buildopts bharat_freestanding)
 
 # Target include directories
 target_include_directories(faultmgr PRIVATE

@@ -1,0 +1,29 @@
+name: Linux Cross Compile (CI)
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  cross-compile:
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        target:
+          - linux-x86_64-dev-debug
+          - linux-arm64-edge-release
+          - linux-riscv64-drone-release
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build clang gcc-aarch64-linux-gnu gcc-riscv64-unknown-elf
+
+      - name: Configure CMake
+        run: cmake --preset ${{ matrix.target }}
+
+      - name: Build Kernel Image
+        run: cmake --build --preset ${{ matrix.target }}

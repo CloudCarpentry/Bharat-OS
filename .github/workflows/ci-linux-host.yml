@@ -1,0 +1,26 @@
+name: Linux Host Tests (CI)
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  host-build-test:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build clang
+
+      - name: Configure CMake (Debug)
+        run: cmake --preset linux-host-debug
+
+      - name: Build Host Tools & Tests
+        run: cmake --build --preset linux-host-debug
+
+      - name: Run Host Tests
+        run: ctest --preset linux-host-debug

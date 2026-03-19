@@ -3,10 +3,9 @@ project(BharatOS_Services_NameSvc C ASM)
 
 # Add the executable target for the namesvc daemon
 add_executable(namesvc main.c)
+    target_link_libraries(namesvc PRIVATE bharat_user_buildopts bharat_freestanding)
 
 # Link against the foundational Phase 1 user-space libraries
 target_link_libraries(namesvc PUBLIC runtime ipc cap)
 
 # Keep the build freestanding and warning-clean
-target_compile_options(namesvc PRIVATE -ffreestanding -nostdlib -Wall)
-target_link_options(namesvc PRIVATE "-nostdlib" "-no-pie" "-fno-pie" "-no-pie" "-fno-pie")

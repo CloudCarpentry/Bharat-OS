@@ -3,7 +3,13 @@ project(BharatOS C ASM)
 
 enable_testing()
 
-include(cmake/BharatProfiles.cmake)
+# Make the modules directory visible to CMake
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/modules")
+
+# Load Common Build Policies
+include(BharatCommon)
+include(BharatProfiles)
+include(BharatPersonality)
 
 # Architecture selection
 bharat_set_arch_defaults()
@@ -128,12 +134,17 @@ endif()
 
 
 # Add subdirectories
+add_subdirectory(hal)
 add_subdirectory(kernel)
 add_subdirectory(lib)
 add_subdirectory(drivers)
 add_subdirectory(subsys)
 add_subdirectory(services)
+add_subdirectory(apps)
 
 if(BHARAT_BUILD_HOST_TESTS AND NOT CMAKE_CROSSCOMPILING)
     add_subdirectory(tests)
 endif()
+
+# Image generation
+include(BharatImage)

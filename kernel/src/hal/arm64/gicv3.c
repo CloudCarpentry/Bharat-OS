@@ -114,7 +114,7 @@ int hal_irq_disable(uint32_t vector) {
     return 0;
 }
 
-int hal_ipi_send(uint32_t cpu_id, uint32_t reason_vector) {
+__attribute__((unused)) static int hal_ipi_send(uint32_t cpu_id, uint32_t reason_vector) {
     // Send SGI via system register
     uint64_t aff1 = (cpu_id >> 8) & 0xFF;
     uint64_t aff0 = cpu_id & 0x0F; // Target list is only 16 bits in SGI1R, bounded to 0-15

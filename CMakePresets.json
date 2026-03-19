@@ -1,5 +1,5 @@
 {
-  "version": 6,
+  "version": 3,
   "cmakeMinimumRequired": {
     "major": 3,
     "minor": 20,
@@ -7,235 +7,146 @@
   },
   "configurePresets": [
     {
-      "name": "x86_64-elf-debug",
-      "displayName": "x86_64 ELF Debug",
+      "name": "linux-host-debug",
+      "displayName": "Linux Host (Debug)",
+      "description": "Host build on Linux using Clang",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build-x86_64",
+      "binaryDir": "${sourceDir}/build/linux-host-debug",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/host-linux-clang.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/x86_64-elf.cmake",
-        "BHARAT_KERNEL_HARDENING": "ON",
-        "BHARAT_ARCH_FAMILY": "X86",
-        "BHARAT_ARCH_BITS": "64",
-        "BHARAT_ARCH_VARIANT": "GENERIC"
-      }
-    },
-    {
-      "name": "riscv64-elf-debug",
-      "displayName": "riscv64 ELF Debug",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build-riscv64",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/riscv64-elf.cmake",
-        "BHARAT_KERNEL_HARDENING": "ON",
-        "BHARAT_ARCH_FAMILY": "RISCV",
-        "BHARAT_ARCH_BITS": "64",
-        "BHARAT_ARCH_VARIANT": "GENERIC"
-      }
-    },
-    {
-      "name": "arm64-elf-debug",
-      "displayName": "arm64 ELF Debug",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build-arm64",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/arm64-elf.cmake",
-        "BHARAT_KERNEL_HARDENING": "ON",
-        "BHARAT_ARCH_FAMILY": "ARM",
-        "BHARAT_ARCH_BITS": "64",
-        "BHARAT_ARCH_VARIANT": "GENERIC"
-      }
-    },
-    {
-      "name": "riscv64-shakti-e-debug",
-      "displayName": "riscv64 ELF Debug (Shakti E)",
-      "inherits": "riscv64-elf-debug",
-      "binaryDir": "${sourceDir}/build-riscv64-shakti-e",
-      "cacheVariables": {
-        "BHARAT_RISCV_SOC_PROFILE": "shakti-e",
-        "BHARAT_ARCH_FAMILY": "RISCV",
-        "BHARAT_ARCH_BITS": "64",
-        "BHARAT_ARCH_VARIANT": "SHAKTI"
-      }
-    },
-    {
-      "name": "riscv64-shakti-c-debug",
-      "displayName": "riscv64 ELF Debug (Shakti C)",
-      "inherits": "riscv64-elf-debug",
-      "binaryDir": "${sourceDir}/build-riscv64-shakti-c",
-      "cacheVariables": {
-        "BHARAT_RISCV_SOC_PROFILE": "shakti-c",
-        "BHARAT_ARCH_FAMILY": "RISCV",
-        "BHARAT_ARCH_BITS": "64",
-        "BHARAT_ARCH_VARIANT": "SHAKTI"
-      }
-    },
-    {
-      "name": "riscv64-shakti-i-debug",
-      "displayName": "riscv64 ELF Debug (Shakti I)",
-      "inherits": "riscv64-elf-debug",
-      "binaryDir": "${sourceDir}/build-riscv64-shakti-i",
-      "cacheVariables": {
-        "BHARAT_RISCV_SOC_PROFILE": "shakti-i",
-        "BHARAT_ARCH_FAMILY": "RISCV",
-        "BHARAT_ARCH_BITS": "64",
-        "BHARAT_ARCH_VARIANT": "SHAKTI"
-      }
-    },
-    {
-      "name": "tests-host",
-      "displayName": "Host unit tests",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build-tests",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "BHARAT_BUILD_AI_GOVERNOR": "OFF",
-        "BHARAT_BUILD_HOST_TESTS": "ON"
-      }
-    },
-    {
-      "name": "riscv64-elf-gcc-debug",
-      "displayName": "riscv64 ELF Debug (GCC)",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build-riscv64-gcc",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/riscv64-elf-gcc.cmake",
-        "BHARAT_KERNEL_HARDENING": "ON",
-        "BHARAT_RISCV_BUILD_PAYLOAD_BIN": "ON",
-        "BHARAT_ARCH_FAMILY": "RISCV",
-        "BHARAT_ARCH_BITS": "64",
-        "BHARAT_ARCH_VARIANT": "GENERIC"
-      }
-    },
-    {
-      "name": "riscv64-shakti-e-gcc-debug",
-      "displayName": "riscv64 ELF Debug (Shakti E, GCC)",
-      "inherits": "riscv64-elf-gcc-debug",
-      "binaryDir": "${sourceDir}/build-riscv64-shakti-e-gcc",
-      "cacheVariables": {
-        "BHARAT_RISCV_SOC_PROFILE": "shakti-e",
-        "BHARAT_ARCH_FAMILY": "RISCV",
-        "BHARAT_ARCH_BITS": "64",
-        "BHARAT_ARCH_VARIANT": "SHAKTI"
-      }
-    },
-    {
-      "name": "desktop-x86_64-linuxlike",
-      "displayName": "x86_64 Desktop Linux-like Profile",
-      "inherits": "x86_64-elf-debug",
-      "binaryDir": "${sourceDir}/build-desktop-x86_64",
-      "cacheVariables": {
+        "BHARAT_BUILD_HOST_TESTS": "ON",
         "BHARAT_DEVICE_PROFILE": "DESKTOP",
-        "BHARAT_PERSONALITY_PROFILE": "LINUX",
-        "BHARAT_ISA_BASELINE": "x86_64_v2",
-        "BHARAT_ISA_FEATURES": "avx2;fma;aes",
-        "BHARAT_ACCELERATOR_CLASSES": "gpu",
-        "BHARAT_PLATFORM_FIRMWARE": "ACPI"
+        "BHARAT_PERSONALITY_PROFILE": "LINUX"
       }
     },
     {
-      "name": "edge-arm64-maclike",
-      "displayName": "arm64 Edge Mac-like Profile",
-      "inherits": "arm64-elf-debug",
-      "binaryDir": "${sourceDir}/build-edge-arm64",
+      "name": "linux-host-release",
+      "displayName": "Linux Host (Release)",
+      "description": "Host build on Linux using Clang",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/linux-host-release",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/host-linux-clang.cmake",
       "cacheVariables": {
-        "BHARAT_DEVICE_PROFILE": "EDGE",
-        "BHARAT_PERSONALITY_PROFILE": "MAC",
-        "BHARAT_ACCELERATOR_CLASSES": "npu;crypto"
+        "CMAKE_BUILD_TYPE": "Release",
+        "BHARAT_BUILD_HOST_TESTS": "ON",
+        "BHARAT_DEVICE_PROFILE": "DESKTOP",
+        "BHARAT_PERSONALITY_PROFILE": "LINUX"
       }
     },
     {
-      "name": "mobile-riscv64-shakti-linuxlike",
-      "displayName": "riscv64 Shakti Mobile Linux-like Profile",
-      "inherits": "riscv64-shakti-e-debug",
-      "binaryDir": "${sourceDir}/build-mobile-riscv64",
+      "name": "linux-x86_64-dev-debug",
+      "displayName": "Cross x86_64 Dev (Debug)",
+      "description": "Cross-compile x86_64 target on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/linux-x86_64-dev-debug",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/x86_64-elf-clang.cmake",
       "cacheVariables": {
-        "BHARAT_DEVICE_PROFILE": "MOBILE",
-        "BHARAT_PERSONALITY_PROFILE": "LINUX",
-        "BHARAT_ISA_BASELINE": "rv64gc",
-        "BHARAT_ISA_FEATURES": "v;zba;zbb",
-        "BHARAT_ACCELERATOR_CLASSES": "gpu;dsp"
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BHARAT_DEVICE_PROFILE": "DESKTOP"
+      }
+    },
+    {
+      "name": "linux-arm64-edge-release",
+      "displayName": "Cross ARM64 Edge (Release)",
+      "description": "Cross-compile ARM64 Edge profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/linux-arm64-edge-release",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/aarch64-elf-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BHARAT_DEVICE_PROFILE": "EDGE"
+      }
+    },
+    {
+      "name": "linux-riscv64-drone-release",
+      "displayName": "Cross RISC-V Drone (Release)",
+      "description": "Cross-compile RISC-V Drone profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/linux-riscv64-drone-release",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/riscv64-elf-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BHARAT_DEVICE_PROFILE": "DRONE"
+      }
+    },
+    {
+      "name": "windows-hosttools-debug",
+      "displayName": "Windows Host Tools (Debug)",
+      "description": "Host tools build on Windows using Clang",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/windows-hosttools-debug",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/host-windows-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BHARAT_BUILD_HOST_TESTS": "ON",
+        "BHARAT_DEVICE_PROFILE": "DESKTOP",
+        "BHARAT_PERSONALITY_PROFILE": "WINDOWS"
+      }
+    },
+    {
+      "name": "windows-sim-debug",
+      "displayName": "Windows Simulation (Debug)",
+      "description": "Subsystem simulation build on Windows",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/windows-sim-debug",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/host-windows-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BHARAT_BUILD_HOST_TESTS": "ON",
+        "BHARAT_DEVICE_PROFILE": "DESKTOP",
+        "BHARAT_PERSONALITY_PROFILE": "WINDOWS"
       }
     }
   ],
   "buildPresets": [
     {
-      "name": "build-x86_64-kernel",
-      "configurePreset": "x86_64-elf-debug",
-      "targets": [
-        "kernel.elf"
-      ]
+      "name": "linux-host-debug",
+      "configurePreset": "linux-host-debug"
     },
     {
-      "name": "build-riscv64-kernel",
-      "configurePreset": "riscv64-elf-debug",
-      "targets": [
-        "kernel.elf",
-        "kernel.payload.bin"
-      ]
+      "name": "linux-host-release",
+      "configurePreset": "linux-host-release"
     },
     {
-      "name": "build-arm64-kernel",
-      "configurePreset": "arm64-elf-debug",
-      "targets": [
-        "kernel.elf"
-      ]
+      "name": "linux-x86_64-dev-debug",
+      "configurePreset": "linux-x86_64-dev-debug"
     },
     {
-      "name": "build-riscv64-shakti-e-kernel",
-      "configurePreset": "riscv64-shakti-e-debug",
-      "targets": [
-        "kernel.elf",
-        "kernel.payload.bin"
-      ]
+      "name": "linux-arm64-edge-release",
+      "configurePreset": "linux-arm64-edge-release"
     },
     {
-      "name": "build-riscv64-shakti-c-kernel",
-      "configurePreset": "riscv64-shakti-c-debug",
-      "targets": [
-        "kernel.elf",
-        "kernel.payload.bin"
-      ]
+      "name": "linux-riscv64-drone-release",
+      "configurePreset": "linux-riscv64-drone-release"
     },
     {
-      "name": "build-riscv64-shakti-i-kernel",
-      "configurePreset": "riscv64-shakti-i-debug",
-      "targets": [
-        "kernel.elf",
-        "kernel.payload.bin"
-      ]
+      "name": "windows-hosttools-debug",
+      "configurePreset": "windows-hosttools-debug"
     },
     {
-      "name": "build-tests",
-      "configurePreset": "tests-host"
-    },
-    {
-      "name": "build-riscv64-gcc-kernel",
-      "configurePreset": "riscv64-elf-gcc-debug",
-      "targets": [
-        "kernel.elf",
-        "kernel.payload.bin"
-      ]
-    },
-    {
-      "name": "build-riscv64-shakti-e-gcc-kernel",
-      "configurePreset": "riscv64-shakti-e-gcc-debug",
-      "targets": [
-        "kernel.elf",
-        "kernel.payload.bin"
-      ]
+      "name": "windows-sim-debug",
+      "configurePreset": "windows-sim-debug"
     }
   ],
   "testPresets": [
     {
-      "name": "run-tests",
-      "configurePreset": "tests-host",
-      "output": {
-        "outputOnFailure": true
-      }
+      "name": "linux-host-debug",
+      "configurePreset": "linux-host-debug",
+      "output": {"outputOnFailure": true},
+      "execution": {"noTestsAction": "error", "stopOnFailure": true}
+    },
+    {
+      "name": "linux-host-release",
+      "configurePreset": "linux-host-release",
+      "output": {"outputOnFailure": true},
+      "execution": {"noTestsAction": "error", "stopOnFailure": true}
+    },
+    {
+      "name": "windows-hosttools-debug",
+      "configurePreset": "windows-hosttools-debug",
+      "output": {"outputOnFailure": true},
+      "execution": {"noTestsAction": "error", "stopOnFailure": true}
     }
   ]
 }
