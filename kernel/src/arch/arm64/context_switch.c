@@ -1,4 +1,5 @@
 #include "arch/context_switch.h"
+#include "arch/arch_ext_state.h"
 #include <stddef.h>
 #include <stdint.h>
 
@@ -20,4 +21,6 @@ void arch_prepare_initial_context(cpu_context_t* ctx, void (*entry)(void), uint6
 
   ctx->pc = (uint64_t)(uintptr_t)entry;
   ctx->sp = stack_top;
+
+  // Do not preload FP state here. Lazy path will trap on first use.
 }

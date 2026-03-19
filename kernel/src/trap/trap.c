@@ -11,7 +11,7 @@
 #include "mm.h"
 #include "mm/mm_local.h"
 #include "fault_diag.h"
-
+#include "arch/arch_ext_state.h"
 
 #include <stddef.h>
 #include <stdbool.h>
@@ -183,6 +183,20 @@ long trap_handle(trap_frame_t *frame) {
   }
 
 #if defined(__riscv)
+  if (frame->cause == 2) { // Illegal instruction
+    kthread_t *current = sched_current_thread();
+    // Assuming we can check if it's FP by checking FS is off and an FP inst trapped
+    // The exact check depends on having the instruction itself, but since we know
+    // FS is off, an FP instruction will cause this. Let's let the helper handle it.
+    uint64_t sstatus;
+    __asm__ volatile("csrr %0, sstatus" : "=r"(sstatus));
+    if ((sstatus & (3UL << 13)) == 0) { // FS is off
+        if (arch_ext_state_handle_fault(current)) {
+            return 0; // retry
+        }
+    }
+  }
+
   if (frame->cause == 13 || frame->cause == 15) { // Load/Store page fault
     kthread_t *current = sched_current_thread();
     uint64_t stval;
@@ -281,6 +295,12 @@ long trap_handle(trap_frame_t *frame) {
   // ARM64 sync exception (page fault)
   if (frame->type == TRAP_TYPE_SYNC) {
     uint64_t ec = frame->cause >> 26;
+    if (ec == 0x07) { // FP/SIMD trap
+        kthread_t *current = sched_current_thread();
+        if (arch_ext_state_handle_fault(current)) {
+            return 0; // retry
+        }
+    }
     if (ec == 0x24 || ec == 0x25) { // Data/Instruction abort
       // Page fault handling
       uint64_t far;
