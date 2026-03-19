@@ -388,7 +388,7 @@ endif()
 target_link_options(kernel.elf PRIVATE
     "-nostdlib"
     "-no-pie" "-fno-pie"
-    "-fuse-ld=lld"
+    ""
     "LINKER:--fatal-warnings"
     "LINKER:-T,${LINKER_SCRIPT}"
     "LINKER:--build-id=none"

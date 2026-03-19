@@ -59,7 +59,7 @@ static void arm64_probe_caps(arch_cpu_caps_record_t *caps) {
         // SVE is exposed raw, but intentionally NOT marked usable yet
         // until kernel context switch handles variable SVE states reliably.
 
-        uint64_t zfr0 = READ_SYSREG(id_aa64zfr0_el1);
+        uint64_t zfr0 = READ_SYSREG(S3_0_C0_C4_4);
         uint64_t sve2 = (zfr0 >> 0) & 0xf;
         if (sve2 >= 1) {
             arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_ARM64_SVE2);
