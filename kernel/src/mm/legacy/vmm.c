@@ -8,6 +8,7 @@
 // M1: Legacy VMM is now just a thin shim over ASpace/Region/Object layers.
 
 address_space_t kernel_space;
+address_space_t *mm_create_address_space(void);
 
 int vmm_init(void) {
     if (!active_hal_pt) {

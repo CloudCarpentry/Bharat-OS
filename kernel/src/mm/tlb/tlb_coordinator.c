@@ -15,10 +15,7 @@ bharat_transport_t* transport_for_core(int core) {
     (void)core;
     return NULL;
 }
-int bharat_monitor_v1_call_tlb_invalidate(bharat_transport_t* t, int dst, const bharat_monitor_v1_TlbInvalidateReq_t* req, void* ctx) {
-    (void)t; (void)dst; (void)req; (void)ctx;
-    return 0;
-}
+extern int bharat_monitor_v1_call_tlb_invalidate(bharat_transport_t* t, int dst, const bharat_monitor_v1_TlbInvalidateReq_t* req, void* ctx);
 
 typedef struct {
     uint64_t active_aspace_id;
