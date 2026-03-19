@@ -13,6 +13,66 @@ It is intended to complement architecture roadmaps with a code-backed snapshot.
 
 ---
 
+
+### High-Level Architecture Component Status
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'fontFamily': 'arial', 'fontSize': '14px', 'primaryColor': '#0d4f40', 'edgeLabelBackground':'#ffffff'}}}%%
+graph TD
+    classDef default fill:#0d4f40,stroke:#0d4f40,color:#fff,rx:10px,ry:10px;
+
+    classDef greenNode fill:#0d4f40,stroke:#1d8c6b,stroke-width:2px,color:#fff,rx:5px,ry:5px;
+    classDef orangeNode fill:#874900,stroke:#f8a619,stroke-width:2px,color:#fff,rx:5px,ry:5px;
+    classDef purpleNode fill:#3f3281,stroke:#6655a6,stroke-width:2px,color:#fff,rx:5px,ry:5px;
+    classDef grayNode fill:#4b4d48,stroke:#868884,stroke-width:2px,color:#fff,rx:5px,ry:5px;
+
+    classDef invisible fill:none,stroke:none,color:#999;
+
+    subgraph US [User-space domains<br/>Policy, drivers, subsystems — isolated by capabilities]
+        direction LR
+        S1["<b>Subsystems</b><br/><span style='color:#75bfa9; font-size:12px'>Console, FB, Input</span>"]:::greenNode
+        S2["<b>Drivers</b><br/><span style='color:#75bfa9; font-size:12px'>Net, Storage, Display</span>"]:::greenNode
+        S3["<b>AI Governor</b><br/><span style='color:#f8a619; font-size:12px'>Sched hints, telemetry</span>"]:::orangeNode
+        S4["<b>Memory Policy</b><br/><span style='color:#75bfa9; font-size:12px'>RT static / Cloud NUMA</span>"]:::greenNode
+    end
+
+    subgraph MK [Microkernel ring-0<br/>Trusted compute base — capability tables, IPC, VMM, scheduler]
+        direction LR
+        M1["<b>Capability</b><br/><span style='color:#a89cd4; font-size:12px'>invoke/grant/revoke</span>"]:::purpleNode
+        M2["<b>IPC / URPC</b><br/><span style='color:#a89cd4; font-size:12px'>Sync + lockless ring</span>"]:::purpleNode
+        M3["<b>VMM / PMM</b><br/><span style='color:#a89cd4; font-size:12px'>Buddy + slab alloc</span>"]:::purpleNode
+        M4["<b>Scheduler</b><br/><span style='color:#a89cd4; font-size:12px'>Tick-driven + AI hooks</span>"]:::purpleNode
+    end
+
+    subgraph HL [Hardware abstraction layer<br/>Portability contracts across architectures]
+        direction LR
+        H1["<b>x86_64</b>"]:::grayNode
+        H2["<b>arm64 / ARMv8</b>"]:::grayNode
+        H3["<b>RISC-V / Shakti</b>"]:::grayNode
+    end
+
+    US -->|syscall / IPC| MK
+    MK -->|HAL call| HL
+
+    style US fill:#0d4f40,stroke:#0d4f40,color:#fff,rx:10px,ry:10px
+    style MK fill:#3f3281,stroke:#3f3281,color:#fff,rx:10px,ry:10px
+    style HL fill:#4b4d48,stroke:#4b4d48,color:#fff,rx:10px,ry:10px
+
+    subgraph Legend [ ]
+        direction LR
+        L1["<div style='background-color:#1d8c6b; width:15px; height:15px; border-radius:3px; display:inline-block; vertical-align:middle;'></div> <span style='color:#999;'>Baseline implemented</span>"]:::invisible
+        L2["<div style='background-color:#f8a619; width:15px; height:15px; border-radius:3px; display:inline-block; vertical-align:middle;'></div> <span style='color:#999;'>Partial / scaffolding</span>"]:::invisible
+        L3["<div style='background-color:#999999; width:15px; height:15px; border-radius:3px; display:inline-block; vertical-align:middle;'></div> <span style='color:#999;'>Deferred / roadmap</span>"]:::invisible
+    end
+    style Legend fill:none,stroke:none
+
+    HL ~~~ Legend
+
+    linkStyle 0 stroke:#999,stroke-width:2px,color:#999
+    linkStyle 1 stroke:#999,stroke-width:2px,color:#999
+```
+
+
 ## 1) Build composition status
 
 ### Kernel + libraries
