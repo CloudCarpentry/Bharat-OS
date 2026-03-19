@@ -6,6 +6,7 @@
 #include "netbuf.h"
 
 #define IPPROTO_ICMP 1
+#define IPPROTO_TCP  6
 #define IPPROTO_UDP  17
 
 typedef struct __attribute__((packed)) {

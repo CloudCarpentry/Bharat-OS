@@ -1,7 +1,21 @@
 cmake_minimum_required(VERSION 3.20)
 project(netstack C)
 
-file(GLOB NETSTACK_SRC "src/*.c")
+set(NETSTACK_SRC
+    src/arp.c
+    src/checksum.c
+    src/driver_virtio_adapter.c
+    src/ethernet.c
+    src/icmp.c
+    src/ipv4.c
+    src/loopback.c
+    src/main.c
+    src/netbuf.c
+    src/netstack_stubs.c
+    src/socket_table.c
+    src/tcp.c
+    src/udp.c
+)
 add_executable(netstack ${NETSTACK_SRC})
 target_compile_options(netstack PRIVATE -Wall -ffreestanding -nostdlib )
 target_link_options(netstack PRIVATE -nostdlib -no-pie)
