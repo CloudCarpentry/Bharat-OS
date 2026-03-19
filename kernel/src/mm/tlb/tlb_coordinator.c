@@ -7,12 +7,13 @@
 #include "../../include/kernel.h"
 
 // Bring in the generated definitions
-#include "../../../services/monitor/generated/bharat_monitor_v1_types.h"
-#include "../../../subsys/include/bharat/msg/transport.h"
+#include "../../../../services/monitor/generated/bharat_monitor_v1_types.h"
+#include "../../../../subsys/include/bharat/msg/transport.h"
+#include "../../../../subsys/include/bharat/msg/wire.h"
 
 // Transport for core mock
 extern bharat_transport_t* transport_for_core(int core);
-extern int bharat_monitor_v1_call_tlb_invalidate(bharat_transport_t* t, int dst, const bharat_monitor_v1_tlb_invalidate_req_t* req, void* ctx);
+extern int bharat_monitor_v1_call_tlb_invalidate(bharat_transport_t* t, int dst, const bharat_monitor_v1_TlbInvalidateReq_t* req, void* ctx);
 
 typedef struct {
     uint64_t active_aspace_id;
@@ -46,7 +47,7 @@ void vmm_send_tlb_invalidate(uint64_t aspace_id,
                              uint64_t len,
                              uint32_t type)
 {
-    bharat_monitor_v1_tlb_invalidate_req_t req = {0};
+    bharat_monitor_v1_TlbInvalidateReq_t req = {0};
 
     req.aspace_id = aspace_id;
     req.va_start  = va;
@@ -81,8 +82,8 @@ void vmm_send_tlb_invalidate(uint64_t aspace_id,
 
 int monitor_handle_tlb_invalidate(
     void* ctx,
-    const bharat_monitor_v1_tlb_invalidate_req_t* req,
-    bharat_monitor_v1_tlb_invalidate_resp_t* resp)
+    const bharat_monitor_v1_TlbInvalidateReq_t* req,
+    bharat_monitor_v1_TlbInvalidateResp_t* resp)
 {
     uint32_t current_core = hal_cpu_get_id();
     cpu_mm_state_t* cpu = &cpu_mm_state[current_core];
