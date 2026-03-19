@@ -131,6 +131,35 @@ typedef struct {
     uint32_t irq;       // Overflow interrupt (if supported/routed)
 } pmu_desc_t;
 
+// --- CPU/Accelerator Capability Discovery ---
+typedef enum {
+    HAL_ACCEL_FEAT_VECTOR = 0,
+    HAL_ACCEL_FEAT_AES,
+    HAL_ACCEL_FEAT_SHA,
+    HAL_ACCEL_FEAT_PMULL,
+    HAL_ACCEL_FEAT_STRONG_ATOMICS,
+    HAL_ACCEL_FEAT_X86_AVX,
+    HAL_ACCEL_FEAT_X86_AVX2,
+    HAL_ACCEL_FEAT_X86_AVX512F,
+    HAL_ACCEL_FEAT_X86_FMA,
+    HAL_ACCEL_FEAT_X86_PCLMUL,
+    HAL_ACCEL_FEAT_ARM64_SVE,
+    HAL_ACCEL_FEAT_ARM64_SVE2,
+    HAL_ACCEL_FEAT_RISCV_V,
+    HAL_ACCEL_FEAT_RISCV_ZBA,
+    HAL_ACCEL_FEAT_RISCV_ZBB,
+    HAL_ACCEL_FEAT_RISCV_ZBC,
+    HAL_ACCEL_FEAT_RISCV_ZBS,
+    HAL_ACCEL_FEAT__COUNT
+} hal_accel_feature_t;
+
+typedef struct {
+    uint64_t raw_any_mask;      // Available on at least one CPU
+    uint64_t raw_all_mask;      // Available on every online CPU
+    uint64_t usable_any_mask;   // Available + kernel-usable on at least one CPU
+    uint64_t usable_all_mask;   // Available + kernel-usable on every online CPU
+} accel_discovery_t;
+
 #include "bharat/display/boot_video.h"
 
 // --- Global System Discovery State ---
@@ -153,10 +182,15 @@ typedef struct {
     uint32_t pmu_count;
     pmu_desc_t pmus[BHARAT_MAX_PMUS];
 
+    accel_discovery_t accel;
+
     boot_video_handoff_t boot_video;
 } system_discovery_t;
 
 // Retrieve the global discovery structure
 system_discovery_t* hal_get_system_discovery(void);
+
+// Publish architecture CPU capability state into system discovery.
+void hal_discovery_publish_cpu_caps(void);
 
 #endif // BHARAT_HAL_DISCOVERY_H
