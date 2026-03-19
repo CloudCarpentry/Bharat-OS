@@ -1,7 +1,7 @@
 #ifndef BHARAT_MSG_TRANSPORT_H
 #define BHARAT_MSG_TRANSPORT_H
 
-#include "bharat/msg/wire.h"
+#include "wire.h"
 
 #ifdef __cplusplus
 extern "C" {
