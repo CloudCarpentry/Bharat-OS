@@ -1,0 +1,60 @@
+service bharat.monitor.v1 = 1 {
+
+  rpc Heartbeat(HeartbeatReq) -> HeartbeatResp {
+    qos = reliable;
+    timeout_ms = 100;
+    idempotent = true;
+    criticality = rt_ctl;
+  }
+
+  rpc NodeJoin(NodeJoinReq) -> NodeJoinResp {
+    qos = reliable;
+    timeout_ms = 500;
+    auth = required;
+    criticality = rt_ctl;
+  }
+
+  // Core of this phase
+  rpc TlbInvalidate(TlbInvalidateReq) -> TlbInvalidateResp {
+    qos = reliable;
+    timeout_ms = 200;
+    idempotent = true;
+    criticality = rt_ctl;
+  }
+}
+
+message HeartbeatReq {
+  u32 node_id;
+  u64 monotonic_time_ns;
+  u32 health_flags;
+}
+
+message HeartbeatResp {
+  u32 accepted;
+}
+
+message NodeJoinReq {
+  u32 protocol_version;
+  u32 arch;
+  u64 boot_nonce;
+  string<64> node_name;
+}
+
+message NodeJoinResp {
+  u32 accepted;
+  u32 assigned_node_id;
+  u64 session_nonce;
+}
+
+message TlbInvalidateReq {
+  u64 aspace_id;
+  u64 va_start;
+  u64 length;
+
+  u32 type;        // 0=page, 1=range, 2=full
+  u32 generation;  // prevents stale shootdown
+}
+
+message TlbInvalidateResp {
+  u32 status;      // 0=ok
+}
