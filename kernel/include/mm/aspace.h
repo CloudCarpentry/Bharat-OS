@@ -29,8 +29,15 @@ typedef struct vm_region {
 
     struct vm_object *object;
 
+    // RB-Tree linkage
+    struct vm_region *left;
+    struct vm_region *right;
+    struct vm_region *parent;
+    uint32_t color;      // 0 for black, 1 for red
+    uintptr_t max_end;   // Augmented: max end address in this subtree
+
+    struct vm_region *next; // Retain list linkage for fast sequential iteration
     struct vm_region *prev;
-    struct vm_region *next;
 } vm_region_t;
 
 typedef struct vm_address_space {
@@ -41,7 +48,8 @@ typedef struct vm_address_space {
 
     volatile uint64_t tlb_seq; // Monotonically increasing sequence for TLB shootdowns
 
-    vm_region_t *regions;    // Head of region tree / list
+    vm_region_t *regions_tree_root; // Root of the augmented RB-tree
+    vm_region_t *regions;           // Head of region list for iteration
     size_t region_count;
 
     uint64_t user_base;      // Min user VA

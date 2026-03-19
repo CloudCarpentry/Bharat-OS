@@ -1,7 +1,7 @@
 #include "arp.h"
 #include "ethernet.h"
 #include "checksum.h"
-#include <stdio.h>
+//#include <stdio.h>
 
 // A simple ARP cache for Phase 2: max 16 entries
 #define ARP_CACHE_SIZE 16

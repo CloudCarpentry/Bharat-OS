@@ -25,4 +25,4 @@ set(CMAKE_C_EXTENSIONS ON)
 set(CMAKE_C_FLAGS_INIT "-ffreestanding -fno-builtin -fno-stack-protector -fno-pic -fno-pie")
 set(CMAKE_ASM_FLAGS_INIT "-ffreestanding -fno-pic -fno-pie")
 
-set(CMAKE_EXE_LINKER_FLAGS_INIT "-nostdlib -fuse-ld=lld -v")
+set(CMAKE_EXE_LINKER_FLAGS_INIT "-nostdlib -no-pie -fno-pie -Wl,-no-pie  -v")

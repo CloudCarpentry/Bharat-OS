@@ -1,6 +1,6 @@
 #include <bharat/runtime/runtime.h>
-#include <stdio.h>
-#include <stdlib.h>
+// #include <stdio.h>
+// #include <stdlib.h>
 
 void bharat_runtime_init(void) {
     // Stub implementation: initialize memory, TLS, thread structs

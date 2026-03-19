@@ -13,3 +13,4 @@ target_compile_options(console PRIVATE -ffreestanding -nostdlib -Wall)
 
 # Link against the subsystem manager and URPC libraries
 target_link_libraries(console PRIVATE urpc subsys_manager)
+target_link_options(console PRIVATE "-nostdlib" "-no-pie" "-fno-pie" "-no-pie" "-fno-pie")
