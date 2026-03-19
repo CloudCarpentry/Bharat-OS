@@ -1,4 +1,5 @@
 #include "../../include/hal/iommu.h"
+#include "../../include/hal/hal_dma.h"
 #include "../../include/mm/dma.h"
 #include "../../include/mm.h"
 #include "../../include/numa.h"
@@ -7,6 +8,18 @@
 // External allocators
 extern void *kmalloc(size_t size);
 extern void kfree(void *ptr);
+
+static hal_dma_direction_t dma_to_hal_direction(dma_direction_t dir) {
+    switch (dir) {
+        case DMA_MAP_FROM_DEVICE:
+            return HAL_DMA_FROM_DEVICE;
+        case DMA_MAP_BIDIRECTIONAL:
+            return HAL_DMA_BIDIRECTIONAL;
+        case DMA_MAP_TO_DEVICE:
+        default:
+            return HAL_DMA_TO_DEVICE;
+    }
+}
 
 // Basic global accounting (in reality, belongs per process/aspace structure)
 static spinlock_t global_pin_lock;
@@ -213,5 +226,54 @@ int dma_buffer_bind_domain(dma_buffer_t *buffer, iova_domain_t *domain) {
         }
     }
 
+    return 0;
+}
+
+void dma_sync_for_device(dma_buffer_t *buffer, dma_direction_t dir) {
+    if (!buffer || !buffer->cpu_addr || buffer->size == 0) {
+        return;
+    }
+    if (!hal_dma_is_coherent()) {
+        hal_dma_sync_for_device(buffer->cpu_addr, buffer->phys_addr, buffer->size, dma_to_hal_direction(dir));
+    }
+}
+
+void dma_sync_for_cpu(dma_buffer_t *buffer, dma_direction_t dir) {
+    if (!buffer || !buffer->cpu_addr || buffer->size == 0) {
+        return;
+    }
+    if (!hal_dma_is_coherent()) {
+        hal_dma_sync_for_cpu(buffer->cpu_addr, buffer->phys_addr, buffer->size, dma_to_hal_direction(dir));
+    }
+}
+
+int dma_buffer_map_device(uint64_t device_id, dma_buffer_t *buffer, dma_direction_t dir) {
+    (void)device_id;
+    if (!buffer) return -1;
+    if (buffer->pin_count == 0) return -2;
+
+    if (buffer->domain && buffer->iova != 0) {
+        hal_iommu_domain_t *hw_dom = (hal_iommu_domain_t *)buffer->domain->iommu_hw_state;
+        if (!hw_dom) return -3;
+        int map_ret = hal_iommu_map(hw_dom, buffer->iova, buffer->phys_addr, buffer->size, (uint64_t)dir);
+        if (map_ret != 0) return map_ret;
+    }
+
+    dma_sync_for_device(buffer, dir);
+    return 0;
+}
+
+int dma_buffer_unmap_device(uint64_t device_id, dma_buffer_t *buffer, dma_direction_t dir) {
+    (void)device_id;
+    if (!buffer) return -1;
+
+    dma_sync_for_cpu(buffer, dir);
+
+    if (buffer->domain && buffer->iova != 0) {
+        hal_iommu_domain_t *hw_dom = (hal_iommu_domain_t *)buffer->domain->iommu_hw_state;
+        if (!hw_dom) return -3;
+        int unmap_ret = hal_iommu_unmap(hw_dom, buffer->iova, buffer->size);
+        if (unmap_ret != 0) return unmap_ret;
+    }
     return 0;
 }

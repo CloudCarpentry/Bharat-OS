@@ -75,6 +75,8 @@ void iova_free(iova_domain_t *domain, uint64_t iova, size_t size);
 int dma_buffer_bind_domain(dma_buffer_t *buffer, iova_domain_t *domain);
 int dma_buffer_map_device(uint64_t device_id, dma_buffer_t *buffer, dma_direction_t dir);
 int dma_buffer_unmap_device(uint64_t device_id, dma_buffer_t *buffer, dma_direction_t dir);
+void dma_sync_for_device(dma_buffer_t *buffer, dma_direction_t dir);
+void dma_sync_for_cpu(dma_buffer_t *buffer, dma_direction_t dir);
 
 #ifdef __cplusplus
 }
