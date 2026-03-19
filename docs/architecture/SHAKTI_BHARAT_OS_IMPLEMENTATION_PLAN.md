@@ -66,7 +66,7 @@ platform/
   shakti/
     boards/
     common/
-compat/
+sdk/
   shakti_sdk/
     include/
     bsp_shim/
@@ -163,7 +163,7 @@ These wrappers should map to existing Bharat build/upload/debug machinery rather
 
 ## SHAKTI-SDK compatibility shim (Phase 3)
 
-Create optional shim under `compat/shakti_sdk/` with familiar BSP-like names at boundary, while internal kernel/driver APIs remain Bharat-native.
+Create optional shim under `sdk/shakti_sdk/` with familiar BSP-like names at boundary, while internal kernel/driver APIs remain Bharat-native.
 
 Initial shim surface:
 
