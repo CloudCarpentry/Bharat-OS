@@ -1,48 +1,40 @@
 #ifndef BHARAT_ARCH_CAPABILITIES_H
 #define BHARAT_ARCH_CAPABILITIES_H
 
-#include <stdint.h>
-#if __has_include("bharat_config.h")
-#include "bharat_config.h"
-#endif
+#include "arch/arch_cpu_caps.h"
 
-/*
- * ISA Capability Layer
- * AVX2, NEON, SVE, RVV, crypto extensions.
- * Allows generic fallback + optimized dispatch via runtime capability descriptor.
- */
-
-typedef struct {
-    uint32_t has_avx2   : 1;
-    uint32_t has_fma    : 1;
-    uint32_t has_aes    : 1;
-    uint32_t has_vector : 1;
-    uint32_t has_crypto : 1;
-} arch_capabilities_t;
-
-extern arch_capabilities_t g_arch_caps;
-
-// Call early in boot to detect features via CPUID or dtb/misa
-void arch_capabilities_init(void);
+static inline void arch_capabilities_init(void) {
+    arch_cpu_caps_init();
+}
 
 static inline int arch_has_feature_avx2(void) {
-    return g_arch_caps.has_avx2;
+#if defined(__x86_64__)
+    return arch_cpu_has(ARCH_CPU_FEAT_X86_AVX2);
+#else
+    return 0;
+#endif
 }
 
 static inline int arch_has_feature_fma(void) {
-    return g_arch_caps.has_fma;
+#if defined(__x86_64__)
+    return arch_cpu_has(ARCH_CPU_FEAT_X86_FMA);
+#else
+    return 0;
+#endif
 }
 
 static inline int arch_has_feature_aes(void) {
-    return g_arch_caps.has_aes;
+    return arch_cpu_has(ARCH_CPU_FEAT_COMMON_AES);
 }
 
 static inline int arch_has_feature_vector(void) {
-    return g_arch_caps.has_vector;
+    return arch_cpu_has(ARCH_CPU_FEAT_COMMON_VECTOR);
 }
 
 static inline int arch_has_feature_crypto(void) {
-    return g_arch_caps.has_crypto;
+    return arch_cpu_has(ARCH_CPU_FEAT_COMMON_AES) ||
+           arch_cpu_has(ARCH_CPU_FEAT_COMMON_SHA) ||
+           arch_cpu_has(ARCH_CPU_FEAT_COMMON_PMULL);
 }
 
 #endif /* BHARAT_ARCH_CAPABILITIES_H */
