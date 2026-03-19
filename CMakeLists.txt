@@ -3,31 +3,10 @@ project(BharatOS C ASM)
 
 enable_testing()
 
+include(cmake/BharatProfiles.cmake)
+
 # Architecture selection
-# If not explicitly set, try to infer from CMAKE_SYSTEM_PROCESSOR or default to X86-64
-if(NOT DEFINED BHARAT_ARCH_FAMILY)
-    if(CMAKE_SYSTEM_PROCESSOR MATCHES "riscv")
-        set(BHARAT_ARCH_FAMILY "RISCV" CACHE STRING "Target architecture family")
-    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64" OR CMAKE_SYSTEM_PROCESSOR MATCHES "arm")
-        set(BHARAT_ARCH_FAMILY "ARM" CACHE STRING "Target architecture family")
-    else()
-        set(BHARAT_ARCH_FAMILY "X86" CACHE STRING "Target architecture family")
-    endif()
-endif()
-
-if(NOT DEFINED BHARAT_ARCH_BITS)
-    if(CMAKE_SYSTEM_PROCESSOR MATCHES "64")
-        set(BHARAT_ARCH_BITS "64" CACHE STRING "Target architecture bitness")
-    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "32")
-        set(BHARAT_ARCH_BITS "32" CACHE STRING "Target architecture bitness")
-    else()
-        set(BHARAT_ARCH_BITS "64" CACHE STRING "Target architecture bitness")
-    endif()
-endif()
-
-if(NOT DEFINED BHARAT_ARCH_VARIANT)
-    set(BHARAT_ARCH_VARIANT "GENERIC" CACHE STRING "Target architecture variant")
-endif()
+bharat_set_arch_defaults()
 
 # Device Profile
 set(BHARAT_DEVICE_PROFILE "DESKTOP" CACHE STRING "Target device profile (DESKTOP, MOBILE, EDGE, DATACENTER, NETWORK_APPLIANCE, DRONE, ROBOT, RTOS, AUTOMOTIVE_ECU, AUTOMOTIVE_INFOTAINMENT)")
@@ -49,27 +28,29 @@ set(BHARAT_PLATFORM_FIRMWARE "" CACHE STRING "Target platform firmware (e.g., AC
 set(BHARAT_BOOT_HW_PROFILE "generic" CACHE STRING "Boot hardware profile (generic, desktop, server, vm, laptop, edge, rtos, automotive_ecu, automotive_infotainment)")
 set_property(CACHE BHARAT_BOOT_HW_PROFILE PROPERTY STRINGS generic desktop server vm laptop edge rtos automotive_ecu automotive_infotainment)
 
-
-# For backward compatibility with existing CMake scripts (like tests, toolchains)
-if(BHARAT_ARCH_FAMILY STREQUAL "X86" AND BHARAT_ARCH_BITS STREQUAL "64")
-    set(ARCH "x86_64")
-elseif(BHARAT_ARCH_FAMILY STREQUAL "RISCV")
-    if(BHARAT_ARCH_BITS STREQUAL "64")
-        set(ARCH "riscv64")
-    else()
-        set(ARCH "riscv32")
-    endif()
-elseif(BHARAT_ARCH_FAMILY STREQUAL "ARM")
-    if(BHARAT_ARCH_BITS STREQUAL "64")
-        set(ARCH "arm64")
-    else()
-        set(ARCH "arm")
-    endif()
-endif()
-
 message(STATUS "Configuring for Device Profile: ${BHARAT_DEVICE_PROFILE}")
 message(STATUS "Configuring for Personality Profile: ${BHARAT_PERSONALITY_PROFILE}")
 message(STATUS "Architecture: ${BHARAT_ARCH_FAMILY}-${BHARAT_ARCH_BITS} (${BHARAT_ARCH_VARIANT})")
+
+if(ARCH STREQUAL "riscv64")
+    add_compile_options(
+        $<$<COMPILE_LANGUAGE:C>:-march=rv64g>
+        $<$<COMPILE_LANGUAGE:C>:-mabi=lp64d>
+        $<$<COMPILE_LANGUAGE:C>:-mcmodel=medany>
+        $<$<COMPILE_LANGUAGE:ASM>:-march=rv64g>
+        $<$<COMPILE_LANGUAGE:ASM>:-mabi=lp64d>
+    )
+    add_link_options(-fuse-ld=lld)
+elseif(ARCH STREQUAL "riscv32")
+    add_compile_options(
+        $<$<COMPILE_LANGUAGE:C>:-march=rv32g>
+        $<$<COMPILE_LANGUAGE:C>:-mabi=ilp32d>
+        $<$<COMPILE_LANGUAGE:C>:-mcmodel=medany>
+        $<$<COMPILE_LANGUAGE:ASM>:-march=rv32g>
+        $<$<COMPILE_LANGUAGE:ASM>:-mabi=ilp32d>
+    )
+    add_link_options(-fuse-ld=lld)
+endif()
 
 option(BHARAT_ENABLE_CLANG_TIDY "Enable clang-tidy static analysis for C targets" OFF)
 option(BHARAT_BUILD_HOST_TESTS "Build host-side unit tests" OFF)
@@ -87,68 +68,39 @@ endif()
 # --- Helper logic for config header ---
 
 # Architecture Family
-if(BHARAT_ARCH_FAMILY STREQUAL "X86")
-    set(BHARAT_ARCH_X86 1)
-elseif(BHARAT_ARCH_FAMILY STREQUAL "ARM")
-    set(BHARAT_ARCH_ARM 1)
-elseif(BHARAT_ARCH_FAMILY STREQUAL "RISCV")
-    set(BHARAT_ARCH_RISCV 1)
-endif()
+bharat_set_profile_flag(BHARAT_ARCH_X86 "X86" "${BHARAT_ARCH_FAMILY}")
+bharat_set_profile_flag(BHARAT_ARCH_ARM "ARM" "${BHARAT_ARCH_FAMILY}")
+bharat_set_profile_flag(BHARAT_ARCH_RISCV "RISCV" "${BHARAT_ARCH_FAMILY}")
 
 # Architecture Bitness
-if(BHARAT_ARCH_BITS STREQUAL "32")
-    set(BHARAT_ARCH_32BIT 1)
-elseif(BHARAT_ARCH_BITS STREQUAL "64")
-    set(BHARAT_ARCH_64BIT 1)
-endif()
+bharat_set_profile_flag(BHARAT_ARCH_32BIT "32" "${BHARAT_ARCH_BITS}")
+bharat_set_profile_flag(BHARAT_ARCH_64BIT "64" "${BHARAT_ARCH_BITS}")
 
 # Architecture Variant
-if(BHARAT_ARCH_VARIANT STREQUAL "GENERIC")
-    set(BHARAT_ARCH_VARIANT_GENERIC 1)
-elseif(BHARAT_ARCH_VARIANT STREQUAL "SHAKTI")
-    set(BHARAT_ARCH_VARIANT_SHAKTI 1)
-endif()
+bharat_set_profile_flag(BHARAT_ARCH_VARIANT_GENERIC "GENERIC" "${BHARAT_ARCH_VARIANT}")
+bharat_set_profile_flag(BHARAT_ARCH_VARIANT_SHAKTI "SHAKTI" "${BHARAT_ARCH_VARIANT}")
 
 # Device Profile
-if(BHARAT_DEVICE_PROFILE STREQUAL "DESKTOP")
-    set(BHARAT_PROFILE_DESKTOP 1)
-elseif(BHARAT_DEVICE_PROFILE STREQUAL "MOBILE")
-    set(BHARAT_PROFILE_MOBILE 1)
-elseif(BHARAT_DEVICE_PROFILE STREQUAL "EDGE")
-    set(BHARAT_PROFILE_EDGE 1)
-elseif(BHARAT_DEVICE_PROFILE STREQUAL "DATACENTER")
-    set(BHARAT_PROFILE_DATACENTER 1)
-elseif(BHARAT_DEVICE_PROFILE STREQUAL "NETWORK_APPLIANCE")
-    set(BHARAT_PROFILE_NETWORK_APPLIANCE 1)
-elseif(BHARAT_DEVICE_PROFILE STREQUAL "DRONE")
-    set(BHARAT_PROFILE_DRONE 1)
-elseif(BHARAT_DEVICE_PROFILE STREQUAL "ROBOT")
-    set(BHARAT_PROFILE_ROBOT 1)
-elseif(BHARAT_DEVICE_PROFILE STREQUAL "RTOS")
-    set(BHARAT_PROFILE_RTOS 1)
-elseif(BHARAT_DEVICE_PROFILE STREQUAL "AUTOMOTIVE_ECU")
-    set(BHARAT_PROFILE_AUTOMOTIVE_ECU 1)
-elseif(BHARAT_DEVICE_PROFILE STREQUAL "AUTOMOTIVE_INFOTAINMENT")
-    set(BHARAT_PROFILE_AUTOMOTIVE_INFOTAINMENT 1)
-endif()
+bharat_set_profile_flag(BHARAT_PROFILE_DESKTOP "DESKTOP" "${BHARAT_DEVICE_PROFILE}")
+bharat_set_profile_flag(BHARAT_PROFILE_MOBILE "MOBILE" "${BHARAT_DEVICE_PROFILE}")
+bharat_set_profile_flag(BHARAT_PROFILE_EDGE "EDGE" "${BHARAT_DEVICE_PROFILE}")
+bharat_set_profile_flag(BHARAT_PROFILE_DATACENTER "DATACENTER" "${BHARAT_DEVICE_PROFILE}")
+bharat_set_profile_flag(BHARAT_PROFILE_NETWORK_APPLIANCE "NETWORK_APPLIANCE" "${BHARAT_DEVICE_PROFILE}")
+bharat_set_profile_flag(BHARAT_PROFILE_DRONE "DRONE" "${BHARAT_DEVICE_PROFILE}")
+bharat_set_profile_flag(BHARAT_PROFILE_ROBOT "ROBOT" "${BHARAT_DEVICE_PROFILE}")
+bharat_set_profile_flag(BHARAT_PROFILE_RTOS "RTOS" "${BHARAT_DEVICE_PROFILE}")
+bharat_set_profile_flag(BHARAT_PROFILE_AUTOMOTIVE_ECU "AUTOMOTIVE_ECU" "${BHARAT_DEVICE_PROFILE}")
+bharat_set_profile_flag(BHARAT_PROFILE_AUTOMOTIVE_INFOTAINMENT "AUTOMOTIVE_INFOTAINMENT" "${BHARAT_DEVICE_PROFILE}")
 
 # Personality Profile
-if(BHARAT_PERSONALITY_PROFILE STREQUAL "NONE")
-    set(BHARAT_PERSONALITY_NONE 1)
-elseif(BHARAT_PERSONALITY_PROFILE STREQUAL "LINUX")
-    set(BHARAT_PERSONALITY_LINUX 1)
-elseif(BHARAT_PERSONALITY_PROFILE STREQUAL "WINDOWS")
-    set(BHARAT_PERSONALITY_WINDOWS 1)
-elseif(BHARAT_PERSONALITY_PROFILE STREQUAL "MAC")
-    set(BHARAT_PERSONALITY_MAC 1)
-endif()
+bharat_set_profile_flag(BHARAT_PERSONALITY_NONE "NONE" "${BHARAT_PERSONALITY_PROFILE}")
+bharat_set_profile_flag(BHARAT_PERSONALITY_LINUX "LINUX" "${BHARAT_PERSONALITY_PROFILE}")
+bharat_set_profile_flag(BHARAT_PERSONALITY_WINDOWS "WINDOWS" "${BHARAT_PERSONALITY_PROFILE}")
+bharat_set_profile_flag(BHARAT_PERSONALITY_MAC "MAC" "${BHARAT_PERSONALITY_PROFILE}")
 
 # Platform Firmware
-if(BHARAT_PLATFORM_FIRMWARE STREQUAL "ACPI")
-    set(BHARAT_PLATFORM_ACPI 1)
-elseif(BHARAT_PLATFORM_FIRMWARE STREQUAL "FDT")
-    set(BHARAT_PLATFORM_FDT 1)
-endif()
+bharat_set_profile_flag(BHARAT_PLATFORM_ACPI "ACPI" "${BHARAT_PLATFORM_FIRMWARE}")
+bharat_set_profile_flag(BHARAT_PLATFORM_FDT "FDT" "${BHARAT_PLATFORM_FIRMWARE}")
 
 # Process ISA features and pass them as definitions
 if(BHARAT_ISA_FEATURES)

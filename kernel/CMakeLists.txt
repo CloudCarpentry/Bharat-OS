@@ -70,13 +70,19 @@ endif()
 add_compile_definitions(BHARAT_BOOT_HW_PROFILE_${KERNEL_PROFILE_LOWER}=1)
 
 # ── Architecture selection ──────────────────────────────────────────────────
-# Inferred from the toolchain file's CMAKE_SYSTEM_PROCESSOR, or set explicitly.
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "riscv")
-    set(ARCH "riscv64")
-elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
-    set(ARCH "arm64")
-else()
-    set(ARCH "x86_64")
+# Prefer root-level ARCH selection when available, otherwise infer from processor.
+if(NOT DEFINED ARCH)
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "riscv32")
+        set(ARCH "riscv32")
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "riscv")
+        set(ARCH "riscv64")
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^arm")
+        set(ARCH "arm32")
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
+        set(ARCH "arm64")
+    else()
+        set(ARCH "x86_64")
+    endif()
 endif()
 
 # ── Boot and HAL sources (arch-specific) ────────────────────────────────────
@@ -84,6 +90,8 @@ if(ARCH STREQUAL "x86_64")
     set(BOOT_SRC src/boot/x86_64/boot.S)
     set(ARCH_HAL src/hal/x86_64/hal_cpu.c src/hal/x86_64/trap_entry.S src/hal/x86_64/vmm.c src/hal/x86_64/hal_pt_x86_64.c src/hal/hal_pt.c src/hal/x86_64/vtd_iommu.c src/hal/x86_64/apic.c src/hal/x86_64/timer.c)
     set(ARCH_CONTEXT_SWITCH src/arch/x86_64/context_switch.c src/arch/x86_64/context_switch.S)
+    set(ARCH_CPU_CAPS_SRC src/arch/x86_64/cpu_caps.c)
+    set(ARCH_EXT_STATE_SRC src/arch/x86_64/ext_state.c)
 elseif(ARCH STREQUAL "riscv64")
     set(BOOT_SRC src/boot/riscv64/boot.S)
     set(ARCH_HAL src/hal/riscv/hal_cpu.c src/hal/riscv/boot/feature_probe.c src/hal/riscv/trap_entry.S src/hal/riscv/vmm.c src/hal/riscv64/hal_pt_riscv64.c src/hal/hal_pt.c src/hal/riscv/iopmp.c src/hal/riscv/plic.c src/hal/riscv/sbi_timer_ipi.c)
@@ -94,18 +102,38 @@ elseif(ARCH STREQUAL "riscv64")
         add_compile_definitions(BHARAT_VIRTIO_GPU=1)
     endif()
     set(ARCH_CONTEXT_SWITCH src/arch/riscv64/context_switch.c src/arch/riscv64/context_switch.S)
+    set(ARCH_CPU_CAPS_SRC src/arch/riscv64/cpu_caps.c)
+    set(ARCH_EXT_STATE_SRC src/arch/riscv64/ext_state.c)
+elseif(ARCH STREQUAL "riscv32")
+    set(BOOT_SRC src/boot/riscv64/boot.S)
+    set(ARCH_HAL src/hal/riscv/hal_cpu.c src/hal/riscv/boot/feature_probe.c src/hal/riscv/trap_entry.S src/hal/riscv/vmm.c src/hal/riscv64/hal_pt_riscv64.c src/hal/hal_pt.c src/hal/riscv/iopmp.c src/hal/riscv/plic.c src/hal/riscv/sbi_timer_ipi.c)
+    set(ARCH_CONTEXT_SWITCH src/arch/shakti/context_switch.c src/arch/shakti/context_switch.S)
+    set(ARCH_CPU_CAPS_SRC src/arch/shakti/cpu_caps.c)
+    set(ARCH_EXT_STATE_SRC src/arch/shakti/ext_state.c)
 elseif(ARCH STREQUAL "arm64")
     set(BOOT_SRC src/boot/arm64/boot.S)
     set(ARCH_HAL src/hal/arm64/hal_cpu.c src/hal/arm64/trap_entry.S src/hal/arm64/vmm.c src/hal/arm64/hal_pt_arm64.c src/hal/hal_pt.c src/hal/arm64/smmu.c src/hal/arm64/gicv3.c src/hal/arm64/timer_generic.c)
     set(ARCH_CONTEXT_SWITCH src/arch/arm64/context_switch.c src/arch/arm64/context_switch.S)
     set(ARCH_HAL_EXTRA src/hal/arm64/topology_fdt.c)
+    set(ARCH_CPU_CAPS_SRC src/arch/arm64/cpu_caps.c)
+    set(ARCH_EXT_STATE_SRC src/arch/arm64/ext_state.c)
+elseif(ARCH STREQUAL "arm32")
+    set(BOOT_SRC src/boot/arm64/boot.S)
+    set(ARCH_HAL src/hal/arm64/hal_cpu.c src/hal/arm64/trap_entry.S src/hal/arm64/vmm.c src/hal/arm64/hal_pt_arm64.c src/hal/hal_pt.c src/hal/arm64/smmu.c src/hal/arm64/gicv3.c src/hal/arm64/timer_generic.c src/hal/arm32_mpu_vmm_mock.c)
+    set(ARCH_CONTEXT_SWITCH src/arch/arm64/context_switch.c src/arch/arm64/context_switch.S)
+    set(ARCH_CPU_CAPS_SRC src/arch/arm64/cpu_caps.c)
+    set(ARCH_EXT_STATE_SRC src/arch/arm64/ext_state.c)
 endif()
 
 if(ARCH STREQUAL "x86_64")
     set(LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/linker.ld")
 elseif(ARCH STREQUAL "riscv64")
     set(LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/linker_riscv64.ld")
+elseif(ARCH STREQUAL "riscv32")
+    set(LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/linker_riscv64.ld")
 elseif(ARCH STREQUAL "arm64")
+    set(LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/linker_arm64.ld")
+elseif(ARCH STREQUAL "arm32")
     set(LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/linker_arm64.ld")
 endif()
 
@@ -235,8 +263,8 @@ set(KERNEL_SRCS
     src/hal/common/discovery.c
     ${ARCH_HAL_EXTRA}
     ${ARCH_CONTEXT_SWITCH}
-    src/arch/${ARCH}/cpu_caps.c
-    src/arch/${ARCH}/ext_state.c
+    ${ARCH_CPU_CAPS_SRC}
+    ${ARCH_EXT_STATE_SRC}
     src/hal/mmu_init.c
     src/hal/iommu_stub.c
 
@@ -381,6 +409,12 @@ elseif(ARCH STREQUAL "riscv64")
         $<$<COMPILE_LANGUAGE:ASM>:-march=rv64g>
         $<$<COMPILE_LANGUAGE:C>:-march=rv64g>
     )
+elseif(ARCH STREQUAL "riscv32")
+    target_compile_options(kernel.elf PRIVATE
+        $<$<COMPILE_LANGUAGE:C>:-mcmodel=medany>
+        $<$<COMPILE_LANGUAGE:ASM>:-march=rv32g>
+        $<$<COMPILE_LANGUAGE:C>:-march=rv32g>
+    )
 endif()
 
 # ── Linker options
@@ -392,7 +426,6 @@ target_link_options(kernel.elf PRIVATE
     "LINKER:--fatal-warnings"
     "LINKER:-T,${LINKER_SCRIPT}"
     "LINKER:--build-id=none"
-    "LINKER:--no-dynamic-linker"
     ""
 )
 

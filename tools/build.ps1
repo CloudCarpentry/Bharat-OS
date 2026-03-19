@@ -66,6 +66,12 @@ if ($Board -ne "") {
 }
 
 if ($Arch -eq "") { $Arch = "x86_64" }
+$Arch = $Arch.ToLower()
+switch ($Arch) {
+    "arm" { $Arch = "arm32" }
+    "aarch64" { $Arch = "arm64" }
+    "riscv" { $Arch = "riscv64" }
+}
 if ($Machine -eq "") { $Machine = "virt" }
 if ($HardwareProfile -eq "") { $HardwareProfile = "generic" }
 if ($BootTier -eq "") { $BootTier = "LINUX_LIKE" }
@@ -107,12 +113,19 @@ elseif ($BoardInfo -ne $null -and $BoardInfo.default_toolchain -ne $null) {
     $Toolchain = "$Root\$($BoardInfo.toolchains.$defTc)"
 }
 else {
-    if ($Arch -eq "x86_64") { $Toolchain = "$Root\cmake\toolchains\x86_64-elf.cmake" }
-    elseif ($Arch -eq "riscv64") {
-        if ($Payload) { $Toolchain = "$Root\cmake\toolchains\riscv64-elf-gcc.cmake" }
-        else { $Toolchain = "$Root\cmake\toolchains\riscv64-elf.cmake" }
+    $DefaultToolchains = @{
+        "x86_64"  = "cmake\toolchains\x86_64-elf.cmake"
+        "riscv64" = if ($Payload) { "cmake\toolchains\riscv64-elf-gcc.cmake" } else { "cmake\toolchains\riscv64-elf.cmake" }
+        "riscv32" = "cmake\toolchains\riscv32-elf.cmake"
+        "arm64"   = "cmake\toolchains\arm64-elf.cmake"
+        "arm32"   = "cmake\toolchains\arm32-elf.cmake"
     }
-    elseif ($Arch -eq "arm64") { $Toolchain = "$Root\cmake\toolchains\arm64-elf.cmake" }
+
+    if (-not $DefaultToolchains.ContainsKey($Arch)) {
+        fail "Unsupported arch '$Arch'. Supported: x86_64, arm64, arm32, riscv64, riscv32"
+    }
+
+    $Toolchain = Join-Path $Root $DefaultToolchains[$Arch]
 }
 
 # ── Ensure LLVM tools are on PATH ─────────────────────────────────────────
@@ -152,6 +165,10 @@ if (-not (Test-Path "$BuildDir\CMakeCache.txt")) {
         "-G", "Ninja",
         "--no-warn-unused-cli"
     )
+
+    if ($Arch -eq "riscv64" -and -not $Payload) {
+        $cmakeArgs += "-DBHARAT_RISCV_BUILD_PAYLOAD_BIN=OFF"
+    }
 
     if ($Profile -ne "") {
         $Profiles = $Profile.Split(',')
