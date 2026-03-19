@@ -13,12 +13,16 @@
 extern "C" {
 #endif
 
+#define VM_REGION_FLAG_STACK (1 << 0)
+#define VM_REGION_FLAG_COW   (1 << 1)
+
 typedef struct vm_region {
     uintptr_t base;
     size_t length;
 
     uint32_t prot;
     uint32_t map_flags;
+    uint32_t region_flags;
     vm_inherit_t inherit;
 
     uint64_t object_offset;
@@ -45,6 +49,8 @@ typedef struct vm_address_space {
 
     uint32_t flags;
     void *owner;             // process/container owner pointer
+
+    uint32_t timing_class;   // From vm_timing_class_t
 } vm_address_space_t;
 
 typedef vm_address_space_t address_space_t;

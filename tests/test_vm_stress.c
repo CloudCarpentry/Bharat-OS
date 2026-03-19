@@ -100,6 +100,9 @@ void hal_tlb_flush(unsigned long long vaddr) {
     g_last_tlb_vaddr = (virt_addr_t)vaddr;
 }
 
+#include "../kernel/include/hal/hal_tlb.h"
+hal_tlb_ops_t *active_hal_tlb = NULL;
+
 // Minimal stub for testing mapping failures
 
 int bharat_addr_token_validate(const bharat_addr_token_t* token, uint64_t request_paddr, uint64_t request_size, uint32_t request_perms) {

@@ -181,3 +181,8 @@ int main() {
     printf("All ASPACE tests passed successfully!\n");
     return 0;
 }
+
+// Temporary additions for the new page fault features
+#include "../kernel/include/mm/fault.h"
+#include "../kernel/include/hal/hal_pt.h"
+#include "../kernel/include/hal/hal.h"
