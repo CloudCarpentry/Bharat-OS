@@ -31,6 +31,8 @@ static int anon_fault(struct vm_object *obj,
     if (access & CAP_RIGHT_EXECUTE) {
         pt_flags |= HAL_PT_FLAG_EXEC;
     }
+    return obj;
+}
 
     *out_page = page;
     *out_page_flags = pt_flags;

@@ -10,14 +10,12 @@
 
 int vm_handle_fault(address_space_t *aspace, virt_addr_t fault_addr, uint32_t fault_flags) {
     if (!aspace || !active_hal_pt) {
-        return -1;
+        return VM_FAULT_SIGSEGV;
     }
 
-    // 1. Authoritative lookup: Find the region mapping this VA
     vm_region_t *region = aspace_lookup_region(aspace, fault_addr);
     if (!region) {
-        // Unmapped address, check for kernel fallback/direct mappings
-        return -1; // Segment fault
+        return VM_FAULT_SIGSEGV;
     }
 
     // 2. Validate access rights
@@ -28,10 +26,9 @@ int vm_handle_fault(address_space_t *aspace, virt_addr_t fault_addr, uint32_t fa
         return -2; // Execute permission fault
     }
 
-    // 3. Delegate to the underlying object backend
     vm_object_t *object = region->object;
     if (!object || !object->ops || !object->ops->fault) {
-        return -3; // No backing object or no fault handler
+        return VM_FAULT_SIGBUS;
     }
 
     // Calculate offset within the object
