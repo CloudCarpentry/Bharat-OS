@@ -80,7 +80,7 @@ static uint32_t sched_clamp_core(uint32_t core_id) {
   return core_id;
 }
 
-void arch_post_switch(void) {
+__attribute__((unused)) static void arch_post_switch(void) {
   uint32_t core = sched_clamp_core(hal_cpu_get_id());
   spin_unlock(&g_cpu_locals[core].runqueue.lock);
 }
@@ -520,7 +520,7 @@ static void sched_update_telemetry(kthread_t *thread) {
                           (uint32_t)thread->context_switch_count);
 }
 
-kthread_t *sched_pick_next_ready(uint32_t core_id) {
+static kthread_t *sched_pick_next_ready(uint32_t core_id) {
   core_id = sched_clamp_core(core_id);
 
   if (g_policy == SCHED_POLICY_ROUND_ROBIN) {
@@ -528,7 +528,7 @@ kthread_t *sched_pick_next_ready(uint32_t core_id) {
       list_head_t *head = &g_cpu_locals[core_id].runqueue.ready_queue[prio];
       if (!list_empty(head)) {
         list_head_t *node = head->prev;
-        thread_slot_t *slot = list_entry(node, thread_slot_t, run_node);
+        thread_slot_t *slot = (thread_slot_t *)(void *)((char *)node - offsetof(thread_slot_t, run_node));
         list_del(node);
         list_init(node);
         slot->is_on_runqueue = 0U;
@@ -540,7 +540,7 @@ kthread_t *sched_pick_next_ready(uint32_t core_id) {
       list_head_t *head = &g_cpu_locals[core_id].runqueue.ready_queue[prio];
       if (!list_empty(head)) {
         list_head_t *node = head->prev;
-        thread_slot_t *slot = list_entry(node, thread_slot_t, run_node);
+        thread_slot_t *slot = (thread_slot_t *)(void *)((char *)node - offsetof(thread_slot_t, run_node));
         list_del(node);
         list_init(node);
         slot->is_on_runqueue = 0U;
@@ -552,7 +552,7 @@ kthread_t *sched_pick_next_ready(uint32_t core_id) {
   return g_cpu_locals[core_id].runqueue.idle_thread;
 }
 
-void sched_dequeue_task_l0(kthread_t *thread, uint32_t core_id) {
+static void sched_dequeue_task_l0(kthread_t *thread, uint32_t core_id) {
   (void)core_id;
   if (!thread) {
     return;
@@ -565,23 +565,23 @@ void sched_dequeue_task_l0(kthread_t *thread, uint32_t core_id) {
   }
 }
 
-void sched_enqueue_task_l0(kthread_t *thread, uint32_t core_id) {
+__attribute__((unused)) static void sched_enqueue_task_l0(kthread_t *thread, uint32_t core_id) {
   (void)sched_enqueue(thread, core_id);
 }
 
-kthread_t *sched_pick_next_ready_l0(uint32_t core_id) {
+__attribute__((unused)) static kthread_t *sched_pick_next_ready_l0(uint32_t core_id) {
   return sched_pick_next_ready(core_id);
 }
 
-void sched_enqueue_task_l1(kthread_t *thread, uint32_t core_id) {
+__attribute__((unused)) static void sched_enqueue_task_l1(kthread_t *thread, uint32_t core_id) {
   (void)sched_enqueue(thread, core_id);
 }
 
-void sched_dequeue_task_l1(kthread_t *thread, uint32_t core_id) {
+__attribute__((unused)) static void sched_dequeue_task_l1(kthread_t *thread, uint32_t core_id) {
   sched_dequeue_task_l0(thread, core_id);
 }
 
-kthread_t *sched_pick_next_ready_l1(uint32_t core_id) {
+__attribute__((unused)) static kthread_t *sched_pick_next_ready_l1(uint32_t core_id) {
   return sched_pick_next_ready(core_id);
 }
 
@@ -820,7 +820,7 @@ void sched_on_timer_tick(void) {
   list_head_t *sleep_head = &g_cpu_locals[core].runqueue.sleeping_list;
   list_head_t *curr = sleep_head->next;
   while (curr != sleep_head) {
-    thread_slot_t *slot = list_entry(curr, thread_slot_t, wait_node);
+    thread_slot_t *slot = (thread_slot_t *)(void *)((char *)curr - offsetof(thread_slot_t, wait_node));
     curr = curr->next;
     if (slot->thread.state == THREAD_STATE_SLEEPING &&
         slot->thread.wake_deadline_ms <= g_sched_ticks) {
@@ -831,7 +831,7 @@ void sched_on_timer_tick(void) {
   list_head_t *block_head = &g_cpu_locals[core].runqueue.blocked_list;
   curr = block_head->next;
   while (curr != block_head) {
-    thread_slot_t *slot = list_entry(curr, thread_slot_t, wait_node);
+    thread_slot_t *slot = (thread_slot_t *)(void *)((char *)curr - offsetof(thread_slot_t, wait_node));
     curr = curr->next;
     if (slot->thread.state == THREAD_STATE_BLOCKED &&
         slot->thread.ipc_deadline_ticks > 0 &&

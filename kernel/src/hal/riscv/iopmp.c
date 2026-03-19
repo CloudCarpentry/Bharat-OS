@@ -81,7 +81,7 @@ static hal_iommu_ops_t iopmp_ops = {
     .get_group = iopmp_get_group
 };
 
-void riscv_iommu_detect(void) {
+__attribute__((unused)) static void riscv_iommu_detect(void) {
     // IOMMU backends must be discovered via firmware/board descriptors (FDT)
     // rather than ad-hoc probing.
     if (iopmp_init() == 0) {

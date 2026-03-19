@@ -175,7 +175,7 @@ int zswap_load_page(phys_addr_t page) {
     zswap_entry_t* found_entry = NULL;
 
     for (pos = head->next; pos != head; pos = pos->next) {
-        zswap_entry_t* entry = list_entry(pos, zswap_entry_t, list);
+        zswap_entry_t* entry = (zswap_entry_t *)((void *)((char *)(pos) - offsetof(zswap_entry_t, list)));
         if (entry->original_paddr == page) {
             found_entry = entry;
             list_del(&entry->list);

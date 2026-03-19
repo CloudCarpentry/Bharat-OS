@@ -29,6 +29,6 @@ static console_backend_t g_serial_backend = {
     .next = NULL
 };
 
-void console_register_serial_backend(void) {
+static void console_register_serial_backend(void) {
     console_register_backend(&g_serial_backend);
 }

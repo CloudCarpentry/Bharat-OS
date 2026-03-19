@@ -14,6 +14,7 @@ set(NETMGR_SOURCES
 )
 
 add_executable(netmgr ${NETMGR_SOURCES})
+    target_link_libraries(netmgr PRIVATE bharat_user_buildopts bharat_freestanding)
 
 target_include_directories(netmgr PRIVATE
     src/

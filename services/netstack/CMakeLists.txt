@@ -17,6 +17,7 @@ set(NETSTACK_SRC
     src/udp.c
 )
 add_executable(netstack ${NETSTACK_SRC})
+    target_link_libraries(netstack PRIVATE bharat_user_buildopts bharat_freestanding)
 target_compile_options(netstack PRIVATE -Wall -ffreestanding -nostdlib )
 target_link_options(netstack PRIVATE -nostdlib -no-pie)
 # Link against necessary system primitives/stubs here in the future

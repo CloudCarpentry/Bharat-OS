@@ -147,7 +147,7 @@ static hal_iommu_ops_t vtd_ops = {
     .get_group = vtd_get_group
 };
 
-void x86_iommu_detect(void) {
+__attribute__((unused)) static void x86_iommu_detect(void) {
     // IOMMU backends must be discovered via firmware/board descriptors (ACPI)
     // rather than ad-hoc probing.
     // Simulation: check if ACPI has DMAR

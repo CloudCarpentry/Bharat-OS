@@ -252,7 +252,7 @@ int mk_send_message(mk_channel_t *channel, uint32_t msg_type, void *payload,
 // and triggers scheduler wakeups if a waiter exists.
 // This is the intended delivery mechanism for Phase 2/3, designed to be called
 // from an interrupt-driven (IPI) context rather than relying purely on polling.
-int mk_ipc_deliver_from_channel(mk_channel_t *channel) {
+static int mk_ipc_deliver_from_channel(mk_channel_t *channel) {
   if (!channel || !channel->urpc_ring) {
     return URPC_ERR_INVALID;
   }

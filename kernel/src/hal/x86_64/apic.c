@@ -14,7 +14,7 @@ static inline void lapic_write(uint32_t offset, uint32_t value) {
     *(volatile uint32_t*)((uint64_t)g_lapic_base + offset) = value;
 }
 
-static inline uint32_t lapic_read(uint32_t offset) {
+__attribute__((unused)) static inline uint32_t lapic_read(uint32_t offset) {
     return *(volatile uint32_t*)((uint64_t)g_lapic_base + offset);
 }
 

@@ -125,7 +125,7 @@ static uint32_t arm64_to_flags(uint64_t pte_flags) {
     return flags;
 }
 
-phys_addr_t arm64_pt_create_address_space(phys_addr_t kernel_root_table) {
+static phys_addr_t arm64_pt_create_address_space(phys_addr_t kernel_root_table) {
     phys_addr_t root = mm_alloc_page(NUMA_NODE_ANY);
     if (root == 0U) {
         return 0;
@@ -167,7 +167,7 @@ static void arm64_pt_destroy_recursive(phys_addr_t table, int level) {
     mm_free_page(table);
 }
 
-void arm64_pt_destroy_address_space(phys_addr_t root_pt) {
+static void arm64_pt_destroy_address_space(phys_addr_t root_pt) {
     if (root_pt) {
         arm64_pt_destroy_recursive(root_pt, 4);
     }
@@ -297,7 +297,7 @@ static int arm64_pt_protect_4k(phys_addr_t root_pt, virt_addr_t vaddr, uint32_t 
     return 0;
 }
 
-int arm64_pt_query_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *paddr, uint32_t *flags) {
+static int arm64_pt_query_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *paddr, uint32_t *flags) {
     if (root_pt == 0U) return -1;
 
     virt_addr_t aligned_vaddr = align_down(vaddr);
@@ -323,7 +323,7 @@ int arm64_pt_query_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *pad
     return 0;
 }
 
-int arm64_pt_map_range(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t paddr, size_t size, uint32_t flags) {
+static int arm64_pt_map_range(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t paddr, size_t size, uint32_t flags) {
     size_t done = 0;
     while (done < size) {
         int rc = arm64_pt_map_4k(root_pt, vaddr + done, paddr + done, flags);
@@ -333,7 +333,7 @@ int arm64_pt_map_range(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t paddr
     return 0;
 }
 
-int arm64_pt_unmap_range(phys_addr_t root_pt, virt_addr_t vaddr, size_t size) {
+static int arm64_pt_unmap_range(phys_addr_t root_pt, virt_addr_t vaddr, size_t size) {
     size_t done = 0;
     while (done < size) {
         int rc = arm64_pt_unmap_4k(root_pt, vaddr + done, NULL);
@@ -343,7 +343,7 @@ int arm64_pt_unmap_range(phys_addr_t root_pt, virt_addr_t vaddr, size_t size) {
     return 0;
 }
 
-int arm64_pt_protect_range(phys_addr_t root_pt, virt_addr_t vaddr, size_t size, uint32_t new_flags) {
+static int arm64_pt_protect_range(phys_addr_t root_pt, virt_addr_t vaddr, size_t size, uint32_t new_flags) {
     size_t done = 0;
     while (done < size) {
         int rc = arm64_pt_protect_4k(root_pt, vaddr + done, new_flags);
@@ -353,29 +353,29 @@ int arm64_pt_protect_range(phys_addr_t root_pt, virt_addr_t vaddr, size_t size, 
     return 0;
 }
 
-int arm64_pt_map_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
+static int arm64_pt_map_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
     return arm64_pt_map_range(root_pt, vaddr, paddr, PAGE_SIZE, flags);
 }
 
-int arm64_pt_unmap_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *unmapped_paddr) {
+static int arm64_pt_unmap_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *unmapped_paddr) {
     if (unmapped_paddr) {
         (void)arm64_pt_query_page(root_pt, vaddr, unmapped_paddr, NULL);
     }
     return arm64_pt_unmap_range(root_pt, vaddr, PAGE_SIZE);
 }
 
-int arm64_pt_protect_page(phys_addr_t root_pt, virt_addr_t vaddr, uint32_t new_flags) {
+static int arm64_pt_protect_page(phys_addr_t root_pt, virt_addr_t vaddr, uint32_t new_flags) {
     return arm64_pt_protect_range(root_pt, vaddr, PAGE_SIZE, new_flags);
 }
 
-int arm64_pt_query_mapping(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *paddr, size_t *mapped_size, uint32_t *flags) {
+static int arm64_pt_query_mapping(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *paddr, size_t *mapped_size, uint32_t *flags) {
     int rc = arm64_pt_query_page(root_pt, vaddr, paddr, flags);
     if (rc != 0) return rc;
     if (mapped_size) *mapped_size = PAGE_SIZE;
     return 0;
 }
 
-void arm64_init_hardening(void) {
+__attribute__((unused)) static void arm64_init_hardening(void) {
     uint64_t sctlr;
     asm volatile("mrs %0, sctlr_el1" : "=r"(sctlr));
     // PAN (Privileged Access Never) is typically bit 23 in SCTLR_EL1 (if ARMv8.1)

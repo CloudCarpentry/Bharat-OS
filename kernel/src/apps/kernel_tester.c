@@ -55,7 +55,7 @@ static void test_pmm_stress(void) {
   KPRINT("PASSED\n");
 }
 
-void kernel_tester_app(void) {
+__attribute__((unused)) static void kernel_tester_app(void) {
   KPRINT("\n========================================\n");
   KPRINT("      Bharat-OS Kernel Test App         \n");
   KPRINT("========================================\n\n");

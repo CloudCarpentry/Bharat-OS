@@ -1,0 +1,2 @@
+add_executable(app_diag diag.c)
+target_link_libraries(app_diag PRIVATE bharat_user_buildopts bharat_freestanding bharat_libdiag bharat_libcmin)
