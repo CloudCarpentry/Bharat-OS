@@ -424,6 +424,11 @@ graph TD
 
 See [`docs/architecture/ai-scheduler-status-and-roadmap.md`](docs/architecture/ai-scheduler-status-and-roadmap.md) and [`docs/decisions/ADR-008-ai-scheduler-plugin-contract.md`](docs/decisions/ADR-008-ai-scheduler-plugin-contract.md).
 
+#### Networking Architecture
+
+See:
+[`docs/architecture/network-architecture.md`](docs/architecture/network-architecture.md)
+
 ## Core architecture themes
 
 - **Capability-based security:** object rights, delegation constraints, and explicit authority checks.

@@ -1,5 +1,12 @@
 # Bharat-OS `lib/net`
 
+## Role
+
+Common networking types:
+- addresses
+- interfaces
+- protocol enums
+
 General IP network definitions, interface IDs, and address families.
 This library provides the foundational types for the universal IP core.
 
