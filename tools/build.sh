@@ -89,6 +89,8 @@ fi
 
 if [ "$PAYLOAD" = true ]; then
     CMAKE_ARGS="${CMAKE_ARGS} -DBHARAT_RISCV_BUILD_PAYLOAD_BIN=ON"
+elif [ "$ARCH" == "riscv64" ]; then
+    CMAKE_ARGS="${CMAKE_ARGS} -DBHARAT_RISCV_BUILD_PAYLOAD_BIN=OFF"
 fi
 
 if [ -n "$BOOT_GUI" ]; then

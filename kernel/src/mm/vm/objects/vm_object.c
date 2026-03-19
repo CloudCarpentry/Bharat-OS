@@ -28,7 +28,6 @@ static void anon_destroy(struct vm_object *obj) {
         obj->kind = VM_OBJECT_SHARED;
         obj->u.shared.shared_id = 0;
     }
-    return obj;
 }
 
 static vm_object_ops_t anon_ops = {
@@ -39,14 +38,20 @@ static vm_object_ops_t anon_ops = {
 vm_object_t *vm_object_create_anon(size_t size, uint32_t flags) {
     static vm_object_t static_anon_pool[128];
     static int pool_idx = 0;
+    vm_object_t *obj = NULL;
 
-    obj->kind = VM_OBJECT_FILE;
-    obj->flags = flags;
-    obj->size = size;
-    obj->refcount = 1;
+    if (pool_idx >= (int)(sizeof(static_anon_pool) / sizeof(static_anon_pool[0]))) {
+        return NULL;
+    }
+
+    obj = &static_anon_pool[pool_idx++];
     obj->kind = VM_OBJECT_ANON;
     obj->ops = &anon_ops;
+    obj->size = size;
     obj->flags = flags;
+    obj->refcount = 1;
+    obj->u.anon.zero_fill = 1;
+
     return obj;
 }
 
@@ -67,20 +72,4 @@ vm_object_t *vm_object_create_device(phys_addr_t phys_base, size_t size, uint32_
 vm_object_t *vm_object_create_dma(phys_addr_t phys_base, size_t size, uint32_t dma_flags, uint32_t numa_node, uint32_t flags) {
     (void)phys_base; (void)size; (void)dma_flags; (void)numa_node; (void)flags;
     return NULL;
-}
-
-void vm_object_retain(vm_object_t *obj) {
-    if (obj) {
-        __atomic_add_fetch(&obj->refcount, 1, __ATOMIC_SEQ_CST);
-    }
-}
-
-void vm_object_release(vm_object_t *obj) {
-    if (obj) {
-        if (__atomic_sub_fetch(&obj->refcount, 1, __ATOMIC_SEQ_CST) == 0) {
-            if (obj->ops && obj->ops->release) {
-                obj->ops->release(obj);
-            }
-        }
-    }
 }

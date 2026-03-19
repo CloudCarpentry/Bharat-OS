@@ -11,8 +11,13 @@
 #include "../../../../subsys/include/bharat/msg/transport.h"
 #include "../../../../subsys/include/bharat/msg/wire.h"
 
-// Transport for core mock
-extern bharat_transport_t* transport_for_core(int core);
+// Optional transport resolver hook for core->transport routing.
+// Keep a weak local stub so kernel linking does not depend on a board/service
+// implementation always being present.
+__attribute__((weak)) bharat_transport_t* transport_for_core(int core) {
+    (void)core;
+    return NULL;
+}
 extern int bharat_monitor_v1_call_tlb_invalidate(bharat_transport_t* t, int dst, const bharat_monitor_v1_TlbInvalidateReq_t* req, void* ctx);
 
 typedef struct {
