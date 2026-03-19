@@ -16,6 +16,10 @@ target_compile_options(urpc PRIVATE -ffreestanding -nostdlib -Wall)
 add_subdirectory(elf)
 add_subdirectory(syscall)
 
+# Phase 1: Foundational Native Libraries
+add_subdirectory(cap)
+add_subdirectory(ipc)
+add_subdirectory(runtime)
 if(BHARAT_BUILD_NETWORK_STUBS)
     add_subdirectory(net)
     add_subdirectory(packet)
