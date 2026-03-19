@@ -5,6 +5,7 @@ void netbuf_init(netbuf_t *nb) {
     nb->size = NETBUF_MAX_SIZE;
     nb->head = NETBUF_DEFAULT_HEADROOM;
     nb->tail = NETBUF_DEFAULT_HEADROOM;
+    nb->flags = 0;
     memset(nb->buffer, 0, nb->size);
 }
 

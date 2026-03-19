@@ -31,6 +31,14 @@ void virtio_adapter_rx(packet_buf_t *pkt) {
     }
     memcpy(buf, pkt->data, len);
 
+    // Propagate hardware checksum metadata from driver to stack.
+    // NOTE: PACKET_FLAG_RX_CSUM_VALID implies hardware validated the relevant
+    // checksums for this packet type (e.g., IPv4/TCP/UDP). The stack layer must
+    // only trust this for unmodified originally-received headers.
+    if (pkt->flags & PACKET_FLAG_RX_CSUM_VALID) {
+        nb.flags |= NETBUF_F_RX_CSUM_VALID;
+    }
+
     packet_unref(pkt);
 
     // Enter the network stack
@@ -60,6 +68,11 @@ int virtio_adapter_tx(netbuf_t *nb) {
 
     memcpy(pkt->data, netbuf_data(nb), len);
     pkt->data_len = len;
+
+    // Translate stack-level TX offload intent to driver packet flags
+    if (nb->flags & NETBUF_F_TX_CSUM_OFFLOAD) {
+        pkt->flags |= PACKET_FLAG_TX_CSUM_REQ;
+    }
 
     return virtio_net_tx(mock_virtio_device, pkt);
 }
