@@ -17,6 +17,9 @@ typedef enum {
     CAP_OBJ_CRYPTO_KEY = 7,
     CAP_OBJ_RNG = 8,
     CAP_OBJ_SEALER = 9,
+    CAP_OBJ_NETDEV = 10,
+    CAP_OBJ_NET_QUEUE = 11,
+    CAP_OBJ_NET_BUFFER = 12,
 } cap_object_type_t;
 
 typedef enum {
