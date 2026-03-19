@@ -5,6 +5,7 @@
 #include "../../include/hal/hal_pt.h"
 #include "../../include/hal/hal_tlb.h"
 #include "../../include/kernel.h"
+#include "../../include/hal/mmu_ops.h"
 
 // VM Fault Engine: Core page fault dispatcher and handler
 
@@ -31,20 +32,23 @@ int vm_handle_fault(address_space_t *aspace, virt_addr_t fault_addr, uint32_t fa
         return VM_FAULT_SIGBUS;
     }
 
-    // Calculate offset within the object
-    uint64_t offset_in_region = fault_addr - region->base;
-    uint64_t object_offset = region->object_offset + offset_in_region;
+    phys_addr_t paddr = 0;
+    uint32_t page_flags = 0;
 
-    // Delegate to object backend (Anon/Shared/File/Device)
-    phys_addr_t out_page = 0;
-    uint32_t out_flags = 0;
-    int res = object->ops->fault(object, region, fault_addr, fault_flags, &out_page, &out_flags);
-    if (res == 0 && out_page) {
-        if (active_hal_pt) {
-            uint32_t pt_flags = region->prot; // Mock conversion
-            active_hal_pt->map_page(aspace->root_pt, fault_addr & ~(PAGE_SIZE-1), out_page, pt_flags);
-            hal_tlb_invalidate_page(aspace, fault_addr & ~(PAGE_SIZE-1));
-        }
+    int res = object->ops->fault(object, region, fault_addr, fault_flags, &paddr, &page_flags);
+    if (res != VM_FAULT_HANDLED) {
+        return res;
     }
-    return res;
+
+    // Map it in the page table
+    uint32_t mmu_flags = MMU_USER;
+    if (page_flags & CAP_RIGHT_WRITE) mmu_flags |= MMU_WRITE;
+    if (page_flags & CAP_RIGHT_EXECUTE) mmu_flags |= MMU_EXEC;
+
+    virt_addr_t aligned_vaddr = fault_addr & ~(PAGE_SIZE - 1U);
+    int ret = active_hal_pt->map_page(aspace->root_pt, aligned_vaddr, paddr, mmu_flags);
+    if (ret == 0) {
+        hal_tlb_invalidate_page(aspace, aligned_vaddr);
+    }
+    return ret;
 }
