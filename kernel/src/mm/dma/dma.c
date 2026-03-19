@@ -233,8 +233,16 @@ void dma_sync_for_device(dma_buffer_t *buffer, dma_direction_t dir) {
     if (!buffer || !buffer->cpu_addr || buffer->size == 0) {
         return;
     }
-    if (!hal_dma_is_coherent()) {
-        hal_dma_sync_for_device(buffer->cpu_addr, buffer->phys_addr, buffer->size, dma_to_hal_direction(dir));
+    if (hal_dma_needs_sync()) {
+        hal_dma_buffer_t hbuf;
+        hbuf.cpu_addr = buffer->cpu_addr;
+        hbuf.phys_addr = buffer->phys_addr;
+        hbuf.dma_addr = buffer->iova;
+        hbuf.size = buffer->size;
+        hbuf.dir = dma_to_hal_direction(dir);
+        hbuf.flags = buffer->flags;
+        hbuf.backend_priv = NULL;
+        hal_dma_sync_for_device(&hbuf);
     }
 }
 
@@ -242,8 +250,16 @@ void dma_sync_for_cpu(dma_buffer_t *buffer, dma_direction_t dir) {
     if (!buffer || !buffer->cpu_addr || buffer->size == 0) {
         return;
     }
-    if (!hal_dma_is_coherent()) {
-        hal_dma_sync_for_cpu(buffer->cpu_addr, buffer->phys_addr, buffer->size, dma_to_hal_direction(dir));
+    if (hal_dma_needs_sync()) {
+        hal_dma_buffer_t hbuf;
+        hbuf.cpu_addr = buffer->cpu_addr;
+        hbuf.phys_addr = buffer->phys_addr;
+        hbuf.dma_addr = buffer->iova;
+        hbuf.size = buffer->size;
+        hbuf.dir = dma_to_hal_direction(dir);
+        hbuf.flags = buffer->flags;
+        hbuf.backend_priv = NULL;
+        hal_dma_sync_for_cpu(&hbuf);
     }
 }
 
