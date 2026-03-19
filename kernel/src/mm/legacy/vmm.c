@@ -1,11 +1,14 @@
-#include "../../include/mm/vmm.h"
-#include "../../include/mm/aspace.h"
-#include "../../include/hal/hal_pt.h"
-#include "../../include/hal/hal_tlb.h"
-#include "../../include/hal/hal_cpu.h"
-#include "../../include/mm/pmm.h"
+#include "../../../include/mm.h"
+#include "../../../include/mm/aspace.h"
+#include "../../../include/hal/hal_pt.h"
+#include "../../../include/hal/mmu_ops.h"
+#include "../../../include/hal/hal_tlb.h"
+#include "../../../include/mm/pmm.h"
+#include "../../../include/slab.h"
 
 // M1: Legacy VMM is now just a thin shim over ASpace/Region/Object layers.
+
+void vmm_process_urpc_messages(void);
 
 int mm_vmm_map_page(address_space_t* as, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
     if (!as || !active_hal_pt) return -1;
@@ -63,4 +66,47 @@ int vmm_handle_cow_fault(address_space_t* as, virt_addr_t vaddr) {
 
 void tlb_shootdown(address_space_t *as, virt_addr_t vaddr) {
     hal_tlb_invalidate_page(as, vaddr);
+}
+
+address_space_t kernel_space;
+static int kernel_space_ready = 0;
+static phys_addr_t kernel_root_pt = 0;
+
+static void ensure_kernel_space_ready(void) {
+    if (kernel_space_ready) return;
+
+    address_space_t *created = NULL;
+    if (aspace_create(&created, 0) == 0 && created) {
+        kernel_space = *created;
+        kfree(created);
+        kernel_root_pt = kernel_space.root_pt;
+        kernel_space_ready = 1;
+    }
+}
+
+int vmm_init(void) {
+    ensure_kernel_space_ready();
+    return kernel_space_ready ? 0 : -1;
+}
+
+phys_addr_t vmm_get_kernel_root(void) {
+    ensure_kernel_space_ready();
+    return kernel_root_pt;
+}
+
+address_space_t *mm_create_address_space(void) {
+    address_space_t *as = NULL;
+    if (aspace_create(&as, 0) != 0) return NULL;
+    return as;
+}
+
+void vmm_process_local_urpc_messages(uint32_t core_id) {
+    (void)core_id;
+    vmm_process_urpc_messages();
+}
+
+int vmm_map_device_mmio(virt_addr_t vaddr, phys_addr_t paddr, capability_t *cap, int is_npu) {
+    (void)is_npu;
+    if (!cap) return -1;
+    return vmm_map_page(vaddr, paddr, cap->rights_mask);
 }
