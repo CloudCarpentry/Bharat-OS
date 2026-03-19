@@ -1,6 +1,6 @@
 #include "loopback.h"
 #include "ipv4.h"
-#include <stdio.h>
+//#include <stdio.h>
 
 int loopback_tx(netbuf_t *nb) {
     // In a real system, we might enqueue this into a loopback queue or softirq.

@@ -121,6 +121,75 @@ if(ARCH STREQUAL "riscv64")
     add_compile_definitions(BHARAT_RISCV_SOC_PROFILE_STR="${BHARAT_RISCV_SOC_PROFILE}")
 endif()
 
+# ── Memory Layer Options ──────────────────────────────────────────────────
+option(BHARAT_PROFILE_MMU_FULL "Full VM, demand paging, COW, shared memory" ON)
+option(BHARAT_PROFILE_MMU_LITE "Static/eager mappings only" OFF)
+option(BHARAT_PROFILE_MPU_ONLY "MPU regions only, no VM" OFF)
+option(BHARAT_ENABLE_MM_LEGACY_SHIMS "Build legacy VMM compat shims" ON)
+
+if(BHARAT_PROFILE_MMU_FULL)
+    add_compile_definitions(BHARAT_PROFILE_MMU_FULL=1)
+elseif(BHARAT_PROFILE_MMU_LITE)
+    add_compile_definitions(BHARAT_PROFILE_MMU_LITE=1)
+elseif(BHARAT_PROFILE_MPU_ONLY)
+    add_compile_definitions(BHARAT_PROFILE_MPU_ONLY=1)
+endif()
+
+# ── Memory Subsystem Targets ──────────────────────────────────────────────
+add_library(bharat_mm_pmm OBJECT
+    src/mm/pmm/pmm.c
+    src/mm/pmm/early_alloc.c
+    src/mm/pmm/slab.c
+    src/mm/pmm/kmem_aligned.c
+    src/mm/pmm/numa.c
+    src/mm/pmm/numa_policy.c
+)
+target_include_directories(bharat_mm_pmm PRIVATE include include/generated ${CMAKE_SOURCE_DIR}/include)
+target_compile_options(bharat_mm_pmm PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
+
+add_library(bharat_mm_aspace OBJECT
+    src/mm/vm/aspace/aspace.c
+    src/mm/vm/aspace/vm_space.c
+)
+target_include_directories(bharat_mm_aspace PRIVATE include include/generated ${CMAKE_SOURCE_DIR}/include)
+target_compile_options(bharat_mm_aspace PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
+
+add_library(bharat_mm_objects OBJECT
+    src/mm/vm/objects/vm_object.c
+)
+target_include_directories(bharat_mm_objects PRIVATE include include/generated ${CMAKE_SOURCE_DIR}/include)
+target_compile_options(bharat_mm_objects PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
+
+add_library(bharat_mm_fault OBJECT
+    src/mm/vm/fault/fault.c
+)
+target_include_directories(bharat_mm_fault PRIVATE include include/generated ${CMAKE_SOURCE_DIR}/include)
+target_compile_options(bharat_mm_fault PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
+
+add_library(bharat_mm_pt OBJECT
+    src/mm/pt/pt_pool.c
+)
+target_include_directories(bharat_mm_pt PRIVATE include include/generated ${CMAKE_SOURCE_DIR}/include)
+target_compile_options(bharat_mm_pt PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
+
+add_library(bharat_mm_tlb OBJECT
+    src/mm/tlb/tlb_coordinator.c
+)
+target_include_directories(bharat_mm_tlb PRIVATE include include/generated ${CMAKE_SOURCE_DIR}/include)
+target_compile_options(bharat_mm_tlb PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
+
+if(BHARAT_ENABLE_MM_LEGACY_SHIMS)
+    add_library(bharat_mm_legacy OBJECT
+        src/mm/legacy/vmm.c
+        src/mm/legacy/vm_mapping.c
+        src/mm/legacy/vm_compat_vmm.c
+        src/mm/legacy/mm_local.c
+        src/mm/legacy/mm_remote.c
+    )
+    target_include_directories(bharat_mm_legacy PRIVATE include include/generated ${CMAKE_SOURCE_DIR}/include)
+    target_compile_options(bharat_mm_legacy PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
+endif()
+
 # ── Core kernel sources ──────────────────────────────────────────────────────
 set(KERNEL_SRCS
     ${BOOT_SRC}
@@ -168,23 +237,12 @@ set(KERNEL_SRCS
     src/arch/${ARCH}/ext_state.c
     src/hal/mmu_init.c
     src/hal/iommu_stub.c
-    src/mm/pmm/pmm.c
-    src/mm/pmm/early_alloc.c
-    src/mm/pmm/slab.c
-    src/mm/pmm/kmem_aligned.c
-    src/mm/vmm_legacy/vmm.c
-    src/mm/vmm_legacy/vm_mapping.c
-    src/mm/vmm_legacy/vm_compat_vmm.c
-    src/mm/vm/aspace/aspace.c
-    src/mm/vm/aspace/vm_space.c
-    src/mm/vm/objects/vm_object.c
-    src/mm/vm/fault/fault.c
-    src/mm/pmm/numa.c
-    src/mm/pmm/numa_policy.c
+
+    # Memory Layer (from object libraries below)
+
     src/mm/dma/dma.c
     src/mm/zswap.c
-    src/mm/vmm_legacy/mm_local.c
-    src/mm/vmm_legacy/mm_remote.c
+
     src/urpc/urpc_bootstrap.c
     src/urpc/urpc_channel.c
     src/security/isolation.c
@@ -234,7 +292,26 @@ set(KERNEL_SRCS
 )
 
 # ── Kernel ELF ──────────────────────────────────────────────────────────────
-add_executable(kernel.elf ${KERNEL_SRCS})
+add_executable(kernel.elf
+    ${KERNEL_SRCS}
+    $<TARGET_OBJECTS:bharat_mm_pmm>
+)
+
+if(NOT BHARAT_PROFILE_MPU_ONLY)
+    target_sources(kernel.elf PRIVATE
+        $<TARGET_OBJECTS:bharat_mm_aspace>
+        $<TARGET_OBJECTS:bharat_mm_objects>
+        $<TARGET_OBJECTS:bharat_mm_fault>
+        $<TARGET_OBJECTS:bharat_mm_pt>
+        $<TARGET_OBJECTS:bharat_mm_tlb>
+    )
+endif()
+
+if(BHARAT_ENABLE_MM_LEGACY_SHIMS)
+    target_sources(kernel.elf PRIVATE
+        $<TARGET_OBJECTS:bharat_mm_legacy>
+    )
+endif()
 
 target_link_libraries(kernel.elf subsys_manager)
 
@@ -309,6 +386,7 @@ endif()
 # compiler driver across clang/gcc and host/cross presets.
 target_link_options(kernel.elf PRIVATE
     "-nostdlib"
+    "-no-pie" "-fno-pie"
     "LINKER:--fatal-warnings"
     "LINKER:-T,${LINKER_SCRIPT}"
     "LINKER:--build-id=none"
