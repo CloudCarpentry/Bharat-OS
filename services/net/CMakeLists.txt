@@ -17,3 +17,4 @@ target_compile_options(net_service PRIVATE -ffreestanding -nostdlib -Wall -fPIC)
 
 # Link against subsystem and URPC
 target_link_libraries(net_service PRIVATE urpc subsys_manager c_posix_stub)
+target_link_options(net_service PRIVATE "-nostdlib" "-no-pie" "-fno-pie" "-no-pie" "-fno-pie")

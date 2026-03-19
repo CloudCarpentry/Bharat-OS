@@ -8,3 +8,4 @@ add_executable(crypto
 target_include_directories(crypto PRIVATE ../../kernel/include ../../subsys/include ../../lib/urpc)
 target_compile_options(crypto PRIVATE -ffreestanding -nostdlib -Wall)
 target_link_libraries(crypto PRIVATE urpc subsys_manager)
+target_link_options(crypto PRIVATE "-nostdlib" "-no-pie" "-fno-pie" "-no-pie" "-fno-pie")

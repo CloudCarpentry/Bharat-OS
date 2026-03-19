@@ -3,7 +3,7 @@
 #include "icmp.h"
 #include "checksum.h"
 #include "socket_table.h"
-#include <stdio.h>
+//#include <stdio.h>
 
 int udp_rx(netbuf_t *nb, uint32_t src_ip, uint32_t dst_ip) {
     if (netbuf_len(nb) < sizeof(udphdr_t)) {

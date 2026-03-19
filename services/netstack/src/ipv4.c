@@ -5,7 +5,7 @@
 #include "checksum.h"
 #include "arp.h"
 #include "loopback.h"
-#include <stdio.h>
+//#include <stdio.h>
 
 static uint32_t local_ip = 0x0A01A8C0; // 192.168.1.10 (Little Endian representation for simplicity here)
 static uint32_t loopback_ip = 0x0100007F; // 127.0.0.1

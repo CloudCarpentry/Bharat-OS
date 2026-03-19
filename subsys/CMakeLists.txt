@@ -43,8 +43,8 @@ if(BHARAT_BUILD_AI_GOVERNOR)
         ${CMAKE_SOURCE_DIR}/lib/posix/include
     )
     set_property(TARGET ai_governor PROPERTY POSITION_INDEPENDENT_CODE FALSE)
-    target_compile_options(ai_governor PRIVATE -fPIE -fPIC)
-    target_link_options(ai_governor PRIVATE "-no-pie")
+    target_compile_options(ai_governor PRIVATE -fno-pic -fno-pie)
+    target_link_options(ai_governor PRIVATE "-no-pie" "-fno-pie" "-fno-pic" "-Wl,-no-pie")
 endif()
 
 if(BHARAT_BUILD_NETWORK_STUBS)

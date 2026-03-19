@@ -1,6 +1,14 @@
 #include <stdint.h>
-#include <stdio.h>
+//#include <stdio.h>
 #include <stdbool.h>
+
+#define printf(...)
+
+void *memset(void *s, int c, unsigned long n) {
+    unsigned char *p = s;
+    while(n--) *p++ = (unsigned char)c;
+    return s;
+}
 
 #include "crypto/crypto_uapi.h"
 #include "crypto_service.h"

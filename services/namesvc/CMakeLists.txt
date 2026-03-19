@@ -9,3 +9,4 @@ target_link_libraries(namesvc PUBLIC runtime ipc cap)
 
 # Keep the build freestanding and warning-clean
 target_compile_options(namesvc PRIVATE -ffreestanding -nostdlib -Wall)
+target_link_options(namesvc PRIVATE "-nostdlib" "-no-pie" "-fno-pie" "-no-pie" "-fno-pie")

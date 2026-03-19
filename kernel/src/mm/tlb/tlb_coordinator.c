@@ -7,12 +7,9 @@
 #include "../../include/kernel.h"
 
 // Synchronous shootdown coordinator
-
 static uint64_t tlb_collect_targets(address_space_t *aspace) {
     uint64_t mask = 0;
     for (uint32_t i = 0; i < MAX_CPUS; i++) {
-        // Need to check if core is online and running this aspace
-        // Assume core is online if cpu_id matches array index (for now just check all)
         if (g_cpu_locals[i].current_as == aspace || g_cpu_locals[i].current_as_id == aspace->object_id) {
             mask |= (1ULL << i);
         }
@@ -29,25 +26,19 @@ static void tlb_shootdown_sync(address_space_t *aspace, tlb_scope_t scope, virt_
 
     // Snapshot target mask
     uint64_t target_mask = tlb_collect_targets(aspace);
-
-    // Remove self from mask to handle local flush separately
     target_mask &= ~(1ULL << current_core);
 
     extern int urpc_is_ready(uint32_t);
     extern int urpc_bootstrap_send(uint32_t, uint64_t);
 
-    // Send requests
     for (uint32_t i = 0; i < MAX_CPUS; i++) {
         if ((target_mask & (1ULL << i)) && urpc_is_ready(i)) {
             mm_mailbox_slot_t* mailbox = &g_mm_mailboxes[i];
-
             spin_lock(&mailbox->lock);
 
-            // Wait for mailbox to be clear if there was a previous un-acked message
-            // In a robust system, we would have a queue or proper URPC rings for messages.
             while (mailbox->valid) {
                 spin_unlock(&mailbox->lock);
-                hal_core_poll_event(); // cpu_relax equivalent
+                hal_core_poll_event();
                 spin_lock(&mailbox->lock);
             }
 
@@ -59,9 +50,8 @@ static void tlb_shootdown_sync(address_space_t *aspace, tlb_scope_t scope, virt_
             mailbox->msg.len = len;
             mailbox->msg.seq = seq;
 
-            mailbox->req_seq++; // Inform remote that a new request is ready
+            mailbox->req_seq++;
             mailbox->valid = 1;
-
             spin_unlock(&mailbox->lock);
 
             uint64_t doorbell = ((uint64_t)URPC_MM_MAILBOX << 56) | 0;
@@ -70,31 +60,27 @@ static void tlb_shootdown_sync(address_space_t *aspace, tlb_scope_t scope, virt_
                 hal_send_ipi_payload(i, 0);
             }
         } else {
-            // If URPC not ready but core is targeted, clear the mask bit so we don't wait forever
             target_mask &= ~(1ULL << i);
         }
     }
 
-    // Process local flush
     if (g_cpu_locals[current_core].current_as == aspace || g_cpu_locals[current_core].current_as_id == aspace->object_id) {
         if (scope == TLB_SCOPE_PAGE && active_hal_tlb->flush_page_local) {
             active_hal_tlb->flush_page_local(va);
         } else if (scope == TLB_SCOPE_RANGE && active_hal_tlb->flush_range_local) {
             active_hal_tlb->flush_range_local(va, len);
         } else if ((scope == TLB_SCOPE_ASPACE || scope == TLB_SCOPE_ALL) && active_hal_tlb->flush_asid_local) {
-            active_hal_tlb->flush_asid_local(aspace->object_id & 0xFFFF); // Simplified ASID logic
+            active_hal_tlb->flush_asid_local(aspace->object_id & 0xFFFF);
         } else if (active_hal_tlb->flush_all_local) {
             active_hal_tlb->flush_all_local();
         }
     }
 
-    // Wait for ACKs
     for (uint32_t i = 0; i < MAX_CPUS; i++) {
         if (target_mask & (1ULL << i)) {
             mm_mailbox_slot_t* mailbox = &g_mm_mailboxes[i];
-            // Spin until ACK sequence catches up to request sequence
             while (mailbox->valid || mailbox->ack_seq < mailbox->req_seq) {
-                hal_core_poll_event(); // cpu_relax equivalent
+                hal_core_poll_event();
             }
         }
     }
@@ -113,10 +99,44 @@ void hal_tlb_invalidate_aspace(address_space_t *aspace) {
 }
 
 void hal_tlb_invalidate_all(void) {
-    // Only use for global fallback, e.g. kernel mappings change
     for (uint32_t i = 0; i < MAX_CPUS; i++) {
         if (g_cpu_locals[i].current_as) {
              tlb_shootdown_sync(g_cpu_locals[i].current_as, TLB_SCOPE_ALL, 0, 0);
         }
+    }
+}
+
+// Mailbox processing loop relocated to central TLB authority layer
+void vmm_process_urpc_messages(void) {
+    uint32_t current_core = hal_cpu_get_id();
+    mm_mailbox_slot_t* mailbox = &g_mm_mailboxes[current_core];
+
+    uint32_t messages_processed = 0;
+    while (1) {
+        if (mailbox->valid) {
+            if (mailbox->req_seq != mailbox->ack_seq) {
+                if (mailbox->msg.type == MM_MSG_TLB_FLUSH) {
+                    if (mailbox->msg.as_id == KERNEL_AS_ID || core_current_as_id() == mailbox->msg.as_id) {
+                        if (mailbox->msg.scope == TLB_SCOPE_PAGE) {
+                            if (active_hal_tlb && active_hal_tlb->flush_page_local) {
+                                active_hal_tlb->flush_page_local((virt_addr_t)mailbox->msg.va);
+                            }
+                        } else if (mailbox->msg.scope == TLB_SCOPE_RANGE) {
+                            if (active_hal_tlb && active_hal_tlb->flush_range_local) {
+                                active_hal_tlb->flush_range_local((virt_addr_t)mailbox->msg.va, mailbox->msg.len);
+                            }
+                        } else if (mailbox->msg.scope == TLB_SCOPE_ASPACE || mailbox->msg.scope == TLB_SCOPE_ALL) {
+                            if (active_hal_tlb && active_hal_tlb->flush_asid_local) {
+                                active_hal_tlb->flush_asid_local(mailbox->msg.as_id & 0xFFFF);
+                            }
+                        }
+                    }
+                    mailbox->ack_seq = mailbox->req_seq;
+                }
+                mailbox->valid = 0;
+            }
+        }
+        messages_processed++;
+        if (messages_processed >= 100) break;
     }
 }
