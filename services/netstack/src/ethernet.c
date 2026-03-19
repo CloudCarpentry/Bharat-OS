@@ -55,8 +55,8 @@ int ethernet_tx(netbuf_t *nb, const uint8_t *dest_mac, uint16_t protocol) {
     ethhdr_t *eth = (ethhdr_t *)netbuf_push(nb, sizeof(ethhdr_t));
     if (!eth) return -1; // Headroom exhausted
 
-    memcpy(eth->h_dest, dest_mac, ETH_ALEN);
-    memcpy(eth->h_source, local_mac, ETH_ALEN);
+    eth_addr_copy(eth->h_dest, dest_mac);
+    eth_addr_copy(eth->h_source, local_mac);
     eth->h_proto = bnet_htons(protocol);
 
     // This is the point where the frame would be handed off to the driver ring.

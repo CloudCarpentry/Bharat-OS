@@ -30,7 +30,7 @@ static void arp_cache_update(uint32_t ip, const uint8_t *mac) {
     // 1. Update existing entry
     for (int i = 0; i < arp_cache_count; i++) {
         if (arp_cache[i].ip == ip) {
-            memcpy(arp_cache[i].mac, mac, ETH_ALEN);
+            eth_addr_copy(arp_cache[i].mac, mac);
             arp_cache[i].expires = 300; // Reset TTL (arbitrary value)
             return;
         }
@@ -39,13 +39,13 @@ static void arp_cache_update(uint32_t ip, const uint8_t *mac) {
     // 2. Or add new entry
     if (arp_cache_count < ARP_CACHE_SIZE) {
         arp_cache[arp_cache_count].ip = ip;
-        memcpy(arp_cache[arp_cache_count].mac, mac, ETH_ALEN);
+        eth_addr_copy(arp_cache[arp_cache_count].mac, mac);
         arp_cache[arp_cache_count].expires = 300;
         arp_cache_count++;
     } else {
         // Simple eviction: replace the first entry
         arp_cache[0].ip = ip;
-        memcpy(arp_cache[0].mac, mac, ETH_ALEN);
+        eth_addr_copy(arp_cache[0].mac, mac);
         arp_cache[0].expires = 300;
     }
 }
@@ -53,7 +53,7 @@ static void arp_cache_update(uint32_t ip, const uint8_t *mac) {
 int arp_resolve(uint32_t target_ip, uint8_t *out_mac) {
     for (int i = 0; i < arp_cache_count; i++) {
         if (arp_cache[i].ip == target_ip) {
-            memcpy(out_mac, arp_cache[i].mac, ETH_ALEN);
+            eth_addr_copy(out_mac, arp_cache[i].mac);
             return 0; // Found in cache
         }
     }
@@ -81,9 +81,9 @@ int arp_send_reply(uint32_t target_ip, const uint8_t *target_mac) {
     arphdr_payload_t *arp_payload = (arphdr_payload_t *)netbuf_put(&nb, sizeof(arphdr_payload_t));
     if (!arp_payload) return -1;
 
-    memcpy(arp_payload->ar_sha, get_local_mac(), ETH_ALEN);
+    eth_addr_copy(arp_payload->ar_sha, get_local_mac());
     arp_payload->ar_sip = get_local_ip();
-    memcpy(arp_payload->ar_tha, target_mac, ETH_ALEN);
+    eth_addr_copy(arp_payload->ar_tha, target_mac);
     arp_payload->ar_tip = target_ip;
 
     // Send via Ethernet
@@ -107,9 +107,9 @@ int arp_send_request(uint32_t target_ip) {
     arphdr_payload_t *arp_payload = (arphdr_payload_t *)netbuf_put(&nb, sizeof(arphdr_payload_t));
     if (!arp_payload) return -1;
 
-    memcpy(arp_payload->ar_sha, get_local_mac(), ETH_ALEN);
+    eth_addr_copy(arp_payload->ar_sha, get_local_mac());
     arp_payload->ar_sip = get_local_ip();
-    memset(arp_payload->ar_tha, 0, ETH_ALEN); // Target MAC unknown
+    eth_addr_zero(arp_payload->ar_tha); // Target MAC unknown
     arp_payload->ar_tip = target_ip;
 
     uint8_t bcast_mac[ETH_ALEN] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
