@@ -13,12 +13,18 @@ fi
 
 BUILD_NAME=${1:-"default_dev"}
 RUN_FLAG=0
+DUAL_SERIAL_FLAG=0
 
-if [[ "$2" == "--run" ]] || [[ "$1" == "--run" ]]; then
-    RUN_FLAG=1
-    if [[ "$1" == "--run" ]]; then
-        BUILD_NAME="default_dev"
+for arg in "$@"; do
+    if [[ "$arg" == "--run" ]]; then
+        RUN_FLAG=1
+    elif [[ "$arg" == "--dual-serial" ]]; then
+        DUAL_SERIAL_FLAG=1
     fi
+done
+
+if [[ "$1" == "--run" ]] || [[ "$1" == "--dual-serial" ]]; then
+    BUILD_NAME="default_dev"
 fi
 
 if ! yq eval ".builds.$BUILD_NAME" build_config.yml &> /dev/null; then
@@ -51,11 +57,31 @@ cmake --build --preset $PRESET
 
 if [ "$RUN" = "true" ] || [ "$RUN_FLAG" -eq 1 ]; then
     echo "Running..."
+
+    QEMU_OPTS=""
+    if [ "$GUI_FLAG" = "ON" ]; then
+        if [ "$DUAL_SERIAL_FLAG" -eq 1 ]; then
+            SERIAL_OPTS="-serial stdio -serial vc"
+        else
+            SERIAL_OPTS="-serial vc"
+        fi
+
+        if [ "$ARCH" = "x86_64" ]; then
+            QEMU_OPTS="$SERIAL_OPTS -vga std"
+        elif [ "$ARCH" = "arm64" ]; then
+            QEMU_OPTS="$SERIAL_OPTS -device virtio-gpu-pci"
+        elif [ "$ARCH" = "riscv64" ]; then
+            QEMU_OPTS="$SERIAL_OPTS -device virtio-gpu-device -device ramfb"
+        fi
+    else
+        QEMU_OPTS="-serial stdio -display none"
+    fi
+
     if [ "$ARCH" = "x86_64" ]; then
-        qemu-system-x86_64 -kernel build/$PRESET/kernel.elf -m 512 -serial stdio -display none
+        qemu-system-x86_64 -kernel build/$PRESET/kernel.elf -m 512 $QEMU_OPTS
     elif [ "$ARCH" = "arm64" ]; then
-        qemu-system-aarch64 -M virt -cpu cortex-a53 -m 512 -kernel build/$PRESET/kernel.elf -serial stdio -display none
+        qemu-system-aarch64 -M virt -cpu cortex-a53 -m 512 -kernel build/$PRESET/kernel.elf $QEMU_OPTS
     elif [ "$ARCH" = "riscv64" ]; then
-        qemu-system-riscv64 -M virt -m 512 -kernel build/$PRESET/kernel.elf -serial stdio -display none
+        qemu-system-riscv64 -M virt -m 512 -kernel build/$PRESET/kernel.elf $QEMU_OPTS
     fi
 fi

@@ -23,6 +23,7 @@ param(
     [switch]$DebugQemu = $false,
     [switch]$Payload = $false,
     [switch]$Flash = $false,
+    [switch]$DualSerial = $false,
     [string]$Machine = "",
     [ValidateSet("ON", "OFF")][string]$BootGui = "ON",
     [string]$HardwareProfile = "",
@@ -277,7 +278,11 @@ if ($Run) {
         $qemuArgs += @("-kernel", $KernelBinary, "-m", "256M", "-serial", "mon:stdio", "-no-reboot")
         if ($BootGui -eq "ON") {
             $qemuArgs = $qemuArgs -ne "-serial" -ne "mon:stdio"
-            $qemuArgs += @("-serial", "vc", "-vga", "std")
+            if ($DualSerial) {
+                $qemuArgs += @("-serial", "mon:stdio", "-serial", "vc", "-vga", "std")
+            } else {
+                $qemuArgs += @("-serial", "vc", "-vga", "std")
+            }
         } else {
             $qemuArgs += @("-nographic")
         }
@@ -300,7 +305,11 @@ if ($Run) {
             # simple-framebuffer handoff the kernel boot GUI can consume.
             # Route serial output only to the virtual console in the QEMU graphical window.
             $qemuArgs = $qemuArgs -ne "-serial" -ne "mon:stdio" # Remove the default serial arg to replace it
-            $qemuArgs += @("-serial", "vc", "-device", "virtio-gpu-device", "-device", "ramfb")
+            if ($DualSerial) {
+                $qemuArgs += @("-serial", "mon:stdio", "-serial", "vc", "-device", "virtio-gpu-device", "-device", "ramfb")
+            } else {
+                $qemuArgs += @("-serial", "vc", "-device", "virtio-gpu-device", "-device", "ramfb")
+            }
         } else {
             $qemuArgs += @("-nographic")
         }
@@ -311,7 +320,11 @@ if ($Run) {
             # arm64 virt machine has no legacy VGA; use VirtIO GPU which the virt machine supports
             # Route serial output only to the virtual console in the QEMU graphical window.
             $qemuArgs = $qemuArgs -ne "-serial" -ne "mon:stdio" # Remove the default serial arg to replace it
-            $qemuArgs += @("-serial", "vc", "-device", "virtio-gpu-pci")
+            if ($DualSerial) {
+                $qemuArgs += @("-serial", "mon:stdio", "-serial", "vc", "-device", "virtio-gpu-pci")
+            } else {
+                $qemuArgs += @("-serial", "vc", "-device", "virtio-gpu-pci")
+            }
         } else {
             $qemuArgs += @("-nographic")
         }
