@@ -6,7 +6,6 @@ add_library(hal_x86_64_cpu OBJECT
     ../../kernel/src/arch/x86_64/context_switch.S
     ../../kernel/src/arch/x86_64/cpu_caps.c
     ../../kernel/src/arch/x86_64/ext_state.c
-    ../../kernel/src/arch/capabilities.c
 )
 
 add_library(hal_x86_64_mmu OBJECT

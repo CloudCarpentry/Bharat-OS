@@ -80,7 +80,7 @@ static uint32_t sched_clamp_core(uint32_t core_id) {
   return core_id;
 }
 
-__attribute__((unused)) static void arch_post_switch(void) {
+void arch_post_switch(void) {
   uint32_t core = sched_clamp_core(hal_cpu_get_id());
   spin_unlock(&g_cpu_locals[core].runqueue.lock);
 }
@@ -565,23 +565,23 @@ static void sched_dequeue_task_l0(kthread_t *thread, uint32_t core_id) {
   }
 }
 
-__attribute__((unused)) static void sched_enqueue_task_l0(kthread_t *thread, uint32_t core_id) {
+void sched_enqueue_task_l0(kthread_t *thread, uint32_t core_id) {
   (void)sched_enqueue(thread, core_id);
 }
 
-__attribute__((unused)) static kthread_t *sched_pick_next_ready_l0(uint32_t core_id) {
+kthread_t *sched_pick_next_ready_l0(uint32_t core_id) {
   return sched_pick_next_ready(core_id);
 }
 
-__attribute__((unused)) static void sched_enqueue_task_l1(kthread_t *thread, uint32_t core_id) {
+void sched_enqueue_task_l1(kthread_t *thread, uint32_t core_id) {
   (void)sched_enqueue(thread, core_id);
 }
 
-__attribute__((unused)) static void sched_dequeue_task_l1(kthread_t *thread, uint32_t core_id) {
+void sched_dequeue_task_l1(kthread_t *thread, uint32_t core_id) {
   sched_dequeue_task_l0(thread, core_id);
 }
 
-__attribute__((unused)) static kthread_t *sched_pick_next_ready_l1(uint32_t core_id) {
+kthread_t *sched_pick_next_ready_l1(uint32_t core_id) {
   return sched_pick_next_ready(core_id);
 }
 
