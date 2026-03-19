@@ -122,7 +122,48 @@ Overall, while the architecture cleanly separates mechanisms (in the kernel) fro
 
 ---
 
-## 10. Conclusion and Recommendations
+## 10. Kernel Boundaries and Subsystem API
+
+### Current State
+- **Mechanism vs Policy:** The architecture aims to separate mechanisms (in the kernel) from policies (in user-space). The system call API (e.g., `trap.c`) dispatches requests like `SYSCALL_ENDPOINT_RECEIVE` or `SYSCALL_CAPABILITY_DELEGATE` based on capability tables.
+- **Pointer Validation:** Trap handlers make rudimentary checks (`trap_user_ptr_valid`), but advanced copy-in/copy-out mechanisms robust against time-of-check to time-of-use (TOCTOU) attacks are not fully fleshed out.
+- **Module Isolation:** Modules and subsystems are heavily defined via CMake stubs but practically lack isolated runtime boundaries on hardware lacking full MPU/MMU enforcement.
+
+### Identified Gaps
+- **Weak Boundary Enforcement:** On smaller profiles (EDGE/RTOS), if the IOMMU or MPU wrappers (like the ARM32 mock) are non-functional, a buggy user-space driver or subsystem can trivially panic the entire kernel or corrupt physical memory.
+- **ABI Instability:** The raw system call and BIDL interface lack a robust versioning mechanism, making independent module updates fragile.
+
+---
+
+## 11. Core OS Primitives: Scheduler and Timers
+
+### Current State
+- **Scheduler (`sched.c`):** The kernel implements a basic tick-driven scheduler with strict Priority scheduling (`SCHED_MAX_PRIORITY`). It includes a rudimentary global array iteration for load balancing (`sched_balance_once`).
+- **Timers (`hal_timer_isr`):** Relies on a single, fixed-frequency tick (e.g., APIC Timer on x86, PLIC/SBI on RISC-V).
+- **Async CPU Primitives:** `async_ipc.c` manages async requests, but relies on a global lockless-but-linear-scan array.
+
+### Identified Gaps
+- **O(N) Scheduler Complexity:** The scheduler uses basic lists and array scans. It lacks O(1) bitmapped runqueues or Red-Black tree structures (like CFS), which will scale poorly with many threads.
+- **Tickless / High-Res Timers:** There is no tickless kernel (NO_HZ) implementation. The constant periodic tick wastes power and degrades real-time determinism.
+- **SMP Scaling:** The load balancer is simplistic and invoked infrequently (`g_sched_ticks % 16U`). Global structures for async IPC and scheduling queues lead to heavy cache-line bouncing.
+
+---
+
+## 12. TCB, Threads, Processes, and Per-Core State
+
+### Current State
+- **Thread Control Block (TCB):** `kthread_t` tracks state, priority, capabilities, and CPU affinity. `kprocess_t` maps to an `address_space_t`.
+- **Per-Core State (`cpu_local.c`):** Uses hardware registers (e.g., `tpidr_el1` on ARM64, `tp` on RISC-V) to quickly resolve `cpu_local_t`, pointing to the current thread and address space.
+- **Kernel Debugging (`fault_diag.c` / `panic.c`):** Implements `fault_breadcrumbs_t` to track the last syscall and fault VA per core. Emits detailed panic headers containing register state and breadcrumbs.
+
+### Identified Gaps
+- **Memory Management (VMM/PMM):** Demand paging and Copy-on-Write (COW) exist as API scaffolds (`vmm_handle_cow_fault`), but heavily rely on the missing architectural MMU implementations. Physical page tracking does not aggressively handle defragmentation or NUMA node awareness beyond preferred hints.
+- **Trap Handling Depth:** The unified trap handler (`trap.c`) handles fatal bounds (e.g. guard page hits causing stack overflow), but recovery or user-space signal translation (e.g. mapping to `SIGSEGV` for the Linux personality) is marked as a `TODO`.
+- **Debugging Limits:** While `panic.c` prints register dumps, there is no interactive kernel debugger (KGDB stub), DTrace/eBPF-like dynamic tracing, or crash dump (kdump) facility. Debugging complex multikernel state transitions remains a purely print-based exercise.
+
+---
+
+## 13. Conclusion and Recommendations
 
 Bharat-OS has successfully laid down the architectural scaffolding for a multikernel, capability-based system. The mechanism-vs-policy boundaries are respected, and the abstractions (HAL interfaces) exist in the right places.
 
