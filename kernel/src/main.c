@@ -145,22 +145,23 @@ static void kernel_boot_scheduler(void) {
   fastops_dispatch_init();
   arch_ext_state_boot_init();
 
-  const arch_cpu_caps_record_t *boot = arch_cpu_caps_boot();
-  KPRINT("  [ARCH]  cpu_caps: cpu0 usable aes=%d sha=%d vector=%d\n",
-         arch_cpu_caps_test(&boot->usable, ARCH_CPU_FEAT_COMMON_AES),
-         arch_cpu_caps_test(&boot->usable, ARCH_CPU_FEAT_COMMON_SHA),
-         arch_cpu_caps_test(&boot->usable, ARCH_CPU_FEAT_COMMON_VECTOR));
+  // TODO: WIP - CPU capabilities diagnostic code disabled (needs formatted print)
+  // const arch_cpu_caps_record_t *boot = arch_cpu_caps_boot();
+  // KPRINT("  [ARCH]  cpu_caps: cpu0 usable aes=%d sha=%d vector=%d\n",
+  //        arch_cpu_caps_test(&boot->usable, ARCH_CPU_FEAT_COMMON_AES),
+  //        arch_cpu_caps_test(&boot->usable, ARCH_CPU_FEAT_COMMON_SHA),
+  //        arch_cpu_caps_test(&boot->usable, ARCH_CPU_FEAT_COMMON_VECTOR));
 
-  const arch_cpu_caps_record_t *sys_all = arch_cpu_caps_system_all();
-  KPRINT("  [ARCH]  cpu_caps: system_all usable aes=%d sha=%d vector=%d\n",
-         arch_cpu_caps_test(&sys_all->usable, ARCH_CPU_FEAT_COMMON_AES),
-         arch_cpu_caps_test(&sys_all->usable, ARCH_CPU_FEAT_COMMON_SHA),
-         arch_cpu_caps_test(&sys_all->usable, ARCH_CPU_FEAT_COMMON_VECTOR));
+  // const arch_cpu_caps_record_t *sys_all = arch_cpu_caps_system_all();
+  // KPRINT("  [ARCH]  cpu_caps: system_all usable aes=%d sha=%d vector=%d\n",
+  //        arch_cpu_caps_test(&sys_all->usable, ARCH_CPU_FEAT_COMMON_AES),
+  //        arch_cpu_caps_test(&sys_all->usable, ARCH_CPU_FEAT_COMMON_SHA),
+  //        arch_cpu_caps_test(&sys_all->usable, ARCH_CPU_FEAT_COMMON_VECTOR));
 
-  KPRINT("  [ARCH]  fastops: page_zero backend=%s\n",
-         arch_cpu_caps_test(&sys_all->usable, ARCH_CPU_FEAT_COMMON_VECTOR) ? "optimized" : "generic");
+  // KPRINT("  [ARCH]  fastops: page_zero backend=%s\n",
+  //        arch_cpu_caps_test(&sys_all->usable, ARCH_CPU_FEAT_COMMON_VECTOR) ? "optimized" : "generic");
 
-  KPRINT("  [ARCH]  CPU capabilities and extended state initialized.\n");
+  // KPRINT("  [ARCH]  CPU capabilities and extended state initialized.\n");
 
   sched_init();
   KPRINT("  [SCHED] Scheduler initialized.\n");

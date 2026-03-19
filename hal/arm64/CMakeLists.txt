@@ -7,7 +7,6 @@ add_library(hal_arm64_cpu OBJECT
     ../../kernel/src/arch/arm64/cpu_caps.c
     ../../kernel/src/arch/arm64/ext_state.c
     ../../kernel/src/hal/arm64/topology_fdt.c
-    ../../kernel/src/arch/capabilities.c
 )
 # Ensure Clang knows to treat .S as arm64 assembly, avoiding errors when host is x86
 set_source_files_properties(

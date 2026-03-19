@@ -1,6 +1,5 @@
 add_library(k_cap OBJECT
     ../../src/capability.c
-    ../../src/arch/capabilities.c
 )
 
 target_include_directories(k_cap PRIVATE ../../include ../../include/generated ${CMAKE_SOURCE_DIR}/include)

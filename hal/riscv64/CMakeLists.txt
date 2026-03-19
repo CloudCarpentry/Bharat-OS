@@ -7,7 +7,6 @@ add_library(hal_riscv64_cpu OBJECT
     ../../kernel/src/arch/riscv64/context_switch.S
     ../../kernel/src/arch/riscv64/cpu_caps.c
     ../../kernel/src/arch/riscv64/ext_state.c
-    ../../kernel/src/arch/capabilities.c
     ../../kernel/src/hal/riscv/shakti_bsp.c
 )
 
