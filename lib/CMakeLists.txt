@@ -15,3 +15,8 @@ target_include_directories(urpc PUBLIC urpc)
 target_compile_options(urpc PRIVATE -ffreestanding -nostdlib -Wall)
 add_subdirectory(elf)
 add_subdirectory(syscall)
+
+# Phase 1: Foundational Native Libraries
+add_subdirectory(cap)
+add_subdirectory(ipc)
+add_subdirectory(runtime)
