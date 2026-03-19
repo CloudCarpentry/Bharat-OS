@@ -1,11 +1,40 @@
-#include "../../include/mm/vmm.h"
+#include "../../include/mm.h"
 #include "../../include/mm/aspace.h"
 #include "../../include/hal/hal_pt.h"
 #include "../../include/hal/hal_tlb.h"
-#include "../../include/hal/hal_cpu.h"
+#include "../../include/hal/hal.h"
 #include "../../include/mm/pmm.h"
 
 // M1: Legacy VMM is now just a thin shim over ASpace/Region/Object layers.
+
+address_space_t kernel_space;
+
+int vmm_init(void) {
+    if (!active_hal_pt) {
+        hal_pt_init();
+    }
+
+    // Initialize the kernel's address space wrapper
+    kernel_space.object_id = 0;
+    extern phys_addr_t vmm_get_kernel_root(void);
+    kernel_space.root_pt = vmm_get_kernel_root();
+    spin_lock_init(&kernel_space.lock);
+
+    return 0;
+}
+
+address_space_t *mm_create_address_space(void) {
+    address_space_t *as = NULL;
+    aspace_create(&as, 0);
+    return as;
+}
+
+phys_addr_t vmm_get_kernel_root(void) {
+    if (active_hal_pt && active_hal_pt->create_address_space) {
+        return active_hal_pt->create_address_space(0);
+    }
+    return 0;
+}
 
 int mm_vmm_map_page(address_space_t* as, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
     if (!as || !active_hal_pt) return -1;
@@ -14,16 +43,16 @@ int mm_vmm_map_page(address_space_t* as, virt_addr_t vaddr, phys_addr_t paddr, u
     vm_region_t *region = aspace_lookup_region(as, vaddr);
     if (!region) {
         // Fallback for kernel direct mappings or legacy code without regions
-        mmu_flags_t mmu_flags = 0;
-        if (flags & CAP_RIGHT_WRITE) mmu_flags |= MMU_WRITE;
-        if (flags & PAGE_USER) mmu_flags |= MMU_USER;
+        uint32_t mmu_flags = 0;
+        if (flags & CAP_RIGHT_WRITE) mmu_flags |= HAL_PT_FLAG_WRITE;
+        if (flags & PAGE_USER) mmu_flags |= HAL_PT_FLAG_USER;
         return active_hal_pt->map_page(as->root_pt, vaddr, paddr, mmu_flags);
     }
 
     // Normally we'd map via region->object, but this is a legacy compat shim.
-    mmu_flags_t mmu_flags = 0;
-    if (flags & CAP_RIGHT_WRITE) mmu_flags |= MMU_WRITE;
-    if (flags & PAGE_USER) mmu_flags |= MMU_USER;
+    uint32_t mmu_flags = 0;
+    if (flags & CAP_RIGHT_WRITE) mmu_flags |= HAL_PT_FLAG_WRITE;
+    if (flags & PAGE_USER) mmu_flags |= HAL_PT_FLAG_USER;
 
     int ret = active_hal_pt->map_page(as->root_pt, vaddr, paddr, mmu_flags);
     if (ret == 0) {
@@ -63,4 +92,26 @@ int vmm_handle_cow_fault(address_space_t* as, virt_addr_t vaddr) {
 
 void tlb_shootdown(address_space_t *as, virt_addr_t vaddr) {
     hal_tlb_invalidate_page(as, vaddr);
+}
+
+// Dummy functions for compilation. They should ideally be part of HAL or device drivers.
+int vmm_map_device_mmio(virt_addr_t vaddr, phys_addr_t paddr, capability_t *cap, int is_npu) {
+    (void)cap;
+    (void)is_npu;
+    return vmm_map_page(vaddr, paddr, CAP_RIGHT_WRITE);
+}
+
+int vmm_map_device_mmio_token(virt_addr_t vaddr, phys_addr_t paddr,
+                              uint64_t size, const bharat_addr_token_t *token,
+                              int is_npu) {
+    (void)size;
+    (void)token;
+    (void)is_npu;
+    return vmm_map_page(vaddr, paddr, CAP_RIGHT_WRITE);
+}
+
+void vmm_process_local_urpc_messages(uint32_t core_id) {
+    (void)core_id;
+    extern void vmm_process_urpc_messages(void);
+    vmm_process_urpc_messages();
 }

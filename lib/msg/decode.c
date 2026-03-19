@@ -60,7 +60,9 @@ int bharat_msg_read_bytes_bounded(bharat_msg_reader_t* r, uint8_t* dst, uint32_t
     }
 
     if (len > 0) {
-        memcpy(dst, r->buf + r->off, len);
+        for (uint32_t i = 0; i < len; i++) {
+            dst[i] = (r->buf + r->off)[i];
+        }
         r->off += len;
     }
     *out_len = len;

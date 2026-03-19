@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -8,7 +7,7 @@
  */
 
 void init_servicemgr(void) {
-    printf("servicemgr: Initializing distributed naming and endpoint lookup service...\n");
+    // //printf("servicemgr: Initializing distributed naming and endpoint lookup service...\n");
     // TODO: Connect to local namesvc
     // TODO: Prepare distributed endpoints propagation
 }
@@ -25,6 +24,6 @@ int main(int argc, char **argv) {
         break; // break for stub to avoid infinite loop
     }
 
-    printf("servicemgr: Exiting.\n");
+    // //printf("servicemgr: Exiting.\n");
     return 0;
 }

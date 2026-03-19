@@ -11,8 +11,14 @@
 #include "../../../subsys/include/bharat/msg/transport.h"
 
 // Transport for core mock
-extern bharat_transport_t* transport_for_core(int core);
-extern int bharat_monitor_v1_call_tlb_invalidate(bharat_transport_t* t, int dst, const bharat_monitor_v1_tlb_invalidate_req_t* req, void* ctx);
+bharat_transport_t* transport_for_core(int core) {
+    (void)core;
+    return NULL;
+}
+int bharat_monitor_v1_call_tlb_invalidate(bharat_transport_t* t, int dst, const bharat_monitor_v1_TlbInvalidateReq_t* req, void* ctx) {
+    (void)t; (void)dst; (void)req; (void)ctx;
+    return 0;
+}
 
 typedef struct {
     uint64_t active_aspace_id;
@@ -46,29 +52,49 @@ void vmm_send_tlb_invalidate(uint64_t aspace_id,
                              uint64_t len,
                              uint32_t type)
 {
-    bharat_monitor_v1_tlb_invalidate_req_t req = {0};
+    bharat_monitor_v1_TlbInvalidateReq_t req = {0};
 
     req.aspace_id = aspace_id;
     req.va_start  = va;
     req.length    = len;
     req.type      = type;
 
-    // We get the current generation from the local CPU state
     uint32_t current_core = hal_cpu_get_id();
-    cpu_mm_state[current_core].tlb_generation++;
-    req.generation = cpu_mm_state[current_core].tlb_generation;
+
+    // The generation counter now lives on the address space, allowing proper monotonic sequence tracking globally
+    address_space_t *as = NULL;
+    if (cpu_mm_state[current_core].active_aspace_id == aspace_id) {
+        as = g_cpu_locals[current_core].current_as;
+    }
+
+    // Fallback if not current
+    if (!as) {
+        for (int i=0; i<MAX_CPUS; i++) {
+            if (g_cpu_locals[i].current_as && g_cpu_locals[i].current_as->object_id == aspace_id) {
+                as = g_cpu_locals[i].current_as;
+                break;
+            }
+        }
+    }
+
+    if (as) {
+        req.generation = __atomic_add_fetch(&as->tlb_seq, 1, __ATOMIC_SEQ_CST);
+    } else {
+        cpu_mm_state[current_core].tlb_generation++;
+        req.generation = cpu_mm_state[current_core].tlb_generation;
+    }
 
     for (int core = 0; core < MAX_CPUS; core++) {
 
         if (core == current_core) continue;
 
-        // ONLY send if core is running this aspace
-        if (cpu_mm_state[core].active_aspace_id != aspace_id)
+        // Ensure we strictly target cores running the active aspace
+        if (g_cpu_locals[core].current_as_id != aspace_id && cpu_mm_state[core].active_aspace_id != aspace_id)
             continue;
 
         bharat_transport_t* t = transport_for_core(core);
         if (t) {
-             // In a real implementation this would actually encode and send
+             // In a real implementation this would actually encode and send, then synchronously await ACK
              bharat_monitor_v1_call_tlb_invalidate(
                 t,
                 core,
@@ -81,8 +107,8 @@ void vmm_send_tlb_invalidate(uint64_t aspace_id,
 
 int monitor_handle_tlb_invalidate(
     void* ctx,
-    const bharat_monitor_v1_tlb_invalidate_req_t* req,
-    bharat_monitor_v1_tlb_invalidate_resp_t* resp)
+    const bharat_monitor_v1_TlbInvalidateReq_t* req,
+    bharat_monitor_v1_TlbInvalidateResp_t* resp)
 {
     uint32_t current_core = hal_cpu_get_id();
     cpu_mm_state_t* cpu = &cpu_mm_state[current_core];

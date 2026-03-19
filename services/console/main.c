@@ -14,7 +14,7 @@ int main(int argc, char** argv) {
 
     // TODO: Acquire capability for UART MMIO or Framebuffer drawing via IPC
     // TODO: Initialize a ring buffer (URPC) for standard input/output streams
-    // TODO: Poll incoming messages from Subsystem personalities (e.g. Linux printf)
+    // TODO: Poll incoming messages from Subsystem personalities (e.g. Linux //printf)
     // TODO: Output characters to the active hardware backend
 
     while(1) {
