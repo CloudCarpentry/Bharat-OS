@@ -14,6 +14,7 @@
 #define PLIC_CLAIM_CTX(ctx) (PLIC_CLAIM + (ctx) * 0x1000)
 
 void hal_irq_init_boot(void) {
+    hal_irq_generic_init_boot();
     // Basic PLIC initialization on boot
 }
 

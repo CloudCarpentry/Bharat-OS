@@ -63,6 +63,7 @@ static msi_domain_t its_msi_domain = {
 };
 
 void hal_irq_init_boot(void) {
+    hal_irq_generic_init_boot();
     system_discovery_t* disc = hal_get_system_discovery();
     if (disc) {
         for (uint32_t i = 0; i < disc->irq_ctrl_count; i++) {
