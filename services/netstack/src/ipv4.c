@@ -1,5 +1,6 @@
 #include "ipv4.h"
 #include "icmp.h"
+#include "tcp.h"
 #include "udp.h"
 #include "ethernet.h"
 #include "checksum.h"
@@ -60,6 +61,8 @@ int ipv4_rx(netbuf_t *nb) {
     switch (protocol) {
         case IPPROTO_ICMP:
             return icmp_rx(nb, src_ip, dst_ip);
+        case IPPROTO_TCP:
+            return tcp_rx(nb, src_ip, dst_ip);
         case IPPROTO_UDP:
             return udp_rx(nb, src_ip, dst_ip);
         default:

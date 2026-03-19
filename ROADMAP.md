@@ -19,7 +19,7 @@ This document details the step-by-step evolution of Bharat-OS from a basic micro
 ## Phase 3: Cloud, Accelerators, & Datacenter
 - **NUMA-Aware Demand Paging:** Improve memory allocation and locality metrics via Bharat-Cloud memory policy extensions.
 - **Heterogeneous Accelerator Subsystem:** Incorporate DMA, NPU, and GPU drivers. Establish zero-copy pipelines directly to accelerator domains.
-- **High-Speed Networking:** Establish lockless kernel-bypass paths for VirtIO and standard NICs.
+- **High-Speed Networking:** Implement a full IP/TCP stack, establishing lockless kernel-bypass paths for VirtIO and standard NICs.
 - **Scale-Out Multikernel Messaging:** Extend URPC primitives to transmit messages across network boundaries for true distributed execution.
 
 ## Phase 4: Advanced UX & Formally Verified Core
