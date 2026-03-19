@@ -23,6 +23,7 @@ static inline void x86_outb(uint16_t port, uint8_t value) {
 }
 
 void hal_irq_init_boot(void) {
+    hal_irq_generic_init_boot();
     // Enable local APIC (set Spurious Interrupt Vector Register)
     lapic_write(LAPIC_SVR_OFFSET, 0x1FF | 0x100);
 
@@ -81,4 +82,68 @@ void hal_ipi_broadcast(uint64_t mask, hal_ipi_reason_t reason) {
             hal_ipi_send(i, reason);
         }
     }
+}
+
+// --- x86_64 MSI Support via Controller Ops ---
+#include "hal/hal_irq.h"
+
+// Note: x86 MSI uses a specific address format based on LAPIC ID
+// Address: 0xFEE00000 | (Destination ID << 12) | (Redirection Hint << 3) | Destination Mode
+// Data: (Trigger Mode << 15) | (Level << 14) | (Delivery Mode << 8) | Vector
+
+// Fake static function for example composition:
+static int x86_64_compose_msi_message(uint32_t irq, uint64_t* msi_address, uint32_t* msi_data) {
+    if (!msi_address || !msi_data) return -1;
+
+    // Pick target cpu via generic affinity API
+    uint32_t target_cpu = hal_irq_pick_target_cpu(irq);
+
+    // Assume LAPIC ID == CPU ID for simple 1:1 topologies
+    uint32_t dest_id = target_cpu;
+
+    *msi_address = 0xFEE00000ULL | ((uint64_t)dest_id << 12);
+
+    // Simplistic edge-triggered, fixed delivery, vector = irq (in a real system vector != irq)
+    *msi_data = (irq & 0xFF);
+
+    return 0;
+}
+
+static void x86_64_irq_mask(uint32_t irq) {
+    // Unimplemented for generic MSI without Mask-Bit support, but required by ops
+    (void)irq;
+}
+
+static void x86_64_irq_unmask(uint32_t irq) {
+    (void)irq;
+}
+
+static void x86_64_irq_ack(uint32_t irq) {
+    (void)irq;
+}
+
+static void x86_64_irq_eoi_op(uint32_t irq) {
+    hal_irq_eoi(irq); // Call LAPIC EOI
+}
+
+static int x86_64_irq_set_affinity(uint32_t irq, irq_affinity_mask_t mask) {
+    // In a real system, setting affinity would update IOAPIC RTE or MSI registers
+    (void)irq;
+    (void)mask;
+    return 0;
+}
+
+// Global ops for x86_64 MSI
+irq_controller_ops_t g_x86_64_msi_ops = {
+    .mask = x86_64_irq_mask,
+    .unmask = x86_64_irq_unmask,
+    .ack = x86_64_irq_ack,
+    .eoi = x86_64_irq_eoi_op,
+    .set_affinity = x86_64_irq_set_affinity,
+    .compose_msi_message = x86_64_compose_msi_message
+};
+
+void hal_x86_64_init_msi_controller(uint32_t irq) {
+    // Register the controller with the generic layer
+    hal_irq_set_controller(irq, &g_x86_64_msi_ops);
 }
