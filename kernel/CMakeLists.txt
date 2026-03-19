@@ -225,6 +225,8 @@ set(KERNEL_SRCS
     ${ARCH_HAL_EXTRA}
     ${ARCH_CONTEXT_SWITCH}
     ${ARCH_CPU_CAPS_SRC}
+    src/arch/common/cpu_caps_state.c
+    src/arch/common/fastops_dispatch.c
     ${ARCH_EXT_STATE_SRC}
     src/hal/mmu_init.c
     src/hal/iommu_stub.c
