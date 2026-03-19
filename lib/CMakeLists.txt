@@ -32,13 +32,24 @@ endif()
 # ---------------------------------------------------------
 # bharat_libmsg (Wire/Validation/Encoding)
 # ---------------------------------------------------------
-add_library(bharat_libmsg STATIC
+set(BHARAT_LIBMSG_SOURCES
     msg/wire.c
     msg/validate.c
     msg/crc.c
+    msg/crc_generic.c
     msg/encode.c
     msg/decode.c
 )
+
+# Optional arch-specific CRC backend based on detected or target architecture
+if (CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|ARM64")
+    # Only enable ARM CRC32 backend if the compiler natively supports it
+    # We compile the backend anyway and conditionally link it, or we could add feature test.
+    # For now, we will add the source and gate the #include/instructions in the file.
+    list(APPEND BHARAT_LIBMSG_SOURCES msg/crc_aarch64.c)
+endif()
+
+add_library(bharat_libmsg STATIC ${BHARAT_LIBMSG_SOURCES})
 target_include_directories(bharat_libmsg PUBLIC ../subsys/include)
 target_link_libraries(bharat_libmsg PUBLIC bharat_freestanding bharat_kernel_buildopts)
 

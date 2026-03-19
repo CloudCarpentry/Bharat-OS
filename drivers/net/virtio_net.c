@@ -12,7 +12,12 @@
    It doesn't implement full DMA/descriptor ring logic yet, but acts
    as the boundary for the netstack to interface with hardware eventually. */
 
+// VirtIO Network Features (Subset)
+#define VIRTIO_NET_F_CSUM       (1ULL << 0)  // Host handles packets with partial checksum
+#define VIRTIO_NET_F_GUEST_CSUM (1ULL << 1)  // Guest handles packets with partial checksum
+
 static void (*netstack_rx_cb)(packet_buf_t *pkt) = NULL;
+static uint64_t negotiated_features = 0;
 
 int virtio_net_init(void) {
     /* Initialize global driver state */
@@ -26,6 +31,11 @@ int virtio_net_probe(void *device) {
 
 int virtio_net_bind(void *device) {
     /* Bind driver to the hardware device */
+    // Example: Negotiate checksum offload capability
+    // In a real driver, we read device features and write negotiated features.
+    // For this milestone, we pretend we successfully negotiated both TX and RX checksum offloading.
+    negotiated_features |= VIRTIO_NET_F_CSUM;       // TX Offload Support
+    negotiated_features |= VIRTIO_NET_F_GUEST_CSUM; // RX Offload Support
     return 0;
 }
 
@@ -44,6 +54,15 @@ int virtio_net_stop(void *device) {
 int virtio_net_tx(void *device, packet_buf_t *pkt) {
     /* Enqueue buffer into virtqueue for transmission.
        For the Phase 2 mock, we can just print or simulate sending. */
+
+    // Check if TX offload was requested and negotiated
+    if ((pkt->flags & PACKET_FLAG_TX_CSUM_REQ) && (negotiated_features & VIRTIO_NET_F_CSUM)) {
+        // Setup virtio_net_hdr to request hardware checksum generation
+        // e.g. hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
+    } else {
+        // Software generated checksum, no offload requested
+    }
+
     // Note: hardware tx would claim ownership, unref upon completion
     packet_unref(pkt);
     return 0;
@@ -66,6 +85,14 @@ void virtio_net_mock_rx(const void *buffer, size_t length) {
             if (length <= pkt->tail_len) {
                 memcpy(pkt->data, buffer, length);
                 pkt->data_len = length;
+
+                // Simulate reading VirtIO RX descriptor header.
+                // If the hardware validated the checksum and we negotiated it:
+                if (negotiated_features & VIRTIO_NET_F_GUEST_CSUM) {
+                    // e.g. if (hdr->flags & VIRTIO_NET_HDR_F_DATA_VALID)
+                    pkt->flags |= PACKET_FLAG_RX_CSUM_VALID;
+                }
+
                 netstack_rx_cb(pkt);
             } else {
                 packet_free(pkt); // Drop packet, too large
