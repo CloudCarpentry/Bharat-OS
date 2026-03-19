@@ -25,7 +25,7 @@ Bharat-OS is a capability-oriented microkernel project with a multikernel direct
 | Distributed/multikernel scale-out | Early baseline | Per-core URPC matrix and multicore bootstrap hooks exist; production-grade topology and transport tuning are deferred. |
 | Diagnostics & Reliability | Implemented baseline | Structured kernel panic generation, architecture-specific trap/fault breadcrumbs, and PStore persistent recovery logging. |
 
-For architecture-level details and deferred boundaries, see `docs/architecture/` and ADRs in `docs/decisions/`. For the step-by-step closure plan, see `docs/architecture/memory-gap-closure-plan.md`. For our profile-driven, capability-safe networking architecture, see [`docs/architecture/network-architecture.md`](docs/architecture/network-architecture.md).
+For architecture-level details and deferred boundaries, see `docs/architecture/` and ADRs in `docs/decisions/`. For the step-by-step closure plan, see `docs/architecture/memory-gap-closure-plan.md`. For our profile-driven, capability-safe communications and networking architecture, see [`docs/architecture/network-architecture.md`](docs/architecture/network-architecture.md).
 
 ## Device Profiles & Use-cases
 
