@@ -1,5 +1,5 @@
-#include <bharat/net/net.h>
+#include <stddef.h>
 
-void libnet_init(void) {
-    // Stub implementation for initialization
+void net_init(void) {
+    // Scaffold init
 }

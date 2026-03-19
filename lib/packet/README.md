@@ -1,13 +1,8 @@
-# lib/packet (Packet Buffer Abstractions)
+# Bharat-OS `lib/packet`
 
-**Status:** Stub / Baseline Target
+Packet buffer descriptors, ring abstractions, and headroom/tailroom flags.
+This library provides zero-copy abstractions used across the communications framework.
 
-This library defines early packet abstractions and buffer descriptors.
-
-## Scope
-* Packet buffer descriptors (`packet_buf_t`).
-* Buffer ownership tracking and lifetime comments.
-* Headroom, tailroom fields, and total length.
-* Flags for checksum and offload intents (future).
-
-This library does *not* contain protocol parsers, routing logic, or socket implementations (see `lib/net` and `services/netstack`).
+## Roadmap
+* Zero-copy RX/TX ring structures
+* Fast-path metadata blocks

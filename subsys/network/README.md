@@ -1,13 +1,11 @@
-# subsys/network
+# Bharat-OS `subsys/network`
 
-**Status:** Stub / Baseline Target
+The network and communications subsystem contract layer.
 
-This is the network personality/subsystem contract layer. It defines how applications and user-space domains view networking operations in Bharat-OS.
+## Architecture & Role
+This subsystem exposes native API contracts for network interfaces and profile-driven feature flags.
+It acts as the intermediary between the IP core (`services/netstack`), advanced planes (firewalls, routing), and user-space applications.
 
-## Scope
-* Native socket/session model.
-* Interface objects and capability surfaces.
-* Route and policy abstractions.
-* Service discovery hooks and profile feature flags (Embedded, Automotive, Cloud, Edge).
-
-This directory does **not** contain the TCP/IP implementation (which lives in `services/netstack`) or interface lifecycle orchestration (which lives in `services/netmgr`). Instead, it acts as the stable contract API and RPC boundary.
+## Status
+* **Current:** Architectural stub and interface definition space.
+* **Roadmap:** Integration into full multi-bus communication architecture (TSN, QoS, isolation).
