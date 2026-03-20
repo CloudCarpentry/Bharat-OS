@@ -12,7 +12,7 @@ system_discovery_t* hal_get_system_discovery(void) {
 }
 
 #if defined(__riscv) || defined(__aarch64__)
-#include "hal/common/fdt_parser.h"
+#include "hal/fdt_parser.h"
 #endif
 
 void hal_discovery_init(void* boot_ptr) {
