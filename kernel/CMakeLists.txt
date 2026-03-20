@@ -205,6 +205,7 @@ add_subdirectory(src/fs)
 add_subdirectory(src/test)
 
 set(KERNEL_SRCS
+    src/mm/physmap.c
     ${BOOT_SRC}
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/boot/boot_ui_select.c>
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/boot_video.c>
