@@ -26,6 +26,8 @@ int aspace_create(address_space_t **out_aspace, uint32_t flags) {
 
     as->object_id = __atomic_fetch_add(&next_as_id, 1, __ATOMIC_SEQ_CST);
     spin_lock_init(&as->lock);
+    as->tlb_gen = 1;
+    as->active_mask = 0;
     as->regions_tree_root = NULL;
     as->regions = NULL;
     as->region_count = 0;
