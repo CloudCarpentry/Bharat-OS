@@ -176,7 +176,7 @@ if [ "$RUN" = true ]; then
         SERIAL_ARGS="-serial mon:stdio"
         if [ "$BOOT_GUI" = "ON" ] || [ "$BOOT_GUI" = "true" ] || [ "$BOOT_GUI" = "1" ]; then
             # arm64 virt has no legacy VGA — VirtIO GPU is the correct device
-            GUI_ARGS="-device virtio-gpu-pci"
+            GUI_ARGS="-vga none -device virtio-gpu-device -device ramfb"
             # Route serial output only to the virtual console in the QEMU graphical window
             SERIAL_ARGS="-serial vc"
         else
