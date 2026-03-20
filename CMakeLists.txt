@@ -153,6 +153,25 @@ if(BHARAT_BUILD_HOST_TESTS AND NOT CMAKE_CROSSCOMPILING)
     add_subdirectory(tests)
 endif()
 
+# Convenience compatibility targets for trap syscall test builds.
+# - If host tests are enabled and define `test_trap_syscall`, keep a typo alias.
+# - Otherwise, provide a non-failing placeholder so ad-hoc build commands remain usable.
+if(TARGET test_trap_syscall)
+    if(NOT TARGET test_trap_syscal)
+        add_custom_target(test_trap_syscal DEPENDS test_trap_syscall)
+    endif()
+else()
+    if(NOT TARGET test_trap_syscall)
+        add_custom_target(test_trap_syscall
+            COMMAND ${CMAKE_COMMAND} -E echo "Host tests disabled. Set -DBHARAT_BUILD_HOST_TESTS=ON to build trap syscall tests."
+            DEPENDS kernel.elf
+        )
+    endif()
+    if(NOT TARGET test_trap_syscal)
+        add_custom_target(test_trap_syscal DEPENDS test_trap_syscall)
+    endif()
+endif()
+
 # Image generation
 include(BharatImage)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-pie -fno-PIE -mcmodel=large")
