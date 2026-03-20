@@ -321,9 +321,9 @@ if ($Run) {
             # Route serial output only to the virtual console in the QEMU graphical window.
             $qemuArgs = $qemuArgs -ne "-serial" -ne "mon:stdio" # Remove the default serial arg to replace it
             if ($DualSerial) {
-                $qemuArgs += @("-serial", "mon:stdio", "-serial", "vc", "-device", "virtio-gpu-pci")
+                $qemuArgs += @("-serial", "mon:stdio", "-serial", "vc", "-vga", "none", "-device", "virtio-gpu-device", "-device", "ramfb")
             } else {
-                $qemuArgs += @("-serial", "vc", "-device", "virtio-gpu-pci")
+                $qemuArgs += @("-serial", "vc", "-vga", "none", "-device", "virtio-gpu-device", "-device", "ramfb")
             }
         } else {
             $qemuArgs += @("-nographic")

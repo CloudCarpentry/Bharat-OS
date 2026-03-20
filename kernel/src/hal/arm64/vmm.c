@@ -125,6 +125,7 @@ int hal_vmm_map_page(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t padd
     uint32_t pt_flags = HAL_PT_FLAG_READ;
     if (flags & CAP_RIGHT_WRITE) pt_flags |= HAL_PT_FLAG_WRITE;
     if (flags & PAGE_USER)       pt_flags |= HAL_PT_FLAG_USER;
+    if (flags & (CAP_RIGHT_DEVICE_GPU | CAP_RIGHT_DEVICE_NPU)) pt_flags |= HAL_PT_FLAG_DEVICE;
 
 
 
@@ -356,6 +357,7 @@ int hal_vmm_update_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_
     uint32_t pt_flags = HAL_PT_FLAG_READ;
     if (flags & CAP_RIGHT_WRITE) pt_flags |= HAL_PT_FLAG_WRITE;
     if (flags & PAGE_USER)       pt_flags |= HAL_PT_FLAG_USER;
+    if (flags & (CAP_RIGHT_DEVICE_GPU | CAP_RIGHT_DEVICE_NPU)) pt_flags |= HAL_PT_FLAG_DEVICE;
 
 
 

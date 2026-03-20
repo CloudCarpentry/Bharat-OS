@@ -7,6 +7,11 @@
 #include "device.h"
 #include "hal/hal.h"
 #include "hal/hal_discovery.h"
+
+#if defined(__riscv) || defined(__aarch64__)
+#include "hal/common/fdt_parser.h"
+#include "hal/mmu_ops.h"
+#endif
 #include "ipc_async.h"
 #include "kernel.h"
 #include "mm.h"
@@ -254,7 +259,19 @@ void kernel_main(void) {
     x86_64_parse_multiboot1_framebuffer(mb_info);
   }
 #else
-  // TODO: Add Device Tree parsing for ARM64/RISC-V bootargs
+  // Device Tree parsing for ARM64/RISC-V
+  if (fdt_ptr == 0) {
+    for (uintptr_t p = 0x40000000; p < 0x41000000; p += 0x1000) {
+      if (*(volatile uint32_t *)p == 0xEDFE0DD0) { // Big-endian 0xD00DFEED
+        fdt_ptr = p;
+        break;
+      }
+    }
+  }
+
+  if (fdt_ptr != 0) {
+    fdt_parse_discovery((const void *)fdt_ptr, hal_get_system_discovery());
+  }
 #endif
 
   KPRINT("\n");
@@ -372,6 +389,40 @@ void kernel_main(void) {
 #endif
 
     KPRINT("BOOT: vmm initialized\n");
+
+#if defined(__riscv) || defined(__aarch64__)
+    // Map discovered framebuffer if present
+    system_discovery_t* discovery = hal_get_system_discovery();
+    if (discovery->boot_video.valid) {
+        uint64_t fb_phys = discovery->boot_video.phys_addr;
+        uint64_t fb_size = discovery->boot_video.size;
+        KPRINT("  [VMM] Mapping framebuffer: ");
+        hal_serial_write_hex(fb_phys);
+        KPRINT(" (size ");
+        hal_serial_write_hex(fb_size);
+        KPRINT(")\n");
+        
+        // Map as much as needed, align to page size (4KB)
+        for (uint64_t off = 0; off < fb_size; off += 4096) {
+            vmm_map_page(fb_phys + off, fb_phys + off, 
+                         CAP_RIGHT_READ | CAP_RIGHT_WRITE | CAP_RIGHT_DEVICE_GPU);
+        }
+        KPRINT("  [VMM] Framebuffer mapped successfully.\n");
+    }
+#endif
+
+#if defined(__riscv) || defined(__aarch64__)
+    // Initialize MMU Ops and activate hardware MMU with the kernel page table
+    // to ensure our framebuffer mapping (applied above) is active in hardware.
+    extern void arch_mmu_init(void);
+    arch_mmu_init();
+
+    extern phys_addr_t vmm_get_kernel_root(void);
+    extern mmu_ops_t *active_mmu;
+    if (active_mmu && active_mmu->activate) {
+        active_mmu->activate(vmm_get_kernel_root());
+    }
+#endif
 
     if (boot_policy->enable_zswap != 0U) {
       KPRINT("  [ZSWAP] Initializing Memory Compression...\n");
