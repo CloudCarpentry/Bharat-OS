@@ -14,6 +14,7 @@
 #endif
 #include "ipc_async.h"
 #include "kernel.h"
+#include "hal/common/fdt_parser.h"
 #include "mm.h"
 #include "arch/arch_cpu_caps.h"
 #include "mm_zswap.h"
@@ -219,7 +220,7 @@ extern void x86_64_parse_multiboot_framebuffer(multiboot_information_t *mb_info)
 void kernel_main(uint32_t magic, multiboot_information_t *mb_info) {
 #elif defined(__riscv)
 void kernel_main(uint64_t hart_id, uintptr_t fdt_ptr) {
-#elif defined(__aarch64__)
+#elif defined(__aarch64__) || defined(__arm__)
 void kernel_main(uintptr_t fdt_ptr) {
 #else
 void kernel_main(void) {
@@ -366,7 +367,7 @@ void kernel_main(void) {
     if (mm_pmm_init(magic, mb_info) != 0) {
       kernel_panic("PMM initialization failed");
     }
-#elif defined(__riscv) || defined(__aarch64__)
+#elif defined(__riscv) || defined(__aarch64__) || defined(__arm__)
     if (mm_pmm_init(0U, (void *)fdt_ptr) != 0) {
       kernel_panic("PMM initialization failed");
     }

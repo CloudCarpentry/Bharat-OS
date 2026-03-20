@@ -81,6 +81,8 @@ if [ "$RUN" = "true" ] || [ "$RUN_FLAG" -eq 1 ]; then
         qemu-system-x86_64 -kernel build/$PRESET/kernel.elf -m 512 $QEMU_OPTS
     elif [ "$ARCH" = "arm64" ]; then
         qemu-system-aarch64 -M virt -cpu cortex-a53 -m 512 -kernel build/$PRESET/kernel.elf $QEMU_OPTS
+    elif [ "$ARCH" = "arm32" ] && [ "$BOARD" = "avh-corstone310" ]; then
+        VHT_Corstone_SSE-310 -a build/$PRESET/kernel.elf $QEMU_OPTS
     elif [ "$ARCH" = "riscv64" ]; then
         qemu-system-riscv64 -M virt -m 512 -kernel build/$PRESET/kernel.elf $QEMU_OPTS
     fi
