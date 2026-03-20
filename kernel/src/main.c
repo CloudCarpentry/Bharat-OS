@@ -221,6 +221,8 @@ void kernel_main(uint32_t magic, multiboot_information_t *mb_info) {
 void kernel_main(uint64_t hart_id, uintptr_t fdt_ptr) {
 #elif defined(__aarch64__)
 void kernel_main(uintptr_t fdt_ptr) {
+  hal_serial_init();
+  hal_serial_write("!!!!! BOOT: fdt_ptr="); hal_serial_write_hex(fdt_ptr); hal_serial_write("\n");
 #else
 void kernel_main(void) {
 #endif
@@ -235,43 +237,24 @@ void kernel_main(void) {
   console_init();
   console_register_serial_backend();
 
-#if defined(__x86_64__)
-  if (magic == MULTIBOOT2_BOOTLOADER_MAGIC && mb_info != NULL) {
-    uint32_t total_size = mb_info->total_size;
-    uint8_t *tag_ptr = (uint8_t *)mb_info + 8;
-    while (tag_ptr < (uint8_t *)mb_info + total_size) {
-      multiboot_tag_t *tag = (multiboot_tag_t *)((void *)tag_ptr);
-      if (tag->type == MULTIBOOT_TAG_TYPE_END) {
-        break;
-      }
-      if (tag->type == MULTIBOOT_TAG_TYPE_CMDLINE) {
-        multiboot_tag_string_t *str_tag = (multiboot_tag_string_t *)tag;
-        boot_args_init(str_tag->string);
-      }
-      tag_ptr += ((tag->size + 7) & ~7);
+#if defined(__riscv) || defined(__aarch64__)
+  KPRINT("!!!!! BOOT: Entry kernel_main, fdt_ptr_arg="); 
+  hal_serial_write_hex(fdt_ptr); 
+  KPRINT("\n");
+#endif
+
+#if defined(__riscv) || defined(__aarch64__)
+    if (fdt_ptr == 0 || !fdt_is_valid((void*)fdt_ptr)) {
+      KPRINT("BOOT: FDT pointer invalid or zero. Using hardcoded fallback 0x40000000...\n");
+      fdt_ptr = 0x40000000;
     }
 
-    // Phase 1 x86_64 Framebuffer parser hook (Multiboot 2)
-    x86_64_parse_multiboot_framebuffer(mb_info);
-  } else if (magic == 0x2BADB002 && mb_info != NULL) {
-    // Multiboot 1 parser fallback (QEMU -kernel passes Multiboot 1)
-    extern void x86_64_parse_multiboot1_framebuffer(void *mb_info);
-    x86_64_parse_multiboot1_framebuffer(mb_info);
-  }
-#else
-  // Device Tree parsing for ARM64/RISC-V
-  if (fdt_ptr == 0) {
-    for (uintptr_t p = 0x40000000; p < 0x41000000; p += 0x1000) {
-      if (*(volatile uint32_t *)p == 0xEDFE0DD0) { // Big-endian 0xD00DFEED
-        fdt_ptr = p;
-        break;
-      }
+    if (fdt_is_valid((void*)fdt_ptr)) {
+        KPRINT("BOOT: Validating FDT at "); hal_serial_write_hex(fdt_ptr); KPRINT("...\n");
+        fdt_parse_discovery((const void *)fdt_ptr, hal_get_system_discovery());
+    } else {
+        KPRINT("BOOT: CRITICAL: FDT NOT FOUND AT FALLBACK!\n");
     }
-  }
-
-  if (fdt_ptr != 0) {
-    fdt_parse_discovery((const void *)fdt_ptr, hal_get_system_discovery());
-  }
 #endif
 
   KPRINT("\n");

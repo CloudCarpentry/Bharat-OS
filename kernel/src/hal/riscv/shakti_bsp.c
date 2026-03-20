@@ -1,6 +1,6 @@
 #include "hal/riscv_bsp.h"
 #include "hal/hal_boot.h"
-#include "../common/fdt_parser.h"
+#include "hal/fdt_parser.h"
 
 #include <stddef.h>
 #include <stdint.h>
