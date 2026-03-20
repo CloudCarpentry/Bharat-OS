@@ -4,8 +4,7 @@
 #include "socket_table.h"
 
 /* Forward declare string operations for freestanding environment */
-extern void *memcpy(void *dest, const void *src, unsigned long n);
-extern void *memset(void *s, int c, unsigned long n);
+#include <bharat/runtime/freestanding_string.h>
 
 /* Minimal TCP stack phase 1 - processing incoming segments and basic verification */
 
