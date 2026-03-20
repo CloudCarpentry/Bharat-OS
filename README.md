@@ -27,6 +27,7 @@ Bharat-OS is a capability-oriented microkernel project with a multikernel direct
 | Documentation coverage | Expanded in this update | See `docs/current-code-status.md` for a code-backed implementation matrix across services/subsystems. |
 
 For architecture-level details and deferred boundaries, see `docs/architecture/` and ADRs in `docs/decisions/`. For the step-by-step closure plan, see `docs/architecture/memory-gap-closure-plan.md`. For our profile-driven, capability-safe communications and networking architecture, see [`docs/architecture/network-architecture.md`](docs/architecture/network-architecture.md).
+For the ARM32/RV32 EDGE-tier expansion strategy and capability matrix, see [`docs/architecture/arm32-rv32-edge-tier-plan.md`](docs/architecture/arm32-rv32-edge-tier-plan.md).
 
 For a code-backed snapshot of what is implemented vs. stubbed right now, see [`docs/current-code-status.md`](docs/current-code-status.md).
 
