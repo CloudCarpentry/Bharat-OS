@@ -3,6 +3,7 @@
 #include "icmp.h"
 #include "checksum.h"
 #include "socket_table.h"
+#include <bharat/runtime/freestanding_string.h>
 //#include <stdio.h>
 
 int udp_rx(netbuf_t *nb, uint32_t src_ip, uint32_t dst_ip) {
