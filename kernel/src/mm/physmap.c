@@ -2,38 +2,39 @@
 #include "../../include/kernel.h"
 #include <stddef.h>
 
-// Architecture-specific offset, defined in hal/xxx/hal_pt_xxx.c or similar hardware headers
-extern const virt_addr_t g_kernel_virt_offset;
-
-// High-half boundaries and sizes. For now, we assume a simple 1:1 offset map.
-// In future phases, these bounds will handle sparse maps and different granularities.
-extern const size_t g_kernel_physmap_size;
-
 void physmap_init(void) {
     // Basic initialization for the linear map boundaries.
-    // By default, architectures define KERNEL_VIRT_OFFSET directly, and we just link to it.
 }
 
-void *phys_to_virt_linear(phys_addr_t pa) {
-    // If we have proper bounds checking, we check it here:
-    // if (!phys_is_linearly_mapped(pa)) return NULL;
-    return (void *)((uintptr_t)pa + g_kernel_virt_offset);
+bool physmap_has_linear_map(void) {
+    const hal_translate_ops_t* ops = hal_translate_ops();
+    if (!ops || !ops->has_linear_physmap) return false;
+    return ops->has_linear_physmap();
 }
 
-phys_addr_t virt_to_phys_linear(const void *va) {
-    if (!virt_is_in_linear_map(va)) return 0;
-    return (phys_addr_t)((uintptr_t)va - g_kernel_virt_offset);
+void *physmap_phys_to_virt(phys_addr_t phys) {
+    const hal_translate_ops_t* ops = hal_translate_ops();
+    // For MMU-Lite, this might panic or return NULL if outside permanent window
+    // For now, we just pass to the backend ops
+    if (!ops || !ops->phys_to_virt) return NULL;
+    return ops->phys_to_virt(phys);
 }
 
-bool virt_is_in_linear_map(const void *va) {
-    virt_addr_t addr = (virt_addr_t)(uintptr_t)va;
-    // Typical check for high-half addresses >= KERNEL_VIRT_OFFSET
-    return addr >= g_kernel_virt_offset;
+phys_addr_t physmap_virt_to_phys(const void *virt) {
+    const hal_translate_ops_t* ops = hal_translate_ops();
+    if (!ops || !ops->virt_to_phys) return 0;
+    return ops->virt_to_phys(virt);
 }
 
-bool phys_is_linearly_mapped(phys_addr_t pa) {
-    (void)pa;
-    // For standard baseline kernels, all RAM is linearly mapped.
-    // This will become sparse-aware in future iterations.
-    return true;
+translate_backend_kind_t physmap_backend_type(void) {
+    const hal_translate_ops_t* ops = hal_translate_ops();
+    if (!ops || !ops->backend_type) return TRANSLATE_BACKEND_NONE;
+    return ops->backend_type();
+}
+
+translate_exec_class_t physmap_exec_class(void) {
+    const hal_translate_ops_t* ops = hal_translate_ops();
+    // Defaulting to MMU_FULL if undefined, although backend should provide it
+    if (!ops || !ops->exec_class) return TRANSLATE_EXEC_MMU_FULL;
+    return ops->exec_class();
 }

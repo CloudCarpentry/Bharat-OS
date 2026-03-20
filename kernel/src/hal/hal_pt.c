@@ -17,9 +17,20 @@ extern hal_tlb_ops_t x86_hal_tlb_ops;
 #elif defined(__aarch64__) || defined(_M_ARM64)
 extern hal_pt_ops_t arm64_hal_pt_ops;
 extern hal_tlb_ops_t arm64_hal_tlb_ops;
+#elif defined(__arm__)
+extern hal_pt_ops_t arm32_hal_pt_ops;
+extern hal_tlb_ops_t arm32_hal_tlb_ops;
 #elif defined(__riscv) && __riscv_xlen == 64
 extern hal_pt_ops_t riscv64_hal_pt_ops;
 extern hal_tlb_ops_t riscv64_hal_tlb_ops;
+#elif defined(__riscv) && __riscv_xlen == 32
+extern hal_pt_ops_t riscv32_hal_pt_ops;
+extern hal_tlb_ops_t riscv32_hal_tlb_ops;
+#endif
+
+#if defined(BHARAT_PROFILE_MPU_ONLY) || defined(PROFILE_MPU_ONLY)
+extern hal_pt_ops_t mpu_hal_pt_ops;
+extern hal_tlb_ops_t mpu_hal_tlb_ops;
 #endif
 
 void hal_pt_init(void) {
@@ -29,9 +40,21 @@ void hal_pt_init(void) {
 #elif defined(__aarch64__) || defined(_M_ARM64)
     active_hal_pt = &arm64_hal_pt_ops;
     active_hal_tlb = &arm64_hal_tlb_ops;
+#elif defined(__arm__)
+    active_hal_pt = &arm32_hal_pt_ops;
+    active_hal_tlb = &arm32_hal_tlb_ops;
 #elif defined(__riscv) && __riscv_xlen == 64
     active_hal_pt = &riscv64_hal_pt_ops;
     active_hal_tlb = &riscv64_hal_tlb_ops;
+#elif defined(__riscv) && __riscv_xlen == 32
+    active_hal_pt = &riscv32_hal_pt_ops;
+    active_hal_tlb = &riscv32_hal_tlb_ops;
+#endif
+
+#if defined(BHARAT_PROFILE_MPU_ONLY) || defined(PROFILE_MPU_ONLY)
+    // Overrides arch-specific setups for bare-metal MPU configs
+    active_hal_pt = &mpu_hal_pt_ops;
+    active_hal_tlb = &mpu_hal_tlb_ops;
 #endif
 }
 
