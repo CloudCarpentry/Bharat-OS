@@ -13,6 +13,7 @@ typedef enum {
 
 typedef struct {
     uint32_t id;
+    uint32_t next_index;
     ipc_async_state_t state;
     kthread_t* waiting_thread;
     uint64_t deadline_ticks;
@@ -46,6 +47,7 @@ void ipc_async_request_complete(ipc_async_request_t* req);
  * Cancel an IPC request (due to user request or subsystem teardown).
  */
 void ipc_async_request_cancel(ipc_async_request_t* req);
+void ipc_async_request_timeout(ipc_async_request_t* req, uint64_t current_ticks);
 
 /*
  * Called by the scheduler to check for expired deadlines and handle timeouts.
