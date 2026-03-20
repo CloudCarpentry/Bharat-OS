@@ -1,11 +1,28 @@
 #include "hal/hal_discovery.h"
 #include "arch/arch_cpu_caps.h"
+#include <stddef.h>
+#include <stdbool.h>
+#include <stdint.h>
 
 // Global discovery structure populated by early architecture boot code (ACPI or FDT)
 static system_discovery_t g_system_discovery;
 
 system_discovery_t* hal_get_system_discovery(void) {
     return &g_system_discovery;
+}
+
+#if defined(__riscv) || defined(__aarch64__)
+#include "hal/common/fdt_parser.h"
+#endif
+
+void hal_discovery_init(void* boot_ptr) {
+    if (!boot_ptr) return;
+#if defined(__riscv) || defined(__aarch64__)
+    fdt_parse_discovery(boot_ptr, &g_system_discovery);
+#elif defined(__x86_64__)
+    // ACPI/Multiboot handled elsewhere for now, or unified here later
+    (void)boot_ptr;
+#endif
 }
 
 static inline void accel_set(uint64_t *mask, hal_accel_feature_t feat, bool enabled) {

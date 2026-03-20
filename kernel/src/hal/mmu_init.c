@@ -1,4 +1,8 @@
-#include "../../include/hal/mmu_ops.h"
+#include "hal/mmu_ops.h"
+#include "hal/hal_discovery.h"
+#include "hal/hal_pt.h"
+#include "mm/aspace.h"
+#include "bharat/console.h"
 #include <stddef.h>
 
 mmu_ops_t *active_mmu = NULL;
@@ -44,7 +48,48 @@ void arch_mmu_init(void) {
 #endif
     } else {
         // MPU or FLAT profile: Do not provide MMU ops.
-        // MPU has its own specific region management APIs not exposed via mmu_ops_t.
         active_mmu = NULL;
     }
+}
+
+void hal_mmu_final_setup(void) {
+    system_discovery_t* discovery = hal_get_system_discovery();
+    if (!active_mmu) return;
+
+#if defined(__aarch64__) || defined(__riscv)
+    if (discovery) {
+        // Map RAM
+        for (uint32_t i = 0; i < discovery->topology.mem_region_count; i++) {
+            uint64_t base = discovery->topology.mem_regions[i].base;
+            uint64_t size = discovery->topology.mem_regions[i].size;
+            for (uint64_t off = 0; off < size; off += 4096) {
+                vmm_map_page(base + off, base + off, 
+                             CAP_RIGHT_READ | CAP_RIGHT_WRITE | CAP_RIGHT_EXECUTE);
+            }
+        }
+
+        // Map UART (essential for KPRINT after MMU enable)
+#if defined(__aarch64__)
+        vmm_map_page(0x09000000, 0x09000000, CAP_RIGHT_READ | CAP_RIGHT_WRITE | CAP_RIGHT_DEVICE);
+#elif defined(__riscv)
+        vmm_map_page(0x10000000, 0x10000000, CAP_RIGHT_READ | CAP_RIGHT_WRITE | CAP_RIGHT_DEVICE);
+#endif
+
+        // Map Framebuffer if valid
+        if (discovery->boot_video.valid) {
+            uint64_t fb_phys = discovery->boot_video.phys_addr;
+            uint64_t fb_size = discovery->boot_video.size;
+            for (uint64_t off = 0; off < fb_size; off += 4096) {
+                vmm_map_page(fb_phys + off, fb_phys + off, 
+                             CAP_RIGHT_READ | CAP_RIGHT_WRITE | CAP_RIGHT_DEVICE_GPU);
+            }
+        }
+    }
+#elif defined(__x86_64__)
+    vmm_map_page(0xFEE00000, 0xFEE00000, CAP_RIGHT_READ | CAP_RIGHT_WRITE); // LAPIC
+    vmm_map_page(0xFEC00000, 0xFEC00000, CAP_RIGHT_READ | CAP_RIGHT_WRITE); // IOAPIC
+#endif
+
+    extern address_space_t kernel_space;
+    active_mmu->activate(kernel_space.root_pt);
 }
