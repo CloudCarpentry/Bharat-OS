@@ -2,7 +2,10 @@
 #include "ipv4.h"
 #include "checksum.h"
 #include "socket_table.h"
-#include <string.h>
+
+/* Forward declare string operations for freestanding environment */
+extern void *memcpy(void *dest, const void *src, unsigned long n);
+extern void *memset(void *s, int c, unsigned long n);
 
 /* Minimal TCP stack phase 1 - processing incoming segments and basic verification */
 

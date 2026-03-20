@@ -70,18 +70,31 @@ void tlb_shootdown(address_space_t *as, virt_addr_t vaddr) {
 
 address_space_t kernel_space;
 static int kernel_space_ready = 0;
+static int kernel_space_init_in_progress = 0;
 static phys_addr_t kernel_root_pt = 0;
 
 static void ensure_kernel_space_ready(void) {
     if (kernel_space_ready) return;
+    if (kernel_space_init_in_progress) {
+        extern void kernel_panic(const char *msg);
+        kernel_panic("Recursive call to ensure_kernel_space_ready detected");
+    }
+
+    kernel_space_init_in_progress = 1;
 
     address_space_t *created = NULL;
     if (aspace_create(&created, 0) == 0 && created) {
-        kernel_space = *created;
+        // Use our kernel-safe memcpy to avoid the compiler emitting SSE/SIMD
+        // instructions (like movups) for large struct assignments which trap
+        // during early boot before the FPU is enabled.
+        extern void *memcpy(void *dest, const void *src, size_t n);
+        memcpy(&kernel_space, created, sizeof(address_space_t));
         kfree(created);
         kernel_root_pt = kernel_space.root_pt;
         kernel_space_ready = 1;
     }
+
+    kernel_space_init_in_progress = 0;
 }
 
 int vmm_init(void) {
@@ -90,7 +103,8 @@ int vmm_init(void) {
 }
 
 phys_addr_t vmm_get_kernel_root(void) {
-    ensure_kernel_space_ready();
+    // Return the current kernel root directly to avoid infinite recursion
+    // when aspace_create is called during bootstrap (which will get 0).
     return kernel_root_pt;
 }
 
