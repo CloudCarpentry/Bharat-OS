@@ -63,6 +63,8 @@ add_executable(test_trap_syscall test_trap_syscall.c benchmark_stubs.c ../kernel
 target_include_directories(test_trap_syscall PRIVATE ../kernel/include ../subsys/include ../include)
 target_compile_definitions(test_trap_syscall PRIVATE TESTING=1)
 add_test(NAME test_trap_syscall COMMAND test_trap_syscall)
+# Compatibility alias for common typo used in ad-hoc commands.
+add_custom_target(test_trap_syscal DEPENDS test_trap_syscall)
 
 add_executable(test_capability_ipc test_capability_ipc.c benchmark_stubs.c ../kernel/src/capability.c ../kernel/src/ipc/endpoint_ipc.c ../kernel/src/sched.c ../kernel/src/sched_deg.c ../kernel/src/ai_sched.c ../kernel/src/algo_matrix.c ../kernel/src/device/device_manager.c ../kernel/src/mm/pmm/numa.c)
 target_include_directories(test_capability_ipc PRIVATE ../kernel/include)
@@ -408,61 +410,68 @@ add_executable(test_netstack_phase2
 )
 target_include_directories(test_netstack_phase2 PRIVATE ../services/netstack/src ../lib/packet/include)
 add_test(NAME test_netstack_phase2 COMMAND test_netstack_phase2)
-target_link_options(
-test_panic
-test_stress_concurrency
-test_tlb_shootdown
-test_hal_interrupts
-test_urpc_init_channel
-test_urpc_ring
-test_ipc_async_timeout
-test_automotive_subsys
-test_scheduler
-test_trap_syscall
-test_capability_ipc
-test_device_framework
-test_multikernel_topology
-test_capability_misuse
-test_memory_edgecases
-test_tier_a_integration
-test_riscv_shakti_bsp
-test_ai_governor
-test_ai_kernel_bridge
-test_secure_boot_policy
-test_capability_policy
-test_posix
-test_windows_compat_init
-test_subsys_manager
-test_vm_stress
-test_ipc_fuzz
-test_ipc_sync_sender_wakeup
-test_ipc_sync_receiver_wakeup
-test_ipc_multiple_waiters_fifo
-test_ipc_no_spurious_self_wakeup
-test_security_isolation
-test_bench_ipc
-test_bench_sched
-test_bench_sched_timer_tick
-test_bench_zswap
-test_vfs_storage
-test_vfs_file_caps
-test_object_store
-test_subsystem_profile
-test_builtin_drivers_profile
-test_integration_core_subsys
-test_profile_edge
-test_scheduler_hello_world
-test_dma_iommu
-test_smp_hal
-test_pmm_production
-test_benchmark_hw_caps
-test_syscall_abi
-test_elf_parser
-test_vfs_ramfs
-test_vmm_aspace
-test_pt_common_mm
-test_pt_x86_64_mm
-test_netstack_phase2 PRIVATE "-nostdlib" "-no-pie" "-fno-pie" "-no-pie")
+set(BHARAT_NOSTDLIB_TEST_TARGETS
+    test_panic
+    test_stress_concurrency
+    test_tlb_shootdown
+    test_hal_interrupts
+    test_urpc_init_channel
+    test_urpc_ring
+    test_ipc_async_timeout
+    test_automotive_subsys
+    test_scheduler
+    test_trap_syscall
+    test_capability_ipc
+    test_device_framework
+    test_multikernel_topology
+    test_capability_misuse
+    test_memory_edgecases
+    test_tier_a_integration
+    test_riscv_shakti_bsp
+    test_ai_governor
+    test_ai_kernel_bridge
+    test_secure_boot_policy
+    test_capability_policy
+    test_posix
+    test_windows_compat_init
+    test_subsys_manager
+    test_vm_stress
+    test_ipc_fuzz
+    test_ipc_sync_sender_wakeup
+    test_ipc_sync_receiver_wakeup
+    test_ipc_multiple_waiters_fifo
+    test_ipc_no_spurious_self_wakeup
+    test_security_isolation
+    test_bench_ipc
+    test_bench_sched
+    test_bench_sched_timer_tick
+    test_bench_zswap
+    test_vfs_storage
+    test_vfs_file_caps
+    test_object_store
+    test_subsystem_profile
+    test_builtin_drivers_profile
+    test_integration_core_subsys
+    test_profile_edge
+    test_scheduler_hello_world
+    test_dma_iommu
+    test_smp_hal
+    test_pmm_production
+    test_benchmark_hw_caps
+    test_syscall_abi
+    test_elf_parser
+    test_vfs_ramfs
+    test_vmm_aspace
+    test_pt_common_mm
+    test_pt_x86_64_mm
+    test_netstack_phase2
+)
+
+foreach(test_target IN LISTS BHARAT_NOSTDLIB_TEST_TARGETS)
+    if(TARGET ${test_target})
+        target_link_options(${test_target} PRIVATE "-nostdlib" "-no-pie" "-fno-pie" "-no-pie")
+    endif()
+endforeach()
 
 # Message/Wire Tests
 add_executable(test_wire_format test_wire_format.c)
