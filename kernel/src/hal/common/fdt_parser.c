@@ -1,5 +1,6 @@
 #include "hal/hal_boot.h"
 #include "hal/hal.h"
+#include "hal/fdt_parser.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -9,8 +10,8 @@
 #define FDT_PROP       0x00000003
 #define FDT_NOP        0x00000004
 #define FDT_END        0x00000009
-  
-  
+
+
 
 static inline uint32_t fdt32_to_cpu(uint32_t val) {
     return ((val >> 24) & 0xff) |
@@ -275,11 +276,11 @@ int fdt_parse_discovery(const void* fdt_ptr, system_discovery_t* discovery) {
     int is_pcie = 0;
     int is_smmuv3 = 0;
     int is_pmu = 0;
-  
-  
-  
-  
-  
+
+
+
+
+
 
 
 

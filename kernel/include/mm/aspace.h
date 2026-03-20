@@ -46,7 +46,8 @@ typedef struct vm_address_space {
     phys_addr_t root_pt;     // Hardware Page-Table Root (hal_pt compatible)
     spinlock_t lock;         // Serialization lock
 
-    volatile uint64_t tlb_seq; // Monotonically increasing sequence for TLB shootdowns
+    volatile uint64_t tlb_gen;       // Epoch generation for TLB shootdowns
+    volatile uint64_t active_mask;   // Bitmask of CPUs currently running this aspace
 
     vm_region_t *regions_tree_root; // Root of the augmented RB-tree
     vm_region_t *regions;           // Head of region list for iteration

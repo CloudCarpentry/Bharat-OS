@@ -94,6 +94,32 @@ void ktest_hal_pt_run(void) {
     active_hal_pt->destroy_address_space(new_as);
     mm_free_page(test_paddr);
 
+    // Test 8: Large Page Mapping (2MB)
+    if (active_hal_pt->map_range) {
+        phys_addr_t huge_as = active_hal_pt->create_address_space(0);
+        if (huge_as != 0) {
+            virt_addr_t huge_vaddr = 0x40000000;
+            phys_addr_t huge_paddr = 0x80000000; // Mock aligned physical address
+
+            int huge_res = active_hal_pt->map_range(huge_as, huge_vaddr, huge_paddr, 0x200000, HAL_PT_FLAG_READ | HAL_PT_FLAG_WRITE | HAL_PT_FLAG_LARGE_2M);
+            if (huge_res == 0) {
+                phys_addr_t q_pa = 0;
+                uint32_t q_flags = 0;
+                size_t q_size = 0;
+                int q_res = active_hal_pt->query_mapping(huge_as, huge_vaddr, &q_pa, &q_size, &q_flags);
+
+                if (q_res == 0 && q_size == 0x200000 && (q_flags & HAL_PT_FLAG_LARGE_2M)) {
+                    KPRINT("PASS: Large Page 2MB Mapping\n");
+                } else {
+                    KPRINT("FAIL: Large Page 2MB query failed or returned wrong size/flags\n");
+                }
+            } else {
+                KPRINT("FAIL: map_range for 2MB failed\n");
+            }
+            active_hal_pt->destroy_address_space(huge_as);
+        }
+    }
+
     KPRINT("PASS: HAL PT Conformance Tests\n");
     return;
 }
