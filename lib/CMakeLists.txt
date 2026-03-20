@@ -26,8 +26,8 @@ add_subdirectory(runtime)
 
 if(BHARAT_BUILD_NETWORK_STUBS)
     add_subdirectory(net)
-    add_subdirectory(packet)
 endif()
+add_subdirectory(packet)
 
 # ---------------------------------------------------------
 # bharat_libmsg (Wire/Validation/Encoding)
