@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 project(BharatOS_Lib_Runtime C ASM)
 
 # Add the lib/runtime static library
-add_library(bharat_libruntime STATIC src/runtime.c)
+add_library(bharat_libruntime STATIC src/runtime.c src/freestanding_string.c)
 
 # Set the public include directory
 target_include_directories(bharat_libruntime PUBLIC include)

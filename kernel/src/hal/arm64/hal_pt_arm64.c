@@ -137,7 +137,7 @@ static phys_addr_t arm64_pt_create_address_space(phys_addr_t kernel_root_table) 
         return 0;
     }
 
-    pt_t* pgd = (pt_t*)phys_to_virt_linear(root);
+    pt_t* pgd = (pt_t*)physmap_phys_to_virt(root);
     for (int i = 0; i < 512; i++) {
         pgd->entries[i] = 0;
     }
@@ -147,7 +147,7 @@ static phys_addr_t arm64_pt_create_address_space(phys_addr_t kernel_root_table) 
     // However, Bharat-OS currently uses the lower half for kernel code/data as well (e.g. 0x40000000).
     // So we copy the entire PGD for now to ensure kernel continuity across address spaces.
     if (kernel_root_table != 0U) {
-        pt_t* kernel_pgd = (pt_t*)phys_to_virt_linear(kernel_root_table);
+        pt_t* kernel_pgd = (pt_t*)physmap_phys_to_virt(kernel_root_table);
         for(int i = 0; i < 512; i++) {
             pgd->entries[i] = kernel_pgd->entries[i];
         }
@@ -160,7 +160,7 @@ static void arm64_pt_destroy_recursive(phys_addr_t table, int level) {
     if (!table) return;
 
     if (level > 1) {
-        pt_t* pt = (pt_t*)phys_to_virt_linear(table);
+        pt_t* pt = (pt_t*)physmap_phys_to_virt(table);
         int max_idx = (level == 4) ? 256 : 512; // Free only bottom half (User) of PGD
         for (int i = 0; i < max_idx; i++) {
             if (pt->entries[i] & ARM64_PT_VALID) {
@@ -192,37 +192,37 @@ static int arm64_pt_map_4k(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t p
     uint64_t pmd_idx = (aligned_vaddr >> 21) & 0x1FF;
     uint64_t pte_idx = (aligned_vaddr >> 12) & 0x1FF;
 
-    pt_t* pgd = (pt_t*)phys_to_virt_linear(root_pt);
+    pt_t* pgd = (pt_t*)physmap_phys_to_virt(root_pt);
 
     uint64_t table_flags = ARM64_PT_VALID | ARM64_PT_TABLE; // Intermediate tables
 
     if ((pgd->entries[pgd_idx] & ARM64_PT_VALID) == 0) {
         phys_addr_t new_pud = mm_alloc_page(NUMA_NODE_ANY);
         if (!new_pud) return -2;
-        pt_t* pud_ptr = (pt_t*)phys_to_virt_linear(new_pud);
+        pt_t* pud_ptr = (pt_t*)physmap_phys_to_virt(new_pud);
         for(int i=0; i<512; i++) pud_ptr->entries[i] = 0;
         pgd->entries[pgd_idx] = new_pud | table_flags;
     }
 
-    pt_t* pud = (pt_t*)phys_to_virt_linear(pgd->entries[pgd_idx] & ARM64_PAGE_MASK);
+    pt_t* pud = (pt_t*)physmap_phys_to_virt(pgd->entries[pgd_idx] & ARM64_PAGE_MASK);
     if ((pud->entries[pud_idx] & ARM64_PT_VALID) == 0) {
         phys_addr_t new_pmd = mm_alloc_page(NUMA_NODE_ANY);
         if (!new_pmd) return -2;
-        pt_t* pmd_ptr = (pt_t*)phys_to_virt_linear(new_pmd);
+        pt_t* pmd_ptr = (pt_t*)physmap_phys_to_virt(new_pmd);
         for(int i=0; i<512; i++) pmd_ptr->entries[i] = 0;
         pud->entries[pud_idx] = new_pmd | table_flags;
     }
 
-    pt_t* pmd = (pt_t*)phys_to_virt_linear(pud->entries[pud_idx] & ARM64_PAGE_MASK);
+    pt_t* pmd = (pt_t*)physmap_phys_to_virt(pud->entries[pud_idx] & ARM64_PAGE_MASK);
     if ((pmd->entries[pmd_idx] & ARM64_PT_VALID) == 0) {
         phys_addr_t new_pte = mm_alloc_page(NUMA_NODE_ANY);
         if (!new_pte) return -2;
-        pt_t* pte_ptr = (pt_t*)phys_to_virt_linear(new_pte);
+        pt_t* pte_ptr = (pt_t*)physmap_phys_to_virt(new_pte);
         for(int i=0; i<512; i++) pte_ptr->entries[i] = 0;
         pmd->entries[pmd_idx] = new_pte | table_flags;
     }
 
-    pt_t* pte = (pt_t*)phys_to_virt_linear(pmd->entries[pmd_idx] & ARM64_PAGE_MASK);
+    pt_t* pte = (pt_t*)physmap_phys_to_virt(pmd->entries[pmd_idx] & ARM64_PAGE_MASK);
 
     uint64_t pte_flags = flags_to_arm64(flags);
     pte->entries[pte_idx] = aligned_paddr | pte_flags;
@@ -240,13 +240,13 @@ static int arm64_pt_unmap_4k(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t
     uint64_t pmd_idx = (aligned_vaddr >> 21) & 0x1FF;
     uint64_t pte_idx = (aligned_vaddr >> 12) & 0x1FF;
 
-    pt_t* pgd = (pt_t*)phys_to_virt_linear(root_pt);
+    pt_t* pgd = (pt_t*)physmap_phys_to_virt(root_pt);
     if ((pgd->entries[pgd_idx] & ARM64_PT_VALID) == 0) return -2;
-    pt_t* pud = (pt_t*)phys_to_virt_linear(pgd->entries[pgd_idx] & ARM64_PAGE_MASK);
+    pt_t* pud = (pt_t*)physmap_phys_to_virt(pgd->entries[pgd_idx] & ARM64_PAGE_MASK);
     if ((pud->entries[pud_idx] & ARM64_PT_VALID) == 0) return -2;
-    pt_t* pmd = (pt_t*)phys_to_virt_linear(pud->entries[pud_idx] & ARM64_PAGE_MASK);
+    pt_t* pmd = (pt_t*)physmap_phys_to_virt(pud->entries[pud_idx] & ARM64_PAGE_MASK);
     if ((pmd->entries[pmd_idx] & ARM64_PT_VALID) == 0) return -2;
-    pt_t* pte = (pt_t*)phys_to_virt_linear(pmd->entries[pmd_idx] & ARM64_PAGE_MASK);
+    pt_t* pte = (pt_t*)physmap_phys_to_virt(pmd->entries[pmd_idx] & ARM64_PAGE_MASK);
 
     if ((pte->entries[pte_idx] & ARM64_PT_VALID) == 0) return -2;
 
@@ -283,13 +283,13 @@ static int arm64_pt_protect_4k(phys_addr_t root_pt, virt_addr_t vaddr, uint32_t 
     uint64_t pmd_idx = (aligned_vaddr >> 21) & 0x1FF;
     uint64_t pte_idx = (aligned_vaddr >> 12) & 0x1FF;
 
-    pt_t* pgd = (pt_t*)phys_to_virt_linear(root_pt);
+    pt_t* pgd = (pt_t*)physmap_phys_to_virt(root_pt);
     if ((pgd->entries[pgd_idx] & ARM64_PT_VALID) == 0) return -2;
-    pt_t* pud = (pt_t*)phys_to_virt_linear(pgd->entries[pgd_idx] & ARM64_PAGE_MASK);
+    pt_t* pud = (pt_t*)physmap_phys_to_virt(pgd->entries[pgd_idx] & ARM64_PAGE_MASK);
     if ((pud->entries[pud_idx] & ARM64_PT_VALID) == 0) return -2;
-    pt_t* pmd = (pt_t*)phys_to_virt_linear(pud->entries[pud_idx] & ARM64_PAGE_MASK);
+    pt_t* pmd = (pt_t*)physmap_phys_to_virt(pud->entries[pud_idx] & ARM64_PAGE_MASK);
     if ((pmd->entries[pmd_idx] & ARM64_PT_VALID) == 0) return -2;
-    pt_t* pte = (pt_t*)phys_to_virt_linear(pmd->entries[pmd_idx] & ARM64_PAGE_MASK);
+    pt_t* pte = (pt_t*)physmap_phys_to_virt(pmd->entries[pmd_idx] & ARM64_PAGE_MASK);
 
     if ((pte->entries[pte_idx] & ARM64_PT_VALID) == 0) return -2;
 
@@ -315,13 +315,13 @@ static int arm64_pt_query_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr
     uint64_t pmd_idx = (aligned_vaddr >> 21) & 0x1FF;
     uint64_t pte_idx = (aligned_vaddr >> 12) & 0x1FF;
 
-    pt_t* pgd = (pt_t*)phys_to_virt_linear(root_pt);
+    pt_t* pgd = (pt_t*)physmap_phys_to_virt(root_pt);
     if ((pgd->entries[pgd_idx] & ARM64_PT_VALID) == 0) return -2;
-    pt_t* pud = (pt_t*)phys_to_virt_linear(pgd->entries[pgd_idx] & ARM64_PAGE_MASK);
+    pt_t* pud = (pt_t*)physmap_phys_to_virt(pgd->entries[pgd_idx] & ARM64_PAGE_MASK);
     if ((pud->entries[pud_idx] & ARM64_PT_VALID) == 0) return -2;
-    pt_t* pmd = (pt_t*)phys_to_virt_linear(pud->entries[pud_idx] & ARM64_PAGE_MASK);
+    pt_t* pmd = (pt_t*)physmap_phys_to_virt(pud->entries[pud_idx] & ARM64_PAGE_MASK);
     if ((pmd->entries[pmd_idx] & ARM64_PT_VALID) == 0) return -2;
-    pt_t* pte = (pt_t*)phys_to_virt_linear(pmd->entries[pmd_idx] & ARM64_PAGE_MASK);
+    pt_t* pte = (pt_t*)physmap_phys_to_virt(pmd->entries[pmd_idx] & ARM64_PAGE_MASK);
 
     if ((pte->entries[pte_idx] & ARM64_PT_VALID) == 0) return -2;
 
@@ -394,6 +394,28 @@ void arm64_init_hardening(void) {
     if ((mmfr1 >> 20) & 0xF) { // PAN supported
         // asm volatile("msr pan, #1"); // Turn on PAN
     }
+}
+
+static translate_backend_kind_t arm64_backend_type(void) { return TRANSLATE_BACKEND_MMU; }
+static translate_exec_class_t arm64_exec_class(void) { return TRANSLATE_EXEC_MMU_FULL; }
+static void* arm64_phys_to_virt(phys_addr_t phys) { return (void*)(phys + g_kernel_virt_offset); }
+static phys_addr_t arm64_virt_to_phys(const void* virt) { return (phys_addr_t)((uintptr_t)virt - g_kernel_virt_offset); }
+static bool arm64_has_linear_physmap(void) { return true; }
+static phys_addr_t arm64_linear_physmap_base(void) { return g_kernel_virt_offset; }
+static phys_addr_t arm64_linear_physmap_limit(void) { return g_kernel_virt_offset + g_kernel_physmap_size; }
+
+static const hal_translate_ops_t arm64_translate_ops = {
+    .backend_type = arm64_backend_type,
+    .exec_class = arm64_exec_class,
+    .phys_to_virt = arm64_phys_to_virt,
+    .virt_to_phys = arm64_virt_to_phys,
+    .has_linear_physmap = arm64_has_linear_physmap,
+    .linear_physmap_base = arm64_linear_physmap_base,
+    .linear_physmap_limit = arm64_linear_physmap_limit,
+};
+
+const hal_translate_ops_t* hal_translate_ops(void) {
+    return &arm64_translate_ops;
 }
 
 hal_pt_ops_t arm64_hal_pt_ops = {

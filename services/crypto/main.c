@@ -4,12 +4,7 @@
 
 //#define printf(...)
 
-void *memset(void *s, int c, unsigned long n) {
-    unsigned char *p = s;
-    while(n--) *p++ = (unsigned char)c;
-    return s;
-}
-
+#include <bharat/runtime/freestanding_string.h>
 #include "crypto/crypto_uapi.h"
 #include "crypto_service.h"
 

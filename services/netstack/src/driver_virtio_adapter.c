@@ -1,6 +1,7 @@
 #include "driver_virtio_adapter.h"
 #include "ethernet.h"
 #include <stddef.h>
+#include <bharat/runtime/freestanding_string.h>
 
 #include <bharat/packet/packet.h>
 

@@ -2,6 +2,7 @@
 #include "../../include/hal/hal_dma.h"
 #include "../../include/mm/dma.h"
 #include "../../include/mm.h"
+#include "../../include/mm/physmap.h"
 #include "../../include/numa.h"
 #include "../../include/spinlock.h"
 
@@ -139,7 +140,7 @@ int dma_buffer_alloc(size_t size, uint32_t flags, dma_buffer_t **out) {
     buf->phys_addr = pa;
     buf->size = size;
     buf->flags = flags;
-    buf->cpu_addr = (void*)(uintptr_t)pa; // Assuming P2V is 1:1 for kernel space
+    buf->cpu_addr = physmap_phys_to_virt(pa);
     buf->iova = 0;
     buf->pin_count = 0;
     buf->owner_as_id = 0;
