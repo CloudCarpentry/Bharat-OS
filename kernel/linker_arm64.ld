@@ -8,7 +8,7 @@ SECTIONS
 
     .text ALIGN(4096) :
     {
-        . = ALIGN(16);
+        KEEP(*(.text.init))
         *(.text)
         *(.text.*)
         . = ALIGN(16);

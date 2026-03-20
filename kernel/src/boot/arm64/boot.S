@@ -7,6 +7,24 @@
 .section .text.init
 .global _start
 _start:
+    /* ARM64 Linux Kernel Image Header (Must be exactly 64 bytes) */
+    b       .real_start         /* 0x00: code0 */
+    .word   0                   /* 0x04: code1 (padding) */
+    .quad   0x80000             /* 0x08: text_offset */
+    .quad   0x0                 /* 0x10: image_size */
+    .quad   0x0                 /* 0x18: flags */
+    .quad   0x0                 /* 0x20: res2 */
+    .quad   0x0                 /* 0x28: res3 */
+    .quad   0x0                 /* 0x30: res4 */
+    .ascii  "ARM\x64"            /* 0x38: magic */
+    .word   0x0                 /* 0x3c: res5 */
+
+.real_start:
+    /* Direct MMIO write to PL011 for early debug confirmation */
+    mov x15, #0x09000000
+    mov x16, #'!'
+    str w16, [x15]
+
     /* Read CPU ID (MPIDR_EL1) and only let CPU 0 continue for now */
     mrs x1, mpidr_el1
     and x1, x1, #0xFF
