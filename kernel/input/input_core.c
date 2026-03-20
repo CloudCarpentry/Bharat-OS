@@ -1,5 +1,4 @@
 #include "bharat/input/input.h"
-#include <string.h>
 
 #define BHARAT_MAX_INPUT_DEVS 8
 

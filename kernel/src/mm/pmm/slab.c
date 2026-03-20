@@ -92,6 +92,17 @@ void* kmalloc(size_t size) {
     return NULL;
 }
 
+// Forward declare memset for kzalloc
+extern void *memset(void *dest, int c, size_t n);
+
+void* kzalloc(size_t size) {
+    void* ptr = kmalloc(size);
+    if (ptr) {
+        memset(ptr, 0, size);
+    }
+    return ptr;
+}
+
 void kfree(void* ptr) {
     if (!ptr) return;
     phys_addr_t paddr = (phys_addr_t)(uintptr_t)ptr;
