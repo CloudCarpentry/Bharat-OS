@@ -2,6 +2,8 @@
 .global arch_context_switch
 .type arch_context_switch, @function
 
+// x0 = prev cpu_context_t*
+// x1 = next cpu_context_t*
 arch_context_switch:
     cbz x0, .L_restore
 
@@ -16,18 +18,23 @@ arch_context_switch:
     mrs x9, daif
     str x9,       [x0, #96]
 
-    // Save d8-d15 (floating point callee-saved)
-    stp d8, d9,   [x0, #144]
-    stp d10, d11, [x0, #160]
-    stp d12, d13, [x0, #176]
-    stp d14, d15, [x0, #192]
-
     str x30,      [x0, #128]
 
     mov x9, sp
     str x9,       [x0, #136]
 
+    // Lazy ext-state save hook
+    stp x0, x1, [sp, #-16]!
+    bl arch_ext_state_context_switch_out
+    ldp x0, x1, [sp], #16
+
 .L_restore:
+    // Lazy ext-state restore hook
+    stp x0, x1, [sp, #-16]!
+    mov x0, x1
+    bl arch_ext_state_context_switch_in
+    ldp x0, x1, [sp], #16
+
     ldr x9,       [x1, #136]
     mov sp, x9
 
@@ -35,12 +42,6 @@ arch_context_switch:
 
     ldr x9,       [x1, #96]
     msr daif, x9
-
-    // Restore d8-d15 (floating point callee-saved)
-    ldp d8, d9,   [x1, #144]
-    ldp d10, d11, [x1, #160]
-    ldp d12, d13, [x1, #176]
-    ldp d14, d15, [x1, #192]
 
     ldp x19, x20, [x1, #0]
     ldp x21, x22, [x1, #16]
@@ -59,5 +60,65 @@ arch_context_switch:
     bl arch_post_switch
     ldp x29, x30, [sp], #16
     ldp x0, x1, [sp], #16
+
+    ret
+
+.global arm64_fp_state_save
+.type arm64_fp_state_save, @function
+// x0 = arch_ext_state_t*
+// offset 16 is where qregs start
+arm64_fp_state_save:
+    add x1, x0, #16
+    stp q0, q1, [x1, #0]
+    stp q2, q3, [x1, #32]
+    stp q4, q5, [x1, #64]
+    stp q6, q7, [x1, #96]
+    stp q8, q9, [x1, #128]
+    stp q10, q11, [x1, #160]
+    stp q12, q13, [x1, #192]
+    stp q14, q15, [x1, #224]
+    stp q16, q17, [x1, #256]
+    stp q18, q19, [x1, #288]
+    stp q20, q21, [x1, #320]
+    stp q22, q23, [x1, #352]
+    stp q24, q25, [x1, #384]
+    stp q26, q27, [x1, #416]
+    stp q28, q29, [x1, #448]
+    stp q30, q31, [x1, #480]
+
+    mrs x2, fpsr
+    str w2, [x0, #528]
+    mrs x3, fpcr
+    str w3, [x0, #532]
+
+    ret
+
+.global arm64_fp_state_restore
+.type arm64_fp_state_restore, @function
+// x0 = arch_ext_state_t*
+// offset 16 is where qregs start
+arm64_fp_state_restore:
+    add x1, x0, #16
+    ldp q0, q1, [x1, #0]
+    ldp q2, q3, [x1, #32]
+    ldp q4, q5, [x1, #64]
+    ldp q6, q7, [x1, #96]
+    ldp q8, q9, [x1, #128]
+    ldp q10, q11, [x1, #160]
+    ldp q12, q13, [x1, #192]
+    ldp q14, q15, [x1, #224]
+    ldp q16, q17, [x1, #256]
+    ldp q18, q19, [x1, #288]
+    ldp q20, q21, [x1, #320]
+    ldp q22, q23, [x1, #352]
+    ldp q24, q25, [x1, #384]
+    ldp q26, q27, [x1, #416]
+    ldp q28, q29, [x1, #448]
+    ldp q30, q31, [x1, #480]
+
+    ldr w2, [x0, #528]
+    msr fpsr, x2
+    ldr w3, [x0, #532]
+    msr fpcr, x3
 
     ret

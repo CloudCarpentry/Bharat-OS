@@ -1,71 +1,158 @@
 #include "../../include/arch/arch_ext_state.h"
 #include "../../include/sched.h"
 #include "../../include/slab.h"
+#include <stdint.h>
+#include <stdbool.h>
 
-static arch_ext_state_desc_t g_arch_ext_desc = {
-    .size = 0,
-    .align = 0,
-    .flags = ARCH_EXT_NONE,
-    .eager = true,
-    .lazy_allowed = false
+#define RISCV_SSTATUS_FS_SHIFT 13
+#define RISCV_SSTATUS_FS_MASK  (3UL << RISCV_SSTATUS_FS_SHIFT)
+#define RISCV_SSTATUS_FS_OFF   (0UL << RISCV_SSTATUS_FS_SHIFT)
+#define RISCV_SSTATUS_FS_INIT  (1UL << RISCV_SSTATUS_FS_SHIFT)
+#define RISCV_SSTATUS_FS_CLEAN (2UL << RISCV_SSTATUS_FS_SHIFT)
+#define RISCV_SSTATUS_FS_DIRTY (3UL << RISCV_SSTATUS_FS_SHIFT)
+
+struct arch_ext_state {
+    uint32_t flags;
+    uint32_t state_flags;
+    uint32_t owner_cpu;
+    uint32_t reserved;
+    uint64_t fpr[32];
+    uint32_t fcsr;
+    uint32_t pad0;
+    void *rvv_blob;
+    uint32_t rvv_len;
+    uint32_t pad1;
 };
 
-void arch_ext_state_boot_init(void) {
-    // Stub: Calculate XSAVE area size based on capabilities
-    g_arch_ext_desc.size = 512; // Sufficient size
-    g_arch_ext_desc.align = 16; // 16-byte alignment
-    g_arch_ext_desc.flags = ARCH_EXT_NONE;
+static const arch_ext_state_desc_t g_desc = {
+    .size = sizeof(arch_ext_state_t),
+    .align = 16,
+    .flags = ARCH_EXT_FP_SIMD,
+    .eager = false,
+    .lazy_allowed = true,
+};
+
+static struct kthread *g_fp_owner;
+
+extern void riscv_fp_state_save(arch_ext_state_t *st);
+extern void riscv_fp_state_restore(const arch_ext_state_t *st);
+
+static inline uint64_t riscv_read_sstatus(void) {
+    uint64_t v;
+    __asm__ volatile("csrr %0, sstatus" : "=r"(v));
+    return v;
 }
 
-const arch_ext_state_desc_t *arch_ext_state_desc(void) {
-    return &g_arch_ext_desc;
+static inline void riscv_write_sstatus(uint64_t v) {
+    __asm__ volatile("csrw sstatus, %0" :: "r"(v) : "memory");
 }
 
-bool arch_ext_state_enabled(void) {
-    return (g_arch_ext_desc.size > 0);
+static inline void riscv_set_fs(uint64_t fs_bits) {
+    uint64_t s = riscv_read_sstatus();
+    s &= ~RISCV_SSTATUS_FS_MASK;
+    s |= fs_bits;
+    riscv_write_sstatus(s);
 }
 
-int arch_ext_state_thread_init(kthread_t *t) {
-    const arch_ext_state_desc_t *d = arch_ext_state_desc();
-    if (!d || d->size == 0) {
-        ((cpu_context_t*)t->cpu_context)->ext = NULL;
-        return 0;
-    }
+const arch_ext_state_desc_t *arch_ext_state_desc(void) { return &g_desc; }
+bool arch_ext_state_enabled(void) { return true; }
+void arch_ext_state_boot_init(void) { riscv_set_fs(RISCV_SSTATUS_FS_OFF); }
 
-    // Allocate aligned extended state memory
-    void *mem = kmem_aligned_alloc(d->align, d->size);
-    if (!mem) {
-        return -1; // -ENOMEM equivalent
-    }
+int arch_ext_state_thread_init(struct kthread *t) {
+    if (!t || !t->cpu_context) return -1;
+    cpu_context_t *ctx = (cpu_context_t *)t->cpu_context;
 
-    // memset is safe if not empty
-    unsigned char *ptr = (unsigned char *)mem;
-    for(size_t i = 0; i < d->size; i++) {
-        ptr[i] = 0;
-    }
+    arch_ext_state_t *st = (arch_ext_state_t *)kzalloc(sizeof(*st));
+    if (!st) return -1;
 
-    ((cpu_context_t*)t->cpu_context)->ext = (arch_ext_state_t *)mem;
+    st->flags = ARCH_EXT_FP_SIMD;
+    st->state_flags = ARCH_EXT_STATE_TRAP_ENABLED;
+    st->owner_cpu = UINT32_MAX;
+    ctx->ext = st;
     return 0;
 }
 
-void arch_ext_state_thread_destroy(kthread_t *t) {
-    if (t && t->cpu_context) {
-        cpu_context_t *ctx = (cpu_context_t*)t->cpu_context;
-        if (ctx->ext) {
-            kmem_aligned_free(ctx->ext);
-            ctx->ext = NULL;
-        }
+void arch_ext_state_thread_destroy(struct kthread *t) {
+    if (!t || !t->cpu_context) return;
+    cpu_context_t *ctx = (cpu_context_t *)t->cpu_context;
+    if (g_fp_owner == t) {
+        riscv_set_fs(RISCV_SSTATUS_FS_OFF);
+        g_fp_owner = NULL;
+    }
+    kfree(ctx->ext);
+    ctx->ext = NULL;
+}
+
+void arch_ext_state_context_switch_out(void *prev_ctx_void) {
+    cpu_context_t *ctx = (cpu_context_t *)prev_ctx_void;
+    if (!ctx || !ctx->ext) return;
+
+    if (g_fp_owner == sched_current_thread()) {
+        arch_ext_state_t *st = ctx->ext;
+        riscv_set_fs(RISCV_SSTATUS_FS_DIRTY);
+        riscv_fp_state_save(st);
+        st->state_flags |= ARCH_EXT_STATE_VALID;
+        st->state_flags &= ~ARCH_EXT_STATE_LOADED;
+        g_fp_owner = NULL;
+        riscv_set_fs(RISCV_SSTATUS_FS_OFF);
     }
 }
 
-void arch_ext_state_save(kthread_t *t) {
-    if (!t || !((cpu_context_t*)t->cpu_context)->ext) return;
-    // Stub: Eager XSAVE/FXSAVE to t->ext
+void arch_ext_state_context_switch_in(void *next_ctx_void) {
+    (void)next_ctx_void;
+    riscv_set_fs(RISCV_SSTATUS_FS_OFF);
 }
 
-void arch_ext_state_restore(kthread_t *t) {
-    if (!t || !((cpu_context_t*)t->cpu_context)->ext) return;
-    // Stub: Eager XRSTOR/FXRSTOR from t->ext
+bool arch_ext_state_handle_fault(struct kthread *t) {
+    if (!t || !t->cpu_context) return false;
+    cpu_context_t *ctx = (cpu_context_t *)t->cpu_context;
+    arch_ext_state_t *st = ctx->ext;
+    if (!st) return false;
+
+    if (g_fp_owner && g_fp_owner != t) {
+        cpu_context_t *owner_ctx = (cpu_context_t *)g_fp_owner->cpu_context;
+        arch_ext_state_t *owner_st = owner_ctx ? owner_ctx->ext : NULL;
+        if (owner_st) {
+            riscv_set_fs(RISCV_SSTATUS_FS_DIRTY);
+            riscv_fp_state_save(owner_st);
+            owner_st->state_flags |= ARCH_EXT_STATE_VALID;
+            owner_st->state_flags &= ~ARCH_EXT_STATE_LOADED;
+        }
+    }
+
+    if (st->state_flags & ARCH_EXT_STATE_VALID) {
+        riscv_set_fs(RISCV_SSTATUS_FS_DIRTY);
+        riscv_fp_state_restore(st);
+        riscv_set_fs(RISCV_SSTATUS_FS_CLEAN);
+    } else {
+        riscv_set_fs(RISCV_SSTATUS_FS_INIT);
+        __asm__ volatile("csrwi fcsr, 0" ::: "memory");
+        st->state_flags |= ARCH_EXT_STATE_VALID;
+    }
+
+    st->state_flags |= ARCH_EXT_STATE_LOADED;
+    g_fp_owner = t;
+    return true;
+}
+
+void arch_ext_state_save(struct kthread *t) {
+    if (!t || !t->cpu_context) return;
+    cpu_context_t *ctx = (cpu_context_t *)t->cpu_context;
+    arch_ext_state_t *st = ctx->ext;
+    if (!st) return;
+
+    if (g_fp_owner == t) {
+        riscv_set_fs(RISCV_SSTATUS_FS_DIRTY);
+        riscv_fp_state_save(st);
+        st->state_flags |= ARCH_EXT_STATE_VALID;
+        st->state_flags &= ~ARCH_EXT_STATE_LOADED;
+        g_fp_owner = NULL;
+        riscv_set_fs(RISCV_SSTATUS_FS_OFF);
+    }
+}
+
+void arch_ext_state_restore(struct kthread *t) {
+    // Eager restore is not used for lazy FP
 }
 
 void arch_kernel_fpu_begin(void) {
