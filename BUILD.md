@@ -213,5 +213,8 @@ To ensure early kernel logs are visible during UI development, the build scripts
 ```bash
 # WSL / Linux / macOS (Bash)
 # Build and run ARM64 with GUI enabled
-./tools/build.sh --arch=arm64 --clean --run --boot-gui=ON
+./tools/build.sh -Arch arm64 -Clean -Run -BootGui ON
+
+# Optionally enable dual-serial output on both stdio and the virtual console
+./tools/build.sh -Arch x86_64 -Clean -Run -BootGui ON -DualSerial
 ```

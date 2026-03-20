@@ -19,27 +19,116 @@ PROFILE="desktop"
 PERSONALITY="none"
 
 # Parse arguments
-for arg in "$@"; do
-    case $arg in
-        --arch=*) ARCH="${arg#*=}" ;;
-        --board=*) BOARD="${arg#*=}" ;;
-        --toolchain=*) TOOLCHAIN_OVERRIDE="${arg#*=}" ;;
-        --clean) CLEAN=true ;;
-        --run)   RUN=true   ;;
-        --debug) DEBUG=true ;;
-        --payload) PAYLOAD=true ;;
-        --flash) FLASH=true ;;
-        --boot-gui=*) BOOT_GUI="${arg#*=}" ;;
-        --hw=*) BOOT_HW="${arg#*=}" ;;
-        --machine=*) MACHINE="${arg#*=}" ;;
-        --tier=*) BOOT_TIER="${arg#*=}" ;;
-        --profile=*) PROFILE="${arg#*=}" ;;
-        --personality=*) PERSONALITY="${arg#*=}" ;;
+DUAL_SERIAL=false
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -Arch|--arch)
+            ARCH="$2"
+            ARCH_SET=true
+            shift 2
+            ;;
+        --arch=*)
+            ARCH="${1#*=}"
+            ARCH_SET=true
+            shift
+            ;;
+        -Board|--board)
+            BOARD="$2"
+            shift 2
+            ;;
+        --board=*)
+            BOARD="${1#*=}"
+            shift
+            ;;
+        -Toolchain|--toolchain)
+            TOOLCHAIN_OVERRIDE="$2"
+            shift 2
+            ;;
+        --toolchain=*)
+            TOOLCHAIN_OVERRIDE="${1#*=}"
+            shift
+            ;;
+        -Clean|--clean)
+            CLEAN=true
+            shift
+            ;;
+        -Run|--run)
+            RUN=true
+            shift
+            ;;
+        -Debug|--debug)
+            DEBUG=true
+            shift
+            ;;
+        -Payload|--payload)
+            PAYLOAD=true
+            shift
+            ;;
+        -Flash|--flash)
+            FLASH=true
+            shift
+            ;;
+        -BootGui|--boot-gui)
+            BOOT_GUI="$2"
+            shift 2
+            ;;
+        --boot-gui=*)
+            BOOT_GUI="${1#*=}"
+            shift
+            ;;
+        -Hw|-HardwareProfile|--hw)
+            BOOT_HW="$2"
+            shift 2
+            ;;
+        --hw=*)
+            BOOT_HW="${1#*=}"
+            shift
+            ;;
+        -Machine|--machine)
+            MACHINE="$2"
+            shift 2
+            ;;
+        --machine=*)
+            MACHINE="${1#*=}"
+            shift
+            ;;
+        -Tier|--tier)
+            BOOT_TIER="$2"
+            shift 2
+            ;;
+        --tier=*)
+            BOOT_TIER="${1#*=}"
+            shift
+            ;;
+        -Profile|--profile)
+            PROFILE="$2"
+            shift 2
+            ;;
+        --profile=*)
+            PROFILE="${1#*=}"
+            shift
+            ;;
+        -Personality|--personality)
+            PERSONALITY="$2"
+            shift 2
+            ;;
+        --personality=*)
+            PERSONALITY="${1#*=}"
+            shift
+            ;;
+        -DualSerial|--dual-serial)
+            DUAL_SERIAL=true
+            shift
+            ;;
         *)
-            # If no equal sign, assume first argument is ARCH for backwards compatibility
-            if [[ ! "$arg" == --* ]] && [[ -z "$ARCH_SET" ]]; then
-                 ARCH="$arg"
-                 ARCH_SET=true
+            if [[ ! "$1" == -* ]] && [[ -z "$ARCH_SET" ]]; then
+                ARCH="$1"
+                ARCH_SET=true
+                shift
+            else
+                echo "Unknown option: $1"
+                shift
             fi
             ;;
     esac
@@ -141,7 +230,11 @@ if [ "$RUN" = true ]; then
         SERIAL_ARGS="-serial mon:stdio"
         if [ "$BOOT_GUI" = "ON" ] || [ "$BOOT_GUI" = "true" ] || [ "$BOOT_GUI" = "1" ]; then
             GUI_ARGS="-vga std"
-            SERIAL_ARGS="-serial vc"
+            if [ "$DUAL_SERIAL" = true ]; then
+                SERIAL_ARGS="-serial mon:stdio -serial vc"
+            else
+                SERIAL_ARGS="-serial vc"
+            fi
         else
             GUI_ARGS="-nographic"
         fi
@@ -158,8 +251,11 @@ if [ "$RUN" = true ]; then
         if [ "$BOOT_GUI" = "ON" ] || [ "$BOOT_GUI" = "true" ] || [ "$BOOT_GUI" = "1" ]; then
             # riscv64 virt has no legacy VGA — VirtIO GPU is the correct device
             GUI_ARGS="-device virtio-gpu-pci"
-            # Route serial output only to the virtual console in the QEMU graphical window
-            SERIAL_ARGS="-serial vc"
+            if [ "$DUAL_SERIAL" = true ]; then
+                SERIAL_ARGS="-serial mon:stdio -serial vc"
+            else
+                SERIAL_ARGS="-serial vc"
+            fi
         else
             GUI_ARGS="-nographic"
         fi
@@ -177,8 +273,11 @@ if [ "$RUN" = true ]; then
         if [ "$BOOT_GUI" = "ON" ] || [ "$BOOT_GUI" = "true" ] || [ "$BOOT_GUI" = "1" ]; then
             # arm64 virt has no legacy VGA — VirtIO GPU is the correct device
             GUI_ARGS="-vga none -device virtio-gpu-device -device ramfb"
-            # Route serial output only to the virtual console in the QEMU graphical window
-            SERIAL_ARGS="-serial vc"
+            if [ "$DUAL_SERIAL" = true ]; then
+                SERIAL_ARGS="-serial mon:stdio -serial vc"
+            else
+                SERIAL_ARGS="-serial vc"
+            fi
         else
             GUI_ARGS="-nographic"
         fi
