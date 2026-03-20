@@ -143,7 +143,7 @@ static void kernel_boot_scheduler(void) {
   arch_cpu_caps_init();
   arch_cpu_caps_system_finalize(); // Aggregates system_all and system_any
   hal_discovery_publish_cpu_caps();
-  fastops_dispatch_init();
+  // TODO: wire fastops dispatch initialization once backend selection lands.
   arch_ext_state_boot_init();
 
   // TODO: WIP - CPU capabilities diagnostic code disabled (needs formatted print)
