@@ -32,7 +32,7 @@ typedef struct {
 typedef struct {
     uint32_t node_id;
     uint32_t distance[BHARAT_MAX_NODES]; // Distance to other nodes
-} numa_distance_t;
+} hal_numa_distance_t;
 
 typedef struct {
     uint32_t cpu_count;
@@ -42,7 +42,7 @@ typedef struct {
     mem_topology_t mem_regions[BHARAT_MAX_MEM_REGIONS];
 
     uint32_t node_count;
-    numa_distance_t nodes[BHARAT_MAX_NODES];
+    hal_numa_distance_t nodes[BHARAT_MAX_NODES];
 } system_topology_t;
 
 // --- Interrupt Controllers ---
