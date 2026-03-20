@@ -20,6 +20,7 @@ int mm_vmm_map_page(address_space_t* as, virt_addr_t vaddr, phys_addr_t paddr, u
         uint32_t mmu_flags = 0;
         if (flags & CAP_RIGHT_WRITE) mmu_flags |= MMU_WRITE;
         if (flags & PAGE_USER) mmu_flags |= MMU_USER;
+        if (flags & (CAP_RIGHT_DEVICE_GPU | CAP_RIGHT_DEVICE_NPU)) mmu_flags |= MMU_DEVICE;
         return active_hal_pt->map_page(as->root_pt, vaddr, paddr, mmu_flags);
     }
 
@@ -27,6 +28,7 @@ int mm_vmm_map_page(address_space_t* as, virt_addr_t vaddr, phys_addr_t paddr, u
     uint32_t mmu_flags = 0;
     if (flags & CAP_RIGHT_WRITE) mmu_flags |= MMU_WRITE;
     if (flags & PAGE_USER) mmu_flags |= MMU_USER;
+    if (flags & (CAP_RIGHT_DEVICE_GPU | CAP_RIGHT_DEVICE_NPU)) mmu_flags |= MMU_DEVICE;
 
     int ret = active_hal_pt->map_page(as->root_pt, vaddr, paddr, mmu_flags);
     if (ret == 0) {
@@ -72,16 +74,33 @@ address_space_t kernel_space;
 static int kernel_space_ready = 0;
 static phys_addr_t kernel_root_pt = 0;
 
+static volatile int kernel_space_init_in_progress = 0;
+
 static void ensure_kernel_space_ready(void) {
     if (kernel_space_ready) return;
+    if (kernel_space_init_in_progress) {
+        return; // Avoid recursion if aspace_create calls back
+    }
+
+    kernel_space_init_in_progress = 1;
 
     address_space_t *created = NULL;
     if (aspace_create(&created, 0) == 0 && created) {
-        kernel_space = *created;
+        // Use a volatile ptr loop to copy the structure byte-by-byte.
+        // This avoids compiler-generated SSE/SIMD instructions (like movups)
+        // for large struct assignments which trap on x86_64 during early boot
+        // before the FPU/SSE state is fully initialized.
+        volatile uint8_t *dest = (volatile uint8_t *)&kernel_space;
+        volatile uint8_t *src  = (volatile uint8_t *)created;
+        for (size_t i = 0; i < sizeof(address_space_t); i++) {
+            dest[i] = src[i];
+        }
         kfree(created);
         kernel_root_pt = kernel_space.root_pt;
         kernel_space_ready = 1;
     }
+
+    kernel_space_init_in_progress = 0;
 }
 
 int vmm_init(void) {
@@ -90,7 +109,8 @@ int vmm_init(void) {
 }
 
 phys_addr_t vmm_get_kernel_root(void) {
-    ensure_kernel_space_ready();
+    // Return the current kernel root directly to avoid infinite recursion
+    // when aspace_create is called during bootstrap (which will get 0).
     return kernel_root_pt;
 }
 

@@ -29,8 +29,10 @@ typedef struct {
     uint32_t type;      // 1 = RAM, 2 = Reserved, etc.
 } mem_topology_t;
 
-// Forward declaration provided in numa.h instead of here to prevent conflicts.
-struct numa_distance_t;
+typedef struct {
+    uint32_t node_id;
+    uint32_t distance[BHARAT_MAX_NODES]; // Distance to other nodes
+} hal_numa_distance_t;
 
 typedef struct {
     uint32_t cpu_count;
@@ -40,7 +42,7 @@ typedef struct {
     mem_topology_t mem_regions[BHARAT_MAX_MEM_REGIONS];
 
     uint32_t node_count;
-    struct numa_distance_t *nodes[BHARAT_MAX_NODES];
+    hal_numa_distance_t nodes[BHARAT_MAX_NODES];
 } system_topology_t;
 
 // --- Interrupt Controllers ---

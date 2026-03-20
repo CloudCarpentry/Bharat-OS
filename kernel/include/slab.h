@@ -18,6 +18,7 @@ typedef struct kcache {
 
 // Standard kernel heap allocator
 void* kmalloc(size_t size);
+void* kzalloc(size_t size);
 void kfree(void* ptr);
 
 // Aligned kernel memory allocator
