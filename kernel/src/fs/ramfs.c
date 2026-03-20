@@ -4,8 +4,14 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
+#include "mm.h"
 
 #define RAMFS_DRIVER_NAME "ramfs"
+
+// Use PAGE_SIZE if defined, else fallback to 4096
+#ifndef PAGE_SIZE
+#define PAGE_SIZE 4096
+#endif
 
 typedef struct ramfs_node {
     vfs_node_t vfs_node;
@@ -13,10 +19,11 @@ typedef struct ramfs_node {
 
     // Type specific data
     union {
-        // File data
+        // File data (page-backed block array)
         struct {
-            uint8_t *data;
-            size_t capacity;
+            void **blocks;          // Array of pointers, each points to PAGE_SIZE block
+            size_t nr_blocks;       // Number of allocated pointers in blocks array (NOT number of pages, but capacity of the array)
+            size_t blocks_capacity; // Capacity of the blocks array itself
         } file;
 
         // Directory data
@@ -42,6 +49,60 @@ static void ramfs_strcpy(char *dst, const char *src, size_t dst_size) {
         i++;
     }
     dst[i] = '\0';
+}
+
+// --- Block-based Storage Helpers ---
+
+// Grow the block array capacity geometrically if needed to accommodate `needed_blocks`
+static int ramfs_grow_block_table(ramfs_node_t *inode, size_t needed_blocks) {
+    if (needed_blocks <= inode->file.blocks_capacity) return 0;
+
+    size_t new_cap = inode->file.blocks_capacity;
+    if (new_cap == 0) new_cap = 8;
+    while (new_cap < needed_blocks) {
+        new_cap *= 2;
+    }
+
+    void **new_blocks = (void **)kmalloc(new_cap * sizeof(void *));
+    if (!new_blocks) return -1;
+
+    // Zero-initialize the entire new array to ensure unallocated blocks are NULL
+    memset(new_blocks, 0, new_cap * sizeof(void *));
+
+    if (inode->file.blocks) {
+        memcpy(new_blocks, inode->file.blocks, inode->file.nr_blocks * sizeof(void *));
+        kfree(inode->file.blocks);
+    }
+
+    inode->file.blocks = new_blocks;
+    inode->file.blocks_capacity = new_cap;
+    return 0;
+}
+
+// Ensure the block at `idx` is allocated. Expands table if necessary.
+static void *ramfs_ensure_block_index(ramfs_node_t *inode, size_t idx) {
+    if (ramfs_grow_block_table(inode, idx + 1) != 0) return NULL;
+
+    if (idx >= inode->file.nr_blocks) {
+        inode->file.nr_blocks = idx + 1;
+    }
+
+    if (!inode->file.blocks[idx]) {
+        // Allocate a new page-sized block
+        void *new_block = kmalloc(PAGE_SIZE);
+        if (!new_block) return NULL;
+        // Zero-fill the new block so holes read as zero
+        memset(new_block, 0, PAGE_SIZE);
+        inode->file.blocks[idx] = new_block;
+    }
+
+    return inode->file.blocks[idx];
+}
+
+// Get the block at `idx`. Returns NULL if out of bounds or unallocated.
+static void *ramfs_get_block(ramfs_node_t *inode, size_t idx) {
+    if (idx >= inode->file.nr_blocks) return NULL;
+    return inode->file.blocks[idx];
 }
 
 static int ramfs_streq(const char *a, const char *b) {
@@ -136,8 +197,31 @@ static int ramfs_read(vfs_file_t *file, uint64_t offset, void *buffer, size_t si
         size = rnode->vfs_node.size - (size_t)offset;
     }
 
-    memcpy(buffer, rnode->file.data + offset, size);
-    return (int)size;
+    size_t bytes_read = 0;
+    uint8_t *dst = (uint8_t *)buffer;
+
+    while (bytes_read < size) {
+        uint64_t current_offset = offset + bytes_read;
+        size_t block_idx = (size_t)(current_offset / PAGE_SIZE);
+        size_t block_offset = (size_t)(current_offset % PAGE_SIZE);
+        size_t to_read = PAGE_SIZE - block_offset;
+
+        if (to_read > size - bytes_read) {
+            to_read = size - bytes_read;
+        }
+
+        void *block_data = ramfs_get_block(rnode, block_idx);
+        if (block_data) {
+            memcpy(dst + bytes_read, (uint8_t *)block_data + block_offset, to_read);
+        } else {
+            // Hole, read as zero
+            memset(dst + bytes_read, 0, to_read);
+        }
+
+        bytes_read += to_read;
+    }
+
+    return (int)bytes_read;
 }
 
 static int ramfs_write(vfs_file_t *file, uint64_t offset, const void *buffer, size_t size) {
@@ -148,42 +232,39 @@ static int ramfs_write(vfs_file_t *file, uint64_t offset, const void *buffer, si
 
     if (rnode->vfs_node.flags != 1) return -1; // Must be file
 
-    if (offset + size > rnode->file.capacity) {
-        size_t new_cap = rnode->file.capacity;
-        if (new_cap == 0) new_cap = 64;
-        while (new_cap < offset + size) {
-            new_cap *= 2;
+    if (size == 0) return 0;
+
+    size_t bytes_written = 0;
+    const uint8_t *src = (const uint8_t *)buffer;
+
+    while (bytes_written < size) {
+        uint64_t current_offset = offset + bytes_written;
+        size_t block_idx = (size_t)(current_offset / PAGE_SIZE);
+        size_t block_offset = (size_t)(current_offset % PAGE_SIZE);
+        size_t to_write = PAGE_SIZE - block_offset;
+
+        if (to_write > size - bytes_written) {
+            to_write = size - bytes_written;
         }
 
-        uint8_t *new_data = (uint8_t *)kmalloc(new_cap);
-        if (!new_data) return -1;
-
-        if (rnode->file.data) {
-            memcpy(new_data, rnode->file.data, (size_t)rnode->vfs_node.size);
-            kfree(rnode->file.data);
+        // Ensure block is allocated (will zero-fill if newly allocated)
+        void *block_data = ramfs_ensure_block_index(rnode, block_idx);
+        if (!block_data) {
+            // Memory allocation failed
+            if (bytes_written > 0) break; // Return what was written
+            return -1;
         }
 
-        // Zero-fill gap
-        if (offset > rnode->vfs_node.size) {
-            memset(new_data + rnode->vfs_node.size, 0, (size_t)offset - (size_t)rnode->vfs_node.size);
-        }
+        memcpy((uint8_t *)block_data + block_offset, src + bytes_written, to_write);
 
-        rnode->file.data = new_data;
-        rnode->file.capacity = new_cap;
-    } else {
-        // Just fill the gap if expanding capacity wasn't needed
-        if (offset > rnode->vfs_node.size) {
-            memset(rnode->file.data + rnode->vfs_node.size, 0, (size_t)offset - (size_t)rnode->vfs_node.size);
-        }
+        bytes_written += to_write;
     }
 
-    memcpy(rnode->file.data + offset, buffer, size);
-
-    if (offset + size > rnode->vfs_node.size) {
-        rnode->vfs_node.size = offset + size;
+    if (offset + bytes_written > rnode->vfs_node.size) {
+        rnode->vfs_node.size = offset + bytes_written;
     }
 
-    return (int)size;
+    return (int)bytes_written;
 }
 
 // IOCTL for custom ops like create/unlink/truncate
@@ -262,7 +343,14 @@ static int ramfs_ioctl(vfs_file_t *file, int request, void *arg) {
 
                 // Free the node
                 if (child->vfs_node.flags == 1) { // file
-                    if (child->file.data) kfree(child->file.data);
+                    if (child->file.blocks) {
+                        for (size_t k = 0; k < child->file.nr_blocks; k++) {
+                            if (child->file.blocks[k]) {
+                                kfree(child->file.blocks[k]);
+                            }
+                        }
+                        kfree(child->file.blocks);
+                    }
                 } else if (child->vfs_node.flags == 2) { // dir
                     if (child->dir.children) kfree(child->dir.children);
                 }
@@ -279,16 +367,37 @@ static int ramfs_ioctl(vfs_file_t *file, int request, void *arg) {
         uint64_t new_size = *new_size_ptr;
 
         if (new_size < rnode->vfs_node.size) {
+            size_t new_nr_blocks = (new_size + PAGE_SIZE - 1) / PAGE_SIZE;
+
+            // Free truncated blocks
+            for (size_t i = new_nr_blocks; i < rnode->file.nr_blocks; i++) {
+                if (rnode->file.blocks[i]) {
+                    kfree(rnode->file.blocks[i]);
+                    rnode->file.blocks[i] = NULL;
+                }
+            }
+            rnode->file.nr_blocks = new_nr_blocks;
+
+            // Optional: Zero-fill the remainder of the last block
+            if (new_size > 0 && rnode->file.blocks) {
+                size_t last_block_idx = (new_size - 1) / PAGE_SIZE;
+                size_t remainder = new_size % PAGE_SIZE;
+                if (remainder != 0 && rnode->file.blocks[last_block_idx]) {
+                    memset((uint8_t *)rnode->file.blocks[last_block_idx] + remainder, 0, PAGE_SIZE - remainder);
+                }
+            }
+
             rnode->vfs_node.size = new_size;
-            // Optionally could shrink capacity, but requirement allows keeping it.
         } else if (new_size > rnode->vfs_node.size) {
             // zero-fill gap if extending (or let write handle it if done via write)
             // But usually truncate doesn't extend, or if it does, zero-fills.
             // Let's implement extend via our write logic:
-            uint64_t offset = new_size - 1;
-            uint8_t zero = 0;
-            // Writing 1 byte of 0 at end
-            return ramfs_write(file, offset, &zero, 1);
+            if (new_size > 0) {
+                uint64_t offset = new_size - 1;
+                uint8_t zero = 0;
+                // Writing 1 byte of 0 at end
+                return ramfs_write(file, offset, &zero, 1);
+            }
         }
         return 0;
     }

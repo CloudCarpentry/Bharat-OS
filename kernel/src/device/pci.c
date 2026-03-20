@@ -93,14 +93,20 @@ int pci_discover_nic(device_mmio_window_t* rx_window, device_mmio_window_t* tx_w
 
 #else
 
+static uint32_t pci_read_config(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset) {
+    (void)bus;
+    (void)slot;
+    (void)func;
+    (void)offset;
+    return 0xFFFFFFFF;
+}
+
 static void pci_write_config(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset, uint32_t val) {
-    uint32_t address;
-    uint32_t lbus  = (uint32_t)bus;
-    uint32_t lslot = (uint32_t)slot;
-    uint32_t lfunc = (uint32_t)func;
-    address = (uint32_t)((lbus << 16) | (lslot << 11) | (lfunc << 8) | (offset & 0xFC) | ((uint32_t)0x80000000));
-    outl(0xCF8, address);
-    outl(0xCFC, val);
+    (void)bus;
+    (void)slot;
+    (void)func;
+    (void)offset;
+    (void)val;
 }
 
 int pci_discover_nic(device_mmio_window_t* rx_window, device_mmio_window_t* tx_window) {
