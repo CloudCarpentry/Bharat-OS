@@ -18,6 +18,10 @@ typedef struct {
 } zswap_entry_t;
 
 #define ZSWAP_HASH_TABLE_SIZE 1024
+#define ZSWAP_HASH_TABLE_MASK (ZSWAP_HASH_TABLE_SIZE - 1U)
+#if (ZSWAP_HASH_TABLE_SIZE & ZSWAP_HASH_TABLE_MASK) != 0
+#error "ZSWAP_HASH_TABLE_SIZE must be a power of two"
+#endif
 static list_head_t zswap_hash_table[ZSWAP_HASH_TABLE_SIZE];
 
 static list_head_t zswap_pool; // Keeping it for global tracking if needed, or we can just use hash table
@@ -27,15 +31,19 @@ static size_t zswap_max_pool_bytes = 0;
 
 static kcache_t* zswap_entry_cache = NULL;
 
+static inline uint64_t zswap_hash_mix64(uint64_t value) {
+    // MurmurHash3 finalizer to spread page-aligned physical addresses across buckets.
+    value ^= value >> 33;
+    value *= 0xff51afd7ed558ccdULL;
+    value ^= value >> 33;
+    value *= 0xc4ceb9fe1a85ec53ULL;
+    value ^= value >> 33;
+    return value;
+}
+
 static inline uint32_t zswap_hash(phys_addr_t page) {
-    // Simple hash function for physical addresses (usually page-aligned, so we shift right by 12)
-    uint64_t key = (uint64_t)page >> 12;
-    key ^= key >> 16;
-    key *= 0x85ebca6b;
-    key ^= key >> 13;
-    key *= 0xc2b2ae35;
-    key ^= key >> 16;
-    return key % ZSWAP_HASH_TABLE_SIZE;
+    uint64_t key = ((uint64_t)page >> 12) ^ ((uint64_t)page >> 3);
+    return (uint32_t)(zswap_hash_mix64(key) & ZSWAP_HASH_TABLE_MASK);
 }
 
 // Very basic LZ4-like compression simulation logic as an actual LZ4 implementation requires complex structures
