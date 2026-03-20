@@ -59,7 +59,13 @@ void hal_dma_sync_for_cpu(hal_dma_buffer_t *buf) {
     }
 }
 
+#include "arch/arch_caps.h"
+
 int hal_dma_is_coherent(void) {
+    if (arch_has_cap(ARCH_CAP_DMA_COHERENT)) {
+        return 1;
+    }
+
     if (g_hal_dma_ops && g_hal_dma_ops->is_coherent) {
         return g_hal_dma_ops->is_coherent();
     }

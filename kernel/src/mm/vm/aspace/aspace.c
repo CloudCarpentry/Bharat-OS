@@ -1,6 +1,7 @@
 #include "../../../../include/mm/aspace.h"
 #include "../../../../include/hal/hal_pt.h"
 #include "../../../../include/hal/hal_tlb.h"
+#include "../../../../include/arch/arch_caps.h"
 #include "../../../../include/mm.h"
 #include "../../../../include/spinlock.h"
 #include "../../../../include/numa.h"
@@ -32,8 +33,14 @@ int aspace_create(address_space_t **out_aspace, uint32_t flags) {
     as->owner = NULL;
     as->timing_class = 0; // default VM_TIMING_BEST_EFFORT
 
-    as->user_base = 0x1000;
-    as->user_limit = 0x00007FFFFFFFFFFF;
+    if (arch_has_cap(ARCH_CAP_USERSPACE_HIGHHALF) && arch_has_cap(ARCH_CAP_64BIT_VA)) {
+        as->user_base = 0x1000;
+        as->user_limit = 0x00007FFFFFFFFFFF;
+    } else {
+        // Compact 32-bit layout
+        as->user_base = 0x1000;
+        as->user_limit = 0x7FFFFFFF;
+    }
 
     *out_aspace = as;
     return 0;
