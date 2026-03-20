@@ -9,7 +9,7 @@
 #include "hal/hal_discovery.h"
 
 #if defined(__riscv) || defined(__aarch64__)
-#include "hal/common/fdt_parser.h"
+#include "hal/fdt_parser.h"
 #include "hal/mmu_ops.h"
 #endif
 #include "ipc_async.h"

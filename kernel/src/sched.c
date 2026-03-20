@@ -12,6 +12,7 @@
 #include "arch/arch_ext_state.h"
 #include "arch/arch_cpu_caps.h"
 #include "slab.h"
+#include "ipc_async.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -72,6 +73,9 @@ static uint32_t g_free_thread_head = UINT32_MAX;
 static uint32_t g_free_process_head = UINT32_MAX;
 
 void fv_secure_context_switch(void *next_thread_frame) __attribute__((weak));
+static inline void sched_ready_bitmap_set(sched_rq_t *rq, uint32_t prio);
+static inline void sched_ready_bitmap_clear_if_empty(sched_rq_t *rq, uint32_t prio);
+static int sched_pick_priority_from_bitmap(const sched_rq_t *rq, int highest);
 
 static uint32_t sched_clamp_core(uint32_t core_id) {
   if (core_id >= MAX_SUPPORTED_CORES) {
@@ -169,6 +173,7 @@ int sched_enqueue(kthread_t *thread, uint32_t core_id) {
   thread->state = THREAD_STATE_READY;
   list_add(&slot->run_node, &g_cpu_locals[core_id].runqueue.ready_queue[thread->priority]);
   slot->is_on_runqueue = 1U;
+  sched_ready_bitmap_set(&g_cpu_locals[core_id].runqueue, thread->priority);
 
   spin_unlock(&g_cpu_locals[core_id].runqueue.lock);
   return 0;
@@ -246,6 +251,7 @@ void sched_init(void) {
     for (uint32_t p = 0; p < MAX_PRIORITY_LEVELS; ++p) {
       list_init(&g_cpu_locals[core].runqueue.ready_queue[p]);
     }
+    g_cpu_locals[core].runqueue.ready_bitmap = 0U;
 
     kthread_t *idle = thread_create(idle_process, sched_idle_task);
     if (idle) {
@@ -411,6 +417,8 @@ int thread_destroy(kthread_t *thread) {
   if (slot->is_on_runqueue != 0U) {
     list_del(&slot->run_node);
     slot->is_on_runqueue = 0U;
+    sched_ready_bitmap_clear_if_empty(&g_cpu_locals[thread->bound_core_id].runqueue,
+                                      thread->priority);
   }
   if (slot->is_sleeping != 0U) {
     sched_sleep_dequeue(slot);
@@ -509,6 +517,32 @@ static uint32_t sched_run_queue_depth(uint32_t core_id) {
   return count;
 }
 
+static inline void sched_ready_bitmap_set(sched_rq_t *rq, uint32_t prio) {
+  if (!rq || prio >= MAX_PRIORITY_LEVELS) {
+    return;
+  }
+  rq->ready_bitmap |= (1U << prio);
+}
+
+static inline void sched_ready_bitmap_clear_if_empty(sched_rq_t *rq, uint32_t prio) {
+  if (!rq || prio >= MAX_PRIORITY_LEVELS) {
+    return;
+  }
+  if (list_empty(&rq->ready_queue[prio])) {
+    rq->ready_bitmap &= ~(1U << prio);
+  }
+}
+
+static int sched_pick_priority_from_bitmap(const sched_rq_t *rq, int highest) {
+  if (!rq || rq->ready_bitmap == 0U) {
+    return -1;
+  }
+  if (highest != 0) {
+    return 31 - __builtin_clz(rq->ready_bitmap);
+  }
+  return __builtin_ctz(rq->ready_bitmap);
+}
+
 static void sched_update_telemetry(kthread_t *thread) {
   if (!thread || !thread->ai_sched_ctx) {
     return;
@@ -522,34 +556,21 @@ static void sched_update_telemetry(kthread_t *thread) {
 
 static kthread_t *sched_pick_next_ready(uint32_t core_id) {
   core_id = sched_clamp_core(core_id);
-
-  if (g_policy == SCHED_POLICY_ROUND_ROBIN) {
-    for (int prio = 0; prio <= (int)SCHED_MAX_PRIORITY; ++prio) {
-      list_head_t *head = &g_cpu_locals[core_id].runqueue.ready_queue[prio];
-      if (!list_empty(head)) {
-        list_head_t *node = head->prev;
-        thread_slot_t *slot = (thread_slot_t *)(void *)((char *)node - offsetof(thread_slot_t, run_node));
-        list_del(node);
-        list_init(node);
-        slot->is_on_runqueue = 0U;
-        return &slot->thread;
-      }
-    }
-  } else {
-    for (int prio = (int)SCHED_MAX_PRIORITY; prio >= 0; --prio) {
-      list_head_t *head = &g_cpu_locals[core_id].runqueue.ready_queue[prio];
-      if (!list_empty(head)) {
-        list_head_t *node = head->prev;
-        thread_slot_t *slot = (thread_slot_t *)(void *)((char *)node - offsetof(thread_slot_t, run_node));
-        list_del(node);
-        list_init(node);
-        slot->is_on_runqueue = 0U;
-        return &slot->thread;
-      }
-    }
+  sched_rq_t *rq = &g_cpu_locals[core_id].runqueue;
+  int pick_highest = (g_policy == SCHED_POLICY_ROUND_ROBIN) ? 0 : 1;
+  int prio = sched_pick_priority_from_bitmap(rq, pick_highest);
+  if (prio < 0) {
+    return rq->idle_thread;
   }
 
-  return g_cpu_locals[core_id].runqueue.idle_thread;
+  list_head_t *head = &rq->ready_queue[prio];
+  list_head_t *node = head->prev;
+  thread_slot_t *slot = (thread_slot_t *)(void *)((char *)node - offsetof(thread_slot_t, run_node));
+  list_del(node);
+  list_init(node);
+  slot->is_on_runqueue = 0U;
+  sched_ready_bitmap_clear_if_empty(rq, (uint32_t)prio);
+  return &slot->thread;
 }
 
 static void sched_dequeue_task_l0(kthread_t *thread, uint32_t core_id) {
@@ -562,6 +583,7 @@ static void sched_dequeue_task_l0(kthread_t *thread, uint32_t core_id) {
     list_del(&slot->run_node);
     list_init(&slot->run_node);
     slot->is_on_runqueue = 0U;
+    sched_ready_bitmap_clear_if_empty(&g_cpu_locals[core_id].runqueue, thread->priority);
   }
 }
 
@@ -605,6 +627,7 @@ static void sched_switch_to(kthread_t *next, uint32_t core_id) {
         current->state = THREAD_STATE_READY;
         list_add(&slot->run_node, &g_cpu_locals[core_id].runqueue.ready_queue[current->priority]);
         slot->is_on_runqueue = 1U;
+        sched_ready_bitmap_set(&g_cpu_locals[core_id].runqueue, current->priority);
     }
   }
 
@@ -816,6 +839,7 @@ void sched_on_timer_tick(void) {
   g_sched_ticks++;
   uint32_t core = sched_clamp_core(hal_cpu_get_id());
   g_cpu_locals[core].runqueue.total_ticks++;
+  ipc_async_check_timeouts(g_sched_ticks);
 
   list_head_t *sleep_head = &g_cpu_locals[core].runqueue.sleeping_list;
   list_head_t *curr = sleep_head->next;
@@ -866,11 +890,12 @@ void sched_on_timer_tick(void) {
     return;
   }
 
-  for (int prio = (int)SCHED_MAX_PRIORITY; prio > (int)current->priority; --prio) {
-    if (!list_empty(&g_cpu_locals[core].runqueue.ready_queue[prio])) {
-      sched_reschedule();
-      return;
-    }
+  uint32_t higher_mask = (current->priority >= SCHED_MAX_PRIORITY)
+                             ? 0U
+                             : ((~0U) << (current->priority + 1U));
+  if ((g_cpu_locals[core].runqueue.ready_bitmap & higher_mask) != 0U) {
+    sched_reschedule();
+    return;
   }
 }
 
