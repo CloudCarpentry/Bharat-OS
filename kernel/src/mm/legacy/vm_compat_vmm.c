@@ -34,6 +34,10 @@ int mm_vmm_map_page_shim(address_space_t* as, virt_addr_t vaddr, phys_addr_t pad
     if (flags & PAGE_EXEC) req.prot |= VM_PROT_EXEC;
 
     req.mem_type = VM_MEM_NORMAL;
+    if (flags & (CAP_RIGHT_DEVICE_GPU | CAP_RIGHT_DEVICE_NPU)) {
+        req.mem_type = VM_MEM_DEVICE;
+        req.prot |= VM_PROT_READ | VM_PROT_WRITE; // Ensure permissions for devices
+    }
     req.map_flags = 0; // Best effort
     req.zone = VM_MEM_ZONE_NORMAL;
     req.timing_class = VM_TIMING_BEST_EFFORT;
