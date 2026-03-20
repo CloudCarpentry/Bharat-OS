@@ -1,9 +1,7 @@
 #include "../../../include/hal/vmm.h"
 #include "../../../include/hal/mmu_ops.h"
 #include "../../../include/numa.h"
-
-#define P2V(x) ((void*)(uintptr_t)(x))
-#define V2P(x) ((phys_addr_t)(uintptr_t)(x))
+#include "../../../include/mm/physmap.h"
 
 #define VMM_FLAG_PRESENT 0x1U
 
@@ -105,7 +103,7 @@ static void x86_mmu_destroy_table_recursive(phys_addr_t table, int level) {
     if (!table) return;
 
     if (level > 1) {
-        pt_t* pt = (pt_t*)P2V(table);
+        pt_t* pt = (pt_t*)physmap_phys_to_virt(table);
         for (int i = 0; i < (level == 4 ? 256 : 512); i++) { // Skip kernel half on pml4
             if (pt->entries[i] & VMM_FLAG_PRESENT) {
                 if ((level == 3 || level == 2) && (pt->entries[i] & (1ULL << 7))) {
