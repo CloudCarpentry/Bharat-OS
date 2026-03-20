@@ -1,11 +1,7 @@
 #include "../../../include/hal/vmm.h"
 #include "../../../include/hal/mmu_ops.h"
 #include "../../../include/numa.h"
-
-// Define direct map macros for early initialization.
-// Mimicking the logic used in generic VMM for identity map base.
-#define P2V(x) ((void*)(uintptr_t)(x))
-#define V2P(x) ((phys_addr_t)(uintptr_t)(x))
+#include "../../../include/mm/physmap.h"
 
 #define ARM64_MMU_DEVICE_nGnRnE (0ULL << 2) // MAIR index 0 -> Device-nGnRnE
 #define ARM64_MMU_NOCACHE_MEM   (1ULL << 2) // MAIR index 1 -> Non-cacheable
@@ -147,7 +143,7 @@ static void arm64_mmu_destroy_table_recursive(phys_addr_t table, int level) {
     if (!table) return;
 
     if (level > 1) {
-        pt_t* pt = (pt_t*)P2V(table);
+        pt_t* pt = (pt_t*)phys_to_virt_linear(table);
         for (int i = 0; i < (level == 4 ? 256 : 512); i++) { // Skip kernel half on pgd
             if (pt->entries[i] & ARM64_MMU_FLAG_VALID) {
                 if ((level == 3 || level == 2) && (pt->entries[i] & ARM64_MMU_DESCRIPTOR_TABLE) == ARM64_MMU_DESCRIPTOR_BLOCK) {

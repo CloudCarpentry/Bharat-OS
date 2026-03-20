@@ -6,6 +6,7 @@
 #include "../../../include/hal/hal_pt.h"
 #include "../../../include/hal/hal_tlb.h"
 #include "../../../include/mm.h"
+#include "../../../include/mm/physmap.h"
 #include "../../../include/sched.h"
 #include "../../../include/slab.h"
 
@@ -65,9 +66,6 @@ int numa_get_node_descriptor(memory_node_id_t node_id, numa_node_descriptor_t* o
 uint32_t numa_active_node_count(void) {
     return g_active_nodes;
 }
-
-#define P2V(x) ((void*)(uintptr_t)(x))
-#define V2P(x) ((phys_addr_t)(uintptr_t)(x))
 
 #define NUMA_MIGRATE_THRESHOLD 100
 #define NUMA_MIGRATE_COOLDOWN_TICKS 5000
@@ -265,8 +263,8 @@ int numa_migrate_page(uint64_t vaddr, memory_node_id_t target_node, void* addres
     }
 
     // 3. Copy data
-    uint8_t* src = (uint8_t*)P2V(old_phys);
-    uint8_t* dst = (uint8_t*)P2V(new_phys);
+    uint8_t* src = (uint8_t*)phys_to_virt_linear(old_phys);
+    uint8_t* dst = (uint8_t*)phys_to_virt_linear(new_phys);
     for (int i = 0; i < PAGE_SIZE; i++) {
         dst[i] = src[i];
     }
