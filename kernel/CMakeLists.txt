@@ -205,6 +205,7 @@ add_subdirectory(src/fs)
 add_subdirectory(src/test)
 
 set(KERNEL_SRCS
+    src/mm/physmap.c
     ${BOOT_SRC}
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/boot/boot_ui_select.c>
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/boot_video.c>
@@ -345,11 +346,7 @@ if(ARCH STREQUAL "x86_64")
         "LINKER:-m,elf_x86_64"
     )
 elseif(ARCH STREQUAL "riscv64")
-    target_compile_options(kernel.elf PRIVATE
-        $<$<COMPILE_LANGUAGE:C>:-mcmodel=medany>
-        $<$<COMPILE_LANGUAGE:ASM>:-march=rv64g>
-        $<$<COMPILE_LANGUAGE:C>:-march=rv64g>
-    )
+    # Using arch flags from toolchain
 elseif(ARCH STREQUAL "riscv32")
     target_compile_options(kernel.elf PRIVATE
         $<$<COMPILE_LANGUAGE:C>:-mcmodel=medany>

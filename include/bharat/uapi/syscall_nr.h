@@ -5,6 +5,9 @@
 extern "C" {
 #endif
 
+#define BHARAT_SYSCALL_ABI_VERSION_MAJOR 1U
+#define BHARAT_SYSCALL_ABI_VERSION_MINOR 0U
+
 typedef enum {
 #define SYSCALL_DEF(name, number) name = number,
 #include "syscall_table.def"

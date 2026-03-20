@@ -1,5 +1,5 @@
-#include "hal/fdt_parser.h"
 #include "hal/hal_boot.h"
+#include "hal/hal.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -9,6 +9,8 @@
 #define FDT_PROP       0x00000003
 #define FDT_NOP        0x00000004
 #define FDT_END        0x00000009
+  
+  
 
 static inline uint32_t fdt32_to_cpu(uint32_t val) {
     return ((val >> 24) & 0xff) |
@@ -16,6 +18,8 @@ static inline uint32_t fdt32_to_cpu(uint32_t val) {
            ((val & 0xff00) << 8) |
            ((val & 0xff) << 24);
 }
+
+
 
 static int str_eq(const char* a, const char* b) {
     if (!a || !b) return 0;
@@ -26,6 +30,9 @@ static int str_eq(const char* a, const char* b) {
     }
     return (*a == '\0' && *b == '\0') ? 1 : 0;
 }
+
+
+
 
 static int str_starts_with(const char* str, const char* prefix) {
     if (!str || !prefix) return 0;
@@ -41,12 +48,25 @@ static const char* fdt_get_string(const struct fdt_header* fdt, uint32_t offset)
     return (const char*)((uintptr_t)fdt + fdt32_to_cpu(fdt->off_dt_strings) + offset);
 }
 
+
+
 #define MAX_FDT_DEPTH 32
+
+/*bool fdt_is_valid(const void* fdt_ptr) {
+    if (!fdt_ptr) return false;
+    const struct fdt_header* fdt = (const struct fdt_header*)fdt_ptr;
+    return (fdt32_to_cpu(fdt->magic) == FDT_MAGIC);
+}
+*/
+
 
 bool fdt_is_valid(const void* fdt_ptr) {
     if (!fdt_ptr) return false;
     const struct fdt_header* fdt = (const struct fdt_header*)fdt_ptr;
-    return (fdt32_to_cpu(fdt->magic) == FDT_MAGIC);
+    uint32_t magic = fdt32_to_cpu(fdt->magic);
+    hal_serial_write("FDT: Checking magic at "); hal_serial_write_hex((uintptr_t)fdt_ptr);
+    hal_serial_write(" magic="); hal_serial_write_hex(magic); hal_serial_write("\n");
+    return (magic == FDT_MAGIC);
 }
 
 // Old legacy function
@@ -255,6 +275,14 @@ int fdt_parse_discovery(const void* fdt_ptr, system_discovery_t* discovery) {
     int is_pcie = 0;
     int is_smmuv3 = 0;
     int is_pmu = 0;
+  
+  
+  
+  
+  
+
+
+
     (void)is_pmu;
     int is_fb = 0;
 
@@ -265,7 +293,9 @@ int fdt_parse_discovery(const void* fdt_ptr, system_discovery_t* discovery) {
         uint32_t tag = fdt32_to_cpu(*p++);
         if (tag == FDT_BEGIN_NODE) {
             current_node_name = (const char*)p;
+            hal_serial_write("FDT: Found node: "); hal_serial_write(current_node_name); hal_serial_write("\n");
 
+            // Align to 4 bytes
             size_t len = 0;
             while (current_node_name[len] != '\0') len++;
             p += (len + 4) / 4;
@@ -276,10 +306,10 @@ int fdt_parse_discovery(const void* fdt_ptr, system_discovery_t* discovery) {
             }
             depth++;
 
-            is_memory = str_starts_with(current_node_name, "memory@");
-            is_cpu = str_starts_with(current_node_name, "cpu@");
-            is_pcie = str_starts_with(current_node_name, "pcie@") || str_starts_with(current_node_name, "pci@");
-            is_fb = str_starts_with(current_node_name, "framebuffer@") || str_starts_with(current_node_name, "fb@");
+            is_memory = str_starts_with(current_node_name, "memory@") || str_eq(current_node_name, "memory");
+            is_cpu = str_starts_with(current_node_name, "cpu@") || str_eq(current_node_name, "cpu");
+            is_pcie = str_starts_with(current_node_name, "pcie@") || str_starts_with(current_node_name, "pci@") || str_eq(current_node_name, "pcie") || str_eq(current_node_name, "pci");
+            is_fb = str_starts_with(current_node_name, "framebuffer@") || str_starts_with(current_node_name, "fb@") || str_eq(current_node_name, "framebuffer") || str_eq(current_node_name, "fb");
 
             is_plic = 0;
             is_gicv3 = 0;
@@ -454,4 +484,4 @@ int fdt_parse_discovery(const void* fdt_ptr, system_discovery_t* discovery) {
     }
 
     return 0;
-}
+}
