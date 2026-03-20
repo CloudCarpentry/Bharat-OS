@@ -82,14 +82,14 @@ static phys_addr_t x86_pt_create_address_space(phys_addr_t kernel_root_table) {
         return 0;
     }
 
-    pt_t* pml4 = (pt_t*)phys_to_virt_linear(root);
+    pt_t* pml4 = (pt_t*)physmap_phys_to_virt(root);
     for (int i = 0; i < 512; i++) {
         pml4->entries[i] = 0;
     }
 
     phys_addr_t kernel_root = kernel_root_table;
     if (kernel_root != 0U) {
-        pt_t* kernel_pml4 = (pt_t*)phys_to_virt_linear(kernel_root);
+        pt_t* kernel_pml4 = (pt_t*)physmap_phys_to_virt(kernel_root);
         // Link kernel space: Map the top half
         // A minimal implementation may just copy entry 511, or 256-511
         for (int i = 256; i < 512; i++) {
@@ -104,7 +104,7 @@ static void x86_pt_destroy_recursive(phys_addr_t table, int level) {
     if (!table) return;
 
     if (level > 1) {
-        pt_t* pt = (pt_t*)phys_to_virt_linear(table);
+        pt_t* pt = (pt_t*)physmap_phys_to_virt(table);
         // User space is 0-255 in PML4
         int max_idx = (level == 4) ? 256 : 512;
         for (int i = 0; i < max_idx; i++) {
@@ -136,7 +136,7 @@ static int x86_pt_map_4k(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t pad
     uint64_t pd_idx = (aligned_vaddr >> 21) & 0x1FF;
     uint64_t pt_idx = (aligned_vaddr >> 12) & 0x1FF;
 
-    pt_t* pml4 = (pt_t*)phys_to_virt_linear(root_pt);
+    pt_t* pml4 = (pt_t*)physmap_phys_to_virt(root_pt);
 
     // Provide generic permissive access (RW | User) to intermediate tables
     // The leaf PTE restricts the final access permissions.
@@ -145,32 +145,32 @@ static int x86_pt_map_4k(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t pad
     if ((pml4->entries[pml4_idx] & X86_PT_PRESENT) == 0) {
         phys_addr_t new_pdp = mm_alloc_page(NUMA_NODE_ANY);
         if (!new_pdp) return -2;
-        pt_t* pdp_ptr = (pt_t*)phys_to_virt_linear(new_pdp);
+        pt_t* pdp_ptr = (pt_t*)physmap_phys_to_virt(new_pdp);
         for(int i=0; i<512; i++) pdp_ptr->entries[i] = 0;
         pml4->entries[pml4_idx] = new_pdp | dir_flags;
     }
 
-    pt_t* pdp = (pt_t*)phys_to_virt_linear(pml4->entries[pml4_idx] & X86_PAGE_MASK);
+    pt_t* pdp = (pt_t*)physmap_phys_to_virt(pml4->entries[pml4_idx] & X86_PAGE_MASK);
     if ((pdp->entries[pdp_idx] & X86_PT_PRESENT) == 0) {
         phys_addr_t new_pd = mm_alloc_page(NUMA_NODE_ANY);
         if (!new_pd) return -2;
-        pt_t* pd_ptr = (pt_t*)phys_to_virt_linear(new_pd);
+        pt_t* pd_ptr = (pt_t*)physmap_phys_to_virt(new_pd);
         for(int i=0; i<512; i++) pd_ptr->entries[i] = 0;
         pdp->entries[pdp_idx] = new_pd | dir_flags;
     }
 
-    pt_t* pd = (pt_t*)phys_to_virt_linear(pdp->entries[pdp_idx] & X86_PAGE_MASK);
+    pt_t* pd = (pt_t*)physmap_phys_to_virt(pdp->entries[pdp_idx] & X86_PAGE_MASK);
     if ((pd->entries[pd_idx] & X86_PT_PRESENT) == 0) {
         phys_addr_t new_pt = mm_alloc_page(NUMA_NODE_ANY);
         if (!new_pt) return -2;
-        pt_t* pt_ptr = (pt_t*)phys_to_virt_linear(new_pt);
+        pt_t* pt_ptr = (pt_t*)physmap_phys_to_virt(new_pt);
         for(int i=0; i<512; i++) pt_ptr->entries[i] = 0;
         pd->entries[pd_idx] = new_pt | dir_flags;
     } else if (pd->entries[pd_idx] & X86_PT_HUGE) {
         phys_addr_t huge_base = pd->entries[pd_idx] & ~((1ULL << 21) - 1ULL);
         phys_addr_t new_pt = mm_alloc_page(NUMA_NODE_ANY);
         if (!new_pt) return -2;
-        pt_t* split_pt = (pt_t*)phys_to_virt_linear(new_pt);
+        pt_t* split_pt = (pt_t*)physmap_phys_to_virt(new_pt);
         uint64_t split_flags = (pd->entries[pd_idx] & ~X86_PAGE_MASK) & ~X86_PT_HUGE;
         for (size_t i = 0; i < 512; i++) {
             split_pt->entries[i] = (huge_base + (i * PAGE_SIZE)) | split_flags;
@@ -178,7 +178,7 @@ static int x86_pt_map_4k(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t pad
         pd->entries[pd_idx] = new_pt | dir_flags;
     }
 
-    pt_t* pt = (pt_t*)phys_to_virt_linear(pd->entries[pd_idx] & X86_PAGE_MASK);
+    pt_t* pt = (pt_t*)physmap_phys_to_virt(pd->entries[pd_idx] & X86_PAGE_MASK);
 
     uint64_t pte_flags = flags_to_x86(flags);
     pt->entries[pt_idx] = aligned_paddr | pte_flags;
@@ -196,11 +196,11 @@ static int x86_pt_unmap_4k(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *
     uint64_t pd_idx = (aligned_vaddr >> 21) & 0x1FF;
     uint64_t pt_idx = (aligned_vaddr >> 12) & 0x1FF;
 
-    pt_t* pml4 = (pt_t*)phys_to_virt_linear(root_pt);
+    pt_t* pml4 = (pt_t*)physmap_phys_to_virt(root_pt);
     if ((pml4->entries[pml4_idx] & X86_PT_PRESENT) == 0) return -2;
-    pt_t* pdp = (pt_t*)phys_to_virt_linear(pml4->entries[pml4_idx] & X86_PAGE_MASK);
+    pt_t* pdp = (pt_t*)physmap_phys_to_virt(pml4->entries[pml4_idx] & X86_PAGE_MASK);
     if ((pdp->entries[pdp_idx] & X86_PT_PRESENT) == 0) return -2;
-    pt_t* pd = (pt_t*)phys_to_virt_linear(pdp->entries[pdp_idx] & X86_PAGE_MASK);
+    pt_t* pd = (pt_t*)physmap_phys_to_virt(pdp->entries[pdp_idx] & X86_PAGE_MASK);
     if ((pd->entries[pd_idx] & X86_PT_PRESENT) == 0) return -2;
     if (pd->entries[pd_idx] & X86_PT_HUGE) {
         if (unmapped_paddr) {
@@ -217,7 +217,7 @@ static int x86_pt_unmap_4k(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *
         }
         return 0;
     }
-    pt_t* pt = (pt_t*)phys_to_virt_linear(pd->entries[pd_idx] & X86_PAGE_MASK);
+    pt_t* pt = (pt_t*)physmap_phys_to_virt(pd->entries[pd_idx] & X86_PAGE_MASK);
 
     if ((pt->entries[pt_idx] & X86_PT_PRESENT) == 0) return -2;
 
@@ -253,11 +253,11 @@ static int x86_pt_protect_4k(phys_addr_t root_pt, virt_addr_t vaddr, uint32_t ne
     uint64_t pd_idx = (aligned_vaddr >> 21) & 0x1FF;
     uint64_t pt_idx = (aligned_vaddr >> 12) & 0x1FF;
 
-    pt_t* pml4 = (pt_t*)phys_to_virt_linear(root_pt);
+    pt_t* pml4 = (pt_t*)physmap_phys_to_virt(root_pt);
     if ((pml4->entries[pml4_idx] & X86_PT_PRESENT) == 0) return -2;
-    pt_t* pdp = (pt_t*)phys_to_virt_linear(pml4->entries[pml4_idx] & X86_PAGE_MASK);
+    pt_t* pdp = (pt_t*)physmap_phys_to_virt(pml4->entries[pml4_idx] & X86_PAGE_MASK);
     if ((pdp->entries[pdp_idx] & X86_PT_PRESENT) == 0) return -2;
-    pt_t* pd = (pt_t*)phys_to_virt_linear(pdp->entries[pdp_idx] & X86_PAGE_MASK);
+    pt_t* pd = (pt_t*)physmap_phys_to_virt(pdp->entries[pdp_idx] & X86_PAGE_MASK);
     if ((pd->entries[pd_idx] & X86_PT_PRESENT) == 0) return -2;
     if (pd->entries[pd_idx] & X86_PT_HUGE) {
         uint64_t paddr_2m = pd->entries[pd_idx] & ~((1ULL << 21) - 1ULL);
@@ -265,7 +265,7 @@ static int x86_pt_protect_4k(phys_addr_t root_pt, virt_addr_t vaddr, uint32_t ne
         pd->entries[pd_idx] = paddr_2m | pte_flags;
         return 0;
     }
-    pt_t* pt = (pt_t*)phys_to_virt_linear(pd->entries[pd_idx] & X86_PAGE_MASK);
+    pt_t* pt = (pt_t*)physmap_phys_to_virt(pd->entries[pd_idx] & X86_PAGE_MASK);
 
     if ((pt->entries[pt_idx] & X86_PT_PRESENT) == 0) return -2;
 
@@ -287,11 +287,11 @@ static int x86_pt_query_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t
     uint64_t pd_idx = (aligned_vaddr >> 21) & 0x1FF;
     uint64_t pt_idx = (aligned_vaddr >> 12) & 0x1FF;
 
-    pt_t* pml4 = (pt_t*)phys_to_virt_linear(root_pt);
+    pt_t* pml4 = (pt_t*)physmap_phys_to_virt(root_pt);
     if ((pml4->entries[pml4_idx] & X86_PT_PRESENT) == 0) return -2;
-    pt_t* pdp = (pt_t*)phys_to_virt_linear(pml4->entries[pml4_idx] & X86_PAGE_MASK);
+    pt_t* pdp = (pt_t*)physmap_phys_to_virt(pml4->entries[pml4_idx] & X86_PAGE_MASK);
     if ((pdp->entries[pdp_idx] & X86_PT_PRESENT) == 0) return -2;
-    pt_t* pd = (pt_t*)phys_to_virt_linear(pdp->entries[pdp_idx] & X86_PAGE_MASK);
+    pt_t* pd = (pt_t*)physmap_phys_to_virt(pdp->entries[pdp_idx] & X86_PAGE_MASK);
     if ((pd->entries[pd_idx] & X86_PT_PRESENT) == 0) return -2;
     if (pd->entries[pd_idx] & X86_PT_HUGE) {
         if (paddr) *paddr = (pd->entries[pd_idx] & ~((1ULL << 21) - 1ULL)) + (pt_idx * PAGE_SIZE);
@@ -301,7 +301,7 @@ static int x86_pt_query_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t
         }
         return 0;
     }
-    pt_t* pt = (pt_t*)phys_to_virt_linear(pd->entries[pd_idx] & X86_PAGE_MASK);
+    pt_t* pt = (pt_t*)physmap_phys_to_virt(pd->entries[pd_idx] & X86_PAGE_MASK);
 
     if ((pt->entries[pt_idx] & X86_PT_PRESENT) == 0) return -2;
 
@@ -315,25 +315,25 @@ static int x86_pt_map_large_2m(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr
     uint64_t pml4_idx = (vaddr >> 39) & 0x1FF;
     uint64_t pdp_idx = (vaddr >> 30) & 0x1FF;
     uint64_t pd_idx = (vaddr >> 21) & 0x1FF;
-    pt_t* pml4 = (pt_t*)phys_to_virt_linear(root_pt);
+    pt_t* pml4 = (pt_t*)physmap_phys_to_virt(root_pt);
     uint64_t dir_flags = X86_PT_PRESENT | X86_PT_RW | X86_PT_USER;
 
     if ((pml4->entries[pml4_idx] & X86_PT_PRESENT) == 0) {
         phys_addr_t new_pdp = mm_alloc_page(NUMA_NODE_ANY);
         if (!new_pdp) return -2;
-        pt_t* pdp_ptr = (pt_t*)phys_to_virt_linear(new_pdp);
+        pt_t* pdp_ptr = (pt_t*)physmap_phys_to_virt(new_pdp);
         for (int i = 0; i < 512; i++) pdp_ptr->entries[i] = 0;
         pml4->entries[pml4_idx] = new_pdp | dir_flags;
     }
-    pt_t* pdp = (pt_t*)phys_to_virt_linear(pml4->entries[pml4_idx] & X86_PAGE_MASK);
+    pt_t* pdp = (pt_t*)physmap_phys_to_virt(pml4->entries[pml4_idx] & X86_PAGE_MASK);
     if ((pdp->entries[pdp_idx] & X86_PT_PRESENT) == 0) {
         phys_addr_t new_pd = mm_alloc_page(NUMA_NODE_ANY);
         if (!new_pd) return -2;
-        pt_t* pd_ptr = (pt_t*)phys_to_virt_linear(new_pd);
+        pt_t* pd_ptr = (pt_t*)physmap_phys_to_virt(new_pd);
         for (int i = 0; i < 512; i++) pd_ptr->entries[i] = 0;
         pdp->entries[pdp_idx] = new_pd | dir_flags;
     }
-    pt_t* pd = (pt_t*)phys_to_virt_linear(pdp->entries[pdp_idx] & X86_PAGE_MASK);
+    pt_t* pd = (pt_t*)physmap_phys_to_virt(pdp->entries[pdp_idx] & X86_PAGE_MASK);
     if ((pd->entries[pd_idx] & X86_PT_PRESENT) && !(pd->entries[pd_idx] & X86_PT_HUGE)) {
         mm_free_page(pd->entries[pd_idx] & X86_PAGE_MASK);
     }
@@ -423,6 +423,28 @@ void x86_64_init_hardening(void) {
     // Bit 21 in CR4
     cr4 |= (1ULL << 21);
     write_cr4(cr4);
+}
+
+static translate_backend_kind_t x86_backend_type(void) { return TRANSLATE_BACKEND_MMU; }
+static translate_exec_class_t x86_exec_class(void) { return TRANSLATE_EXEC_MMU_FULL; }
+static void* x86_phys_to_virt(phys_addr_t phys) { return (void*)(phys + g_kernel_virt_offset); }
+static phys_addr_t x86_virt_to_phys(const void* virt) { return (phys_addr_t)((uintptr_t)virt - g_kernel_virt_offset); }
+static bool x86_has_linear_physmap(void) { return true; }
+static phys_addr_t x86_linear_physmap_base(void) { return g_kernel_virt_offset; }
+static phys_addr_t x86_linear_physmap_limit(void) { return g_kernel_virt_offset + g_kernel_physmap_size; }
+
+static const hal_translate_ops_t x86_translate_ops = {
+    .backend_type = x86_backend_type,
+    .exec_class = x86_exec_class,
+    .phys_to_virt = x86_phys_to_virt,
+    .virt_to_phys = x86_virt_to_phys,
+    .has_linear_physmap = x86_has_linear_physmap,
+    .linear_physmap_base = x86_linear_physmap_base,
+    .linear_physmap_limit = x86_linear_physmap_limit,
+};
+
+const hal_translate_ops_t* hal_translate_ops(void) {
+    return &x86_translate_ops;
 }
 
 hal_pt_ops_t x86_hal_pt_ops = {

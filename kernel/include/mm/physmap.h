@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "mm.h"
+#include "../hal/hal_pt.h"
 
 /**
  * Direct-Map Linear Mapping Subsystem
@@ -15,18 +16,19 @@
 // Global state initialization for the physmap subsystem
 void physmap_init(void);
 
+// Answers: is there a kernel linear physmap?
+bool physmap_has_linear_map(void);
+
 // Converts a physical address to a linearly mapped kernel virtual address.
-// Returns NULL if the physical address is not part of the linear map.
-void *phys_to_virt_linear(phys_addr_t pa);
+void *physmap_phys_to_virt(phys_addr_t phys);
 
-// Converts a linearly mapped kernel virtual address back to a physical address.
-// Returns 0 if the virtual address is not part of the linear map.
-phys_addr_t virt_to_phys_linear(const void *va);
+// Converts a kernel virtual address back to a physical address.
+phys_addr_t physmap_virt_to_phys(const void *virt);
 
-// Checks if the given virtual address is within the kernel's linear map region.
-bool virt_is_in_linear_map(const void *va);
+// Returns the translation backend type
+translate_backend_kind_t physmap_backend_type(void);
 
-// Checks if the given physical address is currently accessible via the linear map.
-bool phys_is_linearly_mapped(phys_addr_t pa);
+// Returns the translation execution class
+translate_exec_class_t physmap_exec_class(void);
 
 #endif // BHARAT_PHYSMAP_H

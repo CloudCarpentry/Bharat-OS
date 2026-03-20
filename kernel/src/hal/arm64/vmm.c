@@ -143,7 +143,7 @@ static void arm64_mmu_destroy_table_recursive(phys_addr_t table, int level) {
     if (!table) return;
 
     if (level > 1) {
-        pt_t* pt = (pt_t*)phys_to_virt_linear(table);
+        pt_t* pt = (pt_t*)physmap_phys_to_virt(table);
         for (int i = 0; i < (level == 4 ? 256 : 512); i++) { // Skip kernel half on pgd
             if (pt->entries[i] & ARM64_MMU_FLAG_VALID) {
                 if ((level == 3 || level == 2) && (pt->entries[i] & ARM64_MMU_DESCRIPTOR_TABLE) == ARM64_MMU_DESCRIPTOR_BLOCK) {

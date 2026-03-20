@@ -7,9 +7,32 @@
 
 // Translation Backend Kind
 typedef enum {
+    TRANSLATE_BACKEND_NONE = 0,
     TRANSLATE_BACKEND_MMU,  // Traditional sparse page tables (x86_64, arm64, riscv64)
     TRANSLATE_BACKEND_MPU,  // Region isolation only (Cortex-M, EDGE32)
 } translate_backend_kind_t;
+
+// Translation Execution Class
+typedef enum {
+    TRANSLATE_EXEC_MMU_FULL,  // Linear physmap or high-half direct map
+    TRANSLATE_EXEC_MMU_LITE,  // Permanent small kernel window or temporary mappings
+    TRANSLATE_EXEC_MPU_ONLY,  // Identity mapping where valid
+} translate_exec_class_t;
+
+// Backend Translation Operations
+typedef struct hal_translate_ops {
+    translate_backend_kind_t (*backend_type)(void);
+    translate_exec_class_t   (*exec_class)(void);
+
+    void*       (*phys_to_virt)(phys_addr_t phys);
+    phys_addr_t (*virt_to_phys)(const void* virt);
+
+    bool        (*has_linear_physmap)(void);
+    phys_addr_t (*linear_physmap_base)(void);   // optional
+    phys_addr_t (*linear_physmap_limit)(void);  // optional
+} hal_translate_ops_t;
+
+const hal_translate_ops_t* hal_translate_ops(void);
 
 // Common VM Permission Enum
 typedef enum {

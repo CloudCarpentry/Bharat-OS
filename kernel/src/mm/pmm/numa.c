@@ -263,8 +263,8 @@ int numa_migrate_page(uint64_t vaddr, memory_node_id_t target_node, void* addres
     }
 
     // 3. Copy data
-    uint8_t* src = (uint8_t*)phys_to_virt_linear(old_phys);
-    uint8_t* dst = (uint8_t*)phys_to_virt_linear(new_phys);
+    uint8_t* src = (uint8_t*)physmap_phys_to_virt(old_phys);
+    uint8_t* dst = (uint8_t*)physmap_phys_to_virt(new_phys);
     for (int i = 0; i < PAGE_SIZE; i++) {
         dst[i] = src[i];
     }

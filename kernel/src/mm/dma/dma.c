@@ -140,7 +140,7 @@ int dma_buffer_alloc(size_t size, uint32_t flags, dma_buffer_t **out) {
     buf->phys_addr = pa;
     buf->size = size;
     buf->flags = flags;
-    buf->cpu_addr = phys_to_virt_linear(pa);
+    buf->cpu_addr = physmap_phys_to_virt(pa);
     buf->iova = 0;
     buf->pin_count = 0;
     buf->owner_as_id = 0;

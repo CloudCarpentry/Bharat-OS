@@ -63,7 +63,7 @@ static void riscv_mmu_destroy_table_recursive(phys_addr_t table, int level) {
     if (!table) return;
 
     if (level > 0) {
-        pte_table_t* pt = (pte_table_t*)phys_to_virt_linear(table);
+        pte_table_t* pt = (pte_table_t*)physmap_phys_to_virt(table);
         for (int i = 0; i < (level == 2 ? 256 : 512); i++) { // Skip top half on l2 (Sv39)
             if (pt->entries[i] & RISCV_PTE_V) {
                 if ((pt->entries[i] & (RISCV_PTE_R | RISCV_PTE_W | RISCV_PTE_X)) != 0) {
