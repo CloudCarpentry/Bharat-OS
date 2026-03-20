@@ -323,7 +323,7 @@ if ($Run) {
             if ($DualSerial) {
                 $qemuArgs += @("-serial", "mon:stdio", "-serial", "vc", "-vga", "none", "-device", "virtio-gpu-device", "-device", "ramfb")
             } else {
-                $qemuArgs += @("-serial", "vc", "-vga", "none", "-device", "virtio-gpu-device", "-device", "ramfb")
+                $qemuArgs += @("-serial", "stdio", "-serial", "vc", "-vga", "none", "-device", "virtio-gpu-device", "-device", "ramfb")
             }
         } else {
             $qemuArgs += @("-nographic")

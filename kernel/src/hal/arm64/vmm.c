@@ -246,15 +246,38 @@ static int arm64_mmu_query(phys_addr_t root, virt_addr_t virt, phys_addr_t *phys
 }
 
 static void arm64_mmu_activate(phys_addr_t root) {
-    // For VMSAv8-64 TTBR0 is used for user space mappings and TTBR1 for kernel space.
-    // This wrapper assumes activating a single root table in TTBR0 for now, mirroring old behavior.
+    // In Bharat-v3-64, we activate the provided root table in TTBR0.
+    // We assume the kernel is identity-mapped (or correctly mapped in the provided table).
+    // This is called AFTER we've mapped the RAM and (optionally) the framebuffer.
+    
+    uint64_t mair = (0xFFLL << 0)  | // Attr 0: Normal WB/WA/RA
+                    (0x04LL << 8)  | // Attr 1: Device-nGnRE
+                    (0x00LL << 16);  // Attr 2: Device-nGnRnE
+    
+    // TCR_EL1:
+    // T0SZ=16 (48-bit VA)
+    // TG0=0 (4KB)
+    // SH0=3 (Inner Shareable)
+    // ORGN0=1 (Normal WB/WA)
+    // IRGN0=1 (Normal WB/WA)
+    // IPS=2 (40-bit PA)
+    uint64_t tcr = (16ULL << 0) | (3ULL << 12) | (1ULL << 10) | (1ULL << 8) | (0ULL << 14) | (2ULL << 32);
+
     asm volatile(
+        "msr mair_el1, %1\n"
+        "msr tcr_el1, %2\n"
         "msr ttbr0_el1, %0\n"
         "isb\n"
         "tlbi vmalle1is\n"
         "dsb ish\n"
         "isb\n"
-        :: "r"((uintptr_t)root)
+        "mrs x0, sctlr_el1\n"
+        "orr x0, x0, #1\n"      // MMU enable
+        "and x0, x0, #~2\n"     // Alignment check (disable SCTLR_EL1.A)
+        "msr sctlr_el1, x0\n"
+        "isb\n"
+        :: "r"((uintptr_t)root), "r"(mair), "r"(tcr)
+        : "x0", "memory"
     );
 }
 

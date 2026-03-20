@@ -137,10 +137,12 @@ static phys_addr_t arm64_pt_create_address_space(phys_addr_t kernel_root_table) 
     }
 
     // In ARM64, we usually separate User and Kernel address spaces via TTBR0 and TTBR1.
-    // If a shared address space is used, we'd copy the kernel upper half.
+    // If a shared address space is used, we'd copy the kernel half.
+    // However, Bharat-OS currently uses the lower half for kernel code/data as well (e.g. 0x40000000).
+    // So we copy the entire PGD for now to ensure kernel continuity across address spaces.
     if (kernel_root_table != 0U) {
         pt_t* kernel_pgd = (pt_t*)P2V(kernel_root_table);
-        for(int i = 256; i < 512; i++) {
+        for(int i = 0; i < 512; i++) {
             pgd->entries[i] = kernel_pgd->entries[i];
         }
     }

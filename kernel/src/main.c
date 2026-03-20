@@ -390,10 +390,39 @@ void kernel_main(void) {
 
     KPRINT("BOOT: vmm initialized\n");
 
+    system_discovery_t* discovery = hal_get_system_discovery();
+    KPRINT("BOOT: discovery ");
+    hal_serial_write_hex((uintptr_t)discovery);
+    KPRINT("\n");
+
+#if defined(__aarch64__)
+    // Map all discovered RAM regions to ensure the kernel (code+bss) is accessible
+    // after we activate the new page tables.
+    if (discovery) {
+        KPRINT("  [VMM] Memory region count: ");
+        hal_serial_write_hex(discovery->topology.mem_region_count);
+        KPRINT("\n");
+        for (uint32_t i = 0; i < discovery->topology.mem_region_count; i++) {
+            uint64_t base = discovery->topology.mem_regions[i].base;
+            uint64_t size = discovery->topology.mem_regions[i].size;
+            KPRINT("  [VMM] Mapping RAM region: ");
+            hal_serial_write_hex(base);
+            KPRINT(" (size ");
+            hal_serial_write_hex(size);
+            KPRINT(")\n");
+            for (uint64_t off = 0; off < size; off += 4096) {
+                vmm_map_page(base + off, base + off, 
+                             CAP_RIGHT_READ | CAP_RIGHT_WRITE | CAP_RIGHT_EXECUTE);
+            }
+        }
+    } else {
+        KPRINT("  [VMM] WARNING: Discovery is NULL, skipping RAM mapping!\n");
+    }
+#endif
+
 #if defined(__riscv) || defined(__aarch64__)
     // Map discovered framebuffer if present
-    system_discovery_t* discovery = hal_get_system_discovery();
-    if (discovery->boot_video.valid) {
+    if (discovery && discovery->boot_video.valid) {
         uint64_t fb_phys = discovery->boot_video.phys_addr;
         uint64_t fb_size = discovery->boot_video.size;
         KPRINT("  [VMM] Mapping framebuffer: ");
