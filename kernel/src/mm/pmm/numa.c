@@ -1,6 +1,13 @@
 #include "../../../include/numa.h"
 
 #include <stddef.h>
+#include <stdint.h>
+
+#include "../../../include/hal/hal_pt.h"
+#include "../../../include/hal/hal_tlb.h"
+#include "../../../include/mm.h"
+#include "../../../include/sched.h"
+#include "../../../include/slab.h"
 
 static numa_node_descriptor_t g_nodes[NUMA_MAX_NODES];
 static uint32_t g_active_nodes;
@@ -59,68 +66,187 @@ uint32_t numa_active_node_count(void) {
     return g_active_nodes;
 }
 
-#include "../../../include/numa.h"
-#include "../../../include/mm.h"
-#include "../../../include/hal/hal_pt.h"
-#include "../../../include/hal/hal_tlb.h"
-#include "../../../include/sched.h"
-#include "../../../include/slab.h"
-
 #define P2V(x) ((void*)(uintptr_t)(x))
 #define V2P(x) ((phys_addr_t)(uintptr_t)(x))
 
 #define NUMA_MIGRATE_THRESHOLD 100
 #define NUMA_MIGRATE_COOLDOWN_TICKS 5000
+#define NUMA_ACCESS_HASH_BUCKETS 128U
+#define NUMA_PAGE_NODE_HASH_BUCKETS 256U
 
 typedef struct numa_access_record {
+    uintptr_t address_space_key;
+    uint64_t vpage;
     uint64_t vaddr;
     uint32_t remote_accesses;
     uint64_t last_migrated_tick;
-    list_head_t list;
+    struct numa_access_record* next;
 } numa_access_record_t;
 
-// Assuming some thread-local access records, we'd store a list of these in kthread_t,
-// but for simplicity we'll just implement the structure and functions here.
+typedef struct numa_page_node_entry {
+    uintptr_t address_space_key;
+    uint64_t vpage;
+    memory_node_id_t node_id;
+    struct numa_page_node_entry* next;
+} numa_page_node_entry_t;
+
 static kcache_t* numa_record_cache = NULL;
+static kcache_t* numa_page_node_cache = NULL;
+static numa_access_record_t* g_access_table[NUMA_ACCESS_HASH_BUCKETS];
+static numa_page_node_entry_t* g_page_node_table[NUMA_PAGE_NODE_HASH_BUCKETS];
+static uint8_t g_numa_tables_initialized = 0U;
+
+static uint64_t hash_mix64(uint64_t value) {
+    value ^= value >> 33;
+    value *= 0xff51afd7ed558ccdULL;
+    value ^= value >> 33;
+    value *= 0xc4ceb9fe1a85ec53ULL;
+    value ^= value >> 33;
+    return value;
+}
+
+static uint32_t access_hash_index(uintptr_t address_space_key, uint64_t vpage) {
+    uint64_t mixed = hash_mix64(((uint64_t)address_space_key) ^ (vpage << 1));
+    return (uint32_t)(mixed & (NUMA_ACCESS_HASH_BUCKETS - 1U));
+}
+
+static uint32_t page_node_hash_index(uintptr_t address_space_key, uint64_t vpage) {
+    uint64_t mixed = hash_mix64((vpage << 2) ^ ((uint64_t)address_space_key));
+    return (uint32_t)(mixed & (NUMA_PAGE_NODE_HASH_BUCKETS - 1U));
+}
 
 static void ensure_cache_init() {
     if (!numa_record_cache) {
         numa_record_cache = kcache_create("numa_access_record", sizeof(numa_access_record_t));
     }
+    if (!numa_page_node_cache) {
+        numa_page_node_cache = kcache_create("numa_page_node_entry", sizeof(numa_page_node_entry_t));
+    }
+    if (g_numa_tables_initialized == 0U) {
+        for (uint32_t i = 0; i < NUMA_ACCESS_HASH_BUCKETS; ++i) {
+            g_access_table[i] = NULL;
+        }
+        for (uint32_t i = 0; i < NUMA_PAGE_NODE_HASH_BUCKETS; ++i) {
+            g_page_node_table[i] = NULL;
+        }
+        g_numa_tables_initialized = 1U;
+    }
 }
 
-// In a real system, we might hash vaddr, but a simple list for PoC is enough.
-// Alternatively, embed the `numa_access_record_t` inside `kthread_t` or an associated struct.
+static numa_access_record_t* find_or_create_access_record(uintptr_t address_space_key, uint64_t vaddr) {
+    uint64_t vpage = vaddr & ~((uint64_t)PAGE_SIZE - 1ULL);
+    uint32_t bucket = access_hash_index(address_space_key, vpage);
+    numa_access_record_t* record = g_access_table[bucket];
 
-// Mock global ticks
-extern uint64_t g_sched_ticks;
+    while (record) {
+        if (record->address_space_key == address_space_key && record->vpage == vpage) {
+            return record;
+        }
+        record = record->next;
+    }
+
+    record = (numa_access_record_t*)kcache_alloc(numa_record_cache);
+    if (!record) {
+        return NULL;
+    }
+
+    record->address_space_key = address_space_key;
+    record->vpage = vpage;
+    record->vaddr = vpage;
+    record->remote_accesses = 0U;
+    record->last_migrated_tick = 0U;
+    record->next = g_access_table[bucket];
+    g_access_table[bucket] = record;
+    return record;
+}
+
+static numa_page_node_entry_t* find_or_create_page_node_entry(uintptr_t address_space_key, uint64_t vaddr) {
+    uint64_t vpage = vaddr & ~((uint64_t)PAGE_SIZE - 1ULL);
+    uint32_t bucket = page_node_hash_index(address_space_key, vpage);
+    numa_page_node_entry_t* entry = g_page_node_table[bucket];
+
+    while (entry) {
+        if (entry->address_space_key == address_space_key && entry->vpage == vpage) {
+            return entry;
+        }
+        entry = entry->next;
+    }
+
+    entry = (numa_page_node_entry_t*)kcache_alloc(numa_page_node_cache);
+    if (!entry) {
+        return NULL;
+    }
+
+    entry->address_space_key = address_space_key;
+    entry->vpage = vpage;
+    entry->node_id = NUMA_NODE_LOCAL;
+    entry->next = g_page_node_table[bucket];
+    g_page_node_table[bucket] = entry;
+    return entry;
+}
+
+static memory_node_id_t get_mapped_page_node(uintptr_t address_space_key, uint64_t vaddr) {
+    numa_page_node_entry_t* entry = find_or_create_page_node_entry(address_space_key, vaddr);
+    if (!entry) {
+        return NUMA_NODE_LOCAL;
+    }
+    return entry->node_id;
+}
+
+static void set_mapped_page_node(uintptr_t address_space_key, uint64_t vaddr, memory_node_id_t node_id) {
+    numa_page_node_entry_t* entry = find_or_create_page_node_entry(address_space_key, vaddr);
+    if (entry) {
+        entry->node_id = node_id;
+    }
+}
 
 void numa_record_page_access(void* thread_ptr, uint64_t vaddr, numa_access_type_t access_type) {
-    (void)vaddr;
     (void)access_type;
     ensure_cache_init();
     kthread_t* thread = (kthread_t*)thread_ptr;
-    if (!thread) return;
+    if (!thread || !thread->process || !thread->process->addr_space) return;
 
-    // For PoC: simulate recording by updating some structure or finding it
-    // In a real implementation, this list would be inside `kthread_t`
-    // e.g. thread->numa_records
-    // We'll just assume there is a list we can iterate.
-    // For now, this is a stub as per "software-driven NUMA migration framework".
+    uintptr_t as_key = (uintptr_t)thread->process->addr_space;
+    numa_access_record_t* record = find_or_create_access_record(as_key, vaddr);
+    if (!record) {
+        return;
+    }
+
+    memory_node_id_t page_node = get_mapped_page_node(as_key, vaddr);
+    memory_node_id_t current_node = numa_get_current_node();
+    if (page_node != current_node) {
+        record->remote_accesses++;
+    }
 }
 
 void numa_select_migration_candidates(void* thread_ptr) {
+    ensure_cache_init();
     kthread_t* thread = (kthread_t*)thread_ptr;
-    if (!thread) return;
+    if (!thread || !thread->process || !thread->process->addr_space) return;
+    if (thread->preferred_numa_node >= NUMA_MAX_NODES) return;
 
-    // Iterate through thread's recorded access pages.
-    // If a page's remote_accesses > NUMA_MIGRATE_THRESHOLD and
-    // it's off cooldown, queue it for migration.
+    uint64_t now_ticks = sched_get_ticks();
+    uintptr_t as_key = (uintptr_t)thread->process->addr_space;
+    for (uint32_t bucket = 0; bucket < NUMA_ACCESS_HASH_BUCKETS; ++bucket) {
+        numa_access_record_t* record = g_access_table[bucket];
+        while (record) {
+            if (record->address_space_key == as_key &&
+                record->remote_accesses >= NUMA_MIGRATE_THRESHOLD &&
+                (now_ticks - record->last_migrated_tick) >= NUMA_MIGRATE_COOLDOWN_TICKS) {
+                if (numa_migrate_page(record->vaddr, thread->preferred_numa_node, thread->process->addr_space) == 0) {
+                    record->last_migrated_tick = now_ticks;
+                    record->remote_accesses = 0U;
+                }
+            }
+            record = record->next;
+        }
+    }
 }
 
 int numa_migrate_page(uint64_t vaddr, memory_node_id_t target_node, void* address_space) {
     address_space_t* as = (address_space_t*)address_space;
     if (!as) return -1;
+    if (target_node >= NUMA_MAX_NODES) return -1;
 
     // 1. Allocate a new physical page on target_node
     phys_addr_t new_phys = mm_alloc_pages_order(0, target_node, PAGE_FLAG_USER | PAGE_FLAG_KERNEL);
@@ -162,6 +288,7 @@ int numa_migrate_page(uint64_t vaddr, memory_node_id_t target_node, void* addres
 
     // 6. TLB shootdown
     tlb_shootdown(as, vaddr);
+    set_mapped_page_node((uintptr_t)as, vaddr, target_node);
 
     return 0;
 }
