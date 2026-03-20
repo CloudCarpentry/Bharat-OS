@@ -5,6 +5,8 @@ enable_testing()
 
 # Make the modules directory visible to CMake
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/modules")
+include_directories(${CMAKE_SOURCE_DIR}/kernel/src)
+include_directories(${CMAKE_SOURCE_DIR}/kernel/include)
 
 # Load Common Build Policies
 include(BharatCommon)

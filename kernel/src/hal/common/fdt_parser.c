@@ -1,4 +1,4 @@
-#include "fdt_parser.h"
+#include "hal/fdt_parser.h"
 #include "hal/hal_boot.h"
 
 #include <stddef.h>
