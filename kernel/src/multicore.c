@@ -11,7 +11,14 @@ uint8_t g_per_core_stacks[MAX_SUPPORTED_CORES][KERNEL_STACK_SIZE] __attribute__(
 
 static uint32_t g_system_core_count = 1U;
 
+#include "arch/arch_caps.h"
+
 int multicore_boot_secondary_cores(uint32_t core_count) {
+    if (!arch_has_cap(ARCH_CAP_SMP)) {
+        g_system_core_count = 1U;
+        return 0;
+    }
+
     if (core_count > MAX_SUPPORTED_CORES) {
         core_count = MAX_SUPPORTED_CORES;
     }
@@ -38,6 +45,10 @@ int multicore_boot_secondary_cores(uint32_t core_count) {
 #include "hal/hal.h"
 
 void smp_init(void) {
+    if (!arch_has_cap(ARCH_CAP_SMP)) {
+        return;
+    }
+
     uint32_t core_id = hal_cpu_get_id();
 
     // Primary boot sequence setup

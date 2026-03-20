@@ -99,6 +99,13 @@ void *arch_memset_scalar(void *dst, int c, size_t n) {
     wv |= wv << 8;
     wv |= wv << 16;
 #if UINTPTR_MAX > 0xFFFFFFFF
+    /*
+     * FIXME(EDGE32): While arch_has_cap() is the preferred way to check
+     * architecture capabilities, doing so here in the fast-path memset
+     * scalar function adds overhead and is technically probing the compiler
+     * width for optimization, not an OS contract. It's left as UINTPTR_MAX
+     * check for performance, but should probably be refactored eventually.
+     */
     wv |= wv << 32;
 #endif
 

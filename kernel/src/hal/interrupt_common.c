@@ -217,8 +217,14 @@ int hal_interrupt_is_registered(uint32_t irq) {
     return is_reg;
 }
 
+#include "arch/arch_caps.h"
+
 // --- Affinity Mask API ---
 int hal_irq_set_affinity(uint32_t irq, irq_affinity_mask_t mask) {
+    if (!arch_has_cap(ARCH_CAP_ADV_IRQ_ROUTING)) {
+        return -1;
+    }
+
     if (irq >= HAL_MAX_IRQS || mask.mask == 0) {
         return -1;
     }
