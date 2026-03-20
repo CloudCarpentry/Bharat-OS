@@ -13,3 +13,8 @@ add_test(NAME test_early_alloc COMMAND test_early_alloc)
 add_test(NAME test_payload_codec COMMAND test_payload_codec)
 add_test(NAME test_capwire COMMAND test_capwire)
 add_test(NAME test_ool COMMAND test_ool)
+
+# Name Service Registry Test
+add_executable(test_namesvc_registry ../test_namesvc_registry.c ../../services/namesvc/src/registry.c)
+target_include_directories(test_namesvc_registry PRIVATE ../../services/namesvc/include ../../services/namesvc ../../lib/cap/include)
+add_test(NAME test_namesvc_registry COMMAND test_namesvc_registry)

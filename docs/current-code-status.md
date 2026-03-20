@@ -93,7 +93,7 @@ graph TD
 | Service | Current code status | Evidence highlights |
 | --- | --- | --- |
 | `init` | Stub supervisor loop | Runtime bootstrap logs and TODO startup graph actions. |
-| `namesvc` | Stub registry loop | Runtime initialization and TODO endpoint/lookup handling. |
+| `namesvc` | Implemented | Registry loop implemented to handle endpoint addition/lookup/removal via mapped IPC operations over bounded endpoints. |
 | `servicemgr` | Stub | Prints init message and exits event loop placeholder. |
 | `coremgr` | Stub | Topology/control responsibilities documented, logic TODO. |
 | `memmgr` | Stub | Placeholder for page-fault/policy loop. |
