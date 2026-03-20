@@ -386,6 +386,7 @@ endif()
 # compiler driver across clang/gcc and host/cross presets.
 target_link_options(kernel.elf PRIVATE
     "-nostdlib"
+    $<$<C_COMPILER_ID:Clang>:-fuse-ld=lld>
     "-no-pie" "-fno-pie"
     ""
     "LINKER:--fatal-warnings"
