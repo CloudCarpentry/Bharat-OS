@@ -12,12 +12,11 @@
 #include "mm/mm_local.h"
 #include "fault_diag.h"
 #include "arch/arch_ext_state.h"
+#include "arch/arch_caps.h"
 
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
-
-#include "mm.h"
 int vmm_handle_cow_fault(address_space_t* as, virt_addr_t vaddr);
 extern bool core_is_rt(void);
 
@@ -70,7 +69,12 @@ static address_space_t *trap_current_aspace(void) {
 
 static int trap_user_ptr_valid(uint64_t ptr) {
   const uint64_t USER_MIN = 0x1000ULL;
-  const uint64_t USER_MAX = 0x00007FFFFFFFFFFFULL;
+  uint64_t USER_MAX = 0x7FFFFFFFULL; // Compact 32-bit layout
+
+  if (arch_has_cap(ARCH_CAP_USERSPACE_HIGHHALF) && arch_has_cap(ARCH_CAP_64BIT_VA)) {
+      USER_MAX = 0x00007FFFFFFFFFFFULL;
+  }
+
   return BHARAT_RANGE_VALID(ptr, USER_MIN, USER_MAX);
 }
 
