@@ -1,6 +1,9 @@
 #include "trap.h"
 #ifdef BHARAT_PERSONALITY_LINUX
 #include "../../subsys/linux/linux_compat.h"
+extern long linux_syscall_handler(long sysno, long arg1, long arg2, long arg3,
+                                  long arg4, long arg5, long arg6)
+    __attribute__((weak));
 #endif
 #include "capability.h"
 #include "device.h"
@@ -381,11 +384,15 @@ long trap_handle(trap_frame_t *frame) {
 
   if (current && current->personality == PERSONALITY_LINUX) {
 #ifdef BHARAT_PERSONALITY_LINUX
-    rc = linux_syscall_handler(frame->gpr[0], frame->gpr[1], frame->gpr[2],
-                               frame->gpr[3], frame->gpr[4], frame->gpr[5],
-                               frame->gpr[6]);
+    if (linux_syscall_handler) {
+      rc = linux_syscall_handler(frame->gpr[0], frame->gpr[1], frame->gpr[2],
+                                 frame->gpr[3], frame->gpr[4], frame->gpr[5],
+                                 frame->gpr[6]);
+    } else {
+      rc = TRAP_ERR_NOSYS;
+    }
 #else
-    rc = -38; /* ENOSYS */
+    rc = TRAP_ERR_NOSYS;
 #endif
   } else {
     rc = syscall_dispatch((syscall_id_t)frame->gpr[0], frame->gpr[1],

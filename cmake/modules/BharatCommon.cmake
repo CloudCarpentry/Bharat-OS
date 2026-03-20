@@ -21,8 +21,22 @@ function(bharat_set_arch_defaults)
     set(ARCH_FAMILY "")
     set(ARCH_BITS "")
     set(ARCH_VARIANT "GENERIC")
-    
-    string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" PROC_LOWER)
+
+    set(BHARAT_ARCH_DETECT_CANDIDATE "${CMAKE_SYSTEM_PROCESSOR}")
+    if("${BHARAT_ARCH_DETECT_CANDIDATE}" STREQUAL "")
+        set(BHARAT_ARCH_DETECT_CANDIDATE "${CMAKE_HOST_SYSTEM_PROCESSOR}")
+    endif()
+    if("${BHARAT_ARCH_DETECT_CANDIDATE}" STREQUAL "")
+        execute_process(
+            COMMAND uname -m
+            OUTPUT_VARIABLE BHARAT_UNAME_MACHINE
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
+        set(BHARAT_ARCH_DETECT_CANDIDATE "${BHARAT_UNAME_MACHINE}")
+    endif()
+
+    string(TOLOWER "${BHARAT_ARCH_DETECT_CANDIDATE}" PROC_LOWER)
     
     # Determine architecture family and bitness
     if(PROC_LOWER MATCHES "^(x86_64|amd64|x64)$")
@@ -44,7 +58,9 @@ function(bharat_set_arch_defaults)
         set(ARCH_FAMILY "RISCV")
         set(ARCH_BITS "32")
     else()
-        message(FATAL_ERROR "Unknown architecture: ${CMAKE_SYSTEM_PROCESSOR}")
+        message(FATAL_ERROR
+            "Unknown architecture: system='${CMAKE_SYSTEM_PROCESSOR}', "
+            "host='${CMAKE_HOST_SYSTEM_PROCESSOR}', detected='${BHARAT_ARCH_DETECT_CANDIDATE}'")
     endif()
     
     # Check for SHAKTI variant (RISC-V specific)
