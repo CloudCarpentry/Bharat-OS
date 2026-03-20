@@ -2,10 +2,13 @@
 #include "../../../include/hal/hal_tlb.h"
 #include "../../../include/mm.h"
 #include "../../../include/numa.h"
+#include "../../../include/mm/physmap.h"
 #include <stdbool.h>
 
-#define P2V(x) ((void*)(uintptr_t)(x))
-#define V2P(x) ((phys_addr_t)(uintptr_t)(x))
+// Direct-Map Subsystem Configuration
+// For ARM64, the kernel virtual offset (high-half map)
+const virt_addr_t g_kernel_virt_offset = 0xFFFF800000000000ULL;
+const size_t g_kernel_physmap_size = 0x8000000000ULL; // e.g., 512GB
 
 // ARM64 Descriptor bits
 #define ARM64_PT_VALID       (1ULL << 0)
@@ -39,8 +42,11 @@
 
 #define ARM64_PAGE_MASK      (~0xFFFULL)
 
+// Arch-private raw descriptor
+typedef uint64_t pte_raw_t;
+
 typedef struct {
-    uint64_t entries[512];
+    pte_raw_t entries[512];
 } pt_t;
 
 static virt_addr_t align_down(virt_addr_t value) {
@@ -131,7 +137,7 @@ static phys_addr_t arm64_pt_create_address_space(phys_addr_t kernel_root_table) 
         return 0;
     }
 
-    pt_t* pgd = (pt_t*)P2V(root);
+    pt_t* pgd = (pt_t*)phys_to_virt_linear(root);
     for (int i = 0; i < 512; i++) {
         pgd->entries[i] = 0;
     }
@@ -141,7 +147,7 @@ static phys_addr_t arm64_pt_create_address_space(phys_addr_t kernel_root_table) 
     // However, Bharat-OS currently uses the lower half for kernel code/data as well (e.g. 0x40000000).
     // So we copy the entire PGD for now to ensure kernel continuity across address spaces.
     if (kernel_root_table != 0U) {
-        pt_t* kernel_pgd = (pt_t*)P2V(kernel_root_table);
+        pt_t* kernel_pgd = (pt_t*)phys_to_virt_linear(kernel_root_table);
         for(int i = 0; i < 512; i++) {
             pgd->entries[i] = kernel_pgd->entries[i];
         }
@@ -154,7 +160,7 @@ static void arm64_pt_destroy_recursive(phys_addr_t table, int level) {
     if (!table) return;
 
     if (level > 1) {
-        pt_t* pt = (pt_t*)P2V(table);
+        pt_t* pt = (pt_t*)phys_to_virt_linear(table);
         int max_idx = (level == 4) ? 256 : 512; // Free only bottom half (User) of PGD
         for (int i = 0; i < max_idx; i++) {
             if (pt->entries[i] & ARM64_PT_VALID) {
@@ -186,37 +192,37 @@ static int arm64_pt_map_4k(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t p
     uint64_t pmd_idx = (aligned_vaddr >> 21) & 0x1FF;
     uint64_t pte_idx = (aligned_vaddr >> 12) & 0x1FF;
 
-    pt_t* pgd = (pt_t*)P2V(root_pt);
+    pt_t* pgd = (pt_t*)phys_to_virt_linear(root_pt);
 
     uint64_t table_flags = ARM64_PT_VALID | ARM64_PT_TABLE; // Intermediate tables
 
     if ((pgd->entries[pgd_idx] & ARM64_PT_VALID) == 0) {
         phys_addr_t new_pud = mm_alloc_page(NUMA_NODE_ANY);
         if (!new_pud) return -2;
-        pt_t* pud_ptr = (pt_t*)P2V(new_pud);
+        pt_t* pud_ptr = (pt_t*)phys_to_virt_linear(new_pud);
         for(int i=0; i<512; i++) pud_ptr->entries[i] = 0;
         pgd->entries[pgd_idx] = new_pud | table_flags;
     }
 
-    pt_t* pud = (pt_t*)P2V(pgd->entries[pgd_idx] & ARM64_PAGE_MASK);
+    pt_t* pud = (pt_t*)phys_to_virt_linear(pgd->entries[pgd_idx] & ARM64_PAGE_MASK);
     if ((pud->entries[pud_idx] & ARM64_PT_VALID) == 0) {
         phys_addr_t new_pmd = mm_alloc_page(NUMA_NODE_ANY);
         if (!new_pmd) return -2;
-        pt_t* pmd_ptr = (pt_t*)P2V(new_pmd);
+        pt_t* pmd_ptr = (pt_t*)phys_to_virt_linear(new_pmd);
         for(int i=0; i<512; i++) pmd_ptr->entries[i] = 0;
         pud->entries[pud_idx] = new_pmd | table_flags;
     }
 
-    pt_t* pmd = (pt_t*)P2V(pud->entries[pud_idx] & ARM64_PAGE_MASK);
+    pt_t* pmd = (pt_t*)phys_to_virt_linear(pud->entries[pud_idx] & ARM64_PAGE_MASK);
     if ((pmd->entries[pmd_idx] & ARM64_PT_VALID) == 0) {
         phys_addr_t new_pte = mm_alloc_page(NUMA_NODE_ANY);
         if (!new_pte) return -2;
-        pt_t* pte_ptr = (pt_t*)P2V(new_pte);
+        pt_t* pte_ptr = (pt_t*)phys_to_virt_linear(new_pte);
         for(int i=0; i<512; i++) pte_ptr->entries[i] = 0;
         pmd->entries[pmd_idx] = new_pte | table_flags;
     }
 
-    pt_t* pte = (pt_t*)P2V(pmd->entries[pmd_idx] & ARM64_PAGE_MASK);
+    pt_t* pte = (pt_t*)phys_to_virt_linear(pmd->entries[pmd_idx] & ARM64_PAGE_MASK);
 
     uint64_t pte_flags = flags_to_arm64(flags);
     pte->entries[pte_idx] = aligned_paddr | pte_flags;
@@ -234,13 +240,13 @@ static int arm64_pt_unmap_4k(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t
     uint64_t pmd_idx = (aligned_vaddr >> 21) & 0x1FF;
     uint64_t pte_idx = (aligned_vaddr >> 12) & 0x1FF;
 
-    pt_t* pgd = (pt_t*)P2V(root_pt);
+    pt_t* pgd = (pt_t*)phys_to_virt_linear(root_pt);
     if ((pgd->entries[pgd_idx] & ARM64_PT_VALID) == 0) return -2;
-    pt_t* pud = (pt_t*)P2V(pgd->entries[pgd_idx] & ARM64_PAGE_MASK);
+    pt_t* pud = (pt_t*)phys_to_virt_linear(pgd->entries[pgd_idx] & ARM64_PAGE_MASK);
     if ((pud->entries[pud_idx] & ARM64_PT_VALID) == 0) return -2;
-    pt_t* pmd = (pt_t*)P2V(pud->entries[pud_idx] & ARM64_PAGE_MASK);
+    pt_t* pmd = (pt_t*)phys_to_virt_linear(pud->entries[pud_idx] & ARM64_PAGE_MASK);
     if ((pmd->entries[pmd_idx] & ARM64_PT_VALID) == 0) return -2;
-    pt_t* pte = (pt_t*)P2V(pmd->entries[pmd_idx] & ARM64_PAGE_MASK);
+    pt_t* pte = (pt_t*)phys_to_virt_linear(pmd->entries[pmd_idx] & ARM64_PAGE_MASK);
 
     if ((pte->entries[pte_idx] & ARM64_PT_VALID) == 0) return -2;
 
@@ -277,13 +283,13 @@ static int arm64_pt_protect_4k(phys_addr_t root_pt, virt_addr_t vaddr, uint32_t 
     uint64_t pmd_idx = (aligned_vaddr >> 21) & 0x1FF;
     uint64_t pte_idx = (aligned_vaddr >> 12) & 0x1FF;
 
-    pt_t* pgd = (pt_t*)P2V(root_pt);
+    pt_t* pgd = (pt_t*)phys_to_virt_linear(root_pt);
     if ((pgd->entries[pgd_idx] & ARM64_PT_VALID) == 0) return -2;
-    pt_t* pud = (pt_t*)P2V(pgd->entries[pgd_idx] & ARM64_PAGE_MASK);
+    pt_t* pud = (pt_t*)phys_to_virt_linear(pgd->entries[pgd_idx] & ARM64_PAGE_MASK);
     if ((pud->entries[pud_idx] & ARM64_PT_VALID) == 0) return -2;
-    pt_t* pmd = (pt_t*)P2V(pud->entries[pud_idx] & ARM64_PAGE_MASK);
+    pt_t* pmd = (pt_t*)phys_to_virt_linear(pud->entries[pud_idx] & ARM64_PAGE_MASK);
     if ((pmd->entries[pmd_idx] & ARM64_PT_VALID) == 0) return -2;
-    pt_t* pte = (pt_t*)P2V(pmd->entries[pmd_idx] & ARM64_PAGE_MASK);
+    pt_t* pte = (pt_t*)phys_to_virt_linear(pmd->entries[pmd_idx] & ARM64_PAGE_MASK);
 
     if ((pte->entries[pte_idx] & ARM64_PT_VALID) == 0) return -2;
 
@@ -309,13 +315,13 @@ static int arm64_pt_query_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr
     uint64_t pmd_idx = (aligned_vaddr >> 21) & 0x1FF;
     uint64_t pte_idx = (aligned_vaddr >> 12) & 0x1FF;
 
-    pt_t* pgd = (pt_t*)P2V(root_pt);
+    pt_t* pgd = (pt_t*)phys_to_virt_linear(root_pt);
     if ((pgd->entries[pgd_idx] & ARM64_PT_VALID) == 0) return -2;
-    pt_t* pud = (pt_t*)P2V(pgd->entries[pgd_idx] & ARM64_PAGE_MASK);
+    pt_t* pud = (pt_t*)phys_to_virt_linear(pgd->entries[pgd_idx] & ARM64_PAGE_MASK);
     if ((pud->entries[pud_idx] & ARM64_PT_VALID) == 0) return -2;
-    pt_t* pmd = (pt_t*)P2V(pud->entries[pud_idx] & ARM64_PAGE_MASK);
+    pt_t* pmd = (pt_t*)phys_to_virt_linear(pud->entries[pud_idx] & ARM64_PAGE_MASK);
     if ((pmd->entries[pmd_idx] & ARM64_PT_VALID) == 0) return -2;
-    pt_t* pte = (pt_t*)P2V(pmd->entries[pmd_idx] & ARM64_PAGE_MASK);
+    pt_t* pte = (pt_t*)phys_to_virt_linear(pmd->entries[pmd_idx] & ARM64_PAGE_MASK);
 
     if ((pte->entries[pte_idx] & ARM64_PT_VALID) == 0) return -2;
 
@@ -391,6 +397,7 @@ void arm64_init_hardening(void) {
 }
 
 hal_pt_ops_t arm64_hal_pt_ops = {
+    .backend_type          = TRANSLATE_BACKEND_MMU,
     .create_address_space  = arm64_pt_create_address_space,
     .destroy_address_space = arm64_pt_destroy_address_space,
     .map_page              = arm64_pt_map_page,
