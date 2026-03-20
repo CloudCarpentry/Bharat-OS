@@ -10,7 +10,6 @@
 #include "ipc_async.h"
 #include "kernel.h"
 #include "mm.h"
-#include "arch/fastops_dispatch.h"
 #include "arch/arch_cpu_caps.h"
 #include "mm_zswap.h"
 #include "multicore.h"

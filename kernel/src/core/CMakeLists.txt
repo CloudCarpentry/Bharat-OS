@@ -10,6 +10,13 @@ add_library(k_core OBJECT
     ../../src/security/secure_boot.c
     ../../src/security/vfio.c
     ../../src/lib/string.c
+    ../../src/arch/common/memops_scalar.c
+    $<$<STREQUAL:${ARCH},x86_64>:../../src/arch/x86_64/memops.c>
+    $<$<STREQUAL:${ARCH},x86_64>:../../src/arch/x86_64/memops_fast_string.c>
+    $<$<STREQUAL:${ARCH},arm64>:../../src/arch/arm64/memops.c>
+    $<$<STREQUAL:${ARCH},arm64>:../../src/arch/arm64/memops_gpr_bulk.c>
+    $<$<STREQUAL:${ARCH},riscv64>:../../src/arch/riscv64/memops.c>
+    $<$<STREQUAL:${ARCH},riscv64>:../../src/arch/riscv64/memops_gpr_bulk.c>
     ../../src/stack_protector.c
     ../../src/crypto/secure_mem.c
 )
