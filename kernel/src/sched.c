@@ -168,6 +168,9 @@ int sched_enqueue(kthread_t *thread, uint32_t core_id) {
     list_del(&slot->run_node);
     list_init(&slot->run_node);
     slot->is_on_runqueue = 0U;
+    if (g_cpu_locals[core_id].runqueue.runnable_count > 0U) {
+      g_cpu_locals[core_id].runqueue.runnable_count--;
+    }
   }
 
   thread->bound_core_id = core_id;
@@ -175,6 +178,7 @@ int sched_enqueue(kthread_t *thread, uint32_t core_id) {
   list_add(&slot->run_node, &g_cpu_locals[core_id].runqueue.ready_queue[thread->priority]);
   slot->is_on_runqueue = 1U;
   sched_ready_bitmap_set(&g_cpu_locals[core_id].runqueue, thread->priority);
+  g_cpu_locals[core_id].runqueue.runnable_count++;
 
   spin_unlock(&g_cpu_locals[core_id].runqueue.lock);
   return 0;
@@ -245,6 +249,7 @@ void sched_init(void) {
     g_cpu_locals[core].runqueue.idle_thread = NULL;
     g_cpu_locals[core].runqueue.total_ticks = 0U;
     g_cpu_locals[core].runqueue.context_switches = 0U;
+    g_cpu_locals[core].runqueue.runnable_count = 0U;
     g_cpu_locals[core].runqueue.throttled = 0U;
     spin_lock_init(&g_cpu_locals[core].runqueue.lock);
     list_init(&g_cpu_locals[core].runqueue.sleeping_list);
@@ -418,6 +423,9 @@ int thread_destroy(kthread_t *thread) {
   if (slot->is_on_runqueue != 0U) {
     list_del(&slot->run_node);
     slot->is_on_runqueue = 0U;
+    if (g_cpu_locals[thread->bound_core_id].runqueue.runnable_count > 0U) {
+      g_cpu_locals[thread->bound_core_id].runqueue.runnable_count--;
+    }
     sched_ready_bitmap_clear_if_empty(&g_cpu_locals[thread->bound_core_id].runqueue,
                                       thread->priority);
   }
@@ -508,14 +516,7 @@ static void sched_process_pending_ai_suggestions(void) {
 }
 
 static uint32_t sched_run_queue_depth(uint32_t core_id) {
-  uint32_t count = 0U;
-  for (uint32_t p = 0; p < MAX_PRIORITY_LEVELS; ++p) {
-    list_head_t *head = &g_cpu_locals[core_id].runqueue.ready_queue[p];
-    for (list_head_t *n = head->next; n != head; n = n->next) {
-      ++count;
-    }
-  }
-  return count;
+  return g_cpu_locals[core_id].runqueue.runnable_count;
 }
 
 static inline void sched_ready_bitmap_set(sched_rq_t *rq, uint32_t prio) {
@@ -570,6 +571,9 @@ static kthread_t *sched_pick_next_ready(uint32_t core_id) {
   list_del(node);
   list_init(node);
   slot->is_on_runqueue = 0U;
+  if (rq->runnable_count > 0U) {
+    rq->runnable_count--;
+  }
   sched_ready_bitmap_clear_if_empty(rq, (uint32_t)prio);
   return &slot->thread;
 }
@@ -584,6 +588,9 @@ static void sched_dequeue_task_l0(kthread_t *thread, uint32_t core_id) {
     list_del(&slot->run_node);
     list_init(&slot->run_node);
     slot->is_on_runqueue = 0U;
+    if (g_cpu_locals[core_id].runqueue.runnable_count > 0U) {
+      g_cpu_locals[core_id].runqueue.runnable_count--;
+    }
     sched_ready_bitmap_clear_if_empty(&g_cpu_locals[core_id].runqueue, thread->priority);
   }
 }
@@ -629,6 +636,7 @@ static void sched_switch_to(kthread_t *next, uint32_t core_id) {
         list_add(&slot->run_node, &g_cpu_locals[core_id].runqueue.ready_queue[current->priority]);
         slot->is_on_runqueue = 1U;
         sched_ready_bitmap_set(&g_cpu_locals[core_id].runqueue, current->priority);
+        g_cpu_locals[core_id].runqueue.runnable_count++;
     }
   }
 
@@ -1029,6 +1037,9 @@ int sched_adjust_priority(kthread_t *thread, uint32_t new_priority) {
     list_del(&slot->run_node);
     list_init(&slot->run_node);
     slot->is_on_runqueue = 0U;
+    if (g_cpu_locals[thread->bound_core_id].runqueue.runnable_count > 0U) {
+      g_cpu_locals[thread->bound_core_id].runqueue.runnable_count--;
+    }
   }
 
   thread->priority = new_priority;
@@ -1063,6 +1074,9 @@ int sched_migrate_task(kthread_t *thread, uint32_t new_node) {
     list_del(&slot->run_node);
     list_init(&slot->run_node);
     slot->is_on_runqueue = 0U;
+    if (g_cpu_locals[thread->bound_core_id].runqueue.runnable_count > 0U) {
+      g_cpu_locals[thread->bound_core_id].runqueue.runnable_count--;
+    }
   }
 
   thread->bound_core_id = new_node;
