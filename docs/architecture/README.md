@@ -37,6 +37,15 @@ This folder captures the current architectural baseline for Bharat-OS.
 - [`storage-and-sandbox-strategy.md`](storage-and-sandbox-strategy.md)
 - [`verification-scope.md`](verification-scope.md)
 - [`threat-model-and-mac.md`](threat-model-and-mac.md)
+- [`cmake-governance-and-agent-rules.md`](cmake-governance-and-agent-rules.md)
+
+
+### Component-level deep dives (with Mermaid + PlantUML)
+
+- [`components/kernel-subcomponents-architecture.md`](components/kernel-subcomponents-architecture.md)
+- [`components/subsystem-subcomponents-architecture.md`](components/subsystem-subcomponents-architecture.md)
+- [`components/services-subcomponents-architecture.md`](components/services-subcomponents-architecture.md)
+- [`components/drivers-subcomponents-architecture.md`](components/drivers-subcomponents-architecture.md)
 
 ### Deployment and user-space strategy
 
