@@ -1,0 +1,87 @@
+Could not open option rom 'vgabios-ramfb.bin': No such file or directory
+!FDT ptr initial: 0x0000000048000000
+FDT: Checking magic at 0x0000000048000000 magic=0x00000000d00dfeed
+FDT: Checking magic at 0x0000000048000000 magic=0x00000000d00dfeed
+FDT: Checking magic at 0x0000000048000000 magic=0x00000000d00dfeed
+FDT: Found node:
+FDT: Found node: psci
+FDT: Found node: memory@40000000
+FDT: Memory region: base=0x0000000040000000 size=0x0000000010000000
+FDT: Found node: platform-bus@c000000
+FDT: Found node: fw-cfg@9020000
+FDT: Found node: virtio_mmio@a000000
+FDT: Found node: virtio_mmio@a000200
+FDT: Found node: virtio_mmio@a000400
+FDT: Found node: virtio_mmio@a000600
+FDT: Found node: virtio_mmio@a000800
+FDT: Found node: virtio_mmio@a000a00
+FDT: Found node: virtio_mmio@a000c00
+FDT: Found node: virtio_mmio@a000e00
+FDT: Found node: virtio_mmio@a001000
+FDT: Found node: virtio_mmio@a001200
+FDT: Found node: virtio_mmio@a001400
+FDT: Found node: virtio_mmio@a001600
+FDT: Found node: virtio_mmio@a001800
+FDT: Found node: virtio_mmio@a001a00
+FDT: Found node: virtio_mmio@a001c00
+FDT: Found node: virtio_mmio@a001e00
+FDT: Found node: virtio_mmio@a002000
+FDT: Found node: virtio_mmio@a002200
+FDT: Found node: virtio_mmio@a002400
+FDT: Found node: virtio_mmio@a002600
+FDT: Found node: virtio_mmio@a002800
+FDT: Found node: virtio_mmio@a002a00
+FDT: Found node: virtio_mmio@a002c00
+FDT: Found node: virtio_mmio@a002e00
+FDT: Found node: virtio_mmio@a003000
+FDT: Found node: virtio_mmio@a003200
+FDT: Found node: virtio_mmio@a003400
+FDT: Found node: virtio_mmio@a003600
+FDT: Found node: virtio_mmio@a003800
+FDT: Found node: virtio_mmio@a003a00
+FDT: Found node: virtio_mmio@a003c00
+FDT: Found node: virtio_mmio@a003e00
+FDT: Found node: gpio-keys
+FDT: Found node: poweroff
+FDT: Found node: pl061@9030000
+FDT: Found node: pcie@10000000
+FDT: Found node: pl031@9010000
+FDT: Found node: pl011@9000000
+FDT: Found node: pmu
+FDT: Found node: intc@8000000
+FDT: Found node: v2m@8020000
+FDT: Found node: flash@0
+FDT: Found node: cpus
+FDT: Found node: cpu-map
+FDT: Found node: socket0
+FDT: Found node: cluster0
+FDT: Found node: core0
+FDT: Found node: cpu@0
+FDT: Found node: timer
+FDT: Found node: apb-pclk
+FDT: Found node: chosen
+Early Primary ID: 0x0000000000000000
+BOOT: kernel_main reached
+
+  ____  _                          _          ____   ____
+ | __ )| |__   __ _ _ __ __ _ _| |_       / ___| / ___|
+ |  _ \| '_ \ / _` | '__/ _` | '__/ _` |_____| |  _  \___ \
+ | |_) | | | | (_| | | | (_| | | | (_| |_____| |_| |  ___) |
+ |____/|_| |_|\__,_|_|  \__,_|_|  \__,_|      \____| |____/
+
+Bharat-OS
+  [HAL] Initialising hardware on BSP...
+  [HAL] Ready.
+  [PROFILE] Applying hardware profile hooks...
+  [SEC] Running secure-boot verification...
+  [SEC] Secure-boot policy accepted.
+  [ALGO] Initializing Capability Matrix...
+  [ALGO] Matrix Ready.
+  [MM]  Initializing PMM...
+PMM: Regions discovered: 0x0000000000000001
+PMM: Region 0x0000000040000000 size 0x0000000010000000 protected up to 0x000000004069d000
+PMM: Freeing range 0x000000004069d000 to 0x0000000050000000
+PMM: ready
+BOOT: pmm initialized
+  [VMM] Initializing VMM...
+BOOT: vmm initialized
