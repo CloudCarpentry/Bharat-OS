@@ -1,5 +1,6 @@
 #include "ipc_endpoint.h"
 #include "kernel_safety.h"
+#include "cap_policy.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -10,6 +11,7 @@ typedef struct {
     uint8_t in_use;
     ipc_message_t msg;
     uint8_t has_msg;
+    capability_table_t* cap_transfer_src_table; // Store the source table for cross-table delegation
     wait_queue_t senders;
     wait_queue_t receivers;
 } ipc_endpoint_t;
@@ -56,7 +58,7 @@ int ipc_endpoint_create(capability_table_t* table, uint32_t* out_send_cap, uint3
     return IPC_ERR_NO_SPACE;
 }
 
-int ipc_endpoint_send(capability_table_t* table, uint32_t send_cap, const void* payload, uint32_t payload_len, uint64_t timeout_ticks) {
+int ipc_endpoint_send(capability_table_t* table, uint32_t send_cap, const void* payload, uint32_t payload_len, uint64_t timeout_ticks, uint32_t cap_to_send, uint32_t cap_send_rights) {
     if (!table || !payload || payload_len == 0U) {
         return IPC_ERR_INVALID;
     }
@@ -75,7 +77,31 @@ int ipc_endpoint_send(capability_table_t* table, uint32_t send_cap, const void* 
         return IPC_ERR_INVALID;
     }
 
-    if (ep->has_msg != 0U) {
+    // Capability transfer validation
+    capability_entry_t transfer_e = {0};
+    if (cap_to_send != 0U) {
+        // Validate that sender has the capability they want to transfer and it has the rights they want to grant
+        if (cap_table_lookup(table, cap_to_send, CAP_OBJ_NONE, cap_send_rights, &transfer_e) != 0) {
+            return IPC_ERR_CAP_TRANSFER_NOT_ALLOWED;
+        }
+
+        // Validate policy: Can this type be transferred?
+        if (!cap_can_transfer(transfer_e.type)) {
+            return IPC_ERR_CAP_TRANSFER_NOT_ALLOWED;
+        }
+
+        // Validate policy: Are the requested rights valid for this type?
+        if (!cap_transfer_rights_valid(transfer_e.type, cap_send_rights)) {
+            return IPC_ERR_CAP_TRANSFER_NOT_ALLOWED;
+        }
+
+        // Require that the sender's capability itself has the DELEGATE right to transfer it
+        if ((transfer_e.rights & CAP_PERM_DELEGATE) == 0U) {
+            return IPC_ERR_CAP_TRANSFER_NOT_ALLOWED;
+        }
+    }
+
+    while (ep->has_msg != 0U) {
         if (timeout_ticks == 0) {
             return IPC_ERR_WOULD_BLOCK;
         }
@@ -94,6 +120,8 @@ int ipc_endpoint_send(capability_table_t* table, uint32_t send_cap, const void* 
             if (cur->ipc_wakeup_reason != IPC_OK) {
                 return cur->ipc_wakeup_reason;
             }
+            // In a multi-waiter environment, someone else might have sent a message
+            // between our wakeup and scheduling. Loop back and check `ep->has_msg` again.
         } else {
             return IPC_ERR_WOULD_BLOCK;
         }
@@ -104,6 +132,18 @@ int ipc_endpoint_send(capability_table_t* table, uint32_t send_cap, const void* 
         ep->msg.payload[i] = src[i];
     }
     ep->msg.msg_len = payload_len;
+
+    // Store capability transfer metadata
+    if (cap_to_send != 0U) {
+        ep->msg.cap_transfer_id = cap_to_send;
+        ep->msg.cap_transfer_rights = cap_send_rights;
+        ep->cap_transfer_src_table = table;
+    } else {
+        ep->msg.cap_transfer_id = 0U;
+        ep->msg.cap_transfer_rights = 0U;
+        ep->cap_transfer_src_table = NULL;
+    }
+
     ep->has_msg = 1U;
 
     kthread_t* recv = sched_wait_queue_dequeue(&ep->receivers);
@@ -116,7 +156,7 @@ int ipc_endpoint_send(capability_table_t* table, uint32_t send_cap, const void* 
     return IPC_OK;
 }
 
-int ipc_endpoint_receive(capability_table_t* table, uint32_t recv_cap, void* out_payload, uint32_t out_payload_capacity, uint32_t* out_received_len, uint64_t timeout_ticks) {
+int ipc_endpoint_receive(capability_table_t* table, uint32_t recv_cap, void* out_payload, uint32_t out_payload_capacity, uint32_t* out_received_len, uint64_t timeout_ticks, uint32_t* out_received_cap) {
     if (!table || !out_payload || out_payload_capacity == 0U || !out_received_len) {
         return IPC_ERR_INVALID;
     }
@@ -131,7 +171,7 @@ int ipc_endpoint_receive(capability_table_t* table, uint32_t recv_cap, void* out
         return IPC_ERR_INVALID;
     }
 
-    if (ep->has_msg == 0U) {
+    while (ep->has_msg == 0U) {
         if (timeout_ticks == 0) {
             return IPC_ERR_WOULD_BLOCK;
         }
@@ -150,6 +190,8 @@ int ipc_endpoint_receive(capability_table_t* table, uint32_t recv_cap, void* out
             if (cur->ipc_wakeup_reason != IPC_OK) {
                 return cur->ipc_wakeup_reason;
             }
+            // In a multi-waiter environment, someone else might have consumed the message
+            // before we got scheduled. Loop back and check `ep->has_msg` again.
         } else {
             return IPC_ERR_WOULD_BLOCK;
         }
@@ -159,13 +201,47 @@ int ipc_endpoint_receive(capability_table_t* table, uint32_t recv_cap, void* out
         return IPC_ERR_NO_SPACE;
     }
 
+    // Phase 1: Validate and stage capability installation
+    uint32_t newly_installed_cap_id = 0U;
+    if (ep->msg.cap_transfer_id != 0U && ep->cap_transfer_src_table != NULL) {
+        int install_ret = cap_table_delegate(
+            ep->cap_transfer_src_table,
+            table,
+            ep->msg.cap_transfer_id,
+            ep->msg.cap_transfer_rights,
+            &newly_installed_cap_id
+        );
+
+        if (install_ret != 0) {
+            // Failed to install capability. Roll back!
+            // Do NOT consume the message or wake up the sender. Return failure to the receiver immediately.
+            // The sender remains blocked, and the message stays pending.
+            return IPC_ERR_CAP_INSTALL_FAILED;
+        }
+    }
+
+    // Phase 2: Commit message consumption
     uint8_t* dst = (uint8_t*)out_payload;
     for (uint32_t i = 0; i < ep->msg.msg_len; ++i) {
         dst[i] = ep->msg.payload[i];
     }
 
     *out_received_len = ep->msg.msg_len;
+    if (out_received_cap) {
+        *out_received_cap = newly_installed_cap_id;
+    } else if (newly_installed_cap_id != 0U) {
+        // The receiver provided a NULL pointer for out_received_cap, but a capability was transferred.
+        // The capability has already been installed into their table, but they don't know the ID!
+        // This is arguably a receiver error or leak, but for ABI simplicity we could revoke it here.
+        // Or we just allow it (they can look it up if they have another way).
+        // Let's revoke it immediately to avoid leaks since they didn't ask for it.
+        cap_table_revoke(table, newly_installed_cap_id);
+    }
+
     ep->msg.msg_len = 0U;
+    ep->msg.cap_transfer_id = 0U;
+    ep->msg.cap_transfer_rights = 0U;
+    ep->cap_transfer_src_table = NULL;
     ep->has_msg = 0U;
 
     kthread_t* sender = sched_wait_queue_dequeue(&ep->senders);

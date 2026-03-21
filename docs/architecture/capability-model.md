@@ -11,8 +11,8 @@ A capability is an unforgeable, kernel-managed token that pairs an object refere
 ## Capability Operations
 
 - **Invoke**: Perform an action on the object the capability points to (e.g., mapping a memory frame into an address space).
-- **Grant**: Transfer a capability over an IPC Endpoint to another task.
-- **Revoke**: Recursively invalidate a capability and all derivations of it.
+- **Grant**: Transfer a capability over an IPC Endpoint to another task. IPC capability transfer involves a strict policy validation (transferability of type, rights attenuation) and safely delegates the capability into the receiver's CSpace.
+- **Revoke**: Recursively invalidate a capability and all derivations of it. This spans across cross-process boundaries to safely sever derived authorities.
 - **Retype**: Convert an `Untyped` memory block capability into specific kernel objects (Threads, Endpoints, Frames).
 
 ## Security Benefits

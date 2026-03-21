@@ -59,14 +59,14 @@ static void test_ipc_fuzzing(void) {
             }
 
             // Fuzz send
-            int ret = ipc_endpoint_send(t, send_cap, payload, payload_len, 0);
+            int ret = ipc_endpoint_send(t, send_cap, payload, payload_len, 0, 0, 0);
 
             // Fuzz receive with varying buffer sizes
             uint32_t out_len = rand_r(&seed) % 1024;
             uint8_t* out = malloc(out_len);
             if (out) {
                 uint32_t actual_received = 0;
-                int recv_ret = ipc_endpoint_receive(t, recv_cap, out, out_len, &actual_received, 0);
+                int recv_ret = ipc_endpoint_receive(t, recv_cap, out, out_len, &actual_received, 0, NULL);
                 (void)ret; (void)recv_ret; // Silence warnings, we just want to ensure it doesn't crash
                 free(out);
             }
@@ -75,7 +75,7 @@ static void test_ipc_fuzzing(void) {
 
         // Fuzz invalid capabilities
         uint32_t bad_cap = rand_r(&seed) % 10000;
-        ipc_endpoint_send(t, bad_cap, "test", 4, 0);
+        ipc_endpoint_send(t, bad_cap, "test", 4, 0, 0, 0);
     }
 
     printf("IPC fuzzing test completed without crashing.\n");

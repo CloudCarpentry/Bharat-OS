@@ -41,12 +41,12 @@ void test_ipc_no_spurious_self_wakeup(void) {
 
     // Initial state: buffer is empty. We attempt to send to ourselves
     // Buffer has size 1, so the first send works.
-    assert(ipc_endpoint_send(table, send_cap, "msg", 4, 0) == IPC_OK);
+    assert(ipc_endpoint_send(table, send_cap, "msg", 4, 0, 0, 0) == IPC_OK);
 
     // Now buffer is full. If we attempt to send again, we should block,
     // but the bug previously was waking up "current thread", so let's verify
     // that our state genuinely stays blocked, and no subsequent operation spuriously wakes us.
-    assert(ipc_endpoint_send(table, send_cap, "msg2", 5, 0) == IPC_ERR_WOULD_BLOCK);
+    assert(ipc_endpoint_send(table, send_cap, "msg2", 5, 0, 0, 0) == IPC_ERR_WOULD_BLOCK);
     assert(self->state == THREAD_STATE_BLOCKED);
 
     // The thread is genuinely blocked and wouldn't be able to run.

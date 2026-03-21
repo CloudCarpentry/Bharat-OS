@@ -180,18 +180,20 @@ long syscall_dispatch(syscall_id_t id, uint64_t arg0, uint64_t arg1,
       return TRAP_ERR_INVAL;
     }
     return (long)ipc_endpoint_send(
-        table, (uint32_t)arg0, (const void *)(uintptr_t)arg1, (uint32_t)arg2, (uint64_t)arg3);
+        table, (uint32_t)arg0, (const void *)(uintptr_t)arg1, (uint32_t)arg2, (uint64_t)arg3, (uint32_t)arg4, (uint32_t)arg5);
   }
   case SYSCALL_ENDPOINT_RECEIVE: {
     capability_table_t *table = trap_current_cap_table();
     uint32_t *out_len = (uint32_t *)(uintptr_t)arg3;
+    uint32_t *out_received_cap = (uint32_t *)(uintptr_t)arg5;
     if (!trap_user_range_valid(arg1, arg2) ||
-        !trap_user_range_valid(arg3, (uint64_t)sizeof(*out_len))) {
+        !trap_user_range_valid(arg3, (uint64_t)sizeof(*out_len)) ||
+        (out_received_cap && !trap_user_range_valid(arg5, (uint64_t)sizeof(*out_received_cap)))) {
       return TRAP_ERR_INVAL;
     }
     return (long)ipc_endpoint_receive(table, (uint32_t)arg0,
                                       (void *)(uintptr_t)arg1, (uint32_t)arg2,
-                                      out_len, (uint64_t)arg4);
+                                      out_len, (uint64_t)arg4, out_received_cap);
   }
   case SYSCALL_CAPABILITY_DELEGATE: {
     capability_table_t *table = trap_current_cap_table();

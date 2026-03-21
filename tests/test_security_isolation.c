@@ -52,12 +52,12 @@ static void test_ipc_bypass(void) {
     // Send a message using another capability table should fail (simulating trying to read an unauthorized cap)
     // Actually, ipc_endpoint_send relies on the passed table.
     // Let's assert that the capability is not found in t2.
-    int ret = ipc_endpoint_send(t2, send_cap, "hello", 5, 0);
+    int ret = ipc_endpoint_send(t2, send_cap, "hello", 5, 0, 0, 0);
     assert(ret == IPC_ERR_PERM || ret == IPC_ERR_INVALID);
 
     // Forged Handle Test
     uint32_t forged_cap = send_cap + 100; // Unlikely to be valid
-    ret = ipc_endpoint_send(t, forged_cap, "hello", 5, 0);
+    ret = ipc_endpoint_send(t, forged_cap, "hello", 5, 0, 0, 0);
     assert(ret == IPC_ERR_PERM || ret == IPC_ERR_INVALID);
 }
 

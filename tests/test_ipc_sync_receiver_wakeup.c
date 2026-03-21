@@ -44,7 +44,7 @@ void test_ipc_sync_receiver_wakeup(void) {
 
     char buf[16];
     uint32_t len = 0;
-    assert(ipc_endpoint_receive(table, recv_cap, buf, sizeof(buf), &len, 0) == IPC_ERR_WOULD_BLOCK);
+    assert(ipc_endpoint_receive(table, recv_cap, buf, sizeof(buf), &len, 0, NULL) == IPC_ERR_WOULD_BLOCK);
     assert(t_receiver->state == THREAD_STATE_BLOCKED);
 
     // Switch to sender.
@@ -55,7 +55,7 @@ void test_ipc_sync_receiver_wakeup(void) {
     assert(sched_current_thread() == t_sender);
 
     const char* msg = "msg";
-    assert(ipc_endpoint_send(table, send_cap, msg, 4, 0) == IPC_OK);
+    assert(ipc_endpoint_send(table, send_cap, msg, 4, 0, 0, 0) == IPC_OK);
 
     // Now t_receiver should be READY.
     assert(t_receiver->state == THREAD_STATE_READY);
