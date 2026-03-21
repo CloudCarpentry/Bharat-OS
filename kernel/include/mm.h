@@ -62,8 +62,9 @@ typedef struct {
 #define PAGE_FLAG_KERNEL (1 << 1)
 #define PAGE_FLAG_USER (1 << 2)
 
-// Initialize physical memory allocator natively using Multiboot/SBI memory maps
-int mm_pmm_init(uint32_t magic, void *memory_map);
+// Initialize physical memory allocator natively using normalized boot_info
+struct boot_info;
+int mm_pmm_init(uint32_t magic, const struct boot_info *boot);
 
 // Base Page Allocation (NUMA aware)
 phys_addr_t mm_alloc_page(uint32_t preferred_numa_node);
