@@ -86,12 +86,4 @@ static inline uint64_t core_current_as_id(void) {
     return cpu ? cpu->current_as_id : KERNEL_AS_ID;
 }
 
-static inline void core_set_current_as(address_space_t *as) {
-    cpu_local_t* cpu = this_cpu();
-    if (cpu) {
-        cpu->current_as = as;
-        cpu->current_as_id = as ? as->object_id : KERNEL_AS_ID;
-    }
-}
-
 #endif // BHARAT_CPU_LOCAL_H

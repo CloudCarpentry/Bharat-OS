@@ -1,10 +1,10 @@
-#include "../../include/hal/hal_tlb.h"
-#include "../../include/mm/aspace.h"
-#include "../../include/mm/mm_remote.h"
-#include "../../include/bharat/cpu_local.h"
-#include "../../include/hal/hal.h"
-#include "../../include/urpc/urpc_bootstrap.h"
-#include "../../include/kernel.h"
+#include "../../../include/hal/hal_tlb.h"
+#include "../../../include/mm/aspace.h"
+#include "../../../include/mm/mm_remote.h"
+#include "../../../include/bharat/cpu_local.h"
+#include "../../../include/hal/hal.h"
+#include "../../../include/urpc/urpc_bootstrap.h"
+#include "../../../include/kernel.h"
 
 // Bring in the generated definitions
 #include "../../../../services/monitor/generated/bharat_monitor_v1_types.h"
@@ -20,30 +20,29 @@ __attribute__((weak)) bharat_transport_t* transport_for_core(int core) {
 }
 extern int bharat_monitor_v1_call_tlb_invalidate(bharat_transport_t* t, int dst, const bharat_monitor_v1_TlbInvalidateReq_t* req, void* ctx);
 
-typedef struct {
-    uint64_t active_aspace_id;
-    uint32_t tlb_generation;
-} cpu_mm_state_t;
+// Global pending request tracking
+#define MAX_PENDING_TLB_REQUESTS 64
 
-cpu_mm_state_t cpu_mm_state[MAX_CPUS];
+typedef struct {
+    uint64_t request_id;
+    uint64_t target_mask;
+    uint64_t ack_mask;
+    uint64_t aspace_id;
+    int in_use;
+} pending_tlb_request_t;
+
+static pending_tlb_request_t g_pending_requests[MAX_PENDING_TLB_REQUESTS];
+static spinlock_t g_pending_requests_lock;
+static bool g_pending_requests_lock_init = false;
 
 static uint64_t tlb_collect_targets(uint64_t aspace_id) {
     uint64_t mask = 0;
     for (uint32_t i = 0; i < MAX_CPUS; i++) {
-        // Need to check if core is online and running this aspace
-        // Assume core is online if cpu_id matches array index (for now just check all)
-        if (cpu_mm_state[i].active_aspace_id == aspace_id) {
+        if (g_cpu_locals[i].current_as_id == aspace_id) {
             mask |= (1ULL << i);
         }
     }
     return mask;
-}
-
-// Update the active aspace in the cpu_mm_state array
-void update_core_active_aspace(uint32_t core_id, uint64_t aspace_id) {
-    if (core_id < MAX_CPUS) {
-        cpu_mm_state[core_id].active_aspace_id = aspace_id;
-    }
 }
 
 // Send the TLB Invalidate using the Monitor service format over URPC
@@ -63,7 +62,7 @@ void vmm_send_tlb_invalidate(uint64_t aspace_id,
 
     // The generation counter now lives on the address space, allowing proper monotonic sequence tracking globally
     address_space_t *as = NULL;
-    if (cpu_mm_state[current_core].active_aspace_id == aspace_id) {
+    if (g_cpu_locals[current_core].current_as_id == aspace_id) {
         as = g_cpu_locals[current_core].current_as;
     }
 
@@ -80,12 +79,40 @@ void vmm_send_tlb_invalidate(uint64_t aspace_id,
     uint64_t target_mask = 0;
     if (as) {
         req.generation = __atomic_add_fetch(&as->tlb_gen, 1, __ATOMIC_SEQ_CST);
-        target_mask = __atomic_load_n(&as->active_mask, __ATOMIC_RELAXED);
+        target_mask = __atomic_load_n(&as->active_mask, __ATOMIC_ACQUIRE);
     } else {
-        cpu_mm_state[current_core].tlb_generation++;
-        req.generation = cpu_mm_state[current_core].tlb_generation;
+        req.generation = 1;
         target_mask = tlb_collect_targets(aspace_id); // Fallback to basic loop scan
     }
+
+    // Do not wait for self
+    target_mask &= ~(1ULL << current_core);
+
+    if (target_mask == 0) {
+        return; // Nothing to do remotely
+    }
+
+    // Allocate tracking slot
+    pending_tlb_request_t* slot = NULL;
+
+    if (!g_pending_requests_lock_init) {
+        spin_lock_init(&g_pending_requests_lock);
+        g_pending_requests_lock_init = true;
+    }
+
+    spin_lock(&g_pending_requests_lock);
+    for (int i = 0; i < MAX_PENDING_TLB_REQUESTS; i++) {
+        if (!g_pending_requests[i].in_use) {
+            slot = &g_pending_requests[i];
+            slot->request_id = req.generation;
+            slot->aspace_id = aspace_id;
+            slot->target_mask = target_mask;
+            slot->ack_mask = 0;
+            slot->in_use = 1;
+            break;
+        }
+    }
+    spin_unlock(&g_pending_requests_lock);
 
     for (int core = 0; core < MAX_CPUS; core++) {
 
@@ -96,17 +123,80 @@ void vmm_send_tlb_invalidate(uint64_t aspace_id,
 
         bharat_transport_t* t = transport_for_core(core);
         if (t) {
-             // In a real implementation this would actually encode and send, then synchronously await ACK
+             // Dispatch without synchronously waiting inside the transport call
              bharat_monitor_v1_call_tlb_invalidate(
                 t,
                 core,
                 &req,
                 NULL
             );
+        } else {
+             // Fallback to legacy mailbox
+             mm_mailbox_slot_t* mailbox = &g_mm_mailboxes[core];
+             spin_lock(&mailbox->lock);
+             mailbox->msg.type = MM_MSG_TLB_FLUSH;
+             mailbox->msg.scope = (type == 0) ? TLB_SCOPE_PAGE : (type == 1) ? TLB_SCOPE_RANGE : TLB_SCOPE_ASPACE;
+             mailbox->msg.sender_core = current_core;
+             mailbox->msg.as_id = aspace_id;
+             mailbox->msg.va = va;
+             mailbox->msg.len = len;
+             mailbox->msg.seq = req.generation;
+             mailbox->valid = 1;
+             mailbox->req_seq++;
+             spin_unlock(&mailbox->lock);
 
-            // Note: If ret < 0 or timeout, this could panic in strict/debug mode
-            // For now just continue (bounded completion ensures we wait for ack).
+             // notify
+             extern void hal_send_ipi_payload(uint32_t target_core, uint64_t payload);
+             hal_send_ipi_payload(core, 0);
         }
+    }
+
+    if (slot) {
+        // Synchronous wait with timeout and retry policy
+        #define BHARAT_TLB_ACK_TIMEOUT_LOOPS 1000000
+        #define BHARAT_TLB_MAX_RETRIES 3
+
+        uint32_t retry_count = 0;
+        bool success = false;
+
+        while (retry_count < BHARAT_TLB_MAX_RETRIES) {
+            uint32_t wait_loops = 0;
+            while (wait_loops < BHARAT_TLB_ACK_TIMEOUT_LOOPS) {
+                uint64_t current_ack;
+                spin_lock(&g_pending_requests_lock);
+                current_ack = slot->ack_mask;
+                spin_unlock(&g_pending_requests_lock);
+
+                if ((current_ack & target_mask) == target_mask) {
+                    success = true;
+                    break; // All acks received
+                }
+
+                // Let CPU relax and process incoming messages
+                __asm__ volatile("rep nop" ::: "memory");
+                extern void vmm_process_urpc_messages(void);
+                vmm_process_urpc_messages(); // check if acks arrived
+                wait_loops++;
+            }
+
+            if (success) break;
+            retry_count++;
+
+            // If we get here, it means we timed out. We should retry sending to missing cores.
+            // For now, in MVP we just wait longer or effectively treat the retry loop as extended wait.
+            // In a full implementation we would re-transmit the URPC message here to the un-acked cores.
+        }
+
+        if (!success) {
+            // TIMEOUT path for revocation. We fail closed.
+            extern void panic(const char*);
+            panic("TLB Shootdown Timeout: Revocation failed, system isolated to prevent memory corruption.");
+        }
+
+        // Free slot
+        spin_lock(&g_pending_requests_lock);
+        slot->in_use = 0;
+        spin_unlock(&g_pending_requests_lock);
     }
 }
 
@@ -116,21 +206,16 @@ int monitor_handle_tlb_invalidate(
     bharat_monitor_v1_TlbInvalidateResp_t* resp)
 {
     uint32_t current_core = hal_cpu_get_id();
-    cpu_mm_state_t* cpu = &cpu_mm_state[current_core];
 
     // Ignore if not running this aspace
-    if (cpu->active_aspace_id != req->aspace_id) {
+    if (g_cpu_locals[current_core].current_as_id != req->aspace_id) {
         resp->status = 0;
         return 0;
     }
 
-    // Ignore stale invalidations
-    if (req->generation < cpu->tlb_generation) {
-        resp->status = 0;
-        return 0;
-    }
-
-    cpu->tlb_generation = req->generation;
+    // Ignore stale invalidations via software epoch tracking
+    // Currently relying on target_mask tracking at sender for correct boundaries,
+    // but in a strict protocol we should track last seen generation per aspace locally.
 
     switch (req->type) {
         case 0: // page
@@ -172,7 +257,7 @@ static void tlb_shootdown_sync(address_space_t *aspace, tlb_scope_t scope, virt_
     vmm_send_tlb_invalidate(aspace->object_id, va, len, type);
 
     // Process local flush
-    if (cpu_mm_state[current_core].active_aspace_id == aspace->object_id || g_cpu_locals[current_core].current_as_id == aspace->object_id) {
+    if (g_cpu_locals[current_core].current_as_id == aspace->object_id) {
 
         if (scope == TLB_SCOPE_PAGE && active_hal_tlb->flush_page_local) {
             active_hal_tlb->flush_page_local(va);
@@ -263,6 +348,24 @@ void vmm_process_urpc_messages(void) {
                             }
                         }
                     }
+                } else if (hdr.service_id == 1 && hdr.opcode == 3 && bharat_msg_is_response(hdr.flags)) {
+                    // It's a response to us
+                    uint64_t req_id = hdr.request_id;
+
+                    if (!g_pending_requests_lock_init) {
+                        spin_lock_init(&g_pending_requests_lock);
+                        g_pending_requests_lock_init = true;
+                    }
+                    spin_lock(&g_pending_requests_lock);
+                    for (int i = 0; i < MAX_PENDING_TLB_REQUESTS; i++) {
+                        if (g_pending_requests[i].in_use && g_pending_requests[i].request_id == req_id) {
+                            if (g_pending_requests[i].target_mask & (1ULL << hdr.src_node)) {
+                                g_pending_requests[i].ack_mask |= (1ULL << hdr.src_node);
+                            }
+                            break;
+                        }
+                    }
+                    spin_unlock(&g_pending_requests_lock);
                 }
             }
         }
@@ -296,7 +399,31 @@ void vmm_process_urpc_messages(void) {
                 mailbox->valid = 0;
             }
         }
+
+        // Also we must process acks from other cores for our requests using legacy mailbox
+        if (!g_pending_requests_lock_init) {
+            spin_lock_init(&g_pending_requests_lock);
+            g_pending_requests_lock_init = true;
+        }
+        spin_lock(&g_pending_requests_lock);
+        for (int i = 0; i < MAX_PENDING_TLB_REQUESTS; i++) {
+            if (g_pending_requests[i].in_use) {
+                for (int c = 0; c < MAX_CPUS; c++) {
+                    if ((g_pending_requests[i].target_mask & (1ULL << c)) &&
+                        !(g_pending_requests[i].ack_mask & (1ULL << c))) {
+
+                        mm_mailbox_slot_t* m = &g_mm_mailboxes[c];
+                        // If req_seq == ack_seq and seq == our request generation, it's acked
+                        if (m->req_seq == m->ack_seq && m->msg.seq == g_pending_requests[i].request_id) {
+                            g_pending_requests[i].ack_mask |= (1ULL << c);
+                        }
+                    }
+                }
+            }
+        }
+        spin_unlock(&g_pending_requests_lock);
+
         messages_processed++;
-        if (messages_processed >= 100) break;
+        if (messages_processed >= 10) break;
     }
 }

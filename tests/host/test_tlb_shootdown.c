@@ -3,12 +3,14 @@
 #include <string.h>
 #include <pthread.h>
 
-#include "../kernel/include/hal/hal_tlb.h"
-#include "../kernel/include/mm/aspace.h"
-#include "../kernel/include/mm/mm_remote.h"
-#include "../kernel/include/bharat/cpu_local.h"
-#include "../kernel/include/hal/hal.h"
-#include "../kernel/include/urpc/urpc_bootstrap.h"
+#include "../../kernel/include/hal/hal_tlb.h"
+#include "../../kernel/include/mm/aspace.h"
+#include "../../kernel/include/mm/mm_remote.h"
+#include "../../kernel/include/bharat/cpu_local.h"
+#include "../../kernel/include/hal/hal.h"
+#include "../../kernel/include/urpc/urpc_bootstrap.h"
+#include "../../subsys/include/bharat/msg/transport.h"
+#include "../../services/monitor/generated/bharat_monitor_v1_types.h"
 
 // --- Mocking ---
 
@@ -53,6 +55,11 @@ void hal_send_ipi_payload(uint32_t target_core, uint64_t payload) {
     }
 }
 
+int bharat_monitor_v1_call_tlb_invalidate(
+    bharat_transport_t* t, int dst, const bharat_monitor_v1_TlbInvalidateReq_t* req, void* ctx) {
+    return 0;
+}
+
 // Ensure mailboxes are defined
 mm_mailbox_slot_t g_mm_mailboxes[64];
 
@@ -79,16 +86,17 @@ void test_tlb_shootdown_page_local_only() {
     setup_test();
     address_space_t as = {0};
     as.object_id = 1;
-    as.tlb_seq = 0;
+    as.tlb_gen = 0;
 
     // Core 0 is running AS 1
     g_cpu_locals[0].current_as = &as;
     g_cpu_locals[0].current_as_id = 1;
+    as.active_mask = 1ULL << 0;
 
     hal_tlb_invalidate_page(&as, 0x1000);
 
     assert(g_local_page_flushes == 1);
-    assert(as.tlb_seq == 1);
+    assert(as.tlb_gen == 1);
 
     // Remote cores shouldn't have received anything (ack_seq 0)
     assert(g_mm_mailboxes[1].ack_seq == 0);
@@ -99,7 +107,7 @@ void test_tlb_shootdown_page_remote() {
     setup_test();
     address_space_t as = {0};
     as.object_id = 2;
-    as.tlb_seq = 0;
+    as.tlb_gen = 0;
 
     // Core 0 (initiator) is running AS 1
     g_cpu_locals[0].current_as_id = 1;
@@ -107,6 +115,7 @@ void test_tlb_shootdown_page_remote() {
     // Core 1 (remote) is running AS 2
     g_cpu_locals[1].current_as = &as;
     g_cpu_locals[1].current_as_id = 2;
+    as.active_mask = 1ULL << 1;
 
     // Core 2 is running AS 3 (should not receive shootdown)
     g_cpu_locals[2].current_as_id = 3;
@@ -115,7 +124,7 @@ void test_tlb_shootdown_page_remote() {
 
     // Initiator is NOT running AS 2, so no local flush
     assert(g_local_page_flushes == 0);
-    assert(as.tlb_seq == 1);
+    assert(as.tlb_gen == 1);
 
     // Core 1 should have received a request, and auto-acked via mock IPI
     assert(g_mm_mailboxes[1].req_seq == 1);
@@ -132,17 +141,18 @@ void test_tlb_shootdown_range_and_aspace() {
     setup_test();
     address_space_t as = {0};
     as.object_id = 3;
+    as.active_mask = 1ULL << 0;
 
     g_cpu_locals[0].current_as = &as;
     g_cpu_locals[0].current_as_id = 3;
 
     hal_tlb_invalidate_range(&as, 0x4000, 8192);
     assert(g_local_range_flushes == 1);
-    assert(as.tlb_seq == 1);
+    assert(as.tlb_gen == 1);
 
     hal_tlb_invalidate_aspace(&as);
     assert(g_local_asid_flushes == 1);
-    assert(as.tlb_seq == 2);
+    assert(as.tlb_gen == 2);
 
     printf("test_tlb_shootdown_range_and_aspace PASSED\n");
 }
