@@ -42,20 +42,20 @@ void test_ipc_multiple_waiters_fifo(void) {
     uint32_t len;
 
     while (sched_current_thread() != r1) { sched_yield(); }
-    assert(ipc_endpoint_receive(table, recv_cap, buf, sizeof(buf), &len, 0) == IPC_ERR_WOULD_BLOCK);
+    assert(ipc_endpoint_receive(table, recv_cap, buf, sizeof(buf), &len, 0, NULL) == IPC_ERR_WOULD_BLOCK);
     assert(r1->state == THREAD_STATE_BLOCKED);
 
     while (sched_current_thread() != r2) { sched_yield(); }
-    assert(ipc_endpoint_receive(table, recv_cap, buf, sizeof(buf), &len, 0) == IPC_ERR_WOULD_BLOCK);
+    assert(ipc_endpoint_receive(table, recv_cap, buf, sizeof(buf), &len, 0, NULL) == IPC_ERR_WOULD_BLOCK);
     assert(r2->state == THREAD_STATE_BLOCKED);
 
     while (sched_current_thread() != r3) { sched_yield(); }
-    assert(ipc_endpoint_receive(table, recv_cap, buf, sizeof(buf), &len, 0) == IPC_ERR_WOULD_BLOCK);
+    assert(ipc_endpoint_receive(table, recv_cap, buf, sizeof(buf), &len, 0, NULL) == IPC_ERR_WOULD_BLOCK);
     assert(r3->state == THREAD_STATE_BLOCKED);
 
     // Switch to sender, and send one message
     while (sched_current_thread() != sender) { sched_yield(); }
-    assert(ipc_endpoint_send(table, send_cap, "msg", 4, 0) == IPC_OK);
+    assert(ipc_endpoint_send(table, send_cap, "msg", 4, 0, 0, 0) == IPC_OK);
 
     // Check that exactly the FIRST blocked thread (r1) was woken
     assert(r1->state == THREAD_STATE_READY);
@@ -66,11 +66,11 @@ void test_ipc_multiple_waiters_fifo(void) {
     // If we send again, it should return IPC_ERR_WOULD_BLOCK since buffer size is 1.
     // So let's consume the message with r1 first, which should be able to run and empty the buffer.
     while (sched_current_thread() != r1) { sched_yield(); }
-    assert(ipc_endpoint_receive(table, recv_cap, buf, sizeof(buf), &len, 0) == IPC_OK);
+    assert(ipc_endpoint_receive(table, recv_cap, buf, sizeof(buf), &len, 0, NULL) == IPC_OK);
 
     // Now send the second message
     while (sched_current_thread() != sender) { sched_yield(); }
-    assert(ipc_endpoint_send(table, send_cap, "msg", 4, 0) == IPC_OK);
+    assert(ipc_endpoint_send(table, send_cap, "msg", 4, 0, 0, 0) == IPC_OK);
     assert(r2->state == THREAD_STATE_READY);
     assert(r3->state == THREAD_STATE_BLOCKED);
 

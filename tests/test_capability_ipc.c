@@ -44,17 +44,92 @@ int main(void) {
     assert(ipc_endpoint_create(table, &send_cap, &recv_cap) == IPC_OK);
 
     const char* msg = "hello";
-    assert(ipc_endpoint_send(table, send_cap, msg, 5U, 0) == IPC_OK);
+    assert(ipc_endpoint_send(table, send_cap, msg, 5U, 0, 0, 0) == IPC_OK);
 
     char out[16] = {0};
     uint32_t out_len = 0;
-    assert(ipc_endpoint_receive(table, recv_cap, out, sizeof(out), &out_len, 0) == IPC_OK);
+    assert(ipc_endpoint_receive(table, recv_cap, out, sizeof(out), &out_len, 0, NULL) == IPC_OK);
     assert(out_len == 5U);
     assert(out[0] == 'h' && out[4] == 'o');
 
     // Delegation must only narrow rights.
     uint32_t delegated = 0;
     assert(cap_table_delegate(table, table, send_cap, CAP_PERM_SEND, &delegated) == 0);
+
+    // ==========================================
+    // Production-Grade Capability Transfer Tests
+    // ==========================================
+
+    // 1. Transfer of a valid transferable cap succeeds
+    // We will create a memory capability and transfer it over the endpoint.
+    uint32_t mem_cap = 0;
+    assert(cap_table_grant(table, CAP_OBJ_MEMORY, 0x1000, CAP_PERM_MAP | CAP_PERM_UNMAP | CAP_PERM_DELEGATE, &mem_cap) == 0);
+
+    // Send message with mem_cap attached
+    assert(ipc_endpoint_send(table, send_cap, "cap1", 4U, 0, mem_cap, CAP_PERM_MAP | CAP_PERM_UNMAP) == IPC_OK);
+
+    // Receive message and the transferred cap
+    char out_cap_msg[16] = {0};
+    uint32_t out_cap_len = 0;
+    uint32_t received_mem_cap = 0;
+    assert(ipc_endpoint_receive(table, recv_cap, out_cap_msg, sizeof(out_cap_msg), &out_cap_len, 0, &received_mem_cap) == IPC_OK);
+
+    assert(out_cap_len == 4U);
+    assert(received_mem_cap != 0 && received_mem_cap != mem_cap); // Must be a newly minted/installed capability ID
+
+    // Verify received capability rights (should be attenuated to exactly what was transferred)
+    capability_entry_t e = {0};
+    assert(cap_table_lookup(table, received_mem_cap, CAP_OBJ_MEMORY, CAP_PERM_MAP | CAP_PERM_UNMAP, &e) == 0);
+    assert((e.rights & CAP_PERM_DELEGATE) == 0); // Sender didn't include DELEGATE
+
+    // 2. Transfer of a non-transferable cap fails
+    uint32_t sched_cap = 0;
+    assert(cap_table_grant(table, CAP_OBJ_SCHED, 0, CAP_PERM_SCHEDULE | CAP_PERM_DELEGATE, &sched_cap) == 0);
+
+    // Sending a SCHED capability should fail validation
+    assert(ipc_endpoint_send(table, send_cap, "bad", 3U, 0, sched_cap, CAP_PERM_SCHEDULE) == IPC_ERR_CAP_TRANSFER_NOT_ALLOWED);
+
+    // 3. Revoking the ancestor invalidates the descendants in the receiver's cap table
+    assert(cap_table_revoke(table, mem_cap) == 0);
+
+    // The received_mem_cap should now be invalid because its ancestor (mem_cap) was revoked
+    assert(cap_table_lookup(table, received_mem_cap, CAP_OBJ_MEMORY, CAP_PERM_MAP | CAP_PERM_UNMAP, &e) != 0);
+
+    // 4. Failed receive-side installation leaves message intact (Retryable Receive)
+
+    // Create endpoint for this test
+    uint32_t send_cap2, recv_cap2;
+    assert(ipc_endpoint_create(table, &send_cap2, &recv_cap2) == IPC_OK);
+
+    // Send a message with capability attached
+    uint32_t mem_cap2 = 0;
+    assert(cap_table_grant(table, CAP_OBJ_MEMORY, 0x1000, CAP_PERM_MAP | CAP_PERM_UNMAP | CAP_PERM_DELEGATE, &mem_cap2) == 0);
+    assert(ipc_endpoint_send(table, send_cap2, "cap2", 4U, 0, mem_cap2, CAP_PERM_MAP | CAP_PERM_UNMAP) == IPC_OK);
+
+    // Give recv_cap2 to full_table BEFORE filling it up
+    capability_table_t* full_table = cap_table_create();
+    uint32_t full_table_recv_cap;
+    capability_entry_t e2 = {0};
+    cap_table_lookup(table, recv_cap2, CAP_OBJ_ENDPOINT, CAP_PERM_RECEIVE, &e2);
+    assert(cap_table_grant(full_table, CAP_OBJ_ENDPOINT, e2.object_ref, CAP_PERM_RECEIVE | CAP_PERM_DELEGATE, &full_table_recv_cap) == 0);
+
+    // We will exhaust the receiver capability table so installation fails.
+    uint32_t dummy_cap;
+    for (int i = 0; i < 64; i++) {
+        // Fill table, we know BHARAT_ARRAY_SIZE(table->entries) is 64
+        cap_table_grant(full_table, CAP_OBJ_MEMORY, 0x2000, CAP_PERM_MAP, &dummy_cap);
+    }
+
+    // Attempt receive into full table (should fail CAP_INSTALL_FAILED)
+    char out_cap_msg2[16] = {0};
+    uint32_t out_cap_len2 = 0;
+    uint32_t received_mem_cap2 = 0;
+    int res = ipc_endpoint_receive(full_table, full_table_recv_cap, out_cap_msg2, sizeof(out_cap_msg2), &out_cap_len2, 0, &received_mem_cap2);
+    assert(res == IPC_ERR_CAP_INSTALL_FAILED);
+
+    // The message should STILL be in the endpoint. Let's receive it into the normal table which has space.
+    assert(ipc_endpoint_receive(table, recv_cap2, out_cap_msg2, sizeof(out_cap_msg2), &out_cap_len2, 0, &received_mem_cap2) == IPC_OK);
+    assert(out_cap_len2 == 4U);
 
     printf("Capability/endpoint IPC tests passed.\n");
     return 0;
