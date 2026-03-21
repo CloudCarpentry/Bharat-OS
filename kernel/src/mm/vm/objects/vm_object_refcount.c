@@ -1,5 +1,5 @@
-#include "../../include/mm/vm_object.h"
-#include "../../include/slab.h"
+#include "../../../../include/mm/vm_object.h"
+#include "../../../../include/slab.h"
 
 void vm_object_retain(vm_object_t *obj) {
     if (obj) {
