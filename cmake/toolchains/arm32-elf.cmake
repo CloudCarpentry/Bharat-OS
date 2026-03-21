@@ -3,9 +3,13 @@ set(CMAKE_SYSTEM_PROCESSOR arm)
 
 set(CMAKE_C_COMPILER clang)
 set(CMAKE_ASM_COMPILER clang)
-set(CMAKE_LINKER ld.lld)
+set(CMAKE_LINKER ld)
 
-set(CMAKE_C_COMPILER_TARGET armv7a-unknown-none-eabi)
+# Use arm-none-eabi-ld or standard ld that isn't hardcoded to x86
+set(CMAKE_EXE_LINKER_FLAGS_INIT "-fuse-ld=bfd -nostdlib -no-pie -fno-pie -Wl,-no-pie ")
+
+set(CMAKE_C_COMPILER_TARGET arm-none-eabi)
+set(CMAKE_ASM_COMPILER_TARGET arm-none-eabi)
 set(CMAKE_ASM_COMPILER_TARGET armv7a-unknown-none-eabi)
 
 set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)

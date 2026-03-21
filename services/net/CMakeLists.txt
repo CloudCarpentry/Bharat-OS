@@ -17,3 +17,5 @@ target_include_directories(net_service PRIVATE
 
 # Link against subsystem and URPC
 target_link_libraries(net_service PRIVATE bharat_libtransport subsys_manager bharat_libcmin bharat_freestanding bharat_libruntime)
+
+bharat_configure_userspace_binary(net_service)

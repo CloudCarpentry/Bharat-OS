@@ -17,6 +17,23 @@
 #include "mm.h"
 #include "arch/arch_cpu_caps.h"
 #include "mm_zswap.h"
+#include "bharat/component_version.h"
+#include "bharat/buildinfo.h"
+#include "bharat/version.h"
+
+BHARAT_REGISTER_COMPONENT(
+    "kernel",
+    "kernel",
+    BHARAT_KERNEL_VERSION,
+    BHARAT_KERNEL_ABI,
+    BHARAT_SYSCALL_ABI,
+    BHARAT_OS_CHANNEL,
+    BHARAT_GIT_SHA,
+    BHARAT_GIT_DIRTY,
+    BHARAT_BUILD_EPOCH,
+    BHARAT_BUILD_TIME_UTC
+);
+
 #include "multicore.h"
 #include "numa.h"
 #include "power_thermal_perf.h"
@@ -219,7 +236,7 @@ extern void x86_64_parse_multiboot_framebuffer(multiboot_information_t *mb_info)
 void kernel_main(uint32_t magic, multiboot_information_t *mb_info) {
 #elif defined(__riscv)
 void kernel_main(uint64_t hart_id, uintptr_t fdt_ptr) {
-#elif defined(__aarch64__)
+#elif defined(__aarch64__) || defined(__arm__)
 void kernel_main(uintptr_t fdt_ptr) {
   hal_serial_init();
   hal_serial_write("!!!!! BOOT: fdt_ptr="); hal_serial_write_hex(fdt_ptr); hal_serial_write("\n");
@@ -263,7 +280,19 @@ void kernel_main(void) {
   KPRINT(" |  _ \\| '_ \\ / _` | '__/ _` | '__/ _` |_____| |  _  \\___ \\ \n");
   KPRINT(" | |_) | | | | (_| | | | (_| | | | (_| |_____| |_| |  ___) |\n");
   KPRINT(" |____/|_| |_|\\__,_|_|  \\__,_|_|  \\__,_|      \\____| |____/ \n");
-  KPRINT("\nBharat-OS kernel boot (v3.2 bring-up)\n");
+  KPRINT("\nBharat-OS (");
+  KPRINT(BHARAT_OS_VERSION);
+  KPRINT("-");
+  KPRINT(BHARAT_OS_CHANNEL);
+  KPRINT(") [");
+  KPRINT(BHARAT_GIT_SHA);
+  if (BHARAT_GIT_DIRTY) {
+      KPRINT("-dirty");
+  }
+  KPRINT("]\n");
+  KPRINT("Kernel Version: ");
+  KPRINT(BHARAT_KERNEL_VERSION);
+  KPRINT("\n\n");
 
   uint32_t cpu_id = hal_cpu_get_id();
   cpu_local_init(cpu_id);
@@ -349,7 +378,7 @@ void kernel_main(void) {
     if (mm_pmm_init(magic, mb_info) != 0) {
       kernel_panic("PMM initialization failed");
     }
-#elif defined(__riscv) || defined(__aarch64__)
+#elif defined(__riscv) || defined(__aarch64__) || defined(__arm__)
     if (mm_pmm_init(0U, (void *)fdt_ptr) != 0) {
       kernel_panic("PMM initialization failed");
     }

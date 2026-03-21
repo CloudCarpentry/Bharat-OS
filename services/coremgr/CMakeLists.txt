@@ -20,3 +20,5 @@ target_link_libraries(coremgr PRIVATE
 )
 
 # Optional: Set properties like output directory if needed
+
+bharat_configure_userspace_binary(coremgr)

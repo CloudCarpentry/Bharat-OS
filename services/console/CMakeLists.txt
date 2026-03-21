@@ -14,3 +14,5 @@ target_include_directories(console PRIVATE
 
 # Link against the subsystem manager and URPC libraries
 target_link_libraries(console PRIVATE bharat_libtransport subsys_manager)
+
+bharat_configure_userspace_binary(console)

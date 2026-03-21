@@ -9,6 +9,7 @@ target_include_directories(bharat_libruntime PUBLIC include)
 
 # Runtime depends on cap and ipc headers
 target_link_libraries(bharat_libruntime PUBLIC cap ipc bharat_freestanding bharat_kernel_buildopts)
+bharat_configure_userspace_library(bharat_libruntime)
 
 # Alias for compatibility
 add_library(runtime ALIAS bharat_libruntime)
