@@ -4,63 +4,84 @@ project(BharatOS_Drivers C ASM)
 set(BHARAT_DRIVER_SOURCES)
 
 list(APPEND BHARAT_DRIVER_SOURCES
-    version/driver_version_registry.c
+    driver_version_registry/driver_version_registry.c
 )
 
 if(COMMAND bharat_component_option)
-    bharat_component_option(BHARAT_ENABLE_DRIVER_GENERIC ON "Build architecture/board generic drivers")
+    bharat_component_option(BHARAT_ENABLE_DRIVER_PTP_CLOCK ON "Build PTP clock driver")
+    bharat_component_option(BHARAT_ENABLE_DRIVER_VIRTIO_NET ON "Build virtio net driver")
+    bharat_component_option(BHARAT_ENABLE_DRIVER_FPGA_MGR ON "Build FPGA manager driver")
+    bharat_component_option(BHARAT_ENABLE_DRIVER_CAN_LOOPBACK OFF "Build CAN loopback driver")
+    bharat_component_option(BHARAT_ENABLE_DRIVER_GENERIC_REGISTRY ON "Build generic driver registry")
+    bharat_component_option(BHARAT_ENABLE_DRIVER_ARCH_IRQ_TIMER ON "Build architecture IRQ/timer generic driver")
+    bharat_component_option(BHARAT_ENABLE_DRIVER_BOARD_FABRIC ON "Build board fabric generic driver")
 else()
-    option(BHARAT_ENABLE_DRIVER_GENERIC "Build architecture/board generic drivers" ON)
+    option(BHARAT_ENABLE_DRIVER_PTP_CLOCK "Build PTP clock driver" ON)
+    option(BHARAT_ENABLE_DRIVER_VIRTIO_NET "Build virtio net driver" ON)
+    option(BHARAT_ENABLE_DRIVER_FPGA_MGR "Build FPGA manager driver" ON)
+    option(BHARAT_ENABLE_DRIVER_CAN_LOOPBACK "Build CAN loopback driver" OFF)
+    option(BHARAT_ENABLE_DRIVER_GENERIC_REGISTRY "Build generic driver registry" ON)
+    option(BHARAT_ENABLE_DRIVER_ARCH_IRQ_TIMER "Build architecture IRQ/timer generic driver" ON)
+    option(BHARAT_ENABLE_DRIVER_BOARD_FABRIC "Build board fabric generic driver" ON)
 endif()
 
-if(BHARAT_ENABLE_DRIVER_NET)
+if(BHARAT_ENABLE_DRIVER_PTP_CLOCK)
     list(APPEND BHARAT_DRIVER_SOURCES
-        net/ptp_clock.c
-        net/virtio_net.c
+        ptp_clock/ptp_clock.c
     )
 endif()
 
-if(BHARAT_ENABLE_DRIVER_ACCEL)
+if(BHARAT_ENABLE_DRIVER_VIRTIO_NET)
     list(APPEND BHARAT_DRIVER_SOURCES
-        accel/fpga_mgr.c
+        virtio_net/virtio_net.c
+    )
+endif()
+
+if(BHARAT_ENABLE_DRIVER_FPGA_MGR)
+    list(APPEND BHARAT_DRIVER_SOURCES
+        fpga_mgr/fpga_mgr.c
     )
 endif()
 
 if(BHARAT_ENABLE_DRIVER_CLUSTER_BUS)
     list(APPEND BHARAT_DRIVER_SOURCES
-        bus/cluster_bus.c
+        cluster_bus/cluster_bus.c
     )
 endif()
 
-if(BHARAT_ENABLE_DRIVER_AUTOMOTIVE_CAN)
+if(BHARAT_ENABLE_DRIVER_CAN_LOOPBACK)
     list(APPEND BHARAT_DRIVER_SOURCES
-        src/automotive/can_loopback.c
+        can_loopback/can_loopback.c
     )
 endif()
 
-if(BHARAT_ENABLE_DRIVER_GENERIC)
+if(BHARAT_ENABLE_DRIVER_GENERIC_REGISTRY
+   OR BHARAT_ENABLE_DRIVER_ARCH_IRQ_TIMER
+   OR BHARAT_ENABLE_DRIVER_BOARD_FABRIC)
     string(TOUPPER "${BHARAT_ARCH_FAMILY}" _bharat_arch_family_upper)
     string(TOLOWER "${BHARAT_TARGET_BOARD}" _bharat_target_board_lower)
     set(_bharat_generic_driver_defs)
 
-    list(APPEND BHARAT_DRIVER_SOURCES
-        generic/generic_registry.c
-    )
-
-    if(_bharat_arch_family_upper STREQUAL "X86"
-       OR _bharat_arch_family_upper STREQUAL "ARM"
-       OR _bharat_arch_family_upper STREQUAL "RISCV")
+    if(BHARAT_ENABLE_DRIVER_GENERIC_REGISTRY)
         list(APPEND BHARAT_DRIVER_SOURCES
-            generic/arch_irq_timer.c
+            generic_registry/generic_registry.c
+        )
+    endif()
+
+    if(BHARAT_ENABLE_DRIVER_ARCH_IRQ_TIMER AND (_bharat_arch_family_upper STREQUAL "X86"
+       OR _bharat_arch_family_upper STREQUAL "ARM"
+       OR _bharat_arch_family_upper STREQUAL "RISCV"))
+        list(APPEND BHARAT_DRIVER_SOURCES
+            arch_irq_timer/arch_irq_timer.c
         )
         list(APPEND _bharat_generic_driver_defs BHARAT_GENERIC_ENABLE_ARCH_IRQ_TIMER)
     endif()
 
-    if(_bharat_target_board_lower MATCHES "qemu"
+    if(BHARAT_ENABLE_DRIVER_BOARD_FABRIC AND (_bharat_target_board_lower MATCHES "qemu"
        OR _bharat_target_board_lower MATCHES "virt"
-       OR _bharat_target_board_lower MATCHES "shakti")
+       OR _bharat_target_board_lower MATCHES "shakti"))
         list(APPEND BHARAT_DRIVER_SOURCES
-            generic/board_fabric.c
+            board_fabric/board_fabric.c
         )
         list(APPEND _bharat_generic_driver_defs BHARAT_GENERIC_ENABLE_BOARD_FABRIC)
     endif()

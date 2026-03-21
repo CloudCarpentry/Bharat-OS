@@ -1,7 +1,7 @@
 /*
  * virtio_gpu.c — Minimal VirtIO GPU (MMIO) framebuffer driver
  *
- * Location: drivers/display/virtio_gpu.c
+ * Location: drivers/virtio_gpu/virtio_gpu.c
  * Selected: BHARAT_BOOT_GUI=ON + riscv64 + qemu-virt SoC profile
  *
  * Overrides the weak hal_console_display_write() stub so that every
