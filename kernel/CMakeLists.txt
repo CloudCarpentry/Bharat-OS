@@ -363,6 +363,7 @@ target_link_options(kernel.elf PRIVATE
     "-nostdlib"
     $<$<AND:$<C_COMPILER_ID:Clang>,$<NOT:$<STREQUAL:${ARCH},arm32>>>:-fuse-ld=lld>
     $<$<AND:$<C_COMPILER_ID:Clang>,$<STREQUAL:${ARCH},arm32>>:-fuse-ld=bfd>
+    "-no-pie" "-fno-pie"
     ""
     "LINKER:--fatal-warnings"
     "LINKER:-T,${LINKER_SCRIPT}"
