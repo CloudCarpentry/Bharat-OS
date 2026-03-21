@@ -1,22 +1,22 @@
 #include "ipc_endpoint.h"
 #include "kernel_safety.h"
 #include "cap_policy.h"
+#include "spinlock.h"
 
 #include <stddef.h>
 #include <stdint.h>
-
-#define MAX_ENDPOINTS 32U
 
 typedef struct {
     uint8_t in_use;
     ipc_message_t msg;
     uint8_t has_msg;
     capability_table_t* cap_transfer_src_table; // Store the source table for cross-table delegation
+    spinlock_t lock;
     wait_queue_t senders;
     wait_queue_t receivers;
 } ipc_endpoint_t;
 
-static ipc_endpoint_t g_endpoints[MAX_ENDPOINTS];
+static ipc_endpoint_t g_endpoints[BHARAT_IPC_MAX_ENDPOINTS];
 
 static ipc_endpoint_t* endpoint_by_ref(uint64_t ref) {
     if (ref >= BHARAT_ARRAY_SIZE(g_endpoints)) {
@@ -38,6 +38,7 @@ int ipc_endpoint_create(capability_table_t* table, uint32_t* out_send_cap, uint3
             g_endpoints[i].in_use = 1U;
             g_endpoints[i].has_msg = 0U;
             g_endpoints[i].msg.msg_len = 0U;
+            spin_lock_init(&g_endpoints[i].lock);
             sched_wait_queue_init(&g_endpoints[i].senders);
             sched_wait_queue_init(&g_endpoints[i].receivers);
 
@@ -101,29 +102,33 @@ int ipc_endpoint_send(capability_table_t* table, uint32_t send_cap, const void* 
         }
     }
 
-    while (ep->has_msg != 0U) {
+    for (;;) {
+        spin_lock(&ep->lock);
+        if (ep->has_msg == 0U) {
+            break;
+        }
         if (timeout_ticks == 0) {
+            spin_unlock(&ep->lock);
             return IPC_ERR_WOULD_BLOCK;
         }
 
         kthread_t* cur = sched_current_thread();
-        if (cur) {
-            cur->ipc_wakeup_reason = IPC_OK;
-            if (timeout_ticks != UINT64_MAX) {
-                cur->ipc_deadline_ticks = sched_get_ticks() + timeout_ticks;
-            } else {
-                cur->ipc_deadline_ticks = 0;
-            }
-            sched_wait_queue_enqueue(&ep->senders, cur);
-            sched_block();
-
-            if (cur->ipc_wakeup_reason != IPC_OK) {
-                return cur->ipc_wakeup_reason;
-            }
-            // In a multi-waiter environment, someone else might have sent a message
-            // between our wakeup and scheduling. Loop back and check `ep->has_msg` again.
-        } else {
+        if (!cur) {
+            spin_unlock(&ep->lock);
             return IPC_ERR_WOULD_BLOCK;
+        }
+        cur->ipc_wakeup_reason = IPC_OK;
+        if (timeout_ticks != UINT64_MAX) {
+            cur->ipc_deadline_ticks = sched_get_ticks() + timeout_ticks;
+        } else {
+            cur->ipc_deadline_ticks = 0;
+        }
+        sched_wait_queue_enqueue(&ep->senders, cur);
+        spin_unlock(&ep->lock);
+        sched_block();
+
+        if (cur->ipc_wakeup_reason != IPC_OK) {
+            return cur->ipc_wakeup_reason;
         }
     }
 
@@ -147,7 +152,9 @@ int ipc_endpoint_send(capability_table_t* table, uint32_t send_cap, const void* 
     ep->has_msg = 1U;
 
     kthread_t* recv = sched_wait_queue_dequeue(&ep->receivers);
-    if (recv) {
+    spin_unlock(&ep->lock);
+
+    if (recv != NULL) {
         recv->ipc_wakeup_reason = IPC_OK;
         recv->ipc_deadline_ticks = 0;
         sched_wakeup(recv);
@@ -171,33 +178,38 @@ int ipc_endpoint_receive(capability_table_t* table, uint32_t recv_cap, void* out
         return IPC_ERR_INVALID;
     }
 
-    while (ep->has_msg == 0U) {
+    for (;;) {
+        spin_lock(&ep->lock);
+        if (ep->has_msg != 0U) {
+            break;
+        }
         if (timeout_ticks == 0) {
+            spin_unlock(&ep->lock);
             return IPC_ERR_WOULD_BLOCK;
         }
 
         kthread_t* cur = sched_current_thread();
-        if (cur) {
-            cur->ipc_wakeup_reason = IPC_OK;
-            if (timeout_ticks != UINT64_MAX) {
-                cur->ipc_deadline_ticks = sched_get_ticks() + timeout_ticks;
-            } else {
-                cur->ipc_deadline_ticks = 0;
-            }
-            sched_wait_queue_enqueue(&ep->receivers, cur);
-            sched_block();
-
-            if (cur->ipc_wakeup_reason != IPC_OK) {
-                return cur->ipc_wakeup_reason;
-            }
-            // In a multi-waiter environment, someone else might have consumed the message
-            // before we got scheduled. Loop back and check `ep->has_msg` again.
-        } else {
+        if (!cur) {
+            spin_unlock(&ep->lock);
             return IPC_ERR_WOULD_BLOCK;
+        }
+        cur->ipc_wakeup_reason = IPC_OK;
+        if (timeout_ticks != UINT64_MAX) {
+            cur->ipc_deadline_ticks = sched_get_ticks() + timeout_ticks;
+        } else {
+            cur->ipc_deadline_ticks = 0;
+        }
+        sched_wait_queue_enqueue(&ep->receivers, cur);
+        spin_unlock(&ep->lock);
+        sched_block();
+
+        if (cur->ipc_wakeup_reason != IPC_OK) {
+            return cur->ipc_wakeup_reason;
         }
     }
 
     if (out_payload_capacity < ep->msg.msg_len) {
+        spin_unlock(&ep->lock);
         return IPC_ERR_NO_SPACE;
     }
 
@@ -216,6 +228,7 @@ int ipc_endpoint_receive(capability_table_t* table, uint32_t recv_cap, void* out
             // Failed to install capability. Roll back!
             // Do NOT consume the message or wake up the sender. Return failure to the receiver immediately.
             // The sender remains blocked, and the message stays pending.
+            spin_unlock(&ep->lock);
             return IPC_ERR_CAP_INSTALL_FAILED;
         }
     }
@@ -245,7 +258,9 @@ int ipc_endpoint_receive(capability_table_t* table, uint32_t recv_cap, void* out
     ep->has_msg = 0U;
 
     kthread_t* sender = sched_wait_queue_dequeue(&ep->senders);
-    if (sender) {
+    spin_unlock(&ep->lock);
+
+    if (sender != NULL) {
         sender->ipc_wakeup_reason = IPC_OK;
         sender->ipc_deadline_ticks = 0;
         sched_wakeup(sender);

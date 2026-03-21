@@ -3,6 +3,9 @@ project(BharatOS-Tests C)
 
 enable_testing()
 
+set(REPO_ROOT "${CMAKE_SOURCE_DIR}")
+set(WORK_DIR "${CMAKE_BINARY_DIR}/tests/policy_matrix")
+
 add_subdirectory(host)
 
 # The following legacy tests are preserved here but should eventually
@@ -70,6 +73,11 @@ add_executable(test_capability_ipc test_capability_ipc.c benchmark_stubs.c host/
 target_include_directories(test_capability_ipc PRIVATE ../kernel/include)
 target_compile_definitions(test_capability_ipc PRIVATE TESTING=1)
 add_test(NAME test_capability_ipc COMMAND test_capability_ipc)
+
+add_executable(test_ipc_endpoint_profile_limits test_ipc_endpoint_profile_limits.c benchmark_stubs.c host/mock_panic.c ../kernel/src/capability.c ../kernel/src/ipc/endpoint_ipc.c ../kernel/src/cap/cap_policy.c ../kernel/src/sched.c ../kernel/src/sched_deg.c ../kernel/src/ai_sched.c ../kernel/src/algo_matrix.c ../kernel/src/device/device_manager.c ../kernel/src/mm/pmm/numa.c)
+target_include_directories(test_ipc_endpoint_profile_limits PRIVATE ../kernel/include)
+target_compile_definitions(test_ipc_endpoint_profile_limits PRIVATE TESTING=1)
+add_test(NAME test_ipc_endpoint_profile_limits COMMAND test_ipc_endpoint_profile_limits)
 
 add_executable(test_device_framework test_device_framework.c benchmark_stubs.c host/mock_panic.c ../kernel/src/device/device_manager.c ../kernel/src/device/builtin_drivers.c ../kernel/src/subsystem/profile.c ../kernel/src/device/pci.c ../kernel/src/ipc/zero_copy_io.c ../kernel/src/capability.c ../kernel/src/sched.c ../kernel/src/sched_deg.c ../kernel/src/ai_sched.c ../kernel/src/algo_matrix.c ../kernel/src/mm/pmm/numa.c)
 target_include_directories(test_device_framework PRIVATE ../kernel/include)
@@ -392,7 +400,7 @@ add_executable(test_pt_x86_64_mm
 target_include_directories(test_pt_x86_64_mm PRIVATE ../kernel/include)
 add_test(NAME test_pt_x86_64_mm COMMAND test_pt_x86_64_mm)
 
-add_executable(test_virt_can_legacy host/services/can/test_virt_can.c ../drivers/virt_can/virt_can.c ../drivers/can_core/can_controller_core.c)
+add_executable(test_virt_can_legacy host/services/can/test_virt_can.c ../drivers/virt_can/virt_can.c ../drivers/src/can/can_controller_core.c)
 target_include_directories(test_virt_can_legacy PRIVATE ../drivers/include)
 target_compile_definitions(test_virt_can_legacy PRIVATE TESTING=1)
 target_link_libraries(test_virt_can_legacy PRIVATE c)
