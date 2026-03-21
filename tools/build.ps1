@@ -309,9 +309,8 @@ if ($Run) {
             $qemuArgs += @("-machine", $Machine, "-kernel", $OutELF, "-m", "256M", "-serial", "mon:stdio", "-no-reboot")
         }
         if ($BootGui -eq "ON") {
-            # riscv64 virt machine has no legacy VGA. Keep VirtIO GPU for later-stage
-            # graphics and also attach ramfb so the firmware can expose an early
-            # simple-framebuffer handoff the kernel boot GUI can consume.
+            # riscv64 virt machine has no legacy VGA.
+            # We attach ramfb so the firmware can expose an early simple-framebuffer handoff.
             # Route serial output only to the virtual console in the QEMU graphical window.
             $qemuArgs = $qemuArgs -ne "-serial" -ne "mon:stdio" # Remove the default serial arg to replace it
             if ($DualSerial) {

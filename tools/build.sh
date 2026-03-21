@@ -228,6 +228,10 @@ if [ "$RUN" = true ]; then
         KERNEL_BIN="${BUILD_DIR}/kernel/kernel32.elf"
         llvm-objcopy -I elf64-x86-64 -O elf32-i386 \
             "${BUILD_DIR}/kernel/kernel.elf" "$KERNEL_BIN"
+    elif [ "$ARCH" == "arm64" ]; then
+        KERNEL_BIN="${BUILD_DIR}/kernel/Image"
+        llvm-objcopy -O binary \
+            "${BUILD_DIR}/kernel/kernel.elf" "$KERNEL_BIN"
     fi
 
     if [ "$ARCH" == "x86_64" ]; then
@@ -256,6 +260,7 @@ if [ "$RUN" = true ]; then
         if [ "$BOOT_GUI" = "ON" ] || [ "$BOOT_GUI" = "true" ] || [ "$BOOT_GUI" = "1" ]; then
             # riscv64 virt has no legacy VGA.
             # We attach ramfb so the firmware can expose an early simple-framebuffer handoff.
+            # Route serial output only to the virtual console in the QEMU graphical window.
             GUI_ARGS="-device virtio-gpu-device -device ramfb"
             if [ "$DUAL_SERIAL" = true ]; then
                 SERIAL_ARGS="-serial mon:stdio -serial vc"
@@ -279,6 +284,7 @@ if [ "$RUN" = true ]; then
         if [ "$BOOT_GUI" = "ON" ] || [ "$BOOT_GUI" = "true" ] || [ "$BOOT_GUI" = "1" ]; then
             # arm64 virt has no legacy VGA.
             # We attach ramfb so the firmware can expose an early simple-framebuffer handoff.
+            # Route serial output only to the virtual console in the QEMU graphical window.
             GUI_ARGS="-vga none -device virtio-gpu-device -device ramfb"
             if [ "$DUAL_SERIAL" = true ]; then
                 SERIAL_ARGS="-serial mon:stdio -serial vc"
