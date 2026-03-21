@@ -32,12 +32,12 @@ void test_ipc_benchmark(void) {
     benchmark_start(&ctx, "IPC Send/Receive", BENCHMARK_LEVEL_0_REF, ITERATIONS);
 
     for (int i = 0; i < ITERATIONS; i++) {
-        res = ipc_endpoint_send(table, send_cap, payload, payload_len, 0);
+        res = ipc_endpoint_send(table, send_cap, payload, payload_len, 0, 0, 0);
         assert(res == IPC_OK);
 
         uint8_t recv_payload[64];
         uint32_t recv_len = 0;
-        res = ipc_endpoint_receive(table, recv_cap, recv_payload, sizeof(recv_payload), &recv_len, 0);
+        res = ipc_endpoint_receive(table, recv_cap, recv_payload, sizeof(recv_payload), &recv_len, 0, NULL);
         assert(res == IPC_OK);
         assert(recv_len == payload_len);
     }

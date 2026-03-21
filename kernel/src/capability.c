@@ -339,7 +339,7 @@ int cap_table_delegate(capability_table_t* src,
 
 // Helper to lock multiple tables in total order to prevent ABBA deadlocks.
 // We only support up to 4 tables at once (e.g. parent, table, prev, sibling).
-inline void cap_lock_tables_sorted(capability_table_t** tables, size_t count) {
+void cap_lock_tables_sorted(capability_table_t** tables, size_t count) {
     // Simple insertion sort by NUMA then memory address
     for (size_t i = 1; i < count; i++) {
         capability_table_t* key = tables[i];
@@ -362,7 +362,7 @@ inline void cap_lock_tables_sorted(capability_table_t** tables, size_t count) {
     }
 }
 
-inline void cap_unlock_tables_sorted(capability_table_t** tables, size_t count) {
+void cap_unlock_tables_sorted(capability_table_t** tables, size_t count) {
     // Unlock uniquely in reverse order
     capability_table_t* last_unlocked = NULL;
     for (int i = (int)count - 1; i >= 0; i--) {
@@ -399,70 +399,71 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
     capability_entry_t* root_entry = &table->entries[root_slot];
     uint32_t root_gen = root_entry->generation;
 
-    // Fast-path: Unlink from parent. If parent is in another table, we must handle
-    // total order locking. To keep it fully robust without reading unprotected
-    // memory, we will just use a global coordinator approach or deferred work queues
-    // in a full OS. Here, we implement a safe local unlinking.
     capability_table_t* parent_table = root_entry->parent.table;
     uint32_t parent_slot = root_entry->parent.slot;
     uint32_t parent_gen = root_entry->parent.generation;
 
-    if (parent_table) {
-        spin_unlock(&table->lock);
+    spin_unlock(&table->lock);
 
-        // Lock both safely
-        cap_lock_two_tables(parent_table, table);
+    if (parent_table) {
+        // Collect all tables required for the sibling chain to lock them correctly and prevent deadlocks
+        capability_table_t* tables_to_lock[16];
+        size_t num_tables = 0;
+
+        tables_to_lock[num_tables++] = table;
+        tables_to_lock[num_tables++] = parent_table;
+
+        // Note: The correct robust approach in a dynamic tree is to use a global coordinator
+        // or a bounded-retry optimistic lock pattern. For this iteration, we make the safe assumption
+        // that all siblings reside in `table` because `cap_table_delegate` currently enforces
+        // that a capability delegating to a remote table links the new child directly into the
+        // parent's child list. Let's simplify and safely lock parent and current table.
+        // If there's a need to traverse cross-table sibling chains, we would need to redesign
+        // the list structure. But to resolve the lock inversion safely, we will just use the pre-sorted multi-lock.
+
+        cap_lock_tables_sorted(tables_to_lock, num_tables);
 
         // Verify root hasn't been reallocated
-        if (root_entry->in_use == 0U || root_entry->generation != root_gen) {
-            cap_unlock_two_tables(parent_table, table);
-            return -2;
-        }
+        if (root_entry->in_use != 0U && root_entry->generation == root_gen) {
+            // Verify parent hasn't been reallocated
+            capability_entry_t* parent = &parent_table->entries[parent_slot];
+            if (parent->in_use != 0U && parent->generation == parent_gen) {
+                cap_handle_t sibling = parent->first_child;
+                cap_handle_t prev = { .table = NULL, .slot = UINT32_MAX, .generation = 0 };
 
-        // Verify parent hasn't been reallocated
-        capability_entry_t* parent = &parent_table->entries[parent_slot];
-        if (parent->in_use != 0U && parent->generation == parent_gen) {
-
-            cap_handle_t sibling = parent->first_child;
-            cap_handle_t prev = { .table = NULL, .slot = UINT32_MAX, .generation = 0 };
-
-            // To safely traverse the sibling chain without dynamic lock inversion,
-            // we gather the tables needed for the unlink, drop locks, sort them,
-            // lock all, and do the unlink.
-            capability_table_t* tables_to_lock[4];
-            size_t num_tables = 0;
-
-            tables_to_lock[num_tables++] = table;
-            tables_to_lock[num_tables++] = parent_table;
-
-            // For simplicity in this bounded bare-metal model, we enforce that
-            // siblings reside in the same destination table. Thus, we only ever
-            // need to lock `parent_table` and `table`.
-            while (sibling.table != NULL && sibling.slot != UINT32_MAX) {
-                if (sibling.table == table && sibling.slot == root_slot && sibling.generation == root_gen) {
-                    if (prev.table != NULL && prev.slot != UINT32_MAX) {
-                        if (prev.table == table) {
-                            table->entries[prev.slot].next_sibling = root_entry->next_sibling;
+                while (sibling.table != NULL && sibling.slot != UINT32_MAX) {
+                    if (sibling.table == table && sibling.slot == root_slot && sibling.generation == root_gen) {
+                        if (prev.table != NULL && prev.slot != UINT32_MAX) {
+                            if (prev.table == table) {
+                                table->entries[prev.slot].next_sibling = root_entry->next_sibling;
+                            } else if (prev.table == parent_table) {
+                                parent_table->entries[prev.slot].next_sibling = root_entry->next_sibling;
+                            } else {
+                                // If the previous sibling is in an unlocked table, we conservatively abort
+                                // this specific unlink to avoid dynamic lock inversion (a background cleanup task
+                                // or global epoch grace period handles unreachable garbage in a full design).
+                                // For now, we assume sibling resides in table or parent_table.
+                            }
+                        } else {
+                            parent->first_child = root_entry->next_sibling;
                         }
-                    } else {
-                        parent->first_child = root_entry->next_sibling;
+                        break;
                     }
-                    break;
-                }
 
-                prev = sibling;
-                // Since siblings reside in the same dst table as the root_slot
-                if (sibling.table == table) {
-                    sibling = table->entries[sibling.slot].next_sibling;
-                } else {
-                    break; // Fallback to break link chain securely
+                    prev = sibling;
+                    // Traverse down the sibling chain. We only safely follow links inside the tables we locked.
+                    if (sibling.table == table) {
+                        sibling = table->entries[sibling.slot].next_sibling;
+                    } else if (sibling.table == parent_table) {
+                        sibling = parent_table->entries[sibling.slot].next_sibling;
+                    } else {
+                        break; // Stop traversal to avoid dynamic lock inversion
+                    }
                 }
             }
         }
 
-        cap_unlock_two_tables(parent_table, table);
-    } else {
-        spin_unlock(&table->lock);
+        cap_unlock_tables_sorted(tables_to_lock, num_tables);
     }
 
     // Iterative tree walk to revoke children safely.
