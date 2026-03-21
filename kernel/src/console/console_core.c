@@ -3,6 +3,7 @@
 #include "console/console_router.h"
 #include "console/console_panic.h"
 #include "console/console_discovery.h"
+#include "console/console_policy.h"
 #include "console_format.h"
 
 #include <stdarg.h>
@@ -21,7 +22,7 @@ static void spin_unlock(volatile uint32_t* lock) {
     __sync_lock_release(lock);
 }
 
-static size_t string_length(const char* str) {
+size_t string_length(const char* str) {
     size_t len = 0;
     while (str && str[len]) len++;
     return len;

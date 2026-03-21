@@ -22,6 +22,7 @@ typedef struct {
 
 void console_render_fb_init(framebuffer_console_state_t *state);
 void console_render_fb_write_char(framebuffer_console_state_t *state, char c);
+void console_render_fb_write(framebuffer_console_state_t *state, const char *data, size_t len);
 void console_render_fb_clear(framebuffer_console_state_t *state);
 void console_render_fb_scroll(framebuffer_console_state_t *state);
 void console_render_fb_set_cursor(framebuffer_console_state_t *state, console_rows_t row, console_cols_t col);

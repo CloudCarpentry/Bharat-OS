@@ -13,9 +13,7 @@ static size_t fb_write(console_backend_t *backend, const char *data, size_t len)
     if (!backend || !backend->state || !data) return 0;
     framebuffer_console_state_t *state = (framebuffer_console_state_t *)backend->state;
 
-    for (size_t i = 0; i < len; i++) {
-        console_render_fb_write_char(state, data[i]);
-    }
+    console_render_fb_write(state, data, len);
     return len;
 }
 
