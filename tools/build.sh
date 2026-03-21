@@ -258,10 +258,9 @@ if [ "$RUN" = true ]; then
         GUI_ARGS=""
         SERIAL_ARGS="-serial mon:stdio"
         if [ "$BOOT_GUI" = "ON" ] || [ "$BOOT_GUI" = "true" ] || [ "$BOOT_GUI" = "1" ]; then
-            # riscv64 virt has no legacy VGA.
-            # We attach ramfb so the firmware can expose an early simple-framebuffer handoff.
-            # Route serial output only to the virtual console in the QEMU graphical window.
-            GUI_ARGS="-device virtio-gpu-device -device ramfb"
+            # Route serial output to the virtual console in the QEMU graphical window.
+            # Without a firmware or GPU, we drop virtio-gpu and force QEMU to display the 'vc' directly on the main window tab.
+            GUI_ARGS="-display gtk"
             if [ "$DUAL_SERIAL" = true ]; then
                 SERIAL_ARGS="-serial mon:stdio -serial vc"
             else
@@ -282,10 +281,9 @@ if [ "$RUN" = true ]; then
         GUI_ARGS=""
         SERIAL_ARGS="-serial mon:stdio"
         if [ "$BOOT_GUI" = "ON" ] || [ "$BOOT_GUI" = "true" ] || [ "$BOOT_GUI" = "1" ]; then
-            # arm64 virt has no legacy VGA.
-            # We attach ramfb so the firmware can expose an early simple-framebuffer handoff.
-            # Route serial output only to the virtual console in the QEMU graphical window.
-            GUI_ARGS="-vga none -device virtio-gpu-device -device ramfb"
+            # Route serial output to the virtual console in the QEMU graphical window.
+            # Without a firmware or GPU, we drop virtio-gpu and force QEMU to display the 'vc' directly on the main window tab.
+            GUI_ARGS="-vga none -display gtk"
             if [ "$DUAL_SERIAL" = true ]; then
                 SERIAL_ARGS="-serial mon:stdio -serial vc"
             else
