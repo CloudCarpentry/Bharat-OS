@@ -277,7 +277,9 @@ if [ "$RUN" = true ]; then
         SERIAL_ARGS="-serial mon:stdio"
         if [ "$BOOT_GUI" = "ON" ] || [ "$BOOT_GUI" = "true" ] || [ "$BOOT_GUI" = "1" ]; then
             # arm64 virt has no legacy VGA — VirtIO GPU is the correct device
-            GUI_ARGS="-vga none -device virtio-gpu-device -device ramfb"
+            # Keep virtio-gpu, but avoid ramfb for now; early simplefb handoff
+            # from ramfb is not yet robust in the current arm64 boot path.
+            GUI_ARGS="-vga none -device virtio-gpu-device"
             if [ "$DUAL_SERIAL" = true ]; then
                 SERIAL_ARGS="-serial mon:stdio -serial vc"
             else

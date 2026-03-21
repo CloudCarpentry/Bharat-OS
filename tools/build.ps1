@@ -231,7 +231,7 @@ else {
     ok "kernel.elf -> $OutELF  ($sizeKB KB)"
 }
 
-# ── Convert to 32-bit ELF for x86_64 (Requirement for Multiboot) ──────────
+# ── Format conversions (x86_64 Multiboot, arm64 Image) ──────────
 $KernelBinary = $OutELF
 if ($Arch -eq "x86_64") {
     $OutELF32 = "$BuildDir\kernel32.elf"
@@ -239,11 +239,16 @@ if ($Arch -eq "x86_64") {
     & llvm-objcopy -I elf64-x86-64 -O elf32-i386 $OutELF $OutELF32
     if ($LASTEXITCODE -ne 0) { fail "ELF conversion failed" }
     $KernelBinary = $OutELF32
+    ok "kernel32.elf -> $OutELF32"
 }
-
-if ($Arch -eq "x86_64") { ok "kernel32.elf -> $OutELF32" }
-
-if ($Arch -eq "x86_64") { ok "kernel32.elf -> $OutELF32" }
+elseif ($Arch -eq "arm64") {
+    $OutImage = "$BuildDir\Image"
+    inf "Converting to raw binary Image (Linux boot protocol)"
+    & llvm-objcopy -O binary $OutELF $OutImage
+    if ($LASTEXITCODE -ne 0) { fail "Binary conversion failed" }
+    $KernelBinary = $OutImage
+    ok "Image -> $OutImage"
+}
 
 # ── Flash ──────────────────────────────────────────────────────────────────
 if ($Flash) {
@@ -319,15 +324,20 @@ if ($Run) {
         }
     }
     elseif ($Arch -eq "arm64") {
-        $qemuArgs += @("-machine", $Machine, "-cpu", "cortex-a53", "-kernel", $OutELF, "-m", "256M", "-serial", "mon:stdio", "-no-reboot")
+        $qemuArgs += @("-machine", $Machine, "-cpu", "cortex-a53", "-kernel", $KernelBinary, "-m", "256M", "-serial", "mon:stdio", "-no-reboot")
         if ($BootGui -eq "ON") {
             # arm64 virt machine has no legacy VGA; use VirtIO GPU which the virt machine supports
             # Route serial output only to the virtual console in the QEMU graphical window.
             $qemuArgs = $qemuArgs -ne "-serial" -ne "mon:stdio" # Remove the default serial arg to replace it
             if ($DualSerial) {
-                $qemuArgs += @("-serial", "mon:stdio", "-serial", "vc", "-vga", "none", "-device", "virtio-gpu-device", "-device", "ramfb")
+                # NOTE: Keep virtio-gpu, but avoid ramfb for arm64 for now.
+                # QEMU virt+ramfb can expose early simplefb data that is not yet
+                # robustly handled in the current arm64 early-boot path.
+                $qemuArgs += @("-serial", "mon:stdio", "-serial", "vc", "-vga", "none", "-device", "virtio-gpu-device")
             } else {
-                $qemuArgs += @("-serial", "stdio", "-serial", "vc", "-vga", "none", "-device", "virtio-gpu-device", "-device", "ramfb")
+                # Match dual-serial path: no ramfb until arm64 early framebuffer
+                # handoff/mapping path is fully hardened.
+                $qemuArgs += @("-serial", "stdio", "-serial", "vc", "-vga", "none", "-device", "virtio-gpu-device")
             }
         } else {
             $qemuArgs += @("-nographic")

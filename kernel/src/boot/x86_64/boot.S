@@ -24,7 +24,7 @@
 
 /* ── Multiboot 1 constants ──────────────────────────────────────────────── */
 #define MB1_MAGIC    0x1BADB002
-#define MB1_FLAGS    0x00000007  /* ALIGN + MEMINFO + VIDINFO */
+#define MB1_FLAGS    0x00000003  /* ALIGN + MEMINFO (no VIDINFO/VBE for QEMU -kernel) */
 
 /* ── Boot Headers (Multiboot 1 & 2 + PVH ELF Note) ─────────────────────
  * Must be in the first 8 KiB (v1) or 32 KiB (v2) of the image.

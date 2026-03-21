@@ -263,9 +263,20 @@ set(KERNEL_SRCS
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/display_handoff.c>
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/display_fallback.c>
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/boot_gui.c>
+    src/kernel_boot.c
+    src/boot/common/boot_info_validate.c
+    src/boot/common/boot_info_finalize.c
     $<$<STREQUAL:${ARCH},arm32>:src/hal/arm32_mpu_vmm_mock.c>
     ../kernel/display/fb_core.c
     src/profile/${KERNEL_PROFILE_LOWER}/profile.c
+    $<$<STREQUAL:${ARCH},x86_64>:src/arch/x86_64/boot/entry.c>
+    $<$<STREQUAL:${ARCH},x86_64>:src/arch/x86_64/boot/multiboot_parse.c>
+    $<$<STREQUAL:${ARCH},arm32>:src/arch/arm32/boot/entry.c>
+    $<$<STREQUAL:${ARCH},arm64>:src/arch/arm64/boot/entry.c>
+    $<$<OR:$<STREQUAL:${ARCH},arm32>,$<STREQUAL:${ARCH},arm64>>:src/arch/arm/boot/fdt_parse_common.c>
+    $<$<STREQUAL:${ARCH},riscv32>:src/arch/riscv32/boot/entry.c>
+    $<$<STREQUAL:${ARCH},riscv64>:src/arch/riscv64/boot/entry.c>
+    $<$<OR:$<STREQUAL:${ARCH},riscv32>,$<STREQUAL:${ARCH},riscv64>>:src/arch/riscv/boot/fdt_parse_common.c>
     $<$<STREQUAL:${ARCH},x86_64>:src/board/qemu-virt-x86_64/board.c>
     $<$<STREQUAL:${ARCH},x86_64>:src/arch/x86_64/boot_video_efi.c>
     $<$<STREQUAL:${ARCH},x86_64>:src/board/qemu-virt-x86_64/machine_display.c>
@@ -313,6 +324,17 @@ set(KERNEL_SRCS
     ../ui/fbui/widgets/fb_widgets.c
 )
 
+
+# ── Platform / Machine layer ────────────────────────────────────────────────
+if(ARCH STREQUAL "x86_64")
+    list(APPEND KERNEL_SRCS src/arch/x86_64/platform/q35/boot/early_console.c)
+elseif(ARCH STREQUAL "arm64")
+    list(APPEND KERNEL_SRCS src/arch/arm64/platform/qemu_virt/boot/early_console.c)
+elseif(ARCH STREQUAL "riscv64")
+    list(APPEND KERNEL_SRCS src/arch/riscv64/platform/qemu_virt/boot/early_console.c)
+endif()
+
+list(APPEND KERNEL_SRCS src/display/boot_video_map.c)
 
 # ── Kernel ELF ──────────────────────────────────────────────────────────────
 add_executable(kernel.elf
@@ -447,3 +469,16 @@ if(ARCH STREQUAL "riscv64" AND BHARAT_RISCV_BUILD_PAYLOAD_BIN)
         add_custom_target(kernel.payload.bin ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/payload.bin")
     endif()
 endif()
+
+# ── Platform / Machine layer ────────────────────────────────────────────────
+if(ARCH STREQUAL "x86_64")
+    list(APPEND KERNEL_SRCS src/arch/x86_64/platform/q35/boot/early_console.c)
+elseif(ARCH STREQUAL "arm64")
+    list(APPEND KERNEL_SRCS src/arch/arm64/platform/qemu_virt/boot/early_console.c)
+elseif(ARCH STREQUAL "riscv64")
+    list(APPEND KERNEL_SRCS src/arch/riscv64/platform/qemu_virt/boot/early_console.c)
+endif()
+
+list(APPEND KERNEL_SRCS src/display/boot_video_map.c)
+
+list(APPEND KERNEL_SRCS src/tests/boot/test_boot_info_validate.c)

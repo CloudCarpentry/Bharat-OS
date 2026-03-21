@@ -387,3 +387,121 @@ Instead of purely driver-focused execution, implementation priority favors contr
 - Calibration/config persistence
 - Thermal/resource derating
 - Protocol layers like ISO-TP / UDS hooks
+### 15.3 CAN/CAN-FD Reference Driver Framework
+
+The driver framework provides a hardware-agnostic core (`drivers/can_core`) and a deterministic virtual backend (`virt_can`) for host-side testing. Future milestones will implement specific hardware drivers (e.g., STM32 bxCAN, NXP FlexCAN) against this contract.
+
+**Driver capabilities**
+
+- classical CAN + CAN FD data phase support
+- acceptance filter programming
+- interrupt-driven Rx/Tx completion
+- bus error handling and automatic recovery policy
+- optional DMA path for high-throughput gateway ECUs
+- hardware timestamp propagation into VNS frame descriptor
+
+**Driver deliverables**
+
+1. Controller HAL contract (`can_hal_ops`) for register/DMA/IRQ abstraction.
+2. VNS adapter layer (`can_vns_adapter`) implementing common callbacks.
+3. Validation suite:
+   - loopback and stress tests
+   - bus-off recovery test
+   - timestamp monotonicity checks
+   - deterministic latency histogram collection
+
+### 15.4 Execution Backlog (Concrete Tasks)
+
+**Milestone A - Subsystem skeleton (Completed)**
+
+- created generic CAN core module and FD-ready frame definitions
+- implemented virtual backend (`virt_can`) with loopback and testing capabilities
+- added per-controller registration and lifecycle handling
+- implemented the userspace CAN service with capability-based routing stubs
+
+**Milestone B - Real Hardware CAN drivers (Next)**
+
+- implement IRQ-driven Tx/Rx path for a physical controller (e.g. STM32, NXP)
+- implement hardware filter compilation from the userspace service
+- connect hardware timestamps and bus-off error reporting to the generic core
+
+**Milestone C - Safety and determinism hardening**
+
+- enforce memory pool limits and queue deadlines
+- integrate Safety Domain emergency policy trigger for bus critical failures
+- add watchdog integration for stuck controller detection
+- add static configuration profile for safety vs gateway ECU variants
+
+**Milestone D - Platform scaling**
+
+- add second CAN controller backend (different SoC family) to validate portability
+- add CAN-to-Ethernet gateway path via Service Domain
+- add TSN time-source synchronization hook for cross-bus correlation
+
+### 15.5 Definition of Done (Automotive Acceptance)
+
+- bounded worst-case ISR + dispatch latency documented per profile
+- zero dynamic allocation in hard real-time data path
+- deterministic recovery from CAN bus-off within configured policy window
+- end-to-end traceability: ISR timestamp -> VNS queue -> consumer task
+- reproducible HIL test report for safety and control profiles
+
+## 16. Current in-scope work without kernel changes
+
+The following subsystems and drivers can be implemented entirely in user space or as independent kernel drivers using existing primitives (IPC, capabilities, timers):
+
+* **CAN subsystem hardening**: Add an automotive-grade CAN service layer and driver abstraction, managing software filtering, subscriptions, and diagnostic stats.
+* **Power & Mode Manager**: Vehicle-style operating modes (Accessory, Run, Crank, Sleep, Limp Home) coordinated across subsystems.
+* **Deterministic Sensor Framework**: A uniform, timestamped layer for sensors (wheel speed, IMU, etc.) handling staleness and plausibility.
+* **Safety I/O / Actuator-safe path**: Safe output framework (PWM/GPIO) with slew limiting, deadman timeouts, and fault-forced safe states.
+* **Service-level time sync**: Timestamp-quality and drift-observation service without relying on kernel clock discipline.
+* **Motor-control framework**: A reusable abstraction layer for PWM and encoder inputs.
+* **Diagnostics/DTC manager**: Centralized fault handling, debouncing, and freeze-frame logging from various services.
+
+## 17. Deferred until kernel support exists
+
+The following features require core kernel modifications (e.g., RT scheduler, new object types, MM/VM changes, capability core redesign) and are deferred:
+
+* hard RT scheduler guarantees
+* kernel PTP/TSN discipline
+* new kernel IPC transports
+* capability-core redesign for automotive objects
+* deeper fault-containment domains if kernel support is needed
+
+## 18. Implementation backlog
+
+**1. CAN subsystem hardening**
+* Files: `drivers/include/drivers/can/can_frame.h`, `drivers/include/drivers/can/can_filter.h`, `drivers/include/drivers/can/can_controller.h`, `services/include/services/can/can_service_protocol.h`, `drivers/src/can/can_controller_core.c`, `drivers/src/can/can_filter_compile.c`, `drivers/src/can/virt_can.c`, `services/can/main.c`, `services/can/router.c`, `services/can/subscriptions.c`, `services/can/diag.c`, `services/can/gateway.c`.
+* Interfaces: `can_frame_t`, `can_filter_t`, `can_controller_ops_t`, service IPC messages.
+* Tests: `tests/host/drivers/test_can_filter_match.c`, `tests/host/drivers/test_can_filter_compile.c`, `tests/host/drivers/test_can_controller_core.c`, `tests/host/services/test_can_router.c`, `tests/host/services/test_can_subscriptions.c`, `tests/host/services/test_can_gateway.c`, `tests/host/services/test_can_busoff_recovery.c`.
+* Notes: Must rely entirely on existing capability checking without introducing new kernel capability types.
+
+**2. Power & Mode Manager**
+* Files: `services/include/services/power_mode/power_mode.h`, `services/include/services/power_mode/power_mode_protocol.h`, `services/power_mode/main.c`, `services/power_mode/state_machine.c`, `services/power_mode/clients.c`, `services/power_mode/policy.c`.
+* Interfaces: `power_mode_state_t`, `power_mode_transition_t`, prepare/commit/wake callbacks.
+* Tests: `tests/host/services/test_power_mode_state_machine.c`, `tests/host/services/test_power_mode_callbacks.c`, `tests/host/services/test_power_mode_limp_home.c`.
+
+**3. Diagnostics/DTC service**
+* Files: `services/include/services/diag/diag_event.h`, `services/include/services/diag/diag_protocol.h`, `services/diag/main.c`, `services/diag/store.c`, `services/diag/debounce.c`, `services/diag/freeze_frame.c`.
+* Interfaces: `diag_severity_t`, `diag_event_t`.
+* Tests: `tests/host/services/test_diag_debounce.c`, `tests/host/services/test_diag_store.c`.
+
+**4. Deterministic Sensor Framework**
+* Files: `drivers/include/drivers/sensor/sensor_sample.h`, `drivers/include/drivers/sensor/sensor_device.h`, `services/include/services/sensor_hub/sensor_hub_protocol.h`, `drivers/src/sensor/sensor_core.c`, `services/sensor_hub/main.c`, `services/sensor_hub/registry.c`, `services/sensor_hub/plausibility.c`, `services/sensor_hub/freshness.c`.
+* Interfaces: `sensor_sample_t`, `sensor_device_ops_t`.
+* Tests: `tests/host/drivers/test_sensor_core.c`, `tests/host/services/test_sensor_freshness.c`, `tests/host/services/test_sensor_plausibility.c`.
+
+**5. Safety I/O / Actuator-safe path**
+* Files: `drivers/include/drivers/actuator/actuator_device.h`, `services/include/services/actuator_mgr/actuator_mgr_protocol.h`, `drivers/src/actuator/actuator_core.c`, `services/actuator_mgr/main.c`, `services/actuator_mgr/policy.c`, `services/actuator_mgr/safe_state.c`.
+* Interfaces: `actuator_state_t`, `actuator_limits_t`, `actuator_device_ops_t`.
+* Tests: `tests/host/drivers/test_actuator_core.c`, `tests/host/services/test_actuator_safe_state.c`, `tests/host/services/test_actuator_deadman.c`.
+
+**6. Service-level time sync**
+* Files: `services/include/services/time_sync/time_sync.h`, `services/time_sync/main.c`, `services/time_sync/drift.c`, `services/time_sync/quality.c`.
+* Interfaces: `time_quality_t`, `time_sync_status_t`.
+* Tests: `tests/host/services/test_time_sync_drift.c`, `tests/host/services/test_time_sync_quality.c`.
+
+**7. Motor-control framework**
+* Files: `drivers/include/drivers/motor/motor_control.h`, `drivers/src/motor/motor_control_core.c`, `drivers/src/motor/pwm_motor_backend.c`, `drivers/src/motor/qei_backend.c`.
+* Interfaces: `motor_pwm_config_t`, `motor_control_ops_t`.
+* Tests: `tests/host/drivers/test_motor_control_core.c`.
