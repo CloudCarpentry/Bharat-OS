@@ -192,13 +192,17 @@ Each profile configures:
 - **Hypervisor Partition Mode**: mixed domains under a hypervisor layer
 - **Distributed Multi-ECU Mode**: networked Bharat-OS instances across ECUs
 
-## 13. Engineering Roadmap
+## 13. Automotive Maturity Milestones & Roadmap
 
-- **Phase 1**: deterministic scheduler core + fast boot + HAL cleanup
-- **Phase 2**: Linux companion interoperability (RPMsg/shared memory)
-- **Phase 3**: protocol stack depth (CAN/LIN/TSN/SOME-IP)
-- **Phase 4**: secure boot + firmware update + isolation hardening
-- **Phase 5**: distributed ECU orchestration and validation toolchain
+The development roadmap aligns with progressively rigorous automotive maturity expectations:
+
+- **Milestone A**: bring-up and basic drivers
+- **Milestone B**: deterministic comms and sensor timing
+- **Milestone C**: safety supervision and diagnostics
+- **Milestone D**: domain-controller/gateway readiness
+- **Milestone E**: certification-oriented hardening
+
+*Previous phased planning integrates directly into these maturity milestones.*
 
 ## 14. Target Applications
 
@@ -207,11 +211,133 @@ Each profile configures:
 - industrial automation
 - smart mobility and gateway systems
 
-## 15. Identified Gaps and Implementation Plan (Subsystem + Driver)
+## 15. Advanced Automotive Subsystems (The Control & Safety Plane)
+
+Moving beyond generic OS components requires a dedicated focus on control-plane and safety-plane architectures.
+
+### 15.1 Functional Safety Plumbing
+This is the most critical layer for vehicle-grade operation:
+* **Safety supervisor subsystem**: monitors heartbeats from critical services, checks deadline misses, and triggers degraded mode or safe-state transitions.
+* **Watchdog framework**: per-core hardware watchdogs combined with service-level watchdog registration. Uses an escalation policy: restart service -> isolate subsystem -> enter limp-home mode.
+* **Fault manager**: provides unified reporting for driver faults, sensor faults, bus faults, and timing faults. Classifies faults into severity classes: info, degraded, critical, immediate-safe-state.
+* **Safe-state output path**: a direct, deterministic, non-IPC-dependent path for actuator neutralization upon critical failure.
+
+### 15.2 AUTOSAR-like Structural Separation
+While full AUTOSAR complexity is avoided, its structural separation is adopted:
+* **MCAL-like Hardware Abstraction**: MCU and peripheral specifics remain fully isolated.
+* **ECU Services & Communication Services**: central managers for protocols, routing, and vehicle state.
+* **I/O Hardware Abstraction**: normalizes hardware signals into logical signals.
+* **Application Personalities**: application logic remains strictly portable across boards; board files must never leak into vehicle control services.
+
+### 15.3 Vehicle Power State & Wakeup Framework
+Explicit management of ECU power states is mandatory:
+* **State Model**: ignition, accessory, run, crank, off.
+* **Sleep Preparation**: sleep preparation callbacks for active services.
+* **Wake Source Framework**: GPIO wake, CAN wake, timer wake.
+* **EV specific protections**: low-voltage battery protection logic, staged shutdown of non-critical domains, and wake authorization policy.
+
+### 15.4 Time-Aware Scheduling and Timestamping
+Automotive systems need absolute timing discipline to prevent control instability:
+* **Global Monotonic Timestamp Service**: core API for all system time.
+* **Hardware Timestamp API**: CAN RX/TX timestamps, GPIO capture timestamps, ADC conversion timestamps.
+* **Timer Wheel / Time-Triggered Scheduler**: for deterministic periodic tasks.
+* **Deadline Monitoring**: catching slipped control loop executions.
+
+### 15.5 Diagnostics and DTC Subsystem
+Essential for serviceability and fault tracing:
+* **Diagnostic Trouble Code (DTC) Manager**: mapping services to DTCs.
+* **Event Memory & Freeze-frame**: snapshot support for faults.
+* **Debouncing Logic**: handling intermittent faults safely.
+* **Fault Aging / Healing Logic**: auto-clearing non-persistent faults.
+* **Service Hooks**: read/clear DTC capabilities for downstream UDS implementation.
+
+### 15.6 Persistent Crash and Event Logging
+For postmortem evidence and field debugging:
+* **Retained Memory Logs**: last-reset reason, fault ring buffer.
+* **Tracing History**: panic crash summaries, bus-off / error storm history, watchdog reset breadcrumbs, boot timeline tracing.
+
+### 15.7 Deterministic Sensor Acquisition Framework
+Instead of a pile of unrelated drivers, sensor inputs are unified:
+* **Supported sensors**: wheel speed, IMU, steering angle, brake pressure, throttle position, battery/thermal sensors, motor resolver/QEI.
+* **Features**: triggered sampling, bounded acquisition latency, timestamped samples, calibration tables, plausibility checks, stale-data detection, signal quality flags.
+
+### 15.8 Actuator Driver Framework
+Output handling must strictly adhere to safety constraints:
+* **PWM Framework**: output capability with safety bounds.
+* **GPIO Output Safety Profiles**: safe output ownership rules and GPIO output capability.
+* **Output Policies**: actuator arming/disarming states, output clamping, slew limits, deadman timeouts, neutral/failsafe position enforcement, cross-checking for redundant outputs.
+
+### 15.9 Health Monitoring and Redundancy Hooks
+Crucial for safety-aware mobility (EVs, drones):
+* **Redundancy**: redundant sensor vote hooks, mismatch detection.
+* **Orchestration**: plausibility monitors, degraded mode policies, channel switchover hooks.
+
+### 15.10 Thermal and Resource Management
+Coordinated derating for vehicle electronics:
+* **Thermal Management**: thermal sensor framework, thermal trip policies.
+* **Derating Integration**: CPU/peripheral derating hooks, actuator derating interface.
+* **Safety Integration**: overload counters, safe degradation path under heat or undervoltage.
+
+### 15.11 Central Subsystem Managers
+These ECU-level managers elevate the OS to a true automotive platform:
+* **Communication Manager**: owns CAN, LIN, routing rules, diagnostic addressing, wake-triggered network behavior.
+* **Vehicle State Manager**: tracks ignition, drive-ready, limp-home, fault-inhibit, charging, maintenance states.
+* **Signal Manager**: normalizes vehicle signals, provides freshness/quality flags, mediates calibration/scaling, centralizes plausibility logic.
+* **Safety Manager**: owns fault policy, safe-state transitions, watchdog integration, health verdicts.
+* **Parameter/Config Manager**: owns calibration values, runtime parameters, configuration versioning, safe commits, fallback to defaults.
+
+## 16. Component-Level Automotive Requirements
+
+Specific driver families must be upgraded to support strict automotive capability requirements.
+
+### 16.1 Advanced CAN Profile
+Beyond basic CAN/FD support, an automotive profile requires:
+* **Hardware Filter Compiler**: merge subscription filters into controller acceptance filters, with clean software fallback.
+* **Tx Mailbox Scheduling Policy**: Class A (safety critical), Class B (real-time control), Class C (diagnostics/best effort).
+* **Bus Load Monitoring**: rolling utilization, arbitration loss stats, dropped frame stats.
+* **Error Confinement Diagnostics**: TEC/REC tracking, error passive/bus-off history.
+* **Gateway Mode**: controlled forwarding between multiple CAN buses (crucial for body/domain controllers).
+* **Diagnostic Transport Readiness**: reserved hooks for ISO-TP, UDS, OBD-II.
+
+### 16.2 LIN Support
+LIN is heavily used for low-cost actuators and sensors bridging to CAN. Minimum support requires:
+* LIN master driver and schedule tables.
+* Checksum handling and sleep/wake functionality.
+* Bridge hooks into the central communication service.
+
+### 16.3 Motor Control Drivers
+* Synchronized PWM update points, ADC trigger sync.
+* Fault input trip support, dead-time configuration.
+* Complementary PWM outputs, resolver/QEI hooks.
+* Immediate hardware overcurrent shutdown path.
+
+### 16.4 ADC Drivers
+* Sequencer support and trigger-based sampling.
+* DMA support, calibration/offset storage.
+* Channel grouping by timing class.
+
+### 16.5 SPI/I2C Sensor Drivers
+* Deterministic transfer windows, bus recovery logic.
+* Device timeout handling, stale-data checks, hardware CRC handling.
+
+### 16.6 EEPROM / NVRAM / Flash Storage
+* Wear-aware parameter storage, power-loss-safe commits.
+* Redundant record formats for safety-critical parameters.
+
+## 17. Architecture Style Improvements
+
+To safely operate in mixed-criticality environments, the core architecture enforces strict automotive idioms:
+
+* **Capability and Ownership Model**: every critical device has clear ownership. Only one owner configures the controller; clients have restricted read/write capabilities. Explicit mode-change authority is required, and shared unsupervised MMIO access is prohibited.
+* **Bounded Memory Behavior**: automotive fast paths (especially ISRs and drivers) strictly avoid heap allocation, unpredictable lock chains, unbounded queues, and broadcast wakeups.
+* **Service Restartability**: noncritical services must be restartable without crashing the kernel, wedging hardware devices, or corrupting active communication state.
+* **Traceability**: every safety-relevant subsystem requires a documented requirement, design component mapping, unit test case, fault injection case, and explicit degraded behavior definition.
+
+## 18. Identified Gaps and Implementation Plan
 
 To make the automotive architecture immediately actionable, the following gaps are identified against typical EV/automotive ECU requirements.
 
-### 15.1 Gap Matrix
+### 18.1 Gap Matrix
 
 | Area | Current State | Gap | Implementation Target |
 |---|---|---|---|
@@ -223,7 +349,7 @@ To make the automotive architecture immediately actionable, the following gaps a
 | Motor control peripheral stack | Control runtime lists motor loops | Missing standardized PWM/ADC/encoder driver contract for FOC pipelines | Add `Motor Control Driver Suite` (PWM trigger, ADC sync, QEI encoder) |
 | Sensor bus integration | Sensor fusion is listed | Missing deterministic IMU + wheel-speed acquisition driver patterns | Add `Deterministic Sensor Driver Framework` with timestamped DMA ring ingestion |
 
-### 15.2 Vehicle Network Subsystem (VNS) & CAN Architecture
+### 18.2 Vehicle Network Subsystem (VNS) & CAN Architecture
 
 The first iteration of the Vehicle Network Subsystem for CAN has been implemented following the multi-kernel capability model:
 
@@ -236,61 +362,28 @@ The first iteration of the Vehicle Network Subsystem for CAN has been implemente
 
 This split keeps the trusted kernel surface small, allows for restartable CAN routing logic, and isolates safety-critical policy from raw register manipulation.
 
-### 15.3 CAN/CAN-FD Reference Driver Framework
+### 18.3 Execution Backlog Priorities
 
-The driver framework provides a hardware-agnostic core (`drivers/can_core`) and a deterministic virtual backend (`virt_can`) for host-side testing. Future milestones will implement specific hardware drivers (e.g., STM32 bxCAN, NXP FlexCAN) against this contract.
+Instead of purely driver-focused execution, implementation priority favors control-plane and safety-plane robustness:
 
-**Driver capabilities**
+**Priority 1**
+- Safety supervisor
+- Watchdog framework
+- CAN hardware filter compilation
+- DTC/event logging core
+- Power/mode manager baseline
+- Deterministic sensor framework base classes
 
-- classical CAN + CAN FD data phase support
-- acceptance filter programming
-- interrupt-driven Rx/Tx completion
-- bus error handling and automatic recovery policy
-- optional DMA path for high-throughput gateway ECUs
-- hardware timestamp propagation into VNS frame descriptor
+**Priority 2**
+- Motor control driver framework
+- Actuator safety output framework
+- Timestamp service
+- Health monitoring / fault manager
+- Retained crash/event log
 
-**Driver deliverables**
-
-1. Controller HAL contract (`can_hal_ops`) for register/DMA/IRQ abstraction.
-2. VNS adapter layer (`can_vns_adapter`) implementing common callbacks.
-3. Validation suite:
-   - loopback and stress tests
-   - bus-off recovery test
-   - timestamp monotonicity checks
-   - deterministic latency histogram collection
-
-### 15.4 Execution Backlog (Concrete Tasks)
-
-**Milestone A - Subsystem skeleton (Completed)**
-
-- created generic CAN core module and FD-ready frame definitions
-- implemented virtual backend (`virt_can`) with loopback and testing capabilities
-- added per-controller registration and lifecycle handling
-- implemented the userspace CAN service with capability-based routing stubs
-
-**Milestone B - Real Hardware CAN drivers (Next)**
-
-- implement IRQ-driven Tx/Rx path for a physical controller (e.g. STM32, NXP)
-- implement hardware filter compilation from the userspace service
-- connect hardware timestamps and bus-off error reporting to the generic core
-
-**Milestone C - Safety and determinism hardening**
-
-- enforce memory pool limits and queue deadlines
-- integrate Safety Domain emergency policy trigger for bus critical failures
-- add watchdog integration for stuck controller detection
-- add static configuration profile for safety vs gateway ECU variants
-
-**Milestone D - Platform scaling**
-
-- add second CAN controller backend (different SoC family) to validate portability
-- add CAN-to-Ethernet gateway path via Service Domain
-- add TSN time-source synchronization hook for cross-bus correlation
-
-### 15.5 Definition of Done (Automotive Acceptance)
-
-- bounded worst-case ISR + dispatch latency documented per profile
-- zero dynamic allocation in hard real-time data path
-- deterministic recovery from CAN bus-off within configured policy window
-- end-to-end traceability: ISR timestamp -> VNS queue -> consumer task
-- reproducible HIL test report for safety and control profiles
+**Priority 3**
+- LIN subsystem
+- Gateway service between buses
+- Calibration/config persistence
+- Thermal/resource derating
+- Protocol layers like ISO-TP / UDS hooks
