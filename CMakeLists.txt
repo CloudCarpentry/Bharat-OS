@@ -68,6 +68,10 @@ set(BHARAT_PLATFORM_FIRMWARE "" CACHE STRING "Target platform firmware (e.g., AC
 set(BHARAT_BOOT_HW_PROFILE "generic" CACHE STRING "Boot hardware profile (generic, desktop, server, vm, laptop, edge, rtos, automotive_ecu, automotive_infotainment)")
 set_property(CACHE BHARAT_BOOT_HW_PROFILE PROPERTY STRINGS generic desktop server vm laptop edge rtos automotive_ecu automotive_infotainment)
 
+# IRQ dispatch profile
+set(BHARAT_IRQ_DISPATCH_MODE "AUTO" CACHE STRING "IRQ dispatch mode (AUTO, GENERIC, MIXED, RT)")
+set_property(CACHE BHARAT_IRQ_DISPATCH_MODE PROPERTY STRINGS AUTO GENERIC MIXED RT)
+
 message(STATUS "Configuring for Device Profile: ${BHARAT_DEVICE_PROFILE}")
 message(STATUS "Configuring for Personality Profile: ${BHARAT_PERSONALITY_PROFILE}")
 message(STATUS "Architecture: ${BHARAT_ARCH_FAMILY}-${BHARAT_ARCH_BITS} (${BHARAT_ARCH_VARIANT})")
@@ -145,6 +149,28 @@ bharat_set_profile_flag(BHARAT_PROFILE_ROBOT "ROBOT" "${BHARAT_DEVICE_PROFILE}")
 bharat_set_profile_flag(BHARAT_PROFILE_RTOS "RTOS" "${BHARAT_DEVICE_PROFILE}")
 bharat_set_profile_flag(BHARAT_PROFILE_AUTOMOTIVE_ECU "AUTOMOTIVE_ECU" "${BHARAT_DEVICE_PROFILE}")
 bharat_set_profile_flag(BHARAT_PROFILE_AUTOMOTIVE_INFOTAINMENT "AUTOMOTIVE_INFOTAINMENT" "${BHARAT_DEVICE_PROFILE}")
+
+# IRQ dispatch mode (profile-aware default with explicit override)
+if(BHARAT_IRQ_DISPATCH_MODE STREQUAL "AUTO")
+    if(BHARAT_DEVICE_PROFILE STREQUAL "RTOS"
+       OR BHARAT_DEVICE_PROFILE STREQUAL "DRONE"
+       OR BHARAT_DEVICE_PROFILE STREQUAL "ROBOT"
+       OR BHARAT_DEVICE_PROFILE STREQUAL "AUTOMOTIVE_ECU")
+        set(BHARAT_IRQ_DISPATCH_RESOLVED "RT")
+    elseif(BHARAT_DEVICE_PROFILE STREQUAL "EDGE"
+           OR BHARAT_DEVICE_PROFILE STREQUAL "MOBILE"
+           OR BHARAT_DEVICE_PROFILE STREQUAL "AUTOMOTIVE_INFOTAINMENT")
+        set(BHARAT_IRQ_DISPATCH_RESOLVED "MIXED")
+    else()
+        set(BHARAT_IRQ_DISPATCH_RESOLVED "GENERIC")
+    endif()
+else()
+    string(TOUPPER "${BHARAT_IRQ_DISPATCH_MODE}" BHARAT_IRQ_DISPATCH_RESOLVED)
+endif()
+message(STATUS "IRQ dispatch mode: ${BHARAT_IRQ_DISPATCH_RESOLVED}")
+bharat_set_profile_flag(BHARAT_IRQ_DISPATCH_GENERIC "GENERIC" "${BHARAT_IRQ_DISPATCH_RESOLVED}")
+bharat_set_profile_flag(BHARAT_IRQ_DISPATCH_MIXED "MIXED" "${BHARAT_IRQ_DISPATCH_RESOLVED}")
+bharat_set_profile_flag(BHARAT_IRQ_DISPATCH_RT "RT" "${BHARAT_IRQ_DISPATCH_RESOLVED}")
 
 # Personality Profile
 bharat_set_profile_flag(BHARAT_PERSONALITY_NONE "NONE" "${BHARAT_PERSONALITY_PROFILE}")
