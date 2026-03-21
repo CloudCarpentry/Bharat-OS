@@ -1,98 +1,82 @@
-#include "bharat/console.h"
+#include "console/console_backend.h"
+#include "console/console_buffer.h"
+#include "console/console_core.h"
+
 #include <stddef.h>
+#include <stdbool.h>
 
-#define MEMLOG_BUFFER_SIZE 4096
+typedef struct {
+    console_ring_t *ring;
+    bool preserve_on_panic;
+} memlog_console_state_t;
 
-static char memlog_buffer[MEMLOG_BUFFER_SIZE];
-static size_t memlog_head = 0;
-static size_t memlog_tail = 0;
-static bool memlog_wrapped = false;
+static memlog_console_state_t g_memlog_state = {
+    .ring = NULL, // Points to central ring conceptually, though we don't strictly need a pointer if we use global functions
+    .preserve_on_panic = true
+};
 
-static int memlog_init(console_backend_t* backend) {
-    (void)backend;
-    memlog_head = 0;
-    memlog_tail = 0;
-    memlog_wrapped = false;
-    return 0;
-}
-
-static void memlog_write(console_backend_t* backend, const char* str, size_t len) {
-    (void)backend;
-    for (size_t i = 0; i < len; i++) {
-        memlog_buffer[memlog_head] = str[i];
-        memlog_head = (memlog_head + 1) % MEMLOG_BUFFER_SIZE;
-        if (memlog_head == memlog_tail) {
-            memlog_tail = (memlog_tail + 1) % MEMLOG_BUFFER_SIZE;
-            memlog_wrapped = true;
-        }
+static bool memlog_init(console_backend_t *backend) {
+    if (backend) {
+        backend->state = &g_memlog_state;
     }
+    return true;
 }
 
-static void memlog_flush(console_backend_t* backend) {
+static size_t memlog_write(console_backend_t *backend, const char *data, size_t len) {
     (void)backend;
-    // Memory ring requires no explicit flush to hardware
+    (void)data;
+    // Do nothing: records are already captured in the central ring buffer
+    return len;
 }
 
-static void memlog_panic_flush(console_backend_t* backend) {
+static void memlog_flush(console_backend_t *backend) {
     (void)backend;
-    // Memory ring requires no explicit flush to hardware
 }
 
-static uint64_t memlog_query_caps(console_backend_t* backend) {
+static void memlog_panic_flush(console_backend_t *backend) {
     (void)backend;
-    return CON_CAP_WRITE_POLLING | CON_CAP_EARLY_BOOT | CON_CAP_CRASH_SAFE | CON_CAP_SCROLLBACK;
+}
+
+static console_caps_t memlog_query_caps(console_backend_t *backend) {
+    (void)backend;
+    return CON_CAP_EARLY_BOOT |
+           CON_CAP_RUNTIME |
+           CON_CAP_PANIC_SAFE |
+           CON_CAP_REPLAY_SAFE |
+           CON_CAP_CRASH_PRESERVE |
+           CON_CAP_STORAGE_SINK;
 }
 
 static const console_backend_ops_t memlog_ops = {
     .init = memlog_init,
     .late_init = NULL,
+    .shutdown = NULL,
     .write = memlog_write,
     .write_atomic = memlog_write,
     .flush = memlog_flush,
     .panic_flush = memlog_panic_flush,
-    .set_mode = NULL,
     .query_caps = memlog_query_caps,
-    .get_geometry = NULL,
-    .scroll = NULL,
+    .set_mode = NULL,
     .clear = NULL,
-    .set_palette = NULL,
+    .set_cursor = NULL,
+    .get_geometry = NULL,
     .poll_input = NULL
 };
 
 static console_backend_t g_memlog_backend = {
-    .type = CONSOLE_TYPE_MEMORY_LOG,
     .name = "memlog",
-    .caps = CON_CAP_WRITE_POLLING | CON_CAP_EARLY_BOOT | CON_CAP_CRASH_SAFE | CON_CAP_SCROLLBACK,
-    .enabled = true,
-    .min_level = CONSOLE_LEVEL_DEBUG,
+    .type = CONSOLE_BACKEND_MEMLOG,
+    .ops = &memlog_ops,
+    .caps = CON_CAP_EARLY_BOOT | CON_CAP_RUNTIME | CON_CAP_PANIC_SAFE | CON_CAP_REPLAY_SAFE | CON_CAP_CRASH_PRESERVE | CON_CAP_STORAGE_SINK,
+    .min_level = CONSOLE_LEVEL_TRACE,
     .priority = 100, // Always captures
+    .enabled = true,
     .early_ok = true,
     .panic_ok = true,
-    .ops = &memlog_ops,
-    .priv_data = NULL,
-    .next = NULL
+    .state = &g_memlog_state
 };
 
 void console_register_memlog_backend(void);
 void console_register_memlog_backend(void) {
     console_register_backend(&g_memlog_backend);
-}
-
-// Function to replay logs to a newly registered backend
-void memlog_replay_to(console_backend_t* backend) {
-    if (!backend || !backend->ops || !backend->ops->write) return;
-
-    size_t current = memlog_tail;
-    bool wrapped = memlog_wrapped;
-
-    if (wrapped) {
-        // Read from tail to end of buffer
-        backend->ops->write(backend, &memlog_buffer[current], MEMLOG_BUFFER_SIZE - current);
-        current = 0;
-    }
-
-    // Read remaining
-    if (memlog_head > current) {
-         backend->ops->write(backend, &memlog_buffer[current], memlog_head - current);
-    }
 }
