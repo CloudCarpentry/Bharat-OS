@@ -330,9 +330,14 @@ if ($Run) {
             # Route serial output only to the virtual console in the QEMU graphical window.
             $qemuArgs = $qemuArgs -ne "-serial" -ne "mon:stdio" # Remove the default serial arg to replace it
             if ($DualSerial) {
-                $qemuArgs += @("-serial", "mon:stdio", "-serial", "vc", "-vga", "none", "-device", "virtio-gpu-device", "-device", "ramfb")
+                # NOTE: Keep virtio-gpu, but avoid ramfb for arm64 for now.
+                # QEMU virt+ramfb can expose early simplefb data that is not yet
+                # robustly handled in the current arm64 early-boot path.
+                $qemuArgs += @("-serial", "mon:stdio", "-serial", "vc", "-vga", "none", "-device", "virtio-gpu-device")
             } else {
-                $qemuArgs += @("-serial", "stdio", "-serial", "vc", "-vga", "none", "-device", "virtio-gpu-device", "-device", "ramfb")
+                # Match dual-serial path: no ramfb until arm64 early framebuffer
+                # handoff/mapping path is fully hardened.
+                $qemuArgs += @("-serial", "stdio", "-serial", "vc", "-vga", "none", "-device", "virtio-gpu-device")
             }
         } else {
             $qemuArgs += @("-nographic")
