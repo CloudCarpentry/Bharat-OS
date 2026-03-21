@@ -254,8 +254,9 @@ if [ "$RUN" = true ]; then
         GUI_ARGS=""
         SERIAL_ARGS="-serial mon:stdio"
         if [ "$BOOT_GUI" = "ON" ] || [ "$BOOT_GUI" = "true" ] || [ "$BOOT_GUI" = "1" ]; then
-            # riscv64 virt has no legacy VGA — VirtIO GPU is the correct device
-            GUI_ARGS="-device virtio-gpu-pci"
+            # riscv64 virt has no legacy VGA.
+            # We attach ramfb so the firmware can expose an early simple-framebuffer handoff.
+            GUI_ARGS="-device virtio-gpu-device -device ramfb"
             if [ "$DUAL_SERIAL" = true ]; then
                 SERIAL_ARGS="-serial mon:stdio -serial vc"
             else
@@ -276,10 +277,9 @@ if [ "$RUN" = true ]; then
         GUI_ARGS=""
         SERIAL_ARGS="-serial mon:stdio"
         if [ "$BOOT_GUI" = "ON" ] || [ "$BOOT_GUI" = "true" ] || [ "$BOOT_GUI" = "1" ]; then
-            # arm64 virt has no legacy VGA — VirtIO GPU is the correct device
-            # Keep virtio-gpu, but avoid ramfb for now; early simplefb handoff
-            # from ramfb is not yet robust in the current arm64 boot path.
-            GUI_ARGS="-vga none -device virtio-gpu-device"
+            # arm64 virt has no legacy VGA.
+            # We attach ramfb so the firmware can expose an early simple-framebuffer handoff.
+            GUI_ARGS="-vga none -device virtio-gpu-device -device ramfb"
             if [ "$DUAL_SERIAL" = true ]; then
                 SERIAL_ARGS="-serial mon:stdio -serial vc"
             else
