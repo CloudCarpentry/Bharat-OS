@@ -14,6 +14,7 @@ typedef enum {
 typedef struct {
     uint32_t id;
     uint32_t next_index;
+    uint32_t timeout_heap_pos;
     ipc_async_state_t state;
     kthread_t* waiting_thread;
     uint64_t deadline_ticks;
@@ -53,5 +54,10 @@ void ipc_async_request_timeout(ipc_async_request_t* req, uint64_t current_ticks)
  * Called by the scheduler to check for expired deadlines and handle timeouts.
  */
 void ipc_async_check_timeouts(uint64_t current_ticks);
+
+/*
+ * Internal timeout-queue helpers used by ipc_timeout.c.
+ */
+ipc_async_request_t* ipc_async_timeout_peek(void);
 
 #endif // BHARAT_ASYNC_IPC_H
