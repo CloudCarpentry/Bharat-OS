@@ -21,31 +21,21 @@ int tcp_rx(netbuf_t *nb, uint32_t src_ip, uint32_t dst_ip) {
     }
 
     // Verify Checksum
-    uint16_t orig_check = tcph->check;
-    tcph->check = 0;
-
-    uint32_t sum = net_pseudo_checksum(src_ip, dst_ip, IPPROTO_TCP, netbuf_len(nb));
-
-    const uint16_t *buf = (const uint16_t *)netbuf_data(nb);
-    size_t len = netbuf_len(nb);
-    while (len > 1) {
-        sum += *buf++;
-        len -= 2;
+    if (nb->flags & NETBUF_F_RX_L4_CSUM_BAD) {
+        return -1;
     }
-    if (len == 1) {
-        uint16_t last_byte = 0;
-        *(uint8_t *)&last_byte = *(const uint8_t *)buf;
-        sum += last_byte;
-    }
-    while (sum >> 16) {
-        sum = (sum & 0xffff) + (sum >> 16);
-    }
+    if (!(nb->flags & NETBUF_F_RX_L4_CSUM_OK)) {
+        uint16_t orig_check = tcph->check;
+        tcph->check = 0;
 
-    if (orig_check != (uint16_t)~sum) {
+        uint16_t calc_check = net_csum_tcp_ipv4(tcph, netbuf_len(nb), src_ip, dst_ip);
+
+        if (orig_check != calc_check) {
+            tcph->check = orig_check;
+            return -1; // Checksum failed
+        }
         tcph->check = orig_check;
-        return -1; // Checksum failed
     }
-    tcph->check = orig_check;
 
     uint16_t src_port = bnet_ntohs(tcph->source);
     uint16_t dst_port = bnet_ntohs(tcph->dest);

@@ -12,8 +12,15 @@
 #define NETBUF_MAX_SIZE 2048
 #define NETBUF_DEFAULT_HEADROOM 256
 
-#define NETBUF_F_RX_CSUM_VALID   (1 << 0) // Hardware has validated relevant checksums
-#define NETBUF_F_TX_CSUM_OFFLOAD (1 << 1) // Request hardware to generate checksums
+#define NETBUF_F_RX_IP_CSUM_OK       (1u << 0) // Hardware has validated IP header checksum
+#define NETBUF_F_RX_L4_CSUM_OK       (1u << 1) // Hardware has validated L4 (TCP/UDP) checksum
+#define NETBUF_F_RX_IP_CSUM_BAD      (1u << 2) // Hardware detected invalid IP checksum
+#define NETBUF_F_RX_L4_CSUM_BAD      (1u << 3) // Hardware detected invalid L4 checksum
+
+#define NETBUF_F_TX_IP_CSUM_PARTIAL  (1u << 4) // Request hardware to generate IP header checksum
+#define NETBUF_F_TX_L4_CSUM_PARTIAL  (1u << 5) // Request hardware to generate L4 checksum
+#define NETBUF_F_TX_IP_CSUM_DONE     (1u << 6) // Software has generated IP checksum
+#define NETBUF_F_TX_L4_CSUM_DONE     (1u << 7) // Software has generated L4 checksum
 
 typedef struct {
     uint8_t buffer[NETBUF_MAX_SIZE];

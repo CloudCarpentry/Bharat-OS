@@ -36,8 +36,10 @@ void virtio_adapter_rx(packet_buf_t *pkt) {
     // NOTE: PACKET_FLAG_RX_CSUM_VALID implies hardware validated the relevant
     // checksums for this packet type (e.g., IPv4/TCP/UDP). The stack layer must
     // only trust this for unmodified originally-received headers.
+    // In a real driver, the NIC provides fine-grained flags.
     if (pkt->flags & PACKET_FLAG_RX_CSUM_VALID) {
-        nb.flags |= NETBUF_F_RX_CSUM_VALID;
+        nb.flags |= NETBUF_F_RX_IP_CSUM_OK;
+        nb.flags |= NETBUF_F_RX_L4_CSUM_OK;
     }
 
     packet_unref(pkt);
@@ -71,7 +73,7 @@ int virtio_adapter_tx(netbuf_t *nb) {
     pkt->data_len = len;
 
     // Translate stack-level TX offload intent to driver packet flags
-    if (nb->flags & NETBUF_F_TX_CSUM_OFFLOAD) {
+    if ((nb->flags & NETBUF_F_TX_IP_CSUM_PARTIAL) || (nb->flags & NETBUF_F_TX_L4_CSUM_PARTIAL)) {
         pkt->flags |= PACKET_FLAG_TX_CSUM_REQ;
     }
 

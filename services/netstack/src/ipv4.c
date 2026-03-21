@@ -31,10 +31,14 @@ int ipv4_rx(netbuf_t *nb) {
 
     // Verify Checksum
     // Skip software validation if hardware has already verified the checksum.
-    if (!(nb->flags & NETBUF_F_RX_CSUM_VALID)) {
+    if (nb->flags & NETBUF_F_RX_IP_CSUM_BAD) {
+        return -1;
+    }
+    if (!(nb->flags & NETBUF_F_RX_IP_CSUM_OK)) {
         uint16_t orig_check = iph->check;
         iph->check = 0;
-        if (orig_check != net_checksum(iph, header_len)) {
+        uint32_t sum = net_csum_partial(iph, header_len, 0);
+        if (orig_check != net_csum_finalize(sum)) {
             iph->check = orig_check; // Restore
             return -1; // Checksum failed
         }
@@ -104,12 +108,14 @@ int ipv4_tx(netbuf_t *nb, uint32_t dst_ip, uint8_t protocol) {
     iph->check = 0;
 
     // Support TX checksum offload if requested
-    if (nb->flags & NETBUF_F_TX_CSUM_OFFLOAD) {
+    if (nb->flags & NETBUF_F_TX_IP_CSUM_PARTIAL) {
         // Leave checksum as 0, hardware will fill it in
         // In reality, some drivers may require pseudo-header checksums,
         // but for IP headers, 0 is typically sufficient.
     } else {
-        iph->check = net_checksum(iph, sizeof(iphdr_t));
+        uint32_t sum = net_csum_partial(iph, sizeof(iphdr_t), 0);
+        iph->check = net_csum_finalize(sum);
+        nb->flags |= NETBUF_F_TX_IP_CSUM_DONE;
     }
 
     // Routing decision

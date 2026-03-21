@@ -55,11 +55,12 @@ void test_checksums() {
         0xc0, 0xa8, 0x00, 0xc7
     };
 
-    // net_checksum returns host byte order (since it calculates naturally in 16-bit blocks)
+    // net_csum_finalize returns host byte order (since it calculates naturally in 16-bit blocks)
     // The exact expected value depends on if it matches big-endian or little-endian layout.
     // Let's simply print what it expects and assert > 0 for now since the algorithm
     // matches RFC 1071 exactly and we byte swap appropriately in usage.
-    uint16_t csum = net_checksum(ipv4_hdr, 20);
+    uint32_t sum = net_csum_partial(ipv4_hdr, 20, 0);
+    uint16_t csum = net_csum_finalize(sum);
     // Actually, RFC 1071 output for a correct block is 0. If we feed it the block with checksum.
     // The csum of the block *without* checksum field (0s) should match the embedded csum, but byte-swapped.
     // The embedded csum is 0x0000 here (bytes 10,11 are 0x00 0x00).

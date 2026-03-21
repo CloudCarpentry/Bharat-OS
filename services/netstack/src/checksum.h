@@ -11,10 +11,30 @@ uint16_t bnet_ntohs(uint16_t v);
 uint32_t bnet_htonl(uint32_t v);
 uint32_t bnet_ntohl(uint32_t v);
 
-/* Core IP/ICMP checksum calculation helper */
-uint16_t net_checksum(const void *data, size_t len);
+/* Core IP/ICMP checksum calculation helpers */
+uint32_t net_csum_partial(const void *buf, size_t len, uint32_t sum);
+uint16_t net_csum_finalize(uint32_t sum);
 
-/* Pseudo-header checksum calculation helper (for UDP/TCP) */
-uint16_t net_pseudo_checksum(uint32_t src_ip, uint32_t dst_ip, uint8_t protocol, uint16_t udp_len);
+uint32_t net_csum_partialv(const void *buf1, size_t len1,
+                           const void *buf2, size_t len2,
+                           uint32_t sum);
+
+/* IPv4 pseudo header accumulation only; does not finalize. */
+uint32_t net_csum_ipv4_pseudo_partial(uint32_t src_ip_be,
+                                      uint32_t dst_ip_be,
+                                      uint8_t protocol,
+                                      uint16_t l4_len_be,
+                                      uint32_t sum);
+
+/* Convenience wrappers for complete L4 checksums. */
+uint16_t net_csum_udp_ipv4(const void *udp_hdr_and_payload,
+                           size_t udp_len,
+                           uint32_t src_ip_be,
+                           uint32_t dst_ip_be);
+
+uint16_t net_csum_tcp_ipv4(const void *tcp_hdr_and_payload,
+                           size_t tcp_len,
+                           uint32_t src_ip_be,
+                           uint32_t dst_ip_be);
 
 #endif // NETSTACK_CHECKSUM_H
