@@ -5,6 +5,10 @@
 #include "../../../include/hal/hal.h"
 #include "../../../include/urpc/urpc_bootstrap.h"
 #include "../../../include/kernel.h"
+#include "../../../include/arch/cpu_relax.h"
+#include "../../../include/panic.h"
+#include "../../../include/bharat/console.h"
+#include "../../../include/spinlock.h"
 
 // Bring in the generated definitions
 #include "../../../../services/monitor/generated/bharat_monitor_v1_types.h"
@@ -173,7 +177,7 @@ void vmm_send_tlb_invalidate(uint64_t aspace_id,
                 }
 
                 // Let CPU relax and process incoming messages
-                __asm__ volatile("rep nop" ::: "memory");
+                arch_cpu_relax();
                 extern void vmm_process_urpc_messages(void);
                 vmm_process_urpc_messages(); // check if acks arrived
                 wait_loops++;

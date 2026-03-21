@@ -7,6 +7,9 @@ This document converts the current memory-management gap assessment into an impl
 ## Implementation progress snapshot
 
 - ✅ Phase 0 (API surface bootstrap) started: memory and HAL contract headers landed under `kernel/include/mm/` and `kernel/include/hal/` to provide stable interfaces for PMM/VM object/aspace/fault/DMA and page-table/TLB/IOMMU work.
+- ✅ VM/aspace scaffolding exists in-tree (`kernel/src/mm/vm/aspace`, `kernel/src/mm/vm/objects`, `kernel/src/mm/vm/fault`) with host tests for overlap, clone, lookup and refcount behavior (`tests/test_vmm_aspace.c`).
+- ✅ HAL page-table and TLB abstraction entry points are wired (`kernel/src/hal/hal_pt.c`, `kernel/src/mm/tlb/tlb_coordinator.c`) with basic range/map/query wrappers and shootdown coordinator plumbing.
+- ⚠️ Several areas are still prototype-grade (limited backend implementations, incomplete pager integration, partial object kinds, and incomplete conformance coverage across all architectures).
 
 Bharat-OS has a credible baseline for physical memory management (PMM/buddy allocator) and software-visible mapping bookkeeping (VMM registry). However, a production-grade, architecture-complete virtual memory stack is still in progress:
 
@@ -173,3 +176,34 @@ A memory subsystem milestone is complete only if all are true:
 3. Land architecture-neutral `hal_pt` interface and x86_64 conformance first.
 
 These three unblock all later VM-object, fault, and pager work.
+
+## 9) Status review (implemented vs not implemented, March 2026)
+
+### Implemented (baseline present)
+
+- Public memory/HAL interface headers from Phase 0 are present (`pmm.h`, `vm_object.h`, `aspace.h`, `fault.h`, `dma.h`, `hal_pt.h`, `hal_tlb.h`, `hal_iommu.h`).
+- PMM has page metadata, owner classes, refcount/pin operations, and multiple zones in the API and implementation baseline.
+- `address_space_t` lifecycle + region interval-tree lookup/attach/detach + clone scaffolding are implemented.
+- `vm_object_t` base structure and object refcount lifecycle are implemented with anon/shared/file/device/dma constructor hooks.
+- TLB coordinator has local and remote shootdown protocol hooks with generation tracking and ack tracking.
+
+### Not implemented / partial
+
+- Full pager path (file-backed demand paging, swap/page-out policy, recover/kill/escalation policy matrix) remains incomplete.
+- COW break path and full write-fault lifecycle are not fully implemented end-to-end.
+- Cross-arch MMU conformance parity (x86_64/arm64/riscv64) is still uneven and needs deterministic teardown/fault suites.
+- NUMA policy/migration/observability remains Tier B/C and not production hardened.
+- DMA/IOMMU lifecycle is still partial (domain model exists, backend parity + full cache-sync contracts still need completion).
+
+## 10) Near-production hardening tasks we can implement next (recommended order)
+
+1. **VM object lifecycle hardening (immediate)**  
+   Remove static pools for VM objects, enforce constructor validation, and ensure refcount teardown is heap-safe and deterministic.
+2. **Fault API contract unification**  
+   Align `mm/fault.h` and implementation signatures, define stable return codes, and add host tests for invalid-access and permission faults.
+3. **TLB shootdown safety checks**  
+   Add argument validation/alignment checks and timeout observability counters (not just panic path), with stress tests for multi-core ack loss.
+4. **hal_pt wrapper fallback behavior**  
+   Add generic page-by-page fallback when backend range ops are absent to improve portability and correctness on partially implemented targets.
+5. **Cross-arch MMU conformance tests**  
+   Expand `tests/mm/*` to include map/unmap/protect/query/teardown determinism suites per architecture profile.
