@@ -14,3 +14,14 @@ add_executable(test_checksum net/test_checksum.c ../../services/netstack/src/che
 target_include_directories(test_checksum PRIVATE ../../services/netstack/src)
 target_link_libraries(test_checksum PRIVATE c)
 add_test(NAME test_checksum COMMAND test_checksum)
+add_executable(test_console console/test_console.c
+               ../../kernel/src/console/console_format.c
+               ../../kernel/src/console/console_buffer.c
+               ../../kernel/src/console/console_router.c
+               ../../kernel/src/console/console_policy.c
+               ../../kernel/src/console/console_core.c
+               ../../kernel/src/console/console_panic.c)
+target_include_directories(test_console PRIVATE ../../kernel/include ../../kernel/src)
+target_compile_definitions(test_console PRIVATE BHARAT_HOST_TEST)
+target_link_libraries(test_console PRIVATE c)
+add_test(NAME test_console COMMAND test_console)
