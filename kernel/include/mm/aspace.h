@@ -40,10 +40,15 @@ typedef struct vm_region {
     struct vm_region *prev;
 } vm_region_t;
 
+#include "prot_domain.h"
+
 typedef struct vm_address_space {
     uint64_t object_id;      // Unique ID compatible with legacy object_id tracking
     uint32_t owner_core_id;  // Owner core compatible with legacy tracking
-    phys_addr_t root_pt;     // Hardware Page-Table Root (hal_pt compatible)
+
+    prot_domain_t* prot_domain; // New generic Protection Domain Backends Layer
+    phys_addr_t root_pt;     // Legacy (to remove)
+
     spinlock_t lock;         // Serialization lock
 
     volatile uint64_t tlb_gen;       // Epoch generation for TLB shootdowns

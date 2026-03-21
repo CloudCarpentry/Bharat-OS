@@ -1,9 +1,12 @@
-#include "../../../include/hal/vmm.h"
-#include "../../../include/hal/mmu_ops.h"
-#include "../../../include/numa.h"
-#include "../../../include/mm/physmap.h"
+#include "../../../../include/hal/vmm.h"
+#include "../../../../include/hal/mmu_ops.h"
+#include "../../../../include/numa.h"
+#include "../../../../include/mm/physmap.h"
+#include "../../../../include/mm/prot_domain.h"
+#include "../../../../include/arch/arch_caps.h"
 
 #define ARM64_MMU_DEVICE_nGnRnE (0ULL << 2) // MAIR index 0 -> Device-nGnRnE
+#define ERR_NOT_SUPPORTED -1
 #define ARM64_MMU_NOCACHE_MEM   (1ULL << 2) // MAIR index 1 -> Non-cacheable
 
 // ARM64 Translation Table Descriptor Types & Flags (VMSAv8-64)
@@ -85,8 +88,8 @@ uint32_t convert_arm64_to_flags(uint64_t mmu_flags) {
     return flags;
 }
 
-#include "../../../include/hal/hal_pt.h"
-#include "../../../include/hal/hal_tlb.h"
+#include "../../../../include/hal/hal_pt.h"
+#include "../../../../include/hal/hal_tlb.h"
 
 phys_addr_t hal_vmm_init_root(void) {
     if (!active_hal_pt) hal_pt_init();
@@ -328,6 +331,73 @@ mmu_ops_t arm64_mmu_ops = {
     .has_nx           = true,
     .asid_bits        = 16, // Typical for ARMv8
     .has_user_kernel_split = true, // TTBR0 vs TTBR1
+};
+
+#include "../../../../include/slab.h"
+
+static prot_domain_t* arm64_mmu_full_create(void) {
+    prot_domain_t* domain = (prot_domain_t*)kmalloc(sizeof(prot_domain_t));
+    if (!domain) return NULL;
+
+    domain->mode = PROT_MODE_MMU_FULL;
+    domain->backend_state = (void*)arm64_mmu_ops.create_table(); // physical root pt
+    return domain;
+}
+
+static void arm64_mmu_full_destroy(prot_domain_t* domain) {
+    if (!domain) return;
+    arm64_mmu_ops.destroy_table((phys_addr_t)domain->backend_state);
+    kfree(domain);
+}
+
+static void arm64_mmu_full_activate(prot_domain_t* domain) {
+    if (!domain) return;
+
+    // MAIR / TTBR / break-before-make validation and readiness hook
+    arch_caps_t caps = arch_get_caps();
+    if (!arch_caps_test(caps, ARCH_CAP_ASID)) {
+       // Perform standard local invalidation before replacing ASIDs on a non ASID cpu.
+       arm64_mmu_ops.tlb_flush_all();
+    }
+
+    arm64_mmu_ops.activate((phys_addr_t)domain->backend_state);
+}
+
+static int arm64_mmu_full_map_region(prot_domain_t* domain, uintptr_t vaddr, uintptr_t paddr, size_t size, uint32_t flags) {
+    if (!domain) return -1;
+
+    // Explicitly validate missing MAIR/Device Attrs memory attributes if not mapped
+    arch_caps_t caps = arch_get_caps();
+    if ((flags & MMU_DEVICE) && !arch_caps_test(caps, ARCH_CAP_DEVICE_MEMORY_ATTRS)) {
+        return ERR_NOT_SUPPORTED;
+    }
+
+    return arm64_mmu_ops.map((phys_addr_t)domain->backend_state, vaddr, paddr, size, flags);
+}
+
+static int arm64_mmu_full_unmap_region(prot_domain_t* domain, uintptr_t vaddr, size_t size) {
+    if (!domain) return -1;
+    return arm64_mmu_ops.unmap((phys_addr_t)domain->backend_state, vaddr, size, NULL);
+}
+
+static int arm64_mmu_full_protect_region(prot_domain_t* domain, uintptr_t vaddr, size_t size, uint32_t flags) {
+    if (!domain) return -1;
+    return arm64_mmu_ops.protect((phys_addr_t)domain->backend_state, vaddr, size, flags);
+}
+
+static int arm64_mmu_full_query_region(prot_domain_t* domain, uintptr_t vaddr, uintptr_t* paddr, uint32_t* flags) {
+    if (!domain) return -1;
+    return arm64_mmu_ops.query((phys_addr_t)domain->backend_state, vaddr, paddr, flags);
+}
+
+prot_domain_ops_t mmu_full_ops_arm64 = {
+    .create = arm64_mmu_full_create,
+    .destroy = arm64_mmu_full_destroy,
+    .activate = arm64_mmu_full_activate,
+    .map_region = arm64_mmu_full_map_region,
+    .unmap_region = arm64_mmu_full_unmap_region,
+    .protect_region = arm64_mmu_full_protect_region,
+    .query_region = arm64_mmu_full_query_region,
 };
 
 void arm64_mmu_detect(mmu_ops_t *ops) {

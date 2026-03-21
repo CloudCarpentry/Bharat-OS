@@ -123,13 +123,13 @@ endif()
 # ── Boot and HAL sources (arch-specific) ────────────────────────────────────
 if(ARCH STREQUAL "x86_64")
     set(BOOT_SRC src/boot/x86_64/boot.S)
-    set(ARCH_HAL src/hal/x86_64/hal_cpu.c src/hal/x86_64/discovery.c src/hal/x86_64/trap_entry.S src/hal/x86_64/vmm.c src/hal/x86_64/hal_pt_x86_64.c src/hal/hal_pt.c src/hal/x86_64/vtd_iommu.c src/hal/x86_64/apic.c src/hal/x86_64/timer.c src/hal/x86_64/dma.c src/hal/x86_64/hal_secure_boot.c src/hal/x86_64/cpu_relax.c)
+    set(ARCH_HAL src/hal/x86_64/hal_cpu.c src/hal/x86_64/discovery.c src/hal/x86_64/trap_entry.S src/hal/mmu/x86_64/vmm.c src/hal/x86_64/hal_pt_x86_64.c src/hal/hal_pt.c src/hal/x86_64/vtd_iommu.c src/hal/x86_64/apic.c src/hal/x86_64/timer.c src/hal/x86_64/dma.c src/hal/x86_64/hal_secure_boot.c src/hal/x86_64/cpu_relax.c)
     set(ARCH_CONTEXT_SWITCH src/arch/x86_64/context_switch.c src/arch/x86_64/context_switch.S)
     set(ARCH_CPU_CAPS_SRC src/arch/x86_64/cpu_caps.c)
     set(ARCH_EXT_STATE_SRC src/arch/x86_64/ext_state.c)
 elseif(ARCH STREQUAL "riscv64")
     set(BOOT_SRC src/boot/riscv64/boot.S)
-    set(ARCH_HAL src/hal/riscv/hal_cpu.c src/hal/riscv/discovery.c src/hal/riscv/boot/feature_probe.c src/hal/riscv/trap_entry.S src/hal/riscv/vmm.c src/hal/riscv64/hal_pt_riscv64.c src/hal/hal_pt.c src/hal/riscv/iopmp.c src/hal/riscv/plic.c src/hal/riscv/sbi_timer_ipi.c src/hal/riscv64/dma.c src/hal/riscv64/hal_secure_boot.c src/hal/riscv64/cpu_relax.c)
+    set(ARCH_HAL src/hal/riscv/hal_cpu.c src/hal/riscv/discovery.c src/hal/riscv/boot/feature_probe.c src/hal/riscv/trap_entry.S src/hal/mmu/riscv64/vmm.c src/hal/riscv64/hal_pt_riscv64.c src/hal/hal_pt.c src/hal/riscv/iopmp.c src/hal/riscv/plic.c src/hal/riscv/sbi_timer_ipi.c src/hal/riscv64/dma.c src/hal/riscv64/hal_secure_boot.c src/hal/riscv64/cpu_relax.c)
     set(ARCH_HAL_EXTRA src/hal/riscv/shakti_bsp.c)
     # VirtIO GPU display driver: only for qemu-virt + GUI enabled
     if(BHARAT_BOOT_GUI AND "${BHARAT_RISCV_SOC_PROFILE}" STREQUAL "qemu-virt")
@@ -141,20 +141,20 @@ elseif(ARCH STREQUAL "riscv64")
     set(ARCH_EXT_STATE_SRC src/arch/riscv64/ext_state.c)
 elseif(ARCH STREQUAL "riscv32")
     set(BOOT_SRC src/boot/riscv64/boot.S)
-    set(ARCH_HAL src/hal/riscv/hal_cpu.c src/hal/riscv/boot/feature_probe.c src/hal/riscv/trap_entry.S src/hal/riscv/vmm.c src/hal/riscv64/hal_pt_riscv64.c src/hal/hal_pt.c src/hal/riscv/iopmp.c src/hal/riscv/plic.c src/hal/riscv/sbi_timer_ipi.c src/hal/common/hal_secure_boot_unsupported.c src/hal/riscv32/cpu_relax.c)
+    set(ARCH_HAL src/hal/riscv/hal_cpu.c src/hal/riscv/boot/feature_probe.c src/hal/riscv/trap_entry.S src/hal/mmu/riscv64/vmm.c src/hal/riscv64/hal_pt_riscv64.c src/hal/hal_pt.c src/hal/riscv/iopmp.c src/hal/riscv/plic.c src/hal/riscv/sbi_timer_ipi.c src/hal/common/hal_secure_boot_unsupported.c src/hal/riscv32/cpu_relax.c)
     set(ARCH_CONTEXT_SWITCH src/arch/shakti/context_switch.c src/arch/shakti/context_switch.S)
     set(ARCH_CPU_CAPS_SRC src/arch/shakti/cpu_caps.c)
     set(ARCH_EXT_STATE_SRC src/arch/shakti/ext_state.c)
 elseif(ARCH STREQUAL "arm64")
     set(BOOT_SRC src/boot/arm64/boot.S)
-    set(ARCH_HAL src/hal/arm64/hal_cpu.c src/hal/arm64/discovery.c src/hal/arm64/trap_entry.S src/hal/arm64/vmm.c src/hal/arm64/hal_pt_arm64.c src/hal/hal_pt.c src/hal/arm64/smmu.c src/hal/arm64/gicv3.c src/hal/arm64/timer_generic.c src/hal/arm64/dma.c src/hal/arm64/hal_secure_boot.c src/hal/arm64/cpu_relax.c)
+    set(ARCH_HAL src/hal/arm64/hal_cpu.c src/hal/arm64/discovery.c src/hal/arm64/trap_entry.S src/hal/mmu/arm64/vmm.c src/hal/arm64/hal_pt_arm64.c src/hal/hal_pt.c src/hal/arm64/smmu.c src/hal/arm64/gicv3.c src/hal/arm64/timer_generic.c src/hal/arm64/dma.c src/hal/arm64/hal_secure_boot.c src/hal/arm64/cpu_relax.c)
     set(ARCH_CONTEXT_SWITCH src/arch/arm64/context_switch.c src/arch/arm64/context_switch.S)
     set(ARCH_HAL_EXTRA src/hal/arm64/topology_fdt.c)
     set(ARCH_CPU_CAPS_SRC src/arch/arm64/cpu_caps.c)
     set(ARCH_EXT_STATE_SRC src/arch/arm64/ext_state.c)
 elseif(ARCH STREQUAL "arm32")
     set(BOOT_SRC src/boot/arm64/boot.S)
-    set(ARCH_HAL src/hal/arm64/hal_cpu.c src/hal/arm64/trap_entry.S src/hal/arm64/vmm.c src/hal/arm64/hal_pt_arm64.c src/hal/hal_pt.c src/hal/arm64/smmu.c src/hal/arm64/gicv3.c src/hal/arm64/timer_generic.c src/hal/arm32_mpu_vmm_mock.c src/hal/arm64/dma.c src/hal/common/hal_secure_boot_unsupported.c src/hal/arm32/cpu_relax.c)
+    set(ARCH_HAL src/hal/arm64/hal_cpu.c src/hal/arm64/trap_entry.S src/hal/mmu/arm64/vmm.c src/hal/arm64/hal_pt_arm64.c src/hal/hal_pt.c src/hal/arm64/smmu.c src/hal/arm64/gicv3.c src/hal/arm64/timer_generic.c src/hal/mpu/arm32/mpu_backend.c src/hal/arm64/dma.c src/hal/common/hal_secure_boot_unsupported.c src/hal/arm32/cpu_relax.c)
     set(ARCH_CONTEXT_SWITCH src/arch/arm64/context_switch.c src/arch/arm64/context_switch.S)
     set(ARCH_CPU_CAPS_SRC src/arch/arm64/cpu_caps.c)
     set(ARCH_EXT_STATE_SRC src/arch/arm64/ext_state.c)
@@ -235,6 +235,9 @@ target_compile_options(bharat_mm_tlb PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestand
 add_library(bharat_mm_vmm OBJECT
     src/mm/vmm.c
     src/mm/vm/distributed/vm_mapping.c
+    src/mm/prot_domain.c
+    src/hal/prot/none/prot_none_backend.c
+    src/hal/mmu_lite/common/mmu_lite_backend.c
     src/mm/vm/distributed/vm_compat_vmm.c
     src/mm/vm/distributed/mm_local.c
     src/mm/vm/distributed/mm_remote.c
@@ -315,6 +318,7 @@ set(KERNEL_SRCS
     src/tests/ktest_pmm.c
     src/tests/ktest_slab.c
     src/tests/ktest_hal_pt.c
+    src/tests/ktest_prot_domain.c
     ../ui/fbui/core/fb_render.c
     ../ui/fbui/core/fb_events.c
     ../ui/fbui/core/fb_demo_app.c

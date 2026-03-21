@@ -26,6 +26,8 @@ extern void x86_iommu_detect(void);
 extern void arm64_iommu_detect(void);
 extern void riscv_iommu_detect(void);
 
+#include "mm/prot_domain.h"
+
 // Initialize based on memory model profile
 void arch_mmu_init(void) {
     MemoryModel model = get_memory_model();
