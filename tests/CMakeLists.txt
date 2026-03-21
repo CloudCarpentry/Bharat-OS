@@ -478,6 +478,7 @@ set(BHARAT_NOSTDLIB_TEST_TARGETS
     test_pt_common_mm
     test_pt_x86_64_mm
     test_netstack_phase2
+    test_boot_e2e
 )
 
 foreach(test_target IN LISTS BHARAT_NOSTDLIB_TEST_TARGETS)
@@ -485,6 +486,10 @@ foreach(test_target IN LISTS BHARAT_NOSTDLIB_TEST_TARGETS)
         target_link_options(${test_target} PRIVATE "-nostdlib" "-no-pie" "-fno-pie" "-no-pie")
     endif()
 endforeach()
+
+add_executable(test_boot_e2e test_boot_e2e.c ../kernel/src/kernel_boot.c ../kernel/src/lib/string.c)
+target_include_directories(test_boot_e2e PRIVATE ../kernel/include ../include)
+add_test(NAME boot_e2e COMMAND test_boot_e2e)
 
 # Message/Wire Tests
 add_executable(test_wire_format test_wire_format.c)
