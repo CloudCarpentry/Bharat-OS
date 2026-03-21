@@ -7,6 +7,7 @@ set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 include_directories(include)
 include_directories(include/generated)
 include_directories(${CMAKE_SOURCE_DIR}/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 # ── Configuration Header ────────────────────────────────────────────────────
 # These variables are normally set in the root CMakeLists.txt. 
 # For kernel-only builds, we provide defaults if not set.
@@ -74,13 +75,13 @@ endif()
 # ── Boot and HAL sources (arch-specific) ────────────────────────────────────
 if(ARCH STREQUAL "x86_64")
     set(BOOT_SRC src/boot/x86_64/boot.S)
-    set(ARCH_HAL src/hal/x86_64/hal_cpu.c src/hal/x86_64/trap_entry.S src/hal/x86_64/vmm.c src/hal/x86_64/hal_pt_x86_64.c src/hal/hal_pt.c src/hal/x86_64/vtd_iommu.c src/hal/x86_64/apic.c src/hal/x86_64/timer.c src/hal/x86_64/dma.c)
+    set(ARCH_HAL src/hal/x86_64/hal_cpu.c src/hal/x86_64/trap_entry.S src/hal/x86_64/vmm.c src/hal/x86_64/hal_pt_x86_64.c src/hal/hal_pt.c src/hal/x86_64/vtd_iommu.c src/hal/x86_64/apic.c src/hal/x86_64/timer.c src/hal/x86_64/dma.c src/hal/x86_64/hal_secure_boot.c)
     set(ARCH_CONTEXT_SWITCH src/arch/x86_64/context_switch.c src/arch/x86_64/context_switch.S)
     set(ARCH_CPU_CAPS_SRC src/arch/x86_64/cpu_caps.c)
     set(ARCH_EXT_STATE_SRC src/arch/x86_64/ext_state.c)
 elseif(ARCH STREQUAL "riscv64")
     set(BOOT_SRC src/boot/riscv64/boot.S)
-    set(ARCH_HAL src/hal/riscv/hal_cpu.c src/hal/riscv/boot/feature_probe.c src/hal/riscv/trap_entry.S src/hal/riscv/vmm.c src/hal/riscv64/hal_pt_riscv64.c src/hal/hal_pt.c src/hal/riscv/iopmp.c src/hal/riscv/plic.c src/hal/riscv/sbi_timer_ipi.c src/hal/riscv64/dma.c)
+    set(ARCH_HAL src/hal/riscv/hal_cpu.c src/hal/riscv/boot/feature_probe.c src/hal/riscv/trap_entry.S src/hal/riscv/vmm.c src/hal/riscv64/hal_pt_riscv64.c src/hal/hal_pt.c src/hal/riscv/iopmp.c src/hal/riscv/plic.c src/hal/riscv/sbi_timer_ipi.c src/hal/riscv64/dma.c src/hal/riscv64/hal_secure_boot.c)
     set(ARCH_HAL_EXTRA src/hal/riscv/shakti_bsp.c)
     # VirtIO GPU display driver: only for qemu-virt + GUI enabled
     if(BHARAT_BOOT_GUI AND "${BHARAT_RISCV_SOC_PROFILE}" STREQUAL "qemu-virt")
@@ -92,25 +93,23 @@ elseif(ARCH STREQUAL "riscv64")
     set(ARCH_EXT_STATE_SRC src/arch/riscv64/ext_state.c)
 elseif(ARCH STREQUAL "riscv32")
     set(BOOT_SRC src/boot/riscv64/boot.S)
-    set(ARCH_HAL src/hal/riscv/hal_cpu.c src/hal/riscv/boot/feature_probe.c src/hal/riscv/trap_entry.S src/hal/riscv/vmm.c src/hal/riscv64/hal_pt_riscv64.c src/hal/hal_pt.c src/hal/riscv/iopmp.c src/hal/riscv/plic.c src/hal/riscv/sbi_timer_ipi.c)
+    set(ARCH_HAL src/hal/riscv/hal_cpu.c src/hal/riscv/boot/feature_probe.c src/hal/riscv/trap_entry.S src/hal/riscv/vmm.c src/hal/riscv64/hal_pt_riscv64.c src/hal/hal_pt.c src/hal/riscv/iopmp.c src/hal/riscv/plic.c src/hal/riscv/sbi_timer_ipi.c src/hal/common/hal_secure_boot_unsupported.c)
     set(ARCH_CONTEXT_SWITCH src/arch/shakti/context_switch.c src/arch/shakti/context_switch.S)
     set(ARCH_CPU_CAPS_SRC src/arch/shakti/cpu_caps.c)
     set(ARCH_EXT_STATE_SRC src/arch/shakti/ext_state.c)
 elseif(ARCH STREQUAL "arm64")
     set(BOOT_SRC src/boot/arm64/boot.S)
-    set(ARCH_HAL src/hal/arm64/hal_cpu.c src/hal/arm64/trap_entry.S src/hal/arm64/vmm.c src/hal/arm64/hal_pt_arm64.c src/hal/hal_pt.c src/hal/arm64/smmu.c src/hal/arm64/gicv3.c src/hal/arm64/timer_generic.c src/hal/arm64/dma.c)
+    set(ARCH_HAL src/hal/arm64/hal_cpu.c src/hal/arm64/trap_entry.S src/hal/arm64/vmm.c src/hal/arm64/hal_pt_arm64.c src/hal/hal_pt.c src/hal/arm64/smmu.c src/hal/arm64/gicv3.c src/hal/arm64/timer_generic.c src/hal/arm64/dma.c src/hal/arm64/hal_secure_boot.c)
     set(ARCH_CONTEXT_SWITCH src/arch/arm64/context_switch.c src/arch/arm64/context_switch.S)
     set(ARCH_HAL_EXTRA src/hal/arm64/topology_fdt.c)
     set(ARCH_CPU_CAPS_SRC src/arch/arm64/cpu_caps.c)
     set(ARCH_EXT_STATE_SRC src/arch/arm64/ext_state.c)
 elseif(ARCH STREQUAL "arm32")
-    # For now, we will create stubs for arm32 instead of incorrectly using arm64 boot sources
-    # since Corstone is Cortex-M based (arm-m). We'll set an empty BOOT_SRC and rely on board init.
-    set(BOOT_SRC src/boot/arm32/boot.S)
-    set(ARCH_HAL src/hal/arm32/hal_cpu.c src/hal/arm32/trap_entry.S src/hal/arm32_mpu_vmm_mock.c src/hal/arm32/timer_generic.c src/hal/arm32/dma.c)
-    set(ARCH_CONTEXT_SWITCH src/arch/arm32/context_switch.c src/arch/arm32/context_switch.S)
-    set(ARCH_CPU_CAPS_SRC src/arch/arm32/cpu_caps.c)
-    set(ARCH_EXT_STATE_SRC src/arch/arm32/ext_state.c)
+    set(BOOT_SRC src/boot/arm64/boot.S)
+    set(ARCH_HAL src/hal/arm64/hal_cpu.c src/hal/arm64/trap_entry.S src/hal/arm64/vmm.c src/hal/arm64/hal_pt_arm64.c src/hal/hal_pt.c src/hal/arm64/smmu.c src/hal/arm64/gicv3.c src/hal/arm64/timer_generic.c src/hal/arm32_mpu_vmm_mock.c src/hal/arm64/dma.c src/hal/common/hal_secure_boot_unsupported.c)
+    set(ARCH_CONTEXT_SWITCH src/arch/arm64/context_switch.c src/arch/arm64/context_switch.S)
+    set(ARCH_CPU_CAPS_SRC src/arch/arm64/cpu_caps.c)
+    set(ARCH_EXT_STATE_SRC src/arch/arm64/ext_state.c)
 endif()
 if(ARCH STREQUAL "x86_64")
     set(LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/linker.ld")
@@ -208,6 +207,7 @@ add_subdirectory(src/fs)
 add_subdirectory(src/test)
 
 set(KERNEL_SRCS
+    src/mm/physmap.c
     ${BOOT_SRC}
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/boot/boot_ui_select.c>
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/boot_video.c>
@@ -349,11 +349,7 @@ if(ARCH STREQUAL "x86_64")
         "LINKER:-m,elf_x86_64"
     )
 elseif(ARCH STREQUAL "riscv64")
-    target_compile_options(kernel.elf PRIVATE
-        $<$<COMPILE_LANGUAGE:C>:-mcmodel=medany>
-        $<$<COMPILE_LANGUAGE:ASM>:-march=rv64g>
-        $<$<COMPILE_LANGUAGE:C>:-march=rv64g>
-    )
+    # Using arch flags from toolchain
 elseif(ARCH STREQUAL "riscv32")
     target_compile_options(kernel.elf PRIVATE
         $<$<COMPILE_LANGUAGE:C>:-mcmodel=medany>

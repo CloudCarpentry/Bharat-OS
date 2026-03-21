@@ -27,12 +27,12 @@ typedef struct {
 
 cpu_mm_state_t cpu_mm_state[MAX_CPUS];
 
-static uint64_t tlb_collect_targets(address_space_t *aspace) {
+static uint64_t tlb_collect_targets(uint64_t aspace_id) {
     uint64_t mask = 0;
     for (uint32_t i = 0; i < MAX_CPUS; i++) {
         // Need to check if core is online and running this aspace
         // Assume core is online if cpu_id matches array index (for now just check all)
-        if (cpu_mm_state[i].active_aspace_id == aspace->object_id) {
+        if (cpu_mm_state[i].active_aspace_id == aspace_id) {
             mask |= (1ULL << i);
         }
     }
@@ -77,20 +77,22 @@ void vmm_send_tlb_invalidate(uint64_t aspace_id,
         }
     }
 
+    uint64_t target_mask = 0;
     if (as) {
-        req.generation = __atomic_add_fetch(&as->tlb_seq, 1, __ATOMIC_SEQ_CST);
+        req.generation = __atomic_add_fetch(&as->tlb_gen, 1, __ATOMIC_SEQ_CST);
+        target_mask = __atomic_load_n(&as->active_mask, __ATOMIC_RELAXED);
     } else {
         cpu_mm_state[current_core].tlb_generation++;
         req.generation = cpu_mm_state[current_core].tlb_generation;
+        target_mask = tlb_collect_targets(aspace_id); // Fallback to basic loop scan
     }
 
     for (int core = 0; core < MAX_CPUS; core++) {
 
         if (core == current_core) continue;
 
-        // Ensure we strictly target cores running the active aspace
-        if (g_cpu_locals[core].current_as_id != aspace_id && cpu_mm_state[core].active_aspace_id != aspace_id)
-            continue;
+        // Strictly target only CPUs tracked in the active mask
+        if (!(target_mask & (1ULL << core))) continue;
 
         bharat_transport_t* t = transport_for_core(core);
         if (t) {

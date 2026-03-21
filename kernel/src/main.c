@@ -9,7 +9,7 @@
 #include "hal/hal_discovery.h"
 
 #if defined(__riscv) || defined(__aarch64__)
-#include "hal/common/fdt_parser.h"
+#include "hal/fdt_parser.h"
 #include "hal/mmu_ops.h"
 #endif
 #include "ipc_async.h"
@@ -222,6 +222,8 @@ void kernel_main(uint32_t magic, multiboot_information_t *mb_info) {
 void kernel_main(uint64_t hart_id, uintptr_t fdt_ptr) {
 #elif defined(__aarch64__) || defined(__arm__)
 void kernel_main(uintptr_t fdt_ptr) {
+  hal_serial_init();
+  hal_serial_write("!!!!! BOOT: fdt_ptr="); hal_serial_write_hex(fdt_ptr); hal_serial_write("\n");
 #else
 void kernel_main(void) {
 #endif
@@ -236,43 +238,24 @@ void kernel_main(void) {
   console_init();
   console_register_serial_backend();
 
-#if defined(__x86_64__)
-  if (magic == MULTIBOOT2_BOOTLOADER_MAGIC && mb_info != NULL) {
-    uint32_t total_size = mb_info->total_size;
-    uint8_t *tag_ptr = (uint8_t *)mb_info + 8;
-    while (tag_ptr < (uint8_t *)mb_info + total_size) {
-      multiboot_tag_t *tag = (multiboot_tag_t *)((void *)tag_ptr);
-      if (tag->type == MULTIBOOT_TAG_TYPE_END) {
-        break;
-      }
-      if (tag->type == MULTIBOOT_TAG_TYPE_CMDLINE) {
-        multiboot_tag_string_t *str_tag = (multiboot_tag_string_t *)tag;
-        boot_args_init(str_tag->string);
-      }
-      tag_ptr += ((tag->size + 7) & ~7);
+#if defined(__riscv) || defined(__aarch64__)
+  KPRINT("!!!!! BOOT: Entry kernel_main, fdt_ptr_arg="); 
+  hal_serial_write_hex(fdt_ptr); 
+  KPRINT("\n");
+#endif
+
+#if defined(__riscv) || defined(__aarch64__)
+    if (fdt_ptr == 0 || !fdt_is_valid((void*)fdt_ptr)) {
+      KPRINT("BOOT: FDT pointer invalid or zero. Using hardcoded fallback 0x40000000...\n");
+      fdt_ptr = 0x40000000;
     }
 
-    // Phase 1 x86_64 Framebuffer parser hook (Multiboot 2)
-    x86_64_parse_multiboot_framebuffer(mb_info);
-  } else if (magic == 0x2BADB002 && mb_info != NULL) {
-    // Multiboot 1 parser fallback (QEMU -kernel passes Multiboot 1)
-    extern void x86_64_parse_multiboot1_framebuffer(void *mb_info);
-    x86_64_parse_multiboot1_framebuffer(mb_info);
-  }
-#else
-  // Device Tree parsing for ARM64/RISC-V
-  if (fdt_ptr == 0) {
-    for (uintptr_t p = 0x40000000; p < 0x41000000; p += 0x1000) {
-      if (*(volatile uint32_t *)p == 0xEDFE0DD0) { // Big-endian 0xD00DFEED
-        fdt_ptr = p;
-        break;
-      }
+    if (fdt_is_valid((void*)fdt_ptr)) {
+        KPRINT("BOOT: Validating FDT at "); hal_serial_write_hex(fdt_ptr); KPRINT("...\n");
+        fdt_parse_discovery((const void *)fdt_ptr, hal_get_system_discovery());
+    } else {
+        KPRINT("BOOT: CRITICAL: FDT NOT FOUND AT FALLBACK!\n");
     }
-  }
-
-  if (fdt_ptr != 0) {
-    fdt_parse_discovery((const void *)fdt_ptr, hal_get_system_discovery());
-  }
 #endif
 
   KPRINT("\n");
@@ -391,10 +374,39 @@ void kernel_main(void) {
 
     KPRINT("BOOT: vmm initialized\n");
 
+    system_discovery_t* discovery = hal_get_system_discovery();
+    KPRINT("BOOT: discovery ");
+    hal_serial_write_hex((uintptr_t)discovery);
+    KPRINT("\n");
+
+#if defined(__aarch64__)
+    // Map all discovered RAM regions to ensure the kernel (code+bss) is accessible
+    // after we activate the new page tables.
+    if (discovery) {
+        KPRINT("  [VMM] Memory region count: ");
+        hal_serial_write_hex(discovery->topology.mem_region_count);
+        KPRINT("\n");
+        for (uint32_t i = 0; i < discovery->topology.mem_region_count; i++) {
+            uint64_t base = discovery->topology.mem_regions[i].base;
+            uint64_t size = discovery->topology.mem_regions[i].size;
+            KPRINT("  [VMM] Mapping RAM region: ");
+            hal_serial_write_hex(base);
+            KPRINT(" (size ");
+            hal_serial_write_hex(size);
+            KPRINT(")\n");
+            for (uint64_t off = 0; off < size; off += 4096) {
+                vmm_map_page(base + off, base + off, 
+                             CAP_RIGHT_READ | CAP_RIGHT_WRITE | CAP_RIGHT_EXECUTE);
+            }
+        }
+    } else {
+        KPRINT("  [VMM] WARNING: Discovery is NULL, skipping RAM mapping!\n");
+    }
+#endif
+
 #if defined(__riscv) || defined(__aarch64__)
     // Map discovered framebuffer if present
-    system_discovery_t* discovery = hal_get_system_discovery();
-    if (discovery->boot_video.valid) {
+    if (discovery && discovery->boot_video.valid) {
         uint64_t fb_phys = discovery->boot_video.phys_addr;
         uint64_t fb_size = discovery->boot_video.size;
         KPRINT("  [VMM] Mapping framebuffer: ");

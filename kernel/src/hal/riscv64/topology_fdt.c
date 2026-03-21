@@ -1,6 +1,6 @@
 #include "hal/hal_topology.h"
 #include "hal/hal_boot.h"
-#include "../common/fdt_parser.h"
+#include "hal/fdt_parser.h"
 
 int hal_topology_init(void) {
     bharat_boot_info_t* boot_info = hal_boot_get_info();

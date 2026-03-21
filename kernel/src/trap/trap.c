@@ -1,6 +1,9 @@
 #include "trap.h"
 #ifdef BHARAT_PERSONALITY_LINUX
 #include "../../subsys/linux/linux_compat.h"
+extern long linux_syscall_handler(long sysno, long arg1, long arg2, long arg3,
+                                  long arg4, long arg5, long arg6)
+    __attribute__((weak));
 #endif
 #include "capability.h"
 #include "device.h"
@@ -78,6 +81,27 @@ static int trap_user_ptr_valid(uint64_t ptr) {
   return BHARAT_RANGE_VALID(ptr, USER_MIN, USER_MAX);
 }
 
+static int trap_user_range_valid(uint64_t ptr, uint64_t len) {
+  if (len == 0U) {
+    return 1;
+  }
+
+  if (len > (uint64_t)SIZE_MAX) {
+    return 0;
+  }
+
+  if (!trap_user_ptr_valid(ptr)) {
+    return 0;
+  }
+
+  uint64_t end_inclusive = ptr + len - 1U;
+  if (end_inclusive < ptr) {
+    return 0;
+  }
+
+  return trap_user_ptr_valid(end_inclusive);
+}
+
 int cap_invoke(uint64_t cap_id, uint64_t opcode, uint64_t arg0, uint64_t arg1)
     __attribute__((weak));
 int cap_invoke(uint64_t cap_id, uint64_t opcode, uint64_t arg0, uint64_t arg1) {
@@ -116,7 +140,7 @@ long syscall_dispatch(syscall_id_t id, uint64_t arg0, uint64_t arg1,
     return TRAP_SUCCESS;
   case SYSCALL_THREAD_CREATE: {
     uint64_t *out_tid = (uint64_t *)(uintptr_t)arg1;
-    if (!trap_user_ptr_valid(arg1)) {
+    if (!trap_user_range_valid(arg1, (uint64_t)sizeof(*out_tid))) {
       return TRAP_ERR_INVAL;
     }
     return (long)sched_sys_thread_create(
@@ -144,14 +168,15 @@ long syscall_dispatch(syscall_id_t id, uint64_t arg0, uint64_t arg1,
     capability_table_t *table = trap_current_cap_table();
     uint32_t *out_send_cap = (uint32_t *)(uintptr_t)arg0;
     uint32_t *out_recv_cap = (uint32_t *)(uintptr_t)arg1;
-    if (!trap_user_ptr_valid(arg0) || !trap_user_ptr_valid(arg1)) {
+    if (!trap_user_range_valid(arg0, (uint64_t)sizeof(*out_send_cap)) ||
+        !trap_user_range_valid(arg1, (uint64_t)sizeof(*out_recv_cap))) {
       return TRAP_ERR_INVAL;
     }
     return (long)ipc_endpoint_create(table, out_send_cap, out_recv_cap);
   }
   case SYSCALL_ENDPOINT_SEND: {
     capability_table_t *table = trap_current_cap_table();
-    if (!trap_user_ptr_valid(arg1)) {
+    if (!trap_user_range_valid(arg1, arg2)) {
       return TRAP_ERR_INVAL;
     }
     return (long)ipc_endpoint_send(
@@ -160,7 +185,8 @@ long syscall_dispatch(syscall_id_t id, uint64_t arg0, uint64_t arg1,
   case SYSCALL_ENDPOINT_RECEIVE: {
     capability_table_t *table = trap_current_cap_table();
     uint32_t *out_len = (uint32_t *)(uintptr_t)arg3;
-    if (!trap_user_ptr_valid(arg1) || !trap_user_ptr_valid(arg3)) {
+    if (!trap_user_range_valid(arg1, arg2) ||
+        !trap_user_range_valid(arg3, (uint64_t)sizeof(*out_len))) {
       return TRAP_ERR_INVAL;
     }
     return (long)ipc_endpoint_receive(table, (uint32_t)arg0,
@@ -170,7 +196,7 @@ long syscall_dispatch(syscall_id_t id, uint64_t arg0, uint64_t arg1,
   case SYSCALL_CAPABILITY_DELEGATE: {
     capability_table_t *table = trap_current_cap_table();
     uint32_t *out_cap = (uint32_t *)(uintptr_t)arg2;
-    if (!trap_user_ptr_valid(arg2)) {
+    if (!trap_user_range_valid(arg2, (uint64_t)sizeof(*out_cap))) {
       return TRAP_ERR_INVAL;
     }
     return (long)cap_table_delegate(table, table, (uint32_t)arg0,
@@ -385,11 +411,15 @@ long trap_handle(trap_frame_t *frame) {
 
   if (current && current->personality == PERSONALITY_LINUX) {
 #ifdef BHARAT_PERSONALITY_LINUX
-    rc = linux_syscall_handler(frame->gpr[0], frame->gpr[1], frame->gpr[2],
-                               frame->gpr[3], frame->gpr[4], frame->gpr[5],
-                               frame->gpr[6]);
+    if (linux_syscall_handler) {
+      rc = linux_syscall_handler(frame->gpr[0], frame->gpr[1], frame->gpr[2],
+                                 frame->gpr[3], frame->gpr[4], frame->gpr[5],
+                                 frame->gpr[6]);
+    } else {
+      rc = TRAP_ERR_NOSYS;
+    }
 #else
-    rc = -38; /* ENOSYS */
+    rc = TRAP_ERR_NOSYS;
 #endif
   } else {
     rc = syscall_dispatch((syscall_id_t)frame->gpr[0], frame->gpr[1],

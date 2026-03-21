@@ -1,11 +1,7 @@
 #include "../../../include/hal/vmm.h"
 #include "../../../include/hal/mmu_ops.h"
 #include "../../../include/numa.h"
-
-// Define direct map macros for early initialization.
-// We are mimicking the logic used in the generic VMM for mapping.
-#define P2V(x) ((void*)(uintptr_t)(x))
-#define V2P(x) ((phys_addr_t)(uintptr_t)(x))
+#include "../../../include/mm/physmap.h"
 
 // RISC-V Sv39 Page Table Entry Flags
 #define RISCV_PTE_V (1ULL << 0) // Valid
@@ -67,7 +63,7 @@ static void riscv_mmu_destroy_table_recursive(phys_addr_t table, int level) {
     if (!table) return;
 
     if (level > 0) {
-        pte_table_t* pt = (pte_table_t*)P2V(table);
+        pte_table_t* pt = (pte_table_t*)physmap_phys_to_virt(table);
         for (int i = 0; i < (level == 2 ? 256 : 512); i++) { // Skip top half on l2 (Sv39)
             if (pt->entries[i] & RISCV_PTE_V) {
                 if ((pt->entries[i] & (RISCV_PTE_R | RISCV_PTE_W | RISCV_PTE_X)) != 0) {

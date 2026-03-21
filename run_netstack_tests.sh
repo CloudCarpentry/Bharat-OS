@@ -1,6 +1,7 @@
 #!/bin/bash
-gcc -I../services/netstack/src -Ilib/packet/include \
+gcc -I../services/netstack/src -Ilib/packet/include -Ilib/runtime/include \
     tests/test_netstack_phase2.c \
+    lib/runtime/src/freestanding_string.c \
     services/netstack/src/netbuf.c \
     services/netstack/src/checksum.c \
     services/netstack/src/ethernet.c \

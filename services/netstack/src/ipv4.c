@@ -6,6 +6,7 @@
 #include "checksum.h"
 #include "arp.h"
 #include "loopback.h"
+#include <bharat/runtime/freestanding_string.h>
 //#include <stdio.h>
 
 static uint32_t local_ip = 0x0A01A8C0; // 192.168.1.10 (Little Endian representation for simplicity here)

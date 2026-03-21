@@ -1,11 +1,7 @@
 #include "../../../include/hal/vmm.h"
 #include "../../../include/hal/mmu_ops.h"
 #include "../../../include/numa.h"
-
-// Define direct map macros for early initialization.
-// Mimicking the logic used in generic VMM for identity map base.
-#define P2V(x) ((void*)(uintptr_t)(x))
-#define V2P(x) ((phys_addr_t)(uintptr_t)(x))
+#include "../../../include/mm/physmap.h"
 
 #define ARM64_MMU_DEVICE_nGnRnE (0ULL << 2) // MAIR index 0 -> Device-nGnRnE
 #define ARM64_MMU_NOCACHE_MEM   (1ULL << 2) // MAIR index 1 -> Non-cacheable
@@ -147,7 +143,7 @@ static void arm64_mmu_destroy_table_recursive(phys_addr_t table, int level) {
     if (!table) return;
 
     if (level > 1) {
-        pt_t* pt = (pt_t*)P2V(table);
+        pt_t* pt = (pt_t*)physmap_phys_to_virt(table);
         for (int i = 0; i < (level == 4 ? 256 : 512); i++) { // Skip kernel half on pgd
             if (pt->entries[i] & ARM64_MMU_FLAG_VALID) {
                 if ((level == 3 || level == 2) && (pt->entries[i] & ARM64_MMU_DESCRIPTOR_TABLE) == ARM64_MMU_DESCRIPTOR_BLOCK) {
@@ -246,15 +242,38 @@ static int arm64_mmu_query(phys_addr_t root, virt_addr_t virt, phys_addr_t *phys
 }
 
 static void arm64_mmu_activate(phys_addr_t root) {
-    // For VMSAv8-64 TTBR0 is used for user space mappings and TTBR1 for kernel space.
-    // This wrapper assumes activating a single root table in TTBR0 for now, mirroring old behavior.
+    // In Bharat-v3-64, we activate the provided root table in TTBR0.
+    // We assume the kernel is identity-mapped (or correctly mapped in the provided table).
+    // This is called AFTER we've mapped the RAM and (optionally) the framebuffer.
+    
+    uint64_t mair = (0xFFLL << 0)  | // Attr 0: Normal WB/WA/RA
+                    (0x04LL << 8)  | // Attr 1: Device-nGnRE
+                    (0x00LL << 16);  // Attr 2: Device-nGnRnE
+    
+    // TCR_EL1:
+    // T0SZ=16 (48-bit VA)
+    // TG0=0 (4KB)
+    // SH0=3 (Inner Shareable)
+    // ORGN0=1 (Normal WB/WA)
+    // IRGN0=1 (Normal WB/WA)
+    // IPS=2 (40-bit PA)
+    uint64_t tcr = (16ULL << 0) | (3ULL << 12) | (1ULL << 10) | (1ULL << 8) | (0ULL << 14) | (2ULL << 32);
+
     asm volatile(
+        "msr mair_el1, %1\n"
+        "msr tcr_el1, %2\n"
         "msr ttbr0_el1, %0\n"
         "isb\n"
         "tlbi vmalle1is\n"
         "dsb ish\n"
         "isb\n"
-        :: "r"((uintptr_t)root)
+        "mrs x0, sctlr_el1\n"
+        "orr x0, x0, #1\n"      // MMU enable
+        "and x0, x0, #~2\n"     // Alignment check (disable SCTLR_EL1.A)
+        "msr sctlr_el1, x0\n"
+        "isb\n"
+        :: "r"((uintptr_t)root), "r"(mair), "r"(tcr)
+        : "x0", "memory"
     );
 }
 

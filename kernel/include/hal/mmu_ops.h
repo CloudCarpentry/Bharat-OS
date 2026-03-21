@@ -61,4 +61,7 @@ extern mmu_ops_t *active_mmu;
 // Called early during boot to detect CPU/MMU features and initialize active_mmu
 void arch_mmu_init(void);
 
+// Called after PMM/VMM are ready to perform final hardware-specific mappings and activate MMU
+void hal_mmu_final_setup(void);
+
 #endif // BHARAT_HAL_MMU_OPS_H

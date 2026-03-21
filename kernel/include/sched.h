@@ -69,6 +69,7 @@ typedef struct sched_rq {
     kthread_t* current_thread;
     kthread_t* idle_thread;
     list_head_t ready_queue[MAX_PRIORITY_LEVELS];
+    uint32_t ready_bitmap;
     list_head_t sleeping_list;
     list_head_t blocked_list;
     uint64_t total_ticks;

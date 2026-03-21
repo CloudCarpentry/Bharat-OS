@@ -1,6 +1,7 @@
 #include "icmp.h"
 #include "ipv4.h"
 #include "checksum.h"
+#include <bharat/runtime/freestanding_string.h>
 //#include <stdio.h>
 
 int icmp_rx(netbuf_t *nb, uint32_t src_ip, uint32_t dst_ip) {
