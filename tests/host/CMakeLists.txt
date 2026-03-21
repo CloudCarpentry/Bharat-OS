@@ -10,6 +10,10 @@ target_include_directories(test_tlb_stress PRIVATE ../../kernel/include ../../se
 target_link_libraries(test_tlb_stress PRIVATE c pthread)
 add_test(NAME test_tlb_stress COMMAND test_tlb_stress)
 
+add_executable(test_checksum net/test_checksum.c ../../services/netstack/src/checksum.c mock_panic.c)
+target_include_directories(test_checksum PRIVATE ../../services/netstack/src)
+target_link_libraries(test_checksum PRIVATE c)
+add_test(NAME test_checksum COMMAND test_checksum)
 add_executable(test_console console/test_console.c
                ../../kernel/src/console/console_format.c
                ../../kernel/src/console/console_buffer.c
@@ -25,3 +29,19 @@ target_include_directories(test_console PRIVATE ../../kernel/include ../../kerne
 target_compile_definitions(test_console PRIVATE BHARAT_HOST_TEST)
 target_link_libraries(test_console PRIVATE c)
 add_test(NAME test_console COMMAND test_console)
+
+add_test(
+    NAME test_component_policy_matrix
+    COMMAND ${CMAKE_COMMAND}
+        -DREPO_ROOT=${CMAKE_SOURCE_DIR}
+        -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/policy_matrix
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/test_component_policy.cmake
+)
+
+add_executable(test_virt_can services/can/test_virt_can.c
+               ../../drivers/virt_can/virt_can.c
+               ../../drivers/can_core/can_controller_core.c)
+target_include_directories(test_virt_can PRIVATE ../../drivers/include)
+target_compile_definitions(test_virt_can PRIVATE BHARAT_HOST_TEST)
+target_link_libraries(test_virt_can PRIVATE c)
+add_test(NAME test_virt_can COMMAND test_virt_can)

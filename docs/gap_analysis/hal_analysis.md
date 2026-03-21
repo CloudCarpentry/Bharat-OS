@@ -9,6 +9,16 @@ This document provides a detailed gap analysis of the Bharat-OS Hardware Abstrac
 
 Overall, while the architecture cleanly separates mechanisms (in the kernel) from policies (in user-space/subsystems) via capabilities, the current implementation heavily relies on stubs, simplifications, and mock hardware. To achieve production readiness, specifically for Edge and Datacenter profiles, substantial work is needed to replace these stubs with robust, scalable implementations.
 
+### Code-vs-Document Validation Update (2026-03)
+
+The original analysis remains directionally correct, but repository state has moved since the first draft:
+
+- **Partially done:** 32-bit architecture scaffolding now exists in tree (ARM32 and RV32 directories, HAL translation backends, and arch-cap profile hooks).
+- **Still not implemented:** most ARM32/RV32 execution paths are placeholders and not wired end-to-end in build/runtime flows.
+- **Action needed:** stabilize the core architecture-neutral layer so new 32-bit backends can plug in without changing generic scheduler/memory/security code.
+
+The sections below keep the gap framing and add concrete implementation deltas for ARM32/RV32 readiness.
+
 ---
 
 ## 2. Interrupt Handling and Delivery
@@ -76,7 +86,7 @@ Overall, while the architecture cleanly separates mechanisms (in the kernel) fro
 
 ### Current State
 - **NPU (Neural Processing Unit):** `kernel/src/hal/npu.c` provides a capability-gated API for allocating and enumerating NPUs. However, the implementation is purely a mock (`vendor_id = 0xABCD`, hardcoded memory sizes) and doesn't map real MMIO or IRQs.
-- **FPGA Manager:** `drivers/accel/fpga_mgr.c` is an empty shell with a single function `fpga_mgr_load_bitstream` that returns 0 without touching hardware.
+- **FPGA Manager:** `drivers/fpga_mgr/fpga_mgr.c` is an empty shell with a single function `fpga_mgr_load_bitstream` that returns 0 without touching hardware.
 - **Performance Monitor Units (PMU):** PMU implementations across architectures (`kernel/src/hal/x86_64/pmu.c`, `arm64/pmu.c`, `riscv/pmu.c`) are marked as "Simple abstraction stubs" and often return approximate cycle counts (e.g., using `rdtsc` directly in x86 instead of full PMC event programming due to QEMU `#GP` concerns).
 
 ### Identified Gaps
@@ -123,12 +133,85 @@ Overall, while the architecture cleanly separates mechanisms (in the kernel) fro
 ## 9. 32-bit Architecture Support (ARM32 / RV32)
 
 ### Current State
-- **ARM32:** The only trace of ARM32 support is a disconnected `arm32_mpu_vmm_mock.c` which implements empty, no-op wrappers for a Memory Protection Unit (MPU) rather than an MMU. It is explicitly marked as "detached from mmu_ops_t".
-- **RISC-V 32 (RV32):** There is no explicit RV32 context switching, page table logic (e.g., `sv32`), or HAL support. The repository heavily assumes 64-bit pointers and registers across its RISC-V and ARM implementations.
+- **ARM32 now has explicit scaffolding:** `kernel/src/arch/arm32/*` and `kernel/src/hal/arm32/*` exist, including context-switch placeholders and an MMU-Lite translation backend (`hal_pt_arm32.c`).
+- **RV32 now has explicit scaffolding:** `kernel/src/hal/riscv32/hal_pt_riscv32.c` and `kernel/src/arch/riscv32/arch_caps.c` exist.
+- **Build wiring remains inconsistent:** `ARCH=riscv32` and `ARCH=arm32` CMake selections still reference several 64-bit sources (e.g., riscv64/arm64 boot and HAL files, shakti context for riscv32), indicating transitional rather than native 32-bit pipelines.
 
 ### Identified Gaps
-- **Not Supported:** 32-bit architectures are effectively unsupported. The kernel assumes 64-bit page table structures, 64-bit atomic operations, and 64-bit context saving.
-- **Embedded RTOS Profile Limitations:** For deeply embedded Cortex-M (ARM32) or RV32 targets, the current HAL is too heavy and tightly coupled to 64-bit MMU assumptions. Significant refactoring is required to support pure MPU-based, 32-bit RTOS profiles.
+- **Scaffold-only state:** ARM32/RV32 page-table backends return `ENOSYS` for map/unmap/protect/query paths, and key translation helpers (`phys_to_virt`, `virt_to_phys`) are placeholders.
+- **Context-switch incompleteness:** ARM32 context switch C/ASM stubs are non-functional; RV32 lacks dedicated context-switch implementation files.
+- **Security and isolation parity gap:** 32-bit paths do not yet have equivalent secure-boot/HAL security backend implementations beyond unsupported defaults.
+- **Embedded RTOS profile limitations:** MPU-only and MMU-Lite abstractions exist conceptually, but not enough concrete backend behavior exists to guarantee isolation or deterministic RT behavior on Cortex-M/RV32-class systems.
+
+### Done vs Not Implemented (Focused Snapshot)
+
+**Done (foundation in place):**
+1. Architecture-neutral translation contracts (`hal_pt`, `hal_translate_ops`, execution classes MMU_FULL/MMU_LITE/MPU_ONLY).
+2. ARM32 and RV32 specific HAL PT backend source files added.
+3. ARM32 and RV32 architecture capability/profile entry points exist.
+4. Generic spin-wait hint now includes x86 pause / ARM yield / RISC-V nop path hooks.
+
+**Not implemented (blocking production support):**
+1. Real ARM32 page-table or MPU programming (backend currently stubbed).
+2. Real RV32 Sv32 page-table programming (backend currently stubbed).
+3. Native ARM32 and RV32 boot + trap + context-switch + timer + interrupt path integration in CMake/runtime.
+4. 32-bit-safe DMA/IOMMU and security-backed memory isolation.
+5. Runtime CPU feature probing for ARM32/RV32 (current probes are placeholder-level).
+
+### Re-analysis Notes Against Latest Code (2026-03)
+
+**What is concretely done in code now (verified):**
+- `hal_pt.c` already has architecture dispatch branches for `__arm__` and `__riscv_xlen == 32`, so the generic translation entry point is prepared to select ARM32/RV32 backends.
+- ARM32 and RV32 each provide dedicated HAL PT backend files (`hal_pt_arm32.c`, `hal_pt_riscv32.c`) and expose `hal_translate_ops()` symbols under the expected compile guards.
+- ARM32 and RV32 architecture capability files exist (`arch/arm32/arch_caps.c`, `arch/riscv32/arch_caps.c`) so capability-gated policy integration has a starting hook.
+
+**What is still not implemented in code (verified):**
+- ARM32/RV32 PT backends are scaffold-only: create/map/unmap/protect/query paths still return fixed stub values (`0` or `-1`) rather than programming MMU tables.
+- ARM32 context switch is currently non-functional (`context_switch()` empty; assembly symbol loops forever via branch-to-self), and RV32 has no dedicated context-switch pair.
+- Build plumbing for 32-bit targets is transitional: CMake still routes `ARCH=arm32` through arm64 boot/HAL/context files and `ARCH=riscv32` through riscv64 boot/HAL plus shakti context sources.
+- The shared atomic layer still centers on legacy `__sync` intrinsics with unconditional 64-bit atomic helpers; this is risky for strict 32-bit portability/performance without capability-aware fallback paths.
+
+### Required Sequencing for ARM32/RV32 Bring-up (to keep core stable)
+
+1. **Build-graph correctness first**
+   - Create native 32-bit source sets in CMake (boot, trap, context-switch, timer, irq, dma) so CI validates the intended architecture path rather than mixed 64-bit proxies.
+2. **Context and trap safety second**
+   - Implement minimal but correct ARM32 and RV32 context switch + trap entry/exit before any scheduler/perf tuning.
+3. **MMU/MPU backend completeness third**
+   - Implement map/unmap/protect/query + TLB maintenance semantics in `hal_pt_*32.c` so generic VM code can run unchanged.
+4. **DMA/IOMMU security parity fourth**
+   - Provide explicit 32-bit backend behavior for non-coherent DMA and iommu/no-iommu fallback policy to preserve isolation guarantees.
+5. **Atomic + capability hardening fifth**
+   - Migrate shared atomics/locks to `__atomic` wrappers and gate 64-bit operations via arch capabilities to avoid latent portability traps.
+6. **Performance tuning last**
+   - Only after correctness: add IRQ affinity, lazy ext-state handling, and scheduler fast paths.
+
+### Core-Code Changes Required So ARM32/RV32 Can Land Without Reworking Core Again
+
+1. **Make address-size assumptions explicit and centralized**
+   - Introduce compile-time contracts (`ARCH_WORD_BITS`, `ARCH_PADDR_BITS`, `ARCH_VADDR_BITS`) and assert these in shared headers.
+   - Audit generic code for implicit `uint64_t` assumptions in mapping, bitmap math, and pointer casts.
+
+2. **Split generic VM logic from page-table format details**
+   - Keep `hal_pt` as the only mapping gateway from generic MM/VMM code.
+   - Forbid generic code from directly depending on level counts (e.g., 4-level assumptions) or 64-bit PTE layouts.
+   - Provide common helpers for page-size-agnostic alignment/rounding to avoid duplicated backend math.
+
+3. **Harden atomic and lock abstraction for 32-bit**
+   - Migrate from legacy `__sync` builtins to `__atomic` wrappers with explicit memory orders.
+   - Gate 64-bit atomics behind capability checks or fallback lock paths when native 64-bit atomic ops are not guaranteed on 32-bit targets.
+
+4. **Define strict per-arch context ABI contract**
+   - Standardize `arch_context_t` save/restore metadata for GPR, status register, and optional ext-state.
+   - Make lazy ext-state save/restore opt-in via arch capability bits to avoid forcing 64-bit assumptions into 32-bit minimal profiles.
+
+5. **Introduce architecture capability-gated fast paths**
+   - Ensure scheduler, IPC, and MM paths select behavior through `arch_caps` rather than compile-time architecture name branching.
+   - Add explicit fallbacks for "no IOMMU", "MPU-only", and "non-coherent DMA" scenarios.
+
+6. **Fix build matrix to test what we claim to support**
+   - Add CI targets that compile and link `ARCH=arm32` and `ARCH=riscv32` with their own boot/HAL/context sets.
+   - Promote a "stub budget" check: fail CI if critical arch interfaces remain unresolved or intentionally stubbed beyond allowed exceptions.
 
 ---
 

@@ -8,34 +8,43 @@ add_library(subsys_manager STATIC
     src/manager.c
     src/subsys_test_runner.c
     src/skb/skb.c
+    src/version_registry.c
 )
 target_include_directories(subsys_manager PUBLIC include ${CMAKE_SOURCE_DIR}/kernel/include)
 target_link_libraries(subsys_manager PUBLIC bharat_user_buildopts bharat_freestanding)
 
 # ------------------------------------------------------------------------------
-# Personality Shims
+# Personality / Domain Shims
 # ------------------------------------------------------------------------------
-add_library(subsys_linux_personality STATIC linux/linux_compat.c)
-target_include_directories(subsys_linux_personality PUBLIC include ${CMAKE_SOURCE_DIR}/kernel/include)
-target_link_libraries(subsys_linux_personality PUBLIC bharat_user_buildopts bharat_freestanding)
+if(BHARAT_ENABLE_SUBSYS_LINUX)
+    add_library(subsys_linux_personality STATIC linux/linux_compat.c)
+    target_include_directories(subsys_linux_personality PUBLIC include ${CMAKE_SOURCE_DIR}/kernel/include)
+    target_link_libraries(subsys_linux_personality PUBLIC bharat_user_buildopts bharat_freestanding)
+endif()
 
-add_library(subsys_windows_personality STATIC windows/win_compat.c)
-target_include_directories(subsys_windows_personality PUBLIC include ${CMAKE_SOURCE_DIR}/kernel/include)
-target_link_libraries(subsys_windows_personality PUBLIC bharat_user_buildopts bharat_freestanding)
+if(BHARAT_ENABLE_SUBSYS_WINDOWS)
+    add_library(subsys_windows_personality STATIC windows/win_compat.c)
+    target_include_directories(subsys_windows_personality PUBLIC include ${CMAKE_SOURCE_DIR}/kernel/include)
+    target_link_libraries(subsys_windows_personality PUBLIC bharat_user_buildopts bharat_freestanding)
+endif()
 
-add_library(subsys_automotive STATIC automotive/automotive.c)
-target_include_directories(subsys_automotive PUBLIC include ${CMAKE_SOURCE_DIR}/kernel/include)
-target_link_libraries(subsys_automotive PUBLIC bharat_user_buildopts bharat_freestanding)
+if(BHARAT_ENABLE_SUBSYS_AUTOMOTIVE)
+    add_library(subsys_automotive STATIC automotive/automotive.c)
+    target_include_directories(subsys_automotive PUBLIC include ${CMAKE_SOURCE_DIR}/kernel/include)
+    target_link_libraries(subsys_automotive PUBLIC bharat_user_buildopts bharat_freestanding)
+endif()
 
-add_library(subsys_android STATIC
-    android/android_personality.c
-    android/android_process.c
-    android/android_boot.c
-    android/android_security.c
-    android/android_binder_dist.c
-)
-target_include_directories(subsys_android PUBLIC include ${CMAKE_SOURCE_DIR}/kernel/include)
-target_link_libraries(subsys_android PUBLIC bharat_user_buildopts bharat_freestanding)
+if(BHARAT_ENABLE_SUBSYS_ANDROID)
+    add_library(subsys_android STATIC
+        android/android_personality.c
+        android/android_process.c
+        android/android_boot.c
+        android/android_security.c
+        android/android_binder_dist.c
+    )
+    target_include_directories(subsys_android PUBLIC include ${CMAKE_SOURCE_DIR}/kernel/include)
+    target_link_libraries(subsys_android PUBLIC bharat_user_buildopts bharat_freestanding)
+endif()
 
 # ------------------------------------------------------------------------------
 # Daemons / Executables
@@ -60,7 +69,7 @@ if(BHARAT_BUILD_AI_GOVERNOR)
     )
 endif()
 
-if(BHARAT_BUILD_NETWORK_STUBS)
+if(BHARAT_BUILD_NETWORK_STUBS AND BHARAT_ENABLE_SERVICE_NETWORK)
     add_subdirectory(network)
 endif()
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIE -pie")

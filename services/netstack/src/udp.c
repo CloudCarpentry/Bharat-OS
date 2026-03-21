@@ -20,29 +20,18 @@ int udp_rx(netbuf_t *nb, uint32_t src_ip, uint32_t dst_ip) {
 
     uint16_t orig_check = udph->check;
     if (orig_check != 0) {
-        udph->check = 0;
-        uint32_t sum = net_pseudo_checksum(src_ip, dst_ip, IPPROTO_UDP, udp_len);
-
-        const uint16_t *buf = (const uint16_t *)udph;
-        size_t len = udp_len;
-        while (len > 1) {
-            sum += *buf++;
-            len -= 2;
+        if (nb->flags & NETBUF_F_RX_L4_CSUM_BAD) {
+            return -1;
         }
-        if (len == 1) {
-            uint16_t last_byte = 0;
-            *(uint8_t *)&last_byte = *(const uint8_t *)buf;
-            sum += last_byte;
-        }
-        while (sum >> 16) {
-            sum = (sum & 0xffff) + (sum >> 16);
-        }
-
-        if (orig_check != (uint16_t)~sum) {
+        if (!(nb->flags & NETBUF_F_RX_L4_CSUM_OK)) {
+            udph->check = 0;
+            uint16_t calc_check = net_csum_udp_ipv4(udph, udp_len, src_ip, dst_ip);
+            if (orig_check != calc_check) {
+                udph->check = orig_check;
+                return -1; // Checksum failed
+            }
             udph->check = orig_check;
-            return -1; // Checksum failed
         }
-        udph->check = orig_check;
     }
 
     uint16_t src_port = bnet_ntohs(udph->source);
@@ -95,25 +84,7 @@ int udp_tx(int sock_id, uint32_t dst_ip, uint16_t dst_port, const uint8_t *data,
         src_ip = 0x0100007F; // 127.0.0.1
     }
 
-    uint32_t sum = net_pseudo_checksum(src_ip, dst_ip, IPPROTO_UDP, udp_len);
-
-    const uint16_t *buf = (const uint16_t *)udph;
-    size_t check_len = udp_len;
-    while (check_len > 1) {
-        sum += *buf++;
-        check_len -= 2;
-    }
-    if (check_len == 1) {
-        uint16_t last_byte = 0;
-        *(uint8_t *)&last_byte = *(const uint8_t *)buf;
-        sum += last_byte;
-    }
-    while (sum >> 16) {
-        sum = (sum & 0xffff) + (sum >> 16);
-    }
-
-    udph->check = (uint16_t)~sum;
-    if (udph->check == 0) udph->check = 0xFFFF; // UDP specific rule
+    udph->check = net_csum_udp_ipv4(udph, udp_len, src_ip, dst_ip);
 
     return ipv4_tx(&nb, dst_ip, IPPROTO_UDP);
 }

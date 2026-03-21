@@ -85,10 +85,10 @@ static void* stress_worker(void* arg) {
             capability_table_t* t = (capability_table_t*)g_proc->security_sandbox_ctx;
             if (t && ipc_endpoint_create(t, &send_cap, &recv_cap) == 0) {
                 uint8_t payload[8] = {1,2,3,4,5,6,7,8};
-                ipc_endpoint_send(t, send_cap, payload, sizeof(payload), 0);
+                ipc_endpoint_send(t, send_cap, payload, sizeof(payload), 0, 0, 0);
                 uint8_t out[8] = {0};
                 uint32_t out_len = 0;
-                ipc_endpoint_receive(t, recv_cap, out, sizeof(out), &out_len, 0);
+                ipc_endpoint_receive(t, recv_cap, out, sizeof(out), &out_len, 0, NULL);
             }
         } else if (op == 2) {
             sched_sys_sleep(rand_r(&seed) % 5);

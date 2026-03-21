@@ -12,6 +12,7 @@ include_directories(${CMAKE_SOURCE_DIR}/kernel/include)
 include(BharatCommon)
 include(BharatProfiles)
 include(BharatPersonality)
+include(BharatComponentPolicy)
 
 # Versioning Identity System: Generate and load from manifest
 set(BHARAT_MANIFEST_JSON "${CMAKE_SOURCE_DIR}/release/manifest/os-release.json")
@@ -44,9 +45,14 @@ bharat_set_arch_defaults()
 
 # Device Profile
 set(BHARAT_DEVICE_PROFILE "DESKTOP" CACHE STRING "Target device profile (DESKTOP, MOBILE, EDGE, DATACENTER, NETWORK_APPLIANCE, DRONE, ROBOT, RTOS, AUTOMOTIVE_ECU, AUTOMOTIVE_INFOTAINMENT)")
+set_property(CACHE BHARAT_DEVICE_PROFILE PROPERTY STRINGS DESKTOP MOBILE EDGE DATACENTER NETWORK_APPLIANCE DRONE ROBOT RTOS AUTOMOTIVE_ECU AUTOMOTIVE_INFOTAINMENT)
 
 # Personality Profile
 set(BHARAT_PERSONALITY_PROFILE "NONE" CACHE STRING "Target personality profile (NONE, LINUX, WINDOWS, MAC)")
+set_property(CACHE BHARAT_PERSONALITY_PROFILE PROPERTY STRINGS NONE LINUX WINDOWS MAC)
+
+# Board selection metadata (provided by build scripts or manual configure)
+set(BHARAT_TARGET_BOARD "" CACHE STRING "Target board identifier (e.g., qemu-virt-riscv64, shakti-c)")
 
 # ISA Extensions
 set(BHARAT_ISA_BASELINE "" CACHE STRING "Target ISA baseline (e.g., x86_64_v2, rv64gc)")
@@ -62,9 +68,22 @@ set(BHARAT_PLATFORM_FIRMWARE "" CACHE STRING "Target platform firmware (e.g., AC
 set(BHARAT_BOOT_HW_PROFILE "generic" CACHE STRING "Boot hardware profile (generic, desktop, server, vm, laptop, edge, rtos, automotive_ecu, automotive_infotainment)")
 set_property(CACHE BHARAT_BOOT_HW_PROFILE PROPERTY STRINGS generic desktop server vm laptop edge rtos automotive_ecu automotive_infotainment)
 
+# IRQ dispatch profile
+set(BHARAT_IRQ_DISPATCH_MODE "AUTO" CACHE STRING "IRQ dispatch mode (AUTO, GENERIC, MIXED, RT)")
+set_property(CACHE BHARAT_IRQ_DISPATCH_MODE PROPERTY STRINGS AUTO GENERIC MIXED RT)
+
 message(STATUS "Configuring for Device Profile: ${BHARAT_DEVICE_PROFILE}")
 message(STATUS "Configuring for Personality Profile: ${BHARAT_PERSONALITY_PROFILE}")
 message(STATUS "Architecture: ${BHARAT_ARCH_FAMILY}-${BHARAT_ARCH_BITS} (${BHARAT_ARCH_VARIANT})")
+
+# Normalize user-provided profile/personality selectors
+string(TOUPPER "${BHARAT_DEVICE_PROFILE}" BHARAT_DEVICE_PROFILE)
+set(BHARAT_DEVICE_PROFILE "${BHARAT_DEVICE_PROFILE}" CACHE STRING "Target device profile (DESKTOP, MOBILE, EDGE, DATACENTER, NETWORK_APPLIANCE, DRONE, ROBOT, RTOS, AUTOMOTIVE_ECU, AUTOMOTIVE_INFOTAINMENT)" FORCE)
+string(TOUPPER "${BHARAT_PERSONALITY_PROFILE}" BHARAT_PERSONALITY_PROFILE)
+set(BHARAT_PERSONALITY_PROFILE "${BHARAT_PERSONALITY_PROFILE}" CACHE STRING "Target personality profile (NONE, LINUX, WINDOWS, MAC)" FORCE)
+
+# Resolve required components for target profile/personality/board
+bharat_apply_component_policy()
 
 # On Windows with LLVM/Clang, explicitly use lld to avoid invoking missing 'ld' or 'gcc'
 if(WIN32)
@@ -130,6 +149,28 @@ bharat_set_profile_flag(BHARAT_PROFILE_ROBOT "ROBOT" "${BHARAT_DEVICE_PROFILE}")
 bharat_set_profile_flag(BHARAT_PROFILE_RTOS "RTOS" "${BHARAT_DEVICE_PROFILE}")
 bharat_set_profile_flag(BHARAT_PROFILE_AUTOMOTIVE_ECU "AUTOMOTIVE_ECU" "${BHARAT_DEVICE_PROFILE}")
 bharat_set_profile_flag(BHARAT_PROFILE_AUTOMOTIVE_INFOTAINMENT "AUTOMOTIVE_INFOTAINMENT" "${BHARAT_DEVICE_PROFILE}")
+
+# IRQ dispatch mode (profile-aware default with explicit override)
+if(BHARAT_IRQ_DISPATCH_MODE STREQUAL "AUTO")
+    if(BHARAT_DEVICE_PROFILE STREQUAL "RTOS"
+       OR BHARAT_DEVICE_PROFILE STREQUAL "DRONE"
+       OR BHARAT_DEVICE_PROFILE STREQUAL "ROBOT"
+       OR BHARAT_DEVICE_PROFILE STREQUAL "AUTOMOTIVE_ECU")
+        set(BHARAT_IRQ_DISPATCH_RESOLVED "RT")
+    elseif(BHARAT_DEVICE_PROFILE STREQUAL "EDGE"
+           OR BHARAT_DEVICE_PROFILE STREQUAL "MOBILE"
+           OR BHARAT_DEVICE_PROFILE STREQUAL "AUTOMOTIVE_INFOTAINMENT")
+        set(BHARAT_IRQ_DISPATCH_RESOLVED "MIXED")
+    else()
+        set(BHARAT_IRQ_DISPATCH_RESOLVED "GENERIC")
+    endif()
+else()
+    string(TOUPPER "${BHARAT_IRQ_DISPATCH_MODE}" BHARAT_IRQ_DISPATCH_RESOLVED)
+endif()
+message(STATUS "IRQ dispatch mode: ${BHARAT_IRQ_DISPATCH_RESOLVED}")
+bharat_set_profile_flag(BHARAT_IRQ_DISPATCH_GENERIC "GENERIC" "${BHARAT_IRQ_DISPATCH_RESOLVED}")
+bharat_set_profile_flag(BHARAT_IRQ_DISPATCH_MIXED "MIXED" "${BHARAT_IRQ_DISPATCH_RESOLVED}")
+bharat_set_profile_flag(BHARAT_IRQ_DISPATCH_RT "RT" "${BHARAT_IRQ_DISPATCH_RESOLVED}")
 
 # Personality Profile
 bharat_set_profile_flag(BHARAT_PERSONALITY_NONE "NONE" "${BHARAT_PERSONALITY_PROFILE}")
@@ -208,6 +249,12 @@ endif()
 bharat_add_host_test_compat_target(
     test_vmm_aspace
     "Host tests disabled. Set -DBHARAT_BUILD_HOST_TESTS=ON to build test_vmm_aspace."
+)
+
+# Automotive subsystem host-test compatibility.
+bharat_add_host_test_compat_target(
+    test_automotive_subsys
+    "Host tests disabled. Reconfigure with -DBHARAT_BUILD_HOST_TESTS=ON to build test_automotive_subsys."
 )
 
 # Image generation
