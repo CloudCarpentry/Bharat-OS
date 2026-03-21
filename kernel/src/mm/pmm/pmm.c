@@ -6,6 +6,7 @@
 
 #include "sched.h"
 #include "early_alloc.h"
+#include "bharat/boot_info.h"
 
 // Multiboot only for x86_64
 #if defined(__x86_64__)
@@ -432,34 +433,9 @@ static void mark_page_free(phys_addr_t phys) {
   mm_free_page(phys);
 }
 
-#if defined(__x86_64__)
-#define MULTIBOOT1_BOOTLOADER_MAGIC 0x2BADB002
-#endif
-
-/* Multiboot 1 Structures for legacy support */
-typedef struct {
-  uint32_t flags;
-  uint32_t mem_lower;
-  uint32_t mem_upper;
-  uint32_t boot_device;
-  uint32_t cmdline;
-  uint32_t mods_count;
-  uint32_t mods_addr;
-  uint32_t syms[4];
-  uint32_t mmap_length;
-  uint32_t mmap_addr;
-} mb1_info_t;
-
-typedef struct {
-  uint32_t size;
-  uint64_t addr;
-  uint64_t len;
-  uint32_t type;
-} __attribute__((packed)) mb1_mmap_entry_t;
-
 /*
  * Multi-Architecture PMM Discovery Logic
- * Supports Multiboot (x86), Device Tree (ARM/RISC-V), and Fixed Maps (Cortex-M)
+ * Supports normalized boot_info_t contract.
  */
 
 static void pmm_add_region(phys_addr_t base, size_t size, pmm_region_type_t type, uint32_t target_numa_node) {
@@ -590,70 +566,6 @@ int pmm_ingest_memory_map(const pmm_memory_map_t *map) {
   return 0;
 }
 
-static int pmm_discovery_multiboot(uint32_t magic, void *memory_map, pmm_memory_map_t *out_map) {
-#if defined(__x86_64__)
-  if (magic == MULTIBOOT2_BOOTLOADER_MAGIC) {
-    multiboot_information_t *mb_info = (multiboot_information_t *)memory_map;
-    uint32_t total_size = mb_info->total_size;
-    uint8_t *tag_ptr = (uint8_t *)mb_info + 8;
-    while (tag_ptr < (uint8_t *)mb_info + total_size) {
-      multiboot_tag_t *tag = (multiboot_tag_t *)tag_ptr;
-      if (tag->type == MULTIBOOT_TAG_TYPE_END)
-        break;
-      if (tag->type == MULTIBOOT_TAG_TYPE_MMAP) {
-        multiboot_tag_mmap_t *mmap_tag = (multiboot_tag_mmap_t *)tag;
-        uint32_t entry_size =
-            (mmap_tag->entry_size < sizeof(multiboot_mmap_entry_t))
-                ? sizeof(multiboot_mmap_entry_t)
-                : mmap_tag->entry_size;
-        uint32_t num_entries =
-            (mmap_tag->size > 16) ? (mmap_tag->size - 16) / entry_size : 0;
-        for (uint32_t i = 0; i < num_entries; i++) {
-          multiboot_mmap_entry_t *entry =
-              (multiboot_mmap_entry_t *)((uint8_t *)mmap_tag->entries +
-                                         (i * entry_size));
-          if (entry->type == MULTIBOOT_MEMORY_AVAILABLE) {
-            if (out_map->region_count < MAX_PMM_REGIONS) {
-              out_map->regions[out_map->region_count].base_addr = entry->addr;
-              out_map->regions[out_map->region_count].length = entry->len;
-              out_map->regions[out_map->region_count].type = PMM_REGION_TYPE_USABLE;
-              out_map->regions[out_map->region_count].numa_node = 0;
-              out_map->region_count++;
-            }
-          }
-        }
-      }
-      tag_ptr += (tag->size + 7) & ~7;
-    }
-    return 0;
-  } else if (magic == MULTIBOOT1_BOOTLOADER_MAGIC) {
-    mb1_info_t *mb_info = (mb1_info_t *)memory_map;
-    if (!(mb_info->flags & (1 << 6)))
-      return -1;
-    mb1_mmap_entry_t *mmap = (mb1_mmap_entry_t *)(uintptr_t)mb_info->mmap_addr;
-    uint32_t mmap_length = mb_info->mmap_length;
-    for (uint32_t offset = 0; offset < mmap_length;) {
-      mb1_mmap_entry_t *entry = (mb1_mmap_entry_t *)((uint8_t *)mmap + offset);
-      if (entry->type == 1) {
-        if (out_map->region_count < MAX_PMM_REGIONS) {
-          out_map->regions[out_map->region_count].base_addr = entry->addr;
-          out_map->regions[out_map->region_count].length = entry->len;
-          out_map->regions[out_map->region_count].type = PMM_REGION_TYPE_USABLE;
-          out_map->regions[out_map->region_count].numa_node = 0;
-          out_map->region_count++;
-        }
-      }
-      offset += entry->size + 4;
-    }
-    return 0;
-  }
-#endif
-  (void)magic;
-  (void)memory_map;
-  (void)out_map;
-  return -1;
-}
-
 static int pmm_discovery_fixed(pmm_memory_map_t *out_map) {
 #if defined(__riscv)
   out_map->regions[out_map->region_count].base_addr = 0x80000000ULL;
@@ -681,19 +593,30 @@ static int pmm_discovery_fixed(pmm_memory_map_t *out_map) {
   return -1;
 }
 
-int mm_pmm_init(uint32_t magic, void *memory_map) {
+int mm_pmm_init(uint32_t magic, const boot_info_t *boot) {
   early_alloc_init(0);
   active_numa_nodes = 0U;
 
   pmm_memory_map_t map;
   map.region_count = 0;
 
-  if (pmm_discovery_multiboot(magic, memory_map, &map) == 0) {
-    KPRINT("PMM: discovered via Multiboot\n");
+  if (boot && boot->mem_map_count > 0) {
+      for (uint32_t i = 0; i < boot->mem_map_count; i++) {
+          if (boot->mem_map[i].type == BOOT_MEM_USABLE) {
+              if (map.region_count < MAX_PMM_REGIONS) {
+                  map.regions[map.region_count].base_addr = boot->mem_map[i].phys_start;
+                  map.regions[map.region_count].length = boot->mem_map[i].size;
+                  map.regions[map.region_count].type = PMM_REGION_TYPE_USABLE;
+                  map.regions[map.region_count].numa_node = 0; // Or from a topology map if available
+                  map.region_count++;
+              }
+          }
+      }
+      KPRINT("PMM: discovered via normalized boot_info_t\n");
   } else if (pmm_discovery_fixed(&map) == 0) {
-    KPRINT("PMM: discovered via Fixed Map fallback\n");
+      KPRINT("PMM: discovered via Fixed Map fallback\n");
   } else {
-    return -1;
+      return -1;
   }
 
   pmm_ingest_memory_map(&map);
