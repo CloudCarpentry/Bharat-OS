@@ -99,3 +99,46 @@ void fb_console_puts(const char *str) {
         fb_console_putc(*str++);
     }
 }
+
+/**
+ * Output a fixed-length string.
+ */
+void fb_console_write(const char *str, size_t len) {
+    if (!str || !fb_console_state.initialized) return;
+
+    // We defer scrolling/clearing checks until either a newline
+    // forces it or we reach the end of the bulk operation to avoid
+    // constant bounds checking.
+
+    for (size_t i = 0; i < len; i++) {
+        char c = str[i];
+
+        if (c == '\n') {
+            fb_console_state.cursor_x = 0;
+            fb_console_state.cursor_y++;
+        } else if (c == '\r') {
+            fb_console_state.cursor_x = 0;
+        } else if (c == '\t') {
+            fb_console_state.cursor_x = (fb_console_state.cursor_x + 8) & ~7;
+        } else {
+            uint32_t px = fb_console_state.cursor_x * FONT_WIDTH;
+            uint32_t py = fb_console_state.cursor_y * FONT_HEIGHT;
+
+            fbui_render_fill_rect(&fb_console_state.render_ctx, px, py, FONT_WIDTH, FONT_HEIGHT, fb_console_state.render_ctx.foreground_color);
+
+            fb_console_state.cursor_x++;
+        }
+
+        // Intra-line wrap check
+        if (fb_console_state.cursor_x >= fb_console_state.cols) {
+            fb_console_state.cursor_x = 0;
+            fb_console_state.cursor_y++;
+        }
+
+        // If we crossed a line boundary, check if we need to scroll.
+        if (fb_console_state.cursor_y >= fb_console_state.rows) {
+            fb_console_state.cursor_y = 0;
+            fb_console_clear();
+        }
+    }
+}

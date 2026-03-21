@@ -29,3 +29,5 @@ void console_vlog(console_log_level_t level, const char *fmt, va_list ap);
 
 void console_write_raw(const char *data, size_t len);
 console_phase_t console_current_phase(void);
+
+size_t string_length(const char* str);

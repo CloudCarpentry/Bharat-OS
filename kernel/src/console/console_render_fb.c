@@ -1,5 +1,6 @@
 #include "console/console_render.h"
 #include <stddef.h>
+#include "arch/memops.h"
 
 /* Extremely basic fixed-width rendering mechanics. */
 #define FONT_WIDTH  8
@@ -50,9 +51,18 @@ void console_render_fb_init(framebuffer_console_state_t *state) {
 void console_render_fb_clear(framebuffer_console_state_t *state) {
     if (!state || !state->fb_base) return;
 
-    for (uint32_t y = 0; y < state->height_px; y++) {
-        for (uint32_t x = 0; x < state->width_px; x++) {
-             draw_pixel(state, x, y, state->bg_color);
+    uint32_t total_bytes = state->stride_bytes * state->height_px;
+
+    if (state->bg_color == 0) {
+        arch_memset((void*)state->fb_base, 0, total_bytes, ARCH_MEMOP_F_DEFAULT);
+    } else {
+        // We only implement bulk clear for black background efficiently here.
+        // For other colors, we fallback to char by char.
+        // A future hardware acceleration driver would implement full solid fills.
+        for (uint32_t y = 0; y < state->height_px; y++) {
+            for (uint32_t x = 0; x < state->width_px; x++) {
+                 draw_pixel(state, x, y, state->bg_color);
+            }
         }
     }
 
@@ -64,22 +74,23 @@ void console_render_fb_scroll(framebuffer_console_state_t *state) {
     if (!state || !state->fb_base) return;
 
     // Move all rows up by one.
-    // In a real implementation this might use DMA or hardware scrolling.
     uint32_t row_bytes = state->stride_bytes * FONT_HEIGHT;
     uint32_t scroll_bytes = state->stride_bytes * (state->height_px - FONT_HEIGHT);
 
-    // Using a manual copy to remain freestanding without depending on memcpy
-    volatile uint8_t *dst = state->fb_base;
-    volatile uint8_t *src = state->fb_base + row_bytes;
-
-    for (uint32_t i = 0; i < scroll_bytes; i++) {
-        dst[i] = src[i];
-    }
+    arch_memmove((void*)state->fb_base, (const void*)(state->fb_base + row_bytes), scroll_bytes, ARCH_MEMOP_F_DEFAULT);
 
     // Clear last row
-    for (uint32_t y = state->height_px - FONT_HEIGHT; y < state->height_px; y++) {
-        for (uint32_t x = 0; x < state->width_px; x++) {
-             draw_pixel(state, x, y, state->bg_color);
+    uint32_t last_row_start_y = state->height_px - FONT_HEIGHT;
+    uint8_t *last_row_ptr = (uint8_t *)state->fb_base + (last_row_start_y * state->stride_bytes);
+    uint32_t last_row_bytes = state->stride_bytes * FONT_HEIGHT;
+
+    if (state->bg_color == 0) {
+        arch_memset((void*)last_row_ptr, 0, last_row_bytes, ARCH_MEMOP_F_DEFAULT);
+    } else {
+        for (uint32_t y = last_row_start_y; y < state->height_px; y++) {
+            for (uint32_t x = 0; x < state->width_px; x++) {
+                 draw_pixel(state, x, y, state->bg_color);
+            }
         }
     }
 }
@@ -111,5 +122,36 @@ void console_render_fb_write_char(framebuffer_console_state_t *state, char c) {
     if (state->cursor_row >= state->rows) {
         console_render_fb_scroll(state);
         state->cursor_row = state->rows - 1;
+    }
+}
+
+void console_render_fb_write(framebuffer_console_state_t *state, const char *data, size_t len) {
+    if (!state || !data) return;
+
+    // Instead of calling _write_char and repeatedly checking wrap/scroll for every char,
+    // we do an optimized bulk write.
+    for (size_t i = 0; i < len; i++) {
+        char c = data[i];
+
+        if (c == '\n') {
+            state->cursor_col = 0;
+            state->cursor_row++;
+        } else if (c == '\r') {
+            state->cursor_col = 0;
+        } else {
+            draw_char_glyph(state, c, state->cursor_col, state->cursor_row);
+            state->cursor_col++;
+
+            if (state->cursor_col >= state->cols) {
+                state->cursor_col = 0;
+                state->cursor_row++;
+            }
+        }
+
+        // Only scroll if we really fell off the edge during this loop
+        if (state->cursor_row >= state->rows) {
+            console_render_fb_scroll(state);
+            state->cursor_row = state->rows - 1;
+        }
     }
 }

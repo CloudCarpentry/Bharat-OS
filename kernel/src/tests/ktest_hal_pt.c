@@ -3,8 +3,8 @@
 #include "../../include/hal/hal_tlb.h"
 #include "../../include/mm.h"
 #include "../../include/numa.h"
-#include "bharat/console.h"
-#define KPRINT(s) console_write_raw(s)
+#include "console/console_core.h"
+#define KPRINT(s) console_write_raw(s, string_length(s))
 
 #include "../../include/kernel.h"
 #include "../../include/bharat/boot_info.h"

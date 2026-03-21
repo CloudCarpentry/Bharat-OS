@@ -14,6 +14,7 @@
 #endif
 #include "ipc_async.h"
 #include "kernel.h"
+#include "console/console_core.h"
 #include "mm.h"
 #include "arch/arch_cpu_caps.h"
 #include "mm_zswap.h"
@@ -50,7 +51,6 @@ BHARAT_REGISTER_COMPONENT(
 #include "display/boot_gui_init.h"
 #include "tests/ktest.h"
 #include <bharat/cpu_local.h>
-#include "bharat/console.h"
 
 #include "arch/arch_ext_state.h"
 #include "arch/arch_cpu_caps.h"
@@ -62,7 +62,7 @@ BHARAT_REGISTER_COMPONENT(
 #include "hal/riscv_bsp.h"
 #endif
 
-#define KPRINT(s) console_write_raw(s)
+#define KPRINT(s) console_write_raw(s, string_length(s))
 #define CAP_RIGHT_IPC_ENDPOINT 0x1U
 
 extern void console_register_serial_backend(void);
@@ -154,7 +154,7 @@ static void kernel_phase2_hello_service_smoke(void) {
 
   if (reply.msg_len > 0U && reply.payload[0] != '\0') {
     KPRINT("P2: ipc reply received payload=");
-    console_write_raw(reply.payload);
+    console_write_raw(reply.payload, string_length(reply.payload));
     KPRINT("\nP2: hello ipc smoke test passed\n");
   } else {
     KPRINT("P2: hello ipc smoke test failed\n");
@@ -251,8 +251,7 @@ void kernel_main(void) {
 #endif
 
   /* Initialize core console layer and serial backend early to allow KPRINT to work immediately */
-  console_init_early();
-  console_register_serial_backend();
+  console_early_init();
 
 #if defined(__riscv) || defined(__aarch64__)
   KPRINT("!!!!! BOOT: Entry kernel_main, fdt_ptr_arg="); 
@@ -516,8 +515,6 @@ void kernel_main(void) {
     } else {
       KPRINT("  [UI] Boot GUI not available, text mode only.\n");
     }
-    extern void console_register_fb_backend(void);
-    console_register_fb_backend();
 #endif /* BHARAT_BOOT_GUI */
 
     KPRINT("  [AI] Calibrating hardware silicon metrics...\n");
@@ -549,9 +546,9 @@ void kernel_main(void) {
     extern void kernel_run_boot_tests(void);
     kernel_run_boot_tests();
 
-    console_write_raw("[bharat] hw_profile=");
-    console_write_raw(profile);
-    console_write_raw("\n");
+    console_write_raw("[bharat] hw_profile=", string_length("[bharat] hw_profile="));
+    console_write_raw(profile, string_length(profile));
+    console_write_raw("\n", string_length("\n"));
 
     /* Hello World Application */
     extern void hello_world_app(void);

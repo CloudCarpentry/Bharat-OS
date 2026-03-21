@@ -13,8 +13,8 @@
 #endif
 
 #include "hal/hal.h"
-#include "bharat/console.h"
-#define KPRINT(s) console_write_raw(s)
+#include "console/console_core.h"
+#define KPRINT(s) console_write_raw(s, string_length(s))
 
 #include <stddef.h>
 #include <stdint.h>
