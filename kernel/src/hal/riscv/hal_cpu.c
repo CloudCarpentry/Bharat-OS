@@ -149,11 +149,17 @@ bool hal_cpu_is_illegal_instruction(const void *trap_frame) {
 }
 
 uint32_t hal_interrupt_get_active_irq(uint64_t hw_cause) {
-    return (uint32_t)hw_cause;
+    // The top bit (63 on rv64, 31 on rv32) indicates an interrupt.
+    // Strip it so the IRQ number fits cleanly in a 32-bit generic ID.
+#if __riscv_xlen == 32
+    return (uint32_t)(hw_cause & ~(1ULL << 31));
+#else
+    return (uint32_t)(hw_cause & ~(1ULL << 63));
+#endif
 }
 
 uint64_t hal_irq_timer_vector(void) {
-    return 0x8000000000000005ULL;
+    return 5U; // S-Mode Timer Interrupt
 }
 
 uint64_t hal_cpu_get_fault_address(const void *trap_frame) {
