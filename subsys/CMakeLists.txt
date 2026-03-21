@@ -8,6 +8,7 @@ add_library(subsys_manager STATIC
     src/manager.c
     src/subsys_test_runner.c
     src/skb/skb.c
+    src/version_registry.c
 )
 target_include_directories(subsys_manager PUBLIC include ${CMAKE_SOURCE_DIR}/kernel/include)
 target_link_libraries(subsys_manager PUBLIC bharat_user_buildopts bharat_freestanding)

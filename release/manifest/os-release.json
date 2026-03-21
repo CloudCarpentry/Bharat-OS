@@ -25,7 +25,15 @@
     "network": { "version": "0.4.0", "iface": 2, "channel": "beta" },
     "ai_governor": { "version": "0.1.0", "iface": 1, "channel": "experimental" }
   },
-  "drivers": {},
+  "drivers": {
+    "virtio_net": { "version": "0.8.0", "iface": 1, "channel": "dev" },
+    "ptp_clock": { "version": "0.8.0", "iface": 1, "channel": "dev" },
+    "fpga_mgr": { "version": "0.8.0", "iface": 1, "channel": "dev" },
+    "cluster_bus": { "version": "0.8.0", "iface": 1, "channel": "experimental" },
+    "automotive_can_loopback": { "version": "0.8.0", "iface": 1, "channel": "dev" },
+    "generic_arch_irq_timer": { "version": "0.8.0", "iface": 1, "channel": "dev" },
+    "generic_board_fabric": { "version": "0.8.0", "iface": 1, "channel": "dev" }
+  },
   "sdk": {
     "version": "0.2.0",
     "libc_abi": 1

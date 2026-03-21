@@ -98,6 +98,16 @@ def generate_headers(manifest_path, out_dir):
             f.write(f'set(BHARAT_SVC_{svc_name.upper()}_IFACE "{svc_info.get("iface", 0)}")\n')
             f.write(f'set(BHARAT_SVC_{svc_name.upper()}_CHANNEL "{svc_info.get("channel", "unknown")}")\n')
 
+        for drv_name, drv_info in manifest.get("drivers", {}).items():
+            f.write(f'set(BHARAT_DRV_{drv_name.upper()}_VERSION "{drv_info.get("version", "0.0.0")}")\n')
+            f.write(f'set(BHARAT_DRV_{drv_name.upper()}_IFACE "{drv_info.get("iface", 0)}")\n')
+            f.write(f'set(BHARAT_DRV_{drv_name.upper()}_CHANNEL "{drv_info.get("channel", "unknown")}")\n')
+
+        for subsys_name, subsys_info in manifest.get("subsystems", {}).items():
+            f.write(f'set(BHARAT_SUBSYS_{subsys_name.upper()}_VERSION "{subsys_info.get("version", "0.0.0")}")\n')
+            f.write(f'set(BHARAT_SUBSYS_{subsys_name.upper()}_IFACE "{subsys_info.get("iface", 0)}")\n')
+            f.write(f'set(BHARAT_SUBSYS_{subsys_name.upper()}_CHANNEL "{subsys_info.get("channel", "unknown")}")\n')
+
         # Provide a helper function to register components
         f.write("""
 function(bharat_register_component)
