@@ -150,18 +150,23 @@ fi
 CMAKE_ARGS=""
 
 IFS=',' read -ra PROFILE_ARR <<< "$PROFILE"
-for prof in "${PROFILE_ARR[@]}"; do
-    prof_upper=$(echo "$prof" | tr '[:lower:]' '[:upper:]')
-    CMAKE_ARGS="${CMAKE_ARGS} -DBHARAT_PROFILE_${prof_upper}=1"
-done
+if [ "${#PROFILE_ARR[@]}" -gt 1 ]; then
+    echo "Warning: multiple --profile values are not supported; using first value: ${PROFILE_ARR[0]}"
+fi
+PROFILE_SELECTED="${PROFILE_ARR[0]}"
+PROFILE_UPPER=$(echo "$PROFILE_SELECTED" | tr '[:lower:]' '[:upper:]')
+CMAKE_ARGS="${CMAKE_ARGS} -DBHARAT_DEVICE_PROFILE=${PROFILE_UPPER}"
 
 IFS=',' read -ra PERSONALITY_ARR <<< "$PERSONALITY"
-for pers in "${PERSONALITY_ARR[@]}"; do
-    pers_upper=$(echo "$pers" | tr '[:lower:]' '[:upper:]')
-    CMAKE_ARGS="${CMAKE_ARGS} -DBHARAT_PERSONALITY_${pers_upper}=1"
-done
+if [ "${#PERSONALITY_ARR[@]}" -gt 1 ]; then
+    echo "Warning: multiple --personality values are not supported; using first value: ${PERSONALITY_ARR[0]}"
+fi
+PERSONALITY_SELECTED="${PERSONALITY_ARR[0]}"
+PERSONALITY_UPPER=$(echo "$PERSONALITY_SELECTED" | tr '[:lower:]' '[:upper:]')
+CMAKE_ARGS="${CMAKE_ARGS} -DBHARAT_PERSONALITY_PROFILE=${PERSONALITY_UPPER}"
 
 if [ -n "$BOARD" ]; then
+    CMAKE_ARGS="${CMAKE_ARGS} -DBHARAT_TARGET_BOARD=${BOARD}"
     # Map boards to appropriate profiles
     if [[ "$BOARD" == "shakti-c" || "$BOARD" == "shakti-e" || "$BOARD" == "shakti-i" ]]; then
          CMAKE_ARGS="${CMAKE_ARGS} -DBHARAT_BOOT_HW_PROFILE=edge -DBHARAT_ARCH_VARIANT=SHAKTI -DBHARAT_RISCV_SOC_PROFILE=${BOARD}"
