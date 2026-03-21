@@ -13,8 +13,31 @@ include(BharatCommon)
 include(BharatProfiles)
 include(BharatPersonality)
 
-# Versioning Identity System
-include(cmake/BharatVersion.cmake)
+# Versioning Identity System: Generate and load from manifest
+set(BHARAT_MANIFEST_JSON "${CMAKE_SOURCE_DIR}/release/manifest/os-release.json")
+set(BHARAT_GEN_SCRIPT "${CMAKE_SOURCE_DIR}/tools/gen_manifest.py")
+set(BHARAT_GEN_DIR "${CMAKE_BINARY_DIR}/generated")
+set(BHARAT_GEN_INCLUDE_DIR "${BHARAT_GEN_DIR}/include")
+
+file(MAKE_DIRECTORY "${BHARAT_GEN_DIR}")
+file(MAKE_DIRECTORY "${BHARAT_GEN_INCLUDE_DIR}/bharat")
+
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+
+execute_process(
+    COMMAND "${Python3_EXECUTABLE}" "${BHARAT_GEN_SCRIPT}"
+            "${BHARAT_MANIFEST_JSON}"
+            "${BHARAT_GEN_DIR}"
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+    RESULT_VARIABLE BHARAT_GEN_RESULT
+)
+
+if(NOT BHARAT_GEN_RESULT EQUAL 0)
+    message(FATAL_ERROR "gen_manifest.py failed with code ${BHARAT_GEN_RESULT}")
+endif()
+
+include("${BHARAT_GEN_DIR}/BharatVersion.cmake")
+include_directories("${BHARAT_GEN_INCLUDE_DIR}")
 
 # Architecture selection
 bharat_set_arch_defaults()
