@@ -2,7 +2,7 @@
 #include "hal/hal_discovery.h"
 #include "hal/hal_pt.h"
 #include "mm/aspace.h"
-#include "bharat/console.h"
+#include "console/console_core.h"
 #include <stddef.h>
 
 mmu_ops_t *active_mmu = NULL;

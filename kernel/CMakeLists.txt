@@ -346,7 +346,7 @@ if(BHARAT_ENABLE_MM_LEGACY_SHIMS)
         $<TARGET_OBJECTS:bharat_mm_legacy>
     )
 endif()
-target_link_libraries(kernel.elf subsys_manager bharat_libmsg bharat_kernel_buildopts)
+target_link_libraries(kernel.elf subsys_manager bharat_libmsg bharat_kernel_buildopts bharatos_drivers)
 set_target_properties(kernel.elf PROPERTIES
     OUTPUT_NAME "kernel.elf"
     SUFFIX ""

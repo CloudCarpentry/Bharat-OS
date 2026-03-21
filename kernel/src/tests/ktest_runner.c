@@ -2,7 +2,7 @@
 #include "hal/hal.h"
 #include "kernel.h"
 #include "tests/ktest.h"
-#include "bharat/console.h"
+#include "console/console_core.h"
 
 extern const kernel_test_t __kern_tests_start[];
 extern const kernel_test_t __kern_tests_end[];
@@ -76,7 +76,7 @@ void kernel_run_boot_tests(void) {
     }
   }
 
-  console_write_raw("--- Running Boot Kernel Tests ---\n");
+  console_write_raw("--- Running Boot Kernel Tests ---\n", string_length("--- Running Boot Kernel Tests ---\n"));
 
   const kernel_test_t *test = __kern_tests_start;
   uint32_t passed = 0;
@@ -104,21 +104,21 @@ void kernel_run_boot_tests(void) {
     }
 
     if (should_run) {
-      console_write_raw(" [TEST] ");
-      console_write_raw(test->name);
-      console_write_raw("... ");
+      console_write_raw(" [TEST] ", string_length(" [TEST] "));
+      console_write_raw(test->name, string_length(test->name));
+      console_write_raw("... ", string_length("... "));
 
       int result = test->run();
 
       if (result == 0) {
-        console_write_raw("PASSED\n");
+        console_write_raw("PASSED\n", string_length("PASSED\n"));
         passed++;
       } else {
-        console_write_raw("FAILED\n");
+        console_write_raw("FAILED\n", string_length("FAILED\n"));
         failed++;
 
         if (test->critical) {
-          console_write_raw("Critical test failed. ");
+          console_write_raw("Critical test failed. ", string_length("Critical test failed. "));
           // Always panic on critical failure in boot tests
           kernel_panic("Critical boot test failed");
         } else if (fail_panic) {
@@ -132,5 +132,5 @@ void kernel_run_boot_tests(void) {
     test++;
   }
 
-  console_write_raw("--- Boot Tests Complete ---\n");
+  console_write_raw("--- Boot Tests Complete ---\n", string_length("--- Boot Tests Complete ---\n"));
 }

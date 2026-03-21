@@ -2,7 +2,7 @@
 #include "../../../../include/bharat/cpu_local.h"
 #include "../../../../include/kernel.h"
 #include "../../../../include/panic.h"
-#include "bharat/console.h"
+#include "console/console_core.h"
 
 void mm_switch_active_aspace(uint32_t core_id, address_space_t *prev_as, address_space_t *next_as) {
     if (core_id >= MAX_CPUS) return;

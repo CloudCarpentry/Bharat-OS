@@ -20,7 +20,11 @@ add_executable(test_console console/test_console.c
                ../../kernel/src/console/console_router.c
                ../../kernel/src/console/console_policy.c
                ../../kernel/src/console/console_core.c
-               ../../kernel/src/console/console_panic.c)
+               ../../kernel/src/console/console_panic.c
+               ../../kernel/src/console/console_discovery.c
+               ../../kernel/src/console/memlog_console.c
+               ../../kernel/src/console/console_render_fb.c
+               ../../kernel/src/arch/common/memops_scalar.c)
 target_include_directories(test_console PRIVATE ../../kernel/include ../../kernel/src)
 target_compile_definitions(test_console PRIVATE BHARAT_HOST_TEST)
 target_link_libraries(test_console PRIVATE c)
