@@ -40,7 +40,14 @@ The IPC subsystem relies entirely on the kernel scheduler (`sched.h`) for state 
 This isolates the IPC code from internal scheduler data structures and runqueues.
 
 ## SMP / Multicore Notes
-Wait queues and state transitions are architecture-independent. While the current stub implements a simplified queuing mechanism, full SMP deployments must protect endpoint state modifications (message copying and wait-queue manipulation) using a spinlock or equivalent synchronization primitive to avoid race conditions. Currently, the kernel relies on higher-level generic locks.
+Wait queues and state transitions are architecture-independent. Endpoint state modifications (message copying, `has_msg` transitions, and wait-queue coupling) are protected with endpoint-local spinlocks in the synchronous endpoint path.
+
+This protects correctness under multicore contention on supported architectures (x86_64, ARM64, RISC-V). For very high-core-count or NUMA-heavy systems, lock contention and queue sharding policy remain tuning targets.
 
 ## Guarantees Across Profiles / Personalities
 Because IPC blocking and wake-up logic delegates entirely to the core scheduler, IPC behaves consistently across all supported CPU architectures (x86_64, ARM64, RISC-V) and subsystem personalities (Linux, Android). No architecture-specific hacks or global states (like `g_current`) are directly used within the wake-up logic.
+
+Endpoint sizing is profile-aware at build time:
+- RT-oriented profiles prioritize tighter bounded memory.
+- General profiles use moderate endpoint/payload limits.
+- Datacenter/NUMA-aware profiles allocate larger endpoint pools/payload ceilings.
