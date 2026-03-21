@@ -240,7 +240,7 @@ int fdt_parse(const void *fdt_ptr, void *boot_info_ptr,
                      str_eq(comp + c_len, "arm,cortex-a15-gic")) {
             is_gic = 1;
           }
-          while (comp[c_len] != '\0' && c_len < len)
+          while (c_len < len && comp[c_len] != '\0')
             c_len++;
           c_len++;
         }
@@ -501,7 +501,7 @@ int fdt_parse_discovery(const void *fdt_ptr, system_discovery_t *discovery) {
           } else if (str_eq(comp + c_len, "simple-framebuffer")) {
             is_fb = 1;
           }
-          while (comp[c_len] != '\0' && c_len < len)
+          while (c_len < len && comp[c_len] != '\0')
             c_len++;
           c_len++;
         }
