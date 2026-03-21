@@ -40,6 +40,26 @@ chmod +x tools/build.sh
 .\tools\build.ps1 -Arch arm64 -Run
 ```
 
+### PowerShell ↔ Bash Argument Mapping (ARM64)
+
+If you run this on Windows:
+
+```powershell
+.\tools\build.ps1 -Arch arm64 -Clean -Run -BootGui ON -DualSerial
+```
+
+the equivalent command on Linux/macOS/WSL/BSD is:
+
+```bash
+./tools/build.sh --arch arm64 --clean --run --boot-gui ON --dual-serial
+```
+
+Short-form flags also work in `build.sh`, so this is equivalent too:
+
+```bash
+./tools/build.sh -Arch arm64 -Clean -Run -BootGui ON -DualSerial
+```
+
 ### Using CMake Presets
 
 You can use standard CMake presets for compiling the kernel and executing tests.
