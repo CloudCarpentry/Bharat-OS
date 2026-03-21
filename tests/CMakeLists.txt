@@ -43,8 +43,12 @@ add_executable(test_ipc_async_timeout test_ipc_async_timeout.c ../kernel/src/ipc
 target_include_directories(test_ipc_async_timeout PRIVATE ../kernel/include)
 add_test(NAME test_ipc_async_timeout COMMAND test_ipc_async_timeout)
 
-add_executable(test_automotive_subsys test_automotive_subsys.c ../subsys/automotive/automotive.c)
-target_include_directories(test_automotive_subsys PRIVATE ../subsys/include ../kernel/include)
+add_executable(test_automotive_subsys
+    test_automotive_subsys.c
+    ../subsys/automotive/automotive.c
+    ../drivers/src/automotive/can_loopback.c
+)
+target_include_directories(test_automotive_subsys PRIVATE ../subsys/include ../kernel/include ../drivers/include)
 add_test(NAME test_automotive_subsys COMMAND test_automotive_subsys)
 
 target_include_directories(test_urpc_ring PRIVATE ../kernel/include)

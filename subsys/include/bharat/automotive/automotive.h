@@ -41,6 +41,14 @@ typedef enum {
     AUTOMOTIVE_BUS_LIN = 2
 } automotive_fieldbus_t;
 
+typedef enum {
+    AUTOMOTIVE_POWER_MODE_OFF = 0,
+    AUTOMOTIVE_POWER_MODE_ACCESSORY = 1,
+    AUTOMOTIVE_POWER_MODE_DRIVE = 2,
+    AUTOMOTIVE_POWER_MODE_CHARGE = 3,
+    AUTOMOTIVE_POWER_MODE_LIMP_HOME = 4
+} automotive_power_mode_t;
+
 typedef struct {
     uint16_t capacity;
     uint16_t high_watermark;
@@ -92,6 +100,14 @@ typedef bool (*automotive_ethernet_hook_t)(uint16_t ethertype,
                                            uint16_t payload_len,
                                            uint8_t traffic_class);
 typedef void (*automotive_boot_service_start_hook_t)(uint32_t service_id);
+typedef void (*automotive_power_mode_hook_t)(automotive_power_mode_t from_mode, automotive_power_mode_t to_mode);
+
+typedef struct {
+    uint32_t controller_id;
+    automotive_fieldbus_t bus;
+    uint8_t max_dlc;
+    uint8_t online;
+} automotive_net_controller_t;
 
 /* Initialize the automotive/robotics/industrial subsystem. */
 void subsys_automotive_init(void);
@@ -142,5 +158,26 @@ size_t subsys_automotive_run_boot_stage(uint32_t stage_id,
 
 /* Backward compatible API. */
 bool subsys_automotive_send_can_frame(uint32_t id, const uint8_t* data, uint8_t dlc);
+
+/* Vehicle network subsystem helpers. */
+bool subsys_automotive_register_net_controller(const automotive_net_controller_t* controller);
+bool subsys_automotive_set_net_controller_online(uint32_t controller_id, bool online);
+bool subsys_automotive_send_vns_frame(uint32_t controller_id,
+                                      uint32_t id,
+                                      const uint8_t* data,
+                                      uint8_t dlc,
+                                      uint8_t priority_class);
+uint32_t subsys_automotive_get_vns_tx_count(uint32_t controller_id);
+
+/* Safety I/O emergency path helpers. */
+void subsys_automotive_trigger_emergency_stop(uint32_t reason_code);
+bool subsys_automotive_is_emergency_stop_active(void);
+uint32_t subsys_automotive_get_emergency_reason(void);
+void subsys_automotive_clear_emergency_stop(void);
+
+/* Power and mode manager helpers. */
+void subsys_automotive_register_power_mode_hook(automotive_power_mode_hook_t hook);
+automotive_power_mode_t subsys_automotive_get_power_mode(void);
+bool subsys_automotive_request_power_mode(automotive_power_mode_t next_mode);
 
 #endif // BHARAT_SUBSYS_AUTOMOTIVE_H

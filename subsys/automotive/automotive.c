@@ -1,13 +1,18 @@
 #include "bharat/automotive/automotive.h"
 
 #define AUTOMOTIVE_INTERNAL_QUEUE_SLOTS 8U
+#define AUTOMOTIVE_INTERNAL_CONTROLLERS 8U
 
 static automotive_runtime_policy_t g_policy;
 static automotive_deadline_hook_t g_deadline_hook;
 static automotive_time_sync_hook_t g_time_sync_hook;
 static automotive_ethernet_hook_t g_ethernet_hook;
+static automotive_power_mode_hook_t g_power_mode_hook;
 static uint64_t g_last_monotonic_time_ns;
 static uint64_t g_last_bus_time_ns;
+static automotive_power_mode_t g_power_mode;
+static uint8_t g_emergency_stop_active;
+static uint32_t g_emergency_reason_code;
 
 typedef struct {
     uint8_t in_use;
@@ -20,6 +25,14 @@ static automotive_watchdog_t g_watchdogs[BHARAT_AUTOMOTIVE_MAX_WATCHDOGS];
 static automotive_health_state_t g_domain_health[AUTOMOTIVE_FAULT_DOMAIN_GENERIC + 1U];
 static automotive_boot_service_t g_boot_services[BHARAT_AUTOMOTIVE_MAX_BOOT_SERVICES];
 static size_t g_boot_service_count;
+
+typedef struct {
+    uint8_t in_use;
+    automotive_net_controller_t controller;
+    uint32_t tx_count;
+} net_controller_slot_t;
+
+static net_controller_slot_t g_net_controllers[AUTOMOTIVE_INTERNAL_CONTROLLERS];
 
 static queue_slot_t* find_queue(uint32_t queue_id) {
     for (size_t i = 0; i < AUTOMOTIVE_INTERNAL_QUEUE_SLOTS; ++i) {
@@ -39,8 +52,12 @@ void subsys_automotive_init(void) {
     g_deadline_hook = 0;
     g_time_sync_hook = 0;
     g_ethernet_hook = 0;
+    g_power_mode_hook = 0;
     g_last_monotonic_time_ns = 0U;
     g_last_bus_time_ns = 0U;
+    g_power_mode = AUTOMOTIVE_POWER_MODE_OFF;
+    g_emergency_stop_active = 0U;
+    g_emergency_reason_code = 0U;
     g_boot_service_count = 0U;
 
     for (size_t i = 0; i < AUTOMOTIVE_INTERNAL_QUEUE_SLOTS; ++i) {
@@ -53,6 +70,11 @@ void subsys_automotive_init(void) {
 
     for (size_t i = 0; i <= AUTOMOTIVE_FAULT_DOMAIN_GENERIC; ++i) {
         g_domain_health[i] = AUTOMOTIVE_HEALTH_OK;
+    }
+
+    for (size_t i = 0; i < AUTOMOTIVE_INTERNAL_CONTROLLERS; ++i) {
+        g_net_controllers[i].in_use = 0U;
+        g_net_controllers[i].tx_count = 0U;
     }
 }
 
@@ -304,6 +326,152 @@ size_t subsys_automotive_run_boot_stage(uint32_t stage_id,
 
 bool subsys_automotive_send_can_frame(uint32_t id, const uint8_t* data, uint8_t dlc) {
     return subsys_automotive_send_frame(AUTOMOTIVE_BUS_CAN_CLASSIC, id, data, dlc);
+}
+
+bool subsys_automotive_register_net_controller(const automotive_net_controller_t* controller) {
+    if (!controller || controller->max_dlc == 0U) {
+        return false;
+    }
+
+    for (size_t i = 0; i < AUTOMOTIVE_INTERNAL_CONTROLLERS; ++i) {
+        if (g_net_controllers[i].in_use &&
+            g_net_controllers[i].controller.controller_id == controller->controller_id) {
+            g_net_controllers[i].controller = *controller;
+            g_net_controllers[i].tx_count = 0U;
+            return true;
+        }
+    }
+
+    for (size_t i = 0; i < AUTOMOTIVE_INTERNAL_CONTROLLERS; ++i) {
+        if (!g_net_controllers[i].in_use) {
+            g_net_controllers[i].in_use = 1U;
+            g_net_controllers[i].controller = *controller;
+            g_net_controllers[i].tx_count = 0U;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool subsys_automotive_set_net_controller_online(uint32_t controller_id, bool online) {
+    for (size_t i = 0; i < AUTOMOTIVE_INTERNAL_CONTROLLERS; ++i) {
+        if (g_net_controllers[i].in_use &&
+            g_net_controllers[i].controller.controller_id == controller_id) {
+            g_net_controllers[i].controller.online = online ? 1U : 0U;
+            return true;
+        }
+    }
+    return false;
+}
+
+bool subsys_automotive_send_vns_frame(uint32_t controller_id,
+                                      uint32_t id,
+                                      const uint8_t* data,
+                                      uint8_t dlc,
+                                      uint8_t priority_class) {
+    (void)priority_class;
+    if (g_emergency_stop_active) {
+        return false;
+    }
+
+    for (size_t i = 0; i < AUTOMOTIVE_INTERNAL_CONTROLLERS; ++i) {
+        if (g_net_controllers[i].in_use &&
+            g_net_controllers[i].controller.controller_id == controller_id) {
+            if (!g_net_controllers[i].controller.online || dlc > g_net_controllers[i].controller.max_dlc) {
+                return false;
+            }
+
+            if (!subsys_automotive_send_frame(g_net_controllers[i].controller.bus, id, data, dlc)) {
+                return false;
+            }
+
+            g_net_controllers[i].tx_count++;
+            return true;
+        }
+    }
+    return false;
+}
+
+uint32_t subsys_automotive_get_vns_tx_count(uint32_t controller_id) {
+    for (size_t i = 0; i < AUTOMOTIVE_INTERNAL_CONTROLLERS; ++i) {
+        if (g_net_controllers[i].in_use &&
+            g_net_controllers[i].controller.controller_id == controller_id) {
+            return g_net_controllers[i].tx_count;
+        }
+    }
+    return 0U;
+}
+
+void subsys_automotive_trigger_emergency_stop(uint32_t reason_code) {
+    g_emergency_stop_active = 1U;
+    g_emergency_reason_code = reason_code;
+    g_domain_health[AUTOMOTIVE_FAULT_DOMAIN_POWERTRAIN] = AUTOMOTIVE_HEALTH_FAILED;
+}
+
+bool subsys_automotive_is_emergency_stop_active(void) {
+    return g_emergency_stop_active != 0U;
+}
+
+uint32_t subsys_automotive_get_emergency_reason(void) {
+    return g_emergency_reason_code;
+}
+
+void subsys_automotive_clear_emergency_stop(void) {
+    g_emergency_stop_active = 0U;
+    g_emergency_reason_code = 0U;
+}
+
+void subsys_automotive_register_power_mode_hook(automotive_power_mode_hook_t hook) {
+    g_power_mode_hook = hook;
+}
+
+automotive_power_mode_t subsys_automotive_get_power_mode(void) {
+    return g_power_mode;
+}
+
+static bool is_power_mode_transition_allowed(automotive_power_mode_t from_mode, automotive_power_mode_t to_mode) {
+    if (to_mode > AUTOMOTIVE_POWER_MODE_LIMP_HOME) {
+        return false;
+    }
+    if (from_mode == to_mode) {
+        return true;
+    }
+
+    if (to_mode == AUTOMOTIVE_POWER_MODE_LIMP_HOME) {
+        return true;
+    }
+
+    if (from_mode == AUTOMOTIVE_POWER_MODE_OFF) {
+        return (to_mode == AUTOMOTIVE_POWER_MODE_ACCESSORY || to_mode == AUTOMOTIVE_POWER_MODE_CHARGE);
+    }
+
+    if (from_mode == AUTOMOTIVE_POWER_MODE_ACCESSORY) {
+        return (to_mode == AUTOMOTIVE_POWER_MODE_OFF || to_mode == AUTOMOTIVE_POWER_MODE_DRIVE);
+    }
+
+    if (from_mode == AUTOMOTIVE_POWER_MODE_DRIVE) {
+        return (to_mode == AUTOMOTIVE_POWER_MODE_OFF || to_mode == AUTOMOTIVE_POWER_MODE_CHARGE);
+    }
+
+    if (from_mode == AUTOMOTIVE_POWER_MODE_CHARGE) {
+        return (to_mode == AUTOMOTIVE_POWER_MODE_OFF || to_mode == AUTOMOTIVE_POWER_MODE_ACCESSORY);
+    }
+
+    return (from_mode == AUTOMOTIVE_POWER_MODE_LIMP_HOME && to_mode == AUTOMOTIVE_POWER_MODE_OFF);
+}
+
+bool subsys_automotive_request_power_mode(automotive_power_mode_t next_mode) {
+    automotive_power_mode_t from_mode = g_power_mode;
+    if (!is_power_mode_transition_allowed(from_mode, next_mode)) {
+        return false;
+    }
+
+    g_power_mode = next_mode;
+    if (g_power_mode_hook) {
+        g_power_mode_hook(from_mode, next_mode);
+    }
+    return true;
 }
 
 void bharat_rt_deadline_timeout_hook(uint32_t endpoint_ref, uint32_t request_id, uint64_t current_ticks) {

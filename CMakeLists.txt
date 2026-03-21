@@ -225,6 +225,12 @@ bharat_add_host_test_compat_target(
     "Host tests disabled. Set -DBHARAT_BUILD_HOST_TESTS=ON to build test_vmm_aspace."
 )
 
+# Automotive subsystem host-test compatibility.
+bharat_add_host_test_compat_target(
+    test_automotive_subsys
+    "Host tests disabled. Reconfigure with -DBHARAT_BUILD_HOST_TESTS=ON to build test_automotive_subsys."
+)
+
 # Image generation
 include(BharatImage)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-pie -fno-PIE -mcmodel=large")
