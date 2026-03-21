@@ -205,6 +205,20 @@ You can tune early boot behavior without source edits:
 
 These are wired through both build scripts and raw CMake cache entries.
 
+### Building for the Automotive Profile
+
+The CAN subsystem (CAN generic core, `virt_can` backend, CAN user-space service, loopback driver, and automotive subsystem) is disabled by default to save space. To enable it, use the `AUTOMOTIVE_ECU` or `AUTOMOTIVE_INFOTAINMENT` device profile.
+
+**Using bash script:**
+```bash
+./build.sh x86_64 --profile=AUTOMOTIVE_ECU
+```
+
+**Using PowerShell:**
+```powershell
+.\build.ps1 -Arch x86_64 -Profile AUTOMOTIVE_ECU -Run
+```
+
 ### GUI and Serial Console Output (`-BootGui ON`)
 
 When `BHARAT_BOOT_GUI` is enabled (e.g. passing `-BootGui ON` to `build.ps1` or `--boot-gui=ON` to `build.sh`), QEMU is launched with a graphical window.

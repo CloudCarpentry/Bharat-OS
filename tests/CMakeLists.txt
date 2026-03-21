@@ -392,6 +392,12 @@ add_executable(test_pt_x86_64_mm
 target_include_directories(test_pt_x86_64_mm PRIVATE ../kernel/include)
 add_test(NAME test_pt_x86_64_mm COMMAND test_pt_x86_64_mm)
 
+add_executable(test_virt_can_legacy host/services/can/test_virt_can.c ../drivers/virt_can/virt_can.c ../drivers/can_core/can_controller_core.c)
+target_include_directories(test_virt_can_legacy PRIVATE ../drivers/include)
+target_compile_definitions(test_virt_can_legacy PRIVATE TESTING=1)
+target_link_libraries(test_virt_can_legacy PRIVATE c)
+add_test(NAME test_virt_can_legacy COMMAND test_virt_can_legacy)
+
 add_executable(test_netstack_phase2
     test_netstack_phase2.c
     ../services/netstack/src/netbuf.c
