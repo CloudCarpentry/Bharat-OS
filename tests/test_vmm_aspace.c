@@ -169,6 +169,32 @@ TEST(aspace_lookup_authoritative_without_pt_mapping) {
     printf("Passed aspace_lookup_authoritative_without_pt_mapping\n");
 }
 
+TEST(vm_object_kinds_basic_construction) {
+    printf("Running vm_object_kinds_basic_construction...\n");
+
+    int fake_backing = 42;
+    vm_object_t *file_obj = vm_object_create_file(&fake_backing, 0x2000, 0x4000, 0);
+    ASSERT_NOT_NULL(file_obj);
+    ASSERT_EQ(file_obj->kind, VM_OBJECT_FILE);
+    ASSERT_EQ(file_obj->u.file.file_offset, 0x2000u);
+
+    vm_object_t *dev_obj = vm_object_create_device(0x900000, 0x2000, 0, 0);
+    ASSERT_NOT_NULL(dev_obj);
+    ASSERT_EQ(dev_obj->kind, VM_OBJECT_DEVICE);
+    ASSERT_EQ(dev_obj->u.device.phys_base, 0x900000u);
+
+    vm_object_t *dma_obj = vm_object_create_dma(0xA00000, 0x3000, 1, 0, 0);
+    ASSERT_NOT_NULL(dma_obj);
+    ASSERT_EQ(dma_obj->kind, VM_OBJECT_DMA);
+    ASSERT_EQ(dma_obj->u.dma.phys_base, 0xA00000u);
+
+    vm_object_release(file_obj);
+    vm_object_release(dev_obj);
+    vm_object_release(dma_obj);
+
+    printf("Passed vm_object_kinds_basic_construction\n");
+}
+
 int main() {
     hal_pt_init(); // Needs mock
 
@@ -177,6 +203,7 @@ int main() {
     aspace_clone_copies_metadata();
     aspace_teardown_releases_refs();
     aspace_lookup_authoritative_without_pt_mapping();
+    vm_object_kinds_basic_construction();
 
     printf("All ASPACE tests passed successfully!\n");
     return 0;
