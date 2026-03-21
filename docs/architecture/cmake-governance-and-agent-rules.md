@@ -16,8 +16,21 @@ This document defines mandatory build-system governance for Bharat-OS contributo
 - Keep public headers in explicit include roots and avoid accidental include leakage.
 - Explicitly declare inter-target dependencies; do not rely on transitive link side effects.
 - Use option gates for experimental components (`BHARAT_BUILD_*`) so default builds remain stable.
+- Driver/service/subsystem inclusion must be controlled through component-policy cache options
+  (for example `BHARAT_ENABLE_DRIVER_*`, `BHARAT_ENABLE_SERVICE_*`, `BHARAT_ENABLE_SUBSYS_*`).
 
-## 1.3 Preset-first workflow
+## 1.3 Component-policy contract
+
+- `cmake/modules/BharatComponentPolicy.cmake` is the single source of truth for profile/personality/board
+  driven component requirements.
+- All top-level configuration entry points (presets, wrapper scripts, CI jobs, and agents) must pass:
+  - `BHARAT_DEVICE_PROFILE`
+  - `BHARAT_PERSONALITY_PROFILE`
+  - `BHARAT_TARGET_BOARD`
+- `BHARAT_DEVICE_PROFILE` and `BHARAT_PERSONALITY_PROFILE` are canonicalized to uppercase during configure.
+- Required-component checks must fail-fast at configure time (no deferred runtime surprises).
+
+## 1.4 Preset-first workflow
 
 - Contributors must use `CMakePresets.json` as the primary configuration entry point.
 - New target families should be reachable through at least one preset.
@@ -53,6 +66,8 @@ These rules apply equally to human contributors and automated code agents.
 3. **Evidence-backed status**: if code is scaffold/partial, do not label as baseline/production.
 4. **Parallel-safe changes**: keep interfaces stable; if changed, document expected downstream updates.
 5. **Architecture parity awareness**: when adding kernel-facing build logic, consider x86_64/arm64/riscv64 implications.
+6. **Agent parity**: automation agents (Codex, Jules, CI bots, and similar) must follow the same
+   component-policy and cache-variable contract as human contributors.
 
 ---
 

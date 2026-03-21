@@ -37,12 +37,24 @@ $RunYaml = (yq eval ".builds.$BuildConfig.run" $YamlPath)
 $GuiFlag = "OFF"
 if ($Gui -eq "true") { $GuiFlag = "ON" }
 
-Write-Host "Configuring: $Preset (Arch: $Arch, Profile: $Profile, Personality: $Personality, Board: $Board)"
+function Get-CanonicalConfigValue([string]$RawValue) {
+    if ([string]::IsNullOrWhiteSpace($RawValue) -or $RawValue -eq "null") {
+        return ""
+    }
+    return (($RawValue -split ",")[0]).Trim().ToUpperInvariant()
+}
+
+$ProfileCanonical = Get-CanonicalConfigValue $Profile
+$PersonalityCanonical = Get-CanonicalConfigValue $Personality
+$BoardCanonical = if ([string]::IsNullOrWhiteSpace($Board) -or $Board -eq "null") { "" } else { (($Board -split ",")[0]).Trim() }
+
+Write-Host "Configuring: $Preset (Arch: $Arch, Profile: $ProfileCanonical, Personality: $PersonalityCanonical, Board: $BoardCanonical)"
 
 cmake --preset $Preset `
     -DBHARAT_ARCH_FAMILY=$Arch `
-    -DBHARAT_DEVICE_PROFILE=$Profile `
-    -DBHARAT_PERSONALITY_PROFILE=$Personality `
+    -DBHARAT_DEVICE_PROFILE=$ProfileCanonical `
+    -DBHARAT_PERSONALITY_PROFILE=$PersonalityCanonical `
+    -DBHARAT_TARGET_BOARD=$BoardCanonical `
     -DBHARAT_BOOT_GUI=$GuiFlag
 
 Write-Host "Building..."

@@ -45,6 +45,16 @@ All compiler and linker settings are isolated in **CMake toolchain files** under
 
 We provide simple wrapper scripts (`build.sh` and `build.ps1`) that parse the target `build_config.yml` configuration and execute the underlying `cmake --preset` engine.
 
+At configure time, component selection is enforced by `cmake/modules/BharatComponentPolicy.cmake`.
+The wrapper scripts normalize and pass:
+
+- `BHARAT_DEVICE_PROFILE`
+- `BHARAT_PERSONALITY_PROFILE`
+- `BHARAT_TARGET_BOARD`
+
+If `profile`, `personality`, or `board` contain comma-separated values in `build_config.yml`,
+only the first value is consumed for CMake cache inputs.
+
 ### Helper Scripts (Recommended)
 
 Edit `build_config.yml` to define your target composition (e.g. arch, UI on/off, profile mapping). Then use the wrapper:
@@ -109,6 +119,11 @@ For Windows:
 cmake --preset windows-hosttools-debug
 cmake --build --preset windows-hosttools-debug
 ctest --preset windows-hosttools-debug
+```
+
+To run just the CMake component-policy host check:
+```bash
+ctest --preset linux-host-debug -R test_component_policy_matrix
 ```
 
 ### Profile and Image Bundling
