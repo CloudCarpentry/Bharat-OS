@@ -55,6 +55,7 @@ static const char *kernel_boot_hw_profile(void) {
 }
 
 void boot_common_early(const boot_info_t *boot) {
+    (void)boot;
     const char *profile = kernel_boot_hw_profile();
 
     KPRINT("\n");
@@ -76,6 +77,7 @@ void boot_common_early(const boot_info_t *boot) {
 }
 
 void boot_common_security(const boot_info_t *boot) {
+    (void)boot;
     KPRINT("  [SEC] Running secure-boot verification...\n");
     if (bharat_secure_boot_verify_early() != 0) {
       kernel_panic("secure-boot verification failed");
@@ -136,6 +138,7 @@ static void kernel_ai_governor_init(void) {
 }
 
 void boot_common_platform_services(const boot_info_t *boot) {
+    (void)boot;
     const bharat_boot_policy_t *boot_policy = bharat_boot_active_policy();
 
     KPRINT("  [PTP] Initializing power/thermal/perf manager\n");
@@ -210,8 +213,6 @@ extern void bharat_demo_app(void);
 extern int boot_video_map(const boot_info_t *boot);
 
 void boot_common_runtime(const boot_info_t *boot) {
-    const bharat_boot_policy_t *boot_policy = bharat_boot_active_policy();
-
     // Track video mapped status tightly.
     bool video_mapped = false;
 

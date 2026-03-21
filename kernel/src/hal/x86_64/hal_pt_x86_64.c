@@ -37,15 +37,6 @@ static virt_addr_t align_down(virt_addr_t value) {
     return value & X86_PAGE_MASK;
 }
 
-static bool table_empty(pt_t* table) {
-    for (size_t i = 0; i < 512; i++) {
-        if (table->entries[i] & X86_PT_PRESENT) {
-            return false;
-        }
-    }
-    return true;
-}
-
 static bool huge_2m_aligned(virt_addr_t va, phys_addr_t pa) {
     return ((va | pa) & (X86_LARGE_2M_SIZE - 1ULL)) == 0ULL;
 }

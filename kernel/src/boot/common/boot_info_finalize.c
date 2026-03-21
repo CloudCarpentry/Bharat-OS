@@ -16,4 +16,7 @@ void boot_info_finalize(boot_info_t *boot) {
             total_ram += boot->mem_map[i].size;
         }
     }
+
+    // Placeholder until boot_info_t stores aggregate RAM explicitly.
+    (void)total_ram;
 }

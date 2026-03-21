@@ -15,9 +15,9 @@ void kernel_main(uint32_t magic, multiboot_information_t *mb_info) {
 
     boot.magic = magic;
 
-    // Check multiboot magic
-    if (magic != 0x36d76289) { // MULTIBOOT2_BOOTLOADER_MAGIC
-        kernel_panic("Invalid Multiboot2 magic number!");
+    // Accept both Multiboot2 (QEMU/GRUB2) and Multiboot1 (legacy loaders).
+    if (magic != 0x36d76289U && magic != 0x2badb002U) {
+        kernel_panic("Invalid Multiboot magic number!");
     }
 
     // Parse multiboot into platform and generic boot info
