@@ -53,10 +53,10 @@ void arch_mmu_init(void) {
 }
 
 void hal_mmu_final_setup(void) {
-    system_discovery_t* discovery = hal_get_system_discovery();
     if (!active_mmu) return;
 
 #if defined(__aarch64__) || defined(__riscv)
+    system_discovery_t* discovery = hal_get_system_discovery();
     if (discovery) {
         // Map RAM
         for (uint32_t i = 0; i < discovery->topology.mem_region_count; i++) {

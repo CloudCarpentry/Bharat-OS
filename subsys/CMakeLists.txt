@@ -67,10 +67,9 @@ if(BHARAT_BUILD_AI_GOVERNOR)
     target_include_directories(ai_governor PRIVATE
         ${CMAKE_SOURCE_DIR}/kernel/include
     )
+    bharat_configure_userspace_binary(ai_governor)
 endif()
 
 if(BHARAT_BUILD_NETWORK_STUBS AND BHARAT_ENABLE_SERVICE_NETWORK)
     add_subdirectory(network)
 endif()
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIE -pie")
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pie")
