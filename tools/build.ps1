@@ -173,18 +173,22 @@ if (-not (Test-Path "$BuildDir\CMakeCache.txt")) {
 
     if ($Profile -ne "") {
         $Profiles = $Profile.Split(',')
-        foreach ($p in $Profiles) {
-            $pUpper = $p.ToUpper()
-            $cmakeArgs += "-DBHARAT_PROFILE_$pUpper=1"
+        if ($Profiles.Count -gt 1) {
+            inf "Multiple profiles provided; using first value: $($Profiles[0])"
         }
+        $cmakeArgs += "-DBHARAT_DEVICE_PROFILE=$($Profiles[0].ToUpper())"
     }
 
     if ($Personality -ne "") {
         $Personalities = $Personality.Split(',')
-        foreach ($p in $Personalities) {
-            $pUpper = $p.ToUpper()
-            $cmakeArgs += "-DBHARAT_PERSONALITY_$pUpper=1"
+        if ($Personalities.Count -gt 1) {
+            inf "Multiple personalities provided; using first value: $($Personalities[0])"
         }
+        $cmakeArgs += "-DBHARAT_PERSONALITY_PROFILE=$($Personalities[0].ToUpper())"
+    }
+
+    if ($Board -ne "") {
+        $cmakeArgs += "-DBHARAT_TARGET_BOARD=$Board"
     }
 
     & cmake @cmakeArgs
