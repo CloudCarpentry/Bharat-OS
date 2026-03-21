@@ -1,5 +1,7 @@
 #include "console/console_backend.h"
 #include "console/uart_driver.h"
+#include "console/console_discovery.h"
+#include "console/console_core.h"
 #include <stddef.h>
 #include <stdbool.h>
 
@@ -18,6 +20,7 @@ static bool serial_init(console_backend_t *backend) {
 }
 
 static size_t serial_write(console_backend_t *backend, const char *data, size_t len) {
+
     if (!backend || !backend->state || !data) return 0;
     serial_console_state_t *state = (serial_console_state_t *)backend->state;
     uart_device_t *uart = state->uart;
@@ -103,3 +106,43 @@ const console_backend_ops_t serial_console_ops = {
     .get_geometry = NULL,
     .poll_input = NULL
 };
+
+static console_backend_t g_early_serial_backend;
+static serial_console_state_t g_early_serial_state;
+static uart_device_t g_early_uart;
+
+
+#if defined(__aarch64__)
+extern const uart_driver_ops_t uart_pl011_ops;
+#elif defined(__x86_64__) || defined(__riscv)
+extern const uart_driver_ops_t uart_ns16550_ops;
+#endif
+
+bool console_serial_register_device(const console_device_desc_t *desc) {
+    if (!desc) return false;
+
+    g_early_uart.base = desc->base;
+    g_early_uart.reg_shift = desc->reserved0;
+#if defined(__aarch64__)
+    g_early_uart.ops = &uart_pl011_ops;
+#elif defined(__x86_64__) || defined(__riscv)
+    g_early_uart.ops = &uart_ns16550_ops;
+#else
+    return false;
+#endif
+
+    g_early_serial_state.uart = &g_early_uart;
+    g_early_serial_state.translate_lf_to_crlf = true;
+
+    g_early_serial_backend.name = desc->name;
+    g_early_serial_backend.type = CONSOLE_BACKEND_SERIAL;
+    g_early_serial_backend.ops = &serial_console_ops;
+    g_early_serial_backend.state = &g_early_serial_state;
+    g_early_serial_backend.caps = desc->caps;
+    g_early_serial_backend.min_level = CONSOLE_LEVEL_INFO;
+    g_early_serial_backend.priority = desc->priority;
+    g_early_serial_backend.enabled = true;
+    g_early_serial_backend.early_ok = true;
+
+    return console_register_backend(&g_early_serial_backend);
+}

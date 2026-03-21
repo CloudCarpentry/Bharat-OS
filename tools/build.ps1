@@ -337,7 +337,7 @@ if ($Run) {
             } else {
                 # Match dual-serial path: no ramfb until arm64 early framebuffer
                 # handoff/mapping path is fully hardened.
-                $qemuArgs += @("-serial", "stdio", "-serial", "vc", "-vga", "none", "-device", "virtio-gpu-device")
+                $qemuArgs += @("-serial", "mon:stdio", "-serial", "vc", "-vga", "none", "-device", "virtio-gpu-device")
             }
         } else {
             $qemuArgs += @("-nographic")

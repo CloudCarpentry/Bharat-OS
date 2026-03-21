@@ -121,8 +121,8 @@ int fdt_parse(const void *fdt_ptr, void *boot_info_ptr,
       if (depth < MAX_FDT_DEPTH - 1) {
         address_cells[depth + 1] = address_cells[depth];
         size_cells[depth + 1] = size_cells[depth];
+        depth++;
       }
-      depth++;
 
       is_memory = str_starts_with(current_node_name, "memory@");
       is_cpu = str_starts_with(current_node_name, "cpu@");
@@ -282,8 +282,12 @@ int fdt_parse_discovery(const void *fdt_ptr, system_discovery_t *discovery) {
   int depth = 0;
   const char *current_node_name = NULL;
 
-  int address_cells[MAX_FDT_DEPTH] = {2};
-  int size_cells[MAX_FDT_DEPTH] = {2};
+  int address_cells[MAX_FDT_DEPTH];
+  int size_cells[MAX_FDT_DEPTH];
+  for (int i = 0; i < MAX_FDT_DEPTH; i++) {
+    address_cells[i] = 2;
+    size_cells[i] = 2;
+  }
 
   int is_memory = 0;
   int is_cpu = 0;
@@ -293,7 +297,6 @@ int fdt_parse_discovery(const void *fdt_ptr, system_discovery_t *discovery) {
   int is_pcie = 0;
   int is_smmuv3 = 0;
   int is_pmu = 0;
-
   (void)is_pmu;
   int is_fb = 0;
 
@@ -304,6 +307,14 @@ int fdt_parse_discovery(const void *fdt_ptr, system_discovery_t *discovery) {
     uint32_t tag = fdt32_to_cpu(*p++);
     if (tag == FDT_BEGIN_NODE) {
       current_node_name = (const char *)p;
+
+      // Increment depth BEFORE processing node, but cap it for array access
+      if (depth < MAX_FDT_DEPTH - 1) {
+        address_cells[depth + 1] = address_cells[depth];
+        size_cells[depth + 1] = size_cells[depth];
+      }
+      depth++;
+
       hal_serial_write("FDT: Found node: ");
       hal_serial_write(current_node_name);
       hal_serial_write("\n");
@@ -313,12 +324,6 @@ int fdt_parse_discovery(const void *fdt_ptr, system_discovery_t *discovery) {
       while (current_node_name[len] != '\0')
         len++;
       p += (len + 4) / 4;
-
-      if (depth < MAX_FDT_DEPTH - 1) {
-        address_cells[depth + 1] = address_cells[depth];
-        size_cells[depth + 1] = size_cells[depth];
-      }
-      depth++;
 
       is_memory = str_starts_with(current_node_name, "memory@") ||
                   str_eq(current_node_name, "memory");
@@ -386,6 +391,11 @@ int fdt_parse_discovery(const void *fdt_ptr, system_discovery_t *discovery) {
             discovery->topology
                 .mem_regions[discovery->topology.mem_region_count]
                 .node_id = 0;
+            hal_serial_write("FDT: Memory region: base=");
+            hal_serial_write_hex(base);
+            hal_serial_write(" size=");
+            hal_serial_write_hex(size);
+            hal_serial_write("\n");
             discovery->topology.mem_region_count++;
           } else if (is_cpu &&
                      discovery->topology.cpu_count < BHARAT_MAX_CPUS) {

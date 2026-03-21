@@ -19,8 +19,8 @@ void console_choose_policy(const console_device_desc_t *devs,
 
         // Memlog is always an active choice behind the scenes, handled by core init
 
-        // Early Primary: Serial/Debug preferred
-        if (dev->early_ok && (dev->type == CONSOLE_BACKEND_SERIAL || dev->type == CONSOLE_BACKEND_DEBUGPORT)) {
+        // Early Primary: Serial/Debug/SBI preferred
+        if (dev->early_ok && (dev->type == CONSOLE_BACKEND_SERIAL || dev->type == CONSOLE_BACKEND_DEBUGPORT || dev->type == CONSOLE_BACKEND_SBI)) {
             if (decision->early_primary_index == -1 || devs[decision->early_primary_index].priority < dev->priority) {
                 decision->early_primary_index = i;
             }
@@ -33,8 +33,8 @@ void console_choose_policy(const console_device_desc_t *devs,
              }
         }
 
-        // Runtime Secondary: Serial
-        if (dev->type == CONSOLE_BACKEND_SERIAL) {
+        // Runtime Secondary: Serial/SBI
+        if (dev->type == CONSOLE_BACKEND_SERIAL || dev->type == CONSOLE_BACKEND_SBI) {
             if (decision->runtime_secondary_index == -1 || devs[decision->runtime_secondary_index].priority < dev->priority) {
                 decision->runtime_secondary_index = i;
             }

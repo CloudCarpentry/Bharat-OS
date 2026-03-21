@@ -14,6 +14,9 @@ add_library(k_debug OBJECT
     ../../src/console/framebuffer_console.c
     ../../src/console/serial_console.c
     ../../src/console/memlog_console.c
+    ../../src/console/drivers/uart_pl011.c
+    ../../src/console/drivers/uart_ns16550.c
+    ../../src/console/drivers/uart_simple_mmio.c
 )
 
 target_include_directories(k_debug PRIVATE ../../include ../../include/generated ${CMAKE_SOURCE_DIR}/include)

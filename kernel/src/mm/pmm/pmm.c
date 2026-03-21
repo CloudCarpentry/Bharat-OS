@@ -436,110 +436,87 @@ static void mark_page_free(phys_addr_t phys) {
  * Supports normalized boot_info_t contract.
  */
 
-static void pmm_add_region(phys_addr_t base, size_t size, pmm_region_type_t type, uint32_t target_numa_node) {
-  if (size == 0)
+static void pmm_add_region(phys_addr_t base, size_t size, uint32_t type,
+                           uint32_t target_numa_node) {
+  if (size < PAGE_SIZE)
     return;
-
-  // No need to log every individual region here, discovery log already shows count.
-  (void)base; (void)size;
-
-  uint32_t page_count = (uint32_t)(size / PAGE_SIZE);
-  phys_addr_t early_mem_end =
-      (early_alloc_get_current_ptr() + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
-
   if (active_numa_nodes >= MAX_NUMA_NODES)
     return;
 
-  // Reuse existing NUMA node if possible
-  uint32_t node_id = MAX_NUMA_NODES;
-  for (uint32_t i = 0; i < active_numa_nodes; i++) {
-    if (numa_nodes[i].node_id == target_numa_node) {
-      node_id = i;
-      break;
+  size_t page_count = size / PAGE_SIZE;
+  uint32_t node_id = active_numa_nodes++;
+
+  numa_nodes[node_id].node_id = target_numa_node;
+  numa_nodes[node_id].start_addr = base;
+  numa_nodes[node_id].total_pages = page_count;
+  numa_nodes[node_id].free_pages = 0;
+  numa_nodes[node_id].allocator_metadata = &numa_zones[node_id];
+
+  size_t page_array_size = page_count * sizeof(page_t);
+  void *page_array = early_alloc(page_array_size, PAGE_SIZE);
+  global_pages_ptrs[node_id] = (page_t *)page_array;
+
+  // Zero-initialize metadata
+  uint8_t *p_bytes = (uint8_t *)page_array;
+  for (size_t i = 0; i < page_array_size; i++) {
+    p_bytes[i] = 0;
+  }
+
+  // Capture current end of reserved memory (kernel + metadata)
+  phys_addr_t early_mem_end = (phys_addr_t)early_alloc(0, 1);
+
+  hal_serial_write("PMM: Region ");
+  hal_serial_write_hex(base);
+  hal_serial_write(" size ");
+  hal_serial_write_hex(size);
+  hal_serial_write(" protected up to ");
+  hal_serial_write_hex(early_mem_end);
+  hal_serial_write("\n");
+
+  zone_t *zone = &numa_zones[node_id];
+  spin_lock_init(&zone->lock);
+  zone->reclaim_count = 0U;
+
+  for (int o = 0; o < MAX_ORDER; o++) {
+    for (int c = 0; c < CONFIG_MM_CACHE_COLORS_DEFAULT; c++) {
+      list_init(&zone->free_list[o][c]);
+      zone->free_count[o][c] = 0;
     }
   }
 
-  if (node_id == MAX_NUMA_NODES) {
-    node_id = active_numa_nodes++;
-    numa_nodes[node_id].node_id = target_numa_node;
-    numa_nodes[node_id].start_addr = base;
-    numa_nodes[node_id].total_pages = page_count;
-    numa_nodes[node_id].free_pages = 0;
-    numa_nodes[node_id].allocator_metadata = &numa_zones[node_id];
-
-    size_t page_array_size = page_count * sizeof(page_t);
-    global_pages_ptrs[node_id] =
-        (page_t *)early_alloc(page_array_size, PAGE_SIZE);
-
-    zone_t *zone = &numa_zones[node_id];
-    spin_lock_init(&zone->lock);
-    zone->reclaim_count = 0U;
-
-    for (int o = 0; o < MAX_ORDER; o++) {
-      for (int c = 0; c < CONFIG_MM_CACHE_COLORS_DEFAULT; c++) {
-        list_init(&zone->free_list[o][c]);
-        zone->free_count[o][c] = 0;
-      }
-    }
-  } else {
-    // Handling non-contiguous regions in the same NUMA node is complex with the current global_pages_ptrs model,
-    // assuming here that each region gets its own pseudo-node for simplicity or they are contiguous.
-    // For production, we'd adjust global_pages_ptrs to handle disjoint ranges per node.
-    // To maintain existing behavior while supporting the new API, we just treat each region as a new 'node' if disjoint
-    // or we'd just create a new internal node struct. Let's just create a new internal node.
-    node_id = active_numa_nodes++;
-    numa_nodes[node_id].node_id = target_numa_node;
-    numa_nodes[node_id].start_addr = base;
-    numa_nodes[node_id].total_pages = page_count;
-    numa_nodes[node_id].free_pages = 0;
-    numa_nodes[node_id].allocator_metadata = &numa_zones[node_id];
-
-    size_t page_array_size = page_count * sizeof(page_t);
-    global_pages_ptrs[node_id] =
-        (page_t *)early_alloc(page_array_size, PAGE_SIZE);
-
-    zone_t *zone = &numa_zones[node_id];
-    spin_lock_init(&zone->lock);
-    zone->reclaim_count = 0U;
-
-    for (int o = 0; o < MAX_ORDER; o++) {
-      for (int c = 0; c < CONFIG_MM_CACHE_COLORS_DEFAULT; c++) {
-        list_init(&zone->free_list[o][c]);
-        zone->free_count[o][c] = 0;
-      }
-    }
-  }
-
-  // Initialize page metadata
+  // Pass 1: Initialize all metadata structures
   for (size_t j = 0; j < page_count; j++) {
     page_t *p = &global_pages_ptrs[node_id][j];
     p->ref_count = 1;
-    p->numa_node = target_numa_node;
-    p->flags = PAGE_FLAG_RESERVED;
+    p->numa_node = node_id;
+    p->flags = 0;
     p->order = -1;
-    p->owner_core_id = hal_cpu_get_id(); // Local core initially owns memory
-    p->object_id = 0;
+    list_init(&p->list);
 
-    // New PMM metadata
-    phys_addr_t paddr = base + j * PAGE_SIZE;
+    phys_addr_t paddr = base + (j * PAGE_SIZE);
     if (paddr < 0x100000000ULL) {
       p->zone = PMM_ZONE_DMA32;
     } else {
       p->zone = PMM_ZONE_NORMAL;
     }
-    p->owner_class = (type == PMM_REGION_TYPE_USABLE) ? PMM_OWNER_CLASS_NONE : PMM_OWNER_CLASS_BOOT;
-    p->pin_count = 0;
-    p->state = (type == PMM_REGION_TYPE_USABLE) ? PMM_PAGE_STATE_RESERVED : PMM_PAGE_STATE_RESERVED;
-
-    list_init(&p->list);
   }
 
-  // Second pass: free available pages into the buddy allocator
+  // Pass 2: Free usable RAM pages (skipping reserved early memory)
   if (type == PMM_REGION_TYPE_USABLE) {
-    phys_addr_t region_start = (base + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
-    phys_addr_t region_end = (base + size) & ~(PAGE_SIZE - 1);
+    phys_addr_t region_start = base;
+    phys_addr_t region_end = base + size;
+
     if (region_start < early_mem_end)
       region_start = early_mem_end;
+
+    // Align start to next page
+    region_start = (region_start + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
+
+    hal_serial_write("PMM: Freeing range ");
+    hal_serial_write_hex(region_start);
+    hal_serial_write(" to ");
+    hal_serial_write_hex(region_end);
+    hal_serial_write("\n");
 
     for (phys_addr_t p = region_start; p < region_end; p += PAGE_SIZE) {
       mark_page_free(p);
@@ -547,7 +524,8 @@ static void pmm_add_region(phys_addr_t base, size_t size, pmm_region_type_t type
   }
 }
 
-int pmm_register_region(uint64_t base, uint64_t len, pmm_region_type_t type, uint32_t numa_node, uint32_t attrs) {
+int pmm_register_region(uint64_t base, uint64_t len, pmm_region_type_t type,
+                        uint32_t numa_node, uint32_t attrs) {
   (void)attrs;
   pmm_add_region((phys_addr_t)base, (size_t)len, type, numa_node);
   return 0;
@@ -588,7 +566,13 @@ static int pmm_discovery_fixed(pmm_memory_map_t *out_map) {
   return -1;
 }
 
+static bool g_pmm_initialized = false;
 int mm_pmm_init(uint32_t magic, const boot_info_t *boot) {
+  if (g_pmm_initialized) {
+    return 0;
+  }
+  g_pmm_initialized = true;
+
   early_alloc_init(0);
   active_numa_nodes = 0U;
 
@@ -597,23 +581,31 @@ int mm_pmm_init(uint32_t magic, const boot_info_t *boot) {
 
   system_discovery_t *discovery = hal_get_system_discovery();
   if (discovery->topology.mem_region_count > 0) {
-      for (uint32_t i = 0; i < discovery->topology.mem_region_count; i++) {
-          if (discovery->topology.mem_regions[i].type == HAL_MEM_RAM) {
-              if (map.region_count < MAX_PMM_REGIONS) {
-                  map.regions[map.region_count].base_addr = discovery->topology.mem_regions[i].base;
-                  map.regions[map.region_count].length = discovery->topology.mem_regions[i].size;
-                  map.regions[map.region_count].type = PMM_REGION_TYPE_USABLE;
-                  map.regions[map.region_count].numa_node = discovery->topology.mem_regions[i].node_id;
-                  map.region_count++;
-              }
-          }
+    for (uint32_t i = 0; i < discovery->topology.mem_region_count; i++) {
+      if (discovery->topology.mem_regions[i].type == HAL_MEM_RAM) {
+        if (map.region_count < MAX_PMM_REGIONS) {
+          map.regions[map.region_count].base_addr =
+              discovery->topology.mem_regions[i].base;
+          map.regions[map.region_count].length =
+              discovery->topology.mem_regions[i].size;
+          map.regions[map.region_count].type = PMM_REGION_TYPE_USABLE;
+          map.regions[map.region_count].numa_node =
+              discovery->topology.mem_regions[i].node_id;
+          map.region_count++;
+        }
       }
-      KPRINT("PMM: discovered via HAL system topology\n");
-  } else if (pmm_discovery_fixed(&map) == 0) {
-      KPRINT("PMM: discovered via Fixed Map fallback (Legacy)\n");
-  } else {
-      return -1;
+    }
   }
+
+#if defined(__x86_64__)
+  if (map.region_count == 0) {
+    pmm_discovery_fixed(&map);
+  }
+#endif
+
+  hal_serial_write("PMM: Regions discovered: ");
+  hal_serial_write_hex(map.region_count);
+  hal_serial_write("\n");
 
   pmm_ingest_memory_map(&map);
 
@@ -719,6 +711,15 @@ void mm_free_page(phys_addr_t page_addr) {
     }
 
     page_t *buddy = &global_pages_ptrs[node_id][buddy_index];
+
+    if ((uintptr_t)buddy < (uintptr_t)global_pages_ptrs[node_id] ||
+        (uintptr_t)buddy >= (uintptr_t)(global_pages_ptrs[node_id] +
+                                        numa_nodes[node_id].total_pages)) {
+      hal_serial_write("PMM: CRITICAL: Buddy pointer out of bounds: ");
+      hal_serial_write_hex((uintptr_t)buddy);
+      hal_serial_write("\n");
+      break;
+    }
 
     if (buddy->ref_count > 0U || buddy->order != order) {
       break;
