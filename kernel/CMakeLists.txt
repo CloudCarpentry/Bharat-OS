@@ -303,7 +303,6 @@ set_target_properties(kernel.elf PROPERTIES
 target_compile_options(kernel.elf PRIVATE
     $<$<COMPILE_LANGUAGE:C>:-ffreestanding>
     $<$<COMPILE_LANGUAGE:C>:-fno-builtin>
-    $<$<COMPILE_LANGUAGE:C>:-fno-pic>
     $<$<COMPILE_LANGUAGE:C>:-Wall>
     $<$<COMPILE_LANGUAGE:C>:-Wextra>
     $<$<COMPILE_LANGUAGE:C>:-Werror=implicit-function-declaration>
@@ -369,6 +368,15 @@ target_link_options(kernel.elf PRIVATE
     "LINKER:--fatal-warnings"
     "LINKER:-T,${LINKER_SCRIPT}"
     "LINKER:--build-id=none"
+)
+
+# ── Component Registration ──────────────────────────────────────────────────
+bharat_register_component(
+    TARGET kernel.elf
+    KIND "kernel"
+    VERSION "${BHARAT_KERNEL_VERSION}"
+    IFACE_VERSION "${BHARAT_KERNEL_ABI}"
+    CHANNEL "${BHARAT_OS_CHANNEL}"
 )
 if(ARCH STREQUAL "riscv64" AND BHARAT_RISCV_BUILD_PAYLOAD_BIN)
     if(NOT CMAKE_OBJCOPY)

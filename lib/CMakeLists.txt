@@ -7,6 +7,7 @@ project(BharatOS_Lib C ASM)
 add_library(bharat_libcmin STATIC posix/stub.c)
 target_include_directories(bharat_libcmin PUBLIC posix/include)
 target_link_libraries(bharat_libcmin PUBLIC bharat_freestanding bharat_kernel_buildopts)
+bharat_configure_userspace_library(bharat_libcmin)
 
 # ---------------------------------------------------------
 # bharat_libtransport (URPC / Loopsback)
@@ -14,6 +15,15 @@ target_link_libraries(bharat_libcmin PUBLIC bharat_freestanding bharat_kernel_bu
 add_library(bharat_libtransport STATIC urpc/urpc.c transport/loopback.c)
 target_include_directories(bharat_libtransport PUBLIC urpc ../subsys/include)
 target_link_libraries(bharat_libtransport PUBLIC bharat_freestanding bharat_kernel_buildopts)
+bharat_configure_userspace_library(bharat_libtransport)
+
+# ---------------------------------------------------------
+# bharat_version_api
+# ---------------------------------------------------------
+add_library(bharat_version_api STATIC version_api.c)
+target_include_directories(bharat_version_api PUBLIC ../include)
+target_link_libraries(bharat_version_api PUBLIC bharat_freestanding)
+bharat_configure_userspace_library(bharat_version_api)
 
 # ---------------------------------------------------------
 # Subdirectories that define specific libs
@@ -55,6 +65,7 @@ if (CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|ARM64")
 endif()
 target_include_directories(bharat_libmsg PUBLIC ../subsys/include)
 target_link_libraries(bharat_libmsg PUBLIC bharat_freestanding bharat_kernel_buildopts)
+bharat_configure_userspace_library(bharat_libmsg)
 
 # Alias old 'msg' for compatibility during migration
 add_library(msg ALIAS bharat_libmsg)
@@ -68,6 +79,7 @@ add_library(bharat_libcap STATIC
 )
 target_include_directories(bharat_libcap PUBLIC ../subsys/include)
 target_link_libraries(bharat_libcap PUBLIC bharat_libmsg bharat_freestanding bharat_kernel_buildopts)
+bharat_configure_userspace_library(bharat_libcap)
 
 # Alias for compatibility
 add_library(capwire ALIAS bharat_libcap)
@@ -81,6 +93,7 @@ add_library(bharat_libdiag STATIC
 )
 target_include_directories(bharat_libdiag PUBLIC ../subsys/include)
 target_link_libraries(bharat_libdiag PUBLIC bharat_libmsg bharat_freestanding bharat_kernel_buildopts)
+bharat_configure_userspace_library(bharat_libdiag)
 
 # Alias for compatibility
 add_library(ool_desc ALIAS bharat_libdiag)

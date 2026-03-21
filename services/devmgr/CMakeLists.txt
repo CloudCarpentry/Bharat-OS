@@ -18,3 +18,5 @@ target_include_directories(devmgr PRIVATE
 target_link_libraries(devmgr PRIVATE
     # TODO: Add runtime and ipc libraries when available
 )
+
+bharat_configure_userspace_binary(devmgr)
