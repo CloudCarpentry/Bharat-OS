@@ -8,6 +8,7 @@
 void kernel_main_common(const boot_info_t *boot) {
   // Setup core console layer and serial backend early
   console_early_init();
+  console_write_raw("BOOT: kernel_main reached\n", 26);
 
   uint32_t cpu_id = hal_cpu_get_id();
   cpu_local_init(cpu_id);

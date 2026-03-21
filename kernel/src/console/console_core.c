@@ -52,7 +52,19 @@ void console_early_init(void) {
     console_policy_decision_t decision;
     console_choose_policy(devs, count, &decision);
 
-    // Later: Actual backend instances for serial/fb could be instantiated based on decision
+    extern void hal_serial_write(const char *s);
+    extern void hal_serial_write_hex(uint64_t v);
+    hal_serial_write("Early Primary ID: ");
+    hal_serial_write_hex((uint64_t)decision.early_primary_index);
+    hal_serial_write("\n");
+
+    if (decision.early_primary_index != -1) {
+        console_device_desc_t *dev = &devs[decision.early_primary_index];
+        if (dev->type == CONSOLE_BACKEND_SERIAL) {
+            extern bool console_serial_register_device(const console_device_desc_t *desc);
+            console_serial_register_device(dev);
+        }
+    }
 }
 
 void console_runtime_init(void) {
