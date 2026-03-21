@@ -1,5 +1,6 @@
 #include "hal/hal_discovery.h"
 #include "arch/arch_cpu_caps.h"
+#include "bharat/boot_info.h"
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -11,18 +12,9 @@ system_discovery_t* hal_get_system_discovery(void) {
     return &g_system_discovery;
 }
 
-#if defined(__riscv) || defined(__aarch64__)
-#include "hal/fdt_parser.h"
-#endif
-
-void hal_discovery_init(void* boot_ptr) {
-    if (!boot_ptr) return;
-#if defined(__riscv) || defined(__aarch64__)
-    fdt_parse_discovery(boot_ptr, &g_system_discovery);
-#elif defined(__x86_64__)
-    // ACPI/Multiboot handled elsewhere for now, or unified here later
-    (void)boot_ptr;
-#endif
+void hal_discovery_init(const boot_info_t *boot) {
+    if (!boot) return;
+    hal_arch_discovery_init(boot);
 }
 
 static inline void accel_set(uint64_t *mask, hal_accel_feature_t feat, bool enabled) {

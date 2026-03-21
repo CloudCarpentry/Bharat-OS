@@ -115,9 +115,10 @@ _start:
     movl $(3*4096/4), %ecx
     rep stosl
 
-    /* PML4[0] → PDPT (present + write) */
+    /* PML4[0] and PML4[256] → PDPT (identity and high-half physical map) */
     movl $(pdpt + PAGE_P + PAGE_RW), %eax
     movl %eax, pml4
+    movl %eax, pml4 + 2048
 
     /* PDPT[0] → PDT (present + write) */
     movl $(pdt + PAGE_P + PAGE_RW), %eax

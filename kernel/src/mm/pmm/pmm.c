@@ -9,11 +9,8 @@
 #include "bharat/boot_info.h"
 
 // Multiboot only for x86_64
-#if defined(__x86_64__)
-#include "../../boot/x86_64/multiboot2.h"
-#endif
-
 #include "hal/hal.h"
+#include "hal/hal_discovery.h"
 #include "console/console_core.h"
 #define KPRINT(s) console_write_raw(s, string_length(s))
 
@@ -443,11 +440,8 @@ static void pmm_add_region(phys_addr_t base, size_t size, pmm_region_type_t type
   if (size == 0)
     return;
 
-  KPRINT("PMM: Adding region: base=");
-  hal_serial_write_hex(base);
-  KPRINT(", size=");
-  hal_serial_write_hex(size);
-  KPRINT("\n");
+  // No need to log every individual region here, discovery log already shows count.
+  (void)base; (void)size;
 
   uint32_t page_count = (uint32_t)(size / PAGE_SIZE);
   phys_addr_t early_mem_end =
@@ -601,21 +595,22 @@ int mm_pmm_init(uint32_t magic, const boot_info_t *boot) {
   pmm_memory_map_t map;
   map.region_count = 0;
 
-  if (boot && boot->mem_map_count > 0) {
-      for (uint32_t i = 0; i < boot->mem_map_count; i++) {
-          if (boot->mem_map[i].type == BOOT_MEM_USABLE) {
+  system_discovery_t *discovery = hal_get_system_discovery();
+  if (discovery->topology.mem_region_count > 0) {
+      for (uint32_t i = 0; i < discovery->topology.mem_region_count; i++) {
+          if (discovery->topology.mem_regions[i].type == HAL_MEM_RAM) {
               if (map.region_count < MAX_PMM_REGIONS) {
-                  map.regions[map.region_count].base_addr = boot->mem_map[i].phys_start;
-                  map.regions[map.region_count].length = boot->mem_map[i].size;
+                  map.regions[map.region_count].base_addr = discovery->topology.mem_regions[i].base;
+                  map.regions[map.region_count].length = discovery->topology.mem_regions[i].size;
                   map.regions[map.region_count].type = PMM_REGION_TYPE_USABLE;
-                  map.regions[map.region_count].numa_node = 0; // Or from a topology map if available
+                  map.regions[map.region_count].numa_node = discovery->topology.mem_regions[i].node_id;
                   map.region_count++;
               }
           }
       }
-      KPRINT("PMM: discovered via normalized boot_info_t\n");
+      KPRINT("PMM: discovered via HAL system topology\n");
   } else if (pmm_discovery_fixed(&map) == 0) {
-      KPRINT("PMM: discovered via Fixed Map fallback\n");
+      KPRINT("PMM: discovered via Fixed Map fallback (Legacy)\n");
   } else {
       return -1;
   }

@@ -1,7 +1,10 @@
-#include "../../../include/mm.h"
-#include "../../../include/mm/vm_space.h"
-#include "../../../include/mm/vm_mapping.h"
-#include "../../../include/mm/arch_vm.h"
+#include "../../../../include/mm.h"
+#include "../../../../include/mm/vm_space.h"
+#include "../../../../include/mm/vm_mapping.h"
+#include "../../../../include/mm/arch_vm.h"
+#include "../../../../include/hal/hal.h"
+#include "../../../../include/slab.h"
+#include "../../../../include/spinlock.h"
 #include <stddef.h>
 
 /*

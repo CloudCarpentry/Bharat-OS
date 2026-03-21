@@ -1,6 +1,7 @@
 #include "hal/hal_timer.h"
 #include "advanced/ai_sched.h"
 #include "hal/hal.h"
+#include "console/console_core.h"
 #include "secure_boot.h"
 
 #include <stdint.h>
@@ -144,6 +145,37 @@ void hal_serial_write(const char *s) {
     s++;
   }
 }
+
+// Console Backend Integration
+static size_t x86_64_serial_write(console_backend_t *backend, const char *data, size_t len) {
+    (void)backend;
+    for (size_t i = 0; i < len; i++) {
+        if (data[i] == '\n') hal_serial_write_char('\r');
+        hal_serial_write_char(data[i]);
+    }
+    return len;
+}
+
+static console_caps_t x86_64_serial_caps(console_backend_t *backend) {
+    (void)backend;
+    return CON_CAP_WRITE_POLL | CON_CAP_EARLY_BOOT | CON_CAP_PANIC_SAFE;
+}
+
+static const console_backend_ops_t x86_64_serial_ops = {
+    .write = x86_64_serial_write,
+    .write_atomic = x86_64_serial_write,
+    .query_caps = x86_64_serial_caps
+};
+
+static console_backend_t g_x86_64_serial_backend = {
+    .name = "x86_64_serial",
+    .type = CONSOLE_BACKEND_SERIAL,
+    .ops = &x86_64_serial_ops,
+    .enabled = true,
+    .early_ok = true,
+    .panic_ok = true,
+    .priority = 10
+};
 
 // Added to intercept serial writes if needed by generic KPRINT
 void serial_puts(const char *s) { hal_serial_write(s); }
@@ -450,6 +482,7 @@ static void gdt_set_system_descriptor(int index, uint64_t base, uint32_t limit,
 
 void hal_init(void) {
   hal_serial_init();
+  console_register_backend(&g_x86_64_serial_backend);
 
   uint32_t core_id = hal_cpu_get_id();
   if (core_id >= MAX_SUPPORTED_CORES)
