@@ -393,12 +393,6 @@ void kernel_main(void) {
       kernel_panic("VMM initialization failed");
     }
 
-#if defined(__x86_64__)
-    // Map LAPIC and IOAPIC MMIO regions
-    vmm_map_page(0xFEE00000, 0xFEE00000, CAP_RIGHT_READ | CAP_RIGHT_WRITE);
-    vmm_map_page(0xFEC00000, 0xFEC00000, CAP_RIGHT_READ | CAP_RIGHT_WRITE);
-#endif
-
     KPRINT("BOOT: vmm initialized\n");
 
     system_discovery_t* discovery = hal_get_system_discovery();
@@ -406,63 +400,15 @@ void kernel_main(void) {
     hal_serial_write_hex((uintptr_t)discovery);
     KPRINT("\n");
 
-#if defined(__aarch64__)
-    // Map all discovered RAM regions to ensure the kernel (code+bss) is accessible
-    // after we activate the new page tables.
-    if (discovery) {
-        KPRINT("  [VMM] Memory region count: ");
-        hal_serial_write_hex(discovery->topology.mem_region_count);
-        KPRINT("\n");
-        for (uint32_t i = 0; i < discovery->topology.mem_region_count; i++) {
-            uint64_t base = discovery->topology.mem_regions[i].base;
-            uint64_t size = discovery->topology.mem_regions[i].size;
-            KPRINT("  [VMM] Mapping RAM region: ");
-            hal_serial_write_hex(base);
-            KPRINT(" (size ");
-            hal_serial_write_hex(size);
-            KPRINT(")\n");
-            for (uint64_t off = 0; off < size; off += 4096) {
-                vmm_map_page(base + off, base + off, 
-                             CAP_RIGHT_READ | CAP_RIGHT_WRITE | CAP_RIGHT_EXECUTE);
-            }
-        }
-    } else {
-        KPRINT("  [VMM] WARNING: Discovery is NULL, skipping RAM mapping!\n");
-    }
-#endif
-
-#if defined(__riscv) || defined(__aarch64__)
-    // Map discovered framebuffer if present
-    if (discovery && discovery->boot_video.valid) {
-        uint64_t fb_phys = discovery->boot_video.phys_addr;
-        uint64_t fb_size = discovery->boot_video.size;
-        KPRINT("  [VMM] Mapping framebuffer: ");
-        hal_serial_write_hex(fb_phys);
-        KPRINT(" (size ");
-        hal_serial_write_hex(fb_size);
-        KPRINT(")\n");
-        
-        // Map as much as needed, align to page size (4KB)
-        for (uint64_t off = 0; off < fb_size; off += 4096) {
-            vmm_map_page(fb_phys + off, fb_phys + off, 
-                         CAP_RIGHT_READ | CAP_RIGHT_WRITE | CAP_RIGHT_DEVICE_GPU);
-        }
-        KPRINT("  [VMM] Framebuffer mapped successfully.\n");
-    }
-#endif
-
-#if defined(__riscv) || defined(__aarch64__)
-    // Initialize MMU Ops and activate hardware MMU with the kernel page table
-    // to ensure our framebuffer mapping (applied above) is active in hardware.
+    // Initialize MMU Ops and activate hardware MMU with the kernel page table.
+    // This abstracts all architecture-specific memory mapping out of main.c
     extern void arch_mmu_init(void);
     arch_mmu_init();
 
-    extern phys_addr_t vmm_get_kernel_root(void);
-    extern mmu_ops_t *active_mmu;
-    if (active_mmu && active_mmu->activate) {
-        active_mmu->activate(vmm_get_kernel_root());
-    }
-#endif
+    extern void hal_mmu_final_setup(void);
+    hal_mmu_final_setup();
+
+    KPRINT("  [VMM] Architecture MMU mappings configured.\n");
 
     if (boot_policy->enable_zswap != 0U) {
       KPRINT("  [ZSWAP] Initializing Memory Compression...\n");
