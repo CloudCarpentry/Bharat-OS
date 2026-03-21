@@ -6,6 +6,7 @@
 #include "../../../../include/slab.h"
 #include "../../../../include/spinlock.h"
 #include "../../../../include/bharat/cpu_local.h"
+#include "../../../../include/mm/mm_aspace_switch.h"
 #include <stddef.h>
 
 // Mock hal_get_core_id if it's not defined
@@ -153,8 +154,8 @@ int vm_activate_local(vm_space_t *space) {
         vm_core_state_t local_state = {0};
         local_state.core_id = core_id;
         // Strictly ordered update to software active_aspace before hardware switch
-        core_set_current_as((address_space_t *)space);
-        __asm__ volatile("" ::: "memory"); // Compiler memory barrier to prevent reordering
+        address_space_t *prev = g_cpu_locals[core_id].current_as;
+        mm_switch_active_aspace(core_id, prev, (address_space_t *)space);
         active_arch_vm_ops->activate(space, &local_state);
     }
 
