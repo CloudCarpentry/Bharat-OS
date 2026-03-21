@@ -7,7 +7,12 @@ arch_caps_t arch_get_caps(void) {
     arch_caps_set(&caps, ARCH_CAP_64BIT_VA);
     arch_caps_set(&caps, ARCH_CAP_SMP);
     arch_caps_set(&caps, ARCH_CAP_MMU_FULL);
+    arch_caps_set(&caps, ARCH_CAP_ASID);
+    arch_caps_set(&caps, ARCH_CAP_GLOBAL_TLB_INVALIDATE);
+    arch_caps_set(&caps, ARCH_CAP_FINE_GRAIN_PROTECT);
     arch_caps_set(&caps, ARCH_CAP_DMA_COHERENT);
+    arch_caps_set(&caps, ARCH_CAP_CACHE_MAINTENANCE);
+    arch_caps_set(&caps, ARCH_CAP_DEVICE_MEMORY_ATTRS); // MAIR
     arch_caps_set(&caps, ARCH_CAP_ADV_IRQ_ROUTING);
     arch_caps_set(&caps, ARCH_CAP_USERSPACE_HIGHHALF);
 
