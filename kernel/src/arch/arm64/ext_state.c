@@ -167,6 +167,7 @@ void arch_ext_state_save(struct kthread *t) {
 }
 
 void arch_ext_state_restore(struct kthread *t) {
+    (void)t;
     // Eager restore is not used for lazy FP
 }
 
