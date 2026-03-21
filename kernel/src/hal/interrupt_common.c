@@ -1,6 +1,10 @@
 #include "hal/hal_irq.h"
+#include "hal/hal.h"
 #include "kernel_safety.h"
 #include "spinlock.h"
+#if __has_include("bharat_config.h")
+#include "bharat_config.h"
+#endif
 
 #include <stddef.h>
 #include <stdint.h>
@@ -31,6 +35,7 @@ typedef struct irq_desc {
     // Affinity/Routing metadata
     irq_affinity_mask_t affinity;
     uint32_t last_handled_cpu;
+    irq_controller_ops_t* controller_ops;
 
     // Fixed array of handlers for simplicity; could use linked list if needed
     irq_action_t actions[HAL_MAX_SHARED_HANDLERS];
@@ -52,6 +57,7 @@ void hal_irq_generic_init_boot(void) {
         g_irq_descriptors[i].action_count = 0;
         g_irq_descriptors[i].affinity.mask = ~0ULL; // Default to all online CPUs
         g_irq_descriptors[i].last_handled_cpu = (uint32_t)-1;
+        g_irq_descriptors[i].controller_ops = NULL;
 
         spin_lock_init(&g_irq_descriptors[i].lock);
 
@@ -230,14 +236,21 @@ int hal_irq_set_affinity(uint32_t irq, irq_affinity_mask_t mask) {
     }
 
     irq_desc_t* desc = &g_irq_descriptors[irq];
+    irq_controller_ops_t* controller_ops = NULL;
 
     spin_lock(&desc->lock);
+    controller_ops = desc->controller_ops;
     desc->affinity = mask;
-
-    // Call arch routing apply hook here if implemented in the controller ops
-    // (We will add the controller ops later)
-
     spin_unlock(&desc->lock);
+
+    // Apply routing in hardware if the backend supports it.
+    // Non-breaking behavior: affinity metadata is always recorded even when
+    // hardware programming is unavailable.
+    if (controller_ops && controller_ops->set_affinity) {
+        if (controller_ops->set_affinity(irq, mask) != 0) {
+            return -1;
+        }
+    }
     return 0;
 }
 
@@ -401,7 +414,61 @@ int hal_irq_set_controller(uint32_t irq, irq_controller_ops_t* ops) {
         return -1;
     }
 
-    // irq_desc_t should ideally contain a pointer to irq_controller_ops_t.
-    // We add this dynamically here to simulate the struct update without a full rewrite in this command script.
+    // Minimum non-breaking contract:
+    // controller ops must at least provide mask/unmask/eoi hooks.
+    if (!ops->mask || !ops->unmask || !ops->eoi) {
+        return -1;
+    }
+
+    irq_desc_t* desc = &g_irq_descriptors[irq];
+    spin_lock(&desc->lock);
+    desc->controller_ops = ops;
+    spin_unlock(&desc->lock);
+
     return 0;
+}
+
+void hal_interrupt_handle_trap_irq(uint64_t timer_irq,
+                                   void (*timer_handler)(void),
+                                   hal_irq_dispatch_fn_t dispatch_fn,
+                                   void* dispatch_ctx) {
+    uint32_t irq = hal_interrupt_acknowledge();
+
+    if (irq == timer_irq && timer_handler) {
+        timer_handler();
+    } else {
+#if defined(BHARAT_IRQ_DISPATCH_RT)
+        if (hal_interrupt_is_registered(irq)) {
+            hal_interrupt_dispatch(irq);
+        } else if (dispatch_fn) {
+            dispatch_fn(irq, dispatch_ctx);
+        }
+#elif defined(BHARAT_IRQ_DISPATCH_MIXED)
+        if (hal_interrupt_is_registered(irq)) {
+            hal_interrupt_dispatch(irq);
+        } else if (dispatch_fn) {
+            dispatch_fn(irq, dispatch_ctx);
+        } else {
+            hal_interrupt_dispatch(irq);
+        }
+#else
+        if (dispatch_fn) {
+            dispatch_fn(irq, dispatch_ctx);
+        } else {
+            hal_interrupt_dispatch(irq);
+        }
+#endif
+    }
+
+    hal_interrupt_end_of_interrupt(irq);
+}
+
+uint64_t hal_irq_timer_vector(void) {
+#if defined(__x86_64__)
+    return 32U;
+#elif defined(__riscv)
+    return 0x8000000000000005ULL;
+#else
+    return 30U;
+#endif
 }

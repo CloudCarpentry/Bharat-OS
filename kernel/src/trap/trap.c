@@ -8,6 +8,7 @@ extern long linux_syscall_handler(long sysno, long arg1, long arg2, long arg3,
 #include "capability.h"
 #include "device.h"
 #include "hal/hal.h"
+#include "hal/hal_irq.h"
 #include "ipc_endpoint.h"
 #include "kernel.h"
 #include "kernel_safety.h"
@@ -30,13 +31,10 @@ extern bool core_is_rt(void);
 
 #if defined(__x86_64__)
 #define TRAP_CAUSE_SYSCALL 0x80U
-#define TRAP_CAUSE_TIMER_INT 32U
 #elif defined(__riscv)
 #define TRAP_CAUSE_SYSCALL 8U
-#define TRAP_CAUSE_TIMER_INT 0x8000000000000005ULL // Supervisor timer interrupt
 #else
 #define TRAP_CAUSE_SYSCALL 0xFFFFU
-#define TRAP_CAUSE_TIMER_INT 30U // Generic timer PPI on ARM
 #endif
 
 static kprocess_t g_syscall_proc;
@@ -68,6 +66,11 @@ static address_space_t *trap_current_aspace(void) {
     return as;
   }
   return g_syscall_proc.addr_space;
+}
+
+static void trap_device_irq_dispatch(uint32_t irq, void* ctx) {
+  (void)ctx;
+  device_dispatch_irq(irq);
 }
 
 static int trap_user_ptr_valid(uint64_t ptr) {
@@ -210,6 +213,7 @@ long syscall_dispatch(syscall_id_t id, uint64_t arg0, uint64_t arg1,
 }
 
 long trap_handle(trap_frame_t *frame) {
+  const uint64_t timer_irq = hal_irq_timer_vector();
   if (!frame) {
     return TRAP_ERR_INVAL;
   }
@@ -265,7 +269,7 @@ long trap_handle(trap_frame_t *frame) {
     }
   }
 
-  if (frame->cause == TRAP_CAUSE_TIMER_INT) {
+  if (frame->cause == timer_irq) {
     void hal_timer_isr(void);
     hal_timer_isr();
     return 0;
@@ -307,21 +311,16 @@ long trap_handle(trap_frame_t *frame) {
     }
   }
 
-  if (frame->cause == TRAP_CAUSE_TIMER_INT) {
+  if (frame->cause == timer_irq) {
     void default_timer_isr(void);
     default_timer_isr();
     return 0;
   }
 #else
   if (frame->type == TRAP_TYPE_IRQ) {
-    uint32_t irq = hal_interrupt_acknowledge();
-    if (irq == TRAP_CAUSE_TIMER_INT) {
-      void hal_timer_isr(void);
-      hal_timer_isr();
-    } else {
-      device_dispatch_irq(irq);
-    }
-    hal_interrupt_end_of_interrupt(irq);
+    void hal_timer_isr(void);
+    hal_interrupt_handle_trap_irq(timer_irq, hal_timer_isr,
+                                  trap_device_irq_dispatch, NULL);
     return 0;
   }
   // ARM64 sync exception (page fault)

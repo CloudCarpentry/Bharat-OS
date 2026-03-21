@@ -92,5 +92,18 @@ struct irq_controller_ops {
 // Set the controller ops for a specific IRQ
 int hal_irq_set_controller(uint32_t irq, irq_controller_ops_t* ops);
 
-#endif // BHARAT_HAL_IRQ_H
+// Common boot-time initialization for generic IRQ descriptor state.
 void hal_irq_generic_init_boot(void);
+
+// Canonical trap-side helper that preserves current acknowledge/eoi contracts
+// while allowing dispatch unification at a single call site.
+typedef void (*hal_irq_dispatch_fn_t)(uint32_t irq, void* ctx);
+void hal_interrupt_handle_trap_irq(uint64_t timer_irq,
+                                   void (*timer_handler)(void),
+                                   hal_irq_dispatch_fn_t dispatch_fn,
+                                   void* dispatch_ctx);
+
+// Returns architecture-appropriate timer interrupt identifier used by trap code.
+uint64_t hal_irq_timer_vector(void);
+
+#endif // BHARAT_HAL_IRQ_H
