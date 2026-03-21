@@ -36,7 +36,7 @@ This document reviews the Bharat-OS subsystem structure (GUI, Console, Framebuff
 ### 2.4 Network Module
 *   **Inventory:**
     *   **Device Layer:** `kernel/include/device.h` defines `DEVICE_CLASS_ETHERNET` and `DEVICE_CLASS_WIFI`.
-    *   **Driver:** `drivers/net/ptp_clock.c` exists (likely stubbed).
+    *   **Driver:** `drivers/ptp_clock/ptp_clock.c` exists (likely stubbed).
     *   **IO Layer:** `kernel/include/io_subsys.h` outlines a high-throughput zero-copy ring (`io_ring_t`, `zero_copy_nic_ring_t`) inspired by io_uring/DPDK.
 *   **Gaps & Problems:**
     *   No generic network device abstraction (`netdev`).

@@ -86,7 +86,7 @@ The sections below keep the gap framing and add concrete implementation deltas f
 
 ### Current State
 - **NPU (Neural Processing Unit):** `kernel/src/hal/npu.c` provides a capability-gated API for allocating and enumerating NPUs. However, the implementation is purely a mock (`vendor_id = 0xABCD`, hardcoded memory sizes) and doesn't map real MMIO or IRQs.
-- **FPGA Manager:** `drivers/accel/fpga_mgr.c` is an empty shell with a single function `fpga_mgr_load_bitstream` that returns 0 without touching hardware.
+- **FPGA Manager:** `drivers/fpga_mgr/fpga_mgr.c` is an empty shell with a single function `fpga_mgr_load_bitstream` that returns 0 without touching hardware.
 - **Performance Monitor Units (PMU):** PMU implementations across architectures (`kernel/src/hal/x86_64/pmu.c`, `arm64/pmu.c`, `riscv/pmu.c`) are marked as "Simple abstraction stubs" and often return approximate cycle counts (e.g., using `rdtsc` directly in x86 instead of full PMC event programming due to QEMU `#GP` concerns).
 
 ### Identified Gaps
