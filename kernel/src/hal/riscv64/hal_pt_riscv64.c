@@ -309,8 +309,25 @@ static int riscv64_pt_query_mapping(phys_addr_t root_pt, virt_addr_t vaddr, phys
 
 static translate_backend_kind_t riscv64_backend_type(void) { return TRANSLATE_BACKEND_MMU; }
 static translate_exec_class_t riscv64_exec_class(void) { return TRANSLATE_EXEC_MMU_FULL; }
-static void* riscv64_phys_to_virt(phys_addr_t phys) { return (void*)(phys + g_kernel_virt_offset); }
-static phys_addr_t riscv64_virt_to_phys(const void* virt) { return (phys_addr_t)((uintptr_t)virt - g_kernel_virt_offset); }
+
+static void* riscv64_phys_to_virt(phys_addr_t phys) {
+    uint64_t satp;
+    asm volatile("csrr %0, satp" : "=r"(satp));
+    if ((satp >> 60) == 0) {
+        return (void*)phys; // MMU is disabled (Bare mode), return identity mapping
+    }
+    return (void*)(phys + g_kernel_virt_offset);
+}
+
+static phys_addr_t riscv64_virt_to_phys(const void* virt) {
+    uint64_t satp;
+    asm volatile("csrr %0, satp" : "=r"(satp));
+    if ((satp >> 60) == 0) {
+        return (phys_addr_t)virt; // MMU is disabled (Bare mode), return identity mapping
+    }
+    return (phys_addr_t)((uintptr_t)virt - g_kernel_virt_offset);
+}
+
 static bool riscv64_has_linear_physmap(void) { return true; }
 static phys_addr_t riscv64_linear_physmap_base(void) { return g_kernel_virt_offset; }
 static phys_addr_t riscv64_linear_physmap_limit(void) { return g_kernel_virt_offset + g_kernel_physmap_size; }
