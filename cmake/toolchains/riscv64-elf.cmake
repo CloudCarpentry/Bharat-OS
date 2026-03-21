@@ -3,7 +3,6 @@ set(CMAKE_SYSTEM_PROCESSOR riscv64)
 
 set(CMAKE_C_COMPILER clang)
 set(CMAKE_ASM_COMPILER clang)
-set(CMAKE_LINKER ld.lld)
 
 set(CMAKE_C_COMPILER_TARGET riscv64-unknown-none-elf)
 set(CMAKE_ASM_COMPILER_TARGET riscv64-unknown-none-elf)

@@ -228,6 +228,10 @@ if [ "$RUN" = true ]; then
         KERNEL_BIN="${BUILD_DIR}/kernel/kernel32.elf"
         llvm-objcopy -I elf64-x86-64 -O elf32-i386 \
             "${BUILD_DIR}/kernel/kernel.elf" "$KERNEL_BIN"
+    elif [ "$ARCH" == "arm64" ]; then
+        KERNEL_BIN="${BUILD_DIR}/kernel/Image"
+        llvm-objcopy -O binary \
+            "${BUILD_DIR}/kernel/kernel.elf" "$KERNEL_BIN"
     fi
 
     if [ "$ARCH" == "x86_64" ]; then
@@ -254,8 +258,9 @@ if [ "$RUN" = true ]; then
         GUI_ARGS=""
         SERIAL_ARGS="-serial mon:stdio"
         if [ "$BOOT_GUI" = "ON" ] || [ "$BOOT_GUI" = "true" ] || [ "$BOOT_GUI" = "1" ]; then
-            # riscv64 virt has no legacy VGA — VirtIO GPU is the correct device
-            GUI_ARGS="-device virtio-gpu-pci"
+            # Route serial output to the virtual console in the QEMU graphical window.
+            # Without a firmware or GPU, we drop virtio-gpu and force QEMU to display the 'vc' directly on the main window tab.
+            GUI_ARGS="-display gtk"
             if [ "$DUAL_SERIAL" = true ]; then
                 SERIAL_ARGS="-serial mon:stdio -serial vc"
             else
@@ -276,10 +281,9 @@ if [ "$RUN" = true ]; then
         GUI_ARGS=""
         SERIAL_ARGS="-serial mon:stdio"
         if [ "$BOOT_GUI" = "ON" ] || [ "$BOOT_GUI" = "true" ] || [ "$BOOT_GUI" = "1" ]; then
-            # arm64 virt has no legacy VGA — VirtIO GPU is the correct device
-            # Keep virtio-gpu, but avoid ramfb for now; early simplefb handoff
-            # from ramfb is not yet robust in the current arm64 boot path.
-            GUI_ARGS="-vga none -device virtio-gpu-device"
+            # Route serial output to the virtual console in the QEMU graphical window.
+            # Without a firmware or GPU, we drop virtio-gpu and force QEMU to display the 'vc' directly on the main window tab.
+            GUI_ARGS="-vga none -display gtk"
             if [ "$DUAL_SERIAL" = true ]; then
                 SERIAL_ARGS="-serial mon:stdio -serial vc"
             else
