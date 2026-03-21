@@ -47,6 +47,18 @@ int main(void) {
     subsys_automotive_select_boot_profile(AUTOMOTIVE_BOOT_PROFILE_RT_MINIMAL);
     assert(subsys_automotive_run_boot_stage(1U, boot_start_hook, ids, 4U) == 0U);
 
+    // Queue registration tests
+    assert(!subsys_automotive_queue_register(1U, NULL));
+
+    automotive_bounded_queue_t q_cfg_zero_cap = {.capacity = 0U};
+    assert(!subsys_automotive_queue_register(2U, &q_cfg_zero_cap));
+
+    automotive_bounded_queue_t q_cfg_over_max = {.capacity = BHARAT_AUTOMOTIVE_MAX_QUEUE_DEPTH + 1U};
+    assert(!subsys_automotive_queue_register(3U, &q_cfg_over_max));
+
+    automotive_bounded_queue_t q_cfg_valid = {.capacity = BHARAT_AUTOMOTIVE_MAX_QUEUE_DEPTH};
+    assert(subsys_automotive_queue_register(4U, &q_cfg_valid));
+
     printf("Automotive subsystem tests passed.\n");
     return 0;
 }
