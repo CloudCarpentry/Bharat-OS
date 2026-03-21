@@ -183,6 +183,32 @@ void hal_serial_write_hex(uint64_t val) {
 
 #include "trap.h"
 
+bool hal_cpu_is_page_fault(const void *trap_frame) {
+    if (!trap_frame) return false;
+    const trap_frame_t *tf = (const trap_frame_t *)trap_frame;
+    return (tf->cause == 14); // #PF
+}
+
+bool hal_cpu_is_fp_simd_fault(const void *trap_frame) {
+    if (!trap_frame) return false;
+    const trap_frame_t *tf = (const trap_frame_t *)trap_frame;
+    return (tf->cause == 7 || tf->cause == 16 || tf->cause == 19); // #NM, #MF, #XF
+}
+
+bool hal_cpu_is_illegal_instruction(const void *trap_frame) {
+    if (!trap_frame) return false;
+    const trap_frame_t *tf = (const trap_frame_t *)trap_frame;
+    return (tf->cause == 6); // #UD
+}
+
+uint32_t hal_interrupt_get_active_irq(uint64_t hw_cause) {
+    return (uint32_t)hw_cause;
+}
+
+uint64_t hal_irq_timer_vector(void) {
+    return 32U;
+}
+
 uint64_t hal_cpu_get_fault_address(const void *trap_frame) {
     (void)trap_frame;
     uint64_t cr2;
@@ -361,7 +387,7 @@ void isr128(void);
 
 static void default_isr(void) { __asm__ volatile("iretq"); }
 
-void default_timer_isr(void) {
+void hal_timer_isr(void) {
   // Ack APIC EOI
   volatile uint32_t *apic_eoi = (volatile uint32_t *)0xFEE000B0;
   *apic_eoi = 0;

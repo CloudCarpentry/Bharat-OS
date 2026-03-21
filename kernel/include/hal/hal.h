@@ -18,6 +18,12 @@ void hal_init(void);
 // Get the fault address for the active synchronous exception
 uint64_t hal_cpu_get_fault_address(const void *trap_frame);
 
+// Exception classification
+#include <stdbool.h>
+bool hal_cpu_is_page_fault(const void *trap_frame);
+bool hal_cpu_is_fp_simd_fault(const void *trap_frame);
+bool hal_cpu_is_illegal_instruction(const void *trap_frame);
+
 // Optional fast-path IPI payload for small URPC messages
 void hal_send_ipi_payload(uint32_t target_core, uint64_t payload);
 

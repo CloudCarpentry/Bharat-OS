@@ -213,140 +213,38 @@ long syscall_dispatch(syscall_id_t id, uint64_t arg0, uint64_t arg1,
 }
 
 long trap_handle(trap_frame_t *frame) {
-  const uint64_t timer_irq = hal_irq_timer_vector();
   if (!frame) {
     return TRAP_ERR_INVAL;
   }
 
-#if defined(__riscv)
-  if (frame->cause == 2) { // Illegal instruction
-    kthread_t *current = sched_current_thread();
-    // Assuming we can check if it's FP by checking FS is off and an FP inst trapped
-    // The exact check depends on having the instruction itself, but since we know
-    // FS is off, an FP instruction will cause this. Let's let the helper handle it.
-    uint64_t sstatus;
-    __asm__ volatile("csrr %0, sstatus" : "=r"(sstatus));
-    if ((sstatus & (3UL << 13)) == 0) { // FS is off
-        if (arch_ext_state_handle_fault(current)) {
-            return 0; // retry
-        }
-    }
-  }
-
-  if (frame->cause == 13 || frame->cause == 15) { // Load/Store page fault
-    kthread_t *current = sched_current_thread();
-    uint64_t stval = hal_cpu_get_fault_address(frame);
-
-    fault_diag_record_fault(stval, frame->cause);
-
-    // Check if it's a guard page hit
-    if (current && current->kernel_stack != 0 && stval >= current->kernel_stack && stval < current->kernel_stack + PAGE_SIZE) {
-        if (core_is_rt()) {
-            panic_context_t pctx = {
-                .message = "Stack overflow on RT core! Guard page hit.",
-                .cause_str = "stack_overflow/guard_page",
-                .cause_code = frame->cause,
-                .fault_addr = stval,
-                .ip = frame->pc,
-                .sp = frame->sp,
-                .trap_frame = frame
-            };
-            kernel_panic_ex(&pctx);
-        } else {
-            thread_raise_fault(current, THREAD_FAULT_STACK_OVERFLOW);
-            return 0;
-        }
-    }
-
-    if (current && current->process_id != 0) {
-      // Address space from current process
-      // For proper hardware demand-paging, we call into the VMM.
-      int rc = vmm_handle_cow_fault(trap_current_aspace(), stval);
-      if (rc == 0) {
-          return 0;
-      }
-    }
-  }
-
   if (frame->type == TRAP_TYPE_IRQ) {
     void hal_timer_isr(void);
     hal_interrupt_handle_trap_irq(frame->cause, hal_timer_isr,
                                   trap_device_irq_dispatch, NULL);
     return 0;
   }
-#elif defined(__x86_64__)
-  if (frame->cause == 14) { // Page fault (#PF)
+
+  if (frame->type == TRAP_TYPE_SYNC || frame->type == TRAP_TYPE_SERROR) {
     kthread_t *current = sched_current_thread();
-    uint64_t cr2 = hal_cpu_get_fault_address(frame);
 
-    fault_diag_record_fault(cr2, frame->cause);
-
-    // Check if it's a guard page hit
-    if (current && current->kernel_stack != 0 && cr2 >= current->kernel_stack && cr2 < current->kernel_stack + PAGE_SIZE) {
-        if (core_is_rt()) {
-            panic_context_t pctx = {
-                .message = "Stack overflow on RT core! Guard page hit.",
-                .cause_str = "stack_overflow/guard_page",
-                .cause_code = frame->cause,
-                .fault_addr = cr2,
-                .ip = frame->pc,
-                .sp = frame->sp,
-                .trap_frame = frame
-            };
-            kernel_panic_ex(&pctx);
-        } else {
-            thread_raise_fault(current, THREAD_FAULT_STACK_OVERFLOW);
-            return 0;
-        }
-    }
-
-    if (current && current->process_id != 0) {
-      // Address space from current process
-      // For proper hardware demand-paging, we call into the VMM.
-      int rc = vmm_handle_cow_fault(trap_current_aspace(), cr2);
-      if (rc == 0) {
-          return 0;
+    if (hal_cpu_is_fp_simd_fault(frame)) {
+      if (arch_ext_state_handle_fault(current)) {
+        return 0; // retry
       }
     }
-  }
 
-  if (frame->type == TRAP_TYPE_IRQ) {
-    void default_timer_isr(void);
-    hal_interrupt_handle_trap_irq(frame->cause, default_timer_isr,
-                                  trap_device_irq_dispatch, NULL);
-    return 0;
-  }
-#else
-  if (frame->type == TRAP_TYPE_IRQ) {
-    void hal_timer_isr(void);
-    hal_interrupt_handle_trap_irq(frame->cause, hal_timer_isr,
-                                  trap_device_irq_dispatch, NULL);
-    return 0;
-  }
-  // ARM64 sync exception (page fault)
-  if (frame->type == TRAP_TYPE_SYNC) {
-    uint64_t ec = frame->cause >> 26;
-    if (ec == 0x07) { // FP/SIMD trap
-        kthread_t *current = sched_current_thread();
-        if (arch_ext_state_handle_fault(current)) {
-            return 0; // retry
-        }
-    }
-    if (ec == 0x24 || ec == 0x25) { // Data/Instruction abort
-      // Page fault handling
-      uint64_t far = hal_cpu_get_fault_address(frame);
+    if (hal_cpu_is_page_fault(frame)) {
+      uint64_t fault_addr = hal_cpu_get_fault_address(frame);
+      fault_diag_record_fault(fault_addr, frame->cause);
 
-      fault_diag_record_fault(far, frame->cause);
-
-      kthread_t *current = sched_current_thread();
       // Check if it's a guard page hit
-      if (current && current->kernel_stack != 0 && far >= current->kernel_stack && far < current->kernel_stack + PAGE_SIZE) {
+      if (current && current->kernel_stack != 0 && fault_addr >= current->kernel_stack && fault_addr < current->kernel_stack + PAGE_SIZE) {
           if (core_is_rt()) {
               panic_context_t pctx = {
                 .message = "Stack overflow on RT core! Guard page hit.",
                 .cause_str = "stack_overflow/guard_page",
                 .cause_code = frame->cause,
-                .fault_addr = far,
+                .fault_addr = fault_addr,
                 .ip = frame->pc,
                 .sp = frame->sp,
                 .trap_frame = frame
@@ -358,14 +256,16 @@ long trap_handle(trap_frame_t *frame) {
           }
       }
 
-      // For proper hardware demand-paging, we call into the VMM.
-      int rc = vmm_handle_cow_fault(trap_current_aspace(), far);
-      if (rc == 0) {
-          return 0;
+      if (current && current->process_id != 0) {
+        // Address space from current process
+        // For proper hardware demand-paging, we call into the VMM.
+        int rc = vmm_handle_cow_fault(trap_current_aspace(), fault_addr);
+        if (rc == 0) {
+            return 0;
+        }
       }
     }
   }
-#endif
 
   if (frame->cause != TRAP_CAUSE_SYSCALL) {
     if (frame->from_user == 0U) {

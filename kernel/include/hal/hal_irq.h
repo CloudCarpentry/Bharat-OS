@@ -103,6 +103,9 @@ void hal_interrupt_handle_trap_irq(uint64_t hw_cause,
                                    hal_irq_dispatch_fn_t dispatch_fn,
                                    void* dispatch_ctx);
 
+// Retrieve the active IRQ number from either the hardware cause or the interrupt controller.
+uint32_t hal_interrupt_get_active_irq(uint64_t hw_cause);
+
 // Returns architecture-appropriate timer interrupt identifier used by trap code.
 uint64_t hal_irq_timer_vector(void);
 

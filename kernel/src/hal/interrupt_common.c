@@ -432,11 +432,7 @@ void hal_interrupt_handle_trap_irq(uint64_t hw_cause,
                                    void (*timer_handler)(void),
                                    hal_irq_dispatch_fn_t dispatch_fn,
                                    void* dispatch_ctx) {
-#if defined(__x86_64__) || defined(__riscv)
-    uint32_t irq = (uint32_t)hw_cause;
-#else
-    uint32_t irq = hal_interrupt_acknowledge();
-#endif
+    uint32_t irq = hal_interrupt_get_active_irq(hw_cause);
 
     if (irq == hal_irq_timer_vector() && timer_handler) {
         timer_handler();
@@ -465,14 +461,4 @@ void hal_interrupt_handle_trap_irq(uint64_t hw_cause,
     }
 
     hal_interrupt_end_of_interrupt(irq);
-}
-
-uint64_t hal_irq_timer_vector(void) {
-#if defined(__x86_64__)
-    return 32U;
-#elif defined(__riscv)
-    return 0x8000000000000005ULL;
-#else
-    return 30U;
-#endif
 }
