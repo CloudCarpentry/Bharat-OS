@@ -428,13 +428,13 @@ int hal_irq_set_controller(uint32_t irq, irq_controller_ops_t* ops) {
     return 0;
 }
 
-void hal_interrupt_handle_trap_irq(uint64_t timer_irq,
+void hal_interrupt_handle_trap_irq(uint64_t hw_cause,
                                    void (*timer_handler)(void),
                                    hal_irq_dispatch_fn_t dispatch_fn,
                                    void* dispatch_ctx) {
-    uint32_t irq = hal_interrupt_acknowledge();
+    uint32_t irq = hal_interrupt_get_active_irq(hw_cause);
 
-    if (irq == timer_irq && timer_handler) {
+    if (irq == hal_irq_timer_vector() && timer_handler) {
         timer_handler();
     } else {
 #if defined(BHARAT_IRQ_DISPATCH_RT)
@@ -461,14 +461,4 @@ void hal_interrupt_handle_trap_irq(uint64_t timer_irq,
     }
 
     hal_interrupt_end_of_interrupt(irq);
-}
-
-uint64_t hal_irq_timer_vector(void) {
-#if defined(__x86_64__)
-    return 32U;
-#elif defined(__riscv)
-    return 0x8000000000000005ULL;
-#else
-    return 30U;
-#endif
 }

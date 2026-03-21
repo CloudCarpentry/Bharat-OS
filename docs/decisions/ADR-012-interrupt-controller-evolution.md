@@ -12,7 +12,7 @@
 
 Bharat-OS currently has usable interrupt controller implementations for x86_64 (APIC family), arm64 (GICv3 direction), and riscv64 (PLIC direction), with early abstraction points for domains and MSI routing.
 
-However, the present shape mixes two handling styles (`hal_irq_*` and trap-side acknowledge/end sequences), and some API contracts are metadata-only rather than fully enforced in backend controller programming. This increases bring-up cost for additional targets and makes behavior drift likely as more ISA features are introduced.
+Historically, the platform mixed two handling styles (`hal_irq_*` and trap-side acknowledge/end sequences) and included architecture-specific `#if defined` logic within common code (`trap.c` and `interrupt_common.c`). This increased bring-up cost for additional targets and made behavior drift likely as more ISA features were introduced.
 
 At the same time, platform goals now explicitly include:
 
@@ -75,7 +75,7 @@ Interrupt-related ISA extensions and accelerators (NPU/GPU/DSP/PCIe MSI-X heavy 
 
 ### Costs / trade-offs
 
-- Requires staged conversion with temporary adapter glue.
+- Requires staged conversion with temporary adapter glue. *(Completed: core trap flows successfully unified).*
 - Requires stronger conformance testing matrix across five architectures.
 - Adds documentation and contract discipline around capability probing.
 

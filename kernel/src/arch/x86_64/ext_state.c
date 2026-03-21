@@ -75,3 +75,9 @@ void arch_kernel_fpu_begin(void) {
 void arch_kernel_fpu_end(void) {
     // Stub: Handle kernel FPU end
 }
+
+bool arch_ext_state_handle_fault(struct kthread *t) {
+    (void)t;
+    // x86_64 uses eager FPU saving or handles #NM faults here
+    return false;
+}

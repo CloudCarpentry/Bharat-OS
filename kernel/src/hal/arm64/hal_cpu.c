@@ -90,6 +90,46 @@ void hal_serial_write_hex(uint64_t val) {
 
 #include "trap.h"
 
+bool hal_cpu_is_page_fault(const void *trap_frame) {
+    if (!trap_frame) return false;
+    const trap_frame_t *tf = (const trap_frame_t *)trap_frame;
+    if (tf->type != TRAP_TYPE_SYNC) return false;
+    uint64_t ec = tf->cause >> 26;
+    return (ec == 0x24 || ec == 0x25); // Data/Instruction abort
+}
+
+bool hal_cpu_is_fp_simd_fault(const void *trap_frame) {
+    if (!trap_frame) return false;
+    const trap_frame_t *tf = (const trap_frame_t *)trap_frame;
+    if (tf->type != TRAP_TYPE_SYNC) return false;
+    uint64_t ec = tf->cause >> 26;
+    return (ec == 0x07); // FP/SIMD trap
+}
+
+bool hal_cpu_is_illegal_instruction(const void *trap_frame) {
+    if (!trap_frame) return false;
+    const trap_frame_t *tf = (const trap_frame_t *)trap_frame;
+    if (tf->type != TRAP_TYPE_SYNC) return false;
+    uint64_t ec = tf->cause >> 26;
+    return (ec == 0x00); // Unknown reason
+}
+
+uint32_t hal_interrupt_get_active_irq(uint64_t hw_cause) {
+    (void)hw_cause;
+    return hal_interrupt_acknowledge();
+}
+
+uint64_t hal_irq_timer_vector(void) {
+    return 30U;
+}
+
+uint64_t hal_cpu_get_fault_address(const void *trap_frame) {
+    (void)trap_frame;
+    uint64_t far;
+    __asm__ volatile("mrs %0, far_el1" : "=r"(far));
+    return far;
+}
+
 __attribute__((weak)) void hal_cpu_dump_trap_frame(const void *trap_frame) {
   if (!trap_frame) {
     return;

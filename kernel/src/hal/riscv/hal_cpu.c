@@ -123,6 +123,52 @@ void hal_serial_write_hex(uint64_t val) {
 
 #include "trap.h"
 
+bool hal_cpu_is_page_fault(const void *trap_frame) {
+    if (!trap_frame) return false;
+    const trap_frame_t *tf = (const trap_frame_t *)trap_frame;
+    return (tf->cause == 13 || tf->cause == 15); // Load/Store page fault
+}
+
+bool hal_cpu_is_fp_simd_fault(const void *trap_frame) {
+    // RISC-V usually triggers Illegal Instruction (cause 2) for disabled FP.
+    // We let hal_cpu_is_illegal_instruction handle it or disambiguate via status.
+    if (!trap_frame) return false;
+    const trap_frame_t *tf = (const trap_frame_t *)trap_frame;
+    if (tf->cause == 2) {
+        uint64_t sstatus;
+        __asm__ volatile("csrr %0, sstatus" : "=r"(sstatus));
+        return ((sstatus & (3UL << 13)) == 0); // FS is off
+    }
+    return false;
+}
+
+bool hal_cpu_is_illegal_instruction(const void *trap_frame) {
+    if (!trap_frame) return false;
+    const trap_frame_t *tf = (const trap_frame_t *)trap_frame;
+    return (tf->cause == 2); // Illegal instruction
+}
+
+uint32_t hal_interrupt_get_active_irq(uint64_t hw_cause) {
+    // The top bit (63 on rv64, 31 on rv32) indicates an interrupt.
+    // Strip it so the IRQ number fits cleanly in a 32-bit generic ID.
+#if __riscv_xlen == 32
+    return (uint32_t)(hw_cause & ~(1ULL << 31));
+#else
+    return (uint32_t)(hw_cause & ~(1ULL << 63));
+#endif
+}
+
+uint64_t hal_irq_timer_vector(void) {
+    return 5U; // S-Mode Timer Interrupt
+}
+
+uint64_t hal_cpu_get_fault_address(const void *trap_frame) {
+    (void)trap_frame;
+    uint64_t stval;
+    __asm__ volatile("csrr %0, stval" : "=r"(stval));
+    return stval;
+}
+
 __attribute__((weak)) void hal_cpu_dump_trap_frame(const void *trap_frame) {
   if (!trap_frame) {
     return;
