@@ -13,7 +13,7 @@ gcc -I../services/netstack/src -Ilib/packet/include -Ilib/runtime/include \
     services/netstack/src/socket_table.c \
     services/netstack/src/loopback.c \
     services/netstack/src/driver_virtio_adapter.c \
-    drivers/net/virtio_net.c \
+    drivers/virtio_net/virtio_net.c \
     lib/packet/src/packet.c \
     -o tests/test_netstack_phase2
 ./tests/test_netstack_phase2

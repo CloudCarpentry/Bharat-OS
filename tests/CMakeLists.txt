@@ -46,7 +46,7 @@ add_test(NAME test_ipc_async_timeout COMMAND test_ipc_async_timeout)
 add_executable(test_automotive_subsys
     test_automotive_subsys.c
     ../subsys/automotive/automotive.c
-    ../drivers/src/automotive/can_loopback.c
+    ../drivers/can_loopback/can_loopback.c
 )
 target_include_directories(test_automotive_subsys PRIVATE ../subsys/include ../kernel/include ../drivers/include)
 add_test(NAME test_automotive_subsys COMMAND test_automotive_subsys)
@@ -405,7 +405,7 @@ add_executable(test_netstack_phase2
     ../services/netstack/src/socket_table.c
     ../services/netstack/src/loopback.c
     ../services/netstack/src/driver_virtio_adapter.c
-    ../drivers/net/virtio_net.c
+    ../drivers/virtio_net/virtio_net.c
     ../lib/packet/src/packet.c
 )
 target_include_directories(test_netstack_phase2 PRIVATE ../services/netstack/src ../lib/packet/include)
