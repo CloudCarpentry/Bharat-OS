@@ -31,6 +31,28 @@ For the ARM32/RV32 EDGE-tier expansion strategy and capability matrix, see [`doc
 
 For a code-backed snapshot of what is implemented vs. stubbed right now, see [`docs/current-code-status.md`](docs/current-code-status.md).
 
+
+## Documentation maturity model and governance
+
+To reduce roadmap drift and keep implementation claims accurate, Bharat-OS uses a canonical four-level maturity taxonomy across roadmap/status documentation:
+
+- **Scaffold**: buildable placeholders and TODO loops.
+- **Partial**: concrete logic exists but end-to-end behavior is incomplete.
+- **Baseline**: core path works for integration/developer workflows.
+- **Production**: hardened and validated for reliability, security, and operations.
+
+Primary references:
+
+- [`docs/current-code-status.md`](docs/current-code-status.md) — code-backed status truth source.
+- [`ROADMAP.md`](ROADMAP.md) — forward-looking plan with explicit maturity labels and discrepancy log.
+- [`docs/architecture/cmake-governance-and-agent-rules.md`](docs/architecture/cmake-governance-and-agent-rules.md) — CMake structure, versioning policy, and contributor/agent rules.
+- [`docs/architecture/components/kernel-subcomponents-architecture.md`](docs/architecture/components/kernel-subcomponents-architecture.md) — kernel subcomponent architecture, per-arch notes, done/todo, roadmap map.
+- [`docs/architecture/components/subsystem-subcomponents-architecture.md`](docs/architecture/components/subsystem-subcomponents-architecture.md) — subsystem architecture and closure map.
+- [`docs/architecture/components/services-subcomponents-architecture.md`](docs/architecture/components/services-subcomponents-architecture.md) — service-domain architecture/status map.
+- [`docs/architecture/components/drivers-subcomponents-architecture.md`](docs/architecture/components/drivers-subcomponents-architecture.md) — driver architecture and arch constraints map.
+
+We intentionally keep architecture documents forward-looking while maintaining conservative implementation status in `docs/current-code-status.md`.
+
 ## Device Profiles & Use-cases
 
 Bharat-OS targets multiple deployment classes. These profiles describe **how the current baseline maps to real devices today**, and what is planned next:
