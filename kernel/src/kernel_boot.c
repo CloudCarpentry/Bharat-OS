@@ -31,6 +31,7 @@
 #include <bharat/cpu_local.h>
 #include "arch/arch_ext_state.h"
 #include "arch/arch_cpu_caps.h"
+#include "arch/arch_caps.h"
 
 #define KPRINT(s) console_write_raw(s, string_length(s))
 
@@ -74,6 +75,24 @@ void boot_common_early(const boot_info_t *boot) {
 
     KPRINT("  [PROFILE] Applying hardware profile hooks...\n");
     profile_init();
+
+    // Print selected capabilities
+    arch_caps_t arch_caps = arch_get_caps();
+    if (arch_caps_test(arch_caps, ARCH_CAP_MMU_FULL)) {
+        KPRINT("  [CAP] Protection Profile: MMU_FULL\n");
+    } else if (arch_caps_test(arch_caps, ARCH_CAP_MMU_LITE)) {
+        KPRINT("  [CAP] Protection Profile: MMU_LITE\n");
+    } else if (arch_caps_test(arch_caps, ARCH_CAP_MPU_ONLY)) {
+        KPRINT("  [CAP] Protection Profile: MPU_ONLY\n");
+    } else {
+        KPRINT("  [CAP] Protection Profile: UNKNOWN\n");
+    }
+
+    if (arch_caps_test(arch_caps, ARCH_CAP_SMP)) {
+        KPRINT("  [CAP] SMP Enabled\n");
+    } else {
+        KPRINT("  [CAP] UP Only\n");
+    }
 
     bharat_subsystems_init(profile);
 }

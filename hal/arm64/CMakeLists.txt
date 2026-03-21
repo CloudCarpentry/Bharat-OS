@@ -1,7 +1,7 @@
 add_library(hal_arm64_cpu OBJECT
     ../../kernel/src/hal/arm64/hal_cpu.c
     ../../kernel/src/hal/arm64/trap_entry.S
-    ../../kernel/src/hal/arm64/vmm.c
+    ../../kernel/src/hal/mmu/arm64/vmm.c
     ../../kernel/src/arch/arm64/context_switch.c
     ../../kernel/src/arch/arm64/context_switch.S
     ../../kernel/src/arch/arm64/cpu_caps.c

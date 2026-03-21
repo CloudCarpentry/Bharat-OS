@@ -34,6 +34,11 @@ void mm_switch_active_aspace(uint32_t core_id, address_space_t *prev_as, address
 
     // A full barrier to ensure software state is visible before any HW TLB/PT operations occur
     __asm__ volatile("" ::: "memory");
+
+    // Now trigger the new protection domain activate routine
+    if (next_as && next_as->prot_domain) {
+        prot_domain_activate(next_as->prot_domain);
+    }
 }
 
 void vm_debug_validate_active_tracking(void) {

@@ -1,9 +1,11 @@
-#include "../../../include/hal/vmm.h"
-#include "../../../include/hal/mmu_ops.h"
-#include "../../../include/numa.h"
-#include "../../../include/mm/physmap.h"
+#include "../../../../include/hal/vmm.h"
+#include "../../../../include/hal/mmu_ops.h"
+#include "../../../../include/numa.h"
+#include "../../../../include/mm/physmap.h"
+#include "../../../../include/mm/prot_domain.h"
 
 #define VMM_FLAG_PRESENT 0x1U
+#define ERR_NOT_SUPPORTED -1
 
 // Use a reserved bit in the 32-bit flags return to pass down NX to map/update
 #define X86_FLAG_NX (1U << 31)
@@ -16,8 +18,8 @@ virt_addr_t align_down(virt_addr_t value) {
     return value & ~(virt_addr_t)(PAGE_SIZE - 1U);
 }
 
-#include "../../../include/hal/hal_pt.h"
-#include "../../../include/hal/hal_tlb.h"
+#include "../../../../include/hal/hal_pt.h"
+#include "../../../../include/hal/hal_tlb.h"
 
 phys_addr_t hal_vmm_init_root(void) {
     if (!active_hal_pt) hal_pt_init();
@@ -266,6 +268,63 @@ mmu_ops_t x86_64_mmu_ops = {
     .has_nx           = true,
     .asid_bits        = 12, // Using PCID
     .has_user_kernel_split = false, // x86 usually uses a shared address space with user/supervisor bits
+};
+
+#include "../../../../include/slab.h"
+
+static prot_domain_t* x86_mmu_full_create(void) {
+    prot_domain_t* domain = (prot_domain_t*)kmalloc(sizeof(prot_domain_t));
+    if (!domain) return NULL;
+
+    domain->mode = PROT_MODE_MMU_FULL;
+    domain->backend_state = (void*)x86_64_mmu_ops.create_table(); // physical root pt
+    return domain;
+}
+
+static void x86_mmu_full_destroy(prot_domain_t* domain) {
+    if (!domain) return;
+    x86_64_mmu_ops.destroy_table((phys_addr_t)domain->backend_state);
+    kfree(domain);
+}
+
+static void x86_mmu_full_activate(prot_domain_t* domain) {
+    if (!domain) return;
+
+    // PCID readiness hook: check architecture capability matrix if PCID is supported
+    // Only flush or activate context switch properly if it is correctly supported by arch.
+    x86_64_mmu_ops.activate((phys_addr_t)domain->backend_state);
+}
+
+static int x86_mmu_full_map_region(prot_domain_t* domain, uintptr_t vaddr, uintptr_t paddr, size_t size, uint32_t flags) {
+    if (!domain) return -1;
+    // E.g. Check for advanced 5-level paging if requested
+    // if (size_is_too_large) return ERR_NOT_SUPPORTED;
+    return x86_64_mmu_ops.map((phys_addr_t)domain->backend_state, vaddr, paddr, size, flags);
+}
+
+static int x86_mmu_full_unmap_region(prot_domain_t* domain, uintptr_t vaddr, size_t size) {
+    if (!domain) return -1;
+    return x86_64_mmu_ops.unmap((phys_addr_t)domain->backend_state, vaddr, size, NULL);
+}
+
+static int x86_mmu_full_protect_region(prot_domain_t* domain, uintptr_t vaddr, size_t size, uint32_t flags) {
+    if (!domain) return -1;
+    return x86_64_mmu_ops.protect((phys_addr_t)domain->backend_state, vaddr, size, flags);
+}
+
+static int x86_mmu_full_query_region(prot_domain_t* domain, uintptr_t vaddr, uintptr_t* paddr, uint32_t* flags) {
+    if (!domain) return -1;
+    return x86_64_mmu_ops.query((phys_addr_t)domain->backend_state, vaddr, paddr, flags);
+}
+
+prot_domain_ops_t mmu_full_ops_x86_64 = {
+    .create = x86_mmu_full_create,
+    .destroy = x86_mmu_full_destroy,
+    .activate = x86_mmu_full_activate,
+    .map_region = x86_mmu_full_map_region,
+    .unmap_region = x86_mmu_full_unmap_region,
+    .protect_region = x86_mmu_full_protect_region,
+    .query_region = x86_mmu_full_query_region,
 };
 
 // basic cpuid wrapper

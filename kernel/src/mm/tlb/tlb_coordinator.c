@@ -245,6 +245,8 @@ int monitor_handle_tlb_invalidate(
     return 0;
 }
 
+#include "arch/arch_caps.h"
+
 static void tlb_shootdown_sync(address_space_t *aspace, tlb_scope_t scope, virt_addr_t va, size_t len) {
     if (!aspace || !active_hal_tlb) return;
 
@@ -257,8 +259,12 @@ static void tlb_shootdown_sync(address_space_t *aspace, tlb_scope_t scope, virt_
         default: type = 2; break; // ASPACE/ALL
     }
 
-    // Send the invalidation requests
-    vmm_send_tlb_invalidate(aspace->object_id, va, len, type);
+    // Phase A: Remote shootdown only if SMP capability exists
+    arch_caps_t caps = arch_get_caps();
+    if (arch_caps_test(caps, ARCH_CAP_SMP)) {
+        // Send the invalidation requests
+        vmm_send_tlb_invalidate(aspace->object_id, va, len, type);
+    }
 
     // Process local flush
     if (g_cpu_locals[current_core].current_as_id == aspace->object_id) {

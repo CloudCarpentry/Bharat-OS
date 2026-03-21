@@ -45,18 +45,11 @@ phys_addr_t vmm_get_kernel_root(void) {
 }
 
 int mm_vmm_map_page(address_space_t* as, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
-    if (!as || !active_hal_pt) return -1;
+    if (!as || !as->prot_domain) return -1;
 
     // Look up authoritative region
     vm_region_t *region = aspace_lookup_region(as, vaddr);
-    if (!region) {
-        // Fallback for kernel direct mappings or legacy code without regions
-        uint32_t mmu_flags = 0;
-        if (flags & CAP_RIGHT_WRITE) mmu_flags |= MMU_WRITE;
-        if (flags & PAGE_USER) mmu_flags |= MMU_USER;
-        if (flags & (CAP_RIGHT_DEVICE_GPU | CAP_RIGHT_DEVICE_NPU)) mmu_flags |= MMU_DEVICE;
-        return active_hal_pt->map_page(as->root_pt, vaddr, paddr, mmu_flags);
-    }
+    (void)region;
 
     uint32_t mmu_flags = 0;
     if (flags & CAP_RIGHT_WRITE) mmu_flags |= MMU_WRITE;
@@ -64,7 +57,10 @@ int mm_vmm_map_page(address_space_t* as, virt_addr_t vaddr, phys_addr_t paddr, u
     if (flags & PAGE_USER) mmu_flags |= MMU_USER;
     if (flags & (CAP_RIGHT_DEVICE_GPU | CAP_RIGHT_DEVICE_NPU)) mmu_flags |= MMU_DEVICE;
 
-    int ret = active_hal_pt->map_page(as->root_pt, vaddr, paddr, mmu_flags);
+    int ret = prot_domain_map_region(as->prot_domain, vaddr, paddr, PAGE_SIZE, mmu_flags);
+
+    // In legacy MMU-only code, we updated active_hal_pt here
+    // And handled a fallback for unmapped regions. The new backend natively handles it.
     if (ret == 0) {
         hal_tlb_invalidate_page(as, vaddr);
     }
@@ -72,10 +68,12 @@ int mm_vmm_map_page(address_space_t* as, virt_addr_t vaddr, phys_addr_t paddr, u
 }
 
 int mm_vmm_unmap_page(address_space_t* as, virt_addr_t vaddr) {
-    if (!as || !active_hal_pt) return -1;
+    if (!as || !as->prot_domain) return -1;
 
-    phys_addr_t paddr = 0;
-    int ret = active_hal_pt->unmap_page(as->root_pt, vaddr, &paddr);
+    uintptr_t paddr = 0;
+    prot_domain_query_region(as->prot_domain, vaddr, &paddr, NULL);
+
+    int ret = prot_domain_unmap_region(as->prot_domain, vaddr, PAGE_SIZE);
     if (ret == 0 && paddr != 0) {
         mm_free_page(paddr);
         hal_tlb_invalidate_page(as, vaddr);
