@@ -9,6 +9,7 @@ target_include_directories(bharat_libipc PUBLIC include)
 
 # IPC depends on cap headers
 target_link_libraries(bharat_libipc PUBLIC cap bharat_freestanding bharat_kernel_buildopts)
+bharat_configure_userspace_library(bharat_libipc)
 
 # Alias for compatibility
 add_library(ipc ALIAS bharat_libipc)

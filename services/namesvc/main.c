@@ -1,6 +1,21 @@
 #include <bharat/runtime/runtime.h>
 #include <bharat/ipc/ipc.h>
 #include "src/registry.h"
+#include "bharat/component_version.h"
+#include "bharat/buildinfo.h"
+
+BHARAT_REGISTER_COMPONENT(
+    BHARAT_COMPONENT_NAME,
+    BHARAT_COMPONENT_KIND,
+    BHARAT_COMPONENT_VERSION,
+    BHARAT_COMPONENT_IFACE,
+    0, /* abi version */
+    BHARAT_COMPONENT_CHANNEL,
+    BHARAT_GIT_SHA,
+    BHARAT_GIT_DIRTY,
+    BHARAT_BUILD_EPOCH,
+    BHARAT_BUILD_TIME_UTC
+);
 
 // Custom memset and memcpy
 static void *custom_memset_main(void *s, int c, unsigned long n) {

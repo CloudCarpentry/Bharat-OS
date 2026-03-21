@@ -18,3 +18,5 @@ target_include_directories(storagemgr PRIVATE
 target_link_libraries(storagemgr PRIVATE
     # TODO: Add runtime and ipc libraries when available
 )
+
+bharat_configure_userspace_binary(storagemgr)

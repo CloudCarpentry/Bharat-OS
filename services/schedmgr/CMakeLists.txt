@@ -18,3 +18,5 @@ target_include_directories(schedmgr PRIVATE
 target_link_libraries(schedmgr PRIVATE
     # TODO: Add runtime and ipc libraries when available
 )
+
+bharat_configure_userspace_binary(schedmgr)

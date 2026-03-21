@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(BharatOS C ASM)
+project(BharatOS VERSION 0.8.0 LANGUAGES C ASM)
 
 enable_testing()
 
@@ -12,6 +12,9 @@ include_directories(${CMAKE_SOURCE_DIR}/kernel/include)
 include(BharatCommon)
 include(BharatProfiles)
 include(BharatPersonality)
+
+# Versioning Identity System
+include(cmake/BharatVersion.cmake)
 
 # Architecture selection
 bharat_set_arch_defaults()

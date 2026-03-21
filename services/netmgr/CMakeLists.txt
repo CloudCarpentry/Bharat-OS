@@ -14,14 +14,25 @@ set(NETMGR_SOURCES
 )
 
 add_executable(netmgr ${NETMGR_SOURCES})
-    target_link_libraries(netmgr PRIVATE bharat_user_buildopts bharat_freestanding bharat_libruntime)
+    target_link_libraries(netmgr PRIVATE bharat_user_buildopts bharat_freestanding bharat_libruntime bharat_version_api)
+
+bharat_register_component(
+    TARGET netmgr
+    KIND "service"
+    VERSION "${BHARAT_SVC_NETMGR_VERSION}"
+    IFACE_VERSION "${BHARAT_SVC_NETMGR_IFACE}"
+    CHANNEL "${BHARAT_SVC_NETMGR_CHANNEL}"
+)
 
 target_include_directories(netmgr PRIVATE
     src/
     ../../subsys/include
     ../../lib/net/include
+    ../../include
 )
 
 target_compile_options(netmgr PRIVATE -Wall -ffreestanding -nostdlib -fPIE -fPIC)
 target_link_options(netmgr PRIVATE -nostdlib -no-pie)
 # Link against necessary system primitives/stubs here in the future
+
+bharat_configure_userspace_binary(netmgr)

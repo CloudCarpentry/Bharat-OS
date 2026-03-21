@@ -15,3 +15,5 @@ target_link_options(boot_displayd PRIVATE "-no-pie" "-fno-pie" "-no-pie" "-fno-p
 
 # In real scenarios we would link against the capability and IPC libraries
 target_link_libraries(boot_displayd PRIVATE subsys_manager)
+
+bharat_configure_userspace_binary(boot_displayd)

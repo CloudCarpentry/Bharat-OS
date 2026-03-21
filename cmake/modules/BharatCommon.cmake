@@ -104,3 +104,30 @@ add_library(bharat_user_buildopts INTERFACE)
 target_compile_definitions(bharat_user_buildopts INTERFACE
     __USER__=1
 )
+
+# Implements per-target userspace PIE policy to avoid conflicting compiler/linker flags
+option(BHARAT_USERSPACE_PIE "Build user-space services as Position Independent Executables" OFF)
+
+function(bharat_configure_userspace_library TARGET_NAME)
+    if(BHARAT_USERSPACE_PIE)
+        set_target_properties(${TARGET_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+        target_compile_options(${TARGET_NAME} PRIVATE -fPIC)
+    else()
+        set_target_properties(${TARGET_NAME} PROPERTIES POSITION_INDEPENDENT_CODE OFF)
+        target_compile_options(${TARGET_NAME} PRIVATE -fno-pie -fno-PIC)
+    endif()
+endfunction()
+
+function(bharat_configure_userspace_binary TARGET_NAME)
+    if(BHARAT_USERSPACE_PIE)
+        set_target_properties(${TARGET_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+        target_compile_options(${TARGET_NAME} PRIVATE -fPIE)
+        target_link_options(${TARGET_NAME} PRIVATE -pie)
+    else()
+        set_target_properties(${TARGET_NAME} PROPERTIES POSITION_INDEPENDENT_CODE OFF)
+        target_compile_options(${TARGET_NAME} PRIVATE -fno-pie -fno-PIC)
+        target_link_options(${TARGET_NAME} PRIVATE -no-pie)
+    endif()
+endfunction()
+
+set(BHARAT_USERSPACE_PIE ON CACHE BOOL "Build user-space services as Position Independent Executables" FORCE)

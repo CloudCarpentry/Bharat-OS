@@ -3,3 +3,5 @@ add_executable(process_manager main.c)
 target_include_directories(process_manager PRIVATE ../../kernel/include ../../subsys/include ../../lib/bharat_libtransport)
 
 target_link_libraries(process_manager PRIVATE bharat_libtransport subsys_manager)
+
+bharat_configure_userspace_binary(process_manager)

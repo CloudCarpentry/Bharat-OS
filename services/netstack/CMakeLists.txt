@@ -17,8 +17,19 @@ set(NETSTACK_SRC
     src/udp.c
 )
 add_executable(netstack ${NETSTACK_SRC})
-target_link_libraries(netstack PRIVATE bharat_user_buildopts bharat_freestanding bharat_libpacket bharat_libcmin bharat_libruntime)
-target_include_directories(netstack PRIVATE ../../lib/packet/include)
+target_link_libraries(netstack PRIVATE bharat_user_buildopts bharat_freestanding bharat_libpacket bharat_libcmin bharat_libruntime bharat_version_api)
+
+bharat_register_component(
+    TARGET netstack
+    KIND "service"
+    VERSION "${BHARAT_SVC_NETSTACK_VERSION}"
+    IFACE_VERSION "${BHARAT_SVC_NETSTACK_IFACE}"
+    CHANNEL "${BHARAT_SVC_NETSTACK_CHANNEL}"
+)
+
+target_include_directories(netstack PRIVATE ../../lib/packet/include ../../include)
 target_compile_options(netstack PRIVATE -Wall -ffreestanding -nostdlib )
-target_link_options(netstack PRIVATE -nostdlib -no-pie)
+target_link_options(netstack PRIVATE -nostdlib)
 # Link against necessary system primitives/stubs here in the future
+
+bharat_configure_userspace_binary(netstack)

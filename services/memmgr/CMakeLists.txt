@@ -18,3 +18,5 @@ target_include_directories(memmgr PRIVATE
 target_link_libraries(memmgr PRIVATE
     # TODO: Add runtime and ipc libraries when available
 )
+
+bharat_configure_userspace_binary(memmgr)

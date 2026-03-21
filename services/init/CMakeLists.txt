@@ -9,3 +9,5 @@ add_executable(init main.c)
 target_link_libraries(init PUBLIC runtime ipc cap)
 
 # Keep the build freestanding and warning-clean
+
+bharat_configure_userspace_binary(init)
