@@ -62,6 +62,7 @@ endif()
 if(BHARAT_ENABLE_DRIVER_CAN_CORE)
     list(APPEND BHARAT_DRIVER_SOURCES
         can_core/can_controller_core.c
+        can_core/can_filter_compile.c
     )
 endif()
 
@@ -118,4 +119,33 @@ target_compile_options(bharatos_drivers PRIVATE -ffreestanding -nostdlib -Wall)
 
 if(_bharat_generic_driver_defs)
     target_compile_definitions(bharatos_drivers PRIVATE ${_bharat_generic_driver_defs})
+endif()
+
+if (BHARAT_AUTOMOTIVE_PROFILE)
+    # Generic Sensor Driver Core Library
+    add_library(bharat_driver_sensor STATIC
+        sensor_core/sensor_core.c
+    )
+    target_include_directories(bharat_driver_sensor PUBLIC include)
+    target_link_libraries(bharat_driver_sensor PRIVATE bharat_libruntime)
+endif()
+
+if (BHARAT_AUTOMOTIVE_PROFILE)
+    # Generic Actuator Driver Core Library
+    add_library(bharat_driver_actuator STATIC
+        actuator_core/actuator_core.c
+    )
+    target_include_directories(bharat_driver_actuator PUBLIC include)
+    target_link_libraries(bharat_driver_actuator PRIVATE bharat_libruntime)
+endif()
+
+if (BHARAT_AUTOMOTIVE_PROFILE)
+    # Generic Motor Driver Core Library
+    add_library(bharat_driver_motor STATIC
+        motor_core/motor_control_core.c
+        motor_core/pwm_motor_backend.c
+        motor_core/qei_backend.c
+    )
+    target_include_directories(bharat_driver_motor PUBLIC include)
+    target_link_libraries(bharat_driver_motor PRIVATE bharat_libruntime)
 endif()
