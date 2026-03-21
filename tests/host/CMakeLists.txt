@@ -10,6 +10,10 @@ target_include_directories(test_tlb_stress PRIVATE ../../kernel/include ../../se
 target_link_libraries(test_tlb_stress PRIVATE c pthread)
 add_test(NAME test_tlb_stress COMMAND test_tlb_stress)
 
+add_executable(test_checksum net/test_checksum.c ../../services/netstack/src/checksum.c mock_panic.c)
+target_include_directories(test_checksum PRIVATE ../../services/netstack/src)
+target_link_libraries(test_checksum PRIVATE c)
+add_test(NAME test_checksum COMMAND test_checksum)
 add_executable(test_console console/test_console.c
                ../../kernel/src/console/console_format.c
                ../../kernel/src/console/console_buffer.c

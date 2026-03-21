@@ -12,11 +12,15 @@ int icmp_rx(netbuf_t *nb, uint32_t src_ip, uint32_t dst_ip) {
     icmphdr_t *icmph = (icmphdr_t *)netbuf_data(nb);
 
     // Skip software checksum verification if hardware already validated it.
-    // The NETBUF_F_RX_CSUM_VALID flag applies to the originally received packet.
-    if (!(nb->flags & NETBUF_F_RX_CSUM_VALID)) {
+    // The NETBUF_F_RX_L4_CSUM_OK flag applies to the originally received packet.
+    if (nb->flags & NETBUF_F_RX_L4_CSUM_BAD) {
+        return -1;
+    }
+    if (!(nb->flags & NETBUF_F_RX_L4_CSUM_OK)) {
         uint16_t orig_check = icmph->checksum;
         icmph->checksum = 0;
-        if (orig_check != net_checksum(icmph, netbuf_len(nb))) {
+        uint32_t sum = net_csum_partial(icmph, netbuf_len(nb), 0);
+        if (orig_check != net_csum_finalize(sum)) {
             icmph->checksum = orig_check;
             return -1; // Checksum failed
         }
@@ -43,7 +47,8 @@ int icmp_send_echo_reply(netbuf_t *nb, uint32_t src_ip, uint32_t dst_ip, uint16_
     icmph->un.echo.sequence = seq;
 
     icmph->checksum = 0;
-    icmph->checksum = net_checksum(icmph, netbuf_len(nb));
+    uint32_t sum = net_csum_partial(icmph, netbuf_len(nb), 0);
+    icmph->checksum = net_csum_finalize(sum);
 
     // Send back to the sender
     return ipv4_tx(nb, src_ip, IPPROTO_ICMP);
@@ -78,7 +83,8 @@ int icmp_send_unreachable(netbuf_t *nb, uint32_t src_ip, uint32_t dst_ip, uint8_
     icmph->un.gateway = 0; // Unused for these codes
 
     icmph->checksum = 0;
-    icmph->checksum = net_checksum(icmph, netbuf_len(&reply_nb));
+    uint32_t sum = net_csum_partial(icmph, netbuf_len(&reply_nb), 0);
+    icmph->checksum = net_csum_finalize(sum);
 
     return ipv4_tx(&reply_nb, src_ip, IPPROTO_ICMP);
 }
