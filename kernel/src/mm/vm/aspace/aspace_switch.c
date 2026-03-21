@@ -2,6 +2,7 @@
 #include "../../../../include/bharat/cpu_local.h"
 #include "../../../../include/kernel.h"
 #include "../../../../include/panic.h"
+#include "bharat/console.h"
 
 void mm_switch_active_aspace(uint32_t core_id, address_space_t *prev_as, address_space_t *next_as) {
     if (core_id >= MAX_CPUS) return;
@@ -41,7 +42,7 @@ void vm_debug_validate_active_tracking(void) {
         if (as) {
             uint64_t mask = __atomic_load_n(&as->active_mask, __ATOMIC_ACQUIRE);
             if (!(mask & (1ULL << i))) {
-                panic("vm_debug_validate_active_tracking: CPU %u is running aspace %lu but is not in active_mask %lx\n", i, as->object_id, mask);
+                kernel_panic("vm_debug_validate_active_tracking: active_mask out of sync\n");
             }
         }
     }

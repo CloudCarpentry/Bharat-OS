@@ -189,8 +189,8 @@ void vmm_send_tlb_invalidate(uint64_t aspace_id,
 
         if (!success) {
             // TIMEOUT path for revocation. We fail closed.
-            extern void panic(const char*);
-            panic("TLB Shootdown Timeout: Revocation failed, system isolated to prevent memory corruption.");
+            extern void kernel_panic(const char*);
+            kernel_panic("TLB Shootdown Timeout: Revocation failed, system isolated to prevent memory corruption.");
         }
 
         // Free slot

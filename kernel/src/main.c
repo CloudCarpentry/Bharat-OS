@@ -251,7 +251,7 @@ void kernel_main(void) {
 #endif
 
   /* Initialize core console layer and serial backend early to allow KPRINT to work immediately */
-  console_init();
+  console_init_early();
   console_register_serial_backend();
 
 #if defined(__riscv) || defined(__aarch64__)
