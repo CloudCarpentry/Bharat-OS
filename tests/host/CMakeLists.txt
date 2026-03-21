@@ -9,3 +9,15 @@ add_executable(test_tlb_stress test_tlb_stress.c ../../kernel/src/mm/tlb/tlb_coo
 target_include_directories(test_tlb_stress PRIVATE ../../kernel/include ../../services/monitor/generated ../../subsys/include)
 target_link_libraries(test_tlb_stress PRIVATE c pthread)
 add_test(NAME test_tlb_stress COMMAND test_tlb_stress)
+
+add_executable(test_console console/test_console.c
+               ../../kernel/src/console/console_format.c
+               ../../kernel/src/console/console_buffer.c
+               ../../kernel/src/console/console_router.c
+               ../../kernel/src/console/console_policy.c
+               ../../kernel/src/console/console_core.c
+               ../../kernel/src/console/console_panic.c)
+target_include_directories(test_console PRIVATE ../../kernel/include ../../kernel/src)
+target_compile_definitions(test_console PRIVATE BHARAT_HOST_TEST)
+target_link_libraries(test_console PRIVATE c)
+add_test(NAME test_console COMMAND test_console)
