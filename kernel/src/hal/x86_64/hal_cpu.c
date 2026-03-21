@@ -183,6 +183,13 @@ void hal_serial_write_hex(uint64_t val) {
 
 #include "trap.h"
 
+uint64_t hal_cpu_get_fault_address(const void *trap_frame) {
+    (void)trap_frame;
+    uint64_t cr2;
+    __asm__ volatile("mov %%cr2, %0" : "=r"(cr2));
+    return cr2;
+}
+
 __attribute__((weak)) void hal_cpu_dump_trap_frame(const void *trap_frame) {
   if (!trap_frame) {
     return;

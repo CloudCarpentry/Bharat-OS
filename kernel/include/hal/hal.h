@@ -15,6 +15,9 @@ void hal_cpu_enable_interrupts(void);
 void hal_cpu_disable_interrupts(void);
 void hal_init(void);
 
+// Get the fault address for the active synchronous exception
+uint64_t hal_cpu_get_fault_address(const void *trap_frame);
+
 // Optional fast-path IPI payload for small URPC messages
 void hal_send_ipi_payload(uint32_t target_core, uint64_t payload);
 

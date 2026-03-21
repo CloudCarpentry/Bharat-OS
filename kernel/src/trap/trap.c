@@ -235,8 +235,7 @@ long trap_handle(trap_frame_t *frame) {
 
   if (frame->cause == 13 || frame->cause == 15) { // Load/Store page fault
     kthread_t *current = sched_current_thread();
-    uint64_t stval;
-    __asm__ volatile("csrr %0, stval" : "=r"(stval));
+    uint64_t stval = hal_cpu_get_fault_address(frame);
 
     fault_diag_record_fault(stval, frame->cause);
 
@@ -269,16 +268,16 @@ long trap_handle(trap_frame_t *frame) {
     }
   }
 
-  if (frame->cause == timer_irq) {
+  if (frame->type == TRAP_TYPE_IRQ) {
     void hal_timer_isr(void);
-    hal_timer_isr();
+    hal_interrupt_handle_trap_irq(frame->cause, hal_timer_isr,
+                                  trap_device_irq_dispatch, NULL);
     return 0;
   }
 #elif defined(__x86_64__)
   if (frame->cause == 14) { // Page fault (#PF)
     kthread_t *current = sched_current_thread();
-    uint64_t cr2;
-    __asm__ volatile("mov %%cr2, %0" : "=r"(cr2));
+    uint64_t cr2 = hal_cpu_get_fault_address(frame);
 
     fault_diag_record_fault(cr2, frame->cause);
 
@@ -311,15 +310,16 @@ long trap_handle(trap_frame_t *frame) {
     }
   }
 
-  if (frame->cause == timer_irq) {
+  if (frame->type == TRAP_TYPE_IRQ) {
     void default_timer_isr(void);
-    default_timer_isr();
+    hal_interrupt_handle_trap_irq(frame->cause, default_timer_isr,
+                                  trap_device_irq_dispatch, NULL);
     return 0;
   }
 #else
   if (frame->type == TRAP_TYPE_IRQ) {
     void hal_timer_isr(void);
-    hal_interrupt_handle_trap_irq(timer_irq, hal_timer_isr,
+    hal_interrupt_handle_trap_irq(frame->cause, hal_timer_isr,
                                   trap_device_irq_dispatch, NULL);
     return 0;
   }
@@ -334,12 +334,7 @@ long trap_handle(trap_frame_t *frame) {
     }
     if (ec == 0x24 || ec == 0x25) { // Data/Instruction abort
       // Page fault handling
-      uint64_t far;
-#if defined(BHARAT_ARCH_32BIT)
-      far = 0; // Stub for arm32
-#else
-      __asm__ volatile("mrs %0, far_el1" : "=r"(far));
-#endif
+      uint64_t far = hal_cpu_get_fault_address(frame);
 
       fault_diag_record_fault(far, frame->cause);
 

@@ -98,7 +98,7 @@ void hal_irq_generic_init_boot(void);
 // Canonical trap-side helper that preserves current acknowledge/eoi contracts
 // while allowing dispatch unification at a single call site.
 typedef void (*hal_irq_dispatch_fn_t)(uint32_t irq, void* ctx);
-void hal_interrupt_handle_trap_irq(uint64_t timer_irq,
+void hal_interrupt_handle_trap_irq(uint64_t hw_cause,
                                    void (*timer_handler)(void),
                                    hal_irq_dispatch_fn_t dispatch_fn,
                                    void* dispatch_ctx);
