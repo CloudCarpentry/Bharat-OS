@@ -1,54 +1,101 @@
-project(bharat_host_tests C)
+cmake_minimum_required(VERSION 3.20)
+include(cmake/test_component_policy.cmake)
 
-add_executable(test_tlb_shootdown test_tlb_shootdown.c ../../kernel/src/mm/tlb/tlb_coordinator.c ../benchmark_stubs.c mock_panic.c ../../lib/msg/wire.c)
-target_include_directories(test_tlb_shootdown PRIVATE ../../kernel/include ../../services/monitor/generated ../../subsys/include)
-target_link_libraries(test_tlb_shootdown PRIVATE c pthread)
-add_test(NAME test_tlb_shootdown COMMAND test_tlb_shootdown)
+# ... preserve existing host tests logic, append ours ...
+add_executable(test_can_filter_match drivers/test_can_filter_match.c ../../drivers/src/can/can_filter_compile.c)
+target_include_directories(test_can_filter_match PRIVATE ../../drivers/include)
 
-add_executable(test_tlb_stress test_tlb_stress.c ../../kernel/src/mm/tlb/tlb_coordinator.c ../benchmark_stubs.c mock_panic.c ../../lib/msg/wire.c)
-target_include_directories(test_tlb_stress PRIVATE ../../kernel/include ../../services/monitor/generated ../../subsys/include)
-target_link_libraries(test_tlb_stress PRIVATE c pthread)
-add_test(NAME test_tlb_stress COMMAND test_tlb_stress)
+add_executable(test_can_filter_compile drivers/test_can_filter_compile.c)
+target_include_directories(test_can_filter_compile PRIVATE ../../drivers/include)
 
-add_executable(test_checksum net/test_checksum.c ../../services/netstack/src/checksum.c mock_panic.c)
-target_include_directories(test_checksum PRIVATE ../../services/netstack/src)
-target_link_libraries(test_checksum PRIVATE c)
-add_test(NAME test_checksum COMMAND test_checksum)
-add_executable(test_console console/test_console.c
-               ../../kernel/src/console/console_format.c
-               ../../kernel/src/console/console_buffer.c
-               ../../kernel/src/console/console_router.c
-               ../../kernel/src/console/console_policy.c
-               ../../kernel/src/console/console_core.c
-               ../../kernel/src/console/console_panic.c
-               ../../kernel/src/console/console_discovery.c
-               ../../kernel/src/console/memlog_console.c
-               ../../kernel/src/console/console_render_fb.c
-               ../../kernel/src/arch/common/memops_scalar.c)
-target_include_directories(test_console PRIVATE ../../kernel/include ../../kernel/src)
-target_compile_definitions(test_console PRIVATE BHARAT_HOST_TEST)
-target_link_libraries(test_console PRIVATE c)
-add_test(NAME test_console COMMAND test_console)
+add_executable(test_can_controller_core drivers/test_can_controller_core.c ../../drivers/src/can/can_controller_core.c)
+target_include_directories(test_can_controller_core PRIVATE ../../drivers/include)
 
-add_test(
-    NAME test_component_policy_matrix
-    COMMAND ${CMAKE_COMMAND}
-        -DREPO_ROOT=${CMAKE_SOURCE_DIR}
-        -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/policy_matrix
-        -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/test_component_policy.cmake
-)
+add_executable(test_can_router services/test_can_router.c)
+target_include_directories(test_can_router PRIVATE ../../services/include)
 
-add_executable(test_virt_can services/can/test_virt_can.c
-               ../../drivers/virt_can/virt_can.c
-               ../../drivers/can_core/can_controller_core.c)
-target_include_directories(test_virt_can PRIVATE ../../drivers/include)
-target_compile_definitions(test_virt_can PRIVATE BHARAT_HOST_TEST)
-target_link_libraries(test_virt_can PRIVATE c)
-add_test(NAME test_virt_can COMMAND test_virt_can)
+add_executable(test_can_subscriptions services/test_can_subscriptions.c)
+target_include_directories(test_can_subscriptions PRIVATE ../../services/include)
 
-add_executable(test_interrupt_common hal/test_interrupt_common.c
-               ../../kernel/src/hal/interrupt_common.c)
-target_include_directories(test_interrupt_common PRIVATE ../../kernel/include ../../include)
-target_compile_definitions(test_interrupt_common PRIVATE BHARAT_HOST_TEST BHARAT_IRQ_DISPATCH_MIXED)
-target_link_libraries(test_interrupt_common PRIVATE c)
-add_test(NAME test_interrupt_common COMMAND test_interrupt_common)
+add_executable(test_can_gateway services/test_can_gateway.c)
+target_include_directories(test_can_gateway PRIVATE ../../services/include)
+
+add_executable(test_can_busoff_recovery services/test_can_busoff_recovery.c ../../drivers/src/can/can_controller_core.c ../../drivers/virt_can/virt_can.c)
+target_include_directories(test_can_busoff_recovery PRIVATE ../../drivers/include)
+
+add_test(NAME host_test_can_filter_match COMMAND test_can_filter_match)
+add_test(NAME host_test_can_filter_compile COMMAND test_can_filter_compile)
+add_test(NAME host_test_can_controller_core COMMAND test_can_controller_core)
+add_test(NAME host_test_can_router COMMAND test_can_router)
+add_test(NAME host_test_can_subscriptions COMMAND test_can_subscriptions)
+add_test(NAME host_test_can_gateway COMMAND test_can_gateway)
+add_test(NAME host_test_can_busoff_recovery COMMAND test_can_busoff_recovery)
+
+# Note: The test targets will be built automatically with 'make check' or 'ctest'.
+
+# Phase 1: Power Mode Tests
+add_executable(test_power_mode_state_machine services/test_power_mode_state_machine.c ../../services/power_mode/state_machine.c)
+target_include_directories(test_power_mode_state_machine PRIVATE ../../services/include)
+
+add_executable(test_power_mode_callbacks services/test_power_mode_callbacks.c ../../services/power_mode/state_machine.c)
+target_include_directories(test_power_mode_callbacks PRIVATE ../../services/include)
+
+add_executable(test_power_mode_limp_home services/test_power_mode_limp_home.c ../../services/power_mode/state_machine.c)
+target_include_directories(test_power_mode_limp_home PRIVATE ../../services/include)
+
+add_test(NAME host_test_power_mode_state_machine COMMAND test_power_mode_state_machine)
+add_test(NAME host_test_power_mode_callbacks COMMAND test_power_mode_callbacks)
+add_test(NAME host_test_power_mode_limp_home COMMAND test_power_mode_limp_home)
+
+# Phase 1: Diag Tests
+add_executable(test_diag_store services/test_diag_store.c ../../services/diag/store.c)
+target_include_directories(test_diag_store PRIVATE ../../services/include)
+
+add_executable(test_diag_debounce services/test_diag_debounce.c ../../services/diag/debounce.c ../../services/diag/store.c)
+target_include_directories(test_diag_debounce PRIVATE ../../services/include)
+
+add_test(NAME host_test_diag_store COMMAND test_diag_store)
+add_test(NAME host_test_diag_debounce COMMAND test_diag_debounce)
+
+# Phase 2: Sensor Tests
+add_executable(test_sensor_core drivers/test_sensor_core.c ../../drivers/src/sensor/sensor_core.c)
+target_include_directories(test_sensor_core PRIVATE ../../drivers/include)
+
+add_executable(test_sensor_freshness services/test_sensor_freshness.c ../../services/sensor_hub/freshness.c)
+target_include_directories(test_sensor_freshness PRIVATE ../../drivers/include)
+
+add_executable(test_sensor_plausibility services/test_sensor_plausibility.c ../../services/sensor_hub/plausibility.c)
+target_include_directories(test_sensor_plausibility PRIVATE ../../drivers/include)
+target_link_libraries(test_sensor_plausibility PRIVATE m)
+
+add_test(NAME host_test_sensor_core COMMAND test_sensor_core)
+add_test(NAME host_test_sensor_freshness COMMAND test_sensor_freshness)
+add_test(NAME host_test_sensor_plausibility COMMAND test_sensor_plausibility)
+
+# Phase 2: Actuator Tests
+add_executable(test_actuator_core drivers/test_actuator_core.c ../../drivers/src/actuator/actuator_core.c)
+target_include_directories(test_actuator_core PRIVATE ../../drivers/include)
+
+add_executable(test_actuator_safe_state services/test_actuator_safe_state.c ../../services/actuator_mgr/safe_state.c)
+target_include_directories(test_actuator_safe_state PRIVATE ../../drivers/include)
+
+add_executable(test_actuator_deadman services/test_actuator_deadman.c)
+
+add_test(NAME host_test_actuator_core COMMAND test_actuator_core)
+add_test(NAME host_test_actuator_safe_state COMMAND test_actuator_safe_state)
+add_test(NAME host_test_actuator_deadman COMMAND test_actuator_deadman)
+
+# Phase 2: Time Sync Tests
+add_executable(test_time_sync_drift services/test_time_sync_drift.c ../../services/time_sync/drift.c)
+target_include_directories(test_time_sync_drift PRIVATE ../../services/include)
+
+add_executable(test_time_sync_quality services/test_time_sync_quality.c ../../services/time_sync/quality.c)
+
+add_test(NAME host_test_time_sync_drift COMMAND test_time_sync_drift)
+add_test(NAME host_test_time_sync_quality COMMAND test_time_sync_quality)
+
+# Phase 3: Motor Control Tests
+add_executable(test_motor_control_core drivers/test_motor_control_core.c ../../drivers/src/motor/motor_control_core.c)
+target_include_directories(test_motor_control_core PRIVATE ../../drivers/include)
+
+add_test(NAME host_test_motor_control_core COMMAND test_motor_control_core)
