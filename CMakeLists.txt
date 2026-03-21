@@ -216,7 +216,7 @@ add_subdirectory(subsys)
 add_subdirectory(services)
 add_subdirectory(apps)
 
-if(BHARAT_BUILD_HOST_TESTS AND NOT CMAKE_CROSSCOMPILING)
+if(BHARAT_BUILD_HOST_TESTS)
     add_subdirectory(tests)
 endif()
 

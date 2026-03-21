@@ -4,10 +4,22 @@
 #include <stdint.h>
 
 #include "capability.h"
+#include "profile.h"
+
+#if defined(Profile_RTOS)
+#define BHARAT_IPC_ENDPOINT_PAYLOAD_MAX 64U
+#define BHARAT_IPC_MAX_ENDPOINTS 64U
+#elif defined(FEATURE_NUMA_AWARE)
+#define BHARAT_IPC_ENDPOINT_PAYLOAD_MAX 256U
+#define BHARAT_IPC_MAX_ENDPOINTS 256U
+#else
+#define BHARAT_IPC_ENDPOINT_PAYLOAD_MAX 128U
+#define BHARAT_IPC_MAX_ENDPOINTS 128U
+#endif
 
 typedef struct {
     uint32_t msg_len;
-    uint8_t payload[64];
+    uint8_t payload[BHARAT_IPC_ENDPOINT_PAYLOAD_MAX];
 
     // Capability transfer fields (0 means none attached)
     uint32_t cap_transfer_id;
