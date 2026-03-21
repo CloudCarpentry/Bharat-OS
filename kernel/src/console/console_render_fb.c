@@ -1,0 +1,115 @@
+#include "console/console_render.h"
+#include <stddef.h>
+
+/* Extremely basic fixed-width rendering mechanics. */
+#define FONT_WIDTH  8
+#define FONT_HEIGHT 16
+
+static void draw_pixel(framebuffer_console_state_t *state, uint32_t x, uint32_t y, uint32_t color) {
+    if (!state || !state->fb_base) return;
+    if (x >= state->width_px || y >= state->height_px) return;
+
+    // Simplified assuming 32bpp
+    volatile uint32_t *pixel = (volatile uint32_t *)(state->fb_base + (y * state->stride_bytes) + (x * 4));
+    *pixel = color;
+}
+
+static void draw_char_glyph(framebuffer_console_state_t *state, char c, console_cols_t col, console_rows_t row) {
+    if (!state || !state->font) return;
+
+    // Very simplified standard 8x16 fixed font access
+    const uint8_t *glyph = (const uint8_t *)state->font + ((uint8_t)c * FONT_HEIGHT);
+
+    uint32_t start_x = col * FONT_WIDTH;
+    uint32_t start_y = row * FONT_HEIGHT;
+
+    for (uint32_t y = 0; y < FONT_HEIGHT; y++) {
+        uint8_t row_bits = glyph[y];
+        for (uint32_t x = 0; x < FONT_WIDTH; x++) {
+            if (row_bits & (1 << (7 - x))) {
+                draw_pixel(state, start_x + x, start_y + y, state->fg_color);
+            } else {
+                draw_pixel(state, start_x + x, start_y + y, state->bg_color);
+            }
+        }
+    }
+}
+
+void console_render_fb_init(framebuffer_console_state_t *state) {
+    if (!state) return;
+    state->rows = state->height_px / FONT_HEIGHT;
+    state->cols = state->width_px / FONT_WIDTH;
+    state->cursor_row = 0;
+    state->cursor_col = 0;
+    state->clear_supported = true;
+    state->scroll_supported = true;
+
+    console_render_fb_clear(state);
+}
+
+void console_render_fb_clear(framebuffer_console_state_t *state) {
+    if (!state || !state->fb_base) return;
+
+    for (uint32_t y = 0; y < state->height_px; y++) {
+        for (uint32_t x = 0; x < state->width_px; x++) {
+             draw_pixel(state, x, y, state->bg_color);
+        }
+    }
+
+    state->cursor_row = 0;
+    state->cursor_col = 0;
+}
+
+void console_render_fb_scroll(framebuffer_console_state_t *state) {
+    if (!state || !state->fb_base) return;
+
+    // Move all rows up by one.
+    // In a real implementation this might use DMA or hardware scrolling.
+    uint32_t row_bytes = state->stride_bytes * FONT_HEIGHT;
+    uint32_t scroll_bytes = state->stride_bytes * (state->height_px - FONT_HEIGHT);
+
+    // Using a manual copy to remain freestanding without depending on memcpy
+    volatile uint8_t *dst = state->fb_base;
+    volatile uint8_t *src = state->fb_base + row_bytes;
+
+    for (uint32_t i = 0; i < scroll_bytes; i++) {
+        dst[i] = src[i];
+    }
+
+    // Clear last row
+    for (uint32_t y = state->height_px - FONT_HEIGHT; y < state->height_px; y++) {
+        for (uint32_t x = 0; x < state->width_px; x++) {
+             draw_pixel(state, x, y, state->bg_color);
+        }
+    }
+}
+
+void console_render_fb_set_cursor(framebuffer_console_state_t *state, console_rows_t row, console_cols_t col) {
+    if (!state) return;
+    if (row < state->rows) state->cursor_row = row;
+    if (col < state->cols) state->cursor_col = col;
+}
+
+void console_render_fb_write_char(framebuffer_console_state_t *state, char c) {
+    if (!state) return;
+
+    if (c == '\n') {
+        state->cursor_col = 0;
+        state->cursor_row++;
+    } else if (c == '\r') {
+        state->cursor_col = 0;
+    } else {
+        draw_char_glyph(state, c, state->cursor_col, state->cursor_row);
+        state->cursor_col++;
+
+        if (state->cursor_col >= state->cols) {
+            state->cursor_col = 0;
+            state->cursor_row++;
+        }
+    }
+
+    if (state->cursor_row >= state->rows) {
+        console_render_fb_scroll(state);
+        state->cursor_row = state->rows - 1;
+    }
+}
