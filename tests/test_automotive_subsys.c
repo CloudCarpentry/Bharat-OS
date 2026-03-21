@@ -59,6 +59,20 @@ int main(void) {
     automotive_bounded_queue_t q_cfg_valid = {.capacity = BHARAT_AUTOMOTIVE_MAX_QUEUE_DEPTH};
     assert(subsys_automotive_queue_register(4U, &q_cfg_valid));
 
+    // Queue push tests
+    assert(!subsys_automotive_queue_push(999U, 1U)); // Unregistered queue
+
+    automotive_bounded_queue_t q_cfg_push = {
+        .capacity = 2U,
+        .priority_aware_wakeup = 1U,
+        .high_watermark = 0U
+    };
+    assert(subsys_automotive_queue_register(5U, &q_cfg_push));
+
+    assert(subsys_automotive_queue_push(5U, 10U)); // Success, depth becomes 1, watermark 10
+    assert(subsys_automotive_queue_push(5U, 5U));  // Success, depth becomes 2, watermark still 10 (5 < 10)
+    assert(!subsys_automotive_queue_push(5U, 20U)); // Fails, depth is 2 (at capacity)
+
     printf("Automotive subsystem tests passed.\n");
     return 0;
 }
