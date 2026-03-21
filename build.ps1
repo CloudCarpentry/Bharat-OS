@@ -51,4 +51,7 @@ cmake --build --preset $Preset
 if ($Run -or ($RunYaml -eq "true")) {
     Write-Host "Running (assuming target is executable for host or qemu is in path)..."
     # Placeholder for platform-specific launch commands similar to Linux script
+    if ($Arch -eq "arm32" -and $Board -eq "avh-corstone310") {
+        VHT_Corstone_SSE-310.exe -a build/$Preset/kernel.elf
+    }
 }

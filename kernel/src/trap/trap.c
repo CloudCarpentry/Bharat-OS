@@ -334,7 +334,11 @@ long trap_handle(trap_frame_t *frame) {
     if (ec == 0x24 || ec == 0x25) { // Data/Instruction abort
       // Page fault handling
       uint64_t far;
+#if defined(BHARAT_ARCH_32BIT)
+      far = 0; // Stub for arm32
+#else
       __asm__ volatile("mrs %0, far_el1" : "=r"(far));
+#endif
 
       fault_diag_record_fault(far, frame->cause);
 

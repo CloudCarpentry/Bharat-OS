@@ -19,3 +19,12 @@ builds:
     board: virt
     gui: false
     run: false
+
+  avh_corstone310:
+    preset: linux-arm32-avh-corstone310-debug
+    arch: arm32
+    profile: EDGE
+    personality: NONE
+    board: avh-corstone310
+    gui: false
+    run: false

@@ -71,6 +71,19 @@
       }
     },
     {
+      "name": "linux-arm32-avh-corstone310-debug",
+      "displayName": "Cross ARM32 AVH Corstone-310 (Debug)",
+      "description": "Cross-compile ARM32 AVH Corstone-310 on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/linux-arm32-avh-corstone310-debug",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/arm32-elf.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BHARAT_DEVICE_PROFILE": "EDGE",
+        "BHARAT_BOOT_HW_PROFILE": "avh-corstone310"
+      }
+    },
+    {
       "name": "windows-hosttools-debug",
       "displayName": "Windows Host Tools (Debug)",
       "description": "Host tools build on Windows using Clang",
@@ -119,6 +132,10 @@
     {
       "name": "linux-riscv64-drone-release",
       "configurePreset": "linux-riscv64-drone-release"
+    },
+    {
+      "name": "linux-arm32-avh-corstone310-debug",
+      "configurePreset": "linux-arm32-avh-corstone310-debug"
     },
     {
       "name": "windows-hosttools-debug",

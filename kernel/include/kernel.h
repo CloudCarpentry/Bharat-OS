@@ -10,7 +10,7 @@ void kernel_main(uint32_t magic, multiboot_information_t *mb_info);
 #elif defined(__riscv)
 #include <stdint.h>
 void kernel_main(uint64_t hart_id, uintptr_t fdt_ptr);
-#elif defined(__aarch64__)
+#elif defined(__aarch64__) || defined(__arm__)
 #include <stdint.h>
 void kernel_main(uintptr_t fdt_ptr);
 #else
