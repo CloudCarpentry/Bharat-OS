@@ -10,6 +10,8 @@ extern void x86_64_parse_multiboot_framebuffer(multiboot_information_t *mb_info)
 void x86_64_parse_multiboot(uint32_t magic, multiboot_information_t *mb_info, platform_boot_info_t *plat_info, boot_info_t *boot_info) {
     if (!mb_info || !boot_info || !plat_info) return;
 
+    (void)magic;
+
     // This is a minimal parser that safely ignores unknown tags rather than making
     // permissive assumptions. A full implementation would map actual hardware details.
 

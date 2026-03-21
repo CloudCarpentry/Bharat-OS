@@ -20,6 +20,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "mm/pmm_map.h"
+#include "mm/pt_cache.h"
 
 #define MAX_ORDER                                                              \
   12 // allows order 11 -> 2048 pages -> 8MB, and order 9 -> 512 pages -> 2MB
@@ -620,6 +621,9 @@ int mm_pmm_init(uint32_t magic, const boot_info_t *boot) {
   }
 
   pmm_ingest_memory_map(&map);
+
+  // Ensure page-table cache is available before VMM/hal_pt code consumes it.
+  pt_cache_init();
 
   // Zero-initialize PStore region if it exists
   extern char _pstore_start[];
