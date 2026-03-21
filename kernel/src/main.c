@@ -14,7 +14,6 @@
 #endif
 #include "ipc_async.h"
 #include "kernel.h"
-#include "hal/common/fdt_parser.h"
 #include "mm.h"
 #include "arch/arch_cpu_caps.h"
 #include "mm_zswap.h"
