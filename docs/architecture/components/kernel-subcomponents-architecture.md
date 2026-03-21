@@ -63,7 +63,7 @@ package "Kernel Core" {
 | Capability core | Present | Present | Present | Partial | Grant/delegate/revoke model direction in place. | Temporal/expiry controls, stronger policy proofs/audits. | Phase 1, Phase 4 |
 | Scheduler + RT hooks | Present | Present | Present | Partial | Per-core scheduling direction and policy hooks. | Admission control depth (EDF/RMS), bounded AI influence. | Phase 1, Phase 2 |
 | HAL contracts | Maturest | Active | Active | Partial | Multi-arch abstraction and bring-up paths exist. | Arch parity closure, validation depth, stronger platform tests. | Phase 1, Phase 3 |
-| Interrupt controller submodule (irq-core + irq-domain + irq-chip) | Present (APIC/IOAPIC) | Present (GICv3 path) | Present (PLIC path) | Partial | Generic IRQ API, backend scaffolding, and discovery model exist. | Non-breaking unification to one claim/dispatch/eoi flow, then arm32 GICv2 baseline + riscv32 PLIC baseline, then ISA-extension/accelerator features behind capability probes. | Phase 1, Phase 3, Phase 4 |
+| Interrupt controller submodule (irq-core + irq-domain + irq-chip) | Present (APIC/IOAPIC) | Present (GICv3 path) | Present (PLIC path) | Baseline | Generic IRQ API and unified `hal_interrupt_handle_trap_irq` flow exist across all architectures. | Non-breaking unification to one claim/dispatch/eoi flow completed. Next: arm32 GICv2 baseline + riscv32 PLIC baseline, then ISA-extension/accelerator features behind capability probes. | Phase 3, Phase 4 |
 
 ## Implementation rule
 

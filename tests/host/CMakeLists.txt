@@ -45,3 +45,10 @@ target_include_directories(test_virt_can PRIVATE ../../drivers/include)
 target_compile_definitions(test_virt_can PRIVATE BHARAT_HOST_TEST)
 target_link_libraries(test_virt_can PRIVATE c)
 add_test(NAME test_virt_can COMMAND test_virt_can)
+
+add_executable(test_interrupt_common hal/test_interrupt_common.c
+               ../../kernel/src/hal/interrupt_common.c)
+target_include_directories(test_interrupt_common PRIVATE ../../kernel/include ../../include)
+target_compile_definitions(test_interrupt_common PRIVATE BHARAT_HOST_TEST BHARAT_IRQ_DISPATCH_MIXED)
+target_link_libraries(test_interrupt_common PRIVATE c)
+add_test(NAME test_interrupt_common COMMAND test_interrupt_common)
