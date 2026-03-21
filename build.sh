@@ -43,12 +43,30 @@ RUN=$(yq eval ".builds.$BUILD_NAME.run" build_config.yml)
 GUI_FLAG="OFF"
 if [ "$GUI" = "true" ]; then GUI_FLAG="ON"; fi
 
+normalize_csv_value() {
+    local raw="$1"
+    local first
+    IFS=',' read -r first _ <<< "$raw"
+    first="${first#"${first%%[![:space:]]*}"}"
+    first="${first%"${first##*[![:space:]]}"}"
+    echo "$first"
+}
+
+PROFILE_CANONICAL=$(normalize_csv_value "$PROFILE")
+PROFILE_CANONICAL="${PROFILE_CANONICAL^^}"
+
+PERSONALITY_CANONICAL=$(normalize_csv_value "$PERSONALITY")
+PERSONALITY_CANONICAL="${PERSONALITY_CANONICAL^^}"
+
+BOARD_CANONICAL=$(normalize_csv_value "$BOARD")
+
 # Configure
-echo "Configuring: $PRESET (Arch: $ARCH, Profile: $PROFILE, Personality: $PERSONALITY, Board: $BOARD)"
+echo "Configuring: $PRESET (Arch: $ARCH, Profile: $PROFILE_CANONICAL, Personality: $PERSONALITY_CANONICAL, Board: $BOARD_CANONICAL)"
 cmake --preset $PRESET \
     -DBHARAT_ARCH_FAMILY=$ARCH \
-    -DBHARAT_DEVICE_PROFILE=$PROFILE \
-    -DBHARAT_PERSONALITY_PROFILE=$PERSONALITY \
+    -DBHARAT_DEVICE_PROFILE=$PROFILE_CANONICAL \
+    -DBHARAT_PERSONALITY_PROFILE=$PERSONALITY_CANONICAL \
+    -DBHARAT_TARGET_BOARD=$BOARD_CANONICAL \
     -DBHARAT_BOOT_GUI=$GUI_FLAG
 
 # Build

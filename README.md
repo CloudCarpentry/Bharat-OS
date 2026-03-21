@@ -498,6 +498,28 @@ cmake --preset linux-x86_64-dev-debug
 cmake --build --preset linux-x86_64-dev-debug
 ```
 
+### Profile/personality/board-aware CMake configuration
+
+Build composition is now resolved through centralized component policy in
+`cmake/modules/BharatComponentPolicy.cmake`. Configure-time decisions use:
+
+- `BHARAT_DEVICE_PROFILE` (for example `DESKTOP`, `AUTOMOTIVE_ECU`, `AUTOMOTIVE_INFOTAINMENT`)
+- `BHARAT_PERSONALITY_PROFILE` (`NONE`, `LINUX`, `WINDOWS`, `MAC`)
+- `BHARAT_TARGET_BOARD` (for example `qemu-virt-riscv64`, `shakti-c`)
+
+Both wrapper scripts (`build.sh`, `build.ps1`) pass these canonical cache variables to CMake.
+If a config value contains multiple comma-separated entries, only the first entry is used so
+configure-time policy remains deterministic.
+
+For manual configure:
+
+```bash
+cmake --preset linux-x86_64-dev-debug \
+  -DBHARAT_DEVICE_PROFILE=AUTOMOTIVE_INFOTAINMENT \
+  -DBHARAT_PERSONALITY_PROFILE=LINUX \
+  -DBHARAT_TARGET_BOARD=qemu-virt-riscv64
+```
+
 Please see **[BUILD.md](BUILD.md)** for exhaustive details on presets and cross-compilation toolchains.
 
 ## Repository layout

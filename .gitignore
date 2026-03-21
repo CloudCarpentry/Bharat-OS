@@ -28,6 +28,7 @@ Makefile
 *.cmake
 !cmake/toolchains/*.cmake
 !cmake/modules/*.cmake
+!tests/host/cmake/*.cmake
 cmake_install.cmake
 compile_commands.json
 .cache/

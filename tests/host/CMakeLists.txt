@@ -25,3 +25,11 @@ target_include_directories(test_console PRIVATE ../../kernel/include ../../kerne
 target_compile_definitions(test_console PRIVATE BHARAT_HOST_TEST)
 target_link_libraries(test_console PRIVATE c)
 add_test(NAME test_console COMMAND test_console)
+
+add_test(
+    NAME test_component_policy_matrix
+    COMMAND ${CMAKE_COMMAND}
+        -DREPO_ROOT=${CMAKE_SOURCE_DIR}
+        -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/policy_matrix
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/test_component_policy.cmake
+)
