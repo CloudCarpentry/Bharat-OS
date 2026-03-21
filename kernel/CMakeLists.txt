@@ -237,8 +237,11 @@ set(KERNEL_SRCS
     # arch/common source files (fixed string.h dependency)
     src/arch/common/cpu_caps_state.c
     $<$<STREQUAL:${ARCH},x86_64>:src/arch/x86_64/arch_caps.c>
+    $<$<STREQUAL:${ARCH},x86_64>:src/arch/x86_64/arch_console.c>
     $<$<STREQUAL:${ARCH},arm64>:src/arch/arm64/arch_caps.c>
+    $<$<STREQUAL:${ARCH},arm64>:src/arch/arm64/arch_console.c>
     $<$<STREQUAL:${ARCH},riscv64>:src/arch/riscv64/arch_caps.c>
+    $<$<STREQUAL:${ARCH},riscv64>:src/arch/riscv64/arch_console.c>
     $<$<STREQUAL:${ARCH},arm32>:src/arch/arm32/arch_caps.c>
     $<$<STREQUAL:${ARCH},riscv32>:src/arch/riscv32/arch_caps.c>
     ${ARCH_EXT_STATE_SRC}

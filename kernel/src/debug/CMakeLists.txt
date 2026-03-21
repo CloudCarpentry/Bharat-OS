@@ -1,10 +1,12 @@
 add_library(k_debug OBJECT
     ../../src/panic.c
     ../../src/trace/trace.c
-    ../../src/console/console.c
+    ../../src/console/console_core.c
+    ../../src/console/console_buffer.c
     ../../src/console/utf8.c
     ../../src/console/serial_backend.c
     ../../src/console/fb_backend.c
+    ../../src/console/memlog_console.c
     ../../../kernel/console/fb_console.c
 )
 
