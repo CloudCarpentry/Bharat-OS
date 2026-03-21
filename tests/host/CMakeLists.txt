@@ -33,3 +33,11 @@ add_test(
         -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/policy_matrix
         -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/test_component_policy.cmake
 )
+
+add_executable(test_virt_can services/can/test_virt_can.c
+               ../../drivers/virt_can/virt_can.c
+               ../../drivers/can_core/can_controller_core.c)
+target_include_directories(test_virt_can PRIVATE ../../drivers/include)
+target_compile_definitions(test_virt_can PRIVATE BHARAT_HOST_TEST)
+target_link_libraries(test_virt_can PRIVATE c)
+add_test(NAME test_virt_can COMMAND test_virt_can)

@@ -17,6 +17,7 @@ option(BHARAT_BUILD_CORE_SERVICES "Build core multi-kernel distributed OS servic
 if(BHARAT_BUILD_CORE_SERVICES)
     add_subdirectory(coremgr)
     add_subdirectory(memmgr)
+add_subdirectory(can)
     add_subdirectory(schedmgr)
     add_subdirectory(devmgr)
     add_subdirectory(accelmgr)
