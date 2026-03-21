@@ -12,28 +12,52 @@ static int vfs_cap_allows_file(vfs_file_t* entry, capability_t* caller_cap, uint
         return 0;
     }
 
-    if (entry->handle_cap.target_object_id != 0 || entry->handle_cap.rights_mask != 0) {
-        if ((entry->handle_cap.rights_mask & required_rights) != required_rights) {
-            return 0;
-        }
-        if (caller_cap->target_object_id != entry->handle_cap.target_object_id) {
-            return 0;
-        }
-        // Ensure that caller cap still possesses the required rights, even if handle has them.
-        // Actually wait, handle_cap is a snapshot of rights. We still must ensure the caller_cap
-        // actually has those rights right now! If the caller passes a capability that lacks the rights,
-        // it shouldn't be able to use the handle.
+    // Legacy or internal callers using an advisory dummy capability
+    if (caller_cap->capability_id == 0) {
         if ((caller_cap->rights_mask & required_rights) != required_rights) {
+            return 0;
+        }
+
+        if (entry->handle_cap.target_object_id != 0 || entry->handle_cap.rights_mask != 0) {
+            if ((entry->handle_cap.rights_mask & required_rights) != required_rights) {
+                return 0;
+            }
+            if (caller_cap->target_object_id != entry->handle_cap.target_object_id) {
+                return 0;
+            }
+            return 1;
+        }
+
+        if (caller_cap->target_object_id != entry->node->object_id) {
             return 0;
         }
         return 1;
     }
 
-    if ((caller_cap->rights_mask & required_rights) != required_rights) {
+    capability_table_t* table = sched_current_cap_table();
+    if (!table) {
         return 0;
     }
 
-    if (caller_cap->target_object_id != entry->node->object_id) {
+    capability_entry_t auth_cap;
+    // cap_table_lookup handles resolution, liveness, and validates required_rights
+    if (cap_table_lookup(table, caller_cap->capability_id, CAP_OBJ_NONE, required_rights, &auth_cap) != 0) {
+        return 0;
+    }
+
+    // Compare against the file's bound capability if established
+    if (entry->handle_cap.target_object_id != 0 || entry->handle_cap.rights_mask != 0) {
+        if ((entry->handle_cap.rights_mask & required_rights) != required_rights) {
+            return 0;
+        }
+        if (auth_cap.object_ref != entry->handle_cap.target_object_id) {
+            return 0;
+        }
+        return 1;
+    }
+
+    // Otherwise, ensure the authoritative capability points to the node's object
+    if (auth_cap.object_ref != entry->node->object_id) {
         return 0;
     }
 
