@@ -86,6 +86,9 @@ typedef struct boot_info {
     // Extra feature flags or security measurements
     uint32_t feature_flags;
 
+    // Architecture-specific pointer (FDT, Multiboot, etc.)
+    void *arch_ptr;
+
 } boot_info_t;
 
 // Boot Display Hooks inside Kernel

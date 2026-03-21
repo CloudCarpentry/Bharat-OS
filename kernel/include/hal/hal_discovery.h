@@ -22,11 +22,16 @@ typedef struct {
     bool is_bsp;
 } cpu_topology_t;
 
+#define HAL_MEM_RAM      1
+#define HAL_MEM_RESERVED 2
+#define HAL_MEM_ACPI     3
+#define HAL_MEM_NVS      4
+
 typedef struct {
     uint64_t base;
     uint64_t size;
     uint32_t node_id;
-    uint32_t type;      // 1 = RAM, 2 = Reserved, etc.
+    uint32_t type;      // HAL_MEM_*
 } mem_topology_t;
 
 typedef struct {
@@ -187,8 +192,16 @@ typedef struct {
     boot_video_handoff_t boot_video;
 } system_discovery_t;
 
+#include "bharat/boot_info.h"
+
 // Retrieve the global discovery structure
 system_discovery_t* hal_get_system_discovery(void);
+
+// Implementation defined by each architecture
+void hal_arch_discovery_init(const boot_info_t *boot);
+
+// Common wrapper called during boot
+void hal_discovery_init(const boot_info_t *boot);
 
 // Publish architecture CPU capability state into system discovery.
 void hal_discovery_publish_cpu_caps(void);

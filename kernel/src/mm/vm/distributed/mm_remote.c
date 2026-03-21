@@ -1,6 +1,10 @@
-#include "../../include/mm/mm_remote.h"
-#include "../../include/urpc/urpc_bootstrap.h"
-#include "../../include/hal/hal.h"
+#include "../../../../include/mm.h"
+#include "../../../../include/mm/vm_space.h"
+#include "../../../../include/mm/vm_mapping.h"
+#include "../../../../include/monitor/mon_vm_ops.h"
+#include "../../../../include/hal/hal.h"
+#include "../../../../include/slab.h"
+#include "../../../../include/mm/mm_remote.h"
 
 void kernel_panic(const char *message);
 

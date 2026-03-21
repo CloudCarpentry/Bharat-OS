@@ -1,6 +1,11 @@
-#include "../../include/mm/mm_local.h"
-#include "../../include/mm/mm_remote.h"
-#include "../../include/hal/hal.h"
+#include "../../../../include/mm.h"
+#include "../../../../include/mm/vm_space.h"
+#include "../../../../include/mm/vm_mapping.h"
+#include "../../../../include/monitor/mon_vm_ops.h"
+#include "../../../../include/hal/hal.h"
+#include "../../../../include/slab.h"
+#include "../../../../include/mm/mm_remote.h"
+#include "../../../../include/mm/mm_local.h"
 
 // TLS or per-core flag to denote if we are currently handling a URPC message
 // This would ideally be in a per-core data structure (e.g. core_local_data_t)

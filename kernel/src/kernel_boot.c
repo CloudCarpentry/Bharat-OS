@@ -58,6 +58,8 @@ void boot_common_early(const boot_info_t *boot) {
     (void)boot;
     const char *profile = kernel_boot_hw_profile();
 
+    hal_init();
+
     KPRINT("\n");
     KPRINT("  ____  _                          _          ____   ____  \n");
     KPRINT(" | __ )| |__   __ _ _ __ __ _ _| |_       / ___| / ___| \n");
@@ -67,7 +69,7 @@ void boot_common_early(const boot_info_t *boot) {
     KPRINT("\nBharat-OS\n");
 
     KPRINT("  [HAL] Initialising hardware on BSP...\n");
-    hal_init();
+    hal_discovery_init(boot);
     KPRINT("  [HAL] Ready.\n");
 
     KPRINT("  [PROFILE] Applying hardware profile hooks...\n");

@@ -4,6 +4,8 @@
 #include "mm/aspace.h"
 #include "console/console_core.h"
 #include <stddef.h>
+#include <stdint.h>
+#include <stdbool.h>
 
 mmu_ops_t *active_mmu = NULL;
 
@@ -88,6 +90,21 @@ void hal_mmu_final_setup(void) {
 #elif defined(__x86_64__)
     vmm_map_page(0xFEE00000, 0xFEE00000, CAP_RIGHT_READ | CAP_RIGHT_WRITE); // LAPIC
     vmm_map_page(0xFEC00000, 0xFEC00000, CAP_RIGHT_READ | CAP_RIGHT_WRITE); // IOAPIC
+
+    // Map RAM into high-half physical map
+    extern const uint64_t g_kernel_virt_offset;
+    system_discovery_t* discovery = hal_get_system_discovery();
+    if (discovery) {
+        for (uint32_t i = 0; i < discovery->topology.mem_region_count; i++) {
+            uint64_t base = discovery->topology.mem_regions[i].base;
+            uint64_t size = discovery->topology.mem_regions[i].size;
+            // Map the whole region into the high-half physical map
+            for (uint64_t off = 0; off < size; off += 4096) {
+                vmm_map_page(base + off + g_kernel_virt_offset, base + off, 
+                             CAP_RIGHT_READ | CAP_RIGHT_WRITE);
+            }
+        }
+    }
 #endif
 
     extern address_space_t kernel_space;
