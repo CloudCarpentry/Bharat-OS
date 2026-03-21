@@ -1,5 +1,7 @@
 #include "fs/file.h"
 #include "fs/mount.h"
+#include "capability.h"
+#include "sched.h"
 
 #define VFS_MAX_OPEN_FILES 64
 
@@ -80,22 +82,46 @@ int vfs_open_file(const char* path, int flags, capability_t* caller_cap, int* ou
             g_open_files[i].offset = 0;
             g_open_files[i].node = node;
 
-            // Issue handle_cap locally without generating a real token
-            g_open_files[i].handle_cap.capability_id = 0;
-            g_open_files[i].handle_cap.target_object_id = node->object_id;
-            g_open_files[i].handle_cap.rights_mask = caller_cap->rights_mask & requested_rights;
-            g_open_files[i].handle_cap.owner_core_id = caller_cap->owner_core_id;
-
             // Allow underlying implementation to populate/reject handle
             if (node->ops && node->ops->open) {
                 if (node->ops->open(node, &g_open_files[i], flags) != 0) {
                     g_open_files[i].in_use = 0;
                     g_open_files[i].node = NULL;
-                    g_open_files[i].handle_cap.target_object_id = 0;
-                    g_open_files[i].handle_cap.rights_mask = 0;
                     return -1;
                 }
             }
+
+            // Derive capability through cap_table to ensure it is newly minted and bound to caller
+            uint32_t new_cap_id = 0;
+            capability_table_t* table = sched_current_cap_table();
+            if (!table || caller_cap->capability_id == 0) {
+                if (node->ops && node->ops->close) {
+                    node->ops->close(&g_open_files[i]);
+                }
+                g_open_files[i].in_use = 0;
+                g_open_files[i].node = NULL;
+                return -1;
+            }
+
+            if (cap_table_delegate(table,
+                                   table,
+                                   caller_cap->capability_id,
+                                   requested_rights,
+                                   &new_cap_id) != 0) {
+                // Minting failed, rollback backend open
+                if (node->ops && node->ops->close) {
+                    node->ops->close(&g_open_files[i]);
+                }
+                g_open_files[i].in_use = 0;
+                g_open_files[i].node = NULL;
+                return -1;
+            }
+
+            // Store advisory token
+            g_open_files[i].handle_cap.capability_id = new_cap_id;
+            g_open_files[i].handle_cap.target_object_id = node->object_id;
+            g_open_files[i].handle_cap.rights_mask = caller_cap->rights_mask & requested_rights;
+            g_open_files[i].handle_cap.owner_core_id = caller_cap->owner_core_id;
 
             *out_fd = (int)i;
             return 0;
@@ -222,8 +248,19 @@ int vfs_close_file(int fd, capability_t* caller_cap) {
         entry->node->ops->close(entry);
     }
 
+    if (entry->handle_cap.capability_id != 0) {
+        capability_table_t* table = sched_current_cap_table();
+        if (table) {
+            cap_table_revoke(table, entry->handle_cap.capability_id);
+        }
+    }
+
     entry->in_use = 0;
     entry->node = NULL;
+    entry->handle_cap.capability_id = 0;
+    entry->handle_cap.target_object_id = 0;
+    entry->handle_cap.rights_mask = 0;
+    entry->handle_cap.owner_core_id = 0;
     return 0;
 }
 
