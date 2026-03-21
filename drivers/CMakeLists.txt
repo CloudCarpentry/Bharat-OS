@@ -12,6 +12,8 @@ if(COMMAND bharat_component_option)
     bharat_component_option(BHARAT_ENABLE_DRIVER_VIRTIO_NET ON "Build virtio net driver")
     bharat_component_option(BHARAT_ENABLE_DRIVER_FPGA_MGR ON "Build FPGA manager driver")
     bharat_component_option(BHARAT_ENABLE_DRIVER_CAN_LOOPBACK OFF "Build CAN loopback driver")
+    bharat_component_option(BHARAT_ENABLE_DRIVER_CAN_CORE ON "Build CAN generic core driver")
+    bharat_component_option(BHARAT_ENABLE_DRIVER_VIRT_CAN ON "Build virt_can virtual controller")
     bharat_component_option(BHARAT_ENABLE_DRIVER_GENERIC_REGISTRY ON "Build generic driver registry")
     bharat_component_option(BHARAT_ENABLE_DRIVER_ARCH_IRQ_TIMER ON "Build architecture IRQ/timer generic driver")
     bharat_component_option(BHARAT_ENABLE_DRIVER_BOARD_FABRIC ON "Build board fabric generic driver")
@@ -20,6 +22,8 @@ else()
     option(BHARAT_ENABLE_DRIVER_VIRTIO_NET "Build virtio net driver" ON)
     option(BHARAT_ENABLE_DRIVER_FPGA_MGR "Build FPGA manager driver" ON)
     option(BHARAT_ENABLE_DRIVER_CAN_LOOPBACK "Build CAN loopback driver" OFF)
+    option(BHARAT_ENABLE_DRIVER_CAN_CORE "Build CAN generic core driver" ON)
+    option(BHARAT_ENABLE_DRIVER_VIRT_CAN "Build virt_can virtual controller" ON)
     option(BHARAT_ENABLE_DRIVER_GENERIC_REGISTRY "Build generic driver registry" ON)
     option(BHARAT_ENABLE_DRIVER_ARCH_IRQ_TIMER "Build architecture IRQ/timer generic driver" ON)
     option(BHARAT_ENABLE_DRIVER_BOARD_FABRIC "Build board fabric generic driver" ON)
@@ -52,6 +56,18 @@ endif()
 if(BHARAT_ENABLE_DRIVER_CAN_LOOPBACK)
     list(APPEND BHARAT_DRIVER_SOURCES
         can_loopback/can_loopback.c
+    )
+endif()
+
+if(BHARAT_ENABLE_DRIVER_CAN_CORE)
+    list(APPEND BHARAT_DRIVER_SOURCES
+        can_core/can_controller_core.c
+    )
+endif()
+
+if(BHARAT_ENABLE_DRIVER_VIRT_CAN)
+    list(APPEND BHARAT_DRIVER_SOURCES
+        virt_can/virt_can.c
     )
 endif()
 

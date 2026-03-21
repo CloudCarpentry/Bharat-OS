@@ -215,38 +215,30 @@ To make the automotive architecture immediately actionable, the following gaps a
 
 | Area | Current State | Gap | Implementation Target |
 |---|---|---|---|
-| Vehicle network stack | CAN/LIN/TSN/SOME-IP is listed at architecture level | Missing unified in-kernel transport abstraction with deterministic buffering contracts | Add `Vehicle Network Subsystem (VNS)` with common frame API, QoS classes, and timestamp contract |
+| Vehicle network stack | CAN/LIN/TSN/SOME-IP is listed at architecture level | **Implemented**: Userspace CAN service (`services/can`) and generic controller core (`drivers/can_core`) via capabilities | Evolve to full VNS with TSN/SOME-IP integration |
 | Safety I/O path | Safety domain responsibilities are defined | Missing explicit low-latency path from fault signal to actuator-safe state | Add `Safety I/O Subsystem` with interrupt-to-action budget and emergency action table |
 | Time sync | Monotonic/cross-core sync is declared | Missing production-ready API for PTP/TSN discipline and drift diagnostics | Add `Time Sync Subsystem` with clock discipline hooks and diagnostics counters |
 | Power state control | Fast boot and mixed-criticality are stated | Missing runtime policy for ignition, sleep, wake, limp-home transitions | Add `Power & Mode Manager` subsystem integrated with Safety + Control domains |
-| CAN controller support | CAN/CAN FD is required | Missing reference production driver model and compliance checklist | Add `CAN/CAN-FD Driver Framework` + first reference driver implementation |
+| CAN controller support | CAN/CAN FD is required | **Implemented**: Generic `can_controller_ops_t` and `virt_can` backend for test/loopback | Add real hardware drivers (e.g., STM32 FDCAN, NXP FlexCAN) |
 | Motor control peripheral stack | Control runtime lists motor loops | Missing standardized PWM/ADC/encoder driver contract for FOC pipelines | Add `Motor Control Driver Suite` (PWM trigger, ADC sync, QEI encoder) |
 | Sensor bus integration | Sensor fusion is listed | Missing deterministic IMU + wheel-speed acquisition driver patterns | Add `Deterministic Sensor Driver Framework` with timestamped DMA ring ingestion |
 
-### 15.2 Priority Subsystem to Add First: Vehicle Network Subsystem (VNS)
+### 15.2 Vehicle Network Subsystem (VNS) & CAN Architecture
 
-Recommended first addition because it unlocks gateway, diagnostics, control telemetry, and distributed ECU communications.
+The first iteration of the Vehicle Network Subsystem for CAN has been implemented following the multi-kernel capability model:
 
 **Scope**
 
-- canonical frame descriptor (`id`, `dlc`, `payload`, `timestamp`, `bus_id`, `priority_class`)
-- deterministic Tx/Rx queue model with bounded memory
-- ISR-safe fast path and deferred worker path
-- filter programming API (hardware + software fallback)
-- error and bus-state model (error active/passive/bus-off)
-- trace hooks for diagnostics and replay
+- Canonical frame descriptor (`can_frame_t`): FD-ready, timestamped, extensible.
+- Generic Controller Interface (`can_controller_ops_t`): abstracted HAL contract for hardware drivers.
+- **Kernel/HAL shim**: The kernel only handles IRQs, MMIO access, and fast-path enqueue/dequeue.
+- **Userspace CAN Service**: A dedicated `can_service` handles routing, software filtering, policy enforcement, and client subscriptions via IPC. Capabilities dictate transmit/receive rights per client.
 
-**Interfaces**
+This split keeps the trusted kernel surface small, allows for restartable CAN routing logic, and isolates safety-critical policy from raw register manipulation.
 
-- `vns_register_controller()`
-- `vns_send_frame()`
-- `vns_subscribe_filter()`
-- `vns_read_frame()`
-- `vns_get_link_state()`
+### 15.3 CAN/CAN-FD Reference Driver Framework
 
-### 15.3 First Driver to Implement: CAN/CAN-FD Reference Driver
-
-Implement a hardware-adapter driver that conforms to VNS and serves as the template for SoC-specific controllers.
+The driver framework provides a hardware-agnostic core (`drivers/can_core`) and a deterministic virtual backend (`virt_can`) for host-side testing. Future milestones will implement specific hardware drivers (e.g., STM32 bxCAN, NXP FlexCAN) against this contract.
 
 **Driver capabilities**
 
@@ -269,19 +261,18 @@ Implement a hardware-adapter driver that conforms to VNS and serves as the templ
 
 ### 15.4 Execution Backlog (Concrete Tasks)
 
-**Milestone A - Subsystem skeleton**
+**Milestone A - Subsystem skeleton (Completed)**
 
-- create VNS core module and frame definitions
-- implement bounded queue and backpressure strategy
-- add per-controller registration and lifecycle handling
-- expose minimal diagnostics counters
+- created generic CAN core module and FD-ready frame definitions
+- implemented virtual backend (`virt_can`) with loopback and testing capabilities
+- added per-controller registration and lifecycle handling
+- implemented the userspace CAN service with capability-based routing stubs
 
-**Milestone B - Reference CAN driver**
+**Milestone B - Real Hardware CAN drivers (Next)**
 
-- define generic CAN HAL ops
-- implement IRQ-driven Tx/Rx path
-- implement filter + state transitions
-- connect timestamps and error reporting to VNS
+- implement IRQ-driven Tx/Rx path for a physical controller (e.g. STM32, NXP)
+- implement hardware filter compilation from the userspace service
+- connect hardware timestamps and bus-off error reporting to the generic core
 
 **Milestone C - Safety and determinism hardening**
 
