@@ -179,6 +179,7 @@ target_compile_options(bharat_mm_pt PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestandi
 add_library(bharat_mm_tlb OBJECT
     src/mm/tlb/tlb_coordinator.c
     src/mm/tlb/monitor_client.c
+    src/mm/vm/aspace/aspace_switch.c
 )
 target_include_directories(bharat_mm_tlb PRIVATE include include/generated ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/subsys/include)
 target_compile_options(bharat_mm_tlb PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)

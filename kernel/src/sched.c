@@ -13,6 +13,7 @@
 #include "arch/arch_cpu_caps.h"
 #include "slab.h"
 #include "ipc_async.h"
+#include "mm/mm_aspace_switch.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -643,6 +644,14 @@ static void sched_switch_to(kthread_t *next, uint32_t core_id) {
   if (current) {
     arch_ext_state_save(current);
   }
+
+  address_space_t *prev_as = current && current->process ? current->process->addr_space : NULL;
+  address_space_t *next_as = next->process ? next->process->addr_space : NULL;
+  mm_switch_active_aspace(core_id, prev_as, next_as);
+
+  #ifndef NDEBUG
+  vm_debug_validate_active_tracking();
+  #endif
 
     // Process incoming URPC messages before doing the switch
     extern void vmm_process_local_urpc_messages(uint32_t core_id);
