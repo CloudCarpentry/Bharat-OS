@@ -12,7 +12,7 @@
 #include "../../kernel/include/hal/hal.h"
 #include "../../kernel/include/urpc/urpc_bootstrap.h"
 #include "../../subsys/include/bharat/msg/transport.h"
-#include "../../services/monitor/generated/bharat_monitor_v1_types.h"
+#include "bharat_monitor_v1_types.h"
 
 // --- Mocking ---
 hal_tlb_ops_t *active_hal_tlb;

@@ -11,7 +11,7 @@
 #include "../../../include/spinlock.h"
 
 // Bring in the generated definitions
-#include "../../../../services/monitor/generated/bharat_monitor_v1_types.h"
+#include "bharat_monitor_v1_types.h"
 #include "../../../../subsys/include/bharat/msg/transport.h"
 #include "../../../../subsys/include/bharat/msg/wire.h"
 

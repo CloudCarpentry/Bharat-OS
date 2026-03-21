@@ -94,6 +94,9 @@ target_compile_options(bharat_kernel_buildopts INTERFACE
     -fno-strict-aliasing
     -fno-common
     -fno-exceptions
+    -fno-pie
+    -fno-PIE
+    -mcmodel=large
 )
 target_compile_definitions(bharat_kernel_buildopts INTERFACE
     __KERNEL__=1

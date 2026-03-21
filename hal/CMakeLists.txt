@@ -7,5 +7,3 @@ elseif(BHARAT_ARCH_FAMILY STREQUAL "ARM")
 elseif(BHARAT_ARCH_FAMILY STREQUAL "RISCV")
     add_subdirectory(riscv64)
 endif()
-
-add_subdirectory(platforms/qemu)

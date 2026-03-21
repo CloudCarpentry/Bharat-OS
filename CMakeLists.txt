@@ -5,8 +5,6 @@ enable_testing()
 
 # Make the modules directory visible to CMake
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/modules")
-include_directories(${CMAKE_SOURCE_DIR}/kernel/src)
-include_directories(${CMAKE_SOURCE_DIR}/kernel/include)
 
 # Load Common Build Policies
 include(BharatCommon)
@@ -22,6 +20,16 @@ set(BHARAT_GEN_INCLUDE_DIR "${BHARAT_GEN_DIR}/include")
 
 file(MAKE_DIRECTORY "${BHARAT_GEN_DIR}")
 file(MAKE_DIRECTORY "${BHARAT_GEN_INCLUDE_DIR}/bharat")
+
+# Copy the IDL-generated headers so the code can include them using just "bharat_monitor_v1_types.h"
+# and "bharat_cap_v1_types.h" via the include path.
+execute_process(
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/services/monitor/generated" "${BHARAT_GEN_INCLUDE_DIR}"
+)
+execute_process(
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/services/cap/generated" "${BHARAT_GEN_INCLUDE_DIR}"
+)
+
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
@@ -209,6 +217,7 @@ endif()
 
 # Add subdirectories
 add_subdirectory(hal)
+add_subdirectory(platform)
 add_subdirectory(kernel)
 add_subdirectory(lib)
 add_subdirectory(drivers)
@@ -259,5 +268,3 @@ bharat_add_host_test_compat_target(
 
 # Image generation
 include(BharatImage)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-pie -fno-PIE -mcmodel=large")
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pie")

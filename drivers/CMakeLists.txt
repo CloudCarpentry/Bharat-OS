@@ -89,7 +89,7 @@ if(BHARAT_ENABLE_DRIVER_GENERIC_REGISTRY
        OR _bharat_arch_family_upper STREQUAL "ARM"
        OR _bharat_arch_family_upper STREQUAL "RISCV"))
         list(APPEND BHARAT_DRIVER_SOURCES
-            arch_irq_timer/arch_irq_timer.c
+            ../hal/arch_irq_timer/arch_irq_timer.c
         )
         list(APPEND _bharat_generic_driver_defs BHARAT_GENERIC_ENABLE_ARCH_IRQ_TIMER)
     endif()
@@ -98,7 +98,7 @@ if(BHARAT_ENABLE_DRIVER_GENERIC_REGISTRY
        OR _bharat_target_board_lower MATCHES "virt"
        OR _bharat_target_board_lower MATCHES "shakti"))
         list(APPEND BHARAT_DRIVER_SOURCES
-            board_fabric/board_fabric.c
+            ../platform/board_fabric/board_fabric.c
         )
         list(APPEND _bharat_generic_driver_defs BHARAT_GENERIC_ENABLE_BOARD_FABRIC)
     endif()
@@ -112,7 +112,7 @@ add_library(bharatos_drivers STATIC ${BHARAT_DRIVER_SOURCES})
 
 target_include_directories(bharatos_drivers PUBLIC include)
 
-target_include_directories(bharatos_drivers PRIVATE ${CMAKE_SOURCE_DIR}/lib/packet/include ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(bharatos_drivers PRIVATE ${CMAKE_SOURCE_DIR}/lib/packet/include ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/kernel/include)
 target_link_libraries(bharatos_drivers PRIVATE bharat_kernel_buildopts bharat_freestanding bharat_libpacket)
 
 target_compile_options(bharatos_drivers PRIVATE -ffreestanding -nostdlib -Wall)
