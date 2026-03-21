@@ -35,7 +35,13 @@ static void ensure_kernel_space_ready(void) {
     kernel_space_init_in_progress = 0;
 }
 
+#include "mm/prot_domain.h"
+
 int vmm_init(void) {
+    // Phase A: Select capability-driven protection profile backend layer first
+    // This must occur before any generic VMM logic attempts to create an address space/domain.
+    prot_domain_init();
+
     ensure_kernel_space_ready();
     return kernel_space_ready ? 0 : -1;
 }

@@ -30,9 +30,6 @@ extern void riscv_iommu_detect(void);
 
 // Initialize based on memory model profile
 void arch_mmu_init(void) {
-    // Phase A: Select capability-driven protection profile backend layer first
-    prot_domain_init();
-
     MemoryModel model = get_memory_model();
 
     if (model == MEM_MODEL_MMU) {
