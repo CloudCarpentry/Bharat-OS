@@ -4,7 +4,7 @@ This directory provides ADR process guidance and cross-links to accepted Bharat-
 
 ## ADR locations in this repository
 
-- `docs/decisions/` contains the primary accepted ADR series (`ADR-001` to `ADR-009`).
+- `docs/decisions/` contains the primary accepted ADR series (`ADR-001` to `ADR-012`).
 - `docs/adr/ADR-007-experimental-scope.md` extends that series with explicit v1 vs experimental boundary rules.
 
 ## Current accepted ADR index
@@ -19,6 +19,8 @@ This directory provides ADR process guidance and cross-links to accepted Bharat-
 8. [`docs/decisions/ADR-008-ai-scheduler-plugin-contract.md`](../decisions/ADR-008-ai-scheduler-plugin-contract.md)
 9. [`docs/decisions/ADR-009-documentation-status-and-claims.md`](../decisions/ADR-009-documentation-status-and-claims.md)
 10. [`docs/decisions/ADR-010-distributed-kernel-ownership.md`](../decisions/ADR-010-distributed-kernel-ownership.md)
+11. [`docs/decisions/ADR-011-structured-kernel-panic-and-diagnostics.md`](../decisions/ADR-011-structured-kernel-panic-and-diagnostics.md)
+12. [`docs/decisions/ADR-012-interrupt-controller-evolution.md`](../decisions/ADR-012-interrupt-controller-evolution.md)
 
 ## ADR authoring expectations
 

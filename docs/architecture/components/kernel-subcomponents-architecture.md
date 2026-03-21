@@ -63,8 +63,21 @@ package "Kernel Core" {
 | Capability core | Present | Present | Present | Partial | Grant/delegate/revoke model direction in place. | Temporal/expiry controls, stronger policy proofs/audits. | Phase 1, Phase 4 |
 | Scheduler + RT hooks | Present | Present | Present | Partial | Per-core scheduling direction and policy hooks. | Admission control depth (EDF/RMS), bounded AI influence. | Phase 1, Phase 2 |
 | HAL contracts | Maturest | Active | Active | Partial | Multi-arch abstraction and bring-up paths exist. | Arch parity closure, validation depth, stronger platform tests. | Phase 1, Phase 3 |
+| Interrupt controller submodule (irq-core + irq-domain + irq-chip) | Present (APIC/IOAPIC) | Present (GICv3 path) | Present (PLIC path) | Partial | Generic IRQ API, backend scaffolding, and discovery model exist. | Non-breaking unification to one claim/dispatch/eoi flow, then arm32 GICv2 baseline + riscv32 PLIC baseline, then ISA-extension/accelerator features behind capability probes. | Phase 1, Phase 3, Phase 4 |
 
 ## Implementation rule
 
 - Keep architecture docs forward-looking.
 - Keep implementation claims conservative and synchronized with `docs/current-code-status.md` and `ROADMAP.md`.
+
+## Core-kernel interrupt submodule evolution (compatibility-first)
+
+The interrupt controller submodule is treated as a core-kernel architecture concern and follows **ADR-012** for migration rules.
+
+- Keep current x86_64, arm64, and riscv64 behavior stable while refactoring (wrappers/adapters allowed during transition).
+- Move all architectures to one internal path: `claim -> domain translate -> dispatch -> eoi`.
+- Use `irq_domain` hierarchy as the sole hardware-to-virq translation model.
+- Complete Tier-2 parity tracks: arm32 (GICv2 first) and riscv32 (PLIC first) without changing Tier-1 behavior.
+- Gate optional ISA-extension and accelerator fast paths using runtime capability probing with fallback preserved.
+
+Reference: `docs/decisions/ADR-012-interrupt-controller-evolution.md`.

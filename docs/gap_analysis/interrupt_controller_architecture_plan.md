@@ -56,6 +56,19 @@ Adopt a **three-layer interrupt architecture**:
 
 ## Proposed implementation plan
 
+## Non-breaking implementation set (safe to do first)
+
+The following items can be implemented with minimal regression risk because they preserve existing backend behavior and mostly tighten internal contracts:
+
+1. **Controller binding correctness**: make `hal_irq_set_controller()` persist and validate ops in descriptors while keeping existing backend entry points unchanged.
+2. **Trap-flow adapters**: add a unified internal helper (`claim -> translate -> dispatch -> eoi`) and call it from current arch trap paths before removing any old glue.
+3. **Descriptor state formalization**: add `irq_desc` state bits and counters without changing externally visible IRQ numbers or driver APIs.
+4. **Domain-first for new routes only**: require `irq_domain` for newly added devices/routes, while legacy static routes continue to work during migration.
+5. **Affinity propagation no-op fallback**: wire descriptor-to-backend affinity propagation with backend fallback to current behavior when hardware reprogramming is not yet implemented.
+6. **Capability-gated fast paths**: introduce capability probes for x2APIC/GIC advanced modes/AIA hooks but keep fast paths disabled by default unless fully validated.
+
+These steps align with **ADR-012 compatibility-first rules** and should be completed before any destructive API removal.
+
 ## Phase 1: Unify core interrupt flow (foundation)
 
 1. Create a canonical per-CPU trap/IRQ flow:
@@ -152,6 +165,14 @@ Rules:
 2. **Week 3-4**: Domain-first conversion for existing x86_64/arm64/riscv64 backends.
 3. **Week 5-6**: arm32 + riscv32 baseline backend completion.
 4. **Week 7+**: MSI-X scaling, accelerator policies, AIA/x2APIC advanced features.
+
+## ADR alignment
+
+This plan is governed by `docs/decisions/ADR-012-interrupt-controller-evolution.md`, especially:
+
+- staged migration with compatibility wrappers,
+- tiered architecture commitments (x86_64/arm64/riscv64 maintained, arm32+riscv32 bring-up),
+- runtime-gated ISA extension and accelerator support with guaranteed fallback.
 
 ## Decision summary
 
