@@ -311,7 +311,7 @@ if ($Run) {
             # Without a firmware or GPU, we drop virtio-gpu and force QEMU to display the 'vc' directly on the main window tab.
             $qemuArgs = $qemuArgs -ne "-serial" -ne "mon:stdio" # Remove the default serial arg to replace it
             if ($DualSerial) {
-                riscv64 virt machine has no legacy VGA. Keep VirtIO GPU for later-stage
+                # riscv64 virt machine has no legacy VGA. Keep VirtIO GPU for later-stage
                 # graphics and also attach ramfb so the firmware can expose an early
                 # simple-framebuffer handoff the kernel boot GUI can consume.
                 # Route serial output only to the virtual console in the QEMU graphical window.
@@ -329,7 +329,7 @@ if ($Run) {
             # Without a firmware or GPU, we drop virtio-gpu and force QEMU to display the 'vc' directly on the main window tab.
             $qemuArgs = $qemuArgs -ne "-serial" -ne "mon:stdio" # Remove the default serial arg to replace it
             if ($DualSerial) {
-                arm64 virt machine has no legacy VGA; use VirtIO GPU which the virt machine supports
+                # arm64 virt machine has no legacy VGA; use VirtIO GPU which the virt machine supports
                 # Route serial output only to the virtual console in the QEMU graphical window.
                 $qemuArgs += @("-serial", "vc", "-vga", "none", "-display", "gtk")
             }
@@ -344,12 +344,6 @@ if ($Run) {
     }
 
     if ($DebugQemu) {
-        inf "GDB Server enabled on tcp::1234. Waiting for debugger..."
-        $qemuArgs += @("-s", "-S")
-    }
-
-    & $qemuExe @qemuArgs
-}
         inf "GDB Server enabled on tcp::1234. Waiting for debugger..."
         $qemuArgs += @("-s", "-S")
     }
