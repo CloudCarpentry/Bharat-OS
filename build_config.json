@@ -9,21 +9,48 @@
       "gui": true,
       "run": false
     },
-    "edge_arm": {
+    "x86_64_desktop_mmu": {
+      "preset": "x86_64-dev",
+      "arch": "x86_64",
+      "profile": "DESKTOP",
+      "personality": "NONE",
+      "board": "qemu-virt",
+      "gui": false,
+      "run": false
+    },
+    "arm64_desktop_mmu": {
       "preset": "arm64-edge",
       "arch": "arm64",
-      "profile": "EDGE",
+      "profile": "DESKTOP",
       "personality": "LINUX",
       "board": "virt",
       "gui": false,
       "run": false
     },
-    "avh_corstone310": {
+    "riscv64_desktop_mmu": {
+      "preset": "riscv64-edge",
+      "arch": "riscv64",
+      "profile": "DESKTOP",
+      "personality": "NONE",
+      "board": "virt",
+      "gui": false,
+      "run": false
+    },
+    "arm32_edge_mpu": {
       "preset": "arm32-edge",
       "arch": "arm32",
       "profile": "EDGE",
       "personality": "NONE",
       "board": "avh-corstone310",
+      "gui": false,
+      "run": false
+    },
+    "riscv32_edge_mmu_lite": {
+      "preset": "riscv32-edge",
+      "arch": "riscv32",
+      "profile": "EDGE",
+      "personality": "NONE",
+      "board": "virt",
       "gui": false,
       "run": false
     }

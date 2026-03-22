@@ -3,10 +3,7 @@
 
 extern long bharat_syscall(long sysno, long arg1, long arg2, long arg3, long arg4, long arg5, long arg6);
 
-void bharat_exit(int code) {
-    bharat_syscall(60, code, 0, 0, 0, 0, 0);
-    while(1) {}
-}
+// bharat_exit is now provided by bharat_syscall.a
 
 int bharat_write(int fd, const void* buf, size_t count) {
     return (int)bharat_syscall(1, fd, (long)buf, (long)count, 0, 0, 0);
