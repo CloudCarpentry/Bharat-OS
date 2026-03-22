@@ -1,32 +1,32 @@
 add_library(hal_arm64_cpu OBJECT
-    ../../kernel/src/hal/arm64/hal_cpu.c
-    ../../kernel/src/hal/arm64/trap_entry.S
-    ../../kernel/src/hal/mmu/arm64/vmm.c
-    ../../kernel/src/arch/arm64/context_switch.c
-    ../../kernel/src/arch/arm64/context_switch.S
-    ../../kernel/src/arch/arm64/cpu_caps.c
-    ../../kernel/src/arch/arm64/ext_state.c
-    ../../kernel/src/hal/arm64/topology_fdt.c
+    ../arm64/hal_cpu.c
+    ../arm64/trap_entry.S
+    ../mmu/arm64/vmm.c
+    ../arch/arm64/context_switch.c
+    ../arch/arm64/context_switch.S
+    ../arch/arm64/cpu_caps.c
+    ../arch/arm64/ext_state.c
+    ../arm64/topology_fdt.c
 )
 # Ensure Clang knows to treat .S as arm64 assembly, avoiding errors when host is x86
 set_source_files_properties(
-    ../../kernel/src/hal/arm64/trap_entry.S
-    ../../kernel/src/arch/arm64/context_switch.S
+    ../arm64/trap_entry.S
+    ../arch/arm64/context_switch.S
     PROPERTIES COMPILE_OPTIONS "-target;aarch64-unknown-none-elf"
 )
 
 add_library(hal_arm64_mmu OBJECT
-    ../../kernel/src/hal/arm64/hal_pt_arm64.c
-    ../../kernel/src/hal/hal_pt.c
-    ../../kernel/src/hal/arm64/smmu.c
+    ../arm64/hal_pt_arm64.c
+    ../hal_pt.c
+    ../arm64/smmu.c
 )
 
 add_library(hal_arm64_irq OBJECT
-    ../../kernel/src/hal/arm64/gicv3.c
+    ../arm64/gicv3.c
 )
 
 add_library(hal_arm64_timer OBJECT
-    ../../kernel/src/hal/arm64/timer_generic.c
+    ../arm64/timer_generic.c
 )
 
 target_include_directories(hal_arm64_cpu PRIVATE ../../kernel/include ../../kernel/include/generated ../../include)

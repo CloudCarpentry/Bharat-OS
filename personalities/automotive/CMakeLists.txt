@@ -1,0 +1,5 @@
+if(BHARAT_ENABLE_SUBSYS_AUTOMOTIVE)
+    add_library(bharatos_personality_automotive STATIC automotive.c)
+    target_include_directories(bharatos_personality_automotive PUBLIC ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/subsys/include)
+    target_link_libraries(bharatos_personality_automotive PUBLIC bharat_user_buildopts bharat_freestanding)
+endif()

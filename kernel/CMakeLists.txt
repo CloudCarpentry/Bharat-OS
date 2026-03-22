@@ -126,57 +126,59 @@ if(NOT DEFINED ARCH)
         set(ARCH "x86_64")
     endif()
 endif()
+string(TOLOWER "${ARCH}" ARCH)
 # ── Boot and HAL sources (arch-specific) ────────────────────────────────────
 if(ARCH STREQUAL "x86_64")
-    set(BOOT_SRC src/boot/x86_64/boot.S)
-    set(ARCH_HAL src/hal/x86_64/hal_cpu.c src/hal/x86_64/discovery.c src/hal/x86_64/hal_mm.c src/hal/x86_64/trap_entry.S src/hal/mmu/x86_64/vmm.c src/hal/x86_64/hal_pt_x86_64.c src/hal/hal_pt.c src/hal/x86_64/vtd_iommu.c src/hal/x86_64/apic.c src/hal/x86_64/timer.c src/hal/x86_64/dma.c src/hal/x86_64/hal_secure_boot.c src/hal/x86_64/cpu_relax.c)
-    set(ARCH_CONTEXT_SWITCH src/arch/x86_64/context_switch.c src/arch/x86_64/context_switch.S)
-    set(ARCH_CPU_CAPS_SRC src/arch/x86_64/cpu_caps.c)
-    set(ARCH_EXT_STATE_SRC src/arch/x86_64/ext_state.c)
+    set(BOOT_SRC ../arch/x86_64/boot/boot.S)
+    set(ARCH_HAL ../hal/x86_64/hal_cpu.c ../hal/x86_64/discovery.c ../hal/x86_64/hal_mm.c ../hal/x86_64/trap_entry.S ../hal/mmu/x86_64/vmm.c ../hal/x86_64/hal_pt_x86_64.c ../hal/hal_pt.c ../hal/x86_64/vtd_iommu.c ../hal/x86_64/apic.c ../hal/x86_64/timer.c ../hal/x86_64/dma.c ../hal/x86_64/hal_secure_boot.c ../hal/x86_64/cpu_relax.c)
+    set(ARCH_CONTEXT_SWITCH ../arch/x86_64/context_switch.c ../arch/x86_64/context_switch.S)
+    set(ARCH_CPU_CAPS_SRC ../arch/x86_64/cpu_caps.c)
+    set(ARCH_EXT_STATE_SRC ../arch/x86_64/ext_state.c)
 elseif(ARCH STREQUAL "riscv64")
-    set(BOOT_SRC src/boot/riscv64/boot.S)
-    set(ARCH_HAL src/hal/riscv/hal_cpu.c src/hal/riscv/discovery.c src/hal/riscv/hal_mm.c src/hal/riscv/boot/feature_probe.c src/hal/riscv/trap_entry.S src/hal/mmu/riscv64/vmm.c src/hal/riscv64/hal_pt_riscv64.c src/hal/hal_pt.c src/hal/riscv/iopmp.c src/hal/riscv/plic.c src/hal/riscv/sbi_timer_ipi.c src/hal/riscv64/dma.c src/hal/riscv64/hal_secure_boot.c src/hal/riscv64/cpu_relax.c)
-    set(ARCH_HAL_EXTRA src/hal/riscv/shakti_bsp.c)
+    set(BOOT_SRC ../arch/riscv64/boot/boot.S)
+    set(ARCH_HAL ../hal/riscv/hal_cpu.c ../hal/riscv/discovery.c ../hal/riscv/hal_mm.c ../hal/riscv/boot/feature_probe.c ../hal/riscv/trap_entry.S ../hal/mmu/riscv64/vmm.c ../hal/riscv64/hal_pt_riscv64.c ../hal/hal_pt.c ../hal/riscv/iopmp.c ../hal/riscv/plic.c ../hal/riscv/sbi_timer_ipi.c ../hal/riscv64/dma.c ../hal/riscv64/hal_secure_boot.c ../hal/riscv64/cpu_relax.c)
+    set(ARCH_HAL_EXTRA ../hal/riscv/shakti_bsp.c)
     # VirtIO GPU display driver: only for qemu-virt + GUI enabled
     if(BHARAT_BOOT_GUI AND "${BHARAT_RISCV_SOC_PROFILE}" STREQUAL "qemu-virt")
-        #list(APPEND ARCH_HAL src/hal/riscv/virtio_gpu.c)
+        #list(APPEND ARCH_HAL ../hal/riscv/virtio_gpu.c)
         add_compile_definitions(BHARAT_VIRTIO_GPU=1)
     endif()
-    set(ARCH_CONTEXT_SWITCH src/arch/riscv64/context_switch.c src/arch/riscv64/context_switch.S)
-    set(ARCH_CPU_CAPS_SRC src/arch/riscv64/cpu_caps.c)
-    set(ARCH_EXT_STATE_SRC src/arch/riscv64/ext_state.c)
+    set(ARCH_CONTEXT_SWITCH ../arch/riscv64/context_switch.c ../arch/riscv64/context_switch.S)
+    set(ARCH_CPU_CAPS_SRC ../arch/riscv64/cpu_caps.c)
+    set(ARCH_EXT_STATE_SRC ../arch/riscv64/ext_state.c)
 elseif(ARCH STREQUAL "riscv32")
-    set(BOOT_SRC src/boot/riscv64/boot.S)
-    set(ARCH_HAL src/hal/riscv/hal_cpu.c src/hal/riscv/boot/feature_probe.c src/hal/riscv/trap_entry.S src/hal/mmu/riscv64/vmm.c src/hal/riscv64/hal_pt_riscv64.c src/hal/hal_pt.c src/hal/riscv/iopmp.c src/hal/riscv/plic.c src/hal/riscv/sbi_timer_ipi.c src/hal/common/hal_secure_boot_unsupported.c src/hal/riscv32/cpu_relax.c)
-    set(ARCH_CONTEXT_SWITCH src/arch/shakti/context_switch.c src/arch/shakti/context_switch.S)
-    set(ARCH_CPU_CAPS_SRC src/arch/shakti/cpu_caps.c)
-    set(ARCH_EXT_STATE_SRC src/arch/shakti/ext_state.c)
+    set(BOOT_SRC ../arch/riscv64/boot/boot.S)
+    set(ARCH_HAL ../hal/riscv/hal_cpu.c ../hal/riscv/boot/feature_probe.c ../hal/riscv/trap_entry.S ../hal/mmu/riscv64/vmm.c ../hal/riscv64/hal_pt_riscv64.c ../hal/hal_pt.c ../hal/riscv/iopmp.c ../hal/riscv/plic.c ../hal/riscv/sbi_timer_ipi.c ../hal/common/hal_secure_boot_unsupported.c ../hal/riscv32/cpu_relax.c)
+    set(ARCH_CONTEXT_SWITCH ../arch/shakti/context_switch.c ../arch/shakti/context_switch.S)
+    set(ARCH_CPU_CAPS_SRC ../arch/shakti/cpu_caps.c)
+    set(ARCH_EXT_STATE_SRC ../arch/shakti/ext_state.c)
 elseif(ARCH STREQUAL "arm64")
-    set(BOOT_SRC src/boot/arm64/boot.S)
-    set(ARCH_HAL src/hal/arm64/hal_cpu.c src/hal/arm64/discovery.c src/hal/arm64/hal_mm.c src/hal/arm64/trap_entry.S src/hal/mmu/arm64/vmm.c src/hal/arm64/hal_pt_arm64.c src/hal/hal_pt.c src/hal/arm64/smmu.c src/hal/arm64/gicv3.c src/hal/arm64/timer_generic.c src/hal/arm64/dma.c src/hal/arm64/hal_secure_boot.c src/hal/arm64/cpu_relax.c)
-    set(ARCH_CONTEXT_SWITCH src/arch/arm64/context_switch.c src/arch/arm64/context_switch.S)
-    set(ARCH_HAL_EXTRA src/hal/arm64/topology_fdt.c)
-    set(ARCH_CPU_CAPS_SRC src/arch/arm64/cpu_caps.c)
-    set(ARCH_EXT_STATE_SRC src/arch/arm64/ext_state.c)
+    set(BOOT_SRC ../arch/arm64/boot/boot.S)
+    set(ARCH_HAL ../hal/arm64/hal_cpu.c ../hal/arm64/discovery.c ../hal/arm64/hal_mm.c ../hal/arm64/trap_entry.S ../hal/mmu/arm64/vmm.c ../hal/arm64/hal_pt_arm64.c ../hal/hal_pt.c ../hal/arm64/smmu.c ../hal/arm64/gicv3.c ../hal/arm64/timer_generic.c ../hal/arm64/dma.c ../hal/arm64/hal_secure_boot.c ../hal/arm64/cpu_relax.c)
+    set(ARCH_CONTEXT_SWITCH ../arch/arm64/context_switch.c ../arch/arm64/context_switch.S)
+    set(ARCH_HAL_EXTRA ../hal/arm64/topology_fdt.c)
+    set(ARCH_CPU_CAPS_SRC ../arch/arm64/cpu_caps.c)
+    set(ARCH_EXT_STATE_SRC ../arch/arm64/ext_state.c)
 elseif(ARCH STREQUAL "arm32")
-    set(BOOT_SRC src/boot/arm64/boot.S)
-    set(ARCH_HAL src/hal/arm64/hal_cpu.c src/hal/arm64/trap_entry.S src/hal/mmu/arm64/vmm.c src/hal/arm64/hal_pt_arm64.c src/hal/hal_pt.c src/hal/arm64/smmu.c src/hal/arm64/gicv3.c src/hal/arm64/timer_generic.c src/hal/mpu/arm32/mpu_backend.c src/hal/arm64/dma.c src/hal/common/hal_secure_boot_unsupported.c src/hal/arm32/cpu_relax.c)
-    set(ARCH_CONTEXT_SWITCH src/arch/arm64/context_switch.c src/arch/arm64/context_switch.S)
-    set(ARCH_CPU_CAPS_SRC src/arch/arm64/cpu_caps.c)
-    set(ARCH_EXT_STATE_SRC src/arch/arm64/ext_state.c)
+    set(BOOT_SRC ../arch/arm32/boot/boot.S)
+    set(ARCH_HAL ../hal/arm64/hal_cpu.c ../hal/arm64/trap_entry.S ../hal/mmu/arm64/vmm.c ../hal/arm64/hal_pt_arm64.c ../hal/hal_pt.c ../hal/arm64/smmu.c ../hal/arm64/gicv3.c ../hal/arm64/timer_generic.c ../hal/mpu/arm32/mpu_backend.c ../hal/arm64/dma.c ../hal/common/hal_secure_boot_unsupported.c ../hal/arm32/cpu_relax.c)
+    set(ARCH_CONTEXT_SWITCH ../arch/arm64/context_switch.c ../arch/arm64/context_switch.S)
+    set(ARCH_CPU_CAPS_SRC ../arch/arm64/cpu_caps.c)
+    set(ARCH_EXT_STATE_SRC ../arch/arm64/ext_state.c)
 endif()
-if(ARCH STREQUAL "x86_64")
+if(ARCH MATCHES "x86_64")
     set(LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/linker.ld")
-elseif(ARCH STREQUAL "riscv64")
+elseif(ARCH MATCHES "riscv.*64")
     set(LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/linker_riscv64.ld")
-elseif(ARCH STREQUAL "riscv32")
-    set(LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/linker_riscv64.ld")
-elseif(ARCH STREQUAL "arm64")
+elseif(ARCH MATCHES "arm.*64" OR ARCH MATCHES "aarch64")
     set(LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/linker_arm64.ld")
-elseif(ARCH STREQUAL "arm32")
-    # For a bare-metal 32-bit ARM we could use linker_arm64.ld modified for 32 bit, or for now just the generic host linker since we are just doing pre-submit checks.
-    # The current ld bfd linker tries to link riscv when using linker_riscv64.ld. We will use the arm64 linker script and rely on `-m armelf` or similar if needed.
+elseif(ARCH MATCHES "arm.*32")
     set(LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/linker.ld")
+elseif(ARCH MATCHES "riscv.*32")
+    set(LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/linker_riscv64.ld")
+else()
+    set(LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/linker.ld")
+    message(WARNING "Unknown ARCH='${ARCH}', falling back to x86_64 linker script!")
 endif()
 if(ARCH STREQUAL "riscv64")
     option(BHARAT_RISCV_BUILD_PAYLOAD_BIN "Emit payload.bin from kernel.elf for OpenSBI packaging" ON)
@@ -243,8 +245,8 @@ add_library(bharat_mm_vmm OBJECT
     src/mm/vmm.c
     src/mm/vm/distributed/vm_mapping.c
     src/mm/prot_domain.c
-    src/hal/prot/none/prot_none_backend.c
-    src/hal/mmu_lite/common/mmu_lite_backend.c
+    ../hal/prot/none/prot_none_backend.c
+    ../hal/mmu_lite/common/mmu_lite_backend.c
     src/mm/vm/distributed/vm_compat_vmm.c
     src/mm/vm/distributed/mm_local.c
     src/mm/vm/distributed/mm_remote.c
@@ -263,59 +265,59 @@ add_subdirectory(src/fs)
 add_subdirectory(src/test)
 
 set(KERNEL_SRCS
-    src/mm/physmap.c
     ${BOOT_SRC}
-    $<$<BOOL:${BHARAT_BOOT_GUI}>:src/boot/boot_ui_select.c>
+    src/mm/physmap.c
+    $<$<BOOL:${BHARAT_BOOT_GUI}>:../boot/common/boot_ui_select.c>
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/boot_video.c>
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/display_handoff.c>
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/display_fallback.c>
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/boot_gui.c>
     src/kernel_boot.c
-    src/boot/common/boot_info_validate.c
-    src/boot/common/boot_info_finalize.c
-    $<$<STREQUAL:${ARCH},arm32>:src/hal/arm32_mpu_vmm_mock.c>
+    ../boot/common/boot_info_validate.c
+    ../boot/common/boot_info_finalize.c
+    $<$<STREQUAL:${ARCH},arm32>:../hal/arm32_mpu_vmm_mock.c>
     ../kernel/display/fb_core.c
     src/profile/${KERNEL_PROFILE_LOWER}/profile.c
-    $<$<STREQUAL:${ARCH},x86_64>:src/arch/x86_64/boot/entry.c>
-    $<$<STREQUAL:${ARCH},x86_64>:src/arch/x86_64/boot/multiboot_parse.c>
-    $<$<STREQUAL:${ARCH},arm32>:src/arch/arm32/boot/entry.c>
-    $<$<STREQUAL:${ARCH},arm64>:src/arch/arm64/boot/entry.c>
-    $<$<OR:$<STREQUAL:${ARCH},arm32>,$<STREQUAL:${ARCH},arm64>>:src/arch/arm/boot/fdt_parse_common.c>
-    $<$<STREQUAL:${ARCH},riscv32>:src/arch/riscv32/boot/entry.c>
-    $<$<STREQUAL:${ARCH},riscv64>:src/arch/riscv64/boot/entry.c>
-    $<$<OR:$<STREQUAL:${ARCH},riscv32>,$<STREQUAL:${ARCH},riscv64>>:src/arch/riscv/boot/fdt_parse_common.c>
-    $<$<STREQUAL:${ARCH},x86_64>:src/board/qemu-virt-x86_64/board.c>
-    $<$<STREQUAL:${ARCH},x86_64>:src/arch/x86_64/boot_video_efi.c>
-    $<$<STREQUAL:${ARCH},x86_64>:src/board/qemu-virt-x86_64/machine_display.c>
-    $<$<AND:$<STREQUAL:${ARCH},arm64>,$<STREQUAL:${KERNEL_PROFILE_LOWER},generic>>:src/board/qemu-virt-arm64/board.c>
-    $<$<AND:$<STREQUAL:${ARCH},arm64>,$<STREQUAL:${KERNEL_PROFILE_LOWER},generic>>:src/board/qemu-virt-arm64/machine_display.c>
-    $<$<AND:$<STREQUAL:${ARCH},arm64>,$<NOT:$<STREQUAL:${KERNEL_PROFILE_LOWER},generic>>>:src/board/bcm2711-rpi4/board.c>
-    $<$<AND:$<STREQUAL:${ARCH},arm32>,$<STREQUAL:${BHARAT_BOOT_HW_PROFILE},avh-corstone310>>:src/board/avh-corstone310/board.c>
-    $<$<AND:$<STREQUAL:${ARCH},riscv64>,$<STREQUAL:${BHARAT_RISCV_SOC_PROFILE},qemu-virt>>:src/board/qemu-virt-riscv64/board.c>
-    $<$<AND:$<STREQUAL:${ARCH},riscv64>,$<NOT:$<STREQUAL:${BHARAT_RISCV_SOC_PROFILE},qemu-virt>>>:src/board/shakti-ref/board.c>
+    $<$<STREQUAL:${ARCH},x86_64>:../arch/x86_64/boot/entry.c>
+    $<$<STREQUAL:${ARCH},x86_64>:../arch/x86_64/boot/multiboot_parse.c>
+    $<$<STREQUAL:${ARCH},arm32>:../arch/arm32/boot/entry.c>
+    $<$<STREQUAL:${ARCH},arm64>:../arch/arm64/boot/entry.c>
+    $<$<OR:$<STREQUAL:${ARCH},arm32>,$<STREQUAL:${ARCH},arm64>>:../arch/arm/boot/fdt_parse_common.c>
+    $<$<STREQUAL:${ARCH},riscv32>:../arch/riscv32/boot/entry.c>
+    $<$<STREQUAL:${ARCH},riscv64>:../arch/riscv64/boot/entry.c>
+    $<$<OR:$<STREQUAL:${ARCH},riscv32>,$<STREQUAL:${ARCH},riscv64>>:../arch/riscv/boot/fdt_parse_common.c>
+    $<$<STREQUAL:${ARCH},x86_64>:../platform/boards/qemu-virt-x86_64/board.c>
+    $<$<STREQUAL:${ARCH},x86_64>:../arch/x86_64/boot_video_efi.c>
+    $<$<STREQUAL:${ARCH},x86_64>:../platform/boards/qemu-virt-x86_64/machine_display.c>
+    $<$<AND:$<STREQUAL:${ARCH},arm64>,$<STREQUAL:${KERNEL_PROFILE_LOWER},generic>>:../platform/boards/qemu-virt-arm64/board.c>
+    $<$<AND:$<STREQUAL:${ARCH},arm64>,$<STREQUAL:${KERNEL_PROFILE_LOWER},generic>>:../platform/boards/qemu-virt-arm64/machine_display.c>
+    $<$<AND:$<STREQUAL:${ARCH},arm64>,$<NOT:$<STREQUAL:${KERNEL_PROFILE_LOWER},generic>>>:../platform/boards/bcm2711-rpi4/board.c>
+    $<$<AND:$<STREQUAL:${ARCH},arm32>,$<STREQUAL:${BHARAT_BOOT_HW_PROFILE},avh-corstone310>>:../platform/boards/avh-corstone310/board.c>
+    $<$<AND:$<STREQUAL:${ARCH},riscv64>,$<STREQUAL:${BHARAT_RISCV_SOC_PROFILE},qemu-virt>>:../platform/boards/qemu-virt-riscv64/board.c>
+    $<$<AND:$<STREQUAL:${ARCH},riscv64>,$<NOT:$<STREQUAL:${BHARAT_RISCV_SOC_PROFILE},qemu-virt>>>:../platform/boards/shakti-ref/board.c>
     # NOTE: HAL sources removed - compiled via hal/* library targets instead
     ${ARCH_HAL}
-    src/hal/common/fdt_parser.c
-    src/hal/common/discovery.c
+    ../hal/common/fdt_parser.c
+    ../hal/common/discovery.c
     ${ARCH_HAL_EXTRA}
     ${ARCH_CONTEXT_SWITCH}
     ${ARCH_CPU_CAPS_SRC}
     # arch/common source files (fixed string.h dependency)
-    src/arch/common/cpu_caps_state.c
-    $<$<STREQUAL:${ARCH},x86_64>:src/arch/x86_64/arch_caps.c>
-    $<$<STREQUAL:${ARCH},x86_64>:src/arch/x86_64/arch_console.c>
-    $<$<STREQUAL:${ARCH},arm64>:src/arch/arm64/arch_caps.c>
-    $<$<STREQUAL:${ARCH},arm64>:src/arch/arm64/arch_console.c>
-    $<$<STREQUAL:${ARCH},riscv64>:src/arch/riscv64/arch_caps.c>
-    $<$<STREQUAL:${ARCH},riscv64>:src/arch/riscv64/arch_console.c>
-    $<$<STREQUAL:${ARCH},arm32>:src/arch/arm32/arch_caps.c>
-    $<$<STREQUAL:${ARCH},riscv32>:src/arch/riscv32/arch_caps.c>
+    ../arch/common/cpu_caps_state.c
+    $<$<STREQUAL:${ARCH},x86_64>:../arch/x86_64/arch_caps.c>
+    $<$<STREQUAL:${ARCH},x86_64>:../arch/x86_64/arch_console.c>
+    $<$<STREQUAL:${ARCH},arm64>:../arch/arm64/arch_caps.c>
+    $<$<STREQUAL:${ARCH},arm64>:../arch/arm64/arch_console.c>
+    $<$<STREQUAL:${ARCH},riscv64>:../arch/riscv64/arch_caps.c>
+    $<$<STREQUAL:${ARCH},riscv64>:../arch/riscv64/arch_console.c>
+    $<$<STREQUAL:${ARCH},arm32>:../arch/arm32/arch_caps.c>
+    $<$<STREQUAL:${ARCH},riscv32>:../arch/riscv32/arch_caps.c>
     ${ARCH_EXT_STATE_SRC}
-    src/hal/mmu_init.c
-    src/hal/iommu_stub.c
-    src/hal/dma_coherency.c
-    src/hal/interrupt_common.c
-    src/hal/timer_common.c
+    ../hal/mmu_init.c
+    ../hal/iommu_stub.c
+    ../hal/dma_coherency.c
+    ../hal/interrupt_common.c
+    ../hal/timer_common.c
     src/mm/dma/dma.c
     src/mm/zswap.c
     src/apps/hello_world.c
@@ -330,11 +332,11 @@ set(KERNEL_SRCS
 
 # ── Platform / Machine layer ────────────────────────────────────────────────
 if(ARCH STREQUAL "x86_64")
-    list(APPEND KERNEL_SRCS src/arch/x86_64/platform/q35/boot/early_console.c)
+    list(APPEND KERNEL_SRCS ../arch/x86_64/platform/q35/boot/early_console.c)
 elseif(ARCH STREQUAL "arm64")
-    list(APPEND KERNEL_SRCS src/arch/arm64/platform/qemu_virt/boot/early_console.c)
+    list(APPEND KERNEL_SRCS ../arch/arm64/platform/qemu_virt/boot/early_console.c)
 elseif(ARCH STREQUAL "riscv64")
-    list(APPEND KERNEL_SRCS src/arch/riscv64/platform/qemu_virt/boot/early_console.c)
+    list(APPEND KERNEL_SRCS ../arch/riscv64/platform/qemu_virt/boot/early_console.c)
 endif()
 
 list(APPEND KERNEL_SRCS src/display/boot_video_map.c)
@@ -369,8 +371,7 @@ endif()
 target_sources(kernel.elf PRIVATE
     $<TARGET_OBJECTS:bharat_mm_vmm>
 )
-target_compile_options(kernel.elf PRIVATE -mcmodel=large -fno-pie -fno-PIE)
-target_link_options(kernel.elf PRIVATE -no-pie)
+# Architecture-specific code model and PIE flags are set below
 target_link_libraries(kernel.elf subsys_manager bharat_libmsg bharat_kernel_buildopts bharatos_drivers bharat_kernel_includes board_fabric)
 if(BHARAT_ENABLE_FBUI)
     target_link_libraries(kernel.elf fbui)
@@ -427,13 +428,28 @@ if(ARCH STREQUAL "x86_64")
     target_link_options(kernel.elf PRIVATE
         "LINKER:-m,elf_x86_64"
     )
-elseif(ARCH STREQUAL "riscv64")
-    # Using arch flags from toolchain
+elseif(ARCH MATCHES "riscv.*64")
+    target_compile_options(kernel.elf PRIVATE
+        $<$<OR:$<COMPILE_LANGUAGE:C>,$<COMPILE_LANGUAGE:ASM>>:-mcmodel=medany>
+    )
+    target_link_options(kernel.elf PRIVATE
+        "LINKER:-m,elf64lriscv"
+    )
+elseif(ARCH MATCHES "arm.*64" OR ARCH MATCHES "aarch64")
+    target_compile_options(kernel.elf PRIVATE
+        $<$<OR:$<COMPILE_LANGUAGE:C>,$<COMPILE_LANGUAGE:ASM>>:-mcmodel=small>
+    )
+    target_link_options(kernel.elf PRIVATE
+        "LINKER:-m,aarch64elf"
+    )
 elseif(ARCH STREQUAL "riscv32")
     target_compile_options(kernel.elf PRIVATE
         $<$<COMPILE_LANGUAGE:C>:-mcmodel=medany>
         $<$<COMPILE_LANGUAGE:ASM>:-march=rv32g>
         $<$<COMPILE_LANGUAGE:C>:-march=rv32g>
+    )
+    target_link_options(kernel.elf PRIVATE
+        "LINKER:-m,elf32lriscv"
     )
 endif()
 # ── Linker options
@@ -477,11 +493,11 @@ endif()
 
 # ── Platform / Machine layer ────────────────────────────────────────────────
 if(ARCH STREQUAL "x86_64")
-    list(APPEND KERNEL_SRCS src/arch/x86_64/platform/q35/boot/early_console.c)
+    list(APPEND KERNEL_SRCS ../arch/x86_64/platform/q35/boot/early_console.c)
 elseif(ARCH STREQUAL "arm64")
-    list(APPEND KERNEL_SRCS src/arch/arm64/platform/qemu_virt/boot/early_console.c)
+    list(APPEND KERNEL_SRCS ../arch/arm64/platform/qemu_virt/boot/early_console.c)
 elseif(ARCH STREQUAL "riscv64")
-    list(APPEND KERNEL_SRCS src/arch/riscv64/platform/qemu_virt/boot/early_console.c)
+    list(APPEND KERNEL_SRCS ../arch/riscv64/platform/qemu_virt/boot/early_console.c)
 endif()
 
 list(APPEND KERNEL_SRCS src/display/boot_video_map.c)
