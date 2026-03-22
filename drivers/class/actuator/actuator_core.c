@@ -1,5 +1,6 @@
 #include "drivers/actuator/actuator_device.h"
 #include <stddef.h>
+#include <string.h>
 #include <math.h>
 
 #define MAX_ACTUATORS 32
@@ -25,8 +26,8 @@ int actuator_core_unregister(actuator_device_t* dev) {
 
     for (int i = 0; i < g_actuator_count; i++) {
         if (g_actuators[i] == dev) {
-            for (int j = i; j < g_actuator_count - 1; j++) {
-                g_actuators[j] = g_actuators[j + 1];
+            if (i < g_actuator_count - 1) {
+                memmove(&g_actuators[i], &g_actuators[i + 1], (g_actuator_count - i - 1) * sizeof(actuator_device_t*));
             }
             g_actuator_count--;
             return 0;
