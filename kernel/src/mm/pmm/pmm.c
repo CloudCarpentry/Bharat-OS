@@ -11,6 +11,7 @@
 // Multiboot only for x86_64
 #include "hal/hal.h"
 #include "hal/hal_discovery.h"
+#include "hal/hal_mm.h"
 #include "console/console_core.h"
 #define KPRINT(s) console_write_raw(s, string_length(s))
 
@@ -484,6 +485,9 @@ static void pmm_add_region(phys_addr_t base, size_t size, uint32_t type,
     }
   }
 
+  hal_mm_zone_limits_t limits;
+  hal_mm_get_zone_limits(&limits);
+
   // Pass 1: Initialize all metadata structures
   for (size_t j = 0; j < page_count; j++) {
     page_t *p = &global_pages_ptrs[node_id][j];
@@ -494,7 +498,7 @@ static void pmm_add_region(phys_addr_t base, size_t size, uint32_t type,
     list_init(&p->list);
 
     phys_addr_t paddr = base + (j * PAGE_SIZE);
-    if (paddr < 0x100000000ULL) {
+    if (paddr >= limits.dma32_start && paddr <= limits.dma32_end) {
       p->zone = PMM_ZONE_DMA32;
     } else {
       p->zone = PMM_ZONE_NORMAL;
@@ -533,33 +537,6 @@ int pmm_ingest_memory_map(const pmm_memory_map_t *map) {
   return 0;
 }
 
-static int pmm_discovery_fixed(pmm_memory_map_t *out_map) {
-#if defined(__riscv)
-  out_map->regions[out_map->region_count].base_addr = 0x80000000ULL;
-  out_map->regions[out_map->region_count].length = 0x8000000ULL;
-  out_map->regions[out_map->region_count].type = PMM_REGION_TYPE_USABLE;
-  out_map->regions[out_map->region_count].numa_node = 0;
-  out_map->region_count++;
-  return 0;
-#elif defined(__aarch64__) || defined(__arm__)
-  out_map->regions[out_map->region_count].base_addr = 0x40000000ULL;
-  out_map->regions[out_map->region_count].length = 0x8000000ULL;
-  out_map->regions[out_map->region_count].type = PMM_REGION_TYPE_USABLE;
-  out_map->regions[out_map->region_count].numa_node = 0;
-  out_map->region_count++;
-  return 0;
-#elif defined(__x86_64__) || defined(__i386__)
-  out_map->regions[out_map->region_count].base_addr = 0x1000000ULL;
-  out_map->regions[out_map->region_count].length = 0x8000000ULL;
-  out_map->regions[out_map->region_count].type = PMM_REGION_TYPE_USABLE;
-  out_map->regions[out_map->region_count].numa_node = 0;
-  out_map->region_count++;
-  return 0;
-#endif
-  (void)out_map;
-  return -1;
-}
-
 static bool g_pmm_initialized = false;
 int mm_pmm_init(uint32_t magic, const boot_info_t *boot) {
   if (g_pmm_initialized) {
@@ -590,12 +567,6 @@ int mm_pmm_init(uint32_t magic, const boot_info_t *boot) {
       }
     }
   }
-
-#if defined(__x86_64__)
-  if (map.region_count == 0) {
-    pmm_discovery_fixed(&map);
-  }
-#endif
 
   pmm_ingest_memory_map(&map);
   

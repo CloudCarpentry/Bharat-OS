@@ -29,4 +29,13 @@ void hal_arch_discovery_init(const boot_info_t *boot) {
     if (boot->video.valid) {
         discovery->boot_video = boot->video;
     }
+
+    if (discovery->topology.mem_region_count == 0) {
+        discovery->topology.mem_regions[0].base = 0x1000000ULL;
+        discovery->topology.mem_regions[0].size = 0x8000000ULL;
+        discovery->topology.mem_regions[0].type = HAL_MEM_RAM;
+        discovery->topology.mem_regions[0].node_id = 0;
+        discovery->topology.mem_region_count = 1;
+        console_log(CONSOLE_LEVEL_INFO, "HAL: x86_64: No memory map from boot, using fallback region.");
+    }
 }
