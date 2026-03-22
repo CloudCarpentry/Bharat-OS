@@ -33,6 +33,10 @@ if(BHARAT_ENABLE_SERVICE_BOOT_DISPLAYD)
     add_subdirectory(boot_displayd)
 endif()
 
+if(NOT BHARAT_LEGACY_SUBSYS_LAYOUT)
+    add_subdirectory(core/subsysmgr)
+endif()
+
 # Legacy monolithic network service (transitional)
 if(BHARAT_ENABLE_SERVICE_NETWORK)
     add_subdirectory(legacy/net)
