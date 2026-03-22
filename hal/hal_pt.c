@@ -58,10 +58,13 @@ void hal_pt_init(void) {
 #endif
 }
 
+#include "mm/tlb.h"
+
 void hal_tlb_init(void) {
     if (!active_hal_tlb) {
         hal_pt_init();
     }
+    tlb_init(); // Initialize the common core tlb subsystem.
 }
 
 phys_addr_t hal_pt_create_address_space(phys_addr_t kernel_root_table) {

@@ -69,7 +69,7 @@ static int smmu_get_group(bharat_device_t *dev, hal_iommu_group_t **out_group) {
     return 0;
 }
 
-static hal_iommu_ops_t smmu_ops = {
+static hal_iommu_ops_legacy_t smmu_ops = {
     .init = smmu_init,
     .domain_create = smmu_domain_create,
     .domain_destroy = smmu_domain_destroy,

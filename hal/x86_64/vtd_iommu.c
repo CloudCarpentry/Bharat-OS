@@ -135,7 +135,7 @@ static int vtd_get_group(bharat_device_t *dev, hal_iommu_group_t **out_group) {
     return 0;
 }
 
-static hal_iommu_ops_t vtd_ops = {
+static hal_iommu_ops_legacy_t vtd_ops = {
     .init = vtd_init,
     .domain_create = vtd_domain_create,
     .domain_destroy = vtd_domain_destroy,

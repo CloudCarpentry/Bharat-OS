@@ -45,22 +45,23 @@ void pt_cache_init(void) {
 }
 
 phys_addr_t pt_cache_alloc(void) {
-    phys_addr_t pa = mm_alloc_pt_page();
-    if (!pa) return 0;
-
-    // Zeroing
-    void* va = physmap_phys_to_virt(pa);
-    if (va) {
-        uint64_t* ptr = (uint64_t*)va;
-        for (size_t i = 0; i < PAGE_SIZE / sizeof(uint64_t); i++) {
-            ptr[i] = 0;
-        }
+    pmm_block_t block;
+    // We now use the hardened PMM allocation with zeroing natively instead of custom pool fallback
+    // We request a single page (order 0) that is explicitly zeroed.
+    if (pmm_alloc_pages(0, PMM_ZONE_NORMAL, PMM_ALLOC_ZERO, &block) == 0) {
+        page_t *p = phys_to_page(block.phys_addr);
+        if (p) p->owner_class = PMM_OWNER_CLASS_PAGETABLE;
+        return block.phys_addr;
     }
-    return pa;
+    return 0;
 }
 
 void pt_cache_free(phys_addr_t pa) {
-    mm_free_pt_page(pa);
+    pmm_block_t block;
+    block.phys_addr = pa;
+    block.page_count = 1;
+    block.order = 0;
+    pmm_free_pages(&block);
 }
 
 // Hugepage promotion stub

@@ -2,6 +2,7 @@ add_library(k_init OBJECT
     ../../src/main.c
     ../../../boot/protocols/boot_args.c
     ../../src/device/device_manager.c
+    ../../src/device/device_dma.c
     ../../src/device/builtin_drivers.c
     ../../src/device/pci.c
     ../../src/device/irq_domain.c
