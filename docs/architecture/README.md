@@ -11,6 +11,10 @@ This folder captures the current architectural baseline for Bharat-OS.
 
 ## Recommended reading order
 
+### Core Architecture
+
+- [Profile-Driven Multi-Kernel Architecture](core/profile-driven-multi-kernel-arc.md)
+
 ### Boot and bring-up
 
 - [`v1-boot-definition.md`](v1-boot-definition.md)
