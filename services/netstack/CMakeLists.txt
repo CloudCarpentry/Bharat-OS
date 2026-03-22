@@ -19,6 +19,10 @@ set(NETSTACK_SRC
 add_executable(netstack ${NETSTACK_SRC})
 target_link_libraries(netstack PRIVATE bharat_user_buildopts bharat_freestanding bharat_libpacket bharat_libcmin bharat_libruntime bharat_version_api)
 
+if(NOT BHARAT_LEGACY_SUBSYS_LAYOUT)
+    target_link_libraries(netstack PRIVATE bharatos_stack_network)
+endif()
+
 bharat_register_component(
     TARGET netstack
     KIND "service"

@@ -237,14 +237,24 @@ endif()
 
 
 # Add subdirectories
+option(BHARAT_LEGACY_SUBSYS_LAYOUT "Build legacy subsys layout" ON)
+
+add_subdirectory(arch)
+add_subdirectory(boot)
 add_subdirectory(hal)
 add_subdirectory(platform)
 add_subdirectory(kernel)
 add_subdirectory(lib)
 add_subdirectory(drivers)
-add_subdirectory(subsys)
 add_subdirectory(services)
 add_subdirectory(user)
+
+if(BHARAT_LEGACY_SUBSYS_LAYOUT)
+    add_subdirectory(subsys)
+else()
+    add_subdirectory(stacks)
+    add_subdirectory(personalities)
+endif()
 
 if(BHARAT_BUILD_HOST_TESTS)
     add_subdirectory(tests)

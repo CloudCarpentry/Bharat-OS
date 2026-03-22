@@ -1,6 +1,6 @@
 add_library(k_init OBJECT
     ../../src/main.c
-    ../../src/boot/boot_args.c
+    ../../../boot/protocols/boot_args.c
     ../../src/device/device_manager.c
     ../../src/device/builtin_drivers.c
     ../../src/device/pci.c
