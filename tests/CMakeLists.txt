@@ -491,6 +491,12 @@ add_executable(test_boot_e2e test_boot_e2e.c test_arch_caps.c ../kernel/src/kern
 target_include_directories(test_boot_e2e PRIVATE ../kernel/include ../include)
 add_test(NAME boot_e2e COMMAND test_boot_e2e)
 
+# Benchmarks
+add_executable(test_bench_hal_pt_arm64 benchmark/test_bench_hal_pt_arm64.c benchmark_stubs.c ../kernel/src/benchmark/benchmark.c)
+target_include_directories(test_bench_hal_pt_arm64 PRIVATE ../kernel/include ../include)
+target_compile_definitions(test_bench_hal_pt_arm64 PRIVATE TESTING=1)
+add_test(NAME test_bench_hal_pt_arm64 COMMAND test_bench_hal_pt_arm64)
+
 # Message/Wire Tests
 add_executable(test_wire_format test_wire_format.c)
 target_include_directories(test_wire_format PRIVATE ../subsys/include)
