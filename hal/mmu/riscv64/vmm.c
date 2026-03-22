@@ -1,9 +1,9 @@
 #include "../../../kernel/include/hal/vmm.h"
 #include "../../../kernel/include/hal/mmu_ops.h"
-#include "../../../../include/numa.h"
+#include "../../../kernel/include/numa.h"
 #include "../../../kernel/include/mm/physmap.h"
 #include "../../../kernel/include/mm/prot_domain.h"
-#include "../../../../include/arch/arch_caps.h"
+#include "../../../kernel/include/arch/arch_caps.h"
 
 #define ERR_NOT_SUPPORTED -1
 
