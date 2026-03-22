@@ -6,6 +6,8 @@
 tlb_cpu_state_t g_tlb_cpu_state[MAX_CPUS];
 
 int tlb_init(void) {
+    extern void tlb_pending_init(void);
+    tlb_pending_init();
     for (int i = 0; i < MAX_CPUS; i++) {
         g_tlb_cpu_state[i].active_aspace = NULL;
         g_tlb_cpu_state[i].active_asid = 0;

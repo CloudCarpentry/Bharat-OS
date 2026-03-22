@@ -215,3 +215,4 @@ int main(void) {
     printf("pt_common_tests: PASS\n");
     return 0;
 }
+int tlb_init(void) { return 0; }
