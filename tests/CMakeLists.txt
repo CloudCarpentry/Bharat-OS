@@ -8,6 +8,14 @@ set(WORK_DIR "${CMAKE_BINARY_DIR}/tests/policy_matrix")
 
 add_subdirectory(host)
 
+# Memory HAL portability tests
+add_executable(test_hal_pt_common
+    mm/pt_common_tests.c
+    ../hal/hal_pt.c
+)
+target_include_directories(test_hal_pt_common PRIVATE ../kernel/include ../include)
+add_test(NAME test_hal_pt_common COMMAND test_hal_pt_common)
+
 # The following legacy tests are preserved here but should eventually
 # migrate to kernel/src/test or tests/host as appropriate.
 add_executable(test_panic test_panic.c benchmark_stubs.c host/mock_panic.c ../kernel/src/panic.c ../kernel/src/fault_diag.c ../kernel/src/sched.c ../kernel/src/sched_deg.c ../kernel/src/ai_sched.c ../kernel/src/capability.c ../kernel/src/device/device_manager.c ../kernel/src/algo_matrix.c ../kernel/src/mm/pmm/numa.c ../kernel/src/cap/cap_policy.c)
