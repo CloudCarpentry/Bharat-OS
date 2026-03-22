@@ -3,7 +3,8 @@
 #include "personality_ops.h"
 #include "sched.h"
 #include "fault_diag.h"
-#include <errno.h>
+
+#define ENOSYS 38
 
 long trap_dispatch_syscall(trap_frame_t *frame, const trap_info_t *info) {
     kthread_t *t = sched_current_thread();

@@ -1,5 +1,4 @@
 #include "personality_ops.h"
-#include <errno.h>
 
 #include "trap_frame_ops.h"
 
@@ -7,7 +6,7 @@ extern long syscall_dispatch(syscall_id_t id, uint64_t arg0, uint64_t arg1,
                       uint64_t arg2, uint64_t arg3, uint64_t arg4,
                       uint64_t arg5);
 
-static long default_handle_syscall(struct kthread *thread, struct trap_frame *frame, const struct trap_info *info) {
+static long default_handle_syscall(kthread_t *thread, trap_frame_t *frame, const trap_info_t *info) {
     (void)thread;
     (void)info;
 
@@ -22,14 +21,14 @@ static long default_handle_syscall(struct kthread *thread, struct trap_frame *fr
     );
 }
 
-static int default_handle_user_fault(struct kthread *thread, struct trap_frame *frame, const struct trap_info *info) {
+static int default_handle_user_fault(kthread_t *thread, trap_frame_t *frame, const trap_info_t *info) {
     (void)thread;
     (void)frame;
     (void)info;
     return -1; // General failure
 }
 
-static int default_map_fault_to_signal(const struct trap_info *info) {
+static int default_map_fault_to_signal(const trap_info_t *info) {
     (void)info;
     return 11; // SIGSEGV
 }

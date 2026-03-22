@@ -3,7 +3,6 @@
 
 #include <stdint.h>
 
-#include "sched.h"
 #include <bharat/uapi/syscall_nr.h>
 
 typedef enum {
@@ -13,7 +12,7 @@ typedef enum {
   TRAP_TYPE_SERROR = 3,
 } trap_type_t;
 
-typedef struct {
+typedef struct trap_frame {
   uint64_t gpr[31];
   uint64_t sp;
   uint64_t pc;
