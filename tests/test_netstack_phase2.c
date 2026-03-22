@@ -112,11 +112,40 @@ void test_loopback_and_udp() {
     printf("test_loopback_and_udp passed\n");
 }
 
+void test_ipv4_tx_fails_when_unconfigured_non_loopback(void) {
+    netbuf_t nb;
+    netbuf_init(&nb);
+    netbuf_put(&nb, 4);
+
+    ipv4_set_local_ip(0);
+    assert(ipv4_tx(&nb, 0x0101A8C0u, IPPROTO_UDP) == -1); /* 192.168.1.1 */
+}
+
+void test_ipv4_loopback_still_selects_loopback_when_unconfigured(void) {
+    ipv4_set_local_ip(0);
+    assert(ipv4_select_source_ip(0x0100007Fu) == ipv4_get_loopback_ip());
+}
+
+void test_udp_uses_configured_ipv4_source_selection(void) {
+    ipv4_set_local_ip(0x0A01A8C0u);
+    assert(ipv4_select_source_ip(0x0101A8C0u) == 0x0A01A8C0u);
+}
+
+void test_ipv4_set_local_ip_rejects_loopback_and_broadcast(void) {
+    assert(ipv4_set_local_ip(0x0100007Fu) == -1);
+    assert(ipv4_set_local_ip(0xFFFFFFFFu) == -1);
+}
+
 int main(void) {
     test_netbuf();
     test_checksums();
     test_ethernet();
     test_loopback_and_udp();
+
+    test_ipv4_tx_fails_when_unconfigured_non_loopback();
+    test_ipv4_loopback_still_selects_loopback_when_unconfigured();
+    test_udp_uses_configured_ipv4_source_selection();
+    test_ipv4_set_local_ip_rejects_loopback_and_broadcast();
 
     printf("All Phase 2 Network Stack tests passed!\n");
     return 0;
