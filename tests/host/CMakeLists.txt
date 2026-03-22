@@ -103,3 +103,9 @@ add_test(NAME host_test_motor_control_core COMMAND test_motor_control_core)
 add_executable(benchmark_actuator drivers/benchmark_actuator.c ../../drivers/class/actuator/actuator_core.c)
 target_include_directories(benchmark_actuator PRIVATE ../../drivers/include)
 add_test(NAME host_benchmark_actuator COMMAND benchmark_actuator)
+
+# Phase 3: Core Scheduler Tests
+add_executable(test_sched test_sched.c)
+target_include_directories(test_sched PRIVATE ../../kernel/include)
+
+add_test(NAME host_test_sched COMMAND test_sched)
