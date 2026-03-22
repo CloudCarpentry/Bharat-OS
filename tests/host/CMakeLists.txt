@@ -109,3 +109,9 @@ add_executable(test_sched test_sched.c)
 target_include_directories(test_sched PRIVATE ../../kernel/include)
 
 add_test(NAME host_test_sched COMMAND test_sched)
+
+# Phase 3: Crypto Tests
+add_executable(test_secure_mem test_secure_mem.c)
+target_include_directories(test_secure_mem PRIVATE ../../kernel/include)
+
+add_test(NAME host_test_secure_mem COMMAND test_secure_mem)
