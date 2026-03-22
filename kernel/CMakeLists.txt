@@ -203,6 +203,7 @@ endif()
 # ── Memory Subsystem Targets ──────────────────────────────────────────────
 add_library(bharat_mm_pmm OBJECT
     src/mm/pmm/pmm.c
+    src/mm/pmm/pmm_debug.c
     src/mm/pmm/early_alloc.c
     src/mm/pmm/slab.c
     src/mm/pmm/kmem_aligned.c
@@ -234,7 +235,11 @@ add_library(bharat_mm_pt OBJECT
 target_link_libraries(bharat_mm_pt PRIVATE bharat_kernel_includes)
 target_compile_options(bharat_mm_pt PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
 add_library(bharat_mm_tlb OBJECT
-    src/mm/tlb/tlb_coordinator.c
+    src/mm/tlb/tlb.c
+    src/mm/tlb/tlb_flush.c
+    src/mm/tlb/tlb_shootdown.c
+    src/mm/tlb/tlb_stats.c
+    src/mm/tlb/tlb_asid.c
     src/mm/tlb/monitor_client.c
     src/mm/vm/aspace/aspace_switch.c
 )

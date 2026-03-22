@@ -248,67 +248,40 @@ int monitor_handle_tlb_invalidate(
     return 0;
 }
 
-#include "arch/arch_caps.h"
+#include "../../include/arch/arch_caps.h"
+#include "../../include/mm/tlb.h"
+#include "../../include/mm/tlb_internal.h"
+#include "../../include/hal/hal_tlb.h"
+#include "../../include/hal/hal.h"
 
-static void tlb_shootdown_sync(address_space_t *aspace, tlb_scope_t scope, virt_addr_t va, size_t len) {
-    if (!aspace || !active_hal_tlb) return;
-
-    uint32_t current_core = hal_cpu_get_id();
+int tlb_invalidate_remote(vm_aspace_t *aspace, uintptr_t va, size_t len, tlb_inv_kind_t kind) {
+    if (!aspace || !active_hal_tlb) return -1;
 
     uint32_t type;
-    switch(scope) {
-        case TLB_SCOPE_PAGE: type = 0; break;
-        case TLB_SCOPE_RANGE: type = 1; break;
+    switch(kind) {
+        case TLB_INV_PAGE: type = 0; break;
+        case TLB_INV_RANGE: type = 1; break;
         default: type = 2; break; // ASPACE/ALL
     }
 
-    // Phase A: Remote shootdown only if SMP capability exists
     arch_caps_t caps = arch_get_caps();
     if (arch_caps_test(caps, ARCH_CAP_SMP)) {
-        // Send the invalidation requests
         vmm_send_tlb_invalidate(aspace->object_id, va, len, type);
+        uint32_t current_core = hal_cpu_get_id();
+        g_tlb_cpu_state[current_core].shootdowns_sent++;
     }
 
-    // Process local flush
-    if (g_cpu_locals[current_core].current_as_id == aspace->object_id) {
-        const hal_tlb_caps_t *caps = hal_tlb_caps();
-        const bool can_page = caps && caps->supports_page_flush;
-        const bool can_range = caps && caps->supports_range_flush;
-        const bool can_aspace = caps && caps->supports_aspace_flush;
-
-        if (scope == TLB_SCOPE_PAGE && can_page && active_hal_tlb->flush_page_local) {
-            active_hal_tlb->flush_page_local(va);
-        } else if (scope == TLB_SCOPE_RANGE && can_range && active_hal_tlb->flush_range_local) {
-            active_hal_tlb->flush_range_local(va, len);
-        } else if ((scope == TLB_SCOPE_ASPACE || scope == TLB_SCOPE_ALL) && can_aspace && active_hal_tlb->flush_asid_local) {
-            active_hal_tlb->flush_asid_local(aspace->object_id & 0xFFFF);
-        } else if (active_hal_tlb->flush_all_local) {
-            active_hal_tlb->flush_all_local();
-        }
-    }
+    return 0;
 }
 
-void hal_tlb_invalidate_page(address_space_t *aspace, virt_addr_t va) {
-    tlb_shootdown_sync(aspace, TLB_SCOPE_PAGE, va, PAGE_SIZE);
+int tlb_invalidate_all(vm_aspace_t *aspace, uintptr_t va, size_t len, tlb_inv_kind_t kind) {
+    if (!aspace || !active_hal_tlb) return -1;
+
+    tlb_invalidate_remote(aspace, va, len, kind);
+    tlb_invalidate_local(aspace, va, len, kind);
+    return 0;
 }
 
-void hal_tlb_invalidate_range(address_space_t *aspace, virt_addr_t start, size_t len) {
-    tlb_shootdown_sync(aspace, TLB_SCOPE_RANGE, start, len);
-}
-
-void hal_tlb_invalidate_aspace(address_space_t *aspace) {
-    tlb_shootdown_sync(aspace, TLB_SCOPE_ASPACE, 0, 0);
-}
-
-void hal_tlb_invalidate_all(void) {
-    for (uint32_t i = 0; i < MAX_CPUS; i++) {
-        if (g_cpu_locals[i].current_as) {
-             tlb_shootdown_sync(g_cpu_locals[i].current_as, TLB_SCOPE_ALL, 0, 0);
-        }
-    }
-}
-
-// Mailbox processing loop relocated to central TLB authority layer
 void vmm_process_urpc_messages(void) {
     uint32_t current_core = hal_cpu_get_id();
 
