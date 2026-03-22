@@ -66,38 +66,61 @@ static void setup_pmm(void) {
 int main(void) {
   setup_pmm();
 
-  pmm_block_t block = {0};
-  assert(pmm_alloc_pages(0, PMM_ZONE_ANY, PMM_ALLOC_NONE, &block) == 0);
+  pmm_block_t ordinary = {0};
+  assert(pmm_alloc_pages(0, PMM_ZONE_ANY, PMM_ALLOC_NONE, &ordinary) == 0);
+  page_t *op = phys_to_page(ordinary.phys_addr);
+  assert(op != NULL);
+  assert(op->ref_count == 1);
 
-  page_t *p = phys_to_page(block.phys_addr);
-  assert(p != NULL);
-  assert(p->ref_count == 1);
+  // Ordinary refcount lifecycle.
+  assert(pmm_ref_get(ordinary.phys_addr) == 0);
+  assert(op->ref_count == 2);
+  assert(pmm_ref_put(ordinary.phys_addr) == 0);
+  assert(op->ref_count == 1);
+  assert(op->state == PMM_PAGE_STATE_ALLOCATED);
+  assert(pmm_ref_put(ordinary.phys_addr) == 0);
+  assert(op->state == PMM_PAGE_STATE_FREE);
 
-  assert(pmm_ref_get(block.phys_addr) == 0);
-  assert(p->ref_count == 2);
+  pmm_block_t pinned = {0};
+  assert(pmm_alloc_pages(0, PMM_ZONE_ANY, PMM_ALLOC_NONE, &pinned) == 0);
+  page_t *pp = phys_to_page(pinned.phys_addr);
+  assert(pp != NULL);
+  assert(pp->ref_count == 1);
+  assert(pp->pin_count == 0);
 
-  assert(pmm_ref_put(block.phys_addr) == 0);
-  assert(p->ref_count == 1);
-  assert(p->state == PMM_PAGE_STATE_ALLOCATED);
+  assert(pmm_pin(pinned.phys_addr) == 0);
+  assert(pp->pin_count == 1);
 
-  assert(pmm_pin(block.phys_addr) == 0);
-  assert(p->pin_count == 1);
+  // Last-ref put while pinned must fail and preserve both counters.
+  for (int i = 0; i < 16; ++i) {
+    assert(pmm_ref_put(pinned.phys_addr) != 0);
+    assert(pp->ref_count == 1);
+    assert(pp->pin_count == 1);
+  }
 
-  assert(pmm_ref_put(block.phys_addr) != 0);
-  assert(p->ref_count == 1);
-  assert(p->pin_count == 1);
+  assert(pmm_unpin(pinned.phys_addr) == 0);
+  assert(pp->pin_count == 0);
 
-  assert(pmm_ref_put(block.phys_addr) != 0);
-  assert(p->ref_count == 1);
-  assert(p->pin_count == 1);
+  // Underflow protection: repeated unpin on zero must fail without wrapping.
+  for (int i = 0; i < 16; ++i) {
+    assert(pmm_unpin(pinned.phys_addr) != 0);
+    assert(pp->pin_count == 0);
+  }
 
-  assert(pmm_unpin(block.phys_addr) == 0);
-  assert(p->pin_count == 0);
-  assert(pmm_unpin(block.phys_addr) != 0);
-  assert(p->pin_count == 0);
+  // Short stress: interleave pin/ref operations on one live page.
+  for (int i = 0; i < 32; ++i) {
+    assert(pmm_ref_get(pinned.phys_addr) == 0);
+    assert(pp->ref_count == 2);
+    assert(pmm_pin(pinned.phys_addr) == 0);
+    assert(pp->pin_count == 1);
+    assert(pmm_ref_put(pinned.phys_addr) == 0);
+    assert(pp->ref_count == 1);
+    assert(pmm_unpin(pinned.phys_addr) == 0);
+    assert(pp->pin_count == 0);
+  }
 
-  assert(pmm_ref_put(block.phys_addr) == 0);
-  assert(p->state == PMM_PAGE_STATE_FREE);
+  assert(pmm_ref_put(pinned.phys_addr) == 0);
+  assert(pp->state == PMM_PAGE_STATE_FREE);
 
   printf("test_pmm_refpin passed\n");
   return 0;
