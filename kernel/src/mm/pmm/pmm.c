@@ -19,6 +19,7 @@
 #include <stdint.h>
 #include "mm/pmm_map.h"
 #include "mm/pt_cache.h"
+#include "mm/physmap.h"
 
 #define MAX_ORDER                                                              \
   12 // allows order 11 -> 2048 pages -> 8MB, and order 9 -> 512 pages -> 2MB
@@ -78,8 +79,27 @@ static inline uint32_t get_page_color(phys_addr_t phys) {
   return (phys / PAGE_SIZE) % CONFIG_MM_CACHE_COLORS_DEFAULT;
 }
 
+static phys_addr_t pmm_alloc_pages_colored_in_zone(int order, uint32_t preferred_numa_node,
+                                                   uint32_t flags,
+                                                   mm_color_config_t *color_config,
+                                                   pmm_zone_t zone_filter);
+
+static bool page_block_matches_zone(page_t *base_page, int order, pmm_zone_t zone) {
+  if (!base_page || zone == PMM_ZONE_ANY) {
+    return true;
+  }
+  size_t page_count = (size_t)1U << order;
+  for (size_t i = 0; i < page_count; i++) {
+    if ((base_page + i)->zone > zone) {
+      return false;
+    }
+  }
+  return true;
+}
+
 static void *pmm_alloc_pages_order_colored(int order, uint32_t numa_node,
-                                           mm_color_config_t *color_config) {
+                                           mm_color_config_t *color_config,
+                                           pmm_zone_t zone_filter) {
   zone_t *zone = &numa_zones[numa_node];
 
   spin_lock(&zone->lock);
@@ -97,6 +117,9 @@ static void *pmm_alloc_pages_order_colored(int order, uint32_t numa_node,
 
       if (!list_empty(&zone->free_list[level][c])) {
         page_t *page = list_entry(zone->free_list[level][c].next, page_t, list);
+        if (!page_block_matches_zone(page, level, zone_filter)) {
+          continue;
+        }
         list_del(&page->list);
         zone->free_count[level][c]--;
 
@@ -154,27 +177,13 @@ int pmm_alloc_pages(uint32_t order, pmm_zone_t zone, uint32_t alloc_flags, pmm_b
   if (!out_block) return -1;
   if (order >= MAX_ORDER) return -1;
 
-  // We map zone directly in the allocator search later, but for now we'll do a basic proxy to pmm_alloc_pages_colored
-  // Note: we need to enforce zones later.
-
   mm_color_config_t no_color_config = {.policy = MM_COLOR_POLICY_NONE, .domain = MM_DOMAIN_DEFAULT, .color_mask = 0xFFFFFFFF};
-  phys_addr_t phys = pmm_alloc_pages_colored(order, NUMA_NODE_ANY, PAGE_FLAG_KERNEL, &no_color_config);
+  phys_addr_t phys = pmm_alloc_pages_colored_in_zone(order, NUMA_NODE_ANY, PAGE_FLAG_KERNEL, &no_color_config, zone);
 
   if (phys == 0) return -1;
 
-  // Since we don't fully respect `zone` inside pmm_alloc_pages_colored yet, let's at least enforce the check post-alloc.
-  // Proper implementation would pass zone down, but since we are modifying the wrapper we can do a naive check.
-  // To avoid rewriting `pmm_alloc_pages_colored` entirely right now, we just fill out_block.
-
   page_t *p = phys_to_page(phys);
   if (!p) return -1;
-
-  if (zone != PMM_ZONE_ANY && p->zone > zone) {
-    // Highly naive: if we got a page outside the zone, free it and fail.
-    // In production, `pmm_alloc_pages_colored` must be zone-aware.
-    mm_free_page(phys);
-    return -1;
-  }
 
   p->state = PMM_PAGE_STATE_ALLOCATED;
   p->pin_count = (alloc_flags & PMM_ALLOC_PINNED) ? 1 : 0;
@@ -186,9 +195,9 @@ int pmm_alloc_pages(uint32_t order, pmm_zone_t zone, uint32_t alloc_flags, pmm_b
   out_block->flags = alloc_flags;
 
   if (alloc_flags & PMM_ALLOC_ZERO) {
-    uint8_t *ptr = (uint8_t *)(uintptr_t)phys;
-    for (size_t i = 0; i < (1ULL << order) * PAGE_SIZE; i++) {
-      ptr[i] = 0;
+    if (mm_zero_phys_range(phys, (1ULL << order) * PAGE_SIZE) != 0) {
+      (void)pmm_free_pages(out_block);
+      return -1;
     }
   }
 
@@ -323,9 +332,10 @@ int pmm_unpin(uint64_t phys_addr) {
     return 0;
 }
 
-phys_addr_t pmm_alloc_pages_colored(int order, uint32_t preferred_numa_node,
-                                    uint32_t flags,
-                                    mm_color_config_t *color_config) {
+static phys_addr_t pmm_alloc_pages_colored_in_zone(int order, uint32_t preferred_numa_node,
+                                                   uint32_t flags,
+                                                   mm_color_config_t *color_config,
+                                                   pmm_zone_t zone_filter) {
   uint32_t home = preferred_numa_node;
 
   if (preferred_numa_node == NUMA_NODE_ANY ||
@@ -344,7 +354,7 @@ phys_addr_t pmm_alloc_pages_colored(int order, uint32_t preferred_numa_node,
         continue;
     }
 
-    void *addr = pmm_alloc_pages_order_colored(order, node_id, color_config);
+    void *addr = pmm_alloc_pages_order_colored(order, node_id, color_config, zone_filter);
     if (addr) {
       atomic64_fetch_and_sub_ptr(&numa_nodes[node_id].free_pages,
                                  (1ULL << order));
@@ -365,7 +375,7 @@ phys_addr_t pmm_alloc_pages_colored(int order, uint32_t preferred_numa_node,
                                            .domain = MM_DOMAIN_DEFAULT,
                                            .color_mask = 0xFFFFFFFF};
       void *addr =
-          pmm_alloc_pages_order_colored(order, node_id, &no_color_config);
+          pmm_alloc_pages_order_colored(order, node_id, &no_color_config, zone_filter);
       if (addr) {
         atomic64_fetch_and_sub_ptr(&numa_nodes[node_id].free_pages,
                                    (1ULL << order));
@@ -386,7 +396,7 @@ phys_addr_t pmm_alloc_pages_colored(int order, uint32_t preferred_numa_node,
   // Attempt one last time
   for (uint32_t attempt = 0; attempt < active_numa_nodes; ++attempt) {
     uint32_t node_id = (home + attempt) % active_numa_nodes;
-    void *addr = pmm_alloc_pages_order_colored(order, node_id, color_config);
+    void *addr = pmm_alloc_pages_order_colored(order, node_id, color_config, zone_filter);
     if (addr) {
       atomic64_fetch_and_sub_ptr(&numa_nodes[node_id].free_pages,
                                  (1ULL << order));
@@ -418,8 +428,13 @@ phys_addr_t mm_alloc_pages_order(int order, uint32_t preferred_numa_node,
   if (current) {
     color_config = &current->mm_color_policy;
   }
-  return pmm_alloc_pages_colored(order, preferred_numa_node, flags,
-                                 color_config);
+  return pmm_alloc_pages_colored(order, preferred_numa_node, flags, color_config);
+}
+
+phys_addr_t pmm_alloc_pages_colored(int order, uint32_t preferred_numa_node,
+                                    uint32_t flags,
+                                    mm_color_config_t *color_config) {
+  return pmm_alloc_pages_colored_in_zone(order, preferred_numa_node, flags, color_config, PMM_ZONE_ANY);
 }
 
 static void mark_page_free(phys_addr_t phys) {
@@ -622,7 +637,11 @@ int mm_alloc_dma_pages(size_t size, uint32_t preferred_numa_node,
   }
 
   *out_phys = block.phys_addr;
-  *out_kernel_virt = (void *)(uintptr_t)block.phys_addr;
+  *out_kernel_virt = physmap_phys_to_virt(block.phys_addr);
+  if (!*out_kernel_virt) {
+    (void)pmm_free_pages(&block);
+    return -1;
+  }
 
   return 0;
 }

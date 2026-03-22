@@ -1,11 +1,18 @@
-#include "../../include/hal/hal_pt.h"
-#include "../../include/hal/hal_tlb.h"
-#include "../../include/kernel.h"
+#include "../kernel/include/hal/hal_pt.h"
+#include "../kernel/include/hal/hal_tlb.h"
+#include "../kernel/include/kernel.h"
 #include <stdbool.h>
 #include <stddef.h>
 
 hal_pt_ops_t *active_hal_pt = NULL;
 hal_tlb_ops_t *active_hal_tlb = NULL;
+
+static const hal_pt_caps_t g_unknown_pt_caps = {
+    .backend_kind = TRANSLATE_BACKEND_NONE,
+    .exec_class = TRANSLATE_EXEC_MPU_ONLY,
+};
+
+static const hal_tlb_caps_t g_unknown_tlb_caps = {0};
 
 static inline bool is_page_aligned_u64(uint64_t val) {
     return (val & (PAGE_SIZE - 1U)) == 0U;
@@ -90,10 +97,22 @@ int hal_pt_map_range(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t paddr, 
         return -1;
     }
 
-    if (!active_hal_pt->map_range) {
+    if (active_hal_pt->map_range) {
+        return active_hal_pt->map_range(root_pt, vaddr, paddr, size, flags);
+    }
+
+    if (!active_hal_pt->map_page) {
         return -1;
     }
-    return active_hal_pt->map_range(root_pt, vaddr, paddr, size, flags);
+
+    for (size_t off = 0U; off < size; off += PAGE_SIZE) {
+        int rc = active_hal_pt->map_page(root_pt, vaddr + off, paddr + off, flags);
+        if (rc != 0) {
+            (void)hal_pt_unmap_range(root_pt, vaddr, off);
+            return rc;
+        }
+    }
+    return 0;
 }
 
 int hal_pt_unmap_range(phys_addr_t root_pt, virt_addr_t vaddr, size_t size) {
@@ -104,10 +123,21 @@ int hal_pt_unmap_range(phys_addr_t root_pt, virt_addr_t vaddr, size_t size) {
         return -1;
     }
 
-    if (!active_hal_pt->unmap_range) {
+    if (active_hal_pt->unmap_range) {
+        return active_hal_pt->unmap_range(root_pt, vaddr, size);
+    }
+
+    if (!active_hal_pt->unmap_page) {
         return -1;
     }
-    return active_hal_pt->unmap_range(root_pt, vaddr, size);
+
+    for (size_t off = 0U; off < size; off += PAGE_SIZE) {
+        int rc = active_hal_pt->unmap_page(root_pt, vaddr + off, NULL);
+        if (rc != 0) {
+            return rc;
+        }
+    }
+    return 0;
 }
 
 int hal_pt_protect_range(phys_addr_t root_pt, virt_addr_t vaddr, size_t size, uint32_t new_flags) {
@@ -118,10 +148,21 @@ int hal_pt_protect_range(phys_addr_t root_pt, virt_addr_t vaddr, size_t size, ui
         return -1;
     }
 
-    if (!active_hal_pt->protect_range) {
+    if (active_hal_pt->protect_range) {
+        return active_hal_pt->protect_range(root_pt, vaddr, size, new_flags);
+    }
+
+    if (!active_hal_pt->protect_page) {
         return -1;
     }
-    return active_hal_pt->protect_range(root_pt, vaddr, size, new_flags);
+
+    for (size_t off = 0U; off < size; off += PAGE_SIZE) {
+        int rc = active_hal_pt->protect_page(root_pt, vaddr + off, new_flags);
+        if (rc != 0) {
+            return rc;
+        }
+    }
+    return 0;
 }
 
 int hal_pt_query_mapping(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *paddr, size_t *mapped_size, uint32_t *flags) {
@@ -132,8 +173,40 @@ int hal_pt_query_mapping(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *pa
         return -1;
     }
 
-    if (!active_hal_pt->query_mapping) {
+    if (active_hal_pt->query_mapping) {
+        return active_hal_pt->query_mapping(root_pt, vaddr, paddr, mapped_size, flags);
+    }
+
+    if (!active_hal_pt->query_page) {
         return -1;
     }
-    return active_hal_pt->query_mapping(root_pt, vaddr, paddr, mapped_size, flags);
+
+    int rc = active_hal_pt->query_page(root_pt, vaddr, paddr, flags);
+    if (rc != 0) {
+        return rc;
+    }
+    if (mapped_size) {
+        *mapped_size = PAGE_SIZE;
+    }
+    return 0;
+}
+
+const hal_pt_caps_t *hal_pt_caps(void) {
+    if (!active_hal_pt) {
+        hal_pt_init();
+    }
+    if (!active_hal_pt || !active_hal_pt->caps) {
+        return &g_unknown_pt_caps;
+    }
+    return active_hal_pt->caps;
+}
+
+const hal_tlb_caps_t *hal_tlb_caps(void) {
+    if (!active_hal_tlb) {
+        hal_pt_init();
+    }
+    if (!active_hal_tlb || !active_hal_tlb->caps) {
+        return &g_unknown_tlb_caps;
+    }
+    return active_hal_tlb->caps;
 }

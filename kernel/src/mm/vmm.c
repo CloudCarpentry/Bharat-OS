@@ -76,12 +76,8 @@ int mm_vmm_map_page(address_space_t* as, virt_addr_t vaddr, phys_addr_t paddr, u
 int mm_vmm_unmap_page(address_space_t* as, virt_addr_t vaddr) {
     if (!as || !as->prot_domain) return -1;
 
-    uintptr_t paddr = 0;
-    prot_domain_query_region(as->prot_domain, vaddr, &paddr, NULL);
-
     int ret = prot_domain_unmap_region(as->prot_domain, vaddr, PAGE_SIZE);
-    if (ret == 0 && paddr != 0) {
-        mm_free_page(paddr);
+    if (ret == 0) {
         hal_tlb_invalidate_page(as, vaddr);
     }
     return ret;

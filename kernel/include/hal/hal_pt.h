@@ -60,6 +60,30 @@ typedef enum {
     MAP_LEVEL_MPU,  // MPU region size (variable)
 } map_level_t;
 
+typedef struct hal_pt_caps {
+    translate_backend_kind_t backend_kind;
+    translate_exec_class_t exec_class;
+    bool supports_sparse_vm;
+    bool supports_demand_fault;
+    bool supports_protect;
+    bool supports_query;
+    bool supports_range_map;
+    bool supports_range_unmap;
+    bool supports_range_protect;
+    bool supports_asid;
+    bool supports_pcid;
+    bool supports_global;
+    bool supports_nx_or_xn;
+    bool supports_ad_bits;
+    bool supports_large_2m;
+    bool supports_large_1g;
+    bool supports_device_memtype;
+    bool supports_writecombine;
+    bool requires_bbm;
+    bool supports_cow_softbit;
+    bool supports_linear_physmap;
+} hal_pt_caps_t;
+
 // Generic Page Table Flags (Legacy flags, preserved for now during migration)
 #define HAL_PT_FLAG_READ    (1 << 0)
 #define HAL_PT_FLAG_WRITE   (1 << 1)
@@ -75,6 +99,7 @@ typedef enum {
 // Architecture-neutral Page Table / Translation Backend API
 typedef struct hal_pt_ops {
     translate_backend_kind_t backend_type;
+    const hal_pt_caps_t *caps;
 
     // Lifecycle
     phys_addr_t (*create_address_space)(phys_addr_t kernel_root_table);
@@ -106,5 +131,6 @@ int hal_pt_map_range(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t paddr, 
 int hal_pt_unmap_range(phys_addr_t root_pt, virt_addr_t vaddr, size_t size);
 int hal_pt_protect_range(phys_addr_t root_pt, virt_addr_t vaddr, size_t size, uint32_t new_flags);
 int hal_pt_query_mapping(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *paddr, size_t *mapped_size, uint32_t *flags);
+const hal_pt_caps_t *hal_pt_caps(void);
 
 #endif // BHARAT_HAL_PT_H

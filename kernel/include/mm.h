@@ -2,6 +2,7 @@
 #define BHARAT_MM_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 /*
  * Bharat-OS Memory Management Subsystem
@@ -16,6 +17,7 @@ typedef uint64_t virt_addr_t;
 
 #include "list.h"
 #include "mm_coloring.h"
+#include "mm/pmm.h"
 
 // Page metadata structure for Buddy Allocator
 typedef struct page {
@@ -89,6 +91,8 @@ int mm_alloc_dma_pages(size_t size,
                        phys_addr_t *out_phys,
                        void **out_kernel_virt);
 int mm_free_dma_pages(phys_addr_t phys, void *kernel_virt, size_t size);
+int mm_memset_phys_range(phys_addr_t phys, uint8_t value, size_t size);
+int mm_zero_phys_range(phys_addr_t phys, size_t size);
 
 // Support for Copy-on-Write (CoW) page reference counting
 void mm_inc_page_ref(phys_addr_t page);
