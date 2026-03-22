@@ -37,6 +37,14 @@ typedef enum {
     CAP_PERM_CRYPT_DECRYPT        = (1U << 9),
     CAP_PERM_CRYPT_EXPORT_WRAPPED = (1U << 10),
     CAP_PERM_CRYPT_ADMIN          = (1U << 11),
+
+    // Communication and RPC capability bits
+    // NOTE: These are vocabulary only and not currently enforced in the
+    // scheduler, IPC send/recv, or URPC routing paths yet.
+    CAP_PERM_IPC_SEND             = (1U << 12),
+    CAP_PERM_IPC_RECEIVE          = (1U << 13),
+    CAP_PERM_URPC_CALL            = (1U << 14),
+    CAP_PERM_URPC_REPLY           = (1U << 15),
 } cap_perm_t;
 
 typedef struct capability_entry {

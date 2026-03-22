@@ -2,6 +2,7 @@ add_library(k_core OBJECT
     ../../src/cpu_local.c
     ../../src/multicore.c
     ../../src/subsystem/profile.c
+    ../../src/profile/profile.c
     ../../src/ai_kernel_bridge.c
     ../../src/security/isolation.c
     ../../src/security/credentials.c
