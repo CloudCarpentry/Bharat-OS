@@ -122,3 +122,9 @@ For diagram-based decomposition and roadmap mapping by domain, see:
 - `docs/architecture/components/subsystem-subcomponents-architecture.md`
 - `docs/architecture/components/services-subcomponents-architecture.md`
 - `docs/architecture/components/drivers-subcomponents-architecture.md`
+
+## 7) Memory hardening roadmap
+
+For the current memory production hardening plan and profile/architecture acceptance matrix, see:
+
+- `docs/architecture/memory-production-grade-plan.md`
