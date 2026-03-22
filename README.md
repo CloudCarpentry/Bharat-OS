@@ -14,6 +14,8 @@
 
 Bharat-OS is a capability-oriented microkernel project with a multikernel direction. The repository currently delivers a **bootable and testable kernel baseline** plus architecture documentation for deferred and experimental tracks.
 
+For our detailed vision and current subsystem maturity regarding the transition to a Barrelfish-like multikernel (supporting RT, GP, and Hybrid profiles), please see the [Multikernel Vision and Maturity Document](docs/architecture/core/MULTIKERNEL_VISION.md).
+
 ## Project status at a glance
 
 | Area | Current status | Notes |
