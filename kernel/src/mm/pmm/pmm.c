@@ -159,6 +159,9 @@ static void *pmm_alloc_pages_order_colored(int order, uint32_t numa_node,
 
     if (!list_empty(&zone->free_list[order][c])) {
       page_t *page = list_entry(zone->free_list[order][c].next, page_t, list);
+      if (!page_block_matches_zone(page, order, zone_filter)) {
+        continue;
+      }
       list_del(&page->list);
       zone->free_count[order][c]--;
       page->order = order;
@@ -287,6 +290,9 @@ int pmm_free_pages(const pmm_block_t *block) {
 }
 
 int pmm_ref_get(uint64_t phys_addr) {
+    // Refcount ownership invariant:
+    // - ref_count > 0 means the page is live and has at least one owner.
+    // - callers must hold a valid live reference before taking another one.
     page_t *page = phys_to_page(phys_addr);
     if (page && page->ref_count > 0U) {
         atomic16_fetch_and_add(&page->ref_count, 1U);
@@ -299,21 +305,34 @@ int pmm_ref_put(uint64_t phys_addr) {
     page_t *page = phys_to_page(phys_addr);
     if (!page) return -1;
 
-    uint16_t old_ref = atomic16_fetch_and_sub(&page->ref_count, 1U);
-    if (old_ref == 1U) {
-        // Last ref
-        if (page->pin_count > 0) {
-            // Can't free pinned page
+    // Lifecycle invariant:
+    // - pinned pages are allowed to have exactly one reference.
+    // - dropping that last reference while pinned must fail without mutation.
+    while (1) {
+        uint16_t old_ref = page->ref_count;
+        if (old_ref == 0U) {
             return -1;
         }
-        page->state = PMM_PAGE_STATE_FREE;
-        page->ref_count = 1; // prepare for mm_free_page
-        mm_free_page(phys_addr);
+        if (old_ref == 1U && page->pin_count > 0U) {
+            return -1;
+        }
+
+        uint16_t new_ref = (uint16_t)(old_ref - 1U);
+        if (__sync_bool_compare_and_swap(&page->ref_count, old_ref, new_ref)) {
+            if (new_ref == 0U) {
+                page->state = PMM_PAGE_STATE_FREE;
+                // mm_free_page() contract: call sites drop the final live reference
+                // and may pass ref_count == 0. mm_free_page() handles this case.
+                mm_free_page(phys_addr);
+            }
+            return 0;
+        }
     }
-    return 0;
 }
 
 int pmm_pin(uint64_t phys_addr) {
+    // Pinning invariant: pin_count prevents final-ref release from reclaiming page
+    // storage, but does not itself own a reference.
     page_t *page = phys_to_page(phys_addr);
     if (!page) return -1;
     atomic16_fetch_and_add(&page->pin_count, 1U);
@@ -321,15 +340,19 @@ int pmm_pin(uint64_t phys_addr) {
 }
 
 int pmm_unpin(uint64_t phys_addr) {
+    // Unpin invariant: never underflow pin_count; reject unpin on zero as-is.
     page_t *page = phys_to_page(phys_addr);
     if (!page) return -1;
-    uint16_t old = atomic16_fetch_and_sub(&page->pin_count, 1U);
-    if (old == 0) {
-        // underflow protection
-        page->pin_count = 0;
-        return -1;
+    while (1) {
+        uint16_t old = page->pin_count;
+        if (old == 0U) {
+            return -1;
+        }
+        if (__sync_bool_compare_and_swap(&page->pin_count, old,
+                                         (uint16_t)(old - 1U))) {
+            return 0;
+        }
     }
-    return 0;
 }
 
 static phys_addr_t pmm_alloc_pages_colored_in_zone(int order, uint32_t preferred_numa_node,
@@ -663,14 +686,25 @@ int mm_free_dma_pages(phys_addr_t phys, void *kernel_virt, size_t size) {
 }
 
 void mm_free_page(phys_addr_t page_addr) {
+  // Freeing contract:
+  // - page must not be pinned (callers enforce this).
+  // - caller may invoke with ref_count == 1 (drop-to-free) or ref_count == 0
+  //   (already dropped by an external CAS path such as pmm_ref_put()).
   page_t *page = phys_to_page(page_addr);
   if (!page) {
     return;
   }
 
-  uint16_t old_ref = atomic16_fetch_and_sub(&page->ref_count, 1);
-  if (old_ref != 1U) {
-    return;
+  uint16_t observed = page->ref_count;
+  if (observed > 0U) {
+    uint16_t old_ref = atomic16_fetch_and_sub(&page->ref_count, 1);
+    if (old_ref != 1U) {
+      return;
+    }
+  } else {
+    if (!__sync_bool_compare_and_swap(&page->ref_count, 0U, 0U)) {
+      return;
+    }
   }
 
   uint32_t node_id = page->numa_node;
