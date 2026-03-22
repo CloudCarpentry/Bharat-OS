@@ -237,7 +237,6 @@ endif()
 
 
 # Add subdirectories
-option(BHARAT_LEGACY_SUBSYS_LAYOUT "Build legacy subsys layout" ON)
 
 add_subdirectory(arch)
 add_subdirectory(boot)
@@ -248,13 +247,8 @@ add_subdirectory(lib)
 add_subdirectory(drivers)
 add_subdirectory(services)
 add_subdirectory(user)
-
-if(BHARAT_LEGACY_SUBSYS_LAYOUT)
-    add_subdirectory(subsys)
-else()
-    add_subdirectory(stacks)
-    add_subdirectory(personalities)
-endif()
+add_subdirectory(stacks)
+add_subdirectory(personalities)
 
 if(BHARAT_BUILD_HOST_TESTS)
     add_subdirectory(tests)
@@ -295,6 +289,20 @@ bharat_add_host_test_compat_target(
 bharat_add_host_test_compat_target(
     test_automotive_subsys
     "Host tests disabled. Reconfigure with -DBHARAT_BUILD_HOST_TESTS=ON to build test_automotive_subsys."
+)
+
+# PMM and scheduler host-test compatibility for targeted correctness suites.
+bharat_add_host_test_compat_target(
+    test_pmm_zone_alloc
+    "Host tests disabled. Set -DBHARAT_BUILD_HOST_TESTS=ON to build test_pmm_zone_alloc."
+)
+bharat_add_host_test_compat_target(
+    test_pmm_refpin
+    "Host tests disabled. Set -DBHARAT_BUILD_HOST_TESTS=ON to build test_pmm_refpin."
+)
+bharat_add_host_test_compat_target(
+    test_sched_reap
+    "Host tests disabled. Set -DBHARAT_BUILD_HOST_TESTS=ON to build test_sched_reap."
 )
 
 # Image generation

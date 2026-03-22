@@ -238,7 +238,7 @@ add_library(bharat_mm_tlb OBJECT
     src/mm/tlb/monitor_client.c
     src/mm/vm/aspace/aspace_switch.c
 )
-target_include_directories(bharat_mm_tlb PRIVATE ${CMAKE_SOURCE_DIR}/subsys/include)
+target_include_directories(bharat_mm_tlb PRIVATE ${CMAKE_SOURCE_DIR}/services/core/subsysmgr/include)
 target_link_libraries(bharat_mm_tlb PRIVATE bharat_kernel_includes)
 target_compile_options(bharat_mm_tlb PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
 add_library(bharat_mm_vmm OBJECT
@@ -339,7 +339,7 @@ elseif(ARCH STREQUAL "riscv64")
     list(APPEND KERNEL_SRCS ../arch/riscv64/platform/qemu_virt/boot/early_console.c)
 endif()
 
-list(APPEND KERNEL_SRCS src/display/boot_video_map.c)
+list(APPEND KERNEL_SRCS src/display/boot_video_map.c src/boot/boot_mode.c src/boot/boot_selftest.c)
 
 # ── Kernel ELF ──────────────────────────────────────────────────────────────
 add_executable(kernel.elf

@@ -1,6 +1,6 @@
 #include "trap.h"
 #ifdef BHARAT_PERSONALITY_LINUX
-#include "../../subsys/linux/linux_compat.h"
+#include "../../personalities/linux/linux_compat.h"
 extern long linux_syscall_handler(long sysno, long arg1, long arg2, long arg3,
                                   long arg4, long arg5, long arg6)
     __attribute__((weak));

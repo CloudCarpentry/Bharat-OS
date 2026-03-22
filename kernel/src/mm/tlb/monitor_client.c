@@ -1,7 +1,7 @@
 #include "../../../include/kernel.h"
-#include "../../../subsys/include/bharat/msg/transport.h"
+#include "../../../services/core/subsysmgr/include/bharat/msg/transport.h"
 #include "bharat_monitor_v1_types.h"
-#include "../../../subsys/include/bharat/msg/wire.h"
+#include "../../../services/core/subsysmgr/include/bharat/msg/wire.h"
 
 // The opcode for TlbInvalidate
 #define OP_TLBINVALIDATE 3

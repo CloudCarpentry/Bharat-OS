@@ -12,7 +12,7 @@ This document explains Bharat-OS's current AI-guided scheduling path and how it 
 
 - Kernel scheduler telemetry and prediction logic: `kernel/src/ai_sched.c`
 - Architecture-neutral scheduler contract: `kernel/include/advanced/ai_sched.h`
-- User-space governor seed implementation: `subsys/src/ai_governor.c`
+- User-space governor seed implementation: `user/apps/ai_governor/ai_governor.c`
 - Plugin contract ADR: `docs/decisions/ADR-008-ai-scheduler-plugin-contract.md`
 
 ## Telemetry model

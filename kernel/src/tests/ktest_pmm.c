@@ -62,4 +62,4 @@ static int boot_test_pmm_alloc(void) {
   return -1;
 }
 
-REGISTER_KERNEL_TEST("pmm_alloc_free", "allocator", boot_test_pmm_alloc, 1, 1)
+REGISTER_BOOT_SELFTEST("pmm_alloc_free", "allocator", boot_test_pmm_alloc, BOOT_TEST_STAGE_MEMORY, BOOT_TEST_MANDATORY, 0, true)

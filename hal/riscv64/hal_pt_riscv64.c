@@ -346,8 +346,33 @@ const hal_translate_ops_t* hal_translate_ops(void) {
     return &riscv64_translate_ops;
 }
 
+static const hal_pt_caps_t riscv64_pt_caps = {
+    .backend_kind = TRANSLATE_BACKEND_MMU,
+    .exec_class = TRANSLATE_EXEC_MMU_FULL,
+    .supports_sparse_vm = true,
+    .supports_demand_fault = true,
+    .supports_protect = true,
+    .supports_query = true,
+    .supports_range_map = true,
+    .supports_range_unmap = true,
+    .supports_range_protect = true,
+    .supports_asid = true,
+    .supports_pcid = false,
+    .supports_global = true,
+    .supports_nx_or_xn = true,
+    .supports_ad_bits = true,
+    .supports_large_2m = false,
+    .supports_large_1g = false,
+    .supports_device_memtype = false,
+    .supports_writecombine = false,
+    .requires_bbm = false,
+    .supports_cow_softbit = true,
+    .supports_linear_physmap = true,
+};
+
 hal_pt_ops_t riscv64_hal_pt_ops = {
     .backend_type          = TRANSLATE_BACKEND_MMU,
+    .caps                  = &riscv64_pt_caps,
     .create_address_space  = riscv64_pt_create_address_space,
     .destroy_address_space = riscv64_pt_destroy_address_space,
     .map_page              = riscv64_pt_map_page,
@@ -358,6 +383,17 @@ hal_pt_ops_t riscv64_hal_pt_ops = {
     .unmap_range           = riscv64_pt_unmap_range,
     .protect_range         = riscv64_pt_protect_range,
     .query_mapping         = riscv64_pt_query_mapping,
+};
+
+static const hal_tlb_caps_t riscv64_tlb_caps = {
+    .supports_page_flush = true,
+    .supports_range_flush = false,
+    .supports_aspace_flush = true,
+    .supports_all_flush = true,
+    .supports_remote_targeted_flush = false,
+    .supports_broadcast_flush = false,
+    .supports_asid_selective_flush = true,
+    .supports_lazy_generation_model = false,
 };
 
 static void riscv64_tlb_flush_page_local(virt_addr_t vaddr) {
@@ -401,6 +437,7 @@ static void riscv64_tlb_flush_all_broadcast(uint16_t asid) {
 }
 
 hal_tlb_ops_t riscv64_hal_tlb_ops = {
+    .caps                 = &riscv64_tlb_caps,
     .flush_page_local      = riscv64_tlb_flush_page_local,
     .flush_all_local       = riscv64_tlb_flush_all_local,
     .flush_asid_local      = riscv64_tlb_flush_asid_local,

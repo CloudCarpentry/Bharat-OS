@@ -1,6 +1,6 @@
 #include "../../kernel/include/hal/hal_pt.h"
-#include "../../../include/hal/hal_pt_walk.h"
-#include "../../../include/hal/hal_tlb.h"
+#include "../../kernel/include/hal/hal_pt_walk.h"
+#include "../../kernel/include/hal/hal_tlb.h"
 
 // Scaffold backend for ARM32 (MMU-Lite)
 // This implements TRANSLATE_EXEC_MMU_LITE where the kernel has a small permanent
@@ -53,8 +53,33 @@ static int arm32_query_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t 
     return -1; // ENOSYS
 }
 
+static const hal_pt_caps_t arm32_pt_caps = {
+    .backend_kind = TRANSLATE_BACKEND_MMU,
+    .exec_class = TRANSLATE_EXEC_MMU_LITE,
+    .supports_sparse_vm = false,
+    .supports_demand_fault = false,
+    .supports_protect = false,
+    .supports_query = false,
+    .supports_range_map = false,
+    .supports_range_unmap = false,
+    .supports_range_protect = false,
+    .supports_asid = false,
+    .supports_pcid = false,
+    .supports_global = false,
+    .supports_nx_or_xn = false,
+    .supports_ad_bits = false,
+    .supports_large_2m = false,
+    .supports_large_1g = false,
+    .supports_device_memtype = true,
+    .supports_writecombine = false,
+    .requires_bbm = false,
+    .supports_cow_softbit = false,
+    .supports_linear_physmap = false,
+};
+
 hal_pt_ops_t arm32_hal_pt_ops = {
     .backend_type          = TRANSLATE_BACKEND_MMU,
+    .caps                  = &arm32_pt_caps,
     .create_address_space  = arm32_create_address_space,
     .destroy_address_space = arm32_destroy_address_space,
     .map_page              = arm32_map_page,
@@ -71,7 +96,19 @@ static void arm32_tlb_flush_all_local(void) {
     // Stub
 }
 
+static const hal_tlb_caps_t arm32_tlb_caps = {
+    .supports_page_flush = false,
+    .supports_range_flush = false,
+    .supports_aspace_flush = false,
+    .supports_all_flush = true,
+    .supports_remote_targeted_flush = false,
+    .supports_broadcast_flush = false,
+    .supports_asid_selective_flush = false,
+    .supports_lazy_generation_model = false,
+};
+
 hal_tlb_ops_t arm32_hal_tlb_ops = {
+    .caps                 = &arm32_tlb_caps,
     .flush_page_local      = NULL,
     .flush_range_local     = NULL,
     .flush_all_local       = arm32_tlb_flush_all_local,

@@ -3,6 +3,7 @@
 #include "../../kernel/include/mm.h"
 #include "../../kernel/include/numa.h"
 #include "../../kernel/include/mm/physmap.h"
+#include "../../kernel/include/arch/memops.h"
 #include <stdbool.h>
 
 // Direct-Map Subsystem Configuration
@@ -48,6 +49,10 @@ typedef uint64_t pte_raw_t;
 typedef struct {
     pte_raw_t entries[512];
 } pt_t;
+
+static inline void arm64_pt_zero_table(void *tbl, size_t sz) {
+    arch_memset(tbl, 0, sz, ARCH_MEMOP_F_DEFAULT);
+}
 
 static virt_addr_t align_down(virt_addr_t value) {
     return value & ARM64_PAGE_MASK;
@@ -138,9 +143,7 @@ static phys_addr_t arm64_pt_create_address_space(phys_addr_t kernel_root_table) 
     }
 
     pt_t* pgd = (pt_t*)physmap_phys_to_virt(root);
-    for (int i = 0; i < 512; i++) {
-        pgd->entries[i] = 0;
-    }
+    arm64_pt_zero_table(pgd, sizeof(*pgd));
 
     // In ARM64, we usually separate User and Kernel address spaces via TTBR0 and TTBR1.
     // If a shared address space is used, we'd copy the kernel half.
@@ -200,7 +203,7 @@ static int arm64_pt_map_4k(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t p
         phys_addr_t new_pud = mm_alloc_page(NUMA_NODE_ANY);
         if (!new_pud) return -2;
         pt_t* pud_ptr = (pt_t*)physmap_phys_to_virt(new_pud);
-        for(int i=0; i<512; i++) pud_ptr->entries[i] = 0;
+        arm64_pt_zero_table(pud_ptr, sizeof(*pud_ptr));
         pgd->entries[pgd_idx] = new_pud | table_flags;
     }
 
@@ -209,7 +212,7 @@ static int arm64_pt_map_4k(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t p
         phys_addr_t new_pmd = mm_alloc_page(NUMA_NODE_ANY);
         if (!new_pmd) return -2;
         pt_t* pmd_ptr = (pt_t*)physmap_phys_to_virt(new_pmd);
-        for(int i=0; i<512; i++) pmd_ptr->entries[i] = 0;
+        arm64_pt_zero_table(pmd_ptr, sizeof(*pmd_ptr));
         pud->entries[pud_idx] = new_pmd | table_flags;
     }
 
@@ -218,7 +221,7 @@ static int arm64_pt_map_4k(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t p
         phys_addr_t new_pte = mm_alloc_page(NUMA_NODE_ANY);
         if (!new_pte) return -2;
         pt_t* pte_ptr = (pt_t*)physmap_phys_to_virt(new_pte);
-        for(int i=0; i<512; i++) pte_ptr->entries[i] = 0;
+        arm64_pt_zero_table(pte_ptr, sizeof(*pte_ptr));
         pmd->entries[pmd_idx] = new_pte | table_flags;
     }
 
@@ -435,8 +438,33 @@ const hal_translate_ops_t* hal_translate_ops(void) {
     return &arm64_translate_ops;
 }
 
+static const hal_pt_caps_t arm64_pt_caps = {
+    .backend_kind = TRANSLATE_BACKEND_MMU,
+    .exec_class = TRANSLATE_EXEC_MMU_FULL,
+    .supports_sparse_vm = true,
+    .supports_demand_fault = true,
+    .supports_protect = true,
+    .supports_query = true,
+    .supports_range_map = true,
+    .supports_range_unmap = true,
+    .supports_range_protect = true,
+    .supports_asid = true,
+    .supports_pcid = false,
+    .supports_global = true,
+    .supports_nx_or_xn = true,
+    .supports_ad_bits = true,
+    .supports_large_2m = true,
+    .supports_large_1g = false,
+    .supports_device_memtype = true,
+    .supports_writecombine = false,
+    .requires_bbm = true,
+    .supports_cow_softbit = true,
+    .supports_linear_physmap = true,
+};
+
 hal_pt_ops_t arm64_hal_pt_ops = {
     .backend_type          = TRANSLATE_BACKEND_MMU,
+    .caps                  = &arm64_pt_caps,
     .create_address_space  = arm64_pt_create_address_space,
     .destroy_address_space = arm64_pt_destroy_address_space,
     .map_page              = arm64_pt_map_page,
@@ -447,6 +475,17 @@ hal_pt_ops_t arm64_hal_pt_ops = {
     .unmap_range           = arm64_pt_unmap_range,
     .protect_range         = arm64_pt_protect_range,
     .query_mapping         = arm64_pt_query_mapping,
+};
+
+static const hal_tlb_caps_t arm64_tlb_caps = {
+    .supports_page_flush = true,
+    .supports_range_flush = true,
+    .supports_aspace_flush = true,
+    .supports_all_flush = true,
+    .supports_remote_targeted_flush = false,
+    .supports_broadcast_flush = true,
+    .supports_asid_selective_flush = true,
+    .supports_lazy_generation_model = false,
 };
 
 static void arm64_tlb_flush_page_local(virt_addr_t vaddr) {
@@ -508,6 +547,7 @@ static void arm64_tlb_flush_all_broadcast(uint16_t asid) {
 }
 
 hal_tlb_ops_t arm64_hal_tlb_ops = {
+    .caps                 = &arm64_tlb_caps,
     .flush_page_local      = arm64_tlb_flush_page_local,
     .flush_all_local       = arm64_tlb_flush_all_local,
     .flush_asid_local      = arm64_tlb_flush_asid_local,
