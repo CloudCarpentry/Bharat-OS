@@ -474,6 +474,17 @@ hal_pt_ops_t arm64_hal_pt_ops = {
     .query_mapping         = arm64_pt_query_mapping,
 };
 
+static const hal_tlb_caps_t arm64_tlb_caps = {
+    .supports_page_flush = true,
+    .supports_range_flush = true,
+    .supports_aspace_flush = true,
+    .supports_all_flush = true,
+    .supports_remote_targeted_flush = false,
+    .supports_broadcast_flush = true,
+    .supports_asid_selective_flush = true,
+    .supports_lazy_generation_model = false,
+};
+
 static void arm64_tlb_flush_page_local(virt_addr_t vaddr) {
     asm volatile(
         "tlbi vale1is, %0\n"
@@ -533,16 +544,7 @@ static void arm64_tlb_flush_all_broadcast(uint16_t asid) {
 }
 
 hal_tlb_ops_t arm64_hal_tlb_ops = {
-    .caps                 = &(const hal_tlb_caps_t){
-        .supports_page_flush = true,
-        .supports_range_flush = true,
-        .supports_aspace_flush = true,
-        .supports_all_flush = true,
-        .supports_remote_targeted_flush = false,
-        .supports_broadcast_flush = true,
-        .supports_asid_selective_flush = true,
-        .supports_lazy_generation_model = false,
-    },
+    .caps                 = &arm64_tlb_caps,
     .flush_page_local      = arm64_tlb_flush_page_local,
     .flush_all_local       = arm64_tlb_flush_all_local,
     .flush_asid_local      = arm64_tlb_flush_asid_local,
