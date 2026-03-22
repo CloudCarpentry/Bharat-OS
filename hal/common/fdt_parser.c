@@ -1,7 +1,9 @@
 #include "hal/fdt_parser.h"
 #include "hal/hal.h"
 #include "hal/hal_boot.h"
+#include "bharat/boot_info.h"
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -75,12 +77,11 @@ int fdt_parse(const void *fdt_ptr, void *boot_info_ptr,
     return -1;
   }
 
-  bharat_boot_info_t *boot_info = (bharat_boot_info_t *)boot_info_ptr;
+  boot_info_t *boot_info = (boot_info_t *)boot_info_ptr;
   const struct fdt_header *fdt = (const struct fdt_header *)fdt_ptr;
 
   // Clear outputs initially
-  boot_info->cpu_count = 0;
-  boot_info->mem_region_count = 0;
+  boot_info->mem_map_count = 0;
 
   out_devices->uart_base = 0;
   out_devices->gic_dist_base = 0;
@@ -163,19 +164,15 @@ int fdt_parse(const void *fdt_ptr, void *boot_info_ptr,
           }
 
           if (is_memory &&
-              boot_info->mem_region_count < BHARAT_MAX_MEM_REGIONS) {
-            boot_info->mem_regions[boot_info->mem_region_count].base = base;
-            boot_info->mem_regions[boot_info->mem_region_count].size = size;
-            boot_info->mem_regions[boot_info->mem_region_count].type =
-                1; // 1 = RAM
-            boot_info->mem_region_count++;
-          } else if (is_cpu && boot_info->cpu_count < BHARAT_MAX_CPUS) {
-            boot_info->cpus[boot_info->cpu_count].cpu_id = boot_info->cpu_count;
-            boot_info->cpus[boot_info->cpu_count].apic_id =
-                base; // map apic_id/hart_id to base
-            boot_info->cpus[boot_info->cpu_count].is_bsp =
-                (boot_info->cpu_count == 0);
-            boot_info->cpu_count++;
+              boot_info->mem_map_count < BHARAT_BOOT_MAX_MEM_REGIONS) {
+            boot_info->mem_map[boot_info->mem_map_count].phys_start = base;
+            boot_info->mem_map[boot_info->mem_map_count].size = size;
+            boot_info->mem_map[boot_info->mem_map_count].type =
+                BOOT_MEM_USABLE;
+            boot_info->mem_map_count++;
+          } else if (is_cpu) {
+            // Hart IDs / topology handled in riscv_fdt_parse_common
+            boot_info->boot_cpu_id = base;
           } else if (is_uart && out_devices->uart_base == 0) {
             out_devices->uart_base = base;
             out_devices->uart_size = size;
@@ -472,6 +469,10 @@ int fdt_parse_discovery(const void *fdt_ptr, system_discovery_t *discovery) {
       uint32_t nameoff = fdt32_to_cpu(*p++);
       const char *prop_name = fdt_get_string(fdt, nameoff);
       const void *prop_data = p;
+      
+      hal_serial_write("FDT:   PROP: ");
+      hal_serial_write(prop_name);
+      hal_serial_write("\n");
 
       p += (len + 3) / 4; // Align to 4 bytes
 

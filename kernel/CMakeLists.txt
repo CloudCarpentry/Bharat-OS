@@ -126,6 +126,7 @@ if(NOT DEFINED ARCH)
         set(ARCH "x86_64")
     endif()
 endif()
+string(TOLOWER "${ARCH}" ARCH)
 # ── Boot and HAL sources (arch-specific) ────────────────────────────────────
 if(ARCH STREQUAL "x86_64")
     set(BOOT_SRC ../arch/x86_64/boot/boot.S)
@@ -159,24 +160,25 @@ elseif(ARCH STREQUAL "arm64")
     set(ARCH_CPU_CAPS_SRC ../arch/arm64/cpu_caps.c)
     set(ARCH_EXT_STATE_SRC ../arch/arm64/ext_state.c)
 elseif(ARCH STREQUAL "arm32")
-    set(BOOT_SRC ../arch/arm64/boot/boot.S)
+    set(BOOT_SRC ../arch/arm32/boot/boot.S)
     set(ARCH_HAL ../hal/arm64/hal_cpu.c ../hal/arm64/trap_entry.S ../hal/mmu/arm64/vmm.c ../hal/arm64/hal_pt_arm64.c ../hal/hal_pt.c ../hal/arm64/smmu.c ../hal/arm64/gicv3.c ../hal/arm64/timer_generic.c ../hal/mpu/arm32/mpu_backend.c ../hal/arm64/dma.c ../hal/common/hal_secure_boot_unsupported.c ../hal/arm32/cpu_relax.c)
     set(ARCH_CONTEXT_SWITCH ../arch/arm64/context_switch.c ../arch/arm64/context_switch.S)
     set(ARCH_CPU_CAPS_SRC ../arch/arm64/cpu_caps.c)
     set(ARCH_EXT_STATE_SRC ../arch/arm64/ext_state.c)
 endif()
-if(ARCH STREQUAL "x86_64")
+if(ARCH MATCHES "x86_64")
     set(LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/linker.ld")
-elseif(ARCH STREQUAL "riscv64")
+elseif(ARCH MATCHES "riscv.*64")
     set(LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/linker_riscv64.ld")
-elseif(ARCH STREQUAL "riscv32")
-    set(LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/linker_riscv64.ld")
-elseif(ARCH STREQUAL "arm64")
+elseif(ARCH MATCHES "arm.*64" OR ARCH MATCHES "aarch64")
     set(LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/linker_arm64.ld")
-elseif(ARCH STREQUAL "arm32")
-    # For a bare-metal 32-bit ARM we could use linker_arm64.ld modified for 32 bit, or for now just the generic host linker since we are just doing pre-submit checks.
-    # The current ld bfd linker tries to link riscv when using linker_riscv64.ld. We will use the arm64 linker script and rely on `-m armelf` or similar if needed.
+elseif(ARCH MATCHES "arm.*32")
     set(LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/linker.ld")
+elseif(ARCH MATCHES "riscv.*32")
+    set(LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/linker_riscv64.ld")
+else()
+    set(LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/linker.ld")
+    message(WARNING "Unknown ARCH='${ARCH}', falling back to x86_64 linker script!")
 endif()
 if(ARCH STREQUAL "riscv64")
     option(BHARAT_RISCV_BUILD_PAYLOAD_BIN "Emit payload.bin from kernel.elf for OpenSBI packaging" ON)
@@ -263,8 +265,8 @@ add_subdirectory(src/fs)
 add_subdirectory(src/test)
 
 set(KERNEL_SRCS
-    src/mm/physmap.c
     ${BOOT_SRC}
+    src/mm/physmap.c
     $<$<BOOL:${BHARAT_BOOT_GUI}>:../boot/common/boot_ui_select.c>
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/boot_video.c>
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/display_handoff.c>
@@ -369,8 +371,7 @@ endif()
 target_sources(kernel.elf PRIVATE
     $<TARGET_OBJECTS:bharat_mm_vmm>
 )
-target_compile_options(kernel.elf PRIVATE -mcmodel=large -fno-pie -fno-PIE)
-target_link_options(kernel.elf PRIVATE -no-pie)
+# Architecture-specific code model and PIE flags are set below
 target_link_libraries(kernel.elf subsys_manager bharat_libmsg bharat_kernel_buildopts bharatos_drivers bharat_kernel_includes board_fabric)
 if(BHARAT_ENABLE_FBUI)
     target_link_libraries(kernel.elf fbui)
@@ -427,13 +428,28 @@ if(ARCH STREQUAL "x86_64")
     target_link_options(kernel.elf PRIVATE
         "LINKER:-m,elf_x86_64"
     )
-elseif(ARCH STREQUAL "riscv64")
-    # Using arch flags from toolchain
+elseif(ARCH MATCHES "riscv.*64")
+    target_compile_options(kernel.elf PRIVATE
+        $<$<OR:$<COMPILE_LANGUAGE:C>,$<COMPILE_LANGUAGE:ASM>>:-mcmodel=medany>
+    )
+    target_link_options(kernel.elf PRIVATE
+        "LINKER:-m,elf64lriscv"
+    )
+elseif(ARCH MATCHES "arm.*64" OR ARCH MATCHES "aarch64")
+    target_compile_options(kernel.elf PRIVATE
+        $<$<OR:$<COMPILE_LANGUAGE:C>,$<COMPILE_LANGUAGE:ASM>>:-mcmodel=small>
+    )
+    target_link_options(kernel.elf PRIVATE
+        "LINKER:-m,aarch64elf"
+    )
 elseif(ARCH STREQUAL "riscv32")
     target_compile_options(kernel.elf PRIVATE
         $<$<COMPILE_LANGUAGE:C>:-mcmodel=medany>
         $<$<COMPILE_LANGUAGE:ASM>:-march=rv32g>
         $<$<COMPILE_LANGUAGE:C>:-march=rv32g>
+    )
+    target_link_options(kernel.elf PRIVATE
+        "LINKER:-m,elf32lriscv"
     )
 endif()
 # ── Linker options
