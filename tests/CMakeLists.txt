@@ -55,7 +55,7 @@ add_test(NAME test_stress_concurrency COMMAND test_stress_concurrency)
 target_include_directories(test_panic PRIVATE ../kernel/include ../include)
 add_test(NAME test_panic COMMAND test_panic)
 
-add_executable(test_hal_interrupts test_hal_interrupts.c ../kernel/src/hal/interrupt_common.c)
+add_executable(test_hal_interrupts test_hal_interrupts.c ../hal/interrupt_common.c)
 target_include_directories(test_hal_interrupts PRIVATE ../kernel/include ../include)
 add_test(NAME test_hal_interrupts COMMAND test_hal_interrupts)
 
@@ -71,8 +71,8 @@ add_test(NAME test_ipc_async_timeout COMMAND test_ipc_async_timeout)
 
 add_executable(test_automotive_subsys
     test_automotive_subsys.c
-    ../subsys/automotive/automotive.c
-    ../drivers/can_loopback/can_loopback.c
+    ../personalities/automotive/automotive.c
+    ../drivers/devices/can_loopback/can_loopback.c
 )
 target_include_directories(test_automotive_subsys PRIVATE ../subsys/include ../kernel/include ../drivers/include)
 add_test(NAME test_automotive_subsys COMMAND test_automotive_subsys)
@@ -85,7 +85,7 @@ target_include_directories(test_scheduler PRIVATE ../kernel/include)
 target_compile_definitions(test_scheduler PRIVATE TESTING=1)
 add_test(NAME test_scheduler COMMAND test_scheduler)
 
-add_executable(test_trap_syscall test_trap_syscall.c benchmark_stubs.c host/mock_panic.c ../kernel/src/trap/trap.c ../kernel/src/sched.c ../kernel/src/sched_deg.c ../kernel/src/ai_sched.c ../kernel/src/capability.c ../kernel/src/ipc/endpoint_ipc.c ../kernel/src/algo_matrix.c ../kernel/src/device/device_manager.c ../kernel/src/mm/pmm/numa.c ../subsys/linux/linux_compat.c)
+add_executable(test_trap_syscall test_trap_syscall.c benchmark_stubs.c host/mock_panic.c ../kernel/src/trap/trap.c ../kernel/src/sched.c ../kernel/src/sched_deg.c ../kernel/src/ai_sched.c ../kernel/src/capability.c ../kernel/src/ipc/endpoint_ipc.c ../kernel/src/algo_matrix.c ../kernel/src/device/device_manager.c ../kernel/src/mm/pmm/numa.c ../personalities/linux/linux_compat.c)
 target_include_directories(test_trap_syscall PRIVATE ../kernel/include ../subsys/include ../include)
 target_compile_definitions(test_trap_syscall PRIVATE TESTING=1)
 add_test(NAME test_trap_syscall COMMAND test_trap_syscall)
@@ -121,21 +121,21 @@ target_include_directories(test_memory_edgecases PRIVATE ../kernel/include)
 target_compile_definitions(test_memory_edgecases PRIVATE TESTING=1)
 add_test(NAME test_memory_edgecases COMMAND test_memory_edgecases)
 
-add_executable(test_tier_a_integration test_tier_a_integration.c benchmark_stubs.c host/mock_panic.c ../kernel/src/trap/trap.c ../kernel/src/sched.c ../kernel/src/sched_deg.c ../kernel/src/ai_sched.c ../kernel/src/capability.c ../kernel/src/ipc/endpoint_ipc.c ../kernel/src/algo_matrix.c ../kernel/src/device/device_manager.c ../kernel/src/mm/pmm/numa.c ../subsys/linux/linux_compat.c)
+add_executable(test_tier_a_integration test_tier_a_integration.c benchmark_stubs.c host/mock_panic.c ../kernel/src/trap/trap.c ../kernel/src/sched.c ../kernel/src/sched_deg.c ../kernel/src/ai_sched.c ../kernel/src/capability.c ../kernel/src/ipc/endpoint_ipc.c ../kernel/src/algo_matrix.c ../kernel/src/device/device_manager.c ../kernel/src/mm/pmm/numa.c ../personalities/linux/linux_compat.c)
 target_include_directories(test_tier_a_integration PRIVATE ../kernel/include ../subsys/include ../include)
 target_compile_definitions(test_tier_a_integration PRIVATE TESTING=1)
 add_test(NAME test_tier_a_integration COMMAND test_tier_a_integration)
 
-add_executable(test_riscv_shakti_bsp test_riscv_shakti_bsp.c ../kernel/src/hal/riscv/shakti_bsp.c ../kernel/src/hal/common/fdt_parser.c)
+add_executable(test_riscv_shakti_bsp test_riscv_shakti_bsp.c ../hal/riscv/shakti_bsp.c ../hal/common/fdt_parser.c)
 target_include_directories(test_riscv_shakti_bsp PRIVATE ../kernel/include ../include)
 add_test(NAME test_riscv_shakti_bsp COMMAND test_riscv_shakti_bsp)
 
-add_executable(test_ai_governor test_ai_governor.c ../subsys/src/ai_governor.c ../kernel/src/ai_sched.c)
+add_executable(test_ai_governor test_ai_governor.c ../user/apps/ai_governor/ai_governor.c ../kernel/src/ai_sched.c)
 target_include_directories(test_ai_governor PRIVATE ../kernel/include)
 target_compile_definitions(test_ai_governor PRIVATE TESTING=1)
 add_test(NAME test_ai_governor COMMAND test_ai_governor)
 
-add_executable(test_ai_kernel_bridge test_ai_kernel_bridge.c benchmark_stubs.c host/mock_panic.c ../kernel/src/ai_kernel_bridge.c ../kernel/src/sched.c ../kernel/src/sched_deg.c ../kernel/src/mm/pmm/numa.c ../kernel/src/mm/vm/aspace/vm_space.c ../kernel/src/ipc/endpoint_ipc.c ../kernel/src/ai_sched.c ../kernel/src/hal/timer_common.c ../kernel/src/capability.c ../kernel/src/cap/cap_policy.c ../kernel/src/algo_matrix.c ../kernel/src/device/device_manager.c)
+add_executable(test_ai_kernel_bridge test_ai_kernel_bridge.c benchmark_stubs.c host/mock_panic.c ../kernel/src/ai_kernel_bridge.c ../kernel/src/sched.c ../kernel/src/sched_deg.c ../kernel/src/mm/pmm/numa.c ../kernel/src/mm/vm/aspace/vm_space.c ../kernel/src/ipc/endpoint_ipc.c ../kernel/src/ai_sched.c ../hal/timer_common.c ../kernel/src/capability.c ../kernel/src/cap/cap_policy.c ../kernel/src/algo_matrix.c ../kernel/src/device/device_manager.c)
 target_include_directories(test_ai_kernel_bridge PRIVATE ../kernel/include)
 target_compile_definitions(test_ai_kernel_bridge PRIVATE TESTING=1)
 add_test(NAME test_ai_kernel_bridge COMMAND test_ai_kernel_bridge)
@@ -161,15 +161,15 @@ add_executable(test_capability_policy test_capability_policy.c benchmark_stubs.c
 target_include_directories(test_capability_policy PRIVATE ../kernel/include)
 add_test(NAME test_capability_policy COMMAND test_capability_policy)
 
-add_executable(test_posix test_posix.c ../subsys/linux/linux_compat.c)
+add_executable(test_posix test_posix.c ../personalities/linux/linux_compat.c)
 target_include_directories(test_posix PRIVATE ../kernel/include ../subsys/include)
 add_test(NAME test_posix COMMAND test_posix)
 
-add_executable(test_windows_compat_init test_windows_compat_init.c ../subsys/windows/win_compat.c)
+add_executable(test_windows_compat_init test_windows_compat_init.c ../personalities/windows/win_compat.c)
 target_include_directories(test_windows_compat_init PRIVATE ../kernel/include ../subsys/include)
 add_test(NAME test_windows_compat_init COMMAND test_windows_compat_init)
 
-add_executable(test_subsys_manager test_subsys_manager.c benchmark_stubs.c host/mock_panic.c ../subsys/src/manager.c ../subsys/linux/linux_compat.c ../subsys/windows/win_compat.c ../subsys/src/subsys_test_runner.c ../kernel/src/boot/boot_args.c ../kernel/src/lib/string.c)
+add_executable(test_subsys_manager test_subsys_manager.c benchmark_stubs.c host/mock_panic.c ../services/core/subsysmgr/manager.c ../personalities/linux/linux_compat.c ../personalities/windows/win_compat.c ../services/core/subsysmgr/subsys_test_runner.c ../boot/protocols/boot_args.c ../kernel/src/lib/string.c)
 target_include_directories(test_subsys_manager PRIVATE ../subsys/include ../kernel/include)
 add_test(NAME test_subsys_manager COMMAND test_subsys_manager)
 
@@ -345,8 +345,8 @@ add_executable(test_integration_core_subsys
     benchmark_stubs.c host/mock_panic.c
     ../kernel/src/device/device_manager.c
     ../kernel/src/algo_matrix.c
-    ../subsys/linux/linux_compat.c
-    ../subsys/automotive/automotive.c
+    ../personalities/linux/linux_compat.c
+    ../personalities/automotive/automotive.c
     ../user/ui/fbui/core/fb_render.c
 )
 target_include_directories(test_integration_core_subsys PRIVATE ../kernel/include ../subsys/include ../include)
@@ -359,7 +359,7 @@ add_executable(test_profile_edge
     benchmark_stubs.c host/mock_panic.c
     ../kernel/src/device/device_manager.c
     ../kernel/src/algo_matrix.c
-    ../subsys/automotive/automotive.c
+    ../personalities/automotive/automotive.c
     ../user/ui/fbui/core/fb_render.c
 )
 target_include_directories(test_profile_edge PRIVATE ../kernel/include ../subsys/include ../include)
