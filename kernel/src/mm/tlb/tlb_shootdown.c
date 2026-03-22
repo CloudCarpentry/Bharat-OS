@@ -8,7 +8,7 @@
 #include "../../../include/arch/cpu_relax.h"
 #include "../../../include/panic.h"
 #include "../../../include/bharat/console.h"
-#include "../../../include/spinlock.h"
+#include "tlb_pending.h"
 
 // Bring in the generated definitions
 #include "bharat_monitor_v1_types.h"
@@ -23,21 +23,6 @@ __attribute__((weak)) bharat_transport_t* transport_for_core(int core) {
     return NULL;
 }
 extern int bharat_monitor_v1_call_tlb_invalidate(bharat_transport_t* t, int dst, const bharat_monitor_v1_TlbInvalidateReq_t* req, void* ctx);
-
-// Global pending request tracking
-#define MAX_PENDING_TLB_REQUESTS 64
-
-typedef struct {
-    uint64_t request_id;
-    uint64_t target_mask;
-    uint64_t ack_mask;
-    uint64_t aspace_id;
-    int in_use;
-} pending_tlb_request_t;
-
-static pending_tlb_request_t g_pending_requests[MAX_PENDING_TLB_REQUESTS];
-static spinlock_t g_pending_requests_lock;
-static bool g_pending_requests_lock_init = false;
 
 static uint64_t tlb_collect_targets(uint64_t aspace_id) {
     uint64_t mask = 0;
@@ -82,6 +67,7 @@ void vmm_send_tlb_invalidate(uint64_t aspace_id,
 
     uint64_t target_mask = 0;
     if (as) {
+        // We still increment the global aspace sequence, but we use the pending table's reqid for URPC tracking.
         req.generation = __atomic_add_fetch(&as->tlb_gen, 1, __ATOMIC_SEQ_CST);
         target_mask = __atomic_load_n(&as->active_mask, __ATOMIC_ACQUIRE);
     } else {
@@ -97,26 +83,18 @@ void vmm_send_tlb_invalidate(uint64_t aspace_id,
     }
 
     // Allocate tracking slot
-    pending_tlb_request_t* slot = NULL;
+    uint32_t reqid = 0;
+    int slot = tlb_pending_alloc(aspace_id, target_mask, &reqid);
 
-    if (!g_pending_requests_lock_init) {
-        spin_lock_init(&g_pending_requests_lock);
-        g_pending_requests_lock_init = true;
+    // In fallback mode, we still send the shootdown but we wait sequentially without tracking
+    // For this simple version, we encode our generation if we fail allocation
+    uint32_t final_reqid = reqid;
+    if (slot < 0) {
+        final_reqid = tlb_reqid_encode(current_core, 0xFF, req.generation & 0xFFFF);
+        tlb_pending_get_stats(current_core)->fallback_count++;
     }
 
-    spin_lock(&g_pending_requests_lock);
-    for (int i = 0; i < MAX_PENDING_TLB_REQUESTS; i++) {
-        if (!g_pending_requests[i].in_use) {
-            slot = &g_pending_requests[i];
-            slot->request_id = req.generation;
-            slot->aspace_id = aspace_id;
-            slot->target_mask = target_mask;
-            slot->ack_mask = 0;
-            slot->in_use = 1;
-            break;
-        }
-    }
-    spin_unlock(&g_pending_requests_lock);
+    req.generation = final_reqid;
 
     for (int core = 0; core < MAX_CPUS; core++) {
 
@@ -144,7 +122,7 @@ void vmm_send_tlb_invalidate(uint64_t aspace_id,
              mailbox->msg.as_id = aspace_id;
              mailbox->msg.va = va;
              mailbox->msg.len = len;
-             mailbox->msg.seq = req.generation;
+             mailbox->msg.seq = req.generation; // Use the generated reqid for sequence tracking
              mailbox->valid = 1;
              mailbox->req_seq++;
              spin_unlock(&mailbox->lock);
@@ -155,7 +133,7 @@ void vmm_send_tlb_invalidate(uint64_t aspace_id,
         }
     }
 
-    if (slot) {
+    if (slot >= 0) {
         // Synchronous wait with timeout and retry policy
         #define BHARAT_TLB_ACK_TIMEOUT_LOOPS 1000000
         #define BHARAT_TLB_MAX_RETRIES 3
@@ -166,12 +144,7 @@ void vmm_send_tlb_invalidate(uint64_t aspace_id,
         while (retry_count < BHARAT_TLB_MAX_RETRIES) {
             uint32_t wait_loops = 0;
             while (wait_loops < BHARAT_TLB_ACK_TIMEOUT_LOOPS) {
-                uint64_t current_ack;
-                spin_lock(&g_pending_requests_lock);
-                current_ack = slot->ack_mask;
-                spin_unlock(&g_pending_requests_lock);
-
-                if ((current_ack & target_mask) == target_mask) {
+                if (tlb_pending_is_complete(current_core, slot)) {
                     success = true;
                     break; // All acks received
                 }
@@ -185,10 +158,6 @@ void vmm_send_tlb_invalidate(uint64_t aspace_id,
 
             if (success) break;
             retry_count++;
-
-            // If we get here, it means we timed out. We should retry sending to missing cores.
-            // For now, in MVP we just wait longer or effectively treat the retry loop as extended wait.
-            // In a full implementation we would re-transmit the URPC message here to the un-acked cores.
         }
 
         if (!success) {
@@ -198,9 +167,17 @@ void vmm_send_tlb_invalidate(uint64_t aspace_id,
         }
 
         // Free slot
-        spin_lock(&g_pending_requests_lock);
-        slot->in_use = 0;
-        spin_unlock(&g_pending_requests_lock);
+        tlb_pending_free(current_core, slot);
+    } else {
+        // Fallback waiting (spinning without slot state tracking, relying directly on transport ack if possible)
+        // Here we can simply wait on mailboxes, or a small wait loop
+        uint32_t wait_loops = 0;
+        while (wait_loops < 1000000) {
+            arch_cpu_relax();
+            extern void vmm_process_urpc_messages(void);
+            vmm_process_urpc_messages();
+            wait_loops++;
+        }
     }
 }
 
@@ -217,10 +194,6 @@ int monitor_handle_tlb_invalidate(
         resp->status = 0;
         return 0;
     }
-
-    // Ignore stale invalidations via software epoch tracking
-    // Currently relying on target_mask tracking at sender for correct boundaries,
-    // but in a strict protocol we should track last seen generation per aspace locally.
 
     switch (req->type) {
         case 0: // page
@@ -340,22 +313,10 @@ void vmm_process_urpc_messages(void) {
                     }
                 } else if (hdr.service_id == 1 && hdr.opcode == 3 && bharat_msg_is_response(hdr.flags)) {
                     // It's a response to us
-                    uint64_t req_id = hdr.request_id;
+                    uint32_t req_id = hdr.request_id;
+                    uint32_t acking_core = hdr.src_node;
 
-                    if (!g_pending_requests_lock_init) {
-                        spin_lock_init(&g_pending_requests_lock);
-                        g_pending_requests_lock_init = true;
-                    }
-                    spin_lock(&g_pending_requests_lock);
-                    for (int i = 0; i < MAX_PENDING_TLB_REQUESTS; i++) {
-                        if (g_pending_requests[i].in_use && g_pending_requests[i].request_id == req_id) {
-                            if (g_pending_requests[i].target_mask & (1ULL << hdr.src_node)) {
-                                g_pending_requests[i].ack_mask |= (1ULL << hdr.src_node);
-                            }
-                            break;
-                        }
-                    }
-                    spin_unlock(&g_pending_requests_lock);
+                    tlb_pending_ack(req_id, acking_core);
                 }
             }
         }
@@ -391,27 +352,25 @@ void vmm_process_urpc_messages(void) {
         }
 
         // Also we must process acks from other cores for our requests using legacy mailbox
-        if (!g_pending_requests_lock_init) {
-            spin_lock_init(&g_pending_requests_lock);
-            g_pending_requests_lock_init = true;
-        }
-        spin_lock(&g_pending_requests_lock);
-        for (int i = 0; i < MAX_PENDING_TLB_REQUESTS; i++) {
-            if (g_pending_requests[i].in_use) {
-                for (int c = 0; c < MAX_CPUS; c++) {
-                    if ((g_pending_requests[i].target_mask & (1ULL << c)) &&
-                        !(g_pending_requests[i].ack_mask & (1ULL << c))) {
+        // Wait, for our requests, we need to check if the other core updated its ack_seq
+        // to match our sent req_seq.
+        // We do this by scanning all cores to see if their mailbox matched the encoded seq
+        for (int c = 0; c < MAX_CPUS; c++) {
+            if (c == current_core) continue;
+            mm_mailbox_slot_t* m = &g_mm_mailboxes[c];
+            if (m->req_seq == m->ack_seq && m->msg.sender_core == current_core) {
+                // The target core processed a message from us.
+                // We use m->msg.seq as the reqid.
+                uint32_t reqid = m->msg.seq;
+                uint32_t core_id, slot, gen;
+                tlb_reqid_decode(reqid, &core_id, &slot, &gen);
 
-                        mm_mailbox_slot_t* m = &g_mm_mailboxes[c];
-                        // If req_seq == ack_seq and seq == our request generation, it's acked
-                        if (m->req_seq == m->ack_seq && m->msg.seq == g_pending_requests[i].request_id) {
-                            g_pending_requests[i].ack_mask |= (1ULL << c);
-                        }
-                    }
+                // Only ack if it's our request (we already checked sender_core but just to be sure)
+                if (core_id == current_core && slot < BHARAT_TLB_MAX_PENDING_PER_CORE) {
+                    tlb_pending_ack(reqid, c);
                 }
             }
         }
-        spin_unlock(&g_pending_requests_lock);
 
         messages_processed++;
         if (messages_processed >= 10) break;

@@ -53,3 +53,4 @@ int main(void) {
     puts("test_hal_caps_consistency: PASS");
     return 0;
 }
+int tlb_init(void) { return 0; }

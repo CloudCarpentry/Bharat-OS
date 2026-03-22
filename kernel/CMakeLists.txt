@@ -248,6 +248,7 @@ add_library(bharat_mm_tlb OBJECT
     src/mm/tlb/tlb.c
     src/mm/tlb/tlb_flush.c
     src/mm/tlb/tlb_shootdown.c
+    src/mm/tlb/tlb_pending.c
     src/mm/tlb/tlb_stats.c
     src/mm/tlb/tlb_asid.c
     src/mm/tlb/monitor_client.c

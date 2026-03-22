@@ -140,3 +140,4 @@ int main(void) {
     puts("test_hal_pt_fallbacks: PASS");
     return 0;
 }
+int tlb_init(void) { return 0; }
