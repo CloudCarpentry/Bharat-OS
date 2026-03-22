@@ -122,4 +122,4 @@ static int boot_test_prot_domain(void) {
   return -1;
 }
 
-REGISTER_KERNEL_TEST("prot_domain_basic", "memory", boot_test_prot_domain, 1, 1)
+REGISTER_BOOT_SELFTEST("prot_domain_basic", "memory", boot_test_prot_domain, BOOT_TEST_STAGE_MEMORY, BOOT_TEST_MANDATORY, 0, true)
