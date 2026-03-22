@@ -63,19 +63,19 @@ void benchmark_stop(benchmark_ctx_t* ctx) {
 static uint32_t benchmark_pack_hw_caps(void) {
     uint32_t caps = 0;
 
-    if (g_arch_caps.has_avx2) {
+    if (arch_has_feature_avx2()) {
         caps |= (1u << 0);
     }
-    if (g_arch_caps.has_fma) {
+    if (arch_has_feature_fma()) {
         caps |= (1u << 1);
     }
-    if (g_arch_caps.has_aes) {
+    if (arch_has_feature_aes()) {
         caps |= (1u << 2);
     }
-    if (g_arch_caps.has_vector) {
+    if (arch_has_feature_vector()) {
         caps |= (1u << 3);
     }
-    if (g_arch_caps.has_crypto) {
+    if (arch_has_feature_crypto()) {
         caps |= (1u << 4);
     }
 

@@ -4,10 +4,16 @@ set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 # ── Toolchain file provides all compiler/linker settings.
 # Pass -DCMAKE_TOOLCHAIN_FILE=../cmake/toolchains/<arch>-elf.cmake at configure time.
 # See BUILD.md for exact commands for each platform.
-include_directories(include)
-include_directories(include/generated)
-include_directories(${CMAKE_SOURCE_DIR}/include)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+# Provide an interface library for kernel components to share common includes
+add_library(bharat_kernel_includes INTERFACE)
+target_include_directories(bharat_kernel_includes INTERFACE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/generated
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+target_link_libraries(bharat_kernel_includes INTERFACE bharat_generated_includes)
 
 # Kernel subdir can be configured standalone (without top-level CMakeLists).
 # In that mode, hydrate manifest/version metadata and component registration
@@ -201,36 +207,37 @@ add_library(bharat_mm_pmm OBJECT
     src/mm/pmm/numa.c
     src/mm/pmm/numa_policy.c
 )
-target_include_directories(bharat_mm_pmm PRIVATE include include/generated ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(bharat_mm_pmm PRIVATE bharat_kernel_includes)
 target_compile_options(bharat_mm_pmm PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
 add_library(bharat_mm_aspace OBJECT
     src/mm/vm/aspace/aspace.c
     src/mm/vm/aspace/vm_space.c
 )
-target_include_directories(bharat_mm_aspace PRIVATE include include/generated ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(bharat_mm_aspace PRIVATE bharat_kernel_includes)
 target_compile_options(bharat_mm_aspace PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
 add_library(bharat_mm_objects OBJECT
     src/mm/vm/objects/vm_object.c
     src/mm/vm/objects/vm_object_refcount.c
 )
-target_include_directories(bharat_mm_objects PRIVATE include include/generated ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(bharat_mm_objects PRIVATE bharat_kernel_includes)
 target_compile_options(bharat_mm_objects PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
 add_library(bharat_mm_fault OBJECT
     src/mm/vm/fault/fault.c
 )
-target_include_directories(bharat_mm_fault PRIVATE include include/generated ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(bharat_mm_fault PRIVATE bharat_kernel_includes)
 target_compile_options(bharat_mm_fault PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
 add_library(bharat_mm_pt OBJECT
     src/mm/pt/pt_pool.c
 )
-target_include_directories(bharat_mm_pt PRIVATE include include/generated ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(bharat_mm_pt PRIVATE bharat_kernel_includes)
 target_compile_options(bharat_mm_pt PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
 add_library(bharat_mm_tlb OBJECT
     src/mm/tlb/tlb_coordinator.c
     src/mm/tlb/monitor_client.c
     src/mm/vm/aspace/aspace_switch.c
 )
-target_include_directories(bharat_mm_tlb PRIVATE include include/generated ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/subsys/include)
+target_include_directories(bharat_mm_tlb PRIVATE ${CMAKE_SOURCE_DIR}/subsys/include)
+target_link_libraries(bharat_mm_tlb PRIVATE bharat_kernel_includes)
 target_compile_options(bharat_mm_tlb PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
 add_library(bharat_mm_vmm OBJECT
     src/mm/vmm.c
@@ -242,7 +249,7 @@ add_library(bharat_mm_vmm OBJECT
     src/mm/vm/distributed/mm_local.c
     src/mm/vm/distributed/mm_remote.c
 )
-target_include_directories(bharat_mm_vmm PRIVATE include include/generated ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(bharat_mm_vmm PRIVATE bharat_kernel_includes)
 target_compile_options(bharat_mm_vmm PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
 # ── Core kernel sources ──────────────────────────────────────────────────────
 add_subdirectory(src/core)
@@ -319,12 +326,7 @@ set(KERNEL_SRCS
     src/tests/ktest_slab.c
     src/tests/ktest_hal_pt.c
     src/tests/ktest_prot_domain.c
-    ../ui/fbui/core/fb_render.c
-    ../ui/fbui/core/fb_events.c
-    ../ui/fbui/core/fb_demo_app.c
-    ../ui/fbui/widgets/fb_widgets.c
 )
-
 
 # ── Platform / Machine layer ────────────────────────────────────────────────
 if(ARCH STREQUAL "x86_64")
@@ -367,7 +369,12 @@ endif()
 target_sources(kernel.elf PRIVATE
     $<TARGET_OBJECTS:bharat_mm_vmm>
 )
-target_link_libraries(kernel.elf subsys_manager bharat_libmsg bharat_kernel_buildopts bharatos_drivers)
+target_compile_options(kernel.elf PRIVATE -mcmodel=large -fno-pie -fno-PIE)
+target_link_options(kernel.elf PRIVATE -no-pie)
+target_link_libraries(kernel.elf subsys_manager bharat_libmsg bharat_kernel_buildopts bharatos_drivers bharat_kernel_includes board_fabric)
+if(BHARAT_ENABLE_FBUI)
+    target_link_libraries(kernel.elf fbui)
+endif()
 set_target_properties(kernel.elf PROPERTIES
     OUTPUT_NAME "kernel.elf"
     SUFFIX ""

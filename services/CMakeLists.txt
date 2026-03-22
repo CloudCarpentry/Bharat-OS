@@ -35,7 +35,7 @@ endif()
 
 # Legacy monolithic network service (transitional)
 if(BHARAT_ENABLE_SERVICE_NETWORK)
-    add_subdirectory(net)
+    add_subdirectory(legacy/net)
 endif()
 
 # Profile-driven network stack and manager

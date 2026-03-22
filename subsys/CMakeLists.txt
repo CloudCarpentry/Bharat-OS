@@ -11,7 +11,7 @@ add_library(subsys_manager STATIC
     src/version_registry.c
 )
 target_include_directories(subsys_manager PUBLIC include ${CMAKE_SOURCE_DIR}/kernel/include)
-target_link_libraries(subsys_manager PUBLIC bharat_user_buildopts bharat_freestanding)
+target_link_libraries(subsys_manager PUBLIC bharat_user_buildopts bharat_freestanding bharat_generated_includes)
 
 # ------------------------------------------------------------------------------
 # Personality / Domain Shims

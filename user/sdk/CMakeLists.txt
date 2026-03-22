@@ -14,3 +14,5 @@ endif()
 
 # Provide headers publicly
 target_include_directories(bharat PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(bharat PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(bharat PRIVATE bharat_user_buildopts bharat_freestanding)
