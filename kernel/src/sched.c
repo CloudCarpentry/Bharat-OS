@@ -34,6 +34,8 @@ typedef struct {
   ai_sched_context_t ai_ctx;
   list_head_t run_node;
   list_head_t wait_node; // Used for both sleeping_list and blocked_list
+  uint32_t reap_next;
+  uint8_t reap_pending;
   uint8_t is_on_runqueue;
   uint8_t is_sleeping;
   uint8_t is_blocked;
@@ -72,6 +74,9 @@ static mutex_owner_entry_t g_mutex_owners[SCHED_MAX_THREADS];
 
 static uint32_t g_free_thread_head = UINT32_MAX;
 static uint32_t g_free_process_head = UINT32_MAX;
+static uint32_t g_reap_head = UINT32_MAX;
+static uint32_t g_reap_tail = UINT32_MAX;
+static spinlock_t g_reap_lock;
 
 void fv_secure_context_switch(void *next_thread_frame) __attribute__((weak));
 static inline void sched_ready_bitmap_set(sched_rq_t *rq, uint32_t prio);
@@ -151,6 +156,101 @@ static void sched_block_dequeue(thread_slot_t *slot) {
   slot->is_blocked = 0U;
 }
 
+static void sched_detach_thread_from_queues(thread_slot_t *slot) {
+  if (!slot) {
+    return;
+  }
+  kthread_t *thread = &slot->thread;
+  uint32_t core_id = sched_clamp_core(thread->bound_core_id);
+  sched_rq_t *rq = &g_cpu_locals[core_id].runqueue;
+
+  spin_lock(&rq->lock);
+  if (slot->is_on_runqueue != 0U) {
+    list_del(&slot->run_node);
+    list_init(&slot->run_node);
+    slot->is_on_runqueue = 0U;
+    if (rq->runnable_count > 0U) {
+      rq->runnable_count--;
+    }
+    sched_ready_bitmap_clear_if_empty(rq, thread->priority);
+  }
+  if (slot->is_sleeping != 0U) {
+    sched_sleep_dequeue(slot);
+  }
+  if (slot->is_blocked != 0U) {
+    sched_block_dequeue(slot);
+  }
+  spin_unlock(&rq->lock);
+}
+
+static int sched_enqueue_reap(thread_slot_t *slot) {
+  if (!slot) {
+    return -1;
+  }
+
+  spin_lock(&g_reap_lock);
+  if (slot->reap_pending != 0U) {
+    spin_unlock(&g_reap_lock);
+    return 0;
+  }
+
+  uint32_t idx = (uint32_t)(slot - g_threads);
+  slot->reap_pending = 1U;
+  slot->reap_next = UINT32_MAX;
+  if (g_reap_tail == UINT32_MAX) {
+    g_reap_head = idx;
+    g_reap_tail = idx;
+  } else {
+    g_threads[g_reap_tail].reap_next = idx;
+    g_reap_tail = idx;
+  }
+  spin_unlock(&g_reap_lock);
+  return 0;
+}
+
+static int sched_mark_thread_terminated(kthread_t *thread) {
+  if (!thread) {
+    return -1;
+  }
+  thread_slot_t *slot = sched_find_thread_slot_by_tid(thread->thread_id);
+  if (!slot) {
+    return -1;
+  }
+  if (thread->state == THREAD_STATE_TERMINATED) {
+    return sched_enqueue_reap(slot);
+  }
+
+  thread->state = THREAD_STATE_TERMINATED;
+  if (thread != sched_current_thread()) {
+    sched_detach_thread_from_queues(slot);
+  }
+  return sched_enqueue_reap(slot);
+}
+
+static void sched_reap_terminated_threads(void) {
+  while (1) {
+    thread_slot_t *slot = NULL;
+
+    spin_lock(&g_reap_lock);
+    if (g_reap_head != UINT32_MAX) {
+      uint32_t idx = g_reap_head;
+      slot = &g_threads[idx];
+      g_reap_head = slot->reap_next;
+      if (g_reap_head == UINT32_MAX) {
+        g_reap_tail = UINT32_MAX;
+      }
+      slot->reap_next = UINT32_MAX;
+      slot->reap_pending = 0U;
+    }
+    spin_unlock(&g_reap_lock);
+
+    if (!slot) {
+      break;
+    }
+    (void)thread_destroy(&slot->thread);
+  }
+}
+
 int sched_enqueue(kthread_t *thread, uint32_t core_id) {
   if (!thread || thread->priority >= MAX_PRIORITY_LEVELS) {
     return -1;
@@ -209,10 +309,13 @@ static void sched_monitor_task(void) {
 void sched_thread_exit_trampoline(void) {
   kthread_t *current = sched_current_thread();
   if (current) {
-    (void)thread_destroy(current);
+    uint32_t core = sched_clamp_core(hal_cpu_get_id());
+    (void)sched_mark_thread_terminated(current);
+    g_cpu_locals[core].runqueue.current_thread = NULL;
+    sched_reschedule();
   }
   while (1) {
-    sched_yield();
+    hal_cpu_halt();
   }
 }
 
@@ -221,6 +324,8 @@ void sched_init(void) {
   for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_threads); ++i) {
     g_threads[i].in_use = 0U;
     g_threads[i].next_free = (i + 1U < BHARAT_ARRAY_SIZE(g_threads)) ? (uint32_t)(i + 1U) : UINT32_MAX;
+    g_threads[i].reap_next = UINT32_MAX;
+    g_threads[i].reap_pending = 0U;
   }
 
   g_free_process_head = 0U;
@@ -239,6 +344,9 @@ void sched_init(void) {
     g_mutex_owners[i].mutex = NULL;
     g_mutex_owners[i].owner = NULL;
   }
+  g_reap_head = UINT32_MAX;
+  g_reap_tail = UINT32_MAX;
+  spin_lock_init(&g_reap_lock);
 
   // Default bounds but could be derived later from actual core count logic.
   // We initialize the runqueues unconditionally, but they are only actively used
@@ -328,6 +436,18 @@ int process_destroy(kprocess_t *process) {
     return -1;
   }
 
+  for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_threads); ++i) {
+    if (g_threads[i].in_use != 0U &&
+        g_threads[i].thread.process_id == slot->process.process_id) {
+      return -1;
+    }
+  }
+
+  if (slot->process.addr_space) {
+    (void)aspace_destroy(slot->process.addr_space);
+    slot->process.addr_space = NULL;
+  }
+
   if (slot->process.security_sandbox_ctx) {
     cap_table_destroy(slot->process.security_sandbox_ctx);
     slot->process.security_sandbox_ctx = NULL;
@@ -411,7 +531,13 @@ kthread_t *thread_create(kprocess_t *parent, void (*entry_point)(void)) {
 }
 
 int thread_destroy(kthread_t *thread) {
+  // Reaper-only contract:
+  // - call only from deferred reap context, never inline on the running thread.
+  // - never destroy while executing on the victim thread's stack.
   if (!thread) {
+    return -1;
+  }
+  if (thread == sched_current_thread()) {
     return -1;
   }
 
@@ -420,21 +546,7 @@ int thread_destroy(kthread_t *thread) {
     return -1;
   }
 
-  if (slot->is_on_runqueue != 0U) {
-    list_del(&slot->run_node);
-    slot->is_on_runqueue = 0U;
-    if (g_cpu_locals[thread->bound_core_id].runqueue.runnable_count > 0U) {
-      g_cpu_locals[thread->bound_core_id].runqueue.runnable_count--;
-    }
-    sched_ready_bitmap_clear_if_empty(&g_cpu_locals[thread->bound_core_id].runqueue,
-                                      thread->priority);
-  }
-  if (slot->is_sleeping != 0U) {
-    sched_sleep_dequeue(slot);
-  }
-  if (slot->is_blocked != 0U) {
-    sched_block_dequeue(slot);
-  }
+  sched_detach_thread_from_queues(slot);
 
   // Clean up architecture extended state
   arch_ext_state_thread_destroy(thread);
@@ -751,6 +863,7 @@ void sched_block(void) {
 
 void sched_reschedule(void) {
   uint32_t core = sched_clamp_core(hal_cpu_get_id());
+  sched_reap_terminated_threads();
   sched_process_pending_ai_suggestions();
 
   spin_lock(&g_cpu_locals[core].runqueue.lock);
@@ -887,6 +1000,7 @@ void sched_on_timer_tick(void) {
   }
 
   sched_process_pending_ai_suggestions();
+  sched_reap_terminated_threads();
 
   if ((g_sched_ticks % 16U) == 0U && core == 0U) {
     sched_balance_once();
@@ -960,7 +1074,7 @@ int sched_sys_thread_destroy(uint64_t tid) {
   if (!slot) {
     return -1;
   }
-  return thread_destroy(&slot->thread);
+  return sched_mark_thread_terminated(&slot->thread);
 }
 
 int sched_sys_sleep(uint64_t millis) {
@@ -1131,7 +1245,18 @@ int sched_ai_apply_suggestion(const ai_suggestion_t *suggestion) {
   case AI_ACTION_THROTTLE_CORE:
     return sched_throttle_core(suggestion->value);
   case AI_ACTION_KILL_TASK:
-    return thread ? thread_destroy(thread) : -1;
+    if (!thread) {
+      return -1;
+    }
+    if (sched_mark_thread_terminated(thread) != 0) {
+      return -1;
+    }
+    if (thread == sched_current_thread()) {
+      uint32_t core = sched_clamp_core(hal_cpu_get_id());
+      g_cpu_locals[core].runqueue.current_thread = NULL;
+      sched_reschedule();
+    }
+    return 0;
   case AI_ACTION_NONE:
   default:
     return -1;

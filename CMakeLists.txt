@@ -297,5 +297,19 @@ bharat_add_host_test_compat_target(
     "Host tests disabled. Reconfigure with -DBHARAT_BUILD_HOST_TESTS=ON to build test_automotive_subsys."
 )
 
+# PMM and scheduler host-test compatibility for targeted correctness suites.
+bharat_add_host_test_compat_target(
+    test_pmm_zone_alloc
+    "Host tests disabled. Set -DBHARAT_BUILD_HOST_TESTS=ON to build test_pmm_zone_alloc."
+)
+bharat_add_host_test_compat_target(
+    test_pmm_refpin
+    "Host tests disabled. Set -DBHARAT_BUILD_HOST_TESTS=ON to build test_pmm_refpin."
+)
+bharat_add_host_test_compat_target(
+    test_sched_reap
+    "Host tests disabled. Set -DBHARAT_BUILD_HOST_TESTS=ON to build test_sched_reap."
+)
+
 # Image generation
 include(BharatImage)
