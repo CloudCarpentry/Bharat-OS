@@ -9,7 +9,7 @@ add_executable(net_service
 
 target_include_directories(net_service PRIVATE
     ../../kernel/include
-    ../../subsys/include
+    ../../services/core/subsysmgr/include
     ../../lib/bharat_libtransport
 )
 

@@ -51,8 +51,8 @@ Fast boot supports safety and real-time lanes.
 
 Kernel/subsystem APIs for this plan are implemented in:
 
-- `subsys/include/bharat/automotive/automotive.h`
-- `subsys/src/automotive.c`
+- `services/core/subsysmgr/include/bharat/automotive/automotive.h`
+- `personalities/automotive/automotive.c`
 - `kernel/include/ipc_async.h`
 - `kernel/src/ipc/async_ipc.c`
 - `kernel/src/ipc/ipc_timeout.c`

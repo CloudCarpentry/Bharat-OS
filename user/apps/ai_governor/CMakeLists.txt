@@ -15,7 +15,7 @@ if(BHARAT_BUILD_AI_GOVERNOR)
     )
     target_include_directories(ai_governor PRIVATE
         ${CMAKE_SOURCE_DIR}/kernel/include
-        ${CMAKE_SOURCE_DIR}/subsys/include
+        ${CMAKE_SOURCE_DIR}/services/core/subsysmgr/include
     )
     bharat_configure_userspace_binary(ai_governor)
 endif()

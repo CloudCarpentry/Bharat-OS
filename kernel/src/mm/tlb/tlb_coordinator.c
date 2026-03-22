@@ -12,8 +12,8 @@
 
 // Bring in the generated definitions
 #include "bharat_monitor_v1_types.h"
-#include "../../../../subsys/include/bharat/msg/transport.h"
-#include "../../../../subsys/include/bharat/msg/wire.h"
+#include "../../../../services/core/subsysmgr/include/bharat/msg/transport.h"
+#include "../../../../services/core/subsysmgr/include/bharat/msg/wire.h"
 
 // Optional transport resolver hook for core->transport routing.
 // Keep a weak local stub so kernel linking does not depend on a board/service

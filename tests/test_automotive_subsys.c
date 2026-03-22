@@ -3,7 +3,7 @@
 #include <stdio.h>
 
 #include "../drivers/include/bharat/drivers/can.h"
-#include "../subsys/include/bharat/automotive/automotive.h"
+#include "../services/core/subsysmgr/include/bharat/automotive/automotive.h"
 
 static int g_started = 0;
 static int g_power_mode_events = 0;

@@ -42,11 +42,11 @@ This document provides a deep implementation-status and gap-analysis review of t
 
 ### Observability / Watchdog / Recovery
 * **Status:** Implemented but incomplete
-* **Details:** The automotive personality (`subsys/automotive.c`) has robust watchdog array and domain health tracking. Core kernel panic recovery (`panic.c`) has a toggle but is not a deeply resilient synchronous fault containment domain.
+* **Details:** The automotive personality (`personalities/automotive/automotive.c`) has robust watchdog array and domain health tracking. Core kernel panic recovery (`panic.c`) has a toggle but is not a deeply resilient synchronous fault containment domain.
 
 ### Personality Support
 * **Status:** Implemented but incomplete
-* **Details:** `subsys/linux/linux_compat.c` exists for desktop/server. The Android and Automotive layers are largely API wrappers (e.g., `automotive.c` is ~500 lines of queues, watchdogs, and hooks) but miss full hardware linkage.
+* **Details:** `personalities/linux/linux_compat.c` exists for desktop/server. The Android and Automotive layers are largely API wrappers (e.g., `automotive.c` is ~500 lines of queues, watchdogs, and hooks) but miss full hardware linkage.
 
 ---
 
@@ -63,7 +63,7 @@ This document provides a deep implementation-status and gap-analysis review of t
 * **Highest Priority:** Splitting HAL timers into monotonic vs deadline (one-shot per core) properly and building real deterministic I2C/SPI drivers for flight controllers/sensors.
 
 ### Automobile (Automotive ECU/Infotainment)
-* **Usable Subsystems:** `subsys/automotive.c` provides a good software model for bounded deterministic queues, watchdog domain health, and boot stage planning.
+* **Usable Subsystems:** `personalities/automotive/automotive.c` provides a good software model for bounded deterministic queues, watchdog domain health, and boot stage planning.
 * **Missing for Production:** Genuine underlying CAN/LIN/Ethernet drivers (the `subsys_automotive_send_can_frame` merely returns true), IOMMU/VFIO protection for isolating untrusted devices (IOMMU is a stub), strong Crash Consistency.
 * **Highest Priority:** IOMMU implementations (VT-d/SMMU) and real CAN driver integration with the deterministic queues.
 

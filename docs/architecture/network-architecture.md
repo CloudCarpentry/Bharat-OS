@@ -58,7 +58,7 @@ Bharat-OS networking is structured into:
 * system-wide contracts
 * profile abstraction
 
-→ `subsys/network`
+→ `stacks/network`
 
 ---
 
@@ -81,7 +81,7 @@ Bharat-OS will evolve beyond traditional networking into a full **communications
 
 | Layer         | Component         |
 | ------------- | ----------------- |
-| Subsystem     | subsys/network    |
+| Subsystem     | stacks/network    |
 | Control Plane | services/netmgr   |
 | Data Plane    | services/netstack |
 | Legacy        | services/net      |

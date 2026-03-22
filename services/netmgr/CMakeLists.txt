@@ -26,7 +26,7 @@ bharat_register_component(
 
 target_include_directories(netmgr PRIVATE
     src/
-    ../../subsys/include
+    ../../services/core/subsysmgr/include
     ../../lib/net/include
     ../../include
 )

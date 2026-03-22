@@ -80,7 +80,7 @@ add_executable(test_automotive_subsys
     ../personalities/automotive/automotive.c
     ../drivers/devices/can_loopback/can_loopback.c
 )
-target_include_directories(test_automotive_subsys PRIVATE ../subsys/include ../kernel/include ../drivers/include)
+target_include_directories(test_automotive_subsys PRIVATE ../services/core/subsysmgr/include ../kernel/include ../drivers/include)
 add_test(NAME test_automotive_subsys COMMAND test_automotive_subsys)
 
 target_include_directories(test_urpc_ring PRIVATE ../kernel/include)
@@ -92,6 +92,7 @@ target_compile_definitions(test_scheduler PRIVATE TESTING=1)
 add_test(NAME test_scheduler COMMAND test_scheduler)
 
 add_executable(test_trap_syscall test_trap_syscall.c benchmark_stubs.c host/mock_panic.c ../kernel/src/trap/trap.c ../kernel/src/sched.c ../kernel/src/sched_deg.c ../kernel/src/ai_sched.c ../kernel/src/capability.c ../kernel/src/ipc/endpoint_ipc.c ../kernel/src/algo_matrix.c ../kernel/src/device/device_manager.c ../kernel/src/mm/pmm/numa.c ../personalities/linux/linux_compat.c)
+target_include_directories(test_trap_syscall PRIVATE ../kernel/include ../services/core/subsysmgr/include ../include)
 target_include_directories(test_trap_syscall PRIVATE ../kernel/include ../subsys/include ../include)
 target_compile_definitions(test_trap_syscall PRIVATE TESTING=1)
 add_test(NAME test_trap_syscall COMMAND test_trap_syscall)
@@ -128,6 +129,7 @@ target_compile_definitions(test_memory_edgecases PRIVATE TESTING=1)
 add_test(NAME test_memory_edgecases COMMAND test_memory_edgecases)
 
 add_executable(test_tier_a_integration test_tier_a_integration.c benchmark_stubs.c host/mock_panic.c ../kernel/src/trap/trap.c ../kernel/src/sched.c ../kernel/src/sched_deg.c ../kernel/src/ai_sched.c ../kernel/src/capability.c ../kernel/src/ipc/endpoint_ipc.c ../kernel/src/algo_matrix.c ../kernel/src/device/device_manager.c ../kernel/src/mm/pmm/numa.c ../personalities/linux/linux_compat.c)
+target_include_directories(test_tier_a_integration PRIVATE ../kernel/include ../services/core/subsysmgr/include ../include)
 target_include_directories(test_tier_a_integration PRIVATE ../kernel/include ../subsys/include ../include)
 target_compile_definitions(test_tier_a_integration PRIVATE TESTING=1)
 add_test(NAME test_tier_a_integration COMMAND test_tier_a_integration)
@@ -168,15 +170,15 @@ target_include_directories(test_capability_policy PRIVATE ../kernel/include)
 add_test(NAME test_capability_policy COMMAND test_capability_policy)
 
 add_executable(test_posix test_posix.c ../personalities/linux/linux_compat.c)
-target_include_directories(test_posix PRIVATE ../kernel/include ../subsys/include)
+target_include_directories(test_posix PRIVATE ../kernel/include ../services/core/subsysmgr/include)
 add_test(NAME test_posix COMMAND test_posix)
 
 add_executable(test_windows_compat_init test_windows_compat_init.c ../personalities/windows/win_compat.c)
-target_include_directories(test_windows_compat_init PRIVATE ../kernel/include ../subsys/include)
+target_include_directories(test_windows_compat_init PRIVATE ../kernel/include ../services/core/subsysmgr/include)
 add_test(NAME test_windows_compat_init COMMAND test_windows_compat_init)
 
 add_executable(test_subsys_manager test_subsys_manager.c benchmark_stubs.c host/mock_panic.c ../services/core/subsysmgr/manager.c ../personalities/linux/linux_compat.c ../personalities/windows/win_compat.c ../services/core/subsysmgr/subsys_test_runner.c ../boot/protocols/boot_args.c ../kernel/src/lib/string.c)
-target_include_directories(test_subsys_manager PRIVATE ../subsys/include ../kernel/include)
+target_include_directories(test_subsys_manager PRIVATE ../services/core/subsysmgr/include ../kernel/include)
 add_test(NAME test_subsys_manager COMMAND test_subsys_manager)
 
 add_executable(test_vm_stress test_vm_stress.c benchmark_stubs.c host/mock_panic.c ../kernel/src/mm/vm/aspace/vm_space.c)
@@ -355,7 +357,7 @@ add_executable(test_integration_core_subsys
     ../personalities/automotive/automotive.c
     ../user/ui/fbui/core/fb_render.c
 )
-target_include_directories(test_integration_core_subsys PRIVATE ../kernel/include ../subsys/include ../include)
+target_include_directories(test_integration_core_subsys PRIVATE ../kernel/include ../services/core/subsysmgr/include ../include)
 target_compile_definitions(test_integration_core_subsys PRIVATE TESTING=1 BHARAT_PROFILE_DATACENTER=1 BHARAT_PERSONALITY_LINUX=1 BHARAT_ARCH_X86=1)
 add_test(NAME test_integration_core_subsys COMMAND test_integration_core_subsys)
 
@@ -368,7 +370,7 @@ add_executable(test_profile_edge
     ../personalities/automotive/automotive.c
     ../user/ui/fbui/core/fb_render.c
 )
-target_include_directories(test_profile_edge PRIVATE ../kernel/include ../subsys/include ../include)
+target_include_directories(test_profile_edge PRIVATE ../kernel/include ../services/core/subsysmgr/include ../include)
 target_compile_definitions(test_profile_edge PRIVATE TESTING=1 BHARAT_PROFILE_EDGE=1)
 add_test(NAME test_profile_edge COMMAND test_profile_edge)
 
@@ -499,11 +501,11 @@ add_test(NAME test_bench_hal_pt_arm64 COMMAND test_bench_hal_pt_arm64)
 
 # Message/Wire Tests
 add_executable(test_wire_format test_wire_format.c)
-target_include_directories(test_wire_format PRIVATE ../subsys/include)
+target_include_directories(test_wire_format PRIVATE ../services/core/subsysmgr/include)
 target_link_libraries(test_wire_format PRIVATE msg)
 add_test(NAME test_wire_format COMMAND test_wire_format)
 
 add_executable(test_transport_loopback test_transport_loopback.c)
-target_include_directories(test_transport_loopback PRIVATE ../subsys/include)
+target_include_directories(test_transport_loopback PRIVATE ../services/core/subsysmgr/include)
 target_link_libraries(test_transport_loopback PRIVATE transport msg)
 add_test(NAME test_transport_loopback COMMAND test_transport_loopback)
