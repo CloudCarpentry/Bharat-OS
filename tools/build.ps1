@@ -91,6 +91,7 @@ if ($Payload -and $Arch -eq "riscv64") {
 
 $OutELF = "$BuildDir\kernel\kernel.elf"
 $OutELF32 = "$BuildDir\kernel\kernel32.elf"
+$OutImage = "$BuildDir\kernel\Image"
 
 # Resolve Toolchain
 $Toolchain = ""
@@ -234,12 +235,14 @@ else {
 # ── Format conversions (x86_64 Multiboot, arm64 Image) ──────────
 $KernelBinary = $OutELF
 if ($Arch -eq "x86_64") {
-    $OutELF32 = "$BuildDir\kernel32.elf"
     inf "Converting to 32-bit ELF (Multiboot compatibility)"
     & llvm-objcopy -I elf64-x86-64 -O elf32-i386 $OutELF $OutELF32
     if ($LASTEXITCODE -ne 0) { fail "ELF conversion failed" }
     $KernelBinary = $OutELF32
     ok "kernel32.elf -> $OutELF32"
+}
+elseif ($Arch -eq "arm64") {
+    inf "Converting ELF to raw Image"
     & llvm-objcopy -O binary $OutELF $OutImage
     if ($LASTEXITCODE -ne 0) { fail "Binary conversion failed" }
     $KernelBinary = $OutImage
