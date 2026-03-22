@@ -37,8 +37,8 @@ typedef struct {
 
 static page_t *global_pages_ptrs[MAX_NUMA_NODES];
 static zone_t numa_zones[MAX_NUMA_NODES];
-static numa_node_t numa_nodes[MAX_NUMA_NODES];
-static uint32_t active_numa_nodes;
+numa_node_t numa_nodes[MAX_NUMA_NODES];
+uint32_t active_numa_nodes;
 
 phys_addr_t page_to_phys(page_t *page) {
   uint32_t node_id = page->numa_node;
@@ -140,6 +140,7 @@ static void *pmm_alloc_pages_order_colored(int order, uint32_t numa_node,
         page->order = order;
         page->ref_count = 1;
         page->flags = PAGE_FLAG_KERNEL; // By default give kernel pages
+        page->state = PMM_PAGE_STATE_ALLOCATED;
         spin_unlock(&zone->lock);
         return (void *)(uintptr_t)page_to_phys(page);
       }
@@ -183,6 +184,7 @@ static void *pmm_alloc_pages_order_colored(int order, uint32_t numa_node,
         page->order = order;
         page->ref_count = 1;
         page->flags = PAGE_FLAG_KERNEL;
+        page->state = PMM_PAGE_STATE_ALLOCATED;
         spin_unlock(&zone->lock);
         return (void *)(uintptr_t)page_to_phys(page);
       }
@@ -488,6 +490,7 @@ static void mark_page_free(phys_addr_t phys) {
   }
   p->ref_count = 1;
   p->order = 0; // Ensure initial order is 0 when freed into the buddy system!
+  p->state = PMM_PAGE_STATE_FREE; // Explicitly transition to FREE
   mm_free_page(phys);
 }
 
@@ -554,6 +557,8 @@ static void pmm_add_region(phys_addr_t base, size_t size, uint32_t type,
     p->numa_node = node_id;
     p->flags = 0;
     p->order = 0; // Initialize order to 0 so buddy merging works immediately
+    p->state = PMM_PAGE_STATE_RESERVED; // Default to reserved
+    p->pin_count = 0;
     list_init(&p->list);
 
     phys_addr_t paddr = base + (j * PAGE_SIZE);
@@ -569,8 +574,10 @@ static void pmm_add_region(phys_addr_t base, size_t size, uint32_t type,
     phys_addr_t region_start = base;
     phys_addr_t region_end = base + size;
 
-    if (region_start < early_mem_end)
+    if (region_start < early_mem_end) {
+      // Pages before early_mem_end are kernels/metadata and remain PMM_PAGE_STATE_RESERVED
       region_start = early_mem_end;
+    }
 
     // Align start to next page
     region_start = (region_start + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
@@ -716,6 +723,20 @@ void mm_free_page(phys_addr_t page_addr) {
     return;
   }
 
+  if (page->state == PMM_PAGE_STATE_FREE) {
+    extern void kernel_panic(const char*);
+    kernel_panic("PMM: Double free detected!\n");
+  }
+
+  // Poisoning the page for debug or hardened builds
+  void *va = physmap_phys_to_virt(page_addr);
+  if (va) {
+      uint8_t *ptr = (uint8_t *)va;
+      for (size_t i = 0; i < PAGE_SIZE; i++) {
+          ptr[i] = 0xAA; // simple poison value
+      }
+  }
+
   uint16_t observed = page->ref_count;
   if (observed > 0U) {
     uint16_t old_ref = atomic16_fetch_and_sub(&page->ref_count, 1);
@@ -789,6 +810,8 @@ void mm_free_page(phys_addr_t page_addr) {
   page->order = order;
   page->ref_count = 0;
   page->flags = 0;
+  page->state = PMM_PAGE_STATE_FREE;
+  page->pin_count = 0;
 
   uint32_t page_color = get_page_color(page_to_phys(page));
   list_add(&page->list, &zone->free_list[order][page_color]);
@@ -808,3 +831,58 @@ void mm_inc_page_ref(phys_addr_t page_addr) {
 #else
 void mm_inc_page_ref(phys_addr_t page_addr) { (void)page_addr; }
 #endif
+
+// Explicit wrappers
+void *pmm_alloc_page(uint32_t flags) {
+    pmm_block_t block;
+    if (pmm_alloc_pages(0, PMM_ZONE_ANY, flags, &block) == 0) {
+        return (void*)block.phys_addr;
+    }
+    return NULL;
+}
+
+void *pmm_alloc_zeroed_page(uint32_t flags) {
+    return pmm_alloc_page(flags | PMM_ALLOC_ZERO);
+}
+
+void *pmm_alloc_contig(size_t npages, size_t align_pages, uint32_t flags) {
+    (void)align_pages; // Assuming natural alignment or buddy block behavior handles it natively for now
+    pmm_block_t block;
+    if (pmm_alloc_contiguous((uint32_t)npages, PMM_ZONE_ANY, flags, &block) == 0) {
+        return (void*)block.phys_addr;
+    }
+    return NULL;
+}
+
+void pmm_free_page(void *page) {
+    pmm_block_t block;
+    block.phys_addr = (uintptr_t)page;
+    block.page_count = 1;
+    block.order = 0;
+    pmm_free_pages(&block);
+}
+
+// Refcount Helpers
+void page_get(struct page *page) {
+    if (page) {
+        atomic16_fetch_and_add(&page->ref_count, 1U);
+    }
+}
+
+void page_put(struct page *page) {
+    if (page) {
+        pmm_ref_put(page_to_phys((page_t*)page));
+    }
+}
+
+bool page_try_get(struct page *page) {
+    if (!page) return false;
+    uint16_t old = __atomic_load_n(&page->ref_count, __ATOMIC_ACQUIRE);
+    while (old > 0) {
+        if (__sync_bool_compare_and_swap(&page->ref_count, old, old + 1)) {
+            return true;
+        }
+        old = __atomic_load_n(&page->ref_count, __ATOMIC_ACQUIRE);
+    }
+    return false;
+}

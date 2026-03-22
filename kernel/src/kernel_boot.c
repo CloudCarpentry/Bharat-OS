@@ -205,6 +205,10 @@ void boot_common_platform_services(const boot_info_t *boot) {
       kernel_panic("device framework initialization failed");
     }
 
+    // Trigger test for DMA capability resolution dumping
+    extern void test_device_dma_dump(void);
+    test_device_dma_dump();
+
     arch_cpu_caps_init();
     arch_cpu_caps_system_finalize();
     hal_discovery_publish_cpu_caps();

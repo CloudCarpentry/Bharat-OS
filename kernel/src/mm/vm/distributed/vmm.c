@@ -3,6 +3,7 @@
 #include "../../../include/hal/hal_pt.h"
 #include "../../../include/hal/mmu_ops.h"
 #include "../../../include/hal/hal_tlb.h"
+#include "../../../include/mm/tlb.h"
 #include "../../../include/mm/pmm.h"
 #include "../../../include/slab.h"
 
@@ -33,7 +34,7 @@ int mm_vmm_map_page(address_space_t* as, virt_addr_t vaddr, phys_addr_t paddr, u
 
     int ret = active_hal_pt->map_page(as->root_pt, vaddr, paddr, mmu_flags);
     if (ret == 0) {
-        hal_tlb_invalidate_page(as, vaddr);
+        tlb_invalidate_all(as, vaddr, PAGE_SIZE, TLB_INV_PAGE);
     }
     return ret;
 }
@@ -46,7 +47,7 @@ int mm_vmm_unmap_page(address_space_t* as, virt_addr_t vaddr) {
     if (ret == 0 && paddr != 0) {
         // Free the physical page (unless it's a device mapping or shared, but legacy shim assumes it's ours)
         mm_free_page(paddr);
-        hal_tlb_invalidate_page(as, vaddr);
+        tlb_invalidate_all(as, vaddr, PAGE_SIZE, TLB_INV_PAGE);
     }
     return ret;
 }
@@ -67,9 +68,7 @@ int vmm_handle_cow_fault(address_space_t* as, virt_addr_t vaddr) {
     return vm_handle_fault(as, vaddr, CAP_RIGHT_WRITE);
 }
 
-void tlb_shootdown(address_space_t *as, virt_addr_t vaddr) {
-    hal_tlb_invalidate_page(as, vaddr);
-}
+// TLB shootdown uses the core tlb abstraction now.
 
 address_space_t kernel_space;
 static int kernel_space_ready = 0;

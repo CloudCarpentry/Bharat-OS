@@ -8,7 +8,7 @@
 typedef struct hal_iommu_domain hal_iommu_domain_t;
 typedef struct hal_iommu_group hal_iommu_group_t;
 
-typedef struct hal_iommu_ops {
+typedef struct hal_iommu_ops_legacy {
     int (*init)(void);
     int (*domain_create)(const bharat_iommu_domain_config_t *cfg, hal_iommu_domain_t **out);
     int (*domain_destroy)(hal_iommu_domain_t *domain);
@@ -18,10 +18,10 @@ typedef struct hal_iommu_ops {
     int (*unmap)(hal_iommu_domain_t *domain, uint64_t iova, size_t size);
     int (*block_device)(bharat_device_t *dev);
     int (*get_group)(bharat_device_t *dev, hal_iommu_group_t **out_group);
-} hal_iommu_ops_t;
+} hal_iommu_ops_legacy_t;
 
 // Backend registration
-void hal_iommu_register_ops(hal_iommu_ops_t *ops);
+void hal_iommu_register_ops(hal_iommu_ops_legacy_t *ops);
 
 // Public API
 int hal_iommu_init(void);

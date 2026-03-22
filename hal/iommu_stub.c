@@ -1,9 +1,9 @@
 #include "hal/iommu.h"
 #include <stddef.h>
 
-static hal_iommu_ops_t *g_iommu_ops = NULL;
+static hal_iommu_ops_legacy_t *g_iommu_ops = NULL;
 
-void hal_iommu_register_ops(hal_iommu_ops_t *ops) {
+void hal_iommu_register_ops(hal_iommu_ops_legacy_t *ops) {
     g_iommu_ops = ops;
 }
 

@@ -69,7 +69,7 @@ static int iopmp_get_group(bharat_device_t *dev, hal_iommu_group_t **out_group) 
     return 0;
 }
 
-static hal_iommu_ops_t iopmp_ops = {
+static hal_iommu_ops_legacy_t iopmp_ops = {
     .init = iopmp_init,
     .domain_create = iopmp_domain_create,
     .domain_destroy = iopmp_domain_destroy,

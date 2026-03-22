@@ -3,6 +3,7 @@
 #include "../../../../include/kernel.h"
 #include "../../../../include/panic.h"
 #include "console/console_core.h"
+#include "../../../../include/mm/tlb_internal.h"
 
 void mm_switch_active_aspace(uint32_t core_id, address_space_t *prev_as, address_space_t *next_as) {
     if (core_id >= MAX_CPUS) return;
@@ -12,9 +13,11 @@ void mm_switch_active_aspace(uint32_t core_id, address_space_t *prev_as, address
         if (next_as) {
             g_cpu_locals[core_id].current_as = next_as;
             g_cpu_locals[core_id].current_as_id = next_as->object_id;
+            g_tlb_cpu_state[core_id].active_aspace = next_as;
         } else {
             g_cpu_locals[core_id].current_as = NULL;
             g_cpu_locals[core_id].current_as_id = KERNEL_AS_ID;
+            g_tlb_cpu_state[core_id].active_aspace = NULL;
         }
         return;
     }
@@ -26,10 +29,12 @@ void mm_switch_active_aspace(uint32_t core_id, address_space_t *prev_as, address
     if (next_as) {
         g_cpu_locals[core_id].current_as = next_as;
         g_cpu_locals[core_id].current_as_id = next_as->object_id;
+        g_tlb_cpu_state[core_id].active_aspace = next_as;
         __atomic_or_fetch(&next_as->active_mask, (1ULL << core_id), __ATOMIC_SEQ_CST);
     } else {
         g_cpu_locals[core_id].current_as = NULL;
         g_cpu_locals[core_id].current_as_id = KERNEL_AS_ID;
+        g_tlb_cpu_state[core_id].active_aspace = NULL;
     }
 
     // A full barrier to ensure software state is visible before any HW TLB/PT operations occur
