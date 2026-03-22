@@ -5,8 +5,6 @@ enable_testing()
 
 # Make the modules directory visible to CMake
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/modules")
-include_directories(${CMAKE_SOURCE_DIR}/kernel/src)
-include_directories(${CMAKE_SOURCE_DIR}/kernel/include)
 
 # Load Common Build Policies
 include(BharatCommon)
@@ -23,6 +21,34 @@ set(BHARAT_GEN_INCLUDE_DIR "${BHARAT_GEN_DIR}/include")
 file(MAKE_DIRECTORY "${BHARAT_GEN_DIR}")
 file(MAKE_DIRECTORY "${BHARAT_GEN_INCLUDE_DIR}/bharat")
 
+# Process static IDL generation explicitly early to guarantee header availability
+set(BHARAT_IDL_GEN_SCRIPT "${CMAKE_SOURCE_DIR}/tools/bidl/bidlc.py")
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+
+# Generate monitor service IDL
+execute_process(
+    COMMAND "${Python3_EXECUTABLE}" "${BHARAT_IDL_GEN_SCRIPT}"
+            "${CMAKE_SOURCE_DIR}/idl/monitor_v1.bidl"
+            "${BHARAT_GEN_INCLUDE_DIR}"
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+    RESULT_VARIABLE IDL_MONITOR_RESULT
+)
+if(NOT IDL_MONITOR_RESULT EQUAL 0)
+    message(WARNING "Failed to generate monitor IDL. Build may fail if headers are missing.")
+endif()
+
+# Generate cap service IDL
+execute_process(
+    COMMAND "${Python3_EXECUTABLE}" "${BHARAT_IDL_GEN_SCRIPT}"
+            "${CMAKE_SOURCE_DIR}/idl/cap_v1.bidl"
+            "${BHARAT_GEN_INCLUDE_DIR}"
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+    RESULT_VARIABLE IDL_CAP_RESULT
+)
+if(NOT IDL_CAP_RESULT EQUAL 0)
+    message(WARNING "Failed to generate cap IDL. Build may fail if headers are missing.")
+endif()
+
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
 execute_process(
@@ -38,7 +64,10 @@ if(NOT BHARAT_GEN_RESULT EQUAL 0)
 endif()
 
 include("${BHARAT_GEN_DIR}/BharatVersion.cmake")
-include_directories("${BHARAT_GEN_INCLUDE_DIR}")
+
+# Provide an interface target so components can inherit generated includes safely
+add_library(bharat_generated_includes INTERFACE)
+target_include_directories(bharat_generated_includes INTERFACE "${BHARAT_GEN_INCLUDE_DIR}")
 
 # Architecture selection
 bharat_set_arch_defaults()
@@ -209,12 +238,13 @@ endif()
 
 # Add subdirectories
 add_subdirectory(hal)
+add_subdirectory(platform)
 add_subdirectory(kernel)
 add_subdirectory(lib)
 add_subdirectory(drivers)
 add_subdirectory(subsys)
 add_subdirectory(services)
-add_subdirectory(apps)
+add_subdirectory(user)
 
 if(BHARAT_BUILD_HOST_TESTS)
     add_subdirectory(tests)
@@ -259,5 +289,3 @@ bharat_add_host_test_compat_target(
 
 # Image generation
 include(BharatImage)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-pie -fno-PIE -mcmodel=large")
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pie")

@@ -256,3 +256,43 @@ __attribute__((weak)) void arch_ext_state_restore(kthread_t *t) {
 
 __attribute__((weak)) void sched_thread_exit_trampoline(void) {
 }
+
+__attribute__((weak)) uint64_t sched_get_ticks(void) { return 0; }
+
+__attribute__((weak)) void mm_switch_active_aspace(address_space_t *aspace) {
+    (void)aspace;
+}
+
+__attribute__((weak)) void vmm_process_local_urpc_messages(uint32_t core_id) {
+    (void)core_id;
+}
+
+__attribute__((weak)) void* physmap_phys_to_virt(phys_addr_t phys) {
+    return (void*)phys;
+}
+
+__attribute__((weak)) int cap_can_transfer(uint32_t type) {
+    (void)type;
+    return 1;
+}
+
+__attribute__((weak)) int cap_transfer_rights_valid(uint32_t current_rights, uint32_t requested_rights) {
+    (void)current_rights;
+    (void)requested_rights;
+    return 1;
+}
+
+__attribute__((weak)) struct capability_table* sched_current_cap_table(void) {
+    return NULL;
+}
+
+#include <stdbool.h>
+
+__attribute__((weak)) bool arch_cpu_has(int feature) {
+    (void)feature;
+    return false;
+}
+
+__attribute__((weak)) void* arch_memcpy(void* dest, const void* src, size_t n) { return memcpy(dest, src, n); }
+__attribute__((weak)) void* arch_memset(void* s, int c, size_t n) { return memset(s, c, n); }
+__attribute__((weak)) void* arch_memmove(void* dest, const void* src, size_t n) { return memmove(dest, src, n); }

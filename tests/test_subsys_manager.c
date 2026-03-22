@@ -1,6 +1,8 @@
 #include <assert.h>
 #include <stdio.h>
 
+#include <string.h>
+
 #include "../subsys/include/subsys.h"
 
 // Stubs for subsys_test_runner.c
@@ -16,6 +18,11 @@ void kernel_panic(const char* msg) {
     (void)msg;
     while(1);
 }
+
+void* arch_memcpy(void* dest, const void* src, size_t n) { return memcpy(dest, src, n); }
+void* arch_memset(void* s, int c, size_t n) { return memset(s, c, n); }
+void* arch_memmove(void* dest, const void* src, size_t n) { return memmove(dest, src, n); }
+
 
 
 static void test_subsys_destroy_null_returns_error(void) {

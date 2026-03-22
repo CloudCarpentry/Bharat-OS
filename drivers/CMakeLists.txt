@@ -94,14 +94,6 @@ if(BHARAT_ENABLE_DRIVER_GENERIC_REGISTRY
         list(APPEND _bharat_generic_driver_defs BHARAT_GENERIC_ENABLE_ARCH_IRQ_TIMER)
     endif()
 
-    if(BHARAT_ENABLE_DRIVER_BOARD_FABRIC AND (_bharat_target_board_lower MATCHES "qemu"
-       OR _bharat_target_board_lower MATCHES "virt"
-       OR _bharat_target_board_lower MATCHES "shakti"))
-        list(APPEND BHARAT_DRIVER_SOURCES
-            board_fabric/board_fabric.c
-        )
-        list(APPEND _bharat_generic_driver_defs BHARAT_GENERIC_ENABLE_BOARD_FABRIC)
-    endif()
 endif()
 
 if(NOT BHARAT_DRIVER_SOURCES)
@@ -112,8 +104,8 @@ add_library(bharatos_drivers STATIC ${BHARAT_DRIVER_SOURCES})
 
 target_include_directories(bharatos_drivers PUBLIC include)
 
-target_include_directories(bharatos_drivers PRIVATE ${CMAKE_SOURCE_DIR}/lib/packet/include ${CMAKE_SOURCE_DIR}/include)
-target_link_libraries(bharatos_drivers PRIVATE bharat_kernel_buildopts bharat_freestanding bharat_libpacket)
+target_include_directories(bharatos_drivers PRIVATE ${CMAKE_SOURCE_DIR}/lib/packet/include ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/kernel/include)
+target_link_libraries(bharatos_drivers PRIVATE bharat_kernel_buildopts bharat_freestanding bharat_libpacket bharat_generated_includes)
 
 target_compile_options(bharatos_drivers PRIVATE -ffreestanding -nostdlib -Wall)
 

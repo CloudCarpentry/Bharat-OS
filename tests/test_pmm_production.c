@@ -7,10 +7,15 @@
 #include "../../kernel/include/mm/pmm.h"
 #include "../../kernel/include/mm.h"
 #include "../../kernel/include/mm/pmm_map.h"
+#include "../../kernel/include/bharat/boot_info.h"
 
 // Define test stubs
 void hal_serial_write(const char *s) { (void)s; }
 void hal_serial_write_hex(uint64_t v) { (void)v; }
+void* hal_get_system_discovery(void) { return NULL; }
+void pt_cache_init(void) {}
+size_t string_length(const char* s) { return strlen(s); }
+void console_write_raw(const char* s, size_t len) { (void)s; (void)len; }
 uint32_t hal_cpu_get_id(void) { return 0; }
 void early_alloc_init(size_t limit) { (void)limit; }
 
@@ -50,15 +55,16 @@ static uint8_t mock_ram[MOCK_RAM_SIZE];
 // Test cases
 static void test_pmm_init(void) {
     printf("[test_pmm_init] Starting...\n");
-    pmm_memory_map_t map;
-    map.region_count = 1;
-    map.regions[0].base_addr = (uint64_t)(uintptr_t)mock_ram;
-    map.regions[0].length = MOCK_RAM_SIZE;
-    map.regions[0].type = PMM_REGION_TYPE_USABLE;
-    map.regions[0].numa_node = 0;
-    map.regions[0].attributes = 0;
 
-    int ret = pmm_ingest_memory_map(&map);
+    // Create a mock boot info struct to pass into mm_pmm_init
+    struct boot_info mock_boot = {0};
+    mock_boot.mem_map_count = 1;
+    mock_boot.mem_map[0].phys_start = (uint64_t)(uintptr_t)mock_ram;
+    mock_boot.mem_map[0].size = MOCK_RAM_SIZE;
+    mock_boot.mem_map[0].type = BOOT_MEM_USABLE;
+
+    // Initialize PMM via the public API instead of the internal one
+    int ret = mm_pmm_init(0xB4A2A705, &mock_boot);
     assert(ret == 0);
     printf("[test_pmm_init] Passed.\n");
 }

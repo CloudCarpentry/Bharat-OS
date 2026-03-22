@@ -1,6 +1,6 @@
 #include "../../../include/kernel.h"
 #include "../../../subsys/include/bharat/msg/transport.h"
-#include "../../../services/monitor/generated/bharat_monitor_v1_types.h"
+#include "bharat_monitor_v1_types.h"
 #include "../../../subsys/include/bharat/msg/wire.h"
 
 // The opcode for TlbInvalidate
