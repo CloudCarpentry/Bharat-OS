@@ -4,6 +4,9 @@
 
 #include "../kernel/include/hal/riscv_bsp.h"
 
+void hal_serial_write(const char *s) { (void)s; }
+void hal_serial_write_hex(uint64_t val) { (void)val; }
+
 static void assert_profile(const char* name,
                            riscv_soc_profile_t profile,
                            uint64_t expected_uart) {

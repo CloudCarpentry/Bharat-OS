@@ -22,7 +22,7 @@ bharat_configure_userspace_library(bharat_libtransport)
 # ---------------------------------------------------------
 add_library(bharat_version_api STATIC version_api.c)
 target_include_directories(bharat_version_api PUBLIC ../include)
-target_link_libraries(bharat_version_api PUBLIC bharat_freestanding)
+target_link_libraries(bharat_version_api PUBLIC bharat_freestanding bharat_generated_includes)
 bharat_configure_userspace_library(bharat_version_api)
 
 # ---------------------------------------------------------

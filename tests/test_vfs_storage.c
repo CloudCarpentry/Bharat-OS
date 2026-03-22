@@ -11,6 +11,10 @@ int __attribute__((weak)) vfs_mount(const char* path, vfs_node_t* root) { (void)
 int __attribute__((weak)) vfs_open(const char* path, int flags) { (void)path; (void)flags; return -1; }
 int __attribute__((weak)) vfs_read(int fd, void* buf, size_t count) { (void)fd; (void)buf; (void)count; return -1; }
 
+void* arch_memcpy(void* dest, const void* src, size_t n) { return memcpy(dest, src, n); }
+void* arch_memset(void* s, int c, size_t n) { return memset(s, c, n); }
+void* arch_memmove(void* dest, const void* src, size_t n) { return memmove(dest, src, n); }
+
 uint8_t g_memory_fs[1024] = {0};
 
 static int mem_read(vfs_file_t *file, uint64_t offset, void *buffer, size_t size) {

@@ -4,16 +4,20 @@
 #include <assert.h>
 #include <string.h>
 
+int g_mock_caps = 0;
+
+bool arch_cpu_has(int feature) {
+    return (g_mock_caps & (1u << feature)) != 0;
+}
+
 int main(void) {
     // Reset global caps to 0 initially
-    memset(&g_arch_caps, 0, sizeof(g_arch_caps));
+    g_mock_caps = 0;
 
     // Force a known value
-    g_arch_caps.has_avx2 = 1;
-    g_arch_caps.has_fma = 1;
-    g_arch_caps.has_aes = 0;
-    g_arch_caps.has_vector = 1;
-    g_arch_caps.has_crypto = 0;
+    g_mock_caps |= (1u << 0); // has_avx2
+    g_mock_caps |= (1u << 1); // has_fma
+    g_mock_caps |= (1u << 3); // has_vector
 
     // Expected packed value: 0b01011 = 11
 
