@@ -67,15 +67,25 @@ static void setup_pmm(void) {
 int main(void) {
   setup_pmm();
 
-  pmm_block_t dma = {0};
-  assert(pmm_alloc_pages(0, PMM_ZONE_DMA32, PMM_ALLOC_NONE, &dma) == 0);
-  page_t *dp = phys_to_page(dma.phys_addr);
-  assert(dp != NULL);
-  assert(dp->zone <= PMM_ZONE_DMA32);
-  assert(pmm_free_pages(&dma) == 0);
+  // Exhaust the DMA32 window as far as PMM metadata/reservations allow.
+  pmm_block_t dma_blocks[1024] = {0};
+  size_t dma_alloc_count = 0;
+  while (dma_alloc_count < 1024) {
+    if (pmm_alloc_pages(0, PMM_ZONE_DMA32, PMM_ALLOC_NONE,
+                        &dma_blocks[dma_alloc_count]) != 0) {
+      break;
+    }
+    page_t *dp = phys_to_page(dma_blocks[dma_alloc_count].phys_addr);
+    assert(dp != NULL);
+    assert(dp->zone <= PMM_ZONE_DMA32);
+    dma_alloc_count++;
+  }
+  assert(dma_alloc_count > 0);
 
-  pmm_block_t big_dma = {0};
-  assert(pmm_alloc_pages(12, PMM_ZONE_DMA32, PMM_ALLOC_NONE, &big_dma) != 0);
+  // With DMA32 exhausted and NORMAL pages still available, DMA32 request must
+  // fail (must not leak a NORMAL page through fallback/retry paths).
+  pmm_block_t exhausted_dma = {0};
+  assert(pmm_alloc_pages(0, PMM_ZONE_DMA32, PMM_ALLOC_NONE, &exhausted_dma) != 0);
 
   pmm_block_t normal = {0};
   assert(pmm_alloc_pages(0, PMM_ZONE_NORMAL, PMM_ALLOC_NONE, &normal) == 0);
@@ -83,6 +93,19 @@ int main(void) {
   assert(np != NULL);
   assert(np->zone <= PMM_ZONE_NORMAL);
   assert(pmm_free_pages(&normal) == 0);
+
+  // Re-open exactly one DMA32 page and make sure allocation still honors zone.
+  assert(pmm_free_pages(&dma_blocks[0]) == 0);
+  pmm_block_t dma_retry = {0};
+  assert(pmm_alloc_pages(0, PMM_ZONE_DMA32, PMM_ALLOC_NONE, &dma_retry) == 0);
+  page_t *retry = phys_to_page(dma_retry.phys_addr);
+  assert(retry != NULL);
+  assert(retry->zone <= PMM_ZONE_DMA32);
+  assert(pmm_free_pages(&dma_retry) == 0);
+
+  for (size_t i = 1; i < dma_alloc_count; ++i) {
+    assert(pmm_free_pages(&dma_blocks[i]) == 0);
+  }
 
   printf("test_pmm_zone_alloc passed\n");
   return 0;
