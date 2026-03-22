@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -22,6 +23,7 @@ typedef enum {
 } dma_alloc_flags_t;
 
 #include "../../include/spinlock.h"
+#include "mm/iommu.h"
 
 // Forward declaration of IOMMU backend ops
 typedef struct iommu_ops iommu_ops_t;
@@ -36,6 +38,7 @@ typedef struct iova_domain {
 
     const iommu_ops_t *iommu; // Binding to physical IOMMU backend (VT-d, SMMU, etc)
     void *iommu_hw_state;     // Hardware context table pointer
+    iommu_domain_t *generic_domain;
 } iova_domain_t;
 
 typedef struct dma_buffer {
@@ -77,6 +80,39 @@ int dma_buffer_map_device(uint64_t device_id, dma_buffer_t *buffer, dma_directio
 int dma_buffer_unmap_device(uint64_t device_id, dma_buffer_t *buffer, dma_direction_t dir);
 void dma_sync_for_device(dma_buffer_t *buffer, dma_direction_t dir);
 void dma_sync_for_cpu(dma_buffer_t *buffer, dma_direction_t dir);
+
+
+struct dma_caps {
+    uint64_t dma_mask;
+    uint64_t max_segment_size;
+    size_t   alignment;
+    bool     coherent;
+    bool     require_isolation;
+    bool     allow_bypass;
+    bool     allow_identity;
+    bool     require_contiguous;
+};
+
+typedef struct dma_mapping {
+    iommu_device_t *dev;
+    void *cpu_addr;
+    uint64_t dma_addr;
+    uint64_t phys_addr;
+    size_t len;
+    dma_direction_t dir;
+    dma_translation_mode_t mode;
+    bool coherent;
+    bool bounced;
+    struct dma_mapping *next;
+} dma_mapping_t;
+
+int dma_map_buffer(iommu_device_t *dev, void *cpu_addr, uint64_t phys_addr, size_t len,
+                   dma_direction_t dir, dma_mapping_t **out_mapping);
+
+int dma_unmap_buffer(dma_mapping_t *mapping);
+
+void *dma_alloc_coherent(iommu_device_t *dev, size_t len, uint64_t *dma_addr_out, dma_mapping_t **out_mapping);
+void dma_free_coherent(dma_mapping_t *mapping);
 
 #ifdef __cplusplus
 }
