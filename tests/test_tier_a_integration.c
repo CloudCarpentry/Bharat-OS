@@ -13,6 +13,13 @@ void default_timer_isr(void) {
 #include "../kernel/include/capability.h"
 #include "../kernel/include/ipc_endpoint.h"
 #include "../kernel/include/trap.h"
+#include "../kernel/include/trap_api.h"
+
+int trap_handle_fault(trap_frame_t *frame, const trap_info_t *info) {
+    (void)frame;
+    (void)info;
+    return -1;
+}
 #include "../kernel/include/arch/arch_caps.h"
 #include <stdlib.h>
 
