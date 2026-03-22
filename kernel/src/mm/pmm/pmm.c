@@ -150,25 +150,42 @@ static void *pmm_alloc_pages_order_colored(int order, uint32_t numa_node,
   pmm_reclaim_one_node(numa_node);
 
   spin_lock(&zone->lock);
-  for (int c = start_color; c <= end_color; ++c) {
-    if (color_config && color_config->policy != MM_COLOR_POLICY_NONE &&
-        color_config->policy != MM_COLOR_POLICY_PREFERRED) {
-      if ((color_config->color_mask & (1U << c)) == 0)
-        continue;
-    }
-
-    if (!list_empty(&zone->free_list[order][c])) {
-      page_t *page = list_entry(zone->free_list[order][c].next, page_t, list);
-      if (!page_block_matches_zone(page, order, zone_filter)) {
-        continue;
+  for (int level = order; level < MAX_ORDER; ++level) {
+    for (int c = start_color; c <= end_color; ++c) {
+      if (color_config && color_config->policy != MM_COLOR_POLICY_NONE &&
+          color_config->policy != MM_COLOR_POLICY_PREFERRED) {
+        if ((color_config->color_mask & (1U << c)) == 0)
+          continue;
       }
-      list_del(&page->list);
-      zone->free_count[order][c]--;
-      page->order = order;
-      page->ref_count = 1;
-      page->flags = PAGE_FLAG_KERNEL;
-      spin_unlock(&zone->lock);
-      return (void *)(uintptr_t)page_to_phys(page);
+
+      if (!list_empty(&zone->free_list[level][c])) {
+        page_t *page = list_entry(zone->free_list[level][c].next, page_t, list);
+        if (!page_block_matches_zone(page, level, zone_filter)) {
+          continue;
+        }
+        list_del(&page->list);
+        zone->free_count[level][c]--;
+
+        int l = level;
+        while (l > order) {
+          --l;
+          size_t offset = (1ULL << l);
+          page_t *buddy = page + offset;
+          buddy->order = l;
+          buddy->ref_count = 0;
+          buddy->flags = 0;
+
+          uint32_t buddy_color = get_page_color(page_to_phys(buddy));
+          list_add(&buddy->list, &zone->free_list[l][buddy_color]);
+          zone->free_count[l][buddy_color]++;
+        }
+
+        page->order = order;
+        page->ref_count = 1;
+        page->flags = PAGE_FLAG_KERNEL;
+        spin_unlock(&zone->lock);
+        return (void *)(uintptr_t)page_to_phys(page);
+      }
     }
   }
   spin_unlock(&zone->lock);
@@ -306,14 +323,16 @@ int pmm_ref_put(uint64_t phys_addr) {
     if (!page) return -1;
 
     // Lifecycle invariant:
-    // - pinned pages are allowed to have exactly one reference.
-    // - dropping that last reference while pinned must fail without mutation.
+    // - pinned pages can be live, but pinning does not own a refcount.
+    // - dropping the final reference while pin_count > 0 must fail without
+    //   mutating ref_count so the page remains safely owned.
     while (1) {
-        uint16_t old_ref = page->ref_count;
+        uint16_t old_ref = __atomic_load_n(&page->ref_count, __ATOMIC_ACQUIRE);
         if (old_ref == 0U) {
             return -1;
         }
-        if (old_ref == 1U && page->pin_count > 0U) {
+        uint16_t pin_count = __atomic_load_n(&page->pin_count, __ATOMIC_ACQUIRE);
+        if (old_ref == 1U && pin_count > 0U) {
             return -1;
         }
 
@@ -331,8 +350,10 @@ int pmm_ref_put(uint64_t phys_addr) {
 }
 
 int pmm_pin(uint64_t phys_addr) {
-    // Pinning invariant: pin_count prevents final-ref release from reclaiming page
-    // storage, but does not itself own a reference.
+    // Pinning invariant:
+    // - pin_count blocks final-ref reclaim/free.
+    // - pinning does not create an ownership reference; callers must still
+    //   manage ref_count separately.
     page_t *page = phys_to_page(phys_addr);
     if (!page) return -1;
     atomic16_fetch_and_add(&page->pin_count, 1U);
@@ -344,7 +365,7 @@ int pmm_unpin(uint64_t phys_addr) {
     page_t *page = phys_to_page(phys_addr);
     if (!page) return -1;
     while (1) {
-        uint16_t old = page->pin_count;
+        uint16_t old = __atomic_load_n(&page->pin_count, __ATOMIC_ACQUIRE);
         if (old == 0U) {
             return -1;
         }
