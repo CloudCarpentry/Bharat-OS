@@ -298,7 +298,6 @@ static void runtime_enter_diagnostic(const boot_info_t *boot) {
     boot_selftest_report_t report;
     boot_selftest_run_stage(BOOT_TEST_STAGE_RUNTIME, &report);
 
-    kernel_run_boot_tests();
     kernel_tester_app();
 
     // Controlled idle
@@ -326,8 +325,6 @@ static void runtime_enter_manufacturing(const boot_info_t *boot) {
 
     boot_selftest_report_t report;
     boot_selftest_run_stage(BOOT_TEST_STAGE_RUNTIME, &report);
-
-    kernel_run_boot_tests();
 
     while (1) {
         hal_cpu_halt();
