@@ -1,17 +1,22 @@
 #pragma once
 
 struct kthread;
+typedef struct kthread kthread_t;
+
+#include "trap_types.h"
+
+// Forward declaration of trap_frame_t without typedef redefinition issues.
 struct trap_frame;
-struct trap_info;
+typedef struct trap_frame trap_frame_t;
 
 typedef struct personality_ops {
-    long (*handle_syscall)(struct kthread *thread,
-                           struct trap_frame *frame,
-                           const struct trap_info *info);
+    long (*handle_syscall)(kthread_t *thread,
+                           trap_frame_t *frame,
+                           const trap_info_t *info);
 
-    int (*handle_user_fault)(struct kthread *thread,
-                             struct trap_frame *frame,
-                             const struct trap_info *info);
+    int (*handle_user_fault)(kthread_t *thread,
+                             trap_frame_t *frame,
+                             const trap_info_t *info);
 
-    int (*map_fault_to_signal)(const struct trap_info *info);
+    int (*map_fault_to_signal)(const trap_info_t *info);
 } personality_ops_t;
