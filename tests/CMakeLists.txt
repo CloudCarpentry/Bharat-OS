@@ -3,7 +3,13 @@ project(BharatOS-Tests C)
 
 enable_testing()
 
-set(REPO_ROOT "${CMAKE_SOURCE_DIR}")
+if(EXISTS "${CMAKE_SOURCE_DIR}/kernel" AND EXISTS "${CMAKE_SOURCE_DIR}/tests")
+    set(REPO_ROOT "${CMAKE_SOURCE_DIR}")
+elseif(EXISTS "${CMAKE_SOURCE_DIR}/../kernel")
+    get_filename_component(REPO_ROOT "${CMAKE_SOURCE_DIR}/.." ABSOLUTE)
+else()
+    set(REPO_ROOT "${CMAKE_SOURCE_DIR}")
+endif()
 set(WORK_DIR "${CMAKE_BINARY_DIR}/tests/policy_matrix")
 
 add_subdirectory(host)
@@ -383,6 +389,19 @@ add_executable(test_pmm_production test_pmm_production.c ../kernel/src/mm/pmm/pm
 target_include_directories(test_pmm_production PRIVATE ../kernel/include ../kernel/src ../include)
 add_test(NAME test_pmm_production COMMAND test_pmm_production)
 
+add_executable(test_pmm_zone_alloc test_pmm_zone_alloc.c ../kernel/src/mm/pmm/pmm.c)
+target_include_directories(test_pmm_zone_alloc PRIVATE ../kernel/include ../kernel/src ../include)
+add_test(NAME test_pmm_zone_alloc COMMAND test_pmm_zone_alloc)
+
+add_executable(test_pmm_refpin test_pmm_refpin.c ../kernel/src/mm/pmm/pmm.c)
+target_include_directories(test_pmm_refpin PRIVATE ../kernel/include ../kernel/src ../include)
+add_test(NAME test_pmm_refpin COMMAND test_pmm_refpin)
+
+add_executable(test_sched_reap test_sched_reap.c benchmark_stubs.c host/mock_panic.c ../kernel/src/sched.c ../kernel/src/sched_deg.c ../kernel/src/ai_sched.c ../kernel/src/capability.c ../kernel/src/algo_matrix.c ../kernel/src/device/device_manager.c ../kernel/src/mm/pmm/numa.c)
+target_include_directories(test_sched_reap PRIVATE ../kernel/include)
+target_compile_definitions(test_sched_reap PRIVATE TESTING=1)
+add_test(NAME test_sched_reap COMMAND test_sched_reap)
+
 add_executable(test_benchmark_hw_caps test_benchmark_hw_caps.c ../kernel/src/benchmark/benchmark.c ../kernel/src/capability.c benchmark_stubs.c host/mock_panic.c)
 target_include_directories(test_benchmark_hw_caps PRIVATE ../kernel/include)
 target_compile_definitions(test_benchmark_hw_caps PRIVATE TESTING=1)
@@ -452,6 +471,9 @@ set(BHARAT_NOSTDLIB_TEST_TARGETS
     test_dma_iommu
     test_smp_hal
     test_pmm_production
+    test_pmm_zone_alloc
+    test_pmm_refpin
+    test_sched_reap
     test_benchmark_hw_caps
     test_syscall_abi
     test_elf_parser
