@@ -7,6 +7,15 @@
 #include "boot/x86_64/multiboot2.h"
 #include "boot/platform_boot_info.h"
 
+#include "bharat/boot_info.h"
+#include "kernel.h"
+#include "hal/hal.h"
+#include <stdint.h>
+#include <stddef.h>
+#include <stdbool.h>
+#include "boot/x86_64/multiboot2.h"
+#include "boot/platform_boot_info.h"
+
 // Forward declaration for x86_64 multiboot parsing
 extern void x86_64_parse_multiboot(uint32_t magic, multiboot_information_t *mb_info, platform_boot_info_t *plat_info, boot_info_t *boot_info);
 

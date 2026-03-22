@@ -1,5 +1,7 @@
 #include "mm/prot_domain.h"
-#include "arch/arch_caps.h"
+#include "../../include/mm/prot_domain.h"
+#include "../../include/hal/hal_pt.h"
+#include "../../include/arch/arch_caps.h"
 #include "console/console_core.h"
 #include <stddef.h>
 

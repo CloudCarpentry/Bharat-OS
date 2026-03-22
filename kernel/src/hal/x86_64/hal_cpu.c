@@ -482,19 +482,15 @@ static void gdt_set_system_descriptor(int index, uint64_t base, uint32_t limit,
 
 void hal_init(void) {
   hal_serial_init();
+  console_write_raw("H0\n", 3);
   console_register_backend(&g_x86_64_serial_backend);
+
+  // Mask legacy PIC to avoid conflicts with exceptions (especially INT 8/Double Fault)
+  hal_interrupt_controller_init();
 
   uint32_t core_id = hal_cpu_get_id();
   if (core_id >= MAX_SUPPORTED_CORES)
     core_id = 0; // Safeguard
-
-  // Setup GDT to include TSS
-  // 0: Null
-  // 1: Kernel Code 64 (0x08)
-  // 2: Kernel Data 64 (0x10)
-  // 3: User Code 64   (0x18)
-  // 4: User Data 64   (0x20)
-  // 5: TSS (16-byte desc) (0x28)
 
   g_gdt[0] = 0;
   g_gdt[1] = 0x00af9a000000ffff; // KCode
@@ -502,31 +498,29 @@ void hal_init(void) {
   g_gdt[3] = 0x00affa000000ffff; // UCode
   g_gdt[4] = 0x00aff2000000ffff; // UData
 
-  // Init TSS
   tss_entry_t *tss = &g_tss[core_id];
   tss->rsp0 = (uint64_t)g_per_core_stacks[core_id] + 16384;
   tss->ist1 = (uint64_t)g_emergency_stacks[core_id] + 4096;
   tss->iopb_offset = sizeof(tss_entry_t);
 
   uint64_t tss_base = (uint64_t)tss;
-  gdt_set_system_descriptor(5, tss_base, sizeof(tss_entry_t) - 1,
-                            0x89); // 0x89 = Present, Ring 0, TSS
+  gdt_set_system_descriptor(5, tss_base, sizeof(tss_entry_t) - 1, 0x89);
 
   g_gdtr.base = (uint64_t)&g_gdt[0];
   g_gdtr.limit = sizeof(g_gdt) - 1;
 
+  console_write_raw("H1\n", 3);
   __asm__ volatile("lgdt %0" : : "m"(g_gdtr));
 
-  // Load TR
-  __asm__ volatile("ltr %w0" : : "r"(0x28)); // Segment index 5 = 5 * 8 = 0x28
+  console_write_raw("H2\n", 3);
+  __asm__ volatile("ltr %w0" : : "r"(0x28));
 
-  // Initialize IDT
+  console_write_raw("H3\n", 3);
+
   for (int i = 0; i < 256; i++) {
-    idt_set_descriptor(i, default_isr,
-                       0x8E); // 0x8E: Present, Ring 0, Interrupt Gate
+    idt_set_descriptor(i, default_isr, 0x8E);
   }
 
-  // Set exception handlers
   idt_set_descriptor(0, isr0, 0x8E);
   idt_set_descriptor(1, isr1, 0x8E);
   idt_set_descriptor(2, isr2, 0x8E);
@@ -536,7 +530,6 @@ void hal_init(void) {
   idt_set_descriptor(6, isr6, 0x8E);
   idt_set_descriptor(7, isr7, 0x8E);
   idt_set_descriptor(8, isr8, 0x8E);
-  // Double fault uses IST1
   idt[8].ist = 1;
 
   idt_set_descriptor(9, isr9, 0x8E);
@@ -562,32 +555,32 @@ void hal_init(void) {
   idt_set_descriptor(29, isr29, 0x8E);
   idt_set_descriptor(30, isr30, 0x8E);
   idt_set_descriptor(31, isr31, 0x8E);
-
-  // Timer vector 32
   idt_set_descriptor(32, isr32, 0x8E);
 
-  // Enable SSE/SIMD (required for float/double usage in demo app)
+  console_write_raw("H4\n", 3);
+
   uint64_t cr0, cr4;
   __asm__ volatile("mov %%cr0, %0" : "=r"(cr0));
-  cr0 &= ~(1ULL << 2); // Clear EM (Emulation) bit
-  cr0 |= (1ULL << 1);  // Set MP (Monitor Coprocessor) bit
+  cr0 &= ~(1ULL << 2);
+  cr0 |= (1ULL << 1);
   __asm__ volatile("mov %0, %%cr0" : : "r"(cr0));
 
   __asm__ volatile("mov %%cr4, %0" : "=r"(cr4));
-  cr4 |= (1ULL << 9);  // Set OSFXSR (FXSAVE/FXRSTOR support)
-  cr4 |= (1ULL << 10); // Set OSXMMEXCPT (SIMD Floating-Point Exception support)
+  cr4 |= (1ULL << 9);
+  cr4 |= (1ULL << 10);
   __asm__ volatile("mov %0, %%cr4" : : "r"(cr4));
 
-  // Initialize Performance Monitoring Counters
+  console_write_raw("H5\n", 3);
   hal_cpu_pmc_init();
 
-  // Syscall vector 0x80 (128) -> from user (DPL=3 -> 0xEE)
   idt_set_descriptor(128, isr128, 0xEE);
 
   idtr.base = (uint64_t)&idt[0];
   idtr.limit = (uint16_t)sizeof(struct idt_entry) * 256 - 1;
 
+  console_write_raw("H6\n", 3);
   __asm__ volatile("lidt %0" : : "m"(idtr));
+  console_write_raw("H7\n", 3);
 }
 
 void hal_tlb_flush(unsigned long long vaddr) {
@@ -687,6 +680,15 @@ uint32_t hal_cpu_get_id(void) {
 #define ARCH_EVENT_INST_RETIRED 0xC0
 
 static void hal_cpu_pmc_init(void) {
+  uint32_t eax, ebx, ecx, edx;
+  // CPUID leaf 0xA: Architectural Performance Monitoring
+  __asm__ volatile("cpuid" : "=a"(eax), "=b"(ebx), "=c"(ecx), "=d"(edx) : "a"(0xA));
+  uint8_t version_id = eax & 0xFF;
+
+  if (version_id == 0) {
+      return; // PMU not supported (e.g., QEMU TCG)
+  }
+
   // Program PMC1 to count Instructions Retired (Event 0xC0, Umask 0x00)
   // Bit 16: USR, Bit 17: OS, Bit 22: EN
   uint64_t evtsel =
