@@ -3,7 +3,7 @@
 #include "hal/hal.h"
 #include "kernel.h"
 #include "sched.h"
-
+#include "console/console_core.h"
 #include <stdint.h>
 #include <stddef.h>
 
@@ -85,17 +85,19 @@ void kernel_panic_ex(const panic_context_t *ctx) {
 
   // Backfill context
   local_ctx.core_id = hal_cpu_get_id();
-  kthread_t *thread = sched_current_thread();
-  if (thread) {
-      if (local_ctx.thread_id == 0) {
-          local_ctx.thread_id = thread->thread_id;
-      }
-      if (local_ctx.process_id == 0) {
-          local_ctx.process_id = thread->process_id;
-      }
-      // Note: mapping process_id to aspace_id for simplicity since we don't track aspace IDs yet
-      if (local_ctx.aspace_id == 0) {
-          local_ctx.aspace_id = thread->process_id;
+  
+  if (console_current_phase() >= CONSOLE_PHASE_RUNTIME) {
+      kthread_t *thread = sched_current_thread();
+      if (thread) {
+          if (local_ctx.thread_id == 0) {
+              local_ctx.thread_id = thread->thread_id;
+          }
+          if (local_ctx.process_id == 0) {
+              local_ctx.process_id = thread->process_id;
+          }
+          if (local_ctx.aspace_id == 0) {
+              local_ctx.aspace_id = thread->process_id;
+          }
       }
   }
 

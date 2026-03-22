@@ -240,10 +240,6 @@ if ($Arch -eq "x86_64") {
     if ($LASTEXITCODE -ne 0) { fail "ELF conversion failed" }
     $KernelBinary = $OutELF32
     ok "kernel32.elf -> $OutELF32"
-}
-elseif ($Arch -eq "arm64") {
-    $OutImage = "$BuildDir\Image"
-    inf "Converting to raw binary Image (Linux boot protocol)"
     & llvm-objcopy -O binary $OutELF $OutImage
     if ($LASTEXITCODE -ne 0) { fail "Binary conversion failed" }
     $KernelBinary = $OutImage
@@ -288,11 +284,13 @@ if ($Run) {
         if ($BootGui -eq "ON") {
             $qemuArgs = $qemuArgs -ne "-serial" -ne "mon:stdio"
             if ($DualSerial) {
-                $qemuArgs += @("-serial", "mon:stdio", "-serial", "vc", "-vga", "std")
-            } else {
+                $qemuArgs += @("-kernel", $KernelBinary, "-m", "256M", "-serial", "mon:stdio", "-no-reboot", "-d", "int,cpu_reset", "-D", "qemu_crash.log")
+            }
+            else {
                 $qemuArgs += @("-serial", "vc", "-vga", "std")
             }
-        } else {
+        }
+        else {
             $qemuArgs += @("-nographic")
         }
     }
@@ -313,11 +311,14 @@ if ($Run) {
             # Without a firmware or GPU, we drop virtio-gpu and force QEMU to display the 'vc' directly on the main window tab.
             $qemuArgs = $qemuArgs -ne "-serial" -ne "mon:stdio" # Remove the default serial arg to replace it
             if ($DualSerial) {
-                $qemuArgs += @("-serial", "mon:stdio", "-serial", "vc", "-display", "gtk")
-            } else {
+                riscv64 virt machine has no legacy VGA. Keep VirtIO GPU for later-stage
+                # graphics and also attach ramfb so the firmware can expose an early
+                # simple-framebuffer handoff the kernel boot GUI can consume.
+                # Route serial output only to the virtual console in the QEMU graphical window.
                 $qemuArgs += @("-serial", "vc", "-display", "gtk")
             }
-        } else {
+        }
+        else {
             $qemuArgs += @("-nographic")
         }
     }
@@ -328,16 +329,27 @@ if ($Run) {
             # Without a firmware or GPU, we drop virtio-gpu and force QEMU to display the 'vc' directly on the main window tab.
             $qemuArgs = $qemuArgs -ne "-serial" -ne "mon:stdio" # Remove the default serial arg to replace it
             if ($DualSerial) {
-                $qemuArgs += @("-serial", "mon:stdio", "-serial", "vc", "-vga", "none", "-display", "gtk")
-            } else {
+                arm64 virt machine has no legacy VGA; use VirtIO GPU which the virt machine supports
+                # Route serial output only to the virtual console in the QEMU graphical window.
                 $qemuArgs += @("-serial", "vc", "-vga", "none", "-display", "gtk")
             }
-        } else {
+        }
+        else {
+            # NOTE: Keep virtio-gpu, but avoid ramfb for arm64 for now.
+            # QEMU virt+ramfb can expose early simplefb data that is not yet
+            # robustly handled in the current arm64 early-boot path.
+            $qemuArgs += @("-serial", "mon:stdio", "-serial", "vc", "-vga", "none", "-device", "virtio-gpu-device")
             $qemuArgs += @("-nographic")
         }
     }
 
     if ($DebugQemu) {
+        inf "GDB Server enabled on tcp::1234. Waiting for debugger..."
+        $qemuArgs += @("-s", "-S")
+    }
+
+    & $qemuExe @qemuArgs
+}
         inf "GDB Server enabled on tcp::1234. Waiting for debugger..."
         $qemuArgs += @("-s", "-S")
     }

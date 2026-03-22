@@ -148,9 +148,9 @@ _start:
     movl $pml4, %eax
     movl %eax,  %cr3
 
-    /* Enable PAE */
+    /* Enable PAE and SSE (OSFXSR, OSXMMEXCPT) for compiler SIMD zeroing */
     movl %cr4,  %eax
-    orl  $CR4_PAE, %eax
+    orl  $(CR4_PAE | (1 << 9) | (1 << 10)), %eax
     movl %eax,  %cr4
 
     /* Set EFER.LME */

@@ -490,7 +490,7 @@ static void pmm_add_region(phys_addr_t base, size_t size, uint32_t type,
     p->ref_count = 1;
     p->numa_node = node_id;
     p->flags = 0;
-    p->order = -1;
+    p->order = 0; // Initialize order to 0 so buddy merging works immediately
     list_init(&p->list);
 
     phys_addr_t paddr = base + (j * PAGE_SIZE);
@@ -512,14 +512,8 @@ static void pmm_add_region(phys_addr_t base, size_t size, uint32_t type,
     // Align start to next page
     region_start = (region_start + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
 
-    hal_serial_write("PMM: Freeing range ");
-    hal_serial_write_hex(region_start);
-    hal_serial_write(" to ");
-    hal_serial_write_hex(region_end);
-    hal_serial_write("\n");
-
-    for (phys_addr_t p = region_start; p < region_end; p += PAGE_SIZE) {
-      mark_page_free(p);
+    for (phys_addr_t paddr = region_start; paddr < region_end; paddr += PAGE_SIZE) {
+      mark_page_free(paddr);
     }
   }
 }
@@ -603,12 +597,8 @@ int mm_pmm_init(uint32_t magic, const boot_info_t *boot) {
   }
 #endif
 
-  hal_serial_write("PMM: Regions discovered: ");
-  hal_serial_write_hex(map.region_count);
-  hal_serial_write("\n");
-
   pmm_ingest_memory_map(&map);
-
+  
   // Ensure page-table cache is available before VMM/hal_pt code consumes it.
   pt_cache_init();
 
@@ -627,8 +617,8 @@ int mm_pmm_init(uint32_t magic, const boot_info_t *boot) {
 }
 
 phys_addr_t mm_alloc_page(uint32_t preferred_numa_node) {
-  (void)preferred_numa_node;
   pmm_block_t block;
+  (void)preferred_numa_node;
   if (pmm_alloc_pages(0, PMM_ZONE_ANY, PMM_ALLOC_NONE, &block) == 0) {
     page_t *p = phys_to_page(block.phys_addr);
     if (p) p->owner_class = PMM_OWNER_CLASS_KERNEL;
