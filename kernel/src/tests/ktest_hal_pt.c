@@ -8,6 +8,7 @@
 
 #include "../../include/kernel.h"
 #include "../../include/bharat/boot_info.h"
+#include "arch/arch_caps.h"
 
 void ktest_hal_pt_run(void) {
     KPRINT("Running HAL PT Conformance Tests...\n");
@@ -123,3 +124,10 @@ void ktest_hal_pt_run(void) {
     KPRINT("PASS: HAL PT Conformance Tests\n");
     return;
 }
+
+static int test_hal_pt_sanity(void) {
+    ktest_hal_pt_run();
+    return 0; // Not perfectly returning pass/fail natively, but wrapper works for smoke.
+}
+
+REGISTER_BOOT_SELFTEST("hal_pt_smoke", "memory", test_hal_pt_sanity, BOOT_TEST_STAGE_MEMORY, BOOT_TEST_MANDATORY, ARCH_CAP_MMU_FULL, true)

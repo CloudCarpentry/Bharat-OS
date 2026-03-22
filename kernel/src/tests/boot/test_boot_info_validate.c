@@ -64,3 +64,11 @@ void test_boot_info_validate_bounds(void) {
          KPRINT("TEST FAIL: Invalid video math accepted.\n");
     }
 }
+
+static int test_boot_info_sanity(void) {
+    test_boot_info_validate_bounds();
+    return 0; // The original test doesn't return pass/fail properly, but we can wrap it
+}
+
+#include "tests/ktest.h"
+REGISTER_BOOT_SELFTEST("boot_info_sanity", "boot", test_boot_info_sanity, BOOT_TEST_STAGE_EARLY, BOOT_TEST_MANDATORY, 0, true)

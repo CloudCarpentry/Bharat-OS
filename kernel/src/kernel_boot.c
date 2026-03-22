@@ -32,6 +32,8 @@
 #include "arch/arch_ext_state.h"
 #include "arch/arch_cpu_caps.h"
 #include "arch/arch_caps.h"
+#include "boot/boot_mode.h"
+#include "boot/boot_selftest.h"
 
 #define KPRINT(s) console_write_raw(s, string_length(s))
 
@@ -95,6 +97,9 @@ void boot_common_early(const boot_info_t *boot) {
     }
 
     bharat_subsystems_init(profile);
+
+    boot_selftest_report_t report;
+    boot_selftest_run_stage(BOOT_TEST_STAGE_EARLY, &report);
 }
 
 void boot_common_security(const boot_info_t *boot) {
@@ -114,6 +119,9 @@ void boot_common_security(const boot_info_t *boot) {
     KPRINT("  [ALGO] Initializing Capability Matrix...\n");
     algo_matrix_init();
     KPRINT("  [ALGO] Matrix Ready.\n");
+
+    boot_selftest_report_t report;
+    boot_selftest_run_stage(BOOT_TEST_STAGE_SECURITY, &report);
 }
 
 void boot_common_memory(const boot_info_t *boot) {
@@ -146,6 +154,9 @@ void boot_common_memory(const boot_info_t *boot) {
       }
       KPRINT("BOOT: zswap initialized\n");
     }
+
+    boot_selftest_report_t report;
+    boot_selftest_run_stage(BOOT_TEST_STAGE_MEMORY, &report);
 }
 
 static mk_channel_t g_scheduler_ai_channel;
@@ -223,6 +234,9 @@ void boot_common_platform_services(const boot_info_t *boot) {
     KPRINT("  [CPU] Enabling interrupts...\n");
     hal_cpu_enable_interrupts();
     KPRINT("  [CPU] Interrupts enabled.\n");
+
+    boot_selftest_report_t report;
+    boot_selftest_run_stage(BOOT_TEST_STAGE_PLATFORM, &report);
 }
 
 extern void kernel_run_boot_tests(void);
@@ -233,20 +247,21 @@ extern void bharat_demo_app(void);
 
 extern int boot_video_map(const boot_info_t *boot);
 
-void boot_common_runtime(const boot_info_t *boot) {
-    // Track video mapped status tightly.
-    bool video_mapped = false;
-
-    // Map video explicitly after VMM if valid to prevent page faults
-    if (boot->video.valid) {
-        if (boot_video_map(boot) != 0) {
-            KPRINT("  [UI] Boot video explicitly mapping failed. Falling back to text.\n");
-        } else {
-            video_mapped = true;
-            KPRINT("  [UI] Boot video mapped safely.\n");
-        }
+static bool runtime_try_boot_video(const boot_info_t *boot) {
+    if (!boot->video.valid) {
+        return false;
     }
 
+    if (boot_video_map(boot) != 0) {
+        KPRINT("  [UI] Boot video explicitly mapping failed. Falling back to text.\n");
+        return false;
+    }
+
+    KPRINT("  [UI] Boot video mapped safely.\n");
+    return true;
+}
+
+static void runtime_maybe_boot_gui(bool video_mapped) {
 #if BHARAT_BOOT_GUI
     if (video_mapped) {
         KPRINT("  [UI] Initializing boot GUI...\n");
@@ -258,7 +273,86 @@ void boot_common_runtime(const boot_info_t *boot) {
     } else {
         KPRINT("  [UI] Video handoff inactive or invalid. Booting serial UI fallback only.\n");
     }
+#else
+    (void)video_mapped;
 #endif /* BHARAT_BOOT_GUI */
+}
+
+static void runtime_enter_normal(const boot_info_t *boot) {
+    bool video_mapped = runtime_try_boot_video(boot);
+    runtime_maybe_boot_gui(video_mapped);
+
+    boot_selftest_report_t report;
+    boot_selftest_run_stage(BOOT_TEST_STAGE_RUNTIME, &report);
+
+    // Controlled idle
+    while (1) {
+        hal_cpu_halt();
+    }
+}
+
+static void runtime_enter_diagnostic(const boot_info_t *boot) {
+    bool video_mapped = runtime_try_boot_video(boot);
+    runtime_maybe_boot_gui(video_mapped);
+
+    boot_selftest_report_t report;
+    boot_selftest_run_stage(BOOT_TEST_STAGE_RUNTIME, &report);
+
+    kernel_run_boot_tests();
+    kernel_tester_app();
+
+    // Controlled idle
+    while (1) {
+        hal_cpu_halt();
+    }
+}
+
+static void runtime_enter_recovery(const boot_info_t *boot) {
+    (void)boot;
+    // Minimal recovery path. No generic tests, no GUI by default.
+    KPRINT("  [BOOT] Recovery mode active.\n");
+
+    boot_selftest_report_t report;
+    boot_selftest_run_stage(BOOT_TEST_STAGE_RUNTIME, &report);
+
+    while (1) {
+        hal_cpu_halt();
+    }
+}
+
+static void runtime_enter_manufacturing(const boot_info_t *boot) {
+    bool video_mapped = runtime_try_boot_video(boot);
+    runtime_maybe_boot_gui(video_mapped);
+
+    boot_selftest_report_t report;
+    boot_selftest_run_stage(BOOT_TEST_STAGE_RUNTIME, &report);
+
+    kernel_run_boot_tests();
+
+    while (1) {
+        hal_cpu_halt();
+    }
+}
+
+static void runtime_enter_benchmark(const boot_info_t *boot) {
+    (void)boot;
+    // Optional video map here but user said defaulting to text is cleaner
+    // No generic boot test sweep by default
+
+    boot_selftest_report_t report;
+    boot_selftest_run_stage(BOOT_TEST_STAGE_RUNTIME, &report);
+
+    while (1) {
+        hal_cpu_halt();
+    }
+}
+
+static void runtime_enter_legacy_bringup(const boot_info_t *boot) {
+    bool video_mapped = runtime_try_boot_video(boot);
+    runtime_maybe_boot_gui(video_mapped);
+
+    boot_selftest_report_t report;
+    boot_selftest_run_stage(BOOT_TEST_STAGE_RUNTIME, &report);
 
     kernel_run_boot_tests();
 
@@ -271,5 +365,46 @@ void boot_common_runtime(const boot_info_t *boot) {
     while (1) {
       // Background AI
       hal_cpu_halt();
+    }
+}
+
+void boot_common_runtime(const boot_info_t *boot) {
+    bharat_boot_mode_t mode = bharat_boot_mode_select();
+
+    KPRINT("  [BOOT] Runtime mode: ");
+    KPRINT(bharat_boot_mode_name(mode));
+    KPRINT("\n");
+
+    switch (mode) {
+        case BHARAT_BOOT_MODE_NORMAL:
+            KPRINT("  [BOOT] Entering normal runtime\n");
+            runtime_enter_normal(boot);
+            break;
+        case BHARAT_BOOT_MODE_DIAGNOSTIC:
+            KPRINT("  [BOOT] Entering diagnostic runtime\n");
+            runtime_enter_diagnostic(boot);
+            break;
+        case BHARAT_BOOT_MODE_RECOVERY:
+            KPRINT("  [BOOT] Entering recovery runtime\n");
+            runtime_enter_recovery(boot);
+            break;
+        case BHARAT_BOOT_MODE_MANUFACTURING:
+            KPRINT("  [BOOT] Entering manufacturing runtime\n");
+            runtime_enter_manufacturing(boot);
+            break;
+        case BHARAT_BOOT_MODE_BENCHMARK:
+            KPRINT("  [BOOT] Entering benchmark runtime\n");
+            runtime_enter_benchmark(boot);
+            break;
+        case BHARAT_BOOT_MODE_LEGACY_BRINGUP:
+        default:
+            KPRINT("  [BOOT] Entering legacy bring-up runtime\n");
+            runtime_enter_legacy_bringup(boot);
+            break;
+    }
+
+    // Safety halt if runtime entry returns
+    while(1) {
+        hal_cpu_halt();
     }
 }

@@ -339,7 +339,7 @@ elseif(ARCH STREQUAL "riscv64")
     list(APPEND KERNEL_SRCS ../arch/riscv64/platform/qemu_virt/boot/early_console.c)
 endif()
 
-list(APPEND KERNEL_SRCS src/display/boot_video_map.c)
+list(APPEND KERNEL_SRCS src/display/boot_video_map.c src/boot/boot_mode.c src/boot/boot_selftest.c)
 
 # ── Kernel ELF ──────────────────────────────────────────────────────────────
 add_executable(kernel.elf
