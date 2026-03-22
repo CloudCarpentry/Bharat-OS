@@ -110,6 +110,11 @@ target_include_directories(test_sched PRIVATE ../../kernel/include)
 
 add_test(NAME host_test_sched COMMAND test_sched)
 
+# Phase 3: Core IPC/Profile Tests
+add_executable(test_ipc_profile test_ipc_profile.c ../../kernel/src/profile/profile.c ../../kernel/src/ipc/ipc_traffic.c)
+target_include_directories(test_ipc_profile PRIVATE ../../kernel/include)
+add_test(NAME host_test_ipc_profile COMMAND test_ipc_profile)
+
 # Phase 3: Crypto Tests
 add_executable(test_secure_mem test_secure_mem.c)
 target_include_directories(test_secure_mem PRIVATE ../../kernel/include)

@@ -1,5 +1,6 @@
 add_library(k_ipc OBJECT
     ../../src/ipc/endpoint_ipc.c
+    ../../src/ipc/ipc_traffic.c
     ../../src/ipc/async_ipc.c
     ../../src/ipc/ipc_timeout.c
     ../../src/ipc/multikernel.c

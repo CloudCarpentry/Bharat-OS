@@ -39,11 +39,23 @@ void profile_init(void);
 #define FEATURE_QOS_HOOKS 1
 #endif
 
+#include <stdbool.h>
+
 typedef enum {
     PROFILE_KERNEL_RT,
     PROFILE_KERNEL_GP,
     PROFILE_KERNEL_MIX
 } KernelExecutionProfile;
+
+/*
+ * Returns true if the given profile is valid.
+ */
+bool kernel_execution_profile_is_valid(KernelExecutionProfile profile);
+
+/*
+ * Returns a human-readable name for the given profile ("RT", "GP", "MIX", or "UNKNOWN").
+ */
+const char *kernel_execution_profile_name(KernelExecutionProfile profile);
 
 static inline KernelExecutionProfile get_kernel_execution_profile(void) {
 #if defined(BHARAT_KERNEL_PROFILE_RT)
@@ -54,6 +66,21 @@ static inline KernelExecutionProfile get_kernel_execution_profile(void) {
     return PROFILE_KERNEL_GP;
 #endif
 }
+
+/*
+ * Returns the name of the active kernel execution profile.
+ */
+static inline const char *current_kernel_execution_profile_name(void) {
+    return kernel_execution_profile_name(get_kernel_execution_profile());
+}
+
+// NOTE: This is a forward-looking policy structure.
+// Not yet enforced in IPC/URPC routing.
+typedef struct kernel_profile_comm_policy {
+    KernelExecutionProfile profile;
+    bool prefer_urpc_for_control;
+    bool allow_ipc_for_bulk;
+} kernel_profile_comm_policy_t;
 
 typedef enum {
     MEM_MODEL_MMU,
