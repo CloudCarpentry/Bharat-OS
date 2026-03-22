@@ -1,8 +1,8 @@
-#include "../../../include/hal/hal_pt.h"
-#include "../../../include/hal/hal_tlb.h"
-#include "../../../include/mm.h"
-#include "../../../include/numa.h"
-#include "../../../include/mm/physmap.h"
+#include "../../kernel/include/hal/hal_pt.h"
+#include "../../kernel/include/hal/hal_tlb.h"
+#include "../../kernel/include/mm.h"
+#include "../../kernel/include/numa.h"
+#include "../../kernel/include/mm/physmap.h"
 #include <stdbool.h>
 
 // Direct-Map Subsystem Configuration

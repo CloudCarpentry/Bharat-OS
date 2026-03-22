@@ -1,6 +1,6 @@
 #include "hal/hal_timer.h"
 #include "hal/hal_ipi.h"
-#include "../../boot/riscv/sbi.h"
+#include "../../arch/riscv/boot/sbi.h"
 
 static uint64_t g_timer_timebase_freq = 10000000ULL;
 

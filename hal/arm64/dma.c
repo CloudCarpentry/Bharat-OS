@@ -1,6 +1,6 @@
-#include "../../../include/hal/hal_dma.h"
-#include "../../../include/mm.h"
-#include "../../../include/numa.h"
+#include "../../kernel/include/hal/hal_dma.h"
+#include "../../kernel/include/mm.h"
+#include "../../kernel/include/numa.h"
 
 // External allocators/deallocators
 extern void *kmalloc(size_t size);

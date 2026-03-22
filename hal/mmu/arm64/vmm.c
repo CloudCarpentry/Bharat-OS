@@ -1,8 +1,8 @@
-#include "../../../../include/hal/vmm.h"
-#include "../../../../include/hal/mmu_ops.h"
+#include "../../../kernel/include/hal/vmm.h"
+#include "../../../kernel/include/hal/mmu_ops.h"
 #include "../../../../include/numa.h"
-#include "../../../../include/mm/physmap.h"
-#include "../../../../include/mm/prot_domain.h"
+#include "../../../kernel/include/mm/physmap.h"
+#include "../../../kernel/include/mm/prot_domain.h"
 #include "../../../../include/arch/arch_caps.h"
 
 #define ARM64_MMU_DEVICE_nGnRnE (0ULL << 2) // MAIR index 0 -> Device-nGnRnE
@@ -88,8 +88,8 @@ uint32_t convert_arm64_to_flags(uint64_t mmu_flags) {
     return flags;
 }
 
-#include "../../../../include/hal/hal_pt.h"
-#include "../../../../include/hal/hal_tlb.h"
+#include "../../../kernel/include/hal/hal_pt.h"
+#include "../../../kernel/include/hal/hal_tlb.h"
 
 phys_addr_t hal_vmm_init_root(void) {
     if (!active_hal_pt) hal_pt_init();
@@ -333,7 +333,7 @@ mmu_ops_t arm64_mmu_ops = {
     .has_user_kernel_split = true, // TTBR0 vs TTBR1
 };
 
-#include "../../../../include/slab.h"
+#include "../../../kernel/include/slab.h"
 
 static prot_domain_t* arm64_mmu_full_create(void) {
     prot_domain_t* domain = (prot_domain_t*)kmalloc(sizeof(prot_domain_t));

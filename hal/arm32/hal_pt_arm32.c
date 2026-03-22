@@ -1,4 +1,4 @@
-#include "../../../include/hal/hal_pt.h"
+#include "../../kernel/include/hal/hal_pt.h"
 #include "../../../include/hal/hal_pt_walk.h"
 #include "../../../include/hal/hal_tlb.h"
 

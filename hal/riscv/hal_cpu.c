@@ -4,7 +4,7 @@
 #include "hal/riscv_bsp.h"
 #include "secure_boot.h"
 
-#include "../../boot/riscv/sbi.h"
+#include "../../arch/riscv/boot/sbi.h"
 
 // RISC-V Specific HAL Implementation (RV64 / Shakti)
 

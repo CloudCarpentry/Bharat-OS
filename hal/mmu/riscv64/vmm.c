@@ -1,8 +1,8 @@
-#include "../../../../include/hal/vmm.h"
-#include "../../../../include/hal/mmu_ops.h"
+#include "../../../kernel/include/hal/vmm.h"
+#include "../../../kernel/include/hal/mmu_ops.h"
 #include "../../../../include/numa.h"
-#include "../../../../include/mm/physmap.h"
-#include "../../../../include/mm/prot_domain.h"
+#include "../../../kernel/include/mm/physmap.h"
+#include "../../../kernel/include/mm/prot_domain.h"
 #include "../../../../include/arch/arch_caps.h"
 
 #define ERR_NOT_SUPPORTED -1
@@ -20,8 +20,8 @@ typedef struct {
 
 
 
-#include "../../../../include/hal/hal_pt.h"
-#include "../../../../include/hal/hal_tlb.h"
+#include "../../../kernel/include/hal/hal_pt.h"
+#include "../../../kernel/include/hal/hal_tlb.h"
 
 phys_addr_t hal_vmm_init_root(void) {
     if (!active_hal_pt) hal_pt_init();
@@ -249,7 +249,7 @@ mmu_ops_t riscv64_mmu_ops = {
     .has_user_kernel_split = false, // RISC-V uses shared address space
 };
 
-#include "../../../../include/slab.h"
+#include "../../../kernel/include/slab.h"
 
 static prot_domain_t* riscv64_mmu_full_create(void) {
     prot_domain_t* domain = (prot_domain_t*)kmalloc(sizeof(prot_domain_t));
