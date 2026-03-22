@@ -435,8 +435,33 @@ const hal_translate_ops_t* hal_translate_ops(void) {
     return &arm64_translate_ops;
 }
 
+static const hal_pt_caps_t arm64_pt_caps = {
+    .backend_kind = TRANSLATE_BACKEND_MMU,
+    .exec_class = TRANSLATE_EXEC_MMU_FULL,
+    .supports_sparse_vm = true,
+    .supports_demand_fault = true,
+    .supports_protect = true,
+    .supports_query = true,
+    .supports_range_map = true,
+    .supports_range_unmap = true,
+    .supports_range_protect = true,
+    .supports_asid = true,
+    .supports_pcid = false,
+    .supports_global = true,
+    .supports_nx_or_xn = true,
+    .supports_ad_bits = true,
+    .supports_large_2m = true,
+    .supports_large_1g = false,
+    .supports_device_memtype = true,
+    .supports_writecombine = false,
+    .requires_bbm = true,
+    .supports_cow_softbit = true,
+    .supports_linear_physmap = true,
+};
+
 hal_pt_ops_t arm64_hal_pt_ops = {
     .backend_type          = TRANSLATE_BACKEND_MMU,
+    .caps                  = &arm64_pt_caps,
     .create_address_space  = arm64_pt_create_address_space,
     .destroy_address_space = arm64_pt_destroy_address_space,
     .map_page              = arm64_pt_map_page,
@@ -508,6 +533,16 @@ static void arm64_tlb_flush_all_broadcast(uint16_t asid) {
 }
 
 hal_tlb_ops_t arm64_hal_tlb_ops = {
+    .caps                 = &(const hal_tlb_caps_t){
+        .supports_page_flush = true,
+        .supports_range_flush = true,
+        .supports_aspace_flush = true,
+        .supports_all_flush = true,
+        .supports_remote_targeted_flush = false,
+        .supports_broadcast_flush = true,
+        .supports_asid_selective_flush = true,
+        .supports_lazy_generation_model = false,
+    },
     .flush_page_local      = arm64_tlb_flush_page_local,
     .flush_all_local       = arm64_tlb_flush_all_local,
     .flush_asid_local      = arm64_tlb_flush_asid_local,

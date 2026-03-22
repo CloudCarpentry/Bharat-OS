@@ -116,9 +116,49 @@ static int mock_query_mapping(phys_addr_t root, virt_addr_t va, phys_addr_t *pa,
     return 0;
 }
 
+static int mock_map_page(phys_addr_t root, virt_addr_t va, phys_addr_t pa, uint32_t flags) {
+    return mock_map_range(root, va, pa, PAGE_SIZE, flags);
+}
+
+static int mock_unmap_page(phys_addr_t root, virt_addr_t va, phys_addr_t *unmapped_pa) {
+    if (unmapped_pa) {
+        map_ent_t* e = find_map(root, va);
+        *unmapped_pa = e ? e->pa : 0;
+    }
+    return mock_unmap_range(root, va, PAGE_SIZE);
+}
+
+static int mock_protect_page(phys_addr_t root, virt_addr_t va, uint32_t new_flags) {
+    return mock_protect_range(root, va, PAGE_SIZE, new_flags);
+}
+
+static int mock_query_page(phys_addr_t root, virt_addr_t va, phys_addr_t *pa, uint32_t *flags) {
+    return mock_query_mapping(root, va, pa, NULL, flags);
+}
+
+static const hal_pt_caps_t g_caps = {
+    .backend_kind = TRANSLATE_BACKEND_MMU,
+    .exec_class = TRANSLATE_EXEC_MMU_FULL,
+    .supports_query = true,
+    .supports_range_map = true,
+    .supports_range_unmap = true,
+    .supports_range_protect = true,
+    .supports_linear_physmap = true,
+};
+
+static const hal_tlb_caps_t g_tlb_caps = {
+    .supports_page_flush = true,
+    .supports_all_flush = true,
+};
+
 static hal_pt_ops_t g_mock = {
+    .caps = &g_caps,
     .create_address_space = mock_create_as,
     .destroy_address_space = mock_destroy_as,
+    .map_page = mock_map_page,
+    .unmap_page = mock_unmap_page,
+    .protect_page = mock_protect_page,
+    .query_page = mock_query_page,
     .map_range = mock_map_range,
     .unmap_range = mock_unmap_range,
     .protect_range = mock_protect_range,
@@ -130,6 +170,9 @@ hal_tlb_ops_t x86_hal_tlb_ops;
 
 int main(void) {
     x86_hal_pt_ops = g_mock;
+    x86_hal_tlb_ops.caps = &g_tlb_caps;
+    assert(hal_pt_caps()->backend_kind == TRANSLATE_BACKEND_MMU);
+    assert(hal_tlb_caps()->supports_all_flush);
 
     for (int i = 0; i < 100; i++) {
         phys_addr_t as = hal_pt_create_address_space(0);
@@ -153,6 +196,20 @@ int main(void) {
         assert(hal_pt_unmap_range(as, 0x400000, 4 * PAGE_SIZE) == 0);
         hal_pt_destroy_address_space(as);
     }
+
+    // Verify generic page-by-page fallbacks when range ops are unavailable.
+    x86_hal_pt_ops.map_range = NULL;
+    x86_hal_pt_ops.unmap_range = NULL;
+    x86_hal_pt_ops.protect_range = NULL;
+    x86_hal_pt_ops.query_mapping = NULL;
+
+    phys_addr_t as = hal_pt_create_address_space(0);
+    assert(as != 0);
+    assert(hal_pt_map_range(as, 0x900000, 0xA00000, 2 * PAGE_SIZE, HAL_PT_FLAG_READ | HAL_PT_FLAG_WRITE) == 0);
+    assert(hal_pt_protect_range(as, 0x900000, PAGE_SIZE, HAL_PT_FLAG_READ) == 0);
+    assert(hal_pt_query_mapping(as, 0x900000, NULL, NULL, NULL) == 0);
+    assert(hal_pt_unmap_range(as, 0x900000, 2 * PAGE_SIZE) == 0);
+    hal_pt_destroy_address_space(as);
 
     assert(g_alloc_pt_pages == g_free_pt_pages);
     printf("pt_common_tests: PASS\n");

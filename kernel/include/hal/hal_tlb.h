@@ -2,6 +2,7 @@
 #define BHARAT_HAL_TLB_H
 
 #include <stdint.h>
+#include <stdbool.h>
 #include "../../include/mm.h"
 
 // TLB Invalidation Scopes
@@ -12,8 +13,20 @@ typedef enum {
     TLB_SCOPE_ALL    = 4
 } tlb_scope_t;
 
+typedef struct hal_tlb_caps {
+    bool supports_page_flush;
+    bool supports_range_flush;
+    bool supports_aspace_flush;
+    bool supports_all_flush;
+    bool supports_remote_targeted_flush;
+    bool supports_broadcast_flush;
+    bool supports_asid_selective_flush;
+    bool supports_lazy_generation_model;
+} hal_tlb_caps_t;
+
 // Architecture-neutral TLB Invalidation API
 typedef struct hal_tlb_ops {
+    const hal_tlb_caps_t *caps;
     // Local Core TLB Operations
     void (*flush_page_local)(virt_addr_t vaddr);
     void (*flush_range_local)(virt_addr_t start, size_t len);
@@ -40,5 +53,6 @@ void hal_tlb_invalidate_aspace(address_space_t *aspace);
 void hal_tlb_invalidate_all(void);
 
 void hal_tlb_init(void);
+const hal_tlb_caps_t *hal_tlb_caps(void);
 
 #endif // BHARAT_HAL_TLB_H
