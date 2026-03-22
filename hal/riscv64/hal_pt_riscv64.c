@@ -359,11 +359,11 @@ static const hal_pt_caps_t riscv64_pt_caps = {
     .supports_asid = true,
     .supports_pcid = false,
     .supports_global = true,
-    .supports_nx_or_xn = false,
+    .supports_nx_or_xn = true,
     .supports_ad_bits = true,
-    .supports_large_2m = true,
+    .supports_large_2m = false,
     .supports_large_1g = false,
-    .supports_device_memtype = true,
+    .supports_device_memtype = false,
     .supports_writecombine = false,
     .requires_bbm = false,
     .supports_cow_softbit = true,
@@ -383,6 +383,17 @@ hal_pt_ops_t riscv64_hal_pt_ops = {
     .unmap_range           = riscv64_pt_unmap_range,
     .protect_range         = riscv64_pt_protect_range,
     .query_mapping         = riscv64_pt_query_mapping,
+};
+
+static const hal_tlb_caps_t riscv64_tlb_caps = {
+    .supports_page_flush = true,
+    .supports_range_flush = false,
+    .supports_aspace_flush = true,
+    .supports_all_flush = true,
+    .supports_remote_targeted_flush = false,
+    .supports_broadcast_flush = false,
+    .supports_asid_selective_flush = true,
+    .supports_lazy_generation_model = false,
 };
 
 static void riscv64_tlb_flush_page_local(virt_addr_t vaddr) {
@@ -426,16 +437,7 @@ static void riscv64_tlb_flush_all_broadcast(uint16_t asid) {
 }
 
 hal_tlb_ops_t riscv64_hal_tlb_ops = {
-    .caps                 = &(const hal_tlb_caps_t){
-        .supports_page_flush = true,
-        .supports_range_flush = false,
-        .supports_aspace_flush = true,
-        .supports_all_flush = true,
-        .supports_remote_targeted_flush = false,
-        .supports_broadcast_flush = false,
-        .supports_asid_selective_flush = true,
-        .supports_lazy_generation_model = false,
-    },
+    .caps                 = &riscv64_tlb_caps,
     .flush_page_local      = riscv64_tlb_flush_page_local,
     .flush_all_local       = riscv64_tlb_flush_all_local,
     .flush_asid_local      = riscv64_tlb_flush_asid_local,

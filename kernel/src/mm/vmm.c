@@ -52,6 +52,8 @@ phys_addr_t vmm_get_kernel_root(void) {
 
 int mm_vmm_map_page(address_space_t* as, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
     if (!as || !as->prot_domain) return -1;
+    const hal_pt_caps_t *pt_caps = hal_pt_caps();
+    if (!pt_caps || !pt_caps->supports_sparse_vm) return -1;
 
     // Look up authoritative region
     vm_region_t *region = aspace_lookup_region(as, vaddr);
@@ -75,6 +77,8 @@ int mm_vmm_map_page(address_space_t* as, virt_addr_t vaddr, phys_addr_t paddr, u
 
 int mm_vmm_unmap_page(address_space_t* as, virt_addr_t vaddr) {
     if (!as || !as->prot_domain) return -1;
+    const hal_pt_caps_t *pt_caps = hal_pt_caps();
+    if (!pt_caps || !pt_caps->supports_sparse_vm) return -1;
 
     int ret = prot_domain_unmap_region(as->prot_domain, vaddr, PAGE_SIZE);
     if (ret == 0) {

@@ -7,13 +7,6 @@
 hal_pt_ops_t *active_hal_pt = NULL;
 hal_tlb_ops_t *active_hal_tlb = NULL;
 
-static const hal_pt_caps_t g_unknown_pt_caps = {
-    .backend_kind = TRANSLATE_BACKEND_NONE,
-    .exec_class = TRANSLATE_EXEC_MPU_ONLY,
-};
-
-static const hal_tlb_caps_t g_unknown_tlb_caps = {0};
-
 static inline bool is_page_aligned_u64(uint64_t val) {
     return (val & (PAGE_SIZE - 1U)) == 0U;
 }
@@ -66,7 +59,9 @@ void hal_pt_init(void) {
 }
 
 void hal_tlb_init(void) {
-    // Already set in hal_pt_init for simplicity
+    if (!active_hal_tlb) {
+        hal_pt_init();
+    }
 }
 
 phys_addr_t hal_pt_create_address_space(phys_addr_t kernel_root_table) {
@@ -196,7 +191,7 @@ const hal_pt_caps_t *hal_pt_caps(void) {
         hal_pt_init();
     }
     if (!active_hal_pt || !active_hal_pt->caps) {
-        return &g_unknown_pt_caps;
+        return NULL;
     }
     return active_hal_pt->caps;
 }
@@ -206,7 +201,7 @@ const hal_tlb_caps_t *hal_tlb_caps(void) {
         hal_pt_init();
     }
     if (!active_hal_tlb || !active_hal_tlb->caps) {
-        return &g_unknown_tlb_caps;
+        return NULL;
     }
     return active_hal_tlb->caps;
 }
