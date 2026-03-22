@@ -78,6 +78,16 @@ void boot_common_early(const boot_info_t *boot) {
     KPRINT("  [PROFILE] Applying hardware profile hooks...\n");
     profile_init();
 
+    KernelExecutionProfile exec_profile = get_kernel_execution_profile();
+    if (exec_profile == PROFILE_KERNEL_RT) {
+        KPRINT("  [PROFILE] Kernel Execution Profile: RT (Real-Time)\n");
+    } else if (exec_profile == PROFILE_KERNEL_MIX) {
+        KPRINT("  [PROFILE] Kernel Execution Profile: MIX (Mixed RT/GP)\n");
+    } else {
+        KPRINT("  [PROFILE] Kernel Execution Profile: GP (General Purpose)\n");
+    }
+
+
     // Print selected capabilities
     arch_caps_t arch_caps = arch_get_caps();
     if (arch_caps_test(arch_caps, ARCH_CAP_MMU_FULL)) {

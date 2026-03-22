@@ -26,6 +26,11 @@
 #cmakedefine BHARAT_PROFILE_AUTOMOTIVE_ECU 1
 #cmakedefine BHARAT_PROFILE_AUTOMOTIVE_INFOTAINMENT 1
 
+/* Kernel Execution Profile */
+#cmakedefine BHARAT_KERNEL_PROFILE_RT 1
+#cmakedefine BHARAT_KERNEL_PROFILE_GP 1
+#cmakedefine BHARAT_KERNEL_PROFILE_MIX 1
+
 /* IRQ Dispatch Mode */
 #cmakedefine BHARAT_IRQ_DISPATCH_GENERIC 1
 #cmakedefine BHARAT_IRQ_DISPATCH_MIXED 1
