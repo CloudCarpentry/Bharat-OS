@@ -104,7 +104,7 @@ def do_clean(build_cfg):
     if os.path.exists(build_dir):
         run_command(['cmake', '--build', f'--preset={preset}', '--target', 'clean'])
 
-def do_run(build_cfg, dual_serial):
+def do_run(build_cfg, dual_serial, run_tests=False):
     arch = build_cfg.get('arch')
     board = build_cfg.get('board', '')
     gui = build_cfg.get('gui', False)
@@ -116,6 +116,14 @@ def do_run(build_cfg, dual_serial):
         sys.exit(1)
 
     qemu_opts = []
+
+    # If run_tests is true, force headless mode for CI to capture output
+    if run_tests:
+        gui = False
+        # In a real environment, we'd pass kernel arguments here like `-append "test=all"`
+        if arch in ['x86_64', 'arm64', 'riscv64']:
+            qemu_opts.extend(['-append', 'test=all log_level=debug'])
+
     if gui:
         if dual_serial:
             qemu_opts.extend(['-serial', 'stdio', '-serial', 'vc'])
@@ -154,7 +162,8 @@ def main():
     parser.add_argument('--build', action='store_true', help='Build the project')
     parser.add_argument('--run', action='store_true', help='Run the project in emulator')
     parser.add_argument('--clean', action='store_true', help='Clean the build directory')
-    parser.add_argument('--test', action='store_true', help='Run tests')
+    parser.add_argument('--test', action='store_true', help='Run tests (host)')
+    parser.add_argument('--run-tests', action='store_true', help='Run user-space and kernel tests in emulator (headless)')
     parser.add_argument('--dual-serial', action='store_true', help='Use dual serial ports in emulator')
 
     args = parser.parse_args()
@@ -177,7 +186,7 @@ def main():
     build_cfg = manifest['builds'][args.build_name]
 
     # Default action if no specific action provided
-    if not (args.configure or args.build or args.run or args.clean or args.test):
+    if not (args.configure or args.build or args.run or args.clean or args.test or args.run_tests):
         args.configure = True
         args.build = True
         if build_cfg.get('run', False):
@@ -195,8 +204,8 @@ def main():
     if args.test:
         do_test(build_cfg)
 
-    if args.run:
-        do_run(build_cfg, args.dual_serial)
+    if args.run or args.run_tests:
+        do_run(build_cfg, args.dual_serial, args.run_tests)
 
 if __name__ == '__main__':
     main()
