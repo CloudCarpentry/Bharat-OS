@@ -261,7 +261,6 @@ int pmm_alloc_contiguous(uint32_t page_count, pmm_zone_t zone, uint32_t alloc_fl
     phys_addr_t free_phys = base_phys + i * PAGE_SIZE;
     page_t *p = phys_to_page(free_phys);
     if (p) {
-        p->state = PMM_PAGE_STATE_FREE;
         p->ref_count = 1;
         p->order = 0;
     }
@@ -288,7 +287,6 @@ int pmm_free_pages(const pmm_block_t *block) {
       page_t *page = phys_to_page(p);
       if (page) {
           if (page->pin_count > 0) return -1;
-          page->state = PMM_PAGE_STATE_FREE;
           page->order = 0; // Just in case
           page->ref_count = 1; // prepare for mm_free_page
       }
@@ -299,7 +297,6 @@ int pmm_free_pages(const pmm_block_t *block) {
       page_t *page = phys_to_page(phys);
       if (page) {
           if (page->pin_count > 0) return -1;
-          page->state = PMM_PAGE_STATE_FREE;
           page->order = block->order;
           page->ref_count = 1; // prepare for mm_free_page
       }
@@ -490,7 +487,6 @@ static void mark_page_free(phys_addr_t phys) {
   }
   p->ref_count = 1;
   p->order = 0; // Ensure initial order is 0 when freed into the buddy system!
-  p->state = PMM_PAGE_STATE_FREE; // Explicitly transition to FREE
   mm_free_page(phys);
 }
 
