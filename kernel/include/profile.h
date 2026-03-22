@@ -40,6 +40,22 @@ void profile_init(void);
 #endif
 
 typedef enum {
+    PROFILE_KERNEL_RT,
+    PROFILE_KERNEL_GP,
+    PROFILE_KERNEL_MIX
+} KernelExecutionProfile;
+
+static inline KernelExecutionProfile get_kernel_execution_profile(void) {
+#if defined(BHARAT_KERNEL_PROFILE_RT)
+    return PROFILE_KERNEL_RT;
+#elif defined(BHARAT_KERNEL_PROFILE_MIX)
+    return PROFILE_KERNEL_MIX;
+#else
+    return PROFILE_KERNEL_GP;
+#endif
+}
+
+typedef enum {
     MEM_MODEL_MMU,
     MEM_MODEL_MPU,
     MEM_MODEL_FLAT
