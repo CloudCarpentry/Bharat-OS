@@ -297,19 +297,19 @@ if ($Run) {
     elseif ($Arch -eq "riscv64") {
         if ($Payload) {
             if (Test-Path "$BuildDir\fw_payload.elf") {
-                $qemuArgs += @("-machine", $Machine, "-bios", "none", "-kernel", "$BuildDir\fw_payload.elf", "-m", "256M", "-serial", "mon:stdio", "-no-reboot")
+                $qemuArgs += @("-machine", $Machine, "-bios", "none", "-kernel", "$BuildDir\fw_payload.elf", "-m", "256M", "-serial", "stdio", "-no-reboot")
             }
             else {
-                $qemuArgs += @("-machine", $Machine, "-bios", "$BuildDir\payload.bin", "-m", "256M", "-serial", "mon:stdio", "-no-reboot")
+                $qemuArgs += @("-machine", $Machine, "-bios", "$BuildDir\payload.bin", "-m", "256M", "-serial", "stdio", "-no-reboot")
             }
         }
         else {
-            $qemuArgs += @("-machine", $Machine, "-kernel", $OutELF, "-m", "256M", "-serial", "mon:stdio", "-no-reboot")
+            $qemuArgs += @("-machine", $Machine, "-kernel", $OutELF, "-m", "256M", "-serial", "stdio", "-no-reboot")
         }
         if ($BootGui -eq "ON") {
             # Route serial output to the virtual console in the QEMU graphical window.
             # Without a firmware or GPU, we drop virtio-gpu and force QEMU to display the 'vc' directly on the main window tab.
-            $qemuArgs = $qemuArgs -ne "-serial" -ne "mon:stdio" # Remove the default serial arg to replace it
+            $qemuArgs = $qemuArgs -ne "-serial" -ne "stdio" # Remove the default serial arg to replace it
             if ($DualSerial) {
                 # riscv64 virt machine has no legacy VGA. Keep VirtIO GPU for later-stage
                 # graphics and also attach ramfb so the firmware can expose an early

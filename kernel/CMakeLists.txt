@@ -369,7 +369,13 @@ endif()
 target_sources(kernel.elf PRIVATE
     $<TARGET_OBJECTS:bharat_mm_vmm>
 )
-target_compile_options(kernel.elf PRIVATE -mcmodel=large -fno-pie -fno-PIE)
+if(ARCH STREQUAL "riscv64")
+    target_compile_options(kernel.elf PRIVATE -mcmodel=medany -fno-pie -fno-PIE)
+    # Add target_compile_options for assembly specific to architecture here if needed globally.
+    set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -march=rv64gc")
+else()
+    target_compile_options(kernel.elf PRIVATE -mcmodel=large -fno-pie -fno-PIE)
+endif()
 target_link_options(kernel.elf PRIVATE -no-pie)
 target_link_libraries(kernel.elf subsys_manager bharat_libmsg bharat_kernel_buildopts bharatos_drivers bharat_kernel_includes board_fabric)
 if(BHARAT_ENABLE_FBUI)

@@ -41,7 +41,7 @@ static inline sbi_ret_t sbi_call(long ext, long fid, long arg0, long arg1,
 
   asm volatile("ecall"
                : "+r"(a0), "+r"(a1)
-               : "r"(a0), "r"(a1), "r"(a2), "r"(a3), "r"(a4), "r"(a5), "r"(a6), "r"(a7)
+               : "r"(a2), "r"(a3), "r"(a4), "r"(a5), "r"(a6), "r"(a7)
                : "memory");
 
   sbi_ret_t ret = {a0, a1};

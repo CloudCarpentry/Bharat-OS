@@ -137,7 +137,10 @@ def do_run(build_cfg, dual_serial, run_tests=False):
         elif arch == 'riscv64':
             qemu_opts.extend(['-device', 'virtio-gpu-device', '-device', 'ramfb'])
     else:
-        qemu_opts.extend(['-serial', 'stdio', '-display', 'none'])
+        if arch == 'riscv64':
+            qemu_opts.extend(['-nographic'])
+        else:
+            qemu_opts.extend(['-serial', 'stdio', '-display', 'none'])
 
     if arch == 'x86_64':
         cmd = ['qemu-system-x86_64', '-kernel', kernel_path, '-m', '512'] + qemu_opts

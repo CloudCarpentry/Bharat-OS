@@ -6,8 +6,16 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#include "boot/riscv/sbi.h"
+
 // Early boot entry for RISC-V 64
 void kernel_main(uint64_t hart_id, uintptr_t fdt_ptr) {
+    const char *msg = "RV64: entry reached\n";
+    for (const char *p = msg; *p; p++) {
+        if (*p == '\n') sbi_console_putchar('\r');
+        sbi_console_putchar(*p);
+    }
+
     boot_info_t boot = {0};
     boot.boot_cpu_id = hart_id;
 

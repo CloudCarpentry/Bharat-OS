@@ -31,6 +31,20 @@ static void ns16550_write_reg(uart_device_t *dev, uint32_t offset, uint8_t val) 
     mmio_write8(dev->base + (offset << dev->reg_shift), val);
 }
 
+#if defined(__riscv) && __riscv_xlen == 64
+static inline void sbi_console_putchar_local_early(int ch) {
+    register long a0 asm("a0") = ch;
+    register long a1 asm("a1") = 0;
+    register long a2 asm("a2") = 0;
+    register long a3 asm("a3") = 0;
+    register long a4 asm("a4") = 0;
+    register long a5 asm("a5") = 0;
+    register long a6 asm("a6") = 0;
+    register long a7 asm("a7") = 1; // SBI_EXT_CONSOLE_PUTCHAR
+    asm volatile("ecall" : "+r"(a0), "+r"(a1) : "r"(a2), "r"(a3), "r"(a4), "r"(a5), "r"(a6), "r"(a7) : "memory");
+}
+#endif
+
 static bool ns16550_init(uart_device_t *dev) {
     if (!dev || !dev->base) return false;
 
@@ -45,6 +59,14 @@ static bool ns16550_init(uart_device_t *dev) {
 
     // Set DTR, RTS
     ns16550_write_reg(dev, NS16550_MCR, 0x03);
+
+#if defined(__riscv) && __riscv_xlen == 64
+    const char *msg = "RV64: uart init reached\n";
+    for (const char *p = msg; *p; p++) {
+        if (*p == '\n') sbi_console_putchar_local_early('\r');
+        sbi_console_putchar_local_early(*p);
+    }
+#endif
 
     return true;
 }
