@@ -2,6 +2,7 @@
 #include "../../include/mm/prot_domain.h"
 #include "../../include/hal/hal_pt.h"
 #include "../../include/arch/arch_caps.h"
+#include "hal/hal_mm.h"
 #include "console/console_core.h"
 #include <stddef.h>
 
@@ -22,9 +23,10 @@ extern prot_domain_ops_t prot_none_ops;
 extern prot_domain_ops_t mmu_lite_ops_common;
 
 void prot_domain_init(void) {
-    arch_caps_t caps = arch_get_caps();
+    hal_mm_backend_caps_t backend_caps;
+    hal_mm_backend_caps(&backend_caps);
 
-    if (arch_caps_test(caps, ARCH_CAP_MMU_FULL)) {
+    if (backend_caps.kind == HAL_MM_BACKEND_MMU_FULL) {
         active_mode = PROT_MODE_MMU_FULL;
 #if defined(__x86_64__)
         active_backend = &mmu_full_ops_x86_64;
@@ -35,10 +37,10 @@ void prot_domain_init(void) {
 #else
         active_backend = &prot_none_ops;
 #endif
-    } else if (arch_caps_test(caps, ARCH_CAP_MMU_LITE)) {
+    } else if (backend_caps.kind == HAL_MM_BACKEND_MMU_LITE) {
         active_mode = PROT_MODE_MMU_LITE;
         active_backend = &mmu_lite_ops_common;
-    } else if (arch_caps_test(caps, ARCH_CAP_MPU_ONLY)) {
+    } else if (backend_caps.kind == HAL_MM_BACKEND_MPU_ONLY) {
         active_mode = PROT_MODE_MPU_ONLY;
 #if defined(__arm__)
         active_backend = &mpu_only_ops_arm32;
