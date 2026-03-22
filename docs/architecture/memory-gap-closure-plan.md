@@ -11,6 +11,7 @@ This document converts the current memory-management gap assessment into an impl
 - ✅ HAL page-table and TLB abstraction entry points are wired (`kernel/src/hal/hal_pt.c`, `kernel/src/mm/tlb/tlb_coordinator.c`) with basic range/map/query wrappers and shootdown coordinator plumbing.
 - ✅ HAL PT/TLB capability contracts now exist (`hal_pt_caps_t`, `hal_tlb_caps_t`) with backend-populated declarations and runtime getters (`hal_pt_caps()`, `hal_tlb_caps()`).
 - ✅ Generic `hal_pt_*` range wrappers now include page-by-page fallback paths when backend range ops are unavailable.
+- ✅ Architecture backends now advertise conservative PT/TLB capabilities via file-static cap objects (x86_64/arm64/riscv64/arm32/riscv32/mpu), and generic policy layers consume those caps in obvious decision points.
 - ⚠️ Several areas are still prototype-grade (limited backend implementations, incomplete pager integration, partial object kinds, and incomplete conformance coverage across all architectures).
 
 Bharat-OS has a credible baseline for physical memory management (PMM/buddy allocator) and software-visible mapping bookkeeping (VMM registry). However, a production-grade, architecture-complete virtual memory stack is still in progress:

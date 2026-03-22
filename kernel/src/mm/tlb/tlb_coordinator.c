@@ -210,6 +210,7 @@ int monitor_handle_tlb_invalidate(
     bharat_monitor_v1_TlbInvalidateResp_t* resp)
 {
     uint32_t current_core = hal_cpu_get_id();
+    const hal_tlb_caps_t *caps = hal_tlb_caps();
 
     // Ignore if not running this aspace
     if (g_cpu_locals[current_core].current_as_id != req->aspace_id) {
@@ -223,14 +224,16 @@ int monitor_handle_tlb_invalidate(
 
     switch (req->type) {
         case 0: // page
-            if (active_hal_tlb && active_hal_tlb->flush_page_local) {
+            if (active_hal_tlb && caps && caps->supports_page_flush && active_hal_tlb->flush_page_local) {
                 active_hal_tlb->flush_page_local(req->va_start);
             }
             break;
 
         case 1: // range
-            if (active_hal_tlb && active_hal_tlb->flush_range_local) {
+            if (active_hal_tlb && caps && caps->supports_range_flush && active_hal_tlb->flush_range_local) {
                 active_hal_tlb->flush_range_local(req->va_start, req->length);
+            } else if (active_hal_tlb && active_hal_tlb->flush_all_local) {
+                active_hal_tlb->flush_all_local();
             }
             break;
 
@@ -268,12 +271,16 @@ static void tlb_shootdown_sync(address_space_t *aspace, tlb_scope_t scope, virt_
 
     // Process local flush
     if (g_cpu_locals[current_core].current_as_id == aspace->object_id) {
+        const hal_tlb_caps_t *caps = hal_tlb_caps();
+        const bool can_page = caps && caps->supports_page_flush;
+        const bool can_range = caps && caps->supports_range_flush;
+        const bool can_aspace = caps && caps->supports_aspace_flush;
 
-        if (scope == TLB_SCOPE_PAGE && active_hal_tlb->flush_page_local) {
+        if (scope == TLB_SCOPE_PAGE && can_page && active_hal_tlb->flush_page_local) {
             active_hal_tlb->flush_page_local(va);
-        } else if (scope == TLB_SCOPE_RANGE && active_hal_tlb->flush_range_local) {
+        } else if (scope == TLB_SCOPE_RANGE && can_range && active_hal_tlb->flush_range_local) {
             active_hal_tlb->flush_range_local(va, len);
-        } else if ((scope == TLB_SCOPE_ASPACE || scope == TLB_SCOPE_ALL) && active_hal_tlb->flush_asid_local) {
+        } else if ((scope == TLB_SCOPE_ASPACE || scope == TLB_SCOPE_ALL) && can_aspace && active_hal_tlb->flush_asid_local) {
             active_hal_tlb->flush_asid_local(aspace->object_id & 0xFFFF);
         } else if (active_hal_tlb->flush_all_local) {
             active_hal_tlb->flush_all_local();

@@ -62,31 +62,33 @@ static int mpu_map_range(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t pad
     return 0; // Return OK because in MPU it's 1:1, but record for protection boundary later
 }
 
+static const hal_pt_caps_t mpu_pt_caps = {
+    .backend_kind = TRANSLATE_BACKEND_MPU,
+    .exec_class = TRANSLATE_EXEC_MPU_ONLY,
+    .supports_sparse_vm = false,
+    .supports_demand_fault = false,
+    .supports_protect = false,
+    .supports_query = false,
+    .supports_range_map = true,
+    .supports_range_unmap = false,
+    .supports_range_protect = false,
+    .supports_asid = false,
+    .supports_pcid = false,
+    .supports_global = false,
+    .supports_nx_or_xn = true,
+    .supports_ad_bits = false,
+    .supports_large_2m = false,
+    .supports_large_1g = false,
+    .supports_device_memtype = true,
+    .supports_writecombine = false,
+    .requires_bbm = false,
+    .supports_cow_softbit = false,
+    .supports_linear_physmap = true,
+};
+
 hal_pt_ops_t mpu_hal_pt_ops = {
     .backend_type          = TRANSLATE_BACKEND_MPU,
-    .caps                  = &(const hal_pt_caps_t){
-        .backend_kind = TRANSLATE_BACKEND_MPU,
-        .exec_class = TRANSLATE_EXEC_MPU_ONLY,
-        .supports_sparse_vm = false,
-        .supports_demand_fault = false,
-        .supports_protect = false,
-        .supports_query = false,
-        .supports_range_map = true,
-        .supports_range_unmap = false,
-        .supports_range_protect = false,
-        .supports_asid = false,
-        .supports_pcid = false,
-        .supports_global = false,
-        .supports_nx_or_xn = true,
-        .supports_ad_bits = false,
-        .supports_large_2m = false,
-        .supports_large_1g = false,
-        .supports_device_memtype = true,
-        .supports_writecombine = false,
-        .requires_bbm = false,
-        .supports_cow_softbit = false,
-        .supports_linear_physmap = true,
-    },
+    .caps                  = &mpu_pt_caps,
     .create_address_space  = mpu_create_address_space,
     .destroy_address_space = mpu_destroy_address_space,
     .map_page              = mpu_map_page,
@@ -103,17 +105,19 @@ static void mpu_tlb_flush_all_local(void) {
     // Re-program MPU registers if necessary based on active tracking
 }
 
+static const hal_tlb_caps_t mpu_tlb_caps = {
+    .supports_page_flush = false,
+    .supports_range_flush = false,
+    .supports_aspace_flush = false,
+    .supports_all_flush = true,
+    .supports_remote_targeted_flush = false,
+    .supports_broadcast_flush = false,
+    .supports_asid_selective_flush = false,
+    .supports_lazy_generation_model = true,
+};
+
 hal_tlb_ops_t mpu_hal_tlb_ops = {
-    .caps                 = &(const hal_tlb_caps_t){
-        .supports_page_flush = false,
-        .supports_range_flush = false,
-        .supports_aspace_flush = false,
-        .supports_all_flush = true,
-        .supports_remote_targeted_flush = false,
-        .supports_broadcast_flush = false,
-        .supports_asid_selective_flush = false,
-        .supports_lazy_generation_model = true,
-    },
+    .caps                 = &mpu_tlb_caps,
     .flush_page_local      = NULL,
     .flush_range_local     = NULL,
     .flush_all_local       = mpu_tlb_flush_all_local,
