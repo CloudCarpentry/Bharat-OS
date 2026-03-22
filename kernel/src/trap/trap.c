@@ -1,10 +1,5 @@
 #include "trap.h"
-#ifdef BHARAT_PERSONALITY_LINUX
-#include "../../personalities/linux/linux_compat.h"
-extern long linux_syscall_handler(long sysno, long arg1, long arg2, long arg3,
-                                  long arg4, long arg5, long arg6)
-    __attribute__((weak));
-#endif
+#include "personality_ops.h"
 #include "capability.h"
 #include "device.h"
 #include "hal/hal.h"
@@ -17,6 +12,7 @@ extern long linux_syscall_handler(long sysno, long arg1, long arg2, long arg3,
 #include "fault_diag.h"
 #include "arch/arch_ext_state.h"
 #include "arch/arch_caps.h"
+#include "trap_api.h"
 
 #include <stddef.h>
 #include <stdbool.h>
@@ -29,13 +25,6 @@ extern bool core_is_rt(void);
 #define TRAP_ERR_PERM (-1L)
 #define TRAP_ERR_NOSYS (-38L)
 
-#if defined(__x86_64__)
-#define TRAP_CAUSE_SYSCALL 0x80U
-#elif defined(__riscv)
-#define TRAP_CAUSE_SYSCALL 8U
-#else
-#define TRAP_CAUSE_SYSCALL 0xFFFFU
-#endif
 
 static kprocess_t g_syscall_proc;
 
@@ -115,11 +104,14 @@ int cap_invoke(uint64_t cap_id, uint64_t opcode, uint64_t arg0, uint64_t arg1) {
   return -1;
 }
 
+extern const personality_ops_t default_personality_ops;
+
 int trap_init(void) {
   g_syscall_proc.process_id = 0U;
   g_syscall_proc.addr_space = mm_create_address_space();
   g_syscall_proc.main_thread = NULL;
   g_syscall_proc.security_sandbox_ctx = NULL;
+  g_syscall_proc.personality_ops = &default_personality_ops;
 
   if (!g_syscall_proc.addr_space) {
     return -1;
@@ -212,118 +204,120 @@ long syscall_dispatch(syscall_id_t id, uint64_t arg0, uint64_t arg1,
   }
 }
 
-long trap_handle(trap_frame_t *frame) {
-  if (!frame) {
+int trap_dispatch(trap_frame_t *frame, const trap_info_t *info) {
+  if (!frame || !info) {
     return TRAP_ERR_INVAL;
   }
 
-  if (frame->type == TRAP_TYPE_IRQ) {
-    void hal_timer_isr(void);
-    hal_interrupt_handle_trap_irq(frame->cause, hal_timer_isr,
-                                  trap_device_irq_dispatch, NULL);
-    return 0;
-  }
-
-  if (frame->type == TRAP_TYPE_SYNC || frame->type == TRAP_TYPE_SERROR) {
-    kthread_t *current = sched_current_thread();
-
-    if (hal_cpu_is_fp_simd_fault(frame)) {
-      if (arch_ext_state_handle_fault(current)) {
-        return 0; // retry
-      }
-    }
-
-    if (hal_cpu_is_page_fault(frame)) {
-      uint64_t fault_addr = hal_cpu_get_fault_address(frame);
-      fault_diag_record_fault(fault_addr, frame->cause);
-
-      // Check if it's a guard page hit
-      if (current && current->kernel_stack != 0 && fault_addr >= current->kernel_stack && fault_addr < current->kernel_stack + PAGE_SIZE) {
-          if (core_is_rt()) {
-              panic_context_t pctx = {
-                .message = "Stack overflow on RT core! Guard page hit.",
-                .cause_str = "stack_overflow/guard_page",
-                .cause_code = frame->cause,
-                .fault_addr = fault_addr,
-                .ip = frame->pc,
-                .sp = frame->sp,
-                .trap_frame = frame
-              };
-              kernel_panic_ex(&pctx);
-          } else {
-              thread_raise_fault(current, THREAD_FAULT_STACK_OVERFLOW);
-              return 0;
-          }
-      }
-
-      if (current && current->process_id != 0) {
-        // Address space from current process
-        // For proper hardware demand-paging, we call into the VMM.
-        int rc = vmm_handle_cow_fault(trap_current_aspace(), fault_addr);
-        if (rc == 0) {
-            return 0;
-        }
-      }
-    }
-  }
-
-  if (frame->cause != TRAP_CAUSE_SYSCALL) {
-    if (frame->from_user == 0U) {
-      panic_context_t pctx = {
-          .message = "Kernel exception",
-          .cause_str = "unhandled_kernel_trap",
-          .cause_code = frame->cause,
-          .ip = frame->pc,
-          .sp = frame->sp,
-          .trap_frame = frame
-      };
-      kernel_panic_ex(&pctx);
-    } else {
-      kthread_t *current = sched_current_thread();
-      if (current) {
-        thread_raise_fault(current, THREAD_FAULT_SEGV);
-      } else {
-        sched_yield();
-      }
-    }
-    return 0; // Return gracefully after handling exception (if user thread)
-  }
-
-  // Before returning to user space, process any pending incoming URPC messages
-  // like TLB shootdowns to ensure consistency.
+  // Common cross-core URPC processing before returning to user space
   // We process only local messages for the current core to maintain multikernel
   // architecture separation.
   extern void vmm_process_local_urpc_messages(uint32_t core_id);
   vmm_process_local_urpc_messages(hal_cpu_get_id());
 
-  if (frame->from_user == 0U) {
-    return TRAP_ERR_PERM;
-  }
-
-  fault_diag_record_syscall(frame->gpr[0]);
-
   kthread_t *current = sched_current_thread();
-  long rc = 0;
 
-  if (current && current->personality == PERSONALITY_LINUX) {
-#ifdef BHARAT_PERSONALITY_LINUX
-    if (linux_syscall_handler) {
-      rc = linux_syscall_handler(frame->gpr[0], frame->gpr[1], frame->gpr[2],
-                                 frame->gpr[3], frame->gpr[4], frame->gpr[5],
-                                 frame->gpr[6]);
-    } else {
-      rc = TRAP_ERR_NOSYS;
+  switch (info->trap_class) {
+  case TRAP_CLASS_INTERRUPT:
+  case TRAP_CLASS_TIMER:
+  case TRAP_CLASS_IPI: {
+    void hal_timer_isr(void);
+    hal_interrupt_handle_trap_irq(info->arch_code, hal_timer_isr,
+                                  trap_device_irq_dispatch, NULL);
+    return 0;
+  }
+  case TRAP_CLASS_SYSCALL: {
+    if (info->origin == TRAP_ORIGIN_KERNEL) {
+      return TRAP_ERR_PERM;
     }
-#else
-    rc = TRAP_ERR_NOSYS;
-#endif
+
+    // Instead of directly running syscall_dispatch, we delegate it via our generic handler
+    long rc = trap_dispatch_syscall(frame, info);
+
+    return (int)rc;
+  }
+  case TRAP_CLASS_PAGE_FAULT:
+  case TRAP_CLASS_ACCESS_FAULT: {
+    fault_diag_record_fault(info->fault_addr, info->arch_code);
+
+    // Check if it's a guard page hit
+    if (current && current->kernel_stack != 0 && info->fault_addr >= current->kernel_stack && info->fault_addr < current->kernel_stack + PAGE_SIZE) {
+        if (core_is_rt()) {
+            panic_context_t pctx = {
+              .message = "Stack overflow on RT core! Guard page hit.",
+              .cause_str = "stack_overflow/guard_page",
+              .cause_code = info->arch_code,
+              .fault_addr = info->fault_addr,
+              .ip = info->ip,
+              .sp = info->sp,
+              .trap_frame = frame
+            };
+            kernel_panic_ex(&pctx);
+        } else {
+            thread_raise_fault(current, THREAD_FAULT_STACK_OVERFLOW);
+            return 0;
+        }
+    }
+
+    if (current && current->process_id != 0) {
+      // Address space from current process
+      // For proper hardware demand-paging, we call into the VMM.
+      int rc = vmm_handle_cow_fault(trap_current_aspace(), info->fault_addr);
+      if (rc == 0) {
+          return 0;
+      }
+    }
+
+    // If we could not resolve the page fault, fall back to handle_fault
+    return trap_handle_fault(frame, info);
+  }
+  case TRAP_CLASS_ILLEGAL_INSTR:
+  case TRAP_CLASS_ALIGNMENT:
+  case TRAP_CLASS_BREAKPOINT:
+  case TRAP_CLASS_GENERAL_FAULT:
+  case TRAP_CLASS_UNKNOWN:
+  default:
+    // Try to resolve FPU fault if applicable, although ideally arch decode would have separated FP disabled exceptions.
+    // For now, keep the generic helper around if needed:
+    if (hal_cpu_is_fp_simd_fault(frame)) {
+      if (arch_ext_state_handle_fault(current)) {
+        return 0; // retry
+      }
+    }
+    return trap_handle_fault(frame, info);
+  }
+}
+
+// Temporary shim to keep current tests/arch building, to be replaced by full arch decode!
+long trap_handle(trap_frame_t *frame) {
+  if (!frame) return TRAP_ERR_INVAL;
+
+  trap_info_t info = {0};
+  info.origin = frame->from_user ? TRAP_ORIGIN_USER : TRAP_ORIGIN_KERNEL;
+  info.ip = frame->pc;
+  info.sp = frame->sp;
+  info.arch_code = frame->cause;
+
+  if (frame->type == TRAP_TYPE_IRQ) {
+    info.trap_class = TRAP_CLASS_INTERRUPT;
   } else {
-    rc = syscall_dispatch((syscall_id_t)frame->gpr[0], frame->gpr[1],
-                          frame->gpr[2], frame->gpr[3], frame->gpr[4],
-                          frame->gpr[5], frame->gpr[6]);
+#if defined(__x86_64__)
+    uint64_t trap_cause_syscall = 0x80U;
+#elif defined(__riscv)
+    uint64_t trap_cause_syscall = 8U;
+#else
+    uint64_t trap_cause_syscall = 0xFFFFU;
+#endif
+
+    if (frame->cause == trap_cause_syscall) {
+      info.trap_class = TRAP_CLASS_SYSCALL;
+    } else if (hal_cpu_is_page_fault(frame)) {
+      info.trap_class = TRAP_CLASS_PAGE_FAULT;
+      info.fault_addr = hal_cpu_get_fault_address(frame);
+    } else {
+      info.trap_class = TRAP_CLASS_GENERAL_FAULT;
+    }
   }
 
-  frame->gpr[0] = (uint64_t)rc;
-
-  return rc;
+  return trap_dispatch(frame, &info);
 }
