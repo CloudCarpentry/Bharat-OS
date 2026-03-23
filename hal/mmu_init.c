@@ -60,15 +60,27 @@ void arch_mmu_init(void) {
 
 void hal_mmu_final_setup(void) {
     if (!active_mmu) return;
+    extern address_space_t kernel_space;
 
 #if defined(__aarch64__) || defined(__riscv)
     system_discovery_t* discovery = hal_get_system_discovery();
     extern const uint64_t g_kernel_virt_offset;
+#if defined(__aarch64__)
+    extern void arm64_set_kernel_linear_map_state(phys_addr_t phys_base, size_t size, bool enabled);
+#endif
     if (discovery) {
+        uint64_t min_base = UINT64_MAX;
+        uint64_t max_end = 0;
         // Map RAM
         for (uint32_t i = 0; i < discovery->topology.mem_region_count; i++) {
             uint64_t base = discovery->topology.mem_regions[i].base;
             uint64_t size = discovery->topology.mem_regions[i].size;
+            if (base < min_base) {
+                min_base = base;
+            }
+            if (base + size > max_end) {
+                max_end = base + size;
+            }
             for (uint64_t off = 0; off < size; off += 4096) {
                 // Identity map
                 vmm_map_page(base + off, base + off,
@@ -95,6 +107,17 @@ void hal_mmu_final_setup(void) {
                              CAP_RIGHT_READ | CAP_RIGHT_WRITE | CAP_RIGHT_DEVICE_GPU);
             }
         }
+
+        active_mmu->activate(kernel_space.root_pt);
+
+#if defined(__aarch64__)
+        if (min_base != UINT64_MAX && max_end > min_base) {
+            arm64_set_kernel_linear_map_state(min_base, (size_t)(max_end - min_base), true);
+        } else {
+            arm64_set_kernel_linear_map_state(0, 0, false);
+        }
+#endif
+        return;
     }
 #elif defined(__x86_64__)
     vmm_map_page(0xFEE00000, 0xFEE00000, CAP_RIGHT_READ | CAP_RIGHT_WRITE); // LAPIC
@@ -115,7 +138,5 @@ void hal_mmu_final_setup(void) {
         }
     }
 #endif
-
-    extern address_space_t kernel_space;
     active_mmu->activate(kernel_space.root_pt);
 }
