@@ -119,3 +119,7 @@ add_test(NAME host_test_secure_mem COMMAND test_secure_mem)
 add_executable(test_netmgr_address_table services/test_netmgr_address_table.c ../../services/netmgr/src/address_table.c ../../lib/runtime/src/freestanding_string.c)
 target_include_directories(test_netmgr_address_table PRIVATE ../../services/netmgr/src ../../services/core/subsysmgr/include ../../lib/net/include ../../lib/runtime/include)
 add_test(NAME host_test_netmgr_address_table COMMAND test_netmgr_address_table)
+
+add_executable(test_pmm_pcache test_pmm_pcache.c ../../kernel/src/mm/pmm/pmm.c ../../kernel/src/mm/pmm/pmm_pcache.c ../../kernel/src/mm/pmm/numa.c)
+target_include_directories(test_pmm_pcache PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/kernel/src ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME host_test_pmm_pcache COMMAND test_pmm_pcache)
