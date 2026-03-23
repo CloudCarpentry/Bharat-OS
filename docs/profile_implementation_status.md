@@ -17,8 +17,8 @@ This document provides a deep implementation-status and gap-analysis review of t
 * **Details:** `interrupt_common.c` and `timer_common.c` exist in `kernel/src/hal/`, but they are very small (few lines) and function mostly as interfaces. Real hardware drivers (e.g., APIC, GICv3) are poorly implemented or stubbed. Clock source (monotonic) and clock event splitting are weak.
 
 ### IPC / Multikernel Messaging
-* **Status:** Production-ready (mostly)
-* **Details:** The `ipc` subsystem is highly developed. URPC (`lib/urpc`) provides high-throughput lockless ring-buffers for async shared memory, and cross-core multikernel messages route through `mk_dispatch.c` with validation. Deterministic endpoint IPC (`endpoint_ipc.c`, `async_ipc.c`) is implemented nicely.
+* **Status:** Endpoint IPC (Baseline), uRPC Transport (Baseline), Async IPC (Partial), Protocol/Delivery (Missing)
+* **Details:** The IPC subsystem has solid primitives, but the middle multikernel/delivery layers are currently scaffolded. Local **Endpoint IPC** is mature and capability-protected (`endpoint_ipc.c`). Local **Async IPC** (`async_ipc.c`) is partial, as it relies on a central global table. For cross-core interaction, the **uRPC Transport** (`multikernel.c`) provides baseline lockless SPSC ring buffers, but the L1 Protocol Delivery engine (ACK/NACK, transactions, timeouts) in `mk_proto.c` is missing/scaffolded. Multikernel capability validations (`mk_dispatch.c`) currently use a relaxed default-allow placeholder and are incomplete.
 
 ### Security / Isolation / Capabilities
 * **Status:** Implemented but incomplete
@@ -53,7 +53,7 @@ This document provides a deep implementation-status and gap-analysis review of t
 ## 2. Target Deployment Classes Evaluation
 
 ### Small Device / Edge
-* **Usable Subsystems:** Core Multikernel IPC (URPC), Capability-based Isolation, Scheduler (basic Round-Robin/Priority).
+* **Usable Subsystems:** Core Multikernel uRPC Transport, Capability-based Isolation, Scheduler (basic Round-Robin/Priority).
 * **Missing for Production:** Lightweight VFS (currently heavily stubbed), Network stack (non-existent), robust Power Management (tick suppression/autosuspend), Secure Update (OTA) hooks.
 * **Highest Priority:** Implementing a real lightweight VFS and a baseline TCP/UDP network stack so the device can communicate and store simple configs.
 
