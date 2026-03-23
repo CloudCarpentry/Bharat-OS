@@ -14,6 +14,7 @@
 #define ARCH_MEMOP_F_NO_FAULT       (1u << 5)
 
 /* Architecture-specific dispatched memory operations */
+void arch_memops_init(void);
 void *arch_memcpy(void *dst, const void *src, size_t n, uint32_t flags);
 void *arch_memset(void *dst, int c, size_t n, uint32_t flags);
 void *arch_memmove(void *dst, const void *src, size_t n, uint32_t flags);

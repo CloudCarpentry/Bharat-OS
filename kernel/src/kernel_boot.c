@@ -32,6 +32,7 @@
 #include "arch/arch_ext_state.h"
 #include "arch/arch_cpu_caps.h"
 #include "arch/arch_caps.h"
+#include "arch/memops.h"
 
 #define KPRINT(s) console_write_raw(s, string_length(s))
 
@@ -78,6 +79,10 @@ void boot_common_early(const boot_info_t *boot) {
 
     // Print selected capabilities
     arch_caps_t arch_caps = arch_get_caps();
+
+    // Initialise architecture memory operations (cached capability check)
+    arch_memops_init();
+
     if (arch_caps_test(arch_caps, ARCH_CAP_MMU_FULL)) {
         KPRINT("  [CAP] Protection Profile: MMU_FULL\n");
     } else if (arch_caps_test(arch_caps, ARCH_CAP_MMU_LITE)) {

@@ -10,10 +10,31 @@
  * recurse back into libc strings.
  */
 
+#include "arch/arch_caps.h"
 #include "arch/memops.h"
 
 #define WORD_SIZE sizeof(uintptr_t)
 #define PREFETCH_THRESHOLD 256
+
+/* Fast-path state cached after initialization to avoid per-call capability probing */
+static bool g_arch_is_64bit = (sizeof(uintptr_t) == 8);
+
+/**
+ * @brief Initialize architecture-specific memory operations state.
+ *
+ * This function resolves whether the current runtime architecture/profile
+ * supports 64-bit wide virtual addresses and caches that state to avoid
+ * the overhead of arch_has_cap() calls in performance-critical scalar
+ * memory operations.
+ */
+void arch_memops_init(void) {
+  /*
+   * While arch_has_cap() is the preferred way to check for capability
+   * presence, we cache the result here to avoid probing the capability
+   * matrix on every memset call.
+   */
+  g_arch_is_64bit = arch_has_cap(ARCH_CAP_64BIT_VA);
+}
 
 void *arch_memcpy_scalar(void *dst, const void *src, size_t n) {
   unsigned char *d = (unsigned char *)dst;
@@ -98,16 +119,11 @@ void *arch_memset_scalar(void *dst, int c, size_t n) {
     uintptr_t wv = v;
     wv |= wv << 8;
     wv |= wv << 16;
-#if UINTPTR_MAX > 0xFFFFFFFF
-    /*
-     * FIXME(EDGE32): While arch_has_cap() is the preferred way to check
-     * architecture capabilities, doing so here in the fast-path memset
-     * scalar function adds overhead and is technically probing the compiler
-     * width for optimization, not an OS contract. It's left as UINTPTR_MAX
-     * check for performance, but should probably be refactored eventually.
-     */
-    wv |= wv << 32;
-#endif
+
+    if (g_arch_is_64bit) {
+      /* Expand fill pattern to 64 bits only if the architecture supports it */
+      wv |= (uintptr_t)((uint64_t)wv << 32);
+    }
 
     uintptr_t *wd = (uintptr_t *)((void *)d);
 
