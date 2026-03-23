@@ -20,6 +20,7 @@
 #include "mm/pmm_map.h"
 #include "mm/pt_cache.h"
 #include "mm/physmap.h"
+#include "mm/pmm_pcache.h"
 
 #define MAX_ORDER                                                              \
   12 // allows order 11 -> 2048 pages -> 8MB, and order 9 -> 512 pages -> 2MB
@@ -100,9 +101,100 @@ static bool page_block_matches_zone(page_t *base_page, int order, pmm_zone_t zon
 static void *pmm_alloc_pages_order_colored(int order, uint32_t numa_node,
                                            mm_color_config_t *color_config,
                                            pmm_zone_t zone_filter) {
+  uint32_t current_core = hal_cpu_get_id();
+  pmm_core_state_t *core_state = &g_pmm_cores[current_core];
+
+  if (order == 0 && core_state->active && numa_node < 4) {
+      pmm_pcache_t *pcache = &core_state->node_caches[numa_node];
+      if (pcache->count > 0) {
+          phys_addr_t phys = pcache->pages[--pcache->count];
+          pcache->alloc_hits++;
+
+          page_t *page = phys_to_page(phys);
+          if (page) {
+              page->order = 0;
+              page->ref_count = 1;
+              page->flags = PAGE_FLAG_KERNEL;
+              page->state = PMM_PAGE_STATE_ALLOCATED;
+              page->owner_core_id = current_core;
+          }
+          return (void *)(uintptr_t)phys;
+      } else {
+          pcache->alloc_misses++;
+      }
+  }
+
+  pmm_drain_remote_frees(current_core);
+
+  // Retry cache after potentially draining inbox
+  if (order == 0 && core_state->active && numa_node < 4) {
+      pmm_pcache_t *pcache = &core_state->node_caches[numa_node];
+      if (pcache->count > 0) {
+          phys_addr_t phys = pcache->pages[--pcache->count];
+          pcache->alloc_hits++;
+
+          page_t *page = phys_to_page(phys);
+          if (page) {
+              page->order = 0;
+              page->ref_count = 1;
+              page->flags = PAGE_FLAG_KERNEL;
+              page->state = PMM_PAGE_STATE_ALLOCATED;
+              page->owner_core_id = current_core;
+          }
+          return (void *)(uintptr_t)phys;
+      }
+  }
+
   zone_t *zone = &numa_zones[numa_node];
 
   spin_lock(&zone->lock);
+
+  // If we missed in cache, attempt to refill a batch for order-0
+  if (order == 0 && core_state->active && numa_node < 4) {
+      pmm_pcache_t *pcache = &core_state->node_caches[numa_node];
+      uint32_t refilled = 0;
+      int start_color = 0;
+      int end_color = CONFIG_MM_CACHE_COLORS_DEFAULT - 1;
+
+      for (int c = start_color; c <= end_color && refilled < PMM_REFILL_BATCH; ++c) {
+          if (color_config && color_config->policy != MM_COLOR_POLICY_NONE &&
+              color_config->policy != MM_COLOR_POLICY_PREFERRED) {
+              if ((color_config->color_mask & (1U << c)) == 0)
+                  continue;
+          }
+
+          while (!list_empty(&zone->free_list[0][c]) && refilled < PMM_REFILL_BATCH) {
+              page_t *page = list_entry(zone->free_list[0][c].next, page_t, list);
+              if (!page_block_matches_zone(page, 0, zone_filter)) {
+                  break;
+              }
+              list_del(&page->list);
+              zone->free_count[0][c]--;
+
+              pcache->pages[pcache->count++] = page_to_phys(page);
+              refilled++;
+          }
+      }
+
+      if (refilled > 0) {
+          pcache->refill_count++;
+          pcache->refill_pages += refilled;
+          atomic64_fetch_and_sub_ptr(&numa_nodes[numa_node].free_pages, refilled);
+
+          // Now pop one for the actual allocation
+          phys_addr_t phys = pcache->pages[--pcache->count];
+          page_t *page = phys_to_page(phys);
+          if (page) {
+              page->order = 0;
+              page->ref_count = 1;
+              page->flags = PAGE_FLAG_KERNEL;
+              page->state = PMM_PAGE_STATE_ALLOCATED;
+              page->owner_core_id = current_core;
+          }
+          spin_unlock(&zone->lock);
+          return (void *)(uintptr_t)phys;
+      }
+  }
 
   int start_color = 0;
   int end_color = CONFIG_MM_CACHE_COLORS_DEFAULT - 1;
@@ -141,6 +233,12 @@ static void *pmm_alloc_pages_order_colored(int order, uint32_t numa_node,
         page->ref_count = 1;
         page->flags = PAGE_FLAG_KERNEL; // By default give kernel pages
         page->state = PMM_PAGE_STATE_ALLOCATED;
+        page->owner_core_id = current_core;
+
+        if (core_state->active && numa_node < 4) {
+            core_state->node_caches[numa_node].direct_zone_allocs++;
+        }
+
         spin_unlock(&zone->lock);
         return (void *)(uintptr_t)page_to_phys(page);
       }
@@ -185,6 +283,12 @@ static void *pmm_alloc_pages_order_colored(int order, uint32_t numa_node,
         page->ref_count = 1;
         page->flags = PAGE_FLAG_KERNEL;
         page->state = PMM_PAGE_STATE_ALLOCATED;
+        page->owner_core_id = current_core;
+
+        if (core_state->active && numa_node < 4) {
+            core_state->node_caches[numa_node].direct_zone_allocs++;
+        }
+
         spin_unlock(&zone->lock);
         return (void *)(uintptr_t)page_to_phys(page);
       }
@@ -486,6 +590,7 @@ static void mark_page_free(phys_addr_t phys) {
   }
   p->ref_count = 1;
   p->order = 0; // Ensure initial order is 0 when freed into the buddy system!
+  p->state = PMM_PAGE_STATE_ALLOCATED; // Pretend it was allocated to avoid double free panic
   mm_free_page(phys);
 }
 
@@ -511,6 +616,9 @@ static void pmm_add_region(phys_addr_t base, size_t size, uint32_t type,
   numa_nodes[node_id].allocator_metadata = &numa_zones[node_id];
 
   size_t page_array_size = page_count * sizeof(page_t);
+  hal_serial_write("Calling early_alloc with page_array_size ");
+  hal_serial_write_hex(page_array_size);
+  hal_serial_write("\n");
   void *page_array = early_alloc(page_array_size, PAGE_SIZE);
   global_pages_ptrs[node_id] = (page_t *)page_array;
 
@@ -523,13 +631,13 @@ static void pmm_add_region(phys_addr_t base, size_t size, uint32_t type,
   // Capture current end of reserved memory (kernel + metadata)
   phys_addr_t early_mem_end = (phys_addr_t)early_alloc(0, 1);
 
-  hal_serial_write("PMM: Region ");
-  hal_serial_write_hex(base);
-  hal_serial_write(" size ");
-  hal_serial_write_hex(size);
-  hal_serial_write(" protected up to ");
-  hal_serial_write_hex(early_mem_end);
-  hal_serial_write("\n");
+  // hal_serial_write("PMM: Region ");
+  // hal_serial_write_hex(base);
+  // hal_serial_write(" size ");
+  // hal_serial_write_hex(size);
+  // hal_serial_write(" protected up to ");
+  // hal_serial_write_hex(early_mem_end);
+  // hal_serial_write("\n");
 
   zone_t *zone = &numa_zones[node_id];
   spin_lock_init(&zone->lock);
@@ -606,6 +714,7 @@ int mm_pmm_init(uint32_t magic, const boot_info_t *boot) {
   g_pmm_initialized = true;
 
   early_alloc_init(0);
+  pmm_pcache_init_all();
   active_numa_nodes = 0U;
 
   pmm_memory_map_t map;
@@ -746,14 +855,82 @@ void mm_free_page(phys_addr_t page_addr) {
   }
 
   uint32_t node_id = page->numa_node;
-  zone_t *zone = &numa_zones[node_id];
-  size_t node_index =
-      (size_t)((page_addr - numa_nodes[node_id].start_addr) / PAGE_SIZE);
-
   int order = page->order;
   if (order < 0) {
     order = 0;
   }
+
+  uint32_t current_core = hal_cpu_get_id();
+  pmm_core_state_t *core_state = &g_pmm_cores[current_core];
+
+  // Local Magazine fast path for order-0 pages
+  if (order == 0 && core_state->active && node_id < 4) {
+      if (page->owner_core_id == current_core) {
+          pmm_pcache_t *pcache = &core_state->node_caches[node_id];
+
+          if (pcache->count < PMM_PCACHE_HIGH) {
+              pcache->pages[pcache->count++] = page_addr;
+              pcache->local_frees++;
+              page->state = PMM_PAGE_STATE_FREE;
+              page->ref_count = 0;
+              page->flags = 0;
+              page->pin_count = 0;
+              page->order = 0;
+              return;
+          } else {
+              // Drain batch to zone slow path
+              pcache->drain_to_zone_count++;
+
+              for (uint32_t i = 0; i < PMM_DRAIN_BATCH; i++) {
+                  phys_addr_t drain_phys = pcache->pages[--pcache->count];
+                  page_t *drain_page = phys_to_page(drain_phys);
+
+                  if (drain_page) {
+                      // Avoid infinite loop: clear owner_core_id so mm_free_page ignores local cache for these pages
+                      drain_page->owner_core_id = 0xFFFFFFFF;
+                      drain_page->ref_count = 1; // restore dropping reference semantics for mm_free_page
+                      drain_page->state = PMM_PAGE_STATE_ALLOCATED; // avoid double free check on re-entry
+                      mm_free_page(drain_phys);
+                  }
+              }
+
+              // Now that we have drained, we can easily cache the currently freed page
+              pcache->pages[pcache->count++] = page_addr;
+              pcache->local_frees++;
+              page->state = PMM_PAGE_STATE_FREE;
+              page->ref_count = 0;
+              page->flags = 0;
+              page->pin_count = 0;
+              page->order = 0;
+              return;
+          }
+      } else if (page->owner_core_id < 256 && g_pmm_cores[page->owner_core_id].active) {
+          // Deferred remote free
+          pmm_remote_inbox_t *inbox = &g_pmm_cores[page->owner_core_id].inbox;
+          spin_lock(&inbox->lock);
+
+          uint32_t next_head = (inbox->head + 1) % PMM_INBOX_SIZE;
+          if (next_head != inbox->tail) {
+              inbox->pages[inbox->head] = page_addr;
+              inbox->head = next_head;
+              inbox->enqueue_count++;
+              spin_unlock(&inbox->lock);
+              return;
+          } else {
+              inbox->enqueue_failures++;
+              spin_unlock(&inbox->lock);
+              // Fallback to zone slow path
+          }
+      }
+  }
+
+  if (core_state->active && node_id < 4) {
+      core_state->node_caches[node_id].direct_zone_frees++;
+  }
+
+  zone_t *zone = &numa_zones[node_id];
+  size_t node_index =
+      (size_t)((page_addr - numa_nodes[node_id].start_addr) / PAGE_SIZE);
 
   spin_lock(&zone->lock);
   while (order < (MAX_ORDER - 1)) {
