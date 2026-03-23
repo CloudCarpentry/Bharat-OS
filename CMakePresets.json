@@ -139,6 +139,174 @@
         "BHARAT_TARGET_BOARD": "virt",
         "BHARAT_BOOT_GUI": "ON"
       }
+    },
+    {
+      "name": "arm64-automobile-debug",
+      "displayName": "Cross ARM64 Automobile (Debug)",
+      "description": "Cross-compile ARM64 Automobile profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/arm64-automobile-debug",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/aarch64-elf-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BHARAT_DEVICE_PROFILE": "AUTOMOBILE",
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "ON"
+      }
+    },
+    {
+      "name": "arm64-automobile-release",
+      "displayName": "Cross ARM64 Automobile (Release)",
+      "description": "Cross-compile ARM64 Automobile profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/arm64-automobile-release",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/aarch64-elf-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BHARAT_DEVICE_PROFILE": "AUTOMOBILE",
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "ON"
+      }
+    },
+    {
+      "name": "riscv64-ev-automobile-debug",
+      "displayName": "Cross RISC-V64 EV Automobile (Debug)",
+      "description": "Cross-compile RISC-V64 EV Automobile profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/riscv64-ev-automobile-debug",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/riscv64-elf-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BHARAT_DEVICE_PROFILE": "EV_AUTOMOBILE",
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "ON"
+      }
+    },
+    {
+      "name": "riscv64-ev-automobile-release",
+      "displayName": "Cross RISC-V64 EV Automobile (Release)",
+      "description": "Cross-compile RISC-V64 EV Automobile profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/riscv64-ev-automobile-release",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/riscv64-elf-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BHARAT_DEVICE_PROFILE": "EV_AUTOMOBILE",
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "ON"
+      }
+    },
+    {
+      "name": "arm32-drone-debug",
+      "displayName": "Cross ARM32 Drone (Debug)",
+      "description": "Cross-compile ARM32 Drone profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/arm32-drone-debug",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/arm32-elf.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BHARAT_DEVICE_PROFILE": "DRONE",
+        "BHARAT_TARGET_BOARD": "avh-corstone310",
+        "BHARAT_BOOT_GUI": "OFF"
+      }
+    },
+    {
+      "name": "arm32-drone-release",
+      "displayName": "Cross ARM32 Drone (Release)",
+      "description": "Cross-compile ARM32 Drone profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/arm32-drone-release",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/arm32-elf.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BHARAT_DEVICE_PROFILE": "DRONE",
+        "BHARAT_TARGET_BOARD": "avh-corstone310",
+        "BHARAT_BOOT_GUI": "OFF"
+      }
+    },
+    {
+      "name": "riscv32-robot-debug",
+      "displayName": "Cross RISC-V32 Robot (Debug)",
+      "description": "Cross-compile RISC-V32 Robot profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/riscv32-robot-debug",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/riscv32-elf.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BHARAT_DEVICE_PROFILE": "ROBOT",
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "OFF"
+      }
+    },
+    {
+      "name": "riscv32-robot-release",
+      "displayName": "Cross RISC-V32 Robot (Release)",
+      "description": "Cross-compile RISC-V32 Robot profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/riscv32-robot-release",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/riscv32-elf.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BHARAT_DEVICE_PROFILE": "ROBOT",
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "OFF"
+      }
+    },
+    {
+      "name": "arm64-medical-debug",
+      "displayName": "Cross ARM64 Medical (Debug)",
+      "description": "Cross-compile ARM64 Medical profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/arm64-medical-debug",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/aarch64-elf-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BHARAT_DEVICE_PROFILE": "MEDICAL",
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "ON"
+      }
+    },
+    {
+      "name": "arm64-medical-release",
+      "displayName": "Cross ARM64 Medical (Release)",
+      "description": "Cross-compile ARM64 Medical profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/arm64-medical-release",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/aarch64-elf-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BHARAT_DEVICE_PROFILE": "MEDICAL",
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "ON"
+      }
+    },
+    {
+      "name": "riscv64-medical-debug",
+      "displayName": "Cross RISC-V64 Medical (Debug)",
+      "description": "Cross-compile RISC-V64 Medical profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/riscv64-medical-debug",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/riscv64-elf-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BHARAT_DEVICE_PROFILE": "MEDICAL",
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "OFF"
+      }
+    },
+    {
+      "name": "riscv64-medical-release",
+      "displayName": "Cross RISC-V64 Medical (Release)",
+      "description": "Cross-compile RISC-V64 Medical profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/riscv64-medical-release",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/riscv64-elf-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BHARAT_DEVICE_PROFILE": "MEDICAL",
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "OFF"
+      }
     }
   ],
   "buildPresets": [
@@ -181,20 +349,210 @@
     {
       "name": "riscv64-gui",
       "configurePreset": "riscv64-gui"
+    },
+    {
+      "name": "arm64-automobile-debug",
+      "configurePreset": "arm64-automobile-debug"
+    },
+    {
+      "name": "arm64-automobile-release",
+      "configurePreset": "arm64-automobile-release"
+    },
+    {
+      "name": "riscv64-ev-automobile-debug",
+      "configurePreset": "riscv64-ev-automobile-debug"
+    },
+    {
+      "name": "riscv64-ev-automobile-release",
+      "configurePreset": "riscv64-ev-automobile-release"
+    },
+    {
+      "name": "arm32-drone-debug",
+      "configurePreset": "arm32-drone-debug"
+    },
+    {
+      "name": "arm32-drone-release",
+      "configurePreset": "arm32-drone-release"
+    },
+    {
+      "name": "riscv32-robot-debug",
+      "configurePreset": "riscv32-robot-debug"
+    },
+    {
+      "name": "riscv32-robot-release",
+      "configurePreset": "riscv32-robot-release"
+    },
+    {
+      "name": "arm64-medical-debug",
+      "configurePreset": "arm64-medical-debug"
+    },
+    {
+      "name": "arm64-medical-release",
+      "configurePreset": "arm64-medical-release"
+    },
+    {
+      "name": "riscv64-medical-debug",
+      "configurePreset": "riscv64-medical-debug"
+    },
+    {
+      "name": "riscv64-medical-release",
+      "configurePreset": "riscv64-medical-release"
     }
   ],
   "testPresets": [
     {
       "name": "host-test",
       "configurePreset": "host-test",
-      "output": {"outputOnFailure": true},
-      "execution": {"noTestsAction": "error", "stopOnFailure": true}
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
     },
     {
       "name": "ci-smoke",
       "configurePreset": "ci-smoke",
-      "output": {"outputOnFailure": true},
-      "execution": {"noTestsAction": "error", "stopOnFailure": true}
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "arm64-automobile-debug",
+      "configurePreset": "arm64-automobile-debug",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "arm64-automobile-release",
+      "configurePreset": "arm64-automobile-release",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "riscv64-ev-automobile-debug",
+      "configurePreset": "riscv64-ev-automobile-debug",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "riscv64-ev-automobile-release",
+      "configurePreset": "riscv64-ev-automobile-release",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "arm32-drone-debug",
+      "configurePreset": "arm32-drone-debug",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "arm32-drone-release",
+      "configurePreset": "arm32-drone-release",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "riscv32-robot-debug",
+      "configurePreset": "riscv32-robot-debug",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "riscv32-robot-release",
+      "configurePreset": "riscv32-robot-release",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "arm64-medical-debug",
+      "configurePreset": "arm64-medical-debug",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "arm64-medical-release",
+      "configurePreset": "arm64-medical-release",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "riscv64-medical-debug",
+      "configurePreset": "riscv64-medical-debug",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "riscv64-medical-release",
+      "configurePreset": "riscv64-medical-release",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
     }
   ]
 }

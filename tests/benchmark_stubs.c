@@ -341,3 +341,15 @@ __attribute__((weak)) int vmm_init(void) {
 }
 
 __attribute__((weak)) personality_ops_t default_personality_ops = {0};
+
+__attribute__((weak)) void hal_cpu_enable_interrupts(void) {}
+__attribute__((weak)) struct rb_node* rb_first(const struct rb_root* root) { (void)root; return NULL; }
+__attribute__((weak)) void rb_erase(struct rb_node* node, struct rb_root* root) { (void)node; (void)root; }
+__attribute__((weak)) void rb_insert_color(struct rb_node* node, struct rb_root* root) { (void)node; (void)root; }
+
+
+__attribute__((weak)) void pmm_pcache_init_all(void) {}
+__attribute__((weak)) void pmm_drain_remote_frees(uint32_t core) { (void)core; }
+
+
+__attribute__((weak)) void* g_pmm_cores[64] = {0}; // Add mock for pmm_core_t* array
