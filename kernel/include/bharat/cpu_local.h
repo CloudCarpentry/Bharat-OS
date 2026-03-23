@@ -58,28 +58,11 @@ extern cpu_local_t g_cpu_locals[MAX_CPUS];
 
 void cpu_local_init(uint32_t cpu_id);
 
+#include <hal/cpu_local.h>
+
 /* Architecture specific `this_cpu()` implementation */
 static inline cpu_local_t *this_cpu(void) {
-#if defined(__x86_64__)
-    cpu_local_t *cl;
-    // Assume we've written the address into GSBASE
-    __asm__ volatile ("movq %%gs:0, %0" : "=r"(cl));
-    return cl;
-#elif defined(__aarch64__)
-    cpu_local_t *cl;
-    __asm__ volatile ("mrs %0, tpidr_el1" : "=r"(cl));
-    return cl;
-#elif defined(__riscv)
-    cpu_local_t *cl;
-    __asm__ volatile ("mv %0, tp" : "=r"(cl));
-    return cl;
-#else
-    // Fallback: This is not safe unless single core, but helps compilation.
-    // For a real system we must use the arch's thread pointer register.
-    // Currently, let's assume we implement hal_get_cpu_id() and use the array.
-    extern uint32_t hal_get_cpu_id(void);
-    return &g_cpu_locals[hal_get_cpu_id()];
-#endif
+    return hal_cpu_local_ptr();
 }
 
 // Helpers for the current address space
