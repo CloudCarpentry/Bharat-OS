@@ -99,3 +99,8 @@ add_executable(test_motor_control_core drivers/test_motor_control_core.c ../../d
 target_include_directories(test_motor_control_core PRIVATE ../../drivers/include)
 
 add_test(NAME host_test_motor_control_core COMMAND test_motor_control_core)
+
+# VFS/RamFS Tests
+add_executable(test_ramfs_streq fs/test_ramfs_streq.c)
+target_include_directories(test_ramfs_streq PRIVATE ../../kernel/include)
+add_test(NAME host_test_ramfs_streq COMMAND test_ramfs_streq)
