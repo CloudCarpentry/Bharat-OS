@@ -24,12 +24,12 @@ typedef struct {
     enclave_type_t hardware_type;
     phys_addr_t base_physical_address;
     uint32_t size_bytes;
-    
+
     // Remote attestation cryptographic quote confirming hardware authenticity
     uint8_t attestation_quote[256];
 } security_enclave_t;
 
-// Request the CPU hardware (e.g. via SGX ENCLS instruction) to carve out 
+// Request the CPU hardware (e.g. via SGX ENCLS instruction) to carve out
 // a dedicated, encrypted EPC (Enclave Page Cache) memory region.
 int enclave_create(uint32_t size, security_enclave_t* out_enclave);
 

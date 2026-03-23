@@ -17,7 +17,7 @@ static void parse_multiboot1(multiboot1_info_t *mb, boot_info_t *boot_info) {
 
         boot_info->mem_map[boot_info->mem_map_count].phys_start = mmap->addr;
         boot_info->mem_map[boot_info->mem_map_count].size = mmap->len;
-        
+
         if (mmap->type == MULTIBOOT_MEMORY_AVAILABLE) {
             boot_info->mem_map[boot_info->mem_map_count].type = BOOT_MEM_USABLE;
         } else if (mmap->type == MULTIBOOT_MEMORY_ACPI_RECLAIMABLE) {
@@ -44,13 +44,13 @@ static void parse_multiboot2(multiboot_information_t *mb_info, boot_info_t *boot
             case MULTIBOOT_TAG_TYPE_MMAP: {
                 multiboot_tag_mmap_t *mmap = (multiboot_tag_mmap_t *)tag;
                 uint32_t entry_count = (mmap->size - sizeof(multiboot_tag_mmap_t)) / mmap->entry_size;
-                
+
                 for (uint32_t i = 0; i < entry_count && boot_info->mem_map_count < BHARAT_BOOT_MAX_MEM_REGIONS; i++) {
                     multiboot_mmap_entry_t *entry = (multiboot_mmap_entry_t *)((uint8_t *)mmap->entries + i * mmap->entry_size);
-                    
+
                     boot_info->mem_map[boot_info->mem_map_count].phys_start = entry->addr;
                     boot_info->mem_map[boot_info->mem_map_count].size = entry->len;
-                    
+
                     if (entry->type == MULTIBOOT_MEMORY_AVAILABLE) {
                         boot_info->mem_map[boot_info->mem_map_count].type = BOOT_MEM_USABLE;
                     } else if (entry->type == MULTIBOOT_MEMORY_ACPI_RECLAIMABLE) {

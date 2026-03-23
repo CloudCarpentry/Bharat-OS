@@ -24,6 +24,7 @@ extern uint32_t hal_get_core_id(void);
 #ifndef spinlock_init
 #define spinlock_init spin_lock_init
 #endif
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include <stdint.h>
 
 const arch_vm_ops_t* active_arch_vm_ops = NULL;

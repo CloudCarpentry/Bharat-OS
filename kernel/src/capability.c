@@ -491,7 +491,7 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
                 if (type == URPC_CAP_REVOKE_ACK) {
                     acks_needed--;
                 }
-                // Note: Other messages received here are dropped in this basic 
+                // Note: Other messages received here are dropped in this basic
                 // synchronous loop to avoid deadlock. A full OS would queue them.
             }
         }

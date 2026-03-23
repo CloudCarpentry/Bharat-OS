@@ -71,6 +71,7 @@ int pmm_unpin(uint64_t phys_addr);
 
 #endif // BHARAT_MM_PMM_H
 
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include <stdbool.h>
 
 // Forward declaration

@@ -5,10 +5,15 @@
 uint32_t hal_get_core_id_mock(void) {
     return 0;
 }
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "../../include/mm/vm_mapping.h"
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "../../include/mm/arch_vm.h"
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include <stddef.h>
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include <stdint.h>
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include <stdbool.h>
 
 // Mock monitor operations

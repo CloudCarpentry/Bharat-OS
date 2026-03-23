@@ -22,7 +22,7 @@ typedef struct {
     void* desc_table_phys;
     void* avail_ring_phys;
     void* used_ring_phys;
-    
+
     uint16_t last_used_idx;
 } virtqueue_t;
 
@@ -31,12 +31,12 @@ typedef struct {
     uint32_t pci_bus;
     uint32_t pci_device;
     uint32_t pci_function;
-    
+
     uint32_t device_type;
     uint32_t features; // Negotiated features with Hypervisor
-    
+
     void* io_base;
-    
+
     // Active virtqueues (e.g., rx/tx for net, req/resp for block)
     virtqueue_t* vqs;
     uint32_t num_vqs;
