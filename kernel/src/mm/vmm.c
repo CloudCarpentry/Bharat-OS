@@ -36,6 +36,7 @@ static void ensure_kernel_space_ready(void) {
     kernel_space_init_in_progress = 0;
 }
 
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "mm/prot_domain.h"
 
 int vmm_init(void) {

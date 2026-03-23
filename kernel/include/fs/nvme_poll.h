@@ -6,7 +6,7 @@
 
 /*
  * Bharat-OS High-Performance NVMe Polling Interface
- * Bypasses standard kernel interrupt handling and VFS overheads to achieve 
+ * Bypasses standard kernel interrupt handling and VFS overheads to achieve
  * millions of IOPS per CPU core for AI/DB workloads (Inspired by Intel SPDK).
  */
 
@@ -16,11 +16,11 @@ typedef struct {
     uint32_t nsid;
     uint64_t reserved;
     uint64_t metadata_ptr;
-    
+
     // Data Pointers (PRP or SGL)
     phys_addr_t data_ptr1;
     phys_addr_t data_ptr2;
-    
+
     uint32_t command_specific[6];
 } nvme_sq_entry_t;
 
@@ -38,7 +38,7 @@ typedef struct {
     nvme_sq_entry_t* sq_base;
     nvme_cq_entry_t* cq_base;
     uint32_t q_depth;
-    
+
     // Hardware Doorbell physical addresses for user-space direct rings
     uint32_t* sq_tail_doorbell;
     uint32_t* cq_head_doorbell;

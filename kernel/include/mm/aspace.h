@@ -40,6 +40,7 @@ typedef struct vm_region {
     struct vm_region *prev;
 } vm_region_t;
 
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "prot_domain.h"
 
 typedef struct vm_address_space {

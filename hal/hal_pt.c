@@ -58,6 +58,7 @@ void hal_pt_init(void) {
 #endif
 }
 
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "mm/tlb.h"
 
 void hal_tlb_init(void) {

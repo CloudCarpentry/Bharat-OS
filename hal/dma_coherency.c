@@ -59,6 +59,7 @@ void hal_dma_sync_for_cpu(hal_dma_buffer_t *buf) {
     }
 }
 
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "arch/arch_caps.h"
 
 int hal_dma_is_coherent(void) {

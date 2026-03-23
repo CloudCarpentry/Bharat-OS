@@ -222,10 +222,15 @@ int monitor_handle_tlb_invalidate(
     return 0;
 }
 
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "../../include/arch/arch_caps.h"
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "../../include/mm/tlb.h"
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "../../include/mm/tlb_internal.h"
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "../../include/hal/hal_tlb.h"
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "../../include/hal/hal.h"
 
 int tlb_invalidate_remote(vm_aspace_t *aspace, uintptr_t va, size_t len, tlb_inv_kind_t kind) {

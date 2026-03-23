@@ -23,13 +23,17 @@ typedef enum {
 
 // Include arch-specific feature header
 #if defined(__x86_64__)
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "arch/x86_64/cpu_features.h"
 #elif defined(__aarch64__)
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "arch/arm64/cpu_features.h"
 #elif defined(__riscv) && defined(BHARAT_ARCH_SHAKTI)
 // Distinguish generic riscv from shakti if needed, otherwise fall through
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "arch/shakti/cpu_features.h"
 #elif defined(__riscv)
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "arch/riscv64/cpu_features.h"
 #else
 // Fallback for unknown/stub

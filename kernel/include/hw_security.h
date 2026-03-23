@@ -6,7 +6,7 @@
 
 /*
  * Bharat-OS Advanced Hardware Security Abstraction (Post-2014 Hardware)
- * Enforces memory and execution safety through CPU features to mitigate 
+ * Enforces memory and execution safety through CPU features to mitigate
  * ROP/JOP attacks and unauthorized memory access.
  */
 
@@ -16,7 +16,7 @@ typedef struct {
     int has_mpk; // Memory Protection Keys
     int has_smap;// Supervisor Mode Access Prevention
     int has_smep;// Supervisor Mode Execution Prevention
-    
+
     // ARM AArch64 specific
     int has_pac; // Pointer Authentication
     int has_pan; // Privileged Access Never

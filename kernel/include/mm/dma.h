@@ -22,7 +22,9 @@ typedef enum {
     DMA_ALLOC_ZERO      = 1u << 2,
 } dma_alloc_flags_t;
 
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "../../include/spinlock.h"
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "mm/iommu.h"
 
 // Forward declaration of IOMMU backend ops

@@ -223,6 +223,7 @@ int hal_interrupt_is_registered(uint32_t irq) {
     return is_reg;
 }
 
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "arch/arch_caps.h"
 
 // --- Affinity Mask API ---

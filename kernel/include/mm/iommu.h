@@ -67,6 +67,7 @@ int iommu_invalidate_range(iommu_domain_t *dom, uintptr_t iova, size_t len);
 int iommu_get_dma_mode(iommu_device_t *dev, dma_translation_mode_t *mode_out);
 
 // Backend registration for hal implementations
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "hal/hal_iommu.h"
 
 #ifdef __cplusplus

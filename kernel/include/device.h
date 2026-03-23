@@ -155,6 +155,7 @@ int pci_discover_nic(device_mmio_window_t *rx_window,
 
 
 // --- DMA and IOMMU Device Capability Registration ---
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "hal/hal_iommu.h"
 
 // Forward declare safely

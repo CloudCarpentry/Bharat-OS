@@ -385,7 +385,7 @@ void sched_init(void) {
       monitor->base_priority = SCHED_MAX_PRIORITY;
       monitor->bound_core_id = core;
       monitor->affinity_mask = (1U << core);
-      // Wait for someone to enqueue it, or it will inherently enqueue in thread_create 
+      // Wait for someone to enqueue it, or it will inherently enqueue in thread_create
       // since thread_create enqueues non-idle tasks.
     }
   }

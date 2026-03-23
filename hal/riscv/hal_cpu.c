@@ -121,6 +121,7 @@ void hal_serial_write_hex(uint64_t val) {
   hal_serial_write(buf);
 }
 
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "trap.h"
 
 bool hal_cpu_is_page_fault(const void *trap_frame) {

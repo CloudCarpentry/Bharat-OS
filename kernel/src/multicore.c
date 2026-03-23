@@ -11,6 +11,7 @@ uint8_t g_per_core_stacks[MAX_SUPPORTED_CORES][KERNEL_STACK_SIZE] __attribute__(
 
 static uint32_t g_system_core_count = 1U;
 
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "arch/arch_caps.h"
 
 int multicore_boot_secondary_cores(uint32_t core_count) {
@@ -42,6 +43,7 @@ int multicore_boot_secondary_cores(uint32_t core_count) {
 
     return 0;
 }
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "hal/hal.h"
 
 void smp_init(void) {
