@@ -81,7 +81,7 @@ uint64_t sched_get_ticks(void) { return 0; }
 void *active_hal_pt = NULL;
 void tlb_shootdown(address_space_t *as, virt_addr_t vaddr) {}
 
-uint8_t _end[1] = {0};
+uint8_t _end[1] __attribute__((weak)) = {0};
 
 // early alloc mock
 void *early_alloc(size_t size, size_t align) {
