@@ -101,6 +101,12 @@ set_property(CACHE BHARAT_BOOT_HW_PROFILE PROPERTY STRINGS generic desktop serve
 set(BHARAT_IRQ_DISPATCH_MODE "AUTO" CACHE STRING "IRQ dispatch mode (AUTO, GENERIC, MIXED, RT)")
 set_property(CACHE BHARAT_IRQ_DISPATCH_MODE PROPERTY STRINGS AUTO GENERIC MIXED RT)
 
+# Serial Console Configuration
+set(BHARAT_ARCH_SERIAL_BASE "" CACHE STRING "Override default architecture serial base address")
+if(BHARAT_ARCH_SERIAL_BASE)
+    add_compile_definitions(BHARAT_ARCH_SERIAL_BASE=${BHARAT_ARCH_SERIAL_BASE})
+endif()
+
 
 # Determine Kernel Execution Profile (RT, GP, MIX) based on Device Profile
 if(BHARAT_DEVICE_PROFILE STREQUAL "RTOS"
