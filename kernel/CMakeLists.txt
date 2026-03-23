@@ -213,6 +213,7 @@ target_compile_options(bharat_mm_iommu PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreesta
 
 add_library(bharat_mm_pmm OBJECT
     src/mm/pmm/pmm.c
+    src/mm/pmm/pmm_pcache.c
     src/mm/pmm/pmm_debug.c
     src/mm/pmm/early_alloc.c
     src/mm/pmm/slab.c
