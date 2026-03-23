@@ -1,3 +1,4 @@
+#include "../../kernel/include/hal/hal_mpa.h"
 #include "../../kernel/include/hal/hal_pt.h"
 #include "../../kernel/include/hal/hal_tlb.h"
 #include "../../kernel/include/mm.h"
@@ -446,3 +447,58 @@ hal_tlb_ops_t riscv64_hal_tlb_ops = {
     .flush_page_broadcast  = riscv64_tlb_flush_page_broadcast,
     .flush_all_broadcast   = riscv64_tlb_flush_all_broadcast,
 };
+
+// Implement the specific functions from mem_protect_cpu_ops
+
+static phys_addr_t riscv64_mpa_make_table(uint32_t level) {
+    (void)level;
+    phys_addr_t pt = mm_alloc_page(NUMA_NODE_ANY);
+    if (pt) {
+        pt_t* ptr = (pt_t*)physmap_phys_to_virt(pt);
+        for(int i = 0; i < 512; i++) ptr->entries[i] = 0;
+    }
+    return pt;
+}
+
+static int riscv64_mpa_map_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
+    uint32_t hal_flags = HAL_PT_FLAG_READ;
+    if (flags & MPA_CAP_EXEC_PERM) hal_flags |= HAL_PT_FLAG_EXEC;
+    if (flags & MPA_CAP_USER) hal_flags |= HAL_PT_FLAG_USER;
+    if (flags & MPA_CAP_GLOBAL) hal_flags |= HAL_PT_FLAG_GLOBAL;
+    if (flags & MPA_CAP_DEVICE) hal_flags |= HAL_PT_FLAG_DEVICE;
+    if (flags & MPA_CAP_WRITE) hal_flags |= HAL_PT_FLAG_WRITE;
+
+    return riscv64_pt_map_4k(root_pt, vaddr, paddr, hal_flags);
+}
+
+static int riscv64_mpa_unmap_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *unmapped_paddr) {
+    return riscv64_pt_unmap_4k(root_pt, vaddr, unmapped_paddr);
+}
+
+static void riscv64_mpa_set_root(phys_addr_t root) {
+    // Sv39 configuration: MODE = 8
+    uint64_t satp = (8ULL << 60) | (root >> 12);
+    __asm__ volatile("csrw satp, %0" :: "r"(satp) : "memory");
+    __asm__ volatile("sfence.vma zero, zero" ::: "memory");
+}
+
+static void riscv64_mpa_flush_tlb_local(virt_addr_t vaddr, uint16_t asid) {
+    (void)asid;
+    __asm__ volatile("sfence.vma %0" :: "r"(vaddr) : "memory");
+}
+
+mem_protect_ops_t riscv64_mem_protect_ops = {
+    .supported_caps = MPA_CAP_VIRT | MPA_CAP_ASID | MPA_CAP_GLOBAL | MPA_CAP_EXEC_PERM | MPA_CAP_WRITE | MPA_CAP_USER | MPA_CAP_DEVICE,
+    .cpu_ops = {
+        .make_table = riscv64_mpa_make_table,
+        .map_page = riscv64_mpa_map_page,
+        .unmap_page = riscv64_mpa_unmap_page,
+        .set_root = riscv64_mpa_set_root,
+        .flush_tlb_local = riscv64_mpa_flush_tlb_local,
+    },
+    .iommu_ops = {
+        .probe = NULL, // Could be linked to RISC-V IOMMU probe later
+    }
+};
+
+mem_protect_ops_t *active_mem_protect = &riscv64_mem_protect_ops;

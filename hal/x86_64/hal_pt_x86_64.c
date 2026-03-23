@@ -1,3 +1,4 @@
+#include "../../kernel/include/hal/hal_mpa.h"
 #include "../../kernel/include/hal/hal_pt.h"
 #include "../../kernel/include/hal/hal_pt_walk.h"
 #include "../../kernel/include/hal/hal_tlb.h"
@@ -588,3 +589,54 @@ hal_tlb_ops_t x86_hal_tlb_ops = {
     .flush_range_broadcast = x86_tlb_flush_range_broadcast,
     .flush_all_broadcast   = x86_tlb_flush_all_broadcast,
 };
+
+// Implement the specific functions from mem_protect_cpu_ops
+
+static phys_addr_t x86_mpa_make_table(uint32_t level) {
+    (void)level;
+    phys_addr_t pt = pt_cache_alloc();
+    if (pt) {
+        pt_t* ptr = (pt_t*)physmap_phys_to_virt(pt);
+        for(int i = 0; i < 512; i++) ptr->entries[i] = 0;
+    }
+    return pt;
+}
+
+static int x86_mpa_map_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
+    uint32_t hal_flags = HAL_PT_FLAG_READ;
+    if (flags & MPA_CAP_EXEC_PERM) hal_flags |= HAL_PT_FLAG_EXEC;
+    if (flags & MPA_CAP_USER) hal_flags |= HAL_PT_FLAG_USER;
+    if (flags & MPA_CAP_GLOBAL) hal_flags |= HAL_PT_FLAG_GLOBAL;
+    if (flags & MPA_CAP_WRITE) hal_flags |= HAL_PT_FLAG_WRITE;
+
+    return x86_pt_map_4k(root_pt, vaddr, paddr, hal_flags);
+}
+
+static int x86_mpa_unmap_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *unmapped_paddr) {
+    return x86_pt_unmap_4k(root_pt, vaddr, unmapped_paddr);
+}
+
+static void x86_mpa_set_root(phys_addr_t root) {
+    __asm__ volatile("mov %0, %%cr3" :: "r"(root) : "memory");
+}
+
+static void x86_mpa_flush_tlb_local(virt_addr_t vaddr, uint16_t asid) {
+    (void)asid; // Assuming no PCID for this specific simple local flush
+    __asm__ volatile("invlpg (%0)" :: "r"(vaddr) : "memory");
+}
+
+mem_protect_ops_t x86_mem_protect_ops = {
+    .supported_caps = MPA_CAP_VIRT | MPA_CAP_GLOBAL | MPA_CAP_HUGEPAGE | MPA_CAP_EXEC_PERM | MPA_CAP_USER,
+    .cpu_ops = {
+        .make_table = x86_mpa_make_table,
+        .map_page = x86_mpa_map_page,
+        .unmap_page = x86_mpa_unmap_page,
+        .set_root = x86_mpa_set_root,
+        .flush_tlb_local = x86_mpa_flush_tlb_local,
+    },
+    .iommu_ops = {
+        .probe = NULL, // Could be linked to VTD probe later
+    }
+};
+
+mem_protect_ops_t *active_mem_protect = &x86_mem_protect_ops;

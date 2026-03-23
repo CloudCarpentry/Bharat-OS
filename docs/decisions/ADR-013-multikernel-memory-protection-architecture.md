@@ -30,11 +30,14 @@ Additionally, this approach relies on a **frame ownership invariant**: every phy
 - Requires modifying the capability model to embed ownership information and handle remote capability modifications.
 
 ## Next Steps
+
+Bring up and validate the single-core page-table HAL on `x86_64` first, then generalize the same contract to `arm64` and `riscv64`. Introduce URPC-based shootdown only once SMP makes cross-core TLB invalidation necessary.
+
 1. Define the capability word and feature bits for VIRT, ASID, HUGEPAGE, NX, IOMMU, and region-only MPU mode.
 2. Define the `mem_protect_ops_t` split into `cpu_ops` and `iommu_ops`.
-3. Add the `x86_64` `cpu_ops` backend skeleton.
-4. Wire `vmm_map()` / `vmm_unmap()` to update hardware mappings synchronously.
-5. Add the `owner_core` property to frame capability metadata.
-6. Provide a runtime IOMMU probe hook (which may return NULL).
-7. Implement the uRPC shootdown and ACK protocols.
-8. Add the `arm64` and `riscv64` backends.
+3. Add the `x86_64` `cpu_ops` backend.
+4. Wire `vmm_map()` / `vmm_unmap()` to update hardware mappings synchronously via the HAL.
+5. Add the `owner_core` property to frame capability metadata immediately.
+6. Add the `arm64` and `riscv64` backends using the same vtable contract.
+7. Provide a runtime IOMMU probe hook (which may return NULL).
+8. Implement the uRPC shootdown and ACK protocols (deferred until SMP relevance exists; local TLB flush is sufficient for single-core bring-up).
