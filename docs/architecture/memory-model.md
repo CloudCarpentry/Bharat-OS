@@ -44,3 +44,21 @@ Memory allocation wildly diverges depending on the target profile, explicitly ba
 - **Profile:** Distributed MMU (`MEM_PROFILE_MMU_DISTRIBUTED`) or DMA Isolated (`MEM_PROFILE_MMU_DMA_ISOLATED`).
 - **Constraints:** Demand paging, lazy realization of mappings, thread migration with remote fault recovery. Unmaps use strict generation-sync revocation to prevent use-after-free vulnerabilities. Full IOMMU/SMMU domain support.
 - **NUMA Readiness**: The kernel interfaces are designed from Day 1 to support per-node descriptors, CPU-to-node affinity, and `memory_node_id` routing.
+
+## Virtual Memory Management (VMM) API Baseline
+
+The kernel primarily manages physical pages mapping to root tables; policy remains in user space. (L4 Minimalist Model).
+
+### Low-level Architecture VMM (`<hal/vmm.h>`)
+* `phys_addr_t hal_vmm_init_root(void)`
+  - Allocates and initializes an architecture-specific root page table.
+* `int hal_vmm_map_page(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags)`
+  - Inserts a mapping directly into the specified root table.
+* `int hal_vmm_unmap_page(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t* unmapped_paddr)`
+  - Removes a mapping.
+
+### High-level VMM (`<mm.h>`)
+* `int vmm_map_page(virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags)`
+  - Maps to the kernel's active address space.
+* `int vmm_map_device_mmio(virt_addr_t vaddr, phys_addr_t paddr, capability_t* cap, int is_npu)`
+  - Authenticates via capabilities (`CAP_RIGHT_DEVICE_NPU`/`GPU`) before mapping device memory.

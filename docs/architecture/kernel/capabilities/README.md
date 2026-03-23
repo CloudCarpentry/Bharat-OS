@@ -20,5 +20,15 @@ A capability is an unforgeable, kernel-managed token that pairs an object refere
 - **Zero-Trust**: No ambient authority.
 - **Verifiability**: The flow of authority can be graph-analyzed at compile time to mathematically prove isolation between critical domains (e.g., separating networking stacks from AI cryptographic enclaves).
 
-
 > Reference: seL4 capability systems define a capability as an immutable reference paired with rights, where capability invocation is the authority path that enables least-privilege control.
+
+## Capability and IPC Baseline (Capabilities Portion)
+
+- Per-process capability table (`capability_table_t`) allocated during `process_create`.
+- Capability entries include:
+  - object type,
+  - object reference,
+  - fine-grained rights (`SEND`, `RECEIVE`, `MAP`, `UNMAP`, `SCHEDULE`, `DELEGATE`).
+- Capability transfer policies: A strict set of rules evaluating transferable types and transferable rights attenuation. Only explicit capabilities carrying `DELEGATE` right can be transferred across domains.
+- Delegation support enforces right reduction (`cap_table_delegate` requires delegated rights to be a subset of source rights).
+- Revocation paths follow tree structures to gracefully revoke derived and explicitly granted capabilities recursively.
