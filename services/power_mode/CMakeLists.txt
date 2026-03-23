@@ -8,10 +8,11 @@ if (BHARAT_AUTOMOTIVE_PROFILE)
             state_machine.c
             clients.c
             policy.c
+            ../common/thermal_policy.c
         LIBS
             bharat_libruntime
             bharat_libipc
             bharat_libcap
     )
-    target_include_directories(power_mode_service PRIVATE ${CMAKE_SOURCE_DIR}/services/include)
+    target_include_directories(power_mode_service PRIVATE ${CMAKE_SOURCE_DIR}/services/include ${CMAKE_SOURCE_DIR}/include)
 endif()

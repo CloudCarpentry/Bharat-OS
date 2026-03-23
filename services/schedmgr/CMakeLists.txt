@@ -3,7 +3,10 @@ cmake_minimum_required(VERSION 3.20)
 project(schedmgr C ASM)
 
 # Add source files
-set(SOURCES main.c)
+set(SOURCES
+    main.c
+    ../common/thermal_policy.c
+)
 
 # Create executable
 add_executable(schedmgr ${SOURCES})
@@ -12,6 +15,7 @@ add_executable(schedmgr ${SOURCES})
 # Target include directories
 target_include_directories(schedmgr PRIVATE
     ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/services/include
 )
 
 # Link against common runtime library and IPC library

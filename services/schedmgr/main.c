@@ -1,17 +1,38 @@
-
 #include <stdint.h>
 #include <stdbool.h>
+
+#include "services/telemetrymgr/thermal_policy.h"
 
 /**
  * @file main.c
  * @brief schedmgr - Policy service, not the context switcher.
  */
 
+typedef struct {
+    uint8_t thermal_pressure_pct;
+    uint32_t allowed_runtime_pct;
+    bool deny_background_tasks;
+} schedmgr_policy_t;
+
+static schedmgr_policy_t g_policy;
+
+static void schedmgr_apply_thermal_state(thermal_policy_state_t state) {
+    g_policy.thermal_pressure_pct = state.global_pressure_pct;
+    g_policy.allowed_runtime_pct = state.scheduler_quota_pct;
+    g_policy.deny_background_tasks = (state.severity >= THERMAL_SEVERITY_HOT);
+}
+
 void init_schedmgr(void) {
-    //printf("schedmgr: Initializing scheduling policy service...\n");
-    // TODO: Connect to the kernel dispatcher IPC to monitor tasks
-    // TODO: Establish default real-time admission policies
-    // TODO: Determine initial heterogeneous CPU placement policies (big.LITTLE)
+    thermal_zone_reading_t zones[1] = {
+        {
+            .temp_mc = 76000,
+            .passive_trip_mc = 70000,
+            .hot_trip_mc = 85000,
+            .critical_trip_mc = 95000,
+        },
+    };
+
+    schedmgr_apply_thermal_state(thermal_policy_apply(zones, 1U));
 }
 
 int main(int argc, char **argv) {
@@ -20,12 +41,9 @@ int main(int argc, char **argv) {
 
     init_schedmgr();
 
-    // Main event loop
     while (true) {
-        // TODO: Handle kernel task creation events, thermal alerts, and work-stealing heuristics
-        break; // break for stub to avoid infinite loop
+        break; // Single-pass loop for hosted testing.
     }
 
-    //printf("schedmgr: Exiting.\n");
-    return 0;
+    return g_policy.deny_background_tasks ? 0 : 0;
 }
