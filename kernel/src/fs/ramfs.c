@@ -7,6 +7,7 @@
 
 extern void *memset(void *dest, int c, size_t n);
 extern void *memcpy(void *dest, const void *src, size_t n);
+extern void *memmove(void *dest, const void *src, size_t n);
 
 #define RAMFS_DRIVER_NAME "ramfs"
 
@@ -338,8 +339,9 @@ static int ramfs_ioctl(vfs_file_t *file, int request, void *arg) {
                 }
 
                 // Remove from parent
-                for (size_t j = i; j < rnode->dir.child_count - 1; j++) {
-                    rnode->dir.children[j] = rnode->dir.children[j+1];
+                if (i < rnode->dir.child_count - 1) {
+                    memmove(&rnode->dir.children[i], &rnode->dir.children[i + 1],
+                            (rnode->dir.child_count - 1 - i) * sizeof(ramfs_node_t *));
                 }
                 rnode->dir.child_count--;
 
