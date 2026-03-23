@@ -6,6 +6,10 @@
 #include "../kernel/src/kernel_boot.h"
 #include "../kernel/include/secure_boot.h"
 #include "../kernel/include/boot/boot_mode.h"
+#include <stdlib.h>
+
+void test_device_dma_dump(void) {
+}
 
 // Stubs for kernel_boot calls
 int bharat_secure_boot_verify_early(void) { return 0; }
@@ -15,6 +19,11 @@ int bharat_isolation_init(void) { return 0; }
 int bharat_policy_init(int mode) { return 0; }
 int bharat_secure_boot_stage_hook(bharat_boot_stage_t stage, uint64_t magic) { return 0; }
 void algo_matrix_init(void) {}
+
+int boot_selftest_run_stage(bharat_boot_stage_t stage) { (void)stage; return 0; }
+void test_device_dma_dump(void) {}
+bharat_boot_mode_t bharat_boot_mode_select(void) { return BHARAT_BOOT_MODE_NORMAL; }
+const char* bharat_boot_mode_name(bharat_boot_mode_t mode) { (void)mode; return "NORMAL"; }
 
 // HAL Stubs
 void hal_init(void) {}
@@ -97,7 +106,7 @@ int zswap_init(void) {
     return 0;
 }
 
-void arch_mmu_init(void) {}
+__attribute__((weak)) void arch_mmu_init(void) {}
 void hal_mmu_final_setup(void) {}
 
 // Lots of stubs for the runtime features being called in boot_common_platform_services

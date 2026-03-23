@@ -39,6 +39,8 @@ void kfree(void* ptr) {
 uint64_t hal_timer_monotonic_ticks(void) {
     return 0;
 }
+void arch_cpu_relax(void) {}
+void vmm_process_urpc_messages(void) {}
 void arch_prepare_initial_context(cpu_context_t* ctx, void (*entry)(void), uint64_t stack_top) {
     (void)ctx;
     (void)entry;
@@ -107,6 +109,32 @@ extern long syscall_dispatch(syscall_id_t id, uint64_t arg0, uint64_t arg1,
                       uint64_t arg5);
 
 // Removed duplicate default_personality_ops definition.
+static long default_handle_syscall(kthread_t *thread, trap_frame_t *frame, const trap_info_t *info) {
+    (void)thread;
+    (void)info;
+
+    return syscall_dispatch(
+        trap_frame_get_syscall_no(frame),
+        trap_frame_get_arg0(frame),
+        trap_frame_get_arg1(frame),
+        trap_frame_get_arg2(frame),
+        trap_frame_get_arg3(frame),
+        trap_frame_get_arg4(frame),
+        trap_frame_get_arg5(frame)
+    );
+}
+static int default_handle_user_fault(kthread_t *thread, trap_frame_t *frame, const trap_info_t *info) {
+    (void)thread;
+    (void)frame;
+    (void)info;
+    return -1; // General failure
+}
+static int default_map_fault_to_signal(const trap_info_t *info) {
+    (void)info;
+    return 11; // SIGSEGV
+}
+
+// removed default_personality_ops from here, it's defined in kernel/src/personality/personality_default.c
 
 int main(void) {
     sched_init();

@@ -4,6 +4,16 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Mock for kernel_panic for missing symbols in pmm
+__attribute__((weak)) void kernel_panic(const char* msg) {
+    (void)msg;
+    abort();
+}
+
+// Mock for test_device_dma_dump missing from boot tests
+__attribute__((weak)) void test_device_dma_dump(void) {
+}
+
 // Using weak linking so that tests that include actual mm code won't complain about multiple definitions
 __attribute__((weak)) address_space_t* mm_create_address_space(void) {
     static address_space_t g_as = { .root_pt = 0x1000U };
@@ -113,8 +123,10 @@ int __attribute__((weak)) vmm_map_device_mmio(virt_addr_t vaddr, phys_addr_t pad
     return -1;
 }
 int __attribute__((weak)) hal_vmm_update_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
-    (void)root_table; (void)vaddr; (void)paddr; (void)flags;
-    return -1;
+    (void)root_table; (void)vaddr; (void)paddr; (void)flags; return -1;
+}
+
+void __attribute__((weak)) arch_cpu_relax(void) {
 }
 
 __attribute__((weak)) void hal_serial_write(const char *s) { (void)s; }

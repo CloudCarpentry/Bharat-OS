@@ -46,9 +46,9 @@ Below is an assessment of the current state of core kernel subsystems against ou
   - **Global IRQ Descriptor Lock**: The `g_irq_descriptors` array uses a spinlock per IRQ line. While partitioned by IRQ, configuring shared IRQs across cores could still cause minor contention. However, since IRQ configuration is usually a slow-path/boot-time operation, this violation is highly tolerable for the RT vision.
 
 ### 5. Capabilities & Security (`kernel/src/capability.c`)
-- **Current State**: Low-to-Medium maturity. The model correctly uses per-core capability tables (`g_cpu_locals[i].cap_table`), which is excellent for multikernel design.
+- **Current State**: Medium maturity. The model correctly uses per-core capability tables (`g_cpu_locals[i].cap_table`), which is excellent for multikernel design.
 - **Needs to Mature**:
-  - **Delegation/Revocation Locks**: `cap_table_delegate` and `cap_table_revoke` currently acquire cross-table locks (`cap_lock_two_tables`, `cap_lock_tables_sorted`). In a strict Barrelfish model, altering a remote core's capability table must be done entirely via an asynchronous uRPC message, not by holding a spinlock on the remote table.
+  - **Delegation/Revocation Locks**: `cap_table_delegate` has been partially refactored to use uRPC for cross-core capability delegation instead of cross-table spinlocks. It routes remote destination-table mutation through uRPC while retaining a synchronous API semantics via polling for an ACK. `cap_table_revoke` uses a similar synchronous polling approach for ACKs. In a strict Barrelfish model, altering a remote core's capability table must be completely asynchronous. The next evolution is full asynchronous APIs for both delegation and revocation.
   - **Tree Traversal**: Revocation traverses sibling lists that might span across tables owned by different cores. This logic must be refactored to use distributed state protocols (e.g., 2-phase commit or asynchronous distributed revocation).
 
 ### 6. Inter-Process Communication (IPC / uRPC) (`kernel/src/urpc/urpc_channel.c`)
@@ -65,4 +65,4 @@ To meet our 99% threshold without over-engineering, we accept the following shar
 ## Next Steps
 1. Refactor TLB Coordinator to remove `g_pending_requests_lock`.
 2. Implement per-core page caching in PMM to eliminate fast-path zone locking.
-3. Transition Capability cross-core delegation to use strictly uRPC asynchronous messages instead of cross-core spinlocks.
+3. **[Partially Implemented]** Transition Capability cross-core delegation to use strictly uRPC messages instead of cross-core spinlocks (delegation now routes cross-core destination mutation through uRPC while retaining synchronous API semantics). Full asynchronous APIs are the next evolution.
