@@ -6,11 +6,6 @@
 
 #include <stdlib.h>
 
-void kernel_panic(const char* msg) {
-    printf("PANIC: %s\n", msg);
-    abort();
-}
-
 #include "../kernel/include/mm.h"
 #include "../kernel/include/mm/pmm.h"
 #include "../kernel/include/mm/pmm_map.h"
