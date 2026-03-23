@@ -7,3 +7,4 @@ int virtio_net_probe() { return 0; }
 int virtio_net_bind() { return 0; }
 int virtio_net_start() { return 0; }
 int virtio_net_tx() { return 0; }
+int virtio_net_poll() { return 0; }

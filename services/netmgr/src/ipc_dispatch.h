@@ -6,7 +6,9 @@
 
 void netmgr_ipc_dispatch_init(void);
 
+#include <bharat/ipc/ipc.h>
+
 // Main dispatch loop or single handler entry point
-void netmgr_ipc_handle_request(const netmgr_ipc_req_t *req, netmgr_ipc_res_t *res);
+void netmgr_ipc_handle_request(const bharat_ipc_msg_header_t *hdr, const netmgr_ipc_req_t *req, netmgr_ipc_res_t *res);
 
 #endif // NETMGR_IPC_DISPATCH_H
