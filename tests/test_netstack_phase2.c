@@ -93,7 +93,8 @@ void test_loopback_and_udp() {
     int sock = socket_create();
     assert(sock >= 0);
 
-    int res = socket_bind(sock, 0x0100007F, 1234); // Bind to 127.0.0.1:1234
+    uint32_t loopback = IPV4_ADDR(127, 0, 0, 1);
+    int res = socket_bind(sock, loopback, 1234); // Bind to 127.0.0.1:1234
     assert(res == 0);
 
     socket_set_rx_callback(sock, test_udp_rx_callback);
@@ -102,7 +103,7 @@ void test_loopback_and_udp() {
     rx_callback_called = 0;
 
     // Send to 127.0.0.1:1234
-    res = udp_tx(sock, 0x0100007F, 1234, test_data, sizeof(test_data));
+    res = udp_tx(sock, loopback, 1234, test_data, sizeof(test_data));
     assert(res == 0);
 
     assert(rx_callback_called == 1);
@@ -117,7 +118,7 @@ void test_custom_ip_udp() {
     virtio_adapter_init();
 
     // Change local IP
-    uint32_t new_ip = 0x01020304; // 4.3.2.1
+    uint32_t new_ip = IPV4_ADDR(4, 3, 2, 1); // 4.3.2.1
     ipv4_set_local_ip(new_ip);
 
     int sock = socket_create();
@@ -149,20 +150,21 @@ void test_ipv4_tx_fails_when_unconfigured_non_loopback() {
     netbuf_t nb;
     netbuf_init(&nb);
     netbuf_put(&nb, 10);
-    int res = ipv4_tx(&nb, 0x08080808, IPPROTO_UDP); // some external IP
+    int res = ipv4_tx(&nb, IPV4_ADDR(8, 8, 8, 8), IPPROTO_UDP); // some external IP
     assert(res == -1);
     printf("test_ipv4_tx_fails_when_unconfigured_non_loopback passed\n");
 }
 
 void test_ipv4_loopback_still_selects_loopback_when_unconfigured() {
     ipv4_set_local_ip(0); // clear config
-    uint32_t src_ip = ipv4_get_source_ip(0x0100007F);
-    assert(src_ip == 0x0100007F);
+    uint32_t loopback = IPV4_ADDR(127, 0, 0, 1);
+    uint32_t src_ip = ipv4_get_source_ip(loopback);
+    assert(src_ip == loopback);
 
     netbuf_t nb;
     netbuf_init(&nb);
     netbuf_put(&nb, 10);
-    int res = ipv4_tx(&nb, 0x0100007F, IPPROTO_UDP);
+    int res = ipv4_tx(&nb, loopback, IPPROTO_UDP);
     assert(res == 0); // Should succeed via loopback interface
     printf("test_ipv4_loopback_still_selects_loopback_when_unconfigured passed\n");
 }
@@ -170,7 +172,7 @@ void test_ipv4_loopback_still_selects_loopback_when_unconfigured() {
 void test_udp_uses_configured_ipv4_source_selection() {
     socket_table_init();
     virtio_adapter_init();
-    ipv4_set_local_ip(0x0A000001); // 10.0.0.1
+    ipv4_set_local_ip(IPV4_ADDR(10, 0, 0, 1)); // 10.0.0.1
 
     int sock = socket_create();
     assert(sock >= 0);
@@ -184,12 +186,13 @@ void test_udp_uses_configured_ipv4_source_selection() {
     // but let's test that UDP actually fails *correctly* when unconfigured.
 
     ipv4_set_local_ip(0);
-    res = udp_tx(sock, 0x08080808, 53, (const uint8_t*)"test", 4);
+    uint32_t external_ip = IPV4_ADDR(8, 8, 8, 8);
+    res = udp_tx(sock, external_ip, 53, (const uint8_t*)"test", 4);
     assert(res == -1); // Fails because source IP is unconfigured
 
-    ipv4_set_local_ip(0x0A000001); // 10.0.0.1
+    ipv4_set_local_ip(IPV4_ADDR(10, 0, 0, 1)); // 10.0.0.1
     // UDP should now compute the header, but fail in ARP or Ethernet since we don't mock it nicely for external IPs
-    res = udp_tx(sock, 0x08080808, 53, (const uint8_t*)"test", 4);
+    res = udp_tx(sock, external_ip, 53, (const uint8_t*)"test", 4);
     // It actually fails due to ARP returning -1 (pending). That's expected, but it means UDP correctly got past the early failure.
     assert(res == -1);
 
@@ -197,15 +200,16 @@ void test_udp_uses_configured_ipv4_source_selection() {
 }
 
 void test_ipv4_set_local_ip_rejects_loopback_and_broadcast() {
-    int res = ipv4_set_local_ip(0x0100007F); // 127.0.0.1
+    uint32_t loopback = IPV4_ADDR(127, 0, 0, 1);
+    int res = ipv4_set_local_ip(loopback); // 127.0.0.1
     assert(res == -1);
 
-    res = ipv4_set_local_ip(0xFFFFFFFF);
+    res = ipv4_set_local_ip(IPV4_ADDR(255, 255, 255, 255));
     assert(res == -1);
 
-    res = ipv4_set_local_ip(0x0A000001); // Valid
+    res = ipv4_set_local_ip(IPV4_ADDR(10, 0, 0, 1)); // Valid
     assert(res == 0);
-    assert(ipv4_get_local_ip() == 0x0A000001);
+    assert(ipv4_get_local_ip() == IPV4_ADDR(10, 0, 0, 1));
 
     res = ipv4_set_local_ip(0); // Valid (clear)
     assert(res == 0);
