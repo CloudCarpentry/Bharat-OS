@@ -41,18 +41,6 @@ uint32_t ipv4_get_loopback_ip(void) {
     return loopback_ip;
 }
 
-uint32_t ipv4_select_source_ip(uint32_t dst_ip) {
-    if ((dst_ip & 0xFFu) == 127u) {
-        return loopback_ip;
-    }
-
-    if (local_ip == 0) {
-        return 0;
-    }
-
-    return local_ip;
-}
-
 int ipv4_is_local_address(uint32_t ip) {
     if (ip == loopback_ip || ipv4_is_broadcast(ip)) {
         return 1;
@@ -130,23 +118,24 @@ int ipv4_rx(netbuf_t *nb) {
 uint32_t ipv4_get_source_ip(uint32_t dst_ip) {
     if ((dst_ip & 0xFF) == 127) { // 127.x.x.x loopback
         return loopback_ip;
-}
-int ipv4_tx(netbuf_t *nb, uint32_t dst_ip, uint8_t protocol) {
-    uint32_t src_ip = ipv4_select_source_ip(dst_ip);
+    }
 
     /* fail closed: no non-loopback transmit without configuration */
-    if (src_ip == 0) {
-        return -1;
+    if (local_ip == 0) {
+        return 0;
     }
     return local_ip;
 }
 
-void ipv4_set_local_ip(uint32_t ip) {
-    local_ip = ip;
-}
-
 int ipv4_tx(netbuf_t *nb, uint32_t dst_ip, uint8_t protocol) {
+    if (!nb) {
+        return -1;
+    }
+
     uint32_t src_ip = ipv4_get_source_ip(dst_ip);
+    if (src_ip == 0) {
+        return -1; // Fail closed if unconfigured non-loopback
+    }
 
     uint16_t total_len = netbuf_len(nb) + sizeof(iphdr_t);
 
