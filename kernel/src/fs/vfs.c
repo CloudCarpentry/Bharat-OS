@@ -1,5 +1,6 @@
 #include "fs/vfs.h"
 
+#include "kernel/status.h"
 #include <stddef.h>
 #include <stdint.h>
 
@@ -9,6 +10,7 @@ vfs_node_t *vfs_root = NULL;
 
 static vfs_driver_info_t g_driver_registry[VFS_MAX_DRIVERS];
 static size_t g_driver_count = 0;
+static uint32_t g_driver_lock = 0;
 
 size_t vfs_strnlen(const char *s, size_t max_len) {
     size_t i = 0;
@@ -58,31 +60,46 @@ static int vfs_streq(const char *a, const char *b) {
 
 int vfs_register_driver(const vfs_driver_info_t *info) {
     if (!info || !info->name || info->name[0] == '\0') {
-        return -1;
+        return K_ERR_INVALID_ARG;
+    }
+
+    while (__atomic_test_and_set(&g_driver_lock, __ATOMIC_ACQUIRE)) {
+        // Spin
     }
 
     if (g_driver_count >= VFS_MAX_DRIVERS) {
-        return -1;
+        __atomic_clear(&g_driver_lock, __ATOMIC_RELEASE);
+        return K_ERR_NO_MEMORY;
     }
 
     g_driver_registry[g_driver_count] = *info;
     g_driver_count++;
-    return 0;
+
+    __atomic_clear(&g_driver_lock, __ATOMIC_RELEASE);
+    return K_OK;
 }
 
 const vfs_driver_info_t *vfs_get_driver(const char *name) {
     size_t i;
+    const vfs_driver_info_t *found = NULL;
+
     if (!name) {
         return NULL;
     }
 
+    while (__atomic_test_and_set(&g_driver_lock, __ATOMIC_ACQUIRE)) {
+        // Spin
+    }
+
     for (i = 0; i < g_driver_count; ++i) {
         if (vfs_streq(g_driver_registry[i].name, name)) {
-            return &g_driver_registry[i];
+            found = &g_driver_registry[i];
+            break;
         }
     }
 
-    return NULL;
+    __atomic_clear(&g_driver_lock, __ATOMIC_RELEASE);
+    return found;
 }
 
 #ifdef TESTING
