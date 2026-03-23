@@ -2,7 +2,7 @@
 #define BHARAT_HAL_GPU_H
 
 #include "hal/hal.h"
-#include "../advanced/formal_verif.h"
+#include "../../staging/formal/formal_verif.h"
 
 /*
  * GPU Hardware Abstraction Layer Base

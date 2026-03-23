@@ -2,7 +2,7 @@
 #define BHARAT_HAL_POWER_H
 
 #include <stdint.h>
-#include "../advanced/formal_verif.h"
+#include "../../staging/formal/formal_verif.h"
 
 /*
  * Bharat-OS Intelligent Power Management Interface

@@ -1,4 +1,4 @@
-#include "../../include/advanced/multikernel.h"
+#include "core/multikernel.h"
 #include "../../include/atomic.h"
 #include "../../include/hal/hal.h"
 #include "../../include/kernel_safety.h"

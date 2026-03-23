@@ -1,7 +1,7 @@
 #ifndef BHARAT_MK_PROTO_H
 #define BHARAT_MK_PROTO_H
 
-#include "../advanced/multikernel.h"
+#include "../core/multikernel.h"
 
 // Delivery Flags
 #define MK_MSG_FLAG_ACK_REQUIRED  (1U << 0)

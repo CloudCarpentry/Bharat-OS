@@ -2,7 +2,7 @@
 #include "security/isolation.h"
 #include "security/audit.h"
 #include "hal/iommu.h"
-#include "profile.h"
+#include "profile/profile.h"
 #include "device.h"
 
 #define BHARAT_MAX_ISOLATED_PROCS 64U

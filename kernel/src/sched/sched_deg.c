@@ -1,5 +1,5 @@
-#include "sched.h"
-#include "sched_deg.h"
+#include "sched/sched.h"
+#include "sched/sched_deg.h"
 
 // Define a minimal kmalloc/kfree stub if we don't have one, since this is a kernel
 // Actually, I'll just use a static pool for DEGs to avoid memory allocation failures in MVP

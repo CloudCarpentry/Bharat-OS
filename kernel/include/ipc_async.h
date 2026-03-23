@@ -2,7 +2,7 @@
 #define BHARAT_ASYNC_IPC_H
 
 #include <stdint.h>
-#include "sched.h"
+#include "sched/sched.h"
 
 typedef enum {
     IPC_ASYNC_STATE_PENDING,

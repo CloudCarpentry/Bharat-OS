@@ -2,7 +2,7 @@
 #define BHARAT_RTOS_DEFENSE_H
 
 #include <stdint.h>
-#include "sched.h"
+#include "sched/sched.h"
 
 /*
  * Bharat-OS Hard Real-Time & Defense Scheduler Extensions

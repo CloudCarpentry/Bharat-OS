@@ -1,4 +1,4 @@
-#include "profile.h"
+#include "profile/profile.h"
 #include <stddef.h>
 
 static const char *k_profile_names[] = {

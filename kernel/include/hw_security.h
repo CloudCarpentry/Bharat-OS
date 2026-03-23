@@ -2,7 +2,7 @@
 #define BHARAT_HW_SECURITY_H
 
 #include <stdint.h>
-#include "sched.h"
+#include "sched/sched.h"
 
 /*
  * Bharat-OS Advanced Hardware Security Abstraction (Post-2014 Hardware)

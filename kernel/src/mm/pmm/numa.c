@@ -7,7 +7,7 @@
 #include "../../../include/hal/hal_tlb.h"
 #include "../../../include/mm.h"
 #include "../../../include/mm/physmap.h"
-#include "../../../include/sched.h"
+#include "sched/sched.h"
 #include "../../../include/slab.h"
 
 static numa_node_descriptor_t g_nodes[NUMA_MAX_NODES];

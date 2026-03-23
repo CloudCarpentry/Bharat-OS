@@ -1,6 +1,6 @@
 #include "../../include/ipc/mk_dispatch.h"
 #include "../../include/hal/hal.h"
-#include "../../include/sched.h"
+#include "sched/sched.h"
 
 #define MK_MSG_TYPE_AI_SUGGESTION 1U
 
