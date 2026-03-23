@@ -3,6 +3,7 @@ add_library(k_sched OBJECT
     ../../src/sched_deg.c
     ../../src/algo_matrix.c
     ../../src/ai_sched.c
+    ../../src/lib/rbtree.c
 )
 
 target_include_directories(k_sched PRIVATE ../../include ../../include/generated ${CMAKE_SOURCE_DIR}/include)
