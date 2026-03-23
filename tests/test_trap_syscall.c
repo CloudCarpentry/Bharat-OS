@@ -39,6 +39,8 @@ void kfree(void* ptr) {
 uint64_t hal_timer_monotonic_ticks(void) {
     return 0;
 }
+void arch_cpu_relax(void) {}
+void vmm_process_urpc_messages(void) {}
 void arch_prepare_initial_context(cpu_context_t* ctx, void (*entry)(void), uint64_t stack_top) {
     (void)ctx;
     (void)entry;
@@ -131,11 +133,7 @@ static int default_map_fault_to_signal(const trap_info_t *info) {
     return 11; // SIGSEGV
 }
 
-const personality_ops_t default_personality_ops = {
-    .handle_syscall = default_handle_syscall,
-    .handle_user_fault = default_handle_user_fault,
-    .map_fault_to_signal = default_map_fault_to_signal,
-};
+// removed default_personality_ops from here, it's defined in kernel/src/personality/personality_default.c
 
 int main(void) {
     sched_init();
