@@ -188,18 +188,18 @@ The sections below keep the gap framing and add concrete implementation deltas f
 
 ### Core-Code Changes Required So ARM32/RV32 Can Land Without Reworking Core Again
 
-1. **Make address-size assumptions explicit and centralized**
-   - Introduce compile-time contracts (`ARCH_WORD_BITS`, `ARCH_PADDR_BITS`, `ARCH_VADDR_BITS`) and assert these in shared headers.
-   - Audit generic code for implicit `uint64_t` assumptions in mapping, bitmap math, and pointer casts.
+1. **Make address-size assumptions explicit and centralized (DONE)**
+   - Introduced compile-time contracts (`ARCH_WORD_BITS`, `ARCH_PADDR_BITS`, `ARCH_VADDR_BITS`) in `kernel/include/bharat/arch/types.h`.
+   - Audit generic code for implicit `uint64_t` assumptions in mapping, bitmap math, and pointer casts (Ongoing).
 
 2. **Split generic VM logic from page-table format details**
    - Keep `hal_pt` as the only mapping gateway from generic MM/VMM code.
    - Forbid generic code from directly depending on level counts (e.g., 4-level assumptions) or 64-bit PTE layouts.
    - Provide common helpers for page-size-agnostic alignment/rounding to avoid duplicated backend math.
 
-3. **Harden atomic and lock abstraction for 32-bit**
-   - Migrate from legacy `__sync` builtins to `__atomic` wrappers with explicit memory orders.
-   - Gate 64-bit atomics behind capability checks or fallback lock paths when native 64-bit atomic ops are not guaranteed on 32-bit targets.
+3. **Harden atomic and lock abstraction for 32-bit (DONE)**
+   - Migrated from legacy `__sync` builtins to `__atomic` wrappers with explicit memory orders in `atomic.h`, `spinlock.h`, and `pmm.c`.
+   - Gated 64-bit atomics behind `ARCH_WORD_BITS == 64` checks, falling back to a global lock implementation for 32-bit targets.
 
 4. **Define strict per-arch context ABI contract**
    - Standardize `arch_context_t` save/restore metadata for GPR, status register, and optional ext-state.
