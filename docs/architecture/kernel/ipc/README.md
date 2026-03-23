@@ -7,7 +7,6 @@ Because Bharat-OS is a microkernel, almost all OS services (file systems, networ
 We utilize two distinct IPC models to serve both deterministic bounds (Bharat-RT) and massive scalability (Bharat-Cloud).
 The cross-core URPC path follows the multikernel principle popularized by Barrelfish: the machine is treated as a network of independent cores coordinated through explicit message passing rather than shared-kernel locks.
 
-
 ```mermaid
 flowchart LR
     subgraph Userspace["User Space"]
@@ -38,6 +37,9 @@ Fast, blocking, unbuffered message passing used for capability delegation and st
 
 - **Endpoints (`ep_t`)**: Communication portals. A Sender invokes a Send capability on the endpoint; a Receiver invokes a Receive capability.
 - **Registers**: Short messages (few words) are passed entirely within CPU registers during the context switch, completely bypassing memory to achieve ultra-low latency.
+- **Blocking**:
+  - Send to full endpoint => `IPC_ERR_WOULD_BLOCK` and current thread marked blocked.
+  - Receive on empty endpoint => `IPC_ERR_WOULD_BLOCK` and current thread marked blocked.
 
 ## 2. Lockless URPC (The Multikernel Spine)
 
@@ -45,3 +47,12 @@ Scaling synchronous IPC across 128+ cores causes shared memory bus saturation an
 
 - **URPC (User-level Remote Procedure Call)**: Replaces cross-core kernel locks with explicit, asynchronous message passing via shared ring buffers.
 - **Core-to-Core Message Passing**: Each core runs its own kernel instance. State (like page tables) is replicated, not shared. When Core A needs to update a page table on Core B, it sends a lockless URPC message over an interconnect rather than grabbing a global spinlock.
+
+## Related Documents
+- [Pipes](pipes.md) - POSIX-like anonymous and named pipes over IPC.
+- [Message Queues](message-queues.md) - Buffered, prioritized message queues.
+- [Shared Memory](shared-memory.md) - Capability-backed shared memory regions.
+- [Signals](signals.md) - POSIX signal delivery emulation via asynchronous IPC.
+- [Semaphores](semaphores.md) - Counting and binary synchronization.
+- [IPC Performance](ipc-performance.md) - Benchmarks and zero-copy optimization goals.
+- [Roadmap](roadmap.md) - Current status and future goals for the IPC subsystem.
