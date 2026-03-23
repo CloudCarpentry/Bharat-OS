@@ -27,10 +27,10 @@ __attribute__((weak)) int machine_probe_boot_video(display_probe_result_t *out, 
     out->early_usable = false;
     out->interactive = false;
     out->requires_takeover = false;
-    
+
     if (video) {
         video->valid = false;
     }
-    
+
     return 0; // successfully probed that we HAVE NO video handoff
 }

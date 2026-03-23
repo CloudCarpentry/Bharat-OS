@@ -39,6 +39,7 @@ void profile_init(void);
 #define FEATURE_QOS_HOOKS 1
 #endif
 
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include <stdbool.h>
 
 typedef enum {

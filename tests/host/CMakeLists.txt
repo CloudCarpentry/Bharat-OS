@@ -104,6 +104,10 @@ target_include_directories(test_motor_control_core PRIVATE ../../drivers/include
 
 add_test(NAME host_test_motor_control_core COMMAND test_motor_control_core)
 
+# VFS/RamFS Tests
+add_executable(test_ramfs_streq fs/test_ramfs_streq.c)
+target_include_directories(test_ramfs_streq PRIVATE ../../kernel/include)
+add_test(NAME host_test_ramfs_streq COMMAND test_ramfs_streq)
 add_executable(benchmark_actuator drivers/benchmark_actuator.c ../../drivers/class/actuator/actuator_core.c)
 target_include_directories(benchmark_actuator PRIVATE ../../drivers/include)
 add_test(NAME host_benchmark_actuator COMMAND benchmark_actuator)

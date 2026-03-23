@@ -36,7 +36,7 @@ typedef struct capability_token_t capability_token_t;
 // Shorthand for capability tokens used across the system
 typedef struct capability_token_t capability_t;
 
-// A formally verified context switch that mathematically guarantees 
+// A formally verified context switch that mathematically guarantees
 // register scrubbing to prevent side-channel data leaks between processes
 void fv_secure_context_switch(void* next_thread_frame);
 

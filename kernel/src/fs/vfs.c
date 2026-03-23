@@ -86,7 +86,9 @@ const vfs_driver_info_t *vfs_get_driver(const char *name) {
 }
 
 #ifdef TESTING
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "fs/mount.h"
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "fs/file.h"
 
 void vfs_test_reset_state(void) {

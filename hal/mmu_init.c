@@ -9,6 +9,7 @@
 
 mmu_ops_t *active_mmu = NULL;
 
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "../../include/profile.h"
 
 // Forward declarations for arch-specific ops
@@ -26,6 +27,7 @@ extern void x86_iommu_detect(void);
 extern void arm64_iommu_detect(void);
 extern void riscv_iommu_detect(void);
 
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "mm/prot_domain.h"
 
 // Initialize based on memory model profile
@@ -67,7 +69,7 @@ void hal_mmu_final_setup(void) {
             uint64_t base = discovery->topology.mem_regions[i].base;
             uint64_t size = discovery->topology.mem_regions[i].size;
             for (uint64_t off = 0; off < size; off += 4096) {
-                vmm_map_page(base + off, base + off, 
+                vmm_map_page(base + off, base + off,
                              CAP_RIGHT_READ | CAP_RIGHT_WRITE | CAP_RIGHT_EXECUTE);
             }
         }
@@ -84,7 +86,7 @@ void hal_mmu_final_setup(void) {
             uint64_t fb_phys = discovery->boot_video.phys_addr;
             uint64_t fb_size = discovery->boot_video.size;
             for (uint64_t off = 0; off < fb_size; off += 4096) {
-                vmm_map_page(fb_phys + off, fb_phys + off, 
+                vmm_map_page(fb_phys + off, fb_phys + off,
                              CAP_RIGHT_READ | CAP_RIGHT_WRITE | CAP_RIGHT_DEVICE_GPU);
             }
         }
@@ -102,7 +104,7 @@ void hal_mmu_final_setup(void) {
             uint64_t size = discovery->topology.mem_regions[i].size;
             // Map the whole region into the high-half physical map
             for (uint64_t off = 0; off < size; off += 4096) {
-                vmm_map_page(base + off + g_kernel_virt_offset, base + off, 
+                vmm_map_page(base + off + g_kernel_virt_offset, base + off,
                              CAP_RIGHT_READ | CAP_RIGHT_WRITE);
             }
         }

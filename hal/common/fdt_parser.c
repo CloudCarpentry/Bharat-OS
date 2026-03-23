@@ -469,7 +469,7 @@ int fdt_parse_discovery(const void *fdt_ptr, system_discovery_t *discovery) {
       uint32_t nameoff = fdt32_to_cpu(*p++);
       const char *prop_name = fdt_get_string(fdt, nameoff);
       const void *prop_data = p;
-      
+
       hal_serial_write("FDT:   PROP: ");
       hal_serial_write(prop_name);
       hal_serial_write("\n");

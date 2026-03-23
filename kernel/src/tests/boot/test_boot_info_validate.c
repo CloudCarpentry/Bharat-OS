@@ -70,5 +70,6 @@ static int test_boot_info_sanity(void) {
     return 0; // The original test doesn't return pass/fail properly, but we can wrap it
 }
 
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "tests/ktest.h"
 REGISTER_BOOT_SELFTEST("boot_info_sanity", "boot", test_boot_info_sanity, BOOT_TEST_STAGE_EARLY, BOOT_TEST_MANDATORY, 0, true)

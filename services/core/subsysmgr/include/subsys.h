@@ -6,7 +6,7 @@
 
 /*
  * Bharat-OS Subsystem Abstraction Interface
- * 
+ *
  * Supports launching foreign OS personalities either via API translation (Syscall interception)
  * or via lightweight Hardware Virtual Machines (Type-1 Hypervisor approach).
  */
@@ -30,11 +30,11 @@ typedef struct {
     uint32_t subsys_id;
     subsys_type_t type;
     subsys_exec_mode_t exec_mode;
-    
+
     // Limits and Configuration
     uint64_t memory_limit_mb;
     uint32_t cpu_core_allocation_mask;
-    
+
     // The root capability representing this subsystem's isolated domain.
     uint32_t root_domain_cap;
 

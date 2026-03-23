@@ -85,7 +85,7 @@ struct vfs_node {
     uint64_t size; // File size in bytes
     uint64_t inode; // FS specific inode number
     vfs_backend_type_t backend_type;
-    
+
     vfs_operations_t* ops;
     void* fs_data;
 };

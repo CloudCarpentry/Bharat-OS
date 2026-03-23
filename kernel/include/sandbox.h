@@ -67,7 +67,7 @@ typedef struct {
     uint64_t allow_port_io;
     int allow_raw_sockets;
     uint32_t sandbox_id;
-    
+
     namespace_config_t namespaces;
     resource_limits_t limits;
     sandbox_fs_policy_t fs_policy;
@@ -79,7 +79,7 @@ sandbox_ctx_t* sandbox_create_context(void);
 // Apply a sandbox context to a process (Containers)
 int sandbox_apply(kprocess_t* process, sandbox_ctx_t* ctx);
 
-// Verify if a process has a specific capability 
+// Verify if a process has a specific capability
 int sandbox_check_capability(kprocess_t* process, uint64_t requested_capability);
 
 // Add or replace a path capability rule in a sandbox context.

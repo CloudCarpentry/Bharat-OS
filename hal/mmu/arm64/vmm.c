@@ -88,7 +88,9 @@ uint32_t convert_arm64_to_flags(uint64_t mmu_flags) {
     return flags;
 }
 
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "../../../kernel/include/hal/hal_pt.h"
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "../../../kernel/include/hal/hal_tlb.h"
 
 phys_addr_t hal_vmm_init_root(void) {
@@ -248,11 +250,11 @@ static void arm64_mmu_activate(phys_addr_t root) {
     // In Bharat-v3-64, we activate the provided root table in TTBR0.
     // We assume the kernel is identity-mapped (or correctly mapped in the provided table).
     // This is called AFTER we've mapped the RAM and (optionally) the framebuffer.
-    
+
     uint64_t mair = (0xFFLL << 0)  | // Attr 0: Normal WB/WA/RA
                     (0x04LL << 8)  | // Attr 1: Device-nGnRE
                     (0x00LL << 16);  // Attr 2: Device-nGnRnE
-    
+
     // TCR_EL1:
     // T0SZ=16 (48-bit VA)
     // TG0=0 (4KB)
@@ -333,6 +335,7 @@ mmu_ops_t arm64_mmu_ops = {
     .has_user_kernel_split = true, // TTBR0 vs TTBR1
 };
 
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "../../../kernel/include/slab.h"
 
 static prot_domain_t* arm64_mmu_full_create(void) {

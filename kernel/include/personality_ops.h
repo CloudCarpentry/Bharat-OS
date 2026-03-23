@@ -3,6 +3,7 @@
 struct kthread;
 typedef struct kthread kthread_t;
 
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "trap_types.h"
 
 // Forward declaration of trap_frame_t without typedef redefinition issues.

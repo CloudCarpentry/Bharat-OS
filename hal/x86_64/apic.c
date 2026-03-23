@@ -85,6 +85,7 @@ void hal_ipi_broadcast(uint64_t mask, hal_ipi_reason_t reason) {
 }
 
 // --- x86_64 MSI Support via Controller Ops ---
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "hal/hal_irq.h"
 
 // Note: x86 MSI uses a specific address format based on LAPIC ID
