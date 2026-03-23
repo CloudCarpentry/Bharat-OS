@@ -178,9 +178,18 @@ add_executable(test_windows_compat_init test_windows_compat_init.c ../personalit
 target_include_directories(test_windows_compat_init PRIVATE ../kernel/include ../services/core/subsysmgr/include)
 add_test(NAME test_windows_compat_init COMMAND test_windows_compat_init)
 
-add_executable(test_subsys_manager test_subsys_manager.c benchmark_stubs.c host/mock_panic.c ../services/core/subsysmgr/manager.c ../personalities/linux/linux_compat.c ../personalities/windows/win_compat.c ../services/core/subsysmgr/subsys_test_runner.c ../boot/protocols/boot_args.c ../kernel/src/lib/string.c)
-target_include_directories(test_subsys_manager PRIVATE ../services/core/subsysmgr/include ../kernel/include)
 add_test(NAME test_subsys_manager COMMAND test_subsys_manager)
+
+add_executable(test_android_personality
+    subsys/test_android_personality.c
+    ../personalities/android/android_personality.c
+    ../personalities/android/android_binder_dist.c
+    ../personalities/android/android_boot.c
+    ../personalities/android/android_process.c
+    ../personalities/android/android_security.c
+)
+target_include_directories(test_android_personality PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/services/core/subsysmgr/include)
+add_test(NAME test_android_personality COMMAND test_android_personality)
 
 add_executable(test_vm_stress test_vm_stress.c benchmark_stubs.c host/mock_panic.c ../kernel/src/mm/vm/aspace/vm_space.c)
 target_include_directories(test_vm_stress PRIVATE ../kernel/include)
@@ -482,6 +491,7 @@ set(BHARAT_NOSTDLIB_TEST_TARGETS
     test_elf_parser
     test_vfs_ramfs
     test_boot_e2e
+    test_android_personality
 )
 
 foreach(test_target IN LISTS BHARAT_NOSTDLIB_TEST_TARGETS)
