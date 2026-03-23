@@ -1,67 +1,17 @@
-{
-  "builds": {
-    "default_dev": {
-      "preset": "x86_64-debug",
-      "arch": "x86_64",
-      "profile": "DESKTOP",
-      "personality": "NONE",
-      "board": "qemu-virt",
-      "gui": true,
-      "run": false
-    },
-    "x86_64_desktop_mmu": {
-      "preset": "x86_64-dev",
-      "arch": "x86_64",
-      "profile": "DESKTOP",
-      "personality": "NONE",
-      "board": "qemu-virt",
-      "gui": false,
-      "run": false
-    },
-    "arm64_desktop_mmu": {
-      "preset": "arm64-edge",
-      "arch": "arm64",
-      "profile": "DESKTOP",
-      "personality": "LINUX",
-      "board": "virt",
-      "gui": false,
-      "run": false
-    },
-    "riscv64_desktop_mmu": {
-      "preset": "riscv64-edge",
-      "arch": "riscv64",
-      "profile": "DESKTOP",
-      "personality": "NONE",
-      "board": "virt",
-      "gui": false,
-      "run": false
-    },
-    "arm32_edge_mpu": {
-      "preset": "arm32-edge",
-      "arch": "arm32",
-      "profile": "EDGE",
-      "personality": "NONE",
-      "board": "avh-corstone310",
-      "gui": false,
-      "run": false
-    },
-    "riscv32_edge_mmu_lite": {
-      "preset": "riscv32-edge",
-      "arch": "riscv32",
-      "profile": "EDGE",
-      "personality": "NONE",
-      "board": "virt",
-      "gui": false,
-      "run": false
-    },
+import json
+
+with open("build_config.json", "r") as f:
+    data = json.load(f)
+
+new_builds = {
     "arm64_automobile_debug": {
       "preset": "arm64-automobile-debug",
       "arch": "arm64",
       "profile": "AUTOMOBILE",
       "personality": "NONE",
       "board": "virt",
-      "gui": true,
-      "run": false
+      "gui": True,
+      "run": False
     },
     "arm64_automobile_release": {
       "preset": "arm64-automobile-release",
@@ -69,8 +19,8 @@
       "profile": "AUTOMOBILE",
       "personality": "NONE",
       "board": "virt",
-      "gui": true,
-      "run": false
+      "gui": True,
+      "run": False
     },
     "riscv64_ev_automobile_debug": {
       "preset": "riscv64-ev-automobile-debug",
@@ -78,8 +28,8 @@
       "profile": "EV_AUTOMOBILE",
       "personality": "NONE",
       "board": "virt",
-      "gui": true,
-      "run": false
+      "gui": True,
+      "run": False
     },
     "riscv64_ev_automobile_release": {
       "preset": "riscv64-ev-automobile-release",
@@ -87,8 +37,8 @@
       "profile": "EV_AUTOMOBILE",
       "personality": "NONE",
       "board": "virt",
-      "gui": true,
-      "run": false
+      "gui": True,
+      "run": False
     },
     "arm32_drone_debug": {
       "preset": "arm32-drone-debug",
@@ -96,8 +46,8 @@
       "profile": "DRONE",
       "personality": "NONE",
       "board": "avh-corstone310",
-      "gui": false,
-      "run": false
+      "gui": False,
+      "run": False
     },
     "arm32_drone_release": {
       "preset": "arm32-drone-release",
@@ -105,8 +55,8 @@
       "profile": "DRONE",
       "personality": "NONE",
       "board": "avh-corstone310",
-      "gui": false,
-      "run": false
+      "gui": False,
+      "run": False
     },
     "riscv32_robot_debug": {
       "preset": "riscv32-robot-debug",
@@ -114,8 +64,8 @@
       "profile": "ROBOT",
       "personality": "NONE",
       "board": "virt",
-      "gui": false,
-      "run": false
+      "gui": False,
+      "run": False
     },
     "riscv32_robot_release": {
       "preset": "riscv32-robot-release",
@@ -123,8 +73,8 @@
       "profile": "ROBOT",
       "personality": "NONE",
       "board": "virt",
-      "gui": false,
-      "run": false
+      "gui": False,
+      "run": False
     },
     "arm64_medical_debug": {
       "preset": "arm64-medical-debug",
@@ -132,8 +82,8 @@
       "profile": "MEDICAL",
       "personality": "NONE",
       "board": "virt",
-      "gui": true,
-      "run": false
+      "gui": True,
+      "run": False
     },
     "arm64_medical_release": {
       "preset": "arm64-medical-release",
@@ -141,8 +91,8 @@
       "profile": "MEDICAL",
       "personality": "NONE",
       "board": "virt",
-      "gui": true,
-      "run": false
+      "gui": True,
+      "run": False
     },
     "riscv64_medical_debug": {
       "preset": "riscv64-medical-debug",
@@ -150,8 +100,8 @@
       "profile": "MEDICAL",
       "personality": "NONE",
       "board": "virt",
-      "gui": false,
-      "run": false
+      "gui": False,
+      "run": False
     },
     "riscv64_medical_release": {
       "preset": "riscv64-medical-release",
@@ -159,8 +109,12 @@
       "profile": "MEDICAL",
       "personality": "NONE",
       "board": "virt",
-      "gui": false,
-      "run": false
+      "gui": False,
+      "run": False
     }
-  }
 }
+
+data["builds"].update(new_builds)
+
+with open("build_config.json", "w") as f:
+    json.dump(data, f, indent=2)
