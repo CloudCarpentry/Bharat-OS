@@ -12,6 +12,8 @@ static uint32_t g_thermal_zone_count;
 static ptp_cooling_device_t g_cooling_devices[PTP_MAX_COOLING_DEVICES];
 static uint32_t g_cooling_device_count;
 
+static ptp_thermal_summary_t g_thermal_summary;
+
 static uint32_t g_system_sleep_state;
 static uint32_t g_system_suspended;
 
@@ -34,6 +36,7 @@ static void perf_topology_build_defaults(void) {
     g_topology.discovered_numa_nodes = 1U;
     g_topology.discovered_cpu_count = BHARAT_MAX_CORES;
     g_topology.heterogeneous_cores = 0U;
+    g_topology.accelerator_count = 0U;
 
     for (core = 0U; core < BHARAT_MAX_CORES; ++core) {
         g_topology.cpu[core].package_id = 0U;
@@ -75,12 +78,31 @@ static void perf_topology_build_defaults(void) {
     g_topology.cache[2].shared_cpu_count = BHARAT_MAX_CORES;
 }
 
+static ptp_thermal_level_t thermal_level_from_temp(const ptp_thermal_zone_t *zone, int32_t temperature_mc) {
+    if (temperature_mc >= zone->critical_trip_mc) {
+        return PTP_THERMAL_LEVEL_CRITICAL;
+    }
+    if (temperature_mc >= zone->hot_trip_mc) {
+        return PTP_THERMAL_LEVEL_HOT;
+    }
+    if (temperature_mc >= zone->passive_trip_mc) {
+        return PTP_THERMAL_LEVEL_PASSIVE;
+    }
+    return PTP_THERMAL_LEVEL_NORMAL;
+}
+
 int ptp_init(void) {
     g_wake_source_count = 0U;
     g_thermal_zone_count = 0U;
     g_cooling_device_count = 0U;
     g_system_sleep_state = 0U;
     g_system_suspended = 0U;
+    g_thermal_summary = (ptp_thermal_summary_t){
+        .level = PTP_THERMAL_LEVEL_NORMAL,
+        .cooling_state = 0U,
+        .max_temp_mc = 0,
+        .throttle_votes = 0U,
+    };
 
     perf_topology_build_defaults();
     return 0;
@@ -179,19 +201,12 @@ int thermal_register_cooling_device(const ptp_cooling_device_t *cooling_cfg) {
 
 int thermal_update_temperature(uint32_t zone_id, int32_t temperature_mc) {
     uint32_t i;
-    uint32_t max_level = 0U;
+    uint32_t requested_cooling = 0U;
+    ptp_thermal_level_t zone_level;
 
     for (i = 0U; i < g_thermal_zone_count; ++i) {
         if (g_thermal_zones[i].id == zone_id) {
             g_thermal_zones[i].current_temp_mc = temperature_mc;
-
-            if (temperature_mc >= g_thermal_zones[i].critical_trip_mc) {
-                max_level = 3U;
-            } else if (temperature_mc >= g_thermal_zones[i].hot_trip_mc) {
-                max_level = 2U;
-            } else if (temperature_mc >= g_thermal_zones[i].passive_trip_mc) {
-                max_level = 1U;
-            }
             break;
         }
     }
@@ -200,23 +215,59 @@ int thermal_update_temperature(uint32_t zone_id, int32_t temperature_mc) {
         return -1;
     }
 
-    for (i = 0U; i < g_cooling_device_count; ++i) {
-        uint32_t requested = max_level;
-        if (requested > g_cooling_devices[i].max_state) {
-            requested = g_cooling_devices[i].max_state;
-        }
+    g_thermal_summary.max_temp_mc = temperature_mc;
+    g_thermal_summary.level = PTP_THERMAL_LEVEL_NORMAL;
 
-        g_cooling_devices[i].active_state = requested;
-        if (g_cooling_devices[i].apply) {
-            (void)g_cooling_devices[i].apply(requested, g_cooling_devices[i].ctx);
+    for (i = 0U; i < g_thermal_zone_count; ++i) {
+        zone_level = thermal_level_from_temp(&g_thermal_zones[i], g_thermal_zones[i].current_temp_mc);
+        if (zone_level > g_thermal_summary.level) {
+            g_thermal_summary.level = zone_level;
+        }
+        if (g_thermal_zones[i].current_temp_mc > g_thermal_summary.max_temp_mc) {
+            g_thermal_summary.max_temp_mc = g_thermal_zones[i].current_temp_mc;
         }
     }
 
-    if (max_level >= 2U) {
+    requested_cooling = (uint32_t)g_thermal_summary.level;
+    g_thermal_summary.cooling_state = requested_cooling;
+
+    for (i = 0U; i < g_cooling_device_count; ++i) {
+        uint32_t target = requested_cooling;
+        if (target > g_cooling_devices[i].max_state) {
+            target = g_cooling_devices[i].max_state;
+        }
+
+        g_cooling_devices[i].active_state = target;
+        if (g_cooling_devices[i].apply) {
+            (void)g_cooling_devices[i].apply(target, g_cooling_devices[i].ctx);
+        }
+    }
+
+    if (g_thermal_summary.level >= PTP_THERMAL_LEVEL_HOT) {
+        g_thermal_summary.throttle_votes += 1U;
         (void)sched_throttle_core(0U);
     }
 
+    if (g_thermal_summary.level >= PTP_THERMAL_LEVEL_PASSIVE) {
+        uint32_t core;
+        for (core = 0U; core < g_topology.discovered_cpu_count; ++core) {
+            uint32_t target_khz = g_topology.cpu[core].max_freq_khz;
+            if (g_thermal_summary.level == PTP_THERMAL_LEVEL_PASSIVE) {
+                target_khz = (target_khz * 75U) / 100U;
+            } else if (g_thermal_summary.level == PTP_THERMAL_LEVEL_HOT) {
+                target_khz = (target_khz * 55U) / 100U;
+            } else {
+                target_khz = (target_khz * 35U) / 100U;
+            }
+            (void)pm_cpufreq_set_hint(core, target_khz);
+        }
+    }
+
     return 0;
+}
+
+ptp_thermal_summary_t thermal_get_summary(void) {
+    return g_thermal_summary;
 }
 
 const ptp_topology_info_t *perf_topology_get(void) {
