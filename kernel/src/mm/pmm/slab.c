@@ -2,6 +2,7 @@
 #include "../../include/mm.h"
 #include "../../include/numa.h"
 #include <stddef.h>
+#include "lib/string.h"
 
 #define NUM_SLAB_SIZES 7
 
@@ -91,9 +92,6 @@ void* kmalloc(size_t size) {
     }
     return NULL;
 }
-
-// Forward declare memset for kzalloc
-extern void *memset(void *dest, int c, size_t n);
 
 void* kzalloc(size_t size) {
     void* ptr = kmalloc(size);

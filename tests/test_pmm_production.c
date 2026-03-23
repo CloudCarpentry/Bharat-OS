@@ -35,6 +35,13 @@ void kernel_panic(const char *msg) {
     abort();
 }
 
+#include "../../kernel/include/hal/hal_mm.h"
+int mm_zero_phys_range(phys_addr_t paddr, size_t size) { (void)paddr; (void)size; return 0; }
+void hal_mm_get_zone_limits(hal_mm_zone_limits_t *limits) {
+    (void)limits;
+}
+virt_addr_t physmap_phys_to_virt(phys_addr_t paddr) { return (virt_addr_t)paddr; }
+
 // Mock functions implemented later
 // We provide a very basic mock early allocator here
 static uint8_t early_mem[10 * 1024 * 1024]; // 10MB of mock metadata memory
@@ -217,6 +224,3 @@ int main() {
 }
 
 #include "../../kernel/include/hal/hal_mm.h"
-void hal_mm_get_zone_limits(hal_mm_zone_limits_t *limits) { (void)limits; }
-void* physmap_phys_to_virt(phys_addr_t phys) { return (void*)(uintptr_t)phys; }
-int mm_zero_phys_range(phys_addr_t phys, size_t len) { (void)phys; (void)len; return 0; }

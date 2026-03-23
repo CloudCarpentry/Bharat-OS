@@ -6,7 +6,7 @@
 #include "console/console_core.h"
 #include <stdint.h>
 #include <stddef.h>
-#include <string.h>
+#include "lib/string.h"
 
 #ifndef PANIC_RECOVERY_MODE
 // 0: Halt (Development), 1: Reboot (Production)
