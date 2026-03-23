@@ -20,7 +20,9 @@ typedef struct {
 
 
 
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "../../../kernel/include/hal/hal_pt.h"
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "../../../kernel/include/hal/hal_tlb.h"
 
 phys_addr_t hal_vmm_init_root(void) {
@@ -249,6 +251,7 @@ mmu_ops_t riscv64_mmu_ops = {
     .has_user_kernel_split = false, // RISC-V uses shared address space
 };
 
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "../../../kernel/include/slab.h"
 
 static prot_domain_t* riscv64_mmu_full_create(void) {

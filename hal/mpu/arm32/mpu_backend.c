@@ -19,6 +19,7 @@ typedef struct {
     int region_count;
 } mpu_backend_state_t;
 
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "../../../../include/slab.h"
 
 static prot_domain_t* arm32_mpu_create(void) {

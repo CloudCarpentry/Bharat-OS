@@ -20,7 +20,9 @@ virt_addr_t align_down(virt_addr_t value) {
     return value & ~(virt_addr_t)(PAGE_SIZE - 1U);
 }
 
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "../../../kernel/include/hal/hal_pt.h"
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "../../../kernel/include/hal/hal_tlb.h"
 
 phys_addr_t hal_vmm_init_root(void) {
@@ -272,6 +274,7 @@ mmu_ops_t x86_64_mmu_ops = {
     .has_user_kernel_split = false, // x86 usually uses a shared address space with user/supervisor bits
 };
 
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "../../../kernel/include/slab.h"
 
 static prot_domain_t* x86_mmu_full_create(void) {

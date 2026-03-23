@@ -4,7 +4,7 @@
 #include "hal/hal.h"
 #include "../advanced/formal_verif.h"
 
-/* 
+/*
  * NPU (Neural Processing Unit) Hardware Abstraction Layer
  * NPUs are highly specialized asynchronous compute units designed for tensor operations.
  */

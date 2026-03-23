@@ -34,7 +34,7 @@ skb_transport_t skb_pick_transport(uint32_t source_core, uint32_t target_core) {
     if (g_core_topology[source_core].l3_cache_id == g_core_topology[target_core].l3_cache_id) {
         return SKB_TRANSPORT_URPC_SHARED_MEM;
     }
-    
+
     // Otherwise cross-NUMA or cross-L3 might benefit from IPI-assisted notification
     return SKB_TRANSPORT_IPI_ASSISTED;
 }
