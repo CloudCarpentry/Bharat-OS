@@ -510,3 +510,9 @@ add_executable(test_transport_loopback test_transport_loopback.c)
 target_include_directories(test_transport_loopback PRIVATE ../services/core/subsysmgr/include)
 target_link_libraries(test_transport_loopback PRIVATE transport msg)
 add_test(NAME test_transport_loopback COMMAND test_transport_loopback)
+
+add_executable(test_unmapped_fault
+    test_unmapped_fault.c
+)
+target_include_directories(test_unmapped_fault PRIVATE ../kernel/include ../include)
+add_test(NAME test_unmapped_fault COMMAND test_unmapped_fault)

@@ -50,11 +50,14 @@ The load-bearing rule that makes everything safe: **every physical frame has exa
 ## Implementation Roadmap
 
 The implementation should proceed in small, safe steps:
+
+Bring up and validate the single-core page-table HAL on `x86_64` first, then generalize the same contract to `arm64` and `riscv64`. Introduce URPC-based shootdown only once SMP makes cross-core TLB invalidation necessary.
+
 1. Define the caps word and feature bits for VIRT, ASID, HUGEPAGE, NX, IOMMU, and region-only MPU mode.
 2. Define `mem_protect_ops_t` split into `cpu_ops` and `iommu_ops`.
-3. Add the `x86_64` `cpu_ops` backend skeleton.
-4. Wire `vmm_map()` / `vmm_unmap()` so the registry is no longer hardware-inert.
-5. Add `owner_core` to frame capability metadata.
-6. Add runtime IOMMU probe hook that may legally return NULL.
-7. Later: Add the uRPC shootdown message type and ACK path.
-8. Later: Add `arm64` and `riscv64` backends.
+3. Add the `x86_64` `cpu_ops` backend.
+4. Wire `vmm_map()` / `vmm_unmap()` so the registry uses the HAL.
+5. Add `owner_core` to frame capability metadata immediately, making ownership explicit from the first frame-capability design.
+6. Add the `arm64` and `riscv64` backends behind the same interface.
+7. Add runtime IOMMU probe hook that may legally return NULL.
+8. Later: Add the uRPC shootdown message type and ACK path (deferred until SMP relevance exists; local TLB flush is sufficient for single-core bring-up).

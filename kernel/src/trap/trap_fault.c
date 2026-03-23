@@ -3,8 +3,15 @@
 #include "panic.h"
 #include "fault_diag.h"
 
+int (*g_test_fault_hook)(trap_frame_t *frame, const trap_info_t *info) = NULL;
+
 int trap_handle_fault(trap_frame_t *frame, const trap_info_t *info) {
     kthread_t *t = sched_current_thread();
+
+    if (g_test_fault_hook) {
+        int ret = g_test_fault_hook(frame, info);
+        if (ret == 0) return 0;
+    }
 
     if (info->origin == TRAP_ORIGIN_KERNEL) {
         panic_context_t pctx = {

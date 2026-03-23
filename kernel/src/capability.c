@@ -186,6 +186,14 @@ int cap_table_grant(capability_table_t* table,
             e->next_sibling.slot = UINT32_MAX;
             e->next_sibling.generation = 0;
             e->generation++;
+
+            // Set the owner_core for memory objects
+            if (e->type == CAP_OBJ_MEMORY) {
+                e->owner_core = hal_cpu_get_id();
+            } else {
+                e->owner_core = 0;
+            }
+
             e->in_use = 1U;
             found_id = e->id;
             ret = 0;
@@ -299,6 +307,7 @@ static int cap_table_delegate_local(capability_table_t* src,
                 dst_entry->next_sibling = src_entry->first_child;
 
                 dst_entry->generation++;
+                dst_entry->owner_core = src_entry->owner_core; // Delegate retains owner core unless explicity transferred
                 dst_entry->in_use = 1U;
 
                 src_entry->first_child.table = dst;
@@ -336,6 +345,7 @@ typedef struct {
     uint32_t rights;
     uint64_t object_ref;
     uint32_t flags;
+    uint32_t owner_core;
     cap_handle_t src_first_child;  // Metadata for linking sibling list
     volatile int status;           // Output from dest
     volatile uint32_t new_cap_id;  // Output from dest
@@ -416,6 +426,7 @@ int cap_table_delegate(capability_table_t* src,
     req->rights = delegated_rights;
     req->object_ref = src_entry->object_ref;
     req->flags = src_entry->flags;
+    req->owner_core = src_entry->owner_core;
     req->src_first_child = src_entry->first_child;
     req->status = -1; // Uninitialized
     req->new_cap_id = 0;
@@ -517,6 +528,7 @@ void cap_handle_delegate_req(uint64_t payload, uint32_t source_core) {
             dst_entry->rights = req->rights;
             dst_entry->object_ref = req->object_ref;
             dst_entry->flags = req->flags;
+            dst_entry->owner_core = req->owner_core; // Delegate retains owner core
 
             dst_entry->parent.table = req->src;
             dst_entry->parent.slot = req->src_slot_idx;
