@@ -5,6 +5,11 @@ void panic(const char *msg) {
     abort();
 }
 
+__attribute__((weak)) void kernel_panic(const char *msg) {
+    printf("KERNEL_PANIC: %s\n", msg);
+    abort();
+}
+
 const char* console_current_phase(void) {
     return "MOCK_PANIC_PHASE";
 }

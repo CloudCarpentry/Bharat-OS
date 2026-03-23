@@ -6,14 +6,38 @@
 #include "fs/vfs.h"
 #include "fs/mount.h"
 #include "fs/file.h"
+#include "capability.h"
 
 int __attribute__((weak)) vfs_mount(const char* path, vfs_node_t* root) { (void)path; (void)root; return -1; }
 int __attribute__((weak)) vfs_open(const char* path, int flags) { (void)path; (void)flags; return -1; }
 int __attribute__((weak)) vfs_read(int fd, void* buf, size_t count) { (void)fd; (void)buf; (void)count; return -1; }
 
-void* arch_memcpy(void* dest, const void* src, size_t n) { return memcpy(dest, src, n); }
-void* arch_memset(void* s, int c, size_t n) { return memset(s, c, n); }
-void* arch_memmove(void* dest, const void* src, size_t n) { return memmove(dest, src, n); }
+void* arch_memcpy(void* dest, const void* src, size_t n, uint32_t flags) {
+    (void)flags;
+    char* d = (char*)dest;
+    const char* s = (const char*)src;
+    while(n--) *d++ = *s++;
+    return dest;
+}
+void* arch_memset(void* s, int c, size_t n, uint32_t flags) {
+    (void)flags;
+    char* p = (char*)s;
+    while(n--) *p++ = (char)c;
+    return s;
+}
+void* arch_memmove(void* dest, const void* src, size_t n, uint32_t flags) {
+    (void)flags;
+    char* d = (char*)dest;
+    const char* s = (const char*)src;
+    if (d < s) {
+        while (n--) *d++ = *s++;
+    } else {
+        d += n;
+        s += n;
+        while (n--) *--d = *--s;
+    }
+    return dest;
+}
 
 uint8_t g_memory_fs[1024] = {0};
 
@@ -34,6 +58,18 @@ static int mem_write(vfs_file_t *file, uint64_t offset, const void *buffer, size
     char *dst = (char *)g_memory_fs;
     memcpy(dst + offset, buffer, size);
     return (int)size;
+}
+
+capability_table_t *g_mock_cap_table;
+
+#include "sched.h"
+
+kthread_t *sched_current_thread(void) {
+    static kprocess_t proc;
+    static kthread_t t;
+    proc.security_sandbox_ctx = g_mock_cap_table;
+    t.process = &proc;
+    return &t;
 }
 
 int main(void) {
@@ -63,11 +99,19 @@ int main(void) {
     fs_root.fs_data = fs_data;
     fs_root.object_id = 1;
 
-    capability_t dummy_cap = { .rights_mask = CAP_RIGHT_READ | CAP_RIGHT_WRITE, .target_object_id = 1 };
+    capability_table_t test_cap_table;
+    memset(&test_cap_table, 0, sizeof(test_cap_table));
+    test_cap_table.next_id = 4; // Use something > 3
+
+    g_mock_cap_table = &test_cap_table;
+
+
+    capability_t dummy_cap = { .rights_mask = CAP_RIGHT_READ | CAP_RIGHT_WRITE, .target_object_id = 1, .capability_id = 0 };
 
     capability_t mount_cap = {
         .target_object_id = VFS_NAMESPACE_OBJECT_ID,
         .rights_mask = CAP_RIGHT_WRITE,
+        .capability_id = 0,
     };
 
     assert(vfs_mount_fs("/", &fs_root, &mount_cap) == 0);
@@ -81,11 +125,15 @@ int main(void) {
                                             sizeof(blob_data) - 1) == 0);
     blob_node.object_id = 2;
 
-    capability_t dummy_blob_cap = { .rights_mask = CAP_RIGHT_READ | CAP_RIGHT_WRITE, .target_object_id = 2 };
+    capability_t dummy_blob_cap = { .rights_mask = CAP_RIGHT_READ | CAP_RIGHT_WRITE, .target_object_id = 2, .capability_id = 0 };
 
     assert(vfs_mount_fs("/blob/remote/minio/bucket/key", &blob_node, &mount_cap) == 0);
 
-    assert(vfs_open_file("/", VFS_OPEN_READ | VFS_OPEN_WRITE, &dummy_cap, &fd) == 0);
+    int res = vfs_open_file("/", VFS_OPEN_READ | VFS_OPEN_WRITE, &dummy_cap, &fd);
+    if (res != 0) {
+        fprintf(stderr, "vfs_open_file failed with %d\n", res);
+    }
+    assert(res == 0);
     assert(fd >= 0);
     int read_bytes = vfs_read_file(fd, read_buf, 5, &dummy_cap);
     assert(read_bytes == 5);
@@ -97,14 +145,14 @@ int main(void) {
     assert(vfs_read_file(fd, read_buf, sizeof(blob_data) - 1, &dummy_blob_cap) == (int)(sizeof(blob_data) - 1));
     assert(memcmp(read_buf, blob_data, sizeof(blob_data) - 1) == 0);
 
-    assert(vfs_open_file("/blob/remote/minio/bucket/key", VFS_OPEN_WRITE, &dummy_blob_cap, &fd) == -1);
+    assert(vfs_open_file("/blob/remote/minio/bucket/key", VFS_OPEN_WRITE, &dummy_blob_cap, &fd) < 0);
 
     // Re-open blob file for reading but attempt to write to it to ensure VFS block backend checks it
     assert(vfs_open_file("/blob/remote/minio/bucket/key", VFS_OPEN_READ, &dummy_blob_cap, &fd) == 0);
     assert(fd >= 0);
 
     // Explicit test: "blob write denied even if caller has write right"
-    capability_t malicious_blob_write_cap = { .rights_mask = CAP_RIGHT_READ | CAP_RIGHT_WRITE, .target_object_id = 2 };
+    capability_t malicious_blob_write_cap = { .rights_mask = CAP_RIGHT_READ | CAP_RIGHT_WRITE, .target_object_id = 2, .capability_id = 0 };
     assert(vfs_write_file(fd, "test", 4, &malicious_blob_write_cap) == -1);
 
     puts("test_vfs_storage: PASS");

@@ -1,7 +1,8 @@
 #include "drivers/sensor/sensor_device.h"
 #include <stddef.h>
+#include <string.h>
 
-#define MAX_SENSORS 32
+#define MAX_SENSORS 10000
 
 static sensor_device_t* g_sensors[MAX_SENSORS];
 static int g_sensor_count = 0;
@@ -24,8 +25,8 @@ int sensor_core_unregister(sensor_device_t* dev) {
 
     for (int i = 0; i < g_sensor_count; i++) {
         if (g_sensors[i] == dev) {
-            for (int j = i; j < g_sensor_count - 1; j++) {
-                g_sensors[j] = g_sensors[j + 1];
+            if (i < g_sensor_count - 1) {
+                memmove(&g_sensors[i], &g_sensors[i + 1], (g_sensor_count - 1 - i) * sizeof(sensor_device_t*));
             }
             g_sensor_count--;
             return 0;

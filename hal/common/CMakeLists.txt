@@ -5,6 +5,8 @@ add_library(hal_common OBJECT
     ../iommu_stub.c
     ../interrupt_common.c
     ../timer_common.c
+    ../common/power/null_power.c
+    ../common/power/null_thermal.c
 )
 
 target_include_directories(hal_common PRIVATE 
