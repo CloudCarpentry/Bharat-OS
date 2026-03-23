@@ -32,5 +32,11 @@ int ipv4_tx(netbuf_t *nb, uint32_t dst_ip, uint8_t protocol);
 /* Centralized IP routing and configuration */
 uint32_t ipv4_get_source_ip(uint32_t dst_ip);
 void ipv4_set_local_ip(uint32_t ip);
+/* Configuration / query API */
+int ipv4_set_local_ip(uint32_t ip);
+uint32_t ipv4_get_local_ip(void);
+uint32_t ipv4_get_loopback_ip(void);
+uint32_t ipv4_select_source_ip(uint32_t dst_ip);
+int ipv4_is_local_address(uint32_t ip);
 
 #endif // NETSTACK_IPV4_H

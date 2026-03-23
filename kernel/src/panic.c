@@ -3,9 +3,10 @@
 #include "hal/hal.h"
 #include "kernel.h"
 #include "sched.h"
-
+#include "console/console_core.h"
 #include <stdint.h>
 #include <stddef.h>
+#include "lib/string.h"
 
 #ifndef PANIC_RECOVERY_MODE
 // 0: Halt (Development), 1: Reboot (Production)
@@ -24,10 +25,13 @@ static void pstore_write(const char *msg) {
   size_t max_len = (size_t)(&_pstore_end - &_pstore_start);
   size_t i = 0;
 
+  #define PSTORE_CLEAR_BYTES 256
+
   // Zero out first to reset (in a real system we'd append or manage a ring
   // buffer)
-  for (size_t j = 0; j < 256 && j < max_len; j++) {
-    pstore[j] = 0;
+  size_t clear_len = (max_len < PSTORE_CLEAR_BYTES) ? max_len : PSTORE_CLEAR_BYTES;
+  if (clear_len > 0) {
+    memset(pstore, 0, clear_len);
   }
 
   const char *prefix = "KERNEL PANIC: ";
@@ -85,17 +89,19 @@ void kernel_panic_ex(const panic_context_t *ctx) {
 
   // Backfill context
   local_ctx.core_id = hal_cpu_get_id();
-  kthread_t *thread = sched_current_thread();
-  if (thread) {
-      if (local_ctx.thread_id == 0) {
-          local_ctx.thread_id = thread->thread_id;
-      }
-      if (local_ctx.process_id == 0) {
-          local_ctx.process_id = thread->process_id;
-      }
-      // Note: mapping process_id to aspace_id for simplicity since we don't track aspace IDs yet
-      if (local_ctx.aspace_id == 0) {
-          local_ctx.aspace_id = thread->process_id;
+  
+  if (console_current_phase() >= CONSOLE_PHASE_RUNTIME) {
+      kthread_t *thread = sched_current_thread();
+      if (thread) {
+          if (local_ctx.thread_id == 0) {
+              local_ctx.thread_id = thread->thread_id;
+          }
+          if (local_ctx.process_id == 0) {
+              local_ctx.process_id = thread->process_id;
+          }
+          if (local_ctx.aspace_id == 0) {
+              local_ctx.aspace_id = thread->process_id;
+          }
       }
   }
 

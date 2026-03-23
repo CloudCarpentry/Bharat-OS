@@ -151,6 +151,11 @@ int main(void) {
     test_loopback_and_udp();
     test_custom_ip_udp();
 
+    test_ipv4_tx_fails_when_unconfigured_non_loopback();
+    test_ipv4_loopback_still_selects_loopback_when_unconfigured();
+    test_udp_uses_configured_ipv4_source_selection();
+    test_ipv4_set_local_ip_rejects_loopback_and_broadcast();
+
     printf("All Phase 2 Network Stack tests passed!\n");
     return 0;
 }

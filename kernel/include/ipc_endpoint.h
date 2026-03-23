@@ -17,6 +17,22 @@
 #define BHARAT_IPC_MAX_ENDPOINTS 128U
 #endif
 
+typedef enum {
+    IPC_TRAFFIC_UNSPECIFIED = 0,
+    IPC_TRAFFIC_CONTROL,
+    IPC_TRAFFIC_SERVICE,
+    IPC_TRAFFIC_EVENT,
+    IPC_TRAFFIC_TELEMETRY,
+    IPC_TRAFFIC_BULK,
+    IPC_TRAFFIC_DEFERRED,
+} ipc_traffic_type_t;
+
+static inline ipc_traffic_type_t ipc_traffic_default(void) {
+    return IPC_TRAFFIC_UNSPECIFIED;
+}
+
+const char *ipc_traffic_type_name(ipc_traffic_type_t type);
+
 typedef struct {
     uint32_t msg_len;
     uint8_t payload[BHARAT_IPC_ENDPOINT_PAYLOAD_MAX];

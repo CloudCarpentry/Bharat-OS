@@ -9,9 +9,57 @@
 #include <bharat/runtime/freestanding_string.h>
 //#include <stdio.h>
 
-static uint32_t local_ip = 0x0A01A8C0; // 192.168.1.10 (Little Endian representation for simplicity here)
-static uint32_t loopback_ip = 0x0100007F; // 127.0.0.1
+static uint32_t local_ip = 0;          /* unconfigured by default */
+static const uint32_t loopback_ip = 0x0100007F; /* 127.0.0.1 */
 static uint16_t ip_id_counter = 0;
+
+static int ipv4_is_broadcast(uint32_t ip) {
+    return ip == 0xFFFFFFFFu;
+}
+
+int ipv4_set_local_ip(uint32_t ip) {
+    /* allow 0 to explicitly clear configuration */
+    if (ip == 0) {
+        local_ip = 0;
+        return 0;
+    }
+
+    /* reject obviously invalid assignments */
+    if (ip == loopback_ip || ipv4_is_broadcast(ip)) {
+        return -1;
+    }
+
+    local_ip = ip;
+    return 0;
+}
+
+uint32_t ipv4_get_local_ip(void) {
+    return local_ip;
+}
+
+uint32_t ipv4_get_loopback_ip(void) {
+    return loopback_ip;
+}
+
+uint32_t ipv4_select_source_ip(uint32_t dst_ip) {
+    if ((dst_ip & 0xFFu) == 127u) {
+        return loopback_ip;
+    }
+
+    if (local_ip == 0) {
+        return 0;
+    }
+
+    return local_ip;
+}
+
+int ipv4_is_local_address(uint32_t ip) {
+    if (ip == loopback_ip || ipv4_is_broadcast(ip)) {
+        return 1;
+    }
+
+    return (local_ip != 0 && ip == local_ip);
+}
 
 int ipv4_rx(netbuf_t *nb) {
     if (netbuf_len(nb) < sizeof(iphdr_t)) {
@@ -60,7 +108,7 @@ int ipv4_rx(netbuf_t *nb) {
     }
 
     // Address check (Local or Loopback)
-    if (dst_ip != local_ip && dst_ip != loopback_ip && dst_ip != 0xFFFFFFFF) {
+    if (!ipv4_is_local_address(dst_ip)) {
         return 0; // Not for us, drop (no forwarding in Phase 2)
     }
 
@@ -82,6 +130,13 @@ int ipv4_rx(netbuf_t *nb) {
 uint32_t ipv4_get_source_ip(uint32_t dst_ip) {
     if ((dst_ip & 0xFF) == 127) { // 127.x.x.x loopback
         return loopback_ip;
+}
+int ipv4_tx(netbuf_t *nb, uint32_t dst_ip, uint8_t protocol) {
+    uint32_t src_ip = ipv4_select_source_ip(dst_ip);
+
+    /* fail closed: no non-loopback transmit without configuration */
+    if (src_ip == 0) {
+        return -1;
     }
     return local_ip;
 }
@@ -123,13 +178,13 @@ int ipv4_tx(netbuf_t *nb, uint32_t dst_ip, uint8_t protocol) {
     }
 
     // Routing decision
-    if (src_ip == loopback_ip || dst_ip == loopback_ip || dst_ip == local_ip) {
+    if (src_ip == loopback_ip || dst_ip == loopback_ip || (local_ip != 0 && dst_ip == local_ip)) {
         // Send to loopback interface
         return loopback_tx(nb);
     } else {
         // Send to Ethernet (requires ARP)
         uint8_t dest_mac[ETH_ALEN];
-        if (dst_ip == 0xFFFFFFFF) {
+        if (dst_ip == 0xFFFFFFFFu) {
             memset(dest_mac, 0xFF, ETH_ALEN);
         } else {
             if (arp_resolve(dst_ip, dest_mac) < 0) {

@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "netbuf.h"
-#include "../../../subsys/include/bharat/network/types.h"
+#include "../../../services/core/subsysmgr/include/bharat/network/types.h"
 
 #define ETH_ALEN 6
 #define ETH_HLEN 14

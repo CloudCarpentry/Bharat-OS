@@ -43,7 +43,7 @@ int capwire_import_cap(const bharat_cap_wire_t* wire, uint32_t remote_node, cap_
 }
 
 // Stubs for the generated dispatch code to call
-#include "../../services/cap/generated/bharat_cap_v1_types.h"
+#include "bharat_cap_v1_types.h"
 
 int handle_remote_grant(const bharat_cap_v1_RemoteGrantReq_t* req, bharat_cap_v1_RemoteGrantResp_t* resp) {
     cap_proxy_obj_t proxy;

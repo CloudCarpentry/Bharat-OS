@@ -5,8 +5,6 @@ enable_testing()
 
 # Make the modules directory visible to CMake
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/modules")
-include_directories(${CMAKE_SOURCE_DIR}/kernel/src)
-include_directories(${CMAKE_SOURCE_DIR}/kernel/include)
 
 # Load Common Build Policies
 include(BharatCommon)
@@ -23,6 +21,34 @@ set(BHARAT_GEN_INCLUDE_DIR "${BHARAT_GEN_DIR}/include")
 file(MAKE_DIRECTORY "${BHARAT_GEN_DIR}")
 file(MAKE_DIRECTORY "${BHARAT_GEN_INCLUDE_DIR}/bharat")
 
+# Process static IDL generation explicitly early to guarantee header availability
+set(BHARAT_IDL_GEN_SCRIPT "${CMAKE_SOURCE_DIR}/tools/bidl/bidlc.py")
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+
+# Generate monitor service IDL
+execute_process(
+    COMMAND "${Python3_EXECUTABLE}" "${BHARAT_IDL_GEN_SCRIPT}"
+            "${CMAKE_SOURCE_DIR}/idl/monitor_v1.bidl"
+            "${BHARAT_GEN_INCLUDE_DIR}"
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+    RESULT_VARIABLE IDL_MONITOR_RESULT
+)
+if(NOT IDL_MONITOR_RESULT EQUAL 0)
+    message(WARNING "Failed to generate monitor IDL. Build may fail if headers are missing.")
+endif()
+
+# Generate cap service IDL
+execute_process(
+    COMMAND "${Python3_EXECUTABLE}" "${BHARAT_IDL_GEN_SCRIPT}"
+            "${CMAKE_SOURCE_DIR}/idl/cap_v1.bidl"
+            "${BHARAT_GEN_INCLUDE_DIR}"
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+    RESULT_VARIABLE IDL_CAP_RESULT
+)
+if(NOT IDL_CAP_RESULT EQUAL 0)
+    message(WARNING "Failed to generate cap IDL. Build may fail if headers are missing.")
+endif()
+
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
 execute_process(
@@ -38,7 +64,10 @@ if(NOT BHARAT_GEN_RESULT EQUAL 0)
 endif()
 
 include("${BHARAT_GEN_DIR}/BharatVersion.cmake")
-include_directories("${BHARAT_GEN_INCLUDE_DIR}")
+
+# Provide an interface target so components can inherit generated includes safely
+add_library(bharat_generated_includes INTERFACE)
+target_include_directories(bharat_generated_includes INTERFACE "${BHARAT_GEN_INCLUDE_DIR}")
 
 # Architecture selection
 bharat_set_arch_defaults()
@@ -72,6 +101,27 @@ set_property(CACHE BHARAT_BOOT_HW_PROFILE PROPERTY STRINGS generic desktop serve
 set(BHARAT_IRQ_DISPATCH_MODE "AUTO" CACHE STRING "IRQ dispatch mode (AUTO, GENERIC, MIXED, RT)")
 set_property(CACHE BHARAT_IRQ_DISPATCH_MODE PROPERTY STRINGS AUTO GENERIC MIXED RT)
 
+# Serial Console Configuration
+set(BHARAT_ARCH_SERIAL_BASE "" CACHE STRING "Override default architecture serial base address")
+if(BHARAT_ARCH_SERIAL_BASE)
+    add_compile_definitions(BHARAT_ARCH_SERIAL_BASE=${BHARAT_ARCH_SERIAL_BASE})
+endif()
+
+
+# Determine Kernel Execution Profile (RT, GP, MIX) based on Device Profile
+if(BHARAT_DEVICE_PROFILE STREQUAL "RTOS"
+   OR BHARAT_DEVICE_PROFILE STREQUAL "DRONE"
+   OR BHARAT_DEVICE_PROFILE STREQUAL "ROBOT"
+   OR BHARAT_DEVICE_PROFILE STREQUAL "AUTOMOTIVE_ECU")
+    set(BHARAT_KERNEL_PROFILE_RESOLVED "RT")
+elseif(BHARAT_DEVICE_PROFILE STREQUAL "EDGE"
+       OR BHARAT_DEVICE_PROFILE STREQUAL "MOBILE"
+       OR BHARAT_DEVICE_PROFILE STREQUAL "AUTOMOTIVE_INFOTAINMENT")
+    set(BHARAT_KERNEL_PROFILE_RESOLVED "MIX")
+else()
+    set(BHARAT_KERNEL_PROFILE_RESOLVED "GP")
+endif()
+message(STATUS "Configuring for Kernel Execution Profile: ${BHARAT_KERNEL_PROFILE_RESOLVED}")
 message(STATUS "Configuring for Device Profile: ${BHARAT_DEVICE_PROFILE}")
 message(STATUS "Configuring for Personality Profile: ${BHARAT_PERSONALITY_PROFILE}")
 message(STATUS "Architecture: ${BHARAT_ARCH_FAMILY}-${BHARAT_ARCH_BITS} (${BHARAT_ARCH_VARIANT})")
@@ -150,6 +200,12 @@ bharat_set_profile_flag(BHARAT_PROFILE_RTOS "RTOS" "${BHARAT_DEVICE_PROFILE}")
 bharat_set_profile_flag(BHARAT_PROFILE_AUTOMOTIVE_ECU "AUTOMOTIVE_ECU" "${BHARAT_DEVICE_PROFILE}")
 bharat_set_profile_flag(BHARAT_PROFILE_AUTOMOTIVE_INFOTAINMENT "AUTOMOTIVE_INFOTAINMENT" "${BHARAT_DEVICE_PROFILE}")
 
+
+# Kernel Execution Profile (RT, GP, MIX)
+bharat_set_profile_flag(BHARAT_KERNEL_PROFILE_RT "RT" "${BHARAT_KERNEL_PROFILE_RESOLVED}")
+bharat_set_profile_flag(BHARAT_KERNEL_PROFILE_GP "GP" "${BHARAT_KERNEL_PROFILE_RESOLVED}")
+bharat_set_profile_flag(BHARAT_KERNEL_PROFILE_MIX "MIX" "${BHARAT_KERNEL_PROFILE_RESOLVED}")
+
 # IRQ dispatch mode (profile-aware default with explicit override)
 if(BHARAT_IRQ_DISPATCH_MODE STREQUAL "AUTO")
     if(BHARAT_DEVICE_PROFILE STREQUAL "RTOS"
@@ -208,13 +264,18 @@ endif()
 
 
 # Add subdirectories
+
+add_subdirectory(arch)
+add_subdirectory(boot)
 add_subdirectory(hal)
+add_subdirectory(platform)
 add_subdirectory(kernel)
 add_subdirectory(lib)
 add_subdirectory(drivers)
-add_subdirectory(subsys)
 add_subdirectory(services)
-add_subdirectory(apps)
+add_subdirectory(user)
+add_subdirectory(stacks)
+add_subdirectory(personalities)
 
 if(BHARAT_BUILD_HOST_TESTS)
     add_subdirectory(tests)
@@ -257,7 +318,19 @@ bharat_add_host_test_compat_target(
     "Host tests disabled. Reconfigure with -DBHARAT_BUILD_HOST_TESTS=ON to build test_automotive_subsys."
 )
 
+# PMM and scheduler host-test compatibility for targeted correctness suites.
+bharat_add_host_test_compat_target(
+    test_pmm_zone_alloc
+    "Host tests disabled. Set -DBHARAT_BUILD_HOST_TESTS=ON to build test_pmm_zone_alloc."
+)
+bharat_add_host_test_compat_target(
+    test_pmm_refpin
+    "Host tests disabled. Set -DBHARAT_BUILD_HOST_TESTS=ON to build test_pmm_refpin."
+)
+bharat_add_host_test_compat_target(
+    test_sched_reap
+    "Host tests disabled. Set -DBHARAT_BUILD_HOST_TESTS=ON to build test_sched_reap."
+)
+
 # Image generation
 include(BharatImage)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-pie -fno-PIE -mcmodel=large")
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pie")

@@ -7,6 +7,10 @@
 #include "../kernel/include/mm.h"
 #include "../kernel/include/advanced/formal_verif.h"
 
+int vmm_init(void) {
+    return 0;
+}
+
 void ipc_async_check_timeouts(uint64_t current_ticks) {
     (void)current_ticks;
 }
@@ -20,7 +24,7 @@ int bharat_addr_token_validate(const bharat_addr_token_t* token,
 }
 
 // Stubs for linking
-int mm_pmm_init(uint32_t magic, void *memory_map) { return 0; }
+int mm_pmm_init(uint32_t magic, const struct boot_info *boot) { return 0; }
 void hal_tlb_flush(unsigned long long vaddr) { (void)vaddr; }
 void hal_send_ipi_payload(uint32_t target_core, uint64_t payload) { }
 

@@ -4,15 +4,25 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "mm.h"
-
-extern void *memset(void *dest, int c, size_t n);
-extern void *memcpy(void *dest, const void *src, size_t n);
+#include "lib/string.h"
 
 #define RAMFS_DRIVER_NAME "ramfs"
 
 // Use PAGE_SIZE if defined, else fallback to 4096
 #ifndef PAGE_SIZE
 #define PAGE_SIZE 4096
+#endif
+
+#ifndef ENOMEM
+#define ENOMEM 12
+#endif
+
+#ifndef ENOSPC
+#define ENOSPC 28
+#endif
+
+#ifndef CONFIG_RAMFS_MAX_NODES
+#define CONFIG_RAMFS_MAX_NODES 0x100000
 #endif
 
 typedef struct ramfs_node {
@@ -59,14 +69,36 @@ static void ramfs_strcpy(char *dst, const char *src, size_t dst_size) {
 static int ramfs_grow_block_table(ramfs_node_t *inode, size_t needed_blocks) {
     if (needed_blocks <= inode->file.blocks_capacity) return 0;
 
-    size_t new_cap = inode->file.blocks_capacity;
-    if (new_cap == 0) new_cap = 8;
+    size_t old_cap = inode->file.blocks_capacity;
+    size_t new_cap;
+
+    if (old_cap == 0) {
+        new_cap = 8;
+    } else {
+        if (old_cap > (SIZE_MAX / 2)) {
+            return -ENOMEM;
+        }
+        new_cap = old_cap * 2;
+    }
+
     while (new_cap < needed_blocks) {
+        if (new_cap > (SIZE_MAX / 2)) {
+            return -ENOMEM;
+        }
         new_cap *= 2;
     }
 
+    if (new_cap > CONFIG_RAMFS_MAX_NODES) {
+        new_cap = CONFIG_RAMFS_MAX_NODES;
+        if (new_cap < needed_blocks || new_cap <= old_cap) return -ENOSPC;
+    }
+
+    if (new_cap > (SIZE_MAX / sizeof(void *))) {
+        return -ENOMEM;
+    }
+
     void **new_blocks = (void **)kmalloc(new_cap * sizeof(void *));
-    if (!new_blocks) return -1;
+    if (!new_blocks) return -ENOMEM;
 
     // Zero-initialize the entire new array to ensure unallocated blocks are NULL
     memset(new_blocks, 0, new_cap * sizeof(void *));
@@ -170,10 +202,29 @@ static int ramfs_add_child(ramfs_node_t *parent, ramfs_node_t *child) {
     if (!parent || parent->vfs_node.flags != 2 || !child) return -1;
 
     if (parent->dir.child_count >= parent->dir.child_capacity) {
-        size_t new_cap = parent->dir.child_capacity * 2;
-        if (new_cap == 0) new_cap = 4;
+        size_t old_cap = parent->dir.child_capacity;
+        size_t new_cap;
+
+        if (old_cap == 0) {
+            new_cap = 4;
+        } else {
+            if (old_cap > (SIZE_MAX / 2)) {
+                return -ENOMEM;
+            }
+            new_cap = old_cap * 2;
+        }
+
+        if (new_cap > CONFIG_RAMFS_MAX_NODES) {
+            new_cap = CONFIG_RAMFS_MAX_NODES;
+            if (new_cap <= old_cap) return -ENOSPC;
+        }
+
+        if (new_cap > (SIZE_MAX / sizeof(ramfs_node_t *))) {
+            return -ENOMEM;
+        }
+
         ramfs_node_t **new_children = (ramfs_node_t **)kmalloc(sizeof(ramfs_node_t *) * new_cap);
-        if (!new_children) return -1;
+        if (!new_children) return -ENOMEM;
 
         memcpy(new_children, parent->dir.children, sizeof(ramfs_node_t *) * parent->dir.child_count);
         kfree(parent->dir.children);

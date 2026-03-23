@@ -42,3 +42,7 @@ int bharat_sched_set_priority(uint64_t tid, uint32_t priority) {
 int bharat_sched_set_affinity(uint64_t tid, uint32_t affinity_mask) {
     return (int)bharat_syscall_arch(SYSCALL_SCHED_SET_AFFINITY, (long)tid, (long)affinity_mask, 0, 0, 0, 0);
 }
+
+long bharat_syscall(long sysno, long arg1, long arg2, long arg3, long arg4, long arg5, long arg6) {
+    return bharat_syscall_arch(sysno, arg1, arg2, arg3, arg4, arg5, arg6);
+}

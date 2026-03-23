@@ -20,8 +20,8 @@ done
 for core_file in \
   "kernel/src/cpu_local.c" \
   "kernel/src/urpc/urpc_channel.c" \
-  "subsys/src/skb/skb.c"; do
-  cc -std=c11 -I"${ROOT_DIR}/kernel/include" -I"${ROOT_DIR}/subsys/include" -c "${ROOT_DIR}/${core_file}" -o /tmp/$(basename "${core_file}").o
+  "stacks/network/skb.c"; do
+  cc -std=c11 -I"${ROOT_DIR}/kernel/include" -I"${ROOT_DIR}/services/core/subsysmgr/include" -c "${ROOT_DIR}/${core_file}" -o /tmp/$(basename "${core_file}").o
   echo "compiled ${core_file}"
 done
 
