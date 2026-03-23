@@ -25,6 +25,11 @@ void console_write_raw(const char* s, size_t len) { (void)s; (void)len; }
 uint32_t hal_cpu_get_id(void) { return 0; }
 void early_alloc_init(size_t limit) { (void)limit; }
 
+void kernel_panic(const char *msg) {
+    printf("KERNEL_PANIC: %s\n", msg);
+    abort();
+}
+
 int mm_zero_phys_range(phys_addr_t paddr, size_t size) { (void)paddr; (void)size; return 0; }
 int hal_mm_get_zone_limits(phys_addr_t paddr, phys_addr_t *zone_start, phys_addr_t *zone_end) {
     (void)paddr; (void)zone_start; (void)zone_end;
