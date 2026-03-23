@@ -1,3 +1,13 @@
+---
+title: Android Personality Architecture
+status: active
+owner: Architecture Team
+reviewers: ["Core Team"]
+version: 1.0
+last_updated: "2024-03-23"
+tags: ["architecture", "personalities"]
+---
+
 # Android Personality Architecture on Bharat-OS
 
 ## Goals and Non-Goals

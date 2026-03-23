@@ -1,4 +1,16 @@
+---
+title: Linux Personality Architecture
+status: active
+owner: Architecture Team
+reviewers: ["Core Team"]
+version: 1.0
+last_updated: "2024-03-23"
+tags: ["architecture", "personalities"]
+---
+
 # Linux Personality Architecture
+
+> **Note on Code Structure:** The Linux personality is located in `kernel/src/personality/linux/`. It translates Linux Syscall ABI numbers directly into Bharat-OS primitives via a structured dispatch table, avoiding any architectural monolithic dependencies in core subsystems.
 
 ## Introduction
 The Bharat-OS core kernel is designed as a distributed, personality-neutral multikernel. To support binary compatibility with Linux, we are introducing a **Linux Personality Subsystem**. This layer is implemented as a pluggable compatibility layer rather than a kernel-wide assumption. The core kernel remains agnostic of POSIX/Linux semantics, with the subsystem translating Linux syscalls and ABI expectations into Bharat-OS primitives.
