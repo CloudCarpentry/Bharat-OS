@@ -24,6 +24,7 @@ typedef struct {
     uint64_t seq; // Request sequence
 } mm_urpc_tlb_msg_t;
 
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "../../include/spinlock.h"
 
 typedef struct {

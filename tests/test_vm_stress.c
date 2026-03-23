@@ -10,6 +10,8 @@
 int vmm_map_page(virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) { (void)vaddr; (void)paddr; (void)flags; return 0; }
 int vmm_unmap_page(virt_addr_t vaddr) { (void)vaddr; return 0; }
 
+int vmm_init(void) { return 0; }
+
 
 typedef struct {
     phys_addr_t paddr;

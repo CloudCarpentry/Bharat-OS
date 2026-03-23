@@ -4,6 +4,7 @@
 #include "ipc_endpoint.h"
 
 uint32_t numa_active_node_count(void) __attribute__((weak));
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "numa.h"
 
 static uint32_t ai_bridge_active_node_count(void) {

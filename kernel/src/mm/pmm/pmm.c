@@ -365,7 +365,6 @@ int pmm_alloc_contiguous(uint32_t page_count, pmm_zone_t zone, uint32_t alloc_fl
     phys_addr_t free_phys = base_phys + i * PAGE_SIZE;
     page_t *p = phys_to_page(free_phys);
     if (p) {
-        p->state = PMM_PAGE_STATE_FREE;
         p->ref_count = 1;
         p->order = 0;
     }
@@ -392,7 +391,6 @@ int pmm_free_pages(const pmm_block_t *block) {
       page_t *page = phys_to_page(p);
       if (page) {
           if (page->pin_count > 0) return -1;
-          page->state = PMM_PAGE_STATE_FREE;
           page->order = 0; // Just in case
           page->ref_count = 1; // prepare for mm_free_page
       }
@@ -403,7 +401,6 @@ int pmm_free_pages(const pmm_block_t *block) {
       page_t *page = phys_to_page(phys);
       if (page) {
           if (page->pin_count > 0) return -1;
-          page->state = PMM_PAGE_STATE_FREE;
           page->order = block->order;
           page->ref_count = 1; // prepare for mm_free_page
       }
@@ -443,7 +440,7 @@ int pmm_ref_put(uint64_t phys_addr) {
         }
 
         uint16_t new_ref = (uint16_t)(old_ref - 1U);
-        if (__sync_bool_compare_and_swap(&page->ref_count, old_ref, new_ref)) {
+        if (__atomic_compare_exchange_n(&page->ref_count, &old_ref, new_ref, false, __ATOMIC_SEQ_CST, __ATOMIC_ACQUIRE)) {
             if (new_ref == 0U) {
                 page->state = PMM_PAGE_STATE_FREE;
                 // mm_free_page() contract: call sites drop the final live reference
@@ -475,8 +472,7 @@ int pmm_unpin(uint64_t phys_addr) {
         if (old == 0U) {
             return -1;
         }
-        if (__sync_bool_compare_and_swap(&page->pin_count, old,
-                                         (uint16_t)(old - 1U))) {
+        if (__atomic_compare_exchange_n(&page->pin_count, &old, (uint16_t)(old - 1U), false, __ATOMIC_SEQ_CST, __ATOMIC_ACQUIRE)) {
             return 0;
         }
     }
@@ -852,7 +848,8 @@ void mm_free_page(phys_addr_t page_addr) {
       return;
     }
   } else {
-    if (!__sync_bool_compare_and_swap(&page->ref_count, 0U, 0U)) {
+    uint16_t expected = 0;
+    if (!__atomic_compare_exchange_n(&page->ref_count, &expected, 0U, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)) {
       return;
     }
   }
@@ -1055,10 +1052,9 @@ bool page_try_get(struct page *page) {
     if (!page) return false;
     uint16_t old = __atomic_load_n(&page->ref_count, __ATOMIC_ACQUIRE);
     while (old > 0) {
-        if (__sync_bool_compare_and_swap(&page->ref_count, old, old + 1)) {
+        if (__atomic_compare_exchange_n(&page->ref_count, &old, old + 1, false, __ATOMIC_SEQ_CST, __ATOMIC_ACQUIRE)) {
             return true;
         }
-        old = __atomic_load_n(&page->ref_count, __ATOMIC_ACQUIRE);
     }
     return false;
 }

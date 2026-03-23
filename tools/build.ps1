@@ -29,7 +29,9 @@ param(
     [string]$HardwareProfile = "",
     [string]$BootTier = "",
     [string]$Profile = "desktop",
-    [string]$Personality = "none"
+    [string]$Personality = "none",
+    [string]$SerialTarget = "",
+    [string]$Preset = ""
 )
 
 Set-StrictMode -Version Latest
@@ -81,6 +83,9 @@ $ProfileClean = $Profile -replace ',', '-'
 $PersonalityClean = $Personality -replace ',', '-'
 
 $BuildDir = "$Root\build\${Arch}_${ProfileClean}_${HardwareProfile}_${PersonalityClean}"
+if ($Preset -ne "") {
+    $BuildDir = "$Root\build\$Preset"
+}
 if ($Board -ne "") {
     $BuildDir = "${BuildDir}_${Board}"
 }
@@ -140,6 +145,12 @@ function inf([string]$m) { Write-Host "  [.] $m" -ForegroundColor Cyan }
 function ok([string]$m) { Write-Host "  [+] $m" -ForegroundColor Green }
 function fail([string]$m) { Write-Host "  [!] $m" -ForegroundColor Red; exit 1 }
 
+if ($Preset -ne "") {
+    if ($Preset -like "*arm64*") { $Arch = "arm64" }
+    elseif ($Preset -like "*riscv64*") { $Arch = "riscv64" }
+    elseif ($Preset -like "*x86_64*") { $Arch = "x86_64" }
+}
+
 Write-Host ""
 Write-Host "  Bharat-OS Build  (arch: $Arch)" -ForegroundColor DarkYellow
 Write-Host "  --------------------------------" -ForegroundColor DarkYellow
@@ -168,6 +179,10 @@ if (-not (Test-Path "$BuildDir\CMakeCache.txt")) {
         "--no-warn-unused-cli"
     )
 
+    if ($Preset -ne "") {
+        $cmakeArgs = @("--preset", $Preset, "-B", $BuildDir)
+    }
+
     if ($Arch -eq "riscv64" -and -not $Payload) {
         $cmakeArgs += "-DBHARAT_RISCV_BUILD_PAYLOAD_BIN=OFF"
     }
@@ -190,6 +205,12 @@ if (-not (Test-Path "$BuildDir\CMakeCache.txt")) {
 
     if ($Board -ne "") {
         $cmakeArgs += "-DBHARAT_TARGET_BOARD=$Board"
+    }
+
+    if ($SerialTarget -eq "vc" -or $SerialTarget -eq "both") {
+        # In GUI/both mode, we might want to tell the kernel to use a specific UART
+        # but for now, we'll keep the default and just route it in QEMU.
+        # However, we allow BHARAT_ARCH_SERIAL_BASE to be passed if needed.
     }
 
     & cmake @cmakeArgs
@@ -315,24 +336,39 @@ if ($Run) {
             $qemuArgs += @("-machine", $Machine, "-kernel", $OutELF, "-m", "256M", "-serial", "mon:stdio", "-no-reboot")
         }
         if ($BootGui -eq "ON") {
-            # Route serial output to the virtual console in the QEMU graphical window.
-            # Without a firmware or GPU, we drop virtio-gpu and force QEMU to display the 'vc' directly on the main window tab.
-            if ($DualSerial) {
-                $qemuArgs += @("-serial", "vc", "-display", "gtk")
+            # Route serial output based on SerialTarget/DualSerial
+            # Fallback to plain 'stdio' if 'mon:stdio' fails on some Windows setups
+            $stdioBackend = "mon:stdio"
+            if ($SerialTarget -eq "both" -or $DualSerial) {
+                $qemuArgs += @("-serial", "vc", "-serial", $stdioBackend)
             }
+            elseif ($SerialTarget -eq "vc") {
+                $qemuArgs += @("-serial", "vc")
+            }
+            else {
+                $qemuArgs += @("-serial", $stdioBackend)
+            }
+            $qemuArgs += @("-display", "gtk")
         }
         else {
             $qemuArgs += @("-nographic")
         }
     }
     elseif ($Arch -eq "arm64") {
-        $qemuArgs += @("-machine", $Machine, "-cpu", "cortex-a53", "-kernel", $KernelBinary, "-m", "256M", "-serial", "mon:stdio", "-no-reboot")
+        $qemuArgs += @("-machine", $Machine, "-cpu", "cortex-a53", "-kernel", $KernelBinary, "-m", "256M", "-no-reboot")
         if ($BootGui -eq "ON") {
-            # Route serial output to the virtual console in the QEMU graphical window.
-            # Without a firmware or GPU, we drop virtio-gpu and force QEMU to display the 'vc' directly on the main window tab.
-            if ($DualSerial) {
-                $qemuArgs += @("-serial", "vc", "-vga", "none", "-display", "gtk")
+            # Route serial output based on SerialTarget/DualSerial
+            $stdioBackend = "mon:stdio"
+            if ($SerialTarget -eq "both" -or $DualSerial) {
+                $qemuArgs += @("-serial", "vc", "-serial", $stdioBackend)
             }
+            elseif ($SerialTarget -eq "vc") {
+                $qemuArgs += @("-serial", "vc")
+            }
+            else {
+                $qemuArgs += @("-serial", $stdioBackend)
+            }
+            $qemuArgs += @("-vga", "none", "-display", "gtk")
         }
         else {
             # NOTE: Keep virtio-gpu, but avoid ramfb for arm64 for now.

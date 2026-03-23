@@ -2,6 +2,7 @@ add_library(k_core OBJECT
     ../../src/cpu_local.c
     ../../src/multicore.c
     ../../src/subsystem/profile.c
+    ../../src/profile/profile.c
     ../../src/ai_kernel_bridge.c
     ../../src/security/isolation.c
     ../../src/security/credentials.c
@@ -19,6 +20,12 @@ add_library(k_core OBJECT
     $<$<STREQUAL:${ARCH},riscv64>:../../../arch/riscv64/memops_gpr_bulk.c>
     ../../src/stack_protector.c
     ../../src/crypto/secure_mem.c
+    ../../src/power/power_core.c
+    ../../src/power/power_domain.c
+    ../../src/power/thermal_core.c
+    ../../src/power/thermal_trip.c
+    ../../src/power/cooling_device.c
+    ../../src/power/power_qos.c
 )
 
 target_include_directories(k_core PRIVATE ../../include ../../include/generated ${CMAKE_SOURCE_DIR}/include)

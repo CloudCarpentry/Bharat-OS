@@ -22,9 +22,9 @@ typedef struct {
     uint32_t deadline_us; // Strict deadline in microseconds
     uint32_t period_us;
     uint32_t wcet_us; // Worst Case Execution Time
-    
+
     fault_tolerance_mode_t ft_mode;
-    
+
     // Hardware Watchdog to trip if deadline is missed
     int enable_hard_watchdog;
 } rtos_constraints_t;

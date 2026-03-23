@@ -42,6 +42,7 @@ typedef enum {
   URPC_ERR_INVAL = -5, // To match the review suggestion
 } urpc_status_t;
 
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include <stdatomic.h>
 
 // Single-Producer / Single-Consumer (SPSC) lockless ring buffer.

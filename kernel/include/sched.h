@@ -173,6 +173,7 @@ void sched_wait_queue_init(wait_queue_t* queue);
 void sched_wait_queue_enqueue(wait_queue_t* queue, kthread_t* thread);
 kthread_t* sched_wait_queue_dequeue(wait_queue_t* queue);
 
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "personality_ops.h"
 
 // Wait Queue State

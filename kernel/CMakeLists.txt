@@ -248,6 +248,7 @@ add_library(bharat_mm_tlb OBJECT
     src/mm/tlb/tlb.c
     src/mm/tlb/tlb_flush.c
     src/mm/tlb/tlb_shootdown.c
+    src/mm/tlb/tlb_pending.c
     src/mm/tlb/tlb_stats.c
     src/mm/tlb/tlb_asid.c
     src/mm/tlb/monitor_client.c
@@ -333,6 +334,7 @@ set(KERNEL_SRCS
     ../hal/dma_coherency.c
     ../hal/interrupt_common.c
     ../hal/timer_common.c
+    src/atomic64_fallback.c
     src/mm/dma/dma.c
     src/mm/zswap.c
     src/apps/hello_world.c

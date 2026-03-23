@@ -10,6 +10,7 @@ typedef struct {
     size_t size;
 } blob_immutable_object_t;
 
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "fs/file.h"
 
 static int blob_read(vfs_file_t *file, uint64_t offset, void *buffer, size_t size) {

@@ -13,13 +13,15 @@ struct kthread;
 
 #define MAX_CPUS 32U
 
-/* Opaque forward declarations for specific subsystems. 
+/* Opaque forward declarations for specific subsystems.
  * Real definitions will be in their respective headers.
  */
 
 // We will use existing structs but forward declare or include them here.
 // In Bharat-OS sched.c uses core_runqueue_t as the per core queue
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "capability.h"
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "sched.h"
 // #include <bharat/pmm.h>
 // #include <bharat/urpc.h>

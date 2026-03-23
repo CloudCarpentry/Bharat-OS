@@ -13,6 +13,7 @@ endif()
 set(WORK_DIR "${CMAKE_BINARY_DIR}/tests/policy_matrix")
 
 add_subdirectory(host)
+add_subdirectory(benchmark)
 
 # Memory HAL portability tests
 add_executable(test_hal_pt_common
@@ -91,7 +92,7 @@ target_include_directories(test_scheduler PRIVATE ../kernel/include)
 target_compile_definitions(test_scheduler PRIVATE TESTING=1)
 add_test(NAME test_scheduler COMMAND test_scheduler)
 
-add_executable(test_trap_syscall test_trap_syscall.c benchmark_stubs.c host/mock_panic.c ../kernel/src/trap/trap.c ../kernel/src/sched.c ../kernel/src/sched_deg.c ../kernel/src/ai_sched.c ../kernel/src/capability.c ../kernel/src/ipc/endpoint_ipc.c ../kernel/src/algo_matrix.c ../kernel/src/device/device_manager.c ../kernel/src/mm/pmm/numa.c ../personalities/linux/linux_compat.c)
+add_executable(test_trap_syscall test_trap_syscall.c benchmark_stubs.c host/mock_panic.c ../kernel/src/trap/trap.c ../kernel/src/trap/syscall.c ../kernel/src/sched.c ../kernel/src/sched_deg.c ../kernel/src/ai_sched.c ../kernel/src/capability.c ../kernel/src/ipc/endpoint_ipc.c ../kernel/src/algo_matrix.c ../kernel/src/device/device_manager.c ../kernel/src/mm/pmm/numa.c ../personalities/linux/linux_compat.c ../kernel/src/personality/personality_default.c)
 target_include_directories(test_trap_syscall PRIVATE ../kernel/include ../services/core/subsysmgr/include ../include)
 target_include_directories(test_trap_syscall PRIVATE ../kernel/include ../subsys/include ../include)
 target_compile_definitions(test_trap_syscall PRIVATE TESTING=1)
@@ -128,7 +129,7 @@ target_include_directories(test_memory_edgecases PRIVATE ../kernel/include)
 target_compile_definitions(test_memory_edgecases PRIVATE TESTING=1)
 add_test(NAME test_memory_edgecases COMMAND test_memory_edgecases)
 
-add_executable(test_tier_a_integration test_tier_a_integration.c benchmark_stubs.c host/mock_panic.c ../kernel/src/trap/trap.c ../kernel/src/sched.c ../kernel/src/sched_deg.c ../kernel/src/ai_sched.c ../kernel/src/capability.c ../kernel/src/ipc/endpoint_ipc.c ../kernel/src/algo_matrix.c ../kernel/src/device/device_manager.c ../kernel/src/mm/pmm/numa.c ../personalities/linux/linux_compat.c)
+add_executable(test_tier_a_integration test_tier_a_integration.c benchmark_stubs.c host/mock_panic.c ../kernel/src/trap/trap.c ../kernel/src/trap/syscall.c ../kernel/src/sched.c ../kernel/src/sched_deg.c ../kernel/src/ai_sched.c ../kernel/src/capability.c ../kernel/src/ipc/endpoint_ipc.c ../kernel/src/algo_matrix.c ../kernel/src/device/device_manager.c ../kernel/src/mm/pmm/numa.c ../personalities/linux/linux_compat.c ../kernel/src/personality/personality_default.c)
 target_include_directories(test_tier_a_integration PRIVATE ../kernel/include ../services/core/subsysmgr/include ../include)
 target_include_directories(test_tier_a_integration PRIVATE ../kernel/include ../subsys/include ../include)
 target_compile_definitions(test_tier_a_integration PRIVATE TESTING=1)
@@ -387,15 +388,15 @@ add_executable(test_smp_hal test_smp_hal.c)
 target_include_directories(test_smp_hal PRIVATE ../kernel/include)
 add_test(NAME test_smp_hal COMMAND test_smp_hal)
 
-add_executable(test_pmm_production test_pmm_production.c ../kernel/src/mm/pmm/pmm.c)
+add_executable(test_pmm_production test_pmm_production.c host/mock_panic.c ../kernel/src/mm/pmm/pmm.c)
 target_include_directories(test_pmm_production PRIVATE ../kernel/include ../kernel/src ../include)
 add_test(NAME test_pmm_production COMMAND test_pmm_production)
 
-add_executable(test_pmm_zone_alloc test_pmm_zone_alloc.c ../kernel/src/mm/pmm/pmm.c)
+add_executable(test_pmm_zone_alloc test_pmm_zone_alloc.c host/mock_panic.c ../kernel/src/mm/pmm/pmm.c)
 target_include_directories(test_pmm_zone_alloc PRIVATE ../kernel/include ../kernel/src ../include)
 add_test(NAME test_pmm_zone_alloc COMMAND test_pmm_zone_alloc)
 
-add_executable(test_pmm_refpin test_pmm_refpin.c ../kernel/src/mm/pmm/pmm.c)
+add_executable(test_pmm_refpin test_pmm_refpin.c host/mock_panic.c ../kernel/src/mm/pmm/pmm.c)
 target_include_directories(test_pmm_refpin PRIVATE ../kernel/include ../kernel/src ../include)
 add_test(NAME test_pmm_refpin COMMAND test_pmm_refpin)
 
@@ -489,7 +490,7 @@ foreach(test_target IN LISTS BHARAT_NOSTDLIB_TEST_TARGETS)
     endif()
 endforeach()
 
-add_executable(test_boot_e2e test_boot_e2e.c test_arch_caps.c ../kernel/src/kernel_boot.c ../kernel/src/lib/string.c)
+add_executable(test_boot_e2e test_boot_e2e.c test_arch_caps.c ../kernel/src/kernel_boot.c ../kernel/src/lib/string.c benchmark_stubs.c host/mock_panic.c)
 target_include_directories(test_boot_e2e PRIVATE ../kernel/include ../include)
 add_test(NAME boot_e2e COMMAND test_boot_e2e)
 
