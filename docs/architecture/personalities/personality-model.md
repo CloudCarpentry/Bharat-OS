@@ -1,4 +1,16 @@
+---
+title: Personality Model
+status: active
+owner: Architecture Team
+reviewers: ["Core Team"]
+version: 1.0
+last_updated: "2024-03-23"
+tags: ["architecture", "personalities"]
+---
+
 # Personality Compatibility Model
+
+> **Note on Code Structure:** Following recent architectural convergence, the personality layer is explicitly separated from the core architecture. Implementations reside in the `kernel/src/personality/` tree (with sub-directories like `linux/`, `android/`, `native/`), mapping specific ABIs to core operations.
 
 In a modern microkernel/multikernel architecture like Bharat-OS, forcing a single monolithic application binary interface (ABI) across all workloads limits flexibility and drags unnecessary state into the kernel.
 
