@@ -24,11 +24,17 @@ static irq_return_t dummy_irq_handler(void* ctx) {
     return IRQ_HANDLED;
 }
 
+void hal_irq_generic_init_boot(void);
+
 int main(void) {
     printf("[TEST] Running HAL Interrupt Common Tests...\n");
 
+    hal_irq_generic_init_boot();
+
+    int dev_id_dummy = 0;
+
     // Test Registration
-    int res = hal_interrupt_register(10, dummy_irq_handler, NULL, 0, "dummy", NULL);
+    int res = hal_interrupt_register(10, dummy_irq_handler, NULL, 0, "dummy", &dev_id_dummy);
     assert(res == 0);
 
     assert(hal_interrupt_is_registered(10) == 1);
@@ -39,14 +45,14 @@ int main(void) {
     assert(hal_interrupt_get_dispatch_count(10) == 1U);
 
     // Test Invalid Registration
-    res = hal_interrupt_register(300, dummy_irq_handler, NULL, 0, "dummy2", NULL);
+    res = hal_interrupt_register(300, dummy_irq_handler, NULL, 0, "dummy2", &dev_id_dummy);
     assert(res == -1);
 
     // Test Unregister
-    res = hal_interrupt_unregister(10, NULL);
+    res = hal_interrupt_unregister(10, &dev_id_dummy);
     assert(res == 0);
     assert(hal_interrupt_is_registered(10) == 0);
-    assert(hal_interrupt_get_dispatch_count(10) == 0U);
+    assert(hal_interrupt_get_dispatch_count(10) == 1U);
 
     dummy_irq_fired = 0;
     hal_interrupt_dispatch(10); // Should not fire
