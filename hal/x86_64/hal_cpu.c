@@ -41,15 +41,7 @@ void hal_core_poll_event(void) {
 
 // x86_64 Specific HAL Implementation
 
-#define COM1_PORT 0x3F8
-
 static void hal_cpu_pmc_init(void);
-
-static inline uint8_t x86_inb(uint16_t port) {
-  uint8_t value;
-  __asm__ volatile("inb %1, %0" : "=a"(value) : "Nd"(port));
-  return value;
-}
 
 static inline void x86_outb(uint16_t port, uint8_t value) {
   __asm__ volatile("outb %0, %1" : : "a"(value), "Nd"(port));
@@ -65,22 +57,6 @@ inline uint64_t x86_rdpmc(uint32_t counter) {
   uint32_t low, high;
   __asm__ volatile("rdpmc" : "=a"(low), "=d"(high) : "c"(counter));
   return ((uint64_t)high << 32) | low;
-}
-
-void hal_serial_init(void) {
-  // Disable interrupts
-  x86_outb(COM1_PORT + 1, 0x00);
-  // Enable DLAB
-  x86_outb(COM1_PORT + 3, 0x80);
-  // Set baud divisor to 3 (38400 baud)
-  x86_outb(COM1_PORT + 0, 0x03);
-  x86_outb(COM1_PORT + 1, 0x00);
-  // 8 bits, no parity, one stop bit
-  x86_outb(COM1_PORT + 3, 0x03);
-  // Enable FIFO, clear them, with 14-byte threshold
-  x86_outb(COM1_PORT + 2, 0xC7);
-  // IRQs enabled, RTS/DSR set
-  x86_outb(COM1_PORT + 4, 0x0B);
 }
 
 // Minimal VGA Text Mode Driver
@@ -122,72 +98,6 @@ static void vga_write_char(char c) {
   }
 }
 
-void hal_serial_write_char(char c) {
-  // Wait for transmit holding register empty
-  while ((x86_inb(COM1_PORT + 5) & 0x20U) == 0U) {
-  }
-
-  x86_outb(COM1_PORT, (uint8_t)c);
-}
-
-void hal_serial_write(const char *s) {
-  if (!s) {
-    return;
-  }
-
-  while (*s != '\0') {
-    if (*s == '\n') {
-      hal_serial_write_char('\r');
-      vga_write_char('\r');
-    }
-    hal_serial_write_char(*s);
-    vga_write_char(*s);
-    s++;
-  }
-}
-
-// Console Backend Integration
-static size_t x86_64_serial_write(console_backend_t *backend, const char *data, size_t len) {
-    (void)backend;
-    for (size_t i = 0; i < len; i++) {
-        if (data[i] == '\n') hal_serial_write_char('\r');
-        hal_serial_write_char(data[i]);
-    }
-    return len;
-}
-
-static console_caps_t x86_64_serial_caps(console_backend_t *backend) {
-    (void)backend;
-    return CON_CAP_WRITE_POLL | CON_CAP_EARLY_BOOT | CON_CAP_PANIC_SAFE;
-}
-
-static const console_backend_ops_t x86_64_serial_ops = {
-    .write = x86_64_serial_write,
-    .write_atomic = x86_64_serial_write,
-    .query_caps = x86_64_serial_caps
-};
-
-static console_backend_t g_x86_64_serial_backend = {
-    .name = "x86_64_serial",
-    .type = CONSOLE_BACKEND_SERIAL,
-    .ops = &x86_64_serial_ops,
-    .enabled = true,
-    .early_ok = true,
-    .panic_ok = true,
-    .priority = 10
-};
-
-// Added to intercept serial writes if needed by generic KPRINT
-void serial_puts(const char *s) { hal_serial_write(s); }
-
-int hal_serial_read_char(void) {
-  // Data ready bit
-  if ((x86_inb(COM1_PORT + 5) & 0x01U) == 0U) {
-    return -1;
-  }
-  return (int)x86_inb(COM1_PORT);
-}
-
 void hal_cpu_halt(void) {
   // Inject x86 assembly for HLT instruction
   __asm__ volatile("hlt");
@@ -199,18 +109,6 @@ void hal_cpu_reboot(void) {
   while (1) {
     __asm__ volatile("hlt");
   }
-}
-
-void hal_serial_write_hex(uint64_t val) {
-  char buf[17];
-  buf[16] = '\0';
-  for (int i = 15; i >= 0; i--) {
-    uint8_t nibble = val & 0xF;
-    buf[i] = nibble < 10 ? '0' + nibble : 'a' + (nibble - 10);
-    val >>= 4;
-  }
-  hal_serial_write("0x");
-  hal_serial_write(buf);
 }
 
 // TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
@@ -484,7 +382,7 @@ static void gdt_set_system_descriptor(int index, uint64_t base, uint32_t limit,
 void hal_init(void) {
   hal_serial_init();
   console_write_raw("H0\n", 3);
-  console_register_backend(&g_x86_64_serial_backend);
+  // g_x86_64_serial_backend removed. Boot UART is used via early_console abstraction.
 
   // Mask legacy PIC to avoid conflicts with exceptions (especially INT 8/Double Fault)
   hal_interrupt_controller_init();

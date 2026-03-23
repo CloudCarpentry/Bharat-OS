@@ -45,46 +45,6 @@ uint64_t hal_riscv_boot_hart_id(void) { return g_boot_hart_id; }
 
 uint64_t hal_riscv_boot_fdt_ptr(void) { return g_boot_fdt_ptr; }
 
-void hal_serial_init(void) {
-  // OpenSBI console is already available; no additional UART init required.
-}
-
-static int g_dbcn_supported = -1;
-
-void hal_serial_write_char(char c) {
-  if (g_dbcn_supported != 0) {
-    if (sbi_dbcn_write_byte((uint8_t)c) == 0) {
-      g_dbcn_supported = 1;
-      return;
-    }
-    g_dbcn_supported = 0;
-  }
-  sbi_console_putchar((int)c);
-}
-
-static void hal_console_display_write(const char *s) {
-  (void)s;
-}
-
-void hal_serial_write(const char *s) {
-  if (!s) {
-    return;
-  }
-
-  const char *orig = s;
-  while (*s != '\0') {
-    if (*s == '\n') {
-      sbi_console_putchar('\r');
-    }
-    sbi_console_putchar(*s);
-    s++;
-  }
-  /* Mirror to any registered display driver (weak no-op by default) */
-  hal_console_display_write(orig);
-}
-
-int hal_serial_read_char(void) { return sbi_console_getchar(); }
-
 static void hal_riscv_send_ipi_payload(const unsigned long *hart_mask,
                                 uint64_t payload) {
   sbi_send_ipi_payload(hart_mask, payload);
@@ -107,18 +67,6 @@ void hal_cpu_reboot(void) {
   while (1) {
     __asm__ volatile("wfi");
   }
-}
-
-void hal_serial_write_hex(uint64_t val) {
-  char buf[17];
-  buf[16] = '\0';
-  for (int i = 15; i >= 0; i--) {
-    uint8_t nibble = val & 0xF;
-    buf[i] = nibble < 10 ? '0' + nibble : 'a' + (nibble - 10);
-    val >>= 4;
-  }
-  hal_serial_write("0x");
-  hal_serial_write(buf);
 }
 
 // TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.

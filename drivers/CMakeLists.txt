@@ -24,6 +24,7 @@ endif()
 add_subdirectory(bus)
 add_subdirectory(class)
 add_subdirectory(devices)
+add_subdirectory(serial)
 add_subdirectory(registry)
 
 add_library(bharatos_drivers INTERFACE)

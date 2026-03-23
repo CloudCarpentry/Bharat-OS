@@ -6,16 +6,6 @@
 
 // ARM AArch64 Specific HAL Implementation
 
-#define PL011_BASE 0x09000000UL
-#define PL011_DR 0x00UL
-#define PL011_FR 0x18UL
-#define PL011_FR_TXFF (1U << 5)
-#define PL011_FR_RXFE (1U << 4)
-
-static inline volatile uint32_t *pl011_reg(uintptr_t offset) {
-  return (volatile uint32_t *)(PL011_BASE + offset);
-}
-
 int hal_secure_boot_arch_check(const bharat_boot_policy_t *policy) {
   if (!policy) {
     return -1;
@@ -30,38 +20,6 @@ int hal_secure_boot_arch_check(const bharat_boot_policy_t *policy) {
   return 0;
 }
 
-void hal_serial_init(void) {
-  // QEMU virt board provides PL011 at 0x09000000 with firmware defaults.
-}
-
-void hal_serial_write_char(char c) {
-  while ((*pl011_reg(PL011_FR) & PL011_FR_TXFF) != 0U) {
-  }
-
-  *pl011_reg(PL011_DR) = (uint32_t)c;
-}
-
-void hal_serial_write(const char *s) {
-  if (!s) {
-    return;
-  }
-
-  while (*s != '\0') {
-    if (*s == '\n') {
-      hal_serial_write_char('\r');
-    }
-    hal_serial_write_char(*s++);
-  }
-}
-
-int hal_serial_read_char(void) {
-  if ((*pl011_reg(PL011_FR) & PL011_FR_RXFE) != 0U) {
-    return -1;
-  }
-
-  return (int)(*pl011_reg(PL011_DR) & 0xFFU);
-}
-
 void hal_cpu_halt(void) {
   // Wait For Interrupt instruction
   __asm__ volatile("wfi");
@@ -74,18 +32,6 @@ void hal_cpu_reboot(void) {
   while (1) {
     __asm__ volatile("wfi");
   }
-}
-
-void hal_serial_write_hex(uint64_t val) {
-  char buf[17];
-  buf[16] = '\0';
-  for (int i = 15; i >= 0; i--) {
-    uint8_t nibble = val & 0xF;
-    buf[i] = nibble < 10 ? '0' + nibble : 'a' + (nibble - 10);
-    val >>= 4;
-  }
-  hal_serial_write("0x");
-  hal_serial_write(buf);
 }
 
 // TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
