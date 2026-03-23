@@ -31,6 +31,13 @@ typedef enum {
     PTP_PERF_CLASS_ACCELERATOR_HOST
 } ptp_perf_class_t;
 
+typedef enum {
+    PTP_THERMAL_LEVEL_NORMAL = 0,
+    PTP_THERMAL_LEVEL_PASSIVE,
+    PTP_THERMAL_LEVEL_HOT,
+    PTP_THERMAL_LEVEL_CRITICAL
+} ptp_thermal_level_t;
+
 typedef struct {
     uint32_t package_id;
     uint32_t cluster_id;
@@ -91,6 +98,13 @@ typedef struct {
     uint32_t accelerator_count;
 } ptp_topology_info_t;
 
+typedef struct {
+    ptp_thermal_level_t level;
+    uint32_t cooling_state;
+    int32_t max_temp_mc;
+    uint32_t throttle_votes;
+} ptp_thermal_summary_t;
+
 int ptp_init(void);
 
 int pm_suspend_system(uint32_t sleep_state);
@@ -104,6 +118,7 @@ const ptp_wake_source_t *pm_get_wake_sources(uint32_t *count);
 int thermal_register_zone(const ptp_thermal_zone_t *zone_cfg);
 int thermal_register_cooling_device(const ptp_cooling_device_t *cooling_cfg);
 int thermal_update_temperature(uint32_t zone_id, int32_t temperature_mc);
+ptp_thermal_summary_t thermal_get_summary(void);
 
 const ptp_topology_info_t *perf_topology_get(void);
 int perf_topology_register_accelerator(const ptp_accelerator_t *accel);

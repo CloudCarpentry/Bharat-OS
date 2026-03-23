@@ -1,5 +1,5 @@
 #include "services/power_mode/power_mode.h"
-#include <stdio.h>
+
 #include <stddef.h>
 
 #define MAX_PM_CLIENTS 16
@@ -13,6 +13,7 @@ typedef struct {
 static pm_client_t g_clients[MAX_PM_CLIENTS] = {0};
 static int g_num_clients = 0;
 static power_mode_state_t g_current_mode = POWER_MODE_OFF;
+static power_mode_thermal_state_t g_thermal_state = {0};
 
 int power_mode_register_client(power_mode_prepare_cb prepare, power_mode_commit_cb commit, power_mode_wake_cb wake) {
     if (g_num_clients >= MAX_PM_CLIENTS) {
@@ -51,8 +52,11 @@ static bool is_valid_transition(power_mode_state_t current, power_mode_state_t t
 }
 
 int power_mode_request_transition(power_mode_state_t target, power_mode_reason_t reason) {
-    (void)reason;
     if (!is_valid_transition(g_current_mode, target)) {
+        return -1;
+    }
+
+    if (g_thermal_state.critical && (target == POWER_MODE_RUN || target == POWER_MODE_CRANK)) {
         return -1;
     }
 
@@ -94,8 +98,26 @@ power_mode_state_t power_mode_get_current(void) {
     return g_current_mode;
 }
 
-// Internal function to reset state for testing
+int power_mode_set_thermal_state(const power_mode_thermal_state_t* thermal_state) {
+    if (!thermal_state) {
+        return -1;
+    }
+
+    g_thermal_state = *thermal_state;
+
+    if (g_thermal_state.critical && g_current_mode != POWER_MODE_LIMP_HOME) {
+        (void)power_mode_force_limp_home(POWER_REASON_THERMAL_CRITICAL);
+    }
+
+    return 0;
+}
+
+power_mode_thermal_state_t power_mode_get_thermal_state(void) {
+    return g_thermal_state;
+}
+
 void power_mode_reset(void) {
     g_num_clients = 0;
     g_current_mode = POWER_MODE_OFF;
+    g_thermal_state = (power_mode_thermal_state_t){0};
 }
