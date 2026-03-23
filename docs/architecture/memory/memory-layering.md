@@ -45,3 +45,46 @@
 
 ## Remaining Build Issues
 - The local emulator toolchain defaults to `/usr/bin/gcc` acting as a driver for `clang`, and lacks the `lld` linker. This is completely expected and purely an environment issue.
+
+## Memory Architecture Diagram
+
+```mermaid
+graph TD
+    subgraph "Subsystems & Services (User Space)"
+        A[App / Service]
+    end
+
+    subgraph "Virtual Memory Manager (VMM)"
+        ASpace[ASpace Layer]
+        VMObj[VM Object Layer]
+        Fault[Fault / Pager Layer]
+    end
+
+    subgraph "Hardware Abstraction Layer (HAL)"
+        PT[HAL Page Table]
+        TLB[HAL TLB Coordinator]
+        IOMMU[HAL IOMMU]
+    end
+
+    subgraph "Physical Memory Manager (PMM)"
+        PMM_Core[PMM Core / Zoned Buddy]
+        Slab[Slab Allocator]
+        NUMA[NUMA Policies]
+    end
+
+    A -->|Syscalls / Page Faults| ASpace
+    A -->|Syscalls / Page Faults| Fault
+    ASpace --> VMObj
+    Fault --> VMObj
+    VMObj --> PT
+    VMObj --> PMM_Core
+    PT --> TLB
+    PMM_Core --> NUMA
+    PMM_Core --> Slab
+    IOMMU -.->|DMA Protection| PMM_Core
+
+    style A fill:#f9f,stroke:#333,stroke-width:2px
+    style ASpace fill:#bbf,stroke:#333,stroke-width:2px
+    style PMM_Core fill:#bfb,stroke:#333,stroke-width:2px
+    style PT fill:#fbb,stroke:#333,stroke-width:2px
+```

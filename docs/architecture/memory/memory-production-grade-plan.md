@@ -123,3 +123,34 @@ This delivers the highest near-term correctness gains and reduces follow-on rewo
 Do not claim feature support unless covered by tests for the relevant profile/architecture matrix.
 
 When behavior is partial, document it as partial with explicit limitations and next milestones.
+
+## Memory Components and Interactions
+
+```mermaid
+graph LR
+    subgraph "Kernel Profiles"
+        Full[MMU Full Profile]
+        Lite[MMU Lite Profile]
+        MPU[MPU Only Profile]
+    end
+
+    subgraph "Hardware Targets"
+        ARM64[arm64]
+        X86_64[x86_64]
+        RV64[riscv64]
+        ARM32[arm32]
+        RV32[riscv32]
+    end
+
+    Full --> ARM64
+    Full --> X86_64
+    Full --> RV64
+    Lite --> ARM32
+    Lite --> RV32
+    MPU --> ARM32
+    MPU --> RV32
+
+    style Full fill:#a9dfbf,stroke:#333
+    style Lite fill:#f9e79f,stroke:#333
+    style MPU fill:#f5b7b1,stroke:#333
+```

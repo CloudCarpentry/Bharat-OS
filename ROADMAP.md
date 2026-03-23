@@ -128,6 +128,7 @@ This document defines CMake structure, versioning expectations, and required con
 
 For per-domain architecture decomposition (with Mermaid + PlantUML diagrams, done/todo status, and roadmap mapping), see:
 
+- [`docs/architecture/memory/roadmap.md`](docs/architecture/memory/roadmap.md)
 - [`docs/architecture/components/kernel-subcomponents-architecture.md`](docs/architecture/components/kernel-subcomponents-architecture.md)
 - [`docs/architecture/components/subsystem-subcomponents-architecture.md`](docs/architecture/components/subsystem-subcomponents-architecture.md)
 - [`docs/architecture/components/services-subcomponents-architecture.md`](docs/architecture/components/services-subcomponents-architecture.md)

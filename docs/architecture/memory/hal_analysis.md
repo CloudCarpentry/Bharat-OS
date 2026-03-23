@@ -269,3 +269,26 @@ However, moving from a "bootable baseline" to a high-performance OS requires sys
 4. **Optimize Context Switches:** Implement lazy FPU/Vector state saving to drastically reduce IPC and scheduling latency.
 5. **Implement Runtime Probing:** Populate `cpu_caps.c` to parse CPUID/FDT and expose hardware features to user-space services.
 6. **Establish Hardware Security Foundations:** Introduce HAL interfaces for TPM/TrustZone interaction to support the secure boot roadmap.
+
+## HAL Architecture Context
+
+```mermaid
+sequenceDiagram
+    participant UserApp as User Space App
+    participant VMM as VMM/ASpace
+    participant HAL_PT as HAL Page Table Layer
+    participant TLB_Coordinator as TLB Coordinator
+    participant Hardware as MMU/MPU
+
+    UserApp->>VMM: Syscall Map Region
+    VMM->>HAL_PT: hal_pt_map(phys, virt, flags)
+    HAL_PT->>Hardware: Write PTE / Region
+    Hardware-->>HAL_PT: Ack
+    HAL_PT-->>VMM: Success
+    VMM->>TLB_Coordinator: hal_tlb_flush(virt)
+    TLB_Coordinator->>Hardware: Local Flush
+    TLB_Coordinator->>Hardware: Remote Shootdown (IPI)
+    Hardware-->>TLB_Coordinator: Ack
+    TLB_Coordinator-->>VMM: Ack
+    VMM-->>UserApp: Complete Map
+```
