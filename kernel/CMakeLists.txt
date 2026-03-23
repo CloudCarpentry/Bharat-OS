@@ -362,6 +362,15 @@ elseif(ARCH STREQUAL "riscv64")
     list(APPEND KERNEL_SRCS ../arch/riscv64/platform/qemu_virt/boot/early_console.c)
 endif()
 
+# Make sure we link the platform layer correctly for symbol resolution
+if(ARCH STREQUAL "x86_64")
+    list(APPEND KERNEL_SRCS ../platform/boards/qemu-virt-x86_64/platform_uart.c)
+elseif(ARCH STREQUAL "arm64")
+    list(APPEND KERNEL_SRCS ../platform/boards/qemu-virt-arm64/platform_uart.c)
+elseif(ARCH STREQUAL "riscv64")
+    list(APPEND KERNEL_SRCS ../platform/boards/qemu-virt-riscv64/platform_uart.c)
+endif()
+
 list(APPEND KERNEL_SRCS src/display/boot_video_map.c src/boot/boot_mode.c src/boot/boot_selftest.c)
 
 # ── Kernel ELF ──────────────────────────────────────────────────────────────
@@ -396,7 +405,7 @@ target_sources(kernel.elf PRIVATE
     $<TARGET_OBJECTS:bharat_mm_vmm>
 )
 # Architecture-specific code model and PIE flags are set below
-target_link_libraries(kernel.elf subsys_manager bharat_libmsg bharat_kernel_buildopts bharatos_drivers bharat_kernel_includes board_fabric)
+target_link_libraries(kernel.elf subsys_manager bharat_libmsg bharat_kernel_buildopts bharatos_drivers serial_drivers bharat_kernel_includes board_fabric)
 if(BHARAT_ENABLE_FBUI)
     target_link_libraries(kernel.elf fbui)
 endif()

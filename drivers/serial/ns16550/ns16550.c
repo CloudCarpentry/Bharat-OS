@@ -15,6 +15,20 @@
 
 #define LSR_THRE 0x20 /* Transmit Holding Register Empty */
 
+static inline uint8_t x86_inb(uint16_t port) {
+    uint8_t value;
+#if defined(__x86_64__)
+    __asm__ volatile("inb %1, %0" : "=a"(value) : "Nd"(port));
+#endif
+    return value;
+}
+
+static inline void x86_outb(uint16_t port, uint8_t value) {
+#if defined(__x86_64__)
+    __asm__ volatile("outb %0, %1" : : "a"(value), "Nd"(port));
+#endif
+}
+
 static inline uint8_t mmio_read8(uintptr_t addr) {
     return *(volatile uint8_t *)addr;
 }
@@ -24,11 +38,19 @@ static inline void mmio_write8(uintptr_t addr, uint8_t val) {
 }
 
 static uint8_t ns16550_read_reg(uart_device_t *dev, uint32_t offset) {
+#if defined(__x86_64__)
+    return x86_inb(dev->base + (offset << dev->reg_shift));
+#else
     return mmio_read8(dev->base + (offset << dev->reg_shift));
+#endif
 }
 
 static void ns16550_write_reg(uart_device_t *dev, uint32_t offset, uint8_t val) {
+#if defined(__x86_64__)
+    x86_outb(dev->base + (offset << dev->reg_shift), val);
+#else
     mmio_write8(dev->base + (offset << dev->reg_shift), val);
+#endif
 }
 
 static bool ns16550_init(uart_device_t *dev) {

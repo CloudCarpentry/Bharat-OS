@@ -112,24 +112,17 @@ static serial_console_state_t g_early_serial_state;
 static uart_device_t g_early_uart;
 
 
-#if defined(__aarch64__)
-extern const uart_driver_ops_t uart_pl011_ops;
-#elif defined(__x86_64__) || defined(__riscv)
-extern const uart_driver_ops_t uart_ns16550_ops;
-#endif
+extern uart_device_t *platform_get_boot_uart(void);
 
 bool console_serial_register_device(const console_device_desc_t *desc) {
     if (!desc) return false;
 
-    g_early_uart.base = desc->base;
-    g_early_uart.reg_shift = desc->reserved0;
-#if defined(__aarch64__)
-    g_early_uart.ops = &uart_pl011_ops;
-#elif defined(__x86_64__) || defined(__riscv)
-    g_early_uart.ops = &uart_ns16550_ops;
-#else
-    return false;
-#endif
+    uart_device_t *platform_uart = platform_get_boot_uart();
+    if (platform_uart) {
+        g_early_uart = *platform_uart;
+    } else {
+        return false;
+    }
 
     g_early_serial_state.uart = &g_early_uart;
     g_early_serial_state.translate_lf_to_crlf = true;

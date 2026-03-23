@@ -1,6 +1,8 @@
 add_library(k_debug OBJECT
     ../../src/panic.c
     ../../src/trace/trace.c
+    ../../src/debug/early_console.c
+    ../../src/debug/hal_serial_compat.c
     ../../src/console/console_core.c
     ../../src/console/console_buffer.c
     ../../src/console/console_discovery.c
@@ -14,8 +16,6 @@ add_library(k_debug OBJECT
     ../../src/console/framebuffer_console.c
     ../../src/console/serial_console.c
     ../../src/console/memlog_console.c
-    ../../src/console/drivers/uart_pl011.c
-    ../../src/console/drivers/uart_ns16550.c
     ../../src/console/drivers/uart_simple_mmio.c
 )
 
