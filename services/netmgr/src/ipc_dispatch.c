@@ -19,11 +19,14 @@ void netmgr_ipc_dispatch_init(void) {
     netmgr_driver_health_init();
 }
 
-void netmgr_ipc_handle_request(const netmgr_ipc_req_t *req, netmgr_ipc_res_t *res) {
+void netmgr_ipc_handle_request(const bharat_ipc_msg_header_t *hdr, const netmgr_ipc_req_t *req, netmgr_ipc_res_t *res) {
     memset(res, 0, sizeof(netmgr_ipc_res_t));
     res->status = NETMGR_STATUS_ERR_INVAL;
 
-    if (!req) return;
+    if (!req || !hdr) return;
+
+    // Set the capability token from the IPC header so the capability checker can evaluate it.
+    netmgr_set_caller_cap(hdr->capability_transfer);
 
     switch (req->opcode) {
         case NETMGR_OP_CREATE_IFACE: {

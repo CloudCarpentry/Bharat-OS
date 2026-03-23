@@ -36,3 +36,16 @@ target_link_options(netmgr PRIVATE -nostdlib -no-pie)
 # Link against necessary system primitives/stubs here in the future
 
 bharat_configure_userspace_binary(netmgr)
+
+# Capability enforcement tests
+# Only build this test when targeting the host (not cross-compiling)
+if(CMAKE_CROSSCOMPILING)
+    message(STATUS "Skipping test_netmgr_caps build during cross-compilation")
+else()
+    add_executable(test_netmgr_caps tests/test_netmgr_caps.c src/capability_checks.c src/ipc_dispatch.c)
+    target_include_directories(test_netmgr_caps PRIVATE src ../../include ../../lib/cap/include)
+    target_link_libraries(test_netmgr_caps PRIVATE libpacket bharat_runtime_freestanding libnet)
+    set_target_properties(test_netmgr_caps PROPERTIES COMPILE_OPTIONS "")
+    set_target_properties(test_netmgr_caps PROPERTIES LINK_OPTIONS "")
+    add_test(NAME test_netmgr_caps COMMAND test_netmgr_caps)
+endif()
