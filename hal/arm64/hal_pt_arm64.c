@@ -12,6 +12,25 @@
 const virt_addr_t g_kernel_virt_offset = 0xFFFF800000000000ULL;
 const size_t g_kernel_physmap_size = 0x8000000000ULL; // e.g., 512GB
 
+typedef enum {
+    ARM64_KVA_MODE_EARLY_IDENTITY = 0,
+    ARM64_KVA_MODE_LINEAR_MAP = 1,
+} arm64_kva_mode_t;
+
+typedef struct {
+    arm64_kva_mode_t mode;
+    phys_addr_t phys_base;
+    virt_addr_t virt_base;
+    size_t size;
+} arm64_kernel_map_state_t;
+
+static arm64_kernel_map_state_t g_arm64_kernel_map = {
+    .mode = ARM64_KVA_MODE_EARLY_IDENTITY,
+    .phys_base = 0,
+    .virt_base = 0,
+    .size = 0,
+};
+
 // ARM64 Descriptor bits
 #define ARM64_PT_VALID       (1ULL << 0)
 #define ARM64_PT_TABLE       (1ULL << 1)
@@ -403,27 +422,68 @@ void arm64_init_hardening(void) {
 static translate_backend_kind_t arm64_backend_type(void) { return TRANSLATE_BACKEND_MMU; }
 static translate_exec_class_t arm64_exec_class(void) { return TRANSLATE_EXEC_MMU_FULL; }
 
-static void* arm64_phys_to_virt(phys_addr_t phys) {
-    uint64_t sctlr;
-    asm volatile("mrs %0, sctlr_el1" : "=r"(sctlr));
-    if ((sctlr & 1) == 0) {
-        return (void*)phys; // MMU is disabled, return identity mapping
+void arm64_set_kernel_linear_map_state(phys_addr_t phys_base, size_t size, bool enabled) {
+    if (!enabled || size == 0) {
+        g_arm64_kernel_map.mode = ARM64_KVA_MODE_EARLY_IDENTITY;
+        g_arm64_kernel_map.phys_base = 0;
+        g_arm64_kernel_map.virt_base = 0;
+        g_arm64_kernel_map.size = 0;
+        return;
     }
-    return (void*)(phys + g_kernel_virt_offset);
+
+    g_arm64_kernel_map.mode = ARM64_KVA_MODE_LINEAR_MAP;
+    g_arm64_kernel_map.phys_base = phys_base;
+    g_arm64_kernel_map.virt_base = g_kernel_virt_offset + phys_base;
+    g_arm64_kernel_map.size = size;
+}
+
+static void* arm64_phys_to_virt(phys_addr_t phys) {
+    if (g_arm64_kernel_map.mode == ARM64_KVA_MODE_EARLY_IDENTITY) {
+        return (void*)(uintptr_t)phys;
+    }
+
+    if (phys < g_arm64_kernel_map.phys_base) {
+        return NULL;
+    }
+    size_t delta = (size_t)(phys - g_arm64_kernel_map.phys_base);
+    if (delta >= g_arm64_kernel_map.size) {
+        return NULL;
+    }
+
+    return (void*)(uintptr_t)(g_arm64_kernel_map.virt_base + delta);
 }
 
 static phys_addr_t arm64_virt_to_phys(const void* virt) {
-    uint64_t sctlr;
-    asm volatile("mrs %0, sctlr_el1" : "=r"(sctlr));
-    if ((sctlr & 1) == 0) {
-        return (phys_addr_t)virt; // MMU is disabled, return identity mapping
+    uintptr_t va = (uintptr_t)virt;
+
+    if (g_arm64_kernel_map.mode == ARM64_KVA_MODE_EARLY_IDENTITY) {
+        return (phys_addr_t)va;
     }
-    return (phys_addr_t)((uintptr_t)virt - g_kernel_virt_offset);
+
+    if (va < g_arm64_kernel_map.virt_base) {
+        return 0;
+    }
+    size_t delta = (size_t)(va - g_arm64_kernel_map.virt_base);
+    if (delta >= g_arm64_kernel_map.size) {
+        return 0;
+    }
+
+    return g_arm64_kernel_map.phys_base + delta;
 }
 
 static bool arm64_has_linear_physmap(void) { return true; }
-static phys_addr_t arm64_linear_physmap_base(void) { return g_kernel_virt_offset; }
-static phys_addr_t arm64_linear_physmap_limit(void) { return g_kernel_virt_offset + g_kernel_physmap_size; }
+static phys_addr_t arm64_linear_physmap_base(void) {
+    if (g_arm64_kernel_map.mode == ARM64_KVA_MODE_LINEAR_MAP) {
+        return g_arm64_kernel_map.virt_base;
+    }
+    return 0;
+}
+static phys_addr_t arm64_linear_physmap_limit(void) {
+    if (g_arm64_kernel_map.mode == ARM64_KVA_MODE_LINEAR_MAP) {
+        return g_arm64_kernel_map.virt_base + g_arm64_kernel_map.size;
+    }
+    return 0;
+}
 
 static const hal_translate_ops_t arm64_translate_ops = {
     .backend_type = arm64_backend_type,
