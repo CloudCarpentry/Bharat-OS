@@ -215,6 +215,7 @@ add_library(bharat_mm_pmm OBJECT
     src/mm/pmm/pmm.c
     src/mm/pmm/pmm_pcache.c
     src/mm/pmm/pmm_debug.c
+    src/mm/pmm/pmm_pcache.c
     src/mm/pmm/early_alloc.c
     src/mm/pmm/slab.c
     src/mm/pmm/kmem_aligned.c
@@ -336,6 +337,7 @@ set(KERNEL_SRCS
     ../hal/interrupt_common.c
     ../hal/timer_common.c
     src/atomic64_fallback.c
+    src/lib/status.c
     src/mm/dma/dma.c
     src/mm/zswap.c
     src/apps/hello_world.c
