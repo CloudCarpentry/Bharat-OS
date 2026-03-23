@@ -61,21 +61,7 @@ void console_write_raw(const char *data, size_t len) {
     // printf("%.*s", (int)len, data);
 }
 
-int boot_selftest_run_stage(int stage) {
-    (void)stage;
-    return 0;
-}
 
-int bharat_boot_mode_select(void) {
-    return 0; // BOOT_MODE_NORMAL
-}
-
-const char* bharat_boot_mode_name(int mode) {
-    (void)mode;
-    return "NORMAL";
-}
-
-int console_current_phase(void) { return 1; }
 size_t string_length(const char* str) {
     size_t len = 0;
     while (str && str[len]) len++;

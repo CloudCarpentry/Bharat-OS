@@ -131,7 +131,7 @@ static int default_map_fault_to_signal(const trap_info_t *info) {
     return 11; // SIGSEGV
 }
 
-const personality_ops_t default_personality_ops = {
+__attribute__((weak)) const personality_ops_t default_personality_ops = {
     .handle_syscall = default_handle_syscall,
     .handle_user_fault = default_handle_user_fault,
     .map_fault_to_signal = default_map_fault_to_signal,
