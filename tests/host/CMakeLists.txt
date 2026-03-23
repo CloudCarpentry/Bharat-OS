@@ -61,6 +61,9 @@ add_test(NAME host_test_diag_debounce COMMAND test_diag_debounce)
 add_executable(test_sensor_core drivers/test_sensor_core.c ../../drivers/class/sensor/sensor_core.c)
 target_include_directories(test_sensor_core PRIVATE ../../drivers/include)
 
+add_executable(test_sensor_core_bench drivers/test_sensor_core_bench.c ../../drivers/class/sensor/sensor_core.c)
+target_include_directories(test_sensor_core_bench PRIVATE ../../drivers/include)
+
 add_executable(test_sensor_freshness services/test_sensor_freshness.c ../../services/sensor_hub/freshness.c)
 target_include_directories(test_sensor_freshness PRIVATE ../../drivers/include)
 
@@ -69,6 +72,7 @@ target_include_directories(test_sensor_plausibility PRIVATE ../../drivers/includ
 target_link_libraries(test_sensor_plausibility PRIVATE m)
 
 add_test(NAME host_test_sensor_core COMMAND test_sensor_core)
+add_test(NAME host_test_sensor_core_bench COMMAND test_sensor_core_bench)
 add_test(NAME host_test_sensor_freshness COMMAND test_sensor_freshness)
 add_test(NAME host_test_sensor_plausibility COMMAND test_sensor_plausibility)
 
