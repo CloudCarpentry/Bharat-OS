@@ -36,18 +36,18 @@ run_arch() {
     local kernel_path="build_e2e_${arch}/kernel.elf"
 
     if [ "$arch" = "x86_64" ]; then
-        qemu_cmd="qemu-system-x86_64 -kernel $kernel_path -m 128 -nographic -no-reboot -serial stdio"
+        qemu_cmd="qemu-system-x86_64 -kernel $kernel_path -m 128 -nographic -no-reboot -chardev stdio,id=char0,mux=on -serial chardev:char0 -mon chardev=char0,mode=readline"
     elif [ "$arch" = "arm64" ]; then
         # According to memory: when booting ARM64 kernels in QEMU using -kernel, use raw binary!
         if [ -f "$kernel_path" ]; then
             objcopy -O binary $kernel_path build_e2e_${arch}/Image
-            qemu_cmd="qemu-system-aarch64 -M virt -cpu cortex-a53 -m 128 -nographic -no-reboot -kernel build_e2e_${arch}/Image"
+            qemu_cmd="qemu-system-aarch64 -M virt -cpu cortex-a53 -m 128 -nographic -no-reboot -chardev stdio,id=char0,mux=on -serial chardev:char0 -mon chardev=char0,mode=readline -kernel build_e2e_${arch}/Image"
         else
             # fallback mock command if kernel failed to build
             qemu_cmd="qemu-system-aarch64-mock"
         fi
     elif [ "$arch" = "riscv64" ]; then
-        qemu_cmd="qemu-system-riscv64 -M virt -m 128 -nographic -no-reboot -serial stdio -kernel $kernel_path"
+        qemu_cmd="qemu-system-riscv64 -M virt -m 128 -nographic -no-reboot -chardev stdio,id=char0,mux=on -serial chardev:char0 -mon chardev=char0,mode=readline -kernel $kernel_path"
     fi
 
     echo "    -> Booting in QEMU (timeout ${TIMEOUT}s)..."
