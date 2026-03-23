@@ -113,8 +113,10 @@ int __attribute__((weak)) vmm_map_device_mmio(virt_addr_t vaddr, phys_addr_t pad
     return -1;
 }
 int __attribute__((weak)) hal_vmm_update_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
-    (void)root_table; (void)vaddr; (void)paddr; (void)flags;
-    return -1;
+    (void)root_table; (void)vaddr; (void)paddr; (void)flags; return -1;
+}
+
+void __attribute__((weak)) arch_cpu_relax(void) {
 }
 
 __attribute__((weak)) void hal_serial_write(const char *s) { (void)s; }
