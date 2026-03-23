@@ -29,6 +29,9 @@ int ipv4_rx(netbuf_t *nb);
 /* Serialize and transmit an IPv4 packet */
 int ipv4_tx(netbuf_t *nb, uint32_t dst_ip, uint8_t protocol);
 
+/* Centralized IP routing and configuration */
+uint32_t ipv4_get_source_ip(uint32_t dst_ip);
+void ipv4_set_local_ip(uint32_t ip);
 /* Configuration / query API */
 int ipv4_set_local_ip(uint32_t ip);
 uint32_t ipv4_get_local_ip(void);
