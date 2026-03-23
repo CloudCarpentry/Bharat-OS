@@ -19,6 +19,7 @@ void hal_init(void);
 uint64_t hal_cpu_get_fault_address(const void *trap_frame);
 
 // Exception classification
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include <stdbool.h>
 bool hal_cpu_is_page_fault(const void *trap_frame);
 bool hal_cpu_is_fp_simd_fault(const void *trap_frame);

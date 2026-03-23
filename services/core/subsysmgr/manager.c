@@ -47,6 +47,7 @@ int subsys_load_env(subsys_instance_t* instance, const char* root_path) {
     return 0;
 }
 
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "bharat/subsys_test.h"
 
 int subsys_start(subsys_instance_t* instance) {

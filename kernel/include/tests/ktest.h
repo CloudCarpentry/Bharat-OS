@@ -13,6 +13,7 @@ typedef struct {
   bool (*test_fn)(void);
 } ktest_case_t;
 
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "boot/boot_selftest.h"
 
 typedef struct {
