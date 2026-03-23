@@ -1,4 +1,3 @@
-// kernel/include/spinlock.h
 #ifndef BHARAT_SPINLOCK_H
 #define BHARAT_SPINLOCK_H
 
@@ -25,14 +24,14 @@ static inline void spin_wait_hint(void) {
 }
 
 static inline void spin_lock(spinlock_t* lock) {
-    while (__sync_lock_test_and_set(&lock->locked.value, 1)) {
+    while (__atomic_test_and_set(&lock->locked.value, __ATOMIC_ACQUIRE)) {
         // Architecture-specific wait hint to reduce contention/power.
         spin_wait_hint();
     }
 }
 
 static inline void spin_unlock(spinlock_t* lock) {
-    __sync_lock_release(&lock->locked.value);
+    __atomic_clear(&lock->locked.value, __ATOMIC_RELEASE);
 }
 
 #endif // BHARAT_SPINLOCK_H

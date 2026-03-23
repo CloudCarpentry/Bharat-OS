@@ -334,6 +334,7 @@ set(KERNEL_SRCS
     ../hal/dma_coherency.c
     ../hal/interrupt_common.c
     ../hal/timer_common.c
+    src/atomic64_fallback.c
     src/mm/dma/dma.c
     src/mm/zswap.c
     src/apps/hello_world.c
