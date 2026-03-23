@@ -10,11 +10,11 @@
 //#include <stdio.h>
 
 static uint32_t local_ip = 0;          /* unconfigured by default */
-static const uint32_t loopback_ip = 0x0100007F; /* 127.0.0.1 */
+static const uint32_t loopback_ip = IPV4_ADDR(127, 0, 0, 1); /* 127.0.0.1 */
 static uint16_t ip_id_counter = 0;
 
 static int ipv4_is_broadcast(uint32_t ip) {
-    return ip == 0xFFFFFFFFu;
+    return ip == IPV4_ADDR(255, 255, 255, 255);
 }
 
 int ipv4_set_local_ip(uint32_t ip) {
@@ -39,18 +39,6 @@ uint32_t ipv4_get_local_ip(void) {
 
 uint32_t ipv4_get_loopback_ip(void) {
     return loopback_ip;
-}
-
-uint32_t ipv4_select_source_ip(uint32_t dst_ip) {
-    if ((dst_ip & 0xFFu) == 127u) {
-        return loopback_ip;
-    }
-
-    if (local_ip == 0) {
-        return 0;
-    }
-
-    return local_ip;
 }
 
 int ipv4_is_local_address(uint32_t ip) {
@@ -128,25 +116,32 @@ int ipv4_rx(netbuf_t *nb) {
 }
 
 uint32_t ipv4_get_source_ip(uint32_t dst_ip) {
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
     if ((dst_ip & 0xFF) == 127) { // 127.x.x.x loopback
         return loopback_ip;
-}
-int ipv4_tx(netbuf_t *nb, uint32_t dst_ip, uint8_t protocol) {
-    uint32_t src_ip = ipv4_select_source_ip(dst_ip);
+    }
+#else
+    if ((dst_ip >> 24) == 127) { // 127.x.x.x loopback
+        return loopback_ip;
+    }
+#endif
 
     /* fail closed: no non-loopback transmit without configuration */
-    if (src_ip == 0) {
-        return -1;
+    if (local_ip == 0) {
+        return 0;
     }
     return local_ip;
 }
 
-void ipv4_set_local_ip(uint32_t ip) {
-    local_ip = ip;
-}
-
 int ipv4_tx(netbuf_t *nb, uint32_t dst_ip, uint8_t protocol) {
+    if (!nb) {
+        return -1;
+    }
+
     uint32_t src_ip = ipv4_get_source_ip(dst_ip);
+    if (src_ip == 0) {
+        return -1; // Fail closed if unconfigured non-loopback
+    }
 
     uint16_t total_len = netbuf_len(nb) + sizeof(iphdr_t);
 
@@ -184,7 +179,7 @@ int ipv4_tx(netbuf_t *nb, uint32_t dst_ip, uint8_t protocol) {
     } else {
         // Send to Ethernet (requires ARP)
         uint8_t dest_mac[ETH_ALEN];
-        if (dst_ip == 0xFFFFFFFFu) {
+        if (ipv4_is_broadcast(dst_ip)) {
             memset(dest_mac, 0xFF, ETH_ALEN);
         } else {
             if (arp_resolve(dst_ip, dest_mac) < 0) {

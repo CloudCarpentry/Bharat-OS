@@ -81,6 +81,11 @@ int udp_tx(int sock_id, uint32_t dst_ip, uint16_t dst_port, const uint8_t *data,
         src_ip = ipv4_get_source_ip(dst_ip);
     }
 
+    // If routing failed to find a valid source IP (unconfigured non-loopback), fail early.
+    if (src_ip == 0) {
+        return -1;
+    }
+
     udph->check = net_csum_udp_ipv4(udph, udp_len, src_ip, dst_ip);
 
     return ipv4_tx(&nb, dst_ip, IPPROTO_UDP);
