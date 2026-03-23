@@ -63,7 +63,7 @@ static arm64_kernel_map_state_t g_arm64_kernel_map = {
 // Access flag
 #define ARM64_PT_AF          (1ULL << 10)
 
-#define ARM64_PAGE_MASK      (~0xFFFULL)
+#define ARM64_PAGE_MASK      (0x0000FFFFFFFFF000ULL)
 
 // Arch-private raw descriptor
 typedef uint64_t pte_raw_t;

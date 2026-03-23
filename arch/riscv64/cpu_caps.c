@@ -11,20 +11,13 @@ static void riscv64_probe_caps(arch_cpu_caps_record_t *caps) {
     arch_cpu_caps_zero(&caps->raw);
     arch_cpu_caps_zero(&caps->usable);
 
-    unsigned long misa = READ_CSR(misa);
+    // MISA is a Machine-mode CSR and cannot be read in Supervisor-mode.
+    // We assume standard IMAFD features are present on generic riscv64 platforms.
+    arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_COMMON_STRONG_ATOMICS);
+    arch_cpu_caps_set(&caps->usable, ARCH_CPU_FEAT_COMMON_STRONG_ATOMICS);
 
-    // Check 'A' for atomic extension.
-    if (misa & (1UL << ('A' - 'A'))) {
-        arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_COMMON_STRONG_ATOMICS);
-        arch_cpu_caps_set(&caps->usable, ARCH_CPU_FEAT_COMMON_STRONG_ATOMICS);
-    }
-
-    // Check 'V' for Vector
-    if (misa & (1UL << ('V' - 'A'))) {
-        arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_RISCV_V);
-        // We set raw 'V', but intentionally leave usable 'V' / 'COMMON_VECTOR'
-        // disabled until VLEN safe context switches are active.
-    }
+    // Vector and other extensions should be detected via Device Tree or SBI.
+    // For now, we rely on compile-time defines below.
 
 #ifdef BHARAT_ISA_FEATURE_ZBA
     arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_RISCV_ZBA);

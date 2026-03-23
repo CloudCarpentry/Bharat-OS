@@ -308,12 +308,14 @@ if ($Run) {
 
     $qemuArgs = @()
 
+    $stdioBackend = "mon:stdio"
+    $serialArgs = @()
+
     if ($Arch -eq "x86_64") {
-        $qemuArgs += @("-kernel", $KernelBinary, "-m", "256M", "-serial", "stdio", "-no-reboot")
+        $qemuArgs += @("-kernel", $KernelBinary, "-m", "256M", "-no-reboot")
         if ($BootGui -eq "ON") {
-            $qemuArgs = $qemuArgs -ne "-serial" -ne "stdio"
             if ($DualSerial) {
-                $qemuArgs += @("-kernel", $KernelBinary, "-m", "256M", "-serial", "stdio", "-no-reboot", "-d", "int,cpu_reset", "-D", "qemu_crash.log")
+                $qemuArgs += @("-serial", $stdioBackend, "-d", "int,cpu_reset", "-D", "qemu_crash.log")
             }
             else {
                 $qemuArgs += @("-serial", "vc", "-vga", "std")
@@ -326,19 +328,17 @@ if ($Run) {
     elseif ($Arch -eq "riscv64") {
         if ($Payload) {
             if (Test-Path "$BuildDir\fw_payload.elf") {
-                $qemuArgs += @("-machine", $Machine, "-bios", "none", "-kernel", "$BuildDir\fw_payload.elf", "-m", "256M", "-serial", "stdio", "-no-reboot")
+                $qemuArgs += @("-machine", $Machine, "-bios", "none", "-kernel", "$BuildDir\fw_payload.elf", "-m", "256M", "-no-reboot")
             }
             else {
-                $qemuArgs += @("-machine", $Machine, "-bios", "$BuildDir\payload.bin", "-m", "256M", "-serial", "stdio", "-no-reboot")
+                $qemuArgs += @("-machine", $Machine, "-bios", "$BuildDir\payload.bin", "-m", "256M", "-no-reboot")
             }
         }
         else {
-            $qemuArgs += @("-machine", $Machine, "-kernel", $OutELF, "-m", "256M", "-serial", "stdio", "-no-reboot")
+            $qemuArgs += @("-machine", $Machine, "-kernel", $OutELF, "-m", "256M", "-no-reboot")
         }
+
         if ($BootGui -eq "ON") {
-            # Route serial output based on SerialTarget/DualSerial
-            # Fallback to plain 'stdio' if 'stdio' fails on some Windows setups
-            $stdioBackend = "stdio"
             if ($SerialTarget -eq "both" -or $DualSerial) {
                 $qemuArgs += @("-serial", "vc", "-serial", $stdioBackend)
             }
@@ -357,8 +357,6 @@ if ($Run) {
     elseif ($Arch -eq "arm64") {
         $qemuArgs += @("-machine", $Machine, "-cpu", "cortex-a53", "-kernel", $KernelBinary, "-m", "256M", "-no-reboot")
         if ($BootGui -eq "ON") {
-            # Route serial output based on SerialTarget/DualSerial
-            $stdioBackend = "stdio"
             if ($SerialTarget -eq "both" -or $DualSerial) {
                 $qemuArgs += @("-serial", "vc", "-serial", $stdioBackend)
             }
@@ -371,10 +369,7 @@ if ($Run) {
             $qemuArgs += @("-vga", "none", "-display", "gtk")
         }
         else {
-            # NOTE: Keep virtio-gpu, but avoid ramfb for arm64 for now.
-            # QEMU virt+ramfb can expose early simplefb data that is not yet
-            # robustly handled in the current arm64 early-boot path.
-            $qemuArgs += @("-serial", "stdio", "-serial", "vc", "-vga", "none", "-device", "virtio-gpu-device")
+            $qemuArgs += @("-serial", $stdioBackend, "-serial", "vc", "-vga", "none", "-device", "virtio-gpu-device")
             $qemuArgs += @("-nographic")
         }
     }

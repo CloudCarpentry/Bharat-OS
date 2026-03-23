@@ -59,13 +59,6 @@ static uint64_t flags_to_riscv(uint32_t flags) {
     if (flags & HAL_PT_FLAG_USER)  pte_flags |= RISCV_PT_U;
     if (flags & HAL_PT_FLAG_GLOBAL) pte_flags |= RISCV_PT_G;
 
-    // Device/Nocache attributes via Svpbmt extension
-    if (flags & HAL_PT_FLAG_DEVICE) {
-        pte_flags |= RISCV_PT_PBMT_IO;
-    } else if (flags & HAL_PT_FLAG_NOCACHE) {
-        pte_flags |= RISCV_PT_PBMT_NC;
-    }
-
     return pte_flags;
 }
 
@@ -77,13 +70,6 @@ static uint32_t riscv_to_flags(uint64_t pte_flags) {
     if (pte_flags & RISCV_PT_X) flags |= HAL_PT_FLAG_EXEC;
     if (pte_flags & RISCV_PT_U) flags |= HAL_PT_FLAG_USER;
     if (pte_flags & RISCV_PT_G) flags |= HAL_PT_FLAG_GLOBAL;
-
-    uint64_t pbmt = pte_flags & (3ULL << 61);
-    if (pbmt == RISCV_PT_PBMT_IO) {
-        flags |= HAL_PT_FLAG_DEVICE;
-    } else if (pbmt == RISCV_PT_PBMT_NC) {
-        flags |= HAL_PT_FLAG_NOCACHE;
-    }
 
     return flags;
 }
