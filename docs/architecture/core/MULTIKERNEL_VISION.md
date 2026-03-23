@@ -40,6 +40,11 @@ Below is an assessment of the current state of core kernel subsystems against ou
   - **Shootdown Coordination**: The `g_pending_requests` array used to track TLB invalidation acknowledgments is protected by a global spinlock (`g_pending_requests_lock`). This creates a cross-core serialization bottleneck during heavy memory unmap operations.
   - **Path Forward**: A lock-free ring buffer or purely per-core tracking structures for pending URPC requests should replace the global lock.
 
+## 3.1 Memory Protection Architecture
+The page-table and memory protection model is fundamental to the multikernel approach. Rather than relying on a shared, global page table structure with cross-core locking, Bharat-OS employs per-core local page-table roots and uses strict uRPC shootdowns for remote TLB invalidation. The architecture cleanly separates the CPU→memory protection axis (MMU/MPU) from the Device→memory axis (IOMMU) into a unified Memory Protection Architecture (MPA) abstraction.
+
+For complete details on the implementation format, HAL vtable, and frame ownership invariant, refer to the [Multikernel Memory Protection Architecture](multikernel-memory-protection-architecture.md) specification.
+
 ### 4. Interrupts (IRQ) & IPI (`hal/interrupt_common.c`)
 - **Current State**: High maturity. IRQ routing natively supports affinity, and deferred work (Bottom-Halves) is implemented via strictly per-core queues (`g_deferred_queues[cpu_id]`).
 - **Needs to Mature**:
