@@ -60,10 +60,10 @@ function Invoke-BharatRun {
 
     switch ($Arch) {
         "x86_64" {
-            qemu-system-x86_64 -kernel $kernel -m $Memory -nographic -serial mon:stdio
+            qemu-system-x86_64 -kernel $kernel -m $Memory -nographic -serial stdio
         }
         "riscv" {
-            qemu-system-riscv64 -machine virt -kernel $kernel -m $Memory -nographic -serial mon:stdio
+            qemu-system-riscv64 -machine virt -kernel $kernel -m $Memory -nographic -serial stdio
         }
     }
 }
