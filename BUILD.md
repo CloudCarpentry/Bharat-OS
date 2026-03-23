@@ -91,9 +91,13 @@ cmake --preset linux-x86_64-dev-debug
 # Build the target image and dependencies
 cmake --build --preset linux-x86_64-dev-debug
 
-# Configure for Windows host tools
-cmake --preset windows-hosttools-debug
-cmake --build --preset windows-hosttools-debug
+# Configure for ARM64 GUI target
+cmake --preset arm64-gui
+cmake --build --preset arm64-gui
+
+# Configure for RISC-V GUI target
+cmake --preset riscv64-gui
+cmake --build --preset riscv64-gui
 ```
 
 ---
@@ -228,6 +232,28 @@ To ensure early kernel logs are visible during UI development, the build scripts
 **Architecture specific behaviors with GUI enabled:**
 - **`x86_64`:** Uses standard VGA (`-vga std`). The serial `vc` output appears natively.
 - **`riscv64` & `arm64`:** These `virt` machines do not support legacy VGA. The build scripts use VirtIO GPU (`-device virtio-gpu-device` or `-device virtio-gpu-pci`). The kernel text output is displayed in a QEMU Virtual Console tab. *Note: If you are using the QEMU GTK/SDL UI, you can switch to the Virtual Console (usually via `View -> serial0` or `Ctrl-Alt-2`) to see the text logs if they don't appear immediately.*
+
+```powershell
+# Build and run with a specific preset
+.\tools\build.ps1 -Preset arm64-gui -Run
+
+# Build and run with logs routed ONLY to the QEMU window (recommended for GUI dev)
+.\tools\build.ps1 -Arch arm64 -Clean -Run -SerialTarget vc
+
+# Build and run with dual serial (Both GUI and Terminal)
+.\tools\build.ps1 -Arch riscv64 -Clean -Run -SerialTarget both
+```
+
+### Serial Console Routing (`-SerialTarget`)
+
+You can control where kernel logs are sent when running in QEMU:
+
+- `-SerialTarget stdio` (Default): Logs go to your host terminal.
+- `-SerialTarget vc`: Logs go to the QEMU GUI window (the "Serial0" tab).
+- `-SerialTarget both` (or `-DualSerial`): Logs go to BOTH. The GUI window remains the primary (`Serial0`), and the terminal is secondary (`Serial1`).
+
+> [!TIP]
+> Use `-SerialTarget vc` for the most seamless GUI development experience on ARM64 and RISC-V, as it avoids cluttering your terminal and keeps everything in one window.
 
 **Example Build Commands:**
 ```powershell

@@ -29,7 +29,9 @@ param(
     [string]$HardwareProfile = "",
     [string]$BootTier = "",
     [string]$Profile = "desktop",
-    [string]$Personality = "none"
+    [string]$Personality = "none",
+    [string]$SerialTarget = "",
+    [string]$Preset = ""
 )
 
 Set-StrictMode -Version Latest
@@ -168,6 +170,10 @@ if (-not (Test-Path "$BuildDir\CMakeCache.txt")) {
         "--no-warn-unused-cli"
     )
 
+    if ($Preset -ne "") {
+        $cmakeArgs = @("--preset", $Preset)
+    }
+
     if ($Arch -eq "riscv64" -and -not $Payload) {
         $cmakeArgs += "-DBHARAT_RISCV_BUILD_PAYLOAD_BIN=OFF"
     }
@@ -190,6 +196,12 @@ if (-not (Test-Path "$BuildDir\CMakeCache.txt")) {
 
     if ($Board -ne "") {
         $cmakeArgs += "-DBHARAT_TARGET_BOARD=$Board"
+    }
+
+    if ($SerialTarget -eq "vc" -or $SerialTarget -eq "both") {
+        # In GUI/both mode, we might want to tell the kernel to use a specific UART
+        # but for now, we'll keep the default and just route it in QEMU.
+        # However, we allow BHARAT_ARCH_SERIAL_BASE to be passed if needed.
     }
 
     & cmake @cmakeArgs
@@ -315,24 +327,39 @@ if ($Run) {
             $qemuArgs += @("-machine", $Machine, "-kernel", $OutELF, "-m", "256M", "-serial", "mon:stdio", "-no-reboot")
         }
         if ($BootGui -eq "ON") {
-            # Route serial output to the virtual console in the QEMU graphical window.
-            # Without a firmware or GPU, we drop virtio-gpu and force QEMU to display the 'vc' directly on the main window tab.
-            if ($DualSerial) {
-                $qemuArgs += @("-serial", "vc", "-display", "gtk")
+            # Route serial output based on SerialTarget/DualSerial
+            if ($SerialTarget -eq "both" -or $DualSerial) {
+                # Logs go to both: Serial0=vc (GUI window), Serial1=mon:stdio (Terminal)
+                # This ensures the 'Serial0' tab in QEMU is the primary one.
+                $qemuArgs += @("-serial", "vc", "-serial", "mon:stdio")
             }
+            elseif ($SerialTarget -eq "vc") {
+                $qemuArgs += @("-serial", "vc")
+            }
+            else {
+                $qemuArgs += @("-serial", "mon:stdio")
+            }
+            $qemuArgs += @("-display", "gtk")
         }
         else {
             $qemuArgs += @("-nographic")
         }
     }
     elseif ($Arch -eq "arm64") {
-        $qemuArgs += @("-machine", $Machine, "-cpu", "cortex-a53", "-kernel", $KernelBinary, "-m", "256M", "-serial", "mon:stdio", "-no-reboot")
+        $qemuArgs += @("-machine", $Machine, "-cpu", "cortex-a53", "-kernel", $KernelBinary, "-m", "256M", "-no-reboot")
         if ($BootGui -eq "ON") {
-            # Route serial output to the virtual console in the QEMU graphical window.
-            # Without a firmware or GPU, we drop virtio-gpu and force QEMU to display the 'vc' directly on the main window tab.
-            if ($DualSerial) {
-                $qemuArgs += @("-serial", "vc", "-vga", "none", "-display", "gtk")
+            # Route serial output based on SerialTarget/DualSerial
+            if ($SerialTarget -eq "both" -or $DualSerial) {
+                # Logs go to both: Serial0=vc (GUI window), Serial1=mon:stdio (Terminal)
+                $qemuArgs += @("-serial", "vc", "-serial", "mon:stdio")
             }
+            elseif ($SerialTarget -eq "vc") {
+                $qemuArgs += @("-serial", "vc")
+            }
+            else {
+                $qemuArgs += @("-serial", "mon:stdio")
+            }
+            $qemuArgs += @("-vga", "none", "-display", "gtk")
         }
         else {
             # NOTE: Keep virtio-gpu, but avoid ramfb for arm64 for now.
