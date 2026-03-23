@@ -5,6 +5,9 @@
 
 #include "../kernel/include/trap.h"
 #include "../kernel/include/arch/arch_caps.h"
+#include "../kernel/include/mm.h"
+#include "../kernel/include/sched.h"
+#include "../kernel/include/kernel.h"
 
 int cap_can_transfer(uint32_t type) { return 1; }
 int cap_transfer_rights_valid(uint32_t current_rights, uint32_t requested_rights) { return 1; }
@@ -81,6 +84,12 @@ int vmm_map_page(virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
 int vmm_unmap_page(virt_addr_t vaddr) {
     (void)vaddr;
     return 0;
+}
+
+int trap_handle_fault(trap_frame_t *frame, const trap_info_t *info) {
+    (void)frame;
+    (void)info;
+    return -1;
 }
 
 void kernel_panic(const char* msg) {
