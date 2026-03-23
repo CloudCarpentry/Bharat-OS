@@ -8,65 +8,63 @@ This note captures:
 
 ---
 
-## Recommended Next Task
+## Recommended Next Task (Updated)
 
-### Task: Build a dedicated host conformance suite for PMM/NUMA branch coverage
+### Task: Extend host memory conformance + retire legacy naming
 
-The highest-impact next task is to close the host-coverage gap in:
+The immediate follow-up task from the previous report has now been partially executed:
 
-- `kernel/src/mm/pmm/pmm.c`
-- `kernel/src/mm/pmm/numa.c`
+- `tests/host/test_pmm_pcache.c` was expanded with additional PMM command-surface checks (invalid order guard, contiguous alloc/free path, invalid-free guard).
+- host CMake now includes dedicated HAL PT/TLB contract conformance targets:
+  - `host_test_hal_pt_common`
+  - `host_test_hal_pt_fallbacks`
+  - `host_test_hal_caps_consistency`
+- legacy `vmm_legacy` references were removed from architecture/memory docs.
 
-Current host tests strongly exercise per-core PMM cache behavior (`pmm_pcache.c`) but leave large PMM and NUMA decision paths unexecuted. To move toward 100% host coverage in memory areas, we should implement a new focused suite (or expand `tests/host/test_pmm_pcache.c`) to cover:
-
-- zone selection failure and fallback branches,
-- contiguous/high-order allocation failure modes,
-- refcount edge/error paths,
-- NUMA policy path selection and invalid-node guards,
-- metadata invariant failure handling.
+Remaining high-impact gap: `kernel/src/mm/pmm/numa.c` and distributed TLB shootdown host-link coverage still need a dependency-clean host harness.
 
 ---
 
-## Repro Commands Used
+## Repro Commands Used (Current Update)
 
 ```bash
-cmake -S . -B build/memory-host-coverage -G Ninja \
-  -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/host-linux-clang.cmake \
-  -DCMAKE_BUILD_TYPE=Debug \
-  -DBHARAT_BUILD_HOST_TESTS=ON \
-  -DBHARAT_DEVICE_PROFILE=DESKTOP \
-  -DBHARAT_PERSONALITY_PROFILE=LINUX \
-  -DCMAKE_C_FLAGS='-fprofile-instr-generate -fcoverage-mapping'
+cmake --preset host-test
+cmake --build --preset host-test --target \
+  test_pmm_pcache \
+  host_test_hal_pt_common \
+  host_test_hal_pt_fallbacks \
+  host_test_hal_caps_consistency \
+  test_bench_hal_pt_arm64
 
-cmake --build build/memory-host-coverage --target \
-  test_secure_mem test_pmm_pcache bench_runner
+cd build/host-test
+./tests/host/test_pmm_pcache
+./tests/host/host_test_hal_pt_common
+./tests/host/host_test_hal_pt_fallbacks
+./tests/host/host_test_hal_caps_consistency
+./tests/test_bench_hal_pt_arm64
 
-cd build/memory-host-coverage
-LLVM_PROFILE_FILE='profiles/test_secure_mem.profraw' ./tests/host/test_secure_mem
-LLVM_PROFILE_FILE='profiles/test_pmm_pcache.profraw' ./tests/host/test_pmm_pcache
-LLVM_PROFILE_FILE='profiles/bench_runner.profraw' ./tests/benchmark/bench_runner
-
-llvm-profdata merge -sparse \
-  profiles/test_secure_mem.profraw \
-  profiles/test_pmm_pcache.profraw \
-  profiles/bench_runner.profraw \
-  -o profiles/memory-suite.profdata
-
-llvm-cov report ./tests/host/test_secure_mem \
-  -instr-profile=profiles/memory-suite.profdata
-
-llvm-cov report ./tests/host/test_pmm_pcache \
-  -instr-profile=profiles/memory-suite.profdata
-
-llvm-cov report ./tests/benchmark/bench_runner \
-  -instr-profile=profiles/memory-suite.profdata
+# Legacy-name retirement validation
+cd /workspace/Bharat-OS
+rg -n "vmm_legacy"
 ```
 
 ---
 
-## Host Coverage Snapshot (Memory Scope)
+## Host Validation Snapshot (Memory Scope)
 
-### Core memory implementation files
+### Added/updated host test coverage focus
+
+| Area | Target/Test | Status |
+|---|---|---|
+| PMM command paths | `tests/host/test_pmm_pcache.c` (new Phase H) | PASS |
+| HAL contracts | `host_test_hal_pt_common`, `host_test_hal_pt_fallbacks`, `host_test_hal_caps_consistency` | PASS |
+| x86_64 PT & TLB contracts | `host_test_hal_pt_common` + fallback/caps tests on host x86_64 profile | PASS |
+| arm64 PT & TLB (host benchmark proxy) | `test_bench_hal_pt_arm64` | PASS |
+| ASpace / VM base objects | `test_vmm_aspace` remains in top-level tests (dependency-coupled in host subtree) | PENDING host-subtree migration |
+
+### Historical llvm-cov coverage snapshot (kept for continuity)
+
+> Note: the following file-coverage numbers are retained from the earlier 2026-03-23 coverage capture and are still useful as baseline trend data until the next llvm-cov refresh.
 
 | File | Region Coverage | Function Coverage | Line Coverage | Branch Coverage |
 |---|---:|---:|---:|---:|
@@ -77,6 +75,13 @@ llvm-cov report ./tests/benchmark/bench_runner \
 
 ### Host benchmark memory suites
 
+| Suite | Result |
+|---|---:|
+| `arm64 page-table zero init (manual loop)` | 1676 ns/op |
+| `arm64 page-table zero init (arch_memset)` | 43 ns/op |
+
+### Historical memory benchmark suites (kept for continuity)
+
 | File | Region Coverage | Function Coverage | Line Coverage | Branch Coverage |
 |---|---:|---:|---:|---:|
 | `tests/benchmark/suites/memory/bench_pmm.c` | 90.91% | 100.00% | 100.00% | 83.33% |
@@ -84,22 +89,27 @@ llvm-cov report ./tests/benchmark/bench_runner \
 
 ---
 
-## Direct Benchmark Results (Host)
+## Direct Host Test/Baseline Results
 
-From `./tests/benchmark/bench_runner`:
+From this run:
 
-- `pmm_alloc_free` (memory): **2316 ns/op**, **431,604 ops/sec**
-- `vmm_map_unmap_1pte` (memory): **13 ns/op**, **72,346,514 ops/sec**
+- `test_pmm_pcache`: PASS including new Phase H PMM command-surface checks.
+- `host_test_hal_pt_common`: PASS
+- `host_test_hal_pt_fallbacks`: PASS
+- `host_test_hal_caps_consistency`: PASS
+- `test_bench_hal_pt_arm64`:
+  - manual loop: **1676 ns/op**
+  - arch_memset path: **43 ns/op**
 
-These values are useful as a baseline for future memory-optimization PRs and for regression tracking in docs/CI artifacts.
+Additional hygiene result:
+
+- `rg -n "vmm_legacy"` returned no matches.
 
 ---
 
-## Gap-to-100% Plan (Short)
+## Gap-to-100% Plan (Short, Revised)
 
-1. Add PMM failure-path tests (allocation exhaustion, invalid zone/order, fallback behavior).
-2. Add NUMA policy tests with synthetic topology matrices.
-3. Add branch-specific checks for secure memory allocation failure path and flag-specific behavior.
-4. Run host coverage gate per memory target file and fail if <100% for selected scope.
-
-Until PMM/NUMA branch surfaces are exercised, we cannot honestly claim 100% host coverage for memory-related areas.
+1. Move `test_vmm_aspace` and VM-object checks into `tests/host/` with explicit prot-domain/arch-cap mocks so ASpace framework is host-subtree-native.
+2. Add a dedicated `tests/host/test_numa_policy.c` harness to exercise `kernel/src/mm/pmm/numa.c` policy and migration branches with cache stubs.
+3. Add host-safe TLB shootdown harness build wiring (current `tests/host/test_tlb_shootdown.c` has include/layout coupling).
+4. Re-run llvm-cov file-level reporting for PMM/NUMA/VM once the above harnesses are merged.

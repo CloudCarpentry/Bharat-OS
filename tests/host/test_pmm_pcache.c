@@ -338,6 +338,25 @@ int main() {
     printf("Phase G passed.\n");
     fflush(stdout);
 
+    printf("[Phase H] PMM command-surface guard coverage\n");
+    // Invalid order should fail deterministically.
+    ret = pmm_alloc_pages(64, PMM_ZONE_ANY, PMM_ALLOC_NONE, &block);
+    assert(ret != 0);
+
+    // Contiguous allocate/free smoke path.
+    pmm_block_t contiguous = {0};
+    ret = pmm_alloc_contiguous(4, PMM_ZONE_ANY, PMM_ALLOC_NONE, &contiguous);
+    if (ret == 0) {
+        assert(contiguous.page_count == 4);
+        assert(pmm_free_pages(&contiguous) == 0);
+    }
+
+    // Invalid free contract: null block pointer must fail.
+    assert(pmm_free_pages(NULL) != 0);
+
+    printf("Phase H passed.\n");
+    fflush(stdout);
+
     printf("All PMM per-core cache and remote free tests passed!\n");
     return 0;
 }

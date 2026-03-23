@@ -3,11 +3,6 @@
 #include <assert.h>
 #include <string.h>
 
-void kernel_panic(const char* msg) {
-    printf("PANIC: %s\n", msg);
-    abort();
-}
-
 // Mock kernel definitions for PMM test harness
 #include "../../kernel/include/mm/pmm.h"
 #include "../../kernel/include/mm.h"
