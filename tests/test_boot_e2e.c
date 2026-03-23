@@ -6,6 +6,10 @@
 #include "../kernel/src/kernel_boot.h"
 #include "../kernel/include/secure_boot.h"
 #include "../kernel/include/boot/boot_mode.h"
+#include <stdlib.h>
+
+void test_device_dma_dump(void) {
+}
 
 // Stubs for kernel_boot calls
 int bharat_secure_boot_verify_early(void) { return 0; }
@@ -62,7 +66,7 @@ int zswap_init(void) {
     return 0;
 }
 
-void arch_mmu_init(void) {}
+__attribute__((weak)) void arch_mmu_init(void) {}
 void hal_mmu_final_setup(void) {}
 
 // Lots of stubs for the runtime features being called in boot_common_platform_services

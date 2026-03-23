@@ -13,6 +13,7 @@ endif()
 set(WORK_DIR "${CMAKE_BINARY_DIR}/tests/policy_matrix")
 
 add_subdirectory(host)
+add_subdirectory(benchmark)
 
 # Memory HAL portability tests
 add_executable(test_hal_pt_common
@@ -489,7 +490,7 @@ foreach(test_target IN LISTS BHARAT_NOSTDLIB_TEST_TARGETS)
     endif()
 endforeach()
 
-add_executable(test_boot_e2e test_boot_e2e.c test_arch_caps.c ../kernel/src/kernel_boot.c ../kernel/src/lib/string.c)
+add_executable(test_boot_e2e test_boot_e2e.c test_arch_caps.c ../kernel/src/kernel_boot.c ../kernel/src/lib/string.c benchmark_stubs.c host/mock_panic.c)
 target_include_directories(test_boot_e2e PRIVATE ../kernel/include ../include)
 add_test(NAME boot_e2e COMMAND test_boot_e2e)
 
