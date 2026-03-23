@@ -139,3 +139,20 @@ add_test(NAME host_test_pmm_pcache COMMAND test_pmm_pcache)
 add_executable(test_netmgr_interface_table services/test_netmgr_interface_table.c ../../services/netmgr/src/interface_table.c ../../lib/runtime/src/freestanding_string.c)
 target_include_directories(test_netmgr_interface_table PRIVATE ../../services/netmgr/src ../../services/core/subsysmgr/include ../../lib/net/include ../../lib/runtime/include)
 add_test(NAME host_test_netmgr_interface_table COMMAND test_netmgr_interface_table)
+
+# Memory host conformance expansion (2026-03-23)
+# HAL contracts + generic PT/TLB contracts
+add_executable(host_test_hal_pt_common ../../tests/mm/pt_common_tests.c ../../hal/hal_pt.c)
+target_include_directories(host_test_hal_pt_common PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME host_test_hal_pt_common COMMAND host_test_hal_pt_common)
+
+add_executable(host_test_hal_pt_fallbacks ../../tests/test_hal_pt_fallbacks.c ../../hal/hal_pt.c)
+target_include_directories(host_test_hal_pt_fallbacks PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME host_test_hal_pt_fallbacks COMMAND host_test_hal_pt_fallbacks)
+
+add_executable(host_test_hal_caps_consistency ../../tests/test_hal_caps_consistency.c ../../hal/hal_pt.c)
+target_include_directories(host_test_hal_caps_consistency PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME host_test_hal_caps_consistency COMMAND host_test_hal_caps_consistency)
+
+# VMM / ASpace / VM base-object conformance currently remains in top-level tests
+# (`test_vmm_aspace`) due additional prot-domain and arch-cap dependencies.
