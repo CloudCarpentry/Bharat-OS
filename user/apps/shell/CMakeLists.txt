@@ -1,4 +1,3 @@
 add_executable(app_shell shell.c)
-target_compile_options(app_shell PRIVATE -fno-pie -fno-PIC)
-target_link_options(app_shell PRIVATE -Wl,-no-pie)
-target_link_libraries(app_shell PRIVATE bharat_user_buildopts bharat_freestanding bharat_libcmin bharat bharat_syscall)
+target_link_libraries(app_shell PUBLIC bharat_libcmin bharat_user_buildopts bharat_syscall bharat)
+bharat_configure_userspace_binary(app_shell)
