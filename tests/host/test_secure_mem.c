@@ -13,6 +13,7 @@ static int kmalloc_count = 0;
 static int kfree_count = 0;
 static int kfree_was_null = 0;
 static void* last_allocated_ptr = NULL;
+static int force_kmalloc_fail = 0;
 
 // --- Mocking basic kernel functions ---
 
@@ -20,7 +21,7 @@ void* kmalloc(size_t size) {
     if (size == 0) return NULL;
 
     // Simulate allocation failure for testing
-    if (size == 0xFFFFFFFF) return NULL;
+    if (force_kmalloc_fail) return NULL;
 
     void* ptr = malloc(size);
     if (ptr) {
@@ -87,6 +88,12 @@ void test_secure_page_alloc() {
     }
 
     kfree(page); // Clean up
+
+    // Test 2: allocation failure path
+    force_kmalloc_fail = 1;
+    page = secure_page_alloc(0);
+    assert(page == NULL);
+    force_kmalloc_fail = 0;
 
     printf("test_secure_page_alloc passed\n");
 }
