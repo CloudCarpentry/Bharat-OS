@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "../subsys/windows/win_compat.h"
+#include "../personalities/windows/win_compat.h"
 
 int main(void) {
     printf("Running Windows Subsystem integration tests...\n");

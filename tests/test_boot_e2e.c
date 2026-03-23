@@ -5,6 +5,7 @@
 #include "../kernel/include/bharat/boot_info.h"
 #include "../kernel/src/kernel_boot.h"
 #include "../kernel/include/secure_boot.h"
+#include "../kernel/include/boot/boot_mode.h"
 
 // Stubs for kernel_boot calls
 int bharat_secure_boot_verify_early(void) { return 0; }
@@ -14,6 +15,10 @@ int bharat_isolation_init(void) { return 0; }
 int bharat_policy_init(int mode) { return 0; }
 int bharat_secure_boot_stage_hook(bharat_boot_stage_t stage, uint64_t magic) { return 0; }
 void algo_matrix_init(void) {}
+
+int boot_selftest_run_stage(bharat_boot_stage_t stage) { (void)stage; return 0; }
+bharat_boot_mode_t bharat_boot_mode_select(void) { return BHARAT_BOOT_MODE_NORMAL; }
+const char* bharat_boot_mode_name(bharat_boot_mode_t mode) { (void)mode; return "NORMAL"; }
 
 // HAL Stubs
 void hal_init(void) {}

@@ -5,6 +5,28 @@
 
 #include "../kernel/include/mm.h"
 
+int vmm_map_page(virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
+    (void)vaddr; (void)paddr; (void)flags;
+    return (vaddr == 0) ? -1 : 0;
+}
+
+int vmm_unmap_page(virt_addr_t vaddr) {
+    (void)vaddr;
+    return (vaddr == 0) ? -1 : 0;
+}
+
+int vmm_init(void) {
+    return 0;
+}
+
+int vmm_map_device_mmio(virt_addr_t vaddr, phys_addr_t paddr, capability_t *cap, int is_npu) {
+    (void)vaddr; (void)paddr;
+    if (!cap) return -3;
+    if (is_npu && (cap->rights_mask & CAP_RIGHT_DEVICE_NPU) == 0) return -3;
+    if (!is_npu && (cap->rights_mask & CAP_RIGHT_DEVICE_GPU) == 0) return -3;
+    return 0;
+}
+
 void ipc_async_check_timeouts(uint64_t current_ticks) {
     (void)current_ticks;
 }

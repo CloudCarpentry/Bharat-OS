@@ -7,6 +7,10 @@
 #include "../kernel/include/mm.h"
 #include "../kernel/include/advanced/formal_verif.h"
 
+int vmm_init(void) {
+    return 0;
+}
+
 void ipc_async_check_timeouts(uint64_t current_ticks) {
     (void)current_ticks;
 }

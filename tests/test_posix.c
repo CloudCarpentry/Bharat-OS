@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include "../lib/posix/include/unistd.h"
 
-#include "../subsys/linux/linux_compat.h"
+#include "../personalities/linux/linux_compat.h"
 
 int main() {
     printf("Running POSIX header integration tests...\n");
