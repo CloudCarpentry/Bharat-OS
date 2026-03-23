@@ -1,3 +1,13 @@
+---
+title: Android Personality Kernel Architecture
+status: active
+owner: Architecture Team
+reviewers: ["Core Team"]
+version: 0.1
+last_updated: "2024-03-23"
+tags: ["architecture", "personalities"]
+---
+
 # Android Personality Architecture
 
 ## Introduction

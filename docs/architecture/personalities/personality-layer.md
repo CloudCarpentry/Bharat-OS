@@ -1,4 +1,16 @@
+---
+title: Personality Layer Architecture
+status: active
+owner: Architecture Team
+reviewers: ["Core Team"]
+version: 1.0
+last_updated: "2024-03-23"
+tags: ["architecture", "personalities"]
+---
+
 # Personality Layer Model
+
+> **Note on Code Structure:** The architecture enforces a strict separation: Syscalls hit a generic trap layer (`kernel/src/arch/*/trap.c`), are routed through personality-specific dispatch tables (`kernel/src/personality/`), and translate into core capability-driven services (`kernel/src/vfs/`, `kernel/src/net/`, etc.). Profile-specific implementations are no longer scattered in switch statements but are table-driven.
 
 ## Overview
 
