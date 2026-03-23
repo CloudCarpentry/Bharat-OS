@@ -387,15 +387,15 @@ add_executable(test_smp_hal test_smp_hal.c)
 target_include_directories(test_smp_hal PRIVATE ../kernel/include)
 add_test(NAME test_smp_hal COMMAND test_smp_hal)
 
-add_executable(test_pmm_production test_pmm_production.c ../kernel/src/mm/pmm/pmm.c)
+add_executable(test_pmm_production test_pmm_production.c host/mock_panic.c ../kernel/src/mm/pmm/pmm.c)
 target_include_directories(test_pmm_production PRIVATE ../kernel/include ../kernel/src ../include)
 add_test(NAME test_pmm_production COMMAND test_pmm_production)
 
-add_executable(test_pmm_zone_alloc test_pmm_zone_alloc.c ../kernel/src/mm/pmm/pmm.c)
+add_executable(test_pmm_zone_alloc test_pmm_zone_alloc.c host/mock_panic.c ../kernel/src/mm/pmm/pmm.c)
 target_include_directories(test_pmm_zone_alloc PRIVATE ../kernel/include ../kernel/src ../include)
 add_test(NAME test_pmm_zone_alloc COMMAND test_pmm_zone_alloc)
 
-add_executable(test_pmm_refpin test_pmm_refpin.c ../kernel/src/mm/pmm/pmm.c)
+add_executable(test_pmm_refpin test_pmm_refpin.c host/mock_panic.c ../kernel/src/mm/pmm/pmm.c)
 target_include_directories(test_pmm_refpin PRIVATE ../kernel/include ../kernel/src ../include)
 add_test(NAME test_pmm_refpin COMMAND test_pmm_refpin)
 
@@ -489,7 +489,7 @@ foreach(test_target IN LISTS BHARAT_NOSTDLIB_TEST_TARGETS)
     endif()
 endforeach()
 
-add_executable(test_boot_e2e test_boot_e2e.c test_arch_caps.c ../kernel/src/kernel_boot.c ../kernel/src/lib/string.c)
+add_executable(test_boot_e2e test_boot_e2e.c test_arch_caps.c ../kernel/src/kernel_boot.c ../kernel/src/lib/string.c host/mock_panic.c)
 target_include_directories(test_boot_e2e PRIVATE ../kernel/include ../include)
 add_test(NAME boot_e2e COMMAND test_boot_e2e)
 

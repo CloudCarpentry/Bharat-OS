@@ -17,6 +17,7 @@ int bharat_secure_boot_stage_hook(bharat_boot_stage_t stage, uint64_t magic) { r
 void algo_matrix_init(void) {}
 
 int boot_selftest_run_stage(bharat_boot_stage_t stage) { (void)stage; return 0; }
+void test_device_dma_dump(void) {}
 bharat_boot_mode_t bharat_boot_mode_select(void) { return BHARAT_BOOT_MODE_NORMAL; }
 const char* bharat_boot_mode_name(bharat_boot_mode_t mode) { (void)mode; return "NORMAL"; }
 
