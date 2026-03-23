@@ -2,13 +2,13 @@ cmake_minimum_required(VERSION 3.20)
 include(cmake/test_component_policy.cmake)
 
 # ... preserve existing host tests logic, append ours ...
-add_executable(test_can_filter_match drivers/test_can_filter_match.c ../../drivers/src/can/can_filter_compile.c)
+add_executable(test_can_filter_match drivers/test_can_filter_match.c ../../drivers/class/can/can_filter_compile.c)
 target_include_directories(test_can_filter_match PRIVATE ../../drivers/include)
 
 add_executable(test_can_filter_compile drivers/test_can_filter_compile.c)
 target_include_directories(test_can_filter_compile PRIVATE ../../drivers/include)
 
-add_executable(test_can_controller_core drivers/test_can_controller_core.c ../../drivers/src/can/can_controller_core.c)
+add_executable(test_can_controller_core drivers/test_can_controller_core.c ../../drivers/class/can/can_controller_core.c)
 target_include_directories(test_can_controller_core PRIVATE ../../drivers/include)
 
 add_executable(test_can_router services/test_can_router.c)
@@ -20,7 +20,7 @@ target_include_directories(test_can_subscriptions PRIVATE ../../services/include
 add_executable(test_can_gateway services/test_can_gateway.c)
 target_include_directories(test_can_gateway PRIVATE ../../services/include)
 
-add_executable(test_can_busoff_recovery services/test_can_busoff_recovery.c ../../drivers/src/can/can_controller_core.c ../../drivers/virt_can/virt_can.c)
+add_executable(test_can_busoff_recovery services/test_can_busoff_recovery.c ../../drivers/class/can/can_controller_core.c ../../drivers/devices/virt_can/virt_can.c)
 target_include_directories(test_can_busoff_recovery PRIVATE ../../drivers/include)
 
 add_test(NAME host_test_can_filter_match COMMAND test_can_filter_match)
@@ -58,8 +58,11 @@ add_test(NAME host_test_diag_store COMMAND test_diag_store)
 add_test(NAME host_test_diag_debounce COMMAND test_diag_debounce)
 
 # Phase 2: Sensor Tests
-add_executable(test_sensor_core drivers/test_sensor_core.c ../../drivers/src/sensor/sensor_core.c)
+add_executable(test_sensor_core drivers/test_sensor_core.c ../../drivers/class/sensor/sensor_core.c)
 target_include_directories(test_sensor_core PRIVATE ../../drivers/include)
+
+add_executable(test_sensor_core_bench drivers/test_sensor_core_bench.c ../../drivers/class/sensor/sensor_core.c)
+target_include_directories(test_sensor_core_bench PRIVATE ../../drivers/include)
 
 add_executable(test_sensor_freshness services/test_sensor_freshness.c ../../services/sensor_hub/freshness.c)
 target_include_directories(test_sensor_freshness PRIVATE ../../drivers/include)
@@ -69,11 +72,12 @@ target_include_directories(test_sensor_plausibility PRIVATE ../../drivers/includ
 target_link_libraries(test_sensor_plausibility PRIVATE m)
 
 add_test(NAME host_test_sensor_core COMMAND test_sensor_core)
+add_test(NAME host_test_sensor_core_bench COMMAND test_sensor_core_bench)
 add_test(NAME host_test_sensor_freshness COMMAND test_sensor_freshness)
 add_test(NAME host_test_sensor_plausibility COMMAND test_sensor_plausibility)
 
 # Phase 2: Actuator Tests
-add_executable(test_actuator_core drivers/test_actuator_core.c ../../drivers/src/actuator/actuator_core.c)
+add_executable(test_actuator_core drivers/test_actuator_core.c ../../drivers/class/actuator/actuator_core.c)
 target_include_directories(test_actuator_core PRIVATE ../../drivers/include)
 
 add_executable(test_actuator_safe_state services/test_actuator_safe_state.c ../../services/actuator_mgr/safe_state.c)
@@ -95,7 +99,43 @@ add_test(NAME host_test_time_sync_drift COMMAND test_time_sync_drift)
 add_test(NAME host_test_time_sync_quality COMMAND test_time_sync_quality)
 
 # Phase 3: Motor Control Tests
-add_executable(test_motor_control_core drivers/test_motor_control_core.c ../../drivers/src/motor/motor_control_core.c)
+add_executable(test_motor_control_core drivers/test_motor_control_core.c ../../drivers/class/motor/motor_control_core.c)
 target_include_directories(test_motor_control_core PRIVATE ../../drivers/include)
 
 add_test(NAME host_test_motor_control_core COMMAND test_motor_control_core)
+
+# VFS/RamFS Tests
+add_executable(test_ramfs_streq fs/test_ramfs_streq.c)
+target_include_directories(test_ramfs_streq PRIVATE ../../kernel/include)
+add_test(NAME host_test_ramfs_streq COMMAND test_ramfs_streq)
+add_executable(benchmark_actuator drivers/benchmark_actuator.c ../../drivers/class/actuator/actuator_core.c)
+target_include_directories(benchmark_actuator PRIVATE ../../drivers/include)
+add_test(NAME host_benchmark_actuator COMMAND benchmark_actuator)
+
+# Phase 3: Core Scheduler Tests
+add_executable(test_sched test_sched.c)
+target_include_directories(test_sched PRIVATE ../../kernel/include)
+
+add_test(NAME host_test_sched COMMAND test_sched)
+
+# Phase 3: Core IPC/Profile Tests
+add_executable(test_ipc_profile test_ipc_profile.c ../../kernel/src/profile/profile.c ../../kernel/src/ipc/ipc_traffic.c)
+target_include_directories(test_ipc_profile PRIVATE ../../kernel/include)
+add_test(NAME host_test_ipc_profile COMMAND test_ipc_profile)
+
+# Phase 3: Crypto Tests
+add_executable(test_secure_mem test_secure_mem.c)
+target_include_directories(test_secure_mem PRIVATE ../../kernel/include)
+
+add_test(NAME host_test_secure_mem COMMAND test_secure_mem)
+# Phase 3: NetMgr Tests
+add_executable(test_netmgr_address_table services/test_netmgr_address_table.c ../../services/netmgr/src/address_table.c ../../lib/runtime/src/freestanding_string.c)
+target_include_directories(test_netmgr_address_table PRIVATE ../../services/netmgr/src ../../services/core/subsysmgr/include ../../lib/net/include ../../lib/runtime/include)
+add_test(NAME host_test_netmgr_address_table COMMAND test_netmgr_address_table)
+
+add_executable(test_pmm_pcache test_pmm_pcache.c ../../kernel/src/mm/pmm/pmm.c ../../kernel/src/mm/pmm/pmm_pcache.c ../../kernel/src/mm/pmm/numa.c)
+target_include_directories(test_pmm_pcache PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/kernel/src ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME host_test_pmm_pcache COMMAND test_pmm_pcache)
+add_executable(test_netmgr_interface_table services/test_netmgr_interface_table.c ../../services/netmgr/src/interface_table.c ../../lib/runtime/src/freestanding_string.c)
+target_include_directories(test_netmgr_interface_table PRIVATE ../../services/netmgr/src ../../services/core/subsysmgr/include ../../lib/net/include ../../lib/runtime/include)
+add_test(NAME host_test_netmgr_interface_table COMMAND test_netmgr_interface_table)

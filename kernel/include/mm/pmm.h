@@ -70,3 +70,20 @@ int pmm_unpin(uint64_t phys_addr);
 #endif
 
 #endif // BHARAT_MM_PMM_H
+
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
+#include <stdbool.h>
+
+// Forward declaration
+struct page;
+
+// Helper wrappers
+void *pmm_alloc_page(uint32_t flags);
+void *pmm_alloc_zeroed_page(uint32_t flags);
+void *pmm_alloc_contig(size_t npages, size_t align_pages, uint32_t flags);
+void pmm_free_page(void *page);
+
+// Refcount helpers
+void page_get(struct page *page);
+void page_put(struct page *page);
+bool page_try_get(struct page *page);

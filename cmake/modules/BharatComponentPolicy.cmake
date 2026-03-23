@@ -41,6 +41,9 @@ function(bharat_apply_component_policy)
     bharat_component_option(BHARAT_ENABLE_SERVICE_BOOT_DISPLAYD ON "Build boot display daemon")
     bharat_component_option(BHARAT_ENABLE_SERVICE_NETWORK ON "Build network services")
 
+    bharat_component_option(BHARAT_ENABLE_UI ON "Build user-space UI subdirectories")
+    bharat_component_option(BHARAT_ENABLE_FBUI ON "Build Framebuffer UI component")
+
     set(_profile "${BHARAT_DEVICE_PROFILE}")
     set(_personality "${BHARAT_PERSONALITY_PROFILE}")
     string(TOLOWER "${BHARAT_TARGET_BOARD}" _board)
@@ -110,6 +113,10 @@ function(bharat_apply_component_policy)
         bharat_require_component(BHARAT_ENABLE_SUBSYS_LINUX "LINUX personality requires Linux subsystem")
     elseif(_personality STREQUAL "WINDOWS")
         bharat_require_component(BHARAT_ENABLE_SUBSYS_WINDOWS "WINDOWS personality requires Windows subsystem")
+    endif()
+
+    if(BHARAT_ENABLE_FBUI)
+        bharat_require_component(BHARAT_ENABLE_UI "FBUI requires UI components enabled")
     endif()
 
     message(STATUS "Component policy resolved for profile=${BHARAT_DEVICE_PROFILE}, personality=${BHARAT_PERSONALITY_PROFILE}, board=${BHARAT_TARGET_BOARD}")

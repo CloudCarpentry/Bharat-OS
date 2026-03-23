@@ -12,7 +12,7 @@ void cpu_local_init(uint32_t cpu_id) {
     cl->idle = NULL;
     cl->current_as_id = 0;
     cl->current_as = NULL;
-    
+
 #if defined(__aarch64__)
     __asm__ volatile ("msr tpidr_el1, %0" :: "r"(cl));
 #elif defined(__riscv)

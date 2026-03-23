@@ -153,4 +153,49 @@ int device_register_builtin_drivers(void);
 int pci_discover_nic(device_mmio_window_t *rx_window,
                      device_mmio_window_t *tx_window);
 
+
+// --- DMA and IOMMU Device Capability Registration ---
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
+#include "hal/hal_iommu.h"
+
+// Forward declare safely
+struct dma_caps;
+typedef struct dma_caps dma_caps_t;
+
+typedef struct iommu_dev_info {
+    bool present_on_iommu_path;
+    bool can_be_managed;
+    bool default_bypass;
+    bool force_identity;
+    uint32_t requester_id;
+    uint32_t stream_id;
+    uint32_t sid_mask;
+} iommu_dev_info_t;
+
+// Opaque forward declaration if not fully defining device_t everywhere
+struct device;
+typedef struct device device_t;
+
+int device_set_dma_caps(device_t *dev, const dma_caps_t *caps);
+int device_set_iommu_info(device_t *dev, const iommu_dev_info_t *info);
+
+const dma_caps_t *device_get_dma_caps(const device_t *dev);
+const iommu_dev_info_t *device_get_iommu_info(const device_t *dev);
+
+typedef enum {
+    DEV_DMA_MODE_UNKNOWN = 0,
+    DEV_DMA_MODE_DIRECT,
+    DEV_DMA_MODE_IDENTITY,
+    DEV_DMA_MODE_IOMMU,
+    DEV_DMA_MODE_BOUNCE,
+    DEV_DMA_MODE_BLOCKED
+} dev_dma_mode_t;
+
+int device_resolve_dma_iommu_policy(device_t *dev,
+                                    dma_caps_t *dma_out,
+                                    iommu_dev_info_t *iommu_out);
+
+dev_dma_mode_t device_get_effective_dma_mode(device_t *dev);
+void device_dump_dma_caps(const device_t *dev);
+
 #endif // BHARAT_DEVICE_H

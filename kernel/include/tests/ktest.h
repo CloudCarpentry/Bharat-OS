@@ -13,17 +13,26 @@ typedef struct {
   bool (*test_fn)(void);
 } ktest_case_t;
 
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
+#include "boot/boot_selftest.h"
+
 typedef struct {
   const char *name;
   const char *group;
   int (*run)(void);
   uint8_t quick;
   uint8_t critical;
+  boot_test_meta_t boot_meta;
+  bool has_boot_meta;
 } kernel_test_t;
 
 #define REGISTER_KERNEL_TEST(t_name, t_group, func, quick_flag, crit_flag)     \
   static const kernel_test_t __attribute__((used, section(".kern_tests")))     \
-      _test_##func = {t_name, t_group, func, quick_flag, crit_flag};
+      _test_##func = {t_name, t_group, func, quick_flag, crit_flag, {0}, false};
+
+#define REGISTER_BOOT_SELFTEST(t_name, t_group, func, t_stage, t_class, t_caps, t_fatal) \
+  static const kernel_test_t __attribute__((used, section(".kern_tests")))     \
+      _test_##func = {t_name, t_group, func, 0, 0, {t_stage, t_class, t_caps, t_fatal}, true};
 
 void kernel_run_boot_tests(void);
 

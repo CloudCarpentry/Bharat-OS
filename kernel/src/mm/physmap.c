@@ -38,3 +38,28 @@ translate_exec_class_t physmap_exec_class(void) {
     if (!ops || !ops->exec_class) return TRANSLATE_EXEC_MMU_FULL;
     return ops->exec_class();
 }
+
+int mm_memset_phys_range(phys_addr_t phys, uint8_t value, size_t size) {
+    if (size == 0U) {
+        return 0;
+    }
+
+    if (!physmap_has_linear_map()) {
+        return -1;
+    }
+
+    uint8_t *dst = (uint8_t *)physmap_phys_to_virt(phys);
+    if (!dst) {
+        return -1;
+    }
+
+    for (size_t i = 0; i < size; i++) {
+        dst[i] = value;
+    }
+
+    return 0;
+}
+
+int mm_zero_phys_range(phys_addr_t phys, size_t size) {
+    return mm_memset_phys_range(phys, 0U, size);
+}

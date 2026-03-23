@@ -143,6 +143,9 @@ struct kprocess {
     // Personality tagging for subsystems (e.g., Linux, Android, Windows)
     uint32_t personality;
 
+    // Ops mapping syscalls/faults to personality specific behavior
+    const struct personality_ops* personality_ops;
+
     // Capability-based security context would be linked here
     void* security_sandbox_ctx;
 
@@ -169,6 +172,9 @@ struct capability_table* sched_current_cap_table(void);
 void sched_wait_queue_init(wait_queue_t* queue);
 void sched_wait_queue_enqueue(wait_queue_t* queue, kthread_t* thread);
 kthread_t* sched_wait_queue_dequeue(wait_queue_t* queue);
+
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
+#include "personality_ops.h"
 
 // Wait Queue State
 void sched_block(void);

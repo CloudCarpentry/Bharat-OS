@@ -1,8 +1,9 @@
 #include "mm.h"
 #include "mm/aspace.h"
-#include "hal/hal_pt.h"
+#include "hal/hal_mpa.h"
 #include "hal/mmu_ops.h"
 #include "hal/hal_tlb.h"
+#include "mm/tlb.h"
 #include "mm/pmm.h"
 #include "slab.h"
 #include <stddef.h>
@@ -21,7 +22,6 @@ static void ensure_kernel_space_ready(void) {
 
     address_space_t *created = NULL;
     if (aspace_create(&created, 0) == 0 && created) {
-        // Safe copy to avoid SIMD traps during early boot
         volatile uint8_t *dest = (volatile uint8_t *)&kernel_space;
         volatile uint8_t *src  = (volatile uint8_t *)created;
         for (size_t i = 0; i < sizeof(address_space_t); i++) {
@@ -38,10 +38,7 @@ static void ensure_kernel_space_ready(void) {
 #include "mm/prot_domain.h"
 
 int vmm_init(void) {
-    // Phase A: Select capability-driven protection profile backend layer first
-    // This must occur before any generic VMM logic attempts to create an address space/domain.
     prot_domain_init();
-
     ensure_kernel_space_ready();
     return kernel_space_ready ? 0 : -1;
 }
@@ -51,38 +48,41 @@ phys_addr_t vmm_get_kernel_root(void) {
 }
 
 int mm_vmm_map_page(address_space_t* as, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
-    if (!as || !as->prot_domain) return -1;
+    if (!as) return -1;
 
-    // Look up authoritative region
+    // Use the unified MPA HAL abstraction instead of the old MMU ops or prot_domain
+    if (!active_mem_protect || !active_mem_protect->cpu_ops.map_page) return -1;
+
+    // Look up authoritative region (kept for legacy/bookkeeping compatibility)
     vm_region_t *region = aspace_lookup_region(as, vaddr);
     (void)region;
 
-    uint32_t mmu_flags = 0;
-    if (flags & CAP_RIGHT_WRITE) mmu_flags |= MMU_WRITE;
-    if (flags & CAP_RIGHT_EXECUTE) mmu_flags |= MMU_EXEC;
-    if (flags & PAGE_USER) mmu_flags |= MMU_USER;
-    if (flags & (CAP_RIGHT_DEVICE_GPU | CAP_RIGHT_DEVICE_NPU)) mmu_flags |= MMU_DEVICE;
+    // Translate VMM flags to MPA Capability Bits
+    uint32_t mpa_flags = 0;
+    if (flags & CAP_RIGHT_WRITE) mpa_flags |= MPA_CAP_WRITE;
+    if (flags & CAP_RIGHT_EXECUTE) mpa_flags |= MPA_CAP_EXEC_PERM;
+    if (flags & PAGE_USER) mpa_flags |= MPA_CAP_USER;
+    if (flags & (CAP_RIGHT_DEVICE_GPU | CAP_RIGHT_DEVICE_NPU)) mpa_flags |= MPA_CAP_DEVICE;
 
-    int ret = prot_domain_map_region(as->prot_domain, vaddr, paddr, PAGE_SIZE, mmu_flags);
+    // Use the HAL abstraction
+    int ret = active_mem_protect->cpu_ops.map_page(as->root_pt, vaddr, paddr, mpa_flags);
 
-    // In legacy MMU-only code, we updated active_hal_pt here
-    // And handled a fallback for unmapped regions. The new backend natively handles it.
-    if (ret == 0) {
-        hal_tlb_invalidate_page(as, vaddr);
+    if (ret == 0 && active_mem_protect->cpu_ops.flush_tlb_local) {
+        active_mem_protect->cpu_ops.flush_tlb_local(vaddr, 0); // ASID 0 for now
     }
     return ret;
 }
 
 int mm_vmm_unmap_page(address_space_t* as, virt_addr_t vaddr) {
-    if (!as || !as->prot_domain) return -1;
+    if (!as) return -1;
 
-    uintptr_t paddr = 0;
-    prot_domain_query_region(as->prot_domain, vaddr, &paddr, NULL);
+    if (!active_mem_protect || !active_mem_protect->cpu_ops.unmap_page) return -1;
 
-    int ret = prot_domain_unmap_region(as->prot_domain, vaddr, PAGE_SIZE);
-    if (ret == 0 && paddr != 0) {
-        mm_free_page(paddr);
-        hal_tlb_invalidate_page(as, vaddr);
+    phys_addr_t unmapped_pa;
+    int ret = active_mem_protect->cpu_ops.unmap_page(as->root_pt, vaddr, &unmapped_pa);
+
+    if (ret == 0 && active_mem_protect->cpu_ops.flush_tlb_local) {
+        active_mem_protect->cpu_ops.flush_tlb_local(vaddr, 0); // ASID 0 for now
     }
     return ret;
 }
@@ -118,8 +118,4 @@ int vmm_map_device_mmio(virt_addr_t vaddr, phys_addr_t paddr, capability_t *cap,
     (void)is_npu;
     if (!cap) return -1;
     return vmm_map_page(vaddr, paddr, cap->rights_mask);
-}
-
-void tlb_shootdown(address_space_t *as, virt_addr_t vaddr) {
-    hal_tlb_invalidate_page(as, vaddr);
 }

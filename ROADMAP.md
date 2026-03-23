@@ -53,6 +53,16 @@ This roadmap tracks Bharat-OS from a bootable microkernel baseline toward a prod
 | Isabelle/HOL proof foundations | **Scaffold** | Verification scope documented, formal chain not yet integrated. |
 | Linux/Android personality maturity | **Partial** | Contracts/architecture documented; end-to-end compatibility depth is ongoing. |
 
+## Phase 5: Image release automation and distribution (future plan)
+
+| Item | Current maturity | Notes |
+| --- | --- | --- |
+| Multi-board image build matrix in GitHub Actions | **Scaffold** | Add tag-triggered workflow (`v*`) that builds per-board images in parallel (for example: `raspberrypi4`, `orangepizero`, `generic-arm64`). |
+| Image post-processing and compression | **Scaffold** | Standardize output naming (`bharat-os-<board>.img.xz`), add optional image shrink/minimize step, and publish checksums. |
+| GitHub Release asset publishing | **Scaffold** | Automate release creation from CI with uploaded `.img.xz` artifacts and board-wise release notes. |
+| Provenance and signing for downloadable images | **Scaffold** | Extend release pipeline to sign image assets and publish detached signatures with manifest hash links. |
+| Runner disk-space hardening for large OS builds | **Scaffold** | Add deterministic cleanup strategy on runners and optional larger/self-hosted runners when image builds exceed hosted limits. |
+
 ---
 
 ## Full gap-analysis pack
@@ -118,6 +128,7 @@ This document defines CMake structure, versioning expectations, and required con
 
 For per-domain architecture decomposition (with Mermaid + PlantUML diagrams, done/todo status, and roadmap mapping), see:
 
+- [`docs/architecture/memory/roadmap.md`](docs/architecture/memory/roadmap.md)
 - [`docs/architecture/components/kernel-subcomponents-architecture.md`](docs/architecture/components/kernel-subcomponents-architecture.md)
 - [`docs/architecture/components/subsystem-subcomponents-architecture.md`](docs/architecture/components/subsystem-subcomponents-architecture.md)
 - [`docs/architecture/components/services-subcomponents-architecture.md`](docs/architecture/components/services-subcomponents-architecture.md)

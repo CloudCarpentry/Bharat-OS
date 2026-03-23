@@ -4,6 +4,7 @@
 #include "../../include/mm/pmm.h"
 #include "../../include/hal/hal_pt.h"
 #include "../../include/hal/hal_tlb.h"
+#include "../../../../include/mm/tlb.h"
 #include "../../include/kernel.h"
 #include "../../include/hal/mmu_ops.h"
 
@@ -116,7 +117,7 @@ int vm_handle_fault(address_space_t *aspace, virt_addr_t fault_addr, uint32_t fa
 
             case FAULT_STATE_TLB_SYNC: {
                 virt_addr_t aligned_vaddr = ctx.fault_addr & ~(PAGE_SIZE - 1U);
-                hal_tlb_invalidate_page(ctx.aspace, aligned_vaddr);
+                tlb_invalidate_all(ctx.aspace, aligned_vaddr, PAGE_SIZE, TLB_INV_PAGE);
                 state = FAULT_STATE_SUCCESS;
                 break;
             }

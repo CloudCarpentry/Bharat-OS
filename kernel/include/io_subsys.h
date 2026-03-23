@@ -51,6 +51,7 @@ int io_setup_ring(uint32_t entries, io_ring_t* out_ring);
 int io_submit_sqes(io_ring_t* ring);
 
 // Zero-Copy Direct Device Access for OpenRAN UP (User Plane)
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "advanced/formal_verif.h"
 
 // Defines a shared memory region mapping a NIC's hardware queues directly to user-space

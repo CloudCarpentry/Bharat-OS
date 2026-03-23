@@ -2,6 +2,7 @@
 #define BHARAT_MM_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 /*
  * Bharat-OS Memory Management Subsystem
@@ -14,8 +15,12 @@
 typedef uint64_t phys_addr_t;
 typedef uint64_t virt_addr_t;
 
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "list.h"
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "mm_coloring.h"
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
+#include "mm/pmm.h"
 
 // Page metadata structure for Buddy Allocator
 typedef struct page {
@@ -89,14 +94,18 @@ int mm_alloc_dma_pages(size_t size,
                        phys_addr_t *out_phys,
                        void **out_kernel_virt);
 int mm_free_dma_pages(phys_addr_t phys, void *kernel_virt, size_t size);
+int mm_memset_phys_range(phys_addr_t phys, uint8_t value, size_t size);
+int mm_zero_phys_range(phys_addr_t phys, size_t size);
 
 // Support for Copy-on-Write (CoW) page reference counting
 void mm_inc_page_ref(phys_addr_t page);
 
 // Virtual Memory Management (Architecture agnostic paging)
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "spinlock.h"
 
 typedef struct vm_address_space address_space_t;
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "mm/aspace.h"
 
 int vmm_init(void);
@@ -110,10 +119,12 @@ int mm_vmm_unmap_page(address_space_t *as, virt_addr_t vaddr);
 // Forward declaration for capability_token_t is not straightforward because
 // it's a typedef of an anonymous struct in formal_verif.h. So we include it
 // directly.
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "advanced/formal_verif.h"
 int vmm_map_device_mmio(virt_addr_t vaddr, phys_addr_t paddr, capability_t *cap,
                         int is_npu);
 
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "mm/address_token.h"
 int vmm_map_device_mmio_token(virt_addr_t vaddr, phys_addr_t paddr,
                               uint64_t size, const bharat_addr_token_t *token,

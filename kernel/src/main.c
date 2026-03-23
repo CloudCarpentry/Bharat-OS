@@ -4,6 +4,8 @@
 #include <bharat/cpu_local.h>
 #include "kernel_boot.h"
 
+extern void hal_serial_write(const char *s);
+
 // The single unified kernel entry point called from architecture-specific entry code.
 void kernel_main_common(const boot_info_t *boot) {
   // Setup core console layer and serial backend early
@@ -12,7 +14,7 @@ void kernel_main_common(const boot_info_t *boot) {
 
   uint32_t cpu_id = hal_cpu_get_id();
   cpu_local_init(cpu_id);
-  
+
   int is_bsp = (cpu_id == 0);
 
   if (is_bsp) {

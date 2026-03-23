@@ -37,6 +37,14 @@ typedef enum {
     CAP_PERM_CRYPT_DECRYPT        = (1U << 9),
     CAP_PERM_CRYPT_EXPORT_WRAPPED = (1U << 10),
     CAP_PERM_CRYPT_ADMIN          = (1U << 11),
+
+    // Communication and RPC capability bits
+    // NOTE: These are vocabulary only and not currently enforced in the
+    // scheduler, IPC send/recv, or URPC routing paths yet.
+    CAP_PERM_IPC_SEND             = (1U << 12),
+    CAP_PERM_IPC_RECEIVE          = (1U << 13),
+    CAP_PERM_URPC_CALL            = (1U << 14),
+    CAP_PERM_URPC_REPLY           = (1U << 15),
 } cap_perm_t;
 
 typedef struct capability_entry {
@@ -69,6 +77,9 @@ typedef struct capability_entry_new {
     cap_handle_t next_sibling; // Other capabilities delegated from the same parent
 
     uint32_t generation;
+
+    // Memory/Frame Ownership
+    uint32_t owner_core;
 } capability_entry_new_t;
 
 // Replace old struct with new
@@ -159,5 +170,10 @@ int cap_table_delegate(capability_table_t* src,
                        uint32_t* out_new_cap_id);
 
 int cap_table_revoke(capability_table_t* table, uint32_t cap_id);
+
+void cap_handle_delegate_req(uint64_t payload, uint32_t source_core);
+void cap_handle_delegate_ack(uint64_t payload);
+void cap_handle_revoke_req(uint64_t payload, uint32_t source_core);
+void cap_handle_revoke_ack(uint64_t payload);
 
 #endif // BHARAT_CAPABILITY_H

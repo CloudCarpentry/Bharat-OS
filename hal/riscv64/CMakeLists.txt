@@ -1,27 +1,27 @@
 add_library(hal_riscv64_cpu OBJECT
-    ../../kernel/src/hal/riscv/hal_cpu.c
-    ../../kernel/src/hal/riscv/boot/feature_probe.c
-    ../../kernel/src/hal/riscv/trap_entry.S
-    ../../kernel/src/hal/mmu/riscv64/vmm.c
-    ../../kernel/src/arch/riscv64/context_switch.c
-    ../../kernel/src/arch/riscv64/context_switch.S
-    ../../kernel/src/arch/riscv64/cpu_caps.c
-    ../../kernel/src/arch/riscv64/ext_state.c
-    ../../kernel/src/hal/riscv/shakti_bsp.c
+    ../riscv/hal_cpu.c
+    ../riscv/boot/feature_probe.c
+    ../riscv/trap_entry.S
+    ../mmu/riscv64/vmm.c
+    ../arch/riscv64/context_switch.c
+    ../arch/riscv64/context_switch.S
+    ../arch/riscv64/cpu_caps.c
+    ../arch/riscv64/ext_state.c
+    ../riscv/shakti_bsp.c
 )
 
 add_library(hal_riscv64_mmu OBJECT
-    ../../kernel/src/hal/riscv64/hal_pt_riscv64.c
-    ../../kernel/src/hal/hal_pt.c
-    ../../kernel/src/hal/riscv/iopmp.c
+    ../riscv64/hal_pt_riscv64.c
+    ../hal_pt.c
+    ../riscv/iopmp.c
 )
 
 add_library(hal_riscv64_irq OBJECT
-    ../../kernel/src/hal/riscv/plic.c
+    ../riscv/plic.c
 )
 
 add_library(hal_riscv64_timer OBJECT
-    ../../kernel/src/hal/riscv/sbi_timer_ipi.c
+    ../riscv/sbi_timer_ipi.c
 )
 
 target_include_directories(hal_riscv64_cpu PRIVATE ../../kernel/include ../../kernel/include/generated ../../include)

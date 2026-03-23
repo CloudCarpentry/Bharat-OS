@@ -6,7 +6,7 @@ add_executable(console main.c)
 
 target_include_directories(console PRIVATE
     ../../kernel/include
-    ../../subsys/include
+    ../../services/core/subsysmgr/include
     ../../lib/bharat_libtransport
 )
 

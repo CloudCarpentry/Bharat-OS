@@ -41,3 +41,34 @@ Release artifacts are cryptographically signed to maintain provenance and trust:
 
 *   The manifest is compiled into JSON and C headers during the CMake configuration step.
 *   The `tools/sign_release.py` script consumes the manifest and build outputs to construct a `dist/Bharat-OS-<version>` release folder.
+
+## Future Plan: GitHub Image Release Flow
+
+To distribute SBC-ready OS images directly from GitHub, Bharat-OS should adopt a tag-driven release pipeline:
+
+1. **Tag triggers release builds**
+   - Trigger on pushed tags matching `v*` (for example `v1.0.0`).
+2. **Matrix build per board**
+   - Run the same build script across a board matrix (for example `raspberrypi4`, `orangepizero`, `generic-arm64`).
+3. **Image normalization**
+   - Produce consistent file names (`bharat-os-<board>.img`), then compress to `*.img.xz`.
+4. **Integrity and provenance**
+   - Generate `.sha256` checksums and publish `.sig` detached signatures for each image artifact.
+5. **Release publication**
+   - Create/update a GitHub Release and attach all compressed images plus checksum/signature files.
+6. **Operational hardening**
+   - Add optional image-shrink steps before compression and runner disk-space cleanup for large builds.
+
+### Suggested CI shape
+
+- `build-os` job:
+  - strategy matrix over boards,
+  - installs cross-build dependencies (`qemu-user-static`, `binfmt-support`, `xz-utils`),
+  - builds and compresses board image,
+  - uploads intermediate artifacts.
+- `create-release` job:
+  - depends on all matrix builds,
+  - downloads artifacts,
+  - publishes release assets with release notes.
+
+This flow keeps the release process reproducible while making board-specific images easy for users to discover and download.

@@ -17,8 +17,8 @@ This document provides a deep implementation-status and gap-analysis review of t
 * **Details:** `interrupt_common.c` and `timer_common.c` exist in `kernel/src/hal/`, but they are very small (few lines) and function mostly as interfaces. Real hardware drivers (e.g., APIC, GICv3) are poorly implemented or stubbed. Clock source (monotonic) and clock event splitting are weak.
 
 ### IPC / Multikernel Messaging
-* **Status:** Production-ready (mostly)
-* **Details:** The `ipc` subsystem is highly developed. URPC (`lib/urpc`) provides high-throughput lockless ring-buffers for async shared memory, and cross-core multikernel messages route through `mk_dispatch.c` with validation. Deterministic endpoint IPC (`endpoint_ipc.c`, `async_ipc.c`) is implemented nicely.
+* **Status:** Endpoint IPC (Baseline), uRPC Transport (Baseline), Async IPC (Partial), Protocol/Delivery (Missing)
+* **Details:** The IPC subsystem has solid primitives, but the middle multikernel/delivery layers are currently scaffolded. Local **Endpoint IPC** is mature and capability-protected (`endpoint_ipc.c`). Local **Async IPC** (`async_ipc.c`) is partial, as it relies on a central global table. For cross-core interaction, the **uRPC Transport** (`multikernel.c`) provides baseline lockless SPSC ring buffers, but the L1 Protocol Delivery engine (ACK/NACK, transactions, timeouts) in `mk_proto.c` is missing/scaffolded. Multikernel capability validations (`mk_dispatch.c`) currently use a relaxed default-allow placeholder and are incomplete.
 
 ### Security / Isolation / Capabilities
 * **Status:** Implemented but incomplete
@@ -42,18 +42,18 @@ This document provides a deep implementation-status and gap-analysis review of t
 
 ### Observability / Watchdog / Recovery
 * **Status:** Implemented but incomplete
-* **Details:** The automotive personality (`subsys/automotive.c`) has robust watchdog array and domain health tracking. Core kernel panic recovery (`panic.c`) has a toggle but is not a deeply resilient synchronous fault containment domain.
+* **Details:** The automotive personality (`personalities/automotive/automotive.c`) has robust watchdog array and domain health tracking. Core kernel panic recovery (`panic.c`) has a toggle but is not a deeply resilient synchronous fault containment domain.
 
 ### Personality Support
 * **Status:** Implemented but incomplete
-* **Details:** `subsys/linux/linux_compat.c` exists for desktop/server. The Android and Automotive layers are largely API wrappers (e.g., `automotive.c` is ~500 lines of queues, watchdogs, and hooks) but miss full hardware linkage.
+* **Details:** `personalities/linux/linux_compat.c` exists for desktop/server. The Android and Automotive layers are largely API wrappers (e.g., `automotive.c` is ~500 lines of queues, watchdogs, and hooks) but miss full hardware linkage.
 
 ---
 
 ## 2. Target Deployment Classes Evaluation
 
 ### Small Device / Edge
-* **Usable Subsystems:** Core Multikernel IPC (URPC), Capability-based Isolation, Scheduler (basic Round-Robin/Priority).
+* **Usable Subsystems:** Core Multikernel uRPC Transport, Capability-based Isolation, Scheduler (basic Round-Robin/Priority).
 * **Missing for Production:** Lightweight VFS (currently heavily stubbed), Network stack (non-existent), robust Power Management (tick suppression/autosuspend), Secure Update (OTA) hooks.
 * **Highest Priority:** Implementing a real lightweight VFS and a baseline TCP/UDP network stack so the device can communicate and store simple configs.
 
@@ -63,7 +63,7 @@ This document provides a deep implementation-status and gap-analysis review of t
 * **Highest Priority:** Splitting HAL timers into monotonic vs deadline (one-shot per core) properly and building real deterministic I2C/SPI drivers for flight controllers/sensors.
 
 ### Automobile (Automotive ECU/Infotainment)
-* **Usable Subsystems:** `subsys/automotive.c` provides a good software model for bounded deterministic queues, watchdog domain health, and boot stage planning.
+* **Usable Subsystems:** `personalities/automotive/automotive.c` provides a good software model for bounded deterministic queues, watchdog domain health, and boot stage planning.
 * **Missing for Production:** Genuine underlying CAN/LIN/Ethernet drivers (the `subsys_automotive_send_can_frame` merely returns true), IOMMU/VFIO protection for isolating untrusted devices (IOMMU is a stub), strong Crash Consistency.
 * **Highest Priority:** IOMMU implementations (VT-d/SMMU) and real CAN driver integration with the deterministic queues.
 
