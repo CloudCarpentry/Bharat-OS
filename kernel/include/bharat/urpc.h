@@ -14,7 +14,9 @@ typedef enum {
     URPC_CAP_REVOKE          = 4,
     URPC_CAP_REVOKE_ACK      = 5,
     URPC_TLB_INVAL           = 6,
-    URPC_TLB_INVAL_ACK       = 7
+    URPC_TLB_INVAL_ACK       = 7,
+    URPC_CAP_DELEGATE_REQ    = 8,
+    URPC_CAP_DELEGATE_ACK    = 9
 } urpc_msg_type_t;
 
 // A generic URPC message packet structure fitting in the uint64_t buffer

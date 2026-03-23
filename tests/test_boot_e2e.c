@@ -6,6 +6,10 @@
 #include "../kernel/src/kernel_boot.h"
 #include "../kernel/include/secure_boot.h"
 #include "../kernel/include/boot/boot_mode.h"
+#include <stdlib.h>
+
+void test_device_dma_dump(void) {
+}
 
 // Stubs for kernel_boot calls
 int bharat_secure_boot_verify_early(void) { return 0; }
@@ -61,6 +65,19 @@ void console_write_raw(const char *data, size_t len) {
     // printf("%.*s", (int)len, data);
 }
 
+int boot_selftest_run_stage(bharat_boot_stage_t stage) {
+    (void)stage;
+    return 0;
+}
+
+bharat_boot_mode_t bharat_boot_mode_select(void) {
+    return BHARAT_BOOT_MODE_NORMAL;
+}
+
+const char* bharat_boot_mode_name(bharat_boot_mode_t mode) {
+    (void)mode;
+    return "NORMAL";
+}
 
 size_t string_length(const char* str) {
     size_t len = 0;
@@ -88,7 +105,7 @@ int zswap_init(void) {
     return 0;
 }
 
-void arch_mmu_init(void) {}
+__attribute__((weak)) void arch_mmu_init(void) {}
 void hal_mmu_final_setup(void) {}
 
 // Lots of stubs for the runtime features being called in boot_common_platform_services
@@ -178,3 +195,4 @@ int main(void) {
     printf("All E2E Boot Tests passed!\n");
     return 0;
 }
+void test_device_dma_dump(void){}

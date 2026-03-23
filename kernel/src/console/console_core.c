@@ -13,13 +13,13 @@ console_global_state_t g_console_state;
 static volatile uint32_t console_lock = 0;
 
 static void spin_lock(volatile uint32_t* lock) {
-    while (__sync_lock_test_and_set(lock, 1)) {
-        while (*lock);
+    while (__atomic_test_and_set(lock, __ATOMIC_ACQUIRE)) {
+        while (__atomic_load_n(lock, __ATOMIC_RELAXED));
     }
 }
 
 static void spin_unlock(volatile uint32_t* lock) {
-    __sync_lock_release(lock);
+    __atomic_clear(lock, __ATOMIC_RELEASE);
 }
 
 size_t string_length(const char* str) {

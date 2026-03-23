@@ -1,9 +1,22 @@
 # Bharat-OS IPC Architecture
 
-This document describes the design and guarantees of the Inter-Process Communication (IPC) subsystem in Bharat-OS.
+This document describes the design and guarantees of the Inter-Process Communication (IPC) subsystems in Bharat-OS. The communication architecture is divided into a layered model spanning local interactions, asynchronous requests, and cross-core multikernel transports.
 
-## Endpoint Model
-Bharat-OS utilizes capability-protected synchronous and asynchronous endpoints for secure messaging. Endpoints (`ipc_endpoint_t`) act as rendezvous points or bounded buffers for transferring messages between isolated execution contexts (processes or threads).
+For the detailed architectural roadmap and multikernel IPC specifications, see [IPC + uRPC + Multikernel Communication Architecture](architecture/core/ipc-urpc-multikernel-arc.md).
+
+## Layered Communication Model
+
+The system structures messaging across four logical layers:
+
+- **L0 — Transport Layer (uRPC transport):** Cross-core, lock-free SPSC ring buffers.
+- **L1 — Delivery Layer (Protocol engine):** Framing, transactions, and ACK/NACK handling (currently incomplete/scaffold).
+- **L2 — Object RPC Layer:** Typed messages handling capability and resource ownership across boundaries.
+- **L3 — Service IPC Layer:** System services (e.g., namesvc, console) utilizing the layers below.
+
+## Endpoint IPC (Local, Synchronous)
+**Maturity: Baseline / Implemented**
+
+Bharat-OS utilizes capability-protected synchronous endpoints for secure messaging. Endpoints (`ipc_endpoint_t`) act as rendezvous points or bounded buffers for transferring messages between isolated execution contexts (processes or threads).
 
 Every endpoint maintains:
 - A message buffer.
@@ -12,14 +25,24 @@ Every endpoint maintains:
 
 Access to endpoints is strongly regulated via capabilities (`send_cap` and `recv_cap`), ensuring only authorized participants can exchange data.
 
-## Sync vs Async Semantics
-### Synchronous IPC
 The core `ipc_endpoint_send` and `ipc_endpoint_receive` operations are fully synchronous:
 - **Send**: If an endpoint buffer is occupied, the sender enqueues itself onto the `senders` wait queue and blocks.
 - **Receive**: If an endpoint buffer is empty, the receiver enqueues itself onto the `receivers` wait queue and blocks.
 
-### Asynchronous IPC
-For lockless, high-throughput applications, Bharat-OS also supports asynchronous IPC via a dedicated ring buffer (URPC) system (`lib/urpc/`), which operates independently of synchronous endpoint wait queues.
+## Async IPC (Local, Request-Driven)
+**Maturity: Partial**
+
+Bharat-OS supports an Async IPC request layer for operations requiring timeouts, wakeups, and deadlines. Currently, this relies on a fixed global request table (`g_async_requests`), which is sufficient for basic interactions but represents a bottleneck that will be transitioned to per-core or per-endpoint pooling to align with multikernel constraints.
+
+## Cross-Core Transport (uRPC / Multikernel)
+**Maturity:**
+- **L0 Transport:** Baseline / Implemented
+- **L1 Protocol / Delivery Engine:** Scaffold / Missing
+- **Distributed Capability Safe Messaging:** Partial / Incomplete
+
+For cross-core multikernel messaging, the OS uses the **uRPC transport**. This relies on asynchronous, cache-friendly SPSC ring buffers established between cores (located in `kernel/src/ipc/multikernel.c` and `kernel/include/advanced/multikernel.h`).
+
+While the fundamental L0 uRPC transport (ring buffers, acquire/release ordering, basic delivery hooks) is in place, the **L1 Protocol Engine** (responsible for ACK/NACK semantics, retry policies, transaction lifecycles, and timeouts) is currently stubbed out or scaffolded. Additionally, explicit ownership and cross-core capability validations are still incomplete.
 
 ## Wait Queues and Wake-up Rules
 To prevent spurious wakeups and guarantee starvation-free operations, blocked IPC operations are strictly coordinated through explicit wait queues (`wait_queue_t`).

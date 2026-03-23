@@ -3,6 +3,11 @@
 #include <assert.h>
 #include <string.h>
 
+void kernel_panic(const char* msg) {
+    printf("PANIC: %s\n", msg);
+    abort();
+}
+
 // Mock kernel definitions for PMM test harness
 #include "../../kernel/include/mm/pmm.h"
 #include "../../kernel/include/mm.h"
@@ -37,6 +42,7 @@ void hal_mm_get_zone_limits(hal_mm_zone_limits_t *limits) {
 }
 virt_addr_t physmap_phys_to_virt(phys_addr_t paddr) { return (virt_addr_t)paddr; }
 
+// Mock functions implemented later
 // We provide a very basic mock early allocator here
 static uint8_t early_mem[10 * 1024 * 1024]; // 10MB of mock metadata memory
 static size_t early_mem_used = 0;
