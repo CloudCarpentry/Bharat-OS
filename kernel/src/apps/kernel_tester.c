@@ -10,6 +10,7 @@
 
 extern void ktest_pmm_run(void);
 extern void ktest_slab_run(void);
+extern void ktest_sched_run(void);
 
 static void test_sched_yield_smoke(void) {
   KPRINT(" [TEST] Scheduler state check... ");
@@ -63,6 +64,7 @@ void kernel_tester_app(void) {
   // 1. Run Unit Test Suites
   ktest_pmm_run();
   ktest_slab_run();
+  ktest_sched_run();
 
   // 2. Functional/Dynamic Tests
   KPRINT("--- Running Dynamic Tests ---\n");

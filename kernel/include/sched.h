@@ -5,6 +5,7 @@
 #include "mm.h"
 #include "advanced/ai_sched.h"
 #include "list.h"
+#include "rbtree.h"
 #include "kernel_safety.h"
 #include "spinlock.h"
 #include <stdbool.h>
@@ -68,8 +69,18 @@ typedef enum {
 typedef struct sched_rq {
     kthread_t* current_thread;
     kthread_t* idle_thread;
+
+    // Priority / RT Scheduler
     list_head_t ready_queue[MAX_PRIORITY_LEVELS];
     uint32_t ready_bitmap;
+
+    // CFS Scheduler
+    struct rb_root cfs_runqueue;
+    int64_t min_vruntime;
+
+    // Remote Enqueue Inbox (Protected by lock)
+    list_head_t pending_inbox;
+
     uint32_t runnable_count;
     list_head_t sleeping_list;
     list_head_t blocked_list;
@@ -110,6 +121,12 @@ struct kthread {
     mm_color_config_t mm_color_policy;
     uint64_t time_slice_ms;
     uint64_t cpu_time_consumed;
+
+    // CFS Scheduler metadata
+    int64_t vruntime;
+    uint32_t weight;
+    struct rb_node cfs_node;
+
     uint8_t preferred_numa_node;
     ai_sched_context_t* ai_sched_ctx;
     uint64_t context_switch_count;
@@ -178,6 +195,9 @@ kthread_t* sched_wait_queue_dequeue(wait_queue_t* queue);
 
 // Wait Queue State
 void sched_block(void);
+
+// L0 layer access (for testing)
+kthread_t *sched_pick_next_ready_l0(uint32_t core_id);
 
 // Context Switching
 void sched_yield(void);

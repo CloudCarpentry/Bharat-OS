@@ -213,6 +213,7 @@ target_compile_options(bharat_mm_iommu PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreesta
 
 add_library(bharat_mm_pmm OBJECT
     src/mm/pmm/pmm.c
+    src/mm/pmm/pmm_pcache.c
     src/mm/pmm/pmm_debug.c
     src/mm/pmm/early_alloc.c
     src/mm/pmm/slab.c
@@ -344,6 +345,7 @@ set(KERNEL_SRCS
     src/tests/ktest_pmm.c
     src/tests/ktest_slab.c
     src/tests/ktest_hal_pt.c
+    src/tests/ktest_sched.c
     src/tests/ktest_unmapped_fault.c
     src/tests/ktest_prot_domain.c
     src/tests/ktest_basic_sanity.c
