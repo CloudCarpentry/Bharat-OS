@@ -16,10 +16,6 @@ int bharat_policy_init(int mode) { return 0; }
 int bharat_secure_boot_stage_hook(bharat_boot_stage_t stage, uint64_t magic) { return 0; }
 void algo_matrix_init(void) {}
 
-int boot_selftest_run_stage(bharat_boot_stage_t stage) { (void)stage; return 0; }
-bharat_boot_mode_t bharat_boot_mode_select(void) { return BHARAT_BOOT_MODE_NORMAL; }
-const char* bharat_boot_mode_name(bharat_boot_mode_t mode) { (void)mode; return "NORMAL"; }
-
 // HAL Stubs
 void hal_init(void) {}
 void hal_discovery_init(const boot_info_t *boot) {}
@@ -60,16 +56,16 @@ void console_write_raw(const char *data, size_t len) {
     // printf("%.*s", (int)len, data);
 }
 
-int boot_selftest_run_stage(int stage) {
+int boot_selftest_run_stage(bharat_boot_stage_t stage) {
     (void)stage;
     return 0;
 }
 
-int bharat_boot_mode_select(void) {
-    return 0; // BOOT_MODE_NORMAL
+bharat_boot_mode_t bharat_boot_mode_select(void) {
+    return BHARAT_BOOT_MODE_NORMAL;
 }
 
-const char* bharat_boot_mode_name(int mode) {
+const char* bharat_boot_mode_name(bharat_boot_mode_t mode) {
     (void)mode;
     return "NORMAL";
 }
@@ -191,3 +187,4 @@ int main(void) {
     printf("All E2E Boot Tests passed!\n");
     return 0;
 }
+void test_device_dma_dump(void){}
