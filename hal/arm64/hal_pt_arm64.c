@@ -1,3 +1,4 @@
+#include "../../kernel/include/hal/hal_mpa.h"
 #include "../../kernel/include/hal/hal_pt.h"
 #include "../../kernel/include/hal/hal_tlb.h"
 #include "../../kernel/include/mm.h"
@@ -556,3 +557,62 @@ hal_tlb_ops_t arm64_hal_tlb_ops = {
     .flush_page_broadcast  = arm64_tlb_flush_page_broadcast,
     .flush_all_broadcast   = arm64_tlb_flush_all_broadcast,
 };
+
+// Implement the specific functions from mem_protect_cpu_ops
+
+static phys_addr_t arm64_mpa_make_table(uint32_t level) {
+    (void)level;
+    // Just map to the page allocator like the original pt did
+    phys_addr_t pt = mm_alloc_page(NUMA_NODE_ANY);
+    if (pt) {
+        pt_t* ptr = (pt_t*)physmap_phys_to_virt(pt);
+        for(int i = 0; i < 512; i++) ptr->entries[i] = 0;
+    }
+    return pt;
+}
+
+static int arm64_mpa_map_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
+    uint32_t hal_flags = HAL_PT_FLAG_READ;
+    if (flags & MPA_CAP_EXEC_PERM) hal_flags |= HAL_PT_FLAG_EXEC;
+    if (flags & MPA_CAP_USER) hal_flags |= HAL_PT_FLAG_USER;
+    if (flags & MPA_CAP_GLOBAL) hal_flags |= HAL_PT_FLAG_GLOBAL;
+    if (flags & MPA_CAP_DEVICE) hal_flags |= HAL_PT_FLAG_DEVICE;
+    if (flags & MPA_CAP_WRITE) hal_flags |= HAL_PT_FLAG_WRITE;
+
+    return arm64_pt_map_4k(root_pt, vaddr, paddr, hal_flags);
+}
+
+static int arm64_mpa_unmap_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *unmapped_paddr) {
+    return arm64_pt_unmap_4k(root_pt, vaddr, unmapped_paddr);
+}
+
+static void arm64_mpa_set_root(phys_addr_t root) {
+    __asm__ volatile("msr ttbr0_el1, %0" :: "r"(root) : "memory");
+    __asm__ volatile("isb\n");
+}
+
+static void arm64_mpa_flush_tlb_local(virt_addr_t vaddr, uint16_t asid) {
+    (void)asid; // Minimal implementation for now
+    __asm__ volatile(
+        "tlbi vale1is, %0\n"
+        "dsb ish\n"
+        "isb\n"
+        :: "r"(vaddr >> 12)
+    );
+}
+
+mem_protect_ops_t arm64_mem_protect_ops = {
+    .supported_caps = MPA_CAP_VIRT | MPA_CAP_ASID | MPA_CAP_GLOBAL | MPA_CAP_HUGEPAGE | MPA_CAP_EXEC_PERM | MPA_CAP_WRITE | MPA_CAP_USER | MPA_CAP_DEVICE,
+    .cpu_ops = {
+        .make_table = arm64_mpa_make_table,
+        .map_page = arm64_mpa_map_page,
+        .unmap_page = arm64_mpa_unmap_page,
+        .set_root = arm64_mpa_set_root,
+        .flush_tlb_local = arm64_mpa_flush_tlb_local,
+    },
+    .iommu_ops = {
+        .probe = NULL, // Could be linked to SMMU probe later
+    }
+};
+
+mem_protect_ops_t *active_mem_protect = &arm64_mem_protect_ops;

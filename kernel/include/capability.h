@@ -77,6 +77,9 @@ typedef struct capability_entry_new {
     cap_handle_t next_sibling; // Other capabilities delegated from the same parent
 
     uint32_t generation;
+
+    // Memory/Frame Ownership
+    uint32_t owner_core;
 } capability_entry_new_t;
 
 // Replace old struct with new
