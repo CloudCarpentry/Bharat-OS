@@ -60,3 +60,14 @@ The Android personality is designed to be modular. Future work will expand these
 - Full ART/Dalvik runtime hooks.
 - A complete AIDL stack mapping to Bharat-OS endpoints.
 - SELinux Android policy mapped to Bharat-OS capability matrices.
+
+## Risks, Assumptions, and Test Strategy
+
+*   **Risk:** Emulating Zygote's COW across cores without distributed TLB shootdown bottlenecks.
+    *   *Mitigation:* Keep Zygote forks local to clusters when possible, or rely on capability-based read-only mapping propagation.
+*   **Risk:** Binder Priority Inversion across cores.
+    *   *Mitigation:* Ensure the ICC layer passes priority metadata, allowing the target scheduler to preempt lower-priority tasks immediately upon message receipt.
+*   **Test Strategy:**
+    *   *Unit Tests:* Ensure logical IDs and handle resolution do not leak memory or raw pointers.
+    *   *Integration Tests:* Spin up multiple cores, execute cross-core Binder transactions, and assert that priority metadata and reply paths function correctly.
+    *   *Stress Tests:* Verify distributed COW sharing and shared-memory teardown paths under memory pressure.
