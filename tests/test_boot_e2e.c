@@ -79,7 +79,6 @@ const char* bharat_boot_mode_name(bharat_boot_mode_t mode) {
     return "NORMAL";
 }
 
-int console_current_phase(void) { return 1; }
 size_t string_length(const char* str) {
     size_t len = 0;
     while (str && str[len]) len++;
