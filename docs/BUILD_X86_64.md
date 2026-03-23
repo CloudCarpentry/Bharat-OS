@@ -81,7 +81,7 @@ If you are not using the `--run` flag with the build scripts, you can run the ge
 ```bash
 # Serial output to terminal
 qemu-system-x86_64 -kernel build/x86_64/kernel.elf \
-    -m 256M -nographic -serial mon:stdio -no-reboot
+    -m 256M -nographic -serial stdio -no-reboot
 ```
 
 > **Note:** To exit QEMU, press `Ctrl+A` followed by `X`. To use a separate QEMU window, remove `-nographic` and use `-serial stdio`.

@@ -63,14 +63,19 @@ void hal_mmu_final_setup(void) {
 
 #if defined(__aarch64__) || defined(__riscv)
     system_discovery_t* discovery = hal_get_system_discovery();
+    extern const uint64_t g_kernel_virt_offset;
     if (discovery) {
         // Map RAM
         for (uint32_t i = 0; i < discovery->topology.mem_region_count; i++) {
             uint64_t base = discovery->topology.mem_regions[i].base;
             uint64_t size = discovery->topology.mem_regions[i].size;
             for (uint64_t off = 0; off < size; off += 4096) {
+                // Identity map
                 vmm_map_page(base + off, base + off,
                              CAP_RIGHT_READ | CAP_RIGHT_WRITE | CAP_RIGHT_EXECUTE);
+                // Linear high-half map
+                vmm_map_page(base + off + g_kernel_virt_offset, base + off,
+                             CAP_RIGHT_READ | CAP_RIGHT_WRITE);
             }
         }
 
