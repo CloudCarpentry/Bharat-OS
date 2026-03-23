@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <stdlib.h>
@@ -28,6 +29,11 @@ void hal_serial_write_hex(uint64_t v) { (void)v; }
 size_t string_length(const char *s) { return strlen(s); }
 void console_write_raw(const char *s, size_t len) { (void)s; (void)len; }
 void pt_cache_init(void) {}
+
+void kernel_panic(const char *msg) {
+    printf("KERNEL_PANIC: %s\n", msg);
+    abort();
+}
 
 int mm_zero_phys_range(phys_addr_t phys, size_t len) { (void)phys; (void)len; return 0; }
 void *physmap_phys_to_virt(phys_addr_t phys) { return (void *)(uintptr_t)phys; }

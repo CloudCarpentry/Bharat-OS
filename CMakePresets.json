@@ -111,6 +111,34 @@
         "BHARAT_DEVICE_PROFILE": "EDGE",
         "BHARAT_TARGET_BOARD": "virt"
       }
+    },
+    {
+      "name": "arm64-gui",
+      "displayName": "Cross ARM64 Edge GUI (Debug)",
+      "description": "ARM64 build optimized for GUI/QEMU console development",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/arm64-gui",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/aarch64-elf-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BHARAT_DEVICE_PROFILE": "EDGE",
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "ON"
+      }
+    },
+    {
+      "name": "riscv64-gui",
+      "displayName": "Cross RISC-V64 Edge GUI (Debug)",
+      "description": "RISC-V64 build optimized for GUI/QEMU console development",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/riscv64-gui",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/riscv64-elf-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BHARAT_DEVICE_PROFILE": "EDGE",
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "ON"
+      }
     }
   ],
   "buildPresets": [
@@ -145,6 +173,14 @@
     {
       "name": "riscv32-edge",
       "configurePreset": "riscv32-edge"
+    },
+    {
+      "name": "arm64-gui",
+      "configurePreset": "arm64-gui"
+    },
+    {
+      "name": "riscv64-gui",
+      "configurePreset": "riscv64-gui"
     }
   ],
   "testPresets": [

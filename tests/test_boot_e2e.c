@@ -21,6 +21,7 @@ int bharat_secure_boot_stage_hook(bharat_boot_stage_t stage, uint64_t magic) { r
 void algo_matrix_init(void) {}
 
 int boot_selftest_run_stage(bharat_boot_stage_t stage) { (void)stage; return 0; }
+void test_device_dma_dump(void) {}
 bharat_boot_mode_t bharat_boot_mode_select(void) { return BHARAT_BOOT_MODE_NORMAL; }
 const char* bharat_boot_mode_name(bharat_boot_mode_t mode) { (void)mode; return "NORMAL"; }
 
@@ -31,15 +32,54 @@ void profile_init(void) {}
 void bharat_subsystems_init(const char *profile) {}
 
 // String stubs for arch independent tests
-void *arch_memcpy(void *dest, const void *src, size_t n) { return memcpy(dest, src, n); }
-void *arch_memset(void *s, int c, size_t n) { return memset(s, c, n); }
-void *arch_memmove(void *dest, const void *src, size_t n) { return memmove(dest, src, n); }
+void* arch_memcpy(void* dest, const void* src, size_t n, uint32_t flags) {
+    (void)flags;
+    char* d = (char*)dest;
+    const char* s = (const char*)src;
+    while(n--) *d++ = *s++;
+    return dest;
+}
+void* arch_memset(void* s, int c, size_t n, uint32_t flags) {
+    (void)flags;
+    char* p = (char*)s;
+    while(n--) *p++ = (char)c;
+    return s;
+}
+void* arch_memmove(void* dest, const void* src, size_t n, uint32_t flags) {
+    (void)flags;
+    char* d = (char*)dest;
+    const char* s = (const char*)src;
+    if (d < s) {
+        while (n--) *d++ = *s++;
+    } else {
+        d += n;
+        s += n;
+        while (n--) *--d = *--s;
+    }
+    return dest;
+}
 
 // Console stubs
 void console_write_raw(const char *data, size_t len) {
     // Optional: write to stdout for debug, but silence usually preferable for clean tests
     // printf("%.*s", (int)len, data);
 }
+
+int boot_selftest_run_stage(int stage) {
+    (void)stage;
+    return 0;
+}
+
+int bharat_boot_mode_select(void) {
+    return 0; // BOOT_MODE_NORMAL
+}
+
+const char* bharat_boot_mode_name(int mode) {
+    (void)mode;
+    return "NORMAL";
+}
+
+int console_current_phase(void) { return 1; }
 size_t string_length(const char* str) {
     size_t len = 0;
     while (str && str[len]) len++;
