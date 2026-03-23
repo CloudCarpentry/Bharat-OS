@@ -1,6 +1,9 @@
 add_library(k_trap OBJECT
     ../../src/trap/trap.c
+    ../../src/trap/syscall.c
+    ../../src/trap/trap_fault.c
     ../../src/fault_diag.c
+    ../../src/personality/personality_default.c
 )
 
 target_include_directories(k_trap PRIVATE ../../include ../../include/generated ${CMAKE_SOURCE_DIR}/include)

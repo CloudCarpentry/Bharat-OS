@@ -43,6 +43,8 @@ SECTIONS
     {
         *(.rodata)
         *(.rodata.*)
+        *(.lrodata)
+        *(.lrodata.*)
 
         . = ALIGN(8);
         __kern_tests_start = .;
@@ -60,6 +62,8 @@ SECTIONS
     {
         *(.data)
         *(.data.*)
+        *(.ldata)
+        *(.ldata.*)
     }
 
     /* ── Uninitialized data (zeroed by boot stub) ────────────────────── */
@@ -68,6 +72,8 @@ SECTIONS
         bss_start = .;
         *(.bss)
         *(.bss.*)
+        *(.lbss)
+        *(.lbss.*)
         *(COMMON)
         bss_end = .;
     }

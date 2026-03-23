@@ -7,11 +7,11 @@
   },
   "configurePresets": [
     {
-      "name": "linux-host-debug",
-      "displayName": "Linux Host (Debug)",
-      "description": "Host build on Linux using Clang",
+      "name": "host-test",
+      "displayName": "Host Tests (Debug)",
+      "description": "Host build for tests on Linux using Clang",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/linux-host-debug",
+      "binaryDir": "${sourceDir}/build/host-test",
       "toolchainFile": "${sourceDir}/cmake/toolchains/host-linux-clang.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
@@ -21,11 +21,11 @@
       }
     },
     {
-      "name": "linux-host-release",
-      "displayName": "Linux Host (Release)",
-      "description": "Host build on Linux using Clang",
+      "name": "ci-smoke",
+      "displayName": "CI Smoke Tests",
+      "description": "CI smoke tests build on Linux using Clang",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/linux-host-release",
+      "binaryDir": "${sourceDir}/build/ci-smoke",
       "toolchainFile": "${sourceDir}/cmake/toolchains/host-linux-clang.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
@@ -35,133 +35,164 @@
       }
     },
     {
-      "name": "linux-x86_64-dev-debug",
-      "displayName": "Cross x86_64 Dev (Debug)",
-      "description": "Cross-compile x86_64 target on Linux",
+      "name": "x86_64-dev",
+      "displayName": "Cross x86_64 Dev (Release)",
+      "description": "Cross-compile x86_64 target on Linux (Release)",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/linux-x86_64-dev-debug",
+      "binaryDir": "${sourceDir}/build/x86_64-dev",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/x86_64-elf-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BHARAT_DEVICE_PROFILE": "DESKTOP",
+        "BHARAT_TARGET_BOARD": "qemu-virt"
+      }
+    },
+    {
+      "name": "x86_64-debug",
+      "displayName": "Cross x86_64 Dev (Debug)",
+      "description": "Cross-compile x86_64 target on Linux (Debug)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/x86_64-debug",
       "toolchainFile": "${sourceDir}/cmake/toolchains/x86_64-elf-clang.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "BHARAT_DEVICE_PROFILE": "DESKTOP"
+        "BHARAT_DEVICE_PROFILE": "DESKTOP",
+        "BHARAT_TARGET_BOARD": "qemu-virt"
       }
     },
     {
-      "name": "linux-arm64-edge-release",
+      "name": "arm64-edge",
       "displayName": "Cross ARM64 Edge (Release)",
       "description": "Cross-compile ARM64 Edge profile on Linux",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/linux-arm64-edge-release",
+      "binaryDir": "${sourceDir}/build/arm64-edge",
       "toolchainFile": "${sourceDir}/cmake/toolchains/aarch64-elf-clang.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "BHARAT_DEVICE_PROFILE": "EDGE"
+        "BHARAT_DEVICE_PROFILE": "EDGE",
+        "BHARAT_TARGET_BOARD": "virt"
       }
     },
     {
-      "name": "linux-riscv64-drone-release",
-      "displayName": "Cross RISC-V Drone (Release)",
-      "description": "Cross-compile RISC-V Drone profile on Linux",
+      "name": "riscv64-edge",
+      "displayName": "Cross RISC-V Edge (Release)",
+      "description": "Cross-compile RISC-V Edge profile on Linux",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/linux-riscv64-drone-release",
+      "binaryDir": "${sourceDir}/build/riscv64-edge",
       "toolchainFile": "${sourceDir}/cmake/toolchains/riscv64-elf-clang.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "BHARAT_DEVICE_PROFILE": "DRONE"
+        "BHARAT_DEVICE_PROFILE": "EDGE",
+        "BHARAT_TARGET_BOARD": "virt"
       }
     },
     {
-      "name": "linux-arm32-avh-corstone310-debug",
-      "displayName": "Cross ARM32 AVH Corstone-310 (Debug)",
-      "description": "Cross-compile ARM32 AVH Corstone-310 on Linux",
+      "name": "arm32-edge",
+      "displayName": "Cross ARM32 Edge (Release)",
+      "description": "Cross-compile ARM32 Edge profile on Linux",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/linux-arm32-avh-corstone310-debug",
+      "binaryDir": "${sourceDir}/build/arm32-edge",
       "toolchainFile": "${sourceDir}/cmake/toolchains/arm32-elf.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BHARAT_DEVICE_PROFILE": "EDGE",
+        "BHARAT_TARGET_BOARD": "avh-corstone310"
+      }
+    },
+    {
+      "name": "riscv32-edge",
+      "displayName": "Cross RISC-V32 Edge (Release)",
+      "description": "Cross-compile RISC-V32 Edge profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/riscv32-edge",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/riscv32-elf.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BHARAT_DEVICE_PROFILE": "EDGE",
+        "BHARAT_TARGET_BOARD": "virt"
+      }
+    },
+    {
+      "name": "arm64-gui",
+      "displayName": "Cross ARM64 Edge GUI (Debug)",
+      "description": "ARM64 build optimized for GUI/QEMU console development",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/arm64-gui",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/aarch64-elf-clang.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "BHARAT_DEVICE_PROFILE": "EDGE",
-        "BHARAT_BOOT_HW_PROFILE": "avh-corstone310"
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "ON"
       }
     },
     {
-      "name": "windows-hosttools-debug",
-      "displayName": "Windows Host Tools (Debug)",
-      "description": "Host tools build on Windows using Clang",
+      "name": "riscv64-gui",
+      "displayName": "Cross RISC-V64 Edge GUI (Debug)",
+      "description": "RISC-V64 build optimized for GUI/QEMU console development",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/windows-hosttools-debug",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/host-windows-clang.cmake",
+      "binaryDir": "${sourceDir}/build/riscv64-gui",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/riscv64-elf-clang.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "BHARAT_BUILD_HOST_TESTS": "ON",
-        "BHARAT_DEVICE_PROFILE": "DESKTOP",
-        "BHARAT_PERSONALITY_PROFILE": "WINDOWS"
-      }
-    },
-    {
-      "name": "windows-sim-debug",
-      "displayName": "Windows Simulation (Debug)",
-      "description": "Subsystem simulation build on Windows",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/windows-sim-debug",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/host-windows-clang.cmake",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "BHARAT_BUILD_HOST_TESTS": "ON",
-        "BHARAT_DEVICE_PROFILE": "DESKTOP",
-        "BHARAT_PERSONALITY_PROFILE": "WINDOWS"
+        "BHARAT_DEVICE_PROFILE": "EDGE",
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "ON"
       }
     }
   ],
   "buildPresets": [
     {
-      "name": "linux-host-debug",
-      "configurePreset": "linux-host-debug"
+      "name": "host-test",
+      "configurePreset": "host-test"
     },
     {
-      "name": "linux-host-release",
-      "configurePreset": "linux-host-release"
+      "name": "ci-smoke",
+      "configurePreset": "ci-smoke"
     },
     {
-      "name": "linux-x86_64-dev-debug",
-      "configurePreset": "linux-x86_64-dev-debug"
+      "name": "x86_64-dev",
+      "configurePreset": "x86_64-dev"
     },
     {
-      "name": "linux-arm64-edge-release",
-      "configurePreset": "linux-arm64-edge-release"
+      "name": "x86_64-debug",
+      "configurePreset": "x86_64-debug"
     },
     {
-      "name": "linux-riscv64-drone-release",
-      "configurePreset": "linux-riscv64-drone-release"
+      "name": "arm64-edge",
+      "configurePreset": "arm64-edge"
     },
     {
-      "name": "linux-arm32-avh-corstone310-debug",
-      "configurePreset": "linux-arm32-avh-corstone310-debug"
+      "name": "riscv64-edge",
+      "configurePreset": "riscv64-edge"
     },
     {
-      "name": "windows-hosttools-debug",
-      "configurePreset": "windows-hosttools-debug"
+      "name": "arm32-edge",
+      "configurePreset": "arm32-edge"
     },
     {
-      "name": "windows-sim-debug",
-      "configurePreset": "windows-sim-debug"
+      "name": "riscv32-edge",
+      "configurePreset": "riscv32-edge"
+    },
+    {
+      "name": "arm64-gui",
+      "configurePreset": "arm64-gui"
+    },
+    {
+      "name": "riscv64-gui",
+      "configurePreset": "riscv64-gui"
     }
   ],
   "testPresets": [
     {
-      "name": "linux-host-debug",
-      "configurePreset": "linux-host-debug",
+      "name": "host-test",
+      "configurePreset": "host-test",
       "output": {"outputOnFailure": true},
       "execution": {"noTestsAction": "error", "stopOnFailure": true}
     },
     {
-      "name": "linux-host-release",
-      "configurePreset": "linux-host-release",
-      "output": {"outputOnFailure": true},
-      "execution": {"noTestsAction": "error", "stopOnFailure": true}
-    },
-    {
-      "name": "windows-hosttools-debug",
-      "configurePreset": "windows-hosttools-debug",
+      "name": "ci-smoke",
+      "configurePreset": "ci-smoke",
       "output": {"outputOnFailure": true},
       "execution": {"noTestsAction": "error", "stopOnFailure": true}
     }

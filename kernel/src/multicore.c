@@ -3,7 +3,7 @@
 #include "advanced/multikernel.h"
 
 #if defined(__riscv)
-#include "boot/riscv/sbi.h"
+#include "../../arch/riscv/boot/sbi.h"
 #endif
 
 #define KERNEL_STACK_SIZE 16384 // 16 KiB

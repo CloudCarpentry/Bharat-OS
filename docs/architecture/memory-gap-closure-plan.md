@@ -9,6 +9,9 @@ This document converts the current memory-management gap assessment into an impl
 - ✅ Phase 0 (API surface bootstrap) started: memory and HAL contract headers landed under `kernel/include/mm/` and `kernel/include/hal/` to provide stable interfaces for PMM/VM object/aspace/fault/DMA and page-table/TLB/IOMMU work.
 - ✅ VM/aspace scaffolding exists in-tree (`kernel/src/mm/vm/aspace`, `kernel/src/mm/vm/objects`, `kernel/src/mm/vm/fault`) with host tests for overlap, clone, lookup and refcount behavior (`tests/test_vmm_aspace.c`).
 - ✅ HAL page-table and TLB abstraction entry points are wired (`kernel/src/hal/hal_pt.c`, `kernel/src/mm/tlb/tlb_coordinator.c`) with basic range/map/query wrappers and shootdown coordinator plumbing.
+- ✅ HAL PT/TLB capability contracts now exist (`hal_pt_caps_t`, `hal_tlb_caps_t`) with backend-populated declarations and runtime getters (`hal_pt_caps()`, `hal_tlb_caps()`).
+- ✅ Generic `hal_pt_*` range wrappers now include page-by-page fallback paths when backend range ops are unavailable.
+- ✅ Architecture backends now advertise conservative PT/TLB capabilities via file-static cap objects (x86_64/arm64/riscv64/arm32/riscv32/mpu), and generic policy layers consume those caps in obvious decision points.
 - ⚠️ Several areas are still prototype-grade (limited backend implementations, incomplete pager integration, partial object kinds, and incomplete conformance coverage across all architectures).
 
 Bharat-OS has a credible baseline for physical memory management (PMM/buddy allocator) and software-visible mapping bookkeeping (VMM registry). However, a production-grade, architecture-complete virtual memory stack is still in progress:
@@ -21,14 +24,25 @@ Bharat-OS has a credible baseline for physical memory management (PMM/buddy allo
 
 ## 2) Layered target architecture (must keep boundaries strict)
 
-To avoid coupling and architecture leakage, implement and enforce these layers:
+To avoid coupling and architecture leakage, implement and enforce these layers.
+The **logical layers** remain the same, but paths below reflect the **current repository layout**:
 
-1. **PMM layer** (`pmm/`): frame discovery, zones, buddy/contiguous alloc, refcounts, pinned/reserved classes.
-2. **VM Object layer** (`vm/objects/`): anonymous/file/shared/device/DMA objects + COW semantics.
-3. **Address-space layer** (`vm/aspace/`): region reservations, overlap checks, attach/detach object mappings.
-4. **Hardware page-table layer** (`hal/mmu/arch/*`): map/unmap/protect/query + page-table page lifecycle + TLB rules.
-5. **Fault/Pager layer** (`vm/fault/`): lazy allocation, COW break, stack growth, page-in/out policy.
-6. **DMA/IOMMU layer** (`dma/`, `iommu/`): pinning, IOVA domains, cache sync, device-visible mappings.
+1. **PMM layer** (`kernel/src/mm/pmm/`): frame discovery, zones, buddy/contiguous alloc, refcounts, pinned/reserved classes.
+2. **VM Object layer** (`kernel/src/mm/vm/objects/`): anonymous/file/shared/device/DMA objects + COW semantics.
+3. **Address-space layer** (`kernel/src/mm/vm/aspace/`): region reservations, overlap checks, attach/detach object mappings.
+4. **Hardware translation layer** (HAL PT/TLB + backend MMU/MPU code):
+   - generic HAL contracts/wrappers: `kernel/include/hal/`, `hal/hal_pt.c`
+   - architecture backends: `hal/x86_64/`, `hal/arm64/`, `hal/riscv64/`, `hal/arm32/`, `hal/riscv32/`
+   - profile/backbone backends: `hal/common/`, `hal/mmu/`, `hal/mmu_lite/`, `hal/mpu/`
+   - board/platform-specific bring-up pieces stay in their board/arch folders (for example `hal/*/boot_*.c`, platform discovery/topology files under `hal/*/`).
+5. **Fault/Pager layer** (`kernel/src/mm/vm/fault/`): lazy allocation, COW break, stack growth, page-in/out policy.
+6. **DMA/IOMMU layer** (`kernel/src/mm/dma/`, `kernel/src/mm/iommu/` + HAL contracts in `kernel/include/hal/hal_dma.h` and `kernel/include/hal/hal_iommu.h`): pinning, IOVA domains, cache sync, device-visible mappings.
+
+### Layout rule for this repository
+
+- Keep **HAL-generic** code in generic HAL locations (`kernel/include/hal/`, `hal/common/`, `hal/hal_pt.c`).
+- Keep **architecture-specific HAL** code in architecture folders under `hal/` (for example `hal/arm64/`, `hal/riscv64/`, `hal/x86_64/`).
+- Keep **board/platform-specific** details in their respective board/platform files within the relevant arch folder; do not collapse board logic into generic memory layers.
 
 ## 3) Profile guarantees (explicit, non-negotiable)
 

@@ -1,6 +1,7 @@
 #include "arp.h"
 #include "ethernet.h"
 #include "checksum.h"
+#include "ipv4.h"
 //#include <stdio.h>
 
 // A simple ARP cache for Phase 2: max 16 entries
@@ -15,10 +16,8 @@ typedef struct {
 static arp_entry_t arp_cache[ARP_CACHE_SIZE] = {0};
 static int arp_cache_count = 0;
 
-static uint8_t local_ip_arr[4] = {192, 168, 1, 10}; // Phase 2 static IP
-
-static uint32_t get_local_ip() {
-    return *(uint32_t *)local_ip_arr;
+static uint32_t get_local_ip(void) {
+    return ipv4_get_local_ip();
 }
 
 static uint8_t *get_local_mac() {
@@ -65,6 +64,11 @@ int arp_resolve(uint32_t target_ip, uint8_t *out_mac) {
 }
 
 int arp_send_reply(uint32_t target_ip, const uint8_t *target_mac) {
+    uint32_t local_ip = get_local_ip();
+    if (local_ip == 0) {
+        return -1;
+    }
+
     netbuf_t nb;
     netbuf_init(&nb);
 
@@ -82,7 +86,7 @@ int arp_send_reply(uint32_t target_ip, const uint8_t *target_mac) {
     if (!arp_payload) return -1;
 
     eth_addr_copy(arp_payload->ar_sha, get_local_mac());
-    arp_payload->ar_sip = get_local_ip();
+    arp_payload->ar_sip = local_ip;
     eth_addr_copy(arp_payload->ar_tha, target_mac);
     arp_payload->ar_tip = target_ip;
 
@@ -91,6 +95,11 @@ int arp_send_reply(uint32_t target_ip, const uint8_t *target_mac) {
 }
 
 int arp_send_request(uint32_t target_ip) {
+    uint32_t local_ip = get_local_ip();
+    if (local_ip == 0) {
+        return -1;
+    }
+
     netbuf_t nb;
     netbuf_init(&nb);
 
@@ -108,7 +117,7 @@ int arp_send_request(uint32_t target_ip) {
     if (!arp_payload) return -1;
 
     eth_addr_copy(arp_payload->ar_sha, get_local_mac());
-    arp_payload->ar_sip = get_local_ip();
+    arp_payload->ar_sip = local_ip;
     eth_addr_zero(arp_payload->ar_tha); // Target MAC unknown
     arp_payload->ar_tip = target_ip;
 

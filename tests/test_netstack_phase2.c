@@ -112,11 +112,49 @@ void test_loopback_and_udp() {
     printf("test_loopback_and_udp passed\n");
 }
 
+void test_custom_ip_udp() {
+    socket_table_init();
+    virtio_adapter_init();
+
+    // Change local IP
+    uint32_t new_ip = 0x01020304; // 4.3.2.1
+    ipv4_set_local_ip(new_ip);
+
+    int sock = socket_create();
+    assert(sock >= 0);
+
+    // Bind to ANY_IP
+    int res = socket_bind(sock, SOCK_ANY_IP, 1234);
+    assert(res == 0);
+
+    socket_set_rx_callback(sock, test_udp_rx_callback);
+
+    uint8_t test_data[] = "Hello Custom IP UDP!";
+    rx_callback_called = 0;
+
+    // Send to ourselves (simulated through loopback since we changed local_ip to new_ip)
+    // Actually, ipv4_tx sends to loopback if dst_ip == local_ip.
+    res = udp_tx(sock, new_ip, 1234, test_data, sizeof(test_data));
+    assert(res == 0);
+
+    assert(rx_callback_called == 1);
+    assert(last_rx_len == sizeof(test_data));
+    assert(memcmp(last_rx_data, test_data, sizeof(test_data)) == 0);
+
+    printf("test_custom_ip_udp passed\n");
+}
+
 int main(void) {
     test_netbuf();
     test_checksums();
     test_ethernet();
     test_loopback_and_udp();
+    test_custom_ip_udp();
+
+    test_ipv4_tx_fails_when_unconfigured_non_loopback();
+    test_ipv4_loopback_still_selects_loopback_when_unconfigured();
+    test_udp_uses_configured_ipv4_source_selection();
+    test_ipv4_set_local_ip_rejects_loopback_and_broadcast();
 
     printf("All Phase 2 Network Stack tests passed!\n");
     return 0;

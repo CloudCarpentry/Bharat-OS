@@ -3,6 +3,7 @@
 #include "hal/hal_pt.h"
 #include "hal/mmu_ops.h"
 #include "hal/hal_tlb.h"
+#include "mm/tlb.h"
 #include "mm/pmm.h"
 #include "slab.h"
 #include <stddef.h>
@@ -52,6 +53,8 @@ phys_addr_t vmm_get_kernel_root(void) {
 
 int mm_vmm_map_page(address_space_t* as, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
     if (!as || !as->prot_domain) return -1;
+    const hal_pt_caps_t *pt_caps = hal_pt_caps();
+    if (!pt_caps || !pt_caps->supports_sparse_vm) return -1;
 
     // Look up authoritative region
     vm_region_t *region = aspace_lookup_region(as, vaddr);
@@ -68,21 +71,19 @@ int mm_vmm_map_page(address_space_t* as, virt_addr_t vaddr, phys_addr_t paddr, u
     // In legacy MMU-only code, we updated active_hal_pt here
     // And handled a fallback for unmapped regions. The new backend natively handles it.
     if (ret == 0) {
-        hal_tlb_invalidate_page(as, vaddr);
+        tlb_invalidate_all(as, vaddr, PAGE_SIZE, TLB_INV_PAGE);
     }
     return ret;
 }
 
 int mm_vmm_unmap_page(address_space_t* as, virt_addr_t vaddr) {
     if (!as || !as->prot_domain) return -1;
-
-    uintptr_t paddr = 0;
-    prot_domain_query_region(as->prot_domain, vaddr, &paddr, NULL);
+    const hal_pt_caps_t *pt_caps = hal_pt_caps();
+    if (!pt_caps || !pt_caps->supports_sparse_vm) return -1;
 
     int ret = prot_domain_unmap_region(as->prot_domain, vaddr, PAGE_SIZE);
-    if (ret == 0 && paddr != 0) {
-        mm_free_page(paddr);
-        hal_tlb_invalidate_page(as, vaddr);
+    if (ret == 0) {
+        tlb_invalidate_all(as, vaddr, PAGE_SIZE, TLB_INV_PAGE);
     }
     return ret;
 }
@@ -120,6 +121,4 @@ int vmm_map_device_mmio(virt_addr_t vaddr, phys_addr_t paddr, capability_t *cap,
     return vmm_map_page(vaddr, paddr, cap->rights_mask);
 }
 
-void tlb_shootdown(address_space_t *as, virt_addr_t vaddr) {
-    hal_tlb_invalidate_page(as, vaddr);
-}
+// We now just use the generic TLB header

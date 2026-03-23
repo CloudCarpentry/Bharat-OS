@@ -4,6 +4,16 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Mock for kernel_panic for missing symbols in pmm
+__attribute__((weak)) void kernel_panic(const char* msg) {
+    (void)msg;
+    abort();
+}
+
+// Mock for test_device_dma_dump missing from boot tests
+__attribute__((weak)) void test_device_dma_dump(void) {
+}
+
 // Using weak linking so that tests that include actual mm code won't complain about multiple definitions
 __attribute__((weak)) address_space_t* mm_create_address_space(void) {
     static address_space_t g_as = { .root_pt = 0x1000U };
@@ -113,8 +123,10 @@ int __attribute__((weak)) vmm_map_device_mmio(virt_addr_t vaddr, phys_addr_t pad
     return -1;
 }
 int __attribute__((weak)) hal_vmm_update_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
-    (void)root_table; (void)vaddr; (void)paddr; (void)flags;
-    return -1;
+    (void)root_table; (void)vaddr; (void)paddr; (void)flags; return -1;
+}
+
+void __attribute__((weak)) arch_cpu_relax(void) {
 }
 
 __attribute__((weak)) void hal_serial_write(const char *s) { (void)s; }
@@ -256,3 +268,76 @@ __attribute__((weak)) void arch_ext_state_restore(kthread_t *t) {
 
 __attribute__((weak)) void sched_thread_exit_trampoline(void) {
 }
+
+__attribute__((weak)) uint64_t sched_get_ticks(void) { return 0; }
+
+__attribute__((weak)) void mm_switch_active_aspace(address_space_t *aspace) {
+    (void)aspace;
+}
+
+__attribute__((weak)) void vmm_process_local_urpc_messages(uint32_t core_id) {
+    (void)core_id;
+}
+
+__attribute__((weak)) void* physmap_phys_to_virt(phys_addr_t phys) {
+    return (void*)phys;
+}
+
+__attribute__((weak)) int cap_can_transfer(uint32_t type) {
+    (void)type;
+    return 1;
+}
+
+__attribute__((weak)) int cap_transfer_rights_valid(uint32_t current_rights, uint32_t requested_rights) {
+    (void)current_rights;
+    (void)requested_rights;
+    return 1;
+}
+
+__attribute__((weak)) struct capability_table* sched_current_cap_table(void) {
+    return NULL;
+}
+
+#include <stdbool.h>
+
+__attribute__((weak)) bool arch_cpu_has(int feature) {
+    (void)feature;
+    return false;
+}
+
+__attribute__((weak)) void* arch_memcpy(void* dest, const void* src, size_t n) { return memcpy(dest, src, n); }
+__attribute__((weak)) void* arch_memset(void* s, int c, size_t n) { return memset(s, c, n); }
+__attribute__((weak)) void* arch_memmove(void* dest, const void* src, size_t n) { return memmove(dest, src, n); }
+
+__attribute__((weak)) int console_current_phase(void) { return 1; }
+__attribute__((weak)) int aspace_destroy(address_space_t *aspace) { (void)aspace; return 0; }
+__attribute__((weak)) void vm_debug_validate_active_tracking(void) {}
+__attribute__((weak)) int boot_selftest_run_stage(int stage) { (void)stage; return 0; }
+__attribute__((weak)) int bharat_boot_mode_select(void) { return 0; }
+__attribute__((weak)) const char* bharat_boot_mode_name(int mode) { (void)mode; return "NORMAL"; }
+
+
+__attribute__((weak)) void trap_dispatch_syscall(trap_frame_t* frame) {
+    (void)frame;
+}
+
+__attribute__((weak)) void trap_handle_fault(trap_frame_t* frame) {
+    (void)frame;
+}
+
+
+__attribute__((weak)) int vmm_map_page(virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
+    (void)vaddr; (void)paddr; (void)flags;
+    return 0;
+}
+
+__attribute__((weak)) int vmm_unmap_page(virt_addr_t vaddr) {
+    (void)vaddr;
+    return 0;
+}
+
+__attribute__((weak)) int vmm_init(void) {
+    return 0;
+}
+
+__attribute__((weak)) personality_ops_t default_personality_ops = {0};

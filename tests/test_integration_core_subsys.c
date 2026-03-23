@@ -9,8 +9,8 @@
 #include "../kernel/include/advanced/algo_matrix.h"
 #include "../kernel/include/subsystem_profile.h"
 
-#include "../subsys/linux/linux_compat.h"
-#include "../subsys/include/bharat/automotive/automotive.h"
+#include "../personalities/linux/linux_compat.h"
+#include "../services/core/subsysmgr/include/bharat/automotive/automotive.h"
 
 #include "../include/bharat/ui/fb_render.h"
 
