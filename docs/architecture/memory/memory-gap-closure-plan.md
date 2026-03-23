@@ -6,6 +6,23 @@ This document converts the current memory-management gap assessment into an impl
 
 ## Implementation progress snapshot
 
+```mermaid
+gantt
+    title Memory Gap Closure Implementation
+    dateFormat  YYYY-MM-DD
+    section Core APIs
+    Contract Headers           :done,    des1, 2024-06-01, 30d
+    HAL PT/TLB Hooks           :done,    des2, 2024-07-01, 30d
+    section Architecture
+    PMM Hardening              :active,  des3, 2024-08-01, 60d
+    Address Spaces / VM Objects:active,  des4, 2024-10-01, 60d
+    Fault Engine               :active,  des5, 2024-12-01, 60d
+    section Advanced
+    DMA & IOMMU Integration    :         des6, 2025-02-01, 60d
+    NUMA Topology              :         des7, 2025-04-01, 60d
+```
+
+
 - ✅ Phase 0 (API surface bootstrap) started: memory and HAL contract headers landed under `kernel/include/mm/` and `kernel/include/hal/` to provide stable interfaces for PMM/VM object/aspace/fault/DMA and page-table/TLB/IOMMU work.
 - ✅ VM/aspace scaffolding exists in-tree (`kernel/src/mm/vm/aspace`, `kernel/src/mm/vm/objects`, `kernel/src/mm/vm/fault`) with host tests for overlap, clone, lookup and refcount behavior (`tests/test_vmm_aspace.c`).
 - ✅ HAL page-table and TLB abstraction entry points are wired (`kernel/src/hal/hal_pt.c`, `kernel/src/mm/tlb/tlb_coordinator.c`) with basic range/map/query wrappers and shootdown coordinator plumbing.
