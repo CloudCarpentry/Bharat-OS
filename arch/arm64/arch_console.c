@@ -2,13 +2,17 @@
 #include "console/console_types.h"
 #include <stddef.h>
 
+#ifndef BHARAT_ARCH_SERIAL_BASE
+#define BHARAT_ARCH_SERIAL_BASE 0x09000000
+#endif
+
 size_t arch_console_discover(console_device_desc_t* out, size_t max) {
     if (!out || max == 0) return 0;
 
     out[0].type = CONSOLE_BACKEND_SERIAL;
     out[0].name = "PL011";
     out[0].caps = CON_CAP_WRITE_POLL | CON_CAP_EARLY_BOOT | CON_CAP_PANIC_SAFE;
-    out[0].base = 0x09000000;
+    out[0].base = BHARAT_ARCH_SERIAL_BASE;
     out[0].irq = 1; // Dummy
     out[0].early_ok = 1;
     out[0].panic_ok = 1;

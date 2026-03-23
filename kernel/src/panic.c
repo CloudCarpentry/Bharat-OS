@@ -6,6 +6,7 @@
 #include "console/console_core.h"
 #include <stdint.h>
 #include <stddef.h>
+#include "lib/string.h"
 
 #ifndef PANIC_RECOVERY_MODE
 // 0: Halt (Development), 1: Reboot (Production)
@@ -24,10 +25,13 @@ static void pstore_write(const char *msg) {
   size_t max_len = (size_t)(&_pstore_end - &_pstore_start);
   size_t i = 0;
 
+  #define PSTORE_CLEAR_BYTES 256
+
   // Zero out first to reset (in a real system we'd append or manage a ring
   // buffer)
-  for (size_t j = 0; j < 256 && j < max_len; j++) {
-    pstore[j] = 0;
+  size_t clear_len = (max_len < PSTORE_CLEAR_BYTES) ? max_len : PSTORE_CLEAR_BYTES;
+  if (clear_len > 0) {
+    memset(pstore, 0, clear_len);
   }
 
   const char *prefix = "KERNEL PANIC: ";

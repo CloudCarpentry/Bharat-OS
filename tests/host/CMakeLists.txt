@@ -61,6 +61,9 @@ add_test(NAME host_test_diag_debounce COMMAND test_diag_debounce)
 add_executable(test_sensor_core drivers/test_sensor_core.c ../../drivers/class/sensor/sensor_core.c)
 target_include_directories(test_sensor_core PRIVATE ../../drivers/include)
 
+add_executable(test_sensor_core_bench drivers/test_sensor_core_bench.c ../../drivers/class/sensor/sensor_core.c)
+target_include_directories(test_sensor_core_bench PRIVATE ../../drivers/include)
+
 add_executable(test_sensor_freshness services/test_sensor_freshness.c ../../services/sensor_hub/freshness.c)
 target_include_directories(test_sensor_freshness PRIVATE ../../drivers/include)
 
@@ -69,6 +72,7 @@ target_include_directories(test_sensor_plausibility PRIVATE ../../drivers/includ
 target_link_libraries(test_sensor_plausibility PRIVATE m)
 
 add_test(NAME host_test_sensor_core COMMAND test_sensor_core)
+add_test(NAME host_test_sensor_core_bench COMMAND test_sensor_core_bench)
 add_test(NAME host_test_sensor_freshness COMMAND test_sensor_freshness)
 add_test(NAME host_test_sensor_plausibility COMMAND test_sensor_plausibility)
 
@@ -100,6 +104,10 @@ target_include_directories(test_motor_control_core PRIVATE ../../drivers/include
 
 add_test(NAME host_test_motor_control_core COMMAND test_motor_control_core)
 
+# VFS/RamFS Tests
+add_executable(test_ramfs_streq fs/test_ramfs_streq.c)
+target_include_directories(test_ramfs_streq PRIVATE ../../kernel/include)
+add_test(NAME host_test_ramfs_streq COMMAND test_ramfs_streq)
 add_executable(benchmark_actuator drivers/benchmark_actuator.c ../../drivers/class/actuator/actuator_core.c)
 target_include_directories(benchmark_actuator PRIVATE ../../drivers/include)
 add_test(NAME host_benchmark_actuator COMMAND benchmark_actuator)
@@ -124,3 +132,7 @@ add_test(NAME host_test_secure_mem COMMAND test_secure_mem)
 add_executable(test_netmgr_address_table services/test_netmgr_address_table.c ../../services/netmgr/src/address_table.c ../../lib/runtime/src/freestanding_string.c)
 target_include_directories(test_netmgr_address_table PRIVATE ../../services/netmgr/src ../../services/core/subsysmgr/include ../../lib/net/include ../../lib/runtime/include)
 add_test(NAME host_test_netmgr_address_table COMMAND test_netmgr_address_table)
+
+add_executable(test_netmgr_interface_table services/test_netmgr_interface_table.c ../../services/netmgr/src/interface_table.c ../../lib/runtime/src/freestanding_string.c)
+target_include_directories(test_netmgr_interface_table PRIVATE ../../services/netmgr/src ../../services/core/subsysmgr/include ../../lib/net/include ../../lib/runtime/include)
+add_test(NAME host_test_netmgr_interface_table COMMAND test_netmgr_interface_table)
