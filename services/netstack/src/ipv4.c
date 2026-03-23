@@ -79,15 +79,19 @@ int ipv4_rx(netbuf_t *nb) {
     }
 }
 
-int ipv4_tx(netbuf_t *nb, uint32_t dst_ip, uint8_t protocol) {
-    uint32_t src_ip;
-
-    // Determine source IP based on destination
+uint32_t ipv4_get_source_ip(uint32_t dst_ip) {
     if ((dst_ip & 0xFF) == 127) { // 127.x.x.x loopback
-        src_ip = loopback_ip;
-    } else {
-        src_ip = local_ip;
+        return loopback_ip;
     }
+    return local_ip;
+}
+
+void ipv4_set_local_ip(uint32_t ip) {
+    local_ip = ip;
+}
+
+int ipv4_tx(netbuf_t *nb, uint32_t dst_ip, uint8_t protocol) {
+    uint32_t src_ip = ipv4_get_source_ip(dst_ip);
 
     uint16_t total_len = netbuf_len(nb) + sizeof(iphdr_t);
 

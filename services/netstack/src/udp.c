@@ -75,13 +75,10 @@ int udp_tx(int sock_id, uint32_t dst_ip, uint16_t dst_port, const uint8_t *data,
     udph->len = bnet_htons(udp_len);
     udph->check = 0;
 
-    // Use default IP if we don't have a specific local IP bound, but the local IP is
-    // ultimately decided by IPv4 routing.
-    // We'll calculate checksum in IPv4 later, or we can calculate it here by predicting
-    // the source IP. In Phase 2, we know the source IP based on the destination.
-    uint32_t src_ip = 0x0A01A8C0; // 192.168.1.10
-    if ((dst_ip & 0xFF) == 127) {
-        src_ip = 0x0100007F; // 127.0.0.1
+    // Use the socket's bound local IP if available, otherwise determine it based on routing.
+    uint32_t src_ip = sock->local_ip;
+    if (src_ip == SOCK_ANY_IP) {
+        src_ip = ipv4_get_source_ip(dst_ip);
     }
 
     udph->check = net_csum_udp_ipv4(udph, udp_len, src_ip, dst_ip);
