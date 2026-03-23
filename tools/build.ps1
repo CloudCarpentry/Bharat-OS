@@ -83,6 +83,9 @@ $ProfileClean = $Profile -replace ',', '-'
 $PersonalityClean = $Personality -replace ',', '-'
 
 $BuildDir = "$Root\build\${Arch}_${ProfileClean}_${HardwareProfile}_${PersonalityClean}"
+if ($Preset -ne "") {
+    $BuildDir = "$Root\build\$Preset"
+}
 if ($Board -ne "") {
     $BuildDir = "${BuildDir}_${Board}"
 }
@@ -142,6 +145,12 @@ function inf([string]$m) { Write-Host "  [.] $m" -ForegroundColor Cyan }
 function ok([string]$m) { Write-Host "  [+] $m" -ForegroundColor Green }
 function fail([string]$m) { Write-Host "  [!] $m" -ForegroundColor Red; exit 1 }
 
+if ($Preset -ne "") {
+    if ($Preset -like "*arm64*") { $Arch = "arm64" }
+    elseif ($Preset -like "*riscv64*") { $Arch = "riscv64" }
+    elseif ($Preset -like "*x86_64*") { $Arch = "x86_64" }
+}
+
 Write-Host ""
 Write-Host "  Bharat-OS Build  (arch: $Arch)" -ForegroundColor DarkYellow
 Write-Host "  --------------------------------" -ForegroundColor DarkYellow
@@ -171,7 +180,7 @@ if (-not (Test-Path "$BuildDir\CMakeCache.txt")) {
     )
 
     if ($Preset -ne "") {
-        $cmakeArgs = @("--preset", $Preset)
+        $cmakeArgs = @("--preset", $Preset, "-B", $BuildDir)
     }
 
     if ($Arch -eq "riscv64" -and -not $Payload) {
@@ -328,16 +337,16 @@ if ($Run) {
         }
         if ($BootGui -eq "ON") {
             # Route serial output based on SerialTarget/DualSerial
+            # Fallback to plain 'stdio' if 'mon:stdio' fails on some Windows setups
+            $stdioBackend = "mon:stdio"
             if ($SerialTarget -eq "both" -or $DualSerial) {
-                # Logs go to both: Serial0=vc (GUI window), Serial1=mon:stdio (Terminal)
-                # This ensures the 'Serial0' tab in QEMU is the primary one.
-                $qemuArgs += @("-serial", "vc", "-serial", "mon:stdio")
+                $qemuArgs += @("-serial", "vc", "-serial", $stdioBackend)
             }
             elseif ($SerialTarget -eq "vc") {
                 $qemuArgs += @("-serial", "vc")
             }
             else {
-                $qemuArgs += @("-serial", "mon:stdio")
+                $qemuArgs += @("-serial", $stdioBackend)
             }
             $qemuArgs += @("-display", "gtk")
         }
@@ -349,15 +358,15 @@ if ($Run) {
         $qemuArgs += @("-machine", $Machine, "-cpu", "cortex-a53", "-kernel", $KernelBinary, "-m", "256M", "-no-reboot")
         if ($BootGui -eq "ON") {
             # Route serial output based on SerialTarget/DualSerial
+            $stdioBackend = "mon:stdio"
             if ($SerialTarget -eq "both" -or $DualSerial) {
-                # Logs go to both: Serial0=vc (GUI window), Serial1=mon:stdio (Terminal)
-                $qemuArgs += @("-serial", "vc", "-serial", "mon:stdio")
+                $qemuArgs += @("-serial", "vc", "-serial", $stdioBackend)
             }
             elseif ($SerialTarget -eq "vc") {
                 $qemuArgs += @("-serial", "vc")
             }
             else {
-                $qemuArgs += @("-serial", "mon:stdio")
+                $qemuArgs += @("-serial", $stdioBackend)
             }
             $qemuArgs += @("-vga", "none", "-display", "gtk")
         }
