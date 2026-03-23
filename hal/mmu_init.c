@@ -1,6 +1,6 @@
 #include "hal/mmu_ops.h"
 #include "hal/hal_discovery.h"
-#include "hal/hal_pt.h"
+#include "hal/hal.h"
 #include "mm/aspace.h"
 #include "console/console_core.h"
 #include <stddef.h>
@@ -98,6 +98,48 @@ void hal_mmu_final_setup(void) {
         vmm_map_page(0x10000000, 0x10000000, CAP_RIGHT_READ | CAP_RIGHT_WRITE | CAP_RIGHT_DEVICE);
 #endif
 
+        // Map IRQ Controllers
+        hal_serial_write("MMU: Found IRQ Controllers: ");
+        hal_serial_write_hex(discovery->irq_ctrl_count);
+        hal_serial_write("\n");
+
+        for (uint32_t i = 0; i < discovery->irq_ctrl_count; i++) {
+            uint64_t base = discovery->irq_ctrls[i].base;
+            uint64_t size = discovery->irq_ctrls[i].size;
+            hal_serial_write("MMU: Mapping IRQ CTRL ");
+            hal_serial_write_hex(i);
+            hal_serial_write(" at ");
+            hal_serial_write_hex(base);
+            hal_serial_write("\n");
+
+            if (base != 0 && size != 0) {
+                for (uint64_t off = 0; off < size; off += 4096) {
+                    vmm_map_page(base + off, base + off,
+                                 CAP_RIGHT_READ | CAP_RIGHT_WRITE | CAP_RIGHT_DEVICE);
+                }
+            }
+            uint64_t aux_base = discovery->irq_ctrls[i].aux_base;
+            uint64_t aux_size = discovery->irq_ctrls[i].aux_size;
+            if (aux_base != 0 && aux_size != 0) {
+                for (uint64_t off = 0; off < aux_size; off += 4096) {
+                    vmm_map_page(aux_base + off, aux_base + off,
+                                 CAP_RIGHT_READ | CAP_RIGHT_WRITE | CAP_RIGHT_DEVICE);
+                }
+            }
+        }
+
+        // Map Timers
+        for (uint32_t i = 0; i < discovery->timer_count; i++) {
+            uint64_t base = discovery->timers[i].base;
+            uint64_t size = discovery->timers[i].size;
+            if (base != 0 && size != 0) {
+                for (uint64_t off = 0; off < size; off += 4096) {
+                    vmm_map_page(base + off, base + off,
+                                 CAP_RIGHT_READ | CAP_RIGHT_WRITE | CAP_RIGHT_DEVICE);
+                }
+            }
+        }
+
         // Map Framebuffer if valid
         if (discovery->boot_video.valid) {
             uint64_t fb_phys = discovery->boot_video.phys_addr;
@@ -108,6 +150,9 @@ void hal_mmu_final_setup(void) {
             }
         }
 
+        hal_serial_write("MMU: Activating root: ");
+        hal_serial_write_hex(kernel_space.root_pt);
+        hal_serial_write("\n");
         active_mmu->activate(kernel_space.root_pt);
 
 #if defined(__aarch64__)

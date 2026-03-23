@@ -101,13 +101,13 @@ phys_addr_t hal_vmm_init_root(void) {
 static uint64_t hal_get_ttbr0(void) {
     uint64_t ttbr0;
     __asm__ volatile("mrs %0, ttbr0_el1" : "=r"(ttbr0));
-    return ttbr0 & ~0xFFFULL;
+    return ttbr0 & 0x0000FFFFFFFFF000ULL;
 }
 
 static uint64_t hal_get_ttbr1(void) {
     uint64_t ttbr1;
     __asm__ volatile("mrs %0, ttbr1_el1" : "=r"(ttbr1));
-    return ttbr1 & ~0xFFFULL;
+    return ttbr1 & 0x0000FFFFFFFFF000ULL;
 }
 
 void hal_tlbi_page(virt_addr_t vaddr) {
@@ -154,7 +154,7 @@ static void arm64_mmu_destroy_table_recursive(phys_addr_t table, int level) {
                 if ((level == 3 || level == 2) && (pt->entries[i] & ARM64_MMU_DESCRIPTOR_TABLE) == ARM64_MMU_DESCRIPTOR_BLOCK) {
                     continue; // Huge page block, don't recurse
                 }
-                arm64_mmu_destroy_table_recursive(pt->entries[i] & ~0xFFFULL, level - 1);
+                arm64_mmu_destroy_table_recursive(pt->entries[i] & 0x0000FFFFFFFFF000ULL, level - 1);
             }
         }
     }
@@ -247,27 +247,35 @@ static int arm64_mmu_query(phys_addr_t root, virt_addr_t virt, phys_addr_t *phys
 }
 
 static void arm64_mmu_activate(phys_addr_t root) {
-    // In Bharat-v3-64, we activate the provided root table in TTBR0.
-    // We assume the kernel is identity-mapped (or correctly mapped in the provided table).
-    // This is called AFTER we've mapped the RAM and (optionally) the framebuffer.
+    // In Bharat-v3-64, we activate the provided root table in BOTH TTBR0 and TTBR1.
+    // Low half (0x0...): User/Identity space (TTBR0)
+    // High half (0xFFFF...): Kernel space (TTBR1)
+    // We assume the kernel is identity-mapped OR correctly mapped in the high-half
+    // part of the provided table.
 
     uint64_t mair = (0xFFLL << 0)  | // Attr 0: Normal WB/WA/RA
                     (0x04LL << 8)  | // Attr 1: Device-nGnRE
                     (0x00LL << 16);  // Attr 2: Device-nGnRnE
 
-    // TCR_EL1:
-    // T0SZ=16 (48-bit VA)
-    // TG0=0 (4KB)
-    // SH0=3 (Inner Shareable)
-    // ORGN0=1 (Normal WB/WA)
-    // IRGN0=1 (Normal WB/WA)
+    // TCR_EL1 Configuration:
+    // T0SZ=16, T1SZ=16 (48-bit VA for both halves)
+    // TG0=0 (4KB for TTBR0), TG1=2 (4KB for TTBR1)
+    // SH0=3, SH1=3 (Inner Shareable)
+    // ORGN0=1, ORGN1=1 (Normal WB/WA)
+    // IRGN0=1, IRGN1=1 (Normal WB/WA)
     // IPS=2 (40-bit PA)
-    uint64_t tcr = (16ULL << 0) | (3ULL << 12) | (1ULL << 10) | (1ULL << 8) | (0ULL << 14) | (2ULL << 32);
+    uint64_t tcr = (16ULL << 0)  | (16ULL << 16) | // T0SZ, T1SZ
+                   (3ULL << 12)  | (3ULL << 28)  | // SH0, SH1
+                   (1ULL << 10)  | (1ULL << 26)  | // ORGN0, ORGN1
+                   (1ULL << 8)   | (1ULL << 24)  | // IRGN0, IRGN1
+                   (0ULL << 14)  | (2ULL << 30)  | // TG0, TG1
+                   (2ULL << 32);                   // IPS
 
     asm volatile(
         "msr mair_el1, %1\n"
         "msr tcr_el1, %2\n"
         "msr ttbr0_el1, %0\n"
+        "msr ttbr1_el1, %0\n"
         "isb\n"
         "tlbi vmalle1is\n"
         "dsb ish\n"

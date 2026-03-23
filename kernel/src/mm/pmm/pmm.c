@@ -718,12 +718,16 @@ int mm_pmm_init(uint32_t magic, const boot_info_t *boot) {
   active_numa_nodes = 0U;
 
   pmm_memory_map_t map;
+  for (uint32_t i = 0; i < MAX_PMM_REGIONS; i++) {
+      map.regions[i].base_addr = 0;
+      map.regions[i].length = 0;
+  }
   map.region_count = 0;
 
   system_discovery_t *discovery = hal_get_system_discovery();
   if (discovery->topology.mem_region_count > 0) {
     for (uint32_t i = 0; i < discovery->topology.mem_region_count; i++) {
-      if (discovery->topology.mem_regions[i].type == HAL_MEM_RAM) {
+      if (discovery->topology.mem_regions[i].type == 1) { // HAL_MEM_RAM
         if (map.region_count < MAX_PMM_REGIONS) {
           map.regions[map.region_count].base_addr =
               discovery->topology.mem_regions[i].base;

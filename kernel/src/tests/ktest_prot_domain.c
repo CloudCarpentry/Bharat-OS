@@ -1,6 +1,7 @@
 #include "../../include/tests/ktest.h"
 #include "../../include/mm/prot_domain.h"
 #include "../../include/arch/arch_caps.h"
+#include "../../include/hal/hal.h"
 
 static bool test_prot_domain_create_destroy(void) {
     prot_domain_t* domain = prot_domain_create();
@@ -77,6 +78,11 @@ static bool test_mmu_sparse_mapping(void) {
     uintptr_t paddr = 0;
     ret = prot_domain_query_region(domain, 0x10000000, &paddr, NULL);
     KTEST_ASSERT(ret == 0, "Sparse query failed");
+    if (paddr != 0x80000000) {
+        hal_serial_write("PMM: Error: Expected 0x80000000, got 0x");
+        hal_serial_write_hex(paddr);
+        hal_serial_write("\n");
+    }
     KTEST_ASSERT(paddr == 0x80000000, "Sparse query address mismatch");
 
     prot_domain_destroy(domain);
