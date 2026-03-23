@@ -28,10 +28,17 @@ void* early_alloc(size_t size, size_t alignment) {
     void* ptr = (void*)(uintptr_t)early_bump_ptr;
     early_bump_ptr += size;
 
+    // Host tests may allocate a dummy buffer and set base to it
+    // but the linker script symbol `_end` doesn't work, we set it manually via early_alloc_init
+    // The issue here is the size mapping might overflow or hit an unmapped region
+    // The test logic sets `g_early_alloc_buf` which is fully valid. We'll just leave the memset.
+
     // Zero the allocated memory
-    uint8_t* p = (uint8_t*)ptr;
-    for (size_t i = 0; i < size; i++) {
-        p[i] = 0;
+    if (size > 0 && ptr) {
+        uint8_t* p = (uint8_t*)ptr;
+        for (size_t i = 0; i < size; i++) {
+            p[i] = 0;
+        }
     }
 
     return ptr;
