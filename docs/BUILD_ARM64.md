@@ -90,7 +90,7 @@ While runtime execution is currently pending full validation on `arm64`, you can
 # Serial output to terminal
 qemu-system-aarch64 -machine virt -cpu cortex-a57 \
     -kernel build/arm64/kernel.elf \
-    -m 256M -nographic -serial mon:stdio -no-reboot
+    -m 256M -nographic -serial stdio -no-reboot
 ```
 
 > **Note:** To exit QEMU, press `Ctrl+A` followed by `X`. To use a separate QEMU window, remove `-nographic` and use `-serial stdio`.

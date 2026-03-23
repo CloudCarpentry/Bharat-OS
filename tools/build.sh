@@ -236,11 +236,11 @@ if [ "$RUN" = true ]; then
 
     if [ "$ARCH" == "x86_64" ]; then
         GUI_ARGS=""
-        SERIAL_ARGS="-serial mon:stdio"
+        SERIAL_ARGS="-serial stdio"
         if [ "$BOOT_GUI" = "ON" ] || [ "$BOOT_GUI" = "true" ] || [ "$BOOT_GUI" = "1" ]; then
             GUI_ARGS="-vga std"
             if [ "$DUAL_SERIAL" = true ]; then
-                SERIAL_ARGS="-serial mon:stdio -serial vc"
+                SERIAL_ARGS="-serial stdio -serial vc"
             else
                 SERIAL_ARGS="-serial vc"
             fi
@@ -256,13 +256,13 @@ if [ "$RUN" = true ]; then
 
     elif [ "$ARCH" == "riscv64" ]; then
         GUI_ARGS=""
-        SERIAL_ARGS="-serial mon:stdio"
+        SERIAL_ARGS="-serial stdio"
         if [ "$BOOT_GUI" = "ON" ] || [ "$BOOT_GUI" = "true" ] || [ "$BOOT_GUI" = "1" ]; then
             # Route serial output to the virtual console in the QEMU graphical window.
             # Without a firmware or GPU, we drop virtio-gpu and force QEMU to display the 'vc' directly on the main window tab.
             GUI_ARGS="-display gtk"
             if [ "$DUAL_SERIAL" = true ]; then
-                SERIAL_ARGS="-serial mon:stdio -serial vc"
+                SERIAL_ARGS="-serial stdio -serial vc"
             else
                 SERIAL_ARGS="-serial vc"
             fi
@@ -279,13 +279,13 @@ if [ "$RUN" = true ]; then
 
     elif [ "$ARCH" == "arm64" ]; then
         GUI_ARGS=""
-        SERIAL_ARGS="-serial mon:stdio"
+        SERIAL_ARGS="-serial stdio"
         if [ "$BOOT_GUI" = "ON" ] || [ "$BOOT_GUI" = "true" ] || [ "$BOOT_GUI" = "1" ]; then
             # Route serial output to the virtual console in the QEMU graphical window.
             # Without a firmware or GPU, we drop virtio-gpu and force QEMU to display the 'vc' directly on the main window tab.
             GUI_ARGS="-vga none -display gtk"
             if [ "$DUAL_SERIAL" = true ]; then
-                SERIAL_ARGS="-serial mon:stdio -serial vc"
+                SERIAL_ARGS="-serial stdio -serial vc"
             else
                 SERIAL_ARGS="-serial vc"
             fi
