@@ -296,3 +296,36 @@ __attribute__((weak)) bool arch_cpu_has(int feature) {
 __attribute__((weak)) void* arch_memcpy(void* dest, const void* src, size_t n) { return memcpy(dest, src, n); }
 __attribute__((weak)) void* arch_memset(void* s, int c, size_t n) { return memset(s, c, n); }
 __attribute__((weak)) void* arch_memmove(void* dest, const void* src, size_t n) { return memmove(dest, src, n); }
+
+__attribute__((weak)) int console_current_phase(void) { return 1; }
+__attribute__((weak)) int aspace_destroy(address_space_t *aspace) { (void)aspace; return 0; }
+__attribute__((weak)) void vm_debug_validate_active_tracking(void) {}
+__attribute__((weak)) int boot_selftest_run_stage(int stage) { (void)stage; return 0; }
+__attribute__((weak)) int bharat_boot_mode_select(void) { return 0; }
+__attribute__((weak)) const char* bharat_boot_mode_name(int mode) { (void)mode; return "NORMAL"; }
+
+
+__attribute__((weak)) void trap_dispatch_syscall(trap_frame_t* frame) {
+    (void)frame;
+}
+
+__attribute__((weak)) void trap_handle_fault(trap_frame_t* frame) {
+    (void)frame;
+}
+
+
+__attribute__((weak)) int vmm_map_page(virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
+    (void)vaddr; (void)paddr; (void)flags;
+    return 0;
+}
+
+__attribute__((weak)) int vmm_unmap_page(virt_addr_t vaddr) {
+    (void)vaddr;
+    return 0;
+}
+
+__attribute__((weak)) int vmm_init(void) {
+    return 0;
+}
+
+__attribute__((weak)) personality_ops_t default_personality_ops = {0};
