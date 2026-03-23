@@ -253,7 +253,12 @@ You can control where kernel logs are sent when running in QEMU:
 - `-SerialTarget both` (or `-DualSerial`): Logs go to BOTH. The GUI window remains the primary (`Serial0`), and the terminal is secondary (`Serial1`).
 
 > [!TIP]
-> Use `-SerialTarget vc` for the most seamless GUI development experience on ARM64 and RISC-V, as it avoids cluttering your terminal and keeps everything in one window.
+> Use `-SerialTarget vc` for the most seamless GUI development experience on ARM64 and RISC-V, as it avoids cluttering your terminal and keeps everything in one window. This also bypasses common "mon:stdio" errors on Windows.
+
+### Troubleshooting: `qemu_add_wait_object: failed`
+If you see the error `could not connect serial device to character backend 'mon:stdio'` on Windows, it is likely due to terminal limitations. 
+
+**Solution:** Use `-SerialTarget vc` to route logs exclusively to the QEMU window, bypassing the terminal's `mon:stdio` backend.
 
 **Example Build Commands:**
 ```powershell
