@@ -307,6 +307,90 @@
         "BHARAT_TARGET_BOARD": "virt",
         "BHARAT_BOOT_GUI": "OFF"
       }
+    },
+    {
+      "name": "x86_64-laptop-debug",
+      "displayName": "Cross x86_64 Laptop (Debug)",
+      "description": "Cross-compile x86_64 Laptop profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/x86_64-laptop-debug",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/x86_64-elf-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BHARAT_DEVICE_PROFILE": "LAPTOP",
+        "BHARAT_TARGET_BOARD": "qemu-virt",
+        "BHARAT_BOOT_GUI": "ON"
+      }
+    },
+    {
+      "name": "x86_64-laptop-release",
+      "displayName": "Cross x86_64 Laptop (Release)",
+      "description": "Cross-compile x86_64 Laptop profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/x86_64-laptop-release",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/x86_64-elf-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BHARAT_DEVICE_PROFILE": "LAPTOP",
+        "BHARAT_TARGET_BOARD": "qemu-virt",
+        "BHARAT_BOOT_GUI": "ON"
+      }
+    },
+    {
+      "name": "arm64-laptop-debug",
+      "displayName": "Cross ARM64 Laptop (Debug)",
+      "description": "Cross-compile ARM64 Laptop profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/arm64-laptop-debug",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/aarch64-elf-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BHARAT_DEVICE_PROFILE": "LAPTOP",
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "ON"
+      }
+    },
+    {
+      "name": "arm64-laptop-release",
+      "displayName": "Cross ARM64 Laptop (Release)",
+      "description": "Cross-compile ARM64 Laptop profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/arm64-laptop-release",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/aarch64-elf-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BHARAT_DEVICE_PROFILE": "LAPTOP",
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "ON"
+      }
+    },
+    {
+      "name": "riscv64-laptop-debug",
+      "displayName": "Cross RISC-V64 Laptop (Debug)",
+      "description": "Cross-compile RISC-V64 Laptop profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/riscv64-laptop-debug",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/riscv64-elf-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BHARAT_DEVICE_PROFILE": "LAPTOP",
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "ON"
+      }
+    },
+    {
+      "name": "riscv64-laptop-release",
+      "displayName": "Cross RISC-V64 Laptop (Release)",
+      "description": "Cross-compile RISC-V64 Laptop profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/riscv64-laptop-release",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/riscv64-elf-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BHARAT_DEVICE_PROFILE": "LAPTOP",
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "ON"
+      }
     }
   ],
   "buildPresets": [
@@ -397,12 +481,102 @@
     {
       "name": "riscv64-medical-release",
       "configurePreset": "riscv64-medical-release"
+    },
+    {
+      "name": "x86_64-laptop-debug",
+      "configurePreset": "x86_64-laptop-debug"
+    },
+    {
+      "name": "x86_64-laptop-release",
+      "configurePreset": "x86_64-laptop-release"
+    },
+    {
+      "name": "arm64-laptop-debug",
+      "configurePreset": "arm64-laptop-debug"
+    },
+    {
+      "name": "arm64-laptop-release",
+      "configurePreset": "arm64-laptop-release"
+    },
+    {
+      "name": "riscv64-laptop-debug",
+      "configurePreset": "riscv64-laptop-debug"
+    },
+    {
+      "name": "riscv64-laptop-release",
+      "configurePreset": "riscv64-laptop-release"
     }
   ],
   "testPresets": [
     {
       "name": "host-test",
       "configurePreset": "host-test",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "x86_64-laptop-debug",
+      "configurePreset": "x86_64-laptop-debug",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "x86_64-laptop-release",
+      "configurePreset": "x86_64-laptop-release",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "arm64-laptop-debug",
+      "configurePreset": "arm64-laptop-debug",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "arm64-laptop-release",
+      "configurePreset": "arm64-laptop-release",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "riscv64-laptop-debug",
+      "configurePreset": "riscv64-laptop-debug",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "riscv64-laptop-release",
+      "configurePreset": "riscv64-laptop-release",
       "output": {
         "outputOnFailure": true
       },

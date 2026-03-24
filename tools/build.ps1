@@ -336,6 +336,15 @@ if ($Run) {
         # Generic edge / robot - add network and block device (stub)
         $ProfileArgs += @("-netdev", "user,id=net0", "-device", "virtio-net-pci,netdev=net0")
     }
+    elseif ($ProfUpper -eq "LAPTOP") {
+        # Laptop / Workstation - add tablet pointer, keyboard, and basic network
+        $ProfileArgs += @("-device", "virtio-tablet-pci", "-device", "virtio-keyboard-pci", "-netdev", "user,id=net0", "-device", "virtio-net-pci,netdev=net0")
+
+        # Add ACPI/Q35 base for x86_64
+        if ($Arch -eq "x86_64") {
+            $ProfileArgs += @("-machine", "q35", "-m", "1G")
+        }
+    }
 
     $stdioBackend = "mon:stdio"
     if ($E2e) {
@@ -344,7 +353,13 @@ if ($Run) {
     $serialArgs = @()
 
     if ($Arch -eq "x86_64") {
-        $qemuArgs += @("-kernel", $KernelBinary, "-m", "256M", "-no-reboot")
+        $MemArg = @("-m", "256M")
+        if ($ProfileArgs -contains "-m") {
+            $MemArg = @()
+        }
+        $qemuArgs += @("-kernel", $KernelBinary)
+        $qemuArgs += $MemArg
+        $qemuArgs += @("-no-reboot")
         $qemuArgs += $ProfileArgs
         if ($BootGui -eq "ON") {
             if ($DualSerial) {

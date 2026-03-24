@@ -259,6 +259,14 @@ if [ "$RUN" = true ]; then
     elif [ "$PROFILE_UPPER" == "EDGE" ] || [ "$PROFILE_UPPER" == "ROBOT" ]; then
         # Generic edge / robot - add network and block device (stub)
         PROFILE_ARGS="-netdev user,id=net0 -device virtio-net-pci,netdev=net0"
+    elif [ "$PROFILE_UPPER" == "LAPTOP" ]; then
+        # Laptop / Workstation - add tablet pointer, keyboard, and basic network
+        PROFILE_ARGS="-device virtio-tablet-pci -device virtio-keyboard-pci -netdev user,id=net0 -device virtio-net-pci,netdev=net0"
+
+        # Add ACPI battery for x86_64
+        if [ "$ARCH" == "x86_64" ]; then
+            PROFILE_ARGS="${PROFILE_ARGS} -machine q35 -m 1G"
+        fi
     fi
 
     if [ "$ARCH" == "x86_64" ]; then
@@ -267,6 +275,12 @@ if [ "$RUN" = true ]; then
         if [ "$E2E" = true ]; then
             SERIAL_ARGS="-serial file:qemu_e2e.log"
         fi
+        # Filter out default -m if laptop overrode it
+        M_ARG="-m 256M"
+        if [[ "$PROFILE_ARGS" == *"-m 1G"* ]]; then
+            M_ARG=""
+        fi
+
         if [ "$BOOT_GUI" = "ON" ] || [ "$BOOT_GUI" = "true" ] || [ "$BOOT_GUI" = "1" ]; then
             GUI_ARGS="-vga std"
             if [ "$DUAL_SERIAL" = true ]; then
@@ -279,7 +293,7 @@ if [ "$RUN" = true ]; then
         fi
         qemu-system-x86_64 \
             -kernel "$KERNEL_BIN" \
-            -m 256M \
+            $M_ARG \
             $SERIAL_ARGS \
             -no-reboot \
             $GUI_ARGS \

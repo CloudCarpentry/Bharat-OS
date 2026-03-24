@@ -246,6 +246,16 @@ The `ROBOT` and `EDGE` profiles inject basic virtio networking to represent gene
 ./build.sh riscv64 --profile=ROBOT --run
 ```
 
+**5. Laptops & Workstations**
+The `LAPTOP` profile targets traditional PC or workstation form factors. It injects a virtio network device, as well as a virtio-tablet and virtio-keyboard to emulate typical human interface devices. For `x86_64` targets, it automatically switches the QEMU machine to `q35` and expands the memory to 1G to support ACPI and modern PC buses.
+```bash
+# Bash
+./build.sh x86_64 --profile=LAPTOP --run
+
+# PowerShell
+.\build.ps1 -Arch arm64 -Profile LAPTOP -Run
+```
+
 ### End-to-End (E2E) Test Support
 
 For Continuous Integration (CI) and automated validation, you can pass the `--e2e` (Bash) or `-E2e` (PowerShell) flag.
