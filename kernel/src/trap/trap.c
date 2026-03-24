@@ -224,6 +224,12 @@ int trap_dispatch(trap_frame_t *frame, const trap_info_t *info) {
     void hal_timer_isr(void);
     hal_interrupt_handle_trap_irq(info->arch_code, hal_timer_isr,
                                   trap_device_irq_dispatch, NULL);
+
+    if (info->trap_class == TRAP_CLASS_IPI) {
+        // IPI could be a remote enqueue notification. We call sched_reschedule
+        // to drain the remote inbox and possibly preempt the current thread.
+        sched_reschedule();
+    }
     return 0;
   }
   case TRAP_CLASS_SYSCALL: {
