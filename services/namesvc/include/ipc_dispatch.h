@@ -2,7 +2,7 @@
 #define NAMESVC_IPC_DISPATCH_H
 
 #include <bharat/namesvc/namesvc_ipc.h>
-#include <uapi/bharat/ipc/contract.h>
+#include <bharat/uapi/ipc/contract.h>
 
 #ifdef __cplusplus
 extern "C" {

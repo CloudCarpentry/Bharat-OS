@@ -9,7 +9,7 @@ target_include_directories(bharat_libpacket PUBLIC
     include
 )
 
-target_link_libraries(bharat_libpacket PUBLIC bharat_freestanding bharat_kernel_buildopts)
+target_link_libraries(bharat_libpacket PUBLIC bharat_freestanding)
 bharat_configure_userspace_library(bharat_libpacket)
 
 # Alias for compatibility

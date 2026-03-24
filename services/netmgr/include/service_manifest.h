@@ -1,7 +1,7 @@
 #ifndef NETMGR_SERVICE_MANIFEST_H
 #define NETMGR_SERVICE_MANIFEST_H
 
-#include <uapi/bharat/ipc/manifest.h>
+#include <bharat/uapi/ipc/manifest.h>
 
 #ifdef __cplusplus
 extern "C" {

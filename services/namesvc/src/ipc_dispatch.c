@@ -1,10 +1,14 @@
 #include <ipc_dispatch.h>
 #include <registry.h>
 #include <ipc/contract_validate.h>
-#include <string.h>
+
+static void custom_memset_ipc(void *s, int c, unsigned long n) {
+    unsigned char *p = s;
+    while(n--) *p++ = (unsigned char)c;
+}
 
 void namesvc_ipc_handle_request(const bharat_ipc_contract_header_t *hdr, const namesvc_ipc_req_t *req, namesvc_ipc_res_t *res) {
-    memset(res, 0, sizeof(namesvc_ipc_res_t));
+    custom_memset_ipc(res, 0, sizeof(namesvc_ipc_res_t));
 
     if (!hdr || !req) {
         res->status = NAMESVC_STATUS_ERR_INVAL;

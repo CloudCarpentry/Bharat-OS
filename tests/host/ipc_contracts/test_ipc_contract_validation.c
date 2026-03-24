@@ -1,6 +1,6 @@
 #include <ipc/contract_validate.h>
-#include <uapi/bharat/ipc/contract.h>
-#include <uapi/bharat/ipc/status.h>
+#include <bharat/uapi/ipc/contract.h>
+#include <bharat/uapi/ipc/status.h>
 #include <assert.h>
 #include <stdio.h>
 

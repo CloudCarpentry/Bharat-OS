@@ -1,5 +1,5 @@
 #include "kernel/status.h"
-#include "uapi/sys_errno.h"
+#include <bharat/uapi/sys_errno.h>
 
 int kstatus_to_syserr(kstatus_t st) {
     if (st == K_OK) return 0;
