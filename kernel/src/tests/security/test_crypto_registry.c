@@ -1,5 +1,5 @@
 #include <stdint.h>
-#include <string.h>
+#include <lib/string.h>
 
 #include <bharat/uapi/sys_errno.h>
 #include <bharat/uapi/crypto/contract.h>
@@ -8,10 +8,8 @@
 #include <security/crypto_registry.h>
 #include <tests/ktest.h>
 
-/* Mock memory allocator stubs for tests */
-#include <stdlib.h>
-void *kmalloc(size_t size) { return malloc(size); }
-void kfree(void *ptr) { free(ptr); }
+/* Use kernel memory allocator stubs for tests */
+#include <slab.h>
 
 /* Mock provider implementation */
 static int mock_invoke(crypto_op_args_t *args) {

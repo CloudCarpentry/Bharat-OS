@@ -10,6 +10,8 @@ add_library(k_core OBJECT
     ../../src/security/audit.c
     ../../src/security/secure_boot.c
     ../../src/security/vfio.c
+    ../../src/security/crypto_registry.c
+    ../../src/security/crypto_caps.c
     ../../src/lib/string.c
     ../../../arch/common/memops_scalar.c
     $<$<STREQUAL:${ARCH},x86_64>:../../../arch/x86/x86_64/memops.c>
