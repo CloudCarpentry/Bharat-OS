@@ -7,7 +7,8 @@
 
 // Early boot entry for ARM32
 void kernel_main(uintptr_t fdt_ptr) {
-    boot_info_t boot = {0};
+    boot_info_t boot;
+    boot_info_init(&boot);
 
     // Abstracted FDT validation & parsing logic
     if (fdt_ptr == 0 || !fdt_is_valid((void*)fdt_ptr)) {
