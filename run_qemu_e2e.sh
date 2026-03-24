@@ -1,128 +1,207 @@
 #!/usr/bin/env bash
-# run_qemu_e2e.sh - End to End QEMU test suite for Bharat-OS boot
+# run_qemu_e2e.sh - End-to-end QEMU harness for multi-arch/profile Bharat-OS boots.
 
-set -e
+set -euo pipefail
 
-# Timout for each qemu boot (in seconds)
-TIMEOUT=10
+TIMEOUT_SECS="${QEMU_TIMEOUT_SECS:-15}"
+STRICT_QEMU="${STRICT_QEMU:-0}"
 
-ARCHITECTURES=("x86_64" "arm64" "riscv64")
-FAILED=0
+# Format: arch:profile:personality (profile/personality are passed to CMake as uppercase enums)
+DEFAULT_MATRIX=(
+  "x86_64:desktop:none"
+  "x86_64:laptop:none"
+  "riscv64:edge:none"
+  "arm64:drone:none"
+)
 
-echo "======================================"
-echo " Starting End-to-End QEMU Boot Tests"
-echo "======================================"
+if [[ -n "${E2E_MATRIX:-}" ]]; then
+  # shellcheck disable=SC2206
+  MATRIX=( ${E2E_MATRIX} )
+else
+  MATRIX=("${DEFAULT_MATRIX[@]}")
+fi
+
+PASS_COUNT=0
+FAIL_COUNT=0
+SKIP_COUNT=0
 
 mkdir -p e2e_logs
 
-run_arch() {
-    local arch=$1
-    echo "[*] Testing Architecture: $arch"
+find_kernel_elf() {
+  local build_dir="$1"
+  local candidate="${build_dir}/kernel/kernel.elf"
+  if [[ -f "$candidate" ]]; then
+    printf '%s\n' "$candidate"
+    return 0
+  fi
 
-    local logfile="e2e_logs/boot_${arch}.log"
-    rm -f "$logfile"
+  candidate="$(find "$build_dir" -maxdepth 4 -type f -name kernel.elf | head -n 1 || true)"
+  if [[ -n "$candidate" ]]; then
+    printf '%s\n' "$candidate"
+    return 0
+  fi
 
-    echo "    -> Configuring..."
-    # Bypass wrapper to prevent presets overriding our settings. Using generic profile.
-    cmake -S . -B build_e2e_${arch} \
-        -DBHARAT_ARCH_FAMILY=${arch} \
-        -DBHARAT_DEVICE_PROFILE=DESKTOP \
-        -DBHARAT_PERSONALITY_PROFILE=NONE > /dev/null
-
-    echo "    -> Building..."
-    cmake --build build_e2e_${arch} --target kernel.elf > /dev/null
-
-    local qemu_cmd=""
-    local kernel_path="build_e2e_${arch}/kernel.elf"
-
-    if [ "$arch" = "x86_64" ]; then
-        qemu_cmd="qemu-system-x86_64 -kernel $kernel_path -m 128 -nographic -no-reboot -chardev stdio,id=char0,mux=on -serial chardev:char0 -mon chardev=char0,mode=readline"
-    elif [ "$arch" = "arm64" ]; then
-        # According to memory: when booting ARM64 kernels in QEMU using -kernel, use raw binary!
-        if [ -f "$kernel_path" ]; then
-            objcopy -O binary $kernel_path build_e2e_${arch}/Image
-            qemu_cmd="qemu-system-aarch64 -M virt -cpu cortex-a53 -m 128 -nographic -no-reboot -chardev stdio,id=char0,mux=on -serial chardev:char0 -mon chardev=char0,mode=readline -kernel build_e2e_${arch}/Image"
-        else
-            # fallback mock command if kernel failed to build
-            qemu_cmd="qemu-system-aarch64-mock"
-        fi
-    elif [ "$arch" = "riscv64" ]; then
-        qemu_cmd="qemu-system-riscv64 -M virt -m 128 -nographic -no-reboot -chardev stdio,id=char0,mux=on -serial chardev:char0 -mon chardev=char0,mode=readline -kernel $kernel_path"
-    fi
-
-    echo "    -> Booting in QEMU (timeout ${TIMEOUT}s)..."
-
-    # Check if QEMU is installed
-    local qemu_bin=$(echo $qemu_cmd | awk '{print $1}')
-    if ! command -v $qemu_bin >/dev/null 2>&1; then
-        echo "    [WARN] $qemu_bin not found. Skipping execution."
-        echo "BOOT: pmm initialized" > "$logfile"
-        echo "BOOT: vmm initialized" >> "$logfile"
-        echo "Hello World from Bharat-OS Kernel!" >> "$logfile"
-    else
-        # Run QEMU in the background, pipe output to log
-        $qemu_cmd > "$logfile" 2>&1 &
-    fi
-    local qemu_pid=$!
-
-    # Wait for the magic strings or timeout
-    local start_time=$(date +%s)
-    local booted_pmm=0
-    local booted_vmm=0
-    local booted_hello=0
-    local panic=0
-
-    while true; do
-        if grep -q "BOOT: pmm initialized" "$logfile"; then booted_pmm=1; fi
-        if grep -q "BOOT: vmm initialized" "$logfile"; then booted_vmm=1; fi
-        if grep -q "Hello World from Bharat-OS Kernel!" "$logfile"; then booted_hello=1; fi
-        if grep -q "\[PANIC\]" "$logfile"; then panic=1; fi
-
-        if [ "$booted_pmm" -eq 1 ] && [ "$booted_vmm" -eq 1 ] && [ "$booted_hello" -eq 1 ]; then
-            break
-        fi
-
-        if [ "$panic" -eq 1 ]; then
-            break
-        fi
-
-        local current_time=$(date +%s)
-        local elapsed=$((current_time - start_time))
-        if [ $elapsed -ge $TIMEOUT ]; then
-            break
-        fi
-
-        sleep 0.5
-    done
-
-    # Kill QEMU
-    kill -9 $qemu_pid 2>/dev/null || true
-    wait $qemu_pid 2>/dev/null || true
-
-    if [ "$panic" -eq 1 ]; then
-        echo "    [FAIL] Kernel PANIC detected!"
-        FAILED=1
-    elif [ "$booted_pmm" -eq 1 ] && [ "$booted_vmm" -eq 1 ] && [ "$booted_hello" -eq 1 ]; then
-        echo "    [PASS] Boot sequence completed successfully!"
-    else
-        echo "    [FAIL] Boot sequence timed out or missing stages."
-        echo "           PMM: $booted_pmm, VMM: $booted_vmm, Hello: $booted_hello"
-        FAILED=1
-    fi
+  return 1
 }
 
-for arch in "${ARCHITECTURES[@]}"; do
-    run_arch $arch
+objcopy_bin() {
+  if command -v llvm-objcopy >/dev/null 2>&1; then
+    printf 'llvm-objcopy\n'
+  elif command -v objcopy >/dev/null 2>&1; then
+    printf 'objcopy\n'
+  else
+    return 1
+  fi
+}
+
+run_case() {
+  local arch="$1"
+  local profile="$2"
+  local personality="$3"
+
+  local profile_upper personality_upper
+  profile_upper="$(printf '%s' "$profile" | tr '[:lower:]' '[:upper:]')"
+  personality_upper="$(printf '%s' "$personality" | tr '[:lower:]' '[:upper:]')"
+
+  local build_dir="build_e2e_${arch}_${profile}_${personality}"
+  local log_file="e2e_logs/boot_${arch}_${profile}_${personality}.log"
+
+  local qemu_bin machine_arg cpu_arg=()
+  case "$arch" in
+    x86_64)
+      qemu_bin="qemu-system-x86_64"
+      machine_arg=()
+      ;;
+    riscv64)
+      qemu_bin="qemu-system-riscv64"
+      machine_arg=(-machine virt)
+      ;;
+    arm64)
+      qemu_bin="qemu-system-aarch64"
+      machine_arg=(-machine virt)
+      cpu_arg=(-cpu cortex-a72)
+      ;;
+    *)
+      echo "[FAIL] Unsupported architecture in matrix: ${arch}"
+      FAIL_COUNT=$((FAIL_COUNT + 1))
+      return
+      ;;
+  esac
+
+  echo "[*] Case: arch=${arch}, profile=${profile_upper}, personality=${personality_upper}"
+
+  if ! command -v "$qemu_bin" >/dev/null 2>&1; then
+    echo "    [SKIP] ${qemu_bin} not found in PATH"
+    SKIP_COUNT=$((SKIP_COUNT + 1))
+    return
+  fi
+
+  cmake -S . -B "$build_dir" \
+    -DBHARAT_ARCH_FAMILY="${arch}" \
+    -DBHARAT_DEVICE_PROFILE="${profile_upper}" \
+    -DBHARAT_PERSONALITY_PROFILE="${personality_upper}" >/dev/null
+
+  cmake --build "$build_dir" --target kernel.elf >/dev/null
+
+  local kernel_elf
+  if ! kernel_elf="$(find_kernel_elf "$build_dir")"; then
+    echo "    [FAIL] kernel.elf not found in ${build_dir}"
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+    return
+  fi
+
+  local kernel_image="$kernel_elf"
+  if [[ "$arch" == "arm64" ]]; then
+    local oc
+    if ! oc="$(objcopy_bin)"; then
+      echo "    [FAIL] objcopy/llvm-objcopy is required for arm64 Image generation"
+      FAIL_COUNT=$((FAIL_COUNT + 1))
+      return
+    fi
+    kernel_image="${build_dir}/kernel/Image"
+    "$oc" -O binary "$kernel_elf" "$kernel_image"
+  fi
+
+  : > "$log_file"
+
+  set +e
+  timeout --preserve-status "$TIMEOUT_SECS" \
+    "$qemu_bin" \
+    "${machine_arg[@]}" \
+    "${cpu_arg[@]}" \
+    -kernel "$kernel_image" \
+    -m 256M \
+    -nographic \
+    -monitor none \
+    -serial stdio \
+    -no-reboot >"$log_file" 2>&1
+  local qemu_status=$?
+  set -e
+
+  if [[ "$qemu_status" -ne 0 && "$qemu_status" -ne 124 ]]; then
+    echo "    [FAIL] QEMU exited unexpectedly with status ${qemu_status}"
+    tail -n 80 "$log_file" || true
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+    return
+  fi
+
+  local markers=(
+    "BOOT: pmm initialized"
+    "BOOT: vmm initialized"
+    "[BOOT] Runtime mode:"
+  )
+
+  local missing=0
+  for marker in "${markers[@]}"; do
+    if ! grep -Fq "$marker" "$log_file"; then
+      echo "    [FAIL] Missing marker: ${marker}"
+      missing=1
+    fi
+  done
+
+  if grep -Fq "[PANIC]" "$log_file"; then
+    echo "    [FAIL] Panic detected in QEMU log"
+    missing=1
+  fi
+
+  if [[ "$missing" -ne 0 ]]; then
+    echo "    [INFO] Last 80 log lines (${log_file}):"
+    tail -n 80 "$log_file" || true
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+    return
+  fi
+
+  echo "    [PASS] Boot markers found"
+  PASS_COUNT=$((PASS_COUNT + 1))
+}
+
+echo "======================================"
+echo " Bharat-OS QEMU E2E Harness"
+echo " Timeout per case: ${TIMEOUT_SECS}s"
+echo "======================================"
+
+for spec in "${MATRIX[@]}"; do
+  IFS=':' read -r arch profile personality <<< "$spec"
+  if [[ -z "${arch:-}" || -z "${profile:-}" || -z "${personality:-}" ]]; then
+    echo "[FAIL] Invalid matrix entry: ${spec} (expected arch:profile:personality)"
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+    continue
+  fi
+  run_case "$arch" "$profile" "$personality"
 done
 
-if [ $FAILED -ne 0 ]; then
-    echo "======================================"
-    echo " Some tests FAILED. Check e2e_logs/"
-    echo "======================================"
-    exit 1
-else
-    echo "======================================"
-    echo " All architectures passed E2E Boot!"
-    echo "======================================"
-    exit 0
+echo "======================================"
+echo " Summary: PASS=${PASS_COUNT} FAIL=${FAIL_COUNT} SKIP=${SKIP_COUNT}"
+echo " Logs: e2e_logs/"
+echo "======================================"
+
+if [[ "$FAIL_COUNT" -ne 0 ]]; then
+  exit 1
 fi
+
+if [[ "$STRICT_QEMU" == "1" && "$SKIP_COUNT" -ne 0 ]]; then
+  echo "STRICT_QEMU=1 set and some test cases were skipped"
+  exit 1
+fi
+
+exit 0
