@@ -275,6 +275,23 @@ cat qemu_e2e.log
 Get-Content qemu_e2e.log
 ```
 
+For a full multi-arch and multi-profile QEMU harness, use `run_qemu_e2e.sh`.
+
+```bash
+# Default matrix (x86_64 desktop/laptop, riscv64 edge, arm64 drone)
+./run_qemu_e2e.sh
+
+# Custom matrix format: arch:profile:personality
+E2E_MATRIX="x86_64:desktop:none riscv64:automobile:none" ./run_qemu_e2e.sh
+
+# Fail if any case is skipped (useful in CI)
+STRICT_QEMU=1 ./run_qemu_e2e.sh
+```
+
+Notes:
+- Logs are written to `e2e_logs/` per test case.
+- The harness validates boot markers (`BOOT: pmm initialized`, `BOOT: vmm initialized`, runtime mode) and fails on panic logs.
+
 ### GUI and Serial Console Output (`-BootGui ON`)
 
 When `BHARAT_BOOT_GUI` is enabled (e.g. passing `-BootGui ON` to `build.ps1` or `--boot-gui=ON` to `build.sh`), QEMU is launched with a graphical window.
