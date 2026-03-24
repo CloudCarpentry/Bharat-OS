@@ -150,6 +150,20 @@ typedef struct {
 #define MK_MSG_CAP_DERIVE_REQ     0x5002
 #define MK_MSG_CAP_LOOKUP_REQ     0x5003
 
+// Remote Scheduling Requests
+#define MK_MSG_THREAD_HANDOFF_REQ   0x6000
+#define MK_MSG_THREAD_HANDOFF_ACK   0x6001
+#define MK_MSG_THREAD_HANDOFF_NACK  0x6002
+
+// Payload struct for MK_MSG_THREAD_HANDOFF_REQ
+typedef struct {
+  uint64_t thread_id;
+  uint32_t source_core;
+  uint32_t target_core;
+  uint32_t priority;
+  uint32_t flags;
+} mk_msg_thread_handoff_t;
+
 // Multicore boot and channel matrix setup
 int mk_boot_secondary_cores(uint32_t core_count);
 int mk_init_per_core_channels(uint32_t core_count, uint32_t ring_size);

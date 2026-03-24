@@ -6,6 +6,7 @@ Based on current code analysis in `kernel/src/sched/` and `kernel/src/trap/`:
 - ✅ **Context Switching**: Implemented core trap frame saving/restoring (`trap_frame_t`).
 - ✅ **Syscall Dispatch**: Basic `syscall_dispatch` and `trap_handle` implemented.
 - ✅ **Basic States**: Ready, Running, Blocked, Exited.
+- 🟡 **Distributed States**: Adding `REMOTE_HANDOFF_PENDING` to track safe cross-core handoff transitions before full task migration.
 - 🟡 **Task/Process Abstraction**: Partially implemented; strong separation of ASpace and CSpace ownership is stabilizing.
 - 🟡 **FPU/SIMD Context Saving**: Lazy saving is planned but architecture-specific implementations are ongoing.
 
@@ -14,6 +15,7 @@ Based on current code analysis in `kernel/src/sched/` and `kernel/src/trap/`:
 2. **Architecture-Specific Entry Stubs**: Finalize ASM entry points for x86_64 IDT and RISC-V `stvec`.
 3. **Futex-like Fast Mutexes**: Implement user-space fast paths for synchronization to minimize syscall overhead.
 4. **TLS Support**: Standardize thread-local storage ABIs across all supported architectures (x86_64, arm64, riscv).
+5. **Thread Handoff Ownership Rules**: Formalize rules around thread object residency vs capability ownership when moving between core runqueues.
 
 ## Long-Term Vision (1+ Years)
 1. **Dynamic Task Migration**: Safely migrate tasks between multikernel cores (in conjunction with the AI Scheduler).

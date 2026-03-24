@@ -7,6 +7,7 @@ add_library(k_test_support OBJECT
     ktest_capability.c
     ktest_accel_mem.c
     ktest_virt_accel.c
+    ktest_urpc_handoff.c
 )
 
 target_include_directories(k_test_support PRIVATE ../../include ../../include/generated ${CMAKE_SOURCE_DIR}/include)
