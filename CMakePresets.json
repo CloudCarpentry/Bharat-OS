@@ -57,7 +57,8 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "BHARAT_DEVICE_PROFILE": "DESKTOP",
-        "BHARAT_TARGET_BOARD": "qemu-virt"
+        "BHARAT_TARGET_BOARD": "host",
+        "BHARAT_BUILD_HOST_TESTS": "ON"
       }
     },
     {
@@ -71,6 +72,34 @@
         "CMAKE_BUILD_TYPE": "Release",
         "BHARAT_DEVICE_PROFILE": "EDGE",
         "BHARAT_TARGET_BOARD": "virt"
+      }
+    },
+    {
+      "name": "host-test-valgrind",
+      "displayName": "Host Environment for Valgrind",
+      "description": "Build host tests configured optimally for Valgrind analysis",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/host-test-valgrind",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BHARAT_DEVICE_PROFILE": "DATACENTER",
+        "BHARAT_TARGET_BOARD": "host",
+        "BHARAT_BUILD_HOST_TESTS": "ON",
+        "CMAKE_C_FLAGS": "-O0 -g -fno-omit-frame-pointer"
+      }
+    },
+    {
+      "name": "host-test-asan",
+      "displayName": "Host Environment with ASan/UBSan",
+      "description": "Build host tests with AddressSanitizer and UndefinedBehaviorSanitizer enabled",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/host-test-asan",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BHARAT_DEVICE_PROFILE": "DATACENTER",
+        "BHARAT_TARGET_BOARD": "host",
+        "BHARAT_BUILD_HOST_TESTS": "ON",
+        "CMAKE_C_FLAGS": "-fsanitize=address,undefined -g -fno-omit-frame-pointer"
       }
     },
     {
@@ -399,6 +428,14 @@
       "configurePreset": "host-test"
     },
     {
+      "name": "host-test-valgrind",
+      "configurePreset": "host-test-valgrind"
+    },
+    {
+      "name": "host-test-asan",
+      "configurePreset": "host-test-asan"
+    },
+    {
       "name": "ci-smoke",
       "configurePreset": "ci-smoke"
     },
@@ -511,6 +548,28 @@
     {
       "name": "host-test",
       "configurePreset": "host-test",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "host-test-valgrind",
+      "configurePreset": "host-test-valgrind",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "host-test-asan",
+      "configurePreset": "host-test-asan",
       "output": {
         "outputOnFailure": true
       },
