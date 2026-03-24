@@ -506,6 +506,15 @@ target_link_options(kernel.elf PRIVATE
     "LINKER:--build-id=none"
 )
 
+# ------------------------------------------------------------------------------
+# Memory Debug Mode Configuration
+# ------------------------------------------------------------------------------
+option(BHARAT_MM_DEBUG "Enable kernel native memory hardening (e.g. poisoning, strict checks, ownership proofs)" OFF)
+if(BHARAT_MM_DEBUG)
+    message(STATUS "Bharat-OS Memory Debugging enabled (BHARAT_MM_DEBUG=ON)")
+    target_compile_definitions(bharat_kernel_buildopts INTERFACE BHARAT_MM_DEBUG=1)
+endif()
+
 # ── Component Registration ──────────────────────────────────────────────────
 bharat_register_component(
     TARGET kernel.elf
