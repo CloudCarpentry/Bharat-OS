@@ -80,6 +80,14 @@ typedef struct sched_rq {
 
     // Remote Enqueue Inbox (Protected by lock)
     list_head_t pending_inbox;
+    uint8_t resched_pending; // Flag to avoid IPI storms
+
+    // Debug counters
+    uint64_t remote_enqueues;
+    uint64_t ipi_sent;
+    uint64_t ipi_coalesced;
+    uint64_t inbox_drains;
+    uint64_t remote_preemptions;
 
     uint32_t runnable_count;
     list_head_t sleeping_list;
