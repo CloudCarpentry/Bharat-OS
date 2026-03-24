@@ -1,5 +1,5 @@
 #include "arch/arch_cpu_caps.h"
-#include "../common/cpu_caps_state.h"
+#include "../../common/cpu_caps_state.h"
 #include <stdint.h>
 
 #define READ_SYSREG(reg) \

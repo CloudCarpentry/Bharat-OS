@@ -1,5 +1,5 @@
 #include "arch/arch_cpu_caps.h"
-#include "../common/cpu_caps_state.h"
+#include "../../common/cpu_caps_state.h"
 #include <stdint.h>
 
 static inline void x86_cpuid(uint32_t leaf, uint32_t subleaf, uint32_t *eax, uint32_t *ebx, uint32_t *ecx, uint32_t *edx) {
