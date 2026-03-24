@@ -6,9 +6,16 @@ A **Capability Space (CSpace)** is the complete set of capabilities available to
 ## The CNode Tree
 The CSpace is not a flat array; it is a directed graph built from nodes called **CNodes**.
 
-1.  **CNode:** A kernel object that holds a fixed-size array of "slots".
-2.  **Slots:** Each slot can hold exactly one capability.
+1.  **CNode:** A kernel object that holds a fixed-size array of "slots" (entries).
+2.  **Slots:** Each slot can hold exactly one capability and tracks its state using metadata (e.g., `in_use`, `generation`).
 3.  **Hierarchy:** A capability in a CNode slot can point to another CNode, creating a tree or directed graph.
+
+To ensure strict parent/child tracking across tables (e.g., during delegation), each capability slot holds a `cap_handle_t` referencing:
+- `parent`: The slot and table that created this capability.
+- `first_child`: The first child capability delegated directly from this slot.
+- `next_sibling`: Other capabilities derived from the same parent.
+
+These links form the backbone of the kernel's revocation algorithm. To avoid stale pointers, a `generation` counter is tied to every handle link, verifying validity before traversal.
 
 ```mermaid
 graph TD
