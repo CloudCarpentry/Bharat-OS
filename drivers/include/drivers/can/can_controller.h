@@ -2,8 +2,8 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include "drivers/can/can_frame.h"
-#include "drivers/can/can_filter.h"
+#include "stack/can/can_frame.h"
+#include "stack/can/can_filter.h"
 
 typedef enum {
     CAN_CTRL_STOPPED = 0,

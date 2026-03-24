@@ -2,17 +2,17 @@ cmake_minimum_required(VERSION 3.20)
 include(cmake/test_component_policy.cmake)
 
 # ... preserve existing host tests logic, append ours ...
-add_executable(test_can_filter_match drivers/test_can_filter_match.c ../../drivers/class/can/can_filter_compile.c)
-target_include_directories(test_can_filter_match PRIVATE ../../drivers/include)
+add_executable(test_can_filter stacks/can/test_can_filter.c ../../stacks/can/core/can_filter.c)
+target_include_directories(test_can_filter PRIVATE ../../stacks/include)
 
-add_executable(test_can_filter_compile drivers/test_can_filter_compile.c)
-target_include_directories(test_can_filter_compile PRIVATE ../../drivers/include)
+add_executable(test_can_filter_compile drivers/test_can_filter_compile.c ../../drivers/class/can/can_filter_compile.c)
+target_include_directories(test_can_filter_compile PRIVATE ../../drivers/include ../../stacks/include)
 
 add_executable(test_can_controller_core drivers/test_can_controller_core.c ../../drivers/class/can/can_controller_core.c)
 target_include_directories(test_can_controller_core PRIVATE ../../drivers/include)
 
-add_executable(test_can_router services/test_can_router.c)
-target_include_directories(test_can_router PRIVATE ../../services/include)
+add_executable(test_can_route stacks/can/test_can_route.c)
+target_include_directories(test_can_route PRIVATE ../../stacks/include)
 
 add_executable(test_can_subscriptions services/test_can_subscriptions.c)
 target_include_directories(test_can_subscriptions PRIVATE ../../services/include)
@@ -23,10 +23,10 @@ target_include_directories(test_can_gateway PRIVATE ../../services/include)
 add_executable(test_can_busoff_recovery services/test_can_busoff_recovery.c ../../drivers/class/can/can_controller_core.c ../../drivers/devices/virt_can/virt_can.c)
 target_include_directories(test_can_busoff_recovery PRIVATE ../../drivers/include)
 
-add_test(NAME host_test_can_filter_match COMMAND test_can_filter_match)
+add_test(NAME host_test_can_filter COMMAND test_can_filter)
 add_test(NAME host_test_can_filter_compile COMMAND test_can_filter_compile)
 add_test(NAME host_test_can_controller_core COMMAND test_can_controller_core)
-add_test(NAME host_test_can_router COMMAND test_can_router)
+add_test(NAME host_test_can_route COMMAND test_can_route)
 add_test(NAME host_test_can_subscriptions COMMAND test_can_subscriptions)
 add_test(NAME host_test_can_gateway COMMAND test_can_gateway)
 add_test(NAME host_test_can_busoff_recovery COMMAND test_can_busoff_recovery)

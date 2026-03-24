@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <assert.h>
-#include "drivers/can/can_filter.h"
-#include "drivers/can/can_frame.h"
+#include "stack/can/can_filter.h"
+#include "stack/can/can_frame.h"
 
 void test_exact_id_match() {
     can_filter_t filter = { .id = 0x123, .mask = 0x7FF, .match_extended = false, .extended_only = false };
