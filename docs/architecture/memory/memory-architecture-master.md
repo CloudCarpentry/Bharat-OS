@@ -123,7 +123,47 @@ Every architecture backend (`x86_64`, `arm64`, `riscv64`, `arm32`, `riscv32`) mu
 
 ---
 
-## 7. Current State and Open Backlog
+## 7. Heterogeneous Compute Memory and Accelerator Domains
+
+To support AI/ML and accelerator workloads without compromising the multikernel memory boundary, Bharat-OS extends its memory architecture with native heterogeneous compute memory domains. This establishes strict ownership for pinned buffers, DMA/IOMMU mappings, and secure memory, ensuring zero leakage between the kernel mechanism and user-space policy.
+
+### 7.1 Memory Roles and Buffer Domains
+
+The virtual memory subsystem (`kernel/src/mm/vm/`) and DMA layer (`kernel/src/mm/dma/`) recognize distinct roles for accelerator-bound memory:
+
+*   **Host-Private Model Memory**: Standard, secure memory regions accessible only by the CPU for compiling or staging.
+*   **Shared Tensor Buffers**: Coherent or explicitly managed shared memory regions accessible by both CPU and accelerators.
+*   **Pinned DMA Buffers**: Pages locked in physical memory to prevent eviction during long-running accelerator jobs.
+*   **Coherent Buffers**: Hardware-coherent memory automatically synchronized between CPU caches and accelerator domains.
+*   **Streaming Buffers**: Non-coherent memory requiring explicit software cache maintenance (flush/invalidate) before and after device execution.
+*   **Secure / Isolated Buffers**: Memory isolated via IOMMU or trusted execution environments, explicitly restricted from unauthorized access.
+*   **Imported / Exported Buffers**: Reference-counted external buffer handles shared across processes or capability domains.
+
+### 7.2 Kernel Memory Tags
+
+To represent these domains, the system utilizes new memory capability tags (e.g., in `vm_types.h` or `accel_types.h`):
+
+*   `MEM_ACCEL_SHARED`
+*   `MEM_ACCEL_PINNED`
+*   `MEM_ACCEL_COHERENT`
+*   `MEM_ACCEL_STREAMING`
+*   `MEM_ACCEL_SECURE`
+*   `MEM_MODEL_RO`
+*   `MEM_TENSOR_RW`
+
+### 7.3 Mechanisms and Lifecycles
+
+The memory stack enforces:
+
+*   **Pin/Unpin Lifecycle**: Deterministic locking of physical frames backing active accelerator jobs.
+*   **Scatter-Gather Generation**: Translating contiguous virtual allocations into scatter-gather lists for DMA programming.
+*   **IOVA Lifecycle**: Binding/unbinding IO Virtual Addresses into device-specific IOMMU domains before job execution.
+*   **Cache Maintenance**: Architecture-agnostic hooks (`hal_dma`) to flush or invalidate caches for `MEM_ACCEL_STREAMING` buffers, specially on edge profiles (e.g., ARM32/RISCV32).
+*   **Teardown and Fault Cleanup**: Deterministic revocation of memory and IOMMU mappings when an accelerator driver encounters a fault, or when a job is cancelled, preventing page leaks.
+
+---
+
+## 8. Current State and Open Backlog
 
 - **PMM**: Core zoned allocator, early allocator, and contiguous allocators exist. Needs deeper NUMA domain hardening.
 - **VM Objects**: Anonymous, Shared, File, Device, and DMA kinds are structurally implemented with rigorous lifecycle validation.
