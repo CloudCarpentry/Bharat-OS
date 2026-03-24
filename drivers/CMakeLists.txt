@@ -57,6 +57,7 @@ add_subdirectory(devices)
 add_subdirectory(serial)
 add_subdirectory(registry)
 add_subdirectory(accel)
+add_subdirectory(block/virtio_blk)
 
 add_library(bharatos_drivers INTERFACE)
 target_link_libraries(bharatos_drivers INTERFACE
@@ -64,5 +65,6 @@ target_link_libraries(bharatos_drivers INTERFACE
   bharatos_driver_class
   bharatos_driver_devices
   bharatos_driver_registry
+  driver_virtio_blk
 )
 target_include_directories(bharatos_drivers INTERFACE include)
