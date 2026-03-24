@@ -1,4 +1,4 @@
-#include "../kernel/include/sched.h"
+#include "../kernel/include/sched/sched.h"
 #include "../kernel/include/slab.h"
 #include "../kernel/include/arch/arch_ext_state.h"
 #include <stdlib.h>
@@ -353,3 +353,22 @@ __attribute__((weak)) void pmm_drain_remote_frees(uint32_t core) { (void)core; }
 
 
 __attribute__((weak)) void* g_pmm_cores[64] = {0}; // Add mock for pmm_core_t* array
+
+#include "../kernel/include/arch/arch_caps.h"
+__attribute__((weak)) arch_caps_t arch_get_caps(void) {
+    arch_caps_t stub_caps = {0};
+    return stub_caps;
+}
+
+#include "../kernel/include/mm/prot_domain.h"
+#include "../kernel/include/hal/hal_mm.h"
+__attribute__((weak)) void hal_mm_backend_caps(hal_mm_backend_caps_t *out) {
+    if (out) {
+        __builtin_memset(out, 0, sizeof(hal_mm_backend_caps_t));
+    }
+}
+
+__attribute__((weak)) prot_domain_t* mock_prot_domain_create(void) { return (prot_domain_t*)0x1234; }
+__attribute__((weak)) prot_domain_ops_t mmu_full_ops_x86_64 = { .create = mock_prot_domain_create };
+__attribute__((weak)) prot_domain_ops_t mmu_lite_ops_common = { .create = mock_prot_domain_create };
+__attribute__((weak)) prot_domain_ops_t prot_none_ops = { .create = mock_prot_domain_create };

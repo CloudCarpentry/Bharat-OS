@@ -229,7 +229,7 @@ These three unblock all later VM-object, fault, and pager work.
 ## 10) Near-production hardening tasks we can implement next (recommended order)
 
 1. **VM object lifecycle hardening (immediate)**  
-   Remove static pools for VM objects, enforce constructor validation, and ensure refcount teardown is heap-safe and deterministic.
+   *Note: Static-pool removal is already satisfied.* Now, strengthen constructor invariants (size/alignment checks), make per-kind initialization explicit, ensure refcount teardown is deterministic/defensive (dead-state / underflow protection), and add host tests for creation/release edge cases.
 2. **Fault API contract unification**  
    Align `mm/fault.h` and implementation signatures, define stable return codes, and add host tests for invalid-access and permission faults.
 3. **TLB shootdown safety checks**  
