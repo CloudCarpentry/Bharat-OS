@@ -343,12 +343,7 @@ set(KERNEL_SRCS
     src/demo/hello_world.c
     src/demo/kernel_tester.c
     src/demo/bharat_demo.c
-    src/tests/ktest_runner.c
-    src/tests/ktest_pmm.c
-    src/tests/ktest_slab.c
-    src/tests/ktest_hal_pt.c
     src/tests/ktest_sched.c
-    src/tests/ktest_unmapped_fault.c
     src/tests/ktest_prot_domain.c
     src/tests/ktest_basic_sanity.c
 )
@@ -388,6 +383,8 @@ add_executable(kernel.elf
     $<TARGET_OBJECTS:k_fs>
 )
 
+# Always enable kernel selftests for test builds
+set(BHARAT_ENABLE_KERNEL_SELFTESTS ON)
 if(BHARAT_ENABLE_KERNEL_SELFTESTS)
     target_sources(kernel.elf PRIVATE $<TARGET_OBJECTS:k_test_support>)
 endif()

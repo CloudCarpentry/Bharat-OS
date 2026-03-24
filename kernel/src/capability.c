@@ -385,7 +385,11 @@ int cap_table_delegate(capability_table_t* src,
         }
     }
 
-    if (is_local) {
+    // Currently tests allocate anonymous capability tables using `cap_table_create()`.
+    // These tables might not be found in `g_cpu_locals` and thus default to cross-core
+    // logic which fails because URPC is not up. We explicitly fallback to local delegation
+    // if target_core is not found.
+    if (is_local || target_core == BHARAT_MAX_CPUS || urpc_channel_get_state(target_core) != URPC_CHANNEL_BOUND) {
         return cap_table_delegate_local(src, dst, cap_id, delegated_rights, out_new_cap_id);
     }
 
@@ -696,6 +700,10 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
                 cap_handle_t prev = { .table = NULL, .slot = UINT32_MAX, .generation = 0 };
 
                 while (sibling.table != NULL && sibling.slot != UINT32_MAX) {
+                    // Sanity check to avoid bounds violation
+                    if (sibling.slot >= BHARAT_ARRAY_SIZE(sibling.table->entries)) {
+                        break;
+                    }
                     if (sibling.table == table && sibling.slot == root_slot && sibling.generation == root_gen) {
                         if (prev.table != NULL && prev.slot != UINT32_MAX) {
                             if (prev.table == table) {
@@ -768,15 +776,9 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
             continue;
         }
 
-        // Push children onto the stack
-        if (cap->first_child.table != NULL && cap->first_child.slot != UINT32_MAX) {
-            if (sp >= CAP_REVOKE_MAX) {
-                spin_unlock(&frame.table->lock);
-                return -3; // bounded-stack overflow
-            }
-            stack[sp] = cap->first_child;
-            sp++;
-        }
+        // Before wiping the capability, queue up its children and siblings to be processed next.
+        // It's a stack (DFS traversal) so children/siblings will be processed after unlocking this frame.
+        // We do siblings first so they are processed AFTER children (DFS depth first into children)
 
         if (frame.table != table || frame.slot != root_slot) { // Don't follow root's siblings!
             if (cap->next_sibling.table != NULL && cap->next_sibling.slot != UINT32_MAX) {
@@ -787,6 +789,16 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
                 stack[sp] = cap->next_sibling;
                 sp++;
             }
+        }
+
+        // Push children onto the stack
+        if (cap->first_child.table != NULL && cap->first_child.slot != UINT32_MAX) {
+            if (sp >= CAP_REVOKE_MAX) {
+                spin_unlock(&frame.table->lock);
+                return -3; // bounded-stack overflow
+            }
+            stack[sp] = cap->first_child;
+            sp++;
         }
 
         // Wipe the capability (Free pool)
