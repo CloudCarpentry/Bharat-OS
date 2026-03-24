@@ -2,7 +2,7 @@
 #define BHARAT_FS_FILE_H
 
 #include "fs/vfs.h"
-#include "advanced/formal_verif.h"
+#include "../../staging/formal/formal_verif.h"
 
 /*
  * vfs_file_t: Represents an open file description/handle.

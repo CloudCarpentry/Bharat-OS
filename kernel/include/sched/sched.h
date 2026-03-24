@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include "mm.h"
-#include "advanced/ai_sched.h"
+#include "sched/ai_sched.h"
 #include "list.h"
 #include "rbtree.h"
 #include "kernel_safety.h"

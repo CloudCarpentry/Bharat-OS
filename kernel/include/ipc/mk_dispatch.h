@@ -1,7 +1,7 @@
 #ifndef BHARAT_MK_DISPATCH_H
 #define BHARAT_MK_DISPATCH_H
 
-#include "../advanced/multikernel.h"
+#include "../core/multikernel.h"
 
 // Dispatches an incoming URPC message received on a specific channel.
 // This function authenticates and validates the message before passing

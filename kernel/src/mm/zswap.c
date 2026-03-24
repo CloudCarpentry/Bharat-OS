@@ -3,7 +3,7 @@
 #include "../../include/spinlock.h"
 #include "../../include/slab.h"
 #include "../../include/list.h"
-#include "../../include/profile.h"
+#include "profile/profile.h"
 
 #ifdef Profile_RTOS
 #undef CONFIG_MM_ZSWAP

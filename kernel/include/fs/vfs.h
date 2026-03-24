@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include "advanced/formal_verif.h" // For capability_t
+#include "../../staging/formal/formal_verif.h" // For capability_t
 
 /*
  * Bharat-OS Virtual File System (VFS)

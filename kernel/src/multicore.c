@@ -1,6 +1,6 @@
 #include "multicore.h"
 #include "bharat_config.h"
-#include "advanced/multikernel.h"
+#include "core/multikernel.h"
 
 #if defined(__riscv)
 #include "../../arch/riscv/boot/sbi.h"

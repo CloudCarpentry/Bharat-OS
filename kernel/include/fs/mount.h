@@ -2,7 +2,7 @@
 #define BHARAT_FS_MOUNT_H
 
 #include "fs/vfs.h"
-#include "advanced/formal_verif.h"
+#include "../../staging/formal/formal_verif.h"
 
 /*
  * vfs_mount_t: Represents a mounted filesystem instance.

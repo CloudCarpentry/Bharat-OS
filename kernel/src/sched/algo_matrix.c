@@ -1,4 +1,4 @@
-#include "advanced/algo_matrix.h"
+#include "sched/algo_matrix.h"
 #include "arch/capabilities.h"
 #include "hal/hal.h"
 #include <stddef.h>

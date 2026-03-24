@@ -5,7 +5,7 @@
 #include "bharat_config.h"
 #endif
 
-#include "../sched.h"
+#include "sched/sched.h"
 #include <stdint.h>
 
 // Fallback alignment macro if not defined by config system

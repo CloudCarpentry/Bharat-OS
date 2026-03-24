@@ -2,7 +2,7 @@
 #include "fault_diag.h"
 #include "hal/hal.h"
 #include "kernel.h"
-#include "sched.h"
+#include "sched/sched.h"
 #include "console/console_core.h"
 #include <stdint.h>
 #include <stddef.h>

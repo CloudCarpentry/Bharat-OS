@@ -1,7 +1,7 @@
 #include "device.h"
 #include "kernel_safety.h"
 #include "mm.h"
-#include "advanced/algo_matrix.h"
+#include "sched/algo_matrix.h"
 
 #include <stddef.h>
 

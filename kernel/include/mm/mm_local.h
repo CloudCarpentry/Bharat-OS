@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "../../include/mm.h"
-#include "../../include/profile.h"
+#include "profile/profile.h"
 
 #include <stdbool.h>
 

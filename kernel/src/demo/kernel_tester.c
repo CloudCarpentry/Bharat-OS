@@ -2,7 +2,7 @@
 #include "kernel.h"
 #include "mm.h"
 #include "numa.h"
-#include "sched.h"
+#include "sched/sched.h"
 #include "tests/ktest.h"
 #include "console/console_core.h"
 

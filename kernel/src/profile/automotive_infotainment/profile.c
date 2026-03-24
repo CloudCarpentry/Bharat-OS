@@ -1,4 +1,4 @@
-#include "profile.h"
+#include "profile/profile.h"
 
 // For Infotainment, media and networking stacks might be prioritized.
 void profile_init(void) {

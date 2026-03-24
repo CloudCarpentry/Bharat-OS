@@ -2,7 +2,7 @@
 #define BHARAT_FS_OBJECT_STORE_H
 
 #include "fs/vfs.h"
-#include "advanced/formal_verif.h"
+#include "../../staging/formal/formal_verif.h"
 
 /*
  * Blob/object storage interfaces.

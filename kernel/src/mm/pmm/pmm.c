@@ -1,10 +1,10 @@
 #include "atomic.h"
 #include "mm.h"
 #include "numa.h"
-#include "profile.h"
+#include "profile/profile.h"
 #include "spinlock.h"
 
-#include "sched.h"
+#include "sched/sched.h"
 #include "early_alloc.h"
 #include "bharat/boot_info.h"
 

@@ -1,5 +1,5 @@
 #include "../../include/ipc_async.h"
-#include "../../include/sched.h"
+#include "sched/sched.h"
 #include <stddef.h>
 
 #define MAX_ASYNC_REQUESTS 64U

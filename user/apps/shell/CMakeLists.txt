@@ -1,3 +1,3 @@
 add_executable(app_shell shell.c)
-target_link_libraries(app_shell PUBLIC bharat_libcmin bharat_user_buildopts bharat_syscall bharat)
+target_link_libraries(app_shell PUBLIC bharat_libcmin bharat_user_buildopts bharat bharat_syscall)
 bharat_configure_userspace_binary(app_shell)

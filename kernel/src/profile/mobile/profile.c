@@ -1,4 +1,4 @@
-#include "profile.h"
+#include "profile/profile.h"
 
 void profile_init(void) {
     /* MOBILE: prioritize Linux-like process/fd/memory substrate, Binder hooks,

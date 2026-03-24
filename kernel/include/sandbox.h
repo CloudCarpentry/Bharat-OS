@@ -2,7 +2,7 @@
 #define BHARAT_SANDBOX_H
 
 #include <stdint.h>
-#include "sched.h"
+#include "sched/sched.h"
 
 /*
  * Bharat-OS Native Sandboxing & Capability Framework

@@ -2,7 +2,7 @@
 #define BHARAT_ANDROID_PROCESS_H
 
 #include "android_personality.h"
-#include "sched.h"
+#include "sched/sched.h"
 
 /*
  * Phase 1: Linux-Compatible Substrate Mapping

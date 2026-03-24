@@ -1,6 +1,6 @@
-#include "advanced/ai_kernel_bridge.h"
+#include "../../staging/ai/ai_kernel_bridge.h"
 
-#include "sched.h"
+#include "sched/sched.h"
 #include "ipc_endpoint.h"
 
 uint32_t numa_active_node_count(void) __attribute__((weak));

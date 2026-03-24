@@ -10,7 +10,7 @@
 mmu_ops_t *active_mmu = NULL;
 
 // TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "../../include/profile.h"
+#include "profile/profile.h"
 
 // Forward declarations for arch-specific ops
 extern mmu_ops_t x86_64_mmu_ops;

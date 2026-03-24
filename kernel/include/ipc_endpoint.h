@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 #include "capability.h"
-#include "profile.h"
+#include "profile/profile.h"
 
 #if defined(Profile_RTOS)
 #define BHARAT_IPC_ENDPOINT_PAYLOAD_MAX 64U

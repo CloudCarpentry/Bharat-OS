@@ -2,7 +2,7 @@
 #define BHARAT_FS_PATH_H
 
 #include "fs/vfs.h"
-#include "advanced/formal_verif.h"
+#include "../../staging/formal/formal_verif.h"
 
 /*
  * Path resolution structures and rights definition.

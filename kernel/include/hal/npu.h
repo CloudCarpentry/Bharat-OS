@@ -2,7 +2,7 @@
 #define BHARAT_HAL_NPU_H
 
 #include "hal/hal.h"
-#include "../advanced/formal_verif.h"
+#include "../../staging/formal/formal_verif.h"
 
 /*
  * NPU (Neural Processing Unit) Hardware Abstraction Layer

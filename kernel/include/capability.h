@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#include "sched.h"
+#include "sched/sched.h"
 #include "spinlock.h"
 
 typedef enum {

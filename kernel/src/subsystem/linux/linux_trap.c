@@ -1,4 +1,4 @@
-#include "sched.h"
+#include "sched/sched.h"
 #include "personality_ops.h"
 #include "trap_types.h"
 #include "trap.h"

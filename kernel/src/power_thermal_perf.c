@@ -1,6 +1,6 @@
 #include "power_thermal_perf.h"
 
-#include "sched.h"
+#include "sched/sched.h"
 
 static ptp_topology_info_t g_topology;
 static ptp_wake_source_t g_wake_sources[PTP_MAX_WAKE_SOURCES];

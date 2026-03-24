@@ -1,9 +1,9 @@
-#include "sched.h"
+#include "sched/sched.h"
 #include <bharat/cpu_local.h>
-#include "sched_deg.h"
+#include "sched/sched_deg.h"
 
-#include "advanced/algo_matrix.h"
-#include "advanced/formal_verif.h"
+#include "sched/algo_matrix.h"
+#include "../../staging/formal/formal_verif.h"
 #include "capability.h"
 #include "hal/hal.h"
 #include "kernel_safety.h"

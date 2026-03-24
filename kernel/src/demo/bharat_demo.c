@@ -19,7 +19,7 @@
 
 #include "hal/hal.h"
 #include "mm.h"
-#include "sched.h"
+#include "sched/sched.h"
 #include "ipc_async.h"
 #include "kernel.h"
 #include <stdint.h>

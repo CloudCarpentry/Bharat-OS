@@ -2,7 +2,7 @@
 #define BHARAT_SCHED_DEG_H
 
 #include <stdint.h>
-#include "sched.h"
+#include "sched/sched.h"
 
 typedef enum {
     DEG_STRICT

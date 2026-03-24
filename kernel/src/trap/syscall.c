@@ -1,7 +1,7 @@
 #include "trap_api.h"
 #include "trap_frame_ops.h"
 #include "personality_ops.h"
-#include "sched.h"
+#include "sched/sched.h"
 #include "fault_diag.h"
 
 #define ENOSYS 38

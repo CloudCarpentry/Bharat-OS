@@ -120,7 +120,7 @@ int mm_vmm_unmap_page(address_space_t *as, virt_addr_t vaddr);
 // it's a typedef of an anonymous struct in formal_verif.h. So we include it
 // directly.
 // TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "advanced/formal_verif.h"
+#include "../staging/formal/formal_verif.h"
 int vmm_map_device_mmio(virt_addr_t vaddr, phys_addr_t paddr, capability_t *cap,
                         int is_npu);
 

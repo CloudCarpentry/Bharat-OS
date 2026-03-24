@@ -5,7 +5,7 @@
 #include "hal/hal.h"
 #include "hal/hal_discovery.h"
 #include "device/irq_domain.h"
-#include "profile.h"
+#include "profile/profile.h"
 
 // Basic VT-d discovery via hal_discovery
 static bool dmar_found = false;
