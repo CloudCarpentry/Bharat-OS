@@ -1,0 +1,7 @@
+add_subdirectory(i2c_hid)
+
+add_library(bharatos_driver_input INTERFACE)
+target_link_libraries(bharatos_driver_input INTERFACE
+  bharatos_driver_input_i2c_hid
+)
+target_include_directories(bharatos_driver_input INTERFACE i2c_hid)

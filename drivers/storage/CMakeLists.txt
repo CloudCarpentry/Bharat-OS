@@ -1,0 +1,7 @@
+add_subdirectory(nvme)
+
+add_library(bharatos_driver_storage INTERFACE)
+target_link_libraries(bharatos_driver_storage INTERFACE
+  bharatos_driver_storage_nvme
+)
+target_include_directories(bharatos_driver_storage INTERFACE nvme)
