@@ -7,8 +7,8 @@ void hal_arch_discovery_init(const boot_info_t *boot) {
 
     system_discovery_t *discovery = hal_get_system_discovery();
 
-    if (boot->arch_ptr) {
-        fdt_parse_discovery(boot->arch_ptr, discovery);
+    if (boot->firmware.fdt_ptr) {
+        fdt_parse_discovery(boot->firmware.fdt_ptr, discovery);
     }
 
     // Fallback if no regions were found

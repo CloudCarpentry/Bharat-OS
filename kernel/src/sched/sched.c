@@ -20,7 +20,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define MAX_SUPPORTED_CORES 8U
 #define SCHED_MAX_THREADS 128U
 #define SCHED_MAX_PROCESSES 32U
 #define SCHED_DEFAULT_SLICE_MS 10U
