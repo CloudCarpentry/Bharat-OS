@@ -21,7 +21,8 @@ typedef enum {
     THREAD_STATE_BLOCKED,
     THREAD_STATE_SLEEPING,
     THREAD_STATE_TERMINATED,
-    THREAD_STATE_DEG_PENDING
+    THREAD_STATE_DEG_PENDING,
+    THREAD_STATE_REMOTE_HANDOFF_PENDING
 } thread_state_t;
 
 typedef enum {
@@ -229,6 +230,9 @@ int sched_enqueue_ai_suggestion(const ai_suggestion_t* suggestion);
 int sched_migrate_task(kthread_t* thread, uint32_t new_node);
 int sched_adjust_priority(kthread_t* thread, uint32_t new_priority);
 int sched_throttle_core(uint32_t core_id);
+
+// Cross-core remote handoff
+int sched_request_remote_handoff(kthread_t* thread, uint32_t target_core, uint32_t auth_token);
 
 // System-call style entry points used by trap/syscall layer
 int sched_sys_thread_create(kprocess_t* parent, void (*entry_point)(void), uint64_t* out_tid);

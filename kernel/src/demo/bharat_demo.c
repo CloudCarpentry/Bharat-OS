@@ -208,6 +208,20 @@ static void demo_scheduler(void)
         }
     }
 
+    // Demonstrate remote handoff if multi-core is simulated or available
+    DEMO_PRINT("  [SCHED] Requesting remote thread handoff to core 1...\n");
+    if (lo_tid != 0U) {
+        kthread_t *lo_thread = sched_find_thread_by_id(lo_tid);
+        if (lo_thread) {
+            int ret = sched_request_remote_handoff(lo_thread, 1, 0xDEADBEEF);
+            if (ret == 0) {
+                DEMO_PRINT("  [SCHED]   OK  thread handed off to core 1.\n");
+            } else {
+                DEMO_PRINT("  [SCHED]   WARN: remote handoff returned error (expected in 1-core or stub env).\n");
+            }
+        }
+    }
+
     process_destroy(proc);
     DEMO_PRINT("  [SCHED] Scheduler demo -- PASS\n");
 }

@@ -11,13 +11,33 @@ static prot_domain_ops_t generic_backend_ops;
 static prot_domain_ops_t* active_backend = NULL;
 static prot_mode_t active_mode = PROT_MODE_NONE;
 
+#include "slab.h"
+
 // Generic wrapper implementations relying on hal_pt and hal_mm capabilities
 static prot_domain_t* generic_create(void) {
-    return NULL; // Stubbed as prot_domain_t is legacy/transitional. VMM uses aspace directly.
+    prot_domain_t* domain = (prot_domain_t*)kmalloc(sizeof(prot_domain_t));
+    if (!domain) return NULL;
+
+    domain->mode = active_mode;
+    domain->ops = active_backend;
+
+    if (active_hal_pt) {
+        extern phys_addr_t vmm_get_kernel_root(void);
+        domain->backend_state = (void*)(uintptr_t)hal_pt_create_address_space(vmm_get_kernel_root());
+    } else {
+        domain->backend_state = NULL;
+    }
+
+    return domain;
 }
 
 static void generic_destroy(prot_domain_t* domain) {
-    (void)domain;
+    if (domain) {
+        if (active_hal_pt && domain->backend_state) {
+            hal_pt_destroy_address_space((phys_addr_t)(uintptr_t)domain->backend_state);
+        }
+        kfree(domain);
+    }
 }
 
 static void generic_activate(prot_domain_t* domain) {
@@ -25,34 +45,30 @@ static void generic_activate(prot_domain_t* domain) {
 }
 
 static int generic_map_region(prot_domain_t* domain, uintptr_t vaddr, uintptr_t paddr, size_t size, uint32_t flags) {
-    (void)domain;
-    if (active_hal_pt && active_hal_pt->map_range) {
-        return active_hal_pt->map_range(0 /* root_pt handled by aspace */, vaddr, paddr, size, flags);
+    if (active_hal_pt && domain && domain->backend_state) {
+        return hal_pt_map_range((phys_addr_t)(uintptr_t)domain->backend_state, vaddr, paddr, size, flags);
     }
     return -1;
 }
 
 static int generic_unmap_region(prot_domain_t* domain, uintptr_t vaddr, size_t size) {
-    (void)domain;
-    if (active_hal_pt && active_hal_pt->unmap_range) {
-        return active_hal_pt->unmap_range(0 /* root_pt handled by aspace */, vaddr, size);
+    if (active_hal_pt && domain && domain->backend_state) {
+        return hal_pt_unmap_range((phys_addr_t)(uintptr_t)domain->backend_state, vaddr, size);
     }
     return -1;
 }
 
 static int generic_protect_region(prot_domain_t* domain, uintptr_t vaddr, size_t size, uint32_t flags) {
-    (void)domain;
-    if (active_hal_pt && active_hal_pt->protect_range) {
-        return active_hal_pt->protect_range(0 /* root_pt handled by aspace */, vaddr, size, flags);
+    if (active_hal_pt && domain && domain->backend_state) {
+        return hal_pt_protect_range((phys_addr_t)(uintptr_t)domain->backend_state, vaddr, size, flags);
     }
     return -1;
 }
 
 static int generic_query_region(prot_domain_t* domain, uintptr_t vaddr, uintptr_t* paddr, uint32_t* flags) {
-    (void)domain;
-    if (active_hal_pt && active_hal_pt->query_mapping) {
+    if (active_hal_pt && domain && domain->backend_state) {
         size_t mapped_size;
-        return active_hal_pt->query_mapping(0 /* root_pt handled by aspace */, vaddr, paddr, &mapped_size, flags);
+        return hal_pt_query_mapping((phys_addr_t)(uintptr_t)domain->backend_state, vaddr, paddr, &mapped_size, flags);
     }
     return -1;
 }

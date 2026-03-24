@@ -1,14 +1,14 @@
 #include "hal/hal_discovery.h"
 #include "hal/fdt_parser.h"
-#include "bharat/boot_info.h"
+#include "boot/boot_info.h"
 
 void hal_arch_discovery_init(const boot_info_t *boot) {
     if (!boot) return;
 
     system_discovery_t *discovery = hal_get_system_discovery();
 
-    if (boot->arch_ptr) {
-        fdt_parse_discovery(boot->arch_ptr, discovery);
+    if (boot->firmware.fdt_ptr) {
+        fdt_parse_discovery(boot->firmware.fdt_ptr, discovery);
     }
 
     // Fallback if no regions were found

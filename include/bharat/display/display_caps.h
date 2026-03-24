@@ -6,6 +6,9 @@
 #include <stdint.h>
 #include "bharat/display/boot_video.h"
 
+int boot_video_collect(boot_video_handoff_t *out);
+int boot_video_validate(const boot_video_handoff_t *in);
+
 typedef enum {
     CAP_DISPLAY_FB = 1,
     CAP_DISPLAY_MODESET,

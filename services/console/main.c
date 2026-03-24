@@ -13,6 +13,7 @@
 // Well-known endpoint for the manager service that grants hardware capabilities
 #define CONSOLE_MANAGER_ENDPOINT ((bharat_cap_handle_t)10)
 
+// Definitions mirror console_v1.bidl operations
 typedef struct {
     uint32_t opcode;
     uint32_t payload_len;

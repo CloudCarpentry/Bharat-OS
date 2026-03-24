@@ -152,11 +152,9 @@ The sections below keep the gap framing and add concrete implementation deltas f
 4. Generic spin-wait hint now includes x86 pause / ARM yield / RISC-V nop path hooks.
 
 **Not implemented (blocking production support):**
-1. Real ARM32 page-table or MPU programming (backend currently stubbed).
-2. Real RV32 Sv32 page-table programming (backend currently stubbed).
-3. Native ARM32 and RV32 boot + trap + context-switch + timer + interrupt path integration in CMake/runtime.
-4. 32-bit-safe DMA/IOMMU and security-backed memory isolation.
-5. Runtime CPU feature probing for ARM32/RV32 (current probes are placeholder-level).
+1. Native ARM32 and RV32 boot + trap + context-switch + timer + interrupt path integration in CMake/runtime.
+2. 32-bit-safe DMA/IOMMU and security-backed memory isolation.
+3. Runtime CPU feature probing for ARM32/RV32 (current probes are placeholder-level).
 
 ### Re-analysis Notes Against Latest Code (2026-03)
 
@@ -164,10 +162,11 @@ The sections below keep the gap framing and add concrete implementation deltas f
 - `hal_pt.c` already has architecture dispatch branches for `__arm__` and `__riscv_xlen == 32`, so the generic translation entry point is prepared to select ARM32/RV32 backends.
 - ARM32 and RV32 each provide dedicated HAL PT backend files (`hal_pt_arm32.c`, `hal_pt_riscv32.c`) and expose `hal_translate_ops()` symbols under the expected compile guards.
 - ARM32 and RV32 architecture capability files exist (`arch/arm32/arch_caps.c`, `arch/riscv32/arch_caps.c`) so capability-gated policy integration has a starting hook.
+- **Implemented baseline backend:** ARM32 (ARMv7 Short-Descriptor) and RV32 (Sv32) now have functional MMU backends (create/map/unmap/protect/query paths correctly program PTEs and perform TLB invalidations).
 
 **What is still not implemented in code (verified):**
-- ARM32/RV32 PT backends are scaffold-only: create/map/unmap/protect/query paths still return fixed stub values (`0` or `-1`) rather than programming MMU tables.
 - ARM32 context switch is currently non-functional (`context_switch()` empty; assembly symbol loops forever via branch-to-self), and RV32 has no dedicated context-switch pair.
+- The 32-bit MMU backends are functional baselines but are not yet fully hardened for advanced features (like COW completion, demanding paging, or NUMA).
 - Build plumbing for 32-bit targets is transitional: CMake still routes `ARCH=arm32` through arm64 boot/HAL/context files and `ARCH=riscv32` through riscv64 boot/HAL plus shakti context sources.
 - The shared atomic layer still centers on legacy `__sync` intrinsics with unconditional 64-bit atomic helpers; this is risky for strict 32-bit portability/performance without capability-aware fallback paths.
 
@@ -177,8 +176,8 @@ The sections below keep the gap framing and add concrete implementation deltas f
    - Create native 32-bit source sets in CMake (boot, trap, context-switch, timer, irq, dma) so CI validates the intended architecture path rather than mixed 64-bit proxies.
 2. **Context and trap safety second**
    - Implement minimal but correct ARM32 and RV32 context switch + trap entry/exit before any scheduler/perf tuning.
-3. **MMU/MPU backend completeness third**
-   - Implement map/unmap/protect/query + TLB maintenance semantics in `hal_pt_*32.c` so generic VM code can run unchanged.
+3. **MMU/MPU backend completeness third (DONE)**
+   - Implemented map/unmap/protect/query + TLB maintenance semantics in `hal_pt_*32.c` so generic VM code can run unchanged.
 4. **DMA/IOMMU security parity fourth**
    - Provide explicit 32-bit backend behavior for non-coherent DMA and iommu/no-iommu fallback policy to preserve isolation guarantees.
 5. **Atomic + capability hardening fifth**
