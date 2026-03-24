@@ -19,8 +19,10 @@ This folder captures the current architectural baseline for Bharat-OS.
 
 - [`v1-boot-definition.md`](v1-boot-definition.md)
 - [`kernel-functionality-tiers-v1.md`](kernel-functionality-tiers-v1.md)
-- [`boot-flow-x86_64.md`](boot-flow-x86_64.md)
-- [`boot-flow-riscv64.md`](boot-flow-riscv64.md)
+- [`boot/boot_flow_x86_64.md`](boot/boot_flow_x86_64.md)
+- [`boot/boot_flow_riscv64.md`](boot/boot_flow_riscv64.md)
+- [`boot/boot_display_architecture.md`](boot/boot_display_architecture.md)
+- [`boot/boot_console_uart_gui_brainstorm.md`](boot/boot_console_uart_gui_brainstorm.md)
 - [`SHAKTI_BHARAT_OS_IMPLEMENTATION_PLAN.md`](SHAKTI_BHARAT_OS_IMPLEMENTATION_PLAN.md)
 
 ### Core kernel architecture

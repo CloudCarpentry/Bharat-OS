@@ -11,7 +11,7 @@ sequenceDiagram
     participant UEFI as UEFI Firmware
     participant Bootloader as Bootloader (GRUB2/Limine)
     participant Stub as Assembly Stub (_start)
-    participant Kernel as Microkernel (kernel_main)
+    participant Common as Kernel (kernel_boot.c)
     participant User as Root User Task (init)
 
     UEFI->>Bootloader: Load from ESP
@@ -19,12 +19,15 @@ sequenceDiagram
     Bootloader->>Bootloader: Collect Memory Map & Framebuffer
     Bootloader->>Stub: Jump to _start (with Multiboot2 magic)
     Stub->>Stub: Setup initial kernel stack
-    Stub->>Kernel: Call kernel_main(magic, info_ptr)
-    Kernel->>Kernel: Parse Multiboot2 tags (Physical Memory)
-    Kernel->>Kernel: pmm_init() (Physical Memory Manager)
-    Kernel->>Kernel: idt_init() (Interrupts)
-    Kernel->>Kernel: vmm_init() (Virtual Memory Manager)
-    Kernel->>User: Handover capabilities & Start
+    Stub->>Stub: Mboot Adapter normalizes to boot_info_t (BOOT_SOURCE_MULTIBOOT2)
+    Stub->>Common: Call kernel_main_common(boot_info)
+    Common->>Common: boot_validate_all(boot_info)
+    Common->>Common: boot_mode_resolve(boot_info)
+    Common->>Common: boot_common_early(boot_info)
+    Common->>Common: boot_common_memory(boot_info)
+    Common->>Common: boot_common_platform_services(boot_info)
+    Common->>Common: boot_common_runtime(boot_info)
+    Common->>User: Handover capabilities & Start
     User->>User: Spawn Personality Servers & Drivers
 ```
 
@@ -37,11 +40,13 @@ sequenceDiagram
    - Jumps to the kernel entry point (`_start` in assembly).
 3. **Assembly Stub (`_start`)**:
    - Sets up the initial kernel stack.
-   - Calls the C-level `kernel_main(magic, multiboot_info_ptr)`.
-4. **Microkernel Initialization (`kernel_main`)**:
-   - Parses the Multiboot2 tags to discover available physical memory.
-   - Initializes the Physical Memory Manager (`pmm_init`).
-   - Initializes the local APIC and core interrupt vectors (`idt_init`).
-   - Re-maps the kernel into higher half virtual memory using the Virtual Memory Manager (`vmm_init`).
+   - Captures the magic value and multiboot info pointer.
+   - An architecture-specific boot source adapter parses the Multiboot2 tags and populates the canonical `boot_info_t` structure, normalizing physical memory regions and framebuffer details.
+   - Calls the generic, C-level `kernel_main_common(boot_info)`.
+4. **Microkernel Initialization (`kernel_boot.c`)**:
+   - `boot_validate_all(boot_info)` validates the standardized structure.
+   - Initializes the Physical Memory Manager (`mm_pmm_init`) and Virtual Memory Manager (`vmm_init`).
+   - Initializes the local APIC and core interrupt vectors (`idt_init` via HAL).
+   - `boot_mode_resolve(boot_info)` determines the boot profile (`BOOT_MODE_NORMAL`, `BOOT_MODE_DIAGNOSTIC`, etc.) and transitions to `boot_common_runtime`.
    - Starts the Idle Task and spawns the Root User Task (`init`).
 5. **Root Task Handover**: The kernel gives the Root Task a capability encompassing all remaining physical memory, devices, and I/O ports. The Root Task then begins spawning Personality Servers and Drivers.
