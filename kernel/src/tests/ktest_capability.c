@@ -276,6 +276,10 @@ static int ktest_cap_run(void) {
     if (test_cap_stale_handle() != 0) return -1;
     hal_serial_write("PASSED\n");
 
+    return 0;
+}
+
+static int ktest_cap_run_runtime(void) {
     hal_serial_write("  [TEST] test_cap_cross_table_revoke... ");
     int ret = test_cap_cross_table_revoke();
     if (ret != 0) {
@@ -294,3 +298,4 @@ static int ktest_cap_run(void) {
 }
 
 REGISTER_BOOT_SELFTEST("capability_tests", "capabilities", ktest_cap_run, BOOT_TEST_STAGE_EARLY, BOOT_TEST_MANDATORY, 0, false)
+REGISTER_BOOT_SELFTEST("capability_tests_runtime", "capabilities", ktest_cap_run_runtime, BOOT_TEST_STAGE_RUNTIME, BOOT_TEST_MANDATORY, 0, false)

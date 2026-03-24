@@ -746,23 +746,25 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
 
     uint32_t current_core = hal_cpu_get_id();
 
-    // Broadacst revocation to other cores via URPC
-    g_revoke_acks_needed[current_core] = 0;
-    for (uint32_t c = 0; c < BHARAT_MAX_CPUS; c++) {
-        if (c != current_core && urpc_channel_get_state(c) == URPC_CHANNEL_BOUND) {
-            // Encode the source core into the payload so the ACK can be routed back
-            uint64_t payload = ((uint64_t)cap_id << 32) | current_core;
-            urpc_bootstrap_send(c, urpc_pack_msg(URPC_CAP_REVOKE, payload));
-            g_revoke_acks_needed[current_core]++;
+    if (current_core < BHARAT_MAX_CPUS) {
+        // Broadcast revocation to other cores via URPC only if we are on a valid, initialized core
+        g_revoke_acks_needed[current_core] = 0;
+        for (uint32_t c = 0; c < BHARAT_MAX_CPUS; c++) {
+            if (c != current_core && urpc_channel_get_state(c) == URPC_CHANNEL_BOUND) {
+                // Encode the source core into the payload so the ACK can be routed back
+                uint64_t payload = ((uint64_t)cap_id << 32) | current_core;
+                urpc_bootstrap_send(c, urpc_pack_msg(URPC_CAP_REVOKE, payload));
+                g_revoke_acks_needed[current_core]++;
+            }
         }
-    }
 
-    // Wait for URPC_CAP_REVOKE_ACK synchronously via central message processor
-    while (g_revoke_acks_needed[current_core] > 0) {
-        extern void arch_cpu_relax(void);
-        arch_cpu_relax();
-        extern void vmm_process_urpc_messages(void);
-        vmm_process_urpc_messages(); // check if acks arrived and process global messages
+        // Wait for URPC_CAP_REVOKE_ACK synchronously via central message processor
+        while (g_revoke_acks_needed[current_core] > 0) {
+            extern void arch_cpu_relax(void);
+            arch_cpu_relax();
+            extern void vmm_process_urpc_messages(void);
+            vmm_process_urpc_messages(); // check if acks arrived and process global messages
+        }
     }
 
     while (sp > 0) {
