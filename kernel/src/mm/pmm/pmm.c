@@ -6,7 +6,8 @@
 
 #include "sched/sched.h"
 #include "early_alloc.h"
-#include "bharat/boot_info.h"
+#include "boot/boot_info.h"
+#include "boot/boot_contract.h"
 
 // Multiboot only for x86_64
 #include "hal/hal.h"
@@ -708,6 +709,8 @@ int pmm_ingest_memory_map(const pmm_memory_map_t *map) {
 
 static bool g_pmm_initialized = false;
 int mm_pmm_init(uint32_t magic, const boot_info_t *boot) {
+  (void)magic; // Passed from old code path, we now rely on boot->magic internally
+
   if (g_pmm_initialized) {
     return 0;
   }

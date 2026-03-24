@@ -104,3 +104,6 @@ Future work may include:
 - shell-triggered diagnostics
 - board-specific manufacturing plans
 - richer self-test reporting
+
+## Boot Validation Phase (Pre-Runtime)
+A new `boot_validate_all()` layer executes immediately on `kernel_main_common()`, explicitly parsing the `boot_info_t` array for overlapping memory, missing initrds, or security combination failures before any true selftests run.

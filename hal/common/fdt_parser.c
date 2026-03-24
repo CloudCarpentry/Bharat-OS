@@ -1,7 +1,7 @@
 #include "hal/fdt_parser.h"
 #include "hal/hal.h"
 #include "hal/hal_boot.h"
-#include "bharat/boot_info.h"
+#include "boot/boot_info.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -93,7 +93,7 @@ int fdt_parse(const void *fdt_ptr, void *boot_info_ptr,
   const struct fdt_header *fdt = (const struct fdt_header *)fdt_ptr;
 
   // Clear outputs initially
-  boot_info->mem_map_count = 0;
+  boot_info->mem_region_count = 0;
 
   out_devices->uart_base = 0;
   out_devices->gic_dist_base = 0;
@@ -176,12 +176,12 @@ int fdt_parse(const void *fdt_ptr, void *boot_info_ptr,
           }
 
           if (is_memory &&
-              boot_info->mem_map_count < BHARAT_BOOT_MAX_MEM_REGIONS) {
-            boot_info->mem_map[boot_info->mem_map_count].phys_start = base;
-            boot_info->mem_map[boot_info->mem_map_count].size = size;
-            boot_info->mem_map[boot_info->mem_map_count].type =
+              boot_info->mem_region_count < BHARAT_BOOT_MAX_MEM_REGIONS) {
+            boot_info->mem_regions[boot_info->mem_region_count].phys_start = base;
+            boot_info->mem_regions[boot_info->mem_region_count].size = size;
+            boot_info->mem_regions[boot_info->mem_region_count].type =
                 BOOT_MEM_USABLE;
-            boot_info->mem_map_count++;
+            boot_info->mem_region_count++;
           } else if (is_cpu) {
             // Hart IDs / topology handled in riscv_fdt_parse_common
             boot_info->boot_cpu_id = base;

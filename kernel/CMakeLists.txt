@@ -11,6 +11,7 @@ target_include_directories(bharat_kernel_includes INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/include/generated
     ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/boot/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 target_link_libraries(bharat_kernel_includes INTERFACE bharat_generated_includes)
@@ -294,14 +295,20 @@ add_subdirectory(src/tests)
 set(KERNEL_SRCS
     ${BOOT_SRC}
     src/mm/physmap.c
-    $<$<BOOL:${BHARAT_BOOT_GUI}>:../boot/common/boot_ui_select.c>
+    ../boot/common/boot_ui_select.c
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/boot_video.c>
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/display_handoff.c>
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/display_fallback.c>
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/boot_gui.c>
     src/kernel_boot.c
-    ../boot/common/boot_info_validate.c
-    ../boot/common/boot_info_finalize.c
+    ../boot/src/boot_info.c
+    ../boot/src/boot_validate.c
+    ../boot/src/boot_security.c
+    ../boot/src/adapters/multiboot2/multiboot2_adapter.c
+    ../boot/src/adapters/fdt/fdt_adapter.c
+    ../boot/src/adapters/opensbi/opensbi_adapter.c
+    ../boot/src/adapters/uboot/uboot_adapter.c
+    ../boot/src/adapters/uefi/uefi_adapter.c
     $<$<STREQUAL:${ARCH},arm32>:../hal/arm32_mpu_vmm_mock.c>
     src/display/fb_core.c
     src/profile/${KERNEL_PROFILE_LOWER}/profile.c
@@ -552,4 +559,3 @@ endif()
 
 list(APPEND KERNEL_SRCS src/display/boot_video_map.c)
 
-list(APPEND KERNEL_SRCS src/tests/boot/test_boot_info_validate.c)

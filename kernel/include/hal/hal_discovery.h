@@ -165,7 +165,6 @@ typedef struct {
     uint64_t usable_all_mask;   // Available + kernel-usable on every online CPU
 } accel_discovery_t;
 
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "bharat/display/boot_video.h"
 
 // --- Global System Discovery State ---
@@ -194,7 +193,7 @@ typedef struct {
 } system_discovery_t;
 
 // TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "bharat/boot_info.h"
+#include "boot/boot_info.h"
 
 // Retrieve the global discovery structure
 system_discovery_t* hal_get_system_discovery(void);
