@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <bharat/uapi/abi_types.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -14,10 +15,10 @@ extern "C" {
  */
 
 /* Capability handle type */
-typedef uint64_t bharat_cap_handle_t;
+typedef bharat_handle_t bharat_cap_handle_t;
 
 /* Invalid handle identifier */
-#define BHARAT_CAP_INVALID_HANDLE ((bharat_cap_handle_t)0)
+#define BHARAT_CAP_INVALID_HANDLE ((bharat_cap_handle_t)BHARAT_INVALID_HANDLE)
 
 /* Capability rights bitmask type */
 typedef uint32_t bharat_cap_rights_t;

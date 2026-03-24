@@ -4,12 +4,13 @@
 #include <stdlib.h>
 
 #include "../kernel/include/mm.h"
-#include "../kernel/include/sched.h"
+#include "../kernel/include/sched/sched.h"
 #include "../kernel/include/trap.h"
 #include "../kernel/include/arch/arch_caps.h"
 #include "../kernel/include/mm.h"
-#include "../kernel/include/sched.h"
+#include "../kernel/include/sched/sched.h"
 #include "../kernel/include/kernel.h"
+#include <bharat/uapi/syscall_args.h>
 
 int cap_can_transfer(uint32_t type) { return 1; }
 int cap_transfer_rights_valid(uint32_t current_rights, uint32_t requested_rights) { return 1; }
@@ -178,27 +179,43 @@ int main(void) {
 
     uint32_t send_cap = 0;
     uint32_t recv_cap = 0;
+    bharat_sys_endpoint_create_args_t create_args = {
+        .out_send_cap_ptr = (uint64_t)(uintptr_t)&send_cap,
+        .out_recv_cap_ptr = (uint64_t)(uintptr_t)&recv_cap,
+    };
     long rc3 = syscall_dispatch(SYSCALL_ENDPOINT_CREATE,
-                            (uint64_t)(uintptr_t)&send_cap,
-                            (uint64_t)(uintptr_t)&recv_cap,
-                            0,0,0,0);
+                            (uint64_t)(uintptr_t)&create_args,
+                            0,0,0,0,0);
     assert(rc3 == -22 || rc3 == 0);
 
     const char payload[] = {'o','k'};
+    bharat_sys_endpoint_send_args_t send_args = {
+        .send_cap = send_cap,
+        .payload_len = 2U,
+        .payload_ptr = (uint64_t)(uintptr_t)payload,
+        .timeout_ticks = 0,
+        .cap_to_send = 0,
+        .cap_send_rights = 0,
+        .reserved0 = 0,
+    };
     long rc4 = syscall_dispatch(SYSCALL_ENDPOINT_SEND,
-                            send_cap,
-                            (uint64_t)(uintptr_t)payload,
-                            2U,0,0,0);
+                            (uint64_t)(uintptr_t)&send_args,
+                            0,0,0,0,0);
     assert(rc4 == -22 || rc4 == 0);
 
     uint8_t recv_buf[8] = {0};
     uint32_t recv_len = 0;
+    bharat_sys_endpoint_receive_args_t recv_args = {
+        .recv_cap = recv_cap,
+        .out_payload_capacity = sizeof(recv_buf),
+        .out_payload_ptr = (uint64_t)(uintptr_t)recv_buf,
+        .out_len_ptr = (uint64_t)(uintptr_t)&recv_len,
+        .timeout_ticks = 0,
+        .out_received_cap_ptr = 0,
+    };
     long rc5 = syscall_dispatch(SYSCALL_ENDPOINT_RECEIVE,
-                            recv_cap,
-                            (uint64_t)(uintptr_t)recv_buf,
-                            sizeof(recv_buf),
-                            (uint64_t)(uintptr_t)&recv_len,
-                            0,0);
+                            (uint64_t)(uintptr_t)&recv_args,
+                            0,0,0,0,0);
     assert(rc5 == -22 || rc5 == 0);
 
     trap_frame_t frame = {0};

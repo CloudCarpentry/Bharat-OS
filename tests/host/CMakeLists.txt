@@ -161,3 +161,7 @@ add_executable(host_test_vmm_fault ../test_vmm_fault.c ../../kernel/src/mm/vm/fa
 target_include_directories(host_test_vmm_fault PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/kernel/src ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/generated/include)
 target_compile_definitions(host_test_vmm_fault PRIVATE TESTING=1)
 add_test(NAME host_test_vmm_fault COMMAND host_test_vmm_fault)
+
+add_executable(test_uapi_abi test_uapi_abi.c)
+target_include_directories(test_uapi_abi PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME host_test_uapi_abi COMMAND test_uapi_abi)

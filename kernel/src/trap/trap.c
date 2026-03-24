@@ -10,6 +10,7 @@
 #include "mm.h"
 #include "mm/mm_local.h"
 #include "fault_diag.h"
+#include <bharat/uapi/syscall_args.h>
 #include "arch/arch_ext_state.h"
 #include "arch/arch_caps.h"
 #include "trap_api.h"
@@ -127,8 +128,7 @@ int trap_init(void) {
 long syscall_dispatch(syscall_id_t id, uint64_t arg0, uint64_t arg1,
                       uint64_t arg2, uint64_t arg3, uint64_t arg4,
                       uint64_t arg5) {
-  (void)arg4;
-  (void)arg5;
+#define SYSCALL_ARGS_FROM_USER(type_, user_ptr_)   ({     const type_ *__p = (const type_ *)(uintptr_t)(user_ptr_);     if (!trap_user_range_valid((uint64_t)(user_ptr_), (uint64_t)sizeof(type_))) {       return TRAP_ERR_INVAL;     }     __p;   })
 
   switch (id) {
   case SYSCALL_NOP:
@@ -152,56 +152,79 @@ long syscall_dispatch(syscall_id_t id, uint64_t arg0, uint64_t arg1,
     return (long)sched_sys_set_priority(arg0, (uint32_t)arg1);
   case SYSCALL_SCHED_SET_AFFINITY:
     return (long)sched_sys_set_affinity(arg0, (uint32_t)arg1);
-  case SYSCALL_VMM_MAP_PAGE:
-    return (long)vmm_map_page((virt_addr_t)arg0, (phys_addr_t)arg1,
-                              (uint32_t)arg2);
+  case SYSCALL_VMM_MAP_PAGE: {
+    const bharat_sys_vmm_map_page_args_t *args =
+        SYSCALL_ARGS_FROM_USER(bharat_sys_vmm_map_page_args_t, arg0);
+    return (long)vmm_map_page((virt_addr_t)args->vaddr, (phys_addr_t)args->paddr,
+                              args->flags);
+  }
   case SYSCALL_VMM_UNMAP_PAGE:
     return (long)vmm_unmap_page((virt_addr_t)arg0);
-  case SYSCALL_CAPABILITY_INVOKE:
-    return (long)cap_invoke(arg0, arg1, arg2, arg3);
+  case SYSCALL_CAPABILITY_INVOKE: {
+    const bharat_sys_cap_invoke_args_t *args =
+        SYSCALL_ARGS_FROM_USER(bharat_sys_cap_invoke_args_t, arg0);
+    return (long)cap_invoke(args->cap_id, args->opcode, args->arg0, args->arg1);
+  }
   case SYSCALL_ENDPOINT_CREATE: {
     capability_table_t *table = trap_current_cap_table();
-    uint32_t *out_send_cap = (uint32_t *)(uintptr_t)arg0;
-    uint32_t *out_recv_cap = (uint32_t *)(uintptr_t)arg1;
-    if (!trap_user_range_valid(arg0, (uint64_t)sizeof(*out_send_cap)) ||
-        !trap_user_range_valid(arg1, (uint64_t)sizeof(*out_recv_cap))) {
+    const bharat_sys_endpoint_create_args_t *args =
+        SYSCALL_ARGS_FROM_USER(bharat_sys_endpoint_create_args_t, arg0);
+    uint32_t *out_send_cap = (uint32_t *)(uintptr_t)args->out_send_cap_ptr;
+    uint32_t *out_recv_cap = (uint32_t *)(uintptr_t)args->out_recv_cap_ptr;
+    if (!trap_user_range_valid(args->out_send_cap_ptr, (uint64_t)sizeof(*out_send_cap)) ||
+        !trap_user_range_valid(args->out_recv_cap_ptr, (uint64_t)sizeof(*out_recv_cap))) {
       return TRAP_ERR_INVAL;
     }
     return (long)ipc_endpoint_create(table, out_send_cap, out_recv_cap);
   }
   case SYSCALL_ENDPOINT_SEND: {
     capability_table_t *table = trap_current_cap_table();
-    if (!trap_user_range_valid(arg1, arg2)) {
+    const bharat_sys_endpoint_send_args_t *args =
+        SYSCALL_ARGS_FROM_USER(bharat_sys_endpoint_send_args_t, arg0);
+    if (!trap_user_range_valid(args->payload_ptr, args->payload_len)) {
       return TRAP_ERR_INVAL;
     }
-    return (long)ipc_endpoint_send(
-        table, (uint32_t)arg0, (const void *)(uintptr_t)arg1, (uint32_t)arg2, (uint64_t)arg3, (uint32_t)arg4, (uint32_t)arg5);
+    return (long)ipc_endpoint_send(table, args->send_cap,
+                                   (const void *)(uintptr_t)args->payload_ptr,
+                                   args->payload_len,
+                                   args->timeout_ticks,
+                                   args->cap_to_send,
+                                   args->cap_send_rights);
   }
   case SYSCALL_ENDPOINT_RECEIVE: {
     capability_table_t *table = trap_current_cap_table();
-    uint32_t *out_len = (uint32_t *)(uintptr_t)arg3;
-    uint32_t *out_received_cap = (uint32_t *)(uintptr_t)arg5;
-    if (!trap_user_range_valid(arg1, arg2) ||
-        !trap_user_range_valid(arg3, (uint64_t)sizeof(*out_len)) ||
-        (out_received_cap && !trap_user_range_valid(arg5, (uint64_t)sizeof(*out_received_cap)))) {
+    const bharat_sys_endpoint_receive_args_t *args =
+        SYSCALL_ARGS_FROM_USER(bharat_sys_endpoint_receive_args_t, arg0);
+    uint32_t *out_len = (uint32_t *)(uintptr_t)args->out_len_ptr;
+    uint32_t *out_received_cap = (uint32_t *)(uintptr_t)args->out_received_cap_ptr;
+    if (!trap_user_range_valid(args->out_payload_ptr, args->out_payload_capacity) ||
+        !trap_user_range_valid(args->out_len_ptr, (uint64_t)sizeof(*out_len)) ||
+        (out_received_cap && !trap_user_range_valid(args->out_received_cap_ptr, (uint64_t)sizeof(*out_received_cap)))) {
       return TRAP_ERR_INVAL;
     }
-    return (long)ipc_endpoint_receive(table, (uint32_t)arg0,
-                                      (void *)(uintptr_t)arg1, (uint32_t)arg2,
-                                      out_len, (uint64_t)arg4, out_received_cap);
+    return (long)ipc_endpoint_receive(table, args->recv_cap,
+                                      (void *)(uintptr_t)args->out_payload_ptr,
+                                      args->out_payload_capacity,
+                                      out_len,
+                                      args->timeout_ticks,
+                                      out_received_cap);
   }
   case SYSCALL_CAPABILITY_DELEGATE: {
     capability_table_t *table = trap_current_cap_table();
-    uint32_t *out_cap = (uint32_t *)(uintptr_t)arg2;
-    if (!trap_user_range_valid(arg2, (uint64_t)sizeof(*out_cap))) {
+    const bharat_sys_cap_delegate_args_t *args =
+        SYSCALL_ARGS_FROM_USER(bharat_sys_cap_delegate_args_t, arg0);
+    uint32_t *out_cap = (uint32_t *)(uintptr_t)args->out_cap_ptr;
+    if (!trap_user_range_valid(args->out_cap_ptr, (uint64_t)sizeof(*out_cap))) {
       return TRAP_ERR_INVAL;
     }
-    return (long)cap_table_delegate(table, table, (uint32_t)arg0,
-                                    (uint32_t)arg1, out_cap);
+    return (long)cap_table_delegate(table, table, args->src_cap,
+                                    args->requested_rights, out_cap);
   }
   default:
     return TRAP_ERR_NOSYS;
   }
+
+#undef SYSCALL_ARGS_FROM_USER
 }
 
 int trap_dispatch(trap_frame_t *frame, const trap_info_t *info) {

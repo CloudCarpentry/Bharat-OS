@@ -1,3 +1,7 @@
+/*
+ * Canonical Bharat syscall number table.
+ * ABI rule: never renumber/reorder existing entries; append only.
+ */
 SYSCALL_DEF(SYSCALL_NOP, 0)
 SYSCALL_DEF(SYSCALL_THREAD_CREATE, 1)
 SYSCALL_DEF(SYSCALL_THREAD_DESTROY, 2)
