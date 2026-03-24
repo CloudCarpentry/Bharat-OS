@@ -24,6 +24,7 @@ param(
     [switch]$Payload = $false,
     [switch]$Flash = $false,
     [switch]$DualSerial = $false,
+    [switch]$E2e = $false,
     [string]$Machine = "",
     [ValidateSet("ON", "OFF")][string]$BootGui = "ON",
     [string]$HardwareProfile = "",
@@ -306,13 +307,60 @@ if ($Run) {
     ok "Booting in QEMU (press Ctrl+A then X to quit)..."
     Write-Host ""
 
+    if ($E2e) {
+        $BootGui = "OFF"
+    }
+
     $qemuArgs = @()
 
+    # Profile-specific QEMU flags
+    $ProfileArgs = @()
+
+    # Use $ProfileClean derived earlier, which correctly isolates the parameter value from the automatic $PROFILE variable.
+    $ProfUpper = $ProfileClean.ToUpper()
+    if ($ProfUpper -eq "AUTOMOBILE" -or $ProfUpper -eq "EV_AUTOMOBILE") {
+        # Emulate CAN bus for automobile testing
+        $ProfileArgs += @("-object", "can-bus,id=canbus0", "-device", "kvaser_pci,canbus=canbus0")
+    }
+    elseif ($ProfUpper -eq "MEDICAL") {
+        # Fault injection & validation (watchdog)
+        $ProfileArgs += @("-watchdog", "i6300esb", "-watchdog-action", "pause")
+    }
+    elseif ($ProfUpper -eq "DRONE") {
+        # E.g. cortex-a15 for drone flight controllers
+        if ($Arch -eq "arm64" -or $Arch -eq "arm32") {
+            $ProfileArgs += @("-cpu", "cortex-a15")
+        }
+    }
+    elseif ($ProfUpper -eq "EDGE" -or $ProfUpper -eq "ROBOT") {
+        # Generic edge / robot - add network and block device (stub)
+        $ProfileArgs += @("-netdev", "user,id=net0", "-device", "virtio-net-pci,netdev=net0")
+    }
+    elseif ($ProfUpper -eq "LAPTOP") {
+        # Laptop / Workstation - add tablet pointer, keyboard, and basic network
+        $ProfileArgs += @("-device", "virtio-tablet-pci", "-device", "virtio-keyboard-pci", "-netdev", "user,id=net0", "-device", "virtio-net-pci,netdev=net0")
+
+        # Add ACPI/Q35 base for x86_64
+        if ($Arch -eq "x86_64") {
+            $ProfileArgs += @("-machine", "q35", "-m", "1G")
+        }
+    }
+
     $stdioBackend = "mon:stdio"
+    if ($E2e) {
+        $stdioBackend = "file:qemu_e2e.log"
+    }
     $serialArgs = @()
 
     if ($Arch -eq "x86_64") {
-        $qemuArgs += @("-kernel", $KernelBinary, "-m", "256M", "-no-reboot")
+        $MemArg = @("-m", "256M")
+        if ($ProfileArgs -contains "-m") {
+            $MemArg = @()
+        }
+        $qemuArgs += @("-kernel", $KernelBinary)
+        $qemuArgs += $MemArg
+        $qemuArgs += @("-no-reboot")
+        $qemuArgs += $ProfileArgs
         if ($BootGui -eq "ON") {
             if ($DualSerial) {
                 $qemuArgs += @("-serial", $stdioBackend, "-d", "int,cpu_reset", "-D", "qemu_crash.log")
@@ -337,6 +385,7 @@ if ($Run) {
         else {
             $qemuArgs += @("-machine", $Machine, "-kernel", $OutELF, "-m", "256M", "-no-reboot")
         }
+        $qemuArgs += $ProfileArgs
 
         if ($BootGui -eq "ON") {
             if ($SerialTarget -eq "both" -or $DualSerial) {
@@ -355,7 +404,15 @@ if ($Run) {
         }
     }
     elseif ($Arch -eq "arm64") {
-        $qemuArgs += @("-machine", $Machine, "-cpu", "cortex-a53", "-kernel", $KernelBinary, "-m", "256M", "-no-reboot")
+        $CpuArg = @("-cpu", "cortex-a72")
+        if ($ProfileArgs -contains "-cpu") {
+            $CpuArg = @()
+        }
+
+        $qemuArgs += @("-machine", $Machine)
+        $qemuArgs += $CpuArg
+        $qemuArgs += @("-kernel", $KernelBinary, "-m", "256M", "-no-reboot")
+        $qemuArgs += $ProfileArgs
         if ($BootGui -eq "ON") {
             if ($SerialTarget -eq "both" -or $DualSerial) {
                 $qemuArgs += @("-serial", "vc", "-serial", $stdioBackend)
