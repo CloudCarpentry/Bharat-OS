@@ -33,6 +33,8 @@ extern int bharat_monitor_v1_call_tlb_invalidate(bharat_transport_t* t, int dst,
 extern void vmm_process_urpc_messages(void);
 extern void cap_handle_delegate_req(uint64_t payload, uint32_t source_core);
 extern void cap_handle_delegate_ack(uint64_t payload);
+extern void cap_handle_revoke_req(uint64_t payload, uint32_t source_core);
+extern void cap_handle_revoke_ack(uint64_t payload);
 
 static uint64_t tlb_collect_targets(uint64_t aspace_id) {
     uint64_t mask = 0;
@@ -400,6 +402,10 @@ void vmm_process_urpc_messages(void) {
             } else if (type == URPC_CAP_DELEGATE_ACK) {
                 // In case an ACK arrives here, we set the global ack_received flag.
                 cap_handle_delegate_ack(payload);
+            } else if (type == URPC_CAP_REVOKE) {
+                cap_handle_revoke_req(payload, c);
+            } else if (type == URPC_CAP_REVOKE_ACK) {
+                cap_handle_revoke_ack(payload);
             } else {
                 // If we get here, it's another message type. The prior behavior was to drop it
                 // in synchronous loops, but since we are replacing the global processor,
