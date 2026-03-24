@@ -30,6 +30,16 @@ graph TD
     end
 ```
 
+## Remote Enqueue and Cross-Core Wakeup
+
+When a thread must be awakened or migrated to a core different from the one currently executing (e.g., Core X enqueuing to Core Y), Bharat-OS utilizes a decoupled, asynchronous enqueue mechanism to preserve local runqueue ownership:
+
+1. **Pending Inbox:** Core X briefly acquires the remote runqueue lock of Core Y, places the newly runnable thread into a specialized `pending_inbox` list, and sets a `resched_pending` flag.
+2. **Inter-Processor Interrupt (IPI):** Core X issues an IPI to Core Y.
+3. **Local Dispatch:** Core Y receives the IPI, triggering a `sched_reschedule()`. Core Y then drains its `pending_inbox` natively, evaluates priorities, and potentially preempts its currently running thread.
+
+This architecture ensures that the remote core always retains ultimate authority over its local `ready_queue` and preemption decisions, maintaining strict multikernel isolation boundaries while minimizing cross-core lock duration. Successive remote enqueues before the inbox is drained are coalesced into a single IPI to prevent interrupt storms.
+
 ## Load Balancing (Cross-Core Migration)
 While per-CPU runqueues are fast, they can lead to imbalance (e.g., Core 0 has 10 busy threads, Core 1 is idle). Bharat-OS addresses this through periodic load balancing.
 
