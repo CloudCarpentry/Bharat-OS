@@ -68,11 +68,11 @@ function(bharat_apply_component_policy)
     string(TOLOWER "${BHARAT_TARGET_BOARD}" _board)
 
     # Resolve Arch-based Default Serial Drivers
-    if(ARCH STREQUAL "x86_64")
+    if(BHARAT_ARCH_FAMILY STREQUAL "X86")
         set(BHARAT_ENABLE_DRIVER_SERIAL_NS16550 ON CACHE BOOL "Build NS16550 serial driver" FORCE)
-    elseif(ARCH MATCHES "^arm")
+    elseif(BHARAT_ARCH_FAMILY STREQUAL "ARM")
         set(BHARAT_ENABLE_DRIVER_SERIAL_PL011 ON CACHE BOOL "Build PL011 serial driver" FORCE)
-    elseif(ARCH MATCHES "^riscv")
+    elseif(BHARAT_ARCH_FAMILY STREQUAL "RISCV")
         set(BHARAT_ENABLE_DRIVER_SERIAL_SIFIVE ON CACHE BOOL "Build SiFive UART driver" FORCE)
         # Often also need NS16550 for qemu-virt
         set(BHARAT_ENABLE_DRIVER_SERIAL_NS16550 ON CACHE BOOL "Build NS16550 serial driver" FORCE)
