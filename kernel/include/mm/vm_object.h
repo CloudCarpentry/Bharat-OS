@@ -66,6 +66,7 @@ struct vm_object {
     uint32_t flags;
     size_t size;
 
+    uint32_t magic; // Debug cookie for lifecycle validation
     volatile uint32_t refcount;
 
     const vm_object_ops_t *ops;

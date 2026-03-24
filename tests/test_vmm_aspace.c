@@ -173,20 +173,28 @@ TEST(vm_object_kinds_basic_construction) {
     printf("Running vm_object_kinds_basic_construction...\n");
 
     int fake_backing = 42;
+
+    // Test invalid unaligned size
+    vm_object_t *invalid_obj = vm_object_create_anon(0x100, 0);
+    ASSERT_EQ(invalid_obj, NULL);
+
     vm_object_t *file_obj = vm_object_create_file(&fake_backing, 0x2000, 0x4000, 0);
     ASSERT_NOT_NULL(file_obj);
     ASSERT_EQ(file_obj->kind, VM_OBJECT_FILE);
     ASSERT_EQ(file_obj->u.file.file_offset, 0x2000u);
+    ASSERT_NOT_NULL((void*)file_obj->ops); // Explicit ops test
 
     vm_object_t *dev_obj = vm_object_create_device(0x900000, 0x2000, 0, 0);
     ASSERT_NOT_NULL(dev_obj);
     ASSERT_EQ(dev_obj->kind, VM_OBJECT_DEVICE);
     ASSERT_EQ(dev_obj->u.device.phys_base, 0x900000u);
+    ASSERT_NOT_NULL((void*)dev_obj->ops);
 
     vm_object_t *dma_obj = vm_object_create_dma(0xA00000, 0x3000, 1, 0, 0);
     ASSERT_NOT_NULL(dma_obj);
     ASSERT_EQ(dma_obj->kind, VM_OBJECT_DMA);
     ASSERT_EQ(dma_obj->u.dma.phys_base, 0xA00000u);
+    ASSERT_NOT_NULL((void*)dma_obj->ops);
 
     vm_object_release(file_obj);
     vm_object_release(dev_obj);
@@ -195,8 +203,32 @@ TEST(vm_object_kinds_basic_construction) {
     printf("Passed vm_object_kinds_basic_construction\n");
 }
 
+TEST(vm_object_lifecycle_hardening) {
+    printf("Running vm_object_lifecycle_hardening...\n");
+
+    vm_object_t *obj = vm_object_create_anon(0x4000, 0);
+    ASSERT_NOT_NULL(obj);
+    ASSERT_EQ(obj->refcount, 1u);
+    ASSERT_EQ(obj->magic, 0x564D4F42); // ALIVE
+
+    vm_object_retain(obj);
+    ASSERT_EQ(obj->refcount, 2u);
+
+    vm_object_release(obj);
+    ASSERT_EQ(obj->refcount, 1u);
+
+    // Final release
+    vm_object_release(obj);
+    // At this point obj is kfree'd, can't reliably read magic unless we intercept kfree.
+    // But we know it didn't trap/panic.
+
+    printf("Passed vm_object_lifecycle_hardening\n");
+}
+
 int main() {
     hal_pt_init(); // Needs mock
+    extern void prot_domain_init(void);
+    prot_domain_init();
 
     aspace_overlap_rejected();
     aspace_shared_object_two_spaces();
@@ -204,6 +236,7 @@ int main() {
     aspace_teardown_releases_refs();
     aspace_lookup_authoritative_without_pt_mapping();
     vm_object_kinds_basic_construction();
+    vm_object_lifecycle_hardening();
 
     printf("All ASPACE tests passed successfully!\n");
     return 0;
