@@ -4,10 +4,6 @@ if(BHARAT_ENABLE_DRIVER_PTP_CLOCK)
     list(APPEND BHARAT_DRIVER_DEVICES_SOURCES ptp_clock/ptp_clock.c)
 endif()
 
-if(BHARAT_ENABLE_DRIVER_VIRTIO_NET)
-    list(APPEND BHARAT_DRIVER_DEVICES_SOURCES virtio_net/virtio_net.c)
-endif()
-
 if(BHARAT_ENABLE_DRIVER_FPGA_MGR)
     list(APPEND BHARAT_DRIVER_DEVICES_SOURCES fpga_mgr/fpga_mgr.c)
 endif()
