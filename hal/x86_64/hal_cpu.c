@@ -59,45 +59,6 @@ inline uint64_t x86_rdpmc(uint32_t counter) {
   return ((uint64_t)high << 32) | low;
 }
 
-// Minimal VGA Text Mode Driver
-static uint16_t *vga_buffer = (uint16_t *)0xB8000;
-static int vga_col = 0;
-static int vga_row = 0;
-#define VGA_WIDTH 80
-#define VGA_HEIGHT 25
-
-static void vga_scroll(void) {
-  for (int y = 0; y < VGA_HEIGHT - 1; y++) {
-    for (int x = 0; x < VGA_WIDTH; x++) {
-      vga_buffer[y * VGA_WIDTH + x] = vga_buffer[(y + 1) * VGA_WIDTH + x];
-    }
-  }
-  for (int x = 0; x < VGA_WIDTH; x++) {
-    vga_buffer[(VGA_HEIGHT - 1) * VGA_WIDTH + x] = 0x0F00 | ' '; // White on black space
-  }
-}
-
-static void vga_write_char(char c) {
-  if (c == '\n') {
-    vga_col = 0;
-    vga_row++;
-  } else if (c == '\r') {
-    vga_col = 0;
-  } else {
-    vga_buffer[vga_row * VGA_WIDTH + vga_col] = 0x0F00 | (uint8_t)c;
-    vga_col++;
-    if (vga_col >= VGA_WIDTH) {
-      vga_col = 0;
-      vga_row++;
-    }
-  }
-
-  if (vga_row >= VGA_HEIGHT) {
-    vga_scroll();
-    vga_row = VGA_HEIGHT - 1;
-  }
-}
-
 void hal_cpu_halt(void) {
   // Inject x86 assembly for HLT instruction
   __asm__ volatile("hlt");
