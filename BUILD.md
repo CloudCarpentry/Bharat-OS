@@ -209,18 +209,70 @@ You can tune early boot behavior without source edits:
 
 These are wired through both build scripts and raw CMake cache entries.
 
-### Building for the Automotive Profile
+### Building for Device Profiles (Automobile, Drone, Medical, Edge)
 
-The CAN subsystem (CAN generic core, `virt_can` backend, CAN user-space service, loopback driver, and automotive subsystem) is disabled by default to save space. To enable it, use the `AUTOMOTIVE_ECU` or `AUTOMOTIVE_INFOTAINMENT` device profile.
+Bharat-OS supports various device profiles natively. The build scripts (`build.sh` and `build.ps1`) automatically inject the correct QEMU flags to emulate hardware-specific peripherals (like CAN buses or watchdog timers) depending on the selected profile.
 
-**Using bash script:**
+**1. Automobile & EV Testing**
+The CAN subsystem is enabled automatically for Automotive profiles. QEMU will be launched with a virtual Kvaser PCI CAN bus.
 ```bash
-./build.sh x86_64 --profile=AUTOMOTIVE_ECU
+# Bash
+./build.sh x86_64 --profile=AUTOMOBILE --run
+
+# PowerShell
+.\build.ps1 -Arch x86_64 -Profile AUTOMOBILE -Run
 ```
 
-**Using PowerShell:**
-```powershell
-.\build.ps1 -Arch x86_64 -Profile AUTOMOTIVE_ECU -Run
+**2. Drone (UAV) Testing**
+Drone firmware usually relies on specific ARM processors. Using the `DRONE` profile on `arm64` or `arm32` defaults to emulating a Cortex-A15.
+```bash
+# Bash
+./build.sh arm64 --profile=DRONE --run
+
+# PowerShell
+.\build.ps1 -Arch arm64 -Profile DRONE -Run
+```
+
+**3. Medical Device Validation**
+Medical environments require strict V&V. The `MEDICAL` profile injects a watchdog device (`i6300esb`) configured to pause on trigger, allowing you to simulate and test fault injection and safe failure states.
+```bash
+# Bash
+./build.sh x86_64 --profile=MEDICAL --run
+```
+
+**4. Robotics & Edge Devices**
+The `ROBOT` and `EDGE` profiles inject basic virtio networking to represent generic IoT or edge deployments.
+```bash
+./build.sh riscv64 --profile=ROBOT --run
+```
+
+**5. Laptops & Workstations**
+The `LAPTOP` profile targets traditional PC or workstation form factors. It injects a virtio network device, as well as a virtio-tablet and virtio-keyboard to emulate typical human interface devices. For `x86_64` targets, it automatically switches the QEMU machine to `q35` and expands the memory to 1G to support ACPI and modern PC buses.
+```bash
+# Bash
+./build.sh x86_64 --profile=LAPTOP --run
+
+# PowerShell
+.\build.ps1 -Arch arm64 -Profile LAPTOP -Run
+```
+
+### End-to-End (E2E) Test Support
+
+For Continuous Integration (CI) and automated validation, you can pass the `--e2e` (Bash) or `-E2e` (PowerShell) flag.
+
+When enabled:
+1. It forces the system to boot in headless mode (`-nographic` / `BOOT_GUI=OFF`).
+2. It redirects all serial output from the QEMU machine to a local file (`qemu_e2e.log`) instead of standard output.
+3. It prevents the emulator from rebooting on a crash (`-no-reboot`).
+
+```bash
+# Bash example for automated testing
+./build.sh x86_64 --profile=AUTOMOBILE --run --e2e
+cat qemu_e2e.log
+
+# PowerShell example
+.\build.ps1 -Arch riscv64 -Profile MEDICAL -Run -E2e
+Get-Content qemu_e2e.log
 ```
 
 ### GUI and Serial Console Output (`-BootGui ON`)

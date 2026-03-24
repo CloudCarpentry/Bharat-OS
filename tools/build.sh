@@ -20,6 +20,7 @@ PERSONALITY="none"
 
 # Parse arguments
 DUAL_SERIAL=false
+E2E=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -121,6 +122,10 @@ while [[ $# -gt 0 ]]; do
             DUAL_SERIAL=true
             shift
             ;;
+        -E2e|--e2e)
+            E2E=true
+            shift
+            ;;
         *)
             if [[ ! "$1" == -* ]] && [[ -z "$ARCH_SET" ]]; then
                 ARCH="$1"
@@ -187,6 +192,10 @@ elif [ "$ARCH" == "riscv64" ]; then
     CMAKE_ARGS="${CMAKE_ARGS} -DBHARAT_RISCV_BUILD_PAYLOAD_BIN=OFF"
 fi
 
+if [ "$E2E" = true ]; then
+    BOOT_GUI="OFF"
+fi
+
 if [ -n "$BOOT_GUI" ]; then
     if [ "$BOOT_GUI" = "true" ] || [ "$BOOT_GUI" = "ON" ] || [ "$BOOT_GUI" = "1" ]; then
         CMAKE_ARGS="${CMAKE_ARGS} -DBHARAT_BOOT_GUI=ON"
@@ -234,9 +243,44 @@ if [ "$RUN" = true ]; then
             "${BUILD_DIR}/kernel/kernel.elf" "$KERNEL_BIN"
     fi
 
+    # Profile-specific QEMU flags
+    PROFILE_ARGS=""
+    if [ "$PROFILE_UPPER" == "AUTOMOBILE" ] || [ "$PROFILE_UPPER" == "EV_AUTOMOBILE" ]; then
+        # Emulate CAN bus for automobile testing
+        PROFILE_ARGS="-object can-bus,id=canbus0 -device kvaser_pci,canbus=canbus0"
+    elif [ "$PROFILE_UPPER" == "MEDICAL" ]; then
+        # Fault injection & validation (watchdog)
+        PROFILE_ARGS="-watchdog i6300esb -watchdog-action pause"
+    elif [ "$PROFILE_UPPER" == "DRONE" ]; then
+        # E.g. cortex-a15 for drone flight controllers
+        if [ "$ARCH" == "arm64" ] || [ "$ARCH" == "arm32" ]; then
+            PROFILE_ARGS="-cpu cortex-a15"
+        fi
+    elif [ "$PROFILE_UPPER" == "EDGE" ] || [ "$PROFILE_UPPER" == "ROBOT" ]; then
+        # Generic edge / robot - add network and block device (stub)
+        PROFILE_ARGS="-netdev user,id=net0 -device virtio-net-pci,netdev=net0"
+    elif [ "$PROFILE_UPPER" == "LAPTOP" ]; then
+        # Laptop / Workstation - add tablet pointer, keyboard, and basic network
+        PROFILE_ARGS="-device virtio-tablet-pci -device virtio-keyboard-pci -netdev user,id=net0 -device virtio-net-pci,netdev=net0"
+
+        # Add ACPI battery for x86_64
+        if [ "$ARCH" == "x86_64" ]; then
+            PROFILE_ARGS="${PROFILE_ARGS} -machine q35 -m 1G"
+        fi
+    fi
+
     if [ "$ARCH" == "x86_64" ]; then
         GUI_ARGS=""
         SERIAL_ARGS="-serial stdio"
+        if [ "$E2E" = true ]; then
+            SERIAL_ARGS="-serial file:qemu_e2e.log"
+        fi
+        # Filter out default -m if laptop overrode it
+        M_ARG="-m 256M"
+        if [[ "$PROFILE_ARGS" == *"-m 1G"* ]]; then
+            M_ARG=""
+        fi
+
         if [ "$BOOT_GUI" = "ON" ] || [ "$BOOT_GUI" = "true" ] || [ "$BOOT_GUI" = "1" ]; then
             GUI_ARGS="-vga std"
             if [ "$DUAL_SERIAL" = true ]; then
@@ -249,14 +293,18 @@ if [ "$RUN" = true ]; then
         fi
         qemu-system-x86_64 \
             -kernel "$KERNEL_BIN" \
-            -m 256M \
+            $M_ARG \
             $SERIAL_ARGS \
             -no-reboot \
-            $GUI_ARGS
+            $GUI_ARGS \
+            $PROFILE_ARGS
 
     elif [ "$ARCH" == "riscv64" ]; then
         GUI_ARGS=""
         SERIAL_ARGS="-serial stdio"
+        if [ "$E2E" = true ]; then
+            SERIAL_ARGS="-serial file:qemu_e2e.log"
+        fi
         if [ "$BOOT_GUI" = "ON" ] || [ "$BOOT_GUI" = "true" ] || [ "$BOOT_GUI" = "1" ]; then
             # Route serial output to the virtual console in the QEMU graphical window.
             # Without a firmware or GPU, we drop virtio-gpu and force QEMU to display the 'vc' directly on the main window tab.
@@ -275,11 +323,22 @@ if [ "$RUN" = true ]; then
             -m 256M \
             $SERIAL_ARGS \
             -no-reboot \
-            $GUI_ARGS
+            $GUI_ARGS \
+            $PROFILE_ARGS
 
     elif [ "$ARCH" == "arm64" ]; then
         GUI_ARGS=""
         SERIAL_ARGS="-serial stdio"
+        if [ "$E2E" = true ]; then
+            SERIAL_ARGS="-serial file:qemu_e2e.log"
+        fi
+
+        # Determine CPU
+        CPU_ARG="-cpu cortex-a72"
+        if [[ "$PROFILE_ARGS" == *"-cpu cortex-a15"* ]]; then
+            CPU_ARG=""
+        fi
+
         if [ "$BOOT_GUI" = "ON" ] || [ "$BOOT_GUI" = "true" ] || [ "$BOOT_GUI" = "1" ]; then
             # Route serial output to the virtual console in the QEMU graphical window.
             # Without a firmware or GPU, we drop virtio-gpu and force QEMU to display the 'vc' directly on the main window tab.
@@ -294,11 +353,12 @@ if [ "$RUN" = true ]; then
         fi
         qemu-system-aarch64 \
             -machine virt \
-            -cpu cortex-a72 \
+            $CPU_ARG \
             -kernel "$KERNEL_BIN" \
             -m 256M \
             $SERIAL_ARGS \
             -no-reboot \
-            $GUI_ARGS
+            $GUI_ARGS \
+            $PROFILE_ARGS
     fi
 fi
