@@ -1,2 +1,11 @@
-file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/dummy_can.c "")
-add_library(bharatos_stack_can STATIC ${CMAKE_CURRENT_BINARY_DIR}/dummy_can.c)
+cmake_minimum_required(VERSION 3.20)
+
+add_library(bharatos_stack_can STATIC
+    core/can_route.c
+    core/can_filter.c
+)
+target_include_directories(bharatos_stack_can PUBLIC
+    ${CMAKE_SOURCE_DIR}/stacks/include
+    ${CMAKE_SOURCE_DIR}/services/include
+    ${CMAKE_SOURCE_DIR}/drivers/include
+)
