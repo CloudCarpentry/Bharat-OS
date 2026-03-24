@@ -24,6 +24,7 @@ kernel/include/generated/
 # CMake generated
 CMakeCache.txt
 CMakeFiles/
+Testing/
 Makefile
 *.cmake
 !cmake/toolchains/*.cmake
