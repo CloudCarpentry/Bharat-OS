@@ -1,37 +1,68 @@
 # ADR Guide and Index
 
-This directory provides ADR process guidance and cross-links to accepted Bharat-OS decisions.
+This directory (`docs/adr`) is the canonical location for Architecture Decision Records (ADRs) in Bharat-OS. This page provides guidelines on how to write and update an ADR, followed by the index of accepted decisions.
 
-## ADR locations in this repository
+If you have questions about the ADR process or need to propose a new one, please contact **Divyang Panchasara**.
 
-- `docs/decisions/` contains the primary accepted ADR series (`ADR-001` to `ADR-012`).
-- `docs/adr/ADR-007-experimental-scope.md` extends that series with explicit v1 vs experimental boundary rules.
+## How to Write and Update an ADR
 
-## Current accepted ADR index
+An ADR captures an important architectural decision made along with its context and consequences.
 
-1. [`docs/decisions/ADR-001-microkernel-vs-hybrid.md`](../decisions/ADR-001-microkernel-vs-hybrid.md)
-2. [`docs/decisions/ADR-002-capability-model.md`](../decisions/ADR-002-capability-model.md)
-3. [`docs/decisions/ADR-003-multikernel-messaging.md`](../decisions/ADR-003-multikernel-messaging.md)
-4. [`docs/decisions/ADR-004-linux-personality-first.md`](../decisions/ADR-004-linux-personality-first.md)
-5. [`docs/decisions/ADR-005-ml-stays-out-of-ring-0.md`](../decisions/ADR-005-ml-stays-out-of-ring-0.md)
-6. [`docs/decisions/ADR-006-numa-awareness.md`](../decisions/ADR-006-numa-awareness.md)
-7. [`ADR-007-experimental-scope.md`](ADR-007-experimental-scope.md)
-8. [`docs/decisions/ADR-008-ai-scheduler-plugin-contract.md`](../decisions/ADR-008-ai-scheduler-plugin-contract.md)
-9. [`docs/decisions/ADR-009-documentation-status-and-claims.md`](../decisions/ADR-009-documentation-status-and-claims.md)
-10. [`docs/decisions/ADR-010-distributed-kernel-ownership.md`](../decisions/ADR-010-distributed-kernel-ownership.md)
-11. [`docs/decisions/ADR-011-structured-kernel-panic-and-diagnostics.md`](../decisions/ADR-011-structured-kernel-panic-and-diagnostics.md)
-12. [`docs/decisions/ADR-012-interrupt-controller-evolution.md`](../decisions/ADR-012-interrupt-controller-evolution.md)
+### 1. Naming and Creating a New ADR
+- File name must follow the pattern `ADR-XXX-short-descriptive-title.md` (e.g., `ADR-014-new-subsystem.md`).
+- Continue the numeric ordering from the highest numbered ADR currently in the folder.
 
-## ADR authoring expectations
+### 2. Format / Template
+Each ADR should include YAML frontmatter and follow the standard structure:
 
-When adding a new ADR:
+```markdown
+---
+title: ADR-XXX Short Title
+status: Proposed | Accepted | Rejected | Superseded
+owner: Your Name
+reviewers: Reviewer Names
+version: 1.0
+last_updated: YYYY-MM-DD
+tags: tag1, tag2
+---
 
-- Continue numeric ordering (`ADR-008`, `ADR-009`, ...).
-- Use clear sections: **Context**, **Decision**, **Consequences**.
-- Link the ADR from this index and any relevant architecture pages.
-- Prefer one decision per ADR to keep scope reviewable.
+# ADR-XXX: Short Title
 
-## Scope discipline
+## Context
+Describe the forces at play, the technological context, or the problem being solved. What is the current situation? Why is a decision necessary?
 
-ADR-007 is the operational boundary for v1 kernel scope.
-If a proposed change moves a feature from experimental to core, introduce a dedicated ADR before implementation.
+## Decision
+What is the proposed change or decision? Write this in clear, assertive language.
+
+## Consequences
+What becomes easier or more difficult because of this change? Are there new risks or maintenance burdens? Are there performance or security implications?
+```
+
+### 3. Review and Update Process
+- **Drafting:** Create a pull request adding the ADR with a status of `Proposed`.
+- **Review:** Gather feedback from the team and stakeholders. Divyang Panchasara and other key reviewers should be tagged.
+- **Acceptance:** Once consensus is reached, the status is changed to `Accepted` and the PR is merged.
+- **Updates:** If an ADR becomes obsolete due to a newer decision, do not delete it. Instead, update its status to `Superseded` and link to the new ADR that replaces it.
+
+---
+
+## Accepted ADR Index
+
+1. [ADR-001: Microkernel vs Hybrid](ADR-001-microkernel-vs-hybrid.md)
+2. [ADR-002: Capability Model](ADR-002-capability-model.md)
+3. [ADR-003: Multikernel Messaging](ADR-003-multikernel-messaging.md)
+4. [ADR-004: Linux Personality First](ADR-004-linux-personality-first.md)
+5. [ADR-005: ML Stays Out of Ring 0](ADR-005-ml-stays-out-of-ring-0.md)
+6. [ADR-006: NUMA Awareness](ADR-006-numa-awareness.md)
+7. [ADR-007: Experimental Scope](ADR-007-experimental-scope.md)
+8. [ADR-008: Distributed VM Monitor and VM Spaces](008-distributed-vm-monitor-and-vm-spaces.md)
+   *(Also: [ADR-008: AI Scheduler Plugin Contract](ADR-008-ai-scheduler-plugin-contract.md))*
+9. [ADR-009: SDK Libc Strategy](009-sdk-libc-strategy.md)
+   *(Also: [ADR-009: Documentation Status and Claims](ADR-009-documentation-status-and-claims.md))*
+10. [ADR-010: Distributed Kernel Ownership](ADR-010-distributed-kernel-ownership.md)
+11. [ADR-011: Structured Kernel Panic and Diagnostics](ADR-011-structured-kernel-panic-and-diagnostics.md)
+12. [ADR-012: CAN Subsystem Architecture](ADR-012-can-subsystem-architecture.md)
+    *(Also: [ADR-012: Interrupt Controller Evolution](ADR-012-interrupt-controller-evolution.md))*
+13. [ADR-013: Multikernel Memory Protection Architecture](ADR-013-multikernel-memory-protection-architecture.md)
+
+*(Note: Some ADR numbers overlap slightly from legacy tracking and are preserved here for historical context).*
