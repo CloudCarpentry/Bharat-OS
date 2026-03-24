@@ -31,6 +31,16 @@ This roadmap tracks the convergence of the memory management subsystem in Bharat
 | **NUMA Awareness** | 🔜 Planned | Topology hooks and scheduler memory affinity hints (`kernel/src/mm/pmm/numa.c` scaffolding exists). |
 | **32-Bit Context Isolation** | 🔜 Planned | Safe execution separation on MPU-only devices. |
 
+## Phase 4: Heterogeneous Compute + Accelerator Memory (Upcoming)
+
+| Item | Status | Description |
+| --- | --- | --- |
+| **Accelerator Memory Contracts** | 🔜 Planned | Introduction of tags like `MEM_ACCEL_SHARED`, `MEM_ACCEL_PINNED` and lifecycle helpers. |
+| **CPU ISA Capability Exposure** | 🔜 Planned | Normalized capability schema for SIMD/Vector units to guide scheduling hints. |
+| **Queueing/Fence Primitives** | 🔜 Planned | Unified HAL and kernel primitives for accelerator command submission and synchronization. |
+| **Buffer Teardown & Fault Containment** | 🔜 Planned | Safe job cancellation paths avoiding physical page leaks on NPU/GPU fault. |
+| **Virtual Mock Backend** | 🔜 Planned | Bringup of a virtual accelerator driver to validate queue contracts and memory isolation end-to-end. |
+
 ## Memory Architecture Diagram
 
 ```mermaid
@@ -47,6 +57,9 @@ gantt
     section Phase 3 (Planned)
     IOMMU Integration     :         des6, 2025-02-01, 2025-05-01
     NUMA / DMA Sync       :         des7, 2025-04-01, 2025-07-01
+    section Phase 4 (Planned)
+    Accel Memory Domains  :         des8, 2025-07-01, 2025-09-01
+    Job & Queue Contracts :         des9, 2025-08-01, 2025-10-01
 ```
 
 ## References

@@ -14,6 +14,12 @@ This matrix is the executable contract for memory behavior across Bharat-OS memo
 | ASID/PCID | Capability-driven by backend | Usually unavailable | N/A |
 | device mappings | Supported via normalized memtype flags | Supported where backend can express attributes | Region attribute only |
 | fault recovery | Fine-grained | Degraded path | Region/access violation handling |
+| coherent DMA | Full hardware coherency | Software managed (flush/invalidate) via HAL | Explicit software sync |
+| pinned shared buffers | Fully supported | Supported via contiguous allocation | Region-based |
+| imported/exported accelerator buffers | Supported via file descriptors/handles | Supported (handle mapping) | Unsupported (direct pointers only) |
+| secure buffer isolation | Supported via IOMMU | Supported via MPU isolation | Basic MPU regions |
+| accelerator fault containment | Process teardown, memory revocation | Memory teardown, task fault | Global device reset |
+| queue/fence support | Fully supported, event-based | Event/IRQ-driven | Polling/basic IRQ |
 
 ## Notes
 
