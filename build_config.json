@@ -161,6 +161,60 @@
       "board": "virt",
       "gui": false,
       "run": false
+    },
+    "x86_64_laptop_debug": {
+      "preset": "x86_64-laptop-debug",
+      "arch": "x86_64",
+      "profile": "LAPTOP",
+      "personality": "NONE",
+      "board": "qemu-virt",
+      "gui": true,
+      "run": false
+    },
+    "x86_64_laptop_release": {
+      "preset": "x86_64-laptop-release",
+      "arch": "x86_64",
+      "profile": "LAPTOP",
+      "personality": "NONE",
+      "board": "qemu-virt",
+      "gui": true,
+      "run": false
+    },
+    "arm64_laptop_debug": {
+      "preset": "arm64-laptop-debug",
+      "arch": "arm64",
+      "profile": "LAPTOP",
+      "personality": "NONE",
+      "board": "virt",
+      "gui": true,
+      "run": false
+    },
+    "arm64_laptop_release": {
+      "preset": "arm64-laptop-release",
+      "arch": "arm64",
+      "profile": "LAPTOP",
+      "personality": "NONE",
+      "board": "virt",
+      "gui": true,
+      "run": false
+    },
+    "riscv64_laptop_debug": {
+      "preset": "riscv64-laptop-debug",
+      "arch": "riscv64",
+      "profile": "LAPTOP",
+      "personality": "NONE",
+      "board": "virt",
+      "gui": true,
+      "run": false
+    },
+    "riscv64_laptop_release": {
+      "preset": "riscv64-laptop-release",
+      "arch": "riscv64",
+      "profile": "LAPTOP",
+      "personality": "NONE",
+      "board": "virt",
+      "gui": true,
+      "run": false
     }
   }
 }

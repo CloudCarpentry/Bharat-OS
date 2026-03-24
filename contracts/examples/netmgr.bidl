@@ -1,0 +1,74 @@
+// netmgr.bidl
+// Example Phase 1 Contract for the Bharat-OS Network Manager Control Plane
+version 1.0;
+
+namespace bharat.netmgr;
+
+// Expected to map to K_ERR_OK and K_ERR_* inside the kernel boundary
+enum Status : i32 {
+    OK = 0,
+    ERR_INVALID = -1,
+    ERR_NOT_FOUND = -2,
+    ERR_DENIED = -3,
+    ERR_BUSY = -4
+}
+
+flags InterfaceFlags : u32 {
+    UP = 0x01,
+    LOOPBACK = 0x02,
+    BROADCAST = 0x04,
+    MULTICAST = 0x08,
+    PROMISC = 0x10
+}
+
+struct MacAddress {
+    Array<u8, 6> bytes;
+}
+
+// Bounded structure defining a network interface configuration
+struct NetInterfaceConfig {
+    u32 interface_id;
+    string<16> name;      // e.g. "eth0"
+    u32 ip_address;       // host byte order IPv4
+    u32 netmask;
+    MacAddress mac;
+    u32 mtu;
+    InterfaceFlags flags;
+
+    // Explicit padding for future additive features
+    u8 reserved[24];
+}
+
+// Synchronous capability-protected network management API
+@transport(endpoint)
+interface NetworkManager {
+
+    // Query configuration of an existing interface
+    method query_interface(u32 interface_id) -> (NetInterfaceConfig config, Status status);
+
+    // List all available interfaces
+    method list_interfaces() -> (Array<u32, 16> interface_ids, Status status);
+
+    // Update the configuration of an interface
+    // Requires the NET_ADMIN capability to execute
+    @requires(capability="NET_ADMIN", rights="WRITE")
+    method config_interface(NetInterfaceConfig config) -> (Status status);
+
+    // Bring an interface up or down
+    @requires(capability="NET_ADMIN", rights="WRITE")
+    method set_link_state(u32 interface_id, bool is_up) -> (Status status);
+
+    // Add a route to the routing table
+    @requires(capability="NET_ADMIN", rights="WRITE")
+    method add_route(u32 dest_ip, u32 netmask, u32 gateway_ip, u32 interface_id) -> (Status status);
+}
+
+// Asynchronous uRPC-based event stream emitted by netmgr
+@transport(urpc)
+interface NetworkEvents {
+    // Fired when an interface's link state changes (e.g. cable unplugged)
+    event link_state_changed(u32 interface_id, bool is_up);
+
+    // Fired when a new IP is assigned or changed
+    event ip_changed(u32 interface_id, u32 new_ip);
+}

@@ -299,8 +299,21 @@ int sched_enqueue(kthread_t *thread, uint32_t core_id) {
       spin_lock(&rq->lock);
       thread->bound_core_id = core_id;
       list_add(&slot->wait_node, &rq->pending_inbox);
+      rq->remote_enqueues++;
+
+      bool send_ipi = false;
+      if (rq->resched_pending == 0U) {
+          rq->resched_pending = 1U;
+          send_ipi = true;
+          rq->ipi_sent++;
+      } else {
+          rq->ipi_coalesced++;
+      }
       spin_unlock(&rq->lock);
-      // NOTE: Here we would trigger an IPI to wake up the remote core
+
+      if (send_ipi) {
+          hal_send_ipi_payload(core_id, 0); // Payload 0 or specific URPC msg if we use URPC
+      }
       return 0;
   }
 
@@ -414,10 +427,18 @@ void sched_init(void) {
     g_cpu_locals[core].runqueue.context_switches = 0U;
     g_cpu_locals[core].runqueue.runnable_count = 0U;
     g_cpu_locals[core].runqueue.throttled = 0U;
+
+    g_cpu_locals[core].runqueue.resched_pending = 0U;
+    g_cpu_locals[core].runqueue.remote_enqueues = 0U;
+    g_cpu_locals[core].runqueue.ipi_sent = 0U;
+    g_cpu_locals[core].runqueue.ipi_coalesced = 0U;
+    g_cpu_locals[core].runqueue.inbox_drains = 0U;
+    g_cpu_locals[core].runqueue.remote_preemptions = 0U;
+
     spin_lock_init(&g_cpu_locals[core].runqueue.lock);
     list_init(&g_cpu_locals[core].runqueue.sleeping_list);
     list_init(&g_cpu_locals[core].runqueue.blocked_list);
-  list_init(&g_cpu_locals[core].runqueue.pending_inbox);
+    list_init(&g_cpu_locals[core].runqueue.pending_inbox);
     for (uint32_t p = 0; p < MAX_PRIORITY_LEVELS; ++p) {
       list_init(&g_cpu_locals[core].runqueue.ready_queue[p]);
     }
@@ -939,9 +960,13 @@ void sched_reschedule(void) {
   sched_rq_t *rq = &g_cpu_locals[core].runqueue;
 
   // Empty remote enqueue inbox
-  if (!list_empty(&rq->pending_inbox)) {
+  if (rq->resched_pending != 0U || !list_empty(&rq->pending_inbox)) {
       spin_lock(&rq->lock);
+      rq->resched_pending = 0U; // Clear flag since we are draining now
       list_head_t *curr = rq->pending_inbox.next;
+      uint32_t drained = 0;
+      kthread_t *highest_prio_arrived = NULL;
+
       while (curr != &rq->pending_inbox) {
           thread_slot_t *slot = (thread_slot_t *)(void *)((char *)curr - offsetof(thread_slot_t, wait_node));
           curr = curr->next;
@@ -959,8 +984,20 @@ void sched_reschedule(void) {
             sched_ready_bitmap_set(rq, thread->priority);
           }
 
+          if (!highest_prio_arrived || thread->priority > highest_prio_arrived->priority) {
+              highest_prio_arrived = thread;
+          }
+
           slot->is_on_runqueue = 1U;
           rq->runnable_count++;
+          drained++;
+      }
+      if (drained > 0) {
+          rq->inbox_drains++;
+          if (rq->current_thread && highest_prio_arrived &&
+              highest_prio_arrived->priority > rq->current_thread->priority) {
+              rq->remote_preemptions++;
+          }
       }
       spin_unlock(&rq->lock);
   }

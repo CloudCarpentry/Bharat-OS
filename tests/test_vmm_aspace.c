@@ -209,7 +209,7 @@ TEST(vm_object_lifecycle_hardening) {
     vm_object_t *obj = vm_object_create_anon(0x4000, 0);
     ASSERT_NOT_NULL(obj);
     ASSERT_EQ(obj->refcount, 1u);
-    ASSERT_EQ(obj->magic, 0x564D4F42); // ALIVE
+    ASSERT_EQ(obj->magic, VM_OBJECT_MAGIC_ALIVE);
 
     vm_object_retain(obj);
     ASSERT_EQ(obj->refcount, 2u);
