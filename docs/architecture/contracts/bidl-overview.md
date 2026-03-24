@@ -76,3 +76,11 @@ BIDL for Bharat-OS is guided by the following principles:
 5. **No Hidden Heap Dependence:** All generated marshalling logic must support fixed-buffer serialization.
 6. **Namesvc-Integrated:** The compiler must output metadata tuples `(service, interface, version)` that integrate natively with the OS discovery layer.
 7. **C-First:** Because the current kernel and service ecosystem is C.
+
+## Security Scope
+
+BIDL is more than a schema definitions language or codegen tool. It is the declarative authority contract for IPC, uRPC, service discovery, and restart-safe identity.
+
+- **Mandatory Policy Enforcement:** Manual dispatcher bypasses are forbidden. BIDL generation ensures that all methods check capability requirements (`@requires`), rights, transport class validations, lease checks, and domain rules before execution.
+- **Discovery Registration:** `namesvc` and `servicemgr` registrations must include security metadata, binding service identity, generation/incarnation, supported profiles, required transport classes, and exported capability classes.
+- **Contract as Security Standard:** Changes to security semantics are treated as ABI breaking changes.

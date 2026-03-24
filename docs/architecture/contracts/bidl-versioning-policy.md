@@ -43,6 +43,9 @@ A breaking change alters the ABI or semantics in a way that older clients cannot
 * **Changing the type or bound of a parameter:** For example, increasing `string<64>` to `string<128>` breaks fixed-size buffer assumptions in older clients.
 * **Reordering fields in a struct:** Changes the C struct memory layout.
 * **Adding new required capabilities to an existing method:** A client that previously succeeded will now fail with `K_ERR_DENIED`.
+* **Changing transport reliability semantics:** For example, from unacked to acked, changing timeout expectations for older clients.
+* **Changing required fault-domain transfer class:** Restricting capability transfer to specific domains.
+* **Changing lease lifetime / revocation semantics:** For any method that returns or consumes a capability-like handle, modifying these semantics is an ABI change.
 * **Adding fields without reserved space:** Changes the overall size of the struct, potentially overflowing older endpoint buffers.
 
 ## 3. Reserved Fields Strategy
