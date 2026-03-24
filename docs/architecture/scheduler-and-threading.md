@@ -45,10 +45,10 @@ This document captures the current scheduler/threading implementation status in 
   - `arch_context_switch(cpu_context_t* prev, cpu_context_t* next)`
   - `arch_prepare_initial_context(cpu_context_t* ctx, void (*entry)(void), uint64_t stack_top)`
 - Per-architecture implementations are now split under:
-  - `kernel/src/arch/x86_64/context_switch.c`
-  - `kernel/src/arch/arm64/context_switch.c`
-  - `kernel/src/arch/riscv64/context_switch.c`
-  - `kernel/src/arch/shakti/context_switch.c`
+  - `arch/x86/x86_64/context_switch.c`
+  - `arch/arm/arm64/context_switch.c`
+  - `arch/riscv/riscv64/context_switch.c`
+  - `arch/shakti/context_switch.c`
 
 These files provide a consistent call signature so scheduler code remains architecture-neutral.
 

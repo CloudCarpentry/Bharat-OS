@@ -12,12 +12,12 @@ add_library(k_core OBJECT
     ../../src/security/vfio.c
     ../../src/lib/string.c
     ../../../arch/common/memops_scalar.c
-    $<$<STREQUAL:${ARCH},x86_64>:../../../arch/x86_64/memops.c>
-    $<$<STREQUAL:${ARCH},x86_64>:../../../arch/x86_64/memops_fast_string.c>
-    $<$<STREQUAL:${ARCH},arm64>:../../../arch/arm64/memops.c>
-    $<$<STREQUAL:${ARCH},arm64>:../../../arch/arm64/memops_gpr_bulk.c>
-    $<$<STREQUAL:${ARCH},riscv64>:../../../arch/riscv64/memops.c>
-    $<$<STREQUAL:${ARCH},riscv64>:../../../arch/riscv64/memops_gpr_bulk.c>
+    $<$<STREQUAL:${ARCH},x86_64>:../../../arch/x86/x86_64/memops.c>
+    $<$<STREQUAL:${ARCH},x86_64>:../../../arch/x86/x86_64/memops_fast_string.c>
+    $<$<STREQUAL:${ARCH},arm64>:../../../arch/arm/arm64/memops.c>
+    $<$<STREQUAL:${ARCH},arm64>:../../../arch/arm/arm64/memops_gpr_bulk.c>
+    $<$<STREQUAL:${ARCH},riscv64>:../../../arch/riscv/riscv64/memops.c>
+    $<$<STREQUAL:${ARCH},riscv64>:../../../arch/riscv/riscv64/memops_gpr_bulk.c>
     ../../src/stack_protector.c
     ../../src/crypto/secure_mem.c
     ../../src/power/power_core.c

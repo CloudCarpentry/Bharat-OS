@@ -19,9 +19,9 @@ The current CPU capability interface is present but minimal:
 
 - `arch_cpu_caps_init()` exists as an API surface in `kernel/include/arch/arch_cpu_caps.h`.
 - Per-architecture implementations are currently stubs in:
-  - `kernel/src/arch/x86_64/cpu_caps.c`
-  - `kernel/src/arch/arm64/cpu_caps.c`
-  - `kernel/src/arch/riscv64/cpu_caps.c`
+  - `arch/x86/x86_64/cpu_caps.c`
+  - `arch/arm/arm64/cpu_caps.c`
+  - `arch/riscv/riscv64/cpu_caps.c`
 
 This means the kernel has **no reliable runtime feature map** to decide whether to enable optimized code paths.
 
@@ -114,9 +114,9 @@ This means the kernel has **no reliable runtime feature map** to decide whether 
   - query helpers (`arch_cpu_has(feature)`),
   - optional per-cpu feature record.
 - Replace stubs in:
-  - `kernel/src/arch/x86_64/cpu_caps.c`
-  - `kernel/src/arch/arm64/cpu_caps.c`
-  - `kernel/src/arch/riscv64/cpu_caps.c`
+  - `arch/x86/x86_64/cpu_caps.c`
+  - `arch/arm/arm64/cpu_caps.c`
+  - `arch/riscv/riscv64/cpu_caps.c`
   with real probe logic.
 
 ### Phase 2 (Low-risk acceleration)
