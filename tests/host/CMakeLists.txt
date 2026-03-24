@@ -165,3 +165,46 @@ add_test(NAME host_test_vmm_fault COMMAND host_test_vmm_fault)
 add_executable(test_uapi_abi test_uapi_abi.c)
 target_include_directories(test_uapi_abi PRIVATE ${CMAKE_SOURCE_DIR}/include)
 add_test(NAME host_test_uapi_abi COMMAND test_uapi_abi)
+
+if(BHARAT_BUILD_HOST_TESTS)
+    # I2C Core Host Tests
+    add_executable(test_i2c_registry ${CMAKE_SOURCE_DIR}/tests/host/drivers/test_i2c_registry.c ${CMAKE_SOURCE_DIR}/drivers/bus/i2c/i2c_core.c ${CMAKE_SOURCE_DIR}/drivers/bus/i2c/i2c_registry.c)
+    target_include_directories(test_i2c_registry PRIVATE ${CMAKE_SOURCE_DIR}/drivers/bus/i2c)
+    add_test(NAME host_test_i2c_registry COMMAND test_i2c_registry)
+
+    add_executable(test_i2c_transfer_mock ${CMAKE_SOURCE_DIR}/tests/host/drivers/test_i2c_transfer_mock.c ${CMAKE_SOURCE_DIR}/drivers/bus/i2c/i2c_core.c ${CMAKE_SOURCE_DIR}/drivers/bus/i2c/i2c_registry.c)
+    target_include_directories(test_i2c_transfer_mock PRIVATE ${CMAKE_SOURCE_DIR}/drivers/bus/i2c)
+    add_test(NAME host_test_i2c_transfer_mock COMMAND test_i2c_transfer_mock)
+
+    # SPI Core Host Tests
+    add_executable(test_spi_registry ${CMAKE_SOURCE_DIR}/tests/host/drivers/test_spi_registry.c ${CMAKE_SOURCE_DIR}/drivers/bus/spi/spi_core.c ${CMAKE_SOURCE_DIR}/drivers/bus/spi/spi_registry.c)
+    target_include_directories(test_spi_registry PRIVATE ${CMAKE_SOURCE_DIR}/drivers/bus/spi)
+    add_test(NAME host_test_spi_registry COMMAND test_spi_registry)
+
+    add_executable(test_spi_transfer_mock ${CMAKE_SOURCE_DIR}/tests/host/drivers/test_spi_transfer_mock.c ${CMAKE_SOURCE_DIR}/drivers/bus/spi/spi_core.c ${CMAKE_SOURCE_DIR}/drivers/bus/spi/spi_registry.c)
+    target_include_directories(test_spi_transfer_mock PRIVATE ${CMAKE_SOURCE_DIR}/drivers/bus/spi)
+    add_test(NAME host_test_spi_transfer_mock COMMAND test_spi_transfer_mock)
+
+    # DRM Core Host Tests
+    add_executable(test_drm_registry ${CMAKE_SOURCE_DIR}/tests/host/drivers/test_drm_registry.c ${CMAKE_SOURCE_DIR}/drivers/display/drm/drm_core.c ${CMAKE_SOURCE_DIR}/drivers/display/drm/drm_registry.c)
+    target_include_directories(test_drm_registry PRIVATE ${CMAKE_SOURCE_DIR}/drivers/display/drm)
+    add_test(NAME host_test_drm_registry COMMAND test_drm_registry)
+
+    add_executable(test_drm_mode_validation ${CMAKE_SOURCE_DIR}/tests/host/drivers/test_drm_mode_validation.c ${CMAKE_SOURCE_DIR}/drivers/display/drm/drm_core.c ${CMAKE_SOURCE_DIR}/drivers/display/drm/drm_registry.c)
+    target_include_directories(test_drm_mode_validation PRIVATE ${CMAKE_SOURCE_DIR}/drivers/display/drm)
+    add_test(NAME host_test_drm_mode_validation COMMAND test_drm_mode_validation)
+
+    # NVMe Core Host Tests
+    add_executable(test_nvme_init_mock ${CMAKE_SOURCE_DIR}/tests/host/drivers/test_nvme_init_mock.c ${CMAKE_SOURCE_DIR}/drivers/storage/nvme/nvme_core.c ${CMAKE_SOURCE_DIR}/drivers/storage/nvme/nvme_admin.c ${CMAKE_SOURCE_DIR}/drivers/storage/nvme/nvme_queue.c)
+    target_include_directories(test_nvme_init_mock PRIVATE ${CMAKE_SOURCE_DIR}/drivers/storage/nvme)
+    add_test(NAME host_test_nvme_init_mock COMMAND test_nvme_init_mock)
+
+    # I2C HID Host Tests
+    add_executable(test_i2c_hid_probe ${CMAKE_SOURCE_DIR}/tests/host/drivers/test_i2c_hid_probe.c ${CMAKE_SOURCE_DIR}/drivers/input/i2c_hid/i2c_hid.c ${CMAKE_SOURCE_DIR}/drivers/bus/i2c/i2c_core.c ${CMAKE_SOURCE_DIR}/drivers/bus/i2c/i2c_registry.c)
+    target_include_directories(test_i2c_hid_probe PRIVATE ${CMAKE_SOURCE_DIR}/drivers/input/i2c_hid ${CMAKE_SOURCE_DIR}/drivers/bus/i2c)
+    add_test(NAME host_test_i2c_hid_probe COMMAND test_i2c_hid_probe)
+
+    add_executable(test_i2c_hid_failures ${CMAKE_SOURCE_DIR}/tests/host/drivers/test_i2c_hid_failures.c ${CMAKE_SOURCE_DIR}/drivers/input/i2c_hid/i2c_hid.c ${CMAKE_SOURCE_DIR}/drivers/bus/i2c/i2c_core.c ${CMAKE_SOURCE_DIR}/drivers/bus/i2c/i2c_registry.c)
+    target_include_directories(test_i2c_hid_failures PRIVATE ${CMAKE_SOURCE_DIR}/drivers/input/i2c_hid ${CMAKE_SOURCE_DIR}/drivers/bus/i2c)
+    add_test(NAME host_test_i2c_hid_failures COMMAND test_i2c_hid_failures)
+endif()
