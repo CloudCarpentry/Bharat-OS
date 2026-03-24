@@ -6,6 +6,7 @@
 #include "hal/hal_irq.h"
 #include "ipc_endpoint.h"
 #include "kernel.h"
+#include "kernel/status.h"
 #include "kernel_safety.h"
 #include "mm.h"
 #include "mm/mm_local.h"
@@ -22,9 +23,9 @@ int vmm_handle_cow_fault(address_space_t* as, virt_addr_t vaddr);
 extern bool core_is_rt(void);
 
 #define TRAP_SUCCESS 0L
-#define TRAP_ERR_INVAL (-22L)
-#define TRAP_ERR_PERM (-1L)
-#define TRAP_ERR_NOSYS (-38L)
+#define TRAP_ERR_INVAL (-(long)SYS_EINVAL)
+#define TRAP_ERR_PERM (-(long)SYS_EPERM)
+#define TRAP_ERR_NOSYS (-(long)SYS_ENOSYS)
 
 
 static kprocess_t g_syscall_proc;
@@ -95,6 +96,65 @@ static int trap_user_range_valid(uint64_t ptr, uint64_t len) {
   return trap_user_ptr_valid(end_inclusive);
 }
 
+static bool trap_is_known_sys_errno(long err) {
+  switch (err) {
+  case SYS_EPERM:
+  case SYS_ENOENT:
+  case SYS_ESRCH:
+  case SYS_EINTR:
+  case SYS_EIO:
+  case SYS_ENXIO:
+  case SYS_EBADF:
+  case SYS_EAGAIN:
+  case SYS_ENOMEM:
+  case SYS_EACCES:
+  case SYS_EFAULT:
+  case SYS_EBUSY:
+  case SYS_EEXIST:
+  case SYS_ENODEV:
+  case SYS_ENOTDIR:
+  case SYS_EISDIR:
+  case SYS_EINVAL:
+  case SYS_ENOSPC:
+  case SYS_EROFS:
+  case SYS_EPIPE:
+  case SYS_ENOSYS:
+  case SYS_EADDRNOTAVAIL:
+  case SYS_ENETDOWN:
+  case SYS_ENETUNREACH:
+  case SYS_ECONNRESET:
+  case SYS_ETIMEDOUT:
+  case SYS_ECONNREFUSED:
+  case SYS_EHOSTUNREACH:
+    return true;
+  default:
+    return false;
+  }
+}
+
+static long trap_status_to_sysret(long rc, sys_errno_t legacy_fallback) {
+  if (rc == 0) {
+    return TRAP_SUCCESS;
+  }
+
+  if (rc > 0) {
+    return rc;
+  }
+
+  const long err = -rc;
+  if (trap_is_known_sys_errno(err)) {
+    return rc;
+  }
+
+  /* Rich kernel statuses have stable K_ERR families. */
+  if ((rc <= -256) || (rc >= -17 && rc <= -1)) {
+    return kstatus_to_sysret((kstatus_t)rc);
+  }
+
+  /* Legacy subsystem-local negatives collapse to deterministic errno. */
+  return -(long)legacy_fallback;
+}
+
 int cap_invoke(uint64_t cap_id, uint64_t opcode, uint64_t arg0, uint64_t arg1)
     __attribute__((weak));
 int cap_invoke(uint64_t cap_id, uint64_t opcode, uint64_t arg0, uint64_t arg1) {
@@ -129,6 +189,7 @@ long syscall_dispatch(syscall_id_t id, uint64_t arg0, uint64_t arg1,
                       uint64_t arg2, uint64_t arg3, uint64_t arg4,
                       uint64_t arg5) {
 #define SYSCALL_ARGS_FROM_USER(type_, user_ptr_)   ({     const type_ *__p = (const type_ *)(uintptr_t)(user_ptr_);     if (!trap_user_range_valid((uint64_t)(user_ptr_), (uint64_t)sizeof(type_))) {       return TRAP_ERR_INVAL;     }     __p;   })
+#define SYSCALL_RET_FROM_STATUS(expr_, fallback_) trap_status_to_sysret((long)(expr_), (fallback_))
 
   switch (id) {
   case SYSCALL_NOP:
@@ -138,32 +199,34 @@ long syscall_dispatch(syscall_id_t id, uint64_t arg0, uint64_t arg1,
     if (!trap_user_range_valid(arg1, (uint64_t)sizeof(*out_tid))) {
       return TRAP_ERR_INVAL;
     }
-    return (long)sched_sys_thread_create(
-        trap_current_process(), (void (*)(void))(uintptr_t)arg0, out_tid);
+    return SYSCALL_RET_FROM_STATUS(
+        sched_sys_thread_create(trap_current_process(), (void (*)(void))(uintptr_t)arg0, out_tid),
+        SYS_ENOMEM);
   }
   case SYSCALL_THREAD_DESTROY:
-    return (long)sched_sys_thread_destroy(arg0);
+    return SYSCALL_RET_FROM_STATUS(sched_sys_thread_destroy(arg0), SYS_ENOENT);
   case SYSCALL_SCHED_YIELD:
     sched_yield();
     return TRAP_SUCCESS;
   case SYSCALL_SCHED_SLEEP:
-    return (long)sched_sys_sleep(arg0);
+    return SYSCALL_RET_FROM_STATUS(sched_sys_sleep(arg0), SYS_EIO);
   case SYSCALL_SCHED_SET_PRIORITY:
-    return (long)sched_sys_set_priority(arg0, (uint32_t)arg1);
+    return SYSCALL_RET_FROM_STATUS(sched_sys_set_priority(arg0, (uint32_t)arg1), SYS_EINVAL);
   case SYSCALL_SCHED_SET_AFFINITY:
-    return (long)sched_sys_set_affinity(arg0, (uint32_t)arg1);
+    return SYSCALL_RET_FROM_STATUS(sched_sys_set_affinity(arg0, (uint32_t)arg1), SYS_EINVAL);
   case SYSCALL_VMM_MAP_PAGE: {
     const bharat_sys_vmm_map_page_args_t *args =
         SYSCALL_ARGS_FROM_USER(bharat_sys_vmm_map_page_args_t, arg0);
-    return (long)vmm_map_page((virt_addr_t)args->vaddr, (phys_addr_t)args->paddr,
-                              args->flags);
+    return SYSCALL_RET_FROM_STATUS(
+        vmm_map_page((virt_addr_t)args->vaddr, (phys_addr_t)args->paddr, args->flags),
+        SYS_EFAULT);
   }
   case SYSCALL_VMM_UNMAP_PAGE:
-    return (long)vmm_unmap_page((virt_addr_t)arg0);
+    return SYSCALL_RET_FROM_STATUS(vmm_unmap_page((virt_addr_t)arg0), SYS_EFAULT);
   case SYSCALL_CAPABILITY_INVOKE: {
     const bharat_sys_cap_invoke_args_t *args =
         SYSCALL_ARGS_FROM_USER(bharat_sys_cap_invoke_args_t, arg0);
-    return (long)cap_invoke(args->cap_id, args->opcode, args->arg0, args->arg1);
+    return SYSCALL_RET_FROM_STATUS(cap_invoke(args->cap_id, args->opcode, args->arg0, args->arg1), SYS_EPERM);
   }
   case SYSCALL_ENDPOINT_CREATE: {
     capability_table_t *table = trap_current_cap_table();
@@ -175,7 +238,7 @@ long syscall_dispatch(syscall_id_t id, uint64_t arg0, uint64_t arg1,
         !trap_user_range_valid(args->out_recv_cap_ptr, (uint64_t)sizeof(*out_recv_cap))) {
       return TRAP_ERR_INVAL;
     }
-    return (long)ipc_endpoint_create(table, out_send_cap, out_recv_cap);
+    return SYSCALL_RET_FROM_STATUS(ipc_endpoint_create(table, out_send_cap, out_recv_cap), SYS_ENOSPC);
   }
   case SYSCALL_ENDPOINT_SEND: {
     capability_table_t *table = trap_current_cap_table();
@@ -184,12 +247,10 @@ long syscall_dispatch(syscall_id_t id, uint64_t arg0, uint64_t arg1,
     if (!trap_user_range_valid(args->payload_ptr, args->payload_len)) {
       return TRAP_ERR_INVAL;
     }
-    return (long)ipc_endpoint_send(table, args->send_cap,
-                                   (const void *)(uintptr_t)args->payload_ptr,
-                                   args->payload_len,
-                                   args->timeout_ticks,
-                                   args->cap_to_send,
-                                   args->cap_send_rights);
+    return SYSCALL_RET_FROM_STATUS(
+        ipc_endpoint_send(table, args->send_cap, (const void *)(uintptr_t)args->payload_ptr,
+                          args->payload_len, args->timeout_ticks, args->cap_to_send, args->cap_send_rights),
+        SYS_EIO);
   }
   case SYSCALL_ENDPOINT_RECEIVE: {
     capability_table_t *table = trap_current_cap_table();
@@ -202,12 +263,11 @@ long syscall_dispatch(syscall_id_t id, uint64_t arg0, uint64_t arg1,
         (out_received_cap && !trap_user_range_valid(args->out_received_cap_ptr, (uint64_t)sizeof(*out_received_cap)))) {
       return TRAP_ERR_INVAL;
     }
-    return (long)ipc_endpoint_receive(table, args->recv_cap,
-                                      (void *)(uintptr_t)args->out_payload_ptr,
-                                      args->out_payload_capacity,
-                                      out_len,
-                                      args->timeout_ticks,
-                                      out_received_cap);
+    return SYSCALL_RET_FROM_STATUS(
+        ipc_endpoint_receive(table, args->recv_cap, (void *)(uintptr_t)args->out_payload_ptr,
+                             args->out_payload_capacity, out_len, args->timeout_ticks,
+                             out_received_cap),
+        SYS_EIO);
   }
   case SYSCALL_CAPABILITY_DELEGATE: {
     capability_table_t *table = trap_current_cap_table();
@@ -217,14 +277,16 @@ long syscall_dispatch(syscall_id_t id, uint64_t arg0, uint64_t arg1,
     if (!trap_user_range_valid(args->out_cap_ptr, (uint64_t)sizeof(*out_cap))) {
       return TRAP_ERR_INVAL;
     }
-    return (long)cap_table_delegate(table, table, args->src_cap,
-                                    args->requested_rights, out_cap);
+    return SYSCALL_RET_FROM_STATUS(
+        cap_table_delegate(table, table, args->src_cap, args->requested_rights, out_cap),
+        SYS_EPERM);
   }
   default:
     return TRAP_ERR_NOSYS;
   }
 
 #undef SYSCALL_ARGS_FROM_USER
+#undef SYSCALL_RET_FROM_STATUS
 }
 
 int trap_dispatch(trap_frame_t *frame, const trap_info_t *info) {
