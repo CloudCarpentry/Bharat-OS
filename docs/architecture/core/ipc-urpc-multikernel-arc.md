@@ -83,6 +83,111 @@ System services:
 
 👉 **Built on top of L2 + endpoint IPC**
 
+## 3.1 🛡️ uRPC Security Model
+
+**uRPC is a distributed security and execution boundary, not just a transport.**
+
+- uRPC frames are part of the authority path.
+- Every cross-core operation MUST bind transport identity, capability identity, and revocation epoch.
+- No cross-core operation is valid solely because it reached the destination ring.
+
+## 3.2 ✉️ Canonical uRPC Message Envelope
+
+Every message MUST follow this stable contract:
+
+```c
+typedef struct urpc_msg_hdr {
+    uint64_t tx_id;              // unique per sender
+    uint32_t src_core;
+    uint32_t dst_core;
+
+    uint64_t service_id;         // logical service identity
+    uint32_t endpoint_id;        // logical endpoint
+    uint32_t endpoint_gen;       // incarnation (restart-safe)
+
+    uint32_t opcode;
+    uint32_t flags;
+
+    uint64_t capability_id;      // authority binding
+    uint64_t capability_epoch;   // revocation epoch
+
+    uint32_t payload_len;
+    uint32_t hdr_crc;
+} urpc_msg_hdr_t;
+```
+
+**Enforced Guarantees:**
+- Stale endpoint use → Rejected (`endpoint_gen` check)
+- Revoked capability use → Rejected (`capability_epoch` check)
+- Replay / Duplicate → Rejected (`tx_id` + epoch)
+- Cross-core drift → Bounded
+
+## 3.3 🔄 Protocol Engine Semantics (L1)
+
+The missing L1 protocol engine must formally implement the following states and behaviors:
+
+### Transaction States
+- `SENT`
+- `DELIVERED`
+- `ACKED`
+- `COMPLETED`
+- `FAILED_TIMEOUT`
+- `FAILED_REVOKED`
+- `FAILED_STALE_ENDPOINT`
+
+### Responsibilities
+- **ACK/NACK:** Mandatory for all authoritative operations.
+- **Timeout Classes:** Fast (RT), Slow (GP).
+- **Duplicate Suppression:** Via `tx_id` tracking.
+- **Transaction Lifecycle:** Bounded completion (no infinite in-flight operations).
+
+## 3.4 🔁 Retry and Idempotency Rules
+
+**Hard Rules:**
+- Retry allowed ONLY for read-only or explicitly idempotent operations.
+- **NEVER** auto-retry:
+  - Capability grant
+  - Capability revoke
+  - DMA map
+  - Device queue submit
+  - State-changing admin operations
+
+| Operation Type    | Retry Allowed |
+|-------------------|---------------|
+| Read-only         | ✅            |
+| Stateless         | ✅            |
+| Device submission | ❌            |
+| Capability grant  | ❌            |
+| DMA map           | ❌            |
+
+## 3.5 🆔 Endpoint / Service Incarnation Model
+
+To prevent stale endpoint reuse after a service restart:
+
+- `service_id` is stable across restarts.
+- `endpoint_gen` (incarnation generation) MUST increment on restart.
+- Old in-flight messages sent to prior incarnations MUST fail closed.
+- `namesvc` MUST return the latest incarnation.
+
+## 3.6 💥 Cross-Core Failure Semantics
+
+Explicit outcomes for distributed failure scenarios:
+
+| Scenario | Behavior |
+|----------|----------|
+| Sender crash before ACK | Pending transaction invalidated / rolled back |
+| Receiver crash after side effect, before ACK | Receiver `endpoint_gen++` on recovery; sender must reconcile |
+| Revoke racing with invoke | Invoke fails with `ERR_CAP_REVOKED` |
+| Remote service restart during transaction | Fail closed (stale generation) |
+
+## 3.7 🚦 Profile-Aware Transport Policy
+
+Transport behavior must adapt to the system profile:
+
+- **RT (Real-Time):** Fixed ring sizes, no dynamic allocation, NO transport retries, bounded in-flight slots.
+- **GP (General Purpose):** Larger buffers, retries allowed on idempotent classes.
+- **MIX (Mixed-Criticality):** Strict separation between control-plane (GP rules) and data-plane (RT rules) channels.
+
 ## 4. 🔄 Communication Types
 
 ### 4.1 Endpoint IPC (Local)
@@ -102,7 +207,7 @@ System services:
 ### 4.3 uRPC (Cross-Core)
 - Asynchronous transport
 - Ring-buffer based
-- No full protocol yet (⚠️ major gap)
+- Protocol L1 (ACK, Timeouts, Identity) required
 
 ### 4.4 Remote Endpoint (Future)
 - Local API → remote execution

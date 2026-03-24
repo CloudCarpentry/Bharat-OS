@@ -23,5 +23,14 @@ Sealing is heavily used for:
 -   **Client State Cookies:** A server (e.g., VFS) can seal a client's session state into a capability and give it to the client. The client stores it but cannot read it. When the client makes a request, it passes the sealed capability back, and the server unseals it to retrieve the session state. This allows the server to be completely stateless.
 -   **Delegation of Authority:** A parent task can seal a set of capabilities into a bundle and give it to a sandboxed child task. The child can only use the bundle as a whole by passing it to an authorized supervisor.
 
+## Multikernel Restart-Safe Authority
+In Bharat-OS's distributed multikernel architecture, sealing is promoted from opaque state passing to forming central, restart-safe authority bundles. Sealing is not just a convenience; it bridges least privilege with service restarts.
+
+It is used for:
+-   **Sealed DMA Lease Descriptors:** Untrusted components can hold resumable references to DMA grants without learning or mutating the underlying authority.
+-   **Sealed Accelerator Submission Tickets:** Accelerators can issue sealed tickets for jobs, which the client can pass to telemetry or sync services without holding raw access to the device queue.
+-   **Sealed Broker-Issued Capability Bundles:** Brokers issue capability bundles that only authorized supervisors can unseal.
+-   **Sealed Restart-Resume Tokens:** Tokens that allow services to resume operations safely after a restart, maintaining continuity of authority without exposing raw states.
+
 ## Hardware Support (CHERI)
 On architectures like CHERI (Capability Hardware Enhanced RISC Instructions), sealing is implemented directly in hardware registers. A CHERI capability is a 128-bit fat pointer that includes bounds, permissions, and a sealed bit. If the sealed bit is set, the pointer cannot be dereferenced or modified until it is unsealed with an appropriate authorization capability.
