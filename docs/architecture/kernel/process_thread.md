@@ -1,6 +1,6 @@
 # Bharat-OS Process & Thread Management Architecture
 
-**Version:** v1.0 (Proposed)
+**Version:** v2.0 (Proposed - True Multikernel)
 **Scope:** Kernel + Personality + Services
 **Status:** Draft → Implementation Ready
 
@@ -8,86 +8,97 @@
 
 ## 1. Executive Summary
 
-Bharat-OS will implement a **single, capability-driven, personality-neutral process/thread model in the kernel**, while providing **multi-personality compatibility (Linux, Android, Windows, macOS)** through a **Personality Runtime Layer**.
+Bharat-OS implements a **Distributed Process & Thread Model** mapped over a **Personality-Driven Compatibility Layer**.
+
+This architecture strictly forbids global kernel state. It enforces **per-core ownership of execution**, where each CPU core acts as a mini-kernel instance. All cross-core operations (thread migration, capability revocation, TLB shootdowns) are performed strictly via **uRPC (Micro-Remote Procedure Call)** messages, ensuring no shared memory mutation or global locks (like `g_threads` or `g_processes`) compromise the system.
 
 This ensures:
+* True multikernel correctness (no hidden global state)
 * Strong kernel correctness and minimalism
-* Cross-platform compatibility without kernel bloat
-* Alignment with multikernel (per-core ownership + message passing)
-* Clean evolution toward distributed execution
+* Cross-platform compatibility (Linux, Android, Windows, macOS) via user-space runtimes
+* Lock-free scalability
 
 ---
 
-## 2. Design Principles
+## 2. Core Architectural Shift
 
-### Core Principles
-
-1. **Kernel = Mechanism only**
-2. **Personality = Policy + ABI translation**
-3. **Services = Lifecycle orchestration**
-4. **No OS-specific semantics in kernel (no fork/clone/CreateProcess)**
-5. **Everything capability-mediated**
-6. **Per-core ownership (multikernel ready)**
-
----
-
-## 3. Current State Analysis (From Repo)
-
-| Area                    | Current State               | Gap                          |
-| ----------------------- | --------------------------- | ---------------------------- |
-| Scheduler               | Functional, in `sched.c`    | Mixed with lifecycle logic   |
-| Process (`kprocess`)    | Basic structure             | Missing lifecycle, hierarchy |
-| Thread (`kthread`)      | Rich scheduling info        | Missing TLS, signals         |
-| Personality             | Minimal (`personality_ops`) | Too limited                  |
-| Process Manager Service | Stub                        | Not implemented              |
-| Syscall Model           | Basic                       | Not personality-aware        |
-| Multikernel Hooks       | Present (core_id etc.)      | Not fully exploited          |
-
----
-
-## 4. Target Architecture Overview
-
-### 4.1 Layered Model
+### 2.1 The Multikernel Imperative
 
 ```mermaid
 graph TD
-    A[Applications] --> B[Personality Runtime]
+    Core0 -->|uRPC| Core1
+    Core1 -->|uRPC| Core2
+
+    Core0 --> LocalState0
+    Core1 --> LocalState1
+    Core2 --> LocalState2
+```
+
+👉 **Each core is a mini-kernel instance.**
+
+Global structures (`g_threads`, `g_processes`, `g_urpc_states`), global locks (`g_reap_lock`), and synchronous cross-core capability revocations are **strictly prohibited**.
+
+---
+
+## 3. Revised Layered Architecture
+
+```mermaid
+graph TD
+    A[Apps] --> B[Personality Runtime]
     B --> C[Process Manager Service]
-    C --> D[Kernel Syscall Layer]
-    D --> E[Kernel Core]
+    C --> D[uRPC Layer]
+    D --> E[Per-Core Kernel Instances]
 
     E --> F[Scheduler]
     E --> G[Process/Thread Core]
     E --> H[Memory/Capabilities]
-    E --> I[IPC/uRPC]
 ```
 
 ---
 
-## 5. Kernel Architecture
+## 4. Kernel Model (Per-Core State)
 
-### 5.1 Kernel Responsibilities
+### 4.1 Local State Block
 
-* Process container (kprocess)
-* Thread execution (kthread)
-* Scheduling
-* Address space management
-* Capability enforcement
-* IPC
-* Fault delivery
+All execution tracking is bound to the core that owns the object.
+
+```c
+struct core_local_state {
+    runqueue_t runqueue;
+
+    thread_table_t local_threads;
+    process_table_t local_processes;
+
+    urpc_ring_t inbound_ring;
+    urpc_ring_t outbound_ring;
+
+    reaper_queue_t local_reaper;
+
+    page_magazine_t local_page_cache;
+};
+```
 
 ---
 
-### 5.2 Core Objects
+## 5. Process Model
 
-#### Process Object
+### 5.1 Ownership Model
+
+```mermaid
+graph TD
+    Process -->|owned by| Core
+    Thread -->|runs on| Core
+```
+
+👉 Each process has a **home core**. It does not exist in a global list.
+
+### 5.2 Updated Process Structure
 
 ```c
 struct kprocess {
     pid_t pid;
-    pid_t parent_pid;
 
-    enum proc_state state;
+    core_id_t home_core; // Ownership tracking
 
     address_space_t* aspace;
     cap_table_t* cspace;
@@ -95,280 +106,136 @@ struct kprocess {
     struct kthread* main_thread;
 
     personality_t personality;
-    void* personality_ctx;
 
-    list_t children;
-    wait_queue_t waiters;
+    proc_state_t state;
 
-    int exit_code;
+    // NO global list or lookup
+    list_t local_children;
 
-    core_id_t owner_core;
-
-    namespace_t* namespace;
-
-    resource_accounting_t* resources;
+    urpc_endpoint_t proc_channel; // Cross-core signaling
 };
 ```
 
 ---
 
-#### Thread Object
+## 6. Thread Model
 
 ```c
 struct kthread {
     tid_t tid;
+
     struct kprocess* process;
-
-    enum thread_state state;
-
-    void* kernel_stack;
-    cpu_context_t context;
-
-    int priority;
-    int base_priority;
-
-    cpu_affinity_t affinity;
-
-    void* tls;
-
-    signal_state_t signals;
-
-    wait_channel_t* wait_channel;
 
     core_id_t current_core;
 
-    personality_t personality;
+    thread_state_t state;
+
+    cpu_context_t context;
+
+    int priority;
+
+    cpu_affinity_t affinity;
+
+    urpc_endpoint_t control_channel; // For async suspension/migration
 };
 ```
 
 ---
 
-## 6. Scheduler Architecture
+## 7. Scheduler Architecture
 
-### 6.1 Scheduler Scope
+### 7.1 Per-Core Only
 
-* Per-core run queues
-* Thread selection
-* Preemption
-* Load balancing via uRPC
-
----
-
-### 6.2 Scheduler Model
+Schedulers do not lock global structures. They pick from their local `runqueue`. Cross-core load balancing is achieved exclusively by sending `MIGRATE_THREAD` uRPC messages to peer cores.
 
 ```mermaid
 graph LR
-    A[Core 0 Runqueue] --> B[Scheduler Core 0]
-    C[Core 1 Runqueue] --> D[Scheduler Core 1]
+    A[Core0 Scheduler] --> A1[Runqueue]
+    B[Core1 Scheduler] --> B1[Runqueue]
 
-    B <-- uRPC --> D
+    A <-- uRPC --> B
 ```
 
 ---
 
-### 6.3 Policy Abstraction
+## 8. Thread Migration (Critical)
 
-| Kernel Policy | Mapped From                  |
-| ------------- | ---------------------------- |
-| REALTIME      | Linux SCHED_FIFO, Windows RT |
-| INTERACTIVE   | Android UI, macOS QoS        |
-| BATCH         | Linux CFS                    |
-| BACKGROUND    | Android bg                   |
-| DEADLINE      | Linux SCHED_DEADLINE         |
+### 8.1 Flow
 
----
+Thread migration must be asynchronous. Core A cannot mutate Core B's runqueue.
 
-## 7. Personality Layer Architecture
+```mermaid
+sequenceDiagram
+    participant CoreA
+    participant CoreB
 
-### 7.1 Concept
-
-Personality = **ABI Translator**
+    CoreA->>CoreB: MIGRATE_THREAD(req)
+    CoreB->>CoreB: validate & enqueue thread
+    CoreB->>CoreA: ACK (ownership transferred)
+```
 
 ---
 
-### 7.2 Personality Stack
+## 9. Capability System & Memory
+
+### 9.1 2-Phase Async Revocation
+
+Delegation and revocation across cores cannot block.
+
+```mermaid
+sequenceDiagram
+    participant CoreA
+    participant CoreB
+
+    CoreA->>CoreB: REVOKE_REQ(cap_id)
+    CoreB->>CoreB: invalidate local caps & TLB
+    CoreB->>CoreA: ACK
+```
+
+### 9.2 TLB Shootdown
+
+Similarly, TLB shootdowns avoid global locks via uRPC:
+
+```mermaid
+sequenceDiagram
+    participant CoreA
+    participant CoreB
+
+    CoreA->>CoreB: TLB_INVALIDATE(aspace, addr)
+    CoreB->>CoreA: ACK
+```
+
+---
+
+## 10. Personality Layer (Distributed-Aware)
+
+The Personality Runtime (Linux, Windows, Android) acts as the ABI translator, but it must be aware that execution is distributed.
+
+When a Linux app calls `fork()`:
+1. `LinuxPersonality` traps the call.
+2. It calls `create_process_native()`.
+3. It sets up COW (Copy-On-Write) memory mappings.
+4. The user-space `Process Manager` or Kernel Policy assigns the new process to a target core via uRPC.
+
+---
+
+## 11. Final Unified Model
+
+Everything ties together without shared memory mutation:
 
 ```mermaid
 graph TD
-    A[Linux Apps] --> B[Linux Personality]
-    C[Android Apps] --> D[Android Personality]
-    E[Windows Apps] --> F[Windows Personality]
+    Core0 -->|uRPC| Core1
+    Core1 -->|uRPC| Core2
 
-    B --> G[Kernel]
-    D --> G
-    F --> G
+    Core0 --> Scheduler0
+    Core1 --> Scheduler1
+
+    Core0 --> ProcTable0
+    Core1 --> ProcTable1
+
+    Core0 --> URPC0
+    Core1 --> URPC1
 ```
 
----
-
-### 7.3 Personality Interface (Enhanced)
-
-```c
-struct personality_ops {
-    int (*handle_syscall)(...);
-    int (*handle_fault)(...);
-
-    int (*create_process)(...);
-    int (*create_thread)(...);
-
-    int (*clone_or_fork)(...);
-
-    int (*exec)(...);
-
-    int (*exit_process)(...);
-    int (*exit_thread)(...);
-
-    int (*deliver_signal)(...);
-
-    int (*wait_translate)(...);
-
-    int (*map_sched_policy)(...);
-};
-```
-
----
-
-## 8. Process Lifecycle
-
-### 8.1 Native Lifecycle
-
-```mermaid
-stateDiagram-v2
-    [*] --> NEW
-    NEW --> READY
-    READY --> RUNNING
-    RUNNING --> WAITING
-    WAITING --> READY
-    RUNNING --> EXITING
-    EXITING --> ZOMBIE
-    ZOMBIE --> DEAD
-```
-
----
-
-## 8.2 Linux Compatibility Flow
-
-```mermaid
-sequenceDiagram
-    participant App
-    participant LinuxPersonality
-    participant Kernel
-    participant ProcessManager
-
-    App->>LinuxPersonality: fork()
-    LinuxPersonality->>Kernel: create_process_native()
-    LinuxPersonality->>Kernel: clone memory (COW)
-    Kernel->>ProcessManager: register child
-```
-
----
-
-## 9. Syscall Design
-
-### 9.1 Kernel Neutral Syscalls
-
-| Syscall                  | Purpose              |
-| ------------------------ | -------------------- |
-| process_create_native    | Create empty process |
-| thread_create_native     | Create thread        |
-| process_bind_personality | Attach personality   |
-| process_exec             | Load image           |
-| process_exit             | Terminate            |
-| thread_exit              | Terminate thread     |
-| wait_object              | Wait                 |
-| ipc_call                 | IPC                  |
-| cap_invoke               | Capability call      |
-
----
-
-## 10. Multikernel Considerations
-
-### 10.1 Core Ownership
-
-* Each process assigned to a core
-* Threads migrate via uRPC
-
----
-
-### 10.2 Migration Flow
-
-```mermaid
-sequenceDiagram
-    participant Core0
-    participant Core1
-
-    Core0->>Core1: MIGRATE_THREAD
-    Core1->>Core0: ACK
-```
-
----
-
-## 11. POSIX / Multi-OS Compatibility Mapping
-
-| Feature       | Kernel        | Personality         |
-| ------------- | ------------- | ------------------- |
-| fork          | ❌             | Linux personality   |
-| clone         | ❌             | Linux personality   |
-| CreateProcess | ❌             | Windows personality |
-| Mach tasks    | ❌             | mac personality     |
-| Signals       | Generic event | Personality maps    |
-| Futex         | IPC primitive | Linux personality   |
-| Handles       | Capability    | Windows personality |
-
----
-
-## 12. Detailed Design Decisions
-
-### 12.1 Why No fork in Kernel
-
-* Breaks multikernel model
-* Heavy memory semantics
-* Not needed for modern systems
-
----
-
-### 12.2 Why Single Thread Model
-
-* Simpler scheduling
-* Easier cross-personality mapping
-* Better verification
-
----
-
-### 12.3 Why Personality Layer
-
-* Avoid kernel bloat
-* Support multiple OS APIs
-* Enable innovation
-
----
-
-## 13. Risks & Mitigation
-
-| Risk                    | Mitigation               |
-| ----------------------- | ------------------------ |
-| Personality complexity  | Modular runtime          |
-| Performance overhead    | Direct syscall fast-path |
-| Multikernel sync issues | uRPC contracts           |
-| Debug complexity        | structured tracing       |
-
----
-
-## 14. Success Metrics
-
-* Process lifecycle correctness (100% tests)
-* Linux basic app support
-* Thread migration working
-* No kernel personality leakage
-* Stable ABI
-
----
-
-## 15. Final Conclusion
-
-This architecture gives Bharat-OS:
-
-* Linux compatibility without becoming Linux
-* Windows/mac support without NT/Mach kernel complexity
-* Clean research + production path
-* True multikernel readiness
+**Bharat-OS is a distributed system kernel, not a shared-memory kernel.**

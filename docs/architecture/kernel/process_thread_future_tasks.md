@@ -1,5 +1,6 @@
 # Process & Thread Management Architecture - Future Implementation Plan
 
+**Version:** v2.0 (Proposed - True Multikernel)
 **Scope:** Kernel + Personality + Services
 **Status:** Planned Actions
 
@@ -8,95 +9,83 @@
 ## Overview
 
 Based on the [Process & Thread Management Architecture](process_thread.md), the Bharat-OS kernel's execution models will be refactored into a clear 3-layer architecture:
-1. Kernel process model: one neutral execution model (`kprocess`, `kthread`)
+1. Kernel process model: **distributed, message-driven, no-global-state architecture** (`kprocess`, `kthread`)
 2. Personality runtime layer: translate foreign semantics (Linux, Windows, Android, macOS)
 3. User-space compatibility subsystems (Process Manager)
 
-This document outlines the concrete, phased implementation steps to achieve this architecture, starting with minimal "baby steps" to cleanly extract existing logic from `sched.c`.
+This document outlines the concrete, phased implementation steps to achieve this architecture.
 
 ---
 
-## Phase 1: Core Kernel Refactoring (The "Baby Steps")
+## Phase 1: Core Kernel Refactoring (Removing Global State)
 
-The immediate goal is to separate process/thread lifecycle management from the scheduler logic without breaking the existing system.
+The immediate goal is to separate process/thread lifecycle management from the scheduler logic and **remove all global state**.
 
-### Step 1.1: Create the `proc` Subsystem Scaffold
+### Step 1.1: Introduce Per-Core State Structures
+*   Create `kernel/include/proc/core_local.h` defining `struct core_local_state`.
+*   Move global arrays like `g_threads` and `g_processes` into `core_local_state` as `local_threads` and `local_processes`.
+*   Replace `g_urpc_states` with a `urpc_ring_t` implementation per core.
+
+### Step 1.2: Create the `proc` Subsystem Scaffold
 *   Create new directories: `kernel/include/proc/` and `kernel/src/proc/`.
 *   Create headers: `kernel/include/proc/process.h` and `kernel/include/proc/thread.h`.
 *   Create source files: `kernel/src/proc/process.c` and `kernel/src/proc/thread.c`.
 *   Update `kernel/src/CMakeLists.txt` to include the new `proc` subdirectory.
 
-### Step 1.2: Define the New Core Objects
-*   In `process.h`, define the new `struct kprocess` with essential fields (pid, parent_pid, state, aspace, cspace, main_thread, personality, children list, waiters, exit_code, owner_core).
-*   In `thread.h`, define the new `struct kthread` with essential fields (tid, process pointer, state, kernel_stack, context, priority, affinity, tls, signals, wait_channel, current_core, personality).
-*   *Note:* Ensure these definitions initially map closely to existing structures in `sched.h` to minimize breakage, adding new fields (like TLS, signals, lifecycle states) as foundational stubs.
+### Step 1.3: Define the New Core Objects (Home Core Ownership)
+*   In `process.h`, define the new `struct kprocess` with essential fields including `home_core` ownership tracking, a localized children list, and `proc_channel`.
+*   In `thread.h`, define the new `struct kthread` with essential fields including `current_core` and `control_channel`.
+*   *Note:* Ensure these definitions enforce that a process/thread belongs to one specific core.
 
-### Step 1.3: Extract Lifecycle Functions from `sched.c`
-*   Move `process_create()` logic from `kernel/src/sched/sched.c` to `kernel/src/proc/process.c`. Rename/refactor it towards `process_create_native()`.
-*   Move `thread_create()` logic from `kernel/src/sched/sched.c` to `kernel/src/proc/thread.c`. Rename/refactor it towards `thread_create_native()`.
-*   Ensure `sched.c` only contains runqueue, pick, preempt, tick, and migration logic. It should call into the new `proc` API for object creation/teardown.
+### Step 1.4: Replace the Global Reaper
+*   Remove the global `g_reap_lock`.
+*   Implement a `local_reaper` queue within `core_local_state`.
+*   Implement asynchronous ZOMBIE cleanup. When a thread on Core B exits and its parent is on Core A, Core B's local reaper sends a `THREAD_EXITED_EVENT` uRPC message to Core A.
 
-### Step 1.4: Expand the Personality ABI Contract
-*   Update `kernel/include/personality_ops.h` to expand `personality_ops_t` from its current minimal 3 callbacks.
-*   Add the new contract fields:
-    *   `create_process_model`
-    *   `create_thread_model`
-    *   `exit_process`
-    *   `exit_thread`
-    *   `clone_or_fork`
-    *   `prepare_exec`
-    *   `deliver_signal_or_exception`
-    *   `wait_event_translate`
-    *   `map_scheduler_policy`
-    *   `map_object_namespace`
-*   Update `kernel/src/personality/personality_default.c` to implement stub versions of these new operations to ensure the kernel compiles.
-
-### Step 1.5: Implement Basic Wait/Exit Stubs
-*   Create `kernel/src/proc/exit.c` and `kernel/src/proc/wait.c`.
-*   Implement basic stubs for `process_exit()`, `thread_exit()`, and `wait_object()`, handling the transition to `ZOMBIE` state and basic parent notification logic.
+### Step 1.5: Expand the Personality ABI Contract
+*   Update `kernel/include/personality_ops.h` to expand `personality_ops_t`.
+*   Add the new contract fields for distributed awareness: `create_process_model`, `create_thread_model`, `exit_process`, `clone_or_fork`, etc.
+*   Update `kernel/src/personality/personality_default.c` with stub implementations.
 
 ---
 
-## Phase 2: User-Space Process Manager
+## Phase 2: Async Revocation & Migration (The uRPC Layer)
 
-Once the kernel core is cleanly separated, focus shifts to the user-space orchestrator.
+Once local state is established, implement the cross-core communication primitives.
 
-### Step 2.1: Define the Process Manager BIDL Contract
-*   Create a BIDL definition for the `process_manager` service defining operations for:
-    *   `spawn`
-    *   `exec`
-    *   `kill`
-    *   `wait`
-    *   `reap`
+### Step 2.1: Implement `urpc_ring_t`
+*   Replace legacy synchronous uRPC paths with lock-free ring buffers (`inbound_ring` / `outbound_ring`).
+*   Implement backpressure and drop/retry policies for inter-core messages.
 
-### Step 2.2: Implement the Process Manager Scaffold
+### Step 2.2: Async Capability Revocation
+*   Refactor the capability system to use a 2-phase async revocation flow (REVOKE_REQ -> ACK) via uRPC instead of global polling/locking.
+
+### Step 2.3: Async TLB Shootdowns
+*   Replace global TLB locks with uRPC messages (`TLB_INVALIDATE(aspace, addr)`).
+
+### Step 2.4: Implement Thread Migration
+*   Implement the `MIGRATE_THREAD` uRPC flow to safely move a thread from Core A's runqueue to Core B's runqueue without shared memory mutation.
+
+---
+
+## Phase 3: User-Space Process Manager
+
+With the distributed kernel core established, focus shifts to the user-space orchestrator.
+
+### Step 3.1: Define the Process Manager BIDL Contract
+*   Create a BIDL definition for the `process_manager` service defining operations for: `spawn`, `exec`, `kill`, `wait`, `reap`.
+
+### Step 3.2: Implement the Process Manager Scaffold
 *   Expand `services/process_manager/main.c` from its current TODO state.
 *   Implement the IPC dispatch loop handling the new BIDL contract.
-*   Implement stub handlers that log requests and return standard errors, preparing for full implementation.
+*   Ensure the Process Manager understands core targeting and issues capability grants to specific core-local endpoints.
 
 ---
 
-## Phase 3: Linux Personality Runtime (The MVP)
-
-With the neutral kernel primitives and a process manager in place, implement the first concrete personality.
-
-### Step 3.1: Linux Personality Base
-*   Create a dedicated `personalities/linux/` directory if not already properly structured.
-*   Implement the `linux_personality_ops` bridging the expanded `personality_ops_t` contract to POSIX semantics.
-
-### Step 3.2: Implement `fork`/`clone` Semantics in User-Space
-*   Implement the Linux `fork()` behavior entirely within the Linux personality runtime, utilizing the neutral `process_create_native()` and explicit memory cloning (COW) rather than a kernel-level `fork`.
-
-### Step 3.3: POSIX Signals and Wait
-*   Implement POSIX signal delivery by mapping the kernel's generic async event primitive.
-*   Implement `waitpid` by mapping to the kernel's generic wait queues and the process manager's reaping logic.
-
----
-
-## Phase 4: Advanced Integration & Multikernel
+## Phase 4: Linux Personality Runtime & Load Balancing
 
 Future phases will build upon this foundation.
 
-*   **Android/Windows/macOS Personalities:** Develop additional personality runtimes utilizing the same neutral kernel primitives.
-*   **Thread Migration:** Implement the multikernel thread migration flow (MIGRATE_THREAD via uRPC) across cores.
-*   **Fault Domains:** Implement fault-domain and restart-policy metadata in the process manager for robust recovery.
+*   **Linux Personality Base:** Implement the `linux_personality_ops` bridging the expanded contract to POSIX semantics. Implement `fork()` using the neutral `process_create_native()` and explicit memory cloning, targeted via the Process Manager to a specific core.
+*   **Android/Windows/macOS Personalities:** Develop additional personality runtimes utilizing the same distributed primitives.
+*   **Cross-Core Load Balancing:** Implement an AI Governor or scheduling service that reads telemetry from local cores and issues `MIGRATE_THREAD` requests to balance load.
