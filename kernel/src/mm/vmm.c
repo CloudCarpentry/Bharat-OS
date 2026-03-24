@@ -97,9 +97,17 @@ int vmm_unmap_page(virt_addr_t vaddr) {
     return mm_vmm_unmap_page(&kernel_space, vaddr);
 }
 
+#include "mm/fault.h"
+
 int vmm_handle_cow_fault(address_space_t* as, virt_addr_t vaddr) {
-    extern int vm_handle_fault(address_space_t* as, virt_addr_t fault_addr, uint32_t fault_flags);
-    return vm_handle_fault(as, vaddr, CAP_RIGHT_WRITE);
+    vm_fault_event_t event = {
+        .aspace = as,
+        .fault_addr = vaddr,
+        .access = CAP_RIGHT_WRITE,
+        .arch_code = 0
+    };
+    vm_fault_result_t res = vm_handle_fault(&event);
+    return (res == VM_FAULT_RESOLVED) ? 0 : -1;
 }
 
 address_space_t *mm_create_address_space(void) {

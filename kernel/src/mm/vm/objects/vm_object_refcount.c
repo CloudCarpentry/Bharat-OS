@@ -1,9 +1,6 @@
 #include "../../../../include/mm/vm_object.h"
 #include "../../../../include/slab.h"
 
-#define VM_OBJECT_MAGIC_ALIVE 0x564D4F42 // "VMOB"
-#define VM_OBJECT_MAGIC_DEAD  0xDEADDEAD
-
 // Panic function prototype to halt on misuse.
 // Depending on architecture or config this could be logging.
 extern void kpanic(const char *msg);

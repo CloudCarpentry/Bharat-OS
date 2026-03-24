@@ -46,6 +46,9 @@ typedef struct {
 #define VM_FAULT_SIGBUS    -3
 #define VM_FAULT_ENOSYS    -4
 
+#define VM_OBJECT_MAGIC_ALIVE 0x564D4F42 // "VMOB"
+#define VM_OBJECT_MAGIC_DEAD  0xDEADDEAD
+
 typedef struct vm_object_ops {
     int (*fault)(struct vm_object *obj,
                  struct vm_region *region,
@@ -106,6 +109,11 @@ vm_object_t *vm_object_create_dma(phys_addr_t phys_base, size_t size, uint32_t d
 
 void vm_object_retain(vm_object_t *obj);
 void vm_object_release(vm_object_t *obj);
+
+#ifdef TESTING
+void vm_object_test_set_allocators(phys_addr_t (*alloc_fn)(int), void (*zero_fn)(phys_addr_t, size_t));
+void vm_object_test_reset_allocators(void);
+#endif
 
 #ifdef __cplusplus
 }
