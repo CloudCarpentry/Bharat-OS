@@ -81,14 +81,36 @@ It does **not** get arbitrary MMIO or arbitrary DMA.
 
 ## 6. Handoff Lifecycle
 
+```mermaid
+sequenceDiagram
+    participant FW as Firmware / Bootloader
+    participant Stub as Arch Boot Stub
+    participant Kernel as Kernel (kernel_boot.c)
+    participant BootUI as boot_displayd (Boot UI)
+    participant Displayd as displayd (Compositor)
+
+    FW->>Stub: Handoff display info (GOP, DT simplefb)
+    Stub->>Stub: Normalize into boot_info_t.console
+    Stub->>Kernel: Call kernel_main_common(boot_info)
+    Kernel->>Kernel: boot_validate_all()
+    Kernel->>Kernel: Safely map framebuffer (boot_video_map)
+    Kernel->>Kernel: Create CAP_DISPLAY_FB
+    Kernel->>BootUI: Launch with FB capability
+    BootUI->>BootUI: Render splash / progress / recovery
+    Note over BootUI: Input may attach
+    Displayd->>Displayd: Start & claim hardware ownership
+    Displayd->>BootUI: Initiate Handoff (fade in / swap)
+    BootUI->>BootUI: Exit gracefully
+```
+
 ### Stage 1 — Early boot
-Firmware/board gives display info -> Kernel validates/maps -> Kernel creates `CAP_DISPLAY_FB` -> Kernel launches `boot_displayd`.
+Firmware/board gives display info. The architecture-specific boot stub normalizes this into the canonical `boot_info_t` (specifically `boot_console_info_t`). The `kernel_main_common` flow (`boot_validate_all`, `boot_mode_resolve`) validates the structure and safely maps the framebuffer before creating the `CAP_DISPLAY_FB` capability and launching `boot_displayd`.
 
 ### Stage 2 — Boot UI active
-Splash, progress, recovery rendered. Input may attach.
+Splash, progress, recovery rendered by `boot_displayd`. Input may attach if permitted by the current boot mode (e.g. `BOOT_MODE_NORMAL` vs `BOOT_MODE_RECOVERY`).
 
 ### Stage 3 — Final display service starts
-`displayd` claims hardware ownership.
+`displayd` (the main compositor) starts and claims hardware ownership.
 
 ### Stage 4 — Boot display handoff
 `displayd` reuses the same path (surface fade in) or replaces the path (reprograms hardware and swaps surface). `boot_displayd` exits.
