@@ -17,23 +17,57 @@ static vm_object_t *vm_object_alloc_common(vm_object_kind_t kind, size_t size, u
     obj->kind = kind;
     obj->size = size;
     obj->flags = flags;
-    obj->magic = 0x564D4F42; // "VMOB"
+    obj->magic = VM_OBJECT_MAGIC_ALIVE;
     obj->refcount = 1;
     return obj;
 }
 
 // VM Object Backend - Anonymous Memory
 
+#ifdef TESTING
+static phys_addr_t (*g_vm_test_alloc_page)(int numa_node) = NULL;
+static void (*g_vm_test_zero_page)(phys_addr_t paddr, size_t size) = NULL;
+
+void vm_object_test_set_allocators(phys_addr_t (*alloc_fn)(int), void (*zero_fn)(phys_addr_t, size_t)) {
+    g_vm_test_alloc_page = alloc_fn;
+    g_vm_test_zero_page = zero_fn;
+}
+
+void vm_object_test_reset_allocators(void) {
+    g_vm_test_alloc_page = NULL;
+    g_vm_test_zero_page = NULL;
+}
+#endif
+
 static int anon_fault(struct vm_object *obj, struct vm_region *region, uintptr_t fault_addr, uint32_t access, phys_addr_t *out_page, uint32_t *out_page_flags) {
     if (!obj) return -1;
     (void)region;
     (void)fault_addr;
 
-    phys_addr_t paddr = mm_alloc_page(NUMA_NODE_ANY);
+    phys_addr_t paddr;
+#ifdef TESTING
+    if (g_vm_test_alloc_page) {
+        paddr = g_vm_test_alloc_page(NUMA_NODE_ANY);
+    } else {
+        paddr = mm_alloc_page(NUMA_NODE_ANY);
+    }
+#else
+    paddr = mm_alloc_page(NUMA_NODE_ANY);
+#endif
+
     if (!paddr) return VM_FAULT_OOM;
 
+#ifdef TESTING
+    if (g_vm_test_zero_page) {
+        g_vm_test_zero_page(paddr, PAGE_SIZE);
+    } else {
+        uint8_t *dst = (uint8_t *)(uintptr_t)paddr;
+        __builtin_memset(dst, 0, PAGE_SIZE);
+    }
+#else
     uint8_t *dst = (uint8_t *)paddr; // Assuming identity map for now
     __builtin_memset(dst, 0, PAGE_SIZE);
+#endif
 
     if (out_page) *out_page = paddr;
     if (out_page_flags) *out_page_flags = access; // Needs proper flags mapping

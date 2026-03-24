@@ -1,12 +1,12 @@
-#include "../../include/mm.h"
-#include "../../include/mm/aspace.h"
-#include "../../include/mm/vm_object.h"
-#include "../../include/mm/pmm.h"
-#include "../../include/hal/hal_pt.h"
-#include "../../include/hal/hal_tlb.h"
+#include "../../../../include/mm.h"
+#include "../../../../include/mm/aspace.h"
+#include "../../../../include/mm/vm_object.h"
+#include "../../../../include/mm/pmm.h"
+#include "../../../../include/hal/hal_pt.h"
+#include "../../../../include/hal/hal_tlb.h"
 #include "../../../../include/mm/tlb.h"
-#include "../../include/kernel.h"
-#include "../../include/hal/mmu_ops.h"
+#include "../../../../include/kernel.h"
+#include "../../../../include/hal/mmu_ops.h"
 
 // VM Fault Engine: Core page fault dispatcher and handler
 
@@ -21,6 +21,8 @@ typedef enum {
     FAULT_STATE_ERROR
 } fault_state_t;
 
+#include "../../../../include/mm/fault.h"
+
 typedef struct {
     address_space_t *aspace;
     virt_addr_t fault_addr;
@@ -33,15 +35,15 @@ typedef struct {
     int error_code;
 } fault_ctx_t;
 
-int vm_handle_fault(address_space_t *aspace, virt_addr_t fault_addr, uint32_t fault_flags) {
-    if (!aspace || !active_hal_pt) {
-        return VM_FAULT_SIGSEGV;
+vm_fault_result_t vm_handle_fault(const vm_fault_event_t *event) {
+    if (!event || !event->aspace || !active_hal_pt) {
+        return VM_FAULT_KILL;
     }
 
     fault_ctx_t ctx = {
-        .aspace = aspace,
-        .fault_addr = fault_addr,
-        .fault_flags = fault_flags,
+        .aspace = event->aspace,
+        .fault_addr = event->fault_addr,
+        .fault_flags = event->access,
         .region = NULL,
         .object = NULL,
         .paddr = 0,
@@ -130,8 +132,14 @@ int vm_handle_fault(address_space_t *aspace, virt_addr_t fault_addr, uint32_t fa
     }
 
     if (state == FAULT_STATE_SUCCESS) {
-        return 0; // Success
+        return VM_FAULT_RESOLVED;
     } else {
-        return ctx.error_code;
+        if (ctx.error_code == VM_FAULT_SIGSEGV || ctx.error_code == VM_FAULT_SIGBUS || ctx.error_code == -2) {
+            return VM_FAULT_KILL;
+        } else if (ctx.error_code == VM_FAULT_OOM || ctx.error_code == VM_FAULT_ENOSYS) {
+            return VM_FAULT_KILL; // In real impl, maybe RETRY or KILL based on policy
+        } else {
+            return VM_FAULT_PANIC;
+        }
     }
 }
