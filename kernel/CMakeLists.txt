@@ -129,13 +129,13 @@ endif()
 string(TOLOWER "${ARCH}" ARCH)
 # ── Boot and HAL sources (arch-specific) ────────────────────────────────────
 if(ARCH STREQUAL "x86_64")
-    set(BOOT_SRC ../arch/x86_64/boot/boot.S)
+    set(BOOT_SRC ../arch/x86/x86_64/boot/boot.S)
     set(ARCH_HAL ../hal/x86_64/hal_cpu.c ../hal/x86_64/discovery.c ../hal/x86_64/hal_mm.c ../hal/x86_64/trap_entry.S ../hal/mmu/x86_64/vmm.c ../hal/x86_64/hal_pt_x86_64.c ../hal/hal_pt.c ../hal/x86_64/vtd_iommu.c ../hal/x86_64/apic.c ../hal/x86_64/timer.c ../hal/x86_64/dma.c ../hal/x86_64/hal_secure_boot.c ../hal/x86_64/cpu_relax.c ../hal/common/iommu/null/null_iommu.c ../hal/x86_64/iommu/intel_vtd/intel_vtd_stub.c)
-    set(ARCH_CONTEXT_SWITCH ../arch/x86_64/context_switch.c ../arch/x86_64/context_switch.S)
-    set(ARCH_CPU_CAPS_SRC ../arch/x86_64/cpu_caps.c)
-    set(ARCH_EXT_STATE_SRC ../arch/x86_64/ext_state.c)
+    set(ARCH_CONTEXT_SWITCH ../arch/x86/x86_64/context_switch.c ../arch/x86/x86_64/context_switch.S)
+    set(ARCH_CPU_CAPS_SRC ../arch/x86/x86_64/cpu_caps.c)
+    set(ARCH_EXT_STATE_SRC ../arch/x86/x86_64/ext_state.c)
 elseif(ARCH STREQUAL "riscv64")
-    set(BOOT_SRC ../arch/riscv64/boot/boot.S)
+    set(BOOT_SRC ../arch/riscv/riscv64/boot/boot.S)
     set(ARCH_HAL ../hal/riscv/hal_cpu.c ../hal/riscv/discovery.c ../hal/riscv/hal_mm.c ../hal/riscv/boot/feature_probe.c ../hal/riscv/trap_entry.S ../hal/mmu/riscv64/vmm.c ../hal/riscv64/hal_pt_riscv64.c ../hal/hal_pt.c ../hal/riscv/iopmp.c ../hal/riscv/plic.c ../hal/riscv/sbi_timer_ipi.c ../hal/riscv64/dma.c ../hal/riscv64/hal_secure_boot.c ../hal/riscv64/cpu_relax.c ../hal/common/iommu/null/null_iommu.c ../hal/riscv64/iommu/riscv_iommu/riscv_iommu_stub.c)
     set(ARCH_HAL_EXTRA ../hal/riscv/shakti_bsp.c)
     # VirtIO GPU display driver: only for qemu-virt + GUI enabled
@@ -143,28 +143,28 @@ elseif(ARCH STREQUAL "riscv64")
         #list(APPEND ARCH_HAL ../hal/riscv/virtio_gpu.c)
         add_compile_definitions(BHARAT_VIRTIO_GPU=1)
     endif()
-    set(ARCH_CONTEXT_SWITCH ../arch/riscv64/context_switch.c ../arch/riscv64/context_switch.S)
-    set(ARCH_CPU_CAPS_SRC ../arch/riscv64/cpu_caps.c)
-    set(ARCH_EXT_STATE_SRC ../arch/riscv64/ext_state.c)
+    set(ARCH_CONTEXT_SWITCH ../arch/riscv/riscv64/context_switch.c ../arch/riscv/riscv64/context_switch.S)
+    set(ARCH_CPU_CAPS_SRC ../arch/riscv/riscv64/cpu_caps.c)
+    set(ARCH_EXT_STATE_SRC ../arch/riscv/riscv64/ext_state.c)
 elseif(ARCH STREQUAL "riscv32")
-    set(BOOT_SRC ../arch/riscv64/boot/boot.S)
+    set(BOOT_SRC ../arch/riscv/riscv64/boot/boot.S)
     set(ARCH_HAL ../hal/riscv/hal_cpu.c ../hal/riscv/boot/feature_probe.c ../hal/riscv/trap_entry.S ../hal/mmu/riscv64/vmm.c ../hal/riscv64/hal_pt_riscv64.c ../hal/hal_pt.c ../hal/riscv/iopmp.c ../hal/riscv/plic.c ../hal/riscv/sbi_timer_ipi.c ../hal/common/hal_secure_boot_unsupported.c ../hal/riscv32/cpu_relax.c ../hal/common/iommu/null/null_iommu.c)
     set(ARCH_CONTEXT_SWITCH ../arch/shakti/context_switch.c ../arch/shakti/context_switch.S)
     set(ARCH_CPU_CAPS_SRC ../arch/shakti/cpu_caps.c)
     set(ARCH_EXT_STATE_SRC ../arch/shakti/ext_state.c)
 elseif(ARCH STREQUAL "arm64")
-    set(BOOT_SRC ../arch/arm64/boot/boot.S)
+    set(BOOT_SRC ../arch/arm/arm64/boot/boot.S)
     set(ARCH_HAL ../hal/arm64/hal_cpu.c ../hal/arm64/discovery.c ../hal/arm64/hal_mm.c ../hal/arm64/trap_entry.S ../hal/mmu/arm64/vmm.c ../hal/arm64/hal_pt_arm64.c ../hal/hal_pt.c ../hal/arm64/smmu.c ../hal/arm64/gicv3.c ../hal/arm64/timer_generic.c ../hal/arm64/dma.c ../hal/arm64/hal_secure_boot.c ../hal/arm64/cpu_relax.c ../hal/common/iommu/null/null_iommu.c ../hal/arm64/iommu/arm_smmu/arm_smmu_stub.c)
-    set(ARCH_CONTEXT_SWITCH ../arch/arm64/context_switch.c ../arch/arm64/context_switch.S)
+    set(ARCH_CONTEXT_SWITCH ../arch/arm/arm64/context_switch.c ../arch/arm/arm64/context_switch.S)
     set(ARCH_HAL_EXTRA ../hal/arm64/topology_fdt.c)
-    set(ARCH_CPU_CAPS_SRC ../arch/arm64/cpu_caps.c)
-    set(ARCH_EXT_STATE_SRC ../arch/arm64/ext_state.c)
+    set(ARCH_CPU_CAPS_SRC ../arch/arm/arm64/cpu_caps.c)
+    set(ARCH_EXT_STATE_SRC ../arch/arm/arm64/ext_state.c)
 elseif(ARCH STREQUAL "arm32")
-    set(BOOT_SRC ../arch/arm32/boot/boot.S)
+    set(BOOT_SRC ../arch/arm/arm32/boot/boot.S)
     set(ARCH_HAL ../hal/arm64/hal_cpu.c ../hal/arm64/trap_entry.S ../hal/mmu/arm64/vmm.c ../hal/arm64/hal_pt_arm64.c ../hal/hal_pt.c ../hal/arm64/smmu.c ../hal/arm64/gicv3.c ../hal/arm64/timer_generic.c ../hal/mpu/arm32/mpu_backend.c ../hal/arm64/dma.c ../hal/common/hal_secure_boot_unsupported.c ../hal/arm32/cpu_relax.c)
-    set(ARCH_CONTEXT_SWITCH ../arch/arm64/context_switch.c ../arch/arm64/context_switch.S)
-    set(ARCH_CPU_CAPS_SRC ../arch/arm64/cpu_caps.c)
-    set(ARCH_EXT_STATE_SRC ../arch/arm64/ext_state.c)
+    set(ARCH_CONTEXT_SWITCH ../arch/arm/arm64/context_switch.c ../arch/arm/arm64/context_switch.S)
+    set(ARCH_CPU_CAPS_SRC ../arch/arm/arm64/cpu_caps.c)
+    set(ARCH_EXT_STATE_SRC ../arch/arm/arm64/ext_state.c)
 endif()
 if(ARCH MATCHES "x86_64")
     set(LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/linker.ld")
@@ -296,16 +296,16 @@ set(KERNEL_SRCS
     $<$<STREQUAL:${ARCH},arm32>:../hal/arm32_mpu_vmm_mock.c>
     src/display/fb_core.c
     src/profile/${KERNEL_PROFILE_LOWER}/profile.c
-    $<$<STREQUAL:${ARCH},x86_64>:../arch/x86_64/boot/entry.c>
-    $<$<STREQUAL:${ARCH},x86_64>:../arch/x86_64/boot/multiboot_parse.c>
-    $<$<STREQUAL:${ARCH},arm32>:../arch/arm32/boot/entry.c>
-    $<$<STREQUAL:${ARCH},arm64>:../arch/arm64/boot/entry.c>
+    $<$<STREQUAL:${ARCH},x86_64>:../arch/x86/x86_64/boot/entry.c>
+    $<$<STREQUAL:${ARCH},x86_64>:../arch/x86/x86_64/boot/multiboot_parse.c>
+    $<$<STREQUAL:${ARCH},arm32>:../arch/arm/arm32/boot/entry.c>
+    $<$<STREQUAL:${ARCH},arm64>:../arch/arm/arm64/boot/entry.c>
     $<$<OR:$<STREQUAL:${ARCH},arm32>,$<STREQUAL:${ARCH},arm64>>:../arch/arm/boot/fdt_parse_common.c>
-    $<$<STREQUAL:${ARCH},riscv32>:../arch/riscv32/boot/entry.c>
-    $<$<STREQUAL:${ARCH},riscv64>:../arch/riscv64/boot/entry.c>
+    $<$<STREQUAL:${ARCH},riscv32>:../arch/riscv/riscv32/boot/entry.c>
+    $<$<STREQUAL:${ARCH},riscv64>:../arch/riscv/riscv64/boot/entry.c>
     $<$<OR:$<STREQUAL:${ARCH},riscv32>,$<STREQUAL:${ARCH},riscv64>>:../arch/riscv/boot/fdt_parse_common.c>
     $<$<STREQUAL:${ARCH},x86_64>:../platform/boards/qemu-virt-x86_64/board.c>
-    $<$<STREQUAL:${ARCH},x86_64>:../arch/x86_64/boot_video_efi.c>
+    $<$<STREQUAL:${ARCH},x86_64>:../arch/x86/x86_64/boot_video_efi.c>
     $<$<STREQUAL:${ARCH},x86_64>:../platform/boards/qemu-virt-x86_64/machine_display.c>
     $<$<AND:$<STREQUAL:${ARCH},arm64>,$<STREQUAL:${KERNEL_PROFILE_LOWER},generic>>:../platform/boards/qemu-virt-arm64/board.c>
     $<$<AND:$<STREQUAL:${ARCH},arm64>,$<STREQUAL:${KERNEL_PROFILE_LOWER},generic>>:../platform/boards/qemu-virt-arm64/machine_display.c>
@@ -322,14 +322,14 @@ set(KERNEL_SRCS
     ${ARCH_CPU_CAPS_SRC}
     # arch/common source files (fixed string.h dependency)
     ../arch/common/cpu_caps_state.c
-    $<$<STREQUAL:${ARCH},x86_64>:../arch/x86_64/arch_caps.c>
-    $<$<STREQUAL:${ARCH},x86_64>:../arch/x86_64/arch_console.c>
-    $<$<STREQUAL:${ARCH},arm64>:../arch/arm64/arch_caps.c>
-    $<$<STREQUAL:${ARCH},arm64>:../arch/arm64/arch_console.c>
-    $<$<STREQUAL:${ARCH},riscv64>:../arch/riscv64/arch_caps.c>
-    $<$<STREQUAL:${ARCH},riscv64>:../arch/riscv64/arch_console.c>
-    $<$<STREQUAL:${ARCH},arm32>:../arch/arm32/arch_caps.c>
-    $<$<STREQUAL:${ARCH},riscv32>:../arch/riscv32/arch_caps.c>
+    $<$<STREQUAL:${ARCH},x86_64>:../arch/x86/x86_64/arch_caps.c>
+    $<$<STREQUAL:${ARCH},x86_64>:../arch/x86/x86_64/arch_console.c>
+    $<$<STREQUAL:${ARCH},arm64>:../arch/arm/arm64/arch_caps.c>
+    $<$<STREQUAL:${ARCH},arm64>:../arch/arm/arm64/arch_console.c>
+    $<$<STREQUAL:${ARCH},riscv64>:../arch/riscv/riscv64/arch_caps.c>
+    $<$<STREQUAL:${ARCH},riscv64>:../arch/riscv/riscv64/arch_console.c>
+    $<$<STREQUAL:${ARCH},arm32>:../arch/arm/arm32/arch_caps.c>
+    $<$<STREQUAL:${ARCH},riscv32>:../arch/riscv/riscv32/arch_caps.c>
     ${ARCH_EXT_STATE_SRC}
     ../hal/mmu_init.c
     ../hal/iommu_stub.c
@@ -355,11 +355,11 @@ set(KERNEL_SRCS
 
 # ── Platform / Machine layer ────────────────────────────────────────────────
 if(ARCH STREQUAL "x86_64")
-    list(APPEND KERNEL_SRCS ../arch/x86_64/platform/q35/boot/early_console.c)
+    list(APPEND KERNEL_SRCS ../arch/x86/x86_64/platform/q35/boot/early_console.c)
 elseif(ARCH STREQUAL "arm64")
-    list(APPEND KERNEL_SRCS ../arch/arm64/platform/qemu_virt/boot/early_console.c)
+    list(APPEND KERNEL_SRCS ../arch/arm/arm64/platform/qemu_virt/boot/early_console.c)
 elseif(ARCH STREQUAL "riscv64")
-    list(APPEND KERNEL_SRCS ../arch/riscv64/platform/qemu_virt/boot/early_console.c)
+    list(APPEND KERNEL_SRCS ../arch/riscv/riscv64/platform/qemu_virt/boot/early_console.c)
 endif()
 
 # Make sure we link the platform layer correctly for symbol resolution
@@ -526,11 +526,11 @@ endif()
 
 # ── Platform / Machine layer ────────────────────────────────────────────────
 if(ARCH STREQUAL "x86_64")
-    list(APPEND KERNEL_SRCS ../arch/x86_64/platform/q35/boot/early_console.c)
+    list(APPEND KERNEL_SRCS ../arch/x86/x86_64/platform/q35/boot/early_console.c)
 elseif(ARCH STREQUAL "arm64")
-    list(APPEND KERNEL_SRCS ../arch/arm64/platform/qemu_virt/boot/early_console.c)
+    list(APPEND KERNEL_SRCS ../arch/arm/arm64/platform/qemu_virt/boot/early_console.c)
 elseif(ARCH STREQUAL "riscv64")
-    list(APPEND KERNEL_SRCS ../arch/riscv64/platform/qemu_virt/boot/early_console.c)
+    list(APPEND KERNEL_SRCS ../arch/riscv/riscv64/platform/qemu_virt/boot/early_console.c)
 endif()
 
 list(APPEND KERNEL_SRCS src/display/boot_video_map.c)

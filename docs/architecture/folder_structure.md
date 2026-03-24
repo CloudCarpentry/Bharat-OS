@@ -30,7 +30,7 @@ The core philosophy of Bharat-OS folder structuring is **semantic sharpness**:
 
 This is the most critical separation in the low-level system.
 
-- **`arch/`**: Owns ISA/CPU-specific code. This contains the hardware-specific implementations of contracts. (e.g., `arch/arm64/`, `arch/x86/x86_64/`).
+- **`arch/`**: Owns ISA/CPU-specific code. This contains the hardware-specific implementations of contracts. (e.g., `arch/arm/arm64/`, `arch/x86/x86_64/`).
 - **`hal/`**: Owns abstraction contracts and common glue. It contains only headers (`include/`) defining the HAL APIs, and generic implementations or stubs (`common/`, `irq/`, `timer/`, `memory/`, etc.). **Do not put architecture-specific implementations (like `hal/arm64`) here.**
 - **`platform/`**: Owns board, machine, SoC integration, and topology/interconnect discovery. (e.g., `platform/boards/`, `platform/soc/`, `platform/qemu/`).
 
