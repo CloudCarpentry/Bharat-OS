@@ -1,0 +1,45 @@
+// namesvc.bidl
+// Example Phase 1 Contract for the Bharat-OS Name Service
+version 1.0;
+
+namespace bharat.namesvc;
+
+// Canonical status codes returned by the service
+enum Status : i32 {
+    OK = 0,
+    ERR_NOT_FOUND = -1,
+    ERR_ALREADY_EXISTS = -2,
+    ERR_DENIED = -3,
+    ERR_INVALID_ARGS = -4
+}
+
+// Fixed-size descriptor for an endpoint registration
+struct ServiceDescriptor {
+    string<64> service_name;
+    u32 interface_version;
+    handle<endpoint> service_port;
+
+    // Explicit padding for ABI stability
+    u8 reserved[16];
+}
+
+// Synchronous capability-protected discovery interface
+@transport(endpoint)
+interface ServiceManager {
+
+    // Register a new service endpoint
+    // Requires the caller to hold a specific capability proving they are allowed to register services
+    @requires(capability="SYS_ADMIN", rights="WRITE")
+    method register_service(ServiceDescriptor descriptor) -> (Status status);
+
+    // Resolve an existing service by name
+    // Any process with basic IPC rights can attempt to resolve a service
+    method resolve_service(string<64> service_name, u32 min_version) -> (handle<endpoint> port, Status status);
+
+    // List registered services, returning a bounded array of names
+    method list_services() -> (Array<string<64>, 32> services, Status status);
+
+    // Unregister a previously registered service
+    @requires(capability="SYS_ADMIN", rights="WRITE")
+    method unregister_service(string<64> service_name) -> (Status status);
+}
