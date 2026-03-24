@@ -1,5 +1,5 @@
 #include <stdint.h>
-#include <string.h>
+#include <lib/string.h>
 
 #include <bharat/uapi/sys_errno.h>
 #include <bharat/uapi/crypto/contract.h>

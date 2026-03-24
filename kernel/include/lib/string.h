@@ -28,6 +28,11 @@ size_t strlen(const char *s);
 char *strncpy(char *dest, const char *src, size_t n);
 int strncmp(const char *s1, const char *s2, size_t n);
 
+int strcmp(const char *s1, const char *s2);
+char *strcpy(char *dest, const char *src);
+
+void secure_memzero(void *ptr, size_t len);
+
 #ifdef __cplusplus
 }
 #endif
