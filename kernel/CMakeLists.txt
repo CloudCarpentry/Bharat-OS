@@ -201,6 +201,15 @@ elseif(BHARAT_PROFILE_MPU_ONLY)
     add_compile_definitions(BHARAT_PROFILE_MPU_ONLY=1)
 endif()
 # ── Memory Subsystem Targets ──────────────────────────────────────────────
+add_library(bharat_mm_accel OBJECT
+    src/mm/accel/accel_mem.c
+    src/mm/accel/accel_sg.c
+    src/mm/accel/accel_iova.c
+    src/mm/accel/accel_teardown.c
+)
+target_link_libraries(bharat_mm_accel PRIVATE bharat_kernel_includes)
+target_compile_options(bharat_mm_accel PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
+
 add_library(bharat_mm_iommu OBJECT
     src/mm/iommu/iommu.c
     src/mm/iommu/iommu_domain.c
@@ -371,6 +380,8 @@ list(APPEND KERNEL_SRCS src/display/boot_video_map.c src/boot/boot_mode.c src/bo
 # ── Kernel ELF ──────────────────────────────────────────────────────────────
 add_executable(kernel.elf
     ${KERNEL_SRCS}
+    $<TARGET_OBJECTS:bharat_mm_accel>
+    $<TARGET_OBJECTS:bharatos_driver_accel>
     $<TARGET_OBJECTS:bharat_mm_iommu>
     $<TARGET_OBJECTS:bharat_mm_pmm>
     $<TARGET_OBJECTS:k_core>

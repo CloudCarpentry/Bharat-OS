@@ -6,21 +6,76 @@
 #include "console/console_core.h"
 #include <stddef.h>
 
+// Forward declaration of the generic wrapper ops
+static prot_domain_ops_t generic_backend_ops;
 static prot_domain_ops_t* active_backend = NULL;
 static prot_mode_t active_mode = PROT_MODE_NONE;
 
-#if defined(__x86_64__)
-extern prot_domain_ops_t mmu_full_ops_x86_64;
-#elif defined(__aarch64__)
-extern prot_domain_ops_t mmu_full_ops_arm64;
-#elif defined(__riscv) && __riscv_xlen == 64
-extern prot_domain_ops_t mmu_full_ops_riscv64;
-#elif defined(__arm__)
-extern prot_domain_ops_t mpu_only_ops_arm32;
-#endif
+// Generic wrapper implementations relying on hal_pt and hal_mm capabilities
+static prot_domain_t* generic_create(void) {
+    return NULL; // Stubbed as prot_domain_t is legacy/transitional. VMM uses aspace directly.
+}
 
-extern prot_domain_ops_t prot_none_ops;
-extern prot_domain_ops_t mmu_lite_ops_common;
+static void generic_destroy(prot_domain_t* domain) {
+    (void)domain;
+}
+
+static void generic_activate(prot_domain_t* domain) {
+    (void)domain;
+}
+
+static int generic_map_region(prot_domain_t* domain, uintptr_t vaddr, uintptr_t paddr, size_t size, uint32_t flags) {
+    (void)domain;
+    if (active_hal_pt && active_hal_pt->map_range) {
+        return active_hal_pt->map_range(0 /* root_pt handled by aspace */, vaddr, paddr, size, flags);
+    }
+    return -1;
+}
+
+static int generic_unmap_region(prot_domain_t* domain, uintptr_t vaddr, size_t size) {
+    (void)domain;
+    if (active_hal_pt && active_hal_pt->unmap_range) {
+        return active_hal_pt->unmap_range(0 /* root_pt handled by aspace */, vaddr, size);
+    }
+    return -1;
+}
+
+static int generic_protect_region(prot_domain_t* domain, uintptr_t vaddr, size_t size, uint32_t flags) {
+    (void)domain;
+    if (active_hal_pt && active_hal_pt->protect_range) {
+        return active_hal_pt->protect_range(0 /* root_pt handled by aspace */, vaddr, size, flags);
+    }
+    return -1;
+}
+
+static int generic_query_region(prot_domain_t* domain, uintptr_t vaddr, uintptr_t* paddr, uint32_t* flags) {
+    (void)domain;
+    if (active_hal_pt && active_hal_pt->query_mapping) {
+        size_t mapped_size;
+        return active_hal_pt->query_mapping(0 /* root_pt handled by aspace */, vaddr, paddr, &mapped_size, flags);
+    }
+    return -1;
+}
+
+static prot_domain_ops_t generic_backend_ops = {
+    .create = generic_create,
+    .destroy = generic_destroy,
+    .activate = generic_activate,
+    .map_region = generic_map_region,
+    .unmap_region = generic_unmap_region,
+    .protect_region = generic_protect_region,
+    .query_region = generic_query_region,
+};
+
+static prot_domain_ops_t prot_none_ops = {
+    .create = NULL,
+    .destroy = NULL,
+    .activate = NULL,
+    .map_region = NULL,
+    .unmap_region = NULL,
+    .protect_region = NULL,
+    .query_region = NULL,
+};
 
 void prot_domain_init(void) {
     hal_mm_backend_caps_t backend_caps;
@@ -28,25 +83,13 @@ void prot_domain_init(void) {
 
     if (backend_caps.kind == HAL_MM_BACKEND_MMU_FULL) {
         active_mode = PROT_MODE_MMU_FULL;
-#if defined(__x86_64__)
-        active_backend = &mmu_full_ops_x86_64;
-#elif defined(__aarch64__)
-        active_backend = &mmu_full_ops_arm64;
-#elif defined(__riscv) && __riscv_xlen == 64
-        active_backend = &mmu_full_ops_riscv64;
-#else
-        active_backend = &prot_none_ops;
-#endif
+        active_backend = &generic_backend_ops;
     } else if (backend_caps.kind == HAL_MM_BACKEND_MMU_LITE) {
         active_mode = PROT_MODE_MMU_LITE;
-        active_backend = &mmu_lite_ops_common;
+        active_backend = &generic_backend_ops;
     } else if (backend_caps.kind == HAL_MM_BACKEND_MPU_ONLY) {
         active_mode = PROT_MODE_MPU_ONLY;
-#if defined(__arm__)
-        active_backend = &mpu_only_ops_arm32;
-#else
-        active_backend = &prot_none_ops;
-#endif
+        active_backend = &generic_backend_ops;
     } else {
         active_mode = PROT_MODE_NONE;
         active_backend = &prot_none_ops;

@@ -10,6 +10,7 @@ add_executable(test_ipc_contract_validation
 )
 target_include_directories(test_ipc_contract_validation PRIVATE
     ${REPO_ROOT}/kernel/include
+    ${REPO_ROOT}/include
 )
 
 add_executable(test_netmgr_ipc_contract
@@ -23,6 +24,7 @@ add_executable(test_netmgr_ipc_contract
 )
 target_include_directories(test_netmgr_ipc_contract PRIVATE
     ${REPO_ROOT}/kernel/include
+    ${REPO_ROOT}/include
     ${REPO_ROOT}/services/netmgr/include
     ${REPO_ROOT}/lib/ipc/include
     ${REPO_ROOT}/lib/net/include
@@ -41,6 +43,7 @@ add_executable(test_namesvc_registry_contract
 )
 target_include_directories(test_namesvc_registry_contract PRIVATE
     ${REPO_ROOT}/kernel/include
+    ${REPO_ROOT}/include
     ${REPO_ROOT}/services/namesvc/include
     ${REPO_ROOT}/services/namesvc/src
     ${REPO_ROOT}/lib/ipc/include

@@ -10,6 +10,10 @@
 #include "../../../include/bharat/console.h"
 #include "../../../include/bharat/urpc.h"
 #include "tlb_pending.h"
+#include "../../../include/arch/arch_caps.h"
+#include "../../../include/mm/tlb.h"
+#include "../../../include/mm/tlb_internal.h"
+#include "../../../include/hal/hal_ipi.h"
 
 // Bring in the generated definitions
 #include "bharat_monitor_v1_types.h"
@@ -24,6 +28,11 @@ __attribute__((weak)) bharat_transport_t* transport_for_core(int core) {
     return NULL;
 }
 extern int bharat_monitor_v1_call_tlb_invalidate(bharat_transport_t* t, int dst, const bharat_monitor_v1_TlbInvalidateReq_t* req, void* ctx);
+
+// Forward declarations
+extern void vmm_process_urpc_messages(void);
+extern void cap_handle_delegate_req(uint64_t payload, uint32_t source_core);
+extern void cap_handle_delegate_ack(uint64_t payload);
 
 static uint64_t tlb_collect_targets(uint64_t aspace_id) {
     uint64_t mask = 0;
@@ -128,9 +137,8 @@ void vmm_send_tlb_invalidate(uint64_t aspace_id,
              mailbox->req_seq++;
              spin_unlock(&mailbox->lock);
 
-             // notify
-             extern void hal_send_ipi_payload(uint32_t target_core, uint64_t payload);
-             hal_send_ipi_payload(core, 0);
+             // notify via proper HAL IPI API
+             hal_ipi_send(core, HAL_IPI_TLB_SHOOTDOWN);
         }
     }
 
@@ -152,7 +160,6 @@ void vmm_send_tlb_invalidate(uint64_t aspace_id,
 
                 // Let CPU relax and process incoming messages
                 arch_cpu_relax();
-                extern void vmm_process_urpc_messages(void);
                 vmm_process_urpc_messages(); // check if acks arrived
                 wait_loops++;
             }
@@ -163,7 +170,6 @@ void vmm_send_tlb_invalidate(uint64_t aspace_id,
 
         if (!success) {
             // TIMEOUT path for revocation. We fail closed.
-            extern void kernel_panic(const char*);
             kernel_panic("TLB Shootdown Timeout: Revocation failed, system isolated to prevent memory corruption.");
         }
 
@@ -175,7 +181,6 @@ void vmm_send_tlb_invalidate(uint64_t aspace_id,
         uint32_t wait_loops = 0;
         while (wait_loops < 1000000) {
             arch_cpu_relax();
-            extern void vmm_process_urpc_messages(void);
             vmm_process_urpc_messages();
             wait_loops++;
         }
@@ -221,17 +226,6 @@ int monitor_handle_tlb_invalidate(
     resp->status = 0;
     return 0;
 }
-
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "../../../include/arch/arch_caps.h"
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "../../../include/mm/tlb.h"
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "../../../include/mm/tlb_internal.h"
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "../../../include/hal/hal_tlb.h"
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "../../../include/hal/hal.h"
 
 int tlb_invalidate_remote(vm_aspace_t *aspace, uintptr_t va, size_t len, tlb_inv_kind_t kind) {
     if (!aspace || !active_hal_tlb) return -1;
@@ -402,11 +396,9 @@ void vmm_process_urpc_messages(void) {
             urpc_unpack_msg(raw_msg, &type, &payload);
 
             if (type == URPC_CAP_DELEGATE_REQ) {
-                extern void cap_handle_delegate_req(uint64_t payload, uint32_t source_core);
                 cap_handle_delegate_req(payload, c);
             } else if (type == URPC_CAP_DELEGATE_ACK) {
                 // In case an ACK arrives here, we set the global ack_received flag.
-                extern void cap_handle_delegate_ack(uint64_t payload);
                 cap_handle_delegate_ack(payload);
             } else {
                 // If we get here, it's another message type. The prior behavior was to drop it
