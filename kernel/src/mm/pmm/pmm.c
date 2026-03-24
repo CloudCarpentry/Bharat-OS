@@ -711,7 +711,7 @@ int pmm_ingest_memory_map(const pmm_memory_map_t *map) {
   return 0;
 }
 
-static bool g_pmm_initialized = false;
+bool g_pmm_initialized = false;
 int mm_pmm_init(uint32_t magic, const boot_info_t *boot) {
   (void)magic; // Passed from old code path, we now rely on boot->magic internally
 
