@@ -1,0 +1,39 @@
+// console_v1.bidl
+// BIDL definition for the Console Subsystem in Bharat-OS
+
+interface bharat.console.v1;
+
+type console_backend_kind_t enum {
+    CONSOLE_BACKEND_NONE = 0,
+    CONSOLE_BACKEND_UART = 1,
+    CONSOLE_BACKEND_FRAMEBUFFER = 2
+};
+
+struct console_cap_request_t {
+    uint32 request_type;
+    uint32 preferred_backend;
+};
+
+struct console_cap_response_t {
+    uint32 status;
+    uint32 granted_backend;
+};
+
+// Console output operations
+operation AcquireHardwareCapability {
+    opcode = 1;
+    input = console_cap_request_t;
+    output = console_cap_response_t;
+    capability_transfer = true;
+};
+
+operation WriteStream {
+    opcode = 2;
+    input_bytes = true; // variable length payload
+    capability_required = true;
+};
+
+operation FlushStream {
+    opcode = 3;
+    capability_required = true;
+};
