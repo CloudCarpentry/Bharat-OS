@@ -21,7 +21,15 @@
 
 #include "display/boot_gui_init.h"
 #include "bharat/display/display_caps.h"
+#include "bharat/display/boot_ui_types.h"
 #include "boot/boot_args.h"
+
+// Forward declaration from boot_ui_select.c
+extern boot_ui_mode_t boot_ui_resolve_mode(system_profile_t profile);
+
+// Forward declaration for legacy boot_video_collect
+extern int boot_video_collect(boot_video_handoff_t *out);
+extern int boot_video_validate(const boot_video_handoff_t *in);
 #include "hal/hal.h"         /* hal_serial_write */
 
 #include <stddef.h>

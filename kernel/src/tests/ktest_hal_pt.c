@@ -7,7 +7,7 @@
 #define KPRINT(s) console_write_raw(s, string_length(s))
 
 #include "../../include/kernel.h"
-#include "../../include/bharat/boot_info.h"
+#include "boot/boot_info.h"
 #include "arch/arch_caps.h"
 
 // Note: Test depends on active_hal_pt which is populated early in boot.

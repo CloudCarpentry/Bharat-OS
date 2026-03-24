@@ -10,5 +10,5 @@ add_library(k_init OBJECT
     ../../src/monitor/mon_vm_service.c
 )
 
-target_include_directories(k_init PRIVATE ../../include ../../include/generated ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/services/core/subsysmgr/include)
+target_include_directories(k_init PRIVATE ../../include ../../include/generated ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/boot/include ${CMAKE_SOURCE_DIR}/services/core/subsysmgr/include)
 target_link_libraries(k_init PRIVATE bharat_freestanding bharat_kernel_buildopts)

@@ -4,7 +4,7 @@
 /* Bharat-OS Kernel Primary Header */
 
 #include "mm.h"
-#include "bharat/boot_info.h"
+#include "boot/boot_info.h"
 void kernel_main_common(const boot_info_t *boot);
 
 void kernel_panic(const char *message);

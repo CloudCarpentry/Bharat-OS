@@ -1,6 +1,6 @@
 #include "hal/hal_discovery.h"
 #include "hal/fdt_parser.h"
-#include "bharat/boot_info.h"
+#include "boot/boot_info.h"
 
 void hal_arch_discovery_init(const boot_info_t *boot) {
     if (!boot) return;

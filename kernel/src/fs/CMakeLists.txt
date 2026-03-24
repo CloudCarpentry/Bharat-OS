@@ -9,5 +9,5 @@ add_library(k_fs OBJECT
     ../../src/fs/blob_backend.c
 )
 
-target_include_directories(k_fs PRIVATE ../../include ../../include/generated ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(k_fs PRIVATE ../../include ../../include/generated ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/boot/include)
 target_link_libraries(k_fs PRIVATE bharat_freestanding bharat_kernel_buildopts)

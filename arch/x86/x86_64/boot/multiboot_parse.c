@@ -13,20 +13,20 @@ static void parse_multiboot1(multiboot1_info_t *mb, boot_info_t *boot_info) {
     uint32_t mmap_end = mb->mmap_addr + mb->mmap_length;
 
     while ((uint32_t)(uint64_t)mmap < mmap_end) {
-        if (boot_info->mem_map_count >= BHARAT_BOOT_MAX_MEM_REGIONS) break;
+        if (boot_info->mem_region_count >= BHARAT_BOOT_MAX_MEM_REGIONS) break;
 
-        boot_info->mem_map[boot_info->mem_map_count].phys_start = mmap->addr;
-        boot_info->mem_map[boot_info->mem_map_count].size = mmap->len;
+        boot_info->mem_regions[boot_info->mem_region_count].phys_start = mmap->addr;
+        boot_info->mem_regions[boot_info->mem_region_count].size = mmap->len;
 
         if (mmap->type == MULTIBOOT_MEMORY_AVAILABLE) {
-            boot_info->mem_map[boot_info->mem_map_count].type = BOOT_MEM_USABLE;
+            boot_info->mem_regions[boot_info->mem_region_count].type = BOOT_MEM_USABLE;
         } else if (mmap->type == MULTIBOOT_MEMORY_ACPI_RECLAIMABLE) {
-            boot_info->mem_map[boot_info->mem_map_count].type = BOOT_MEM_ACPI_RECLAIM;
+            boot_info->mem_regions[boot_info->mem_region_count].type = BOOT_MEM_ACPI_RECLAIM;
         } else {
-            boot_info->mem_map[boot_info->mem_map_count].type = BOOT_MEM_RESERVED;
+            boot_info->mem_regions[boot_info->mem_region_count].type = BOOT_MEM_RESERVED;
         }
 
-        boot_info->mem_map_count++;
+        boot_info->mem_region_count++;
         mmap = (multiboot1_mmap_entry_t *)((uint8_t *)mmap + mmap->size + sizeof(mmap->size));
     }
 
@@ -45,21 +45,21 @@ static void parse_multiboot2(multiboot_information_t *mb_info, boot_info_t *boot
                 multiboot_tag_mmap_t *mmap = (multiboot_tag_mmap_t *)tag;
                 uint32_t entry_count = (mmap->size - sizeof(multiboot_tag_mmap_t)) / mmap->entry_size;
 
-                for (uint32_t i = 0; i < entry_count && boot_info->mem_map_count < BHARAT_BOOT_MAX_MEM_REGIONS; i++) {
+                for (uint32_t i = 0; i < entry_count && boot_info->mem_region_count < BHARAT_BOOT_MAX_MEM_REGIONS; i++) {
                     multiboot_mmap_entry_t *entry = (multiboot_mmap_entry_t *)((uint8_t *)mmap->entries + i * mmap->entry_size);
 
-                    boot_info->mem_map[boot_info->mem_map_count].phys_start = entry->addr;
-                    boot_info->mem_map[boot_info->mem_map_count].size = entry->len;
+                    boot_info->mem_regions[boot_info->mem_region_count].phys_start = entry->addr;
+                    boot_info->mem_regions[boot_info->mem_region_count].size = entry->len;
 
                     if (entry->type == MULTIBOOT_MEMORY_AVAILABLE) {
-                        boot_info->mem_map[boot_info->mem_map_count].type = BOOT_MEM_USABLE;
+                        boot_info->mem_regions[boot_info->mem_region_count].type = BOOT_MEM_USABLE;
                     } else if (entry->type == MULTIBOOT_MEMORY_ACPI_RECLAIMABLE) {
-                        boot_info->mem_map[boot_info->mem_map_count].type = BOOT_MEM_ACPI_RECLAIM;
+                        boot_info->mem_regions[boot_info->mem_region_count].type = BOOT_MEM_ACPI_RECLAIM;
                     } else {
-                        boot_info->mem_map[boot_info->mem_map_count].type = BOOT_MEM_RESERVED;
+                        boot_info->mem_regions[boot_info->mem_region_count].type = BOOT_MEM_RESERVED;
                     }
 
-                    boot_info->mem_map_count++;
+                    boot_info->mem_region_count++;
                 }
                 break;
             }
@@ -83,8 +83,8 @@ void x86_64_parse_multiboot(uint32_t magic, void *mb_ptr, platform_boot_info_t *
 
     system_discovery_t *discovery = hal_get_system_discovery();
     discovery->topology.mem_region_count = 0;
-    boot_info->mem_map_count = 0;
-    boot_info->booted_via_multiboot = true;
+    boot_info->mem_region_count = 0;
+    boot_info->source = BOOT_SOURCE_MULTIBOOT2;
 
     if (magic == MULTIBOOT2_BOOTLOADER_MAGIC) {
         parse_multiboot2((multiboot_information_t *)mb_ptr, boot_info);
@@ -96,6 +96,6 @@ void x86_64_parse_multiboot(uint32_t magic, void *mb_ptr, platform_boot_info_t *
 
     // For now, conservatively invalidate the video to force serial/text console
     // because full robust validation of multiboot video tags is missing here.
-    boot_info->video.valid = false;
+    boot_info->console.type = BOOT_CONSOLE_NONE;
     plat_info->has_early_console = true; // Fallback to safe serial defaults
 }

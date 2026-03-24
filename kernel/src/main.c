@@ -1,6 +1,8 @@
 #include "hal/hal.h"
 #include "console/console_core.h"
-#include "bharat/boot_info.h"
+#include "boot/boot_info.h"
+#include "boot/boot_validate.h"
+#include "boot/boot_security.h"
 #include <bharat/cpu_local.h>
 #include "kernel_boot.h"
 

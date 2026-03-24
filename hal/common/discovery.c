@@ -1,6 +1,6 @@
 #include "hal/hal_discovery.h"
 #include "arch/arch_cpu_caps.h"
-#include "bharat/boot_info.h"
+#include "boot/boot_info.h"
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>

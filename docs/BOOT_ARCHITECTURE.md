@@ -263,3 +263,6 @@ Policy classes:
 Normal boot runs only mandatory checks by default, while diagnostic and manufacturing boots allow richer validation.
 
 This keeps production boot deterministic while still supporting bring-up, validation, and benchmarking flows.
+
+## Canonical Boot Contract Architecture Update
+As of Phase 1, Bharat-OS standardizes on `boot_info_t` under `boot/include/boot/`, deprecating ad-hoc parsers in `kernel/main.c`. Adapters (Multiboot2, FDT, OpenSBI) normalize all hardware-specific properties into this structure prior to early validation. See `docs/architecture/boot/` for details on validation and security posture handling.

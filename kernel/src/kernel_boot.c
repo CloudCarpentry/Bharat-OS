@@ -25,7 +25,9 @@
 #include "subsystem_profile.h"
 #include "trap.h"
 #include "boot/boot_args.h"
-#include "bharat/boot_info.h"
+#include "boot/boot_info.h"
+#include "boot/boot_validate.h"
+#include "boot/boot_security.h"
 #include "display/boot_gui_init.h"
 #include "tests/ktest.h"
 #include <bharat/cpu_local.h>
@@ -57,8 +59,32 @@ static const char *kernel_boot_hw_profile(void) {
 #endif
 }
 
+static void print_boot_diagnostics(const boot_info_t *boot) {
+    if (!boot) return;
+
+    KPRINT("  [BOOT] Normalized handoff contract established\n");
+
+    boot_validation_report_t report;
+    int vret = boot_validate_all((boot_info_t*)boot, &report);
+    if (vret != BOOT_OK) {
+        KPRINT("  [BOOT] Validation failed: ");
+        if (report.message) KPRINT(report.message);
+        KPRINT("\n");
+        if (report.is_fatal) {
+            kernel_panic("Fatal boot handoff validation error");
+        }
+    }
+
+    if (boot->is_degraded) {
+        KPRINT("  [BOOT] Running in degraded mode (some handoff info missing/invalid)\n");
+    }
+
+    bharat_boot_mode_t mode;
+    boot_mode_resolve(boot, &mode);
+    ((boot_info_t*)boot)->selected_mode = (boot_mode_t)mode; // Cast away const to set policy state
+}
+
 void boot_common_early(const boot_info_t *boot) {
-    (void)boot;
     const char *profile = kernel_boot_hw_profile();
 
     hal_init();
@@ -70,6 +96,8 @@ void boot_common_early(const boot_info_t *boot) {
     KPRINT(" | |_) | | | | (_| | | | (_| | | | (_| |_____| |_| |  ___) |\n");
     KPRINT(" |____/|_| |_|\\__,_|_|  \\__,_|_|  \\__,_|      \\____| |____/ \n");
     KPRINT("\nBharat-OS\n");
+
+    print_boot_diagnostics(boot);
 
     KPRINT("  [HAL] Initialising hardware on BSP...\n");
     hal_discovery_init(boot);
@@ -262,7 +290,7 @@ extern void bharat_demo_app(void);
 extern int boot_video_map(const boot_info_t *boot);
 
 static bool runtime_try_boot_video(const boot_info_t *boot) {
-    if (!boot->video.valid) {
+    if (!boot || boot->console.type != BOOT_CONSOLE_FRAMEBUFFER) {
         return false;
     }
 
@@ -380,7 +408,7 @@ static void runtime_enter_legacy_bringup(const boot_info_t *boot) {
 }
 
 void boot_common_runtime(const boot_info_t *boot) {
-    bharat_boot_mode_t mode = bharat_boot_mode_select();
+    bharat_boot_mode_t mode = (bharat_boot_mode_t)boot->selected_mode; // Resolved earlier
 
     KPRINT("  [BOOT] Runtime mode: ");
     KPRINT(bharat_boot_mode_name(mode));

@@ -6,5 +6,5 @@ add_library(k_sched OBJECT
     ../lib/rbtree.c
 )
 
-target_include_directories(k_sched PRIVATE ../../include ../../include/generated ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(k_sched PRIVATE ../../include ../../include/generated ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/boot/include)
 target_link_libraries(k_sched PRIVATE bharat_freestanding bharat_kernel_buildopts)
