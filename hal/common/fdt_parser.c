@@ -54,13 +54,6 @@ static size_t hal_strlen(const char* s) {
     return len;
 }
 
-static char* hal_strncpy(char* dest, const char* src, size_t n) {
-    size_t i;
-    for (i = 0; i < n && src[i] != '\0'; i++) dest[i] = src[i];
-    for (; i < n; i++) dest[i] = '\0';
-    return dest;
-}
-
 static const char *fdt_get_string(const struct fdt_header *fdt,
                                   uint32_t offset) {
   return (const char *)((uintptr_t)fdt + fdt32_to_cpu(fdt->off_dt_strings) +
