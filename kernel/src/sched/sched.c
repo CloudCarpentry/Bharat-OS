@@ -5,6 +5,7 @@
 #include "sched/algo_matrix.h"
 #include "../../staging/formal/formal_verif.h"
 #include "capability.h"
+#include "core/multikernel.h"
 #include "hal/hal.h"
 #include "kernel_safety.h"
 #include "list.h"
@@ -1425,6 +1426,106 @@ int sched_throttle_core(uint32_t core_id) {
     return -1;
   }
   g_cpu_locals[core_id].runqueue.throttled = 1U;
+  return 0;
+}
+
+int sched_request_remote_handoff(kthread_t *thread, uint32_t target_core, uint32_t auth_token) {
+  if (!thread || target_core >= MAX_SUPPORTED_CORES) {
+    return -1; // Invalid argument
+  }
+
+  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  if (target_core == current_core) {
+    return -1; // Cannot handoff to self
+  }
+
+  thread_slot_t *slot = sched_find_thread_slot_by_tid(thread->thread_id);
+  if (!slot) {
+    return -1;
+  }
+
+  hal_cpu_disable_interrupts();
+
+  // Validate state - only READY threads can be handed off
+  if (thread->state != THREAD_STATE_READY) {
+    hal_cpu_enable_interrupts();
+    return -2; // Invalid state
+  }
+
+  sched_rq_t *rq = &g_cpu_locals[current_core].runqueue;
+
+  // Dequeue from local runqueue
+  if (slot->is_on_runqueue != 0U) {
+    if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
+      sched_cfs_dequeue(rq, thread);
+    } else {
+      list_del(&slot->run_node);
+      list_init(&slot->run_node);
+      sched_ready_bitmap_clear_if_empty(rq, thread->priority);
+    }
+    slot->is_on_runqueue = 0U;
+    if (rq->runnable_count > 0U) {
+      rq->runnable_count--;
+    }
+  }
+
+  // Transition to pending handoff state
+  thread->state = THREAD_STATE_REMOTE_HANDOFF_PENDING;
+
+  hal_cpu_enable_interrupts();
+
+  // Prepare and send uRPC message
+  mk_channel_t channel;
+  if (mk_get_channel(current_core, target_core, &channel) != 0) {
+    // If channel fails, revert state and re-enqueue locally
+    hal_cpu_disable_interrupts();
+    thread->state = THREAD_STATE_READY;
+    if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
+      sched_cfs_enqueue(rq, thread);
+    } else {
+      list_add(&slot->run_node, &rq->ready_queue[thread->priority]);
+      sched_ready_bitmap_set(rq, thread->priority);
+    }
+    slot->is_on_runqueue = 1U;
+    rq->runnable_count++;
+    hal_cpu_enable_interrupts();
+    return -3; // Channel error
+  }
+
+  mk_msg_thread_handoff_t payload = {
+    .thread_id = thread->thread_id,
+    .source_core = current_core,
+    .target_core = target_core,
+    .priority = thread->priority,
+    .flags = 0
+  };
+
+  urpc_msg_t msg = {
+    .msg_type = MK_MSG_THREAD_HANDOFF_REQ,
+    .payload_size = sizeof(payload),
+    .sender_core_id = current_core,
+    .receiver_core_id = target_core,
+    .auth_token = auth_token
+  };
+  __builtin_memcpy(msg.payload_data, &payload, sizeof(payload));
+
+  int ret = mk_send_message(&channel, msg.msg_type, msg.payload_data, msg.payload_size);
+  if (ret != 0) {
+      // If send fails, revert state and re-enqueue locally
+      hal_cpu_disable_interrupts();
+      thread->state = THREAD_STATE_READY;
+      if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
+        sched_cfs_enqueue(rq, thread);
+      } else {
+        list_add(&slot->run_node, &rq->ready_queue[thread->priority]);
+        sched_ready_bitmap_set(rq, thread->priority);
+      }
+      slot->is_on_runqueue = 1U;
+      rq->runnable_count++;
+      hal_cpu_enable_interrupts();
+      return -4; // Send error
+  }
+
   return 0;
 }
 

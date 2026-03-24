@@ -10,11 +10,13 @@ Based on current code analysis in `kernel/src/sched/` and `kernel/src/ai_sched.c
 - 🟡 **Per-Core Runqueues**: The multikernel architecture mandates per-core structures, which are partially implemented but need robust lockless fast-paths.
 - 🔴 **RT/EDF Scheduling**: Hard real-time deadline scheduling is currently deferred; static priorities are honored, but strict deadline admission control is not yet implemented.
 - 🔴 **Load Balancing**: Automatic cross-core thread migration (work stealing) is currently deferred in favor of explicit placement or AI Governor suggestions.
+- 🟡 **Cross-Core Remote Enqueue**: Implementing capability-protected cross-core thread handoff via uRPC to form the baseline for future full migration.
 
 ## Near-Term Goals (Next 3-6 Months)
 1. **Stabilize CFS for GP Profile**: Fully implement and test the Red-Black tree (or equivalent) for `vruntime`-based fair scheduling.
 2. **Lockless Per-Core Runqueues**: Ensure that the `sched_dispatch` fast path requires zero cross-core locks or cache-line bouncing.
 3. **AI Governor Action Execution**: Fully implement the kernel execution side of `AI_ACTION_MIGRATE_TASK` and `AI_ACTION_ADJUST_PRIORITY` suggestions.
+4. **Cross-Core Thread Handoff Path**: Refine and stabilize the explicit remote enqueue/handoff path over uRPC with proper capability authorization.
 
 ## Long-Term Vision (1+ Years)
 1. **Hard Real-Time Profile (EDF)**: Implement strict Earliest Deadline First scheduling for the `BHARAT_KERNEL_PROFILE_RT` configuration, including admission control to guarantee schedulability.
