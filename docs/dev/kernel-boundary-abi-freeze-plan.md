@@ -478,6 +478,49 @@ Kernel-private status values must be translated before crossing the syscall boun
 
 ---
 
+## 16. Current implementation status (March 2026)
+
+This section tracks what is landed in-tree versus what remains open.
+
+### 16.1 Landed
+
+- Canonical mapping APIs are present:
+  - `kstatus_to_sys_errno(kstatus_t)`
+  - `kstatus_to_sysret(kstatus_t)`
+- Trap/syscall dispatch now uses canonical `SYS_E*` constants for trap-local invalid/perm/nosys returns.
+- Trap/syscall dispatch has a shared normalization path so mixed internal return domains
+  (canonical syscall errno, rich `kstatus_t`, and legacy subsystem-local negatives)
+  are collapsed into stable syscall return encoding.
+
+### 16.2 In progress
+
+- Legacy kernel subsystems still return heterogeneous negative values (`-1`, `-2`, custom enums)
+  instead of pure `kstatus_t` or canonical syscall errno.
+- Current normalization includes deterministic fallbacks per syscall family while migration is ongoing.
+
+### 16.3 Open work (next)
+
+1. Convert syscall-facing kernel subsystems to return `kstatus_t` (or explicit canonical syscall errno)
+   instead of ad-hoc negative values.
+2. Add syscall-path conformance checks ensuring trap exit values are always:
+   - `0`, or
+   - `-(sys_errno_t)` where errno is from canonical UAPI.
+3. Add service/BIDL CI checks proving `bharat_status_t` is used for contract-level status
+   and raw `SYS_*` does not leak into contract payload status fields.
+4. Add CI gates for ABI freeze:
+   - syscall carrier/layout assertions
+   - UAPI drift checks
+   - generated binding type-width checks
+
+### 16.4 Updated phase status
+
+- **Phase 1 (boundary cleanup):** Partial / mostly complete in include ownership and layering.
+- **Phase 2 (error/status enforcement):** Partial / active migration.
+- **Phase 3 (ABI validation):** Not started in CI-complete form.
+- **Phase 4 (freeze discipline):** Not started (policy hooks pending hard enforcement).
+
+---
+
 ## 14. Definition of Done
 
 This freeze plan is considered operational when:

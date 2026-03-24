@@ -26,6 +26,7 @@ This roadmap tracks Bharat-OS from a bootable microkernel baseline toward a prod
 | Cross-core capability operations | **Partial** | Delegation/revocation path exists, but lifecycle proofs and temporal controls remain. |
 | Message-based TLB shootdown | **Partial** | Functional path exists; ack/completion semantics and stronger stress validation are still open. |
 | Basic SKB/topology discovery | **Partial** | Present as baseline subsystem direction; depth varies by architecture. |
+| Kernel boundary + syscall ABI freeze | **Partial** | Canonical UAPI and syscall status translation path are in active convergence; remaining work includes eliminating legacy ad-hoc negative subsystem returns, adding ABI drift CI gates, and BIDL contract status conformance checks. |
 
 ## Phase 2: Device specialization & edge UI
 

@@ -2,11 +2,12 @@
 #define BHARAT_KERNEL_STATUS_H
 
 #include <stdint.h>
+#include <bharat/uapi/sys_errno.h>
 
 /*
  * Bharat-OS Internal Kernel Status Codes
  * Defines the rich internal error and status architecture for the kernel.
- * These are strictly internal and must be translated via kstatus_to_syserr()
+ * These are strictly internal and must be translated via kstatus_to_sysret()
  * before returning to userspace via syscalls.
  */
 
@@ -111,5 +112,15 @@ typedef int32_t kstatus_t;
 #define K_ERR_FEATURE_DISABLED  ((kstatus_t)-2306)
 #define K_ERR_AI_DEFERRED       ((kstatus_t)-2307)
 #define K_ERR_AI_THROTTLED      ((kstatus_t)-2308)
+
+/*
+ * Canonical kernel-internal -> syscall boundary status translation.
+ *
+ * kstatus_to_sys_errno(): maps a kstatus_t into a stable positive SYS_E* code.
+ * kstatus_to_sysret(): maps a kstatus_t into canonical syscall return encoding:
+ *   K_OK -> 0, error -> -(sys_errno_t)
+ */
+sys_errno_t kstatus_to_sys_errno(kstatus_t st);
+long kstatus_to_sysret(kstatus_t st);
 
 #endif // BHARAT_KERNEL_STATUS_H
