@@ -746,7 +746,10 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
 
     uint32_t current_core = hal_cpu_get_id();
 
-    if (current_core < BHARAT_MAX_CPUS) {
+    extern bool g_pmm_initialized; // We check this as a proxy for early boot since PMM initializes URPC safely.
+    // In Bharat-OS capability revoke operations must degrade safely to local-only behavior
+    // until SMP and URPC distributed infrastructure are fully initialized.
+    if (current_core < BHARAT_MAX_CPUS && g_pmm_initialized) {
         // Broadcast revocation to other cores via URPC only if we are on a valid, initialized core
         g_revoke_acks_needed[current_core] = 0;
         for (uint32_t c = 0; c < BHARAT_MAX_CPUS; c++) {
