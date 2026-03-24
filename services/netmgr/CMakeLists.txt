@@ -11,6 +11,11 @@ set(NETMGR_SOURCES
     src/driver_health.c
     src/capability_checks.c
     src/ipc_dispatch.c
+    src/ipc_ops.c
+    src/ipc_auth.c
+    src/ipc_contract.c
+    src/service_manifest.c
+    ../../kernel/src/ipc/contract_validate.c
 )
 
 add_executable(netmgr ${NETMGR_SOURCES})
@@ -26,9 +31,12 @@ bharat_register_component(
 
 target_include_directories(netmgr PRIVATE
     src/
+    include/
     ../../services/core/subsysmgr/include
     ../../lib/net/include
     ../../include
+    ../../kernel/include
+    ../../lib/ipc/include
 )
 
 target_compile_options(netmgr PRIVATE -Wall -ffreestanding -nostdlib -fPIE -fPIC)

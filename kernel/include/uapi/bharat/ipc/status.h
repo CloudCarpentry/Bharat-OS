@@ -3,8 +3,17 @@
 
 #include <bharat/uapi/service_status.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/**
+ * @file status.h
+ * @brief Canonical IPC contract-level statuses.
+ */
+
 /* Backward-compatible aliases for older include paths. */
-typedef bharat_status_t bharat_ipc_status_t;
+typedef bharat_status_t bharat_ipc_contract_status_t;
 
 #define BHARAT_IPC_STATUS_OK              BHARAT_STATUS_OK
 #define BHARAT_IPC_STATUS_ERR_DECODE      BHARAT_STATUS_ERR_DECODE
@@ -18,4 +27,8 @@ typedef bharat_status_t bharat_ipc_status_t;
 #define BHARAT_IPC_STATUS_ERR_LENGTH      BHARAT_STATUS_ERR_LENGTH
 #define BHARAT_IPC_STATUS_ERR_FLAGS       BHARAT_STATUS_ERR_FLAGS
 
-#endif /* BHARAT_UAPI_IPC_STATUS_H */
+#ifdef __cplusplus
+}
+#endif
+
+#endif // BHARAT_UAPI_IPC_STATUS_H
