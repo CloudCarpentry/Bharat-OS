@@ -28,7 +28,7 @@ For our detailed vision and current subsystem maturity regarding the transition 
 | Distributed/multikernel scale-out | Early baseline | Messaging-first direction is reflected in subsystem and service decomposition, but many production control-plane behaviors remain roadmap items. |
 | Documentation coverage | Expanded in this update | See `docs/current-code-status.md` for a code-backed implementation matrix across services/subsystems. |
 
-For architecture-level details and deferred boundaries, see `docs/architecture/` and ADRs in `docs/decisions/`. For the step-by-step closure plan, see `docs/architecture/memory-gap-closure-plan.md`. For our profile-driven, capability-safe communications and networking architecture, see [`docs/architecture/network-architecture.md`](docs/architecture/network-architecture.md).
+For architecture-level details and deferred boundaries, see `docs/architecture/` and ADRs in `docs/adr/`. For the step-by-step closure plan, see `docs/architecture/memory-gap-closure-plan.md`. For our profile-driven, capability-safe communications and networking architecture, see [`docs/architecture/network-architecture.md`](docs/architecture/network-architecture.md).
 For the ARM32/RV32 EDGE-tier expansion strategy and capability matrix, see [`docs/architecture/arm32-rv32-edge-tier-plan.md`](docs/architecture/arm32-rv32-edge-tier-plan.md).
 For cross-tool code-agent guidance, guardrails, and skill templates, see [`docs/ai-agents/README.md`](docs/ai-agents/README.md).
 
@@ -455,7 +455,7 @@ graph TD
 - Safety/verification hardening for AI-driven scheduling decisions.
 - Clearer user-space governor lifecycle, observability, and audit reporting.
 
-See [`docs/architecture/ai-scheduler-status-and-roadmap.md`](docs/architecture/ai-scheduler-status-and-roadmap.md) and [`docs/decisions/ADR-008-ai-scheduler-plugin-contract.md`](docs/decisions/ADR-008-ai-scheduler-plugin-contract.md).
+See [`docs/architecture/ai-scheduler-status-and-roadmap.md`](docs/architecture/ai-scheduler-status-and-roadmap.md) and [`docs/adr/ADR-008-ai-scheduler-plugin-contract.md`](docs/adr/ADR-008-ai-scheduler-plugin-contract.md).
 
 #### Networking Architecture
 

@@ -63,4 +63,4 @@ The following are explicitly **deferred** and should not block v1 completion:
 
 - Boot success and serial evidence definitions: [`v1-boot-definition.md`](v1-boot-definition.md)
 - Architecture index and scope notes: [`README.md`](README.md)
-- Final conflict resolution on scope/priority: ADRs under `docs/decisions/`
+- Final conflict resolution on scope/priority: ADRs under `docs/adr/`

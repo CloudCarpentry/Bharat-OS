@@ -168,7 +168,7 @@ Rules:
 
 ## ADR alignment
 
-This plan is governed by `docs/decisions/ADR-012-interrupt-controller-evolution.md`, especially:
+This plan is governed by `docs/adr/ADR-012-interrupt-controller-evolution.md`, especially:
 
 - staged migration with compatibility wrappers,
 - tiered architecture commitments (x86_64/arm64/riscv64 maintained, arm32+riscv32 bring-up),

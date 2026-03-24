@@ -7,7 +7,7 @@ This folder captures the current architectural baseline for Bharat-OS.
 1. Start with platform bring-up flows.
 2. Continue with kernel security and object/IPC/memory models.
 3. Review deferred areas (GUI, personalities) with their status labels.
-4. Cross-check major architectural constraints against ADRs in `docs/decisions/`.
+4. Cross-check major architectural constraints against ADRs in `docs/adr/`.
 
 ## Recommended reading order
 
@@ -74,5 +74,5 @@ The ADR set is the source of truth whenever scope or priority conflicts arise.
 
 ## Related ADR updates
 
-- [`docs/decisions/ADR-008-ai-scheduler-plugin-contract.md`](../decisions/ADR-008-ai-scheduler-plugin-contract.md)
-- [`docs/decisions/ADR-009-documentation-status-and-claims.md`](../decisions/ADR-009-documentation-status-and-claims.md)
+- [`docs/adr/ADR-008-ai-scheduler-plugin-contract.md`](../adr/ADR-008-ai-scheduler-plugin-contract.md)
+- [`docs/adr/ADR-009-documentation-status-and-claims.md`](../adr/ADR-009-documentation-status-and-claims.md)

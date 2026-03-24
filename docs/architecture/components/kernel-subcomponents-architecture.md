@@ -80,4 +80,4 @@ The interrupt controller submodule is treated as a core-kernel architecture conc
 - Complete Tier-2 parity tracks: arm32 (GICv2 first) and riscv32 (PLIC first) without changing Tier-1 behavior.
 - Gate optional ISA-extension and accelerator fast paths using runtime capability probing with fallback preserved.
 
-Reference: `docs/decisions/ADR-012-interrupt-controller-evolution.md`.
+Reference: `docs/adr/ADR-012-interrupt-controller-evolution.md`.
