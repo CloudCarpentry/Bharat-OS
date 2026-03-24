@@ -1,52 +1,69 @@
-# Inter-Process Communication (IPC) Model
+# Bharat-OS IPC Architecture
 
-## Overview
+This document describes the design and guarantees of the Inter-Process Communication (IPC) subsystems in Bharat-OS. The communication architecture is divided into a layered model spanning local interactions, asynchronous requests, and cross-core multikernel transports.
 
-Because Bharat-OS is a microkernel, almost all OS services (file systems, networking, drivers) run in isolated user-space domains. Thus, IPC performance is the most critical bottleneck.
+For the detailed architectural roadmap and multikernel IPC specifications, see [IPC + uRPC + Multikernel Communication Architecture](../../core/ipc-urpc-multikernel-arc.md).
 
-We utilize two distinct IPC models to serve both deterministic bounds (Bharat-RT) and massive scalability (Bharat-Cloud).
-The cross-core URPC path follows the multikernel principle popularized by Barrelfish: the machine is treated as a network of independent cores coordinated through explicit message passing rather than shared-kernel locks.
+## Layered Communication Model
 
-```mermaid
-flowchart LR
-    subgraph Userspace["User Space"]
-        Client[Client Task]
-        Server[Server Task]
-    end
+The system structures messaging across four logical layers:
 
-    subgraph Kernel["Microkernel"]
-        Endpoint[IPC Endpoint]
-    end
+- **L0 — Transport Layer (uRPC transport):** Cross-core, lock-free SPSC ring buffers. (See [../urpc/README.md](../urpc/README.md))
+- **L1 — Delivery Layer (Protocol engine):** Framing, transactions, and ACK/NACK handling. (See [../urpc/README.md](../urpc/README.md))
+- **L2 — Object RPC Layer:** Typed messages handling capability and resource ownership across boundaries.
+- **L3 — Service IPC Layer:** System services (e.g., namesvc, console) utilizing the layers below.
 
-    subgraph MultiCore["Multikernel Architecture (Cross-Core)"]
-        CoreA[Core A]
-        CoreB[Core B]
-        RingBuffer[(Shared Ring Buffer)]
-    end
+## Endpoint IPC (Local, Synchronous)
+**Maturity: Baseline / Implemented**
 
-    Client -- "1. Sync Send (Registers)" --> Endpoint
-    Endpoint -- "2. Sync Receive" --> Server
+Bharat-OS utilizes capability-protected synchronous endpoints for secure messaging. Endpoints (`ipc_endpoint_t`) act as rendezvous points or bounded buffers for transferring messages between isolated execution contexts (processes or threads).
 
-    CoreA -- "Lockless URPC" --> RingBuffer
-    RingBuffer -- "Lockless URPC" --> CoreB
-```
+Every endpoint maintains:
+- A message buffer.
+- `senders` wait queue: Threads waiting to send a message when the buffer is full.
+- `receivers` wait queue: Threads waiting to receive a message when the buffer is empty.
 
-## 1. Synchronous Endpoint IPC (The Microkernel Standard)
+Access to endpoints is strongly regulated via capabilities (`send_cap` and `recv_cap`), ensuring only authorized participants can exchange data.
 
-Fast, blocking, unbuffered message passing used for capability delegation and strict procedural calls.
+The core `ipc_endpoint_send` and `ipc_endpoint_receive` operations are fully synchronous:
+- **Send**: If an endpoint buffer is occupied, the sender enqueues itself onto the `senders` wait queue and blocks.
+- **Receive**: If an endpoint buffer is empty, the receiver enqueues itself onto the `receivers` wait queue and blocks.
 
-- **Endpoints (`ep_t`)**: Communication portals. A Sender invokes a Send capability on the endpoint; a Receiver invokes a Receive capability.
-- **Registers**: Short messages (few words) are passed entirely within CPU registers during the context switch, completely bypassing memory to achieve ultra-low latency.
-- **Blocking**:
-  - Send to full endpoint => `IPC_ERR_WOULD_BLOCK` and current thread marked blocked.
-  - Receive on empty endpoint => `IPC_ERR_WOULD_BLOCK` and current thread marked blocked.
+## Async IPC (Local, Request-Driven)
+**Maturity: Partial**
 
-## 2. Lockless URPC (The Multikernel Spine)
+Bharat-OS supports an Async IPC request layer for operations requiring timeouts, wakeups, and deadlines. Currently, this relies on a fixed global request table (`g_async_requests`), which is sufficient for basic interactions but represents a bottleneck that will be transitioned to per-core or per-endpoint pooling to align with multikernel constraints.
 
-Scaling synchronous IPC across 128+ cores causes shared memory bus saturation and cache thrashing. For high-core-count processors, Bharat-Cloud utilizes a Barrelfish-inspired Multikernel architecture.
+## Wait Queues and Wake-up Rules
+To prevent spurious wakeups and guarantee starvation-free operations, blocked IPC operations are strictly coordinated through explicit wait queues (`wait_queue_t`).
 
-- **URPC (User-level Remote Procedure Call)**: Replaces cross-core kernel locks with explicit, asynchronous message passing via shared ring buffers.
-- **Core-to-Core Message Passing**: Each core runs its own kernel instance. State (like page tables) is replicated, not shared. When Core A needs to update a page table on Core B, it sends a lockless URPC message over an interconnect rather than grabbing a global spinlock.
+- When a thread blocks on an IPC operation, it explicitly queues itself onto the endpoint's wait queue and calls the scheduler to transition its state to `THREAD_STATE_BLOCKED`.
+- When an operation succeeds (a sender fills the buffer or a receiver consumes the buffer):
+  - A successful `send` dequeues **exactly one** receiver from the `receivers` queue and explicitly wakes it using `sched_wakeup()`.
+  - A successful `receive` dequeues **exactly one** sender from the `senders` queue and wakes it using `sched_wakeup()`.
+
+This ensures FIFO fairness among waiters and prevents thundering herd problems.
+
+## Scheduler Interaction
+The IPC subsystem relies entirely on the kernel scheduler (`sched.h`) for state transitions. IPC code does **not** manipulate `THREAD_STATE_READY` directly. All state management and queueing is delegated to:
+- `sched_wait_queue_enqueue`
+- `sched_wait_queue_dequeue`
+- `sched_wakeup`
+
+This isolates the IPC code from internal scheduler data structures and runqueues.
+
+## SMP / Multicore Notes
+Wait queues and state transitions are architecture-independent. Endpoint state modifications (message copying, `has_msg` transitions, and wait-queue coupling) are protected with endpoint-local spinlocks in the synchronous endpoint path.
+
+This protects correctness under multicore contention on supported architectures (x86_64, ARM64, RISC-V). For very high-core-count or NUMA-heavy systems, lock contention and queue sharding policy remain tuning targets.
+
+## Guarantees Across Profiles / Personalities
+Because IPC blocking and wake-up logic delegates entirely to the core scheduler, IPC behaves consistently across all supported CPU architectures (x86_64, ARM64, RISC-V) and subsystem personalities (Linux, Android). No architecture-specific hacks or global states (like `g_current`) are directly used within the wake-up logic.
+
+Endpoint sizing is profile-aware at build time:
+- RT-oriented profiles prioritize tighter bounded memory.
+- General profiles use moderate endpoint/payload limits.
+- Datacenter/NUMA-aware profiles allocate larger endpoint pools/payload ceilings.
 
 ## Related Documents
 - [Pipes](pipes.md) - POSIX-like anonymous and named pipes over IPC.

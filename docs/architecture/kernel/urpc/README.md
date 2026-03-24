@@ -2,7 +2,9 @@
 
 ## Overview
 
-The `urpc` cluster documents the foundational communication layer of the Bharat-OS multikernel architecture. While synchronous IPC endpoints (`ipc/`) handle local, intra-core communication, **uRPC** (User-level Remote Procedure Call) provides asynchronous, lockless message passing for cross-core and cross-node coordination.
+The `urpc` cluster documents the foundational communication layer of the Bharat-OS multikernel architecture. While synchronous IPC endpoints (see [../ipc/README.md](../ipc/README.md)) handle local, intra-core communication, **uRPC** (User-level Remote Procedure Call) provides asynchronous, lockless message passing for cross-core and cross-node coordination.
+
+For the detailed architectural roadmap and multikernel IPC specifications, see [IPC + uRPC + Multikernel Communication Architecture](../../core/ipc-urpc-multikernel-arc.md).
 
 ## Why uRPC over POSIX IPC?
 
@@ -14,6 +16,16 @@ Bharat-OS adopts the **Multikernel** model (inspired by Barrelfish):
 3.  **Lockless:** Cores never acquire spinlocks that belong to other cores.
 
 uRPC is the protocol that implements this explicit, lockless message passing. It operates over shared memory ring buffers, completely bypassing the traditional POSIX IPC abstractions (pipes, message queues) which are too slow and heavyweight for core-to-core kernel synchronization.
+
+## Cross-Core Transport (uRPC / Multikernel)
+**Maturity:**
+- **L0 Transport:** Baseline / Implemented
+- **L1 Protocol / Delivery Engine:** Scaffold / Missing
+- **Distributed Capability Safe Messaging:** Partial / Incomplete
+
+For cross-core multikernel messaging, the OS uses the **uRPC transport**. This relies on asynchronous, cache-friendly SPSC ring buffers established between cores (located in `kernel/src/ipc/multikernel.c` and `kernel/include/advanced/multikernel.h`).
+
+While the fundamental L0 uRPC transport (ring buffers, acquire/release ordering, basic delivery hooks) is in place, the **L1 Protocol Engine** (responsible for ACK/NACK semantics, retry policies, transaction lifecycles, and timeouts) is currently stubbed out or scaffolded. Additionally, explicit ownership and cross-core capability validations are still incomplete.
 
 ## Multikernel URPC API Baseline
 
