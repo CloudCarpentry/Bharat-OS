@@ -3,7 +3,7 @@
 
 #include "fs/vfs.h"
 #include "fs/mount.h"
-#include "advanced/formal_verif.h"
+#include "../../staging/formal/formal_verif.h"
 
 /*
  * vfs_namespace_t: A per-process or per-sandbox view of the mount graph.

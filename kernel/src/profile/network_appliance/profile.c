@@ -1,4 +1,4 @@
-#include "profile.h"
+#include "profile/profile.h"
 
 void profile_init(void) {
     /* NETWORK APPLIANCE: prioritize packet path, NIC drivers, flow tables,

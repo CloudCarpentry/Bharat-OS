@@ -2,8 +2,8 @@
 #define BHARAT_DFS_H
 
 #include "../../fs/vfs.h"
-#include "../cluster_bus.h"
-#include "../rdma.h"
+#include "../distributed/cluster_bus.h"
+#include "../rdma/rdma.h"
 #include "bfs.h"
 
 

@@ -1,5 +1,5 @@
 #include "trap_api.h"
-#include "sched.h"
+#include "sched/sched.h"
 #include "panic.h"
 #include "fault_diag.h"
 

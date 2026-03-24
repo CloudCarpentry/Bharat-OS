@@ -1,6 +1,6 @@
 #include "fault_diag.h"
 #include "hal/hal.h"
-#include "sched.h"
+#include "sched/sched.h"
 
 // Hardcode max cores for diagnostic tracking to avoid dynamic allocation
 #ifndef MAX_SUPPORTED_CORES

@@ -1,7 +1,7 @@
 #include "../../include/mm/numa_policy.h"
 #include "../../include/numa.h"
 #include "../../include/mm.h"
-#include "../../include/sched.h"
+#include "sched/sched.h"
 
 phys_addr_t mm_alloc_page_policy(const numa_affinity_t *policy) {
     if (!policy) {

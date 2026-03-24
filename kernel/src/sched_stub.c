@@ -1,10 +1,10 @@
 
-#include "sched.h"
-#include "sched_deg.h"
+#include "sched/sched.h"
+#include "sched/sched_deg.h"
 #include "kernel_safety.h"
 #include "capability.h"
 #include "../include/slab.h"
-#include "advanced/formal_verif.h"
+#include "../staging/formal/formal_verif.h"
 
 #include <stddef.h>
 #include <stdint.h>

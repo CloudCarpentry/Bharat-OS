@@ -280,7 +280,7 @@ add_subdirectory(src/trap)
 add_subdirectory(src/debug)
 add_subdirectory(src/init)
 add_subdirectory(src/fs)
-add_subdirectory(src/test)
+add_subdirectory(src/tests)
 
 set(KERNEL_SRCS
     ${BOOT_SRC}
@@ -294,7 +294,7 @@ set(KERNEL_SRCS
     ../boot/common/boot_info_validate.c
     ../boot/common/boot_info_finalize.c
     $<$<STREQUAL:${ARCH},arm32>:../hal/arm32_mpu_vmm_mock.c>
-    ../kernel/display/fb_core.c
+    src/display/fb_core.c
     src/profile/${KERNEL_PROFILE_LOWER}/profile.c
     $<$<STREQUAL:${ARCH},x86_64>:../arch/x86_64/boot/entry.c>
     $<$<STREQUAL:${ARCH},x86_64>:../arch/x86_64/boot/multiboot_parse.c>
@@ -340,9 +340,9 @@ set(KERNEL_SRCS
     src/lib/status.c
     src/mm/dma/dma.c
     src/mm/zswap.c
-    src/apps/hello_world.c
-    src/apps/kernel_tester.c
-    src/apps/bharat_demo.c
+    src/demo/hello_world.c
+    src/demo/kernel_tester.c
+    src/demo/bharat_demo.c
     src/tests/ktest_runner.c
     src/tests/ktest_pmm.c
     src/tests/ktest_slab.c

@@ -1,5 +1,5 @@
 #include "hal/hal_timer.h"
-#include "advanced/ai_sched.h"
+#include "sched/ai_sched.h"
 #include "hal/hal.h"
 #include "console/console_core.h"
 #include "secure_boot.h"

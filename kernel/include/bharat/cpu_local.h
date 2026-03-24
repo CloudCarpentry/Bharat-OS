@@ -22,7 +22,7 @@ struct kthread;
 // TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "capability.h"
 // TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "sched.h"
+#include "sched/sched.h"
 // #include <bharat/pmm.h>
 // #include <bharat/urpc.h>
 

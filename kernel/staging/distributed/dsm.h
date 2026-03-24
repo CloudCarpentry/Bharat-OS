@@ -3,7 +3,7 @@
 
 #include "../mm.h"
 #include "cluster_bus.h"
-#include "rdma.h"
+#include "../rdma/rdma.h"
 
 
 /*

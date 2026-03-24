@@ -1,7 +1,7 @@
 #include "fs/file.h"
 #include "fs/mount.h"
 #include "capability.h"
-#include "sched.h"
+#include "sched/sched.h"
 #include "kernel/status.h"
 
 #define VFS_MAX_OPEN_FILES 64

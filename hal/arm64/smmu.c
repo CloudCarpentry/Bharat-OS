@@ -3,7 +3,7 @@
 #include <stdbool.h>
 
 #include "hal/hal.h"
-#include "profile.h"
+#include "profile/profile.h"
 
 static bool smmu_found = false;
 

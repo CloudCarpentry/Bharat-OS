@@ -1,6 +1,6 @@
 #include "hal/hal_timer.h"
 #include "hal/hal.h"
-#include "sched.h"
+#include "sched/sched.h"
 
 #include <stdint.h>
 

@@ -1,4 +1,4 @@
-#include "advanced/ai_sched.h"
+#include "sched/ai_sched.h"
 #include "hal/hal_timer.h"
 #include <stddef.h>
 
