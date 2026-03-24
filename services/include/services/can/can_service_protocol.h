@@ -1,8 +1,8 @@
 #pragma once
 #include <stdint.h>
 #include <stdbool.h>
-#include "drivers/can/can_frame.h"
-#include "drivers/can/can_filter.h"
+#include "stack/can/can_frame.h"
+#include "stack/can/can_filter.h"
 #include "drivers/can/can_controller.h"
 
 // Message definitions for CAN service IPC

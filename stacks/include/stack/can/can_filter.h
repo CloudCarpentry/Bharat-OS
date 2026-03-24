@@ -1,7 +1,7 @@
 #pragma once
 #include <stdint.h>
 #include <stdbool.h>
-#include "drivers/can/can_frame.h"
+#include "stack/can/can_frame.h"
 
 typedef struct {
     uint32_t id;

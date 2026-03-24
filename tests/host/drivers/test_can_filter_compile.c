@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <assert.h>
-#include "drivers/can/can_filter.h"
+#include "stack/can/can_filter.h"
 
 // hardware filter compilation stub test
 void test_filter_compilation() {
