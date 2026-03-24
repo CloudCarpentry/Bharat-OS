@@ -69,3 +69,4 @@ gantt
 - [HAL Gap Analysis](hal_analysis.md)
 - [Production Grade Memory Plan](memory-production-grade-plan.md)
 - [Profile Behavior Matrix](memory-profile-behavior-matrix.md)
+- [Valgrind, Sanitizers & Kernel Hardening Strategy](valgrind-sanitizer-rollout.md)

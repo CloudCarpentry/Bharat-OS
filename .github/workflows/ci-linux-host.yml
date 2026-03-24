@@ -14,13 +14,31 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build clang
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build clang valgrind
 
-      - name: Configure CMake (Debug)
-        run: cmake --preset linux-host-debug
+      - name: Configure CMake (Host Test)
+        run: cmake --preset host-test
 
-      - name: Build Host Tools & Tests
-        run: cmake --build --preset linux-host-debug
+      - name: Build Host Tests
+        run: cmake --build --preset host-test
 
       - name: Run Host Tests
-        run: ctest --preset linux-host-debug
+        run: ctest --preset host-test
+
+      - name: Configure CMake (Sanitizers)
+        run: cmake --preset host-test-asan
+
+      - name: Build Host Tests (Sanitizers)
+        run: cmake --build --preset host-test-asan
+
+      - name: Run Host Tests (Sanitizers)
+        run: ctest --preset host-test-asan
+
+      - name: Configure CMake (Valgrind)
+        run: cmake --preset host-test-valgrind
+
+      - name: Build Host Tests (Valgrind)
+        run: cmake --build --preset host-test-valgrind
+
+      - name: Run Host Tests (Valgrind)
+        run: ctest --preset host-test-valgrind -T memcheck
