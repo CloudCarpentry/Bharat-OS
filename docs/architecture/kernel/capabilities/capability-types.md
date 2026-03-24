@@ -44,7 +44,32 @@ Every capability in the Bharat-OS kernel points to an underlying object and carr
 8.  **I/O Ports (`CAP_TYPE_IOPORT`)** (x86 specific)
     - Authority to use `in`/`out` instructions on a specific port range.
 9.  **MMIO Device Region (`CAP_TYPE_DEVICE_MMIO`)**
-    - Authority to map specific physical addresses associated with hardware devices (e.g., GPUs, Network Cards). Requires explicit rights like `CAP_RIGHT_DEVICE_NPU` for specialized accelerators.
+    - Authority to map specific physical addresses associated with hardware devices.
+    - *Note: This generic type is deprecated for complex accelerators (GPUs, NPUs, advanced DMA). Use specific accelerator capabilities instead.*
+
+## Accelerator & DMA Capabilities (New)
+To support a secure distributed kernel with complex hardware, Bharat-OS defines first-class capability families for accelerators and DMA, moving away from generic MMIO access.
+
+10. **Accelerator Device (`CAP_TYPE_ACCEL_DEVICE`)**
+    - Authority over a physical accelerator device.
+    - **Rights:** `ALL`, `DERIVE`
+11. **Accelerator Queue (`CAP_TYPE_ACCEL_QUEUE`)**
+    - Authority to submit work to a hardware queue.
+    - **Rights:** `ENQUEUE`, `CANCEL`, `QUERY`
+12. **Accelerator Buffer (`CAP_TYPE_ACCEL_BUFFER`)**
+    - Authority over device-mapped memory.
+    - **Rights:** `MAP`, `BIND`, `SHARE`, `SYNC_CPU`, `SYNC_DEV`
+13. **Accelerator Telemetry (`CAP_TYPE_ACCEL_TELEMETRY`)**
+    - Authority to read performance counters and fault states.
+    - **Rights:** `READ_STATS`, `READ_FAULTS`
+14. **Accelerator Admin (`CAP_TYPE_ACCEL_ADMIN`)**
+    - Privileged administrative authority (reset, repartition, firmware load).
+    - **Rights:** `RESET`, `PARTITION`, `FW_LOAD`, `THROTTLE_OVERRIDE`
+15. **DMA Domain (`CAP_TYPE_DMA_DOMAIN`)**
+    - Authority over an IOMMU protection domain.
+16. **DMA Grant (`CAP_TYPE_DMA_GRANT`)**
+    - A temporal lease mapping host memory to a device (see `dma-grant-model.md`).
+    - **Rights:** `MAP`, `UNMAP`, `REVOKE`
 
 ```mermaid
 graph TD
@@ -52,4 +77,7 @@ graph TD
     Untyped -->|Retype| Endpoint(IPC Endpoint)
     Untyped -->|Retype| CNode(CNode)
     Untyped -->|Retype| TCB(Thread Control Block)
+    Untyped -->|Retype| AccelDevice(Accelerator Device)
+    AccelDevice -->|Derive| AccelQueue(Accelerator Queue)
+    AccelDevice -->|Derive| AccelBuffer(Accelerator Buffer)
 ```
