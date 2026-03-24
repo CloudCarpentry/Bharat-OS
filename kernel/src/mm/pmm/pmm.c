@@ -103,9 +103,13 @@ static void *pmm_alloc_pages_order_colored(int order, uint32_t numa_node,
                                            mm_color_config_t *color_config,
                                            pmm_zone_t zone_filter) {
   uint32_t current_core = hal_cpu_get_id();
-  pmm_core_state_t *core_state = &g_pmm_cores[current_core];
+  pmm_core_state_t *core_state = NULL;
 
-  if (order == 0 && core_state->active && numa_node < 4) {
+  if (current_core < BHARAT_MAX_CPUS) {
+      core_state = &g_pmm_cores[current_core];
+  }
+
+  if (order == 0 && core_state && core_state->active && numa_node < 4) {
       pmm_pcache_t *pcache = &core_state->node_caches[numa_node];
       if (pcache->count > 0) {
           phys_addr_t phys = pcache->pages[--pcache->count];
@@ -868,10 +872,14 @@ void mm_free_page(phys_addr_t page_addr) {
   }
 
   uint32_t current_core = hal_cpu_get_id();
-  pmm_core_state_t *core_state = &g_pmm_cores[current_core];
+  pmm_core_state_t *core_state = NULL;
+
+  if (current_core < BHARAT_MAX_CPUS) {
+      core_state = &g_pmm_cores[current_core];
+  }
 
   // Local Magazine fast path for order-0 pages
-  if (order == 0 && core_state->active && node_id < 4) {
+  if (order == 0 && core_state && core_state->active && node_id < 4) {
       if (page->owner_core_id == current_core) {
           pmm_pcache_t *pcache = &core_state->node_caches[node_id];
 
@@ -911,7 +919,7 @@ void mm_free_page(phys_addr_t page_addr) {
               page->order = 0;
               return;
           }
-      } else if (page->owner_core_id < 256 && g_pmm_cores[page->owner_core_id].active) {
+      } else if (page->owner_core_id < BHARAT_MAX_CPUS && g_pmm_cores[page->owner_core_id].active) {
           // Deferred remote free
           pmm_remote_inbox_t *inbox = &g_pmm_cores[page->owner_core_id].inbox;
           spin_lock(&inbox->lock);
@@ -931,7 +939,7 @@ void mm_free_page(phys_addr_t page_addr) {
       }
   }
 
-  if (core_state->active && node_id < 4) {
+  if (core_state && core_state->active && node_id < 4) {
       core_state->node_caches[node_id].direct_zone_frees++;
   }
 
