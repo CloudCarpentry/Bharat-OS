@@ -56,6 +56,7 @@ add_subdirectory(class)
 add_subdirectory(devices)
 add_subdirectory(serial)
 add_subdirectory(registry)
+add_subdirectory(accel)
 
 add_library(bharatos_drivers INTERFACE)
 target_link_libraries(bharatos_drivers INTERFACE
