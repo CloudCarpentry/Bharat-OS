@@ -6,6 +6,7 @@ add_library(k_ipc OBJECT
     ../../src/ipc/multikernel.c
     ../../src/ipc/mk_dispatch.c
     ../../src/ipc/mk_proto.c
+    ../../src/ipc/contract_validate.c
     ../../src/urpc/urpc_bootstrap.c
     ../../src/urpc/urpc_channel.c
 )

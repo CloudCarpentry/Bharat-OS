@@ -17,6 +17,23 @@ extern "C" {
 /* IPC Endpoint Handle Type */
 typedef bharat_cap_handle_t bharat_ipc_endpoint_t;
 
+/*
+ * Canonical service-level contract envelope.
+ * Keep this distinct from any lower-level transport framing.
+ */
+typedef struct {
+    uint32_t service_id;
+    uint32_t interface_id;
+    uint32_t interface_version;
+    uint32_t opcode;
+    uint32_t flags;
+    uint32_t payload_size;
+    uint32_t message_id;
+    uint32_t reserved0;
+    bharat_cap_handle_t capability_transfer;
+    bharat_cap_handle_t reply_endpoint;
+} bharat_ipc_contract_header_t;
+
 /* IPC Message Header Struct */
 typedef struct {
     uint32_t message_id;
