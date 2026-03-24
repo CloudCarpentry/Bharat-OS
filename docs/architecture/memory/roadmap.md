@@ -19,7 +19,7 @@ This roadmap tracks the convergence of the memory management subsystem in Bharat
 | **x86_64 PT & TLB** | 🚧 Active | 4-level paging, cache attributes, and local/remote shootdowns via IPI. |
 | **arm64 PT & TLB** | 🚧 Active | MAIR attributes, stage-1 translation, break-before-make remap paths. |
 | **riscv64 PT & TLB** | 🚧 Active | Sv39/Sv48 switching and `sfence.vma` logic. |
-| **arm32/riscv32 MMU-lite** | 🚧 Active | Baseline scaffolding exists (`hal_pt_arm32.c`, `hal_pt_riscv32.c`). Needs functional backend programming. |
+| **arm32/riscv32 MMU-lite** | ✅ Done (Baseline) | Functional MMU backends (ARMv7 Short-Descriptor and Sv32) implemented. No longer scaffolded; ready for hardening / advanced features. |
 | **Demand Paging/COW** | 🚧 Active | Fault handlers are present (`kernel/src/mm/vm/fault/`) but require tighter alignment with hardware faults and COW breaks. |
 
 ## Phase 3: Hardware Specialization and IOMMU (Upcoming)
