@@ -40,10 +40,16 @@ This is the most critical separation in the low-level system.
 
 `services/` is a first-class layer for policy and system-level managers. To prevent it from becoming a "catch-all" dumping ground, it is strictly categorized:
 
+**Heterogeneous Compute Rule**:
+> Kernel owns deterministic compute mechanisms (queues, jobs, memory isolation).
+> Services own routing policy, fallback logic, and model selection.
+> Drivers own accelerator hardware control.
+> Runtime/lib owns model/backend logic and graph compilation.
+
 - **`core/`**: Core managers (e.g., `init/`, `coremgr/`, `devmgr/`, `capmgr/`).
 - **`system/`**: System utilities (e.g., `console/`, `diag/`, `logd/`, `boot_displayd/`).
 - **`security/`**: Security services (e.g., `crypto/`, `keystore/`).
-- **`device/`**: Device-specific policy managers (e.g., `accelmgr/`, `actuator_mgr/`, `sensormgr/`).
+- **`device/`**: Device-specific policy managers (e.g., `accelmgr/`, `aigov/`, `actuator_mgr/`, `sensormgr/`).
 - **`network/`**: Network daemons/managers (e.g., `can/`, `netmgr/`, `gatewayd/`).
 
 *Note:* Real device drivers belong in `drivers/`, not `services/`. Only driver-facing service adapters belong in `services/`.
@@ -130,6 +136,10 @@ Bharat-OS/
     serial/
     storage/
     accel/
+      common/
+      gpu/
+      npu/
+      virt/
     sensor/
 
   services/
@@ -137,6 +147,8 @@ Bharat-OS/
     system/
     security/
     device/
+      accelmgr/
+      aigov/
     network/
 
   personalities/
@@ -155,6 +167,7 @@ Bharat-OS/
     packet/
     posix/
     runtime/
+      accel/
     syscall/
     transport/
     urpc/
