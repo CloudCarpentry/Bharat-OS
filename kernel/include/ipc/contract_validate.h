@@ -1,8 +1,8 @@
 #ifndef BHARAT_IPC_CONTRACT_VALIDATE_H
 #define BHARAT_IPC_CONTRACT_VALIDATE_H
 
-#include <uapi/bharat/ipc/contract.h>
-#include <uapi/bharat/ipc/status.h>
+#include <bharat/uapi/ipc/contract.h>
+#include <bharat/uapi/ipc/status.h>
 #include <stddef.h>
 
 #ifdef __cplusplus

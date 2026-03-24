@@ -18,8 +18,8 @@ extern "C" {
 typedef bharat_cap_handle_t bharat_ipc_endpoint_t;
 
 /* Include UAPI contract and status headers for service-level IPC */
-#include <uapi/bharat/ipc/contract.h>
-#include <uapi/bharat/ipc/status.h>
+#include <bharat/uapi/ipc/contract.h>
+#include <bharat/uapi/ipc/status.h>
 
 /* IPC Message Header Struct - compatibility alias */
 typedef bharat_ipc_contract_header_t bharat_ipc_msg_header_t;

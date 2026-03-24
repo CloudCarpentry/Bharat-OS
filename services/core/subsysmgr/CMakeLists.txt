@@ -12,7 +12,6 @@ target_include_directories(subsys_manager PUBLIC
     ${CMAKE_SOURCE_DIR}/stacks/network/include
 )
 target_link_libraries(subsys_manager PUBLIC
-    bharat_user_buildopts
     bharat_freestanding
     bharat_generated_includes
     bharat_libpacket

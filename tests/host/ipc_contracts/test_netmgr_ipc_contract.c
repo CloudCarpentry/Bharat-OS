@@ -1,5 +1,5 @@
-#include <uapi/bharat/ipc/contract.h>
-#include <uapi/bharat/ipc/status.h>
+#include <bharat/uapi/ipc/contract.h>
+#include <bharat/uapi/ipc/status.h>
 #include <bharat/network/netmgr_ipc.h>
 #include <ipc_dispatch.h>
 #include <ipc_contract.h>

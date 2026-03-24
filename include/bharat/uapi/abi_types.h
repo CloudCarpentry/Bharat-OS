@@ -1,6 +1,10 @@
 #ifndef BHARAT_UAPI_ABI_TYPES_H
 #define BHARAT_UAPI_ABI_TYPES_H
 
+#if defined(__KERNEL__) && defined(__USER__)
+#error "Invalid build: __KERNEL__ and __USER__ both defined"
+#endif
+
 #include <stdint.h>
 
 /*

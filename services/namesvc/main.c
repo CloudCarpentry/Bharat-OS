@@ -1,6 +1,7 @@
 #include <bharat/runtime/runtime.h>
 #include <bharat/ipc/ipc.h>
 #include "src/registry.h"
+#include "include/ipc_dispatch.h"
 #include "bharat/component_version.h"
 #include "bharat/buildinfo.h"
 

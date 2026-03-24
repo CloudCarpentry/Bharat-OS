@@ -6,9 +6,10 @@ add_library(bharat_libcap_base STATIC src/cap.c)
 
 # Set the public include directory
 target_include_directories(bharat_libcap_base PUBLIC include)
+target_include_directories(bharat_libcap_base PUBLIC ${CMAKE_SOURCE_DIR}/include)
 
 # Keep the build freestanding and warning-clean using common targets
-target_link_libraries(bharat_libcap_base PUBLIC bharat_freestanding bharat_kernel_buildopts)
+target_link_libraries(bharat_libcap_base PUBLIC bharat_freestanding)
 bharat_configure_userspace_library(bharat_libcap_base)
 
 # Alias old 'cap' for compatibility during migration
