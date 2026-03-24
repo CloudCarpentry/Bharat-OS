@@ -66,6 +66,12 @@ struct netmgr_req_add_route {
     uint32_t metric;
 };
 
+struct netmgr_req_remove_route {
+    net_af_t af;
+    uint8_t dest[16];
+    uint8_t mask[16];
+};
+
 typedef struct {
     uint32_t opcode;
     uint32_t reserved;
@@ -75,7 +81,10 @@ typedef struct {
         struct netmgr_req_set_admin_state set_admin_state;
         struct netmgr_req_iface_id query_stats;
         struct netmgr_req_add_addr add_addr;
+        struct netmgr_req_add_addr remove_addr;
         struct netmgr_req_add_route add_route;
+        struct netmgr_req_remove_route remove_route;
+        struct netmgr_req_iface_id neighbor_flush;
         struct netmgr_req_iface_id restart_driver;
         uint8_t raw[112];
     } u;
