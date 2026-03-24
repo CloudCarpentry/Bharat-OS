@@ -1,4 +1,5 @@
-#include "bharat/boot_info.h"
+#include "boot/boot_info.h"
+#include "bharat/display/boot_ui_types.h"
 #include "bharat/display/display_caps.h"
 #include "kernel.h"
 

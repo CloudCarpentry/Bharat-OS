@@ -10,7 +10,7 @@
 #ifndef BHARAT_BOOT_GUI_INIT_H
 #define BHARAT_BOOT_GUI_INIT_H
 
-#include "bharat/boot_info.h"   /* boot_video_handoff_t */
+#include "bharat/display/boot_video.h"
 #include <stdint.h>
 #include <stdbool.h>
 

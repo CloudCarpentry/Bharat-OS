@@ -1,4 +1,4 @@
-#include "bharat/boot_info.h"
+#include "boot/boot_info.h"
 #include "bharat/display/display_caps.h"
 #include "bharat/display/boot_video.h"
 #include "boot/multiboot2.h"

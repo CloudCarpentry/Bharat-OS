@@ -1,4 +1,4 @@
-#include "bharat/boot_info.h"
+#include "boot/boot_info.h"
 #include "kernel.h"
 #include "hal/fdt_parser.h"
 #include "hal/hal.h"

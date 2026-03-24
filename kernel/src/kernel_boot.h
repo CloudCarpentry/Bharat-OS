@@ -1,7 +1,7 @@
 #ifndef BHARAT_KERNEL_BOOT_H
 #define BHARAT_KERNEL_BOOT_H
 
-#include "bharat/boot_info.h"
+#include "boot/boot_info.h"
 
 void boot_common_early(const boot_info_t *boot);
 void boot_common_security(const boot_info_t *boot);

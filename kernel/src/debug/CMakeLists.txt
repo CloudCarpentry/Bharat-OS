@@ -19,5 +19,5 @@ add_library(k_debug OBJECT
     ../../src/console/drivers/uart_simple_mmio.c
 )
 
-target_include_directories(k_debug PRIVATE ../../include ../../include/generated ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(k_debug PRIVATE ../../include ../../include/generated ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/boot/include)
 target_link_libraries(k_debug PRIVATE bharat_freestanding bharat_kernel_buildopts)

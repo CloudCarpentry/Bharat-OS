@@ -1,4 +1,4 @@
-#include "bharat/boot_info.h"
+#include "boot/boot_info.h"
 #include "kernel.h"
 #include "hal/hal.h"
 #include <stdint.h>
@@ -7,7 +7,7 @@
 #include "multiboot2.h"
 #include "boot/platform_boot_info.h"
 
-#include "bharat/boot_info.h"
+#include "boot/boot_info.h"
 #include "kernel.h"
 #include "hal/hal.h"
 #include <stdint.h>
@@ -41,8 +41,8 @@ void kernel_main(uint32_t magic, multiboot_information_t *mb_info) {
     x86_64_parse_multiboot(magic, mb_info, &plat, &boot);
 
     // Provide generic hints
-    boot.booted_via_multiboot = true;
-    boot.arch_ptr = mb_info;
+    boot.source = BOOT_SOURCE_MULTIBOOT2;
+    // Removed arch_ptr as it is no longer in the canonical contract directly, adapters handle it.
 
     // Call the common kernel main
     kernel_main_common(&boot);
