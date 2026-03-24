@@ -9,7 +9,8 @@
 
 // Early boot entry for ARM64
 void kernel_main(uintptr_t fdt_ptr) {
-    boot_info_t boot = {0};
+    boot_info_t boot;
+    boot_info_init(&boot);
 
     hal_serial_init();
     hal_serial_write("!ARM64 Boot Started\n");

@@ -27,10 +27,10 @@ void kernel_main(uint32_t magic, multiboot_information_t *mb_info) {
     hal_serial_init();
     hal_serial_write("BOOT: kernel_main reached\n");
 
-    boot_info_t boot = {0};
-    platform_boot_info_t plat = {0};
+    boot_info_t boot;
+    boot_info_init(&boot);
 
-    boot.magic = magic;
+    platform_boot_info_t plat = {0};
 
     // Accept both Multiboot2 (QEMU/GRUB2) and Multiboot1 (legacy loaders).
     if (magic != 0x36d76289U && magic != 0x2badb002U) {

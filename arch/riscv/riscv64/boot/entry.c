@@ -10,7 +10,8 @@
 
 // Early boot entry for RISC-V 64
 void kernel_main(uint64_t hart_id, uintptr_t fdt_ptr) {
-    boot_info_t boot = {0};
+    boot_info_t boot;
+    boot_info_init(&boot);
     boot.boot_cpu_id = hart_id;
 
     hal_serial_init();
