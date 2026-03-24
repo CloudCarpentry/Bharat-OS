@@ -17,26 +17,30 @@
 void namesvc_registry_init(void);
 
 /**
- * @brief Add a name mapping to the registry.
- * @param name Null-terminated name string.
- * @param endpoint The capability handle for the endpoint.
- * @return NAMESVC_STATUS_OK on success, error code otherwise.
+ * @brief Add a version-aware interface mapping to the registry.
  */
-int32_t namesvc_registry_add(const char *name, bharat_cap_handle_t endpoint);
+int32_t namesvc_registry_add(const char *service_name,
+                             const char *interface_name,
+                             uint32_t interface_version,
+                             uint32_t transport_flags,
+                             bharat_cap_handle_t endpoint);
 
 /**
- * @brief Lookup a name mapping in the registry.
- * @param name Null-terminated name string.
- * @param endpoint Output pointer for the capability handle.
- * @return NAMESVC_STATUS_OK on success, error code otherwise.
+ * @brief Lookup an interface mapping in the registry.
  */
-int32_t namesvc_registry_lookup(const char *name, bharat_cap_handle_t *endpoint);
+int32_t namesvc_registry_lookup(const char *service_name,
+                                const char *interface_name,
+                                uint32_t requested_version,
+                                bool exact_version,
+                                bharat_cap_handle_t *endpoint,
+                                uint32_t *out_version,
+                                uint32_t *out_transport_flags);
 
 /**
- * @brief Remove a name mapping from the registry.
- * @param name Null-terminated name string.
- * @return NAMESVC_STATUS_OK on success, error code otherwise.
+ * @brief Remove an interface mapping from the registry.
  */
-int32_t namesvc_registry_remove(const char *name);
+int32_t namesvc_registry_remove(const char *service_name,
+                                const char *interface_name,
+                                uint32_t interface_version);
 
 #endif // NAMESVC_REGISTRY_H

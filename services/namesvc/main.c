@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
 
     bharat_runtime_log("services/namesvc: Registry initialized. Awaiting connections.");
 
-    bharat_ipc_msg_header_t hdr;
+    bharat_ipc_contract_header_t hdr;
     namesvc_ipc_req_t req;
     namesvc_ipc_res_t res;
 
@@ -58,42 +58,23 @@ int main(int argc, char **argv) {
         custom_memset_main(&req, 0, sizeof(req));
         custom_memset_main(&res, 0, sizeof(res));
 
-        int ret = bharat_ipc_recv(my_endpoint, &hdr, &req, sizeof(req));
+        // Use the transport shim to receive the contract header and payload
+        // In a real system, the transport would unmarshal into `hdr`.
+        int ret = bharat_ipc_recv(my_endpoint, (bharat_ipc_msg_header_t*)&hdr, &req, sizeof(req));
 
-        // As IPC is not fully implemented in stubs, this would block.
-        // We'll process requests if they arrive.
         if (ret == 0) {
-            res.status = NAMESVC_STATUS_ERR_INVAL;
+            // Dispatch to the centralized contract handler
+            namesvc_ipc_handle_request(&hdr, &req, &res);
 
-            switch (req.opcode) {
-                case NAMESVC_OP_REGISTER:
-                    if (bharat_cap_is_valid(hdr.capability_transfer)) {
-                        res.status = namesvc_registry_add(req.u.reg.name, hdr.capability_transfer);
-                        if (res.status == NAMESVC_STATUS_OK) {
-                            bharat_runtime_log("services/namesvc: Registered endpoint.");
-                        }
-                    } else {
-                        res.status = NAMESVC_STATUS_ERR_INVAL;
-                    }
-                    break;
-
-                case NAMESVC_OP_LOOKUP:
-                    res.status = namesvc_registry_lookup(req.u.lookup.name, &res.u.lookup_res.endpoint);
-                    if (res.status == NAMESVC_STATUS_OK) {
-                        bharat_runtime_log("services/namesvc: Lookup successful.");
-                    }
-                    break;
-
-                case NAMESVC_OP_REMOVE:
-                    res.status = namesvc_registry_remove(req.u.remove.name);
-                    break;
-
-                default:
-                    res.status = NAMESVC_STATUS_ERR_INVAL;
-                    break;
+            if (res.status == NAMESVC_STATUS_OK) {
+                if (req.opcode == NAMESVC_OP_REGISTER) {
+                    bharat_runtime_log("services/namesvc: Registered endpoint.");
+                } else if (req.opcode == NAMESVC_OP_LOOKUP) {
+                    bharat_runtime_log("services/namesvc: Lookup successful.");
+                }
             }
 
-            bharat_ipc_msg_header_t rep_hdr;
+            bharat_ipc_contract_header_t rep_hdr;
             custom_memset_main(&rep_hdr, 0, sizeof(rep_hdr));
             rep_hdr.message_id = hdr.message_id;
             rep_hdr.payload_size = sizeof(res);
@@ -102,7 +83,8 @@ int main(int argc, char **argv) {
                 rep_hdr.capability_transfer = res.u.lookup_res.endpoint;
             }
 
-            bharat_ipc_send(hdr.capability_transfer /* assuming reply cap is passed here in a real system */, &rep_hdr, &res);
+            // In a real system, reply_endpoint from the incoming contract header is used to reply.
+            bharat_ipc_send(hdr.reply_endpoint, (bharat_ipc_msg_header_t*)&rep_hdr, &res);
         } else {
              // For stub compilation, we just break to avoid infinite loop taking 100% CPU when recv doesn't block
              break;

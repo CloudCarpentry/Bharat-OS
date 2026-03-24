@@ -16,7 +16,8 @@ typedef enum {
     NAMESVC_OP_INVALID = 0,
     NAMESVC_OP_REGISTER = 1,
     NAMESVC_OP_LOOKUP = 2,
-    NAMESVC_OP_REMOVE = 3
+    NAMESVC_OP_REMOVE = 3,
+    NAMESVC_OP_LIST_INTERFACES = 4
 } namesvc_op_t;
 
 typedef enum {
@@ -24,19 +25,32 @@ typedef enum {
     NAMESVC_STATUS_ERR_INVAL = -1,
     NAMESVC_STATUS_ERR_NOTFOUND = -2,
     NAMESVC_STATUS_ERR_NOSPACE = -3,
-    NAMESVC_STATUS_ERR_EXISTS = -4
+    NAMESVC_STATUS_ERR_EXISTS = -4,
+    NAMESVC_STATUS_ERR_COMPAT = -5
 } namesvc_status_t;
 
 struct namesvc_req_register {
-    char name[NAMESVC_MAX_NAME_LEN];
+    char service_name[NAMESVC_MAX_NAME_LEN];
+    char interface_name[NAMESVC_MAX_NAME_LEN];
+    uint32_t interface_version;
+    uint32_t transport_flags;
 };
 
 struct namesvc_req_lookup {
-    char name[NAMESVC_MAX_NAME_LEN];
+    char service_name[NAMESVC_MAX_NAME_LEN];
+    char interface_name[NAMESVC_MAX_NAME_LEN];
+    uint32_t interface_version; // Requested version
+    bool exact_version;         // True if exact version required, false for compatible
 };
 
 struct namesvc_req_remove {
-    char name[NAMESVC_MAX_NAME_LEN];
+    char service_name[NAMESVC_MAX_NAME_LEN];
+    char interface_name[NAMESVC_MAX_NAME_LEN];
+    uint32_t interface_version;
+};
+
+struct namesvc_req_list_interfaces {
+    char service_name[NAMESVC_MAX_NAME_LEN];
 };
 
 typedef struct {
@@ -46,7 +60,8 @@ typedef struct {
         struct namesvc_req_register reg;
         struct namesvc_req_lookup lookup;
         struct namesvc_req_remove remove;
-        uint8_t raw[112];
+        struct namesvc_req_list_interfaces list;
+        uint8_t raw[256];
     } u;
 } namesvc_ipc_req_t;
 
@@ -56,8 +71,10 @@ typedef struct {
     union {
         struct {
             bharat_cap_handle_t endpoint;
+            uint32_t interface_version;
+            uint32_t transport_flags;
         } lookup_res;
-        uint8_t raw[120];
+        uint8_t raw[256];
     } u;
 } namesvc_ipc_res_t;
 
