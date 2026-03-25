@@ -7,6 +7,7 @@
 #include "../../../kernel/include/mm/pmm.h"
 #include "../../../kernel/include/cap/cap_rights.h"
 #include "../../../kernel/include/mm/mm_flags.h"
+#include "../../../kernel/include/capability.h"
 
 #define ARM64_MMU_DEVICE_nGnRnE (0ULL << 2) // MAIR index 0 -> Device-nGnRnE
 #define ERR_NOT_SUPPORTED -1
@@ -49,14 +50,14 @@ uint64_t convert_flags_to_arm64(uint32_t flags) {
 
     // Permissions mapping
     if ((flags & PAGE_USER) != 0) {
-        if ((flags & CAP_RIGHT_WRITE) != 0) {
+        if ((flags & MMU_WRITE) != 0) {
             mmu_flags |= ARM64_MMU_AP_RW_EL0;
         } else {
             mmu_flags |= ARM64_MMU_AP_RO_EL0;
         }
         mmu_flags |= ARM64_MMU_PXN; // User pages are usually PXN
     } else {
-        if ((flags & CAP_RIGHT_WRITE) != 0) {
+        if ((flags & MMU_WRITE) != 0) {
             mmu_flags |= ARM64_MMU_AP_RW_EL1;
         } else {
             mmu_flags |= ARM64_MMU_AP_RO_EL1;
@@ -81,7 +82,7 @@ uint32_t convert_arm64_to_flags(uint64_t mmu_flags) {
     }
 
     if (ap == ARM64_MMU_AP_RW_EL0 || ap == ARM64_MMU_AP_RW_EL1) {
-        flags |= CAP_RIGHT_WRITE;
+        flags |= MMU_WRITE;
     }
 
     if ((mmu_flags & (1ULL << 55)) != 0) {
@@ -127,7 +128,7 @@ int hal_vmm_map_page(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t padd
     if (!active_hal_pt) hal_pt_init();
 
     uint32_t pt_flags = HAL_PT_FLAG_READ;
-    if (flags & CAP_RIGHT_WRITE) pt_flags |= HAL_PT_FLAG_WRITE;
+    if (flags & MMU_WRITE) pt_flags |= HAL_PT_FLAG_WRITE;
     if (flags & PAGE_USER)       pt_flags |= HAL_PT_FLAG_USER;
     if (flags & (CAP_RIGHT_DEVICE_GPU | CAP_RIGHT_DEVICE_NPU)) pt_flags |= HAL_PT_FLAG_DEVICE;
 
@@ -177,7 +178,7 @@ static phys_addr_t arm64_mmu_clone_kernel(phys_addr_t kernel_root) {
 // Translate generic mmu_flags_t to ARM64-specific VMM flags
 static uint32_t flags_to_arm64(mmu_flags_t f) {
     uint32_t flags = 0;
-    if (f & MMU_WRITE)   flags |= CAP_RIGHT_WRITE;
+    if (f & MMU_WRITE)   flags |= MMU_WRITE;
     if (f & MMU_USER)    flags |= PAGE_USER;
     if (f & MMU_COW)     flags |= PAGE_COW;
     if (f & MMU_DEVICE)  flags |= CAP_RIGHT_DEVICE; // Map MMU_DEVICE to CAP_RIGHT_DEVICE
@@ -188,9 +189,10 @@ static uint32_t flags_to_arm64(mmu_flags_t f) {
 // Translate ARM64-specific VMM flags to generic mmu_flags_t
 static mmu_flags_t arm64_to_flags(uint32_t flags) {
     mmu_flags_t f = MMU_READ;
-    if (flags & CAP_RIGHT_WRITE) f |= MMU_WRITE;
+    if (flags & MMU_WRITE) f |= MMU_WRITE;
     if (flags & PAGE_USER)       f |= MMU_USER;
     if (flags & PAGE_COW)        f |= MMU_COW;
+    if (flags & MMU_DEVICE)      f |= MMU_DEVICE;
     return f;
 }
 
@@ -444,7 +446,7 @@ int hal_vmm_get_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t* 
 
     if (ret == 0 && flags) {
         *flags = ARM64_MMU_FLAG_VALID;
-        if (pt_flags & HAL_PT_FLAG_WRITE) *flags |= CAP_RIGHT_WRITE;
+        if (pt_flags & HAL_PT_FLAG_WRITE) *flags |= MMU_WRITE;
         if (pt_flags & HAL_PT_FLAG_USER)  *flags |= PAGE_USER;
     }
 
@@ -455,7 +457,7 @@ int hal_vmm_update_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_
     if (!active_hal_pt) hal_pt_init();
 
     uint32_t pt_flags = HAL_PT_FLAG_READ;
-    if (flags & CAP_RIGHT_WRITE) pt_flags |= HAL_PT_FLAG_WRITE;
+    if (flags & MMU_WRITE) pt_flags |= HAL_PT_FLAG_WRITE;
     if (flags & PAGE_USER)       pt_flags |= HAL_PT_FLAG_USER;
 
     pt_flags |= HAL_PT_FLAG_EXEC;

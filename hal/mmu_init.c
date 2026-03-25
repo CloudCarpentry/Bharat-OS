@@ -1,3 +1,4 @@
+#include "hal/hal_mpa.h"
 #include "hal/mmu_ops.h"
 #include "hal/hal_discovery.h"
 #include "hal/hal.h"
@@ -60,7 +61,7 @@ void arch_mmu_init(void) {
 }
 
 void hal_mmu_final_setup(void) {
-    if (!active_mmu) return;
+    if (!active_mem_protect) return;
     extern address_space_t kernel_space;
 
 #if defined(__aarch64__) || defined(__riscv)
@@ -85,18 +86,18 @@ void hal_mmu_final_setup(void) {
             for (uint64_t off = 0; off < size; off += 4096) {
                 // Identity map
                 vmm_map_page(base + off, base + off,
-                             CAP_RIGHT_READ | CAP_RIGHT_WRITE | CAP_RIGHT_EXECUTE);
+                             MMU_READ | MMU_WRITE | MMU_EXEC);
                 // Linear high-half map
                 vmm_map_page(base + off + g_kernel_virt_offset, base + off,
-                             CAP_RIGHT_READ | CAP_RIGHT_WRITE);
+                             MMU_READ | MMU_WRITE);
             }
         }
 
         // Map UART (essential for KPRINT after MMU enable)
 #if defined(__aarch64__)
-        vmm_map_page(0x09000000, 0x09000000, CAP_RIGHT_READ | CAP_RIGHT_WRITE | CAP_RIGHT_DEVICE);
+        vmm_map_page(0x09000000, 0x09000000, MMU_READ | MMU_WRITE | MMU_DEVICE);
 #elif defined(__riscv)
-        vmm_map_page(0x10000000, 0x10000000, CAP_RIGHT_READ | CAP_RIGHT_WRITE | CAP_RIGHT_DEVICE);
+        vmm_map_page(0x10000000, 0x10000000, MMU_READ | MMU_WRITE | MMU_DEVICE);
 #endif
 
         // Map IRQ Controllers
@@ -116,7 +117,7 @@ void hal_mmu_final_setup(void) {
             if (base != 0 && size != 0) {
                 for (uint64_t off = 0; off < size; off += 4096) {
                     vmm_map_page(base + off, base + off,
-                                 CAP_RIGHT_READ | CAP_RIGHT_WRITE | CAP_RIGHT_DEVICE);
+                                 MMU_READ | MMU_WRITE | MMU_DEVICE);
                 }
             }
             uint64_t aux_base = discovery->irq_ctrls[i].aux_base;
@@ -124,7 +125,7 @@ void hal_mmu_final_setup(void) {
             if (aux_base != 0 && aux_size != 0) {
                 for (uint64_t off = 0; off < aux_size; off += 4096) {
                     vmm_map_page(aux_base + off, aux_base + off,
-                                 CAP_RIGHT_READ | CAP_RIGHT_WRITE | CAP_RIGHT_DEVICE);
+                                 MMU_READ | MMU_WRITE | MMU_DEVICE);
                 }
             }
         }
@@ -136,7 +137,7 @@ void hal_mmu_final_setup(void) {
             if (base != 0 && size != 0) {
                 for (uint64_t off = 0; off < size; off += 4096) {
                     vmm_map_page(base + off, base + off,
-                                 CAP_RIGHT_READ | CAP_RIGHT_WRITE | CAP_RIGHT_DEVICE);
+                                 MMU_READ | MMU_WRITE | MMU_DEVICE);
                 }
             }
         }
@@ -147,14 +148,14 @@ void hal_mmu_final_setup(void) {
             uint64_t fb_size = discovery->boot_video.size;
             for (uint64_t off = 0; off < fb_size; off += 4096) {
                 vmm_map_page(fb_phys + off, fb_phys + off,
-                             CAP_RIGHT_READ | CAP_RIGHT_WRITE | CAP_RIGHT_DEVICE_GPU);
+                             MMU_READ | MMU_WRITE | MMU_DEVICE);
             }
         }
 
         hal_serial_write("MMU: Activating root: ");
         hal_serial_write_hex(kernel_space.root_pt);
         hal_serial_write("\n");
-        active_mmu->activate(kernel_space.root_pt);
+        active_mem_protect->cpu_ops.set_root(kernel_space.root_pt);
 
 #if defined(__aarch64__)
         if (min_base != UINT64_MAX && max_end > min_base) {
@@ -166,8 +167,8 @@ void hal_mmu_final_setup(void) {
         return;
     }
 #elif defined(__x86_64__)
-    vmm_map_page(0xFEE00000, 0xFEE00000, CAP_RIGHT_READ | CAP_RIGHT_WRITE); // LAPIC
-    vmm_map_page(0xFEC00000, 0xFEC00000, CAP_RIGHT_READ | CAP_RIGHT_WRITE); // IOAPIC
+    vmm_map_page(0xFEE00000, 0xFEE00000, MMU_READ | MMU_WRITE | MMU_DEVICE); // LAPIC
+    vmm_map_page(0xFEC00000, 0xFEC00000, MMU_READ | MMU_WRITE | MMU_DEVICE); // IOAPIC
 
     // Map RAM into high-half physical map
     extern const uint64_t g_kernel_virt_offset;
@@ -179,10 +180,10 @@ void hal_mmu_final_setup(void) {
             // Map the whole region into the high-half physical map
             for (uint64_t off = 0; off < size; off += 4096) {
                 vmm_map_page(base + off + g_kernel_virt_offset, base + off,
-                             CAP_RIGHT_READ | CAP_RIGHT_WRITE);
+                             MMU_READ | MMU_WRITE);
             }
         }
     }
 #endif
-    active_mmu->activate(kernel_space.root_pt);
+    active_mem_protect->cpu_ops.set_root(kernel_space.root_pt);
 }
