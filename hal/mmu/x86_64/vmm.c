@@ -46,7 +46,7 @@ int hal_vmm_map_page(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t padd
 
     // Map x86 VMM flags back to HAL PT flags
     uint32_t pt_flags = HAL_PT_FLAG_READ;
-    if (flags & CAP_RIGHT_WRITE) pt_flags |= HAL_PT_FLAG_WRITE;
+    if (flags & MMU_WRITE) pt_flags |= HAL_PT_FLAG_WRITE;
     if (flags & PAGE_USER)       pt_flags |= HAL_PT_FLAG_USER;
     if (!(flags & X86_FLAG_NX))  pt_flags |= HAL_PT_FLAG_EXEC;
     if (flags & (1ULL << 4))     pt_flags |= HAL_PT_FLAG_NOCACHE; // PCD
@@ -76,7 +76,7 @@ int hal_vmm_get_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t* 
     if (ret == 0 && flags) {
         // Map HAL PT flags back to x86 VMM flags
         *flags = VMM_FLAG_PRESENT;
-        if (pt_flags & HAL_PT_FLAG_WRITE) *flags |= CAP_RIGHT_WRITE;
+        if (pt_flags & HAL_PT_FLAG_WRITE) *flags |= MMU_WRITE;
         if (pt_flags & HAL_PT_FLAG_USER)  *flags |= PAGE_USER;
         if (!(pt_flags & HAL_PT_FLAG_EXEC)) *flags |= X86_FLAG_NX;
     }
@@ -87,7 +87,7 @@ int hal_vmm_update_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_
     if (!active_hal_pt) hal_pt_init();
 
     uint32_t pt_flags = 0;
-    if (flags & CAP_RIGHT_WRITE) pt_flags |= HAL_PT_FLAG_WRITE;
+    if (flags & MMU_WRITE) pt_flags |= HAL_PT_FLAG_WRITE;
     if (flags & PAGE_USER)       pt_flags |= HAL_PT_FLAG_USER;
     if (!(flags & X86_FLAG_NX))  pt_flags |= HAL_PT_FLAG_EXEC;
 
@@ -137,7 +137,7 @@ static phys_addr_t x86_mmu_clone_kernel(phys_addr_t kernel_root) {
 // Translate generic mmu_flags_t to x86-specific VMM flags
 static uint32_t flags_to_x86(mmu_flags_t f) {
     uint32_t pte = 0;
-    if (f & MMU_WRITE)   pte |= CAP_RIGHT_WRITE;
+    if (f & MMU_WRITE)   pte |= MMU_WRITE;
     if (f & MMU_USER)    pte |= PAGE_USER;
     if (f & MMU_COW)     pte |= PAGE_COW;
     if (!(f & MMU_EXEC)) pte |= X86_FLAG_NX; // Pass NX down via reserved bit
@@ -149,7 +149,7 @@ static uint32_t flags_to_x86(mmu_flags_t f) {
 // Translate x86-specific VMM flags to generic mmu_flags_t
 static mmu_flags_t x86_to_flags(uint32_t pte) {
     mmu_flags_t f = MMU_READ;
-    if (pte & CAP_RIGHT_WRITE) f |= MMU_WRITE;
+    if (pte & MMU_WRITE) f |= MMU_WRITE;
     if (pte & PAGE_USER)       f |= MMU_USER;
     if (pte & PAGE_COW)        f |= MMU_COW;
     return f;

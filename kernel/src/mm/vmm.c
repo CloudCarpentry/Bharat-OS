@@ -60,8 +60,8 @@ int mm_vmm_map_page(address_space_t* as, virt_addr_t vaddr, phys_addr_t paddr, u
 
     // Translate VMM flags to MPA Capability Bits
     uint32_t mpa_flags = 0;
-    if (flags & CAP_RIGHT_WRITE) mpa_flags |= MPA_CAP_WRITE;
-    if (flags & CAP_RIGHT_EXECUTE) mpa_flags |= MPA_CAP_EXEC_PERM;
+    if (flags & MMU_WRITE) mpa_flags |= MPA_CAP_WRITE;
+    if (flags & MMU_EXEC) mpa_flags |= MPA_CAP_EXEC_PERM;
     if (flags & PAGE_USER) mpa_flags |= MPA_CAP_USER;
     if (flags & (0x40 | 0x80)) mpa_flags |= MPA_CAP_DEVICE; // Old GPU and NPU masks
 
@@ -99,12 +99,13 @@ int vmm_unmap_page(virt_addr_t vaddr) {
 }
 
 #include "mm/fault.h"
+#include "mm/vm_mapping.h"
 
 int vmm_handle_cow_fault(address_space_t* as, virt_addr_t vaddr) {
     vm_fault_event_t event = {
         .aspace = as,
         .fault_addr = vaddr,
-        .access = CAP_RIGHT_WRITE,
+        .access = VM_PROT_WRITE,
         .arch_code = 0
     };
     vm_fault_result_t res = vm_handle_fault(&event);

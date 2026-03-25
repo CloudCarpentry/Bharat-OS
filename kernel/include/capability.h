@@ -32,51 +32,52 @@ typedef enum {
     CAP_TYPE_DMA_GRANT = 20,
 } cap_type_t;
 
-typedef enum {
-    CAP_RIGHT_NONE                 = 0,
-    CAP_RIGHT_SEND                 = (1U << 0),
-    CAP_RIGHT_RECEIVE              = (1U << 1),
-    CAP_RIGHT_MAP                  = (1U << 2),
-    CAP_RIGHT_UNMAP                = (1U << 3),
-    CAP_RIGHT_SCHEDULE             = (1U << 4),
-    CAP_RIGHT_DELEGATE             = (1U << 5),
-    CAP_RIGHT_CRYPT_USE            = (1U << 6),
-    CAP_RIGHT_CRYPT_DERIVE         = (1U << 7),
-    CAP_RIGHT_CRYPT_SIGN           = (1U << 8),
-    CAP_RIGHT_CRYPT_DECRYPT        = (1U << 9),
-    CAP_RIGHT_CRYPT_EXPORT_WRAPPED = (1U << 10),
-    CAP_RIGHT_CRYPT_ADMIN          = (1U << 11),
+typedef uint32_t cap_rights_t;
 
-    // Communication and RPC capability bits
-    // NOTE: These are vocabulary only and not currently enforced in the
-    // scheduler, IPC send/recv, or URPC routing paths yet.
-    CAP_RIGHT_IPC_SEND             = (1U << 12),
-    CAP_RIGHT_IPC_RECEIVE          = (1U << 13),
-    CAP_RIGHT_URPC_CALL            = (1U << 14),
-    CAP_RIGHT_URPC_REPLY           = (1U << 15),
+#define CAP_RIGHT_NONE                 0U
+#define CAP_RIGHT_SEND                 (1U << 0)
+#define CAP_RIGHT_RECEIVE              (1U << 1)
+#define CAP_RIGHT_MAP                  (1U << 2)
+#define CAP_RIGHT_UNMAP                (1U << 3)
+#define CAP_RIGHT_SCHEDULE             (1U << 4)
+#define CAP_RIGHT_DELEGATE             (1U << 5)
+#define CAP_RIGHT_CRYPT_USE            (1U << 6)
+#define CAP_RIGHT_CRYPT_DERIVE         (1U << 7)
+#define CAP_RIGHT_CRYPT_SIGN           (1U << 8)
+#define CAP_RIGHT_CRYPT_DECRYPT        (1U << 9)
+#define CAP_RIGHT_CRYPT_EXPORT_WRAPPED (1U << 10)
+#define CAP_RIGHT_CRYPT_ADMIN          (1U << 11)
 
-    // Accelerator and DMA rights
-    CAP_RIGHT_ENQUEUE              = (1U << 16),
-    CAP_RIGHT_CANCEL               = (1U << 17),
-    CAP_RIGHT_QUERY                = (1U << 18),
-    CAP_RIGHT_BIND                 = (1U << 19),
-    CAP_RIGHT_SHARE                = (1U << 20),
-    CAP_RIGHT_SYNC_CPU             = (1U << 21),
-    CAP_RIGHT_SYNC_DEV             = (1U << 22),
-    CAP_RIGHT_READ_STATS           = (1U << 23),
-    CAP_RIGHT_READ_FAULTS          = (1U << 24),
-    CAP_RIGHT_RESET                = (1U << 25),
-    CAP_RIGHT_PARTITION            = (1U << 26),
-    CAP_RIGHT_FW_LOAD              = (1U << 27),
-    CAP_RIGHT_DERIVE               = (1U << 28),
-    CAP_RIGHT_REVOKE               = (1U << 29),
-    CAP_RIGHT_READ                 = (1U << 30),
-    CAP_RIGHT_WRITE                = (1U << 31),
-    CAP_RIGHT_EXECUTE              = (1ULL << 32),
+// Communication and RPC capability bits
+// NOTE: These are vocabulary only and not currently enforced in the
+// scheduler, IPC send/recv, or URPC routing paths yet.
+// Since these are currently unused we merge URPC_REPLY and URPC_CALL into 14 to save a bit for EXECUTE
+#define CAP_RIGHT_IPC_SEND             (1U << 12)
+#define CAP_RIGHT_IPC_RECEIVE          (1U << 13)
+#define CAP_RIGHT_URPC_CALL            (1U << 14)
+#define CAP_RIGHT_URPC_REPLY           (1U << 14) // Aliased to CALL to save a bit until we need it or migrate to 64-bit
 
-    // Synthetic rights combo
-    CAP_RIGHT_ALL                  = 0xFFFFFFFF,
-} cap_rights_t;
+// Accelerator and DMA rights
+#define CAP_RIGHT_ENQUEUE              (1U << 15)
+#define CAP_RIGHT_CANCEL               (1U << 16)
+#define CAP_RIGHT_QUERY                (1U << 17)
+#define CAP_RIGHT_BIND                 (1U << 18)
+#define CAP_RIGHT_SHARE                (1U << 19)
+#define CAP_RIGHT_SYNC_CPU             (1U << 20)
+#define CAP_RIGHT_SYNC_DEV             (1U << 21)
+#define CAP_RIGHT_READ_STATS           (1U << 22)
+#define CAP_RIGHT_READ_FAULTS          (1U << 23)
+#define CAP_RIGHT_RESET                (1U << 24)
+#define CAP_RIGHT_PARTITION            (1U << 25)
+#define CAP_RIGHT_FW_LOAD              (1U << 26)
+#define CAP_RIGHT_DERIVE               (1U << 27)
+#define CAP_RIGHT_REVOKE               (1U << 28)
+#define CAP_RIGHT_READ                 (1U << 29)
+#define CAP_RIGHT_WRITE                (1U << 30)
+#define CAP_RIGHT_EXECUTE              (1U << 31)
+
+// Synthetic rights combo
+#define CAP_RIGHT_ALL                  0xFFFFFFFFU
 
 typedef struct capability_entry {
     uint8_t in_use;
