@@ -52,3 +52,29 @@ While Bharat-OS provides native capability-based APIs internally, the driver-fac
 ## Accelerator Hooks
 
 "Accelerators" are not strictly GPUs in the Bharat-OS model. Small devices often feature blitters, DMAs, DSPs, and NPUs. The `bharat_accel_ops` interface permits capabilities-based querying of these blocks. If a hardware blitter exists, the 2D primitive layer can transparently map it instead of using CPU-bound loops.
+
+## Console vs UI and Layering Rules
+
+It is critical to distinguish between the core trusted system console and higher-level user interfaces (or system UI services). The physical directory structure strictly enforces these layers.
+
+### 1. Display Layering
+
+*   **Hardware Display Drivers (`drivers/display/`):** Code that directly pokes registers or manages hardware components (modesetting, buffer allocation for actual screens, e.g., DRM or VirtIO GPU).
+*   **Console Subsystem (`kernel/src/console/`):** Contains the stateful core console routing and rendering logic. This includes tracking character grids, cursors, wrapping, panning, and processing ANSI/newline characters. The `framebuffer_console` implementation natively draws text to a linear framebuffer using simple helper routines.
+*   **System UI / Services (`services/system/...`):** Higher-level graphical shells, status bars, compositor proxies, or full-blown desktop managers.
+
+### 2. Early/Trusted Console vs Service UI
+
+The framebuffer console (`fb_console`) is a minimal system console path suitable for boot logs, early panics, and simple text output. It is **not** a general-purpose GUI or service. It operates inside the kernel/trusted core to ensure reliability during critical failures (like `panic()` paths). Service-level UIs, on the other hand, are run as independent processes and communicate via IPC.
+
+### 3. Folder Ownership Matrix
+
+To prevent subsystem entanglement, adhere to the following directory responsibilities:
+
+*   `drivers/display/` &rarr; Real display hardware drivers.
+*   `drivers/serial/` &rarr; UART/serial hardware drivers.
+*   `kernel/src/console/` &rarr; Console routing, policy, panic paths, serial console backends, and framebuffer console backends.
+*   `lib/ui/` &rarr; Reusable rendering primitives only (e.g., generic glyph or box drawing routines without state).
+*   `services/system/...` &rarr; Higher-level system services, including user-mode UI daemons.
+
+*(Note: In earlier repository structures, a `drivers/src/console/` folder existed as a transitional staging area. This pattern is invalid under the current architecture and has been fully refactored into the respective core subsystems.)*

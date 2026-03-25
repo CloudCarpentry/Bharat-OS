@@ -109,6 +109,12 @@ void console_render_fb_write_char(framebuffer_console_state_t *state, char c) {
         state->cursor_row++;
     } else if (c == '\r') {
         state->cursor_col = 0;
+    } else if (c == '\t') {
+        state->cursor_col = (state->cursor_col + 8) & ~7;
+        if (state->cursor_col >= state->cols) {
+            state->cursor_col = 0;
+            state->cursor_row++;
+        }
     } else {
         draw_char_glyph(state, c, state->cursor_col, state->cursor_row);
         state->cursor_col++;
@@ -138,6 +144,12 @@ void console_render_fb_write(framebuffer_console_state_t *state, const char *dat
             state->cursor_row++;
         } else if (c == '\r') {
             state->cursor_col = 0;
+        } else if (c == '\t') {
+            state->cursor_col = (state->cursor_col + 8) & ~7;
+            if (state->cursor_col >= state->cols) {
+                state->cursor_col = 0;
+                state->cursor_row++;
+            }
         } else {
             draw_char_glyph(state, c, state->cursor_col, state->cursor_row);
             state->cursor_col++;
