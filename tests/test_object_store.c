@@ -16,7 +16,7 @@ int main() {
 
     capability_t test_cap;
     memset(&test_cap, 0, sizeof(test_cap));
-    test_cap.rights_mask = CAP_RIGHT_READ | CAP_RIGHT_WRITE;
+    test_cap.rights_mask = 1 | 2; // Old CAP_RIGHT_READ | CAP_RIGHT_WRITE
 
     // Set up the store.
     object_store_test_reset_state();
@@ -36,7 +36,7 @@ int main() {
     // Test 2: cap without CAP_RIGHT_READ should fail
     capability_t no_read_cap;
     memset(&no_read_cap, 0, sizeof(no_read_cap));
-    no_read_cap.rights_mask = CAP_RIGHT_WRITE;
+    no_read_cap.rights_mask = 2; // Old CAP_RIGHT_WRITE
 
     if (object_store_lookup("/blob/remote/bucket", &out_store, &no_read_cap) == 0) {
         printf("FAILED: Expected failure without CAP_RIGHT_READ\n");
@@ -46,7 +46,7 @@ int main() {
     // Test 3: cap with CAP_RIGHT_READ should succeed
     capability_t read_cap;
     memset(&read_cap, 0, sizeof(read_cap));
-    read_cap.rights_mask = CAP_RIGHT_READ;
+    read_cap.rights_mask = 1; // Old CAP_RIGHT_READ
 
     out_store = NULL;
     if (object_store_lookup("/blob/remote/bucket", &out_store, &read_cap) != 0 || out_store != &my_store) {
@@ -57,7 +57,7 @@ int main() {
     // Test 4: cap with CAP_RIGHT_READ | CAP_RIGHT_WRITE should succeed
     capability_t read_write_cap;
     memset(&read_write_cap, 0, sizeof(read_write_cap));
-    read_write_cap.rights_mask = CAP_RIGHT_READ | CAP_RIGHT_WRITE;
+    read_write_cap.rights_mask = 1 | 2; // Old CAP_RIGHT_READ | CAP_RIGHT_WRITE
 
     out_store = NULL;
     if (object_store_lookup("/blob/remote/bucket", &out_store, &read_write_cap) != 0 || out_store != &my_store) {

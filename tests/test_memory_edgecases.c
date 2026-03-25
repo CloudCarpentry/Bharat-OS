@@ -96,7 +96,7 @@ int main(void) {
     // Test vmm_map_device_mmio error paths and success paths
     capability_t cap_npu = { .rights_mask = CAP_RIGHT_DEVICE_NPU };
     capability_t cap_gpu = { .rights_mask = CAP_RIGHT_DEVICE_GPU };
-    capability_t cap_none = { .rights_mask = CAP_RIGHT_READ };
+    capability_t cap_none = { .rights_mask = 1 }; // Old CAP_RIGHT_READ
 
     // 1. NULL capability should be denied (-3)
     assert(vmm_map_device_mmio(0x3000U, 0x4000U, NULL, 1) == -3);

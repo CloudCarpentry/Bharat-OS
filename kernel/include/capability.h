@@ -68,6 +68,14 @@ typedef enum {
     CAP_RIGHT_RESET                = (1U << 25),
     CAP_RIGHT_PARTITION            = (1U << 26),
     CAP_RIGHT_FW_LOAD              = (1U << 27),
+    CAP_RIGHT_DERIVE               = (1U << 28),
+    CAP_RIGHT_REVOKE               = (1U << 29),
+    CAP_RIGHT_READ                 = (1U << 30),
+    CAP_RIGHT_WRITE                = (1U << 31),
+    CAP_RIGHT_EXECUTE              = (1ULL << 32),
+
+    // Synthetic rights combo
+    CAP_RIGHT_ALL                  = 0xFFFFFFFF,
 } cap_rights_t;
 
 typedef struct capability_entry {

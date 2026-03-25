@@ -326,11 +326,11 @@ target_include_directories(test_pmm_production PRIVATE ../kernel/include ../kern
 add_test(NAME test_pmm_production COMMAND test_pmm_production)
 
 add_executable(test_pmm_zone_alloc test_pmm_zone_alloc.c host/mock_panic.c ../kernel/src/mm/pmm/pmm.c)
-target_include_directories(test_pmm_zone_alloc PRIVATE ../kernel/include ../kernel/src ../include)
+target_include_directories(test_pmm_zone_alloc PRIVATE ../kernel/include ../kernel/src ../include ../boot/include)
 add_test(NAME test_pmm_zone_alloc COMMAND test_pmm_zone_alloc)
 
 add_executable(test_pmm_refpin test_pmm_refpin.c host/mock_panic.c ../kernel/src/mm/pmm/pmm.c)
-target_include_directories(test_pmm_refpin PRIVATE ../kernel/include ../kernel/src ../include)
+target_include_directories(test_pmm_refpin PRIVATE ../kernel/include ../kernel/src ../include ../boot/include)
 add_test(NAME test_pmm_refpin COMMAND test_pmm_refpin)
 
 add_executable(test_sched_reap test_sched_reap.c $<TARGET_OBJECTS:bharat_test_sched_mocks>)

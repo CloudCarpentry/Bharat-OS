@@ -7,7 +7,7 @@
 #include "../../kernel/include/mm/pmm.h"
 #include "../../kernel/include/mm.h"
 #include "../../kernel/include/mm/pmm_map.h"
-#include "../../kernel/include/bharat/boot_info.h"
+#include "../../boot/include/boot/boot_info.h"
 
 // Define test stubs
 void hal_serial_write(const char *s) { (void)s; }
@@ -58,7 +58,7 @@ void *early_alloc(size_t size, size_t align) {
     return ptr;
 }
 
-#include "../../kernel/include/sched.h"
+#include "../../kernel/include/sched/sched.h"
 
 char _pstore_start[1024];
 char _pstore_end[1024];
@@ -83,10 +83,10 @@ static void test_pmm_init(void) {
 
     // Create a mock boot info struct to pass into mm_pmm_init
     struct boot_info mock_boot = {0};
-    mock_boot.mem_map_count = 1;
-    mock_boot.mem_map[0].phys_start = (uint64_t)(uintptr_t)mock_ram;
-    mock_boot.mem_map[0].size = MOCK_RAM_SIZE;
-    mock_boot.mem_map[0].type = BOOT_MEM_USABLE;
+    mock_boot.mem_region_count = 1;
+    mock_boot.mem_regions[0].phys_start = (uint64_t)(uintptr_t)mock_ram;
+    mock_boot.mem_regions[0].size = MOCK_RAM_SIZE;
+    mock_boot.mem_regions[0].type = BOOT_MEM_USABLE;
 
     // Initialize PMM via the public API instead of the internal one
     int ret = mm_pmm_init(0xB4A2A705, &mock_boot);

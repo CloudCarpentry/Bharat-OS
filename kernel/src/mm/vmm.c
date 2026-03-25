@@ -4,6 +4,7 @@
 #include "hal/mmu_ops.h"
 #include "hal/hal_tlb.h"
 #include "mm/tlb.h"
+#include "capability.h"
 #include "mm/pmm.h"
 #include "slab.h"
 #include <stddef.h>
@@ -62,7 +63,7 @@ int mm_vmm_map_page(address_space_t* as, virt_addr_t vaddr, phys_addr_t paddr, u
     if (flags & CAP_RIGHT_WRITE) mpa_flags |= MPA_CAP_WRITE;
     if (flags & CAP_RIGHT_EXECUTE) mpa_flags |= MPA_CAP_EXEC_PERM;
     if (flags & PAGE_USER) mpa_flags |= MPA_CAP_USER;
-    if (flags & (CAP_RIGHT_DEVICE_GPU | CAP_RIGHT_DEVICE_NPU)) mpa_flags |= MPA_CAP_DEVICE;
+    if (flags & (0x40 | 0x80)) mpa_flags |= MPA_CAP_DEVICE; // Old GPU and NPU masks
 
     // Use the HAL abstraction
     int ret = active_mem_protect->cpu_ops.map_page(as->root_pt, vaddr, paddr, mpa_flags);
