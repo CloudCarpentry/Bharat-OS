@@ -19,7 +19,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <string.h>
+#include "lib/base/string.h"
 
 #define SCHED_MAX_THREADS 128U
 #define SCHED_MAX_PROCESSES 32U
