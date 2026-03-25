@@ -80,7 +80,7 @@ add_test(NAME host_test_sensor_plausibility COMMAND test_sensor_plausibility)
 add_executable(test_actuator_core drivers/test_actuator_core.c ../../drivers/class/actuator/actuator_core.c)
 target_include_directories(test_actuator_core PRIVATE ../../drivers/include)
 
-add_executable(test_actuator_safe_state services/test_actuator_safe_state.c ../../services/actuator_mgr/safe_state.c)
+add_executable(test_actuator_safe_state services/test_actuator_safe_state.c ../../services/device/actuator_mgr/safe_state.c)
 target_include_directories(test_actuator_safe_state PRIVATE ../../drivers/include)
 
 add_executable(test_actuator_deadman services/test_actuator_deadman.c)

@@ -492,7 +492,7 @@ The following features require core kernel modifications (e.g., RT scheduler, ne
 * Tests: `tests/host/drivers/test_sensor_core.c`, `tests/host/services/test_sensor_freshness.c`, `tests/host/services/test_sensor_plausibility.c`.
 
 **5. Safety I/O / Actuator-safe path**
-* Files: `drivers/include/drivers/actuator/actuator_device.h`, `services/include/services/actuator_mgr/actuator_mgr_protocol.h`, `drivers/src/actuator/actuator_core.c`, `services/actuator_mgr/main.c`, `services/actuator_mgr/policy.c`, `services/actuator_mgr/safe_state.c`.
+* Files: `drivers/include/drivers/actuator/actuator_device.h`, `services/include/services/actuator_mgr/actuator_mgr_protocol.h`, `drivers/src/actuator/actuator_core.c`, `services/device/actuator_mgr/main.c`, `services/device/actuator_mgr/policy.c`, `services/device/actuator_mgr/safe_state.c`.
 * Interfaces: `actuator_state_t`, `actuator_limits_t`, `actuator_device_ops_t`.
 * Tests: `tests/host/drivers/test_actuator_core.c`, `tests/host/services/test_actuator_safe_state.c`, `tests/host/services/test_actuator_deadman.c`.
 
