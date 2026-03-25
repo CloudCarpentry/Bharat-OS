@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "../kernel/include/advanced/multikernel.h"
+#include "../kernel/include/core/multikernel.h"
 
 int multicore_boot_secondary_cores(uint32_t core_count) {
     (void)core_count;

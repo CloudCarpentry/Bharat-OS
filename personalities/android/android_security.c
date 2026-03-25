@@ -1,4 +1,4 @@
-#include "android/android_security.h"
+#include "compat/android/android_security.h"
 
 int android_sec_check_binder_access(android_sec_sid_t caller_sid, android_sec_sid_t target_sid, uint32_t action) {
     // Stub: Translates SELinux rules into local capability cache checks.

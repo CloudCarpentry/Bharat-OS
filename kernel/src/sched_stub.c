@@ -183,7 +183,7 @@ static void sched_switch_to(kthread_t* next) {
 
 static void sched_monitor_task(void) {
     while (1) {
-        sched_yield();
+        kthread_yield();
     }
 }
 
@@ -282,6 +282,19 @@ kprocess_t* process_create(const char* name) {
     return &slot->process;
 }
 
+int process_destroy(kprocess_t* process) {
+    if (!process) {
+        return -1;
+    }
+    for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_processes); ++i) {
+        if (g_processes[i].in_use && &g_processes[i].process == process) {
+            g_processes[i].in_use = 0U;
+            return 0;
+        }
+    }
+    return -1;
+}
+
 kthread_t* thread_create(kprocess_t* parent, void (*entry_point)(void)) {
     kthread_t* t = NULL; // Dummy for stub
     if (!t) return NULL;
@@ -323,7 +336,7 @@ int thread_destroy(kthread_t* thread) {
     return 0;
 }
 
-void sched_yield(void) {
+void kthread_yield(void) {
     sched_process_pending_ai_suggestions();
     kthread_t* next = sched_pick_next_ready();
     if (next) {
@@ -338,7 +351,7 @@ void sched_sleep(uint64_t millis) {
 
     g_current->wake_deadline_ms = g_sched_ticks + millis;
     g_current->state = THREAD_STATE_SLEEPING;
-    sched_yield();
+    kthread_yield();
 }
 
 void sched_wakeup(kthread_t* thread) {
@@ -371,16 +384,96 @@ void sched_on_timer_tick(void) {
 
         if (g_current->cpu_time_consumed >= g_current->time_slice_ms) {
             g_current->cpu_time_consumed = 0U;
-            sched_yield();
+            kthread_yield();
         }
         return;
     }
 
-    sched_yield();
+    kthread_yield();
 }
 
 kthread_t* sched_current_thread(void) {
     return g_current;
+}
+
+// ----------------------------------------------------------------------------
+// Host Test Trap/Syscall Fakes & Mocks
+// ----------------------------------------------------------------------------
+
+int g_stub_sched_sys_set_priority_ret = 0;
+int g_stub_sched_sys_set_affinity_ret = 0;
+long g_stub_kstatus_to_sysret_ret = 0;
+
+int g_stub_sched_sys_set_priority_called = 0;
+int g_stub_sched_sys_set_affinity_called = 0;
+int g_stub_thread_raise_fault_called = 0;
+
+int g_stub_last_priority = -1;
+uint64_t g_stub_last_affinity_mask = 0;
+int g_stub_last_fault_code = 0;
+kprocess_t* g_stub_current_process = NULL;
+
+void sched_stub_reset(void) {
+    g_stub_sched_sys_set_priority_ret = 0;
+    g_stub_sched_sys_set_affinity_ret = 0;
+    g_stub_kstatus_to_sysret_ret = 0;
+
+    g_stub_sched_sys_set_priority_called = 0;
+    g_stub_sched_sys_set_affinity_called = 0;
+    g_stub_thread_raise_fault_called = 0;
+
+    g_stub_last_priority = -1;
+    g_stub_last_affinity_mask = 0;
+    g_stub_last_fault_code = 0;
+    g_stub_current_process = NULL;
+}
+
+int sched_sys_set_priority(uint64_t tid, uint32_t new_priority) {
+    (void)tid;
+    g_stub_sched_sys_set_priority_called++;
+    g_stub_last_priority = new_priority;
+    return g_stub_sched_sys_set_priority_ret;
+}
+
+int sched_sys_set_affinity(uint64_t tid, uint32_t affinity_mask) {
+    (void)tid;
+    g_stub_sched_sys_set_affinity_called++;
+    g_stub_last_affinity_mask = affinity_mask;
+    return g_stub_sched_sys_set_affinity_ret;
+}
+
+long kstatus_to_sysret(int32_t st) {
+    (void)st;
+    return g_stub_kstatus_to_sysret_ret;
+}
+
+kprocess_t* sched_current_process(void) {
+    if (g_stub_current_process != NULL) {
+        return g_stub_current_process;
+    }
+    return g_current ? g_current->process : NULL;
+}
+
+address_space_t* sched_current_aspace(void) {
+    kprocess_t* p = sched_current_process();
+    return p ? p->addr_space : NULL;
+}
+
+int thread_raise_fault(kthread_t *thread, thread_fault_t fault) {
+    (void)thread;
+    g_stub_thread_raise_fault_called++;
+    g_stub_last_fault_code = fault;
+    return 0;
+}
+
+int sched_sys_sleep(uint64_t millis) {
+    sched_sleep(millis);
+    return 0;
+}
+
+void sched_wakeup_with_priority(kthread_t* thread, uint32_t wakeup_priority) {
+    (void)wakeup_priority;
+    sched_wakeup(thread);
 }
 
 void sched_set_policy(sched_policy_t policy) {
@@ -525,7 +618,7 @@ int sched_enqueue_ai_suggestion(const ai_suggestion_t* suggestion) {
          suggestion->action == AI_ACTION_MIGRATE_TASK) &&
         g_current &&
         g_current->thread_id == suggestion->target_id) {
-        sched_yield();
+        kthread_yield();
     }
 
     return 0;

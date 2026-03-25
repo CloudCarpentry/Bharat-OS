@@ -34,7 +34,7 @@ int trap_handle_fault(trap_frame_t *frame, const trap_info_t *info) {
     if (t) {
         thread_raise_fault(t, THREAD_FAULT_SEGV);
     } else {
-        sched_yield();
+        kthread_yield();
     }
 
     return -1;

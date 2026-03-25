@@ -1,4 +1,4 @@
-#include "android/android_process.h"
+#include "compat/android/android_process.h"
 
 int android_clone_task(android_process_desc_t* parent, uint32_t flags, android_process_desc_t** out_desc) {
     if (!out_desc) return -1;

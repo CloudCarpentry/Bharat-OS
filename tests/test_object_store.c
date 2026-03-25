@@ -2,7 +2,7 @@
 #include <string.h>
 
 #include "fs/object_store.h"
-#include "advanced/formal_verif.h"
+#include "../kernel/staging/formal/formal_verif.h"
 
 // Reset function provided by kernel/src/fs/object_store.c when compiled with TESTING
 extern void object_store_test_reset_state(void);

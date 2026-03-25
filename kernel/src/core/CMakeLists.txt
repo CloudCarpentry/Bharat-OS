@@ -30,5 +30,5 @@ add_library(k_core OBJECT
     ../../src/power/power_qos.c
 )
 
-target_include_directories(k_core PRIVATE ../../include ../../include/generated ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/boot/include)
+target_include_directories(k_core PRIVATE ../../include ../../include/generated ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/lib/include ${CMAKE_SOURCE_DIR}/boot/include)
 target_link_libraries(k_core PRIVATE bharat_freestanding bharat_kernel_buildopts)

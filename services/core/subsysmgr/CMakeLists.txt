@@ -7,6 +7,7 @@ add_library(subsys_manager STATIC
 target_include_directories(subsys_manager PUBLIC
     ${CMAKE_SOURCE_DIR}/services/core/subsysmgr/include
     ${CMAKE_SOURCE_DIR}/kernel/include
+    ${CMAKE_SOURCE_DIR}/lib/include
     ${CMAKE_SOURCE_DIR}/lib/packet/include
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/stacks/network/include

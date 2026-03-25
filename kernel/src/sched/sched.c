@@ -370,7 +370,7 @@ static void sched_monitor_task(void) {
         // BSP monitor might do system-wide coordination
       }
     }
-    sched_yield();
+    kthread_yield();
   }
 }
 
@@ -1011,7 +1011,7 @@ void sched_reschedule(void) {
   sched_switch_to(next, core);
 }
 
-void sched_yield(void) { sched_reschedule(); }
+void kthread_yield(void) { sched_reschedule(); }
 
 void sched_sleep(uint64_t millis) {
   uint32_t core = sched_clamp_core(hal_cpu_get_id());

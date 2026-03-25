@@ -1,4 +1,4 @@
-#include "android/android_boot.h"
+#include "compat/android/android_boot.h"
 
 int android_boot_early_init(android_personality_t* p) {
     if (!p) return -1;

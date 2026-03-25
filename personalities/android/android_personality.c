@@ -1,4 +1,4 @@
-#include "android/android_personality.h"
+#include "compat/android/android_personality.h"
 #include "personality/personality_types.h"
 #include <string.h>
 

@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "../kernel/include/advanced/multikernel.h"
+#include "../kernel/include/core/multikernel.h"
 #include "../kernel/include/numa.h"
 #include "../kernel/include/slab.h"
 

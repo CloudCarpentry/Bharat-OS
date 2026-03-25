@@ -1,7 +1,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
-#include "android/android_personality.h"
+#include "compat/android/android_personality.h"
 #include "personality/personality_types.h"
 
 // Stubs for console/logging if needed by the test runner

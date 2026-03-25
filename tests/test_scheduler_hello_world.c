@@ -3,7 +3,7 @@
 #include <stdio.h>
 
 #include "../kernel/include/ipc_async.h"
-#include "../kernel/include/sched.h"
+#include "../kernel/include/sched/sched.h"
 
 static uint32_t g_mock_core_id = 0;
 static address_space_t g_as = {.root_pt = 0x2000U};
@@ -69,11 +69,11 @@ int main(void) {
   assert(sched_set_thread_priority(a->thread_id, 3) == 0);
   assert(sched_set_thread_priority(b->thread_id, 9) == 0);
 
-  sched_reschedule();
+  kthread_yield();
   assert(sched_current_thread() == b);
 
   sched_sleep(2);
-  sched_reschedule();
+  kthread_yield();
   assert(sched_current_thread() != b);
 
   sched_on_timer_tick();

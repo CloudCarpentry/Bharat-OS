@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
-#include "../kernel/include/advanced/ai_sched.h"
-#include "../kernel/include/advanced/multikernel.h"
+#include "../kernel/include/sched/ai_sched.h"
+#include "../kernel/include/core/multikernel.h"
 #include <stdlib.h>
 
 void* kmalloc(size_t size) {
