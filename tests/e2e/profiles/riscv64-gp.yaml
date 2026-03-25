@@ -1,0 +1,19 @@
+arch: riscv64
+device_profile: GP
+personality_profile: NONE
+memory_test: mmu
+qemu_cmd: qemu-system-riscv64
+qemu_args:
+  - -machine
+  - virt
+  - -m
+  - 256M
+  - -nographic
+  - -monitor
+  - none
+  - -serial
+  - stdio
+  - -no-reboot
+markers:
+  - "BOOT: pmm initialized"
+  - "BOOT: vmm initialized"

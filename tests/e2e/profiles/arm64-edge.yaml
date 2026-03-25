@@ -1,0 +1,21 @@
+arch: arm64
+device_profile: EDGE
+personality_profile: NONE
+memory_test: mmu-lite
+qemu_cmd: qemu-system-aarch64
+qemu_args:
+  - -machine
+  - virt
+  - -cpu
+  - cortex-a72
+  - -m
+  - 256M
+  - -nographic
+  - -monitor
+  - none
+  - -serial
+  - stdio
+  - -no-reboot
+markers:
+  - "BOOT: pmm initialized"
+  - "BOOT: vmm initialized"

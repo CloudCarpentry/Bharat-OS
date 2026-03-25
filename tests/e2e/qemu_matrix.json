@@ -1,0 +1,11 @@
+{
+    "smoke": [
+        { "arch": "x86_64", "profile": "x86_64-gp.yaml" },
+        { "arch": "arm64", "profile": "arm64-gp.yaml" },
+        { "arch": "riscv64", "profile": "riscv64-gp.yaml" }
+    ],
+    "extended": [
+        { "arch": "x86_64", "profile": "x86_64-desktop.yaml" },
+        { "arch": "arm64", "profile": "arm64-edge.yaml" }
+    ]
+}
