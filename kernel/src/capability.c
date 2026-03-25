@@ -53,6 +53,20 @@ static int cap_rights_valid(cap_type_t type, uint32_t rights) {
         return (rights & ~(CAP_RIGHT_SCHEDULE | CAP_RIGHT_DELEGATE)) == 0U;
     case CAP_TYPE_PROCESS:
         return (rights & ~(CAP_RIGHT_DELEGATE)) == 0U;
+    case CAP_TYPE_ACCEL_DEVICE:
+        return (rights & ~(CAP_RIGHT_ALL | CAP_RIGHT_DERIVE | CAP_RIGHT_DELEGATE)) == 0U;
+    case CAP_TYPE_ACCEL_QUEUE:
+        return (rights & ~(CAP_RIGHT_ENQUEUE | CAP_RIGHT_CANCEL | CAP_RIGHT_QUERY | CAP_RIGHT_DELEGATE)) == 0U;
+    case CAP_TYPE_ACCEL_BUFFER:
+        return (rights & ~(CAP_RIGHT_MAP | CAP_RIGHT_BIND | CAP_RIGHT_SHARE | CAP_RIGHT_SYNC_CPU | CAP_RIGHT_SYNC_DEV | CAP_RIGHT_DELEGATE)) == 0U;
+    case CAP_TYPE_ACCEL_TELEMETRY:
+        return (rights & ~(CAP_RIGHT_READ_STATS | CAP_RIGHT_READ_FAULTS | CAP_RIGHT_DELEGATE)) == 0U;
+    case CAP_TYPE_ACCEL_ADMIN:
+        return (rights & ~(CAP_RIGHT_RESET | CAP_RIGHT_PARTITION | CAP_RIGHT_FW_LOAD | CAP_RIGHT_DELEGATE)) == 0U;
+    case CAP_TYPE_DMA_DOMAIN:
+        return (rights & ~(CAP_RIGHT_ALL | CAP_RIGHT_DELEGATE)) == 0U;
+    case CAP_TYPE_DMA_GRANT:
+        return (rights & ~(CAP_RIGHT_MAP | CAP_RIGHT_UNMAP | CAP_RIGHT_REVOKE | CAP_RIGHT_DELEGATE)) == 0U;
     default:
         return 0;
     }
@@ -194,6 +208,12 @@ int cap_table_grant(capability_table_t* table,
                 e->owner_core = 0;
             }
 
+            e->instance_id.origin_core = hal_cpu_get_id();
+            e->instance_id.object_id = e->object_ref;
+            e->instance_id.slot_gen = e->generation;
+            e->instance_id.rights_digest = e->rights;
+            e->revocation_epoch = 0;
+
             e->in_use = 1U;
             found_id = e->id;
             ret = 0;
@@ -308,6 +328,13 @@ static int cap_table_delegate_local(capability_table_t* src,
 
                 dst_entry->generation++;
                 dst_entry->owner_core = src_entry->owner_core; // Delegate retains owner core unless explicity transferred
+
+                // Inherit distributed instance ID
+                dst_entry->instance_id = src_entry->instance_id;
+                dst_entry->instance_id.rights_digest = delegated_rights;
+                dst_entry->instance_id.slot_gen = dst_entry->generation;
+                dst_entry->revocation_epoch = src_entry->revocation_epoch;
+
                 dst_entry->in_use = 1U;
 
                 src_entry->first_child.table = dst;
@@ -346,6 +373,8 @@ typedef struct {
     uint64_t object_ref;
     uint32_t flags;
     uint32_t owner_core;
+    cap_instance_id_t instance_id;
+    uint64_t revocation_epoch;
     cap_handle_t src_first_child;  // Metadata for linking sibling list
     volatile int status;           // Output from dest
     volatile uint32_t new_cap_id;  // Output from dest
@@ -431,6 +460,9 @@ int cap_table_delegate(capability_table_t* src,
     req->object_ref = src_entry->object_ref;
     req->flags = src_entry->flags;
     req->owner_core = src_entry->owner_core;
+    req->instance_id = src_entry->instance_id;
+    req->instance_id.rights_digest = delegated_rights; // Update for remote tracking
+    req->revocation_epoch = src_entry->revocation_epoch;
     req->src_first_child = src_entry->first_child;
     req->status = -1; // Uninitialized
     req->new_cap_id = 0;
@@ -534,6 +566,9 @@ void cap_handle_delegate_req(uint64_t payload, uint32_t source_core) {
             dst_entry->flags = req->flags;
             dst_entry->owner_core = req->owner_core; // Delegate retains owner core
 
+            dst_entry->instance_id = req->instance_id;
+            dst_entry->revocation_epoch = req->revocation_epoch;
+
             dst_entry->parent.table = req->src;
             dst_entry->parent.slot = req->src_slot_idx;
             dst_entry->parent.generation = req->src_generation;
@@ -547,6 +582,7 @@ void cap_handle_delegate_req(uint64_t payload, uint32_t source_core) {
             dst_entry->next_sibling = req->src_first_child;
 
             dst_entry->generation++;
+            dst_entry->instance_id.slot_gen = dst_entry->generation; // Update on destination
             dst_entry->in_use = 1U;
 
             found_id = dst_entry->id;
@@ -737,6 +773,13 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
 
         cap_unlock_tables_sorted(tables_to_lock, num_tables);
     }
+
+    // Increment revocation epoch BEFORE broadcast
+    spin_lock(&table->lock);
+    if (root_entry->in_use != 0U && root_entry->generation == root_gen) {
+        root_entry->revocation_epoch++;
+    }
+    spin_unlock(&table->lock);
 
     // Iterative tree walk to revoke children safely.
     stack[sp].table = table;

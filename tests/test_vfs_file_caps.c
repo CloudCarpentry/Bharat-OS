@@ -51,7 +51,7 @@ int main(void) {
 
     capability_t mount_cap = {
         .target_object_id = VFS_NAMESPACE_OBJECT_ID,
-        .rights_mask = CAP_RIGHT_WRITE,
+        .rights_mask = 2, // Old CAP_RIGHT_WRITE
     };
 
     capability_t bad_mount_cap = {
@@ -65,14 +65,14 @@ int main(void) {
     capability_t good_cap = {
         .capability_id = 1,
         .target_object_id = 42,
-        .rights_mask = CAP_RIGHT_READ | CAP_RIGHT_WRITE,
+        .rights_mask = 1 | 2, // Old CAP_RIGHT_READ | CAP_RIGHT_WRITE
         .owner_core_id = 0,
     };
 
     capability_t bad_object_cap = {
         .capability_id = 2,
         .target_object_id = 99,
-        .rights_mask = CAP_RIGHT_READ | CAP_RIGHT_WRITE,
+        .rights_mask = 1 | 2, // Old CAP_RIGHT_READ | CAP_RIGHT_WRITE
         .owner_core_id = 0,
     };
 

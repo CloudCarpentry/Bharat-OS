@@ -19,7 +19,7 @@ static int object_store_cap_allows_lookup(const capability_t* cap) {
         return 0;
     }
 
-    return (cap->rights_mask & CAP_RIGHT_READ) == CAP_RIGHT_READ;
+    return (cap->rights_mask & 1) == 1; // Old CAP_RIGHT_READ
 }
 
 int object_store_register(object_store_t* store, capability_t* cap) {
