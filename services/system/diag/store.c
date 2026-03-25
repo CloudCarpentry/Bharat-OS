@@ -28,12 +28,15 @@ int diag_report_event(const diag_event_t* event) {
     return 0;
 }
 
+// Clears an event by dtc.
+// Note: This operation uses an O(1) swap-with-last removal, meaning
+// the internal order of stored events is NOT guaranteed to be preserved
+// after an event is cleared. Do not rely on insertion order.
 int diag_clear_event(uint32_t dtc) {
     for (int i = 0; i < g_store_count; i++) {
         if (g_store[i].dtc == dtc) {
-            for (int j = i; j < g_store_count - 1; j++) {
-                g_store[j] = g_store[j + 1];
-            }
+            // Swap with last element to avoid O(N^2) shifting
+            g_store[i] = g_store[g_store_count - 1];
             g_store_count--;
             return 0;
         }
