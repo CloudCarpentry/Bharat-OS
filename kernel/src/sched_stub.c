@@ -38,7 +38,7 @@ static process_slot_t g_processes[SCHED_MAX_PROCESSES];
 static sched_rq_t g_cores[SCHED_MAX_CORES];
 
 static kthread_t* g_current;
-static sched_policy_t g_policy = SCHED_POLICY_ROUND_ROBIN;
+static sched_policy_t g_policy = SCHED_POLICY_PRIORITY;
 static uint64_t g_next_thread_id = 1U;
 static uint64_t g_next_process_id = 1U;
 static uint64_t g_sched_ticks = 0U;
@@ -134,6 +134,10 @@ static kthread_t* sched_pick_next_ready(void) {
             continue;
         }
 
+        if (g_policy == SCHED_POLICY_ROUND_ROBIN) {
+            return &g_threads[idx].thread;
+        }
+
         if (g_policy == SCHED_POLICY_EDF && g_threads[idx].thread.rt_attr.deadline_ms > 0U) {
             if (!best || g_threads[idx].thread.rt_attr.deadline_ms < best->rt_attr.deadline_ms) {
                 best = &g_threads[idx].thread;
@@ -188,6 +192,15 @@ static void sched_monitor_task(void) {
 }
 
 void sched_init(void) {
+    g_current = NULL;
+    g_next_thread_id = 1U;
+    g_next_process_id = 1U;
+    g_policy = SCHED_POLICY_PRIORITY;
+    g_sched_ticks = 0U;
+    g_sched_context_switches = 0U;
+    g_pending_suggestions.head = 0U;
+    g_pending_suggestions.tail = 0U;
+
     for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_threads); ++i) {
         g_threads[i].in_use = 0U;
     }
@@ -197,19 +210,6 @@ void sched_init(void) {
     for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_cores); ++i) {
         g_cores[i] = (sched_rq_t){ .current_thread = NULL, .total_ticks = 0U, .throttled = 0U };
     }
-
-    // Since this is a stub, we simulate creating a monitor thread for core 0
-    kprocess_t* stub_proc = process_create("stub_process");
-    thread_create(stub_proc, sched_monitor_task);
-
-    g_current = NULL;
-    g_next_thread_id = 1U;
-    g_next_process_id = 1U;
-    g_policy = SCHED_POLICY_ROUND_ROBIN;
-    g_sched_ticks = 0U;
-    g_sched_context_switches = 0U;
-    g_pending_suggestions.head = 0U;
-    g_pending_suggestions.tail = 0U;
 }
 
 void sched_wait_queue_init(wait_queue_t* queue) {
@@ -296,34 +296,34 @@ int process_destroy(kprocess_t* process) {
 }
 
 kthread_t* thread_create(kprocess_t* parent, void (*entry_point)(void)) {
-    kthread_t* t = NULL; // Dummy for stub
-    if (!t) return NULL;
-
-    t->thread_id = g_next_thread_id++;
-    t->process_id = parent->process_id;
-    t->state = THREAD_STATE_READY;
-    t->priority = 1U;
-    t->base_priority = 1U;
-    t->cpu_time_consumed = 0U;
-    t->time_slice_ms = SCHED_DEFAULT_SLICE_MS;
-    t->preferred_numa_node = 0U;
-
     thread_slot_t* slot = sched_find_free_thread_slot();
-    if (slot) {
-        slot->in_use = 1U;
-        slot->thread = *t;
-        slot->context.pc = (uint64_t)(uintptr_t)entry_point;
-        slot->context.sp = 0U;
-        slot->thread.cpu_context = &slot->context;
-
-        if (!parent->main_thread) {
-            parent->main_thread = &slot->thread;
-        }
-        return &slot->thread;
+    if (!slot) {
+        return NULL;
     }
 
-    // __builtin_free(t);
-    return NULL;
+    slot->in_use = 1U;
+    slot->thread = (kthread_t){0};
+    slot->thread.thread_id = g_next_thread_id++;
+    slot->thread.process_id = parent ? parent->process_id : 0U;
+    slot->thread.process = parent;
+    slot->thread.state = THREAD_STATE_READY;
+    slot->thread.priority = 1U;
+    slot->thread.base_priority = 1U;
+    slot->thread.cpu_time_consumed = 0U;
+    slot->thread.time_slice_ms = SCHED_DEFAULT_SLICE_MS;
+    slot->thread.preferred_numa_node = 0U;
+    slot->thread.affinity_mask = 0xFFFFFFFFU;
+
+    slot->context.pc = (uint64_t)(uintptr_t)entry_point;
+    slot->context.sp = 0U;
+    slot->thread.cpu_context = &slot->context;
+    ai_sched_init_context(&slot->ai_ctx);
+    slot->thread.ai_sched_ctx = &slot->ai_ctx;
+
+    if (parent && !parent->main_thread) {
+        parent->main_thread = &slot->thread;
+    }
+    return &slot->thread;
 }
 
 int thread_destroy(kthread_t* thread) {
@@ -381,6 +381,12 @@ void sched_on_timer_tick(void) {
     if (g_current) {
         g_current->cpu_time_consumed++;
         sched_update_telemetry(g_current);
+
+        kthread_t* preempt = sched_pick_next_ready();
+        if (preempt && preempt->priority > g_current->priority) {
+            sched_switch_to(preempt);
+            return;
+        }
 
         if (g_current->cpu_time_consumed >= g_current->time_slice_ms) {
             g_current->cpu_time_consumed = 0U;
