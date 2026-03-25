@@ -16,6 +16,8 @@ tags:
 
 This document outlines the architectural boundaries and exact directory structure for the Bharat-OS repository. The goal of this structure is to maintain clear semantic separation between architecture, abstraction, platform integration, services, and the core kernel.
 
+*Note: The repository is currently partially aligned with this folder structure, and migrations of `services/` components (e.g., to `services/device/`, `services/core/`) are ongoing.*
+
 ---
 
 ## Architectural Boundaries

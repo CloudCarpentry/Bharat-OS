@@ -1,6 +1,8 @@
-# services/accelmgr
+# services/device/accelmgr
 
 ## Purpose
+This module is a **device policy manager**, not a driver. It owns routing policy, fallback logic, and model selection. Real accelerator hardware control drivers reside in `drivers/accel/`.
+
 Hardware-aware accelerator abstraction service. Critical for future hardware architectures involving offloaded computing elements.
 
 ## Responsibilities
