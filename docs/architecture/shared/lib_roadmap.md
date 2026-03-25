@@ -46,7 +46,29 @@ This roadmap outlines the plan to strictly enforce the boundaries defined in `do
 2. **Transition Kernel Subsystems:**
    * Migrate existing ad-hoc kernel queues and resource trackers to use the standardized `lib/` structures.
 
+### Phase 5: Multikernel Algorithms and Advanced Data Structures (Short-to-Mid Term)
+
+1. **Replace Global Locks:**
+   * Introduce MCS locks or hazard pointers for critical sections.
+   * Implement per-core ring buffers for uRPC.
+2. **Optimize Thread Lookup:**
+   * Transition to cuckoo hashing utilizing hardware CRC32 acceleration.
+3. **Memory Locality:**
+   * Integrate per-core PMM caches (magazine allocator) and NUMA-aware allocation strategies.
+
+### Phase 6: Next-Generation Hardware Integration (Long Term)
+
+1. **Lock-Free Capability Tables:**
+   * Migrate capability delegation structures to use RCU combined with radix trees.
+2. **Hardware-Accelerated Cryptography:**
+   * Establish interfaces to offload cryptography to AES-NI (x86) or Crypto Extensions (ARM).
+3. **AI-Driven Scheduling:**
+   * Incorporate dynamic scheduler hints using performance counters (PMC/PMU).
+   * Evaluate offloading complex scheduling decisions to available NPU/TPUs.
+
 ## Build and Testing Strategy
 
 * **Host-Testing:** Everything in `lib/` must be compiled and tested on the host (e.g., `cmake --preset host-test`). Any dependency on kernel headers or target hardware limits this ability and is considered a violation.
+* **Scalability Testing:** Stress-test lock-free and parallel structures with high core counts (e.g., 64+ cores) to validate scalability and hardware leveraging.
+* **Formal Methods:** As the lock-free data structures stabilize (especially MPMC rings and RCU), utilize formal verification (e.g., Isabelle/HOL) to prove their correctness.
 * **Continuous Enforcement:** Add pre-commit static analysis or CMake assertion checks to verify dependency directions.
