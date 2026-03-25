@@ -1,3 +1,4 @@
+#include "hal/hal_mpa.h"
 #include "hal/mmu_ops.h"
 #include "hal/hal_discovery.h"
 #include "hal/hal.h"
@@ -60,7 +61,7 @@ void arch_mmu_init(void) {
 }
 
 void hal_mmu_final_setup(void) {
-    if (!active_mmu) return;
+    if (!active_mem_protect) return;
     extern address_space_t kernel_space;
 
 #if defined(__aarch64__) || defined(__riscv)
@@ -154,7 +155,7 @@ void hal_mmu_final_setup(void) {
         hal_serial_write("MMU: Activating root: ");
         hal_serial_write_hex(kernel_space.root_pt);
         hal_serial_write("\n");
-        active_mmu->activate(kernel_space.root_pt);
+        active_mem_protect->cpu_ops.set_root(kernel_space.root_pt);
 
 #if defined(__aarch64__)
         if (min_base != UINT64_MAX && max_end > min_base) {
@@ -184,5 +185,5 @@ void hal_mmu_final_setup(void) {
         }
     }
 #endif
-    active_mmu->activate(kernel_space.root_pt);
+    active_mem_protect->cpu_ops.set_root(kernel_space.root_pt);
 }
