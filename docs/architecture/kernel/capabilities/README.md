@@ -1,5 +1,10 @@
 # Capability Model
 
+**See also:**
+- [Capability Naming and Terms](capability-naming-and-terms.md)
+- [Distributed Capability Consistency](distributed-capability-consistency.md)
+- [Naming Conventions](../../contracts/naming-conventions.md)
+
 ## Overview
 
 Bharat-OS enforces security through a mathematically verifiable Capability System. There are no global Access Control Lists (ACLs), user IDs, or root privileges inside the kernel.

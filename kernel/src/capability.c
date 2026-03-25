@@ -43,16 +43,16 @@ static inline void cap_unlock_two_tables(capability_table_t* a, capability_table
   assigns \nothing;
   ensures \result == 0 || \result == 1;
 */
-static int cap_rights_valid(cap_object_type_t type, uint32_t rights) {
+static int cap_rights_valid(cap_type_t type, uint32_t rights) {
     switch (type) {
-    case CAP_OBJ_ENDPOINT:
-        return (rights & ~(CAP_PERM_SEND | CAP_PERM_RECEIVE | CAP_PERM_DELEGATE)) == 0U;
-    case CAP_OBJ_MEMORY:
-        return (rights & ~(CAP_PERM_MAP | CAP_PERM_UNMAP | CAP_PERM_DELEGATE)) == 0U;
-    case CAP_OBJ_SCHED:
-        return (rights & ~(CAP_PERM_SCHEDULE | CAP_PERM_DELEGATE)) == 0U;
-    case CAP_OBJ_PROCESS:
-        return (rights & ~(CAP_PERM_DELEGATE)) == 0U;
+    case CAP_TYPE_ENDPOINT:
+        return (rights & ~(CAP_RIGHT_SEND | CAP_RIGHT_RECEIVE | CAP_RIGHT_DELEGATE)) == 0U;
+    case CAP_TYPE_MEMORY:
+        return (rights & ~(CAP_RIGHT_MAP | CAP_RIGHT_UNMAP | CAP_RIGHT_DELEGATE)) == 0U;
+    case CAP_TYPE_SCHED:
+        return (rights & ~(CAP_RIGHT_SCHEDULE | CAP_RIGHT_DELEGATE)) == 0U;
+    case CAP_TYPE_PROCESS:
+        return (rights & ~(CAP_RIGHT_DELEGATE)) == 0U;
     default:
         return 0;
     }
@@ -147,15 +147,15 @@ void cap_table_destroy(capability_table_t* table) {
 }
 
 int cap_table_grant(capability_table_t* table,
-                    cap_object_type_t type,
+                    cap_type_t type,
                     uint64_t object_ref,
                     uint32_t rights,
                     uint32_t* out_cap_id) {
-    if (!BHARAT_PTR_NON_NULL(table) || type == CAP_OBJ_NONE) {
+    if (!BHARAT_PTR_NON_NULL(table) || type == CAP_TYPE_NONE) {
         return -1;
     }
 
-    if (!cap_rights_valid(type, rights) || rights == CAP_PERM_NONE) {
+    if (!cap_rights_valid(type, rights) || rights == CAP_RIGHT_NONE) {
         return -3;
     }
 
@@ -188,7 +188,7 @@ int cap_table_grant(capability_table_t* table,
             e->generation++;
 
             // Set the owner_core for memory objects
-            if (e->type == CAP_OBJ_MEMORY) {
+            if (e->type == CAP_TYPE_MEMORY) {
                 e->owner_core = hal_cpu_get_id();
             } else {
                 e->owner_core = 0;
@@ -212,7 +212,7 @@ int cap_table_grant(capability_table_t* table,
 
 int cap_table_lookup(const capability_table_t* table,
                      uint32_t cap_id,
-                     cap_object_type_t required_type,
+                     cap_type_t required_type,
                      uint32_t required_rights,
                      capability_entry_t* out_entry) {
     if (!BHARAT_PTR_NON_NULL(table) || cap_id == 0U) {
@@ -235,7 +235,7 @@ int cap_table_lookup(const capability_table_t* table,
     for (size_t i = 0; i < BHARAT_ARRAY_SIZE(table->entries); ++i) {
         const capability_entry_t* e = &table->entries[i];
         if (e->in_use != 0U && e->id == cap_id) {
-            if (required_type != CAP_OBJ_NONE && e->type != required_type) {
+            if (required_type != CAP_TYPE_NONE && e->type != required_type) {
                 ret = -2;
                 break;
             }
@@ -279,10 +279,10 @@ static int cap_table_delegate_local(capability_table_t* src,
     }
 
     if (src_entry &&
-        ((src_entry->rights & CAP_PERM_DELEGATE) != 0U) &&
+        ((src_entry->rights & CAP_RIGHT_DELEGATE) != 0U) &&
         ((src_entry->rights & delegated_rights) == delegated_rights) &&
         cap_rights_valid(src_entry->type, delegated_rights) &&
-        (delegated_rights != CAP_PERM_NONE)) {
+        (delegated_rights != CAP_RIGHT_NONE)) {
 
         uint32_t found_id = 0;
         ret = -2;
@@ -341,7 +341,7 @@ typedef struct {
     capability_table_t* dst;
     uint32_t src_slot_idx;
     uint32_t src_generation;
-    cap_object_type_t type;
+    cap_type_t type;
     uint32_t rights;
     uint64_t object_ref;
     uint32_t flags;
@@ -411,10 +411,10 @@ int cap_table_delegate(capability_table_t* src,
     }
 
     if (!src_entry ||
-        ((src_entry->rights & CAP_PERM_DELEGATE) == 0U) ||
+        ((src_entry->rights & CAP_RIGHT_DELEGATE) == 0U) ||
         ((src_entry->rights & delegated_rights) != delegated_rights) ||
         !cap_rights_valid(src_entry->type, delegated_rights) ||
-        (delegated_rights == CAP_PERM_NONE)) {
+        (delegated_rights == CAP_RIGHT_NONE)) {
 
         spin_unlock(&src->lock);
         return -5;
@@ -746,10 +746,14 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
 
     uint32_t current_core = hal_cpu_get_id();
 
-    extern bool g_pmm_initialized; // We check this as a proxy for early boot since PMM initializes URPC safely.
+    // We check g_pmm_initialized as a proxy for early boot since PMM initializes URPC safely.
+    // Use weak linkage or simple dummy for tests.
+    __attribute__((weak)) extern bool g_pmm_initialized;
+    bool pmm_is_initialized = &g_pmm_initialized ? g_pmm_initialized : true;
+
     // In Bharat-OS capability revoke operations must degrade safely to local-only behavior
     // until SMP and URPC distributed infrastructure are fully initialized.
-    if (current_core < BHARAT_MAX_CPUS && g_pmm_initialized) {
+    if (current_core < BHARAT_MAX_CPUS && pmm_is_initialized) {
         // Broadcast revocation to other cores via URPC only if we are on a valid, initialized core
         g_revoke_acks_needed[current_core] = 0;
         for (uint32_t c = 0; c < BHARAT_MAX_CPUS; c++) {
