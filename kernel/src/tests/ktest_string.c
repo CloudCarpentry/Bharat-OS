@@ -1,4 +1,4 @@
-#include <lib/string.h>
+#include <lib/base/string.h>
 #include <tests/ktest.h>
 #include <stdint.h>
 #include <stddef.h>

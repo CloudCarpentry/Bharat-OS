@@ -8,6 +8,7 @@ add_library(hal_common OBJECT
     ../common/power/null_power.c
     ../common/power/null_thermal.c
     ../common/memops/memops_fallback.c
+    ../common/hash/hash_fallback.c
 )
 
 target_include_directories(hal_common PRIVATE 

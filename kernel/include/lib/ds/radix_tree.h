@@ -23,6 +23,7 @@
  * @brief Node within the radix tree.
  */
 typedef struct radix_node {
+    uint16_t valid_children; /* Bitmap of allocated children for fast traversal */
     struct radix_node *children[RADIX_TREE_NODES];
     void *value; /* Value stored at the node (e.g., capability or memory map) */
 } radix_node_t;
