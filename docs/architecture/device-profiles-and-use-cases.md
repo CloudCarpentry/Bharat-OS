@@ -4,11 +4,13 @@ This document maps Bharat-OS architectural features to practical deployment clas
 
 ## Profile model
 
-Bharat-OS uses profile-oriented tuning to keep a shared kernel spine while changing policy and scale assumptions:
+Bharat-OS uses profile-oriented tuning to keep a shared kernel spine while changing policy and scale assumptions. The architecture specifically scales down through formal profiles rather than a messy half-port.
 
-- **RTOS profile:** smallest footprint and bounded behavior.
-- **EDGE profile:** constrained power/thermal envelopes with mixed criticality workloads.
-- **DESKTOP/SERVER profile:** broader throughput and service composition goals.
+The three primary delivery tiers are:
+
+- **Bharat-OS Nano (Micro-profile / RTOS):** Smallest footprint and bounded behavior. Designed for Hercules/C2000 class where full OS features are not viable. Single-core, static memory pools, MPU/MMU-lite, minimal IPC.
+- **Bharat-OS Edge (Mid-edge):** Constrained power/thermal envelopes with mixed criticality workloads. Designed for AM2x/Cortex-R class. Includes bounded multiservice architecture, telemetry, watchdog, power hooks, and fault domains.
+- **Bharat-OS Full (Desktop/Server/Cloud):** Broader throughput and service composition goals. Designed for AM6x and above. Includes SMP, full VM, rich networking/storage, and broad service graphs.
 
 ## Cross-profile architectural strengths (current baseline)
 
@@ -49,7 +51,7 @@ Bharat-OS uses profile-oriented tuning to keep a shared kernel spine while chang
 **Gaps / roadmap**
 
 - Stronger real-time scheduling guarantees and admission control.
-- More complete fault containment and recovery semantics for safety-critical subsystems.
+- More complete fault containment and recovery semantics for safety-critical subsystems via explicit fault domains and restart metadata.
 
 ### 3) Network appliances and edge gateways
 
@@ -62,6 +64,7 @@ Bharat-OS uses profile-oriented tuning to keep a shared kernel spine while chang
 
 - Mature high-throughput network stack/data plane acceleration.
 - Better asynchronous eventing and device-interrupt integration depth.
+- Standardized IPC/uRPC message classes (control, dataplane, telemetry) to cut code duplication.
 
 ### 4) Data-center and clustered services
 
@@ -99,10 +102,7 @@ These are architectural influences rather than claims of implementation equivale
 
 **Planned profile set**
 
-- `BHARAT_PROFILE_AUTOMOTIVE_SAFETY_RT`
-- `BHARAT_PROFILE_AUTOMOTIVE_CONTROL`
-- `BHARAT_PROFILE_AUTOMOTIVE_GATEWAY`
-- `BHARAT_PROFILE_AUTOMOTIVE_AI_EDGE`
+- `PROFILE_AUTOMOTIVE`
 
 **Gaps / roadmap**
 
