@@ -4,9 +4,9 @@ This document tracks where cryptography or hashing logic currently operates in s
 
 ## Subsystems
 
-### 1. Crypto Service (`services/crypto/dispatch.c`, `crypto_service.h`)
+### 1. Crypto Service (`services/security/crypto/dispatch.c`, `crypto_service.h`)
 The Crypto service is currently stubbed to handle requests in software via `handle_hash_init`, `handle_hash_update`, etc.
-*   **File:** `services/crypto/dispatch.c`, `services/crypto/crypto_service.h`
+*   **File:** `services/security/crypto/dispatch.c`, `services/security/crypto/crypto_service.h`
 *   **Context:** Handling crypto opcodes (`CRYPTO_OP_HASH_INIT`, `CRYPTO_OP_AEAD_SEAL`) in user-space.
 *   **Improvement Suggestion:**
     *   **Hardware / Accelerator Offload:** Integrate hardware cryptography offloading (via `services/accelmgr` or direct device assignments). Replace generic software algorithms with CPU extensions where offload hardware is unavailable:

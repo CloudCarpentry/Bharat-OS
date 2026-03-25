@@ -482,7 +482,7 @@ The following features require core kernel modifications (e.g., RT scheduler, ne
 * Tests: `tests/host/services/test_power_mode_state_machine.c`, `tests/host/services/test_power_mode_callbacks.c`, `tests/host/services/test_power_mode_limp_home.c`.
 
 **3. Diagnostics/DTC service**
-* Files: `services/include/services/diag/diag_event.h`, `services/include/services/diag/diag_protocol.h`, `services/diag/main.c`, `services/diag/store.c`, `services/diag/debounce.c`, `services/diag/freeze_frame.c`.
+* Files: `services/include/services/system/diag/diag_event.h`, `services/include/services/system/diag/diag_protocol.h`, `services/system/diag/main.c`, `services/system/diag/store.c`, `services/system/diag/debounce.c`, `services/system/diag/freeze_frame.c`.
 * Interfaces: `diag_severity_t`, `diag_event_t`.
 * Tests: `tests/host/services/test_diag_debounce.c`, `tests/host/services/test_diag_store.c`.
 

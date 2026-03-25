@@ -48,10 +48,10 @@ add_test(NAME host_test_power_mode_callbacks COMMAND test_power_mode_callbacks)
 add_test(NAME host_test_power_mode_limp_home COMMAND test_power_mode_limp_home)
 
 # Phase 1: Diag Tests
-add_executable(test_diag_store services/test_diag_store.c ../../services/diag/store.c)
+add_executable(test_diag_store services/test_diag_store.c ../../services/system/diag/store.c)
 target_include_directories(test_diag_store PRIVATE ../../services/include)
 
-add_executable(test_diag_debounce services/test_diag_debounce.c ../../services/diag/debounce.c ../../services/diag/store.c)
+add_executable(test_diag_debounce services/test_diag_debounce.c ../../services/system/diag/debounce.c ../../services/system/diag/store.c)
 target_include_directories(test_diag_debounce PRIVATE ../../services/include)
 
 add_test(NAME host_test_diag_store COMMAND test_diag_store)
