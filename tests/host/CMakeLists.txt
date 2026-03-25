@@ -9,7 +9,7 @@ add_executable(test_can_filter_compile drivers/test_can_filter_compile.c ../../d
 target_include_directories(test_can_filter_compile PRIVATE ../../drivers/include ../../stacks/include)
 
 add_executable(test_can_controller_core drivers/test_can_controller_core.c ../../drivers/class/can/can_controller_core.c)
-target_include_directories(test_can_controller_core PRIVATE ../../drivers/include)
+target_include_directories(test_can_controller_core PRIVATE ../../drivers/include ../../stacks/include)
 
 add_executable(test_can_route stacks/can/test_can_route.c)
 target_include_directories(test_can_route PRIVATE ../../stacks/include)
@@ -21,7 +21,7 @@ add_executable(test_can_gateway services/test_can_gateway.c)
 target_include_directories(test_can_gateway PRIVATE ../../services/include)
 
 add_executable(test_can_busoff_recovery services/test_can_busoff_recovery.c ../../drivers/class/can/can_controller_core.c ../../drivers/devices/virt_can/virt_can.c)
-target_include_directories(test_can_busoff_recovery PRIVATE ../../drivers/include)
+target_include_directories(test_can_busoff_recovery PRIVATE ../../drivers/include ../../stacks/include)
 
 add_test(NAME host_test_can_filter COMMAND test_can_filter)
 add_test(NAME host_test_can_filter_compile COMMAND test_can_filter_compile)
@@ -113,14 +113,14 @@ target_include_directories(benchmark_actuator PRIVATE ../../drivers/include)
 add_test(NAME host_benchmark_actuator COMMAND benchmark_actuator)
 
 # Phase 3: Core Scheduler Tests
-add_executable(test_sched test_sched.c)
-target_include_directories(test_sched PRIVATE ../../kernel/include)
+add_executable(test_sched test_sched.c host_stubs.c ../../lib/rbtree/rbtree.c)
+target_include_directories(test_sched PRIVATE ../../kernel/include ../../include ../../lib/include)
 
 add_test(NAME host_test_sched COMMAND test_sched)
 
 # Phase 3: Core IPC/Profile Tests
 add_executable(test_ipc_profile test_ipc_profile.c ../../kernel/src/profile/profile.c ../../kernel/src/ipc/ipc_traffic.c)
-target_include_directories(test_ipc_profile PRIVATE ../../kernel/include)
+target_include_directories(test_ipc_profile PRIVATE ../../kernel/include ../../include ../../lib/include)
 add_test(NAME host_test_ipc_profile COMMAND test_ipc_profile)
 
 # Phase 3: Crypto Tests
@@ -130,35 +130,35 @@ target_include_directories(test_secure_mem PRIVATE ../../kernel/include)
 add_test(NAME host_test_secure_mem COMMAND test_secure_mem)
 # Phase 3: NetMgr Tests
 add_executable(test_netmgr_address_table services/test_netmgr_address_table.c ../../services/netmgr/src/address_table.c ../../lib/runtime/src/freestanding_string.c)
-target_include_directories(test_netmgr_address_table PRIVATE ../../services/netmgr/src ../../services/core/subsysmgr/include ../../lib/net/include ../../lib/runtime/include)
+target_include_directories(test_netmgr_address_table PRIVATE ../../services/netmgr/src ../../services/netmgr/include ../../services/core/subsysmgr/include ../../lib/net/include ../../lib/runtime/include)
 add_test(NAME host_test_netmgr_address_table COMMAND test_netmgr_address_table)
 
 add_executable(test_pmm_pcache test_pmm_pcache.c ../../kernel/src/mm/pmm/pmm.c ../../kernel/src/mm/pmm/pmm_pcache.c ../../kernel/src/mm/pmm/numa.c)
-target_include_directories(test_pmm_pcache PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/kernel/src ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(test_pmm_pcache PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/kernel/src ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/lib/include ${CMAKE_SOURCE_DIR}/boot/include)
 add_test(NAME host_test_pmm_pcache COMMAND test_pmm_pcache)
 add_executable(test_netmgr_interface_table services/test_netmgr_interface_table.c ../../services/netmgr/src/interface_table.c ../../lib/runtime/src/freestanding_string.c)
-target_include_directories(test_netmgr_interface_table PRIVATE ../../services/netmgr/src ../../services/core/subsysmgr/include ../../lib/net/include ../../lib/runtime/include)
+target_include_directories(test_netmgr_interface_table PRIVATE ../../services/netmgr/src ../../services/netmgr/include ../../services/core/subsysmgr/include ../../lib/net/include ../../lib/runtime/include)
 add_test(NAME host_test_netmgr_interface_table COMMAND test_netmgr_interface_table)
 
 # Memory host conformance expansion (2026-03-23)
 # HAL contracts + generic PT/TLB contracts
 add_executable(host_test_hal_pt_common ../../tests/mm/pt_common_tests.c ../../hal/hal_pt.c)
-target_include_directories(host_test_hal_pt_common PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(host_test_hal_pt_common PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/boot/include)
 add_test(NAME host_test_hal_pt_common COMMAND host_test_hal_pt_common)
 
 add_executable(host_test_hal_pt_fallbacks ../../tests/test_hal_pt_fallbacks.c ../../hal/hal_pt.c)
-target_include_directories(host_test_hal_pt_fallbacks PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(host_test_hal_pt_fallbacks PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/boot/include)
 add_test(NAME host_test_hal_pt_fallbacks COMMAND host_test_hal_pt_fallbacks)
 
 add_executable(host_test_hal_caps_consistency ../../tests/test_hal_caps_consistency.c ../../hal/hal_pt.c)
-target_include_directories(host_test_hal_caps_consistency PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(host_test_hal_caps_consistency PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/boot/include)
 add_test(NAME host_test_hal_caps_consistency COMMAND host_test_hal_caps_consistency)
 
 # VMM / ASpace / VM base-object conformance currently remains in top-level tests
 # (`test_vmm_aspace`) due additional prot-domain and arch-cap dependencies.
 
-add_executable(host_test_vmm_fault ../test_vmm_fault.c ../../kernel/src/mm/vm/fault/fault.c ../../kernel/src/mm/vm/objects/vm_object.c ../../kernel/src/mm/vm/objects/vm_object_refcount.c ../../kernel/src/mm/vm/aspace/vm_space.c ../../kernel/src/mm/vm/aspace/aspace.c ../../kernel/src/mm/pmm/early_alloc.c ../../kernel/src/mm/pmm/pmm.c ../../kernel/src/mm/pmm/pt_pool.c ../../kernel/src/mm/tlb/tlb_shootdown.c ../../kernel/src/capability.c ../../kernel/src/cap/cap_policy.c ../benchmark_stubs.c ../../kernel/src/lib/base/string.c mock_panic.c)
-target_include_directories(host_test_vmm_fault PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/kernel/src ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/generated/include)
+add_executable(host_test_vmm_fault ../test_vmm_fault.c host_stubs.c ../../kernel/src/mm/vm/fault/fault.c ../../kernel/src/mm/vm/objects/vm_object.c ../../kernel/src/mm/vm/objects/vm_object_refcount.c ../../kernel/src/mm/vm/aspace/vm_space.c ../../kernel/src/mm/vm/aspace/aspace.c ../../kernel/src/mm/pmm/early_alloc.c ../../kernel/src/mm/pmm/pmm.c ../../kernel/src/mm/pmm/pt_pool.c ../../kernel/src/mm/tlb/tlb_shootdown.c ../../kernel/src/capability.c ../../kernel/src/cap/cap_policy.c ../benchmark_stubs.c ../../kernel/src/lib/base/string.c ../../arch/common/memops_scalar.c mock_panic.c)
+target_include_directories(host_test_vmm_fault PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/kernel/src ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/boot/include ${CMAKE_SOURCE_DIR}/lib/include ${CMAKE_BINARY_DIR}/generated/include)
 target_compile_definitions(host_test_vmm_fault PRIVATE TESTING=1)
 add_test(NAME host_test_vmm_fault COMMAND host_test_vmm_fault)
 

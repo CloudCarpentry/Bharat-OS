@@ -187,6 +187,7 @@ void sched_init(void);
 kprocess_t* process_create(const char* name);
 int process_destroy(kprocess_t* process);
 kthread_t* thread_create(kprocess_t* parent, void (*entry_point)(void));
+kthread_t* thread_create_detached(kprocess_t* parent, void (*entry_point)(void));
 int thread_destroy(kthread_t* thread);
 
 // Current Context Helpers

@@ -8,9 +8,6 @@
 #include "../kernel/include/boot/boot_mode.h"
 #include <stdlib.h>
 
-void test_device_dma_dump(void) {
-}
-
 // Stubs for kernel_boot calls
 int bharat_secure_boot_verify_early(void) { return 0; }
 int bharat_audit_init(void) { return 0; }
@@ -18,12 +15,12 @@ int bharat_credentials_init(void) { return 0; }
 int bharat_isolation_init(void) { return 0; }
 int bharat_policy_init(int mode) { return 0; }
 int bharat_secure_boot_stage_hook(bharat_boot_stage_t stage, uint64_t magic) { return 0; }
-void algo_matrix_init(void) {}
 
-int boot_selftest_run_stage(bharat_boot_stage_t stage) { (void)stage; return 0; }
-void test_device_dma_dump(void) {}
-bharat_boot_mode_t bharat_boot_mode_select(void) { return BHARAT_BOOT_MODE_NORMAL; }
-const char* bharat_boot_mode_name(bharat_boot_mode_t mode) { (void)mode; return "NORMAL"; }
+bool boot_validate_all(boot_info_t* bi) { return true; }
+int boot_mode_resolve(const struct boot_info *bi, bharat_boot_mode_t *out_mode) {
+    if (out_mode) *out_mode = BHARAT_BOOT_MODE_NORMAL;
+    return 0;
+}
 
 // HAL Stubs
 void hal_init(void) {}
@@ -110,19 +107,15 @@ void hal_mmu_final_setup(void) {}
 
 // Lots of stubs for the runtime features being called in boot_common_platform_services
 int ptp_init(void) { return 0; }
-int numa_discover_topology(void) { return 0; }
 int mk_boot_secondary_cores(uint32_t c) { return 0; }
 int mk_init_per_core_channels(uint32_t c, uint32_t q) { return 0; }
 void hal_irq_init_boot(void) {}
 void hal_timer_init(void) {}
-int device_framework_init(void) { return 0; }
 int device_register_builtin_drivers(void) { return 0; }
 void arch_cpu_caps_init(void) {}
 void arch_cpu_caps_system_finalize(void) {}
 void hal_discovery_publish_cpu_caps(void) {}
 void arch_ext_state_boot_init(void) {}
-void sched_init(void) {}
-void ai_sched_calibrate_silicon(void) {}
 void ipc_async_init(void) {}
 int trap_init(void) { return 0; }
 int mk_establish_channel(uint32_t c, void* ch) { return 0; }
@@ -169,10 +162,10 @@ static void test_boot_memory(void) {
     printf("[TEST] Boot Memory initialization\n");
     boot_info_t boot = {0};
     boot.magic = 0xB4A2A705;
-    boot.mem_map_count = 1;
-    boot.mem_map[0].phys_start = 0x100000;
-    boot.mem_map[0].size = 0x10000000;
-    boot.mem_map[0].type = BOOT_MEM_USABLE;
+    boot.mem_region_count = 1;
+    boot.mem_regions[0].phys_start = 0x100000;
+    boot.mem_regions[0].size = 0x10000000;
+    boot.mem_regions[0].type = BOOT_MEM_USABLE;
 
     mock_pmm_init_called = 0;
     mock_vmm_init_called = 0;

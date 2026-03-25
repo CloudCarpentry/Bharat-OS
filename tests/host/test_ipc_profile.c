@@ -2,7 +2,7 @@
 #include <assert.h>
 #include <string.h>
 
-#include "profile.h"
+#include "profile/profile.h"
 #include "ipc_endpoint.h"
 
 static void test_profile_helpers(void) {

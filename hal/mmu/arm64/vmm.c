@@ -5,6 +5,8 @@
 #include "../../../kernel/include/mm/prot_domain.h"
 #include "../../../kernel/include/arch/arch_caps.h"
 #include "../../../kernel/include/mm/pmm.h"
+#include "../../../kernel/include/cap/cap_rights.h"
+#include "../../../kernel/include/mm/mm_flags.h"
 #include "../../../kernel/include/capability.h"
 
 #define ARM64_MMU_DEVICE_nGnRnE (0ULL << 2) // MAIR index 0 -> Device-nGnRnE
@@ -128,7 +130,7 @@ int hal_vmm_map_page(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t padd
     uint32_t pt_flags = HAL_PT_FLAG_READ;
     if (flags & MMU_WRITE) pt_flags |= HAL_PT_FLAG_WRITE;
     if (flags & PAGE_USER)       pt_flags |= HAL_PT_FLAG_USER;
-    if (flags & MMU_DEVICE) pt_flags |= HAL_PT_FLAG_DEVICE;
+    if (flags & (CAP_RIGHT_DEVICE_GPU | CAP_RIGHT_DEVICE_NPU)) pt_flags |= HAL_PT_FLAG_DEVICE;
 
     pt_flags |= HAL_PT_FLAG_EXEC;
 
@@ -179,7 +181,7 @@ static uint32_t flags_to_arm64(mmu_flags_t f) {
     if (f & MMU_WRITE)   flags |= MMU_WRITE;
     if (f & MMU_USER)    flags |= PAGE_USER;
     if (f & MMU_COW)     flags |= PAGE_COW;
-    if (f & MMU_DEVICE)  flags |= MMU_DEVICE;
+    if (f & MMU_DEVICE)  flags |= CAP_RIGHT_DEVICE; // Map MMU_DEVICE to CAP_RIGHT_DEVICE
     if (f & MMU_NOCACHE) flags |= ARM64_MMU_NOCACHE_MEM;
     return flags;
 }

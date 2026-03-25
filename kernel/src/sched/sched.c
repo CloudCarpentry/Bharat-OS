@@ -537,7 +537,7 @@ int process_destroy(kprocess_t *process) {
   return 0;
 }
 
-kthread_t *thread_create(kprocess_t *parent, void (*entry_point)(void)) {
+kthread_t *thread_create_detached(kprocess_t *parent, void (*entry_point)(void)) {
   thread_slot_t *slot = sched_find_free_thread_slot();
   if (!slot) {
     return NULL;
@@ -600,11 +600,15 @@ kthread_t *thread_create(kprocess_t *parent, void (*entry_point)(void)) {
     parent->main_thread = &slot->thread;
   }
 
-  if (entry_point != (void (*)(void))sched_idle_task) {
-    (void)sched_enqueue(&slot->thread, slot->thread.bound_core_id);
-  }
-
   return &slot->thread;
+}
+
+kthread_t *thread_create(kprocess_t *parent, void (*entry_point)(void)) {
+  kthread_t *thread = thread_create_detached(parent, entry_point);
+  if (thread && entry_point != (void (*)(void))sched_idle_task) {
+    (void)sched_enqueue(thread, thread->bound_core_id);
+  }
+  return thread;
 }
 
 int thread_destroy(kthread_t *thread) {

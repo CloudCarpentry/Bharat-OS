@@ -23,4 +23,7 @@ void *arch_memcpy_scalar(void *dst, const void *src, size_t n);
 void *arch_memset_scalar(void *dst, int c, size_t n);
 void *arch_memmove_scalar(void *dst, const void *src, size_t n);
 
+/* Tier-0 primitives: Guaranteed non-recursive raw memory operations */
+void arch_memset_raw(void *dst, int val, size_t len);
+
 #endif /* BHARAT_ARCH_MEMOPS_H */

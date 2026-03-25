@@ -8,6 +8,8 @@
 #include "../../kernel/include/mm/tlb.h"
 #include "../../kernel/include/hal/mmu_ops.h"
 #include "../../kernel/include/hal/hal_tlb.h"
+#include "../../kernel/include/arch/memops.h"
+#include "../../kernel/include/capability.h"
 
 __attribute__((weak)) int kcache_create(const char *name, size_t obj_size, size_t align) {
     (void)name; (void)obj_size; (void)align;
@@ -37,16 +39,13 @@ static phys_addr_t fake_alloc_page(int node) {
 }
 
 static void fake_zero_page(phys_addr_t paddr, size_t size) {
-    // Avoid recursive __builtin_memset loop if the compiler does something weird, just loop.
-    uint8_t *dst = (uint8_t *)(uintptr_t)paddr;
-    for (size_t i = 0; i < size; i++) {
-        dst[i] = 0;
-    }
+    // Utilize proper Tier-0 memops primitive that prevents infinite memset recursion
+    arch_memset_raw((void *)(uintptr_t)paddr, 0, size);
 }
 
 __attribute__((weak)) uint16_t numa_get_current_node(void) { return 0; }
-__attribute__((weak)) void *sched_current_thread(void) { return NULL; }
-__attribute__((weak)) void sched_ai_apply_suggestion(void) {}
+__attribute__((weak)) kthread_t *sched_current_thread(void) { return NULL; }
+__attribute__((weak)) int sched_ai_apply_suggestion(const ai_suggestion_t* suggestion) { return 0; }
 __attribute__((weak)) void hal_mm_get_zone_limits(void) {}
 __attribute__((weak)) void *hal_get_system_discovery(void) { return NULL; }
 __attribute__((weak)) void pt_cache_init(void) {}
@@ -171,13 +170,13 @@ TEST(fault_permission_denied) {
     vm_fault_event_t event = {
         .aspace = as,
         .fault_addr = 0x1000,
-        .access = CAP_RIGHT_WRITE, // requested write, region is read-only
+        .access = VM_FAULT_WRITE, // requested write, region is read-only
         .arch_code = 0
     };
 
     ASSERT_EQ(vm_handle_fault(&event), VM_FAULT_KILL);
 
-    event.access = CAP_RIGHT_EXECUTE;
+    event.access = VM_FAULT_EXEC;
     ASSERT_EQ(vm_handle_fault(&event), VM_FAULT_KILL);
 
     aspace_destroy(as);
@@ -198,7 +197,7 @@ TEST(fault_object_resolution_failure) {
     vm_fault_event_t event = {
         .aspace = as,
         .fault_addr = 0x1000,
-        .access = CAP_RIGHT_READ,
+        .access = VM_FAULT_READ,
         .arch_code = 0
     };
 
@@ -221,7 +220,7 @@ TEST(fault_success_path) {
     vm_fault_event_t event = {
         .aspace = as,
         .fault_addr = 0x1000,
-        .access = CAP_RIGHT_READ | CAP_RIGHT_WRITE,
+        .access = VM_FAULT_READ | VM_FAULT_WRITE,
         .arch_code = 0
     };
 
@@ -251,7 +250,7 @@ TEST(fault_backend_repair_failure) {
     vm_fault_event_t event = {
         .aspace = as,
         .fault_addr = 0x1000,
-        .access = CAP_RIGHT_READ,
+        .access = VM_FAULT_READ,
         .arch_code = 0
     };
 
