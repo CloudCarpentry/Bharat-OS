@@ -682,6 +682,20 @@ void cap_unlock_tables_sorted(capability_table_t** tables, size_t count) {
     }
 }
 
+static bool cap_table_pointer_is_known(const capability_table_t* table) {
+    if (table == NULL) {
+        return false;
+    }
+
+    for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_cpu_locals); ++i) {
+        if (&g_cpu_locals[i].cap_table == table) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
     if (!BHARAT_PTR_NON_NULL(table) || cap_id == 0U) {
         return -1;
@@ -757,6 +771,9 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
                 cap_handle_t prev = { .table = NULL, .slot = UINT32_MAX, .generation = 0 };
 
                 while (sibling.table != NULL && sibling.slot != UINT32_MAX) {
+                    if (sibling.table != table && sibling.table != parent_table) {
+                        break;
+                    }
                     // Sanity check to avoid bounds violation
                     if (sibling.slot >= BHARAT_ARRAY_SIZE(sibling.table->entries)) {
                         break;
@@ -840,6 +857,10 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
 
     while (sp > 0) {
         cap_handle_t frame = stack[--sp];
+
+        if (!cap_table_pointer_is_known(frame.table)) {
+            continue;
+        }
 
         spin_lock(&frame.table->lock);
 
