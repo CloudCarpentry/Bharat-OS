@@ -233,6 +233,12 @@ if(BHARAT_ENABLE_IOMMU)
     )
     target_link_libraries(bharat_mm_iommu PRIVATE bharat_kernel_includes)
     target_compile_options(bharat_mm_iommu PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
+else()
+    add_library(bharat_mm_iommu_fallback OBJECT
+        src/mm/iommu/iommu_fallback.c
+    )
+    target_link_libraries(bharat_mm_iommu_fallback PRIVATE bharat_kernel_includes)
+    target_compile_options(bharat_mm_iommu_fallback PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
 endif()
 
 # Accelerator Memory Support
@@ -409,6 +415,7 @@ add_executable(kernel.elf
     $<TARGET_OBJECTS:bharat_mm_accel>
     $<TARGET_OBJECTS:bharatos_driver_accel>
     $<$<BOOL:${BHARAT_ENABLE_IOMMU}>:$<TARGET_OBJECTS:bharat_mm_iommu>>
+    $<$<NOT:$<BOOL:${BHARAT_ENABLE_IOMMU}>>:$<TARGET_OBJECTS:bharat_mm_iommu_fallback>>
     $<TARGET_OBJECTS:bharat_mm_pmm>
     $<TARGET_OBJECTS:bharat_librbtree_obj>
     $<TARGET_OBJECTS:k_core>
