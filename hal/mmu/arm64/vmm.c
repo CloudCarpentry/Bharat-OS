@@ -5,8 +5,6 @@
 #include "../../../kernel/include/mm/prot_domain.h"
 #include "../../../kernel/include/arch/arch_caps.h"
 #include "../../../kernel/include/mm/pmm.h"
-#include "../../../kernel/include/cap/cap_rights.h"
-#include "../../../kernel/include/mm/mm_flags.h"
 #include "../../../kernel/include/capability.h"
 
 #define ARM64_MMU_DEVICE_nGnRnE (0ULL << 2) // MAIR index 0 -> Device-nGnRnE
