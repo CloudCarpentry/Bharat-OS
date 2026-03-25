@@ -206,7 +206,7 @@ long syscall_dispatch(syscall_id_t id, uint64_t arg0, uint64_t arg1,
   case SYSCALL_THREAD_DESTROY:
     return SYSCALL_RET_FROM_STATUS(sched_sys_thread_destroy(arg0), SYS_ENOENT);
   case SYSCALL_SCHED_YIELD:
-    sched_yield();
+    kthread_yield();
     return TRAP_SUCCESS;
   case SYSCALL_SCHED_SLEEP:
     return SYSCALL_RET_FROM_STATUS(sched_sys_sleep(arg0), SYS_EIO);
@@ -311,9 +311,9 @@ int trap_dispatch(trap_frame_t *frame, const trap_info_t *info) {
                                   trap_device_irq_dispatch, NULL);
 
     if (info->trap_class == TRAP_CLASS_IPI) {
-        // IPI could be a remote enqueue notification. We call sched_reschedule
+        // IPI could be a remote enqueue notification. We call kthread_yield
         // to drain the remote inbox and possibly preempt the current thread.
-        sched_reschedule();
+        kthread_yield();
     }
     return 0;
   }

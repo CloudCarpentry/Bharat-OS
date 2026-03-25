@@ -2,8 +2,8 @@
 #include <assert.h>
 #include <stdio.h>
 
-#include "../kernel/include/advanced/ai_kernel_bridge.h"
-#include "../kernel/include/sched.h"
+#include "../kernel/staging/ai/ai_kernel_bridge.h"
+#include "../kernel/include/sched/sched.h"
 
 void ipc_async_check_timeouts(uint64_t current_ticks) {
     (void)current_ticks;
@@ -59,7 +59,7 @@ int main(void) {
     assert(updated != NULL);
     assert(updated->priority == 7U);
 
-    sched_yield();
+    kthread_yield();
     assert(sched_current_thread() != NULL);
 
     assert(numa_discover_topology() == 0);

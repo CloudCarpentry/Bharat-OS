@@ -3,7 +3,7 @@
 #include <stdio.h>
 
 #include "../kernel/include/benchmark/benchmark.h"
-#include "../kernel/include/sched.h"
+#include "../kernel/include/sched/sched.h"
 #include "../kernel/include/hal/hal.h"
 
 static uint32_t g_mock_core_id = 0;
