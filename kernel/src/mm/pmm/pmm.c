@@ -304,14 +304,28 @@ static void *pmm_alloc_pages_order_colored(int order, uint32_t numa_node,
   return NULL;
 }
 
-int pmm_alloc_pages(uint32_t order, pmm_zone_t zone, uint32_t alloc_flags, pmm_block_t *out_block) {
+#if defined(BHARAT_ENABLE_MEMORY_STATS) && BHARAT_ENABLE_MEMORY_STATS == 1
+static uint64_t g_alloc_class_stats[8][2]; // [class][0=allocs, 1=failures]
+#define PMM_STATS_RECORD_ALLOC(cls) do { if ((cls) < 8) __atomic_fetch_add(&g_alloc_class_stats[(cls)][0], 1, __ATOMIC_RELAXED); } while(0)
+#define PMM_STATS_RECORD_FAIL(cls) do { if ((cls) < 8) __atomic_fetch_add(&g_alloc_class_stats[(cls)][1], 1, __ATOMIC_RELAXED); } while(0)
+#else
+#define PMM_STATS_RECORD_ALLOC(cls) do { } while(0)
+#define PMM_STATS_RECORD_FAIL(cls) do { } while(0)
+#endif
+
+int pmm_alloc_pages_ex(uint32_t order, pmm_zone_t zone, alloc_class_t cls, uint32_t alloc_flags, pmm_block_t *out_block) {
   if (!out_block) return -1;
   if (order >= MAX_ORDER) return -1;
 
   mm_color_config_t no_color_config = {.policy = MM_COLOR_POLICY_NONE, .domain = MM_DOMAIN_DEFAULT, .color_mask = 0xFFFFFFFF};
   phys_addr_t phys = pmm_alloc_pages_colored_in_zone(order, NUMA_NODE_ANY, PAGE_FLAG_KERNEL, &no_color_config, zone);
 
-  if (phys == 0) return -1;
+  if (phys == 0) {
+      PMM_STATS_RECORD_FAIL(cls);
+      return -1;
+  }
+
+  PMM_STATS_RECORD_ALLOC(cls);
 
   page_t *p = phys_to_page(phys);
   if (!p) return -1;
@@ -324,6 +338,7 @@ int pmm_alloc_pages(uint32_t order, pmm_zone_t zone, uint32_t alloc_flags, pmm_b
   out_block->order = order;
   out_block->page_count = (1ULL << order);
   out_block->flags = alloc_flags;
+  out_block->alloc_class = cls;
 
   if (alloc_flags & PMM_ALLOC_ZERO) {
     if (mm_zero_phys_range(phys, (1ULL << order) * PAGE_SIZE) != 0) {
@@ -335,7 +350,7 @@ int pmm_alloc_pages(uint32_t order, pmm_zone_t zone, uint32_t alloc_flags, pmm_b
   return 0;
 }
 
-int pmm_alloc_contiguous(uint32_t page_count, pmm_zone_t zone, uint32_t alloc_flags, pmm_block_t *out_block) {
+int pmm_alloc_contiguous_ex(uint32_t page_count, pmm_zone_t zone, alloc_class_t cls, uint32_t alloc_flags, pmm_block_t *out_block) {
   if (page_count == 0 || !out_block) return -1;
 
   // Fast path: power of two
@@ -345,14 +360,14 @@ int pmm_alloc_contiguous(uint32_t page_count, pmm_zone_t zone, uint32_t alloc_fl
   }
 
   if ((1ULL << order) == page_count) {
-    return pmm_alloc_pages(order, zone, alloc_flags, out_block);
+    return pmm_alloc_pages_ex(order, zone, cls, alloc_flags, out_block);
   }
 
   if (order >= MAX_ORDER) return -1;
 
   // Over-allocate and free tails
   pmm_block_t big_block;
-  if (pmm_alloc_pages(order, zone, alloc_flags, &big_block) != 0) {
+  if (pmm_alloc_pages_ex(order, zone, cls, alloc_flags, &big_block) != 0) {
     return -1;
   }
 
@@ -364,6 +379,7 @@ int pmm_alloc_contiguous(uint32_t page_count, pmm_zone_t zone, uint32_t alloc_fl
   out_block->order = 0; // It's no longer a buddy block
   out_block->page_count = page_count;
   out_block->flags = alloc_flags;
+  out_block->alloc_class = cls;
 
   // Free trailing pages manually
   for (uint32_t i = page_count; i < allocated_pages; i++) {
@@ -771,7 +787,7 @@ int mm_pmm_init(uint32_t magic, const boot_info_t *boot) {
 phys_addr_t mm_alloc_page(uint32_t preferred_numa_node) {
   pmm_block_t block;
   (void)preferred_numa_node;
-  if (pmm_alloc_pages(0, PMM_ZONE_ANY, PMM_ALLOC_NONE, &block) == 0) {
+  if (pmm_alloc_pages_ex(0, PMM_ZONE_ANY, MEM_NORMAL, PMM_ALLOC_NONE, &block) == 0) {
     page_t *p = phys_to_page(block.phys_addr);
     if (p) p->owner_class = PMM_OWNER_CLASS_KERNEL;
     return block.phys_addr;
@@ -792,7 +808,7 @@ int mm_alloc_dma_pages(size_t size, uint32_t preferred_numa_node,
   pmm_zone_t zone = (dma_flags & BHARAT_DMA_32BIT_ONLY) ? PMM_ZONE_DMA32 : PMM_ZONE_ANY;
   uint32_t alloc_flags = (dma_flags & BHARAT_DMA_ZERO) ? PMM_ALLOC_ZERO : PMM_ALLOC_NONE;
 
-  if (pmm_alloc_contiguous((uint32_t)num_pages, zone, alloc_flags, &block) != 0) {
+  if (pmm_alloc_contiguous_ex((uint32_t)num_pages, zone, MEM_DMA, alloc_flags, &block) != 0) {
       return -1;
   }
 
@@ -1021,22 +1037,22 @@ void mm_inc_page_ref(phys_addr_t page_addr) { (void)page_addr; }
 #endif
 
 // Explicit wrappers
-void *pmm_alloc_page(uint32_t flags) {
+void *pmm_alloc_page_ex(alloc_class_t cls, uint32_t flags) {
     pmm_block_t block;
-    if (pmm_alloc_pages(0, PMM_ZONE_ANY, flags, &block) == 0) {
+    if (pmm_alloc_pages_ex(0, PMM_ZONE_ANY, cls, flags, &block) == 0) {
         return (void*)block.phys_addr;
     }
     return NULL;
 }
 
-void *pmm_alloc_zeroed_page(uint32_t flags) {
-    return pmm_alloc_page(flags | PMM_ALLOC_ZERO);
+void *pmm_alloc_zeroed_page_ex(alloc_class_t cls, uint32_t flags) {
+    return pmm_alloc_page_ex(cls, flags | PMM_ALLOC_ZERO);
 }
 
-void *pmm_alloc_contig(size_t npages, size_t align_pages, uint32_t flags) {
+void *pmm_alloc_contig_ex(size_t npages, size_t align_pages, alloc_class_t cls, uint32_t flags) {
     (void)align_pages; // Assuming natural alignment or buddy block behavior handles it natively for now
     pmm_block_t block;
-    if (pmm_alloc_contiguous((uint32_t)npages, PMM_ZONE_ANY, flags, &block) == 0) {
+    if (pmm_alloc_contiguous_ex((uint32_t)npages, PMM_ZONE_ANY, cls, flags, &block) == 0) {
         return (void*)block.phys_addr;
     }
     return NULL;
