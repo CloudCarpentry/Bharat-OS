@@ -182,6 +182,10 @@ struct kprocess {
 
 // Scheduler Core
 void sched_init(void);
+#if defined(TESTING)
+void sched_test_reset(void);
+void sched_set_test_core_count(uint32_t core_count);
+#endif
 
 // Create process and main thread
 kprocess_t* process_create(const char* name);
