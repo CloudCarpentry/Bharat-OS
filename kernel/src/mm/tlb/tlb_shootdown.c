@@ -7,7 +7,7 @@
 #include "../../../include/kernel.h"
 #include "../../../include/arch/cpu_relax.h"
 #include "../../../include/panic.h"
-#include "../../../include/bharat/console.h"
+#include "bharat/console.h"
 #include "../../../include/bharat/urpc.h"
 #include "tlb_pending.h"
 #include "../../../include/arch/arch_caps.h"

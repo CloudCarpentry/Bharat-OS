@@ -5,7 +5,8 @@
 #include "../kernel/include/sched/sched.h"
 #include "../kernel/include/ipc_async.h"
 
-void arch_post_switch(void);
+void arch_post_switch(void) {}
+void sched_reschedule(void) {}
 
 static uint32_t g_mock_core_id = 0;
 static uint32_t g_aspace_destroy_calls = 0;

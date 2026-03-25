@@ -7,14 +7,15 @@
 #define TESTING 1
 
 #include "../../kernel/include/hal/hal.h"
-#include "../../kernel/include/sched.h"
+#include "../../kernel/include/sched/sched.h"
 #include "../../kernel/include/bharat/cpu_local.h"
 #include "../../kernel/include/slab.h"
-#include "../../kernel/include/advanced/ai_sched.h"
+#include "../../kernel/include/sched/ai_sched.h"
 #include "../../kernel/include/ipc_async.h"
 #include "../../kernel/include/arch/arch_ext_state.h"
 #include "../../kernel/include/mm/mm_aspace_switch.h"
 #include "../../kernel/include/capability.h"
+#include "../../kernel/include/core/multikernel.h"
 
 // --- Global variables for mocks ---
 #define MAX_SUPPORTED_CORES 8U
@@ -22,9 +23,9 @@ cpu_local_t g_cpu_locals[MAX_CPUS];
 
 // --- Mocking basic kernel functions ---
 
-uint32_t hal_cpu_get_id(void) {
-    return 0; // Simulate running on core 0
-}
+// Removed hal_cpu_get_id, hal_cpu_disable_interrupts, hal_cpu_enable_interrupts,
+// hal_send_ipi_payload, kernel_panic, mk_get_channel, and mk_send_message
+// because they are now provided by host_stubs.c.
 
 void hal_cpu_halt(void) {
     // Should not be called in test
@@ -114,7 +115,7 @@ void vm_debug_validate_active_tracking(void) {
 }
 
 // Ensure the inclusion compiles our actual object code
-#include "../../kernel/src/sched.c"
+#include "../../kernel/src/sched/sched.c"
 
 // --- Tests ---
 
@@ -169,17 +170,17 @@ void test_thread_pick_next_ready() {
         sched_pick_next_ready(0);
     }
 
-    // Create higher priority thread
-    kthread_t* t1 = thread_create(proc, mock_task_entry);
+    // Create higher priority thread (detached prevents auto-enqueue and avoids double-counting)
+    kthread_t* t1 = thread_create_detached(proc, mock_task_entry);
     t1->priority = 5;
     sched_enqueue(t1, 0); // Re-enqueue with new priority
 
     // Create lower priority thread
-    kthread_t* t2 = thread_create(proc, mock_task_entry);
+    kthread_t* t2 = thread_create_detached(proc, mock_task_entry);
     t2->priority = 2;
     sched_enqueue(t2, 0);
 
-    // Expected runnable count will be 2
+    // Invariant: runnable_count tracks how many tasks are ON the runqueue (not currently running)
     assert(g_cpu_locals[0].runqueue.runnable_count == 2);
 
     // Policy default is PRIORITY
@@ -187,7 +188,8 @@ void test_thread_pick_next_ready() {
     assert(picked == t1); // Priority 5 is higher
 
     thread_slot_t* slot1 = sched_find_thread_slot_by_tid(t1->thread_id);
-    assert(slot1->is_on_runqueue == 0);
+    assert(slot1->is_on_runqueue == 0); // Popped off queue during pick
+    // Running thread (t1) is no longer on the run queue
     assert(g_cpu_locals[0].runqueue.runnable_count == 1);
 
     picked = sched_pick_next_ready(0);
