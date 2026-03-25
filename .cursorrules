@@ -1,0 +1,24 @@
+# Bharat-OS Kernel Development - Cursor Rules
+
+## General Context
+Bharat-OS is a multi-profile operating system (RTOS to Datacenter).
+Focus on micro-architectural efficiency and hardware-aware programming.
+
+## Strict Requirements
+- **Standard**: C23 (ISO/IEC 9899:2024).
+- **HAL**: Architecture-specific code ONLY in `kernel/hal/`.
+- **Modern C**: Use `nullptr`, `constexpr`, `_BitInt`, and `stdbit.h`.
+- **Memory**: No dynamic allocation in critical paths. Align to cache lines.
+
+## Build System
+- Don't bypass the CMake policy module: `cmake/modules/BharatComponentPolicy.cmake`.
+- Feature toggles must be `BHARAT_ENABLE_*`.
+
+## Safety
+- `memset_explicit` for sensitive model weights/keys.
+- Validate pointers and alignment for DMA.
+
+## Workflow Rules (Strict)
+1. **Research First**: Consult `/docs/architecture` and `/docs/adr` before coding.
+2. **Test Always**: Implement Host/Harness/E2E tests after code completion.
+3. **Doc-sync**: Update documentation in `/docs` to reflect changes.
