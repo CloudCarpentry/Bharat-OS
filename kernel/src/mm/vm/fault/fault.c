@@ -5,6 +5,7 @@
 #include "../../../../include/mm/pmm.h"
 #include "../../../../include/hal/hal_pt.h"
 #include "../../../../include/hal/hal_tlb.h"
+#include "../../../../include/mm/vm_mapping.h"
 #include "../../../../include/mm/tlb.h"
 #include "../../../../include/kernel.h"
 #include "../../../../include/hal/mmu_ops.h"
@@ -71,10 +72,10 @@ vm_fault_result_t vm_handle_fault(const vm_fault_event_t *event) {
                 break;
 
             case FAULT_STATE_CHECK_PERM:
-                if ((ctx.fault_flags & CAP_RIGHT_WRITE) && !(ctx.region->prot & CAP_RIGHT_WRITE)) {
+                if ((ctx.fault_flags & VM_PROT_WRITE) && !(ctx.region->prot & VM_PROT_WRITE)) {
                     ctx.error_code = -2; // Permission fault
                     state = FAULT_STATE_ERROR;
-                } else if ((ctx.fault_flags & CAP_RIGHT_EXECUTE) && !(ctx.region->prot & CAP_RIGHT_EXECUTE)) {
+                } else if ((ctx.fault_flags & VM_PROT_EXEC) && !(ctx.region->prot & VM_PROT_EXEC)) {
                     ctx.error_code = -2; // Execute permission fault
                     state = FAULT_STATE_ERROR;
                 } else {
@@ -100,8 +101,8 @@ vm_fault_result_t vm_handle_fault(const vm_fault_event_t *event) {
 
             case FAULT_STATE_BACKEND_REPAIR: {
                 uint32_t mmu_flags = MMU_USER; // Base common flag
-                if (ctx.page_flags & CAP_RIGHT_WRITE) mmu_flags |= MMU_WRITE;
-                if (ctx.page_flags & CAP_RIGHT_EXECUTE) mmu_flags |= MMU_EXEC;
+                if (ctx.page_flags & VM_PROT_WRITE) mmu_flags |= MMU_WRITE;
+                if (ctx.page_flags & VM_PROT_EXEC) mmu_flags |= MMU_EXEC;
                 // If hal_pt mapped it to generic flags, map MMU_WRITE to HAL_PT_FLAG_WRITE etc
                 uint32_t pt_flags = HAL_PT_FLAG_USER | HAL_PT_FLAG_READ;
                 if (mmu_flags & MMU_WRITE) pt_flags |= HAL_PT_FLAG_WRITE;

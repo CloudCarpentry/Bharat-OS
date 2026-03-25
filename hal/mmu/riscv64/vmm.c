@@ -41,7 +41,7 @@ int hal_vmm_map_page(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t padd
     if (!active_hal_pt) hal_pt_init();
 
     uint32_t pt_flags = HAL_PT_FLAG_READ;
-    if (flags & CAP_RIGHT_WRITE) pt_flags |= HAL_PT_FLAG_WRITE;
+    if (flags & MMU_WRITE) pt_flags |= HAL_PT_FLAG_WRITE;
     if (flags & PAGE_USER)       pt_flags |= HAL_PT_FLAG_USER;
 
     if (flags & (1U << 30)) {
@@ -98,7 +98,7 @@ static phys_addr_t riscv_mmu_clone_kernel(phys_addr_t kernel_root) {
 // Translate generic mmu_flags_t to RISC-V specific VMM flags
 static uint32_t flags_to_riscv(mmu_flags_t f) {
     uint32_t flags = 0;
-    if (f & MMU_WRITE)   flags |= CAP_RIGHT_WRITE;
+    if (f & MMU_WRITE)   flags |= MMU_WRITE;
     if (f & MMU_USER)    flags |= PAGE_USER;
     if (f & MMU_COW)     flags |= PAGE_COW;
     // We store DEVICE/NOCACHE in upper bits of flags to pass to convert_flags_to_riscv
@@ -110,7 +110,7 @@ static uint32_t flags_to_riscv(mmu_flags_t f) {
 // Translate RISC-V specific VMM flags to generic mmu_flags_t
 static mmu_flags_t riscv_to_flags(uint32_t flags) {
     mmu_flags_t f = MMU_READ;
-    if (flags & CAP_RIGHT_WRITE) f |= MMU_WRITE;
+    if (flags & MMU_WRITE) f |= MMU_WRITE;
     if (flags & PAGE_USER)       f |= MMU_USER;
     if (flags & PAGE_COW)        f |= MMU_COW;
     return f;
@@ -341,7 +341,7 @@ int hal_vmm_get_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t* 
 
     if (ret == 0 && flags) {
         *flags = RISCV_PTE_V;
-        if (pt_flags & HAL_PT_FLAG_WRITE) *flags |= CAP_RIGHT_WRITE;
+        if (pt_flags & HAL_PT_FLAG_WRITE) *flags |= MMU_WRITE;
         if (pt_flags & HAL_PT_FLAG_USER)  *flags |= PAGE_USER;
         // In original RISC-V implementation, DEVICE/NOCACHE mappings were preserved/read out manually.
         // We'll just preserve the basic ones for now as required by the old API wrapper.
@@ -354,7 +354,7 @@ int hal_vmm_update_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_
     if (!active_hal_pt) hal_pt_init();
 
     uint32_t pt_flags = HAL_PT_FLAG_READ;
-    if (flags & CAP_RIGHT_WRITE) pt_flags |= HAL_PT_FLAG_WRITE;
+    if (flags & MMU_WRITE) pt_flags |= HAL_PT_FLAG_WRITE;
     if (flags & PAGE_USER)       pt_flags |= HAL_PT_FLAG_USER;
 
     if (flags & (1U << 30)) {
