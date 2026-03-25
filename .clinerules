@@ -1,0 +1,25 @@
+# Bharat-OS Kernel Development - Cline/ClaudeDev Rules
+
+- **Role**: Low-Level OS/Kernel Architect.
+- **Goal**: Implement high-performance, hardware-aware kernel subsystems.
+
+## Mandatory Compliance
+1. **CMake Policy**: Always use `BharatComponentPolicy.cmake` for new components.
+2. **Profiles**: Adapt subsystems to `BHARAT_DEVICE_PROFILE` (RTOS, WATCH, MOBILE, SERVER, etc.).
+3. **Architecture**: Isolate hardware-specific logic in `kernel/hal/`.
+
+## Coding Standards
+- **Standards**: Use C23 (mandatory).
+- **No Stdlib**: Assume no libc/standard library.
+- **Safety**: Align memory, use `nullptr`, and `memset_explicit`.
+- **Concurrency**: Prefer atomic operations and per-CPU data structures over global locks.
+
+## Optimization
+- Optimize for cache locality (64-byte alignment for per-CPU data).
+- Minimize TLB misses and context switching overhead.
+- Use CPU vector units (AVX, NEON, SVE) where applicable.
+
+## Research, Testing & Docs (Mandatory)
+- **Reference `/docs`**: Check architecture guides and ADRs before implementation.
+- **Verify**: Implement host/harness/e2e tests post-implementation.
+- **Update Docs**: Every change must update relevant `/docs` or ADRs.

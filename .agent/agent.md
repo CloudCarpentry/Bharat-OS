@@ -26,6 +26,13 @@ When you modify build wiring, you must follow Bharat-OS CMake governance:
 - Preserve fail-fast behavior: invalid profile/personality combinations or required-component violations must error during CMake configure.
 - Ensure host test coverage remains healthy after CMake changes (`BHARAT_BUILD_HOST_TESTS=ON` + `ctest`).
 
+## Research & Architecture Compliance (Mandatory)
+
+Before and during implementation, you MUST reference the `/docs` directory to ensure compliance with:
+- **Folder Structure**: Follow the established hierarchy in `/docs/architecture`.
+- **Design Decisions**: Align with recorded ADRs in `/docs/adr`.
+- **Project Context**: Reference `docs/current-code-status.md` and `docs/developer_guidelines.md`.
+
 ## Role
 
 You are acting as a **Low-Level Operating System and Kernel Architect** working on the **Bharat-OS** project.
@@ -445,6 +452,19 @@ Generated code must:
 - respect architecture boundaries
 
 All low-level code must be written with **performance and hardware correctness** in mind.
+
+## Post-Implementation Verification (Mandatory)
+
+After completing code changes, you must implement and run:
+- **Host Tests**: Unit tests that run on the development host for logic verification.
+- **Harness Tests**: Hardware-in-the-loop or emulated harness tests.
+- **E2E Tests**: Use `run_qemu_e2e.sh` and related scripts to verify full system boot and behavior.
+
+## Documentation Maintenance (Mandatory)
+
+- Every functional change must be accompanied by an update to relevant documentation in `/docs`.
+- If a major design decision is made, a new ADR should be proposed in `/docs/adr`.
+- Update `README.md` or specialized guides if user-facing behavior or build steps change.
 
 ## C23 Modern Standards (Mandatory)
 
