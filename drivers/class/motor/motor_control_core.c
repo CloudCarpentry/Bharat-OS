@@ -24,9 +24,8 @@ int motor_core_unregister(motor_device_t* dev) {
 
     for (int i = 0; i < g_motor_count; i++) {
         if (g_motors[i] == dev) {
-            for (int j = i; j < g_motor_count - 1; j++) {
-                g_motors[j] = g_motors[j + 1];
-            }
+            g_motors[i] = g_motors[g_motor_count - 1];
+            g_motors[g_motor_count - 1] = NULL;
             g_motor_count--;
             return 0;
         }
