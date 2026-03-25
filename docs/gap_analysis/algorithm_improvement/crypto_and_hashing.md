@@ -9,7 +9,7 @@ The Crypto service is currently stubbed to handle requests in software via `hand
 *   **File:** `services/security/crypto/dispatch.c`, `services/security/crypto/crypto_service.h`
 *   **Context:** Handling crypto opcodes (`CRYPTO_OP_HASH_INIT`, `CRYPTO_OP_AEAD_SEAL`) in user-space.
 *   **Improvement Suggestion:**
-    *   **Hardware / Accelerator Offload:** Integrate hardware cryptography offloading (via `services/accelmgr` or direct device assignments). Replace generic software algorithms with CPU extensions where offload hardware is unavailable:
+    *   **Hardware / Accelerator Offload:** Integrate hardware cryptography offloading (via `services/device/accelmgr` or direct device assignments). Replace generic software algorithms with CPU extensions where offload hardware is unavailable:
         *   **x86_64:** AES-NI for block ciphers, SHA extensions for hashing.
         *   **ARM64:** Cryptographic Extensions (CE) for AES, SHA-1, SHA-256.
         *   **RISC-V:** Scalar Cryptography Extensions (Zk*) for AES and hashing.
