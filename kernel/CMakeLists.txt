@@ -291,6 +291,7 @@ add_subdirectory(src/trap)
 add_subdirectory(src/debug)
 add_subdirectory(src/init)
 add_subdirectory(src/fs)
+add_subdirectory(src/lib)
 add_subdirectory(src/tests)
 
 set(KERNEL_SRCS

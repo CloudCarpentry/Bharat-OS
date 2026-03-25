@@ -5,7 +5,7 @@
 #include "mm.h"
 #include "sched/ai_sched.h"
 #include "list.h"
-#include "lib/rbtree.h"
+#include "lib/rbtree/rbtree.h"
 #include "kernel_safety.h"
 #include "spinlock.h"
 #include <stdbool.h>
