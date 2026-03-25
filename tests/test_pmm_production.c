@@ -97,7 +97,7 @@ static void test_pmm_init(void) {
 static void test_pmm_alloc_free_single(void) {
     printf("[test_pmm_alloc_free_single] Starting...\n");
     pmm_block_t b;
-    int ret = pmm_alloc_pages(0, PMM_ZONE_ANY, PMM_ALLOC_NONE, &b);
+    int ret = pmm_alloc_pages_ex(0, PMM_ZONE_ANY, MEM_NORMAL, PMM_ALLOC_NONE, &b);
     assert(ret == 0);
     assert(b.page_count == 1);
 
@@ -112,6 +112,24 @@ static void test_pmm_alloc_free_single(void) {
     assert(p->state == PMM_PAGE_STATE_FREE);
     assert(p->ref_count == 0);
     printf("[test_pmm_alloc_free_single] Passed.\n");
+}
+
+static void test_pmm_alloc_free_class(void) {
+    printf("[test_pmm_alloc_free_class] Starting...\n");
+    pmm_block_t b;
+    int ret = pmm_alloc_pages_ex(0, PMM_ZONE_ANY, MEM_DMA, PMM_ALLOC_NONE, &b);
+    assert(ret == 0);
+    assert(b.page_count == 1);
+    assert(b.alloc_class == MEM_DMA);
+
+    page_t *p = phys_to_page(b.phys_addr);
+    assert(p != NULL);
+    assert(p->state == PMM_PAGE_STATE_ALLOCATED);
+
+    ret = pmm_free_pages(&b);
+    assert(ret == 0);
+    assert(p->state == PMM_PAGE_STATE_FREE);
+    printf("[test_pmm_alloc_free_class] Passed.\n");
 }
 
 static void test_pmm_refcount_pin(void) {
@@ -165,7 +183,7 @@ static void test_pmm_alloc_contiguous(void) {
 
     // Request exactly 3 pages
     pmm_block_t b;
-    int ret = pmm_alloc_contiguous(3, PMM_ZONE_ANY, PMM_ALLOC_NONE, &b);
+    int ret = pmm_alloc_contiguous_ex(3, PMM_ZONE_ANY, MEM_NORMAL, PMM_ALLOC_NONE, &b);
     assert(ret == 0);
     assert(b.page_count == 3);
     assert(b.order == 0); // Explicit run, no buddy block order
@@ -211,6 +229,7 @@ int main() {
     printf("Running PMM Production Tests...\n");
     test_pmm_init();
     test_pmm_alloc_free_single();
+    test_pmm_alloc_free_class();
     test_pmm_refcount_pin();
     test_pmm_alloc_contiguous();
     test_pmm_leak_check();

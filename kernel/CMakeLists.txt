@@ -207,6 +207,35 @@ elseif(BHARAT_PROFILE_MPU_ONLY)
     add_compile_definitions(BHARAT_PROFILE_MPU_ONLY=1)
 endif()
 # ── Memory Subsystem Targets ──────────────────────────────────────────────
+
+# Minimal Core: PMM and basic allocation (Always Included)
+add_library(bharat_mm_pmm OBJECT
+    src/mm/pmm/pmm.c
+    src/mm/pmm/pmm_pcache.c
+    src/mm/pmm/pmm_debug.c
+    src/mm/pmm/early_alloc.c
+    src/mm/pmm/slab.c
+    src/mm/pmm/kmem_aligned.c
+    src/mm/pmm/numa.c
+    src/mm/pmm/numa_policy.c
+)
+target_link_libraries(bharat_mm_pmm PRIVATE bharat_kernel_includes)
+target_compile_options(bharat_mm_pmm PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
+
+# IOMMU Support
+if(BHARAT_ENABLE_IOMMU)
+    add_library(bharat_mm_iommu OBJECT
+        src/mm/iommu/iommu.c
+        src/mm/iommu/iommu_domain.c
+        src/mm/iommu/iommu_map.c
+        src/mm/iommu/iommu_fault.c
+        src/mm/iommu/iommu_device.c
+    )
+    target_link_libraries(bharat_mm_iommu PRIVATE bharat_kernel_includes)
+    target_compile_options(bharat_mm_iommu PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
+endif()
+
+# Accelerator Memory Support
 add_library(bharat_mm_accel OBJECT
     src/mm/accel/accel_mem.c
     src/mm/accel/accel_sg.c
@@ -216,76 +245,60 @@ add_library(bharat_mm_accel OBJECT
 target_link_libraries(bharat_mm_accel PRIVATE bharat_kernel_includes)
 target_compile_options(bharat_mm_accel PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
 
-add_library(bharat_mm_iommu OBJECT
-    src/mm/iommu/iommu.c
-    src/mm/iommu/iommu_domain.c
-    src/mm/iommu/iommu_map.c
-    src/mm/iommu/iommu_fault.c
-    src/mm/iommu/iommu_device.c
-)
-target_link_libraries(bharat_mm_iommu PRIVATE bharat_kernel_includes)
-target_compile_options(bharat_mm_iommu PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
+# Advanced VM Tier (Conditionally Included)
+if(BHARAT_ENABLE_ADVANCED_VM)
+    add_library(bharat_mm_aspace OBJECT
+        src/mm/vm/aspace/aspace.c
+        src/mm/vm/aspace/vm_space.c
+    )
+    target_link_libraries(bharat_mm_aspace PRIVATE bharat_kernel_includes)
+    target_compile_options(bharat_mm_aspace PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
 
-add_library(bharat_mm_pmm OBJECT
-    src/mm/pmm/pmm.c
-    src/mm/pmm/pmm_pcache.c
-    src/mm/pmm/pmm_debug.c
-    src/mm/pmm/pmm_pcache.c
-    src/mm/pmm/early_alloc.c
-    src/mm/pmm/slab.c
-    src/mm/pmm/kmem_aligned.c
-    src/mm/pmm/numa.c
-    src/mm/pmm/numa_policy.c
-)
-target_link_libraries(bharat_mm_pmm PRIVATE bharat_kernel_includes)
-target_compile_options(bharat_mm_pmm PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
-add_library(bharat_mm_aspace OBJECT
-    src/mm/vm/aspace/aspace.c
-    src/mm/vm/aspace/vm_space.c
-)
-target_link_libraries(bharat_mm_aspace PRIVATE bharat_kernel_includes)
-target_compile_options(bharat_mm_aspace PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
-add_library(bharat_mm_objects OBJECT
-    src/mm/vm/objects/vm_object.c
-    src/mm/vm/objects/vm_object_refcount.c
-)
-target_link_libraries(bharat_mm_objects PRIVATE bharat_kernel_includes)
-target_compile_options(bharat_mm_objects PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
-add_library(bharat_mm_fault OBJECT
-    src/mm/vm/fault/fault.c
-)
-target_link_libraries(bharat_mm_fault PRIVATE bharat_kernel_includes)
-target_compile_options(bharat_mm_fault PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
-add_library(bharat_mm_pt OBJECT
-    src/mm/pt/pt_pool.c
-)
-target_link_libraries(bharat_mm_pt PRIVATE bharat_kernel_includes)
-target_compile_options(bharat_mm_pt PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
-add_library(bharat_mm_tlb OBJECT
-    src/mm/tlb/tlb.c
-    src/mm/tlb/tlb_flush.c
-    src/mm/tlb/tlb_shootdown.c
-    src/mm/tlb/tlb_pending.c
-    src/mm/tlb/tlb_stats.c
-    src/mm/tlb/tlb_asid.c
-    src/mm/tlb/monitor_client.c
-    src/mm/vm/aspace/aspace_switch.c
-)
-target_include_directories(bharat_mm_tlb PRIVATE ${CMAKE_SOURCE_DIR}/services/core/subsysmgr/include)
-target_link_libraries(bharat_mm_tlb PRIVATE bharat_kernel_includes)
-target_compile_options(bharat_mm_tlb PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
-add_library(bharat_mm_vmm OBJECT
-    src/mm/vmm.c
-    src/mm/vm/distributed/vm_mapping.c
-    src/mm/prot_domain.c
-    ../hal/prot/none/prot_none_backend.c
-    ../hal/mmu_lite/common/mmu_lite_backend.c
-    src/mm/vm/distributed/vm_compat_vmm.c
-    src/mm/vm/distributed/mm_local.c
-    src/mm/vm/distributed/mm_remote.c
-)
-target_link_libraries(bharat_mm_vmm PRIVATE bharat_kernel_includes)
-target_compile_options(bharat_mm_vmm PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
+    add_library(bharat_mm_objects OBJECT
+        src/mm/vm/objects/vm_object.c
+        src/mm/vm/objects/vm_object_refcount.c
+    )
+    target_link_libraries(bharat_mm_objects PRIVATE bharat_kernel_includes)
+    target_compile_options(bharat_mm_objects PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
+
+    add_library(bharat_mm_fault OBJECT
+        src/mm/vm/fault/fault.c
+    )
+    target_link_libraries(bharat_mm_fault PRIVATE bharat_kernel_includes)
+    target_compile_options(bharat_mm_fault PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
+
+    add_library(bharat_mm_pt OBJECT
+        src/mm/pt/pt_pool.c
+    )
+    target_link_libraries(bharat_mm_pt PRIVATE bharat_kernel_includes)
+    target_compile_options(bharat_mm_pt PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
+
+    add_library(bharat_mm_tlb OBJECT
+        src/mm/tlb/tlb.c
+        src/mm/tlb/tlb_flush.c
+        src/mm/tlb/tlb_shootdown.c
+        src/mm/tlb/tlb_pending.c
+        src/mm/tlb/tlb_stats.c
+        src/mm/tlb/tlb_asid.c
+        src/mm/tlb/monitor_client.c
+        src/mm/vm/aspace/aspace_switch.c
+    )
+    target_include_directories(bharat_mm_tlb PRIVATE ${CMAKE_SOURCE_DIR}/services/core/subsysmgr/include)
+    target_link_libraries(bharat_mm_tlb PRIVATE bharat_kernel_includes)
+    target_compile_options(bharat_mm_tlb PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
+
+    add_library(bharat_mm_vmm OBJECT
+        src/mm/vmm.c
+        src/mm/vm/distributed/vm_mapping.c
+        ../hal/prot/none/prot_none_backend.c
+        ../hal/mmu_lite/common/mmu_lite_backend.c
+        src/mm/vm/distributed/vm_compat_vmm.c
+        src/mm/vm/distributed/mm_local.c
+        src/mm/vm/distributed/mm_remote.c
+    )
+    target_link_libraries(bharat_mm_vmm PRIVATE bharat_kernel_includes)
+    target_compile_options(bharat_mm_vmm PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
+endif()
 # ── Core kernel sources ──────────────────────────────────────────────────────
 add_subdirectory(src/core)
 add_subdirectory(src/sched)
@@ -301,6 +314,7 @@ add_subdirectory(src/tests)
 set(KERNEL_SRCS
     ${BOOT_SRC}
     src/mm/physmap.c
+    src/mm/prot_domain.c
     ../boot/common/boot_ui_select.c
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/boot_video.c>
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/display_handoff.c>
@@ -315,7 +329,6 @@ set(KERNEL_SRCS
     ../boot/src/adapters/opensbi/opensbi_adapter.c
     ../boot/src/adapters/uboot/uboot_adapter.c
     ../boot/src/adapters/uefi/uefi_adapter.c
-    $<$<STREQUAL:${ARCH},arm32>:../hal/arm32_mpu_vmm_mock.c>
     src/display/fb_core.c
     src/profile/${KERNEL_PROFILE_LOWER}/profile.c
     $<$<STREQUAL:${ARCH},x86_64>:../arch/x86/x86_64/boot/entry.c>
@@ -395,7 +408,7 @@ add_executable(kernel.elf
     ${KERNEL_SRCS}
     $<TARGET_OBJECTS:bharat_mm_accel>
     $<TARGET_OBJECTS:bharatos_driver_accel>
-    $<TARGET_OBJECTS:bharat_mm_iommu>
+    $<$<BOOL:${BHARAT_ENABLE_IOMMU}>:$<TARGET_OBJECTS:bharat_mm_iommu>>
     $<TARGET_OBJECTS:bharat_mm_pmm>
     $<TARGET_OBJECTS:bharat_librbtree_obj>
     $<TARGET_OBJECTS:k_core>
@@ -414,18 +427,16 @@ if(BHARAT_ENABLE_KERNEL_SELFTESTS)
     target_sources(kernel.elf PRIVATE $<TARGET_OBJECTS:k_test_support>)
 endif()
 
-if(NOT BHARAT_PROFILE_MPU_ONLY)
+if(BHARAT_ENABLE_ADVANCED_VM)
     target_sources(kernel.elf PRIVATE
         $<TARGET_OBJECTS:bharat_mm_aspace>
         $<TARGET_OBJECTS:bharat_mm_objects>
         $<TARGET_OBJECTS:bharat_mm_fault>
         $<TARGET_OBJECTS:bharat_mm_pt>
         $<TARGET_OBJECTS:bharat_mm_tlb>
+        $<TARGET_OBJECTS:bharat_mm_vmm>
     )
 endif()
-target_sources(kernel.elf PRIVATE
-    $<TARGET_OBJECTS:bharat_mm_vmm>
-)
 # Architecture-specific code model and PIE flags are set below
 target_link_libraries(kernel.elf subsys_manager bharat_libmsg bharat_kernel_buildopts bharatos_drivers serial_drivers bharat_kernel_includes board_fabric)
 if(BHARAT_ENABLE_FBUI)
