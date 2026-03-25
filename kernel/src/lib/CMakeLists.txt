@@ -1,5 +1,7 @@
 
 add_library(bharat_kernel_lib_ds STATIC
+    base/string.c
+    base/status.c
     ds/cuckoo_hash.c
     ds/radix_tree.c
     ds/urpc_ring.c

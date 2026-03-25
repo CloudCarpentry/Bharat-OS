@@ -8,6 +8,7 @@ add_library(hal_riscv64_cpu OBJECT
     ../arch/riscv64/cpu_caps.c
     ../arch/riscv64/ext_state.c
     ../riscv/shakti_bsp.c
+    ../riscv64/hash/hash_riscv64.c
 )
 
 add_library(hal_riscv64_mmu OBJECT

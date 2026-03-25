@@ -4,6 +4,7 @@
  */
 
 #include "lib/ds/cuckoo_hash.h"
+#include "arch/hash.h"
 #include <stddef.h>
 
 void cuckoo_hash_init(cuckoo_hash_t *hash, size_t size, cuckoo_entry_t *t1, cuckoo_entry_t *t2) {
@@ -20,11 +21,7 @@ void cuckoo_hash_init(cuckoo_hash_t *hash, size_t size, cuckoo_entry_t *t1, cuck
 }
 
 static size_t hash_func(uint64_t key, int table, size_t size) {
-    if (table == 0) {
-        return (key * 2654435761U) % size;
-    } else {
-        return ((key * 2654435761U) ^ 0xdeadbeef) % size;
-    }
+    return arch_hash_func(key, table, size);
 }
 
 int cuckoo_hash_insert(cuckoo_hash_t *hash, uint64_t key, void *value) {

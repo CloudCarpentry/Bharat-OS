@@ -12,7 +12,7 @@ add_library(k_core OBJECT
     ../../src/security/vfio.c
     ../../src/security/crypto_registry.c
     ../../src/security/crypto_caps.c
-    ../../src/lib/string.c
+    ../../src/lib/base/string.c
     ../../../arch/common/memops_scalar.c
     $<$<STREQUAL:${ARCH},x86_64>:../../../arch/x86/x86_64/memops.c>
     $<$<STREQUAL:${ARCH},x86_64>:../../../arch/x86/x86_64/memops_fast_string.c>

@@ -12,7 +12,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "arch/memops.h"
-#include "lib/string.h"
+#include "lib/base/string.h"
 
 void *memcpy(void *dest, const void *src, size_t n) {
   return arch_memcpy(dest, src, n, ARCH_MEMOP_F_DEFAULT | ARCH_MEMOP_F_NO_SIMD);

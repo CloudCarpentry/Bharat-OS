@@ -2,7 +2,7 @@
 #include <assert.h>
 #include <string.h>
 
-#include "../kernel/include/bharat/boot_info.h"
+#include "boot/boot_info.h"
 #include "../kernel/src/kernel_boot.h"
 #include "../kernel/include/secure_boot.h"
 #include "../kernel/include/boot/boot_mode.h"

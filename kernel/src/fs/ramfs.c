@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "mm.h"
-#include "lib/string.h"
+#include "lib/base/string.h"
 
 #define RAMFS_DRIVER_NAME "ramfs"
 
