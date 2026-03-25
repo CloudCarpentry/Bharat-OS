@@ -27,7 +27,7 @@ int main(void) {
 
     capability_t mount_cap = {
         .target_object_id = VFS_NAMESPACE_OBJECT_ID,
-        .rights_mask = CAP_RIGHT_WRITE,
+        .rights_mask = 2, // Old CAP_RIGHT_WRITE
     };
     assert(vfs_mount_fs("/", root_node, &mount_cap) == 0);
 
@@ -41,7 +41,7 @@ int main(void) {
     int fd;
     capability_t root_cap = {
         .target_object_id = root_node->object_id,
-        .rights_mask = CAP_RIGHT_READ | CAP_RIGHT_WRITE,
+        .rights_mask = 1 | 2, // Old CAP_RIGHT_READ | CAP_RIGHT_WRITE
     };
 
     assert(vfs_open_file("/", VFS_OPEN_READ | VFS_OPEN_WRITE, &root_cap, &fd) == 0);
@@ -60,7 +60,7 @@ int main(void) {
     // Write to the file
     capability_t file_cap = {
         .target_object_id = hello_node->object_id,
-        .rights_mask = CAP_RIGHT_READ | CAP_RIGHT_WRITE,
+        .rights_mask = 1 | 2, // Old CAP_RIGHT_READ | CAP_RIGHT_WRITE
     };
 
     // We can just call ops directly for testing if we want or via mount resolving

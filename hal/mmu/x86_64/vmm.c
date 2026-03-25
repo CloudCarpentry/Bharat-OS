@@ -1,4 +1,5 @@
 #include "../../../kernel/include/hal/vmm.h"
+#include "../../../kernel/include/capability.h"
 #include "../../../kernel/include/hal/hal_pt.h"
 #include "../../../kernel/include/hal/hal_tlb.h"
 #include "../../../kernel/include/hal/hal_mm.h"

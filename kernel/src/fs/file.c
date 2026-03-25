@@ -83,10 +83,10 @@ int vfs_open_file(const char* path, int flags, capability_t* caller_cap, int* ou
     }
 
     if (flags & VFS_OPEN_READ) {
-        requested_rights |= CAP_RIGHT_READ;
+        requested_rights |= 1; // Old CAP_RIGHT_READ
     }
     if (flags & VFS_OPEN_WRITE) {
-        requested_rights |= CAP_RIGHT_WRITE;
+        requested_rights |= 2; // Old CAP_RIGHT_WRITE
     }
 
     if ((caller_cap->rights_mask & requested_rights) != requested_rights && caller_cap->capability_id != 0) {
@@ -183,7 +183,7 @@ int vfs_open(const char* path, int flags) {
 
     // For legacy vfs_open, just bypass cap check locally by passing dummy cap but make sure
     // to give it full rights so it doesn't fail the new checks inside vfs_open_file
-    dummy_cap.rights_mask = CAP_RIGHT_READ | CAP_RIGHT_WRITE;
+    dummy_cap.rights_mask = 1 | 2; // Old CAP_RIGHT_READ | CAP_RIGHT_WRITE
     // We can't easily know target_object_id here.
     // Wait, the vfs_open is a legacy wrapper. Let's make sure it passes.
     // Actually, let's just resolve mount path and get the object_id
@@ -216,7 +216,7 @@ int vfs_read_file(int fd, void* buffer, size_t size, capability_t* caller_cap) {
         return K_ERR_DENIED;
     }
 
-    if (!vfs_cap_allows_file(entry, caller_cap, CAP_RIGHT_READ)) {
+    if (!vfs_cap_allows_file(entry, caller_cap, 1)) { // Old CAP_RIGHT_READ
         return K_ERR_CAP_DENIED;
     }
 
@@ -256,7 +256,7 @@ int vfs_write_file(int fd, const void* buffer, size_t size, capability_t* caller
         return K_ERR_VFS_READ_ONLY;
     }
 
-    if (!vfs_cap_allows_file(entry, caller_cap, CAP_RIGHT_WRITE)) {
+    if (!vfs_cap_allows_file(entry, caller_cap, 2)) { // Old CAP_RIGHT_WRITE
         return K_ERR_CAP_DENIED;
     }
 

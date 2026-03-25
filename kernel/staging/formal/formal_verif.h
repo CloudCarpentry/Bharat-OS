@@ -15,9 +15,9 @@
 #define FV_PRECONDITION(expr) __attribute__((annotate("fv_pre(" #expr ")")))
 
 // Capability Rights Definitions
-#define CAP_RIGHT_READ       (1 << 0)
-#define CAP_RIGHT_WRITE      (1 << 1)
-#define CAP_RIGHT_EXECUTE    (1 << 2)
+// Formal verification definitions
+// Note: CAP_RIGHT_READ, CAP_RIGHT_WRITE, CAP_RIGHT_EXECUTE are now
+// defined in capability.h as enum constants.
 #define CAP_RIGHT_DEVICE_NPU (1 << 3)
 #define CAP_RIGHT_DEVICE_GPU (1 << 4)
 #define CAP_RIGHT_DEVICE     (CAP_RIGHT_DEVICE_NPU | CAP_RIGHT_DEVICE_GPU)

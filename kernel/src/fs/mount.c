@@ -31,7 +31,7 @@ int vfs_mount_fs(const char* target_path, vfs_node_t* fs_root, capability_t* cal
     if (caller_cap->target_object_id != VFS_NAMESPACE_OBJECT_ID && caller_cap->capability_id != 0) {
         return K_ERR_CAP_DENIED;
     }
-    if ((caller_cap->rights_mask & CAP_RIGHT_WRITE) != CAP_RIGHT_WRITE && caller_cap->capability_id != 0) {
+    if ((caller_cap->rights_mask & 2) != 2 && caller_cap->capability_id != 0) { // Using old value for CAP_RIGHT_WRITE
         return K_ERR_CAP_DENIED;
     }
 

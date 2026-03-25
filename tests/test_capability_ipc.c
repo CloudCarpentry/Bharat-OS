@@ -36,6 +36,8 @@ int main(void) {
     kprocess_t* proc = process_create("ipc");
     assert(proc != NULL);
 
+    cap_table_init_for_process(proc);
+
     capability_table_t* table = (capability_table_t*)proc->security_sandbox_ctx;
     assert(table != NULL);
 

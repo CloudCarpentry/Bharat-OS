@@ -1,4 +1,5 @@
 #include "../../../../include/mm.h"
+#include "../../../../include/capability.h"
 #include "../../../../include/mm/aspace.h"
 #include "../../../../include/mm/vm_object.h"
 #include "../../../../include/mm/pmm.h"

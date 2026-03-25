@@ -21,7 +21,7 @@ int mm_vmm_map_page(address_space_t* as, virt_addr_t vaddr, phys_addr_t paddr, u
         uint32_t mmu_flags = 0;
         if (flags & CAP_RIGHT_WRITE) mmu_flags |= MMU_WRITE;
         if (flags & PAGE_USER) mmu_flags |= MMU_USER;
-        if (flags & (CAP_RIGHT_DEVICE_GPU | CAP_RIGHT_DEVICE_NPU)) mmu_flags |= MMU_DEVICE;
+        if (flags & (0x40 | 0x80)) mmu_flags |= MMU_DEVICE; // Old GPU and NPU masks
         return active_hal_pt->map_page(as->root_pt, vaddr, paddr, mmu_flags);
     }
 
@@ -30,7 +30,7 @@ int mm_vmm_map_page(address_space_t* as, virt_addr_t vaddr, phys_addr_t paddr, u
     if (flags & CAP_RIGHT_WRITE) mmu_flags |= MMU_WRITE;
     if (flags & CAP_RIGHT_EXECUTE) mmu_flags |= MMU_EXEC;
     if (flags & PAGE_USER) mmu_flags |= MMU_USER;
-    if (flags & (CAP_RIGHT_DEVICE_GPU | CAP_RIGHT_DEVICE_NPU)) mmu_flags |= MMU_DEVICE;
+    if (flags & (0x40 | 0x80)) mmu_flags |= MMU_DEVICE; // Old GPU and NPU masks
 
     int ret = active_hal_pt->map_page(as->root_pt, vaddr, paddr, mmu_flags);
     if (ret == 0) {

@@ -1,6 +1,7 @@
 #include "hal/mmu_ops.h"
 #include "hal/hal_discovery.h"
 #include "hal/hal.h"
+#include "capability.h"
 #include "mm/aspace.h"
 #include "console/console_core.h"
 #include <stddef.h>
