@@ -341,15 +341,16 @@ static inline void cpuid(uint32_t leaf, uint32_t subleaf, uint32_t *eax, uint32_
 void x86_mmu_detect(mmu_ops_t *ops) {
     uint32_t eax, ebx, ecx, edx;
     cpuid(1, 0, &eax, &ebx, &ecx, &edx);
-    if (ecx & (1 << 17)) {
-        g_x86_pcid_supported = true;
-        // Enable PCID in CR4 (bit 17)
-        uint64_t cr4;
-        __asm__ volatile("mov %%cr4, %0" : "=r"(cr4));
-        cr4 |= (1ULL << 17);
-        __asm__ volatile("mov %0, %%cr4" :: "r"(cr4) : "memory");
-    } else {
+    // Disable PCID temporarily during boot debugging
+    // if (ecx & (1 << 17)) {
+    //     g_x86_pcid_supported = true;
+    //     // Enable PCID in CR4 (bit 17)
+    //     uint64_t cr4;
+    //     __asm__ volatile("mov %%cr4, %0" : "=r"(cr4));
+    //     cr4 |= (1ULL << 17);
+    //     __asm__ volatile("mov %0, %%cr4" :: "r"(cr4) : "memory");
+    // } else {
         g_x86_pcid_supported = false;
         ops->asid_bits = 0;
-    }
+    // }
 }
