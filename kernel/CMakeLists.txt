@@ -355,7 +355,7 @@ set(KERNEL_SRCS
     ../hal/interrupt_common.c
     ../hal/timer_common.c
     src/atomic64_fallback.c
-    src/lib/status.c
+    src/lib/base/status.c
     src/mm/dma/dma.c
     src/mm/zswap.c
     src/demo/hello_world.c

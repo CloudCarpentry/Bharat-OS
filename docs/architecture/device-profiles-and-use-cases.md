@@ -9,8 +9,12 @@ Bharat-OS uses profile-oriented tuning to keep a shared kernel spine while chang
 The three primary delivery tiers are:
 
 - **Bharat-OS Nano (Micro-profile / RTOS):** Smallest footprint and bounded behavior. Designed for Hercules/C2000 class where full OS features are not viable. Single-core, static memory pools, MPU/MMU-lite, minimal IPC.
+  - **Constraints**: 128KB - 512KB RAM, <512KB Flash.
 - **Bharat-OS Edge (Mid-edge):** Constrained power/thermal envelopes with mixed criticality workloads. Designed for AM2x/Cortex-R class. Includes bounded multiservice architecture, telemetry, watchdog, power hooks, and fault domains.
+  - **Constraints**: 1MB - 2MB RAM, <1MB Flash.
 - **Bharat-OS Full (Desktop/Server/Cloud):** Broader throughput and service composition goals. Designed for AM6x and above. Includes SMP, full VM, rich networking/storage, and broad service graphs.
+
+For a deep dive into achieving these small footprints, see the [Low-Footprint Design and Analysis](low-footprint-design.md) document.
 
 ## Cross-profile architectural strengths (current baseline)
 

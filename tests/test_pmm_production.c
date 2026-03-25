@@ -7,7 +7,7 @@
 #include "../../kernel/include/mm/pmm.h"
 #include "../../kernel/include/mm.h"
 #include "../../kernel/include/mm/pmm_map.h"
-#include "../../boot/include/boot/boot_info.h"
+#include "boot/boot_info.h"
 
 // Define test stubs
 void hal_serial_write(const char *s) { (void)s; }

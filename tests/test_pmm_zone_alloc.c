@@ -10,7 +10,7 @@
 #include "../kernel/include/mm/pmm.h"
 #include "../kernel/include/mm/pmm_map.h"
 #include "../kernel/include/sched/sched.h"
-#include "../boot/include/boot/boot_info.h"
+#include "boot/boot_info.h"
 #include "../kernel/include/hal/hal_discovery.h"
 #include "../kernel/include/hal/hal_mm.h"
 
