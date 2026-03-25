@@ -58,14 +58,14 @@ int main(void) {
     uint32_t cap = 0;
 
     // Invalid rights for endpoint object should fail.
-    assert(cap_table_grant(t, CAP_OBJ_ENDPOINT, 1U, CAP_PERM_MAP, &cap) != 0);
+    assert(cap_table_grant(t, CAP_TYPE_ENDPOINT, 1U, CAP_RIGHT_MAP, &cap) != 0);
 
     // Valid grant succeeds.
-    assert(cap_table_grant(t, CAP_OBJ_ENDPOINT, 1U, CAP_PERM_SEND | CAP_PERM_DELEGATE, &cap) == 0);
+    assert(cap_table_grant(t, CAP_TYPE_ENDPOINT, 1U, CAP_RIGHT_SEND | CAP_RIGHT_DELEGATE, &cap) == 0);
 
     // Delegating unsupported rights should fail.
     uint32_t delegated = 0;
-    assert(cap_table_delegate(t, t, cap, CAP_PERM_MAP, &delegated) != 0);
+    assert(cap_table_delegate(t, t, cap, CAP_RIGHT_MAP, &delegated) != 0);
 
     printf("Capability misuse tests passed.\n");
     return 0;

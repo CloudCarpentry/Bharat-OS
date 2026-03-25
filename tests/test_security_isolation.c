@@ -68,11 +68,11 @@ static void test_device_access(void) {
 
     uint32_t cap = 0;
     // Grant endpoint rights, but try to use it as a device (capability confusion)
-    assert(cap_table_grant(t, CAP_OBJ_ENDPOINT, 1U, CAP_PERM_RECEIVE, &cap) == 0);
+    assert(cap_table_grant(t, CAP_TYPE_ENDPOINT, 1U, CAP_RIGHT_RECEIVE, &cap) == 0);
 
     // Check if cap is accessible as device
     capability_entry_t resolved;
-    int err = cap_table_lookup(t, cap, CAP_OBJ_ENDPOINT, CAP_PERM_RECEIVE, &resolved);
+    int err = cap_table_lookup(t, cap, CAP_TYPE_ENDPOINT, CAP_RIGHT_RECEIVE, &resolved);
     assert(err == 0);
 
     // Ensure the resolved capability is NOT a device

@@ -42,12 +42,12 @@ int ipc_endpoint_create(capability_table_t* table, uint32_t* out_send_cap, uint3
             sched_wait_queue_init(&g_endpoints[i].senders);
             sched_wait_queue_init(&g_endpoints[i].receivers);
 
-            if (cap_table_grant(table, CAP_OBJ_ENDPOINT, i, CAP_PERM_SEND | CAP_PERM_DELEGATE, out_send_cap) != 0) {
+            if (cap_table_grant(table, CAP_TYPE_ENDPOINT, i, CAP_RIGHT_SEND | CAP_RIGHT_DELEGATE, out_send_cap) != 0) {
                 g_endpoints[i].in_use = 0U;
                 return IPC_ERR_NO_SPACE;
             }
 
-            if (cap_table_grant(table, CAP_OBJ_ENDPOINT, i, CAP_PERM_RECEIVE | CAP_PERM_DELEGATE, out_recv_cap) != 0) {
+            if (cap_table_grant(table, CAP_TYPE_ENDPOINT, i, CAP_RIGHT_RECEIVE | CAP_RIGHT_DELEGATE, out_recv_cap) != 0) {
                 g_endpoints[i].in_use = 0U;
                 return IPC_ERR_NO_SPACE;
             }
@@ -65,7 +65,7 @@ int ipc_endpoint_send(capability_table_t* table, uint32_t send_cap, const void* 
     }
 
     capability_entry_t e = {0};
-    if (cap_table_lookup(table, send_cap, CAP_OBJ_ENDPOINT, CAP_PERM_SEND, &e) != 0) {
+    if (cap_table_lookup(table, send_cap, CAP_TYPE_ENDPOINT, CAP_RIGHT_SEND, &e) != 0) {
         return IPC_ERR_PERM;
     }
 
@@ -82,7 +82,7 @@ int ipc_endpoint_send(capability_table_t* table, uint32_t send_cap, const void* 
     capability_entry_t transfer_e = {0};
     if (cap_to_send != 0U) {
         // Validate that sender has the capability they want to transfer and it has the rights they want to grant
-        if (cap_table_lookup(table, cap_to_send, CAP_OBJ_NONE, cap_send_rights, &transfer_e) != 0) {
+        if (cap_table_lookup(table, cap_to_send, CAP_TYPE_NONE, cap_send_rights, &transfer_e) != 0) {
             return IPC_ERR_CAP_TRANSFER_NOT_ALLOWED;
         }
 
@@ -97,7 +97,7 @@ int ipc_endpoint_send(capability_table_t* table, uint32_t send_cap, const void* 
         }
 
         // Require that the sender's capability itself has the DELEGATE right to transfer it
-        if ((transfer_e.rights & CAP_PERM_DELEGATE) == 0U) {
+        if ((transfer_e.rights & CAP_RIGHT_DELEGATE) == 0U) {
             return IPC_ERR_CAP_TRANSFER_NOT_ALLOWED;
         }
     }
@@ -169,7 +169,7 @@ int ipc_endpoint_receive(capability_table_t* table, uint32_t recv_cap, void* out
     }
 
     capability_entry_t e = {0};
-    if (cap_table_lookup(table, recv_cap, CAP_OBJ_ENDPOINT, CAP_PERM_RECEIVE, &e) != 0) {
+    if (cap_table_lookup(table, recv_cap, CAP_TYPE_ENDPOINT, CAP_RIGHT_RECEIVE, &e) != 0) {
         return IPC_ERR_PERM;
     }
 
