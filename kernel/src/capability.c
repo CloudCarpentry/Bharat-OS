@@ -3,6 +3,7 @@
 #include "kernel_safety.h"
 #include "bharat/urpc.h"
 #include "hal/hal.h"
+#include "slab.h"
 
 // @cite seL4: Formal Verification of an OS Kernel (Klein et al., 2009)
 // seL4 capability model and verification-oriented discipline
@@ -639,7 +640,11 @@ void cap_handle_revoke_ack(uint64_t payload) {
     }
 }
 
-#define CAP_REVOKE_MAX 256
+#ifdef BHARAT_CONFIG_CAP_REVOKE_MAX
+#define CAP_REVOKE_MAX BHARAT_CONFIG_CAP_REVOKE_MAX
+#else
+#define CAP_REVOKE_MAX 64
+#endif
 
 // Helper to lock multiple tables in total order to prevent ABBA deadlocks.
 // We only support up to 4 tables at once (e.g. parent, table, prev, sibling).
@@ -682,7 +687,11 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
         return -1;
     }
 
-    cap_handle_t stack[CAP_REVOKE_MAX];
+    cap_handle_t* stack = (cap_handle_t*)kmalloc(sizeof(cap_handle_t) * CAP_REVOKE_MAX);
+    cap_handle_t fallback_stack[32];
+    if (!stack) {
+        stack = fallback_stack; // fallback to small static stack buffer if OOM or early boot
+    }
     size_t sp = 0;
 
     spin_lock(&table->lock);
@@ -697,6 +706,13 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
 
     if (root_slot == UINT32_MAX) {
         spin_unlock(&table->lock);
+        if (stack != fallback_stack) { kfree(stack); }
+        return -2;
+    }
+
+    if (root_slot >= BHARAT_ARRAY_SIZE(table->entries)) {
+        spin_unlock(&table->lock);
+        if (stack != fallback_stack) { kfree(stack); }
         return -2;
     }
 
@@ -730,6 +746,11 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
         // Verify root hasn't been reallocated
         if (root_entry->in_use != 0U && root_entry->generation == root_gen) {
             // Verify parent hasn't been reallocated
+            if (parent_slot >= BHARAT_ARRAY_SIZE(parent_table->entries)) {
+                cap_unlock_tables_sorted(tables_to_lock, num_tables);
+                if (stack != fallback_stack) { kfree(stack); }
+                return -2;
+            }
             capability_entry_t* parent = &parent_table->entries[parent_slot];
             if (parent->in_use != 0U && parent->generation == parent_gen) {
                 cap_handle_t sibling = parent->first_child;
@@ -822,6 +843,11 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
 
         spin_lock(&frame.table->lock);
 
+        if (frame.slot >= BHARAT_ARRAY_SIZE(frame.table->entries)) {
+            spin_unlock(&frame.table->lock);
+            continue;
+        }
+
         capability_entry_t* cap = &frame.table->entries[frame.slot];
         if (cap->in_use == 0U || cap->generation != frame.generation) {
             spin_unlock(&frame.table->lock);
@@ -834,8 +860,9 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
 
         if (frame.table != table || frame.slot != root_slot) { // Don't follow root's siblings!
             if (cap->next_sibling.table != NULL && cap->next_sibling.slot != UINT32_MAX) {
-                if (sp >= CAP_REVOKE_MAX) {
+                if (sp >= (stack == fallback_stack ? 32 : CAP_REVOKE_MAX)) {
                     spin_unlock(&frame.table->lock);
+                    if (stack != fallback_stack) { kfree(stack); }
                     return -3; // bounded-stack overflow
                 }
                 stack[sp] = cap->next_sibling;
@@ -845,8 +872,9 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
 
         // Push children onto the stack
         if (cap->first_child.table != NULL && cap->first_child.slot != UINT32_MAX) {
-            if (sp >= CAP_REVOKE_MAX) {
+            if (sp >= (stack == fallback_stack ? 32 : CAP_REVOKE_MAX)) {
                 spin_unlock(&frame.table->lock);
+                if (stack != fallback_stack) { kfree(stack); }
                 return -3; // bounded-stack overflow
             }
             stack[sp] = cap->first_child;
@@ -876,5 +904,6 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
         spin_unlock(&frame.table->lock);
     }
 
+    if (stack != fallback_stack) { kfree(stack); }
     return 0;
 }

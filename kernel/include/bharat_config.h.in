@@ -55,6 +55,7 @@
 /* For example: -DBHARAT_ACCEL_GPU=1 */
 
 #define MAX_SUPPORTED_CORES @BHARAT_MAX_CORES@
+#define BHARAT_CONFIG_CAP_REVOKE_MAX @BHARAT_CAP_REVOKE_MAX@
 
 /* Platform Firmware */
 #cmakedefine BHARAT_PLATFORM_ACPI 1
