@@ -8,7 +8,12 @@ The core principle:
 > `lib/` is for reusable libraries with controlled dependencies.
 > `kernel/src/lib/` is for kernel implementation support.
 
-### 1. Root `lib/` (Shared, Reusable Library Space)
+### 1. Hard Split Between Three Layers
+* **`kernel/src/lib/`**: Kernel-private helpers. May use kernel allocators (`kalloc`), kernel locking, per-core state, and trap-safe assumptions. Its headers reside in `kernel/include/lib/`.
+* **`lib/`**: Reusable user-space/shared library code. Must have **zero** kernel dependency. Provides portable fallback implementations. Its headers reside in `lib/include/`.
+* **`hal/` or `arch/`**: Hardware/ISA optimized implementations selected by the build/arch/profile system (e.g., `arch_memcpy`).
+
+### 2. Root `lib/` (Shared, Reusable Library Space)
 
 The top-level `lib/` directory contains platform-agnostic, dependency-disciplined libraries intended for broad reuse.
 
@@ -41,6 +46,7 @@ The `kernel/src/lib/` directory contains helpers and utilities explicitly bound 
 * In-kernel boot and test frameworks
 
 **Rules for `kernel/src/lib/` Code:**
+* **Kernel-Private Include:** Kernel-only DS implementations (like Cuckoo hash, Radix Tree, uRPC rings) MUST NOT place their headers in `lib/include/`. They belong in `kernel/include/lib/` to prevent publishing an API that user-space can see but cannot link against.
 * **Privileged Execution:** May freely use kernel internals, spinlocks, scheduler state, IRQ masks, and CPU-local contexts.
 * **Implicit Allocations:** May directly depend on kernel allocators (`kalloc`, `vm_alloc`).
 * **Fault Handling:** May contain fault-safe formatting or panic helpers specific to the kernel domain.

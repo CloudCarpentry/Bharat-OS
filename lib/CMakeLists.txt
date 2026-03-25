@@ -39,6 +39,7 @@ if(BHARAT_BUILD_NETWORK_STUBS)
 endif()
 add_subdirectory(packet)
 add_subdirectory(rbtree)
+add_subdirectory(string)
 
 # ---------------------------------------------------------
 # bharat_libmsg (Wire/Validation/Encoding)
