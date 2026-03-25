@@ -22,7 +22,7 @@
 // Helper to check if a capability exists
 static bool cap_exists(capability_table_t* table, uint32_t cap_id) {
     capability_entry_t entry;
-    return cap_table_lookup(table, cap_id, CAP_OBJ_NONE, CAP_PERM_NONE, &entry) == 0;
+    return cap_table_lookup(table, cap_id, CAP_TYPE_NONE, CAP_RIGHT_NONE, &entry) == 0;
 }
 
 static int test_cap_basic_grant(void) {
@@ -30,11 +30,11 @@ static int test_cap_basic_grant(void) {
     ASSERT_RET(table != NULL, -1);
 
     uint32_t cap_id1;
-    int ret = cap_table_grant(table, CAP_OBJ_ENDPOINT, 0x1234, CAP_PERM_SEND | CAP_PERM_RECEIVE, &cap_id1);
+    int ret = cap_table_grant(table, CAP_TYPE_ENDPOINT, 0x1234, CAP_RIGHT_SEND | CAP_RIGHT_RECEIVE, &cap_id1);
     ASSERT_RET(ret == 0 && cap_id1 != 0, -2);
 
     uint32_t cap_id2;
-    ret = cap_table_grant(table, CAP_OBJ_MEMORY, 0x5678, CAP_PERM_MAP | CAP_PERM_UNMAP | CAP_PERM_DELEGATE, &cap_id2);
+    ret = cap_table_grant(table, CAP_TYPE_MEMORY, 0x5678, CAP_RIGHT_MAP | CAP_RIGHT_UNMAP | CAP_RIGHT_DELEGATE, &cap_id2);
     ASSERT_RET(ret == 0 && cap_id2 != 0, -3);
 
     cap_table_destroy(table);
@@ -46,19 +46,19 @@ static int test_cap_deep_chain_revoke(void) {
     ASSERT_RET(table != NULL, -1);
 
     uint32_t cap_A;
-    int ret = cap_table_grant(table, CAP_OBJ_MEMORY, 0x1000, CAP_PERM_MAP | CAP_PERM_UNMAP | CAP_PERM_DELEGATE, &cap_A);
+    int ret = cap_table_grant(table, CAP_TYPE_MEMORY, 0x1000, CAP_RIGHT_MAP | CAP_RIGHT_UNMAP | CAP_RIGHT_DELEGATE, &cap_A);
     ASSERT_RET(ret == 0, -2);
 
     uint32_t cap_B;
-    ret = cap_table_delegate(table, table, cap_A, CAP_PERM_MAP | CAP_PERM_DELEGATE, &cap_B);
+    ret = cap_table_delegate(table, table, cap_A, CAP_RIGHT_MAP | CAP_RIGHT_DELEGATE, &cap_B);
     ASSERT_RET(ret == 0, -3);
 
     uint32_t cap_C;
-    ret = cap_table_delegate(table, table, cap_B, CAP_PERM_MAP | CAP_PERM_DELEGATE, &cap_C);
+    ret = cap_table_delegate(table, table, cap_B, CAP_RIGHT_MAP | CAP_RIGHT_DELEGATE, &cap_C);
     ASSERT_RET(ret == 0, -4);
 
     uint32_t cap_D;
-    ret = cap_table_delegate(table, table, cap_C, CAP_PERM_MAP, &cap_D);
+    ret = cap_table_delegate(table, table, cap_C, CAP_RIGHT_MAP, &cap_D);
     ASSERT_RET(ret == 0, -5);
 
     ASSERT_RET(cap_exists(table, cap_A), -6);
@@ -84,25 +84,25 @@ static int test_cap_sibling_fanout_revoke(void) {
     ASSERT_RET(table != NULL, -1);
 
     uint32_t parent;
-    int ret = cap_table_grant(table, CAP_OBJ_MEMORY, 0x2000, CAP_PERM_MAP | CAP_PERM_UNMAP | CAP_PERM_DELEGATE, &parent);
+    int ret = cap_table_grant(table, CAP_TYPE_MEMORY, 0x2000, CAP_RIGHT_MAP | CAP_RIGHT_UNMAP | CAP_RIGHT_DELEGATE, &parent);
     ASSERT_RET(ret == 0, -2);
 
     uint32_t child1, child2, child3;
-    ret = cap_table_delegate(table, table, parent, CAP_PERM_MAP | CAP_PERM_DELEGATE, &child1);
+    ret = cap_table_delegate(table, table, parent, CAP_RIGHT_MAP | CAP_RIGHT_DELEGATE, &child1);
     ASSERT_RET(ret == 0, -3);
-    ret = cap_table_delegate(table, table, parent, CAP_PERM_MAP | CAP_PERM_DELEGATE, &child2);
+    ret = cap_table_delegate(table, table, parent, CAP_RIGHT_MAP | CAP_RIGHT_DELEGATE, &child2);
     ASSERT_RET(ret == 0, -4);
-    ret = cap_table_delegate(table, table, parent, CAP_PERM_MAP | CAP_PERM_DELEGATE, &child3);
+    ret = cap_table_delegate(table, table, parent, CAP_RIGHT_MAP | CAP_RIGHT_DELEGATE, &child3);
     ASSERT_RET(ret == 0, -5);
 
     // Add a grandchild to child2
     uint32_t grandchild;
-    ret = cap_table_delegate(table, table, child2, CAP_PERM_MAP, &grandchild);
+    ret = cap_table_delegate(table, table, child2, CAP_RIGHT_MAP, &grandchild);
     ASSERT_RET(ret == 0, -6);
 
     // Ensure parent's first child is correctly set
     capability_entry_t parent_entry;
-    ret = cap_table_lookup(table, parent, CAP_OBJ_NONE, CAP_PERM_NONE, &parent_entry);
+    ret = cap_table_lookup(table, parent, CAP_TYPE_NONE, CAP_RIGHT_NONE, &parent_entry);
     ASSERT_RET(ret == 0, -7);
     ASSERT_RET(parent_entry.first_child.slot != UINT32_MAX, -8);
 
@@ -110,11 +110,11 @@ static int test_cap_sibling_fanout_revoke(void) {
     ret = cap_table_revoke(table, child1);
     ASSERT_RET(ret == 0, -9);
 
-    ret = cap_table_lookup(table, parent, CAP_OBJ_NONE, CAP_PERM_NONE, &parent_entry);
+    ret = cap_table_lookup(table, parent, CAP_TYPE_NONE, CAP_RIGHT_NONE, &parent_entry);
     ASSERT_RET(ret == 0, -10);
 
     capability_entry_t new_first_child_entry;
-    ret = cap_table_lookup(table, table->entries[parent_entry.first_child.slot].id, CAP_OBJ_NONE, CAP_PERM_NONE, &new_first_child_entry);
+    ret = cap_table_lookup(table, table->entries[parent_entry.first_child.slot].id, CAP_TYPE_NONE, CAP_RIGHT_NONE, &new_first_child_entry);
     ASSERT_RET(ret == 0, -11);
     // Due to stack processing order on DFS, the remaining children might not strictly
     // stay in child2 then child3 order if multiple are revoked. Wait, child1 is root of revoke,
@@ -145,20 +145,20 @@ static int test_cap_rights_attenuation(void) {
     ASSERT_RET(table != NULL, -1);
 
     uint32_t parent;
-    int ret = cap_table_grant(table, CAP_OBJ_MEMORY, 0x3000, CAP_PERM_MAP | CAP_PERM_DELEGATE, &parent);
+    int ret = cap_table_grant(table, CAP_TYPE_MEMORY, 0x3000, CAP_RIGHT_MAP | CAP_RIGHT_DELEGATE, &parent);
     ASSERT_RET(ret == 0, -2);
 
     uint32_t child;
     // Try to delegate with more rights than parent has (UNMAP)
-    ret = cap_table_delegate(table, table, parent, CAP_PERM_MAP | CAP_PERM_UNMAP | CAP_PERM_DELEGATE, &child);
+    ret = cap_table_delegate(table, table, parent, CAP_RIGHT_MAP | CAP_RIGHT_UNMAP | CAP_RIGHT_DELEGATE, &child);
     ASSERT_RET(ret != 0, -3); // Should fail
 
     // Try to delegate without DELEGATE right in source
     uint32_t no_delegate_parent;
-    ret = cap_table_grant(table, CAP_OBJ_MEMORY, 0x4000, CAP_PERM_MAP, &no_delegate_parent);
+    ret = cap_table_grant(table, CAP_TYPE_MEMORY, 0x4000, CAP_RIGHT_MAP, &no_delegate_parent);
     ASSERT_RET(ret == 0, -4);
 
-    ret = cap_table_delegate(table, table, no_delegate_parent, CAP_PERM_MAP, &child);
+    ret = cap_table_delegate(table, table, no_delegate_parent, CAP_RIGHT_MAP, &child);
     ASSERT_RET(ret != 0, -5); // Should fail
 
     cap_table_destroy(table);
@@ -170,7 +170,7 @@ static int test_cap_stale_handle(void) {
     ASSERT_RET(table != NULL, -1);
 
     uint32_t cap;
-    int ret = cap_table_grant(table, CAP_OBJ_MEMORY, 0x5000, CAP_PERM_MAP | CAP_PERM_DELEGATE, &cap);
+    int ret = cap_table_grant(table, CAP_TYPE_MEMORY, 0x5000, CAP_RIGHT_MAP | CAP_RIGHT_DELEGATE, &cap);
     ASSERT_RET(ret == 0, -2);
 
     ret = cap_table_revoke(table, cap);
@@ -178,12 +178,12 @@ static int test_cap_stale_handle(void) {
 
     // After revoke, lookup should fail
     capability_entry_t entry;
-    ret = cap_table_lookup(table, cap, CAP_OBJ_NONE, CAP_PERM_NONE, &entry);
+    ret = cap_table_lookup(table, cap, CAP_TYPE_NONE, CAP_RIGHT_NONE, &entry);
     ASSERT_RET(ret != 0, -4);
 
     // Grant a new one, should likely reuse the slot but with a new generation
     uint32_t new_cap;
-    ret = cap_table_grant(table, CAP_OBJ_MEMORY, 0x6000, CAP_PERM_MAP | CAP_PERM_DELEGATE, &new_cap);
+    ret = cap_table_grant(table, CAP_TYPE_MEMORY, 0x6000, CAP_RIGHT_MAP | CAP_RIGHT_DELEGATE, &new_cap);
     ASSERT_RET(ret == 0, -5);
 
     // Old ID still shouldn't work if the ID generation strategy is implemented properly
@@ -201,11 +201,11 @@ static int test_cap_cross_table_revoke(void) {
     ASSERT_RET(table1 != NULL && table2 != NULL, -1);
 
     uint32_t parent;
-    int ret = cap_table_grant(table1, CAP_OBJ_MEMORY, 0x7000, CAP_PERM_MAP | CAP_PERM_DELEGATE, &parent);
+    int ret = cap_table_grant(table1, CAP_TYPE_MEMORY, 0x7000, CAP_RIGHT_MAP | CAP_RIGHT_DELEGATE, &parent);
     ASSERT_RET(ret == 0, -2);
 
     uint32_t child;
-    ret = cap_table_delegate(table1, table2, parent, CAP_PERM_MAP | CAP_PERM_DELEGATE, &child);
+    ret = cap_table_delegate(table1, table2, parent, CAP_RIGHT_MAP | CAP_RIGHT_DELEGATE, &child);
     if (ret != 0) {
         hal_serial_write("failed to delegate child: ");
         char buf[3];
@@ -218,7 +218,7 @@ static int test_cap_cross_table_revoke(void) {
 
     // Grandchild in table1 again
     uint32_t grandchild;
-    ret = cap_table_delegate(table2, table1, child, CAP_PERM_MAP, &grandchild);
+    ret = cap_table_delegate(table2, table1, child, CAP_RIGHT_MAP, &grandchild);
     if (ret != 0) {
         hal_serial_write("failed to delegate grandchild: ");
         char buf[3];
@@ -231,7 +231,7 @@ static int test_cap_cross_table_revoke(void) {
 
     // Ensure we can lookup child from table2 before revoking
     capability_entry_t entry;
-    ret = cap_table_lookup(table2, child, CAP_OBJ_NONE, CAP_PERM_NONE, &entry);
+    ret = cap_table_lookup(table2, child, CAP_TYPE_NONE, CAP_RIGHT_NONE, &entry);
     if (ret != 0) return -9;
 
     // Revoke from table1 parent

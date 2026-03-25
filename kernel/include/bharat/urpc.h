@@ -19,10 +19,15 @@ typedef enum {
     URPC_CAP_DELEGATE_ACK    = 9
 } urpc_msg_type_t;
 
-// A generic URPC message packet structure fitting in the uint64_t buffer
-// Top 8 bits = message type
-// Lower 56 bits = payload
+// Canonical uRPC Protocol Header
+typedef struct urpc_msg_hdr {
+    uint8_t  msg_type;          // From urpc_msg_type_t
+    uint32_t tx_id;             // Transaction ID
+    uint32_t endpoint_gen;      // Endpoint generation for stale handle rejection
+    uint64_t capability_epoch;  // Revocation epoch for capability validation
+} __attribute__((packed)) urpc_msg_hdr_t;
 
+// Keep old packing functions for compatibility with bootstrap for now
 #define URPC_MSG_TYPE_SHIFT 56
 #define URPC_MSG_TYPE_MASK  0xFFULL
 #define URPC_MSG_PAYLOAD_MASK ((1ULL << 56) - 1ULL)

@@ -43,7 +43,7 @@ static int vfs_cap_allows_file(vfs_file_t* entry, capability_t* caller_cap, uint
 
     capability_entry_t auth_cap;
     // cap_table_lookup handles resolution, liveness, and validates required_rights
-    if (cap_table_lookup(table, caller_cap->capability_id, CAP_OBJ_NONE, required_rights, &auth_cap) != 0) {
+    if (cap_table_lookup(table, caller_cap->capability_id, CAP_TYPE_NONE, required_rights, &auth_cap) != 0) {
         return 0;
     }
 

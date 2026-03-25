@@ -7,50 +7,73 @@
 #include "spinlock.h"
 
 typedef enum {
-    CAP_OBJ_NONE = 0,
-    CAP_OBJ_ENDPOINT = 1,
-    CAP_OBJ_MEMORY = 2,
-    CAP_OBJ_SCHED = 3,
-    CAP_OBJ_PROCESS = 4,
-    CAP_OBJ_CRYPTO_ENDPOINT = 5,
-    CAP_OBJ_CRYPTO_DEVICE = 6,
-    CAP_OBJ_CRYPTO_KEY = 7,
-    CAP_OBJ_RNG = 8,
-    CAP_OBJ_SEALER = 9,
-    CAP_OBJ_NETDEV = 10,
-    CAP_OBJ_NET_QUEUE = 11,
-    CAP_OBJ_NET_BUFFER = 12,
-    CAP_OBJ_IMPORTED_PROXY = 13, // Remote/delegated capability on wire
-} cap_object_type_t;
+    CAP_TYPE_NONE = 0,
+    CAP_TYPE_ENDPOINT = 1,
+    CAP_TYPE_MEMORY = 2,
+    CAP_TYPE_SCHED = 3,
+    CAP_TYPE_PROCESS = 4,
+    CAP_TYPE_CRYPTO_ENDPOINT = 5,
+    CAP_TYPE_CRYPTO_DEVICE = 6,
+    CAP_TYPE_CRYPTO_KEY = 7,
+    CAP_TYPE_RNG = 8,
+    CAP_TYPE_SEALER = 9,
+    CAP_TYPE_NETDEV = 10,
+    CAP_TYPE_NET_QUEUE = 11,
+    CAP_TYPE_NET_BUFFER = 12,
+    CAP_TYPE_IMPORTED_PROXY = 13, // Remote/delegated capability on wire
+
+    // Accelerator and DMA types
+    CAP_TYPE_ACCEL_DEVICE = 14,
+    CAP_TYPE_ACCEL_QUEUE = 15,
+    CAP_TYPE_ACCEL_BUFFER = 16,
+    CAP_TYPE_ACCEL_TELEMETRY = 17,
+    CAP_TYPE_ACCEL_ADMIN = 18,
+    CAP_TYPE_DMA_DOMAIN = 19,
+    CAP_TYPE_DMA_GRANT = 20,
+} cap_type_t;
 
 typedef enum {
-    CAP_PERM_NONE                 = 0,
-    CAP_PERM_SEND                 = (1U << 0),
-    CAP_PERM_RECEIVE              = (1U << 1),
-    CAP_PERM_MAP                  = (1U << 2),
-    CAP_PERM_UNMAP                = (1U << 3),
-    CAP_PERM_SCHEDULE             = (1U << 4),
-    CAP_PERM_DELEGATE             = (1U << 5),
-    CAP_PERM_CRYPT_USE            = (1U << 6),
-    CAP_PERM_CRYPT_DERIVE         = (1U << 7),
-    CAP_PERM_CRYPT_SIGN           = (1U << 8),
-    CAP_PERM_CRYPT_DECRYPT        = (1U << 9),
-    CAP_PERM_CRYPT_EXPORT_WRAPPED = (1U << 10),
-    CAP_PERM_CRYPT_ADMIN          = (1U << 11),
+    CAP_RIGHT_NONE                 = 0,
+    CAP_RIGHT_SEND                 = (1U << 0),
+    CAP_RIGHT_RECEIVE              = (1U << 1),
+    CAP_RIGHT_MAP                  = (1U << 2),
+    CAP_RIGHT_UNMAP                = (1U << 3),
+    CAP_RIGHT_SCHEDULE             = (1U << 4),
+    CAP_RIGHT_DELEGATE             = (1U << 5),
+    CAP_RIGHT_CRYPT_USE            = (1U << 6),
+    CAP_RIGHT_CRYPT_DERIVE         = (1U << 7),
+    CAP_RIGHT_CRYPT_SIGN           = (1U << 8),
+    CAP_RIGHT_CRYPT_DECRYPT        = (1U << 9),
+    CAP_RIGHT_CRYPT_EXPORT_WRAPPED = (1U << 10),
+    CAP_RIGHT_CRYPT_ADMIN          = (1U << 11),
 
     // Communication and RPC capability bits
     // NOTE: These are vocabulary only and not currently enforced in the
     // scheduler, IPC send/recv, or URPC routing paths yet.
-    CAP_PERM_IPC_SEND             = (1U << 12),
-    CAP_PERM_IPC_RECEIVE          = (1U << 13),
-    CAP_PERM_URPC_CALL            = (1U << 14),
-    CAP_PERM_URPC_REPLY           = (1U << 15),
-} cap_perm_t;
+    CAP_RIGHT_IPC_SEND             = (1U << 12),
+    CAP_RIGHT_IPC_RECEIVE          = (1U << 13),
+    CAP_RIGHT_URPC_CALL            = (1U << 14),
+    CAP_RIGHT_URPC_REPLY           = (1U << 15),
+
+    // Accelerator and DMA rights
+    CAP_RIGHT_ENQUEUE              = (1U << 16),
+    CAP_RIGHT_CANCEL               = (1U << 17),
+    CAP_RIGHT_QUERY                = (1U << 18),
+    CAP_RIGHT_BIND                 = (1U << 19),
+    CAP_RIGHT_SHARE                = (1U << 20),
+    CAP_RIGHT_SYNC_CPU             = (1U << 21),
+    CAP_RIGHT_SYNC_DEV             = (1U << 22),
+    CAP_RIGHT_READ_STATS           = (1U << 23),
+    CAP_RIGHT_READ_FAULTS          = (1U << 24),
+    CAP_RIGHT_RESET                = (1U << 25),
+    CAP_RIGHT_PARTITION            = (1U << 26),
+    CAP_RIGHT_FW_LOAD              = (1U << 27),
+} cap_rights_t;
 
 typedef struct capability_entry {
     uint8_t in_use;
     uint32_t id;
-    cap_object_type_t type;
+    cap_type_t type;
     uint32_t rights;
     uint32_t flags;
     uint64_t object_ref;
@@ -63,11 +86,18 @@ typedef struct {
     uint32_t generation;
 } cap_handle_t;
 
+typedef struct cap_instance_id {
+    uint32_t origin_core;       // The core that authoritatively owns the object
+    uint64_t object_id;         // The unique ID of the underlying kernel object
+    uint32_t slot_gen;          // Generation number of the local CNode slot
+    uint32_t rights_digest;     // Hash or bitmask of the granted rights
+} cap_instance_id_t;
+
 // Redefine capability_entry_t with handles to avoid use-after-free
 typedef struct capability_entry_new {
     uint8_t in_use;
     uint32_t id;
-    cap_object_type_t type;
+    cap_type_t type;
     uint32_t rights;
     uint32_t flags;
     uint64_t object_ref;
@@ -80,6 +110,10 @@ typedef struct capability_entry_new {
 
     // Memory/Frame Ownership
     uint32_t owner_core;
+
+    // Distributed consistency fields
+    cap_instance_id_t instance_id;
+    uint64_t revocation_epoch;
 } capability_entry_new_t;
 
 // Replace old struct with new
@@ -122,7 +156,7 @@ void cap_table_destroy(capability_table_t* table);
   ensures \result == 0 || \result == -1 || \result == -2 || \result == -3;
 */
 int cap_table_grant(capability_table_t* table,
-                    cap_object_type_t type,
+                    cap_type_t type,
                     uint64_t object_ref,
                     uint32_t rights,
                     uint32_t* out_cap_id);
@@ -143,7 +177,7 @@ int cap_table_grant(capability_table_t* table,
 */
 int cap_table_lookup(const capability_table_t* table,
                      uint32_t cap_id,
-                     cap_object_type_t required_type,
+                     cap_type_t required_type,
                      uint32_t required_rights,
                      capability_entry_t* out_entry);
 

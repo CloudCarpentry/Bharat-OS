@@ -1,6 +1,9 @@
 ---
 title: IPC + uRPC + Multikernel Communication Architecture
 status: Proposed
+see_also:
+  - ../contracts/naming-conventions.md
+  - service-identity-and-incarnation.md
 owner: Kernel Architecture
 reviewers:
   - Core Kernel Team
