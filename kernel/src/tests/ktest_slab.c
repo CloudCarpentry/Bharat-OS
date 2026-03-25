@@ -38,11 +38,30 @@ bool test_kmalloc_multiple_same_size(void) {
     KTEST_ASSERT(ptrs[i] != NULL, "kmalloc(128) failed in loop");
   }
 
-  // All must be unique
+  // All must be unique.
+  // We use a temporary copy to preserve the original pointer order for correct
+  // allocation/free validation.
+  void *sorted_ptrs[33];
   for (int i = 0; i < 33; i++) {
-    for (int j = i + 1; j < 33; j++) {
-      KTEST_ASSERT(ptrs[i] != ptrs[j], "Duplicate pointers detected");
+    sorted_ptrs[i] = ptrs[i];
+  }
+
+  // Local insertion sort: O(N^2) worst case but practically O(N log N) or O(N)
+  // for small inputs, and avoids pulling in generic qsort dependencies.
+  for (int i = 1; i < 33; i++) {
+    void *key = sorted_ptrs[i];
+    int j = i - 1;
+    while (j >= 0 && (uintptr_t)sorted_ptrs[j] > (uintptr_t)key) {
+      sorted_ptrs[j + 1] = sorted_ptrs[j];
+      j = j - 1;
     }
+    sorted_ptrs[j + 1] = key;
+  }
+
+  // Adjacency check: O(N)
+  for (int i = 0; i < 32; i++) {
+    KTEST_ASSERT(sorted_ptrs[i] != sorted_ptrs[i + 1],
+                 "Duplicate pointers detected");
   }
 
   for (int i = 0; i < 33; i++) {
