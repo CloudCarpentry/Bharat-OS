@@ -171,3 +171,11 @@ The memory stack enforces:
 - **Fault Contract**: Unified `vm_handle_fault` contract implemented and host-tested (including OOM, segmentation, permissions, and backing resolution stages).
 - **HAL Translation**: Interfaces (`hal_pt`) exist but need full translation across all architectures (specifically 32-bit backends).
 - **DMA/IOMMU**: Scaffolding is complete but real SMMU/VT-d integration and lifecycle caching remain open.
+## 8. Stack Bounds and Revocation Memory Safety
+
+The Bharat-OS kernel operates with bounded stack sizes, especially during early boot. On architectures like ARM64, stack sizes are strictly enforced, and deep recursion or large stack allocations can lead to unhandled data aborts.
+
+To maintain memory safety and prevent stack overflow panics:
+* **Capability Revocation:** Recursive tree traversals for capability revocation must not rely on deep stack allocations. The `cap_table_revoke` implementation utilizes heap-allocated memory (`kmalloc`) for its traversal stack, falling back to a bounded static buffer only when the heap is unavailable (e.g., early boot).
+* **Bounded Maximums:** The maximum depth of capability revocation (`BHARAT_CONFIG_CAP_REVOKE_MAX`) is governed by the system profile to scale with available resources, preventing arbitrary stack bloat.
+* **Iterative Traversal:** Tree traversals and graph iterations must always use an iterative approach with explicit queue or stack structures on the heap, avoiding standard C function recursion which risks overflowing the architecture's execution stack.
