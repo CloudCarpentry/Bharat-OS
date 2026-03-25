@@ -100,6 +100,57 @@ Structures introduced only when justified by specific profiles (e.g., HPC, high-
 
 ---
 
+## Multikernel Data Structures and Algorithms
+
+For a true multikernel architecture like Bharat-OS—where per-core autonomy, message-passing, and hardware acceleration are critical—choosing the right data structures and algorithms is essential. The following strategies ensure efficiency, scalability, and maximal leverage of hardware features.
+
+### 1. Data Structures for Multikernel Efficiency
+
+#### A. Per-Core Data Structures
+* **Lock-Free Queues (uRPC/IPC):**
+  * *MPMC Ring Buffer:* Cache-aligned, lock-free, and scalable for per-core queues. Leverages CAS or LL/SC for atomic operations and SIMD for batching small messages.
+  * *Wait-Free Queues:* Guaranteed progress under contention, relying on atomic RMW support.
+* **Per-Core Hash Tables (Thread/Process Lookup):**
+  * *Cuckoo Hashing:* O(1) lookup with low contention. Leverages hardware CRC32/CRC64 instructions (x86 `CRC32`, ARM `CRC32`, RISC-V `Zbb`).
+  * *Hopscotch Hashing:* Lock-free, high concurrency, and low memory overhead.
+* **Per-Core Pools (Memory Allocation):**
+  * *Slab Allocator:* Reduces fragmentation. Leverages hardware prefetching (x86 `PREFETCH`, ARM `PLD`, RISC-V `PREFETCH`).
+  * *Magazine Allocator:* Per-core magazines for lock-free fast paths.
+
+#### B. Global Shared Data Structures
+* **Radix Trees (Capability Tables):** Compressed and lock-free (via RCU). Leverages bit manipulation instructions (e.g., x86 `BSF/BSR`, ARM `CLZ`, RISC-V `CTZ`).
+* **B-Trees (Filesystem Metadata):** Cache-friendly nodes that fit in cache lines, supporting concurrent lock-free variants.
+* **Skip Lists (Priority Schedulers):** Easy lock-free implementation with CAS, efficient for dynamic priorities (e.g., real-time tasks).
+
+### 2. Algorithms for Multikernel Scalability
+
+#### A. Scheduling Algorithms
+* **Multilevel Feedback Queue (MLFQ):** Adaptive and balanced. Leverages performance counters (x86 `PMC`, ARM `PMU`, RISC-V `Sstc`) for dynamic adjustments.
+* **Earliest Deadline First (EDF):** Optimal for real-time tasks. Leverages precise timer interrupts (x86 `HPET`, ARM `Generic Timer`, RISC-V `CLINT`).
+* **Completely Fair Scheduler (CFS):** Proportional fairness using virtual runtime. Leverages hardware timekeeping (`rdtsc`/`rdtscp` or `CNTFRQ_EL0`).
+
+#### B. Synchronization Algorithms
+* **MCS Locks (Mutual Exclusion):** Scalable and spins on local variables to reduce cache invalidations. Leverages atomic exchanges (x86 `XCHG`, ARM `LDXR/STXR`).
+* **RCU (Read-Copy-Update):** Zero-contention reads for read-heavy workloads. Leverages memory barriers (x86 `MFENCE`, ARM `DMB`, RISC-V `FENCE`).
+* **Hazard Pointers:** Lock-free safe memory reclamation avoiding the ABA problem, using atomic pointers.
+
+#### C. Memory Management Algorithms
+* **Buddy Allocator (PMM):** O(1) split/merge operations using bitmask operations for free block tracking.
+* **Slab Allocator (Kernel Objects):** Cache-friendly object reuse, accelerated via hardware prefetching.
+* **NUMA-Aware Allocator:** Allocates memory close to the requesting core using hardware NUMA node IDs (x86 `cpuid`, ARM `MPIDR`, RISC-V `mhartid`).
+
+### 3. Leveraging Hardware Features
+
+* **Atomic Operations:** Lock-free data structures using `CMPXCHG`/`LOCK` (x86), `LDXR/STXR` (ARM), or `AMO*` (RISC-V).
+* **SIMD:** Batch processing for uRPC via AVX-512 (x86), NEON/SVE (ARM), or RVV (RISC-V).
+* **Virtualization:** Secure capability isolation using VT-x, Virtualization Extensions, or the `H` Extension.
+* **Accelerator Integration:**
+  * *GPU Offloading:* OpenCL/CUDA for parallel tasks (e.g., cryptography).
+  * *DMA Engines:* Zero-copy networking (e.g., virtio DMA).
+  * *NPU/TPU:* Offloading AI scheduling hints.
+
+---
+
 ## Contracts vs. Libraries (The BIDL Boundary)
 
 **Rule:** BIDL definitions are contracts, not generic libraries.
