@@ -2,7 +2,7 @@
 #include "../../include/mm.h"
 #include "../../include/numa.h"
 #include <stddef.h>
-#include "lib/string.h"
+#include "lib/base/string.h"
 
 #define NUM_SLAB_SIZES 7
 

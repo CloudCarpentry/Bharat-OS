@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "../kernel/include/sched.h"
+#include "../kernel/include/sched/sched.h"
 #include "../kernel/include/ipc_async.h"
 
 void arch_post_switch(void);

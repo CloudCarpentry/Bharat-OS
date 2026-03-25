@@ -13,7 +13,7 @@ This roadmap outlines the plan to strictly enforce the boundaries defined in `do
 1. **Establish Canonical Locations:**
    * Create boundary `README.md` files in `lib/` and `kernel/src/lib/` explaining the core policy.
    * Formalize the rule: `lib/` must not depend on `kernel/`.
-   * **Header Isolation:** Relocate any headers intended for kernel-only DS implementations from `lib/include/ds/` into a kernel-private include layer such as `kernel/include/lib/ds/`.
+   * **Header Isolation:** Relocate any headers intended for kernel-only implementations from `lib/include/` into a kernel-private include layer such as `kernel/include/lib/` or `kernel/include/ds/`. Only keep a header under `lib/include/` if it is supported as a shared/public library contract.
 2. **Build System Restrictions:**
    * Introduce CMake rules (e.g., in `lib/CMakeLists.txt` or a common policy file) that strictly prevent target linkage from `lib/` back to kernel targets.
 3. **Identify Misplaced Code:**
