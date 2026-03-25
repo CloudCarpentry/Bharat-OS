@@ -41,6 +41,36 @@ This roadmap tracks the convergence of the memory management subsystem in Bharat
 | **Buffer Teardown & Fault Containment** | 🔜 Planned | Safe job cancellation paths avoiding physical page leaks on NPU/GPU fault. |
 | **Virtual Mock Backend** | 🔜 Planned | Bringup of a virtual accelerator driver to validate queue contracts and memory isolation end-to-end. |
 
+## Phase 5: Capability-Gated Tier Split (Active)
+
+To effectively scale from tiny MCU profiles to full datacenter VMs, the memory subsystem must transition from monolithic `#ifdef` profile checks to explicit, capability-gated tiers.
+
+### 1. Allocation Classes (Semantic Intent)
+Instead of relying solely on `PMM_ALLOC_*` flags, we are introducing `alloc_class_t` (`MEM_NORMAL`, `MEM_DMA`, `MEM_RT`, `MEM_SECURE`, `MEM_PACKET`) to capture the semantic intent of allocations. This enables small profiles to collapse allocations into a single pool while allowing advanced profiles to route them to dedicated CMA or NUMA regions.
+
+### 2. Capability-Gated Build Features
+We are replacing the reliance on `BHARAT_DEVICE_PROFILE` (e.g., `EDGE`, `DATACENTER`) with explicit memory capability flags in CMake:
+*   `BHARAT_ENABLE_ADVANCED_VM`
+*   `BHARAT_ENABLE_MMU`
+*   `BHARAT_ENABLE_MPU`
+*   `BHARAT_ENABLE_IOMMU`
+*   `BHARAT_ENABLE_DMA_MAP`
+
+### 3. Minimal Core vs. Advanced VM Split
+The monolithic memory stack is being split into a **Minimal Memory Core** (always included: PMM, MPU-lite, early alloc) and an **Advanced VM** tier (conditionally included: address spaces, demand paging, COW, NUMA). This ensures embedded builds do not link or initialize complex VMM structures.
+
+```mermaid
+flowchart TD
+    A[Build Configuration / Presets] --> B{Capabilities}
+    B -->|BHARAT_ENABLE_ADVANCED_VM=ON| C[Advanced VM Tier]
+    B -->|BHARAT_ENABLE_ADVANCED_VM=OFF| D[Minimal Core Only]
+
+    C --> E(Address Spaces, COW, Demand Paging, NUMA)
+    D --> F(PMM, Frame Allocator, MPU-Lite, Fixed Mappings)
+
+    E --> F
+```
+
 ## Memory Architecture Diagram
 
 ```mermaid

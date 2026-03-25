@@ -90,6 +90,19 @@ set(BHARAT_ISA_FEATURES "" CACHE STRING "Target ISA features as a semicolon-sepa
 # Hardware Accelerators
 set(BHARAT_ACCELERATOR_CLASSES "" CACHE STRING "Target accelerator classes as a semicolon-separated list (e.g., gpu;npu;dsp;crypto;vpu)")
 
+# Memory Capability Options
+option(BHARAT_ENABLE_MMU "Enable MMU support" ON)
+option(BHARAT_ENABLE_MPU "Enable MPU support" OFF)
+option(BHARAT_ENABLE_ADVANCED_VM "Enable advanced virtual memory" ON)
+option(BHARAT_ENABLE_IOMMU "Enable IOMMU support" OFF)
+option(BHARAT_ENABLE_DMA_MAP "Enable DMA map APIs" ON)
+option(BHARAT_ENABLE_COW "Enable Copy-On-Write" ON)
+option(BHARAT_ENABLE_DEMAND_PAGING "Enable demand paging" ON)
+option(BHARAT_ENABLE_SHARED_MEMORY "Enable shared memory" ON)
+option(BHARAT_ENABLE_NUMA "Enable NUMA support" OFF)
+option(BHARAT_ENABLE_ALLOC_CLASSES "Enable memory allocation classes" ON)
+option(BHARAT_ENABLE_MEMORY_STATS "Enable memory statistics" ON)
+
 # Platform Firmware
 set(BHARAT_PLATFORM_FIRMWARE "" CACHE STRING "Target platform firmware (e.g., ACPI, FDT)")
 
@@ -107,6 +120,32 @@ if(BHARAT_ARCH_SERIAL_BASE)
     add_compile_definitions(BHARAT_ARCH_SERIAL_BASE=${BHARAT_ARCH_SERIAL_BASE})
 endif()
 
+
+# Profile-based Memory Capability Overrides
+if(BHARAT_DEVICE_PROFILE STREQUAL "RTOS" OR BHARAT_DEVICE_PROFILE STREQUAL "DRONE" OR BHARAT_DEVICE_PROFILE STREQUAL "ROBOT")
+    # Tiny MPU/MMU-lite default profiles
+    set(BHARAT_ENABLE_ADVANCED_VM OFF CACHE BOOL "Enable advanced virtual memory" FORCE)
+    set(BHARAT_ENABLE_COW OFF CACHE BOOL "Enable Copy-On-Write" FORCE)
+    set(BHARAT_ENABLE_DEMAND_PAGING OFF CACHE BOOL "Enable demand paging" FORCE)
+    set(BHARAT_ENABLE_SHARED_MEMORY OFF CACHE BOOL "Enable shared memory" FORCE)
+    set(BHARAT_ENABLE_NUMA OFF CACHE BOOL "Enable NUMA support" FORCE)
+    set(BHARAT_ENABLE_MEMORY_STATS OFF CACHE BOOL "Enable memory statistics" FORCE)
+    set(BHARAT_PROFILE_MMU_FULL OFF CACHE BOOL "Full VM" FORCE)
+    if(ARCH STREQUAL "arm32" OR ARCH STREQUAL "riscv32")
+        set(BHARAT_ENABLE_MMU OFF CACHE BOOL "Enable MMU support" FORCE)
+        set(BHARAT_ENABLE_MPU ON CACHE BOOL "Enable MPU support" FORCE)
+        set(BHARAT_PROFILE_MPU_ONLY ON CACHE BOOL "MPU regions only" FORCE)
+        set(BHARAT_PROFILE_MMU_LITE OFF CACHE BOOL "MMU Lite" FORCE)
+    else()
+        set(BHARAT_ENABLE_MMU ON CACHE BOOL "Enable MMU support" FORCE)
+        set(BHARAT_ENABLE_MPU OFF CACHE BOOL "Enable MPU support" FORCE)
+        set(BHARAT_PROFILE_MMU_LITE ON CACHE BOOL "MMU Lite" FORCE)
+        set(BHARAT_PROFILE_MPU_ONLY OFF CACHE BOOL "MPU regions only" FORCE)
+    endif()
+elseif(BHARAT_DEVICE_PROFILE STREQUAL "DATACENTER" OR BHARAT_DEVICE_PROFILE STREQUAL "CLOUD" OR BHARAT_DEVICE_PROFILE STREQUAL "SERVER")
+    set(BHARAT_ENABLE_NUMA ON CACHE BOOL "Enable NUMA support" FORCE)
+    set(BHARAT_ENABLE_IOMMU ON CACHE BOOL "Enable IOMMU support" FORCE)
+endif()
 
 # Determine Kernel Execution Profile (RT, GP, MIX) based on Device Profile
 if(BHARAT_DEVICE_PROFILE STREQUAL "RTOS"
