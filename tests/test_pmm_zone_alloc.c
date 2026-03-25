@@ -14,6 +14,8 @@
 #include "../kernel/include/hal/hal_discovery.h"
 #include "../kernel/include/hal/hal_mm.h"
 
+uint32_t hal_cpu_get_id(void) { return 0; }
+
 static uint8_t g_mock_ram[64 * 1024 * 1024];
 static size_t g_early_used = 0;
 static system_discovery_t g_discovery;

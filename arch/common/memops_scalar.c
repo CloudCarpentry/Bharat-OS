@@ -15,6 +15,28 @@
 #define WORD_SIZE sizeof(uintptr_t)
 #define PREFETCH_THRESHOLD 256
 
+/*
+ * Tier 0: Pure, raw memory fill.
+ * Explicitly cast to volatile to prevent the compiler from
+ * transforming this loop back into a memset() call, which
+ * would cause infinite recursion in host tests/early boot.
+ */
+void arch_memset_raw(void *dst, int val, size_t len) {
+#if defined(TESTING) || defined(__HOST__)
+    volatile unsigned char *d = (volatile unsigned char *)dst;
+    unsigned char v = (unsigned char)val;
+    for (size_t i = 0; i < len; i++) {
+        d[i] = v;
+    }
+#else
+    unsigned char *d = (unsigned char *)dst;
+    unsigned char v = (unsigned char)val;
+    for (size_t i = 0; i < len; i++) {
+        d[i] = v;
+    }
+#endif
+}
+
 void *arch_memcpy_scalar(void *dst, const void *src, size_t n) {
   unsigned char *d = (unsigned char *)dst;
   const unsigned char *s = (const unsigned char *)src;
@@ -76,69 +98,7 @@ void *arch_memcpy_scalar(void *dst, const void *src, size_t n) {
 }
 
 void *arch_memset_scalar(void *dst, int c, size_t n) {
-  unsigned char *d = (unsigned char *)dst;
-  unsigned char v = (unsigned char)c;
-
-  if (n == 0) {
-    return dst;
-  }
-
-  /* Optional conservative prefetch for larger copies */
-  if (n >= PREFETCH_THRESHOLD) {
-    __builtin_prefetch(d, 1, 0);
-  }
-
-  /* Align destination to word boundary */
-  while (n > 0 && ((uintptr_t)d & (WORD_SIZE - 1)) != 0) {
-    *d++ = v;
-    n--;
-  }
-
-  if (n >= WORD_SIZE) {
-    uintptr_t wv = v;
-    wv |= wv << 8;
-    wv |= wv << 16;
-#if UINTPTR_MAX > 0xFFFFFFFF
-    /*
-     * FIXME(EDGE32): While arch_has_cap() is the preferred way to check
-     * architecture capabilities, doing so here in the fast-path memset
-     * scalar function adds overhead and is technically probing the compiler
-     * width for optimization, not an OS contract. It's left as UINTPTR_MAX
-     * check for performance, but should probably be refactored eventually.
-     */
-    wv |= wv << 32;
-#endif
-
-    uintptr_t *wd = (uintptr_t *)((void *)d);
-
-    /* Unrolled loop (4 words per iteration) */
-    while (n >= 4 * WORD_SIZE) {
-      if (n >= PREFETCH_THRESHOLD) {
-        __builtin_prefetch(wd + (64 / WORD_SIZE), 1, 0);
-      }
-      wd[0] = wv;
-      wd[1] = wv;
-      wd[2] = wv;
-      wd[3] = wv;
-      wd += 4;
-      n -= 4 * WORD_SIZE;
-    }
-
-    /* Remaining words */
-    while (n >= WORD_SIZE) {
-      *wd++ = wv;
-      n -= WORD_SIZE;
-    }
-
-    d = (unsigned char *)wd;
-  }
-
-  /* Scalar tail handling */
-  while (n > 0) {
-    *d++ = v;
-    n--;
-  }
-
+  arch_memset_raw(dst, c, n);
   return dst;
 }
 

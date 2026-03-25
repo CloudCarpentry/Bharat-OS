@@ -305,9 +305,19 @@ __attribute__((weak)) bool arch_cpu_has(int feature) {
     return false;
 }
 
-__attribute__((weak)) void* arch_memcpy(void* dest, const void* src, size_t n) { return memcpy(dest, src, n); }
-__attribute__((weak)) void* arch_memset(void* s, int c, size_t n) { return memset(s, c, n); }
-__attribute__((weak)) void* arch_memmove(void* dest, const void* src, size_t n) { return memmove(dest, src, n); }
+// Ensure these functions don't recurse through lib/base/string.c
+__attribute__((weak)) void arch_memset_raw(void *dst, int val, size_t len) {
+    volatile unsigned char *d = (volatile unsigned char *)dst;
+    unsigned char v = (unsigned char)val;
+    for (size_t i = 0; i < len; i++) {
+        d[i] = v;
+    }
+}
+
+__attribute__((weak)) void* arch_memcpy(void* dest, const void* src, size_t n, uint32_t flags) { (void)flags; return __builtin_memcpy(dest, src, n); }
+__attribute__((weak)) void* arch_memset(void* s, int c, size_t n, uint32_t flags) { (void)flags; arch_memset_raw(s, c, n); return s; }
+__attribute__((weak)) void* arch_memmove(void* dest, const void* src, size_t n, uint32_t flags) { (void)flags; return __builtin_memmove(dest, src, n); }
+
 
 __attribute__((weak)) int console_current_phase(void) { return 1; }
 __attribute__((weak)) int aspace_destroy(address_space_t *aspace) { (void)aspace; return 0; }
@@ -360,6 +370,7 @@ __attribute__((weak)) arch_caps_t arch_get_caps(void) {
     return stub_caps;
 }
 
+#include "../kernel/include/arch/memops.h"
 #include "../kernel/include/mm/prot_domain.h"
 #include "../kernel/include/hal/hal_mm.h"
 __attribute__((weak)) void hal_mm_backend_caps(hal_mm_backend_caps_t *out) {

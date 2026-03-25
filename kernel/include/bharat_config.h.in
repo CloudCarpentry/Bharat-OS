@@ -54,7 +54,21 @@
 /* Hardware Accelerators (Dynamic based on CMake lists) */
 /* For example: -DBHARAT_ACCEL_GPU=1 */
 
+/* Memory Capabilities */
+#cmakedefine BHARAT_ENABLE_MMU 1
+#cmakedefine BHARAT_ENABLE_MPU 1
+#cmakedefine BHARAT_ENABLE_ADVANCED_VM 1
+#cmakedefine BHARAT_ENABLE_IOMMU 1
+#cmakedefine BHARAT_ENABLE_DMA_MAP 1
+#cmakedefine BHARAT_ENABLE_COW 1
+#cmakedefine BHARAT_ENABLE_DEMAND_PAGING 1
+#cmakedefine BHARAT_ENABLE_SHARED_MEMORY 1
+#cmakedefine BHARAT_ENABLE_NUMA 1
+#cmakedefine BHARAT_ENABLE_ALLOC_CLASSES 1
+#cmakedefine BHARAT_ENABLE_MEMORY_STATS 1
+
 #define MAX_SUPPORTED_CORES @BHARAT_MAX_CORES@
+#define BHARAT_CONFIG_CAP_REVOKE_MAX @BHARAT_CAP_REVOKE_MAX@
 
 /* Platform Firmware */
 #cmakedefine BHARAT_PLATFORM_ACPI 1

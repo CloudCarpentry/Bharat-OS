@@ -8,8 +8,8 @@
 #include "hal/hal.h"
 #include "hal/hal_discovery.h"
 #include "hal/hal_mm.h"
-#include "sched.h"
-#include "bharat/boot_info.h"
+#include "sched/sched.h"
+#include "boot/boot_info.h"
 
 // Mock definitions
 uint32_t g_current_core_id = 0;

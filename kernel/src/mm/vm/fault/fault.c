@@ -1,4 +1,5 @@
 #include "../../../../include/mm.h"
+#include "../../../../include/capability.h"
 #include "../../../../include/mm/aspace.h"
 #include "../../../../include/mm/vm_object.h"
 #include "../../../../include/mm/pmm.h"
@@ -70,10 +71,10 @@ vm_fault_result_t vm_handle_fault(const vm_fault_event_t *event) {
                 break;
 
             case FAULT_STATE_CHECK_PERM:
-                if ((ctx.fault_flags & CAP_RIGHT_WRITE) && !(ctx.region->prot & CAP_RIGHT_WRITE)) {
+                if ((ctx.fault_flags & VM_FAULT_WRITE) && !(ctx.region->prot & CAP_RIGHT_WRITE)) {
                     ctx.error_code = -2; // Permission fault
                     state = FAULT_STATE_ERROR;
-                } else if ((ctx.fault_flags & CAP_RIGHT_EXECUTE) && !(ctx.region->prot & CAP_RIGHT_EXECUTE)) {
+                } else if ((ctx.fault_flags & VM_FAULT_EXEC) && !(ctx.region->prot & CAP_RIGHT_EXECUTE)) {
                     ctx.error_code = -2; // Execute permission fault
                     state = FAULT_STATE_ERROR;
                 } else {

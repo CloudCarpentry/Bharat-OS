@@ -3,6 +3,7 @@
 #include "kernel_safety.h"
 #include "bharat/urpc.h"
 #include "hal/hal.h"
+#include "slab.h"
 
 // @cite seL4: Formal Verification of an OS Kernel (Klein et al., 2009)
 // seL4 capability model and verification-oriented discipline
@@ -53,6 +54,20 @@ static int cap_rights_valid(cap_type_t type, uint32_t rights) {
         return (rights & ~(CAP_RIGHT_SCHEDULE | CAP_RIGHT_DELEGATE)) == 0U;
     case CAP_TYPE_PROCESS:
         return (rights & ~(CAP_RIGHT_DELEGATE)) == 0U;
+    case CAP_TYPE_ACCEL_DEVICE:
+        return (rights & ~(CAP_RIGHT_ALL | CAP_RIGHT_DERIVE | CAP_RIGHT_DELEGATE)) == 0U;
+    case CAP_TYPE_ACCEL_QUEUE:
+        return (rights & ~(CAP_RIGHT_ENQUEUE | CAP_RIGHT_CANCEL | CAP_RIGHT_QUERY | CAP_RIGHT_DELEGATE)) == 0U;
+    case CAP_TYPE_ACCEL_BUFFER:
+        return (rights & ~(CAP_RIGHT_MAP | CAP_RIGHT_BIND | CAP_RIGHT_SHARE | CAP_RIGHT_SYNC_CPU | CAP_RIGHT_SYNC_DEV | CAP_RIGHT_DELEGATE)) == 0U;
+    case CAP_TYPE_ACCEL_TELEMETRY:
+        return (rights & ~(CAP_RIGHT_READ_STATS | CAP_RIGHT_READ_FAULTS | CAP_RIGHT_DELEGATE)) == 0U;
+    case CAP_TYPE_ACCEL_ADMIN:
+        return (rights & ~(CAP_RIGHT_RESET | CAP_RIGHT_PARTITION | CAP_RIGHT_FW_LOAD | CAP_RIGHT_DELEGATE)) == 0U;
+    case CAP_TYPE_DMA_DOMAIN:
+        return (rights & ~(CAP_RIGHT_ALL | CAP_RIGHT_DELEGATE)) == 0U;
+    case CAP_TYPE_DMA_GRANT:
+        return (rights & ~(CAP_RIGHT_MAP | CAP_RIGHT_UNMAP | CAP_RIGHT_REVOKE | CAP_RIGHT_DELEGATE)) == 0U;
     default:
         return 0;
     }
@@ -194,6 +209,12 @@ int cap_table_grant(capability_table_t* table,
                 e->owner_core = 0;
             }
 
+            e->instance_id.origin_core = hal_cpu_get_id();
+            e->instance_id.object_id = e->object_ref;
+            e->instance_id.slot_gen = e->generation;
+            e->instance_id.rights_digest = e->rights;
+            e->revocation_epoch = 0;
+
             e->in_use = 1U;
             found_id = e->id;
             ret = 0;
@@ -308,6 +329,13 @@ static int cap_table_delegate_local(capability_table_t* src,
 
                 dst_entry->generation++;
                 dst_entry->owner_core = src_entry->owner_core; // Delegate retains owner core unless explicity transferred
+
+                // Inherit distributed instance ID
+                dst_entry->instance_id = src_entry->instance_id;
+                dst_entry->instance_id.rights_digest = delegated_rights;
+                dst_entry->instance_id.slot_gen = dst_entry->generation;
+                dst_entry->revocation_epoch = src_entry->revocation_epoch;
+
                 dst_entry->in_use = 1U;
 
                 src_entry->first_child.table = dst;
@@ -346,6 +374,8 @@ typedef struct {
     uint64_t object_ref;
     uint32_t flags;
     uint32_t owner_core;
+    cap_instance_id_t instance_id;
+    uint64_t revocation_epoch;
     cap_handle_t src_first_child;  // Metadata for linking sibling list
     volatile int status;           // Output from dest
     volatile uint32_t new_cap_id;  // Output from dest
@@ -431,6 +461,9 @@ int cap_table_delegate(capability_table_t* src,
     req->object_ref = src_entry->object_ref;
     req->flags = src_entry->flags;
     req->owner_core = src_entry->owner_core;
+    req->instance_id = src_entry->instance_id;
+    req->instance_id.rights_digest = delegated_rights; // Update for remote tracking
+    req->revocation_epoch = src_entry->revocation_epoch;
     req->src_first_child = src_entry->first_child;
     req->status = -1; // Uninitialized
     req->new_cap_id = 0;
@@ -534,6 +567,9 @@ void cap_handle_delegate_req(uint64_t payload, uint32_t source_core) {
             dst_entry->flags = req->flags;
             dst_entry->owner_core = req->owner_core; // Delegate retains owner core
 
+            dst_entry->instance_id = req->instance_id;
+            dst_entry->revocation_epoch = req->revocation_epoch;
+
             dst_entry->parent.table = req->src;
             dst_entry->parent.slot = req->src_slot_idx;
             dst_entry->parent.generation = req->src_generation;
@@ -547,6 +583,7 @@ void cap_handle_delegate_req(uint64_t payload, uint32_t source_core) {
             dst_entry->next_sibling = req->src_first_child;
 
             dst_entry->generation++;
+            dst_entry->instance_id.slot_gen = dst_entry->generation; // Update on destination
             dst_entry->in_use = 1U;
 
             found_id = dst_entry->id;
@@ -603,7 +640,11 @@ void cap_handle_revoke_ack(uint64_t payload) {
     }
 }
 
-#define CAP_REVOKE_MAX 256
+#ifdef BHARAT_CONFIG_CAP_REVOKE_MAX
+#define CAP_REVOKE_MAX BHARAT_CONFIG_CAP_REVOKE_MAX
+#else
+#define CAP_REVOKE_MAX 64
+#endif
 
 // Helper to lock multiple tables in total order to prevent ABBA deadlocks.
 // We only support up to 4 tables at once (e.g. parent, table, prev, sibling).
@@ -646,7 +687,11 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
         return -1;
     }
 
-    cap_handle_t stack[CAP_REVOKE_MAX];
+    cap_handle_t* stack = (cap_handle_t*)kmalloc(sizeof(cap_handle_t) * CAP_REVOKE_MAX);
+    cap_handle_t fallback_stack[32];
+    if (!stack) {
+        stack = fallback_stack; // fallback to small static stack buffer if OOM or early boot
+    }
     size_t sp = 0;
 
     spin_lock(&table->lock);
@@ -661,6 +706,13 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
 
     if (root_slot == UINT32_MAX) {
         spin_unlock(&table->lock);
+        if (stack != fallback_stack) { kfree(stack); }
+        return -2;
+    }
+
+    if (root_slot >= BHARAT_ARRAY_SIZE(table->entries)) {
+        spin_unlock(&table->lock);
+        if (stack != fallback_stack) { kfree(stack); }
         return -2;
     }
 
@@ -694,6 +746,11 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
         // Verify root hasn't been reallocated
         if (root_entry->in_use != 0U && root_entry->generation == root_gen) {
             // Verify parent hasn't been reallocated
+            if (parent_slot >= BHARAT_ARRAY_SIZE(parent_table->entries)) {
+                cap_unlock_tables_sorted(tables_to_lock, num_tables);
+                if (stack != fallback_stack) { kfree(stack); }
+                return -2;
+            }
             capability_entry_t* parent = &parent_table->entries[parent_slot];
             if (parent->in_use != 0U && parent->generation == parent_gen) {
                 cap_handle_t sibling = parent->first_child;
@@ -738,6 +795,13 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
         cap_unlock_tables_sorted(tables_to_lock, num_tables);
     }
 
+    // Increment revocation epoch BEFORE broadcast
+    spin_lock(&table->lock);
+    if (root_entry->in_use != 0U && root_entry->generation == root_gen) {
+        root_entry->revocation_epoch++;
+    }
+    spin_unlock(&table->lock);
+
     // Iterative tree walk to revoke children safely.
     stack[sp].table = table;
     stack[sp].slot = root_slot;
@@ -779,6 +843,11 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
 
         spin_lock(&frame.table->lock);
 
+        if (frame.slot >= BHARAT_ARRAY_SIZE(frame.table->entries)) {
+            spin_unlock(&frame.table->lock);
+            continue;
+        }
+
         capability_entry_t* cap = &frame.table->entries[frame.slot];
         if (cap->in_use == 0U || cap->generation != frame.generation) {
             spin_unlock(&frame.table->lock);
@@ -791,8 +860,9 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
 
         if (frame.table != table || frame.slot != root_slot) { // Don't follow root's siblings!
             if (cap->next_sibling.table != NULL && cap->next_sibling.slot != UINT32_MAX) {
-                if (sp >= CAP_REVOKE_MAX) {
+                if (sp >= (stack == fallback_stack ? 32 : CAP_REVOKE_MAX)) {
                     spin_unlock(&frame.table->lock);
+                    if (stack != fallback_stack) { kfree(stack); }
                     return -3; // bounded-stack overflow
                 }
                 stack[sp] = cap->next_sibling;
@@ -802,8 +872,9 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
 
         // Push children onto the stack
         if (cap->first_child.table != NULL && cap->first_child.slot != UINT32_MAX) {
-            if (sp >= CAP_REVOKE_MAX) {
+            if (sp >= (stack == fallback_stack ? 32 : CAP_REVOKE_MAX)) {
                 spin_unlock(&frame.table->lock);
+                if (stack != fallback_stack) { kfree(stack); }
                 return -3; // bounded-stack overflow
             }
             stack[sp] = cap->first_child;
@@ -833,5 +904,6 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
         spin_unlock(&frame.table->lock);
     }
 
+    if (stack != fallback_stack) { kfree(stack); }
     return 0;
 }
