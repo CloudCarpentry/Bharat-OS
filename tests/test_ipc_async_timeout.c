@@ -3,14 +3,17 @@
 #include <stdio.h>
 
 #include "../kernel/include/ipc_async.h"
-#include "../kernel/include/sched.h"
+#include "../kernel/include/sched/sched.h"
 
-static uint64_t g_ticks = 0;
-static int g_wakeup_count = 0;
+// Test stub logic for ipc timeouts
+
+uint64_t g_ticks = 0;
 
 uint64_t sched_get_ticks(void) {
     return g_ticks;
 }
+
+int g_wakeup_count = 0;
 
 void sched_wakeup(kthread_t* thread) {
     if (thread) {

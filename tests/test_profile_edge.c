@@ -6,7 +6,7 @@
 
 #include "../kernel/include/kernel.h"
 #include "../kernel/include/device.h"
-#include "../kernel/include/advanced/algo_matrix.h"
+#include "../kernel/include/sched/algo_matrix.h"
 #include "../kernel/include/subsystem_profile.h"
 
 #include "../services/core/subsysmgr/include/bharat/automotive/automotive.h"

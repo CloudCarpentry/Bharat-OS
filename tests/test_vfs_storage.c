@@ -64,15 +64,13 @@ capability_table_t *g_mock_cap_table;
 
 #include "sched.h"
 
-kthread_t *sched_current_thread(void) {
-    static kprocess_t proc;
-    static kthread_t t;
-    proc.security_sandbox_ctx = g_mock_cap_table;
-    t.process = &proc;
-    return &t;
-}
+
+extern kprocess_t* g_stub_current_process;
 
 int main(void) {
+    static kprocess_t proc;
+    g_stub_current_process = &proc;
+    proc.security_sandbox_ctx = g_mock_cap_table;
     // initialize g_memory_fs
     strcpy((char*)g_memory_fs, "hello-kernel-vfs");
 

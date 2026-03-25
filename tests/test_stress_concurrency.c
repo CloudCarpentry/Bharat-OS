@@ -8,7 +8,7 @@
 
 #include "../kernel/include/capability.h"
 #include "../kernel/include/ipc_endpoint.h"
-#include "../kernel/include/sched.h"
+#include "../kernel/include/sched/sched.h"
 
 #ifndef THREADS
 #define THREADS 32
@@ -78,7 +78,7 @@ static void* stress_worker(void* arg) {
         if (op == 0) {
             // sched_sys_thread_create needs careful locking in stub or limit memory leaks
             // we will simulate contention manually instead
-            sched_yield();
+            kthread_yield();
         } else if (op == 1) {
             uint32_t send_cap = 0;
             uint32_t recv_cap = 0;
@@ -93,7 +93,7 @@ static void* stress_worker(void* arg) {
         } else if (op == 2) {
             sched_sys_sleep(rand_r(&seed) % 5);
         } else if (op == 3) {
-            sched_yield();
+            kthread_yield();
         } else if (op == 4) {
             // Allocate and free random capabilities
             capability_table_t* t = (capability_table_t*)g_proc->security_sandbox_ctx;

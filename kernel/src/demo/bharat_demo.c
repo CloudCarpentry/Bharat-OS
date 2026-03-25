@@ -133,7 +133,7 @@ static void high_priority_thread(void)
     }
     g_hi_done = 1U;
     while (1) {
-        sched_yield();
+        kthread_yield();
     }
 }
 
@@ -145,7 +145,7 @@ static void low_priority_thread(void)
     }
     g_lo_done = 1U;
     while (1) {
-        sched_yield();
+        kthread_yield();
     }
 }
 
@@ -191,7 +191,7 @@ static void demo_scheduler(void)
     }
 
     /* Yield so that both threads can run */
-    sched_yield();
+    kthread_yield();
 
     /* Report results */
     DEMO_PRINT("  [SCHED] HI-PRI done=");

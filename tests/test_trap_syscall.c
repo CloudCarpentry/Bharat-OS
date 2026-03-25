@@ -9,11 +9,10 @@
 #include "../kernel/include/arch/arch_caps.h"
 #include "../kernel/include/mm.h"
 #include "../kernel/include/sched/sched.h"
+#include "../boot/include/boot/boot_info.h"
 #include "../kernel/include/kernel.h"
 #include <bharat/uapi/syscall_args.h>
 
-int cap_can_transfer(uint32_t type) { return 1; }
-int cap_transfer_rights_valid(uint32_t current_rights, uint32_t requested_rights) { return 1; }
 
 arch_caps_t arch_get_caps(void) {
     arch_caps_t caps = {0};

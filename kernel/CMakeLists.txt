@@ -11,6 +11,7 @@ target_include_directories(bharat_kernel_includes INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/include/generated
     ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/lib/include
     ${CMAKE_SOURCE_DIR}/boot/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
@@ -391,6 +392,7 @@ add_executable(kernel.elf
     $<TARGET_OBJECTS:bharatos_driver_accel>
     $<TARGET_OBJECTS:bharat_mm_iommu>
     $<TARGET_OBJECTS:bharat_mm_pmm>
+    $<TARGET_OBJECTS:bharat_librbtree_obj>
     $<TARGET_OBJECTS:k_core>
     $<TARGET_OBJECTS:k_sched>
     $<TARGET_OBJECTS:k_ipc>

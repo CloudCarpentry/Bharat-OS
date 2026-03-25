@@ -5,7 +5,7 @@
 #include "mm.h"
 #include "sched/ai_sched.h"
 #include "list.h"
-#include "rbtree.h"
+#include "lib/rbtree.h"
 #include "kernel_safety.h"
 #include "spinlock.h"
 #include <stdbool.h>
@@ -209,7 +209,7 @@ void sched_block(void);
 kthread_t *sched_pick_next_ready_l0(uint32_t core_id);
 
 // Context Switching
-void sched_yield(void);
+void kthread_yield(void);
 void sched_on_timer_tick(void);
 kthread_t* sched_current_thread(void);
 uint64_t sched_get_ticks(void);

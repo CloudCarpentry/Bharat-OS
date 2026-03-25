@@ -1,11 +1,12 @@
-#include "../kernel/include/advanced/ai_sched.h"
+#include "../kernel/include/sched/ai_sched.h"
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "../kernel/include/mm/address_token.h"
 #include "../kernel/include/mm.h"
-#include "../kernel/include/advanced/formal_verif.h"
+#include "../kernel/staging/formal/formal_verif.h"
 
 int vmm_init(void) {
     return 0;
