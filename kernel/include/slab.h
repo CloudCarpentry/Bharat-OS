@@ -5,15 +5,24 @@
 #include <stddef.h>
 #include "mm.h"
 
+#define KCACHE_MAX_PAGES             64
+#define SLAB_MIN_OBJECT_SIZE         16
+#define KCACHE_MAX_OBJS_PER_PAGE     (4096 / SLAB_MIN_OBJECT_SIZE) // Assumes PAGE_SIZE is 4096
+#define KCACHE_BITMAP_WORDS_PER_PAGE ((KCACHE_MAX_OBJS_PER_PAGE + 31u) / 32u)
+
 // Kernel cache structure for custom object caching
 typedef struct kcache {
     const char* name;
     size_t object_size;
     // Basic tracking arrays for simplicity
-    phys_addr_t pages[64];
+    phys_addr_t pages[KCACHE_MAX_PAGES];
     uint32_t num_pages;
-    // Bitmap for free items
-    uint32_t free_bitmap[64];
+
+    uint32_t objs_per_page;
+    uint32_t bitmap_words_per_page;
+
+    // Bitmap for allocated items (1 = allocated)
+    uint32_t free_bitmap[KCACHE_MAX_PAGES][KCACHE_BITMAP_WORDS_PER_PAGE];
 } kcache_t;
 
 // Standard kernel heap allocator

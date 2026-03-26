@@ -16,44 +16,70 @@ static void init_slab() {
         slab_caches[i].name = "kmalloc_slab";
         slab_caches[i].object_size = slab_sizes[i];
         slab_caches[i].num_pages = 0;
-        for (int j = 0; j < 64; j++) slab_caches[i].free_bitmap[j] = 0;
+        slab_caches[i].objs_per_page = PAGE_SIZE / slab_caches[i].object_size;
+        slab_caches[i].bitmap_words_per_page = (slab_caches[i].objs_per_page + 31u) / 32u;
+        for (int j = 0; j < KCACHE_MAX_PAGES; j++) {
+            for (int w = 0; w < KCACHE_BITMAP_WORDS_PER_PAGE; w++) {
+                slab_caches[i].free_bitmap[j][w] = 0;
+            }
+        }
     }
     slab_initialized = 1;
 }
 
 // Custom kcache implementation
 kcache_t* kcache_create(const char* name, size_t size) {
+    // Force minimum 16-byte alignment
+    if (size < SLAB_MIN_OBJECT_SIZE) {
+        size = SLAB_MIN_OBJECT_SIZE;
+    } else {
+        size = (size + 15) & ~15;
+    }
+
     kcache_t* c = (kcache_t*)kmalloc(sizeof(kcache_t));
     if (!c) return NULL;
     c->name = name;
     c->object_size = size;
     c->num_pages = 0;
-    for (int j = 0; j < 64; j++) c->free_bitmap[j] = 0;
+    c->objs_per_page = PAGE_SIZE / size;
+    c->bitmap_words_per_page = (c->objs_per_page + 31u) / 32u;
+    for (int j = 0; j < KCACHE_MAX_PAGES; j++) {
+        for (int w = 0; w < KCACHE_BITMAP_WORDS_PER_PAGE; w++) {
+            c->free_bitmap[j][w] = 0;
+        }
+    }
     return c;
 }
 
 void* kcache_alloc(kcache_t* cache) {
     if (!cache || cache->object_size == 0) return NULL;
-    int objs_per_page = PAGE_SIZE / cache->object_size;
+    uint32_t objs_per_page = cache->objs_per_page;
 
     // Find free object
     for (uint32_t p = 0; p < cache->num_pages; p++) {
-        for (int i = 0; i < objs_per_page; i++) {
-            if ((cache->free_bitmap[p] & (1U << i)) == 0) {
-                cache->free_bitmap[p] |= (1U << i);
+        for (uint32_t i = 0; i < objs_per_page; i++) {
+            uint32_t word = i / 32u;
+            uint32_t bit = i % 32u;
+            if ((cache->free_bitmap[p][word] & (1U << bit)) == 0) {
+                cache->free_bitmap[p][word] |= (1U << bit);
                 return (void*)(uintptr_t)(cache->pages[p] + (i * cache->object_size));
             }
         }
     }
 
     // Allocate new page
-    if (cache->num_pages >= 64) return NULL; // simple limitation
+    if (cache->num_pages >= KCACHE_MAX_PAGES) return NULL; // simple limitation
     phys_addr_t page = mm_alloc_page(NUMA_NODE_ANY);
     if (!page) return NULL;
 
     uint32_t p = cache->num_pages++;
     cache->pages[p] = page;
-    cache->free_bitmap[p] = (1U << 0); // Allocate first object
+
+    for (int w = 0; w < KCACHE_BITMAP_WORDS_PER_PAGE; w++) {
+        cache->free_bitmap[p][w] = 0;
+    }
+
+    cache->free_bitmap[p][0] = (1U << 0); // Allocate first object
     return (void*)(uintptr_t)(page);
 }
 
@@ -63,8 +89,12 @@ void kcache_free(kcache_t* cache, void* obj) {
 
     for (uint32_t p = 0; p < cache->num_pages; p++) {
         if (paddr >= cache->pages[p] && paddr < cache->pages[p] + PAGE_SIZE) {
-            int i = (paddr - cache->pages[p]) / cache->object_size;
-            cache->free_bitmap[p] &= ~(1U << i);
+            uint32_t i = (paddr - cache->pages[p]) / cache->object_size;
+            if (i < cache->objs_per_page) {
+                uint32_t word = i / 32u;
+                uint32_t bit = i % 32u;
+                cache->free_bitmap[p][word] &= ~(1U << bit);
+            }
             return;
         }
     }
