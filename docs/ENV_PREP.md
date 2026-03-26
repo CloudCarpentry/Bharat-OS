@@ -138,3 +138,4 @@ Once your environment is set up, proceed to the architecture-specific build guid
 - [Building for RISC-V 64-bit](BUILD_RISCV64.md)
 - [Building for ARM64](BUILD_ARM64.md)
 - [General Build Overview](../BUILD.md)
+- [Local Verification Guide (with `act`/native)](dev/verification_guide.md)
