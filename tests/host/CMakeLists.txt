@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.20)
 include(cmake/test_component_policy.cmake)
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Generic")
+    # This file shouldn't be processed if we are building the kernel (cross-compiling)
+    return()
+endif()
+
 # ... preserve existing host tests logic, append ours ...
 add_executable(test_can_filter stacks/can/test_can_filter.c ../../stacks/can/core/can_filter.c)
 target_include_directories(test_can_filter PRIVATE ../../stacks/include)
