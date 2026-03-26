@@ -3,6 +3,7 @@ import json
 import os
 import subprocess
 import sys
+import boot
 
 def load_manifest():
     manifest_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'build_config.json')
@@ -110,12 +111,18 @@ def do_run(build_cfg, dual_serial, run_tests=False):
     gui = build_cfg.get('gui', False)
     preset = build_cfg.get('preset')
 
-    kernel_path = os.path.join('build', preset, 'kernel.elf')
+    kernel_path = os.path.join('build', preset, 'kernel', 'kernel.elf')
     if not os.path.exists(kernel_path):
         print(f"Kernel image {kernel_path} not found. Build it first.")
         sys.exit(1)
 
+    # Use boot abstraction layer
+    boot_config = boot.get_bootloader(arch)(kernel_path)
+    run_kernel = boot_config.get("kernel_path", kernel_path)
+
     qemu_opts = []
+    if "qemu_flags" in boot_config:
+        qemu_opts.extend(boot_config["qemu_flags"])
 
     # If run_tests is true, force headless mode for CI to capture output
     if run_tests:
@@ -140,13 +147,13 @@ def do_run(build_cfg, dual_serial, run_tests=False):
         qemu_opts.extend(['-serial', 'stdio', '-display', 'none'])
 
     if arch == 'x86_64':
-        cmd = ['qemu-system-x86_64', '-kernel', kernel_path, '-m', '512'] + qemu_opts
+        cmd = ['qemu-system-x86_64', '-kernel', run_kernel, '-m', '512'] + qemu_opts
     elif arch == 'arm64':
-        cmd = ['qemu-system-aarch64', '-M', 'virt', '-cpu', 'cortex-a53', '-m', '512', '-kernel', kernel_path] + qemu_opts
+        cmd = ['qemu-system-aarch64', '-kernel', run_kernel, '-m', '512'] + qemu_opts
     elif arch == 'riscv64':
-        cmd = ['qemu-system-riscv64', '-M', 'virt', '-m', '512', '-kernel', kernel_path] + qemu_opts
+        cmd = ['qemu-system-riscv64', '-kernel', run_kernel, '-m', '512'] + qemu_opts
     elif arch == 'arm32' and board == 'avh-corstone310':
-        cmd = ['VHT_Corstone_SSE-310', '-a', kernel_path] + qemu_opts
+        cmd = ['VHT_Corstone_SSE-310', '-a', run_kernel] + qemu_opts
     else:
         print(f"Unsupported run configuration for arch {arch} board {board}")
         sys.exit(1)

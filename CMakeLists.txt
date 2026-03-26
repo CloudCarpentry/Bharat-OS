@@ -181,10 +181,10 @@ endif()
 
 if(ARCH STREQUAL "riscv64")
     add_compile_options(
-        $<$<COMPILE_LANGUAGE:C>:-march=rv64g>
+        $<$<COMPILE_LANGUAGE:C>:-march=rv64gc>
         $<$<COMPILE_LANGUAGE:C>:-mabi=lp64d>
         $<$<COMPILE_LANGUAGE:C>:-mcmodel=medany>
-        $<$<COMPILE_LANGUAGE:ASM>:-march=rv64g>
+        $<$<COMPILE_LANGUAGE:ASM>:-march=rv64gc>
         $<$<COMPILE_LANGUAGE:ASM>:-mabi=lp64d>
     )
     add_link_options(-fuse-ld=lld)
