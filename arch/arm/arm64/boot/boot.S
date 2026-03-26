@@ -20,6 +20,9 @@ _start:
     .word   0x0                 /* 0x3c: res5 */
 
 .real_start:
+    /* Preserve device tree pointer passed in x0 by bootloader/QEMU */
+    mov x19, x0
+
     /* Direct MMIO write to PL011 for early debug confirmation */
     mov x15, #0x09000000
     mov x16, #'!'
@@ -52,6 +55,7 @@ _start:
     isb
 
     /* Jump to C kernel_main */
+    mov x0, x19
     bl kernel_main
 
 .halt_loop:
