@@ -20,3 +20,7 @@ The Canonical Boot Contract defines `boot_info_t`, a uniform, early-stage handof
 ## 3. Guarantees
 - The struct relies strictly on fixed-size arrays (`BHARAT_BOOT_MAX_MEM_REGIONS` = 128) to avoid allocations before PMM.
 - Boot mode (`BHARAT_BOOT_MODE_NORMAL`, `BHARAT_BOOT_MODE_RECOVERY`, etc) is resolved via `boot_mode_resolve` directly from this structure, isolating policy from parsing logic.
+
+## 4. Current Status & Roadmap
+*   **Status**: Baseline implementation complete.
+*   **Roadmap**: We are currently focused on secure and measured boot, expanding upon the security info captured by this structure to enable secure updates and fallback control points. For detailed boot architecture code status and future roadmap, please see `docs/architecture/boot/boot-status-and-roadmap.md`.
