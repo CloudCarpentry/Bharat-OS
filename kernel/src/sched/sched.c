@@ -21,36 +21,14 @@
 #include <stdint.h>
 #include "lib/base/string.h"
 
-#define SCHED_MAX_THREADS 128U
-#define SCHED_MAX_PROCESSES 32U
+#include "sched_internal.h"
+
 #define SCHED_DEFAULT_SLICE_MS 10U
 
 #define SCHED_MAX_PENDING_SUGGESTIONS 64U
 #define SCHED_AFFINITY_ANY 0xFFFFFFFFU
 
 #define CFS_NICE_0_WEIGHT 1024U
-
-typedef struct {
-  uint8_t in_use;
-  uint8_t is_bootstrap;
-  uint32_t next_free;
-  kthread_t thread;
-  cpu_context_t context;
-  ai_sched_context_t ai_ctx;
-  list_head_t run_node;
-  list_head_t wait_node; // Used for both sleeping_list and blocked_list
-  uint32_t reap_next;
-  uint8_t reap_pending;
-  uint8_t is_on_runqueue;
-  uint8_t is_sleeping;
-  uint8_t is_blocked;
-} thread_slot_t;
-
-typedef struct {
-  uint8_t in_use;
-  uint32_t next_free;
-  kprocess_t process;
-} process_slot_t;
 
 typedef struct {
   ai_suggestion_t queue[SCHED_MAX_PENDING_SUGGESTIONS];
@@ -65,9 +43,9 @@ typedef struct {
 
 // Removed core_runqueue_t definition from here as it's now in sched.h as sched_rq_t
 // Removed static core_runqueue_t g_runqueues
-static thread_slot_t g_threads[SCHED_MAX_THREADS];
-static thread_slot_t g_bootstrap_threads[MAX_SUPPORTED_CORES][2];
-static process_slot_t g_processes[SCHED_MAX_PROCESSES];
+thread_slot_t g_threads[SCHED_MAX_THREADS];
+thread_slot_t g_bootstrap_threads[MAX_SUPPORTED_CORES][2];
+process_slot_t g_processes[SCHED_MAX_PROCESSES];
 static uint8_t g_bootstrap_stacks[MAX_SUPPORTED_CORES][2][16384U];
 
 static sched_policy_t g_policy = SCHED_POLICY_PRIORITY;
@@ -84,10 +62,11 @@ static uint32_t g_free_process_head = UINT32_MAX;
 static uint32_t g_reap_head = UINT32_MAX;
 static uint32_t g_reap_tail = UINT32_MAX;
 static spinlock_t g_reap_lock;
-static uint8_t g_sched_initialized = 0U;
+uint8_t g_sched_initialized = 0U;
 static uint32_t g_active_core_count = 1U;
-#if defined(TESTING)
-static uint32_t g_sched_test_core_count = 1U;
+
+#if defined(BHARAT_ENABLE_KERNEL_SELFTESTS)
+uint32_t g_sched_test_core_count = 1U;
 #endif
 
 enum {
@@ -449,7 +428,7 @@ void sched_thread_exit_trampoline(void) {
   }
 }
 
-static void sched_reset_core_runqueues(void) {
+void sched_reset_core_runqueues(void) {
   for (uint32_t core = 0; core < g_active_core_count; ++core) {
     sched_rq_t *rq = &g_cpu_locals[core].runqueue;
     rq->current_thread = NULL;
@@ -519,50 +498,10 @@ static kthread_t *sched_create_bootstrap_thread(kprocess_t *parent,
   return &slot->thread;
 }
 
-#if defined(TESTING)
-void sched_set_test_core_count(uint32_t core_count) {
-  if (core_count == 0U) {
-    g_sched_test_core_count = 1U;
-  } else if (core_count > MAX_SUPPORTED_CORES) {
-    g_sched_test_core_count = MAX_SUPPORTED_CORES;
-  } else {
-    g_sched_test_core_count = core_count;
-  }
-}
-
-void sched_test_reset(void) {
-  for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_threads); ++i) {
-    if (g_threads[i].in_use != 0U) {
-      if (g_threads[i].thread.capability_list) {
-        cap_table_destroy(g_threads[i].thread.capability_list);
-        g_threads[i].thread.capability_list = NULL;
-      }
-      arch_ext_state_thread_destroy(&g_threads[i].thread);
-      if (g_threads[i].thread.kernel_stack) {
-        kfree((void *)(uintptr_t)g_threads[i].thread.kernel_stack);
-      }
-    }
-  }
-  for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_processes); ++i) {
-    if (g_processes[i].in_use != 0U) {
-      if (g_processes[i].process.security_sandbox_ctx) {
-        cap_table_destroy(g_processes[i].process.security_sandbox_ctx);
-        g_processes[i].process.security_sandbox_ctx = NULL;
-      }
-      if (g_processes[i].process.addr_space) {
-        (void)aspace_destroy(g_processes[i].process.addr_space);
-      }
-    }
-  }
-  memset(g_bootstrap_threads, 0, sizeof(g_bootstrap_threads));
-  sched_reset_core_runqueues();
-  g_sched_initialized = 0U;
-}
-#endif
-
 void sched_init(void) {
   if (g_sched_initialized != 0U) {
-#if defined(TESTING)
+#if defined(BHARAT_ENABLE_KERNEL_SELFTESTS)
+    extern void sched_test_reset(void);
     sched_test_reset();
 #else
     return;
