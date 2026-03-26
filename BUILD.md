@@ -35,7 +35,7 @@ Before building Bharat-OS, you need to set up your development environment.
 - QEMU (for running the kernel)
 - `yq` (Optional, used by the build wrappers `build.sh`/`build.ps1` to parse `build_config.yml`)
 
-Please see the comprehensive **[Environment Preparation Guide](docs/ENV_PREP.md)** for platform-specific instructions.
+Please see the comprehensive **[Environment Preparation Guide](docs/build/ENV_PREP.md)** for platform-specific instructions.
 
 ---
 

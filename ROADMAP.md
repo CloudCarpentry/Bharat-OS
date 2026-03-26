@@ -87,7 +87,7 @@ This roadmap tracks Bharat-OS from a bootable microkernel baseline toward a prod
 
 When implementation deviates from architecture intent:
 
-1. Document deviation in `docs/current-code-status.md` with taxonomy label.
+1. Document deviation in `docs/dev/current-code-status.md` with taxonomy label.
 2. Add roadmap closure item (owner + target phase).
 3. Keep architecture docs forward-looking, but mark current maturity and constraints.
 

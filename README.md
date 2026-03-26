@@ -26,13 +26,13 @@ For our detailed vision and current subsystem maturity regarding the transition 
 | Networking split (`net` -> `netmgr` + `netstack`) | In progress | `netmgr` has control-plane tables + IPC op dispatch; `netstack` includes IPv4, ARP, ICMP, UDP, socket table, and loopback/ethernet paths. |
 | Build & test infrastructure | Active baseline | CMake presets/toolchains and host test integration are wired; architecture runtime maturity differs by target. |
 | Distributed/multikernel scale-out | Early baseline | Messaging-first direction is reflected in subsystem and service decomposition, but many production control-plane behaviors remain roadmap items. |
-| Documentation coverage | Expanded in this update | See `docs/current-code-status.md` for a code-backed implementation matrix across services/subsystems. |
+| Documentation coverage | Expanded in this update | See `docs/dev/current-code-status.md` for a code-backed implementation matrix across services/subsystems. |
 
 For architecture-level details and deferred boundaries, see `docs/architecture/` and ADRs in `docs/adr/`. For the step-by-step closure plan, see `docs/architecture/memory-gap-closure-plan.md`. For our profile-driven, capability-safe communications and networking architecture, see [`docs/architecture/network-architecture.md`](docs/architecture/network-architecture.md).
 For the ARM32/RV32 EDGE-tier expansion strategy and capability matrix, see [`docs/architecture/arm32-rv32-edge-tier-plan.md`](docs/architecture/arm32-rv32-edge-tier-plan.md).
 For cross-tool code-agent guidance, guardrails, and skill templates, see [`docs/ai-agents/README.md`](docs/ai-agents/README.md).
 
-For a code-backed snapshot of what is implemented vs. stubbed right now, see [`docs/current-code-status.md`](docs/current-code-status.md).
+For a code-backed snapshot of what is implemented vs. stubbed right now, see [`docs/dev/current-code-status.md`](docs/dev/current-code-status.md).
 
 
 ## Documentation maturity model and governance
@@ -46,7 +46,7 @@ To reduce roadmap drift and keep implementation claims accurate, Bharat-OS uses 
 
 Primary references:
 
-- [`docs/current-code-status.md`](docs/current-code-status.md) — code-backed status truth source.
+- [`docs/dev/current-code-status.md`](docs/dev/current-code-status.md) — code-backed status truth source.
 - [`ROADMAP.md`](ROADMAP.md) — forward-looking plan with explicit maturity labels and discrepancy log.
 - [`docs/architecture/cmake-governance-and-agent-rules.md`](docs/architecture/cmake-governance-and-agent-rules.md) — CMake structure, versioning policy, and contributor/agent rules.
 - [`docs/architecture/components/kernel-subcomponents-architecture.md`](docs/architecture/components/kernel-subcomponents-architecture.md) — kernel subcomponent architecture, per-arch notes, done/todo, roadmap map.
@@ -54,7 +54,7 @@ Primary references:
 - [`docs/architecture/components/services-subcomponents-architecture.md`](docs/architecture/components/services-subcomponents-architecture.md) — service-domain architecture/status map.
 - [`docs/architecture/components/drivers-subcomponents-architecture.md`](docs/architecture/components/drivers-subcomponents-architecture.md) — driver architecture and arch constraints map.
 
-We intentionally keep architecture documents forward-looking while maintaining conservative implementation status in `docs/current-code-status.md`.
+We intentionally keep architecture documents forward-looking while maintaining conservative implementation status in `docs/dev/current-code-status.md`.
 
 ## Device Profiles & Use-cases
 
@@ -552,7 +552,7 @@ Bharat-OS draws inspiration from and builds upon research in AI-driven systems a
 - **L4 Family Microkernels:** Surveys L4 evolution, emphasizing modularity; Bharat-OS builds on L4's IPC and driver isolation principles. ([PDF](https://trustworthy.systems/publications/nicta_full_text/8988.pdf))
 - **AI scheduling research:** workload-aware scheduling literature (including RL-driven resource managers) informs the long-term AI-governor and scheduler policy roadmap. ([arXiv](https://arxiv.org/abs/2403.01185), [IJMET PDF](https://iaeme.com/MasterAdmin/Journal_uploads/IJMET/VOLUME_11_ISSUE_12/IJMET_11_12_012.pdf))
 
-For a complete bibliography and BibTeX entries, see [`docs/papers.md`](docs/papers.md) and [`docs/references.bib`](docs/references.bib).
+For a complete bibliography and BibTeX entries, see [`docs/research_doc/papers.md`](docs/research_doc/papers.md) and [`docs/research_doc/references.bib`](docs/research_doc/references.bib).
 
 ### Phase 4 Verification Roadmap
 
