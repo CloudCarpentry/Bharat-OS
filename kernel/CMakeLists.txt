@@ -373,6 +373,7 @@ set(KERNEL_SRCS
     $<$<STREQUAL:${ARCH},riscv32>:../arch/riscv/riscv32/arch_caps.c>
     ${ARCH_EXT_STATE_SRC}
     ../hal/mmu_init.c
+    ../hal/hal_mem_backend.c
     ../hal/iommu_stub.c
     ../hal/dma_coherency.c
     ../hal/interrupt_common.c
