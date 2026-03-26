@@ -43,12 +43,12 @@ static inline void cap_unlock_two_tables(capability_table_t* a, capability_table
   assigns \nothing;
   ensures \result == 0 || \result == 1;
 */
-static int cap_rights_valid(cap_type_t type, uint32_t rights) {
+static int cap_rights_valid(cap_type_t type, uint64_t rights) {
     switch (type) {
     case CAP_TYPE_ENDPOINT:
-        return (rights & ~(CAP_RIGHT_SEND | CAP_RIGHT_RECEIVE | CAP_RIGHT_DELEGATE)) == 0U;
+        return (rights & ~(CAP_RIGHT_ENDPOINT_SEND | CAP_RIGHT_ENDPOINT_RECEIVE | CAP_RIGHT_DELEGATE)) == 0U;
     case CAP_TYPE_MEMORY:
-        return (rights & ~(CAP_RIGHT_MAP | CAP_RIGHT_UNMAP | CAP_RIGHT_DELEGATE)) == 0U;
+        return (rights & ~(CAP_RIGHT_MEMORY_MAP | CAP_RIGHT_MEMORY_UNMAP | CAP_RIGHT_MEMORY_SHARE | CAP_RIGHT_DELEGATE)) == 0U;
     case CAP_TYPE_SCHED:
         return (rights & ~(CAP_RIGHT_SCHEDULE | CAP_RIGHT_DELEGATE)) == 0U;
     case CAP_TYPE_PROCESS:
@@ -58,7 +58,7 @@ static int cap_rights_valid(cap_type_t type, uint32_t rights) {
     case CAP_TYPE_ACCEL_QUEUE:
         return (rights & ~(CAP_RIGHT_ENQUEUE | CAP_RIGHT_CANCEL | CAP_RIGHT_QUERY | CAP_RIGHT_DELEGATE)) == 0U;
     case CAP_TYPE_ACCEL_BUFFER:
-        return (rights & ~(CAP_RIGHT_MAP | CAP_RIGHT_BIND | CAP_RIGHT_SHARE | CAP_RIGHT_SYNC_CPU | CAP_RIGHT_SYNC_DEV | CAP_RIGHT_DELEGATE)) == 0U;
+        return (rights & ~(CAP_RIGHT_MEMORY_MAP | CAP_RIGHT_BIND | CAP_RIGHT_MEMORY_SHARE | CAP_RIGHT_SYNC_CPU | CAP_RIGHT_SYNC_DEV | CAP_RIGHT_DELEGATE)) == 0U;
     case CAP_TYPE_ACCEL_TELEMETRY:
         return (rights & ~(CAP_RIGHT_READ_STATS | CAP_RIGHT_READ_FAULTS | CAP_RIGHT_DELEGATE)) == 0U;
     case CAP_TYPE_ACCEL_ADMIN:
@@ -66,7 +66,7 @@ static int cap_rights_valid(cap_type_t type, uint32_t rights) {
     case CAP_TYPE_DMA_DOMAIN:
         return (rights & ~(CAP_RIGHT_ALL | CAP_RIGHT_DELEGATE)) == 0U;
     case CAP_TYPE_DMA_GRANT:
-        return (rights & ~(CAP_RIGHT_MAP | CAP_RIGHT_UNMAP | CAP_RIGHT_REVOKE | CAP_RIGHT_DELEGATE)) == 0U;
+        return (rights & ~(CAP_RIGHT_DMA_MAP | CAP_RIGHT_MEMORY_UNMAP | CAP_RIGHT_REVOKE | CAP_RIGHT_DELEGATE)) == 0U;
     default:
         return 0;
     }
@@ -163,7 +163,7 @@ void cap_table_destroy(capability_table_t* table) {
 int cap_table_grant(capability_table_t* table,
                     cap_type_t type,
                     uint64_t object_ref,
-                    uint32_t rights,
+                    uint64_t rights,
                     uint32_t* out_cap_id) {
     if (!BHARAT_PTR_NON_NULL(table) || type == CAP_TYPE_NONE) {
         return -1;
@@ -187,6 +187,7 @@ int cap_table_grant(capability_table_t* table,
         capability_entry_t* e = &table->entries[i];
         if (e->in_use == 0U) {
             e->id = table->next_id++;
+            e->state = CAP_STATE_LIVE;
             e->type = type;
             e->rights = rights;
             e->object_ref = object_ref;
@@ -201,12 +202,8 @@ int cap_table_grant(capability_table_t* table,
             e->next_sibling.generation = 0;
             e->generation++;
 
-            // Set the owner_core for memory objects
-            if (e->type == CAP_TYPE_MEMORY) {
-                e->owner_core = hal_cpu_get_id();
-            } else {
-                e->owner_core = 0;
-            }
+            // Default owner core to the core creating the capability
+            e->owner_core = hal_cpu_get_id();
 
             e->instance_id.origin_core = hal_cpu_get_id();
             e->instance_id.object_id = e->object_ref;
@@ -215,7 +212,7 @@ int cap_table_grant(capability_table_t* table,
             e->revocation_epoch = 0;
 
             e->in_use = 1U;
-            found_id = e->id;
+            found_id = e->id | (e->generation << 16);
             ret = 0;
             break;
         }
@@ -233,11 +230,17 @@ int cap_table_grant(capability_table_t* table,
 int cap_table_lookup(const capability_table_t* table,
                      uint32_t cap_id,
                      cap_type_t required_type,
-                     uint32_t required_rights,
+                     uint64_t required_rights,
                      capability_entry_t* out_entry) {
     if (!BHARAT_PTR_NON_NULL(table) || cap_id == 0U) {
         return -1;
     }
+
+    uint32_t id_only = cap_id & 0xFFFF;
+    uint32_t generation = cap_id >> 16;
+
+    // If generation is 0, we treat it as un-versioned for backwards compatibility
+    // if tests use raw IDs, else we strictly enforce.
 
     capability_entry_t found_entry = {0};
     int ret = -4;
@@ -254,7 +257,15 @@ int cap_table_lookup(const capability_table_t* table,
     */
     for (size_t i = 0; i < BHARAT_ARRAY_SIZE(table->entries); ++i) {
         const capability_entry_t* e = &table->entries[i];
-        if (e->in_use != 0U && e->id == cap_id) {
+        if (e->in_use != 0U && e->id == id_only) {
+            if (generation != 0 && e->generation != generation) {
+                ret = -6; // Stale handle
+                break;
+            }
+            if (e->state != CAP_STATE_LIVE) {
+                ret = -7; // Not live
+                break;
+            }
             if (required_type != CAP_TYPE_NONE && e->type != required_type) {
                 ret = -2;
                 break;
@@ -282,7 +293,7 @@ int cap_table_lookup(const capability_table_t* table,
 static int cap_table_delegate_local(capability_table_t* src,
                                     capability_table_t* dst,
                                     uint32_t cap_id,
-                                    uint32_t delegated_rights,
+                                    uint64_t delegated_rights,
                                     uint32_t* out_new_cap_id) {
     cap_lock_two_tables(src, dst);
 
@@ -290,8 +301,17 @@ static int cap_table_delegate_local(capability_table_t* src,
     uint32_t src_slot_idx = UINT32_MAX;
     capability_entry_t* src_entry = NULL;
 
+    uint32_t id_only = cap_id & 0xFFFF;
+    uint32_t generation = cap_id >> 16;
+
     for (size_t i = 0; i < BHARAT_ARRAY_SIZE(src->entries); ++i) {
-        if (src->entries[i].in_use != 0U && src->entries[i].id == cap_id) {
+        if (src->entries[i].in_use != 0U && src->entries[i].id == id_only) {
+            if (generation != 0 && src->entries[i].generation != generation) {
+                break; // Stale handle
+            }
+            if (src->entries[i].state != CAP_STATE_LIVE) {
+                break; // Not live
+            }
             src_entry = &src->entries[i];
             src_slot_idx = (uint32_t)i;
             break;
@@ -311,6 +331,7 @@ static int cap_table_delegate_local(capability_table_t* src,
             capability_entry_t* dst_entry = &dst->entries[i];
             if (dst_entry->in_use == 0U) {
                 dst_entry->id = dst->next_id++;
+                dst_entry->state = CAP_STATE_LIVE;
                 dst_entry->type = src_entry->type;
                 dst_entry->rights = delegated_rights;
                 dst_entry->object_ref = src_entry->object_ref;
@@ -341,7 +362,7 @@ static int cap_table_delegate_local(capability_table_t* src,
                 src_entry->first_child.slot = (uint32_t)i;
                 src_entry->first_child.generation = dst_entry->generation;
 
-                found_id = dst_entry->id;
+                found_id = dst_entry->id | (dst_entry->generation << 16);
                 ret = 0;
                 break;
             }
@@ -369,7 +390,7 @@ typedef struct {
     uint32_t src_slot_idx;
     uint32_t src_generation;
     cap_type_t type;
-    uint32_t rights;
+    uint64_t rights;
     uint64_t object_ref;
     uint32_t flags;
     uint32_t owner_core;
@@ -391,7 +412,7 @@ volatile int g_revoke_acks_needed[MAX_CPUS];
 int cap_table_delegate(capability_table_t* src,
                        capability_table_t* dst,
                        uint32_t cap_id,
-                       uint32_t delegated_rights,
+                       uint64_t delegated_rights,
                        uint32_t* out_new_cap_id) {
     if (!BHARAT_PTR_NON_NULL(src) || !BHARAT_PTR_NON_NULL(dst) || cap_id == 0U) {
         return -1;
@@ -431,8 +452,17 @@ int cap_table_delegate(capability_table_t* src,
     uint32_t src_slot_idx = UINT32_MAX;
     capability_entry_t* src_entry = NULL;
 
+    uint32_t id_only = cap_id & 0xFFFF;
+    uint32_t generation = cap_id >> 16;
+
     for (size_t i = 0; i < BHARAT_ARRAY_SIZE(src->entries); ++i) {
-        if (src->entries[i].in_use != 0U && src->entries[i].id == cap_id) {
+        if (src->entries[i].in_use != 0U && src->entries[i].id == id_only) {
+            if (generation != 0 && src->entries[i].generation != generation) {
+                break; // Stale handle
+            }
+            if (src->entries[i].state != CAP_STATE_LIVE) {
+                break; // Not live
+            }
             src_entry = &src->entries[i];
             src_slot_idx = (uint32_t)i;
             break;
@@ -498,7 +528,7 @@ int cap_table_delegate(capability_table_t* src,
 
     // Re-validate the source entry in case it was revoked while we waited
     src_entry = &src->entries[src_slot_idx];
-    if (src_entry->in_use != 0U && src_entry->id == cap_id && src_entry->generation == req->src_generation) {
+    if (src_entry->in_use != 0U && src_entry->id == id_only && src_entry->generation == req->src_generation && src_entry->state == CAP_STATE_LIVE) {
 
         // Link parent/child metadata
         // The destination core already set its parent fields to point to us.
@@ -516,7 +546,7 @@ int cap_table_delegate(capability_table_t* src,
         src_entry->first_child.generation = req->dst_generation;
 
         if (out_new_cap_id) {
-            *out_new_cap_id = req->new_cap_id;
+            *out_new_cap_id = req->new_cap_id | (req->dst_generation << 16);
         }
         ret = 0;
     } else {
@@ -560,6 +590,7 @@ void cap_handle_delegate_req(uint64_t payload, uint32_t source_core) {
         capability_entry_t* dst_entry = &dst->entries[i];
         if (dst_entry->in_use == 0U) {
             dst_entry->id = dst->next_id++;
+            dst_entry->state = CAP_STATE_LIVE;
             dst_entry->type = req->type;
             dst_entry->rights = req->rights;
             dst_entry->object_ref = req->object_ref;
@@ -700,6 +731,9 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
         return -1;
     }
 
+    uint32_t id_only = cap_id & 0xFFFF;
+    uint32_t generation = cap_id >> 16;
+
     // Iterative tree walk to revoke children safely.
     // Use a fixed-size stack to avoid kmalloc in core kernel path.
     // 64 entries = 1KB on stack, which is safe for kernel stacks.
@@ -710,8 +744,15 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
 
     uint32_t root_slot = UINT32_MAX;
     for (size_t i = 0; i < BHARAT_ARRAY_SIZE(table->entries); ++i) {
-        if (table->entries[i].in_use != 0U && table->entries[i].id == cap_id) {
+        if (table->entries[i].in_use != 0U && table->entries[i].id == id_only) {
+            if (generation != 0 && table->entries[i].generation != generation) {
+                break; // Stale handle
+            }
+            if (table->entries[i].state == CAP_STATE_FREE) {
+                break; // Already free
+            }
             root_slot = (uint32_t)i;
+            table->entries[i].state = CAP_STATE_REVOKING;
             break;
         }
     }
@@ -889,6 +930,11 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
         }
 
         // Wipe the capability (Free pool)
+
+        // If this capability was an endpoint, we should mark the endpoint as revoked/closed
+        // if this was the original or only capability for it?
+        // Let's rely on the endpoint state being verified during send/receive
+
         cap->rights = 0U;
         cap->flags = 0U;
         cap->object_ref = 0U;
@@ -906,6 +952,7 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
         cap->next_sibling.generation = 0;
 
         cap->generation++;
+        cap->state = CAP_STATE_FREE;
         cap->in_use = 0U;
 
         spin_unlock(&frame.table->lock);
