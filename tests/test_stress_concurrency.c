@@ -99,7 +99,7 @@ static void* stress_worker(void* arg) {
             capability_table_t* t = (capability_table_t*)g_proc->security_sandbox_ctx;
             if (t) {
                 uint32_t cap = 0;
-                if (cap_table_grant(t, CAP_TYPE_ENDPOINT, 1U, CAP_RIGHT_SEND, &cap) == 0) {
+                if (cap_table_grant(t, CAP_TYPE_ENDPOINT, 1U, CAP_RIGHT_ENDPOINT_SEND, &cap) == 0) {
                     // Do nothing
                 }
             }
