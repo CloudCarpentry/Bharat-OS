@@ -34,27 +34,16 @@ int vm_map(vm_space_t *space, const vm_map_req_t *req) {
         // return -1; // Uncomment for strict enforcement
     }
 
-    vm_mapping_t *mapping = (vm_mapping_t *)kmalloc(sizeof(vm_mapping_t));
-    if (!mapping) {
+    // Refactor to use Address Space Region tree for authority instead of mappings.head
+    address_space_t *aspace = (address_space_t *)space;
+    vm_region_t *r = NULL;
+    int attach_ret = aspace_region_attach(aspace, req->va, req->len, req->prot, req->map_flags, VM_INHERIT_COPY_META, NULL, 0, &r);
+    if (attach_ret != 0) {
         spinlock_release(&space->lock);
-        return -1;
+        return attach_ret;
     }
 
-    mapping->va_start = req->va;
-    mapping->pa_start = req->pa;
-    mapping->length = req->len;
-    mapping->prot = req->prot;
-    mapping->mem_type = req->mem_type;
-    mapping->flags = req->map_flags;
-    mapping->zone = req->zone;
-    mapping->map_gen = ++space->generation;
-    mapping->next = space->mappings.head;
-    mapping->prev = NULL;
-
-    if (space->mappings.head) {
-        space->mappings.head->prev = mapping;
-    }
-    space->mappings.head = mapping;
+    space->generation++;
 
     bool is_strict = (req->map_flags & VM_MAP_NO_LAZY_SYNC) || (space->timing_class >= VM_TIMING_FIRM_RT);
 
@@ -79,36 +68,27 @@ int vm_unmap(vm_space_t *space, uintptr_t va, size_t len) {
 
     spinlock_acquire(&space->lock);
 
-    vm_mapping_t *curr = space->mappings.head;
-    while (curr) {
-        if (curr->va_start == va && curr->length == len) {
-            if (curr->prev) curr->prev->next = curr->next;
-            else space->mappings.head = curr->next;
-
-            if (curr->next) curr->next->prev = curr->prev;
-
-            curr->map_gen = ++space->generation; // Bump generation for revoke
-
-            // Coordinate with Monitor Plane (Unmap MUST be strict)
-            mon_vm_send_unmap(space, va, len, true);
-
-            kfree(curr);
-            break;
-        }
-        curr = curr->next;
+    address_space_t *aspace = (address_space_t *)space;
+    int detach_ret = aspace_region_detach(aspace, va);
+    if (detach_ret == 0) {
+        space->generation++; // Bump generation for revoke
+        // Coordinate with Monitor Plane (Unmap MUST be strict)
+        mon_vm_send_unmap(space, va, len, true);
     }
 
     spinlock_release(&space->lock);
 
-    // Local invalidation
-    if (space->active_cores & (1ULL << hal_cpu_get_id())) {
-        if (active_arch_vm_ops && active_arch_vm_ops->unmap) {
-            vm_core_state_t local_state = { .core_id = hal_cpu_get_id() };
-            active_arch_vm_ops->unmap(space, &local_state, va, len);
+    if (detach_ret == 0) {
+        // Local invalidation
+        if (space->active_cores & (1ULL << hal_cpu_get_id())) {
+            if (active_arch_vm_ops && active_arch_vm_ops->unmap) {
+                vm_core_state_t local_state = { .core_id = hal_cpu_get_id() };
+                active_arch_vm_ops->unmap(space, &local_state, va, len);
+            }
         }
     }
 
-    return 0;
+    return detach_ret;
 }
 
 int vm_protect(vm_space_t *space, uintptr_t va, size_t len, uint64_t prot, uint64_t mem_type) {
@@ -116,19 +96,18 @@ int vm_protect(vm_space_t *space, uintptr_t va, size_t len, uint64_t prot, uint6
 
     spinlock_acquire(&space->lock);
 
-    vm_mapping_t *curr = space->mappings.head;
-    while (curr) {
-        if (curr->va_start == va && curr->length == len) {
-            curr->prot = prot;
-            curr->mem_type = mem_type;
-            curr->map_gen = ++space->generation;
-            break;
-        }
-        curr = curr->next;
+    address_space_t *aspace = (address_space_t *)space;
+    vm_region_t *r = aspace_lookup_region(aspace, va);
+    if (r) {
+        r->prot = prot;
+        // mem_type currently not explicitly tracked in region, could be mapped to map_flags or new field
+        space->generation++;
+        // Downgrades should be strict, upgrades can be lazy. Assuming strict for now.
+        mon_vm_send_protect(space, va, len, prot, mem_type, true);
+    } else {
+        spinlock_release(&space->lock);
+        return -1;
     }
-
-    // Downgrades should be strict, upgrades can be lazy. Assuming strict for now.
-    mon_vm_send_protect(space, va, len, prot, mem_type, true);
 
     spinlock_release(&space->lock);
 

@@ -33,7 +33,7 @@ The core philosophy of Bharat-OS folder structuring is **semantic sharpness**:
 This is the most critical separation in the low-level system.
 
 - **`arch/`**: Owns ISA/CPU-specific code. This contains the hardware-specific implementations of contracts. (e.g., `arch/arm/arm64/`, `arch/x86/x86_64/`).
-- **`hal/`**: Owns abstraction contracts and common glue. It contains only headers (`include/`) defining the HAL APIs, and generic implementations or stubs (`common/`, `irq/`, `timer/`, `memory/`, etc.). **Do not put architecture-specific implementations (like `hal/arm64`) here.**
+- **`hal/`**: Owns abstraction contracts and common glue. It contains only headers (`include/`) defining the HAL APIs, and generic implementations or stubs (`common/`, `irq/`, `timer/`, `memory/`, etc.). It also provides the unified, memory-backend agnostic API surface (such as `hal_pt` for Page Table manipulation) shielding the rest of the kernel from differing hardware memory models. **Do not put architecture-specific implementations (like `hal/arm64`) here.**
 - **`platform/`**: Owns board, machine, SoC integration, and topology/interconnect discovery. (e.g., `platform/boards/`, `platform/soc/`, `platform/qemu/`).
 
 *Rule of Thumb:* `arch/` contains the implementations of the contracts defined in `hal/`. `platform/` wires them together for a specific physical or virtual machine.
@@ -70,12 +70,12 @@ The kernel is intentionally kept minimal. Anything policy-heavy should be questi
 
 The `kernel/` directory should only contain:
 - Core scheduling mechanisms
-- Memory mechanisms
+- Memory mechanisms (e.g. Address Spaces, VMM unified authority via regions)
 - Syscall/trap mechanisms
 - Capabilities
 - IPC/uRPC primitives
 - Fault handling
-- Minimal coordination primitives
+- Minimal coordination primitives (e.g. message-based TLB shootdowns)
 
 ### 5. `stacks/` and `uapi/`
 

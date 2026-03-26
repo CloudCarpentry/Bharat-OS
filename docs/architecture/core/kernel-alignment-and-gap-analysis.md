@@ -35,10 +35,10 @@ The next evolution is not adding features—but **formalizing contracts** so the
 
 | Area              | Status               | Notes                                   |
 | ----------------- | -------------------- | --------------------------------------- |
-| Address Spaces    | ✅ Exists             | Needs unified authority path            |
-| Page Tables (HAL) | ⚠️ Partial           | Arch-specific maturity uneven           |
-| TLB Coordination  | ⚠️ Weak              | Needs contract + multi-core correctness |
-| DMA / IOMMU       | ❌ Missing/Fragmented | Not lifecycle-governed                  |
+| Address Spaces    | ✅ Aligned            | Unified authority via Region Trees      |
+| Page Tables (HAL) | ✅ Aligned            | Enforced via strict `hal_pt` contract   |
+| TLB Coordination  | ✅ Aligned            | Message-based tracking via ASIDs        |
+| DMA / IOMMU       | ✅ Aligned            | Lifecycle-governed with null-fallback   |
 
 ### 2.3 Multi-Architecture Support
 

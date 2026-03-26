@@ -1,6 +1,6 @@
 #include "../../include/tests/ktest.h"
 #include "../../include/hal/hal_mpa.h"
-#include "../../include/hal/mmu_ops.h"
+#include "../../include/hal/hal_pt.h"
 #include "../../include/mm/aspace.h"
 #include "console/console_core.h"
 #include "trap_api.h"
@@ -63,8 +63,8 @@ static int test_unmapped_user_fault(void) {
     // Verify via HAL that the page is absent
     phys_addr_t paddr;
     int query_res = -1;
-    if (active_mem_protect && active_mem_protect->cpu_ops.unmap_page) {
-        query_res = active_mem_protect->cpu_ops.unmap_page(kernel_space.root_pt, test_va, &paddr);
+    if (active_hal_pt && active_hal_pt->unmap_page) {
+        query_res = active_hal_pt->unmap_page(kernel_space.root_pt, test_va, &paddr);
     }
     if (query_res == 0) {
         KPRINT("FAIL: Page was still mapped\n");
