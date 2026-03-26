@@ -9,8 +9,7 @@
 // seL4 capability model and verification-oriented discipline
 #include <stddef.h>
 
-#define MAX_CAP_TABLES 32U
-
+#define MAX_CAP_TABLES ((size_t)MAX_CPUS)
 
 static uint8_t g_cap_tables_used[MAX_CAP_TABLES];
 
