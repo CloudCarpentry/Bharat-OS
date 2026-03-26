@@ -20,6 +20,12 @@ python3 tools/build.py <build_name> --clean --configure --build --run-tests
 | **Automotive (ARM64)** | `python3 tools/build.py arm64_automobile_debug --run-tests` |
 | **Laptop (x86_64)** | `python3 tools/build.py x86_64_laptop_debug --run-tests` |
 
+### Architecture-Specific Boot Notes
+
+*   **x86_64**: QEMU requires a 32-bit ELF for multiboot compatibility. The build script automatically uses `llvm-objcopy` to produce `kernel32.elf` and boots it.
+*   **ARM64**: Requires passing `-machine virt -cpu cortex-a57` to QEMU. The kernel also expects a valid Device Tree Blob (FDT) pointer passed in `x0`, which is correctly preserved during the early boot assembly phase. It boots from a flat binary format (`Image`).
+*   **RISCV64**: Requires the `-march=rv64gc` ISA extensions for the compiler to prevent floating-point and compressed instruction errors. It uses `-machine virt` for the QEMU machine type.
+
 ---
 
 ## 2. Local CI Verification (Using `act`)
