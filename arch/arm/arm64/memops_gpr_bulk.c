@@ -20,9 +20,20 @@ void *arch_memcpy_gpr_bulk(void *dst, const void *src, size_t n) {
         return dst;
     }
 
-    // Align d to 16 bytes (if possible without breaking s alignment, or just proceed)
-    // For simplicity, we process unaligned up to 16-byte boundary
-    while (((uintptr_t)d & 15) && n > 0) {
+    /*
+     * ldp/stp pairs are used below. On some ARM64 configurations with strict
+     * alignment checking enabled, unaligned ldp/stp can trap.
+     *
+     * We can only co-align source and destination by byte-copying if they have
+     * the same low alignment offset. If their offsets differ, they will never
+     * become simultaneously aligned, so fall back to scalar-safe copy.
+     */
+    if ((((uintptr_t)d ^ (uintptr_t)s) & 0xF) != 0U) {
+        return arch_memcpy_scalar(dst, src, n);
+    }
+
+    // Align both pointers to 16-byte boundary before using ldp/stp.
+    while (((uintptr_t)d & 15U) != 0U && n > 0U) {
         *d++ = *s++;
         n--;
     }
