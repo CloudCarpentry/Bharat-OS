@@ -1,95 +1,45 @@
-name: E2E QEMU Tests
+name: E2E QEMU Verification
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ main, develop ]
   pull_request:
-    branches: [ "main", "master" ]
+    branches: [ main, develop ]
   workflow_dispatch:
 
 jobs:
-  build-host-tests:
+  verify:
+    name: Verify ${{ matrix.build_name }}
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Dummy Build Host Tests
-        run: echo "Host tests build placeholder"
-
-  e2e-qemu-smoke:
-    runs-on: ubuntu-latest
-    needs: build-host-tests
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - arch: x86_64
-            profile: x86_64-gp.yaml
-          - arch: arm64
-            profile: arm64-gp.yaml
-          - arch: riscv64
-            profile: riscv64-gp.yaml
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+        build_name: [
+          "x86_64_desktop_mmu",
+          "arm64_desktop_mmu",
+          "riscv64_desktop_mmu",
+          "arm64_automobile_debug",
+          "riscv64_ev_automobile_debug",
+          "x86_64_laptop_debug",
+          "arm64_laptop_debug",
+          "riscv64_laptop_debug"
+        ]
 
-      - name: Install dependencies
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake ninja-build gcc-aarch64-linux-gnu gcc-riscv64-unknown-elf llvm qemu-system-x86 qemu-system-arm qemu-system-misc qemu-system-riscv python3 python3-yaml
+          sudo apt-get install -y \
+            cmake ninja-build clang lld \
+            qemu-system-x86 qemu-system-arm qemu-system-misc \
+            python3
 
-      - name: Run E2E Smoke Tests
-        run: |
-          ./tests/e2e/run_e2e.py tests/e2e/profiles/${{ matrix.profile }}
+      - name: Doctor Check
+        run: python3 tools/build.py --doctor
 
-      - name: Upload logs
-        if: always()
-        uses: actions/upload-artifact@v3
-        with:
-          name: e2e-logs-smoke-${{ matrix.arch }}
-          path: e2e_logs/
-
-  e2e-qemu-extended:
-    runs-on: ubuntu-latest
-    needs: e2e-qemu-smoke
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - arch: x86_64
-            profile: x86_64-desktop.yaml
-          - arch: arm64
-            profile: arm64-edge.yaml
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake ninja-build gcc-aarch64-linux-gnu gcc-riscv64-unknown-elf llvm qemu-system-x86 qemu-system-arm qemu-system-misc qemu-system-riscv python3 python3-yaml
-
-      - name: Run E2E Extended Tests
-        run: |
-          ./tests/e2e/run_e2e.py tests/e2e/profiles/${{ matrix.profile }}
-
-      - name: Upload logs
-        if: always()
-        uses: actions/upload-artifact@v3
-        with:
-          name: e2e-logs-extended-${{ matrix.arch }}
-          path: e2e_logs/
-
-  e2e-hardware-manual:
-    runs-on: ubuntu-latest
-    needs: e2e-qemu-extended
-    if: github.event_name == 'workflow_dispatch'
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Dummy Hardware Tests
-        run: |
-          echo "Hardware tests are currently manual/optional."
-          echo "This job will eventually run on self-hosted runners connected to physical boards."
+      - name: Build and Run Tests
+        run: python3 tools/build.py ${{ matrix.build_name }} --clean --configure --build --run-tests
+        timeout-minutes: 10
