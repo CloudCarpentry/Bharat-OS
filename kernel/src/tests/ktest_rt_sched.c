@@ -1,4 +1,5 @@
 #include "sched/sched.h"
+#include "sched/sched_test_support.h"
 #include "tests/ktest.h"
 #include <bharat/cpu_local.h>
 

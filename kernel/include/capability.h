@@ -88,7 +88,7 @@ typedef struct capability_entry {
 
 } capability_entry_old_t;
 
-typedef struct {
+typedef struct __attribute__((aligned(16))) {
     struct capability_table* table;
     uint32_t slot;
     uint32_t generation;
@@ -102,7 +102,7 @@ typedef struct cap_instance_id {
 } cap_instance_id_t;
 
 // Redefine capability_entry_t with handles to avoid use-after-free
-typedef struct capability_entry_new {
+typedef struct __attribute__((aligned(16))) capability_entry_new {
     uint8_t in_use;
     uint32_t id;
     cap_type_t type;
@@ -119,6 +119,8 @@ typedef struct capability_entry_new {
     // Memory/Frame Ownership
     uint32_t owner_core;
 
+    uint8_t pad_mid[8]; // Align instance_id to 16-byte boundary (offset 96)
+
     // Distributed consistency fields
     cap_instance_id_t instance_id;
     uint64_t revocation_epoch;
@@ -127,7 +129,7 @@ typedef struct capability_entry_new {
 // Replace old struct with new
 #define capability_entry_t capability_entry_new_t
 
-typedef struct capability_table {
+typedef struct __attribute__((aligned(64))) capability_table {
     capability_entry_t entries[64];
     uint32_t next_id;
     spinlock_t lock;

@@ -130,7 +130,10 @@ static int x86_pt_walk(phys_addr_t root_pt, virt_addr_t vaddr, bool create, uint
     uint64_t pt_idx = (aligned_vaddr >> 12) & 0x1FF;
 
     pt_t* pml4 = (pt_t*)physmap_phys_to_virt(root_pt);
-    uint64_t dir_flags = X86_PT_PRESENT | X86_PT_RW | X86_PT_USER;
+    uint64_t dir_flags = X86_PT_PRESENT | X86_PT_RW;
+    if (alloc_flags & HAL_PT_FLAG_USER) {
+        dir_flags |= X86_PT_USER;
+    }
 
     if ((pml4->entries[pml4_idx] & X86_PT_PRESENT) == 0) {
         if (!create) {
@@ -440,15 +443,39 @@ void x86_64_init_hardening(void) {
     // Bit 21 in CR4
     cr4 |= (1ULL << 21);
     write_cr4(cr4);
+
+    // Enable NX (No-Execute) in EFER (Extended Feature Enable Register)
+    // MSR 0xC0000080, Bit 11
+    uint32_t low, high;
+    __asm__ volatile("rdmsr" : "=a"(low), "=d"(high) : "c"(0xC0000080));
+    low |= (1 << 11);
+    __asm__ volatile("wrmsr" : : "a"(low), "d"(high), "c"(0xC0000080));
 }
 
 static translate_backend_kind_t x86_backend_type(void) { return TRANSLATE_BACKEND_MMU; }
 static translate_exec_class_t x86_exec_class(void) { return TRANSLATE_EXEC_MMU_FULL; }
-static void* x86_phys_to_virt(phys_addr_t phys) { return (void*)(phys + g_kernel_virt_offset); }
-static phys_addr_t x86_virt_to_phys(const void* virt) { return (phys_addr_t)((uintptr_t)virt - g_kernel_virt_offset); }
-static bool x86_has_linear_physmap(void) { return true; }
-static phys_addr_t x86_linear_physmap_base(void) { return g_kernel_virt_offset; }
-static phys_addr_t x86_linear_physmap_limit(void) { return g_kernel_virt_offset + g_kernel_physmap_size; }
+bool g_x86_mmu_finalized = false;
+
+static void* x86_phys_to_virt(phys_addr_t phys) { 
+    if (!g_x86_mmu_finalized) {
+        return (void*)phys;
+    }
+    return (void*)(phys + g_kernel_virt_offset); 
+}
+
+static phys_addr_t x86_virt_to_phys(const void* virt) { 
+    if (!g_x86_mmu_finalized) {
+        return (phys_addr_t)(uintptr_t)virt;
+    }
+    return (phys_addr_t)((uintptr_t)virt - g_kernel_virt_offset); 
+}
+static bool x86_has_linear_physmap(void) { return g_x86_mmu_finalized; }
+static phys_addr_t x86_linear_physmap_base(void) { 
+    return g_x86_mmu_finalized ? g_kernel_virt_offset : 0; 
+}
+static phys_addr_t x86_linear_physmap_limit(void) { 
+    return g_x86_mmu_finalized ? (g_kernel_virt_offset + g_kernel_physmap_size) : 0; 
+}
 
 static const hal_translate_ops_t x86_translate_ops = {
     .backend_type = x86_backend_type,
