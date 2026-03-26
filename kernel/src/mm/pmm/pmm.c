@@ -463,9 +463,9 @@ int pmm_ref_put(uint64_t phys_addr) {
         uint16_t new_ref = (uint16_t)(old_ref - 1U);
         if (__atomic_compare_exchange_n(&page->ref_count, &old_ref, new_ref, false, __ATOMIC_SEQ_CST, __ATOMIC_ACQUIRE)) {
             if (new_ref == 0U) {
-                page->state = PMM_PAGE_STATE_FREE;
                 // mm_free_page() contract: call sites drop the final live reference
-                // and may pass ref_count == 0. mm_free_page() handles this case.
+                // and may pass ref_count == 0. mm_free_page() handles this case
+                // and transitions the state to PMM_PAGE_STATE_FREE.
                 mm_free_page(phys_addr);
             }
             return 0;
