@@ -36,6 +36,11 @@ This document captures the current scheduler/threading implementation status in 
   - bounded pending AI suggestion queue,
   - suggestion actions for reprioritize/migrate/throttle/kill,
   - telemetry collection during tick handling.
+- Real-Time EDF/RMS admission logic:
+  - Bandwidth budget tracking (`rt_budget_used` / `rt_budget_total`).
+  - EDF (Earliest Deadline First) runs on a dedicated Red-Black tree sorted by absolute deadline (`absolute_deadline_ms`).
+  - RMS (Rate Monotonic Scheduling) assigns static priorities inversely proportional to period length.
+  - Test suites exist for both admission success/fail paths and RB-tree insertion/dequeue correctly handling deadlines.
 - Portable scheduler API surface:
   - `sched_current`, `sched_enqueue`, `sched_reschedule`, and existing thread APIs.
 
@@ -63,6 +68,5 @@ These files provide a consistent call signature so scheduler code remains archit
 ## Remaining hardening items for production
 
 - Replace context-switch C placeholders with full save/restore assembly for integer/FPU/vector state.
-- Complete EDF/RMS admission/deadline accounting paths.
 - Add lock-graph-aware transitive priority donation for nested mutex ownership chains.
 - Expand NUMA-aware migration heuristics with topology distance/cost tables.
