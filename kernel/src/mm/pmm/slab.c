@@ -1,6 +1,7 @@
 #include "../../include/slab.h"
 #include "../../include/mm.h"
 #include "../../include/numa.h"
+#include "../../include/mm/physmap.h"
 #include <stddef.h>
 #include "lib/base/string.h"
 
@@ -62,7 +63,8 @@ void* kcache_alloc(kcache_t* cache) {
             uint32_t bit = i % 32u;
             if ((cache->free_bitmap[p][word] & (1U << bit)) == 0) {
                 cache->free_bitmap[p][word] |= (1U << bit);
-                return (void*)(uintptr_t)(cache->pages[p] + (i * cache->object_size));
+                phys_addr_t paddr = cache->pages[p] + (i * cache->object_size);
+                return physmap_phys_to_virt(paddr);
             }
         }
     }
@@ -80,12 +82,12 @@ void* kcache_alloc(kcache_t* cache) {
     }
 
     cache->free_bitmap[p][0] = (1U << 0); // Allocate first object
-    return (void*)(uintptr_t)(page);
+    return physmap_phys_to_virt(page);
 }
 
 void kcache_free(kcache_t* cache, void* obj) {
     if (!cache || !obj) return;
-    phys_addr_t paddr = (phys_addr_t)(uintptr_t)obj;
+    phys_addr_t paddr = physmap_virt_to_phys(obj);
 
     for (uint32_t p = 0; p < cache->num_pages; p++) {
         if (paddr >= cache->pages[p] && paddr < cache->pages[p] + PAGE_SIZE) {
@@ -112,7 +114,8 @@ void* kmalloc(size_t size) {
             s *= 2;
         }
         phys_addr_t p = mm_alloc_pages_order(order, NUMA_NODE_ANY, PAGE_FLAG_KERNEL);
-        return (void*)(uintptr_t)p;
+        if (!p) return NULL;
+        return physmap_phys_to_virt(p);
     }
 
     for (int i = 0; i < NUM_SLAB_SIZES; i++) {
@@ -126,6 +129,7 @@ void* kmalloc(size_t size) {
 void* kzalloc(size_t size) {
     void* ptr = kmalloc(size);
     if (ptr) {
+        // memset expects a virtual address
         memset(ptr, 0, size);
     }
     return ptr;
@@ -133,7 +137,7 @@ void* kzalloc(size_t size) {
 
 void kfree(void* ptr) {
     if (!ptr) return;
-    phys_addr_t paddr = (phys_addr_t)(uintptr_t)ptr;
+    phys_addr_t paddr = physmap_virt_to_phys(ptr);
 
     // Check if it's in slab
     for (int i = 0; i < NUM_SLAB_SIZES; i++) {
@@ -148,17 +152,8 @@ void kfree(void* ptr) {
     // Otherwise it's a direct page allocation
     page_t *page = phys_to_page(paddr);
     if (page) {
-        int order = page->order;
-        if (order < 0) order = 0;
-        uint32_t page_count = 1U << order;
-        for (uint32_t i = 0; i < page_count; i++) {
-            page_t *p = phys_to_page(paddr + i * PAGE_SIZE);
-            if (p) {
-                p->order = 0;
-                p->ref_count = 1;
-            }
-            mm_free_page(paddr + i * PAGE_SIZE);
-        }
+        page->ref_count = 1; // Prepare for mm_free_page
+        mm_free_page(paddr);
     }
 }
 

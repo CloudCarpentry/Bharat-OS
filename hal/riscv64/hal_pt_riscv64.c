@@ -315,7 +315,11 @@ static phys_addr_t riscv64_virt_to_phys(const void* virt) {
     return (phys_addr_t)((uintptr_t)virt - g_kernel_virt_offset);
 }
 
-static bool riscv64_has_linear_physmap(void) { return true; }
+static bool riscv64_has_linear_physmap(void) { 
+    uint64_t satp;
+    asm volatile("csrr %0, satp" : "=r"(satp));
+    return (satp >> 60) != 0;
+}
 static phys_addr_t riscv64_linear_physmap_base(void) { return g_kernel_virt_offset; }
 static phys_addr_t riscv64_linear_physmap_limit(void) { return g_kernel_virt_offset + g_kernel_physmap_size; }
 

@@ -35,7 +35,7 @@ struct kthread;
 // Let's create an opaque pointer array or simply include the right headers once we figure out where things live.
 
 /* In a real implementation we define this structure */
-typedef struct cpu_local {
+typedef struct __attribute__((aligned(64))) cpu_local {
     uint32_t          cpu_id;
     // We will place a pointer for now, or the struct itself if we can refactor sched.h.
     sched_rq_t        runqueue;       // per-core, no lock needed
@@ -54,7 +54,7 @@ typedef struct cpu_local {
 #define KERNEL_AS_ID 0
 
 // Provide an array of locals for all CPUs.
-extern cpu_local_t g_cpu_locals[MAX_CPUS];
+extern cpu_local_t g_cpu_locals[MAX_CPUS] __attribute__((aligned(64)));
 
 void cpu_local_init(uint32_t cpu_id);
 

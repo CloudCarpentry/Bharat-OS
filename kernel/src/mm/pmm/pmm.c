@@ -1,4 +1,5 @@
 #include "atomic.h"
+#include "lib/base/string.h"
 #include "mm.h"
 #include "numa.h"
 #include "profile/profile.h"
@@ -29,7 +30,7 @@
 #define PMM_RECLAIM_BATCH 32U
 #define PMM_LOW_WATERMARK_PAGES 128U
 
-typedef struct {
+typedef struct __attribute__((aligned(64))) {
   spinlock_t lock;
   list_head_t free_list[MAX_ORDER][CONFIG_MM_CACHE_COLORS_DEFAULT];
   size_t free_count[MAX_ORDER][CONFIG_MM_CACHE_COLORS_DEFAULT];
@@ -38,7 +39,7 @@ typedef struct {
 } zone_t;
 
 static page_t *global_pages_ptrs[MAX_NUMA_NODES];
-static zone_t numa_zones[MAX_NUMA_NODES];
+static zone_t numa_zones[MAX_NUMA_NODES] __attribute__((aligned(64)));
 numa_node_t numa_nodes[MAX_NUMA_NODES];
 uint32_t active_numa_nodes;
 
@@ -107,13 +108,17 @@ static void *pmm_alloc_pages_order_colored(int order, uint32_t numa_node,
 
   if (current_core < BHARAT_MAX_CPUS) {
       core_state = &g_pmm_cores[current_core];
+      // [Stability v3] Re-enabling pcache now that scheduler races are fixed
+      core_state->active = true;
   }
 
   if (order == 0 && core_state && core_state->active && numa_node < 4) {
+      hal_cpu_disable_interrupts();
       pmm_pcache_t *pcache = &core_state->node_caches[numa_node];
       if (pcache->count > 0) {
           phys_addr_t phys = pcache->pages[--pcache->count];
           pcache->alloc_hits++;
+          hal_cpu_enable_interrupts();
 
           page_t *page = phys_to_page(phys);
           if (page) {
@@ -126,17 +131,18 @@ static void *pmm_alloc_pages_order_colored(int order, uint32_t numa_node,
           return (void *)(uintptr_t)phys;
       } else {
           pcache->alloc_misses++;
+          hal_cpu_enable_interrupts();
       }
   }
 
-  pmm_drain_remote_frees(current_core);
-
-  // Retry cache after potentially draining inbox
-  if (order == 0 && core_state->active && numa_node < 4) {
+  pmm_drain_remote_frees(current_core);  // Retry cache after potentially draining inbox
+  if (order == 0 && core_state && core_state->active && numa_node < 4) {
+      hal_cpu_disable_interrupts();
       pmm_pcache_t *pcache = &core_state->node_caches[numa_node];
       if (pcache->count > 0) {
           phys_addr_t phys = pcache->pages[--pcache->count];
           pcache->alloc_hits++;
+          hal_cpu_enable_interrupts();
 
           page_t *page = phys_to_page(phys);
           if (page) {
@@ -148,6 +154,7 @@ static void *pmm_alloc_pages_order_colored(int order, uint32_t numa_node,
           }
           return (void *)(uintptr_t)phys;
       }
+      hal_cpu_enable_interrupts();
   }
 
   zone_t *zone = &numa_zones[numa_node];
@@ -155,20 +162,17 @@ static void *pmm_alloc_pages_order_colored(int order, uint32_t numa_node,
   spin_lock(&zone->lock);
 
   // If we missed in cache, attempt to refill a batch for order-0
-  if (order == 0 && core_state->active && numa_node < 4) {
+  if (order == 0 && core_state && core_state->active && numa_node < 4) {
+      hal_cpu_disable_interrupts();
       pmm_pcache_t *pcache = &core_state->node_caches[numa_node];
       uint32_t refilled = 0;
       int start_color = 0;
       int end_color = CONFIG_MM_CACHE_COLORS_DEFAULT - 1;
 
       for (int c = start_color; c <= end_color && refilled < PMM_REFILL_BATCH; ++c) {
-          if (color_config && color_config->policy != MM_COLOR_POLICY_NONE &&
-              color_config->policy != MM_COLOR_POLICY_PREFERRED) {
-              if ((color_config->color_mask & (1U << c)) == 0)
-                  continue;
-          }
-
-          while (!list_empty(&zone->free_list[0][c]) && refilled < PMM_REFILL_BATCH) {
+          while (!list_empty(&zone->free_list[0][c]) && 
+                 refilled < PMM_REFILL_BATCH && 
+                 pcache->count < PMM_PCACHE_HIGH) {
               page_t *page = list_entry(zone->free_list[0][c].next, page_t, list);
               if (!page_block_matches_zone(page, 0, zone_filter)) {
                   break;
@@ -186,8 +190,9 @@ static void *pmm_alloc_pages_order_colored(int order, uint32_t numa_node,
           pcache->refill_pages += refilled;
           atomic64_fetch_and_sub_ptr(&numa_nodes[numa_node].free_pages, refilled);
 
-          // Now pop one for the actual allocation
           phys_addr_t phys = pcache->pages[--pcache->count];
+          hal_cpu_enable_interrupts();
+
           page_t *page = phys_to_page(phys);
           if (page) {
               page->order = 0;
@@ -199,6 +204,7 @@ static void *pmm_alloc_pages_order_colored(int order, uint32_t numa_node,
           spin_unlock(&zone->lock);
           return (void *)(uintptr_t)phys;
       }
+      hal_cpu_enable_interrupts();
   }
 
   int start_color = 0;
@@ -529,6 +535,22 @@ static phys_addr_t pmm_alloc_pages_colored_in_zone(int order, uint32_t preferred
       if (page) {
         page->flags = flags;
       }
+
+      if (flags & PMM_ALLOC_ZERO) {
+          if (physmap_has_linear_map()) {
+              void *va = physmap_phys_to_virt((phys_addr_t)(uintptr_t)addr);
+              if (va) {
+                  memset(va, 0, (1ULL << order) * PAGE_SIZE);
+              }
+          } else {
+              // Early boot fallback: use identity mapping if available
+              // We use a raw write loop to avoid any dependency on high-half mappings
+              uint8_t *p = (uint8_t*)(uintptr_t)addr;
+              size_t total = (1ULL << order) * PAGE_SIZE;
+              for (size_t i = 0; i < total; i++) p[i] = 0;
+          }
+      }
+
       return (phys_addr_t)(uintptr_t)addr;
     }
   }
@@ -550,6 +572,14 @@ static phys_addr_t pmm_alloc_pages_colored_in_zone(int order, uint32_t preferred
         if (page) {
           page->flags = flags;
         }
+
+        if (flags & PMM_ALLOC_ZERO) {
+            void *va = physmap_phys_to_virt((phys_addr_t)(uintptr_t)addr);
+            if (va) {
+                memset(va, 0, (1ULL << order) * PAGE_SIZE);
+            }
+        }
+
         return (phys_addr_t)(uintptr_t)addr;
       }
     }
@@ -561,7 +591,7 @@ static phys_addr_t pmm_alloc_pages_colored_in_zone(int order, uint32_t preferred
   }
 
   // Attempt one last time
-  for (uint32_t attempt = 0; attempt < active_numa_nodes; ++attempt) {
+  for (uint32_t attempt = 0; attempt < active_numa_nodes; attempt++) {
     uint32_t node_id = (home + attempt) % active_numa_nodes;
     void *addr = pmm_alloc_pages_order_colored(order, node_id, color_config, zone_filter);
     if (addr) {
@@ -571,6 +601,22 @@ static phys_addr_t pmm_alloc_pages_colored_in_zone(int order, uint32_t preferred
       if (page) {
         page->flags = flags;
       }
+
+      if (flags & PMM_ALLOC_ZERO) {
+          if (physmap_has_linear_map()) {
+              void *va = physmap_phys_to_virt((phys_addr_t)(uintptr_t)addr);
+              if (va) {
+                  memset(va, 0, (1ULL << order) * PAGE_SIZE);
+              }
+          } else {
+              // Early boot fallback: use identity mapping if available
+              // We use a raw write loop to avoid any dependency on high-half mappings
+              uint8_t *p = (uint8_t*)(uintptr_t)addr;
+              size_t total = (1ULL << order) * PAGE_SIZE;
+              for (size_t i = 0; i < total; i++) p[i] = 0;
+          }
+      }
+
       return (phys_addr_t)(uintptr_t)addr;
     }
   }
@@ -856,15 +902,22 @@ void mm_free_page(phys_addr_t page_addr) {
 
   if (page->state == PMM_PAGE_STATE_FREE) {
     extern void kernel_panic(const char*);
+    hal_serial_write("PMM: Double free of phys: ");
+    hal_serial_write_hex(page_addr);
+    hal_serial_write(" from PC: ");
+    hal_serial_write_hex((uintptr_t)__builtin_return_address(0));
+    hal_serial_write("\n");
     kernel_panic("PMM: Double free detected!\n");
   }
 
   // Poisoning the page for debug or hardened builds
-  void *va = physmap_phys_to_virt(page_addr);
-  if (va) {
-      uint8_t *ptr = (uint8_t *)va;
-      for (size_t i = 0; i < PAGE_SIZE; i++) {
-          ptr[i] = 0xAA; // simple poison value
+  if (physmap_has_linear_map()) {
+      void *va = physmap_phys_to_virt(page_addr);
+      if (va) {
+          uint8_t *ptr = (uint8_t *)va;
+          for (size_t i = 0; i < PAGE_SIZE; i++) {
+              ptr[i] = 0xAA; // simple poison value
+          }
       }
   }
 
@@ -897,6 +950,7 @@ void mm_free_page(phys_addr_t page_addr) {
   // Local Magazine fast path for order-0 pages
   if (order == 0 && core_state && core_state->active && node_id < 4) {
       if (page->owner_core_id == current_core) {
+          hal_cpu_disable_interrupts();
           pmm_pcache_t *pcache = &core_state->node_caches[node_id];
 
           if (pcache->count < PMM_PCACHE_HIGH) {
@@ -907,6 +961,7 @@ void mm_free_page(phys_addr_t page_addr) {
               page->flags = 0;
               page->pin_count = 0;
               page->order = 0;
+              hal_cpu_enable_interrupts();
               return;
           } else {
               // Drain batch to zone slow path
@@ -933,6 +988,7 @@ void mm_free_page(phys_addr_t page_addr) {
               page->flags = 0;
               page->pin_count = 0;
               page->order = 0;
+              hal_cpu_enable_interrupts();
               return;
           }
       } else if (page->owner_core_id < BHARAT_MAX_CPUS && g_pmm_cores[page->owner_core_id].active) {

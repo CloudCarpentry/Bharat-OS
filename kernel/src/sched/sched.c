@@ -629,11 +629,8 @@ kthread_t *thread_create_detached(kprocess_t *parent, void (*entry_point)(void))
     return NULL;
   }
 
+  memset(slot, 0, sizeof(*slot));
   slot->in_use = 1U;
-  slot->is_bootstrap = 0U;
-  slot->is_on_runqueue = 0U;
-  slot->is_sleeping = 0U;
-  slot->is_blocked = 0U;
 
   slot->thread.thread_id = g_next_thread_id++;
   slot->thread.process_id = parent ? parent->process_id : 0U;
@@ -714,6 +711,22 @@ int thread_destroy(kthread_t *thread) {
     return -1;
   }
 
+  // Prevent race with background reaper or other cores
+  hal_cpu_disable_interrupts();
+  
+  extern spinlock_t g_reap_lock;
+  spin_lock(&g_reap_lock);
+  
+  if (slot->reap_pending) {
+      // Thread is already being reaped, let the reaper finish it
+      spin_unlock(&g_reap_lock);
+      hal_cpu_enable_interrupts();
+      return 0;
+  }
+  
+  slot->reap_pending = 1U; // Mark as pending so reaper doesn't touch it
+  spin_unlock(&g_reap_lock);
+
   sched_detach_thread_from_queues(slot);
 
   // Clean up architecture extended state
@@ -725,14 +738,21 @@ int thread_destroy(kthread_t *thread) {
   }
 
   if (thread->kernel_stack) {
-    kfree((void*)(uintptr_t)thread->kernel_stack);
-    thread->kernel_stack = 0U;
+    void *stack_ptr = (void*)(uintptr_t)thread->kernel_stack;
+    thread->kernel_stack = 0U; // Clear first to prevent double-free if re-entered
+    kfree(stack_ptr);
   }
 
+  // Final slot reclamation
+  spin_lock(&g_reap_lock);
   slot->in_use = 0U;
+  slot->reap_pending = 0U;
   uint32_t idx = (uint32_t)(slot - g_threads);
   slot->next_free = g_free_thread_head;
   g_free_thread_head = idx;
+  spin_unlock(&g_reap_lock);
+
+  hal_cpu_enable_interrupts();
   return 0;
 }
 
