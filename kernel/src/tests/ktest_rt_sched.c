@@ -3,6 +3,10 @@
 #include "tests/ktest.h"
 #include <bharat/cpu_local.h>
 
+#if defined(TESTING) || defined(BHARAT_KERNEL_TESTS)
+extern void sched_test_reset(void);
+extern void sched_set_test_core_count(uint32_t core_count);
+#endif
 extern kthread_t *sched_pick_next_ready_l0(uint32_t core_id);
 
 static void dummy_thread_entry(void) {
@@ -12,8 +16,10 @@ static void dummy_thread_entry(void) {
 }
 
 static bool test_rms_admission(void) {
+#if defined(TESTING) || defined(BHARAT_KERNEL_TESTS)
     sched_set_test_core_count(1);
     sched_test_reset();
+#endif
     sched_init();
 
     kprocess_t *p = process_create("rms_test");
@@ -51,8 +57,10 @@ static bool test_rms_admission(void) {
 }
 
 static bool test_edf_admission_and_queue(void) {
+#if defined(TESTING) || defined(BHARAT_KERNEL_TESTS)
     sched_set_test_core_count(1);
     sched_test_reset();
+#endif
     sched_init();
     sched_set_policy(SCHED_POLICY_EDF);
 

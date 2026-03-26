@@ -18,6 +18,12 @@ add_subdirectory(benchmark)
 # ---------------------------------------------------------
 # Shared Scheduler Test Mocks
 # ---------------------------------------------------------
+if(CMAKE_SYSTEM_NAME STREQUAL "Generic")
+    # This file shouldn't be processed if we are building the kernel (cross-compiling)
+    # The top level CMakeLists.txt guards it, but just in case:
+    return()
+endif()
+
 add_library(bharat_test_sched_mocks OBJECT
     ../kernel/src/sched_stub.c
     ../lib/rbtree/rbtree.c

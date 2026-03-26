@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 project(BharatOS_Services_Init C ASM)
 
 # Add the executable target for the init service
-add_executable(init main.c)
+add_executable(init main.c sysmgr.c)
     target_link_libraries(init PRIVATE bharat_user_buildopts bharat_freestanding)
 
 # Link against the foundational Phase 1 user-space libraries

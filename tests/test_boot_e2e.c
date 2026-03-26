@@ -129,6 +129,9 @@ void hal_cpu_halt(void) { while(1); }
 int boot_video_map(const boot_info_t *boot) { return 0; }
 int boot_gui_run(void) { return 0; }
 
+// Init bootstrap stub
+int services_init_main(void) { return 0; }
+
 // Boot policy stub
 static bharat_boot_policy_t g_mock_policy = { .enable_zswap = 1, .enable_ai_governor = 0, .smp_target_cores = 1 };
 

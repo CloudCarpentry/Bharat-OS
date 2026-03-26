@@ -1,5 +1,6 @@
 add_library(k_init OBJECT
     ../../src/main.c
+    init_bootstrap.c
     ../../../boot/protocols/boot_args.c
     ../../src/device/device_manager.c
     ../../src/device/device_dma.c
