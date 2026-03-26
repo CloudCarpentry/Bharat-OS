@@ -383,10 +383,10 @@ typedef struct {
     volatile bool ack_received;
 } cap_delegate_req_t;
 
-static cap_delegate_req_t g_cap_delegations[BHARAT_MAX_CPUS];
+static cap_delegate_req_t g_cap_delegations[MAX_CPUS];
 
 // Counter for synchronous capability revokes
-volatile int g_revoke_acks_needed[BHARAT_MAX_CPUS];
+volatile int g_revoke_acks_needed[MAX_CPUS];
 
 int cap_table_delegate(capability_table_t* src,
                        capability_table_t* dst,
@@ -401,10 +401,10 @@ int cap_table_delegate(capability_table_t* src,
     // For this mock implementation, we search g_cpu_locals to find the core ID
     // that owns the dst table. If it's the current core, do a local delegate.
     uint32_t current_core = hal_cpu_get_id();
-    uint32_t target_core = BHARAT_MAX_CPUS; // Invalid by default
+    uint32_t target_core = MAX_CPUS; // Invalid by default
     bool is_local = true;
 
-    for (uint32_t i = 0; i < BHARAT_MAX_CPUS; i++) {
+    for (uint32_t i = 0; i < MAX_CPUS; i++) {
         if (&g_cpu_locals[i].cap_table == dst) {
             target_core = i;
             if (i != current_core) {
@@ -418,7 +418,7 @@ int cap_table_delegate(capability_table_t* src,
     // These tables might not be found in `g_cpu_locals` and thus default to cross-core
     // logic which fails because URPC is not up. We explicitly fallback to local delegation
     // if target_core is not found.
-    if (is_local || target_core == BHARAT_MAX_CPUS || urpc_channel_get_state(target_core) != URPC_CHANNEL_BOUND) {
+    if (is_local || target_core == MAX_CPUS || urpc_channel_get_state(target_core) != URPC_CHANNEL_BOUND) {
         return cap_table_delegate_local(src, dst, cap_id, delegated_rights, out_new_cap_id);
     }
 
@@ -536,7 +536,7 @@ int cap_table_delegate(capability_table_t* src,
 // This should be called from the uRPC message processing loop.
 void cap_handle_delegate_req(uint64_t payload, uint32_t source_core) {
     uint32_t req_core = (uint32_t)payload;
-    if (req_core >= BHARAT_MAX_CPUS) return;
+    if (req_core >= MAX_CPUS) return;
 
     cap_delegate_req_t* req = &g_cap_delegations[req_core];
 
@@ -609,7 +609,7 @@ void cap_handle_delegate_req(uint64_t payload, uint32_t source_core) {
 
 void cap_handle_delegate_ack(uint64_t payload) {
     uint32_t req_core = (uint32_t)payload;
-    if (req_core >= BHARAT_MAX_CPUS) return;
+    if (req_core >= MAX_CPUS) return;
 
     cap_delegate_req_t* req = &g_cap_delegations[req_core];
     req->ack_received = true;
@@ -634,7 +634,7 @@ void cap_handle_revoke_req(uint64_t payload, uint32_t source_core) {
 
 void cap_handle_revoke_ack(uint64_t payload) {
     uint32_t req_core = (uint32_t)payload;
-    if (req_core < BHARAT_MAX_CPUS) {
+    if (req_core < MAX_CPUS) {
         g_revoke_acks_needed[req_core]--;
     }
 }
@@ -833,10 +833,10 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
 
     // In Bharat-OS capability revoke operations must degrade safely to local-only behavior
     // until SMP and URPC distributed infrastructure are fully initialized.
-    if (current_core < BHARAT_MAX_CPUS && pmm_is_initialized) {
+    if (current_core < MAX_CPUS && pmm_is_initialized) {
         // Broadcast revocation to other cores via URPC only if we are on a valid, initialized core
         g_revoke_acks_needed[current_core] = 0;
-        for (uint32_t c = 0; c < BHARAT_MAX_CPUS; c++) {
+        for (uint32_t c = 0; c < MAX_CPUS; c++) {
             if (c != current_core && urpc_channel_get_state(c) == URPC_CHANNEL_BOUND) {
                 // Encode the source core into the payload so the ACK can be routed back
                 uint64_t payload = ((uint64_t)cap_id << 32) | current_core;
