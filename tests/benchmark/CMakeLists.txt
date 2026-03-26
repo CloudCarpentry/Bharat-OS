@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.20)
 project(BharatOS-Benchmark-Framework C)
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Generic")
+    # This file shouldn't be processed if we are building the kernel (cross-compiling)
+    return()
+endif()
+
 # Benchmark core library
 add_library(bharat_bench_core STATIC
     core/bench_runner.c

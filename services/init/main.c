@@ -1,10 +1,19 @@
 #include <bharat/runtime/runtime.h>
 #include <bharat/cap/cap.h>
+#include "sysmgr.h"
+
+int services_init_main(void);
 
 int main(int argc, char **argv) {
+    (void)argc;
+    (void)argv;
+    return services_init_main();
+}
+
+int services_init_main(void) {
     bharat_runtime_init();
 
-    bharat_runtime_log("services/init: Starting user-space bootstrap.");
+    bharat_runtime_log("services/init: Starting user-space bootstrap (sysmgr).");
 
     // TODO: Intake root bootstrap capability from kernel/environment
     bharat_cap_handle_t root_cap = bharat_runtime_get_bootstrap_cap();
@@ -15,9 +24,11 @@ int main(int argc, char **argv) {
         bharat_runtime_log("services/init: Bootstrap capability acquired.");
     }
 
-    // TODO: Load hardware/profile manifest
     // TODO: Connect to or spawn services/namesvc
     // TODO: Spawn services/capmgr and delegate subset of root rights
+
+    // Enforce profile matrix and start registered services
+    sysmgr_enforce_startup_policy();
 
     bharat_runtime_log("services/init: Initialization graph complete. Suspending.");
 

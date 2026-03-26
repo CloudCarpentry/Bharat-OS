@@ -320,12 +320,18 @@ static void runtime_maybe_boot_gui(bool video_mapped) {
 #endif /* BHARAT_BOOT_GUI */
 }
 
+// Forward declaration for user-space initialization stub
+extern void kernel_start_init_service(void);
+
 static void runtime_enter_normal(const boot_info_t *boot) {
     bool video_mapped = runtime_try_boot_video(boot);
     runtime_maybe_boot_gui(video_mapped);
 
     boot_selftest_report_t report;
     boot_selftest_run_stage(BOOT_TEST_STAGE_RUNTIME, &report);
+
+    KPRINT("  [BOOT] Spawning first system service (sysmgr)...\n");
+    kernel_start_init_service();
 
     // Controlled idle
     while (1) {
@@ -416,6 +422,7 @@ void boot_common_runtime(const boot_info_t *boot) {
 
     switch (mode) {
         case BHARAT_BOOT_MODE_NORMAL:
+        default:
             KPRINT("  [BOOT] Entering normal runtime\n");
             runtime_enter_normal(boot);
             break;
@@ -436,7 +443,6 @@ void boot_common_runtime(const boot_info_t *boot) {
             runtime_enter_benchmark(boot);
             break;
         case BHARAT_BOOT_MODE_LEGACY_BRINGUP:
-        default:
             KPRINT("  [BOOT] Entering legacy bring-up runtime\n");
             runtime_enter_legacy_bringup(boot);
             break;
