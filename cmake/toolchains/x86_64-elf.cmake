@@ -8,7 +8,7 @@ set(CMAKE_LINKER ld.lld)
 # On Windows, clang with x86_64-unknown-none-elf may dispatch link through gcc.
 # Use a linux-gnu triple to keep clang driving lld directly while still linking
 # a freestanding ELF via explicit linker script/options from kernel CMake.
-if(WIN32)
+if(CMAKE_HOST_WIN32)
 	set(CMAKE_C_COMPILER_TARGET x86_64-unknown-linux-gnu)
 	set(CMAKE_ASM_COMPILER_TARGET x86_64-unknown-linux-gnu)
 else()
