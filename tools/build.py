@@ -69,6 +69,31 @@ def run_command(cmd, cwd=None):
         print(f"Command failed with exit code {result.returncode}")
         sys.exit(result.returncode)
 
+def check_and_clean_stale_cache(preset):
+    build_dir = os.path.join('build', preset)
+    cache_file = os.path.join(build_dir, 'CMakeCache.txt')
+    if os.path.exists(cache_file):
+        try:
+            with open(cache_file, 'r') as f:
+                for line in f:
+                    if line.startswith('CMAKE_HOME_DIRECTORY:INTERNAL='):
+                        cached_src_dir = line.split('=', 1)[1].strip()
+                        current_src_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+
+                        # Replace backslashes with forward slashes to normalize C:\ vs C:/
+                        norm_cached = cached_src_dir.replace('\\', '/')
+                        norm_current = current_src_dir.replace('\\', '/')
+
+                        # Use lowercase to handle case-insensitive paths (e.g. c:/ vs C:/)
+                        if os.path.normcase(norm_cached) != os.path.normcase(norm_current):
+                            print(f"Detected mixed-host build environment (cache: {cached_src_dir}, current: {current_src_dir}).")
+                            print(f"Cleaning stale cache to avoid path contamination errors...")
+                            import shutil
+                            shutil.rmtree(build_dir, ignore_errors=True)
+                        break
+        except Exception as e:
+            print(f"Warning: Failed to parse CMakeCache.txt: {e}")
+
 def do_configure(build_cfg):
     preset = build_cfg.get('preset')
     arch = build_cfg.get('arch')
@@ -76,6 +101,8 @@ def do_configure(build_cfg):
     personality = normalize_csv(build_cfg.get('personality', 'NONE'))
     board = normalize_csv(build_cfg.get('board', ''))
     gui = 'ON' if build_cfg.get('gui') else 'OFF'
+
+    check_and_clean_stale_cache(preset)
 
     cmd = [
         'cmake', f'--preset={preset}',
