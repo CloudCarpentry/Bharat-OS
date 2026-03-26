@@ -79,6 +79,13 @@ typedef struct sched_rq {
     struct rb_root cfs_runqueue;
     int64_t min_vruntime;
 
+    // EDF Scheduler
+    struct rb_root edf_runqueue;
+
+    // RT Admissions
+    uint64_t rt_budget_used;
+    uint64_t rt_budget_total;
+
     // Remote Enqueue Inbox (Protected by lock)
     list_head_t pending_inbox;
     uint8_t resched_pending; // Flag to avoid IPI storms
@@ -135,6 +142,10 @@ struct kthread {
     int64_t vruntime;
     uint32_t weight;
     struct rb_node cfs_node;
+
+    // EDF Scheduler metadata
+    uint64_t absolute_deadline_ms;
+    struct rb_node edf_node;
 
     uint8_t preferred_numa_node;
     ai_sched_context_t* ai_sched_ctx;
@@ -238,6 +249,10 @@ int sched_throttle_core(uint32_t core_id);
 
 // Cross-core remote handoff
 int sched_request_remote_handoff(kthread_t* thread, uint32_t target_core, uint32_t auth_token);
+
+// RT Scheduler Admissions
+int sched_admission_edf(kthread_t* thread, uint64_t wcet_ms, uint64_t period_ms, uint64_t deadline_ms);
+int sched_admission_rms(kthread_t* thread, uint64_t wcet_ms, uint64_t period_ms);
 
 // System-call style entry points used by trap/syscall layer
 int sched_sys_thread_create(kprocess_t* parent, void (*entry_point)(void), uint64_t* out_tid);

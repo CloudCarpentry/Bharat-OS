@@ -106,6 +106,12 @@ static void sched_cfs_enqueue(sched_rq_t *rq, kthread_t *thread);
 static void sched_cfs_dequeue(sched_rq_t *rq, kthread_t *thread);
 static kthread_t *sched_cfs_pick_next(sched_rq_t *rq);
 static void sched_cfs_update_vruntime(sched_rq_t *rq, kthread_t *thread, uint64_t delta_exec);
+
+// EDF Functions
+static void sched_edf_enqueue(sched_rq_t *rq, kthread_t *thread);
+static void sched_edf_dequeue(sched_rq_t *rq, kthread_t *thread);
+static kthread_t *sched_edf_pick_next(sched_rq_t *rq);
+
 static void sched_validate_rq(sched_rq_t *rq);
 
 static uint32_t sched_clamp_core(uint32_t core_id) {
@@ -228,6 +234,8 @@ static void sched_detach_thread_from_queues(thread_slot_t *slot) {
   if (slot->is_on_runqueue != 0U) {
     if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
       sched_cfs_dequeue(rq, thread);
+    } else if (g_policy == SCHED_POLICY_EDF) {
+      sched_edf_dequeue(rq, thread);
     } else {
       list_del(&slot->run_node);
       list_init(&slot->run_node);
@@ -367,6 +375,8 @@ int sched_enqueue(kthread_t *thread, uint32_t core_id) {
   if (slot->is_on_runqueue != 0U) {
     if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
       sched_cfs_dequeue(rq, thread);
+    } else if (g_policy == SCHED_POLICY_EDF) {
+      sched_edf_dequeue(rq, thread);
     } else {
       list_del(&slot->run_node);
       list_init(&slot->run_node);
@@ -383,6 +393,13 @@ int sched_enqueue(kthread_t *thread, uint32_t core_id) {
 
   if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
     sched_cfs_enqueue(rq, thread);
+  } else if (g_policy == SCHED_POLICY_EDF) {
+    if (thread->rt_attr.period_ms > 0 && thread->rt_attr.deadline_ms > 0) {
+        if (thread->absolute_deadline_ms == 0) {
+            thread->absolute_deadline_ms = g_sched_ticks + thread->rt_attr.deadline_ms;
+        }
+    }
+    sched_edf_enqueue(rq, thread);
   } else {
     list_add(&slot->run_node, &rq->ready_queue[thread->priority]);
     sched_ready_bitmap_set(rq, thread->priority);
@@ -455,6 +472,9 @@ static void sched_reset_core_runqueues(void) {
       list_init(&rq->ready_queue[p]);
     }
     rq->ready_bitmap = 0U;
+    rq->edf_runqueue.rb_node = NULL;
+    rq->rt_budget_used = 0U;
+    rq->rt_budget_total = 0U;
   }
 }
 
@@ -880,23 +900,46 @@ static void sched_update_telemetry(kthread_t *thread) {
 static kthread_t *sched_pick_next_ready(uint32_t core_id) {
   core_id = sched_clamp_core(core_id);
   sched_rq_t *rq = &g_cpu_locals[core_id].runqueue;
-  int pick_highest = (g_policy == SCHED_POLICY_ROUND_ROBIN) ? 0 : 1;
-  int prio = sched_pick_priority_from_bitmap(rq, pick_highest);
-  if (prio < 0) {
-    return rq->idle_thread;
+
+  kthread_t *next = NULL;
+
+  if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
+      next = sched_cfs_pick_next(rq);
+      if (next) {
+          sched_cfs_dequeue(rq, next);
+      }
+  } else if (g_policy == SCHED_POLICY_EDF) {
+      next = sched_edf_pick_next(rq);
+      if (next) {
+          sched_edf_dequeue(rq, next);
+      }
+  } else {
+      int pick_highest = (g_policy == SCHED_POLICY_ROUND_ROBIN) ? 0 : 1;
+      int prio = sched_pick_priority_from_bitmap(rq, pick_highest);
+      if (prio >= 0) {
+          list_head_t *head = &rq->ready_queue[prio];
+          list_head_t *node = head->prev;
+          thread_slot_t *slot = (thread_slot_t *)(void *)((char *)node - offsetof(thread_slot_t, run_node));
+          list_del(node);
+          list_init(node);
+          sched_ready_bitmap_clear_if_empty(rq, (uint32_t)prio);
+          next = &slot->thread;
+      }
   }
 
-  list_head_t *head = &rq->ready_queue[prio];
-  list_head_t *node = head->prev;
-  thread_slot_t *slot = (thread_slot_t *)(void *)((char *)node - offsetof(thread_slot_t, run_node));
-  list_del(node);
-  list_init(node);
-  slot->is_on_runqueue = 0U;
+  if (!next) {
+      return rq->idle_thread;
+  }
+
+  thread_slot_t *slot = sched_find_thread_slot_by_tid(next->thread_id);
+  if (slot) {
+      slot->is_on_runqueue = 0U;
+  }
   if (rq->runnable_count > 0U) {
     rq->runnable_count--;
   }
-  sched_ready_bitmap_clear_if_empty(rq, (uint32_t)prio);
-  return &slot->thread;
+
+  return next;
 }
 
 static void sched_dequeue_task_l0(kthread_t *thread, uint32_t core_id) {
@@ -963,6 +1006,8 @@ static void sched_switch_to(kthread_t *next, uint32_t core_id) {
         current->state = THREAD_STATE_READY;
         if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
             sched_cfs_enqueue(rq, current);
+        } else if (g_policy == SCHED_POLICY_EDF) {
+            sched_edf_enqueue(rq, current);
         } else {
             list_add(&slot->run_node, &rq->ready_queue[current->priority]);
             sched_ready_bitmap_set(rq, current->priority);
@@ -1111,6 +1156,13 @@ void sched_reschedule(void) {
 
           if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
             sched_cfs_enqueue(rq, thread);
+          } else if (g_policy == SCHED_POLICY_EDF) {
+            if (thread->rt_attr.period_ms > 0 && thread->rt_attr.deadline_ms > 0) {
+                if (thread->absolute_deadline_ms == 0) {
+                    thread->absolute_deadline_ms = g_sched_ticks + thread->rt_attr.deadline_ms;
+                }
+            }
+            sched_edf_enqueue(rq, thread);
           } else {
             list_add(&slot->run_node, &rq->ready_queue[thread->priority]);
             sched_ready_bitmap_set(rq, thread->priority);
@@ -1141,6 +1193,118 @@ void sched_reschedule(void) {
 
   kthread_t *next = sched_pick_next_ready(core);
   sched_switch_to(next, core);
+}
+
+static void sched_edf_enqueue(sched_rq_t *rq, kthread_t *thread) {
+    struct rb_node **link = &rq->edf_runqueue.rb_node;
+    struct rb_node *parent = NULL;
+    uint64_t absolute_deadline = thread->absolute_deadline_ms;
+
+    while (*link) {
+        parent = *link;
+        kthread_t *entry = (kthread_t *)(void *)((char *)parent - offsetof(kthread_t, edf_node));
+
+        if (absolute_deadline < entry->absolute_deadline_ms) {
+            link = &parent->rb_left;
+        } else {
+            link = &parent->rb_right;
+        }
+    }
+
+    rb_link_node(&thread->edf_node, parent, link);
+    rb_insert_color(&thread->edf_node, &rq->edf_runqueue);
+}
+
+static void sched_edf_dequeue(sched_rq_t *rq, kthread_t *thread) {
+    if (rq->edf_runqueue.rb_node == NULL) {
+        return;
+    }
+    rb_erase(&thread->edf_node, &rq->edf_runqueue);
+}
+
+static kthread_t *sched_edf_pick_next(sched_rq_t *rq) {
+    struct rb_node *left = rb_first(&rq->edf_runqueue);
+    if (!left) {
+        return NULL;
+    }
+    return (kthread_t *)(void *)((char *)left - offsetof(kthread_t, edf_node));
+}
+
+int sched_admission_edf(kthread_t *thread, uint64_t wcet_ms, uint64_t period_ms, uint64_t deadline_ms) {
+    if (!thread || period_ms == 0 || wcet_ms > period_ms) {
+        return -1;
+    }
+
+    // Assign RT attributes
+    thread->rt_attr.wcet_ms = wcet_ms;
+    thread->rt_attr.period_ms = period_ms;
+    thread->rt_attr.deadline_ms = deadline_ms;
+    thread->absolute_deadline_ms = 0; // calculated on enqueue
+
+    // Calculate bandwidth contribution
+    uint64_t bandwidth_needed = (wcet_ms * 1000) / period_ms;
+
+    uint32_t core = thread->bound_core_id;
+    sched_rq_t *rq = &g_cpu_locals[core].runqueue;
+
+    spin_lock(&rq->lock);
+    if (rq->rt_budget_total == 0) {
+        rq->rt_budget_total = 1000; // 100% core utilization allowed for EDF tests
+    }
+
+    if (rq->rt_budget_used + bandwidth_needed > rq->rt_budget_total) {
+        spin_unlock(&rq->lock);
+        return -2; // Admission failed due to bandwidth limitations
+    }
+
+    rq->rt_budget_used += bandwidth_needed;
+    spin_unlock(&rq->lock);
+
+    return 0;
+}
+
+int sched_admission_rms(kthread_t *thread, uint64_t wcet_ms, uint64_t period_ms) {
+    if (!thread || period_ms == 0 || wcet_ms > period_ms) {
+        return -1;
+    }
+
+    // Rate Monotonic assigns static priorities based on period:
+    // shorter period -> higher priority.
+    // In our system, max priority is 31.
+    // Let's create a simple mapping: e.g. base = 10, prio = min(31, 31 - period_ms/10 + constant)
+    // For simplicity, we assign priority manually but ensure basic bounds.
+    uint32_t new_prio = 10; // Default fallback
+    if (period_ms <= 10) new_prio = 30;
+    else if (period_ms <= 50) new_prio = 25;
+    else if (period_ms <= 100) new_prio = 20;
+    else new_prio = 15;
+
+    // Optional bounds checking for n tasks: U <= n(2^(1/n) - 1). Simplified to 0.69 bound.
+    uint64_t bandwidth_needed = (wcet_ms * 1000) / period_ms;
+
+    uint32_t core = thread->bound_core_id;
+    sched_rq_t *rq = &g_cpu_locals[core].runqueue;
+
+    spin_lock(&rq->lock);
+    if (rq->rt_budget_total == 0) {
+        rq->rt_budget_total = 690; // RMS bound (~69%)
+    }
+
+    if (rq->rt_budget_used + bandwidth_needed > rq->rt_budget_total) {
+        spin_unlock(&rq->lock);
+        return -2; // Admission failed
+    }
+
+    rq->rt_budget_used += bandwidth_needed;
+    spin_unlock(&rq->lock);
+
+    thread->priority = new_prio;
+    thread->base_priority = new_prio;
+    thread->rt_attr.wcet_ms = wcet_ms;
+    thread->rt_attr.period_ms = period_ms;
+    thread->rt_attr.deadline_ms = period_ms; // implicit deadline
+
+    return 0;
 }
 
 void kthread_yield(void) { sched_reschedule(); }
@@ -1287,25 +1451,50 @@ void sched_on_timer_tick(void) {
 
   sched_update_telemetry(current);
 
-  if (current->cpu_time_consumed >= current->time_slice_ms) {
-    current->cpu_time_consumed = 0U;
-    sched_reschedule();
-    return;
-  }
+  if (g_policy == SCHED_POLICY_EDF && current != rq->idle_thread) {
+      if (current->cpu_time_consumed >= current->rt_attr.wcet_ms) {
+          // Task exhausted budget for this period, wait for next period
+          current->absolute_deadline_ms += current->rt_attr.period_ms;
+          current->cpu_time_consumed = 0U;
 
-  if (g_policy != SCHED_POLICY_CLOUD_FAIR) {
-      uint32_t higher_mask = (current->priority >= SCHED_MAX_PRIORITY)
-                                 ? 0U
-                                 : ((~0U) << (current->priority + 1U));
-      if ((rq->ready_bitmap & higher_mask) != 0U) {
+          thread_slot_t *slot = sched_find_thread_slot_by_tid(current->thread_id);
+          if (slot) {
+              // Suspend the thread until the start of the next period
+              current->wake_deadline_ms = current->absolute_deadline_ms - current->rt_attr.deadline_ms;
+              current->state = THREAD_STATE_SLEEPING;
+              sched_sleep_enqueue(slot, core);
+              rq->current_thread = NULL;
+          }
+          sched_reschedule();
+          return;
+      }
+
+      kthread_t *next = sched_edf_pick_next(rq);
+      if (next && next->absolute_deadline_ms < current->absolute_deadline_ms) {
+          sched_reschedule();
+          return;
+      }
+  } else {
+      if (current->cpu_time_consumed >= current->time_slice_ms) {
+        current->cpu_time_consumed = 0U;
         sched_reschedule();
         return;
       }
-  } else {
-      kthread_t *next = sched_cfs_pick_next(rq);
-      if (next && next->vruntime < current->vruntime) {
-          sched_reschedule();
-          return;
+
+      if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
+          kthread_t *next = sched_cfs_pick_next(rq);
+          if (next && next->vruntime < current->vruntime) {
+              sched_reschedule();
+              return;
+          }
+      } else {
+          uint32_t higher_mask = (current->priority >= SCHED_MAX_PRIORITY)
+                                     ? 0U
+                                     : ((~0U) << (current->priority + 1U));
+          if ((rq->ready_bitmap & higher_mask) != 0U) {
+            sched_reschedule();
+            return;
+          }
       }
   }
 }

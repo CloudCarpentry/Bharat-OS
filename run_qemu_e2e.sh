@@ -190,6 +190,9 @@ run_case() {
   : > "$log_file"
 
   local qemu_args=(-kernel "$kernel_image" -m 256M -nographic -monitor none -serial stdio -no-reboot)
+  if [[ -n "${E2E_EXTRA_QEMU_APPEND:-}" ]]; then
+    qemu_args+=("-append" "${E2E_EXTRA_QEMU_APPEND}")
+  fi
   if [[ -n "$machine_line" ]]; then
     # shellcheck disable=SC2206
     qemu_args=( $machine_line "${qemu_args[@]}" )
