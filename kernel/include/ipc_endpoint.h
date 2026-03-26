@@ -39,8 +39,15 @@ typedef struct {
 
     // Capability transfer fields (0 means none attached)
     uint32_t cap_transfer_id;
-    uint32_t cap_transfer_rights;
+    uint64_t cap_transfer_rights;
 } ipc_message_t;
+
+typedef enum {
+    IPC_ENDPOINT_STATE_FREE = 0,
+    IPC_ENDPOINT_STATE_READY = 1,
+    IPC_ENDPOINT_STATE_CLOSED = 2,
+    IPC_ENDPOINT_STATE_REVOKED = 3,
+} ipc_endpoint_state_t;
 
 typedef enum {
     IPC_OK = 0,
@@ -50,10 +57,12 @@ typedef enum {
     IPC_ERR_PERM = -4,
     IPC_ERR_CAP_TRANSFER_NOT_ALLOWED = -5,
     IPC_ERR_CAP_INSTALL_FAILED = -6,
+    IPC_ERR_CLOSED = -7,
+    IPC_ERR_TIMEOUT = -8,
 } ipc_status_t;
 
 int ipc_endpoint_create(capability_table_t* table, uint32_t* out_send_cap, uint32_t* out_recv_cap);
-int ipc_endpoint_send(capability_table_t* table, uint32_t send_cap, const void* payload, uint32_t payload_len, uint64_t timeout_ticks, uint32_t cap_to_send, uint32_t cap_send_rights);
+int ipc_endpoint_send(capability_table_t* table, uint32_t send_cap, const void* payload, uint32_t payload_len, uint64_t timeout_ticks, uint32_t cap_to_send, uint64_t cap_send_rights);
 int ipc_endpoint_receive(capability_table_t* table, uint32_t recv_cap, void* out_payload, uint32_t out_payload_capacity, uint32_t* out_received_len, uint64_t timeout_ticks, uint32_t* out_received_cap);
 
 #endif // BHARAT_IPC_ENDPOINT_H

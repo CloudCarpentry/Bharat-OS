@@ -34,45 +34,44 @@ typedef enum {
 
 typedef enum {
     CAP_RIGHT_NONE                 = 0,
-    CAP_RIGHT_SEND                 = (1U << 0),
-    CAP_RIGHT_RECEIVE              = (1U << 1),
-    CAP_RIGHT_MAP                  = (1U << 2),
-    CAP_RIGHT_UNMAP                = (1U << 3),
-    CAP_RIGHT_SCHEDULE             = (1U << 4),
-    CAP_RIGHT_DELEGATE             = (1U << 5),
-    CAP_RIGHT_CRYPT_USE            = (1U << 6),
-    CAP_RIGHT_CRYPT_DERIVE         = (1U << 7),
-    CAP_RIGHT_CRYPT_SIGN           = (1U << 8),
-    CAP_RIGHT_CRYPT_DECRYPT        = (1U << 9),
-    CAP_RIGHT_CRYPT_EXPORT_WRAPPED = (1U << 10),
-    CAP_RIGHT_CRYPT_ADMIN          = (1U << 11),
+    CAP_RIGHT_ENDPOINT_SEND        = (1U << 0),
+    CAP_RIGHT_ENDPOINT_RECEIVE     = (1U << 1),
+    CAP_RIGHT_MEMORY_MAP           = (1U << 2),
+    CAP_RIGHT_MEMORY_UNMAP         = (1U << 3),
+    CAP_RIGHT_MEMORY_SHARE         = (1U << 4),
+    CAP_RIGHT_DMA_MAP              = (1U << 5),
+    CAP_RIGHT_SCHEDULE             = (1U << 6),
+    CAP_RIGHT_DELEGATE             = (1U << 7),
+    CAP_RIGHT_CRYPT_USE            = (1U << 8),
+    CAP_RIGHT_CRYPT_DERIVE         = (1U << 9),
+    CAP_RIGHT_CRYPT_SIGN           = (1U << 10),
+    CAP_RIGHT_CRYPT_DECRYPT        = (1U << 11),
+    CAP_RIGHT_CRYPT_EXPORT_WRAPPED = (1U << 12),
+    CAP_RIGHT_CRYPT_ADMIN          = (1U << 13),
 
     // Communication and RPC capability bits
-    // NOTE: These are vocabulary only and not currently enforced in the
-    // scheduler, IPC send/recv, or URPC routing paths yet.
-    CAP_RIGHT_IPC_SEND             = (1U << 12),
-    CAP_RIGHT_IPC_RECEIVE          = (1U << 13),
-    CAP_RIGHT_URPC_CALL            = (1U << 14),
-    CAP_RIGHT_URPC_REPLY           = (1U << 15),
+    CAP_RIGHT_IPC_SEND             = (1U << 14),
+    CAP_RIGHT_IPC_RECEIVE          = (1U << 15),
+    CAP_RIGHT_URPC_CALL            = (1U << 16),
+    CAP_RIGHT_URPC_REPLY           = (1U << 17),
 
     // Accelerator and DMA rights
-    CAP_RIGHT_ENQUEUE              = (1U << 16),
-    CAP_RIGHT_CANCEL               = (1U << 17),
-    CAP_RIGHT_QUERY                = (1U << 18),
-    CAP_RIGHT_BIND                 = (1U << 19),
-    CAP_RIGHT_SHARE                = (1U << 20),
-    CAP_RIGHT_SYNC_CPU             = (1U << 21),
-    CAP_RIGHT_SYNC_DEV             = (1U << 22),
-    CAP_RIGHT_READ_STATS           = (1U << 23),
-    CAP_RIGHT_READ_FAULTS          = (1U << 24),
-    CAP_RIGHT_RESET                = (1U << 25),
-    CAP_RIGHT_PARTITION            = (1U << 26),
-    CAP_RIGHT_FW_LOAD              = (1U << 27),
-    CAP_RIGHT_DERIVE               = (1U << 28),
-    CAP_RIGHT_REVOKE               = (1U << 29),
-    CAP_RIGHT_READ                 = (1U << 30),
-    CAP_RIGHT_WRITE                = (1U << 31),
-    CAP_RIGHT_EXECUTE              = (1ULL << 32),
+    CAP_RIGHT_ENQUEUE              = (1U << 18),
+    CAP_RIGHT_CANCEL               = (1U << 19),
+    CAP_RIGHT_QUERY                = (1U << 20),
+    CAP_RIGHT_BIND                 = (1U << 21),
+    CAP_RIGHT_SYNC_CPU             = (1U << 22),
+    CAP_RIGHT_SYNC_DEV             = (1U << 23),
+    CAP_RIGHT_READ_STATS           = (1U << 24),
+    CAP_RIGHT_READ_FAULTS          = (1U << 25),
+    CAP_RIGHT_RESET                = (1U << 26),
+    CAP_RIGHT_PARTITION            = (1U << 27),
+    CAP_RIGHT_FW_LOAD              = (1U << 28),
+    CAP_RIGHT_DERIVE               = (1U << 29),
+    CAP_RIGHT_REVOKE               = (1U << 30),
+    CAP_RIGHT_READ                 = (1U << 31),
+    CAP_RIGHT_WRITE                = (1ULL << 32),
+    CAP_RIGHT_EXECUTE              = (1ULL << 33),
 
     // Synthetic rights combo
     CAP_RIGHT_ALL                  = 0xFFFFFFFF,
@@ -98,15 +97,16 @@ typedef struct cap_instance_id {
     uint32_t origin_core;       // The core that authoritatively owns the object
     uint64_t object_id;         // The unique ID of the underlying kernel object
     uint32_t slot_gen;          // Generation number of the local CNode slot
-    uint32_t rights_digest;     // Hash or bitmask of the granted rights
+    uint64_t rights_digest;     // Hash or bitmask of the granted rights
 } cap_instance_id_t;
 
 // Redefine capability_entry_t with handles to avoid use-after-free
 typedef struct __attribute__((aligned(16))) capability_entry_new {
     uint8_t in_use;
+    uint8_t state; // cap_state_t
     uint32_t id;
     cap_type_t type;
-    uint32_t rights;
+    uint64_t rights;
     uint32_t flags;
     uint64_t object_ref;
 
@@ -125,6 +125,13 @@ typedef struct __attribute__((aligned(16))) capability_entry_new {
     cap_instance_id_t instance_id;
     uint64_t revocation_epoch;
 } capability_entry_new_t;
+
+typedef enum {
+    CAP_STATE_FREE = 0,
+    CAP_STATE_LIVE = 1,
+    CAP_STATE_REVOKING = 2,
+    CAP_STATE_REVOKED = 3,
+} cap_state_t;
 
 // Replace old struct with new
 #define capability_entry_t capability_entry_new_t
@@ -168,7 +175,7 @@ void cap_table_destroy(capability_table_t* table);
 int cap_table_grant(capability_table_t* table,
                     cap_type_t type,
                     uint64_t object_ref,
-                    uint32_t rights,
+                    uint64_t rights,
                     uint32_t* out_cap_id);
 
 /*@
@@ -188,7 +195,7 @@ int cap_table_grant(capability_table_t* table,
 int cap_table_lookup(const capability_table_t* table,
                      uint32_t cap_id,
                      cap_type_t required_type,
-                     uint32_t required_rights,
+                     uint64_t required_rights,
                      capability_entry_t* out_entry);
 
 /*@
@@ -210,7 +217,7 @@ int cap_table_lookup(const capability_table_t* table,
 int cap_table_delegate(capability_table_t* src,
                        capability_table_t* dst,
                        uint32_t cap_id,
-                       uint32_t delegated_rights,
+                       uint64_t delegated_rights,
                        uint32_t* out_new_cap_id);
 
 int cap_table_revoke(capability_table_t* table, uint32_t cap_id);

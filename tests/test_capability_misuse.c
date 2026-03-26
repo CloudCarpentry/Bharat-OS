@@ -62,14 +62,14 @@ int main(void) {
     uint32_t cap = 0;
 
     // Invalid rights for endpoint object should fail.
-    assert(cap_table_grant(t, CAP_TYPE_ENDPOINT, 1U, CAP_RIGHT_MAP, &cap) != 0);
+    assert(cap_table_grant(t, CAP_TYPE_ENDPOINT, 1U, CAP_RIGHT_MEMORY_MAP, &cap) != 0);
 
     // Valid grant succeeds.
-    assert(cap_table_grant(t, CAP_TYPE_ENDPOINT, 1U, CAP_RIGHT_SEND | CAP_RIGHT_DELEGATE, &cap) == 0);
+    assert(cap_table_grant(t, CAP_TYPE_ENDPOINT, 1U, CAP_RIGHT_ENDPOINT_SEND | CAP_RIGHT_DELEGATE, &cap) == 0);
 
     // Delegating unsupported rights should fail.
     uint32_t delegated = 0;
-    assert(cap_table_delegate(t, t, cap, CAP_RIGHT_MAP, &delegated) != 0);
+    assert(cap_table_delegate(t, t, cap, CAP_RIGHT_MEMORY_MAP, &delegated) != 0);
 
     printf("Capability misuse tests passed.\n");
 
@@ -131,22 +131,22 @@ void test_accelerator_caps(void) {
     // Test correct grants
     assert(cap_table_grant(t, CAP_TYPE_ACCEL_DEVICE, 1U, CAP_RIGHT_ALL | CAP_RIGHT_DELEGATE, &cap_device) == 0);
     assert(cap_table_grant(t, CAP_TYPE_ACCEL_QUEUE, 2U, CAP_RIGHT_ENQUEUE | CAP_RIGHT_CANCEL | CAP_RIGHT_DELEGATE, &cap_queue) == 0);
-    assert(cap_table_grant(t, CAP_TYPE_ACCEL_BUFFER, 3U, CAP_RIGHT_MAP | CAP_RIGHT_BIND | CAP_RIGHT_DELEGATE, &cap_buffer) == 0);
+    assert(cap_table_grant(t, CAP_TYPE_ACCEL_BUFFER, 3U, CAP_RIGHT_MEMORY_MAP | CAP_RIGHT_BIND | CAP_RIGHT_DELEGATE, &cap_buffer) == 0);
     assert(cap_table_grant(t, CAP_TYPE_ACCEL_TELEMETRY, 4U, CAP_RIGHT_READ_STATS | CAP_RIGHT_READ_FAULTS | CAP_RIGHT_DELEGATE, &cap_telemetry) == 0);
     assert(cap_table_grant(t, CAP_TYPE_ACCEL_ADMIN, 5U, CAP_RIGHT_RESET | CAP_RIGHT_PARTITION | CAP_RIGHT_DELEGATE, &cap_admin) == 0);
     assert(cap_table_grant(t, CAP_TYPE_DMA_DOMAIN, 6U, CAP_RIGHT_ALL | CAP_RIGHT_DELEGATE, &cap_dma_domain) == 0);
-    assert(cap_table_grant(t, CAP_TYPE_DMA_GRANT, 7U, CAP_RIGHT_MAP | CAP_RIGHT_REVOKE | CAP_RIGHT_DELEGATE, &cap_dma_grant) == 0);
+    assert(cap_table_grant(t, CAP_TYPE_DMA_GRANT, 7U, CAP_RIGHT_DMA_MAP | CAP_RIGHT_MEMORY_UNMAP | CAP_RIGHT_REVOKE | CAP_RIGHT_DELEGATE, &cap_dma_grant) == 0);
 
     // Test incorrect rights
     uint32_t bad_cap = 0;
-    assert(cap_table_grant(t, CAP_TYPE_ACCEL_QUEUE, 8U, CAP_RIGHT_MAP, &bad_cap) != 0); // Queue shouldn't have MAP right
+    assert(cap_table_grant(t, CAP_TYPE_ACCEL_QUEUE, 8U, CAP_RIGHT_MEMORY_MAP, &bad_cap) != 0); // Queue shouldn't have MAP right
     assert(cap_table_grant(t, CAP_TYPE_ACCEL_BUFFER, 9U, CAP_RIGHT_ENQUEUE, &bad_cap) != 0); // Buffer shouldn't have ENQUEUE right
     assert(cap_table_grant(t, CAP_TYPE_DMA_GRANT, 10U, CAP_RIGHT_READ_STATS, &bad_cap) != 0); // DMA Grant shouldn't have READ_STATS right
 
     // Test Delegation
     uint32_t delegated_queue = 0;
     assert(cap_table_delegate(t, t, cap_queue, CAP_RIGHT_ENQUEUE, &delegated_queue) == 0);
-    assert(cap_table_delegate(t, t, cap_queue, CAP_RIGHT_MAP, &delegated_queue) != 0); // Delegate bad right
+    assert(cap_table_delegate(t, t, cap_queue, CAP_RIGHT_MEMORY_MAP, &delegated_queue) != 0); // Delegate bad right
 
     printf("Accelerator & DMA Capability tests passed.\n");
 }
