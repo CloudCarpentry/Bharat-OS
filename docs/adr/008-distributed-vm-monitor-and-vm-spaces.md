@@ -1,7 +1,7 @@
 # ADR 008: Distributed VM Monitor and VM Spaces
 
 ## Status
-Accepted
+Accepted (Actively Implemented)
 
 ## Context
 The current Virtual Memory Management (VMM) model (`kernel/src/mm/vmm.c` and `address_space_t`) assumes a monolithic, single-core perspective of address spaces. This design tightly couples the logical address space description with the physical page table programming (via `mmu_ops`).
@@ -28,7 +28,13 @@ We will transition to a **3-plane Distributed VM Architecture**:
 To avoid a massive, destabilizing rewrite, we will build the new system alongside the legacy `vmm.c` implementation.
 - The new VM subsystem (`vm_space.c`, `vm_mapping.c`, etc.) will be the core truth.
 - The legacy VMM API will become an adapter/shim that translates old calls into the new structures.
-- We will target `x86_64` as the initial proving ground (Phase 2), followed by ARM64 and RISC-V.
+- We will target `x86_64` as the initial proving ground (Phase 2), followed by ARM64 and RISC-V (and now active 32-bit `arm32`/`riscv32` support).
+
+### Current Status (Update)
+The multikernel transition defined here is now actively implemented in the core architecture:
+- Address spaces are properly per-core owned.
+- The architecture layer uses capability-aware memory domains instead of global shared page-tables.
+- The `hal_pt` (Plane C) contracts are standardized and functional across x86_64, arm64, riscv64, and the 32-bit (arm32/riscv32) profiles.
 
 ## Consequences
 - **Positive:** True distributed memory consistency across cores. Explicit support for RT constraints and MPU/PMP systems without fake paging logic. Clean separation of policy (Monitor/VM Core) from mechanism (Arch MMU).
