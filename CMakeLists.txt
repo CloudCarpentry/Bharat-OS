@@ -174,8 +174,9 @@ set(BHARAT_PERSONALITY_PROFILE "${BHARAT_PERSONALITY_PROFILE}" CACHE STRING "Tar
 # Resolve required components for target profile/personality/board
 bharat_apply_component_policy()
 
-# On Windows with LLVM/Clang, explicitly use lld to avoid invoking missing 'ld' or 'gcc'
-if(WIN32)
+option(BHARAT_USE_LLD "Prefer LLVM lld linker for Clang builds" ON)
+
+if(CMAKE_C_COMPILER_ID MATCHES "Clang" AND BHARAT_USE_LLD)
     add_link_options(-fuse-ld=lld)
 endif()
 
@@ -187,7 +188,6 @@ if(ARCH STREQUAL "riscv64")
         $<$<COMPILE_LANGUAGE:ASM>:-march=rv64gc>
         $<$<COMPILE_LANGUAGE:ASM>:-mabi=lp64d>
     )
-    add_link_options(-fuse-ld=lld)
 elseif(ARCH STREQUAL "riscv32")
     add_compile_options(
         $<$<COMPILE_LANGUAGE:C>:-march=rv32g>
@@ -196,7 +196,6 @@ elseif(ARCH STREQUAL "riscv32")
         $<$<COMPILE_LANGUAGE:ASM>:-march=rv32g>
         $<$<COMPILE_LANGUAGE:ASM>:-mabi=ilp32d>
     )
-    add_link_options(-fuse-ld=lld)
 endif()
 
 option(BHARAT_ENABLE_CLANG_TIDY "Enable clang-tidy static analysis for C targets" OFF)
