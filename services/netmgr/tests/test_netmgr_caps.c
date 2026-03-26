@@ -1,6 +1,6 @@
 #include <assert.h>
 #include <string.h>
-#include "../src/capability_checks.h"
+#include "../../src/capability_checks.h"
 #include "../src/ipc_dispatch.h"
 #include <bharat/cap/cap.h>
 
