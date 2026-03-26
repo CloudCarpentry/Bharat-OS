@@ -19,7 +19,7 @@ This roadmap tracks the convergence of the memory management subsystem in Bharat
 | **x86_64 PT & TLB** | 🚧 Active | 4-level paging, cache attributes, and local/remote shootdowns via IPI. |
 | **arm64 PT & TLB** | 🚧 Active | MAIR attributes, stage-1 translation, break-before-make remap paths. |
 | **riscv64 PT & TLB** | 🚧 Active | Sv39/Sv48 switching and `sfence.vma` logic. |
-| **arm32/riscv32 MMU-lite** | ✅ Done (Baseline) | Functional MMU backends (ARMv7 Short-Descriptor and Sv32) implemented. No longer scaffolded; ready for hardening / advanced features. |
+| **arm32/riscv32 MMU-lite** | ✅ Done (Baseline) | Functional MMU backends (ARMv7 Short-Descriptor and Sv32) implemented. Ready for hardening / advanced features. |
 | **Demand Paging/COW** | 🚧 Active | Fault handlers are present (`kernel/src/mm/vm/fault/`) but require tighter alignment with hardware faults and COW breaks. |
 
 ## Phase 3: Hardware Specialization and IOMMU (Upcoming)
@@ -29,7 +29,7 @@ This roadmap tracks the convergence of the memory management subsystem in Bharat
 | **IOMMU Domains** | 🔜 Planned | Full device domain lifecycle management. Currently a `null` backend exists. |
 | **Non-Coherent DMA** | 🔜 Planned | APIs for cache flushing/invalidation around DMA boundaries for ARM/RISC-V edge profiles. |
 | **NUMA Awareness** | 🔜 Planned | Topology hooks and scheduler memory affinity hints (`kernel/src/mm/pmm/numa.c` scaffolding exists). |
-| **32-Bit Context Isolation** | 🔜 Planned | Safe execution separation on MPU-only devices. |
+| **32-Bit Context Isolation** | 🚧 Active | Safe execution separation on MPU-only devices. |
 
 ## Phase 4: Heterogeneous Compute + Accelerator Memory (Upcoming)
 
@@ -83,7 +83,7 @@ gantt
     section Phase 2 (In Progress)
     VM Objects & ASpace   :active,  des3, 2024-06-01, 2024-10-01
     Arch Backends (64-bit):active,  des4, 2024-08-01, 2024-12-01
-    Arch Backends (32-bit):         des5, 2024-11-01, 2025-02-01
+    Arch Backends (32-bit):done,    des5, 2024-11-01, 2025-02-01
     section Phase 3 (Planned)
     IOMMU Integration     :         des6, 2025-02-01, 2025-05-01
     NUMA / DMA Sync       :         des7, 2025-04-01, 2025-07-01
@@ -94,9 +94,9 @@ gantt
 
 ## References
 
-- [Memory Layering Overview](memory-layering.md)
-- [Memory Gap Closure Plan](memory-gap-closure-plan.md)
-- [HAL Gap Analysis](hal_analysis.md)
-- [Production Grade Memory Plan](memory-production-grade-plan.md)
-- [Profile Behavior Matrix](memory-profile-behavior-matrix.md)
+- [Memory Model](memory-model.md)
+- [Memory Layering Overview](memops-layering.md)
+- [Multikernel Memory Architecture](memory-architecture-multikernel.md)
+- [PMM Invariants](pmm-invariants.md)
+- [Memory Profile Behavior Matrix](memory-profile-behavior-matrix.md)
 - [Valgrind, Sanitizers & Kernel Hardening Strategy](valgrind-sanitizer-rollout.md)
