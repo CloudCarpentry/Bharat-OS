@@ -33,14 +33,14 @@ int cap_can_transfer(cap_type_t type) {
 }
 
 // Returns 1 if the rights requested to be transferred are valid for the given capability type.
-int cap_transfer_rights_valid(cap_type_t type, uint32_t transfer_rights) {
+int cap_transfer_rights_valid(cap_type_t type, uint64_t transfer_rights) {
     switch (type) {
     case CAP_TYPE_ENDPOINT:
     case CAP_TYPE_CRYPTO_ENDPOINT:
-        return (transfer_rights & ~(CAP_RIGHT_SEND | CAP_RIGHT_RECEIVE | CAP_RIGHT_DELEGATE)) == 0U;
+        return (transfer_rights & ~(CAP_RIGHT_ENDPOINT_SEND | CAP_RIGHT_ENDPOINT_RECEIVE | CAP_RIGHT_DELEGATE)) == 0U;
     case CAP_TYPE_MEMORY:
     case CAP_TYPE_NET_BUFFER:
-        return (transfer_rights & ~(CAP_RIGHT_MAP | CAP_RIGHT_UNMAP | CAP_RIGHT_DELEGATE)) == 0U;
+        return (transfer_rights & ~(CAP_RIGHT_MEMORY_MAP | CAP_RIGHT_MEMORY_UNMAP | CAP_RIGHT_MEMORY_SHARE | CAP_RIGHT_DELEGATE)) == 0U;
     case CAP_TYPE_CRYPTO_DEVICE:
         return (transfer_rights & ~(CAP_RIGHT_CRYPT_ADMIN | CAP_RIGHT_DELEGATE)) == 0U;
     case CAP_TYPE_CRYPTO_KEY:
@@ -52,19 +52,19 @@ int cap_transfer_rights_valid(cap_type_t type, uint32_t transfer_rights) {
     case CAP_TYPE_NETDEV:
         return (transfer_rights & ~(CAP_RIGHT_DELEGATE)) == 0U; // Add more if needed later
     case CAP_TYPE_NET_QUEUE:
-        return (transfer_rights & ~(CAP_RIGHT_SEND | CAP_RIGHT_RECEIVE | CAP_RIGHT_DELEGATE)) == 0U;
+        return (transfer_rights & ~(CAP_RIGHT_ENDPOINT_SEND | CAP_RIGHT_ENDPOINT_RECEIVE | CAP_RIGHT_DELEGATE)) == 0U;
     case CAP_TYPE_ACCEL_DEVICE:
         return (transfer_rights & ~(CAP_RIGHT_DELEGATE)) == 0U;
     case CAP_TYPE_ACCEL_QUEUE:
         return (transfer_rights & ~(CAP_RIGHT_ENQUEUE | CAP_RIGHT_CANCEL | CAP_RIGHT_QUERY | CAP_RIGHT_DELEGATE)) == 0U;
     case CAP_TYPE_ACCEL_BUFFER:
-        return (transfer_rights & ~(CAP_RIGHT_MAP | CAP_RIGHT_BIND | CAP_RIGHT_SHARE | CAP_RIGHT_SYNC_CPU | CAP_RIGHT_SYNC_DEV | CAP_RIGHT_DELEGATE)) == 0U;
+        return (transfer_rights & ~(CAP_RIGHT_MEMORY_MAP | CAP_RIGHT_BIND | CAP_RIGHT_MEMORY_SHARE | CAP_RIGHT_SYNC_CPU | CAP_RIGHT_SYNC_DEV | CAP_RIGHT_DELEGATE)) == 0U;
     case CAP_TYPE_ACCEL_TELEMETRY:
         return (transfer_rights & ~(CAP_RIGHT_READ_STATS | CAP_RIGHT_READ_FAULTS | CAP_RIGHT_DELEGATE)) == 0U;
     case CAP_TYPE_ACCEL_ADMIN:
         return (transfer_rights & ~(CAP_RIGHT_RESET | CAP_RIGHT_PARTITION | CAP_RIGHT_FW_LOAD | CAP_RIGHT_DELEGATE)) == 0U;
     case CAP_TYPE_DMA_GRANT:
-        return (transfer_rights & ~(CAP_RIGHT_MAP | CAP_RIGHT_UNMAP | CAP_RIGHT_DELEGATE)) == 0U;
+        return (transfer_rights & ~(CAP_RIGHT_DMA_MAP | CAP_RIGHT_MEMORY_UNMAP | CAP_RIGHT_DELEGATE)) == 0U;
     case CAP_TYPE_DMA_DOMAIN:
         return (transfer_rights & ~(CAP_RIGHT_DELEGATE)) == 0U;
     default:
