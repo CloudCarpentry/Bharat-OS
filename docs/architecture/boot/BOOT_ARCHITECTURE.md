@@ -266,3 +266,7 @@ This keeps production boot deterministic while still supporting bring-up, valida
 
 ## Canonical Boot Contract Architecture Update
 As of Phase 1, Bharat-OS standardizes on `boot_info_t` under `boot/include/boot/`, deprecating ad-hoc parsers in `kernel/main.c`. Adapters (Multiboot2, FDT, OpenSBI) normalize all hardware-specific properties into this structure prior to early validation. See `docs/architecture/boot/` for details on validation and security posture handling.
+
+## 13. Current Status & Roadmap
+
+The current code status and future roadmap for the Bharat-OS boot architecture is detailed in `docs/architecture/boot/boot-status-and-roadmap.md`. Key ongoing tasks include fleshing out secure boot attestation, improving the `init` and `servicemgr` services from scaffold to production, and building out the memory and console policy frameworks.

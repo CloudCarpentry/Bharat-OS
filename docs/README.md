@@ -10,7 +10,7 @@ To help navigate the codebase and the documentation, we have organized the conte
 Contains high-level system design documents, subcomponent architectures, kernel models, and network/storage strategies.
 * [Kernel Architecture](architecture/000_KERNEL_ARCHITECTURE.md)
 * [Automotive Architecture](architecture/AUTOMOTIVE_ARCHITECTURE.md)
-* [Boot Architecture](architecture/BOOT_ARCHITECTURE.md)
+* [Boot Architecture](architecture/boot/BOOT_ARCHITECTURE.md)
 * [Boot Selftest Policy](architecture/BOOT_SELFTEST_POLICY.md)
 * [Network Architecture](architecture/network-architecture.md)
 
