@@ -61,7 +61,7 @@ int kernel_publish_boot_framebuffer(const boot_video_handoff_t *in,
 
     int ret = cap_table_grant(table, CAP_TYPE_MEMORY,
                               in->phys_addr,
-                              CAP_RIGHT_MAP, out_cap);
+                              CAP_RIGHT_MEMORY_MAP, out_cap);
 
     /* The table is temporary here (will be attached to the first process
      * in a full implementation).  Clean up the allocation. */
