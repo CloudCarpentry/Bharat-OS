@@ -700,11 +700,10 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
         return -1;
     }
 
-    cap_handle_t* stack = (cap_handle_t*)kmalloc(sizeof(cap_handle_t) * CAP_REVOKE_MAX);
-    cap_handle_t fallback_stack[32];
-    if (!stack) {
-        stack = fallback_stack; // fallback to small static stack buffer if OOM or early boot
-    }
+    // Iterative tree walk to revoke children safely.
+    // Use a fixed-size stack to avoid kmalloc in core kernel path.
+    // 64 entries = 1KB on stack, which is safe for kernel stacks.
+    cap_handle_t stack[64];
     size_t sp = 0;
 
     spin_lock(&table->lock);
@@ -719,13 +718,11 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
 
     if (root_slot == UINT32_MAX) {
         spin_unlock(&table->lock);
-        if (stack != fallback_stack) { kfree(stack); }
         return -2;
     }
 
     if (root_slot >= BHARAT_ARRAY_SIZE(table->entries)) {
         spin_unlock(&table->lock);
-        if (stack != fallback_stack) { kfree(stack); }
         return -2;
     }
 
@@ -746,14 +743,7 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
         tables_to_lock[num_tables++] = table;
         tables_to_lock[num_tables++] = parent_table;
 
-        // Note: The correct robust approach in a dynamic tree is to use a global coordinator
-        // or a bounded-retry optimistic lock pattern. For this iteration, we make the safe assumption
-        // that all siblings reside in `table` because `cap_table_delegate` currently enforces
-        // that a capability delegating to a remote table links the new child directly into the
-        // parent's child list. Let's simplify and safely lock parent and current table.
-        // If there's a need to traverse cross-table sibling chains, we would need to redesign
-        // the list structure. But to resolve the lock inversion safely, we will just use the pre-sorted multi-lock.
-
+        // Resolve lock inversion safely using pre-sorted multi-lock
         cap_lock_tables_sorted(tables_to_lock, num_tables);
 
         // Verify root hasn't been reallocated
@@ -761,7 +751,6 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
             // Verify parent hasn't been reallocated
             if (parent_slot >= BHARAT_ARRAY_SIZE(parent_table->entries)) {
                 cap_unlock_tables_sorted(tables_to_lock, num_tables);
-                if (stack != fallback_stack) { kfree(stack); }
                 return -2;
             }
             capability_entry_t* parent = &parent_table->entries[parent_slot];
@@ -880,9 +869,8 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
 
         if (frame.table != table || frame.slot != root_slot) { // Don't follow root's siblings!
             if (cap->next_sibling.table != NULL && cap->next_sibling.slot != UINT32_MAX) {
-                if (sp >= (stack == fallback_stack ? 32 : CAP_REVOKE_MAX)) {
+                if (sp >= 64) {
                     spin_unlock(&frame.table->lock);
-                    if (stack != fallback_stack) { kfree(stack); }
                     return -3; // bounded-stack overflow
                 }
                 stack[sp] = cap->next_sibling;
@@ -892,9 +880,8 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
 
         // Push children onto the stack
         if (cap->first_child.table != NULL && cap->first_child.slot != UINT32_MAX) {
-            if (sp >= (stack == fallback_stack ? 32 : CAP_REVOKE_MAX)) {
+            if (sp >= 64) {
                 spin_unlock(&frame.table->lock);
-                if (stack != fallback_stack) { kfree(stack); }
                 return -3; // bounded-stack overflow
             }
             stack[sp] = cap->first_child;
@@ -924,6 +911,5 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
         spin_unlock(&frame.table->lock);
     }
 
-    if (stack != fallback_stack) { kfree(stack); }
     return 0;
 }

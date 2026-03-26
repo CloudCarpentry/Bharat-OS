@@ -689,8 +689,27 @@ static int arm64_mpa_unmap_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_add
 }
 
 static void arm64_mpa_set_root(phys_addr_t root) {
-    __asm__ volatile("msr ttbr0_el1, %0" :: "r"(root) : "memory");
-    __asm__ volatile("isb\n");
+    // TCR_EL1: T0SZ=16, T1SZ=16 (48-bit VA), TG0=0 (4KB), TG1=2 (4KB), IPS=2 (40-bit PA)
+    uint64_t tcr = (16ULL << 0) | (16ULL << 16) | (3ULL << 12) | (3ULL << 28) |
+                   (1ULL << 10) | (1ULL << 26) | (1ULL << 8) | (1ULL << 24) |
+                   (0ULL << 14) | (2ULL << 30) | (2ULL << 32);
+    
+    // MAIR_EL1: Attr0=Normal, Attr1=Device-nGnRE, Attr2=Device-nGnRnE
+    uint64_t mair = (0xFFLL << 0) | (0x04LL << 8) | (0x00LL << 16);
+
+    asm volatile(
+        "msr mair_el1, %1\n"
+        "msr tcr_el1, %2\n"
+        "msr ttbr0_el1, %0\n"
+        "msr ttbr1_el1, %0\n"
+        "isb\n"
+        "mrs x0, sctlr_el1\n"
+        "orr x0, x0, #1\n"
+        "msr sctlr_el1, x0\n"
+        "isb\n"
+        :: "r"((uintptr_t)root), "r"(mair), "r"(tcr)
+        : "x0", "memory"
+    );
 }
 
 static void arm64_mpa_flush_tlb_local(virt_addr_t vaddr, uint16_t asid) {

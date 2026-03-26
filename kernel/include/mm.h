@@ -23,7 +23,7 @@ typedef uint64_t virt_addr_t;
 #include "mm/pmm.h"
 
 // Page metadata structure for Buddy Allocator
-typedef struct page {
+typedef struct __attribute__((aligned(16))) page {
   list_head_t list;
   uint16_t ref_count;
   uint16_t numa_node;
