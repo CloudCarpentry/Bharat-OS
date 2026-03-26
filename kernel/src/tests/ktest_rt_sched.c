@@ -1,9 +1,8 @@
 #include "sched/sched.h"
+#include "sched/sched_test_support.h"
 #include "tests/ktest.h"
 #include <bharat/cpu_local.h>
 
-extern void sched_test_reset(void);
-extern void sched_set_test_core_count(uint32_t core_count);
 extern kthread_t *sched_pick_next_ready_l0(uint32_t core_id);
 
 static void dummy_thread_entry(void) {

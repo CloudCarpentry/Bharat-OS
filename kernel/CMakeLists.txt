@@ -429,8 +429,10 @@ add_executable(kernel.elf
 )
 
 # Always enable kernel selftests for test builds
-set(BHARAT_ENABLE_KERNEL_SELFTESTS ON)
+set(BHARAT_ENABLE_KERNEL_SELFTESTS ON CACHE BOOL "Enable kernel self-tests")
 if(BHARAT_ENABLE_KERNEL_SELFTESTS)
+    add_compile_definitions(BHARAT_ENABLE_KERNEL_SELFTESTS=1)
+    target_compile_definitions(bharat_kernel_buildopts INTERFACE BHARAT_ENABLE_KERNEL_SELFTESTS=1)
     target_sources(kernel.elf PRIVATE $<TARGET_OBJECTS:k_test_support>)
 endif()
 
