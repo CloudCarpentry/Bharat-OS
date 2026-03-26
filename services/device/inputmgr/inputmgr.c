@@ -1,9 +1,13 @@
-#include "bharat/input/input.h"
+#include "inputmgr/inputmgr.h"
 
 #define BHARAT_MAX_INPUT_DEVS 8
 
 static bharat_input_device_t *g_input_devs[BHARAT_MAX_INPUT_DEVS];
 static uint32_t g_num_input_devs = 0;
+
+void inputmgr_init(void) {
+    g_num_input_devs = 0;
+}
 
 /**
  * Register an input device.
