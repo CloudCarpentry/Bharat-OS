@@ -33,7 +33,7 @@ This folder captures the current architectural baseline for Bharat-OS.
 - [`kernel-object-model.md`](kernel-object-model.md)
 - [`ipc-model.md`](ipc-model.md)
 - [`capability-and-ipc-baseline.md`](capability-and-ipc-baseline.md)
-- [`memory-model.md`](memory-model.md)
+- [`memory/memory-model.md`](memory/memory-model.md)
 - [`multiprocessor-and-numa-baseline.md`](multiprocessor-and-numa-baseline.md)
 - [`scheduler-and-threading.md`](scheduler-and-threading.md)
 - [`realtime-automotive-robotics-subsystems.md`](realtime-automotive-robotics-subsystems.md)

@@ -1,7 +1,7 @@
 # ADR-013: Multikernel Memory Protection Architecture (MPA)
 
 ## Status
-Proposed
+Accepted (Actively Implemented)
 
 ## Context
 Bharat-OS operates on a multikernel architecture, avoiding global shared state where possible. Historically, monolithic kernels (like Linux) utilize a single shared page table that all CPUs look up under a lock. This approach limits scalability and creates contention during heavy memory mapping and unmapping operations.
@@ -29,15 +29,13 @@ Additionally, this approach relies on a **frame ownership invariant**: every phy
 - Adds slightly more complex messaging logic via uRPC for shootdowns.
 - Requires modifying the capability model to embed ownership information and handle remote capability modifications.
 
-## Next Steps
+## Implementation Status (Update)
 
-Bring up and validate the single-core page-table HAL on `x86_64` first, then generalize the same contract to `arm64` and `riscv64`. Introduce URPC-based shootdown only once SMP makes cross-core TLB invalidation necessary.
+The memory protection architecture is now actively in-tree, driven by capability-gated feature flags (`BHARAT_ENABLE_MMU`, `BHARAT_ENABLE_MPU`, `BHARAT_ENABLE_ADVANCED_VM`, etc.).
 
-1. Define the capability word and feature bits for VIRT, ASID, HUGEPAGE, NX, IOMMU, and region-only MPU mode.
-2. Define the `mem_protect_ops_t` split into `cpu_ops` and `iommu_ops`.
-3. Add the `x86_64` `cpu_ops` backend.
-4. Wire `vmm_map()` / `vmm_unmap()` to update hardware mappings synchronously via the HAL.
-5. Add the `owner_core` property to frame capability metadata immediately.
-6. Add the `arm64` and `riscv64` backends using the same vtable contract.
-7. Provide a runtime IOMMU probe hook (which may return NULL).
-8. Implement the uRPC shootdown and ACK protocols (deferred until SMP relevance exists; local TLB flush is sufficient for single-core bring-up).
+1. **DONE:** The capability word and feature bits for varying capabilities are defined and passed contextually.
+2. **DONE:** HAL Translation interfaces (`hal_pt`, `hal_translate_ops`) exist, completely replacing the legacy global MMU state.
+3. **DONE:** Hardware implementations for `x86_64`, `arm64`, `riscv64`, as well as 32-bit MPU/MMU-lite environments (`arm32`, `riscv32`) exist and are integrated.
+4. **DONE:** The capability token and frame ownership models ensure zero cross-core locking inside the physical page allocator (PMM) and logical address spaces.
+5. **PARTIAL:** URPC shootdown pathways are functionally scaffolded via asynchronous messages, undergoing hardening for larger-scale SMP.
+6. **PARTIAL:** Device IOMMU/DMA protection is functionally isolated via memory domains, but full hardware programming (e.g. SMMU, VT-d) remains to be completed.
