@@ -41,6 +41,14 @@ compile_commands.json
 *~
 .DS_Store
 
+# Python
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
 # Logs
 *.log
 out.log
