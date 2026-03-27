@@ -150,6 +150,10 @@ add_executable(test_netmgr_interface_table services/test_netmgr_interface_table.
 target_include_directories(test_netmgr_interface_table PRIVATE ../../services/netmgr/src ../../services/netmgr/include ../../services/core/subsysmgr/include ../../lib/net/include ../../lib/runtime/include)
 add_test(NAME host_test_netmgr_interface_table COMMAND test_netmgr_interface_table)
 
+add_executable(test_smp_tlb_active_cores test_smp_tlb_active_cores.c ../../kernel/src/mm/tlb/tlb_shootdown.c ../../kernel/src/mm/tlb/tlb_pending.c ../../kernel/src/mm/tlb/tlb_stats.c host_stubs.c ../../kernel/src/lib/base/string.c)
+target_include_directories(test_smp_tlb_active_cores PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/kernel/src ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/boot/include ${CMAKE_SOURCE_DIR}/lib/include ${CMAKE_BINARY_DIR}/generated/include ${CMAKE_SOURCE_DIR}/services/monitor/generated)
+add_test(NAME host_test_smp_tlb_active_cores COMMAND test_smp_tlb_active_cores)
+
 # Memory host conformance expansion (2026-03-23)
 # HAL contracts + generic PT/TLB contracts
 add_executable(host_test_hal_pt_common ../../tests/mm/pt_common_tests.c ../../hal/hal_pt.c)
