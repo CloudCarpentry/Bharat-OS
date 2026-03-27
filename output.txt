@@ -1,0 +1,45 @@
+!!ARM64 Boot Started
+!FDT ptr initial: 0x0000000000000000
+!Probing FDT at fallback: 0x0000000040000000
+FDT: Checking magic at 0x0000000040000000 magic=0x0000000000000000
+!Probing FDT at fallback: 0x0000000040000000
+FDT: Checking magic at 0x0000000040000000 magic=0x0000000000000000
+
+================ KERNEL PANIC ================
+message      : FDT not provided by bootloader and fallback failed
+cause        : panic
+cause_code   : 0x0000000000000000
+core         : 0x0000000000000000
+thread       : 0x0000000000000000
+process      : 0x0000000000000000
+aspace       : 0x0000000000000000
+last_syscall : 0x0000000000000000
+fault_va     : 0x0000000000000000
+ip           : 0x0000000000000000
+sp           : 0x0000000000000000
+==============================================
+
+--- Breadcrumbs ---
+last_syscall : 0x0000000000000000
+last_fault_va: 0x0000000000000000
+last_trap    : 0x0000000000000000
+-------------------
+
+--- ARM64 CPU State Dump ---
+FAR_EL1: 0x0000000000000000
+ESR_EL1: 0x0000000000000000
+ELR_EL1: 0x0000000000000000
+SPSR_EL1: 0x0000000000000000
+FP (x29): 0x0000000040602c40
+SP: 0x0000000040602c30
+
+Stack Trace (Frame Pointers):
+  [0] pc=0x00000000400948ec fp=0x0000000040602d00
+  [1] pc=0x0000000040094a60 fp=0x0000000040602da0
+  [2] pc=0x00000000400a5bb0 fp=0x0000000040603fe0
+  [3] pc=0x0000000040080098 fp=0x0000000000000000
+-----------------------------
+System halted.
+qemu-system-aarch64: terminating on signal 15 from pid 9959 (-bash)
+ARM64: Expecting valid FDT pointer in x0 via QEMU.
+Running: qemu-system-aarch64 -kernel build/arm64-edge/kernel/kernel.elf -m 512 -machine virt -cpu cortex-a57 -append test=all log_level=debug -serial stdio -display none
