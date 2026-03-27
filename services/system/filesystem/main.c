@@ -1,35 +1,36 @@
 #include <stdint.h>
 #include <stddef.h>
-// Forward declare for initialization stub
-int vfs_init(void);
-void vfs_fd_init(void);
-int vfs_mount_add(const char* prefix, uint32_t capabilities);
+#include "urpc.h"
+#include "bharat/stacks/storage/block.h"
 
-/*
- * Bharat-OS User-Space VFS Daemon
- *
- * Manages mounts, files, and dispatches IPC/URPC requests from other
- * applications or personalities (like Linux `open()`) to specific backing filesystems.
- */
+// Reference happy path execution
+extern int virtio_blk_submit_request(void* sg_list, uint32_t num_sgs);
+extern void virtio_blk_init(void);
 
-int main(int argc, char** argv) {
-    (void)argc;
-    (void)argv;
+// Simulated capability IPC server handler
+void handle_fs_urpc_request(void* msg) {
+    (void)msg; // Suppress unused
+    // App -> Service (VFS)
+    // Here VFS would decode `msg`, validate capability, check mount, and open/read file.
 
-    // Initialize VFS layer stub
-    vfs_init();
-    vfs_fd_init();
+    // Service -> Stack (Block)
+    block_request_t breq = {
+        .type = BLOCK_REQ_READ,
+        .lba = 0,
+        .num_blocks = 1,
+        .buffer = NULL, // Provide simulated DMA buffer here
+        .status = -1
+    };
 
-    // Mount early boot filesystem (ramfs/tmpfs) baseline
-    vfs_mount_add("/", 0x01); // 0x01 = READ_WRITE capability
+    block_queue_request(0, &breq); // Stacks block abstraction
+}
 
-    // TODO: Await file operations (open, read, write, close) via URPC
-    // TODO: Map to POSIX semantics using block-device drivers via IPC
-    // TODO: Create a URPC buffer mapping to high-bandwidth block devices
+int main(void) {
+    // 1. Initialize drivers
+    virtio_blk_init();
 
-    while(1) {
-        // Poll and process URPC filesystem requests
-    }
+    // 2. Wait for incoming capability requests
+    // (Simulate an incoming uRPC request loop)
 
     return 0;
 }

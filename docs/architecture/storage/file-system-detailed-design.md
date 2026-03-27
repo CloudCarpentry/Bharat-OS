@@ -71,16 +71,17 @@ The pure hardware interface layer.
 
 ## 5. Implementation Roadmap
 
-### Phase 1: Near-Production Baseline (Current Objective)
-1. Relocate existing VFS stubs to `services/system/filesystem/`.
-2. Establish the `stacks/storage/` framework (generic block API, basic buffer cache).
-3. Implement a reference block driver (`drivers/block/virtio_blk/`) demonstrating DMA queue construction.
-4. Wire uRPC IPC mechanisms to route a block read request from an app -> VFS -> Stack -> Driver.
+### Phase 1: Near-Production Baseline (Completed)
+1. Relocated existing VFS policy logic (`vfs.c`, `mount.c`, `file.c`, `namespace.c`, etc.) out of the kernel into `services/system/filesystem/`.
+2. Replaced kernel VFS logic with thin transitional capability/IPC shims.
+3. Established the `stacks/storage/` framework encompassing generic block API, basic buffer cache abstracts, and fs-adapter boundaries.
+4. Linked and verified a reference IPC-to-block routing path: app -> VFS service -> Storage Block Stack -> `virtio_blk` driver.
 
-### Phase 2: POSIX Personality & Caching
-1. Implement a complete FAT32 or ext2 adapter in `stacks/storage/fs/`.
-2. Connect `services/system/filesystem/` to the `compat/linux` personality to support real `openat`, `read`, `write`, `stat`.
-3. Implement the NUMA-aware Page Cache in `stacks/storage/cache/` to buffer reads and aggregate writes.
+### Phase 2: Kernel Clean-up & POSIX Personality (Current Objective)
+1. Remove remaining direct kernel consumer dependencies on transitional VFS shims (B-phase cleanup).
+2. Implement a complete deterministic/lightweight filesystem (e.g., littlefs/FAT) in `stacks/storage/fs/`.
+3. Connect `services/system/filesystem/` to the `compat/linux` personality to support real `openat`, `read`, `write`, `stat`.
+4. Implement the NUMA-aware Page Cache in `stacks/storage/cache/` to buffer reads and aggregate writes.
 
 ### Phase 3: Advanced Sandboxing & Security
 1. Enforce Path Capabilities: Validate that a sandboxed app's token allows writing to a specific subdirectory.
