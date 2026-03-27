@@ -149,6 +149,15 @@ flowchart LR
     F --> G[Sender Marks Request Complete]
 ```
 
+### 6.1 Monitor VM Channel Coordination
+
+The distributed VM implementation relies on the Monitor VM Channel for inter-core memory coordination. The monitor (`kernel/src/monitor/mon_vm_service.c` and `mon_vm_dispatch.c`) is strictly a mechanism layer, providing bounded-completion URPC/IPC capabilities to the advanced VM and TLB controllers.
+
+**Design Guarantees:**
+1. **Bounded Wait:** Operations are dispatched with strict limits on wait times (e.g., `mon_vm_wait_for_acks` terminates on timeout or terminal error rather than indefinite blocking).
+2. **Contract Discipline:** Dispatching map/unmap/protect requests validates message envelopes, alignments, and flags before taking action. Malformed requests are explicitly nacked (`MON_VM_STATUS_MALFORMED`).
+3. **Observability:** Telemetry metrics (`stat_requests_sent`, `stat_acks_received`, `stat_timeouts`, etc.) track cross-core coordination health, surfacing channel issues quickly.
+
 ## 7. Memory Operations Layering
 
 Memory copying, zeroing, and moving follows strict layering:
