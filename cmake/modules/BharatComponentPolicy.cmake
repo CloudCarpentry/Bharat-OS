@@ -131,7 +131,7 @@ function(bharat_apply_component_policy)
         set(BHARAT_ENABLE_SUBSYS_WINDOWS ON CACHE BOOL "Build Windows personality subsystem" FORCE)
     elseif(_personality STREQUAL "MAC")
         # No dedicated subsystem target yet.
-    elseif(_personality STREQUAL "NONE")
+    elseif(_personality STREQUAL "NATIVE")
         # Keep defaults.
     else()
         message(FATAL_ERROR "Unsupported BHARAT_PERSONALITY_PROFILE='${BHARAT_PERSONALITY_PROFILE}'")

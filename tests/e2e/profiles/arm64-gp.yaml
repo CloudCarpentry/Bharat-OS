@@ -1,6 +1,6 @@
 arch: arm64
 device_profile: GP
-personality_profile: NONE
+personality_profile: NATIVE
 memory_test: mmu
 qemu_cmd: qemu-system-aarch64
 qemu_args:
