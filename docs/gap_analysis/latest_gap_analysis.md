@@ -458,11 +458,9 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Tasks**
 
-* ~~Implement **Full VM manager** (`vm_manager`) for full-MMU systems (dynamic address spaces, page-fault-driven behavior, richer process isolation).~~
-* ~~Implement **Memory-domain manager** (`memdom_manager`) for MMU-lite systems (region ownership, static/bounded remap rules, capability checks, fault reporting, lightweight domain switching).~~
-* ~~Implement **Static protection-domain path** for MPU-only constrained systems (no standalone service, minimal policy in kernel/arch, boot-configured regions, no dynamic mapping).~~
-* ~~Use profile-gated enablement (`FULL_VM`, `MEM_DOMAIN`, `STATIC_MPU`) and capability-governed subsystem registry to load only the required runtime.~~
-* ~~Implement memory class tags (e.g., `MEM_RT`, `MEM_DMA`, `MEM_PACKET`) for deterministic and isolated pools.~~
+* ~~Define address-space lifecycle contract~~
+* ~~Implement map/unmap/protect/query flows~~
+* ~~Integrate with kernel VM path~~
 
 **Likely Code Areas**
 
@@ -475,9 +473,8 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Acceptance Criteria**
 
-* ~~**MMU profile:** `vm_manager` is active; supports dynamic address spaces, mapping lifecycle, and paging tests pass end-to-end.~~
-* ~~**MMU-lite profile:** `memdom_manager` is active; enforces region ownership and bounded remap rules without full VM overhead.~~
-* ~~**MPU profile:** No resident memory service is started; kernel/arch handles static region configuration and protection domain switching at boot.~~
+* ~~vm_manager supports real lifecycle operations~~
+* ~~Mapping tests pass end to end~~
 
 ### Story E2-S3 — Add service supervisor runtime [COMPLETED]
 
