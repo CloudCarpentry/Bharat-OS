@@ -60,6 +60,8 @@ typedef struct {
 
 typedef struct kthread kthread_t;
 typedef struct kprocess kprocess_t;
+struct thread_slot;
+struct process_slot;
 
 typedef enum {
     THREAD_FAULT_NONE = 0,
@@ -104,6 +106,20 @@ typedef struct sched_rq {
     uint64_t context_switches;
     uint32_t throttled;
     spinlock_t lock;
+
+    // Deferred reaping queue
+    uint32_t reap_head;
+    uint32_t reap_tail;
+
+    // Per-core object pools
+    uint32_t free_thread_head;
+    uint32_t free_process_head;
+    struct thread_slot *threads;
+    struct process_slot *processes;
+    struct thread_slot *bootstrap_threads;
+    void *mutex_owners;
+    void *pending_suggestions;
+    uint8_t *bootstrap_stacks;
 } sched_rq_t;
 
 typedef struct {

@@ -26,10 +26,10 @@ The next evolution is not adding features—but **formalizing contracts** so the
 
 | Area             | Status              | Notes                                          |
 | ---------------- | ------------------- | ---------------------------------------------- |
-| Scheduler        | ⚠️ Partial          | Exists but not fully per-core isolated         |
-| Process/Thread   | ⚠️ Partial          | Lifecycle exists, policy separation incomplete |
-| IPC / Endpoints  | ⚠️ Emerging         | Needs standardization for URPC                 |
-| Capability Model | ⚠️ Strong Direction | Needs narrowing + lifecycle enforcement        |
+| Scheduler        | ✅ Aligned          | Fully per-core isolated with lockless handoffs |
+| Process/Thread   | ✅ Aligned          | Per-core tracking and lifecycle hooks active   |
+| IPC / Endpoints  | ✅ Aligned          | Standardized URPC envelope and descriptors     |
+| Capability Model | ✅ Aligned          | Profile filtering and subsystem registration   |
 
 ### 2.2 Memory & MMU
 
