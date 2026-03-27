@@ -6,6 +6,7 @@
 #include "../../kernel/include/numa.h"
 #include "../../kernel/include/mm/physmap.h"
 #include "../../kernel/include/mm/pt_cache.h"
+#include "../../kernel/include/arch/arch_cpu_caps.h"
 #include <stdbool.h>
 
 // Direct-Map Subsystem Configuration
@@ -491,7 +492,9 @@ const hal_translate_ops_t* hal_translate_ops(void) {
     return &x86_translate_ops;
 }
 
-static const hal_pt_caps_t x86_pt_caps = {
+bool g_x86_pcid_supported = false;
+
+static hal_pt_caps_t x86_pt_caps = {
     .backend_kind = TRANSLATE_BACKEND_MMU,
     .exec_class = TRANSLATE_EXEC_MMU_FULL,
     .supports_sparse_vm = true,
@@ -531,8 +534,6 @@ hal_pt_ops_t x86_hal_pt_ops = {
 };
 
 // --- x86_64 TLB Operations ---
-
-bool g_x86_pcid_supported = false;
 
 static void x86_tlb_flush_page_local(virt_addr_t vaddr) {
     __asm__ volatile("invlpg (%0)" :: "r"(vaddr) : "memory");
@@ -592,7 +593,7 @@ static void x86_tlb_flush_all_broadcast(uint16_t asid) {
     (void)asid;
 }
 
-static const hal_tlb_caps_t x86_tlb_caps = {
+static hal_tlb_caps_t x86_tlb_caps = {
     .supports_page_flush = true,
     .supports_range_flush = true,
     .supports_aspace_flush = true,
@@ -616,6 +617,14 @@ hal_tlb_ops_t x86_hal_tlb_ops = {
     .flush_range_broadcast = x86_tlb_flush_range_broadcast,
     .flush_all_broadcast   = x86_tlb_flush_all_broadcast,
 };
+
+void x86_pt_caps_init(void) {
+    g_x86_pcid_supported = arch_cpu_has(ARCH_CPU_FEAT_X86_PCID);
+    if (g_x86_pcid_supported) {
+        x86_pt_caps.supports_pcid = true;
+        x86_tlb_caps.supports_asid_selective_flush = true;
+    }
+}
 
 // Implement the specific functions from mem_protect_cpu_ops
 
