@@ -365,7 +365,7 @@ static void demo_capability_cross_call(void)
 
     /* cap WITHOUT right */
     demo_cap_t bad_cap  = { .cap_id = 8U, .rights_mask = 0x0U };
-    DEMO_PRINT("  [CAP]  cap_id=8 rights=NONE -> check: ");
+    DEMO_PRINT("  [CAP]  cap_id=8 rights=NATIVE -> check: ");
     DEMO_PRINT((bad_cap.rights_mask & 0x1U) ? "ALLOWED\n" : "DENIED (correct)\n");
 
     DEMO_PRINT("  [CAP]  Capability demo -- PASS\n");
