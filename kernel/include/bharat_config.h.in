@@ -37,7 +37,7 @@
 #cmakedefine BHARAT_IRQ_DISPATCH_RT 1
 
 /* Personality Profile */
-#cmakedefine BHARAT_PERSONALITY_NONE 1
+#cmakedefine BHARAT_PERSONALITY_NATIVE 1
 #cmakedefine BHARAT_PERSONALITY_LINUX 1
 #cmakedefine BHARAT_PERSONALITY_WINDOWS 1
 #cmakedefine BHARAT_PERSONALITY_MAC 1

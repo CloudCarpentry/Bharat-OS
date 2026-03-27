@@ -16,7 +16,7 @@ BOOT_HW="generic"
 MACHINE=""
 BOOT_TIER=""
 PROFILE="desktop"
-PERSONALITY="none"
+PERSONALITY="native"
 
 # Parse arguments
 DUAL_SERIAL=false
