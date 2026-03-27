@@ -1,8 +1,18 @@
 cmake_minimum_required(VERSION 3.20)
-if(TARGET kernel.elf)
-    target_sources(kernel.elf PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/mon_vm_service.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/mon_vm_dispatch.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/mon_vm_state.c
-    )
-endif()
+
+add_library(k_monitor OBJECT
+    mon_vm_service.c
+    mon_vm_dispatch.c
+    mon_vm_state.c
+)
+
+target_include_directories(k_monitor PRIVATE
+    ../../include
+    ../../include/generated
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/lib/include
+    ${CMAKE_SOURCE_DIR}/boot/include
+    ${CMAKE_SOURCE_DIR}/services/core/subsysmgr/include
+)
+
+target_link_libraries(k_monitor PRIVATE bharat_freestanding bharat_kernel_buildopts)

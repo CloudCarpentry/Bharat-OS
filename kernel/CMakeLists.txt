@@ -418,6 +418,7 @@ add_executable(kernel.elf
     $<TARGET_OBJECTS:k_debug>
     $<TARGET_OBJECTS:k_init>
     $<TARGET_OBJECTS:k_fs>
+    $<TARGET_OBJECTS:k_monitor>
 )
 
 # Always enable kernel selftests for test builds
