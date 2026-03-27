@@ -12,7 +12,12 @@ void print(const char *msg) {
 }
 
 // The entry point for the sample app
-void _start() {
+void _start_app() {
     print("Hello from Bharat-OS SDK Sample App!\n");
     bharat_exit(0);
+}
+
+int main() {
+    _start_app();
+    return 0;
 }

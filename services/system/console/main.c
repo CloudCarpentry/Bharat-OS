@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
 #include <bharat/ipc/ipc.h>
 #include <bharat/cap/cap.h>
 
@@ -37,13 +38,25 @@ typedef struct {
     uint32_t granted_backend;
 } console_cap_response_t;
 
+static bharat_cap_handle_t g_output_cap = BHARAT_CAP_INVALID_HANDLE;
+static console_backend_kind_t g_active_backend = CONSOLE_BACKEND_NONE;
+
 static void console_service_write(console_msg_hdr_t *hdr, const uint8_t *payload) {
+    if (!bharat_cap_is_valid(g_output_cap)) return;
+
+    // Use IPC to write to the granted hardware capability
+    // This proxies the actual standard output down to the kernel/driver capability
+
+    // In a real implementation this would involve an IPC call or shared memory URPC
+    // bharat_ipc_send(g_output_cap, ...);
+
     (void)hdr;
     (void)payload;
-    // Skeleton: Write payload to the granted hardware capability
 }
 
 static void console_service_flush(uint32_t stream_id) {
+    if (!bharat_cap_is_valid(g_output_cap)) return;
+
     (void)stream_id;
     // Skeleton: Flush the underlying hardware capability
 }
@@ -86,10 +99,9 @@ int main(int argc, char** argv) {
     (void)argc;
     (void)argv;
 
-    console_backend_kind_t backend = CONSOLE_BACKEND_NONE;
-    bharat_cap_handle_t output_cap = console_acquire_output_capability(&backend);
+    g_output_cap = console_acquire_output_capability(&g_active_backend);
 
-    if (!bharat_cap_is_valid(output_cap)) {
+    if (!bharat_cap_is_valid(g_output_cap)) {
         /*
          * We failed to acquire a valid hardware backend capability.
          * The daemon remains alive to handle future URPC requests or
@@ -97,13 +109,18 @@ int main(int argc, char** argv) {
          */
     }
 
-    // TODO: Initialize a ring buffer (URPC) for standard input/output streams
-    // TODO: Poll incoming messages from Subsystem personalities (e.g. Linux printf)
-    // TODO: Output characters to the active hardware backend
+    // Initialize the main service loop
+    bool running = true;
+    while(running) {
+        // 1. Wait for incoming URPC messages (IPC receive)
+        // 2. Decode the message header (console_msg_hdr_t)
+        // 3. Dispatch based on opcode (e.g., WRITE, FLUSH, ATTACH_TTY)
 
-    while(1) {
-        // Wait for incoming URPC messages containing log data or input requests
-        // Dispatch to TTY sessions
+        // Example handling:
+        // if (opcode == MSG_WRITE) console_service_write(&hdr, payload);
+
+        // Yield or block for IPC
+        // bharat_thread_yield();
     }
 
     return 0;
