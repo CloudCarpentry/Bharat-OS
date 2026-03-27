@@ -35,6 +35,10 @@ extern hal_tlb_ops_t mpu_hal_tlb_ops;
 
 void hal_pt_init(void) {
 #if defined(__x86_64__) || defined(_M_X64)
+    void __attribute__((weak)) x86_pt_caps_init(void);
+    if (x86_pt_caps_init) {
+        x86_pt_caps_init();
+    }
     active_hal_pt = &x86_hal_pt_ops;
     active_hal_tlb = &x86_hal_tlb_ops;
 #elif defined(__aarch64__) || defined(_M_ARM64)
