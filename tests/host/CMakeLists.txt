@@ -164,6 +164,10 @@ add_executable(host_test_hal_caps_consistency ../../tests/test_hal_caps_consiste
 target_include_directories(host_test_hal_caps_consistency PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/boot/include)
 add_test(NAME host_test_hal_caps_consistency COMMAND host_test_hal_caps_consistency)
 
+add_executable(host_test_mon_vm test_mon_vm.c host_stubs.c ../../kernel/src/monitor/mon_vm_dispatch.c ../../kernel/src/monitor/mon_vm_service.c ../../kernel/src/monitor/mon_vm_state.c)
+target_include_directories(host_test_mon_vm PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/kernel/src ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/lib/include)
+add_test(NAME host_test_mon_vm COMMAND host_test_mon_vm)
+
 # VMM / ASpace / VM base-object conformance currently remains in top-level tests
 # (`test_vmm_aspace`) due additional prot-domain and arch-cap dependencies.
 
