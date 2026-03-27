@@ -56,7 +56,23 @@ void netmgr_ipc_handle_request(const bharat_ipc_msg_header_t *hdr, const netmgr_
     netmgr_set_caller_cap(hdr->capability_transfer);
 
     uint32_t target_if_id = desc->extract_target_obj(req);
-    int auth_status = netmgr_authorize(req->opcode, hdr->capability_transfer, target_if_id, desc->required_rights);
+
+    // Convert target ID to scope
+    bharat_cap_scope_t scope;
+    if (desc->object_type == BHARAT_CAP_OBJ_SERVICE) {
+        scope.kind = BHARAT_CAP_SCOPE_SERVICE;
+        scope.scope_id = 0; // The netmgr service itself
+    } else {
+        scope.kind = BHARAT_CAP_SCOPE_OBJECT;
+        scope.scope_id = target_if_id;
+    }
+
+    int auth_status = netmgr_authorize(
+        hdr->capability_transfer,
+        desc->object_type,
+        target_if_id,
+        desc->required_rights,
+        &scope);
 
     if (auth_status != BHARAT_IPC_STATUS_OK) {
         res->status = NETMGR_STATUS_ERR_PERM;

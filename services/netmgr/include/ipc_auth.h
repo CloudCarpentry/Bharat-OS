@@ -9,16 +9,28 @@
 extern "C" {
 #endif
 
+#include <bharat/cap/cap_validate.h>
+
 // Define rights
-#define NETMGR_RIGHT_READ  (1 << 0)
-#define NETMGR_RIGHT_WRITE (1 << 1)
-#define NETMGR_RIGHT_ADMIN (1 << 2)
+#define BHARAT_CAP_RIGHT_NET_READ_STATS      (1ull << 0)
+#define BHARAT_CAP_RIGHT_NET_IFACE_QUERY     (1ull << 1)
+#define BHARAT_CAP_RIGHT_NET_IFACE_CONFIG    (1ull << 2)
+#define BHARAT_CAP_RIGHT_NET_ROUTE_QUERY     (1ull << 3)
+#define BHARAT_CAP_RIGHT_NET_ROUTE_MUTATE    (1ull << 4)
+#define BHARAT_CAP_RIGHT_NET_FIREWALL_READ   (1ull << 5)
+#define BHARAT_CAP_RIGHT_NET_FIREWALL_WRITE  (1ull << 6)
+#define BHARAT_CAP_RIGHT_NET_ADMIN           (1ull << 7)
 
 // Set the current caller capability (mock context for now)
 void netmgr_set_caller_cap(bharat_cap_handle_t cap);
 
 // Uniform authorization hook
-int netmgr_authorize(uint32_t opcode, bharat_cap_handle_t caller_cap, uint32_t target_if_id, uint32_t required_rights);
+int netmgr_authorize(
+    bharat_cap_handle_t caller_cap,
+    bharat_cap_object_type_t object_type,
+    uint64_t object_id,
+    uint64_t required_rights,
+    const bharat_cap_scope_t *required_scope);
 
 #ifdef __cplusplus
 }
