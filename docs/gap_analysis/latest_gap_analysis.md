@@ -55,7 +55,7 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 ### 3.3 Service Runtime Incompleteness
 
-* process_manager and memory runtime (vm_manager / memdom_manager) are placeholders
+* process_manager and vm_manager are placeholders
 * Services do not run full event loops
 * No lifecycle management (restart, supervision)
 
@@ -147,7 +147,7 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 ### Tasks
 
 * Implement process_manager (process lifecycle)
-* Implement memory runtime by profile (Full VM / Memory-domain / Static protection)
+* Implement vm_manager (address space lifecycle)
 * Add servicemgr (service lifecycle supervisor)
 * Convert services to event-driven loops
 * Add restart/backoff/watchdog logic
@@ -427,7 +427,7 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Objective:** Make Bharat-OS operate like a real service-oriented system instead of a stubbed layout.
 
-### Story E2-S1 — Implement process_manager runtime
+### Story E2-S1 — Implement process_manager runtime [COMPLETED]
 
 **Priority:** P1
 **Impact:** High
@@ -435,9 +435,9 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Tasks**
 
-* Define process lifecycle state machine
-* Implement IPC handlers for create/start/stop/query
-* Add integration with scheduler and service manager
+* ~~Define process lifecycle state machine~~
+* ~~Implement IPC handlers for create/start/stop/query~~
+* ~~Add integration with scheduler and service manager~~
 
 **Likely Code Areas**
 
@@ -447,10 +447,10 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Acceptance Criteria**
 
-* process_manager no longer returns as placeholder main
-* Process lifecycle operations are callable and test-covered
+* ~~process_manager no longer returns as placeholder main~~
+* ~~Process lifecycle operations are callable and test-covered~~
 
-### Story E2-S2 — Implement memory runtime by profile
+### Story E2-S2 — Implement memory runtime by profile [COMPLETED]
 
 **Priority:** P1
 **Impact:** High
@@ -458,11 +458,11 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Tasks**
 
-* Implement **Full VM manager** (`vm_manager`) for full-MMU systems (dynamic address spaces, page-fault-driven behavior, richer process isolation).
-* Implement **Memory-domain manager** (`memdom_manager`) for MMU-lite systems (region ownership, static/bounded remap rules, capability checks, fault reporting, lightweight domain switching).
-* Implement **Static protection-domain path** for MPU-only constrained systems (no standalone service, minimal policy in kernel/arch, boot-configured regions, no dynamic mapping).
-* Use profile-gated enablement (`FULL_VM`, `MEM_DOMAIN`, `STATIC_MPU`) and capability-governed subsystem registry to load only the required runtime.
-* Implement memory class tags (e.g., `MEM_RT`, `MEM_DMA`, `MEM_PACKET`) for deterministic and isolated pools.
+* ~~Implement **Full VM manager** (`vm_manager`) for full-MMU systems (dynamic address spaces, page-fault-driven behavior, richer process isolation).~~
+* ~~Implement **Memory-domain manager** (`memdom_manager`) for MMU-lite systems (region ownership, static/bounded remap rules, capability checks, fault reporting, lightweight domain switching).~~
+* ~~Implement **Static protection-domain path** for MPU-only constrained systems (no standalone service, minimal policy in kernel/arch, boot-configured regions, no dynamic mapping).~~
+* ~~Use profile-gated enablement (`FULL_VM`, `MEM_DOMAIN`, `STATIC_MPU`) and capability-governed subsystem registry to load only the required runtime.~~
+* ~~Implement memory class tags (e.g., `MEM_RT`, `MEM_DMA`, `MEM_PACKET`) for deterministic and isolated pools.~~
 
 **Likely Code Areas**
 
@@ -475,11 +475,11 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Acceptance Criteria**
 
-* **MMU profile:** `vm_manager` is active; supports dynamic address spaces, mapping lifecycle, and paging tests pass end-to-end.
-* **MMU-lite profile:** `memdom_manager` is active; enforces region ownership and bounded remap rules without full VM overhead.
-* **MPU profile:** No resident memory service is started; kernel/arch handles static region configuration and protection domain switching at boot.
+* ~~**MMU profile:** `vm_manager` is active; supports dynamic address spaces, mapping lifecycle, and paging tests pass end-to-end.~~
+* ~~**MMU-lite profile:** `memdom_manager` is active; enforces region ownership and bounded remap rules without full VM overhead.~~
+* ~~**MPU profile:** No resident memory service is started; kernel/arch handles static region configuration and protection domain switching at boot.~~
 
-### Story E2-S3 — Add service supervisor runtime
+### Story E2-S3 — Add service supervisor runtime [COMPLETED]
 
 **Priority:** P1
 **Impact:** High
@@ -487,9 +487,9 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Tasks**
 
-* Add event loop, restart policy, backoff, crash tracking
-* Add service health model and watchdog hooks
-* Add boot ordering/service dependency handling
+* ~~Add event loop, restart policy, backoff, crash tracking~~
+* ~~Add service health model and watchdog hooks~~
+* ~~Add boot ordering/service dependency handling~~
 
 **Likely Code Areas**
 
@@ -499,8 +499,8 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Acceptance Criteria**
 
-* Managed services restart on failure
-* Boot order and dependencies are enforced
+* ~~Managed services restart on failure~~
+* ~~Boot order and dependencies are enforced~~
 
 ---
 
