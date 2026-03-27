@@ -33,6 +33,10 @@ Before and during implementation, you MUST reference the `/docs` directory to en
 - **Design Decisions**: Align with recorded ADRs in `/docs/adr`.
 - **Project Context**: Reference `docs/current-code-status.md` and `docs/developer_guidelines.md`.
 
+## Strict Execution Directives (Mandatory)
+
+Do not ask broad clarification questions when the requested change can be inferred from repo context, architecture docs, and existing code. Make a best-effort implementation. Respect Bharat-OS layering: kernel for mechanisms only, services for policy, stacks for composed subsystems, arch for ISA-specific code, hal for contracts/glue, platform for board/machine integration. Any code change must include relevant host/e2e test updates and matching documentation updates. Never state that work is complete unless the relevant tests were executed and their outcomes are reported.
+
 ## Role
 
 You are acting as a **Low-Level Operating System and Kernel Architect** working on the **Bharat-OS** project.
