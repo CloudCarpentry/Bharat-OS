@@ -19,15 +19,13 @@ int aspace_create(address_space_t **out_aspace, uint32_t flags) {
 
     extern phys_addr_t vmm_get_kernel_root(void);
     as->prot_domain = prot_domain_create();
-    if (!as->prot_domain) {
-        kfree(as);
-        return -1;
-    }
 
     // Stub legacy while transitioning fully
     as->root_pt = active_hal_pt->create_address_space(vmm_get_kernel_root());
     if (!as->root_pt) {
-        prot_domain_destroy(as->prot_domain);
+        if (as->prot_domain) {
+            prot_domain_destroy(as->prot_domain);
+        }
         kfree(as);
         return -1;
     }
@@ -79,6 +77,11 @@ int aspace_destroy(address_space_t *aspace) {
 
     if (active_hal_pt) {
         active_hal_pt->destroy_address_space(aspace->root_pt);
+    }
+
+    if (aspace->prot_domain) {
+        prot_domain_destroy(aspace->prot_domain);
+        aspace->prot_domain = NULL;
     }
 
     spin_unlock(&aspace->lock);

@@ -1,5 +1,6 @@
 #include "device.h"
 #include "kernel_safety.h"
+#include "hal/hal_pt.h"
 #include "mm.h"
 #include "sched/algo_matrix.h"
 
@@ -294,14 +295,20 @@ int device_register_mmio_window(const device_mmio_window_t* window) {
             g_windows[i].in_use = 1U;
 
             #ifndef TESTING
+            capability_t mmio_cap = {
+                .capability_id = 0U,
+                .target_object_id = 0U,
+                .rights_mask = HAL_PT_FLAG_READ | HAL_PT_FLAG_WRITE | HAL_PT_FLAG_NOCACHE
+            };
             uint32_t num_pages = (window->size_bytes + PAGE_SIZE - 1) / PAGE_SIZE;
             for (uint32_t p = 0; p < num_pages; p++) {
-                vmm_map_device_mmio(
+                if (vmm_map_device_mmio(
                     window->virt_base + (p * PAGE_SIZE),
                     window->phys_base + (p * PAGE_SIZE),
-                    NULL,
-                    0
-                );
+                    &mmio_cap,
+                    0) != 0) {
+                    return -3;
+                }
             }
             #endif
 
