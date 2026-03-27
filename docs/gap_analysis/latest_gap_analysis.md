@@ -450,7 +450,7 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 * ~~process_manager no longer returns as placeholder main~~
 * ~~Process lifecycle operations are callable and test-covered~~
 
-### Story E2-S2 — Implement vm_manager runtime [COMPLETED]
+### Story E2-S2 — Implement memory runtime by profile [COMPLETED]
 
 **Priority:** P1
 **Impact:** High
@@ -465,7 +465,9 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 **Likely Code Areas**
 
 * `services/vm_manager/`
+* `services/memdom_manager/`
 * `kernel/src/mm/vm/`
+* `kernel/src/mm/mpu/`
 * `idl/`
 * `uapi/`
 
@@ -696,7 +698,7 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 * E1-S2 Capability enforcement framework rollout
 * E2-S1 process_manager runtime
-* E2-S2 vm_manager runtime
+* E2-S2 Implement memory runtime by profile
 * netmgr daemonization completion
 
 ### Sprint Block C — Platform Cohesion
@@ -724,7 +726,7 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 2. TLB shootdown redesign
 3. netmgr strict capability enforcement
 4. PMM per-core magazines + ownership tests
-5. process_manager / vm_manager runtime implementation
+5. process_manager / memory runtime implementation by profile
 
 ### Top 5 documentation priorities
 
@@ -771,7 +773,7 @@ A story is complete only when all are true:
 
 **Gate 3 — Runtime Real**
 
-* process_manager, vm_manager, and service supervisor operational
+* process_manager, appropriate memory runtime (based on profile), and service supervisor operational
 
 **Gate 4 — Architecture Clean**
 
