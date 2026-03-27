@@ -65,6 +65,10 @@ void kernel_panic_ex(const panic_context_t *ctx) {
 
   hal_cpu_disable_interrupts();
 
+  // Enter the safe console panic path locklessly
+  extern void console_enter_panic(void);
+  console_enter_panic();
+
   // Early flush to push any pending print buffers
   panic_flush_logs();
 
@@ -125,6 +129,10 @@ void kernel_panic_ex(const panic_context_t *ctx) {
 
   // Save to persistent storage
   pstore_write(local_ctx.message);
+
+  // Safely flush all registered console backends (synchronous polling)
+  extern void console_panic_flush_backends(void);
+  console_panic_flush_backends();
 
   panic_flush_logs();
 

@@ -51,10 +51,13 @@ endif()
 
 # Sample Application
 add_executable(sample_app sample_app/main.c)
-target_link_libraries(sample_app PRIVATE bharat)
+target_link_libraries(sample_app PRIVATE bharat bharat_user_buildopts bharat_freestanding)
 
 # If building standalone, we need to ensure the executable is built without host stdlib
 if (NOT TARGET bharat_user_buildopts)
-    target_compile_options(sample_app PRIVATE -ffreestanding -nostdlib)
-    target_link_options(sample_app PRIVATE -nostdlib)
+    target_compile_options(sample_app PRIVATE -ffreestanding -nostdlib -fPIC)
+    target_link_options(sample_app PRIVATE -nostdlib -pie)
+else()
+    target_compile_options(sample_app PRIVATE -fPIC)
+    target_link_options(sample_app PRIVATE -pie)
 endif()
