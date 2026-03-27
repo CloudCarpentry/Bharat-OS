@@ -20,6 +20,12 @@ SECTIONS
         *(.rodata)
         *(.rodata.*)
 
+        . = ALIGN(8);
+        __start_bharat_services = .;
+        KEEP(*(bharat_services))
+        __stop_bharat_services = .;
+
+
         . = ALIGN(16);
         __kern_tests_start = .;
         KEEP(*(.kern_tests))

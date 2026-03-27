@@ -23,7 +23,7 @@
 #include "security/credentials.h"
 #include "security/isolation.h"
 #include "security/policy.h"
-#include "subsystem_profile.h"
+#include "profile/subsystem_profile.h"
 #include "trap.h"
 #include "boot/boot_args.h"
 #include "boot/boot_info.h"
@@ -85,8 +85,28 @@ static void print_boot_diagnostics(const boot_info_t *boot) {
     ((boot_info_t*)boot)->selected_mode = (boot_mode_t)mode; // Cast away const to set policy state
 }
 
+// External linker symbols for the subsystem registration framework
+extern const subsystem_descriptor_t __start_bharat_services;
+extern const subsystem_descriptor_t __stop_bharat_services;
+
+void init_subsystems(void) {
+    const subsystem_descriptor_t* current = &__start_bharat_services;
+
+    // Default boot profile
+    uint32_t active_profile_mask = 1;
+
+    while (current < &__stop_bharat_services) {
+        if ((current->profile_mask & active_profile_mask) != 0) {
+            // Profile matched, start the subsystem
+            if (current->init_fn) {
+                current->init_fn();
+            }
+        }
+        current++;
+    }
+}
 void boot_common_early(const boot_info_t *boot) {
-    const char *profile = kernel_boot_hw_profile();
+
 
     hal_init();
 
@@ -135,7 +155,7 @@ void boot_common_early(const boot_info_t *boot) {
         KPRINT("  [CAP] UP Only\n");
     }
 
-    bharat_subsystems_init(profile);
+    init_subsystems();
 
     boot_selftest_report_t report;
     boot_selftest_run_stage(BOOT_TEST_STAGE_EARLY, &report);

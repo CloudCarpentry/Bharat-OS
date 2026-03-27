@@ -147,8 +147,8 @@ int mk_init_per_core_channels(uint32_t core_count, uint32_t ring_size) {
         return URPC_ERR_INVALID;
       }
 
-      slot->channel.sender_core_id = s;
-      slot->channel.receiver_core_id = r;
+      slot->channel.src_core = s;
+      slot->channel.dst_core = r;
       slot->channel.urpc_ring = &slot->ring;
       slot->channel.ring_size = ring_size;
 
@@ -195,8 +195,8 @@ int mk_establish_channel(uint32_t target_core, mk_channel_t *out_channel) {
       }
 
       g_channels[i].in_use = 1U;
-      g_channels[i].channel.sender_core_id = 0U;
-      g_channels[i].channel.receiver_core_id = target_core;
+      g_channels[i].channel.src_core = 0U;
+      g_channels[i].channel.dst_core = target_core;
       g_channels[i].channel.urpc_ring = &g_channels[i].ring;
       g_channels[i].channel.ring_size = g_channels[i].ring.capacity;
 
@@ -219,10 +219,10 @@ int mk_send_message(mk_channel_t *channel, uint32_t msg_type, void *payload,
   }
 
   urpc_msg_t msg = {0};
-  msg.msg_type = msg_type;
+  msg.type = msg_type;
   msg.payload_size = size;
-  msg.sender_core_id = channel->sender_core_id;
-  msg.receiver_core_id = channel->receiver_core_id;
+  msg.src_core = channel->src_core;
+  msg.dst_core = channel->dst_core;
 
   uint32_t words = size / sizeof(uint64_t);
   if ((size % sizeof(uint64_t)) != 0U) {
@@ -242,7 +242,7 @@ int mk_send_message(mk_channel_t *channel, uint32_t msg_type, void *payload,
 
   int status = urpc_send(channel->urpc_ring, &msg);
   if (status == URPC_SUCCESS_WOKE) {
-    hal_core_notify(channel->receiver_core_id, msg_type);
+    hal_core_notify(channel->dst_core, msg_type);
     status = URPC_SUCCESS; // Normalize return code
   }
   return status;
@@ -285,7 +285,7 @@ int mk_msg_pool_init(mk_msg_pool_t *pool, mk_message_slot_t *slots,
 
   for (uint32_t i = 0; i < capacity; ++i) {
     pool->slots[i].in_use = 0U;
-    pool->slots[i].msg.msg_type = 0U;
+    pool->slots[i].msg.type = 0U;
     pool->slots[i].msg.payload_size = 0U;
   }
 
@@ -315,7 +315,7 @@ void mk_msg_free(mk_msg_pool_t *pool, urpc_msg_t *msg) {
   for (uint32_t i = 0; i < pool->capacity; ++i) {
     if (&pool->slots[i].msg == msg) {
       pool->slots[i].in_use = 0U;
-      pool->slots[i].msg.msg_type = 0U;
+      pool->slots[i].msg.type = 0U;
       pool->slots[i].msg.payload_size = 0U;
       return;
     }
