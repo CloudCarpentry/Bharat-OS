@@ -1,6 +1,7 @@
 #include "../../include/ipc/mk_dispatch.h"
 #include "../../include/hal/hal.h"
 #include "sched/sched.h"
+#include "../sched/sched_internal.h"
 
 #define MK_MSG_TYPE_AI_SUGGESTION 1U
 
@@ -25,6 +26,56 @@ static int mk_authorize_message(mk_channel_t *channel, urpc_msg_t *msg) {
 
     // Default route: allow control messages but this will tighten
     return 0;
+}
+
+static void mk_handle_thread_lookup_req(mk_channel_t *channel, urpc_msg_t *msg) {
+    mk_msg_remote_lookup_t payload;
+    __builtin_memcpy(&payload, msg->payload_data, sizeof(payload));
+    uint32_t local_core = hal_cpu_get_id();
+
+    thread_slot_t *slot = sched_find_thread_slot_by_tid_local(&g_cpu_locals[local_core].runqueue, payload.id);
+
+    mk_msg_remote_lookup_t resp = {
+        .request_id = payload.request_id,
+        .src_core = payload.target_core,
+        .target_core = payload.src_core,
+        .id = payload.id,
+        .generation = payload.generation,
+        .flags = slot ? 0 : 1, // 0 = OK, 1 = NOT_FOUND
+        .arg = slot ? slot->thread.state : 0
+    };
+
+    urpc_msg_t reply = {
+        .type = MK_MSG_THREAD_LOOKUP_RESP,
+        .payload_size = sizeof(resp),
+        .src_core = local_core,
+        .dst_core = msg->src_core,
+        .msg_id = msg->msg_id
+    };
+    __builtin_memcpy(reply.payload_data, &resp, sizeof(resp));
+    mk_send_message(channel, reply.type, reply.payload_data, reply.payload_size);
+}
+
+static void mk_handle_thread_wake_req(mk_channel_t *channel, urpc_msg_t *msg) {
+    mk_msg_remote_lookup_t payload;
+    __builtin_memcpy(&payload, msg->payload_data, sizeof(payload));
+    uint32_t local_core = hal_cpu_get_id();
+
+    thread_slot_t *slot = sched_find_thread_slot_by_tid_local(&g_cpu_locals[local_core].runqueue, payload.id);
+    if (slot) {
+        sched_wakeup_with_priority(&slot->thread, payload.arg);
+    }
+}
+
+static void mk_handle_thread_enqueue_req(mk_channel_t *channel, urpc_msg_t *msg) {
+    mk_msg_remote_lookup_t payload;
+    __builtin_memcpy(&payload, msg->payload_data, sizeof(payload));
+    uint32_t local_core = hal_cpu_get_id();
+
+    thread_slot_t *slot = sched_find_thread_slot_by_tid_local(&g_cpu_locals[local_core].runqueue, payload.id);
+    if (slot) {
+        sched_enqueue(&slot->thread, payload.arg);
+    }
 }
 
 static void mk_handle_thread_handoff_req(mk_channel_t *channel, urpc_msg_t *msg) {
@@ -182,6 +233,15 @@ int mk_dispatch_message(mk_channel_t *channel, urpc_msg_t *msg) {
             /* Scheduler control-plane hook placeholder. */
             break;
 
+        case MK_MSG_THREAD_LOOKUP_REQ:
+            mk_handle_thread_lookup_req(channel, msg);
+            break;
+        case MK_MSG_THREAD_WAKE_REQ:
+            mk_handle_thread_wake_req(channel, msg);
+            break;
+        case MK_MSG_THREAD_ENQUEUE_REQ:
+            mk_handle_thread_enqueue_req(channel, msg);
+            break;
         case MK_MSG_THREAD_HANDOFF_REQ:
             mk_handle_thread_handoff_req(channel, msg);
             break;

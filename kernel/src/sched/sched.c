@@ -104,39 +104,38 @@ static uint32_t sched_configured_core_count(void) {
 #endif
 }
 
-static thread_slot_t *sched_find_bootstrap_slot_by_tid(uint64_t tid) {
-  for (uint32_t core = 0; core < g_active_core_count; ++core) {
-    sched_rq_t *rq = &g_cpu_locals[core].runqueue;
-    thread_slot_t *slots = (thread_slot_t *)rq->bootstrap_threads;
-    if (slots) {
-      for (uint32_t i = 0; i < SCHED_BOOTSTRAP_THREAD_TYPES; ++i) {
-        if (slots[i].in_use != 0U && slots[i].thread.thread_id == tid) {
-          return &slots[i];
-        }
+void arch_post_switch(void) {
+  uint32_t core = sched_clamp_core(hal_cpu_get_id());
+  hal_cpu_enable_interrupts();
+}
+
+thread_slot_t *sched_find_thread_slot_by_tid_local(sched_rq_t *rq, uint64_t tid) {
+  thread_slot_t *slots = (thread_slot_t *)rq->threads;
+  if (slots) {
+    for (size_t i = 0; i < SCHED_MAX_THREADS; ++i) {
+      if (slots[i].in_use != 0U && slots[i].thread.thread_id == tid) {
+        return &slots[i];
+      }
+    }
+  }
+  slots = (thread_slot_t *)rq->bootstrap_threads;
+  if (slots) {
+    for (uint32_t i = 0; i < SCHED_BOOTSTRAP_THREAD_TYPES; ++i) {
+      if (slots[i].in_use != 0U && slots[i].thread.thread_id == tid) {
+        return &slots[i];
       }
     }
   }
   return NULL;
 }
 
-void arch_post_switch(void) {
-  uint32_t core = sched_clamp_core(hal_cpu_get_id());
-  hal_cpu_enable_interrupts();
-}
-
-static thread_slot_t *sched_find_thread_slot_by_tid(uint64_t tid) {
+static thread_slot_t *sched_resolve_tid_owner_slow(uint64_t tid) {
   for (uint32_t core = 0; core < g_active_core_count; ++core) {
     sched_rq_t *rq = &g_cpu_locals[core].runqueue;
-    thread_slot_t *slots = (thread_slot_t *)rq->threads;
-    if (slots) {
-      for (size_t i = 0; i < SCHED_MAX_THREADS; ++i) {
-        if (slots[i].in_use != 0U && slots[i].thread.thread_id == tid) {
-          return &slots[i];
-        }
-      }
-    }
+    thread_slot_t* slot = sched_find_thread_slot_by_tid_local(rq, tid);
+    if (slot) return slot;
   }
-  return sched_find_bootstrap_slot_by_tid(tid);
+  return NULL;
 }
 
 static thread_slot_t *sched_find_free_thread_slot(void) {
@@ -278,7 +277,7 @@ static int sched_mark_thread_terminated(kthread_t *thread) {
   if (!thread) {
     return -1;
   }
-  thread_slot_t *slot = sched_find_thread_slot_by_tid(thread->thread_id);
+  thread_slot_t *slot = sched_find_thread_slot_by_tid_local(&g_cpu_locals[thread->home_core_id].runqueue, thread->thread_id);
   if (!slot) {
     return -1;
   }
@@ -325,37 +324,30 @@ int sched_enqueue(kthread_t *thread, uint32_t core_id) {
     return -1;
   }
 
-  thread_slot_t *slot = sched_find_thread_slot_by_tid(thread->thread_id);
-  if (!slot) {
-    return -1;
-  }
-
   core_id = sched_clamp_core(core_id);
-  sched_rq_t *rq = &g_cpu_locals[core_id].runqueue;
-
   uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
   bool is_local = (core_id == current_core);
 
   if (!is_local) {
-      spin_lock(&rq->lock);
-      thread->bound_core_id = core_id;
-      list_add(&slot->wait_node, &rq->pending_inbox);
-      rq->remote_enqueues++;
-
-      bool send_ipi = false;
-      if (rq->resched_pending == 0U) {
-          rq->resched_pending = 1U;
-          send_ipi = true;
-          rq->ipi_sent++;
-      } else {
-          rq->ipi_coalesced++;
-      }
-      spin_unlock(&rq->lock);
-
-      if (send_ipi) {
-          hal_send_ipi_payload(core_id, 0); // Payload 0 or specific URPC msg if we use URPC
+      mk_msg_remote_lookup_t req = {
+          .request_id = 0,
+          .src_core = current_core,
+          .target_core = core_id,
+          .id = thread->thread_id,
+          .arg = core_id
+      };
+      mk_channel_t *chan = NULL;
+      if (mk_get_channel(current_core, core_id, chan) == 0 && chan) {
+          mk_send_message(chan, MK_MSG_THREAD_ENQUEUE_REQ, &req, sizeof(req));
+          hal_send_ipi_payload(1U << core_id, MK_MSG_THREAD_ENQUEUE_REQ);
       }
       return 0;
+  }
+
+  sched_rq_t *rq = &g_cpu_locals[core_id].runqueue;
+  thread_slot_t *slot = sched_find_thread_slot_by_tid_local(rq, thread->thread_id);
+  if (!slot) {
+    return -1;
   }
 
   hal_cpu_disable_interrupts();
@@ -514,6 +506,8 @@ static kthread_t *sched_create_bootstrap_thread(kprocess_t *parent,
   slot->thread.thread_id = g_next_thread_id++;
   slot->thread.process_id = parent ? parent->process_id : 0U;
   slot->thread.process = parent;
+  slot->thread.home_core_id = sched_clamp_core(hal_cpu_get_id());
+  slot->thread.generation = 1U;
   slot->thread.personality = PERSONALITY_NATIVE;
   slot->thread.state = THREAD_STATE_READY;
   slot->thread.priority = priority;
@@ -668,6 +662,8 @@ kthread_t *thread_create_detached(kprocess_t *parent, void (*entry_point)(void))
   slot->thread.thread_id = g_next_thread_id++;
   slot->thread.process_id = parent ? parent->process_id : 0U;
   slot->thread.process = parent;
+  slot->thread.home_core_id = sched_clamp_core(hal_cpu_get_id());
+  slot->thread.generation = 1U;
   slot->thread.personality = PERSONALITY_NATIVE;
   slot->thread.state = THREAD_STATE_READY;
   slot->thread.priority = 1U;
@@ -740,13 +736,12 @@ int thread_destroy(kthread_t *thread) {
     return -1;
   }
 
-  thread_slot_t *slot = sched_find_thread_slot_by_tid(thread->thread_id);
+  uint32_t creation_core = sched_clamp_core(thread->home_core_id);
+  sched_rq_t *rq = &g_cpu_locals[creation_core].runqueue;
+  thread_slot_t *slot = sched_find_thread_slot_by_tid_local(rq, thread->thread_id);
   if (!slot) {
     return -1;
   }
-
-  uint32_t creation_core = sched_clamp_core(slot->creation_core_id);
-  sched_rq_t *rq = &g_cpu_locals[creation_core].runqueue;
 
   // Prevent race with background reaper or other cores
   hal_cpu_disable_interrupts();
@@ -942,7 +937,7 @@ static kthread_t *sched_pick_next_ready(uint32_t core_id) {
       return rq->idle_thread;
   }
 
-  thread_slot_t *slot = sched_find_thread_slot_by_tid(next->thread_id);
+  thread_slot_t *slot = sched_find_thread_slot_by_tid_local(rq, next->thread_id);
   if (slot) {
       slot->is_on_runqueue = 0U;
   }
@@ -958,9 +953,9 @@ static void sched_dequeue_task_l0(kthread_t *thread, uint32_t core_id) {
   if (!thread) {
     return;
   }
-  thread_slot_t *slot = sched_find_thread_slot_by_tid(thread->thread_id);
+  sched_rq_t *rq = &g_cpu_locals[core_id].runqueue;
+  thread_slot_t *slot = sched_find_thread_slot_by_tid_local(rq, thread->thread_id);
   if (slot && slot->is_on_runqueue != 0U) {
-    sched_rq_t *rq = &g_cpu_locals[core_id].runqueue;
     if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
       sched_cfs_dequeue(rq, thread);
     } else {
@@ -1012,7 +1007,7 @@ static void sched_switch_to(kthread_t *next, uint32_t core_id) {
   if (current && current != rq->idle_thread &&
       current->state == THREAD_STATE_RUNNING) {
 
-    thread_slot_t *slot = sched_find_thread_slot_by_tid(current->thread_id);
+    thread_slot_t *slot = sched_find_thread_slot_by_tid_local(rq, current->thread_id);
     if (slot && slot->is_on_runqueue == 0U) {
         current->state = THREAD_STATE_READY;
         if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
@@ -1128,7 +1123,7 @@ void sched_block(void) {
     }
 
     if (current->ipc_deadline_ticks > 0) {
-      thread_slot_t *slot = sched_find_thread_slot_by_tid(current->thread_id);
+      thread_slot_t *slot = sched_find_thread_slot_by_tid_local(&g_cpu_locals[core].runqueue, current->thread_id);
       if (slot) {
         sched_block_enqueue(slot, core);
       }
@@ -1327,7 +1322,7 @@ void sched_sleep(uint64_t millis) {
     return;
   }
 
-  thread_slot_t *slot = sched_find_thread_slot_by_tid(current->thread_id);
+  thread_slot_t *slot = sched_find_thread_slot_by_tid_local(&g_cpu_locals[core].runqueue, current->thread_id);
   if (!slot) {
     return;
   }
@@ -1344,11 +1339,28 @@ void sched_wakeup_with_priority(kthread_t *thread, uint32_t wakeup_priority) {
     return;
   }
 
+  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  if (thread->home_core_id != current_core) {
+      mk_msg_remote_lookup_t req = {
+          .request_id = 0,
+          .src_core = current_core,
+          .target_core = thread->home_core_id,
+          .id = thread->thread_id,
+          .arg = wakeup_priority
+      };
+      mk_channel_t *chan = NULL;
+      if (mk_get_channel(current_core, thread->home_core_id, chan) == 0 && chan) {
+          mk_send_message(chan, MK_MSG_THREAD_WAKE_REQ, &req, sizeof(req));
+          hal_send_ipi_payload(1U << thread->home_core_id, MK_MSG_THREAD_WAKE_REQ);
+      }
+      return;
+  }
+
   if (wakeup_priority <= SCHED_MAX_PRIORITY && wakeup_priority > thread->priority) {
     thread->priority = wakeup_priority;
   }
 
-  thread_slot_t *slot = sched_find_thread_slot_by_tid(thread->thread_id);
+  thread_slot_t *slot = sched_find_thread_slot_by_tid_local(&g_cpu_locals[thread->home_core_id].runqueue, thread->thread_id);
   if (!slot) {
     return;
   }
@@ -1468,7 +1480,7 @@ void sched_on_timer_tick(void) {
           current->absolute_deadline_ms += current->rt_attr.period_ms;
           current->cpu_time_consumed = 0U;
 
-          thread_slot_t *slot = sched_find_thread_slot_by_tid(current->thread_id);
+          thread_slot_t *slot = sched_find_thread_slot_by_tid_local(rq, current->thread_id);
           if (slot) {
               // Suspend the thread until the start of the next period
               current->wake_deadline_ms = current->absolute_deadline_ms - current->rt_attr.deadline_ms;
@@ -1550,7 +1562,7 @@ int sched_sys_thread_create(kprocess_t *parent, void (*entry_point)(void), uint6
 }
 
 int sched_sys_thread_destroy(uint64_t tid) {
-  thread_slot_t *slot = sched_find_thread_slot_by_tid(tid);
+  thread_slot_t *slot = sched_resolve_tid_owner_slow(tid);
   if (!slot) {
     return -1;
   }
@@ -1614,7 +1626,7 @@ void sched_on_mutex_release(kthread_t *owner, void *mutex) {
 }
 
 kthread_t *sched_find_thread_by_id(uint64_t tid) {
-  thread_slot_t *slot = sched_find_thread_slot_by_tid(tid);
+  thread_slot_t *slot = sched_resolve_tid_owner_slow(tid);
   return slot ? &slot->thread : NULL;
 }
 
@@ -1626,7 +1638,7 @@ int sched_adjust_priority(kthread_t *thread, uint32_t new_priority) {
     new_priority = SCHED_MAX_PRIORITY;
   }
 
-  thread_slot_t *slot = sched_find_thread_slot_by_tid(thread->thread_id);
+  thread_slot_t *slot = sched_find_thread_slot_by_tid_local(&g_cpu_locals[thread->home_core_id].runqueue, thread->thread_id);
 
   if (slot && slot->is_on_runqueue != 0U) {
     uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
@@ -1684,7 +1696,7 @@ int sched_migrate_task(kthread_t *thread, uint32_t new_node) {
     return -2;
   }
 
-  thread_slot_t *slot = sched_find_thread_slot_by_tid(thread->thread_id);
+  thread_slot_t *slot = sched_find_thread_slot_by_tid_local(&g_cpu_locals[thread->home_core_id].runqueue, thread->thread_id);
   if (!slot) {
     return -1;
   }
@@ -1770,7 +1782,7 @@ int sched_request_remote_handoff(kthread_t *thread, uint32_t target_core, uint32
     return -1; // Cannot handoff to self
   }
 
-  thread_slot_t *slot = sched_find_thread_slot_by_tid(thread->thread_id);
+  thread_slot_t *slot = sched_find_thread_slot_by_tid_local(&g_cpu_locals[thread->home_core_id].runqueue, thread->thread_id);
   if (!slot) {
     return -1;
   }

@@ -7,6 +7,7 @@
 #include "../staging/formal/formal_verif.h"
 
 #include <stddef.h>
+#include "lib/base/string.h"
 #include <stdint.h>
 
 #define SCHED_MAX_THREADS 64U
@@ -33,9 +34,9 @@ typedef struct {
     uint32_t tail;
 } suggestion_queue_t;
 
-static thread_slot_t g_threads[SCHED_MAX_THREADS];
-static process_slot_t g_processes[SCHED_MAX_PROCESSES];
 static sched_rq_t g_cores[SCHED_MAX_CORES];
+static thread_slot_t g_threads[SCHED_MAX_CORES][SCHED_MAX_THREADS];
+static process_slot_t g_processes[SCHED_MAX_CORES][SCHED_MAX_PROCESSES];
 
 static kthread_t* g_current;
 static sched_policy_t g_policy = SCHED_POLICY_PRIORITY;
@@ -49,6 +50,7 @@ static kcache_t* thread_cache = NULL;
 
 void fv_secure_context_switch(void* next_thread_frame) __attribute__((weak));
 
+
 uint32_t numa_active_node_count(void) __attribute__((weak));
 
 static uint32_t sched_numa_node_count(void) {
@@ -60,37 +62,55 @@ static uint32_t sched_numa_node_count(void) {
 }
 
 static thread_slot_t* sched_find_thread_slot_by_tid(uint64_t tid) {
-    for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_threads); ++i) {
-        if (g_threads[i].in_use != 0U && g_threads[i].thread.thread_id == tid) {
-            return &g_threads[i];
+    uint32_t current_core = 0;
+    sched_rq_t *rq = &g_cores[current_core];
+    thread_slot_t *slots = (thread_slot_t *)rq->threads;
+    if (slots) {
+        for (size_t i = 0; i < SCHED_MAX_THREADS; ++i) {
+            if (slots[i].in_use != 0U && slots[i].thread.thread_id == tid) {
+                return &slots[i];
+            }
         }
     }
     return NULL;
 }
 
 static thread_slot_t* sched_find_free_thread_slot(void) {
-    for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_threads); ++i) {
-        if (g_threads[i].in_use == 0U) {
-            return &g_threads[i];
+    uint32_t current_core = 0;
+    sched_rq_t *rq = &g_cores[current_core];
+    if (!rq->threads) { rq->threads = g_threads[current_core]; memset(rq->threads, 0, sizeof(thread_slot_t) * SCHED_MAX_THREADS); }
+    thread_slot_t *slots = (thread_slot_t *)rq->threads;
+    for (size_t i = 0; i < SCHED_MAX_THREADS; ++i) {
+        if (slots[i].in_use == 0U) {
+            return &slots[i];
         }
     }
     return NULL;
 }
 
 static process_slot_t* sched_find_free_process_slot(void) {
-    for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_processes); ++i) {
-        if (g_processes[i].in_use == 0U) {
-            return &g_processes[i];
+    uint32_t current_core = 0;
+    sched_rq_t *rq = &g_cores[current_core];
+    if (!rq->processes) { rq->processes = g_processes[current_core]; memset(rq->processes, 0, sizeof(process_slot_t) * SCHED_MAX_PROCESSES); }
+    process_slot_t *slots = (process_slot_t *)rq->processes;
+    for (size_t i = 0; i < SCHED_MAX_PROCESSES; ++i) {
+        if (slots[i].in_use == 0U) {
+            return &slots[i];
         }
     }
     return NULL;
 }
 
 static uint32_t sched_run_queue_depth(void) {
+    uint32_t current_core = 0;
+    sched_rq_t *rq = &g_cores[current_core];
+    thread_slot_t *slots = (thread_slot_t *)rq->threads;
     uint32_t count = 0U;
-    for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_threads); ++i) {
-        if (g_threads[i].in_use != 0U && g_threads[i].thread.state == THREAD_STATE_READY) {
-            ++count;
+    if (slots) {
+        for (size_t i = 0; i < SCHED_MAX_THREADS; ++i) {
+            if (slots[i].in_use != 0U && slots[i].thread.state == THREAD_STATE_READY) {
+                ++count;
+            }
         }
     }
     return count;
@@ -124,29 +144,29 @@ static kthread_t* sched_pick_next_ready(void) {
     if (g_current) {
         thread_slot_t* cur = sched_find_thread_slot_by_tid(g_current->thread_id);
         if (cur) {
-            start = (size_t)(cur - &g_threads[0]) + 1U;
+            start = (size_t)(cur - &((thread_slot_t*)g_cores[0].threads)[0]) + 1U;
         }
     }
 
-    for (size_t attempt = 0U; attempt < BHARAT_ARRAY_SIZE(g_threads); ++attempt) {
-        size_t idx = (start + attempt) % BHARAT_ARRAY_SIZE(g_threads);
-        if (g_threads[idx].in_use == 0U || g_threads[idx].thread.state != THREAD_STATE_READY) {
+    for (size_t attempt = 0U; attempt < SCHED_MAX_THREADS; ++attempt) {
+        size_t idx = (start + attempt) % SCHED_MAX_THREADS;
+        if (((thread_slot_t*)g_cores[0].threads)[idx].in_use == 0U || ((thread_slot_t*)g_cores[0].threads)[idx].thread.state != THREAD_STATE_READY) {
             continue;
         }
 
         if (g_policy == SCHED_POLICY_ROUND_ROBIN) {
-            return &g_threads[idx].thread;
+            return &((thread_slot_t*)g_cores[0].threads)[idx].thread;
         }
 
-        if (g_policy == SCHED_POLICY_EDF && g_threads[idx].thread.rt_attr.deadline_ms > 0U) {
-            if (!best || g_threads[idx].thread.rt_attr.deadline_ms < best->rt_attr.deadline_ms) {
-                best = &g_threads[idx].thread;
+        if (g_policy == SCHED_POLICY_EDF && ((thread_slot_t*)g_cores[0].threads)[idx].thread.rt_attr.deadline_ms > 0U) {
+            if (!best || ((thread_slot_t*)g_cores[0].threads)[idx].thread.rt_attr.deadline_ms < best->rt_attr.deadline_ms) {
+                best = &((thread_slot_t*)g_cores[0].threads)[idx].thread;
             }
             continue;
         }
 
-        if (!best || g_threads[idx].thread.priority > best->priority) {
-            best = &g_threads[idx].thread;
+        if (!best || ((thread_slot_t*)g_cores[0].threads)[idx].thread.priority > best->priority) {
+            best = &((thread_slot_t*)g_cores[0].threads)[idx].thread;
         }
     }
 
@@ -192,6 +212,7 @@ static void sched_monitor_task(void) {
 }
 
 void sched_init(void) {
+    sched_rq_t *rq = &g_cores[0];
     g_current = NULL;
     g_next_thread_id = 1U;
     g_next_process_id = 1U;
@@ -201,12 +222,10 @@ void sched_init(void) {
     g_pending_suggestions.head = 0U;
     g_pending_suggestions.tail = 0U;
 
-    for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_threads); ++i) {
-        g_threads[i].in_use = 0U;
+    for (size_t i = 0; i < SCHED_MAX_THREADS; ++i) {
+        ((thread_slot_t*)g_cores[0].threads)[i].in_use = 0U;
     }
-    for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_processes); ++i) {
-        g_processes[i].in_use = 0U;
-    }
+
     for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_cores); ++i) {
         g_cores[i] = (sched_rq_t){ .current_thread = NULL, .total_ticks = 0U, .throttled = 0U };
     }
@@ -282,17 +301,27 @@ kprocess_t* process_create(const char* name) {
     return &slot->process;
 }
 
+int sched_unregister_process(kprocess_t* process) {
+    if (!process) return -1;
+    for (size_t core = 0; core < SCHED_MAX_CORES; ++core) {
+        sched_rq_t *rq = &g_cores[core];
+        if (!rq->processes) continue;
+        process_slot_t *slots = (process_slot_t *)rq->processes;
+        for (size_t i = 0; i < SCHED_MAX_PROCESSES; ++i) {
+            if (slots[i].in_use && &slots[i].process == process) {
+                slots[i].in_use = 0U;
+                return 0;
+            }
+        }
+    }
+    return -1;
+}
+
 int process_destroy(kprocess_t* process) {
     if (!process) {
         return -1;
     }
-    for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_processes); ++i) {
-        if (g_processes[i].in_use && &g_processes[i].process == process) {
-            g_processes[i].in_use = 0U;
-            return 0;
-        }
-    }
-    return -1;
+    return sched_unregister_process(process);
 }
 
 kthread_t* thread_create(kprocess_t* parent, void (*entry_point)(void)) {
@@ -366,13 +395,14 @@ void sched_wakeup(kthread_t* thread) {
 }
 
 void sched_on_timer_tick(void) {
+    sched_rq_t *rq = &g_cores[0];
     g_sched_ticks++;
     g_cores[0].total_ticks++;
 
-    for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_threads); ++i) {
-        if (g_threads[i].in_use != 0U && g_threads[i].thread.state == THREAD_STATE_SLEEPING &&
-            g_threads[i].thread.wake_deadline_ms <= g_sched_ticks) {
-            sched_wakeup(&g_threads[i].thread);
+    for (size_t i = 0; i < SCHED_MAX_THREADS; ++i) {
+        if (((thread_slot_t*)g_cores[0].threads)[i].in_use != 0U && ((thread_slot_t*)g_cores[0].threads)[i].thread.state == THREAD_STATE_SLEEPING &&
+            ((thread_slot_t*)g_cores[0].threads)[i].thread.wake_deadline_ms <= g_sched_ticks) {
+            sched_wakeup(&((thread_slot_t*)g_cores[0].threads)[i].thread);
         }
     }
 
