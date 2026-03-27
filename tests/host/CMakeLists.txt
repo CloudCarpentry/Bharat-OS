@@ -184,6 +184,25 @@ add_executable(test_uapi_abi test_uapi_abi.c)
 target_include_directories(test_uapi_abi PRIVATE ${CMAKE_SOURCE_DIR}/include)
 add_test(NAME host_test_uapi_abi COMMAND test_uapi_abi)
 
+# ---------------------------------------------------------
+# Phase 2: Runtime completeness Tests
+# ---------------------------------------------------------
+add_executable(test_process_manager test_process_manager.c ../../services/process_manager/process_manager.c ../../lib/ipc/src/ipc.c)
+target_include_directories(test_process_manager PRIVATE ../../include ../../lib/ipc/include ../../lib/cap/include ../../kernel/include)
+add_test(NAME host_test_process_manager COMMAND test_process_manager)
+
+add_executable(test_vm_manager test_vm_manager.c ../../services/vm_manager/vm_manager.c ../../lib/ipc/src/ipc.c)
+target_include_directories(test_vm_manager PRIVATE ../../include ../../lib/ipc/include ../../lib/cap/include ../../kernel/include)
+add_test(NAME host_test_vm_manager COMMAND test_vm_manager)
+
+add_executable(test_servicemgr test_servicemgr.c ../../services/servicemgr/servicemgr.c ../../lib/ipc/src/ipc.c)
+target_include_directories(test_servicemgr PRIVATE ../../include ../../lib/ipc/include ../../lib/cap/include ../../kernel/include)
+add_test(NAME host_test_servicemgr COMMAND test_servicemgr)
+
+add_executable(test_e2e_service_runtime test_e2e_service_runtime.c ../../services/process_manager/process_manager.c ../../services/vm_manager/vm_manager.c ../../services/servicemgr/servicemgr.c ../../lib/ipc/src/ipc.c)
+target_include_directories(test_e2e_service_runtime PRIVATE ../../include ../../lib/ipc/include ../../lib/cap/include ../../kernel/include)
+add_test(NAME host_test_e2e_service_runtime COMMAND test_e2e_service_runtime)
+
 if(BHARAT_BUILD_HOST_TESTS)
     # I2C Core Host Tests
     add_executable(test_i2c_registry ${CMAKE_SOURCE_DIR}/tests/host/drivers/test_i2c_registry.c ${CMAKE_SOURCE_DIR}/drivers/bus/i2c/i2c_core.c ${CMAKE_SOURCE_DIR}/drivers/bus/i2c/i2c_registry.c)
