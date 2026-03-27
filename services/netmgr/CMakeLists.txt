@@ -40,7 +40,7 @@ target_include_directories(netmgr PRIVATE
 )
 
 target_compile_options(netmgr PRIVATE -Wall -ffreestanding -nostdlib -fPIE -fPIC)
-target_link_options(netmgr PRIVATE -nostdlib -no-pie)
+target_link_options(netmgr PRIVATE -nostdlib "LINKER:-no-pie")
 # Link against necessary system primitives/stubs here in the future
 
 bharat_configure_userspace_binary(netmgr)

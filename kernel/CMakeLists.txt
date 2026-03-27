@@ -79,8 +79,8 @@ endif()
 if(NOT DEFINED BHARAT_IRQ_DISPATCH_RT)
     set(BHARAT_IRQ_DISPATCH_RT 0)
 endif()
-if(NOT DEFINED BHARAT_PERSONALITY_NONE)
-    set(BHARAT_PERSONALITY_NONE 1)
+if(NOT DEFINED BHARAT_PERSONALITY_NATIVE)
+    set(BHARAT_PERSONALITY_NATIVE 1)
 endif()
 if(NOT BHARAT_MAX_CORES)
     set(BHARAT_MAX_CORES 32)
@@ -528,7 +528,7 @@ endif()
 target_link_options(kernel.elf PRIVATE
     "-nostdlib"
     $<$<AND:$<C_COMPILER_ID:Clang>,$<STREQUAL:${ARCH},arm32>>:-fuse-ld=bfd>
-    "-no-pie" "-fno-pie"
+    "LINKER:-no-pie"
     ""
     "LINKER:--fatal-warnings"
     "LINKER:-T,${LINKER_SCRIPT}"

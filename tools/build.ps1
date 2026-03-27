@@ -30,7 +30,7 @@ param(
     [string]$HardwareProfile = "",
     [string]$BootTier = "",
     [string]$Profile = "desktop",
-    [string]$Personality = "none",
+    [string]$Personality = "native",
     [string]$SerialTarget = "",
     [string]$Preset = ""
 )

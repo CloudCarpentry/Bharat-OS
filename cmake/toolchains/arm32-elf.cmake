@@ -6,7 +6,7 @@ set(CMAKE_ASM_COMPILER clang)
 set(CMAKE_LINKER ld)
 
 # Use arm-none-eabi-ld or standard ld that isn't hardcoded to x86
-set(CMAKE_EXE_LINKER_FLAGS_INIT "-fuse-ld=bfd -nostdlib -no-pie -fno-pie -Wl,-no-pie ")
+set(CMAKE_EXE_LINKER_FLAGS_INIT "-fuse-ld=bfd -nostdlib -fno-pie -Wl,-no-pie ")
 
 set(CMAKE_C_COMPILER_TARGET arm-none-eabi)
 set(CMAKE_ASM_COMPILER_TARGET arm-none-eabi)
@@ -21,4 +21,4 @@ set(CMAKE_C_EXTENSIONS ON)
 set(CMAKE_C_FLAGS_INIT "-ffreestanding -fno-builtin -fno-stack-protector -fno-pic -fno-pie")
 set(CMAKE_ASM_FLAGS_INIT "-ffreestanding -fno-pic -fno-pie")
 
-set(CMAKE_EXE_LINKER_FLAGS_INIT "-nostdlib -no-pie -fno-pie -Wl,-no-pie ")
+set(CMAKE_EXE_LINKER_FLAGS_INIT "-nostdlib -fno-pie -Wl,-no-pie ")
