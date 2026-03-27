@@ -66,7 +66,7 @@ Personalities represent external interfaces, ABIs, or domain profiles. They are 
 
 ### 4. The `kernel/` Scope
 
-The kernel is intentionally kept minimal. Anything policy-heavy should be questioned before staying in `kernel/`.
+The kernel is intentionally kept minimal. Anything policy-heavy should be questioned before staying in `kernel/`. **Mixed-criticality policy must not drift into `kernel/`; only the mechanisms live there.**
 
 The `kernel/` directory should only contain:
 - Core scheduling mechanisms
@@ -81,6 +81,10 @@ The `kernel/` directory should only contain:
 
 - **`stacks/`**: For composed subsystems that span multiple layers (e.g., `net/`, `storage/`, `media/`, `vehicle/`, `cloud/`). This prevents these complex systems from being smeared across `services/`, `lib/`, and `drivers/`.
 - **`uapi/`**: The explicit boundary for external contracts. Contains syscall headers, capability invoke contracts, shared IPC structures visible outside the kernel, and stable ABI types.
+
+### 6. Benchmark and Verification Ownership
+
+Benchmark definitions, trace schemas, and verification plans for mixed-criticality policies (e.g., `rt_and_mixed_criticality_benchmark_plan.md`, `benchmark_trace_schema.md`) are explicitly owned within the `docs/dev/` directory.
 
 ---
 
@@ -126,6 +130,9 @@ Bharat-OS/
 
   kernel/
     include/
+      profile.h
+      fault_domain.h
+      deadline.h
     src/
     selftest/
 
@@ -146,7 +153,10 @@ Bharat-OS/
 
   services/
     core/
+      policymgr/
     system/
+      telemetryd/
+      healthd/
     security/
     device/
       accelmgr/
@@ -160,6 +170,7 @@ Bharat-OS/
       windows/
     domain/
       automotive/
+      rt/ # Only if truly wanting a domain personality, otherwise avoid it
     common/
 
   lib/
@@ -176,15 +187,16 @@ Bharat-OS/
     elf/
 
   stacks/
-    net/
+    net/ # GP dataplane vs RT control separation
     storage/
-    vehicle/
+    vehicle/ # Automotive mixed-criticality policy
     media/
 
   uapi/
     syscall/
     capability/
     ipc/
+      channel_classes.h
     compat/
 
   idl/
