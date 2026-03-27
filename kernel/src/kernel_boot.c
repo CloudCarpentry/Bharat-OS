@@ -7,6 +7,7 @@
 #include "device.h"
 #include "hal/hal.h"
 #include "hal/hal_pt.h"
+#include "hal/hal_tlb.h"
 #include "hal/hal_discovery.h"
 #include "ipc_async.h"
 #include "kernel.h"
@@ -180,6 +181,7 @@ void boot_common_memory(const boot_info_t *boot) {
 
     // Ensure hal_pt is initialized
     hal_pt_init();
+    hal_tlb_init();
 
     // The rest of the setup is handled through the hal_pt interface
     KPRINT("  [VMM] Architecture MMU mappings configured.\n");
