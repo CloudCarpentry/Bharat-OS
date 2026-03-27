@@ -126,7 +126,7 @@ function(bharat_configure_userspace_binary TARGET_NAME)
     else()
         set_target_properties(${TARGET_NAME} PROPERTIES POSITION_INDEPENDENT_CODE OFF)
         target_compile_options(${TARGET_NAME} PRIVATE -fno-pie -fno-PIC)
-        target_link_options(${TARGET_NAME} PRIVATE -nostdlib -no-pie)
+        target_link_options(${TARGET_NAME} PRIVATE -nostdlib "LINKER:-no-pie")
     endif()
 endfunction()
 
