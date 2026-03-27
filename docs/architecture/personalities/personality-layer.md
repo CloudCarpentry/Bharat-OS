@@ -10,28 +10,44 @@ tags: ["architecture", "personalities"]
 
 # Personality Layer Model
 
-> **Note on Code Structure:** The architecture enforces a strict separation: Syscalls hit a generic trap layer (`kernel/src/arch/*/trap.c`), are routed through personality-specific dispatch tables (`kernel/src/personality/`), and translate into core capability-driven services (`kernel/src/vfs/`, `kernel/src/net/`, etc.). Profile-specific implementations are no longer scattered in switch statements but are table-driven.
+> **Note on Code Structure:** The architecture enforces a strict separation. Syscalls hit a generic trap layer (`kernel/src/arch/*/trap.c`) and are routed through the native UAPI. Foreign ABIs are supported through compatibility layers (`personalities/compat/linux/`, etc.) that translate POSIX and other semantics into native IPC/uRPC requests.
 
 ## Overview
 
 The Bharat-OS microkernel provides _no_ POSIX system calls natively. Features like `fork()`, `open()`, network sockets, and user accounts do not exist in Ring-0.
 
-Instead, the OS relies on user-space Personality Layers to present expected environments to legacy or cloud applications.
+Instead, the OS defines a **Native Bharat Personality** and corresponding UAPI, while relying on **Compat Personality Layers** to present expected environments to legacy applications.
 
-## 1. POSIX-Native (Target API)
+### The Golden Rule of Personalities
 
-The primary execution environment for Bharat-OS native applications. It implements a POSIX-compliant C Library (`musl` or `libc`) where standard system calls (e.g., `read()` or `write()`) are intercepted by the library and translated directly into synchronous capability IPC calls directed at the VFS or Network servers.
+> **Kernel mechanisms are native. Services are native. UAPI is native. Compat personalities translate into native.**
 
-## 2. Unikernel / Library OS (Cloud-Native Mode)
+## 1. Native Personality (BHARAT_NATIVE)
+
+This is the real OS contract for Bharat-native apps. It does not use POSIX paths or ambient file descriptors.
+
+- **Native UAPI (`uapi/`):** Defines the stable public contracts (process/thread syscalls, capability rights, IPC message layouts, native handles).
+- **Capability-Driven:** File access occurs via capability/object handle acquisition, followed by service-mediated lookup.
+- **Service Ownership:** `services/system/filesystem/` owns the namespace and mount policies. `stacks/storage/` owns the composed storage internals.
+
+## 2. Compat Personalities (e.g., Linux POSIX)
+
+These translate foreign semantics into the native kernel and service model. They **do not** redefine the kernel core.
+
+- A legacy Linux application makes a standard `openat()` or `write()` syscall.
+- The `compat/linux/` layer catches this and maps the POSIX concepts into native capability-scoped IPC messages.
+- These IPC messages are dispatched to the native UAPI endpoints (like the VFS service).
+
+## 3. Unikernel / Library OS (Cloud-Native Mode)
 
 _Optional single-address-space mode for trusted workloads._
-In this mode, a single application (e.g., an AI microservice or Nginx) is statically compiled _with_ the Bharat-OS core and the POSIX-Native translation layer into a single executable image.
+In this mode, a single application (e.g., an AI microservice or Nginx) is statically compiled _with_ the Bharat-OS core and the appropriate translation layer into a single executable image.
 
 - There is no user-space separation.
 - The application invokes hardware drivers via direct function calls instead of IPC, eliminating all overhead.
 - Strictly for Cloud virtualization where the Hypervisor already provides hardware isolation.
 
-## 3. Compatibility Subsystems (Research Horizon)
+## 4. Specific Compatibility Subsystems (Research Horizon)
 
 Subsystems exist to run pre-compiled foreign binaries unmodified while natively leveraging Bharat-OS's advanced security, performance, and scheduling features.
 
