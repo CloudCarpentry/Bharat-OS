@@ -40,26 +40,6 @@
 
 #define KPRINT(s) console_write_raw(s, string_length(s))
 
-static const char *kernel_boot_hw_profile(void) {
-#if defined(BHARAT_BOOT_HW_PROFILE_desktop)
-  return "desktop";
-#elif defined(BHARAT_BOOT_HW_PROFILE_server)
-  return "server";
-#elif defined(BHARAT_BOOT_HW_PROFILE_vm)
-  return "vm";
-#elif defined(BHARAT_BOOT_HW_PROFILE_laptop)
-  return "laptop";
-#elif defined(BHARAT_BOOT_HW_PROFILE_mobile)
-  return "mobile";
-#elif defined(BHARAT_BOOT_HW_PROFILE_datacenter)
-  return "datacenter";
-#elif defined(BHARAT_BOOT_HW_PROFILE_network_appliance)
-  return "network_appliance";
-#else
-  return "generic";
-#endif
-}
-
 static void print_boot_diagnostics(const boot_info_t *boot) {
     if (!boot) return;
 

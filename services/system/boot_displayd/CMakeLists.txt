@@ -11,7 +11,7 @@ target_include_directories(boot_displayd PRIVATE
 
 # Use PIC to fix linker issues since the environment defaults to PIE
 target_compile_options(boot_displayd PRIVATE -fPIC)
-target_link_options(boot_displayd PRIVATE "-no-pie" "-fno-pie" "-no-pie" "-fno-pie")
+target_link_options(boot_displayd PRIVATE "LINKER:-no-pie" "-fno-pie")
 
 # In real scenarios we would link against the capability and IPC libraries
 target_link_libraries(boot_displayd PRIVATE subsys_manager)
