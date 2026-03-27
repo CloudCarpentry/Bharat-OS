@@ -75,7 +75,13 @@ void hal_cpu_reboot(void) {
 bool hal_cpu_is_page_fault(const void *trap_frame) {
     if (!trap_frame) return false;
     const trap_frame_t *tf = (const trap_frame_t *)trap_frame;
-    return (tf->cause == 13 || tf->cause == 15); // Load/Store page fault
+    return (tf->cause == 12 || tf->cause == 13 || tf->cause == 15); // Instruction/Load/Store page fault
+}
+
+bool hal_cpu_is_access_fault(const void *trap_frame) {
+    if (!trap_frame) return false;
+    const trap_frame_t *tf = (const trap_frame_t *)trap_frame;
+    return (tf->cause == 1 || tf->cause == 5 || tf->cause == 7); // Instruction/Load/Store access fault
 }
 
 bool hal_cpu_is_fp_simd_fault(const void *trap_frame) {

@@ -8,6 +8,11 @@ bool hal_cpu_is_page_fault(const void *trap_frame) {
     return false;
 }
 
+bool hal_cpu_is_access_fault(const void *trap_frame) {
+    (void)trap_frame;
+    return false;
+}
+
 bool hal_cpu_is_fp_simd_fault(const void *trap_frame) {
     (void)trap_frame;
     return false;
