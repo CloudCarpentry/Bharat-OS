@@ -308,6 +308,7 @@ add_subdirectory(src/init)
 add_subdirectory(src/fs)
 add_subdirectory(src/lib)
 add_subdirectory(src/tests)
+add_subdirectory(src/monitor)
 
 set(KERNEL_SRCS
     ${BOOT_SRC}
