@@ -1,11 +1,15 @@
 #include <stdint.h>
+#include "vm_manager.h"
 
 int main(int argc, char** argv) {
     (void)argc;
     (void)argv;
-    // TODO: Register as the Page Fault handler
-    // TODO: Await page fault IPC from the Kernel
-    // TODO: Perform memory quotas, replacement policy
-    // TODO: Return memory frames or deny access
+
+    vm_manager_init();
+
+    bharat_ipc_endpoint_t endpoint = 0x2000; // Fake endpoint for now
+
+    vm_manager_loop(endpoint);
+
     return 0;
 }
