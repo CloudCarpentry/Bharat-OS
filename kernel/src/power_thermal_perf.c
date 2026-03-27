@@ -97,12 +97,11 @@ int ptp_init(void) {
     g_cooling_device_count = 0U;
     g_system_sleep_state = 0U;
     g_system_suspended = 0U;
-    g_thermal_summary = (ptp_thermal_summary_t){
-        .level = PTP_THERMAL_LEVEL_NORMAL,
-        .cooling_state = 0U,
-        .max_temp_mc = 0,
-        .throttle_votes = 0U,
-    };
+
+    g_thermal_summary.level = PTP_THERMAL_LEVEL_NORMAL;
+    g_thermal_summary.cooling_state = 0U;
+    g_thermal_summary.max_temp_mc = 0;
+    g_thermal_summary.throttle_votes = 0U;
 
     perf_topology_build_defaults();
     return 0;
