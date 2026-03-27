@@ -1,6 +1,6 @@
 #include "subsys.h"
-#include "../../personalities/linux/linux_compat.h"
-#include "../../personalities/windows/win_compat.h"
+#include "../../../personalities/compat/linux/linux_compat.h"
+#include "../../../personalities/compat/windows/win_compat.h"
 
 #ifndef MAX_SUPPORTED_CORES
 #define MAX_SUPPORTED_CORES 8U

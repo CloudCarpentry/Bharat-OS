@@ -165,14 +165,17 @@ int cap_invoke(uint64_t cap_id, uint64_t opcode, uint64_t arg0, uint64_t arg1) {
   return -1;
 }
 
-extern const personality_ops_t default_personality_ops;
+#include "personality/personality_hooks.h"
 
 int trap_init(void) {
   g_syscall_proc.process_id = 0U;
   g_syscall_proc.addr_space = mm_create_address_space();
   g_syscall_proc.main_thread = NULL;
   g_syscall_proc.security_sandbox_ctx = NULL;
-  g_syscall_proc.personality_ops = &default_personality_ops;
+
+  // By default, a process will inherit the current system personality.
+  // The system's actual personality ops should be registered by early boot via personality_register_ops().
+  g_syscall_proc.personality_ops = personality_get_current_ops();
 
   if (!g_syscall_proc.addr_space) {
     return -1;

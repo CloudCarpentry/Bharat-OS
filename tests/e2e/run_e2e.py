@@ -78,7 +78,7 @@ def main():
 
     arch = profile.get('arch')
     device_profile = profile.get('device_profile')
-    personality_profile = profile.get('personality_profile', 'NONE')
+    personality_profile = profile.get('personality_profile', 'NATIVE')
     memory_test = profile.get('memory_test', 'mmu')
     qemu_cmd = profile.get('qemu_cmd')
     qemu_args = profile.get('qemu_args', [])
