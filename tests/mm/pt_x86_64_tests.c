@@ -15,7 +15,7 @@ extern int x86_pt_unmap_range(phys_addr_t root_pt, virt_addr_t vaddr, size_t siz
 extern phys_addr_t x86_pt_create_address_space(phys_addr_t kernel_root_table);
 extern void x86_pt_destroy_address_space(phys_addr_t root_pt);
 
-bool g_x86_pcid_supported = false;
+extern bool g_x86_pcid_supported;
 
 #define TEST_POOL_PAGES 8192
 static unsigned char g_pool[TEST_POOL_PAGES][PAGE_SIZE] __attribute__((aligned(PAGE_SIZE)));
