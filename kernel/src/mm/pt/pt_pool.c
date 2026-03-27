@@ -48,7 +48,7 @@ phys_addr_t pt_cache_alloc(void) {
     pmm_block_t block;
     // We now use the hardened PMM allocation with zeroing natively instead of custom pool fallback
     // We request a single page (order 0) that is explicitly zeroed.
-    if (pmm_alloc_pages(0, PMM_ZONE_NORMAL, PMM_ALLOC_ZERO, &block) == 0) {
+    if (pmm_alloc_pages(0, PMM_ZONE_ANY, PMM_ALLOC_ZERO, &block) == 0) {
         page_t *p = phys_to_page(block.phys_addr);
         if (p) p->owner_class = PMM_OWNER_CLASS_PAGETABLE;
         return block.phys_addr;

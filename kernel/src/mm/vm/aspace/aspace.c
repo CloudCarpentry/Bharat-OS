@@ -26,6 +26,11 @@ int aspace_create(address_space_t **out_aspace, uint32_t flags) {
 
     // Stub legacy while transitioning fully
     as->root_pt = active_hal_pt->create_address_space(vmm_get_kernel_root());
+    if (!as->root_pt) {
+        prot_domain_destroy(as->prot_domain);
+        kfree(as);
+        return -1;
+    }
 
     as->object_id = __atomic_fetch_add(&next_as_id, 1, __ATOMIC_SEQ_CST);
     spin_lock_init(&as->lock);

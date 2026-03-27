@@ -24,6 +24,10 @@ static prot_domain_t* generic_create(void) {
     if (active_hal_pt) {
         extern phys_addr_t vmm_get_kernel_root(void);
         domain->backend_state = (void*)(uintptr_t)hal_pt_create_address_space(vmm_get_kernel_root());
+        if (!domain->backend_state) {
+            kfree(domain);
+            return NULL;
+        }
     } else {
         domain->backend_state = NULL;
     }
