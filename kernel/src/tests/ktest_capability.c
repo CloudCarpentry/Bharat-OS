@@ -19,10 +19,48 @@
 // TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "tests/ktest.h"
 
+#include "cap_policy.h"
+
 // Helper to check if a capability exists
 static bool cap_exists(capability_table_t* table, uint32_t cap_id) {
     capability_entry_t entry;
     return cap_table_lookup(table, cap_id, CAP_TYPE_NONE, CAP_RIGHT_NONE, &entry) == 0;
+}
+
+static int test_cap_policy_semantics(void) {
+    // 1. Valid mask acceptance
+    ASSERT_RET(cap_transfer_rights_valid(CAP_TYPE_ENDPOINT, CAP_RIGHT_ENDPOINT_SEND | CAP_RIGHT_ENDPOINT_RECEIVE | CAP_RIGHT_DELEGATE), -1);
+
+    // 2. Unknown-bit rejection
+    ASSERT_RET(!cap_transfer_rights_valid(CAP_TYPE_ENDPOINT, CAP_RIGHT_MEMORY_MAP), -2);
+    ASSERT_RET(!cap_transfer_rights_valid(CAP_TYPE_MEMORY, CAP_RIGHT_ENDPOINT_SEND), -3);
+
+    // 3. High-bit correctness for rights above 31
+    // CAP_RIGHT_EXECUTE is 1ULL << 33. It shouldn't be accepted by endpoint.
+    ASSERT_RET(!cap_transfer_rights_valid(CAP_TYPE_ENDPOINT, CAP_RIGHT_EXECUTE), -4);
+    // Even if it's the only requested right
+    ASSERT_RET(!cap_transfer_rights_valid(CAP_TYPE_MEMORY, CAP_RIGHT_EXECUTE), -5);
+
+    // 4. Subset checks
+    cap_rights_mask_t src_rights = CAP_RIGHT_ENDPOINT_SEND | CAP_RIGHT_DELEGATE;
+    // Requesting a strict subset is allowed
+    ASSERT_RET(cap_can_transfer(CAP_TYPE_ENDPOINT, src_rights, CAP_RIGHT_ENDPOINT_SEND), -6);
+    // Requesting exact match is allowed
+    ASSERT_RET(cap_can_transfer(CAP_TYPE_ENDPOINT, src_rights, src_rights), -7);
+    // Requesting more than source has should fail
+    ASSERT_RET(!cap_can_transfer(CAP_TYPE_ENDPOINT, src_rights, CAP_RIGHT_ENDPOINT_SEND | CAP_RIGHT_ENDPOINT_RECEIVE), -8);
+    // Requesting completely disjoint right should fail
+    ASSERT_RET(!cap_can_transfer(CAP_TYPE_ENDPOINT, src_rights, CAP_RIGHT_ENDPOINT_RECEIVE), -9);
+    // Requesting something the source has but isn't structurally valid should fail
+    // (e.g. somehow source has memory map, but it's an endpoint)
+    ASSERT_RET(!cap_can_transfer(CAP_TYPE_ENDPOINT, src_rights | CAP_RIGHT_MEMORY_MAP, CAP_RIGHT_MEMORY_MAP), -10);
+
+    // 5. Fail-closed behavior on unsupported types
+    ASSERT_RET(!cap_transfer_rights_valid(CAP_TYPE_PROCESS, CAP_RIGHT_READ), -11);
+    ASSERT_RET(!cap_can_transfer(CAP_TYPE_PROCESS, CAP_RIGHT_READ, CAP_RIGHT_READ), -12);
+    ASSERT_RET(!cap_transfer_rights_valid(CAP_TYPE_NONE, CAP_RIGHT_READ), -13);
+
+    return 0;
 }
 
 static int test_cap_basic_grant(void) {
@@ -274,6 +312,10 @@ static int ktest_cap_run(void) {
 
     hal_serial_write("  [TEST] test_cap_stale_handle... ");
     if (test_cap_stale_handle() != 0) return -1;
+    hal_serial_write("PASSED\n");
+
+    hal_serial_write("  [TEST] test_cap_policy_semantics... ");
+    if (test_cap_policy_semantics() != 0) return -1;
     hal_serial_write("PASSED\n");
 
     return 0;
