@@ -8,7 +8,6 @@ add_library(k_init OBJECT
     ../../src/device/pci.c
     ../../src/device/irq_domain.c
     ../../src/power_thermal_perf.c
-    ../../src/monitor/mon_vm_service.c
 )
 
 target_include_directories(k_init PRIVATE ../../include ../../include/generated ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/lib/include ${CMAKE_SOURCE_DIR}/boot/include ${CMAKE_SOURCE_DIR}/services/core/subsysmgr/include)
