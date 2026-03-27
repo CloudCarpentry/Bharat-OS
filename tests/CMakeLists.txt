@@ -426,7 +426,7 @@ set(BHARAT_NOSTDLIB_TEST_TARGETS
 
 foreach(test_target IN LISTS BHARAT_NOSTDLIB_TEST_TARGETS)
     if(TARGET ${test_target})
-        target_link_options(${test_target} PRIVATE "-no-pie" "-fno-pie")
+        target_link_options(${test_target} PRIVATE "LINKER:-no-pie" "-fno-pie")
     endif()
 endforeach()
 
