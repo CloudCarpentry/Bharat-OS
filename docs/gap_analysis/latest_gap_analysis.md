@@ -55,7 +55,7 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 ### 3.3 Service Runtime Incompleteness
 
-* process_manager and vm_manager are placeholders
+* process_manager and memory runtime (vm_manager / memdom_manager) are placeholders
 * Services do not run full event loops
 * No lifecycle management (restart, supervision)
 
@@ -147,7 +147,7 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 ### Tasks
 
 * Implement process_manager (process lifecycle)
-* Implement vm_manager (address space lifecycle)
+* Implement memory runtime by profile (Full VM / Memory-domain / Static protection)
 * Add servicemgr (service lifecycle supervisor)
 * Convert services to event-driven loops
 * Add restart/backoff/watchdog logic
@@ -450,7 +450,7 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 * process_manager no longer returns as placeholder main
 * Process lifecycle operations are callable and test-covered
 
-### Story E2-S2 — Implement vm_manager runtime
+### Story E2-S2 — Implement memory runtime by profile
 
 **Priority:** P1
 **Impact:** High
@@ -458,21 +458,26 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Tasks**
 
-* Define address-space lifecycle contract
-* Implement map/unmap/protect/query flows
-* Integrate with kernel VM path
+* Implement **Full VM manager** (`vm_manager`) for full-MMU systems (dynamic address spaces, page-fault-driven behavior, richer process isolation).
+* Implement **Memory-domain manager** (`memdom_manager`) for MMU-lite systems (region ownership, static/bounded remap rules, capability checks, fault reporting, lightweight domain switching).
+* Implement **Static protection-domain path** for MPU-only constrained systems (no standalone service, minimal policy in kernel/arch, boot-configured regions, no dynamic mapping).
+* Use profile-gated enablement (`FULL_VM`, `MEM_DOMAIN`, `STATIC_MPU`) and capability-governed subsystem registry to load only the required runtime.
+* Implement memory class tags (e.g., `MEM_RT`, `MEM_DMA`, `MEM_PACKET`) for deterministic and isolated pools.
 
 **Likely Code Areas**
 
 * `services/vm_manager/`
+* `services/memdom_manager/`
 * `kernel/src/mm/vm/`
+* `kernel/src/mm/mpu/`
 * `idl/`
 * `uapi/`
 
 **Acceptance Criteria**
 
-* vm_manager supports real lifecycle operations
-* Mapping tests pass end to end
+* **MMU profile:** `vm_manager` is active; supports dynamic address spaces, mapping lifecycle, and paging tests pass end-to-end.
+* **MMU-lite profile:** `memdom_manager` is active; enforces region ownership and bounded remap rules without full VM overhead.
+* **MPU profile:** No resident memory service is started; kernel/arch handles static region configuration and protection domain switching at boot.
 
 ### Story E2-S3 — Add service supervisor runtime
 
@@ -696,7 +701,7 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 * E1-S2 Capability enforcement framework rollout
 * E2-S1 process_manager runtime
-* E2-S2 vm_manager runtime
+* E2-S2 Implement memory runtime by profile
 * netmgr daemonization completion
 
 ### Sprint Block C — Platform Cohesion
@@ -724,7 +729,7 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 2. TLB shootdown redesign
 3. netmgr strict capability enforcement
 4. PMM per-core magazines + ownership tests
-5. process_manager / vm_manager runtime implementation
+5. process_manager / memory runtime implementation by profile
 
 ### Top 5 documentation priorities
 
@@ -771,7 +776,7 @@ A story is complete only when all are true:
 
 **Gate 3 — Runtime Real**
 
-* process_manager, vm_manager, and service supervisor operational
+* process_manager, appropriate memory runtime (based on profile), and service supervisor operational
 
 **Gate 4 — Architecture Clean**
 
