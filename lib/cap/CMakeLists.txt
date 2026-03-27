@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 project(BharatOS_Lib_Cap C ASM)
 
 # Add the lib/cap static library
-add_library(bharat_libcap_base STATIC src/cap.c)
+add_library(bharat_libcap_base STATIC src/cap.c src/cap_validate.c)
 
 # Set the public include directory
 target_include_directories(bharat_libcap_base PUBLIC include)
