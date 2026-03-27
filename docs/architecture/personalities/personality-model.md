@@ -10,23 +10,36 @@ tags: ["architecture", "personalities"]
 
 # Personality Compatibility Model
 
-> **Note on Code Structure:** Following recent architectural convergence, the personality layer is explicitly separated from the core architecture. Implementations reside in the `kernel/src/personality/` tree (with sub-directories like `linux/`, `android/`, `native/`), mapping specific ABIs to core operations.
+> **Note on Code Structure:** Following recent architectural convergence, the personality layer is explicitly separated from the core architecture. Implementations reside in the `personalities/` tree (with sub-directories like `compat/linux/`, `compat/android/`), mapping specific ABIs to core operations exposed via `uapi/`.
 
 In a modern microkernel/multikernel architecture like Bharat-OS, forcing a single monolithic application binary interface (ABI) across all workloads limits flexibility and drags unnecessary state into the kernel.
 
-Instead, Bharat-OS supports **behavioral personalities** layered above the core capability-driven kernel primitives. This document outlines the distinct personality compatibilities we aim to implement to support different deployment profiles.
+Instead, Bharat-OS defines a **Native Bharat Personality** and supports **compat personalities** layered above the core capability-driven kernel primitives. This document outlines the distinct personality compatibilities we aim to implement to support different deployment profiles.
 
 ## Core Principle
 
-**Kernel = Mechanisms. Libc / POSIX / Personality = Policy & Compatibility.**
+**Kernel mechanisms are native. Services are native. UAPI is native. Compat personalities translate into native.**
 
-The kernel does not define a "POSIX process model" natively. It exports address spaces, threads, capability handles, endpoint IPC, timers, VM map/unmap, and per-core execution models. Personalities map these primitives into expected semantics for different application classes.
+The kernel does not define a "POSIX process model" natively. It exports address spaces, threads, capability handles, endpoint IPC, timers, VM map/unmap, and per-core execution models. Compat personalities translate these primitives into expected semantics for different application classes.
 
 ---
 
 ## Personality Types
 
-### 1. Linux Personality
+### 1. Native Personality (`BHARAT_NATIVE`)
+**Best for:** First-class Bharat-OS native applications, highly secure edge daemons, and low-latency multikernel services.
+
+This is the default, native OS contract for Bharat-OS apps. It is not Linux-compatible; it is capability-oriented and secure by default.
+
+* **Maps:**
+  * Capability/object handle acquisition.
+  * Namespace or service-mediated open/lookup via IPC.
+  * Capability-scoped read/write/map/stat-like operations.
+  * Process create/destroy and thread create/exit/join primitives directly to UAPI.
+  * Sandboxing enforced by capability possession and rights narrowing.
+* **Architecture Placement:** Uses the `uapi/` explicit boundary for syscall headers, capability contracts, shared IPC structures, and stable ABI types.
+
+### 2. Linux Personality (Compat Layer)
 **Best for:** Developer adoption, general-purpose porting, tools, and testing.
 
 This personality is the first to build and aims to provide the familiar "Linux-like" behavior developers expect when cross-compiling or porting generic code.
@@ -40,7 +53,7 @@ This personality is the first to build and aims to provide the familiar "Linux-l
   * A subset of socket `ioctls` (later).
 * **Limitations:** Does not promise 100% bug-for-bug compatibility with glibc/Linux internals. Heavyweight concepts like full `fork()` and complex signals are shimmed, stubbed, or deferred.
 
-### 2. Embedded / RT Personality
+### 3. Embedded / RT Profile (Domain Personality)
 **Best for:** Drones, robotics, edge control, and deterministic workloads.
 
 This personality focuses on predictable execution, strict bounds, and safety-critical patterns.
@@ -53,7 +66,7 @@ This personality focuses on predictable execution, strict bounds, and safety-cri
   * Watchdog and fault hooks deeply integrated into the runtime.
   * **No `fork`/`exec` assumption:** Task creation is explicit, clone-like, or strictly capability-scoped `spawn`.
 
-### 3. Appliance Personality
+### 4. Appliance Profile (Domain Personality)
 **Best for:** Routers, gateways, storage/network appliances.
 
 This personality bridges the gap between full general-purpose Linux and strict embedded RT, providing enough dynamic capability to run daemons while restricting arbitrary execution.
@@ -66,7 +79,7 @@ This personality bridges the gap between full general-purpose Linux and strict e
 
 ## Architectural Placement
 
-These personalities reside as libraries or user-space services, forming the top layer of the Bharat-OS SDK:
-* `libsys` (Base UAPI) -> `libc` (Core runtime) -> `libposix` (POSIX subset) -> **`libpersonality-*`**
+Compat personalities reside as services or adapters built around the UAPI:
+* `kernel/` -> `uapi/` (Bharat-native ABI) -> `personalities/compat/linux/`
 
-For example, a service compiled with the Linux personality will link against `libpersonality-linux.a`, which intercepts or translates calls (like `open`, `ioctl`, or specific `mmap` requests) before passing them down through the POSIX shim or directly to `libsys` endpoint IPC.
+For example, a legacy application compiled with a Linux toolchain will interact with the Linux compat personality layer (`compat/linux/`), which translates standard POSIX `openat()` or `read()` operations down into capability-scoped, native UAPI IPC messages sent to `services/system/filesystem/`.
