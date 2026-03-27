@@ -4,7 +4,7 @@
       "preset": "x86_64-debug",
       "arch": "x86_64",
       "profile": "DESKTOP",
-      "personality": "NONE",
+      "personality": "NATIVE",
       "board": "qemu-virt",
       "gui": true,
       "run": false
@@ -13,7 +13,7 @@
       "preset": "x86_64-dev",
       "arch": "x86_64",
       "profile": "DESKTOP",
-      "personality": "NONE",
+      "personality": "NATIVE",
       "board": "qemu-virt",
       "gui": false,
       "run": false
@@ -31,7 +31,7 @@
       "preset": "riscv64-edge",
       "arch": "riscv64",
       "profile": "DESKTOP",
-      "personality": "NONE",
+      "personality": "NATIVE",
       "board": "virt",
       "gui": false,
       "run": false
@@ -40,7 +40,7 @@
       "preset": "arm32-edge",
       "arch": "arm32",
       "profile": "EDGE",
-      "personality": "NONE",
+      "personality": "NATIVE",
       "board": "avh-corstone310",
       "gui": false,
       "run": false
@@ -49,7 +49,7 @@
       "preset": "riscv32-edge",
       "arch": "riscv32",
       "profile": "EDGE",
-      "personality": "NONE",
+      "personality": "NATIVE",
       "board": "virt",
       "gui": false,
       "run": false
@@ -58,7 +58,7 @@
       "preset": "arm64-automobile-debug",
       "arch": "arm64",
       "profile": "AUTOMOBILE",
-      "personality": "NONE",
+      "personality": "NATIVE",
       "board": "virt",
       "gui": true,
       "run": false
@@ -67,7 +67,7 @@
       "preset": "arm64-automobile-release",
       "arch": "arm64",
       "profile": "AUTOMOBILE",
-      "personality": "NONE",
+      "personality": "NATIVE",
       "board": "virt",
       "gui": true,
       "run": false
@@ -76,7 +76,7 @@
       "preset": "riscv64-ev-automobile-debug",
       "arch": "riscv64",
       "profile": "EV_AUTOMOBILE",
-      "personality": "NONE",
+      "personality": "NATIVE",
       "board": "virt",
       "gui": true,
       "run": false
@@ -85,7 +85,7 @@
       "preset": "riscv64-ev-automobile-release",
       "arch": "riscv64",
       "profile": "EV_AUTOMOBILE",
-      "personality": "NONE",
+      "personality": "NATIVE",
       "board": "virt",
       "gui": true,
       "run": false
@@ -94,7 +94,7 @@
       "preset": "arm32-drone-debug",
       "arch": "arm32",
       "profile": "DRONE",
-      "personality": "NONE",
+      "personality": "NATIVE",
       "board": "avh-corstone310",
       "gui": false,
       "run": false
@@ -103,7 +103,7 @@
       "preset": "arm32-drone-release",
       "arch": "arm32",
       "profile": "DRONE",
-      "personality": "NONE",
+      "personality": "NATIVE",
       "board": "avh-corstone310",
       "gui": false,
       "run": false
@@ -112,7 +112,7 @@
       "preset": "riscv32-robot-debug",
       "arch": "riscv32",
       "profile": "ROBOT",
-      "personality": "NONE",
+      "personality": "NATIVE",
       "board": "virt",
       "gui": false,
       "run": false
@@ -121,7 +121,7 @@
       "preset": "riscv32-robot-release",
       "arch": "riscv32",
       "profile": "ROBOT",
-      "personality": "NONE",
+      "personality": "NATIVE",
       "board": "virt",
       "gui": false,
       "run": false
@@ -130,7 +130,7 @@
       "preset": "arm64-medical-debug",
       "arch": "arm64",
       "profile": "MEDICAL",
-      "personality": "NONE",
+      "personality": "NATIVE",
       "board": "virt",
       "gui": true,
       "run": false
@@ -139,7 +139,7 @@
       "preset": "arm64-medical-release",
       "arch": "arm64",
       "profile": "MEDICAL",
-      "personality": "NONE",
+      "personality": "NATIVE",
       "board": "virt",
       "gui": true,
       "run": false
@@ -148,7 +148,7 @@
       "preset": "riscv64-medical-debug",
       "arch": "riscv64",
       "profile": "MEDICAL",
-      "personality": "NONE",
+      "personality": "NATIVE",
       "board": "virt",
       "gui": false,
       "run": false
@@ -157,7 +157,7 @@
       "preset": "riscv64-medical-release",
       "arch": "riscv64",
       "profile": "MEDICAL",
-      "personality": "NONE",
+      "personality": "NATIVE",
       "board": "virt",
       "gui": false,
       "run": false
@@ -166,7 +166,7 @@
       "preset": "x86_64-laptop-debug",
       "arch": "x86_64",
       "profile": "LAPTOP",
-      "personality": "NONE",
+      "personality": "NATIVE",
       "board": "qemu-virt",
       "gui": true,
       "run": false
@@ -175,7 +175,7 @@
       "preset": "x86_64-laptop-release",
       "arch": "x86_64",
       "profile": "LAPTOP",
-      "personality": "NONE",
+      "personality": "NATIVE",
       "board": "qemu-virt",
       "gui": true,
       "run": false
@@ -184,7 +184,7 @@
       "preset": "arm64-laptop-debug",
       "arch": "arm64",
       "profile": "LAPTOP",
-      "personality": "NONE",
+      "personality": "NATIVE",
       "board": "virt",
       "gui": true,
       "run": false
@@ -193,7 +193,7 @@
       "preset": "arm64-laptop-release",
       "arch": "arm64",
       "profile": "LAPTOP",
-      "personality": "NONE",
+      "personality": "NATIVE",
       "board": "virt",
       "gui": true,
       "run": false
@@ -202,7 +202,7 @@
       "preset": "riscv64-laptop-debug",
       "arch": "riscv64",
       "profile": "LAPTOP",
-      "personality": "NONE",
+      "personality": "NATIVE",
       "board": "virt",
       "gui": true,
       "run": false
@@ -211,7 +211,7 @@
       "preset": "riscv64-laptop-release",
       "arch": "riscv64",
       "profile": "LAPTOP",
-      "personality": "NONE",
+      "personality": "NATIVE",
       "board": "virt",
       "gui": true,
       "run": false

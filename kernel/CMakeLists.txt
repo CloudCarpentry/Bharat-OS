@@ -415,6 +415,8 @@ add_executable(kernel.elf
     $<TARGET_OBJECTS:k_ipc>
     $<TARGET_OBJECTS:k_cap>
     $<TARGET_OBJECTS:k_trap>
+    $<TARGET_OBJECTS:bharatos_personality_native>
+    $<TARGET_OBJECTS:bharatos_personality_common>
     $<TARGET_OBJECTS:k_debug>
     $<TARGET_OBJECTS:k_init>
     $<TARGET_OBJECTS:k_fs>
