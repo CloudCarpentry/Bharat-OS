@@ -39,5 +39,6 @@ extern uint32_t g_sched_test_core_count;
 #endif
 
 void sched_reset_core_runqueues(void);
+thread_slot_t *sched_find_thread_slot_by_tid_local(sched_rq_t *rq, uint64_t tid);
 
 #endif // BHARAT_SCHED_INTERNAL_H
