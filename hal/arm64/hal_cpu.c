@@ -45,6 +45,11 @@ bool hal_cpu_is_page_fault(const void *trap_frame) {
     return (ec == 0x24 || ec == 0x25); // Data/Instruction abort
 }
 
+bool hal_cpu_is_access_fault(const void *trap_frame) {
+    (void)trap_frame;
+    return false;
+}
+
 bool hal_cpu_is_fp_simd_fault(const void *trap_frame) {
     if (!trap_frame) return false;
     const trap_frame_t *tf = (const trap_frame_t *)trap_frame;
