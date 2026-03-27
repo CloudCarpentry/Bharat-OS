@@ -137,7 +137,50 @@ flowchart LR
 
 The OS communicates with the physical architecture using a capability-aware HAL. It handles page tables (`hal_pt_map`, `hal_pt_unmap`), TLB invalidations, IOMMU translations, and MMIO mappings.
 
-### TLB SMP Shootdown Coordination
+### 6.1 Memory Profile Behavior Matrix
+
+This matrix is the executable contract for memory behavior across Bharat-OS memory profiles.
+
+| Capability | MMU-full | MMU-lite | MPU-only |
+| :--- | :--- | :--- | :--- |
+| map/unmap page | Supported | Backend-dependent, fallback-heavy | Not supported (page-granular) |
+| map/unmap range | Supported; wrapper falls back to page ops if needed | Supported when backend provides page ops; wrapper fallback allowed | Backend-specific region programming only |
+| protect | Supported | Partial / backend-dependent | Explicit unsupported for page semantics |
+| query | Supported | Partial / backend-dependent | Explicit unsupported for sparse page queries |
+| demand faults | Supported | Reduced/eager strategy | Not supported as sparse VM |
+| COW | Software contract allowed | Limited | Unsupported |
+| huge pages (2M/1G) | Capability-driven | Usually disabled | N/A |
+| ASID/PCID | Capability-driven by backend | Usually unavailable | N/A |
+| device mappings | Supported via normalized memtype flags | Supported where backend can express attributes | Region attribute only |
+| fault recovery | Fine-grained | Degraded path | Region/access violation handling |
+| coherent DMA | Full hardware coherency | Software managed (flush/invalidate) via HAL | Explicit software sync |
+| pinned shared buffers | Fully supported | Supported via contiguous allocation | Region-based |
+| imported/exported accelerator buffers | Supported via file descriptors/handles | Supported (handle mapping) | Unsupported (direct pointers only) |
+| secure buffer isolation | Supported via IOMMU | Supported via MPU isolation | Basic MPU regions |
+| accelerator fault containment | Process teardown, memory revocation | Memory teardown, task fault | Global device reset |
+| queue/fence support | Fully supported, event-based | Event/IRQ-driven | Polling/basic IRQ |
+
+#### Notes
+*   MPU-only must not emulate full sparse-MMU semantics.
+*   Generic HAL PT wrappers use range ops when available and page-by-page fallbacks otherwise.
+*   Capability getters (`hal_pt_caps()`, `hal_tlb_caps()`) are the source of truth for runtime behavior decisions.
+
+### 6.2 Profile Selection Diagram
+
+```mermaid
+flowchart TD
+    Start[Initialization] --> Query{Query Hardware Capabilities<br/>`hal_pt_caps()`, `hal_tlb_caps()`}
+
+    Query -->|Full Sparse-MMU<br/>Fine-grained Page Ops| MMUFull[Select: MMU-full Profile]
+    Query -->|Partial MMU<br/>Fallback-heavy Page Ops| MMULite[Select: MMU-lite Profile]
+    Query -->|No Sparse-MMU<br/>Region-based Only| MPUOnly[Select: MPU-only Profile]
+
+    MMUFull --> A[Enable: Demand Paging, COW, Huge Pages, Coherent DMA]
+    MMULite --> B[Enable: Eager Strategy, Software Coherent DMA]
+    MPUOnly --> C[Enable: Region Programming, Explicit Software Sync]
+```
+
+### 6.3 TLB SMP Shootdown Coordination
 
 ```mermaid
 flowchart LR
@@ -149,7 +192,7 @@ flowchart LR
     F --> G[Sender Marks Request Complete]
 ```
 
-### 6.1 Monitor VM Channel Coordination
+### 6.4 Monitor VM Channel Coordination
 
 The distributed VM implementation relies on the Monitor VM Channel for inter-core memory coordination. The monitor (`kernel/src/monitor/mon_vm_service.c` and `mon_vm_dispatch.c`) is strictly a mechanism layer, providing bounded-completion URPC/IPC capabilities to the advanced VM and TLB controllers.
 
