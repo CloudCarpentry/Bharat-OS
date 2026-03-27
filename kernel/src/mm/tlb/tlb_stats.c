@@ -1,5 +1,4 @@
-#include "../../include/mm/tlb.h"
-#include "../../include/mm/tlb_internal.h"
+#include "../../../include/mm/tlb_internal.h"
 #include "console/console_core.h"
 
 void tlb_dump_stats(void) {

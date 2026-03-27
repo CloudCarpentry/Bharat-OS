@@ -89,6 +89,8 @@ static uint32_t sched_clamp_core(uint32_t core_id) {
   return core_id;
 }
 
+#include "hal/hal_discovery.h"
+
 static uint32_t sched_configured_core_count(void) {
 #if defined(TESTING)
   uint32_t test_cores = g_sched_test_core_count;
@@ -100,7 +102,15 @@ static uint32_t sched_configured_core_count(void) {
   }
   return test_cores;
 #else
-  return MAX_SUPPORTED_CORES;
+  system_discovery_t* discovery = hal_get_system_discovery();
+  if (discovery && discovery->topology.cpu_count > 0) {
+    uint32_t count = discovery->topology.cpu_count;
+    if (count > MAX_SUPPORTED_CORES) {
+        count = MAX_SUPPORTED_CORES;
+    }
+    return count;
+  }
+  return 1U;
 #endif
 }
 

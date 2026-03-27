@@ -49,6 +49,9 @@ typedef struct __attribute__((aligned(64))) cpu_local {
     // Active address space
     uint64_t          current_as_id;
     address_space_t  *current_as;
+
+    // CPU online state
+    bool              is_online;
 } cpu_local_t;
 
 #define KERNEL_AS_ID 0

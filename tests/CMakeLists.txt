@@ -98,10 +98,10 @@ add_executable(test_ipc_async_timeout test_ipc_async_timeout.c ../kernel/src/ipc
 target_include_directories(test_ipc_async_timeout PRIVATE ../kernel/include ../lib/include)
 add_test(NAME test_ipc_async_timeout COMMAND test_ipc_async_timeout)
 
-if(EXISTS "${CMAKE_SOURCE_DIR}/personalities/automotive/automotive.c")
+if (EXISTS "${CMAKE_SOURCE_DIR}/personalities/domain/automotive/automotive.c")
     add_executable(test_automotive_subsys
         test_automotive_subsys.c
-        ../personalities/automotive/automotive.c
+        ../personalities/domain/automotive/automotive.c
         ../drivers/devices/can_loopback/can_loopback.c
     )
     target_include_directories(test_automotive_subsys PRIVATE ../services/core/subsysmgr/include ../kernel/include ../drivers/include)
@@ -116,14 +116,14 @@ target_include_directories(test_scheduler PRIVATE ../kernel/include ../lib/inclu
 target_compile_definitions(test_scheduler PRIVATE TESTING=1)
 add_test(NAME test_scheduler COMMAND test_scheduler)
 
-if(EXISTS "${CMAKE_SOURCE_DIR}/personalities/linux/linux_compat.c")
-    add_executable(test_trap_syscall test_trap_syscall.c ../kernel/src/trap/trap.c ../kernel/src/trap/syscall.c ../kernel/src/ipc/endpoint_ipc.c ../personalities/linux/linux_compat.c ../kernel/src/personality/personality_default.c $<TARGET_OBJECTS:bharat_test_sched_mocks>)
+if (EXISTS "${CMAKE_SOURCE_DIR}/personalities/compat/linux/linux_compat.c")
+    add_executable(test_trap_syscall test_trap_syscall.c ../kernel/src/trap/trap.c ../kernel/src/trap/syscall.c ../kernel/src/ipc/endpoint_ipc.c ../personalities/compat/linux/linux_compat.c ../personalities/common/personality_registry.c $<TARGET_OBJECTS:bharat_test_sched_mocks>)
     target_include_directories(test_trap_syscall PRIVATE ../kernel/include ../services/core/subsysmgr/include ../include ../lib/include ../boot/include ../subsys/include)
     target_compile_definitions(test_trap_syscall PRIVATE TESTING=1)
     add_test(NAME test_trap_syscall COMMAND test_trap_syscall)
+    # Compatibility alias for common typo used in ad-hoc commands.
+    add_custom_target(test_trap_syscal DEPENDS test_trap_syscall)
 endif()
-# Compatibility alias for common typo used in ad-hoc commands.
-add_custom_target(test_trap_syscal DEPENDS test_trap_syscall)
 
 add_executable(test_capability_ipc test_capability_ipc.c ../kernel/src/ipc/endpoint_ipc.c $<TARGET_OBJECTS:bharat_test_sched_mocks>)
 target_include_directories(test_capability_ipc PRIVATE ../kernel/include ../lib/include)
@@ -154,8 +154,8 @@ target_include_directories(test_memory_edgecases PRIVATE ../kernel/include ../li
 target_compile_definitions(test_memory_edgecases PRIVATE TESTING=1)
 add_test(NAME test_memory_edgecases COMMAND test_memory_edgecases)
 
-if(EXISTS "${CMAKE_SOURCE_DIR}/personalities/linux/linux_compat.c")
-    add_executable(test_tier_a_integration test_tier_a_integration.c ../kernel/src/trap/trap.c ../kernel/src/trap/syscall.c ../kernel/src/ipc/endpoint_ipc.c ../personalities/linux/linux_compat.c ../kernel/src/personality/personality_default.c $<TARGET_OBJECTS:bharat_test_sched_mocks>)
+if (EXISTS "${CMAKE_SOURCE_DIR}/personalities/compat/linux/linux_compat.c")
+    add_executable(test_tier_a_integration test_tier_a_integration.c ../kernel/src/trap/trap.c ../kernel/src/trap/syscall.c ../kernel/src/ipc/endpoint_ipc.c ../personalities/compat/linux/linux_compat.c ../personalities/common/personality_registry.c $<TARGET_OBJECTS:bharat_test_sched_mocks>)
     target_include_directories(test_tier_a_integration PRIVATE ../kernel/include ../services/core/subsysmgr/include ../include ../subsys/include ../lib/include ../boot/include)
     target_compile_definitions(test_tier_a_integration PRIVATE TESTING=1)
     add_test(NAME test_tier_a_integration COMMAND test_tier_a_integration)
@@ -200,28 +200,28 @@ add_executable(test_capability_policy test_capability_policy.c benchmark_stubs.c
 target_include_directories(test_capability_policy PRIVATE ../kernel/include ../lib/include)
 add_test(NAME test_capability_policy COMMAND test_capability_policy)
 
-if(EXISTS "${CMAKE_SOURCE_DIR}/personalities/linux/linux_compat.c")
-    add_executable(test_posix test_posix.c ../personalities/linux/linux_compat.c)
+if (EXISTS "${CMAKE_SOURCE_DIR}/personalities/compat/linux/linux_compat.c")
+    add_executable(test_posix test_posix.c ../personalities/compat/linux/linux_compat.c)
     target_include_directories(test_posix PRIVATE ../kernel/include ../lib/include ../services/core/subsysmgr/include)
     add_test(NAME test_posix COMMAND test_posix)
 endif()
 
-if(EXISTS "${CMAKE_SOURCE_DIR}/personalities/windows/win_compat.c")
-    add_executable(test_windows_compat_init test_windows_compat_init.c ../personalities/windows/win_compat.c)
+if (EXISTS "${CMAKE_SOURCE_DIR}/personalities/compat/windows/win_compat.c")
+    add_executable(test_windows_compat_init test_windows_compat_init.c ../personalities/compat/windows/win_compat.c)
     target_include_directories(test_windows_compat_init PRIVATE ../kernel/include ../lib/include ../services/core/subsysmgr/include)
     add_test(NAME test_windows_compat_init COMMAND test_windows_compat_init)
 endif()
 
 add_test(NAME test_subsys_manager COMMAND test_subsys_manager)
 
-if(EXISTS "${CMAKE_SOURCE_DIR}/personalities/android/android_personality.c")
+if (EXISTS "${CMAKE_SOURCE_DIR}/personalities/compat/android/android_personality.c")
     add_executable(test_android_personality
         subsys/test_android_personality.c
-        ../personalities/android/android_personality.c
-        ../personalities/android/android_binder_dist.c
-        ../personalities/android/android_boot.c
-        ../personalities/android/android_process.c
-        ../personalities/android/android_security.c
+        ../personalities/compat/android/android_personality.c
+        ../personalities/compat/android/android_binder_dist.c
+        ../personalities/compat/android/android_boot.c
+        ../personalities/compat/android/android_process.c
+        ../personalities/compat/android/android_security.c
     )
     target_include_directories(test_android_personality PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/lib/include ${CMAKE_SOURCE_DIR}/services/core/subsysmgr/include)
     add_test(NAME test_android_personality COMMAND test_android_personality)
@@ -304,27 +304,29 @@ target_compile_definitions(test_builtin_drivers_profile PRIVATE TESTING=1 BHARAT
 add_test(NAME test_builtin_drivers_profile COMMAND test_builtin_drivers_profile)
 
 # Integration Subsystem Tests
-if(EXISTS "${CMAKE_SOURCE_DIR}/personalities/linux/linux_compat.c" AND EXISTS "${CMAKE_SOURCE_DIR}/personalities/automotive/automotive.c")
+if (EXISTS "${CMAKE_SOURCE_DIR}/personalities/compat/linux/linux_compat.c" AND EXISTS "${CMAKE_SOURCE_DIR}/personalities/domain/automotive/automotive.c")
     add_executable(test_integration_core_subsys
         test_integration_core_subsys.c
-        ../personalities/linux/linux_compat.c
-        ../personalities/automotive/automotive.c
+        ../personalities/compat/linux/linux_compat.c
+        ../personalities/domain/automotive/automotive.c
         ../user/ui/fbui/core/fb_render.c
         $<TARGET_OBJECTS:bharat_test_sched_mocks>
     )
     target_include_directories(test_integration_core_subsys PRIVATE ../kernel/include ../services/core/subsysmgr/include ../include ../lib/include ../boot/include)
     target_compile_definitions(test_integration_core_subsys PRIVATE TESTING=1 BHARAT_PROFILE_DATACENTER=1 BHARAT_PERSONALITY_LINUX=1 BHARAT_ARCH_X86=1)
     add_test(NAME test_integration_core_subsys COMMAND test_integration_core_subsys)
+endif()
 
-    # Edge Profile Subsystem Tests
+# Edge Profile Subsystem Tests
+if (EXISTS "${CMAKE_SOURCE_DIR}/personalities/domain/automotive/automotive.c")
     add_executable(test_profile_edge
         test_profile_edge.c
-        ../personalities/automotive/automotive.c
+        ../personalities/domain/automotive/automotive.c
         ../user/ui/fbui/core/fb_render.c
         $<TARGET_OBJECTS:bharat_test_sched_mocks>
     )
     target_include_directories(test_profile_edge PRIVATE ../kernel/include ../services/core/subsysmgr/include ../include ../lib/include ../boot/include)
-    target_compile_definitions(test_profile_edge PRIVATE TESTING=1 BHARAT_PROFILE_EDGE=1)
+    target_compile_definitions(test_profile_edge PRIVATE TESTING=1 BHARAT_PROFILE_EDGE=1 BHARAT_PERSONALITY_AUTOMOTIVE=1 BHARAT_ARCH_ARM=1)
     add_test(NAME test_profile_edge COMMAND test_profile_edge)
 endif()
 
