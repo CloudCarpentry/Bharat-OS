@@ -1,5 +1,6 @@
 #include "capability_checks.h"
 #include <bharat/cap/cap.h>
+#include <bharat/cap/cap_validate.h>
 #include <stddef.h>
 
 // A mock thread-local or static capability token to represent the caller's context.
@@ -10,20 +11,23 @@ void netmgr_set_caller_cap(bharat_cap_handle_t cap) {
     current_caller_cap = cap;
 }
 
-bool netmgr_cap_check_rights(uint32_t required_rights, uint32_t object_id) {
-    (void)object_id;
-    (void)required_rights;
+bool netmgr_cap_check_rights(
+    bharat_cap_handle_t caller_cap,
+    bharat_cap_object_type_t object_type,
+    uint64_t object_id,
+    uint64_t required_rights,
+    const bharat_cap_scope_t *required_scope)
+{
+    bharat_cap_validation_result_t vr = {0};
 
-    // Strict fail-closed shim: deny by default, allow only when an explicit capability token/context is present.
-    if (!bharat_cap_is_valid(current_caller_cap)) {
+    if (bharat_cap_validate(caller_cap,
+                            object_type,
+                            object_id,
+                            required_rights,
+                            required_scope,
+                            &vr) != BHARAT_CAP_OK) {
         return false;
     }
 
-    // In a complete capability system, we would:
-    // 1. Look up the capability object corresponding to 'current_caller_cap'.
-    // 2. Check if the capability grants 'required_rights'.
-    // 3. Check if the capability scope matches 'object_id' (e.g., specific interface or global).
-    // For now, since the capability core is partial, possessing a valid token grants access.
-
-    return true;
+    return vr.allowed;
 }

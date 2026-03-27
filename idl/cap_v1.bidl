@@ -1,31 +1,149 @@
-service bharat.cap.v1 = 2 {
+package bharat.cap.v1;
 
-  rpc RemoteGrant(RemoteGrantReq) -> RemoteGrantResp {
-    qos = reliable;
-    timeout_ms = 200;
-    criticality = rt_ctl;
-  }
-
-  rpc RemoteRevoke(RemoteRevokeReq) -> RemoteRevokeResp {
-    qos = reliable;
-    timeout_ms = 200;
-    criticality = rt_ctl;
-  }
+enum cap_status {
+  CAP_STATUS_OK = 0;
+  CAP_STATUS_INVALID = 1;
+  CAP_STATUS_NOT_FOUND = 2;
+  CAP_STATUS_REVOKED = 3;
+  CAP_STATUS_RIGHTS_DENIED = 4;
+  CAP_STATUS_SCOPE_DENIED = 5;
+  CAP_STATUS_OBJECT_MISMATCH = 6;
+  CAP_STATUS_EXPIRED = 7;
+  CAP_STATUS_STALE = 8;
+  CAP_STATUS_UNSUPPORTED = 9;
 }
 
-message RemoteGrantReq {
-  cap_descriptor cap;
-  u32 target_node;
+enum cap_object_type {
+  CAP_OBJECT_NONE = 0;
+  CAP_OBJECT_SERVICE = 1;
+  CAP_OBJECT_NET_IFACE = 2;
+  CAP_OBJECT_ROUTE_TABLE = 3;
+  CAP_OBJECT_ENDPOINT = 4;
+  CAP_OBJECT_PROCESS = 5;
+  CAP_OBJECT_VM_SPACE = 6;
+  CAP_OBJECT_DEVICE = 7;
+  CAP_OBJECT_DMA_DOMAIN = 8;
 }
 
-message RemoteGrantResp {
-  u32 status;
+enum cap_scope_kind {
+  CAP_SCOPE_GLOBAL = 0;
+  CAP_SCOPE_OBJECT = 1;
+  CAP_SCOPE_NAMESPACE = 2;
+  CAP_SCOPE_SERVICE = 3;
 }
 
-message RemoteRevokeReq {
+enum cap_lifecycle_state {
+  CAP_LIFECYCLE_ACTIVE = 0;
+  CAP_LIFECYCLE_REVOKED = 1;
+  CAP_LIFECYCLE_EXPIRED = 2;
+  CAP_LIFECYCLE_TRANSFERRED = 3;
+}
+
+struct cap_handle {
+  u64 value;
+}
+
+struct cap_scope {
+  cap_scope_kind kind;
+  u64 scope_id;
+}
+
+struct cap_descriptor {
+  cap_handle handle;
   u64 cap_id;
+  u64 parent_cap_id;
+  u64 owner_principal_id;
+  cap_object_type object_type;
+  u64 object_id;
+  u64 rights;
+  cap_scope scope;
+  u64 generation;
+  u64 flags;
+  cap_lifecycle_state state;
 }
 
-message RemoteRevokeResp {
-  u32 status;
+struct CapValidateReq {
+  cap_handle handle;
+  cap_object_type expected_object_type;
+  u64 expected_object_id;
+  u64 required_rights;
+  cap_scope required_scope;
+}
+
+struct CapValidateResp {
+  cap_status status;
+  bool allowed;
+  cap_descriptor descriptor;
+}
+
+struct CapCreateReq {
+  u64 creator_principal_id;
+  cap_object_type object_type;
+  u64 object_id;
+  u64 rights;
+  cap_scope scope;
+  u64 flags;
+  u64 parent_cap_id;   // 0 if authority/root-created
+}
+
+struct CapCreateResp {
+  cap_status status;
+  cap_descriptor descriptor;
+}
+
+struct CapRevokeReq {
+  cap_handle handle;
+  bool revoke_descendants;
+}
+
+struct CapRevokeResp {
+  cap_status status;
+}
+
+struct CapTransferReq {
+  cap_handle handle;
+  u64 new_owner_principal_id;
+  bool preserve_rights;
+  u64 new_rights;      // used if preserve_rights = false
+  cap_scope new_scope; // may narrow scope during transfer
+}
+
+struct CapTransferResp {
+  cap_status status;
+  cap_descriptor descriptor;
+}
+
+struct CapInspectReq {
+  cap_handle handle;
+}
+
+struct CapInspectResp {
+  cap_status status;
+  cap_descriptor descriptor;
+}
+
+service CapabilityService {
+  rpc Validate(CapValidateReq) -> CapValidateResp {
+    qos = reliable;
+    timeout_ms = 100;
+  }
+  rpc Create(CapCreateReq) -> CapCreateResp {
+    qos = reliable;
+    timeout_ms = 200;
+    criticality = rt_ctl;
+  }
+  rpc Revoke(CapRevokeReq) -> CapRevokeResp {
+    qos = reliable;
+    timeout_ms = 200;
+    criticality = rt_ctl;
+  }
+  rpc Transfer(CapTransferReq) -> CapTransferResp {
+    qos = reliable;
+    timeout_ms = 200;
+    criticality = rt_ctl;
+  }
+  rpc Inspect(CapInspectReq) -> CapInspectResp {
+    qos = reliable;
+    timeout_ms = 100;
+  }
 }
