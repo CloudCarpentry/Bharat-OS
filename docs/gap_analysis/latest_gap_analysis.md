@@ -163,20 +163,30 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 ### Goals
 
-* Production-grade memory subsystem
+* Complete a production-grade, profile-aware memory subsystem
+* Stabilize Bharat-OS memory behavior across MMU-full, MMU-lite, and MPU-only targets
+* Deliver robust ownership, lifecycle, and synchronization semantics for frames, mappings, regions, and device-visible memory
 
 ### Tasks
 
-* Implement unified VM authority path
-* Add page lifecycle management
-* Implement IOMMU / DMA mapping model
-* Add NUMA awareness (future-ready)
-* Add full VM test suite
+* Implement unified memory contract across MMU-full / MMU-lite / MPU-only
+* Complete Advanced VM path for sparse-MMU targets
+* Harden Minimal Memory Core for MMU-lite / MPU-only targets
+* Add frame, mapping, and region lifecycle management
+* Normalize HAL PT behavior using capability-driven profile dispatch
+* Integrate TLB synchronization only where translation model requires it
+* Implement DMA / IOMMU / MPU-safe device visibility model
+* Add NUMA-ready placement and allocation metadata
+* Add profile-matrix memory verification suite
 
 ### Deliverables
 
-* Robust memory model
-* SMP-safe behavior
+* robust, profile-truthful memory model
+* SMP-safe behavior where supported
+* explicit degradation path for constrained targets
+* test-backed memory subsystem across all supported translation models
+
+> **Important Note for Contributors:** Do not force MMU-full abstractions onto MMU-lite or MPU-only platforms. Use capability-driven behavior from HAL as the source of truth. Unsupported semantics must stay explicitly unsupported, not emulated poorly.
 
 ---
 
@@ -489,11 +499,11 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 ---
 
-## Epic E3 — Memory Authority Path Completion
+## Epic E3 — Profile-Aware Memory System Completion
 
-**Objective:** Create one authoritative VM pipeline from fault to mapping backend.
+**Objective:** Complete Bharat-OS memory as a profile-aware subsystem that works correctly across MMU-full, MMU-lite, and MPU-only targets.
 
-### Story E3-S1 — Unified VM authority path
+### Story E3-S1 — Implement unified memory contract across MMU-full / MMU-lite / MPU
 
 **Priority:** P1
 **Impact:** High
@@ -501,9 +511,12 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Tasks**
 
-* Route fault handling through `fault -> aspace -> region/object -> HAL PT`
-* Remove legacy bypasses/parallel paths
-* Document invariants and lifecycle
+* Introduce a top-level memory profile dispatcher driven by `hal_pt_caps()` / translation kind / exec class
+* Implement MMU-full path (`request/fault -> aspace -> region -> vm_object -> hal_pt -> tlb`)
+* Implement MMU-lite path (`request/prefault/realize -> aspace -> region -> vm_object -> hal_pt or fixed-map backend -> limited tlb sync`)
+* Implement MPU path (`request/protection-domain update -> region set -> hal_mpu/prot_domain programming -> synchronization`)
+* Make `vm_handle_fault()` callable only on profiles that advertise meaningful fault support
+* Remove assumptions that every region ends in `map_page()`
 
 **Likely Code Areas**
 
@@ -511,36 +524,110 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 * `kernel/src/mm/vm/aspace/`
 * `kernel/src/mm/vm/objects/`
 * `kernel/src/hal/*/`
-* `docs/architecture/core/`
+* `docs/architecture/memory/`
 
 **Acceptance Criteria**
 
-* No duplicate authority path for mappings
-* Fault handling follows one documented route
+* Dispatch logic correctly routes based on HAL capabilities
+* Sparse VM operations are separate from eager/static realization operations and region-protection operations
+* No fake page-fault expectations on platforms that cannot support them truthfully
 
-### Story E3-S2 — DMA/IOMMU lifecycle groundwork
+### Story E3-S2 — Frame + mapping + region lifecycle management
 
 **Priority:** P1
-**Impact:** Medium-High
+**Impact:** High
 **Dependencies:** E3-S1
 
 **Tasks**
 
-* Define DMA mapping contract
-* Introduce IOMMU abstraction points
-* Add capability-mediated DMA permissions
+* Define physical frame lifecycle (boot-known, free, allocated, pinned, reclaimable, quarantined/poisoned, device-owned / DMA-exported)
+* Define sparse mapping lifecycle (reserved, attached to object, realized, protected, unmapped, destroyed)
+* Define region / protection lifecycle (declared, validated, programmed, active, reprogram pending, revoked)
 
 **Likely Code Areas**
 
 * `kernel/src/mm/`
-* `kernel/include/hal/`
-* `drivers/`
-* `docs/architecture/core/`
+* `kernel/src/mm/pmm/`
+* `docs/architecture/memory/`
 
 **Acceptance Criteria**
 
-* DMA mapping lifecycle is explicit
-* Future IOMMU support has defined insertion points
+* MPU platforms correctly utilize the region/protection lifecycle
+* PMM correctly handles the physical frame lifecycle
+
+### Story E3-S3 — Implement DMA / IOMMU / MPU-safe device visibility model
+
+**Priority:** P1
+**Impact:** Medium-High
+**Dependencies:** E3-S1, E3-S2
+
+**Tasks**
+
+* Define pinned page ownership and contiguous allocation path
+* Differentiate coherent vs non-coherent DMA
+* Implement software cache maintenance for MMU-lite / MPU-only
+* Define direct DMA fallback policy when no IOMMU exists
+* Implement IOVA domain lifecycle when IOMMU exists
+* Define device isolation levels (unmanaged, identity, bypass, managed, blocked)
+
+**Likely Code Areas**
+
+* `kernel/src/mm/iommu/`
+* `kernel/include/hal/`
+* `drivers/`
+* `docs/architecture/memory/`
+
+**Acceptance Criteria**
+
+* Drivers must not assume `physical address == safely DMA-visible address`
+* MPU-only gets a valid DMA contract (even if software-synchronized and region-based)
+
+### Story E3-S4 — Add NUMA-ready placement contract
+
+**Priority:** P2
+**Impact:** Medium
+**Dependencies:** E3-S1
+
+**Tasks**
+
+* Establish node metadata as authoritative kernel objects
+* Define allocation preferences and locality tagging on VM objects / DMA buffers
+* Implement node affinity hints in PMM and aspace
+* Ensure clean no-op behavior on single-node systems
+
+**Likely Code Areas**
+
+* `kernel/src/mm/pmm/`
+* `kernel/src/mm/vm/aspace/`
+
+**Acceptance Criteria**
+
+* NUMA metadata is correctly plumbed
+* Single-node systems fallback gracefully without performance penalty
+* (Note: Full NUMA balancing/migration is explicitly deferred)
+
+### Story E3-S5 — Add profile-matrix memory verification suite
+
+**Priority:** P1
+**Impact:** High
+**Dependencies:** E3-S1, E3-S2, E3-S3
+
+**Tasks**
+
+* Create MMU-full tests (faults, COW, TLB invalidation, shared mappings)
+* Create MMU-lite tests (eager realization, no-demand-fault builds, fixed mapping stability)
+* Create MPU-only tests (region overlap validation, transition, no sparse-page API leakage)
+* Create Cross-profile tests (frame lifecycle, DMA mapping lifecycle, NUMA metadata plumbing)
+
+**Likely Code Areas**
+
+* `tests/mm/`
+* `kernel/src/tests/`
+
+**Acceptance Criteria**
+
+* Tests pass across all three translation profiles (MMU-full, MMU-lite, MPU-only)
+* Explicit unsupported-return tests succeed for paging features on MPU-only targets
 
 ---
 
@@ -615,12 +702,15 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 ### Sprint Block C — Platform Cohesion
 
 * E2-S3 service supervisor runtime
-* E3-S1 Unified VM authority path
+* E3-S1 Implement unified memory contract across MMU-full / MMU-lite / MPU
+* E3-S2 Frame + mapping + region lifecycle management
 * E4-S2 Contributor architecture contract
 
 ### Sprint Block D — De-risked Expansion
 
-* E3-S2 DMA/IOMMU lifecycle groundwork
+* E3-S3 Implement DMA / IOMMU / MPU-safe device visibility model
+* E3-S4 Add NUMA-ready placement contract
+* E3-S5 Add profile-matrix memory verification suite
 * E4-S1 Remove legacy duplicates
 * selective advanced features only after all above are green
 
@@ -640,7 +730,7 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 1. Kernel invariants contract
 2. Capability model contract
-3. VM authority path contract
+3. Profile-aware memory contract
 4. Service lifecycle contract
 5. Contributor architecture placement rules
 
