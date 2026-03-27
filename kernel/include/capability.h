@@ -32,56 +32,96 @@ typedef enum {
     CAP_TYPE_DMA_GRANT = 20,
 } cap_type_t;
 
+typedef uint64_t cap_rights_mask_t;
+
+// Keep enum for symbolic names/indices, but avoid relying on its underlying size
 typedef enum {
-    CAP_RIGHT_NONE                 = 0,
-    CAP_RIGHT_ENDPOINT_SEND        = (1U << 0),
-    CAP_RIGHT_ENDPOINT_RECEIVE     = (1U << 1),
-    CAP_RIGHT_MEMORY_MAP           = (1U << 2),
-    CAP_RIGHT_MEMORY_UNMAP         = (1U << 3),
-    CAP_RIGHT_MEMORY_SHARE         = (1U << 4),
-    CAP_RIGHT_DMA_MAP              = (1U << 5),
-    CAP_RIGHT_SCHEDULE             = (1U << 6),
-    CAP_RIGHT_DELEGATE             = (1U << 7),
-    CAP_RIGHT_CRYPT_USE            = (1U << 8),
-    CAP_RIGHT_CRYPT_DERIVE         = (1U << 9),
-    CAP_RIGHT_CRYPT_SIGN           = (1U << 10),
-    CAP_RIGHT_CRYPT_DECRYPT        = (1U << 11),
-    CAP_RIGHT_CRYPT_EXPORT_WRAPPED = (1U << 12),
-    CAP_RIGHT_CRYPT_ADMIN          = (1U << 13),
+    CAP_RIGHT_BIT_ENDPOINT_SEND        = 0,
+    CAP_RIGHT_BIT_ENDPOINT_RECEIVE     = 1,
+    CAP_RIGHT_BIT_MEMORY_MAP           = 2,
+    CAP_RIGHT_BIT_MEMORY_UNMAP         = 3,
+    CAP_RIGHT_BIT_MEMORY_SHARE         = 4,
+    CAP_RIGHT_BIT_DMA_MAP              = 5,
+    CAP_RIGHT_BIT_SCHEDULE             = 6,
+    CAP_RIGHT_BIT_DELEGATE             = 7,
+    CAP_RIGHT_BIT_CRYPT_USE            = 8,
+    CAP_RIGHT_BIT_CRYPT_DERIVE         = 9,
+    CAP_RIGHT_BIT_CRYPT_SIGN           = 10,
+    CAP_RIGHT_BIT_CRYPT_DECRYPT        = 11,
+    CAP_RIGHT_BIT_CRYPT_EXPORT_WRAPPED = 12,
+    CAP_RIGHT_BIT_CRYPT_ADMIN          = 13,
 
     // Communication and RPC capability bits
-    CAP_RIGHT_IPC_SEND             = (1U << 14),
-    CAP_RIGHT_IPC_RECEIVE          = (1U << 15),
-    CAP_RIGHT_URPC_CALL            = (1U << 16),
-    CAP_RIGHT_URPC_REPLY           = (1U << 17),
+    CAP_RIGHT_BIT_IPC_SEND             = 14,
+    CAP_RIGHT_BIT_IPC_RECEIVE          = 15,
+    CAP_RIGHT_BIT_URPC_CALL            = 16,
+    CAP_RIGHT_BIT_URPC_REPLY           = 17,
 
     // Accelerator and DMA rights
-    CAP_RIGHT_ENQUEUE              = (1U << 18),
-    CAP_RIGHT_CANCEL               = (1U << 19),
-    CAP_RIGHT_QUERY                = (1U << 20),
-    CAP_RIGHT_BIND                 = (1U << 21),
-    CAP_RIGHT_SYNC_CPU             = (1U << 22),
-    CAP_RIGHT_SYNC_DEV             = (1U << 23),
-    CAP_RIGHT_READ_STATS           = (1U << 24),
-    CAP_RIGHT_READ_FAULTS          = (1U << 25),
-    CAP_RIGHT_RESET                = (1U << 26),
-    CAP_RIGHT_PARTITION            = (1U << 27),
-    CAP_RIGHT_FW_LOAD              = (1U << 28),
-    CAP_RIGHT_DERIVE               = (1U << 29),
-    CAP_RIGHT_REVOKE               = (1U << 30),
-    CAP_RIGHT_READ                 = (1U << 31),
-    CAP_RIGHT_WRITE                = (1ULL << 32),
-    CAP_RIGHT_EXECUTE              = (1ULL << 33),
-
-    // Synthetic rights combo
-    CAP_RIGHT_ALL                  = 0xFFFFFFFF,
+    CAP_RIGHT_BIT_ENQUEUE              = 18,
+    CAP_RIGHT_BIT_CANCEL               = 19,
+    CAP_RIGHT_BIT_QUERY                = 20,
+    CAP_RIGHT_BIT_BIND                 = 21,
+    CAP_RIGHT_BIT_SYNC_CPU             = 22,
+    CAP_RIGHT_BIT_SYNC_DEV             = 23,
+    CAP_RIGHT_BIT_READ_STATS           = 24,
+    CAP_RIGHT_BIT_READ_FAULTS          = 25,
+    CAP_RIGHT_BIT_RESET                = 26,
+    CAP_RIGHT_BIT_PARTITION            = 27,
+    CAP_RIGHT_BIT_FW_LOAD              = 28,
+    CAP_RIGHT_BIT_DERIVE               = 29,
+    CAP_RIGHT_BIT_REVOKE               = 30,
+    CAP_RIGHT_BIT_READ                 = 31,
+    CAP_RIGHT_BIT_WRITE                = 32,
+    CAP_RIGHT_BIT_EXECUTE              = 33,
 } cap_rights_t;
+
+// Standardize capability right mask macros on uint64_t
+#define CAP_RIGHT_NONE                 UINT64_C(0)
+#define CAP_RIGHT_ENDPOINT_SEND        (UINT64_C(1) << CAP_RIGHT_BIT_ENDPOINT_SEND)
+#define CAP_RIGHT_ENDPOINT_RECEIVE     (UINT64_C(1) << CAP_RIGHT_BIT_ENDPOINT_RECEIVE)
+#define CAP_RIGHT_MEMORY_MAP           (UINT64_C(1) << CAP_RIGHT_BIT_MEMORY_MAP)
+#define CAP_RIGHT_MEMORY_UNMAP         (UINT64_C(1) << CAP_RIGHT_BIT_MEMORY_UNMAP)
+#define CAP_RIGHT_MEMORY_SHARE         (UINT64_C(1) << CAP_RIGHT_BIT_MEMORY_SHARE)
+#define CAP_RIGHT_DMA_MAP              (UINT64_C(1) << CAP_RIGHT_BIT_DMA_MAP)
+#define CAP_RIGHT_SCHEDULE             (UINT64_C(1) << CAP_RIGHT_BIT_SCHEDULE)
+#define CAP_RIGHT_DELEGATE             (UINT64_C(1) << CAP_RIGHT_BIT_DELEGATE)
+#define CAP_RIGHT_CRYPT_USE            (UINT64_C(1) << CAP_RIGHT_BIT_CRYPT_USE)
+#define CAP_RIGHT_CRYPT_DERIVE         (UINT64_C(1) << CAP_RIGHT_BIT_CRYPT_DERIVE)
+#define CAP_RIGHT_CRYPT_SIGN           (UINT64_C(1) << CAP_RIGHT_BIT_CRYPT_SIGN)
+#define CAP_RIGHT_CRYPT_DECRYPT        (UINT64_C(1) << CAP_RIGHT_BIT_CRYPT_DECRYPT)
+#define CAP_RIGHT_CRYPT_EXPORT_WRAPPED (UINT64_C(1) << CAP_RIGHT_BIT_CRYPT_EXPORT_WRAPPED)
+#define CAP_RIGHT_CRYPT_ADMIN          (UINT64_C(1) << CAP_RIGHT_BIT_CRYPT_ADMIN)
+
+#define CAP_RIGHT_IPC_SEND             (UINT64_C(1) << CAP_RIGHT_BIT_IPC_SEND)
+#define CAP_RIGHT_IPC_RECEIVE          (UINT64_C(1) << CAP_RIGHT_BIT_IPC_RECEIVE)
+#define CAP_RIGHT_URPC_CALL            (UINT64_C(1) << CAP_RIGHT_BIT_URPC_CALL)
+#define CAP_RIGHT_URPC_REPLY           (UINT64_C(1) << CAP_RIGHT_BIT_URPC_REPLY)
+
+#define CAP_RIGHT_ENQUEUE              (UINT64_C(1) << CAP_RIGHT_BIT_ENQUEUE)
+#define CAP_RIGHT_CANCEL               (UINT64_C(1) << CAP_RIGHT_BIT_CANCEL)
+#define CAP_RIGHT_QUERY                (UINT64_C(1) << CAP_RIGHT_BIT_QUERY)
+#define CAP_RIGHT_BIND                 (UINT64_C(1) << CAP_RIGHT_BIT_BIND)
+#define CAP_RIGHT_SYNC_CPU             (UINT64_C(1) << CAP_RIGHT_BIT_SYNC_CPU)
+#define CAP_RIGHT_SYNC_DEV             (UINT64_C(1) << CAP_RIGHT_BIT_SYNC_DEV)
+#define CAP_RIGHT_READ_STATS           (UINT64_C(1) << CAP_RIGHT_BIT_READ_STATS)
+#define CAP_RIGHT_READ_FAULTS          (UINT64_C(1) << CAP_RIGHT_BIT_READ_FAULTS)
+#define CAP_RIGHT_RESET                (UINT64_C(1) << CAP_RIGHT_BIT_RESET)
+#define CAP_RIGHT_PARTITION            (UINT64_C(1) << CAP_RIGHT_BIT_PARTITION)
+#define CAP_RIGHT_FW_LOAD              (UINT64_C(1) << CAP_RIGHT_BIT_FW_LOAD)
+#define CAP_RIGHT_DERIVE               (UINT64_C(1) << CAP_RIGHT_BIT_DERIVE)
+#define CAP_RIGHT_REVOKE               (UINT64_C(1) << CAP_RIGHT_BIT_REVOKE)
+#define CAP_RIGHT_READ                 (UINT64_C(1) << CAP_RIGHT_BIT_READ)
+#define CAP_RIGHT_WRITE                (UINT64_C(1) << CAP_RIGHT_BIT_WRITE)
+#define CAP_RIGHT_EXECUTE              (UINT64_C(1) << CAP_RIGHT_BIT_EXECUTE)
+
+#define CAP_RIGHT_ALL                  (~UINT64_C(0))
 
 typedef struct capability_entry {
     uint8_t in_use;
     uint32_t id;
     cap_type_t type;
-    uint32_t rights;
+    cap_rights_mask_t rights;
     uint32_t flags;
     uint64_t object_ref;
 
@@ -106,7 +146,7 @@ typedef struct __attribute__((aligned(16))) capability_entry_new {
     uint8_t state; // cap_state_t
     uint32_t id;
     cap_type_t type;
-    uint64_t rights;
+    cap_rights_mask_t rights;
     uint32_t flags;
     uint64_t object_ref;
 
@@ -175,7 +215,7 @@ void cap_table_destroy(capability_table_t* table);
 int cap_table_grant(capability_table_t* table,
                     cap_type_t type,
                     uint64_t object_ref,
-                    uint64_t rights,
+                    cap_rights_mask_t rights,
                     uint32_t* out_cap_id);
 
 /*@
@@ -195,7 +235,7 @@ int cap_table_grant(capability_table_t* table,
 int cap_table_lookup(const capability_table_t* table,
                      uint32_t cap_id,
                      cap_type_t required_type,
-                     uint64_t required_rights,
+                     cap_rights_mask_t required_rights,
                      capability_entry_t* out_entry);
 
 /*@
@@ -217,7 +257,7 @@ int cap_table_lookup(const capability_table_t* table,
 int cap_table_delegate(capability_table_t* src,
                        capability_table_t* dst,
                        uint32_t cap_id,
-                       uint64_t delegated_rights,
+                       cap_rights_mask_t delegated_rights,
                        uint32_t* out_new_cap_id);
 
 int cap_table_revoke(capability_table_t* table, uint32_t cap_id);

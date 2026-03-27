@@ -110,13 +110,8 @@ int ipc_endpoint_send(capability_table_t* table, uint32_t send_cap, const void* 
             return IPC_ERR_CAP_TRANSFER_NOT_ALLOWED;
         }
 
-        // Validate policy: Can this type be transferred?
-        if (!cap_can_transfer(transfer_e.type)) {
-            return IPC_ERR_CAP_TRANSFER_NOT_ALLOWED;
-        }
-
-        // Validate policy: Are the requested rights valid for this type?
-        if (!cap_transfer_rights_valid(transfer_e.type, cap_send_rights)) {
+        // Validate policy: Can this type be transferred, are rights valid, and are they a subset?
+        if (!cap_can_transfer(transfer_e.type, transfer_e.rights, cap_send_rights)) {
             return IPC_ERR_CAP_TRANSFER_NOT_ALLOWED;
         }
 
