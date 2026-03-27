@@ -532,7 +532,7 @@ hal_pt_ops_t x86_hal_pt_ops = {
 
 // --- x86_64 TLB Operations ---
 
-extern bool g_x86_pcid_supported;
+bool g_x86_pcid_supported = false;
 
 static void x86_tlb_flush_page_local(virt_addr_t vaddr) {
     __asm__ volatile("invlpg (%0)" :: "r"(vaddr) : "memory");
