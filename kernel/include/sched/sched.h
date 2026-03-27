@@ -132,6 +132,10 @@ struct kthread {
     uint64_t process_id;
     kprocess_t* process;
 
+    // Ownership and lookup metadata
+    uint32_t home_core_id;
+    uint32_t generation;
+
     // CPU Architectural Context (Registers)
     void* cpu_context;
 
@@ -192,6 +196,10 @@ struct kprocess {
     uint64_t process_id;
     address_space_t* addr_space;
     kthread_t* main_thread;
+
+    // Ownership and lookup metadata
+    uint32_t home_core_id;
+    uint32_t generation;
 
     // Personality tagging for subsystems (e.g., Linux, Android, Windows)
     uint32_t personality;

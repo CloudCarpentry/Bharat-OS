@@ -157,6 +157,24 @@ typedef struct {
 #define MK_MSG_THREAD_HANDOFF_ACK   0x6001
 #define MK_MSG_THREAD_HANDOFF_NACK  0x6002
 
+#define MK_MSG_THREAD_LOOKUP_REQ    0x6003
+#define MK_MSG_THREAD_LOOKUP_RESP   0x6004
+#define MK_MSG_PROCESS_LOOKUP_REQ   0x6005
+#define MK_MSG_PROCESS_LOOKUP_RESP  0x6006
+#define MK_MSG_THREAD_ENQUEUE_REQ   0x6007
+#define MK_MSG_THREAD_WAKE_REQ      0x6008
+
+// Payload struct for remote operations
+typedef struct {
+  uint32_t request_id;
+  uint32_t src_core;
+  uint32_t target_core;
+  uint64_t id;          // tid or pid
+  uint32_t generation;
+  uint32_t flags;       // operation specific flags or return status
+  uint64_t arg;         // extra arguments (e.g. priority for wake)
+} mk_msg_remote_lookup_t;
+
 // Payload struct for MK_MSG_THREAD_HANDOFF_REQ
 typedef struct {
   uint64_t thread_id;
