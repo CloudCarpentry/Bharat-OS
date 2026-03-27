@@ -98,7 +98,7 @@ def do_configure(build_cfg):
     preset = build_cfg.get('preset')
     arch = build_cfg.get('arch')
     profile = normalize_csv(build_cfg.get('profile', 'DESKTOP'))
-    personality = normalize_csv(build_cfg.get('personality', 'NONE'))
+    personality = normalize_csv(build_cfg.get('personality', 'NATIVE'))
     board = normalize_csv(build_cfg.get('board', ''))
     gui = 'ON' if build_cfg.get('gui') else 'OFF'
 

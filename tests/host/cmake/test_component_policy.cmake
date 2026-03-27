@@ -57,7 +57,7 @@ run_policy_case(lowercase_profile_personality_normalized PASS
 run_policy_case(automotive_infotainment_forces_required_network_service PASS
     CMAKE_ARGS
         -DBHARAT_DEVICE_PROFILE=AUTOMOTIVE_INFOTAINMENT
-        -DBHARAT_PERSONALITY_PROFILE=NONE
+        -DBHARAT_PERSONALITY_PROFILE=NATIVE
         -DBHARAT_ENABLE_SERVICE_NETWORK=OFF
 )
 
