@@ -177,7 +177,7 @@ Features include:
 
 # Multikernel State Management
 
-Bharat-OS embraces the multikernel architecture model (inspired by Barrelfish). Rather than a single shared-state monolith, the system is designed as a distributed system of independent cores to maximize scalability and eliminate lock contention.
+Bharat-OS embraces the multikernel architecture model (inspired by Barrelfish). Rather than a single shared-state monolith, the system is designed as a distributed system of independent cores to maximize scalability and eliminate lock contention. For an in-depth look at how execution units and scheduling are managed in this model, see the [Process & Scheduler Architecture](core/process-scheduler-architecture.md).
 
 Features include:
 
