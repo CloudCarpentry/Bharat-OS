@@ -1,7 +1,6 @@
 #include "../../../include/mm.h"
 #include "../../../include/mm/aspace.h"
 #include "../../../include/hal/hal_pt.h"
-#include "../../../include/hal/mmu_ops.h"
 #include "../../../include/hal/hal_tlb.h"
 #include "../../../include/mm/tlb.h"
 #include "../../../include/mm/pmm.h"
@@ -18,21 +17,21 @@ int mm_vmm_map_page(address_space_t* as, virt_addr_t vaddr, phys_addr_t paddr, u
     vm_region_t *region = aspace_lookup_region(as, vaddr);
     if (!region) {
         // Fallback for kernel direct mappings or legacy code without regions
-        uint32_t mmu_flags = 0;
-        if (flags & CAP_RIGHT_WRITE) mmu_flags |= MMU_WRITE;
-        if (flags & PAGE_USER) mmu_flags |= MMU_USER;
-        if (flags & (0x40 | 0x80)) mmu_flags |= MMU_DEVICE; // Old GPU and NPU masks
-        return active_hal_pt->map_page(as->root_pt, vaddr, paddr, mmu_flags);
+        uint32_t pt_flags = HAL_PT_FLAG_READ;
+        if (flags & CAP_RIGHT_WRITE) pt_flags |= HAL_PT_FLAG_WRITE;
+        if (flags & PAGE_USER) pt_flags |= HAL_PT_FLAG_USER;
+        if (flags & (0x40 | 0x80)) pt_flags |= HAL_PT_FLAG_DEVICE; // Old GPU and NPU masks
+        return active_hal_pt->map_page(as->root_pt, vaddr, paddr, pt_flags);
     }
 
     // Normally we'd map via region->object, but this is a legacy compat shim.
-    uint32_t mmu_flags = 0;
-    if (flags & CAP_RIGHT_WRITE) mmu_flags |= MMU_WRITE;
-    if (flags & CAP_RIGHT_EXECUTE) mmu_flags |= MMU_EXEC;
-    if (flags & PAGE_USER) mmu_flags |= MMU_USER;
-    if (flags & (0x40 | 0x80)) mmu_flags |= MMU_DEVICE; // Old GPU and NPU masks
+    uint32_t pt_flags = HAL_PT_FLAG_READ;
+    if (flags & CAP_RIGHT_WRITE) pt_flags |= HAL_PT_FLAG_WRITE;
+    if (flags & CAP_RIGHT_EXECUTE) pt_flags |= HAL_PT_FLAG_EXEC;
+    if (flags & PAGE_USER) pt_flags |= HAL_PT_FLAG_USER;
+    if (flags & (0x40 | 0x80)) pt_flags |= HAL_PT_FLAG_DEVICE; // Old GPU and NPU masks
 
-    int ret = active_hal_pt->map_page(as->root_pt, vaddr, paddr, mmu_flags);
+    int ret = active_hal_pt->map_page(as->root_pt, vaddr, paddr, pt_flags);
     if (ret == 0) {
         tlb_invalidate_all(as, vaddr, PAGE_SIZE, TLB_INV_PAGE);
     }

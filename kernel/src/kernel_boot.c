@@ -6,6 +6,7 @@
 #include "core/multikernel.h"
 #include "device.h"
 #include "hal/hal.h"
+#include "hal/hal_pt.h"
 #include "hal/hal_discovery.h"
 #include "ipc_async.h"
 #include "kernel.h"
@@ -177,11 +178,10 @@ void boot_common_memory(const boot_info_t *boot) {
     }
     KPRINT("BOOT: vmm initialized\n");
 
-    extern void arch_mmu_init(void);
-    arch_mmu_init();
+    // Ensure hal_pt is initialized
+    hal_pt_init();
 
-    extern void hal_mmu_final_setup(void);
-    hal_mmu_final_setup();
+    // The rest of the setup is handled through the hal_pt interface
     KPRINT("  [VMM] Architecture MMU mappings configured.\n");
 
     const bharat_boot_policy_t *boot_policy = bharat_boot_active_policy();

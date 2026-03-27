@@ -8,7 +8,7 @@
 #include "../../../../include/mm/vm_mapping.h"
 #include "../../../../include/mm/tlb.h"
 #include "../../../../include/kernel.h"
-#include "../../../../include/hal/mmu_ops.h"
+#include "../../../../include/hal/hal_pt.h"
 
 // VM Fault Engine: Core page fault dispatcher and handler
 
@@ -100,13 +100,9 @@ vm_fault_result_t vm_handle_fault(const vm_fault_event_t *event) {
                 break;
 
             case FAULT_STATE_BACKEND_REPAIR: {
-                uint32_t mmu_flags = MMU_USER; // Base common flag
-                if (ctx.page_flags & VM_PROT_WRITE) mmu_flags |= MMU_WRITE;
-                if (ctx.page_flags & VM_PROT_EXEC) mmu_flags |= MMU_EXEC;
-                // If hal_pt mapped it to generic flags, map MMU_WRITE to HAL_PT_FLAG_WRITE etc
                 uint32_t pt_flags = HAL_PT_FLAG_USER | HAL_PT_FLAG_READ;
-                if (mmu_flags & MMU_WRITE) pt_flags |= HAL_PT_FLAG_WRITE;
-                if (mmu_flags & MMU_EXEC) pt_flags |= HAL_PT_FLAG_EXEC;
+                if (ctx.page_flags & VM_PROT_WRITE) pt_flags |= HAL_PT_FLAG_WRITE;
+                if (ctx.page_flags & VM_PROT_EXEC) pt_flags |= HAL_PT_FLAG_EXEC;
 
                 virt_addr_t aligned_vaddr = ctx.fault_addr & ~(PAGE_SIZE - 1U);
                 int ret = active_hal_pt->map_page(ctx.aspace->root_pt, aligned_vaddr, ctx.paddr, pt_flags);

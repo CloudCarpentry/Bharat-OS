@@ -136,13 +136,13 @@ string(TOLOWER "${ARCH}" ARCH)
 # ── Boot and HAL sources (arch-specific) ────────────────────────────────────
 if(ARCH STREQUAL "x86_64")
     set(BOOT_SRC ../arch/x86/x86_64/boot/boot.S)
-    set(ARCH_HAL ../hal/x86_64/hal_cpu.c ../hal/x86_64/discovery.c ../hal/x86_64/hal_mm.c ../hal/x86_64/trap_entry.S ../hal/mmu/x86_64/vmm.c ../hal/x86_64/hal_pt_x86_64.c ../hal/hal_pt.c ../hal/x86_64/vtd_iommu.c ../hal/x86_64/apic.c ../hal/x86_64/timer.c ../hal/x86_64/dma.c ../hal/x86_64/hal_secure_boot.c ../hal/x86_64/cpu_relax.c ../hal/common/iommu/null/null_iommu.c ../hal/x86_64/iommu/intel_vtd/intel_vtd_stub.c)
+    set(ARCH_HAL ../hal/x86_64/hal_cpu.c ../hal/x86_64/discovery.c ../hal/x86_64/hal_mm.c ../hal/x86_64/trap_entry.S ../hal/x86_64/hal_pt_x86_64.c ../hal/hal_pt.c ../hal/x86_64/vtd_iommu.c ../hal/x86_64/apic.c ../hal/x86_64/timer.c ../hal/x86_64/dma.c ../hal/x86_64/hal_secure_boot.c ../hal/x86_64/cpu_relax.c ../hal/common/iommu/null/null_iommu.c ../hal/x86_64/iommu/intel_vtd/intel_vtd_stub.c)
     set(ARCH_CONTEXT_SWITCH ../arch/x86/x86_64/context_switch.c ../arch/x86/x86_64/context_switch.S)
     set(ARCH_CPU_CAPS_SRC ../arch/x86/x86_64/cpu_caps.c)
     set(ARCH_EXT_STATE_SRC ../arch/x86/x86_64/ext_state.c)
 elseif(ARCH STREQUAL "riscv64")
     set(BOOT_SRC ../arch/riscv/riscv64/boot/boot.S)
-    set(ARCH_HAL ../hal/riscv/hal_cpu.c ../hal/riscv/discovery.c ../hal/riscv/hal_mm.c ../hal/riscv/boot/feature_probe.c ../hal/riscv/trap_entry.S ../hal/mmu/riscv64/vmm.c ../hal/riscv64/hal_pt_riscv64.c ../hal/hal_pt.c ../hal/riscv/iopmp.c ../hal/riscv/plic.c ../hal/riscv/sbi_timer_ipi.c ../hal/riscv64/dma.c ../hal/riscv64/hal_secure_boot.c ../hal/riscv64/cpu_relax.c ../hal/common/iommu/null/null_iommu.c ../hal/riscv64/iommu/riscv_iommu/riscv_iommu_stub.c)
+    set(ARCH_HAL ../hal/riscv/hal_cpu.c ../hal/riscv/discovery.c ../hal/riscv/hal_mm.c ../hal/riscv/boot/feature_probe.c ../hal/riscv/trap_entry.S ../hal/riscv64/hal_pt_riscv64.c ../hal/hal_pt.c ../hal/riscv/iopmp.c ../hal/riscv/plic.c ../hal/riscv/sbi_timer_ipi.c ../hal/riscv64/dma.c ../hal/riscv64/hal_secure_boot.c ../hal/riscv64/cpu_relax.c ../hal/common/iommu/null/null_iommu.c ../hal/riscv64/iommu/riscv_iommu/riscv_iommu_stub.c)
     set(ARCH_HAL_EXTRA ../hal/riscv/shakti_bsp.c)
     # VirtIO GPU display driver: only for qemu-virt + GUI enabled
     if(BHARAT_BOOT_GUI AND "${BHARAT_RISCV_SOC_PROFILE}" STREQUAL "qemu-virt")
@@ -154,20 +154,20 @@ elseif(ARCH STREQUAL "riscv64")
     set(ARCH_EXT_STATE_SRC ../arch/riscv/riscv64/ext_state.c)
 elseif(ARCH STREQUAL "riscv32")
     set(BOOT_SRC ../arch/riscv/riscv64/boot/boot.S)
-    set(ARCH_HAL ../hal/riscv/hal_cpu.c ../hal/riscv/boot/feature_probe.c ../hal/riscv/trap_entry.S ../hal/mmu/riscv64/vmm.c ../hal/riscv64/hal_pt_riscv64.c ../hal/hal_pt.c ../hal/riscv/iopmp.c ../hal/riscv/plic.c ../hal/riscv/sbi_timer_ipi.c ../hal/common/hal_secure_boot_unsupported.c ../hal/riscv32/cpu_relax.c ../hal/common/iommu/null/null_iommu.c)
+    set(ARCH_HAL ../hal/riscv/hal_cpu.c ../hal/riscv/boot/feature_probe.c ../hal/riscv/trap_entry.S ../hal/riscv64/hal_pt_riscv64.c ../hal/hal_pt.c ../hal/riscv/iopmp.c ../hal/riscv/plic.c ../hal/riscv/sbi_timer_ipi.c ../hal/common/hal_secure_boot_unsupported.c ../hal/riscv32/cpu_relax.c ../hal/common/iommu/null/null_iommu.c)
     set(ARCH_CONTEXT_SWITCH ../arch/shakti/context_switch.c ../arch/shakti/context_switch.S)
     set(ARCH_CPU_CAPS_SRC ../arch/shakti/cpu_caps.c)
     set(ARCH_EXT_STATE_SRC ../arch/shakti/ext_state.c)
 elseif(ARCH STREQUAL "arm64")
     set(BOOT_SRC ../arch/arm/arm64/boot/boot.S)
-    set(ARCH_HAL ../hal/arm64/hal_cpu.c ../hal/arm64/discovery.c ../hal/arm64/hal_mm.c ../hal/arm64/trap_entry.S ../hal/mmu/arm64/vmm.c ../hal/arm64/hal_pt_arm64.c ../hal/hal_pt.c ../hal/arm64/smmu.c ../hal/arm64/gicv3.c ../hal/arm64/timer_generic.c ../hal/arm64/dma.c ../hal/arm64/hal_secure_boot.c ../hal/arm64/cpu_relax.c ../hal/common/iommu/null/null_iommu.c ../hal/arm64/iommu/arm_smmu/arm_smmu_stub.c)
+    set(ARCH_HAL ../hal/arm64/hal_cpu.c ../hal/arm64/discovery.c ../hal/arm64/hal_mm.c ../hal/arm64/trap_entry.S ../hal/arm64/hal_pt_arm64.c ../hal/hal_pt.c ../hal/arm64/smmu.c ../hal/arm64/gicv3.c ../hal/arm64/timer_generic.c ../hal/arm64/dma.c ../hal/arm64/hal_secure_boot.c ../hal/arm64/cpu_relax.c ../hal/common/iommu/null/null_iommu.c ../hal/arm64/iommu/arm_smmu/arm_smmu_stub.c)
     set(ARCH_CONTEXT_SWITCH ../arch/arm/arm64/context_switch.c ../arch/arm/arm64/context_switch.S)
     set(ARCH_HAL_EXTRA ../hal/arm64/topology_fdt.c)
     set(ARCH_CPU_CAPS_SRC ../arch/arm/arm64/cpu_caps.c)
     set(ARCH_EXT_STATE_SRC ../arch/arm/arm64/ext_state.c)
 elseif(ARCH STREQUAL "arm32")
     set(BOOT_SRC ../arch/arm/arm32/boot/boot.S)
-    set(ARCH_HAL ../hal/arm64/hal_cpu.c ../hal/arm64/trap_entry.S ../hal/mmu/arm64/vmm.c ../hal/arm64/hal_pt_arm64.c ../hal/hal_pt.c ../hal/arm64/smmu.c ../hal/arm64/gicv3.c ../hal/arm64/timer_generic.c ../hal/mpu/arm32/mpu_backend.c ../hal/arm64/dma.c ../hal/common/hal_secure_boot_unsupported.c ../hal/arm32/cpu_relax.c)
+    set(ARCH_HAL ../hal/arm64/hal_cpu.c ../hal/arm64/trap_entry.S ../hal/arm64/hal_pt_arm64.c ../hal/hal_pt.c ../hal/arm64/smmu.c ../hal/arm64/gicv3.c ../hal/arm64/timer_generic.c ../hal/mpu/arm32/mpu_backend.c ../hal/arm64/dma.c ../hal/common/hal_secure_boot_unsupported.c ../hal/arm32/cpu_relax.c)
     set(ARCH_CONTEXT_SWITCH ../arch/arm/arm64/context_switch.c ../arch/arm/arm64/context_switch.S)
     set(ARCH_CPU_CAPS_SRC ../arch/arm/arm64/cpu_caps.c)
     set(ARCH_EXT_STATE_SRC ../arch/arm/arm64/ext_state.c)
@@ -222,24 +222,16 @@ add_library(bharat_mm_pmm OBJECT
 target_link_libraries(bharat_mm_pmm PRIVATE bharat_kernel_includes)
 target_compile_options(bharat_mm_pmm PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
 
-# IOMMU Support
-if(BHARAT_ENABLE_IOMMU)
-    add_library(bharat_mm_iommu OBJECT
-        src/mm/iommu/iommu.c
-        src/mm/iommu/iommu_domain.c
-        src/mm/iommu/iommu_map.c
-        src/mm/iommu/iommu_fault.c
-        src/mm/iommu/iommu_device.c
-    )
-    target_link_libraries(bharat_mm_iommu PRIVATE bharat_kernel_includes)
-    target_compile_options(bharat_mm_iommu PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
-else()
-    add_library(bharat_mm_iommu_fallback OBJECT
-        src/mm/iommu/iommu_fallback.c
-    )
-    target_link_libraries(bharat_mm_iommu_fallback PRIVATE bharat_kernel_includes)
-    target_compile_options(bharat_mm_iommu_fallback PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
-endif()
+# IOMMU Support (Always Present, uses Null Backend when disabled)
+add_library(bharat_mm_iommu OBJECT
+    src/mm/iommu/iommu.c
+    src/mm/iommu/iommu_domain.c
+    src/mm/iommu/iommu_map.c
+    src/mm/iommu/iommu_fault.c
+    src/mm/iommu/iommu_device.c
+)
+target_link_libraries(bharat_mm_iommu PRIVATE bharat_kernel_includes)
+target_compile_options(bharat_mm_iommu PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
 
 # Accelerator Memory Support
 add_library(bharat_mm_accel OBJECT
@@ -372,7 +364,6 @@ set(KERNEL_SRCS
     $<$<STREQUAL:${ARCH},arm32>:../arch/arm/arm32/arch_caps.c>
     $<$<STREQUAL:${ARCH},riscv32>:../arch/riscv/riscv32/arch_caps.c>
     ${ARCH_EXT_STATE_SRC}
-    ../hal/mmu_init.c
     ../hal/hal_mem_backend.c
     ../hal/iommu_stub.c
     ../hal/dma_coherency.c
@@ -415,8 +406,7 @@ add_executable(kernel.elf
     ${KERNEL_SRCS}
     $<TARGET_OBJECTS:bharat_mm_accel>
     $<TARGET_OBJECTS:bharatos_driver_accel>
-    $<$<BOOL:${BHARAT_ENABLE_IOMMU}>:$<TARGET_OBJECTS:bharat_mm_iommu>>
-    $<$<NOT:$<BOOL:${BHARAT_ENABLE_IOMMU}>>:$<TARGET_OBJECTS:bharat_mm_iommu_fallback>>
+    $<TARGET_OBJECTS:bharat_mm_iommu>
     $<TARGET_OBJECTS:bharat_mm_pmm>
     $<TARGET_OBJECTS:bharat_librbtree_obj>
     $<TARGET_OBJECTS:k_core>

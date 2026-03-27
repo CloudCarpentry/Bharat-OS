@@ -1,8 +1,8 @@
 #include "mm.h"
 #include "mm/aspace.h"
 #include "hal/hal_mpa.h"
-#include "hal/mmu_ops.h"
 #include "hal/hal_tlb.h"
+#include "hal/hal_pt.h"
 #include "mm/tlb.h"
 #include "capability.h"
 #include "mm/pmm.h"
@@ -60,8 +60,8 @@ int mm_vmm_map_page(address_space_t* as, virt_addr_t vaddr, phys_addr_t paddr, u
 
     // Translate VMM flags to MPA Capability Bits
     uint32_t mpa_flags = 0;
-    if (flags & MMU_WRITE) mpa_flags |= MPA_CAP_WRITE;
-    if (flags & MMU_EXEC) mpa_flags |= MPA_CAP_EXEC_PERM;
+    if (flags & HAL_PT_FLAG_WRITE) mpa_flags |= MPA_CAP_WRITE;
+    if (flags & HAL_PT_FLAG_EXEC) mpa_flags |= MPA_CAP_EXEC_PERM;
     if (flags & PAGE_USER) mpa_flags |= MPA_CAP_USER;
     if (flags & (0x40 | 0x80)) mpa_flags |= MPA_CAP_DEVICE; // Old GPU and NPU masks
 
