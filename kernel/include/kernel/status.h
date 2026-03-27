@@ -21,6 +21,7 @@ typedef int32_t kstatus_t;
 /* ── Generic / Common ─────────── 0 .. -255 */
 #define K_ERR_INVALID_ARG       ((kstatus_t)-1)
 #define K_ERR_BAD_STATE         ((kstatus_t)-2)
+#define K_ERR_REQUIRES_FS_SERVICE ((kstatus_t)-31)
 #define K_ERR_NOT_FOUND         ((kstatus_t)-3)
 #define K_ERR_ALREADY_EXISTS    ((kstatus_t)-4)
 #define K_ERR_UNSUPPORTED       ((kstatus_t)-5)

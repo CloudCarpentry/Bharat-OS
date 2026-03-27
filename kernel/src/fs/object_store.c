@@ -1,69 +1,22 @@
 #include "fs/object_store.h"
+#include "kernel/status.h"
 
-#define MAX_OBJECT_STORES 4
-
-static object_store_t* g_object_stores[MAX_OBJECT_STORES];
-static size_t g_object_store_count = 0;
-
-#ifdef TESTING
-void object_store_test_reset_state(void) {
-    g_object_store_count = 0;
-    for (int i = 0; i < MAX_OBJECT_STORES; i++) {
-        g_object_stores[i] = NULL;
-    }
-}
-#endif
-
-static int object_store_cap_allows_lookup(const capability_t* cap) {
-    if (!cap) {
-        return 0;
-    }
-
-    return (cap->rights_mask & 1) == 1; // Old CAP_RIGHT_READ
-}
+// PHASE1_COMPAT_SHIM: Object store policy moved out of kernel.
 
 int object_store_register(object_store_t* store, capability_t* cap) {
-    if (!store || !cap) {
-        return -1;
-    }
-
-    if (g_object_store_count >= MAX_OBJECT_STORES) {
-        return -1;
-    }
-
-    g_object_stores[g_object_store_count++] = store;
-    return 0;
+    (void)store;
+    (void)cap;
+    return K_ERR_REQUIRES_FS_SERVICE;
 }
 
 int object_store_lookup(const char* uri, object_store_t** out_store, capability_t* cap) {
-    if (!uri || !out_store || !cap) {
-        return -1;
-    }
-
-    if (!object_store_cap_allows_lookup(cap)) {
-        return -1;
-    }
-
-    // Iterate through stores, returning match based on URI prefix
-    for (size_t i = 0; i < g_object_store_count; i++) {
-        const char *store_uri = g_object_stores[i]->uri;
-        size_t j = 0;
-        int match = 1;
-
-        while (store_uri[j] != '\0' && uri[j] != '\0') {
-            if (store_uri[j] != uri[j]) {
-                match = 0;
-                break;
-            }
-            j++;
-        }
-
-        if (match && store_uri[j] == '\0' && (uri[j] == '\0' || uri[j] == '/')) {
-            *out_store = g_object_stores[i];
-            return 0;
-        }
-    }
-
-    *out_store = NULL;
-    return -1;
+    (void)uri;
+    (void)cap;
+    if (out_store) *out_store = NULL;
+    return K_ERR_REQUIRES_FS_SERVICE;
 }
+
+#ifdef TESTING
+void object_store_test_reset_state(void) {
+}
+#endif
