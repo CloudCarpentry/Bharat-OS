@@ -1,11 +1,15 @@
 #include <stdint.h>
+#include "process_manager.h"
 
 int main(int argc, char** argv) {
     (void)argc;
     (void)argv;
-    // TODO: Implement Address Space Management and Server Launching
-    // TODO: Register with Subsystem Manager
-    // TODO: Create capability pools for processes
-    // TODO: Wait for IPC messages (create_process, kill_process)
+
+    process_manager_init();
+
+    bharat_ipc_endpoint_t endpoint = 0x1000; // Fake endpoint for now
+
+    process_manager_loop(endpoint);
+
     return 0;
 }

@@ -427,7 +427,7 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Objective:** Make Bharat-OS operate like a real service-oriented system instead of a stubbed layout.
 
-### Story E2-S1 — Implement process_manager runtime
+### Story E2-S1 — Implement process_manager runtime [COMPLETED]
 
 **Priority:** P1
 **Impact:** High
@@ -435,9 +435,9 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Tasks**
 
-* Define process lifecycle state machine
-* Implement IPC handlers for create/start/stop/query
-* Add integration with scheduler and service manager
+* ~~Define process lifecycle state machine~~
+* ~~Implement IPC handlers for create/start/stop/query~~
+* ~~Add integration with scheduler and service manager~~
 
 **Likely Code Areas**
 
@@ -447,10 +447,10 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Acceptance Criteria**
 
-* process_manager no longer returns as placeholder main
-* Process lifecycle operations are callable and test-covered
+* ~~process_manager no longer returns as placeholder main~~
+* ~~Process lifecycle operations are callable and test-covered~~
 
-### Story E2-S2 — Implement vm_manager runtime
+### Story E2-S2 — Implement vm_manager runtime [COMPLETED]
 
 **Priority:** P1
 **Impact:** High
@@ -458,9 +458,9 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Tasks**
 
-* Define address-space lifecycle contract
-* Implement map/unmap/protect/query flows
-* Integrate with kernel VM path
+* ~~Define address-space lifecycle contract~~
+* ~~Implement map/unmap/protect/query flows~~
+* ~~Integrate with kernel VM path~~
 
 **Likely Code Areas**
 
@@ -471,10 +471,10 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Acceptance Criteria**
 
-* vm_manager supports real lifecycle operations
-* Mapping tests pass end to end
+* ~~vm_manager supports real lifecycle operations~~
+* ~~Mapping tests pass end to end~~
 
-### Story E2-S3 — Add service supervisor runtime
+### Story E2-S3 — Add service supervisor runtime [COMPLETED]
 
 **Priority:** P1
 **Impact:** High
@@ -482,9 +482,9 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Tasks**
 
-* Add event loop, restart policy, backoff, crash tracking
-* Add service health model and watchdog hooks
-* Add boot ordering/service dependency handling
+* ~~Add event loop, restart policy, backoff, crash tracking~~
+* ~~Add service health model and watchdog hooks~~
+* ~~Add boot ordering/service dependency handling~~
 
 **Likely Code Areas**
 
@@ -494,8 +494,8 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Acceptance Criteria**
 
-* Managed services restart on failure
-* Boot order and dependencies are enforced
+* ~~Managed services restart on failure~~
+* ~~Boot order and dependencies are enforced~~
 
 ---
 
