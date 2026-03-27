@@ -405,6 +405,9 @@ long trap_handle(trap_frame_t *frame) {
     } else if (hal_cpu_is_page_fault(frame)) {
       info.trap_class = TRAP_CLASS_PAGE_FAULT;
       info.fault_addr = hal_cpu_get_fault_address(frame);
+    } else if (hal_cpu_is_access_fault(frame)) {
+      info.trap_class = TRAP_CLASS_ACCESS_FAULT;
+      info.fault_addr = hal_cpu_get_fault_address(frame);
     } else {
       info.trap_class = TRAP_CLASS_GENERAL_FAULT;
     }

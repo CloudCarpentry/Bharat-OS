@@ -34,6 +34,7 @@ void hal_interrupt_handle_trap_irq(trap_frame_t* frame) { (void)frame; }
 int hal_cpu_is_fp_simd_fault(trap_frame_t* frame) { (void)frame; return 0; }
 int arch_ext_state_handle_fault(trap_frame_t* frame) { (void)frame; return 0; }
 int hal_cpu_is_page_fault(trap_frame_t* frame) { (void)frame; return 0; }
+int hal_cpu_is_access_fault(trap_frame_t* frame) { (void)frame; return 0; }
 virt_addr_t hal_cpu_get_fault_address(trap_frame_t* frame) { (void)frame; return 0; }
 void fault_diag_record_fault(trap_frame_t* frame, virt_addr_t fault_addr) { (void)frame; (void)fault_addr; }
 void fault_diag_record_syscall(trap_frame_t* frame, uint64_t sys_num) { (void)frame; (void)sys_num; }
