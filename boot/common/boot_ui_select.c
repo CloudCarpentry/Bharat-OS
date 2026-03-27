@@ -40,7 +40,7 @@ boot_ui_mode_t boot_ui_resolve_mode(system_profile_t profile) {
     ret = machine_get_display_caps(&caps);
 #endif
     if (ret != 0 || !caps.display_present || !caps.boot_gui_allowed) {
-        return BOOT_UI_TEXT; // Or NONE
+        return BOOT_UI_TEXT; // Or NATIVE
     }
 
     boot_ui_mode_t machine_max_supported_mode = BOOT_UI_NONE;

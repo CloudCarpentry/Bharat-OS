@@ -264,6 +264,10 @@ void boot_common_platform_services(const boot_info_t *boot) {
     KPRINT("  [IPC] Async IPC ready.\n");
 
     KPRINT("  [TRAP] Initializing syscall/trap gate...\n");
+#include "personality/personality_hooks.h"
+    extern const personality_ops_t default_personality_ops;
+    personality_register_ops(&default_personality_ops);
+
     if (trap_init() != 0) {
       kernel_panic("trap gate initialization failed");
     }
