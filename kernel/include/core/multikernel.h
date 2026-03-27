@@ -21,16 +21,18 @@
  */
 
 typedef struct {
-  uint32_t msg_type;
-  uint32_t payload_size;
-  uint32_t sender_core_id;
-  uint32_t receiver_core_id;
+  uint16_t type;
+  uint16_t flags;
+  uint32_t src_core;
+  uint32_t dst_core;
+  uintptr_t capability;
   uint64_t msg_id;
   uint64_t txn_id;
-  uint32_t flags;
   uint32_t auth_token;
+  uint32_t payload_size;
   uint64_t payload_data[8]; // Max 64 bytes in shared memory ring
 } urpc_msg_t;
+
 
 typedef enum {
   URPC_SUCCESS = 0,
@@ -92,8 +94,8 @@ typedef enum {
 } mk_txn_state_t;
 
 typedef struct {
-  uint32_t sender_core_id;
-  uint32_t receiver_core_id;
+  uint32_t src_core;
+  uint32_t dst_core;
   mk_channel_state_t state;
 
   // Lockless URPC (User-level Remote Procedure Call) Ring Buffer

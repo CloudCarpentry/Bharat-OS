@@ -9,7 +9,7 @@
 #define SCHED_MAX_THREADS 128U
 #define SCHED_MAX_PROCESSES 32U
 
-typedef struct {
+typedef struct thread_slot {
   uint8_t in_use;
   uint8_t is_bootstrap;
   uint32_t next_free;
@@ -23,17 +23,15 @@ typedef struct {
   uint8_t is_on_runqueue;
   uint8_t is_sleeping;
   uint8_t is_blocked;
+  uint32_t creation_core_id;
 } thread_slot_t;
 
-typedef struct {
+typedef struct process_slot {
   uint8_t in_use;
   uint32_t next_free;
   kprocess_t process;
 } process_slot_t;
 
-extern thread_slot_t g_threads[SCHED_MAX_THREADS];
-extern thread_slot_t g_bootstrap_threads[MAX_SUPPORTED_CORES][2];
-extern process_slot_t g_processes[SCHED_MAX_PROCESSES];
 extern uint8_t g_sched_initialized;
 
 #if defined(BHARAT_ENABLE_KERNEL_SELFTESTS)

@@ -22,15 +22,15 @@ __attribute__((weak)) int mk_get_channel(uint32_t sender_core, uint32_t receiver
     if (sender_core >= MAX_SUPPORTED_CORES || receiver_core >= MAX_SUPPORTED_CORES) {
         return -1;
     }
-    out_channel->sender_core_id = sender_core;
-    out_channel->receiver_core_id = receiver_core;
+    out_channel->src_core = sender_core;
+    out_channel->dst_core = receiver_core;
     out_channel->state = MK_CHANNEL_STATE_ESTABLISHED;
     return 0;
 }
 
 __attribute__((weak)) int mk_send_message(mk_channel_t *channel, uint32_t msg_type, void *payload, uint32_t size) {
     (void)channel;
-    g_last_sent_msg.msg_type = msg_type;
+    g_last_sent_msg.type = msg_type;
     g_last_sent_msg.payload_size = size;
     if (payload && size <= sizeof(g_last_sent_msg.payload_data)) {
         __builtin_memcpy(g_last_sent_msg.payload_data, payload, size);
@@ -67,7 +67,7 @@ bool test_urpc_thread_handoff_valid(void) {
     KTEST_ASSERT(ret == 0, "Handoff request failed");
     KTEST_ASSERT(t->state == THREAD_STATE_REMOTE_HANDOFF_PENDING, "Thread state not updated");
     KTEST_ASSERT(g_msg_sent_count == 1, "Message not sent");
-    KTEST_ASSERT(g_last_sent_msg.msg_type == MK_MSG_THREAD_HANDOFF_REQ, "Wrong message type sent");
+    KTEST_ASSERT(g_last_sent_msg.type == MK_MSG_THREAD_HANDOFF_REQ, "Wrong message type sent");
 
     // Now simulate receiving the message on the target core
     // We need to mock hal_cpu_get_id() to return target_core, but since it's an inline
@@ -76,22 +76,22 @@ bool test_urpc_thread_handoff_valid(void) {
     // For this test, let's just test the dispatch logic directly.
 
     urpc_msg_t rx_msg = g_last_sent_msg;
-    rx_msg.sender_core_id = sender_core;
-    rx_msg.receiver_core_id = target_core;
+    rx_msg.src_core = sender_core;
+    rx_msg.dst_core = target_core;
     rx_msg.auth_token = valid_auth_token;
 
-    g_mock_channel.sender_core_id = sender_core;
-    g_mock_channel.receiver_core_id = target_core;
+    g_mock_channel.src_core = sender_core;
+    g_mock_channel.dst_core = target_core;
 
     // To test mk_dispatch_message on the "target core", we temporarily need to
     // bypass the local_core check OR just call the handler directly if mk_dispatch_message
-    // enforces hal_cpu_get_id() == receiver_core_id. Since hal_cpu_get_id() returns 0 in tests,
+    // enforces hal_cpu_get_id() == dst_core. Since hal_cpu_get_id() returns 0 in tests,
     // let's set target_core to 0 and sender_core to 1 for the *receive* phase.
 
-    rx_msg.receiver_core_id = 0;
-    rx_msg.sender_core_id = 1;
-    g_mock_channel.receiver_core_id = 0;
-    g_mock_channel.sender_core_id = 1;
+    rx_msg.dst_core = 0;
+    rx_msg.src_core = 1;
+    g_mock_channel.dst_core = 0;
+    g_mock_channel.src_core = 1;
 
     mk_msg_thread_handoff_t *payload = (mk_msg_thread_handoff_t *)rx_msg.payload_data;
     payload->target_core = 0; // Update payload to match the mocked receiver core
@@ -105,7 +105,7 @@ bool test_urpc_thread_handoff_valid(void) {
     KTEST_ASSERT(t->bound_core_id == 0, "Thread not bound to target core");
     KTEST_ASSERT(t->state == THREAD_STATE_READY, "Thread not set back to READY");
     KTEST_ASSERT(g_msg_sent_count == 1, "ACK not sent");
-    KTEST_ASSERT(g_last_sent_msg.msg_type == MK_MSG_THREAD_HANDOFF_ACK, "Wrong reply type");
+    KTEST_ASSERT(g_last_sent_msg.type == MK_MSG_THREAD_HANDOFF_ACK, "Wrong reply type");
 
     return true;
 }
@@ -116,13 +116,13 @@ bool test_urpc_thread_handoff_denied_no_cap(void) {
     // Simulate incoming message with NO capability token
     urpc_msg_t rx_msg;
     __builtin_memset(&rx_msg, 0, sizeof(rx_msg));
-    rx_msg.msg_type = MK_MSG_THREAD_HANDOFF_REQ;
-    rx_msg.sender_core_id = 1;
-    rx_msg.receiver_core_id = 0;
+    rx_msg.type = MK_MSG_THREAD_HANDOFF_REQ;
+    rx_msg.src_core = 1;
+    rx_msg.dst_core = 0;
     rx_msg.auth_token = 0; // INVALID token
 
-    g_mock_channel.sender_core_id = 1;
-    g_mock_channel.receiver_core_id = 0;
+    g_mock_channel.src_core = 1;
+    g_mock_channel.dst_core = 0;
 
     int ret = mk_dispatch_message(&g_mock_channel, &rx_msg);
     KTEST_ASSERT(ret == -1, "Dispatch should fail due to missing capability");
@@ -140,9 +140,9 @@ bool test_urpc_thread_handoff_reject_bad_core(void) {
 
     urpc_msg_t rx_msg;
     __builtin_memset(&rx_msg, 0, sizeof(rx_msg));
-    rx_msg.msg_type = MK_MSG_THREAD_HANDOFF_REQ;
-    rx_msg.sender_core_id = 1;
-    rx_msg.receiver_core_id = 0;
+    rx_msg.type = MK_MSG_THREAD_HANDOFF_REQ;
+    rx_msg.src_core = 1;
+    rx_msg.dst_core = 0;
     rx_msg.auth_token = 0xDEADBEEF;
     rx_msg.payload_size = sizeof(mk_msg_thread_handoff_t);
 
@@ -153,13 +153,13 @@ bool test_urpc_thread_handoff_reject_bad_core(void) {
     };
     __builtin_memcpy(rx_msg.payload_data, &payload, sizeof(payload));
 
-    g_mock_channel.sender_core_id = 1;
-    g_mock_channel.receiver_core_id = 0;
+    g_mock_channel.src_core = 1;
+    g_mock_channel.dst_core = 0;
 
     int ret = mk_dispatch_message(&g_mock_channel, &rx_msg);
     KTEST_ASSERT(ret == 0, "Dispatch should succeed (it handles routing internally)");
     KTEST_ASSERT(g_msg_sent_count == 1, "NACK should be sent");
-    KTEST_ASSERT(g_last_sent_msg.msg_type == MK_MSG_THREAD_HANDOFF_NACK, "Expected NACK for bad core");
+    KTEST_ASSERT(g_last_sent_msg.type == MK_MSG_THREAD_HANDOFF_NACK, "Expected NACK for bad core");
 
     return true;
 }
@@ -173,9 +173,9 @@ bool test_urpc_thread_handoff_reject_bad_state(void) {
 
     urpc_msg_t rx_msg;
     __builtin_memset(&rx_msg, 0, sizeof(rx_msg));
-    rx_msg.msg_type = MK_MSG_THREAD_HANDOFF_REQ;
-    rx_msg.sender_core_id = 1;
-    rx_msg.receiver_core_id = 0;
+    rx_msg.type = MK_MSG_THREAD_HANDOFF_REQ;
+    rx_msg.src_core = 1;
+    rx_msg.dst_core = 0;
     rx_msg.auth_token = 0xDEADBEEF;
     rx_msg.payload_size = sizeof(mk_msg_thread_handoff_t);
 
@@ -186,13 +186,13 @@ bool test_urpc_thread_handoff_reject_bad_state(void) {
     };
     __builtin_memcpy(rx_msg.payload_data, &payload, sizeof(payload));
 
-    g_mock_channel.sender_core_id = 1;
-    g_mock_channel.receiver_core_id = 0;
+    g_mock_channel.src_core = 1;
+    g_mock_channel.dst_core = 0;
 
     int ret = mk_dispatch_message(&g_mock_channel, &rx_msg);
     KTEST_ASSERT(ret == 0, "Dispatch should succeed");
     KTEST_ASSERT(g_msg_sent_count == 1, "NACK should be sent");
-    KTEST_ASSERT(g_last_sent_msg.msg_type == MK_MSG_THREAD_HANDOFF_NACK, "Expected NACK for bad state");
+    KTEST_ASSERT(g_last_sent_msg.type == MK_MSG_THREAD_HANDOFF_NACK, "Expected NACK for bad state");
 
     return true;
 }

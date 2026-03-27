@@ -21,11 +21,27 @@ typedef enum {
 
 // Canonical uRPC Protocol Header
 typedef struct urpc_msg_hdr {
-    uint8_t  msg_type;          // From urpc_msg_type_t
-    uint32_t tx_id;             // Transaction ID
-    uint32_t endpoint_gen;      // Endpoint generation for stale handle rejection
-    uint64_t capability_epoch;  // Revocation epoch for capability validation
+    uint16_t type;
+    uint16_t flags;
+    uint32_t src_core;
+    uint32_t dst_core;
+    uintptr_t capability; // bit agnostic
 } __attribute__((packed)) urpc_msg_hdr_t;
+
+// Message Classes
+#define URPC_CLASS_CONTROL   0x1000
+#define URPC_CLASS_DATA      0x2000
+#define URPC_CLASS_MEMORY    0x3000
+#define URPC_CLASS_POWER     0x4000
+#define URPC_CLASS_SAFETY    0x5000
+#define URPC_CLASS_TELEMETRY 0x6000
+
+// Standard URPC Message
+typedef struct urpc_msg {
+    urpc_msg_hdr_t header;
+    uint8_t payload[56];
+} __attribute__((packed)) urpc_msg_std_t;
+
 
 // Keep old packing functions for compatibility with bootstrap for now
 #define URPC_MSG_TYPE_SHIFT 56

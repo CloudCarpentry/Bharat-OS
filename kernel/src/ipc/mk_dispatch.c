@@ -9,11 +9,11 @@ static int mk_authorize_message(mk_channel_t *channel, urpc_msg_t *msg) {
     (void)channel;
     // For now, accept generic safe types but reject unrecognized or sensitive types implicitly
     // This will be expanded when full distributed capabilities and tokens are ready.
-    if (msg->msg_type == MK_MSG_TYPE_AI_SUGGESTION) {
+    if (msg->type == MK_MSG_TYPE_AI_SUGGESTION) {
         return 0; // Temporarily allow AI suggestions until proper policies are wired
     }
 
-    if (msg->msg_type == MK_MSG_THREAD_HANDOFF_REQ) {
+    if (msg->type == MK_MSG_THREAD_HANDOFF_REQ) {
         // Mock capability check: Ensure sender provided a valid schedule authority token
         // In a real implementation, this would lookup the auth_token in the receiver's CNode
         // to verify it grants CAP_SCHED_TARGET on this core.
@@ -31,13 +31,13 @@ static void mk_handle_thread_handoff_req(mk_channel_t *channel, urpc_msg_t *msg)
     if (msg->payload_size != sizeof(mk_msg_thread_handoff_t)) {
         // Send NACK for invalid size
         urpc_msg_t nack = {
-            .msg_type = MK_MSG_THREAD_HANDOFF_NACK,
+            .type = MK_MSG_THREAD_HANDOFF_NACK,
             .payload_size = 0,
-            .sender_core_id = msg->receiver_core_id,
-            .receiver_core_id = msg->sender_core_id,
+            .src_core = msg->dst_core,
+            .dst_core = msg->src_core,
             .msg_id = msg->msg_id
         };
-        mk_send_message(channel, nack.msg_type, nack.payload_data, nack.payload_size);
+        mk_send_message(channel, nack.type, nack.payload_data, nack.payload_size);
         return;
     }
 
@@ -49,13 +49,13 @@ static void mk_handle_thread_handoff_req(mk_channel_t *channel, urpc_msg_t *msg)
     if (payload.target_core != local_core) {
         // Bad core routing
         urpc_msg_t nack = {
-            .msg_type = MK_MSG_THREAD_HANDOFF_NACK,
+            .type = MK_MSG_THREAD_HANDOFF_NACK,
             .payload_size = 0,
-            .sender_core_id = local_core,
-            .receiver_core_id = msg->sender_core_id,
+            .src_core = local_core,
+            .dst_core = msg->src_core,
             .msg_id = msg->msg_id
         };
-        mk_send_message(channel, nack.msg_type, nack.payload_data, nack.payload_size);
+        mk_send_message(channel, nack.type, nack.payload_data, nack.payload_size);
         return;
     }
 
@@ -63,13 +63,13 @@ static void mk_handle_thread_handoff_req(mk_channel_t *channel, urpc_msg_t *msg)
     if (!thread) {
         // Thread not found
         urpc_msg_t nack = {
-            .msg_type = MK_MSG_THREAD_HANDOFF_NACK,
+            .type = MK_MSG_THREAD_HANDOFF_NACK,
             .payload_size = 0,
-            .sender_core_id = local_core,
-            .receiver_core_id = msg->sender_core_id,
+            .src_core = local_core,
+            .dst_core = msg->src_core,
             .msg_id = msg->msg_id
         };
-        mk_send_message(channel, nack.msg_type, nack.payload_data, nack.payload_size);
+        mk_send_message(channel, nack.type, nack.payload_data, nack.payload_size);
         return;
     }
 
@@ -79,13 +79,13 @@ static void mk_handle_thread_handoff_req(mk_channel_t *channel, urpc_msg_t *msg)
     if (thread->state != THREAD_STATE_REMOTE_HANDOFF_PENDING) {
         hal_cpu_enable_interrupts();
         urpc_msg_t nack = {
-            .msg_type = MK_MSG_THREAD_HANDOFF_NACK,
+            .type = MK_MSG_THREAD_HANDOFF_NACK,
             .payload_size = 0,
-            .sender_core_id = local_core,
-            .receiver_core_id = msg->sender_core_id,
+            .src_core = local_core,
+            .dst_core = msg->src_core,
             .msg_id = msg->msg_id
         };
-        mk_send_message(channel, nack.msg_type, nack.payload_data, nack.payload_size);
+        mk_send_message(channel, nack.type, nack.payload_data, nack.payload_size);
         return;
     }
 
@@ -103,13 +103,13 @@ static void mk_handle_thread_handoff_req(mk_channel_t *channel, urpc_msg_t *msg)
 
     // Send ACK
     urpc_msg_t ack = {
-        .msg_type = MK_MSG_THREAD_HANDOFF_ACK,
+        .type = MK_MSG_THREAD_HANDOFF_ACK,
         .payload_size = 0,
-        .sender_core_id = local_core,
-        .receiver_core_id = msg->sender_core_id,
+        .src_core = local_core,
+        .dst_core = msg->src_core,
         .msg_id = msg->msg_id
     };
-    mk_send_message(channel, ack.msg_type, ack.payload_data, ack.payload_size);
+    mk_send_message(channel, ack.type, ack.payload_data, ack.payload_size);
 }
 
 int mk_dispatch_message(mk_channel_t *channel, urpc_msg_t *msg) {
@@ -120,17 +120,17 @@ int mk_dispatch_message(mk_channel_t *channel, urpc_msg_t *msg) {
     uint32_t local_core = hal_cpu_get_id();
 
     // 1. Validate receiver matches local core
-    if (msg->receiver_core_id != local_core || channel->receiver_core_id != local_core) {
+    if (msg->dst_core != local_core || channel->dst_core != local_core) {
         return -1;
     }
 
     // 2. Validate sender matches channel's expected sender
-    if (msg->sender_core_id != channel->sender_core_id) {
+    if (msg->src_core != channel->src_core) {
         return -1;
     }
 
     // 3. Validate channel direction consistency
-    if (channel->sender_core_id == channel->receiver_core_id) {
+    if (channel->src_core == channel->dst_core) {
         return -1; // Intra-core messages over URPC shouldn't happen here
     }
 
@@ -145,7 +145,7 @@ int mk_dispatch_message(mk_channel_t *channel, urpc_msg_t *msg) {
     }
 
     // 6. Action / routing
-    switch (msg->msg_type) {
+    switch (msg->type) {
         case MK_MSG_TYPE_ACK:
         case MK_MSG_TYPE_NACK:
             // Route to transaction table for ACK/NACK completion
@@ -192,7 +192,7 @@ int mk_dispatch_message(mk_channel_t *channel, urpc_msg_t *msg) {
             break;
 
         default:
-            sched_notify_ipc_ready(local_core, msg->msg_type);
+            sched_notify_ipc_ready(local_core, msg->type);
             break;
     }
 

@@ -43,6 +43,12 @@ SECTIONS
     {
         *(.rodata)
         *(.rodata.*)
+
+        . = ALIGN(8);
+        __start_bharat_services = .;
+        KEEP(*(bharat_services))
+        __stop_bharat_services = .;
+
         *(.lrodata)
         *(.lrodata.*)
 
