@@ -749,6 +749,7 @@ static void arm64_mpa_set_root(phys_addr_t root) {
         "msr ttbr1_el1, %0\n"
         "isb\n"
         "mrs x0, sctlr_el1\n"
+        "bic x0, x0, #2\n"   /* Clear A (alignment check trap) for kernel EL1 */
         "orr x0, x0, #1\n"
         "msr sctlr_el1, x0\n"
         "isb\n"
@@ -768,7 +769,18 @@ static void arm64_mpa_flush_tlb_local(virt_addr_t vaddr, uint16_t asid) {
 }
 
 static phys_addr_t arm64_mpa_get_root(void) {
+    uint64_t sctlr;
     phys_addr_t ttbr1;
+
+    /*
+     * When MMU is disabled (SCTLR_EL1.M == 0), TTBR values are not an
+     * authoritative active translation root for VMM bootstrap.
+     */
+    __asm__ volatile("mrs %0, sctlr_el1" : "=r"(sctlr));
+    if ((sctlr & 1ULL) == 0ULL) {
+        return 0U;
+    }
+
     __asm__ volatile("mrs %0, ttbr1_el1" : "=r"(ttbr1));
     return ttbr1 & ~(0xFFFULL);
 }

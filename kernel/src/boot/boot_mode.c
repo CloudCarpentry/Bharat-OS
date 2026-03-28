@@ -114,7 +114,7 @@ bool boot_mode_should_skip_optional_drivers(bharat_boot_mode_t mode) {
 }
 
 bharat_boot_mode_t bharat_boot_mode_select(void) {
-    char mode_str[32] = {0};
+    char mode_str[32];
 
     if (boot_get_kv("mode", mode_str, sizeof(mode_str))) {
         if (string_equals(mode_str, "normal")) return BOOT_MODE_NORMAL;

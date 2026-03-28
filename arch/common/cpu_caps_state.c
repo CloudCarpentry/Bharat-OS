@@ -15,6 +15,15 @@ static arch_cpu_caps_record_t g_system_caps_all;
 static arch_cpu_caps_record_t g_system_caps_any;
 static arch_cpu_caps_record_t g_per_cpu_caps[MAX_CPUS];
 
+static void cpu_caps_record_copy(arch_cpu_caps_record_t *dst,
+                                 const arch_cpu_caps_record_t *src) {
+    volatile uint64_t *d = (volatile uint64_t *)dst;
+    const volatile uint64_t *s = (const volatile uint64_t *)src;
+    for (size_t i = 0; i < (sizeof(*dst) / sizeof(uint64_t)); ++i) {
+        d[i] = s[i];
+    }
+}
+
 bool arch_cpu_caps_test(const arch_cpu_caps_t *caps, int feat) {
     if (feat < 0 || feat >= ARCH_CPU_FEAT_TARGET__COUNT) return false;
     return (caps->bits[feat / 64] & (1ULL << (feat % 64))) != 0;
@@ -84,17 +93,17 @@ bool arch_cpu_has_on(size_t cpu_index, int feat) {
 }
 
 void cpu_caps_state_set_boot(const arch_cpu_caps_record_t *caps) {
-    g_boot_cpu_caps = *caps;
-    g_per_cpu_caps[0] = *caps;
+    cpu_caps_record_copy(&g_boot_cpu_caps, caps);
+    cpu_caps_record_copy(&g_per_cpu_caps[0], caps);
 
     // Initialize system caps to boot caps for now
-    g_system_caps_all = *caps;
-    g_system_caps_any = *caps;
+    cpu_caps_record_copy(&g_system_caps_all, caps);
+    cpu_caps_record_copy(&g_system_caps_any, caps);
 }
 
 void cpu_caps_state_set_ap(unsigned int cpu_id, const arch_cpu_caps_record_t *caps) {
     if (cpu_id < MAX_CPUS) {
-        g_per_cpu_caps[cpu_id] = *caps;
+        cpu_caps_record_copy(&g_per_cpu_caps[cpu_id], caps);
     }
 }
 
@@ -106,6 +115,6 @@ void arch_cpu_caps_system_finalize(void) {
     arch_cpu_caps_zero(&g_system_caps_any.usable);
 
     // For now we just mirror boot cpu, in real SMP boot this will AND/OR across active CPUs.
-    g_system_caps_all = g_boot_cpu_caps;
-    g_system_caps_any = g_boot_cpu_caps;
+    cpu_caps_record_copy(&g_system_caps_all, &g_boot_cpu_caps);
+    cpu_caps_record_copy(&g_system_caps_any, &g_boot_cpu_caps);
 }

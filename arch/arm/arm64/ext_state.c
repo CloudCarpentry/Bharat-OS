@@ -38,7 +38,11 @@ static inline void arm64_fp_trap_enable(void) {
     uint64_t cpacr;
     __asm__ volatile("mrs %0, cpacr_el1" : "=r"(cpacr));
     cpacr &= ~ARM64_CPACR_EL1_FPEN_MASK;
-    cpacr |= ARM64_CPACR_EL1_FPEN_TRAP_ALL;
+    /*
+     * Keep FP/SIMD enabled in kernel bring-up/runtime to avoid trapping on
+     * compiler-emitted vector instructions in EL1 paths.
+     */
+    cpacr |= ARM64_CPACR_EL1_FPEN_ENABLE;
     __asm__ volatile("msr cpacr_el1, %0\nisb" :: "r"(cpacr) : "memory");
 }
 
