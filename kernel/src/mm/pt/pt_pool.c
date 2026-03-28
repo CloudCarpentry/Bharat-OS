@@ -46,9 +46,21 @@ void pt_cache_init(void) {
 
 phys_addr_t pt_cache_alloc(void) {
     pmm_block_t block;
-    // We now use the hardened PMM allocation with zeroing natively instead of custom pool fallback
-    // We request a single page (order 0) that is explicitly zeroed.
-    if (pmm_alloc_pages(0, PMM_ZONE_ANY, PMM_ALLOC_ZERO, &block) == 0) {
+    // Root page-table pointers use 0 as an invalid sentinel throughout the HAL.
+    // If PMM hands us physical page 0, recycle it and try again so callers can
+    // keep relying on 0 == allocation failure.
+    for (int attempt = 0; attempt < 4; ++attempt) {
+        // We now use the hardened PMM allocation with zeroing natively instead
+        // of custom pool fallback.
+        if (pmm_alloc_pages(0, PMM_ZONE_ANY, PMM_ALLOC_ZERO, &block) != 0) {
+            return 0;
+        }
+
+        if (block.phys_addr == 0) {
+            pmm_free_pages(&block);
+            continue;
+        }
+
         page_t *p = phys_to_page(block.phys_addr);
         if (p) p->owner_class = PMM_OWNER_CLASS_PAGETABLE;
         return block.phys_addr;
