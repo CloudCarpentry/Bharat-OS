@@ -8,6 +8,7 @@
 #include "../../../../include/bharat/cpu_local.h"
 #include "../../../../include/mm/mm_aspace_switch.h"
 #include <stddef.h>
+#include <stdint.h>
 
 // Mock hal_get_core_id if it's not defined
 #ifndef hal_get_core_id
@@ -24,8 +25,6 @@ extern uint32_t hal_get_core_id(void);
 #ifndef spinlock_init
 #define spinlock_init spin_lock_init
 #endif
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include <stdint.h>
 
 const arch_vm_ops_t* active_arch_vm_ops = NULL;
 
@@ -75,7 +74,9 @@ int vm_space_destroy(vm_space_t *space) {
 
     spinlock_acquire(&space->lock);
 
-    // DEPRECATED: Legacy registry clean up
+    // QUARANTINED DEPRECATED PATH: Legacy registry clean up
+    // DO NOT DELETE yet; wait for unified authority path (fault -> aspace -> region -> HAL)
+    // tests to pass before removing this explicit loop.
     vm_mapping_t *curr = space->mappings.head;
     while (curr) {
         vm_mapping_t *next = curr->next;
@@ -106,8 +107,9 @@ int vm_realize_on_core(vm_space_t *space, uint32_t core_id, bool strict) {
         // Mock init
         active_arch_vm_ops->space_init(space, &local_state);
 
-        // Walk mappings and realize them (DEPRECATED PATH)
+        // QUARANTINED DEPRECATED PATH: Walk mappings and realize them
         // Correct path is lazy faults or walk address_space_t -> regions.
+        // DO NOT DELETE until unified authority path tests pass.
         vm_mapping_t *curr = space->mappings.head;
         while (curr) {
             active_arch_vm_ops->map(space, &local_state, curr->va_start, curr->pa_start, curr->length, curr->prot, curr->mem_type, curr->flags);

@@ -24,11 +24,14 @@ static int mk_authorize_message(mk_channel_t *channel, urpc_msg_t *msg) {
         return 0;
     }
 
-    // Default route: allow control messages but this will tighten
-    return 0;
+    // Default route: deny by default
+    return -1;
 }
 
 static void mk_handle_thread_lookup_req(mk_channel_t *channel, urpc_msg_t *msg) {
+    if (msg->payload_size != sizeof(mk_msg_remote_lookup_t)) {
+        return; // Payload size validation failed
+    }
     mk_msg_remote_lookup_t payload;
     __builtin_memcpy(&payload, msg->payload_data, sizeof(payload));
     uint32_t local_core = hal_cpu_get_id();
@@ -57,6 +60,9 @@ static void mk_handle_thread_lookup_req(mk_channel_t *channel, urpc_msg_t *msg) 
 }
 
 static void mk_handle_thread_wake_req(mk_channel_t *channel, urpc_msg_t *msg) {
+    if (msg->payload_size != sizeof(mk_msg_remote_lookup_t)) {
+        return; // Payload size validation failed
+    }
     mk_msg_remote_lookup_t payload;
     __builtin_memcpy(&payload, msg->payload_data, sizeof(payload));
     uint32_t local_core = hal_cpu_get_id();
@@ -68,6 +74,9 @@ static void mk_handle_thread_wake_req(mk_channel_t *channel, urpc_msg_t *msg) {
 }
 
 static void mk_handle_thread_enqueue_req(mk_channel_t *channel, urpc_msg_t *msg) {
+    if (msg->payload_size != sizeof(mk_msg_remote_lookup_t)) {
+        return; // Payload size validation failed
+    }
     mk_msg_remote_lookup_t payload;
     __builtin_memcpy(&payload, msg->payload_data, sizeof(payload));
     uint32_t local_core = hal_cpu_get_id();
