@@ -7,11 +7,12 @@ This roadmap tracks the convergence of the memory management subsystem in Bharat
 The memory stack is split into a **Minimal Memory Core** (PMM, MPU-lite, early alloc) and an **Advanced VM** tier (ASpace, paging).
 
 ### Current Code State
-- **PMM (`kernel/src/mm/pmm/`)**: Core zoned buddy allocator and contiguous APIs are complete.
+- **PMM (`kernel/src/mm/pmm/`)**: Core zoned buddy allocator and contiguous APIs are complete. Successfully boots and initializes memory per-core.
 - **VM Base Objects (`kernel/src/mm/vm/objects/`)**: Base structures for anonymous and device objects are implemented, including lifecycle reference counting.
 - **ASpace (`kernel/src/mm/vm/aspace/`)**: Interval trees and base APIs are mature.
 - **Fault Handling (`kernel/src/mm/vm/fault/`)**: Handlers are present but demand paging and COW require alignment with hardware COW breaks.
 - **HAL Common (`hal/hal_pt.c`)**: Neutral architecture capability contracts (`hal_pt_caps`) are in place.
+- **Architecture Backends**: Phase 2 is complete. The 64-bit architecture backends (x86_64, arm64, riscv64) are successfully integrated, booting, and initializing memory correctly with stable per-core page table mapping.
 
 ## 2. Capability-Gated Build Features
 
@@ -26,9 +27,9 @@ We are replacing reliance on monolithic profiles with explicit capability flags 
 
 | Architecture | MMU Status | TLB Shootdowns | Cache Mgmt | Hardware Huge Pages |
 |---|---|---|---|---|
-| **x86_64** | 🚧 Active (4-level) | 🚧 Local/Remote IPI | ✅ Supported | 🔜 Planned |
-| **arm64** | 🚧 Active | 🚧 IPI/Shootdowns | 🚧 MAIR setup | 🔜 Planned |
-| **riscv64** | 🚧 Active (Sv39/48) | 🚧 `sfence.vma` | ✅ Supported | 🔜 Planned (Svpbmt) |
+| **x86_64** | ✅ Done (4-level) | ✅ Local/Remote IPI | ✅ Supported | 🔜 Planned |
+| **arm64** | ✅ Done | ✅ IPI/Shootdowns | ✅ MAIR setup | 🔜 Planned |
+| **riscv64** | ✅ Done (Sv39/48) | ✅ `sfence.vma` | ✅ Supported | 🔜 Planned (Svpbmt) |
 | **arm32/riscv32** | ✅ Done (MMU-lite) | ❌ N/A | ❌ N/A | 🔜 Planned (LPAE) |
 | **cortex-m / RV32IMAC** | ✅ Done (MPU-only) | ❌ N/A | ❌ N/A | ❌ N/A |
 
@@ -72,9 +73,9 @@ gantt
     section Phase 1 (Completed)
     PMM & Frameworks      :done,    des1, 2024-01-01, 2024-04-01
     HAL Interface Setup   :done,    des2, 2024-04-01, 2024-06-01
-    section Phase 2 (In Progress)
-    VM Objects & ASpace   :active,  des3, 2024-06-01, 2024-10-01
-    Arch Backends (64-bit):active,  des4, 2024-08-01, 2024-12-01
+    section Phase 2 (Completed)
+    VM Objects & ASpace   :done,    des3, 2024-06-01, 2024-10-01
+    Arch Backends (64-bit):done,    des4, 2024-08-01, 2024-12-01
     Arch Backends (32-bit):done,    des5, 2024-11-01, 2025-02-01
     section Phase 3 (Planned)
     IOMMU Integration     :         des6, 2025-02-01, 2025-05-01
