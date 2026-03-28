@@ -14,6 +14,7 @@ static inline bool is_page_aligned_u64(uint64_t val) {
 #if defined(__x86_64__) || defined(_M_X64)
 extern hal_pt_ops_t x86_hal_pt_ops;
 extern hal_tlb_ops_t x86_hal_tlb_ops;
+extern void x86_pt_set_mmu_finalized(bool finalized);
 #elif defined(__aarch64__) || defined(_M_ARM64)
 extern hal_pt_ops_t arm64_hal_pt_ops;
 extern hal_tlb_ops_t arm64_hal_tlb_ops;
@@ -39,6 +40,7 @@ void hal_pt_init(void) {
     if (x86_pt_caps_init) {
         x86_pt_caps_init();
     }
+    x86_pt_set_mmu_finalized(true);
     active_hal_pt = &x86_hal_pt_ops;
     active_hal_tlb = &x86_hal_tlb_ops;
 #elif defined(__aarch64__) || defined(_M_ARM64)
