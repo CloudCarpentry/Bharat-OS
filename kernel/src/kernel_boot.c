@@ -173,15 +173,15 @@ void boot_common_memory(const boot_info_t *boot) {
     }
     KPRINT("BOOT: pmm initialized\n");
 
+    // Ensure hal_pt is initialized BEFORE VMM tries to map things / create address space
+    hal_pt_init();
+    hal_tlb_init();
+
     KPRINT("  [VMM] Initializing VMM...\n");
     if (vmm_init() != 0) {
       kernel_panic("VMM initialization failed");
     }
     KPRINT("BOOT: vmm initialized\n");
-
-    // Ensure hal_pt is initialized
-    hal_pt_init();
-    hal_tlb_init();
 
     // The rest of the setup is handled through the hal_pt interface
     KPRINT("  [VMM] Architecture MMU mappings configured.\n");

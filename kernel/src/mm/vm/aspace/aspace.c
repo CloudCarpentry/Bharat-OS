@@ -21,13 +21,17 @@ int aspace_create(address_space_t **out_aspace, uint32_t flags) {
     as->prot_domain = prot_domain_create();
 
     // Stub legacy while transitioning fully
-    as->root_pt = active_hal_pt->create_address_space(vmm_get_kernel_root());
-    if (!as->root_pt) {
-        if (as->prot_domain) {
-            prot_domain_destroy(as->prot_domain);
+    if (as->prot_domain && as->prot_domain->backend_state) {
+        as->root_pt = (phys_addr_t)(uintptr_t)as->prot_domain->backend_state;
+    } else {
+        as->root_pt = active_hal_pt->create_address_space(vmm_get_kernel_root());
+        if (!as->root_pt) {
+            if (as->prot_domain) {
+                prot_domain_destroy(as->prot_domain);
+            }
+            kfree(as);
+            return -1;
         }
-        kfree(as);
-        return -1;
     }
 
     as->object_id = __atomic_fetch_add(&next_as_id, 1, __ATOMIC_SEQ_CST);
@@ -75,7 +79,9 @@ int aspace_destroy(address_space_t *aspace) {
     aspace->regions = NULL;
     aspace->region_count = 0;
 
-    if (active_hal_pt) {
+    if (aspace->prot_domain && aspace->prot_domain->backend_state == (void*)(uintptr_t)aspace->root_pt) {
+        // Handled by prot_domain_destroy
+    } else if (active_hal_pt) {
         active_hal_pt->destroy_address_space(aspace->root_pt);
     }
 
