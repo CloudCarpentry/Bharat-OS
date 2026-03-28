@@ -403,6 +403,7 @@ void hal_init(void) {
   idt_set_descriptor(12, isr12, 0x8E);
   idt_set_descriptor(13, isr13, 0x8E);
   idt_set_descriptor(14, isr14, 0x8E);
+  idt[14].ist = 1;  // Use IST1 for page faults (critical exception needs safe stack)
   idt_set_descriptor(15, isr15, 0x8E);
   idt_set_descriptor(16, isr16, 0x8E);
   idt_set_descriptor(17, isr17, 0x8E);

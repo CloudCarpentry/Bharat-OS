@@ -167,13 +167,27 @@ static phys_addr_t arm64_pt_create_address_space(phys_addr_t kernel_root_table) 
     pt_t* pgd = (pt_t*)physmap_phys_to_virt(root);
     arm64_pt_zero_table(pgd, sizeof(*pgd));
 
-    // In ARM64, we usually separate User and Kernel address spaces via TTBR0 and TTBR1.
-    // If a shared address space is used, we'd copy the kernel half.
-    // However, Bharat-OS currently uses the lower half for kernel code/data as well (e.g. 0x40000000).
-    // So we copy the entire PGD for now to ensure kernel continuity across address spaces.
+    // On arm64, kernel executes at low addresses (0x40000000), covered by entry 0.
+    // Entry 0 contains 1GB block mappings that cannot be subdivided.
+    // 
+    // Strategy:
+    // - Kernel space (first creation): Copy entry 0 + entries 256-511
+    // - User domains: Copy ONLY entries 256-511, leave entry 0 empty for user mappings
+    // 
+    // User domains don't execute kernel code at low addresses, so they don't need
+    // entry 0. This allows them to create their own fine-grained mappings in the
+    // 0-512GB range without conflicting with kernel's 1GB blocks.
     if (kernel_root_table != 0U) {
+        extern int vmm_is_kernel_space_ready(void);
         pt_t* kernel_pgd = (pt_t*)physmap_phys_to_virt(kernel_root_table);
-        for(int i = 0; i < 512; i++) {
+        
+        // Copy entry 0 ONLY for kernel space creation (before kernel_space_ready)
+        if (!vmm_is_kernel_space_ready()) {
+            pgd->entries[0] = kernel_pgd->entries[0];
+        }
+        
+        // Always copy kernel half (256-511) for high canonical kernel mappings
+        for(int i = 256; i < 512; i++) {
             pgd->entries[i] = kernel_pgd->entries[i];
         }
     } else {
@@ -216,7 +230,8 @@ static void arm64_pt_destroy_recursive(phys_addr_t table, int level) {
 
     if (level > 1) {
         pt_t* pt = (pt_t*)physmap_phys_to_virt(table);
-        int max_idx = (level == 4) ? 256 : 512; // Free only bottom half (User) of PGD
+        // Free only user space (entries 0-255 at PGD level, 0-511 at other levels)
+        int max_idx = (level == 4) ? 256 : 512;
         for (int i = 0; i < max_idx; i++) {
             if (pt->entries[i] & ARM64_PT_VALID) {
                 // If it's a block descriptor at level 1 or 2, don't recurse

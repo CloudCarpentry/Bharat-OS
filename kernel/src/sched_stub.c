@@ -78,7 +78,7 @@ static thread_slot_t* sched_find_thread_slot_by_tid(uint64_t tid) {
 static thread_slot_t* sched_find_free_thread_slot(void) {
     uint32_t current_core = 0;
     sched_rq_t *rq = &g_cores[current_core];
-    if (!rq->threads) { rq->threads = g_threads[current_core]; memset(rq->threads, 0, sizeof(thread_slot_t) * SCHED_MAX_THREADS); }
+    if (!rq->threads) { rq->threads = (struct thread_slot *)&g_threads[current_core][0]; memset(rq->threads, 0, sizeof(thread_slot_t) * SCHED_MAX_THREADS); }
     thread_slot_t *slots = (thread_slot_t *)rq->threads;
     for (size_t i = 0; i < SCHED_MAX_THREADS; ++i) {
         if (slots[i].in_use == 0U) {
@@ -91,7 +91,7 @@ static thread_slot_t* sched_find_free_thread_slot(void) {
 static process_slot_t* sched_find_free_process_slot(void) {
     uint32_t current_core = 0;
     sched_rq_t *rq = &g_cores[current_core];
-    if (!rq->processes) { rq->processes = g_processes[current_core]; memset(rq->processes, 0, sizeof(process_slot_t) * SCHED_MAX_PROCESSES); }
+    if (!rq->processes) { rq->processes = (struct process_slot *)&g_processes[current_core][0]; memset(rq->processes, 0, sizeof(process_slot_t) * SCHED_MAX_PROCESSES); }
     process_slot_t *slots = (process_slot_t *)rq->processes;
     for (size_t i = 0; i < SCHED_MAX_PROCESSES; ++i) {
         if (slots[i].in_use == 0U) {
