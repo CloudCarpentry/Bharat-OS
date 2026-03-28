@@ -39,23 +39,13 @@ static void ensure_kernel_space_ready(void) {
 
     kernel_space_init_in_progress = 1;
 
-    address_space_t *created = NULL;
-    if (aspace_create(&created, 0) == 0 && created) {
-        volatile uint8_t *dest = (volatile uint8_t *)&kernel_space;
-        volatile uint8_t *src  = (volatile uint8_t *)created;
-        for (size_t i = 0; i < sizeof(address_space_t); i++) {
-            dest[i] = src[i];
-        }
-        kfree(created);
-        kernel_root_pt = kernel_space.root_pt;
-        kernel_space_ready = 1;
-    } else if (active_mem_protect && active_mem_protect->cpu_ops.get_root) {
-        /*
-         * Robust fallback:
-         * If fresh aspace creation fails during early boot, continue using the
-         * bootstrap hardware root so the kernel can proceed through memory
-         * selftests and platform-service bring-up.
-         */
+    /*
+     * During early VMM initialization, the kernel address space must adopt
+     * the existing hardware page table root via the get_root MPA abstraction
+     * hook rather than creating and installing an empty page table root,
+     * which triggers immediate triple faults or CPU hangs.
+     */
+    if (active_mem_protect && active_mem_protect->cpu_ops.get_root) {
         phys_addr_t bootstrap_root = active_mem_protect->cpu_ops.get_root();
         init_kernel_space_from_bootstrap_root(bootstrap_root);
     }

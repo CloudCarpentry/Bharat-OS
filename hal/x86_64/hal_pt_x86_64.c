@@ -95,16 +95,12 @@ static phys_addr_t x86_pt_create_address_space(phys_addr_t kernel_root_table) {
     }
 
     phys_addr_t kernel_root = kernel_root_table;
-if (kernel_root != 0U) {
-        pt_t* kernel_pml4 = (pt_t*)(uintptr_t)kernel_root;
-        uint64_t pml4_0_entry = kernel_pml4->entries[0];
-        
-        // Copy PML4[0]: Identity-mapped low kernel region (1 MiB - 4 GiB)
-        // Required for kernel .text/.data/.bss including emergency stacks
-        if (pml4_0_entry & X86_PT_PRESENT) {
-            pml4->entries[0] = pml4_0_entry;
-        }
-        
+    if (kernel_root != 0U) {
+        pt_t* kernel_pml4 = (pt_t*)physmap_phys_to_virt(kernel_root);
+
+        // Link identity mapping (used during boot tests and initial kernel load)
+        pml4->entries[0] = kernel_pml4->entries[0];
+
         // Link kernel space: Map the top half
         // A minimal implementation may just copy entry 511, or 256-511
         for (int i = 256; i < 512; i++) {
@@ -119,10 +115,13 @@ static void x86_pt_destroy_recursive(phys_addr_t table, int level) {
     if (!table) return;
 
     if (level > 1) {
-        pt_t* pt = (pt_t*)(uintptr_t)table;
-        // User space is 0-255 in PML4
+        pt_t* pt = (pt_t*)physmap_phys_to_virt(table);
+        // User space is 0-255 in PML4, but skip 0 as it holds the identity map
         int max_idx = (level == 4) ? 256 : 512;
         for (int i = 0; i < max_idx; i++) {
+            if (level == 4 && i == 0) {
+                continue; // Skip identity mapping
+            }
             if (pt->entries[i] & X86_PT_PRESENT) {
                 if ((level == 3 || level == 2) && (pt->entries[i] & X86_PT_HUGE)) {
                     continue; // Huge page, don't recurse down

@@ -3,6 +3,11 @@
 #include "core/multikernel.h"
 #include "arch/arch_caps.h"
 #include "hal/hal.h"
+#include "hal/hal_pt.h"
+#include "hal/hal_tlb.h"
+#include "kernel.h"
+#include "mm.h"
+#include "sched/sched.h"
 
 #if defined(__riscv)
 #include "../../arch/riscv/boot/sbi.h"
@@ -66,6 +71,18 @@ void smp_init(void) {
     }
 
     // Further AP local state initialization
+    if (core_id != 0U) {
+        // Core > 0: initialize per-core MMU/TLB/VMM instances for the multi-kernel
+        hal_pt_init();
+        hal_tlb_init();
+        if (vmm_init() != 0) {
+            kernel_panic("AP VMM initialization failed");
+        }
+
+        // AP scheduler initialization
+        sched_init();
+    }
+
     // For phase 1, APs just need to enable interrupts and enter their scheduler tick
     hal_cpu_enable_interrupts();
 }

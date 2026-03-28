@@ -28,7 +28,8 @@ static volatile virt_addr_t fault_address = 0;
 extern int (*g_test_fault_hook)(trap_frame_t *frame, const trap_info_t *info);
 
 static int my_test_fault_hook(trap_frame_t *frame, const trap_info_t *info) {
-    if (info->trap_class == TRAP_CLASS_PAGE_FAULT || info->trap_class == TRAP_CLASS_ACCESS_FAULT) {
+    if ((info->trap_class == TRAP_CLASS_PAGE_FAULT || info->trap_class == TRAP_CLASS_ACCESS_FAULT) &&
+        info->fault_addr == 0x0000008000000000ULL) {
         page_fault_triggered = true;
         fault_address = info->fault_addr;
 
@@ -54,36 +55,54 @@ static int my_test_fault_hook(trap_frame_t *frame, const trap_info_t *info) {
 static int test_unmapped_user_fault(void) {
     KPRINT("Running Hardware Unmapped User Fault Test...\n");
 
-    virt_addr_t test_va = 0x400000;
+    // Allocate a fresh page to safely test mapping and unmapping without destroying
+    // the kernel's identity map or active stack memory.
+    phys_addr_t paddr = mm_alloc_page(NUMA_NODE_ANY);
+    if (paddr == 0) {
+        KPRINT("FAIL: Could not allocate test page\n");
+        return -1;
+    }
 
-    // Unmap the address explicitly.
-    // On x86_64, the runtime may still execute on a bootstrap CR3 rather than
-    // kernel_space.root_pt, so unmap the currently active root to make the
-    // hardware fault test deterministic.
     extern address_space_t kernel_space;
+    // Safely far away from identity map AND shared PML4 entries!
+    // boot.S uses PML4[0] and PML4[256].
+    // Using PML4[1] (0x0000008000000000) guarantees no overlap with kernel.
+    virt_addr_t test_va = 0x0000008000000000ULL;
+
+    // Map the page
+    if (mm_vmm_map_page(&kernel_space, test_va, paddr, HAL_PT_FLAG_READ | HAL_PT_FLAG_WRITE) != 0) {
+        KPRINT("FAIL: Could not map test page\n");
+        mm_free_page(paddr);
+        return -1;
+    }
+
+    // Now unmap the address explicitly to test the hardware page fault.
+    mm_vmm_unmap_page(&kernel_space, test_va);
+
 #if defined(__x86_64__)
     phys_addr_t active_root = 0;
     __asm__ volatile("mov %%cr3, %0" : "=r"(active_root));
     active_root &= ~(phys_addr_t)0xFFFU; // Strip PCID bits if present
-    mm_vmm_unmap_page(&kernel_space, test_va);
-    if (active_hal_pt && active_hal_pt->unmap_page) {
+    // Ensure it's unmapped from the active root if it differs from kernel_space
+    if (active_hal_pt && active_hal_pt->unmap_page && active_root != kernel_space.root_pt) {
         (void)active_hal_pt->unmap_page(active_root, test_va, NULL);
     }
-#else
-    mm_vmm_unmap_page(&kernel_space, test_va);
 #endif
 
     // Verify via HAL that the page is absent
-    phys_addr_t paddr;
+    phys_addr_t queried_paddr;
     int query_res = -1;
     if (active_hal_pt && active_hal_pt->query_page) {
-        query_res = active_hal_pt->query_page(kernel_space.root_pt, test_va, &paddr, NULL);
+        query_res = active_hal_pt->query_page(kernel_space.root_pt, test_va, &queried_paddr, NULL);
     }
     if (query_res == 0) {
         KPRINT("FAIL: Page was still mapped\n");
+        mm_free_page(paddr);
         return -1;
     }
     KPRINT("PASS: User page is verifiably unmapped in hardware page tables.\n");
+
+    int test_result = 0;
 
 #if defined(__x86_64__) || defined(__aarch64__) || defined(__riscv)
     // Register our hook
@@ -135,14 +154,17 @@ static int test_unmapped_user_fault(void) {
 
     if (page_fault_triggered && fault_address == test_va) {
         KPRINT("PASS: Hardware page fault correctly triggered and caught.\n");
-        return 0;
+        test_result = 0;
     } else {
         KPRINT("FAIL: Hardware did not trap the unmapped memory access!\n");
-        return -1;
+        test_result = -1;
     }
 #else
-    return 0;
+    test_result = 0;
 #endif
+
+    mm_free_page(paddr);
+    return test_result;
 }
 
 REGISTER_BOOT_SELFTEST("hw_unmapped_fault", "memory", test_unmapped_user_fault, BOOT_TEST_STAGE_RUNTIME, BOOT_TEST_MANDATORY, 0, false)
