@@ -56,15 +56,28 @@ static int test_unmapped_user_fault(void) {
 
     virt_addr_t test_va = 0x400000;
 
-    // Unmap the address explicitly
+    // Unmap the address explicitly.
+    // On x86_64, the runtime may still execute on a bootstrap CR3 rather than
+    // kernel_space.root_pt, so unmap the currently active root to make the
+    // hardware fault test deterministic.
     extern address_space_t kernel_space;
+#if defined(__x86_64__)
+    phys_addr_t active_root = 0;
+    __asm__ volatile("mov %%cr3, %0" : "=r"(active_root));
+    active_root &= ~(phys_addr_t)0xFFFU; // Strip PCID bits if present
     mm_vmm_unmap_page(&kernel_space, test_va);
+    if (active_hal_pt && active_hal_pt->unmap_page) {
+        (void)active_hal_pt->unmap_page(active_root, test_va, NULL);
+    }
+#else
+    mm_vmm_unmap_page(&kernel_space, test_va);
+#endif
 
     // Verify via HAL that the page is absent
     phys_addr_t paddr;
     int query_res = -1;
-    if (active_hal_pt && active_hal_pt->unmap_page) {
-        query_res = active_hal_pt->unmap_page(kernel_space.root_pt, test_va, &paddr);
+    if (active_hal_pt && active_hal_pt->query_page) {
+        query_res = active_hal_pt->query_page(kernel_space.root_pt, test_va, &paddr, NULL);
     }
     if (query_res == 0) {
         KPRINT("FAIL: Page was still mapped\n");
