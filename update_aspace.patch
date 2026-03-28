@@ -1,0 +1,27 @@
+--- kernel/src/mm/vm/aspace/aspace.c
++++ kernel/src/mm/vm/aspace/aspace.c
+@@ -21,15 +21,18 @@
+     as->prot_domain = prot_domain_create();
+
+     // Stub legacy while transitioning fully
+-    as->root_pt = active_hal_pt->create_address_space(vmm_get_kernel_root());
+-    if (!as->root_pt) {
+-        if (as->prot_domain) {
+-            prot_domain_destroy(as->prot_domain);
+-        }
+-        kfree(as);
+-        return -1;
++    if (as->prot_domain && as->prot_domain->backend_state) {
++        as->root_pt = (phys_addr_t)(uintptr_t)as->prot_domain->backend_state;
++    } else {
++        as->root_pt = active_hal_pt->create_address_space(vmm_get_kernel_root());
++        if (!as->root_pt) {
++            if (as->prot_domain) {
++                prot_domain_destroy(as->prot_domain);
++            }
++            kfree(as);
++            return -1;
++        }
+     }
+
+     as->object_id = __atomic_fetch_add(&next_as_id, 1, __ATOMIC_SEQ_CST);

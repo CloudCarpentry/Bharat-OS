@@ -1,0 +1,66 @@
+#include "../../../../include/mm/aspace.h"
+#include "../../../../include/hal/hal_pt.h"
+#include "../../../../include/hal/hal_tlb.h"
+#include "../../../../include/arch/arch_caps.h"
+#include "../../../../include/mm.h"
+#include "../../../../include/spinlock.h"
+#include "../../../../include/numa.h"
+#include "../../../../include/slab.h"
+#include "console/console_core.h"
+
+static uint64_t next_as_id = 1;
+
+int aspace_create(address_space_t **out_aspace, uint32_t flags) {
+    if (!out_aspace) return -1;
+    console_write_raw("aspace_create\n", 14);
+
+    address_space_t *as = (address_space_t *)kmalloc(sizeof(address_space_t));
+    if (!as) {
+        console_write_raw("aspace_create kmalloc failed\n", 29);
+        return -1;
+    }
+
+    if (!active_hal_pt) hal_pt_init();
+
+    extern phys_addr_t vmm_get_kernel_root(void);
+    as->prot_domain = prot_domain_create();
+
+    // Stub legacy while transitioning fully
+    if (as->prot_domain && as->prot_domain->backend_state) {
+        as->root_pt = (phys_addr_t)(uintptr_t)as->prot_domain->backend_state;
+        console_write_raw("aspace_create domain backend valid\n", 35);
+    } else {
+        as->root_pt = active_hal_pt->create_address_space(vmm_get_kernel_root());
+        if (!as->root_pt) {
+            console_write_raw("aspace_create root_pt failed\n", 29);
+            if (as->prot_domain) {
+                prot_domain_destroy(as->prot_domain);
+            }
+            kfree(as);
+            return -1;
+        }
+    }
+
+    as->object_id = __atomic_fetch_add(&next_as_id, 1, __ATOMIC_SEQ_CST);
+    spin_lock_init(&as->lock);
+    as->tlb_gen = 1;
+    as->active_mask = 0;
+    as->regions_tree_root = NULL;
+    as->regions = NULL;
+    as->region_count = 0;
+    as->flags = flags;
+    as->owner = NULL;
+    as->timing_class = 0; // default VM_TIMING_BEST_EFFORT
+
+    if (arch_has_cap(ARCH_CAP_USERSPACE_HIGHHALF) && arch_has_cap(ARCH_CAP_64BIT_VA)) {
+        as->user_base = 0x1000;
+        as->user_limit = 0x00007FFFFFFFFFFF;
+    } else {
+        // Compact 32-bit layout
+        as->user_base = 0x1000;
+        as->user_limit = 0x7FFFFFFF;
+    }
+
+    *out_aspace = as;
+    return 0;
+}
