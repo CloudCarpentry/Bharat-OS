@@ -677,6 +677,12 @@ static void x86_mpa_flush_tlb_local(virt_addr_t vaddr, uint16_t asid) {
     __asm__ volatile("invlpg (%0)" :: "r"(vaddr) : "memory");
 }
 
+static phys_addr_t x86_mpa_get_root(void) {
+    phys_addr_t cr3;
+    __asm__ volatile("mov %%cr3, %0" : "=r"(cr3));
+    return cr3 & ~(0xFFFULL);
+}
+
 mem_protect_ops_t x86_mem_protect_ops = {
     .supported_caps = MPA_CAP_VIRT | MPA_CAP_GLOBAL | MPA_CAP_HUGEPAGE | MPA_CAP_EXEC_PERM | MPA_CAP_USER,
     .cpu_ops = {
@@ -685,6 +691,7 @@ mem_protect_ops_t x86_mem_protect_ops = {
         .unmap_page = x86_mpa_unmap_page,
         .set_root = x86_mpa_set_root,
         .flush_tlb_local = x86_mpa_flush_tlb_local,
+        .get_root = x86_mpa_get_root,
     },
     .iommu_ops = {
         .probe = NULL, // Could be linked to VTD probe later
