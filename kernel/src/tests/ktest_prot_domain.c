@@ -72,11 +72,15 @@ static bool test_mmu_sparse_mapping(void) {
     prot_domain_t* domain = prot_domain_create();
     KTEST_ASSERT(domain != NULL, "Domain create failed");
 
-    int ret = prot_domain_map_region(domain, 0x10000000, 0x80000000, 4096, 0);
+    // Use an address outside PML4[0] and PML4[256] so we don't accidentally
+    // modify the shared identity map / kernel mappings in x86_64 boot state.
+    // 0x0000008000000000 is 512 GiB, which uses PML4[1].
+    uintptr_t test_vaddr = 0x0000008000000000ULL;
+    int ret = prot_domain_map_region(domain, test_vaddr, 0x80000000, 4096, 0);
     KTEST_ASSERT(ret == 0, "Sparse mapping failed");
 
     uintptr_t paddr = 0;
-    ret = prot_domain_query_region(domain, 0x10000000, &paddr, NULL);
+    ret = prot_domain_query_region(domain, test_vaddr, &paddr, NULL);
     KTEST_ASSERT(ret == 0, "Sparse query failed");
     if (paddr != 0x80000000) {
         hal_serial_write("PMM: Error: Expected 0x80000000, got 0x");
