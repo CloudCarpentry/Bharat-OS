@@ -1,6 +1,8 @@
 #include "multicore.h"
 #include "bharat_config.h"
 #include "core/multikernel.h"
+#include "arch/arch_caps.h"
+#include "hal/hal.h"
 
 #if defined(__riscv)
 #include "../../arch/riscv/boot/sbi.h"
@@ -10,9 +12,6 @@
 uint8_t g_per_core_stacks[MAX_SUPPORTED_CORES][KERNEL_STACK_SIZE] __attribute__((aligned(16)));
 
 static uint32_t g_system_core_count = 1U;
-
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "arch/arch_caps.h"
 
 int multicore_boot_secondary_cores(uint32_t core_count) {
     if (!arch_has_cap(ARCH_CAP_SMP)) {
@@ -43,8 +42,6 @@ int multicore_boot_secondary_cores(uint32_t core_count) {
 
     return 0;
 }
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "hal/hal.h"
 
 void smp_init(void) {
     if (!arch_has_cap(ARCH_CAP_SMP)) {

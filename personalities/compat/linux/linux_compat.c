@@ -89,10 +89,10 @@ long linux_syscall_handler(long sysno, long arg1, long arg2, long arg3, long arg
 case 0: /* read */
             if (arg1 >= 0 && arg1 < LINUX_MAX_FDS && fd_table[arg1].type != LINUX_FD_TYPE_NONE) {
                 if (fd_table[arg1].type == LINUX_FD_TYPE_CONSOLE) {
-                    // map to console read
-                    return 0; // return 0 bytes read for now
+                    // map to console read - unimplemented
+                    return -38; // ENOSYS
                 }
-                return 0; // stub
+                return -38; // stub
             }
             return -9; // EBADF
         case 1: /* write */
@@ -101,7 +101,7 @@ case 0: /* read */
                     // For a console, mapping to underlying printing capability
                     return arg3; // return length written as stub success
                 }
-                return arg3; // stub success
+                return -38; // ENOSYS
             }
             return -9; // EBADF
         case 2: /* open */
@@ -126,22 +126,22 @@ case 0: /* read */
             return -9; // EBADF
         case 9: /* mmap */
             // Map to Linux virtual memory regions instead of raw vmm_map_page
-            // For now, return a dummy successful region allocation
-            return 0x7F0000000000;
+            // For now, return a realistic failure since no logic exists
+            return -38; // ENOSYS
         case 10: /* mprotect */
-            return 0; // stub success
+            return -38; // ENOSYS
         case 11: /* munmap */
-            return 0; // stub success
+            return -38; // ENOSYS
         case 12: /* brk */
-            // Return dummy successful heap base
-            return 0x40000000;
+            // Return dummy failure
+            return -38; // ENOSYS
         case 13: /* rt_sigaction */
-            return 0; // stub success
+            return -38; // ENOSYS
         case 14: /* rt_sigprocmask */
-            return 0; // stub success
+            return -38; // ENOSYS
         case 16: /* ioctl */
             if (arg1 >= 0 && arg1 < LINUX_MAX_FDS && fd_table[arg1].type == LINUX_FD_TYPE_CONSOLE) {
-                return 0; // stub success for TTY ioctls
+                return -38; // stub error for TTY ioctls
             }
             return -25; // ENOTTY
         case 39: /* getpid */
@@ -157,15 +157,15 @@ case 0: /* read */
             g_linux_instance->is_running = 0;
             return 0;
         case 63: /* uname */
-            return 0; // stub success
+            return -38; // ENOSYS
         case 186: /* gettid */
             return 1;
         case 202: /* futex */
-            return 0; // stub success
+            return -38; // ENOSYS
         case 228: /* clock_gettime */
-            return 0; // stub success
+            return -38; // ENOSYS
         case 230: /* nanosleep */
-            return 0; // stub success
+            return -38; // ENOSYS
         default:
             return -38; // ENOSYS
 

@@ -38,6 +38,7 @@ void hal_serial_write_hex(uint64_t val) {
 }
 
 int hal_serial_read_char(void) {
-    // Left unimplemented for basic early console output
+    // Explicitly unsupported: Serial read path should be implemented in proper
+    // low-level console driver, not as a compat shim here.
     return -1;
 }
