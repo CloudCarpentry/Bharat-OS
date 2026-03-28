@@ -176,6 +176,36 @@ static phys_addr_t arm64_pt_create_address_space(phys_addr_t kernel_root_table) 
         for(int i = 0; i < 512; i++) {
             pgd->entries[i] = kernel_pgd->entries[i];
         }
+    } else {
+        // Bootstrap the initial kernel root with a 1GB block identity map
+        // to cover QEMU's default physical layout.
+        // PGD -> PUD
+        phys_addr_t pud_pa = mm_alloc_page(NUMA_NODE_ANY);
+        if (pud_pa) {
+            pt_t* pud = (pt_t*)physmap_phys_to_virt(pud_pa);
+            arm64_pt_zero_table(pud, sizeof(*pud));
+
+            // Map 0x00000000 - 0x3FFFFFFF as Device memory (1GB Block)
+            uint64_t dev_flags = ARM64_PT_VALID | ARM64_PT_BLOCK | ARM64_PT_AF;
+            dev_flags |= ARM64_PT_AP_RW_EL1 | ARM64_PT_PXN | ARM64_PT_UXN;
+            dev_flags |= ARM64_PT_ATTR_IDX(MAIR_IDX_DEVICE) | ARM64_PT_OUTER_SHARE;
+            pud->entries[0] = 0x00000000ULL | dev_flags;
+
+            // Map 0x40000000 - 0x7FFFFFFF as Normal memory (1GB Block)
+            uint64_t ram_flags = ARM64_PT_VALID | ARM64_PT_BLOCK | ARM64_PT_AF;
+            ram_flags |= ARM64_PT_AP_RW_EL1; // Executable kernel
+            ram_flags |= ARM64_PT_ATTR_IDX(MAIR_IDX_NORMAL) | ARM64_PT_INNER_SHARE;
+            pud->entries[1] = 0x40000000ULL | ram_flags;
+
+            // Map 0x80000000 - 0xBFFFFFFF as Normal memory (1GB Block)
+            pud->entries[2] = 0x80000000ULL | ram_flags;
+
+            // Map 0xC0000000 - 0xFFFFFFFF as Normal memory (1GB Block)
+            pud->entries[3] = 0xC0000000ULL | ram_flags;
+
+            // Link PUD into PGD at index 0 (covers 0x0 to 0x7FFFFFFFFF)
+            pgd->entries[0] = pud_pa | ARM64_PT_VALID | ARM64_PT_TABLE;
+        }
     }
 
     return root;
