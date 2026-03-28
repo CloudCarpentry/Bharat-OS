@@ -46,7 +46,49 @@ stateDiagram-v2
 - **Allocated State**: Active use. Reference counts handle multiple references.
 - **Pinned State**: Locked physically (e.g., for DMA), eviction is prevented.
 
-## 3. Layered Architecture and Ownership Boundaries
+## 3. Early Boot & Per-Core Memory Setup
+
+During the early kernel boot sequence (`vmm_init`), a safe handoff policy is enforced to transition from bootloader/firmware-provided page tables to the OS-managed page tables.
+
+Bharat-OS supports a multikernel-inspired per-core memory setup, meaning each CPU core can operate with its own isolated kernel root page table (CR3/TTBR/SATP) while sharing physical memory domains.
+
+### 3.1 Boot-Safe Root Handoff Policy
+To avoid breaking the identity mapping or high-half mappings required for execution, `vmm_init` avoids creating an empty page table root from scratch. Instead, it explicitly adopts the bootstrap root.
+
+1. **Capture Bootstrap Root:** Before any context switches, the hardware root (`get_root()`) is saved as `bootstrap_root_pt`.
+2. **Adopt or Clone:** The kernel space adopts this authoritative root, ensuring safe continuation of the boot sequence across all architectures (x86_64, arm64, riscv64).
+3. **Bare-Mode Resilience:** On RISC-V, where the system might start in "bare mode" (SATP=0), setting a new, empty SATP is deferred until valid mappings are fully populated.
+
+### Boot Handoff Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    participant Bootloader as Bootloader/SBI/UEFI
+    participant Kernel as Early Boot Assembly
+    participant VMM as vmm_init()
+    participant HAL_PT as HAL Page Table Layer
+    participant CPU as Hardware MMU (CR3/TTBR/SATP)
+
+    Bootloader->>Kernel: Jump to Entry Point
+    Kernel->>CPU: Enable basic paging (or bare mode)
+    Kernel->>VMM: Call vmm_init()
+
+    VMM->>CPU: get_root() -> bootstrap_root_pt
+    alt is Bare Mode (root == 0)
+        VMM->>HAL_PT: Create new empty root
+        HAL_PT-->>VMM: new_root
+        VMM->>CPU: (Deferred) set_root() skipped to avoid hang
+    else is Paged Mode (root != 0)
+        VMM->>HAL_PT: Adopt bootstrap_root_pt
+        VMM->>CPU: set_root(bootstrap_root_pt)
+    end
+
+    VMM-->>Kernel: VMM Initialized
+    Kernel->>VMM: Map Runtime Kernel Objects
+    VMM->>HAL_PT: Map Pages (Unified MPA)
+```
+
+## 4. Layered Architecture and Ownership Boundaries
 
 The memory stack is divided into explicit layers, each with strict responsibilities:
 
@@ -78,7 +120,7 @@ flowchart TD
     F --> M[Zones / Refcount / Pin / Contig]
 ```
 
-## 4. Fault Resolution Sequence
+## 5. Fault Resolution Sequence
 
 The unified fault engine provides a deterministic state machine for handling memory faults.
 
@@ -106,7 +148,7 @@ sequenceDiagram
     Fault-->>Trap: VM_FAULT_RESOLVED / VM_FAULT_KILL
 ```
 
-## 5. Profile Behavior Model
+## 6. Profile Behavior Model
 
 Bharat-OS operates across different device classes:
 
@@ -133,11 +175,11 @@ flowchart LR
     style E fill:#f5b7b1,stroke:#333
 ```
 
-## 6. Hardware Abstraction and Interfaces
+## 7. Hardware Abstraction and Interfaces
 
 The OS communicates with the physical architecture using a capability-aware HAL. It handles page tables (`hal_pt_map`, `hal_pt_unmap`), TLB invalidations, IOMMU translations, and MMIO mappings.
 
-### 6.1 Memory Profile Behavior Matrix
+### 7.1 Memory Profile Behavior Matrix
 
 This matrix is the executable contract for memory behavior across Bharat-OS memory profiles.
 
@@ -165,7 +207,7 @@ This matrix is the executable contract for memory behavior across Bharat-OS memo
 *   Generic HAL PT wrappers use range ops when available and page-by-page fallbacks otherwise.
 *   Capability getters (`hal_pt_caps()`, `hal_tlb_caps()`) are the source of truth for runtime behavior decisions.
 
-### 6.2 Profile Selection Diagram
+### 7.2 Profile Selection Diagram
 
 ```mermaid
 flowchart TD
@@ -180,7 +222,7 @@ flowchart TD
     MPUOnly --> C[Enable: Region Programming, Explicit Software Sync]
 ```
 
-### 6.3 TLB SMP Shootdown Coordination
+### 7.3 TLB SMP Shootdown Coordination
 
 ```mermaid
 flowchart LR
@@ -192,7 +234,7 @@ flowchart LR
     F --> G[Sender Marks Request Complete]
 ```
 
-### 6.4 Monitor VM Channel Coordination
+### 7.4 Monitor VM Channel Coordination
 
 The distributed VM implementation relies on the Monitor VM Channel for inter-core memory coordination. The monitor (`kernel/src/monitor/mon_vm_service.c` and `mon_vm_dispatch.c`) is strictly a mechanism layer, providing bounded-completion URPC/IPC capabilities to the advanced VM and TLB controllers.
 
@@ -201,7 +243,7 @@ The distributed VM implementation relies on the Monitor VM Channel for inter-cor
 2. **Contract Discipline:** Dispatching map/unmap/protect requests validates message envelopes, alignments, and flags before taking action. Malformed requests are explicitly nacked (`MON_VM_STATUS_MALFORMED`).
 3. **Observability:** Telemetry metrics (`stat_requests_sent`, `stat_acks_received`, `stat_timeouts`, etc.) track cross-core coordination health, surfacing channel issues quickly.
 
-## 7. Memory Operations Layering
+## 8. Memory Operations Layering
 
 Memory copying, zeroing, and moving follows strict layering:
 
@@ -218,7 +260,7 @@ flowchart TD
     F --> G
 ```
 
-### 7.1 Syscall Map Region Example
+### 8.1 Syscall Map Region Example
 
 For contrast, mapping a region follows a different path involving the HAL PT and TLB layers:
 
@@ -243,7 +285,7 @@ sequenceDiagram
     VMM-->>UserApp: Complete Map
 ```
 
-## 8. Debugging & Benchmarking Strategy
+## 9. Debugging & Benchmarking Strategy
 
 Memory correctness is verified using:
 1. **Valgrind/Memcheck** on host tests.
