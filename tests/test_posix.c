@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include "../lib/posix/include/unistd.h"
 
-#include "../personalities/linux/linux_compat.h"
+#include "../personalities/compat/linux/linux_compat.h"
 
 int main() {
     printf("Running POSIX header integration tests...\n");
@@ -36,7 +36,15 @@ int main() {
     // read(fd, buf, size)
     char buf[128];
     ret = linux_syscall_handler(0, fd, (long)buf, sizeof(buf), 0, 0, 0);
-    assert(ret == 0); // Stub returns 0
+    assert(ret == -38); // Stub returns ENOSYS (-38) since actual read isn't implemented
+
+    // mmap should fail with ENOSYS
+    ret = linux_syscall_handler(9, 0, 4096, 3, 34, -1, 0);
+    assert(ret == -38);
+
+    // futex should fail with ENOSYS
+    ret = linux_syscall_handler(202, 0, 0, 0, 0, 0, 0);
+    assert(ret == -38);
 
     // close(fd)
     ret = linux_syscall_handler(3, fd, 0, 0, 0, 0, 0);
