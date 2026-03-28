@@ -13,6 +13,7 @@
 address_space_t kernel_space;
 static int kernel_space_ready = 0;
 static phys_addr_t kernel_root_pt = 0;
+static phys_addr_t bootstrap_root_pt = 0;  // Store original bootstrap CR3
 static volatile int kernel_space_init_in_progress = 0;
 
 static void clear_address_space(address_space_t *as) {
@@ -65,6 +66,12 @@ static void ensure_kernel_space_ready(void) {
 #include "mm/prot_domain.h"
 
 int vmm_init(void) {
+    // CRITICAL: Capture bootstrap CR3 before any CR3 switches
+    // This is the hardware root with complete identity + high-half mappings
+    if (!bootstrap_root_pt && active_mem_protect && active_mem_protect->cpu_ops.get_root) {
+        bootstrap_root_pt = active_mem_protect->cpu_ops.get_root();
+    }
+    
     prot_domain_init();
     ensure_kernel_space_ready();
 
@@ -76,6 +83,10 @@ int vmm_init(void) {
      *
      * This avoids unsafe early CR3/SATP switches that can drop bootstrap
      * mappings, while still allowing idempotent/required activation paths.
+     * 
+     * SPECIAL CASE for RISC-V64: When starting in bare mode (SATP=0), the new
+     * page table has no kernel mappings. Skip set_root() and continue using
+     * bare mode until proper page tables are set up later.
      */
     if (kernel_space_ready && kernel_space.root_pt != 0U &&
         active_mem_protect && active_mem_protect->cpu_ops.set_root) {
@@ -84,7 +95,12 @@ int vmm_init(void) {
             current_root = active_mem_protect->cpu_ops.get_root();
         }
 
-        if (current_root == 0U || current_root == kernel_space.root_pt) {
+        // If current_root is 0 AND bootstrap_root_pt is also 0, we're in bare mode
+        // with no bootstrap page tables - skip set_root() to avoid switching to
+        // an empty page table that has no kernel mappings
+        if (current_root == 0U && bootstrap_root_pt == 0U) {
+            // Skip set_root in bare mode without bootstrap
+        } else if (current_root == 0U || current_root == kernel_space.root_pt) {
             active_mem_protect->cpu_ops.set_root(kernel_space.root_pt);
         }
     }
@@ -93,11 +109,29 @@ int vmm_init(void) {
 }
 
 phys_addr_t vmm_get_kernel_root(void) {
-    if (kernel_root_pt != 0) return kernel_root_pt;
-    if (active_mem_protect && active_mem_protect->cpu_ops.get_root) {
-        return active_mem_protect->cpu_ops.get_root();
+    // Multi-kernel architecture: Always use bootstrap root as authoritative kernel root
+    // Bootstrap page tables have complete low identity + high canonical mappings
+    // required for per-core kernel instances with separate page tables
+    if (bootstrap_root_pt != 0) {
+        return bootstrap_root_pt;
     }
+    
+    // Fallback: try to read current root (early boot path)
+    if (active_mem_protect && active_mem_protect->cpu_ops.get_root) {
+        phys_addr_t current_root = active_mem_protect->cpu_ops.get_root();
+        if (current_root != 0) {
+            // Cache it for future calls
+            bootstrap_root_pt = current_root;
+            return current_root;
+        }
+    }
+    
+    if (kernel_root_pt != 0) return kernel_root_pt;
     return 0;
+}
+
+int vmm_is_kernel_space_ready(void) {
+    return kernel_space_ready;
 }
 
 int mm_vmm_map_page(address_space_t* as, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {

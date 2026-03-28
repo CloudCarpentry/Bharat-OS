@@ -140,6 +140,7 @@ void boot_common_early(const boot_info_t *boot) {
 
     boot_selftest_report_t report;
     boot_selftest_run_stage(BOOT_TEST_STAGE_EARLY, &report);
+    KPRINT("  [BOOT] Early initialization complete\n");
 }
 
 void boot_common_security(const boot_info_t *boot) {
@@ -162,6 +163,7 @@ void boot_common_security(const boot_info_t *boot) {
 
     boot_selftest_report_t report;
     boot_selftest_run_stage(BOOT_TEST_STAGE_SECURITY, &report);
+    KPRINT("  [BOOT] Security initialization complete\n");
 }
 
 void boot_common_memory(const boot_info_t *boot) {
@@ -197,6 +199,7 @@ void boot_common_memory(const boot_info_t *boot) {
 
     boot_selftest_report_t report;
     boot_selftest_run_stage(BOOT_TEST_STAGE_MEMORY, &report);
+    KPRINT("  [BOOT] Memory subsystem initialization complete\n");
 }
 
 static mk_channel_t g_scheduler_ai_channel;
@@ -285,6 +288,7 @@ void boot_common_platform_services(const boot_info_t *boot) {
 
     boot_selftest_report_t report;
     boot_selftest_run_stage(BOOT_TEST_STAGE_PLATFORM, &report);
+    KPRINT("  [BOOT] Platform services initialization complete\n");
 }
 
 extern void kernel_run_boot_tests(void);
@@ -335,6 +339,7 @@ static void runtime_enter_normal(const boot_info_t *boot) {
 
     boot_selftest_report_t report;
     boot_selftest_run_stage(BOOT_TEST_STAGE_RUNTIME, &report);
+    KPRINT("  [BOOT] Runtime initialization complete\n");
 
     KPRINT("  [BOOT] Spawning first system service (sysmgr)...\n");
     kernel_start_init_service();
@@ -351,6 +356,7 @@ static void runtime_enter_diagnostic(const boot_info_t *boot) {
 
     boot_selftest_report_t report;
     boot_selftest_run_stage(BOOT_TEST_STAGE_RUNTIME, &report);
+    KPRINT("  [BOOT] Runtime initialization complete\n");
 
     kernel_tester_app();
 
@@ -367,6 +373,7 @@ static void runtime_enter_recovery(const boot_info_t *boot) {
 
     boot_selftest_report_t report;
     boot_selftest_run_stage(BOOT_TEST_STAGE_RUNTIME, &report);
+    KPRINT("  [BOOT] Recovery mode initialization complete\n");
 
     while (1) {
         hal_cpu_halt();
@@ -379,6 +386,7 @@ static void runtime_enter_manufacturing(const boot_info_t *boot) {
 
     boot_selftest_report_t report;
     boot_selftest_run_stage(BOOT_TEST_STAGE_RUNTIME, &report);
+    KPRINT("  [BOOT] Manufacturing mode initialization complete\n");
 
     while (1) {
         hal_cpu_halt();
@@ -392,6 +400,7 @@ static void runtime_enter_benchmark(const boot_info_t *boot) {
 
     boot_selftest_report_t report;
     boot_selftest_run_stage(BOOT_TEST_STAGE_RUNTIME, &report);
+    KPRINT("  [BOOT] Benchmark mode initialization complete\n");
 
     while (1) {
         hal_cpu_halt();
@@ -404,6 +413,7 @@ static void runtime_enter_legacy_bringup(const boot_info_t *boot) {
 
     boot_selftest_report_t report;
     boot_selftest_run_stage(BOOT_TEST_STAGE_RUNTIME, &report);
+    KPRINT("  [BOOT] Runtime initialization complete\n");
 
     kernel_run_boot_tests();
 
@@ -425,6 +435,7 @@ void boot_common_runtime(const boot_info_t *boot) {
     KPRINT("  [BOOT] Runtime mode: ");
     KPRINT(bharat_boot_mode_name(mode));
     KPRINT("\n");
+    KPRINT("  [BOOT] Kernel loading successful - boot complete\n");
 
     switch (mode) {
         case BHARAT_BOOT_MODE_NORMAL:
