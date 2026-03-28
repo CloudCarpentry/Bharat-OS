@@ -37,6 +37,8 @@ Each architecture provides exactly five functions behind a static vtable. The wa
 - `set_root(pa)`: Writes the architecture's root register (`CR3` on x86, `satp` on riscv64, `TTBR0` on arm64).
 - `flush_tlb_local(va, asid)`: Performs local invalidation.
 
+Boot-time note: some architectures may enter C with MMU/paging disabled, so `get_root()` can return `0` during early VMM initialization. In that state, the VMM must bootstrap a kernel page-table root via HAL allocation and defer unsafe root-register switches until mappings are valid for that architecture.
+
 ### Layer 2: The VMM Mapping Registry
 The VMM acts as a mapping registry tracking what is mapped where. Every `vmm_map()` call invokes `hal_pt.map_page()` immediately. This makes the registry the software mirror of the hardware page table, keeping them in sync by construction. Each registry entry also records which capability token owns the backing frame, allowing `vmm_unmap()` to revoke the capability atomically with the hardware unmap.
 

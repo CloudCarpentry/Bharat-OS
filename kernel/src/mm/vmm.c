@@ -24,6 +24,15 @@ static void clear_address_space(address_space_t *as) {
 }
 
 static void init_kernel_space_from_bootstrap_root(phys_addr_t root_pt) {
+    if (root_pt == 0U) {
+        /*
+         * Some architectures enter C with MMU/paging disabled (TTBR/SATP/CR3 root is 0).
+         * In that case, bootstrap a fresh kernel root and keep root switch deferred
+         * until architecture-specific mappings are guaranteed safe.
+         */
+        root_pt = hal_pt_create_address_space(0U);
+    }
+
     clear_address_space(&kernel_space);
     kernel_space.root_pt = root_pt;
     kernel_space.user_base = 0x1000U;
@@ -40,14 +49,16 @@ static void ensure_kernel_space_ready(void) {
     kernel_space_init_in_progress = 1;
 
     /*
-     * During early VMM initialization, the kernel address space must adopt
-     * the existing hardware page table root via the get_root MPA abstraction
-     * hook rather than creating and installing an empty page table root,
-     * which triggers immediate triple faults or CPU hangs.
+     * During early VMM initialization we prefer adopting the active hardware
+     * root via get_root(). If the architecture boots in MMU-off/bare mode and
+     * get_root() returns 0, we bootstrap a fresh root in
+     * init_kernel_space_from_bootstrap_root().
      */
     if (active_mem_protect && active_mem_protect->cpu_ops.get_root) {
         phys_addr_t bootstrap_root = active_mem_protect->cpu_ops.get_root();
         init_kernel_space_from_bootstrap_root(bootstrap_root);
+    } else {
+        init_kernel_space_from_bootstrap_root(0U);
     }
 
     kernel_space_init_in_progress = 0;
@@ -85,14 +96,20 @@ int vmm_init(void) {
             current_root = active_mem_protect->cpu_ops.get_root();
         }
 
-        // If current_root is 0 AND bootstrap_root_pt is also 0, we're in bare mode
-        // with no bootstrap page tables - skip set_root() to avoid switching to
-        // an empty page table that has no kernel mappings
+        // RISC-V bare mode can start with SATP=0 and an empty newly created root.
+        // Keep the previous behavior there; other architectures (e.g. arm64)
+        // should activate the prepared root so MMU and control registers are set.
+#if defined(__riscv)
         if (current_root == 0U && bootstrap_root_pt == 0U) {
-            // Skip set_root in bare mode without bootstrap
+            // Skip set_root in bare mode without bootstrap on RISC-V
         } else if (current_root == 0U || current_root == kernel_space.root_pt) {
             active_mem_protect->cpu_ops.set_root(kernel_space.root_pt);
         }
+#else
+        if (current_root == 0U || current_root == kernel_space.root_pt) {
+            active_mem_protect->cpu_ops.set_root(kernel_space.root_pt);
+        }
+#endif
     }
 
     return kernel_space_ready ? 0 : -1;

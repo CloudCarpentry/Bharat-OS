@@ -5,8 +5,9 @@
 
 // In a real framework, these would be attached to the actual `device_t` struct
 // For this standalone feature, we will use a linked list mapping dev pointers to their caps.
-typedef struct dev_dma_node {
+typedef struct __attribute__((aligned(16))) dev_dma_node {
     device_t *dev;
+    uint64_t align_pad;
     dma_caps_t dma_caps;
     iommu_dev_info_t iommu_info;
     dev_dma_mode_t effective_mode;
@@ -37,6 +38,7 @@ static dev_dma_node_t *find_or_create_node(device_t *dev) {
     dev_dma_node_t *node = alloc_node();
     if (node) {
         node->dev = dev;
+        node->align_pad = 0U;
         // defaults
         node->dma_caps.dma_mask = 0xFFFFFFFF; // 32-bit default
         node->dma_caps.max_segment_size = 65536;

@@ -111,6 +111,8 @@ typedef struct vm_address_space address_space_t;
 int vmm_init(void);
 int vmm_map_page(virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags);
 int vmm_unmap_page(virt_addr_t vaddr);
+phys_addr_t vmm_get_kernel_root(void);
+int vmm_is_kernel_space_ready(void);
 
 int mm_vmm_map_page(address_space_t *as, virt_addr_t vaddr, phys_addr_t paddr,
                     uint32_t flags);
