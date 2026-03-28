@@ -84,15 +84,27 @@ static phys_addr_t x86_pt_create_address_space(phys_addr_t kernel_root_table) {
     if (root == 0U) {
         return 0;
     }
-
-    pt_t* pml4 = (pt_t*)physmap_phys_to_virt(root);
+    
+    // CRITICAL: Use identity mapping (just cast to pointer) to access page tables
+    // instead of physmap_phys_to_virt(), which uses high canonical addresses.
+    // High canonical mappings may be incomplete in newly created page tables.
+    pt_t* pml4 = (pt_t*)(uintptr_t)root;
+    
     for (int i = 0; i < 512; i++) {
         pml4->entries[i] = 0;
     }
 
     phys_addr_t kernel_root = kernel_root_table;
-    if (kernel_root != 0U) {
-        pt_t* kernel_pml4 = (pt_t*)physmap_phys_to_virt(kernel_root);
+if (kernel_root != 0U) {
+        pt_t* kernel_pml4 = (pt_t*)(uintptr_t)kernel_root;
+        uint64_t pml4_0_entry = kernel_pml4->entries[0];
+        
+        // Copy PML4[0]: Identity-mapped low kernel region (1 MiB - 4 GiB)
+        // Required for kernel .text/.data/.bss including emergency stacks
+        if (pml4_0_entry & X86_PT_PRESENT) {
+            pml4->entries[0] = pml4_0_entry;
+        }
+        
         // Link kernel space: Map the top half
         // A minimal implementation may just copy entry 511, or 256-511
         for (int i = 256; i < 512; i++) {
@@ -107,7 +119,7 @@ static void x86_pt_destroy_recursive(phys_addr_t table, int level) {
     if (!table) return;
 
     if (level > 1) {
-        pt_t* pt = (pt_t*)physmap_phys_to_virt(table);
+        pt_t* pt = (pt_t*)(uintptr_t)table;
         // User space is 0-255 in PML4
         int max_idx = (level == 4) ? 256 : 512;
         for (int i = 0; i < max_idx; i++) {
@@ -138,7 +150,7 @@ static int x86_pt_walk(phys_addr_t root_pt, virt_addr_t vaddr, bool create, uint
     uint64_t pd_idx = (aligned_vaddr >> 21) & 0x1FF;
     uint64_t pt_idx = (aligned_vaddr >> 12) & 0x1FF;
 
-    pt_t* pml4 = (pt_t*)physmap_phys_to_virt(root_pt);
+    pt_t* pml4 = (pt_t*)(uintptr_t)root_pt;
     uint64_t dir_flags = X86_PT_PRESENT | X86_PT_RW;
     if (alloc_flags & HAL_PT_FLAG_USER) {
         dir_flags |= X86_PT_USER;
@@ -152,13 +164,13 @@ static int x86_pt_walk(phys_addr_t root_pt, virt_addr_t vaddr, bool create, uint
         }
         phys_addr_t new_pdp = pt_cache_alloc();
         if (!new_pdp) return -2;
-        pt_t* pdp_ptr = (pt_t*)physmap_phys_to_virt(new_pdp);
+        pt_t* pdp_ptr = (pt_t*)(uintptr_t)new_pdp;
         for(int i=0; i<512; i++) pdp_ptr->entries[i] = 0;
         pml4->entries[pml4_idx] = new_pdp | dir_flags;
     }
 
     phys_addr_t pdp_pa = pml4->entries[pml4_idx] & X86_PAGE_MASK;
-    pt_t* pdp = (pt_t*)physmap_phys_to_virt(pdp_pa);
+    pt_t* pdp = (pt_t*)(uintptr_t)pdp_pa;
 
     if ((pdp->entries[pdp_idx] & X86_PT_PRESENT) == 0) {
         if (!create) {
@@ -168,7 +180,7 @@ static int x86_pt_walk(phys_addr_t root_pt, virt_addr_t vaddr, bool create, uint
         }
         phys_addr_t new_pd = pt_cache_alloc();
         if (!new_pd) return -2;
-        pt_t* pd_ptr = (pt_t*)physmap_phys_to_virt(new_pd);
+        pt_t* pd_ptr = (pt_t*)(uintptr_t)new_pd;
         for(int i=0; i<512; i++) pd_ptr->entries[i] = 0;
         pdp->entries[pdp_idx] = new_pd | dir_flags;
     } else if (pdp->entries[pdp_idx] & X86_PT_HUGE) {
@@ -185,7 +197,7 @@ static int x86_pt_walk(phys_addr_t root_pt, virt_addr_t vaddr, bool create, uint
     }
 
     phys_addr_t pd_pa = pdp->entries[pdp_idx] & X86_PAGE_MASK;
-    pt_t* pd = (pt_t*)physmap_phys_to_virt(pd_pa);
+    pt_t* pd = (pt_t*)(uintptr_t)pd_pa;
 
     if ((pd->entries[pd_idx] & X86_PT_PRESENT) == 0) {
         if (!create) {
@@ -195,7 +207,7 @@ static int x86_pt_walk(phys_addr_t root_pt, virt_addr_t vaddr, bool create, uint
         }
         phys_addr_t new_pt = pt_cache_alloc();
         if (!new_pt) return -2;
-        pt_t* pt_ptr = (pt_t*)physmap_phys_to_virt(new_pt);
+        pt_t* pt_ptr = (pt_t*)(uintptr_t)new_pt;
         for(int i=0; i<512; i++) pt_ptr->entries[i] = 0;
         pd->entries[pd_idx] = new_pt | dir_flags;
     } else if (pd->entries[pd_idx] & X86_PT_HUGE) {
@@ -205,7 +217,7 @@ static int x86_pt_walk(phys_addr_t root_pt, virt_addr_t vaddr, bool create, uint
             phys_addr_t huge_base = pte_to_pa(pd->entries[pd_idx], 21);
             phys_addr_t new_pt = pt_cache_alloc();
             if (!new_pt) return -2;
-            pt_t* split_pt = (pt_t*)physmap_phys_to_virt(new_pt);
+            pt_t* split_pt = (pt_t*)(uintptr_t)new_pt;
             uint64_t split_flags = (pd->entries[pd_idx] & ~X86_PAGE_MASK) & ~X86_PT_HUGE;
             for (size_t i = 0; i < 512; i++) {
                 split_pt->entries[i] = (huge_base + (i * PAGE_SIZE)) | split_flags;
@@ -225,7 +237,7 @@ static int x86_pt_walk(phys_addr_t root_pt, virt_addr_t vaddr, bool create, uint
     }
 
     phys_addr_t pt_pa = pd->entries[pd_idx] & X86_PAGE_MASK;
-    pt_t* pt = (pt_t*)physmap_phys_to_virt(pt_pa);
+    pt_t* pt = (pt_t*)(uintptr_t)pt_pa;
 
     out_result->present = (pt->entries[pt_idx] & X86_PT_PRESENT) != 0;
     out_result->level = 1;
@@ -648,7 +660,7 @@ static phys_addr_t x86_mpa_make_table(uint32_t level) {
     (void)level;
     phys_addr_t pt = pt_cache_alloc();
     if (pt) {
-        pt_t* ptr = (pt_t*)physmap_phys_to_virt(pt);
+        pt_t* ptr = (pt_t*)(uintptr_t)pt;
         for(int i = 0; i < 512; i++) ptr->entries[i] = 0;
     }
     return pt;
