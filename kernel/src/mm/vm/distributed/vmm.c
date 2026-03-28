@@ -111,6 +111,8 @@ static void ensure_kernel_space_ready(void) {
 }
 
 int vmm_init(void) {
+    extern void prot_domain_init(void);
+    prot_domain_init();
     ensure_kernel_space_ready();
     return kernel_space_ready ? 0 : -1;
 }
