@@ -29,6 +29,8 @@ const size_t g_kernel_physmap_size = 0x8000000000ULL; // 512GB
 #define X86_PAGE_MASK   ((((1ULL << X86_MAX_PHYS_ADDR_BITS) - 1ULL)) & ~0xFFFULL)
 #define X86_LARGE_2M_SIZE (1ULL << 21)
 
+static void x86_tlb_flush_page_local(virt_addr_t vaddr);
+
 // Arch-private raw descriptor
 typedef uint64_t pte_raw_t;
 
@@ -288,6 +290,7 @@ static int x86_pt_unmap_4k(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *
         // Note: For full teardown, we should ideally check `table_empty`
         // and free upper levels. To keep it simple in this iteration,
         // we omit immediate pruning here or rely on space destroy.
+        x86_tlb_flush_page_local(aligned_vaddr);
     }
 
     return 0;
@@ -295,6 +298,8 @@ static int x86_pt_unmap_4k(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *
 
 static int x86_pt_protect_4k(phys_addr_t root_pt, virt_addr_t vaddr, uint32_t new_flags) {
     if (root_pt == 0U) return -1;
+
+    virt_addr_t aligned_vaddr = align_down(vaddr);
 
     page_table_walk_result_t res;
     int rc = x86_pt_walk(root_pt, vaddr, false, 0, &res);
@@ -309,6 +314,7 @@ static int x86_pt_protect_4k(phys_addr_t root_pt, virt_addr_t vaddr, uint32_t ne
             pte_flags |= X86_PT_HUGE;
         }
         *pte = res.mapped_pa | pte_flags;
+        x86_tlb_flush_page_local(aligned_vaddr);
         return 0;
     }
 

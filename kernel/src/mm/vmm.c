@@ -41,6 +41,13 @@ static void ensure_kernel_space_ready(void) {
 int vmm_init(void) {
     prot_domain_init();
     ensure_kernel_space_ready();
+
+    if (kernel_space_ready && kernel_space.root_pt != 0) {
+        if (active_mem_protect && active_mem_protect->cpu_ops.set_root) {
+            active_mem_protect->cpu_ops.set_root(kernel_space.root_pt);
+        }
+    }
+
     return kernel_space_ready ? 0 : -1;
 }
 

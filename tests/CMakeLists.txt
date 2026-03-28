@@ -182,13 +182,9 @@ add_test(NAME test_secure_boot_policy COMMAND test_secure_boot_policy)
 add_executable(test_capability_policy test_capability_policy.c benchmark_stubs.c host/mock_panic.c
     ../kernel/src/mm/vm/aspace/vm_space.c
     ../kernel/src/sched_stub.c
-    ../kernel/src/sched_stub.c
-    ../kernel/src/sched_stub.c
-    ../kernel/src/sched_stub.c
     ../kernel/src/capability.c
     ../kernel/src/cap/cap_policy.c
     ../kernel/src/ipc/endpoint_ipc.c
-    ../kernel/src/sched_stub.c
     ../kernel/src/device/device_manager.c
     ../kernel/src/mm/pmm/numa.c
     ../kernel/src/mm/zswap.c
