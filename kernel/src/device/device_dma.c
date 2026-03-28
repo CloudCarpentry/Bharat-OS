@@ -18,7 +18,18 @@ typedef struct dev_dma_node {
 } dev_dma_node_t;
 
 static dev_dma_node_t *g_dev_dma_list = NULL;
+#define DEV_DMA_NODE_CAPACITY 64U
+static dev_dma_node_t g_dev_dma_nodes[DEV_DMA_NODE_CAPACITY];
 // Missing spinlock for simplicity, would be added in prod.
+
+static dev_dma_node_t *alloc_node(void) {
+    for (size_t i = 0; i < DEV_DMA_NODE_CAPACITY; ++i) {
+        if (g_dev_dma_nodes[i].dev == NULL) {
+            return &g_dev_dma_nodes[i];
+        }
+    }
+    return NULL;
+}
 
 static dev_dma_node_t *find_or_create_node(device_t *dev) {
     dev_dma_node_t *curr = g_dev_dma_list;
@@ -27,7 +38,7 @@ static dev_dma_node_t *find_or_create_node(device_t *dev) {
         curr = curr->next;
     }
 
-    dev_dma_node_t *node = kmalloc(sizeof(dev_dma_node_t));
+    dev_dma_node_t *node = alloc_node();
     if (node) {
         node->dev = dev;
         // defaults
