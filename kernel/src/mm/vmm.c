@@ -52,7 +52,11 @@ int vmm_init(void) {
 }
 
 phys_addr_t vmm_get_kernel_root(void) {
-    return kernel_root_pt;
+    if (kernel_root_pt != 0) return kernel_root_pt;
+    if (active_mem_protect && active_mem_protect->cpu_ops.get_root) {
+        return active_mem_protect->cpu_ops.get_root();
+    }
+    return 0;
 }
 
 int mm_vmm_map_page(address_space_t* as, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
