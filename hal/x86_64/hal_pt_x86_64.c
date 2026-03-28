@@ -25,7 +25,8 @@ const size_t g_kernel_physmap_size = 0x8000000000ULL; // 512GB
 #define X86_PT_GLOBAL   (1ULL << 8)
 #define X86_PT_NX       (1ULL << 63)
 
-#define X86_PAGE_MASK   (~0xFFFULL)
+#define X86_MAX_PHYS_ADDR_BITS 52U
+#define X86_PAGE_MASK   ((((1ULL << X86_MAX_PHYS_ADDR_BITS) - 1ULL)) & ~0xFFFULL)
 #define X86_LARGE_2M_SIZE (1ULL << 21)
 
 // Arch-private raw descriptor
@@ -37,6 +38,11 @@ typedef struct {
 
 static virt_addr_t align_down(virt_addr_t value) {
     return value & X86_PAGE_MASK;
+}
+
+static phys_addr_t pte_to_pa(uint64_t pte, uint8_t page_shift) {
+    uint64_t page_mask = ~((1ULL << page_shift) - 1ULL);
+    return (phys_addr_t)(pte & X86_PAGE_MASK & page_mask);
 }
 
 static bool huge_2m_aligned(virt_addr_t va, phys_addr_t pa) {
@@ -171,7 +177,7 @@ static int x86_pt_walk(phys_addr_t root_pt, virt_addr_t vaddr, bool create, uint
         out_result->entry_pa = pdp_pa + pdp_idx * sizeof(pte_raw_t);
         out_result->entry_va = &pdp->entries[pdp_idx];
         out_result->raw_value = pdp->entries[pdp_idx];
-        out_result->mapped_pa = pdp->entries[pdp_idx] & ~((1ULL << 30) - 1ULL);
+        out_result->mapped_pa = pte_to_pa(pdp->entries[pdp_idx], 30);
         out_result->flags = x86_to_flags(pdp->entries[pdp_idx] & ~X86_PAGE_MASK);
         return 0;
     }
@@ -194,7 +200,7 @@ static int x86_pt_walk(phys_addr_t root_pt, virt_addr_t vaddr, bool create, uint
         // 2MB huge page
         if (create && !(alloc_flags & HAL_PT_FLAG_LARGE_2M)) {
             // Split it if we need a 4K mapping here
-            phys_addr_t huge_base = pd->entries[pd_idx] & ~((1ULL << 21) - 1ULL);
+            phys_addr_t huge_base = pte_to_pa(pd->entries[pd_idx], 21);
             phys_addr_t new_pt = pt_cache_alloc();
             if (!new_pt) return -2;
             pt_t* split_pt = (pt_t*)physmap_phys_to_virt(new_pt);
@@ -210,7 +216,7 @@ static int x86_pt_walk(phys_addr_t root_pt, virt_addr_t vaddr, bool create, uint
             out_result->entry_pa = pd_pa + pd_idx * sizeof(pte_raw_t);
             out_result->entry_va = &pd->entries[pd_idx];
             out_result->raw_value = pd->entries[pd_idx];
-            out_result->mapped_pa = pd->entries[pd_idx] & ~((1ULL << 21) - 1ULL);
+            out_result->mapped_pa = pte_to_pa(pd->entries[pd_idx], 21);
             out_result->flags = x86_to_flags(pd->entries[pd_idx] & ~X86_PAGE_MASK) | HAL_PT_FLAG_LARGE_2M;
             return 0;
         }
@@ -225,7 +231,7 @@ static int x86_pt_walk(phys_addr_t root_pt, virt_addr_t vaddr, bool create, uint
     out_result->entry_pa = pt_pa + pt_idx * sizeof(pte_raw_t);
     out_result->entry_va = &pt->entries[pt_idx];
     out_result->raw_value = pt->entries[pt_idx];
-    out_result->mapped_pa = pt->entries[pt_idx] & X86_PAGE_MASK;
+    out_result->mapped_pa = pte_to_pa(pt->entries[pt_idx], 12);
     out_result->flags = out_result->present ? x86_to_flags(pt->entries[pt_idx] & ~X86_PAGE_MASK) : 0;
 
     return 0;
