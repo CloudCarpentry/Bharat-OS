@@ -457,6 +457,10 @@ static translate_backend_kind_t x86_backend_type(void) { return TRANSLATE_BACKEN
 static translate_exec_class_t x86_exec_class(void) { return TRANSLATE_EXEC_MMU_FULL; }
 bool g_x86_mmu_finalized = false;
 
+void x86_pt_set_mmu_finalized(bool finalized) {
+    g_x86_mmu_finalized = finalized;
+}
+
 static void* x86_phys_to_virt(phys_addr_t phys) { 
     if (!g_x86_mmu_finalized) {
         return (void*)phys;
