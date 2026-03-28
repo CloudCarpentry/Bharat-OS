@@ -752,6 +752,12 @@ static void arm64_mpa_flush_tlb_local(virt_addr_t vaddr, uint16_t asid) {
     );
 }
 
+static phys_addr_t arm64_mpa_get_root(void) {
+    phys_addr_t ttbr1;
+    __asm__ volatile("mrs %0, ttbr1_el1" : "=r"(ttbr1));
+    return ttbr1 & ~(0xFFFULL);
+}
+
 mem_protect_ops_t arm64_mem_protect_ops = {
     .supported_caps = MPA_CAP_VIRT | MPA_CAP_ASID | MPA_CAP_GLOBAL | MPA_CAP_HUGEPAGE | MPA_CAP_EXEC_PERM | MPA_CAP_WRITE | MPA_CAP_USER | MPA_CAP_DEVICE,
     .cpu_ops = {
@@ -760,6 +766,7 @@ mem_protect_ops_t arm64_mem_protect_ops = {
         .unmap_page = arm64_mpa_unmap_page,
         .set_root = arm64_mpa_set_root,
         .flush_tlb_local = arm64_mpa_flush_tlb_local,
+        .get_root = arm64_mpa_get_root,
     },
     .iommu_ops = {
         .probe = NULL, // Could be linked to SMMU probe later

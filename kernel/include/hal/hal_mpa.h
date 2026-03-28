@@ -36,6 +36,9 @@ typedef struct mem_protect_cpu_ops {
 
     // 5. Perform local TLB invalidation
     void (*flush_tlb_local)(virt_addr_t va, uint16_t asid);
+
+    // 6. Get the current active root table from hardware
+    phys_addr_t (*get_root)(void);
 } mem_protect_cpu_ops_t;
 
 // -----------------------------------------------------------------------------

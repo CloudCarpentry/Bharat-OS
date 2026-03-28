@@ -17,13 +17,14 @@ int aspace_create(address_space_t **out_aspace, uint32_t flags) {
 
     if (!active_hal_pt) hal_pt_init();
 
-    extern phys_addr_t vmm_get_kernel_root(void);
+
     as->prot_domain = prot_domain_create();
 
     // Stub legacy while transitioning fully
     if (as->prot_domain && as->prot_domain->backend_state) {
         as->root_pt = (phys_addr_t)(uintptr_t)as->prot_domain->backend_state;
-    } else {
+    } else if (active_hal_pt && active_hal_pt->create_address_space) {
+        extern phys_addr_t vmm_get_kernel_root(void);
         as->root_pt = active_hal_pt->create_address_space(vmm_get_kernel_root());
         if (!as->root_pt) {
             if (as->prot_domain) {
@@ -32,6 +33,8 @@ int aspace_create(address_space_t **out_aspace, uint32_t flags) {
             kfree(as);
             return -1;
         }
+    } else {
+        as->root_pt = 0;
     }
 
     as->object_id = __atomic_fetch_add(&next_as_id, 1, __ATOMIC_SEQ_CST);

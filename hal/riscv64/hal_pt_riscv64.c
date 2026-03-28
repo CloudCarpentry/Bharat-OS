@@ -477,6 +477,12 @@ static void riscv64_mpa_flush_tlb_local(virt_addr_t vaddr, uint16_t asid) {
     __asm__ volatile("sfence.vma %0" :: "r"(vaddr) : "memory");
 }
 
+static phys_addr_t riscv64_mpa_get_root(void) {
+    uint64_t satp;
+    __asm__ volatile("csrr %0, satp" : "=r"(satp));
+    return (satp & ((1ULL << 44) - 1)) << 12; // PPN is lower 44 bits, physical address is PPN << 12
+}
+
 mem_protect_ops_t riscv64_mem_protect_ops = {
     .supported_caps = MPA_CAP_VIRT | MPA_CAP_ASID | MPA_CAP_GLOBAL | MPA_CAP_EXEC_PERM | MPA_CAP_WRITE | MPA_CAP_USER | MPA_CAP_DEVICE,
     .cpu_ops = {
@@ -485,6 +491,7 @@ mem_protect_ops_t riscv64_mem_protect_ops = {
         .unmap_page = riscv64_mpa_unmap_page,
         .set_root = riscv64_mpa_set_root,
         .flush_tlb_local = riscv64_mpa_flush_tlb_local,
+        .get_root = riscv64_mpa_get_root,
     },
     .iommu_ops = {
         .probe = NULL, // Could be linked to RISC-V IOMMU probe later
