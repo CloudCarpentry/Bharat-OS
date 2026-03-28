@@ -1,11 +1,7 @@
 #include "device.h"
 #include "mm/dma.h"
 #include "mm/iommu.h"
-#include "slab.h"
 #include "console/console_core.h"
-
-// Ensure the full types are available
-#include "mm/dma.h"
 
 // In a real framework, these would be attached to the actual `device_t` struct
 // For this standalone feature, we will use a linked list mapping dev pointers to their caps.
