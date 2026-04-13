@@ -79,7 +79,7 @@ Implemented modules include:
 
 Current limitations:
 - Main event loop intentionally breaks immediately (daemon runtime not fully wired).
-- Capability checks currently allow all requests (`netmgr_cap_check_rights` returns true).
+- Capability checks now use a strict fail-closed shim via `bharat_cap_validate()` (denies by default). The previous permissive bypass is obsolete, though the full capability lookup engine is still pending.
 - Restart behavior records intent only; no process-manager integration yet.
 
 ## `services/netstack` (data plane)
@@ -98,7 +98,7 @@ Current limitations:
 ## 4) Gap summary (docs-to-code)
 
 1. **Status precision gap**: several services are buildable but still lifecycle scaffolds.
-2. **Enforcement gap**: capability checks in some manager paths are placeholder-permissive.
+2. **Enforcement gap**: capability checks in some manager paths were historically placeholder-permissive; however, the major `netmgr` bypass has been closed (fail-closed shim). Full capability routing is still needed.
 3. **Runtime wiring gap**: multiple daemons initialize state but do not yet run complete production event loops.
 4. **Hardening gap**: observability, failure semantics, and profile-specific guarantees need deeper closure.
 

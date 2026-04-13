@@ -19,7 +19,7 @@ BIDL is designed to act as the single source of truth for all cross-boundary int
 Bharat-OS relies heavily on isolated components communicating via endpoint IPC and cross-core uRPC. However, without a contract definition layer:
 
 1. **Interface Drift:** Ad-hoc request structs and handwritten opcode definitions lead to incompatible ABI breakages.
-2. **Weak Enforcement:** In critical services (like `netmgr`), capability checks currently only verify that a token exists, failing to automatically map specific operations to the granular object rights they require.
+2. **Weak Enforcement:** In critical services (like `netmgr`), capability checks currently fail-closed without an explicit valid token, but they still fail to automatically map specific operations to the granular object rights they require. (The prior unconditional bypass was removed).
 3. **Scaffolded Boilerplate:** Services like `namesvc` and `servicemgr` remain in scaffold states partially because defining their true IPC loops using raw C macros is tedious and error-prone.
 4. **Discovery Disconnect:** Without a structured way to declare an interface version, `namesvc` cannot reliably match clients to compatible service endpoints.
 
