@@ -313,6 +313,7 @@ add_subdirectory(src/monitor)
 set(KERNEL_SRCS
     ${BOOT_SRC}
     src/mm/physmap.c
+    src/mm/mem_model.c
     src/mm/prot_domain.c
     ../boot/common/boot_ui_select.c
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/boot_video.c>
