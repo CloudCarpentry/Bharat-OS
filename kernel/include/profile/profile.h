@@ -41,6 +41,8 @@ void profile_init(void);
 
 // TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include <stdbool.h>
+// Include the new canonical memory model contract
+#include "mm/mem_model.h"
 
 typedef enum {
     PROFILE_KERNEL_RT,
@@ -84,25 +86,23 @@ typedef struct kernel_profile_comm_policy {
 } kernel_profile_comm_policy_t;
 
 typedef enum {
-    MEM_MODEL_MMU,
-    MEM_MODEL_MPU,
-    MEM_MODEL_FLAT
-} MemoryModel;
-
-typedef enum {
     PROFILE_TIER_A,
     PROFILE_TIER_B,
     PROFILE_TIER_C
 } SystemProfile;
 
+// Compatibility typedef and macros for the old MemoryModel enum
+typedef mem_model_t MemoryModel;
+#define MEM_MODEL_MMU MEM_MODEL_MMU_FULL
+#define MEM_MODEL_FLAT MEM_MODEL_MPU
+
+/**
+ * Get the current memory model.
+ * Wraps the new canonical API for backward compatibility.
+ * Prefer `mem_model_get_current()` in new code.
+ */
 static inline MemoryModel get_memory_model(void) {
-#if defined(CONFIG_MEM_MODEL_MPU)
-    return MEM_MODEL_MPU;
-#elif defined(CONFIG_MEM_MODEL_FLAT)
-    return MEM_MODEL_FLAT;
-#else
-    return MEM_MODEL_MMU;
-#endif
+    return mem_model_get_current();
 }
 
 static inline SystemProfile get_system_profile(void) {
