@@ -216,9 +216,9 @@ int bharat_iommu_block_device(bharat_device_t* dev) {
     int ret = hal_iommu_block_device(dev);
     if (ret == -1) { // -ENOSYS means no IOMMU
         SystemProfile profile = get_system_profile();
-        MemoryModel model = get_memory_model();
+        mem_model_t model = mem_model_get_current();
 
-        if (model != MEM_MODEL_MMU) {
+        if (model != MEM_MODEL_MMU_FULL) {
             // MCU / MPU profile: Explicitly skip DMA-isolation promises, don't fail device
             return 0;
         }
