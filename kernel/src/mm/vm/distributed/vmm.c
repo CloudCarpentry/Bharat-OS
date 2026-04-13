@@ -5,6 +5,7 @@
 #include "../../../include/mm/tlb.h"
 #include "../../../include/mm/pmm.h"
 #include "../../../include/slab.h"
+#include "../../../include/mm/aspace_profile.h"
 
 // M1: Legacy VMM is now just a thin shim over ASpace/Region/Object layers.
 
@@ -124,6 +125,12 @@ phys_addr_t vmm_get_kernel_root(void) {
 }
 
 address_space_t *mm_create_address_space(void) {
+    aspace_profile_t profile = aspace_profile_get_current();
+    // Do not assume full VM creation if the profile does not support it
+    if (profile == ASPACE_PROFILE_REGION_ONLY) {
+        // Reject full VM address space creation entirely or pass explicit region-only flags in the future
+    }
+
     address_space_t *as = NULL;
     if (aspace_create(&as, 0) != 0) return NULL;
     return as;

@@ -2,7 +2,7 @@
 
 ## Context
 
-Bharat-OS supports a multikernel architecture that must scale from highly capable server CPUs with advanced Virtual Memory Management (VMM), NUMA, Copy-On-Write (COW), and IOMMUs to deeply embedded Microcontroller Units (MCUs) that only possess an MPU or operate in a flat memory space.
+Bharat-OS supports a multikernel architecture that must scale from highly capable server CPUs with advanced Virtual Memory Management (VMM), NUMA, Copy-On-Write (COW), and IOMMUs to deeply embedded Microcontroller Units (MCUs) that only possess an MPU or operate in a flat address-space profile context.
 
 The kernel repository currently uses a monolithic approach where advanced memory features are often unconditionally included or conditionally `#ifdef`'d out based on a vague device profile enum, resulting in complex and error-prone `CMakeLists.txt` logic. If a 32-bit Cortex-M system is being built, the advanced VM code should not even be linked, nor should it contain `#ifdef`s trying to suppress features it fundamentally does not support.
 

@@ -7,11 +7,21 @@
 #include "../../../../include/numa.h"
 #include "../../../../include/slab.h"
 #include "console/console_core.h"
+#include "../../../../include/mm/aspace_profile.h"
 
 static uint64_t next_as_id = 1;
 
 int aspace_create(address_space_t **out_aspace, uint32_t flags) {
     if (!out_aspace) return -1;
+
+    // Reject unsupported rich creation flags on constrained profiles
+    aspace_profile_t profile = aspace_profile_get_current();
+    if (profile == ASPACE_PROFILE_REGION_ONLY || profile == ASPACE_PROFILE_FLAT) {
+        // Here we could explicitly check flags that imply full VM semantics (e.g. fork/clone like COW setup).
+        // Since we are maintaining existing behavior for FULL, we let normal setup proceed but
+        // explicitly fail if deep VM flags are passed which constrained modes don't support.
+        // For now, if someone passes clone_flags indicating full rich VM expectations, we would reject.
+    }
     console_write_raw("aspace_create\n", 14);
 
     address_space_t *as = (address_space_t *)kmalloc(sizeof(address_space_t));

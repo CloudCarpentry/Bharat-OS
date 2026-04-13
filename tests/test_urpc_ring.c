@@ -22,7 +22,7 @@ void hal_send_ipi_payload(uint32_t target_core, uint64_t payload) {
 int main(void) {
     urpc_msg_t buffer[2] = {0};
     urpc_ring_t ring = {0};
-    urpc_msg_t msg = { .msg_type = 7U, .payload_size = 8U, .payload_data = {0xABCDU} };
+    urpc_msg_t msg = { .type = 7U, .payload_size = 8U, .payload_data = {0xABCDU} };
     urpc_msg_t out = {0};
 
     assert(urpc_init_ring(NULL, buffer, 2U) == URPC_ERR_INVAL);
@@ -37,7 +37,7 @@ int main(void) {
     assert(urpc_send(&ring, &msg) == URPC_ERR_FULL);
 
     assert(urpc_receive(&ring, &out) == URPC_SUCCESS);
-    assert(out.msg_type == 7U);
+    assert(out.type == 7U);
     assert(out.payload_size == 8U);
     assert(out.payload_data[0] == 0xABCDU);
 
