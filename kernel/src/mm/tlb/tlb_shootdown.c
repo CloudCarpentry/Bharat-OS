@@ -181,7 +181,7 @@ void vmm_send_tlb_invalidate(uint64_t aspace_id,
         // Fallback waiting (spinning without slot state tracking, relying directly on transport ack if possible)
         // Here we can simply wait on mailboxes, or a small wait loop
         uint32_t wait_loops = 0;
-        while (wait_loops < 1000000) {
+        while (wait_loops < BHARAT_TLB_ACK_TIMEOUT_LOOPS) {
             arch_cpu_relax();
             vmm_process_urpc_messages();
             wait_loops++;
