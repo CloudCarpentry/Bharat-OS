@@ -188,7 +188,29 @@ def do_run(build_cfg, dual_serial, run_tests=False):
     run_command(cmd)
 
 def main():
-    parser = argparse.ArgumentParser(description='Bharat-OS Build Wrapper')
+    # Detect legacy flags and provide a friendly migration error
+    legacy_flags = {'-arch', '-clean', '-run', '-bootgui', '-dualserial', '-profile', '-e2e', '-serialtarget', '-preset'}
+    used_legacy = [arg for arg in sys.argv[1:] if arg.lower() in legacy_flags]
+    if used_legacy:
+        print(f"Error: Legacy flags detected: {', '.join(used_legacy)}")
+        print("\nThe build system has been unified around tools/build.py with a canonical interface.")
+        print("Legacy PowerShell/shell flags (like -Arch, -Clean, -Run) are NO LONGER SUPPORTED.")
+        print("\nPlease use the new canonical syntax with a build name from build_config.json:")
+        print("  ./build.sh <build_name> [--run] [--clean]")
+        print("  .\\build.ps1 <build_name> [--run] [--clean]")
+        print("\nTo see available build configurations, run:")
+        print("  ./build.sh --list")
+        sys.exit(1)
+
+    parser = argparse.ArgumentParser(
+        description='Bharat-OS Build Wrapper\n\n'
+                    'Examples:\n'
+                    '  python tools/build.py default_dev --run\n'
+                    '  python tools/build.py arm64_automobile_debug --clean --build\n'
+                    '  python tools/build.py riscv64_edge_mmu_lite\n'
+                    '  python tools/build.py --list',
+        formatter_class=argparse.RawTextHelpFormatter
+    )
     parser.add_argument('build_name', nargs='?', default='default_dev', help='Name of the build from build_config.json')
     parser.add_argument('--list', action='store_true', help='List available builds')
     parser.add_argument('--doctor', action='store_true', help='Check environment')
