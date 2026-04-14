@@ -52,9 +52,6 @@ void netmgr_ipc_handle_request(const bharat_ipc_msg_header_t *hdr, const netmgr_
         return;
     }
 
-    // Set the capability token from the IPC header so the capability checker can evaluate it.
-    netmgr_set_caller_cap(hdr->capability_transfer);
-
     uint32_t target_if_id = desc->extract_target_obj(req);
 
     // Convert target ID to scope

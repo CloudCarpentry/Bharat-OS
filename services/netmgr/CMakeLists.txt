@@ -19,7 +19,7 @@ set(NETMGR_SOURCES
 )
 
 add_executable(netmgr ${NETMGR_SOURCES})
-    target_link_libraries(netmgr PRIVATE bharat_user_buildopts bharat_freestanding bharat_libruntime bharat_version_api)
+    target_link_libraries(netmgr PRIVATE bharat_user_buildopts bharat_freestanding bharat_libruntime bharat_version_api bharat_syscall)
 
 bharat_register_component(
     TARGET netmgr

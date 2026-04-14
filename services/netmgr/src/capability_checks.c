@@ -3,14 +3,6 @@
 #include <bharat/cap/cap_validate.h>
 #include <stddef.h>
 
-// A mock thread-local or static capability token to represent the caller's context.
-// In a real system, this would be fetched from the IPC message header or thread context.
-bharat_cap_handle_t current_caller_cap = BHARAT_CAP_INVALID_HANDLE;
-
-void netmgr_set_caller_cap(bharat_cap_handle_t cap) {
-    current_caller_cap = cap;
-}
-
 bool netmgr_cap_check_rights(
     bharat_cap_handle_t caller_cap,
     bharat_cap_object_type_t object_type,
