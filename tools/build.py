@@ -5,6 +5,9 @@ import subprocess
 import sys
 import boot
 
+from targets.loader import get_target
+from targets.validate import validate_target
+
 def load_manifest():
     manifest_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'build_config.json')
     try:
@@ -124,9 +127,67 @@ def do_configure(build_cfg):
     ]
     run_command(cmd)
 
-def do_build(build_cfg):
+def do_build(build_cfg, target_name=None):
     preset = build_cfg.get('preset')
     run_command(['cmake', '--build', f'--preset={preset}'])
+
+    if target_name:
+        # Emit run_manifest.json
+        target = get_target(target_name)
+        validate_target(target)
+
+        build_dir = os.path.join('build', preset)
+        target_build_dir = os.path.join('build', target_name)
+        os.makedirs(target_build_dir, exist_ok=True)
+        manifest_path = os.path.join(target_build_dir, 'run_manifest.json')
+
+        # Build the manifest structure
+        exec_class = target.get('execution_class')
+        manifest = {
+            'target_name': target_name,
+            'runner_type': exec_class,
+            'arch': target.get('arch'),
+            'profile': target.get('profile'),
+            'machine_cfg': {
+                'machine': target.get('machine')
+            },
+            'artifacts': {
+                'kernel': os.path.join(build_dir, 'kernel', 'kernel.elf')
+            },
+            'device_list': target.get('device_contracts', {}).get('bus', []),
+            'debug_config': target.get('debug_contract', {})
+        }
+
+        # Handling special boot entries
+        entry = target.get('boot_contract', {}).get('entry')
+        if entry == 'firmware_image':
+            manifest['artifacts']['firmware'] = os.path.join(build_dir, 'firmware.bin')
+        elif entry == 'memory_blob':
+            manifest['artifacts']['memory_blob'] = os.path.join(build_dir, 'memory.bin')
+
+        # DTB handling
+        if target.get('discovery_contract') == 'fdt':
+            manifest['dtb_handling'] = {
+                'required': target.get('boot_contract', {}).get('requires_fdt', False),
+                'source': target.get('boot_contract', {}).get('fdt_source', '')
+            }
+
+        # Console & Display routing
+        console_mode = target.get('console_contract', {}).get('mode', 'headless')
+        manifest['serial_routing'] = {
+            'requested': 'serial' in console_mode,
+            'stdio': True if 'serial' in console_mode else False
+        }
+
+        manifest['display_routing'] = {
+            'requested': 'display' in console_mode,
+            'device': target.get('console_contract', {}).get('display'),
+            'frontend': 'generic' if 'display' in console_mode else None
+        }
+
+        with open(manifest_path, 'w') as f:
+            json.dump(manifest, f, indent=2)
+        print(f"Emitted run manifest to {manifest_path}")
 
 def do_test(build_cfg):
     preset = build_cfg.get('preset')
@@ -151,88 +212,120 @@ RUN_MATRIX = {
     ("riscv32", "virt"): {"runner": "qemu-system-riscv32", "machine": "virt", "smp_supported": True},
 }
 
-def do_run(build_cfg, dual_serial, run_tests=False, cpus=1):
-    arch = build_cfg.get('arch')
-    board = build_cfg.get('board', '')
-
-    display_cfg = build_cfg.get("display", {})
-    gui_enabled = display_cfg.get("enabled", build_cfg.get("gui", False))
-    gui = gui_enabled
-
+def do_run(build_cfg, dual_serial, run_tests=False, cpus=1, target_name=None):
     preset = build_cfg.get('preset')
+    build_dir = os.path.join('build', preset)
 
-    target_key = (arch, board)
-    run_config = RUN_MATRIX.get(target_key)
-    if not run_config:
-        print(f"Unsupported run configuration for arch {arch} board {board}")
-        sys.exit(1)
+    if target_name:
+        manifest_path = os.path.join('build', target_name, 'run_manifest.json')
+    else:
+        manifest_path = os.path.join(build_dir, 'run_manifest.json')
 
-    if cpus > 1 and not run_config.get("smp_supported", False):
-        raise Exception(f"SMP not supported on this target (arch: {arch}, board: {board})")
+    if target_name and os.path.exists(manifest_path):
+        with open(manifest_path, 'r') as f:
+            manifest = json.load(f)
+    else:
+        # Fallback to legacy execution logic for builds without a target matrix entry
+        print("Warning: Running legacy execution path (no target matrix entry found).")
+        arch = build_cfg.get('arch')
+        board = build_cfg.get('board', '')
 
-    kernel_path = os.path.join('build', preset, 'kernel', 'kernel.elf')
-    if not os.path.exists(kernel_path):
-        print(f"Kernel image {kernel_path} not found. Build it first.")
-        sys.exit(1)
+        display_cfg = build_cfg.get("display", {})
+        gui_enabled = display_cfg.get("enabled", build_cfg.get("gui", False))
+        gui = gui_enabled
 
-    # Use boot abstraction layer
-    boot_config = boot.get_bootloader(arch)(kernel_path)
-    run_kernel = boot_config.get("kernel_path", kernel_path)
+        target_key = (arch, board)
+        run_config = RUN_MATRIX.get(target_key)
+        if not run_config:
+            print(f"Unsupported run configuration for arch {arch} board {board}")
+            sys.exit(1)
 
-    qemu_opts = []
-    if "qemu_flags" in boot_config:
-        qemu_opts.extend(boot_config["qemu_flags"])
+        if cpus > 1 and not run_config.get("smp_supported", False):
+            raise Exception(f"SMP not supported on this target (arch: {arch}, board: {board})")
 
-    # If run_tests is true, force headless mode for CI to capture output
-    if run_tests:
-        gui = False
-        # In a real environment, we'd pass kernel arguments here like `-append "test=all"`
-        if arch in ['x86_64', 'arm64', 'riscv64']:
-            qemu_opts.extend(['-append', 'test=all log_level=debug'])
+        kernel_path = os.path.join(build_dir, 'kernel', 'kernel.elf')
+        if not os.path.exists(kernel_path):
+            print(f"Kernel image {kernel_path} not found. Build it first.")
+            sys.exit(1)
 
-    if gui:
-        if dual_serial:
-            qemu_opts.extend(['-serial', 'stdio', '-serial', 'vc'])
+        # Use boot abstraction layer
+        boot_config = boot.get_bootloader(arch)(kernel_path)
+        run_kernel = boot_config.get("kernel_path", kernel_path)
+
+        qemu_opts = []
+        if "qemu_flags" in boot_config:
+            qemu_opts.extend(boot_config["qemu_flags"])
+
+        # If run_tests is true, force headless mode for CI to capture output
+        if run_tests:
+            gui = False
+            # In a real environment, we'd pass kernel arguments here like `-append "test=all"`
+            if arch in ['x86_64', 'arm64', 'riscv64']:
+                qemu_opts.extend(['-append', 'test=all log_level=debug'])
+
+        if gui:
+            if dual_serial:
+                qemu_opts.extend(['-serial', 'stdio', '-serial', 'vc'])
+            else:
+                qemu_opts.extend(['-serial', 'vc'])
+
+            if arch == 'x86_64':
+                qemu_opts.extend(['-vga', 'std'])
+            elif arch == 'arm64':
+                qemu_opts.extend(['-device', 'virtio-gpu-pci'])
+            elif arch == 'riscv64':
+                qemu_opts.extend(['-device', 'virtio-gpu-device', '-device', 'ramfb'])
         else:
-            qemu_opts.extend(['-serial', 'vc'])
+            qemu_opts.extend(['-serial', 'stdio', '-display', 'none'])
 
-        if arch == 'x86_64':
-            qemu_opts.extend(['-vga', 'std'])
-        elif arch == 'arm64':
-            qemu_opts.extend(['-device', 'virtio-gpu-pci'])
-        elif arch == 'riscv64':
-            qemu_opts.extend(['-device', 'virtio-gpu-device', '-device', 'ramfb'])
+        runner = run_config.get("runner")
+
+        # [FIX] Enhanced runner check: ensure the tool is in PATH before attempting to run
+        if not check_command(runner):
+            print(f"\nERROR: Runner '{runner}' not found in PATH.")
+            print(f"To fix this:")
+            if 'qemu-system' in runner:
+                print(f"  - Install QEMU for {arch}.")
+                print(f"  - On Windows: Add 'C:\\Program Files\\qemu' to your PATH.")
+            elif runner == 'VHT_Corstone_SSE-310':
+                print(f"  - Ensure Arm Virtual Hardware (AVH) tools are installed.")
+                print(f"  - Falling back to QEMU might work if you change the board profile.")
+            sys.exit(1)
+
+        if runner == 'VHT_Corstone_SSE-310':
+            cmd = [runner, '-a', run_kernel] + qemu_opts
+        else:
+            cmd = [runner, '-kernel', run_kernel, '-m', '512']
+            if "machine" in run_config:
+                cmd.extend(['-machine', run_config["machine"]])
+            if "cpu" in run_config:
+                cmd.extend(['-cpu', run_config["cpu"]])
+            if run_config.get("smp_supported", False) and cpus > 1:
+                cmd.extend(['-smp', str(cpus)])
+            cmd.extend(qemu_opts)
+
+        print(f"[RUN] Arch: {arch} | CPUs: {cpus} | Board: {board} | Runner: {runner}")
+        run_command(cmd)
+        return
+
+    # Delegate to the appropriate runner plugin
+    runner_type = manifest.get('runner_type')
+
+    if runner_type == 'qemu':
+        from runners import runner_qemu
+        runner_qemu.run(manifest)
+    elif runner_type == 'renode':
+        from runners import runner_renode
+        runner_renode.run(manifest)
+    elif runner_type == 'real_board':
+        from runners import runner_real_board
+        runner_real_board.run(manifest)
+    elif runner_type == 'unicorn':
+        from runners import runner_unicorn
+        runner_unicorn.run(manifest)
     else:
-        qemu_opts.extend(['-serial', 'stdio', '-display', 'none'])
-
-    runner = run_config.get("runner")
-
-    # [FIX] Enhanced runner check: ensure the tool is in PATH before attempting to run
-    if not check_command(runner):
-        print(f"\nERROR: Runner '{runner}' not found in PATH.")
-        print(f"To fix this:")
-        if 'qemu-system' in runner:
-            print(f"  - Install QEMU for {arch}.")
-            print(f"  - On Windows: Add 'C:\\Program Files\\qemu' to your PATH.")
-        elif runner == 'VHT_Corstone_SSE-310':
-            print(f"  - Ensure Arm Virtual Hardware (AVH) tools are installed.")
-            print(f"  - Falling back to QEMU might work if you change the board profile.")
+        print(f"Error: Unknown runner type '{runner_type}'")
         sys.exit(1)
-
-    if runner == 'VHT_Corstone_SSE-310':
-        cmd = [runner, '-a', run_kernel] + qemu_opts
-    else:
-        cmd = [runner, '-kernel', run_kernel, '-m', '512']
-        if "machine" in run_config:
-            cmd.extend(['-machine', run_config["machine"]])
-        if "cpu" in run_config:
-            cmd.extend(['-cpu', run_config["cpu"]])
-        if run_config.get("smp_supported", False) and cpus > 1:
-            cmd.extend(['-smp', str(cpus)])
-        cmd.extend(qemu_opts)
-
-    print(f"[RUN] Arch: {arch} | CPUs: {cpus} | Board: {board} | Runner: {runner}")
-    run_command(cmd)
 
 def do_matrix(manifest):
     matrix_targets = [
@@ -263,9 +356,17 @@ def do_matrix(manifest):
         build_cfg = manifest['builds'][build_name]
 
         try:
+            # We check if there's a corresponding target in the matrix
+            target_name = None
+            try:
+                get_target(build_name, silent=True)
+                target_name = build_name
+            except SystemExit:
+                pass
+
             do_configure(build_cfg)
-            do_build(build_cfg)
-            do_run(build_cfg, dual_serial=False, run_tests=True, cpus=cpus)
+            do_build(build_cfg, target_name)
+            do_run(build_cfg, dual_serial=False, run_tests=True, cpus=cpus, target_name=target_name)
             results.append((build_name, cpus, "PASS"))
         except SystemExit as e:
             if e.code == 0:
@@ -338,12 +439,41 @@ def main():
         do_matrix(manifest)
         return
 
-    if args.build_name not in manifest.get('builds', {}):
-        print(f"Error: Build '{args.build_name}' not found in manifest.")
-        print_list(manifest)
-        sys.exit(1)
+    # Determine target_name if it exists in the new target matrix
+    target_name = None
+    try:
+        target = get_target(args.build_name, silent=True)
+        target_name = args.build_name
+    except SystemExit:
+        pass
 
-    build_cfg = manifest['builds'][args.build_name]
+    if args.build_name not in manifest.get('builds', {}):
+        if target_name:
+            # We found a new target matrix target but no build config. Create a dummy build_cfg to proceed.
+            # In a real system, you'd map the build config dynamically based on target.
+            print(f"Warning: No explicit build config found for {args.build_name}, proceeding with dynamic settings.")
+            # Map standard profiles to existing presets
+            profile_to_preset = {
+                'small': 'edge',
+                'desktop': 'edge', # Desktop is mapped to edge in legacy config for non-x86
+                'tiny': 'edge' # map to edge for now since tiny-mpu-debug lacks arch prefix
+            }
+            preset_suffix = profile_to_preset.get(target.get('profile'), 'edge')
+            if target.get('arch') == 'x86_64':
+                 preset_suffix = 'dev' # x86_64 uses -dev or -debug
+
+            build_cfg = {
+                'preset': f"{target.get('arch')}-{preset_suffix}",
+                'arch': target.get('arch'),
+                'board': target.get('machine'),
+                'gui': 'display' in target.get('console_contract', {}).get('mode', 'headless')
+            }
+        else:
+            print(f"Error: Build/Target '{args.build_name}' not found in manifest or target matrix.")
+            print_list(manifest)
+            sys.exit(1)
+    else:
+        build_cfg = manifest['builds'][args.build_name]
 
     # Default action if no specific action provided
     if not (args.configure or args.build or args.run or args.clean or args.test or args.run_tests):
@@ -359,13 +489,13 @@ def main():
         do_configure(build_cfg)
 
     if args.build:
-        do_build(build_cfg)
+        do_build(build_cfg, target_name)
 
     if args.test:
         do_test(build_cfg)
 
     if args.run or args.run_tests:
-        do_run(build_cfg, args.dual_serial, args.run_tests, args.cpus)
+        do_run(build_cfg, args.dual_serial, args.run_tests, args.cpus, target_name)
 
 if __name__ == '__main__':
     main()
