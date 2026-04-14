@@ -204,6 +204,10 @@ add_executable(test_servicemgr test_servicemgr.c ../../services/servicemgr/servi
 target_include_directories(test_servicemgr PRIVATE ../../include ../../lib/ipc/include ../../lib/cap/include ../../kernel/include)
 add_test(NAME host_test_servicemgr COMMAND test_servicemgr)
 
+add_executable(test_init test_init.c ../../services/core/init/init_runtime.c ../../services/core/init/init_status.c ../../services/core/init/init_handoff.c)
+target_include_directories(test_init PRIVATE ../../include ../../kernel/include ../../lib/runtime/include ../../lib/cap/include ../../lib/ipc/include)
+add_test(NAME host_test_init COMMAND test_init)
+
 add_executable(test_e2e_service_runtime test_e2e_service_runtime.c ../../services/process_manager/process_manager.c ../../services/vm_manager/vm_manager.c ../../services/servicemgr/servicemgr.c ../../lib/ipc/src/ipc.c)
 target_include_directories(test_e2e_service_runtime PRIVATE ../../include ../../lib/ipc/include ../../lib/cap/include ../../kernel/include)
 add_test(NAME host_test_e2e_service_runtime COMMAND test_e2e_service_runtime)

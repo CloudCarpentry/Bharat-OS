@@ -1,0 +1,174 @@
+{
+  "arm32_small_qemu_virt": {
+    "name": "arm32_small_qemu_virt",
+    "arch": "arm32",
+    "profile": "small",
+    "execution_class": "qemu",
+    "machine": "virt",
+    "boot_contract": {
+      "entry": "kernel_elf",
+      "requires_fdt": true,
+      "fdt_source": "emulator"
+    },
+    "discovery_contract": "fdt",
+    "console_contract": {
+      "mode": "serial",
+      "primary_uart": "uart.pl011"
+    },
+    "device_contracts": {
+      "interrupt": "intc.gicv2",
+      "timer": "timer.arm_generic",
+      "bus": ["bus.platform_mmio", "bus.pci"]
+    }
+  },
+  "arm64_desktop_qemu_virt": {
+    "name": "arm64_desktop_qemu_virt",
+    "arch": "arm64",
+    "profile": "desktop",
+    "execution_class": "qemu",
+    "machine": "virt",
+    "boot_contract": {
+      "entry": "kernel_elf",
+      "requires_fdt": true,
+      "fdt_source": "emulator"
+    },
+    "discovery_contract": "fdt",
+    "console_contract": {
+      "mode": "serial+display",
+      "primary_uart": "uart.pl011",
+      "display": "display.virtio_gpu"
+    },
+    "device_contracts": {
+      "interrupt": "intc.gicv3",
+      "timer": "timer.arm_generic",
+      "bus": ["bus.platform_mmio", "bus.pci"]
+    }
+  },
+  "riscv64_desktop_qemu_virt": {
+    "name": "riscv64_desktop_qemu_virt",
+    "arch": "riscv64",
+    "profile": "desktop",
+    "execution_class": "qemu",
+    "machine": "virt",
+    "boot_contract": {
+      "entry": "kernel_elf",
+      "requires_fdt": true,
+      "fdt_source": "emulator"
+    },
+    "discovery_contract": "fdt",
+    "console_contract": {
+      "mode": "serial+display",
+      "primary_uart": "uart.ns16550",
+      "display": "display.virtio_gpu"
+    },
+    "device_contracts": {
+      "interrupt": "intc.plic",
+      "timer": "timer.systick",
+      "bus": ["bus.platform_mmio", "bus.pci"]
+    }
+  },
+  "arm32_tiny_renode_stm32f4": {
+    "name": "arm32_tiny_renode_stm32f4",
+    "arch": "arm32",
+    "profile": "tiny",
+    "execution_class": "renode",
+    "machine": "stm32f4_discovery",
+    "boot_contract": {
+      "entry": "kernel_elf"
+    },
+    "discovery_contract": "static",
+    "console_contract": {
+      "mode": "serial",
+      "primary_uart": "uart.stm32"
+    },
+    "device_contracts": {
+      "interrupt": "intc.nvic",
+      "timer": "timer.systick",
+      "bus": ["bus.platform_mmio"]
+    }
+  },
+  "arm32_embedded_renode_zynq": {
+    "name": "arm32_embedded_renode_zynq",
+    "arch": "arm32",
+    "profile": "embedded_rich",
+    "execution_class": "renode",
+    "machine": "zynq-7000",
+    "boot_contract": {
+      "entry": "kernel_elf"
+    },
+    "discovery_contract": "fdt",
+    "console_contract": {
+      "mode": "serial",
+      "primary_uart": "uart.ns16550"
+    },
+    "device_contracts": {
+      "interrupt": "intc.gicv2",
+      "timer": "timer.arm_generic",
+      "bus": ["bus.amba"]
+    }
+  },
+  "arm32_real_stm32f4": {
+    "name": "arm32_real_stm32f4",
+    "arch": "arm32",
+    "profile": "tiny",
+    "execution_class": "real_board",
+    "machine": "stm32f4_discovery",
+    "boot_contract": {
+      "entry": "firmware_image"
+    },
+    "discovery_contract": "static",
+    "console_contract": {
+      "mode": "serial",
+      "primary_uart": "uart.stm32"
+    },
+    "debug_contract": {
+      "probe": "stlink",
+      "interface": "swd"
+    },
+    "device_contracts": {
+      "interrupt": "intc.nvic",
+      "timer": "timer.systick",
+      "bus": ["bus.platform_mmio"]
+    }
+  },
+  "arm32_real_zedboard": {
+    "name": "arm32_real_zedboard",
+    "arch": "arm32",
+    "profile": "embedded_rich",
+    "execution_class": "real_board",
+    "machine": "zedboard",
+    "boot_contract": {
+      "entry": "firmware_image",
+      "requires_fdt": true
+    },
+    "discovery_contract": "hybrid",
+    "console_contract": {
+      "mode": "serial",
+      "primary_uart": "uart.ns16550"
+    },
+    "debug_contract": {
+      "probe": "jlink",
+      "interface": "jtag"
+    },
+    "device_contracts": {
+      "interrupt": "intc.gicv2",
+      "timer": "timer.arm_generic",
+      "bus": ["bus.amba"]
+    }
+  },
+  "arm32_cpu_harness": {
+    "name": "arm32_cpu_harness",
+    "arch": "arm32",
+    "profile": "tiny",
+    "execution_class": "unicorn",
+    "machine": "cpu_only",
+    "boot_contract": {
+      "entry": "memory_blob"
+    },
+    "discovery_contract": "static",
+    "console_contract": {
+      "mode": "headless"
+    },
+    "device_contracts": {}
+  }
+}
