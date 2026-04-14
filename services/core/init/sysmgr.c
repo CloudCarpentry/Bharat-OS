@@ -1,4 +1,5 @@
 #include "sysmgr.h"
+#include "init_runtime.h"
 #include <bharat/runtime/runtime.h>
 
 __attribute__((weak)) const bharat_service_descriptor_t __start_bharat_services[0];
@@ -36,27 +37,17 @@ uint32_t sysmgr_get_active_profile(void) {
 }
 
 void sysmgr_enforce_startup_policy(void) {
-    uint32_t current_profile = sysmgr_get_active_profile();
+    bharat_runtime_log("sysmgr: shim calling init_runtime_start...");
+    init_boot_context_t ctx = {
+        .profile = init_profile_get_active(),
+        .arch_id = 0,
+        .platform_id = 0,
+        .board_id = 0,
+        .personality_id = 0,
+        .cap_mask = ~0ULL,
+        .safe_mode = false,
+        .diagnostics_mode = false,
+    };
 
-    bharat_runtime_log("sysmgr: Active profile bitmask resolved.");
-    bharat_runtime_log("sysmgr: Discovering and filtering registered services...");
-
-    const bharat_service_descriptor_t *svc = __start_bharat_services;
-    while (svc < __stop_bharat_services) {
-        if (svc->supported_profiles & current_profile) {
-            // Service is allowed
-            // Log starting message matching testing requirements
-            bharat_runtime_log("sysmgr: started ");
-            bharat_runtime_log(svc->name);
-            if (svc->entry_point) {
-                svc->entry_point();
-            }
-        } else {
-            // Service is forbidden for this profile
-            bharat_runtime_log("sysmgr: filtered ");
-            bharat_runtime_log(svc->name);
-            bharat_runtime_log(" (unsupported profile)");
-        }
-        svc++;
-    }
+    init_runtime_start(&ctx);
 }

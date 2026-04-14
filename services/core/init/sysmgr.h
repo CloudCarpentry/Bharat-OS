@@ -30,10 +30,10 @@ typedef struct {
     __attribute__((section("bharat_services"))) \
     const bharat_service_descriptor_t var_name = __VA_ARGS__;
 
-// Helper to get active profile
+// Helper to get active profile (Legacy interface)
 uint32_t sysmgr_get_active_profile(void);
 
-// Sysmgr enforcement function
+// Sysmgr enforcement function (Legacy interface shimmed to init_runtime)
 void sysmgr_enforce_startup_policy(void);
 
 #endif // SYSMGR_H

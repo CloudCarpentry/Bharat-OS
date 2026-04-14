@@ -1,0 +1,6 @@
+I need to verify some aspects of the project.
+1. Should we completely remove `sysmgr.c` and `sysmgr.h` in favor of our new `init_*` files, or should they be refactored? The task says: "Turn services/core/init into a small, deterministic, profile-aware bootstrap service... without becoming a full service supervisor...".
+2. Regarding `init_manifest.h` and the state enums, should I put them into `kernel/include/profile.h` or leave them localized to `services/core/init/` as much as possible?
+3. Where should we put `init_boot_context_t` and `bharat_init_profile_t` definitions? The spec mentions "kernel/include/profile.h or equivalent profile contract area if already present". I will check if that file exists.
+
+I will use `request_user_input` for this. But first, let me check kernel/include/profile.h.

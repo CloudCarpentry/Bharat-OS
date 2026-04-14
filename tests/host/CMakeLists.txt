@@ -245,3 +245,13 @@ if(BHARAT_BUILD_HOST_TESTS)
     target_include_directories(test_i2c_hid_failures PRIVATE ${CMAKE_SOURCE_DIR}/drivers/input/i2c_hid ${CMAKE_SOURCE_DIR}/drivers/bus/i2c)
     add_test(NAME host_test_i2c_hid_failures COMMAND test_i2c_hid_failures)
 endif()
+
+add_executable(test_init_service test_init_service.c host_stubs.c
+    ../../services/core/init/init_manifest.c
+    ../../services/core/init/init_profile.c
+    ../../services/core/init/init_status.c
+    ../../services/core/init/init_handoff.c
+    ../../services/core/init/init_runtime.c
+)
+target_include_directories(test_init_service PRIVATE ../../include ../../kernel/include ../../kernel/include/generated ../../lib/include ../../lib/runtime/include ../../lib/cap/include ../../lib/ipc/include ../../services/core/init ${CMAKE_BINARY_DIR}/kernel/include)
+add_test(NAME host_test_init_service COMMAND test_init_service)
