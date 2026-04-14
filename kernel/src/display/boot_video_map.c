@@ -30,14 +30,26 @@ int boot_video_map(const boot_info_t *boot) {
     }
     
     // Full TLB flush
+#if defined(__x86_64__) || defined(__i386__)
     __asm__ volatile("mov %%cr3, %%rax; mov %%rax, %%cr3" ::: "rax", "memory");
+#elif defined(__aarch64__)
+    __asm__ volatile("tlbi vmalle1is; dsb ish; isb" ::: "memory");
+#elif defined(__riscv)
+    __asm__ volatile("sfence.vma" ::: "memory");
+#else
+    /* Fallback for other architectures */
+#endif
 
     // Update the handoff's virtual address for the GUI to find.
-    extern boot_video_handoff_t* boot_video_get_handoff_ptr(void);
-    boot_video_handoff_t* handoff = boot_video_get_handoff_ptr();
-    if (handoff) {
-        handoff->virt_addr = fb_virt;
+#if BHARAT_BOOT_GUI
+    extern boot_video_handoff_t* boot_video_get_handoff_ptr(void) __attribute__((weak));
+    if (boot_video_get_handoff_ptr) {
+        boot_video_handoff_t* handoff = boot_video_get_handoff_ptr();
+        if (handoff) {
+            handoff->virt_addr = fb_virt;
+        }
     }
+#endif
 
     return 0;
 }

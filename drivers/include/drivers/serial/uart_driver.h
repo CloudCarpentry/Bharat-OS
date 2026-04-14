@@ -1,7 +1,7 @@
 #pragma once
 
-#include "console_base_types.h"
-#include "console_caps.h"
+#include "console/console_base_types.h"
+#include "console/console_caps.h"
 
 typedef struct uart_device uart_device_t;
 
