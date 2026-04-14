@@ -557,3 +557,10 @@ For a complete bibliography and BibTeX entries, see [`docs/research_doc/papers.m
 ### Phase 4 Verification Roadmap
 
 As part of Phase 4, we plan to integrate seL4 tools for verification. Our initial focus will be on Isabelle/HOL proofs for our core IPC primitives. We are actively seeking and welcome help from other developers on this roadmap. If you have experience in formal verification or theorem proving, please join us!
+
+## Build script hierarchy
+
+* Root `build.sh` and `build.ps1` are the supported user-facing entrypoints.
+* `tools/build.py` is the authoritative build/run implementation.
+* Any shell or PowerShell scripts under `tools/` (like `tools/build.sh` and `tools/build.ps1`) are compatibility wrappers only.
+* Future CLI, build, or run behavior changes must be made in `tools/build.py` only. Do not add new logic to the compatibility shims.
