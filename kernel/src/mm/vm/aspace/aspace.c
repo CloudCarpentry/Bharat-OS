@@ -7,6 +7,7 @@
 #include "../../../../include/numa.h"
 #include "../../../../include/slab.h"
 #include "../../../../include/mm/aspace_profile.h"
+#include "../../../../include/debug/mm_invariants.h"
 
 static uint64_t next_as_id = 1;
 
@@ -56,19 +57,30 @@ static bool aspace_profile_allows_create(aspace_profile_t profile, uint32_t flag
 }
 
 int aspace_create(address_space_t **out_aspace, uint32_t flags) {
+    mm_stats.aspace_create_calls++;
+    MM_TRACE("ASPACE_CREATE profile=%d flags=%u\n", aspace_profile_get_current(), flags);
+    MM_ASSERT(out_aspace != NULL, "out_aspace pointer must not be NULL");
+
     if (!out_aspace) return -1;
 
     aspace_profile_t profile = aspace_profile_get_current();
     if (!aspace_profile_is_supported(mem_model_get_current(), profile)) {
+        mm_stats.aspace_rejected_by_profile++;
+        mm_stats.aspace_create_failures++;
         return -1; // Or BHARAT_ERR_NOT_SUPPORTED equivalent
     }
 
+    MM_ASSERT(aspace_profile_is_supported(mem_model_get_current(), profile), "Unsupported profile for current memory model");
+    MM_WARN(!(profile == ASPACE_PROFILE_REGION_ONLY && aspace_flags_require_rich_vm(flags)), "REGION_ONLY should not allow rich VM flags");
+
     if (!aspace_profile_allows_create(profile, flags)) {
+        mm_stats.aspace_rejected_by_profile++;
+        mm_stats.aspace_create_failures++;
         return -1; // Explicitly reject unsupported rich/full-VM semantics
     }
 
     address_space_t *as = (address_space_t *)kmalloc(sizeof(address_space_t));
-    if (!as) return -1;
+    if (!as) { mm_stats.aspace_create_failures++; return -1; }
 
     if (!active_hal_pt) hal_pt_init();
 

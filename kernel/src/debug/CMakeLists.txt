@@ -3,6 +3,7 @@ add_library(k_debug OBJECT
     ../../src/trace/trace.c
     ../../src/debug/early_console.c
     ../../src/debug/hal_serial_compat.c
+    ../../src/debug/mm_invariants.c
     ../../src/console/console_core.c
     ../../src/console/console_buffer.c
     ../../src/console/console_discovery.c
