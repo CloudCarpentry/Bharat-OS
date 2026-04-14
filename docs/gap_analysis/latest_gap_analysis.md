@@ -273,7 +273,7 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 1. Fix scheduler global state → per-core ownership
 2. Redesign TLB shootdown protocol
-3. Implement capability validation in netmgr (pilot)
+3. Implement full capability validation engine in netmgr (pilot)
 4. Build invariant test harness (scheduler + memory)
 5. Convert netmgr into fully running daemon
 
@@ -381,8 +381,8 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Tasks**
 
-* Replace permissive token-valid logic with object/right/scope validation
-* Add deny-by-default behavior
+* Replace basic fail-closed shim with full object/right/scope validation
+* Maintain deny-by-default behavior (implemented via shim)
 * Add audit logging for capability failures
 * Add negative-path tests for unauthorized IPC
 
@@ -691,7 +691,7 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 * E0-S1 Eliminate global scheduler registries
 * E0-S2 Bounded TLB shootdown protocol
-* E1-S1 Pilot strict capability checks in netmgr
+* E1-S1 Pilot full capability enforcement in netmgr
 * E0-S3 PMM ownership and per-core magazines
 
 ### Sprint Block B — Runtime Legitimacy
@@ -724,7 +724,7 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 1. Scheduler per-core ownership
 2. TLB shootdown redesign
-3. netmgr strict capability enforcement
+3. netmgr full capability enforcement
 4. PMM per-core magazines + ownership tests
 5. process_manager / memory runtime implementation by profile
 
