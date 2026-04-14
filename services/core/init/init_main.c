@@ -1,6 +1,7 @@
+#include "init_profile.h"
+#include "init_runtime.h"
 #include <bharat/runtime/runtime.h>
 #include <bharat/cap/cap.h>
-#include "sysmgr.h"
 
 int services_init_main(void);
 
@@ -13,28 +14,41 @@ int main(int argc, char **argv) {
 int services_init_main(void) {
     bharat_runtime_init();
 
-    bharat_runtime_log("services/init: Starting user-space bootstrap (sysmgr).");
+    bharat_runtime_log("services/init: Starting user-space bootstrap (manifest-driven).");
 
     // TODO: Intake root bootstrap capability from kernel/environment
     bharat_cap_handle_t root_cap = bharat_runtime_get_bootstrap_cap();
     if (!bharat_cap_is_valid(root_cap)) {
         bharat_runtime_log("services/init: Warning - no valid root bootstrap capability found.");
-        // We do not panic yet because the kernel boot ABI might not supply this perfectly.
     } else {
         bharat_runtime_log("services/init: Bootstrap capability acquired.");
     }
 
-    // TODO: Connect to or spawn services/namesvc
-    // TODO: Spawn services/capmgr and delegate subset of root rights
+    // Prepare context
+    init_boot_context_t ctx;
+    init_profile_get_context(&ctx);
 
-    // Enforce profile matrix and start registered services
-    sysmgr_enforce_startup_policy();
+    if (ctx.profile == BHARAT_INIT_PROFILE_TINY) {
+        bharat_runtime_log("services/init: Running in TINY profile mode.");
+    } else if (ctx.safe_mode) {
+         bharat_runtime_log("services/init: Booting in SAFE_MODE.");
+    }
+
+    // Run the startup sequence
+    int result = init_runtime_run(&ctx);
+    if (result != 0) {
+        bharat_runtime_log("services/init: Bootstrap failed (safe mode / halted).");
+        // Hang
+        while (1) {
+            bharat_sched_yield();
+        }
+    }
 
     bharat_runtime_log("services/init: Initialization graph complete. Suspending.");
 
     // Simulate main event loop or sleep
     while(1) {
-        // Sleep or wait for supervisor IPC requests
+        bharat_sched_yield();
     }
 
     // Unreachable
