@@ -5,7 +5,7 @@ add_subdirectory(process_manager)
 add_subdirectory(vm_manager)
 
 # Phase 1: Native Service Skeletons
-option(BHARAT_BUILD_USER_SERVICES_STUBS "Build foundational user-space service stubs" ON)
+option(BHARAT_BUILD_USER_SERVICES_STUBS "Build foundational user-space service stubs" OFF)
 if(BHARAT_BUILD_USER_SERVICES_STUBS)
     add_subdirectory(init)
     add_subdirectory(namesvc)
@@ -13,7 +13,7 @@ if(BHARAT_BUILD_USER_SERVICES_STUBS)
 endif()
 
 # Core System Services (Multi-kernel / Distributed OS)
-option(BHARAT_BUILD_CORE_SERVICES "Build core multi-kernel distributed OS services" ON)
+option(BHARAT_BUILD_CORE_SERVICES "Build core multi-kernel distributed OS services" OFF)
 if(BHARAT_BUILD_CORE_SERVICES)
     add_subdirectory(coremgr)
     add_subdirectory(memmgr)
@@ -43,7 +43,7 @@ if(BHARAT_ENABLE_SERVICE_NETWORK)
 endif()
 
 # Profile-driven network stack and manager
-option(BHARAT_BUILD_NETWORK_STUBS "Build network manager and stack user-space stubs" ON)
+option(BHARAT_BUILD_NETWORK_STUBS "Build network manager and stack user-space stubs" OFF)
 if(BHARAT_BUILD_NETWORK_STUBS AND BHARAT_ENABLE_SERVICE_NETWORK)
     add_subdirectory(netmgr)
     add_subdirectory(netstack)

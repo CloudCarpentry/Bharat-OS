@@ -657,6 +657,22 @@
         "BHARAT_TARGET_BOARD": "virt",
         "BHARAT_BOOT_GUI": "OFF"
       }
+    },
+    {
+      "name": "experimental-services",
+      "displayName": "Experimental Services Build (Debug)",
+      "description": "Build with all scaffold-heavy experimental service groups enabled",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/experimental-services",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/x86_64-elf-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BHARAT_DEVICE_PROFILE": "DESKTOP",
+        "BHARAT_TARGET_BOARD": "qemu-virt",
+        "BHARAT_BUILD_USER_SERVICES_STUBS": "ON",
+        "BHARAT_BUILD_CORE_SERVICES": "ON",
+        "BHARAT_BUILD_NETWORK_STUBS": "ON"
+      }
     }
   ],
   "buildPresets": [
@@ -831,6 +847,10 @@
     {
       "name": "riscv32-iot-release",
       "configurePreset": "riscv32-iot-release"
+    },
+    {
+      "name": "experimental-services",
+      "configurePreset": "experimental-services"
     }
   ],
   "testPresets": [
