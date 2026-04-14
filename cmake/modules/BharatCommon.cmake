@@ -119,14 +119,21 @@ function(bharat_configure_userspace_library TARGET_NAME)
 endfunction()
 
 function(bharat_configure_userspace_binary TARGET_NAME)
+    # Inject the runtime crt0 object directly into the binary
+    if (TARGET bharat_crt0)
+        target_sources(${TARGET_NAME} PRIVATE $<TARGET_OBJECTS:bharat_crt0>)
+        # Make sure every binary implicitly links the syscalls needed by crt0 (bharat_exit)
+        target_link_libraries(${TARGET_NAME} PRIVATE bharat_syscall)
+    endif()
+
     if(BHARAT_USERSPACE_PIE)
         set_target_properties(${TARGET_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
         target_compile_options(${TARGET_NAME} PRIVATE -fPIE)
-        target_link_options(${TARGET_NAME} PRIVATE -nostdlib -pie)
+        target_link_options(${TARGET_NAME} PRIVATE -nostdlib -nostartfiles -pie)
     else()
         set_target_properties(${TARGET_NAME} PROPERTIES POSITION_INDEPENDENT_CODE OFF)
         target_compile_options(${TARGET_NAME} PRIVATE -fno-pie -fno-PIC)
-        target_link_options(${TARGET_NAME} PRIVATE -nostdlib "LINKER:-no-pie")
+        target_link_options(${TARGET_NAME} PRIVATE -nostdlib -nostartfiles "LINKER:-no-pie")
     endif()
 endfunction()
 
