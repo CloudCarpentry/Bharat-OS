@@ -287,6 +287,7 @@ void boot_common_platform_services(const boot_info_t *boot) {
     KPRINT("  [CPU] Interrupts enabled.\n");
 
     boot_selftest_report_t report;
+    boot_selftest_run_stage(BOOT_TEST_STAGE_IPC, &report);
     boot_selftest_run_stage(BOOT_TEST_STAGE_PLATFORM, &report);
     KPRINT("  [BOOT] Platform services initialization complete\n");
 }
