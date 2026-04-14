@@ -117,6 +117,12 @@ typedef int32_t kstatus_t;
 /*
  * Canonical kernel-internal -> syscall boundary status translation.
  *
+ * NOTE: Kernel code must never return raw `sys_errno_t` or negative `sys_errno_t`
+ * directly from internal functions. Always return `kstatus_t`. Translation must
+ * occur exclusively at the syscall boundary.
+ *
+ * See `docs/architecture/kernel/status-code-contract.md` for full mapping rules.
+ *
  * kstatus_to_sys_errno(): maps a kstatus_t into a stable positive SYS_E* code.
  * kstatus_to_sysret(): maps a kstatus_t into canonical syscall return encoding:
  *   K_OK -> 0, error -> -(sys_errno_t)

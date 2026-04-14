@@ -5,7 +5,13 @@
 
 typedef int32_t sys_errno_t;
 
-/* Positive errno values; syscall boundary returns them as negative values. */
+/* Positive errno values; syscall boundary returns them as negative values.
+ * Note: Internal kernel code should use `kstatus_t` (from `kernel/status.h`)
+ * and rely on the syscall boundary translation functions to map them to these
+ * `sys_errno_t` values.
+ *
+ * See `docs/architecture/kernel/status-code-contract.md` for full mapping rules.
+ */
 #define SYS_EPERM       1
 #define SYS_ENOENT      2
 #define SYS_ESRCH       3
