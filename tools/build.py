@@ -100,7 +100,12 @@ def do_configure(build_cfg):
     profile = normalize_csv(build_cfg.get('profile', 'DESKTOP'))
     personality = normalize_csv(build_cfg.get('personality', 'NATIVE'))
     board = normalize_csv(build_cfg.get('board', ''))
-    gui = 'ON' if build_cfg.get('gui') else 'OFF'
+
+    display_cfg = build_cfg.get("display", {})
+    gui_enabled = display_cfg.get("enabled", build_cfg.get("gui", False))
+    display_class = display_cfg.get("class", "none" if not gui_enabled else "generic")
+
+    gui = 'ON' if gui_enabled else 'OFF'
 
     check_and_clean_stale_cache(preset)
 
@@ -144,7 +149,11 @@ RUN_MATRIX = {
 def do_run(build_cfg, dual_serial, run_tests=False, cpus=1):
     arch = build_cfg.get('arch')
     board = build_cfg.get('board', '')
-    gui = build_cfg.get('gui', False)
+
+    display_cfg = build_cfg.get("display", {})
+    gui_enabled = display_cfg.get("enabled", build_cfg.get("gui", False))
+    gui = gui_enabled
+
     preset = build_cfg.get('preset')
 
     target_key = (arch, board)

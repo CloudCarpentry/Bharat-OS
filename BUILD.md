@@ -56,8 +56,11 @@ Edit `build_config.json` to define your target composition (e.g. arch, UI on/off
 
 ```bash
 # Linux/Mac/WSL
-# Build the default_dev profile
+# Build the default_dev profile (conservative, disables scaffold-heavy service groups)
 ./build.sh default_dev
+
+# Build the experimental services profile (enables scaffold-heavy experimental services)
+./build.sh experimental_services
 
 # Build and run immediately in QEMU
 ./build.sh default_dev --run

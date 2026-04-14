@@ -138,6 +138,11 @@ add_executable(test_secure_mem test_secure_mem.c)
 target_include_directories(test_secure_mem PRIVATE ../../kernel/include)
 
 add_test(NAME host_test_secure_mem COMMAND test_secure_mem)
+
+add_executable(test_crypto_protocol_dispatch services/test_crypto_protocol_dispatch.c ../../services/security/crypto/protocol.c ../../services/security/crypto/dispatch.c)
+target_include_directories(test_crypto_protocol_dispatch PRIVATE ../../services/security/crypto ../../kernel/include)
+add_test(NAME host_test_crypto_protocol_dispatch COMMAND test_crypto_protocol_dispatch)
+
 # Phase 3: NetMgr Tests
 add_executable(test_netmgr_address_table services/test_netmgr_address_table.c ../../services/netmgr/src/address_table.c ../../lib/runtime/src/freestanding_string.c)
 target_include_directories(test_netmgr_address_table PRIVATE ../../services/netmgr/src ../../services/netmgr/include ../../services/core/subsysmgr/include ../../lib/net/include ../../lib/runtime/include)

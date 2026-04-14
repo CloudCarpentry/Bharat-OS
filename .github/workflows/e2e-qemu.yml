@@ -2,9 +2,9 @@ name: E2E QEMU Verification
 
 on:
   push:
-    branches: [ main, developer ]
+    branches: [ developer ]
   pull_request:
-    branches: [ main, developer ]
+    branches: [ developer ]
   workflow_dispatch:
 
 jobs:

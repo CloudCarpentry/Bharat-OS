@@ -1,6 +1,10 @@
 #include "crypto_service.h"
 
 crypto_status_t crypto_dispatch_request(const crypto_request_msg_t *req, crypto_resp_common_t *resp) {
+    if (req == NULL || resp == NULL) {
+        return CRYPTO_STATUS_ERR_BAD_PARAM;
+    }
+
     switch (req->header.opcode) {
         case CRYPTO_OP_GET_RANDOM:
             return handle_get_random(&req->payload.get_random, resp);

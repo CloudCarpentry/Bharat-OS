@@ -29,15 +29,19 @@ Use these labels consistently across status docs and roadmap updates:
 - Host tests are optional through `BHARAT_BUILD_HOST_TESTS`.
 
 ### Service composition
-- Always built: `process_manager`, `vm_manager`, `file_system`, `drivers`, `crypto`, `console`, `boot_displayd`.
+
+- Always built: `process_manager`, `vm_manager`, `file_system`, `drivers`, `crypto`, `console`, `boot_displayd`. legacy `net`.
 - Experimental option groups (`BHARAT_BUILD_EXPERIMENTAL_SERVICES=OFF` by default):
   - `BHARAT_BUILD_USER_SERVICES_STUBS=ON`: `init`, `namesvc`, `servicemgr`.
   - `BHARAT_BUILD_CORE_SERVICES=ON`: `coremgr`, `memmgr`, `schedmgr`, `devmgr`, `accelmgr`, `storagemgr`, `faultmgr`, `telemetrymgr`.
   - Also guards: `netfast`, `sensor_hub`, `time_sync`, `can`, `power_mode`.
 - Forward path network stack (`BHARAT_BUILD_NETWORK_STUBS=ON`): `netmgr`, `netstack` (default ON).
 - Legacy/Transitional network stack (`BHARAT_ENABLE_SERVICE_NETWORK=ON`): `net` (default ON but deprecated).
+-  Default-off option groups (enabled in experimental presets):
+  - `BHARAT_BUILD_USER_SERVICES_STUBS=ON`: `init`, `namesvc`, `servicemgr`.
+  - `BHARAT_BUILD_CORE_SERVICES=ON`: `coremgr`, `memmgr`, `schedmgr`, `devmgr`, `storagemgr`, `faultmgr`, `telemetrymgr`.
+  - `BHARAT_BUILD_NETWORK_STUBS=ON`: `netmgr`, `netstack`, `netfast`.
 
----
 
 ## 2) Service implementation matrix (taxonomy-aligned)
 
