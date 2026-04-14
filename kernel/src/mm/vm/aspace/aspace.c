@@ -10,16 +10,61 @@
 
 static uint64_t next_as_id = 1;
 
+static bool aspace_flags_require_rich_vm(uint32_t flags)
+{
+    /*
+     * Conservative rule:
+     * - flags == 0 means basic creation
+     * - any unknown/non-zero flags are treated as requiring rich VM
+     *
+     * This keeps constrained profiles honest until a fuller flag taxonomy
+     * exists.
+     */
+    if (flags == 0) {
+        return false;
+    }
+
+    return true;
+}
+
+static bool aspace_profile_allows_create(aspace_profile_t profile, uint32_t flags)
+{
+    const bool rich = aspace_flags_require_rich_vm(flags);
+
+    if (!rich) {
+        return true;
+    }
+
+    switch (profile) {
+        case ASPACE_PROFILE_FULL:
+            return true;
+
+        case ASPACE_PROFILE_SPLIT:
+            /*
+             * Keep SPLIT permissive in this PR unless there is already an
+             * existing semantic in-tree that must be rejected.
+             */
+            return true;
+
+        case ASPACE_PROFILE_FLAT:
+        case ASPACE_PROFILE_REGION_ONLY:
+            return false;
+
+        default:
+            return false;
+    }
+}
+
 int aspace_create(address_space_t **out_aspace, uint32_t flags) {
     if (!out_aspace) return -1;
 
-    // Reject unsupported rich creation flags on constrained profiles
     aspace_profile_t profile = aspace_profile_get_current();
-    if (profile == ASPACE_PROFILE_REGION_ONLY || profile == ASPACE_PROFILE_FLAT) {
-        // Here we could explicitly check flags that imply full VM semantics (e.g. fork/clone like COW setup).
-        // Since we are maintaining existing behavior for FULL, we let normal setup proceed but
-        // explicitly fail if deep VM flags are passed which constrained modes don't support.
-        // For now, if someone passes clone_flags indicating full rich VM expectations, we would reject.
+    if (!aspace_profile_is_supported(mem_model_get_current(), profile)) {
+        return -1; // Or BHARAT_ERR_NOT_SUPPORTED equivalent
+    }
+
+    if (!aspace_profile_allows_create(profile, flags)) {
+        return -1; // Explicitly reject unsupported rich/full-VM semantics
     }
 
     address_space_t *as = (address_space_t *)kmalloc(sizeof(address_space_t));

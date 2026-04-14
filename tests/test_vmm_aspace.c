@@ -4,6 +4,7 @@
 #include "../kernel/include/mm/aspace.h"
 #include "../kernel/include/mm/vm_object.h"
 #include "../kernel/include/hal/hal_pt.h"
+#include "../kernel/include/mm/aspace_profile.h"
 
 #define TEST(name) void name()
 #define ASSERT_EQ(a, b) assert((a) == (b))
@@ -225,6 +226,47 @@ TEST(vm_object_lifecycle_hardening) {
     printf("Passed vm_object_lifecycle_hardening\n");
 }
 
+// Mocks for mm_model and aspace_profile to test create constraints
+mem_model_t mock_mem_model = MEM_MODEL_MMU_FULL;
+// aspace_profile_t mock_aspace_profile = ASPACE_PROFILE_FULL; // Removed since we map directly from mem_model
+
+mem_model_t mem_model_get_current(void) {
+    return mock_mem_model;
+}
+
+TEST(aspace_create_profile_enforcement) {
+    printf("Running aspace_create_profile_enforcement...\n");
+    address_space_t *as = NULL;
+
+    // 1. FULL + rich create (flags=1) -> PASS
+    mock_mem_model = MEM_MODEL_MMU_FULL;
+    ASSERT_EQ(0, aspace_create(&as, 1));
+    aspace_destroy(as);
+
+    // 2. FULL + basic create (flags=0) -> PASS
+    mock_mem_model = MEM_MODEL_MMU_FULL;
+    ASSERT_EQ(0, aspace_create(&as, 0));
+    aspace_destroy(as);
+
+    // 3. REGION_ONLY + rich create -> FAIL
+    mock_mem_model = MEM_MODEL_MPU; // implies REGION_ONLY
+    ASSERT_NE(0, aspace_create(&as, 1));
+
+    // 4. REGION_ONLY + basic create -> PASS
+    mock_mem_model = MEM_MODEL_MPU; // implies REGION_ONLY
+    ASSERT_EQ(0, aspace_create(&as, 0));
+    aspace_destroy(as);
+
+    // 5. FLAT + rich create -> FAIL
+    // For tests, we use MMU_LITE which implies SPLIT in aspace_profile_get_for_model
+    // We cannot easily inject FLAT here without changing aspace_profile.h, but we can test
+    // that constrained profiles block rich. Since LITE defaults to SPLIT and we left SPLIT permissive,
+    // this test for FLAT would need us to be able to mock the profile directly, which is inline.
+    // Let's rely on MPU -> REGION_ONLY test for the rejection path logic.
+
+    printf("Passed aspace_create_profile_enforcement\n");
+}
+
 int main() {
     hal_pt_init(); // Needs mock
     extern void prot_domain_init(void);
@@ -237,6 +279,7 @@ int main() {
     aspace_lookup_authoritative_without_pt_mapping();
     vm_object_kinds_basic_construction();
     vm_object_lifecycle_hardening();
+    aspace_create_profile_enforcement();
 
     printf("All ASPACE tests passed successfully!\n");
     return 0;
