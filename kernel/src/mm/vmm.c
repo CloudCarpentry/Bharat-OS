@@ -10,6 +10,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "mm/aspace_profile.h"
+#include "debug/mm_invariants.h"
 
 address_space_t kernel_space;
 static int kernel_space_ready = 0;
@@ -212,6 +213,8 @@ address_space_t *mm_create_address_space(void) {
 
     // Defer explicit legality checks entirely to the authoritative aspace_create boundary
     if (aspace_create(&as, create_flags) != 0) return NULL;
+    MM_WARN(as != NULL, "Address space creation returned NULL");
+    console_log(CONSOLE_LEVEL_DEBUG, "ASPACE profile: %d\n", aspace_profile_get_current());
     return as;
 }
 
