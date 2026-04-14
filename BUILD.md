@@ -363,3 +363,41 @@ Ensure `qemu-system-*` binaries for all architectures are in the system `PATH`.
 1. **Sequencing**: Execute each build name from the matrix sequentially.
 2. **Verification**: Confirm the presence of the `Bharat-OS` boot logo and kernel initialization logs in the output.
 3. **Multi-Arch Logic**: The `tools/build.py` script automatically selects the correct CPU and machine flags (e.g., `cortex-a15` for arm32 virt, `q35` for x86_64).
+
+### Quick Start Commands (Windows PowerShell)
+
+Here are the commands to run the predefined configurations in Windows:
+
+**1. x86_64 (Desktop, GUI)**
+```powershell
+.\build.ps1 default_dev --run
+# Or with dual serial for both GUI and terminal logs:
+# .\build.ps1 default_dev --run --dual-serial
+```
+
+**2. ARM64 (Desktop, GUI)**
+```powershell
+.\build.ps1 arm64_desktop_mmu --run
+```
+
+**3. ARM32 (Edge, Headless)**
+```powershell
+.\build.ps1 arm32_virt_mmu --run
+```
+
+**4. RISC-V 64 (Desktop, GUI)**
+```powershell
+.\build.ps1 riscv64_desktop_mmu --run
+```
+
+**5. RISC-V 32 (Edge, Headless)**
+```powershell
+.\build.ps1 riscv32_edge_mmu_lite --run
+```
+
+**Headless/CI Testing (All Architectures)**
+If you want to run any of the GUI-enabled profiles purely in headless mode (no QEMU window) for testing, replace `--run` with `--run-tests`:
+```powershell
+.\build.ps1 arm64_desktop_mmu --run-tests
+```
+
