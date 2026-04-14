@@ -132,11 +132,29 @@ def do_clean(build_cfg):
     if os.path.exists(build_dir):
         run_command(['cmake', '--build', f'--preset={preset}', '--target', 'clean'])
 
-def do_run(build_cfg, dual_serial, run_tests=False):
+RUN_MATRIX = {
+    ("x86_64", "qemu-virt"): {"runner": "qemu-system-x86_64", "machine": "q35", "smp_supported": True},
+    ("arm64", "virt"): {"runner": "qemu-system-aarch64", "machine": "virt", "cpu": "cortex-a57", "smp_supported": True},
+    ("riscv64", "virt"): {"runner": "qemu-system-riscv64", "machine": "virt", "smp_supported": True},
+    ("arm32", "avh-corstone310"): {"runner": "VHT_Corstone_SSE-310", "smp_supported": False},
+    ("arm32", "virt"): {"runner": "qemu-system-arm", "machine": "virt", "cpu": "cortex-a15", "smp_supported": True},
+    ("riscv32", "virt"): {"runner": "qemu-system-riscv32", "machine": "virt", "smp_supported": True},
+}
+
+def do_run(build_cfg, dual_serial, run_tests=False, cpus=1):
     arch = build_cfg.get('arch')
     board = build_cfg.get('board', '')
     gui = build_cfg.get('gui', False)
     preset = build_cfg.get('preset')
+
+    target_key = (arch, board)
+    run_config = RUN_MATRIX.get(target_key)
+    if not run_config:
+        print(f"Unsupported run configuration for arch {arch} board {board}")
+        sys.exit(1)
+
+    if cpus > 1 and not run_config.get("smp_supported", False):
+        raise Exception(f"SMP not supported on this target (arch: {arch}, board: {board})")
 
     kernel_path = os.path.join('build', preset, 'kernel', 'kernel.elf')
     if not os.path.exists(kernel_path):
@@ -173,19 +191,73 @@ def do_run(build_cfg, dual_serial, run_tests=False):
     else:
         qemu_opts.extend(['-serial', 'stdio', '-display', 'none'])
 
-    if arch == 'x86_64':
-        cmd = ['qemu-system-x86_64', '-kernel', run_kernel, '-m', '512'] + qemu_opts
-    elif arch == 'arm64':
-        cmd = ['qemu-system-aarch64', '-kernel', run_kernel, '-m', '512'] + qemu_opts
-    elif arch == 'riscv64':
-        cmd = ['qemu-system-riscv64', '-kernel', run_kernel, '-m', '512'] + qemu_opts
-    elif arch == 'arm32' and board == 'avh-corstone310':
-        cmd = ['VHT_Corstone_SSE-310', '-a', run_kernel] + qemu_opts
-    else:
-        print(f"Unsupported run configuration for arch {arch} board {board}")
-        sys.exit(1)
+    runner = run_config.get("runner")
 
+    if runner == 'VHT_Corstone_SSE-310':
+        cmd = [runner, '-a', run_kernel] + qemu_opts
+    else:
+        cmd = [runner, '-kernel', run_kernel, '-m', '512']
+        if "machine" in run_config:
+            cmd.extend(['-machine', run_config["machine"]])
+        if "cpu" in run_config:
+            cmd.extend(['-cpu', run_config["cpu"]])
+        if run_config.get("smp_supported", False) and cpus > 1:
+            cmd.extend(['-smp', str(cpus)])
+        cmd.extend(qemu_opts)
+
+    print(f"[RUN] Arch: {arch} | CPUs: {cpus} | Board: {board}")
     run_command(cmd)
+
+def do_matrix(manifest):
+    matrix_targets = [
+        ("x86_64_desktop_mmu", 1),
+        ("x86_64_desktop_mmu", 4),
+        ("arm64_desktop_mmu", 1),
+        ("arm64_desktop_mmu", 4),
+        ("riscv64_desktop_mmu", 1),
+        ("riscv64_desktop_mmu", 4),
+        ("arm32_edge_mpu", 1),
+        ("arm32_virt_mmu", 1),
+        ("arm32_virt_mmu", 2),
+        ("riscv32_edge_mmu_lite", 1),
+    ]
+
+    results = []
+
+    for build_name, cpus in matrix_targets:
+        print(f"\n{'='*60}")
+        print(f"MATRIX RUN: {build_name} with {cpus} CPU(s)")
+        print(f"{'='*60}\n")
+
+        if build_name not in manifest.get('builds', {}):
+            print(f"Warning: Build '{build_name}' not found in manifest. Skipping.")
+            results.append((build_name, cpus, "SKIPPED"))
+            continue
+
+        build_cfg = manifest['builds'][build_name]
+
+        try:
+            do_configure(build_cfg)
+            do_build(build_cfg)
+            do_run(build_cfg, dual_serial=False, run_tests=True, cpus=cpus)
+            results.append((build_name, cpus, "PASS"))
+        except SystemExit as e:
+            if e.code == 0:
+                results.append((build_name, cpus, "PASS"))
+            else:
+                results.append((build_name, cpus, "FAIL"))
+        except Exception as e:
+            print(f"Error during matrix run for {build_name}: {e}")
+            results.append((build_name, cpus, "FAIL"))
+
+    print("\n" + "="*60)
+    print("MATRIX SUMMARY")
+    print("="*60)
+    print(f"{'Build Name':<30} | {'CPUs':<4} | {'Status'}")
+    print("-" * 60)
+    for build_name, cpus, status in results:
+        print(f"{build_name:<30} | {cpus:<4} | {status}")
+    print("="*60 + "\n")
 
 def main():
     # Detect legacy flags and provide a friendly migration error
@@ -221,6 +293,8 @@ def main():
     parser.add_argument('--test', action='store_true', help='Run tests (host)')
     parser.add_argument('--run-tests', action='store_true', help='Run user-space and kernel tests in emulator (headless)')
     parser.add_argument('--dual-serial', action='store_true', help='Use dual serial ports in emulator')
+    parser.add_argument('--cpus', type=int, default=1, help='Number of CPUs for SMP run (if supported)')
+    parser.add_argument('--matrix', action='store_true', help='Run the execution matrix sequentially')
 
     args = parser.parse_args()
 
@@ -232,6 +306,10 @@ def main():
 
     if args.list:
         print_list(manifest)
+        return
+
+    if args.matrix:
+        do_matrix(manifest)
         return
 
     if args.build_name not in manifest.get('builds', {}):
@@ -261,7 +339,7 @@ def main():
         do_test(build_cfg)
 
     if args.run or args.run_tests:
-        do_run(build_cfg, args.dual_serial, args.run_tests)
+        do_run(build_cfg, args.dual_serial, args.run_tests, args.cpus)
 
 if __name__ == '__main__':
     main()

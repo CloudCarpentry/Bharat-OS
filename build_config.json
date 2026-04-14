@@ -18,6 +18,15 @@
       "gui": false,
       "run": false
     },
+    "arm32_virt_mmu": {
+      "preset": "arm32-edge",
+      "arch": "arm32",
+      "profile": "EDGE",
+      "personality": "NATIVE",
+      "board": "virt",
+      "gui": false,
+      "run": false
+    },
     "arm64_desktop_mmu": {
       "preset": "arm64-edge",
       "arch": "arm64",
