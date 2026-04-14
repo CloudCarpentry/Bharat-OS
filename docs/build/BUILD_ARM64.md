@@ -15,29 +15,29 @@ The build system offers multiple paths for configuring and building the kernel. 
 **Linux / macOS / WSL / BSD:**
 
 ```bash
-chmod +x tools/build.sh
+chmod +x ./build.sh
 
 # Build the kernel
-./tools/build.sh arm64
+./build.sh arm64
 
 # Clean and rebuild the kernel
-./tools/build.sh arm64 --clean
+./build.sh arm64 --clean
 
 # Build and attempt to boot in QEMU (Runtime pending)
-./tools/build.sh arm64 --run
+./build.sh arm64 --run
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
 # Build the kernel
-.\tools\build.ps1 -Arch arm64
+.\build.ps1 -Arch arm64
 
 # Clean and rebuild the kernel
-.\tools\build.ps1 -Arch arm64 -Clean
+.\build.ps1 -Arch arm64 -Clean
 
 # Build and attempt to boot in QEMU (Runtime pending)
-.\tools\build.ps1 -Arch arm64 -Run
+.\build.ps1 -Arch arm64 -Run
 ```
 
 ### PowerShell ↔ Bash Argument Mapping (ARM64)
@@ -45,19 +45,19 @@ chmod +x tools/build.sh
 If you run this on Windows:
 
 ```powershell
-.\tools\build.ps1 -Arch arm64 -Clean -Run -BootGui ON -DualSerial
+.\build.ps1 -Arch arm64 -Clean -Run -BootGui ON -DualSerial
 ```
 
 the equivalent command on Linux/macOS/WSL/BSD is:
 
 ```bash
-./tools/build.sh --arch arm64 --clean --run --boot-gui ON --dual-serial
+./build.sh --arch arm64 --clean --run --boot-gui ON --dual-serial
 ```
 
 Short-form flags also work in `build.sh`, so this is equivalent too:
 
 ```bash
-./tools/build.sh -Arch arm64 -Clean -Run -BootGui ON -DualSerial
+./build.sh -Arch arm64 -Clean -Run -BootGui ON -DualSerial
 ```
 
 ### Using CMake Presets

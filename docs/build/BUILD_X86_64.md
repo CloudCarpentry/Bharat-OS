@@ -15,41 +15,41 @@ The build system offers multiple paths for configuring and building the kernel. 
 **Linux / macOS / WSL / BSD:**
 
 ```bash
-chmod +x tools/build.sh
+chmod +x ./build.sh
 
 # Build the kernel
-./tools/build.sh x86_64
+./build.sh x86_64
 
 # Clean and rebuild the kernel
-./tools/build.sh x86_64 --clean
+./build.sh x86_64 --clean
 
 # Build and boot directly in QEMU
-./tools/build.sh x86_64 --run
+./build.sh x86_64 --run
 
 # Run with GDB debug server enabled
-./tools/build.sh x86_64 --run --debug
+./build.sh x86_64 --run --debug
 
 # Override boot knobs (e.g., disable GUI, use VM profile)
-./tools/build.sh x86_64 --boot-gui=OFF --hw=vm
+./build.sh x86_64 --boot-gui=OFF --hw=vm
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
 # Build the kernel
-.\tools\build.ps1 -Arch x86_64
+.\build.ps1 -Arch x86_64
 
 # Clean and rebuild the kernel
-.\tools\build.ps1 -Arch x86_64 -Clean
+.\build.ps1 -Arch x86_64 -Clean
 
 # Build and boot directly in QEMU
-.\tools\build.ps1 -Arch x86_64 -Run
+.\build.ps1 -Arch x86_64 -Run
 
 # Run with GDB debug server enabled
-.\tools\build.ps1 -Arch x86_64 -Run -DebugQemu
+.\build.ps1 -Arch x86_64 -Run -DebugQemu
 
 # Override boot knobs
-.\tools\build.ps1 -Arch x86_64 -BootGui OFF -HardwareProfile vm
+.\build.ps1 -Arch x86_64 -BootGui OFF -HardwareProfile vm
 ```
 
 ### Using CMake Presets

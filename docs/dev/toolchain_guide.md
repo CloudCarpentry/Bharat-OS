@@ -23,7 +23,7 @@ The toolchain files ensure that CMake correctly identifies `CMAKE_SYSTEM_NAME` (
 
 ### 1. Building the Kernel
 ```bash
-./tools/build.sh x86_64
+./build.sh x86_64
 ```
 *Behind the scenes: Calls CMake using `cmake/toolchains/x86_64-elf.cmake`.*
 

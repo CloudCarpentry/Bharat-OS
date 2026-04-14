@@ -54,14 +54,14 @@ Minimum expected tools on both hosts:
 
 ```bash
 # Example: RISC-V64
-chmod +x tools/build.sh
-./tools/build.sh riscv64
+chmod +x ./build.sh
+./build.sh riscv64
 
 # Example: ARM64
-./tools/build.sh arm64
+./build.sh arm64
 
 # Example: clean rebuild
-./tools/build.sh riscv64 --clean
+./build.sh riscv64 --clean
 ```
 
 ## 4.2 Run host tests
@@ -76,13 +76,13 @@ ctest --preset run-tests
 
 ```bash
 # RISC-V64
-./tools/build.sh riscv64 --run
+./build.sh riscv64 --run
 
 # ARM64
-./tools/build.sh arm64 --run
+./build.sh arm64 --run
 
 # x86_64
-./tools/build.sh x86_64 --run
+./build.sh x86_64 --run
 ```
 
 For manual QEMU invocation, use generated kernel artifacts from the corresponding build directory.
@@ -95,16 +95,16 @@ For manual QEMU invocation, use generated kernel artifacts from the correspondin
 
 ```powershell
 # RISC-V64
-.\tools\build.ps1 -Arch riscv64
+.\build.ps1 -Arch riscv64
 
 # ARM64
-.\tools\build.ps1 -Arch arm64
+.\build.ps1 -Arch arm64
 
 # x86_64
-.\tools\build.ps1 -Arch x86_64
+.\build.ps1 -Arch x86_64
 
 # clean rebuild
-.\tools\build.ps1 -Arch riscv64 -Clean
+.\build.ps1 -Arch riscv64 -Clean
 ```
 
 ## 5.2 Run host tests
@@ -118,9 +118,9 @@ ctest --preset run-tests
 ## 5.3 Run in QEMU
 
 ```powershell
-.\tools\build.ps1 -Arch riscv64 -Run
-.\tools\build.ps1 -Arch arm64 -Run
-.\tools\build.ps1 -Arch x86_64 -Run
+.\build.ps1 -Arch riscv64 -Run
+.\build.ps1 -Arch arm64 -Run
+.\build.ps1 -Arch x86_64 -Run
 ```
 
 ---
@@ -171,9 +171,9 @@ Suggested progression:
 cmake --preset tests-host
 cmake --build --preset build-tests
 ctest --preset run-tests
-./tools/build.sh riscv64
-./tools/build.sh arm64
-./tools/build.sh x86_64
+./build.sh riscv64
+./build.sh arm64
+./build.sh x86_64
 ```
 
 ## Windows CI stage
@@ -182,9 +182,9 @@ ctest --preset run-tests
 cmake --preset tests-host
 cmake --build --preset build-tests
 ctest --preset run-tests
-.\tools\build.ps1 -Arch riscv64
-.\tools\build.ps1 -Arch arm64
-.\tools\build.ps1 -Arch x86_64
+.\build.ps1 -Arch riscv64
+.\build.ps1 -Arch arm64
+.\build.ps1 -Arch x86_64
 ```
 
 ---
