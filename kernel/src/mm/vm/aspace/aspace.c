@@ -7,6 +7,7 @@
 #include "../../../../include/numa.h"
 #include "../../../../include/slab.h"
 #include "../../../../include/mm/aspace_profile.h"
+#include "../../../../include/kernel/status.h"
 
 static uint64_t next_as_id = 1;
 
@@ -56,19 +57,19 @@ static bool aspace_profile_allows_create(aspace_profile_t profile, uint32_t flag
 }
 
 int aspace_create(address_space_t **out_aspace, uint32_t flags) {
-    if (!out_aspace) return -1;
+    if (!out_aspace) return K_ERR_INVALID_ARG;
 
     aspace_profile_t profile = aspace_profile_get_current();
     if (!aspace_profile_is_supported(mem_model_get_current(), profile)) {
-        return -1; // Or BHARAT_ERR_NOT_SUPPORTED equivalent
+        return K_ERR_UNSUPPORTED; // Explicitly reject unsupported combinations
     }
 
     if (!aspace_profile_allows_create(profile, flags)) {
-        return -1; // Explicitly reject unsupported rich/full-VM semantics
+        return K_ERR_PROFILE_RESTRICTED; // Explicitly reject unsupported rich/full-VM semantics
     }
 
     address_space_t *as = (address_space_t *)kmalloc(sizeof(address_space_t));
-    if (!as) return -1;
+    if (!as) return K_ERR_NO_MEMORY;
 
     if (!active_hal_pt) hal_pt_init();
 
