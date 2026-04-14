@@ -68,11 +68,28 @@ Edit `build_config.json` to define your target composition (e.g. arch, UI on/off
 
 ```powershell
 # Windows
-# Build the default_dev profile
-.\build.ps1 default_dev
 
-# Build and run immediately in QEMU
+# --- x86_64 ---
+# Build and run x86_64 with GUI
 .\build.ps1 default_dev --run
+# Build and run x86_64 without GUI (Headless)
+.\build.ps1 default_dev --run-tests
+
+# --- ARM64 ---
+# Build and run ARM64 with GUI
+.\build.ps1 arm64_desktop_mmu --run
+# Build and run ARM64 without GUI (Headless)
+.\build.ps1 arm64_desktop_mmu --run-tests
+
+# --- RISCV64 ---
+# Build and run RISCV64 with GUI
+.\build.ps1 riscv64_desktop_mmu --run
+# Build and run RISCV64 without GUI (Headless)
+.\build.ps1 riscv64_desktop_mmu --run-tests
+
+# --- ARM32 ---
+# Build and run ARM32 without GUI (Edge profile)
+.\build.ps1 arm32_virt_mmu --run-tests
 ```
 
 ### 🚨 Migration Guide: Legacy Flags Removed
