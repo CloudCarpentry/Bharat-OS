@@ -1,5 +1,14 @@
 {
   "builds": {
+    "experimental_services": {
+      "preset": "experimental-services",
+      "arch": "x86_64",
+      "profile": "DESKTOP",
+      "personality": "NATIVE",
+      "board": "qemu-virt",
+      "gui": false,
+      "run": false
+    },
     "default_dev": {
       "preset": "x86_64-debug",
       "arch": "x86_64",
