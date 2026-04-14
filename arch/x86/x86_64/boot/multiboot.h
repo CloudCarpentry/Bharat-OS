@@ -32,7 +32,23 @@ typedef struct {
     uint16_t vbe_interface_seg;
     uint16_t vbe_interface_off;
     uint16_t vbe_interface_len;
+
+    /* Framebuffer info */
+    uint64_t framebuffer_addr;
+    uint32_t framebuffer_pitch;
+    uint32_t framebuffer_width;
+    uint32_t framebuffer_height;
+    uint8_t framebuffer_bpp;
+    uint8_t framebuffer_type;
+    uint8_t framebuffer_red_field_position;
+    uint8_t framebuffer_red_mask_size;
+    uint8_t framebuffer_green_field_position;
+    uint8_t framebuffer_green_mask_size;
+    uint8_t framebuffer_blue_field_position;
+    uint8_t framebuffer_blue_mask_size;
 } multiboot1_info_t;
+
+#define MULTIBOOT1_FLAG_FRAMEBUFFER 0x00001000
 
 typedef struct {
     uint32_t size;
