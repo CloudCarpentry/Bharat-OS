@@ -2,9 +2,9 @@ name: E2E QEMU Verification
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ developer ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ developer ]
   workflow_dispatch:
 
 jobs:
@@ -43,3 +43,19 @@ jobs:
       - name: Build and Run Tests
         run: python3 tools/build.py ${{ matrix.build_name }} --clean --configure --build --run-tests
         timeout-minutes: 10
+
+      - name: Repeat run (3 times)
+        if: matrix.build_name == 'x86_64_desktop_mmu'
+        run: |
+          for i in 1 2 3; do
+            echo "Run $i"
+            python3 tools/build.py ${{ matrix.build_name }} --run-tests || exit 1
+          done
+        timeout-minutes: 10
+
+  verify-all-successful:
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Aggregate result
+        run: echo "All matrix jobs passed"
