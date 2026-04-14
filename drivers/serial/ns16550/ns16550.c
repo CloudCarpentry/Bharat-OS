@@ -1,4 +1,4 @@
-#include "console/uart_driver.h"
+#include "drivers/serial/uart_driver.h"
 #include <stddef.h>
 
 /* NS16550 Register Offsets */

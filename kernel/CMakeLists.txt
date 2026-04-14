@@ -402,6 +402,9 @@ elseif(ARCH STREQUAL "riscv64")
     list(APPEND KERNEL_SRCS ../platform/boards/qemu-virt-riscv64/platform_uart.c)
 endif()
 
+# Make sure kernel targets can find platform headers
+target_include_directories(bharat_kernel_includes INTERFACE ${CMAKE_SOURCE_DIR}/platform/include)
+
 list(APPEND KERNEL_SRCS src/display/boot_video_map.c src/boot/boot_mode.c src/boot/boot_selftest.c)
 
 # ── Kernel ELF ──────────────────────────────────────────────────────────────
@@ -444,7 +447,7 @@ if(BHARAT_ENABLE_ADVANCED_VM)
     )
 endif()
 # Architecture-specific code model and PIE flags are set below
-target_link_libraries(kernel.elf subsys_manager bharat_libmsg bharat_kernel_buildopts bharatos_drivers serial_drivers bharat_kernel_includes board_fabric)
+target_link_libraries(kernel.elf subsys_manager bharat_libmsg bharat_kernel_buildopts bharatos_drivers serial_drivers bharat_kernel_includes board_fabric bharat_platform_headers)
 if(BHARAT_ENABLE_FBUI)
     target_link_libraries(kernel.elf fbui)
 endif()

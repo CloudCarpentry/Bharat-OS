@@ -1,4 +1,4 @@
-#include "console/uart_driver.h"
+#include "drivers/serial/uart_driver.h"
 #include <stddef.h>
 
 /* Simple MMIO UART (e.g., HTIF or SBI generic fallback) */
