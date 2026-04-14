@@ -88,8 +88,41 @@ target_compile_options(bharat_freestanding INTERFACE
     -nostdlib
 )
 
+# Function to apply architecture-specific flags to bharat_freestanding
+# This MUST be called after bharat_set_arch_defaults()
+function(bharat_apply_arch_flags)
+    if(BHARAT_ARCH_FAMILY STREQUAL "RISCV")
+        if(BHARAT_ARCH_BITS EQUAL 64)
+            target_compile_options(bharat_freestanding INTERFACE
+                -march=rv64gc -mabi=lp64d -mcmodel=medany
+            )
+        elseif(BHARAT_ARCH_BITS EQUAL 32)
+            target_compile_options(bharat_freestanding INTERFACE
+                -march=rv32g -mabi=ilp32d -mcmodel=medany
+            )
+        endif()
+    elseif(BHARAT_ARCH_FAMILY STREQUAL "ARM")
+        if(BHARAT_ARCH_BITS EQUAL 64)
+            target_compile_options(bharat_freestanding INTERFACE
+                -mcmodel=small
+            )
+        elseif(BHARAT_ARCH_BITS EQUAL 32)
+            target_compile_options(bharat_freestanding INTERFACE
+                -march=armv7-a -mfloat-abi=soft
+            )
+        endif()
+    elseif(BHARAT_ARCH_FAMILY STREQUAL "X86")
+        if(BHARAT_ARCH_BITS EQUAL 64)
+            target_compile_options(bharat_freestanding INTERFACE
+                -m64 -mno-red-zone
+            )
+        endif()
+    endif()
+endfunction()
+
 # bharat_kernel_buildopts: Kernel-specific build options
 add_library(bharat_kernel_buildopts INTERFACE)
+target_link_libraries(bharat_kernel_buildopts INTERFACE bharat_freestanding)
 target_compile_options(bharat_kernel_buildopts INTERFACE
     -fno-strict-aliasing
     -fno-common
@@ -101,6 +134,7 @@ target_compile_definitions(bharat_kernel_buildopts INTERFACE
 
 # bharat_user_buildopts: User-space build options
 add_library(bharat_user_buildopts INTERFACE)
+target_link_libraries(bharat_user_buildopts INTERFACE bharat_freestanding)
 target_compile_definitions(bharat_user_buildopts INTERFACE
     __USER__=1
 )

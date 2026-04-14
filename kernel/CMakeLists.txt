@@ -153,11 +153,11 @@ elseif(ARCH STREQUAL "riscv64")
     set(ARCH_CPU_CAPS_SRC ../arch/riscv/riscv64/cpu_caps.c)
     set(ARCH_EXT_STATE_SRC ../arch/riscv/riscv64/ext_state.c)
 elseif(ARCH STREQUAL "riscv32")
-    set(BOOT_SRC ../arch/riscv/riscv64/boot/boot.S)
-    set(ARCH_HAL ../hal/riscv/hal_cpu.c ../hal/riscv/boot/feature_probe.c ../hal/riscv/trap_entry.S ../hal/riscv64/hal_pt_riscv64.c ../hal/hal_pt.c ../hal/riscv/iopmp.c ../hal/riscv/plic.c ../hal/riscv/sbi_timer_ipi.c ../hal/common/hal_secure_boot_unsupported.c ../hal/riscv32/cpu_relax.c ../hal/common/iommu/null/null_iommu.c)
-    set(ARCH_CONTEXT_SWITCH ../arch/shakti/context_switch.c ../arch/shakti/context_switch.S)
-    set(ARCH_CPU_CAPS_SRC ../arch/shakti/cpu_caps.c)
-    set(ARCH_EXT_STATE_SRC ../arch/shakti/ext_state.c)
+    set(BOOT_SRC ../arch/riscv/riscv32/boot/entry.c)
+    set(ARCH_HAL ../hal/riscv/hal_cpu.c ../hal/riscv/boot/feature_probe.c ../hal/riscv/trap_entry.S ../hal/riscv32/hal_pt_riscv32.c ../hal/hal_pt.c ../hal/riscv/iopmp.c ../hal/riscv/plic.c ../hal/riscv/sbi_timer_ipi.c ../hal/common/hal_secure_boot_unsupported.c ../hal/riscv32/cpu_relax.c ../hal/common/iommu/null/null_iommu.c ../hal/riscv32/discovery.c ../hal/riscv32/hal_mm.c)
+    set(ARCH_CONTEXT_SWITCH ../arch/riscv/riscv64/context_switch.c ../arch/riscv/riscv64/context_switch.S)
+    set(ARCH_CPU_CAPS_SRC ../arch/riscv/riscv32/arch_caps.c)
+    set(ARCH_EXT_STATE_SRC ../hal/riscv/hal_cpu.c) # Placeholder
 elseif(ARCH STREQUAL "arm64")
     set(BOOT_SRC ../arch/arm/arm64/boot/boot.S)
     set(ARCH_HAL ../hal/arm64/hal_cpu.c ../hal/arm64/discovery.c ../hal/arm64/hal_mm.c ../hal/arm64/trap_entry.S ../hal/arm64/hal_pt_arm64.c ../hal/hal_pt.c ../hal/arm64/smmu.c ../hal/arm64/gicv3.c ../hal/arm64/timer_generic.c ../hal/arm64/dma.c ../hal/arm64/hal_secure_boot.c ../hal/arm64/cpu_relax.c ../hal/common/iommu/null/null_iommu.c ../hal/arm64/iommu/arm_smmu/arm_smmu_stub.c)
@@ -167,12 +167,13 @@ elseif(ARCH STREQUAL "arm64")
     set(ARCH_EXT_STATE_SRC ../arch/arm/arm64/ext_state.c)
 elseif(ARCH STREQUAL "arm32")
     set(BOOT_SRC ../arch/arm/arm32/boot/boot.S)
-    set(ARCH_HAL ../hal/arm64/hal_cpu.c ../hal/arm64/trap_entry.S ../hal/arm64/hal_pt_arm64.c ../hal/hal_pt.c ../hal/arm64/smmu.c ../hal/arm64/gicv3.c ../hal/arm64/timer_generic.c ../hal/mpu/arm32/mpu_backend.c ../hal/arm64/dma.c ../hal/common/hal_secure_boot_unsupported.c ../hal/arm32/cpu_relax.c)
-    set(ARCH_CONTEXT_SWITCH ../arch/arm/arm64/context_switch.c ../arch/arm/arm64/context_switch.S)
-    set(ARCH_CPU_CAPS_SRC ../arch/arm/arm64/cpu_caps.c)
-    set(ARCH_EXT_STATE_SRC ../arch/arm/arm64/ext_state.c)
+    set(ARCH_HAL ../hal/arm32/hal_cpu.c ../hal/arm32/trap_entry.S ../hal/arm32/hal_pt_arm32.c ../hal/hal_pt.c ../hal/arm32/discovery.c ../hal/arm32/timer_generic.c ../hal/mpu/arm32/mpu_backend.c ../hal/arm32/dma.c ../hal/common/hal_secure_boot_unsupported.c ../hal/arm32/cpu_relax.c)
+    set(ARCH_CONTEXT_SWITCH ../arch/arm/arm32/context_switch.c ../arch/arm/arm32/context_switch.S)
+    set(ARCH_CPU_CAPS_SRC ../arch/arm/arm32/cpu_caps.c)
+    set(ARCH_EXT_STATE_SRC ../arch/arm/arm32/ext_state.c)
 endif()
-if(ARCH MATCHES "x86_64")
+
+if(ARCH STREQUAL "x86_64")
     set(LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/linker.ld")
 elseif(ARCH MATCHES "riscv.*64")
     set(LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/linker_riscv64.ld")
@@ -219,7 +220,7 @@ add_library(bharat_mm_pmm OBJECT
     src/mm/pmm/numa.c
     src/mm/pmm/numa_policy.c
 )
-target_link_libraries(bharat_mm_pmm PRIVATE bharat_kernel_includes)
+target_link_libraries(bharat_mm_pmm PRIVATE bharat_kernel_includes bharat_kernel_buildopts)
 target_compile_options(bharat_mm_pmm PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
 
 # IOMMU Support (Always Present, uses Null Backend when disabled)
@@ -230,7 +231,7 @@ add_library(bharat_mm_iommu OBJECT
     src/mm/iommu/iommu_fault.c
     src/mm/iommu/iommu_device.c
 )
-target_link_libraries(bharat_mm_iommu PRIVATE bharat_kernel_includes)
+target_link_libraries(bharat_mm_iommu PRIVATE bharat_kernel_includes bharat_kernel_buildopts)
 target_compile_options(bharat_mm_iommu PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
 
 # Accelerator Memory Support
@@ -240,7 +241,7 @@ add_library(bharat_mm_accel OBJECT
     src/mm/accel/accel_iova.c
     src/mm/accel/accel_teardown.c
 )
-target_link_libraries(bharat_mm_accel PRIVATE bharat_kernel_includes)
+target_link_libraries(bharat_mm_accel PRIVATE bharat_kernel_includes bharat_kernel_buildopts)
 target_compile_options(bharat_mm_accel PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
 
 # Advanced VM Tier (Conditionally Included)
@@ -249,26 +250,26 @@ if(BHARAT_ENABLE_ADVANCED_VM)
         src/mm/vm/aspace/aspace.c
         src/mm/vm/aspace/vm_space.c
     )
-    target_link_libraries(bharat_mm_aspace PRIVATE bharat_kernel_includes)
+    target_link_libraries(bharat_mm_aspace PRIVATE bharat_kernel_includes bharat_kernel_buildopts)
     target_compile_options(bharat_mm_aspace PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
 
     add_library(bharat_mm_objects OBJECT
         src/mm/vm/objects/vm_object.c
         src/mm/vm/objects/vm_object_refcount.c
     )
-    target_link_libraries(bharat_mm_objects PRIVATE bharat_kernel_includes)
+    target_link_libraries(bharat_mm_objects PRIVATE bharat_kernel_includes bharat_kernel_buildopts)
     target_compile_options(bharat_mm_objects PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
 
     add_library(bharat_mm_fault OBJECT
         src/mm/vm/fault/fault.c
     )
-    target_link_libraries(bharat_mm_fault PRIVATE bharat_kernel_includes)
+    target_link_libraries(bharat_mm_fault PRIVATE bharat_kernel_includes bharat_kernel_buildopts)
     target_compile_options(bharat_mm_fault PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
 
     add_library(bharat_mm_pt OBJECT
         src/mm/pt/pt_pool.c
     )
-    target_link_libraries(bharat_mm_pt PRIVATE bharat_kernel_includes)
+    target_link_libraries(bharat_mm_pt PRIVATE bharat_kernel_includes bharat_kernel_buildopts)
     target_compile_options(bharat_mm_pt PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
 
     add_library(bharat_mm_tlb OBJECT
@@ -282,7 +283,7 @@ if(BHARAT_ENABLE_ADVANCED_VM)
         src/mm/vm/aspace/aspace_switch.c
     )
     target_include_directories(bharat_mm_tlb PRIVATE ${CMAKE_SOURCE_DIR}/services/core/subsysmgr/include)
-    target_link_libraries(bharat_mm_tlb PRIVATE bharat_kernel_includes)
+    target_link_libraries(bharat_mm_tlb PRIVATE bharat_kernel_includes bharat_kernel_buildopts)
     target_compile_options(bharat_mm_tlb PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
 
     add_library(bharat_mm_vmm OBJECT
@@ -294,7 +295,7 @@ if(BHARAT_ENABLE_ADVANCED_VM)
         src/mm/vm/distributed/mm_local.c
         src/mm/vm/distributed/mm_remote.c
     )
-    target_link_libraries(bharat_mm_vmm PRIVATE bharat_kernel_includes)
+    target_link_libraries(bharat_mm_vmm PRIVATE bharat_kernel_includes bharat_kernel_buildopts)
     target_compile_options(bharat_mm_vmm PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
 endif()
 # ── Core kernel sources ──────────────────────────────────────────────────────
@@ -491,44 +492,24 @@ else()
         "LINKER:--no-pie"
     )
 endif()
+# ── Architecture-specific linker options ────────────────────────────────────
 if(ARCH STREQUAL "x86_64")
-    target_compile_options(kernel.elf PRIVATE
-        $<$<COMPILE_LANGUAGE:C>:-m64>
-        $<$<COMPILE_LANGUAGE:C>:-mno-red-zone>
-    )
-    target_link_options(kernel.elf PRIVATE
-        "LINKER:-m,elf_x86_64"
-    )
+    target_link_options(kernel.elf PRIVATE "LINKER:-m,elf_x86_64")
 elseif(ARCH MATCHES "riscv.*64")
-    target_compile_options(kernel.elf PRIVATE
-        $<$<OR:$<COMPILE_LANGUAGE:C>,$<COMPILE_LANGUAGE:ASM>>:-mcmodel=medany>
-    )
-    target_link_options(kernel.elf PRIVATE
-        "LINKER:-m,elf64lriscv"
-    )
+    target_link_options(kernel.elf PRIVATE "LINKER:-m,elf64lriscv")
 elseif(ARCH MATCHES "arm.*64" OR ARCH MATCHES "aarch64")
-    target_compile_options(kernel.elf PRIVATE
-        $<$<OR:$<COMPILE_LANGUAGE:C>,$<COMPILE_LANGUAGE:ASM>>:-mcmodel=small>
-    )
-    target_link_options(kernel.elf PRIVATE
-        "LINKER:-m,aarch64elf"
-    )
+    target_link_options(kernel.elf PRIVATE "LINKER:-m,aarch64elf")
 elseif(ARCH STREQUAL "riscv32")
-    target_compile_options(kernel.elf PRIVATE
-        $<$<COMPILE_LANGUAGE:C>:-mcmodel=medany>
-        $<$<COMPILE_LANGUAGE:ASM>:-march=rv32g>
-        $<$<COMPILE_LANGUAGE:C>:-march=rv32g>
-    )
-    target_link_options(kernel.elf PRIVATE
-        "LINKER:-m,elf32lriscv"
-    )
+    target_link_options(kernel.elf PRIVATE "LINKER:-m,elf32lriscv")
+elseif(ARCH STREQUAL "arm32")
+    target_link_options(kernel.elf PRIVATE "LINKER:-m,armelf")
 endif()
 # ── Linker options
 # Use LINKER: so CMake can translate options correctly when linking via the
 # compiler driver across clang/gcc and host/cross presets.
 target_link_options(kernel.elf PRIVATE
     "-nostdlib"
-    $<$<AND:$<C_COMPILER_ID:Clang>,$<STREQUAL:${ARCH},arm32>>:-fuse-ld=bfd>
+    $<$<AND:$<C_COMPILER_ID:Clang>,$<STREQUAL:${ARCH},arm32>>:-fuse-ld=lld>
     "LINKER:-no-pie"
     ""
     "LINKER:--fatal-warnings"

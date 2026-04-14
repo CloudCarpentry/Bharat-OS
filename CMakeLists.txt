@@ -71,6 +71,7 @@ target_include_directories(bharat_generated_includes INTERFACE "${BHARAT_GEN_INC
 
 # Architecture selection
 bharat_set_arch_defaults()
+bharat_apply_arch_flags()
 
 # Device Profile
 set(BHARAT_DEVICE_PROFILE "DESKTOP" CACHE STRING "Target device profile (DESKTOP, MOBILE, EDGE, DATACENTER, NETWORK_APPLIANCE, DRONE, ROBOT, RTOS, AUTOMOTIVE_ECU, AUTOMOTIVE_INFOTAINMENT)")
@@ -180,23 +181,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang" AND BHARAT_USE_LLD)
     add_link_options(-fuse-ld=lld)
 endif()
 
-if(ARCH STREQUAL "riscv64")
-    add_compile_options(
-        $<$<COMPILE_LANGUAGE:C>:-march=rv64gc>
-        $<$<COMPILE_LANGUAGE:C>:-mabi=lp64d>
-        $<$<COMPILE_LANGUAGE:C>:-mcmodel=medany>
-        $<$<COMPILE_LANGUAGE:ASM>:-march=rv64gc>
-        $<$<COMPILE_LANGUAGE:ASM>:-mabi=lp64d>
-    )
-elseif(ARCH STREQUAL "riscv32")
-    add_compile_options(
-        $<$<COMPILE_LANGUAGE:C>:-march=rv32g>
-        $<$<COMPILE_LANGUAGE:C>:-mabi=ilp32d>
-        $<$<COMPILE_LANGUAGE:C>:-mcmodel=medany>
-        $<$<COMPILE_LANGUAGE:ASM>:-march=rv32g>
-        $<$<COMPILE_LANGUAGE:ASM>:-mabi=ilp32d>
-    )
-endif()
+
 
 option(BHARAT_ENABLE_CLANG_TIDY "Enable clang-tidy static analysis for C targets" OFF)
 option(BHARAT_BUILD_HOST_TESTS "Build host-side unit tests" OFF)

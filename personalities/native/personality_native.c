@@ -2,9 +2,9 @@
 
 #include "trap_frame_ops.h"
 
-extern long syscall_dispatch(syscall_id_t id, uint64_t arg0, uint64_t arg1,
-                      uint64_t arg2, uint64_t arg3, uint64_t arg4,
-                      uint64_t arg5);
+extern long syscall_dispatch(syscall_id_t id, uintptr_t arg0, uintptr_t arg1,
+                      uintptr_t arg2, uintptr_t arg3, uintptr_t arg4,
+                      uintptr_t arg5);
 
 static long default_handle_syscall(kthread_t *thread, trap_frame_t *frame, const trap_info_t *info) {
     (void)thread;

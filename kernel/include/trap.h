@@ -2,7 +2,7 @@
 #define BHARAT_TRAP_H
 
 #include <stdint.h>
-
+#include <stddef.h>
 #include <bharat/uapi/syscall_nr.h>
 
 typedef enum {
@@ -13,19 +13,19 @@ typedef enum {
 } trap_type_t;
 
 typedef struct trap_frame {
-  uint64_t gpr[31];
-  uint64_t sp;
-  uint64_t pc;
-  uint64_t cause;
-  uint64_t status;
+  uintptr_t gpr[31];
+  uintptr_t sp;
+  uintptr_t pc;
+  uintptr_t cause;
+  uintptr_t status;
   uint32_t type;      // Sync, IRQ, etc.
   uint32_t from_user; // Changed to uint32_t for alignment
 } trap_frame_t;
 
 int trap_init(void);
-long syscall_dispatch(syscall_id_t id, uint64_t arg0, uint64_t arg1,
-                      uint64_t arg2, uint64_t arg3, uint64_t arg4,
-                      uint64_t arg5);
+long syscall_dispatch(syscall_id_t id, uintptr_t arg0, uintptr_t arg1,
+                      uintptr_t arg2, uintptr_t arg3, uintptr_t arg4,
+                      uintptr_t arg5);
 long trap_handle(trap_frame_t *frame);
 
 #endif // BHARAT_TRAP_H

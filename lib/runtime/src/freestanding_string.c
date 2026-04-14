@@ -47,3 +47,15 @@ int strncmp(const char *s1, const char *s2, size_t n) {
     } while (--n != 0);
     return 0;
 }
+
+// ── ARM AEABI Wrappers ───────────────────────────────────────────────────────
+// These are required for ARM 32-bit builds when -nostdlib is used.
+void __aeabi_memcpy(void *dest, const void *src, size_t n) { memcpy(dest, src, n); }
+void __aeabi_memcpy4(void *dest, const void *src, size_t n) { memcpy(dest, src, n); }
+void __aeabi_memcpy8(void *dest, const void *src, size_t n) { memcpy(dest, src, n); }
+void __aeabi_memclr(void *dest, size_t n) { memset(dest, 0, n); }
+void __aeabi_memclr4(void *dest, size_t n) { memset(dest, 0, n); }
+void __aeabi_memclr8(void *dest, size_t n) { memset(dest, 0, n); }
+void __aeabi_memset(void *dest, size_t n, int c) { memset(dest, c, n); }
+void __aeabi_memset4(void *dest, size_t n, int c) { memset(dest, c, n); }
+void __aeabi_memset8(void *dest, size_t n, int c) { memset(dest, c, n); }

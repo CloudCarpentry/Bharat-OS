@@ -12,7 +12,7 @@ def check_multiboot_header(kernel_path):
     try:
         # We search for the Multiboot magic number 0x1badb002
         # Note: x86 is little-endian, so it appears as 02b0ad1b in hex dump.
-        cmd = ['objdump', '-s', kernel_path]
+        cmd = ['llvm-objdump', '-s', kernel_path]
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode == 0:
             if "02b0ad1b" not in result.stdout.lower():

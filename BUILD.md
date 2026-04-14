@@ -164,9 +164,11 @@ During build execution, CMake groups your selected targets into bundles:
 
 | Arch      | Status                                     | QEMU Machine                        |
 | --------- | ------------------------------------------ | ----------------------------------- |
-| `x86_64`  | ✅ Active                                  | `qemu-system-x86_64 -kernel`        |
-| `riscv64` | ✅ Cross-compile validated (incl. Shakti RV64 profile) | `qemu-system-riscv64 -machine virt` |
-| `arm64`   | ✅ Cross-compile validated (runtime pending) | N/A                                 |
+| `x86_64`  | ✅ Active                                  | `qemu-system-x86_64 -machine q35`   |
+| `arm64`   | ✅ Active                                  | `qemu-system-aarch64 -machine virt` |
+| `riscv64` | ✅ Active                                  | `qemu-system-riscv64 -machine virt` |
+| `arm32`   | ⚠️ Stabilization (use `--run-tests`)       | `qemu-system-arm -machine virt`     |
+| `riscv32` | ⚠️ Stabilization (use `--run-tests`)       | `qemu-system-riscv32 -machine virt` |
 
 
 ---
@@ -178,8 +180,10 @@ Bharat-OS exclusively relies on LLVM/Clang and LLD (version 16+) for bare-metal 
 | Architecture | Target Triple         | Compiler | Linker | Status      |
 | ------------ | --------------------- | -------- | ------ | ----------- |
 | `x86_64`     | `x86_64-elf`          | Clang 16+| LLD 16+| Active      |
-| `riscv64`    | `riscv64-elf`         | Clang 16+| LLD 16+| Validated   |
-| `arm64`      | `aarch64-elf`         | Clang 16+| LLD 16+| Validated (build) |
+| `arm64`      | `aarch64-elf`         | Clang 16+| LLD 16+| Active      |
+| `riscv64`    | `riscv64-elf`         | Clang 16+| LLD 16+| Active      |
+| `arm32`      | `armv7a-none-eabi`    | Clang 16+| LLD 16+| Validated   |
+| `riscv32`    | `riscv32-elf`         | Clang 16+| LLD 16+| Validated   |
 
 ---
 
@@ -329,3 +333,33 @@ If you see the error `could not connect serial device to character backend 'mon:
 # Build and run x86_64 with GUI enabled
 .\build.ps1 x86_64_laptop_debug --clean --run
 ```
+
+---
+
+## Multi-Architecture Build & Test Execution Plan
+
+The goal is to verify the build and execution of Bharat-OS across five major architectures (arm64, arm32, x86_64, riscv32, riscv64) using `.\build.ps1` (`tools/build.py`) with both GUI-enabled and headless configurations.
+
+### Phase 1: Environment Readiness
+Ensure `qemu-system-*` binaries for all architectures are in the system `PATH`.
+- **Windows**: Add `C:\Program Files\qemu` to your environment variables.
+- **Verification**: Run `python tools/build.py --doctor` to check runner availability.
+
+### Phase 2: Architecture Verification Matrix
+
+| Architecture | Build Name | Profile | QEMU Machine | GUI |
+| :--- | :--- | :--- | :--- | :--- |
+| **x86_64** | `default_dev` | DESKTOP | q35 | Enabled |
+| **arm64** | `arm64_desktop_mmu` | DESKTOP | virt | Enabled |
+| **arm32** | `arm32_virt_mmu` | EDGE | virt | Disabled |
+| **riscv64** | `riscv64_desktop_mmu` | DESKTOP | virt | Enabled |
+| **riscv32** | `riscv32_edge_mmu_lite` | EDGE | virt | Disabled |
+
+### Phase 3: GUI vs Headless Execution
+- **GUI Mode**: Run `./build.sh <build_name> --run`. This expects a graphical window to open.
+- **Headless Mode (CI)**: Run `./build.sh <build_name> --run-tests`. This forces `-display none` and redirects all console output to `stdio` for automated logging.
+
+### Execution Strategy
+1. **Sequencing**: Execute each build name from the matrix sequentially.
+2. **Verification**: Confirm the presence of the `Bharat-OS` boot logo and kernel initialization logs in the output.
+3. **Multi-Arch Logic**: The `tools/build.py` script automatically selects the correct CPU and machine flags (e.g., `cortex-a15` for arm32 virt, `q35` for x86_64).

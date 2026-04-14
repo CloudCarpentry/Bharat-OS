@@ -72,7 +72,12 @@ static int generic_protect_region(prot_domain_t* domain, uintptr_t vaddr, size_t
 static int generic_query_region(prot_domain_t* domain, uintptr_t vaddr, uintptr_t* paddr, uint32_t* flags) {
     if (active_hal_pt && domain && domain->backend_state) {
         size_t mapped_size;
-        return hal_pt_query_mapping((phys_addr_t)(uintptr_t)domain->backend_state, vaddr, paddr, &mapped_size, flags);
+        phys_addr_t pa;
+        int res = hal_pt_query_mapping((phys_addr_t)(uintptr_t)domain->backend_state, vaddr, &pa, &mapped_size, flags);
+        if (res == 0 && paddr) {
+            *paddr = (uintptr_t)pa;
+        }
+        return res;
     }
     return -1;
 }

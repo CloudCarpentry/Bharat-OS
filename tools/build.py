@@ -36,8 +36,13 @@ def check_qemu(arch):
         return check_command('qemu-system-aarch64')
     elif arch == 'riscv64':
         return check_command('qemu-system-riscv64')
+    elif arch == 'riscv32':
+        return check_command('qemu-system-riscv32')
     elif arch == 'arm32':
-        return check_command('VHT_Corstone_SSE-310')
+        # Prefer AVH runner if available, fallback to QEMU arm
+        if check_command('VHT_Corstone_SSE-310'):
+            return True
+        return check_command('qemu-system-arm')
     return False
 
 def doctor():
@@ -52,7 +57,7 @@ def doctor():
         print(f"  {tool}: {'Found' if found else 'Missing'}")
 
     print("\nChecking runners...")
-    runners = ['x86_64', 'arm64', 'riscv64', 'arm32']
+    runners = ['x86_64', 'arm64', 'riscv64', 'arm32', 'riscv32']
     for arch in runners:
         found = check_qemu(arch)
         print(f"  QEMU/Runner ({arch}): {'Found' if found else 'Missing'}")
@@ -202,6 +207,18 @@ def do_run(build_cfg, dual_serial, run_tests=False, cpus=1):
 
     runner = run_config.get("runner")
 
+    # [FIX] Enhanced runner check: ensure the tool is in PATH before attempting to run
+    if not check_command(runner):
+        print(f"\nERROR: Runner '{runner}' not found in PATH.")
+        print(f"To fix this:")
+        if 'qemu-system' in runner:
+            print(f"  - Install QEMU for {arch}.")
+            print(f"  - On Windows: Add 'C:\\Program Files\\qemu' to your PATH.")
+        elif runner == 'VHT_Corstone_SSE-310':
+            print(f"  - Ensure Arm Virtual Hardware (AVH) tools are installed.")
+            print(f"  - Falling back to QEMU might work if you change the board profile.")
+        sys.exit(1)
+
     if runner == 'VHT_Corstone_SSE-310':
         cmd = [runner, '-a', run_kernel] + qemu_opts
     else:
@@ -214,7 +231,7 @@ def do_run(build_cfg, dual_serial, run_tests=False, cpus=1):
             cmd.extend(['-smp', str(cpus)])
         cmd.extend(qemu_opts)
 
-    print(f"[RUN] Arch: {arch} | CPUs: {cpus} | Board: {board}")
+    print(f"[RUN] Arch: {arch} | CPUs: {cpus} | Board: {board} | Runner: {runner}")
     run_command(cmd)
 
 def do_matrix(manifest):
