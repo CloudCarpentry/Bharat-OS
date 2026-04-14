@@ -1,5 +1,5 @@
 #include "console/console_backend.h"
-#include "console/uart_driver.h"
+#include "drivers/serial/uart_driver.h"
 #include "console/console_discovery.h"
 #include "console/console_core.h"
 #include <stddef.h>
@@ -112,12 +112,18 @@ static serial_console_state_t g_early_serial_state;
 static uart_device_t g_early_uart;
 
 
-extern uart_device_t *platform_get_boot_uart(void);
+#include "platform/device_profile.h"
+#include "drivers/serial/serial_provider.h"
+
+extern const platform_device_profile_t *platform_get_device_profile(void);
 
 bool console_serial_register_device(const console_device_desc_t *desc) {
     if (!desc) return false;
 
-    uart_device_t *platform_uart = platform_get_boot_uart();
+    const platform_device_profile_t *profile = platform_get_device_profile();
+    if (!profile) return false;
+
+    uart_device_t *platform_uart = serial_driver_match_boot_console(profile);
     if (platform_uart) {
         g_early_uart = *platform_uart;
     } else {

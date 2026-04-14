@@ -1,15 +1,20 @@
 #include "hal/hal.h"
 #include "debug/early_console.h"
-#include "console/uart_driver.h"
+#include "drivers/serial/uart_driver.h"
+#include "platform/device_profile.h"
+#include "drivers/serial/serial_provider.h"
 #include <stdint.h>
 #include <stddef.h>
 
-extern uart_device_t *platform_get_boot_uart(void);
+extern const platform_device_profile_t *platform_get_device_profile(void);
 
 void hal_serial_init(void) {
-    uart_device_t *uart = platform_get_boot_uart();
-    if (uart) {
-        early_console_bind(uart);
+    const platform_device_profile_t *profile = platform_get_device_profile();
+    if (profile) {
+        uart_device_t *uart = serial_driver_match_boot_console(profile);
+        if (uart) {
+            early_console_bind(uart);
+        }
     }
 }
 
