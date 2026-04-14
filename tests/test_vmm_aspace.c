@@ -262,7 +262,8 @@ TEST(aspace_create_profile_enforcement) {
     // We cannot easily inject FLAT here without changing aspace_profile.h, but we can test
     // that constrained profiles block rich. Since LITE defaults to SPLIT and we left SPLIT permissive,
     // this test for FLAT would need us to be able to mock the profile directly, which is inline.
-    // Let's rely on MPU -> REGION_ONLY test for the rejection path logic.
+    // TODO: Add a test seam to explicitly test FLAT profile behavior once architecture allows easier mocking,
+    // for now, we rely on the MPU -> REGION_ONLY test for the constrained rejection path logic.
 
     printf("Passed aspace_create_profile_enforcement\n");
 }
