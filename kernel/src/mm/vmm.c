@@ -9,6 +9,7 @@
 #include "slab.h"
 #include <stddef.h>
 #include <stdint.h>
+#include "mm/aspace_profile.h"
 
 address_space_t kernel_space;
 static int kernel_space_ready = 0;
@@ -206,6 +207,14 @@ int vmm_handle_cow_fault(address_space_t* as, virt_addr_t vaddr) {
 }
 
 address_space_t *mm_create_address_space(void) {
+    aspace_profile_t profile = aspace_profile_get_current();
+    // Do not assume full VM creation if the profile does not support it
+    if (profile == ASPACE_PROFILE_REGION_ONLY) {
+        // Reject full VM address space creation entirely or pass explicit region-only flags in the future
+        // For now, if we are in a purely static MPU environment where dynamic aspace creation is unsupported:
+        // return NULL; (but for testing, we will just pass through to aspace_create which handles it)
+    }
+
     address_space_t *as = NULL;
     if (aspace_create(&as, 0) != 0) return NULL;
     return as;

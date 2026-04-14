@@ -108,7 +108,7 @@ if (EXISTS "${CMAKE_SOURCE_DIR}/personalities/domain/automotive/automotive.c")
     add_test(NAME test_automotive_subsys COMMAND test_automotive_subsys)
 endif()
 
-target_include_directories(test_urpc_ring PRIVATE ../kernel/include ../lib/include)
+target_include_directories(test_urpc_ring PRIVATE ../kernel/include ../lib/include ../kernel/include/generated)
 add_test(NAME test_urpc_ring COMMAND test_urpc_ring)
 
 add_executable(test_scheduler test_scheduler.c $<TARGET_OBJECTS:bharat_test_sched_mocks>)

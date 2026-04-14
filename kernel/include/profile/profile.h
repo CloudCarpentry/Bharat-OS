@@ -94,6 +94,9 @@ typedef enum {
 // Compatibility typedef and macros for the old MemoryModel enum
 typedef mem_model_t MemoryModel;
 #define MEM_MODEL_MMU MEM_MODEL_MMU_FULL
+// Note: "Flat" is now represented as an address-space profile (ASPACE_PROFILE_FLAT),
+// rather than a top-level architectural memory model.
+// Preserved here strictly for legacy compatibility.
 #define MEM_MODEL_FLAT MEM_MODEL_MPU
 
 /**

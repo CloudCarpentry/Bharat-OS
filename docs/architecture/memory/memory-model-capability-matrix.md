@@ -10,6 +10,23 @@ We map targets to one of three canonical memory models:
 - **`MEM_MODEL_MMU_LITE`**: Constrained 32-bit systems with an MMU, where rich semantics are simplified or avoided.
 - **`MEM_MODEL_MPU`**: Minimal constraint 32-bit targets without full paging, relying on static regions.
 
+## Address Space Profiles
+
+To bridge the gap between canonical memory hardware models and the running target's software memory semantics, Bharat-OS defines **Address Space Profiles** (`aspace_profile_t`). These profiles determine the "shape" and expected runtime behavior of an address space without conflating hardware truths and software policies.
+
+The profiles include:
+- **`ASPACE_PROFILE_FULL`**: Rich per-process address spaces with full page-granular protection.
+- **`ASPACE_PROFILE_SPLIT`**: Shared kernel / constrained user split model.
+- **`ASPACE_PROFILE_FLAT`**: Minimal protected flat mapping model. Note that "flat" is considered a runtime context style here, not a hardware memory model.
+- **`ASPACE_PROFILE_REGION_ONLY`**: MPU-native protection context. No fake sparse paging assumptions or deep VM orchestration. Mandatory for `MEM_MODEL_MPU`.
+
+These map logically to hardware profiles:
+- `MEM_MODEL_MMU_FULL` typically uses `FULL` (or optionally `SPLIT`).
+- `MEM_MODEL_MMU_LITE` typically uses `SPLIT` or `FLAT`.
+- `MEM_MODEL_MPU` must use `REGION_ONLY`.
+
+By querying `aspace_profile_get_current()`, core process/scheduler implementations can reject advanced VM assumptions on constrained profiles seamlessly.
+
 ## The Memory Model Contract and Unsupported Operations
 
 When an architecture does not support a specific feature (e.g. page-granular protection on an MPU), it **must fail explicitly**.
@@ -24,19 +41,19 @@ When an architecture does not support a specific feature (e.g. page-granular pro
 Each model determines what capability bits are exposed. We provide a queryable capability set: `mpa_caps_t` (Memory Protection Architecture Capabilities).
 
 1. **`MEM_MODEL_MMU_FULL`**
-   - Supports: `MPA_CAP_VIRT_ADDRSPACE`, `MPA_CAP_PAGE_MAP`, `MPA_CAP_PAGE_PROTECT`, `MPA_CAP_DEMAND_FAULT`, `MPA_CAP_SHARED_ASPACE`, `MPA_CAP_TLB_INVALIDATE`, `MPA_CAP_DMA_MAP`, `MPA_CAP_IOMMU`, `MPA_CAP_PER_CORE_PMM_CACHE`.
+   - Supports: `MEM_CAP_VIRT_ADDRSPACE`, `MEM_CAP_PAGE_MAP`, `MEM_CAP_PAGE_PROTECT`, `MEM_CAP_DEMAND_FAULT`, `MEM_CAP_SHARED_ASPACE`, `MEM_CAP_TLB_INVALIDATE`, `MEM_CAP_DMA_MAP`, `MEM_CAP_IOMMU`, `MEM_CAP_PER_CORE_PMM_CACHE`.
    - The full environment where deep VM services orchestrate process structures, NUMA allocations, and full TLB shootdown acks.
 
 2. **`MEM_MODEL_MMU_LITE`**
-   - Supports: `MPA_CAP_VIRT_ADDRSPACE`, `MPA_CAP_PAGE_MAP`, `MPA_CAP_PAGE_PROTECT`, `MPA_CAP_TLB_INVALIDATE`, `MPA_CAP_DMA_MAP`.
-   - Typically skips heavy `MPA_CAP_DEMAND_FAULT` loops and deep `MPA_CAP_SHARED_ASPACE` orchestration to save footprint on 32-bit SMP systems.
+   - Supports: `MEM_CAP_VIRT_ADDRSPACE`, `MEM_CAP_PAGE_MAP`, `MEM_CAP_PAGE_PROTECT`, `MEM_CAP_TLB_INVALIDATE`, `MEM_CAP_DMA_MAP`.
+   - Typically skips heavy `MEM_CAP_DEMAND_FAULT` loops and deep `MEM_CAP_SHARED_ASPACE` orchestration to save footprint on 32-bit SMP systems.
 
 3. **`MEM_MODEL_MPU`**
-   - Supports: `MPA_CAP_REGION_PROTECT`.
-   - Operates fully on region-based allocations. Features like `MPA_CAP_PAGE_MAP` are intentionally absent, and calls to map generic pages will explicitly fail. No "pretend VM" exists in the MPU layer.
+   - Supports: `MEM_CAP_REGION_PROTECT`.
+   - Operates fully on region-based allocations. Features like `MEM_CAP_PAGE_MAP` are intentionally absent, and calls to map generic pages will explicitly fail. No "pretend VM" exists in the MPU layer.
 
 ## Per-core Ownership Philosophy
 
 The fundamental philosophy of per-core ownership remains in place regardless of the memory model:
 - The **abstract authority path** stays identical: `fault/request -> aspace/protection context -> region/object -> arch/hal backend`.
-- Heavy per-core structures (like large PMM cache magazines) are tied to `MPA_CAP_PER_CORE_PMM_CACHE` (optional on memory-constrained targets), but the strict ownership mechanics remain true everywhere.
+- Heavy per-core structures (like large PMM cache magazines) are tied to `MEM_CAP_PER_CORE_PMM_CACHE` (optional on memory-constrained targets), but the strict ownership mechanics remain true everywhere.

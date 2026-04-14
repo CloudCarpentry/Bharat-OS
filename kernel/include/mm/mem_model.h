@@ -19,19 +19,20 @@ typedef enum {
 /**
  * Memory Protection Architecture Capabilities
  */
-typedef enum {
-    MPA_CAP_NONE                 = 0,
-    MPA_CAP_VIRT_ADDRSPACE       = (1ULL << 0),
-    MPA_CAP_PAGE_MAP             = (1ULL << 1),
-    MPA_CAP_PAGE_PROTECT         = (1ULL << 2),
-    MPA_CAP_REGION_PROTECT       = (1ULL << 3),
-    MPA_CAP_DEMAND_FAULT         = (1ULL << 4),
-    MPA_CAP_SHARED_ASPACE        = (1ULL << 5),
-    MPA_CAP_TLB_INVALIDATE       = (1ULL << 6),
-    MPA_CAP_DMA_MAP              = (1ULL << 7),
-    MPA_CAP_IOMMU                = (1ULL << 8),
-    MPA_CAP_PER_CORE_PMM_CACHE   = (1ULL << 9)
-} mpa_caps_t;
+// Note: We avoid enum here for MPA_CAPs to prevent name collision with hal_mpa.h
+// which uses #defines for different but similarly named constants.
+typedef uint64_t mpa_caps_t;
+#define MEM_CAP_NONE                 0
+#define MEM_CAP_VIRT_ADDRSPACE       (1ULL << 0)
+#define MEM_CAP_PAGE_MAP             (1ULL << 1)
+#define MEM_CAP_PAGE_PROTECT         (1ULL << 2)
+#define MEM_CAP_REGION_PROTECT       (1ULL << 3)
+#define MEM_CAP_DEMAND_FAULT         (1ULL << 4)
+#define MEM_CAP_SHARED_ASPACE        (1ULL << 5)
+#define MEM_CAP_TLB_INVALIDATE       (1ULL << 6)
+#define MEM_CAP_DMA_MAP              (1ULL << 7)
+#define MEM_CAP_IOMMU                (1ULL << 8)
+#define MEM_CAP_PER_CORE_PMM_CACHE   (1ULL << 9)
 
 /**
  * API Contract for Unsupported Operations:
