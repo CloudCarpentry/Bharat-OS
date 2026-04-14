@@ -545,6 +545,118 @@
         "BHARAT_TARGET_BOARD": "virt",
         "BHARAT_BOOT_GUI": "ON"
       }
+    },
+    {
+      "name": "arm64-mobile-debug",
+      "displayName": "Cross ARM64 Mobile (Debug)",
+      "description": "Cross-compile ARM64 Mobile profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/arm64-mobile-debug",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/aarch64-elf-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BHARAT_DEVICE_PROFILE": "MOBILE",
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "ON"
+      }
+    },
+    {
+      "name": "arm64-mobile-release",
+      "displayName": "Cross ARM64 Mobile (Release)",
+      "description": "Cross-compile ARM64 Mobile profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/arm64-mobile-release",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/aarch64-elf-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BHARAT_DEVICE_PROFILE": "MOBILE",
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "ON"
+      }
+    },
+    {
+      "name": "riscv64-mobile-debug",
+      "displayName": "Cross RISC-V64 Mobile (Debug)",
+      "description": "Cross-compile RISC-V64 Mobile profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/riscv64-mobile-debug",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/riscv64-elf-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BHARAT_DEVICE_PROFILE": "MOBILE",
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "ON"
+      }
+    },
+    {
+      "name": "riscv64-mobile-release",
+      "displayName": "Cross RISC-V64 Mobile (Release)",
+      "description": "Cross-compile RISC-V64 Mobile profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/riscv64-mobile-release",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/riscv64-elf-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BHARAT_DEVICE_PROFILE": "MOBILE",
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "ON"
+      }
+    },
+    {
+      "name": "arm32-iot-debug",
+      "displayName": "Cross ARM32 IOT (Debug)",
+      "description": "Cross-compile ARM32 IOT profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/arm32-iot-debug",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/arm32-elf.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BHARAT_DEVICE_PROFILE": "IOT",
+        "BHARAT_TARGET_BOARD": "avh-corstone310",
+        "BHARAT_BOOT_GUI": "OFF"
+      }
+    },
+    {
+      "name": "arm32-iot-release",
+      "displayName": "Cross ARM32 IOT (Release)",
+      "description": "Cross-compile ARM32 IOT profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/arm32-iot-release",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/arm32-elf.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BHARAT_DEVICE_PROFILE": "IOT",
+        "BHARAT_TARGET_BOARD": "avh-corstone310",
+        "BHARAT_BOOT_GUI": "OFF"
+      }
+    },
+    {
+      "name": "riscv32-iot-debug",
+      "displayName": "Cross RISC-V32 IOT (Debug)",
+      "description": "Cross-compile RISC-V32 IOT profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/riscv32-iot-debug",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/riscv32-elf-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BHARAT_DEVICE_PROFILE": "IOT",
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "OFF"
+      }
+    },
+    {
+      "name": "riscv32-iot-release",
+      "displayName": "Cross RISC-V32 IOT (Release)",
+      "description": "Cross-compile RISC-V32 IOT profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/riscv32-iot-release",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/riscv32-elf-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BHARAT_DEVICE_PROFILE": "IOT",
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "OFF"
+      }
     }
   ],
   "buildPresets": [
@@ -687,6 +799,38 @@
     {
       "name": "riscv64-laptop-release",
       "configurePreset": "riscv64-laptop-release"
+    },
+    {
+      "name": "arm64-mobile-debug",
+      "configurePreset": "arm64-mobile-debug"
+    },
+    {
+      "name": "arm64-mobile-release",
+      "configurePreset": "arm64-mobile-release"
+    },
+    {
+      "name": "riscv64-mobile-debug",
+      "configurePreset": "riscv64-mobile-debug"
+    },
+    {
+      "name": "riscv64-mobile-release",
+      "configurePreset": "riscv64-mobile-release"
+    },
+    {
+      "name": "arm32-iot-debug",
+      "configurePreset": "arm32-iot-debug"
+    },
+    {
+      "name": "arm32-iot-release",
+      "configurePreset": "arm32-iot-release"
+    },
+    {
+      "name": "riscv32-iot-debug",
+      "configurePreset": "riscv32-iot-debug"
+    },
+    {
+      "name": "riscv32-iot-release",
+      "configurePreset": "riscv32-iot-release"
     }
   ],
   "testPresets": [
@@ -924,6 +1068,94 @@
     {
       "name": "riscv64-medical-release",
       "configurePreset": "riscv64-medical-release",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "arm64-mobile-debug",
+      "configurePreset": "arm64-mobile-debug",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "arm64-mobile-release",
+      "configurePreset": "arm64-mobile-release",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "riscv64-mobile-debug",
+      "configurePreset": "riscv64-mobile-debug",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "riscv64-mobile-release",
+      "configurePreset": "riscv64-mobile-release",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "arm32-iot-debug",
+      "configurePreset": "arm32-iot-debug",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "arm32-iot-release",
+      "configurePreset": "arm32-iot-release",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "riscv32-iot-debug",
+      "configurePreset": "riscv32-iot-debug",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "riscv32-iot-release",
+      "configurePreset": "riscv32-iot-release",
       "output": {
         "outputOnFailure": true
       },
