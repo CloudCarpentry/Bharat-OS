@@ -2,7 +2,6 @@
 #include <stddef.h>
 
 extern int bharat_write(int fd, const void* buf, size_t count);
-extern void bharat_exit(int status);
 
 // Minimal print for demo
 void print(const char *msg) {
@@ -11,13 +10,7 @@ void print(const char *msg) {
     bharat_write(1, msg, len);
 }
 
-// The entry point for the sample app
-void _start_app() {
-    print("Hello from Bharat-OS SDK Sample App!\n");
-    bharat_exit(0);
-}
-
 int main() {
-    _start_app();
+    print("Hello from Bharat-OS SDK Sample App!\n");
     return 0;
 }
