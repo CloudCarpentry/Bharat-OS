@@ -20,7 +20,7 @@ This plan defines a structured rollout to validate Bharat-OS build and execution
 
 **Acceptance criteria**
 - `cmake --list-presets` works on Linux and Windows
-- `tools/build.sh` and `tools/build.ps1` execute successfully
+- `./build.sh` and `.\build.ps1` execute successfully
 
 ---
 

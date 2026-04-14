@@ -138,6 +138,11 @@ add_executable(test_secure_mem test_secure_mem.c)
 target_include_directories(test_secure_mem PRIVATE ../../kernel/include)
 
 add_test(NAME host_test_secure_mem COMMAND test_secure_mem)
+
+add_executable(test_crypto_protocol_dispatch services/test_crypto_protocol_dispatch.c ../../services/security/crypto/protocol.c ../../services/security/crypto/dispatch.c)
+target_include_directories(test_crypto_protocol_dispatch PRIVATE ../../services/security/crypto ../../kernel/include)
+add_test(NAME host_test_crypto_protocol_dispatch COMMAND test_crypto_protocol_dispatch)
+
 # Phase 3: NetMgr Tests
 add_executable(test_netmgr_address_table services/test_netmgr_address_table.c ../../services/netmgr/src/address_table.c ../../lib/runtime/src/freestanding_string.c)
 target_include_directories(test_netmgr_address_table PRIVATE ../../services/netmgr/src ../../services/netmgr/include ../../services/core/subsysmgr/include ../../lib/net/include ../../lib/runtime/include)
@@ -199,6 +204,10 @@ add_executable(test_servicemgr test_servicemgr.c ../../services/servicemgr/servi
 target_include_directories(test_servicemgr PRIVATE ../../include ../../lib/ipc/include ../../lib/cap/include ../../kernel/include)
 add_test(NAME host_test_servicemgr COMMAND test_servicemgr)
 
+add_executable(test_init test_init.c ../../services/core/init/init_runtime.c ../../services/core/init/init_status.c ../../services/core/init/init_handoff.c)
+target_include_directories(test_init PRIVATE ../../include ../../kernel/include ../../lib/runtime/include ../../lib/cap/include ../../lib/ipc/include)
+add_test(NAME host_test_init COMMAND test_init)
+
 add_executable(test_e2e_service_runtime test_e2e_service_runtime.c ../../services/process_manager/process_manager.c ../../services/vm_manager/vm_manager.c ../../services/servicemgr/servicemgr.c ../../lib/ipc/src/ipc.c)
 target_include_directories(test_e2e_service_runtime PRIVATE ../../include ../../lib/ipc/include ../../lib/cap/include ../../kernel/include)
 add_test(NAME host_test_e2e_service_runtime COMMAND test_e2e_service_runtime)
@@ -245,3 +254,5 @@ if(BHARAT_BUILD_HOST_TESTS)
     target_include_directories(test_i2c_hid_failures PRIVATE ${CMAKE_SOURCE_DIR}/drivers/input/i2c_hid ${CMAKE_SOURCE_DIR}/drivers/bus/i2c)
     add_test(NAME host_test_i2c_hid_failures COMMAND test_i2c_hid_failures)
 endif()
+add_executable(test_fdt_parser test_fdt_parser.c ../../hal/common/fdt_parser.c)
+target_include_directories(test_fdt_parser PRIVATE ../../include ../../kernel/include ../../boot/include)

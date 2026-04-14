@@ -1,5 +1,14 @@
 {
   "builds": {
+    "experimental_services": {
+      "preset": "experimental-services",
+      "arch": "x86_64",
+      "profile": "DESKTOP",
+      "personality": "NATIVE",
+      "board": "qemu-virt",
+      "gui": false,
+      "run": false
+    },
     "default_dev": {
       "preset": "x86_64-debug",
       "arch": "x86_64",
@@ -18,14 +27,26 @@
       "gui": false,
       "run": false
     },
+    "arm32_virt_mmu": {
+      "preset": "arm32-edge",
+      "arch": "arm32",
+      "profile": "EDGE",
+      "personality": "NATIVE",
+      "board": "virt",
+      "gui": false,
+      "run": false
+    },
     "arm64_desktop_mmu": {
       "preset": "arm64-edge",
       "arch": "arm64",
       "profile": "DESKTOP",
       "personality": "LINUX",
       "board": "virt",
-      "gui": false,
-      "run": false
+      "run": false,
+      "display": {
+        "enabled": true,
+        "class": "desktop"
+      }
     },
     "riscv64_desktop_mmu": {
       "preset": "riscv64-edge",
@@ -33,8 +54,11 @@
       "profile": "DESKTOP",
       "personality": "NATIVE",
       "board": "virt",
-      "gui": false,
-      "run": false
+      "run": false,
+      "display": {
+        "enabled": true,
+        "class": "desktop"
+      }
     },
     "arm32_edge_mpu": {
       "preset": "arm32-edge",
@@ -214,6 +238,102 @@
       "personality": "NATIVE",
       "board": "virt",
       "gui": true,
+      "run": false
+    },
+    "arm64_mobile_debug": {
+      "preset": "arm64-mobile-debug",
+      "arch": "arm64",
+      "profile": "MOBILE",
+      "personality": "NATIVE",
+      "board": "virt",
+      "display": {
+        "enabled": true,
+        "class": "mobile"
+      },
+      "run": false
+    },
+    "arm64_mobile_release": {
+      "preset": "arm64-mobile-release",
+      "arch": "arm64",
+      "profile": "MOBILE",
+      "personality": "NATIVE",
+      "board": "virt",
+      "display": {
+        "enabled": true,
+        "class": "mobile"
+      },
+      "run": false
+    },
+    "riscv64_mobile_debug": {
+      "preset": "riscv64-mobile-debug",
+      "arch": "riscv64",
+      "profile": "MOBILE",
+      "personality": "NATIVE",
+      "board": "virt",
+      "display": {
+        "enabled": true,
+        "class": "mobile"
+      },
+      "run": false
+    },
+    "riscv64_mobile_release": {
+      "preset": "riscv64-mobile-release",
+      "arch": "riscv64",
+      "profile": "MOBILE",
+      "personality": "NATIVE",
+      "board": "virt",
+      "display": {
+        "enabled": true,
+        "class": "mobile"
+      },
+      "run": false
+    },
+    "arm32_iot_debug": {
+      "preset": "arm32-iot-debug",
+      "arch": "arm32",
+      "profile": "IOT",
+      "personality": "NATIVE",
+      "board": "avh-corstone310",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "run": false
+    },
+    "arm32_iot_release": {
+      "preset": "arm32-iot-release",
+      "arch": "arm32",
+      "profile": "IOT",
+      "personality": "NATIVE",
+      "board": "avh-corstone310",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "run": false
+    },
+    "riscv32_iot_debug": {
+      "preset": "riscv32-iot-debug",
+      "arch": "riscv32",
+      "profile": "IOT",
+      "personality": "NATIVE",
+      "board": "virt",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "run": false
+    },
+    "riscv32_iot_release": {
+      "preset": "riscv32-iot-release",
+      "arch": "riscv32",
+      "profile": "IOT",
+      "personality": "NATIVE",
+      "board": "virt",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
       "run": false
     }
   }

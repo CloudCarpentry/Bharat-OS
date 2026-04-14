@@ -45,10 +45,10 @@ typedef struct {
 // Removed static core_runqueue_t g_runqueues
 
 static sched_policy_t g_policy = SCHED_POLICY_PRIORITY;
-static _Atomic uint64_t g_next_thread_id = 1U;
-static _Atomic uint64_t g_next_process_id = 1U;
-static _Atomic uint64_t g_sched_ticks = 0U;
-static _Atomic uint64_t g_sched_context_switches = 0U;
+static volatile uint64_t g_next_thread_id = 1U;
+static volatile uint64_t g_next_process_id = 1U;
+
+
 
 
 uint8_t g_sched_initialized = 0U;
@@ -386,7 +386,7 @@ int sched_enqueue(kthread_t *thread, uint32_t core_id) {
   } else if (g_policy == SCHED_POLICY_EDF) {
     if (thread->rt_attr.period_ms > 0 && thread->rt_attr.deadline_ms > 0) {
         if (thread->absolute_deadline_ms == 0) {
-            thread->absolute_deadline_ms = g_sched_ticks + thread->rt_attr.deadline_ms;
+            thread->absolute_deadline_ms = g_cpu_locals[sched_clamp_core(hal_cpu_get_id())].runqueue.total_ticks + thread->rt_attr.deadline_ms;
         }
     }
     sched_edf_enqueue(rq, thread);
@@ -444,7 +444,7 @@ void sched_reset_core_runqueues(void) {
     sched_rq_t *rq = &g_cpu_locals[core].runqueue;
     rq->current_thread = NULL;
     rq->idle_thread = NULL;
-    rq->total_ticks = 0U;
+    g_cpu_locals[core].runqueue.total_ticks = 0U;
     rq->context_switches = 0U;
     rq->runnable_count = 0U;
     rq->throttled = 0U;
@@ -513,7 +513,7 @@ static kthread_t *sched_create_bootstrap_thread(kprocess_t *parent,
   slot->in_use = 1U;
   slot->is_bootstrap = 1U;
 
-  slot->thread.thread_id = g_next_thread_id++;
+  slot->thread.thread_id = atomic64_fetch_and_add_ptr(&g_next_thread_id, 1);
   slot->thread.process_id = parent ? parent->process_id : 0U;
   slot->thread.process = parent;
   slot->thread.home_core_id = sched_clamp_core(hal_cpu_get_id());
@@ -560,8 +560,8 @@ void sched_init(void) {
 
   g_next_thread_id = 1U;
   g_next_process_id = 1U;
-  g_sched_ticks = 0U;
-  g_sched_context_switches = 0U;
+
+
 
 
 
@@ -592,7 +592,7 @@ kprocess_t *process_create(const char *name) {
   sched_rq_t *rq = &g_cpu_locals[current_core].runqueue;
 
   slot->in_use = 1U;
-  slot->process.process_id = g_next_process_id++;
+  slot->process.process_id = atomic64_fetch_and_add_ptr(&g_next_process_id, 1);
   slot->process.addr_space = mm_create_address_space();
   slot->process.main_thread = NULL;
   slot->process.security_sandbox_ctx = NULL;
@@ -669,7 +669,7 @@ kthread_t *thread_create_detached(kprocess_t *parent, void (*entry_point)(void))
   memset(slot, 0, sizeof(*slot));
   slot->in_use = 1U;
 
-  slot->thread.thread_id = g_next_thread_id++;
+  slot->thread.thread_id = atomic64_fetch_and_add_ptr(&g_next_thread_id, 1);
   slot->thread.process_id = parent ? parent->process_id : 0U;
   slot->thread.process = parent;
   slot->thread.home_core_id = sched_clamp_core(hal_cpu_get_id());
@@ -1036,7 +1036,7 @@ static void sched_switch_to(kthread_t *next, uint32_t core_id) {
 
   next->state = THREAD_STATE_RUNNING;
   next->context_switch_count++;
-  g_sched_context_switches++;
+  rq->context_switches++;
   g_cpu_locals[core_id].runqueue.context_switches++;
   g_cpu_locals[core_id].runqueue.current_thread = next;
 
@@ -1175,7 +1175,7 @@ void sched_reschedule(void) {
           } else if (g_policy == SCHED_POLICY_EDF) {
             if (thread->rt_attr.period_ms > 0 && thread->rt_attr.deadline_ms > 0) {
                 if (thread->absolute_deadline_ms == 0) {
-                    thread->absolute_deadline_ms = g_sched_ticks + thread->rt_attr.deadline_ms;
+                    thread->absolute_deadline_ms = g_cpu_locals[sched_clamp_core(hal_cpu_get_id())].runqueue.total_ticks + thread->rt_attr.deadline_ms;
                 }
             }
             sched_edf_enqueue(rq, thread);
@@ -1337,7 +1337,7 @@ void sched_sleep(uint64_t millis) {
     return;
   }
 
-  current->wake_deadline_ms = g_sched_ticks + millis;
+  current->wake_deadline_ms = g_cpu_locals[core].runqueue.total_ticks + millis;
   current->state = THREAD_STATE_SLEEPING;
   sched_sleep_enqueue(slot, core);
   g_cpu_locals[core].runqueue.current_thread = NULL;
@@ -1428,11 +1428,14 @@ static void sched_balance_once(void) {
   (void)sched_enqueue(candidate, idlest);
 }
 
+
 void sched_on_timer_tick(void) {
-  g_sched_ticks++;
+  g_cpu_locals[sched_clamp_core(hal_cpu_get_id())].runqueue.total_ticks++;
+
+
   uint32_t core = sched_clamp_core(hal_cpu_get_id());
-  g_cpu_locals[core].runqueue.total_ticks++;
-  ipc_async_check_timeouts(g_sched_ticks);
+
+  ipc_async_check_timeouts(g_cpu_locals[core].runqueue.total_ticks);
 
   list_head_t *sleep_head = &g_cpu_locals[core].runqueue.sleeping_list;
   list_head_t *curr = sleep_head->next;
@@ -1440,7 +1443,7 @@ void sched_on_timer_tick(void) {
     thread_slot_t *slot = (thread_slot_t *)(void *)((char *)curr - offsetof(thread_slot_t, wait_node));
     curr = curr->next;
     if (slot->thread.state == THREAD_STATE_SLEEPING &&
-        slot->thread.wake_deadline_ms <= g_sched_ticks) {
+        slot->thread.wake_deadline_ms <= g_cpu_locals[core].runqueue.total_ticks) {
       sched_wakeup(&slot->thread);
     }
   }
@@ -1452,7 +1455,7 @@ void sched_on_timer_tick(void) {
     curr = curr->next;
     if (slot->thread.state == THREAD_STATE_BLOCKED &&
         slot->thread.ipc_deadline_ticks > 0 &&
-        slot->thread.ipc_deadline_ticks <= g_sched_ticks) {
+        slot->thread.ipc_deadline_ticks <= g_cpu_locals[core].runqueue.total_ticks) {
       slot->thread.ipc_wakeup_reason = -3; // IPC_ERR_WOULD_BLOCK or TIMEOUT
       slot->thread.ipc_deadline_ticks = 0;
 
@@ -1465,7 +1468,7 @@ void sched_on_timer_tick(void) {
   sched_process_pending_ai_suggestions();
   sched_reap_terminated_threads();
 
-  if ((g_sched_ticks % 16U) == 0U && core == 0U) {
+  if ((g_cpu_locals[core].runqueue.total_ticks % 16U) == 0U && core == 0U) {
     sched_balance_once();
   }
 
@@ -1553,7 +1556,7 @@ struct capability_table *sched_current_cap_table(void) {
   return p ? (struct capability_table *)p->security_sandbox_ctx : NULL;
 }
 
-uint64_t sched_get_ticks(void) { return g_sched_ticks; }
+uint64_t sched_get_ticks(void) { return g_cpu_locals[sched_clamp_core(hal_cpu_get_id())].runqueue.total_ticks; }
 void sched_set_policy(sched_policy_t policy) {
   if (policy <= SCHED_POLICY_RMS) {
     g_policy = policy;

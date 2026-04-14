@@ -476,30 +476,60 @@ See:
 - `cmake` (3.20+)
 - Ninja or Make
 - A supported LLVM/Clang cross toolchain
-- `yq` (Optional, to parse `build_config.yml` via wrappers)
 
 ### Build examples
 
-Using the modern CMake presets and composition framework:
+Bharat-OS uses a centralized build manifest (`build_config.json`) and the single `tools/build.py` script for all commands. You can invoke this through the root wrappers `build.sh` and `build.ps1`.
 
+To list all available configurations:
 ```bash
-# Use the wrapper scripts which read build_config.yml and execute the right presets
+./build.sh --list
+```
+
+**Common build commands (Linux/macOS):**
+```bash
+# Build the default x86_64 development profile
 ./build.sh default_dev
 
-# Optionally build and immediately run the emulator
+# Build and immediately run the emulator
 ./build.sh default_dev --run
+
+# Clean, build, and run an arm64 edge device profile
+./build.sh arm64_desktop_mmu --clean --run
+
+# Build and run a riscv64 edge profile with headless tests
+./build.sh riscv64_desktop_mmu --clean --run-tests
 ```
 
-Windows users can invoke the identical workflow:
+**Common build commands (Windows):**
 ```powershell
-.\build.ps1 default_dev -Run
+# Build the default x86_64 development profile
+.\build.ps1 default_dev
+
+# Build and immediately run the emulator
+.\build.ps1 default_dev --run
+
+# Clean, build, and run an arm64 edge device profile
+.\build.ps1 arm64_desktop_mmu --clean --run
+
+# Build and run a riscv64 edge profile with headless tests
+.\build.ps1 riscv64_desktop_mmu --clean --run-tests
 ```
 
-For advanced users, you can bypass the wrapper script and invoke the CMake Presets directly:
-```bash
-cmake --preset linux-x86_64-dev-debug
-cmake --build --preset linux-x86_64-dev-debug
-```
+### 🚨 Migration Guide: Legacy Flags Removed
+
+The build system has been unified around `tools/build.py` using canonical `argparse` arguments. **Legacy PowerShell and shell flags are no longer supported.** The wrappers do not translate flags; they strictly forward to `build.py`.
+
+| Old Syntax (Deprecated) | New Syntax (Canonical) | Notes |
+| :--- | :--- | :--- |
+| `.\build.ps1 -Arch x86_64 -Run` | `.\build.ps1 default_dev --run` | Arch, board, and profile are now bundled into named configurations in `build_config.json`. |
+| `.\build.ps1 -Arch riscv64 -Clean -Run` | `.\build.ps1 riscv64_desktop_mmu --clean --run` | |
+| `.\build.ps1 -Arch arm64 -Profile MEDICAL` | `.\build.ps1 arm64_medical_debug` | |
+| `.\build.ps1 -Arch x86_64 -BootGui ON` | `.\build.ps1 x86_64_laptop_debug --run` | Use a configuration that specifies `"gui": true` in the JSON manifest. |
+| `.\build.ps1 -Arch x86_64 -DualSerial` | `.\build.ps1 default_dev --run --dual-serial` | |
+| `./build.sh -Arch x86_64 -E2e` | `./build.sh default_dev --run-tests` | |
+
+If you need a specific combination of architecture, profile, and features that does not exist in `build_config.json`, simply add a new block to the JSON file.
 
 ### Profile/personality/board-aware CMake configuration
 
@@ -557,3 +587,10 @@ For a complete bibliography and BibTeX entries, see [`docs/research_doc/papers.m
 ### Phase 4 Verification Roadmap
 
 As part of Phase 4, we plan to integrate seL4 tools for verification. Our initial focus will be on Isabelle/HOL proofs for our core IPC primitives. We are actively seeking and welcome help from other developers on this roadmap. If you have experience in formal verification or theorem proving, please join us!
+
+## Build script hierarchy
+
+* Root `build.sh` and `build.ps1` are the supported user-facing entrypoints.
+* `tools/build.py` is the authoritative build/run implementation.
+* Any shell or PowerShell scripts under `tools/` (like `tools/build.sh` and `tools/build.ps1`) are compatibility wrappers only.
+* Future CLI, build, or run behavior changes must be made in `tools/build.py` only. Do not add new logic to the compatibility shims.

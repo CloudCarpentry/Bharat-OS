@@ -67,7 +67,7 @@ winget install -e --id SoftwareFreedomConservancy.QEMU
 winget install -e --id Python.Python.3.11
 ```
 
-> **Note:** Restart your terminal after installation so tools appear in `PATH`. On Windows, `tools/build.ps1` expects QEMU at `C:\Program Files\qemu\` and auto-adds `C:\Program Files\LLVM\bin` to `PATH`.
+> **Note:** Restart your terminal after installation so tools appear in `PATH`. On Windows, `.\build.ps1` expects QEMU at `C:\Program Files\qemu\` and auto-adds `C:\Program Files\LLVM\bin` to `PATH`.
 
 **2. Install on WSL (Ubuntu/Debian inside Windows)**
 

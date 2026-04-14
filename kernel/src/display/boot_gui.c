@@ -319,7 +319,7 @@ int boot_gui_run(void) {
         return -1;
     }
 
-    g_gui.fb      = (void *)(uintptr_t)g_gui_handoff.phys_addr;
+    g_gui.fb      = (void *)(uintptr_t)g_gui_handoff.virt_addr;
     g_gui.width   = g_gui_handoff.width;
     g_gui.height  = g_gui_handoff.height;
     g_gui.stride  = g_gui_handoff.stride_bytes;

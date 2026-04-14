@@ -24,7 +24,7 @@
 
 /* ── Multiboot 1 constants ──────────────────────────────────────────────── */
 #define MB1_MAGIC    0x1BADB002
-#define MB1_FLAGS    0x00000003  /* ALIGN + MEMINFO (no VIDINFO/VBE for QEMU -kernel) */
+#define MB1_FLAGS    0x00000007  /* ALIGN + MEMINFO + VIDEO */
 
 /* ── Boot Headers (Multiboot 1 & 2 + PVH ELF Note) ─────────────────────
  * Must be in the first 8 KiB (v1) or 32 KiB (v2) of the image.
@@ -32,29 +32,29 @@
 .section .multiboot, "a"
 .align 8
 
-.align 8
-/* Multiboot 1 Header */
-mb1_header:
-    .long MB1_MAGIC
-    .long MB1_FLAGS
-    .long -(MB1_MAGIC + MB1_FLAGS)
-    .long 0 /* header_addr */
-    .long 0 /* load_addr */
-    .long 0 /* load_end_addr */
-    .long 0 /* bss_end_addr */
-    .long 0 /* entry_addr */
-    .long 0 /* mode_type (0 = linear graphics) */
-    .long 1024 /* width */
-    .long 768 /* height */
-    .long 32 /* depth */
-
-.align 8
 /* Multiboot 2 Header */
 mb2_start:
-    .long  MB2_MAGIC
-    .long  MB2_ARCH_X86
+    .long  0xe85250d6   /* MB2_MAGIC */
+    .long  0            /* MB2_ARCH_X86 */
     .long  (mb2_end - mb2_start)
-    .long  -(MB2_MAGIC + MB2_ARCH_X86 + (mb2_end - mb2_start))
+    .long  -(0xe85250d6 + 0 + (mb2_end - mb2_start))
+
+    /* Header Address Tag (Type 2) */
+    .align 8
+    .short 2
+    .short 0
+    .long  24
+    .long  mb2_start    /* header_addr */
+    .long  mb2_start    /* load_addr */
+    .long  kernel_end   /* load_end_addr */
+    .long  bss_end      /* bss_end_addr */
+
+    /* Entry Address Tag (Type 3) */
+    .align 8
+    .short 3            /* type = entry address */
+    .short 0            /* flags */
+    .long  12           /* size */
+    .long  _start       /* entry addr */
 
     /* Framebuffer Request Tag (Type 5) */
     .align 8
@@ -73,6 +73,12 @@ mb2_start:
 mb2_end:
 
 .align 8
+mb1_header:
+    .long MB1_MAGIC
+    .long 0x00000003
+    .long -(MB1_MAGIC + 0x00000003)
+
+.align 8
 /* PVH ELF Note (Requirement for QEMU -kernel to load 64-bit ELF) 
  * Specifically looking for type XEN_ELFNOTE_PHYS32_ENTRY (18)
  */
@@ -83,6 +89,19 @@ mb2_end:
     .long 18             /* type (XEN_ELFNOTE_PHYS32_ENTRY) */
     .ascii "Xen\0"
     .long _start         /* entry point (physical address) */
+
+.align 8
+/* PVH ELF Note (Requirement for QEMU -kernel to load 64-bit ELF) 
+ * Specifically looking for type XEN_ELFNOTE_PHYS32_ENTRY (18)
+ */
+.section .note.Xen, "a", @note
+.align 4
+    .long 4              /* name len ("Xen\0") */
+    .long 4              /* desc len (entry address) */
+    .long 18             /* type (XEN_ELFNOTE_PHYS32_ENTRY) */
+    .ascii "Xen\0"
+    .long _start         /* entry point (physical address) */
+
 
 /* ── Minimal bootstrap page tables (identity-map first 1 GiB) ────────────
  * All in .bss — zeroed by the boot code itself before use.

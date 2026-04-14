@@ -33,8 +33,6 @@ Before building Bharat-OS, you need to set up your development environment.
 - Ninja or Make
 - Clang & LLD (`llvm`, `clang`, `lld`)
 - QEMU (for running the kernel)
-- `yq` (Optional, used by the build wrappers `build.sh`/`build.ps1` to parse `build_config.yml`)
-
 Please see the comprehensive **[Environment Preparation Guide](docs/build/ENV_PREP.md)** for platform-specific instructions.
 
 ---
@@ -43,26 +41,26 @@ Please see the comprehensive **[Environment Preparation Guide](docs/build/ENV_PR
 
 All compiler and linker settings are isolated in **CMake toolchain files** under `cmake/toolchains/`. Target generation is mapped out via profiles in `CMakePresets.json`.
 
-We provide simple wrapper scripts (`build.sh` and `build.ps1`) that parse the target `build_config.yml` configuration and execute the underlying `cmake --preset` engine.
+We provide simple wrapper scripts (`build.sh` and `build.ps1`) that pass configuration from the target `build_config.json` configuration and execute the underlying `cmake --preset` engine using `tools/build.py`.
 
 At configure time, component selection is enforced by `cmake/modules/BharatComponentPolicy.cmake`.
-The wrapper scripts normalize and pass:
+The central script `tools/build.py` reads the desired configuration from `build_config.json` and injects variables like:
 
 - `BHARAT_DEVICE_PROFILE`
 - `BHARAT_PERSONALITY_PROFILE`
 - `BHARAT_TARGET_BOARD`
 
-If `profile`, `personality`, or `board` contain comma-separated values in `build_config.yml`,
-only the first value is consumed for CMake cache inputs.
-
 ### Helper Scripts (Recommended)
 
-Edit `build_config.yml` to define your target composition (e.g. arch, UI on/off, profile mapping). Then use the wrapper:
+Edit `build_config.json` to define your target composition (e.g. arch, UI on/off, profile mapping). Then use the wrapper:
 
 ```bash
 # Linux/Mac/WSL
-# Build the default_dev profile
+# Build the default_dev profile (conservative, disables scaffold-heavy service groups)
 ./build.sh default_dev
+
+# Build the experimental services profile (enables scaffold-heavy experimental services)
+./build.sh experimental_services
 
 # Build and run immediately in QEMU
 ./build.sh default_dev --run
@@ -73,9 +71,24 @@ Edit `build_config.yml` to define your target composition (e.g. arch, UI on/off,
 # Build the default_dev profile
 .\build.ps1 default_dev
 
-# Build and run
-.\build.ps1 default_dev -Run
+# Build and run immediately in QEMU
+.\build.ps1 default_dev --run
 ```
+
+### 🚨 Migration Guide: Legacy Flags Removed
+
+The build system has been unified around `tools/build.py` using canonical `argparse` arguments. **Legacy PowerShell and shell flags (like `-Arch`, `-Run`, `-Clean`, `-BootGui`, `-DualSerial`) are no longer supported.** The wrappers do not translate flags; they strictly forward to `build.py`.
+
+| Old Syntax (Deprecated) | New Syntax (Canonical) | Notes |
+| :--- | :--- | :--- |
+| `.\build.ps1 -Arch x86_64 -Run` | `.\build.ps1 default_dev --run` | Arch, board, and profile are now bundled into named configurations in `build_config.json`. |
+| `.\build.ps1 -Arch riscv64 -Clean -Run` | `.\build.ps1 riscv64_desktop_mmu --clean --run` | |
+| `.\build.ps1 -Arch arm64 -Profile MEDICAL` | `.\build.ps1 arm64_medical_debug` | |
+| `.\build.ps1 -Arch x86_64 -BootGui ON` | `.\build.ps1 x86_64_laptop_debug --run` | Use a configuration that specifies `"gui": true` in the JSON manifest. |
+| `.\build.ps1 -Arch x86_64 -DualSerial` | `.\build.ps1 default_dev --run --dual-serial` | |
+| `./build.sh -Arch x86_64 -E2e` | `./build.sh default_dev --run-tests` | |
+
+If you need a specific combination of architecture, profile, and features that does not exist in `build_config.json`, simply add a new block to the JSON file.
 
 ### Manual CMake Presets
 
@@ -151,9 +164,11 @@ During build execution, CMake groups your selected targets into bundles:
 
 | Arch      | Status                                     | QEMU Machine                        |
 | --------- | ------------------------------------------ | ----------------------------------- |
-| `x86_64`  | ✅ Active                                  | `qemu-system-x86_64 -kernel`        |
-| `riscv64` | ✅ Cross-compile validated (incl. Shakti RV64 profile) | `qemu-system-riscv64 -machine virt` |
-| `arm64`   | ✅ Cross-compile validated (runtime pending) | N/A                                 |
+| `x86_64`  | ✅ Active                                  | `qemu-system-x86_64 -machine q35`   |
+| `arm64`   | ✅ Active                                  | `qemu-system-aarch64 -machine virt` |
+| `riscv64` | ✅ Active                                  | `qemu-system-riscv64 -machine virt` |
+| `arm32`   | ⚠️ Stabilization (use `--run-tests`)       | `qemu-system-arm -machine virt`     |
+| `riscv32` | ⚠️ Stabilization (use `--run-tests`)       | `qemu-system-riscv32 -machine virt` |
 
 
 ---
@@ -165,8 +180,10 @@ Bharat-OS exclusively relies on LLVM/Clang and LLD (version 16+) for bare-metal 
 | Architecture | Target Triple         | Compiler | Linker | Status      |
 | ------------ | --------------------- | -------- | ------ | ----------- |
 | `x86_64`     | `x86_64-elf`          | Clang 16+| LLD 16+| Active      |
-| `riscv64`    | `riscv64-elf`         | Clang 16+| LLD 16+| Validated   |
-| `arm64`      | `aarch64-elf`         | Clang 16+| LLD 16+| Validated (build) |
+| `arm64`      | `aarch64-elf`         | Clang 16+| LLD 16+| Active      |
+| `riscv64`    | `riscv64-elf`         | Clang 16+| LLD 16+| Active      |
+| `arm32`      | `armv7a-none-eabi`    | Clang 16+| LLD 16+| Validated   |
+| `riscv32`    | `riscv32-elf`         | Clang 16+| LLD 16+| Validated   |
 
 ---
 
@@ -211,68 +228,63 @@ These are wired through both build scripts and raw CMake cache entries.
 
 ### Building for Device Profiles (Automobile, Drone, Medical, Edge)
 
-Bharat-OS supports various device profiles natively. The build scripts (`build.sh` and `build.ps1`) automatically inject the correct QEMU flags to emulate hardware-specific peripherals (like CAN buses or watchdog timers) depending on the selected profile.
+Bharat-OS supports various device profiles natively. The build scripts (`build.sh` and `build.ps1`) automatically inject the correct QEMU flags to emulate hardware-specific peripherals (like CAN buses or watchdog timers) depending on the selected profile configured in `build_config.json`.
 
 **1. Automobile & EV Testing**
 The CAN subsystem is enabled automatically for Automotive profiles. QEMU will be launched with a virtual Kvaser PCI CAN bus.
 ```bash
 # Bash
-./build.sh x86_64 --profile=AUTOMOBILE --run
+./build.sh arm64_automobile_debug --run
 
 # PowerShell
-.\build.ps1 -Arch x86_64 -Profile AUTOMOBILE -Run
+.\build.ps1 arm64_automobile_debug --run
 ```
 
 **2. Drone (UAV) Testing**
 Drone firmware usually relies on specific ARM processors. Using the `DRONE` profile on `arm64` or `arm32` defaults to emulating a Cortex-A15.
 ```bash
 # Bash
-./build.sh arm64 --profile=DRONE --run
+./build.sh arm32_drone_debug --run
 
 # PowerShell
-.\build.ps1 -Arch arm64 -Profile DRONE -Run
+.\build.ps1 arm32_drone_debug --run
 ```
 
 **3. Medical Device Validation**
 Medical environments require strict V&V. The `MEDICAL` profile injects a watchdog device (`i6300esb`) configured to pause on trigger, allowing you to simulate and test fault injection and safe failure states.
 ```bash
 # Bash
-./build.sh x86_64 --profile=MEDICAL --run
+./build.sh arm64_medical_debug --run
 ```
 
 **4. Robotics & Edge Devices**
 The `ROBOT` and `EDGE` profiles inject basic virtio networking to represent generic IoT or edge deployments.
 ```bash
-./build.sh riscv64 --profile=ROBOT --run
+./build.sh riscv32_robot_debug --run
 ```
 
 **5. Laptops & Workstations**
 The `LAPTOP` profile targets traditional PC or workstation form factors. It injects a virtio network device, as well as a virtio-tablet and virtio-keyboard to emulate typical human interface devices. For `x86_64` targets, it automatically switches the QEMU machine to `q35` and expands the memory to 1G to support ACPI and modern PC buses.
 ```bash
 # Bash
-./build.sh x86_64 --profile=LAPTOP --run
+./build.sh x86_64_laptop_debug --run
 
 # PowerShell
-.\build.ps1 -Arch arm64 -Profile LAPTOP -Run
+.\build.ps1 x86_64_laptop_debug --run
 ```
 
 ### End-to-End (E2E) Test Support
 
-For Continuous Integration (CI) and automated validation, you can pass the `--e2e` (Bash) or `-E2e` (PowerShell) flag.
+For Continuous Integration (CI) and automated validation, you can pass the `--run-tests` flag.
 
 When enabled:
-1. It forces the system to boot in headless mode (`-nographic` / `BOOT_GUI=OFF`).
-2. It redirects all serial output from the QEMU machine to a local file (`qemu_e2e.log`) instead of standard output.
-3. It prevents the emulator from rebooting on a crash (`-no-reboot`).
+1. It forces the system to boot in headless mode.
+2. It runs tests in the emulator environment.
+3. It prevents the emulator from rebooting on a crash.
 
 ```bash
 # Bash example for automated testing
-./build.sh x86_64 --profile=AUTOMOBILE --run --e2e
-cat qemu_e2e.log
-
-# PowerShell example
-.\build.ps1 -Arch riscv64 -Profile MEDICAL -Run -E2e
-Get-Content qemu_e2e.log
+./build.sh arm64_automobile_debug --run-tests
 ```
 
 For a full multi-arch and multi-profile QEMU harness, use `run_qemu_e2e.sh`.
@@ -292,58 +304,100 @@ Notes:
 - Logs are written to `e2e_logs/` per test case.
 - The harness validates boot markers (`BOOT: pmm initialized`, `BOOT: vmm initialized`, runtime mode) and fails on panic logs.
 
-### GUI and Serial Console Output (`-BootGui ON`)
+### GUI and Serial Console Output
 
-When `BHARAT_BOOT_GUI` is enabled (e.g. passing `-BootGui ON` to `build.ps1` or `--boot-gui=ON` to `build.sh`), QEMU is launched with a graphical window.
+When a build configuration has `"gui": true` in `build_config.json`, QEMU is launched with a graphical window.
 
-To ensure early kernel logs are visible during UI development, the build scripts automatically route QEMU serial output to both your host terminal and a Virtual Console (`vc`) inside the QEMU GUI using the `-serial stdio -serial vc` flags.
+To ensure early kernel logs are visible during UI development, you can use the `--dual-serial` flag to automatically route QEMU serial output to both your host terminal and a Virtual Console (`vc`) inside the QEMU GUI using the `-serial stdio -serial vc` flags.
 
 **Architecture specific behaviors with GUI enabled:**
 - **`x86_64`:** Uses standard VGA (`-vga std`). The serial `vc` output appears natively.
 - **`riscv64` & `arm64`:** These `virt` machines do not support legacy VGA. The build scripts use VirtIO GPU (`-device virtio-gpu-device` or `-device virtio-gpu-pci`). The kernel text output is displayed in a QEMU Virtual Console tab. *Note: If you are using the QEMU GTK/SDL UI, you can switch to the Virtual Console (usually via `View -> serial0` or `Ctrl-Alt-2`) to see the text logs if they don't appear immediately.*
 
 ```powershell
-# Build and run with a specific preset
-.\tools\build.ps1 -Preset arm64-gui -Run
-
-# Build and run with logs routed ONLY to the QEMU window (recommended for GUI dev)
-.\tools\build.ps1 -Arch arm64 -Clean -Run -SerialTarget vc
+# Build and run a GUI-enabled config
+.\build.ps1 arm64_automobile_debug --run
 
 # Build and run with dual serial (Both GUI and Terminal)
-.\tools\build.ps1 -Arch riscv64 -Clean -Run -SerialTarget both
+.\build.ps1 arm64_automobile_debug --run --dual-serial
 ```
-
-### Serial Console Routing (`-SerialTarget`)
-
-You can control where kernel logs are sent when running in QEMU:
-
-- `-SerialTarget stdio` (Default): Logs go to your host terminal.
-- `-SerialTarget vc`: Logs go to the QEMU GUI window (the "Serial0" tab).
-- `-SerialTarget both` (or `-DualSerial`): Logs go to BOTH. The GUI window remains the primary (`Serial0`), and the terminal is secondary (`Serial1`).
-
-> [!TIP]
-> Use `-SerialTarget vc` for the most seamless GUI development experience on ARM64 and RISC-V, as it avoids cluttering your terminal and keeps everything in one window. This also bypasses common "mon:stdio" errors on Windows.
 
 ### Troubleshooting: `qemu_add_wait_object: failed`
 If you see the error `could not connect serial device to character backend 'mon:stdio'` on Windows, it is likely due to terminal limitations. 
 
-**Solution:** Use `-SerialTarget vc` to route logs exclusively to the QEMU window, bypassing the terminal's `mon:stdio` backend.
+**Solution:** Use the QEMU virtual console natively if GUI is enabled.
 
 **Example Build Commands:**
 ```powershell
 # Windows (PowerShell)
 # Build and run x86_64 with GUI enabled
-.\tools\build.ps1 -Arch x86_64 -Clean -Run -BootGui ON
-
-# Build and run RISC-V with GUI enabled
-.\tools\build.ps1 -Arch riscv64 -Clean -Run -BootGui ON
+.\build.ps1 x86_64_laptop_debug --clean --run
 ```
 
-```bash
-# WSL / Linux / macOS (Bash)
-# Build and run ARM64 with GUI enabled
-./tools/build.sh -Arch arm64 -Clean -Run -BootGui ON
+---
 
-# Optionally enable dual-serial output on both stdio and the virtual console
-./tools/build.sh -Arch x86_64 -Clean -Run -BootGui ON -DualSerial
+## Multi-Architecture Build & Test Execution Plan
+
+The goal is to verify the build and execution of Bharat-OS across five major architectures (arm64, arm32, x86_64, riscv32, riscv64) using `.\build.ps1` (`tools/build.py`) with both GUI-enabled and headless configurations.
+
+### Phase 1: Environment Readiness
+Ensure `qemu-system-*` binaries for all architectures are in the system `PATH`.
+- **Windows**: Add `C:\Program Files\qemu` to your environment variables.
+- **Verification**: Run `python tools/build.py --doctor` to check runner availability.
+
+### Phase 2: Architecture Verification Matrix
+
+| Architecture | Build Name | Profile | QEMU Machine | GUI |
+| :--- | :--- | :--- | :--- | :--- |
+| **x86_64** | `default_dev` | DESKTOP | q35 | Enabled |
+| **arm64** | `arm64_desktop_mmu` | DESKTOP | virt | Enabled |
+| **arm32** | `arm32_virt_mmu` | EDGE | virt | Disabled |
+| **riscv64** | `riscv64_desktop_mmu` | DESKTOP | virt | Enabled |
+| **riscv32** | `riscv32_edge_mmu_lite` | EDGE | virt | Disabled |
+
+### Phase 3: GUI vs Headless Execution
+- **GUI Mode**: Run `./build.sh <build_name> --run`. This expects a graphical window to open.
+- **Headless Mode (CI)**: Run `./build.sh <build_name> --run-tests`. This forces `-display none` and redirects all console output to `stdio` for automated logging.
+
+### Execution Strategy
+1. **Sequencing**: Execute each build name from the matrix sequentially.
+2. **Verification**: Confirm the presence of the `Bharat-OS` boot logo and kernel initialization logs in the output.
+3. **Multi-Arch Logic**: The `tools/build.py` script automatically selects the correct CPU and machine flags (e.g., `cortex-a15` for arm32 virt, `q35` for x86_64).
+
+### Quick Start Commands (Windows PowerShell)
+
+Here are the commands to run the predefined configurations in Windows:
+
+**1. x86_64 (Desktop, GUI)**
+```powershell
+.\build.ps1 default_dev --run
+# Or with dual serial for both GUI and terminal logs:
+# .\build.ps1 default_dev --run --dual-serial
 ```
+
+**2. ARM64 (Desktop, GUI)**
+```powershell
+.\build.ps1 arm64_desktop_mmu --run
+```
+
+**3. ARM32 (Edge, Headless)**
+```powershell
+.\build.ps1 arm32_virt_mmu --run
+```
+
+**4. RISC-V 64 (Desktop, GUI)**
+```powershell
+.\build.ps1 riscv64_desktop_mmu --run
+```
+
+**5. RISC-V 32 (Edge, Headless)**
+```powershell
+.\build.ps1 riscv32_edge_mmu_lite --run
+```
+
+**Headless/CI Testing (All Architectures)**
+If you want to run any of the GUI-enabled profiles purely in headless mode (no QEMU window) for testing, replace `--run` with `--run-tests`:
+```powershell
+.\build.ps1 arm64_desktop_mmu --run-tests
+```
+

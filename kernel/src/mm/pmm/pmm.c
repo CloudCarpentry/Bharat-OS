@@ -973,7 +973,7 @@ void mm_free_page(phys_addr_t page_addr) {
 
                   if (drain_page) {
                       // Avoid infinite loop: clear owner_core_id so mm_free_page ignores local cache for these pages
-                      drain_page->owner_core_id = 0xFFFFFFFF;
+
                       drain_page->ref_count = 1; // restore dropping reference semantics for mm_free_page
                       drain_page->state = PMM_PAGE_STATE_ALLOCATED; // avoid double free check on re-entry
                       mm_free_page(drain_phys);
@@ -1123,19 +1123,19 @@ void pmm_free_page(void *page) {
 }
 
 // Refcount Helpers
-void page_get(struct page *page) {
+void page_get(page_t *page) {
     if (page) {
         atomic16_fetch_and_add(&page->ref_count, 1U);
     }
 }
 
-void page_put(struct page *page) {
+void page_put(page_t *page) {
     if (page) {
         pmm_ref_put(page_to_phys((page_t*)page));
     }
 }
 
-bool page_try_get(struct page *page) {
+bool page_try_get(page_t *page) {
     if (!page) return false;
     uint16_t old = __atomic_load_n(&page->ref_count, __ATOMIC_ACQUIRE);
     while (old > 0) {

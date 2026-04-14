@@ -1,5 +1,6 @@
 #include "atomic.h"
 #include "spinlock.h"
+#include <stdbool.h>
 
 #if ARCH_WORD_BITS == 32
 static spinlock_t g_atomic64_lock;

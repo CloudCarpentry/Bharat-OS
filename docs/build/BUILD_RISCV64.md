@@ -17,41 +17,41 @@ The build system offers multiple paths for configuring and building the kernel. 
 **Linux / macOS / WSL / BSD:**
 
 ```bash
-chmod +x tools/build.sh
+chmod +x ./build.sh
 
 # Build the kernel
-./tools/build.sh riscv64
+./build.sh riscv64
 
 # Clean and rebuild the kernel
-./tools/build.sh riscv64 --clean
+./build.sh riscv64 --clean
 
 # Build and boot directly in QEMU
-./tools/build.sh riscv64 --run
+./build.sh riscv64 --run
 
 # Run with a specific QEMU machine (e.g., sifive_u)
-./tools/build.sh riscv64 --machine=sifive_u --run
+./build.sh riscv64 --machine=sifive_u --run
 
 # Build RISC-V GCC OpenSBI payload
-./tools/build.sh riscv64 --payload
+./build.sh riscv64 --payload
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
 # Build the kernel
-.\tools\build.ps1 -Arch riscv64
+.\build.ps1 -Arch riscv64
 
 # Clean and rebuild the kernel
-.\tools\build.ps1 -Arch riscv64 -Clean
+.\build.ps1 -Arch riscv64 -Clean
 
 # Build and boot directly in QEMU
-.\tools\build.ps1 -Arch riscv64 -Run
+.\build.ps1 -Arch riscv64 -Run
 
 # Run with a specific QEMU machine (e.g., sifive_u)
-.\tools\build.ps1 -Arch riscv64 -Machine sifive_u -Run
+.\build.ps1 -Arch riscv64 -Machine sifive_u -Run
 
 # Build RISC-V GCC OpenSBI payload
-.\tools\build.ps1 -Arch riscv64 -Payload
+.\build.ps1 -Arch riscv64 -Payload
 ```
 
 ### Using CMake Presets

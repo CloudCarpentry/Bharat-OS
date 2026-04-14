@@ -29,13 +29,19 @@ Use these labels consistently across status docs and roadmap updates:
 - Host tests are optional through `BHARAT_BUILD_HOST_TESTS`.
 
 ### Service composition
-- Always built: `process_manager`, `vm_manager`, `file_system`, `drivers`, `crypto`, `console`, `boot_displayd`, legacy `net`.
-- Default-on option groups:
+
+- Always built: `process_manager`, `vm_manager`, `file_system`, `drivers`, `crypto`, `console`, `boot_displayd`. legacy `net`.
+- Experimental option groups (`BHARAT_BUILD_EXPERIMENTAL_SERVICES=OFF` by default):
   - `BHARAT_BUILD_USER_SERVICES_STUBS=ON`: `init`, `namesvc`, `servicemgr`.
   - `BHARAT_BUILD_CORE_SERVICES=ON`: `coremgr`, `memmgr`, `schedmgr`, `devmgr`, `accelmgr`, `storagemgr`, `faultmgr`, `telemetrymgr`.
+  - Also guards: `netfast`, `sensor_hub`, `time_sync`, `can`, `power_mode`.
+- Forward path network stack (`BHARAT_BUILD_NETWORK_STUBS=ON`): `netmgr`, `netstack` (default ON).
+- Legacy/Transitional network stack (`BHARAT_ENABLE_SERVICE_NETWORK=ON`): `net` (default ON but deprecated).
+-  Default-off option groups (enabled in experimental presets):
+  - `BHARAT_BUILD_USER_SERVICES_STUBS=ON`: `init`, `namesvc`, `servicemgr`.
+  - `BHARAT_BUILD_CORE_SERVICES=ON`: `coremgr`, `memmgr`, `schedmgr`, `devmgr`, `storagemgr`, `faultmgr`, `telemetrymgr`.
   - `BHARAT_BUILD_NETWORK_STUBS=ON`: `netmgr`, `netstack`, `netfast`.
 
----
 
 ## 2) Service implementation matrix (taxonomy-aligned)
 
@@ -59,14 +65,16 @@ Use these labels consistently across status docs and roadmap updates:
 | `boot_displayd` | **Partial** | Framebuffer rectangle helper + mocked early UI flow. |
 | `file_system` | **Partial** | Calls `vfs_init()` and outlines mount/URPC flow; persistent backing FS path still pending. |
 | `crypto` | **Partial** | DRBG/keystore + request validation/dispatch logic; IPC transport path is stubbed. |
-| `net` (legacy monolith) | **Partial** | Transitional control/data plane and smoke-test compatibility path. |
-| `netmgr` | **Partial** | Interface/address/route/neighbor/driver-health modules + IPC opcode dispatcher. |
-| `netstack` | **Partial** | Socket table + protocol modules (IPv4/ARP/ICMP/UDP/loopback/Ethernet) + virtio adapter init hook. |
+| `net` (legacy monolith) | **Partial** | **Deprecated/Transitional** control/data plane and smoke-test compatibility path. |
+| `netmgr` | **Baseline** | Interface/address/route/neighbor/driver-health modules, full IPC opcode dispatcher, capability wiring, health tracking and yield loop. Forward path. |
+| `netstack` | **Partial** | Socket table + protocol modules (IPv4/ARP/ICMP/UDP/loopback/Ethernet) + virtio adapter init hook. Forward path. |
 | `netfast` | **Scaffold** | Placeholder fast-path main. |
 
 ---
 
 ## 3) Networking implementation details
+
+*Note: The legacy `net` monolithic service is deprecated and transitional. `netmgr` and `netstack` represent the canonical forward path.*
 
 ## `services/netmgr` (control plane)
 Implemented modules include:
@@ -81,6 +89,8 @@ Current limitations:
 - Main event loop intentionally breaks immediately (daemon runtime not fully wired).
 - Capability checks now use a strict fail-closed shim via `bharat_cap_validate()` (denies by default). The previous permissive bypass is obsolete, though the full capability lookup engine is still pending.
 - Restart behavior records intent only; no process-manager integration yet.
+- Full blocking IPC wait is waiting on scheduler integration; falls back to yielding loop for now.
+- System registry bindings are still mocked until `namesvc` is fully operational.
 
 ## `services/netstack` (data plane)
 Implemented modules include:
@@ -128,3 +138,16 @@ For diagram-based decomposition and roadmap mapping by domain, see:
 For the current memory production hardening plan and profile/architecture acceptance matrix, see:
 
 - `docs/architecture/memory-production-grade-plan.md`
+
+## 8) Service Deployment Profiles
+
+Services in Bharat-OS are not universally mandatory. They are deployed via three primary profile tiers to accommodate hardware constraints:
+
+*   **Tier A (Tiny profile):** `init`, `namesvc`, `devmgr`, `process_manager`, `vm_manager`.
+    *Target:* Micro edge nodes, sensors, controller-class devices, low-storage builds.
+*   **Tier B (Managed embedded profile):** Tier A + `servicemgr`, `faultmgr`, minimal telemetry export.
+    *Target:* Serious embedded products needing restart, supervision, and fleet debugging.
+*   **Tier C (Rich embedded/mobile/appliance profile):** Tier B + `storagemgr`, `telemetrymgr`, `console`, `boot_displayd`, optional `accelmgr`.
+    *Target:* UI devices, media devices, connected appliances, richer edge systems.
+
+*Note: Core system managers like `schedmgr`, `memmgr`, and `coremgr` are profile-optional and only engaged when policy must be strictly separated from kernel mechanisms.*

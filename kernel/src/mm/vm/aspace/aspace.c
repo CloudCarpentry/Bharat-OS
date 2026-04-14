@@ -6,35 +6,114 @@
 #include "../../../../include/spinlock.h"
 #include "../../../../include/numa.h"
 #include "../../../../include/slab.h"
+#include "../../../../include/mm/aspace_profile.h"
+#include "../../../../include/debug/mm_invariants.h"
+#include "../../../../include/kernel/status.h"
 
 static uint64_t next_as_id = 1;
 
+static bool aspace_flags_require_rich_vm(uint32_t flags)
+{
+    /*
+     * Conservative rule:
+     * - flags == 0 means basic creation
+     * - any unknown/non-zero flags are treated as requiring rich VM
+     *
+     * This keeps constrained profiles honest until a fuller flag taxonomy
+     * exists.
+     */
+    if (flags == 0) {
+        return false;
+    }
+
+    return true;
+}
+
+static bool aspace_profile_allows_create(aspace_profile_t profile, uint32_t flags)
+{
+    const bool rich = aspace_flags_require_rich_vm(flags);
+
+    if (!rich) {
+        return true;
+    }
+
+    switch (profile) {
+        case ASPACE_PROFILE_FULL:
+            return true;
+
+        case ASPACE_PROFILE_SPLIT:
+            /*
+             * TODO(PR3.1-HARDENING): Re-evaluate SPLIT semantics and restrict specific
+             * rich VM flags that break isolation or unsupported constraints.
+             */
+            return true;
+
+        case ASPACE_PROFILE_FLAT:
+        case ASPACE_PROFILE_REGION_ONLY:
+            return false;
+
+        default:
+            return false;
+    }
+}
+
+static phys_addr_t aspace_create_root_pt_via_fallback(address_space_t *as) {
+    if (active_hal_pt && active_hal_pt->create_address_space) {
+        extern phys_addr_t vmm_get_kernel_root(void);
+        return active_hal_pt->create_address_space(vmm_get_kernel_root());
+    }
+    return 0;
+}
+
+static phys_addr_t aspace_create_root_pt_from_prot_domain(address_space_t *as) {
+    if (as->prot_domain && as->prot_domain->backend_state) {
+        return (phys_addr_t)(uintptr_t)as->prot_domain->backend_state;
+    }
+    return 0;
+}
+
 int aspace_create(address_space_t **out_aspace, uint32_t flags) {
-    if (!out_aspace) return -1;
+    mm_stats.aspace_create_calls++;
+    MM_TRACE("ASPACE_CREATE profile=%d flags=%u\n", aspace_profile_get_current(), flags);
+    MM_ASSERT(out_aspace != NULL, "out_aspace pointer must not be NULL");
+
+    if (!out_aspace) return K_ERR_INVALID_ARG;
+
+    aspace_profile_t profile = aspace_profile_get_current();
+    if (!aspace_profile_is_supported(mem_model_get_current(), profile)) {
+        mm_stats.aspace_rejected_by_profile++;
+        mm_stats.aspace_create_failures++;
+        return K_ERR_UNSUPPORTED; // Explicitly reject unsupported combinations
+    }
+
+    MM_ASSERT(aspace_profile_is_supported(mem_model_get_current(), profile), "Unsupported profile for current memory model");
+    MM_WARN(!(profile == ASPACE_PROFILE_REGION_ONLY && aspace_flags_require_rich_vm(flags)), "REGION_ONLY should not allow rich VM flags");
+
+    if (!aspace_profile_allows_create(profile, flags)) {
+        mm_stats.aspace_rejected_by_profile++;
+        mm_stats.aspace_create_failures++;
+        return K_ERR_PROFILE_RESTRICTED; // Explicitly reject unsupported rich/full-VM semantics
+    }
 
     address_space_t *as = (address_space_t *)kmalloc(sizeof(address_space_t));
-    if (!as) return -1;
+    if (!as) { mm_stats.aspace_create_failures++; return K_ERR_NO_MEMORY; }
 
     if (!active_hal_pt) hal_pt_init();
 
 
     as->prot_domain = prot_domain_create();
 
-    // Stub legacy while transitioning fully
-    if (as->prot_domain && as->prot_domain->backend_state) {
-        as->root_pt = (phys_addr_t)(uintptr_t)as->prot_domain->backend_state;
-    } else if (active_hal_pt && active_hal_pt->create_address_space) {
-        extern phys_addr_t vmm_get_kernel_root(void);
-        as->root_pt = active_hal_pt->create_address_space(vmm_get_kernel_root());
-        if (!as->root_pt) {
+    // TODO(PR3.1-TRANSITION): Isolate legacy root PT allocation logic while transitioning fully to prot_domain backend
+    as->root_pt = aspace_create_root_pt_from_prot_domain(as);
+    if (!as->root_pt) {
+        as->root_pt = aspace_create_root_pt_via_fallback(as);
+        if (!as->root_pt && active_hal_pt && active_hal_pt->create_address_space) {
             if (as->prot_domain) {
                 prot_domain_destroy(as->prot_domain);
             }
             kfree(as);
-            return -1;
+            return K_ERR_NO_MEMORY;
         }
-    } else {
-        as->root_pt = 0;
     }
 
     as->object_id = __atomic_fetch_add(&next_as_id, 1, __ATOMIC_SEQ_CST);
@@ -58,11 +137,11 @@ int aspace_create(address_space_t **out_aspace, uint32_t flags) {
     }
 
     *out_aspace = as;
-    return 0;
+    return K_OK;
 }
 
 int aspace_destroy(address_space_t *aspace) {
-    if (!aspace) return -1;
+    if (!aspace) return K_ERR_INVALID_ARG;
 
     spin_lock(&aspace->lock);
 
@@ -70,7 +149,7 @@ int aspace_destroy(address_space_t *aspace) {
     while (curr) {
         vm_region_t *next = curr->next;
 
-        // Note: For now, just drop the reference to the object.
+        // TODO(PR3.1-RUNTIME): In the future, we may need to handle mapped memory properly instead of just dropping the object reference.
         if (curr->object) {
             vm_object_release(curr->object);
         }
@@ -95,7 +174,7 @@ int aspace_destroy(address_space_t *aspace) {
 
     spin_unlock(&aspace->lock);
     kfree(aspace);
-    return 0;
+    return K_OK;
 }
 
 
@@ -386,9 +465,9 @@ int aspace_find_region(address_space_t *aspace, uint64_t vaddr, vm_region_t **ou
     vm_region_t *r = aspace_lookup_region(aspace, vaddr);
     if (r) {
         if (out_region) *out_region = r;
-        return 0;
+        return K_OK;
     }
-    return -1;
+    return K_ERR_NOT_FOUND;
 }
 
 vm_object_t *aspace_lookup_object(address_space_t *aspace, uintptr_t va, vm_region_t **out_region, uint64_t *out_object_offset) {
@@ -410,7 +489,7 @@ static int insert_region_sorted(address_space_t *aspace, vm_region_t *new_region
 
         tree_insert(aspace, new_region);
         aspace->region_count++;
-        return 0;
+        return K_OK;
     }
 
     vm_region_t *curr = aspace->regions;
@@ -436,28 +515,28 @@ static int insert_region_sorted(address_space_t *aspace, vm_region_t *new_region
     tree_insert(aspace, new_region);
 
     aspace->region_count++;
-    return 0;
+    return K_OK;
 }
 
 int aspace_region_reserve(address_space_t *aspace, uintptr_t base, size_t length, uint32_t prot, uint32_t map_flags, vm_inherit_t inherit, vm_region_t **out_region) {
-    if (!aspace || length == 0) return -1;
+    if (!aspace || length == 0) return K_ERR_INVALID_ARG;
 
     base = base & ~(PAGE_SIZE - 1);
     length = (length + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
 
-    if (base + length <= base) return -1; // Overflow
+    if (base + length <= base) return K_ERR_OVERFLOW; // Overflow
 
     spin_lock(&aspace->lock);
 
     if (aspace_check_overlap(aspace, base, length)) {
         spin_unlock(&aspace->lock);
-        return -1;
+        return K_ERR_VM_ALREADY_MAPPED;
     }
 
     vm_region_t *region = (vm_region_t *)kmalloc(sizeof(vm_region_t));
     if (!region) {
         spin_unlock(&aspace->lock);
-        return -1;
+        return K_ERR_NO_MEMORY;
     }
 
     region->base = base;
@@ -474,28 +553,28 @@ int aspace_region_reserve(address_space_t *aspace, uintptr_t base, size_t length
     spin_unlock(&aspace->lock);
 
     if (out_region) *out_region = region;
-    return 0;
+    return K_OK;
 }
 
 int aspace_region_attach(address_space_t *aspace, uintptr_t base, size_t length, uint32_t prot, uint32_t map_flags, vm_inherit_t inherit, vm_object_t *object, uint64_t object_offset, vm_region_t **out_region) {
-    if (!aspace || length == 0) return -1;
+    if (!aspace || length == 0) return K_ERR_INVALID_ARG;
 
     base = base & ~(PAGE_SIZE - 1);
     length = (length + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
 
-    if (base + length <= base) return -1; // Overflow
+    if (base + length <= base) return K_ERR_OVERFLOW; // Overflow
 
     spin_lock(&aspace->lock);
 
     if (aspace_check_overlap(aspace, base, length)) {
         spin_unlock(&aspace->lock);
-        return -1;
+        return K_ERR_VM_ALREADY_MAPPED;
     }
 
     vm_region_t *region = (vm_region_t *)kmalloc(sizeof(vm_region_t));
     if (!region) {
         spin_unlock(&aspace->lock);
-        return -1;
+        return K_ERR_NO_MEMORY;
     }
 
     if (object) {
@@ -516,11 +595,11 @@ int aspace_region_attach(address_space_t *aspace, uintptr_t base, size_t length,
     spin_unlock(&aspace->lock);
 
     if (out_region) *out_region = region;
-    return 0;
+    return K_OK;
 }
 
 int aspace_region_detach(address_space_t *aspace, uintptr_t base) {
-    if (!aspace) return -1;
+    if (!aspace) return K_ERR_INVALID_ARG;
 
     base = base & ~(PAGE_SIZE - 1);
 
@@ -543,21 +622,21 @@ int aspace_region_detach(address_space_t *aspace, uintptr_t base) {
 
             kfree(curr);
             spin_unlock(&aspace->lock);
-            return 0;
+            return K_OK;
         }
         curr = curr->next;
     }
 
     spin_unlock(&aspace->lock);
-    return -1;
+    return K_ERR_NOT_FOUND;
 }
 
 int aspace_clone(address_space_t *src, address_space_t **out_clone, uint32_t clone_flags) {
-    if (!src || !out_clone) return -1;
+    if (!src || !out_clone) return K_ERR_INVALID_ARG;
 
     address_space_t *dst = NULL;
     int ret = aspace_create(&dst, clone_flags);
-    if (ret != 0) return ret;
+    if (ret != K_OK) return ret;
 
     spin_lock(&src->lock);
 
@@ -568,7 +647,7 @@ int aspace_clone(address_space_t *src, address_space_t **out_clone, uint32_t clo
             if (!new_region) {
                 spin_unlock(&src->lock);
                 aspace_destroy(dst);
-                return -1;
+                return K_ERR_NO_MEMORY;
             }
 
             new_region->base = curr->base;
@@ -592,7 +671,7 @@ int aspace_clone(address_space_t *src, address_space_t **out_clone, uint32_t clo
     spin_unlock(&src->lock);
 
     *out_clone = dst;
-    return 0;
+    return K_OK;
 }
 
 // ============================================================================
@@ -602,14 +681,14 @@ int aspace_clone(address_space_t *src, address_space_t **out_clone, uint32_t clo
 int aspace_map_region(address_space_t *aspace, uint64_t vaddr_hint, uint64_t length, uint32_t prot, uint32_t map_flags, vm_object_t *object, uint64_t object_offset, uint64_t *out_vaddr) {
     // Basic wrapper to map legacy calls to the new attach logic.
     // If vaddr_hint is 0, we'd normally search for a hole. In the new logic, attach requires base.
-    // For now, this is just a quick placeholder, and we'll let existing tests fail or pass based on hardcoded hints.
+    // TODO(PR3.1-TRANSITION): Support dynamic vaddr allocation rather than forcing hardcoded hints
     if (vaddr_hint == 0) {
-        return -1; // Not fully supported by legacy adapter
+        return K_ERR_UNSUPPORTED; // Not fully supported by legacy adapter
     }
 
     vm_region_t *r = NULL;
     int ret = aspace_region_attach(aspace, vaddr_hint, length, prot, map_flags, VM_INHERIT_COPY_META, object, object_offset, &r);
-    if (ret == 0 && out_vaddr) *out_vaddr = vaddr_hint;
+    if (ret == K_OK && out_vaddr) *out_vaddr = vaddr_hint;
     return ret;
 }
 
@@ -623,7 +702,7 @@ int aspace_protect_region(address_space_t *aspace, uint64_t base, uint64_t lengt
     vm_region_t *r = aspace_lookup_region(aspace, base);
     if (r) {
         r->prot = new_prot;
-        return 0;
+        return K_OK;
     }
-    return -1;
+    return K_ERR_NOT_FOUND;
 }

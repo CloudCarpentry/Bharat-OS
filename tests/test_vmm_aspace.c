@@ -4,6 +4,7 @@
 #include "../kernel/include/mm/aspace.h"
 #include "../kernel/include/mm/vm_object.h"
 #include "../kernel/include/hal/hal_pt.h"
+#include "../kernel/include/mm/aspace_profile.h"
 
 #define TEST(name) void name()
 #define ASSERT_EQ(a, b) assert((a) == (b))
@@ -40,15 +41,15 @@ phys_addr_t vmm_get_kernel_root(void) {
 TEST(aspace_overlap_rejected) {
     printf("Running aspace_overlap_rejected...\n");
     address_space_t *as = NULL;
-    ASSERT_EQ(0, aspace_create(&as, 0));
+    ASSERT_EQ(K_OK, aspace_create(&as, 0));
 
     vm_object_t *obj = vm_object_create_anon(0x4000, 0);
     ASSERT_NOT_NULL(obj);
 
-    ASSERT_EQ(0, aspace_region_attach(as, 0x100000, 0x2000, VM_PROT_READ, 0,
+    ASSERT_EQ(K_OK, aspace_region_attach(as, 0x100000, 0x2000, VM_PROT_READ, 0,
                                       VM_INHERIT_COPY_META, obj, 0, NULL));
 
-    ASSERT_NE(0, aspace_region_attach(as, 0x101000, 0x2000, VM_PROT_READ, 0,
+    ASSERT_NE(K_OK, aspace_region_attach(as, 0x101000, 0x2000, VM_PROT_READ, 0,
                                       VM_INHERIT_COPY_META, obj, 0, NULL));
 
     aspace_destroy(as);
@@ -59,17 +60,17 @@ TEST(aspace_overlap_rejected) {
 TEST(aspace_shared_object_two_spaces) {
     printf("Running aspace_shared_object_two_spaces...\n");
     address_space_t *a = NULL, *b = NULL;
-    ASSERT_EQ(0, aspace_create(&a, 0));
-    ASSERT_EQ(0, aspace_create(&b, 0));
+    ASSERT_EQ(K_OK, aspace_create(&a, 0));
+    ASSERT_EQ(K_OK, aspace_create(&b, 0));
 
     vm_object_t *obj = vm_object_create_shared(0x4000, 0);
     ASSERT_NOT_NULL(obj);
 
     uint32_t start_ref = obj->refcount;
 
-    ASSERT_EQ(0, aspace_region_attach(a, 0x200000, 0x2000, VM_PROT_READ|VM_PROT_WRITE, 0,
+    ASSERT_EQ(K_OK, aspace_region_attach(a, 0x200000, 0x2000, VM_PROT_READ|VM_PROT_WRITE, 0,
                                       VM_INHERIT_SHARE, obj, 0, NULL));
-    ASSERT_EQ(0, aspace_region_attach(b, 0x300000, 0x2000, VM_PROT_READ|VM_PROT_WRITE, 0,
+    ASSERT_EQ(K_OK, aspace_region_attach(b, 0x300000, 0x2000, VM_PROT_READ|VM_PROT_WRITE, 0,
                                       VM_INHERIT_SHARE, obj, 0, NULL));
 
     vm_region_t *ra = aspace_lookup_region(a, 0x200100);
@@ -89,17 +90,17 @@ TEST(aspace_shared_object_two_spaces) {
 TEST(aspace_clone_copies_metadata) {
     printf("Running aspace_clone_copies_metadata...\n");
     address_space_t *src = NULL, *dst = NULL;
-    ASSERT_EQ(0, aspace_create(&src, 0));
+    ASSERT_EQ(K_OK, aspace_create(&src, 0));
 
     vm_object_t *anon = vm_object_create_anon(0x8000, 0);
     vm_object_t *shared = vm_object_create_shared(0x4000, 0);
 
-    ASSERT_EQ(0, aspace_region_attach(src, 0x400000, 0x3000, VM_PROT_READ|VM_PROT_WRITE, 0,
+    ASSERT_EQ(K_OK, aspace_region_attach(src, 0x400000, 0x3000, VM_PROT_READ|VM_PROT_WRITE, 0,
                                       VM_INHERIT_COPY_META, anon, 0x1000, NULL));
-    ASSERT_EQ(0, aspace_region_attach(src, 0x500000, 0x2000, VM_PROT_READ, 0,
+    ASSERT_EQ(K_OK, aspace_region_attach(src, 0x500000, 0x2000, VM_PROT_READ, 0,
                                       VM_INHERIT_SHARE, shared, 0, NULL));
 
-    ASSERT_EQ(0, aspace_clone(src, &dst, 0));
+    ASSERT_EQ(K_OK, aspace_clone(src, &dst, 0));
 
     vm_region_t *r1 = aspace_lookup_region(dst, 0x400100);
     vm_region_t *r2 = aspace_lookup_region(dst, 0x500100);
@@ -123,17 +124,17 @@ TEST(aspace_clone_copies_metadata) {
 TEST(aspace_teardown_releases_refs) {
     printf("Running aspace_teardown_releases_refs...\n");
     address_space_t *as = NULL, *clone = NULL;
-    ASSERT_EQ(0, aspace_create(&as, 0));
+    ASSERT_EQ(K_OK, aspace_create(&as, 0));
 
     vm_object_t *obj = vm_object_create_shared(0x4000, 0);
     ASSERT_NOT_NULL(obj);
     ASSERT_EQ(obj->refcount, 1u);
 
-    ASSERT_EQ(0, aspace_region_attach(as, 0x600000, 0x2000, VM_PROT_READ, 0,
+    ASSERT_EQ(K_OK, aspace_region_attach(as, 0x600000, 0x2000, VM_PROT_READ, 0,
                                       VM_INHERIT_SHARE, obj, 0, NULL));
     ASSERT_EQ(obj->refcount, 2u);
 
-    ASSERT_EQ(0, aspace_clone(as, &clone, 0));
+    ASSERT_EQ(K_OK, aspace_clone(as, &clone, 0));
     ASSERT_EQ(obj->refcount, 3u);
 
     aspace_destroy(clone);
@@ -149,11 +150,11 @@ TEST(aspace_teardown_releases_refs) {
 TEST(aspace_lookup_authoritative_without_pt_mapping) {
     printf("Running aspace_lookup_authoritative_without_pt_mapping...\n");
     address_space_t *as = NULL;
-    ASSERT_EQ(0, aspace_create(&as, 0));
+    ASSERT_EQ(K_OK, aspace_create(&as, 0));
 
     vm_object_t *obj = vm_object_create_anon(0x4000, 0);
 
-    ASSERT_EQ(0, aspace_region_attach(as, 0x700000, 0x2000, VM_PROT_READ|VM_PROT_WRITE, 0,
+    ASSERT_EQ(K_OK, aspace_region_attach(as, 0x700000, 0x2000, VM_PROT_READ|VM_PROT_WRITE, 0,
                                       VM_INHERIT_COPY_META, obj, 0x100, NULL));
 
     vm_region_t *r = aspace_lookup_region(as, 0x700100);
@@ -225,6 +226,48 @@ TEST(vm_object_lifecycle_hardening) {
     printf("Passed vm_object_lifecycle_hardening\n");
 }
 
+// Mocks for mm_model and aspace_profile to test create constraints
+mem_model_t mock_mem_model = MEM_MODEL_MMU_FULL;
+// aspace_profile_t mock_aspace_profile = ASPACE_PROFILE_FULL; // Removed since we map directly from mem_model
+
+mem_model_t mem_model_get_current(void) {
+    return mock_mem_model;
+}
+
+TEST(aspace_create_profile_enforcement) {
+    printf("Running aspace_create_profile_enforcement...\n");
+    address_space_t *as = NULL;
+
+    // 1. FULL + rich create (flags=1) -> PASS
+    mock_mem_model = MEM_MODEL_MMU_FULL;
+    ASSERT_EQ(K_OK, aspace_create(&as, 1));
+    aspace_destroy(as);
+
+    // 2. FULL + basic create (flags=0) -> PASS
+    mock_mem_model = MEM_MODEL_MMU_FULL;
+    ASSERT_EQ(K_OK, aspace_create(&as, 0));
+    aspace_destroy(as);
+
+    // 3. REGION_ONLY + rich create -> FAIL
+    mock_mem_model = MEM_MODEL_MPU; // implies REGION_ONLY
+    ASSERT_NE(K_OK, aspace_create(&as, 1));
+
+    // 4. REGION_ONLY + basic create -> PASS
+    mock_mem_model = MEM_MODEL_MPU; // implies REGION_ONLY
+    ASSERT_EQ(K_OK, aspace_create(&as, 0));
+    aspace_destroy(as);
+
+    // 5. FLAT + rich create -> FAIL
+    // For tests, we use MMU_LITE which implies SPLIT in aspace_profile_get_for_model
+    // We cannot easily inject FLAT here without changing aspace_profile.h, but we can test
+    // that constrained profiles block rich. Since LITE defaults to SPLIT and we left SPLIT permissive,
+    // this test for FLAT would need us to be able to mock the profile directly, which is inline.
+    // TODO: Add a test seam to explicitly test FLAT profile behavior once architecture allows easier mocking,
+    // for now, we rely on the MPU -> REGION_ONLY test for the constrained rejection path logic.
+
+    printf("Passed aspace_create_profile_enforcement\n");
+}
+
 int main() {
     hal_pt_init(); // Needs mock
     extern void prot_domain_init(void);
@@ -237,6 +280,7 @@ int main() {
     aspace_lookup_authoritative_without_pt_mapping();
     vm_object_kinds_basic_construction();
     vm_object_lifecycle_hardening();
+    aspace_create_profile_enforcement();
 
     printf("All ASPACE tests passed successfully!\n");
     return 0;

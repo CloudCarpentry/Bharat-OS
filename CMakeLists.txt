@@ -71,6 +71,7 @@ target_include_directories(bharat_generated_includes INTERFACE "${BHARAT_GEN_INC
 
 # Architecture selection
 bharat_set_arch_defaults()
+bharat_apply_arch_flags()
 
 # Device Profile
 set(BHARAT_DEVICE_PROFILE "DESKTOP" CACHE STRING "Target device profile (DESKTOP, MOBILE, EDGE, DATACENTER, NETWORK_APPLIANCE, DRONE, ROBOT, RTOS, AUTOMOTIVE_ECU, AUTOMOTIVE_INFOTAINMENT)")
@@ -79,6 +80,10 @@ set_property(CACHE BHARAT_DEVICE_PROFILE PROPERTY STRINGS DESKTOP MOBILE EDGE DA
 # Personality Profile
 set(BHARAT_PERSONALITY_PROFILE "NATIVE" CACHE STRING "Target personality profile (NATIVE, LINUX, WINDOWS, MAC)")
 set_property(CACHE BHARAT_PERSONALITY_PROFILE PROPERTY STRINGS NATIVE LINUX WINDOWS MAC)
+
+# Default Init Profile
+set(BHARAT_DEFAULT_INIT_PROFILE "DESKTOP" CACHE STRING "Target default init profile (TINY, SMALL, EMBEDDED_RICH, MOBILE, DESKTOP, DRONE)")
+set_property(CACHE BHARAT_DEFAULT_INIT_PROFILE PROPERTY STRINGS TINY SMALL EMBEDDED_RICH MOBILE DESKTOP DRONE)
 
 # Board selection metadata (provided by build scripts or manual configure)
 set(BHARAT_TARGET_BOARD "" CACHE STRING "Target board identifier (e.g., qemu-virt-riscv64, shakti-c)")
@@ -180,23 +185,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang" AND BHARAT_USE_LLD)
     add_link_options(-fuse-ld=lld)
 endif()
 
-if(ARCH STREQUAL "riscv64")
-    add_compile_options(
-        $<$<COMPILE_LANGUAGE:C>:-march=rv64gc>
-        $<$<COMPILE_LANGUAGE:C>:-mabi=lp64d>
-        $<$<COMPILE_LANGUAGE:C>:-mcmodel=medany>
-        $<$<COMPILE_LANGUAGE:ASM>:-march=rv64gc>
-        $<$<COMPILE_LANGUAGE:ASM>:-mabi=lp64d>
-    )
-elseif(ARCH STREQUAL "riscv32")
-    add_compile_options(
-        $<$<COMPILE_LANGUAGE:C>:-march=rv32g>
-        $<$<COMPILE_LANGUAGE:C>:-mabi=ilp32d>
-        $<$<COMPILE_LANGUAGE:C>:-mcmodel=medany>
-        $<$<COMPILE_LANGUAGE:ASM>:-march=rv32g>
-        $<$<COMPILE_LANGUAGE:ASM>:-mabi=ilp32d>
-    )
-endif()
+
 
 option(BHARAT_ENABLE_CLANG_TIDY "Enable clang-tidy static analysis for C targets" OFF)
 option(BHARAT_BUILD_HOST_TESTS "Build host-side unit tests" OFF)

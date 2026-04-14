@@ -344,6 +344,9 @@ static void runtime_enter_normal(const boot_info_t *boot) {
     KPRINT("  [BOOT] Spawning first system service (sysmgr)...\n");
     kernel_start_init_service();
 
+    // Force first reschedule to start sysmgr immediately
+    kthread_yield();
+
     // Controlled idle
     while (1) {
         hal_cpu_halt();
