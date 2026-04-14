@@ -13,6 +13,4 @@ bool netmgr_cap_check_rights(
     uint64_t required_rights,
     const bharat_cap_scope_t *required_scope);
 
-void netmgr_set_caller_cap(bharat_cap_handle_t cap);
-
 #endif // NETMGR_CAPABILITY_CHECKS_H
