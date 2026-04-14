@@ -207,39 +207,11 @@ int vmm_handle_cow_fault(address_space_t* as, virt_addr_t vaddr) {
     return (res == VM_FAULT_RESOLVED) ? 0 : -1;
 }
 
-static bool vmm_create_request_obviously_illegal(uint32_t flags)
-{
-    aspace_profile_t profile = aspace_profile_get_current();
-
-    if (!aspace_profile_is_supported(mem_model_get_current(), profile)) {
-        return true;
-    }
-
-    if (flags == 0) {
-        return false;
-    }
-
-    switch (profile) {
-        case ASPACE_PROFILE_FULL:
-        case ASPACE_PROFILE_SPLIT:
-            return false;
-
-        case ASPACE_PROFILE_FLAT:
-        case ASPACE_PROFILE_REGION_ONLY:
-            return true;
-
-        default:
-            return true;
-    }
-}
-
 address_space_t *mm_create_address_space(void) {
     uint32_t create_flags = 0; // Legacy basic creation
-    if (vmm_create_request_obviously_illegal(create_flags)) {
-        return NULL;
-    }
-
     address_space_t *as = NULL;
+
+    // Defer explicit legality checks entirely to the authoritative aspace_create boundary
     if (aspace_create(&as, create_flags) != 0) return NULL;
     MM_WARN(as != NULL, "Address space creation returned NULL");
     console_log(CONSOLE_LEVEL_DEBUG, "ASPACE profile: %d\n", aspace_profile_get_current());
