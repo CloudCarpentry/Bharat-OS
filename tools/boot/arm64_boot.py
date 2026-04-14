@@ -10,5 +10,5 @@ def get_boot_config(kernel_path):
     check_fdt_ready()
     return {
         "kernel_path": kernel_path,
-        "qemu_flags": ["-machine", "virt", "-cpu", "cortex-a57"]
+        "qemu_flags": []
     }

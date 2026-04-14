@@ -18,47 +18,59 @@
       "gui": true,
       "run": false
     },
-    "x86_64_desktop_mmu": {
+    "x86_64_desktop_gui": {
       "preset": "x86_64-dev",
       "arch": "x86_64",
       "profile": "DESKTOP",
       "personality": "NATIVE",
       "board": "qemu-virt",
-      "gui": false,
+      "display": { "enabled": true, "class": "desktop" },
       "run": false
     },
-    "arm32_virt_mmu": {
-      "preset": "arm32-edge",
-      "arch": "arm32",
-      "profile": "EDGE",
+    "x86_64_desktop_headless": {
+      "preset": "x86_64-dev",
+      "arch": "x86_64",
+      "profile": "DESKTOP",
       "personality": "NATIVE",
-      "board": "virt",
-      "gui": false,
+      "board": "qemu-virt",
+      "display": { "enabled": false, "class": "none" },
       "run": false
     },
-    "arm64_desktop_mmu": {
+    "arm64_desktop_gui": {
       "preset": "arm64-edge",
       "arch": "arm64",
       "profile": "DESKTOP",
       "personality": "LINUX",
       "board": "virt",
-      "run": false,
-      "display": {
-        "enabled": true,
-        "class": "desktop"
-      }
+      "display": { "enabled": true, "class": "desktop" },
+      "run": false
     },
-    "riscv64_desktop_mmu": {
+    "arm64_desktop_headless": {
+      "preset": "arm64-edge",
+      "arch": "arm64",
+      "profile": "DESKTOP",
+      "personality": "LINUX",
+      "board": "virt",
+      "display": { "enabled": false, "class": "none" },
+      "run": false
+    },
+    "riscv64_desktop_gui": {
       "preset": "riscv64-edge",
       "arch": "riscv64",
       "profile": "DESKTOP",
       "personality": "NATIVE",
       "board": "virt",
-      "run": false,
-      "display": {
-        "enabled": true,
-        "class": "desktop"
-      }
+      "display": { "enabled": true, "class": "desktop" },
+      "run": false
+    },
+    "riscv64_desktop_headless": {
+      "preset": "riscv64-edge",
+      "arch": "riscv64",
+      "profile": "DESKTOP",
+      "personality": "NATIVE",
+      "board": "virt",
+      "display": { "enabled": false, "class": "none" },
+      "run": false
     },
     "arm32_edge_mpu": {
       "preset": "arm32-edge",

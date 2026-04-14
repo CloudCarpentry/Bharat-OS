@@ -167,7 +167,7 @@ elseif(ARCH STREQUAL "arm64")
     set(ARCH_EXT_STATE_SRC ../arch/arm/arm64/ext_state.c)
 elseif(ARCH STREQUAL "arm32")
     set(BOOT_SRC ../arch/arm/arm32/boot/boot.S)
-    set(ARCH_HAL ../hal/arm32/hal_cpu.c ../hal/arm32/trap_entry.S ../hal/arm32/hal_pt_arm32.c ../hal/hal_pt.c ../hal/arm32/discovery.c ../hal/arm32/timer_generic.c ../hal/mpu/arm32/mpu_backend.c ../hal/arm32/dma.c ../hal/common/hal_secure_boot_unsupported.c ../hal/arm32/cpu_relax.c)
+    set(ARCH_HAL ../hal/arm32/hal_cpu.c ../hal/arm32/trap_entry.S ../hal/arm32/hal_pt_arm32.c ../hal/hal_pt.c ../hal/arm32/discovery.c ../hal/arm32/timer_generic.c ../hal/mpu/arm32/mpu_backend.c ../hal/arm32/dma.c ../hal/common/hal_secure_boot_unsupported.c ../hal/arm32/cpu_relax.c ../hal/common/iommu/null/null_iommu.c)
     set(ARCH_CONTEXT_SWITCH ../arch/arm/arm32/context_switch.c ../arch/arm/arm32/context_switch.S)
     set(ARCH_CPU_CAPS_SRC ../arch/arm/arm32/cpu_caps.c)
     set(ARCH_EXT_STATE_SRC ../arch/arm/arm32/ext_state.c)
@@ -180,9 +180,9 @@ elseif(ARCH MATCHES "riscv.*64")
 elseif(ARCH MATCHES "arm.*64" OR ARCH MATCHES "aarch64")
     set(LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/linker_arm64.ld")
 elseif(ARCH MATCHES "arm.*32")
-    set(LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/linker.ld")
+    set(LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/linker_arm32.ld")
 elseif(ARCH MATCHES "riscv.*32")
-    set(LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/linker_riscv64.ld")
+    set(LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/linker_riscv32.ld")
 else()
     set(LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/linker.ld")
     message(WARNING "Unknown ARCH='${ARCH}', falling back to x86_64 linker script!")
@@ -360,6 +360,7 @@ set(KERNEL_SRCS
     ../arch/common/cpu_caps_state.c
     $<$<STREQUAL:${ARCH},x86_64>:../arch/x86/x86_64/arch_caps.c>
     $<$<STREQUAL:${ARCH},x86_64>:../arch/x86/x86_64/arch_console.c>
+    $<$<STREQUAL:${ARCH},arm32>:../arch/arm/arm32/arch_console.c>
     $<$<STREQUAL:${ARCH},arm64>:../arch/arm/arm64/arch_caps.c>
     $<$<STREQUAL:${ARCH},arm64>:../arch/arm/arm64/arch_console.c>
     $<$<STREQUAL:${ARCH},riscv64>:../arch/riscv/riscv64/arch_caps.c>

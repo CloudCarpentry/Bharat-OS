@@ -19,9 +19,13 @@ int boot_video_map(const boot_info_t *boot) {
     size_t fb_size = (size_t)boot->console.fb_height * boot->console.fb_pitch;
     uint32_t flags = HAL_PT_FLAG_READ | HAL_PT_FLAG_WRITE;
 
-    // Use a high canonical address to avoid clashing with identity mapping.
-    // Base: 0xFFFF900000000000
+#if defined(__x86_64__)
+    // For x86_64, use the higher-half alias (PML4 index 256) which is already mapped in boot.S
+    virt_addr_t fb_virt = 0xFFFF800000000000ULL | (fb_phys & 0xFFFFFFFF);
+#else
+    // For ARM/RISC-V, use a high canonical address
     virt_addr_t fb_virt = 0xFFFF900000000000ULL | (fb_phys & 0xFFFFFFFF);
+#endif
 
     phys_addr_t current_root = active_mem_protect->cpu_ops.get_root();
     

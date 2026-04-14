@@ -2,6 +2,7 @@
 #include "hal/hal.h"
 #include "hal/hal_boot.h"
 #include "boot/boot_info.h"
+#include "bharat/display/boot_video.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -341,6 +342,10 @@ typedef struct {
     uint32_t reg_len;
     uint32_t ac;
     uint32_t sc;
+    /* simple-framebuffer specific properties */
+    uint32_t fb_width;
+    uint32_t fb_height;
+    uint32_t fb_stride;
 } fdt_node_state_t;
 
 // New unified function to parse FDT and fill out discovery structs
@@ -451,9 +456,25 @@ int fdt_parse_discovery(const void *fdt_ptr, system_discovery_t *discovery) {
           discovery->irq_ctrls[discovery->irq_ctrl_count].size = size;
           discovery->irq_ctrl_count++;
         } else if (s->is_fb) {
-          discovery->boot_video.phys_addr = base;
-          discovery->boot_video.size = size;
-          discovery->boot_video.valid = true;
+          discovery->boot_video.phys_addr    = base;
+          discovery->boot_video.size         = size;
+          /* width/height/stride gathered from properties below */
+          discovery->boot_video.width        = s->fb_width;
+          discovery->boot_video.height       = s->fb_height;
+          discovery->boot_video.stride_bytes = s->fb_stride;
+          discovery->boot_video.format       = PIXEL_FORMAT_XRGB8888;
+          /* Mark valid only if we have non-zero geometry */
+          discovery->boot_video.valid = (s->fb_width > 0 && s->fb_height > 0 &&
+                                         s->fb_stride > 0 && base != 0);
+          if (!discovery->boot_video.valid) {
+            /* Fallback: derive stride from width assuming 32bpp */
+            if (s->fb_width > 0 && s->fb_height > 0 && s->fb_stride == 0) {
+                discovery->boot_video.stride_bytes = s->fb_width * 4;
+                discovery->boot_video.size = (size > 0) ? size :
+                    (uint64_t)s->fb_height * s->fb_width * 4;
+                discovery->boot_video.valid = true;
+            }
+          }
         }
       }
       depth--;
@@ -487,6 +508,18 @@ int fdt_parse_discovery(const void *fdt_ptr, system_discovery_t *discovery) {
         stack[depth].ac = fdt32_to_cpu(*(const uint32_t *)prop_data);
       } else if (str_eq(prop_name, "#size-cells")) {
         stack[depth].sc = fdt32_to_cpu(*(const uint32_t *)prop_data);
+      } else if (str_eq(prop_name, "width")) {
+        if (len >= 4)
+            stack[depth].fb_width = fdt32_to_cpu(*(const uint32_t *)prop_data);
+      } else if (str_eq(prop_name, "height")) {
+        if (len >= 4)
+            stack[depth].fb_height = fdt32_to_cpu(*(const uint32_t *)prop_data);
+      } else if (str_eq(prop_name, "stride")) {
+        if (len >= 4)
+            stack[depth].fb_stride = fdt32_to_cpu(*(const uint32_t *)prop_data);
+      } else if (str_eq(prop_name, "format")) {
+        /* e.g. "a8r8g8b8" — we just accept any, default to XRGB8888 */
+        (void)prop_data;
       } else if (str_eq(prop_name, "compatible")) {
         const char *comp = (const char *)prop_data;
         size_t c_len = 0;

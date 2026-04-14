@@ -23,11 +23,6 @@ _start:
     /* Preserve device tree pointer passed in x0 by bootloader/QEMU */
     mov x19, x0
 
-    /* Direct MMIO write to PL011 for early debug confirmation */
-    mov x15, #0x09000000
-    mov x16, #'!'
-    str w16, [x15]
-
     /* Read CPU ID (MPIDR_EL1) and only let CPU 0 continue for now */
     mrs x1, mpidr_el1
     and x1, x1, #0xFF

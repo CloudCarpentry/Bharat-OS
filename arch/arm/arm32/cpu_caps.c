@@ -1,1 +1,1 @@
-void arch_caps_init(void) {}
+void arch_cpu_caps_init(void) {}

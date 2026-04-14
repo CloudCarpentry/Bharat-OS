@@ -34,5 +34,5 @@ def get_boot_config(kernel_path):
 
     return {
         "kernel_path": kernel32_path,
-        "qemu_flags": ["-machine", "pc"]
+        "qemu_flags": []
     }

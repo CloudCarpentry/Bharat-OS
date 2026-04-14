@@ -156,7 +156,3 @@ int machine_probe_boot_video(display_probe_result_t *out, boot_video_handoff_t *
 
     return -1;
 }
-
-boot_video_handoff_t* boot_video_get_handoff_ptr(void) {
-    return &g_boot_video;
-}

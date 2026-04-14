@@ -34,6 +34,26 @@ endif()
 
 add_library(serial_drivers OBJECT ${SERIAL_DRV_SRCS})
 
+# Propagate feature flags to the compiler
+if(BHARAT_ENABLE_DRIVER_SERIAL_PL011)
+    target_compile_definitions(serial_drivers PRIVATE BHARAT_ENABLE_DRIVER_SERIAL_PL011=1)
+endif()
+if(BHARAT_ENABLE_DRIVER_SERIAL_NS16550)
+    target_compile_definitions(serial_drivers PRIVATE BHARAT_ENABLE_DRIVER_SERIAL_NS16550=1)
+endif()
+if(BHARAT_ENABLE_DRIVER_SERIAL_SIFIVE)
+    target_compile_definitions(serial_drivers PRIVATE BHARAT_ENABLE_DRIVER_SERIAL_SIFIVE=1)
+endif()
+if(BHARAT_ENABLE_DRIVER_SERIAL_CADENCE)
+    target_compile_definitions(serial_drivers PRIVATE BHARAT_ENABLE_DRIVER_SERIAL_CADENCE=1)
+endif()
+if(BHARAT_ENABLE_DRIVER_SERIAL_IMX_LPUART)
+    target_compile_definitions(serial_drivers PRIVATE BHARAT_ENABLE_DRIVER_SERIAL_IMX_LPUART=1)
+endif()
+if(BHARAT_ENABLE_DRIVER_SERIAL_DW_APB)
+    target_compile_definitions(serial_drivers PRIVATE BHARAT_ENABLE_DRIVER_SERIAL_DW_APB=1)
+endif()
+
 # Make serial_console_match available to kernel
 target_compile_options(serial_drivers PRIVATE
     $<$<COMPILE_LANGUAGE:C>:-ffreestanding>

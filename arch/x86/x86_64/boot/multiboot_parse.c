@@ -51,6 +51,19 @@ static void parse_multiboot1(multiboot1_info_t *mb, boot_info_t *boot_info) {
         boot_info->console.fb_height = mb->framebuffer_height;
         boot_info->console.fb_pitch = mb->framebuffer_pitch;
         boot_info->console.fb_bpp = mb->framebuffer_bpp;
+
+        // Mirror into discovery so machine_probe_boot_video() can see it
+        system_discovery_t *disc = hal_get_system_discovery();
+        if (disc) {
+            disc->boot_video.phys_addr    = mb->framebuffer_addr;
+            disc->boot_video.virt_addr    = mb->framebuffer_addr; // identity mapped at boot
+            disc->boot_video.width        = mb->framebuffer_width;
+            disc->boot_video.height       = mb->framebuffer_height;
+            disc->boot_video.stride_bytes = mb->framebuffer_pitch;
+            disc->boot_video.size         = (uint64_t)mb->framebuffer_height * mb->framebuffer_pitch;
+            disc->boot_video.format       = PIXEL_FORMAT_XRGB8888;
+            disc->boot_video.valid        = true;
+        }
     } else {
         KPRINT("MB1: No Framebuffer flag, trying PCI scan...\n");
         boot_video_handoff_t h = {0};
@@ -61,8 +74,11 @@ static void parse_multiboot1(multiboot1_info_t *mb, boot_info_t *boot_info) {
             boot_info->console.fb_width = h.width;
             boot_info->console.fb_height = h.height;
             boot_info->console.fb_pitch = h.stride_bytes;
-            boot_info->console.fb_bpp = 32; // Assuming 32 for now
+            boot_info->console.fb_bpp = 32;
             KPRINT("MB1: Found VGA via PCI\n");
+            // Mirror into discovery
+            system_discovery_t *disc = hal_get_system_discovery();
+            if (disc) disc->boot_video = h;
         }
     }
 }
@@ -115,6 +131,19 @@ static void parse_multiboot2(multiboot_information_t *mb_info, boot_info_t *boot
                 boot_info->console.fb_height = fb->framebuffer_height;
                 boot_info->console.fb_pitch = fb->framebuffer_pitch;
                 boot_info->console.fb_bpp = fb->framebuffer_bpp;
+
+                // Mirror into discovery so machine_probe_boot_video() sees it
+                system_discovery_t *disc = hal_get_system_discovery();
+                if (disc) {
+                    disc->boot_video.phys_addr    = fb->framebuffer_addr;
+                    disc->boot_video.virt_addr    = fb->framebuffer_addr;
+                    disc->boot_video.width        = fb->framebuffer_width;
+                    disc->boot_video.height       = fb->framebuffer_height;
+                    disc->boot_video.stride_bytes = fb->framebuffer_pitch;
+                    disc->boot_video.size         = (uint64_t)fb->framebuffer_height * fb->framebuffer_pitch;
+                    disc->boot_video.format       = PIXEL_FORMAT_XRGB8888;
+                    disc->boot_video.valid        = true;
+                }
                 break;
             }
         }

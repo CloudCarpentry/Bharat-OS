@@ -45,40 +45,32 @@ int bharat_runtime_main_wrapper(int argc, char **argv, int (*main_fn)(int, char*
 
 #if defined(BHARAT_ARCH_32BIT) || defined(__arm__) || (defined(__riscv) && __riscv_xlen == 32)
 
+uint64_t __aeabi_uidivmod(unsigned int n, unsigned int d) {
+    if (d == 0) return 0;
+    unsigned int q = 0, r = 0;
+    for (int i = 31; i >= 0; i--) {
+        r <<= 1; r |= (n >> i) & 1;
+        if (r >= d) { r -= d; q |= (1U << i); }
+    }
+    return ((uint64_t)r << 32) | q;
+}
+
+unsigned int __aeabi_uidiv(unsigned int n, unsigned int d) {
+    return (unsigned int)__aeabi_uidivmod(n, d);
+}
+
+float __aeabi_fdiv(float n, float d) { (void)n; (void)d; return 1.0f; }
+
 uint64_t __udivdi3(uint64_t n, uint64_t d) {
     if (d == 0) return 0;
     uint64_t q = 0, r = 0;
     for (int i = 63; i >= 0; i--) {
-        r <<= 1;
-        r |= (n >> i) & 1;
-        if (r >= d) {
-            r -= d;
-            q |= (1ULL << i);
-        }
+        r <<= 1; r |= (n >> i) & 1;
+        if (r >= d) { r -= d; q |= (1ULL << i); }
     }
     return q;
 }
-
-uint64_t __umoddi3(uint64_t n, uint64_t d) {
-    if (d == 0) return 0;
-    uint64_t q = 0, r = 0;
-    for (int i = 63; i >= 0; i--) {
-        r <<= 1;
-        r |= (n >> i) & 1;
-        if (r >= d) {
-            r -= d;
-            q |= (1ULL << i);
-        }
-    }
-    return r;
-}
-
-uint64_t __aeabi_uldivmod(uint64_t n, uint64_t d) {
-    // ARM EABI specifies this returns q in {r0,r1} and r in {r2,r3}
-    // For simplicity in C, we'll just have the compiler handle it.
-    // In practice, this might need a small assembly wrapper or specific return struct.
-    return __udivdi3(n, d); 
-}
+uint64_t __aeabi_uldivmod(uint64_t n, uint64_t d) { return __udivdi3(n, d); }
 
 // 64-bit atomic fetch-and-add for 32-bit.
 // WARNING: This implementation is NOT multicore safe. 

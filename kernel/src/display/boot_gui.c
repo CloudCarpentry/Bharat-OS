@@ -342,3 +342,11 @@ const boot_video_handoff_t *boot_gui_get_handoff(void) {
     if (!g_gui.active) return NULL;
     return &g_gui_handoff;
 }
+
+/*
+ * Export a pointer to our internal handoff state so that boot_video_map.c
+ * can update the virtual address after the MMU is initialized.
+ */
+boot_video_handoff_t* boot_video_get_handoff_ptr(void) {
+    return &g_gui_handoff;
+}

@@ -85,8 +85,14 @@ target_compile_options(bharat_freestanding INTERFACE
     -ffreestanding
     -fno-builtin
     -fno-stack-protector
-    -nostdlib
 )
+
+target_link_options(bharat_freestanding INTERFACE
+    -nostdlib
+    -nostartfiles
+)
+
+
 
 # Function to apply architecture-specific flags to bharat_freestanding
 # This MUST be called after bharat_set_arch_defaults()

@@ -3,27 +3,27 @@
 #include <stddef.h>
 
 #if BHARAT_ENABLE_DRIVER_SERIAL_NS16550
-#include "drivers/serial/ns16550.h"
+#include "ns16550/ns16550.h"
 #endif
 
 #if BHARAT_ENABLE_DRIVER_SERIAL_PL011
-#include "drivers/serial/pl011.h"
+#include "pl011/pl011.h"
 #endif
 
 #if BHARAT_ENABLE_DRIVER_SERIAL_SIFIVE
-#include "drivers/serial/sifive_uart.h"
+#include "sifive_uart/sifive_uart.h"
 #endif
 
 #if BHARAT_ENABLE_DRIVER_SERIAL_CADENCE
-#include "drivers/serial/cadence_uart.h"
+#include "cadence_uart/cadence_uart.h"
 #endif
 
 #if BHARAT_ENABLE_DRIVER_SERIAL_IMX_LPUART
-#include "drivers/serial/imx_lpuart.h"
+#include "imx_lpuart/imx_lpuart.h"
 #endif
 
 #if BHARAT_ENABLE_DRIVER_SERIAL_DW_APB
-#include "drivers/serial/dw_apb_uart.h"
+#include "dw_apb_uart/dw_apb_uart.h"
 #endif
 
 

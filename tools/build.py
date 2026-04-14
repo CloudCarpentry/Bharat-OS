@@ -263,20 +263,25 @@ def do_run(build_cfg, dual_serial, run_tests=False, cpus=1, target_name=None):
             if arch in ['x86_64', 'arm64', 'riscv64']:
                 qemu_opts.extend(['-append', 'test=all log_level=debug'])
 
+        # Serial routing: Always send primary serial to stdio for host visibility
+        # If dual serial is requested, we can add a second one to the window (vc)
+        qemu_opts.extend(['-serial', 'stdio'])
+        if dual_serial:
+            qemu_opts.extend(['-serial', 'vc'])
+
         if gui:
-            if dual_serial:
-                qemu_opts.extend(['-serial', 'stdio', '-serial', 'vc'])
-            else:
-                qemu_opts.extend(['-serial', 'vc'])
+            # Display routing: Enable GTK UI for graphical output
+            qemu_opts.extend(['-display', 'gtk'])
 
             if arch == 'x86_64':
+                # Standard VGA for x86_64 (Multiboot provides the FB info)
                 qemu_opts.extend(['-vga', 'std'])
-            elif arch == 'arm64':
+            elif arch == 'arm64' or arch == 'riscv64':
+                # virtio-gpu for ARM64/RISC-V64 (modern standard)
                 qemu_opts.extend(['-device', 'virtio-gpu-pci'])
-            elif arch == 'riscv64':
-                qemu_opts.extend(['-device', 'virtio-gpu-device', '-device', 'ramfb'])
         else:
-            qemu_opts.extend(['-serial', 'stdio', '-display', 'none'])
+            # Headless mode: No window
+            qemu_opts.extend(['-display', 'none'])
 
         runner = run_config.get("runner")
 
