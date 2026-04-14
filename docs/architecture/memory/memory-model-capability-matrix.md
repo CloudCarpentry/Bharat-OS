@@ -27,6 +27,28 @@ These map logically to hardware profiles:
 
 By querying `aspace_profile_get_current()`, core process/scheduler implementations can reject advanced VM assumptions on constrained profiles seamlessly.
 
+### Mapping intent
+
+- `mem_model_t` answers: what protection mechanism exists?
+- `ASPACE_PROFILE_*` answers: what address-space creation semantics are allowed?
+
+“Flat” is an address-space/runtime profile concept, not a hardware memory model.
+
+### Enforcement rule
+
+Constrained profiles must reject unsupported rich/full-VM creation semantics explicitly.
+They must not silently proceed through the normal full-VM creation path.
+
+Current conservative rule:
+- `flags == 0` → basic creation
+- `flags != 0` → treated as rich/full-VM semantics unless explicitly classified otherwise
+
+Therefore:
+- `ASPACE_PROFILE_FULL` allows rich creation semantics
+- `ASPACE_PROFILE_SPLIT` is permissive in this PR
+- `ASPACE_PROFILE_FLAT` rejects rich creation semantics
+- `ASPACE_PROFILE_REGION_ONLY` rejects rich creation semantics
+
 ## The Memory Model Contract and Unsupported Operations
 
 When an architecture does not support a specific feature (e.g. page-granular protection on an MPU), it **must fail explicitly**.
