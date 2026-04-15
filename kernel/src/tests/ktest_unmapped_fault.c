@@ -11,9 +11,14 @@ static volatile bool page_fault_triggered = false;
 static volatile virt_addr_t fault_address = 0;
 
 static virt_addr_t get_test_va(void) {
-#if UINTPTR_MAX > 0xFFFFFFFF
-    return (virt_addr_t)0x0000008000000000ULL;
+#if defined(__x86_64__) || defined(__aarch64__)
+    // Keep this canonical and in the user half on 48-bit VA configurations.
+    return (virt_addr_t)0x0000700000000000ULL;
+#elif defined(__riscv) && (__riscv_xlen == 64)
+    // Keep this canonical for Sv39/Sv48-style layouts as well.
+    return (virt_addr_t)0x0000002000000000ULL;
 #else
+    // 32-bit targets (arm32/riscv32/x86) use a high user-space VA.
     return (virt_addr_t)0x40000000;
 #endif
 }
