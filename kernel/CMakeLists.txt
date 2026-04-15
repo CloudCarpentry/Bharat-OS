@@ -392,6 +392,10 @@ elseif(ARCH STREQUAL "arm64")
     list(APPEND KERNEL_SRCS ../arch/arm/arm64/platform/qemu_virt/boot/early_console.c)
 elseif(ARCH STREQUAL "riscv64")
     list(APPEND KERNEL_SRCS ../arch/riscv/riscv64/platform/qemu_virt/boot/early_console.c)
+elseif(ARCH STREQUAL "arm32")
+    list(APPEND KERNEL_SRCS ../arch/arm/arm32/platform/qemu_virt/boot/early_console.c)
+elseif(ARCH STREQUAL "riscv32")
+    list(APPEND KERNEL_SRCS ../arch/riscv/riscv32/platform/qemu_virt/boot/early_console.c)
 endif()
 
 # Make sure we link the platform layer correctly for symbol resolution
@@ -401,6 +405,10 @@ elseif(ARCH STREQUAL "arm64")
     list(APPEND KERNEL_SRCS ../platform/boards/qemu-virt-arm64/platform_uart.c)
 elseif(ARCH STREQUAL "riscv64")
     list(APPEND KERNEL_SRCS ../platform/boards/qemu-virt-riscv64/platform_uart.c)
+elseif(ARCH STREQUAL "arm32")
+    list(APPEND KERNEL_SRCS ../platform/boards/qemu-virt-arm32/platform_uart.c)
+elseif(ARCH STREQUAL "riscv32")
+    list(APPEND KERNEL_SRCS ../platform/boards/qemu-virt-riscv32/platform_uart.c)
 endif()
 
 # Make sure kernel targets can find platform headers
@@ -555,15 +563,4 @@ if(ARCH STREQUAL "riscv64" AND BHARAT_RISCV_BUILD_PAYLOAD_BIN)
         add_custom_target(kernel.payload.bin ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/payload.bin")
     endif()
 endif()
-
-# ── Platform / Machine layer ────────────────────────────────────────────────
-if(ARCH STREQUAL "x86_64")
-    list(APPEND KERNEL_SRCS ../arch/x86/x86_64/platform/q35/boot/early_console.c)
-elseif(ARCH STREQUAL "arm64")
-    list(APPEND KERNEL_SRCS ../arch/arm/arm64/platform/qemu_virt/boot/early_console.c)
-elseif(ARCH STREQUAL "riscv64")
-    list(APPEND KERNEL_SRCS ../arch/riscv/riscv64/platform/qemu_virt/boot/early_console.c)
-endif()
-
-list(APPEND KERNEL_SRCS src/display/boot_video_map.c)
 
