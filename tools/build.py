@@ -149,7 +149,8 @@ def do_build(build_cfg, target_name=None):
             'arch': target.get('arch'),
             'profile': target.get('profile'),
             'machine_cfg': {
-                'machine': target.get('machine')
+                'machine': target.get('machine'),
+                'cpu': target.get('cpu')
             },
             'artifacts': {
                 'kernel': os.path.join(build_dir, 'kernel', 'kernel.elf')

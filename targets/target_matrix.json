@@ -18,7 +18,9 @@
     "device_contracts": {
       "interrupt": "intc.ioapic",
       "timer": "timer.hpet",
-      "bus": ["bus.pci"]
+      "bus": [
+        "bus.pci"
+      ]
     }
   },
   "x86_64_desktop_headless": {
@@ -39,7 +41,9 @@
     "device_contracts": {
       "interrupt": "intc.ioapic",
       "timer": "timer.hpet",
-      "bus": ["bus.pci"]
+      "bus": [
+        "bus.pci"
+      ]
     }
   },
   "arm64_desktop_gui": {
@@ -62,8 +66,12 @@
     "device_contracts": {
       "interrupt": "intc.gicv3",
       "timer": "timer.arm_generic",
-      "bus": ["bus.platform_mmio", "bus.pci"]
-    }
+      "bus": [
+        "bus.platform_mmio",
+        "bus.pci"
+      ]
+    },
+    "cpu": "cortex-a57"
   },
   "arm64_desktop_headless": {
     "name": "arm64_desktop_headless",
@@ -84,8 +92,12 @@
     "device_contracts": {
       "interrupt": "intc.gicv3",
       "timer": "timer.arm_generic",
-      "bus": ["bus.platform_mmio", "bus.pci"]
-    }
+      "bus": [
+        "bus.platform_mmio",
+        "bus.pci"
+      ]
+    },
+    "cpu": "cortex-a57"
   },
   "riscv64_desktop_gui": {
     "name": "riscv64_desktop_gui",
@@ -107,7 +119,10 @@
     "device_contracts": {
       "interrupt": "intc.plic",
       "timer": "timer.systick",
-      "bus": ["bus.platform_mmio", "bus.pci"]
+      "bus": [
+        "bus.platform_mmio",
+        "bus.pci"
+      ]
     }
   },
   "riscv64_desktop_headless": {
@@ -129,7 +144,10 @@
     "device_contracts": {
       "interrupt": "intc.plic",
       "timer": "timer.systick",
-      "bus": ["bus.platform_mmio", "bus.pci"]
+      "bus": [
+        "bus.platform_mmio",
+        "bus.pci"
+      ]
     }
   },
   "arm32_small_qemu_virt": {
@@ -151,8 +169,12 @@
     "device_contracts": {
       "interrupt": "intc.gicv2",
       "timer": "timer.arm_generic",
-      "bus": ["bus.platform_mmio", "bus.pci"]
-    }
+      "bus": [
+        "bus.platform_mmio",
+        "bus.pci"
+      ]
+    },
+    "cpu": "cortex-a15"
   },
   "arm64_desktop_qemu_virt": {
     "name": "arm64_desktop_qemu_virt",
@@ -174,8 +196,12 @@
     "device_contracts": {
       "interrupt": "intc.gicv3",
       "timer": "timer.arm_generic",
-      "bus": ["bus.platform_mmio", "bus.pci"]
-    }
+      "bus": [
+        "bus.platform_mmio",
+        "bus.pci"
+      ]
+    },
+    "cpu": "cortex-a57"
   },
   "riscv64_desktop_qemu_virt": {
     "name": "riscv64_desktop_qemu_virt",
@@ -197,7 +223,10 @@
     "device_contracts": {
       "interrupt": "intc.plic",
       "timer": "timer.systick",
-      "bus": ["bus.platform_mmio", "bus.pci"]
+      "bus": [
+        "bus.platform_mmio",
+        "bus.pci"
+      ]
     }
   },
   "arm32_tiny_renode_stm32f4": {
@@ -217,7 +246,9 @@
     "device_contracts": {
       "interrupt": "intc.nvic",
       "timer": "timer.systick",
-      "bus": ["bus.platform_mmio"]
+      "bus": [
+        "bus.platform_mmio"
+      ]
     }
   },
   "arm32_embedded_renode_zynq": {
@@ -237,7 +268,9 @@
     "device_contracts": {
       "interrupt": "intc.gicv2",
       "timer": "timer.arm_generic",
-      "bus": ["bus.amba"]
+      "bus": [
+        "bus.amba"
+      ]
     }
   },
   "arm32_real_stm32f4": {
@@ -261,7 +294,9 @@
     "device_contracts": {
       "interrupt": "intc.nvic",
       "timer": "timer.systick",
-      "bus": ["bus.platform_mmio"]
+      "bus": [
+        "bus.platform_mmio"
+      ]
     }
   },
   "arm32_real_zedboard": {
@@ -286,7 +321,9 @@
     "device_contracts": {
       "interrupt": "intc.gicv2",
       "timer": "timer.arm_generic",
-      "bus": ["bus.amba"]
+      "bus": [
+        "bus.amba"
+      ]
     }
   },
   "arm32_cpu_harness": {
