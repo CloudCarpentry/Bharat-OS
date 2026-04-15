@@ -12,13 +12,34 @@ def _run_command(cmd):
     result = subprocess.run(cmd)
     return result.returncode == 0
 
-def _build_arm64_image(kernel_path):
-    image_path = kernel_path.replace('kernel.elf', 'kernel.img')
+def _find_objcopy():
+    # Prefer versioned LLVM binaries first; some environments ship an
+    # `llvm-objcopy` wrapper that is present in PATH but not executable.
+    candidates = [
+        'llvm-objcopy-20',
+        '/usr/lib/llvm-20/bin/llvm-objcopy',
+        'llvm-objcopy',
+        'objcopy',
+    ]
+    for tool in candidates:
+        try:
+            probe = subprocess.run(
+                [tool, '--version'],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            if probe.returncode == 0:
+                return tool
+        except FileNotFoundError:
+            continue
+    return None
 
-    # Prefer llvm-objcopy (used elsewhere in this repo), fallback to objcopy.
-    if _run_command(['llvm-objcopy', '-O', 'binary', kernel_path, image_path]):
-        return image_path
-    if _run_command(['objcopy', '-O', 'binary', kernel_path, image_path]):
+def _build_arm64_image(kernel_path):
+    kernel_dir = os.path.dirname(kernel_path)
+    image_path = os.path.join(kernel_dir, 'Image')
+
+    objcopy = _find_objcopy()
+    if objcopy and _run_command([objcopy, '-O', 'binary', kernel_path, image_path]):
         return image_path
 
     raise Exception(
