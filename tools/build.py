@@ -143,17 +143,30 @@ def do_build(build_cfg, target_name=None):
 
         # Build the manifest structure
         exec_class = target.get('execution_class')
+        arch = target.get('arch')
+        kernel_path = os.path.join(build_dir, 'kernel', 'kernel.elf')
+
+        # Architectural Rule: Boot Artifact Resolution
+        # 1. The x86_64 QEMU multiboot path requires a 32-bit ELF (kernel32.elf).
+        # 2. Manifest generation is strictly responsible for resolving and converting
+        #    architecture-specific artifacts before execution.
+        # 3. Runners (like runner_qemu.py) do not perform implicit kernel artifact
+        #    conversion; they consume the manifest as-is.
+        if arch == 'x86_64':
+            boot_config = boot.get_bootloader(arch)(kernel_path)
+            kernel_path = boot_config.get('kernel_path', kernel_path)
+
         manifest = {
             'target_name': target_name,
             'runner_type': exec_class,
-            'arch': target.get('arch'),
+            'arch': arch,
             'profile': target.get('profile'),
             'machine_cfg': {
                 'machine': target.get('machine'),
                 'cpu': target.get('cpu')
             },
             'artifacts': {
-                'kernel': os.path.join(build_dir, 'kernel', 'kernel.elf')
+                'kernel': kernel_path
             },
             'device_list': target.get('device_contracts', {}).get('bus', []),
             'debug_config': target.get('debug_contract', {})
