@@ -152,9 +152,8 @@ def do_build(build_cfg, target_name=None):
         #    architecture-specific artifacts before execution.
         # 3. Runners (like runner_qemu.py) do not perform implicit kernel artifact
         #    conversion; they consume the manifest as-is.
-        if arch == 'x86_64':
-            boot_config = boot.get_bootloader(arch)(kernel_path)
-            kernel_path = boot_config.get('kernel_path', kernel_path)
+        boot_config = boot.get_bootloader(arch)(kernel_path)
+        kernel_path = boot_config.get('kernel_path', kernel_path)
 
         manifest = {
             'target_name': target_name,
