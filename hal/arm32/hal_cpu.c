@@ -51,8 +51,6 @@ void hal_ipi_send(uint32_t target_cpu, uint32_t vector) { (void)target_cpu; (voi
 uint32_t hal_cpu_get_id(void) { return 0; }
 void hal_core_poll_event(void) {}
 void hal_cpu_dump_trap_frame(const void *trap_frame) { (void)trap_frame; }
-int platform_get_device_profile(void *p) { (void)p; return 0; }
-
 bool active_mem_protect = false;
 void hal_timer_isr(void) {}
 void hal_cpu_dump_state(void) {}
@@ -64,4 +62,8 @@ void hal_mm_get_zone_limits(uint32_t zone, uintptr_t *start, uintptr_t *end) {
     (void)zone; 
     if (start) *start = 0;
     if (end) *end = 0;
+}
+
+void *__aeabi_read_tp(void) {
+    return 0;
 }

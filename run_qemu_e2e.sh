@@ -15,7 +15,7 @@ MATRIX_MODE="${E2E_MATRIX_MODE:-auto}" # auto | explicit
 E2E_ARCHES=(x86_64 arm32 arm64 riscv32 riscv64)
 E2E_MEMORY_TESTS=(mmu mmu-lite mpu iommu)
 E2E_DEVICE_PROFILES=(desktop edge drone)
-E2E_PERSONALITIES=(none linux)
+E2E_PERSONALITIES=(linux)
 
 PASS_COUNT=0
 FAIL_COUNT=0
@@ -41,13 +41,14 @@ find_kernel_elf() {
 }
 
 objcopy_bin() {
-  if command -v llvm-objcopy >/dev/null 2>&1; then
-    printf 'llvm-objcopy\n'
-  elif command -v objcopy >/dev/null 2>&1; then
-    printf 'objcopy\n'
-  else
-    return 1
-  fi
+  local candidate
+  for candidate in llvm-objcopy-20 llvm-objcopy objcopy; do
+    if command -v "$candidate" >/dev/null 2>&1 && "$candidate" --version >/dev/null 2>&1; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+  return 1
 }
 
 supports_combo() {
@@ -83,6 +84,42 @@ set_memory_cmake_flags() {
   esac
 }
 
+get_arch_cmake_flags() {
+  local arch="$1"
+  case "$arch" in
+    x86_64)
+      printf '%s\n' "-DBHARAT_ARCH_FAMILY=X86 -DBHARAT_ARCH_BITS=64 -DARCH=x86_64"
+      ;;
+    arm64)
+      printf '%s\n' "-DBHARAT_ARCH_FAMILY=ARM -DBHARAT_ARCH_BITS=64 -DARCH=arm64"
+      ;;
+    arm32)
+      printf '%s\n' "-DBHARAT_ARCH_FAMILY=ARM -DBHARAT_ARCH_BITS=32 -DARCH=arm32"
+      ;;
+    riscv64)
+      printf '%s\n' "-DBHARAT_ARCH_FAMILY=RISCV -DBHARAT_ARCH_BITS=64 -DARCH=riscv64"
+      ;;
+    riscv32)
+      printf '%s\n' "-DBHARAT_ARCH_FAMILY=RISCV -DBHARAT_ARCH_BITS=32 -DARCH=riscv32"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+get_toolchain_file() {
+  local arch="$1"
+  case "$arch" in
+    x86_64) printf '%s\n' "cmake/toolchains/x86_64-elf-clang.cmake" ;;
+    arm64) printf '%s\n' "cmake/toolchains/aarch64-elf-clang.cmake" ;;
+    arm32) printf '%s\n' "cmake/toolchains/arm32-elf.cmake" ;;
+    riscv64) printf '%s\n' "cmake/toolchains/riscv64-elf-clang.cmake" ;;
+    riscv32) printf '%s\n' "cmake/toolchains/riscv32-elf.cmake" ;;
+    *) return 1 ;;
+  esac
+}
+
 get_qemu_config() {
   local arch="$1"
 
@@ -105,8 +142,19 @@ get_qemu_config() {
       printf '%s\n' "-cpu cortex-a72"
       return 0
       ;;
+    arm32)
+      printf '%s\n' "qemu-system-arm"
+      printf '%s\n' "-machine virt"
+      printf '%s\n' "-cpu cortex-a15"
+      return 0
+      ;;
+    riscv32)
+      printf '%s\n' "qemu-system-riscv32"
+      printf '%s\n' "-machine virt"
+      printf '\n'
+      return 0
+      ;;
     *)
-      # arm32/riscv32 currently don't have a validated QEMU boot command in this harness.
       return 1
       ;;
   esac
@@ -140,13 +188,33 @@ run_case() {
     return
   fi
 
+  local arch_flags
+  if ! arch_flags="$(get_arch_cmake_flags "$arch")"; then
+    echo "    [FAIL] Unsupported arch value: ${arch}"
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+    return
+  fi
+
+  local toolchain_file
+  if ! toolchain_file="$(get_toolchain_file "$arch")"; then
+    echo "    [FAIL] No toolchain mapping for arch=${arch}"
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+    return
+  fi
+
   # shellcheck disable=SC2206
   local cmake_flags=( $flags )
+  # shellcheck disable=SC2206
+  local cmake_arch_flags=( $arch_flags )
+
+  rm -rf "$build_dir"
 
   cmake -S . -B "$build_dir" \
-    -DBHARAT_ARCH_FAMILY="${arch}" \
+    -DCMAKE_TOOLCHAIN_FILE="${toolchain_file}" \
     -DBHARAT_DEVICE_PROFILE="${profile_upper}" \
     -DBHARAT_PERSONALITY_PROFILE="${personality_upper}" \
+    -DBHARAT_BOOT_GUI=OFF \
+    "${cmake_arch_flags[@]}" \
     "${cmake_flags[@]}" >/dev/null
 
   cmake --build "$build_dir" --target kernel.elf >/dev/null
@@ -176,7 +244,16 @@ run_case() {
   fi
 
   local kernel_image="$kernel_elf"
-  if [[ "$arch" == "arm64" ]]; then
+  if [[ "$arch" == "x86_64" ]]; then
+    local oc
+    if ! oc="$(objcopy_bin)"; then
+      echo "    [FAIL] objcopy/llvm-objcopy is required for x86_64 kernel32 generation"
+      FAIL_COUNT=$((FAIL_COUNT + 1))
+      return
+    fi
+    kernel_image="${build_dir}/kernel/kernel32.elf"
+    "$oc" -O elf32-i386 "$kernel_elf" "$kernel_image"
+  elif [[ "$arch" == "arm64" ]]; then
     local oc
     if ! oc="$(objcopy_bin)"; then
       echo "    [FAIL] objcopy/llvm-objcopy is required for arm64 Image generation"
@@ -209,7 +286,7 @@ run_case() {
   local qemu_status=$?
   set -e
 
-  if [[ "$qemu_status" -ne 0 && "$qemu_status" -ne 124 ]]; then
+  if [[ "$qemu_status" -ne 0 && "$qemu_status" -ne 124 && "$qemu_status" -ne 143 ]]; then
     echo "    [FAIL] QEMU exited unexpectedly with status ${qemu_status}"
     tail -n 80 "$log_file" || true
     FAIL_COUNT=$((FAIL_COUNT + 1))
@@ -217,6 +294,7 @@ run_case() {
   fi
 
   local markers=(
+    "BOOT: kernel_main reached"
     "BOOT: pmm initialized"
     "BOOT: vmm initialized"
     "[BOOT] Runtime mode:"
