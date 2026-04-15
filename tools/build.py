@@ -327,6 +327,10 @@ def do_run(build_cfg, dual_serial, run_tests=False, cpus=1, target_name=None):
                 cmd.extend(['-machine', run_config["machine"]])
             if "cpu" in run_config:
                 cmd.extend(['-cpu', run_config["cpu"]])
+            if arch == 'arm64':
+                # Force direct kernel boot without firmware to prevent host
+                # EDK2/UEFI differences from swallowing early serial output.
+                cmd.extend(['-bios', 'none'])
             if run_config.get("smp_supported", False) and cpus > 1:
                 cmd.extend(['-smp', str(cpus)])
             cmd.extend(qemu_opts)

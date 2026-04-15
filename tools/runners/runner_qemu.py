@@ -43,6 +43,12 @@ def run(manifest):
     if machine_cfg.get('cpu'):
         cmd.extend(['-cpu', machine_cfg['cpu']])
 
+    # For ARM64 direct kernel boot, force firmware-less path to avoid host
+    # firmware variance (e.g., EDK2 grabbing control and appearing as a hang
+    # on serial-only runs).
+    if arch == 'arm64':
+        cmd.extend(['-bios', 'none'])
+
     cmd.extend(['-m', str(machine_cfg.get('memory', '512M'))])
 
     smp = machine_cfg.get('smp')
