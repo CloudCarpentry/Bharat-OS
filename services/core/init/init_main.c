@@ -28,9 +28,9 @@ int services_init_main(void) {
     init_boot_context_t ctx;
     init_profile_get_context(&ctx);
 
-    if (ctx.profile == BHARAT_INIT_PROFILE_TINY) {
+    if (ctx.profile == INIT_PROFILE_TINY) {
         bharat_runtime_log("services/init: Running in TINY profile mode.");
-    } else if (ctx.safe_mode) {
+    } else if (ctx.safe_mode_requested) {
          bharat_runtime_log("services/init: Booting in SAFE_MODE.");
     }
 

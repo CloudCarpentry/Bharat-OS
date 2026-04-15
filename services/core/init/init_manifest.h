@@ -20,13 +20,8 @@ typedef enum {
     INIT_SERVICE_REQUIRED,
 } init_service_policy_t;
 
-typedef enum {
-    INIT_SERVICE_STOPPED = 0,
-    INIT_SERVICE_STARTING,
-    INIT_SERVICE_RUNNING,
-    INIT_SERVICE_FAILED,
-    INIT_SERVICE_SKIPPED,
-} init_service_state_t;
+#include "init_status.h"
+#include <bharat/uapi/init/init_boot_context.h>
 
 typedef uint64_t bharat_init_profile_mask_t;
 typedef uint64_t bharat_init_cap_mask_t;
@@ -63,14 +58,23 @@ typedef enum {
 } init_service_id_t;
 
 typedef struct {
+    init_service_id_t service_id;
+    int status_code;
+} init_launch_result_t;
+
+typedef struct init_service_desc_s {
     init_service_id_t id;
     const char *name;
-    int (*start_fn)(void *ctx);
-    int (*probe_fn)(void *ctx);      // optional capability/platform precheck
+    init_boot_class_t boot_class;
+    uint32_t start_deadline_ms;
+    uint32_t ready_deadline_ms;
+    int (*start_fn)(void *ctx);      // legacy direct start
+    bool (*probe_fn)(const init_boot_context_t *ctx); // updated
+    int (*bootstrap_hint_fn)(const init_boot_context_t *ctx, init_launch_result_t *out);
     const init_service_id_t *deps;
     uint8_t dep_count;
     uint8_t retry_limit;
-    init_service_policy_t policy;
+    init_service_policy_t policy; // leaving for compatibility for now
     bharat_init_profile_mask_t profile_mask;
     bharat_init_board_mask_t board_mask;
     bharat_init_personality_mask_t personality_mask;

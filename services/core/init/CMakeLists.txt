@@ -14,6 +14,7 @@ add_executable(init
     init_runtime.c
     init_status.c
     init_handoff.c
+    init_events.c
 )
 target_link_libraries(init PRIVATE bharat_user_buildopts bharat_freestanding bharat_syscall)
 
