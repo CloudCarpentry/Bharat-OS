@@ -54,18 +54,34 @@ def run(manifest):
         cmd.extend(['-kernel', artifacts['kernel']])
 
     serial_routing = manifest.get('serial_routing', {})
+    dual_serial = manifest.get('dual_serial_requested', False)
+
     if serial_routing.get('stdio'):
         # Prevent monitor/serial stdio contention when routing boot logs to host terminal.
         cmd.extend(['-monitor', 'none'])
         cmd.extend(['-serial', 'stdio'])
 
+    if dual_serial:
+        cmd.extend(['-serial', 'vc'])
+
     if not display_routing.get('requested'):
         cmd.extend(['-display', 'none'])
     else:
-         # Need real device mapping in full implementation, simple string for now
+         cmd.extend(['-display', 'gtk'])
          device = display_routing.get('device')
          if device == 'display.virtio_gpu':
              cmd.extend(['-device', 'virtio-gpu-pci'])
+         elif device == 'display.vga':
+             cmd.extend(['-vga', 'std'])
+
+    print("\n--- Final QEMU Routing Summary ---")
+    print(f"Host serial: {'enabled' if serial_routing.get('stdio') else 'disabled'}")
+    print(f"Secondary serial sink: {'enabled' if dual_serial else 'disabled'}")
+    print(f"GUI: {'enabled' if display_routing.get('requested') else 'disabled'}")
+    print(f"Runner: {qemu_cmd}")
+    print(f"Machine: {machine_cfg.get('machine', 'default')}")
+    print(f"Board: {manifest.get('arch', 'unknown')} / {manifest.get('profile', 'unknown')}")
+    print("----------------------------------\n")
 
     print(f"[QEMU Runner] Executing: {' '.join(cmd)}")
 

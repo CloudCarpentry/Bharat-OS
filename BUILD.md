@@ -33,6 +33,9 @@ Before building Bharat-OS, you need to set up your development environment.
 - Ninja or Make
 - Clang & LLD (`llvm`, `clang`, `lld`)
 - QEMU (for running the kernel)
+
+Note: `build.ps1` and `build.sh` are thin wrappers. The real implementation path for builds and runners is driven by `tools/build.py`.
+
 Please see the comprehensive **[Environment Preparation Guide](docs/build/ENV_PREP.md)** for platform-specific instructions.
 
 ### QEMU runtime prerequisites (Linux)
@@ -115,7 +118,7 @@ E2E_MATRIX_MODE=explicit E2E_MATRIX="arm64:mmu:desktop:linux" ./run_qemu_e2e.sh
 E2E_MATRIX_MODE=explicit E2E_MATRIX="riscv64:mmu:desktop:linux" ./run_qemu_e2e.sh
 ```
 
-### GUI profiles with host-visible boot logs (`--run`)
+### How to run desktop GUI builds
 
 `--run` now routes primary serial to host stdio and disables monitor-on-stdio conflicts, so these GUI profiles should print boot logs in your host terminal while the QEMU window is open:
 
@@ -131,12 +134,27 @@ E2E_MATRIX_MODE=explicit E2E_MATRIX="riscv64:mmu:desktop:linux" ./run_qemu_e2e.s
 ./build.sh riscv64_desktop_gui --run
 ```
 
-If your local terminal still does not display serial output reliably, use one of these fallback modes:
+### How to run headless builds
 
-- `--run-tests` (headless/CI-style, strongest host-log path)
-- `--run --dual-serial` (keeps GUI and mirrors a second serial channel to QEMU VC)
+For a pure terminal-based experience without a QEMU graphical window (e.g., CI or remote SSH environments), use the `headless` targets:
 
-> Use `--dual-serial` (hyphen), **not** `--dual_serial`.
+```powershell
+.\build.ps1 x86_64_desktop_headless --run
+.\build.ps1 arm64_desktop_headless --run
+.\build.ps1 riscv64_desktop_headless --run
+```
+
+```bash
+./build.sh x86_64_desktop_headless --run
+./build.sh arm64_desktop_headless --run
+./build.sh riscv64_desktop_headless --run
+```
+
+### Expected behavior & Dual serial usage
+
+- Host terminal **must show boot logs** in both headless and GUI modes. The QEMU graphical window does not replace the host terminal serial logging.
+- `--dual-serial` (hyphen) may additionally show serial output in the QEMU window by adding a secondary `-serial vc` sink.
+- Note: **Use `--dual-serial`, NOT `--dual_serial`.**
 
 Examples with GUI + mirrored serial (`--dual-serial`):
 
@@ -163,6 +181,15 @@ Examples with GUI + mirrored serial (`--dual-serial`):
 - **Wrong image format / objcopy issue**
   - Symptom: x86_64/arm64 runs fail before boot with image format errors.
   - Fix: install `llvm-objcopy` (or equivalent `objcopy`) and verify it is callable in PATH.
+- **Legacy execution path warning**
+  - Symptom: "Warning: Running legacy execution path (no target matrix entry found)."
+  - Fix: Use one of the first-class targets that appear in `targets/target_matrix.json` (e.g., `x86_64_desktop_gui`).
+- **Wrong flag spelling**
+  - Symptom: Script rejects `--dual_serial`.
+  - Fix: Always use `--dual-serial` (with a hyphen).
+- **GUI window appears but host terminal is silent**
+  - Symptom: QEMU starts, the GUI window loads, but the host terminal receives no logs.
+  - Fix: Make sure you're using a first-class manifest target, which correctly routes primary serial to `stdio`.
 - **No boot markers in host terminal**
   - Symptom: QEMU starts but none of the required markers appear.
   - Fix: use `--run-tests` for headless serial-first validation, or use `--run --dual-serial` for GUI+VC mirroring; then inspect `e2e_logs/`.

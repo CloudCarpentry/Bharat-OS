@@ -224,9 +224,13 @@ def do_run(build_cfg, dual_serial, run_tests=False, cpus=1, target_name=None):
     if target_name and os.path.exists(manifest_path):
         with open(manifest_path, 'r') as f:
             manifest = json.load(f)
+
+        # Push dual_serial state into the manifest for the runner
+        manifest['dual_serial_requested'] = dual_serial
     else:
         # Fallback to legacy execution logic for builds without a target matrix entry
         print("Warning: Running legacy execution path (no target matrix entry found).")
+        print("Hint: To fix this, add proper target matrix / manifest-backed run entries to targets/target_matrix.json.")
         arch = build_cfg.get('arch')
         board = build_cfg.get('board', '')
 
@@ -368,7 +372,7 @@ def do_matrix(manifest):
             try:
                 get_target(build_name, silent=True)
                 target_name = build_name
-            except SystemExit:
+            except (SystemExit, KeyError):
                 pass
 
             do_configure(build_cfg)
@@ -397,6 +401,12 @@ def main():
     # Detect legacy flags and provide a friendly migration error
     legacy_flags = {'-arch', '-clean', '-run', '-bootgui', '-dualserial', '-profile', '-e2e', '-serialtarget', '-preset'}
     used_legacy = [arg for arg in sys.argv[1:] if arg.lower() in legacy_flags]
+
+    # Check for invalid dual_serial flag spelling
+    if '--dual_serial' in sys.argv:
+        print("Error: The flag is --dual-serial (with a hyphen), not --dual_serial.")
+        sys.exit(1)
+
     if used_legacy:
         print(f"Error: Legacy flags detected: {', '.join(used_legacy)}")
         print("\nThe build system has been unified around tools/build.py with a canonical interface.")
@@ -451,7 +461,7 @@ def main():
     try:
         target = get_target(args.build_name, silent=True)
         target_name = args.build_name
-    except SystemExit:
+    except (SystemExit, KeyError, Exception):
         pass
 
     if args.build_name not in manifest.get('builds', {}):
