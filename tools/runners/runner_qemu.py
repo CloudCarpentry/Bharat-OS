@@ -72,11 +72,17 @@ def run(manifest):
 
     serial_routing = manifest.get('serial_routing', {})
     dual_serial = manifest.get('dual_serial_requested', False)
+    is_windows = sys.platform.startswith('win')
 
     if serial_routing.get('stdio'):
-        # Prevent monitor/serial stdio contention when routing boot logs to host terminal.
-        cmd.extend(['-monitor', 'none'])
-        cmd.extend(['-serial', 'stdio'])
+        # Host-serial routing:
+        # - Non-Windows: disable monitor to avoid stdio contention.
+        # - Windows: use mon:stdio mux (more reliable in PowerShell).
+        if is_windows:
+            cmd.extend(['-serial', 'mon:stdio'])
+        else:
+            cmd.extend(['-monitor', 'none'])
+            cmd.extend(['-serial', 'stdio'])
 
     if dual_serial:
         cmd.extend(['-serial', 'vc'])
@@ -90,9 +96,8 @@ def run(manifest):
         #   and keeps boot logs visible in the terminal.
         # - Fallback to -display none when no stdio serial sink is requested.
         if serial_routing.get('stdio'):
-            # On some native Windows QEMU builds, `-serial stdio` + `-nographic`
-            # can yield no visible guest output in PowerShell sessions.
-            # Prefer `-display none` there and keep explicit serial routing.
+            # On some native Windows QEMU builds, `-nographic` can suppress or
+            # swallow guest serial in PowerShell. Prefer `-display none` there.
             if is_windows:
                 cmd.extend(['-display', 'none'])
             else:
