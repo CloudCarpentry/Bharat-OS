@@ -299,8 +299,11 @@ def do_run(build_cfg, dual_serial, run_tests=False, cpus=1, target_name=None):
                 # virtio-gpu for ARM64/RISC-V64 (modern standard)
                 qemu_opts.extend(['-device', 'virtio-gpu-pci'])
         else:
-            # Headless mode: No window
-            qemu_opts.extend(['-display', 'none'])
+            # Headless mode: prefer -nographic for robust serial routing.
+            # This is supported across our QEMU targets (x86_64/arm32/arm64/
+            # riscv32/riscv64) and avoids silent terminal sessions seen on
+            # some host/QEMU combinations when using -display none.
+            qemu_opts.extend(['-nographic'])
 
         runner = run_config.get("runner")
 
