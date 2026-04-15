@@ -263,8 +263,10 @@ def do_run(build_cfg, dual_serial, run_tests=False, cpus=1, target_name=None):
             if arch in ['x86_64', 'arm64', 'riscv64']:
                 qemu_opts.extend(['-append', 'test=all log_level=debug'])
 
-        # Serial routing: Always send primary serial to stdio for host visibility
-        # If dual serial is requested, we can add a second one to the window (vc)
+        # Serial routing: Always send primary serial to stdio for host visibility.
+        # Disable the QEMU monitor on stdio to avoid stdio backend conflicts.
+        # If dual serial is requested, add a second serial sink to the QEMU window (vc).
+        qemu_opts.extend(['-monitor', 'none'])
         qemu_opts.extend(['-serial', 'stdio'])
         if dual_serial:
             qemu_opts.extend(['-serial', 'vc'])

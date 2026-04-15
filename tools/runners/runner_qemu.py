@@ -55,6 +55,8 @@ def run(manifest):
 
     serial_routing = manifest.get('serial_routing', {})
     if serial_routing.get('stdio'):
+        # Prevent monitor/serial stdio contention when routing boot logs to host terminal.
+        cmd.extend(['-monitor', 'none'])
         cmd.extend(['-serial', 'stdio'])
 
     if not display_routing.get('requested'):
