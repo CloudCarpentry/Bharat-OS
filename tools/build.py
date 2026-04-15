@@ -300,8 +300,9 @@ def do_run(build_cfg, dual_serial, run_tests=False, cpus=1, target_name=None):
                 qemu_opts.extend(['-device', 'virtio-gpu-pci'])
         else:
             # Headless mode: prefer -nographic for robust serial routing.
-            # This is especially important on some aarch64 host/QEMU builds
-            # where -display none can result in a silent terminal session.
+            # This is supported across our QEMU targets (x86_64/arm32/arm64/
+            # riscv32/riscv64) and avoids silent terminal sessions seen on
+            # some host/QEMU combinations when using -display none.
             qemu_opts.extend(['-nographic'])
 
         runner = run_config.get("runner")

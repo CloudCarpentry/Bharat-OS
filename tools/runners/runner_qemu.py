@@ -65,11 +65,15 @@ def run(manifest):
         cmd.extend(['-serial', 'vc'])
 
     if not display_routing.get('requested'):
-        # For headless boots, prefer -nographic over -display none.
-        # On some QEMU builds (notably Windows aarch64 setups), -nographic
-        # is the most reliable way to route PL011/NS16550 boot logs to the
-        # terminal and avoid apparent "hangs" with a blank console.
-        cmd.append('-nographic')
+        # Headless routing:
+        # - Prefer -nographic when serial is routed to stdio. This works across
+        #   QEMU system targets we support (x86_64/arm32/arm64/riscv32/riscv64)
+        #   and keeps boot logs visible in the terminal.
+        # - Fallback to -display none when no stdio serial sink is requested.
+        if serial_routing.get('stdio'):
+            cmd.append('-nographic')
+        else:
+            cmd.extend(['-display', 'none'])
     else:
          cmd.extend(['-display', 'gtk'])
          device = display_routing.get('device')
