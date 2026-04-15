@@ -91,6 +91,8 @@ def run(manifest):
     if dual_serial and not (gui_requested and serial_routing.get('stdio')):
         cmd.extend(['-serial', 'vc'])
 
+    is_windows = sys.platform.startswith('win')
+
     if not display_routing.get('requested'):
         # Headless routing:
         # - Prefer -nographic when serial is routed to stdio. This works across
