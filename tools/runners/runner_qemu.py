@@ -43,12 +43,6 @@ def run(manifest):
     if machine_cfg.get('cpu'):
         cmd.extend(['-cpu', machine_cfg['cpu']])
 
-    # For ARM64 direct kernel boot, force firmware-less path to avoid host
-    # firmware variance (e.g., EDK2 grabbing control and appearing as a hang
-    # on serial-only runs).
-    if arch == 'arm64':
-        cmd.extend(['-bios', 'none'])
-
     cmd.extend(['-m', str(machine_cfg.get('memory', '512M'))])
 
     smp = machine_cfg.get('smp')
@@ -56,8 +50,25 @@ def run(manifest):
         cmd.extend(['-smp', str(smp)])
 
     artifacts = manifest.get('artifacts', {})
-    if artifacts.get('kernel'):
-        cmd.extend(['-kernel', artifacts['kernel']])
+    kernel_path = artifacts.get('kernel')
+    machine = machine_cfg.get('machine', '')
+    if arch == 'arm64' and 'virt' in machine and kernel_path:
+        normalized = kernel_path.replace('\\', '/')
+        if normalized.lower().endswith('.elf'):
+            print(
+                "Error: ARM64 virt requires a raw kernel image (Image), "
+                f"not ELF: {kernel_path}"
+            )
+            sys.exit(1)
+        if not normalized.endswith('/Image'):
+            print(
+                "Error: ARM64 virt expects kernel artifact named 'Image'. "
+                f"Found: {kernel_path}. Re-run build to regenerate manifest."
+            )
+            sys.exit(1)
+
+    if kernel_path:
+        cmd.extend(['-kernel', kernel_path])
 
     serial_routing = manifest.get('serial_routing', {})
     dual_serial = manifest.get('dual_serial_requested', False)
@@ -70,6 +81,8 @@ def run(manifest):
     if dual_serial:
         cmd.extend(['-serial', 'vc'])
 
+    is_windows = sys.platform.startswith('win')
+
     if not display_routing.get('requested'):
         # Headless routing:
         # - Prefer -nographic when serial is routed to stdio. This works across
@@ -77,7 +90,13 @@ def run(manifest):
         #   and keeps boot logs visible in the terminal.
         # - Fallback to -display none when no stdio serial sink is requested.
         if serial_routing.get('stdio'):
-            cmd.append('-nographic')
+            # On some native Windows QEMU builds, `-serial stdio` + `-nographic`
+            # can yield no visible guest output in PowerShell sessions.
+            # Prefer `-display none` there and keep explicit serial routing.
+            if is_windows:
+                cmd.extend(['-display', 'none'])
+            else:
+                cmd.append('-nographic')
         else:
             cmd.extend(['-display', 'none'])
     else:
@@ -102,5 +121,9 @@ def run(manifest):
     # Try to execute if qemu is installed, otherwise just print
     try:
         subprocess.run(cmd)
+    except KeyboardInterrupt:
+        print("\n[QEMU Runner] Interrupted by user (Ctrl+C).")
+        print("[QEMU Runner] QEMU process terminated.")
+        sys.exit(130)
     except FileNotFoundError:
         print(f"Warning: {qemu_cmd} not found. Simulated execution successful.")
