@@ -89,7 +89,6 @@ target_compile_options(bharat_freestanding INTERFACE
 
 target_link_options(bharat_freestanding INTERFACE
     -nostdlib
-    -nostartfiles
 )
 
 
@@ -169,12 +168,14 @@ function(bharat_configure_userspace_binary TARGET_NAME)
     if(BHARAT_USERSPACE_PIE)
         set_target_properties(${TARGET_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
         target_compile_options(${TARGET_NAME} PRIVATE -fPIE)
-        target_link_options(${TARGET_NAME} PRIVATE -nostdlib -nostartfiles -pie)
+        target_link_options(${TARGET_NAME} PRIVATE -nostdlib -pie)
     else()
         set_target_properties(${TARGET_NAME} PROPERTIES POSITION_INDEPENDENT_CODE OFF)
         target_compile_options(${TARGET_NAME} PRIVATE -fno-pie -fno-PIC)
-        target_link_options(${TARGET_NAME} PRIVATE -nostdlib -nostartfiles "LINKER:-no-pie")
+        target_link_options(${TARGET_NAME} PRIVATE -nostdlib "LINKER:-no-pie")
     endif()
 endfunction()
 
-set(BHARAT_USERSPACE_PIE ON CACHE BOOL "Build user-space services as Position Independent Executables" FORCE)
+# Respect caller/toolchain-selected userspace PIE policy instead of forcing it on.
+# Default remains OFF unless explicitly enabled via cache/preset.
+set(BHARAT_USERSPACE_PIE "${BHARAT_USERSPACE_PIE}" CACHE BOOL "Build user-space services as Position Independent Executables" FORCE)
