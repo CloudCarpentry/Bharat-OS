@@ -73,16 +73,22 @@ def run(manifest):
 
     serial_routing = manifest.get('serial_routing', {})
     dual_serial = manifest.get('dual_serial_requested', False)
+    gui_requested = display_routing.get('requested')
     is_windows = sys.platform.startswith('win')
 
     if serial_routing.get('stdio'):
-        # Host-serial routing:
-        # keep explicit stdio serial on all hosts, and disable monitor to
-        # avoid stdio contention with QEMU monitor.
-        cmd.extend(['-monitor', 'none'])
-        cmd.extend(['-serial', 'stdio'])
+        # Serial routing:
+        # - GUI mode: prefer virtual console window for guest serial so the
+        #   graphical display remains responsive and host terminal is not tied
+        #   to serial plumbing.
+        # - Headless mode: route serial directly to host stdio.
+        if gui_requested:
+            cmd.extend(['-serial', 'vc'])
+        else:
+            cmd.extend(['-monitor', 'none'])
+            cmd.extend(['-serial', 'stdio'])
 
-    if dual_serial:
+    if dual_serial and not (gui_requested and serial_routing.get('stdio')):
         cmd.extend(['-serial', 'vc'])
 
     is_windows = sys.platform.startswith('win')
