@@ -35,6 +35,154 @@ Before building Bharat-OS, you need to set up your development environment.
 - QEMU (for running the kernel)
 Please see the comprehensive **[Environment Preparation Guide](docs/build/ENV_PREP.md)** for platform-specific instructions.
 
+### QEMU runtime prerequisites (Linux)
+
+For validated QEMU runtime bring-up (host-visible serial logs), install:
+
+- Core build tools: `cmake`, `ninja-build`, `clang`, `lld`, `llvm`, `python3`
+- QEMU system emulators:
+  - `qemu-system-x86_64`
+  - `qemu-system-aarch64`
+  - `qemu-system-riscv64`
+- `llvm-objcopy` (or compatible `objcopy`) for x86_64/arm64 image conversion paths used by the harness
+- OpenSBI (`opensbi`) when your RISC-V QEMU flow requires explicit firmware handoff in your environment
+
+On Debian/Ubuntu-family hosts, this usually maps to packages such as:
+
+```bash
+sudo apt update
+sudo apt install -y \
+  cmake ninja-build clang lld llvm python3 \
+  qemu-system-x86 qemu-system-arm qemu-system-misc \
+  opensbi
+```
+
+> Boot validation is serial-first: expected boot markers must appear in the **host terminal**.
+
+---
+
+## QEMU build/run flow (x86_64, arm64, riscv64)
+
+This is the canonical developer flow for the currently validated runtime targets: **x86_64**, **arm64**, and **riscv64**.
+
+### How boot logs are surfaced
+
+- The serial console is the authoritative early-boot/runtime sink.
+- QEMU runs in `-nographic -serial stdio` style for validation.
+- A graphical framebuffer window is **not required** for the validated path.
+- Success criteria are marker-driven from host terminal output.
+
+### Expected boot markers in host terminal
+
+The current harness validates these markers:
+
+- `BOOT: kernel_main reached`
+- `BOOT: pmm initialized`
+- `BOOT: vmm initialized`
+- `[BOOT] Runtime mode:`
+
+If these markers do not appear, treat the run as failed even if QEMU launched.
+
+### Build examples (repo-canonical commands)
+
+```bash
+# x86_64
+./build.sh default_dev
+
+# arm64
+./build.sh arm64_desktop_headless
+
+# riscv64
+./build.sh riscv64_desktop_headless
+```
+
+### Run examples (recommended: QEMU E2E harness)
+
+Recommended path is `run_qemu_e2e.sh` with explicit matrix entries:
+
+```bash
+# x86_64 + arm64 + riscv64 runtime matrix
+E2E_MATRIX_MODE=explicit \
+E2E_MATRIX="x86_64:mmu:desktop:linux arm64:mmu:desktop:linux riscv64:mmu:desktop:linux" \
+./run_qemu_e2e.sh
+```
+
+You can also execute per-arch runs one-by-one:
+
+```bash
+E2E_MATRIX_MODE=explicit E2E_MATRIX="x86_64:mmu:desktop:linux" ./run_qemu_e2e.sh
+E2E_MATRIX_MODE=explicit E2E_MATRIX="arm64:mmu:desktop:linux" ./run_qemu_e2e.sh
+E2E_MATRIX_MODE=explicit E2E_MATRIX="riscv64:mmu:desktop:linux" ./run_qemu_e2e.sh
+```
+
+### GUI profiles with host-visible boot logs (`--run`)
+
+`--run` now routes primary serial to host stdio and disables monitor-on-stdio conflicts, so these GUI profiles should print boot logs in your host terminal while the QEMU window is open:
+
+```powershell
+.\build.ps1 x86_64_desktop_gui --run
+.\build.ps1 arm64_desktop_gui --run
+.\build.ps1 riscv64_desktop_gui --run
+```
+
+```bash
+./build.sh x86_64_desktop_gui --run
+./build.sh arm64_desktop_gui --run
+./build.sh riscv64_desktop_gui --run
+```
+
+If your local terminal still does not display serial output reliably, use one of these fallback modes:
+
+- `--run-tests` (headless/CI-style, strongest host-log path)
+- `--run --dual-serial` (keeps GUI and mirrors a second serial channel to QEMU VC)
+
+> Use `--dual-serial` (hyphen), **not** `--dual_serial`.
+
+Examples with GUI + mirrored serial (`--dual-serial`):
+
+```powershell
+.\build.ps1 x86_64_desktop_gui --run --dual-serial
+.\build.ps1 arm64_desktop_gui --run --dual-serial
+.\build.ps1 riscv64_desktop_gui --run --dual-serial
+```
+
+```bash
+./build.sh x86_64_desktop_gui --run --dual-serial
+./build.sh arm64_desktop_gui --run --dual-serial
+./build.sh riscv64_desktop_gui --run --dual-serial
+```
+
+### Troubleshooting (QEMU runtime)
+
+- **Missing QEMU binary**
+  - Symptom: log contains skip/fail indicating `qemu-system-* not found`.
+  - Fix: install corresponding system emulator package(s) and confirm with `command -v qemu-system-<arch>`.
+- **Missing OpenSBI (RISC-V environments that require it)**
+  - Symptom: RISC-V fails before expected markers; firmware handoff errors may appear.
+  - Fix: install OpenSBI and ensure your local run configuration points to valid firmware.
+- **Wrong image format / objcopy issue**
+  - Symptom: x86_64/arm64 runs fail before boot with image format errors.
+  - Fix: install `llvm-objcopy` (or equivalent `objcopy`) and verify it is callable in PATH.
+- **No boot markers in host terminal**
+  - Symptom: QEMU starts but none of the required markers appear.
+  - Fix: use `--run-tests` for headless serial-first validation, or use `--run --dual-serial` for GUI+VC mirroring; then inspect `e2e_logs/`.
+- **Timeout without panic**
+  - Symptom: process times out but panic markers are absent.
+  - Fix: inspect the last emitted marker in logs to identify stall stage (early boot, PMM, VMM, runtime transition).
+- **Panic marker found**
+  - Symptom: `[PANIC]` or fatal self-test text appears.
+  - Fix: treat as runtime failure; capture full log and debug by failing stage.
+
+### Current validated QEMU runtime status
+
+- ✅ x86_64: validated
+- ✅ arm64: validated
+- ✅ riscv64: validated
+- ⚠️ arm32: not yet runtime-complete (runtime marker gap)
+- ⚠️ riscv32: not yet link/runtime-complete
+
+Follow-up implementation tasks are tracked in `docs/dev/boot-console-milestone-and-followups.md`.
+
 ---
 
 ## How the Build System Works
@@ -77,19 +225,19 @@ Edit `build_config.json` to define your target composition (e.g. arch, UI on/off
 
 # --- ARM64 ---
 # Build and run ARM64 with GUI
-.\build.ps1 arm64_desktop_mmu --run
+.\build.ps1 arm64_desktop_gui --run
 # Build and run ARM64 without GUI (Headless)
-.\build.ps1 arm64_desktop_mmu --run-tests
+.\build.ps1 arm64_desktop_headless --run-tests
 
 # --- RISCV64 ---
 # Build and run RISCV64 with GUI
-.\build.ps1 riscv64_desktop_mmu --run
+.\build.ps1 riscv64_desktop_gui --run
 # Build and run RISCV64 without GUI (Headless)
-.\build.ps1 riscv64_desktop_mmu --run-tests
+.\build.ps1 riscv64_desktop_headless --run-tests
 
 # --- ARM32 ---
 # Build and run ARM32 without GUI (Edge profile)
-.\build.ps1 arm32_virt_mmu --run-tests
+.\build.ps1 arm32_edge_mpu --run-tests
 ```
 
 ### 🚨 Migration Guide: Legacy Flags Removed
@@ -99,7 +247,7 @@ The build system has been unified around `tools/build.py` using canonical `argpa
 | Old Syntax (Deprecated) | New Syntax (Canonical) | Notes |
 | :--- | :--- | :--- |
 | `.\build.ps1 -Arch x86_64 -Run` | `.\build.ps1 default_dev --run` | Arch, board, and profile are now bundled into named configurations in `build_config.json`. |
-| `.\build.ps1 -Arch riscv64 -Clean -Run` | `.\build.ps1 riscv64_desktop_mmu --clean --run` | |
+| `.\build.ps1 -Arch riscv64 -Clean -Run` | `.\build.ps1 riscv64_desktop_headless --clean --run-tests` | |
 | `.\build.ps1 -Arch arm64 -Profile MEDICAL` | `.\build.ps1 arm64_medical_debug` | |
 | `.\build.ps1 -Arch x86_64 -BootGui ON` | `.\build.ps1 x86_64_laptop_debug --run` | Use a configuration that specifies `"gui": true` in the JSON manifest. |
 | `.\build.ps1 -Arch x86_64 -DualSerial` | `.\build.ps1 default_dev --run --dual-serial` | |
@@ -184,8 +332,8 @@ During build execution, CMake groups your selected targets into bundles:
 | `x86_64`  | ✅ Active                                  | `qemu-system-x86_64 -machine q35`   |
 | `arm64`   | ✅ Active                                  | `qemu-system-aarch64 -machine virt` |
 | `riscv64` | ✅ Active                                  | `qemu-system-riscv64 -machine virt` |
-| `arm32`   | ⚠️ Stabilization (use `--run-tests`)       | `qemu-system-arm -machine virt`     |
-| `riscv32` | ⚠️ Stabilization (use `--run-tests`)       | `qemu-system-riscv32 -machine virt` |
+| `arm32`   | ⚠️ Incomplete runtime markers              | `qemu-system-arm -machine virt`     |
+| `riscv32` | ⚠️ Incomplete link/runtime bring-up        | `qemu-system-riscv32 -machine virt` |
 
 
 ---
@@ -199,8 +347,8 @@ Bharat-OS exclusively relies on LLVM/Clang and LLD (version 16+) for bare-metal 
 | `x86_64`     | `x86_64-elf`          | Clang 16+| LLD 16+| Active      |
 | `arm64`      | `aarch64-elf`         | Clang 16+| LLD 16+| Active      |
 | `riscv64`    | `riscv64-elf`         | Clang 16+| LLD 16+| Active      |
-| `arm32`      | `armv7a-none-eabi`    | Clang 16+| LLD 16+| Validated   |
-| `riscv32`    | `riscv32-elf`         | Clang 16+| LLD 16+| Validated   |
+| `arm32`      | `armv7a-none-eabi`    | Clang 16+| LLD 16+| Partial (runtime gap) |
+| `riscv32`    | `riscv32-elf`         | Clang 16+| LLD 16+| Partial (link/runtime gap) |
 
 ---
 
@@ -329,7 +477,7 @@ To ensure early kernel logs are visible during UI development, you can use the `
 
 **Architecture specific behaviors with GUI enabled:**
 - **`x86_64`:** Uses standard VGA (`-vga std`). The serial `vc` output appears natively.
-- **`riscv64` & `arm64`:** These `virt` machines do not support legacy VGA. The build scripts use VirtIO GPU (`-device virtio-gpu-device` or `-device virtio-gpu-pci`). The kernel text output is displayed in a QEMU Virtual Console tab. *Note: If you are using the QEMU GTK/SDL UI, you can switch to the Virtual Console (usually via `View -> serial0` or `Ctrl-Alt-2`) to see the text logs if they don't appear immediately.*
+- **`riscv64` & `arm64`:** These `virt` machines do not support legacy VGA. The build scripts use VirtIO GPU (`-device virtio-gpu-device` or `-device virtio-gpu-pci`). Serial boot logs are routed to the host terminal; optional `--dual-serial` also mirrors serial to a QEMU Virtual Console tab (`View -> serial0` / `Ctrl-Alt-2` in GTK/SDL).
 
 ```powershell
 # Build and run a GUI-enabled config
@@ -355,66 +503,31 @@ If you see the error `could not connect serial device to character backend 'mon:
 
 ## Multi-Architecture Build & Test Execution Plan
 
-The goal is to verify the build and execution of Bharat-OS across five major architectures (arm64, arm32, x86_64, riscv32, riscv64) using `.\build.ps1` (`tools/build.py`) with both GUI-enabled and headless configurations.
+Use the validated runtime matrix as the baseline:
 
-### Phase 1: Environment Readiness
-Ensure `qemu-system-*` binaries for all architectures are in the system `PATH`.
-- **Windows**: Add `C:\Program Files\qemu` to your environment variables.
-- **Verification**: Run `python tools/build.py --doctor` to check runner availability.
+| Architecture | Preferred Build Name | Runtime validation status |
+| :--- | :--- | :--- |
+| **x86_64** | `default_dev` | ✅ Validated |
+| **arm64** | `arm64_desktop_headless` (or `arm64_desktop_gui`) | ✅ Validated |
+| **riscv64** | `riscv64_desktop_headless` (or `riscv64_desktop_gui`) | ✅ Validated |
+| **arm32** | `arm32_edge_mpu` | ⚠️ Not runtime-complete |
+| **riscv32** | `riscv32_edge_mmu_lite` | ⚠️ Not link/runtime-complete |
 
-### Phase 2: Architecture Verification Matrix
+### Recommended execution strategy
 
-| Architecture | Build Name | Profile | QEMU Machine | GUI |
-| :--- | :--- | :--- | :--- | :--- |
-| **x86_64** | `default_dev` | DESKTOP | q35 | Enabled |
-| **arm64** | `arm64_desktop_mmu` | DESKTOP | virt | Enabled |
-| **arm32** | `arm32_virt_mmu` | EDGE | virt | Disabled |
-| **riscv64** | `riscv64_desktop_mmu` | DESKTOP | virt | Enabled |
-| **riscv32** | `riscv32_edge_mmu_lite` | EDGE | virt | Disabled |
-
-### Phase 3: GUI vs Headless Execution
-- **GUI Mode**: Run `./build.sh <build_name> --run`. This expects a graphical window to open.
-- **Headless Mode (CI)**: Run `./build.sh <build_name> --run-tests`. This forces `-display none` and redirects all console output to `stdio` for automated logging.
-
-### Execution Strategy
-1. **Sequencing**: Execute each build name from the matrix sequentially.
-2. **Verification**: Confirm the presence of the `Bharat-OS` boot logo and kernel initialization logs in the output.
-3. **Multi-Arch Logic**: The `tools/build.py` script automatically selects the correct CPU and machine flags (e.g., `cortex-a15` for arm32 virt, `q35` for x86_64).
+1. Build with `build.sh` / `build.ps1` using a config from `build_config.json`.
+2. Validate boot markers in host-terminal serial logs.
+3. Prefer explicit-matrix runs via `run_qemu_e2e.sh` for regression checks.
 
 ### Quick Start Commands (Windows PowerShell)
 
-Here are the commands to run the predefined configurations in Windows:
-
-**1. x86_64 (Desktop, GUI)**
 ```powershell
-.\build.ps1 default_dev --run
-# Or with dual serial for both GUI and terminal logs:
-# .\build.ps1 default_dev --run --dual-serial
-```
+# x86_64
+.\build.ps1 default_dev --run-tests
 
-**2. ARM64 (Desktop, GUI)**
-```powershell
-.\build.ps1 arm64_desktop_mmu --run
-```
+# arm64
+.\build.ps1 arm64_desktop_headless --run-tests
 
-**3. ARM32 (Edge, Headless)**
-```powershell
-.\build.ps1 arm32_virt_mmu --run
+# riscv64
+.\build.ps1 riscv64_desktop_headless --run-tests
 ```
-
-**4. RISC-V 64 (Desktop, GUI)**
-```powershell
-.\build.ps1 riscv64_desktop_mmu --run
-```
-
-**5. RISC-V 32 (Edge, Headless)**
-```powershell
-.\build.ps1 riscv32_edge_mmu_lite --run
-```
-
-**Headless/CI Testing (All Architectures)**
-If you want to run any of the GUI-enabled profiles purely in headless mode (no QEMU window) for testing, replace `--run` with `--run-tests`:
-```powershell
-.\build.ps1 arm64_desktop_mmu --run-tests
-```
-
