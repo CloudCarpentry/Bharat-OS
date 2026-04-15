@@ -228,6 +228,7 @@ run_case() {
   fi
 
   local markers=(
+    "BOOT: kernel_main reached"
     "BOOT: pmm initialized"
     "BOOT: vmm initialized"
     "[BOOT] Runtime mode:"

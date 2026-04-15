@@ -8,6 +8,7 @@ endif()
 
 add_library(board_fabric STATIC
     board_fabric.c
+    boot_console.c
     ${PLATFORM_UART_SRC}
 )
 target_include_directories(board_fabric PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/drivers/include)

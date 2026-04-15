@@ -564,14 +564,3 @@ if(ARCH STREQUAL "riscv64" AND BHARAT_RISCV_BUILD_PAYLOAD_BIN)
     endif()
 endif()
 
-# ── Platform / Machine layer ────────────────────────────────────────────────
-if(ARCH STREQUAL "x86_64")
-    list(APPEND KERNEL_SRCS ../arch/x86/x86_64/platform/q35/boot/early_console.c)
-elseif(ARCH STREQUAL "arm64")
-    list(APPEND KERNEL_SRCS ../arch/arm/arm64/platform/qemu_virt/boot/early_console.c)
-elseif(ARCH STREQUAL "riscv64")
-    list(APPEND KERNEL_SRCS ../arch/riscv/riscv64/platform/qemu_virt/boot/early_console.c)
-endif()
-
-list(APPEND KERNEL_SRCS src/display/boot_video_map.c)
-
