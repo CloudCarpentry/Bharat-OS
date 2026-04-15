@@ -65,7 +65,11 @@ def run(manifest):
         cmd.extend(['-serial', 'vc'])
 
     if not display_routing.get('requested'):
-        cmd.extend(['-display', 'none'])
+        # For headless boots, prefer -nographic over -display none.
+        # On some QEMU builds (notably Windows aarch64 setups), -nographic
+        # is the most reliable way to route PL011/NS16550 boot logs to the
+        # terminal and avoid apparent "hangs" with a blank console.
+        cmd.append('-nographic')
     else:
          cmd.extend(['-display', 'gtk'])
          device = display_routing.get('device')
