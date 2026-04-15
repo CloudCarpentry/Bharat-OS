@@ -140,7 +140,9 @@ static int test_unmapped_user_fault(void) {
 }
 
 // Keep this probe out of normal boot for now: on some x86_64 QEMU setups the
-// fault-recovery hook is not reliably reached, causing a reboot loop before
-// services/init handoff. It remains available in diagnostic/quick-capable
-// modes where fault-path validation is explicitly requested.
+// intentional kernel-mode #PF used by this test can still bypass the intended
+// recovery path and fall through to panic/reboot before services/init handoff.
+// arm64/riscv64 do not show the same instability in current CI runs. Keep this
+// as a diagnostic/quick-only probe until x86_64 trap-frame/return handling for
+// in-kernel fault injection is fully hardened.
 REGISTER_BOOT_SELFTEST("hw_unmapped_fault", "memory", test_unmapped_user_fault, BOOT_TEST_STAGE_RUNTIME, BOOT_TEST_QUICK, 0, false)
