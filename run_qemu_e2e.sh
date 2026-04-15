@@ -105,8 +105,19 @@ get_qemu_config() {
       printf '%s\n' "-cpu cortex-a72"
       return 0
       ;;
+    arm32)
+      printf '%s\n' "qemu-system-arm"
+      printf '%s\n' "-machine virt"
+      printf '%s\n' "-cpu cortex-a15"
+      return 0
+      ;;
+    riscv32)
+      printf '%s\n' "qemu-system-riscv32"
+      printf '%s\n' "-machine virt"
+      printf '\n'
+      return 0
+      ;;
     *)
-      # arm32/riscv32 currently don't have a validated QEMU boot command in this harness.
       return 1
       ;;
   esac

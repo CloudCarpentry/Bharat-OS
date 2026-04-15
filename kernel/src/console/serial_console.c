@@ -112,23 +112,13 @@ static serial_console_state_t g_early_serial_state;
 static uart_device_t g_early_uart;
 
 
-#include "platform/device_profile.h"
-#include "drivers/serial/serial_provider.h"
-
-extern const platform_device_profile_t *platform_get_device_profile(void);
-
 bool console_serial_register_device(const console_device_desc_t *desc) {
-    if (!desc) return false;
-
-    const platform_device_profile_t *profile = platform_get_device_profile();
-    if (!profile) return false;
-
-    uart_device_t *platform_uart = serial_driver_match_boot_console(profile);
-    if (platform_uart) {
-        g_early_uart = *platform_uart;
-    } else {
+    if (!desc || !desc->opaque) {
         return false;
     }
+
+    const uart_device_t *selected_uart = (const uart_device_t *)desc->opaque;
+    g_early_uart = *selected_uart;
 
     g_early_serial_state.uart = &g_early_uart;
     g_early_serial_state.translate_lf_to_crlf = true;
