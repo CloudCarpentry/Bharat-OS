@@ -81,6 +81,8 @@ def run(manifest):
     if dual_serial:
         cmd.extend(['-serial', 'vc'])
 
+    is_windows = sys.platform.startswith('win')
+
     if not display_routing.get('requested'):
         # Headless routing:
         # - Prefer -nographic when serial is routed to stdio. This works across
@@ -88,7 +90,13 @@ def run(manifest):
         #   and keeps boot logs visible in the terminal.
         # - Fallback to -display none when no stdio serial sink is requested.
         if serial_routing.get('stdio'):
-            cmd.append('-nographic')
+            # On some native Windows QEMU builds, `-serial stdio` + `-nographic`
+            # can yield no visible guest output in PowerShell sessions.
+            # Prefer `-display none` there and keep explicit serial routing.
+            if is_windows:
+                cmd.extend(['-display', 'none'])
+            else:
+                cmd.append('-nographic')
         else:
             cmd.extend(['-display', 'none'])
     else:
