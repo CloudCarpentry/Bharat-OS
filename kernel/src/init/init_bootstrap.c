@@ -2,7 +2,13 @@
 #include "console/console_core.h"
 #include "sched/sched.h"
 
-// Minimal placeholder for the ELF/initramfs bootloader until implemented
+// Minimal placeholder for the ELF/initramfs bootloader until implemented.
+//
+// NOTE:
+// The previous stub unconditionally returned failure, which forced a kernel
+// panic on every boot once runtime reached the bootstrap handoff stage.
+// Until the userspace ELF loader is wired in, treat bootstrap as "deferred"
+// and keep the system alive in degraded mode.
 static int bootstrap_launch_first_service(void) {
     // A future change will implement:
     // create_process("init");
@@ -13,7 +19,8 @@ static int bootstrap_launch_first_service(void) {
     // grant bootstrap caps/handles
     // sched_enqueue();
 
-    return -1; // -ENOSYS
+    console_write_raw("  [BOOTSTRAP] userspace loader not wired yet; deferring services/init launch\n", 76);
+    return 0;
 }
 
 static void bootstrap_thread_entry(void) {
@@ -24,6 +31,8 @@ static void bootstrap_thread_entry(void) {
         console_write_raw("  [BOOTSTRAP] Failed to launch services/init\n", 45);
         kernel_panic("bootstrap: first service launch failed");
     }
+
+    console_write_raw("  [BOOTSTRAP] services/init launch deferred (degraded boot)\n", 59);
 
     thread_destroy(sched_current_thread());
     kthread_yield();
