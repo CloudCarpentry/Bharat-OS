@@ -1,4 +1,5 @@
 import sys
+import signal
 import subprocess
 
 def run(manifest):
@@ -76,13 +77,10 @@ def run(manifest):
 
     if serial_routing.get('stdio'):
         # Host-serial routing:
-        # - Non-Windows: disable monitor to avoid stdio contention.
-        # - Windows: use mon:stdio mux (more reliable in PowerShell).
-        if is_windows:
-            cmd.extend(['-serial', 'mon:stdio'])
-        else:
-            cmd.extend(['-monitor', 'none'])
-            cmd.extend(['-serial', 'stdio'])
+        # keep explicit stdio serial on all hosts, and disable monitor to
+        # avoid stdio contention with QEMU monitor.
+        cmd.extend(['-monitor', 'none'])
+        cmd.extend(['-serial', 'stdio'])
 
     if dual_serial:
         cmd.extend(['-serial', 'vc'])
@@ -124,10 +122,28 @@ def run(manifest):
     print(f"[QEMU Runner] Executing: {' '.join(cmd)}")
 
     # Try to execute if qemu is installed, otherwise just print
+    popen_kwargs = {}
+    if is_windows and hasattr(subprocess, "CREATE_NEW_PROCESS_GROUP"):
+        popen_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
+
+    proc = None
     try:
-        subprocess.run(cmd)
+        proc = subprocess.Popen(cmd, **popen_kwargs)
+        return_code = proc.wait()
+        if return_code:
+            sys.exit(return_code)
     except KeyboardInterrupt:
         print("\n[QEMU Runner] Interrupted by user (Ctrl+C).")
+        try:
+            if proc is not None:
+                if is_windows and hasattr(signal, "CTRL_BREAK_EVENT"):
+                    proc.send_signal(signal.CTRL_BREAK_EVENT)
+                else:
+                    proc.terminate()
+                proc.wait(timeout=5)
+        except Exception:
+            if proc is not None:
+                proc.kill()
         print("[QEMU Runner] QEMU process terminated.")
         sys.exit(130)
     except FileNotFoundError:
