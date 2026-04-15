@@ -51,7 +51,7 @@
     "arch": "arm64",
     "profile": "desktop",
     "execution_class": "qemu",
-    "machine": "virt",
+    "machine": "virt,gic-version=2",
     "boot_contract": {
       "entry": "kernel_elf",
       "requires_fdt": true,
@@ -78,7 +78,7 @@
     "arch": "arm64",
     "profile": "desktop",
     "execution_class": "qemu",
-    "machine": "virt",
+    "machine": "virt,gic-version=2",
     "boot_contract": {
       "entry": "kernel_elf",
       "requires_fdt": true,
@@ -181,7 +181,7 @@
     "arch": "arm64",
     "profile": "desktop",
     "execution_class": "qemu",
-    "machine": "virt",
+    "machine": "virt,gic-version=2",
     "boot_contract": {
       "entry": "kernel_elf",
       "requires_fdt": true,
