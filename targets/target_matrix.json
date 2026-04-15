@@ -1,4 +1,137 @@
 {
+  "x86_64_desktop_gui": {
+    "name": "x86_64_desktop_gui",
+    "arch": "x86_64",
+    "profile": "desktop",
+    "execution_class": "qemu",
+    "machine": "q35",
+    "boot_contract": {
+      "entry": "kernel_elf",
+      "requires_fdt": false
+    },
+    "discovery_contract": "acpi",
+    "console_contract": {
+      "mode": "serial+display",
+      "primary_uart": "uart.ns16550",
+      "display": "display.vga"
+    },
+    "device_contracts": {
+      "interrupt": "intc.ioapic",
+      "timer": "timer.hpet",
+      "bus": ["bus.pci"]
+    }
+  },
+  "x86_64_desktop_headless": {
+    "name": "x86_64_desktop_headless",
+    "arch": "x86_64",
+    "profile": "desktop",
+    "execution_class": "qemu",
+    "machine": "q35",
+    "boot_contract": {
+      "entry": "kernel_elf",
+      "requires_fdt": false
+    },
+    "discovery_contract": "acpi",
+    "console_contract": {
+      "mode": "serial",
+      "primary_uart": "uart.ns16550"
+    },
+    "device_contracts": {
+      "interrupt": "intc.ioapic",
+      "timer": "timer.hpet",
+      "bus": ["bus.pci"]
+    }
+  },
+  "arm64_desktop_gui": {
+    "name": "arm64_desktop_gui",
+    "arch": "arm64",
+    "profile": "desktop",
+    "execution_class": "qemu",
+    "machine": "virt",
+    "boot_contract": {
+      "entry": "kernel_elf",
+      "requires_fdt": true,
+      "fdt_source": "emulator"
+    },
+    "discovery_contract": "fdt",
+    "console_contract": {
+      "mode": "serial+display",
+      "primary_uart": "uart.pl011",
+      "display": "display.virtio_gpu"
+    },
+    "device_contracts": {
+      "interrupt": "intc.gicv3",
+      "timer": "timer.arm_generic",
+      "bus": ["bus.platform_mmio", "bus.pci"]
+    }
+  },
+  "arm64_desktop_headless": {
+    "name": "arm64_desktop_headless",
+    "arch": "arm64",
+    "profile": "desktop",
+    "execution_class": "qemu",
+    "machine": "virt",
+    "boot_contract": {
+      "entry": "kernel_elf",
+      "requires_fdt": true,
+      "fdt_source": "emulator"
+    },
+    "discovery_contract": "fdt",
+    "console_contract": {
+      "mode": "serial",
+      "primary_uart": "uart.pl011"
+    },
+    "device_contracts": {
+      "interrupt": "intc.gicv3",
+      "timer": "timer.arm_generic",
+      "bus": ["bus.platform_mmio", "bus.pci"]
+    }
+  },
+  "riscv64_desktop_gui": {
+    "name": "riscv64_desktop_gui",
+    "arch": "riscv64",
+    "profile": "desktop",
+    "execution_class": "qemu",
+    "machine": "virt",
+    "boot_contract": {
+      "entry": "kernel_elf",
+      "requires_fdt": true,
+      "fdt_source": "emulator"
+    },
+    "discovery_contract": "fdt",
+    "console_contract": {
+      "mode": "serial+display",
+      "primary_uart": "uart.ns16550",
+      "display": "display.virtio_gpu"
+    },
+    "device_contracts": {
+      "interrupt": "intc.plic",
+      "timer": "timer.systick",
+      "bus": ["bus.platform_mmio", "bus.pci"]
+    }
+  },
+  "riscv64_desktop_headless": {
+    "name": "riscv64_desktop_headless",
+    "arch": "riscv64",
+    "profile": "desktop",
+    "execution_class": "qemu",
+    "machine": "virt",
+    "boot_contract": {
+      "entry": "kernel_elf",
+      "requires_fdt": true,
+      "fdt_source": "emulator"
+    },
+    "discovery_contract": "fdt",
+    "console_contract": {
+      "mode": "serial",
+      "primary_uart": "uart.ns16550"
+    },
+    "device_contracts": {
+      "interrupt": "intc.plic",
+      "timer": "timer.systick",
+      "bus": ["bus.platform_mmio", "bus.pci"]
+    }
+  },
   "arm32_small_qemu_virt": {
     "name": "arm32_small_qemu_virt",
     "arch": "arm32",

@@ -18,5 +18,8 @@ def get_target(target_name, matrix=None, silent=False):
     if target_name not in matrix:
         if not silent:
             print(f"Error: Target '{target_name}' not found in target matrix.")
+        # If silent, raise KeyError instead of exiting, so caller can catch it without killing the process
+        if silent:
+            raise KeyError(target_name)
         sys.exit(1)
     return matrix[target_name]
