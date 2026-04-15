@@ -293,9 +293,11 @@ int boot_gui_run(void) {
     }
 
     /* 2. Probe the boot video handoff from the machine layer */
-    if (boot_video_collect(&g_gui_handoff) != 0 || !g_gui_handoff.valid) {
-        hal_serial_write("  [GUI] No valid framebuffer handoff from bootloader.\n");
-        return -1;
+    if (!g_gui_handoff.valid) {
+        if (boot_video_collect(&g_gui_handoff) != 0 || !g_gui_handoff.valid) {
+            hal_serial_write("  [GUI] No valid framebuffer handoff from bootloader.\n");
+            return -1;
+        }
     }
 
     /* 3. Validate geometry */
@@ -304,7 +306,15 @@ int boot_gui_run(void) {
         return -1;
     }
 
-    /* 4. Set up state: use identity-mapped physical address.
+    hal_serial_write("  [GUI] Video phys=");
+    hal_serial_write_hex(g_gui_handoff.phys_addr);
+    hal_serial_write(" virt=");
+    hal_serial_write_hex(g_gui_handoff.virt_addr);
+    hal_serial_write(" size=");
+    hal_serial_write_hex(g_gui_handoff.size);
+    hal_serial_write("\n");
+
+    /* 4. Set up state: use identity-mapped physical address if not mapped.
      *    This is safe because UEFI/Grub/OpenSBI establish a 1:1 map before
      *    calling kernel_main, and we haven't torn it down yet at this point. */
     uint8_t bpp = 0;
