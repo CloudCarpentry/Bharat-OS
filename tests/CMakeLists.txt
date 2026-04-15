@@ -446,6 +446,10 @@ add_executable(test_boot_e2e test_boot_e2e.c test_arch_caps.c ../kernel/src/kern
 target_include_directories(test_boot_e2e PRIVATE ../kernel/include ../include ../lib/include ../boot/include)
 add_test(NAME boot_e2e COMMAND test_boot_e2e)
 
+add_executable(test_init_manifest host/test_init_manifest.c ../services/core/init/init_events.c)
+target_include_directories(test_init_manifest PRIVATE ../include ../lib/runtime/include ../lib/cap/include ../lib/ipc/include)
+add_test(NAME test_init_manifest COMMAND test_init_manifest)
+
 # Benchmarks
 add_executable(test_bench_hal_pt_arm64 benchmark/test_bench_hal_pt_arm64.c ../kernel/src/benchmark/benchmark.c $<TARGET_OBJECTS:bharat_test_sched_mocks>)
 target_include_directories(test_bench_hal_pt_arm64 PRIVATE ../kernel/include ../include ../lib/include)

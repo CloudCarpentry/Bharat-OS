@@ -3,14 +3,9 @@
 
 #include "init_profile.h"
 #include "init_status.h"
+#include "init_contract.h"
 
-#define MAX_INIT_SERVICES 32
-
-typedef struct {
-    init_service_runtime_t services[MAX_INIT_SERVICES];
-    size_t count;
-    init_boot_context_t *ctx;
-} init_runtime_ctx_t;
+#define MAX_INIT_SERVICES INIT_SERVICE_ID_MAX
 
 int init_runtime_run(init_boot_context_t *ctx);
 
