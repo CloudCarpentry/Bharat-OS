@@ -472,3 +472,5 @@ add_executable(test_unmapped_fault
 )
 target_include_directories(test_unmapped_fault PRIVATE ../kernel/include ../include)
 add_test(NAME test_unmapped_fault COMMAND test_unmapped_fault)
+
+add_subdirectory(drivers)
