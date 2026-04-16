@@ -253,15 +253,6 @@ run_case() {
     fi
     kernel_image="${build_dir}/kernel/kernel32.elf"
     "$oc" -O elf32-i386 "$kernel_elf" "$kernel_image"
-  elif [[ "$arch" == "arm64" ]]; then
-    local oc
-    if ! oc="$(objcopy_bin)"; then
-      echo "    [FAIL] objcopy/llvm-objcopy is required for arm64 Image generation"
-      FAIL_COUNT=$((FAIL_COUNT + 1))
-      return
-    fi
-    kernel_image="${build_dir}/kernel/Image"
-    "$oc" -O binary "$kernel_elf" "$kernel_image"
   fi
 
   : > "$log_file"

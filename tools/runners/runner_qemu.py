@@ -53,20 +53,6 @@ def run(manifest):
     artifacts = manifest.get('artifacts', {})
     kernel_path = artifacts.get('kernel')
     machine = machine_cfg.get('machine', '')
-    if arch == 'arm64' and 'virt' in machine and kernel_path:
-        normalized = kernel_path.replace('\\', '/')
-        if normalized.lower().endswith('.elf'):
-            print(
-                "Error: ARM64 virt requires a raw kernel image (Image), "
-                f"not ELF: {kernel_path}"
-            )
-            sys.exit(1)
-        if not normalized.endswith('/Image'):
-            print(
-                "Error: ARM64 virt expects kernel artifact named 'Image'. "
-                f"Found: {kernel_path}. Re-run build to regenerate manifest."
-            )
-            sys.exit(1)
 
     if kernel_path:
         cmd.extend(['-kernel', kernel_path])
