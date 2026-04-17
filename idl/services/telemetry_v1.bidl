@@ -1,0 +1,76 @@
+service bharat.telemetry.v1 = 10 {
+
+  // Subscription management
+  rpc Subscribe(SubscribeReq) -> SubscribeResp {
+    qos = reliable;
+    timeout_ms = 500;
+  }
+
+  rpc Unsubscribe(UnsubscribeReq) -> UnsubscribeResp {
+    qos = reliable;
+    timeout_ms = 500;
+  }
+
+  // Counter queries
+  rpc ListCounters(ListCountersReq) -> ListCountersResp {
+    qos = reliable;
+    timeout_ms = 500;
+  }
+
+  rpc ReadCounterSnapshot(ReadCounterSnapshotReq) -> ReadCounterSnapshotResp {
+    qos = reliable;
+    timeout_ms = 200;
+  }
+}
+
+// ---------------------------------------------------------
+// Subscriptions
+// ---------------------------------------------------------
+message SubscribeReq {
+  // Client identifier
+  u32 client_id;
+
+  // Filter settings matching UAPI definition
+  u32 event_kind_mask;
+  u32 min_severity;
+  u32 source_id;
+}
+
+message SubscribeResp {
+  u32 subscription_id;
+  u32 status; // 0 = ok
+}
+
+message UnsubscribeReq {
+  u32 subscription_id;
+}
+
+message UnsubscribeResp {
+  u32 status; // 0 = ok
+}
+
+
+// ---------------------------------------------------------
+// Counters
+// ---------------------------------------------------------
+message ListCountersReq {
+  u32 filter_source_id; // 0 for all sources
+}
+
+// In a real BIDL parser this would map to an array of bharat_counter_desc_t.
+// We approximate the layout here or use IDL strings/fields.
+message ListCountersResp {
+  u32 status;
+  u32 num_counters;
+  // Payload contains array of UAPI bharat_counter_desc_t structs
+}
+
+message ReadCounterSnapshotReq {
+  u32 counter_id;
+}
+
+message ReadCounterSnapshotResp {
+  u32 status; // 0 = ok
+  u64 value;
+  u64 timestamp_ns;
+}
