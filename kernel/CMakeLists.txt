@@ -223,14 +223,20 @@ add_library(bharat_mm_pmm OBJECT
 target_link_libraries(bharat_mm_pmm PRIVATE bharat_kernel_includes bharat_kernel_buildopts)
 target_compile_options(bharat_mm_pmm PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
 
-# IOMMU Support (Always Present, uses Null Backend when disabled)
-add_library(bharat_mm_iommu OBJECT
-    src/mm/iommu/iommu.c
-    src/mm/iommu/iommu_domain.c
-    src/mm/iommu/iommu_map.c
-    src/mm/iommu/iommu_fault.c
-    src/mm/iommu/iommu_device.c
-)
+# IOMMU Support (Can be stubbed via configuration)
+if(BHARAT_ENABLE_IOMMU)
+    add_library(bharat_mm_iommu OBJECT
+        src/mm/iommu/iommu.c
+        src/mm/iommu/iommu_domain.c
+        src/mm/iommu/iommu_map.c
+        src/mm/iommu/iommu_fault.c
+        src/mm/iommu/iommu_device.c
+    )
+else()
+    add_library(bharat_mm_iommu OBJECT
+        src/mm/iommu/iommu_stub.c
+    )
+endif()
 target_link_libraries(bharat_mm_iommu PRIVATE bharat_kernel_includes bharat_kernel_buildopts)
 target_compile_options(bharat_mm_iommu PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
 
