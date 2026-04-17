@@ -7,7 +7,7 @@ add_library(hal_common OBJECT
     ../timer_common.c
     ../common/power/null_power.c
     ../common/power/null_thermal.c
-    ../common/memops/memops_fallback.c
+    ../common/memops/mem_scalar.c
     ../common/hash/hash_fallback.c
 )
 
@@ -18,6 +18,9 @@ target_include_directories(hal_common PRIVATE
     ${CMAKE_SOURCE_DIR}/drivers/include
     ${CMAKE_SOURCE_DIR}/include)
 target_link_libraries(hal_common PRIVATE bharat_freestanding bharat_kernel_buildopts)
+
+# Apply targeted builtin suppression to the memory helper
+set_source_files_properties(../common/memops/mem_scalar.c PROPERTIES COMPILE_OPTIONS "-fno-builtin-memset;-fno-builtin-memcpy;-fno-builtin-memmove;-fno-builtin-strcmp;-fno-builtin-strncmp;-fno-builtin-strlen;-fno-builtin-bzero")
 
 string(TOUPPER "${BHARAT_ARCH_FAMILY}" _bharat_arch_family_upper)
 if(BHARAT_ENABLE_DRIVER_ARCH_IRQ_TIMER AND (_bharat_arch_family_upper STREQUAL "X86"

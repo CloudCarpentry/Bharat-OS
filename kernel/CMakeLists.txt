@@ -473,7 +473,6 @@ set_target_properties(kernel.elf PROPERTIES
 # Extra warnings for C sources only
 target_compile_options(kernel.elf PRIVATE
     $<$<COMPILE_LANGUAGE:C>:-ffreestanding>
-    $<$<COMPILE_LANGUAGE:C>:-fno-builtin>
     $<$<COMPILE_LANGUAGE:C>:-Wall>
     $<$<COMPILE_LANGUAGE:C>:-Wextra>
     $<$<COMPILE_LANGUAGE:C>:-Werror=implicit-function-declaration>
