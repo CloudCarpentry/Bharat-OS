@@ -455,6 +455,26 @@ add_executable(test_init_manifest host/test_init_manifest.c ../services/core/ini
 target_include_directories(test_init_manifest PRIVATE ../include ../lib/runtime/include ../lib/cap/include ../lib/ipc/include)
 add_test(NAME test_init_manifest COMMAND test_init_manifest)
 
+add_executable(test_execution_mode_single_core host/test_execution_mode_single_core.c ../kernel/src/sched/cpu_partition.c ../kernel/src/sched/execution_mode.c ../kernel/src/sched/sched_class.c ../kernel/src/sched/sched_topology.c ../platform/common/platform_cpu_topology.c)
+target_include_directories(test_execution_mode_single_core PRIVATE ../kernel/include ../include ../hal/include ../)
+target_compile_definitions(test_execution_mode_single_core PRIVATE TESTING=1)
+add_test(NAME test_execution_mode_single_core COMMAND test_execution_mode_single_core)
+
+add_executable(test_execution_mode_dual_core host/test_execution_mode_dual_core.c ../kernel/src/sched/cpu_partition.c ../kernel/src/sched/execution_mode.c ../kernel/src/sched/sched_class.c ../kernel/src/sched/sched_topology.c ../platform/common/platform_cpu_topology.c)
+target_include_directories(test_execution_mode_dual_core PRIVATE ../kernel/include ../include ../hal/include ../)
+target_compile_definitions(test_execution_mode_dual_core PRIVATE TESTING=1)
+add_test(NAME test_execution_mode_dual_core COMMAND test_execution_mode_dual_core)
+
+add_executable(test_execution_mode_quad_core host/test_execution_mode_quad_core.c ../kernel/src/sched/cpu_partition.c ../kernel/src/sched/execution_mode.c ../kernel/src/sched/sched_class.c ../kernel/src/sched/sched_topology.c ../platform/common/platform_cpu_topology.c)
+target_include_directories(test_execution_mode_quad_core PRIVATE ../kernel/include ../include ../hal/include ../)
+target_compile_definitions(test_execution_mode_quad_core PRIVATE TESTING=1)
+add_test(NAME test_execution_mode_quad_core COMMAND test_execution_mode_quad_core)
+
+add_executable(test_sched_partition_validation host/test_sched_partition_validation.c ../kernel/src/sched/cpu_partition.c ../kernel/src/sched/execution_mode.c ../kernel/src/sched/sched_class.c ../kernel/src/sched/sched_topology.c ../platform/common/platform_cpu_topology.c)
+target_include_directories(test_sched_partition_validation PRIVATE ../kernel/include ../include ../hal/include ../)
+target_compile_definitions(test_sched_partition_validation PRIVATE TESTING=1)
+add_test(NAME test_sched_partition_validation COMMAND test_sched_partition_validation)
+
 # Benchmarks
 add_executable(test_bench_hal_pt_arm64 benchmark/test_bench_hal_pt_arm64.c ../kernel/src/benchmark/benchmark.c $<TARGET_OBJECTS:bharat_test_sched_mocks>)
 target_include_directories(test_bench_hal_pt_arm64 PRIVATE ../kernel/include ../include ../lib/include)

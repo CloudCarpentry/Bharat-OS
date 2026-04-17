@@ -673,6 +673,141 @@
         "BHARAT_BUILD_CORE_SERVICES": "ON",
         "BHARAT_BUILD_NETWORK_STUBS": "ON"
       }
+    },
+    {
+      "name": "arm64-automobile-mix-1cpu",
+      "inherits": [
+        "arm64-edge"
+      ],
+      "cacheVariables": {
+        "BHARAT_SYSTEM_PROFILE": "AUTOMOBILE",
+        "BHARAT_EXECUTION_MODE": "MIXED_CRITICAL",
+        "BHARAT_LOGICAL_CPU_COUNT": "1",
+        "BHARAT_ENABLE_EXECUTION_MODE_FRAMEWORK": "ON",
+        "BHARAT_ENABLE_TEMPORAL_PARTITION_FALLBACK": "ON",
+        "BHARAT_ENABLE_SCHED_CLASS_FIFO_RT": "ON",
+        "BHARAT_ENABLE_SCHED_CLASS_FAIR": "ON"
+      }
+    },
+    {
+      "name": "arm64-automobile-mix-2cpu",
+      "inherits": [
+        "arm64-edge"
+      ],
+      "cacheVariables": {
+        "BHARAT_SYSTEM_PROFILE": "AUTOMOBILE",
+        "BHARAT_EXECUTION_MODE": "MIXED_CRITICAL",
+        "BHARAT_LOGICAL_CPU_COUNT": "2",
+        "BHARAT_ENABLE_EXECUTION_MODE_FRAMEWORK": "ON",
+        "BHARAT_ENABLE_TEMPORAL_PARTITION_FALLBACK": "ON",
+        "BHARAT_ENABLE_SCHED_CLASS_FIFO_RT": "ON",
+        "BHARAT_ENABLE_SCHED_CLASS_FAIR": "ON"
+      }
+    },
+    {
+      "name": "arm64-automobile-mix-4cpu",
+      "inherits": [
+        "arm64-edge"
+      ],
+      "cacheVariables": {
+        "BHARAT_SYSTEM_PROFILE": "AUTOMOBILE",
+        "BHARAT_EXECUTION_MODE": "MIXED_CRITICAL",
+        "BHARAT_LOGICAL_CPU_COUNT": "4",
+        "BHARAT_ENABLE_EXECUTION_MODE_FRAMEWORK": "ON",
+        "BHARAT_ENABLE_TEMPORAL_PARTITION_FALLBACK": "ON",
+        "BHARAT_ENABLE_SCHED_CLASS_FIFO_RT": "ON",
+        "BHARAT_ENABLE_SCHED_CLASS_FAIR": "ON"
+      }
+    },
+    {
+      "name": "arm64-mobile-gp-1cpu",
+      "inherits": [
+        "arm64-edge"
+      ],
+      "cacheVariables": {
+        "BHARAT_SYSTEM_PROFILE": "MOBILE",
+        "BHARAT_EXECUTION_MODE": "GENERAL_PURPOSE",
+        "BHARAT_LOGICAL_CPU_COUNT": "1",
+        "BHARAT_ENABLE_EXECUTION_MODE_FRAMEWORK": "ON",
+        "BHARAT_ENABLE_TEMPORAL_PARTITION_FALLBACK": "ON",
+        "BHARAT_ENABLE_SCHED_CLASS_FIFO_RT": "ON",
+        "BHARAT_ENABLE_SCHED_CLASS_FAIR": "ON"
+      }
+    },
+    {
+      "name": "arm64-mobile-mix-2cpu",
+      "inherits": [
+        "arm64-edge"
+      ],
+      "cacheVariables": {
+        "BHARAT_SYSTEM_PROFILE": "MOBILE",
+        "BHARAT_EXECUTION_MODE": "MIXED_CRITICAL",
+        "BHARAT_LOGICAL_CPU_COUNT": "2",
+        "BHARAT_ENABLE_EXECUTION_MODE_FRAMEWORK": "ON",
+        "BHARAT_ENABLE_TEMPORAL_PARTITION_FALLBACK": "ON",
+        "BHARAT_ENABLE_SCHED_CLASS_FIFO_RT": "ON",
+        "BHARAT_ENABLE_SCHED_CLASS_FAIR": "ON"
+      }
+    },
+    {
+      "name": "arm64-mobile-mix-4cpu",
+      "inherits": [
+        "arm64-edge"
+      ],
+      "cacheVariables": {
+        "BHARAT_SYSTEM_PROFILE": "MOBILE",
+        "BHARAT_EXECUTION_MODE": "MIXED_CRITICAL",
+        "BHARAT_LOGICAL_CPU_COUNT": "4",
+        "BHARAT_ENABLE_EXECUTION_MODE_FRAMEWORK": "ON",
+        "BHARAT_ENABLE_TEMPORAL_PARTITION_FALLBACK": "ON",
+        "BHARAT_ENABLE_SCHED_CLASS_FIFO_RT": "ON",
+        "BHARAT_ENABLE_SCHED_CLASS_FAIR": "ON"
+      }
+    },
+    {
+      "name": "riscv64-appliance-rt-1cpu",
+      "inherits": [
+        "riscv64-edge"
+      ],
+      "cacheVariables": {
+        "BHARAT_SYSTEM_PROFILE": "APPLIANCE",
+        "BHARAT_EXECUTION_MODE": "REALTIME",
+        "BHARAT_LOGICAL_CPU_COUNT": "1",
+        "BHARAT_ENABLE_EXECUTION_MODE_FRAMEWORK": "ON",
+        "BHARAT_ENABLE_TEMPORAL_PARTITION_FALLBACK": "ON",
+        "BHARAT_ENABLE_SCHED_CLASS_FIFO_RT": "ON",
+        "BHARAT_ENABLE_SCHED_CLASS_FAIR": "OFF"
+      }
+    },
+    {
+      "name": "x86_64-mobile-gp-2cpu",
+      "inherits": [
+        "x86_64-dev"
+      ],
+      "cacheVariables": {
+        "BHARAT_SYSTEM_PROFILE": "MOBILE",
+        "BHARAT_EXECUTION_MODE": "GENERAL_PURPOSE",
+        "BHARAT_LOGICAL_CPU_COUNT": "2",
+        "BHARAT_ENABLE_EXECUTION_MODE_FRAMEWORK": "ON",
+        "BHARAT_ENABLE_TEMPORAL_PARTITION_FALLBACK": "ON",
+        "BHARAT_ENABLE_SCHED_CLASS_FIFO_RT": "ON",
+        "BHARAT_ENABLE_SCHED_CLASS_FAIR": "ON"
+      }
+    },
+    {
+      "name": "x86_64-desktop-gp-4cpu",
+      "inherits": [
+        "x86_64-dev"
+      ],
+      "cacheVariables": {
+        "BHARAT_SYSTEM_PROFILE": "DESKTOP",
+        "BHARAT_EXECUTION_MODE": "GENERAL_PURPOSE",
+        "BHARAT_LOGICAL_CPU_COUNT": "4",
+        "BHARAT_ENABLE_EXECUTION_MODE_FRAMEWORK": "ON",
+        "BHARAT_ENABLE_TEMPORAL_PARTITION_FALLBACK": "ON",
+        "BHARAT_ENABLE_SCHED_CLASS_FIFO_RT": "ON",
+        "BHARAT_ENABLE_SCHED_CLASS_FAIR": "ON"
+      }
     }
   ],
   "buildPresets": [
