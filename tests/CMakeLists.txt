@@ -335,6 +335,10 @@ add_test(NAME test_scheduler_hello_world COMMAND test_scheduler_hello_world)
 add_executable(test_dma_iommu test_dma_iommu.c ../kernel/src/security/isolation.c ../kernel/src/security/vfio.c ../kernel/src/security/audit.c)
 target_include_directories(test_dma_iommu PRIVATE ../kernel/include)
 
+add_executable(test_iommu_stub test_iommu_stub.c ../kernel/src/mm/iommu/iommu_stub.c ../kernel/src/lib/base/status.c)
+target_include_directories(test_iommu_stub PRIVATE ../kernel/include ../lib/include ../include)
+add_test(NAME test_iommu_stub COMMAND test_iommu_stub)
+
 add_executable(test_smp_hal test_smp_hal.c)
 target_include_directories(test_smp_hal PRIVATE ../kernel/include)
 add_test(NAME test_smp_hal COMMAND test_smp_hal)
@@ -423,6 +427,7 @@ set(BHARAT_NOSTDLIB_TEST_TARGETS
     test_profile_edge
     test_scheduler_hello_world
     test_dma_iommu
+    test_iommu_stub
     test_smp_hal
     test_pmm_production
     test_pmm_zone_alloc
