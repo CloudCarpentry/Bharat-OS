@@ -126,16 +126,12 @@ def run(manifest):
             sys.exit(return_code)
     except KeyboardInterrupt:
         print("\n[QEMU Runner] Interrupted by user (Ctrl+C).")
-        try:
-            if proc is not None:
-                if is_windows and hasattr(signal, "CTRL_BREAK_EVENT"):
-                    proc.send_signal(signal.CTRL_BREAK_EVENT)
-                else:
-                    proc.terminate()
-                proc.wait(timeout=5)
-        except Exception:
-            if proc is not None:
+        if proc is not None:
+            try:
                 proc.kill()
+                proc.wait(timeout=2)
+            except Exception:
+                pass
         print("[QEMU Runner] QEMU process terminated.")
         sys.exit(130)
     except FileNotFoundError:
