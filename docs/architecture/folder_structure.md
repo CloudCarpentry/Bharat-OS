@@ -81,6 +81,7 @@ The `kernel/` directory should only contain:
 
 - **`stacks/`**: For composed subsystems that span multiple layers (e.g., `net/`, `storage/`, `media/`, `vehicle/`, `cloud/`). This prevents these complex systems from being smeared across `services/`, `lib/`, and `drivers/`.
 - **`uapi/`**: The explicit boundary for external contracts. Contains syscall headers, capability invoke contracts, shared IPC structures visible outside the kernel, and stable ABI types.
+  - *Note:* The strict separation between UAPI, IDL, and IPC is defined in [uapi-idl-ipc-boundary.md](core/uapi-idl-ipc-boundary.md).
 
 ### 6. Benchmark and Verification Ownership
 
