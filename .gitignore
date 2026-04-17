@@ -27,6 +27,7 @@ CMakeFiles/
 Testing/
 Makefile
 *.cmake
+!cmake/*.cmake
 !cmake/toolchains/*.cmake
 !cmake/modules/*.cmake
 !tests/host/cmake/*.cmake
