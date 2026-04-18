@@ -489,13 +489,13 @@ To list all available targets (YAML and legacy):
 **Common build commands (Linux/macOS):**
 ```bash
 # Build and run the x86_64 headless YAML target
-./build.sh x86_64_desktop_headless --run
+./build.sh run --target-yaml tools/targets/qemu/x86_64_desktop_headless.yaml
 
 # Clean, build, and run an arm64 edge device profile using a YAML target
-./build.sh arm64_desktop_headless --clean --run
+./build.sh all --target-yaml tools/targets/qemu/arm64_desktop_headless.yaml
 
 # Run a legacy target from build_config.json
-./build.sh default_dev --run
+./build.sh run --target default_dev
 ```
 
 **Common build commands (Windows):**
@@ -521,7 +521,7 @@ The build system has been unified around `tools/build.py` using canonical `argpa
 | `.\build.ps1 -Arch arm64 -Profile MEDICAL` | `.\build.ps1 arm64_medical_debug` | |
 | `.\build.ps1 -Arch x86_64 -BootGui ON` | `.\build.ps1 x86_64_laptop_debug --run` | Use a configuration that specifies `"gui": true` in the JSON manifest. |
 | `.\build.ps1 -Arch x86_64 -DualSerial` | `.\build.ps1 default_dev --run --dual-serial` | |
-| `./build.sh -Arch x86_64 -E2e` | `./build.sh default_dev --run-tests` | |
+| `./build.sh -Arch x86_64 -E2e` | `./build.sh run --target default_dev-tests` | |
 
 If you need a specific combination of architecture, profile, and features, you should create a declarative YAML target specification file in `tools/targets/qemu/` or `tools/targets/boards/`. The legacy `build_config.json` is deprecated and no longer accepts new features.
 
