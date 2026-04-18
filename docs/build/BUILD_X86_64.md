@@ -18,38 +18,38 @@ The build system offers multiple paths for configuring and building the kernel. 
 chmod +x ./build.sh
 
 # Build the kernel
-./build.sh x86_64
+./build.sh build --target x86_64
 
 # Clean and rebuild the kernel
-./build.sh x86_64 --clean
+./build.sh build --target x86_64
 
 # Build and boot directly in QEMU
-./build.sh x86_64 --run
+./build.sh all --target x86_64
 
 # Run with GDB debug server enabled
-./build.sh x86_64 --run --debug
+./build.sh all --target x86_64
 
 # Override boot knobs (e.g., disable GUI, use VM profile)
-./build.sh x86_64 --boot-gui=OFF --hw=vm
+./build.sh build --target x86_64
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
 # Build the kernel
-.\build.ps1 -Arch x86_64
+.\build.ps1 build --target x86_64
 
 # Clean and rebuild the kernel
-.\build.ps1 -Arch x86_64 -Clean
+.\build.ps1 build --target x86_64
 
 # Build and boot directly in QEMU
-.\build.ps1 -Arch x86_64 -Run
+.\build.ps1 all --target x86_64
 
 # Run with GDB debug server enabled
-.\build.ps1 -Arch x86_64 -Run -DebugQemu
+.\build.ps1 all --target x86_64
 
 # Override boot knobs
-.\build.ps1 -Arch x86_64 -BootGui OFF -HardwareProfile vm
+.\build.ps1 build --target x86_64
 ```
 
 ### Using CMake Presets

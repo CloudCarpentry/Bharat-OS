@@ -23,14 +23,14 @@ The toolchain files ensure that CMake correctly identifies `CMAKE_SYSTEM_NAME` (
 
 ### 1. Building the Kernel
 ```bash
-./build.sh x86_64
+./build.sh build --target x86_64
 ```
 *Behind the scenes: Calls CMake using `cmake/toolchains/x86_64-elf.cmake`.*
 
 ### 2. Building the SDK
 ```bash
 cd user/sdk/
-./build.sh --arch arm64
+./build.sh build --target arm64
 ```
 *Behind the scenes: Leverages the exact same toolchain files to ensure ABI consistency.*
 
