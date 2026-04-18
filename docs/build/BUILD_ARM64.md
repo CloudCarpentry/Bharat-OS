@@ -18,26 +18,26 @@ The build system offers multiple paths for configuring and building the kernel. 
 chmod +x ./build.sh
 
 # Build the kernel
-./build.sh arm64
+./build.sh build --target arm64
 
 # Clean and rebuild the kernel
-./build.sh arm64 --clean
+./build.sh build --target arm64
 
 # Build and attempt to boot in QEMU (Runtime pending)
-./build.sh arm64 --run
+./build.sh all --target arm64
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
 # Build the kernel
-.\build.ps1 -Arch arm64
+.\build.ps1 build --target arm64
 
 # Clean and rebuild the kernel
-.\build.ps1 -Arch arm64 -Clean
+.\build.ps1 build --target arm64
 
 # Build and attempt to boot in QEMU (Runtime pending)
-.\build.ps1 -Arch arm64 -Run
+.\build.ps1 all --target arm64
 ```
 
 ### PowerShell ↔ Bash Argument Mapping (ARM64)
@@ -45,19 +45,19 @@ chmod +x ./build.sh
 If you run this on Windows:
 
 ```powershell
-.\build.ps1 -Arch arm64 -Clean -Run -BootGui ON -DualSerial
+.\build.ps1 all --target arm64_desktop_gui
 ```
 
 the equivalent command on Linux/macOS/WSL/BSD is:
 
 ```bash
-./build.sh --arch arm64 --clean --run --boot-gui ON --dual-serial
+./build.sh all --target arm64_desktop_gui
 ```
 
 Short-form flags also work in `build.sh`, so this is equivalent too:
 
 ```bash
-./build.sh -Arch arm64 -Clean -Run -BootGui ON -DualSerial
+./build.sh all --target arm64_desktop_gui
 ```
 
 ### Using CMake Presets

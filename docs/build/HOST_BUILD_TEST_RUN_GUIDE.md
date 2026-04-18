@@ -55,13 +55,13 @@ Minimum expected tools on both hosts:
 ```bash
 # Example: RISC-V64
 chmod +x ./build.sh
-./build.sh riscv64
+./build.sh build --target riscv64
 
 # Example: ARM64
-./build.sh arm64
+./build.sh build --target arm64
 
 # Example: clean rebuild
-./build.sh riscv64 --clean
+./build.sh build --target riscv64
 ```
 
 ## 4.2 Run host tests
@@ -76,13 +76,13 @@ ctest --preset run-tests
 
 ```bash
 # RISC-V64
-./build.sh riscv64 --run
+./build.sh all --target riscv64
 
 # ARM64
-./build.sh arm64 --run
+./build.sh all --target arm64
 
 # x86_64
-./build.sh x86_64 --run
+./build.sh all --target x86_64
 ```
 
 For manual QEMU invocation, use generated kernel artifacts from the corresponding build directory.
@@ -95,16 +95,16 @@ For manual QEMU invocation, use generated kernel artifacts from the correspondin
 
 ```powershell
 # RISC-V64
-.\build.ps1 -Arch riscv64
+.\build.ps1 build --target riscv64
 
 # ARM64
-.\build.ps1 -Arch arm64
+.\build.ps1 build --target arm64
 
 # x86_64
-.\build.ps1 -Arch x86_64
+.\build.ps1 build --target x86_64
 
 # clean rebuild
-.\build.ps1 -Arch riscv64 -Clean
+.\build.ps1 build --target riscv64
 ```
 
 ## 5.2 Run host tests
@@ -118,9 +118,9 @@ ctest --preset run-tests
 ## 5.3 Run in QEMU
 
 ```powershell
-.\build.ps1 -Arch riscv64 -Run
-.\build.ps1 -Arch arm64 -Run
-.\build.ps1 -Arch x86_64 -Run
+.\build.ps1 all --target riscv64
+.\build.ps1 all --target arm64
+.\build.ps1 all --target x86_64
 ```
 
 ---
@@ -171,9 +171,9 @@ Suggested progression:
 cmake --preset tests-host
 cmake --build --preset build-tests
 ctest --preset run-tests
-./build.sh riscv64
-./build.sh arm64
-./build.sh x86_64
+./build.sh build --target riscv64
+./build.sh build --target arm64
+./build.sh build --target x86_64
 ```
 
 ## Windows CI stage
@@ -182,9 +182,9 @@ ctest --preset run-tests
 cmake --preset tests-host
 cmake --build --preset build-tests
 ctest --preset run-tests
-.\build.ps1 -Arch riscv64
-.\build.ps1 -Arch arm64
-.\build.ps1 -Arch x86_64
+.\build.ps1 build --target riscv64
+.\build.ps1 build --target arm64
+.\build.ps1 build --target x86_64
 ```
 
 ---
