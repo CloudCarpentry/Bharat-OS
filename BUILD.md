@@ -248,19 +248,19 @@ Edit `build_config.json` to define your target composition (e.g. arch, UI on/off
 # Build and run x86_64 with GUI
 .\build.ps1 default_dev --run
 # Build and run x86_64 without GUI (Headless)
-.\build.ps1 default_dev --run-tests
+.\build.ps1 default_dev --run
 
 # --- ARM64 ---
 # Build and run ARM64 with GUI
 .\build.ps1 arm64_desktop_gui --run
 # Build and run ARM64 without GUI (Headless)
-.\build.ps1 arm64_desktop_headless --run-tests
+.\build.ps1 tools/targets/qemu/arm64_desktop_headless.yaml --run
 
 # --- RISCV64 ---
 # Build and run RISCV64 with GUI
 .\build.ps1 riscv64_desktop_gui --run
 # Build and run RISCV64 without GUI (Headless)
-.\build.ps1 riscv64_desktop_headless --run-tests
+.\build.ps1 tools/targets/qemu/riscv64_desktop_headless.yaml --run
 
 # --- ARM32 ---
 # Build and run ARM32 without GUI (Edge profile)
@@ -550,14 +550,14 @@ Use the validated runtime matrix as the baseline:
 
 ```powershell
 # x86_64 (using YAML target)
-.\build.ps1 x86_64_desktop_headless --run-tests
+.\build.ps1 tools/targets/qemu/x86_64_desktop_headless.yaml --run
 
 # arm64 (using YAML target)
-.\build.ps1 arm64_desktop_headless --run-tests
+.\build.ps1 tools/targets/qemu/arm64_desktop_headless.yaml --run
 
 # riscv64 (using YAML target)
-.\build.ps1 riscv64_desktop_headless --run-tests
+.\build.ps1 tools/targets/qemu/riscv64_desktop_headless.yaml --run
 
 # x86_64 legacy (using build_config.json)
-.\build.ps1 default_dev --run-tests
+.\build.ps1 default_dev --run
 ```

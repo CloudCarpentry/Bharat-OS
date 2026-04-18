@@ -1,244 +1,87 @@
-import argparse
-import json
-import os
-import subprocess
-import sys
-import boot
-
-from targets.loader import get_target
-from targets.validate import validate_target
-
 import sys
 import os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from tools.build.preset_resolver import resolve_target
+from pathlib import Path
 
-from tools.package.packager import package
-from tools.run import runner_qemu
+# Add repo root to sys.path so we can import from tools.*
+REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
-def load_manifest():
-    manifest_path = 'build_config.json'
-    try:
-        with open(manifest_path, 'r') as f:
-            return json.load(f)
-    except Exception as e:
-        print(f"Error loading {manifest_path}: {e}")
-        sys.exit(1)
+from tools.build.cli import parse_args
+from tools.build.target_resolver import resolve_target_input, resolve_yaml_target
+from tools.build.legacy_adapter import resolve_legacy_target
+from tools.build.validators import validate_resolved_target
 
-def print_list(manifest):
-    print("Available builds (legacy):")
-    if 'builds' in manifest:
-        for name, cfg in manifest['builds'].items():
-            print(f"  {name}: {cfg.get('preset')} ({cfg.get('arch')} / {cfg.get('profile')})")
-    else:
-        print("  No builds configured.")
+from tools.build.build_executor import make_build_plan, execute_build
+from tools.package.packager import make_package_plan, execute_package
+from tools.run.runner_qemu import run_qemu
 
-    print("\nAvailable targets (YAML):")
-    qemu_dir = 'tools/targets/qemu'
-    if os.path.exists(qemu_dir):
-        for f in os.listdir(qemu_dir):
-            if f.endswith('.yaml'):
-                print(f"  {f[:-5]}")
-
-def check_command(cmd):
-    try:
-        subprocess.run([cmd, '--version'], capture_output=True, check=True)
-        return True
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return False
-
-def doctor():
-    print("Checking dependencies...")
-    deps = {
-        'cmake': check_command('cmake'),
-        'ninja': check_command('ninja'),
-        'clang': check_command('clang'),
-        'lld': check_command('lld')
-    }
-    for tool, found in deps.items():
-        print(f"  {tool}: {'Found' if found else 'Missing'}")
-
-def normalize_csv(val):
-    if not val:
-        return ""
-    return str(val).split(',')[0].strip().upper()
-
-def run_command(cmd, cwd=None):
-    print(f"Running: {' '.join(cmd)}")
-    result = subprocess.run(cmd, cwd=cwd)
-    if result.returncode != 0:
-        print(f"Command failed with exit code {result.returncode}")
-        sys.exit(result.returncode)
-
-def do_configure(target_spec):
-    build_spec = target_spec.get('build', {})
-    preset = build_spec.get('cmake_preset')
-    defs = build_spec.get('cmake_defs', {})
-
-    cmd = ['cmake', f'--preset={preset}']
-    for k, v in defs.items():
-        cmd.append(f'-D{k}={v}')
-
-    run_command(cmd)
-
-def do_build(target_spec):
-    build_spec = target_spec.get('build', {})
-    preset = build_spec.get('cmake_preset')
-    run_command(['cmake', '--build', f'--preset={preset}'])
-
-def do_test(target_spec):
-    preset = target_spec.get('build', {}).get('cmake_preset')
-    build_dir = os.path.join('build', preset)
-    if not os.path.exists(build_dir):
-         print(f"Build directory {build_dir} not found. Please build first.")
-         sys.exit(1)
-    run_command(['ctest', '--test-dir', build_dir])
-
-def do_clean(target_spec):
-    preset = target_spec.get('build', {}).get('cmake_preset')
-    build_dir = os.path.join('build', preset)
-    if os.path.exists(build_dir):
-        run_command(['cmake', '--build', f'--preset={preset}', '--target', 'clean'])
-
-def do_package(target_spec):
-    if target_spec.get('_source') == 'yaml':
-        preset = target_spec.get('build', {}).get('cmake_preset')
-        build_dir = os.path.join('build', preset)
-        return package(target_spec, build_dir)
-    return None
-
-def do_run(target_spec, packaged_output=None, cpus=1):
-    if target_spec.get('_source') == 'yaml':
-        run_manifest_path = packaged_output.get('run_manifest')
-        if not run_manifest_path or not os.path.exists(run_manifest_path):
-            print("Error: Run manifest not found. Did packaging succeed?")
-            sys.exit(1)
-
-        with open(run_manifest_path, 'r') as f:
-            run_manifest = json.load(f)
-
-        runner_type = run_manifest.get('runner_type', 'qemu')
-        if runner_type == 'qemu':
-            runner_qemu.run(run_manifest)
-        else:
-            print(f"Error: Unknown runner type '{runner_type}'")
-            sys.exit(1)
-    else:
-        # Legacy run path
-        print("[Run] Falling back to legacy runner path for build_config.json target...")
-        legacy_cfg = target_spec.get('_legacy_cfg')
-        arch = legacy_cfg.get('arch')
-        preset = legacy_cfg.get('preset')
-        board = legacy_cfg.get('board')
-        build_dir = os.path.join('build', preset)
-
-        kernel_path = os.path.join(build_dir, 'kernel', 'kernel.elf')
-        boot_config = boot.get_bootloader(arch)(kernel_path)
-        run_kernel = boot_config.get('kernel_path', kernel_path)
-
-        RUN_MATRIX = {
-            ("x86_64", "qemu-virt"): {"runner": "qemu-system-x86_64", "machine": "q35", "smp_supported": True},
-            ("arm64", "virt"): {"runner": "qemu-system-aarch64", "machine": "virt", "cpu": "cortex-a57", "smp_supported": True},
-            ("riscv64", "virt"): {"runner": "qemu-system-riscv64", "machine": "virt", "smp_supported": True},
-            ("arm32", "avh-corstone310"): {"runner": "VHT_Corstone_SSE-310", "smp_supported": False},
-            ("arm32", "virt"): {"runner": "qemu-system-arm", "machine": "virt", "cpu": "cortex-a15", "smp_supported": True},
-            ("riscv32", "virt"): {"runner": "qemu-system-riscv32", "machine": "virt", "smp_supported": True},
-        }
-
-        run_config = RUN_MATRIX.get((arch, board))
-        if not run_config:
-            print(f"Error: No legacy run configuration for {arch} / {board}")
-            sys.exit(1)
-
-        runner = run_config.get('runner')
-        cmd = [runner]
-        if runner != 'VHT_Corstone_SSE-310':
-            cmd.extend(['-kernel', run_kernel, '-m', '512'])
-            if 'machine' in run_config:
-                cmd.extend(['-machine', run_config['machine']])
-            if 'cpu' in run_config:
-                cmd.extend(['-cpu', run_config['cpu']])
-            if arch == 'arm64':
-                cmd.extend(['-bios', 'none'])
-
-            if run_config.get("smp_supported", False) and cpus > 1:
-                cmd.extend(['-smp', str(cpus)])
-
-        display_cfg = legacy_cfg.get("display", {})
-        gui_enabled = display_cfg.get("enabled", legacy_cfg.get("gui", False))
-        if not gui_enabled:
-            cmd.append('-nographic')
-
-        run_command(cmd)
-
-def main():
-    parser = argparse.ArgumentParser(
-        description='Bharat-OS Build Wrapper (Manifest-driven Pipeline)\n\n'
-                    'Examples:\n'
-                    '  python tools/build.py arm64_desktop_headless --run\n'
-                    '  python tools/build.py tools/targets/qemu/x86_64_desktop_headless.yaml --build --run\n'
-                    '  python tools/build.py default_dev\n'
-                    '  python tools/build.py --list',
-        formatter_class=argparse.RawTextHelpFormatter
+def load_existing_build_outputs(target, repo_root):
+    from tools.build.models import BuildOutputs, ArtifactRecord
+    from tools.build.paths import get_output_root
+    build_dir = get_output_root(target, repo_root)
+    # Mocking for simplicity if we didn't just build it.
+    return BuildOutputs(
+        target=target,
+        build_dir=build_dir,
+        artifacts=[ArtifactRecord(kind="kernel_elf", path=build_dir / target.kernel.canonical_elf, producer="manual")]
     )
-    parser.add_argument('build_name', nargs='?', default='default_dev', help='Name of the build target or path to YAML')
-    parser.add_argument('--list', action='store_true', help='List available builds')
-    parser.add_argument('--doctor', action='store_true', help='Check environment')
-    parser.add_argument('--configure', action='store_true', help='Only configure the project')
-    parser.add_argument('--build', action='store_true', help='Build the project')
-    parser.add_argument('--run', action='store_true', help='Run the project in emulator')
-    parser.add_argument('--clean', action='store_true', help='Clean the build directory')
-    parser.add_argument('--test', action='store_true', help='Run tests (host)')
-    # Keep some legacy flags for compatibility wrappers
-    parser.add_argument('--run-tests', action='store_true', help='Run tests in emulator (legacy)')
-    parser.add_argument('--dual-serial', action='store_true', help='Legacy dual serial flag')
-    parser.add_argument('--cpus', type=int, default=1, help='Legacy CPUs flag')
-    parser.add_argument('--matrix', action='store_true', help='Legacy matrix flag')
 
-    args = parser.parse_args()
+def load_existing_package_outputs(target, repo_root):
+    from tools.build.models import PackageOutputs
+    from tools.build.paths import get_manifest_dir
+    manifest_dir = get_manifest_dir(target, repo_root)
+    return PackageOutputs(target=target, manifest_paths={"run": manifest_dir / "run-manifest.json"})
 
-    if args.doctor:
-        doctor()
-        return
+def main() -> int:
+    args = parse_args()
 
-    if args.list:
-        manifest = load_manifest()
-        print_list(manifest)
-        return
+    target_input = resolve_target_input(args.target, getattr(args, "target_yaml", None))
 
-    target_spec = resolve_target(args.build_name)
-    if not target_spec:
-        print(f"Error: Target '{args.build_name}' not found as YAML or in build_config.json.")
-        sys.exit(1)
+    repo_root = REPO_ROOT
 
-    # Default action if no specific action provided
-    if not (args.configure or args.build or args.run or args.clean or args.test):
-        args.configure = True
-        args.build = True
-        if target_spec.get('_source') == 'legacy' and target_spec.get('_legacy_cfg', {}).get('run', False):
-            args.run = True
-        elif target_spec.get('_source') == 'yaml' and target_spec.get('run'):
-            # Only run if a run block exists
-            pass # Keep default to build only
+    if target_input.source_kind == "yaml":
+        target = resolve_yaml_target(Path(target_input.source_ref))
+    else:
+        target = resolve_legacy_target(target_input.source_ref, repo_root)
 
-    if args.clean:
-        do_clean(target_spec)
+    validate_resolved_target(target)
 
-    if args.configure:
-        do_configure(target_spec)
+    build_outputs = None
+    if args.command in ("configure", "build", "all"):
+        build_plan = make_build_plan(target, repo_root)
+        build_outputs = execute_build(build_plan, repo_root)
+    else:
+        build_outputs = load_existing_build_outputs(target, repo_root)
 
-    if args.build:
-        do_build(target_spec)
+    package_outputs = None
+    if args.command in ("package", "all", "run", "flash", "debug"):
+        package_plan = make_package_plan(target, build_outputs, repo_root)
+        package_outputs = execute_package(package_plan, repo_root)
+    else:
+        package_outputs = load_existing_package_outputs(target, repo_root)
 
-    if args.test:
-        do_test(target_spec)
+    if args.command in ("run", "all"):
+        if not target.run:
+            print("Error: Target does not support 'run' action.")
+            return 1
+        return run_qemu(package_outputs.manifest_paths["run"])
 
-    if args.run or args.run_tests:
-        if target_spec.get('_source') == 'yaml':
-            packaged_output = do_package(target_spec)
-        else:
-            packaged_output = None
-        do_run(target_spec, packaged_output, args.cpus)
+    if args.command == "flash":
+        if not target.flash:
+            print("Error: Target does not support 'flash' action.")
+            return 1
+        from tools.flash.flasher import execute_flash
+        return execute_flash(package_outputs.manifest_paths["flash"], dry_run=getattr(args, "dry_run", False))
 
-if __name__ == '__main__':
-    main()
+    if args.command == "debug":
+        if not target.debug:
+            print("Error: Target does not support 'debug' action.")
+            return 1
+        print("Debug workflow not fully implemented yet.")
+        return 0
+
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main())

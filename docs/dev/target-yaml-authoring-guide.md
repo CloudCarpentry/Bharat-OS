@@ -1,73 +1,140 @@
 # Target YAML Authoring Guide
 
-Bharat-OS relies on declarative YAML files to define build targets, covering everything from CMake presets to packaging, running, and flashing. This replaces scattered legacy CLI flags and logic inside the build scripts.
+This guide explains how to define declarative targets for the Bharat-OS build and execution pipeline. Target YAML files describe the full lifecycle of a target: how it is built, packaged, run, flashed, and debugged.
 
-## Location
-Targets belong in:
-- `tools/targets/qemu/` for emulator targets.
-- `tools/targets/boards/` for physical hardware targets.
+Targets are stored in `tools/targets/` (e.g., `tools/targets/qemu/`, `tools/targets/boards/`).
 
-## Structure Overview
+## YAML Schema Overview
 
-A target YAML must contain the following keys:
-- `name`: Unique identifier for the target.
-- `arch`: Target architecture (e.g., `arm64`, `x86_64`).
-- `board`: Machine or board identifier (e.g., `qemu-virt-arm64`, `shakti-c`).
-- `build`: CMake configuration properties (`cmake_preset`, `cmake_defs`).
-- `kernel`: Path definitions for the core build artifact (`kernel.elf`).
-- `boot`: Boot protocol and artifact requirements.
-- `package`: Required transformations (e.g., `elf_to_bin`).
-- `run` (Optional): Instructions for running in an emulator.
-- `flash` (Optional): Instructions for deploying to hardware.
+A target specification contains several top-level sections:
 
-## Example: ARM64 QEMU Headless
+- **Metadata**: Identification (`name`, `kind`, `arch`, `board`).
+- **Profiles**: Feature selection (`device_profile`, `personality_profile`, `execution_profile`).
+- **build**: CMake compilation instructions.
+- **kernel**: Output mapping for canonical artifacts.
+- **boot**: Boot protocol and handoff expectations.
+- **package**: Instructions for deriving target-specific binaries from canonical artifacts.
+- **run**: Emulator configuration (e.g., QEMU).
+- **flash**: Hardware deployment configuration.
+- **debug**: Debugger attachment parameters.
+
+## Minimal QEMU Example
+
+Here is a typical target for a headless ARM64 QEMU execution:
 
 ```yaml
-name: arm64_desktop_headless_qemu
+name: arm64_desktop_headless
+kind: qemu_target
+
 arch: arm64
-board: virt
+board: qemu-virt-arm64
+device_profile: desktop
+personality_profile: none
+execution_profile: gp
 
 build:
   cmake_preset: arm64-edge
   cmake_defs:
     BHARAT_ARCH_FAMILY: ARM64
     BHARAT_DEVICE_PROFILE: DESKTOP
-    BHARAT_PERSONALITY_PROFILE: LINUX
+    BHARAT_PERSONALITY_PROFILE: NONE
     BHARAT_TARGET_BOARD: virt
     BHARAT_BOOT_GUI: OFF
 
 kernel:
-  canonical_artifact: build/arm64_desktop_headless_qemu/kernel/kernel.elf
-  entry_contract: kernel_main
+  canonical_artifacts:
+    elf: kernel/kernel.elf
+    map: kernel/kernel.map
 
 boot:
   protocol: linux_arm64
-  artifact_format: raw_image
+  artifact_format: raw_bin
   dtb:
     mode: qemu_generated
-    required_at_entry: true
+    required: true
     handoff_register: x0
 
 package:
   transforms:
     - type: elf_to_bin
-      input: build/arm64_desktop_headless_qemu/kernel/kernel.elf
-      output: build/arm64_desktop_headless_qemu/packaged/kernel.bin
+      input: kernel/kernel.elf
+      output: kernel.bin
 
 run:
-  method: qemu
+  backend: qemu
   machine: virt
   cpu: cortex-a72
   memory: 1024M
+  nographic: true
   serial:
     - stdio
-  display: none
-  boot_artifact: build/arm64_desktop_headless_qemu/packaged/kernel.bin
-  dtb:
-    mode: qemu_generated
-  extra_args:
-    - "-nographic"
+  boot_artifact: kernel.bin
+
+debug:
+  backend: gdb_remote
+  stop_on_entry: false
+  gdb_port: 1234
 ```
 
-## Validation
-Always validate new targets against the JSON schema defined in `tools/schemas/target.schema.yaml`.
+## Board Target Example
+
+A physical board will specify flash operations rather than run operations:
+
+```yaml
+name: stm32f4_discovery
+kind: board_target
+
+arch: arm32
+board: stm32f407g-disc1
+device_profile: iot
+personality_profile: native
+execution_profile: rt
+
+build:
+  cmake_preset: arm32-embedded
+  cmake_defs:
+    BHARAT_TARGET_BOARD: stm32f4
+    # ...
+
+kernel:
+  canonical_artifacts:
+    elf: kernel/kernel.elf
+
+boot:
+  protocol: raw_entry
+  artifact_format: raw_bin
+  dtb:
+    mode: appended
+
+package:
+  transforms:
+    - type: elf_to_bin
+      input: kernel/kernel.elf
+      output: flash_payload.bin
+
+flash:
+  backend: openocd
+  artifact: flash_payload.bin
+  probe: stlink-v2-1
+  verify: true
+  reset_after_flash: true
+
+debug:
+  backend: gdb_remote
+  symbols: kernel/kernel.elf
+```
+
+## Validation Rules
+
+When resolving the YAML, the pipeline performs structural validation (via JSON Schema) and semantic validation.
+
+- A target with a `qemu_target` kind must define a `run` block.
+- A `board_target` must define a `flash` block.
+- If the `boot` block requires an `artifact_format: raw_bin`, but the `kernel.canonical_artifacts.elf` is mapped, a valid `elf_to_bin` package transform must exist.
+- If `boot.dtb.required` is true, a `dtb.mode` must be declared.
+
+## Common Mistakes
+
+- **Omitting `boot_artifact`**: The `run` or `flash` block needs to know exactly which file to execute from the packaged output. If you applied an `elf_to_bin` transform, your `boot_artifact` should be the resulting `.bin` file, not the original `.elf`.
+- **Mixing Boot Protocol and Artifact Format**: `protocol` defines *how* the handoff happens (e.g., what registers are populated), while `artifact_format` defines *what* is loaded into memory.
+- **Forgetting PyYAML/jsonschema**: Since the pipeline relies on these for resolution, ensure your development environment has them installed.

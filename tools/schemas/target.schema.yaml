@@ -1,102 +1,150 @@
 $schema: "http://json-schema.org/draft-07/schema#"
-title: "Target Definition Schema"
-type: "object"
-required: ["name", "arch", "board", "build", "kernel", "boot"]
+title: "Target Specification"
+description: "Declarative target specification for Bharat-OS."
+type: object
+required:
+  - name
+  - kind
+  - arch
+  - board
+  - device_profile
+  - personality_profile
+  - build
+  - kernel
+  - boot
 properties:
   name:
-    type: "string"
+    type: string
+  kind:
+    type: string
+    enum: [qemu_target, board_target]
   arch:
-    type: "string"
-    enum: ["x86_64", "arm64", "riscv64", "arm32", "riscv32"]
+    type: string
   board:
-    type: "string"
+    type: string
   device_profile:
-    type: "string"
+    type: string
   personality_profile:
-    type: "string"
+    type: string
   execution_profile:
-    type: "string"
+    type: string
   build:
-    type: "object"
-    required: ["cmake_preset"]
+    type: object
+    required: [cmake_preset]
     properties:
       cmake_preset:
-        type: "string"
+        type: string
       cmake_defs:
-        type: "object"
+        type: object
         additionalProperties:
-          type: "string"
+          type: [string, boolean, number]
   kernel:
-    type: "object"
-    required: ["canonical_artifact"]
+    type: object
+    required: [canonical_artifacts]
     properties:
-      canonical_artifact:
-        type: "string"
-      entry_contract:
-        type: "string"
-      symbol_artifacts:
-        type: "array"
-        items:
-          type: "string"
+      canonical_artifacts:
+        type: object
+        required: [elf]
+        properties:
+          elf:
+            type: string
+          map:
+            type: string
+          symbols:
+            type: string
   boot:
-    type: "object"
-    required: ["protocol"]
+    type: object
+    required: [protocol, artifact_format]
     properties:
       protocol:
-        type: "string"
+        type: string
       artifact_format:
-        type: "string"
+        type: string
       dtb:
-        type: "object"
+        type: object
         properties:
           mode:
-            type: "string"
-          required_at_entry:
-            type: "boolean"
+            type: string
+            enum: [qemu_generated, external, embedded, appended, firmware_provided]
+          required:
+            type: boolean
+          path:
+            type: string
           handoff_register:
-            type: "string"
+            type: string
   package:
-    type: "object"
+    type: object
     properties:
       transforms:
-        type: "array"
+        type: array
         items:
-          type: "object"
+          type: object
+          required: [type, input, output]
           properties:
             type:
-              type: "string"
+              type: string
             input:
-              type: "string"
+              type: string
             output:
-              type: "string"
-          required: ["type", "input", "output"]
+              type: string
+            options:
+              type: object
   run:
-    type: "object"
+    type: object
     properties:
-      method:
-        type: "string"
+      backend:
+        type: string
       machine:
-        type: "string"
+        type: string
       cpu:
-        type: "string"
+        type: string
       memory:
-        type: "string"
-      smp:
-        type: "integer"
-      serial:
-        type: "array"
-        items:
-          type: "string"
-      display:
-        type: "string"
+        type: string
       boot_artifact:
-        type: "string"
-      dtb:
-        type: "object"
-        properties:
-          mode:
-            type: "string"
-      extra_args:
-        type: "array"
+        type: string
+      serial:
+        type: array
         items:
-          type: "string"
+          type: string
+      display:
+        type: string
+      nographic:
+        type: boolean
+      extra_args:
+        type: array
+        items:
+          type: string
+  flash:
+    type: object
+    properties:
+      backend:
+        type: string
+      artifact:
+        type: string
+      probe:
+        type: string
+      transport:
+        type: string
+      verify:
+        type: boolean
+      reset_after_flash:
+        type: boolean
+      extra_args:
+        type: array
+        items:
+          type: string
+  debug:
+    type: object
+    properties:
+      backend:
+        type: string
+      symbols:
+        type: string
+      gdb_port:
+        type: integer
+      stop_on_entry:
+        type: boolean
+      extra_args:
+        type: array
+        items:
+          type: string

@@ -1,45 +1,50 @@
 name: arm64_desktop_headless
+kind: qemu_target
+
 arch: arm64
 board: virt
-device_profile: DESKTOP
-personality_profile: LINUX
-execution_profile: edge
+device_profile: desktop
+personality_profile: native
+execution_profile: gp
 
 build:
   cmake_preset: arm64-edge
   cmake_defs:
     BHARAT_ARCH_FAMILY: ARM64
     BHARAT_DEVICE_PROFILE: DESKTOP
-    BHARAT_PERSONALITY_PROFILE: LINUX
+    BHARAT_PERSONALITY_PROFILE: NATIVE
     BHARAT_TARGET_BOARD: virt
     BHARAT_BOOT_GUI: OFF
 
 kernel:
-  canonical_artifact: kernel/kernel.elf
-  entry_contract: kernel_main
+  canonical_artifacts:
+    elf: kernel/kernel.elf
 
 boot:
   protocol: linux_arm64
-  artifact_format: raw_image
+  artifact_format: raw_bin
   dtb:
     mode: qemu_generated
-    required_at_entry: true
+    required: true
     handoff_register: x0
 
 package:
   transforms:
     - type: elf_to_bin
       input: kernel/kernel.elf
-      output: packaged/kernel.bin
+      output: kernel.bin
 
 run:
-  method: qemu
+  backend: qemu
   machine: virt
-  cpu: cortex-a72
+  cpu: cortex-a57
   memory: 512M
+  nographic: true
   serial:
     - stdio
-  display: none
-  boot_artifact: packaged/kernel.bin
-  dtb:
-    mode: qemu_generated
+  boot_artifact: kernel.bin
+
+debug:
+  backend: gdb_remote
+  stop_on_entry: false
+  gdb_port: 1234

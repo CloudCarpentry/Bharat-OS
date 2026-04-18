@@ -1,40 +1,44 @@
-import os
-import sys
 import json
+import os
 import subprocess
+import sys
+from pathlib import Path
+from shutil import which
 
-def check_command(cmd_name):
-    from shutil import which
+def check_command(cmd_name: str) -> bool:
     return which(cmd_name) is not None
 
-def run(manifest):
-    """
-    Runs QEMU purely based on the declarative run-manifest.json.
-    """
-    print(f"\n[Run] Launching QEMU for {manifest.get('target_name')}...")
+def load_run_manifest(path: Path) -> dict:
+    if not path.exists():
+        raise FileNotFoundError(f"Run manifest not found: {path}")
+    with open(path, "r") as f:
+        return json.load(f)
 
-    arch = manifest.get('arch')
-    run_config = manifest.get('run_config', {})
-    artifacts = manifest.get('artifacts', {})
-    boot_contract = manifest.get('boot_contract', {})
+def run_qemu(manifest_path: Path) -> int:
+    manifest = load_run_manifest(manifest_path)
 
-    # Validation: Boot contract compatibility
-    protocol = boot_contract.get('protocol')
-    boot_artifact = artifacts.get('boot_artifact')
+    target_name = manifest.get("target_name")
+    print(f"\n[Run] Launching QEMU for {target_name}...")
 
-    if not os.path.exists(boot_artifact):
+    arch = manifest.get("arch")
+    run_config = manifest.get("run_config", {})
+    artifacts = manifest.get("artifacts", {})
+    boot_contract = manifest.get("boot_contract", {})
+
+    boot_artifact = artifacts.get("boot_artifact")
+
+    if not boot_artifact or not os.path.exists(boot_artifact):
         print(f"Error: Boot artifact not found: {boot_artifact}")
         sys.exit(1)
 
     print(f"[Run] Using boot artifact: {boot_artifact}")
 
-    # Determine the correct runner binary
     qemu_bin_map = {
-        'x86_64': 'qemu-system-x86_64',
-        'arm64': 'qemu-system-aarch64',
-        'riscv64': 'qemu-system-riscv64',
-        'arm32': 'qemu-system-arm',
-        'riscv32': 'qemu-system-riscv32'
+        "x86_64": "qemu-system-x86_64",
+        "arm64": "qemu-system-aarch64",
+        "riscv64": "qemu-system-riscv64",
+        "arm32": "qemu-system-arm",
+        "riscv32": "qemu-system-riscv32"
     }
 
     runner = qemu_bin_map.get(arch)
@@ -48,44 +52,39 @@ def run(manifest):
 
     cmd = [runner]
 
-    # Basic Machine/CPU/Memory flags
-    machine = run_config.get('machine')
+    machine = run_config.get("machine")
     if machine:
-        cmd.extend(['-machine', machine])
+        cmd.extend(["-machine", machine])
 
-    cpu = run_config.get('cpu')
+    cpu = run_config.get("cpu")
     if cpu:
-        cmd.extend(['-cpu', cpu])
+        cmd.extend(["-cpu", cpu])
 
-    memory = run_config.get('memory')
+    memory = run_config.get("memory")
     if memory:
-        cmd.extend(['-m', memory])
+        cmd.extend(["-m", memory])
 
-    # Boot specific logic depending on contract / emulator
-    if arch == 'arm64' and boot_contract.get('dtb', {}).get('mode') == 'qemu_generated':
-        cmd.extend(['-bios', 'none'])
+    protocol = boot_contract.get("protocol")
+    if arch == "arm64" and boot_contract.get("dtb", {}).get("mode") == "qemu_generated":
+        cmd.extend(["-bios", "none"])
 
-    if protocol == 'linux_arm64' or protocol == 'multiboot2' or protocol == 'opensbi_payload':
-        cmd.extend(['-kernel', boot_artifact])
+    # Basic generic boot logic based on protocol
+    cmd.extend(["-kernel", boot_artifact])
+
+    if run_config.get("nographic", False):
+        cmd.extend(["-nographic"])
     else:
-        # Default fallback if protocol is generic or not specified
-        cmd.extend(['-kernel', boot_artifact])
+        display = run_config.get("display")
+        if display in ("desktop", "mobile"):
+            cmd.extend(["-device", "virtio-gpu-pci"])
 
-    # Display / Serial
-    display = run_config.get('display')
-    if display == 'none':
-        cmd.extend(['-nographic'])
-    elif display == 'desktop' or display == 'mobile':
-        cmd.extend(['-device', 'virtio-gpu-pci'])
-
-    # SMP
-    smp = run_config.get('smp')
+    smp = run_config.get("smp")
     if smp:
-        cmd.extend(['-smp', str(smp)])
+        cmd.extend(["-smp", str(smp)])
 
-    # Extra arguments
-    extra_args = run_config.get('extra_args', [])
-    cmd.extend(extra_args)
+    extra_args = run_config.get("extra_args", [])
+    if extra_args:
+        cmd.extend(extra_args)
 
     print(f"[Run] Executing: {' '.join(cmd)}")
 
@@ -96,8 +95,10 @@ def run(manifest):
         print("\n[Run] Terminating QEMU...")
         proc.kill()
         proc.wait()
-        sys.exit(0)
+        return 0
 
     if proc.returncode != 0:
         print(f"[Run] QEMU exited with code {proc.returncode}")
-        sys.exit(proc.returncode)
+        return proc.returncode
+
+    return 0
