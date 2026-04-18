@@ -27,7 +27,10 @@ boot:
     mode: qemu_generated
 
 package:
-  transforms: []
+  transforms:
+    - type: multiboot_elf_fix
+      input: kernel/kernel.elf
+      output: kernel/kernel.elf32
 
 run:
   backend: qemu
@@ -36,7 +39,7 @@ run:
   nographic: true
   serial:
     - stdio
-  boot_artifact: kernel/kernel.elf
+  boot_artifact: kernel/kernel.elf32
 
 debug:
   backend: gdb_remote

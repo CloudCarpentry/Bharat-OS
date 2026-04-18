@@ -17,8 +17,22 @@ def validate_boot_contract(target: ResolvedTarget) -> None:
     boot = target.boot
     kernel = target.kernel
 
-    # If the boot contract requires raw bin, we must have an elf_to_bin transform OR kernel elf is somehow bin.
-    # We check if there's an elf_to_bin transform in the package config if artifact_format is raw_bin.
+    # Protocol-specific semantic validation
+    if boot.protocol == "linux_arm64":
+        # linux_arm64 requires a proper Linux Image header. 
+        # A generic elf_to_bin (objcopy -O binary) is NOT sufficient as it lacks the header.
+        is_generic_bin = any(t.type == "elf_to_bin" for t in target.package.transforms)
+        if is_generic_bin:
+            print(f"Validation Error: Protocol 'linux_arm64' on ARM64 cannot accept a generic 'elf_to_bin' output. "
+                  f"It requires a real Linux ARM64 image with header. Use 'elf_direct' for QEMU simulation.")
+            sys.exit(1)
+
+    if boot.protocol == "elf_direct":
+        if boot.artifact_format != "elf":
+            print(f"Validation Error: Protocol 'elf_direct' requires artifact_format 'elf' for target '{target.name}'.")
+            sys.exit(1)
+
+    # General artifact format validation
     if boot.artifact_format == "raw_bin":
         has_transform = any(t.type == "elf_to_bin" for t in target.package.transforms)
         if not has_transform and not kernel.canonical_elf.endswith(".bin"):

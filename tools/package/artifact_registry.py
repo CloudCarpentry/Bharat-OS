@@ -1,10 +1,12 @@
 from tools.package.transforms.elf_to_bin import apply_elf_to_bin
+from tools.package.transforms.multiboot_elf_fix import apply_multiboot_elf_fix
 
 
 class ArtifactRegistry:
     def __init__(self):
         self.transforms = {
             "elf_to_bin": apply_elf_to_bin,
+            "multiboot_elf_fix": apply_multiboot_elf_fix,
         }
 
     def get_transform(self, transform_name):

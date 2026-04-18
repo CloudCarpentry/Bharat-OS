@@ -58,6 +58,7 @@ properties:
     properties:
       protocol:
         type: string
+        enum: [linux_arm64, multiboot2, opensbi_payload, raw_entry, uefi, elf_direct]
       artifact_format:
         type: string
       dtb:

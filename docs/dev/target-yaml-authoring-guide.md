@@ -20,7 +20,7 @@ A target specification contains several top-level sections:
 
 ## Minimal QEMU Example
 
-Here is a typical target for a headless ARM64 QEMU execution:
+Here is a typical target for a headless ARM64 QEMU execution using direct ELF loading:
 
 ```yaml
 name: arm64_desktop_headless
@@ -29,7 +29,7 @@ kind: qemu_target
 arch: arm64
 board: qemu-virt-arm64
 device_profile: desktop
-personality_profile: none
+personality_profile: native
 execution_profile: gp
 
 build:
@@ -37,7 +37,7 @@ build:
   cmake_defs:
     BHARAT_ARCH_FAMILY: ARM64
     BHARAT_DEVICE_PROFILE: DESKTOP
-    BHARAT_PERSONALITY_PROFILE: NONE
+    BHARAT_PERSONALITY_PROFILE: NATIVE
     BHARAT_TARGET_BOARD: virt
     BHARAT_BOOT_GUI: OFF
 
@@ -47,18 +47,15 @@ kernel:
     map: kernel/kernel.map
 
 boot:
-  protocol: linux_arm64
-  artifact_format: raw_bin
+  protocol: elf_direct
+  artifact_format: elf
   dtb:
     mode: qemu_generated
     required: true
     handoff_register: x0
 
 package:
-  transforms:
-    - type: elf_to_bin
-      input: kernel/kernel.elf
-      output: kernel.bin
+  transforms: []
 
 run:
   backend: qemu
@@ -68,7 +65,7 @@ run:
   nographic: true
   serial:
     - stdio
-  boot_artifact: kernel.bin
+  boot_artifact: kernel/kernel.elf
 
 debug:
   backend: gdb_remote
@@ -130,6 +127,9 @@ When resolving the YAML, the pipeline performs structural validation (via JSON S
 
 - A target with a `qemu_target` kind must define a `run` block.
 - A `board_target` must define a `flash` block.
+- **Protocol-Artifact Safety**: 
+  - `elf_direct` protocol requires `artifact_format: elf`.
+  - `linux_arm64` requires a real Linux Image (do not use generic `elf_to_bin` for this).
 - If the `boot` block requires an `artifact_format: raw_bin`, but the `kernel.canonical_artifacts.elf` is mapped, a valid `elf_to_bin` package transform must exist.
 - If `boot.dtb.required` is true, a `dtb.mode` must be declared.
 
@@ -137,4 +137,5 @@ When resolving the YAML, the pipeline performs structural validation (via JSON S
 
 - **Omitting `boot_artifact`**: The `run` or `flash` block needs to know exactly which file to execute from the packaged output. If you applied an `elf_to_bin` transform, your `boot_artifact` should be the resulting `.bin` file, not the original `.elf`.
 - **Mixing Boot Protocol and Artifact Format**: `protocol` defines *how* the handoff happens (e.g., what registers are populated), while `artifact_format` defines *what* is loaded into memory.
+- **Using `linux_arm64` for QEMU ELF simulation**: Use `elf_direct` instead. `linux_arm64` assumes a Linux Image binary with a valid 64-byte header.
 - **Forgetting PyYAML/jsonschema**: Since the pipeline relies on these for resolution, ensure your development environment has them installed.

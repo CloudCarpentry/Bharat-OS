@@ -5,14 +5,17 @@ import sys
 from pathlib import Path
 from shutil import which
 
+
 def check_command(cmd_name: str) -> bool:
     return which(cmd_name) is not None
+
 
 def load_run_manifest(path: Path) -> dict:
     if not path.exists():
         raise FileNotFoundError(f"Run manifest not found: {path}")
     with open(path, "r") as f:
         return json.load(f)
+
 
 def run_qemu(manifest_path: Path) -> int:
     manifest = load_run_manifest(manifest_path)
@@ -38,7 +41,7 @@ def run_qemu(manifest_path: Path) -> int:
         "arm64": "qemu-system-aarch64",
         "riscv64": "qemu-system-riscv64",
         "arm32": "qemu-system-arm",
-        "riscv32": "qemu-system-riscv32"
+        "riscv32": "qemu-system-riscv32",
     }
 
     runner = qemu_bin_map.get(arch)
@@ -65,20 +68,15 @@ def run_qemu(manifest_path: Path) -> int:
         cmd.extend(["-m", memory])
 
     protocol = boot_contract.get("protocol")
-    if arch == "arm64" and boot_contract.get("dtb", {}).get("mode") == "qemu_generated":
-        cmd.extend(["-bios", "none"])
 
     # Basic generic boot logic based on protocol
     cmd.extend(["-kernel", boot_artifact])
 
-    if run_config.get("nographic", False):
-        cmd.extend(["-nographic"])
-    else:
-        display = run_config.get("display")
-        if display in ("desktop", "mobile"):
-            cmd.extend(["-device", "virtio-gpu-pci"])
+    # We use discrete flags for better signal handling on Windows/WSL
+    # -nographic often hijacks the signal handler
+    cmd.extend(["-display", "none", "-serial", "stdio"])
 
-    smp = run_config.get("smp")
+    smp = run_config.get("smp", 1)
     if smp:
         cmd.extend(["-smp", str(smp)])
 
@@ -88,16 +86,26 @@ def run_qemu(manifest_path: Path) -> int:
 
     print(f"[Run] Executing: {' '.join(cmd)}")
 
+    import time
+
+    proc = None
     try:
         proc = subprocess.Popen(cmd)
-        proc.wait()
+        # Polling loop allows KeyboardInterrupt (Ctrl+C) to be caught on Windows
+        while proc.poll() is None:
+            time.sleep(0.1)
     except KeyboardInterrupt:
         print("\n[Run] Terminating QEMU...")
-        proc.kill()
-        proc.wait()
+        if proc:
+            # Try gentle termination first
+            proc.terminate()
+            try:
+                proc.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                proc.kill()
         return 0
 
-    if proc.returncode != 0:
+    if proc and proc.returncode != 0:
         print(f"[Run] QEMU exited with code {proc.returncode}")
         return proc.returncode
 
