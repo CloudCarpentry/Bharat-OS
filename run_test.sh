@@ -1,5 +1,5 @@
 #!/bin/bash
-./build.sh -Arch riscv64 -Run --e2e &
+./build.sh all --target riscv64_desktop_headless &
 PID=$!
 sleep 30
 kill $PID
