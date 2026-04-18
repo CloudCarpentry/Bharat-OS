@@ -1,0 +1,49 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+title: "Run Manifest Schema"
+type: "object"
+required: ["target_name", "arch", "board", "runner_type", "artifacts"]
+properties:
+  target_name:
+    type: "string"
+  arch:
+    type: "string"
+  board:
+    type: "string"
+  runner_type:
+    type: "string"
+  run_config:
+    type: "object"
+    properties:
+      machine:
+        type: "string"
+      cpu:
+        type: "string"
+      memory:
+        type: "string"
+      serial:
+        type: "array"
+        items:
+          type: "string"
+      display:
+        type: "string"
+      extra_args:
+        type: "array"
+        items:
+          type: "string"
+  artifacts:
+    type: "object"
+    required: ["boot_artifact"]
+    properties:
+      boot_artifact:
+        type: "string"
+      dtb:
+        type: "string"
+      canonical_elf:
+        type: "string"
+      symbol_file:
+        type: "string"
+  boot_contract:
+    type: "object"
+    properties:
+      protocol:
+        type: "string"

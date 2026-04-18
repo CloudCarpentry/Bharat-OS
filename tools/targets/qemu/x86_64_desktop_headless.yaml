@@ -1,0 +1,33 @@
+name: x86_64_desktop_headless
+arch: x86_64
+board: qemu-virt
+device_profile: DESKTOP
+personality_profile: NATIVE
+execution_profile: dev
+
+build:
+  cmake_preset: x86_64-dev
+  cmake_defs:
+    BHARAT_ARCH_FAMILY: X86_64
+    BHARAT_DEVICE_PROFILE: DESKTOP
+    BHARAT_PERSONALITY_PROFILE: NATIVE
+    BHARAT_TARGET_BOARD: qemu-virt
+    BHARAT_BOOT_GUI: OFF
+
+kernel:
+  canonical_artifact: kernel/kernel.elf
+  entry_contract: _start
+
+boot:
+  protocol: multiboot2
+  artifact_format: elf
+
+run:
+  method: qemu
+  machine: q35
+  cpu: max
+  memory: 512M
+  serial:
+    - stdio
+  display: none
+  boot_artifact: kernel/kernel.elf

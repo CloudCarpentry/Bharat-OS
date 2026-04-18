@@ -1,0 +1,102 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+title: "Target Definition Schema"
+type: "object"
+required: ["name", "arch", "board", "build", "kernel", "boot"]
+properties:
+  name:
+    type: "string"
+  arch:
+    type: "string"
+    enum: ["x86_64", "arm64", "riscv64", "arm32", "riscv32"]
+  board:
+    type: "string"
+  device_profile:
+    type: "string"
+  personality_profile:
+    type: "string"
+  execution_profile:
+    type: "string"
+  build:
+    type: "object"
+    required: ["cmake_preset"]
+    properties:
+      cmake_preset:
+        type: "string"
+      cmake_defs:
+        type: "object"
+        additionalProperties:
+          type: "string"
+  kernel:
+    type: "object"
+    required: ["canonical_artifact"]
+    properties:
+      canonical_artifact:
+        type: "string"
+      entry_contract:
+        type: "string"
+      symbol_artifacts:
+        type: "array"
+        items:
+          type: "string"
+  boot:
+    type: "object"
+    required: ["protocol"]
+    properties:
+      protocol:
+        type: "string"
+      artifact_format:
+        type: "string"
+      dtb:
+        type: "object"
+        properties:
+          mode:
+            type: "string"
+          required_at_entry:
+            type: "boolean"
+          handoff_register:
+            type: "string"
+  package:
+    type: "object"
+    properties:
+      transforms:
+        type: "array"
+        items:
+          type: "object"
+          properties:
+            type:
+              type: "string"
+            input:
+              type: "string"
+            output:
+              type: "string"
+          required: ["type", "input", "output"]
+  run:
+    type: "object"
+    properties:
+      method:
+        type: "string"
+      machine:
+        type: "string"
+      cpu:
+        type: "string"
+      memory:
+        type: "string"
+      smp:
+        type: "integer"
+      serial:
+        type: "array"
+        items:
+          type: "string"
+      display:
+        type: "string"
+      boot_artifact:
+        type: "string"
+      dtb:
+        type: "object"
+        properties:
+          mode:
+            type: "string"
+      extra_args:
+        type: "array"
+        items:
+          type: "string"

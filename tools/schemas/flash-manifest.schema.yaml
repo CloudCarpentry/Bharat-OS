@@ -1,0 +1,35 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+title: "Flash Manifest Schema"
+type: "object"
+required: ["target_name", "arch", "board", "flash_method", "artifacts"]
+properties:
+  target_name:
+    type: "string"
+  arch:
+    type: "string"
+  board:
+    type: "string"
+  flash_method:
+    type: "string"
+  flash_config:
+    type: "object"
+    properties:
+      probe:
+        type: "string"
+      transport:
+        type: "string"
+      verify:
+        type: "boolean"
+      reset_after_flash:
+        type: "boolean"
+  artifacts:
+    type: "object"
+    required: ["flash_image"]
+    properties:
+      flash_image:
+        type: "string"
+        description: "Path to the final image to flash"
+      checksum:
+        type: "string"
+      canonical_elf:
+        type: "string"

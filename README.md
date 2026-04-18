@@ -479,41 +479,35 @@ See:
 
 ### Build examples
 
-Bharat-OS uses a centralized build manifest (`build_config.json`) and the single `tools/build.py` script for all commands. You can invoke this through the root wrappers `build.sh` and `build.ps1`.
+Bharat-OS uses a declarative target pipeline driven by YAML files located in `tools/targets/`. The legacy `build_config.json` is still supported for backward compatibility, but target YAML specs are the primary source of truth. You can invoke the build pipeline through the root wrappers `build.sh` and `build.ps1`.
 
-To list all available configurations:
+To list all available targets (YAML and legacy):
 ```bash
 ./build.sh --list
 ```
 
 **Common build commands (Linux/macOS):**
 ```bash
-# Build the default x86_64 development profile
-./build.sh default_dev
+# Build and run the x86_64 headless YAML target
+./build.sh x86_64_desktop_headless --run
 
-# Build and immediately run the emulator
+# Clean, build, and run an arm64 edge device profile using a YAML target
+./build.sh arm64_desktop_headless --clean --run
+
+# Run a legacy target from build_config.json
 ./build.sh default_dev --run
-
-# Clean, build, and run an arm64 edge device profile
-./build.sh arm64_desktop_mmu --clean --run
-
-# Build and run a riscv64 edge profile with headless tests
-./build.sh riscv64_desktop_mmu --clean --run-tests
 ```
 
 **Common build commands (Windows):**
 ```powershell
-# Build the default x86_64 development profile
-.\build.ps1 default_dev
+# Build and run the x86_64 headless YAML target
+.\build.ps1 x86_64_desktop_headless --run
 
-# Build and immediately run the emulator
+# Clean, build, and run an arm64 edge device profile using a YAML target
+.\build.ps1 arm64_desktop_headless --clean --run
+
+# Run a legacy target from build_config.json
 .\build.ps1 default_dev --run
-
-# Clean, build, and run an arm64 edge device profile
-.\build.ps1 arm64_desktop_mmu --clean --run
-
-# Build and run a riscv64 edge profile with headless tests
-.\build.ps1 riscv64_desktop_mmu --clean --run-tests
 ```
 
 ### 🚨 Migration Guide: Legacy Flags Removed
@@ -529,7 +523,7 @@ The build system has been unified around `tools/build.py` using canonical `argpa
 | `.\build.ps1 -Arch x86_64 -DualSerial` | `.\build.ps1 default_dev --run --dual-serial` | |
 | `./build.sh -Arch x86_64 -E2e` | `./build.sh default_dev --run-tests` | |
 
-If you need a specific combination of architecture, profile, and features that does not exist in `build_config.json`, simply add a new block to the JSON file.
+If you need a specific combination of architecture, profile, and features, you should create a declarative YAML target specification file in `tools/targets/qemu/` or `tools/targets/boards/`. The legacy `build_config.json` is deprecated and no longer accepts new features.
 
 ### Profile/personality/board-aware CMake configuration
 
