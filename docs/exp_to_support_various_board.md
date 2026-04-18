@@ -156,3 +156,52 @@ Adopt a **capability-class support policy**:
 - **H2+** = real deployable Bharat-OS runtime
 
 This preserves architectural integrity (mechanism in kernel, policy in services, behavior via profiles) and creates a transparent, automation-friendly support model.
+
+---
+
+## Empirical RV32 MPU Footprint Check (Build-Based, April 17, 2026)
+
+To validate the practical minimum footprint for a RISC-V32 + MPU configuration, we attempted a release build with MMU/advanced VM features disabled and MPU enabled.
+
+### Build Configuration Used
+
+```bash
+cmake -S . -B build/riscv32-mpu-min -G Ninja \
+  -DARCH=riscv32 \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DBHARAT_DEVICE_PROFILE=RTOS \
+  -DBHARAT_TARGET_BOARD=virt \
+  -DBHARAT_ENABLE_MMU=OFF \
+  -DBHARAT_ENABLE_MPU=ON \
+  -DBHARAT_ENABLE_ADVANCED_VM=OFF \
+  -DBHARAT_ENABLE_IOMMU=OFF \
+  -DBHARAT_ENABLE_DMA_MAP=OFF \
+  -DBHARAT_ENABLE_COW=OFF \
+  -DBHARAT_ENABLE_DEMAND_PAGING=OFF \
+  -DBHARAT_ENABLE_SHARED_MEMORY=OFF \
+  -DBHARAT_ENABLE_NUMA=OFF \
+  -DBHARAT_ENABLE_ALLOC_CLASSES=OFF \
+  -DBHARAT_ENABLE_MEMORY_STATS=OFF
+cmake --build build/riscv32-mpu-min
+```
+
+### What We Observed
+
+- The build compiles a large portion of the codebase for `riscv32`, but final link is still incomplete (undefined symbols remain for current RV32 bring-up).
+- Even **before** final kernel ELF link, compiled `kernel.elf` object files already show this lower bound:
+  - `.text` ≈ **72,544 bytes**
+  - `.data` ≈ **180 bytes**
+  - `.bss` ≈ **74,142 bytes**
+  - aggregate (`text + data + bss`) ≈ **146,866 bytes**
+
+### Implication for CH32V003-Class Board (2 KB RAM, 16 KB Flash, MPU-only)
+
+Given the measured lower-bound object footprint from an MPU-oriented RV32 build:
+
+- Flash need is already far beyond **16 KB**.
+- RAM/BSS need is already far beyond **2 KB**.
+
+So CH32V003 remains correctly classified as:
+
+- **H0 experimental kernel bring-up target only**
+- **not a full Bharat-OS runtime target**
