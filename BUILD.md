@@ -549,12 +549,15 @@ Use the validated runtime matrix as the baseline:
 ### Quick Start Commands (Windows PowerShell)
 
 ```powershell
-# x86_64
-.\build.ps1 default_dev --run-tests
+# x86_64 (using YAML target)
+.\build.ps1 x86_64_desktop_headless --run-tests
 
-# arm64
+# arm64 (using YAML target)
 .\build.ps1 arm64_desktop_headless --run-tests
 
-# riscv64
+# riscv64 (using YAML target)
 .\build.ps1 riscv64_desktop_headless --run-tests
+
+# x86_64 legacy (using build_config.json)
+.\build.ps1 default_dev --run-tests
 ```
