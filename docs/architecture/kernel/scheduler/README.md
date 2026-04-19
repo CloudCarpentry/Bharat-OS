@@ -18,3 +18,4 @@ The `scheduler` cluster details how the Bharat-OS kernel distributes CPU time am
 - [Preemption](preemption.md) - Kernel preemption points, IRQ-safe regions, and voluntary yielding.
 - [Real-Time Support](realtime.md) - The RT task model and EDF (Earliest Deadline First) scheduling.
 - [Roadmap](roadmap.md) - Current status and future goals for the scheduler.
+- [Invariants & Router Contract](invariants-and-router-contract.md) - Scheduler ownership invariants and the class-router mechanism boundary for refactors.
