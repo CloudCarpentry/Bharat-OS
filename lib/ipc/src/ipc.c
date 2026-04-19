@@ -1,6 +1,7 @@
 #include <bharat/ipc/ipc.h>
 #include <bharat/uapi/ipc/contract.h>
 #include <ipc_user.h>
+#include <lib/base/string.h>
 #include <stdint.h>
 #include <stddef.h>
 
