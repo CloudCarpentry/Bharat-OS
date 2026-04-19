@@ -1,6 +1,9 @@
 #include "sched/ai_sched.h"
 #include "hal/hal_timer.h"
 #include <stddef.h>
+#include <sched/sched.h>
+
+extern bool sched_is_core_admissible(kthread_t *t, int cpu_id);
 
 // @cite Integrating Artificial Intelligence into Operating Systems (Korshun et al., 2024)
 // @cite Enhancing Operating System Performance with AI (S. S. et al., 2025)

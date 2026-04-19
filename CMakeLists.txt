@@ -11,6 +11,7 @@ include(BharatCommon)
 include(BharatProfiles)
 include(BharatPersonality)
 include(BharatComponentPolicy)
+include(${CMAKE_SOURCE_DIR}/cmake/BharatConstraints.cmake)
 
 # Versioning Identity System: Generate and load from manifest
 set(BHARAT_MANIFEST_JSON "${CMAKE_SOURCE_DIR}/release/manifest/os-release.json")

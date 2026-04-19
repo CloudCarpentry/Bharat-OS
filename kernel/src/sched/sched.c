@@ -329,12 +329,17 @@ static void sched_reap_terminated_threads(void) {
   }
 }
 
+extern bool sched_is_core_admissible(kthread_t *t, int cpu_id);
+
 int sched_enqueue(kthread_t *thread, uint32_t core_id) {
   if (!thread || thread->priority >= MAX_PRIORITY_LEVELS) {
     return -1;
   }
 
   core_id = sched_clamp_core(core_id);
+  if (!sched_is_core_admissible(thread, core_id)) {
+    return -1; // SCHED_REJECT
+  }
   uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
   bool is_local = (core_id == current_core);
 
@@ -516,6 +521,7 @@ static kthread_t *sched_create_bootstrap_thread(kprocess_t *parent,
   slot->thread.thread_id = atomic64_fetch_and_add_ptr(&g_next_thread_id, 1);
   slot->thread.process_id = parent ? parent->process_id : 0U;
   slot->thread.process = parent;
+  slot->thread.constraints.cpu_mask = 0xFFFFFFFF; // Admissible everywhere by default
   slot->thread.home_core_id = sched_clamp_core(hal_cpu_get_id());
   slot->thread.generation = 1U;
   slot->thread.personality = PERSONALITY_NATIVE;
@@ -944,6 +950,23 @@ static kthread_t *sched_pick_next_ready(uint32_t core_id) {
   }
 
   if (!next) {
+      return rq->idle_thread;
+  }
+
+  // Fallback: If not admissible on this core (e.g. from dynamic constraint update while queued),
+  // try to find a valid core, else fallback to idle.
+  if (!sched_is_core_admissible(next, core_id)) {
+      bool found = false;
+      for (uint32_t i = 0; i < g_active_core_count; ++i) {
+          if (sched_is_core_admissible(next, i)) {
+              sched_enqueue(next, i);
+              found = true;
+              break;
+          }
+      }
+      if (!found) {
+          // If no core is valid, put it back to sleep/deferred queue (simple drop for MVP)
+      }
       return rq->idle_thread;
   }
 
@@ -1416,6 +1439,11 @@ static void sched_balance_once(void) {
 
   kthread_t *candidate = sched_pick_next_ready(busiest);
   if (!candidate || candidate == g_cpu_locals[busiest].runqueue.idle_thread) {
+    return;
+  }
+
+  if (!sched_is_core_admissible(candidate, idlest)) {
+    (void)sched_enqueue(candidate, busiest);
     return;
   }
 

@@ -569,3 +569,12 @@ if(ARCH STREQUAL "riscv64" AND BHARAT_RISCV_BUILD_PAYLOAD_BIN)
     endif()
 endif()
 
+if(BHARAT_ENABLE_CONSTRAINTS)
+    target_sources(kernel.elf PRIVATE
+        src/core/constraints/constraints_common.c
+        src/core/constraints/constraint_validate.c
+        src/sys/sys_constraints.c
+        src/sched/constraint_apply.c
+        src/sched/constraint_trace.c
+    )
+endif()

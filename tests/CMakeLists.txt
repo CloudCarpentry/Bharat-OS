@@ -499,3 +499,12 @@ target_include_directories(test_unmapped_fault PRIVATE ../kernel/include ../incl
 add_test(NAME test_unmapped_fault COMMAND test_unmapped_fault)
 
 add_subdirectory(drivers)
+add_executable(test_constraint_validation
+    core/test_constraint_validation.c
+)
+target_include_directories(test_constraint_validation PRIVATE
+    ${CMAKE_SOURCE_DIR}/kernel/include
+    ${CMAKE_SOURCE_DIR}/uapi
+)
+target_sources(test_constraint_validation PRIVATE ${CMAKE_SOURCE_DIR}/kernel/src/core/constraints/constraints_common.c ${CMAKE_SOURCE_DIR}/kernel/src/core/constraints/constraint_validate.c)
+add_test(NAME test_constraint_validation COMMAND test_constraint_validation)
