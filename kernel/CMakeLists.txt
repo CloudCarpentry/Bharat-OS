@@ -375,7 +375,7 @@ set(KERNEL_SRCS
     $<$<STREQUAL:${ARCH},riscv32>:../arch/riscv/riscv32/arch_caps.c>
     ${ARCH_EXT_STATE_SRC}
     ../hal/hal_mem_backend.c
-    ../hal/iommu_stub.c
+    ../hal/common/iommu_adapter.c
     ../hal/dma_coherency.c
     ../hal/interrupt_common.c
     ../hal/timer_common.c

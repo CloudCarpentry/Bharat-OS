@@ -9,8 +9,27 @@ target_link_libraries(bharat_crt0 PUBLIC bharat_freestanding bharat_syscall)
 # Add the lib/runtime static library
 add_library(bharat_libruntime STATIC src/runtime.c src/freestanding_string.c)
 
+# Add backend dispatch framework (Gated behind feature if needed, currently unconditionally available as an object/static)
+add_library(bharat_runtime_backend_dispatch OBJECT backend_dispatch/backend_registry.c)
+target_include_directories(bharat_runtime_backend_dispatch PRIVATE ../../)
+target_link_libraries(bharat_runtime_backend_dispatch PUBLIC bharat_freestanding)
+bharat_configure_userspace_library(bharat_runtime_backend_dispatch)
+
+# Crypto Pilot
+add_library(bharat_runtime_crypto OBJECT crypto/crypto_dispatch.c)
+target_include_directories(bharat_runtime_crypto PRIVATE ../../)
+target_link_libraries(bharat_runtime_crypto PUBLIC bharat_freestanding bharat_runtime_backend_dispatch)
+bharat_configure_userspace_library(bharat_runtime_crypto)
+
+# Tensor Pilot
+add_library(bharat_runtime_tensor OBJECT accel/tensor_dispatch.c)
+target_include_directories(bharat_runtime_tensor PRIVATE ../../)
+target_link_libraries(bharat_runtime_tensor PUBLIC bharat_freestanding bharat_runtime_backend_dispatch)
+bharat_configure_userspace_library(bharat_runtime_tensor)
+
 # Set the public include directory
 target_include_directories(bharat_libruntime PUBLIC include)
+target_link_libraries(bharat_libruntime PRIVATE bharat_runtime_backend_dispatch bharat_runtime_crypto bharat_runtime_tensor)
 
 # Runtime depends on cap and ipc headers
 target_link_libraries(bharat_libruntime PUBLIC cap ipc bharat_syscall bharat_freestanding)

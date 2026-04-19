@@ -5,7 +5,7 @@
 #include "mm.h"
 #include "security/isolation.h"
 #include "security/vfio.h"
-#include "hal/iommu.h"
+#include "hal/hal_iommu.h"
 
 struct hal_iommu_domain { int dummy; };
 struct hal_iommu_group { int dummy; };
