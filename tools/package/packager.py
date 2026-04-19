@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 
 from tools.build.models import ArtifactRecord, BuildOutputs, PackageOutputs, PackagePlan, ResolvedTarget
 from tools.build.paths import get_manifest_dir, get_packaged_dir
@@ -85,4 +86,27 @@ def execute_package(plan: PackagePlan, repo_root: Path) -> PackageOutputs:
         debug_manifest_path = plan.manifest_dir / "debug-manifest.json"
         manifest_paths["debug"] = write_debug_manifest(plan.target, outputs, debug_manifest_path)
 
+    footprint_report = _write_footprint_report(plan, packaged_artifacts)
+    manifest_paths["footprint_report"] = footprint_report
+
     return outputs
+
+
+def _write_footprint_report(plan: PackagePlan, artifacts: list[ArtifactRecord]) -> Path:
+    report_path = plan.manifest_dir / "footprint-report.json"
+    by_kind = {}
+    for artifact in artifacts:
+        size = artifact.path.stat().st_size if artifact.path.exists() else 0
+        by_kind.setdefault(artifact.kind, 0)
+        by_kind[artifact.kind] += size
+
+    payload = {
+        "target": plan.target.name,
+        "arch": plan.target.arch,
+        "footprint_profile": plan.target.footprint_profile,
+        "binary_size_breakdown_bytes": by_kind,
+        "total_artifact_size_bytes": sum(by_kind.values()),
+    }
+    with open(report_path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2)
+    return report_path
