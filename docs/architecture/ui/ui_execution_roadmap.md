@@ -1,17 +1,21 @@
 # Bharat-OS UI/Display Roadmap (Ticket-Oriented, Production-Grade)
 
-**Status:** Proposed next-task execution plan  
+**Status:** Wave 1 completed; Wave 2 implementation in progress  
 **Scope:** UI/media architecture as first-class Bharat-OS area, explicitly out of kernel policy space.
 
 ## Current Execution Focus (Started)
 
-- **Selected core task:** **P1 — Production-grade display/input class model**.
-- **Why this task first:** it unblocks `devmgr`, `displayd`, `inputd`, and every higher-level UI stack by defining a stable service-visible hardware contract.
-- **Implementation started in this change-set:**
+- **Completed core task:** **P1 — Production-grade display/input class model**.
+- **Current task in progress:** **P2 — Production-grade boot display + tiny UI path**.
+- **Why P2 now:** with P1 contracts in place, a deterministic boot/safe-mode UI can be wired without board-specific assumptions.
+- **Implementation landed so far:**
   - canonical display/input subclasses added to shared device class UAPI
   - generic display/input capability-bit registry added
   - canonical display/input capability structs and input event wire shape added
   - host test added for UI class/capability contract stability
+  - tiny LCD/framebuffer renderer core added under `stacks/ui/lcd/`
+  - `boot_displayd` now uses the shared tiny UI renderer/state model
+  - host test added for tiny UI page/input/progress rendering behavior
 
 ---
 
@@ -353,13 +357,13 @@ Host richer Linux-like GUI stacks in optional profiles.
 
 ## 7) Ticket-Ready Agent Tasks
 
-1. **Agent Task 1** — Write Bharat-OS GUI architecture and layering contract.
+1. **Agent Task 1** — ✅ Write Bharat-OS GUI architecture and layering contract.
    - DoD: paths named, boundaries explicit, open-source hosting approach and trusted path documented.
-2. **Agent Task 2** — Write GUI roadmap with profile/capability matrix.
+2. **Agent Task 2** — ✅ Write GUI roadmap with profile/capability matrix.
    - DoD: phase plan, compile-time/runtime model, dependencies and release gates.
-3. **Agent Task 3** — Implement canonical display/input classes and descriptors.
+3. **Agent Task 3** — ✅ Implement canonical display/input classes and descriptors.
    - DoD: class model merged, service query path exists, tests pass.
-4. **Agent Task 4** — Implement `boot_displayd` and tiny LCD/framebuffer stack.
+4. **Agent Task 4** — 🟡 Implement `boot_displayd` and tiny LCD/framebuffer stack (in progress).
    - DoD: boot/safe-mode UI renders; low-memory path and basic input navigation work.
 5. **Agent Task 5** — Implement surface/buffer lifecycle + direct-scanout path.
    - DoD: fullscreen direct present works; lifecycle explicit; tests cover ownership and plane selection.
