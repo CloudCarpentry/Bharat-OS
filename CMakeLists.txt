@@ -96,10 +96,11 @@ set(BHARAT_ISA_FEATURES "" CACHE STRING "Target ISA features as a semicolon-sepa
 set(BHARAT_ACCELERATOR_CLASSES "" CACHE STRING "Target accelerator classes as a semicolon-separated list (e.g., gpu;npu;dsp;crypto;vpu)")
 
 # Execution Mode Framework Integration
-if(EXISTS "${CMAKE_SOURCE_DIR}/cmake/BharatExecutionMode.cmake")
-    include(cmake/BharatExecutionMode.cmake)
+set(BHARAT_EXECUTION_MODE_MODULE "${CMAKE_CURRENT_SOURCE_DIR}/cmake/BharatExecutionMode.cmake")
+if(EXISTS "${BHARAT_EXECUTION_MODE_MODULE}")
+    include("${BHARAT_EXECUTION_MODE_MODULE}")
 else()
-    message(WARNING "BharatExecutionMode.cmake not found, using defaults")
+    message(WARNING "Optional execution mode module not found: ${BHARAT_EXECUTION_MODE_MODULE}. Continuing with in-tree defaults.")
 endif()
 
 # Memory Capability Options
