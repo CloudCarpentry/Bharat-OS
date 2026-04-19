@@ -27,6 +27,7 @@ int services_init_main(void) {
     // Prepare context
     init_boot_context_t ctx;
     init_profile_get_context(&ctx);
+    const init_profile_policy_t *policy = init_profile_get_policy(ctx.profile);
 
     if (ctx.profile == INIT_PROFILE_TINY) {
         bharat_runtime_log("services/init: Running in TINY profile mode.");
@@ -44,14 +45,16 @@ int services_init_main(void) {
         }
     }
 
-    bharat_runtime_log("services/init: Initialization graph complete. Suspending.");
+    bharat_runtime_log("services/init: Initialization graph complete.");
 
-    // Simulate main event loop or sleep
-    while(1) {
-        bharat_sched_yield();
+    if (policy->quiesce_after_handoff) {
+        bharat_runtime_log("services/init: Entering quiescent mode.");
+        while(1) {
+            bharat_sched_yield();
+        }
     }
 
-    // Unreachable
+    bharat_runtime_log("services/init: Exiting after handoff.");
     bharat_runtime_shutdown();
     return 0;
 }

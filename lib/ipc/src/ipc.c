@@ -1,8 +1,10 @@
 #include <bharat/ipc/ipc.h>
 #include <bharat/uapi/ipc/contract.h>
 #include <ipc_user.h>
-#include <string.h>
 #include <stdint.h>
+#include <stddef.h>
+
+#define memcpy __builtin_memcpy
 
 #define BHARAT_IPC_ENDPOINT_PAYLOAD_MAX 128u
 

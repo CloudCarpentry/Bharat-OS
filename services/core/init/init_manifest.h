@@ -6,15 +6,6 @@
 #include <stddef.h>
 
 typedef enum {
-    BHARAT_INIT_PROFILE_TINY = 1,
-    BHARAT_INIT_PROFILE_SMALL = 2,
-    BHARAT_INIT_PROFILE_EMBEDDED_RICH = 4,
-    BHARAT_INIT_PROFILE_MOBILE = 8,
-    BHARAT_INIT_PROFILE_DESKTOP = 16,
-    BHARAT_INIT_PROFILE_DRONE = 32,
-} bharat_init_profile_t;
-
-typedef enum {
     INIT_SERVICE_DISABLED = 0,
     INIT_SERVICE_OPTIONAL,
     INIT_SERVICE_REQUIRED,
@@ -35,6 +26,20 @@ typedef uint64_t bharat_init_personality_mask_t;
 #define BHARAT_INIT_CAP_DISPLAY         (1 << 2)
 #define BHARAT_INIT_CAP_SENSORS         (1 << 3)
 #define BHARAT_INIT_CAP_MMU             (1 << 4)
+
+// Profile mask flags (mapped to shared uapi profile enum values)
+#define BHARAT_INIT_PROFILE_TINY            ((bharat_init_profile_mask_t)INIT_PROFILE_TINY)
+#define BHARAT_INIT_PROFILE_SMALL           ((bharat_init_profile_mask_t)INIT_PROFILE_SMALL)
+#define BHARAT_INIT_PROFILE_EMBEDDED_RICH   ((bharat_init_profile_mask_t)INIT_PROFILE_EMBEDDED_RICH)
+#define BHARAT_INIT_PROFILE_RT              ((bharat_init_profile_mask_t)INIT_PROFILE_RT)
+#define BHARAT_INIT_PROFILE_MOBILE          ((bharat_init_profile_mask_t)INIT_PROFILE_MOBILE)
+#define BHARAT_INIT_PROFILE_DESKTOP         ((bharat_init_profile_mask_t)INIT_PROFILE_DESKTOP)
+#define BHARAT_INIT_PROFILE_DRONE           ((bharat_init_profile_mask_t)INIT_PROFILE_DRONE)
+#define BHARAT_INIT_PROFILE_CLOUD           ((bharat_init_profile_mask_t)INIT_PROFILE_CLOUD)
+#define BHARAT_INIT_PROFILE_AUTOMOTIVE      ((bharat_init_profile_mask_t)INIT_PROFILE_AUTOMOTIVE)
+#define BHARAT_INIT_PROFILE_TV              ((bharat_init_profile_mask_t)INIT_PROFILE_TV)
+#define BHARAT_INIT_PROFILE_APPLIANCE       ((bharat_init_profile_mask_t)INIT_PROFILE_APPLIANCE)
+#define BHARAT_INIT_PROFILE_WATCH           ((bharat_init_profile_mask_t)INIT_PROFILE_WATCH)
 
 // Platform mask placeholders (example)
 #define BHARAT_INIT_BOARD_ANY           (0xFFFFFFFFU)

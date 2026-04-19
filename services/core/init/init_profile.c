@@ -11,6 +11,39 @@
 #define BHARAT_INIT_CAP_MMU             (1 << 4)
 #endif
 
+static const init_profile_policy_t g_default_policy = {
+    .name = "unknown",
+    .strict_core_deadlines = false,
+    .quiesce_after_handoff = false,
+    .allow_optional_failure = true,
+};
+
+static const init_profile_policy_t g_profile_policies[] = {
+    [0] = {0},
+    [1] = { .name = "tiny", .strict_core_deadlines = false, .quiesce_after_handoff = false, .allow_optional_failure = true },
+    [2] = { .name = "small", .strict_core_deadlines = false, .quiesce_after_handoff = false, .allow_optional_failure = true },
+    [4] = { .name = "embedded_rich", .strict_core_deadlines = true, .quiesce_after_handoff = true, .allow_optional_failure = true },
+    [8] = { .name = "rt", .strict_core_deadlines = true, .quiesce_after_handoff = false, .allow_optional_failure = true },
+    [16] = { .name = "mobile", .strict_core_deadlines = true, .quiesce_after_handoff = true, .allow_optional_failure = true },
+    [32] = { .name = "desktop", .strict_core_deadlines = false, .quiesce_after_handoff = false, .allow_optional_failure = true },
+    [64] = { .name = "drone", .strict_core_deadlines = true, .quiesce_after_handoff = true, .allow_optional_failure = false },
+    [128] = { .name = "cloud", .strict_core_deadlines = true, .quiesce_after_handoff = true, .allow_optional_failure = true },
+    [256] = { .name = "automotive", .strict_core_deadlines = true, .quiesce_after_handoff = true, .allow_optional_failure = true },
+    [512] = { .name = "tv", .strict_core_deadlines = false, .quiesce_after_handoff = true, .allow_optional_failure = true },
+    [1024] = { .name = "appliance", .strict_core_deadlines = true, .quiesce_after_handoff = true, .allow_optional_failure = false },
+    [2048] = { .name = "watch", .strict_core_deadlines = true, .quiesce_after_handoff = true, .allow_optional_failure = true },
+};
+
+const init_profile_policy_t *init_profile_get_policy(init_profile_t profile) {
+    if (profile > 0 && profile < (init_profile_t)(sizeof(g_profile_policies) / sizeof(g_profile_policies[0]))) {
+        const init_profile_policy_t *policy = &g_profile_policies[profile];
+        if (policy->name != NULL) {
+            return policy;
+        }
+    }
+    return &g_default_policy;
+}
+
 void init_profile_get_context(init_boot_context_t *ctx) {
     if (!ctx) return;
 
@@ -40,6 +73,16 @@ void init_profile_get_context(init_boot_context_t *ctx) {
     ctx->profile = INIT_PROFILE_DESKTOP;
 #elif defined(BHARAT_INIT_PROFILE_DRONE)
     ctx->profile = INIT_PROFILE_DRONE;
+#elif defined(BHARAT_INIT_PROFILE_CLOUD)
+    ctx->profile = INIT_PROFILE_CLOUD;
+#elif defined(BHARAT_INIT_PROFILE_AUTOMOTIVE)
+    ctx->profile = INIT_PROFILE_AUTOMOTIVE;
+#elif defined(BHARAT_INIT_PROFILE_TV)
+    ctx->profile = INIT_PROFILE_TV;
+#elif defined(BHARAT_INIT_PROFILE_APPLIANCE)
+    ctx->profile = INIT_PROFILE_APPLIANCE;
+#elif defined(BHARAT_INIT_PROFILE_WATCH)
+    ctx->profile = INIT_PROFILE_WATCH;
 #elif defined(BHARAT_DEFAULT_INIT_PROFILE)
     // Fallback if built with BHARAT_DEFAULT_INIT_PROFILE string definition
     ctx->profile = INIT_PROFILE_DESKTOP;

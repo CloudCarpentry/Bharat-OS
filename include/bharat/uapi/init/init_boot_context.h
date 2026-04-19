@@ -18,6 +18,10 @@ typedef enum {
     INIT_PROFILE_DESKTOP = 32,
     INIT_PROFILE_DRONE = 64,
     INIT_PROFILE_CLOUD = 128,
+    INIT_PROFILE_AUTOMOTIVE = 256,
+    INIT_PROFILE_TV = 512,
+    INIT_PROFILE_APPLIANCE = 1024,
+    INIT_PROFILE_WATCH = 2048,
 } init_profile_t;
 
 typedef enum {
