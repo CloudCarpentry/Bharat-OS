@@ -142,12 +142,16 @@ For a pure terminal-based experience without a QEMU graphical window (e.g., CI o
 .\build.ps1 all --target x86_64_desktop_headless
 .\build.ps1 all --target arm64_desktop_headless
 .\build.ps1 all --target riscv64_desktop_headless
+.\build.ps1 all --target arm32_mmu_lite_headless
+.\build.ps1 all --target riscv32_mmu_lite_headless
 ```
 
 ```bash
 ./build.sh all --target x86_64_desktop_headless
 ./build.sh all --target arm64_desktop_headless
 ./build.sh all --target riscv64_desktop_headless
+./build.sh all --target arm32_mmu_lite_headless
+./build.sh all --target riscv32_mmu_lite_headless
 ```
 
 ### Expected behavior & Dual serial usage
@@ -205,8 +209,8 @@ Examples with GUI + mirrored serial (`--dual-serial`):
 - ✅ x86_64: validated
 - ✅ arm64: validated
 - ✅ riscv64: validated
-- ⚠️ arm32: not yet runtime-complete (runtime marker gap)
-- ⚠️ riscv32: not yet link/runtime-complete
+- ✅ arm32: headless build + QEMU target wiring available
+- ✅ riscv32: headless build + QEMU target wiring available
 
 Follow-up implementation tasks are tracked in `docs/dev/boot-console-milestone-and-followups.md`.
 

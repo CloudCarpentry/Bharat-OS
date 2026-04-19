@@ -21,6 +21,8 @@ add_library(k_core OBJECT
     $<$<STREQUAL:${ARCH},arm64>:../../../arch/arm/arm64/memops_gpr_bulk.c>
     $<$<STREQUAL:${ARCH},riscv64>:../../../arch/riscv/riscv64/memops.c>
     $<$<STREQUAL:${ARCH},riscv64>:../../../arch/riscv/riscv64/memops_gpr_bulk.c>
+    $<$<STREQUAL:${ARCH},riscv32>:../../../arch/riscv/riscv64/memops.c>
+    $<$<STREQUAL:${ARCH},riscv32>:../../../arch/riscv/riscv64/memops_gpr_bulk.c>
     ../../src/stack_protector.c
     ../../src/crypto/secure_mem.c
     ../../src/power/power_core.c

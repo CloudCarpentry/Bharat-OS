@@ -254,6 +254,34 @@
       }
     },
     {
+      "name": "arm32-qemu-mmu-lite-headless",
+      "displayName": "Cross ARM32 QEMU MMU-Lite (Release)",
+      "description": "Cross-compile ARM32 MMU-lite profile for QEMU headless runs",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/arm32-qemu-mmu-lite-headless",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/arm32-elf.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "ARCH": "arm32",
+        "BHARAT_DEVICE_PROFILE": "EDGE",
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "OFF",
+        "BHARAT_PROFILE_MMU_FULL": "OFF",
+        "BHARAT_PROFILE_MMU_LITE": "ON",
+        "BHARAT_PROFILE_MPU_ONLY": "OFF",
+        "BHARAT_ENABLE_MMU": "ON",
+        "BHARAT_ENABLE_MPU": "OFF",
+        "BHARAT_ENABLE_ADVANCED_VM": "ON",
+        "BHARAT_ENABLE_IOMMU": "OFF",
+        "BHARAT_ENABLE_DMA_MAP": "ON",
+        "BHARAT_ENABLE_COW": "OFF",
+        "BHARAT_ENABLE_DEMAND_PAGING": "OFF",
+        "BHARAT_ENABLE_SHARED_MEMORY": "OFF",
+        "BHARAT_ENABLE_NUMA": "OFF",
+        "BHARAT_ENABLE_MEMORY_STATS": "OFF"
+      }
+    },
+    {
       "name": "riscv32-edge",
       "displayName": "Cross RISC-V32 Edge (Release)",
       "description": "Cross-compile RISC-V32 Edge profile on Linux",
@@ -264,6 +292,34 @@
         "CMAKE_BUILD_TYPE": "Release",
         "BHARAT_DEVICE_PROFILE": "EDGE",
         "BHARAT_TARGET_BOARD": "virt"
+      }
+    },
+    {
+      "name": "riscv32-qemu-mmu-lite-headless",
+      "displayName": "Cross RISCV32 QEMU MMU-Lite (Release)",
+      "description": "Cross-compile RISCV32 MMU-lite profile for QEMU headless runs",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/riscv32-qemu-mmu-lite-headless",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/riscv32-elf.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "ARCH": "riscv32",
+        "BHARAT_DEVICE_PROFILE": "EDGE",
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "OFF",
+        "BHARAT_PROFILE_MMU_FULL": "OFF",
+        "BHARAT_PROFILE_MMU_LITE": "ON",
+        "BHARAT_PROFILE_MPU_ONLY": "OFF",
+        "BHARAT_ENABLE_MMU": "ON",
+        "BHARAT_ENABLE_MPU": "OFF",
+        "BHARAT_ENABLE_ADVANCED_VM": "ON",
+        "BHARAT_ENABLE_IOMMU": "OFF",
+        "BHARAT_ENABLE_DMA_MAP": "ON",
+        "BHARAT_ENABLE_COW": "OFF",
+        "BHARAT_ENABLE_DEMAND_PAGING": "OFF",
+        "BHARAT_ENABLE_SHARED_MEMORY": "OFF",
+        "BHARAT_ENABLE_NUMA": "OFF",
+        "BHARAT_ENABLE_MEMORY_STATS": "OFF"
       }
     },
     {
@@ -868,8 +924,16 @@
       "configurePreset": "arm32-edge"
     },
     {
+      "name": "arm32-qemu-mmu-lite-headless",
+      "configurePreset": "arm32-qemu-mmu-lite-headless"
+    },
+    {
       "name": "riscv32-edge",
       "configurePreset": "riscv32-edge"
+    },
+    {
+      "name": "riscv32-qemu-mmu-lite-headless",
+      "configurePreset": "riscv32-qemu-mmu-lite-headless"
     },
     {
       "name": "arm64-gui",

@@ -1,9 +1,13 @@
-if(ARCH STREQUAL "x86_64")
+if(BHARAT_ARCH_FAMILY STREQUAL "X86" AND BHARAT_ARCH_BITS STREQUAL "64")
     set(PLATFORM_UART_SRC "../boards/qemu-virt-x86_64/platform_uart.c")
-elseif(ARCH STREQUAL "arm64")
+elseif(BHARAT_ARCH_FAMILY STREQUAL "ARM" AND BHARAT_ARCH_BITS STREQUAL "64")
     set(PLATFORM_UART_SRC "../boards/qemu-virt-arm64/platform_uart.c")
-elseif(ARCH STREQUAL "riscv64")
+elseif(BHARAT_ARCH_FAMILY STREQUAL "ARM" AND BHARAT_ARCH_BITS STREQUAL "32")
+    set(PLATFORM_UART_SRC "../boards/qemu-virt-arm32/platform_uart.c")
+elseif(BHARAT_ARCH_FAMILY STREQUAL "RISCV" AND BHARAT_ARCH_BITS STREQUAL "64")
     set(PLATFORM_UART_SRC "../boards/qemu-virt-riscv64/platform_uart.c")
+elseif(BHARAT_ARCH_FAMILY STREQUAL "RISCV" AND BHARAT_ARCH_BITS STREQUAL "32")
+    set(PLATFORM_UART_SRC "../boards/qemu-virt-riscv32/platform_uart.c")
 endif()
 
 add_library(board_fabric STATIC
