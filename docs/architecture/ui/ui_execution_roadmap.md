@@ -3,6 +3,16 @@
 **Status:** Proposed next-task execution plan  
 **Scope:** UI/media architecture as first-class Bharat-OS area, explicitly out of kernel policy space.
 
+## Current Execution Focus (Started)
+
+- **Selected core task:** **P1 — Production-grade display/input class model**.
+- **Why this task first:** it unblocks `devmgr`, `displayd`, `inputd`, and every higher-level UI stack by defining a stable service-visible hardware contract.
+- **Implementation started in this change-set:**
+  - canonical display/input subclasses added to shared device class UAPI
+  - generic display/input capability-bit registry added
+  - canonical display/input capability structs and input event wire shape added
+  - host test added for UI class/capability contract stability
+
 ---
 
 ## 1) Layer Contract (Non-Negotiable)
