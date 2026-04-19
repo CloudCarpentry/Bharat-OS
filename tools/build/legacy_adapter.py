@@ -91,6 +91,7 @@ def resolve_legacy_target(target_name: str, repo_root: Path) -> ResolvedTarget:
 
     dtb_mode = "qemu_generated"
     default_cpu = "cortex-a72" if arch == "arm64" else None
+    extra_args = legacy_cfg.get("extra_args", [])
 
     cmake_defs = {
         "BHARAT_BOOT_GUI": "ON" if gui_enabled else "OFF",
@@ -129,6 +130,7 @@ def resolve_legacy_target(target_name: str, repo_root: Path) -> ResolvedTarget:
             boot_artifact=boot_artifact,
             nographic=nographic,
             serial=["stdio"],
+            extra_args=extra_args,
         ),
         source_metadata={"source_kind": "legacy"}
     )

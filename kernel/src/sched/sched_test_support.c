@@ -66,3 +66,7 @@ void sched_test_reset(void) {
 }
 
 #endif /* BHARAT_ENABLE_KERNEL_SELFTESTS */
+
+#if !defined(BHARAT_ENABLE_KERNEL_SELFTESTS)
+void sched_test_reset(void) {}
+#endif

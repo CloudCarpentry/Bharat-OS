@@ -24,7 +24,10 @@
       "profile": "DESKTOP",
       "personality": "NATIVE",
       "board": "qemu-virt",
-      "display": { "enabled": true, "class": "desktop" },
+      "display": {
+        "enabled": true,
+        "class": "desktop"
+      },
       "run": false
     },
     "x86_64_desktop_headless": {
@@ -33,7 +36,10 @@
       "profile": "DESKTOP",
       "personality": "NATIVE",
       "board": "qemu-virt",
-      "display": { "enabled": false, "class": "none" },
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
       "run": false
     },
     "arm64_desktop_gui": {
@@ -42,7 +48,10 @@
       "profile": "DESKTOP",
       "personality": "LINUX",
       "board": "virt",
-      "display": { "enabled": true, "class": "desktop" },
+      "display": {
+        "enabled": true,
+        "class": "desktop"
+      },
       "run": false
     },
     "arm64_desktop_headless": {
@@ -51,7 +60,10 @@
       "profile": "DESKTOP",
       "personality": "LINUX",
       "board": "virt",
-      "display": { "enabled": false, "class": "none" },
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
       "run": false
     },
     "riscv64_desktop_gui": {
@@ -60,7 +72,10 @@
       "profile": "DESKTOP",
       "personality": "NATIVE",
       "board": "virt",
-      "display": { "enabled": true, "class": "desktop" },
+      "display": {
+        "enabled": true,
+        "class": "desktop"
+      },
       "run": false
     },
     "riscv64_desktop_headless": {
@@ -69,7 +84,10 @@
       "profile": "DESKTOP",
       "personality": "NATIVE",
       "board": "virt",
-      "display": { "enabled": false, "class": "none" },
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
       "run": false
     },
     "arm32_edge_mpu": {
@@ -340,6 +358,34 @@
       "preset": "riscv32-iot-release",
       "arch": "riscv32",
       "profile": "IOT",
+      "personality": "NATIVE",
+      "board": "virt",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "run": false
+    },
+    "riscv32_mmu_lite_headless": {
+      "preset": "riscv32-qemu-mmu-lite-headless",
+      "arch": "riscv32",
+      "profile": "EDGE",
+      "personality": "NATIVE",
+      "board": "virt",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "extra_args": [
+        "-bios",
+        "/usr/lib/riscv32-linux-gnu/opensbi/generic/fw_dynamic.bin"
+      ],
+      "run": false
+    },
+    "arm32_mmu_lite_headless": {
+      "preset": "arm32-qemu-mmu-lite-headless",
+      "arch": "arm32",
+      "profile": "EDGE",
       "personality": "NATIVE",
       "board": "virt",
       "display": {
