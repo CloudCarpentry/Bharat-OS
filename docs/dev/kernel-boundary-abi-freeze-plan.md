@@ -564,3 +564,20 @@ A stable kernel boundary requires:
 - CI-backed ABI drift enforcement
 
 This is the line between “headers that currently compile” and a real OS ABI that can survive growth.
+
+---
+
+## 17. Companion policy: native standard surface vs compatibility
+
+The syscall ABI freeze defined in this document protects low-level kernel/user binary compatibility.
+To avoid architecture drift at the SDK/runtime layer, Bharat-OS also maintains a separate policy for
+what belongs to native Bharat contracts versus personality compatibility APIs.
+
+See:
+
+- `docs/dev/bharat-native-standard-surface-and-compat-boundary.md`
+
+Use both documents together when proposing new public headers:
+
+- This document answers: **is it stable/ABI-safe and correctly layered?**
+- The companion policy answers: **is it Bharat-native or compatibility-only?**
