@@ -1,0 +1,246 @@
+{
+  "bh_exec_constraints_t": {
+    "fields": [
+      {
+        "name": "flags",
+        "type": "uint32_t"
+      },
+      {
+        "name": "priority_class",
+        "type": "uint32_t"
+      },
+      {
+        "name": "latency_target_us",
+        "type": "uint32_t"
+      },
+      {
+        "name": "energy_budget_uw",
+        "type": "uint32_t"
+      },
+      {
+        "name": "memory_budget_kb",
+        "type": "uint32_t"
+      },
+      {
+        "name": "isolation_domain",
+        "type": "uint32_t"
+      },
+      {
+        "name": "cpu_mask_hint",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bh_mem_constraints_t": {
+    "fields": [
+      {
+        "name": "class_id",
+        "type": "uint32_t"
+      },
+      {
+        "name": "lifetime_ms",
+        "type": "uint32_t"
+      },
+      {
+        "name": "locality",
+        "type": "uint32_t"
+      },
+      {
+        "name": "reclaim_priority",
+        "type": "uint32_t"
+      },
+      {
+        "name": "reliability",
+        "type": "uint32_t"
+      },
+      {
+        "name": "zero_copy",
+        "type": "uint32_t"
+      },
+      {
+        "name": "pinned",
+        "type": "uint32_t"
+      },
+      {
+        "name": "hugepage",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_sys_cap_delegate_args_t": {
+    "fields": [
+      {
+        "name": "src_cap",
+        "type": "uint32_t"
+      },
+      {
+        "name": "requested_rights",
+        "type": "uint32_t"
+      },
+      {
+        "name": "out_cap_ptr",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bharat_sys_cap_invoke_args_t": {
+    "fields": [
+      {
+        "name": "cap_id",
+        "type": "uint64_t"
+      },
+      {
+        "name": "opcode",
+        "type": "uint64_t"
+      },
+      {
+        "name": "arg0",
+        "type": "uint64_t"
+      },
+      {
+        "name": "arg1",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bharat_sys_endpoint_create_args_t": {
+    "fields": [
+      {
+        "name": "out_send_cap_ptr",
+        "type": "uint64_t"
+      },
+      {
+        "name": "out_recv_cap_ptr",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bharat_sys_endpoint_receive_args_t": {
+    "fields": [
+      {
+        "name": "recv_cap",
+        "type": "uint32_t"
+      },
+      {
+        "name": "out_payload_capacity",
+        "type": "uint32_t"
+      },
+      {
+        "name": "out_payload_ptr",
+        "type": "uint64_t"
+      },
+      {
+        "name": "out_len_ptr",
+        "type": "uint64_t"
+      },
+      {
+        "name": "timeout_ticks",
+        "type": "uint64_t"
+      },
+      {
+        "name": "out_received_cap_ptr",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bharat_sys_endpoint_send_args_t": {
+    "fields": [
+      {
+        "name": "send_cap",
+        "type": "uint32_t"
+      },
+      {
+        "name": "payload_len",
+        "type": "uint32_t"
+      },
+      {
+        "name": "payload_ptr",
+        "type": "uint64_t"
+      },
+      {
+        "name": "timeout_ticks",
+        "type": "uint64_t"
+      },
+      {
+        "name": "cap_to_send",
+        "type": "uint32_t"
+      },
+      {
+        "name": "cap_send_rights",
+        "type": "uint32_t"
+      },
+      {
+        "name": "reserved0",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bharat_sys_vmm_map_page_args_t": {
+    "fields": [
+      {
+        "name": "vaddr",
+        "type": "uint64_t"
+      },
+      {
+        "name": "paddr",
+        "type": "uint64_t"
+      },
+      {
+        "name": "flags",
+        "type": "uint32_t"
+      },
+      {
+        "name": "reserved0",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "crypto_op_args_t": {
+    "fields": [
+      {
+        "name": "op",
+        "type": "crypto_op_class_t"
+      },
+      {
+        "name": "input_buf",
+        "type": "void*"
+      },
+      {
+        "name": "input_len",
+        "type": "size_t"
+      },
+      {
+        "name": "output_buf",
+        "type": "void*"
+      },
+      {
+        "name": "output_len",
+        "type": "size_t"
+      },
+      {
+        "name": "key_handle",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "crypto_provider_info_t": {
+    "fields": [
+      {
+        "name": "provider_id",
+        "type": "uint32_t"
+      },
+      {
+        "name": "backend_class",
+        "type": "crypto_backend_class_t"
+      },
+      {
+        "name": "supported_ops_mask",
+        "type": "uint32_t"
+      },
+      {
+        "name": "name",
+        "type": "char[32]"
+      }
+    ]
+  }
+}
