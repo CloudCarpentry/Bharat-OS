@@ -471,83 +471,53 @@ See:
 
 ## Build quick start
 
-### Prerequisites
+For complete setup on **Windows, WSL/Linux, and macOS** (including QEMU/OpenOCD/GDB install and full preset command cookbook), read [`BUILD.md`](BUILD.md).
 
-- `cmake` (3.20+)
-- Ninja or Make
-- A supported LLVM/Clang cross toolchain
+### Daily commands
 
-### Build examples
-
-Bharat-OS uses a declarative target pipeline driven by YAML files located in `tools/targets/`. The legacy `build_config.json` is still supported for backward compatibility, but target YAML specs are the primary source of truth. You can invoke the build pipeline through the root wrappers `build.sh` and `build.ps1`.
-
-To list all available targets (YAML and legacy):
-```bash
-./build.sh configure --help
-```
-
-**Common build commands (Linux/macOS):**
-```bash
-# Build and run the x86_64 headless YAML target
-./build.sh build --target-yaml tools/targets/qemu/x86_64_desktop_headless.yaml
-
-# Clean, build, and run an arm64 edge device profile using a YAML target
-./build.sh build --target-yaml tools/targets/qemu/arm64_desktop_headless.yaml
-
-# Run a legacy target from build_config.json
-./build.sh build --target default_dev
-```
-
-**Common build commands (Windows):**
 ```powershell
-# Build and run the x86_64 headless YAML target
+# PowerShell
 .\build.ps1 all --target x86_64_desktop_headless
-
-# Clean, build, and run an arm64 edge device profile using a YAML target
 .\build.ps1 all --target arm64_desktop_headless
-
-# Run a legacy target from build_config.json
-.\build.ps1 all --target default_dev
+.\build.ps1 all --target riscv64_desktop_headless
 ```
-
-### 🚨 Migration Guide: Legacy Flags Removed
-
-The build system has been unified around `tools/build.py` using canonical `argparse` arguments. **Legacy PowerShell and shell flags are no longer supported.** The wrappers do not translate flags; they strictly forward to `build.py`.
-
-| Old Syntax (Deprecated) | New Syntax (Canonical) | Notes |
-| :--- | :--- | :--- |
-| `.\build.ps1 all --target x86_64` | `.\build.ps1 all --target default_dev` | Arch, board, and profile are now bundled into named configurations in `build_config.json`. |
-| `.\build.ps1 all --target riscv64` | `.\build.ps1 all --target riscv64_desktop_mmu` | |
-| `.\build.ps1 build --target arm64_medical_debug` | `.\build.ps1 build --target arm64_medical_debug` | |
-| `.\build.ps1 build --target x86_64_laptop_debug` | `.\build.ps1 all --target x86_64_laptop_debug` | Use a configuration that specifies `"gui": true` in the JSON manifest. |
-| `.\build.ps1 build --target x86_64` | `.\build.ps1 all --target default_dev` | |
-| `./build.sh build --target x86_64` | `./build.sh build --target default_dev-tests` | |
-
-If you need a specific combination of architecture, profile, and features, you should create a declarative YAML target specification file in `tools/targets/qemu/` or `tools/targets/boards/`. The legacy `build_config.json` is deprecated and no longer accepts new features.
-
-### Profile/personality/board-aware CMake configuration
-
-Build composition is now resolved through centralized component policy in
-`cmake/modules/BharatComponentPolicy.cmake`. Configure-time decisions use:
-
-- `BHARAT_DEVICE_PROFILE` (for example `DESKTOP`, `AUTOMOTIVE_ECU`, `AUTOMOTIVE_INFOTAINMENT`)
-- `BHARAT_PERSONALITY_PROFILE` (`NATIVE`, `LINUX`, `WINDOWS`, `MAC`)
-- `BHARAT_TARGET_BOARD` (for example `qemu-virt-riscv64`, `shakti-c`)
-
-Both wrapper scripts (`build.sh`, `build.ps1`) pass these canonical cache variables to CMake.
-If a config value contains multiple comma-separated entries, only the first entry is used so
-configure-time policy remains deterministic.
-
-For manual configure:
 
 ```bash
-cmake --preset linux-x86_64-dev-debug \
-  -DBHARAT_DEVICE_PROFILE=AUTOMOTIVE_INFOTAINMENT \
-  -DBHARAT_PERSONALITY_PROFILE=LINUX \
-  -DBHARAT_TARGET_BOARD=qemu-virt-riscv64
+# WSL/Linux/macOS
+./build.sh all --target x86_64_desktop_headless
+./build.sh all --target arm64_desktop_headless
+./build.sh all --target riscv64_desktop_headless
 ```
 
-Please see **[BUILD.md](BUILD.md)** for exhaustive details on presets and cross-compilation toolchains.
+### Stage-oriented usage
+
+```bash
+./build.sh build   --target x86_64_desktop_headless
+./build.sh package --target x86_64_desktop_headless
+./build.sh run     --target x86_64_desktop_headless
+./build.sh flash   --target <board_target> --dry-run
+```
+
+PowerShell equivalents:
+
+```powershell
+.\build.ps1 build   --target x86_64_desktop_headless
+.\build.ps1 package --target x86_64_desktop_headless
+.\build.ps1 run     --target x86_64_desktop_headless
+.\build.ps1 flash   --target <board_target> --dry-run
+```
+
+Legacy positional compatibility example:
+
+```powershell
+.\build.ps1 x86_64_desktop_headless --run
+```
+
+Equivalent modern command:
+
+```powershell
+.\build.ps1 all --target x86_64_desktop_headless
+```
 
 ## Repository layout
 

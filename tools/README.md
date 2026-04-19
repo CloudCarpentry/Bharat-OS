@@ -1,24 +1,96 @@
-# Bharat-OS Tools Directory
+# Bharat-OS `tools/` Guide
 
-This directory contains the essential build, test, and emulation scripts for Bharat-OS development.
+This directory contains the implementation for the Bharat-OS build delivery pipeline.
 
-## Core Tooling
-- `build.sh` / `build.ps1`: The primary entry points for building the entire kernel and launching it in QEMU.
-- `debug.sh` / `debug.ps1`: Scripts to attach a debugger (GDB/LLDB) to running QEMU instances.
-- `sign_release.py`: Handles payload and image signing.
+## What lives here
 
-## Usage Overview
-To configure, compile, and optionally run the kernel for a specific architecture:
+- `build.py` - authoritative CLI for build/package/run/flash/debug.
+- `build.sh` / `build.ps1` - compatibility wrappers that forward to `build.py`.
+- `build/` - Python modules for target resolve, validation, CMake execution, manifests.
+- `package/` - packaging/transforms and manifest generation.
+- `run/` - QEMU launcher.
+- `flash/` - flashing backend integration (OpenOCD path).
+- `targets/` - explicit YAML targets (QEMU profiles).
+- `debug.sh` / `debug.ps1` - helper debugger attach scripts.
+
+---
+
+## Canonical usage
+
+Use root wrappers from repository root:
 
 ```bash
-# Linux / macOS
-./build.sh all --target x86_64
-
-# Windows (PowerShell)
-.\build.ps1 all --target x86_64
+./build.sh <subcommand> --target <name>
+./build.sh <subcommand> --target-yaml <path>
 ```
 
-For advanced usage (like profiling, hardware targeting, or dual serial output), use `--help` or see the corresponding scripts.
+```powershell
+.\build.ps1 <subcommand> --target <name>
+.\build.ps1 <subcommand> --target-yaml <path>
+```
 
-## Relationship to SDK
-The `tools/` directory is concerned with building the *kernel* and running the *emulation environment*. To build user-space applications, look inside `user/sdk/`.
+Subcommands: `configure`, `build`, `package`, `run`, `flash`, `debug`, `all`.
+
+---
+
+## Common workflows
+
+### Build and run in one command
+
+```powershell
+.\build.ps1 all --target x86_64_desktop_headless
+```
+
+```bash
+./build.sh all --target x86_64_desktop_headless
+```
+
+### Package only
+
+```powershell
+.\build.ps1 package --target x86_64_desktop_headless
+```
+
+```bash
+./build.sh package --target x86_64_desktop_headless
+```
+
+### Run only (after prior build/package)
+
+```powershell
+.\build.ps1 run --target x86_64_desktop_headless
+```
+
+```bash
+./build.sh run --target x86_64_desktop_headless
+```
+
+### Flash (board target)
+
+```powershell
+.\build.ps1 flash --target <board_target> --dry-run
+```
+
+```bash
+./build.sh flash --target <board_target> --dry-run
+```
+
+### Legacy positional compatibility example
+
+```powershell
+.\build.ps1 x86_64_desktop_headless --run
+```
+
+Equivalent modern command:
+
+```powershell
+.\build.ps1 all --target x86_64_desktop_headless
+```
+
+---
+
+## Where to read full docs
+
+- Full build/install/preset guide: `../BUILD.md`
+- High-level project quick start: `../README.md`
+
