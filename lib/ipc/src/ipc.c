@@ -2,7 +2,6 @@
 #include <bharat/uapi/ipc/contract.h>
 #include <stdint.h>
 
-#include <bharat/syscalls.h>
 #define BHARAT_IPC_ENDPOINT_PAYLOAD_MAX 128u
 
 typedef struct {
@@ -24,7 +23,6 @@ static int32_t ipc_check_header(const bharat_ipc_msg_header_t *header) {
     }
     return BHARAT_IPC_STATUS_OK;
 }
-
 
 #include <bharat/uapi/syscall_nr.h>
 #include <bharat/uapi/syscall_args.h>
