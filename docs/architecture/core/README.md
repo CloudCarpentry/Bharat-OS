@@ -6,3 +6,4 @@ This folder contains foundational architectural models for Bharat-OS.
 
 - [Profile-Driven Multi-Kernel Architecture (ARC)](profile-driven-multi-kernel-arc.md)
 - [Process & Scheduler Architecture](process-scheduler-architecture.md)
+- [Freestanding Layer Contract (Kernel/HAL/Arch)](freestanding-layer-contract.md)
