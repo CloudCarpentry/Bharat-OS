@@ -1,0 +1,39 @@
+#ifndef BHARAT_UAPI_POLICY_STATUS_H
+#define BHARAT_UAPI_POLICY_STATUS_H
+
+#include <bharat/uapi/service_status.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/**
+ * @file status.h
+ * @brief Canonical status codes for unified policy-plane contracts.
+ */
+typedef int32_t bharat_policy_status_t;
+
+#define BHARAT_POLICY_STATUS_OK                BHARAT_STATUS_OK
+#define BHARAT_POLICY_STATUS_ERR_DECODE        BHARAT_STATUS_ERR_DECODE
+#define BHARAT_POLICY_STATUS_ERR_VERSION       BHARAT_STATUS_ERR_VERSION
+#define BHARAT_POLICY_STATUS_ERR_OPCODE        BHARAT_STATUS_ERR_OPCODE
+#define BHARAT_POLICY_STATUS_ERR_PERMISSION    BHARAT_STATUS_ERR_PERMISSION
+#define BHARAT_POLICY_STATUS_ERR_NOT_FOUND     BHARAT_STATUS_ERR_NOT_FOUND
+#define BHARAT_POLICY_STATUS_ERR_UNSUPPORTED   BHARAT_STATUS_ERR_UNSUPPORTED
+#define BHARAT_POLICY_STATUS_ERR_INTERNAL      BHARAT_STATUS_ERR_INTERNAL
+#define BHARAT_POLICY_STATUS_ERR_TRUNCATED     BHARAT_STATUS_ERR_TRUNCATED
+#define BHARAT_POLICY_STATUS_ERR_LENGTH        BHARAT_STATUS_ERR_LENGTH
+#define BHARAT_POLICY_STATUS_ERR_FLAGS         BHARAT_STATUS_ERR_FLAGS
+
+/* Policy-plane specific failures. */
+#define BHARAT_POLICY_STATUS_ERR_PROFILE_MISMATCH   ((bharat_policy_status_t)-64)
+#define BHARAT_POLICY_STATUS_ERR_HW_UNSUPPORTED     ((bharat_policy_status_t)-65)
+#define BHARAT_POLICY_STATUS_ERR_TIER_UNSUPPORTED   ((bharat_policy_status_t)-66)
+#define BHARAT_POLICY_STATUS_ERR_SLO_GATE_FAILED    ((bharat_policy_status_t)-67)
+#define BHARAT_POLICY_STATUS_ERR_BUDGET_EXHAUSTED   ((bharat_policy_status_t)-68)
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* BHARAT_UAPI_POLICY_STATUS_H */
