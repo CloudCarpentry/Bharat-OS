@@ -29,16 +29,17 @@ def load_legacy_config(repo_root: Path) -> dict:
 def resolve_objcopy_for_cmake() -> str | None:
     candidates = ("llvm-objcopy", "llvm-objcopy-20", "llvm-objcopy-19", "objcopy")
     for candidate in candidates:
-        if not which(candidate):
+        resolved = which(candidate)
+        if not resolved:
             continue
         try:
             subprocess.run(
-                [candidate, "--version"],
+                [resolved, "--version"],
                 check=True,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
-            return candidate
+            return resolved
         except Exception:
             continue
     return None
