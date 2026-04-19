@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "../../staging/formal/formal_verif.h" // For capability_t
+#include "fs/vnode.h"
+#include "fs/fs_caps.h"
 
 /*
  * Bharat-OS Virtual File System (VFS)
@@ -56,39 +58,38 @@ struct dirent {
 };
 
 // Personality-neutral file operations
-typedef struct {
-    int (*read)(vfs_file_t* file, uint64_t offset, void* buffer, size_t size);
-    int (*write)(vfs_file_t* file, uint64_t offset, const void* buffer, size_t size);
+typedef struct vfs_operations {
+    // Mount operations
+    int (*mount)(vfs_mount_t* mnt, vfs_node_t* dev_node);
+    int (*unmount)(vfs_mount_t* mnt);
+
+    // Node operations
+    vfs_node_t* (*lookup)(vfs_node_t* dir, const char* name);
+    int (*create)(vfs_node_t* dir, const char* name, int flags);
+    int (*remove)(vfs_node_t* dir, const char* name);
+
+    // File operations
     int (*open)(vfs_node_t* node, vfs_file_t* file, int flags);
     int (*close)(vfs_file_t* file);
+    int (*read)(vfs_file_t* file, uint64_t offset, void* buffer, size_t size);
+    int (*write)(vfs_file_t* file, uint64_t offset, const void* buffer, size_t size);
+
+    // Dir operations
     struct dirent* (*readdir)(vfs_file_t* file, uint32_t index);
-    vfs_node_t* (*finddir)(vfs_node_t* node, const char* name);
+    vfs_node_t* (*finddir)(vfs_node_t* node, const char* name); // legacy
+
+    // Meta operations
     int (*ioctl)(vfs_file_t* file, int request, void* arg);
-    int (*stat)(vfs_node_t* node, void* stat_buf); // Generic stat-like structure
+    int (*getattr)(vfs_node_t* node, void* stat_buf);
+    int (*setattr)(vfs_node_t* node, void* stat_buf);
+    int (*stat)(vfs_node_t* node, void* stat_buf); // legacy
+
+    // Advanced
+    int (*sync)(vfs_node_t* node);
+    int (*mmap)(vfs_file_t* file, void** addr, size_t length, int prot, int flags, uint64_t offset); // hook if supported
+    int (*watch)(vfs_node_t* node, void* watch_spec); // watch/notify hook optional
 } vfs_operations_t;
 
-/*
- * vfs_node_t: The canonical storage object.
- * Represents a file, directory, or device. Does NOT contain ambient
- * permissions, but rather links to the capability system via provenance.
- */
-struct vfs_node {
-    char name[256];
-    uint32_t flags; // Type (file, dir, block device, pipe)
-
-    // Ownership/Security Metadata
-    // The canonical object ID to which capabilities grant access
-    uint32_t object_id;
-    // Link to capability provenance/derivation tree
-    capability_t* provenance_cap;
-
-    uint64_t size; // File size in bytes
-    uint64_t inode; // FS specific inode number
-    vfs_backend_type_t backend_type;
-
-    vfs_operations_t* ops;
-    void* fs_data;
-};
 
 // Global VFS Root mounting point (Legacy fallback or root namespace reference)
 extern vfs_node_t* vfs_root;
