@@ -45,7 +45,7 @@ def main() -> int:
     else:
         target = resolve_legacy_target(target_input.source_ref, repo_root)
 
-    validate_resolved_target(target)
+    validate_resolved_target(target, repo_root)
 
     build_outputs = None
     if args.command in ("configure", "build", "all"):

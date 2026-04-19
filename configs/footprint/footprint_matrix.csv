@@ -1,0 +1,4 @@
+profile_id,arch,protection_model,personality,boot_min_ram_kb,usable_min_ram_kb,recommended_ram_kb,boot_min_flash_kb,usable_min_flash_kb,recommended_flash_kb
+micro_arm32,arm32,MPU,NONE,256,512,1024,1024,2048,4096
+small_riscv32,riscv32,MPU,NONE,512,1024,2048,2048,4096,8192
+edge_arm64,arm64,MMU_FULL,NATIVE,2048,4096,8192,8192,16384,65536

@@ -2,10 +2,18 @@ import sys
 from pathlib import Path
 
 from tools.build.models import ResolvedTarget
+from tools.build.footprint import validate_footprint_contract
 
 
-def validate_resolved_target(target: ResolvedTarget) -> None:
+def validate_resolved_target(target: ResolvedTarget, repo_root: Path | None = None) -> None:
     validate_boot_contract(target)
+    validate_arch_profile_contract(target)
+    if repo_root:
+        try:
+            validate_footprint_contract(target, repo_root)
+        except ValueError as exc:
+            print(f"Validation Error: {exc}")
+            sys.exit(1)
 
     if target.kind == "qemu_target":
         validate_run_contract(target)
@@ -69,4 +77,23 @@ def validate_flash_contract(target: ResolvedTarget) -> None:
     flash = target.flash
     if flash.backend == "openocd" and not flash.artifact:
         print(f"Validation Error: Flash backend 'openocd' requires an 'artifact' to flash for target '{target.name}'.")
+        sys.exit(1)
+
+
+def validate_arch_profile_contract(target: ResolvedTarget) -> None:
+    cmake_defs = target.build.cmake_defs or {}
+    declared_family = str(cmake_defs.get("BHARAT_ARCH_FAMILY", "")).upper()
+    expected_family = {
+        "arm32": "ARM32",
+        "arm64": "ARM64",
+        "riscv32": "RISCV32",
+        "riscv64": "RISCV64",
+        "xtensa": "XTENSA",
+        "arc": "ARC",
+    }.get(target.arch, "")
+    if expected_family and declared_family and declared_family != expected_family:
+        print(
+            f"Validation Error: Target '{target.name}' arch '{target.arch}' expects "
+            f"BHARAT_ARCH_FAMILY={expected_family}, got '{declared_family}'."
+        )
         sys.exit(1)

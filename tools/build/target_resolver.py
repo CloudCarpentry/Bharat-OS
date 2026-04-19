@@ -183,6 +183,7 @@ def resolve_yaml_target(path: Path) -> ResolvedTarget:
         run=run_cfg,
         flash=flash_cfg,
         debug=debug_cfg,
+        footprint_profile=raw.get("footprint_profile"),
         source_metadata={"source_kind": "yaml", "source_path": str(path)}
     )
 
