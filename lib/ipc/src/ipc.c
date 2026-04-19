@@ -1,9 +1,8 @@
 #include <bharat/ipc/ipc.h>
 #include <bharat/uapi/ipc/contract.h>
-#include <ipc_user.h>
-#include <string.h>
 #include <stdint.h>
 
+#include <bharat/syscalls.h>
 #define BHARAT_IPC_ENDPOINT_PAYLOAD_MAX 128u
 
 typedef struct {
@@ -26,14 +25,36 @@ static int32_t ipc_check_header(const bharat_ipc_msg_header_t *header) {
     return BHARAT_IPC_STATUS_OK;
 }
 
+
+#include <bharat/uapi/syscall_nr.h>
+#include <bharat/uapi/syscall_args.h>
+long bharat_syscall(long nr, long arg);
+
 __attribute__((weak))
 long bharat_ipc_transport_send(uint32_t send_cap, const void *payload, uint32_t len, uint64_t timeout_ticks) {
-    return ipc_endpoint_send(send_cap, payload, len, timeout_ticks, 0U, 0U);
+    bharat_sys_endpoint_send_args_t args = {
+        .send_cap = send_cap,
+        .payload_len = len,
+        .payload_ptr = (uint64_t)(uintptr_t)payload,
+        .timeout_ticks = timeout_ticks,
+        .cap_to_send = 0U,
+        .cap_send_rights = 0U,
+        .reserved0 = 0,
+    };
+    return bharat_syscall(SYSCALL_ENDPOINT_SEND, (long)(uintptr_t)&args);
 }
 
 __attribute__((weak))
 long bharat_ipc_transport_receive(uint32_t recv_cap, void *out_payload, uint32_t out_capacity, uint32_t *out_len, uint64_t timeout_ticks) {
-    return ipc_endpoint_receive(recv_cap, out_payload, out_capacity, out_len, timeout_ticks, NULL);
+    bharat_sys_endpoint_receive_args_t args = {
+        .recv_cap = recv_cap,
+        .out_payload_capacity = out_capacity,
+        .out_payload_ptr = (uint64_t)(uintptr_t)out_payload,
+        .out_len_ptr = (uint64_t)(uintptr_t)out_len,
+        .timeout_ticks = timeout_ticks,
+        .out_received_cap_ptr = 0,
+    };
+    return bharat_syscall(SYSCALL_ENDPOINT_RECEIVE, (long)(uintptr_t)&args);
 }
 
 static int32_t ipc_status_from_kernel(long status) {
@@ -71,13 +92,17 @@ int32_t bharat_ipc_send_ex(bharat_ipc_endpoint_t endpoint,
     if (valid != BHARAT_IPC_STATUS_OK) {
         return valid;
     }
-    if (header->payload_size > 0U && payload == NULL) {
+    if (header->payload_size > 0U && payload == (void*)0) {
         return BHARAT_IPC_STATUS_ERR_DECODE;
     }
 
     msg.header = *header;
     if (header->payload_size > 0U) {
-        memcpy(msg.payload, payload, header->payload_size);
+        uint8_t *dst = (uint8_t *)msg.payload;
+        const uint8_t *src = (const uint8_t *)payload;
+        for (uint32_t i = 0; i < header->payload_size; i++) {
+            dst[i] = src[i];
+        }
     }
 
     long st = bharat_ipc_transport_send(endpoint, &msg, (uint32_t)(sizeof(msg.header) + header->payload_size), timeout_ticks);
@@ -113,7 +138,11 @@ int32_t bharat_ipc_recv_ex(bharat_ipc_endpoint_t endpoint,
 
     *header = msg.header;
     if (msg.header.payload_size > 0U) {
-        memcpy(payload_buf, msg.payload, msg.header.payload_size);
+        uint8_t *dst = (uint8_t *)payload_buf;
+        const uint8_t *src = (const uint8_t *)msg.payload;
+        for (uint32_t i = 0; i < msg.header.payload_size; i++) {
+            dst[i] = src[i];
+        }
     }
     return BHARAT_IPC_STATUS_OK;
 }
