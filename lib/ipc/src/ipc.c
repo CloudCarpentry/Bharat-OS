@@ -3,6 +3,9 @@
 #include <ipc_user.h>
 #include <lib/base/string.h>
 #include <stdint.h>
+#include <stddef.h>
+
+#define memcpy __builtin_memcpy
 
 #define BHARAT_IPC_ENDPOINT_PAYLOAD_MAX 128u
 

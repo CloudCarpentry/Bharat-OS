@@ -5,9 +5,10 @@ long bharat_syscall(long sysno, long arg1, long arg2, long arg3, long arg4, long
 
 #include <stdint.h>
 
-
 #include <bharat/uapi/syscall_nr.h>
 #include <bharat/uapi/syscall_args.h>
+
+long bharat_syscall(long sysno, long arg1, long arg2, long arg3, long arg4, long arg5, long arg6);
 
 static inline long ipc_endpoint_create(uint32_t* out_send_cap, uint32_t* out_recv_cap) {
     bharat_sys_endpoint_create_args_t args = {
