@@ -34,6 +34,24 @@ int32_t bharat_ipc_recv(bharat_ipc_endpoint_t endpoint, bharat_ipc_msg_header_t 
 int32_t bharat_ipc_call(bharat_ipc_endpoint_t endpoint, const bharat_ipc_msg_header_t *req_header, const void *req_payload,
                         bharat_ipc_msg_header_t *rep_header, void *rep_payload_buf, uint32_t rep_max_size);
 
+/* Extended timeout-aware APIs (ticks, UINT64_MAX means wait forever). */
+int32_t bharat_ipc_send_ex(bharat_ipc_endpoint_t endpoint,
+                           const bharat_ipc_msg_header_t *header,
+                           const void *payload,
+                           uint64_t timeout_ticks);
+int32_t bharat_ipc_recv_ex(bharat_ipc_endpoint_t endpoint,
+                           bharat_ipc_msg_header_t *header,
+                           void *payload_buf,
+                           uint32_t max_size,
+                           uint64_t timeout_ticks);
+int32_t bharat_ipc_call_ex(bharat_ipc_endpoint_t endpoint,
+                           const bharat_ipc_msg_header_t *req_header,
+                           const void *req_payload,
+                           bharat_ipc_msg_header_t *rep_header,
+                           void *rep_payload_buf,
+                           uint32_t rep_max_size,
+                           uint64_t timeout_ticks);
+
 #ifdef __cplusplus
 }
 #endif

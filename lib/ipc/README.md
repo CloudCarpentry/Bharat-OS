@@ -16,9 +16,9 @@ Higher-level IPC wrapper above raw syscall/URPC. Reduces boilerplate across ever
 - `bharat_ipc_call` (Request-reply wrapper)
 
 ## Immediate TODOs
-- Implement send/recv stubs using underlying URPC implementation.
+- Expand async APIs and cancellation model.
 - Introduce zero-copy buffer descriptors.
-- Support timeout semantics.
+- Add richer capability-transfer envelope fields for public API.
 
 ## Status
-Stub.
+Basic request/response contract implemented on top of existing endpoint syscall path.
