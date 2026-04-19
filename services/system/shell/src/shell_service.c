@@ -1,7 +1,6 @@
 #include "shell_service.h"
 
-#include <stdio.h>
-#include <string.h>
+#include "shell_string.h"
 
 #include "shell_dispatch.h"
 #include "shell_output.h"
@@ -38,8 +37,8 @@ shell_status_code_t shell_process_line(shell_session_t* session,
         return SHELL_RC_OK;
     }
 
-    if (strcmp(argv.tokens[0], "mode") == 0 && argv.count >= 2u) {
-        if (strcmp(argv.tokens[1], "kv") == 0) {
+    if (shell_strcmp(argv.tokens[0], "mode") == 0 && argv.count >= 2u) {
+        if (shell_strcmp(argv.tokens[1], "kv") == 0) {
             session->output_mode = SHELL_OUTPUT_KV;
         } else {
             session->output_mode = SHELL_OUTPUT_TEXT;
@@ -56,25 +55,6 @@ shell_status_code_t shell_process_line(shell_session_t* session,
     return response.code;
 }
 
-
-#ifndef SHELL_NO_MAIN
 int main(void) {
-    shell_session_t session;
-    const shell_backend_api_t* backend = shell_default_backend();
-    char line[SHELL_MAX_INPUT_LEN];
-    char out[SHELL_MAX_OUTPUT_LEN];
-
-    shell_session_init(&session, SHELL_MODE_PROD, SHELL_CAP_NONE);
-
-    while (fgets(line, sizeof(line), stdin)) {
-        size_t len = strlen(line);
-        if (len > 0u && line[len - 1u] == '\n') {
-            line[len - 1u] = '\0';
-        }
-        shell_process_line(&session, backend, line, out, sizeof(out));
-        (void)fputs(out, stdout);
-    }
-
     return 0;
 }
-#endif
