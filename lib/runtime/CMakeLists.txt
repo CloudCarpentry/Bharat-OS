@@ -7,7 +7,7 @@ target_include_directories(bharat_crt0 PUBLIC include)
 target_link_libraries(bharat_crt0 PUBLIC bharat_freestanding bharat_syscall)
 
 # Add the lib/runtime static library
-add_library(bharat_libruntime STATIC src/runtime.c src/freestanding_string.c)
+add_library(bharat_libruntime STATIC src/runtime.c src/freestanding_string.c host/runtime_host.c)
 
 # Add backend dispatch framework (Gated behind feature if needed, currently unconditionally available as an object/static)
 add_library(bharat_runtime_backend_dispatch OBJECT backend_dispatch/backend_registry.c)
@@ -28,7 +28,7 @@ target_link_libraries(bharat_runtime_tensor PUBLIC bharat_freestanding bharat_ru
 bharat_configure_userspace_library(bharat_runtime_tensor)
 
 # Set the public include directory
-target_include_directories(bharat_libruntime PUBLIC include)
+target_include_directories(bharat_libruntime PUBLIC include ${CMAKE_SOURCE_DIR}/uapi/runtime)
 target_link_libraries(bharat_libruntime PRIVATE bharat_runtime_backend_dispatch bharat_runtime_crypto bharat_runtime_tensor)
 
 # Runtime depends on cap and ipc headers
