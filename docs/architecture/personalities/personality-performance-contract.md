@@ -68,3 +68,24 @@ Every personality adapter operates under a strict budget compared to native benc
 ## 6. Observability Parity
 
 To hit these budgets, the Bharat-OS SDK must provide tracing, perf counters, IPC latency histograms, frame timing, and page fault profiling equal to or better than native Linux/Android ecosystems.
+
+## 7. Hard KPIs and Latency Targets
+
+To ensure the "no translation tax" rule is upheld, the following hard KPIs are enforced for personality hot paths:
+
+*   **Null Syscall Latency:** Must be within a tight delta (e.g., < 5%) of the equivalent native Linux `getpid` or `prctl` latency.
+*   **Memory Mapping (`mmap`/`munmap`/`mprotect`):** Must match native speeds. The VM path must use a single authority without a double-layer translation.
+*   **Futex Wait/Wake Latency:** Must bypass global locks and remain highly concurrent, matching Linux/Android native performance.
+*   **Event Polling (`epoll`/`poll`/`select`):** Readiness mapping must not involve per-event translation churn; it must map directly to the kernel's readiness object model.
+*   **Process / Thread Spawn Overhead:** Clone/fork-like operations must not be heavily penalized by personality setup.
+*   **Shared-Memory IPC Throughput:** Must achieve zero-copy throughput parity for large buffers (critical for Binder and Ashmem-like behavior).
+
+## 8. Benchmark Methodology
+
+All performance validations must follow a strict comparison method:
+*   **Environment:** Same hardware target (or accurate QEMU configuration for preliminary checks).
+*   **Toolchain:** Same compiler class and optimization levels.
+*   **Workload:** Identical benchmark source code (e.g., standard microbenchmarks for syscall, epoll, mmap).
+*   **Baseline:** Native Linux result vs. Bharat Linux personality result.
+
+Pass bands require that hot syscalls fall within the defined latency deltas, IPC fast paths perform zero extra memory copies, and no repeated personality/string lookups occur on internal kernel state transitions.
