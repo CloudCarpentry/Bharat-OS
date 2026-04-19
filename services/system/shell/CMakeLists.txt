@@ -20,6 +20,10 @@ set(SHELL_SOURCES
 )
 
 add_executable(system_shell ${SHELL_SOURCES})
+target_link_libraries(system_shell PRIVATE
+    bharat_user_buildopts
+    bharat_freestanding
+)
 target_include_directories(system_shell PRIVATE
     include
 )
@@ -47,3 +51,5 @@ endif()
 if(BUILD_TESTING)
     add_subdirectory(tests)
 endif()
+
+bharat_configure_userspace_binary(system_shell)

@@ -1,24 +1,27 @@
 #include "shell_backend.h"
 
-#include <stdio.h>
-#include <string.h>
-#include <time.h>
+#include "shell_string.h"
 
 static int write_text(char* out, size_t out_len, const char* value) {
+    size_t len;
     if (!out || out_len == 0u || !value) {
         return -1;
     }
-    if (snprintf(out, out_len, "%s", value) < 0) {
+    len = shell_strlen(value);
+    if (len >= out_len) {
         return -1;
     }
+    shell_memcpy(out, value, len + 1u);
     return 0;
 }
 
 static int backend_uptime(uint64_t* uptime_ms) {
+    static uint64_t fake_uptime_ms = 0;
     if (!uptime_ms) {
         return -1;
     }
-    *uptime_ms = (uint64_t)((clock() * 1000ull) / (uint64_t)CLOCKS_PER_SEC);
+    fake_uptime_ms += 100;
+    *uptime_ms = fake_uptime_ms;
     return 0;
 }
 
@@ -35,12 +38,24 @@ static int backend_svc_list(char* out, size_t out_len) {
 }
 
 static int backend_svc_status(const char* name, char* out, size_t out_len) {
+    static const char prefix[] = "service=";
+    static const char suffix[] = " status=active";
+    size_t name_len;
+    size_t total;
     if (!name || name[0] == '\0') {
         return -1;
     }
-    if (snprintf(out, out_len, "service=%s status=active", name) < 0) {
+    if (!out || out_len == 0u) {
         return -1;
     }
+    name_len = shell_strlen(name);
+    total = (sizeof(prefix) - 1u) + name_len + (sizeof(suffix) - 1u);
+    if (total >= out_len) {
+        return -1;
+    }
+    shell_memcpy(out, prefix, sizeof(prefix) - 1u);
+    shell_memcpy(out + (sizeof(prefix) - 1u), name, name_len);
+    shell_memcpy(out + (sizeof(prefix) - 1u) + name_len, suffix, sizeof(suffix));
     return 0;
 }
 
@@ -65,11 +80,9 @@ static int backend_reboot(void) {
 }
 
 static void backend_audit(const char* event, const char* command, shell_status_code_t status) {
-    (void)fprintf(stderr,
-                  "shell_audit event=%s command=%s status=%u\n",
-                  event ? event : "none",
-                  command ? command : "none",
-                  (unsigned)status);
+    (void)event;
+    (void)command;
+    (void)status;
 }
 
 const shell_backend_api_t* shell_default_backend(void) {

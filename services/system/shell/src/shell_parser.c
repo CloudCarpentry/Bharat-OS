@@ -1,8 +1,7 @@
 #include "shell_parser.h"
 
-#include <ctype.h>
 #include <stddef.h>
-#include <string.h>
+#include "shell_string.h"
 
 static bool shell_is_valid_text_char(unsigned char c) {
     if (c == '\t' || c == ' ') {

@@ -1,7 +1,24 @@
 #include "shell_registry.h"
 
-#include <stdio.h>
-#include <string.h>
+#include "shell_string.h"
+
+static void write_u64_dec(char* out, size_t out_len, uint64_t value) {
+    char tmp[21];
+    size_t n = 0;
+    size_t i;
+    if (!out || out_len == 0u) {
+        return;
+    }
+    do {
+        tmp[n++] = (char)('0' + (value % 10u));
+        value /= 10u;
+    } while (value != 0u && n < sizeof(tmp));
+    i = 0;
+    while (n > 0 && (i + 1u) < out_len) {
+        out[i++] = tmp[--n];
+    }
+    out[i] = '\0';
+}
 
 static shell_response_t mk(shell_status_code_t code, const char* msg, const char* payload) {
     shell_response_t r = {.code = code, .message = msg, .payload = payload};
@@ -24,12 +41,25 @@ static shell_response_t cmd_version(const shell_session_t* s, const shell_backen
 
 static shell_response_t cmd_uptime(const shell_session_t* s, const shell_backend_api_t* b, const shell_argv_t* a) {
     static char payload[64];
+    static const char prefix[] = "uptime_ms=";
+    char digits[32];
     uint64_t ms = 0;
     (void)s; (void)a;
     if (!b || !b->get_uptime_ms || b->get_uptime_ms(&ms) != 0) {
         return mk(SHELL_RC_BACKEND_UNAVAILABLE, "uptime unavailable", NULL);
     }
-    snprintf(payload, sizeof(payload), "uptime_ms=%llu", (unsigned long long)ms);
+    write_u64_dec(digits, sizeof(digits), ms);
+    shell_memcpy(payload, prefix, sizeof(prefix) - 1u);
+    payload[sizeof(prefix) - 1u] = '\0';
+    {
+        size_t pfx_len = sizeof(prefix) - 1u;
+        size_t digits_len = shell_strlen(digits);
+        if ((pfx_len + digits_len) >= sizeof(payload)) {
+            digits_len = sizeof(payload) - pfx_len - 1u;
+        }
+        shell_memcpy(payload + pfx_len, digits, digits_len);
+        payload[pfx_len + digits_len] = '\0';
+    }
     return mk(SHELL_RC_OK, "uptime", payload);
 }
 
@@ -40,11 +70,18 @@ static shell_response_t cmd_echo(const shell_session_t* s, const shell_backend_a
     (void)s; (void)b;
     payload[0] = '\0';
     for (i = 1; i < a->count; ++i) {
-        int n = snprintf(payload + used, sizeof(payload) - used, "%s%s", (i > 1) ? " " : "", a->tokens[i]);
-        if (n < 0 || (size_t)n >= sizeof(payload) - used) {
+        const char* token = a->tokens[i];
+        size_t token_len = shell_strlen(token);
+        size_t add = token_len + ((i > 1) ? 1u : 0u);
+        if (add >= (sizeof(payload) - used)) {
             break;
         }
-        used += (size_t)n;
+        if (i > 1) {
+            payload[used++] = ' ';
+        }
+        shell_memcpy(payload + used, token, token_len);
+        used += token_len;
+        payload[used] = '\0';
     }
     return mk(SHELL_RC_OK, "echo", payload);
 }
