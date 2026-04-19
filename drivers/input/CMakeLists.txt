@@ -1,4 +1,5 @@
 add_subdirectory(i2c_hid)
+add_subdirectory(virtio_input)
 
 set(BHARAT_DRIVER_INPUT_SOURCES)
 if(BHARAT_ENABLE_INPUT_GPIO_KEYS)
@@ -19,6 +20,7 @@ target_compile_options(bharatos_driver_input_static PRIVATE -ffreestanding -nost
 add_library(bharatos_driver_input INTERFACE)
 target_link_libraries(bharatos_driver_input INTERFACE
   bharatos_driver_input_i2c_hid
+  bharatos_driver_input_virtio_input
   bharatos_driver_input_static
 )
-target_include_directories(bharatos_driver_input INTERFACE i2c_hid)
+target_include_directories(bharatos_driver_input INTERFACE i2c_hid virtio_input)

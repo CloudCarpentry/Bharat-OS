@@ -268,6 +268,11 @@ if(BHARAT_BUILD_HOST_TESTS)
     add_executable(test_i2c_hid_failures ${CMAKE_SOURCE_DIR}/tests/host/drivers/test_i2c_hid_failures.c ${CMAKE_SOURCE_DIR}/drivers/input/i2c_hid/i2c_hid.c ${CMAKE_SOURCE_DIR}/drivers/bus/i2c/i2c_core.c ${CMAKE_SOURCE_DIR}/drivers/bus/i2c/i2c_registry.c)
     target_include_directories(test_i2c_hid_failures PRIVATE ${CMAKE_SOURCE_DIR}/drivers/input/i2c_hid ${CMAKE_SOURCE_DIR}/drivers/bus/i2c)
     add_test(NAME host_test_i2c_hid_failures COMMAND test_i2c_hid_failures)
+
+    # VirtIO Input Host Tests
+    add_executable(test_virtio_input ${CMAKE_SOURCE_DIR}/tests/host/drivers/test_virtio_input.c ${CMAKE_SOURCE_DIR}/drivers/input/virtio_input/virtio_input.c)
+    target_include_directories(test_virtio_input PRIVATE ${CMAKE_SOURCE_DIR}/drivers/input/virtio_input ${CMAKE_SOURCE_DIR}/drivers/input/include ${CMAKE_SOURCE_DIR}/uapi)
+    add_test(NAME host_test_virtio_input COMMAND test_virtio_input)
 endif()
 add_executable(test_fdt_parser test_fdt_parser.c ../../hal/common/fdt_parser.c)
 target_include_directories(test_fdt_parser PRIVATE ../../include ../../kernel/include ../../boot/include)
