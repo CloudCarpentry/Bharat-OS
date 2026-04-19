@@ -134,3 +134,7 @@ Policy is profile/mode-driven:
 ## Implementation scope note
 
 This document defines architecture and contract, not POSIX shell behavior. The first production shell for Bharat-OS should be a minimal capability-aware system/admin shell, with POSIX compatibility deferred to personality-layer work.
+
+## Reference implementation status
+
+A production-grade minimal system/admin shell reference implementation now exists under `services/system/shell/` with bounded parser/dispatch behavior, capability-gated privileged commands, structured output mode, and host-side tests.
