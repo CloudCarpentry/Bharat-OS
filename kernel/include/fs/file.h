@@ -20,6 +20,9 @@ typedef struct vfs_file {
     // Live capability token governing this open handle's specific rights
     capability_t handle_cap;
 
+    // Per-open private state for drivers or file objects
+    void* private_data;
+
 } vfs_file_t;
 
 // Capability-checked file operations (neutral semantics, not POSIX)

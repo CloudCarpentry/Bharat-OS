@@ -3,6 +3,7 @@
 
 #include "fs/vfs.h"
 #include "../../staging/formal/formal_verif.h"
+#include "fs/superblock.h"
 
 /*
  * vfs_mount_t: Represents a mounted filesystem instance.
@@ -17,6 +18,12 @@ typedef struct vfs_mount {
 
     // Mount-specific capability token (restricts path, class, TTL)
     capability_t mount_cap;
+
+    // The underlying filesystem instance this mount exposes
+    struct fs_superblock* sb;
+
+    // Mount flags (e.g., read-only, no-exec)
+    uint32_t mount_flags;
 
     // References to next mount in system list or namespace mount graph
     struct vfs_mount* next;
