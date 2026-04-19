@@ -165,6 +165,13 @@ add_executable(test_ui_device_class_contract test_ui_device_class_contract.c)
 target_include_directories(test_ui_device_class_contract PRIVATE ../include)
 add_test(NAME test_ui_device_class_contract COMMAND test_ui_device_class_contract)
 
+add_executable(test_tiny_ui_stack
+    test_tiny_ui_stack.c
+    ../stacks/ui/lcd/tiny_ui.c
+)
+target_include_directories(test_tiny_ui_stack PRIVATE ../include)
+add_test(NAME test_tiny_ui_stack COMMAND test_tiny_ui_stack)
+
 add_executable(test_memory_edgecases test_memory_edgecases.c ../kernel/src/mm/vm/aspace/vm_space.c ../kernel/src/mm/zswap.c $<TARGET_OBJECTS:bharat_test_sched_mocks>)
 target_include_directories(test_memory_edgecases PRIVATE ../kernel/include ../lib/include)
 target_compile_definitions(test_memory_edgecases PRIVATE TESTING=1)
