@@ -127,10 +127,14 @@ typedef struct {
     kthread_t* tail;
 } wait_queue_t;
 
+#include <bharat/constraints.h>
+
 struct kthread {
     uint64_t thread_id;
     uint64_t process_id;
     kprocess_t* process;
+
+    bh_exec_constraints_k_t constraints;
 
     // Ownership and lookup metadata
     uint32_t home_core_id;
