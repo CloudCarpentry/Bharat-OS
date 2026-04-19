@@ -416,6 +416,23 @@ CI must fail if:
 - generated BIDL bindings use the wrong status type
 - a kernel-private header becomes part of UAPI transitively
 
+To enforce this, we have developed `tools/abi/generate_abi_manifests.py` and run it automatically in GitHub Actions via `.github/workflows/abi-compat.yml`. This system splits the guardrails into four independent gates:
+
+1. **Syscall table policy**: Checks `syscall_table.def` to ensure numbers are append-only.
+2. **Carrier layout compatibility**: Parses UAPI headers (using `pycparser`) to enforce struct fields remain append-only and do not change types.
+3. **IDL/BIDL compatibility**: Parses `.bidl` files to track RPC signatures, enum constants, and struct layouts.
+4. **SDK symbol compatibility**: Tracks exported symbols using `nm`.
+
+### How to update baselines
+
+Intentional boundary changes require an explicit update process. Only approved PRs should include baseline updates. Developers can run the script with the `--update` flag:
+
+```bash
+python3 tools/abi/generate_abi_manifests.py --update
+```
+
+This will update the `.json` manifest files inside the `contracts/abi/` directory. CI will run the script in `--check` mode.
+
 ---
 
 ## 12. Immediate Repository Rules
