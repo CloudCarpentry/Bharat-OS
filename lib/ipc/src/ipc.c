@@ -1,7 +1,7 @@
 #include <bharat/ipc/ipc.h>
 #include <bharat/uapi/ipc/contract.h>
 #include <ipc_user.h>
-#include <string.h>
+#include <lib/base/string.h>
 #include <stdint.h>
 
 #define BHARAT_IPC_ENDPOINT_PAYLOAD_MAX 128u
