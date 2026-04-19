@@ -2,6 +2,8 @@
 
 This document outlines the manifest-driven target delivery pipeline architecture for Bharat-OS. The pipeline transforms declarative inputs (YAML targets or legacy JSON configs) into runnable or flashable artifacts while strictly decoupling the compilation, packaging, and execution phases.
 
+**Note on Orchestration:** As per the memory core rules, the unified Python build orchestrator is `tools/build.py`. Execution relies on explicit subcommands (e.g., `build`, `package`, `run`, `flash`, `debug`, `all`) and explicit flags: `--target-yaml <path>` for YAML targets and `--target <name>` for legacy configurations. Do not guess behavior from positional arguments.
+
 ## 1. Architectural Boundaries
 
 The build-to-run pipeline enforces rigid boundaries between systems:

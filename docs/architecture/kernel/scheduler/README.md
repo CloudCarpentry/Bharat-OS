@@ -7,7 +7,7 @@ The `scheduler` cluster details how the Bharat-OS kernel distributes CPU time am
 1.  **Fairness (GP Profile):** Ensure general-purpose tasks receive an equitable share of the CPU based on their weight (priority).
 2.  **Real-Time (RT Profile):** Guarantee deterministic, bounded latencies for high-priority tasks, regardless of system load.
 3.  **Energy Efficiency (Edge Profile):** Minimize waking idle cores and consolidate work to save battery on embedded devices.
-4.  **AI Governor Integration:** Allow an external AI Service to asynchronously suggest load-balancing, migrations, and priority adjustments based on telemetry.
+4.  **AI Governor Integration:** Employs an embedded AI heuristic scheduling model within the kernel (Ring 0). This logic collects performance monitoring counter (PMC) data directly via architectural hooks and synchronously scales time slices and predicts optimal tasks for load balancing.
 
 ## Related Documents
 - [Algorithms](algorithms.md) - Details the CFS-like and MLFQ approaches used for general-purpose threads.
