@@ -1,4 +1,6 @@
 import json
+import subprocess
+from shutil import which
 from pathlib import Path
 
 from tools.build.models import (
@@ -24,6 +26,24 @@ def load_legacy_config(repo_root: Path) -> dict:
         return json.load(f)
 
 
+def resolve_objcopy_for_cmake() -> str | None:
+    candidates = ("llvm-objcopy", "llvm-objcopy-20", "llvm-objcopy-19", "objcopy")
+    for candidate in candidates:
+        if not which(candidate):
+            continue
+        try:
+            subprocess.run(
+                [candidate, "--version"],
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            return candidate
+        except Exception:
+            continue
+    return None
+
+
 def resolve_legacy_target(target_name: str, repo_root: Path) -> ResolvedTarget:
     config = load_legacy_config(repo_root)
 
@@ -47,10 +67,20 @@ def resolve_legacy_target(target_name: str, repo_root: Path) -> ResolvedTarget:
     nographic = not gui_enabled
 
     # Fallback boot logic guessing
-    protocol = "linux_arm64" if arch == "arm64" else "multiboot2" if arch == "x86_64" else "opensbi_payload"
-    artifact_format = "raw_bin" if protocol == "linux_arm64" else "elf"
+    protocol = "elf_direct" if arch == "arm64" else "multiboot2" if arch == "x86_64" else "opensbi_payload"
+    artifact_format = "elf"
 
     transforms = []
+    boot_artifact = "kernel/kernel.elf"
+
+    if arch == "x86_64" and protocol == "multiboot2":
+        transforms.append(PackageTransformConfig(
+            type="multiboot_elf_fix",
+            input="kernel/kernel.elf",
+            output="kernel/kernel.elf32",
+        ))
+        boot_artifact = "kernel/kernel.elf32"
+
     if artifact_format == "raw_bin":
         transforms.append(PackageTransformConfig(
             type="elf_to_bin",
@@ -58,10 +88,16 @@ def resolve_legacy_target(target_name: str, repo_root: Path) -> ResolvedTarget:
             output="kernel.bin"
         ))
         boot_artifact = "kernel.bin"
-    else:
-        boot_artifact = "kernel/kernel.elf"
 
     dtb_mode = "qemu_generated"
+    default_cpu = "cortex-a72" if arch == "arm64" else None
+
+    cmake_defs = {
+        "BHARAT_BOOT_GUI": "ON" if gui_enabled else "OFF",
+    }
+    resolved_objcopy = resolve_objcopy_for_cmake()
+    if resolved_objcopy:
+        cmake_defs["CMAKE_OBJCOPY"] = resolved_objcopy
 
     return ResolvedTarget(
         name=target_name,
@@ -73,6 +109,7 @@ def resolve_legacy_target(target_name: str, repo_root: Path) -> ResolvedTarget:
         execution_profile="gp",
         build=BuildConfig(
             cmake_preset=preset,
+            cmake_defs=cmake_defs,
         ),
         kernel=KernelConfig(
             canonical_elf="kernel/kernel.elf",
@@ -88,6 +125,7 @@ def resolve_legacy_target(target_name: str, repo_root: Path) -> ResolvedTarget:
         run=RunConfig(
             backend="qemu",
             machine="virt" if arch in ("arm64", "riscv64", "arm32", "riscv32") else "q35",
+            cpu=default_cpu,
             boot_artifact=boot_artifact,
             nographic=nographic,
             serial=["stdio"],

@@ -1,6 +1,17 @@
+#include "mm/iommu.h"
 #include "hal/hal_iommu.h"
 #include "console/console_core.h"
 #include "kernel/status.h"
+
+static const hal_iommu_ops_t *g_stub_iommu_ops = NULL;
+
+void hal_iommu_set_ops(const hal_iommu_ops_t *ops) {
+    g_stub_iommu_ops = ops;
+}
+
+const hal_iommu_ops_t *hal_iommu_get_ops(void) {
+    return g_stub_iommu_ops;
+}
 
 int iommu_init(void) {
     console_write_raw("IOMMU: Subsystem disabled/stubbed via build configuration\n", 58);

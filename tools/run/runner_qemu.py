@@ -74,7 +74,7 @@ def run_qemu(manifest_path: Path) -> int:
 
     # We use discrete flags for better signal handling on Windows/WSL
     # -nographic often hijacks the signal handler
-    cmd.extend(["-display", "none", "-serial", "stdio"])
+    cmd.extend(["-nographic", "-monitor", "none", "-serial", "stdio"])
 
     smp = run_config.get("smp", 1)
     if smp:

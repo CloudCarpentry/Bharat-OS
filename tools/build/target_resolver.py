@@ -1,6 +1,4 @@
 import sys
-import yaml
-import jsonschema
 from pathlib import Path
 
 from tools.build.models import (
@@ -19,13 +17,28 @@ from tools.build.models import (
 
 SCHEMA_PATH = Path(__file__).parent.parent / "schemas" / "target.schema.yaml"
 
+
+def _require_yaml_deps():
+    try:
+        import yaml  # type: ignore
+        import jsonschema  # type: ignore
+    except ModuleNotFoundError as exc:
+        raise RuntimeError(
+            "YAML target support requires optional Python dependencies "
+            "(pyyaml and jsonschema). Install them or use --target for legacy "
+            "build_config.json targets."
+        ) from exc
+    return yaml, jsonschema
+
 def load_yaml_target(path: Path) -> dict:
+    yaml, _ = _require_yaml_deps()
     if not path.exists():
         raise FileNotFoundError(f"Target YAML not found: {path}")
     with open(path, "r") as f:
         return yaml.safe_load(f)
 
 def validate_yaml_target(raw: dict) -> None:
+    yaml, jsonschema = _require_yaml_deps()
     if not SCHEMA_PATH.exists():
         print(f"[Warning] Target schema not found at {SCHEMA_PATH}, skipping schema validation.")
         return
