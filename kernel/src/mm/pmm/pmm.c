@@ -311,9 +311,9 @@ static void *pmm_alloc_pages_order_colored(int order, uint32_t numa_node,
 }
 
 #if defined(BHARAT_ENABLE_MEMORY_STATS) && BHARAT_ENABLE_MEMORY_STATS == 1
-static uint64_t g_alloc_class_stats[8][2]; // [class][0=allocs, 1=failures]
-#define PMM_STATS_RECORD_ALLOC(cls) do { if ((cls) < 8) __atomic_fetch_add(&g_alloc_class_stats[(cls)][0], 1, __ATOMIC_RELAXED); } while(0)
-#define PMM_STATS_RECORD_FAIL(cls) do { if ((cls) < 8) __atomic_fetch_add(&g_alloc_class_stats[(cls)][1], 1, __ATOMIC_RELAXED); } while(0)
+static uint64_t g_alloc_class_stats[MEM_CLASS_MAX][2]; // [class][0=allocs, 1=failures]
+#define PMM_STATS_RECORD_ALLOC(cls) do { if ((cls) < MEM_CLASS_MAX) __atomic_fetch_add(&g_alloc_class_stats[(cls)][0], 1, __ATOMIC_RELAXED); } while(0)
+#define PMM_STATS_RECORD_FAIL(cls) do { if ((cls) < MEM_CLASS_MAX) __atomic_fetch_add(&g_alloc_class_stats[(cls)][1], 1, __ATOMIC_RELAXED); } while(0)
 #else
 #define PMM_STATS_RECORD_ALLOC(cls) do { } while(0)
 #define PMM_STATS_RECORD_FAIL(cls) do { } while(0)

@@ -1,0 +1,43 @@
+// Runtime Hosting Service Contract v1
+// This interface defines the contract between a runtime environment
+// (e.g., Java ART, Node.js v8, Python) and the Bharat-OS Service Manager.
+
+namespace bharat.runtime.v1;
+
+/// Represents the current execution state of a hosted runtime.
+enum RuntimeState {
+    INIT = 0,
+    RUNNING = 1,
+    PAUSED = 2,
+    STOPPING = 3,
+    CRASHED = 4
+}
+
+/// A request to spawn a new isolate or process within the current runtime capability domain.
+struct SpawnRequest {
+    string package_id;
+    string entry_point;
+    list<string> args;
+}
+
+/// The result of a spawn operation.
+struct SpawnResponse {
+    uint64 process_handle;
+    int32 status_code;
+}
+
+/// Service interface for the runtime host to communicate with the OS.
+interface RuntimeHostController {
+
+    /// Reports the current state of the runtime to the OS lifecycle manager.
+    /// This is used for suspending/resuming apps or tracking background jobs.
+    method ReportState(RuntimeState state) -> ();
+
+    /// Requests to spawn a new child process bounded by the current app's capabilities.
+    method SpawnChild(SpawnRequest req) -> (SpawnResponse res);
+
+    /// Looks up an OS service capability handle by name.
+    /// The OS will only return a handle if the app's manifest permits it.
+    method LookupService(string service_name) -> (uint64 endpoint_handle);
+
+}

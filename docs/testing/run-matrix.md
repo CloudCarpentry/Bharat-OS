@@ -25,13 +25,13 @@ To test an SMP configuration, you can pass the `--cpus` option alongside the run
 
 ```bash
 # Run on 1 CPU
-./build.sh x86_64_desktop_mmu --run --cpus 1
+./build.sh run --target x86_64_desktop_mmu
 
 # Run on 4 CPUs
-./build.sh x86_64_desktop_mmu --run --cpus 4
+./build.sh run --target x86_64_desktop_mmu
 
 # Run ARM32 with SMP (virt path)
-./build.sh arm32_virt_mmu --run --cpus 2
+./build.sh run --target arm32_virt_mmu
 ```
 
 If you specify `--cpus N` (where N > 1) for a board without SMP support (like `avh-corstone310`), the runner will intentionally fail rather than pretending to provide SMP capabilities.
@@ -41,7 +41,7 @@ If you specify `--cpus N` (where N > 1) for a board without SMP support (like `a
 For a powerful, automated approach, you can run a pre-curated test matrix using the `--matrix` option:
 
 ```bash
-./build.sh --matrix
+./build.sh all --matrix
 ```
 
 This sequentially configures, builds, and runs headless tests against a curated list of build configurations and CPU counts, including single-core and multi-core configurations across architectures. At the conclusion of the matrix execution, a summary is provided showing the pass/fail status of each configuration.

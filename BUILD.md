@@ -90,13 +90,13 @@ If these markers do not appear, treat the run as failed even if QEMU launched.
 
 ```bash
 # x86_64
-./build.sh default_dev
+./build.sh build --target default_dev
 
 # arm64
-./build.sh arm64_desktop_headless
+./build.sh build --target arm64_desktop_headless
 
 # riscv64
-./build.sh riscv64_desktop_headless
+./build.sh build --target riscv64_desktop_headless
 ```
 
 ### Run examples (recommended: QEMU E2E harness)
@@ -123,15 +123,15 @@ E2E_MATRIX_MODE=explicit E2E_MATRIX="riscv64:mmu:desktop:linux" ./run_qemu_e2e.s
 `--run` now routes primary serial to host stdio and disables monitor-on-stdio conflicts, so these GUI profiles should print boot logs in your host terminal while the QEMU window is open:
 
 ```powershell
-.\build.ps1 x86_64_desktop_gui --run
-.\build.ps1 arm64_desktop_gui --run
-.\build.ps1 riscv64_desktop_gui --run
+.\build.ps1 all --target x86_64_desktop_gui
+.\build.ps1 all --target arm64_desktop_gui
+.\build.ps1 all --target riscv64_desktop_gui
 ```
 
 ```bash
-./build.sh x86_64_desktop_gui --run
-./build.sh arm64_desktop_gui --run
-./build.sh riscv64_desktop_gui --run
+./build.sh all --target x86_64_desktop_gui
+./build.sh all --target arm64_desktop_gui
+./build.sh all --target riscv64_desktop_gui
 ```
 
 ### How to run headless builds
@@ -139,15 +139,15 @@ E2E_MATRIX_MODE=explicit E2E_MATRIX="riscv64:mmu:desktop:linux" ./run_qemu_e2e.s
 For a pure terminal-based experience without a QEMU graphical window (e.g., CI or remote SSH environments), use the `headless` targets:
 
 ```powershell
-.\build.ps1 x86_64_desktop_headless --run
-.\build.ps1 arm64_desktop_headless --run
-.\build.ps1 riscv64_desktop_headless --run
+.\build.ps1 all --target x86_64_desktop_headless
+.\build.ps1 all --target arm64_desktop_headless
+.\build.ps1 all --target riscv64_desktop_headless
 ```
 
 ```bash
-./build.sh x86_64_desktop_headless --run
-./build.sh arm64_desktop_headless --run
-./build.sh riscv64_desktop_headless --run
+./build.sh all --target x86_64_desktop_headless
+./build.sh all --target arm64_desktop_headless
+./build.sh all --target riscv64_desktop_headless
 ```
 
 ### Expected behavior & Dual serial usage
@@ -159,15 +159,15 @@ For a pure terminal-based experience without a QEMU graphical window (e.g., CI o
 Examples with GUI + mirrored serial (`--dual-serial`):
 
 ```powershell
-.\build.ps1 x86_64_desktop_gui --run --dual-serial
-.\build.ps1 arm64_desktop_gui --run --dual-serial
-.\build.ps1 riscv64_desktop_gui --run --dual-serial
+.\build.ps1 all --target x86_64_desktop_gui
+.\build.ps1 all --target arm64_desktop_gui
+.\build.ps1 all --target riscv64_desktop_gui
 ```
 
 ```bash
-./build.sh x86_64_desktop_gui --run --dual-serial
-./build.sh arm64_desktop_gui --run --dual-serial
-./build.sh riscv64_desktop_gui --run --dual-serial
+./build.sh all --target x86_64_desktop_gui
+./build.sh all --target arm64_desktop_gui
+./build.sh all --target riscv64_desktop_gui
 ```
 
 ### Troubleshooting (QEMU runtime)
@@ -232,13 +232,13 @@ Edit `build_config.json` to define your target composition (e.g. arch, UI on/off
 ```bash
 # Linux/Mac/WSL
 # Build the default_dev profile (conservative, disables scaffold-heavy service groups)
-./build.sh default_dev
+./build.sh build --target default_dev
 
 # Build the experimental services profile (enables scaffold-heavy experimental services)
-./build.sh experimental_services
+./build.sh build --target experimental_services
 
 # Build and run immediately in QEMU
-./build.sh default_dev --run
+./build.sh all --target default_dev
 ```
 
 ```powershell
@@ -246,25 +246,25 @@ Edit `build_config.json` to define your target composition (e.g. arch, UI on/off
 
 # --- x86_64 ---
 # Build and run x86_64 with GUI
-.\build.ps1 default_dev --run
+.\build.ps1 all --target default_dev
 # Build and run x86_64 without GUI (Headless)
-.\build.ps1 default_dev --run-tests
+.\build.ps1 all --target default_dev
 
 # --- ARM64 ---
 # Build and run ARM64 with GUI
-.\build.ps1 arm64_desktop_gui --run
+.\build.ps1 all --target arm64_desktop_gui
 # Build and run ARM64 without GUI (Headless)
-.\build.ps1 arm64_desktop_headless --run-tests
+.\build.ps1 all --target-yaml tools/targets/qemu/arm64_desktop_headless.yaml
 
 # --- RISCV64 ---
 # Build and run RISCV64 with GUI
-.\build.ps1 riscv64_desktop_gui --run
+.\build.ps1 all --target riscv64_desktop_gui
 # Build and run RISCV64 without GUI (Headless)
-.\build.ps1 riscv64_desktop_headless --run-tests
+.\build.ps1 all --target-yaml tools/targets/qemu/riscv64_desktop_headless.yaml
 
 # --- ARM32 ---
 # Build and run ARM32 without GUI (Edge profile)
-.\build.ps1 arm32_edge_mpu --run-tests
+.\build.ps1 build --target arm32_edge_mpu
 ```
 
 ### 🚨 Migration Guide: Legacy Flags Removed
@@ -273,12 +273,12 @@ The build system has been unified around `tools/build.py` using canonical `argpa
 
 | Old Syntax (Deprecated) | New Syntax (Canonical) | Notes |
 | :--- | :--- | :--- |
-| `.\build.ps1 -Arch x86_64 -Run` | `.\build.ps1 default_dev --run` | Arch, board, and profile are now bundled into named configurations in `build_config.json`. |
-| `.\build.ps1 -Arch riscv64 -Clean -Run` | `.\build.ps1 riscv64_desktop_headless --clean --run-tests` | |
-| `.\build.ps1 -Arch arm64 -Profile MEDICAL` | `.\build.ps1 arm64_medical_debug` | |
-| `.\build.ps1 -Arch x86_64 -BootGui ON` | `.\build.ps1 x86_64_laptop_debug --run` | Use a configuration that specifies `"gui": true` in the JSON manifest. |
-| `.\build.ps1 -Arch x86_64 -DualSerial` | `.\build.ps1 default_dev --run --dual-serial` | |
-| `./build.sh -Arch x86_64 -E2e` | `./build.sh default_dev --run-tests` | |
+| `.\build.ps1 all --target x86_64` | `.\build.ps1 all --target default_dev` | Arch, board, and profile are now bundled into named configurations in `build_config.json`. |
+| `.\build.ps1 all --target riscv64` | `.\build.ps1 build --target riscv64_desktop_headless` | |
+| `.\build.ps1 build --target arm64_medical_debug` | `.\build.ps1 build --target arm64_medical_debug` | |
+| `.\build.ps1 build --target x86_64_laptop_debug` | `.\build.ps1 all --target x86_64_laptop_debug` | Use a configuration that specifies `"gui": true` in the JSON manifest. |
+| `.\build.ps1 build --target x86_64` | `.\build.ps1 all --target default_dev` | |
+| `./build.sh build --target x86_64` | `./build.sh build --target default_dev` | |
 
 If you need a specific combination of architecture, profile, and features that does not exist in `build_config.json`, simply add a new block to the JSON file.
 
@@ -426,43 +426,43 @@ Bharat-OS supports various device profiles natively. The build scripts (`build.s
 The CAN subsystem is enabled automatically for Automotive profiles. QEMU will be launched with a virtual Kvaser PCI CAN bus.
 ```bash
 # Bash
-./build.sh arm64_automobile_debug --run
+./build.sh all --target arm64_automobile_debug
 
 # PowerShell
-.\build.ps1 arm64_automobile_debug --run
+.\build.ps1 all --target arm64_automobile_debug
 ```
 
 **2. Drone (UAV) Testing**
 Drone firmware usually relies on specific ARM processors. Using the `DRONE` profile on `arm64` or `arm32` defaults to emulating a Cortex-A15.
 ```bash
 # Bash
-./build.sh arm32_drone_debug --run
+./build.sh all --target arm32_drone_debug
 
 # PowerShell
-.\build.ps1 arm32_drone_debug --run
+.\build.ps1 all --target arm32_drone_debug
 ```
 
 **3. Medical Device Validation**
 Medical environments require strict V&V. The `MEDICAL` profile injects a watchdog device (`i6300esb`) configured to pause on trigger, allowing you to simulate and test fault injection and safe failure states.
 ```bash
 # Bash
-./build.sh arm64_medical_debug --run
+./build.sh all --target arm64_medical_debug
 ```
 
 **4. Robotics & Edge Devices**
 The `ROBOT` and `EDGE` profiles inject basic virtio networking to represent generic IoT or edge deployments.
 ```bash
-./build.sh riscv32_robot_debug --run
+./build.sh all --target riscv32_robot_debug
 ```
 
 **5. Laptops & Workstations**
 The `LAPTOP` profile targets traditional PC or workstation form factors. It injects a virtio network device, as well as a virtio-tablet and virtio-keyboard to emulate typical human interface devices. For `x86_64` targets, it automatically switches the QEMU machine to `q35` and expands the memory to 1G to support ACPI and modern PC buses.
 ```bash
 # Bash
-./build.sh x86_64_laptop_debug --run
+./build.sh all --target x86_64_laptop_debug
 
 # PowerShell
-.\build.ps1 x86_64_laptop_debug --run
+.\build.ps1 all --target x86_64_laptop_debug
 ```
 
 ### End-to-End (E2E) Test Support
@@ -476,7 +476,7 @@ When enabled:
 
 ```bash
 # Bash example for automated testing
-./build.sh arm64_automobile_debug --run-tests
+./build.sh build --target arm64_automobile_debug
 ```
 
 For a full multi-arch and multi-profile QEMU harness, use `run_qemu_e2e.sh`.
@@ -508,10 +508,10 @@ To ensure early kernel logs are visible during UI development, you can use the `
 
 ```powershell
 # Build and run a GUI-enabled config
-.\build.ps1 arm64_automobile_debug --run
+.\build.ps1 all --target arm64_automobile_debug
 
 # Build and run with dual serial (Both GUI and Terminal)
-.\build.ps1 arm64_automobile_debug --run --dual-serial
+.\build.ps1 all --target arm64_automobile_debug
 ```
 
 ### Troubleshooting: `qemu_add_wait_object: failed`
@@ -523,7 +523,7 @@ If you see the error `could not connect serial device to character backend 'mon:
 ```powershell
 # Windows (PowerShell)
 # Build and run x86_64 with GUI enabled
-.\build.ps1 x86_64_laptop_debug --clean --run
+.\build.ps1 all --target x86_64_laptop_debug
 ```
 
 ---
@@ -549,12 +549,15 @@ Use the validated runtime matrix as the baseline:
 ### Quick Start Commands (Windows PowerShell)
 
 ```powershell
-# x86_64
-.\build.ps1 default_dev --run-tests
+# x86_64 (using YAML target)
+.\build.ps1 all --target-yaml tools/targets/qemu/x86_64_desktop_headless.yaml
 
-# arm64
-.\build.ps1 arm64_desktop_headless --run-tests
+# arm64 (using YAML target)
+.\build.ps1 all --target-yaml tools/targets/qemu/arm64_desktop_headless.yaml
 
-# riscv64
-.\build.ps1 riscv64_desktop_headless --run-tests
+# riscv64 (using YAML target)
+.\build.ps1 all --target-yaml tools/targets/qemu/riscv64_desktop_headless.yaml
+
+# x86_64 legacy (using build_config.json)
+.\build.ps1 all --target default_dev
 ```

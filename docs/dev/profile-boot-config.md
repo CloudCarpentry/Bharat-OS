@@ -96,10 +96,10 @@ E2E testing relies on capturing serial logs or defined memory markers. Avoid fra
 
 ```bash
 # Validating Desktop Profile Boot
-./build.sh --arch arm64 --profile DESKTOP
+./build.sh build --target DESKTOP
 qemu-system-aarch64 ... | grep -q "sysmgr: started ui_mgr"
 
 # Validating Appliance Profile Boot
-./build.sh --arch arm64 --profile APPLIANCE
+./build.sh build --target APPLIANCE
 qemu-system-aarch64 ... | grep -q "sysmgr: filtered ui_mgr (unsupported profile)"
 ```

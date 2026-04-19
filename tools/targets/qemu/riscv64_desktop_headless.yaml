@@ -1,0 +1,44 @@
+name: riscv64_desktop_headless
+kind: qemu_target
+
+arch: riscv64
+board: virt
+device_profile: desktop
+personality_profile: native
+execution_profile: gp
+
+build:
+  cmake_preset: riscv64-edge
+  cmake_defs:
+    BHARAT_ARCH_FAMILY: RISCV64
+    BHARAT_DEVICE_PROFILE: DESKTOP
+    BHARAT_PERSONALITY_PROFILE: NATIVE
+    BHARAT_TARGET_BOARD: virt
+    BHARAT_BOOT_GUI: OFF
+
+kernel:
+  canonical_artifacts:
+    elf: kernel/kernel.elf
+
+boot:
+  protocol: opensbi_payload
+  artifact_format: elf
+  dtb:
+    mode: qemu_generated
+
+package:
+  transforms: []
+
+run:
+  backend: qemu
+  machine: virt
+  memory: 512M
+  nographic: true
+  serial:
+    - stdio
+  boot_artifact: kernel/kernel.elf
+
+debug:
+  backend: gdb_remote
+  stop_on_entry: false
+  gdb_port: 1234
