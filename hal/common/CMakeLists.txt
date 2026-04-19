@@ -2,9 +2,9 @@ add_library(hal_common OBJECT
     ../common/fdt_parser.c
     ../common/discovery.c
     ../mmu_init.c
-    ../iommu_stub.c
     ../interrupt_common.c
     ../timer_common.c
+    iommu_adapter.c
     ../common/power/null_power.c
     ../common/power/null_thermal.c
     ../common/memops/mem_scalar.c
