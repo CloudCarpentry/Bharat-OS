@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.20)
 project(BharatOS_Services C ASM)
 
+option(BHARAT_ENABLE_SYSTEM_SHELL "Build capability-aware system shell service" ON)
+
 add_subdirectory(process_manager)
 add_subdirectory(vm_manager)
 
@@ -30,6 +32,9 @@ endif()
 add_subdirectory(device)
 add_subdirectory(system/filesystem)
 add_subdirectory(system/console)
+if(BHARAT_ENABLE_SYSTEM_SHELL)
+    add_subdirectory(system/shell)
+endif()
 add_subdirectory(drivers)
 add_subdirectory(security/crypto)
 if(BHARAT_ENABLE_SERVICE_BOOT_DISPLAYD)

@@ -27,6 +27,8 @@ Guides for setting up your environment, building, running, and testing Bharat-OS
 Contains best practices, status trackers, and implementation plans.
 * [Current Code Status](dev/current-code-status.md) - *The source of truth for implementation status vs. architecture plans.*
 * [Developer Guidelines](dev/developer_guidelines.md)
+* [Shell Contributor Guide](dev/shell-contributor-guide.md)
+* [Shell Testing Guide](dev/shell-testing.md)
 * [Release Versioning](dev/release-versioning.md)
 
 ### [Research & References (`docs/research_doc/`)](research_doc/)
