@@ -96,6 +96,7 @@ def resolve_legacy_target(target_name: str, repo_root: Path) -> ResolvedTarget:
     cmake_defs = {
         "BHARAT_BOOT_GUI": "ON" if gui_enabled else "OFF",
     }
+    cmake_defs.update(legacy_cfg.get("cmake_defs", {}))
     resolved_objcopy = resolve_objcopy_for_cmake()
     if resolved_objcopy:
         cmake_defs["CMAKE_OBJCOPY"] = resolved_objcopy

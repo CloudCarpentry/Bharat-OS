@@ -9,32 +9,26 @@ set -e
 if [[ "${1:-}" == "--sched-matrix" ]]; then
   shift
   root_dir="$(cd "$(dirname "$0")" && pwd)"
-  declare -a archs=(x86_64 arm64 riscv64 arm32 riscv32)
-  declare -a profiles=(gp rt mix)
+  declare -a targets=(
+    x86_64_desktop_headless
+    x86_64_desktop_headless_rt
+    x86_64_desktop_headless_mix
+    arm64_desktop_headless
+    arm64_desktop_headless_rt
+    arm64_desktop_headless_mix
+    riscv64_desktop_headless
+    riscv64_desktop_headless_rt
+    riscv64_desktop_headless_mix
+    arm32_mmu_lite_headless_gp
+    arm32_mmu_lite_headless_rt
+    arm32_mmu_lite_headless_mix
+    riscv32_mmu_lite_headless_gp
+    riscv32_mmu_lite_headless_rt
+    riscv32_mmu_lite_headless_mix
+  )
 
-  for arch in "${archs[@]}"; do
-    for profile in "${profiles[@]}"; do
-      bdir="build/${arch}-${profile}-headless"
-      rm -rf "${root_dir}/${bdir}"
-      defs=(
-        -DARCH="${arch}"
-        -DBHARAT_BOOT_GUI=OFF
-        -DBHARAT_BOOT_HW_PROFILE=edge
-        -DBHARAT_IRQ_DISPATCH_GENERIC=0
-        -DBHARAT_IRQ_DISPATCH_RT=0
-        -DBHARAT_IRQ_DISPATCH_MIXED=0
-      )
-      case "${profile}" in
-        gp) defs+=(-DBHARAT_IRQ_DISPATCH_GENERIC=1) ;;
-        rt) defs+=(-DBHARAT_IRQ_DISPATCH_RT=1) ;;
-        mix) defs+=(-DBHARAT_IRQ_DISPATCH_MIXED=1) ;;
-      esac
-
-      cmake -S "${root_dir}" -B "${root_dir}/${bdir}" \
-        -DCMAKE_TOOLCHAIN_FILE="${root_dir}/cmake/toolchains/${arch}-elf.cmake" \
-        "${defs[@]}" "$@"
-      cmake --build "${root_dir}/${bdir}" -j2 --target k_sched
-    done
+  for target_name in "${targets[@]}"; do
+    python3 "${root_dir}/tools/build.py" build --target "${target_name}" "$@"
   done
   exit 0
 fi
