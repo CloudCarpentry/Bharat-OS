@@ -393,6 +393,570 @@
         "class": "none"
       },
       "run": false
+    },
+    "x86_64_desktop_headless_gp": {
+      "preset": "x86_64-dev",
+      "arch": "x86_64",
+      "profile": "DESKTOP",
+      "personality": "NATIVE",
+      "board": "qemu-virt",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "run": false,
+      "cmake_defs": {
+        "BHARAT_IRQ_DISPATCH_GENERIC": "1",
+        "BHARAT_IRQ_DISPATCH_RT": "0",
+        "BHARAT_IRQ_DISPATCH_MIXED": "0",
+        "BHARAT_IRQ_DISPATCH_MODE": "GENERIC"
+      }
+    },
+    "x86_64_desktop_headless_rt": {
+      "preset": "x86_64-dev",
+      "arch": "x86_64",
+      "profile": "DESKTOP",
+      "personality": "NATIVE",
+      "board": "qemu-virt",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "run": false,
+      "cmake_defs": {
+        "BHARAT_IRQ_DISPATCH_GENERIC": "0",
+        "BHARAT_IRQ_DISPATCH_RT": "1",
+        "BHARAT_IRQ_DISPATCH_MIXED": "0",
+        "BHARAT_IRQ_DISPATCH_MODE": "RT"
+      }
+    },
+    "x86_64_desktop_headless_mix": {
+      "preset": "x86_64-dev",
+      "arch": "x86_64",
+      "profile": "DESKTOP",
+      "personality": "NATIVE",
+      "board": "qemu-virt",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "run": false,
+      "cmake_defs": {
+        "BHARAT_IRQ_DISPATCH_GENERIC": "0",
+        "BHARAT_IRQ_DISPATCH_RT": "0",
+        "BHARAT_IRQ_DISPATCH_MIXED": "1",
+        "BHARAT_IRQ_DISPATCH_MODE": "MIXED"
+      }
+    },
+    "arm64_desktop_headless_gp": {
+      "preset": "arm64-edge",
+      "arch": "arm64",
+      "profile": "DESKTOP",
+      "personality": "LINUX",
+      "board": "virt",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "run": false,
+      "cmake_defs": {
+        "BHARAT_IRQ_DISPATCH_GENERIC": "1",
+        "BHARAT_IRQ_DISPATCH_RT": "0",
+        "BHARAT_IRQ_DISPATCH_MIXED": "0",
+        "BHARAT_IRQ_DISPATCH_MODE": "GENERIC"
+      }
+    },
+    "arm64_desktop_headless_rt": {
+      "preset": "arm64-edge",
+      "arch": "arm64",
+      "profile": "DESKTOP",
+      "personality": "LINUX",
+      "board": "virt",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "run": false,
+      "cmake_defs": {
+        "BHARAT_IRQ_DISPATCH_GENERIC": "0",
+        "BHARAT_IRQ_DISPATCH_RT": "1",
+        "BHARAT_IRQ_DISPATCH_MIXED": "0",
+        "BHARAT_IRQ_DISPATCH_MODE": "RT"
+      }
+    },
+    "arm64_desktop_headless_mix": {
+      "preset": "arm64-edge",
+      "arch": "arm64",
+      "profile": "DESKTOP",
+      "personality": "LINUX",
+      "board": "virt",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "run": false,
+      "cmake_defs": {
+        "BHARAT_IRQ_DISPATCH_GENERIC": "0",
+        "BHARAT_IRQ_DISPATCH_RT": "0",
+        "BHARAT_IRQ_DISPATCH_MIXED": "1",
+        "BHARAT_IRQ_DISPATCH_MODE": "MIXED"
+      }
+    },
+    "riscv64_desktop_headless_gp": {
+      "preset": "riscv64-edge",
+      "arch": "riscv64",
+      "profile": "DESKTOP",
+      "personality": "NATIVE",
+      "board": "virt",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "run": false,
+      "cmake_defs": {
+        "BHARAT_IRQ_DISPATCH_GENERIC": "1",
+        "BHARAT_IRQ_DISPATCH_RT": "0",
+        "BHARAT_IRQ_DISPATCH_MIXED": "0",
+        "BHARAT_IRQ_DISPATCH_MODE": "GENERIC"
+      }
+    },
+    "riscv64_desktop_headless_rt": {
+      "preset": "riscv64-edge",
+      "arch": "riscv64",
+      "profile": "DESKTOP",
+      "personality": "NATIVE",
+      "board": "virt",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "run": false,
+      "cmake_defs": {
+        "BHARAT_IRQ_DISPATCH_GENERIC": "0",
+        "BHARAT_IRQ_DISPATCH_RT": "1",
+        "BHARAT_IRQ_DISPATCH_MIXED": "0",
+        "BHARAT_IRQ_DISPATCH_MODE": "RT"
+      }
+    },
+    "riscv64_desktop_headless_mix": {
+      "preset": "riscv64-edge",
+      "arch": "riscv64",
+      "profile": "DESKTOP",
+      "personality": "NATIVE",
+      "board": "virt",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "run": false,
+      "cmake_defs": {
+        "BHARAT_IRQ_DISPATCH_GENERIC": "0",
+        "BHARAT_IRQ_DISPATCH_RT": "0",
+        "BHARAT_IRQ_DISPATCH_MIXED": "1",
+        "BHARAT_IRQ_DISPATCH_MODE": "MIXED"
+      }
+    },
+    "arm32_mmu_lite_headless_gp": {
+      "preset": "arm32-qemu-mmu-lite-headless",
+      "arch": "arm32",
+      "profile": "EDGE",
+      "personality": "NATIVE",
+      "board": "virt",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "run": false,
+      "cmake_defs": {
+        "BHARAT_IRQ_DISPATCH_GENERIC": "1",
+        "BHARAT_IRQ_DISPATCH_RT": "0",
+        "BHARAT_IRQ_DISPATCH_MIXED": "0",
+        "BHARAT_IRQ_DISPATCH_MODE": "GENERIC"
+      }
+    },
+    "arm32_mmu_lite_headless_rt": {
+      "preset": "arm32-qemu-mmu-lite-headless",
+      "arch": "arm32",
+      "profile": "EDGE",
+      "personality": "NATIVE",
+      "board": "virt",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "run": false,
+      "cmake_defs": {
+        "BHARAT_IRQ_DISPATCH_GENERIC": "0",
+        "BHARAT_IRQ_DISPATCH_RT": "1",
+        "BHARAT_IRQ_DISPATCH_MIXED": "0",
+        "BHARAT_IRQ_DISPATCH_MODE": "RT"
+      }
+    },
+    "arm32_mmu_lite_headless_mix": {
+      "preset": "arm32-qemu-mmu-lite-headless",
+      "arch": "arm32",
+      "profile": "EDGE",
+      "personality": "NATIVE",
+      "board": "virt",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "run": false,
+      "cmake_defs": {
+        "BHARAT_IRQ_DISPATCH_GENERIC": "0",
+        "BHARAT_IRQ_DISPATCH_RT": "0",
+        "BHARAT_IRQ_DISPATCH_MIXED": "1",
+        "BHARAT_IRQ_DISPATCH_MODE": "MIXED"
+      }
+    },
+    "riscv32_mmu_lite_headless_gp": {
+      "preset": "riscv32-qemu-mmu-lite-headless",
+      "arch": "riscv32",
+      "profile": "EDGE",
+      "personality": "NATIVE",
+      "board": "virt",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "extra_args": [
+        "-bios",
+        "/usr/lib/riscv32-linux-gnu/opensbi/generic/fw_dynamic.bin"
+      ],
+      "run": false,
+      "cmake_defs": {
+        "BHARAT_IRQ_DISPATCH_GENERIC": "1",
+        "BHARAT_IRQ_DISPATCH_RT": "0",
+        "BHARAT_IRQ_DISPATCH_MIXED": "0",
+        "BHARAT_IRQ_DISPATCH_MODE": "GENERIC"
+      }
+    },
+    "riscv32_mmu_lite_headless_rt": {
+      "preset": "riscv32-qemu-mmu-lite-headless",
+      "arch": "riscv32",
+      "profile": "EDGE",
+      "personality": "NATIVE",
+      "board": "virt",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "extra_args": [
+        "-bios",
+        "/usr/lib/riscv32-linux-gnu/opensbi/generic/fw_dynamic.bin"
+      ],
+      "run": false,
+      "cmake_defs": {
+        "BHARAT_IRQ_DISPATCH_GENERIC": "0",
+        "BHARAT_IRQ_DISPATCH_RT": "1",
+        "BHARAT_IRQ_DISPATCH_MIXED": "0",
+        "BHARAT_IRQ_DISPATCH_MODE": "RT"
+      }
+    },
+    "riscv32_mmu_lite_headless_mix": {
+      "preset": "riscv32-qemu-mmu-lite-headless",
+      "arch": "riscv32",
+      "profile": "EDGE",
+      "personality": "NATIVE",
+      "board": "virt",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "extra_args": [
+        "-bios",
+        "/usr/lib/riscv32-linux-gnu/opensbi/generic/fw_dynamic.bin"
+      ],
+      "run": false,
+      "cmake_defs": {
+        "BHARAT_IRQ_DISPATCH_GENERIC": "0",
+        "BHARAT_IRQ_DISPATCH_RT": "0",
+        "BHARAT_IRQ_DISPATCH_MIXED": "1",
+        "BHARAT_IRQ_DISPATCH_MODE": "MIXED"
+      }
+    },
+    "x86_64_gp_headless": {
+      "preset": "x86_64-dev",
+      "arch": "x86_64",
+      "profile": "DESKTOP",
+      "personality": "NATIVE",
+      "board": "qemu-virt",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "run": false,
+      "cmake_defs": {
+        "BHARAT_IRQ_DISPATCH_GENERIC": "1",
+        "BHARAT_IRQ_DISPATCH_RT": "0",
+        "BHARAT_IRQ_DISPATCH_MIXED": "0",
+        "BHARAT_IRQ_DISPATCH_MODE": "GENERIC"
+      }
+    },
+    "x86_64_rt_headless": {
+      "preset": "x86_64-dev",
+      "arch": "x86_64",
+      "profile": "DESKTOP",
+      "personality": "NATIVE",
+      "board": "qemu-virt",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "run": false,
+      "cmake_defs": {
+        "BHARAT_IRQ_DISPATCH_GENERIC": "0",
+        "BHARAT_IRQ_DISPATCH_RT": "1",
+        "BHARAT_IRQ_DISPATCH_MIXED": "0",
+        "BHARAT_IRQ_DISPATCH_MODE": "RT"
+      }
+    },
+    "x86_64_mix_headless": {
+      "preset": "x86_64-dev",
+      "arch": "x86_64",
+      "profile": "DESKTOP",
+      "personality": "NATIVE",
+      "board": "qemu-virt",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "run": false,
+      "cmake_defs": {
+        "BHARAT_IRQ_DISPATCH_GENERIC": "0",
+        "BHARAT_IRQ_DISPATCH_RT": "0",
+        "BHARAT_IRQ_DISPATCH_MIXED": "1",
+        "BHARAT_IRQ_DISPATCH_MODE": "MIXED"
+      }
+    },
+    "arm64_gp_headless": {
+      "preset": "arm64-edge",
+      "arch": "arm64",
+      "profile": "DESKTOP",
+      "personality": "LINUX",
+      "board": "virt",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "run": false,
+      "cmake_defs": {
+        "BHARAT_IRQ_DISPATCH_GENERIC": "1",
+        "BHARAT_IRQ_DISPATCH_RT": "0",
+        "BHARAT_IRQ_DISPATCH_MIXED": "0",
+        "BHARAT_IRQ_DISPATCH_MODE": "GENERIC"
+      }
+    },
+    "arm64_rt_headless": {
+      "preset": "arm64-edge",
+      "arch": "arm64",
+      "profile": "DESKTOP",
+      "personality": "LINUX",
+      "board": "virt",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "run": false,
+      "cmake_defs": {
+        "BHARAT_IRQ_DISPATCH_GENERIC": "0",
+        "BHARAT_IRQ_DISPATCH_RT": "1",
+        "BHARAT_IRQ_DISPATCH_MIXED": "0",
+        "BHARAT_IRQ_DISPATCH_MODE": "RT"
+      }
+    },
+    "arm64_mix_headless": {
+      "preset": "arm64-edge",
+      "arch": "arm64",
+      "profile": "DESKTOP",
+      "personality": "LINUX",
+      "board": "virt",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "run": false,
+      "cmake_defs": {
+        "BHARAT_IRQ_DISPATCH_GENERIC": "0",
+        "BHARAT_IRQ_DISPATCH_RT": "0",
+        "BHARAT_IRQ_DISPATCH_MIXED": "1",
+        "BHARAT_IRQ_DISPATCH_MODE": "MIXED"
+      }
+    },
+    "riscv64_gp_headless": {
+      "preset": "riscv64-edge",
+      "arch": "riscv64",
+      "profile": "DESKTOP",
+      "personality": "NATIVE",
+      "board": "virt",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "run": false,
+      "cmake_defs": {
+        "BHARAT_IRQ_DISPATCH_GENERIC": "1",
+        "BHARAT_IRQ_DISPATCH_RT": "0",
+        "BHARAT_IRQ_DISPATCH_MIXED": "0",
+        "BHARAT_IRQ_DISPATCH_MODE": "GENERIC"
+      }
+    },
+    "riscv64_rt_headless": {
+      "preset": "riscv64-edge",
+      "arch": "riscv64",
+      "profile": "DESKTOP",
+      "personality": "NATIVE",
+      "board": "virt",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "run": false,
+      "cmake_defs": {
+        "BHARAT_IRQ_DISPATCH_GENERIC": "0",
+        "BHARAT_IRQ_DISPATCH_RT": "1",
+        "BHARAT_IRQ_DISPATCH_MIXED": "0",
+        "BHARAT_IRQ_DISPATCH_MODE": "RT"
+      }
+    },
+    "riscv64_mix_headless": {
+      "preset": "riscv64-edge",
+      "arch": "riscv64",
+      "profile": "DESKTOP",
+      "personality": "NATIVE",
+      "board": "virt",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "run": false,
+      "cmake_defs": {
+        "BHARAT_IRQ_DISPATCH_GENERIC": "0",
+        "BHARAT_IRQ_DISPATCH_RT": "0",
+        "BHARAT_IRQ_DISPATCH_MIXED": "1",
+        "BHARAT_IRQ_DISPATCH_MODE": "MIXED"
+      }
+    },
+    "arm32_gp_headless": {
+      "preset": "arm32-qemu-mmu-lite-headless",
+      "arch": "arm32",
+      "profile": "EDGE",
+      "personality": "NATIVE",
+      "board": "virt",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "run": false,
+      "cmake_defs": {
+        "BHARAT_IRQ_DISPATCH_GENERIC": "1",
+        "BHARAT_IRQ_DISPATCH_RT": "0",
+        "BHARAT_IRQ_DISPATCH_MIXED": "0",
+        "BHARAT_IRQ_DISPATCH_MODE": "GENERIC"
+      }
+    },
+    "arm32_rt_headless": {
+      "preset": "arm32-qemu-mmu-lite-headless",
+      "arch": "arm32",
+      "profile": "EDGE",
+      "personality": "NATIVE",
+      "board": "virt",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "run": false,
+      "cmake_defs": {
+        "BHARAT_IRQ_DISPATCH_GENERIC": "0",
+        "BHARAT_IRQ_DISPATCH_RT": "1",
+        "BHARAT_IRQ_DISPATCH_MIXED": "0",
+        "BHARAT_IRQ_DISPATCH_MODE": "RT"
+      }
+    },
+    "arm32_mix_headless": {
+      "preset": "arm32-qemu-mmu-lite-headless",
+      "arch": "arm32",
+      "profile": "EDGE",
+      "personality": "NATIVE",
+      "board": "virt",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "run": false,
+      "cmake_defs": {
+        "BHARAT_IRQ_DISPATCH_GENERIC": "0",
+        "BHARAT_IRQ_DISPATCH_RT": "0",
+        "BHARAT_IRQ_DISPATCH_MIXED": "1",
+        "BHARAT_IRQ_DISPATCH_MODE": "MIXED"
+      }
+    },
+    "riscv32_gp_headless": {
+      "preset": "riscv32-qemu-mmu-lite-headless",
+      "arch": "riscv32",
+      "profile": "EDGE",
+      "personality": "NATIVE",
+      "board": "virt",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "extra_args": [
+        "-bios",
+        "/usr/lib/riscv32-linux-gnu/opensbi/generic/fw_dynamic.bin"
+      ],
+      "run": false,
+      "cmake_defs": {
+        "BHARAT_IRQ_DISPATCH_GENERIC": "1",
+        "BHARAT_IRQ_DISPATCH_RT": "0",
+        "BHARAT_IRQ_DISPATCH_MIXED": "0",
+        "BHARAT_IRQ_DISPATCH_MODE": "GENERIC"
+      }
+    },
+    "riscv32_rt_headless": {
+      "preset": "riscv32-qemu-mmu-lite-headless",
+      "arch": "riscv32",
+      "profile": "EDGE",
+      "personality": "NATIVE",
+      "board": "virt",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "extra_args": [
+        "-bios",
+        "/usr/lib/riscv32-linux-gnu/opensbi/generic/fw_dynamic.bin"
+      ],
+      "run": false,
+      "cmake_defs": {
+        "BHARAT_IRQ_DISPATCH_GENERIC": "0",
+        "BHARAT_IRQ_DISPATCH_RT": "1",
+        "BHARAT_IRQ_DISPATCH_MIXED": "0",
+        "BHARAT_IRQ_DISPATCH_MODE": "RT"
+      }
+    },
+    "riscv32_mix_headless": {
+      "preset": "riscv32-qemu-mmu-lite-headless",
+      "arch": "riscv32",
+      "profile": "EDGE",
+      "personality": "NATIVE",
+      "board": "virt",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "extra_args": [
+        "-bios",
+        "/usr/lib/riscv32-linux-gnu/opensbi/generic/fw_dynamic.bin"
+      ],
+      "run": false,
+      "cmake_defs": {
+        "BHARAT_IRQ_DISPATCH_GENERIC": "0",
+        "BHARAT_IRQ_DISPATCH_RT": "0",
+        "BHARAT_IRQ_DISPATCH_MIXED": "1",
+        "BHARAT_IRQ_DISPATCH_MODE": "MIXED"
+      }
     }
   }
 }

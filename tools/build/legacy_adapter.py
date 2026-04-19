@@ -29,16 +29,17 @@ def load_legacy_config(repo_root: Path) -> dict:
 def resolve_objcopy_for_cmake() -> str | None:
     candidates = ("llvm-objcopy", "llvm-objcopy-20", "llvm-objcopy-19", "objcopy")
     for candidate in candidates:
-        if not which(candidate):
+        resolved = which(candidate)
+        if not resolved:
             continue
         try:
             subprocess.run(
-                [candidate, "--version"],
+                [resolved, "--version"],
                 check=True,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
-            return candidate
+            return resolved
         except Exception:
             continue
     return None
@@ -96,6 +97,7 @@ def resolve_legacy_target(target_name: str, repo_root: Path) -> ResolvedTarget:
     cmake_defs = {
         "BHARAT_BOOT_GUI": "ON" if gui_enabled else "OFF",
     }
+    cmake_defs.update(legacy_cfg.get("cmake_defs", {}))
     resolved_objcopy = resolve_objcopy_for_cmake()
     if resolved_objcopy:
         cmake_defs["CMAKE_OBJCOPY"] = resolved_objcopy
