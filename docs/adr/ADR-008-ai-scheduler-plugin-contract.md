@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted
+Superseded (by implementation)
+
+*Note: As of the latest architecture implementation in `kernel/src/sched/ai_sched.c`, the AI heuristic scheduling model is directly embedded in the kernel (Ring 0) and processes telemetry and load-balancing synchronously. This ADR, which assumes a purely external plugin/daemon, is kept for historical context.*
 
 ## Context
 
