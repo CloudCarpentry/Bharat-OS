@@ -1,0 +1,129 @@
+{
+  "manifest": {
+    "schema_version": 1,
+    "release_format_version": 1,
+    "product": {
+      "name": "Bharat-OS",
+      "version": "0.8.0",
+      "channel": "dev",
+      "codename": "vajra"
+    },
+    "kernel": {
+      "version": "0.8.0",
+      "abi": 3,
+      "syscall_abi": 2,
+      "cap_abi": 1
+    },
+    "services": {
+      "namesvc": {
+        "version": "0.1.0",
+        "iface": 1,
+        "channel": "stub"
+      },
+      "servicemgr": {
+        "version": "0.1.0",
+        "iface": 1,
+        "channel": "stub"
+      },
+      "netmgr": {
+        "version": "0.4.0",
+        "iface": 2,
+        "channel": "beta"
+      },
+      "netstack": {
+        "version": "0.4.0",
+        "iface": 2,
+        "channel": "beta"
+      },
+      "crypto": {
+        "version": "0.3.0",
+        "iface": 1,
+        "channel": "beta"
+      },
+      "file_system": {
+        "version": "0.1.0",
+        "iface": 1,
+        "channel": "stub"
+      }
+    },
+    "subsystems": {
+      "network": {
+        "version": "0.4.0",
+        "iface": 2,
+        "channel": "beta"
+      },
+      "ai_governor": {
+        "version": "0.1.0",
+        "iface": 1,
+        "channel": "experimental"
+      }
+    },
+    "drivers": {
+      "virtio_net": {
+        "version": "0.8.0",
+        "iface": 1,
+        "channel": "dev"
+      },
+      "ptp_clock": {
+        "version": "0.8.0",
+        "iface": 1,
+        "channel": "dev"
+      },
+      "fpga_mgr": {
+        "version": "0.8.0",
+        "iface": 1,
+        "channel": "dev"
+      },
+      "cluster_bus": {
+        "version": "0.8.0",
+        "iface": 1,
+        "channel": "experimental"
+      },
+      "automotive_can_loopback": {
+        "version": "0.8.0",
+        "iface": 1,
+        "channel": "dev"
+      },
+      "generic_arch_irq_timer": {
+        "version": "0.8.0",
+        "iface": 1,
+        "channel": "dev"
+      },
+      "generic_board_fabric": {
+        "version": "0.8.0",
+        "iface": 1,
+        "channel": "dev"
+      }
+    },
+    "sdk": {
+      "version": "0.2.0",
+      "libc_abi": 1
+    },
+    "build": {},
+    "signing": {},
+    "supported_arches": [
+      "x86_64",
+      "aarch64",
+      "riscv64",
+      "riscv32",
+      "arm32"
+    ],
+    "supported_profiles": [
+      "desktop",
+      "server",
+      "vm",
+      "laptop",
+      "edge",
+      "rtos",
+      "mobile",
+      "datacenter",
+      "network_appliance"
+    ]
+  },
+  "build": {
+    "git_sha": "21d0b8f",
+    "git_dirty": true,
+    "build_epoch": 1776623062,
+    "build_time_utc": "2026-04-19T18:24:22Z"
+  }
+}

@@ -391,6 +391,7 @@ set(KERNEL_SRCS
     src/tests/ktest_sched.c
     src/tests/ktest_prot_domain.c
     src/tests/ktest_basic_sanity.c
+    src/kernel_policy.c
 )
 
 # ── Platform / Machine layer ────────────────────────────────────────────────

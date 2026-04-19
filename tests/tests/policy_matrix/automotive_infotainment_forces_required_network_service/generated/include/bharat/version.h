@@ -1,0 +1,15 @@
+/* GENERATED FILE - DO NOT EDIT */
+#ifndef BHARAT_VERSION_H
+#define BHARAT_VERSION_H
+
+#define BHARAT_OS_NAME "Bharat-OS"
+#define BHARAT_OS_VERSION "0.8.0"
+#define BHARAT_OS_CHANNEL "dev"
+#define BHARAT_OS_CODENAME "vajra"
+
+#define BHARAT_KERNEL_VERSION "0.8.0"
+#define BHARAT_KERNEL_ABI 3
+#define BHARAT_SYSCALL_ABI 2
+#define BHARAT_CAP_ABI 1
+
+#endif /* BHARAT_VERSION_H */

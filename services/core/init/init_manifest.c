@@ -14,8 +14,27 @@ static const init_service_id_t deps_vm_manager[] = { INIT_SVC_NAMESVC, INIT_SVC_
 static const init_service_id_t deps_servicemgr[] = { INIT_SVC_NAMESVC };
 static const init_service_id_t deps_faultmgr[] = { INIT_SVC_NAMESVC };
 static const init_service_id_t deps_boot_displayd[] = { INIT_SVC_NAMESVC };
+static const init_service_id_t deps_policymgr[] = { INIT_SVC_NAMESVC };
 
 const init_service_desc_t g_init_manifest[] = {
+    {
+        .id = INIT_SVC_POLICYMGR,
+        .name = "policymgr",
+        .boot_class = BOOT_CLASS_CORE,
+        .start_deadline_ms = 1000,
+        .ready_deadline_ms = 5000,
+        .start_fn = stub_start,
+        .probe_fn = NULL,
+        .bootstrap_hint_fn = NULL,
+        .deps = deps_policymgr,
+        .dep_count = 1,
+        .retry_limit = 3,
+        .policy = INIT_SERVICE_REQUIRED,
+        .profile_mask = BHARAT_INIT_PROFILE_SMALL | BHARAT_INIT_PROFILE_EMBEDDED_RICH | BHARAT_INIT_PROFILE_MOBILE | BHARAT_INIT_PROFILE_DESKTOP | BHARAT_INIT_PROFILE_DRONE,
+        .board_mask = BHARAT_INIT_BOARD_ANY,
+        .personality_mask = BHARAT_INIT_PERSONALITY_ANY,
+        .required_caps = BHARAT_INIT_CAP_NONE,
+    },
     {
         .id = INIT_SVC_NAMESVC,
         .name = "namesvc",

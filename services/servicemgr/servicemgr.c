@@ -1,5 +1,6 @@
 #include "servicemgr.h"
 #include <stddef.h>
+#include <bharat/uapi/system/policy_contract.h>
 
 // Basic string/mem stub for freestanding tests
 void *memset(void *s, int c, size_t n);
@@ -10,6 +11,7 @@ static uint32_t next_service_id = 1;
 
 void servicemgr_init(void) {
     memset(service_registry, 0, sizeof(service_registry));
+    memset(policy_cache, 0, sizeof(policy_cache));
 }
 
 int32_t servicemgr_handle_register(const sm_req_register_t *req, sm_resp_register_t *resp) {
@@ -33,10 +35,72 @@ int32_t servicemgr_handle_register(const sm_req_register_t *req, sm_resp_registe
     return BHARAT_IPC_STATUS_ERR_INTERNAL;
 }
 
+// Last-known-good cache for policy decisions
+typedef struct {
+    uint32_t service_id;
+    bharat_policy_decision_t decision;
+    bool valid;
+} policy_cache_entry_t;
+
+static policy_cache_entry_t policy_cache[MAX_SERVICES];
+
+static bharat_policy_decision_t servicemgr_query_policy(uint32_t service_id, uint32_t caps) {
+    bharat_ipc_msg_header_t req_header = {
+        .service_id = 0,
+        .interface_id = BHARAT_POLICYMGR_INTERFACE_ID,
+        .interface_version = BHARAT_POLICYMGR_INTERFACE_VERSION,
+        .opcode = POLICY_OP_QUERY_SERVICE,
+        .payload_size = sizeof(policy_req_query_service_t)
+    };
+
+    policy_req_query_service_t req = {
+        .service_id = service_id,
+        .requested_caps = caps
+    };
+
+    bharat_ipc_msg_header_t resp_header = {0};
+    policy_resp_query_service_t resp = {0};
+
+    // Static endpoint 12 for policymgr
+    int32_t st = bharat_ipc_call(12, &req_header, &req, &resp_header, &resp, sizeof(resp));
+    if (st == BHARAT_IPC_STATUS_OK && resp_header.flags == BHARAT_IPC_STATUS_OK) {
+        // Update cache on success
+        for (int i = 0; i < MAX_SERVICES; i++) {
+            if (!policy_cache[i].valid || policy_cache[i].service_id == service_id) {
+                policy_cache[i].service_id = service_id;
+                policy_cache[i].decision = resp.decision;
+                policy_cache[i].valid = true;
+                break;
+            }
+        }
+        return resp.decision;
+    }
+
+    // Fallback to last-known-good cache if policymgr is unavailable or errors out
+    for (int i = 0; i < MAX_SERVICES; i++) {
+        if (policy_cache[i].valid && policy_cache[i].service_id == service_id) {
+            return policy_cache[i].decision;
+        }
+    }
+
+    // If no cache entry exists (e.g., very first boot or static constraint failure),
+    // default to ALLOW to prevent soft-bricking, relying on mechanism caps to block unsafe actions.
+    return POLICY_DECISION_ALLOW;
+}
+
 int32_t servicemgr_handle_start(const sm_req_start_t *req, sm_resp_start_t *resp) {
     for (int i = 0; i < MAX_SERVICES; i++) {
         if (service_registry[i].in_use && service_registry[i].service_id == req->service_id) {
             if (service_registry[i].state == SM_STATE_STOPPED || service_registry[i].state == SM_STATE_CRASHED) {
+                // Query policymgr for launch gating
+                bharat_policy_decision_t decision = servicemgr_query_policy(service_registry[i].service_id, service_registry[i].required_caps);
+
+                if (decision == POLICY_DECISION_DENY) {
+                    service_registry[i].state = SM_STATE_DENIED_BY_POLICY;
+                    resp->status = BHARAT_IPC_STATUS_ERR_PERM;
+                    return BHARAT_IPC_STATUS_ERR_PERM;
+                }
+
                 service_registry[i].state = SM_STATE_STARTING;
                 service_registry[i].last_heartbeat = 0; // Reset heartbeat
                 resp->status = BHARAT_IPC_STATUS_OK;

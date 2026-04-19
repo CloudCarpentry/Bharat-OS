@@ -1,5 +1,6 @@
 #include "sched/sched.h"
 #include "sched_internal.h"
+#include <kernel_policy.h>
 #include "panic.h"
 
 int sched_enqueue(kthread_t *thread, uint32_t core_id) {
@@ -8,6 +9,14 @@ int sched_enqueue(kthread_t *thread, uint32_t core_id) {
   }
 
   core_id = sched_clamp_core(core_id);
+
+  // Policy Enforcement: Validate against SLO gates
+  const bharat_slo_gates_t *gates = kernel_get_slo_gates();
+  sched_rq_t *rq = &g_cpu_locals[core_id].runqueue;
+  if (gates && rq->runnable_count >= gates->max_runqueue_depth) {
+      return -1; // SCHED_REJECT due to runqueue depth SLO violation
+  }
+
   if (!sched_is_core_admissible(thread, core_id)) {
     return -1; // SCHED_REJECT
   }
@@ -29,8 +38,6 @@ int sched_enqueue(kthread_t *thread, uint32_t core_id) {
       }
       return 0;
   }
-
-  sched_rq_t *rq = &g_cpu_locals[core_id].runqueue;
   thread_slot_t *slot = sched_find_thread_slot_by_tid_local(rq, thread->thread_id);
   if (!slot) {
     return -1;

@@ -25,7 +25,8 @@ typedef enum {
     SM_STATE_STARTING,
     SM_STATE_RUNNING,
     SM_STATE_CRASHED,
-    SM_STATE_BACKOFF
+    SM_STATE_BACKOFF,
+    SM_STATE_DENIED_BY_POLICY
 } sm_service_state_t;
 
 // SM_OP_REGISTER Request

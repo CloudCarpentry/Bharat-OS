@@ -54,6 +54,7 @@ typedef enum {
     INIT_SVC_STORAGEMGR = 9,
     INIT_SVC_ACCELMGR = 10,
     INIT_SVC_APP_PAYLOAD = 11,
+    INIT_SVC_POLICYMGR = 12,
     // Add more as needed
 } init_service_id_t;
 

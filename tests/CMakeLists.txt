@@ -93,6 +93,18 @@ add_executable(test_urpc_init_channel test_urpc_init_channel.c ../lib/urpc/urpc.
 target_include_directories(test_urpc_init_channel PRIVATE ../lib/urpc)
 add_test(NAME test_urpc_init_channel COMMAND test_urpc_init_channel)
 
+add_executable(test_lib_ipc_contract
+    test_lib_ipc_contract.c
+    ../lib/ipc/src/ipc.c
+)
+target_include_directories(test_lib_ipc_contract PRIVATE
+    ../include
+    ../lib/include
+    ../lib/cap/include
+    ../lib/ipc/include
+)
+add_test(NAME test_lib_ipc_contract COMMAND test_lib_ipc_contract)
+
 add_executable(test_urpc_ring test_urpc_ring.c ../kernel/src/ipc/multikernel.c ../kernel/src/ipc/mk_dispatch.c $<TARGET_OBJECTS:bharat_test_sched_mocks>)
 add_executable(test_ipc_async_timeout test_ipc_async_timeout.c ../kernel/src/ipc/async_ipc.c ../kernel/src/ipc/ipc_timeout.c)
 target_include_directories(test_ipc_async_timeout PRIVATE ../kernel/include ../lib/include)
@@ -506,5 +518,11 @@ target_include_directories(test_constraint_validation PRIVATE
     ${CMAKE_SOURCE_DIR}/kernel/include
     ${CMAKE_SOURCE_DIR}/uapi
 )
-target_sources(test_constraint_validation PRIVATE ${CMAKE_SOURCE_DIR}/kernel/src/core/constraints/constraints_common.c ${CMAKE_SOURCE_DIR}/kernel/src/core/constraints/constraint_validate.c)
+target_sources(test_constraint_validation PRIVATE /app/kernel/src/core/constraints/constraints_common.c /app/kernel/src/core/constraints/constraint_validate.c)
 add_test(NAME test_constraint_validation COMMAND test_constraint_validation)
+
+# Host negative tests
+
+target_include_directories(test_policy_gating PRIVATE ../include ../include/bharat ../uapi)
+target_compile_definitions(test_policy_gating PRIVATE -D__USER__)
+add_test(NAME test_policy_gating COMMAND test_policy_gating)
