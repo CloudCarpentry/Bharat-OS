@@ -7,6 +7,12 @@ int block_queue_request(uint32_t device_id, block_request_t* req) {
     // Stub: Serialize request and send to driver via uRPC
     if (!req) return -1;
 
+    if (req->type == BLOCK_REQ_FLUSH) {
+        // Queue drain / barrier semantic placeholder.
+        req->status = 0;
+        return 0;
+    }
+
     if (device_id == 0) { // Assume 0 is virtio-blk
         // We simulate sending an SG list to the driver
         void* dummy_sg = req->buffer;

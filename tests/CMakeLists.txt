@@ -399,6 +399,10 @@ add_executable(test_elf_parser test_elf_parser.c)
 target_include_directories(test_elf_parser PRIVATE ${CMAKE_SOURCE_DIR}/include)
 target_link_libraries(test_elf_parser PRIVATE elf_parser)
 add_test(NAME ELFParserTest COMMAND test_elf_parser)
+add_executable(test_storage_profile test_storage_profile.c ../stacks/storage/profile.c)
+target_include_directories(test_storage_profile PRIVATE ../include)
+add_test(NAME test_storage_profile COMMAND test_storage_profile)
+
 add_executable(test_vfs_ramfs test_vfs_ramfs.c ../lib/fs/fs_client.c ../stacks/storage/fs/ramfs/ramfs.c ../services/system/filesystem/vfs_stub.c ../services/system/filesystem/mount_mgr.c ../services/system/filesystem/fd_mgr.c ../services/system/filesystem/namespace_mgr.c ../kernel/src/lib/base/string.c $<TARGET_OBJECTS:bharat_test_sched_mocks>)
 target_include_directories(test_vfs_ramfs PRIVATE ../kernel/include ../include ../lib/include)
 target_compile_definitions(test_vfs_ramfs PRIVATE TESTING=1)
@@ -460,6 +464,7 @@ set(BHARAT_NOSTDLIB_TEST_TARGETS
     test_syscall_abi
     test_elf_parser
     test_vfs_ramfs
+    test_storage_profile
     test_boot_e2e
     test_android_personality
 )
