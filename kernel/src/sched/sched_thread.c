@@ -1,3 +1,4 @@
+#include <bharat/uapi/system/intent.h>
 #include "sched/sched.h"
 #include "sched_internal.h"
 
@@ -143,3 +144,29 @@ int thread_raise_fault(kthread_t *thread, thread_fault_t fault) {
     return 0;
 }
 
+
+
+void *memcpy(void *dest, const void *src, size_t n);
+
+int sched_sys_intent_set(uint64_t tid, const void* intent) {
+    if (!intent) return -1;
+    kthread_t *thread = sched_find_thread_by_id(tid);
+    if (!thread) return -1;
+    // Basic validation and copy
+    bharat_intent_t local_intent;
+    memcpy(&local_intent, intent, sizeof(bharat_intent_t));
+    if (local_intent.version != BHARAT_INTENT_V1) return -1;
+
+    // TODO: store intent somewhere
+    (void)thread;
+    return 0;
+}
+
+int sched_sys_intent_get(uint64_t tid, void* intent) {
+    if (!intent) return -1;
+    kthread_t *thread = sched_find_thread_by_id(tid);
+    if (!thread) return -1;
+    // TODO: retrieve intent from somewhere
+    (void)thread;
+    return 0;
+}

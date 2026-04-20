@@ -1,6 +1,6 @@
 # Bharat-OS Review: Modern Primitives, Risk, and Personality Impact (Linux/Android)
 
-**Date:** 2026-04-20  
+**Date:** 2026-04-20
 **Scope:** Intent-based execution, memory semantic classes, and fault domains as additive v1 primitives.
 
 ## 1) Executive conclusion

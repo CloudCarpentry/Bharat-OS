@@ -54,3 +54,4 @@ typedef struct bharat_sys_cap_delegate_args {
 } bharat_sys_cap_delegate_args_t;
 
 #endif /* BHARAT_UAPI_SYSCALL_ARGS_H */
+// Add args structs if needed, but since we are trying to keep it simple, we might just pass args directly if they fit in registers.
