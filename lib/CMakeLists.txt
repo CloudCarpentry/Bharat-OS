@@ -13,7 +13,7 @@ bharat_configure_userspace_library(bharat_libcmin)
 # bharat_libtransport (URPC / Loopsback)
 # ---------------------------------------------------------
 add_library(bharat_libtransport STATIC urpc/urpc.c transport/loopback.c)
-target_include_directories(bharat_libtransport PUBLIC urpc ../services/core/subsysmgr/include)
+target_include_directories(bharat_libtransport PUBLIC urpc ../services/core/subsysmgr/include runtime/include)
 target_link_libraries(bharat_libtransport PUBLIC bharat_freestanding)
 bharat_configure_userspace_library(bharat_libtransport)
 
@@ -65,7 +65,7 @@ add_library(bharat_libmsg STATIC ${BHARAT_LIBMSG_SOURCES})
 if (CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|ARM64")
     set_source_files_properties(msg/crc_aarch64.c PROPERTIES COMPILE_FLAGS "-march=armv8-a+crc")
 endif()
-target_include_directories(bharat_libmsg PUBLIC ../services/core/subsysmgr/include)
+target_include_directories(bharat_libmsg PUBLIC ../services/core/subsysmgr/include runtime/include)
 target_link_libraries(bharat_libmsg PUBLIC bharat_freestanding)
 bharat_configure_userspace_library(bharat_libmsg)
 

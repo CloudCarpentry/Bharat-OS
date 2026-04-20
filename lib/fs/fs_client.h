@@ -7,6 +7,7 @@
 // Phase 2 fs_client layer to enforce boundary between kernel and service
 
 int fs_open(const char* path, int flags, capability_t* caller_cap, int* out_fd);
+int fs_openat(int dirfd, const char* path, int flags, capability_t* caller_cap, int* out_fd);
 int fs_read(int fd, void* buffer, size_t size, capability_t* caller_cap);
 int fs_write(int fd, const void* buffer, size_t size, capability_t* caller_cap);
 int fs_close(int fd, capability_t* caller_cap);
