@@ -505,6 +505,21 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Objective:** Complete Bharat-OS memory as a profile-aware subsystem that works correctly across MMU-full, MMU-lite, and MPU-only targets.
 
+### E3 Priority gap closure requirements (authoritative)
+
+**Current strengths to preserve**
+
+* Explicit memory model API already exists with capability distinctions across MMU-full / MMU-lite / MPU.
+* Arch capability reporting is present on major targets and already encodes model diversity.
+* VM space object timing behavior (`prefault`, lazy realization, runtime PT allocation gating) is already surfaced.
+
+**Production closure requirements**
+
+* Boot-time runtime memory model validation must be authoritative (`arch_caps × selected profile × required guarantees`) with fail-closed semantics.
+* VM distributed map/unmap/realize/destroy ownership flow must be monitor-confirmed with rollback safety.
+* MMU-lite/MPU profiles must publish strict unsupported-feature contracts and enforce them (no implicit MMU-full emulation).
+* IOMMU/NUMA/hugepage paths must be profile-matrix gated so unsupported paths are disabled and cannot be accidentally invoked.
+
 ### Story E3-S1 — Implement unified memory contract across MMU-full / MMU-lite / MPU
 
 **Priority:** P1
@@ -514,6 +529,8 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 **Tasks**
 
 * Introduce a top-level memory profile dispatcher driven by `hal_pt_caps()` / translation kind / exec class
+* Add runtime verification layer for `mem_model_get_current()` outputs against boot-detected hardware capabilities
+* Add fail-closed boot behavior when required memory guarantees are not met by detected hardware
 * Implement MMU-full path (`request/fault -> aspace -> region -> vm_object -> hal_pt -> tlb`)
 * Implement MMU-lite path (`request/prefault/realize -> aspace -> region -> vm_object -> hal_pt or fixed-map backend -> limited tlb sync`)
 * Implement MPU path (`request/protection-domain update -> region set -> hal_mpu/prot_domain programming -> synchronization`)
@@ -544,6 +561,8 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 * Define physical frame lifecycle (boot-known, free, allocated, pinned, reclaimable, quarantined/poisoned, device-owned / DMA-exported)
 * Define sparse mapping lifecycle (reserved, attached to object, realized, protected, unmapped, destroyed)
+* Remove deprecated realization walk pathways and quarantine-only fallback paths
+* Make distributed destroy path include authoritative remote realization cleanup with explicit completion ACK
 * Define region / protection lifecycle (declared, validated, programmed, active, reprogram pending, revoked)
 
 **Likely Code Areas**
@@ -568,6 +587,7 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 * Define pinned page ownership and contiguous allocation path
 * Differentiate coherent vs non-coherent DMA
 * Implement software cache maintenance for MMU-lite / MPU-only
+* Add profile-level call-path guards that hard-disable unavailable IOMMU semantics
 * Define direct DMA fallback policy when no IOMMU exists
 * Implement IOVA domain lifecycle when IOMMU exists
 * Define device isolation levels (unmanaged, identity, bypass, managed, blocked)
@@ -593,6 +613,7 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 **Tasks**
 
 * Establish node metadata as authoritative kernel objects
+* Add explicit no-NUMA/no-hugepage profile declarations and enforce hard-disabled behavior
 * Define allocation preferences and locality tagging on VM objects / DMA buffers
 * Implement node affinity hints in PMM and aspace
 * Ensure clean no-op behavior on single-node systems

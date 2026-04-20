@@ -137,7 +137,7 @@ For diagram-based decomposition and roadmap mapping by domain, see:
 
 For the current memory production hardening plan and profile/architecture acceptance matrix, see:
 
-- `docs/architecture/memory-production-grade-plan.md`
+- `docs/architecture/memory/memory-roadmap-consolidated.md`
 
 ## 8) Service Deployment Profiles
 
