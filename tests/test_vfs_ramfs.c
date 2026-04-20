@@ -4,9 +4,10 @@
 #include <string.h>
 
 #include "fs/vfs.h"
+#include "../../lib/fs/fs_client.h"
 #include "fs/file.h"
 #include "fs/mount.h"
-#include "fs/ramfs.h"
+#include "../../stacks/storage/fs/ramfs/ramfs.h"
 
 // Provide dummy kmalloc/kfree since it's host-side tests
 void* kmalloc(size_t size) {
@@ -29,7 +30,7 @@ int main(void) {
         .target_object_id = VFS_NAMESPACE_OBJECT_ID,
         .rights_mask = 2, // Old CAP_RIGHT_WRITE
     };
-    assert(vfs_mount_fs("/", root_node, &mount_cap) == 0);
+    assert(fs_mount("/", root_node, &mount_cap) == 0);
 
     // Create a file
     int create_result;
@@ -44,7 +45,7 @@ int main(void) {
         .rights_mask = 1 | 2, // Old CAP_RIGHT_READ | CAP_RIGHT_WRITE
     };
 
-    assert(vfs_open_file("/", VFS_OPEN_READ | VFS_OPEN_WRITE, &root_cap, &fd) == 0);
+    assert(fs_open("/", VFS_OPEN_READ | VFS_OPEN_WRITE, &root_cap, &fd) == 0);
 
     // We can't do ioctl via vfs layer because there is no vfs_ioctl wrapper, but we can call it on the root node's ops
     vfs_file_t file_struct = {
@@ -104,4 +105,30 @@ int main(void) {
 
     puts("test_vfs_ramfs: PASS");
     return 0;
+}
+void* arch_memcpy(void* dest, const void* src, size_t n, uint32_t flags) {
+    (void)flags;
+    char* d = (char*)dest;
+    const char* s = (const char*)src;
+    while(n--) *d++ = *s++;
+    return dest;
+}
+void* arch_memset(void* s, int c, size_t n, uint32_t flags) {
+    (void)flags;
+    char* p = (char*)s;
+    while(n--) *p++ = (char)c;
+    return s;
+}
+void* arch_memmove(void* dest, const void* src, size_t n, uint32_t flags) {
+    (void)flags;
+    char* d = (char*)dest;
+    const char* s = (const char*)src;
+    if (d < s) {
+        while (n--) *d++ = *s++;
+    } else {
+        d += n;
+        s += n;
+        while (n--) *--d = *--s;
+    }
+    return dest;
 }

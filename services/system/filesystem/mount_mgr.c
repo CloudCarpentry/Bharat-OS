@@ -117,3 +117,11 @@ vfs_node_t* vfs_resolve_mount_path(const char* path, capability_t* caller_cap) {
 
     return best_node;
 }
+
+#ifdef TESTING
+void vfs_mount_test_reset_state(void) {
+    g_mount_count = 0;
+    g_mount_lock = 0;
+    vfs_root = NULL;
+}
+#endif

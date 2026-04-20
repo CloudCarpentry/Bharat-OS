@@ -71,14 +71,14 @@ The pure hardware interface layer.
 
 ## 5. Implementation Roadmap
 
-### Phase 1: Near-Production Baseline (Completed)
-1. Relocated existing VFS policy logic (`vfs.c`, `mount.c`, `file.c`, `namespace.c`, etc.) out of the kernel into `services/system/filesystem/`.
-2. Replaced kernel VFS logic with thin transitional capability/IPC shims.
-3. Established the `stacks/storage/` framework encompassing generic block API, basic buffer cache abstracts, and fs-adapter boundaries.
-4. Linked and verified a reference IPC-to-block routing path: app -> VFS service -> Storage Block Stack -> `virtio_blk` driver.
+### Phase 1: Near-Production Baseline (Partially Complete / Transitional)
+1. Relocated existing VFS policy logic (`vfs.c`, `mount.c`, `file.c`, `namespace.c`, etc.) out of the kernel into `services/system/filesystem/`. The service migration has started but is still incomplete.
+2. Replaced kernel VFS logic with thin transitional capability/IPC shims. The kernel still exposes this shim ABI.
+3. Established the `stacks/storage/` framework encompassing generic block API, basic buffer cache abstracts, and fs-adapter boundaries. This is currently scaffolded, but not production-complete.
+4. Tests and legacy components still depend on the kernel shim paths instead of the service path.
 
 ### Phase 2: Kernel Clean-up & POSIX Personality (Current Objective)
-1. Remove remaining direct kernel consumer dependencies on transitional VFS shims (B-phase cleanup).
+1. Remove remaining direct kernel consumer dependencies on transitional VFS shims (B-phase cleanup). Migrate tests to use an `fs_client` layer that routes to the filesystem service.
 2. Implement a complete deterministic/lightweight filesystem (e.g., littlefs/FAT) in `stacks/storage/fs/`.
 3. Connect `services/system/filesystem/` to the `compat/linux` personality to support real `openat`, `read`, `write`, `stat`.
 4. Implement the NUMA-aware Page Cache in `stacks/storage/cache/` to buffer reads and aggregate writes.

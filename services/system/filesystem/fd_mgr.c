@@ -1,3 +1,4 @@
+#include "fs/vfs.h"
 #include "fs/file.h"
 #include "fs/mount.h"
 #include "capability.h"
@@ -22,7 +23,18 @@ static int vfs_cap_allows_file(vfs_file_t* entry, capability_t* caller_cap, uint
         if (caller_cap->target_object_id != entry->node->object_id) return 0;
         return 1;
     }
-    // Stub capability checks since we are in userspace service daemon now
+    // Capability hook
+    if (caller_cap->capability_id != 0) {
+        if ((caller_cap->rights_mask & required_rights) != required_rights) {
+            return 0;
+        }
+        if (entry->handle_cap.target_object_id != 0 || entry->handle_cap.rights_mask != 0) {
+            if ((entry->handle_cap.rights_mask & required_rights) != required_rights) return 0;
+            if (caller_cap->target_object_id != entry->handle_cap.target_object_id) return 0;
+            return 1;
+        }
+        if (caller_cap->target_object_id != entry->node->object_id) return 0;
+    }
     return 1;
 }
 
@@ -139,3 +151,13 @@ int vfs_close(int fd) {
     if (fd >= 0 && fd < VFS_MAX_OPEN_FILES) dummy_cap = g_open_files[fd].handle_cap;
     return vfs_close_file(fd, &dummy_cap);
 }
+
+#ifdef TESTING
+void vfs_file_test_reset_state(void) {
+    for (int i = 0; i < VFS_MAX_OPEN_FILES; i++) {
+        g_open_files[i].in_use = 0;
+        g_open_files[i].node = NULL;
+    }
+    g_open_files_lock = 0;
+}
+#endif
