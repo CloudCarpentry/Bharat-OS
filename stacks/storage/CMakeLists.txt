@@ -1,6 +1,7 @@
 add_library(bharat_stacks_storage STATIC
     block/block.c
     cache/cache.c
+    profile.c
     fs/adapter.c
     fs/ramfs/ramfs.c
     fs/blob/blob_backend.c
