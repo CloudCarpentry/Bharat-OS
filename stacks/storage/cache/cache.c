@@ -25,11 +25,18 @@ static cache_entry_t* cache_find(uint32_t device_id, uint64_t lba) {
 }
 
 static cache_entry_t* cache_pick_victim(void) {
+    uint32_t idx = g_clock_hand;
     for (uint32_t probe = 0; probe < g_cache_capacity; ++probe) {
-        uint32_t idx = (g_clock_hand + probe) % g_cache_capacity;
         if (!g_cache[idx].in_use || g_cache[idx].pin_count == 0U) {
-            g_clock_hand = (idx + 1U) % g_cache_capacity;
+            g_clock_hand = idx + 1U;
+            if (g_clock_hand >= g_cache_capacity) {
+                g_clock_hand = 0U;
+            }
             return &g_cache[idx];
+        }
+        idx++;
+        if (idx >= g_cache_capacity) {
+            idx = 0U;
         }
     }
     return NULL;

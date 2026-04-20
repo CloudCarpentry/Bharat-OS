@@ -3,8 +3,13 @@
 #include "slab.h"
 #include <stddef.h>
 #include <stdint.h>
+#include <limits.h>
 #include "mm.h"
 #include "lib/base/string.h"
+
+#ifndef SIZE_MAX
+#define SIZE_MAX ((size_t)-1)
+#endif
 
 #define RAMFS_DRIVER_NAME "ramfs"
 
