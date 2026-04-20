@@ -71,14 +71,14 @@ The pure hardware interface layer.
 
 ## 5. Implementation Roadmap
 
-### Phase 1: Near-Production Baseline (Completed)
-1. Relocated existing VFS policy logic (`vfs.c`, `mount.c`, `file.c`, `namespace.c`, etc.) out of the kernel into `services/system/filesystem/`.
-2. Replaced kernel VFS logic with thin transitional capability/IPC shims.
-3. Established the `stacks/storage/` framework encompassing generic block API, basic buffer cache abstracts, and fs-adapter boundaries.
-4. Linked and verified a reference IPC-to-block routing path: app -> VFS service -> Storage Block Stack -> `virtio_blk` driver.
+### Phase 1: Near-Production Baseline (Partially Complete / Transitional)
+1. Relocated existing VFS policy logic (`vfs.c`, `mount.c`, `file.c`, `namespace.c`, etc.) out of the kernel into `services/system/filesystem/`. The service migration has started but is still incomplete.
+2. Replaced kernel VFS logic with thin transitional capability/IPC shims. The kernel still exposes this shim ABI.
+3. Established the `stacks/storage/` framework encompassing generic block API, basic buffer cache abstracts, and fs-adapter boundaries. This is currently scaffolded, but not production-complete.
+4. Tests and legacy components still depend on the kernel shim paths instead of the service path.
 
 ### Phase 2: Kernel Clean-up & POSIX Personality (Current Objective)
-1. Remove remaining direct kernel consumer dependencies on transitional VFS shims (B-phase cleanup).
+1. Remove remaining direct kernel consumer dependencies on transitional VFS shims (B-phase cleanup). Migrate tests to use an `fs_client` layer that routes to the filesystem service.
 2. Implement a complete deterministic/lightweight filesystem (e.g., littlefs/FAT) in `stacks/storage/fs/`.
 3. Connect `services/system/filesystem/` to the `compat/linux` personality to support real `openat`, `read`, `write`, `stat`.
 4. Implement the NUMA-aware Page Cache in `stacks/storage/cache/` to buffer reads and aggregate writes.
@@ -92,3 +92,65 @@ The pure hardware interface layer.
 1. Implement multi-queue NVMe driver with CPU core pinning.
 2. Introduce `VFS_BACKEND_BLOB` for URI-addressed object storage.
 3. Asynchronous I/O via `io_uring`-style ring buffers mapped between the application and VFS.
+
+---
+
+## 6. Gap Review (Current Repo State) and Remaining Tasks
+
+After reviewing the active code under `stacks/storage/` and `services/system/filesystem/`, the biggest remaining production gaps are:
+
+1. **Filesystem service path is still mostly stubbed**
+   - `services/system/filesystem/main.c` performs only a single synthetic block read flow.
+   - Full IPC decode/dispatch for `openat/read/write/stat` is still pending.
+
+2. **Storage cache and writeback were placeholder-only**
+   - The previous cache implementation had no residency model, no eviction policy, and no sync semantics.
+
+3. **No profile/device/architecture-aware policy resolver**
+   - Build/runtime profile intent existed in architecture docs, but there was no shared resolver translating:
+     - app profile (RT/Edge/Datacenter),
+     - device size,
+     - hardware architecture,
+     into concrete FS backend + cache + queue configuration.
+
+4. **Phase-2 service migration remains incomplete**
+   - Kernel shim consumers and some tests still rely on transitional paths.
+
+### Updated Remaining Task List (priority order)
+
+1. Complete `fs_client` + service-side syscall routing (`openat/read/write/stat/mkdir/unlink/rename`) and migrate all tests from kernel shims.
+2. Add concrete persistent adapters in `stacks/storage/fs/`:
+   - `littlefs`/`FAT` for RT/Edge,
+   - `ext4-like` baseline for general-purpose,
+   - `xfs-like`/blob for datacenter scale.
+3. Wire cache pages to DMA-safe allocator and block IO SG lists (remove placeholder buffer pointers).
+4. Add NUMA-local worker and queue pinning policy plumbing for datacenter profile.
+5. Add integrity/journaling hooks (`stacks/storage/integrity/`) and profile-gated enforcement.
+6. Add fault-injection + soak tests (power-cut/replay, media errors, queue timeouts).
+
+---
+
+## 7. Implemented Baseline Improvements (This Change)
+
+To move toward production-grade behavior while keeping scope realistic, the current implementation now includes:
+
+1. **Profile-aware storage resolver (`stacks/storage/profile.c`)**
+   - Chooses backend/cache/queue/cache-budget from:
+     - application profile,
+     - device size,
+     - hardware architecture.
+   - Includes 32-bit resource clamping for constrained targets.
+
+2. **Configurable cache initialization (`cache_init_with_profile`)**
+   - Cache capacity now follows resolved profile budget.
+   - Added bounded in-memory cache entries, lookup, victim selection, pin/unpin tracking.
+   - Added `cache_sync()` writeback + FLUSH request path.
+
+3. **Filesystem service startup policy wiring**
+   - Service now reads block device geometry and resolves profile policy at boot.
+   - Cache is initialized using the resolved policy, creating a profile/device/arch aware storage baseline.
+
+4. **Block layer FLUSH semantic stub**
+   - Generic block queue now explicitly handles FLUSH requests, enabling cache-sync barrier semantics.
+
+These changes establish the policy plane and cache baseline needed before full adapter, journaling, and service syscall completion.

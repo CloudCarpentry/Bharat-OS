@@ -1,4 +1,15 @@
-#include "trap.h"
+#include <stdint.h>
+#include <stddef.h>
+
+int sched_sys_intent_set(uint64_t tid, const void* intent);
+int sched_sys_intent_get(uint64_t tid, void* intent);
+int sys_mem_alloc_class(size_t size, uint32_t mem_class, uint32_t flags, uint64_t* out_addr);
+int sys_fault_domain_create(const void* attr, uint64_t* out_domain);
+int sys_fault_domain_destroy(uint64_t domain);
+int sys_fault_domain_attach(uint64_t domain, uint64_t tid);
+
+#include <bharat/uapi/system/intent.h>
+#include <bharat/uapi/system/fault_domain.h>
 #include "personality_ops.h"
 #include "capability.h"
 #include "device.h"
@@ -274,6 +285,40 @@ long syscall_dispatch(syscall_id_t id, uintptr_t arg0, uintptr_t arg1,
         cap_table_delegate(table, table, args->src_cap, args->requested_rights, out_cap),
         SYS_EPERM);
   }
+
+  case SYSCALL_INTENT_SET: {
+    if (!trap_user_range_valid(arg1, (size_t)sizeof(bharat_intent_t))) {
+      return TRAP_ERR_INVAL;
+    }
+    return SYSCALL_RET_FROM_STATUS(sched_sys_intent_set((uint64_t)arg0, (const void*)(uintptr_t)arg1), SYS_EINVAL);
+  }
+  case SYSCALL_INTENT_GET: {
+    if (!trap_user_range_valid(arg1, (size_t)sizeof(bharat_intent_t))) {
+      return TRAP_ERR_INVAL;
+    }
+    return SYSCALL_RET_FROM_STATUS(sched_sys_intent_get((uint64_t)arg0, (void*)(uintptr_t)arg1), SYS_EINVAL);
+  }
+  case SYSCALL_MEM_ALLOC_CLASS: {
+    uint64_t *out_addr = (uint64_t*)(uintptr_t)arg3;
+    if (!trap_user_range_valid(arg3, (size_t)sizeof(*out_addr))) {
+      return TRAP_ERR_INVAL;
+    }
+    return SYSCALL_RET_FROM_STATUS(sys_mem_alloc_class((size_t)arg0, (uint32_t)arg1, (uint32_t)arg2, out_addr), SYS_ENOMEM);
+  }
+  case SYSCALL_FAULT_DOMAIN_CREATE: {
+    if (!trap_user_range_valid(arg0, (size_t)sizeof(bharat_fault_domain_attr_t))) {
+      return TRAP_ERR_INVAL;
+    }
+    uint64_t *out_domain = (uint64_t*)(uintptr_t)arg1;
+    if (!trap_user_range_valid(arg1, (size_t)sizeof(*out_domain))) {
+      return TRAP_ERR_INVAL;
+    }
+    return SYSCALL_RET_FROM_STATUS(sys_fault_domain_create((const void*)(uintptr_t)arg0, out_domain), SYS_EINVAL);
+  }
+  case SYSCALL_FAULT_DOMAIN_DESTROY:
+    return SYSCALL_RET_FROM_STATUS(sys_fault_domain_destroy((uint64_t)arg0), SYS_EINVAL);
+  case SYSCALL_FAULT_DOMAIN_ATTACH:
+    return SYSCALL_RET_FROM_STATUS(sys_fault_domain_attach((uint64_t)arg0, (uint64_t)arg1), SYS_EINVAL);
   default:
     return TRAP_ERR_NOSYS;
   }
@@ -395,3 +440,4 @@ long trap_handle(trap_frame_t *frame) {
 
   return trap_dispatch(frame, &info);
 }
+// Needs updating with the new cases.

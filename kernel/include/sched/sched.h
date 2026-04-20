@@ -129,6 +129,7 @@ typedef struct {
 
 #include <bharat/constraints.h>
 
+
 struct kthread {
     uint64_t thread_id;
     uint64_t process_id;
@@ -301,3 +302,5 @@ void sched_disable_tick_for_core(uint32_t core_id);
 #endif
 
 #endif // BHARAT_SCHED_H
+int sched_sys_intent_set(uint64_t tid, const void* intent);
+int sched_sys_intent_get(uint64_t tid, void* intent);
