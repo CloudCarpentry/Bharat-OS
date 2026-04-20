@@ -1,4 +1,5 @@
 #include "runtime_host.h"
+#include "../../fs/fs_client.h" // Include fs_client to use fs_open
 
 /*
  * Skeleton implementation of the Runtime Hosting Layer.
@@ -60,9 +61,19 @@ int bharat_runtime_ipc_call(bharat_runtime_handle_t endpoint_handle, const void*
 
 int bharat_runtime_file_open(const char* path, int flags, bharat_runtime_handle_t* out_file_handle) {
     if (!path || !out_file_handle) return -1;
-    // TODO: Resolve path against VFS capability root via URPC.
+
+    // Resolve path against VFS using fs_open contract
+    capability_t dummy_cap = {0}; // Should obtain the actual capability of the runtime environment
+    int fd = -1;
+    int err = fs_open(path, flags, &dummy_cap, &fd);
+
+    if (err == 0 && fd >= 0) {
+        *out_file_handle = (bharat_runtime_handle_t)fd;
+        return 0;
+    }
+
     *out_file_handle = BHARAT_RUNTIME_INVALID_HANDLE;
-    return -1; // Unimplemented
+    return err;
 }
 
 int64_t bharat_runtime_read(bharat_runtime_handle_t handle, void* buf, size_t count) {

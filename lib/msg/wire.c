@@ -1,13 +1,5 @@
 #include "bharat/msg/wire.h"
-
-// Provide an internal memset definition for the freestanding environment.
-static void *internal_memset(void *s, int c, size_t n) {
-    unsigned char *p = s;
-    while (n--) {
-        *p++ = (unsigned char)c;
-    }
-    return s;
-}
+#include <bharat/runtime/freestanding_string.h>
 
 // ============================================================================
 // Protocol Decoding
@@ -95,7 +87,7 @@ int bharat_msg_header_encode(const bharat_msg_header_t* hdr, uint8_t* buf, size_
 
     // Future-proof: Zero-out any remaining padding bytes up to header_len
     if (hdr->header_len > BHARAT_MSG_HEADER_MIN_LEN) {
-        internal_memset(buf + BHARAT_MSG_HEADER_MIN_LEN, 0, hdr->header_len - BHARAT_MSG_HEADER_MIN_LEN);
+        memset(buf + BHARAT_MSG_HEADER_MIN_LEN, 0, hdr->header_len - BHARAT_MSG_HEADER_MIN_LEN);
     }
 
     return BHARAT_MSG_OK;

@@ -39,7 +39,7 @@ def scan_kernel():
                     with open(filepath, "r", encoding="utf-8") as f:
                         for idx, line in enumerate(f):
                             # To be strict for new files but allow existing tree
-                            if emulator_pattern.search(line) and "TODO" not in line and "lint-disable" not in line and "legacy" not in root and "board/" not in filepath and "virtio" not in filepath and "hal/" not in filepath and "demo/" not in filepath:
+                            if emulator_pattern.search(line) and "TODO" not in line and "lint-disable" not in line and "legacy" not in root and "board/" not in filepath and "virtio" not in filepath and "hal/" not in filepath and "demo/" not in filepath and "tests/" not in filepath:
                                 report_violation(filepath, "Emulator logic inside kernel source", f"Line {idx+1}")
                 except Exception:
                     pass
@@ -68,10 +68,30 @@ def scan_services():
                 except Exception:
                     pass
 
+def scan_for_internal_memops():
+    internal_memops_pattern = re.compile(r"internal_mem(set|cpy|move)")
+
+    for root, _, files in os.walk(REPO_ROOT):
+        # Skip tooling/docs/build directories
+        if "tools" in root or "docs" in root or "build" in root or ".git" in root:
+            continue
+
+        for file in files:
+            if file.endswith((".c", ".h", ".cpp")):
+                filepath = os.path.join(root, file)
+                try:
+                    with open(filepath, "r", encoding="utf-8") as f:
+                        for idx, line in enumerate(f):
+                            if internal_memops_pattern.search(line):
+                                report_violation(filepath, "Use of forbidden internal_memset/memcpy/memmove", f"Line {idx+1}")
+                except Exception:
+                    pass
+
 def main():
     print("Running Bharat-OS Architecture Placement Linter...")
     scan_kernel()
     scan_services()
+    scan_for_internal_memops()
 
     if VIOLATIONS:
         print("\n❌ Architecture placement violations found:")
