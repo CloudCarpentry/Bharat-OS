@@ -49,6 +49,7 @@ static void adapter_domain_destroy(iommu_domain_t *dom) {
 
 static int adapter_map(iommu_domain_t *dom, uintptr_t iova, uint64_t pa,
                 size_t len, uint64_t prot, uint64_t flags) {
+    (void)flags;
     if (g_legacy_ops && g_legacy_ops->map && dom) {
         return g_legacy_ops->map((hal_iommu_domain_t*)dom->hal_priv, iova, pa, len, prot);
     }
@@ -63,23 +64,32 @@ static int adapter_unmap(iommu_domain_t *dom, uintptr_t iova, size_t len) {
 }
 
 static int adapter_attach_device(iommu_domain_t *dom, iommu_device_t *dev) {
+    (void)dom;
+    (void)dev;
     // Legacy relies on groups, new API does not immediately. Return unsupported for now.
     return -1;
 }
 
 static int adapter_detach_device(iommu_device_t *dev) {
+    (void)dev;
     return -1;
 }
 
 static int adapter_invalidate_domain(iommu_domain_t *dom) {
+    (void)dom;
     return -1;
 }
 
 static int adapter_invalidate_range(iommu_domain_t *dom, uintptr_t iova, size_t len) {
+    (void)dom;
+    (void)iova;
+    (void)len;
     return -1;
 }
 
 static int adapter_query_device_caps(iommu_device_t *dev, iommu_device_caps_t *caps) {
+    (void)dev;
+    (void)caps;
     return -1;
 }
 
