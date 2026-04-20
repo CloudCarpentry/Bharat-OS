@@ -1,4 +1,4 @@
-#include "fs/ramfs.h"
+#include "ramfs.h"
 #include "fs/file.h"
 #include "slab.h"
 #include <stddef.h>
