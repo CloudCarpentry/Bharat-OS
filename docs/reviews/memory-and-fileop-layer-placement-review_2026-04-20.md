@@ -118,28 +118,28 @@ Own:
 
 ### Phase A — memory ops normalization
 
-1. Define two canonical facades and ban others:
+1. [x] Define two canonical facades and ban others:
    - `arch_mem*` for kernel/ring-0 context-sensitive use.
-   - `mem*` from `lib/string` for shared/lib/sdk use.
-2. Replace per-file `internal_mem*` duplicates with one selected facade per layer.
-3. Keep `tools/check_no_recursive_memops.py` in CI as a hard guard.
-4. Add a placement lint rule: disallow new `internal_memcpy/internal_memset` symbols outside explicitly allowlisted files.
+   - `mem*` from `lib/string` (or `freestanding_string.h`) for shared/lib/sdk use.
+2. [x] Replace per-file `internal_mem*` duplicates with one selected facade per layer.
+3. [x] Keep `tools/check_no_recursive_memops.py` in CI as a hard guard.
+4. [x] Add a placement lint rule: disallow new `internal_memcpy/internal_memset` symbols outside explicitly allowlisted files.
 
 ### Phase B — open/openat ownership cleanup
 
-1. Freeze ownership model:
+1. [x] Freeze ownership model:
    - kernel `vfs_*` stays mechanism bridge only.
    - service filesystem owns real open logic.
-2. Rename service implementation surface to service-specific names (e.g., `fsd_open_file`) to remove ambiguity with kernel shim names.
-3. Introduce one `openat` contract at SDK/UAPI boundary first, then map into FS service implementation.
-4. Make `lib/fs` and runtime host path converge on same internal client transport contract.
+2. [x] Rename service implementation surface to service-specific names (e.g., `fsd_open_file`) to remove ambiguity with kernel shim names.
+3. [x] Introduce one `openat` contract at SDK/UAPI boundary first, then map into FS service implementation.
+4. [x] Make `lib/fs` and runtime host path converge on same internal client transport contract.
 
 ### Phase C — guardrails
 
-1. Extend layer-reference checks to enforce:
+1. [ ] Extend layer-reference checks to enforce:
    - no HAL/arch includes from SDK/user-facing lib unless explicitly permitted.
    - no direct service implementation symbol imports from generic lib APIs (must go through contract header).
-2. Add architecture conformance test matrix for memops behavior equivalence and overlap safety.
+2. [ ] Add architecture conformance test matrix for memops behavior equivalence and overlap safety.
 
 ---
 
