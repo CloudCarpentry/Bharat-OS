@@ -41,8 +41,25 @@ def parse_args():
             file=sys.stderr,
         )
 
+        normalized_args = list(sys.argv[2:])
+        normalized_flags = set(normalized_args)
+        filtered_args = []
+
+        # Be tolerant of users typing "-- run" / "-- all" in legacy mode.
+        i = 0
+        while i < len(normalized_args):
+            arg = normalized_args[i]
+            if arg == "--" and i + 1 < len(normalized_args):
+                maybe_flag = f"--{normalized_args[i + 1]}"
+                if maybe_flag in ("--run", "--build", "--all"):
+                    normalized_flags.add(maybe_flag)
+                    i += 2
+                    continue
+            filtered_args.append(arg)
+            i += 1
+
         # We'll create a dummy 'all' or 'build' command internally
-        mock_argv = ["all" if "--run" in sys.argv or "--all" in sys.argv else "build"]
+        mock_argv = ["all" if "--run" in normalized_flags or "--all" in normalized_flags else "build"]
         # Add target spec
         if sys.argv[1].endswith(".yaml"):
             mock_argv.extend(["--target-yaml", sys.argv[1]])
@@ -50,7 +67,7 @@ def parse_args():
             mock_argv.extend(["--target", sys.argv[1]])
 
         # Keep other flags
-        for arg in sys.argv[2:]:
+        for arg in filtered_args:
             if arg not in ("--run", "--build", "--all"):
                 mock_argv.append(arg)
 
