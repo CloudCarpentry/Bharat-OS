@@ -15,6 +15,7 @@ This folder captures the current architectural baseline for Bharat-OS.
 
 - [Profile-Driven Multi-Kernel Architecture](core/profile-driven-multi-kernel-arc.md)
 - [Low-Footprint Design and Analysis](low-footprint-design.md)
+- [Primitive Matrix and Execution Roadmap](primitive-matrix-roadmap.md)
 
 ### Boot and bring-up
 
