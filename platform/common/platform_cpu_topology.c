@@ -11,6 +11,9 @@ __attribute__((weak)) bool hal_cpu_topology_query(hal_cpu_topology_info_t *out) 
     }
 
     out->discovered_cpu_count = 1;
+    out->valid_cpu_mask = 0x1U;
+    out->performance_cluster_mask = out->valid_cpu_mask;
+    out->efficiency_cluster_mask = 0U;
     out->smp_available = false;
     out->homogeneous_cores = true;
 
