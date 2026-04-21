@@ -2,7 +2,7 @@
 
 ## Scope
 
-This guide covers the production-grade minimal system/admin shell under `services/system/shell/`.
+This guide covers the production-grade minimal system/admin shell under `services/system/shell/` and its alignment path with `services/system/console/`.
 
 ## Build enablement
 
@@ -62,7 +62,7 @@ Verify:
 - auth lockout after repeated denied attempts,
 - restricted behavior in production mode.
 
-## Runtime smoke test
+## Runtime smoke test (host binary)
 
 After building `system_shell`, run it with stdin commands, e.g.:
 
@@ -75,3 +75,19 @@ For structured output mode:
 ```sh
 printf "mode kv\nstatus\n" | ./system_shell
 ```
+
+## Headless QEMU validation (alignment gate)
+
+Use at least one headless QEMU target to verify boot + console path:
+
+```sh
+timeout 30s python3 tools/build.py all --target-yaml tools/targets/qemu/x86_64_desktop_headless.yaml
+```
+
+Current expected reality:
+
+- kernel console logs should appear,
+- shell host tests should pass,
+- full interactive shell-over-console E2E may still be incomplete until console daemon IPC and shell IPC backend wiring are implemented.
+
+Treat missing interactive shell-over-console behavior as a tracked integration gap, not a parser/dispatch correctness failure.

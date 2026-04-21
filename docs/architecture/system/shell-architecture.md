@@ -2,139 +2,108 @@
 
 ## Purpose
 
-This document defines the canonical Bharat-OS shell architecture and ownership model. It standardizes shell behavior across device profiles while preserving strict layering:
+This document defines the canonical Bharat-OS system shell architecture and aligns it with the current console subsystem reality.
 
-- Kernel provides primitives and capability enforcement.
-- `services/system/shell/` provides shell mechanism and command dispatch.
-- Product/profile policy decides which shell class is enabled.
+- Kernel provides primitives and enforcement.
+- `services/system/console/` is the stream broker boundary (currently scaffold).
+- `services/system/shell/` provides parser/dispatch/policy enforcement.
+- Profile policy determines availability and command surface.
 
-> **Non-negotiable boundary:** the kernel must not own shell policy. Shell policy is a service-layer concern.
+> Non-negotiable: kernel does not own shell policy.
 
-## Shell taxonomy
+## Runtime placement and boundaries
 
-Bharat-OS defines three shell classes:
+- Runtime shell service: `services/system/shell/`
+- Runtime console service: `services/system/console/`
+- Optional shared CLI helpers: `lib/cli/` or `lib/msg/cli/`
+- Deferred POSIX compatibility shell: `personalities/compat/`
 
-1. **Mini shell**
-   - Target: UART bring-up, recovery, factory, emergency service mode.
-   - Scope: tightly bounded command set; mostly diagnostics and static status.
-   - Footprint: smallest memory/runtime budget.
+Shell handlers must use service contracts/backend APIs and must not access kernel internals directly.
 
-2. **Admin shell**
-   - Target: field operations, system administration, diagnostics.
-   - Scope: service lifecycle, health, log inspection, network/device/process status.
-   - Footprint: moderate; capability-gated mutating operations.
+## Shell classes
 
-3. **Compatibility shell** (deferred)
-   - Target: Linux/POSIX personality workloads.
-   - Scope: personality-facing interactive shell semantics.
-   - Placement: `personalities/compat/` (not in core system shell service).
+1. Mini shell: low-footprint recovery/factory/bring-up path.
+2. Admin shell: operational diagnostics and controlled mutating commands.
+3. Compatibility shell (deferred): personality-layer POSIX-style shell semantics.
 
-## Layering and placement
+## Current implementation status
 
-### Required placement
+### Implemented now
 
-- **Runtime service:** `services/system/shell/`
-- **Shared parser/output helpers (optional):** `lib/cli/` or `lib/msg/cli/`
-- **Compatibility/POSIX shell (later):** `personalities/compat/`
+- Bounded parser and tokens.
+- Command registry with namespaced multi-token command support.
+- Capability + mode gating (`dev/prod/factory/recovery`).
+- Deny path + auth lockout behavior.
+- Text and `kv` output modes.
+- Host tests covering parser, registry, denials, malformed input, timeout/backend failure, integration session.
 
-### Layering rules
+### Missing / partial
 
-- Command handlers **must** call stable service contracts (IPC/IDL or service APIs).
-- Command handlers **must not** access kernel internals directly.
-- Shell command policy (allow/deny by profile/mode) belongs to shell service/profile config, not kernel code.
+- Shell main runtime loop + interactive IPC session plumbing is not complete.
+- Backend is stubbed (`shell_backend_stub.c`) instead of live service IPC.
+- No full shell↔console daemon wiring for true end-to-end TTY/session path.
+- Remote/script/compat modes are build-flag placeholders today.
 
 ## Security and capability model
 
-Shell dispatch is capability-mediated.
+Mandatory controls:
 
-### Core requirements
+- Per-command capability metadata.
+- Deny-by-default access check.
+- Audit events on denied/failed sensitive operations.
+- Lockout/rate-limit behavior on repeated failures.
 
-- Each command declares required capability rights.
-- Session carries authenticated role and effective capability mask.
-- Dispatcher enforces deny-by-default for privileged commands.
-- Denied and failed privileged attempts generate audit records.
+Session modes:
 
-### Session roles/modes
+- `dev`
+- `prod`
+- `factory`
+- `recovery`
 
-Minimum modes:
+## Production-grade contract
 
-- `dev` (developer mode)
-- `prod` (restricted production mode)
-- `factory` (provisioning/manufacturing)
-- `recovery` (break-glass support)
+A shell is production-grade only if all are true:
 
-### Mandatory controls
+1. Deterministic bounded parse and dispatch behavior.
+2. Bounded runtime execution with timeout and cancellation behavior.
+3. Strict service layering (no direct kernel shortcuts).
+4. Stable status/message/payload contract with machine-readable output.
+5. Tests for malformed input, unknown commands, deny/auth paths, and backend failure/degraded mode.
+6. E2E validation with headless QEMU proving console-connected command path.
 
-- Failed-auth and denied-command logging.
-- Lockout policy after repeated auth failure.
-- Rate limiting on auth and sensitive command classes.
-- Recovery/factory mode restrictions are explicit and build/profile controlled.
+## Console alignment contract
 
-## Production-grade shell requirements
+The shell and console are considered aligned only when:
 
-A shell implementation is production-grade only if it satisfies all of the following:
+1. Shell backend is service-IPC based (not local stub).
+2. Console service provides stream attach/write/flush over real capability-backed transport.
+3. At least one read-only command and one privileged command are validated through end-to-end path (with deny-path evidence where expected).
 
-1. **Deterministic parser behavior**
-   - Bounded line length and token count.
-   - Stable parsing result for identical input.
-2. **Bounded runtime model**
-   - Non-blocking event loop.
-   - Timeout and cancellation contract for command handlers.
-   - No unbounded buffers or growth.
-3. **Strict layering**
-   - No direct kernel poking from command handlers.
-4. **Stable output and error contract**
-   - Standard status code + message.
-   - Optional structured payload (machine-readable mode).
-5. **Testability**
-   - Parser, dispatch, auth, malformed input, and degraded-mode tests.
-6. **Safe degraded behavior**
-   - Commands fail safely when dependent services are unavailable.
-
-## Build/profile integration contract
-
-Use build-time configuration gates to include only required shell features:
+## Build-time feature gates
 
 - `CONFIG_SHELL_MINI`
 - `CONFIG_SHELL_ADMIN`
 - `CONFIG_SHELL_REMOTE`
 - `CONFIG_SHELL_RECOVERY`
 - `CONFIG_SHELL_SCRIPT`
-- `CONFIG_SHELL_COMPAT_POSIX` (deferred personality target)
+- `CONFIG_SHELL_COMPAT_POSIX` (deferred)
 
-Profiles may additionally disable mutating command namespaces by policy.
+## Near-term roadmap
 
-## Command namespace contract
+### Phase 1 — Integration completion
 
-Recommended namespace families:
+- Implement IPC-backed shell backend.
+- Complete console service URPC/capability request flow.
+- Add shell service runtime loop that binds to console session/stream endpoints.
 
-- `sys`
-- `svc`
-- `log`
-- `dev`
-- `net`
-- `proc`
-- `mem`
-- `cap`
-- `health`
-- `update`
+### Phase 2 — Hardening
 
-New commands should be namespaced; global top-level commands should be limited to essentials (for example `help`, `version`, `status`).
+- Replace simulated timeout behavior with real timeout/cancellation paths.
+- Centralize audit sink integration.
+- Move mode/profile command policy to explicit policy manifests.
 
-## Initial command policy model
+### Phase 3 — Expansion
 
-Policy is profile/mode-driven:
-
-- **Always allowed in dev:** core read and controlled diagnostics.
-- **Read-only in prod:** status, inventory, and observability commands.
-- **Factory-only:** provisioning, calibration, secure enrollment flows.
-- **Recovery-only:** break-glass repair and rollback.
-- **Disallowed on safety-critical runtime builds:** commands that alter live safety behavior unless explicitly approved by profile policy.
-
-## Implementation scope note
-
-This document defines architecture and contract, not POSIX shell behavior. The first production shell for Bharat-OS should be a minimal capability-aware system/admin shell, with POSIX compatibility deferred to personality-layer work.
-
-## Reference implementation status
-
-A production-grade minimal system/admin shell reference implementation now exists under `services/system/shell/` with bounded parser/dispatch behavior, capability-gated privileged commands, structured output mode, and host-side tests.
+- Remote shell with strict auth/rate-limit posture.
+- Recovery/factory differentiated command catalogs.
+- Personality-scoped compatibility shell.
