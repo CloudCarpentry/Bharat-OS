@@ -18,22 +18,21 @@ For our detailed vision and current subsystem maturity regarding the transition 
 
 ## Project status at a glance
 
-| Area | Current status | Notes |
-| --- | --- | --- |
-| Kernel architecture | Baseline implemented | Capability objects, syscall/uAPI surfaces, core scheduler hooks, and architecture-specific HAL paths are present for x86_64, riscv64, and arm64 builds. |
-| User-space service layer | Mixed (stubs + partial implementations) | Many services currently compile as lifecycle/event-loop stubs, while networking (`netmgr`, `netstack`) and crypto include concrete module logic. |
-| Filesystem & Storage | Partial scaffold | VFS kernel headers present; `services/file_system` is a compiled stub. Persistent storage (FAT/littlefs) and OTA recovery support are roadmap items. |
-| Networking split (`net` -> `netmgr` + `netstack`) | In progress | `netmgr` has control-plane tables + IPC op dispatch; `netstack` includes IPv4, ARP, ICMP, UDP, socket table, and loopback/ethernet paths. |
-| Build & test infrastructure | Active baseline | CMake presets/toolchains and host test integration are wired; architecture runtime maturity differs by target. |
-| Distributed/multikernel scale-out | Early baseline | Messaging-first direction is reflected in subsystem and service decomposition, but many production control-plane behaviors remain roadmap items. |
-| Documentation coverage | Expanded in this update | See `docs/dev/current-code-status.md` for a code-backed implementation matrix across services/subsystems. |
+| Area                                              | Current status                          | Notes                                                                                                                                                   |
+| ------------------------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Kernel architecture                               | Baseline implemented                    | Capability objects, syscall/uAPI surfaces, core scheduler hooks, and architecture-specific HAL paths are present for x86_64, riscv64, and arm64 builds. |
+| User-space service layer                          | Mixed (stubs + partial implementations) | Many services currently compile as lifecycle/event-loop stubs, while networking (`netmgr`, `netstack`) and crypto include concrete module logic.        |
+| Filesystem & Storage                              | Partial scaffold                        | VFS kernel headers present; `services/file_system` is a compiled stub. Persistent storage (FAT/littlefs) and OTA recovery support are roadmap items.    |
+| Networking split (`net` -> `netmgr` + `netstack`) | In progress                             | `netmgr` has control-plane tables + IPC op dispatch; `netstack` includes IPv4, ARP, ICMP, UDP, socket table, and loopback/ethernet paths.               |
+| Build & test infrastructure                       | Active baseline                         | CMake presets/toolchains and host test integration are wired; architecture runtime maturity differs by target.                                          |
+| Distributed/multikernel scale-out                 | Early baseline                          | Messaging-first direction is reflected in subsystem and service decomposition, but many production control-plane behaviors remain roadmap items.        |
+| Documentation coverage                            | Expanded in this update                 | See `docs/dev/current-code-status.md` for a code-backed implementation matrix across services/subsystems.                                               |
 
 For architecture-level details and deferred boundaries, see `docs/architecture/` and ADRs in `docs/adr/`. For the step-by-step closure plan, see `docs/architecture/memory-gap-closure-plan.md`. For our profile-driven, capability-safe communications and networking architecture, see [`docs/architecture/network-architecture.md`](docs/architecture/network-architecture.md).
 For the ARM32/RV32 EDGE-tier expansion strategy and capability matrix, see [`docs/architecture/arm32-rv32-edge-tier-plan.md`](docs/architecture/arm32-rv32-edge-tier-plan.md).
 For cross-tool code-agent guidance, guardrails, and skill templates, see [`docs/ai-agents/README.md`](docs/ai-agents/README.md).
 
 For a code-backed snapshot of what is implemented vs. stubbed right now, see [`docs/dev/current-code-status.md`](docs/dev/current-code-status.md).
-
 
 ## Documentation maturity model and governance
 
@@ -66,7 +65,6 @@ Bharat-OS targets multiple deployment classes. These profiles describe **how the
 - **Data-center / clustered nodes:** NUMA/multicore scaffolding and URPC primitives are present; full distributed scheduling and high-scale service orchestration are roadmap.
 
 ### High-Level Architecture
-
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': { 'fontFamily': 'arial', 'fontSize': '14px', 'primaryColor': '#0d4f40', 'edgeLabelBackground':'#ffffff'}}}%%
@@ -124,23 +122,22 @@ graph TD
     linkStyle 1 stroke:#999,stroke-width:2px,color:#999
 ```
 
-
 ### Key Technical Pillars
 
-* **Tiered Functionality:** The OS scales its footprint by activating specific Tiers. Small devices run **Tier A** (minimal core), while desktops and servers enable **Tiers B and C** for full POSIX and GUI support.
-* **Multi-Architecture HAL:** Native support for `x86_64`, `ARMv8`, and notably **Shakti RISC-V**, ensuring performance on local semiconductor innovations.
-* **Distributed IPC:** A capability-based IPC model that treats local and remote system calls through a unified messaging interface.
+- **Tiered Functionality:** The OS scales its footprint by activating specific Tiers. Small devices run **Tier A** (minimal core), while desktops and servers enable **Tiers B and C** for full POSIX and GUI support.
+- **Multi-Architecture HAL:** Native support for `x86_64`, `ARMv8`, and notably **Shakti RISC-V**, ensuring performance on local semiconductor innovations.
+- **Distributed IPC:** A capability-based IPC model that treats local and remote system calls through a unified messaging interface.
 
 ### Current v1 Architecture Highlights
 
-| Feature | Summary |
-| :-- | :-- |
-| Verification-first microkernel | Ring-0 keeps boot flow, memory mapping, capability tables, IPC, and scheduler scaffolding; policy/services stay in isolated user-space domains. |
-| Capability-based security model | No global ACL/root model in kernel; object access is capability-mediated (`invoke`, `grant`, `revoke`, `retype`) with zero-trust isolation. |
-| Flexible memory model | Kernel maps/unmaps physical pages, while memory policy remains in user space (Bharat-RT static/no-paging; Bharat-Cloud demand paging + NUMA-aware path). |
-| Synchronous and asynchronous IPC | Fast register-based endpoint IPC for low latency plus lockless ring-buffer URPC for cross-core multikernel messaging. |
-| User-space driver model | Drivers are unprivileged; capabilities gate MMIO/IRQ access and IOMMU policy hardens DMA boundaries, enabling restartable driver domains. |
-| Modular scheduler with AI hooks | Tick-driven scheduler collects telemetry and applies AI hints via ADR-008 plugin boundaries, with deterministic fallback when PMCs are unavailable. |
+| Feature                          | Summary                                                                                                                                                  |
+| :------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Verification-first microkernel   | Ring-0 keeps boot flow, memory mapping, capability tables, IPC, and scheduler scaffolding; policy/services stay in isolated user-space domains.          |
+| Capability-based security model  | No global ACL/root model in kernel; object access is capability-mediated (`invoke`, `grant`, `revoke`, `retype`) with zero-trust isolation.              |
+| Flexible memory model            | Kernel maps/unmaps physical pages, while memory policy remains in user space (Bharat-RT static/no-paging; Bharat-Cloud demand paging + NUMA-aware path). |
+| Synchronous and asynchronous IPC | Fast register-based endpoint IPC for low latency plus lockless ring-buffer URPC for cross-core multikernel messaging.                                    |
+| User-space driver model          | Drivers are unprivileged; capabilities gate MMIO/IRQ access and IOMMU policy hardens DMA boundaries, enabling restartable driver domains.                |
+| Modular scheduler with AI hooks  | Tick-driven scheduler collects telemetry and applies AI hints via ADR-008 plugin boundaries, with deterministic fallback when PMCs are unavailable.      |
 
 #### Multi-Personality Subsystem Architecture
 
@@ -354,15 +351,16 @@ Bharat-OS is intentionally profile-driven instead of forcing one heavyweight ima
 - **Datacenter/cloud:** multikernel-friendly scaling on many-core/NUMA systems with demand paging and policy-driven AI scheduling.
 
 ### Subsystem Model
+
 Bharat-OS defines explicit subsystem groups to ensure scalable and tailored functionality for every device class:
 
-* **Console Subsystem:** Serial and text console outputs for early bring-up, logging, and headless environments.
-* **Framebuffer & Embedded Graphics Subsystem:** The *primary* graphics path for small devices. Framebuffers are treated as a first-class target, offering deterministic rendering and software-rendered UI without dragging in a heavy GPU compositor.
-* **Input Subsystem:** Modular routing for keyboards, touch panels, rotary encoders, and GPIO buttons.
-* **Heterogeneous Accelerator Subsystem:** DMA engines, DSPs, NPUs, and ISP abstractions for edge AI and multimedia tasks.
-* **Embedded Device Services:** Kiosk shells, watchdog timers, OTA recovery, and lightweight local storage.
-* **Filesystem & Storage Subsystem:** VFS abstraction mapping capability-based IO to block, blob, and persistent storage drivers (e.g., FAT, littlefs) necessary for stateful edge devices and OTA recovery.
-* **Desktop Graphics Subsystem:** An advanced layer reserved for devices with capable hardware and full compositor needs.
+- **Console Subsystem:** Serial and text console outputs for early bring-up, logging, and headless environments.
+- **Framebuffer & Embedded Graphics Subsystem:** The _primary_ graphics path for small devices. Framebuffers are treated as a first-class target, offering deterministic rendering and software-rendered UI without dragging in a heavy GPU compositor.
+- **Input Subsystem:** Modular routing for keyboards, touch panels, rotary encoders, and GPIO buttons.
+- **Heterogeneous Accelerator Subsystem:** DMA engines, DSPs, NPUs, and ISP abstractions for edge AI and multimedia tasks.
+- **Embedded Device Services:** Kiosk shells, watchdog timers, OTA recovery, and lightweight local storage.
+- **Filesystem & Storage Subsystem:** VFS abstraction mapping capability-based IO to block, blob, and persistent storage drivers (e.g., FAT, littlefs) necessary for stateful edge devices and OTA recovery.
+- **Desktop Graphics Subsystem:** An advanced layer reserved for devices with capable hardware and full compositor needs.
 
 ### Display & GUI Strategy
 
@@ -487,6 +485,7 @@ For complete setup on **Windows, WSL/Linux, and macOS** (including QEMU/OpenOCD/
 ./build.sh all --target x86_64_desktop_headless
 ./build.sh all --target arm64_desktop_headless
 ./build.sh all --target riscv64_desktop_headless
+./build.sh tools/targets/qemu/arm32_mmu_lite_headless.yaml --run
 ```
 
 ### Stage-oriented usage
@@ -554,7 +553,7 @@ As part of Phase 4, we plan to integrate seL4 tools for verification. Our initia
 
 ## Build script hierarchy
 
-* Root `build.sh` and `build.ps1` are the supported user-facing entrypoints.
-* `tools/build.py` is the authoritative build/run implementation.
-* Any shell or PowerShell scripts under `tools/` (like `tools/build.sh` and `tools/build.ps1`) are compatibility wrappers only.
-* Future CLI, build, or run behavior changes must be made in `tools/build.py` only. Do not add new logic to the compatibility shims.
+- Root `build.sh` and `build.ps1` are the supported user-facing entrypoints.
+- `tools/build.py` is the authoritative build/run implementation.
+- Any shell or PowerShell scripts under `tools/` (like `tools/build.sh` and `tools/build.ps1`) are compatibility wrappers only.
+- Future CLI, build, or run behavior changes must be made in `tools/build.py` only. Do not add new logic to the compatibility shims.
