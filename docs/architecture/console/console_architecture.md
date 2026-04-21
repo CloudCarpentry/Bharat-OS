@@ -1,50 +1,155 @@
-# Console Architecture
+# Console and Shell Architecture (Aligned Runtime Contract)
 
-This document describes the design principles, layering, and responsibilities for the console and standard I/O in Bharat-OS. The architecture separates early-boot and emergency kernel mechanisms from user-facing policy and rich standard I/O management.
+This document defines the **current Bharat-OS console + shell architecture contract** and aligns it with the code that exists today.
 
-## 1. Core Principles
+It supersedes older assumptions that a userspace console already provides full TTY/session multiplexing.
 
-- **Mechanism in the Kernel, Policy in Userspace:** The kernel handles only the minimal, necessary mechanisms for early boot, safe panic output, and a minimal runtime fallback. All user-facing multiplexing, terminal sessions, and standard I/O (stdin/stdout/stderr) are managed by the userspace `services/system/console`.
-- **Driver Integration:** The console is built *on top* of the existing driver model. It does not reinvent hardware support. The stack relies on `drivers/bus`, `drivers/devices` (class modeling), and `drivers/serial`.
-- **Safe Kernel Panic:** The emergency panic path is guaranteed to be lockless, allocation-free, and polling-based. It bypasses any queues, interrupts, or scheduler states to ensure deterministic output even during severe system corruption.
+## 1) Executive summary
 
-## 2. Architecture Layers
+- Kernel console is the only production-meaningful output path today (`kernel/src/console/*`).
+- `services/system/console` exists, but is still a scaffold with TODO URPC routing and mock capability-acquisition flow.
+- `services/system/shell` exists and is substantially ahead of console service in maturity (bounded parser, capability-aware dispatch, tests), but it currently runs against a stub backend and is not yet wired to console URPC.
+- Therefore, **console and shell are architecturally compatible but not yet fully integrated at runtime**.
 
-### 2.1 Driver Layering (`drivers/`)
-Hardware support for serial communication resides entirely within the `drivers/` subsystem. The kernel console binds to a generic device class, rather than directly to an architecture-specific UART.
+## 2) Layering contract (must remain stable)
 
-1. **Bus & Device Discovery (`drivers/bus`, `drivers/devices`):** Hardware is discovered via ACPI, Device Tree, or platform-specific mechanisms.
-2. **Serial Class (`drivers/class`):** Exposes a consistent `uart_driver_ops_t` interface for all serial devices.
-3. **Hardware Drivers (`drivers/serial`):** Specific implementations like `ns16550`, `pl011`, or `sifive_uart` implement the interface. Advanced features (FIFOs, interrupts, DMA) are exposed here but remain optional capabilities.
+## 2.1 Kernel mechanism (trusted core)
 
-### 2.2 Kernel Console Mechanisms (`kernel/src/console`)
-The kernel manages three distinct console phases:
+The kernel owns mechanism only:
 
-- **Early Boot Console:** Initialized immediately after basic memory is available. It binds to an early serial fallback (e.g., a simple MMIO UART or an explicitly nominated boot UART) for basic debug output before the full driver model is up.
-- **Runtime Kernel Console:** Once the full device model is initialized, the console binds to the registered primary serial device. It handles standard kernel logging (`console_vlog`, `console_log`) via bounded buffers.
-- **Panic-Safe Console:** Upon a kernel panic (`console_enter_panic`), the console switches to a synchronous, lockless path (`console_panic_flush_backends`). It forces output through polling-based `putc` or `write_atomic` methods, ignoring any runtime locks or asynchronous queues.
+- early/runtime/panic console phases,
+- bounded formatting/log routing,
+- backend selection + fallback,
+- panic-safe flush behavior.
 
-### 2.3 Userspace Console Service (`services/system/console`)
-This service acts as the central broker for standard I/O across the system.
+Code anchors:
 
-- **Responsibilities:**
-  - Standard I/O (stdin/stdout/stderr) brokering for applications.
-  - Session and terminal (TTY) multiplexing.
-  - Interactive shell attachment.
-  - Routing logs to persistent storage or diagnostic endpoints.
-  - Enforcing policy on stream access.
-- **Hardware Access:** It does not own the UART hardware driver directly. Instead, it relies on the kernel/driver capability mechanisms to write to the underlying hardware sink, while providing rich features (e.g., ANSI colors, UTF-8 rendering) at the user level.
+- `kernel/src/console/console_core.c`
+- `kernel/src/console/console_policy.c`
+- `kernel/src/console/console_buffer.c`
+- `kernel/src/console/serial_console.c`
+- `kernel/src/console/framebuffer_console.c`
 
-## 3. Fallback Order and Selection Rules
+## 2.2 Userspace console service policy/runtime brokering
 
-The platform nominates the preferred console device. If the preferred device is unavailable, the fallback order is:
-1. Platform-nominated primary console (e.g., specific `ns16550` or `pl011`).
-2. Generic MMIO fallback (e.g., simple `uart_simple_mmio` for SBI/HTIF).
-3. Memory log (`memlog_console`) as a last resort sink.
+`services/system/console/main.c` is intended to own:
 
-The platform is responsible for wiring the correct initialization sequence during boot to ensure the kernel console binds to the intended hardware.
+- stream brokering (`stdin/stdout/stderr` style channels),
+- session/TTY attachment,
+- URPC routing,
+- capability-mediated output dispatch.
 
-## 4. Testing Strategy
+Current state: scaffold loop + placeholder IPC calls.
 
-- **QEMU Tests:** E2E testing must capture serial logs from QEMU to validate early boot messages, successful driver binding, and deterministic panic output.
-- **Board Tests:** Hardware smoke tests must verify the correct fallback and primary console initialization on physical boards, ensuring UART output matches the expected profile.
+## 2.3 Userspace shell service command plane
+
+`services/system/shell/` owns:
+
+- line parsing,
+- command registry/dispatch,
+- per-session mode/capability checks,
+- response formatting (text + `kv` machine-readable mode).
+
+Current state: implemented and unit-tested on host; still backend-stub based.
+
+## 3) Current alignment between console and shell
+
+## 3.1 What is aligned now
+
+- Layering intent is correct: shell does not poke kernel internals directly.
+- Shell command handlers are designed around service/backend abstraction (`shell_backend_api_t`).
+- Console service and shell both target capability-mediated service composition.
+
+## 3.2 What is not aligned yet
+
+1. No concrete shell↔console transport binding (no URPC session plumbing from shell into console daemon).
+2. Console daemon does not yet implement real `bharat_ipc_call`/`bharat_ipc_send` flow for write/flush and stream ops.
+3. No shared contract document for shell session-to-console stream model (PTY/TTY/session lifecycle).
+4. End-to-end boot validation does not yet prove interactive shell over console on QEMU; only baseline boot/log behavior is generally testable.
+
+## 4) Shell implementation status (as of this update)
+
+Implemented in `services/system/shell/`:
+
+- bounded parser (`SHELL_MAX_INPUT_LEN`, `SHELL_MAX_TOKENS`),
+- capability/mode gated dispatch,
+- lockout after repeated denied auth path,
+- structured output mode (`mode kv`),
+- command registry for baseline read-only + privileged commands,
+- host-side tests for parser/registry/denial/malformed/timeout/integration behavior.
+
+Not yet implemented (or intentionally stubbed):
+
+- real IPC-backed backend (currently `shell_backend_stub.c`),
+- interactive service loop main path (today `main` in `shell_service.c` is placeholder),
+- remote shell transport,
+- script mode,
+- compatibility POSIX shell (deferred to personality layer).
+
+## 5) Missing code to implement next (priority order)
+
+### P0 — Required for real console+shell integration
+
+1. **Console daemon IPC implementation**
+   - Replace mock return path in `console_acquire_output_capability`.
+   - Implement real send/call path for write/flush opcodes.
+2. **Shell backend over service IPC**
+   - Add `shell_backend_ipc_console.c` (or equivalent) implementing backend API via console + system services.
+3. **Session wiring**
+   - Introduce explicit shell session lifecycle + binding to console stream IDs.
+
+### P1 — Reliability and policy hardening
+
+4. Add command timeout enforcement with cancellation hooks (not busy-loop simulation).
+5. Add comprehensive audit sink integration for denied/failed privileged operations.
+6. Add production-mode policy tables externalized from code (profile policy files).
+
+### P2 — Feature completion
+
+7. Remote shell transport gate (`CONFIG_SHELL_REMOTE`) with auth and rate limits.
+8. Recovery/factory distinct command profiles and test matrix.
+9. Compatibility shell landing zone in `personalities/compat/` (kept separate from system shell).
+
+## 6) Unified roadmap (console + shell)
+
+## Phase A (near-term): bootstrap integration
+
+- Complete console daemon URPC plumbing.
+- Implement shell IPC backend.
+- Prove shell command round-trip to real backend on QEMU headless.
+
+## Phase B (mid-term): production policy and resiliency
+
+- Audit/event pipelines for privileged paths.
+- Deterministic timeout/cancellation in dispatch.
+- Profile-specific command policy manifests.
+
+## Phase C (later): scale and compatibility
+
+- Session multiplexing + PTY-like abstractions where needed.
+- Remote shell endpoint with strict policy.
+- Personality-scoped POSIX compatibility shell.
+
+## 7) Headless QEMU validation contract
+
+Minimum acceptance evidence for console/shell alignment work:
+
+1. QEMU boots in `-nographic` mode and emits kernel console logs.
+2. Console service starts and reports backend acquisition (success/failure with explicit code).
+3. Shell service starts with backend availability state.
+4. At least one command path (`status`/`svc list`) proves end-to-end response through service backend (not local stub).
+
+Recommended command style:
+
+```bash
+timeout 30s python3 tools/build.py all --target-yaml tools/targets/qemu/x86_64_desktop_headless.yaml
+```
+
+For now, when (4) is not yet implemented, mark this as expected gap and keep shell host-tests mandatory.
+
+## 8) Invariants (non-negotiable)
+
+- Kernel keeps mechanism; shell/console services keep policy and session behavior.
+- Panic path remains lockless/allocation-free/polling-safe.
+- Shell parser/dispatch remains bounded.
+- Compatibility/POSIX semantics never leak into core system shell path.
