@@ -12,6 +12,7 @@ add_library(hal_common OBJECT
 )
 
 target_include_directories(hal_common PRIVATE 
+    ${CMAKE_SOURCE_DIR}/hal/include
     ${CMAKE_SOURCE_DIR}/kernel/src
     ${CMAKE_SOURCE_DIR}/kernel/include 
     ${CMAKE_SOURCE_DIR}/kernel/include/generated 
