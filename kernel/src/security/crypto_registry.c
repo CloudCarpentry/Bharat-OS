@@ -34,6 +34,25 @@ int crypto_provider_register(const crypto_provider_info_t *info, const crypto_pr
     if (!info || !ops) {
         return -SYS_EINVAL;
     }
+    if (info->backend_class != CRYPTO_BACKEND_CPU_ACCEL &&
+        info->backend_class != CRYPTO_BACKEND_SECURE_ELEMENT_TPM &&
+        info->backend_class != CRYPTO_BACKEND_RNG_PROVIDER) {
+        return -SYS_EINVAL;
+    }
+    if (info->supported_ops_mask == 0U) {
+        return -SYS_EINVAL;
+    }
+    if (info->name[0] == '\0') {
+        return -SYS_EINVAL;
+    }
+
+    /* Ensure backend contract completeness for RNG providers. */
+    if (info->backend_class == CRYPTO_BACKEND_RNG_PROVIDER && !ops->get_random) {
+        return -SYS_EINVAL;
+    }
+    if (!ops->invoke && !ops->zeroize && !ops->get_random) {
+        return -SYS_EINVAL;
+    }
 
     crypto_provider_node_t *node = (crypto_provider_node_t *)kmalloc(sizeof(crypto_provider_node_t));
     if (!node) {
@@ -134,7 +153,18 @@ int crypto_provider_invoke(uint32_t provider_id, crypto_op_args_t *args)
         return -SYS_ENOSYS;
     }
 
-    /* 4. Invoke the provider */
+    /* 4. Dispatch the provider operation */
+    if (args->op == CRYPTO_OP_ZEROIZE_KEY) {
+        if (!args->input_buf || args->input_len == 0) {
+            return -SYS_EINVAL;
+        }
+        if (node->ops && node->ops->zeroize) {
+            node->ops->zeroize(args->input_buf, args->input_len);
+            return 0;
+        }
+        return -SYS_ENOSYS;
+    }
+
     if (node->ops && node->ops->invoke) {
         return node->ops->invoke(args);
     }
