@@ -35,9 +35,9 @@ This folder captures the current architectural baseline for Bharat-OS.
 - [`capability-and-ipc-baseline.md`](capability-and-ipc-baseline.md)
 - [`memory/memory-model.md`](memory/memory-model.md)
 - [`multiprocessor-and-numa-baseline.md`](multiprocessor-and-numa-baseline.md)
-- [`scheduler-and-threading.md`](scheduler-and-threading.md)
+- [`kernel/scheduler/scheduler-and-threading.md`](kernel/scheduler/scheduler-and-threading.md)
 - [`realtime-automotive-robotics-subsystems.md`](realtime-automotive-robotics-subsystems.md)
-- [`ai-scheduler-status-and-roadmap.md`](ai-scheduler-status-and-roadmap.md)
+- [`kernel/scheduler/ai-scheduler-status-and-roadmap.md`](kernel/scheduler/ai-scheduler-status-and-roadmap.md)
 - [`syscall-trap-gates.md`](syscall-trap-gates.md)
 - [`driver-model.md`](driver-model.md)
 - [`hardware-abstraction-and-drivers-baseline.md`](hardware-abstraction-and-drivers-baseline.md)
@@ -69,7 +69,7 @@ This folder captures the current architectural baseline for Bharat-OS.
 - [`personality-layer.md`](personality-layer.md)
 - [`gui-strategy.md`](gui-strategy.md)
 - [`device-profiles.md`](device-profiles.md)
-- [`ai-scheduler-overview.md`](ai-scheduler-overview.md)
+- [`kernel/scheduler/ai-scheduler-overview.md`](kernel/scheduler/ai-scheduler-overview.md)
 
 ## Scope note
 
