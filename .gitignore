@@ -58,4 +58,4 @@ test_vm_space
 run_vm_tests.sh
 build/
 !tools/build/
-!docs/build/
+!docs/dev/build/
