@@ -68,9 +68,18 @@ def run_qemu(manifest_path: Path) -> int:
         cmd.extend(["-m", memory])
 
     protocol = boot_contract.get("protocol")
+    dtb_info = boot_contract.get("dtb", {})
+    dtb_path = dtb_info.get("path")
+
+    if dtb_info.get("required") and not dtb_path:
+        print("Error: QEMU Runner requires DTB path but none was provided.")
+        sys.exit(1)
 
     # Basic generic boot logic based on protocol
     cmd.extend(["-kernel", boot_artifact])
+
+    if dtb_path:
+        cmd.extend(["-dtb", dtb_path])
 
     # We use discrete flags for better signal handling on Windows/WSL
     # -nographic often hijacks the signal handler

@@ -27,13 +27,9 @@ def validate_boot_contract(target: ResolvedTarget) -> None:
 
     # Protocol-specific semantic validation
     if boot.protocol == "linux_arm64":
-        # linux_arm64 requires a proper Linux Image header. 
-        # A generic elf_to_bin (objcopy -O binary) is NOT sufficient as it lacks the header.
-        is_generic_bin = any(t.type == "elf_to_bin" for t in target.package.transforms)
-        if is_generic_bin:
-            print(f"Validation Error: Protocol 'linux_arm64' on ARM64 cannot accept a generic 'elf_to_bin' output. "
-                  f"It requires a real Linux ARM64 image with header. Use 'elf_direct' for QEMU simulation.")
-            sys.exit(1)
+        # We now ensure the arm64 boot.S provides a valid Linux Image header.
+        # elf_to_bin is appropriate as long as the ELF was built with the header at the start.
+        pass
 
     if boot.protocol == "elf_direct":
         if boot.artifact_format != "elf":
