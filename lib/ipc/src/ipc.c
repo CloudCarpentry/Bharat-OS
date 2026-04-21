@@ -107,8 +107,9 @@ int32_t bharat_ipc_recv_ex(bharat_ipc_endpoint_t endpoint,
     if (recv_len < sizeof(bharat_ipc_msg_header_t)) {
         return BHARAT_IPC_STATUS_ERR_DECODE;
     }
-    if (ipc_check_header(&msg.header) != BHARAT_IPC_STATUS_OK) {
-        return BHARAT_IPC_STATUS_ERR_VERSION;
+    int32_t header_st = ipc_check_header(&msg.header);
+    if (header_st != BHARAT_IPC_STATUS_OK) {
+        return header_st;
     }
     if ((sizeof(msg.header) + msg.header.payload_size) > recv_len || msg.header.payload_size > max_size) {
         return BHARAT_IPC_STATUS_ERR_TRUNCATED;

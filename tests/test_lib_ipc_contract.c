@@ -102,6 +102,28 @@ int main(void) {
     /* Authorization negative path */
     assert(bharat_ipc_recv_ex(0U, &rep_hdr, out, sizeof(out), 0U) == BHARAT_IPC_STATUS_ERR_PERM);
 
+
+    /* Decode path preserves specific header validation errors */
+    g_head = g_tail = 0U;
+    {
+        bharat_ipc_msg_header_t bad_ver = mk_hdr(5000U, 0U);
+        bad_ver.header_version = 99U;
+        uint32_t idx = g_tail % 32U;
+        memcpy(g_queue[idx].bytes, &bad_ver, sizeof(bad_ver));
+        g_queue[idx].len = sizeof(bad_ver);
+        g_tail++;
+        assert(bharat_ipc_recv_ex(1U, &rep_hdr, out, sizeof(out), 0U) == BHARAT_IPC_STATUS_ERR_VERSION);
+    }
+
+    {
+        bharat_ipc_msg_header_t bad_len = mk_hdr(5001U, 0U);
+        bad_len.payload_size = 200U;
+        uint32_t idx = g_tail % 32U;
+        memcpy(g_queue[idx].bytes, &bad_len, sizeof(bad_len));
+        g_queue[idx].len = sizeof(bad_len);
+        g_tail++;
+        assert(bharat_ipc_recv_ex(1U, &rep_hdr, out, sizeof(out), 0U) == BHARAT_IPC_STATUS_ERR_LENGTH);
+    }
     /* Burst smoke */
     g_head = g_tail = 0U;
     for (uint64_t i = 0; i < 10; ++i) {
