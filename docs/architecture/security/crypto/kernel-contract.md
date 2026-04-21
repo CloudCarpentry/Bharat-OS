@@ -11,6 +11,16 @@ tags: [security, crypto, kernel, contract]
 
 This document strictly defines the boundary between what the Bharat-OS kernel implements directly regarding cryptography and security, and what it delegates to user-space services. The core philosophy is to keep cryptography mechanisms in the kernel only where the kernel must enforce trust, isolation, boot integrity, or hardware binding.
 
+## Current code-backed status (2026-04-21)
+
+The kernel now includes a concrete, test-backed baseline for:
+* Provider registration and lookup.
+* Capability-gated provider invocation.
+* Convenience RNG dispatch to the first registered RNG backend.
+* Key-buffer zeroization dispatch through provider hooks.
+
+These pieces are implemented but not yet fully production-hardened for concurrency, formal capability object routing, and complete secure-element orchestration.
+
 ## What the Kernel Owns (Mechanisms)
 
 The kernel is responsible for the absolute minimum required to securely boot the system, establish trust, protect key material in memory, and safely expose hardware cryptographic features to authorized user-space services.
