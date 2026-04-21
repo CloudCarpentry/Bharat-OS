@@ -1,5 +1,7 @@
 # Storage & Filesystem Strategy (Advanced)
 
+> Consolidation note: normative storage/filesystem architecture now lives in `docs/architecture/storage/`. This document remains as an advanced strategy companion.
+
 ## Goals
 
 Bharat-OS should expose a single, capability-safe storage model that can host:

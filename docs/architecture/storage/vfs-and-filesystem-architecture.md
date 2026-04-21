@@ -1,58 +1,128 @@
-# Storage and Filesystem Architecture Contract (Bharat-OS)
+# Storage and Filesystem Architecture Contract (Repository-Aligned)
 
-## 1. Introduction & Guiding Principles
+## 1. Purpose
 
-Bharat-OS implements a strict, profile-aware, and capability-governed multi-tiered architecture for its Virtual File System (VFS) and storage subsystems. The traditional monolithic VFS is decomposed across four distinct layers to ensure scaling from tiny MPU/MMU-lite devices, appliances, drones, automotive, mobile, edge, and cloud deployments.
+This document defines the **current authoritative architecture** for storage and filesystem behavior in Bharat-OS, aligned to code in:
 
-### The Four Layers
-1. **Kernel VFS Core (`kernel/`):** Provides *minimal mechanism only*. Handles capability enforcement, object identifiers, and boundary checks. *Crucially, no policy (automount, sync strategy, media indexing) or rich VFS logic resides here.* Currently transitioning to pure capability/IPC shims.
-2. **Filesystem Service/System Layer (`services/system/filesystem/` & `stacks/storage/`):** The policy and orchestration layer. Owns mount policy, namespace rules, pathname traversal, file descriptor handling, and orchestration. (Migration in progress; scaffolding exists).
-3. **Storage Drivers/Backends (`drivers/block/`, `drivers/storage/`, & `stacks/storage/fs/`):** Separate actual backend implementations. Includes ramfs, devfs, tmpfs, flashfs (log-structured for small devices), block-backed local FS, network/distributed/cloud adapters, automotive partitioned storage, and read-only image FS for appliances.
-4. **Userspace/UAPI Layer (`uapi/include/fs/`):** Exposes a clean, language-agnostic UAPI/SDK for file, directory, metadata, mount/query, and notification/watch operations, with optional POSIX compatibility.
+- `services/system/filesystem/`
+- `stacks/storage/`
+- `drivers/block/` and `drivers/storage/`
+- `kernel/src/fs/` and `kernel/include/fs/`
+- `lib/fs/`
 
----
+It intentionally separates:
 
-## 2. Capability Matrix & Storage Profiles
-
-Bharat-OS does not optimize first for "desktop POSIX completeness." It optimizes for a **filesystem capability matrix**, supporting various deployment classes through explicit storage profiles.
-
-### 2.1 Profile Definitions
-
-*   **A. Tiny / MPU / Appliance / Drone Controller (`FS_PROFILE_TINY_RO`, `FS_PROFILE_TINY_RW_LOG`, `FS_PROFILE_APPLIANCE`)**
-    *   Tiny code size, static mount layout, mostly read-only or append-log.
-    *   Predictable latency, flash-aware write behavior, minimal namespace complexity.
-    *   Optional/no page cache.
-*   **B. Mobile / Automotive / Appliance with Richer UX (`FS_PROFILE_MOBILE`, `FS_PROFILE_AUTOMOTIVE`)**
-    *   Per-app/per-domain namespace control, journaling or crash consistency.
-    *   Notification/watch support, better caching, removable media support.
-    *   Secure partitioning, profile-aware storage classes.
-*   **C. Cloud / Edge / Server (`FS_PROFILE_CLOUD`)**
-    *   Scalable mount/namespace model, page cache/writeback sophistication, high IOPS backends.
-    *   Richer metadata, quotas/snapshots, remote FS integration, observability.
+- **What exists today** (implemented or stubbed), and
+- **What is target architecture** (phased roadmap).
 
 ---
 
-## 3. Crash Consistency Tiers
+## 2. Layer model (current + target)
 
-*   **Tier 1:** Best effort / volatile only (ramfs/tmpfs/devfs).
-*   **Tier 2:** Small-device log or copy-on-write metadata (flash/appliance/drone).
-*   **Tier 3:** Journaled/block-backed consistency (mobile/automotive/general systems).
-*   **Tier 4:** Advanced scalable/server features (snapshots/quotas/replication/integrity scrub).
+### Layer A — Driver layer (hardware-facing)
+
+- `drivers/block/virtio_blk/`: block submission stub + init path.
+- `drivers/storage/nvme/`: NVMe controller init/admin queue baseline.
+
+**Contract:** no pathname parsing, no capability policy, no POSIX semantic ownership.
+
+### Layer B — Storage stack primitives
+
+- `stacks/storage/block/`: generic block request API (`READ`, `WRITE`, `FLUSH`).
+- `stacks/storage/cache/`: bounded cache table with dirty tracking and flush path.
+- `stacks/storage/profile.c`: profile resolver for backend, cache, queue depth, journaling/NUMA toggles.
+- `stacks/storage/fs/adapter.c`: filesystem adapter registry.
+- `stacks/storage/fs/ramfs/`: concrete in-memory filesystem backend.
+- `stacks/storage/fs/blob/`: blob backend compatibility stub.
+
+**Contract:** reusable policy/mechanism helpers, but not user ABI ownership.
+
+### Layer C — Filesystem service
+
+- `services/system/filesystem/main.c`: service bootstrap with storage profile selection + cache init.
+- `services/system/filesystem/fd_mgr.c`: open/read/write/close table and capability-gated checks.
+- `services/system/filesystem/mount_mgr.c`, `namespace_mgr.c`, `vfs_stub.c`: service-side namespace/mount and VFS helper scaffolding.
+
+**Contract:** owns mount/namespace/file-descriptor policy and request dispatch behavior.
+
+### Layer D — Kernel compatibility surface (transitional)
+
+- `kernel/include/fs/*.h`: shared FS/VFS types and operation contracts.
+- `kernel/src/fs/*.c`: currently mixed state; some files are compatibility shims returning `K_ERR_REQUIRES_FS_SERVICE`.
+
+**Contract target:** kernel keeps only mechanism/ABI stubs required for safe transition; policy migrates to service.
+
+### Layer E — Client boundary
+
+- `lib/fs/fs_client.c`: fs client wrappers forwarding to filesystem-service symbols.
+
+**Contract:** call-site stable entrypoints while IPC transport matures.
 
 ---
 
-## 4. Capability-Governed FS Access
+## 3. Current reality check (important)
 
-The capability model is mandatory across services and IPC boundaries. Filesystem objects define:
-*   Object type
-*   Allowed rights (lookup, read, write, append, create, delete, execute, mount, remount, admin, watch, setattr)
-*   Scope
-*   Handle lifetime
-*   Revoke behavior
+The repository is in a **hybrid migration state**:
+
+1. **Service path exists and performs real work for FD operations.**
+2. **Kernel fs path still exists** and contains transitional compatibility shims in some units.
+3. **Dual symbol patterns remain** (`vfs_*`-style behaviors in multiple places), which is accepted short-term but must be collapsed.
+4. **Storage profile and cache wiring are present** in the service startup path.
+
+This is expected for current phase, but documentation and code must explicitly acknowledge the hybrid state to avoid architectural drift.
 
 ---
 
-## 5. Mount & Namespace Model
+## 4. Capability and authority model
 
-*   **Small-Device Mode:** Fixed mount table, no dynamic mount namespaces.
-*   **Large-Device/Cloud Mode:** Global early boot namespace, system namespace, and per-process namespace (chroot-like environments), with read-only/read-write mounts and optional bind-like remaps.
+Authority is capability-scoped. In current code paths, this is represented by:
+
+- capability checks when opening and operating files (`caller_cap`, rights masks, target object checks).
+- per-open file handle capability association in service FD tables.
+- transitional dummy capability fallbacks in compatibility wrappers.
+
+**Hard rule:** no ambient authority assumptions in new storage/filesystem work.
+
+---
+
+## 5. Driver taxonomy rule (`drivers/block` vs `drivers/storage`)
+
+To keep current tree while reducing ambiguity:
+
+- `drivers/block/*`: frontend request engines that consume normalized block requests.
+- `drivers/storage/*`: transport/protocol-specialized storage controllers and queue managers.
+
+Both remain valid now, but future docs/code should keep this split explicit.
+
+---
+
+## 6. Profile-driven policy baseline
+
+The storage profile resolver currently derives:
+
+- FS backend family intent (ramfs/littlefs/fat/ext4-like/xfs-like/blob)
+- cache policy
+- queue depth
+- cache budget
+- NUMA/journaling flags
+
+Inputs are:
+
+- app profile (`RT`, `EDGE`, `DATACENTER`)
+- device size
+- hardware architecture family
+
+This baseline is already wired into filesystem service boot initialization.
+
+---
+
+## 7. Out of scope for current phase
+
+Not yet treated as implemented architecture commitments:
+
+- full userspace IPC protocol for complete POSIX file API surface,
+- production persistent FS adapters beyond RAMFS-level baseline,
+- complete blob/object implementation,
+- full NUMA-local IO worker scheduling and queue pinning.
+
+These remain roadmap items.
