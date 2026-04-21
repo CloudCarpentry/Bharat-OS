@@ -3,14 +3,19 @@ title: Personality Layer Architecture
 status: active
 owner: Architecture Team
 reviewers: ["Core Team"]
-version: 1.0
-last_updated: "2024-03-23"
+version: 1.1
+last_updated: "2026-04-21"
 tags: ["architecture", "personalities"]
 ---
 
 # Personality Layer Model
 
 > **Note on Code Structure:** The architecture enforces a strict separation. Syscalls hit a generic trap layer (`kernel/src/arch/*/trap.c`) and are routed through the native UAPI. Foreign ABIs are supported through compatibility layers (`personalities/compat/linux/`, etc.) that translate POSIX and other semantics into native IPC/uRPC requests.
+
+
+## 0. Documentation Entry Point
+
+Use `docs/architecture/personalities/README.md` as the canonical index for all personality-layer architecture and roadmap content.
 
 ## Overview
 
@@ -33,6 +38,8 @@ This is the real OS contract for Bharat-native apps. It does not use POSIX paths
 ## 2. Compat Personalities (e.g., Linux POSIX)
 
 These translate foreign semantics into the native kernel and service model. They **do not** redefine the kernel core.
+
+Compat adapters should increasingly target the additive modern primitives (`intent_set/get`, class-aware allocation, fault-domain operations) via table-driven mappings, while preserving default legacy behavior when mappings are disabled.
 
 - A legacy Linux application makes a standard `openat()` or `write()` syscall.
 - The `compat/linux/` layer catches this and maps the POSIX concepts into native capability-scoped IPC messages.
