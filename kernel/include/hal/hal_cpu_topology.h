@@ -10,6 +10,9 @@ extern "C" {
 
 typedef struct {
     uint32_t discovered_cpu_count;
+    uint32_t valid_cpu_mask;
+    uint32_t performance_cluster_mask;
+    uint32_t efficiency_cluster_mask;
     bool smp_available;
     bool homogeneous_cores;
 } hal_cpu_topology_info_t;

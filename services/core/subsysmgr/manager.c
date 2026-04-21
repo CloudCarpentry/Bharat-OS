@@ -4,43 +4,87 @@
 #include "../../../personalities/compat/linux/linux_compat.h"
 #include "../../../personalities/compat/windows/win_compat.h"
 
-static uint32_t subsys_allowed_cpu_mask(void) {
-    hal_cpu_topology_info_t topology = {0};
-    uint32_t discovered = 1U;
-    if (hal_cpu_topology_query(&topology) && topology.discovered_cpu_count > 0U) {
-        discovered = topology.discovered_cpu_count;
-    }
-    if (discovered > 32U) {
-        discovered = 32U;
+uint32_t subsys_resolve_effective_cpu_mask(const hal_cpu_topology_info_t* topology, const subsys_alloc_config_t* config, uint32_t requested_mask) {
+    if (!topology || !config) return 1U; // Safe fallback
+
+    // 1. Determine requested mask
+    uint32_t base_request = requested_mask;
+    if (base_request == 0U) {
+        base_request = config->preferred_cpu_mask;
+        if (base_request == 0U) {
+            base_request = topology->valid_cpu_mask;
+        }
     }
 
-    if (discovered == 32U) {
-        return UINT32_MAX;
+    // 2. Sanitize against valid mask
+    uint32_t eligible_mask = base_request & topology->valid_cpu_mask;
+    if (eligible_mask == 0U) {
+        eligible_mask = topology->valid_cpu_mask;
     }
-    return (1U << discovered) - 1U;
+
+    // 3. Apply cluster preference
+    if (config->cluster_pref == SUBSYS_CLUSTER_PREF_PERF) {
+        if (topology->performance_cluster_mask != 0U) {
+            uint32_t pref_mask = eligible_mask & topology->performance_cluster_mask;
+            if (pref_mask != 0U) eligible_mask = pref_mask;
+        }
+    } else if (config->cluster_pref == SUBSYS_CLUSTER_PREF_EFF) {
+        if (topology->efficiency_cluster_mask != 0U) {
+            uint32_t pref_mask = eligible_mask & topology->efficiency_cluster_mask;
+            if (pref_mask != 0U) eligible_mask = pref_mask;
+        }
+    }
+
+    // 4. Apply strategy (PACKED vs SPREAD)
+    if (eligible_mask != 0U && (eligible_mask & (eligible_mask - 1)) != 0U) { // Multiple CPUs eligible
+        if (config->policy == SUBSYS_ALLOC_PACKED) {
+            // Pick lowest valid CPU
+            uint32_t lowest_bit = eligible_mask & (~eligible_mask + 1);
+            eligible_mask = lowest_bit;
+        } else if (config->policy == SUBSYS_ALLOC_SPREAD) {
+            // Keep all eligible CPUs to spread load
+            // (In a more advanced system, we might pick alternating bits, but for now, spread means use all eligible)
+        }
+    }
+
+    if (eligible_mask == 0U) return 1U; // Safe fallback
+
+    return eligible_mask;
 }
 
-static uint32_t subsys_effective_cpu_mask(uint32_t requested_mask) {
-    uint32_t allowed_mask = subsys_allowed_cpu_mask();
+static uint32_t subsys_effective_cpu_mask(const subsys_alloc_config_t* config, uint32_t requested_mask) {
+    hal_cpu_topology_info_t topology = {0};
+    topology.discovered_cpu_count = 1U;
+    topology.valid_cpu_mask = 1U;
+    topology.performance_cluster_mask = 1U;
+    topology.efficiency_cluster_mask = 0U;
+    topology.smp_available = false;
+    topology.homogeneous_cores = true;
 
-    uint32_t effective = requested_mask & allowed_mask;
-    if (effective == 0U) {
-        effective = 0x1U;
-    }
+    hal_cpu_topology_query(&topology);
 
-    return effective;
+    return subsys_resolve_effective_cpu_mask(&topology, config, requested_mask);
 }
 
 static uint32_t next_subsys_id = 1;
 
-int subsys_create(subsys_type_t type, subsys_exec_mode_t mode, subsys_instance_t* out_instance) {
+int subsys_create(subsys_type_t type, subsys_exec_mode_t mode, const subsys_alloc_config_t* alloc_cfg, subsys_instance_t* out_instance) {
     if (!out_instance) return -1;
 
     out_instance->subsys_id = next_subsys_id++;
     out_instance->type = type;
     out_instance->exec_mode = mode;
     out_instance->memory_limit_mb = 0;
-    out_instance->cpu_core_allocation_mask = subsys_effective_cpu_mask(0U);
+
+    if (alloc_cfg) {
+        out_instance->alloc_config = *alloc_cfg;
+    } else {
+        out_instance->alloc_config.policy = SUBSYS_ALLOC_DEFAULT;
+        out_instance->alloc_config.preferred_cpu_mask = 0U;
+        out_instance->alloc_config.cluster_pref = SUBSYS_CLUSTER_PREF_NONE;
+    }
+
+    out_instance->cpu_core_allocation_mask = subsys_effective_cpu_mask(&out_instance->alloc_config, 0U);
     out_instance->is_running = 0;
 
     switch (type) {
@@ -62,7 +106,7 @@ int subsys_start(subsys_instance_t* instance) {
     if (!instance) return -1;
 
     instance->cpu_core_allocation_mask =
-        subsys_effective_cpu_mask(instance->cpu_core_allocation_mask);
+        subsys_effective_cpu_mask(&instance->alloc_config, instance->cpu_core_allocation_mask);
 
     if (instance->exec_mode == EXECUTION_MODE_TESTING) {
         const char *subsys_name = "unknown";

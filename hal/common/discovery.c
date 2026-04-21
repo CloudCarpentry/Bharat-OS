@@ -25,6 +25,9 @@ bool hal_cpu_topology_query(hal_cpu_topology_info_t *out) {
     }
 
     out->discovered_cpu_count = discovered;
+    out->valid_cpu_mask = (discovered == 32U) ? UINT32_MAX : ((1U << discovered) - 1U);
+    out->performance_cluster_mask = out->valid_cpu_mask;
+    out->efficiency_cluster_mask = 0;
     out->smp_available = (discovered > 1U);
     out->homogeneous_cores = true;
     return true;

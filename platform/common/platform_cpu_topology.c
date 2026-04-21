@@ -11,6 +11,9 @@ __attribute__((weak)) bool hal_cpu_topology_query(hal_cpu_topology_info_t *out) 
     }
 
     out->discovered_cpu_count = 1;
+    out->valid_cpu_mask = 1; /* Mask for 1 CPU */
+    out->performance_cluster_mask = 1; /* For backwards compatibility, homogeneous single core acts as perf mask */
+    out->efficiency_cluster_mask = 0;
     out->smp_available = false;
     out->homogeneous_cores = true;
 
