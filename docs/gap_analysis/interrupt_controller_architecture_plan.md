@@ -12,15 +12,17 @@ This plan defines how Bharat-OS can evolve one interrupt subsystem that supports
 
 ## Current architecture snapshot (what we have now)
 
+> **Code-verified note (April 21, 2026):** This document was re-validated against the current tree and several statements below were adjusted from “implemented” to “partial/stub” where code is still placeholder (especially irq_domain and architecture controller depth).
+
 ### Strengths
 
 1. **A generic IRQ API exists** (`hal_irq_*`, `hal_interrupt_*`) with registration, shared handlers, affinity metadata, and deferred work hooks.
 2. **Per-arch controller backends exist** for:
-   - x86_64 APIC (`kernel/src/hal/x86_64/apic.c`)
-   - arm64 GICv3 (`kernel/src/hal/arm64/gicv3.c`)
-   - riscv64 PLIC (`kernel/src/hal/riscv64/plic.c`)
+   - x86_64 APIC (`hal/x86_64/apic.c`)
+   - arm64 GICv3 (`hal/arm64/gicv3.c`)
+   - riscv64 PLIC (`hal/riscv64/plic.c`)
 3. **Discovery already models multiple interrupt controllers** (APIC, IOAPIC, GICv2/v3, ITS, PLIC, AIA placeholders) in `hal_discovery.h`.
-4. **MSI-domain concept exists** (`device/irq_domain.h`) and is partially wired on arm64 ITS + x86 stubs.
+4. **MSI-domain concept exists** (`kernel/include/device/irq_domain.h`) and is partially wired on arm64 ITS + x86 stubs.
 
 ### Gaps / architectural risks
 
@@ -28,11 +30,12 @@ This plan defines how Bharat-OS can evolve one interrupt subsystem that supports
    - `hal_irq_*` + `hal_interrupt_dispatch()` path
    - `hal_interrupt_acknowledge()/end_of_interrupt()` path in trap handling
    This creates inconsistent behavior and makes cross-arch features harder.
-2. **Controller ops are not actually stored/applied**: `hal_irq_set_controller()` currently returns success but does not bind ops into descriptors.
+2. **irq_domain framework is still placeholder-heavy**: `irq_domain_create()` returns a dummy pointer and no real allocator/hierarchy bookkeeping exists yet.
 3. **Trap path is not uniformly controller-agnostic**: architecture-specific branches directly special-case timer/ack flow.
 4. **Affinity and routing are metadata-first, hardware-second**: generic affinity is tracked, but backend reprogramming is mostly stubbed.
-5. **arm32/riscv32 parity is incomplete** for a production interrupt stack.
+5. **arm32/riscv32 parity is incomplete** for a production interrupt stack (arm32 stubs are still minimal; riscv32 lacks equivalent full PLIC backend path).
 6. **Feature-level extensibility (ISR budget, QoS, NMI/FIQ policy, virtualization interrupt injection) is not first-class yet.**
+7. **Header/API drift exists**: `hal/include/hal/hal_irq.h` currently exposes only minimal prototypes and does not match the richer API surface this plan assumes.
 
 ## Target architecture model
 
@@ -60,16 +63,16 @@ Adopt a **three-layer interrupt architecture**:
 
 The following items can be implemented with minimal regression risk because they preserve existing backend behavior and mostly tighten internal contracts:
 
-1. [x] **Controller binding correctness**: make `hal_irq_set_controller()` persist and validate ops in descriptors while keeping existing backend entry points unchanged.
-2. [x] **Trap-flow adapters**: add a unified internal helper (`claim -> translate -> dispatch -> eoi`) and call it from current arch trap paths before removing any old glue. *(Completed: unified via `hal_interrupt_handle_trap_irq` and `hal_interrupt_get_active_irq` across all archs)*.
-3. [x] **Descriptor state formalization**: add `irq_desc` state bits and counters without changing externally visible IRQ numbers or driver APIs.
-4. [ ] **Domain-first for new routes only**: require `irq_domain` for newly added devices/routes, while legacy static routes continue to work during migration.
-5. [x] **Affinity propagation no-op fallback**: wire descriptor-to-backend affinity propagation with backend fallback to current behavior when hardware reprogramming is not yet implemented.
-6. [ ] **Capability-gated fast paths**: introduce capability probes for x2APIC/GIC advanced modes/AIA hooks but keep fast paths disabled by default unless fully validated.
+1. [x] **Controller binding correctness**: `hal_irq_set_controller()` now persists and validates required ops in descriptors.
+2. [x] **Trap-flow adapters**: unified helper path is in use from trap dispatch (`hal_interrupt_handle_trap_irq`).
+3. [~] **Descriptor state formalization**: counters/flags exist, but explicit state bits (`masked/pending/in-progress/oneshot/level`) and bound domain pointer are still incomplete.
+4. [ ] **Domain-first for new routes only**: still pending; static routes/stubs remain dominant.
+5. [x] **Affinity propagation no-op fallback**: metadata + backend callback fallback exists.
+6. [ ] **Capability-gated fast paths**: still pending (no dedicated interrupt-extension capability matrix implemented yet).
 
 These steps align with **ADR-012 compatibility-first rules** and should be completed before any destructive API removal.
 
-## Phase 1: Unify core interrupt flow (foundation) -> **COMPLETED**
+## Phase 1: Unify core interrupt flow (foundation) -> **MOSTLY COMPLETED**
 
 1. [x] Create a canonical per-CPU trap/IRQ flow:
    - `controller->claim()` returns hwirq/token
@@ -77,7 +80,7 @@ These steps align with **ADR-012 compatibility-first rules** and should be compl
    - `irq_core_dispatch(virq)` executes handlers
    - `controller->eoi(token)` finalizes
 2. [x] Remove duplicated trap-path variants by introducing one internal API used by x86/arm/riscv entries. *(Completed: `trap.c` fully deduplicated, relying on `hal_interrupt_get_active_irq` for all architectures).*
-3. [x] Upgrade `irq_desc` to include:
+3. [~] Upgrade `irq_desc` to include:
    - bound controller ops pointer
    - bound domain pointer
    - irq state bits (masked, pending, in-progress, oneshot, level)
@@ -138,6 +141,14 @@ Rules:
 2. Add `irq_desc.state` bitfield and `irq_desc.chip` pointer.
 3. Replace fixed `HAL_MAX_IRQS=256` assumption with configurable virq allocator.
 4. Add per-CPU `irq_ctx` with stats, nesting depth, deferred queue, and preemption accounting.
+
+## Code-verified gaps to prioritize next
+
+1. **Implement real irq_domain objects and translation tables** (allocation, map/unmap bookkeeping, hierarchy parent chaining).
+2. **Complete API alignment for HAL IRQ headers vs implementation** to avoid divergence in function signatures and expected controller contracts.
+3. **Finish descriptor model** with explicit state bits + domain pointer, then wire those fields through dispatch and mask/unmask paths.
+4. **Add riscv32/arm32 production-grade interrupt controller backends** (not only stubs/default returns).
+5. **Promote domain-first routing from “planned” to enforced for new device IRQ plumbing** (PCI/MSI and platform IRQ sources).
 
 ## Validation and bring-up plan
 
