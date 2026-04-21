@@ -44,6 +44,8 @@ This folder captures the current architectural baseline for Bharat-OS.
 - [`driver-model.md`](driver-model.md)
 - [`hardware-abstraction-and-drivers-baseline.md`](hardware-abstraction-and-drivers-baseline.md)
 - [`storage-and-sandbox-strategy.md`](storage-and-sandbox-strategy.md)
+- [`storage/README.md`](storage/README.md)
+- [`storage/roadmap.md`](storage/roadmap.md)
 - [`verification-scope.md`](verification-scope.md)
 - [`threat-model-and-mac.md`](threat-model-and-mac.md)
 - [`cmake-governance-and-agent-rules.md`](cmake-governance-and-agent-rules.md)

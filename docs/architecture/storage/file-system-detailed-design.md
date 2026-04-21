@@ -1,156 +1,93 @@
-# Storage and Filesystem Detailed Architecture (Bharat-OS)
+# Storage and Filesystem Detailed Design (Code-Aligned)
 
-## 1. Introduction & Guiding Principles
+## 1. Scope and intent
 
-Bharat-OS embraces a strict multi-tiered architecture for storage and file systems, adhering to the capability-oriented microkernel design philosophy. The traditional monolithic "Virtual File System" (VFS) is decomposed across four distinct layers to ensure isolation, flexibility across device profiles, and high-performance I/O (DMA/NUMA awareness) without bloating the kernel.
-
-### The Four Layers
-1. **Kernel (`kernel/`):** Provides *only* the low-level mechanisms. No filesystem policy, no pathname resolution, no heavy VFS. The kernel handles capability enforcement, IPC/uRPC transport, physical memory management (PMM), DMA-safe memory allocation, and fault delivery.
-2. **System Services (`services/system/filesystem/`):** The VFS daemon. Owns mount policy, namespace rules, pathname traversal, file descriptor (session) handling, and sandbox storage policies.
-3. **Storage Stack (`stacks/storage/`):** Reusable storage subsystem logic. Owns generic block request models, page/buffer caching, writeback engines, integrity frameworks, and filesystem protocol adapters (e.g., FAT, ext4-like).
-4. **Drivers (`drivers/block/` & `drivers/storage/`):** Real device drivers (e.g., virtio-blk, NVMe, eMMC). Owns hardware probing, MMIO/registers, ring/queue submissions, DMA descriptor/SG list mapping, and interrupt/timeout handling.
+This document maps storage/filesystem design to **current code** and records what is real, partial, or planned.
 
 ---
 
-## 2. Advanced Architectural Concepts
+## 2. Implementation map
 
-### 2.1 Direct Memory Access (DMA) and Zero-Copy I/O
-To achieve near-production grade performance, the storage stack must minimize data copying across domain boundaries:
-- **DMA-Safe Memory:** The `stacks/storage/cache` (Page/Buffer Cache) allocates I/O buffers from capability-granted, DMA-safe memory pools provided by the kernel PMM.
-- **Zero-Copy IPC:** User applications issuing `read()` or `write()` calls negotiate shared memory windows (vmo/shm) via uRPC with `services/system/filesystem`.
-- **Scatter-Gather (SG) Lists:** The generic block layer (`stacks/storage/block`) constructs SG lists referencing these pinned DMA buffers and passes them via capability-restricted IPC to the hardware drivers (`drivers/block/`).
+## 2.1 Filesystem service (`services/system/filesystem/`)
 
-### 2.2 NUMA Awareness
-Modern Datacenter and Edge-Compute profiles feature Non-Uniform Memory Access (NUMA) topologies. The storage architecture accounts for this by:
-- **NUMA-Local Page Caching:** The buffer cache allocates pages from the memory node closest to the CPU core executing the application thread.
-- **I/O Queue Pinning:** Multi-queue block devices (like NVMe) map submission/completion queues to specific NUMA nodes. Interrupts and uRPC completion notifications are routed to the corresponding local cores to prevent cross-interconnect thrashing.
-- **VFS Session Locality:** The `services/system/filesystem` daemon can spawn worker threads pinned to specific NUMA domains to handle high-throughput parallel I/O.
+- `main.c`
+  - selects profile at build/runtime macro level,
+  - reads block geometry via `block_get_info`,
+  - resolves storage policy via `storage_profile_resolve`,
+  - initializes cache via `cache_init_with_profile`.
+- `fd_mgr.c`
+  - owns open-file table,
+  - enforces capability-aware checks for open/read/write/close,
+  - keeps `openat` in limited transitional mode (`AT_FDCWD`-style fallback only).
+- `vfs_stub.c`
+  - service-side driver registry helpers and path-prefix helpers.
 
----
+## 2.2 Storage stack (`stacks/storage/`)
 
-## 3. Profile-Driven Storage Features
+- `block/block.c`
+  - validates request, routes to virtio-blk path for device 0,
+  - handles flush request as explicit semantic.
+- `cache/cache.c`
+  - fixed-size global cache entries with profile-sized active capacity,
+  - lookup + victim selection,
+  - dirty block writeback and device flush in `cache_sync`.
+- `profile.c`
+  - profile resolver with device-size thresholds and arch clamping,
+  - backend/cache/queue depth strategy,
+  - string helpers for reporting.
+- `fs/adapter.c`
+  - lightweight adapter registration and lookup.
+- `fs/ramfs/ramfs.c`
+  - concrete page-backed RAMFS implementation with block-table growth.
+- `fs/blob/blob_backend.c`
+  - explicit compatibility placeholder returning service-required errors.
 
-Bharat-OS targets diverse environments. The storage stack components are conditionally compiled and configured based on the target profile:
+## 2.3 Kernel fs boundary (`kernel/src/fs/`)
 
-| Feature / Subsystem | RT / Safety (Automotive/Medical) | Edge / Mobile (IoT/Drones) | Datacenter / Server |
-| :--- | :--- | :--- | :--- |
-| **Primary Backend** | eMMC / SPI NOR Flash | UFS / eMMC / SD Card | NVMe / Virtio-Blk / Network Blob |
-| **Filesystem Type** | Deterministic (littlefs, FAT) | Wear-aware (f2fs, ext4-like) | High-throughput (xfs-like, btrfs-like) |
-| **Cache Policy** | Minimal buffer cache (strict write-through) | Moderate page cache (write-back) | Deep, NUMA-aware page cache with async writeback |
-| **I/O Queues** | Single queue, polling mode | Multi-queue, interrupt driven | Deep multi-queue, polling + interrupt hybrid |
-| **Memory Allocation** | Static, pre-allocated DMA pools | Dynamic, reclaimable page cache | Transparent Huge Pages (THP), NUMA-bound |
+- Contains compatibility units that intentionally return service-required status, preserving build/ABI continuity while policy migrates out of kernel.
+- `kernel/include/fs/` remains important as shared contract surface for FS/VFS objects and operations.
 
----
+## 2.4 Client boundary (`lib/fs/`)
 
-## 4. Directory Structure and Responsibilities
-
-Following the rigorous folder structure guidelines, the implementation is organized as follows:
-
-### 4.1 Services: `services/system/filesystem/`
-The authoritative VFS and Storage Policy Manager.
-- **`mount_mgr.c`:** Manages the mount graph and resolves capability-anchored mount tokens.
-- **`namespace_mgr.c`:** Handles per-sandbox path resolution and chroot-like environments.
-- **`vnode_mgr.c`:** Orchestrates abstract virtual nodes (vnodes/dentries).
-- **`fd_mgr.c`:** Maps per-process file descriptors to live `vnode` sessions and capability handles.
-- **`ipc_dispatch.c`:** Handles uRPC messages (`openat`, `stat`, `mkdir`) from user apps and personalities.
-
-### 4.2 Stacks: `stacks/storage/`
-The reusable subsystem building blocks.
-- **`block/`:** Generic block request queues, elevator algorithms, and I/O scheduler hints.
-- **`cache/`:** Page cache, buffer cache, readahead logic, and writeback engine.
-- **`fs/`:** Concrete filesystem format adapters (e.g., parsing superblocks, inodes, directory entries).
-- **`integrity/`:** Checksums, journaling frameworks, and Merkle-tree validation (for secure profiles).
-
-### 4.3 Drivers: `drivers/block/` & `drivers/storage/`
-The pure hardware interface layer.
-- **`drivers/block/virtio_blk/`:** Virtqueue initialization, descriptor chaining, and MMIO notifications.
-- **`drivers/storage/nvme/`:** Admin/I/O queue pair creation, PRP/SGL construction, and doorbell ringing.
-- **Constraints:** Drivers *never* parse paths, *never* check permissions, and *never* understand POSIX semantics. They only execute `block_request_t` arrays.
+- `fs_client` forwards operations to filesystem service symbols and acts as migration boundary for callers.
 
 ---
 
-## 5. Implementation Roadmap
+## 3. What is aligned now
 
-### Phase 1: Near-Production Baseline (Partially Complete / Transitional)
-1. Relocated existing VFS policy logic (`vfs.c`, `mount.c`, `file.c`, `namespace.c`, etc.) out of the kernel into `services/system/filesystem/`. The service migration has started but is still incomplete.
-2. Replaced kernel VFS logic with thin transitional capability/IPC shims. The kernel still exposes this shim ABI.
-3. Established the `stacks/storage/` framework encompassing generic block API, basic buffer cache abstracts, and fs-adapter boundaries. This is currently scaffolded, but not production-complete.
-4. Tests and legacy components still depend on the kernel shim paths instead of the service path.
-
-### Phase 2: Kernel Clean-up & POSIX Personality (Current Objective)
-1. Remove remaining direct kernel consumer dependencies on transitional VFS shims (B-phase cleanup). Migrate tests to use an `fs_client` layer that routes to the filesystem service.
-2. Implement a complete deterministic/lightweight filesystem (e.g., littlefs/FAT) in `stacks/storage/fs/`.
-3. Connect `services/system/filesystem/` to the `compat/linux` personality to support real `openat`, `read`, `write`, `stat`.
-4. Implement the NUMA-aware Page Cache in `stacks/storage/cache/` to buffer reads and aggregate writes.
-
-### Phase 3: Advanced Sandboxing & Security
-1. Enforce Path Capabilities: Validate that a sandboxed app's token allows writing to a specific subdirectory.
-2. Implement Storage Class Restrictions (e.g., block raw `/dev/nvme0n1` access from untrusted containers).
-3. Enable Secure Boot / Fast Boot profile integration (read-only verified rootfs with a volatile tmpfs overlay).
-
-### Phase 4: Datacenter & Blob Scale
-1. Implement multi-queue NVMe driver with CPU core pinning.
-2. Introduce `VFS_BACKEND_BLOB` for URI-addressed object storage.
-3. Asynchronous I/O via `io_uring`-style ring buffers mapped between the application and VFS.
+1. **Profile-aware initialization exists in the service startup path.**
+2. **Cache/writeback/flush scaffolding exists and is callable from service flow.**
+3. **Filesystem adapter boundary exists (`adapter.c`) with concrete RAMFS backend present.**
+4. **Driver side includes both virtio-blk and NVMe implementation baselines.**
+5. **Capability-aware checks are present in active file operation path.**
 
 ---
 
-## 6. Gap Review (Current Repo State) and Remaining Tasks
+## 4. Known mismatches and debt
 
-After reviewing the active code under `stacks/storage/` and `services/system/filesystem/`, the biggest remaining production gaps are:
-
-1. **Filesystem service path is still mostly stubbed**
-   - `services/system/filesystem/main.c` performs only a single synthetic block read flow.
-   - Full IPC decode/dispatch for `openat/read/write/stat` is still pending.
-
-2. **Storage cache and writeback were placeholder-only**
-   - The previous cache implementation had no residency model, no eviction policy, and no sync semantics.
-
-3. **No profile/device/architecture-aware policy resolver**
-   - Build/runtime profile intent existed in architecture docs, but there was no shared resolver translating:
-     - app profile (RT/Edge/Datacenter),
-     - device size,
-     - hardware architecture,
-     into concrete FS backend + cache + queue configuration.
-
-4. **Phase-2 service migration remains incomplete**
-   - Kernel shim consumers and some tests still rely on transitional paths.
-
-### Updated Remaining Task List (priority order)
-
-1. Complete `fs_client` + service-side syscall routing (`openat/read/write/stat/mkdir/unlink/rename`) and migrate all tests from kernel shims.
-2. Add concrete persistent adapters in `stacks/storage/fs/`:
-   - `littlefs`/`FAT` for RT/Edge,
-   - `ext4-like` baseline for general-purpose,
-   - `xfs-like`/blob for datacenter scale.
-3. Wire cache pages to DMA-safe allocator and block IO SG lists (remove placeholder buffer pointers).
-4. Add NUMA-local worker and queue pinning policy plumbing for datacenter profile.
-5. Add integrity/journaling hooks (`stacks/storage/integrity/`) and profile-gated enforcement.
-6. Add fault-injection + soak tests (power-cut/replay, media errors, queue timeouts).
+1. **Hybrid ownership remains:** some VFS-related behavior is still available in multiple transitional locations.
+2. **Service API coverage is incomplete:** no full syscall/IPC-complete `openat/read/write/stat/mkdir/unlink/rename` route set yet.
+3. **Persistent FS adapters are not production-complete:** RAMFS is strongest concrete path today.
+4. **Blob backend is contract placeholder only.**
+5. **Kernel-to-service cutover is not fully complete for all consumers/tests.**
 
 ---
 
-## 7. Implemented Baseline Improvements (This Change)
+## 5. Documentation contract for contributors
 
-To move toward production-grade behavior while keeping scope realistic, the current implementation now includes:
+When changing storage/filesystem code, contributors should keep these invariants:
 
-1. **Profile-aware storage resolver (`stacks/storage/profile.c`)**
-   - Chooses backend/cache/queue/cache-budget from:
-     - application profile,
-     - device size,
-     - hardware architecture.
-   - Includes 32-bit resource clamping for constrained targets.
+- Do not move policy-rich namespace/mount behavior back into kernel internals.
+- Keep driver code free of path/permission/POSIX policy logic.
+- Route new profile decisions through `stacks/storage/profile.c` and consume them from service startup/config paths.
+- Use `lib/fs/fs_client.*` as boundary for clients while transport evolves.
 
-2. **Configurable cache initialization (`cache_init_with_profile`)**
-   - Cache capacity now follows resolved profile budget.
-   - Added bounded in-memory cache entries, lookup, victim selection, pin/unpin tracking.
-   - Added `cache_sync()` writeback + FLUSH request path.
+---
 
-3. **Filesystem service startup policy wiring**
-   - Service now reads block device geometry and resolves profile policy at boot.
-   - Cache is initialized using the resolved policy, creating a profile/device/arch aware storage baseline.
+## 6. Relationship to roadmap
 
-4. **Block layer FLUSH semantic stub**
-   - Generic block queue now explicitly handles FLUSH requests, enabling cache-sync barrier semantics.
+Delivery phases, priorities, and completion criteria are tracked in:
 
-These changes establish the policy plane and cache baseline needed before full adapter, journaling, and service syscall completion.
+- [`roadmap.md`](roadmap.md)
+
+This detailed design document should be updated alongside roadmap status changes whenever storage/filesystem behavior changes materially.
