@@ -28,6 +28,7 @@ This folder captures the current architectural baseline for Bharat-OS.
 
 ### Core kernel architecture
 
+- [`interrupt/interrupt-architecture.md`](interrupt/interrupt-architecture.md)
 - [`kernel-api.md`](kernel-api.md)
 - [`capability-model.md`](capability-model.md)
 - [`kernel-object-model.md`](kernel-object-model.md)
