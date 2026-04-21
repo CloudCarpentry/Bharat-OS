@@ -26,6 +26,7 @@ This roadmap tracks Bharat-OS from a bootable microkernel baseline toward a prod
 | Cross-core capability operations | **Partial** | Delegation/revocation path exists, but lifecycle proofs and temporal controls remain. |
 | Message-based TLB shootdown | **Partial** | Functional path exists; ack/completion semantics and stronger stress validation are still open. |
 | Basic SKB/topology discovery | **Partial** | Present as baseline subsystem direction; depth varies by architecture. |
+| Bootstrap control-plane split (`init` → `servicemgr` → `policymgr`) | **Partial** | Direction is now explicit: `init` remains a thin trusted bootstrap layer, while long-lived lifecycle policy converges into `servicemgr` and profile-aware policy managers. Remaining work is completion of supervision/event-loop depth and profile contracts. |
 | Kernel boundary + syscall ABI freeze | **Partial** | Canonical UAPI and syscall status translation path are in active convergence; remaining work includes eliminating legacy ad-hoc negative subsystem returns, adding ABI drift CI gates, and BIDL contract status conformance checks. |
 | Production-grade Interrupt Architecture | **Partial** | Core architecture unified (`hal_irq_` flow), but full `irq_domain` resolution, hardware specific mapping depth (e.g. MSI-X), and strict domain-first routing enforcement remain to be implemented. Documentation is in place. |
 
@@ -75,6 +76,7 @@ This roadmap tracks Bharat-OS from a bootable microkernel baseline toward a prod
 2. **Networking is ahead of most services**: `netmgr`/`netstack` have meaningful internal modules, while many other managers are stubs.
 3. **Security depth gap**: capability and policy structure exists, but enforcement depth (e.g., full cap checks, IOMMU depth, verified boot chain) still needs sustained implementation.
 4. **Observability gap**: baseline diagnostics exist, but production-grade trace/metrics/export and watchdog policy coverage are not fully closed.
+5. **Lifecycle authority migration gap**: architecture direction is clear, but full migration from early-boot bootstrap logic into durable `servicemgr`/policy-manager ownership is still in progress.
 
 ## B) Discrepancy log (explicit)
 
