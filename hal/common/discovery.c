@@ -1,4 +1,5 @@
 #include "hal/hal_discovery.h"
+#include "hal/hal_cpu_topology.h"
 #include "arch/arch_cpu_caps.h"
 #include "boot/boot_info.h"
 #include <stddef.h>
@@ -10,6 +11,23 @@ static system_discovery_t g_system_discovery;
 
 system_discovery_t* hal_get_system_discovery(void) {
     return &g_system_discovery;
+}
+
+bool hal_cpu_topology_query(hal_cpu_topology_info_t *out) {
+    if (!out) {
+        return false;
+    }
+
+    const system_discovery_t *discovery = hal_get_system_discovery();
+    uint32_t discovered = 1U;
+    if (discovery && discovery->topology.cpu_count > 0U) {
+        discovered = discovery->topology.cpu_count;
+    }
+
+    out->discovered_cpu_count = discovered;
+    out->smp_available = (discovered > 1U);
+    out->homogeneous_cores = true;
+    return true;
 }
 
 void hal_discovery_init(const boot_info_t *boot) {

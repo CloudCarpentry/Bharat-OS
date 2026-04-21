@@ -1,17 +1,27 @@
 #include "subsys.h"
 #include "bharat/subsys_test.h"
+#include "hal/hal_cpu_topology.h"
 #include "../../../personalities/compat/linux/linux_compat.h"
 #include "../../../personalities/compat/windows/win_compat.h"
 
-#ifndef MAX_SUPPORTED_CORES
-#define MAX_SUPPORTED_CORES 8U
-#endif
+static uint32_t subsys_allowed_cpu_mask(void) {
+    hal_cpu_topology_info_t topology = {0};
+    uint32_t discovered = 1U;
+    if (hal_cpu_topology_query(&topology) && topology.discovered_cpu_count > 0U) {
+        discovered = topology.discovered_cpu_count;
+    }
+    if (discovered > 32U) {
+        discovered = 32U;
+    }
+
+    if (discovered == 32U) {
+        return UINT32_MAX;
+    }
+    return (1U << discovered) - 1U;
+}
 
 static uint32_t subsys_effective_cpu_mask(uint32_t requested_mask) {
-    uint32_t allowed_mask = 0U;
-    for (uint32_t i = 0; i < MAX_SUPPORTED_CORES && i < 32U; ++i) {
-        allowed_mask |= (1U << i);
-    }
+    uint32_t allowed_mask = subsys_allowed_cpu_mask();
 
     uint32_t effective = requested_mask & allowed_mask;
     if (effective == 0U) {
