@@ -1,7 +1,8 @@
 #pragma once
 
 struct kthread;
-typedef struct bh_thread bh_thread_t;
+typedef struct kthread bh_thread_t;
+typedef struct kthread kthread_t;
 
 // TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "trap_types.h"
