@@ -4,7 +4,7 @@
 - **Date:** 2026-03-21
 - **Deciders:** Kernel/HAL maintainers
 - **Related docs:**
-  - `docs/gap_analysis/interrupt_controller_architecture_plan.md`
+  - `docs/reviews/gap_analysis/interrupt_controller_architecture_plan.md`
   - `docs/architecture/components/kernel-subcomponents-architecture.md`
   - `docs/architecture/arch-capability-matrix.md`
 
