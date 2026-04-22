@@ -1,6 +1,30 @@
 import os
 import subprocess
 from pathlib import Path
+from shutil import which
+
+
+def _resolve_objcopy() -> str:
+    env_objcopy = os.environ.get("OBJCOPY")
+    if env_objcopy:
+        return env_objcopy
+
+    candidates = ("llvm-objcopy", "llvm-objcopy-20", "llvm-objcopy-19", "objcopy")
+    for candidate in candidates:
+        if not which(candidate):
+            continue
+        try:
+            subprocess.run(
+                [candidate, "--version"],
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            return candidate
+        except Exception:
+            continue
+
+    return "llvm-objcopy"
 
 
 def apply_elf_to_bin(input_path: Path, output_path: Path):
@@ -15,7 +39,7 @@ def apply_elf_to_bin(input_path: Path, output_path: Path):
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    objcopy_cmd = os.environ.get("OBJCOPY", "llvm-objcopy")
+    objcopy_cmd = _resolve_objcopy()
     cmd = [objcopy_cmd, "-O", "binary", str(input_path), str(output_path)]
 
     try:

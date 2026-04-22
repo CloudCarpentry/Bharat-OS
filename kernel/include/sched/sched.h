@@ -8,6 +8,7 @@
 #include <lib/rbtree/rbtree.h>
 #include "kernel_safety.h"
 #include "spinlock.h"
+#include "personality_ops.h"
 #include <stdbool.h>
 
 /*
@@ -60,11 +61,9 @@ typedef struct {
 
 struct bh_thread;
 typedef struct bh_thread bh_thread_t;
-typedef struct bh_thread kthread_t;
 
 struct bh_process;
 typedef struct bh_process bh_process_t;
-typedef struct bh_process kprocess_t;
 
 struct thread_slot;
 struct process_slot;
@@ -246,9 +245,6 @@ void sched_wait_queue_init(wait_queue_t* queue);
 void sched_wait_queue_enqueue(wait_queue_t* queue, bh_thread_t* thread);
 bh_thread_t* sched_wait_queue_dequeue(wait_queue_t* queue);
 
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "personality_ops.h"
-
 // Wait Queue State
 void sched_block(void);
 
@@ -291,6 +287,8 @@ int sched_sys_thread_destroy(uint64_t tid);
 int sched_sys_sleep(uint64_t millis);
 int sched_sys_set_priority(uint64_t tid, uint32_t new_priority);
 int sched_sys_set_affinity(uint64_t tid, uint32_t affinity_mask);
+int sched_sys_intent_set(uint64_t tid, const void* intent);
+int sched_sys_intent_get(uint64_t tid, void* intent);
 
 // Priority Inheritance support
 void sched_inherit_priority(bh_thread_t* thread, uint32_t new_priority);
@@ -308,5 +306,3 @@ void sched_disable_tick_for_core(uint32_t core_id);
 #endif
 
 #endif // BHARAT_SCHED_H
-int sched_sys_intent_set(uint64_t tid, const void* intent);
-int sched_sys_intent_get(uint64_t tid, void* intent);
