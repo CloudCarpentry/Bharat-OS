@@ -23,7 +23,7 @@ static void dummy_entry(void) {}
 void test_ipc_multiple_waiters_fifo(void) {
     sched_init();
 
-    kprocess_t* proc = process_create("test_fifo");
+    bh_process_t* proc = process_create("test_fifo");
     assert(proc != NULL);
 
     capability_table_t* table = (capability_table_t*)proc->security_sandbox_ctx;
@@ -32,10 +32,10 @@ void test_ipc_multiple_waiters_fifo(void) {
     uint32_t send_cap, recv_cap;
     assert(ipc_endpoint_create(table, &send_cap, &recv_cap) == IPC_OK);
 
-    kthread_t* r1 = thread_create(proc, dummy_entry);
-    kthread_t* r2 = thread_create(proc, dummy_entry);
-    kthread_t* r3 = thread_create(proc, dummy_entry);
-    kthread_t* sender = thread_create(proc, dummy_entry);
+    bh_thread_t* r1 = thread_create(proc, dummy_entry);
+    bh_thread_t* r2 = thread_create(proc, dummy_entry);
+    bh_thread_t* r3 = thread_create(proc, dummy_entry);
+    bh_thread_t* sender = thread_create(proc, dummy_entry);
 
     // Get all receivers blocked
     char buf[16];

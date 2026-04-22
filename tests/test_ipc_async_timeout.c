@@ -15,14 +15,14 @@ uint64_t sched_get_ticks(void) {
 
 int g_wakeup_count = 0;
 
-void sched_wakeup(kthread_t* thread) {
+void sched_wakeup(bh_thread_t* thread) {
     if (thread) {
         thread->state = THREAD_STATE_READY;
     }
     g_wakeup_count++;
 }
 
-void sched_wakeup_with_priority(kthread_t* thread, uint32_t wakeup_priority) {
+void sched_wakeup_with_priority(bh_thread_t* thread, uint32_t wakeup_priority) {
     (void)wakeup_priority;
     sched_wakeup(thread);
 }
@@ -30,7 +30,7 @@ void sched_wakeup_with_priority(kthread_t* thread, uint32_t wakeup_priority) {
 int main(void) {
     ipc_async_init();
 
-    kthread_t thread = {0};
+    bh_thread_t thread = {0};
     thread.state = THREAD_STATE_BLOCKED;
 
     g_ticks = 10;

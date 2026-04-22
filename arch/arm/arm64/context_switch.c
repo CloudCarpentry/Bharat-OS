@@ -9,7 +9,7 @@ _Static_assert(__builtin_offsetof(cpu_context_t, regs) == 0, "cpu_context_t.regs
 _Static_assert(__builtin_offsetof(cpu_context_t, pc) == 128, "cpu_context_t.pc offset mismatch");
 _Static_assert(__builtin_offsetof(cpu_context_t, sp) == 136, "cpu_context_t.sp offset mismatch");
 
-extern void arch_kthread_start_trampoline(void);
+extern void arch_bh_thread_start_trampoline(void);
 
 void arch_prepare_initial_context(cpu_context_t* ctx, void (*entry)(void), uint64_t stack_top) {
   if (!ctx) {
@@ -26,7 +26,7 @@ void arch_prepare_initial_context(cpu_context_t* ctx, void (*entry)(void), uint6
   ctx->regs[0] = (uint64_t)(uintptr_t)entry;
 
   // Initial resume point is the bootstrap trampoline
-  ctx->pc = (uint64_t)(uintptr_t)arch_kthread_start_trampoline;
+  ctx->pc = (uint64_t)(uintptr_t)arch_bh_thread_start_trampoline;
   ctx->sp = stack_top;
 
   // Do not preload FP state here. Lazy path will trap on first use.

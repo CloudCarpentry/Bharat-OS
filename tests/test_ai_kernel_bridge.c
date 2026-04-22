@@ -38,13 +38,13 @@ void isr32(void) {} void isr128(void) {}
 int main(void) {
     sched_init();
 
-    kprocess_t proc;
+    bh_process_t proc;
     proc.process_id = 1;
     cap_table_init_for_process(&proc); // Ensure caps are initialized
 
-    kthread_t* t = thread_create(&proc, thread_entry);
+    bh_thread_t* t = thread_create(&proc, thread_entry);
     assert(t != NULL);
-    kthread_t* t2 = thread_create(&proc, thread_entry);
+    bh_thread_t* t2 = thread_create(&proc, thread_entry);
     assert(t2 != NULL);
 
     ai_suggestion_t priority = {
@@ -55,11 +55,11 @@ int main(void) {
 
     assert(ai_kernel_apply_suggestion(&priority) == 0);
     sched_on_timer_tick();
-    kthread_t* updated = sched_find_thread_by_id(t2->thread_id);
+    bh_thread_t* updated = sched_find_thread_by_id(t2->thread_id);
     assert(updated != NULL);
     assert(updated->priority == 7U);
 
-    kthread_yield();
+    bh_thread_yield();
     assert(sched_current_thread() != NULL);
 
     assert(numa_discover_topology() == 0);
@@ -80,7 +80,7 @@ int main(void) {
 
     assert(ai_kernel_apply_suggestion(&migrate) == 0);
     sched_on_timer_tick();
-    kthread_t* migrated = sched_find_thread_by_id(t->thread_id);
+    bh_thread_t* migrated = sched_find_thread_by_id(t->thread_id);
     assert(migrated != NULL);
     assert(migrated->preferred_numa_node == 1U);
 

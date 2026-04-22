@@ -53,7 +53,7 @@ void mm_switch_active_aspace(uint32_t core_id, address_space_t* prev, address_sp
     (void)core_id; (void)prev; (void)next;
 }
 
-int cap_table_init_for_process(kprocess_t* proc) {
+int cap_table_init_for_process(bh_process_t* proc) {
     (void)proc;
     return 0;
 }
@@ -66,20 +66,20 @@ void arch_prepare_initial_context(cpu_context_t* ctx, void (*entry_point)(void),
     (void)ctx; (void)entry_point; (void)stack_top;
 }
 
-int arch_ext_state_thread_init(kthread_t* thread) {
+int arch_ext_state_thread_init(bh_thread_t* thread) {
     (void)thread;
     return 0;
 }
 
-void arch_ext_state_thread_destroy(kthread_t* thread) {
+void arch_ext_state_thread_destroy(bh_thread_t* thread) {
     (void)thread;
 }
 
-void arch_ext_state_save(kthread_t* thread) {
+void arch_ext_state_save(bh_thread_t* thread) {
     (void)thread;
 }
 
-void arch_ext_state_restore(kthread_t* thread) {
+void arch_ext_state_restore(bh_thread_t* thread) {
     (void)thread;
 }
 
@@ -103,7 +103,7 @@ void ipc_async_check_timeouts(uint64_t current_ticks) {
     (void)current_ticks;
 }
 
-void deg_block_member(kthread_t* thread, uint32_t reason) {
+void deg_block_member(bh_thread_t* thread, uint32_t reason) {
     (void)thread; (void)reason;
 }
 
@@ -126,7 +126,7 @@ void test_sched_init() {
     // So checking g_free_thread_head == 0 will fail, since threads were allocated during sched_init.
 
     // Check if idle task is correctly created on core 0
-    kthread_t* idle = g_cpu_locals[0].runqueue.idle_thread;
+    bh_thread_t* idle = g_cpu_locals[0].runqueue.idle_thread;
     assert(idle != NULL);
     assert(idle->priority == 0);
     assert(idle->bound_core_id == 0);
@@ -139,10 +139,10 @@ void mock_task_entry() { }
 void test_thread_create_and_enqueue() {
     sched_init(); // Reset state
 
-    kprocess_t* proc = process_create("test_proc");
+    bh_process_t* proc = process_create("test_proc");
     assert(proc != NULL);
 
-    kthread_t* thread = thread_create(proc, mock_task_entry);
+    bh_thread_t* thread = thread_create(proc, mock_task_entry);
     assert(thread != NULL);
     assert(thread->state == THREAD_STATE_READY);
     assert(thread->priority == 1); // Default
@@ -163,7 +163,7 @@ void test_thread_create_and_enqueue() {
 
 void test_thread_pick_next_ready() {
     sched_init();
-    kprocess_t* proc = process_create("test_proc");
+    bh_process_t* proc = process_create("test_proc");
 
     // Drain the run queue initially, as sched_init adds a monitor task
     while (g_cpu_locals[0].runqueue.runnable_count > 0) {
@@ -171,12 +171,12 @@ void test_thread_pick_next_ready() {
     }
 
     // Create higher priority thread (detached prevents auto-enqueue and avoids double-counting)
-    kthread_t* t1 = thread_create_detached(proc, mock_task_entry);
+    bh_thread_t* t1 = thread_create_detached(proc, mock_task_entry);
     t1->priority = 5;
     sched_enqueue(t1, 0); // Re-enqueue with new priority
 
     // Create lower priority thread
-    kthread_t* t2 = thread_create_detached(proc, mock_task_entry);
+    bh_thread_t* t2 = thread_create_detached(proc, mock_task_entry);
     t2->priority = 2;
     sched_enqueue(t2, 0);
 
@@ -184,7 +184,7 @@ void test_thread_pick_next_ready() {
     assert(g_cpu_locals[0].runqueue.runnable_count == 2);
 
     // Policy default is PRIORITY
-    kthread_t* picked = sched_pick_next_ready(0);
+    bh_thread_t* picked = sched_pick_next_ready(0);
     assert(picked == t1); // Priority 5 is higher
 
     thread_slot_t* slot1 = sched_find_thread_slot_by_tid(t1->thread_id);
@@ -200,8 +200,8 @@ void test_thread_pick_next_ready() {
 
 void test_sched_mark_terminated_and_reap() {
     sched_init();
-    kprocess_t* proc = process_create("test_proc");
-    kthread_t* t1 = thread_create(proc, mock_task_entry);
+    bh_process_t* proc = process_create("test_proc");
+    bh_thread_t* t1 = thread_create(proc, mock_task_entry);
 
     assert(t1->state == THREAD_STATE_READY);
 

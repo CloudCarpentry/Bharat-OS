@@ -32,19 +32,19 @@ typedef enum {
  * Enqueue a thread through router-approved class/core paths.
  * Returns 0 on success, negative error code on rejection/failure.
  */
-int sched_router_enqueue(kthread_t *thread, uint32_t core_id, sched_route_reason_t reason);
+int sched_router_enqueue(bh_thread_t *thread, uint32_t core_id, sched_route_reason_t reason);
 
 /*
  * Dequeue a thread through router-approved class/core paths.
  * Returns 0 on success, negative error code on rejection/failure.
  */
-int sched_router_dequeue(kthread_t *thread, uint32_t core_id, sched_route_reason_t reason);
+int sched_router_dequeue(bh_thread_t *thread, uint32_t core_id, sched_route_reason_t reason);
 
 /*
  * Pick next runnable thread for the given core according to active composition.
  * Returns NULL when no runnable candidate exists (idle fallback expected).
  */
-kthread_t *sched_router_pick_next(uint32_t core_id);
+bh_thread_t *sched_router_pick_next(uint32_t core_id);
 
 /*
  * Per-tick hook for router/class accounting updates.
@@ -54,14 +54,14 @@ void sched_router_on_tick(uint32_t core_id, uint64_t now_ticks);
 /*
  * Thread state transition hooks that preserve core lifecycle authority.
  */
-void sched_router_on_block(kthread_t *thread, uint32_t core_id);
-void sched_router_on_wake(kthread_t *thread, uint32_t core_id);
+void sched_router_on_block(bh_thread_t *thread, uint32_t core_id);
+void sched_router_on_wake(bh_thread_t *thread, uint32_t core_id);
 
 /*
  * Notify router about ownership transfer across cores.
  * Returns 0 on success, negative error code otherwise.
  */
-int sched_router_on_migrate(kthread_t *thread,
+int sched_router_on_migrate(bh_thread_t *thread,
                             uint32_t src_core,
                             uint32_t dst_core,
                             sched_route_reason_t reason);

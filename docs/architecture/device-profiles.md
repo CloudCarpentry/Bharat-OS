@@ -138,7 +138,7 @@ The following 8 tasks form the core engineering plan to realize the Nano/Edge/Fu
 * **High-Level Task**: Add fault domains, restart policies, safe-mode markers, and fault reason codes to process/service control blocks.
 * **Low-Level Code Map**:
   * Define `fault_domain_t` and `restart_policy_t` in `kernel/include/kernel/kernel_safety.h` or `kernel/include/sched/fault_domain.h`.
-  * Augment the scheduler process descriptor (`kprocess_t` or equivalent in `kernel/src/sched/`) to track these metadata fields.
+  * Augment the scheduler process descriptor (`bh_process_t` or equivalent in `kernel/src/sched/`) to track these metadata fields.
   * Update the fault handler (`kernel/src/trap/` and `kernel/src/mm/vm/fault/fault.c`) to query the fault domain and trigger partial restarts via IPC instead of global panics.
 
 ### 7. Standardize IPC/uRPC endpoint descriptor and message classes

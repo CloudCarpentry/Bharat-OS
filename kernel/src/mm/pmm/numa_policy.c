@@ -63,13 +63,13 @@ memory_node_id_t numa_policy_next_interleave_node(const numa_affinity_t *policy,
 // Scheduler hints (stub implementation)
 void numa_policy_set_thread_affinity(void *thread, const numa_affinity_t *policy) {
     if (!thread || !policy) return;
-    kthread_t *t = (kthread_t *)thread;
+    bh_thread_t *t = (bh_thread_t *)thread;
     t->preferred_numa_node = policy->target_node;
 }
 
 int numa_policy_get_thread_affinity(void *thread, numa_affinity_t *out_policy) {
     if (!thread || !out_policy) return -1;
-    kthread_t *t = (kthread_t *)thread;
+    bh_thread_t *t = (bh_thread_t *)thread;
 
     out_policy->policy = NUMA_POLICY_LOCAL_PREFERRED;
     out_policy->target_node = t->preferred_numa_node;

@@ -4,7 +4,7 @@ This document reflects the scheduler/threading baseline from current kernel code
 
 ## Core data model
 
-`kthread_t` and `sched_rq_t` define the runtime contract:
+`bh_thread_t` and `sched_rq_t` define the runtime contract:
 
 - Thread state machine (`THREAD_STATE_*`) with ready/running/blocked/sleeping/terminated plus distributed handoff states.
 - Per-core runqueue with:
