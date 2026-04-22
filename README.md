@@ -490,6 +490,22 @@ For complete setup on **Windows, WSL/Linux, and macOS** (including QEMU/OpenOCD/
 
 
 ### Linux + Android headless personality targets
+To build and boot the Linux or Android headless targets for smoke testing, use:
+```bash
+./build.sh all --target x86_64_desktop_headless_linux
+./build.sh all --target arm64_desktop_headless_linux
+./build.sh all --target riscv64_desktop_headless_linux
+
+./build.sh all --target x86_64_desktop_headless_android
+./build.sh all --target arm64_desktop_headless_android
+./build.sh all --target riscv64_desktop_headless_android
+```
+
+To run the automated E2E smoke tests for all 6 personality targets:
+```bash
+python3 tests/e2e/test_personalities_smoke.py
+```
+
 
 ```bash
 ./build.sh all --target x86_64_desktop_headless_linux

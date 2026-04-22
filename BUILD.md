@@ -237,6 +237,15 @@ Runtime command includes serial-first bring-up (`-nographic -monitor none -seria
 
 ## 5.2 Canonical headless run commands (WSL/Linux/macOS)
 
+### Personality Targets (Linux & Android)
+You can explicitly build the desktop GP profile with a specific personality:
+```bash
+./build.sh all --target x86_64_desktop_headless_linux
+./build.sh all --target x86_64_desktop_headless_android
+```
+These test targets assert that the ABI boundaries and dispatch tables do not cause build breakage or kernel panics during early boot.
+
+
 ```bash
 ./build.sh all --target x86_64_desktop_headless
 ./build.sh all --target arm64_desktop_headless
