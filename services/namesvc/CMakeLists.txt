@@ -6,6 +6,7 @@ add_executable(namesvc
     main.c
     src/registry.c
     src/ipc_dispatch.c
+    src/ipc_auth.c
     src/service_manifest.c
     ../../kernel/src/ipc/contract_validate.c
 )

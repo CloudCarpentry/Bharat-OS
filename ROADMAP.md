@@ -77,13 +77,14 @@ This roadmap tracks Bharat-OS from a bootable microkernel baseline toward a prod
 3. **Security depth gap**: capability and policy structure exists, but enforcement depth (e.g., full cap checks, IOMMU depth, verified boot chain) still needs sustained implementation.
 4. **Observability gap**: baseline diagnostics exist, but production-grade trace/metrics/export and watchdog policy coverage are not fully closed.
 5. **Lifecycle authority migration gap**: architecture direction is clear, but full migration from early-boot bootstrap logic into durable `servicemgr`/policy-manager ownership is still in progress.
+6. **Production gate gap**: capability mediation is not uniformly strict across all manager paths yet; until this is closed, production-readiness claims remain blocked.
 
 ## B) Discrepancy log (explicit)
 
 | Area | Discrepancy | Action |
 | --- | --- | --- |
 | Service status wording | “Implemented” may overstate runtime readiness for some services. | Keep architecture intent, but classify code status using taxonomy labels. |
-| Capability mediation claims | Some code paths still use permissive/stub checks. | Mark as partial enforcement and track hardening milestones. |
+| Capability mediation claims | `netmgr` now uses fail-closed validation, but capability mediation is still not complete across all manager/dispatch paths. | Keep mediation at **Partial**, track removal of remaining permissive/stub checks, and block production claims until strict enforcement is end-to-end. |
 | “Current phase” interpretation | Readers may assume production depth from phase labels. | Add per-item maturity labels and evidence links. |
 
 ## C) Deviation policy
