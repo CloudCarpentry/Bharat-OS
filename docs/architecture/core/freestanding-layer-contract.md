@@ -57,7 +57,7 @@ Examples:
 ```bash
 python3 tools/lint/check_layer_references.py
 python3 tools/lint/check_layer_references.py --strict --baseline tools/lint/baselines/layer_references.allowlist
-python3 tools/lint/check_layer_references.py --report docs/gap_analysis/layer_reference_gap_analysis_YYYY-MM-DD.md
+python3 tools/lint/check_layer_references.py --report docs/reviews/gap_analysis/layer_reference_gap_analysis_YYYY-MM-DD.md
 ```
 
 ### CI
