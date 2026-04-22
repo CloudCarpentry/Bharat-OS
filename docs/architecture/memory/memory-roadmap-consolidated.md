@@ -118,3 +118,11 @@ gantt
     section P2 (Validation depth)
     Cross-profile memory conformance CI              :a5, 2026-08-01, 2026-10-01
 ```
+
+## 9. AI-adjacent memory/accelerator primitive track
+
+For the AI-enabling (but kernel-minimal) extension plan, see:
+
+- [AI-Adjacent Memory & Accelerator Primitive Roadmap](./ai-adjacent-memory-accel-roadmap.md)
+
+This track intentionally limits kernel additions to memory/accelerator/security primitives and keeps model/runtime/framework semantics in services and libraries.

@@ -4,6 +4,7 @@
 
 **Related Contracts:**
 * [VM Authority Path Contract](./vm-authority-path.md)
+* [AI-Adjacent Memory & Accelerator Primitive Roadmap](./ai-adjacent-memory-accel-roadmap.md)
 
 Bharat-OS implements a capability-gated multikernel memory architecture that enforces strict separation between mechanisms (physical memory allocation, hardware translation) and policies (virtual memory semantics, demand paging). The memory subsystem provides a robust foundation encompassing physical memory management (PMM), virtual memory objects, address spaces, and hardware translation through a capability-aware HAL.
 
