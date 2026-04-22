@@ -65,6 +65,16 @@ This aligns with existing repository boundaries and current architecture directi
 
 ## 4. Proposed Primitive Additions (small, stable set)
 
+### 4.0 Primitive tiering model (normative)
+
+Bharat-OS classifies AI-adjacent primitives into three tiers so profile support stays truthful:
+
+- **Tier U (Universal):** must exist as a kernel contract for every profile and memory model, even when implemented in constrained form.
+- **Tier P (Profile-conditional):** centrally defined contract shapes that are enabled only when profile + memory model + hardware can enforce the semantics.
+- **Tier X (Non-kernel AI):** never kernel-universal; always implemented in services/runtime/drivers.
+
+This prevents architectural over-claiming on MMU-lite/MPU-only systems and enforces fail-closed admission for unsupported semantics.
+
 ### 4.1 Memory classes
 
 Extend `alloc_class_t` with AI-adjacent classes designed as generic compute/data movement classes:
@@ -79,6 +89,13 @@ Extend `alloc_class_t` with AI-adjacent classes designed as generic compute/data
 
 These are allocation/mapping semantics, not framework semantics.
 
+#### Tier assignment for memory classes
+
+- **Tier U:** `MEM_TENSOR`, `MEM_MODEL_RO`, `MEM_SCRATCH_LOWLAT`
+- **Tier P:** `MEM_TENSOR_PINNED`, `MEM_STREAM_DMA`, `MEM_SECURE_MODEL`, `MEM_SHARED_ACCEL`
+
+`Tier P` classes are optional by profile; unsupported requests must fail closed.
+
 ### 4.2 Generic accelerator job primitive
 
 Define a neutral job descriptor that supports:
@@ -91,6 +108,8 @@ Define a neutral job descriptor that supports:
 - fault-domain tag
 
 The descriptor must avoid ML-specific fields.
+
+The job primitive is **Tier P**: shared UAPI shape, profile-conditional enablement.
 
 ### 4.3 Capability contract extensions
 
@@ -113,6 +132,8 @@ Add or standardize only low-level primitives with broad utility:
 - secure zeroization helper
 
 Do not add ML operators to kernel.
+
+Core copy/fill/move/zeroize helpers are **Tier U**. Advanced queue- or isolation-dependent handoff paths remain **Tier P**.
 
 ### 4.5 Scheduling hints
 
@@ -164,7 +185,28 @@ Policy decisions stay in services/plugin policy.
 2. Add conformance tests per profile and per translation model.
 3. Validate deterministic teardown and memory reclamation on accelerator faults.
 
-## 6. Concrete first task list
+## 6. Profile and memory-model support matrix (normative)
+
+### 6.1 MMU_FULL
+
+- **Must support:** all Tier U primitives; `MEM_TENSOR`, `MEM_MODEL_RO`, `MEM_SCRATCH_LOWLAT`; capability validation and teardown/telemetry paths.
+- **May support (Tier P):** pinned tensors, stream DMA, shared accelerator buffers, secure model compartments, quota dimensions (time/bandwidth/memory), accelerator-preferred queue hints.
+- **Typical profiles:** desktop/cloud throughput, high-end mobile, mixed-criticality infotainment/edge.
+
+### 6.2 MMU_LITE
+
+- **Must support:** Tier U contracts with constrained guarantees; class admission, capability-gated buffer/accel access, basic fence completion, telemetry + teardown.
+- **Conditional support (Tier P):** enable only where semantics are enforceable (e.g., deterministic queue ownership, meaningful pinning, safe DMA isolation).
+- **Default posture:** preserve API compatibility but narrow guarantees; reject unsupported over-commit/sharing semantics.
+
+### 6.3 MPU_ONLY
+
+- **Must support:** minimal Tier U shell (class/admission metadata, copy/fill/move/zeroize, basic capability checks, fault tagging, counters, tiny sync/completion where required).
+- **May support (restricted):** `MEM_TENSOR`, `MEM_MODEL_RO`, `MEM_SCRATCH_LOWLAT` only when backed by real platform semantics.
+- **Usually not supported:** pinned/shared-accel classes, rich stream-DMA sharing, generic multi-queue job objects, secure model compartments without hardware isolation.
+- **Required posture:** explicit, minimal, fail-closed.
+
+## 7. Concrete first task list
 
 1. Add design ADR: “Kernel AI-adjacent primitive scope and non-goals”.
 2. Draft `accel_job` and `accel_fence` neutral UAPI structs.
@@ -178,7 +220,7 @@ Policy decisions stay in services/plugin policy.
    - budget/accounting placeholders
    - telemetry surfacing path
 
-## 7. Acceptance criteria
+## 8. Acceptance criteria
 
 A change is accepted only if all are true:
 
@@ -188,11 +230,20 @@ A change is accepted only if all are true:
 4. Service/runtime layers own backend selection and AI policy behavior.
 5. Tests cover rejection paths and fault teardown determinism.
 
-## 8. Decision rule for future proposals
+6. Every newly proposed primitive is classified as Tier U / Tier P / Tier X.
+7. Profile matrix documentation states mandatory vs optional semantics per memory model.
+
+## 9. Decision rule for future proposals
 
 Use this gate:
 
 - If useful without AI models, it may belong in kernel.
 - If meaningful only through ML framework semantics, keep it in runtime/services.
+
+Then classify through profile-truthfulness gates:
+
+1. **Can MPU-only support it honestly?** If yes, candidate Tier U; if no, Tier P.
+2. **Does it require rich VM/isolation semantics?** If yes, MMU_FULL (or strong MMU_LITE) only.
+3. **Is it mechanism or policy?** Mechanism may be kernel; policy/orchestration stays service/runtime.
 
 This preserves kernel minimalism while still enabling efficient accelerator-backed compute.
