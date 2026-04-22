@@ -1,14 +1,14 @@
 #include "sched/sched.h"
 #include "sched_internal.h"
 
-void sched_edf_enqueue(sched_rq_t *rq, kthread_t *thread) {
+void sched_edf_enqueue(sched_rq_t *rq, bh_thread_t *thread) {
     struct rb_node **link = &rq->edf_runqueue.rb_node;
     struct rb_node *parent = NULL;
     uint64_t absolute_deadline = thread->absolute_deadline_ms;
 
     while (*link) {
         parent = *link;
-        kthread_t *entry = (kthread_t *)(void *)((char *)parent - offsetof(kthread_t, edf_node));
+        bh_thread_t *entry = (bh_thread_t *)(void *)((char *)parent - offsetof(bh_thread_t, edf_node));
 
         if (absolute_deadline < entry->absolute_deadline_ms) {
             link = &parent->rb_left;
@@ -21,14 +21,14 @@ void sched_edf_enqueue(sched_rq_t *rq, kthread_t *thread) {
     rb_insert_color(&thread->edf_node, &rq->edf_runqueue);
 }
 
-void sched_edf_dequeue(sched_rq_t *rq, kthread_t *thread) {
+void sched_edf_dequeue(sched_rq_t *rq, bh_thread_t *thread) {
     if (rq->edf_runqueue.rb_node == NULL) {
         return;
     }
     rb_erase(&thread->edf_node, &rq->edf_runqueue);
 }
 
-int sched_admission_edf(kthread_t *thread, uint64_t wcet_ms, uint64_t period_ms, uint64_t deadline_ms) {
+int sched_admission_edf(bh_thread_t *thread, uint64_t wcet_ms, uint64_t period_ms, uint64_t deadline_ms) {
     if (!thread || period_ms == 0 || wcet_ms > period_ms) {
         return -1;
     }
@@ -61,7 +61,7 @@ int sched_admission_edf(kthread_t *thread, uint64_t wcet_ms, uint64_t period_ms,
     return 0;
 }
 
-int sched_admission_rms(kthread_t *thread, uint64_t wcet_ms, uint64_t period_ms) {
+int sched_admission_rms(bh_thread_t *thread, uint64_t wcet_ms, uint64_t period_ms) {
     if (!thread || period_ms == 0 || wcet_ms > period_ms) {
         return -1;
     }
