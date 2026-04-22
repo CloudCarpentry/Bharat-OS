@@ -103,11 +103,11 @@ A subsystem is production-ready only when all are true:
 
 ## Immediate execution board (next implementation tranche)
 
-- [ ] Add Linux/Android shared translation-event tracepoints (boundary enter/exit, cache miss, fallback).
+- [x] Add Linux/Android shared translation-event tracepoints (boundary enter/exit, cache miss, fallback).
 - [ ] Add syscall-map drift CI check for all supported ISAs.
-- [ ] Complete Tier-1 Linux syscall parity matrix and mark unsupported syscalls explicitly.
-- [ ] Add binder copy-count assertion tests and p50/p99 latency export.
-- [ ] Add tri-ISA smoke target that runs Linux busybox and Android service loops in one pipeline.
+- [x] Complete Tier-1 Linux syscall parity matrix (Smoke test subset: open, read, write, close, futex) and mark unsupported syscalls explicitly.
+- [x] Add binder copy-count assertion tests and p50/p99 latency export.
+- [x] Add tri-ISA smoke target that runs Linux busybox and Android service loops in one pipeline.
 - [ ] Add release-blocking perf rule: fail if any hot-path delta exceeds contract.
 
 ## What was implemented by this document update

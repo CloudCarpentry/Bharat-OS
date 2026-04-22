@@ -287,3 +287,14 @@ if(BHARAT_BUILD_HOST_TESTS)
 endif()
 add_executable(test_fdt_parser test_fdt_parser.c ../../hal/common/fdt_parser.c)
 target_include_directories(test_fdt_parser PRIVATE ../../include ../../kernel/include ../../boot/include)
+
+# Personality Compatibility Tests
+if(BHARAT_BUILD_HOST_TESTS)
+    add_executable(test_linux_syscalls compat/linux/test_linux_syscalls.c ../../personalities/compat/linux/linux_compat.c)
+    target_include_directories(test_linux_syscalls PRIVATE ../../personalities/compat/linux ../../services/core/subsysmgr/include ../../include ../../kernel/include ../../lib/cap/include ../../lib/ipc/include ../../lib)
+    add_test(NAME host_test_linux_syscalls COMMAND test_linux_syscalls)
+
+    add_executable(test_android_binder compat/android/test_android_binder.c ../../personalities/compat/android/android_binder_dist.c ../../personalities/compat/android/android_personality.c)
+    target_include_directories(test_android_binder PRIVATE ../../personalities/compat/android ../../include)
+    add_test(NAME host_test_android_binder COMMAND test_android_binder)
+endif()
