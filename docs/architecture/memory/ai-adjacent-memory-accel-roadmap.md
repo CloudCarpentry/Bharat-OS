@@ -220,6 +220,49 @@ Policy decisions stay in services/plugin policy.
    - budget/accounting placeholders
    - telemetry surfacing path
 
+## 7.1 Current-code-derived implementation priority (memory-first)
+
+Based on current repository state, the first production blocker is **profile truthfulness at runtime**:
+
+1. `kernel/CMakeLists.txt` emits `BHARAT_PROFILE_*` compile definitions for memory profile selection.
+2. `kernel/src/mm/mem_model.c` currently keyed primarily off `CONFIG_MEM_MODEL_*` macros.
+3. This mismatch can misreport MMU/MPU model at runtime and silently weaken fail-closed behavior.
+
+Therefore, the immediate memory task order is:
+
+### Task M0 (P0): profile macro alignment and truthfulness
+
+- Ensure `mem_model_get_current()` honors the active `BHARAT_PROFILE_*` build profile.
+- Add a self-test that validates profile flag -> `mem_model_t` mapping.
+- Gate accel Tier P class admission on the truthful `mem_model_t` result.
+
+### Task M1 (P0): class-to-allocator semantic binding
+
+- Map each Tier U/P class to explicit allocator intent (pool, alignment, residency, reclamation behavior).
+- Enforce unsupported class requests with explicit rejection on MPU-only.
+- Add per-class accounting counters and export to telemetry.
+
+### Task M2 (P1): accelerator memory lifecycle hardening
+
+- Complete pin/unpin reclaim paths (including partial-failure rollback).
+- Add deterministic teardown state machine checks for cancel/revoke/fault paths.
+- Validate SG + IOVA lifecycle invariants under concurrent revoke/unmap.
+
+### Task M3 (P1): capability granularity for production isolation
+
+- Extend accelerator capability checks with queue-class and domain constraints.
+- Add quota dimensions (memory bytes, queue depth, bandwidth budget).
+- Require fail-closed rights checks at every memory bind/share/sync transition.
+
+### Task M4 (P2): profile/device/personality conformance matrix
+
+- **Device profiles:** mobile, desktop/cloud, edge/IoT, safety-critical.
+- **Personality modes:** latency-first, throughput-first, power-save, deterministic/auditable.
+- **Memory models:** MMU_FULL, MMU_LITE, MPU_ONLY.
+- Publish mandatory-vs-optional behaviors per cell; reject non-enforceable semantics.
+
+This sequence keeps memory/capability correctness ahead of scheduler/runtime policy and is the shortest path to production-grade profile support.
+
 ## 8. Acceptance criteria
 
 A change is accepted only if all are true:

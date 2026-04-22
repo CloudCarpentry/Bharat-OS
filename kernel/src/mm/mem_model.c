@@ -2,10 +2,12 @@
 
 // For now we map the current memory model based on build configuration.
 mem_model_t mem_model_get_current(void) {
-#if defined(CONFIG_MEM_MODEL_MPU) || defined(CONFIG_MEM_MODEL_FLAT)
+#if defined(BHARAT_PROFILE_MPU_ONLY) || defined(CONFIG_MEM_MODEL_MPU) || defined(CONFIG_MEM_MODEL_FLAT)
     return MEM_MODEL_MPU;
-#elif defined(CONFIG_MEM_MODEL_MMU_LITE)
+#elif defined(BHARAT_PROFILE_MMU_LITE) || defined(CONFIG_MEM_MODEL_MMU_LITE)
     return MEM_MODEL_MMU_LITE;
+#elif defined(BHARAT_PROFILE_MMU_FULL)
+    return MEM_MODEL_MMU_FULL;
 #else
     return MEM_MODEL_MMU_FULL;
 #endif
