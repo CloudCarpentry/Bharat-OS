@@ -33,7 +33,7 @@ void entry_point(void) {}
 int main(void) {
     sched_init();
 
-    kprocess_t* proc = process_create("ipc");
+    bh_process_t* proc = process_create("ipc");
     assert(proc != NULL);
 
     cap_table_init_for_process(proc);

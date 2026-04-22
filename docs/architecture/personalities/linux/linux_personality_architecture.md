@@ -17,7 +17,7 @@ The Bharat-OS core kernel is designed as a distributed, personality-neutral mult
 
 ## Core Process & Thread Model
 The core kernel separates the scheduler thread/task abstraction from the process/address-space abstraction.
-To support multi-personality execution, we introduce a `personality_type` field to the `kthread_t` (and/or `kprocess_t`) structure.
+To support multi-personality execution, we introduce a `personality_type` field to the `bh_thread_t` (and/or `bh_process_t`) structure.
 
 - `PERSONALITY_NATIVE`: Threads executing native Bharat-OS ABI.
 - `PERSONALITY_LINUX`: Threads executing the Linux ABI.

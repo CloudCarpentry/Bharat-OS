@@ -201,7 +201,7 @@ static void set_mapped_page_node(uintptr_t address_space_key, uint64_t vaddr, me
 void numa_record_page_access(void* thread_ptr, uint64_t vaddr, numa_access_type_t access_type) {
     (void)access_type;
     ensure_cache_init();
-    kthread_t* thread = (kthread_t*)thread_ptr;
+    bh_thread_t* thread = (bh_thread_t*)thread_ptr;
     if (!thread || !thread->process || !thread->process->addr_space) return;
 
     uintptr_t as_key = (uintptr_t)thread->process->addr_space;
@@ -219,7 +219,7 @@ void numa_record_page_access(void* thread_ptr, uint64_t vaddr, numa_access_type_
 
 void numa_select_migration_candidates(void* thread_ptr) {
     ensure_cache_init();
-    kthread_t* thread = (kthread_t*)thread_ptr;
+    bh_thread_t* thread = (bh_thread_t*)thread_ptr;
     if (!thread || !thread->process || !thread->process->addr_space) return;
     if (thread->preferred_numa_node >= NUMA_MAX_NODES) return;
 
@@ -292,7 +292,7 @@ int numa_migrate_page(uint64_t vaddr, memory_node_id_t target_node, void* addres
 }
 
 void numa_balance_thread_memory(void* thread_ptr) {
-    kthread_t* thread = (kthread_t*)thread_ptr;
+    bh_thread_t* thread = (bh_thread_t*)thread_ptr;
     if (!thread) return;
 
     // In a background worker, run `numa_select_migration_candidates`

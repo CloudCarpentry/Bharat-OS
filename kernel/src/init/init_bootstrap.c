@@ -35,12 +35,12 @@ static void bootstrap_thread_entry(void) {
     console_write_raw("  [BOOTSTRAP] services/init launch deferred (degraded boot)\n", 59);
 
     thread_destroy(sched_current_thread());
-    kthread_yield();
+    bh_thread_yield();
 }
 
 void kernel_start_init_service(void) {
     // Create a dedicated kernel thread to bootstrap user-space
-    kprocess_t *proc = process_create("sysmgr");
+    bh_process_t *proc = process_create("sysmgr");
     if (proc) {
         uint64_t tid = 0;
         sched_sys_thread_create(proc, bootstrap_thread_entry, &tid);

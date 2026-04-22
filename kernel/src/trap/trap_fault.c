@@ -6,7 +6,7 @@
 int (*g_test_fault_hook)(trap_frame_t *frame, const trap_info_t *info) = NULL;
 
 int trap_handle_fault(trap_frame_t *frame, const trap_info_t *info) {
-    kthread_t *t = sched_current_thread();
+    bh_thread_t *t = sched_current_thread();
 
     if (g_test_fault_hook) {
         int ret = g_test_fault_hook(frame, info);
@@ -34,7 +34,7 @@ int trap_handle_fault(trap_frame_t *frame, const trap_info_t *info) {
     if (t) {
         thread_raise_fault(t, THREAD_FAULT_SEGV);
     } else {
-        kthread_yield();
+        bh_thread_yield();
     }
 
     return -1;

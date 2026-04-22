@@ -1,7 +1,7 @@
 # Preemption
 
 ## Overview
-In a multi-tasking OS, the scheduler must guarantee that threads (`kthread_t`) share the CPU fairly and that critical high-priority tasks run immediately when ready. This involves **preemption**: forcibly removing a running thread from the CPU and replacing it with another.
+In a multi-tasking OS, the scheduler must guarantee that threads (`bh_thread_t`) share the CPU fairly and that critical high-priority tasks run immediately when ready. This involves **preemption**: forcibly removing a running thread from the CPU and replacing it with another.
 
 ## Types of Preemption
 

@@ -21,7 +21,7 @@ void sched_reschedule(void) {
       rq->resched_pending = 0U; // Clear flag since we are draining now
       list_head_t *curr = rq->pending_inbox.next;
       uint32_t drained = 0;
-      kthread_t *highest_prio_arrived = NULL;
+      bh_thread_t *highest_prio_arrived = NULL;
 
       while (curr != &rq->pending_inbox) {
           thread_slot_t *slot = (thread_slot_t *)(void *)((char *)curr - offsetof(thread_slot_t, wait_node));
@@ -30,7 +30,7 @@ void sched_reschedule(void) {
           list_del(&slot->wait_node);
           list_init(&slot->wait_node);
 
-          kthread_t* thread = &slot->thread;
+          bh_thread_t* thread = &slot->thread;
           thread->state = THREAD_STATE_READY;
 
           if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
@@ -70,7 +70,7 @@ void sched_reschedule(void) {
     return;
   }
 
-  kthread_t *next = sched_pick_next_ready(core);
+  bh_thread_t *next = sched_pick_next_ready(core);
   sched_switch_to(next, core);
 }
 
@@ -118,7 +118,7 @@ void sched_on_timer_tick(void) {
   }
 
   sched_rq_t* rq = &g_cpu_locals[core].runqueue;
-  kthread_t *current = rq->current_thread;
+  bh_thread_t *current = rq->current_thread;
   if (!current) {
     sched_reschedule();
     return;
@@ -150,7 +150,7 @@ void sched_on_timer_tick(void) {
           return;
       }
 
-      kthread_t *next = sched_edf_pick_next(rq);
+      bh_thread_t *next = sched_edf_pick_next(rq);
       if (next && next->absolute_deadline_ms < current->absolute_deadline_ms) {
           sched_reschedule();
           return;
@@ -163,7 +163,7 @@ void sched_on_timer_tick(void) {
       }
 
       if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
-          kthread_t *next = sched_cfs_pick_next(rq);
+          bh_thread_t *next = sched_cfs_pick_next(rq);
           if (next && next->vruntime < current->vruntime) {
               sched_reschedule();
               return;

@@ -47,10 +47,10 @@ static void reset_test_state(void) {
 bool test_urpc_thread_handoff_valid(void) {
     reset_test_state();
 
-    kprocess_t *p = process_create("test_proc_handoff");
+    bh_process_t *p = process_create("test_proc_handoff");
     KTEST_ASSERT(p != NULL, "Process creation failed");
 
-    kthread_t *t = thread_create(p, NULL);
+    bh_thread_t *t = thread_create(p, NULL);
     KTEST_ASSERT(t != NULL, "Thread creation failed");
 
     uint32_t sender_core = hal_cpu_get_id(); // Should be 0 in test env
@@ -134,8 +134,8 @@ bool test_urpc_thread_handoff_denied_no_cap(void) {
 bool test_urpc_thread_handoff_reject_bad_core(void) {
     reset_test_state();
 
-    kprocess_t *p = process_create("test_proc_bad_core");
-    kthread_t *t = thread_create(p, NULL);
+    bh_process_t *p = process_create("test_proc_bad_core");
+    bh_thread_t *t = thread_create(p, NULL);
     t->state = THREAD_STATE_REMOTE_HANDOFF_PENDING; // Pre-condition for receiver
 
     urpc_msg_t rx_msg;
@@ -167,8 +167,8 @@ bool test_urpc_thread_handoff_reject_bad_core(void) {
 bool test_urpc_thread_handoff_reject_bad_state(void) {
     reset_test_state();
 
-    kprocess_t *p = process_create("test_proc_bad_state");
-    kthread_t *t = thread_create(p, NULL);
+    bh_process_t *p = process_create("test_proc_bad_state");
+    bh_thread_t *t = thread_create(p, NULL);
     t->state = THREAD_STATE_RUNNING; // NOT handoff pending!
 
     urpc_msg_t rx_msg;

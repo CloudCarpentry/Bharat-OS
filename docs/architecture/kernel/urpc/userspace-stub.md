@@ -35,7 +35,7 @@ A compiler tool (`bidlc`) parses the `.bidl` files and generates C (or Rust/C++)
 
 ### 1. Client Stubs
 The generator creates a proxy function for the client:
-`int bharat_vfs_v1_OpenFile(urpc_channel_t* chan, const char* path, uint32_t flags, ep_t* out_file_stream);`
+`int bharat_vfs_v1_OpenFile(urpc_channel_t* chan, const char* path, uint32_t flags, bh_endpoint_t* out_file_stream);`
 
 -   **Marshalling:** Inside this function, the stub allocates a buffer (or uses a pre-allocated slab), writes the canonical header (setting `service_id` and `opcode`), and carefully packs the `path` and `flags` into the little-endian wire format.
 -   **Execution:** The stub calls `urpc_send()` (or blocks waiting for a reply).

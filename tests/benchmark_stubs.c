@@ -76,16 +76,16 @@ void hal_fpu_disable(void) {
 void hal_fpu_enable(void) {
 }
 
-void hal_fpu_save_state(void* kthread) {
-    (void)kthread;
+void hal_fpu_save_state(void* bh_thread) {
+    (void)bh_thread;
 }
 
-void hal_fpu_restore_state(void* kthread) {
-    (void)kthread;
+void hal_fpu_restore_state(void* bh_thread) {
+    (void)bh_thread;
 }
 
-void hal_fpu_init_thread_state(void* kthread) {
-    (void)kthread;
+void hal_fpu_init_thread_state(void* bh_thread) {
+    (void)bh_thread;
 }
 
 #include "../kernel/include/capability.h"
@@ -183,7 +183,7 @@ __attribute__((weak)) void arch_context_switch(cpu_context_t* prev, cpu_context_
     (void)next;
 }
 
-__attribute__((weak)) int arch_ext_state_thread_init(kthread_t *t) {
+__attribute__((weak)) int arch_ext_state_thread_init(bh_thread_t *t) {
     (void)t;
     return 0;
 }
@@ -194,15 +194,15 @@ int __attribute__((weak)) vmm_handle_cow_fault(address_space_t* as, virt_addr_t 
     return 0;
 }
 
-__attribute__((weak)) void arch_ext_state_thread_destroy(kthread_t *t) {
+__attribute__((weak)) void arch_ext_state_thread_destroy(bh_thread_t *t) {
     (void)t;
 }
 
-__attribute__((weak)) void arch_ext_state_save(kthread_t *t) {
+__attribute__((weak)) void arch_ext_state_save(bh_thread_t *t) {
     (void)t;
 }
 
-__attribute__((weak)) void arch_ext_state_restore(kthread_t *t) {
+__attribute__((weak)) void arch_ext_state_restore(bh_thread_t *t) {
     (void)t;
 }
 

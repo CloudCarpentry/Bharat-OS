@@ -70,14 +70,14 @@ By translating foreign ABIs into Bharat-OS primitives, we allow legacy applicati
 ### Windows Subsystem (Wine-like NT Compatibility)
 
 - **PE Loading & ABI:** Emulates Windows Portable Executable (PE) loading and the NT Kernel syscall interface (`ntdll.dll` wrapping).
-- **NT Objects to Capabilities:** Windows NT Objects (Handles, Events, Mutexes, Sections) map cleanly to Bharat-OS Kernel Objects. A Windows `HANDLE` becomes a Bharat-OS Capability (`cap_t`).
-- **LPC Translation:** The Windows Local Procedure Call (LPC / ALPC) mechanism is perfectly modeled using Bharat-OS Synchronous Endpoints (`ep_t`) for fast cross-process communication.
+- **NT Objects to Capabilities:** Windows NT Objects (Handles, Events, Mutexes, Sections) map cleanly to Bharat-OS Kernel Objects. A Windows `HANDLE` becomes a Bharat-OS Capability (`bh_cap_t`).
+- **LPC Translation:** The Windows Local Procedure Call (LPC / ALPC) mechanism is perfectly modeled using Bharat-OS Synchronous Endpoints (`bh_endpoint_t`) for fast cross-process communication.
 - **AI Governor Integration:** Windows Thread Priorities and scheduling hints are transparently fed into the Bharat-OS AI Governor (`ai_sched_context_t`), optimizing legacy Windows applications for modern NUMA/Heterogeneous architectures without modification.
 
 ### macOS / Darwin Subsystem (Mach Compatibility)
 
 - **Mach Ports & IPC:** Darwin's XNU kernel relies heavily on Mach Ports. These are mapped 1:1 to Bharat-OS IPC Endpoints. Send/Receive rights natively match the Bharat-OS Capability model (`CAP_PERM_SEND`, `CAP_PERM_RECEIVE`).
-- **Mach Tasks & Threads:** Mach Task/Thread management maps directly to Bharat-OS `ktask_t` and `kthread_t` primitives.
+- **Mach Tasks & Threads:** Mach Task/Thread management maps directly to Bharat-OS `bh_task_t` and `bh_thread_t` primitives.
 - **Objective-C / Swift Runtime:** Native Darwin binaries can execute with high performance, as message-passing overhead is minimized via URPC when scaling across cores.
 
 _Note: Full POSIX, Windows, and macOS translations are considered deferred research modules due to the enormous surface area of their respective APIs, but the architectural scaffolding is designed to support them natively as first-class, high-performance environments._

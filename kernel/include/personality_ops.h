@@ -1,6 +1,6 @@
 #pragma once
 
-struct kthread;
+struct bh_thread;
 typedef struct bh_thread bh_thread_t;
 
 // TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
@@ -11,11 +11,11 @@ struct trap_frame;
 typedef struct trap_frame trap_frame_t;
 
 typedef struct personality_ops {
-    long (*handle_syscall)(kthread_t *thread,
+    long (*handle_syscall)(bh_thread_t *thread,
                            trap_frame_t *frame,
                            const trap_info_t *info);
 
-    int (*handle_user_fault)(kthread_t *thread,
+    int (*handle_user_fault)(bh_thread_t *thread,
                              trap_frame_t *frame,
                              const trap_info_t *info);
 

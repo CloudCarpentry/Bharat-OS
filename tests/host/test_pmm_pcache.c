@@ -46,7 +46,7 @@ void hal_mm_get_zone_limits(hal_mm_zone_limits_t *limits) {
 
 
 
-kthread_t *sched_current_thread(void) {
+bh_thread_t *sched_current_thread(void) {
     return NULL;
 }
 

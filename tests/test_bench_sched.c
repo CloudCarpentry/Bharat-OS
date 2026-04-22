@@ -21,7 +21,7 @@ void dummy_entry(void) {
 void test_sched_benchmark(void) {
     sched_init();
 
-    kprocess_t* proc = process_create("bench_proc");
+    bh_process_t* proc = process_create("bench_proc");
     assert(proc != NULL);
 
     const int ITERATIONS = 10000;
@@ -30,7 +30,7 @@ void test_sched_benchmark(void) {
     benchmark_start(&ctx, "Thread Creation/Destruction", BENCHMARK_LEVEL_0_REF, ITERATIONS);
 
     for (int i = 0; i < ITERATIONS; i++) {
-        kthread_t* thread = thread_create(proc, dummy_entry);
+        bh_thread_t* thread = thread_create(proc, dummy_entry);
         assert(thread != NULL);
         thread_destroy(thread);
     }
@@ -43,7 +43,7 @@ void test_sched_benchmark(void) {
 
 
     // Benchmark thread lookups
-    kthread_t* threads[100];
+    bh_thread_t* threads[100];
     for (int i = 0; i < 100; i++) {
         threads[i] = thread_create(proc, dummy_entry);
     }
@@ -52,7 +52,7 @@ void test_sched_benchmark(void) {
     for (int i = 0; i < ITERATIONS; i++) {
         // Find by pseudo-random thread ID
         uint64_t target_id = threads[i % 100]->thread_id;
-        kthread_t* found = sched_find_thread_by_id(target_id);
+        bh_thread_t* found = sched_find_thread_by_id(target_id);
         assert(found != NULL);
     }
     benchmark_stop(&ctx);
@@ -66,7 +66,7 @@ void test_sched_benchmark(void) {
     // Benchmark thread slot allocation worst-case (near-full table)
     // SCHED_MAX_THREADS is 128, but scheduler initializes idle threads for cores.
     // Let's create 100 threads to safely leave a few slots.
-    kthread_t* thread_pool[100];
+    bh_thread_t* thread_pool[100];
     for (int i = 0; i < 100; i++) {
         thread_pool[i] = thread_create(proc, dummy_entry);
         assert(thread_pool[i] != NULL);
@@ -74,7 +74,7 @@ void test_sched_benchmark(void) {
 
     benchmark_start(&ctx, "Thread Alloc/Free (Near-Full Table)", BENCHMARK_LEVEL_0_REF, ITERATIONS);
     for (int i = 0; i < ITERATIONS; i++) {
-        kthread_t* t = thread_create(proc, dummy_entry);
+        bh_thread_t* t = thread_create(proc, dummy_entry);
         assert(t != NULL);
         thread_destroy(t);
     }
@@ -88,7 +88,7 @@ void test_sched_benchmark(void) {
 
     // Benchmark process slot allocation worst-case (near-full table)
     // SCHED_MAX_PROCESSES is 32. Idle process uses 1. `bench_proc` uses 1. Total = 2 used.
-    kprocess_t* process_pool[25];
+    bh_process_t* process_pool[25];
     for (int i = 0; i < 25; i++) {
         process_pool[i] = process_create("bench_filler");
         assert(process_pool[i] != NULL);
@@ -96,7 +96,7 @@ void test_sched_benchmark(void) {
 
     benchmark_start(&ctx, "Process Alloc/Free (Near-Full Table)", BENCHMARK_LEVEL_0_REF, ITERATIONS);
     for (int i = 0; i < ITERATIONS; i++) {
-        kprocess_t* p = process_create("bench_test");
+        bh_process_t* p = process_create("bench_test");
         assert(p != NULL); // if it fails here, table was full.
         process_destroy(p);
     }

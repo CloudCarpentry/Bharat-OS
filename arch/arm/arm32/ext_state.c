@@ -2,7 +2,7 @@
 
 void arch_ext_state_boot_init(void) {}
 
-bool arch_ext_state_handle_fault(struct kthread *t) {
+bool arch_ext_state_handle_fault(struct bh_thread *t) {
     (void)t;
     return false;
 }

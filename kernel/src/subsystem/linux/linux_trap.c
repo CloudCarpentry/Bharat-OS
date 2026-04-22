@@ -7,7 +7,7 @@
 extern long linux_syscall_handler(long sysno, long arg1, long arg2, long arg3,
                                   long arg4, long arg5, long arg6);
 
-static long linux_handle_syscall(struct kthread *thread, struct trap_frame *frame, const struct trap_info *info) {
+static long linux_handle_syscall(struct bh_thread *thread, struct trap_frame *frame, const struct trap_info *info) {
     (void)thread;
     (void)info;
     return linux_syscall_handler(
@@ -21,7 +21,7 @@ static long linux_handle_syscall(struct kthread *thread, struct trap_frame *fram
     );
 }
 
-static int linux_handle_user_fault(struct kthread *thread, struct trap_frame *frame, const struct trap_info *info) {
+static int linux_handle_user_fault(struct bh_thread *thread, struct trap_frame *frame, const struct trap_info *info) {
     (void)thread;
     (void)frame;
     (void)info;

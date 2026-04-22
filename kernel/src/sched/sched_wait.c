@@ -8,7 +8,7 @@ void sched_wait_queue_init(wait_queue_t* queue) {
   }
 }
 
-void sched_wait_queue_enqueue(wait_queue_t* queue, kthread_t* thread) {
+void sched_wait_queue_enqueue(wait_queue_t* queue, bh_thread_t* thread) {
   if (!queue || !thread) {
     return;
   }
@@ -24,12 +24,12 @@ void sched_wait_queue_enqueue(wait_queue_t* queue, kthread_t* thread) {
   }
 }
 
-kthread_t* sched_wait_queue_dequeue(wait_queue_t* queue) {
+bh_thread_t* sched_wait_queue_dequeue(wait_queue_t* queue) {
   if (!queue || !queue->head) {
     return NULL;
   }
 
-  kthread_t* thread = queue->head;
+  bh_thread_t* thread = queue->head;
   // Skip any threads that were already woken up by timeout (state != BLOCKED)
   // or that had their next_waiter cleared by the timeout sweep.
   while (thread && thread->state != THREAD_STATE_BLOCKED) {
@@ -54,7 +54,7 @@ kthread_t* sched_wait_queue_dequeue(wait_queue_t* queue) {
 
 void sched_block(void) {
   uint32_t core = sched_clamp_core(hal_cpu_get_id());
-  kthread_t *current = g_cpu_locals[core].runqueue.current_thread;
+  bh_thread_t *current = g_cpu_locals[core].runqueue.current_thread;
   if (current) {
     current->state = THREAD_STATE_BLOCKED;
     if (current->sched_ctx && current->sched_ctx->deg) {
@@ -74,7 +74,7 @@ void sched_block(void) {
 
 void sched_sleep(uint64_t millis) {
   uint32_t core = sched_clamp_core(hal_cpu_get_id());
-  kthread_t *current = g_cpu_locals[core].runqueue.current_thread;
+  bh_thread_t *current = g_cpu_locals[core].runqueue.current_thread;
   if (!current || current == g_cpu_locals[core].runqueue.idle_thread) {
     return;
   }
@@ -91,7 +91,7 @@ void sched_sleep(uint64_t millis) {
   sched_reschedule();
 }
 
-void sched_wakeup_with_priority(kthread_t *thread, uint32_t wakeup_priority) {
+void sched_wakeup_with_priority(bh_thread_t *thread, uint32_t wakeup_priority) {
   if (!thread) {
     return;
   }
@@ -135,7 +135,7 @@ void sched_wakeup_with_priority(kthread_t *thread, uint32_t wakeup_priority) {
   }
 }
 
-void sched_wakeup(kthread_t *thread) {
+void sched_wakeup(bh_thread_t *thread) {
   sched_wakeup_with_priority(thread, SCHED_MAX_PRIORITY + 1U);
 }
 

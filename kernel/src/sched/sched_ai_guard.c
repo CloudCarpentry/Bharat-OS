@@ -5,7 +5,7 @@ int sched_ai_apply_suggestion(const ai_suggestion_t *suggestion) {
   if (!suggestion) {
     return -1;
   }
-  kthread_t *thread = sched_find_thread_by_id((uint64_t)suggestion->target_id);
+  bh_thread_t *thread = sched_find_thread_by_id((uint64_t)suggestion->target_id);
   if (!thread) {
       return -1;
   }

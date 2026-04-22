@@ -1,7 +1,7 @@
 # Endpoint Design
 
 ## Overview
-In Bharat-OS, an Endpoint (`ep_t`) is a capability-protected rendezvous point. For local (intra-core) communication, endpoints are implemented as synchronous wait queues in the kernel. For cross-core (multikernel) or network communication, **uRPC Channels** operate *underneath* or *alongside* these endpoints.
+In Bharat-OS, an Endpoint (`bh_endpoint_t`) is a capability-protected rendezvous point. For local (intra-core) communication, endpoints are implemented as synchronous wait queues in the kernel. For cross-core (multikernel) or network communication, **uRPC Channels** operate *underneath* or *alongside* these endpoints.
 
 ## The Problem: Capability Boundaries
 How does Task A (on Core 0) send a capability to Task B (on Core 1)?
@@ -13,7 +13,7 @@ How does Task A (on Core 0) send a capability to Task B (on Core 1)?
 ### 1. The Proxy Endpoint
 To preserve the illusion of a local synchronous endpoint, Bharat-OS uses **Proxy Endpoints**.
 
--   Task A holds a capability to an Endpoint. As far as Task A is concerned, it's just a normal `ep_t`.
+-   Task A holds a capability to an Endpoint. As far as Task A is concerned, it's just a normal `bh_endpoint_t`.
 -   However, the kernel on Core 0 knows that this Endpoint is actually a *proxy* pointing to a destination on Core 1.
 
 ### 2. The Capwire Translation

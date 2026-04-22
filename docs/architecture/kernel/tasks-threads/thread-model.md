@@ -4,7 +4,7 @@
 A **Thread** in Bharat-OS is the fundamental unit of scheduling and execution. It runs inside a Task, inheriting the Task's Address Space (ASpace) and Capability Space (CSpace). Threads are represented by the **Thread Control Block (TCB)**.
 
 ## Thread Control Block (TCB) Layout
-The `kthread_t` (defined in `kernel/src/sched/`) tracks everything the CPU needs to resume a preempted context:
+The `bh_thread_t` (defined in `kernel/src/sched/`) tracks everything the CPU needs to resume a preempted context:
 
 - **State:** Running, Ready, Blocked, Exited.
 - **Trap Frame (`trap_frame_t`):** Pointer to the top of the kernel stack where registers are saved when a trap, interrupt, or syscall occurs.

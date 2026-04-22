@@ -119,7 +119,7 @@ static void mk_handle_thread_handoff_req(mk_channel_t *channel, urpc_msg_t *msg)
         return;
     }
 
-    kthread_t *thread = sched_find_thread_by_id(payload.thread_id);
+    bh_thread_t *thread = sched_find_thread_by_id(payload.thread_id);
     if (!thread) {
         // Thread not found
         urpc_msg_t nack = {
