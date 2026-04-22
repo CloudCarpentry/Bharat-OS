@@ -7,6 +7,12 @@ version: 1.0
 
 # Linux Personality Contract
 
+### Contract Status
+- **Spec**: ✅ Documented and versioned
+- **Implemented**: 🚧 Pending kernel/service behavior merge
+- **Validated**: ❌ Pending stress/fault-injection tests
+
+
 This document defines the ABI boundary and performance contract for the Linux personality on Bharat-OS. The Linux personality is an external ABI compatibility layer; it maps Linux concepts to Bharat-OS core mechanisms without leaking policy into the kernel.
 
 ## A. ABI Scope

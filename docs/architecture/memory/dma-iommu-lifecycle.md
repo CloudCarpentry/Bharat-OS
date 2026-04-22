@@ -1,5 +1,11 @@
 # DMA and IOMMU Lifecycle Contract
 
+### Contract Status
+- **Spec**: ✅ Documented and versioned
+- **Implemented**: 🚧 Pending kernel/service behavior merge
+- **Validated**: ❌ Pending stress/fault-injection tests
+
+
 ## Overview
 This document defines the strict lifecycle and ownership model for device memory access, ensuring safe, coherent, and isolated data transfers between hardware accelerators and system memory. This contract spans the `hal_dma`, `hal_iommu`, and kernel `mm/iommu` layers.
 

@@ -1,5 +1,11 @@
 # Personality Contract Architecture
 
+### Contract Status
+- **Spec**: ✅ Documented and versioned
+- **Implemented**: 🚧 Pending kernel/service behavior merge
+- **Validated**: ❌ Pending stress/fault-injection tests
+
+
 ## 1. Purpose
 
 Bharat-OS supports multiple external execution models without bloating the minimal kernel. Personalities exist to control ABI, contract exposure, and runtime behavior while preserving one small, mechanism-focused kernel.

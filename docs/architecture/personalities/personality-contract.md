@@ -7,6 +7,12 @@ version: 1.0
 
 # Personality Contract
 
+### Contract Status
+- **Spec**: ✅ Documented and versioned
+- **Implemented**: 🚧 Pending kernel/service behavior merge
+- **Validated**: ❌ Pending stress/fault-injection tests
+
+
 This document is the root governance contract for all personality implementations within Bharat-OS. It defines the strict boundaries of what a personality is allowed to do, what it must delegate, and how it interacts with the underlying capability-oriented microkernel and services.
 
 ## 1. What a Personality Owns

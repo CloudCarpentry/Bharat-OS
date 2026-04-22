@@ -1,5 +1,11 @@
 # Device Manager (devmgr) Contract
 
+### Contract Status
+- **Spec**: ✅ Documented and versioned
+- **Implemented**: 🚧 Pending kernel/service behavior merge
+- **Validated**: ❌ Pending stress/fault-injection tests
+
+
 ## Purpose
 This document defines the role and boundary of the Device Manager (`devmgr`) in Bharat-OS. The `devmgr` acts as the service-level policy orchestrator for hardware devices, acting entirely outside of kernel mechanism and driver control paths.
 
