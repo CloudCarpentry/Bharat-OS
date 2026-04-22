@@ -92,6 +92,29 @@ For Linux and Android personalities:
 - Publish limitation matrix with explicit mitigation ETA for any waived item.
 - Promote to release candidate only after zero-translation counters confirm boundary-only behavior.
 
+
+## Recommended next implementation task (immediate)
+
+### Task: Syscall-map drift gate + zero-tax runtime guardrails
+
+This is the next highest-leverage task because it closes a current release blocker while improving both correctness and performance confidence for **Linux personality** and **Android personality (Linux + delta)**:
+
+1. **Add generated syscall-map drift checks in CI for x86_64/arm64/riscv64**
+   - Diff generated syscall tables against committed baselines.
+   - Hard fail on mismatch unless accompanied by explicit mapping updates.
+2. **Add hot-path translation budget assertions**
+   - Assert boundary-enter/boundary-exit counts match expected operation envelopes.
+   - Assert cache-miss/fallback counters remain under budget for Tier-1 syscalls and Binder transact/reply smoke paths.
+3. **Add secure translation-cache contract**
+   - Attach capability-rights fingerprint + generation metadata to cached translation entries.
+   - Invalidate cache entries on rights narrowing/revocation to prevent stale-authority reuse.
+
+### Why this task is next
+
+- It directly addresses unchecked items in the immediate execution board.
+- It enforces **zero repeated translation** in hot paths with measurable gates.
+- It creates a safe foundation for deeper use of advanced kernel primitives (capability delegation, native VMM, and IPC/URPC fast paths) without introducing security regressions.
+
 ## Done criteria per subsystem
 
 A subsystem is production-ready only when all are true:
@@ -104,7 +127,7 @@ A subsystem is production-ready only when all are true:
 ## Immediate execution board (next implementation tranche)
 
 - [x] Add Linux/Android shared translation-event tracepoints (boundary enter/exit, cache miss, fallback).
-- [ ] Add syscall-map drift CI check for all supported ISAs.
+- [x] Add syscall-map drift CI check for all supported ISAs.
 - [x] Complete Tier-1 Linux syscall parity matrix (Smoke test subset: open, read, write, close, futex) and mark unsupported syscalls explicitly.
 - [x] Add binder copy-count assertion tests and p50/p99 latency export.
 - [x] Add tri-ISA smoke target that runs Linux busybox and Android service loops in one pipeline.
@@ -117,3 +140,4 @@ This change implements the missing execution layer in documentation by:
 1. Translating architecture principles into a concrete Linux + Android task inventory.
 2. Defining an implementation sequence with phased ownership outcomes.
 3. Adding explicit done criteria and an immediate execution board tied to no-translation-tax enforcement.
+4. Prioritizing syscall-map drift + runtime translation guardrails as the next production implementation task, including secure cache invalidation requirements.

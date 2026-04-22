@@ -2,34 +2,52 @@ import sys
 import os
 import subprocess
 
+BASE_MARKERS = ["BOOT: kernel_main reached", "Bharat-OS"]
+LINUX_MARKERS = ["[LINUX] file-I/O smoke pass", "[LINUX] futex sync exercised"]
+ANDROID_MARKERS = [
+    "[ANDROID] ashmem shared-memory smoke pass",
+    "[ANDROID] binder transact pass",
+    "[ANDROID] binder reply pass",
+]
+
+
 def check_log_markers(log_file, markers):
-    with open(log_file, 'r') as f:
+    with open(log_file, 'r', encoding='utf-8', errors='replace') as f:
         content = f.read()
-        for marker in markers:
-            if marker not in content:
-                print(f"[FAIL] Missing marker '{marker}' in {log_file}")
-                return False
+        missing = [marker for marker in markers if marker not in content]
+
+    if missing:
+        for marker in missing:
+            print(f"[FAIL] Missing marker '{marker}' in {log_file}")
+        return False
     return True
+
 
 def run_target(target, is_android):
     print(f"[*] Running E2E test for {target}")
 
-    cmd = ["timeout", "15", "./build.sh", "all", "--target", target]
+    cmd = ["timeout", "240", "./build.sh", "all", "--target", target]
 
     log_dir = "e2e_logs_personalities"
     os.makedirs(log_dir, exist_ok=True)
     log_file = os.path.join(log_dir, f"{target}.log")
 
-    with open(log_file, "w") as f:
-        subprocess.run(cmd, stdout=f, stderr=subprocess.STDOUT)
+    with open(log_file, "w", encoding="utf-8") as f:
+        proc = subprocess.run(cmd, stdout=f, stderr=subprocess.STDOUT)
 
-    # Basic markers
-    markers = ["BOOT: kernel_main reached", "Bharat-OS"]
+    if proc.returncode != 0:
+        print(f"[FAIL] build/run command failed with rc={proc.returncode} for {target}")
+        return False
+
+    markers = list(BASE_MARKERS)
+    markers.extend(ANDROID_MARKERS if is_android else LINUX_MARKERS)
 
     if check_log_markers(log_file, markers):
-        print(f"[PASS] {target} booted successfully.")
+        print(f"[PASS] {target} booted and personality markers verified.")
         return True
+
     return False
+
 
 def main():
     targets = [
@@ -49,6 +67,7 @@ def main():
     if not all_passed:
         sys.exit(1)
     print("[SUCCESS] All personality E2E tests passed!")
+
 
 if __name__ == "__main__":
     main()
