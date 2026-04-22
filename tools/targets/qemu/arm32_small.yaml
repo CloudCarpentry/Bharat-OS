@@ -25,14 +25,17 @@ kernel:
     elf: kernel/kernel.elf
 
 boot:
-  protocol: elf_direct
-  artifact_format: elf
+  protocol: linux_arm64
+  artifact_format: raw_bin
   dtb:
     mode: qemu_generated
     required: true
 
 package:
-  transforms: []
+  transforms:
+    - type: elf_to_bin
+      input: kernel/kernel.elf
+      output: kernel/kernel.bin
 
 run:
   backend: qemu
@@ -42,4 +45,4 @@ run:
   nographic: true
   serial:
     - stdio
-  boot_artifact: kernel/kernel.elf
+  boot_artifact: kernel/kernel.bin

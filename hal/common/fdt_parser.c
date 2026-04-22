@@ -99,11 +99,6 @@ bool fdt_is_valid(const void *fdt_ptr) {
     return false;
   const struct fdt_header *fdt = (const struct fdt_header *)fdt_ptr;
   uint32_t magic = fdt32_to_cpu(fdt->magic);
-  hal_serial_write("FDT: Checking magic at ");
-  hal_serial_write_hex((uintptr_t)fdt_ptr);
-  hal_serial_write(" magic=");
-  hal_serial_write_hex(magic);
-  hal_serial_write("\n");
   return (magic == FDT_MAGIC);
 }
 
