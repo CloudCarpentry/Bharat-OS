@@ -75,3 +75,6 @@ static inline uint64_t core_current_as_id(void) {
 }
 
 #endif // BHARAT_CPU_LOCAL_H
+
+/* Architecture-specific implementation for setting the current CPU local pointer */
+void arch_cpu_local_set(cpu_local_t *cl);

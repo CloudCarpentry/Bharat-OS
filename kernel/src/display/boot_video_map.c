@@ -3,6 +3,7 @@
 #include "kernel.h"
 #include "hal/hal_pt.h"
 #include "hal/hal_mpa.h"
+#include "hal/hal_tlb.h"
 #include "bharat/display/boot_video.h"
 
 // Early boot video map logic.
@@ -34,15 +35,7 @@ int boot_video_map(const boot_info_t *boot) {
     }
     
     // Full TLB flush
-#if defined(__x86_64__) || defined(__i386__)
-    __asm__ volatile("mov %%cr3, %%rax; mov %%rax, %%cr3" ::: "rax", "memory");
-#elif defined(__aarch64__)
-    __asm__ volatile("tlbi vmalle1is; dsb ish; isb" ::: "memory");
-#elif defined(__riscv)
-    __asm__ volatile("sfence.vma" ::: "memory");
-#else
-    /* Fallback for other architectures */
-#endif
+    hal_tlb_invalidate_all();
 
     // Update the handoff's virtual address for the GUI to find.
 #if BHARAT_BOOT_GUI
