@@ -13,8 +13,14 @@ target_include_directories(test_can_filter PRIVATE ../../stacks/include)
 add_executable(test_can_filter_compile drivers/test_can_filter_compile.c ../../drivers/class/can/can_filter_compile.c)
 target_include_directories(test_can_filter_compile PRIVATE ../../drivers/include ../../stacks/include)
 
-add_executable(test_can_controller_core drivers/test_can_controller_core.c ../../drivers/class/can/can_controller_core.c)
+add_executable(test_can_controller_core drivers/test_can_controller_core.c ../../drivers/class/can/can_controller_core.c ../../stacks/can/core/can_filter.c)
 target_include_directories(test_can_controller_core PRIVATE ../../drivers/include ../../stacks/include)
+
+add_executable(test_can_controller_state_machine drivers/test_can_controller_state_machine.c ../../drivers/class/can/can_controller_core.c ../../stacks/can/core/can_filter.c)
+target_include_directories(test_can_controller_state_machine PRIVATE ../../drivers/include ../../stacks/include)
+
+add_executable(test_net_driver_core drivers/test_net_driver_core.c ../../drivers/net/core/net_driver_core.c ../../lib/packet/src/packet.c)
+target_include_directories(test_net_driver_core PRIVATE ../../drivers/include ../../stacks/include ../../lib/packet/include)
 
 add_executable(test_can_route stacks/can/test_can_route.c)
 target_include_directories(test_can_route PRIVATE ../../stacks/include)
@@ -25,12 +31,14 @@ target_include_directories(test_can_subscriptions PRIVATE ../../services/include
 add_executable(test_can_gateway services/test_can_gateway.c)
 target_include_directories(test_can_gateway PRIVATE ../../services/include)
 
-add_executable(test_can_busoff_recovery services/test_can_busoff_recovery.c ../../drivers/class/can/can_controller_core.c ../../drivers/devices/virt_can/virt_can.c)
+add_executable(test_can_busoff_recovery services/test_can_busoff_recovery.c ../../drivers/class/can/can_controller_core.c ../../drivers/devices/virt_can/virt_can.c ../../stacks/can/core/can_filter.c)
 target_include_directories(test_can_busoff_recovery PRIVATE ../../drivers/include ../../stacks/include)
 
 add_test(NAME host_test_can_filter COMMAND test_can_filter)
 add_test(NAME host_test_can_filter_compile COMMAND test_can_filter_compile)
 add_test(NAME host_test_can_controller_core COMMAND test_can_controller_core)
+add_test(NAME host_test_can_controller_state_machine COMMAND test_can_controller_state_machine)
+add_test(NAME host_test_net_driver_core COMMAND test_net_driver_core)
 add_test(NAME host_test_can_route COMMAND test_can_route)
 add_test(NAME host_test_can_subscriptions COMMAND test_can_subscriptions)
 add_test(NAME host_test_can_gateway COMMAND test_can_gateway)
