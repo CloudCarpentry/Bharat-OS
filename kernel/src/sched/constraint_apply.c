@@ -2,7 +2,7 @@
 #include <hal/hal.h>
 #include "sched_internal.h"
 
-bool sched_is_core_admissible(kthread_t *t, int cpu_id)
+bool sched_is_core_admissible(bh_thread_t *t, int cpu_id)
 {
     if (!t) return false;
 

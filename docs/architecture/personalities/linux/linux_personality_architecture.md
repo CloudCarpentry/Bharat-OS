@@ -3,8 +3,8 @@ title: Linux Personality Architecture
 status: active
 owner: Architecture Team
 reviewers: ["Core Team"]
-version: 1.0
-last_updated: "2024-03-23"
+version: 1.1
+last_updated: "2026-04-22"
 tags: ["architecture", "personalities"]
 ---
 
@@ -17,7 +17,7 @@ The Bharat-OS core kernel is designed as a distributed, personality-neutral mult
 
 ## Core Process & Thread Model
 The core kernel separates the scheduler thread/task abstraction from the process/address-space abstraction.
-To support multi-personality execution, we introduce a `personality_type` field to the `kthread_t` (and/or `kprocess_t`) structure.
+To support multi-personality execution, we introduce a `personality_type` field to the `bh_thread_t` (and/or `bh_process_t`) structure.
 
 - `PERSONALITY_NATIVE`: Threads executing native Bharat-OS ABI.
 - `PERSONALITY_LINUX`: Threads executing the Linux ABI.
@@ -59,3 +59,13 @@ A Linux ELF loader is required for:
 - ELF64 support
 - auxv, argv/envp stack setup
 - Statically linked binaries initially, progressing to dynamic linking (interpreter path, TLS hooks).
+
+
+## Cross-ISA Contract (x86_64, arm64, riscv64)
+
+Linux personality support must be functionally consistent and performance-grade across all three target ISAs.
+
+- Maintain per-ISA syscall number maps while preserving a shared syscall implementation layer.
+- Keep ABI argument extraction architecture-local, but normalize immediately into a common internal syscall context.
+- Validate restart/error/signal edge cases with architecture-conformance tests in CI.
+- Enforce hot-path KPI budgets independently for each ISA to avoid hidden regressions.

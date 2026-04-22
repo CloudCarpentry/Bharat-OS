@@ -5,6 +5,7 @@
 #include "bharat/stacks/storage/block.h"
 #include "bharat/stacks/storage/cache/cache.h"
 #include "bharat/stacks/storage/profile.h"
+#include "fs_arch_profile.h"
 
 // Reference happy path execution
 extern int virtio_blk_submit_request(void* sg_list, uint32_t num_sgs);
@@ -17,22 +18,6 @@ static storage_app_profile_t fs_select_profile(void) {
     return STORAGE_APP_PROFILE_DATACENTER;
 #else
     return STORAGE_APP_PROFILE_EDGE;
-#endif
-}
-
-static storage_hw_arch_t fs_select_arch(void) {
-#if defined(__x86_64__) || defined(_M_X64)
-    return STORAGE_HW_ARCH_X86_64;
-#elif defined(__aarch64__)
-    return STORAGE_HW_ARCH_ARM64;
-#elif defined(__arm__)
-    return STORAGE_HW_ARCH_ARM32;
-#elif defined(__riscv) && (__riscv_xlen == 64)
-    return STORAGE_HW_ARCH_RISCV64;
-#elif defined(__riscv)
-    return STORAGE_HW_ARCH_RISCV32;
-#else
-    return STORAGE_HW_ARCH_UNKNOWN;
 #endif
 }
 

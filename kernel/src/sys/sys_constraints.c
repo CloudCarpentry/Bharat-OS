@@ -26,7 +26,7 @@ static void bh_copy_exec_constraints_kern_to_uapi(
 }
 
 static int thread_set_constraints(int tid, const bh_exec_constraints_k_t *c) {
-    kthread_t *thread = sched_find_thread_by_id(tid);
+    bh_thread_t *thread = sched_find_thread_by_id(tid);
     if (!thread) return -1;
 
     thread->constraints = *c;
@@ -34,7 +34,7 @@ static int thread_set_constraints(int tid, const bh_exec_constraints_k_t *c) {
 }
 
 static int thread_get_constraints(int tid, bh_exec_constraints_k_t *out_c) {
-    kthread_t *thread = sched_find_thread_by_id(tid);
+    bh_thread_t *thread = sched_find_thread_by_id(tid);
     if (!thread) return -1;
 
     *out_c = thread->constraints;
@@ -54,7 +54,7 @@ int sys_thread_set_constraints(int tid, const bh_exec_constraints_t *user_c) {
         return -1;
 
     // Reschedule the thread to enforce new constraints (per constraint-aware scheduling rules)
-    kthread_t* thread = sched_find_thread_by_id(tid);
+    bh_thread_t* thread = sched_find_thread_by_id(tid);
     if (thread && thread->state == THREAD_STATE_RUNNING) {
         // Trigger a reschedule on the thread's core to force the new constraint to be evaluated
         // For MVP, we can just yield the core if it's running locally, or rely on normal quantum expiration.

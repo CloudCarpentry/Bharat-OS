@@ -84,7 +84,7 @@ static int g_mutex_b;
 
 static void test_lifecycle_and_syscalls(void) {
   sched_init();
-  kprocess_t *p = process_create("init");
+  bh_process_t *p = process_create("init");
   assert(p != NULL);
 
   uint64_t tid = 0;
@@ -95,32 +95,32 @@ static void test_lifecycle_and_syscalls(void) {
 
 static void test_priority_round_robin(void) {
   sched_init();
-  kprocess_t *p = process_create("prio");
+  bh_process_t *p = process_create("prio");
   assert(p != NULL);
 
-  kthread_t *t1 = thread_create(p, thread_a);
-  kthread_t *t2 = thread_create(p, thread_b);
+  bh_thread_t *t1 = thread_create(p, thread_a);
+  bh_thread_t *t2 = thread_create(p, thread_b);
   assert(t1 && t2);
 
   assert(sched_set_thread_priority(t1->thread_id, 3) == 0);
   assert(sched_set_thread_priority(t2->thread_id, 8) == 0);
 
-  kthread_yield();
+  bh_thread_yield();
   assert(sched_current_thread() == t2);
 
-  kthread_yield();
+  bh_thread_yield();
   assert(sched_current_thread() == t1 || sched_current_thread() == t2);
 }
 
 static void test_sleep_wakeup(void) {
   sched_init();
-  kprocess_t *p = process_create("sleep");
+  bh_process_t *p = process_create("sleep");
   assert(p != NULL);
 
-  kthread_t *t = thread_create(p, thread_a);
+  bh_thread_t *t = thread_create(p, thread_a);
   assert(t != NULL);
 
-  kthread_yield();
+  bh_thread_yield();
   assert(sched_current_thread() == t);
 
   sched_sleep(2);
@@ -135,21 +135,21 @@ static void test_sleep_wakeup(void) {
 
 static void test_preempt_on_higher_priority_ready(void) {
   sched_init();
-  kprocess_t *p = process_create("preempt");
+  bh_process_t *p = process_create("preempt");
   assert(p != NULL);
 
-  kthread_t *low = thread_create(p, thread_a);
-  kthread_t *high = thread_create(p, thread_b);
+  bh_thread_t *low = thread_create(p, thread_a);
+  bh_thread_t *high = thread_create(p, thread_b);
   assert(low && high);
 
   assert(sched_set_thread_priority(low->thread_id, 2) == 0);
   assert(sched_set_thread_priority(high->thread_id, 7) == 0);
 
-  kthread_yield();
+  bh_thread_yield();
   assert(sched_current_thread() == high);
 
   sched_sleep(5);
-  kthread_yield();
+  bh_thread_yield();
   assert(sched_current_thread() != high);
 
   sched_wakeup(high);
@@ -161,41 +161,41 @@ static void test_preempt_on_higher_priority_ready(void) {
 
 static void test_policy_hooks_and_rr(void) {
   sched_init();
-  kprocess_t *p = process_create("policy");
+  bh_process_t *p = process_create("policy");
   assert(p != NULL);
 
-  kthread_t *low = thread_create(p, thread_a);
-  kthread_t *high = thread_create(p, thread_b);
+  bh_thread_t *low = thread_create(p, thread_a);
+  bh_thread_t *high = thread_create(p, thread_b);
   assert(low && high);
 
   assert(sched_set_thread_priority(low->thread_id, 1) == 0);
   assert(sched_set_thread_priority(high->thread_id, 9) == 0);
 
   sched_set_policy(SCHED_POLICY_ROUND_ROBIN);
-  kthread_yield();
+  bh_thread_yield();
   assert(sched_current_thread() != high);
 
   sched_set_policy(SCHED_POLICY_PRIORITY);
-  kthread_yield();
+  bh_thread_yield();
   assert(sched_current_thread() != NULL);
 
   sched_set_policy(SCHED_POLICY_EDF);
-  kthread_yield();
+  bh_thread_yield();
   assert(sched_current_thread() != NULL);
 
   sched_set_policy(SCHED_POLICY_RMS);
-  kthread_yield();
+  bh_thread_yield();
   assert(sched_current_thread() != NULL);
 }
 
 static void test_priority_inheritance_chain(void) {
   sched_init();
-  kprocess_t *p = process_create("inherit");
+  bh_process_t *p = process_create("inherit");
   assert(p != NULL);
 
-  kthread_t *low = thread_create(p, thread_a);
-  kthread_t *mid = thread_create(p, thread_a);
-  kthread_t *high = thread_create(p, thread_b);
+  bh_thread_t *low = thread_create(p, thread_a);
+  bh_thread_t *mid = thread_create(p, thread_a);
+  bh_thread_t *high = thread_create(p, thread_b);
   assert(low && mid && high);
 
   assert(sched_set_thread_priority(low->thread_id, 2) == 0);
@@ -223,29 +223,29 @@ static void test_priority_inheritance_chain(void) {
 
 static void test_affinity_migration_multicore(void) {
   sched_init();
-  kprocess_t *p = process_create("smp");
+  bh_process_t *p = process_create("smp");
   assert(p != NULL);
 
-  kthread_t *t = thread_create(p, thread_a);
+  bh_thread_t *t = thread_create(p, thread_a);
   assert(t != NULL);
 
   // assert(sched_sys_set_affinity(t->thread_id, (1U << 1)) == 0);
   t->bound_core_id = 1U;
 
   g_mock_core_id = 1U;
-  kthread_yield();
+  bh_thread_yield();
   assert(sched_current_thread() == t || sched_current_thread() != NULL);
   g_mock_core_id = 0U;
 }
 
 static void run_benchmark(void) {
   sched_init();
-  kprocess_t *p = process_create("bench");
+  bh_process_t *p = process_create("bench");
   assert(p != NULL);
   uint64_t tids[64];
 
   for (int i = 0; i < 64; i++) {
-    kthread_t *t = thread_create(p, thread_a);
+    bh_thread_t *t = thread_create(p, thread_a);
     assert(t != NULL);
     tids[i] = t->thread_id;
   }

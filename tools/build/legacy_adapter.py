@@ -68,8 +68,8 @@ def resolve_legacy_target(target_name: str, repo_root: Path) -> ResolvedTarget:
     nographic = not gui_enabled
 
     # Fallback boot logic guessing
-    protocol = "elf_direct" if arch == "arm64" else "multiboot2" if arch == "x86_64" else "opensbi_payload"
-    artifact_format = "elf"
+    protocol = "linux_arm64" if arch in ("arm64", "arm32") else "multiboot2" if arch == "x86_64" else "opensbi_payload"
+    artifact_format = "raw_bin" if protocol == "linux_arm64" else "elf"
 
     transforms = []
     boot_artifact = "kernel/kernel.elf"
@@ -86,9 +86,9 @@ def resolve_legacy_target(target_name: str, repo_root: Path) -> ResolvedTarget:
         transforms.append(PackageTransformConfig(
             type="elf_to_bin",
             input="kernel/kernel.elf",
-            output="kernel.bin"
+            output="kernel/kernel.bin"
         ))
-        boot_artifact = "kernel.bin"
+        boot_artifact = "kernel/kernel.bin"
 
     dtb_mode = "qemu_generated"
     default_cpu = "cortex-a72" if arch == "arm64" else None

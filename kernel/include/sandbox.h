@@ -77,10 +77,10 @@ typedef struct {
 sandbox_ctx_t* sandbox_create_context(void);
 
 // Apply a sandbox context to a process (Containers)
-int sandbox_apply(kprocess_t* process, sandbox_ctx_t* ctx);
+int sandbox_apply(bh_process_t* process, sandbox_ctx_t* ctx);
 
 // Verify if a process has a specific capability
-int sandbox_check_capability(kprocess_t* process, uint64_t requested_capability);
+int sandbox_check_capability(bh_process_t* process, uint64_t requested_capability);
 
 // Add or replace a path capability rule in a sandbox context.
 int sandbox_allow_path(sandbox_ctx_t* ctx, const char* prefix, uint32_t allowed_ops_mask);

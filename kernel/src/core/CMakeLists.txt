@@ -1,5 +1,10 @@
 add_library(k_core OBJECT
     ../../src/cpu_local.c
+    $<$<STREQUAL:${ARCH},x86_64>:../../../arch/x86/x86_64/kernel/cpu_local.c>
+    $<$<STREQUAL:${ARCH},arm64>:../../../arch/arm/arm64/kernel/cpu_local.c>
+    $<$<STREQUAL:${ARCH},riscv64>:../../../arch/riscv/riscv64/kernel/cpu_local.c>
+    $<$<STREQUAL:${ARCH},arm32>:../../../arch/arm/arm32/kernel/cpu_local.c>
+    $<$<STREQUAL:${ARCH},riscv32>:../../../arch/riscv/riscv32/kernel/cpu_local.c>
     ../../src/multicore.c
     ../../src/subsystem/profile.c
     ../../src/profile/profile.c

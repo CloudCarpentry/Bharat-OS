@@ -40,7 +40,7 @@ extern bool core_is_rt(void);
 #define TRAP_ERR_NOSYS (-(long)SYS_ENOSYS)
 
 
-static kprocess_t g_syscall_proc;
+static bh_process_t g_syscall_proc;
 
 static capability_table_t *trap_current_cap_table(void) {
   capability_table_t *table = sched_current_cap_table();
@@ -50,8 +50,8 @@ static capability_table_t *trap_current_cap_table(void) {
   return (capability_table_t *)g_syscall_proc.security_sandbox_ctx;
 }
 
-static kprocess_t *trap_current_process(void) {
-  kprocess_t *proc = sched_current_process();
+static bh_process_t *trap_current_process(void) {
+  bh_process_t *proc = sched_current_process();
   if (proc) {
     return proc;
   }
@@ -210,7 +210,7 @@ long syscall_dispatch(syscall_id_t id, uintptr_t arg0, uintptr_t arg1,
   case SYSCALL_THREAD_DESTROY:
     return SYSCALL_RET_FROM_STATUS(sched_sys_thread_destroy((uint64_t)arg0), SYS_ENOENT);
   case SYSCALL_SCHED_YIELD:
-    kthread_yield();
+    bh_thread_yield();
     return TRAP_SUCCESS;
   case SYSCALL_SCHED_SLEEP:
     return SYSCALL_RET_FROM_STATUS(sched_sys_sleep((uint64_t)arg0), SYS_EIO);
@@ -335,7 +335,7 @@ int trap_dispatch(trap_frame_t *frame, const trap_info_t *info) {
   extern void vmm_process_local_urpc_messages(uint32_t core_id);
   vmm_process_local_urpc_messages(hal_cpu_get_id());
 
-  kthread_t *current = sched_current_thread();
+  bh_thread_t *current = sched_current_thread();
 
   switch (info->trap_class) {
   case TRAP_CLASS_INTERRUPT:
@@ -346,7 +346,7 @@ int trap_dispatch(trap_frame_t *frame, const trap_info_t *info) {
                                   trap_device_irq_dispatch, NULL);
 
     if (info->trap_class == TRAP_CLASS_IPI) {
-        kthread_yield();
+        bh_thread_yield();
     }
     return 0;
   }

@@ -127,7 +127,7 @@ void ipc_async_init(void) {
     g_next_async_id = 1U;
 }
 
-ipc_async_request_t* ipc_async_request_create_ex(kthread_t* thread,
+ipc_async_request_t* ipc_async_request_create_ex(bh_thread_t* thread,
                                                   uint32_t endpoint_ref,
                                                   uint64_t timeout_ms,
                                                   uint32_t qos_priority,
@@ -158,13 +158,13 @@ ipc_async_request_t* ipc_async_request_create_ex(kthread_t* thread,
     return req;
 }
 
-ipc_async_request_t* ipc_async_request_create(kthread_t* thread, uint32_t endpoint_ref, uint64_t timeout_ms) {
+ipc_async_request_t* ipc_async_request_create(bh_thread_t* thread, uint32_t endpoint_ref, uint64_t timeout_ms) {
     return ipc_async_request_create_ex(thread, endpoint_ref, timeout_ms, 0U, 0U);
 }
 
 void ipc_async_request_complete(ipc_async_request_t* req) {
     if (req && req->in_use && req->state == IPC_ASYNC_STATE_PENDING) {
-        kthread_t* waiting = req->waiting_thread;
+        bh_thread_t* waiting = req->waiting_thread;
         uint32_t qos = req->qos_priority;
         req->state = IPC_ASYNC_STATE_COMPLETED;
         ipc_async_free_slot(req);
@@ -177,7 +177,7 @@ void ipc_async_request_complete(ipc_async_request_t* req) {
 
 void ipc_async_request_cancel(ipc_async_request_t* req) {
     if (req && req->in_use && req->state == IPC_ASYNC_STATE_PENDING) {
-        kthread_t* waiting = req->waiting_thread;
+        bh_thread_t* waiting = req->waiting_thread;
         uint32_t qos = req->qos_priority;
         req->state = IPC_ASYNC_STATE_CANCELLED;
         ipc_async_free_slot(req);
@@ -190,7 +190,7 @@ void ipc_async_request_cancel(ipc_async_request_t* req) {
 void ipc_async_request_timeout(ipc_async_request_t* req, uint64_t current_ticks) {
     (void)current_ticks;
     if (req && req->in_use && req->state == IPC_ASYNC_STATE_PENDING) {
-        kthread_t* waiting = req->waiting_thread;
+        bh_thread_t* waiting = req->waiting_thread;
         uint32_t qos = req->qos_priority;
         req->state = IPC_ASYNC_STATE_TIMEOUT;
         ipc_async_free_slot(req);

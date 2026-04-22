@@ -1,7 +1,7 @@
 #include "sched/sched.h"
 #include "sched_internal.h"
 
-void sched_inherit_priority(kthread_t *thread, uint32_t new_priority) {
+void sched_inherit_priority(bh_thread_t *thread, uint32_t new_priority) {
   if (!thread) {
     return;
   }
@@ -10,21 +10,21 @@ void sched_inherit_priority(kthread_t *thread, uint32_t new_priority) {
   }
 }
 
-void sched_restore_priority(kthread_t *thread) {
+void sched_restore_priority(bh_thread_t *thread) {
   if (!thread) {
     return;
   }
   thread->priority = thread->base_priority;
 }
 
-void sched_on_mutex_wait(kthread_t *waiter, void *mutex) {
+void sched_on_mutex_wait(bh_thread_t *waiter, void *mutex) {
   if (!waiter || !mutex) {
     return;
   }
 
   waiter->waiting_on_lock = mutex;
 
-  kthread_t *owner = sched_find_mutex_owner(mutex);
+  bh_thread_t *owner = sched_find_mutex_owner(mutex);
   while (owner && owner != waiter && waiter->priority > owner->priority) {
     sched_inherit_priority(owner, waiter->priority);
     if (!owner->waiting_on_lock) {
@@ -34,7 +34,7 @@ void sched_on_mutex_wait(kthread_t *waiter, void *mutex) {
   }
 }
 
-void sched_on_mutex_acquire(kthread_t *owner, void *mutex) {
+void sched_on_mutex_acquire(bh_thread_t *owner, void *mutex) {
   if (!owner || !mutex) {
     return;
   }
@@ -43,7 +43,7 @@ void sched_on_mutex_acquire(kthread_t *owner, void *mutex) {
   sched_register_mutex_owner(mutex, owner);
 }
 
-void sched_on_mutex_release(kthread_t *owner, void *mutex) {
+void sched_on_mutex_release(bh_thread_t *owner, void *mutex) {
   if (!owner || !mutex) {
     return;
   }
@@ -52,7 +52,7 @@ void sched_on_mutex_release(kthread_t *owner, void *mutex) {
   sched_restore_priority(owner);
 }
 
-int sched_adjust_priority(kthread_t *thread, uint32_t new_priority) {
+int sched_adjust_priority(bh_thread_t *thread, uint32_t new_priority) {
   if (!thread) {
     return -1;
   }

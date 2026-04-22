@@ -39,7 +39,7 @@ int vmm_map_device_mmio(virt_addr_t vaddr, phys_addr_t paddr, capability_t* cap,
 static void test_ipc_fuzzing(void) {
     printf("Running deterministic IPC fuzzing test...\n");
 
-    kprocess_t* p = process_create("fuzzer");
+    bh_process_t* p = process_create("fuzzer");
     assert(p != NULL);
 
     capability_table_t* t = (capability_table_t*)p->security_sandbox_ctx;

@@ -38,6 +38,9 @@ def write_run_manifest(target: ResolvedTarget, package_outputs: PackageOutputs, 
         elif a.kind == "kernel_elf":
             artifacts["canonical_elf"] = str(a.path)
 
+        elif a.kind == "dtb":
+            artifacts["dtb_path"] = str(a.path)
+
     if not "boot_artifact" in artifacts:
         # Fallback to kernel elf if no transform produced a specific boot artifact
         artifacts["boot_artifact"] = artifacts.get("canonical_elf", "")
@@ -62,7 +65,9 @@ def write_run_manifest(target: ResolvedTarget, package_outputs: PackageOutputs, 
         "boot_contract": {
             "protocol": target.boot.protocol,
             "dtb": {
-                "mode": target.boot.dtb.mode
+                "mode": target.boot.dtb.mode,
+                "required": target.boot.dtb.required,
+                "path": artifacts.get("dtb_path", "")
             }
         }
     }

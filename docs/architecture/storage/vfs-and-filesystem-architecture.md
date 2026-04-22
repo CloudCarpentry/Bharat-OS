@@ -1,58 +1,114 @@
-# Storage and Filesystem Architecture Contract (Bharat-OS)
+# Storage and Filesystem Architecture Contract (Normative)
 
-## 1. Introduction & Guiding Principles
+## 1. Purpose and scope
 
-Bharat-OS implements a strict, profile-aware, and capability-governed multi-tiered architecture for its Virtual File System (VFS) and storage subsystems. The traditional monolithic VFS is decomposed across four distinct layers to ensure scaling from tiny MPU/MMU-lite devices, appliances, drones, automotive, mobile, edge, and cloud deployments.
+This document is the **normative contract** for storage/filesystem ownership and boundaries in Bharat-OS.
 
-### The Four Layers
-1. **Kernel VFS Core (`kernel/`):** Provides *minimal mechanism only*. Handles capability enforcement, object identifiers, and boundary checks. *Crucially, no policy (automount, sync strategy, media indexing) or rich VFS logic resides here.* Currently transitioning to pure capability/IPC shims.
-2. **Filesystem Service/System Layer (`services/system/filesystem/` & `stacks/storage/`):** The policy and orchestration layer. Owns mount policy, namespace rules, pathname traversal, file descriptor handling, and orchestration. (Migration in progress; scaffolding exists).
-3. **Storage Drivers/Backends (`drivers/block/`, `drivers/storage/`, & `stacks/storage/fs/`):** Separate actual backend implementations. Includes ramfs, devfs, tmpfs, flashfs (log-structured for small devices), block-backed local FS, network/distributed/cloud adapters, automotive partitioned storage, and read-only image FS for appliances.
-4. **Userspace/UAPI Layer (`uapi/include/fs/`):** Exposes a clean, language-agnostic UAPI/SDK for file, directory, metadata, mount/query, and notification/watch operations, with optional POSIX compatibility.
+It defines what is **allowed**, **forbidden**, and **owned** by each layer. It does **not** describe implementation maturity or roadmap sequencing.
 
----
-
-## 2. Capability Matrix & Storage Profiles
-
-Bharat-OS does not optimize first for "desktop POSIX completeness." It optimizes for a **filesystem capability matrix**, supporting various deployment classes through explicit storage profiles.
-
-### 2.1 Profile Definitions
-
-*   **A. Tiny / MPU / Appliance / Drone Controller (`FS_PROFILE_TINY_RO`, `FS_PROFILE_TINY_RW_LOG`, `FS_PROFILE_APPLIANCE`)**
-    *   Tiny code size, static mount layout, mostly read-only or append-log.
-    *   Predictable latency, flash-aware write behavior, minimal namespace complexity.
-    *   Optional/no page cache.
-*   **B. Mobile / Automotive / Appliance with Richer UX (`FS_PROFILE_MOBILE`, `FS_PROFILE_AUTOMOTIVE`)**
-    *   Per-app/per-domain namespace control, journaling or crash consistency.
-    *   Notification/watch support, better caching, removable media support.
-    *   Secure partitioning, profile-aware storage classes.
-*   **C. Cloud / Edge / Server (`FS_PROFILE_CLOUD`)**
-    *   Scalable mount/namespace model, page cache/writeback sophistication, high IOPS backends.
-    *   Richer metadata, quotas/snapshots, remote FS integration, observability.
+For implementation status, see `file-system-detailed-design.md`.
+For delivery sequencing, see `roadmap.md`.
+For sandbox policy details, see `sandbox-policy.md`.
 
 ---
 
-## 3. Crash Consistency Tiers
+## 2. Ownership matrix (canonical)
 
-*   **Tier 1:** Best effort / volatile only (ramfs/tmpfs/devfs).
-*   **Tier 2:** Small-device log or copy-on-write metadata (flash/appliance/drone).
-*   **Tier 3:** Journaled/block-backed consistency (mobile/automotive/general systems).
-*   **Tier 4:** Advanced scalable/server features (snapshots/quotas/replication/integrity scrub).
-
----
-
-## 4. Capability-Governed FS Access
-
-The capability model is mandatory across services and IPC boundaries. Filesystem objects define:
-*   Object type
-*   Allowed rights (lookup, read, write, append, create, delete, execute, mount, remount, admin, watch, setattr)
-*   Scope
-*   Handle lifetime
-*   Revoke behavior
+| Area | Primary ownership | Must do | Must not do |
+|---|---|---|---|
+| `drivers/block/*` | Block frontend engines | Consume normalized block requests, submit hardware-facing I/O | Path parsing, namespace logic, mount policy, POSIX permission semantics |
+| `drivers/storage/*` | Transport/controller specialization | Implement protocol/controller queueing and device management | Path policy, VFS policy, capability policy decisions |
+| `stacks/storage/*` | Reusable storage primitives | Provide block/cache/profile/backend adapter building blocks | Own user ABI contract or global namespace policy |
+| `services/system/filesystem/*` | Filesystem service policy | Own namespace, mount, FD lifecycle, capability-aware access policy, request dispatch | Push policy back into kernel internals |
+| `kernel/include/fs/*` | Shared kernel-service contract types | Define minimal shared ABI/type contracts needed by both sides | Encode namespace/mount/path policy |
+| `kernel/src/fs/*` | Transitional mechanism-only compatibility surface | Keep minimal dispatch/forwarding/error bridging while migration completes | Introduce new pathname, namespace, mount, or sandbox policy |
+| `lib/fs/*` | Client boundary | Provide stable client entrypoints while service IPC/runtime matures | Re-implement service policy logic |
 
 ---
 
-## 5. Mount & Namespace Model
+## 3. Layer contract
 
-*   **Small-Device Mode:** Fixed mount table, no dynamic mount namespaces.
-*   **Large-Device/Cloud Mode:** Global early boot namespace, system namespace, and per-process namespace (chroot-like environments), with read-only/read-write mounts and optional bind-like remaps.
+### Layer A — Drivers (`drivers/block`, `drivers/storage`)
+
+- Hardware/transport mechanism only.
+- No policy authority for namespace, mount, descriptor, or capability semantics.
+
+### Layer B — Storage stack (`stacks/storage`)
+
+- Reusable mechanisms (block API, cache, profile resolution, backend adapters).
+- May encode tunable behavior, but not user-visible policy ownership.
+
+### Layer C — Filesystem service (`services/system/filesystem`)
+
+- Sole owner of:
+  - namespace visibility,
+  - mount policy,
+  - file descriptor lifecycle,
+  - capability interpretation for filesystem access.
+
+### Layer D — Kernel compatibility surface (`kernel/include/fs`, `kernel/src/fs`)
+
+- Transitional surface only.
+- Kernel stays mechanism-oriented and migration-safe.
+
+### Layer E — Client boundary (`lib/fs`)
+
+- Stable call boundary for applications/components during transport/runtime migration.
+- Must remain thin and policy-neutral.
+
+---
+
+## 4. Kernel FS transitional allowlist (normative)
+
+`kernel/src/fs/*` is temporary and constrained.
+
+### Allowed in kernel FS transitional code
+
+1. ABI-preserving stubs and forwarding shims.
+2. Shared object/type plumbing strictly required for compatibility.
+3. Minimal dispatch glue to reach service-owned implementation.
+4. Error-code forwarding/translation without policy reinterpretation.
+5. Validation hooks limited to structural sanity checks.
+
+### Forbidden in kernel FS transitional code
+
+1. Pathname policy (path prefix authorization, directory policy, path ACL logic).
+2. Namespace policy (mount namespace visibility, remap rules, per-process namespace shaping).
+3. Mount policy (who may mount, mount flag governance, storage-class admission).
+4. Sandbox policy (`noexec/nodev/nosuid` policy ownership, sandbox defaulting, tenant policy matrices).
+5. Rich capability interpretation beyond minimal validation hooks.
+
+Any new kernel FS code must justify itself as transitional mechanism support and must not expand policy ownership.
+
+---
+
+## 5. Capability and authority contract
+
+- No ambient authority assumptions.
+- Filesystem authority is capability-scoped and enforced by service-owned policy.
+- Service-level capability checks must gate namespace, mount, FD, and storage-class decisions.
+- Kernel transitional path may validate structure, but policy decisions remain service-owned.
+
+---
+
+## 6. Storage classes (contract-level)
+
+Bharat-OS storage-class policy distinguishes at least:
+
+- filesystem mounts,
+- raw block interfaces,
+- blob/object backends.
+
+Authorization for storage-class use is service-owned policy, with sandbox policy rules defined in `sandbox-policy.md`.
+
+---
+
+## 7. Change-control rules for this contract
+
+A storage/filesystem PR must update this document when it changes any normative boundary involving:
+
+- ownership movement across driver/stack/service/kernel/lib layers,
+- kernel transitional allowlist scope,
+- capability/policy ownership boundaries.
+
+If implementation diverges from this contract, implementation must be fixed or deviation must be explicitly approved and documented in the same change.

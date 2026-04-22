@@ -1,5 +1,5 @@
 #include "hal/hal_discovery.h"
-#include "hal/hal_cpu_topology.h"
+#include <hal/hal_cpu_topology.h>
 #include "arch/arch_cpu_caps.h"
 #include "boot/boot_info.h"
 #include <stddef.h>
@@ -23,6 +23,11 @@ bool hal_cpu_topology_query(hal_cpu_topology_info_t *out) {
     if (discovery && discovery->topology.cpu_count > 0U) {
         discovered = discovery->topology.cpu_count;
     }
+    if (discovered > 32U) {
+        discovered = 32U;
+    }
+
+    uint32_t valid_cpu_mask = (discovered == 32U) ? UINT32_MAX : ((1U << discovered) - 1U);
 
     out->discovered_cpu_count = discovered;
     out->valid_cpu_mask = (discovered == 32U) ? UINT32_MAX : ((1U << discovered) - 1U);

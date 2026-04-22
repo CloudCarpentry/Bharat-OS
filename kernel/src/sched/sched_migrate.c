@@ -23,7 +23,7 @@ void sched_balance_once(void) {
     return;
   }
 
-  kthread_t *candidate = sched_pick_next_ready(busiest);
+  bh_thread_t *candidate = sched_pick_next_ready(busiest);
   if (!candidate || candidate == g_cpu_locals[busiest].runqueue.idle_thread) {
     return;
   }
@@ -42,7 +42,7 @@ void sched_balance_once(void) {
   (void)sched_enqueue(candidate, idlest);
 }
 
-int sched_migrate_task(kthread_t *thread, uint32_t new_node) {
+int sched_migrate_task(bh_thread_t *thread, uint32_t new_node) {
   if (!thread || new_node >= g_active_core_count) {
     return -1;
   }
@@ -100,7 +100,7 @@ int sched_set_thread_preferred_node(uint64_t tid, uint8_t node_id) {
 }
 
 int sched_sys_set_affinity(uint64_t tid, uint32_t affinity_mask) {
-  kthread_t *thread = sched_find_thread_by_id(tid);
+  bh_thread_t *thread = sched_find_thread_by_id(tid);
   if (!thread || affinity_mask == 0U) {
     return -1;
   }
@@ -126,7 +126,7 @@ int sched_throttle_core(uint32_t core_id) {
   return 0;
 }
 
-int sched_request_remote_handoff(kthread_t *thread, uint32_t target_core, uint32_t auth_token) {
+int sched_request_remote_handoff(bh_thread_t *thread, uint32_t target_core, uint32_t auth_token) {
   if (!thread || target_core >= g_active_core_count) {
     return -1; // Invalid argument
   }

@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include "../../kernel/include/capability.h"
+#include "hal/hal_cpu_topology.h"
 
 /*
  * Bharat-OS Subsystem Abstraction Interface
@@ -51,6 +52,7 @@ typedef struct {
 
     // Limits and Configuration
     uint64_t memory_limit_mb;
+    uint32_t requested_cpu_mask;
     uint32_t cpu_core_allocation_mask;
     subsys_alloc_config_t alloc_config;
 
@@ -61,13 +63,16 @@ typedef struct {
     int is_running;
 } subsys_instance_t;
 
-#include <hal/hal_cpu_topology.h>
-
-// Pure resolver function for CPU mask calculation
-uint32_t subsys_resolve_effective_cpu_mask(const hal_cpu_topology_info_t* topology, const subsys_alloc_config_t* config, uint32_t requested_mask);
+uint32_t subsys_resolve_effective_cpu_mask(
+    const hal_cpu_topology_info_t* topology,
+    uint32_t requested_mask,
+    const subsys_alloc_config_t* config
+);
 
 // API to spawn a new subsystem instance
-int subsys_create(subsys_type_t type, subsys_exec_mode_t mode, const subsys_alloc_config_t* alloc_cfg, subsys_instance_t* out_instance);
+int subsys_create(subsys_type_t type, subsys_exec_mode_t mode, subsys_instance_t* out_instance);
+int subsys_create_with_config(subsys_type_t type, subsys_exec_mode_t mode, const subsys_alloc_config_t* cfg, subsys_instance_t* out_instance);
+int subsys_set_alloc_config(subsys_instance_t* instance, const subsys_alloc_config_t* cfg);
 
 // Load the root filesystem or executable environment for the subsystem
 int subsys_load_env(subsys_instance_t* instance, const char* root_path);

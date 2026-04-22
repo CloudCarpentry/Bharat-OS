@@ -18,14 +18,14 @@
 
 typedef struct {
     uint8_t in_use;
-    kthread_t thread;
+    bh_thread_t thread;
     cpu_context_t context;
     ai_sched_context_t ai_ctx;
 } thread_slot_t;
 
 typedef struct {
     uint8_t in_use;
-    kprocess_t process;
+    bh_process_t process;
 } process_slot_t;
 
 typedef struct {
@@ -38,7 +38,7 @@ static sched_rq_t g_cores[SCHED_MAX_CORES];
 static thread_slot_t g_threads[SCHED_MAX_CORES][SCHED_MAX_THREADS];
 static process_slot_t g_processes[SCHED_MAX_CORES][SCHED_MAX_PROCESSES];
 
-static kthread_t* g_current;
+static bh_thread_t* g_current;
 static sched_policy_t g_policy = SCHED_POLICY_PRIORITY;
 static uint64_t g_next_thread_id = 1U;
 static uint64_t g_next_process_id = 1U;
@@ -137,9 +137,9 @@ static void sched_process_pending_ai_suggestions(void) {
     }
 }
 
-static kthread_t* sched_pick_next_ready(void) {
+static bh_thread_t* sched_pick_next_ready(void) {
     size_t start = 0U;
-    kthread_t* best = NULL;
+    bh_thread_t* best = NULL;
 
     if (g_current) {
         thread_slot_t* cur = sched_find_thread_slot_by_tid(g_current->thread_id);
@@ -173,7 +173,7 @@ static kthread_t* sched_pick_next_ready(void) {
     return best;
 }
 
-static void sched_update_telemetry(kthread_t* thread) {
+static void sched_update_telemetry(bh_thread_t* thread) {
     if (!thread || !thread->ai_sched_ctx) {
         return;
     }
@@ -185,7 +185,7 @@ static void sched_update_telemetry(kthread_t* thread) {
                             (uint32_t)thread->context_switch_count);
 }
 
-static void sched_switch_to(kthread_t* next) {
+static void sched_switch_to(bh_thread_t* next) {
     if (!next) {
         return;
     }
@@ -207,7 +207,7 @@ static void sched_switch_to(kthread_t* next) {
 
 static void sched_monitor_task(void) {
     while (1) {
-        kthread_yield();
+        bh_thread_yield();
     }
 }
 
@@ -238,7 +238,7 @@ void sched_wait_queue_init(wait_queue_t* queue) {
     }
 }
 
-void sched_wait_queue_enqueue(wait_queue_t* queue, kthread_t* thread) {
+void sched_wait_queue_enqueue(wait_queue_t* queue, bh_thread_t* thread) {
     if (!queue || !thread) {
         return;
     }
@@ -254,12 +254,12 @@ void sched_wait_queue_enqueue(wait_queue_t* queue, kthread_t* thread) {
     }
 }
 
-kthread_t* sched_wait_queue_dequeue(wait_queue_t* queue) {
+bh_thread_t* sched_wait_queue_dequeue(wait_queue_t* queue) {
     if (!queue || !queue->head) {
         return NULL;
     }
 
-    kthread_t* thread = queue->head;
+    bh_thread_t* thread = queue->head;
 
     queue->head = thread->next_waiter;
     if (!queue->head) {
@@ -279,7 +279,7 @@ void sched_block(void) {
     }
 }
 
-kprocess_t* process_create(const char* name) {
+bh_process_t* process_create(const char* name) {
     (void)name;
 
     process_slot_t* slot = sched_find_free_process_slot();
@@ -301,7 +301,7 @@ kprocess_t* process_create(const char* name) {
     return &slot->process;
 }
 
-int sched_unregister_process(kprocess_t* process) {
+int sched_unregister_process(bh_process_t* process) {
     if (!process) return -1;
     for (size_t core = 0; core < SCHED_MAX_CORES; ++core) {
         sched_rq_t *rq = &g_cores[core];
@@ -317,21 +317,21 @@ int sched_unregister_process(kprocess_t* process) {
     return -1;
 }
 
-int process_destroy(kprocess_t* process) {
+int process_destroy(bh_process_t* process) {
     if (!process) {
         return -1;
     }
     return sched_unregister_process(process);
 }
 
-kthread_t* thread_create(kprocess_t* parent, void (*entry_point)(void)) {
+bh_thread_t* thread_create(bh_process_t* parent, void (*entry_point)(void)) {
     thread_slot_t* slot = sched_find_free_thread_slot();
     if (!slot) {
         return NULL;
     }
 
     slot->in_use = 1U;
-    slot->thread = (kthread_t){0};
+    slot->thread = (bh_thread_t){0};
     slot->thread.thread_id = g_next_thread_id++;
     slot->thread.process_id = parent ? parent->process_id : 0U;
     slot->thread.process = parent;
@@ -355,7 +355,7 @@ kthread_t* thread_create(kprocess_t* parent, void (*entry_point)(void)) {
     return &slot->thread;
 }
 
-int thread_destroy(kthread_t* thread) {
+int thread_destroy(bh_thread_t* thread) {
     if (!thread) return -1;
     thread_slot_t* slot = sched_find_thread_slot_by_tid(thread->thread_id);
     if (slot) {
@@ -365,9 +365,9 @@ int thread_destroy(kthread_t* thread) {
     return 0;
 }
 
-void kthread_yield(void) {
+void bh_thread_yield(void) {
     sched_process_pending_ai_suggestions();
-    kthread_t* next = sched_pick_next_ready();
+    bh_thread_t* next = sched_pick_next_ready();
     if (next) {
         sched_switch_to(next);
     }
@@ -380,10 +380,10 @@ void sched_sleep(uint64_t millis) {
 
     g_current->wake_deadline_ms = g_sched_ticks + millis;
     g_current->state = THREAD_STATE_SLEEPING;
-    kthread_yield();
+    bh_thread_yield();
 }
 
-void sched_wakeup(kthread_t* thread) {
+void sched_wakeup(bh_thread_t* thread) {
     if (!thread) {
         return;
     }
@@ -412,7 +412,7 @@ void sched_on_timer_tick(void) {
         g_current->cpu_time_consumed++;
         sched_update_telemetry(g_current);
 
-        kthread_t* preempt = sched_pick_next_ready();
+        bh_thread_t* preempt = sched_pick_next_ready();
         if (preempt && preempt->priority > g_current->priority) {
             sched_switch_to(preempt);
             return;
@@ -420,15 +420,15 @@ void sched_on_timer_tick(void) {
 
         if (g_current->cpu_time_consumed >= g_current->time_slice_ms) {
             g_current->cpu_time_consumed = 0U;
-            kthread_yield();
+            bh_thread_yield();
         }
         return;
     }
 
-    kthread_yield();
+    bh_thread_yield();
 }
 
-kthread_t* sched_current_thread(void) {
+bh_thread_t* sched_current_thread(void) {
     return g_current;
 }
 
@@ -447,7 +447,7 @@ int g_stub_thread_raise_fault_called = 0;
 int g_stub_last_priority = -1;
 uint64_t g_stub_last_affinity_mask = 0;
 int g_stub_last_fault_code = 0;
-kprocess_t* g_stub_current_process = NULL;
+bh_process_t* g_stub_current_process = NULL;
 
 void sched_stub_reset(void) {
     g_stub_sched_sys_set_priority_ret = 0;
@@ -483,7 +483,7 @@ long kstatus_to_sysret(int32_t st) {
     return g_stub_kstatus_to_sysret_ret;
 }
 
-kprocess_t* sched_current_process(void) {
+bh_process_t* sched_current_process(void) {
     if (g_stub_current_process != NULL) {
         return g_stub_current_process;
     }
@@ -491,11 +491,11 @@ kprocess_t* sched_current_process(void) {
 }
 
 address_space_t* sched_current_aspace(void) {
-    kprocess_t* p = sched_current_process();
+    bh_process_t* p = sched_current_process();
     return p ? p->addr_space : NULL;
 }
 
-int thread_raise_fault(kthread_t *thread, thread_fault_t fault) {
+int thread_raise_fault(bh_thread_t *thread, thread_fault_t fault) {
     (void)thread;
     g_stub_thread_raise_fault_called++;
     g_stub_last_fault_code = fault;
@@ -507,7 +507,7 @@ int sched_sys_sleep(uint64_t millis) {
     return 0;
 }
 
-void sched_wakeup_with_priority(kthread_t* thread, uint32_t wakeup_priority) {
+void sched_wakeup_with_priority(bh_thread_t* thread, uint32_t wakeup_priority) {
     (void)wakeup_priority;
     sched_wakeup(thread);
 }
@@ -516,8 +516,8 @@ void sched_set_policy(sched_policy_t policy) {
     g_policy = policy;
 }
 
-int sched_sys_thread_create(kprocess_t* parent, void (*entry_point)(void), uint64_t* out_tid) {
-    kthread_t* t = thread_create(parent, entry_point);
+int sched_sys_thread_create(bh_process_t* parent, void (*entry_point)(void), uint64_t* out_tid) {
+    bh_thread_t* t = thread_create(parent, entry_point);
     if (!t) {
         return -1;
     }
@@ -537,7 +537,7 @@ int sched_sys_thread_destroy(uint64_t tid) {
     return thread_destroy(&slot->thread);
 }
 
-void sched_inherit_priority(kthread_t* thread, uint32_t new_priority) {
+void sched_inherit_priority(bh_thread_t* thread, uint32_t new_priority) {
     if (!thread) {
         return;
     }
@@ -547,7 +547,7 @@ void sched_inherit_priority(kthread_t* thread, uint32_t new_priority) {
     }
 }
 
-void sched_restore_priority(kthread_t* thread) {
+void sched_restore_priority(bh_thread_t* thread) {
     if (!thread) {
         return;
     }
@@ -555,12 +555,12 @@ void sched_restore_priority(kthread_t* thread) {
     thread->priority = thread->base_priority;
 }
 
-kthread_t* sched_find_thread_by_id(uint64_t tid) {
+bh_thread_t* sched_find_thread_by_id(uint64_t tid) {
     thread_slot_t* slot = sched_find_thread_slot_by_tid(tid);
     return slot ? &slot->thread : NULL;
 }
 
-int sched_adjust_priority(kthread_t* thread, uint32_t new_priority) {
+int sched_adjust_priority(bh_thread_t* thread, uint32_t new_priority) {
     if (!thread) {
         return -1;
     }
@@ -585,7 +585,7 @@ int sched_set_thread_priority(uint64_t tid, uint32_t new_priority) {
     return sched_adjust_priority(sched_find_thread_by_id(tid), new_priority);
 }
 
-int sched_migrate_task(kthread_t* thread, uint32_t new_node) {
+int sched_migrate_task(bh_thread_t* thread, uint32_t new_node) {
     if (!thread) {
         return -1;
     }
@@ -616,7 +616,7 @@ int sched_ai_apply_suggestion(const ai_suggestion_t* suggestion) {
         return -1;
     }
 
-    kthread_t* thread = sched_find_thread_by_id((uint64_t)suggestion->target_id);
+    bh_thread_t* thread = sched_find_thread_by_id((uint64_t)suggestion->target_id);
     switch (suggestion->action) {
         case AI_ACTION_ADJUST_PRIORITY:
             return sched_adjust_priority(thread, suggestion->value);
@@ -625,7 +625,7 @@ int sched_ai_apply_suggestion(const ai_suggestion_t* suggestion) {
         case AI_ACTION_THROTTLE_CORE:
             return 0; // Throttle core not implemented fully in stub
         case AI_ACTION_KILL_TASK: {
-            kthread_t* thread = sched_find_thread_by_id((uint64_t)suggestion->target_id);
+            bh_thread_t* thread = sched_find_thread_by_id((uint64_t)suggestion->target_id);
             if (thread) {
                 return thread_destroy(thread);
             }
@@ -654,7 +654,7 @@ int sched_enqueue_ai_suggestion(const ai_suggestion_t* suggestion) {
          suggestion->action == AI_ACTION_MIGRATE_TASK) &&
         g_current &&
         g_current->thread_id == suggestion->target_id) {
-        kthread_yield();
+        bh_thread_yield();
     }
 
     return 0;
@@ -666,7 +666,7 @@ void sched_disable_tick_for_core(uint32_t core_id) {
 }
 #endif
 
-int sched_enqueue(kthread_t *thread, uint32_t core_id) {
+int sched_enqueue(bh_thread_t *thread, uint32_t core_id) {
     (void)core_id;
     if (!thread) {
         return -1;
