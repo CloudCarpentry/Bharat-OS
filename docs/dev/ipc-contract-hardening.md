@@ -1,5 +1,11 @@
 # IPC/URPC Contract Hardening (Developer Branch)
 
+### Contract Status
+- **Spec**: ✅ Documented and versioned
+- **Implemented**: 🚧 Pending kernel/service behavior merge
+- **Validated**: ❌ Pending stress/fault-injection tests
+
+
 ## Scope and intent
 
 This change hardens the existing IPC contract path without introducing a parallel IPC model. It keeps layer ownership intact:

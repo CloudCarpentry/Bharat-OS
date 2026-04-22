@@ -58,13 +58,13 @@ typedef struct {
     uint64_t wcet_ms;
 } bh_thread_attr_t;
 
-struct kthread;
-typedef struct kthread bh_thread_t;
-typedef struct kthread kthread_t;
+struct bh_thread;
+typedef struct bh_thread bh_thread_t;
+typedef struct bh_thread kthread_t;
 
-struct kprocess;
-typedef struct kprocess bh_process_t;
-typedef struct kprocess kprocess_t;
+struct bh_process;
+typedef struct bh_process bh_process_t;
+typedef struct bh_process kprocess_t;
 
 struct thread_slot;
 struct process_slot;

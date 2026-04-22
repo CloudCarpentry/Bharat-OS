@@ -9,6 +9,12 @@ tags: ["architecture", "layering", "freestanding", "lint"]
 
 # Freestanding Layer Contract (Kernel/HAL/Arch)
 
+### Contract Status
+- **Spec**: ✅ Documented and versioned
+- **Implemented**: 🚧 Pending kernel/service behavior merge
+- **Validated**: ❌ Pending stress/fault-injection tests
+
+
 This document formalizes a rule that already existed across multiple Bharat-OS architecture documents:
 
 - **Kernel = mechanism**

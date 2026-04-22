@@ -1,5 +1,11 @@
 # Thread Lifecycle and State Machine
 
+### Contract Status
+- **Spec**: ✅ Documented and versioned
+- **Implemented**: 🚧 Pending kernel/service behavior merge
+- **Validated**: ❌ Pending stress/fault-injection tests
+
+
 ## Overview
 A Bharat-OS Thread transitions through defined states in the kernel scheduler. These states control whether the thread can execute on the CPU or if it is blocked waiting for an event (e.g., an IPC message).
 

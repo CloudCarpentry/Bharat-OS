@@ -1,5 +1,11 @@
 # Service Lifecycle Contract
 
+### Contract Status
+- **Spec**: ✅ Documented and versioned
+- **Implemented**: 🚧 Pending kernel/service behavior merge
+- **Validated**: ❌ Pending stress/fault-injection tests
+
+
 This document defines the generic contract for system and user-space service lifecycles in Bharat-OS. It serves as the definitive reference for how services transition between states, the boundaries of ownership during those transitions, and policies for recovery, failure, and readiness.
 
 ## 1. Goal & Scope

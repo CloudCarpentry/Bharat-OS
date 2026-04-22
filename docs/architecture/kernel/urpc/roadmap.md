@@ -8,7 +8,7 @@ Based on current code analysis in `kernel/src/ipc/` and `<advanced/multikernel.h
 - 🟡 **Capwire Translation & Validation**: The proxying of capabilities across cores via Capwire descriptors is in development. Authorization is currently stubbed (`mk_authorize_message` in `mk_dispatch.c`). Complex derivation chains across nodes require more robust tracking and validation.
 - 🟡 **Interrupt Wakeups**: Cross-core IPIs to wake sleeping threads waiting on uRPC rings are partially implemented but need architecture-specific hardening (e.g., x86 Local APIC IPIs, ARM GIC SGIs).
 - 🟡 **Remote Scheduling Enqueue**: Baseline implementation of `MK_MSG_THREAD_HANDOFF_REQ` message contract, validation, and execution to test the L0 fabric.
-- 🔴 **L1 Protocol Engine (`mk_proto.c`)**: Currently missing/scaffold. The uRPC spine lacks an L1 Protocol Engine responsible for ACK/NACK semantics, retry policies, duplicate suppression, and transaction lifecycles.
+- 🟡 **L1 Protocol Engine (`mk_proto.c`)**: Partial protocol engine now exists including policy classification, transaction registry, ACK/NACK completion, and bounded timeout state transitions. (Duplicate suppression and robust scheduling integration still pending.)
 - 🔴 **BIDL Stub Generator**: The `bidlc` compiler for generating C stubs from Interface Definition Language files (`bidl-v1.md`) is currently a prototype/deferred for production.
 
 *Note: For the local endpoint and synchronous IPC status, please see the [IPC Roadmap](../ipc/roadmap.md).*

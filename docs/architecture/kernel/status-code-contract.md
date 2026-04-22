@@ -1,5 +1,11 @@
 # Status Code and Error Unification Contract
 
+### Contract Status
+- **Spec**: ✅ Documented and versioned
+- **Implemented**: 🚧 Pending kernel/service behavior merge
+- **Validated**: ❌ Pending stress/fault-injection tests
+
+
 This document outlines the strict mapping rules between the internal kernel status space (`kstatus_t`) and the user-facing UAPI status space (`sys_errno_t`).
 
 ## 1. Spaces and Ownership

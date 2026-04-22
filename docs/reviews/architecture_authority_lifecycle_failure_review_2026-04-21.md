@@ -157,3 +157,12 @@ The March 24 review is **not fully obsolete**, but it is **too broad and partial
 - Focus execution on enforcement depth, runtime guarantees, and validation evidence.
 
 This document replaces the previous review as the current baseline.
+
+---
+
+## Addendum (2026-04-22): IPC/URPC Reliability Progress
+Following this review, the **IPC/URPC Reliability Contract** has advanced from a pure scaffold to a **partial implementation** gate.
+- A fixed-size transaction registry has been added to `mk_proto.c`.
+- `ACK`/`NACK` completions are now routed and tracked by transaction ID.
+- Bounded timeouts transition expired transactions to a timeout state.
+- **Validation gate** remains open pending stress/fault-injection tests.

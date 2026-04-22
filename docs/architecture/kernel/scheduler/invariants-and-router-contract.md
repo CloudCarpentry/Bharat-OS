@@ -1,5 +1,11 @@
 # Scheduler Invariants and Router Contract
 
+### Contract Status
+- **Spec**: ✅ Documented and versioned
+- **Implemented**: 🚧 Pending kernel/service behavior merge
+- **Validated**: ❌ Pending stress/fault-injection tests
+
+
 ## Purpose
 
 This document defines the non-negotiable scheduler invariants and the router-layer API contract that must remain valid during and after the `sched.c` decomposition.

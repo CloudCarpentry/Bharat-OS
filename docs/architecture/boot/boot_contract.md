@@ -1,5 +1,11 @@
 # Canonical Boot Contract
 
+### Contract Status
+- **Spec**: ✅ Documented and versioned
+- **Implemented**: 🚧 Pending kernel/service behavior merge
+- **Validated**: ❌ Pending stress/fault-injection tests
+
+
 **Status**: Active
 **Version**: 1.0
 **Owner**: Bharat-OS Core Team

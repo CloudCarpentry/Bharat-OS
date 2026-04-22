@@ -7,6 +7,12 @@ version: 1.0
 
 # Personality Performance Contract
 
+### Contract Status
+- **Spec**: ✅ Documented and versioned
+- **Implemented**: 🚧 Pending kernel/service behavior merge
+- **Validated**: ❌ Pending stress/fault-injection tests
+
+
 Compatibility is not enough. Personality support on Bharat-OS must be performance-grade. If the Linux or Android personality acts as a slow translation layer, it will only be tolerated for demos. Our goal is **near-native semantics, near-native performance, and native-grade observability** for each personality.
 
 ## 1. The Core Rule

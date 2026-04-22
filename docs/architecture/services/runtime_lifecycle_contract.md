@@ -1,5 +1,11 @@
 # Service Runtime Lifecycle Contract
 
+### Contract Status
+- **Spec**: ✅ Documented and versioned
+- **Implemented**: 🚧 Pending kernel/service behavior merge
+- **Validated**: ❌ Pending stress/fault-injection tests
+
+
 ## Overview
 
 Bharat-OS enforces a strict architectural boundary: the kernel is mechanism only, while user-space services handle policy and orchestration. This document formalizes the runtime behavior of the core OS services responsible for lifecycle management: `servicemgr`, `process_manager`, and `vm_manager`.

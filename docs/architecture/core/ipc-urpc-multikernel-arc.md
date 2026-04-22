@@ -55,14 +55,16 @@ All system interactions must follow:
 - `kernel/src/ipc/multikernel.c`
 - `kernel/include/advanced/multikernel.h`
 
-### 🔹 L1 — Delivery Layer (Protocol Engine) ❗ Missing (Critical Gap)
+### 🔹 L1 — Delivery Layer (Protocol Engine) 🟡 Partial
 Responsible for:
-- ACK / NACK
-- Timeout handling
-- Retry policy
-- Duplicate suppression
-- Transaction lifecycle
+- ACK / NACK (Implemented)
+- Timeout handling (Implemented)
+- Retry policy (Policy helpers implemented)
+- Duplicate suppression (Pending)
+- Transaction lifecycle (Partial: Begin, Complete, Poll Timeouts)
 
+👉 **To be implemented in:**
+- `kernel/src/ipc/mk_proto.c`
 👉 **To be implemented in:**
 - `kernel/src/ipc/mk_proto.c`
 

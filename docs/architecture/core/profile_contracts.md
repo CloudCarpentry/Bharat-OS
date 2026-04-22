@@ -14,6 +14,12 @@ tags:
 
 # Bharat-OS Profile Contracts and Mechanisms
 
+### Contract Status
+- **Spec**: ✅ Documented and versioned
+- **Implemented**: 🚧 Pending kernel/service behavior merge
+- **Validated**: ❌ Pending stress/fault-injection tests
+
+
 The capability kernel of Bharat-OS avoids hardcoding policy or profile data natively. Instead, it relies on a standardized set of declarative primitives and mechanism contracts to enforce the mixed-criticality execution model. The architecture mandates that these first-class concepts are not scattered behaviors but strict contracts binding user-space policy to kernel capabilities.
 
 This document outlines the core contracts required to implement the RT, GP, and MIX profiles in Bharat-OS.

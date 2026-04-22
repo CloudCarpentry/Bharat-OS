@@ -1,3 +1,4 @@
+#include "../../include/ipc/mk_proto.h"
 #include "../../include/ipc/mk_dispatch.h"
 #include "../../include/hal/hal.h"
 #include "sched/sched.h"
@@ -207,8 +208,10 @@ int mk_dispatch_message(mk_channel_t *channel, urpc_msg_t *msg) {
     // 6. Action / routing
     switch (msg->type) {
         case MK_MSG_TYPE_ACK:
+            mk_proto_txn_complete(msg->msg_id, MK_REASON_SUCCESS);
+            break;
         case MK_MSG_TYPE_NACK:
-            // Route to transaction table for ACK/NACK completion
+            mk_proto_txn_complete(msg->msg_id, MK_REASON_UNSUPPORTED);
             break;
 
         case MK_MSG_FRAME_ALLOC_REQ:
