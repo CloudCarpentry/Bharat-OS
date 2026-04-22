@@ -66,10 +66,10 @@ capability_table_t *g_mock_cap_table;
 #include "sched.h"
 
 
-extern kprocess_t* g_stub_current_process;
+extern bh_process_t* g_stub_current_process;
 
 int main(void) {
-    static kprocess_t proc;
+    static bh_process_t proc;
     g_stub_current_process = &proc;
     proc.security_sandbox_ctx = g_mock_cap_table;
     // initialize g_memory_fs

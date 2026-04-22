@@ -346,7 +346,7 @@ static void runtime_enter_normal(const boot_info_t *boot) {
     kernel_start_init_service();
 
     // Force first reschedule to start sysmgr immediately
-    kthread_yield();
+    bh_thread_yield();
 
     // Controlled idle
     while (1) {

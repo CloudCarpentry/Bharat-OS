@@ -54,15 +54,15 @@ void sched_ready_bitmap_clear_if_empty(sched_rq_t *rq, uint32_t prio);
 int sched_pick_priority_from_bitmap(const sched_rq_t *rq, int highest);
 
 // CFS Functions
-void sched_cfs_enqueue(sched_rq_t *rq, kthread_t *thread);
-void sched_cfs_dequeue(sched_rq_t *rq, kthread_t *thread);
-kthread_t *sched_cfs_pick_next(sched_rq_t *rq);
-void sched_cfs_update_vruntime(sched_rq_t *rq, kthread_t *thread, uint64_t delta_exec);
+void sched_cfs_enqueue(sched_rq_t *rq, bh_thread_t *thread);
+void sched_cfs_dequeue(sched_rq_t *rq, bh_thread_t *thread);
+bh_thread_t *sched_cfs_pick_next(sched_rq_t *rq);
+void sched_cfs_update_vruntime(sched_rq_t *rq, bh_thread_t *thread, uint64_t delta_exec);
 
 // EDF Functions
-void sched_edf_enqueue(sched_rq_t *rq, kthread_t *thread);
-void sched_edf_dequeue(sched_rq_t *rq, kthread_t *thread);
-kthread_t *sched_edf_pick_next(sched_rq_t *rq);
+void sched_edf_enqueue(sched_rq_t *rq, bh_thread_t *thread);
+void sched_edf_dequeue(sched_rq_t *rq, bh_thread_t *thread);
+bh_thread_t *sched_edf_pick_next(sched_rq_t *rq);
 
 void sched_validate_rq(sched_rq_t *rq);
 
@@ -193,7 +193,7 @@ void sched_detach_thread_from_queues(thread_slot_t *slot) {
   if (!slot) {
     return;
   }
-  kthread_t *thread = &slot->thread;
+  bh_thread_t *thread = &slot->thread;
   uint32_t core_id = sched_clamp_core(thread->bound_core_id);
   sched_rq_t *rq = &g_cpu_locals[core_id].runqueue;
 
@@ -264,7 +264,7 @@ static int sched_enqueue_reap(thread_slot_t *slot) {
   return 0;
 }
 
-int sched_mark_thread_terminated(kthread_t *thread) {
+int sched_mark_thread_terminated(bh_thread_t *thread) {
   if (!thread) {
     return -1;
   }
@@ -310,7 +310,7 @@ void sched_reap_terminated_threads(void) {
   }
 }
 
-extern bool sched_is_core_admissible(kthread_t *t, int cpu_id);
+extern bool sched_is_core_admissible(bh_thread_t *t, int cpu_id);
 
 
 
@@ -332,12 +332,12 @@ static void sched_monitor_task(void) {
         // BSP monitor might do system-wide coordination
       }
     }
-    kthread_yield();
+    bh_thread_yield();
   }
 }
 
 void sched_thread_exit_trampoline(void) {
-  kthread_t *current = sched_current_thread();
+  bh_thread_t *current = sched_current_thread();
   if (current) {
     uint32_t core = sched_clamp_core(hal_cpu_get_id());
     (void)sched_mark_thread_terminated(current);
@@ -411,7 +411,7 @@ void sched_reset_core_runqueues(void) {
   }
 }
 
-static kthread_t *sched_create_bootstrap_thread(kprocess_t *parent,
+static bh_thread_t *sched_create_bootstrap_thread(bh_process_t *parent,
                                                 uint32_t core,
                                                 uint32_t kind,
                                                 void (*entry_point)(void),
@@ -478,9 +478,9 @@ void sched_init(void) {
 
   sched_reset_core_runqueues();
 
-  kprocess_t *idle_process = process_create("idle_process");
+  bh_process_t *idle_process = process_create("idle_process");
   for (uint32_t core = 0; core < g_active_core_count; ++core) {
-    kthread_t *idle = sched_create_bootstrap_thread(
+    bh_thread_t *idle = sched_create_bootstrap_thread(
         idle_process, core, SCHED_BOOTSTRAP_IDLE, sched_idle_task, 0U, 0U);
     g_cpu_locals[core].runqueue.idle_thread = idle;
     g_cpu_locals[core].runqueue.current_thread = idle;
@@ -492,7 +492,7 @@ void sched_init(void) {
   g_sched_initialized = 1U;
 }
 
-kprocess_t *process_create(const char *name) {
+bh_process_t *process_create(const char *name) {
   (void)name;
   process_slot_t *slot = sched_find_free_process_slot();
   if (!slot) {
@@ -525,7 +525,7 @@ kprocess_t *process_create(const char *name) {
 
 
 
-kthread_t *thread_create_detached(kprocess_t *parent, void (*entry_point)(void)) {
+bh_thread_t *thread_create_detached(bh_process_t *parent, void (*entry_point)(void)) {
   thread_slot_t *slot = sched_find_free_thread_slot();
   if (!slot) {
     return NULL;
@@ -595,8 +595,8 @@ kthread_t *thread_create_detached(kprocess_t *parent, void (*entry_point)(void))
   return &slot->thread;
 }
 
-kthread_t *thread_create(kprocess_t *parent, void (*entry_point)(void)) {
-  kthread_t *thread = thread_create_detached(parent, entry_point);
+bh_thread_t *thread_create(bh_process_t *parent, void (*entry_point)(void)) {
+  bh_thread_t *thread = thread_create_detached(parent, entry_point);
   if (thread && entry_point != (void (*)(void))sched_idle_task) {
     (void)sched_enqueue(thread, thread->bound_core_id);
   }
@@ -605,7 +605,7 @@ kthread_t *thread_create(kprocess_t *parent, void (*entry_point)(void)) {
 
 
 
-kthread_t *sched_find_mutex_owner(void *mutex) {
+bh_thread_t *sched_find_mutex_owner(void *mutex) {
   if (!mutex) {
     return NULL;
   }
@@ -622,7 +622,7 @@ kthread_t *sched_find_mutex_owner(void *mutex) {
   return NULL;
 }
 
-void sched_register_mutex_owner(void *mutex, kthread_t *owner) {
+void sched_register_mutex_owner(void *mutex, bh_thread_t *owner) {
   if (!mutex) {
     return;
   }
@@ -639,7 +639,7 @@ void sched_register_mutex_owner(void *mutex, kthread_t *owner) {
   }
 }
 
-void sched_unregister_mutex_owner(void *mutex, kthread_t *owner) {
+void sched_unregister_mutex_owner(void *mutex, bh_thread_t *owner) {
   if (!mutex) {
     return;
   }
@@ -669,7 +669,7 @@ void sched_unregister_mutex_owner(void *mutex, kthread_t *owner) {
 
 
 
-void sched_update_telemetry(kthread_t *thread) {
+void sched_update_telemetry(bh_thread_t *thread) {
   if (!thread || !thread->ai_sched_ctx) {
     return;
   }
@@ -680,11 +680,11 @@ void sched_update_telemetry(kthread_t *thread) {
                           (uint32_t)thread->context_switch_count);
 }
 
-kthread_t *sched_pick_next_ready(uint32_t core_id) {
+bh_thread_t *sched_pick_next_ready(uint32_t core_id) {
   core_id = sched_clamp_core(core_id);
   sched_rq_t *rq = &g_cpu_locals[core_id].runqueue;
 
-  kthread_t *next = NULL;
+  bh_thread_t *next = NULL;
 
   if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
       next = sched_cfs_pick_next(rq);
@@ -746,7 +746,7 @@ kthread_t *sched_pick_next_ready(uint32_t core_id) {
 
 
 
-kthread_t *sched_pick_next_ready_l0(uint32_t core_id) {
+bh_thread_t *sched_pick_next_ready_l0(uint32_t core_id) {
   return sched_pick_next_ready(core_id);
 }
 
@@ -754,17 +754,17 @@ kthread_t *sched_pick_next_ready_l0(uint32_t core_id) {
 
 
 
-kthread_t *sched_pick_next_ready_l1(uint32_t core_id) {
+bh_thread_t *sched_pick_next_ready_l1(uint32_t core_id) {
   return sched_pick_next_ready(core_id);
 }
 
-void sched_switch_to(kthread_t *next, uint32_t core_id) {
+void sched_switch_to(bh_thread_t *next, uint32_t core_id) {
   if (!next) {
     hal_cpu_enable_interrupts();
     return;
   }
 
-  kthread_t *current = g_cpu_locals[core_id].runqueue.current_thread;
+  bh_thread_t *current = g_cpu_locals[core_id].runqueue.current_thread;
   if (current == next) {
     hal_cpu_enable_interrupts();
     return;
@@ -844,19 +844,19 @@ void sched_switch_to(kthread_t *next, uint32_t core_id) {
 
 
 
-kthread_t *sched_edf_pick_next(sched_rq_t *rq) {
+bh_thread_t *sched_edf_pick_next(sched_rq_t *rq) {
     struct rb_node *left = rb_first(&rq->edf_runqueue);
     if (!left) {
         return NULL;
     }
-    return (kthread_t *)(void *)((char *)left - offsetof(kthread_t, edf_node));
+    return (bh_thread_t *)(void *)((char *)left - offsetof(bh_thread_t, edf_node));
 }
 
 
 
 
 
-void kthread_yield(void) { sched_reschedule(); }
+void bh_thread_yield(void) { sched_reschedule(); }
 
 
 
@@ -869,24 +869,24 @@ void kthread_yield(void) { sched_reschedule(); }
 
 
 
-kthread_t *sched_current_thread(void) {
+bh_thread_t *sched_current_thread(void) {
   return g_cpu_locals[sched_clamp_core(hal_cpu_get_id())].runqueue.current_thread;
 }
 
-kthread_t *sched_current(void) { return sched_current_thread(); }
+bh_thread_t *sched_current(void) { return sched_current_thread(); }
 
-kprocess_t *sched_current_process(void) {
-  kthread_t *t = sched_current_thread();
+bh_process_t *sched_current_process(void) {
+  bh_thread_t *t = sched_current_thread();
   return t ? t->process : NULL;
 }
 
 address_space_t *sched_current_aspace(void) {
-  kprocess_t *p = sched_current_process();
+  bh_process_t *p = sched_current_process();
   return p ? p->addr_space : NULL;
 }
 
 struct capability_table *sched_current_cap_table(void) {
-  kprocess_t *p = sched_current_process();
+  bh_process_t *p = sched_current_process();
   return p ? (struct capability_table *)p->security_sandbox_ctx : NULL;
 }
 
@@ -912,7 +912,7 @@ int sched_sys_sleep(uint64_t millis) {
 
 
 
-kthread_t *sched_find_thread_by_id(uint64_t tid) {
+bh_thread_t *sched_find_thread_by_id(uint64_t tid) {
   thread_slot_t *slot = sched_resolve_tid_owner_slow(tid);
   return slot ? &slot->thread : NULL;
 }
@@ -949,12 +949,12 @@ void sched_disable_tick_for_core(uint32_t core_id) { (void)core_id; }
 
 
 
-kthread_t *sched_cfs_pick_next(sched_rq_t *rq) {
+bh_thread_t *sched_cfs_pick_next(sched_rq_t *rq) {
     struct rb_node *left = rb_first(&rq->cfs_runqueue);
     if (!left) {
         return NULL;
     }
-    return (kthread_t *)(void *)((char *)left - offsetof(kthread_t, cfs_node));
+    return (bh_thread_t *)(void *)((char *)left - offsetof(bh_thread_t, cfs_node));
 }
 
 

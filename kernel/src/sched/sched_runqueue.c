@@ -2,7 +2,7 @@
 #include "sched_internal.h"
 #include "panic.h"
 
-int sched_enqueue(kthread_t *thread, uint32_t core_id) {
+int sched_enqueue(bh_thread_t *thread, uint32_t core_id) {
   if (!thread || thread->priority >= MAX_PRIORITY_LEVELS) {
     return -1;
   }
@@ -110,7 +110,7 @@ int sched_pick_priority_from_bitmap(const sched_rq_t *rq, int highest) {
   return __builtin_ctz(rq->ready_bitmap);
 }
 
-static void sched_dequeue_task_l0(kthread_t *thread, uint32_t core_id) {
+static void sched_dequeue_task_l0(bh_thread_t *thread, uint32_t core_id) {
   (void)core_id;
   if (!thread) {
     return;
@@ -132,15 +132,15 @@ static void sched_dequeue_task_l0(kthread_t *thread, uint32_t core_id) {
   }
 }
 
-void sched_enqueue_task_l0(kthread_t *thread, uint32_t core_id) {
+void sched_enqueue_task_l0(bh_thread_t *thread, uint32_t core_id) {
   (void)sched_enqueue(thread, core_id);
 }
 
-void sched_enqueue_task_l1(kthread_t *thread, uint32_t core_id) {
+void sched_enqueue_task_l1(bh_thread_t *thread, uint32_t core_id) {
   (void)sched_enqueue(thread, core_id);
 }
 
-void sched_dequeue_task_l1(kthread_t *thread, uint32_t core_id) {
+void sched_dequeue_task_l1(bh_thread_t *thread, uint32_t core_id) {
   sched_dequeue_task_l0(thread, core_id);
 }
 
@@ -158,7 +158,7 @@ void sched_validate_rq(sched_rq_t *rq) {
         // Validate min_vruntime is sensible
         struct rb_node *first = rb_first(&rq->cfs_runqueue);
         if (first) {
-            kthread_t *next = (kthread_t *)(void *)((char *)first - offsetof(kthread_t, cfs_node));
+            bh_thread_t *next = (bh_thread_t *)(void *)((char *)first - offsetof(bh_thread_t, cfs_node));
             if (next->vruntime < rq->min_vruntime && rq->min_vruntime - next->vruntime > 1000) {
                 // Minor drift is okay due to rounding, but major divergence is a bug
                 kernel_panic("Runqueue min_vruntime divergence");

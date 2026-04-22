@@ -27,10 +27,10 @@ bool test_sched_remote_enqueue_ipi(void) {
     sched_init();
 
     // Create a new process and thread
-    kprocess_t *proc = process_create("test_proc");
+    bh_process_t *proc = process_create("test_proc");
     KTEST_ASSERT(proc != NULL, "Failed to create process");
 
-    kthread_t *thread = thread_create(proc, dummy_thread_entry);
+    bh_thread_t *thread = thread_create(proc, dummy_thread_entry);
     KTEST_ASSERT(thread != NULL, "Failed to create thread");
 
     // We mock that we are on CPU 0 and want to enqueue on CPU 1
@@ -72,10 +72,10 @@ bool test_sched_remote_enqueue_ipi(void) {
 bool test_sched_ipi_coalescing(void) {
     sched_init();
 
-    kprocess_t *proc = process_create("test_proc2");
+    bh_process_t *proc = process_create("test_proc2");
 
-    kthread_t *thread1 = thread_create(proc, dummy_thread_entry);
-    kthread_t *thread2 = thread_create(proc, dummy_thread_entry);
+    bh_thread_t *thread1 = thread_create(proc, dummy_thread_entry);
+    bh_thread_t *thread2 = thread_create(proc, dummy_thread_entry);
 
     current_mock_cpu = 0;
     mock_ipi_sent_to = UINT32_MAX;

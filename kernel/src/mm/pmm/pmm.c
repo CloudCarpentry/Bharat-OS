@@ -622,7 +622,7 @@ static phys_addr_t pmm_alloc_pages_colored_in_zone(int order, uint32_t preferred
   }
 
   // Still OOM, invoke AI governor action to kill current task
-  kthread_t *current = sched_current_thread();
+  bh_thread_t *current = sched_current_thread();
   if (current) {
     ai_suggestion_t suggestion;
     suggestion.action = AI_ACTION_KILL_TASK;
@@ -636,7 +636,7 @@ static phys_addr_t pmm_alloc_pages_colored_in_zone(int order, uint32_t preferred
 
 phys_addr_t mm_alloc_pages_order(int order, uint32_t preferred_numa_node,
                                  uint32_t flags) {
-  kthread_t *current = sched_current_thread();
+  bh_thread_t *current = sched_current_thread();
   mm_color_config_t *color_config = NULL;
   if (current) {
     color_config = &current->mm_color_policy;

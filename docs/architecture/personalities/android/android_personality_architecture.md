@@ -28,10 +28,10 @@ Android userspace historically depends on a Linux kernel substrate combined with
 
 ### 1. Personality Tagging
 
-The Bharat-OS scheduler has been updated to support `personality` tagging at both the `kprocess_t` and `kthread_t` levels.
+The Bharat-OS scheduler has been updated to support `personality` tagging at both the `bh_process_t` and `bh_thread_t` levels.
 
 - **Subsystem Registration:** When an Android subsystem is created via `subsys_create(SUBSYS_TYPE_ANDROID, ...)`, any subsequent process spawned for this domain inherits the `SUBSYS_TYPE_ANDROID` personality.
-- **Dispatch Hooks:** Exception/signal translation and syscall dispatch can inspect `kprocess_t->personality` to route Android-specific handling correctly, without polluting the generic fast paths.
+- **Dispatch Hooks:** Exception/signal translation and syscall dispatch can inspect `bh_process_t->personality` to route Android-specific handling correctly, without polluting the generic fast paths.
 
 ### 2. Binder Compatibility Layer
 

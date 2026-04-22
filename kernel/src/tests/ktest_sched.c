@@ -8,16 +8,16 @@
 bool test_sched_rq_basic(void) {
     sched_set_policy(SCHED_POLICY_CLOUD_FAIR);
 
-    kprocess_t *p = process_create("test_proc");
+    bh_process_t *p = process_create("test_proc");
     KTEST_ASSERT(p != NULL, "Failed to create process");
 
-    kthread_t *t1 = thread_create(p, NULL);
+    bh_thread_t *t1 = thread_create(p, NULL);
     KTEST_ASSERT(t1 != NULL, "Failed to create t1");
     t1->priority = 1;
     t1->vruntime = 100;
     t1->weight = CFS_NICE_0_WEIGHT;
 
-    kthread_t *t2 = thread_create(p, NULL);
+    bh_thread_t *t2 = thread_create(p, NULL);
     KTEST_ASSERT(t2 != NULL, "Failed to create t2");
     t2->priority = 1;
     t2->vruntime = 50;
@@ -30,7 +30,7 @@ bool test_sched_rq_basic(void) {
     // And actually, if thread_create does `sched_enqueue(&slot->thread, ...)`, it means they are active!
 
     // Dequeue everything explicitly
-    extern void sched_dequeue_task_l1(kthread_t *thread, uint32_t core_id);
+    extern void sched_dequeue_task_l1(bh_thread_t *thread, uint32_t core_id);
     sched_dequeue_task_l1(t1, 0);
     sched_dequeue_task_l1(t2, 0);
 
@@ -48,12 +48,12 @@ bool test_sched_rq_basic(void) {
 
     // We expect t2 to be picked first since it has min vruntime.
     // We will peek at the runqueue until we find our tasks, while storing background ones.
-    kthread_t *next;
-    kthread_t *temp_dq[20];
+    bh_thread_t *next;
+    bh_thread_t *temp_dq[20];
     int tdq_count = 0;
 
-    kthread_t *picked_first = NULL;
-    kthread_t *picked_second = NULL;
+    bh_thread_t *picked_first = NULL;
+    bh_thread_t *picked_second = NULL;
 
     int iterations = 0;
     while ((next = sched_pick_next_ready_l0(0)) != NULL && iterations < 100) {
@@ -102,8 +102,8 @@ bool test_sched_rq_basic(void) {
 
 bool test_sched_vruntime_monotonic(void) {
     // Manually run a tick on a task and see vruntime increment
-    kprocess_t *p = process_create("test_proc2");
-    kthread_t *t1 = thread_create(p, NULL);
+    bh_process_t *p = process_create("test_proc2");
+    bh_thread_t *t1 = thread_create(p, NULL);
     t1->vruntime = 0;
     t1->weight = CFS_NICE_0_WEIGHT;
     t1->time_slice_ms = 10;
@@ -130,8 +130,8 @@ bool test_sched_remote_enqueue(void) {
     // Save original policy
     sched_set_policy(SCHED_POLICY_CLOUD_FAIR);
 
-    kprocess_t *p = process_create("test_proc3");
-    kthread_t *t1 = thread_create(p, NULL);
+    bh_process_t *p = process_create("test_proc3");
+    bh_thread_t *t1 = thread_create(p, NULL);
     KTEST_ASSERT(t1 != NULL, "Failed to create t1");
     t1->priority = 1;
     t1->vruntime = 100;
@@ -170,8 +170,8 @@ uint64_t benchmark_get_cycles(void) {
 bool test_sched_benchmark(void) {
     sched_set_policy(SCHED_POLICY_CLOUD_FAIR);
 
-    kprocess_t *p = process_create("bench_proc");
-    kthread_t *t1 = thread_create(p, NULL);
+    bh_process_t *p = process_create("bench_proc");
+    bh_thread_t *t1 = thread_create(p, NULL);
     t1->vruntime = 0;
 
     // Enqueue benchmark
@@ -186,7 +186,7 @@ bool test_sched_benchmark(void) {
     uint64_t avg_cycles = (end_cycles - start_cycles) / 1000;
 
     // Context switch benchmark (roughly measured via fast path)
-    kthread_t *t2 = thread_create(p, NULL);
+    bh_thread_t *t2 = thread_create(p, NULL);
     t2->vruntime = 0;
 
     start_cycles = benchmark_get_cycles();

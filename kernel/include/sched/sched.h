@@ -56,7 +56,7 @@ typedef struct {
     uint64_t deadline_ms;
     uint64_t period_ms;
     uint64_t wcet_ms;
-} kthread_attr_t;
+} bh_thread_attr_t;
 
 typedef struct bh_thread bh_thread_t;
 typedef struct bh_process bh_process_t;
@@ -70,8 +70,8 @@ typedef enum {
 } thread_fault_t;
 
 typedef struct sched_rq {
-    kthread_t* current_thread;
-    kthread_t* idle_thread;
+    bh_thread_t* current_thread;
+    bh_thread_t* idle_thread;
 
     // Priority / RT Scheduler
     list_head_t ready_queue[MAX_PRIORITY_LEVELS];
@@ -123,17 +123,17 @@ typedef struct sched_rq {
 } sched_rq_t;
 
 typedef struct {
-    kthread_t* head;
-    kthread_t* tail;
+    bh_thread_t* head;
+    bh_thread_t* tail;
 } wait_queue_t;
 
 #include <bharat/constraints.h>
 
 
-struct kthread {
+struct bh_thread {
     uint64_t thread_id;
     uint64_t process_id;
-    kprocess_t* process;
+    bh_process_t* process;
 
     bh_exec_constraints_k_t constraints;
 
@@ -175,7 +175,7 @@ struct kthread {
     uint8_t preferred_numa_node;
     ai_sched_context_t* ai_sched_ctx;
     uint64_t context_switch_count;
-    kthread_attr_t rt_attr;
+    bh_thread_attr_t rt_attr;
     uint64_t wake_deadline_ms;
     uint32_t bound_core_id;
     uint32_t affinity_mask;
@@ -184,7 +184,7 @@ struct kthread {
     struct sched_context* sched_ctx;
 
     // Next thread in a wait queue
-    kthread_t* next_waiter;
+    bh_thread_t* next_waiter;
 
     // IPC blocking state
     uint64_t ipc_deadline_ticks;
@@ -195,12 +195,12 @@ struct kthread {
     bool fault_pending;
 };
 
-int thread_raise_fault(kthread_t *thread, thread_fault_t fault);
+int thread_raise_fault(bh_thread_t *thread, thread_fault_t fault);
 
-struct kprocess {
+struct bh_process {
     uint64_t process_id;
     address_space_t* addr_space;
-    kthread_t* main_thread;
+    bh_thread_t* main_thread;
 
     // Ownership and lookup metadata
     uint32_t home_core_id;
@@ -224,21 +224,21 @@ struct kprocess {
 void sched_init(void);
 
 // Create process and main thread
-kprocess_t* process_create(const char* name);
-int process_destroy(kprocess_t* process);
-kthread_t* thread_create(kprocess_t* parent, void (*entry_point)(void));
-kthread_t* thread_create_detached(kprocess_t* parent, void (*entry_point)(void));
-int thread_destroy(kthread_t* thread);
+bh_process_t* process_create(const char* name);
+int process_destroy(bh_process_t* process);
+bh_thread_t* thread_create(bh_process_t* parent, void (*entry_point)(void));
+bh_thread_t* thread_create_detached(bh_process_t* parent, void (*entry_point)(void));
+int thread_destroy(bh_thread_t* thread);
 
 // Current Context Helpers
-kprocess_t* sched_current_process(void);
+bh_process_t* sched_current_process(void);
 address_space_t* sched_current_aspace(void);
 struct capability_table* sched_current_cap_table(void);
 
 // Wait Queues
 void sched_wait_queue_init(wait_queue_t* queue);
-void sched_wait_queue_enqueue(wait_queue_t* queue, kthread_t* thread);
-kthread_t* sched_wait_queue_dequeue(wait_queue_t* queue);
+void sched_wait_queue_enqueue(wait_queue_t* queue, bh_thread_t* thread);
+bh_thread_t* sched_wait_queue_dequeue(wait_queue_t* queue);
 
 // TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "personality_ops.h"
@@ -247,51 +247,51 @@ kthread_t* sched_wait_queue_dequeue(wait_queue_t* queue);
 void sched_block(void);
 
 // L0 layer access (for testing)
-kthread_t *sched_pick_next_ready_l0(uint32_t core_id);
+bh_thread_t *sched_pick_next_ready_l0(uint32_t core_id);
 
 // Context Switching
-void kthread_yield(void);
+void bh_thread_yield(void);
 void sched_on_timer_tick(void);
-kthread_t* sched_current_thread(void);
+bh_thread_t* sched_current_thread(void);
 uint64_t sched_get_ticks(void);
 void sched_set_policy(sched_policy_t policy);
 void sched_reschedule(void);
-kthread_t* sched_current(void);
-int sched_enqueue(kthread_t* thread, uint32_t core_id);
+bh_thread_t* sched_current(void);
+int sched_enqueue(bh_thread_t* thread, uint32_t core_id);
 void sched_sleep(uint64_t millis);
-void sched_wakeup(kthread_t* thread);
-void sched_wakeup_with_priority(kthread_t* thread, uint32_t wakeup_priority);
+void sched_wakeup(bh_thread_t* thread);
+void sched_wakeup_with_priority(bh_thread_t* thread, uint32_t wakeup_priority);
 
 // AI governor integration helpers
-kthread_t* sched_find_thread_by_id(uint64_t tid);
+bh_thread_t* sched_find_thread_by_id(uint64_t tid);
 int sched_set_thread_priority(uint64_t tid, uint32_t new_priority);
 int sched_set_thread_preferred_node(uint64_t tid, uint8_t node_id);
 int sched_ai_apply_suggestion(const ai_suggestion_t* suggestion);
 int sched_enqueue_ai_suggestion(const ai_suggestion_t* suggestion);
-int sched_migrate_task(kthread_t* thread, uint32_t new_node);
-int sched_adjust_priority(kthread_t* thread, uint32_t new_priority);
+int sched_migrate_task(bh_thread_t* thread, uint32_t new_node);
+int sched_adjust_priority(bh_thread_t* thread, uint32_t new_priority);
 int sched_throttle_core(uint32_t core_id);
 
 // Cross-core remote handoff
-int sched_request_remote_handoff(kthread_t* thread, uint32_t target_core, uint32_t auth_token);
+int sched_request_remote_handoff(bh_thread_t* thread, uint32_t target_core, uint32_t auth_token);
 
 // RT Scheduler Admissions
-int sched_admission_edf(kthread_t* thread, uint64_t wcet_ms, uint64_t period_ms, uint64_t deadline_ms);
-int sched_admission_rms(kthread_t* thread, uint64_t wcet_ms, uint64_t period_ms);
+int sched_admission_edf(bh_thread_t* thread, uint64_t wcet_ms, uint64_t period_ms, uint64_t deadline_ms);
+int sched_admission_rms(bh_thread_t* thread, uint64_t wcet_ms, uint64_t period_ms);
 
 // System-call style entry points used by trap/syscall layer
-int sched_sys_thread_create(kprocess_t* parent, void (*entry_point)(void), uint64_t* out_tid);
+int sched_sys_thread_create(bh_process_t* parent, void (*entry_point)(void), uint64_t* out_tid);
 int sched_sys_thread_destroy(uint64_t tid);
 int sched_sys_sleep(uint64_t millis);
 int sched_sys_set_priority(uint64_t tid, uint32_t new_priority);
 int sched_sys_set_affinity(uint64_t tid, uint32_t affinity_mask);
 
 // Priority Inheritance support
-void sched_inherit_priority(kthread_t* thread, uint32_t new_priority);
-void sched_restore_priority(kthread_t* thread);
-void sched_on_mutex_wait(kthread_t* waiter, void* mutex);
-void sched_on_mutex_acquire(kthread_t* owner, void* mutex);
-void sched_on_mutex_release(kthread_t* owner, void* mutex);
+void sched_inherit_priority(bh_thread_t* thread, uint32_t new_priority);
+void sched_restore_priority(bh_thread_t* thread);
+void sched_on_mutex_wait(bh_thread_t* waiter, void* mutex);
+void sched_on_mutex_acquire(bh_thread_t* owner, void* mutex);
+void sched_on_mutex_release(bh_thread_t* owner, void* mutex);
 
 // Multikernel IPC integration stub
 void sched_notify_ipc_ready(uint32_t core_id, uint32_t msg_type);

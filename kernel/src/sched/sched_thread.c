@@ -2,7 +2,7 @@
 #include "sched/sched.h"
 #include "sched_internal.h"
 
-int process_destroy(kprocess_t *process) {
+int process_destroy(bh_process_t *process) {
   if (!process) {
     return -1;
   }
@@ -47,7 +47,7 @@ int process_destroy(kprocess_t *process) {
   return 0;
 }
 
-int thread_destroy(kthread_t *thread) {
+int thread_destroy(bh_thread_t *thread) {
   // Reaper-only contract:
   // - call only from deferred reap context, never inline on the running thread.
   // - never destroy while executing on the victim thread's stack.
@@ -112,8 +112,8 @@ int thread_destroy(kthread_t *thread) {
   return 0;
 }
 
-int sched_sys_thread_create(kprocess_t *parent, void (*entry_point)(void), uint64_t *out_tid) {
-  kthread_t *t = thread_create(parent, entry_point);
+int sched_sys_thread_create(bh_process_t *parent, void (*entry_point)(void), uint64_t *out_tid) {
+  bh_thread_t *t = thread_create(parent, entry_point);
   if (!t) {
     return -1;
   }
@@ -131,7 +131,7 @@ int sched_sys_thread_destroy(uint64_t tid) {
   return sched_mark_thread_terminated(&slot->thread);
 }
 
-int thread_raise_fault(kthread_t *thread, thread_fault_t fault) {
+int thread_raise_fault(bh_thread_t *thread, thread_fault_t fault) {
     if (!thread) return -1; // -EINVAL mapped
 
     thread->pending_fault = fault;
@@ -150,7 +150,7 @@ void *memcpy(void *dest, const void *src, size_t n);
 
 int sched_sys_intent_set(uint64_t tid, const void* intent) {
     if (!intent) return -1;
-    kthread_t *thread = sched_find_thread_by_id(tid);
+    bh_thread_t *thread = sched_find_thread_by_id(tid);
     if (!thread) return -1;
     // Basic validation and copy
     bharat_intent_t local_intent;
@@ -164,7 +164,7 @@ int sched_sys_intent_set(uint64_t tid, const void* intent) {
 
 int sched_sys_intent_get(uint64_t tid, void* intent) {
     if (!intent) return -1;
-    kthread_t *thread = sched_find_thread_by_id(tid);
+    bh_thread_t *thread = sched_find_thread_by_id(tid);
     if (!thread) return -1;
     // TODO: retrieve intent from somewhere
     (void)thread;

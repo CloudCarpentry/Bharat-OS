@@ -28,7 +28,7 @@ int sys_fault_domain_destroy(uint64_t domain) {
 }
 
 int sys_fault_domain_attach(uint64_t domain, uint64_t tid) {
-    kthread_t *thread = sched_find_thread_by_id(tid);
+    bh_thread_t *thread = sched_find_thread_by_id(tid);
     if (!thread) return -1;
     // TODO: store fault domain id
     (void)thread;

@@ -1,7 +1,7 @@
 #include "sched/sched.h"
 #include "sched_internal.h"
 
-void sched_cfs_enqueue(sched_rq_t *rq, kthread_t *thread) {
+void sched_cfs_enqueue(sched_rq_t *rq, bh_thread_t *thread) {
     struct rb_node **link = &rq->cfs_runqueue.rb_node;
     struct rb_node *parent = NULL;
     int64_t vruntime = thread->vruntime;
@@ -15,7 +15,7 @@ void sched_cfs_enqueue(sched_rq_t *rq, kthread_t *thread) {
 
     while (*link) {
         parent = *link;
-        kthread_t *entry = (kthread_t *)(void *)((char *)parent - offsetof(kthread_t, cfs_node));
+        bh_thread_t *entry = (bh_thread_t *)(void *)((char *)parent - offsetof(bh_thread_t, cfs_node));
 
         if (vruntime < entry->vruntime) {
             link = &parent->rb_left;
@@ -34,7 +34,7 @@ void sched_cfs_enqueue(sched_rq_t *rq, kthread_t *thread) {
     }
 }
 
-void sched_cfs_dequeue(sched_rq_t *rq, kthread_t *thread) {
+void sched_cfs_dequeue(sched_rq_t *rq, bh_thread_t *thread) {
     if (rq->cfs_runqueue.rb_node == NULL) {
         return;
     }
@@ -47,13 +47,13 @@ void sched_cfs_dequeue(sched_rq_t *rq, kthread_t *thread) {
     if (leftmost) {
         struct rb_node *first = rb_first(&rq->cfs_runqueue);
         if (first) {
-            kthread_t *next = (kthread_t *)(void *)((char *)first - offsetof(kthread_t, cfs_node));
+            bh_thread_t *next = (bh_thread_t *)(void *)((char *)first - offsetof(bh_thread_t, cfs_node));
             rq->min_vruntime = next->vruntime;
         }
     }
 }
 
-void sched_cfs_update_vruntime(sched_rq_t *rq, kthread_t *thread, uint64_t delta_exec) {
+void sched_cfs_update_vruntime(sched_rq_t *rq, bh_thread_t *thread, uint64_t delta_exec) {
     if (delta_exec == 0) return;
 
     // Validate monotonic growth
