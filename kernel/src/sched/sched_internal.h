@@ -27,14 +27,14 @@ typedef struct {
 
 typedef struct {
   void *mutex;
-  kthread_t *owner;
+  bh_thread_t *owner;
 } mutex_owner_entry_t;
 
 typedef struct thread_slot {
   uint8_t in_use;
   uint8_t is_bootstrap;
   uint32_t next_free;
-  kthread_t thread;
+  bh_thread_t thread;
   cpu_context_t context;
   ai_sched_context_t ai_ctx;
   list_head_t run_node;
@@ -50,7 +50,7 @@ typedef struct thread_slot {
 typedef struct process_slot {
   uint8_t in_use;
   uint32_t next_free;
-  kprocess_t process;
+  bh_process_t process;
 } process_slot_t;
 
 extern uint8_t g_sched_initialized;
@@ -65,7 +65,7 @@ void sched_reset_core_runqueues(void);
 thread_slot_t *sched_find_thread_slot_by_tid_local(sched_rq_t *rq, uint64_t tid);
 thread_slot_t *sched_resolve_tid_owner_slow(uint64_t tid);
 uint32_t sched_clamp_core(uint32_t core_id);
-int sched_mark_thread_terminated(kthread_t *thread);
+int sched_mark_thread_terminated(bh_thread_t *thread);
 void sched_reap_terminated_threads(void);
 void sched_process_pending_ai_suggestions(void);
 void sched_sleep_enqueue(thread_slot_t *slot, uint32_t core_id);
@@ -76,23 +76,23 @@ void sched_ready_bitmap_set(sched_rq_t *rq, uint32_t prio);
 void sched_ready_bitmap_clear_if_empty(sched_rq_t *rq, uint32_t prio);
 int sched_pick_priority_from_bitmap(const sched_rq_t *rq, int highest);
 uint32_t sched_run_queue_depth(uint32_t core_id);
-kthread_t *sched_pick_next_ready(uint32_t core_id);
-void sched_cfs_enqueue(sched_rq_t *rq, kthread_t *thread);
-void sched_cfs_dequeue(sched_rq_t *rq, kthread_t *thread);
-kthread_t *sched_cfs_pick_next(sched_rq_t *rq);
-void sched_cfs_update_vruntime(sched_rq_t *rq, kthread_t *thread, uint64_t delta_exec);
-void sched_edf_enqueue(sched_rq_t *rq, kthread_t *thread);
-void sched_edf_dequeue(sched_rq_t *rq, kthread_t *thread);
-kthread_t *sched_edf_pick_next(sched_rq_t *rq);
-kthread_t *sched_find_mutex_owner(void *mutex);
-void sched_register_mutex_owner(void *mutex, kthread_t *owner);
-void sched_unregister_mutex_owner(void *mutex, kthread_t *owner);
-kthread_t *sched_find_thread_by_id(uint64_t tid);
+bh_thread_t *sched_pick_next_ready(uint32_t core_id);
+void sched_cfs_enqueue(sched_rq_t *rq, bh_thread_t *thread);
+void sched_cfs_dequeue(sched_rq_t *rq, bh_thread_t *thread);
+bh_thread_t *sched_cfs_pick_next(sched_rq_t *rq);
+void sched_cfs_update_vruntime(sched_rq_t *rq, bh_thread_t *thread, uint64_t delta_exec);
+void sched_edf_enqueue(sched_rq_t *rq, bh_thread_t *thread);
+void sched_edf_dequeue(sched_rq_t *rq, bh_thread_t *thread);
+bh_thread_t *sched_edf_pick_next(sched_rq_t *rq);
+bh_thread_t *sched_find_mutex_owner(void *mutex);
+void sched_register_mutex_owner(void *mutex, bh_thread_t *owner);
+void sched_unregister_mutex_owner(void *mutex, bh_thread_t *owner);
+bh_thread_t *sched_find_thread_by_id(uint64_t tid);
 void sched_balance_once(void);
 void sched_detach_thread_from_queues(thread_slot_t *slot);
-bool sched_is_core_admissible(kthread_t *t, int cpu_id);
-void sched_switch_to(kthread_t *next, uint32_t core_id);
-void sched_update_telemetry(kthread_t *thread);
+bool sched_is_core_admissible(bh_thread_t *t, int cpu_id);
+void sched_switch_to(bh_thread_t *next, uint32_t core_id);
+void sched_update_telemetry(bh_thread_t *thread);
 void sched_validate_rq(sched_rq_t *rq);
 
 #endif // BHARAT_SCHED_INTERNAL_H

@@ -1,5 +1,5 @@
 #include "hal/hal_discovery.h"
-#include "hal/hal_cpu_topology.h"
+#include <hal/hal_cpu_topology.h>
 #include "arch/arch_cpu_caps.h"
 #include "boot/boot_info.h"
 #include <stddef.h>

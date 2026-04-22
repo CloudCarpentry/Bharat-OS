@@ -13,6 +13,7 @@ target_include_directories(bharat_kernel_includes INTERFACE
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/lib/include
     ${CMAKE_SOURCE_DIR}/boot/include
+    ${CMAKE_SOURCE_DIR}/hal/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 target_link_libraries(bharat_kernel_includes INTERFACE bharat_generated_includes)
