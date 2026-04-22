@@ -25,6 +25,7 @@ if(COMMAND bharat_component_option)
     bharat_component_option(BHARAT_ENABLE_DRIVER_SDHOST OFF "Build SD/eMMC host driver")
     bharat_component_option(BHARAT_ENABLE_DRIVER_I2C_CORE OFF "Build I2C core driver")
     bharat_component_option(BHARAT_ENABLE_DRIVER_SPI_CORE OFF "Build SPI core driver")
+    bharat_component_option(BHARAT_ENABLE_DRIVER_PCIE_HOST OFF "Build PCIe host bridge baseline driver")
 
     # Input and Sensor Drivers
     bharat_component_option(BHARAT_ENABLE_DRIVER_VIRTIO_INPUT OFF "Build virtio input driver")
@@ -58,6 +59,7 @@ else()
     option(BHARAT_ENABLE_DRIVER_SDHOST "Build SD/eMMC host driver" OFF)
     option(BHARAT_ENABLE_DRIVER_I2C_CORE "Build I2C core driver" OFF)
     option(BHARAT_ENABLE_DRIVER_SPI_CORE "Build SPI core driver" OFF)
+    option(BHARAT_ENABLE_DRIVER_PCIE_HOST "Build PCIe host bridge baseline driver" OFF)
 
     # Input and Sensor Drivers
     option(BHARAT_ENABLE_DRIVER_VIRTIO_INPUT "Build virtio input driver" OFF)

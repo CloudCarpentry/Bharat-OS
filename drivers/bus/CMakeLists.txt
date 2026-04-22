@@ -12,6 +12,10 @@ if(BHARAT_ENABLE_DRIVER_SPI_CORE)
     list(APPEND BHARAT_DRIVER_BUS_SOURCES spi/spi_core.c spi/spi_registry.c)
 endif()
 
+if(BHARAT_ENABLE_DRIVER_PCIE_HOST)
+    list(APPEND BHARAT_DRIVER_BUS_SOURCES pcie/pcie_host.c)
+endif()
+
 if(BHARAT_ENABLE_GPIO)
     list(APPEND BHARAT_DRIVER_BUS_SOURCES gpio/gpio_core.c)
 endif()
