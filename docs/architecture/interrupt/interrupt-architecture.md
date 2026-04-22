@@ -44,7 +44,7 @@ The lowest layer consists of the hardware-specific driver implementations (e.g.,
 
 The implementation of this architecture is executed in planned phases. The target roadmap for the core foundations includes:
 
-1.  **Fully Realizing `irq_domain`**: Migrating from placeholder structs to a fully implemented allocator, translation table, and hierarchy tracking system.
+1.  **Fully Realizing `irq_domain`**: ✅ **Phase-1 completed** with in-kernel domain allocation and explicit mapping-table based `map -> translate -> unmap` flow. The current implementation uses bounded static tables (`IRQ_DOMAIN_MAX_DOMAINS`, `IRQ_DOMAIN_MAX_MAPPINGS`) to avoid dynamic allocation in hard IRQ paths while preserving deterministic behavior.
 2.  **Descriptor State Formalization**: Enriching the `irq_desc` model with explicit state bitfields and active chip pointers.
 3.  **Domain-First Routing Enforced**: Mandating that all new device IRQ plumbing uses the domain layer.
 
@@ -60,6 +60,7 @@ These tests validate the required backend controller operations and semantic cor
 *   **Level vs. Edge Semantics**: Validating acknowledgment requirements and repetitive firing behavior.
 *   **Shared IRQ Behavior**: Testing handler chain execution and unregistration.
 *   **Affinity Move Behavior**: Testing dynamic rerouting of interrupts to different CPU cores without loss.
+*   **Domain Map/Translate/Unmap Semantics**: Boot selftests now validate domain range checks, duplicate mapping rejection, and translation invalidation after unmap.
 
 ### 2. Stress and Load Tests
 These tests push the system to identify edge cases, race conditions, and bottlenecks:

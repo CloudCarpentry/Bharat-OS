@@ -29,6 +29,12 @@ irq_domain_t* irq_domain_create(const char* name, uint32_t irq_base, uint32_t ir
 // Map a hardware IRQ to a virtual IRQ within the domain
 int irq_domain_map(irq_domain_t* domain, uint32_t virq, uint32_t hwirq);
 
+// Unmap a virtual IRQ from a domain mapping
+int irq_domain_unmap(irq_domain_t* domain, uint32_t virq);
+
+// Translate a hardware IRQ to virtual IRQ
+int irq_domain_translate(irq_domain_t* domain, uint32_t hwirq, uint32_t* out_virq);
+
 // --- MSI Domains ---
 
 typedef struct msi_msg {

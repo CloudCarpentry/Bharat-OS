@@ -11,6 +11,7 @@ add_library(k_test_support OBJECT
     security/test_crypto_registry.c
     ktest_string.c
     ktest_rt_sched.c
+    ktest_irq_domain.c
 )
 
 target_include_directories(k_test_support PRIVATE ../../include ../../include/generated ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/lib/include ${CMAKE_SOURCE_DIR}/boot/include)
