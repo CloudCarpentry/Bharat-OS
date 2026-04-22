@@ -19,8 +19,20 @@ typedef enum alloc_class {
     MEM_PACKET,
     MEM_LOWPOWER,
     MEM_PERSISTENT,
+
+    /* AI-Adjacent Memory Classes (Tier U - Universal) */
+    MEM_TENSOR,
+    MEM_MODEL_RO,
+    MEM_SCRATCH_LOWLAT,
+
+    /* AI-Adjacent Memory Classes (Tier P - Profile Conditional) */
+    MEM_TENSOR_PINNED,
+    MEM_STREAM_DMA,
+    MEM_SECURE_MODEL,
+    MEM_SHARED_ACCEL,
+
     /* Ensure max classes is tracked in statistics limits */
-    MEM_CLASS_MAX = 8
+    MEM_CLASS_MAX = 16
 } alloc_class_t;
 
 #ifdef __cplusplus
