@@ -215,6 +215,18 @@ add_executable(test_uapi_abi test_uapi_abi.c)
 target_include_directories(test_uapi_abi PRIVATE ${CMAKE_SOURCE_DIR}/include)
 add_test(NAME host_test_uapi_abi COMMAND test_uapi_abi)
 
+add_executable(test_hal_cpu_features
+    test_hal_cpu_features.c
+    ../../arch/common/cpu_caps_state.c
+    ../../hal/common/cpu_features.c)
+target_include_directories(test_hal_cpu_features PRIVATE
+    ${CMAKE_SOURCE_DIR}/kernel/include
+    ${CMAKE_SOURCE_DIR}/hal/include
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/lib/include
+    ${CMAKE_SOURCE_DIR})
+add_test(NAME host_test_hal_cpu_features COMMAND test_hal_cpu_features)
+
 # ---------------------------------------------------------
 # Phase 2: Runtime completeness Tests
 # ---------------------------------------------------------

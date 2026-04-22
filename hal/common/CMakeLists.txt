@@ -1,6 +1,7 @@
 add_library(hal_common OBJECT
     ../common/fdt_parser.c
     ../common/discovery.c
+    ../common/cpu_features.c
     ../mmu_init.c
     ../interrupt_common.c
     ../timer_common.c
