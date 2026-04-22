@@ -220,7 +220,12 @@ target_include_directories(test_capability_policy PRIVATE ../kernel/include ../l
 add_test(NAME test_capability_policy COMMAND test_capability_policy)
 
 if (EXISTS "${CMAKE_SOURCE_DIR}/personalities/compat/linux/linux_compat.c")
-    add_executable(test_posix test_posix.c ../personalities/compat/linux/linux_compat.c)
+    add_executable(test_posix
+        test_posix.c
+        ../personalities/compat/linux/linux_compat.c
+        ../personalities/common/translation_events.c
+        subsys/test_personality_stubs.c
+    )
     target_include_directories(test_posix PRIVATE ../kernel/include ../lib/include ../services/core/subsysmgr/include)
     add_test(NAME test_posix COMMAND test_posix)
 endif()
@@ -243,9 +248,22 @@ if (EXISTS "${CMAKE_SOURCE_DIR}/personalities/compat/android/android_personality
         ../personalities/compat/android/android_boot.c
         ../personalities/compat/android/android_process.c
         ../personalities/compat/android/android_security.c
+        ../personalities/common/translation_events.c
+        subsys/test_personality_stubs.c
     )
     target_include_directories(test_android_personality PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/lib/include ${CMAKE_SOURCE_DIR}/services/core/subsysmgr/include)
     add_test(NAME test_android_personality COMMAND test_android_personality)
+
+    if (EXISTS "${CMAKE_SOURCE_DIR}/personalities/compat/linux/linux_compat.c")
+        add_executable(test_personality_translation_guards
+            subsys/test_personality_translation_guards.c
+            ../personalities/compat/linux/linux_compat.c
+            ../personalities/compat/android/android_binder_dist.c
+            ../personalities/common/translation_events.c
+        )
+        target_include_directories(test_personality_translation_guards PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/lib/include ${CMAKE_SOURCE_DIR}/services/core/subsysmgr/include)
+        add_test(NAME test_personality_translation_guards COMMAND test_personality_translation_guards)
+    endif()
 endif()
 
 add_executable(test_vm_stress test_vm_stress.c benchmark_stubs.c host/mock_panic.c ../kernel/src/mm/vm/aspace/vm_space.c ../lib/rbtree/rbtree.c)
