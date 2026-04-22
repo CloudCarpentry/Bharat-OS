@@ -85,12 +85,16 @@ static bool test_edf_admission_and_queue(void) {
     int ret3 = sched_admission_edf(t3, 30, 100, 100);
     KTEST_ASSERT(ret3 != 0, "Admission of T3 should fail (budget exceeded)");
 
+    // Make absolute deadlines deterministic for the test. In boot selftests,
+    // runtime ticks may already be non-zero and can advance between enqueues
+    // on slower architectures, which makes "ticks + relative deadline"
+    // timing-sensitive. Pre-setting non-zero absolute deadlines avoids that.
+    t1->absolute_deadline_ms = 100;
+    t2->absolute_deadline_ms = 50;
+
     // Enqueue T1 and T2
     sched_enqueue(t1, 0);
     sched_enqueue(t2, 0);
-
-    // T1 absolute deadline = ticks + 100 = 100 (assuming ticks=0)
-    // T2 absolute deadline = ticks + 50 = 50
 
     // Pick next ready should return T2 because its deadline (50) is smaller than T1 (100)
     bh_thread_t *picked1 = sched_pick_next_ready_l0(0);
