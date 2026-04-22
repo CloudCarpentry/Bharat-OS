@@ -128,6 +128,9 @@ target_include_directories(test_sched PRIVATE ../../kernel/include ../../include
 
 add_test(NAME host_test_sched COMMAND test_sched)
 
+add_executable(test_lib_string test_lib_string.c ../../lib/string/string.c)
+add_test(NAME host_test_lib_string COMMAND test_lib_string)
+
 # Phase 3: Core IPC/Profile Tests
 add_executable(test_ipc_profile test_ipc_profile.c ../../kernel/src/profile/profile.c ../../kernel/src/ipc/ipc_traffic.c)
 target_include_directories(test_ipc_profile PRIVATE ../../kernel/include ../../include ../../lib/include)

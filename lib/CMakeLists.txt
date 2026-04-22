@@ -101,3 +101,36 @@ bharat_configure_userspace_library(bharat_libdiag)
 add_library(ool_desc ALIAS bharat_libdiag)
 add_library(transport ALIAS bharat_libtransport)
 
+# ---------------------------------------------------------
+# Layer boundary enforcement
+# ---------------------------------------------------------
+# Enforce the architecture rule from docs/architecture/shared/lib_architecture.md:
+# targets defined under top-level lib/ must not link against kernel-private
+# targets (e.g., bharat_kernel_*).
+function(_bharat_assert_no_kernel_links DIRPATH)
+    get_property(_targets DIRECTORY "${DIRPATH}" PROPERTY BUILDSYSTEM_TARGETS)
+
+    foreach(_target IN LISTS _targets)
+        foreach(_prop IN ITEMS LINK_LIBRARIES INTERFACE_LINK_LIBRARIES)
+            get_target_property(_links "${_target}" "${_prop}")
+            if(NOT _links)
+                continue()
+            endif()
+
+            foreach(_link IN LISTS _links)
+                if(_link MATCHES "(^|;)bharat_kernel|(^|;)kernel")
+                    message(FATAL_ERROR
+                        "Library layering violation: target '${_target}' in lib/ links against '${_link}'. "
+                        "Shared lib/ targets must not depend on kernel-private targets.")
+                endif()
+            endforeach()
+        endforeach()
+    endforeach()
+
+    get_property(_subdirs DIRECTORY "${DIRPATH}" PROPERTY SUBDIRECTORIES)
+    foreach(_subdir IN LISTS _subdirs)
+        _bharat_assert_no_kernel_links("${_subdir}")
+    endforeach()
+endfunction()
+
+_bharat_assert_no_kernel_links("${CMAKE_CURRENT_SOURCE_DIR}")
