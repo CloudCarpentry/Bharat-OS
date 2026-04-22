@@ -18,7 +18,7 @@ This document updates the proposed driver roadmap to reflect what already exists
 
 | Proposal | Current baseline | Priority |
 | --- | --- | --- |
-| PCIe host bridge + full enumeration | Not explicit in current tree | High |
+| PCIe host bridge + full enumeration | Baseline scaffold now in `drivers/bus/pcie` (enumeration TODO) | High |
 | I3C support | Missing | Medium |
 | USB host hardening (xHCI/DWC3 profiles) | Generic USB folder exists | Medium |
 
@@ -63,8 +63,9 @@ This document updates the proposed driver roadmap to reflect what already exists
 
 ## Coding tasks identified
 
-1. **Real hardware NIC backlog:** implement at least one production NIC family for non-virtio environments.
-2. **Storage taxonomy cleanup:** remove ambiguity between `drivers/block` and `drivers/storage` with a documented split.
-3. **CAN production readiness:** graduate from loopback/virtual examples to hardware-backed CAN FD implementations.
-4. **Accelerator framework bring-up:** introduce shared ring/fence APIs to support multiple accelerator backends consistently.
-5. **Driver CI matrix expansion:** add per-driver smoke tests across qemu-virt x86_64/arm64/riscv64 targets.
+1. **PCIe host maturity:** expand the new non-invasive `drivers/bus/pcie` scaffold from deterministic stub behavior into full ECAM discovery and BAR assignment.
+2. **Real hardware NIC backlog:** implement at least one production NIC family for non-virtio environments.
+3. **Storage taxonomy cleanup:** remove ambiguity between `drivers/block` and `drivers/storage` with a documented split.
+4. **CAN production readiness:** graduate from loopback/virtual examples to hardware-backed CAN FD implementations.
+5. **Accelerator framework bring-up:** introduce shared ring/fence APIs to support multiple accelerator backends consistently.
+6. **Driver CI matrix expansion:** add per-driver smoke tests across qemu-virt x86_64/arm64/riscv64 targets.
