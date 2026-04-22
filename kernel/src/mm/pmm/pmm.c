@@ -312,16 +312,25 @@ static void *pmm_alloc_pages_order_colored(int order, uint32_t numa_node,
 
 #if defined(BHARAT_ENABLE_MEMORY_STATS) && BHARAT_ENABLE_MEMORY_STATS == 1
 static uint64_t g_alloc_class_stats[MEM_CLASS_MAX][2]; // [class][0=allocs, 1=failures]
-#define PMM_STATS_RECORD_ALLOC(cls) do { if ((cls) < MEM_CLASS_MAX) __atomic_fetch_add(&g_alloc_class_stats[(cls)][0], 1, __ATOMIC_RELAXED); } while(0)
-#define PMM_STATS_RECORD_FAIL(cls) do { if ((cls) < MEM_CLASS_MAX) __atomic_fetch_add(&g_alloc_class_stats[(cls)][1], 1, __ATOMIC_RELAXED); } while(0)
+#define PMM_STATS_RECORD_ALLOC(cls) do { if ((uint32_t)(cls) < MEM_CLASS_MAX) __atomic_fetch_add(&g_alloc_class_stats[(uint32_t)(cls)][0], 1, __ATOMIC_RELAXED); } while(0)
+#define PMM_STATS_RECORD_FAIL(cls) do { if ((uint32_t)(cls) < MEM_CLASS_MAX) __atomic_fetch_add(&g_alloc_class_stats[(uint32_t)(cls)][1], 1, __ATOMIC_RELAXED); } while(0)
 #else
 #define PMM_STATS_RECORD_ALLOC(cls) do { } while(0)
 #define PMM_STATS_RECORD_FAIL(cls) do { } while(0)
 #endif
 
+#include "mm/mem_model.h"
+#include "kernel/status.h"
+
 int pmm_alloc_pages_ex(uint32_t order, pmm_zone_t zone, alloc_class_t cls, uint32_t alloc_flags, pmm_block_t *out_block) {
   if (!out_block) return -1;
   if (order >= MAX_ORDER) return -1;
+
+  /* Verify class admission relative to profile/memory-model */
+  if (!mem_class_is_supported(cls, mem_model_get_current())) {
+      PMM_STATS_RECORD_FAIL(cls);
+      return K_ERR_PROFILE_RESTRICTED;
+  }
 
   mm_color_config_t no_color_config = {.policy = MM_COLOR_POLICY_NONE, .domain = MM_DOMAIN_DEFAULT, .color_mask = 0xFFFFFFFF};
   phys_addr_t phys = pmm_alloc_pages_colored_in_zone(order, NUMA_NODE_ANY, PAGE_FLAG_KERNEL, &no_color_config, zone);
@@ -338,6 +347,7 @@ int pmm_alloc_pages_ex(uint32_t order, pmm_zone_t zone, alloc_class_t cls, uint3
 
   p->state = PMM_PAGE_STATE_ALLOCATED;
   p->pin_count = (alloc_flags & PMM_ALLOC_PINNED) ? 1 : 0;
+  p->owner_class = (uint8_t)cls;
 
   // Set block
   out_block->phys_addr = phys;

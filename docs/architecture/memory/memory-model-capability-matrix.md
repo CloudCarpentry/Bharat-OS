@@ -73,6 +73,16 @@ Each model determines what capability bits are exposed. We provide a queryable c
 3. **`MEM_MODEL_MPU`**
    - Supports: `MEM_CAP_REGION_PROTECT`.
    - Operates fully on region-based allocations. Features like `MEM_CAP_PAGE_MAP` are intentionally absent, and calls to map generic pages will explicitly fail. No "pretend VM" exists in the MPU layer.
+   - **AI-Adjacent Constraints:** Explicitly rejects Tier P memory classes (e.g., `MEM_TENSOR_PINNED`, `MEM_SHARED_ACCEL`). Only Tier U (Universal) classes are permitted.
+
+## AI-Adjacent Memory Class Tiering
+
+Bharat-OS classifies AI-adjacent memory classes into two tiers for cross-profile truthfulness:
+
+| Tier | Classes | Support Requirement |
+| :--- | :--- | :--- |
+| **Tier U (Universal)** | `MEM_TENSOR`, `MEM_MODEL_RO`, `MEM_SCRATCH_LOWLAT` | Mandatory on all memory models (MMU-full, MMU-lite, MPU). |
+| **Tier P (Profile)** | `MEM_TENSOR_PINNED`, `MEM_STREAM_DMA`, `MEM_SECURE_MODEL`, `MEM_SHARED_ACCEL` | Optional; Rejected on `MEM_MODEL_MPU`. |
 
 ## Per-core Ownership Philosophy
 

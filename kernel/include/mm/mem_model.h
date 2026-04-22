@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "bharat/mem_class.h"
 
 /**
  * Memory Model Architectures
@@ -60,5 +61,10 @@ uint64_t mem_model_get_caps(void);
 static inline bool mem_model_has_cap(mpa_caps_t cap) {
     return (mem_model_get_caps() & cap) != 0;
 }
+
+/**
+ * Validates whether a memory class is supported by the given memory model.
+ */
+bool mem_class_is_supported(alloc_class_t cls, mem_model_t model);
 
 #endif // BHARAT_MM_MEM_MODEL_H
