@@ -17,6 +17,7 @@ This folder is the canonical architecture location for personality design and pl
 - `roadmap.md`: phased delivery roadmap.
 - `zero-translation-roadmap.md`: implementation roadmap for near-zero translation overhead using modern native primitives.
 - `multi-arch-personality-roadmap.md`: cross-ISA execution roadmap for Linux and Android personalities on x86_64, arm64, and riscv64.
+- `production-grade-personality-plan.md`: executable implementation backlog for production-grade Linux + Android personalities with no-translation-tax gates.
 
 ## Personality-specific docs
 
