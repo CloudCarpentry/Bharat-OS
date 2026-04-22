@@ -19,6 +19,8 @@ static void* g_gicd_base = NULL;
 static void* g_gicr_base = NULL;
 static void* g_its_base = NULL;
 
+static irq_domain_t* g_gicv3_root_domain = NULL;
+
 static inline void gicd_write(uint32_t offset, uint32_t value) {
     *(volatile uint32_t*)((uint64_t)g_gicd_base + offset) = value;
 }
@@ -64,6 +66,16 @@ static msi_domain_t its_msi_domain = {
 
 void hal_irq_init_boot(void) {
     hal_irq_generic_init_boot();
+
+    // Create root domain for GICv3
+    g_gicv3_root_domain = irq_domain_create("gicv3-root", 0, 1024, NULL);
+    if (g_gicv3_root_domain) {
+        for (uint32_t i = 0; i < 256; i++) { // Bounded by HAL_MAX_IRQS (256)
+            irq_domain_map(g_gicv3_root_domain, i, i);
+        }
+        irq_domain_set_default(g_gicv3_root_domain);
+    }
+
     system_discovery_t* disc = hal_get_system_discovery();
     if (disc) {
         for (uint32_t i = 0; i < disc->irq_ctrl_count; i++) {

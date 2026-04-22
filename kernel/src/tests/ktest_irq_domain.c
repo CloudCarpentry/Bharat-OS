@@ -65,7 +65,7 @@ static ktest_case_t irq_domain_tests[] = {
     {"Domain unmap behavior", test_irq_domain_unmap_removes_translation},
 };
 
-static int boot_test_irq_domain(void) {
+int boot_test_irq_domain(void) {
     ktest_run_suite("IRQ Domain Unit Tests", irq_domain_tests, 3);
     if (!test_irq_domain_create_and_map()) return -1;
     if (!test_irq_domain_rejects_invalid_and_duplicate_map()) return -1;

@@ -1,4 +1,6 @@
 #include "hal/hal.h"
+#include "hal/hal_irq.h"
+#include "device/irq_domain.h"
 #include <stdint.h>
 
 void hal_cpu_init(void) {}
@@ -40,7 +42,22 @@ uint64_t hal_cpu_get_fault_address(const void *trap_frame) {
 void hal_init(void) {}
 uint32_t hal_mm_backend_caps(void) { return 0; }
 void hal_send_ipi_payload(uint32_t cpu, uint64_t payload) { (void)cpu; (void)payload; }
-void hal_irq_init_boot(void) {}
+
+static irq_domain_t* g_arm32_root_domain = NULL;
+
+void hal_irq_init_boot(void) {
+    hal_irq_generic_init_boot();
+
+    // Create root domain for ARM32
+    g_arm32_root_domain = irq_domain_create("arm32-root", 0, 256, NULL);
+    if (g_arm32_root_domain) {
+        for (uint32_t i = 0; i < 256; i++) { // Bounded by HAL_MAX_IRQS (256)
+            irq_domain_map(g_arm32_root_domain, i, i);
+        }
+        irq_domain_set_default(g_arm32_root_domain);
+    }
+}
+
 uint32_t hal_interrupt_acknowledge(void) { return 0; }
 
 void hal_cpu_halt(void) { while(1); }

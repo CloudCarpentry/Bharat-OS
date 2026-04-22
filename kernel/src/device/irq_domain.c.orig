@@ -10,7 +10,6 @@
 // - Optional parent hierarchy pointer stored in descriptor
 
 static msi_domain_t* g_default_msi_domain = NULL;
-static irq_domain_t* g_default_irq_domain = NULL;
 
 typedef struct irq_map_entry {
     irq_domain_t* domain;
@@ -117,15 +116,6 @@ int irq_domain_translate(irq_domain_t* domain, uint32_t hwirq, uint32_t* out_vir
         }
     }
     return -1;
-}
-
-int irq_domain_set_default(irq_domain_t* domain) {
-    g_default_irq_domain = domain;
-    return 0;
-}
-
-irq_domain_t* irq_domain_get_default(void) {
-    return g_default_irq_domain;
 }
 
 int msi_domain_register(msi_domain_t* domain) {

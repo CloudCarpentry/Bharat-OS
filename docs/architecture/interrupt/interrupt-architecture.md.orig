@@ -46,7 +46,7 @@ The implementation of this architecture is executed in planned phases. The targe
 
 1.  **Fully Realizing `irq_domain`**: ✅ **Phase-1 completed** with in-kernel domain allocation and explicit mapping-table based `map -> translate -> unmap` flow. The current implementation uses bounded static tables (`IRQ_DOMAIN_MAX_DOMAINS`, `IRQ_DOMAIN_MAX_MAPPINGS`) to avoid dynamic allocation in hard IRQ paths while preserving deterministic behavior.
 2.  **Descriptor State Formalization**: Enriching the `irq_desc` model with explicit state bitfields and active chip pointers.
-3.  **Domain-First Routing Enforced**: ✅ **Phase-3 completed**. The generic `hal_interrupt_handle_trap_irq` now mandatorily performs domain translation. Raw hardware interrupts are translated into virtual IRQs before they are dispatched. Also, each primary interrupt controller (APIC for x86_64, GICv3 for ARM, PLIC for RISC-V, etc.) now creates and registers a root domain during HAL boot. Unmapped interrupts fallback safely instead of erroneously dispatching raw hardware identifiers.
+3.  **Domain-First Routing Enforced**: Mandating that all new device IRQ plumbing uses the domain layer.
 
 *Note: For detailed progression, refer to `ROADMAP.md`.*
 
