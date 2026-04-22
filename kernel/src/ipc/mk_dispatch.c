@@ -9,13 +9,20 @@
 // Simple first-pass authorization stub
 static int mk_authorize_message(mk_channel_t *channel, urpc_msg_t *msg) {
     (void)channel;
-    // For now, accept generic safe types but reject unrecognized or sensitive types implicitly
-    // This will be expanded when full distributed capabilities and tokens are ready.
-    if (msg->type == MK_MSG_TYPE_AI_SUGGESTION) {
-        return 0; // Temporarily allow AI suggestions until proper policies are wired
-    }
+    switch (msg->type) {
+    // Explicitly permit protocol replies so tracked transactions can settle.
+    case MK_MSG_TYPE_ACK:
+    case MK_MSG_TYPE_NACK:
+    case MK_MSG_THREAD_HANDOFF_ACK:
+    case MK_MSG_THREAD_HANDOFF_NACK:
+    case MK_MSG_THREAD_LOOKUP_REQ:
+    case MK_MSG_THREAD_LOOKUP_RESP:
+    case MK_MSG_THREAD_WAKE_REQ:
+    case MK_MSG_THREAD_ENQUEUE_REQ:
+    case MK_MSG_TYPE_AI_SUGGESTION:
+        return 0;
 
-    if (msg->type == MK_MSG_THREAD_HANDOFF_REQ) {
+    case MK_MSG_THREAD_HANDOFF_REQ:
         // Mock capability check: Ensure sender provided a valid schedule authority token
         // In a real implementation, this would lookup the auth_token in the receiver's CNode
         // to verify it grants CAP_SCHED_TARGET on this core.
@@ -23,10 +30,11 @@ static int mk_authorize_message(mk_channel_t *channel, urpc_msg_t *msg) {
             return -1; // Denied: Missing capability token
         }
         return 0;
-    }
 
-    // Default route: deny by default
-    return -1;
+    default:
+        // Default route: deny by default
+        return -1;
+    }
 }
 
 static void mk_handle_thread_lookup_req(mk_channel_t *channel, urpc_msg_t *msg) {
@@ -259,8 +267,10 @@ int mk_dispatch_message(mk_channel_t *channel, urpc_msg_t *msg) {
             break;
 
         case MK_MSG_THREAD_HANDOFF_ACK:
+            mk_proto_txn_complete(msg->msg_id, MK_REASON_SUCCESS);
+            break;
         case MK_MSG_THREAD_HANDOFF_NACK:
-            /* Expected replies for handoffs, tracked by L1 protocol/transactions later */
+            mk_proto_txn_complete(msg->msg_id, MK_REASON_UNSUPPORTED);
             break;
 
         default:
