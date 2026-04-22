@@ -112,6 +112,15 @@ Current limitations:
 3. **Runtime wiring gap**: multiple daemons initialize state but do not yet run complete production event loops.
 4. **Hardening gap**: observability, failure semantics, and profile-specific guarantees need deeper closure.
 
+## 4.1) Security production gate (explicit blocker)
+
+To avoid status inflation, this repository treats capability enforcement maturity as a hard release gate:
+
+- **No production claim is valid while capability mediation remains Partial.**
+- A manager path must not rely on default-allow, placeholder, or stub authorization behavior.
+- Fail-closed behavior (like the current `netmgr` shim through `bharat_cap_validate()`) is required as an interim baseline, but does not by itself qualify as full production security.
+- Promotion to **Production** requires strict, code-backed capability checks across manager and dispatch paths, plus validation evidence.
+
 ---
 
 ## 5) Contributor update rules
