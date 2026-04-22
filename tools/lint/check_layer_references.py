@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 INCLUDE_RE = re.compile(r'^\s*#\s*include\s*[<\"]([^>\"]+)[>\"]')
+SYMBOL_LEAKAGE_RE = re.compile(r'\b(fsd_|netmgr_|devmgr_)[a-zA-Z0-9_]+')
 
 LAYER_PREFIX = {
     "kernel": "kernel/",
@@ -44,7 +45,7 @@ ALLOWED_REFS = {
     "services": {"services", "stacks", "lib", "include", "uapi", "sdk", "user", "personalities"},
     "stacks": {"stacks", "services", "lib", "include", "uapi", "sdk", "user", "personalities"},
     "user": {"user", "sdk", "lib", "include", "uapi", "services", "stacks", "personalities"},
-    "sdk": {"sdk", "lib", "include", "uapi", "user", "services", "stacks", "personalities"},
+    "sdk": {"sdk", "lib", "include", "uapi", "user", "personalities"},
     "uapi": {"uapi", "include", "lib"},
     "lib": {"lib", "include", "uapi"},
     "boot": {"boot", "hal", "arch", "platform", "include", "uapi"},
@@ -124,6 +125,20 @@ def scan(repo_root: Path) -> tuple[list[Violation], int]:
         try:
             with abspath.open("r", encoding="utf-8", errors="ignore") as f:
                 for ln, line in enumerate(f, start=1):
+                    # Symbol leakage check for lib/sdk
+                    if src_layer in {"lib", "sdk"}:
+                        for match in SYMBOL_LEAKAGE_RE.finditer(line):
+                            violations.append(
+                                Violation(
+                                    relpath,
+                                    ln,
+                                    match.group(0),
+                                    src_layer,
+                                    "service-symbol",
+                                    rule="symbol-leakage",
+                                )
+                            )
+
                     m = INCLUDE_RE.match(line)
                     if not m:
                         continue
@@ -140,16 +155,12 @@ def scan(repo_root: Path) -> tuple[list[Violation], int]:
                                 rule="freestanding-header",
                             )
                         )
-                        continue
-
-                    target = include_target_layer(repo_root, src_layer, include_target)
-                    if target is None:
-                        continue
-
-                    if target not in ALLOWED_REFS.get(src_layer, set()):
-                        violations.append(
-                            Violation(relpath, ln, include_target, src_layer, target)
-                        )
+                    else:
+                        target = include_target_layer(repo_root, src_layer, include_target)
+                        if target is not None and target not in ALLOWED_REFS.get(src_layer, set()):
+                            violations.append(
+                                Violation(relpath, ln, include_target, src_layer, target)
+                            )
         except OSError:
             continue
 

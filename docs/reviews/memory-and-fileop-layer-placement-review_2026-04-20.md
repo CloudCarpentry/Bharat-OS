@@ -136,10 +136,12 @@ Own:
 
 ### Phase C — guardrails
 
-1. [ ] Extend layer-reference checks to enforce:
+1. [x] Extend layer-reference checks to enforce:
    - no HAL/arch includes from SDK/user-facing lib unless explicitly permitted.
    - no direct service implementation symbol imports from generic lib APIs (must go through contract header).
-2. [ ] Add architecture conformance test matrix for memops behavior equivalence and overlap safety.
+   - *Status: Heuristic-based linter implemented in `tools/lint/check_layer_references.py`.*
+2. [x] Add architecture conformance test matrix for memops behavior equivalence and overlap safety.
+   - *Status: `kernel/src/tests/ktest_memops.c` added to validate `arch_mem*` primitives.*
 
 ---
 
