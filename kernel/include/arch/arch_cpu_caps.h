@@ -60,6 +60,7 @@ void arch_cpu_caps_system_finalize(void); // To calculate system_all and system_
 
 const arch_cpu_caps_record_t *arch_cpu_caps_boot(void);
 const arch_cpu_caps_record_t *arch_cpu_caps_current(void);
+const arch_cpu_caps_record_t *arch_cpu_caps_for_cpu(size_t cpu_index);
 const arch_cpu_caps_record_t *arch_cpu_caps_system_all(void);
 const arch_cpu_caps_record_t *arch_cpu_caps_system_any(void);
 

@@ -2,6 +2,8 @@
 #include "../../common/cpu_caps_state.h"
 #include <stdint.h>
 
+extern uint32_t hal_cpu_get_id(void);
+
 #define READ_CSR(reg) \
     ({ unsigned long __v; \
        __asm__ __volatile__ ("csrr %0, " #reg : "=r" (__v) : : "memory"); \
@@ -44,4 +46,7 @@ void arch_cpu_caps_init(void) {
 }
 
 void arch_cpu_caps_init_ap(void) {
+    arch_cpu_caps_record_t ap_caps;
+    riscv64_probe_caps(&ap_caps);
+    cpu_caps_state_set_ap(hal_cpu_get_id(), &ap_caps);
 }

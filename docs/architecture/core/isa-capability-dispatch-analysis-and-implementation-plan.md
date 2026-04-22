@@ -288,3 +288,28 @@ Guiding model:
   - and verified generic fallback behavior.
 - No ISA-fragmented conditionals are scattered through kernel/services fast paths.
 - Feature enablement policy is profile-driven and auditable.
+
+---
+
+## Implementation update (2026-04-22)
+
+Completed in this change set:
+
+- Added canonical HAL CPU feature query contract:
+  - `hal/include/hal/hal_cpu_features.h`
+  - `hal/common/cpu_features.c`
+- Completed AP capability probing hooks for:
+  - `arch/x86/x86_64/cpu_caps.c`
+  - `arch/arm/arm64/cpu_caps.c`
+  - `arch/riscv/riscv64/cpu_caps.c`
+  - `arch/arm/arm32/cpu_caps.c`
+- Implemented true `system_all` / `system_any` aggregation over online CPUs in:
+  - `arch/common/cpu_caps_state.c`
+- Added host verification test:
+  - `tests/host/test_hal_cpu_features.c`
+
+Remaining high-priority follow-up:
+
+- Boot-time capability dump (`BO-ISA-009`)
+- Ops-table dispatch installation for memops/bitops/crypto/cacheops (`BO-ISA-005`..`008`)
+- Runtime RISC-V firmware-backed probing beyond compile-time extension gates
