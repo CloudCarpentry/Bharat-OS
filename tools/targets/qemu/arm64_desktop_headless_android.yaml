@@ -1,0 +1,51 @@
+name: arm64_desktop_headless_android
+kind: qemu_target
+
+arch: arm64
+board: qemu-virt-arm64
+device_profile: desktop
+personality_profile: android
+execution_profile: gp
+
+build:
+  cmake_preset: arm64-edge
+  cmake_defs:
+    BHARAT_ARCH_FAMILY: ARM64
+    BHARAT_DEVICE_PROFILE: DESKTOP
+    BHARAT_PERSONALITY_PROFILE: ANDROID
+    BHARAT_TARGET_BOARD: virt
+    BHARAT_BOOT_GUI: OFF
+
+kernel:
+  canonical_artifacts:
+    elf: kernel/kernel.elf
+    map: kernel/kernel.map
+
+boot:
+  protocol: linux_arm64
+  artifact_format: raw_bin
+  dtb:
+    mode: qemu_generated
+    required: true
+    handoff_register: x0
+
+package:
+  transforms:
+    - type: elf_to_bin
+      input: kernel/kernel.elf
+      output: kernel/kernel.bin
+
+run:
+  backend: qemu
+  machine: virt
+  cpu: cortex-a72
+  memory: 1024M
+  nographic: true
+  serial:
+    - stdio
+  boot_artifact: kernel/kernel.bin
+
+debug:
+  backend: gdb_remote
+  stop_on_entry: false
+  gdb_port: 1234

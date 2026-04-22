@@ -94,8 +94,21 @@ def resolve_legacy_target(target_name: str, repo_root: Path) -> ResolvedTarget:
     default_cpu = "cortex-a72" if arch == "arm64" else None
     extra_args = legacy_cfg.get("extra_args", [])
 
+    arch_family_map = {
+        "x86_64": "X86_64",
+        "x86": "X86",
+        "arm64": "ARM64",
+        "arm32": "ARM32",
+        "riscv64": "RISCV64",
+        "riscv32": "RISCV32",
+    }
+
     cmake_defs = {
         "BHARAT_BOOT_GUI": "ON" if gui_enabled else "OFF",
+        "BHARAT_ARCH_FAMILY": arch_family_map.get(str(arch).lower(), str(arch).upper()),
+        "BHARAT_DEVICE_PROFILE": str(profile).upper(),
+        "BHARAT_PERSONALITY_PROFILE": str(personality).upper(),
+        "BHARAT_TARGET_BOARD": board,
     }
     cmake_defs.update(legacy_cfg.get("cmake_defs", {}))
     resolved_objcopy = resolve_objcopy_for_cmake()

@@ -1,6 +1,6 @@
 #include "compat/android/android_personality.h"
 #include "personality/personality_types.h"
-#include <string.h>
+
 
 static int android_init_callback(personality_desc_t* self) {
     if (!self) return -1;

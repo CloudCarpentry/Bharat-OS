@@ -957,6 +957,78 @@
         "BHARAT_IRQ_DISPATCH_MIXED": "1",
         "BHARAT_IRQ_DISPATCH_MODE": "MIXED"
       }
+    },
+    "x86_64_desktop_headless_linux": {
+      "preset": "x86_64-dev",
+      "arch": "x86_64",
+      "profile": "DESKTOP",
+      "personality": "LINUX",
+      "board": "qemu-virt",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "run": false
+    },
+    "x86_64_desktop_headless_android": {
+      "preset": "x86_64-dev",
+      "arch": "x86_64",
+      "profile": "DESKTOP",
+      "personality": "ANDROID",
+      "board": "qemu-virt",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "run": false
+    },
+    "arm64_desktop_headless_linux": {
+      "preset": "arm64-edge",
+      "arch": "arm64",
+      "profile": "DESKTOP",
+      "personality": "LINUX",
+      "board": "virt",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "run": false
+    },
+    "arm64_desktop_headless_android": {
+      "preset": "arm64-edge",
+      "arch": "arm64",
+      "profile": "DESKTOP",
+      "personality": "ANDROID",
+      "board": "virt",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "run": false
+    },
+    "riscv64_desktop_headless_linux": {
+      "preset": "riscv64-edge",
+      "arch": "riscv64",
+      "profile": "DESKTOP",
+      "personality": "LINUX",
+      "board": "virt",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "run": false
+    },
+    "riscv64_desktop_headless_android": {
+      "preset": "riscv64-edge",
+      "arch": "riscv64",
+      "profile": "DESKTOP",
+      "personality": "ANDROID",
+      "board": "virt",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "run": false
     }
   }
 }
