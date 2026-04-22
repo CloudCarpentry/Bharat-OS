@@ -3,8 +3,8 @@ title: Linux Personality Architecture
 status: active
 owner: Architecture Team
 reviewers: ["Core Team"]
-version: 1.0
-last_updated: "2024-03-23"
+version: 1.1
+last_updated: "2026-04-22"
 tags: ["architecture", "personalities"]
 ---
 
@@ -59,3 +59,13 @@ A Linux ELF loader is required for:
 - ELF64 support
 - auxv, argv/envp stack setup
 - Statically linked binaries initially, progressing to dynamic linking (interpreter path, TLS hooks).
+
+
+## Cross-ISA Contract (x86_64, arm64, riscv64)
+
+Linux personality support must be functionally consistent and performance-grade across all three target ISAs.
+
+- Maintain per-ISA syscall number maps while preserving a shared syscall implementation layer.
+- Keep ABI argument extraction architecture-local, but normalize immediately into a common internal syscall context.
+- Validate restart/error/signal edge cases with architecture-conformance tests in CI.
+- Enforce hot-path KPI budgets independently for each ISA to avoid hidden regressions.
