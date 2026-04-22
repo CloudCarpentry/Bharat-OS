@@ -488,6 +488,19 @@ For complete setup on **Windows, WSL/Linux, and macOS** (including QEMU/OpenOCD/
 ./build.sh tools/targets/qemu/arm32_mmu_lite_headless.yaml --run
 ```
 
+
+### Linux + Android headless personality targets
+
+```bash
+./build.sh all --target x86_64_desktop_headless_linux
+./build.sh all --target arm64_desktop_headless_linux
+./build.sh all --target riscv64_desktop_headless_linux
+
+./build.sh all --target x86_64_desktop_headless_android
+./build.sh all --target arm64_desktop_headless_android
+./build.sh all --target riscv64_desktop_headless_android
+```
+
 ### Stage-oriented usage
 
 ```bash

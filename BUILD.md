@@ -241,6 +241,12 @@ Runtime command includes serial-first bring-up (`-nographic -monitor none -seria
 ./build.sh all --target x86_64_desktop_headless
 ./build.sh all --target arm64_desktop_headless
 ./build.sh all --target riscv64_desktop_headless
+./build.sh all --target x86_64_desktop_headless_linux
+./build.sh all --target arm64_desktop_headless_linux
+./build.sh all --target riscv64_desktop_headless_linux
+./build.sh all --target x86_64_desktop_headless_android
+./build.sh all --target arm64_desktop_headless_android
+./build.sh all --target riscv64_desktop_headless_android
 ./build.sh all --target arm32_mmu_lite_headless
 ./build.sh all --target riscv32_mmu_lite_headless
 
