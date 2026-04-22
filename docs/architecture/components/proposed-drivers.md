@@ -1,16 +1,56 @@
 # Proposed Drivers Architecture and Roadmap (Aligned to Current Tree)
 
-This document updates the proposed driver roadmap to reflect what already exists in `drivers/` and what remains to be implemented.
+This document tracks **what exists now** and the production-grade first slice implemented for network and CAN driver classes.
 
 ## What already exists in tree (baseline)
 
 - Bus foundations: `drivers/bus/{i2c,spi,usb,gpio,cluster_bus}`.
-- Network baseline: `drivers/net/virtio_net`.
+- Network baseline: `drivers/net/virtio_net` plus generic class contract in `drivers/net/core`.
 - Storage baseline: `drivers/storage/nvme` and `drivers/block/virtio_blk`.
 - Display baseline: `drivers/display/{drm,virtio_gpu}`.
 - Input baseline: `drivers/input/{virtio_input,i2c_hid}`.
 - Serial breadth: `drivers/serial/{ns16550,pl011,dw_apb_uart,imx_lpuart,cadence_uart,sifive_uart}`.
 - Class and device examples: `drivers/class/{can,sensor,motor,actuator}`, `drivers/devices/{virt_can,can_loopback,fpga_mgr,ptp_clock}`.
+
+## Networking + CAN first-slice status
+
+### Implemented in this slice
+
+1. **Common network class contract (`drivers/include/drivers/net/net_driver.h`)**
+   - Device descriptor with MAC, MTU, queue counts, carrier state, and feature flags.
+   - Ops table: `probe/init/start/stop/tx/rx/poll/irq` + MTU/promisc controls.
+   - Common stats counters and explicit lifecycle state.
+   - Registry helpers in `drivers/net/core/net_driver_core.c`.
+
+2. **`drivers/net/` baseline hardening**
+   - `virtio_net` migrated to use the common contract.
+   - TX path now flows through queue-aware generic helpers.
+   - RX queue + poll fallback path available for QEMU-friendly mock RX tests.
+   - Carrier and MTU handling are fail-closed; invalid MTU returns an error.
+
+3. **`drivers/class/can/` production baseline**
+   - Controller contract extended with capabilities, bitrate bounds, loopback/listen-only toggles, poll/irq hooks.
+   - State machine helpers: stopped/error-active/error-passive/bus-off/recovering.
+   - Queue-backed TX/RX plumbing and acceptance-filtered RX delivery.
+   - Error/statistics updates for bus-off, overruns, drops, and error-frame accounting.
+
+4. **Profile-aware build stance**
+   - CAN core remains policy-controlled through `cmake/modules/BharatComponentPolicy.cmake`.
+   - Automotive profiles continue forcing CAN core + loopback on.
+   - Desktop/headless targets keep generic NIC (`virtio-net`) path available.
+
+### Deliberately deferred
+
+- Physical NIC families (ixgbe/i40e/mlx5/ENETC).
+- Hardware-backed CAN FD controller drivers.
+- Service-level CAN orchestration (`services/network/can/*`) beyond existing `services/can/*` primitives.
+- Full IRQ-driven data path for all NIC backends (poll fallback remains required).
+
+## Validation scope guidance
+
+- **Build coverage:** `x86_64_desktop_headless`, `arm64_desktop_headless`, `riscv64_desktop_headless`.
+- **Runtime truthfulness:** if QEMU target lacks real CAN hardware, validate with loopback/controller tests only and do not claim hardware parity.
+- **Host coverage:** contract/state/queue/filter tests in `tests/host/drivers` and `tests/host/services`.
 
 ## Updated proposal by domain
 
@@ -26,8 +66,9 @@ This document updates the proposed driver roadmap to reflect what already exists
 
 | Proposal | Current baseline | Priority |
 | --- | --- | --- |
-| Physical NIC families (ixgbe/i40e/mlx5/ENETC) | Missing in tree | High |
-| CAN FD production drivers | Class and virtual CAN examples exist | High |
+| Common net class contract + virtio baseline | Landed (`drivers/include/drivers/net/net_driver.h`, `drivers/net/core`, `virtio_net`) | High |
+| CAN core state/queue/filter contract | Landed (`drivers/class/can/can_controller_core.c`) | High |
+| Physical NIC families + real CAN FD | Missing | High |
 | Wi-Fi 6 framework | Missing | Medium |
 
 ### 3) Storage (`drivers/storage/`, `drivers/block/`)
@@ -38,34 +79,9 @@ This document updates the proposed driver roadmap to reflect what already exists
 | UFS + eMMC host stacks | Missing | Medium |
 | SPI NOR + recovery integration | Missing | Medium |
 
-### 4) Display/graphics (`drivers/display/`)
-
-| Proposal | Current baseline | Priority |
-| --- | --- | --- |
-| DRM/KMS composition path | `drivers/display/drm` exists | High (feature depth) |
-| virtio-gpu bring-up quality | `drivers/display/virtio_gpu` exists | Medium |
-| DSI/DCSS/mobile controllers | Missing | Medium |
-
-### 5) Accelerators (`drivers/accel/`, `drivers/devices/fpga_mgr`)
-
-| Proposal | Current baseline | Priority |
-| --- | --- | --- |
-| Common accel queue + fence framework | Minimal accel tree | High |
-| NVDLA / Edge TPU / QAT integration | Missing | Medium |
-| FPGA runtime reconfiguration maturity | `drivers/devices/fpga_mgr` exists | Medium |
-
 ## Integration rules (unchanged)
 
 1. Drivers must consume HAL contracts rather than architecture-private register logic.
 2. Device MMIO/IRQ/DMA authority must be capability-validated through manager paths.
 3. High-throughput paths should prefer URPC/shared-memory interfaces over synchronous RPC for data plane.
 4. Driver enablement should remain profile-gated through build policy toggles.
-
-## Coding tasks identified
-
-1. **PCIe host maturity:** expand the new non-invasive `drivers/bus/pcie` scaffold from deterministic stub behavior into full ECAM discovery and BAR assignment.
-2. **Real hardware NIC backlog:** implement at least one production NIC family for non-virtio environments.
-3. **Storage taxonomy cleanup:** remove ambiguity between `drivers/block` and `drivers/storage` with a documented split.
-4. **CAN production readiness:** graduate from loopback/virtual examples to hardware-backed CAN FD implementations.
-5. **Accelerator framework bring-up:** introduce shared ring/fence APIs to support multiple accelerator backends consistently.
-6. **Driver CI matrix expansion:** add per-driver smoke tests across qemu-virt x86_64/arm64/riscv64 targets.

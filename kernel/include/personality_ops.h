@@ -1,7 +1,7 @@
 #pragma once
 
 struct bh_thread;
-#include <sched/sched.h>
+typedef struct bh_thread bh_thread_t;
 
 // TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "trap_types.h"

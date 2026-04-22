@@ -34,13 +34,13 @@ graph TD
 | Target bucket (folder_structure) | Current paths present | Alignment | Notes |
 | --- | --- | --- | --- |
 | `drivers/bus/` | `drivers/bus/{i2c,spi,usb,gpio,cluster_bus}` | Strong | Good base layout. |
-| `drivers/net/` | `drivers/net/virtio_net` | Partial | Only virtio path is visible; physical NIC coverage pending. |
+| `drivers/net/` | `drivers/net/{core,virtio_net}` | Partial | Shared network-driver class contract is now present; physical NIC coverage still pending. |
 | `drivers/block/` + `drivers/storage/` | both exist (`block/virtio_blk`, `storage/nvme`) | Partial | Overlap indicates unresolved taxonomy between block vs storage. |
 | `drivers/display/` | `drivers/display/{drm,virtio_gpu}` | Strong | Matches direction. |
 | `drivers/input/` | `drivers/input/{virtio_input,i2c_hid}` | Strong | Matches direction. |
 | `drivers/serial/` | multiple UART families | Strong | Good arch/vendor spread. |
 | `drivers/accel/` | present but minimal | Scaffold | Control plane exists; hardware backends limited. |
-| `drivers/class/*` | `class/{can,sensor,motor,actuator}` | Partial | Useful, but class-vs-bus boundary needs policy clarity. |
+| `drivers/class/*` | `class/{can,sensor,motor,actuator}` | Partial | CAN class now has state/queue/filter contract; hardware backends still limited. |
 
 ## Driver status matrix
 
@@ -57,5 +57,5 @@ graph TD
 
 1. **Resolve block/storage duplication:** publish a `drivers/block` vs `drivers/storage` contract and migrate one implementation path to avoid dual registration logic.
 2. **Promote discovery stack:** add PCI/ACPI/FDT-aware bus discovery adapters for real hardware in addition to virtio-centric workflows.
-3. **Class-driver contract hardening:** define class-driver registration + probing interfaces in `drivers/include/drivers/*` and require bus-agnostic class APIs.
+3. **Class-driver contract hardening:** extend new net/CAN class contracts to additional classes and enforce bus-agnostic class APIs.
 4. **Accelerator maturity:** create common queue, fence, and DMA map APIs under `drivers/accel/` to remove per-device ad hoc flows.

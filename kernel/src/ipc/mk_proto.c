@@ -113,28 +113,6 @@ int mk_proto_txn_lookup(uint64_t txn_id, mk_proto_txn_entry_t *out_entry) {
     return -1;
 }
 
-int mk_proto_is_idempotent(uint32_t msg_type) {
-    switch (msg_type) {
-        case MK_MSG_PROC_LOOKUP:
-        case MK_MSG_THREAD_LOOKUP_REQ:
-            return 1;
-        default:
-            return 0;
-    }
-}
-
-int mk_proto_should_retry(uint32_t msg_type, uint32_t retry_count) {
-    if (retry_count >= 3) {
-        return 0;
-    }
-
-    if (mk_proto_is_idempotent(msg_type)) {
-        return 1;
-    }
-
-    return 0; // State-changing ops do not auto-retry
-}
-
 int mk_proto_send_tracked(mk_channel_t *channel, uint32_t msg_type,
                           void *payload, uint32_t size,
                           uint64_t txn_id, uint64_t deadline_ticks) {
@@ -162,6 +140,7 @@ int mk_proto_send_tracked(mk_channel_t *channel, uint32_t msg_type,
     }
 
     return ret;
+}
 
 // Minimal, non-invasive L1 policy helpers. These do not change runtime
 // behavior yet; they provide a single place to encode retry/idempotency
