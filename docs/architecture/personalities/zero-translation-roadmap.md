@@ -2,8 +2,8 @@
 title: Personality Zero-Translation Roadmap
 status: active
 owner: Architecture Team
-version: 1.0
-last_updated: "2026-04-21"
+version: 1.1
+last_updated: "2026-04-22"
 tags: ["architecture", "personalities", "performance", "compatibility"]
 ---
 
@@ -81,3 +81,12 @@ To maximize personality benefit, primitive implementations should mature from v1
 - No ABI renumbering or replacement of legacy compatibility interfaces.
 - Additive UAPI only, with versioned structs and reserved fields.
 - Degrade behavior explicit per profile when semantics cannot be fully honored.
+
+
+## 8. Cross-ISA enforcement (x86_64, arm64, riscv64)
+
+All zero-translation requirements in this document are mandatory for Linux and Android personalities on each supported ISA.
+
+- No architecture is allowed to rely on repeated translation in hot loops as a temporary default.
+- KPI pass/fail is evaluated per ISA, not as a pooled average.
+- Any ISA-specific fallback path must be explicitly measured, documented, and tracked to removal in `multi-arch-personality-roadmap.md`.
