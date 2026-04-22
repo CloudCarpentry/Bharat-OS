@@ -35,12 +35,6 @@ int irq_domain_unmap(irq_domain_t* domain, uint32_t virq);
 // Translate a hardware IRQ to virtual IRQ
 int irq_domain_translate(irq_domain_t* domain, uint32_t hwirq, uint32_t* out_virq);
 
-// Set the system default (root) IRQ domain
-int irq_domain_set_default(irq_domain_t* domain);
-
-// Get the system default (root) IRQ domain
-irq_domain_t* irq_domain_get_default(void);
-
 // --- MSI Domains ---
 
 typedef struct msi_msg {

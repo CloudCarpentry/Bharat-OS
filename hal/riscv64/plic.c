@@ -1,6 +1,7 @@
 #include "hal/hal_irq.h"
 #include "hal/hal_boot.h"
 #include "hal/hal.h"
+#include "device/irq_domain.h"
 
 // Define PLIC base address and offsets
 #define PLIC_BASE        0x0C000000
@@ -48,7 +49,18 @@ static inline uint32_t plic_read(uint32_t offset) {
     return *(volatile uint32_t*)((uint64_t)PLIC_BASE + offset);
 }
 
+static irq_domain_t* g_plic_root_domain = NULL;
+
 int hal_irq_init_boot(void) {
+    // Create root domain for PLIC
+    g_plic_root_domain = irq_domain_create("plic-root", 0, 1024, NULL);
+    if (g_plic_root_domain) {
+        for (uint32_t i = 0; i < 256; i++) { // Bounded by HAL_MAX_IRQS
+            irq_domain_map(g_plic_root_domain, i, i);
+        }
+        irq_domain_set_default(g_plic_root_domain);
+    }
+
     // Set priority of IRQ 1..1023 to 0
     for (int i = 1; i < 1024; i++) {
         plic_write(PLIC_PRIORITY + (i * 4), 1);

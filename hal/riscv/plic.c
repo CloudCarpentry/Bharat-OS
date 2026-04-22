@@ -1,4 +1,5 @@
 #include "hal/hal_irq.h"
+#include "device/irq_domain.h"
 
 // --- PLIC Definitions (QEMU virt) ---
 #define PLIC_BASE 0x0c000000ULL
@@ -13,8 +14,20 @@
 #define PLIC_THRESHOLD_CTX(ctx) (PLIC_THRESHOLD + (ctx) * 0x1000)
 #define PLIC_CLAIM_CTX(ctx) (PLIC_CLAIM + (ctx) * 0x1000)
 
+static irq_domain_t* g_plic_root_domain = NULL;
+
 void hal_irq_init_boot(void) {
     hal_irq_generic_init_boot();
+
+    // Create root domain for PLIC
+    g_plic_root_domain = irq_domain_create("plic-root", 0, 64, NULL);
+    if (g_plic_root_domain) {
+        for (uint32_t i = 0; i < 64; i++) {
+            irq_domain_map(g_plic_root_domain, i, i);
+        }
+        irq_domain_set_default(g_plic_root_domain);
+    }
+
     // Basic PLIC initialization on boot
 }
 

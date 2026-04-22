@@ -500,11 +500,6 @@ target_include_directories(test_execution_mode_quad_core PRIVATE ../kernel/inclu
 target_compile_definitions(test_execution_mode_quad_core PRIVATE TESTING=1)
 add_test(NAME test_execution_mode_quad_core COMMAND test_execution_mode_quad_core)
 
-add_executable(test_irq_domain host/test_irq_domain_host.c ../kernel/src/tests/ktest_irq_domain.c ../kernel/src/device/irq_domain.c)
-target_include_directories(test_irq_domain PRIVATE ../kernel/include ../include ../hal/include ../boot/include ../)
-target_compile_definitions(test_irq_domain PRIVATE TESTING=1 HOST_TEST_BUILD)
-add_test(NAME test_irq_domain COMMAND test_irq_domain)
-
 add_executable(test_sched_partition_validation host/test_sched_partition_validation.c ../kernel/src/sched/cpu_partition.c ../kernel/src/sched/execution_mode.c ../kernel/src/sched/sched_class.c ../kernel/src/sched/sched_topology.c ../platform/common/platform_cpu_topology.c)
 target_include_directories(test_sched_partition_validation PRIVATE ../kernel/include ../include ../hal/include ../)
 target_compile_definitions(test_sched_partition_validation PRIVATE TESTING=1)
