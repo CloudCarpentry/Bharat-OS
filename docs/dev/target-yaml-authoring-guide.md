@@ -139,3 +139,8 @@ When resolving the YAML, the pipeline performs structural validation (via JSON S
 - **Mixing Boot Protocol and Artifact Format**: `protocol` defines *how* the handoff happens (e.g., what registers are populated), while `artifact_format` defines *what* is loaded into memory.
 - **Using `linux_arm64` for QEMU ELF simulation**: Use `elf_direct` instead. `linux_arm64` assumes a Linux Image binary with a valid 64-byte header.
 - **Forgetting PyYAML/jsonschema**: Since the pipeline relies on these for resolution, ensure your development environment has them installed.
+
+
+## Personality profile values
+
+`personality_profile` and `BHARAT_PERSONALITY_PROFILE` now support `native`, `linux`, and `android` for production headless tri-ISA target definitions.

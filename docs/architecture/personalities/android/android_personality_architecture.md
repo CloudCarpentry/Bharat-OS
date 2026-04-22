@@ -3,8 +3,8 @@ title: Android Personality Kernel Architecture
 status: active
 owner: Architecture Team
 reviewers: ["Core Team"]
-version: 0.1
-last_updated: "2024-03-23"
+version: 0.2
+last_updated: "2026-04-22"
 tags: ["architecture", "personalities"]
 ---
 
@@ -71,3 +71,13 @@ The Android personality is designed to be modular. Future work will expand these
     *   *Unit Tests:* Ensure logical IDs and handle resolution do not leak memory or raw pointers.
     *   *Integration Tests:* Spin up multiple cores, execute cross-core Binder transactions, and assert that priority metadata and reply paths function correctly.
     *   *Stress Tests:* Verify distributed COW sharing and shared-memory teardown paths under memory pressure.
+
+
+## Cross-ISA Execution Requirements (x86_64, arm64, riscv64)
+
+Android personality implementation must remain architecture-portable while preserving Binder and shared-memory fast paths.
+
+- Validate Bionic ABI assumptions (TLS, signals, loader interaction) separately per ISA.
+- Keep Binder compatibility logic shared; isolate only ABI/trap details to arch-specific glue.
+- Enforce zero-copy buffer transfer and bounded wakeup latency on all target ISAs.
+- Gate promotion on per-ISA Android service smoke tests and KPI compliance.

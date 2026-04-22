@@ -74,6 +74,23 @@ def execute_package(plan: PackagePlan, repo_root: Path) -> PackageOutputs:
         manifest_paths=manifest_paths
     )
 
+    if plan.target.boot.dtb.required and plan.target.boot.dtb.mode == "qemu_generated":
+        dtb_path = plan.manifest_dir / "hw.dtb"
+        dtb_cmd = ["qemu-system-" + ("aarch64" if plan.target.arch == "arm64" else plan.target.arch)]
+        if plan.target.run and plan.target.run.machine:
+            dtb_cmd.extend(["-machine", plan.target.run.machine + ",dumpdtb=" + str(dtb_path)])
+
+        if plan.target.run and plan.target.run.cpu:
+            dtb_cmd.extend(["-cpu", plan.target.run.cpu])
+
+        print(f"[Package] Generating QEMU DTB: {' '.join(dtb_cmd)}")
+        import subprocess
+        subprocess.run(dtb_cmd, capture_output=True)
+        if dtb_path.exists():
+            packaged_artifacts.append(
+                ArtifactRecord(kind="dtb", path=dtb_path, producer="qemu_dumpdtb")
+            )
+
     if plan.target.run:
         run_manifest_path = plan.manifest_dir / "run-manifest.json"
         manifest_paths["run"] = write_run_manifest(plan.target, outputs, run_manifest_path)

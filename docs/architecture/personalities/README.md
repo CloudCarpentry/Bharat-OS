@@ -2,8 +2,8 @@
 title: Personalities Documentation Index
 status: active
 owner: Architecture Team
-version: 1.0
-last_updated: "2026-04-21"
+version: 1.1
+last_updated: "2026-04-22"
 ---
 
 # Personalities Documentation (Consolidated)
@@ -16,6 +16,8 @@ This folder is the canonical architecture location for personality design and pl
 - `personality-performance-contract.md`: mandatory performance and KPI constraints.
 - `roadmap.md`: phased delivery roadmap.
 - `zero-translation-roadmap.md`: implementation roadmap for near-zero translation overhead using modern native primitives.
+- `multi-arch-personality-roadmap.md`: cross-ISA execution roadmap for Linux and Android personalities on x86_64, arm64, and riscv64.
+- `production-grade-personality-plan.md`: executable implementation backlog for production-grade Linux + Android personalities with no-translation-tax gates.
 
 ## Personality-specific docs
 

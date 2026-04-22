@@ -231,6 +231,8 @@ if (EXISTS "${CMAKE_SOURCE_DIR}/personalities/compat/windows/win_compat.c")
     add_test(NAME test_windows_compat_init COMMAND test_windows_compat_init)
 endif()
 
+add_executable(test_subsys_manager test_subsys_manager.c ../services/core/subsysmgr/manager.c ../personalities/compat/linux/linux_compat.c ../personalities/compat/windows/win_compat.c ../platform/common/platform_cpu_topology.c)
+target_include_directories(test_subsys_manager PRIVATE ../kernel/include ../lib/include ../services/core/subsysmgr/include ../hal/include)
 add_test(NAME test_subsys_manager COMMAND test_subsys_manager)
 
 if (EXISTS "${CMAKE_SOURCE_DIR}/personalities/compat/android/android_personality.c")

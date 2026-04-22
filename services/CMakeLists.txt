@@ -3,6 +3,7 @@ project(BharatOS_Services C ASM)
 
 option(BHARAT_ENABLE_SYSTEM_SHELL "Build capability-aware system shell service" ON)
 
+add_subdirectory(core/subsysmgr)
 add_subdirectory(process_manager)
 add_subdirectory(vm_manager)
 
@@ -46,10 +47,6 @@ if(BHARAT_ENABLE_SERVICE_BOOT_DISPLAYD)
     add_subdirectory(system/boot_displayd)
 endif()
 
-if(NOT BHARAT_LEGACY_SUBSYS_LAYOUT)
-    add_subdirectory(core/subsysmgr)
-endif()
-
 # Legacy monolithic network service (transitional/deprecated)
 # TODO(PR3.1-TRANSITION): This is the legacy network path. netmgr and netstack are the forward path.
 if(BHARAT_ENABLE_SERVICE_NETWORK)
@@ -72,4 +69,5 @@ if(BHARAT_BUILD_EXPERIMENTAL_SERVICES)
     add_subdirectory(sensor_hub)
     add_subdirectory(time_sync)
     add_subdirectory(can)
+endif()
 endif()

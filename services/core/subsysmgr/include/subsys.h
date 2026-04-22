@@ -30,19 +30,19 @@ typedef enum {
 typedef enum {
     SUBSYS_ALLOC_DEFAULT = 0,
     SUBSYS_ALLOC_PACKED = 1,
-    SUBSYS_ALLOC_SPREAD = 2,
+    SUBSYS_ALLOC_SPREAD = 2
 } subsys_alloc_policy_t;
 
 typedef enum {
-    SUBSYS_CLUSTER_PREFERENCE_NONE = 0,
-    SUBSYS_CLUSTER_PREFERENCE_PERFORMANCE = 1,
-    SUBSYS_CLUSTER_PREFERENCE_EFFICIENCY = 2,
+    SUBSYS_CLUSTER_PREF_NONE = 0,
+    SUBSYS_CLUSTER_PREF_PERF = 1,
+    SUBSYS_CLUSTER_PREF_EFF = 2
 } subsys_cluster_preference_t;
 
 typedef struct {
     subsys_alloc_policy_t policy;
     uint32_t preferred_cpu_mask;
-    subsys_cluster_preference_t cluster_preference;
+    subsys_cluster_preference_t cluster_pref;
 } subsys_alloc_config_t;
 
 typedef struct {
