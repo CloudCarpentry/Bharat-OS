@@ -1,23 +1,4 @@
-#ifndef BHARAT_BOOT_ERRNO_H
-#define BHARAT_BOOT_ERRNO_H
+#pragma once
 
-typedef enum {
-    BOOT_OK = 0,
-    BOOT_ERR_BAD_MAGIC = -1,
-    BOOT_ERR_BAD_VERSION = -2,
-    BOOT_ERR_TOO_MANY_MEM_REGIONS = -3,
-    BOOT_ERR_INVALID_MEM_RANGE = -4,
-    BOOT_ERR_OVERLAPPING_MEM_RANGE = -5,
-    BOOT_ERR_TOO_MANY_MODULES = -6,
-    BOOT_ERR_INVALID_MODULE = -7,
-    BOOT_ERR_CMDLINE_TOO_LONG = -8,
-    BOOT_ERR_UNSUPPORTED_BOOT_MODE = -9,
-    BOOT_ERR_SECURITY_POLICY = -10,
-    BOOT_ERR_FDT_INVALID = -11,
-    BOOT_ERR_ACPI_INVALID = -12,
-    BOOT_ERR_CONSOLE_INVALID = -13,
-    BOOT_ERR_UNSUPPORTED = -14,
-    BOOT_ERR_INVALID_ARGUMENT = -15
-} boot_errno_t;
-
-#endif // BHARAT_BOOT_ERRNO_H
+/* Legacy compatibility wrapper. Canonical header moved to core/boot/include/boot/boot_errno.h. */
+#include "../../../core/boot/include/boot/boot_errno.h"
