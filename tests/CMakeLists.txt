@@ -382,6 +382,10 @@ add_executable(test_iommu_stub test_iommu_stub.c ../kernel/src/mm/iommu/iommu_st
 target_include_directories(test_iommu_stub PRIVATE ../kernel/include ../lib/include ../include)
 add_test(NAME test_iommu_stub COMMAND test_iommu_stub)
 
+add_executable(test_dma_lifecycle_host test_dma_lifecycle_host.c ../kernel/src/mm/dma/dma.c ../hal/dma_coherency.c)
+target_include_directories(test_dma_lifecycle_host PRIVATE ../kernel/include ../include ../lib/include)
+add_test(NAME test_dma_lifecycle_host COMMAND test_dma_lifecycle_host)
+
 add_executable(test_smp_hal test_smp_hal.c)
 target_include_directories(test_smp_hal PRIVATE ../kernel/include)
 add_test(NAME test_smp_hal COMMAND test_smp_hal)
@@ -475,6 +479,7 @@ set(BHARAT_NOSTDLIB_TEST_TARGETS
     test_scheduler_hello_world
     test_dma_iommu
     test_iommu_stub
+    test_dma_lifecycle_host
     test_smp_hal
     test_pmm_production
     test_pmm_zone_alloc
