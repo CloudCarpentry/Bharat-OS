@@ -17,6 +17,8 @@ jobs:
         run: tools/ci/install_formal_tools.sh
       - name: Lint freestanding layer contract
         run: python3 tools/lint/check_layer_references.py --strict --baseline tools/lint/baselines/layer_references.allowlist
+      - name: Migration legacy reference guard (warning mode)
+        run: python3 tools/ci/check_migration_refs.py
       - name: Configure x86_64 kernel build
         run: cmake --preset x86_64-elf-debug
       - name: Build kernel.elf

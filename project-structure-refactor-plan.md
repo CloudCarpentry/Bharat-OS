@@ -12,6 +12,19 @@ This plan is based on the current repo layout and build system behavior (`build.
 
 ---
 
+## Migration tracker (live)
+
+| ID | Slice | Status | Notes |
+| --- | --- | --- | --- |
+| A | QEMU YAML move to `delivery/targets/qemu` | ✅ Completed | Alias translation exists in `tools/build/path_aliases.py` and resolver wiring. |
+| B1 | Shared alias helper adoption for target matrix + loader | ✅ Completed | `tools/targets/loader.py` now uses shared alias helper/fallback primitives. |
+| B2 | CI legacy reference guard (warning mode) | ✅ Completed | `tools/ci/check_migration_refs.py` added and wired into `kernel-ci` workflow. |
+| B3 | Guard escalation to strict mode | ⏳ Planned | Flip to `--strict` after two additional migration slices. |
+| C1 | Interface `idl/` move | ⏳ Planned | Move in one PR with generator fallback support. |
+| D1 | `boot/` to `core/boot/` | ⏳ Planned | First high-impact core move with CMake compatibility includes. |
+
+---
+
 ## Current-state constraints observed from code/docs
 
 - `./build.sh` is a thin wrapper that delegates to `python3 tools/build.py`, so migration must preserve script entry points even if internal paths change.  
