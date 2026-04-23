@@ -62,3 +62,11 @@ const vfs_driver_info_t *vfs_get_driver(const char *name) {
     __atomic_clear(&g_driver_lock, __ATOMIC_RELEASE);
     return found;
 }
+
+#ifdef TESTING
+void vfs_test_reset_state(void) {
+    vfs_root = NULL;
+    g_driver_count = 0;
+    g_driver_lock = 0;
+}
+#endif

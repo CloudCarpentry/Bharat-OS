@@ -23,7 +23,7 @@ static void dummy_entry(void) {}
 void test_ipc_sync_sender_wakeup(void) {
     sched_init();
 
-    kprocess_t* proc = process_create("test_sender");
+    bh_process_t* proc = process_create("test_sender");
     assert(proc != NULL);
 
     capability_table_t* table = (capability_table_t*)proc->security_sandbox_ctx;
@@ -32,9 +32,9 @@ void test_ipc_sync_sender_wakeup(void) {
     uint32_t send_cap, recv_cap;
     assert(ipc_endpoint_create(table, &send_cap, &recv_cap) == IPC_OK);
 
-    kthread_t* t_sender1 = thread_create(proc, dummy_entry);
-    kthread_t* t_sender2 = thread_create(proc, dummy_entry);
-    kthread_t* t_receiver = thread_create(proc, dummy_entry);
+    bh_thread_t* t_sender1 = thread_create(proc, dummy_entry);
+    bh_thread_t* t_sender2 = thread_create(proc, dummy_entry);
+    bh_thread_t* t_receiver = thread_create(proc, dummy_entry);
 
     // Initial state: sender1 fills the endpoint buffer.
     // To pretend t_sender1 is running:

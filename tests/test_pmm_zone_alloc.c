@@ -59,7 +59,7 @@ void hal_mm_get_zone_limits(hal_mm_zone_limits_t *limits) {
 }
 
 memory_node_id_t numa_get_current_node(void) { return 0; }
-kthread_t *sched_current_thread(void) { return NULL; }
+bh_thread_t *sched_current_thread(void) { return NULL; }
 int sched_ai_apply_suggestion(const ai_suggestion_t *s) { (void)s; return 0; }
 
 static void setup_pmm(void) {

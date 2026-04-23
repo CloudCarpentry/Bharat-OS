@@ -1,6 +1,9 @@
 #include "sched/ai_sched.h"
 #include "hal/hal_timer.h"
 #include <stddef.h>
+#include <sched/sched.h>
+
+extern bool sched_is_core_admissible(bh_thread_t *t, int cpu_id);
 
 // @cite Integrating Artificial Intelligence into Operating Systems (Korshun et al., 2024)
 // @cite Enhancing Operating System Performance with AI (S. S. et al., 2025)
@@ -260,21 +263,21 @@ uint8_t ai_model_ready(void) {
 }
 
 // Mock prediction function for demonstration
-static struct kthread* ai_model_predict_best(struct kthread *run_queue) {
+static struct bh_thread* ai_model_predict_best(struct bh_thread *run_queue) {
     (void)run_queue;
     return NULL;
 }
 
 // Simple fallback scheduler
-struct kthread* fallback_scheduler(struct kthread *run_queue) {
+struct bh_thread* fallback_scheduler(struct bh_thread *run_queue) {
     if (run_queue == NULL) return NULL;
-    // In a real kthread_t, next would be handled via list_head_t.
+    // In a real bh_thread_t, next would be handled via list_head_t.
     // For the sake of this conceptual implementation, we'll return run_queue.
     return run_queue;
 }
 
 // Main AI selection logic
-struct kthread* ai_sched_select_task(struct kthread *run_queue) {
+struct bh_thread* ai_sched_select_task(struct bh_thread *run_queue) {
     // 1. Check if AI subsystem is active and model is loaded
     if (!ai_telemetry.is_active || !ai_model_ready()) {
         return fallback_scheduler(run_queue); // Immediate fallback
@@ -283,7 +286,7 @@ struct kthread* ai_sched_select_task(struct kthread *run_queue) {
     // 2. Attempt AI-based prediction
     // NOTE: This is a placeholder. In a full implementation, the global/per-core
     // heap structure would be passed here, and we would use select_and_update_queue.
-    struct kthread *selected = ai_model_predict_best(run_queue);
+    struct bh_thread *selected = ai_model_predict_best(run_queue);
 
     // 3. Final safety check: if prediction fails, use fallback
     if (selected == NULL) {

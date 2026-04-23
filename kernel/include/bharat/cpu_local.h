@@ -9,7 +9,7 @@ struct sched_rq;
 struct capability_table;
 struct pmm_shard;
 struct urpc_port;
-struct kthread;
+struct bh_thread;
 
 #define MAX_CPUS 32U
 
@@ -42,8 +42,8 @@ typedef struct __attribute__((aligned(64))) cpu_local {
     capability_table_t cap_table;     // per-core capability namespace
     void             *pmm;            // struct pmm_shard *
     void             *urpc_ports[MAX_CPUS]; // struct urpc_port *
-    struct kthread   *current;        // currently running thread
-    struct kthread   *idle;           // per-core idle thread
+    struct bh_thread   *current;        // currently running thread
+    struct bh_thread   *idle;           // per-core idle thread
     uintptr_t         kernel_stack;
 
     // Active address space
@@ -75,3 +75,6 @@ static inline uint64_t core_current_as_id(void) {
 }
 
 #endif // BHARAT_CPU_LOCAL_H
+
+/* Architecture-specific implementation for setting the current CPU local pointer */
+void arch_cpu_local_set(cpu_local_t *cl);

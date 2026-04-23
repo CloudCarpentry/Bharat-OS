@@ -25,34 +25,18 @@
 
 #define SCHED_DEFAULT_SLICE_MS 10U
 
-#define SCHED_MAX_PENDING_SUGGESTIONS 64U
-#define SCHED_AFFINITY_ANY 0xFFFFFFFFU
-
-#define CFS_NICE_0_WEIGHT 1024U
-
-typedef struct {
-  ai_suggestion_t queue[SCHED_MAX_PENDING_SUGGESTIONS];
-  uint32_t head;
-  uint32_t tail;
-} suggestion_queue_t;
-
-typedef struct {
-  void *mutex;
-  kthread_t *owner;
-} mutex_owner_entry_t;
-
 // Removed core_runqueue_t definition from here as it's now in sched.h as sched_rq_t
 // Removed static core_runqueue_t g_runqueues
 
-static sched_policy_t g_policy = SCHED_POLICY_PRIORITY;
-static _Atomic uint64_t g_next_thread_id = 1U;
-static _Atomic uint64_t g_next_process_id = 1U;
-static _Atomic uint64_t g_sched_ticks = 0U;
-static _Atomic uint64_t g_sched_context_switches = 0U;
+sched_policy_t g_policy = SCHED_POLICY_PRIORITY;
+static volatile uint64_t g_next_thread_id = 1U;
+static volatile uint64_t g_next_process_id = 1U;
+
+
 
 
 uint8_t g_sched_initialized = 0U;
-static uint32_t g_active_core_count = 1U;
+uint32_t g_active_core_count = 1U;
 
 #if defined(BHARAT_ENABLE_KERNEL_SELFTESTS)
 uint32_t g_sched_test_core_count = 1U;
@@ -65,24 +49,24 @@ enum {
 };
 
 void fv_secure_context_switch(void *next_thread_frame) __attribute__((weak));
-static inline void sched_ready_bitmap_set(sched_rq_t *rq, uint32_t prio);
-static inline void sched_ready_bitmap_clear_if_empty(sched_rq_t *rq, uint32_t prio);
-static int sched_pick_priority_from_bitmap(const sched_rq_t *rq, int highest);
+void sched_ready_bitmap_set(sched_rq_t *rq, uint32_t prio);
+void sched_ready_bitmap_clear_if_empty(sched_rq_t *rq, uint32_t prio);
+int sched_pick_priority_from_bitmap(const sched_rq_t *rq, int highest);
 
 // CFS Functions
-static void sched_cfs_enqueue(sched_rq_t *rq, kthread_t *thread);
-static void sched_cfs_dequeue(sched_rq_t *rq, kthread_t *thread);
-static kthread_t *sched_cfs_pick_next(sched_rq_t *rq);
-static void sched_cfs_update_vruntime(sched_rq_t *rq, kthread_t *thread, uint64_t delta_exec);
+void sched_cfs_enqueue(sched_rq_t *rq, bh_thread_t *thread);
+void sched_cfs_dequeue(sched_rq_t *rq, bh_thread_t *thread);
+bh_thread_t *sched_cfs_pick_next(sched_rq_t *rq);
+void sched_cfs_update_vruntime(sched_rq_t *rq, bh_thread_t *thread, uint64_t delta_exec);
 
 // EDF Functions
-static void sched_edf_enqueue(sched_rq_t *rq, kthread_t *thread);
-static void sched_edf_dequeue(sched_rq_t *rq, kthread_t *thread);
-static kthread_t *sched_edf_pick_next(sched_rq_t *rq);
+void sched_edf_enqueue(sched_rq_t *rq, bh_thread_t *thread);
+void sched_edf_dequeue(sched_rq_t *rq, bh_thread_t *thread);
+bh_thread_t *sched_edf_pick_next(sched_rq_t *rq);
 
-static void sched_validate_rq(sched_rq_t *rq);
+void sched_validate_rq(sched_rq_t *rq);
 
-static uint32_t sched_clamp_core(uint32_t core_id) {
+uint32_t sched_clamp_core(uint32_t core_id) {
   if (core_id >= g_active_core_count) {
     return 0U;
   }
@@ -114,10 +98,7 @@ static uint32_t sched_configured_core_count(void) {
 #endif
 }
 
-void arch_post_switch(void) {
-  uint32_t core = sched_clamp_core(hal_cpu_get_id());
-  hal_cpu_enable_interrupts();
-}
+
 
 thread_slot_t *sched_find_thread_slot_by_tid_local(sched_rq_t *rq, uint64_t tid) {
   thread_slot_t *slots = (thread_slot_t *)rq->threads;
@@ -139,7 +120,7 @@ thread_slot_t *sched_find_thread_slot_by_tid_local(sched_rq_t *rq, uint64_t tid)
   return NULL;
 }
 
-static thread_slot_t *sched_resolve_tid_owner_slow(uint64_t tid) {
+thread_slot_t *sched_resolve_tid_owner_slow(uint64_t tid) {
   for (uint32_t core = 0; core < g_active_core_count; ++core) {
     sched_rq_t *rq = &g_cpu_locals[core].runqueue;
     thread_slot_t* slot = sched_find_thread_slot_by_tid_local(rq, tid);
@@ -174,7 +155,7 @@ static process_slot_t *sched_find_free_process_slot(void) {
   return &slots[idx];
 }
 
-static void sched_sleep_enqueue(thread_slot_t *slot, uint32_t core_id) {
+void sched_sleep_enqueue(thread_slot_t *slot, uint32_t core_id) {
   if (!slot || slot->is_sleeping != 0U || slot->is_blocked != 0U) {
     return;
   }
@@ -182,7 +163,7 @@ static void sched_sleep_enqueue(thread_slot_t *slot, uint32_t core_id) {
   slot->is_sleeping = 1U;
 }
 
-static void sched_sleep_dequeue(thread_slot_t *slot) {
+void sched_sleep_dequeue(thread_slot_t *slot) {
   if (!slot || slot->is_sleeping == 0U) {
     return;
   }
@@ -191,7 +172,7 @@ static void sched_sleep_dequeue(thread_slot_t *slot) {
   slot->is_sleeping = 0U;
 }
 
-static void sched_block_enqueue(thread_slot_t *slot, uint32_t core_id) {
+void sched_block_enqueue(thread_slot_t *slot, uint32_t core_id) {
   if (!slot || slot->is_sleeping != 0U || slot->is_blocked != 0U) {
     return;
   }
@@ -199,7 +180,7 @@ static void sched_block_enqueue(thread_slot_t *slot, uint32_t core_id) {
   slot->is_blocked = 1U;
 }
 
-static void sched_block_dequeue(thread_slot_t *slot) {
+void sched_block_dequeue(thread_slot_t *slot) {
   if (!slot || slot->is_blocked == 0U) {
     return;
   }
@@ -208,11 +189,11 @@ static void sched_block_dequeue(thread_slot_t *slot) {
   slot->is_blocked = 0U;
 }
 
-static void sched_detach_thread_from_queues(thread_slot_t *slot) {
+void sched_detach_thread_from_queues(thread_slot_t *slot) {
   if (!slot) {
     return;
   }
-  kthread_t *thread = &slot->thread;
+  bh_thread_t *thread = &slot->thread;
   uint32_t core_id = sched_clamp_core(thread->bound_core_id);
   sched_rq_t *rq = &g_cpu_locals[core_id].runqueue;
 
@@ -283,7 +264,7 @@ static int sched_enqueue_reap(thread_slot_t *slot) {
   return 0;
 }
 
-static int sched_mark_thread_terminated(kthread_t *thread) {
+int sched_mark_thread_terminated(bh_thread_t *thread) {
   if (!thread) {
     return -1;
   }
@@ -302,7 +283,7 @@ static int sched_mark_thread_terminated(kthread_t *thread) {
   return sched_enqueue_reap(slot);
 }
 
-static void sched_reap_terminated_threads(void) {
+void sched_reap_terminated_threads(void) {
   uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
   sched_rq_t *rq = &g_cpu_locals[current_core].runqueue;
 
@@ -329,80 +310,9 @@ static void sched_reap_terminated_threads(void) {
   }
 }
 
-int sched_enqueue(kthread_t *thread, uint32_t core_id) {
-  if (!thread || thread->priority >= MAX_PRIORITY_LEVELS) {
-    return -1;
-  }
+extern bool sched_is_core_admissible(bh_thread_t *t, int cpu_id);
 
-  core_id = sched_clamp_core(core_id);
-  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
-  bool is_local = (core_id == current_core);
 
-  if (!is_local) {
-      mk_msg_remote_lookup_t req = {
-          .request_id = 0,
-          .src_core = current_core,
-          .target_core = core_id,
-          .id = thread->thread_id,
-          .arg = core_id
-      };
-      mk_channel_t *chan = NULL;
-      if (mk_get_channel(current_core, core_id, chan) == 0 && chan) {
-          mk_send_message(chan, MK_MSG_THREAD_ENQUEUE_REQ, &req, sizeof(req));
-          hal_send_ipi_payload(1U << core_id, MK_MSG_THREAD_ENQUEUE_REQ);
-      }
-      return 0;
-  }
-
-  sched_rq_t *rq = &g_cpu_locals[core_id].runqueue;
-  thread_slot_t *slot = sched_find_thread_slot_by_tid_local(rq, thread->thread_id);
-  if (!slot) {
-    return -1;
-  }
-
-  hal_cpu_disable_interrupts();
-
-  if (slot->is_on_runqueue != 0U) {
-    if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
-      sched_cfs_dequeue(rq, thread);
-    } else if (g_policy == SCHED_POLICY_EDF) {
-      sched_edf_dequeue(rq, thread);
-    } else {
-      list_del(&slot->run_node);
-      list_init(&slot->run_node);
-      sched_ready_bitmap_clear_if_empty(rq, thread->priority);
-    }
-    slot->is_on_runqueue = 0U;
-    if (rq->runnable_count > 0U) {
-      rq->runnable_count--;
-    }
-  }
-
-  thread->bound_core_id = core_id;
-  thread->state = THREAD_STATE_READY;
-
-  if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
-    sched_cfs_enqueue(rq, thread);
-  } else if (g_policy == SCHED_POLICY_EDF) {
-    if (thread->rt_attr.period_ms > 0 && thread->rt_attr.deadline_ms > 0) {
-        if (thread->absolute_deadline_ms == 0) {
-            thread->absolute_deadline_ms = g_sched_ticks + thread->rt_attr.deadline_ms;
-        }
-    }
-    sched_edf_enqueue(rq, thread);
-  } else {
-    list_add(&slot->run_node, &rq->ready_queue[thread->priority]);
-    sched_ready_bitmap_set(rq, thread->priority);
-  }
-
-  slot->is_on_runqueue = 1U;
-  rq->runnable_count++;
-
-  sched_validate_rq(rq);
-
-  hal_cpu_enable_interrupts();
-  return 0;
-}
 
 static void sched_idle_task(void) {
   while (1) {
@@ -422,12 +332,12 @@ static void sched_monitor_task(void) {
         // BSP monitor might do system-wide coordination
       }
     }
-    kthread_yield();
+    bh_thread_yield();
   }
 }
 
 void sched_thread_exit_trampoline(void) {
-  kthread_t *current = sched_current_thread();
+  bh_thread_t *current = sched_current_thread();
   if (current) {
     uint32_t core = sched_clamp_core(hal_cpu_get_id());
     (void)sched_mark_thread_terminated(current);
@@ -444,7 +354,7 @@ void sched_reset_core_runqueues(void) {
     sched_rq_t *rq = &g_cpu_locals[core].runqueue;
     rq->current_thread = NULL;
     rq->idle_thread = NULL;
-    rq->total_ticks = 0U;
+    g_cpu_locals[core].runqueue.total_ticks = 0U;
     rq->context_switches = 0U;
     rq->runnable_count = 0U;
     rq->throttled = 0U;
@@ -501,7 +411,7 @@ void sched_reset_core_runqueues(void) {
   }
 }
 
-static kthread_t *sched_create_bootstrap_thread(kprocess_t *parent,
+static bh_thread_t *sched_create_bootstrap_thread(bh_process_t *parent,
                                                 uint32_t core,
                                                 uint32_t kind,
                                                 void (*entry_point)(void),
@@ -513,9 +423,10 @@ static kthread_t *sched_create_bootstrap_thread(kprocess_t *parent,
   slot->in_use = 1U;
   slot->is_bootstrap = 1U;
 
-  slot->thread.thread_id = g_next_thread_id++;
+  slot->thread.thread_id = atomic64_fetch_and_add_ptr(&g_next_thread_id, 1);
   slot->thread.process_id = parent ? parent->process_id : 0U;
   slot->thread.process = parent;
+  slot->thread.constraints.cpu_mask = 0xFFFFFFFF; // Admissible everywhere by default
   slot->thread.home_core_id = sched_clamp_core(hal_cpu_get_id());
   slot->thread.generation = 1U;
   slot->thread.personality = PERSONALITY_NATIVE;
@@ -560,16 +471,16 @@ void sched_init(void) {
 
   g_next_thread_id = 1U;
   g_next_process_id = 1U;
-  g_sched_ticks = 0U;
-  g_sched_context_switches = 0U;
+
+
 
 
 
   sched_reset_core_runqueues();
 
-  kprocess_t *idle_process = process_create("idle_process");
+  bh_process_t *idle_process = process_create("idle_process");
   for (uint32_t core = 0; core < g_active_core_count; ++core) {
-    kthread_t *idle = sched_create_bootstrap_thread(
+    bh_thread_t *idle = sched_create_bootstrap_thread(
         idle_process, core, SCHED_BOOTSTRAP_IDLE, sched_idle_task, 0U, 0U);
     g_cpu_locals[core].runqueue.idle_thread = idle;
     g_cpu_locals[core].runqueue.current_thread = idle;
@@ -581,7 +492,7 @@ void sched_init(void) {
   g_sched_initialized = 1U;
 }
 
-kprocess_t *process_create(const char *name) {
+bh_process_t *process_create(const char *name) {
   (void)name;
   process_slot_t *slot = sched_find_free_process_slot();
   if (!slot) {
@@ -592,7 +503,7 @@ kprocess_t *process_create(const char *name) {
   sched_rq_t *rq = &g_cpu_locals[current_core].runqueue;
 
   slot->in_use = 1U;
-  slot->process.process_id = g_next_process_id++;
+  slot->process.process_id = atomic64_fetch_and_add_ptr(&g_next_process_id, 1);
   slot->process.addr_space = mm_create_address_space();
   slot->process.main_thread = NULL;
   slot->process.security_sandbox_ctx = NULL;
@@ -612,52 +523,9 @@ kprocess_t *process_create(const char *name) {
   return &slot->process;
 }
 
-int process_destroy(kprocess_t *process) {
-  if (!process) {
-    return -1;
-  }
 
-  uint32_t current_core = sched_clamp_core(process->owner_core_id);
-  sched_rq_t *rq = &g_cpu_locals[current_core].runqueue;
 
-  process_slot_t *slot = NULL;
-  for (size_t i = 0; i < SCHED_MAX_PROCESSES; ++i) {
-    process_slot_t *s = &((process_slot_t*)rq->processes)[i];
-    if (s->in_use != 0U && &s->process == process) {
-      slot = s;
-      break;
-    }
-  }
-
-  if (!slot) {
-    return -1;
-  }
-
-  for (size_t i = 0; i < SCHED_MAX_THREADS; ++i) {
-    thread_slot_t *ts = &((thread_slot_t*)rq->threads)[i];
-    if (ts->in_use != 0U && ts->thread.process_id == slot->process.process_id) {
-      return -1;
-    }
-  }
-
-  if (slot->process.addr_space) {
-    (void)aspace_destroy(slot->process.addr_space);
-    slot->process.addr_space = NULL;
-  }
-
-  if (slot->process.security_sandbox_ctx) {
-    cap_table_destroy(slot->process.security_sandbox_ctx);
-    slot->process.security_sandbox_ctx = NULL;
-  }
-
-  slot->in_use = 0U;
-  uint32_t idx = (uint32_t)(slot - (process_slot_t*)rq->processes);
-  slot->next_free = rq->free_process_head;
-  rq->free_process_head = idx;
-  return 0;
-}
-
-kthread_t *thread_create_detached(kprocess_t *parent, void (*entry_point)(void)) {
+bh_thread_t *thread_create_detached(bh_process_t *parent, void (*entry_point)(void)) {
   thread_slot_t *slot = sched_find_free_thread_slot();
   if (!slot) {
     return NULL;
@@ -669,7 +537,7 @@ kthread_t *thread_create_detached(kprocess_t *parent, void (*entry_point)(void))
   memset(slot, 0, sizeof(*slot));
   slot->in_use = 1U;
 
-  slot->thread.thread_id = g_next_thread_id++;
+  slot->thread.thread_id = atomic64_fetch_and_add_ptr(&g_next_thread_id, 1);
   slot->thread.process_id = parent ? parent->process_id : 0U;
   slot->thread.process = parent;
   slot->thread.home_core_id = sched_clamp_core(hal_cpu_get_id());
@@ -727,80 +595,17 @@ kthread_t *thread_create_detached(kprocess_t *parent, void (*entry_point)(void))
   return &slot->thread;
 }
 
-kthread_t *thread_create(kprocess_t *parent, void (*entry_point)(void)) {
-  kthread_t *thread = thread_create_detached(parent, entry_point);
+bh_thread_t *thread_create(bh_process_t *parent, void (*entry_point)(void)) {
+  bh_thread_t *thread = thread_create_detached(parent, entry_point);
   if (thread && entry_point != (void (*)(void))sched_idle_task) {
     (void)sched_enqueue(thread, thread->bound_core_id);
   }
   return thread;
 }
 
-int thread_destroy(kthread_t *thread) {
-  // Reaper-only contract:
-  // - call only from deferred reap context, never inline on the running thread.
-  // - never destroy while executing on the victim thread's stack.
-  if (!thread) {
-    return -1;
-  }
-  if (thread == sched_current_thread()) {
-    return -1;
-  }
 
-  uint32_t creation_core = sched_clamp_core(thread->home_core_id);
-  sched_rq_t *rq = &g_cpu_locals[creation_core].runqueue;
-  thread_slot_t *slot = sched_find_thread_slot_by_tid_local(rq, thread->thread_id);
-  if (!slot) {
-    return -1;
-  }
 
-  // Prevent race with background reaper or other cores
-  hal_cpu_disable_interrupts();
-  
-  spin_lock(&rq->lock);
-  
-  if (slot->reap_pending && slot->reap_next != UINT32_MAX) {
-      // Thread is already being reaped, let the reaper finish it
-      spin_unlock(&rq->lock);
-      hal_cpu_enable_interrupts();
-      return 0;
-  }
-  
-  slot->reap_pending = 1U; // Mark as pending so reaper doesn't touch it
-  spin_unlock(&rq->lock);
-
-  sched_detach_thread_from_queues(slot);
-
-  // Clean up architecture extended state
-  arch_ext_state_thread_destroy(thread);
-
-  if (thread->capability_list) {
-    cap_table_destroy(thread->capability_list);
-    thread->capability_list = NULL;
-  }
-
-  if (thread->kernel_stack) {
-    void *stack_ptr = (void*)(uintptr_t)thread->kernel_stack;
-    thread->kernel_stack = 0U; // Clear first to prevent double-free if re-entered
-    kfree(stack_ptr);
-  }
-
-  // Final slot reclamation
-  spin_lock(&rq->lock);
-  slot->in_use = 0U;
-  slot->reap_pending = 0U;
-
-  if (!slot->is_bootstrap) {
-    uint32_t idx = (uint32_t)(slot - (thread_slot_t*)rq->threads);
-    slot->next_free = rq->free_thread_head;
-    rq->free_thread_head = idx;
-  }
-  spin_unlock(&rq->lock);
-
-  hal_cpu_enable_interrupts();
-  return 0;
-}
-
-static kthread_t *sched_find_mutex_owner(void *mutex) {
+bh_thread_t *sched_find_mutex_owner(void *mutex) {
   if (!mutex) {
     return NULL;
   }
@@ -817,7 +622,7 @@ static kthread_t *sched_find_mutex_owner(void *mutex) {
   return NULL;
 }
 
-static void sched_register_mutex_owner(void *mutex, kthread_t *owner) {
+void sched_register_mutex_owner(void *mutex, bh_thread_t *owner) {
   if (!mutex) {
     return;
   }
@@ -834,7 +639,7 @@ static void sched_register_mutex_owner(void *mutex, kthread_t *owner) {
   }
 }
 
-static void sched_unregister_mutex_owner(void *mutex, kthread_t *owner) {
+void sched_unregister_mutex_owner(void *mutex, bh_thread_t *owner) {
   if (!mutex) {
     return;
   }
@@ -852,57 +657,19 @@ static void sched_unregister_mutex_owner(void *mutex, kthread_t *owner) {
   }
 }
 
-static int sched_suggestion_dequeue(ai_suggestion_t *out) {
-  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
-  sched_rq_t *rq = &g_cpu_locals[current_core].runqueue;
-  suggestion_queue_t *sq = (suggestion_queue_t *)rq->pending_suggestions;
 
-  if (!out || sq->head == sq->tail) {
-    return -1;
-  }
-  *out = sq->queue[sq->tail];
-  sq->tail = (sq->tail + 1U) % SCHED_MAX_PENDING_SUGGESTIONS;
-  return 0;
-}
 
-static void sched_process_pending_ai_suggestions(void) {
-  ai_suggestion_t suggestion = {0};
-  while (sched_suggestion_dequeue(&suggestion) == 0) {
-    (void)sched_ai_apply_suggestion(&suggestion);
-  }
-}
 
-static uint32_t sched_run_queue_depth(uint32_t core_id) {
-  return g_cpu_locals[core_id].runqueue.runnable_count;
-}
 
-static inline void sched_ready_bitmap_set(sched_rq_t *rq, uint32_t prio) {
-  if (!rq || prio >= MAX_PRIORITY_LEVELS) {
-    return;
-  }
-  rq->ready_bitmap |= (1U << prio);
-}
 
-static inline void sched_ready_bitmap_clear_if_empty(sched_rq_t *rq, uint32_t prio) {
-  if (!rq || prio >= MAX_PRIORITY_LEVELS) {
-    return;
-  }
-  if (list_empty(&rq->ready_queue[prio])) {
-    rq->ready_bitmap &= ~(1U << prio);
-  }
-}
 
-static int sched_pick_priority_from_bitmap(const sched_rq_t *rq, int highest) {
-  if (!rq || rq->ready_bitmap == 0U) {
-    return -1;
-  }
-  if (highest != 0) {
-    return 31 - __builtin_clz(rq->ready_bitmap);
-  }
-  return __builtin_ctz(rq->ready_bitmap);
-}
 
-static void sched_update_telemetry(kthread_t *thread) {
+
+
+
+
+
+void sched_update_telemetry(bh_thread_t *thread) {
   if (!thread || !thread->ai_sched_ctx) {
     return;
   }
@@ -913,11 +680,11 @@ static void sched_update_telemetry(kthread_t *thread) {
                           (uint32_t)thread->context_switch_count);
 }
 
-static kthread_t *sched_pick_next_ready(uint32_t core_id) {
+bh_thread_t *sched_pick_next_ready(uint32_t core_id) {
   core_id = sched_clamp_core(core_id);
   sched_rq_t *rq = &g_cpu_locals[core_id].runqueue;
 
-  kthread_t *next = NULL;
+  bh_thread_t *next = NULL;
 
   if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
       next = sched_cfs_pick_next(rq);
@@ -947,6 +714,23 @@ static kthread_t *sched_pick_next_ready(uint32_t core_id) {
       return rq->idle_thread;
   }
 
+  // Fallback: If not admissible on this core (e.g. from dynamic constraint update while queued),
+  // try to find a valid core, else fallback to idle.
+  if (!sched_is_core_admissible(next, core_id)) {
+      bool found = false;
+      for (uint32_t i = 0; i < g_active_core_count; ++i) {
+          if (sched_is_core_admissible(next, i)) {
+              sched_enqueue(next, i);
+              found = true;
+              break;
+          }
+      }
+      if (!found) {
+          // If no core is valid, put it back to sleep/deferred queue (simple drop for MVP)
+      }
+      return rq->idle_thread;
+  }
+
   thread_slot_t *slot = sched_find_thread_slot_by_tid_local(rq, next->thread_id);
   if (slot) {
       slot->is_on_runqueue = 0U;
@@ -958,55 +742,29 @@ static kthread_t *sched_pick_next_ready(uint32_t core_id) {
   return next;
 }
 
-static void sched_dequeue_task_l0(kthread_t *thread, uint32_t core_id) {
-  (void)core_id;
-  if (!thread) {
-    return;
-  }
-  sched_rq_t *rq = &g_cpu_locals[core_id].runqueue;
-  thread_slot_t *slot = sched_find_thread_slot_by_tid_local(rq, thread->thread_id);
-  if (slot && slot->is_on_runqueue != 0U) {
-    if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
-      sched_cfs_dequeue(rq, thread);
-    } else {
-      list_del(&slot->run_node);
-      list_init(&slot->run_node);
-      sched_ready_bitmap_clear_if_empty(rq, thread->priority);
-    }
-    slot->is_on_runqueue = 0U;
-    if (rq->runnable_count > 0U) {
-      rq->runnable_count--;
-    }
-  }
-}
 
-void sched_enqueue_task_l0(kthread_t *thread, uint32_t core_id) {
-  (void)sched_enqueue(thread, core_id);
-}
 
-kthread_t *sched_pick_next_ready_l0(uint32_t core_id) {
+
+
+bh_thread_t *sched_pick_next_ready_l0(uint32_t core_id) {
   return sched_pick_next_ready(core_id);
 }
 
-void sched_enqueue_task_l1(kthread_t *thread, uint32_t core_id) {
-  (void)sched_enqueue(thread, core_id);
-}
 
-void sched_dequeue_task_l1(kthread_t *thread, uint32_t core_id) {
-  sched_dequeue_task_l0(thread, core_id);
-}
 
-kthread_t *sched_pick_next_ready_l1(uint32_t core_id) {
+
+
+bh_thread_t *sched_pick_next_ready_l1(uint32_t core_id) {
   return sched_pick_next_ready(core_id);
 }
 
-static void sched_switch_to(kthread_t *next, uint32_t core_id) {
+void sched_switch_to(bh_thread_t *next, uint32_t core_id) {
   if (!next) {
     hal_cpu_enable_interrupts();
     return;
   }
 
-  kthread_t *current = g_cpu_locals[core_id].runqueue.current_thread;
+  bh_thread_t *current = g_cpu_locals[core_id].runqueue.current_thread;
   if (current == next) {
     hal_cpu_enable_interrupts();
     return;
@@ -1036,7 +794,7 @@ static void sched_switch_to(kthread_t *next, uint32_t core_id) {
 
   next->state = THREAD_STATE_RUNNING;
   next->context_switch_count++;
-  g_sched_context_switches++;
+  rq->context_switches++;
   g_cpu_locals[core_id].runqueue.context_switches++;
   g_cpu_locals[core_id].runqueue.current_thread = next;
 
@@ -1072,1011 +830,132 @@ static void sched_switch_to(kthread_t *next, uint32_t core_id) {
   arch_ext_state_restore(next);
 }
 
-void sched_wait_queue_init(wait_queue_t* queue) {
-  if (queue) {
-    queue->head = NULL;
-    queue->tail = NULL;
-  }
-}
 
-void sched_wait_queue_enqueue(wait_queue_t* queue, kthread_t* thread) {
-  if (!queue || !thread) {
-    return;
-  }
 
-  thread->next_waiter = NULL;
 
-  if (!queue->tail) {
-    queue->head = thread;
-    queue->tail = thread;
-  } else {
-    queue->tail->next_waiter = thread;
-    queue->tail = thread;
-  }
-}
 
-kthread_t* sched_wait_queue_dequeue(wait_queue_t* queue) {
-  if (!queue || !queue->head) {
-    return NULL;
-  }
 
-  kthread_t* thread = queue->head;
-  // Skip any threads that were already woken up by timeout (state != BLOCKED)
-  // or that had their next_waiter cleared by the timeout sweep.
-  while (thread && thread->state != THREAD_STATE_BLOCKED) {
-      thread = thread->next_waiter;
-      queue->head = thread;
-  }
 
-  if (!queue->head) {
-    queue->tail = NULL;
-    return NULL;
-  }
 
-  thread = queue->head;
-  queue->head = thread->next_waiter;
-  if (!queue->head) {
-    queue->tail = NULL;
-  }
 
-  thread->next_waiter = NULL;
-  return thread;
-}
 
-void sched_block(void) {
-  uint32_t core = sched_clamp_core(hal_cpu_get_id());
-  kthread_t *current = g_cpu_locals[core].runqueue.current_thread;
-  if (current) {
-    current->state = THREAD_STATE_BLOCKED;
-    if (current->sched_ctx && current->sched_ctx->deg) {
-        deg_block_member(current, 0);
-    }
 
-    if (current->ipc_deadline_ticks > 0) {
-      thread_slot_t *slot = sched_find_thread_slot_by_tid_local(&g_cpu_locals[core].runqueue, current->thread_id);
-      if (slot) {
-        sched_block_enqueue(slot, core);
-      }
-    }
 
-    g_cpu_locals[core].runqueue.current_thread = NULL;
-  }
-}
 
-void sched_reschedule(void) {
-  uint32_t core = sched_clamp_core(hal_cpu_get_id());
-  sched_reap_terminated_threads();
-  sched_process_pending_ai_suggestions();
 
-  hal_cpu_disable_interrupts(); // Fast path local lockless
 
-  sched_rq_t *rq = &g_cpu_locals[core].runqueue;
-
-  // Empty remote enqueue inbox
-  if (rq->resched_pending != 0U || !list_empty(&rq->pending_inbox)) {
-      spin_lock(&rq->lock);
-      rq->resched_pending = 0U; // Clear flag since we are draining now
-      list_head_t *curr = rq->pending_inbox.next;
-      uint32_t drained = 0;
-      kthread_t *highest_prio_arrived = NULL;
-
-      while (curr != &rq->pending_inbox) {
-          thread_slot_t *slot = (thread_slot_t *)(void *)((char *)curr - offsetof(thread_slot_t, wait_node));
-          curr = curr->next;
-
-          list_del(&slot->wait_node);
-          list_init(&slot->wait_node);
-
-          kthread_t* thread = &slot->thread;
-          thread->state = THREAD_STATE_READY;
-
-          if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
-            sched_cfs_enqueue(rq, thread);
-          } else if (g_policy == SCHED_POLICY_EDF) {
-            if (thread->rt_attr.period_ms > 0 && thread->rt_attr.deadline_ms > 0) {
-                if (thread->absolute_deadline_ms == 0) {
-                    thread->absolute_deadline_ms = g_sched_ticks + thread->rt_attr.deadline_ms;
-                }
-            }
-            sched_edf_enqueue(rq, thread);
-          } else {
-            list_add(&slot->run_node, &rq->ready_queue[thread->priority]);
-            sched_ready_bitmap_set(rq, thread->priority);
-          }
-
-          if (!highest_prio_arrived || thread->priority > highest_prio_arrived->priority) {
-              highest_prio_arrived = thread;
-          }
-
-          slot->is_on_runqueue = 1U;
-          rq->runnable_count++;
-          drained++;
-      }
-      if (drained > 0) {
-          rq->inbox_drains++;
-          if (rq->current_thread && highest_prio_arrived &&
-              highest_prio_arrived->priority > rq->current_thread->priority) {
-              rq->remote_preemptions++;
-          }
-      }
-      spin_unlock(&rq->lock);
-  }
-
-  if (g_cpu_locals[core].runqueue.throttled != 0U && g_cpu_locals[core].runqueue.idle_thread) {
-    sched_switch_to(g_cpu_locals[core].runqueue.idle_thread, core);
-    return;
-  }
-
-  kthread_t *next = sched_pick_next_ready(core);
-  sched_switch_to(next, core);
-}
-
-static void sched_edf_enqueue(sched_rq_t *rq, kthread_t *thread) {
-    struct rb_node **link = &rq->edf_runqueue.rb_node;
-    struct rb_node *parent = NULL;
-    uint64_t absolute_deadline = thread->absolute_deadline_ms;
-
-    while (*link) {
-        parent = *link;
-        kthread_t *entry = (kthread_t *)(void *)((char *)parent - offsetof(kthread_t, edf_node));
-
-        if (absolute_deadline < entry->absolute_deadline_ms) {
-            link = &parent->rb_left;
-        } else {
-            link = &parent->rb_right;
-        }
-    }
-
-    rb_link_node(&thread->edf_node, parent, link);
-    rb_insert_color(&thread->edf_node, &rq->edf_runqueue);
-}
-
-static void sched_edf_dequeue(sched_rq_t *rq, kthread_t *thread) {
-    if (rq->edf_runqueue.rb_node == NULL) {
-        return;
-    }
-    rb_erase(&thread->edf_node, &rq->edf_runqueue);
-}
-
-static kthread_t *sched_edf_pick_next(sched_rq_t *rq) {
+bh_thread_t *sched_edf_pick_next(sched_rq_t *rq) {
     struct rb_node *left = rb_first(&rq->edf_runqueue);
     if (!left) {
         return NULL;
     }
-    return (kthread_t *)(void *)((char *)left - offsetof(kthread_t, edf_node));
+    return (bh_thread_t *)(void *)((char *)left - offsetof(bh_thread_t, edf_node));
 }
 
-int sched_admission_edf(kthread_t *thread, uint64_t wcet_ms, uint64_t period_ms, uint64_t deadline_ms) {
-    if (!thread || period_ms == 0 || wcet_ms > period_ms) {
-        return -1;
-    }
 
-    // Assign RT attributes
-    thread->rt_attr.wcet_ms = wcet_ms;
-    thread->rt_attr.period_ms = period_ms;
-    thread->rt_attr.deadline_ms = deadline_ms;
-    thread->absolute_deadline_ms = 0; // calculated on enqueue
 
-    // Calculate bandwidth contribution
-    uint64_t bandwidth_needed = (wcet_ms * 1000) / period_ms;
 
-    uint32_t core = thread->bound_core_id;
-    sched_rq_t *rq = &g_cpu_locals[core].runqueue;
 
-    spin_lock(&rq->lock);
-    if (rq->rt_budget_total == 0) {
-        rq->rt_budget_total = 1000; // 100% core utilization allowed for EDF tests
-    }
+void bh_thread_yield(void) { sched_reschedule(); }
 
-    if (rq->rt_budget_used + bandwidth_needed > rq->rt_budget_total) {
-        spin_unlock(&rq->lock);
-        return -2; // Admission failed due to bandwidth limitations
-    }
 
-    rq->rt_budget_used += bandwidth_needed;
-    spin_unlock(&rq->lock);
 
-    return 0;
-}
 
-int sched_admission_rms(kthread_t *thread, uint64_t wcet_ms, uint64_t period_ms) {
-    if (!thread || period_ms == 0 || wcet_ms > period_ms) {
-        return -1;
-    }
 
-    // Rate Monotonic assigns static priorities based on period:
-    // shorter period -> higher priority.
-    // In our system, max priority is 31.
-    // Let's create a simple mapping: e.g. base = 10, prio = min(31, 31 - period_ms/10 + constant)
-    // For simplicity, we assign priority manually but ensure basic bounds.
-    uint32_t new_prio = 10; // Default fallback
-    if (period_ms <= 10) new_prio = 30;
-    else if (period_ms <= 50) new_prio = 25;
-    else if (period_ms <= 100) new_prio = 20;
-    else new_prio = 15;
 
-    // Optional bounds checking for n tasks: U <= n(2^(1/n) - 1). Simplified to 0.69 bound.
-    uint64_t bandwidth_needed = (wcet_ms * 1000) / period_ms;
 
-    uint32_t core = thread->bound_core_id;
-    sched_rq_t *rq = &g_cpu_locals[core].runqueue;
 
-    spin_lock(&rq->lock);
-    if (rq->rt_budget_total == 0) {
-        rq->rt_budget_total = 690; // RMS bound (~69%)
-    }
 
-    if (rq->rt_budget_used + bandwidth_needed > rq->rt_budget_total) {
-        spin_unlock(&rq->lock);
-        return -2; // Admission failed
-    }
 
-    rq->rt_budget_used += bandwidth_needed;
-    spin_unlock(&rq->lock);
 
-    thread->priority = new_prio;
-    thread->base_priority = new_prio;
-    thread->rt_attr.wcet_ms = wcet_ms;
-    thread->rt_attr.period_ms = period_ms;
-    thread->rt_attr.deadline_ms = period_ms; // implicit deadline
 
-    return 0;
-}
-
-void kthread_yield(void) { sched_reschedule(); }
-
-void sched_sleep(uint64_t millis) {
-  uint32_t core = sched_clamp_core(hal_cpu_get_id());
-  kthread_t *current = g_cpu_locals[core].runqueue.current_thread;
-  if (!current || current == g_cpu_locals[core].runqueue.idle_thread) {
-    return;
-  }
-
-  thread_slot_t *slot = sched_find_thread_slot_by_tid_local(&g_cpu_locals[core].runqueue, current->thread_id);
-  if (!slot) {
-    return;
-  }
-
-  current->wake_deadline_ms = g_sched_ticks + millis;
-  current->state = THREAD_STATE_SLEEPING;
-  sched_sleep_enqueue(slot, core);
-  g_cpu_locals[core].runqueue.current_thread = NULL;
-  sched_reschedule();
-}
-
-void sched_wakeup_with_priority(kthread_t *thread, uint32_t wakeup_priority) {
-  if (!thread) {
-    return;
-  }
-
-  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
-  if (thread->home_core_id != current_core) {
-      mk_msg_remote_lookup_t req = {
-          .request_id = 0,
-          .src_core = current_core,
-          .target_core = thread->home_core_id,
-          .id = thread->thread_id,
-          .arg = wakeup_priority
-      };
-      mk_channel_t *chan = NULL;
-      if (mk_get_channel(current_core, thread->home_core_id, chan) == 0 && chan) {
-          mk_send_message(chan, MK_MSG_THREAD_WAKE_REQ, &req, sizeof(req));
-          hal_send_ipi_payload(1U << thread->home_core_id, MK_MSG_THREAD_WAKE_REQ);
-      }
-      return;
-  }
-
-  if (wakeup_priority <= SCHED_MAX_PRIORITY && wakeup_priority > thread->priority) {
-    thread->priority = wakeup_priority;
-  }
-
-  thread_slot_t *slot = sched_find_thread_slot_by_tid_local(&g_cpu_locals[thread->home_core_id].runqueue, thread->thread_id);
-  if (!slot) {
-    return;
-  }
-
-  if (thread->state == THREAD_STATE_SLEEPING || thread->state == THREAD_STATE_BLOCKED) {
-    thread->state = THREAD_STATE_READY;
-    thread->wake_deadline_ms = 0U;
-    if (slot->is_sleeping != 0U) {
-      sched_sleep_dequeue(slot);
-    }
-    if (slot->is_blocked != 0U) {
-      sched_block_dequeue(slot);
-    }
-    (void)sched_enqueue(thread, thread->bound_core_id);
-  }
-}
-
-void sched_wakeup(kthread_t *thread) {
-  sched_wakeup_with_priority(thread, SCHED_MAX_PRIORITY + 1U);
-}
-
-static void sched_balance_once(void) {
-  uint32_t busiest = 0U;
-  uint32_t idlest = 0U;
-  uint32_t max_depth = 0U;
-  uint32_t min_depth = UINT32_MAX;
-
-  for (uint32_t core = 0; core < MAX_SUPPORTED_CORES; ++core) {
-    uint32_t depth = sched_run_queue_depth(core);
-    if (depth > max_depth) {
-      max_depth = depth;
-      busiest = core;
-    }
-    if (depth < min_depth) {
-      min_depth = depth;
-      idlest = core;
-    }
-  }
-
-  if (max_depth <= (min_depth + 1U) || busiest == idlest) {
-    return;
-  }
-
-  kthread_t *candidate = sched_pick_next_ready(busiest);
-  if (!candidate || candidate == g_cpu_locals[busiest].runqueue.idle_thread) {
-    return;
-  }
-
-  if ((candidate->affinity_mask & (1U << idlest)) == 0U) {
-    (void)sched_enqueue(candidate, busiest);
-    return;
-  }
-
-  candidate->preferred_numa_node = (uint8_t)idlest;
-  (void)sched_enqueue(candidate, idlest);
-}
-
-void sched_on_timer_tick(void) {
-  g_sched_ticks++;
-  uint32_t core = sched_clamp_core(hal_cpu_get_id());
-  g_cpu_locals[core].runqueue.total_ticks++;
-  ipc_async_check_timeouts(g_sched_ticks);
-
-  list_head_t *sleep_head = &g_cpu_locals[core].runqueue.sleeping_list;
-  list_head_t *curr = sleep_head->next;
-  while (curr != sleep_head) {
-    thread_slot_t *slot = (thread_slot_t *)(void *)((char *)curr - offsetof(thread_slot_t, wait_node));
-    curr = curr->next;
-    if (slot->thread.state == THREAD_STATE_SLEEPING &&
-        slot->thread.wake_deadline_ms <= g_sched_ticks) {
-      sched_wakeup(&slot->thread);
-    }
-  }
-
-  list_head_t *block_head = &g_cpu_locals[core].runqueue.blocked_list;
-  curr = block_head->next;
-  while (curr != block_head) {
-    thread_slot_t *slot = (thread_slot_t *)(void *)((char *)curr - offsetof(thread_slot_t, wait_node));
-    curr = curr->next;
-    if (slot->thread.state == THREAD_STATE_BLOCKED &&
-        slot->thread.ipc_deadline_ticks > 0 &&
-        slot->thread.ipc_deadline_ticks <= g_sched_ticks) {
-      slot->thread.ipc_wakeup_reason = -3; // IPC_ERR_WOULD_BLOCK or TIMEOUT
-      slot->thread.ipc_deadline_ticks = 0;
-
-      // Unlink it from wait queues handled by endpoint access so we can awaken it
-      slot->thread.next_waiter = NULL;
-      sched_wakeup(&slot->thread);
-    }
-  }
-
-  sched_process_pending_ai_suggestions();
-  sched_reap_terminated_threads();
-
-  if ((g_sched_ticks % 16U) == 0U && core == 0U) {
-    sched_balance_once();
-  }
-
-  sched_rq_t* rq = &g_cpu_locals[core].runqueue;
-  kthread_t *current = rq->current_thread;
-  if (!current) {
-    sched_reschedule();
-    return;
-  }
-
-  current->cpu_time_consumed++;
-
-  if (g_policy == SCHED_POLICY_CLOUD_FAIR && current != rq->idle_thread) {
-    sched_cfs_update_vruntime(rq, current, 1);
-  }
-
-  sched_update_telemetry(current);
-
-  if (g_policy == SCHED_POLICY_EDF && current != rq->idle_thread) {
-      if (current->cpu_time_consumed >= current->rt_attr.wcet_ms) {
-          // Task exhausted budget for this period, wait for next period
-          current->absolute_deadline_ms += current->rt_attr.period_ms;
-          current->cpu_time_consumed = 0U;
-
-          thread_slot_t *slot = sched_find_thread_slot_by_tid_local(rq, current->thread_id);
-          if (slot) {
-              // Suspend the thread until the start of the next period
-              current->wake_deadline_ms = current->absolute_deadline_ms - current->rt_attr.deadline_ms;
-              current->state = THREAD_STATE_SLEEPING;
-              sched_sleep_enqueue(slot, core);
-              rq->current_thread = NULL;
-          }
-          sched_reschedule();
-          return;
-      }
-
-      kthread_t *next = sched_edf_pick_next(rq);
-      if (next && next->absolute_deadline_ms < current->absolute_deadline_ms) {
-          sched_reschedule();
-          return;
-      }
-  } else {
-      if (current->cpu_time_consumed >= current->time_slice_ms) {
-        current->cpu_time_consumed = 0U;
-        sched_reschedule();
-        return;
-      }
-
-      if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
-          kthread_t *next = sched_cfs_pick_next(rq);
-          if (next && next->vruntime < current->vruntime) {
-              sched_reschedule();
-              return;
-          }
-      } else {
-          uint32_t higher_mask = (current->priority >= SCHED_MAX_PRIORITY)
-                                     ? 0U
-                                     : ((~0U) << (current->priority + 1U));
-          if ((rq->ready_bitmap & higher_mask) != 0U) {
-            sched_reschedule();
-            return;
-          }
-      }
-  }
-}
-
-kthread_t *sched_current_thread(void) {
+bh_thread_t *sched_current_thread(void) {
   return g_cpu_locals[sched_clamp_core(hal_cpu_get_id())].runqueue.current_thread;
 }
 
-kthread_t *sched_current(void) { return sched_current_thread(); }
+bh_thread_t *sched_current(void) { return sched_current_thread(); }
 
-kprocess_t *sched_current_process(void) {
-  kthread_t *t = sched_current_thread();
+bh_process_t *sched_current_process(void) {
+  bh_thread_t *t = sched_current_thread();
   return t ? t->process : NULL;
 }
 
 address_space_t *sched_current_aspace(void) {
-  kprocess_t *p = sched_current_process();
+  bh_process_t *p = sched_current_process();
   return p ? p->addr_space : NULL;
 }
 
 struct capability_table *sched_current_cap_table(void) {
-  kprocess_t *p = sched_current_process();
+  bh_process_t *p = sched_current_process();
   return p ? (struct capability_table *)p->security_sandbox_ctx : NULL;
 }
 
-uint64_t sched_get_ticks(void) { return g_sched_ticks; }
-void sched_set_policy(sched_policy_t policy) {
-  if (policy <= SCHED_POLICY_RMS) {
-    g_policy = policy;
-  }
-}
+uint64_t sched_get_ticks(void) { return g_cpu_locals[sched_clamp_core(hal_cpu_get_id())].runqueue.total_ticks; }
 
-int sched_sys_thread_create(kprocess_t *parent, void (*entry_point)(void), uint64_t *out_tid) {
-  kthread_t *t = thread_create(parent, entry_point);
-  if (!t) {
-    return -1;
-  }
-  if (out_tid) {
-    *out_tid = t->thread_id;
-  }
-  return 0;
-}
 
-int sched_sys_thread_destroy(uint64_t tid) {
-  thread_slot_t *slot = sched_resolve_tid_owner_slow(tid);
-  if (!slot) {
-    return -1;
-  }
-  return sched_mark_thread_terminated(&slot->thread);
-}
+
+
+
 
 int sched_sys_sleep(uint64_t millis) {
   sched_sleep(millis);
   return 0;
 }
 
-void sched_inherit_priority(kthread_t *thread, uint32_t new_priority) {
-  if (!thread) {
-    return;
-  }
-  if (new_priority > thread->priority) {
-    thread->priority = new_priority;
-  }
-}
 
-void sched_restore_priority(kthread_t *thread) {
-  if (!thread) {
-    return;
-  }
-  thread->priority = thread->base_priority;
-}
 
-void sched_on_mutex_wait(kthread_t *waiter, void *mutex) {
-  if (!waiter || !mutex) {
-    return;
-  }
 
-  waiter->waiting_on_lock = mutex;
 
-  kthread_t *owner = sched_find_mutex_owner(mutex);
-  while (owner && owner != waiter && waiter->priority > owner->priority) {
-    sched_inherit_priority(owner, waiter->priority);
-    if (!owner->waiting_on_lock) {
-      break;
-    }
-    owner = sched_find_mutex_owner(owner->waiting_on_lock);
-  }
-}
 
-void sched_on_mutex_acquire(kthread_t *owner, void *mutex) {
-  if (!owner || !mutex) {
-    return;
-  }
 
-  owner->waiting_on_lock = NULL;
-  sched_register_mutex_owner(mutex, owner);
-}
 
-void sched_on_mutex_release(kthread_t *owner, void *mutex) {
-  if (!owner || !mutex) {
-    return;
-  }
 
-  sched_unregister_mutex_owner(mutex, owner);
-  sched_restore_priority(owner);
-}
 
-kthread_t *sched_find_thread_by_id(uint64_t tid) {
+
+bh_thread_t *sched_find_thread_by_id(uint64_t tid) {
   thread_slot_t *slot = sched_resolve_tid_owner_slow(tid);
   return slot ? &slot->thread : NULL;
 }
 
-int sched_adjust_priority(kthread_t *thread, uint32_t new_priority) {
-  if (!thread) {
-    return -1;
-  }
-  if (new_priority > SCHED_MAX_PRIORITY) {
-    new_priority = SCHED_MAX_PRIORITY;
-  }
 
-  thread_slot_t *slot = sched_find_thread_slot_by_tid_local(&g_cpu_locals[thread->home_core_id].runqueue, thread->thread_id);
 
-  if (slot && slot->is_on_runqueue != 0U) {
-    uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
-    bool is_local = (thread->bound_core_id == current_core);
 
-    if (is_local) {
-        hal_cpu_disable_interrupts();
-    } else {
-        // Fallback for safety. In strict multikernel, we should send an IPI to mutate.
-        spin_lock(&g_cpu_locals[thread->bound_core_id].runqueue.lock);
-    }
 
-    sched_rq_t *rq = &g_cpu_locals[thread->bound_core_id].runqueue;
 
-    if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
-      sched_cfs_dequeue(rq, thread);
-    } else {
-      list_del(&slot->run_node);
-      list_init(&slot->run_node);
-      sched_ready_bitmap_clear_if_empty(rq, thread->priority);
-    }
 
-    slot->is_on_runqueue = 0U;
-    if (rq->runnable_count > 0U) {
-      rq->runnable_count--;
-    }
 
-    if (is_local) {
-        hal_cpu_enable_interrupts();
-    } else {
-        spin_unlock(&g_cpu_locals[thread->bound_core_id].runqueue.lock);
-    }
-  }
 
-  thread->priority = new_priority;
-  if (thread->state == THREAD_STATE_READY) {
-    (void)sched_enqueue(thread, thread->bound_core_id); // Defer via enqueue inbox
-  }
-  return 0;
-}
 
-int sched_set_thread_priority(uint64_t tid, uint32_t new_priority) {
-  return sched_adjust_priority(sched_find_thread_by_id(tid), new_priority);
-}
 
-int sched_sys_set_priority(uint64_t tid, uint32_t new_priority) {
-  return sched_set_thread_priority(tid, new_priority);
-}
 
-int sched_migrate_task(kthread_t *thread, uint32_t new_node) {
-  if (!thread || new_node >= g_active_core_count) {
-    return -1;
-  }
-  if ((thread->affinity_mask & (1U << new_node)) == 0U) {
-    return -2;
-  }
 
-  thread_slot_t *slot = sched_find_thread_slot_by_tid_local(&g_cpu_locals[thread->home_core_id].runqueue, thread->thread_id);
-  if (!slot) {
-    return -1;
-  }
 
-  if (slot->is_on_runqueue != 0U) {
-    uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
-    bool is_local = (thread->bound_core_id == current_core);
 
-    if (is_local) {
-        hal_cpu_disable_interrupts();
-    } else {
-        spin_lock(&g_cpu_locals[thread->bound_core_id].runqueue.lock);
-    }
 
-    sched_rq_t *rq = &g_cpu_locals[thread->bound_core_id].runqueue;
 
-    if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
-      sched_cfs_dequeue(rq, thread);
-    } else {
-      list_del(&slot->run_node);
-      list_init(&slot->run_node);
-      sched_ready_bitmap_clear_if_empty(rq, thread->priority);
-    }
 
-    slot->is_on_runqueue = 0U;
-    if (rq->runnable_count > 0U) {
-      rq->runnable_count--;
-    }
 
-    if (is_local) {
-        hal_cpu_enable_interrupts();
-    } else {
-        spin_unlock(&g_cpu_locals[thread->bound_core_id].runqueue.lock);
-    }
-  }
 
-  thread->bound_core_id = new_node;
-  thread->preferred_numa_node = (uint8_t)new_node;
-  if (thread->state == THREAD_STATE_READY) {
-    return sched_enqueue(thread, new_node); // Enqueues into target core's inbox if remote
-  }
-  return 0;
-}
-
-int sched_set_thread_preferred_node(uint64_t tid, uint8_t node_id) {
-  return sched_migrate_task(sched_find_thread_by_id(tid), node_id);
-}
-
-int sched_sys_set_affinity(uint64_t tid, uint32_t affinity_mask) {
-  kthread_t *thread = sched_find_thread_by_id(tid);
-  if (!thread || affinity_mask == 0U) {
-    return -1;
-  }
-  thread->affinity_mask = affinity_mask;
-
-  uint32_t current_core = thread->bound_core_id;
-  if ((affinity_mask & (1U << current_core)) == 0U) {
-    for (uint32_t core = 0; core < g_active_core_count; ++core) {
-      if ((affinity_mask & (1U << core)) != 0U) {
-        return sched_migrate_task(thread, core);
-      }
-    }
-    return -1;
-  }
-  return 0;
-}
-
-int sched_throttle_core(uint32_t core_id) {
-  if (core_id >= g_active_core_count) {
-    return -1;
-  }
-  g_cpu_locals[core_id].runqueue.throttled = 1U;
-  return 0;
-}
-
-int sched_request_remote_handoff(kthread_t *thread, uint32_t target_core, uint32_t auth_token) {
-  if (!thread || target_core >= g_active_core_count) {
-    return -1; // Invalid argument
-  }
-
-  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
-  if (target_core == current_core) {
-    return -1; // Cannot handoff to self
-  }
-
-  thread_slot_t *slot = sched_find_thread_slot_by_tid_local(&g_cpu_locals[thread->home_core_id].runqueue, thread->thread_id);
-  if (!slot) {
-    return -1;
-  }
-
-  hal_cpu_disable_interrupts();
-
-  // Validate state - only READY threads can be handed off
-  if (thread->state != THREAD_STATE_READY) {
-    hal_cpu_enable_interrupts();
-    return -2; // Invalid state
-  }
-
-  sched_rq_t *rq = &g_cpu_locals[current_core].runqueue;
-
-  // Dequeue from local runqueue
-  if (slot->is_on_runqueue != 0U) {
-    if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
-      sched_cfs_dequeue(rq, thread);
-    } else {
-      list_del(&slot->run_node);
-      list_init(&slot->run_node);
-      sched_ready_bitmap_clear_if_empty(rq, thread->priority);
-    }
-    slot->is_on_runqueue = 0U;
-    if (rq->runnable_count > 0U) {
-      rq->runnable_count--;
-    }
-  }
-
-  // Transition to pending handoff state
-  thread->state = THREAD_STATE_REMOTE_HANDOFF_PENDING;
-
-  hal_cpu_enable_interrupts();
-
-  // Prepare and send uRPC message
-  mk_channel_t channel;
-  if (mk_get_channel(current_core, target_core, &channel) != 0) {
-    // If channel fails, revert state and re-enqueue locally
-    hal_cpu_disable_interrupts();
-    thread->state = THREAD_STATE_READY;
-    if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
-      sched_cfs_enqueue(rq, thread);
-    } else {
-      list_add(&slot->run_node, &rq->ready_queue[thread->priority]);
-      sched_ready_bitmap_set(rq, thread->priority);
-    }
-    slot->is_on_runqueue = 1U;
-    rq->runnable_count++;
-    hal_cpu_enable_interrupts();
-    return -3; // Channel error
-  }
-
-  mk_msg_thread_handoff_t payload = {
-    .thread_id = thread->thread_id,
-    .source_core = current_core,
-    .target_core = target_core,
-    .priority = thread->priority,
-    .flags = 0
-  };
-
-  urpc_msg_t msg = {
-    .type = MK_MSG_THREAD_HANDOFF_REQ,
-    .payload_size = sizeof(payload),
-    .src_core = current_core,
-    .dst_core = target_core,
-    .auth_token = auth_token
-  };
-  __builtin_memcpy(msg.payload_data, &payload, sizeof(payload));
-
-  int ret = mk_send_message(&channel, msg.type, msg.payload_data, msg.payload_size);
-  if (ret != 0) {
-      // If send fails, revert state and re-enqueue locally
-      hal_cpu_disable_interrupts();
-      thread->state = THREAD_STATE_READY;
-      if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
-        sched_cfs_enqueue(rq, thread);
-      } else {
-        list_add(&slot->run_node, &rq->ready_queue[thread->priority]);
-        sched_ready_bitmap_set(rq, thread->priority);
-      }
-      slot->is_on_runqueue = 1U;
-      rq->runnable_count++;
-      hal_cpu_enable_interrupts();
-      return -4; // Send error
-  }
-
-  return 0;
-}
-
-int sched_ai_apply_suggestion(const ai_suggestion_t *suggestion) {
-  if (!suggestion) {
-    return -1;
-  }
-  kthread_t *thread = sched_find_thread_by_id((uint64_t)suggestion->target_id);
-  if (!thread) {
-      return -1;
-  }
-  switch (suggestion->action) {
-  case AI_ACTION_ADJUST_PRIORITY:
-    if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
-        if (suggestion->value == 0) return -1;
-        thread->weight = suggestion->value;
-        return 0;
-    }
-    return sched_adjust_priority(thread, suggestion->value);
-  case AI_ACTION_MIGRATE_TASK:
-    return sched_migrate_task(thread, suggestion->value);
-  case AI_ACTION_THROTTLE_CORE:
-    return sched_throttle_core(suggestion->value);
-  case AI_ACTION_KILL_TASK:
-    if (sched_mark_thread_terminated(thread) != 0) {
-      return -1;
-    }
-    if (thread == sched_current_thread()) {
-      uint32_t core = sched_clamp_core(hal_cpu_get_id());
-      g_cpu_locals[core].runqueue.current_thread = NULL;
-      sched_reschedule();
-    }
-    return 0;
-  case AI_ACTION_NONE:
-  default:
-    return -1;
-  }
-}
-
-int sched_enqueue_ai_suggestion(const ai_suggestion_t *suggestion) {
-  if (!suggestion) {
-    return -1;
-  }
-  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
-  sched_rq_t *rq = &g_cpu_locals[current_core].runqueue;
-  suggestion_queue_t *sq = (suggestion_queue_t *)rq->pending_suggestions;
-
-  uint32_t next = (sq->head + 1U) % SCHED_MAX_PENDING_SUGGESTIONS;
-  if (next == sq->tail) {
-    return -2;
-  }
-  sq->queue[sq->head] = *suggestion;
-  sq->head = next;
-  return 0;
-}
 
 #ifdef Profile_RTOS
 void sched_disable_tick_for_core(uint32_t core_id) { (void)core_id; }
 #endif
 
-void sched_notify_ipc_ready(uint32_t core_id, uint32_t msg_type) {
-  (void)core_id;
-  (void)msg_type;
-}
 
-int thread_raise_fault(kthread_t *thread, thread_fault_t fault) {
-    if (!thread) return -1; // -EINVAL mapped
 
-    thread->pending_fault = fault;
-    thread->fault_pending = true;
-    thread->state = THREAD_STATE_TERMINATED; // Mark as doomed
 
-    /* TODO(personality/linux): translate THREAD_FAULT_SEGV / STACK_OVERFLOW to SIGSEGV */
 
-    sched_reschedule();
-    return 0;
-}
 
-static void sched_cfs_enqueue(sched_rq_t *rq, kthread_t *thread) {
-    struct rb_node **link = &rq->cfs_runqueue.rb_node;
-    struct rb_node *parent = NULL;
-    int64_t vruntime = thread->vruntime;
-    int leftmost = 1;
 
-    // Wakeup preemption edge case: bound the negative drift
-    if (vruntime < rq->min_vruntime) {
-        vruntime = rq->min_vruntime;
-        thread->vruntime = vruntime;
-    }
 
-    while (*link) {
-        parent = *link;
-        kthread_t *entry = (kthread_t *)(void *)((char *)parent - offsetof(kthread_t, cfs_node));
 
-        if (vruntime < entry->vruntime) {
-            link = &parent->rb_left;
-        } else {
-            link = &parent->rb_right;
-            leftmost = 0;
-        }
-    }
-
-    rb_link_node(&thread->cfs_node, parent, link);
-    rb_insert_color(&thread->cfs_node, &rq->cfs_runqueue);
-
-    // Update min_vruntime if this is the new leftmost node
-    if (leftmost) {
-        rq->min_vruntime = vruntime;
-    }
-}
-
-static void sched_cfs_dequeue(sched_rq_t *rq, kthread_t *thread) {
-    if (rq->cfs_runqueue.rb_node == NULL) {
-        return;
-    }
-
-    // Is it the leftmost?
-    int leftmost = (rb_first(&rq->cfs_runqueue) == &thread->cfs_node);
-
-    rb_erase(&thread->cfs_node, &rq->cfs_runqueue);
-
-    if (leftmost) {
-        struct rb_node *first = rb_first(&rq->cfs_runqueue);
-        if (first) {
-            kthread_t *next = (kthread_t *)(void *)((char *)first - offsetof(kthread_t, cfs_node));
-            rq->min_vruntime = next->vruntime;
-        }
-    }
-}
-
-static kthread_t *sched_cfs_pick_next(sched_rq_t *rq) {
+bh_thread_t *sched_cfs_pick_next(sched_rq_t *rq) {
     struct rb_node *left = rb_first(&rq->cfs_runqueue);
     if (!left) {
         return NULL;
     }
-    return (kthread_t *)(void *)((char *)left - offsetof(kthread_t, cfs_node));
+    return (bh_thread_t *)(void *)((char *)left - offsetof(bh_thread_t, cfs_node));
 }
 
-static void sched_cfs_update_vruntime(sched_rq_t *rq, kthread_t *thread, uint64_t delta_exec) {
-    if (delta_exec == 0) return;
 
-    // Validate monotonic growth
-    int64_t prev_vruntime = thread->vruntime;
 
-    // vruntime += (delta_exec * NICE_0_WEIGHT) / weight
-    uint32_t weight = thread->weight > 0 ? thread->weight : 1;
-    uint64_t delta_vruntime = (delta_exec * CFS_NICE_0_WEIGHT) / weight;
-
-    thread->vruntime += delta_vruntime;
-
-    // Ensure monotonic
-    if (thread->vruntime < prev_vruntime) {
-        thread->vruntime = prev_vruntime; // Handle theoretical wrap around
-    }
-
-    // Track min_vruntime to prevent unbounded lag
-    if (thread->vruntime < rq->min_vruntime) {
-         // Should not happen, but invariant safety
-         rq->min_vruntime = thread->vruntime;
-    } else if (thread->vruntime > rq->min_vruntime && rq->runnable_count == 1) {
-         // Single active task drags the baseline forward
-         rq->min_vruntime = thread->vruntime;
-    }
-}
-
-static void sched_validate_rq(sched_rq_t *rq) {
-    // Debug only
-#ifndef NDEBUG
-    if (!rq) return;
-
-    // Valid count
-    if (rq->runnable_count > SCHED_MAX_THREADS) {
-        kernel_panic("Runqueue count invalid/underflow");
-    }
-
-    if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
-        // Validate min_vruntime is sensible
-        struct rb_node *first = rb_first(&rq->cfs_runqueue);
-        if (first) {
-            kthread_t *next = (kthread_t *)(void *)((char *)first - offsetof(kthread_t, cfs_node));
-            if (next->vruntime < rq->min_vruntime && rq->min_vruntime - next->vruntime > 1000) {
-                // Minor drift is okay due to rounding, but major divergence is a bug
-                kernel_panic("Runqueue min_vruntime divergence");
-            }
-        }
-    } else {
-        // Validate priority bitmaps vs lists
-        for (uint32_t i = 0; i < MAX_PRIORITY_LEVELS; i++) {
-            int is_empty = list_empty(&rq->ready_queue[i]);
-            int bit_set = (rq->ready_bitmap & (1U << i)) != 0;
-            if (is_empty && bit_set) {
-                 kernel_panic("Runqueue bitmap indicates ready task but list is empty");
-            } else if (!is_empty && !bit_set) {
-                 kernel_panic("Runqueue list has tasks but bitmap bit is cleared");
-            }
-        }
-    }
-#else
-    (void)rq;
-#endif
-}

@@ -1,7 +1,7 @@
 # Priority & Priority Inversion
 
 ## Overview
-Threads (`kthread_t`) in Bharat-OS have an assigned priority level that determines their relative importance to the system. Higher-priority threads receive more CPU time or preempt lower-priority threads.
+Threads (`bh_thread_t`) in Bharat-OS have an assigned priority level that determines their relative importance to the system. Higher-priority threads receive more CPU time or preempt lower-priority threads.
 
 ## Static vs. Dynamic Priority
 -   **Static Priority (RT):** Threads with a hard real-time profile (`BHARAT_KERNEL_PROFILE_RT`) have a static priority (e.g., 0 to 99, where 99 is highest). This priority *never changes* during normal execution unless explicitly modified by a capability-authorized system call.

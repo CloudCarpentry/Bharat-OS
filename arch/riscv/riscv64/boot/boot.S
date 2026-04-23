@@ -10,16 +10,7 @@
 .section .text.init
 .global _start
 _start:
-    /* Only allow hart 0 to boot the kernel initially.
-     * OpenSBI passes hartid in a0.
-     */
     bnez a0, .halt_loop
-
-    /* Early heartbeat: print '!' via SBI legacy console putchar */
-    li a7, 0x01
-    li a6, 0
-    li a0, 0x21 /* '!' */
-    ecall
 
     /* Setup stack */
     la sp, stack_top

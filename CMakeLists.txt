@@ -11,6 +11,7 @@ include(BharatCommon)
 include(BharatProfiles)
 include(BharatPersonality)
 include(BharatComponentPolicy)
+include(${CMAKE_SOURCE_DIR}/cmake/BharatConstraints.cmake)
 
 # Versioning Identity System: Generate and load from manifest
 set(BHARAT_MANIFEST_JSON "${CMAKE_SOURCE_DIR}/release/manifest/os-release.json")
@@ -71,14 +72,19 @@ target_include_directories(bharat_generated_includes INTERFACE "${BHARAT_GEN_INC
 
 # Architecture selection
 bharat_set_arch_defaults()
+bharat_apply_arch_flags()
 
 # Device Profile
 set(BHARAT_DEVICE_PROFILE "DESKTOP" CACHE STRING "Target device profile (DESKTOP, MOBILE, EDGE, DATACENTER, NETWORK_APPLIANCE, DRONE, ROBOT, RTOS, AUTOMOTIVE_ECU, AUTOMOTIVE_INFOTAINMENT)")
 set_property(CACHE BHARAT_DEVICE_PROFILE PROPERTY STRINGS DESKTOP MOBILE EDGE DATACENTER NETWORK_APPLIANCE DRONE ROBOT RTOS AUTOMOTIVE_ECU AUTOMOTIVE_INFOTAINMENT)
 
 # Personality Profile
-set(BHARAT_PERSONALITY_PROFILE "NATIVE" CACHE STRING "Target personality profile (NATIVE, LINUX, WINDOWS, MAC)")
-set_property(CACHE BHARAT_PERSONALITY_PROFILE PROPERTY STRINGS NATIVE LINUX WINDOWS MAC)
+set(BHARAT_PERSONALITY_PROFILE "NATIVE" CACHE STRING "Target personality profile (NATIVE, LINUX, ANDROID, WINDOWS, MAC)")
+set_property(CACHE BHARAT_PERSONALITY_PROFILE PROPERTY STRINGS NATIVE LINUX ANDROID WINDOWS MAC)
+
+# Default Init Profile
+set(BHARAT_DEFAULT_INIT_PROFILE "DESKTOP" CACHE STRING "Target default init profile (TINY, SMALL, EMBEDDED_RICH, MOBILE, DESKTOP, DRONE)")
+set_property(CACHE BHARAT_DEFAULT_INIT_PROFILE PROPERTY STRINGS TINY SMALL EMBEDDED_RICH MOBILE DESKTOP DRONE)
 
 # Board selection metadata (provided by build scripts or manual configure)
 set(BHARAT_TARGET_BOARD "" CACHE STRING "Target board identifier (e.g., qemu-virt-riscv64, shakti-c)")
@@ -89,6 +95,14 @@ set(BHARAT_ISA_FEATURES "" CACHE STRING "Target ISA features as a semicolon-sepa
 
 # Hardware Accelerators
 set(BHARAT_ACCELERATOR_CLASSES "" CACHE STRING "Target accelerator classes as a semicolon-separated list (e.g., gpu;npu;dsp;crypto;vpu)")
+
+# Execution Mode Framework Integration
+set(BHARAT_EXECUTION_MODE_MODULE "${CMAKE_CURRENT_SOURCE_DIR}/cmake/BharatExecutionMode.cmake")
+if(EXISTS "${BHARAT_EXECUTION_MODE_MODULE}")
+    include("${BHARAT_EXECUTION_MODE_MODULE}")
+else()
+    message(WARNING "Optional execution mode module not found: ${BHARAT_EXECUTION_MODE_MODULE}. Continuing with in-tree defaults.")
+endif()
 
 # Memory Capability Options
 option(BHARAT_ENABLE_MMU "Enable MMU support" ON)
@@ -145,6 +159,8 @@ if(BHARAT_DEVICE_PROFILE STREQUAL "RTOS" OR BHARAT_DEVICE_PROFILE STREQUAL "DRON
 elseif(BHARAT_DEVICE_PROFILE STREQUAL "DATACENTER" OR BHARAT_DEVICE_PROFILE STREQUAL "CLOUD" OR BHARAT_DEVICE_PROFILE STREQUAL "SERVER")
     set(BHARAT_ENABLE_NUMA ON CACHE BOOL "Enable NUMA support" FORCE)
     set(BHARAT_ENABLE_IOMMU ON CACHE BOOL "Enable IOMMU support" FORCE)
+elseif(BHARAT_DEVICE_PROFILE STREQUAL "DESKTOP" OR BHARAT_DEVICE_PROFILE STREQUAL "LAPTOP" OR BHARAT_DEVICE_PROFILE STREQUAL "AUTOMOTIVE_INFOTAINMENT")
+    set(BHARAT_ENABLE_IOMMU ON CACHE BOOL "Enable IOMMU support" FORCE)
 endif()
 
 # Determine Kernel Execution Profile (RT, GP, MIX) based on Device Profile
@@ -169,7 +185,7 @@ message(STATUS "Architecture: ${BHARAT_ARCH_FAMILY}-${BHARAT_ARCH_BITS} (${BHARA
 string(TOUPPER "${BHARAT_DEVICE_PROFILE}" BHARAT_DEVICE_PROFILE)
 set(BHARAT_DEVICE_PROFILE "${BHARAT_DEVICE_PROFILE}" CACHE STRING "Target device profile (DESKTOP, MOBILE, EDGE, DATACENTER, NETWORK_APPLIANCE, DRONE, ROBOT, RTOS, AUTOMOTIVE_ECU, AUTOMOTIVE_INFOTAINMENT)" FORCE)
 string(TOUPPER "${BHARAT_PERSONALITY_PROFILE}" BHARAT_PERSONALITY_PROFILE)
-set(BHARAT_PERSONALITY_PROFILE "${BHARAT_PERSONALITY_PROFILE}" CACHE STRING "Target personality profile (NATIVE, LINUX, WINDOWS, MAC)" FORCE)
+set(BHARAT_PERSONALITY_PROFILE "${BHARAT_PERSONALITY_PROFILE}" CACHE STRING "Target personality profile (NATIVE, LINUX, ANDROID, WINDOWS, MAC)" FORCE)
 
 # Resolve required components for target profile/personality/board
 bharat_apply_component_policy()
@@ -180,23 +196,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang" AND BHARAT_USE_LLD)
     add_link_options(-fuse-ld=lld)
 endif()
 
-if(ARCH STREQUAL "riscv64")
-    add_compile_options(
-        $<$<COMPILE_LANGUAGE:C>:-march=rv64gc>
-        $<$<COMPILE_LANGUAGE:C>:-mabi=lp64d>
-        $<$<COMPILE_LANGUAGE:C>:-mcmodel=medany>
-        $<$<COMPILE_LANGUAGE:ASM>:-march=rv64gc>
-        $<$<COMPILE_LANGUAGE:ASM>:-mabi=lp64d>
-    )
-elseif(ARCH STREQUAL "riscv32")
-    add_compile_options(
-        $<$<COMPILE_LANGUAGE:C>:-march=rv32g>
-        $<$<COMPILE_LANGUAGE:C>:-mabi=ilp32d>
-        $<$<COMPILE_LANGUAGE:C>:-mcmodel=medany>
-        $<$<COMPILE_LANGUAGE:ASM>:-march=rv32g>
-        $<$<COMPILE_LANGUAGE:ASM>:-mabi=ilp32d>
-    )
-endif()
+
 
 option(BHARAT_ENABLE_CLANG_TIDY "Enable clang-tidy static analysis for C targets" OFF)
 option(BHARAT_BUILD_HOST_TESTS "Build host-side unit tests" OFF)
@@ -269,6 +269,7 @@ bharat_set_profile_flag(BHARAT_IRQ_DISPATCH_RT "RT" "${BHARAT_IRQ_DISPATCH_RESOL
 # Personality Profile
 bharat_set_profile_flag(BHARAT_PERSONALITY_NATIVE "NATIVE" "${BHARAT_PERSONALITY_PROFILE}")
 bharat_set_profile_flag(BHARAT_PERSONALITY_LINUX "LINUX" "${BHARAT_PERSONALITY_PROFILE}")
+bharat_set_profile_flag(BHARAT_PERSONALITY_ANDROID "ANDROID" "${BHARAT_PERSONALITY_PROFILE}")
 bharat_set_profile_flag(BHARAT_PERSONALITY_WINDOWS "WINDOWS" "${BHARAT_PERSONALITY_PROFILE}")
 bharat_set_profile_flag(BHARAT_PERSONALITY_MAC "MAC" "${BHARAT_PERSONALITY_PROFILE}")
 

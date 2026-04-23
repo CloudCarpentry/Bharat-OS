@@ -2,13 +2,19 @@
 
 ## Overview
 
-`boot_displayd` is a minimal early-boot graphical/visual service responsible for handling splash screens, boot progress indicators, and early recovery UI.
+`boot_displayd` is the minimal early-boot visual service for splash, diagnostics, and recovery-safe pages.
 
 ## Responsibilities
 
-- **Early Rendering**: Utilizing the raw framebuffer or display capabilities provided by the kernel early in the boot sequence.
-- **Progress Updates**: Displaying visual feedback during the initial phases of system startup.
+- **Early rendering** via a framebuffer-first contract.
+- **Deterministic tiny pages** (`splash`, `diagnostics`, `recovery`) through `bharat_tiny_ui_state_t`.
+- **Simple input mapping** for next/prev/select/back navigation without a compositor dependency.
+- **Handoff readiness** so `displayd` can replace the boot path once richer UI services are online.
 
-## Architecture
+## Current Implementation Baseline
 
-This service is replaced or transitioned out once the full user-space display manager (`displayd`) or equivalent windowing system takes over.
+- Service entrypoint: `services/system/boot_displayd/main.c`
+- Tiny renderer/runtime: `stacks/ui/lcd/tiny_ui.c`
+- Public contract: `include/bharat/ui/tiny_ui.h`
+
+The current baseline intentionally stays policy-light and profile-friendly: page-oriented rendering, low-memory compatible buffers, and no direct board-driver reach-around.

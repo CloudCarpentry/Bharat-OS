@@ -12,19 +12,21 @@ python3 tools/build.py <build_name> --clean --configure --build --run-tests
 ```
 
 ### Common Combinations
-| Target | Command |
-| :--- | :--- |
-| **x86_64 Desktop** | `python3 tools/build.py x86_64_desktop_mmu --run-tests` |
-| **ARM64 Desktop** | `python3 tools/build.py arm64_desktop_mmu --run-tests` |
-| **RISCV64 Desktop** | `python3 tools/build.py riscv64_desktop_mmu --run-tests` |
-| **Automotive (ARM64)** | `python3 tools/build.py arm64_automobile_debug --run-tests` |
-| **Laptop (x86_64)** | `python3 tools/build.py x86_64_laptop_debug --run-tests` |
+| Target | Command | Status |
+| :--- | :--- | :--- |
+| **x86_64 Desktop** | `python tools/build.py default_dev --run-tests` | ✅ Verified |
+| **ARM64 Desktop** | `python tools/build.py arm64_desktop_mmu --run-tests` | ✅ Verified |
+| **ARM32 Edge** | `python tools/build.py arm32_virt_mmu --run-tests` | ⚠️ Stabilizing |
+| **RISCV64 Desktop** | `python tools/build.py riscv64_desktop_mmu --run-tests` | ✅ Verified |
+| **RISCV32 Robot** | `python tools/build.py riscv32_robot_debug --run-tests` | ⚠️ Stabilizing |
 
 ### Architecture-Specific Boot Notes
 
 *   **x86_64**: QEMU requires a 32-bit ELF for multiboot compatibility. The build script automatically uses `llvm-objcopy` to produce `kernel32.elf` and boots it.
 *   **ARM64**: Requires passing `-machine virt -cpu cortex-a57` to QEMU. The kernel also expects a valid Device Tree Blob (FDT) pointer passed in `x0`, which is correctly preserved during the early boot assembly phase. It boots from a flat binary format (`Image`).
+*   **ARM32**: Targets the ARMv7-A ISA. Uses `-machine virt -cpu cortex-a15`. Linked with `lld` to avoid legacy GCC dependency.
 *   **RISCV64**: Requires the `-march=rv64gc` ISA extensions for the compiler to prevent floating-point and compressed instruction errors. It uses `-machine virt` for the QEMU machine type.
+*   **RISCV32**: Targets the generic RV32G ISA. Uses `-machine virt`. Required specialized `hal_pt_riscv32.c` and 32/64-bit agnostic assembly macros.
 
 ---
 
@@ -56,15 +58,20 @@ If you see `level=warning msg="Couldn't get a valid docker connection"`, ensure:
 ---
 
 ## 3. Reference: Full Build Matrix
-All build names available in `build_config.json`:
-
-- `x86_64_desktop_mmu`
+- `default_dev` (x86_64)
 - `arm64_desktop_mmu`
+- `arm32_virt_mmu`
 - `riscv64_desktop_mmu`
-- `arm64_automobile_debug`
-- `riscv64_ev_automobile_debug`
-- `x86_64_laptop_debug`
-- `arm64_laptop_debug`
-- `riscv64_laptop_debug`
-- `arm32_edge_mpu`
+- `riscv32_robot_debug`
 - `riscv32_edge_mmu_lite`
+
+---
+
+## 4. Execution Strategy & Validation
+
+For robust multi-arch verification, follow this sequence:
+
+1. **Clean & Configure**: Always use `--clean --configure` when switching between architectures to ensure the CMake cache does not contain stale host or targeting paths.
+2. **Sequential Build**: Use the naming matrix provided in Phase 2 above.
+3. **Log Analysis**: Search for the `Bharat-OS` banner in the serial output.
+4. **Failure Recovery**: On 32-bit targets, monitor for the specialized "Runtime Tier" logs to ensure the correct architecture-agnostic assembly macros are active.

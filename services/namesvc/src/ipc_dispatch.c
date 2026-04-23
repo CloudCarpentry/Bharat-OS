@@ -1,6 +1,7 @@
 #include <ipc_dispatch.h>
 #include <registry.h>
 #include <ipc/contract_validate.h>
+#include <ipc_auth.h>
 
 static void custom_memset_ipc(void *s, int c, unsigned long n) {
     unsigned char *p = s;
@@ -23,6 +24,12 @@ void namesvc_ipc_handle_request(const bharat_ipc_contract_header_t *hdr, const n
             return;
         }
         res->status = NAMESVC_STATUS_ERR_INVAL;
+        return;
+    }
+
+    int auth_status = namesvc_authorize(req->opcode, hdr->capability_transfer);
+    if (auth_status != BHARAT_IPC_STATUS_OK) {
+        res->status = auth_status;
         return;
     }
 

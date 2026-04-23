@@ -24,6 +24,9 @@ int iommu_init(void) {
         console_write_raw("IOMMU: Initialized with NULL backend\n", 37);
     }
 
+    // Initialize fault reporting via IRQ (hardcoded vector for demo)
+    (void)iommu_fault_init(0x30);
+
     if (g_iommu_ops && g_iommu_ops->init) {
         int ret = g_iommu_ops->init();
         if (ret == 0 && g_iommu_ops->query_state) {

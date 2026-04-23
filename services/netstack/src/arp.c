@@ -11,10 +11,36 @@ typedef struct {
     uint32_t ip;
     uint8_t mac[ETH_ALEN];
     uint32_t expires; // Time to live (simple counter/timestamp)
+    uint32_t last_used; // Monotonic recency stamp for LRU-style eviction
 } arp_entry_t;
 
 static arp_entry_t arp_cache[ARP_CACHE_SIZE] = {0};
 static int arp_cache_count = 0;
+static uint32_t arp_cache_use_tick = 0;
+
+static uint32_t arp_next_use_tick(void) {
+    arp_cache_use_tick++;
+    if (arp_cache_use_tick == 0U) {
+        // Wraparound defense: keep ordering monotonic enough for tiny cache.
+        arp_cache_use_tick = 1U;
+        for (int i = 0; i < arp_cache_count; i++) {
+            arp_cache[i].last_used = 0U;
+        }
+    }
+    return arp_cache_use_tick;
+}
+
+static int arp_find_lru_index(void) {
+    int lru_idx = 0;
+    uint32_t min_tick = arp_cache[0].last_used;
+    for (int i = 1; i < arp_cache_count; i++) {
+        if (arp_cache[i].last_used < min_tick) {
+            min_tick = arp_cache[i].last_used;
+            lru_idx = i;
+        }
+    }
+    return lru_idx;
+}
 
 static uint32_t get_local_ip(void) {
     return ipv4_get_local_ip();
@@ -26,11 +52,14 @@ static uint8_t *get_local_mac() {
 }
 
 static void arp_cache_update(uint32_t ip, const uint8_t *mac) {
+    uint32_t now = arp_next_use_tick();
+
     // 1. Update existing entry
     for (int i = 0; i < arp_cache_count; i++) {
         if (arp_cache[i].ip == ip) {
             eth_addr_copy(arp_cache[i].mac, mac);
             arp_cache[i].expires = 300; // Reset TTL (arbitrary value)
+            arp_cache[i].last_used = now;
             return;
         }
     }
@@ -40,18 +69,23 @@ static void arp_cache_update(uint32_t ip, const uint8_t *mac) {
         arp_cache[arp_cache_count].ip = ip;
         eth_addr_copy(arp_cache[arp_cache_count].mac, mac);
         arp_cache[arp_cache_count].expires = 300;
+        arp_cache[arp_cache_count].last_used = now;
         arp_cache_count++;
     } else {
-        // Simple eviction: replace the first entry
-        arp_cache[0].ip = ip;
-        eth_addr_copy(arp_cache[0].mac, mac);
-        arp_cache[0].expires = 300;
+        // Evict least-recently-used entry rather than fixed index replacement.
+        int lru = arp_find_lru_index();
+        arp_cache[lru].ip = ip;
+        eth_addr_copy(arp_cache[lru].mac, mac);
+        arp_cache[lru].expires = 300;
+        arp_cache[lru].last_used = now;
     }
 }
 
 int arp_resolve(uint32_t target_ip, uint8_t *out_mac) {
+    uint32_t now = arp_next_use_tick();
     for (int i = 0; i < arp_cache_count; i++) {
         if (arp_cache[i].ip == target_ip) {
+            arp_cache[i].last_used = now;
             eth_addr_copy(out_mac, arp_cache[i].mac);
             return 0; // Found in cache
         }

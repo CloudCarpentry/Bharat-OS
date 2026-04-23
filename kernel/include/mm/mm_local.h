@@ -5,20 +5,26 @@
 #include <stddef.h>
 #include "../../include/mm.h"
 #include "profile/profile.h"
+#include "bharat/cpu_local.h"
 
 #include <stdbool.h>
 
 // Utility
 static inline bool core_is_rt(void) {
-    MemoryModel model = get_memory_model();
-    // Assuming MEM_MODEL_MPU/FLAT align with RT profiles, or explicitly check profile.
-    // In a full implementation, this should query the actual core profile configuration.
-    // For now, if the system is configured for RTOS, return true.
-#ifdef Profile_RTOS
-    return true;
-#else
-    return (model == MEM_MODEL_MPU || model == MEM_MODEL_FLAT);
-#endif
+    KernelExecutionProfile profile = get_kernel_execution_profile();
+
+    if (profile == PROFILE_KERNEL_RT) {
+        return true;
+    } else if (profile == PROFILE_KERNEL_MIX) {
+        // In MIX profile, some cores are RT and others are GP.
+        // We query the specific core configuration.
+        // For simplicity, we assume we can fetch this from cpu_local config if available
+        // Currently fallback to returning false. In a full implementation, we'd check current_core_is_rt().
+        return false;
+    }
+
+    // For GP profile or default fallback, it is not strictly RT.
+    return false;
 }
 
 // Operations that touch only this core's state (no URPC, no blocking)

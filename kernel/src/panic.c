@@ -95,7 +95,7 @@ void kernel_panic_ex(const panic_context_t *ctx) {
   local_ctx.core_id = hal_cpu_get_id();
 
   if (console_current_phase() >= CONSOLE_PHASE_RUNTIME) {
-      kthread_t *thread = sched_current_thread();
+      bh_thread_t *thread = sched_current_thread();
       if (thread) {
           if (local_ctx.thread_id == 0) {
               local_ctx.thread_id = thread->thread_id;

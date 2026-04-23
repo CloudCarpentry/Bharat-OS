@@ -8,10 +8,11 @@ if (BHARAT_AUTOMOTIVE_PROFILE)
             store.c
             debounce.c
             freeze_frame.c
+            telemetry.c
         LIBS
             bharat_libruntime
             bharat_libipc
             bharat_libcap
     )
-    target_include_directories(diag_service PRIVATE ${CMAKE_SOURCE_DIR}/services/include)
+    target_include_directories(diag_service PRIVATE ${CMAKE_SOURCE_DIR}/services/include ${CMAKE_SOURCE_DIR}/uapi/bharat)
 endif()

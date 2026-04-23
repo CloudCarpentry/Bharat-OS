@@ -13,8 +13,14 @@ target_include_directories(test_can_filter PRIVATE ../../stacks/include)
 add_executable(test_can_filter_compile drivers/test_can_filter_compile.c ../../drivers/class/can/can_filter_compile.c)
 target_include_directories(test_can_filter_compile PRIVATE ../../drivers/include ../../stacks/include)
 
-add_executable(test_can_controller_core drivers/test_can_controller_core.c ../../drivers/class/can/can_controller_core.c)
+add_executable(test_can_controller_core drivers/test_can_controller_core.c ../../drivers/class/can/can_controller_core.c ../../stacks/can/core/can_filter.c)
 target_include_directories(test_can_controller_core PRIVATE ../../drivers/include ../../stacks/include)
+
+add_executable(test_can_controller_state_machine drivers/test_can_controller_state_machine.c ../../drivers/class/can/can_controller_core.c ../../stacks/can/core/can_filter.c)
+target_include_directories(test_can_controller_state_machine PRIVATE ../../drivers/include ../../stacks/include)
+
+add_executable(test_net_driver_core drivers/test_net_driver_core.c ../../drivers/net/core/net_driver_core.c ../../lib/packet/src/packet.c)
+target_include_directories(test_net_driver_core PRIVATE ../../drivers/include ../../stacks/include ../../lib/packet/include)
 
 add_executable(test_can_route stacks/can/test_can_route.c)
 target_include_directories(test_can_route PRIVATE ../../stacks/include)
@@ -25,12 +31,14 @@ target_include_directories(test_can_subscriptions PRIVATE ../../services/include
 add_executable(test_can_gateway services/test_can_gateway.c)
 target_include_directories(test_can_gateway PRIVATE ../../services/include)
 
-add_executable(test_can_busoff_recovery services/test_can_busoff_recovery.c ../../drivers/class/can/can_controller_core.c ../../drivers/devices/virt_can/virt_can.c)
+add_executable(test_can_busoff_recovery services/test_can_busoff_recovery.c ../../drivers/class/can/can_controller_core.c ../../drivers/devices/virt_can/virt_can.c ../../stacks/can/core/can_filter.c)
 target_include_directories(test_can_busoff_recovery PRIVATE ../../drivers/include ../../stacks/include)
 
 add_test(NAME host_test_can_filter COMMAND test_can_filter)
 add_test(NAME host_test_can_filter_compile COMMAND test_can_filter_compile)
 add_test(NAME host_test_can_controller_core COMMAND test_can_controller_core)
+add_test(NAME host_test_can_controller_state_machine COMMAND test_can_controller_state_machine)
+add_test(NAME host_test_net_driver_core COMMAND test_net_driver_core)
 add_test(NAME host_test_can_route COMMAND test_can_route)
 add_test(NAME host_test_can_subscriptions COMMAND test_can_subscriptions)
 add_test(NAME host_test_can_gateway COMMAND test_can_gateway)
@@ -128,16 +136,39 @@ target_include_directories(test_sched PRIVATE ../../kernel/include ../../include
 
 add_test(NAME host_test_sched COMMAND test_sched)
 
+add_executable(test_lib_string test_lib_string.c ../../lib/string/string.c)
+add_test(NAME host_test_lib_string COMMAND test_lib_string)
+
 # Phase 3: Core IPC/Profile Tests
 add_executable(test_ipc_profile test_ipc_profile.c ../../kernel/src/profile/profile.c ../../kernel/src/ipc/ipc_traffic.c)
 target_include_directories(test_ipc_profile PRIVATE ../../kernel/include ../../include ../../lib/include)
 add_test(NAME host_test_ipc_profile COMMAND test_ipc_profile)
+
+add_executable(test_ipc_urpc_policy_rt_mpu test_ipc_urpc_policy_matrix.c ../../kernel/src/ipc/ipc_profile_policy.c ../../kernel/src/mm/mem_model.c ../../kernel/src/profile/profile.c)
+target_include_directories(test_ipc_urpc_policy_rt_mpu PRIVATE ../../kernel/include ../../include ../../lib/include)
+target_compile_definitions(test_ipc_urpc_policy_rt_mpu PRIVATE CONFIG_PROFILE_AUTOMOBILE=1 CONFIG_MEM_MODEL_MPU=1 BHARAT_KERNEL_PROFILE_RT=1 EXPECT_PREFER_URPC=1 EXPECT_ALLOW_BULK_IPC=0 EXPECT_URPC_MAX=32 EXPECT_CONTROL_TRANSPORT=IPC_TRANSPORT_URPC EXPECT_BULK_TRANSPORT=IPC_TRANSPORT_URPC)
+add_test(NAME host_test_ipc_urpc_policy_rt_mpu COMMAND test_ipc_urpc_policy_rt_mpu)
+
+add_executable(test_ipc_urpc_policy_gp_mmu_lite test_ipc_urpc_policy_matrix.c ../../kernel/src/ipc/ipc_profile_policy.c ../../kernel/src/mm/mem_model.c ../../kernel/src/profile/profile.c)
+target_include_directories(test_ipc_urpc_policy_gp_mmu_lite PRIVATE ../../kernel/include ../../include ../../lib/include)
+target_compile_definitions(test_ipc_urpc_policy_gp_mmu_lite PRIVATE CONFIG_MEM_MODEL_MMU_LITE=1 EXPECT_PREFER_URPC=0 EXPECT_ALLOW_BULK_IPC=1 EXPECT_URPC_MAX=64 EXPECT_CONTROL_TRANSPORT=IPC_TRANSPORT_ENDPOINT EXPECT_BULK_TRANSPORT=IPC_TRANSPORT_ENDPOINT)
+add_test(NAME host_test_ipc_urpc_policy_gp_mmu_lite COMMAND test_ipc_urpc_policy_gp_mmu_lite)
+
+add_executable(test_ipc_urpc_policy_mix_mmu_full test_ipc_urpc_policy_matrix.c ../../kernel/src/ipc/ipc_profile_policy.c ../../kernel/src/mm/mem_model.c ../../kernel/src/profile/profile.c)
+target_include_directories(test_ipc_urpc_policy_mix_mmu_full PRIVATE ../../kernel/include ../../include ../../lib/include)
+target_compile_definitions(test_ipc_urpc_policy_mix_mmu_full PRIVATE BHARAT_KERNEL_PROFILE_MIX=1 EXPECT_PREFER_URPC=1 EXPECT_ALLOW_BULK_IPC=1 EXPECT_URPC_MAX=256 EXPECT_CONTROL_TRANSPORT=IPC_TRANSPORT_URPC EXPECT_BULK_TRANSPORT=IPC_TRANSPORT_ENDPOINT)
+add_test(NAME host_test_ipc_urpc_policy_mix_mmu_full COMMAND test_ipc_urpc_policy_mix_mmu_full)
 
 # Phase 3: Crypto Tests
 add_executable(test_secure_mem test_secure_mem.c)
 target_include_directories(test_secure_mem PRIVATE ../../kernel/include)
 
 add_test(NAME host_test_secure_mem COMMAND test_secure_mem)
+
+add_executable(test_crypto_protocol_dispatch services/test_crypto_protocol_dispatch.c ../../services/security/crypto/protocol.c ../../services/security/crypto/dispatch.c)
+target_include_directories(test_crypto_protocol_dispatch PRIVATE ../../services/security/crypto ../../kernel/include)
+add_test(NAME host_test_crypto_protocol_dispatch COMMAND test_crypto_protocol_dispatch)
+
 # Phase 3: NetMgr Tests
 add_executable(test_netmgr_address_table services/test_netmgr_address_table.c ../../services/netmgr/src/address_table.c ../../lib/runtime/src/freestanding_string.c)
 target_include_directories(test_netmgr_address_table PRIVATE ../../services/netmgr/src ../../services/netmgr/include ../../services/core/subsysmgr/include ../../lib/net/include ../../lib/runtime/include)
@@ -184,6 +215,18 @@ add_executable(test_uapi_abi test_uapi_abi.c)
 target_include_directories(test_uapi_abi PRIVATE ${CMAKE_SOURCE_DIR}/include)
 add_test(NAME host_test_uapi_abi COMMAND test_uapi_abi)
 
+add_executable(test_hal_cpu_features
+    test_hal_cpu_features.c
+    ../../arch/common/cpu_caps_state.c
+    ../../hal/common/cpu_features.c)
+target_include_directories(test_hal_cpu_features PRIVATE
+    ${CMAKE_SOURCE_DIR}/kernel/include
+    ${CMAKE_SOURCE_DIR}/hal/include
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/lib/include
+    ${CMAKE_SOURCE_DIR})
+add_test(NAME host_test_hal_cpu_features COMMAND test_hal_cpu_features)
+
 # ---------------------------------------------------------
 # Phase 2: Runtime completeness Tests
 # ---------------------------------------------------------
@@ -198,6 +241,10 @@ add_test(NAME host_test_vm_manager COMMAND test_vm_manager)
 add_executable(test_servicemgr test_servicemgr.c ../../services/servicemgr/servicemgr.c ../../lib/ipc/src/ipc.c)
 target_include_directories(test_servicemgr PRIVATE ../../include ../../lib/ipc/include ../../lib/cap/include ../../kernel/include)
 add_test(NAME host_test_servicemgr COMMAND test_servicemgr)
+
+add_executable(test_init test_init.c ../../services/core/init/init_runtime.c ../../services/core/init/init_status.c ../../services/core/init/init_handoff.c)
+target_include_directories(test_init PRIVATE ../../include ../../kernel/include ../../lib/runtime/include ../../lib/cap/include ../../lib/ipc/include)
+add_test(NAME host_test_init COMMAND test_init)
 
 add_executable(test_e2e_service_runtime test_e2e_service_runtime.c ../../services/process_manager/process_manager.c ../../services/vm_manager/vm_manager.c ../../services/servicemgr/servicemgr.c ../../lib/ipc/src/ipc.c)
 target_include_directories(test_e2e_service_runtime PRIVATE ../../include ../../lib/ipc/include ../../lib/cap/include ../../kernel/include)
@@ -244,4 +291,27 @@ if(BHARAT_BUILD_HOST_TESTS)
     add_executable(test_i2c_hid_failures ${CMAKE_SOURCE_DIR}/tests/host/drivers/test_i2c_hid_failures.c ${CMAKE_SOURCE_DIR}/drivers/input/i2c_hid/i2c_hid.c ${CMAKE_SOURCE_DIR}/drivers/bus/i2c/i2c_core.c ${CMAKE_SOURCE_DIR}/drivers/bus/i2c/i2c_registry.c)
     target_include_directories(test_i2c_hid_failures PRIVATE ${CMAKE_SOURCE_DIR}/drivers/input/i2c_hid ${CMAKE_SOURCE_DIR}/drivers/bus/i2c)
     add_test(NAME host_test_i2c_hid_failures COMMAND test_i2c_hid_failures)
+
+    # VirtIO Input Host Tests
+    add_executable(test_virtio_input ${CMAKE_SOURCE_DIR}/tests/host/drivers/test_virtio_input.c ${CMAKE_SOURCE_DIR}/drivers/input/virtio_input/virtio_input.c)
+    target_include_directories(test_virtio_input PRIVATE ${CMAKE_SOURCE_DIR}/drivers/input/virtio_input ${CMAKE_SOURCE_DIR}/drivers/input/include ${CMAKE_SOURCE_DIR}/uapi)
+    add_test(NAME host_test_virtio_input COMMAND test_virtio_input)
+
+    # Memory Model AI-adjacent Primitives Host Test
+    add_executable(test_mem_model_ai test_mem_model_ai.c ../../kernel/src/mm/mem_class.c)
+    target_include_directories(test_mem_model_ai PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/lib/include)
+    add_test(NAME host_test_mem_model_ai COMMAND test_mem_model_ai)
+endif()
+add_executable(test_fdt_parser test_fdt_parser.c ../../hal/common/fdt_parser.c)
+target_include_directories(test_fdt_parser PRIVATE ../../include ../../kernel/include ../../boot/include)
+
+# Personality Compatibility Tests
+if(BHARAT_BUILD_HOST_TESTS)
+    add_executable(test_linux_syscalls compat/linux/test_linux_syscalls.c ../../personalities/compat/linux/linux_compat.c)
+    target_include_directories(test_linux_syscalls PRIVATE ../../personalities/compat/linux ../../services/core/subsysmgr/include ../../include ../../kernel/include ../../lib/cap/include ../../lib/ipc/include ../../lib)
+    add_test(NAME host_test_linux_syscalls COMMAND test_linux_syscalls)
+
+    add_executable(test_android_binder compat/android/test_android_binder.c ../../personalities/compat/android/android_binder_dist.c ../../personalities/compat/android/android_personality.c)
+    target_include_directories(test_android_binder PRIVATE ../../personalities/compat/android ../../include)
+    add_test(NAME host_test_android_binder COMMAND test_android_binder)
 endif()

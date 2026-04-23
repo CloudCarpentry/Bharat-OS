@@ -64,7 +64,7 @@ void ipc_async_check_timeouts(uint64_t current_ticks) { (void)current_ticks; }
 uint64_t hal_timer_monotonic_ticks(void) { return 0; }
 
 
-static kprocess_t* g_proc;
+static bh_process_t* g_proc;
 
 static void worker_thread(void) { }
 
@@ -78,7 +78,7 @@ static void* stress_worker(void* arg) {
         if (op == 0) {
             // sched_sys_thread_create needs careful locking in stub or limit memory leaks
             // we will simulate contention manually instead
-            kthread_yield();
+            bh_thread_yield();
         } else if (op == 1) {
             uint32_t send_cap = 0;
             uint32_t recv_cap = 0;
@@ -93,7 +93,7 @@ static void* stress_worker(void* arg) {
         } else if (op == 2) {
             sched_sys_sleep(rand_r(&seed) % 5);
         } else if (op == 3) {
-            kthread_yield();
+            bh_thread_yield();
         } else if (op == 4) {
             // Allocate and free random capabilities
             capability_table_t* t = (capability_table_t*)g_proc->security_sandbox_ctx;

@@ -110,7 +110,7 @@ extern long syscall_dispatch(syscall_id_t id, uint64_t arg0, uint64_t arg1,
                       uint64_t arg5);
 
 // Removed duplicate default_personality_ops definition.
-static long default_handle_syscall(kthread_t *thread, trap_frame_t *frame, const trap_info_t *info) {
+static long default_handle_syscall(bh_thread_t *thread, trap_frame_t *frame, const trap_info_t *info) {
     (void)thread;
     (void)info;
 
@@ -124,7 +124,7 @@ static long default_handle_syscall(kthread_t *thread, trap_frame_t *frame, const
         trap_frame_get_arg5(frame)
     );
 }
-static int default_handle_user_fault(kthread_t *thread, trap_frame_t *frame, const trap_info_t *info) {
+static int default_handle_user_fault(bh_thread_t *thread, trap_frame_t *frame, const trap_info_t *info) {
     (void)thread;
     (void)frame;
     (void)info;

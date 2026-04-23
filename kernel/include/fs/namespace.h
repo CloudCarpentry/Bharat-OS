@@ -17,6 +17,10 @@ typedef struct vfs_namespace {
     vfs_mount_t* mounts;
     uint32_t mount_count;
 
+    // Per-namespace context
+    vfs_node_t* root_dir;
+    vfs_node_t* cwd;
+
     // A reference back to a parent namespace if derived (or NULL)
     struct vfs_namespace* parent;
 } vfs_namespace_t;

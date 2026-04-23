@@ -1,10 +1,10 @@
 ---
 title: Bharat-OS Project Folder Structure
-status: Draft
-version: 1.0
+status: Active
+version: 1.1
 owner: Architecture Team
 reviewers: Core Maintainers
-last_updated: 2024-03-24
+last_updated: 2026-04-21
 tags:
   - architecture
   - structure
@@ -14,200 +14,68 @@ tags:
 
 # Bharat-OS Project Folder Structure
 
-This document outlines the architectural boundaries and exact directory structure for the Bharat-OS repository. The goal of this structure is to maintain clear semantic separation between architecture, abstraction, platform integration, services, and the core kernel.
+This document defines target folder boundaries and records the **current alignment snapshot** from the repository tree.
 
-*Note: The repository is currently partially aligned with this folder structure, and migrations of `services/` components (e.g., to `services/device/`, `services/core/`) are ongoing.*
+## Boundary rules
 
----
+- One folder = one primary responsibility.
+- Mechanism (kernel/drivers/hal) and policy (services/stacks/personalities) should stay separated.
+- External contracts should be versioned and published through `uapi/` + `idl/`.
 
-## Architectural Boundaries
+## Current alignment snapshot (2026-04-21)
 
-The core philosophy of Bharat-OS folder structuring is **semantic sharpness**:
-- One folder = one responsibility.
-- No overlapping classification systems.
-- No ambiguous names.
-- No policy creeping back into kernel/hal/arch.
+| Area | Target direction | Current alignment | Notes |
+| --- | --- | --- | --- |
+| `arch/` | ISA-specific implementation | Strong | Includes `arm`, `riscv`, `x86`, plus `xtensa`, `arc`, `shakti`. |
+| `hal/` | abstraction contracts + generic glue | Partial | Contains arch-specific directories (`hal/arm64`, `hal/x86_64`, etc.), which blurs strict abstraction-only intent. |
+| `platform/` | board/soc/machine integration | Strong | `platform/common`, `platform/boards`, `platform/qemu` present. |
+| `kernel/` | minimal mechanism core | Partial | Good modular core, but profile/subsystem policy still mixed in some paths. |
+| `drivers/` | hardware driver implementations | Strong | Rich domain structure exists; some taxonomy overlaps remain (`block` vs `storage`, `class` vs `devices`). |
+| `services/` | policy managers by domain | Partial | New `services/core|system|device|network` exists alongside legacy flat managers. |
+| `personalities/` | compatibility/domain personalities | Strong | `compat/{linux,android,windows}` and `domain/automotive` present. |
+| `stacks/` | composed cross-layer subsystems | Partial | Present (`network`, `can`, `ui`, `storage`) but ownership boundaries need tighter contracts. |
+| `uapi/` + `idl/` | explicit contract surface | Partial | Directories exist, but adoption is not yet consistently enforced across subsystems. |
 
-### 1. The `arch/`, `hal/`, and `platform/` Boundary
-
-This is the most critical separation in the low-level system.
-
-- **`arch/`**: Owns ISA/CPU-specific code. This contains the hardware-specific implementations of contracts. (e.g., `arch/arm/arm64/`, `arch/x86/x86_64/`).
-- **`hal/`**: Owns abstraction contracts and common glue. It contains only headers (`include/`) defining the HAL APIs, and generic implementations or stubs (`common/`, `irq/`, `timer/`, `memory/`, etc.). It also provides the unified, memory-backend agnostic API surface (such as `hal_pt` for Page Table manipulation) shielding the rest of the kernel from differing hardware memory models. **Do not put architecture-specific implementations (like `hal/arm64`) here.**
-- **`platform/`**: Owns board, machine, SoC integration, and topology/interconnect discovery. (e.g., `platform/boards/`, `platform/soc/`, `platform/qemu/`).
-
-*Rule of Thumb:* `arch/` contains the implementations of the contracts defined in `hal/`. `platform/` wires them together for a specific physical or virtual machine.
-
-### 2. The `services/` Hierarchy
-
-`services/` is a first-class layer for policy and system-level managers. To prevent it from becoming a "catch-all" dumping ground, it is strictly categorized:
-
-**Heterogeneous Compute Rule**:
-> Kernel owns deterministic compute mechanisms (queues, jobs, memory isolation).
-> Services own routing policy, fallback logic, and model selection.
-> Drivers own accelerator hardware control.
-> Runtime/lib owns model/backend logic and graph compilation.
-
-- **`core/`**: Core managers (e.g., `init/`, `coremgr/`, `devmgr/`, `capmgr/`).
-- **`system/`**: System utilities (e.g., `console/`, `diag/`, `logd/`, `boot_displayd/`).
-- **`security/`**: Security services (e.g., `crypto/`, `keystore/`).
-- **`device/`**: Device-specific policy managers (e.g., `accelmgr/`, `aigov/`, `actuator_mgr/`, `sensormgr/`).
-- **`network/`**: Network daemons/managers (e.g., `can/`, `netmgr/`, `gatewayd/`).
-
-*Note:* Real device drivers belong in `drivers/`, not `services/`. Only driver-facing service adapters belong in `services/`.
-
-### 3. The `personalities/` Boundary
-
-Personalities represent external interfaces, ABIs, or domain profiles. They are separated to avoid mixing compatibility with domain policy.
-
-- **`compat/`**: OS compatibility and ABI personalities (e.g., `android/`, `linux/`, `windows/`).
-- **`domain/`**: Domain or runtime profile policies (e.g., `automotive/`).
-- **`common/`**: Shared personality utilities.
-
-### 4. The `kernel/` Scope
-
-The kernel is intentionally kept minimal. Anything policy-heavy should be questioned before staying in `kernel/`. **Mixed-criticality policy must not drift into `kernel/`; only the mechanisms live there.**
-
-The `kernel/` directory should only contain:
-- Core scheduling mechanisms
-- Memory mechanisms (e.g. Address Spaces, VMM unified authority via regions)
-- Syscall/trap mechanisms
-- Capabilities
-- IPC/uRPC primitives
-- Fault handling
-- Minimal coordination primitives (e.g. message-based TLB shootdowns)
-
-### 5. `stacks/` and `uapi/`
-
-- **`stacks/`**: For composed subsystems that span multiple layers (e.g., `net/`, `storage/`, `media/`, `vehicle/`, `cloud/`). This prevents these complex systems from being smeared across `services/`, `lib/`, and `drivers/`.
-- **`uapi/`**: The explicit boundary for external contracts. Contains syscall headers, capability invoke contracts, shared IPC structures visible outside the kernel, and stable ABI types.
-
-### 6. Benchmark and Verification Ownership
-
-Benchmark definitions, trace schemas, and verification plans for mixed-criticality policies (e.g., `rt_and_mixed_criticality_benchmark_plan.md`, `benchmark_trace_schema.md`) are explicitly owned within the `docs/dev/` directory.
-
----
-
-## Target Folder Structure
+## Target structure (logical)
 
 ```text
 Bharat-OS/
   arch/
-    common/
-    arm/
-      common/
-      arm32/
-      arm64/
-    riscv/
-      common/
-      riscv32/
-      riscv64/
-    x86/
-      x86_64/
-
   boot/
-    common/
-    discovery/
-    protocols/
-
   hal/
-    include/
-    common/
-    irq/
-    timer/
-    ipi/
-    dma/
-    iommu/
-    console/
-    memory/
-
   platform/
-    common/
-    qemu/
-    boards/
-    soc/
-    fabric/
-
   kernel/
-    include/
-      profile.h
-      fault_domain.h
-      deadline.h
-    src/
-    selftest/
-
   drivers/
-    bus/
-    net/
-    block/
-    display/
-    input/
-    serial/
-    storage/
-    accel/
-      common/
-      gpu/
-      npu/
-      virt/
-    sensor/
-
   services/
     core/
-      policymgr/
     system/
-      telemetryd/
-      healthd/
     security/
     device/
-      accelmgr/
-      aigov/
     network/
-
   personalities/
     compat/
-      android/
-      linux/
-      windows/
     domain/
-      automotive/
-      rt/ # Only if truly wanting a domain personality, otherwise avoid it
     common/
-
-  lib/
-    ipc/
-    msg/
-    net/
-    packet/
-    posix/
-    runtime/
-      accel/
-    syscall/
-    transport/
-    urpc/
-    elf/
-
   stacks/
-    net/ # GP dataplane vs RT control separation
-    storage/
-    vehicle/ # Automotive mixed-criticality policy
-    media/
-
   uapi/
-    syscall/
-    capability/
-    ipc/
-      channel_classes.h
-    compat/
-
   idl/
-    capability/
-    monitor/
-    services/
-    transport/
-    versioning/
-
+  lib/
   tests/
   tools/
   docs/
-  staging/
 ```
+
+## Migration priorities
+
+1. **Service consolidation:** complete migration from flat `services/*mgr` directories to domain buckets (`core/system/device/network/security`).
+2. **HAL boundary cleanup:** move or wrap architecture-specific HAL internals to preserve abstraction contract clarity.
+3. **Kernel policy extraction:** migrate profile/personality-heavy policy from kernel paths into services/personalities where possible.
+4. **Driver taxonomy finalization:** document and enforce ownership split for `block` vs `storage`, `class` vs device-specific drivers.
+5. **Contract discipline:** require `uapi/idl`-backed interfaces for new cross-component APIs.
+
+## Coding tasks identified from structure audit
+
+- Create a phased rename/move plan for legacy services with compatibility headers and build aliases.
+- Add CI lint that fails when new cross-layer interfaces are introduced without `idl/` or `uapi/` artifacts.
+- Introduce architecture-boundary checks to prevent new policy code under `kernel/src/profile` unless explicitly approved.
+- Add a driver ownership manifest (`drivers/registry`) mapping each driver to canonical subsystem and service owner.

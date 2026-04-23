@@ -1,0 +1,20 @@
+--- tests/CMakeLists.txt
++++ tests/CMakeLists.txt
+@@ -375,6 +375,9 @@
+ add_executable(test_execution_mode_quad_core host/test_execution_mode_quad_core.c ../kernel/src/sched/execution_mode.c ../kernel/src/sched/cpu_partition.c ../kernel/src/sched/sched_class.c ../kernel/src/sched/sched_topology.c ../platform/common/platform_cpu_topology.c)
+ target_compile_definitions(test_execution_mode_quad_core PRIVATE HOST_TEST_BUILD GP_EXECUTION_MODE SMP_MODE SMP_CORE_COUNT=4)
+
++add_executable(test_irq_domain ../kernel/src/tests/ktest_runner.c ../kernel/src/tests/ktest_irq_domain.c ../kernel/src/device/irq_domain.c)
++target_compile_definitions(test_irq_domain PRIVATE HOST_TEST_BUILD)
++
+ add_executable(test_sched_partition_validation host/test_sched_partition_validation.c ../kernel/src/sched/execution_mode.c ../kernel/src/sched/cpu_partition.c ../kernel/src/sched/sched_class.c ../kernel/src/sched/sched_topology.c ../platform/common/platform_cpu_topology.c)
+ target_compile_definitions(test_sched_partition_validation PRIVATE HOST_TEST_BUILD GP_EXECUTION_MODE SMP_MODE SMP_CORE_COUNT=4)
+
+@@ -501,6 +504,7 @@
+ add_test(NAME test_execution_mode_single_core COMMAND test_execution_mode_single_core)
+ add_test(NAME test_execution_mode_dual_core COMMAND test_execution_mode_dual_core)
+ add_test(NAME test_execution_mode_quad_core COMMAND test_execution_mode_quad_core)
++add_test(NAME test_irq_domain COMMAND test_irq_domain)
+ add_test(NAME test_sched_partition_validation COMMAND test_sched_partition_validation)
+ add_test(NAME test_bench_hal_pt_arm64 COMMAND test_bench_hal_pt_arm64)
+ add_test(NAME test_wire_format COMMAND test_wire_format)

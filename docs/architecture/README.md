@@ -15,6 +15,7 @@ This folder captures the current architectural baseline for Bharat-OS.
 
 - [Profile-Driven Multi-Kernel Architecture](core/profile-driven-multi-kernel-arc.md)
 - [Low-Footprint Design and Analysis](low-footprint-design.md)
+- [Primitive Matrix and Execution Roadmap](primitive-matrix-roadmap.md)
 
 ### Boot and bring-up
 
@@ -28,6 +29,7 @@ This folder captures the current architectural baseline for Bharat-OS.
 
 ### Core kernel architecture
 
+- [`interrupt/interrupt-architecture.md`](interrupt/interrupt-architecture.md)
 - [`kernel-api.md`](kernel-api.md)
 - [`capability-model.md`](capability-model.md)
 - [`kernel-object-model.md`](kernel-object-model.md)
@@ -35,13 +37,15 @@ This folder captures the current architectural baseline for Bharat-OS.
 - [`capability-and-ipc-baseline.md`](capability-and-ipc-baseline.md)
 - [`memory/memory-model.md`](memory/memory-model.md)
 - [`multiprocessor-and-numa-baseline.md`](multiprocessor-and-numa-baseline.md)
-- [`scheduler-and-threading.md`](scheduler-and-threading.md)
+- [`kernel/scheduler/scheduler-and-threading.md`](kernel/scheduler/scheduler-and-threading.md)
 - [`realtime-automotive-robotics-subsystems.md`](realtime-automotive-robotics-subsystems.md)
-- [`ai-scheduler-status-and-roadmap.md`](ai-scheduler-status-and-roadmap.md)
+- [`kernel/scheduler/ai-scheduler-status-and-roadmap.md`](kernel/scheduler/ai-scheduler-status-and-roadmap.md)
 - [`syscall-trap-gates.md`](syscall-trap-gates.md)
 - [`driver-model.md`](driver-model.md)
 - [`hardware-abstraction-and-drivers-baseline.md`](hardware-abstraction-and-drivers-baseline.md)
 - [`storage-and-sandbox-strategy.md`](storage-and-sandbox-strategy.md)
+- [`storage/README.md`](storage/README.md)
+- [`storage/roadmap.md`](storage/roadmap.md)
 - [`verification-scope.md`](verification-scope.md)
 - [`threat-model-and-mac.md`](threat-model-and-mac.md)
 - [`cmake-governance-and-agent-rules.md`](cmake-governance-and-agent-rules.md)
@@ -57,14 +61,20 @@ This folder captures the current architectural baseline for Bharat-OS.
 ### Deployment and user-space strategy
 
 - [`device-profiles-and-use-cases.md`](device-profiles-and-use-cases.md)
+- [`profiles/extended_device_profiles.md`](profiles/extended_device_profiles.md)
 - [`distributed-kernel-implementation-plan.md`](distributed-kernel-implementation-plan.md)
+
+### System shell architecture
+
+- [`system/shell-architecture.md`](system/shell-architecture.md)
+- [`system/shell-profile-matrix.md`](system/shell-profile-matrix.md)
 
 ### User-space strategy and deferred surfaces
 
 - [`personality-layer.md`](personality-layer.md)
 - [`gui-strategy.md`](gui-strategy.md)
 - [`device-profiles.md`](device-profiles.md)
-- [`ai-scheduler-overview.md`](ai-scheduler-overview.md)
+- [`kernel/scheduler/ai-scheduler-overview.md`](kernel/scheduler/ai-scheduler-overview.md)
 
 ## Scope note
 

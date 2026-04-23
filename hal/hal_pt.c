@@ -1,6 +1,7 @@
 #include "../kernel/include/hal/hal_pt.h"
 #include "../kernel/include/hal/hal_tlb.h"
 #include "../kernel/include/kernel.h"
+#include "mm/tlb.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -14,7 +15,7 @@ static inline bool is_page_aligned_u64(uint64_t val) {
 #if defined(__x86_64__) || defined(_M_X64)
 extern hal_pt_ops_t x86_hal_pt_ops;
 extern hal_tlb_ops_t x86_hal_tlb_ops;
-extern void x86_pt_set_mmu_finalized(bool finalized);
+__attribute__((weak)) void x86_pt_set_mmu_finalized(bool finalized) { (void)finalized; }
 #elif defined(__aarch64__) || defined(_M_ARM64)
 extern hal_pt_ops_t arm64_hal_pt_ops;
 extern hal_tlb_ops_t arm64_hal_tlb_ops;
@@ -63,9 +64,6 @@ void hal_pt_init(void) {
     active_hal_tlb = &mpu_hal_tlb_ops;
 #endif
 }
-
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "mm/tlb.h"
 
 void hal_tlb_init(void) {
     if (!active_hal_tlb) {

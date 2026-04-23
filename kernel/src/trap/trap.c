@@ -1,4 +1,15 @@
-#include "trap.h"
+#include <stdint.h>
+#include <stddef.h>
+
+int sched_sys_intent_set(uint64_t tid, const void* intent);
+int sched_sys_intent_get(uint64_t tid, void* intent);
+int sys_mem_alloc_class(size_t size, uint32_t mem_class, uint32_t flags, uint64_t* out_addr);
+int sys_fault_domain_create(const void* attr, uint64_t* out_domain);
+int sys_fault_domain_destroy(uint64_t domain);
+int sys_fault_domain_attach(uint64_t domain, uint64_t tid);
+
+#include <bharat/uapi/system/intent.h>
+#include <bharat/uapi/system/fault_domain.h>
 #include "personality_ops.h"
 #include "capability.h"
 #include "device.h"
@@ -19,6 +30,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
+
 int vmm_handle_cow_fault(address_space_t* as, virt_addr_t vaddr);
 extern bool core_is_rt(void);
 
@@ -28,23 +40,18 @@ extern bool core_is_rt(void);
 #define TRAP_ERR_NOSYS (-(long)SYS_ENOSYS)
 
 
-static kprocess_t g_syscall_proc;
-
-// Architectural guardrail: The `g_syscall_proc` singleton is a bootstrap fallback only.
-// In steady state, syscalls and faults must resolve authority against the current thread/process.
-// Cross-core URPC processing in the trap return path is strictly bounded and local.
+static bh_process_t g_syscall_proc;
 
 static capability_table_t *trap_current_cap_table(void) {
   capability_table_t *table = sched_current_cap_table();
   if (table) {
     return table;
   }
-  // Fallback for early bootstrap when no user context exists
   return (capability_table_t *)g_syscall_proc.security_sandbox_ctx;
 }
 
-static kprocess_t *trap_current_process(void) {
-  kprocess_t *proc = sched_current_process();
+static bh_process_t *trap_current_process(void) {
+  bh_process_t *proc = sched_current_process();
   if (proc) {
     return proc;
   }
@@ -64,31 +71,29 @@ static void trap_device_irq_dispatch(uint32_t irq, void* ctx) {
   device_dispatch_irq(irq);
 }
 
-static int trap_user_ptr_valid(uint64_t ptr) {
-  const uint64_t USER_MIN = 0x1000ULL;
-  uint64_t USER_MAX = 0x7FFFFFFFULL; // Compact 32-bit layout
+static int trap_user_ptr_valid(uintptr_t ptr) {
+  uintptr_t USER_MIN = (uintptr_t)0x1000;
+  uintptr_t USER_MAX = (uintptr_t)0x7FFFFFFF; // Compact 32-bit layout
 
   if (arch_has_cap(ARCH_CAP_USERSPACE_HIGHHALF) && arch_has_cap(ARCH_CAP_64BIT_VA)) {
-      USER_MAX = 0x00007FFFFFFFFFFFULL;
+#if defined(__BHARAT_64BIT__) || defined(_WIN64) || defined(__LP64__) || defined(__x86_64__) || defined(__aarch64__) || defined(__riscv_xlen) && (__riscv_xlen == 64)
+      USER_MAX = (uintptr_t)0x00007FFFFFFFFFFFULL;
+#endif
   }
 
-  return BHARAT_RANGE_VALID(ptr, USER_MIN, USER_MAX);
+  return (ptr >= USER_MIN && ptr <= USER_MAX);
 }
 
-static int trap_user_range_valid(uint64_t ptr, uint64_t len) {
-  if (len == 0U) {
+static int trap_user_range_valid(uintptr_t ptr, size_t len) {
+  if (len == 0) {
     return 1;
-  }
-
-  if (len > (uint64_t)SIZE_MAX) {
-    return 0;
   }
 
   if (!trap_user_ptr_valid(ptr)) {
     return 0;
   }
 
-  uint64_t end_inclusive = ptr + len - 1U;
+  uintptr_t end_inclusive = ptr + len - 1;
   if (end_inclusive < ptr) {
     return 0;
   }
@@ -146,18 +151,16 @@ static long trap_status_to_sysret(long rc, sys_errno_t legacy_fallback) {
     return rc;
   }
 
-  /* Rich kernel statuses have stable K_ERR families. */
   if ((rc <= -256) || (rc >= -17 && rc <= -1)) {
     return kstatus_to_sysret((kstatus_t)rc);
   }
 
-  /* Legacy subsystem-local negatives collapse to deterministic errno. */
   return -(long)legacy_fallback;
 }
 
-int cap_invoke(uint64_t cap_id, uint64_t opcode, uint64_t arg0, uint64_t arg1)
+int cap_invoke(uintptr_t cap_id, uintptr_t opcode, uintptr_t arg0, uintptr_t arg1)
     __attribute__((weak));
-int cap_invoke(uint64_t cap_id, uint64_t opcode, uint64_t arg0, uint64_t arg1) {
+int cap_invoke(uintptr_t cap_id, uintptr_t opcode, uintptr_t arg0, uintptr_t arg1) {
   (void)cap_id;
   (void)opcode;
   (void)arg0;
@@ -173,8 +176,6 @@ int trap_init(void) {
   g_syscall_proc.main_thread = NULL;
   g_syscall_proc.security_sandbox_ctx = NULL;
 
-  // By default, a process will inherit the current system personality.
-  // The system's actual personality ops should be registered by early boot via personality_register_ops().
   g_syscall_proc.personality_ops = personality_get_current_ops();
 
   if (!g_syscall_proc.addr_space) {
@@ -188,35 +189,35 @@ int trap_init(void) {
   return 0;
 }
 
-long syscall_dispatch(syscall_id_t id, uint64_t arg0, uint64_t arg1,
-                      uint64_t arg2, uint64_t arg3, uint64_t arg4,
-                      uint64_t arg5) {
-#define SYSCALL_ARGS_FROM_USER(type_, user_ptr_)   ({     const type_ *__p = (const type_ *)(uintptr_t)(user_ptr_);     if (!trap_user_range_valid((uint64_t)(user_ptr_), (uint64_t)sizeof(type_))) {       return TRAP_ERR_INVAL;     }     __p;   })
+long syscall_dispatch(syscall_id_t id, uintptr_t arg0, uintptr_t arg1,
+                      uintptr_t arg2, uintptr_t arg3, uintptr_t arg4,
+                      uintptr_t arg5) {
+#define SYSCALL_ARGS_FROM_USER(type_, user_ptr_)   ({     const type_ *__p = (const type_ *)(uintptr_t)(user_ptr_);     if (!trap_user_range_valid((uintptr_t)(user_ptr_), (size_t)sizeof(type_))) {       return TRAP_ERR_INVAL;     }     __p;   })
 #define SYSCALL_RET_FROM_STATUS(expr_, fallback_) trap_status_to_sysret((long)(expr_), (fallback_))
 
   switch (id) {
   case SYSCALL_NOP:
     return TRAP_SUCCESS;
   case SYSCALL_THREAD_CREATE: {
-    uint64_t *out_tid = (uint64_t *)(uintptr_t)arg1;
-    if (!trap_user_range_valid(arg1, (uint64_t)sizeof(*out_tid))) {
+    uintptr_t *out_tid = (uintptr_t *)(uintptr_t)arg1;
+    if (!trap_user_range_valid(arg1, (size_t)sizeof(*out_tid))) {
       return TRAP_ERR_INVAL;
     }
     return SYSCALL_RET_FROM_STATUS(
-        sched_sys_thread_create(trap_current_process(), (void (*)(void))(uintptr_t)arg0, out_tid),
+        sched_sys_thread_create(trap_current_process(), (void (*)(void))(uintptr_t)arg0, (uint64_t *)out_tid),
         SYS_ENOMEM);
   }
   case SYSCALL_THREAD_DESTROY:
-    return SYSCALL_RET_FROM_STATUS(sched_sys_thread_destroy(arg0), SYS_ENOENT);
+    return SYSCALL_RET_FROM_STATUS(sched_sys_thread_destroy((uint64_t)arg0), SYS_ENOENT);
   case SYSCALL_SCHED_YIELD:
-    kthread_yield();
+    bh_thread_yield();
     return TRAP_SUCCESS;
   case SYSCALL_SCHED_SLEEP:
-    return SYSCALL_RET_FROM_STATUS(sched_sys_sleep(arg0), SYS_EIO);
+    return SYSCALL_RET_FROM_STATUS(sched_sys_sleep((uint64_t)arg0), SYS_EIO);
   case SYSCALL_SCHED_SET_PRIORITY:
-    return SYSCALL_RET_FROM_STATUS(sched_sys_set_priority(arg0, (uint32_t)arg1), SYS_EINVAL);
+    return SYSCALL_RET_FROM_STATUS(sched_sys_set_priority((uint64_t)arg0, (uint32_t)arg1), SYS_EINVAL);
   case SYSCALL_SCHED_SET_AFFINITY:
-    return SYSCALL_RET_FROM_STATUS(sched_sys_set_affinity(arg0, (uint32_t)arg1), SYS_EINVAL);
+    return SYSCALL_RET_FROM_STATUS(sched_sys_set_affinity((uint64_t)arg0, (uint32_t)arg1), SYS_EINVAL);
   case SYSCALL_VMM_MAP_PAGE: {
     const bharat_sys_vmm_map_page_args_t *args =
         SYSCALL_ARGS_FROM_USER(bharat_sys_vmm_map_page_args_t, arg0);
@@ -237,8 +238,8 @@ long syscall_dispatch(syscall_id_t id, uint64_t arg0, uint64_t arg1,
         SYSCALL_ARGS_FROM_USER(bharat_sys_endpoint_create_args_t, arg0);
     uint32_t *out_send_cap = (uint32_t *)(uintptr_t)args->out_send_cap_ptr;
     uint32_t *out_recv_cap = (uint32_t *)(uintptr_t)args->out_recv_cap_ptr;
-    if (!trap_user_range_valid(args->out_send_cap_ptr, (uint64_t)sizeof(*out_send_cap)) ||
-        !trap_user_range_valid(args->out_recv_cap_ptr, (uint64_t)sizeof(*out_recv_cap))) {
+    if (!trap_user_range_valid(args->out_send_cap_ptr, (size_t)sizeof(*out_send_cap)) ||
+        !trap_user_range_valid(args->out_recv_cap_ptr, (size_t)sizeof(*out_recv_cap))) {
       return TRAP_ERR_INVAL;
     }
     return SYSCALL_RET_FROM_STATUS(ipc_endpoint_create(table, out_send_cap, out_recv_cap), SYS_ENOSPC);
@@ -262,8 +263,8 @@ long syscall_dispatch(syscall_id_t id, uint64_t arg0, uint64_t arg1,
     uint32_t *out_len = (uint32_t *)(uintptr_t)args->out_len_ptr;
     uint32_t *out_received_cap = (uint32_t *)(uintptr_t)args->out_received_cap_ptr;
     if (!trap_user_range_valid(args->out_payload_ptr, args->out_payload_capacity) ||
-        !trap_user_range_valid(args->out_len_ptr, (uint64_t)sizeof(*out_len)) ||
-        (out_received_cap && !trap_user_range_valid(args->out_received_cap_ptr, (uint64_t)sizeof(*out_received_cap)))) {
+        !trap_user_range_valid(args->out_len_ptr, (size_t)sizeof(*out_len)) ||
+        (out_received_cap && !trap_user_range_valid(args->out_received_cap_ptr, (size_t)sizeof(*out_received_cap)))) {
       return TRAP_ERR_INVAL;
     }
     return SYSCALL_RET_FROM_STATUS(
@@ -277,13 +278,47 @@ long syscall_dispatch(syscall_id_t id, uint64_t arg0, uint64_t arg1,
     const bharat_sys_cap_delegate_args_t *args =
         SYSCALL_ARGS_FROM_USER(bharat_sys_cap_delegate_args_t, arg0);
     uint32_t *out_cap = (uint32_t *)(uintptr_t)args->out_cap_ptr;
-    if (!trap_user_range_valid(args->out_cap_ptr, (uint64_t)sizeof(*out_cap))) {
+    if (!trap_user_range_valid(args->out_cap_ptr, (size_t)sizeof(*out_cap))) {
       return TRAP_ERR_INVAL;
     }
     return SYSCALL_RET_FROM_STATUS(
         cap_table_delegate(table, table, args->src_cap, args->requested_rights, out_cap),
         SYS_EPERM);
   }
+
+  case SYSCALL_INTENT_SET: {
+    if (!trap_user_range_valid(arg1, (size_t)sizeof(bharat_intent_t))) {
+      return TRAP_ERR_INVAL;
+    }
+    return SYSCALL_RET_FROM_STATUS(sched_sys_intent_set((uint64_t)arg0, (const void*)(uintptr_t)arg1), SYS_EINVAL);
+  }
+  case SYSCALL_INTENT_GET: {
+    if (!trap_user_range_valid(arg1, (size_t)sizeof(bharat_intent_t))) {
+      return TRAP_ERR_INVAL;
+    }
+    return SYSCALL_RET_FROM_STATUS(sched_sys_intent_get((uint64_t)arg0, (void*)(uintptr_t)arg1), SYS_EINVAL);
+  }
+  case SYSCALL_MEM_ALLOC_CLASS: {
+    uint64_t *out_addr = (uint64_t*)(uintptr_t)arg3;
+    if (!trap_user_range_valid(arg3, (size_t)sizeof(*out_addr))) {
+      return TRAP_ERR_INVAL;
+    }
+    return SYSCALL_RET_FROM_STATUS(sys_mem_alloc_class((size_t)arg0, (uint32_t)arg1, (uint32_t)arg2, out_addr), SYS_ENOMEM);
+  }
+  case SYSCALL_FAULT_DOMAIN_CREATE: {
+    if (!trap_user_range_valid(arg0, (size_t)sizeof(bharat_fault_domain_attr_t))) {
+      return TRAP_ERR_INVAL;
+    }
+    uint64_t *out_domain = (uint64_t*)(uintptr_t)arg1;
+    if (!trap_user_range_valid(arg1, (size_t)sizeof(*out_domain))) {
+      return TRAP_ERR_INVAL;
+    }
+    return SYSCALL_RET_FROM_STATUS(sys_fault_domain_create((const void*)(uintptr_t)arg0, out_domain), SYS_EINVAL);
+  }
+  case SYSCALL_FAULT_DOMAIN_DESTROY:
+    return SYSCALL_RET_FROM_STATUS(sys_fault_domain_destroy((uint64_t)arg0), SYS_EINVAL);
+  case SYSCALL_FAULT_DOMAIN_ATTACH:
+    return SYSCALL_RET_FROM_STATUS(sys_fault_domain_attach((uint64_t)arg0, (uint64_t)arg1), SYS_EINVAL);
   default:
     return TRAP_ERR_NOSYS;
   }
@@ -297,13 +332,10 @@ int trap_dispatch(trap_frame_t *frame, const trap_info_t *info) {
     return TRAP_ERR_INVAL;
   }
 
-  // Common cross-core URPC processing before returning to user space
-  // We process only local messages for the current core to maintain multikernel
-  // architecture separation.
   extern void vmm_process_local_urpc_messages(uint32_t core_id);
   vmm_process_local_urpc_messages(hal_cpu_get_id());
 
-  kthread_t *current = sched_current_thread();
+  bh_thread_t *current = sched_current_thread();
 
   switch (info->trap_class) {
   case TRAP_CLASS_INTERRUPT:
@@ -314,9 +346,7 @@ int trap_dispatch(trap_frame_t *frame, const trap_info_t *info) {
                                   trap_device_irq_dispatch, NULL);
 
     if (info->trap_class == TRAP_CLASS_IPI) {
-        // IPI could be a remote enqueue notification. We call kthread_yield
-        // to drain the remote inbox and possibly preempt the current thread.
-        kthread_yield();
+        bh_thread_yield();
     }
     return 0;
   }
@@ -325,7 +355,6 @@ int trap_dispatch(trap_frame_t *frame, const trap_info_t *info) {
       return TRAP_ERR_PERM;
     }
 
-    // Instead of directly running syscall_dispatch, we delegate it via our generic handler
     long rc = trap_dispatch_syscall(frame, info);
 
     return (int)rc;
@@ -334,16 +363,15 @@ int trap_dispatch(trap_frame_t *frame, const trap_info_t *info) {
   case TRAP_CLASS_ACCESS_FAULT: {
     fault_diag_record_fault(info->fault_addr, info->arch_code);
 
-    // Check if it's a guard page hit
     if (current && current->kernel_stack != 0 && info->fault_addr >= current->kernel_stack && info->fault_addr < current->kernel_stack + PAGE_SIZE) {
         if (core_is_rt()) {
             panic_context_t pctx = {
               .message = "Stack overflow on RT core! Guard page hit.",
               .cause_str = "stack_overflow/guard_page",
               .cause_code = info->arch_code,
-              .fault_addr = info->fault_addr,
-              .ip = info->ip,
-              .sp = info->sp,
+              .fault_addr = (uint64_t)info->fault_addr,
+              .ip = (uint64_t)info->ip,
+              .sp = (uint64_t)info->sp,
               .trap_frame = frame
             };
             kernel_panic_ex(&pctx);
@@ -354,15 +382,12 @@ int trap_dispatch(trap_frame_t *frame, const trap_info_t *info) {
     }
 
     if (current && current->process_id != 0) {
-      // Address space from current process
-      // For proper hardware demand-paging, we call into the VMM.
       int rc = vmm_handle_cow_fault(trap_current_aspace(), info->fault_addr);
       if (rc == 0) {
           return 0;
       }
     }
 
-    // If we could not resolve the page fault, fall back to handle_fault
     return trap_handle_fault(frame, info);
   }
   case TRAP_CLASS_ILLEGAL_INSTR:
@@ -371,8 +396,6 @@ int trap_dispatch(trap_frame_t *frame, const trap_info_t *info) {
   case TRAP_CLASS_GENERAL_FAULT:
   case TRAP_CLASS_UNKNOWN:
   default:
-    // Try to resolve FPU fault if applicable, although ideally arch decode would have separated FP disabled exceptions.
-    // For now, keep the generic helper around if needed:
     if (hal_cpu_is_fp_simd_fault(frame)) {
       if (arch_ext_state_handle_fault(current)) {
         return 0; // retry
@@ -382,7 +405,6 @@ int trap_dispatch(trap_frame_t *frame, const trap_info_t *info) {
   }
 }
 
-// Temporary shim to keep current tests/arch building, to be replaced by full arch decode!
 long trap_handle(trap_frame_t *frame) {
   if (!frame) return TRAP_ERR_INVAL;
 
@@ -396,21 +418,21 @@ long trap_handle(trap_frame_t *frame) {
     info.trap_class = TRAP_CLASS_INTERRUPT;
   } else {
 #if defined(__x86_64__)
-    uint64_t trap_cause_syscall = 0x80U;
+    uintptr_t trap_cause_syscall = 0x80U;
 #elif defined(__riscv)
-    uint64_t trap_cause_syscall = 8U;
+    uintptr_t trap_cause_syscall = 8U;
 #else
-    uint64_t trap_cause_syscall = 0xFFFFU;
+    uintptr_t trap_cause_syscall = 0xFFFFU;
 #endif
 
     if (frame->cause == trap_cause_syscall) {
       info.trap_class = TRAP_CLASS_SYSCALL;
     } else if (hal_cpu_is_page_fault(frame)) {
       info.trap_class = TRAP_CLASS_PAGE_FAULT;
-      info.fault_addr = hal_cpu_get_fault_address(frame);
+      info.fault_addr = (virt_addr_t)hal_cpu_get_fault_address(frame);
     } else if (hal_cpu_is_access_fault(frame)) {
       info.trap_class = TRAP_CLASS_ACCESS_FAULT;
-      info.fault_addr = hal_cpu_get_fault_address(frame);
+      info.fault_addr = (virt_addr_t)hal_cpu_get_fault_address(frame);
     } else {
       info.trap_class = TRAP_CLASS_GENERAL_FAULT;
     }
@@ -418,3 +440,4 @@ long trap_handle(trap_frame_t *frame) {
 
   return trap_dispatch(frame, &info);
 }
+// Needs updating with the new cases.

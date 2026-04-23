@@ -32,7 +32,7 @@ dist_exec_group_t* deg_create(void) {
     return deg;
 }
 
-int deg_add_member(dist_exec_group_t* deg, struct kthread* thread, uint32_t core, uint32_t local_sched_class) {
+int deg_add_member(dist_exec_group_t* deg, struct bh_thread* thread, uint32_t core, uint32_t local_sched_class) {
     if (!deg || !thread || deg->member_count >= MAX_DEG_MEMBERS) {
         return -1;
     }
@@ -64,7 +64,7 @@ int deg_activate(dist_exec_group_t* deg) {
     return 0;
 }
 
-static int _deg_get_member_index(dist_exec_group_t* deg, struct kthread* thread) {
+static int _deg_get_member_index(dist_exec_group_t* deg, struct bh_thread* thread) {
     for (uint32_t i = 0; i < deg->member_count; i++) {
         if (deg->members[i] == thread) {
             return i;
@@ -86,7 +86,7 @@ int deg_release_if_ready(dist_exec_group_t* deg) {
         deg->ready_bitmap = 0;
 
         for (uint32_t i = 0; i < deg->member_count; i++) {
-            struct kthread* member = deg->members[i];
+            struct bh_thread* member = deg->members[i];
             if (member && member->state == THREAD_STATE_DEG_PENDING) {
                 member->state = THREAD_STATE_READY;
                 // Enqueue to the actual core runqueue
@@ -98,7 +98,7 @@ int deg_release_if_ready(dist_exec_group_t* deg) {
     return 0; // Not yet ready
 }
 
-int deg_mark_ready(struct kthread* thread) {
+int deg_mark_ready(struct bh_thread* thread) {
     if (!thread || !thread->sched_ctx || !thread->sched_ctx->deg) {
         return -1;
     }
@@ -120,7 +120,7 @@ void deg_abort_epoch(dist_exec_group_t* deg) {
     deg->ready_bitmap = 0;
 
     for (uint32_t i = 0; i < deg->member_count; i++) {
-        struct kthread* member = deg->members[i];
+        struct bh_thread* member = deg->members[i];
         if (member && member->state == THREAD_STATE_DEG_PENDING) {
             // Un-pending them or handle fallback
             // In a full implementation, we might schedule them as best-effort or degraded.
@@ -133,7 +133,7 @@ void deg_abort_epoch(dist_exec_group_t* deg) {
     deg->state = DEG_WAITING_RELEASE; // Reset for next try
 }
 
-void deg_block_member(struct kthread* thread, uint32_t reason) {
+void deg_block_member(struct bh_thread* thread, uint32_t reason) {
     (void)reason;
     if (!thread || !thread->sched_ctx || !thread->sched_ctx->deg) {
         return;

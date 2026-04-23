@@ -1,20 +1,39 @@
-# Scheduler Architecture
+# Kernel Scheduler Documentation
 
-## Overview
-The `scheduler` cluster details how the Bharat-OS kernel distributes CPU time among executable threads (`kthread_t`). Because Bharat-OS targets devices ranging from hard real-time controllers to multi-core hybrid cloud servers, the scheduler is highly configurable.
+This folder is the single source of truth for scheduler architecture, implementation status, and roadmap.
 
-## Goals
-1.  **Fairness (GP Profile):** Ensure general-purpose tasks receive an equitable share of the CPU based on their weight (priority).
-2.  **Real-Time (RT Profile):** Guarantee deterministic, bounded latencies for high-priority tasks, regardless of system load.
-3.  **Energy Efficiency (Edge Profile):** Minimize waking idle cores and consolidate work to save battery on embedded devices.
-4.  **AI Governor Integration:** Allow an external AI Service to asynchronously suggest load-balancing, migrations, and priority adjustments based on telemetry.
+## Scope
 
-## Related Documents
-- [Algorithms](algorithms.md) - Details the CFS-like and MLFQ approaches used for general-purpose threads.
-- [Runqueue Design](runqueue.md) - Per-CPU lockless queues and load balancing mechanisms.
-- [Priority & Inversion](priority.md) - Static vs dynamic priorities and Priority Inheritance (PI) protocols.
-- [Time Accounting](time-accounting.md) - High-resolution timers, ticks, and `vruntime`.
-- [CPU Affinity](cpu-affinity.md) - Pinning threads to specific cores and NUMA-aware scheduling.
-- [Preemption](preemption.md) - Kernel preemption points, IRQ-safe regions, and voluntary yielding.
-- [Real-Time Support](realtime.md) - The RT task model and EDF (Earliest Deadline First) scheduling.
-- [Roadmap](roadmap.md) - Current status and future goals for the scheduler.
+The scheduler implementation lives primarily in:
+
+- `kernel/src/sched/`
+- `kernel/include/sched/`
+- `tests/test_scheduler.c`
+- `tests/host/test_sched.c`
+- `tests/host/test_sched_partition_validation.c`
+
+## Current implementation shape (code-backed)
+
+- Per-core runqueues with local ownership (`sched_rq_t`) and remote enqueue inbox support.
+- Multiple policies selectable via `sched_set_policy(...)`: round-robin, cloud-fair, priority, EDF, RMS.
+- Runnable ownership accounting (`runnable_count`, `ready_bitmap`, per-priority queues, CFS and EDF trees).
+- Timer-tick driven preemption and wakeups (`sched_on_timer_tick`).
+- RT admissions (`sched_admission_edf`, `sched_admission_rms`) with utilization budgets.
+- AI suggestion ingestion and bounded application path (`sched_enqueue_ai_suggestion`, `sched_process_pending_ai_suggestions`).
+- Cross-core migration and balancing primitives (`sched_migrate_task`, periodic `sched_balance_once`).
+
+## Documents in this folder
+
+- [Scheduler and Threading](scheduler-and-threading.md)
+- [Scheduler Invariants and Host Tests](scheduler-invariants-and-host-tests.md)
+- [AI Scheduler Overview](ai-scheduler-overview.md)
+- [AI Scheduler Status and Roadmap](ai-scheduler-status-and-roadmap.md)
+- [Algorithms](algorithms.md)
+- [Runqueue](runqueue.md)
+- [Priority](priority.md)
+- [Time Accounting](time-accounting.md)
+- [CPU Affinity](cpu-affinity.md)
+- [Preemption](preemption.md)
+- [Real-time](realtime.md)
+- [Roadmap](roadmap.md)
+- [Invariants and Router Contract](invariants-and-router-contract.md)

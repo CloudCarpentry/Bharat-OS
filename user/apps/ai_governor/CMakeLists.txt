@@ -10,6 +10,7 @@ if(BHARAT_BUILD_AI_GOVERNOR)
         subsys_manager
         bharat_libtransport
         bharat_libcmin
+        bharat_libruntime
         bharat_user_buildopts
         bharat_freestanding
     )

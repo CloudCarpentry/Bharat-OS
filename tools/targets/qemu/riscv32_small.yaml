@@ -1,0 +1,43 @@
+name: riscv32_small
+kind: qemu_target
+
+arch: riscv32
+board: qemu-virt-riscv32
+device_profile: small
+personality_profile: native
+execution_profile: mix
+footprint_profile: small_riscv32
+
+build:
+  cmake_preset: riscv32-qemu-mmu-lite-headless
+  cmake_defs:
+    BHARAT_ARCH_FAMILY: RISCV32
+    BHARAT_DEVICE_PROFILE: SMALL
+    BHARAT_PERSONALITY_PROFILE: NATIVE
+    BHARAT_TARGET_BOARD: virt
+    BHARAT_BOOT_GUI: OFF
+    BHARAT_PROFILE_MMU_FULL: OFF
+    BHARAT_PROFILE_MMU_LITE: ON
+    BHARAT_PROFILE_MPU_ONLY: OFF
+
+kernel:
+  canonical_artifacts:
+    elf: kernel/kernel.elf
+
+boot:
+  protocol: opensbi_payload
+  artifact_format: elf
+  dtb:
+    mode: qemu_generated
+
+package:
+  transforms: []
+
+run:
+  backend: qemu
+  machine: virt
+  memory: 512M
+  nographic: true
+  serial:
+    - stdio
+  boot_artifact: kernel/kernel.elf

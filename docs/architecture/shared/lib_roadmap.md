@@ -16,6 +16,7 @@ This roadmap outlines the plan to strictly enforce the boundaries defined in `do
    * **Header Isolation:** Relocate any headers intended for kernel-only implementations from `lib/include/` into a kernel-private include layer such as `kernel/include/lib/` or `kernel/include/ds/`. Only keep a header under `lib/include/` if it is supported as a shared/public library contract.
 2. **Build System Restrictions:**
    * Introduce CMake rules (e.g., in `lib/CMakeLists.txt` or a common policy file) that strictly prevent target linkage from `lib/` back to kernel targets.
+   * **Status (2026-04-22):** Implemented a configure-time enforcement pass in `lib/CMakeLists.txt` that fails configuration if any `lib/` target links kernel-private targets.
 3. **Identify Misplaced Code:**
    * Audit `kernel/src/lib/` (e.g., `rbtree.c`, `string.c`, `status.c`) and migrate purely logical, zero-kernel-state data structures (like standard linked lists or rbtrees, if allocation-free) to `lib/`.
    * Conversely, move any helper currently in `lib/` that relies on kernel locking, traps, or physical memory allocation directly into `kernel/src/lib/`.
@@ -70,6 +71,7 @@ This roadmap outlines the plan to strictly enforce the boundaries defined in `do
 ## Build and Testing Strategy
 
 * **Host-Testing:** Everything in `lib/` must be compiled and tested on the host (e.g., `cmake --preset host-test`). Any dependency on kernel headers or target hardware limits this ability and is considered a violation.
+* **Current Coverage Update (2026-04-22):** Added dedicated host test `host_test_lib_string` for the fallback string/memory path in `lib/string/string.c`, including overlap-sensitive `memmove` behavior.
 * **Scalability Testing:** Stress-test lock-free and parallel structures with high core counts (e.g., 64+ cores) to validate scalability and hardware leveraging.
 * **Formal Methods:** As the lock-free data structures stabilize (especially MPMC rings and RCU), utilize formal verification (e.g., Isabelle/HOL) to prove their correctness.
 * **Continuous Enforcement:** Add pre-commit static analysis or CMake assertion checks to verify dependency directions.

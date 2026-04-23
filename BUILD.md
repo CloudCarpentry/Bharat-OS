@@ -1,349 +1,417 @@
-# Building Bharat-OS
+# Bharat-OS Build, Package, Run, and Debug Guide
 
-Bharat-OS utilizes a modern CMake Presets (`CMakePresets.json`) based workflow, allowing identical configuration and compilation paths on Windows, WSL, Linux, macOS, and BSD. We build entirely with **LLVM/Clang** + **LLD** for cross-arch reproducibility.
+This document is the **single user guide** for using Bharat-OS build tooling on:
 
-```mermaid
-flowchart TD
-    subgraph BuildSystem["Build System (CMake Presets)"]
-        A[Source Code] -->|CMake| B(Build Generator)
-    end
+- Windows (PowerShell)
+- WSL/Linux
+- macOS
 
-    subgraph Toolchains["Cross-Platform Toolchains"]
-        B -->|host-linux-clang.cmake| HostL[Host Linux Clang]
-        B -->|host-windows-clang.cmake| HostW[Host Windows Clang]
-        B -->|x86_64-elf-clang.cmake| X86[LLVM/Clang x86_64]
-        B -->|riscv64-elf-clang.cmake| RV[LLVM/Clang riscv64]
-        B -->|aarch64-elf-clang.cmake| ARM[LLVM/Clang arm64]
-    end
+It covers:
 
-    subgraph Output["Output Artifacts"]
-        X86 --> O1[kernel.elf + bharat_image]
-        RV --> O2[kernel.elf + bharat_image]
-        ARM --> O3[kernel.elf + bharat_image]
-    end
-```
+- what to install,
+- how `build.ps1` / `build.sh` work,
+- how to build/package/run/debug,
+- QEMU workflows,
+- board flashing workflows,
+- preset command recipes (especially headless).
 
 ---
 
-## Prerequisites & Environment Preparation
+## 1) Tool entrypoints and command model
 
-Before building Bharat-OS, you need to set up your development environment.
+Bharat-OS provides two user-facing wrappers:
 
-- CMake 3.20+
-- Ninja or Make
-- Clang & LLD (`llvm`, `clang`, `lld`)
-- QEMU (for running the kernel)
-- `yq` (Optional, used by the build wrappers `build.sh`/`build.ps1` to parse `build_config.yml`)
+- `./build.sh` (Linux/macOS/WSL)
+- `.\build.ps1` (Windows PowerShell)
 
-Please see the comprehensive **[Environment Preparation Guide](docs/build/ENV_PREP.md)** for platform-specific instructions.
+Both wrappers forward directly to `tools/build.py`. The Python CLI is authoritative and supports these subcommands:
 
----
+- `configure`
+- `build`
+- `package`
+- `run`
+- `flash`
+- `debug`
+- `all`
 
-## How the Build System Works
+Each subcommand requires exactly one target selector:
 
-All compiler and linker settings are isolated in **CMake toolchain files** under `cmake/toolchains/`. Target generation is mapped out via profiles in `CMakePresets.json`.
+- `--target <name>` (legacy targets from `build_config.json`)
+- `--target-yaml <path>` (explicit target YAML in `tools/targets/`)
 
-We provide simple wrapper scripts (`build.sh` and `build.ps1`) that parse the target `build_config.yml` configuration and execute the underlying `cmake --preset` engine.
-
-At configure time, component selection is enforced by `cmake/modules/BharatComponentPolicy.cmake`.
-The wrapper scripts normalize and pass:
-
-- `BHARAT_DEVICE_PROFILE`
-- `BHARAT_PERSONALITY_PROFILE`
-- `BHARAT_TARGET_BOARD`
-
-If `profile`, `personality`, or `board` contain comma-separated values in `build_config.yml`,
-only the first value is consumed for CMake cache inputs.
-
-### Helper Scripts (Recommended)
-
-Edit `build_config.yml` to define your target composition (e.g. arch, UI on/off, profile mapping). Then use the wrapper:
-
-```bash
-# Linux/Mac/WSL
-# Build the default_dev profile
-./build.sh default_dev
-
-# Build and run immediately in QEMU
-./build.sh default_dev --run
-```
+Examples:
 
 ```powershell
-# Windows
-# Build the default_dev profile
-.\build.ps1 default_dev
-
-# Build and run
-.\build.ps1 default_dev -Run
+# Windows PowerShell
+.\build.ps1 build --target x86_64_desktop_headless
+.\build.ps1 all --target x86_64_desktop_headless
+.\build.ps1 run --target-yaml tools/targets/qemu/x86_64_desktop_headless.yaml
 ```
-
-### Manual CMake Presets
-
-You can bypass the YAML wrapper and invoke the raw presets directly:
 
 ```bash
-# View available presets
-cmake --list-presets
-
-# Configure for x86_64 dev target on Linux host
-cmake --preset linux-x86_64-dev-debug
-
-# Build the target image and dependencies
-cmake --build --preset linux-x86_64-dev-debug
-
-# Configure for ARM64 GUI target
-cmake --preset arm64-gui
-cmake --build --preset arm64-gui
-
-# Configure for RISC-V GUI target
-cmake --preset riscv64-gui
-cmake --build --preset riscv64-gui
+# Linux/macOS/WSL
+./build.sh build --target x86_64_desktop_headless
+./build.sh all --target x86_64_desktop_headless
+./build.sh run --target-yaml tools/targets/qemu/x86_64_desktop_headless.yaml
 ```
+
+> Legacy positional syntax still works (for example `.\build.ps1 x86_64_desktop_headless --run`), but it is compatibility-only and emits a warning. Prefer explicit subcommands.
 
 ---
 
-## Testing & SDK Development
+## 2) Host prerequisites by platform
 
-### Validating Host-Side Tests (Windows & WSL/Linux)
+### Windows host (PowerShell)
 
-Bharat-OS separates purely host-isolated unit tests from kernel self-tests. The host tests execute natively on your host machine (Windows or Linux) without QEMU, making them fast and suitable for CI.
+Install:
 
-**Running host tests from the preset:**
-```bash
-# Configure the host profile (Linux example)
-cmake --preset linux-host-debug
-cmake --build --preset linux-host-debug
+- Python 3
+- CMake (3.20+)
+- Ninja
+- LLVM/Clang + LLD (and `llvm-objcopy`)
+- QEMU
+- (optional for board flashing) OpenOCD
+- (optional for debug) GDB (`gdb` or `gdb-multiarch`)
 
-# Run all test runners
-ctest --preset linux-host-debug
-```
-
-For Windows:
-```powershell
-cmake --preset windows-hosttools-debug
-cmake --build --preset windows-hosttools-debug
-ctest --preset windows-hosttools-debug
-```
-
-To run just the CMake component-policy host check:
-```bash
-ctest --preset linux-host-debug -R test_component_policy_matrix
-```
-
-### Profile and Image Bundling
-
-During build execution, CMake groups your selected targets into bundles:
-- `bharat_services_bundle`: All compiled user-space daemon libraries.
-- `bharat_apps_bundle`: Leaf applications selected by your current `profiles/*.cmake` file.
-- `bharat_initramfs`: A mock tar packaging the root filesystem payloads.
-- `bharat_image`: The overarching target tying `kernel.elf` to the final bundled manifest.
-
-
-## Build Output
-
-| File                      | Description                                 |
-| ------------------------- | ------------------------------------------- |
-| `build/<arch>/kernel.elf` | Bare-metal ELF image, loadable by GRUB/QEMU |
-
----
-
-## Supported Architectures
-
-| Arch      | Status                                     | QEMU Machine                        |
-| --------- | ------------------------------------------ | ----------------------------------- |
-| `x86_64`  | ✅ Active                                  | `qemu-system-x86_64 -kernel`        |
-| `riscv64` | ✅ Cross-compile validated (incl. Shakti RV64 profile) | `qemu-system-riscv64 -machine virt` |
-| `arm64`   | ✅ Cross-compile validated (runtime pending) | N/A                                 |
-
-
----
-
-## Portability Matrix
-
-Bharat-OS exclusively relies on LLVM/Clang and LLD (version 16+) for bare-metal compilation. This strategy ensures cross-compilation stability and avoids conflicts seen with standard C libraries.
-
-| Architecture | Target Triple         | Compiler | Linker | Status      |
-| ------------ | --------------------- | -------- | ------ | ----------- |
-| `x86_64`     | `x86_64-elf`          | Clang 16+| LLD 16+| Active      |
-| `riscv64`    | `riscv64-elf`         | Clang 16+| LLD 16+| Validated   |
-| `arm64`      | `aarch64-elf`         | Clang 16+| LLD 16+| Validated (build) |
-
----
-
-## Running the AI Governor in User Space
-
-During early bring-up, the AI Governor operates as an isolated user-space process. It uses the capability-based IPC model (specifically the Lockless URPC messaging spine or Synchronous Endpoint IPC) to analyze telemetry from the microkernel and suggest configuration tuning.
-
-To run the AI governor in user space during development or testing:
-
-1. **Build the subsystem:** The governor is located in `subsys/src/ai_governor.c`. Ensure it is built using the same bare-metal toolchain provided in `cmake/toolchains/`. (Note: A testing wrapper can also be built as a standalone binary on the host to simulate telemetry).
-2. **Execute integration tests:** Run the tests located in the `tests/` directory (e.g., `test_ai_governor`) to verify IPC message formatting and URPC ring behavior before booting the full kernel image in QEMU.
-3. **Boot in Emulator:** Once built into the root filesystem image (pending storage subsystem availability), the microkernel will spawn the AI governor as a capability-restricted task upon boot.
-
-
----
-
-
-
-## Troubleshooting
-
-**`clang not found` (CMake error)**
-→ Install LLVM (see above). On macOS, also run `export PATH="$(brew --prefix llvm)/bin:$PATH"`.
-
-**`ld.lld not found`**
-→ Install `lld`. On Ubuntu: `sudo apt install lld`. On macOS: included with Homebrew LLVM.
-
-**QEMU: `-nographic` freezes**
-→ Press Ctrl+A then X to exit. Or use `-serial stdio` without `-nographic` to open a separate window.
-
-**Windows: `ninja` not found by CMake**
-→ Install Ninja via winget (see above) or set path: `$env:Path += ";C:\path\to\ninja"`.
-
-
-## Boot-time configuration
-
-You can tune early boot behavior without source edits:
-
-- `BHARAT_BOOT_GUI` (`ON`/`OFF`): enables boot-to-GUI handoff metadata.
-- `BHARAT_BOOT_HW_PROFILE` (`generic`, `desktop`, `server`, `vm`, `laptop`): picks hardware profile compile definitions for boot policy and defaults.
-
-These are wired through both build scripts and raw CMake cache entries.
-
-### Building for Device Profiles (Automobile, Drone, Medical, Edge)
-
-Bharat-OS supports various device profiles natively. The build scripts (`build.sh` and `build.ps1`) automatically inject the correct QEMU flags to emulate hardware-specific peripherals (like CAN buses or watchdog timers) depending on the selected profile.
-
-**1. Automobile & EV Testing**
-The CAN subsystem is enabled automatically for Automotive profiles. QEMU will be launched with a virtual Kvaser PCI CAN bus.
-```bash
-# Bash
-./build.sh x86_64 --profile=AUTOMOBILE --run
-
-# PowerShell
-.\build.ps1 -Arch x86_64 -Profile AUTOMOBILE -Run
-```
-
-**2. Drone (UAV) Testing**
-Drone firmware usually relies on specific ARM processors. Using the `DRONE` profile on `arm64` or `arm32` defaults to emulating a Cortex-A15.
-```bash
-# Bash
-./build.sh arm64 --profile=DRONE --run
-
-# PowerShell
-.\build.ps1 -Arch arm64 -Profile DRONE -Run
-```
-
-**3. Medical Device Validation**
-Medical environments require strict V&V. The `MEDICAL` profile injects a watchdog device (`i6300esb`) configured to pause on trigger, allowing you to simulate and test fault injection and safe failure states.
-```bash
-# Bash
-./build.sh x86_64 --profile=MEDICAL --run
-```
-
-**4. Robotics & Edge Devices**
-The `ROBOT` and `EDGE` profiles inject basic virtio networking to represent generic IoT or edge deployments.
-```bash
-./build.sh riscv64 --profile=ROBOT --run
-```
-
-**5. Laptops & Workstations**
-The `LAPTOP` profile targets traditional PC or workstation form factors. It injects a virtio network device, as well as a virtio-tablet and virtio-keyboard to emulate typical human interface devices. For `x86_64` targets, it automatically switches the QEMU machine to `q35` and expands the memory to 1G to support ACPI and modern PC buses.
-```bash
-# Bash
-./build.sh x86_64 --profile=LAPTOP --run
-
-# PowerShell
-.\build.ps1 -Arch arm64 -Profile LAPTOP -Run
-```
-
-### End-to-End (E2E) Test Support
-
-For Continuous Integration (CI) and automated validation, you can pass the `--e2e` (Bash) or `-E2e` (PowerShell) flag.
-
-When enabled:
-1. It forces the system to boot in headless mode (`-nographic` / `BOOT_GUI=OFF`).
-2. It redirects all serial output from the QEMU machine to a local file (`qemu_e2e.log`) instead of standard output.
-3. It prevents the emulator from rebooting on a crash (`-no-reboot`).
-
-```bash
-# Bash example for automated testing
-./build.sh x86_64 --profile=AUTOMOBILE --run --e2e
-cat qemu_e2e.log
-
-# PowerShell example
-.\build.ps1 -Arch riscv64 -Profile MEDICAL -Run -E2e
-Get-Content qemu_e2e.log
-```
-
-For a full multi-arch and multi-profile QEMU harness, use `run_qemu_e2e.sh`.
-
-```bash
-# Default matrix (x86_64 desktop/laptop, riscv64 edge, arm64 drone)
-./run_qemu_e2e.sh
-
-# Custom matrix format: arch:profile:personality
-E2E_MATRIX="x86_64:desktop:none riscv64:automobile:none" ./run_qemu_e2e.sh
-
-# Fail if any case is skipped (useful in CI)
-STRICT_QEMU=1 ./run_qemu_e2e.sh
-```
-
-Notes:
-- Logs are written to `e2e_logs/` per test case.
-- The harness validates boot markers (`BOOT: pmm initialized`, `BOOT: vmm initialized`, runtime mode) and fails on panic logs.
-
-### GUI and Serial Console Output (`-BootGui ON`)
-
-When `BHARAT_BOOT_GUI` is enabled (e.g. passing `-BootGui ON` to `build.ps1` or `--boot-gui=ON` to `build.sh`), QEMU is launched with a graphical window.
-
-To ensure early kernel logs are visible during UI development, the build scripts automatically route QEMU serial output to both your host terminal and a Virtual Console (`vc`) inside the QEMU GUI using the `-serial stdio -serial vc` flags.
-
-**Architecture specific behaviors with GUI enabled:**
-- **`x86_64`:** Uses standard VGA (`-vga std`). The serial `vc` output appears natively.
-- **`riscv64` & `arm64`:** These `virt` machines do not support legacy VGA. The build scripts use VirtIO GPU (`-device virtio-gpu-device` or `-device virtio-gpu-pci`). The kernel text output is displayed in a QEMU Virtual Console tab. *Note: If you are using the QEMU GTK/SDL UI, you can switch to the Virtual Console (usually via `View -> serial0` or `Ctrl-Alt-2`) to see the text logs if they don't appear immediately.*
+Typical installs (examples):
 
 ```powershell
-# Build and run with a specific preset
-.\tools\build.ps1 -Preset arm64-gui -Run
-
-# Build and run with logs routed ONLY to the QEMU window (recommended for GUI dev)
-.\tools\build.ps1 -Arch arm64 -Clean -Run -SerialTarget vc
-
-# Build and run with dual serial (Both GUI and Terminal)
-.\tools\build.ps1 -Arch riscv64 -Clean -Run -SerialTarget both
+# Winget examples
+winget install Python.Python.3
+winget install Kitware.CMake
+winget install Ninja-build.Ninja
+winget install LLVM.LLVM
+winget install SoftwareFreedomConservancy.QEMU
 ```
 
-### Serial Console Routing (`-SerialTarget`)
+Ensure these commands are in `PATH`: `python`, `cmake`, `ninja`, `clang`, `ld.lld`, and the needed `qemu-system-*` binary.
 
-You can control where kernel logs are sent when running in QEMU:
+### WSL / Linux host
 
-- `-SerialTarget stdio` (Default): Logs go to your host terminal.
-- `-SerialTarget vc`: Logs go to the QEMU GUI window (the "Serial0" tab).
-- `-SerialTarget both` (or `-DualSerial`): Logs go to BOTH. The GUI window remains the primary (`Serial0`), and the terminal is secondary (`Serial1`).
+Install:
 
-> [!TIP]
-> Use `-SerialTarget vc` for the most seamless GUI development experience on ARM64 and RISC-V, as it avoids cluttering your terminal and keeps everything in one window. This also bypasses common "mon:stdio" errors on Windows.
+- `python3`
+- `cmake`
+- `ninja-build`
+- `clang`, `lld`, `llvm` (for `llvm-objcopy`)
+- `qemu-system-x86`, `qemu-system-arm`, `qemu-system-misc`
+- (optional) `opensbi` for RISC-V environments
+- (optional) `openocd` for board flashing
+- (optional) `gdb-multiarch`
 
-### Troubleshooting: `qemu_add_wait_object: failed`
-If you see the error `could not connect serial device to character backend 'mon:stdio'` on Windows, it is likely due to terminal limitations. 
+```bash
+sudo apt update
+sudo apt install -y \
+  python3 cmake ninja-build clang lld llvm \
+  qemu-system-x86 qemu-system-arm qemu-system-misc \
+  opensbi openocd gdb-multiarch
+```
 
-**Solution:** Use `-SerialTarget vc` to route logs exclusively to the QEMU window, bypassing the terminal's `mon:stdio` backend.
+### macOS host
 
-**Example Build Commands:**
+Install with Homebrew:
+
+- `python`
+- `cmake`
+- `ninja`
+- `llvm`
+- `qemu`
+- (optional) `openocd`
+- (optional) `gdb`
+
+```bash
+brew install python cmake ninja llvm qemu openocd gdb
+```
+
+If Homebrew LLVM is not default, export PATH:
+
+```bash
+export PATH="$(brew --prefix llvm)/bin:$PATH"
+```
+
+---
+
+## 3) Build pipeline stages (what each command does)
+
+### `configure`
+Runs CMake configure preset and writes build manifest metadata.
+
+### `build`
+Runs configure + compile for the selected preset.
+
+### `package`
+Generates packaging artifacts/manifests (run/flash/debug manifests + footprint report).
+
+### `run`
+Packages (if needed) and launches QEMU for the target.
+
+### `all`
+Build + package + run in one command.
+
+### `flash`
+Packages and runs flashing backend (currently OpenOCD backend path).
+
+### `debug`
+Generates/validates debug path, but current workflow reports that full debug automation is not yet implemented.
+
+Output layout uses CMake preset name:
+
+- `build/<preset>/...`
+- `build/<preset>/manifests/run-manifest.json`
+- `build/<preset>/manifests/flash-manifest.json`
+- `build/<preset>/manifests/debug-manifest.json`
+
+---
+
+## 4) QEMU usage (desktop/headless/emulator targets)
+
+### Recommended quick workflow
+
 ```powershell
-# Windows (PowerShell)
-# Build and run x86_64 with GUI enabled
-.\tools\build.ps1 -Arch x86_64 -Clean -Run -BootGui ON
-
-# Build and run RISC-V with GUI enabled
-.\tools\build.ps1 -Arch riscv64 -Clean -Run -BootGui ON
+.\build.ps1 all --target x86_64_desktop_headless
 ```
 
 ```bash
-# WSL / Linux / macOS (Bash)
-# Build and run ARM64 with GUI enabled
-./tools/build.sh -Arch arm64 -Clean -Run -BootGui ON
-
-# Optionally enable dual-serial output on both stdio and the virtual console
-./tools/build.sh -Arch x86_64 -Clean -Run -BootGui ON -DualSerial
+./build.sh all --target x86_64_desktop_headless
 ```
+
+### Supported QEMU runners by architecture
+
+- `x86_64` -> `qemu-system-x86_64`
+- `arm64` -> `qemu-system-aarch64`
+- `riscv64` -> `qemu-system-riscv64`
+- `arm32` -> `qemu-system-arm`
+- `riscv32` -> `qemu-system-riscv32`
+
+Runtime command includes serial-first bring-up (`-nographic -monitor none -serial stdio`) so headless logs stream to your terminal.
+
+---
+
+## 5) Preset command cookbook
+
+## 5.1 Canonical headless run commands (PowerShell)
+
+```powershell
+.\build.ps1 all --target x86_64_desktop_headless
+.\build.ps1 all --target arm64_desktop_headless
+.\build.ps1 all --target riscv64_desktop_headless
+.\build.ps1 all --target arm32_mmu_lite_headless
+.\build.ps1 all --target riscv32_mmu_lite_headless
+
+.\build.ps1 all --target x86_64_desktop_headless_gp
+.\build.ps1 all --target x86_64_desktop_headless_rt
+.\build.ps1 all --target x86_64_desktop_headless_mix
+
+.\build.ps1 all --target arm64_desktop_headless_gp
+.\build.ps1 all --target arm64_desktop_headless_rt
+.\build.ps1 all --target arm64_desktop_headless_mix
+
+.\build.ps1 all --target riscv64_desktop_headless_gp
+.\build.ps1 all --target riscv64_desktop_headless_rt
+.\build.ps1 all --target riscv64_desktop_headless_mix
+
+.\build.ps1 all --target arm32_mmu_lite_headless_gp
+.\build.ps1 all --target arm32_mmu_lite_headless_rt
+.\build.ps1 all --target arm32_mmu_lite_headless_mix
+
+.\build.ps1 all --target riscv32_mmu_lite_headless_gp
+.\build.ps1 all --target riscv32_mmu_lite_headless_rt
+.\build.ps1 all --target riscv32_mmu_lite_headless_mix
+
+.\build.ps1 all --target x86_64_gp_headless
+.\build.ps1 all --target x86_64_rt_headless
+.\build.ps1 all --target x86_64_mix_headless
+.\build.ps1 all --target arm64_gp_headless
+.\build.ps1 all --target arm64_rt_headless
+.\build.ps1 all --target arm64_mix_headless
+.\build.ps1 all --target riscv64_gp_headless
+.\build.ps1 all --target riscv64_rt_headless
+.\build.ps1 all --target riscv64_mix_headless
+.\build.ps1 all --target arm32_gp_headless
+.\build.ps1 all --target arm32_rt_headless
+.\build.ps1 all --target arm32_mix_headless
+.\build.ps1 all --target riscv32_gp_headless
+.\build.ps1 all --target riscv32_rt_headless
+.\build.ps1 all --target riscv32_mix_headless
+```
+
+## 5.2 Canonical headless run commands (WSL/Linux/macOS)
+
+### Personality Targets (Linux & Android)
+You can explicitly build the desktop GP profile with a specific personality:
+```bash
+./build.sh all --target x86_64_desktop_headless_linux
+./build.sh all --target x86_64_desktop_headless_android
+```
+These test targets assert that the ABI boundaries and dispatch tables do not cause build breakage or kernel panics during early boot.
+
+
+```bash
+./build.sh all --target x86_64_desktop_headless
+./build.sh all --target arm64_desktop_headless
+./build.sh all --target riscv64_desktop_headless
+./build.sh all --target x86_64_desktop_headless_linux
+./build.sh all --target arm64_desktop_headless_linux
+./build.sh all --target riscv64_desktop_headless_linux
+./build.sh all --target x86_64_desktop_headless_android
+./build.sh all --target arm64_desktop_headless_android
+./build.sh all --target riscv64_desktop_headless_android
+./build.sh all --target arm32_mmu_lite_headless
+./build.sh all --target riscv32_mmu_lite_headless
+
+./build.sh all --target x86_64_desktop_headless_gp
+./build.sh all --target x86_64_desktop_headless_rt
+./build.sh all --target x86_64_desktop_headless_mix
+
+./build.sh all --target arm64_desktop_headless_gp
+./build.sh all --target arm64_desktop_headless_rt
+./build.sh all --target arm64_desktop_headless_mix
+
+./build.sh all --target riscv64_desktop_headless_gp
+./build.sh all --target riscv64_desktop_headless_rt
+./build.sh all --target riscv64_desktop_headless_mix
+
+./build.sh all --target arm32_mmu_lite_headless_gp
+./build.sh all --target arm32_mmu_lite_headless_rt
+./build.sh all --target arm32_mmu_lite_headless_mix
+
+./build.sh all --target riscv32_mmu_lite_headless_gp
+./build.sh all --target riscv32_mmu_lite_headless_rt
+./build.sh all --target riscv32_mmu_lite_headless_mix
+
+./build.sh all --target x86_64_gp_headless
+./build.sh all --target x86_64_rt_headless
+./build.sh all --target x86_64_mix_headless
+./build.sh all --target arm64_gp_headless
+./build.sh all --target arm64_rt_headless
+./build.sh all --target arm64_mix_headless
+./build.sh all --target riscv64_gp_headless
+./build.sh all --target riscv64_rt_headless
+./build.sh all --target riscv64_mix_headless
+./build.sh all --target arm32_gp_headless
+./build.sh all --target arm32_rt_headless
+./build.sh all --target arm32_mix_headless
+./build.sh all --target riscv32_gp_headless
+./build.sh all --target riscv32_rt_headless
+./build.sh all --target riscv32_mix_headless
+```
+
+## 5.3 GUI presets (examples)
+
+```powershell
+.\build.ps1 all --target x86_64_desktop_gui
+.\build.ps1 all --target arm64_desktop_gui
+.\build.ps1 all --target riscv64_desktop_gui
+```
+
+```bash
+./build.sh all --target x86_64_desktop_gui
+./build.sh all --target arm64_desktop_gui
+./build.sh all --target riscv64_desktop_gui
+```
+
+## 5.4 Legacy positional example requested by users
+
+```powershell
+.\build.ps1 x86_64_desktop_headless --run
+```
+
+Equivalent modern command:
+
+```powershell
+.\build.ps1 all --target x86_64_desktop_headless
+```
+
+---
+
+## 6) Package-only and run-only workflows
+
+```powershell
+.\build.ps1 build --target x86_64_desktop_headless
+.\build.ps1 package --target x86_64_desktop_headless
+.\build.ps1 run --target x86_64_desktop_headless
+```
+
+```bash
+./build.sh build --target x86_64_desktop_headless
+./build.sh package --target x86_64_desktop_headless
+./build.sh run --target x86_64_desktop_headless
+```
+
+YAML target path equivalent:
+
+```bash
+./build.sh all --target-yaml tools/targets/qemu/x86_64_desktop_headless.yaml
+```
+
+---
+
+## 7) Debug workflow
+
+Current state:
+
+- `build.py debug` exists in CLI.
+- The main debug stage prints `Debug workflow not fully implemented yet.`
+- You can still use helper debugger attach scripts:
+  - `tools/debug.sh`
+  - `tools/debug.ps1`
+
+Typical pattern:
+
+1. launch QEMU with gdb stub enabled from target extra args (if configured),
+2. attach with debug helper script.
+
+---
+
+## 8) Board and hardware flashing workflow
+
+For hardware/board flows, use `flash` with a target that includes flash configuration.
+
+```powershell
+.\build.ps1 flash --target <board_target>
+.\build.ps1 flash --target <board_target> --dry-run
+```
+
+```bash
+./build.sh flash --target <board_target>
+./build.sh flash --target <board_target> --dry-run
+```
+
+Flash backend currently implemented: **OpenOCD**.
+
+Install OpenOCD first (`openocd` command in PATH).
+
+---
+
+## 9) Discovering available presets and targets
+
+List CLI usage:
+
+```bash
+./build.sh --help
+./build.sh build --help
+```
+
+Print all legacy target names from `build_config.json`:
+
+```bash
+python3 - <<'PY'
+import json
+cfg = json.load(open('build_config.json'))['builds']
+for name in cfg:
+    print(name)
+PY
+```
+
+See YAML targets under:
+
+- `tools/targets/qemu/`
+
+---
+
+## 10) Wrapper script summary (`build.ps1` and `build.sh`)
+
+- Root wrappers (`/build.sh`, `/build.ps1`) are the stable commands users should run.
+- `tools/build.sh` and `tools/build.ps1` are compatibility shims.
+- New build/run feature behavior must be implemented in `tools/build.py`.
+

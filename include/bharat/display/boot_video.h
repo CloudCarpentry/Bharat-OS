@@ -20,6 +20,7 @@ typedef struct boot_video_handoff {
     boot_video_path_t path;
 
     uintptr_t phys_addr;
+    uintptr_t virt_addr;
     size_t size;
 
     uint32_t width;

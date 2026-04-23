@@ -5,8 +5,6 @@ target_link_libraries(bharat_librbtree PUBLIC bharat_freestanding)
 
 add_library(bharat_librbtree_obj OBJECT rbtree.c)
 target_include_directories(bharat_librbtree_obj PUBLIC ../include ../../kernel/include)
-target_compile_options(bharat_librbtree_obj PRIVATE
-    $<$<COMPILE_LANGUAGE:C>:-ffreestanding>
-    $<$<COMPILE_LANGUAGE:C>:-fno-builtin>
-)
+target_link_libraries(bharat_librbtree_obj PRIVATE bharat_freestanding)
+
 bharat_configure_userspace_library(bharat_librbtree)

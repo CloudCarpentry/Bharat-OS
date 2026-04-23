@@ -40,9 +40,9 @@ void dummy_thread(void) {}
 int main(void) {
   sched_init();
 
-  kprocess_t *p = process_create("reap_proc");
+  bh_process_t *p = process_create("reap_proc");
   assert(p != NULL);
-  kthread_t *t = thread_create(p, dummy_thread);
+  bh_thread_t *t = thread_create(p, dummy_thread);
   assert(t != NULL);
 
   ai_suggestion_t kill = {
@@ -60,9 +60,9 @@ int main(void) {
   assert(process_destroy(p) == 0);
   assert(g_aspace_destroy_calls >= 1U);
 
-  kprocess_t *p2 = process_create("live_proc");
+  bh_process_t *p2 = process_create("live_proc");
   assert(p2 != NULL);
-  kthread_t *t2 = thread_create(p2, dummy_thread);
+  bh_thread_t *t2 = thread_create(p2, dummy_thread);
   assert(t2 != NULL);
   assert(process_destroy(p2) != 0);
 

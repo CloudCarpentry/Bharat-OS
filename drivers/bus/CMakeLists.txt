@@ -12,6 +12,22 @@ if(BHARAT_ENABLE_DRIVER_SPI_CORE)
     list(APPEND BHARAT_DRIVER_BUS_SOURCES spi/spi_core.c spi/spi_registry.c)
 endif()
 
+if(BHARAT_ENABLE_DRIVER_PCIE_HOST)
+    list(APPEND BHARAT_DRIVER_BUS_SOURCES pcie/pcie_host.c)
+endif()
+
+if(BHARAT_ENABLE_GPIO)
+    list(APPEND BHARAT_DRIVER_BUS_SOURCES gpio/gpio_core.c)
+endif()
+
+if(BHARAT_ENABLE_PINCTRL)
+    list(APPEND BHARAT_DRIVER_BUS_SOURCES gpio/pinctrl_core.c)
+endif()
+
+if(BHARAT_ENABLE_PWM)
+    list(APPEND BHARAT_DRIVER_BUS_SOURCES gpio/pwm_core.c)
+endif()
+
 # We only create the target if there are sources, or we create an empty static lib or object lib.
 # Actually let's just create an empty library if no sources are selected, to satisfy the link.
 if(NOT BHARAT_DRIVER_BUS_SOURCES)

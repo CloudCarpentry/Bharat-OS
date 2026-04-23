@@ -11,11 +11,21 @@ if(COMMAND bharat_component_option)
     bharat_component_option(BHARAT_ENABLE_DRIVER_GENERIC_REGISTRY ON "Build generic driver registry")
     bharat_component_option(BHARAT_ENABLE_DRIVER_BOARD_FABRIC ON "Build board fabric generic driver")
 
+    # Driver Core Baseline & Edge I/O
+    bharat_component_option(BHARAT_ENABLE_DRIVER_CORE ON "Build driver core baseline")
+    bharat_component_option(BHARAT_ENABLE_GPIO ON "Build GPIO core driver")
+    bharat_component_option(BHARAT_ENABLE_PINCTRL ON "Build pinctrl core driver")
+    bharat_component_option(BHARAT_ENABLE_PWM ON "Build PWM core driver")
+    bharat_component_option(BHARAT_ENABLE_LED ON "Build LED subsystem driver")
+    bharat_component_option(BHARAT_ENABLE_INPUT_GPIO_KEYS ON "Build gpio-keys input driver")
+    bharat_component_option(BHARAT_ENABLE_USB_CORE_HEADERS ON "Enable USB core contracts")
+
     # Storage and Bus Drivers
     bharat_component_option(BHARAT_ENABLE_DRIVER_NVME OFF "Build NVMe driver")
     bharat_component_option(BHARAT_ENABLE_DRIVER_SDHOST OFF "Build SD/eMMC host driver")
     bharat_component_option(BHARAT_ENABLE_DRIVER_I2C_CORE OFF "Build I2C core driver")
     bharat_component_option(BHARAT_ENABLE_DRIVER_SPI_CORE OFF "Build SPI core driver")
+    bharat_component_option(BHARAT_ENABLE_DRIVER_PCIE_HOST OFF "Build PCIe host bridge baseline driver")
 
     # Input and Sensor Drivers
     bharat_component_option(BHARAT_ENABLE_DRIVER_VIRTIO_INPUT OFF "Build virtio input driver")
@@ -35,11 +45,21 @@ else()
     option(BHARAT_ENABLE_DRIVER_GENERIC_REGISTRY "Build generic driver registry" ON)
     option(BHARAT_ENABLE_DRIVER_BOARD_FABRIC "Build board fabric generic driver" ON)
 
+    # Driver Core Baseline & Edge I/O
+    option(BHARAT_ENABLE_DRIVER_CORE "Build driver core baseline" ON)
+    option(BHARAT_ENABLE_GPIO "Build GPIO core driver" ON)
+    option(BHARAT_ENABLE_PINCTRL "Build pinctrl core driver" ON)
+    option(BHARAT_ENABLE_PWM "Build PWM core driver" ON)
+    option(BHARAT_ENABLE_LED "Build LED subsystem driver" ON)
+    option(BHARAT_ENABLE_INPUT_GPIO_KEYS "Build gpio-keys input driver" ON)
+    option(BHARAT_ENABLE_USB_CORE_HEADERS "Enable USB core contracts" ON)
+
     # Storage and Bus Drivers
     option(BHARAT_ENABLE_DRIVER_NVME "Build NVMe driver" OFF)
     option(BHARAT_ENABLE_DRIVER_SDHOST "Build SD/eMMC host driver" OFF)
     option(BHARAT_ENABLE_DRIVER_I2C_CORE "Build I2C core driver" OFF)
     option(BHARAT_ENABLE_DRIVER_SPI_CORE "Build SPI core driver" OFF)
+    option(BHARAT_ENABLE_DRIVER_PCIE_HOST "Build PCIe host bridge baseline driver" OFF)
 
     # Input and Sensor Drivers
     option(BHARAT_ENABLE_DRIVER_VIRTIO_INPUT "Build virtio input driver" OFF)
@@ -63,6 +83,15 @@ add_subdirectory(storage)
 add_subdirectory(input)
 add_subdirectory(block/virtio_blk)
 
+# Driver Core Baseline Subdirectories
+if(BHARAT_ENABLE_DRIVER_CORE)
+    add_subdirectory(core)
+endif()
+
+if(BHARAT_ENABLE_LED)
+    add_subdirectory(led)
+endif()
+
 add_library(bharatos_drivers INTERFACE)
 target_link_libraries(bharatos_drivers INTERFACE
   bharatos_driver_bus
@@ -75,4 +104,13 @@ target_link_libraries(bharatos_drivers INTERFACE
   bharatos_driver_input
   driver_virtio_blk
 )
+
+if(BHARAT_ENABLE_DRIVER_CORE)
+  target_link_libraries(bharatos_drivers INTERFACE bharatos_driver_baseline_core)
+endif()
+
+if(BHARAT_ENABLE_LED)
+  target_link_libraries(bharatos_drivers INTERFACE bharatos_driver_baseline_led)
+endif()
+
 target_include_directories(bharatos_drivers INTERFACE include)

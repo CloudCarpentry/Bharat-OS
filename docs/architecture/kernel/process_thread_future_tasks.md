@@ -9,7 +9,7 @@
 ## Overview
 
 Based on the [Process & Thread Management Architecture](process_thread.md), the Bharat-OS kernel's execution models will be refactored into a clear 3-layer architecture:
-1. Kernel process model: **distributed, message-driven, no-global-state architecture** (`kprocess`, `kthread`)
+1. Kernel process model: **distributed, message-driven, no-global-state architecture** (`bh_process`, `bh_thread`)
 2. Personality runtime layer: translate foreign semantics (Linux, Windows, Android, macOS)
 3. User-space compatibility subsystems (Process Manager)
 
@@ -33,8 +33,8 @@ The immediate goal is to separate process/thread lifecycle management from the s
 *   Update `kernel/src/CMakeLists.txt` to include the new `proc` subdirectory.
 
 ### Step 1.3: Define the New Core Objects (Home Core Ownership)
-*   In `process.h`, define the new `struct kprocess` with essential fields including `home_core` ownership tracking, a localized children list, and `proc_channel`.
-*   In `thread.h`, define the new `struct kthread` with essential fields including `current_core` and `control_channel`.
+*   In `process.h`, define the new `struct bh_process` with essential fields including `home_core` ownership tracking, a localized children list, and `proc_channel`.
+*   In `thread.h`, define the new `struct bh_thread` with essential fields including `current_core` and `control_channel`.
 *   *Note:* Ensure these definitions enforce that a process/thread belongs to one specific core.
 
 ### Step 1.4: Replace the Global Reaper

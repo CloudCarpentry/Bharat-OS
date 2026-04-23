@@ -27,6 +27,7 @@ CMakeFiles/
 Testing/
 Makefile
 *.cmake
+!cmake/*.cmake
 !cmake/toolchains/*.cmake
 !cmake/modules/*.cmake
 !tests/host/cmake/*.cmake
@@ -56,4 +57,5 @@ out.txt
 test_vm_space
 run_vm_tests.sh
 build/
-!docs/build/
+!tools/build/
+!docs/dev/build/

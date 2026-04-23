@@ -133,13 +133,6 @@ def main():
         sys.exit(1)
 
     kernel_image = kernel_elf
-    if arch == "arm64":
-        objcopy = get_objcopy_bin()
-        if not objcopy:
-            print("[FAIL] objcopy or llvm-objcopy is required for arm64.")
-            sys.exit(1)
-        kernel_image = os.path.join(build_dir, "kernel", "Image")
-        subprocess.run([objcopy, "-O", "binary", kernel_elf, kernel_image], check=True)
 
     print(f"[*] Running QEMU ({qemu_cmd}) with kernel {kernel_image}...")
     qemu_full_args = [qemu_cmd, "-kernel", kernel_image] + qemu_args

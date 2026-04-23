@@ -1,3 +1,4 @@
+#include "fs/vfs.h"
 #include "fs/file.h"
 #include "fs/mount.h"
 #include "capability.h"
@@ -22,11 +23,35 @@ static int vfs_cap_allows_file(vfs_file_t* entry, capability_t* caller_cap, uint
         if (caller_cap->target_object_id != entry->node->object_id) return 0;
         return 1;
     }
-    // Stub capability checks since we are in userspace service daemon now
+    // Capability hook
+    if (caller_cap->capability_id != 0) {
+        if ((caller_cap->rights_mask & required_rights) != required_rights) {
+            return 0;
+        }
+        if (entry->handle_cap.target_object_id != 0 || entry->handle_cap.rights_mask != 0) {
+            if ((entry->handle_cap.rights_mask & required_rights) != required_rights) return 0;
+            if (caller_cap->target_object_id != entry->handle_cap.target_object_id) return 0;
+            return 1;
+        }
+        if (caller_cap->target_object_id != entry->node->object_id) return 0;
+    }
     return 1;
 }
 
-int vfs_open_file(const char* path, int flags, capability_t* caller_cap, int* out_fd) {
+int fsd_open_file(const char* path, int flags, capability_t* caller_cap, int* out_fd);
+
+int fsd_openat_file(int dirfd, const char* path, int flags, capability_t* caller_cap, int* out_fd) {
+    // Stub implementation for Phase B.2
+    // Full path resolution relative to dirfd will be added later.
+    // For now, if dirfd is a valid special value (e.g. AT_FDCWD), fallback to fsd_open_file.
+    // Otherwise, return error to establish the contract without implementing full relative path walking.
+    if (dirfd == -100) { // Assuming -100 as AT_FDCWD equivalent for now
+        return fsd_open_file(path, flags, caller_cap, out_fd);
+    }
+    return -1; // Unimplemented path resolution
+}
+
+int fsd_open_file(const char* path, int flags, capability_t* caller_cap, int* out_fd) {
     vfs_node_t *node;
     uint32_t requested_rights = 0;
     int found_slot = -1;
@@ -77,12 +102,12 @@ int vfs_open(const char* path, int flags) {
     vfs_node_t *node = vfs_resolve_mount_path(path, &dummy_cap);
     if (node) dummy_cap.target_object_id = node->object_id;
     int fd = -1;
-    int err = vfs_open_file(path, flags, &dummy_cap, &fd);
+    int err = fsd_open_file(path, flags, &dummy_cap, &fd);
     if (err == 0) return fd;
     return err;
 }
 
-int vfs_read_file(int fd, void* buffer, size_t size, capability_t* caller_cap) {
+int fsd_read_file(int fd, void* buffer, size_t size, capability_t* caller_cap) {
     if (fd < 0 || fd >= VFS_MAX_OPEN_FILES || !caller_cap) return -1;
     vfs_file_t *entry = &g_open_files[fd];
     if (!entry->in_use || !entry->node || !entry->node->ops || !entry->node->ops->read) return -2;
@@ -97,10 +122,10 @@ int vfs_read_file(int fd, void* buffer, size_t size, capability_t* caller_cap) {
 int vfs_read(int fd, void* buffer, size_t size) {
     capability_t dummy_cap = {0};
     if (fd >= 0 && fd < VFS_MAX_OPEN_FILES) dummy_cap = g_open_files[fd].handle_cap;
-    return vfs_read_file(fd, buffer, size, &dummy_cap);
+    return fsd_read_file(fd, buffer, size, &dummy_cap);
 }
 
-int vfs_write_file(int fd, const void* buffer, size_t size, capability_t* caller_cap) {
+int fsd_write_file(int fd, const void* buffer, size_t size, capability_t* caller_cap) {
     if (fd < 0 || fd >= VFS_MAX_OPEN_FILES || !caller_cap) return -1;
     vfs_file_t *entry = &g_open_files[fd];
     if (!entry->in_use || !entry->node || !entry->node->ops || !entry->node->ops->write) return -2;
@@ -115,10 +140,10 @@ int vfs_write_file(int fd, const void* buffer, size_t size, capability_t* caller
 int vfs_write(int fd, const void* buffer, size_t size) {
     capability_t dummy_cap = {0};
     if (fd >= 0 && fd < VFS_MAX_OPEN_FILES) dummy_cap = g_open_files[fd].handle_cap;
-    return vfs_write_file(fd, buffer, size, &dummy_cap);
+    return fsd_write_file(fd, buffer, size, &dummy_cap);
 }
 
-int vfs_close_file(int fd, capability_t* caller_cap) {
+int fsd_close_file(int fd, capability_t* caller_cap) {
     if (fd < 0 || fd >= VFS_MAX_OPEN_FILES || !caller_cap) return -1;
     vfs_file_t *entry = &g_open_files[fd];
     if (!entry->in_use) return -2;
@@ -137,5 +162,15 @@ int vfs_close_file(int fd, capability_t* caller_cap) {
 int vfs_close(int fd) {
     capability_t dummy_cap = {0};
     if (fd >= 0 && fd < VFS_MAX_OPEN_FILES) dummy_cap = g_open_files[fd].handle_cap;
-    return vfs_close_file(fd, &dummy_cap);
+    return fsd_close_file(fd, &dummy_cap);
 }
+
+#ifdef TESTING
+void vfs_file_test_reset_state(void) {
+    for (int i = 0; i < VFS_MAX_OPEN_FILES; i++) {
+        g_open_files[i].in_use = 0;
+        g_open_files[i].node = NULL;
+    }
+    g_open_files_lock = 0;
+}
+#endif

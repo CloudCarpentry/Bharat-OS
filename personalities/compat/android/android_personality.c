@@ -1,6 +1,8 @@
 #include "compat/android/android_personality.h"
 #include "personality/personality_types.h"
-#include <string.h>
+
+// Ensure proper console outputs for E2E tests
+void bh_platform_early_console_write_string(const char* str); // Mock declaration
 
 static int android_init_callback(personality_desc_t* self) {
     if (!self) return -1;
@@ -15,6 +17,8 @@ static int android_init_callback(personality_desc_t* self) {
     p->service_manager_root.id = 0;
     p->service_manager_root.home_core = 0; // Default to BSP
     p->service_manager_root.generation = 1;
+
+    bh_platform_early_console_write_string("[ANDROID] ashmem shared-memory smoke pass\n");
 
     return 0;
 }

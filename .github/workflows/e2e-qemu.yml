@@ -2,9 +2,9 @@ name: E2E QEMU Verification
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ developer ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ developer ]
   workflow_dispatch:
 
 jobs:
@@ -41,5 +41,30 @@ jobs:
         run: python3 tools/build.py --doctor
 
       - name: Build and Run Tests
-        run: python3 tools/build.py ${{ matrix.build_name }} --clean --configure --build --run-tests
-        timeout-minutes: 10
+        run: |
+          echo "Running standard build and test..."
+          python3 tools/build.py ${{ matrix.build_name }} --clean --configure --build --run-tests
+
+          # Add repeated non-smoke check for specific target (e.g., standard x86_64 desktop)
+          if [ "${{ matrix.build_name }}" = "x86_64_desktop_mmu" ]; then
+            echo "Running repeated non-smoke checks for x86_64_desktop_mmu..."
+            for i in {1..3}; do
+              echo "Repetition $i..."
+              python3 tools/build.py ${{ matrix.build_name }} --run-tests || exit 1
+            done
+          fi
+        timeout-minutes: 15
+
+  verify-all-successful:
+    name: Verify All Successful
+    runs-on: ubuntu-latest
+    needs: verify
+    if: always()
+    steps:
+      - name: Check Matrix Success
+        run: |
+          if [ "${{ needs.verify.result }}" != "success" ]; then
+            echo "One or more matrix jobs failed."
+            exit 1
+          fi
+          echo "All matrix jobs passed successfully."

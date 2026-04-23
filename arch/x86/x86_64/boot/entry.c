@@ -34,6 +34,14 @@ void kernel_main(uint32_t magic, multiboot_information_t *mb_info) {
 
     // Accept both Multiboot2 (QEMU/GRUB2) and Multiboot1 (legacy loaders).
     if (magic != 0x36d76289U && magic != 0x2badb002U) {
+        hal_serial_write("BAD MAGIC: ");
+        for (int i = 7; i >= 0; i--) {
+            uint32_t nibble = (magic >> (i * 4)) & 0xF;
+            char c = (nibble < 10) ? ('0' + nibble) : ('A' + nibble - 10);
+            char buf[2] = {c, '\0'};
+            hal_serial_write(buf);
+        }
+        hal_serial_write("\n");
         kernel_panic("Invalid Multiboot magic number!");
     }
 

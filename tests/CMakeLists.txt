@@ -93,6 +93,18 @@ add_executable(test_urpc_init_channel test_urpc_init_channel.c ../lib/urpc/urpc.
 target_include_directories(test_urpc_init_channel PRIVATE ../lib/urpc)
 add_test(NAME test_urpc_init_channel COMMAND test_urpc_init_channel)
 
+add_executable(test_lib_ipc_contract
+    test_lib_ipc_contract.c
+    ../lib/ipc/src/ipc.c
+)
+target_include_directories(test_lib_ipc_contract PRIVATE
+    ../include
+    ../lib/include
+    ../lib/cap/include
+    ../lib/ipc/include
+)
+add_test(NAME test_lib_ipc_contract COMMAND test_lib_ipc_contract)
+
 add_executable(test_urpc_ring test_urpc_ring.c ../kernel/src/ipc/multikernel.c ../kernel/src/ipc/mk_dispatch.c $<TARGET_OBJECTS:bharat_test_sched_mocks>)
 add_executable(test_ipc_async_timeout test_ipc_async_timeout.c ../kernel/src/ipc/async_ipc.c ../kernel/src/ipc/ipc_timeout.c)
 target_include_directories(test_ipc_async_timeout PRIVATE ../kernel/include ../lib/include)
@@ -108,7 +120,7 @@ if (EXISTS "${CMAKE_SOURCE_DIR}/personalities/domain/automotive/automotive.c")
     add_test(NAME test_automotive_subsys COMMAND test_automotive_subsys)
 endif()
 
-target_include_directories(test_urpc_ring PRIVATE ../kernel/include ../lib/include)
+target_include_directories(test_urpc_ring PRIVATE ../kernel/include ../lib/include ../kernel/include/generated)
 add_test(NAME test_urpc_ring COMMAND test_urpc_ring)
 
 add_executable(test_scheduler test_scheduler.c $<TARGET_OBJECTS:bharat_test_sched_mocks>)
@@ -148,6 +160,17 @@ add_executable(test_capability_misuse test_capability_misuse.c $<TARGET_OBJECTS:
 target_include_directories(test_capability_misuse PRIVATE ../kernel/include ../lib/include)
 target_compile_definitions(test_capability_misuse PRIVATE TESTING=1)
 add_test(NAME test_capability_misuse COMMAND test_capability_misuse)
+
+add_executable(test_ui_device_class_contract test_ui_device_class_contract.c)
+target_include_directories(test_ui_device_class_contract PRIVATE ../include)
+add_test(NAME test_ui_device_class_contract COMMAND test_ui_device_class_contract)
+
+add_executable(test_tiny_ui_stack
+    test_tiny_ui_stack.c
+    ../stacks/ui/lcd/tiny_ui.c
+)
+target_include_directories(test_tiny_ui_stack PRIVATE ../include)
+add_test(NAME test_tiny_ui_stack COMMAND test_tiny_ui_stack)
 
 add_executable(test_memory_edgecases test_memory_edgecases.c ../kernel/src/mm/vm/aspace/vm_space.c ../kernel/src/mm/zswap.c $<TARGET_OBJECTS:bharat_test_sched_mocks>)
 target_include_directories(test_memory_edgecases PRIVATE ../kernel/include ../lib/include)
@@ -197,7 +220,12 @@ target_include_directories(test_capability_policy PRIVATE ../kernel/include ../l
 add_test(NAME test_capability_policy COMMAND test_capability_policy)
 
 if (EXISTS "${CMAKE_SOURCE_DIR}/personalities/compat/linux/linux_compat.c")
-    add_executable(test_posix test_posix.c ../personalities/compat/linux/linux_compat.c)
+    add_executable(test_posix
+        test_posix.c
+        ../personalities/compat/linux/linux_compat.c
+        ../personalities/common/translation_events.c
+        subsys/test_personality_stubs.c
+    )
     target_include_directories(test_posix PRIVATE ../kernel/include ../lib/include ../services/core/subsysmgr/include)
     add_test(NAME test_posix COMMAND test_posix)
 endif()
@@ -208,6 +236,8 @@ if (EXISTS "${CMAKE_SOURCE_DIR}/personalities/compat/windows/win_compat.c")
     add_test(NAME test_windows_compat_init COMMAND test_windows_compat_init)
 endif()
 
+add_executable(test_subsys_manager test_subsys_manager.c ../services/core/subsysmgr/manager.c ../personalities/compat/linux/linux_compat.c ../personalities/compat/windows/win_compat.c ../platform/common/platform_cpu_topology.c)
+target_include_directories(test_subsys_manager PRIVATE ../kernel/include ../lib/include ../services/core/subsysmgr/include ../hal/include)
 add_test(NAME test_subsys_manager COMMAND test_subsys_manager)
 
 if (EXISTS "${CMAKE_SOURCE_DIR}/personalities/compat/android/android_personality.c")
@@ -218,9 +248,22 @@ if (EXISTS "${CMAKE_SOURCE_DIR}/personalities/compat/android/android_personality
         ../personalities/compat/android/android_boot.c
         ../personalities/compat/android/android_process.c
         ../personalities/compat/android/android_security.c
+        ../personalities/common/translation_events.c
+        subsys/test_personality_stubs.c
     )
     target_include_directories(test_android_personality PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/lib/include ${CMAKE_SOURCE_DIR}/services/core/subsysmgr/include)
     add_test(NAME test_android_personality COMMAND test_android_personality)
+
+    if (EXISTS "${CMAKE_SOURCE_DIR}/personalities/compat/linux/linux_compat.c")
+        add_executable(test_personality_translation_guards
+            subsys/test_personality_translation_guards.c
+            ../personalities/compat/linux/linux_compat.c
+            ../personalities/compat/android/android_binder_dist.c
+            ../personalities/common/translation_events.c
+        )
+        target_include_directories(test_personality_translation_guards PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/lib/include ${CMAKE_SOURCE_DIR}/services/core/subsysmgr/include)
+        add_test(NAME test_personality_translation_guards COMMAND test_personality_translation_guards)
+    endif()
 endif()
 
 add_executable(test_vm_stress test_vm_stress.c benchmark_stubs.c host/mock_panic.c ../kernel/src/mm/vm/aspace/vm_space.c ../lib/rbtree/rbtree.c)
@@ -274,12 +317,12 @@ target_compile_definitions(test_bench_zswap PRIVATE TESTING=1)
 add_test(NAME test_bench_zswap COMMAND test_bench_zswap)
 
 
-add_executable(test_vfs_storage test_vfs_storage.c ../kernel/src/fs/vfs.c ../kernel/src/fs/blob_backend.c ../kernel/src/fs/mount.c ../kernel/src/fs/file.c ../kernel/src/fs/path.c ../kernel/src/lib/base/string.c $<TARGET_OBJECTS:bharat_test_sched_mocks>)
+add_executable(test_vfs_storage test_vfs_storage.c ../lib/fs/fs_client.c ../services/system/filesystem/vfs_stub.c ../stacks/storage/fs/blob/blob_backend.c ../services/system/filesystem/mount_mgr.c ../services/system/filesystem/fd_mgr.c ../services/system/filesystem/namespace_mgr.c ../kernel/src/lib/base/string.c $<TARGET_OBJECTS:bharat_test_sched_mocks>)
 target_include_directories(test_vfs_storage PRIVATE ../kernel/include ../include ../lib/include)
 target_compile_definitions(test_vfs_storage PRIVATE TESTING=1)
 add_test(NAME test_vfs_storage COMMAND test_vfs_storage)
 
-add_executable(test_vfs_file_caps test_vfs_file_caps.c ../kernel/src/fs/file.c ../kernel/src/fs/vfs.c ../kernel/src/fs/mount.c ../kernel/src/fs/path.c ../kernel/src/lib/base/string.c $<TARGET_OBJECTS:bharat_test_sched_mocks>)
+add_executable(test_vfs_file_caps test_vfs_file_caps.c ../lib/fs/fs_client.c ../services/system/filesystem/fd_mgr.c ../services/system/filesystem/vfs_stub.c ../services/system/filesystem/mount_mgr.c ../services/system/filesystem/namespace_mgr.c ../kernel/src/lib/base/string.c $<TARGET_OBJECTS:bharat_test_sched_mocks>)
 target_include_directories(test_vfs_file_caps PRIVATE ../kernel/include ../include ../lib/include)
 target_compile_definitions(test_vfs_file_caps PRIVATE TESTING=1)
 add_test(NAME test_vfs_file_caps COMMAND test_vfs_file_caps)
@@ -335,6 +378,18 @@ add_test(NAME test_scheduler_hello_world COMMAND test_scheduler_hello_world)
 add_executable(test_dma_iommu test_dma_iommu.c ../kernel/src/security/isolation.c ../kernel/src/security/vfio.c ../kernel/src/security/audit.c)
 target_include_directories(test_dma_iommu PRIVATE ../kernel/include)
 
+add_executable(test_iommu_stub test_iommu_stub.c ../kernel/src/mm/iommu/iommu_stub.c ../kernel/src/lib/base/status.c)
+target_include_directories(test_iommu_stub PRIVATE ../kernel/include ../lib/include ../include)
+add_test(NAME test_iommu_stub COMMAND test_iommu_stub)
+
+add_executable(test_dma_lifecycle_host test_dma_lifecycle_host.c
+    ../kernel/src/mm/dma/dma.c
+    ../kernel/src/mm/iommu/iommu_domain.c
+    ../kernel/src/capability.c
+    ../hal/dma_coherency.c)
+target_include_directories(test_dma_lifecycle_host PRIVATE ../kernel/include ../include ../lib/include)
+add_test(NAME test_dma_lifecycle_host COMMAND test_dma_lifecycle_host)
+
 add_executable(test_smp_hal test_smp_hal.c)
 target_include_directories(test_smp_hal PRIVATE ../kernel/include)
 add_test(NAME test_smp_hal COMMAND test_smp_hal)
@@ -372,7 +427,11 @@ add_executable(test_elf_parser test_elf_parser.c)
 target_include_directories(test_elf_parser PRIVATE ${CMAKE_SOURCE_DIR}/include)
 target_link_libraries(test_elf_parser PRIVATE elf_parser)
 add_test(NAME ELFParserTest COMMAND test_elf_parser)
-add_executable(test_vfs_ramfs test_vfs_ramfs.c ../kernel/src/fs/ramfs.c ../kernel/src/fs/vfs.c ../kernel/src/fs/mount.c ../kernel/src/fs/file.c ../kernel/src/fs/path.c ../kernel/src/lib/base/string.c $<TARGET_OBJECTS:bharat_test_sched_mocks>)
+add_executable(test_storage_profile test_storage_profile.c ../stacks/storage/profile.c)
+target_include_directories(test_storage_profile PRIVATE ../include)
+add_test(NAME test_storage_profile COMMAND test_storage_profile)
+
+add_executable(test_vfs_ramfs test_vfs_ramfs.c ../lib/fs/fs_client.c ../stacks/storage/fs/ramfs/ramfs.c ../services/system/filesystem/vfs_stub.c ../services/system/filesystem/mount_mgr.c ../services/system/filesystem/fd_mgr.c ../services/system/filesystem/namespace_mgr.c ../kernel/src/lib/base/string.c $<TARGET_OBJECTS:bharat_test_sched_mocks>)
 target_include_directories(test_vfs_ramfs PRIVATE ../kernel/include ../include ../lib/include)
 target_compile_definitions(test_vfs_ramfs PRIVATE TESTING=1)
 add_test(NAME test_vfs_ramfs COMMAND test_vfs_ramfs)
@@ -423,6 +482,8 @@ set(BHARAT_NOSTDLIB_TEST_TARGETS
     test_profile_edge
     test_scheduler_hello_world
     test_dma_iommu
+    test_iommu_stub
+    test_dma_lifecycle_host
     test_smp_hal
     test_pmm_production
     test_pmm_zone_alloc
@@ -432,6 +493,7 @@ set(BHARAT_NOSTDLIB_TEST_TARGETS
     test_syscall_abi
     test_elf_parser
     test_vfs_ramfs
+    test_storage_profile
     test_boot_e2e
     test_android_personality
 )
@@ -445,6 +507,35 @@ endforeach()
 add_executable(test_boot_e2e test_boot_e2e.c test_arch_caps.c ../kernel/src/kernel_boot.c ../kernel/src/lib/base/string.c $<TARGET_OBJECTS:bharat_test_sched_mocks>)
 target_include_directories(test_boot_e2e PRIVATE ../kernel/include ../include ../lib/include ../boot/include)
 add_test(NAME boot_e2e COMMAND test_boot_e2e)
+
+add_executable(test_init_manifest host/test_init_manifest.c ../services/core/init/init_events.c)
+target_include_directories(test_init_manifest PRIVATE ../include ../lib/runtime/include ../lib/cap/include ../lib/ipc/include)
+add_test(NAME test_init_manifest COMMAND test_init_manifest)
+
+add_executable(test_execution_mode_single_core host/test_execution_mode_single_core.c ../kernel/src/sched/cpu_partition.c ../kernel/src/sched/execution_mode.c ../kernel/src/sched/sched_class.c ../kernel/src/sched/sched_topology.c ../platform/common/platform_cpu_topology.c)
+target_include_directories(test_execution_mode_single_core PRIVATE ../kernel/include ../include ../hal/include ../)
+target_compile_definitions(test_execution_mode_single_core PRIVATE TESTING=1)
+add_test(NAME test_execution_mode_single_core COMMAND test_execution_mode_single_core)
+
+add_executable(test_execution_mode_dual_core host/test_execution_mode_dual_core.c ../kernel/src/sched/cpu_partition.c ../kernel/src/sched/execution_mode.c ../kernel/src/sched/sched_class.c ../kernel/src/sched/sched_topology.c ../platform/common/platform_cpu_topology.c)
+target_include_directories(test_execution_mode_dual_core PRIVATE ../kernel/include ../include ../hal/include ../)
+target_compile_definitions(test_execution_mode_dual_core PRIVATE TESTING=1)
+add_test(NAME test_execution_mode_dual_core COMMAND test_execution_mode_dual_core)
+
+add_executable(test_execution_mode_quad_core host/test_execution_mode_quad_core.c ../kernel/src/sched/cpu_partition.c ../kernel/src/sched/execution_mode.c ../kernel/src/sched/sched_class.c ../kernel/src/sched/sched_topology.c ../platform/common/platform_cpu_topology.c)
+target_include_directories(test_execution_mode_quad_core PRIVATE ../kernel/include ../include ../hal/include ../)
+target_compile_definitions(test_execution_mode_quad_core PRIVATE TESTING=1)
+add_test(NAME test_execution_mode_quad_core COMMAND test_execution_mode_quad_core)
+
+add_executable(test_irq_domain host/test_irq_domain_host.c ../kernel/src/tests/ktest_irq_domain.c ../kernel/src/device/irq_domain.c)
+target_include_directories(test_irq_domain PRIVATE ../kernel/include ../include ../hal/include ../boot/include ../)
+target_compile_definitions(test_irq_domain PRIVATE TESTING=1 HOST_TEST_BUILD)
+add_test(NAME test_irq_domain COMMAND test_irq_domain)
+
+add_executable(test_sched_partition_validation host/test_sched_partition_validation.c ../kernel/src/sched/cpu_partition.c ../kernel/src/sched/execution_mode.c ../kernel/src/sched/sched_class.c ../kernel/src/sched/sched_topology.c ../platform/common/platform_cpu_topology.c)
+target_include_directories(test_sched_partition_validation PRIVATE ../kernel/include ../include ../hal/include ../)
+target_compile_definitions(test_sched_partition_validation PRIVATE TESTING=1)
+add_test(NAME test_sched_partition_validation COMMAND test_sched_partition_validation)
 
 # Benchmarks
 add_executable(test_bench_hal_pt_arm64 benchmark/test_bench_hal_pt_arm64.c ../kernel/src/benchmark/benchmark.c $<TARGET_OBJECTS:bharat_test_sched_mocks>)
@@ -468,3 +559,14 @@ add_executable(test_unmapped_fault
 )
 target_include_directories(test_unmapped_fault PRIVATE ../kernel/include ../include)
 add_test(NAME test_unmapped_fault COMMAND test_unmapped_fault)
+
+add_subdirectory(drivers)
+add_executable(test_constraint_validation
+    core/test_constraint_validation.c
+)
+target_include_directories(test_constraint_validation PRIVATE
+    ${CMAKE_SOURCE_DIR}/kernel/include
+    ${CMAKE_SOURCE_DIR}/uapi
+)
+target_sources(test_constraint_validation PRIVATE ${CMAKE_SOURCE_DIR}/kernel/src/core/constraints/constraints_common.c ${CMAKE_SOURCE_DIR}/kernel/src/core/constraints/constraint_validate.c)
+add_test(NAME test_constraint_validation COMMAND test_constraint_validation)

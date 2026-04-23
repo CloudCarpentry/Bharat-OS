@@ -1,4 +1,4 @@
-#include "console/uart_driver.h"
+#include "drivers/serial/uart_driver.h"
 #include <stddef.h>
 
 /* PL011 Register Offsets */
@@ -48,7 +48,8 @@ static bool pl011_tx_ready(uart_device_t *dev) {
 }
 
 static void pl011_putc(uart_device_t *dev, char c) {
-    while (!pl011_tx_ready(dev)) {
+    volatile uint32_t timeout = 1000000;
+    while (!pl011_tx_ready(dev) && --timeout) {
         // Wait
     }
     mmio_write32(dev->base + PL011_DR, (uint32_t)c);

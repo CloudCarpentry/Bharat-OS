@@ -32,7 +32,7 @@ static const arch_ext_state_desc_t g_desc = {
     .lazy_allowed = true,
 };
 
-static struct kthread *g_fp_owner;
+static struct bh_thread *g_fp_owner;
 
 extern void riscv_fp_state_save(arch_ext_state_t *st);
 extern void riscv_fp_state_restore(const arch_ext_state_t *st);
@@ -58,7 +58,7 @@ const arch_ext_state_desc_t *arch_ext_state_desc(void) { return &g_desc; }
 bool arch_ext_state_enabled(void) { return true; }
 void arch_ext_state_boot_init(void) { riscv_set_fs(RISCV_SSTATUS_FS_OFF); }
 
-int arch_ext_state_thread_init(struct kthread *t) {
+int arch_ext_state_thread_init(struct bh_thread *t) {
     if (!t || !t->cpu_context) return -1;
     cpu_context_t *ctx = (cpu_context_t *)t->cpu_context;
 
@@ -72,7 +72,7 @@ int arch_ext_state_thread_init(struct kthread *t) {
     return 0;
 }
 
-void arch_ext_state_thread_destroy(struct kthread *t) {
+void arch_ext_state_thread_destroy(struct bh_thread *t) {
     if (!t || !t->cpu_context) return;
     cpu_context_t *ctx = (cpu_context_t *)t->cpu_context;
     if (g_fp_owner == t) {
@@ -103,7 +103,7 @@ void arch_ext_state_context_switch_in(void *next_ctx_void) {
     riscv_set_fs(RISCV_SSTATUS_FS_OFF);
 }
 
-bool arch_ext_state_handle_fault(struct kthread *t) {
+bool arch_ext_state_handle_fault(struct bh_thread *t) {
     if (!t || !t->cpu_context) return false;
     cpu_context_t *ctx = (cpu_context_t *)t->cpu_context;
     arch_ext_state_t *st = ctx->ext;
@@ -135,7 +135,7 @@ bool arch_ext_state_handle_fault(struct kthread *t) {
     return true;
 }
 
-void arch_ext_state_save(struct kthread *t) {
+void arch_ext_state_save(struct bh_thread *t) {
     if (!t || !t->cpu_context) return;
     cpu_context_t *ctx = (cpu_context_t *)t->cpu_context;
     arch_ext_state_t *st = ctx->ext;
@@ -151,7 +151,7 @@ void arch_ext_state_save(struct kthread *t) {
     }
 }
 
-void arch_ext_state_restore(struct kthread *t) {
+void arch_ext_state_restore(struct bh_thread *t) {
     (void)t;
     // Eager restore is not used for lazy FP
 }

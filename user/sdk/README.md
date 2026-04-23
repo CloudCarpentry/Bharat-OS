@@ -12,10 +12,10 @@ To build the SDK and sample application:
 
 ```bash
 # On Linux / macOS
-./build.sh --arch x86_64 --clean
+./build.sh build --target x86_64
 
 # On Windows PowerShell
-.\build.ps1 -Arch x86_64 -Clean
+.\build.ps1 build --target x86_64
 ```
 
 ## How it relates to the workflow

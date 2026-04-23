@@ -10,14 +10,15 @@ def run_command(cmd):
 def check_multiboot_header(kernel_path):
     print(f"Validating Multiboot header in {kernel_path}...")
     try:
-        # We search for the Multiboot magic number 0x1badb002
-        # Note: x86 is little-endian, so it appears as 02b0ad1b in hex dump.
-        cmd = ['objdump', '-s', kernel_path]
+        # We search for Multiboot 1 magic 0x1badb002 or Multiboot 2 magic 0xe85250d6
+        cmd = ['llvm-objdump', '-s', kernel_path]
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode == 0:
-            if "02b0ad1b" not in result.stdout.lower():
+            out = result.stdout.lower()
+            if "02b0ad1b" in out or "d65052e8" in out:
+                print("x86_64: Multiboot compliant ELF verified.")
+            else:
                 raise Exception("Multiboot header magic number not found in objdump output.")
-            print("x86_64: Multiboot compliant ELF verified.")
     except Exception as e:
         print(f"Warning: Failed to validate multiboot header: {e}")
         raise e
@@ -33,5 +34,5 @@ def get_boot_config(kernel_path):
 
     return {
         "kernel_path": kernel32_path,
-        "qemu_flags": ["-machine", "pc"]
+        "qemu_flags": []
     }

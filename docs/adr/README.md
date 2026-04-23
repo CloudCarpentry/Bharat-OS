@@ -64,5 +64,15 @@ What becomes easier or more difficult because of this change? Are there new risk
 12. [ADR-012: CAN Subsystem Architecture](ADR-012-can-subsystem-architecture.md)
     *(Also: [ADR-012: Interrupt Controller Evolution](ADR-012-interrupt-controller-evolution.md))*
 13. [ADR-013: Multikernel Memory Protection Architecture](ADR-013-multikernel-memory-protection-architecture.md)
+14. [ADR-014: Library Layering and Data Structures](ADR-014-library-layering-and-data-structures.md)
+
+### Additional Architecture and Memory ADRs
+- [ADR: Allocation Classes](ADR-allocation-classes.md)
+- [ADR: Boot Runtime Contract](ADR-boot-runtime-contract.md)
+- [ADR: Build Presets for Memory Profiles](ADR-build-presets-for-memory-profiles.md)
+- [ADR: Cross-Core Thread Handoff](ADR-001-cross-core-thread-handoff.md)
+- [ADR: Memory Core vs Advanced VM Split](ADR-memory-core-vs-advanced-vm-split.md)
+- [ADR: Memory HAL Unification](ADR-memory-hal-unification.md)
+- [ADR: Memory Profile Gating](ADR-memory-profile-gating.md)
 
 *(Note: Some ADR numbers overlap slightly from legacy tracking and are preserved here for historical context).*

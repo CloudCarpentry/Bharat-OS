@@ -1,22 +1,5 @@
 #include "bharat/msg/transport.h"
-
-// Define internal helpers for freestanding environment.
-static void *internal_memset(void *s, int c, size_t n) {
-    unsigned char *p = s;
-    while (n--) {
-        *p++ = (unsigned char)c;
-    }
-    return s;
-}
-
-static void *internal_memcpy(void *dest, const void *src, size_t n) {
-    unsigned char *d = dest;
-    const unsigned char *s = src;
-    while (n--) {
-        *d++ = *s++;
-    }
-    return dest;
-}
+#include <bharat/runtime/freestanding_string.h>
 
 // Since we are building freestanding, mock malloc/free if they don't exist.
 // This is just a loopback transport for unit testing.
@@ -38,7 +21,7 @@ static int lb_send(bharat_transport_t* self, const uint8_t* buf, size_t len) {
     if (len > ctx->mtu) return BHARAT_MSG_ERR_TOO_LARGE;
 
     // Synchronous overwrite of the single slot buffer (simple test mode)
-    internal_memcpy(ctx->buffer, buf, len);
+    memcpy(ctx->buffer, buf, len);
     ctx->stored_len = len;
 
     return BHARAT_MSG_OK;
@@ -52,7 +35,7 @@ static int lb_recv(bharat_transport_t* self, uint8_t* buf, size_t cap, size_t* o
         return BHARAT_MSG_ERR_BUFFER_OVERFLOW;
     }
 
-    internal_memcpy(buf, ctx->buffer, ctx->stored_len);
+    memcpy(buf, ctx->buffer, ctx->stored_len);
     *out_len = ctx->stored_len;
 
     // Clear out

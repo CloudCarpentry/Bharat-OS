@@ -195,7 +195,7 @@ capability_table_t* cap_table_create(void);
   assigns proc->security_sandbox_ctx;
   ensures \result == 0 || \result == -1 || \result == -2;
 */
-int cap_table_init_for_process(kprocess_t* proc);
+int cap_table_init_for_process(bh_process_t* proc);
 void cap_table_destroy(capability_table_t* table);
 
 /*@

@@ -23,6 +23,7 @@ void run_test(const char* name);
 // Test declarations
 int pmm_stress_test_run(void);
 int vmm_stress_test_run(void);
+int net_can_contract_test_run(void);
 
 // Syscall / Arch wrappers (stubbed for now, eventually make real syscalls)
 uint64_t arch_read_cycles(void);

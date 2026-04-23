@@ -1,10 +1,12 @@
-#include "../../include/hal/iommu.h"
-#include "../../include/hal/hal_dma.h"
-#include "../../include/mm/dma.h"
-#include "../../include/mm.h"
-#include "../../include/mm/physmap.h"
-#include "../../include/numa.h"
-#include "../../include/spinlock.h"
+#include "hal/hal_iommu.h"
+#include "hal/hal_dma.h"
+#include "mm/dma.h"
+#include "mm.h"
+#include "capability.h"
+#include "sched/sched.h"
+#include "mm/physmap.h"
+#include "numa.h"
+#include "spinlock.h"
 
 // External allocators
 extern void *kmalloc(size_t size);
@@ -25,12 +27,28 @@ static hal_dma_direction_t dma_to_hal_direction(dma_direction_t dir) {
 // Basic global accounting (in reality, belongs per process/aspace structure)
 static spinlock_t global_pin_lock;
 static uint64_t global_pinned_bytes = 0; // Simple accounting for demo
+static int global_pin_lock_ready = 0;
+
+static inline void dma_accounting_init_once(void) {
+    if (!global_pin_lock_ready) {
+        spin_lock_init(&global_pin_lock);
+        global_pin_lock_ready = 1;
+    }
+}
+
+static inline int dma_direction_valid(dma_direction_t dir) {
+    return (dir == DMA_MAP_TO_DEVICE) ||
+           (dir == DMA_MAP_FROM_DEVICE) ||
+           (dir == DMA_MAP_BIDIRECTIONAL);
+}
 
 int dma_account_pin(uint64_t as_id, size_t bytes) {
     (void)as_id; // Per-process check goes here
+    dma_accounting_init_once();
 
     spin_lock(&global_pin_lock);
-    if (global_pinned_bytes + bytes > DMA_MAX_PIN_BYTES_PER_PROCESS) {
+    if (bytes > DMA_MAX_PIN_BYTES_PER_PROCESS ||
+        global_pinned_bytes > (DMA_MAX_PIN_BYTES_PER_PROCESS - bytes)) {
         spin_unlock(&global_pin_lock);
         return -1; // Exceeded budget
     }
@@ -41,6 +59,7 @@ int dma_account_pin(uint64_t as_id, size_t bytes) {
 
 void dma_account_unpin(uint64_t as_id, size_t bytes) {
     (void)as_id;
+    dma_accounting_init_once();
     spin_lock(&global_pin_lock);
     if (global_pinned_bytes >= bytes) {
         global_pinned_bytes -= bytes;
@@ -145,6 +164,9 @@ int dma_buffer_alloc(size_t size, uint32_t flags, dma_buffer_t **out) {
     buf->pin_count = 0;
     buf->owner_as_id = 0;
     buf->domain = NULL;
+    buf->active_dir = DMA_MAP_TO_DEVICE;
+    buf->mapped_to_device = false;
+    buf->owned_by_device = false;
     buf->next = NULL;
 
     // Zero memory if requested
@@ -159,6 +181,7 @@ int dma_buffer_alloc(size_t size, uint32_t flags, dma_buffer_t **out) {
 
 int dma_buffer_free(dma_buffer_t *buffer) {
     if (!buffer) return -1;
+    if (buffer->mapped_to_device) return -2;
 
     if (buffer->pin_count > 0) {
         // Force unpin
@@ -211,6 +234,7 @@ int dma_buffer_bind_domain(dma_buffer_t *buffer, iova_domain_t *domain) {
     if (!buffer || !domain) return -1;
 
     if (buffer->iova != 0) return -2; // Already bound
+    if (buffer->mapped_to_device) return -3;
 
     uint64_t iova = 0;
     int ret = iova_alloc(domain, buffer->size, &iova);
@@ -223,7 +247,13 @@ int dma_buffer_bind_domain(dma_buffer_t *buffer, iova_domain_t *domain) {
     if (domain->iommu) {
          if (domain->iommu_hw_state) {
             hal_iommu_domain_t *hw_dom = (hal_iommu_domain_t*)domain->iommu_hw_state;
-            hal_iommu_map(hw_dom, iova, buffer->phys_addr, buffer->size, buffer->flags);
+            int map_ret = hal_iommu_map(hw_dom, iova, buffer->phys_addr, buffer->size, buffer->flags);
+            if (map_ret != 0) {
+                iova_free(domain, iova, buffer->size);
+                buffer->domain = NULL;
+                buffer->iova = 0;
+                return map_ret;
+            }
         }
     }
 
@@ -232,6 +262,12 @@ int dma_buffer_bind_domain(dma_buffer_t *buffer, iova_domain_t *domain) {
 
 void dma_sync_for_device(dma_buffer_t *buffer, dma_direction_t dir) {
     if (!buffer || !buffer->cpu_addr || buffer->size == 0) {
+        return;
+    }
+    if (!dma_direction_valid(dir)) {
+        return;
+    }
+    if (buffer->owned_by_device && buffer->active_dir == dir) {
         return;
     }
     if (hal_dma_needs_sync()) {
@@ -251,6 +287,12 @@ void dma_sync_for_cpu(dma_buffer_t *buffer, dma_direction_t dir) {
     if (!buffer || !buffer->cpu_addr || buffer->size == 0) {
         return;
     }
+    if (!dma_direction_valid(dir)) {
+        return;
+    }
+    if (!buffer->owned_by_device) {
+        return;
+    }
     if (hal_dma_needs_sync()) {
         hal_dma_buffer_t hbuf;
         hbuf.cpu_addr = buffer->cpu_addr;
@@ -267,16 +309,57 @@ void dma_sync_for_cpu(dma_buffer_t *buffer, dma_direction_t dir) {
 int dma_buffer_map_device(uint64_t device_id, dma_buffer_t *buffer, dma_direction_t dir) {
     (void)device_id;
     if (!buffer) return -1;
+
+    // Capability check: Ensure the current process has the right to map this DMA buffer.
+    // In a capability-based system, the device_id would be a capability handle (CAP_TYPE_DMA_GRANT).
+    // For now, we simulate this by checking the current capability table if we have one.
+    capability_table_t *ct = sched_current_cap_table();
+    if (ct) {
+        // We use device_id as the capability handle to lookup
+        capability_entry_t entry;
+        int ret = cap_table_lookup(ct, (uint32_t)device_id, CAP_TYPE_DMA_GRANT, CAP_RIGHT_DMA_MAP, &entry);
+        if (ret != 0) {
+            return -100; // Unauthorized
+        }
+        // Ensure the grant refers to the same object (buffer)
+        if (entry.object_ref != (uint64_t)buffer) {
+            return -101; // Mismatch
+        }
+    }
+
     if (buffer->pin_count == 0) return -2;
+    if (!dma_direction_valid(dir)) return -3;
+    if (buffer->mapped_to_device) return -4;
+
+    hal_dma_buffer_t hbuf;
+    hbuf.cpu_addr = buffer->cpu_addr;
+    hbuf.phys_addr = buffer->phys_addr;
+    hbuf.dma_addr = (buffer->iova != 0) ? buffer->iova : buffer->phys_addr;
+    hbuf.size = buffer->size;
+    hbuf.dir = dma_to_hal_direction(dir);
+    hbuf.flags = buffer->flags;
+    hbuf.backend_priv = NULL;
 
     if (buffer->domain && buffer->iova != 0) {
         hal_iommu_domain_t *hw_dom = (hal_iommu_domain_t *)buffer->domain->iommu_hw_state;
-        if (!hw_dom) return -3;
+        if (!hw_dom) return -5;
         int map_ret = hal_iommu_map(hw_dom, buffer->iova, buffer->phys_addr, buffer->size, (uint64_t)dir);
         if (map_ret != 0) return map_ret;
     }
 
+    int hal_ret = hal_dma_map_buffer(&hbuf);
+    if (hal_ret != 0) {
+        if (buffer->domain && buffer->iova != 0 && buffer->domain->iommu_hw_state) {
+            hal_iommu_domain_t *hw_dom = (hal_iommu_domain_t *)buffer->domain->iommu_hw_state;
+            (void)hal_iommu_unmap(hw_dom, buffer->iova, buffer->size);
+        }
+        return hal_ret;
+    }
     dma_sync_for_device(buffer, dir);
+    buffer->mapped_to_device = true;
+    buffer->owned_by_device = true;
+    buffer->active_dir = dir;
+    buffer->iova = hbuf.dma_addr;
     return 0;
 }
 
@@ -284,13 +367,41 @@ int dma_buffer_unmap_device(uint64_t device_id, dma_buffer_t *buffer, dma_direct
     (void)device_id;
     if (!buffer) return -1;
 
+    capability_table_t *ct = sched_current_cap_table();
+    if (ct) {
+        capability_entry_t entry;
+        int ret = cap_table_lookup(ct, (uint32_t)device_id, CAP_TYPE_DMA_GRANT, CAP_RIGHT_MEMORY_UNMAP, &entry);
+        if (ret != 0) {
+            return -100; // Unauthorized
+        }
+        if (entry.object_ref != (uint64_t)buffer) {
+            return -101; // Mismatch
+        }
+    }
+
+    if (!buffer->mapped_to_device) return -2;
+    if (dir != buffer->active_dir) return -3;
+
     dma_sync_for_cpu(buffer, dir);
+
+    hal_dma_buffer_t hbuf;
+    hbuf.cpu_addr = buffer->cpu_addr;
+    hbuf.phys_addr = buffer->phys_addr;
+    hbuf.dma_addr = buffer->iova;
+    hbuf.size = buffer->size;
+    hbuf.dir = dma_to_hal_direction(dir);
+    hbuf.flags = buffer->flags;
+    hbuf.backend_priv = NULL;
+    hal_dma_unmap_buffer(&hbuf);
 
     if (buffer->domain && buffer->iova != 0) {
         hal_iommu_domain_t *hw_dom = (hal_iommu_domain_t *)buffer->domain->iommu_hw_state;
-        if (!hw_dom) return -3;
+        if (!hw_dom) return -4;
         int unmap_ret = hal_iommu_unmap(hw_dom, buffer->iova, buffer->size);
         if (unmap_ret != 0) return unmap_ret;
     }
+
+    buffer->mapped_to_device = false;
+    buffer->owned_by_device = false;
     return 0;
 }
