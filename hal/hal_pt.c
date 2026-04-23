@@ -1,6 +1,7 @@
 #include "../kernel/include/hal/hal_pt.h"
 #include "../kernel/include/hal/hal_tlb.h"
 #include "../kernel/include/kernel.h"
+#include "mm/tlb.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -63,9 +64,6 @@ void hal_pt_init(void) {
     active_hal_tlb = &mpu_hal_tlb_ops;
 #endif
 }
-
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "mm/tlb.h"
 
 void hal_tlb_init(void) {
     if (!active_hal_tlb) {
