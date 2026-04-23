@@ -2,6 +2,8 @@
 #include "hal/hal_dma.h"
 #include "mm/dma.h"
 #include "mm.h"
+#include "capability.h"
+#include "sched/sched.h"
 #include "mm/physmap.h"
 #include "numa.h"
 #include "spinlock.h"
@@ -307,6 +309,24 @@ void dma_sync_for_cpu(dma_buffer_t *buffer, dma_direction_t dir) {
 int dma_buffer_map_device(uint64_t device_id, dma_buffer_t *buffer, dma_direction_t dir) {
     (void)device_id;
     if (!buffer) return -1;
+
+    // Capability check: Ensure the current process has the right to map this DMA buffer.
+    // In a capability-based system, the device_id would be a capability handle (CAP_TYPE_DMA_GRANT).
+    // For now, we simulate this by checking the current capability table if we have one.
+    capability_table_t *ct = sched_current_cap_table();
+    if (ct) {
+        // We use device_id as the capability handle to lookup
+        capability_entry_t entry;
+        int ret = cap_table_lookup(ct, (uint32_t)device_id, CAP_TYPE_DMA_GRANT, CAP_RIGHT_DMA_MAP, &entry);
+        if (ret != 0) {
+            return -100; // Unauthorized
+        }
+        // Ensure the grant refers to the same object (buffer)
+        if (entry.object_ref != (uint64_t)buffer) {
+            return -101; // Mismatch
+        }
+    }
+
     if (buffer->pin_count == 0) return -2;
     if (!dma_direction_valid(dir)) return -3;
     if (buffer->mapped_to_device) return -4;
@@ -346,6 +366,19 @@ int dma_buffer_map_device(uint64_t device_id, dma_buffer_t *buffer, dma_directio
 int dma_buffer_unmap_device(uint64_t device_id, dma_buffer_t *buffer, dma_direction_t dir) {
     (void)device_id;
     if (!buffer) return -1;
+
+    capability_table_t *ct = sched_current_cap_table();
+    if (ct) {
+        capability_entry_t entry;
+        int ret = cap_table_lookup(ct, (uint32_t)device_id, CAP_TYPE_DMA_GRANT, CAP_RIGHT_MEMORY_UNMAP, &entry);
+        if (ret != 0) {
+            return -100; // Unauthorized
+        }
+        if (entry.object_ref != (uint64_t)buffer) {
+            return -101; // Mismatch
+        }
+    }
+
     if (!buffer->mapped_to_device) return -2;
     if (dir != buffer->active_dir) return -3;
 

@@ -47,6 +47,7 @@ typedef struct iommu_fault_info {
 } iommu_fault_info_t;
 
 int iommu_init(void);
+int iommu_fault_init(uint32_t irq_vector);
 
 bool iommu_available(void);
 bool iommu_enabled(void);

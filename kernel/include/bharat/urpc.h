@@ -17,7 +17,9 @@ typedef enum {
     URPC_TLB_INVAL           = 6,
     URPC_TLB_INVAL_ACK       = 7,
     URPC_CAP_DELEGATE_REQ    = 8,
-    URPC_CAP_DELEGATE_ACK    = 9
+    URPC_CAP_DELEGATE_ACK    = 9,
+    URPC_IOMMU_INVAL         = 10,
+    URPC_IOMMU_INVAL_ACK     = 11
 } urpc_msg_type_t;
 
 // Canonical uRPC Protocol Header
