@@ -6,6 +6,24 @@ set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 # See BUILD.md for exact commands for each platform.
 
 # Provide an interface library for kernel components to share common includes
+set(BHARAT_BOOT_INCLUDE_CANDIDATES
+    ${CMAKE_SOURCE_DIR}/core/boot/include
+    ${CMAKE_SOURCE_DIR}/boot/include
+)
+set(BHARAT_BOOT_INCLUDE_DIR "")
+foreach(_boot_include IN LISTS BHARAT_BOOT_INCLUDE_CANDIDATES)
+    if(EXISTS "${_boot_include}/boot/boot_info.h")
+        set(BHARAT_BOOT_INCLUDE_DIR "${_boot_include}")
+        if(_boot_include MATCHES "/boot/include$" AND NOT _boot_include MATCHES "/core/boot/include$")
+            message(WARNING "[migration-warning] Using legacy boot include root: ${_boot_include}")
+        endif()
+        break()
+    endif()
+endforeach()
+if(NOT BHARAT_BOOT_INCLUDE_DIR)
+    message(FATAL_ERROR "No boot include root found in core/boot/include or boot/include")
+endif()
+
 add_library(bharat_kernel_includes INTERFACE)
 target_include_directories(bharat_kernel_includes INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -13,7 +31,7 @@ target_include_directories(bharat_kernel_includes INTERFACE
     ${CMAKE_SOURCE_DIR}/hal/include
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/lib/include
-    ${CMAKE_SOURCE_DIR}/boot/include
+    ${BHARAT_BOOT_INCLUDE_DIR}
     ${CMAKE_SOURCE_DIR}/hal/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 )

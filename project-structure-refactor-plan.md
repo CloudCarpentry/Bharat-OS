@@ -23,7 +23,7 @@ This plan is based on the current repo layout and build system behavior (`build.
 | C1 | Interface `idl/` move | ✅ Completed | `interface/idl/` is now authoritative; legacy `idl` path is preserved as a compatibility symlink and tooling fallback. |
 | C2 | Interface `uapi/` move | ✅ Completed | `interface/uapi/` is now authoritative; legacy `uapi` path is preserved as a compatibility symlink. |
 | C3 | Interface `sdk/` move | ✅ Completed | `interface/sdk/` is now authoritative; legacy `sdk` path is preserved as a compatibility symlink. |
-| D1 | `boot/` to `core/boot/` | 🚧 In progress | D1a completed: `boot/src` + `boot/common` moved to `core/boot` with legacy symlink compatibility and CMake source-root fallback. |
+| D1 | `boot/` to `core/boot/` | 🚧 In progress | D1a + D1b completed: sources/common/include/discovery/protocols are now canonical in `core/boot/*`; legacy `boot/*` wrappers remain for compatibility. |
 
 ---
 
@@ -491,6 +491,22 @@ This section converts the phase model into concrete, code-aware slices from the 
 - Add include path compatibility at CMake level.
 - Keep adapter include headers where path churn is high.
 - Require compile + runtime checks before merge.
+
+**Detailed medium-chunk execution (repo-aware)**
+- **D1 (done in parts): boot canonicalization in `core/boot`**
+  - D1a (already done): `boot/src` and `boot/common` moved to `core/boot`.
+  - D1b (this slice): `boot/include`, `boot/discovery`, and `boot/protocols` moved to `core/boot/{include,discovery,protocols}`.
+  - Compatibility retained with legacy wrappers in `boot/include/*`, `boot/discovery/*`, and `boot/protocols/*`.
+  - Build wiring now resolves boot include/protocol roots through candidate lists (`core/boot/*` first, `boot/*` fallback with warning).
+- **D2 (next): kernel tree move**
+  - Start with `kernel/src/{init,core,boot}` into `core/kernel/src/*` and keep `kernel/` forwarding CMake.
+  - Preserve `kernel/include` include root while introducing `core/kernel/include` as preferred.
+- **D3 (next): arch + hal staged move**
+  - Move `arch` first (path-heavy compile graph), then `hal`.
+  - Add alias validation in CI for newly added legacy refs.
+- **D4 (next): platform/services/lib ecosystem**
+  - Move `lib` and `stacks` first (low coupling), then `platform`, `drivers`, `services`, `personalities`.
+  - Keep temporary compatibility roots for one full phase before strict mode.
 
 ---
 
