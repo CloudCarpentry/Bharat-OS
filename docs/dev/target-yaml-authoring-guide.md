@@ -2,7 +2,7 @@
 
 This guide explains how to define declarative targets for the Bharat-OS build and execution pipeline. Target YAML files describe the full lifecycle of a target: how it is built, packaged, run, flashed, and debugged.
 
-Targets are stored in `tools/targets/` (e.g., `tools/targets/qemu/`, `tools/targets/boards/`).
+Targets are stored in `delivery/targets/` (preferred, e.g., `delivery/targets/qemu/`). During migration, legacy `tools/targets/qemu/` path references are accepted via compatibility aliasing.
 
 ## YAML Schema Overview
 

@@ -361,3 +361,90 @@ When build/run commands are updated in future phases:
 1. Execute Phase 0 guardrails in a dedicated PR.
 2. Create phase tickets with exact directory scope and validation checklist.
 3. Start Phase 1 scaffolding only after CI guardrails are merged.
+
+---
+
+## Repo-informed execution backlog (practical medium chunks)
+
+This section converts the phase model into concrete, code-aware slices from the current tree.
+
+### Phase A (now) — QEMU target YAML relocation (medium chunk, low runtime risk)
+
+**Objective**
+- Relocate QEMU target YAMLs from `tools/targets/qemu/` to `delivery/targets/qemu/` with compatibility path translation.
+
+**Why first**
+- Build orchestration is already centralized in `tools/build.py`.
+- YAML target resolution is the least invasive place to add old->new aliasing before larger tree movement.
+
+**Code changes**
+- Move all `tools/targets/qemu/*.yaml` to `delivery/targets/qemu/`.
+- Keep old CLI usage functional by translating `--target-yaml tools/targets/qemu/...` to `delivery/targets/qemu/...` in resolver logic.
+- Emit migration warning when aliasing is used.
+
+**Validation gate**
+- Run full build/package/run/all matrix listed in this plan.
+- If a command fails due to missing host tool (e.g., QEMU binary), classify as environment/tooling issue and document.
+
+**Docs**
+- Update build docs to mark `delivery/targets/qemu/` as preferred and `tools/targets/qemu/` as legacy alias.
+
+---
+
+### Phase B — Tools root transition (`tools/targets` + `tools/ci` compatibility)
+
+**Scope**
+- Begin shifting non-runtime tooling assets to `delivery/targets` and `delivery/tools`.
+
+**Code tasks**
+- Introduce a reusable path-alias helper in Python tooling (`tools/build/*`, validators, lints).
+- Keep a two-way fallback (`delivery/*` preferred, legacy root fallback).
+- Add a CI check for new references to legacy roots in touched files.
+
+**Validation**
+- Same matrix + lint stage.
+- Confirm warning visibility in CI logs.
+
+---
+
+### Phase C — Interface migration in thin slices
+
+**Scope order**
+1. `idl/` -> `interface/idl/` (schema + tooling references),
+2. `uapi/` -> `interface/uapi/`,
+3. remaining `sdk/` modules -> `interface/sdk/`.
+
+**Code tasks**
+- One subtree move per PR.
+- Keep include/tool fallbacks until end of Phase D.
+- Update code generators and package manifests to consume new interface paths first.
+
+**Validation**
+- Matrix + contract validation + interface artifact generation checks.
+
+---
+
+### Phase D — Core runtime path migration in bounded units
+
+**Recommended PR order**
+1. `boot/` -> `core/boot/`
+2. `kernel/` -> `core/kernel/`
+3. `hal/` + `arch/` -> `core/hal/`, `core/arch/`
+4. `platform/`, `drivers/`, `services/`, `stacks/`, `personalities/`, `lib/` -> `core/*`
+
+**Code tasks per PR**
+- Add include path compatibility at CMake level.
+- Keep adapter include headers where path churn is high.
+- Require compile + runtime checks before merge.
+
+---
+
+### Phase E — Cleanup and enforcement
+
+**Tasks**
+- Convert migration warnings to CI errors.
+- Remove fallback aliases after all docs/scripts are updated.
+- Enforce that new contributions use only zone-based paths.
+
+**Done condition**
+- Legacy paths absent from source, docs, and scripts.
