@@ -356,11 +356,11 @@ When build/run commands are updated in future phases:
 
 ---
 
-## Immediate next actions (start now)
+## Immediate next actions (updated to current repository state)
 
-1. Execute Phase 0 guardrails in a dedicated PR.
-2. Create phase tickets with exact directory scope and validation checklist.
-3. Start Phase 1 scaffolding only after CI guardrails are merged.
+1. Record current migration status in a tracker doc and keep it updated per PR.
+2. Complete Phase B tooling unification (shared alias helper + CI reference guard).
+3. Continue interface/core moves using thin-slice PRs with mandatory validation matrix.
 
 ---
 
@@ -368,7 +368,7 @@ When build/run commands are updated in future phases:
 
 This section converts the phase model into concrete, code-aware slices from the current tree.
 
-### Phase A (now) — QEMU target YAML relocation (medium chunk, low runtime risk)
+### Phase A (completed) — QEMU target YAML relocation (medium chunk, low runtime risk)
 
 **Objective**
 - Relocate QEMU target YAMLs from `tools/targets/qemu/` to `delivery/targets/qemu/` with compatibility path translation.
@@ -389,9 +389,13 @@ This section converts the phase model into concrete, code-aware slices from the 
 **Docs**
 - Update build docs to mark `delivery/targets/qemu/` as preferred and `tools/targets/qemu/` as legacy alias.
 
+**Current status**
+- YAML targets already reside in `delivery/targets/qemu/`.
+- Compatibility aliasing is active in `tools/build.py` target resolution.
+
 ---
 
-### Phase B — Tools root transition (`tools/targets` + `tools/ci` compatibility)
+### Phase B (active) — Tools root transition (`tools/targets` + `tools/ci` compatibility)
 
 **Scope**
 - Begin shifting non-runtime tooling assets to `delivery/targets` and `delivery/tools`.
@@ -400,6 +404,12 @@ This section converts the phase model into concrete, code-aware slices from the 
 - Introduce a reusable path-alias helper in Python tooling (`tools/build/*`, validators, lints).
 - Keep a two-way fallback (`delivery/*` preferred, legacy root fallback).
 - Add a CI check for new references to legacy roots in touched files.
+
+**Execution order (medium chunks)**
+1. Extract alias logic into a shared helper module and wire `target_resolver.py` to use it.
+2. Apply the same helper to other target-consuming scripts (`tools/targets/loader.py`, validation scripts).
+3. Add CI guard for newly introduced `tools/targets/qemu/` references.
+4. Flip guard from warning to error after two migration phases.
 
 **Validation**
 - Same matrix + lint stage.

@@ -1,6 +1,7 @@
 import sys
 from pathlib import Path
 
+from tools.build.path_aliases import resolve_target_yaml_alias
 from tools.build.models import (
     BootConfig,
     BuildConfig,
@@ -16,8 +17,6 @@ from tools.build.models import (
 )
 
 SCHEMA_PATH = Path(__file__).parent.parent / "schemas" / "target.schema.yaml"
-REPO_ROOT = Path(__file__).resolve().parents[2]
-
 
 def _require_yaml_deps():
     try:
@@ -46,24 +45,10 @@ def resolve_target_yaml_path(path: Path) -> Path:
     Preferred location is delivery/targets/qemu, while tools/targets/qemu is
     kept as a legacy alias during transition.
     """
-    if path.exists():
-        return path
-
-    raw = str(path).replace("\\", "/")
-    alias_candidates: list[Path] = []
-
-    if "tools/targets/qemu/" in raw:
-        alias_candidates.append(Path(raw.replace("tools/targets/qemu/", "delivery/targets/qemu/", 1)))
-    if "delivery/targets/qemu/" in raw:
-        alias_candidates.append(Path(raw.replace("delivery/targets/qemu/", "tools/targets/qemu/", 1)))
-
-    for candidate in alias_candidates:
-        candidate_abs = candidate if candidate.is_absolute() else (REPO_ROOT / candidate)
-        if candidate_abs.exists():
-            print(f"[migration-warning] Using aliased target-yaml path: {path} -> {candidate_abs}")
-            return candidate_abs
-
-    return path
+    resolved_path, used_alias = resolve_target_yaml_alias(path)
+    if used_alias:
+        print(f"[migration-warning] Using aliased target-yaml path: {path} -> {resolved_path}")
+    return resolved_path
 
 def validate_yaml_target(raw: dict) -> None:
     yaml, jsonschema = _require_yaml_deps()

@@ -485,7 +485,7 @@ For complete setup on **Windows, WSL/Linux, and macOS** (including QEMU/OpenOCD/
 ./build.sh all --target x86_64_desktop_headless
 ./build.sh all --target arm64_desktop_headless
 ./build.sh all --target riscv64_desktop_headless
-./build.sh tools/targets/qemu/arm32_mmu_lite_headless.yaml --run
+./build.sh run --target-yaml delivery/targets/qemu/arm32_mmu_lite_headless.yaml
 ```
 
 

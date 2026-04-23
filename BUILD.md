@@ -341,7 +341,7 @@ Equivalent modern command:
 YAML target path equivalent:
 
 ```bash
-./build.sh all --target-yaml tools/targets/qemu/x86_64_desktop_headless.yaml
+./build.sh all --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml
 ```
 
 ---
@@ -405,7 +405,8 @@ PY
 
 See YAML targets under:
 
-- `tools/targets/qemu/`
+- `delivery/targets/qemu/` (preferred)
+- `tools/targets/qemu/` (legacy alias accepted by `tools/build.py` during migration)
 
 ---
 
