@@ -57,6 +57,12 @@ Examples:
 
 > Legacy positional syntax still works (for example `.\build.ps1 x86_64_desktop_headless --run`), but it is compatibility-only and emits a warning. Prefer explicit subcommands.
 
+### Transitional path compatibility (active migration behavior)
+
+- Preferred target YAML location: `delivery/targets/qemu/*.yaml`
+- Preferred target matrix location: `delivery/targets/target_matrix.json`
+- Legacy paths under `tools/targets/qemu` and `targets/` are still accepted through alias translation during migration phases and emit migration warnings where applicable.
+
 ---
 
 ## 2) Host prerequisites by platform

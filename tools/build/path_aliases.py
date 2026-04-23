@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Iterable
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 _TARGET_ALIASES: tuple[tuple[str, str], ...] = (
     ("tools/targets/qemu/", "delivery/targets/qemu/"),
+)
+
+_TARGET_MATRIX_ALIASES: tuple[tuple[str, str], ...] = (
+    ("targets/target_matrix.json", "delivery/targets/target_matrix.json"),
 )
 
 
@@ -37,3 +42,18 @@ def resolve_migration_alias(path: Path, aliases: tuple[tuple[str, str], ...]) ->
 
 def resolve_target_yaml_alias(path: Path) -> tuple[Path, bool]:
     return resolve_migration_alias(path, _TARGET_ALIASES)
+
+
+def resolve_target_matrix_alias(path: Path) -> tuple[Path, bool]:
+    return resolve_migration_alias(path, _TARGET_MATRIX_ALIASES)
+
+
+def repo_path_candidates(*relative_paths: str) -> list[Path]:
+    return [REPO_ROOT / rel for rel in relative_paths]
+
+
+def first_existing_path(candidates: Iterable[Path]) -> Path | None:
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return None

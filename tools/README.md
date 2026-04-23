@@ -10,8 +10,13 @@ This directory contains the implementation for the Bharat-OS build delivery pipe
 - `package/` - packaging/transforms and manifest generation.
 - `run/` - QEMU launcher.
 - `flash/` - flashing backend integration (OpenOCD path).
-- `targets/` - explicit YAML targets (QEMU profiles).
+- `targets/` - target loading/validation helpers (legacy compatibility layer).
 - `debug.sh` / `debug.ps1` - helper debugger attach scripts.
+
+Preferred target data locations during migration:
+
+- `delivery/targets/qemu/*.yaml`
+- `delivery/targets/target_matrix.json`
 
 ---
 
@@ -93,4 +98,3 @@ Equivalent modern command:
 
 - Full build/install/preset guide: `../BUILD.md`
 - High-level project quick start: `../README.md`
-
