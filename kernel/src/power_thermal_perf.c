@@ -1,5 +1,6 @@
 #include "power_thermal_perf.h"
 
+#include "hal/hal_cpu_topology.h"
 #include "sched/sched.h"
 
 static ptp_topology_info_t g_topology;
@@ -17,28 +18,26 @@ static ptp_thermal_summary_t g_thermal_summary;
 static uint32_t g_system_sleep_state;
 static uint32_t g_system_suspended;
 
-static ptp_arch_t ptp_detect_arch(void) {
-#if defined(__x86_64__)
-    return PTP_ARCH_X86_64;
-#elif defined(__aarch64__)
-    return PTP_ARCH_ARM64;
-#elif defined(__riscv)
-    return PTP_ARCH_RISCV64;
-#else
-    return PTP_ARCH_UNKNOWN;
-#endif
-}
-
 static void perf_topology_build_defaults(void) {
+    hal_cpu_topology_info_t hal_topology;
     uint32_t core;
+    uint32_t discovered = BHARAT_MAX_CORES;
+    bool homogeneous = true;
 
-    g_topology.arch = ptp_detect_arch();
+    if (hal_cpu_topology_query(&hal_topology)) {
+        if (hal_topology.discovered_cpu_count > 0U && hal_topology.discovered_cpu_count <= BHARAT_MAX_CORES) {
+            discovered = hal_topology.discovered_cpu_count;
+        }
+        homogeneous = hal_topology.homogeneous_cores;
+    }
+
+    g_topology.arch = PTP_ARCH_UNKNOWN;
     g_topology.discovered_numa_nodes = 1U;
-    g_topology.discovered_cpu_count = BHARAT_MAX_CORES;
-    g_topology.heterogeneous_cores = 0U;
+    g_topology.discovered_cpu_count = discovered;
+    g_topology.heterogeneous_cores = homogeneous ? 0U : 1U;
     g_topology.accelerator_count = 0U;
 
-    for (core = 0U; core < BHARAT_MAX_CORES; ++core) {
+    for (core = 0U; core < discovered; ++core) {
         g_topology.cpu[core].package_id = 0U;
         g_topology.cpu[core].cluster_id = core / 4U;
         g_topology.cpu[core].core_id = core;
@@ -47,19 +46,6 @@ static void perf_topology_build_defaults(void) {
         g_topology.cpu[core].max_freq_khz = 2000000U;
         g_topology.cpu[core].perf_class = PTP_PERF_CLASS_BALANCED;
     }
-
-#if defined(__aarch64__)
-    for (core = 0U; core < BHARAT_MAX_CORES; ++core) {
-        if ((core & 1U) == 0U) {
-            g_topology.cpu[core].perf_class = PTP_PERF_CLASS_LITTLE;
-            g_topology.cpu[core].max_freq_khz = 1500000U;
-            g_topology.heterogeneous_cores = 1U;
-        } else {
-            g_topology.cpu[core].perf_class = PTP_PERF_CLASS_BIG;
-            g_topology.cpu[core].max_freq_khz = 2500000U;
-        }
-    }
-#endif
 
     g_topology.cache_levels = 3U;
     g_topology.cache[0].level = 1U;
@@ -75,7 +61,7 @@ static void perf_topology_build_defaults(void) {
     g_topology.cache[2].level = 3U;
     g_topology.cache[2].size_kb = 4096U;
     g_topology.cache[2].line_size = 64U;
-    g_topology.cache[2].shared_cpu_count = BHARAT_MAX_CORES;
+    g_topology.cache[2].shared_cpu_count = discovered;
 }
 
 static ptp_thermal_level_t thermal_level_from_temp(const ptp_thermal_zone_t *zone, int32_t temperature_mc) {

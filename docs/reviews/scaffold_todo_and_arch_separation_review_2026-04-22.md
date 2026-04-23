@@ -134,9 +134,9 @@ First-pass aggregate counts from this scan:
 
 | ID | Area | File/Path | Finding Type | Summary | Current Owner | Correct Owner | Action | Priority | Status |
 |----|------|-----------|--------------|---------|---------------|---------------|--------|----------|--------|
-| F-001 | MM | `hal/hal_pt.c` | Mixed arch | Architecture-specific TLB and PT initialization mixed with weak symbols | hal | arch/hal | SPLIT_BY_ARCH | P1 | OPEN |
+| F-001 | MM | `hal/hal_pt.c` | Mixed arch | Architecture-specific TLB and PT initialization mixed with weak symbols (mid-file include debt removed in follow-up pass) | hal | arch/hal | SPLIT_BY_ARCH | P1 | IN_PROGRESS |
 | F-002 | CPU | `hal/common/discovery.c` | Mixed arch | `x86_64`, `aarch64`, `riscv` CPU capabilities parsing mixed in common HAL | hal | arch/hal | SPLIT_BY_ARCH | P1 | OPEN |
-| F-003 | Power | `kernel/src/power_thermal_perf.c` | Policy Creep / Mixed arch | Kernel contains topology defaults, thermal policy logic, and arch checks | kernel | services/arch | MOVE_TO_CORRECT_LAYER | P0 | OPEN |
+| F-003 | Power | `kernel/src/power_thermal_perf.c` | Policy Creep / Mixed arch | Kernel contains topology defaults and thermal policy logic; compile-time arch checks removed, remaining policy move still pending | kernel | services/arch | MOVE_TO_CORRECT_LAYER | P0 | IN_PROGRESS |
 | F-004 | Storage | `services/system/filesystem/main.c` | Mixed arch / Mock | App profile and HW arch checks directly in filesystem service main; simulated block device | services | stacks/services | KEEP_AS_SCAFFOLD_WITH_TRACKING | P1 | DONE |
 | F-005 | Video | `kernel/src/display/boot_video_map.c` | Mixed arch | TLB flushes and VA calculations using arch macros directly in kernel | kernel | arch/hal | MOVE_TO_CORRECT_LAYER | P1 | DONE |
 | F-006 | Drivers | `drivers/serial/ns16550/ns16550.c` | Mixed arch | Architecture-specific `x86_inb`/`x86_outb` mixed with MMIO | drivers | arch/drivers | SPLIT_BY_ARCH | P1 | OPEN |
@@ -365,6 +365,10 @@ This review item is only considered complete when:
   - Split one high-value mixed-arch source file into per-arch files.
 - **Task C (architecture split follow-up):** Deferred to next patch set for additional files.
 - **Task D (docs sync):** This review document updated with inventory and actions.
+- **Task E (headless build matrix check):** Partially completed.
+  - `x86_64_desktop_headless`: configure/build/package successful; run stage blocked by missing `qemu-system-x86_64`.
+  - `arm64_desktop_headless`: configure/build successful; package DTB generation blocked by missing `qemu-system-aarch64`.
+  - `riscv64_desktop_headless`: configure/build/package successful.
 
 ---
 
@@ -385,6 +389,8 @@ This review item is only considered complete when:
 - Split `kernel/src/cpu_local.c` inline assembly into architecture-specific files under `arch/`.
 - Replace inline-assembly architecture-specific flushes in `kernel/src/display/boot_video_map.c` with neutral HAL call `hal_tlb_invalidate_all()`.
 - Gated scaffolded/experimental service `system/filesystem` behind `BHARAT_BUILD_EXPERIMENTAL_SERVICES` in `services/CMakeLists.txt`.
+- Removed include-order compatibility debt in `hal/hal_pt.c` by moving `mm/tlb.h` into the regular include block.
+- Reduced architecture coupling in `kernel/src/power_thermal_perf.c` by switching default topology sizing to `hal_cpu_topology_query()` and removing compile-time arch branches.
 
 ### In progress
 -
