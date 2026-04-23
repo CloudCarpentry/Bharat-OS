@@ -1,28 +1,39 @@
 # Scheduler Algorithms
 
-## Overview
-Because Bharat-OS is built for diverse hardware and use cases, the kernel scheduler implements multiple algorithms tailored to the execution profile of the thread (`kthread_t`).
+## Active policy selector
 
-## General Purpose (GP): CFS-Like
-For general-purpose workloads (e.g., UI, background networking), the scheduler uses a Completely Fair Scheduler (CFS) approach based on `vruntime` (virtual runtime).
+The scheduler exposes `sched_set_policy(...)` with these policies:
 
--   **Mechanism:** Threads accumulate `vruntime` as they execute. The thread with the smallest `vruntime` in the ready queue is chosen to run next.
--   **Priority Weighting:** The physical time a thread is allowed to run before its `vruntime` increases by 1 unit depends on its assigned priority weight. High-priority threads accumulate `vruntime` slower, giving them a larger share of the CPU over time.
--   **Data Structure:** A Red-Black tree or an optimized sorted array (depending on the memory profile) is used to track the ready threads, ensuring `O(log N)` insertion and `O(1)` retrieval of the lowest `vruntime` thread.
+- `SCHED_POLICY_ROUND_ROBIN`
+- `SCHED_POLICY_CLOUD_FAIR`
+- `SCHED_POLICY_PRIORITY`
+- `SCHED_POLICY_EDF`
+- `SCHED_POLICY_RMS`
 
-## Hard Real-Time (RT): Priority & Deadline (EDF)
-For threads marked with the `BHARAT_KERNEL_PROFILE_RT` execution profile (e.g., motor control, sensor fusion), the GP scheduler is bypassed entirely.
+## Priority/RR path
 
--   **Mechanism:** RT threads use a strict static priority queue. The highest-priority ready RT thread *always* preempts any GP thread and any lower-priority RT thread immediately.
--   **EDF (Earliest Deadline First):** Within the same RT priority level, the scheduler can optionally order threads based on a strict deadline (if provided during task creation). The thread with the closest deadline runs first.
--   **Data Structure:** An array of linked lists (`O(1)` scheduler) is used. There is one list per RT priority level (e.g., 0-99). The scheduler simply finds the highest non-empty list and takes the first thread.
+- Uses per-priority ready lists and `ready_bitmap`.
+- Pick-next uses bitmap scanning for highest runnable priority.
+- Timer tick enforces timeslice preemption.
 
-## AI Scheduler Integration (AI-MLFQ)
-Bharat-OS includes an innovative control-plane hook allowing user-space AI governors to influence the GP scheduling algorithm dynamically.
+## Cloud-fair path
 
--   **Telemetry Input:** The kernel gathers hardware performance counters (cycles, instructions, CPI, cache misses) via `ai_sched_update_telemetry()` on context switches.
--   **Suggestions:** The AI governor (running as an isolated user-space service) analyzes this data and sends capability-secured IPC messages (`ai_kernel_ingest_suggestion_ipc()`) to the kernel.
--   **Actions:** These suggestions can request the kernel to:
-    -   `AI_ACTION_MIGRATE_TASK`: Move a thread to a different CPU core (e.g., a "big" or "LITTLE" core).
-    -   `AI_ACTION_ADJUST_PRIORITY`: Temporarily boost or lower a GP thread's weight.
--   **Bounded Execution:** The kernel evaluates these suggestions securely. The scheduler consumes queued suggestions during the timer tick or scheduling path, not directly in the IPC receive path, ensuring the AI governor cannot cause denial-of-service within the kernel scheduler itself.
+- Uses CFS-style rb-tree (`cfs_runqueue`) and `vruntime` accounting.
+- Tick updates `vruntime` for running non-idle thread.
+- Preemption can occur when a lower-`vruntime` candidate is available.
+
+## EDF path
+
+- Uses deadline-ordered rb-tree (`edf_runqueue`).
+- Admission is controlled by utilization budget (`rt_budget_used/rt_budget_total`).
+- Tick path enforces WCET-per-period behavior and re-sleeps tasks for next period when budget is exhausted.
+
+## RMS path
+
+- Admission uses simplified RMS utilization bound.
+- Priority is statically assigned from period buckets.
+- Dispatch still reuses priority queue machinery.
+
+## AI-assisted adjustments
+
+AI suggestions do not replace class algorithms; they request bounded actions (migrate/priority/throttle/etc.) that are validated and applied by scheduler mechanisms.

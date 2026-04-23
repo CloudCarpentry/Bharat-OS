@@ -36,11 +36,11 @@ int vmm_map_device_mmio(virt_addr_t vaddr, phys_addr_t paddr, capability_t* cap,
 }
 
 static void test_ipc_bypass(void) {
-    kprocess_t* p = process_create("p1");
+    bh_process_t* p = process_create("p1");
     assert(p != NULL);
     capability_table_t* t = (capability_table_t*)p->security_sandbox_ctx;
 
-    kprocess_t* p2 = process_create("p2");
+    bh_process_t* p2 = process_create("p2");
     assert(p2 != NULL);
     capability_table_t* t2 = (capability_table_t*)p2->security_sandbox_ctx;
 
@@ -62,7 +62,7 @@ static void test_ipc_bypass(void) {
 }
 
 static void test_device_access(void) {
-    kprocess_t* p = process_create("device_process");
+    bh_process_t* p = process_create("device_process");
     assert(p != NULL);
     capability_table_t* t = (capability_table_t*)p->security_sandbox_ctx;
 

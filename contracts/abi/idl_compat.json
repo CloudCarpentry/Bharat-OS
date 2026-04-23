@@ -1,0 +1,769 @@
+{
+  "CapabilityService": {
+    "enums": {
+      "cap_lifecycle_state": [
+        {
+          "name": "CAP_LIFECYCLE_ACTIVE",
+          "value": 0
+        },
+        {
+          "name": "CAP_LIFECYCLE_REVOKED",
+          "value": 1
+        },
+        {
+          "name": "CAP_LIFECYCLE_EXPIRED",
+          "value": 2
+        },
+        {
+          "name": "CAP_LIFECYCLE_TRANSFERRED",
+          "value": 3
+        }
+      ],
+      "cap_object_type": [
+        {
+          "name": "CAP_OBJECT_NONE",
+          "value": 0
+        },
+        {
+          "name": "CAP_OBJECT_SERVICE",
+          "value": 1
+        },
+        {
+          "name": "CAP_OBJECT_NET_IFACE",
+          "value": 2
+        },
+        {
+          "name": "CAP_OBJECT_ROUTE_TABLE",
+          "value": 3
+        },
+        {
+          "name": "CAP_OBJECT_ENDPOINT",
+          "value": 4
+        },
+        {
+          "name": "CAP_OBJECT_PROCESS",
+          "value": 5
+        },
+        {
+          "name": "CAP_OBJECT_VM_SPACE",
+          "value": 6
+        },
+        {
+          "name": "CAP_OBJECT_DEVICE",
+          "value": 7
+        },
+        {
+          "name": "CAP_OBJECT_DMA_DOMAIN",
+          "value": 8
+        }
+      ],
+      "cap_scope_kind": [
+        {
+          "name": "CAP_SCOPE_GLOBAL",
+          "value": 0
+        },
+        {
+          "name": "CAP_SCOPE_OBJECT",
+          "value": 1
+        },
+        {
+          "name": "CAP_SCOPE_NAMESPACE",
+          "value": 2
+        },
+        {
+          "name": "CAP_SCOPE_SERVICE",
+          "value": 3
+        }
+      ],
+      "cap_status": [
+        {
+          "name": "CAP_STATUS_OK",
+          "value": 0
+        },
+        {
+          "name": "CAP_STATUS_INVALID",
+          "value": 1
+        },
+        {
+          "name": "CAP_STATUS_NOT_FOUND",
+          "value": 2
+        },
+        {
+          "name": "CAP_STATUS_REVOKED",
+          "value": 3
+        },
+        {
+          "name": "CAP_STATUS_RIGHTS_DENIED",
+          "value": 4
+        },
+        {
+          "name": "CAP_STATUS_SCOPE_DENIED",
+          "value": 5
+        },
+        {
+          "name": "CAP_STATUS_OBJECT_MISMATCH",
+          "value": 6
+        },
+        {
+          "name": "CAP_STATUS_EXPIRED",
+          "value": 7
+        },
+        {
+          "name": "CAP_STATUS_STALE",
+          "value": 8
+        },
+        {
+          "name": "CAP_STATUS_UNSUPPORTED",
+          "value": 9
+        }
+      ]
+    },
+    "id": 0,
+    "messages": {
+      "CapCreateReq": [
+        {
+          "name": "creator_principal_id",
+          "type": "u64"
+        },
+        {
+          "name": "object_type",
+          "type": "cap_object_type"
+        },
+        {
+          "name": "object_id",
+          "type": "u64"
+        },
+        {
+          "name": "rights",
+          "type": "u64"
+        },
+        {
+          "name": "scope",
+          "type": "cap_scope"
+        },
+        {
+          "name": "flags",
+          "type": "u64"
+        },
+        {
+          "name": "parent_cap_id",
+          "type": "u64"
+        }
+      ],
+      "CapCreateResp": [
+        {
+          "name": "status",
+          "type": "cap_status"
+        },
+        {
+          "name": "descriptor",
+          "type": "cap_descriptor"
+        }
+      ],
+      "CapInspectReq": [
+        {
+          "name": "handle",
+          "type": "cap_handle"
+        }
+      ],
+      "CapInspectResp": [
+        {
+          "name": "status",
+          "type": "cap_status"
+        },
+        {
+          "name": "descriptor",
+          "type": "cap_descriptor"
+        }
+      ],
+      "CapRevokeReq": [
+        {
+          "name": "handle",
+          "type": "cap_handle"
+        },
+        {
+          "name": "revoke_descendants",
+          "type": "bool"
+        }
+      ],
+      "CapRevokeResp": [
+        {
+          "name": "status",
+          "type": "cap_status"
+        }
+      ],
+      "CapTransferReq": [
+        {
+          "name": "handle",
+          "type": "cap_handle"
+        },
+        {
+          "name": "new_owner_principal_id",
+          "type": "u64"
+        },
+        {
+          "name": "preserve_rights",
+          "type": "bool"
+        },
+        {
+          "name": "new_rights",
+          "type": "u64"
+        },
+        {
+          "name": "new_scope",
+          "type": "cap_scope"
+        }
+      ],
+      "CapTransferResp": [
+        {
+          "name": "status",
+          "type": "cap_status"
+        },
+        {
+          "name": "descriptor",
+          "type": "cap_descriptor"
+        }
+      ],
+      "CapValidateReq": [
+        {
+          "name": "handle",
+          "type": "cap_handle"
+        },
+        {
+          "name": "expected_object_type",
+          "type": "cap_object_type"
+        },
+        {
+          "name": "expected_object_id",
+          "type": "u64"
+        },
+        {
+          "name": "required_rights",
+          "type": "u64"
+        },
+        {
+          "name": "required_scope",
+          "type": "cap_scope"
+        }
+      ],
+      "CapValidateResp": [
+        {
+          "name": "status",
+          "type": "cap_status"
+        },
+        {
+          "name": "allowed",
+          "type": "bool"
+        },
+        {
+          "name": "descriptor",
+          "type": "cap_descriptor"
+        }
+      ],
+      "cap_descriptor": [
+        {
+          "name": "handle",
+          "type": "cap_handle"
+        },
+        {
+          "name": "cap_id",
+          "type": "u64"
+        },
+        {
+          "name": "parent_cap_id",
+          "type": "u64"
+        },
+        {
+          "name": "owner_principal_id",
+          "type": "u64"
+        },
+        {
+          "name": "object_type",
+          "type": "cap_object_type"
+        },
+        {
+          "name": "object_id",
+          "type": "u64"
+        },
+        {
+          "name": "rights",
+          "type": "u64"
+        },
+        {
+          "name": "scope",
+          "type": "cap_scope"
+        },
+        {
+          "name": "generation",
+          "type": "u64"
+        },
+        {
+          "name": "flags",
+          "type": "u64"
+        },
+        {
+          "name": "state",
+          "type": "cap_lifecycle_state"
+        }
+      ],
+      "cap_handle": [
+        {
+          "name": "value",
+          "type": "u64"
+        }
+      ],
+      "cap_scope": [
+        {
+          "name": "kind",
+          "type": "cap_scope_kind"
+        },
+        {
+          "name": "scope_id",
+          "type": "u64"
+        }
+      ]
+    },
+    "name": "CapabilityService",
+    "rpcs": [
+      {
+        "name": "Validate",
+        "req": "CapValidateReq",
+        "resp": "CapValidateResp"
+      },
+      {
+        "name": "Create",
+        "req": "CapCreateReq",
+        "resp": "CapCreateResp"
+      },
+      {
+        "name": "Revoke",
+        "req": "CapRevokeReq",
+        "resp": "CapRevokeResp"
+      },
+      {
+        "name": "Transfer",
+        "req": "CapTransferReq",
+        "resp": "CapTransferResp"
+      },
+      {
+        "name": "Inspect",
+        "req": "CapInspectReq",
+        "resp": "CapInspectResp"
+      }
+    ]
+  },
+  "bharat.device.accelmgr.v1": {
+    "enums": {},
+    "id": 15,
+    "messages": {
+      "AdmissionRequest": [
+        {
+          "name": "client_id",
+          "type": "uint32"
+        },
+        {
+          "name": "feature_class",
+          "type": "uint32"
+        },
+        {
+          "name": "requested_qos",
+          "type": "uint32"
+        },
+        {
+          "name": "requires_isolation",
+          "type": "bool"
+        }
+      ],
+      "AdmissionResponse": [
+        {
+          "name": "status",
+          "type": "int32"
+        },
+        {
+          "name": "granted_qos",
+          "type": "uint32"
+        },
+        {
+          "name": "context_id",
+          "type": "uint32"
+        }
+      ],
+      "HealthQuery": [
+        {
+          "name": "feature_class",
+          "type": "uint32"
+        }
+      ],
+      "HealthResponse": [
+        {
+          "name": "state",
+          "type": "uint32"
+        },
+        {
+          "name": "temperature_c",
+          "type": "uint32"
+        },
+        {
+          "name": "utilization_pct",
+          "type": "uint32"
+        }
+      ],
+      "ReleaseRequest": [
+        {
+          "name": "context_id",
+          "type": "uint32"
+        }
+      ],
+      "SafeModeRequest": [
+        {
+          "name": "enable_safe_mode",
+          "type": "bool"
+        },
+        {
+          "name": "reason",
+          "type": "string"
+        }
+      ],
+      "StatusResponse": [
+        {
+          "name": "status",
+          "type": "int32"
+        }
+      ],
+      "ThermalConstraint": [
+        {
+          "name": "feature_class",
+          "type": "uint32"
+        },
+        {
+          "name": "max_power_mw",
+          "type": "uint32"
+        }
+      ]
+    },
+    "name": "bharat.device.accelmgr.v1",
+    "rpcs": [
+      {
+        "name": "RequestAdmission",
+        "req": "AdmissionRequest",
+        "resp": "AdmissionResponse"
+      },
+      {
+        "name": "ReleaseContext",
+        "req": "ReleaseRequest",
+        "resp": "StatusResponse"
+      },
+      {
+        "name": "QueryHealth",
+        "req": "HealthQuery",
+        "resp": "HealthResponse"
+      },
+      {
+        "name": "SetThermalConstraint",
+        "req": "ThermalConstraint",
+        "resp": "StatusResponse"
+      },
+      {
+        "name": "SetSafeMode",
+        "req": "SafeModeRequest",
+        "resp": "StatusResponse"
+      }
+    ]
+  },
+  "bharat.monitor.accel_telemetry.v1": {
+    "enums": {},
+    "id": 16,
+    "messages": {
+      "StatusResponse": [
+        {
+          "name": "status",
+          "type": "int32"
+        }
+      ],
+      "TelemetryQuery": [
+        {
+          "name": "feature_class",
+          "type": "uint32"
+        }
+      ],
+      "TelemetryReport": [
+        {
+          "name": "status",
+          "type": "int32"
+        },
+        {
+          "name": "total_hw_ops",
+          "type": "uint64"
+        },
+        {
+          "name": "total_sw_ops",
+          "type": "uint64"
+        },
+        {
+          "name": "total_faults",
+          "type": "uint64"
+        },
+        {
+          "name": "avg_latency_us",
+          "type": "uint64"
+        }
+      ],
+      "TelemetryUpdate": [
+        {
+          "name": "feature_class",
+          "type": "uint32"
+        },
+        {
+          "name": "backend_selected_count",
+          "type": "uint64"
+        },
+        {
+          "name": "fallback_sw_count",
+          "type": "uint64"
+        },
+        {
+          "name": "throttled_count",
+          "type": "uint64"
+        },
+        {
+          "name": "faults_encountered",
+          "type": "uint64"
+        },
+        {
+          "name": "queue_latency_us",
+          "type": "uint64"
+        },
+        {
+          "name": "bytes_mapped",
+          "type": "uint64"
+        },
+        {
+          "name": "dma_sync_failures",
+          "type": "uint64"
+        }
+      ]
+    },
+    "name": "bharat.monitor.accel_telemetry.v1",
+    "rpcs": [
+      {
+        "name": "PushTelemetry",
+        "req": "TelemetryUpdate",
+        "resp": "StatusResponse"
+      },
+      {
+        "name": "QueryTelemetry",
+        "req": "TelemetryQuery",
+        "resp": "TelemetryReport"
+      }
+    ]
+  },
+  "bharat.monitor.v1": {
+    "enums": {},
+    "id": 1,
+    "messages": {
+      "HeartbeatReq": [
+        {
+          "name": "node_id",
+          "type": "u32"
+        },
+        {
+          "name": "monotonic_time_ns",
+          "type": "u64"
+        },
+        {
+          "name": "health_flags",
+          "type": "u32"
+        }
+      ],
+      "HeartbeatResp": [
+        {
+          "name": "accepted",
+          "type": "u32"
+        }
+      ],
+      "NodeJoinReq": [
+        {
+          "name": "protocol_version",
+          "type": "u32"
+        },
+        {
+          "name": "arch",
+          "type": "u32"
+        },
+        {
+          "name": "boot_nonce",
+          "type": "u64"
+        },
+        {
+          "name": "node_name",
+          "type": "string<64>"
+        }
+      ],
+      "NodeJoinResp": [
+        {
+          "name": "accepted",
+          "type": "u32"
+        },
+        {
+          "name": "assigned_node_id",
+          "type": "u32"
+        },
+        {
+          "name": "session_nonce",
+          "type": "u64"
+        }
+      ],
+      "TlbInvalidateReq": [
+        {
+          "name": "aspace_id",
+          "type": "u64"
+        },
+        {
+          "name": "va_start",
+          "type": "u64"
+        },
+        {
+          "name": "length",
+          "type": "u64"
+        },
+        {
+          "name": "type",
+          "type": "u32"
+        },
+        {
+          "name": "generation",
+          "type": "u32"
+        }
+      ],
+      "TlbInvalidateResp": [
+        {
+          "name": "status",
+          "type": "u32"
+        }
+      ]
+    },
+    "name": "bharat.monitor.v1",
+    "rpcs": [
+      {
+        "name": "Heartbeat",
+        "req": "HeartbeatReq",
+        "resp": "HeartbeatResp"
+      },
+      {
+        "name": "NodeJoin",
+        "req": "NodeJoinReq",
+        "resp": "NodeJoinResp"
+      },
+      {
+        "name": "TlbInvalidate",
+        "req": "TlbInvalidateReq",
+        "resp": "TlbInvalidateResp"
+      }
+    ]
+  },
+  "bharat.telemetry.v1": {
+    "enums": {},
+    "id": 10,
+    "messages": {
+      "ListCountersReq": [
+        {
+          "name": "filter_source_id",
+          "type": "u32"
+        }
+      ],
+      "ListCountersResp": [
+        {
+          "name": "status",
+          "type": "u32"
+        },
+        {
+          "name": "num_counters",
+          "type": "u32"
+        }
+      ],
+      "ReadCounterSnapshotReq": [
+        {
+          "name": "counter_id",
+          "type": "u32"
+        }
+      ],
+      "ReadCounterSnapshotResp": [
+        {
+          "name": "status",
+          "type": "u32"
+        },
+        {
+          "name": "value",
+          "type": "u64"
+        },
+        {
+          "name": "timestamp_ns",
+          "type": "u64"
+        }
+      ],
+      "SubscribeReq": [
+        {
+          "name": "client_id",
+          "type": "u32"
+        },
+        {
+          "name": "event_kind_mask",
+          "type": "u32"
+        },
+        {
+          "name": "min_severity",
+          "type": "u32"
+        },
+        {
+          "name": "source_id",
+          "type": "u32"
+        }
+      ],
+      "SubscribeResp": [
+        {
+          "name": "subscription_id",
+          "type": "u32"
+        },
+        {
+          "name": "status",
+          "type": "u32"
+        }
+      ],
+      "UnsubscribeReq": [
+        {
+          "name": "subscription_id",
+          "type": "u32"
+        }
+      ],
+      "UnsubscribeResp": [
+        {
+          "name": "status",
+          "type": "u32"
+        }
+      ]
+    },
+    "name": "bharat.telemetry.v1",
+    "rpcs": [
+      {
+        "name": "Subscribe",
+        "req": "SubscribeReq",
+        "resp": "SubscribeResp"
+      },
+      {
+        "name": "Unsubscribe",
+        "req": "UnsubscribeReq",
+        "resp": "UnsubscribeResp"
+      },
+      {
+        "name": "ListCounters",
+        "req": "ListCountersReq",
+        "resp": "ListCountersResp"
+      },
+      {
+        "name": "ReadCounterSnapshot",
+        "req": "ReadCounterSnapshotReq",
+        "resp": "ReadCounterSnapshotResp"
+      }
+    ]
+  }
+}

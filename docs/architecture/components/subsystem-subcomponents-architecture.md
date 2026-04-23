@@ -1,61 +1,52 @@
-# Subsystem Subcomponents Architecture (Status + Roadmap Mapping)
+# Subsystem Subcomponents Architecture (Repository-Aligned Status + Roadmap)
 
-This document tracks subsystem-level decomposition, status, and roadmap alignment.
+This document tracks subsystem-level decomposition against the current repository layout (`personalities/`, `stacks/`, and kernel/service subsystem touchpoints).
 
-## Mermaid (subsystem view)
+## Repository-aligned subsystem view
 
 ```mermaid
 %%{init: {'theme':'base','themeVariables':{'primaryColor':'#003049','primaryTextColor':'#ffffff','lineColor':'#fcbf49','fontFamily':'Inter'}}}%%
 graph LR
-    S[Subsystem Layer] --> LNX[Linux Personality]
-    S --> AND[Android Personality]
-    S --> WIN[Windows Compat]
-    S --> AUTO[Automotive]
-    S --> NETC[Network Contracts]
-    S --> SKB[System Knowledge Base]
+    S[Subsystem Layer] --> PERS[personalities]
+    S --> STACKS[stacks]
+    S --> CONTRACTS[uapi + idl + contracts]
 
-    classDef partial fill:#fcbf49,stroke:#d68c00,color:#111;
-    classDef scaffold fill:#d62828,stroke:#9b1c1c,color:#fff;
+    PERS --> LINUX[compat/linux]
+    PERS --> ANDROID[compat/android]
+    PERS --> WINDOWS[compat/windows]
+    PERS --> AUTO[domain/automotive]
+    PERS --> NATIVE[native]
 
-    LNX:::partial
-    AND:::partial
-    WIN:::partial
-    AUTO:::partial
-    NETC:::partial
-    SKB:::partial
+    STACKS --> NET[stacks/network]
+    STACKS --> CAN[stacks/can]
+    STACKS --> UI[stacks/ui]
+    STACKS --> STORAGE[stacks/storage]
 ```
 
-## PlantUML (subsystem packaging)
+## Alignment with `folder_structure.md`
 
-```plantuml
-@startuml
-!theme plain
-skinparam backgroundColor #111827
-skinparam packageBackgroundColor #1f2937
-skinparam packageBorderColor #60a5fa
-skinparam defaultTextAlignment center
-
-package "Subsystem Layer" {
-  [Linux Personality]
-  [Android Personality]
-  [Windows Compatibility]
-  [Automotive Module]
-  [Network Contracts]
-  [SKB]
-}
-
-[Linux Personality] --> [Network Contracts]
-[Android Personality] --> [Network Contracts]
-@enduml
-```
+| Target subsystem area | Current paths present | Alignment | Notes |
+| --- | --- | --- | --- |
+| `personalities/compat/*` | linux/android/windows present | Strong | Matches structure well. |
+| `personalities/domain/*` | automotive present | Strong | Domain layering exists. |
+| `personalities/common` | present | Strong | Shared utility bucket exists. |
+| `stacks/*` composed subsystems | network/can/ui/storage present | Partial | Good start; ownership boundaries to services/drivers need tighter contracts. |
+| Explicit contract boundary (`uapi/`, `idl/`) | both present | Partial | Needs stronger usage enforcement from implementations. |
 
 ## Subsystem status matrix
 
-| Subcomponent | Scope | Current status | Done | To do | Roadmap linkage |
-| --- | --- | --- | --- | --- | --- |
-| Linux personality layer | Syscall/personality adaptation | Partial | Contract and compatibility scaffolding exists. | Syscall translation completeness and runtime conformance tests. | Phase 4 |
-| Android personality layer | Android compatibility domain | Partial | Core module and architecture docs exist. | Binder/ashmem/runtime coverage expansion. | Phase 4 |
-| Windows compatibility shims | API compatibility helpers | Partial | Compatibility shim structure is present. | Broader API depth and behavioral tests. | Phase 4 |
-| Automotive subsystem | RT/automotive profile hooks | Partial | Module and profile intent exists. | Deterministic fault containment and RT validation suites. | Phase 2 |
-| Network contracts (`stacks/network`) | Shared control/data contracts | Partial | Types/uAPI/contract headers available. | Runtime enforcement and policy integration depth. | Phase 1, Phase 3 |
-| SKB and topology surfaces | Platform topology and routing hints | Partial | Base SKB direction exists in subsystem layer. | Better topology ingestion and runtime policy feedback loop. | Phase 1 |
+| Subcomponent | Current status | Evidence in tree | Next structural action | Roadmap linkage |
+| --- | --- | --- | --- | --- |
+| Linux personality | Partial | `personalities/compat/linux` + `kernel/src/subsystem/linux` | Reduce cross-layer duplication and centralize syscall adaptation ownership. | Phase 4 |
+| Android personality | Partial | `personalities/compat/android` | Expand binder/runtime compatibility and ABI tests. | Phase 4 |
+| Windows compatibility | Partial | `personalities/compat/windows` | Extend API coverage and behavioral parity tests. | Phase 4 |
+| Automotive domain | Partial | `personalities/domain/automotive` | Align with CAN + actuator service flows and deterministic fault policy. | Phase 2 |
+| Stack composition layer | Partial | `stacks/network`, `stacks/can`, `stacks/ui`, `stacks/storage` | Clarify which APIs are stack-internal vs exposed through `uapi/idl`. | Phase 1, Phase 3 |
+| Contract surfaces | Partial | `uapi/*`, `idl/{services,monitor,runtime}` | Enforce versioned interfaces in CI and prevent ad hoc private structs. | Phase 1 |
+
+## Coding tasks identified
+
+1. **Personality/subsystem deduplication:** reconcile linux subsystem hooks between kernel and `personalities/compat/linux`.
+2. **Stack contract hardening:** add versioned IDL definitions for stack-facing interfaces currently expressed as internal headers.
+3. **Subsystem ownership matrix:** document and enforce for each domain (kernel/services/stacks/personalities) to stop feature overlap.
+4. **Compatibility test expansion:** add conformance suites for android/windows compatibility layers.

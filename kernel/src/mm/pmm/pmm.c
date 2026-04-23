@@ -311,17 +311,26 @@ static void *pmm_alloc_pages_order_colored(int order, uint32_t numa_node,
 }
 
 #if defined(BHARAT_ENABLE_MEMORY_STATS) && BHARAT_ENABLE_MEMORY_STATS == 1
-static uint64_t g_alloc_class_stats[8][2]; // [class][0=allocs, 1=failures]
-#define PMM_STATS_RECORD_ALLOC(cls) do { if ((cls) < 8) __atomic_fetch_add(&g_alloc_class_stats[(cls)][0], 1, __ATOMIC_RELAXED); } while(0)
-#define PMM_STATS_RECORD_FAIL(cls) do { if ((cls) < 8) __atomic_fetch_add(&g_alloc_class_stats[(cls)][1], 1, __ATOMIC_RELAXED); } while(0)
+static uint64_t g_alloc_class_stats[MEM_CLASS_MAX][2]; // [class][0=allocs, 1=failures]
+#define PMM_STATS_RECORD_ALLOC(cls) do { if ((uint32_t)(cls) < MEM_CLASS_MAX) __atomic_fetch_add(&g_alloc_class_stats[(uint32_t)(cls)][0], 1, __ATOMIC_RELAXED); } while(0)
+#define PMM_STATS_RECORD_FAIL(cls) do { if ((uint32_t)(cls) < MEM_CLASS_MAX) __atomic_fetch_add(&g_alloc_class_stats[(uint32_t)(cls)][1], 1, __ATOMIC_RELAXED); } while(0)
 #else
 #define PMM_STATS_RECORD_ALLOC(cls) do { } while(0)
 #define PMM_STATS_RECORD_FAIL(cls) do { } while(0)
 #endif
 
+#include "mm/mem_model.h"
+#include "kernel/status.h"
+
 int pmm_alloc_pages_ex(uint32_t order, pmm_zone_t zone, alloc_class_t cls, uint32_t alloc_flags, pmm_block_t *out_block) {
   if (!out_block) return -1;
   if (order >= MAX_ORDER) return -1;
+
+  /* Verify class admission relative to profile/memory-model */
+  if (!mem_class_is_supported(cls, mem_model_get_current())) {
+      PMM_STATS_RECORD_FAIL(cls);
+      return K_ERR_PROFILE_RESTRICTED;
+  }
 
   mm_color_config_t no_color_config = {.policy = MM_COLOR_POLICY_NONE, .domain = MM_DOMAIN_DEFAULT, .color_mask = 0xFFFFFFFF};
   phys_addr_t phys = pmm_alloc_pages_colored_in_zone(order, NUMA_NODE_ANY, PAGE_FLAG_KERNEL, &no_color_config, zone);
@@ -338,6 +347,7 @@ int pmm_alloc_pages_ex(uint32_t order, pmm_zone_t zone, alloc_class_t cls, uint3
 
   p->state = PMM_PAGE_STATE_ALLOCATED;
   p->pin_count = (alloc_flags & PMM_ALLOC_PINNED) ? 1 : 0;
+  p->owner_class = (uint8_t)cls;
 
   // Set block
   out_block->phys_addr = phys;
@@ -622,7 +632,7 @@ static phys_addr_t pmm_alloc_pages_colored_in_zone(int order, uint32_t preferred
   }
 
   // Still OOM, invoke AI governor action to kill current task
-  kthread_t *current = sched_current_thread();
+  bh_thread_t *current = sched_current_thread();
   if (current) {
     ai_suggestion_t suggestion;
     suggestion.action = AI_ACTION_KILL_TASK;
@@ -636,7 +646,7 @@ static phys_addr_t pmm_alloc_pages_colored_in_zone(int order, uint32_t preferred
 
 phys_addr_t mm_alloc_pages_order(int order, uint32_t preferred_numa_node,
                                  uint32_t flags) {
-  kthread_t *current = sched_current_thread();
+  bh_thread_t *current = sched_current_thread();
   mm_color_config_t *color_config = NULL;
   if (current) {
     color_config = &current->mm_color_policy;
@@ -973,7 +983,7 @@ void mm_free_page(phys_addr_t page_addr) {
 
                   if (drain_page) {
                       // Avoid infinite loop: clear owner_core_id so mm_free_page ignores local cache for these pages
-                      drain_page->owner_core_id = 0xFFFFFFFF;
+
                       drain_page->ref_count = 1; // restore dropping reference semantics for mm_free_page
                       drain_page->state = PMM_PAGE_STATE_ALLOCATED; // avoid double free check on re-entry
                       mm_free_page(drain_phys);
@@ -1123,19 +1133,19 @@ void pmm_free_page(void *page) {
 }
 
 // Refcount Helpers
-void page_get(struct page *page) {
+void page_get(page_t *page) {
     if (page) {
         atomic16_fetch_and_add(&page->ref_count, 1U);
     }
 }
 
-void page_put(struct page *page) {
+void page_put(page_t *page) {
     if (page) {
         pmm_ref_put(page_to_phys((page_t*)page));
     }
 }
 
-bool page_try_get(struct page *page) {
+bool page_try_get(page_t *page) {
     if (!page) return false;
     uint16_t old = __atomic_load_n(&page->ref_count, __ATOMIC_ACQUIRE);
     while (old > 0) {

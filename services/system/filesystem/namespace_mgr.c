@@ -42,9 +42,13 @@ vfs_node_t* vfs_namespace_lookup(vfs_namespace_t* ns, const char* path, capabili
 }
 
 // from kernel/src/fs/path.c
-#include "fs/path.h"
 int vfs_validate_path_rights(const char* path, uint32_t required_rights, capability_t* cap) {
-    (void)required_rights;
     if (!path || !cap) return -1;
-    return -1;
+    // In Phase 2, we just do a basic capability verification hook
+    if (cap->capability_id != 0) {
+        if ((cap->rights_mask & required_rights) != required_rights) {
+            return -2;
+        }
+    }
+    return 0;
 }

@@ -1,83 +1,55 @@
-# Kernel Subcomponents Architecture (Status + Roadmap Mapping)
+# Kernel Subcomponents Architecture (Repository-Aligned Status + Roadmap)
 
-This document decomposes kernel subcomponents, architecture coverage, implementation status, and roadmap alignment.
+This document decomposes kernel subcomponents according to the **current `kernel/src` tree** and maps closure tasks.
 
-## Themed Mermaid view
+## Repository-aligned kernel map
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#1d3557','primaryTextColor':'#ffffff','primaryBorderColor':'#457b9d','lineColor':'#a8dadc','secondaryColor':'#2a9d8f','tertiaryColor':'#264653','fontFamily':'Inter'}}}%%
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#1d3557','primaryTextColor':'#ffffff','lineColor':'#a8dadc','fontFamily':'Inter'}}}%%
 graph TD
-    K[Kernel Core] --> MM[Memory Management]
-    K --> IPC[IPC + URPC]
-    K --> CAP[Capability System]
-    K --> SCH[Scheduler]
-    K --> HAL[HAL Abstraction]
+    K[kernel/src] --> CORE[core]
+    K --> MM[mm]
+    K --> IPC[ipc + urpc]
+    K --> CAP[cap]
+    K --> SCHED[sched]
+    K --> TRAP[trap + sys]
+    K --> SUBSYS[subsystem]
+    K --> DEVICE[device + display + fs + console]
+    K --> PROFILE[profile/*]
 
-    HAL --> X86[x86_64]
-    HAL --> ARM[arm64]
-    HAL --> RV[riscv64]
+    MM --> PMM[pmm]
+    MM --> PT[pt]
+    MM --> TLB[tlb]
+    MM --> IOMMU[iommu]
+    MM --> DMA[dma]
 
-    classDef done fill:#2a9d8f,stroke:#1f7a68,color:#fff;
-    classDef partial fill:#e9c46a,stroke:#b5892e,color:#000;
-    classDef todo fill:#e76f51,stroke:#b24d35,color:#fff;
-
-    MM:::partial
-    IPC:::partial
-    CAP:::partial
-    SCH:::partial
-    HAL:::partial
+    SUBSYS --> LINUX[linux]
 ```
 
-## Themed PlantUML view
+## Alignment with `folder_structure.md`
 
-```plantuml
-@startuml
-!theme amiga
-skinparam backgroundColor #0f172a
-skinparam ArrowColor #93c5fd
-skinparam defaultTextAlignment center
-skinparam packageStyle rectangle
+| Target kernel intent | Current paths present | Alignment | Notes |
+| --- | --- | --- | --- |
+| Minimal mechanism-focused core | `core`, `sched`, `mm`, `ipc`, `cap`, `trap`, `sys` | Strong | Core mechanisms are clearly represented. |
+| Keep policy out of kernel | `kernel/src/profile/*`, `kernel/src/subsystem/linux` | Partial | Some profile/personality-like concerns still reside under kernel tree. |
+| Capability + IPC primitives | `cap`, `ipc`, `urpc` | Strong | Matches architecture direction. |
+| Memory authority and isolation | `mm/{vm,pt,pmm,dma,iommu,tlb}` | Strong | Good decomposition for MM evolution. |
+| Hardware abstraction usage | via `hal/*` and arch paths | Partial | HAL tree still includes arch-specific directories, conflicting with strict abstraction guidance. |
 
-package "Kernel Core" {
-  [Memory Mgmt]
-  [IPC/URPC]
-  [Capability System]
-  [Scheduler]
-  [HAL]
-}
+## Kernel status matrix
 
-[HAL] --> [x86_64 path]
-[HAL] --> [arm64 path]
-[HAL] --> [riscv64 path]
+| Subcomponent | Current status | Evidence in tree | Next structural action | Roadmap linkage |
+| --- | --- | --- | --- | --- |
+| Memory management | Partial | `kernel/src/mm/*` broad coverage | Complete huge-page lifecycle, TLB shootdown protocol proof tests, IOMMU authority boundaries. | Phase 1, Phase 3 |
+| IPC + URPC | Partial | `kernel/src/ipc`, `kernel/src/urpc` | Unify backpressure/error contracts and cross-node routing semantics. | Phase 1, Phase 3 |
+| Capability core | Partial | `kernel/src/cap` | Add formal derivation/revocation invariant checks in host tests. | Phase 1, Phase 4 |
+| Scheduler | Partial | `kernel/src/sched` | Improve admission control + deterministic RT isolation proofs. | Phase 1, Phase 2 |
+| Trap/syscall path | Partial | `kernel/src/trap`, `kernel/src/sys` | Tighten ABI surface to `uapi/` and remove internal header leakage. | Phase 1 |
+| Subsystem/personality hooks | Partial | `kernel/src/subsystem/linux`, `kernel/src/profile/*` | Move policy-heavy profile logic toward `services/` or `personalities/` where possible. | Phase 2, Phase 4 |
 
-[Kernel Core] -[hidden]- [HAL]
-@enduml
-```
+## Coding tasks identified
 
-## Subcomponent status and architecture detail
-
-| Subcomponent | x86_64 | arm64 | riscv64 | Current status | What is done | What is next | Roadmap linkage |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| Memory management (PMM/VMM + MMU ops) | Present | Present | Present | Partial | Baseline page-table path and MMU interfaces exist. | TLB shootdown ack semantics, huge-page lifecycle, heap hardening. | Phase 1, Phase 3 |
-| IPC/URPC | Present | Present | Present | Partial | Endpoint + URPC primitives in baseline direction. | Backpressure/failure handling, cross-node transport. | Phase 1, Phase 3 |
-| Capability core | Present | Present | Present | Partial | Grant/delegate/revoke model direction in place. | Temporal/expiry controls, stronger policy proofs/audits. | Phase 1, Phase 4 |
-| Scheduler + RT hooks | Present | Present | Present | Partial | Per-core scheduling direction and policy hooks. | Admission control depth (EDF/RMS), bounded AI influence. | Phase 1, Phase 2 |
-| HAL contracts | Maturest | Active | Active | Partial | Multi-arch abstraction and bring-up paths exist. | Arch parity closure, validation depth, stronger platform tests. | Phase 1, Phase 3 |
-| Interrupt controller submodule (irq-core + irq-domain + irq-chip) | Present (APIC/IOAPIC) | Present (GICv3 path) | Present (PLIC path) | Baseline | Generic IRQ API and unified `hal_interrupt_handle_trap_irq` flow exist across all architectures. | Non-breaking unification to one claim/dispatch/eoi flow completed. Next: arm32 GICv2 baseline + riscv32 PLIC baseline, then ISA-extension/accelerator features behind capability probes. | Phase 3, Phase 4 |
-
-## Implementation rule
-
-- Keep architecture docs forward-looking.
-- Keep implementation claims conservative and synchronized with `docs/current-code-status.md` and `ROADMAP.md`.
-
-## Core-kernel interrupt submodule evolution (compatibility-first)
-
-The interrupt controller submodule is treated as a core-kernel architecture concern and follows **ADR-012** for migration rules.
-
-- Keep current x86_64, arm64, and riscv64 behavior stable while refactoring (wrappers/adapters allowed during transition).
-- Move all architectures to one internal path: `claim -> domain translate -> dispatch -> eoi`.
-- Use `irq_domain` hierarchy as the sole hardware-to-virq translation model.
-- Complete Tier-2 parity tracks: arm32 (GICv2 first) and riscv32 (PLIC first) without changing Tier-1 behavior.
-- Gate optional ISA-extension and accelerator fast paths using runtime capability probing with fallback preserved.
-
-Reference: `docs/adr/ADR-012-interrupt-controller-evolution.md`.
+1. **Kernel profile extraction audit:** evaluate each `kernel/src/profile/*` module for migration to `services/` (policy) vs retention in kernel (mechanism).
+2. **Subsystem boundary cleanup:** define strict interfaces between `kernel/src/subsystem/linux` and `personalities/compat/linux` to avoid duplication.
+3. **Capability correctness tests:** expand host-side invariant suites for grant/delegate/revoke edge cases.
+4. **MM + IOMMU contract tests:** add integration tests validating DMA map/unmap, revoke ordering, and TLB synchronization.

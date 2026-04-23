@@ -1,6 +1,7 @@
 #ifndef CRYPTO_SERVICE_H
 #define CRYPTO_SERVICE_H
 
+#include <stddef.h>
 #include "crypto/crypto_uapi.h"
 
 /* Protocol and validation */

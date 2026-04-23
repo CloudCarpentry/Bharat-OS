@@ -1,27 +1,58 @@
 #include "boot/boot_info.h"
 #include "bharat/display/display_caps.h"
 #include "bharat/display/boot_video.h"
+#include "hal/hal.h"
 #include "boot/multiboot2.h"
+#include "kernel.h"
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
 
-#define MULTIBOOT_TAG_TYPE_FRAMEBUFFER 8
-
-typedef struct {
-    uint32_t type;
-    uint32_t size;
-    uint64_t framebuffer_addr;
-    uint32_t framebuffer_pitch;
-    uint32_t framebuffer_width;
-    uint32_t framebuffer_height;
-    uint8_t  framebuffer_bpp;
-    uint8_t  framebuffer_type;
-    uint16_t reserved;
-} multiboot_tag_framebuffer_t;
-
 static boot_video_handoff_t g_boot_video = {0};
 static bool g_boot_video_parsed = false;
+
+static uint32_t pci_read_config_32(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset) {
+    uint32_t address = (uint32_t)((((uint32_t)bus) << 16) | (((uint32_t)slot) << 11) |
+                      (((uint32_t)func) << 8) | (offset & 0xfc) | ((uint32_t)0x80000000));
+    __asm__ volatile("outl %0, %%dx" : : "a"(address), "d"((uint16_t)0xCF8));
+    uint32_t tmp;
+    __asm__ volatile("inl %%dx, %0" : "=a"(tmp) : "d"((uint16_t)0xCFC));
+    return tmp;
+}
+
+void x86_64_scan_pci_for_vga(boot_video_handoff_t *out_handoff) {
+    for (int bus = 0; bus < 8; bus++) {
+        for (int slot = 0; slot < 32; slot++) {
+            uint32_t id = pci_read_config_32(bus, slot, 0, 0);
+            if (id == 0x11111234 || id == 0xbeef80ee) { // QEMU/Bochs
+                uint32_t bar0 = pci_read_config_32(bus, slot, 0, 0x10);
+                if (bar0 & 0x1) continue; // Not memory BAR
+                
+                hal_serial_write("PCI: Found VGA framebuffer via BAR0 scan.\n");
+                
+                boot_video_handoff_t h = {0};
+                h.valid = true;
+                h.path = BOOT_VIDEO_PATH_FIRMWARE_FB;
+                h.phys_addr = bar0 & 0xFFFFFFF0;
+                h.virt_addr = h.phys_addr; // Default to identity before remapped
+                h.width = 1024;
+                h.height = 768;
+                h.stride_bytes = 1024 * 4;
+                h.size = h.height * h.stride_bytes;
+                h.format = PIXEL_FORMAT_ARGB8888;
+                h.source = BOOT_VIDEO_SOURCE_UNKNOWN;
+                
+                if (out_handoff) {
+                    *out_handoff = h;
+                } else {
+                    g_boot_video = h;
+                    g_boot_video_parsed = true;
+                }
+                return;
+            }
+        }
+    }
+}
 
 // Call this from kernel_main / boot discovery to capture the framebuffer tag
 void x86_64_parse_multiboot_framebuffer(multiboot_information_t *mb_info) {
@@ -64,37 +95,7 @@ void x86_64_parse_multiboot_framebuffer(multiboot_information_t *mb_info) {
 }
 
 // Parse Multiboot 1 fallback
-typedef struct {
-    uint32_t flags;
-    uint32_t mem_lower;
-    uint32_t mem_upper;
-    uint32_t boot_device;
-    uint32_t cmdline;
-    uint32_t mods_count;
-    uint32_t mods_addr;
-    uint32_t syms[4];
-    uint32_t mmap_length;
-    uint32_t mmap_addr;
-    uint32_t drives_length;
-    uint32_t drives_addr;
-    uint32_t config_table;
-    uint32_t boot_loader_name;
-    uint32_t apm_table;
-    uint32_t vbe_control_info;
-    uint32_t vbe_mode_info;
-    uint16_t vbe_mode;
-    uint16_t vbe_interface_seg;
-    uint16_t vbe_interface_off;
-    uint16_t vbe_interface_len;
-
-    uint64_t framebuffer_addr;
-    uint32_t framebuffer_pitch;
-    uint32_t framebuffer_width;
-    uint32_t framebuffer_height;
-    uint8_t framebuffer_bpp;
-    uint8_t framebuffer_type;
-    uint8_t color_info[6];
-} multiboot1_info_t;
+#include "boot/multiboot.h"
 
 void x86_64_parse_multiboot1_framebuffer(void *mb_info) {
     if (!mb_info) return;
@@ -129,6 +130,15 @@ int machine_probe_boot_video(display_probe_result_t *out, boot_video_handoff_t *
 
     if (g_boot_video_parsed && g_boot_video.valid) {
         *video = g_boot_video;
+    } else {
+        // Fallback: try PCI scan if no bootloader info found
+        x86_64_scan_pci_for_vga(NULL);
+        if (g_boot_video_parsed && g_boot_video.valid) {
+            *video = g_boot_video;
+        }
+    }
+
+    if (g_boot_video.valid) {
 
         out->usable = true;
         out->path = BOOT_VIDEO_PATH_FIRMWARE_FB;

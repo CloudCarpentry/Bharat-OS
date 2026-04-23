@@ -8,6 +8,7 @@ int main(int argc, char** argv) {
 
     register_test("pmm_stress", pmm_stress_test_run);
     register_test("vmm_stress", vmm_stress_test_run);
+    register_test("net_can_contract", net_can_contract_test_run);
 
     run_all_tests();
 

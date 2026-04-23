@@ -26,7 +26,7 @@ SECTIONS
     }
 
     /* ── ELF Notes (PVH entry point info) ───────────────────────────── */
-    .note ALIGN(4) :
+    .note ALIGN(8) :
     {
         KEEP(*(.note.*))
     }

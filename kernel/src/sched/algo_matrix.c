@@ -14,16 +14,16 @@ sched_algo_ops_t  g_sched_ops;
 search_algo_ops_t g_search_ops;
 
 /* Fallbacks to be assigned in their respective modules */
-extern struct kthread* sched_pick_next_ready_l0(uint32_t core_id);
-extern void sched_enqueue_task_l0(struct kthread* thread, uint32_t core_id);
-extern void sched_dequeue_task_l0(struct kthread* thread, uint32_t core_id);
+extern struct bh_thread* sched_pick_next_ready_l0(uint32_t core_id);
+extern void sched_enqueue_task_l0(struct bh_thread* thread, uint32_t core_id);
+extern void sched_dequeue_task_l0(struct bh_thread* thread, uint32_t core_id);
 
 extern int device_lookup_mmio_window_l0(uint32_t class_id, uint32_t device_id, uint32_t window_id, void* out_window);
 
 /* Optimized Level 1 (SMP/per-CPU) implementations */
-extern struct kthread* sched_pick_next_ready_l1(uint32_t core_id);
-extern void sched_enqueue_task_l1(struct kthread* thread, uint32_t core_id);
-extern void sched_dequeue_task_l1(struct kthread* thread, uint32_t core_id);
+extern struct bh_thread* sched_pick_next_ready_l1(uint32_t core_id);
+extern void sched_enqueue_task_l1(struct bh_thread* thread, uint32_t core_id);
+extern void sched_dequeue_task_l1(struct bh_thread* thread, uint32_t core_id);
 
 extern int device_lookup_mmio_window_l1(uint32_t class_id, uint32_t device_id, uint32_t window_id, void* out_window);
 

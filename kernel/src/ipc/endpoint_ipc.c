@@ -138,7 +138,7 @@ int ipc_endpoint_send(capability_table_t* table, uint32_t send_cap, const void* 
             return IPC_ERR_WOULD_BLOCK;
         }
 
-        kthread_t* cur = sched_current_thread();
+        bh_thread_t* cur = sched_current_thread();
         if (!cur) {
             spin_unlock(&ep->lock);
             return IPC_ERR_WOULD_BLOCK;
@@ -188,7 +188,7 @@ int ipc_endpoint_send(capability_table_t* table, uint32_t send_cap, const void* 
 
     ep->has_msg = 1U;
 
-    kthread_t* recv = sched_wait_queue_dequeue(&ep->receivers);
+    bh_thread_t* recv = sched_wait_queue_dequeue(&ep->receivers);
     spin_unlock(&ep->lock);
 
     if (recv != NULL) {
@@ -231,7 +231,7 @@ int ipc_endpoint_receive(capability_table_t* table, uint32_t recv_cap, void* out
             return IPC_ERR_WOULD_BLOCK;
         }
 
-        kthread_t* cur = sched_current_thread();
+        bh_thread_t* cur = sched_current_thread();
         if (!cur) {
             spin_unlock(&ep->lock);
             return IPC_ERR_WOULD_BLOCK;
@@ -311,7 +311,7 @@ int ipc_endpoint_receive(capability_table_t* table, uint32_t recv_cap, void* out
     ep->cap_transfer_src_table = NULL;
     ep->has_msg = 0U;
 
-    kthread_t* sender = sched_wait_queue_dequeue(&ep->senders);
+    bh_thread_t* sender = sched_wait_queue_dequeue(&ep->senders);
     spin_unlock(&ep->lock);
 
     if (sender != NULL) {

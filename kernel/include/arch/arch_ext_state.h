@@ -5,7 +5,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-struct kthread;
+struct bh_thread;
 
 typedef struct arch_ext_state arch_ext_state_t;
 
@@ -35,17 +35,17 @@ void arch_ext_state_boot_init(void);
 const arch_ext_state_desc_t *arch_ext_state_desc(void);
 bool arch_ext_state_enabled(void);
 
-int arch_ext_state_thread_init(struct kthread *t);
-void arch_ext_state_thread_destroy(struct kthread *t);
+int arch_ext_state_thread_init(struct bh_thread *t);
+void arch_ext_state_thread_destroy(struct bh_thread *t);
 
-void arch_ext_state_save(struct kthread *t);
-void arch_ext_state_restore(struct kthread *t);
+void arch_ext_state_save(struct bh_thread *t);
+void arch_ext_state_restore(struct bh_thread *t);
 
 void arch_ext_state_context_switch_out(void *prev_ctx);
 void arch_ext_state_context_switch_in(void *next_ctx);
 
 /* called from trap path when FP/SIMD use traps */
-bool arch_ext_state_handle_fault(struct kthread *t);
+bool arch_ext_state_handle_fault(struct bh_thread *t);
 
 void arch_kernel_fpu_begin(void);
 void arch_kernel_fpu_end(void);

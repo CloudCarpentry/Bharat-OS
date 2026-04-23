@@ -22,6 +22,17 @@ BHARAT_REGISTER_COMPONENT(
 #include <bharat/ipc/ipc.h>
 
 #include <bharat/runtime/freestanding_string.h>
+#include <bharat/syscalls.h>
+
+// Static service state
+static bharat_ipc_endpoint_t g_netmgr_endpoint = BHARAT_CAP_INVALID_HANDLE;
+static uint32_t g_health_ticks = 0;
+
+static int netmgr_bind_endpoint(void) {
+    // TODO(PR3.1-RUNTIME): Wire this to the real namesvc/registry once the API is available.
+    // For now, this cleanly returns a startup failure instead of hiding behind a mock.
+    return -1; // Missing registry API
+}
 
 static void service_poll_ipc(void) {
     bharat_ipc_msg_header_t hdr;
@@ -32,12 +43,8 @@ static void service_poll_ipc(void) {
     memset(&req, 0, sizeof(req));
     memset(&res, 0, sizeof(res));
 
-    // MOCK endpoint for netmgr itself. In a real system, the capability handle
-    // is obtained during registration or system init.
-    bharat_ipc_endpoint_t my_endpoint = 2;
-
     // Non-blocking or blocking receive; stubs might just return an error if no message.
-    int ret = bharat_ipc_recv(my_endpoint, &hdr, &req, sizeof(req));
+    int ret = bharat_ipc_recv(g_netmgr_endpoint, &hdr, &req, sizeof(req));
     if (ret == 0) {
         netmgr_ipc_handle_request(&hdr, &req, &res);
 
@@ -49,11 +56,15 @@ static void service_poll_ipc(void) {
             rep_hdr.payload_size = sizeof(res);
             bharat_ipc_send(hdr.capability_transfer, &rep_hdr, &res);
         }
+    } else {
+        // Yield if no message received, until we have a real blocking wait/poll.
+        bharat_sched_yield();
     }
 }
 
 static void service_run_timers(void) {
     // Process timer and deadline events (e.g. ARP timeouts, health check intervals)
+    g_health_ticks++;
 }
 
 static void service_handle_control_events(void) {
@@ -70,17 +81,17 @@ void netmgr_event_loop(void) {
         service_run_timers();
         service_handle_control_events();
         service_run_deferred_work();
-
-        // In the stub environment, break to avoid 100% CPU usage
-        // due to non-blocking stubs. In a real environment, we would
-        // use an IPC poll/wait or a yield.
-#ifdef BHARAT_PERSONALITY_NONE
-        break; // For compilation/stub execution
-#endif
     }
 }
 
 int main(void) {
+    if (netmgr_bind_endpoint() != 0) {
+        // Log fatal exit reason once before shutdown
+        // TODO(PR3.1-RUNTIME): Replace with proper service logger when available
+        // printf("netmgr: FATAL - failed to bind endpoint\n");
+        return -1;
+    }
+
     netmgr_ipc_dispatch_init();
     netmgr_event_loop();
     return 0;

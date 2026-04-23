@@ -1,85 +1,70 @@
-# Services Subcomponents Architecture (Status + Roadmap Mapping)
+# Services Subcomponents Architecture (Repository-Aligned Status + Roadmap)
 
-This document maps service domains to their current implementation maturity and roadmap closure path.
+This document maps the service layer to the **current repository structure** and highlights consolidation work needed to align with `docs/architecture/folder_structure.md`.
 
-## Mermaid (service domain map)
+## Current repository-aligned service map
 
 ```mermaid
 %%{init: {'theme':'base','themeVariables':{'primaryColor':'#14213d','primaryTextColor':'#ffffff','lineColor':'#fca311','fontFamily':'Inter'}}}%%
 graph TB
-    SV[Service Layer] --> CORE[Core Managers]
-    SV --> NET[Network Services]
-    SV --> PLATFORM[Platform Services]
+    SV[services/] --> CORE[services/core/*]
+    SV --> SYSTEM[services/system/*]
+    SV --> DEVICE[services/device/*]
+    SV --> NETWORK[services/network/* + net*]
+    SV --> LEGACY[legacy flat managers]
 
-    CORE --> MEM[memmgr]
-    CORE --> SCH[schedmgr]
-    CORE --> DEV[devmgr]
-    CORE --> TEL[telemetrymgr]
+    CORE --> INIT[core/init]
+    CORE --> DEVMGR2[core/devmgr]
+    CORE --> SUBSYSMGR[core/subsysmgr]
 
-    NET --> NM[netmgr]
-    NET --> NS[netstack]
-    NET --> NF[netfast]
+    SYSTEM --> CONSOLE[system/console]
+    SYSTEM --> FS[system/filesystem]
+    SYSTEM --> BOOTD[system/boot_displayd]
+    SYSTEM --> DIAG[system/diag]
+    SYSTEM --> SHELL[system/shell]
 
-    PLATFORM --> FS[file_system]
-    PLATFORM --> CR[crypto]
-    PLATFORM --> CON[console]
-    PLATFORM --> BD[boot_displayd]
+    DEVICE --> ACCELMGR[device/accelmgr]
+    DEVICE --> INPUTMGR[device/inputmgr]
+    DEVICE --> ACTUATOR[device/actuator_mgr]
 
-    classDef scaffold fill:#e63946,stroke:#9f1239,color:#fff;
-    classDef partial fill:#ffb703,stroke:#b45309,color:#111;
+    NETWORK --> NETMGR2[network/netmgr]
+    NETWORK --> NETSTACK2[network/netstack]
+    NETWORK --> NETMGR1[netmgr]
+    NETWORK --> NETSTACK1[netstack]
+    NETWORK --> NETFAST[netfast]
 
-    MEM:::scaffold
-    SCH:::scaffold
-    DEV:::scaffold
-    TEL:::scaffold
-    NM:::partial
-    NS:::partial
-    NF:::scaffold
-    FS:::partial
-    CR:::partial
-    CON:::scaffold
-    BD:::partial
+    LEGACY --> COREMGR[coremgr]
+    LEGACY --> DEVMGR1[devmgr]
+    LEGACY --> MEMMGR[memmgr]
+    LEGACY --> SCHEDMGR[schedmgr]
+    LEGACY --> TELEMETRY[telemetrymgr]
+    LEGACY --> STORAGEMGR[storagemgr]
+    LEGACY --> SERVICEMGR[servicemgr]
 ```
 
-## PlantUML (service groups)
+## Alignment with `folder_structure.md`
 
-```plantuml
-@startuml
-!theme spacelab
-skinparam backgroundColor #0b132b
-skinparam componentStyle rectangle
-skinparam ArrowColor #5bc0be
+| Target bucket (folder_structure) | Current paths present | Alignment | Notes |
+| --- | --- | --- | --- |
+| `services/core/` | `services/core/init`, `services/core/devmgr`, `services/core/subsysmgr` | Partial | New hierarchy exists, but legacy flat managers still active in parallel. |
+| `services/system/` | `services/system/console`, `boot_displayd`, `filesystem`, `diag`, `shell`, `footprintd` | Strong | Matches target intent. |
+| `services/security/` | `services/security/crypto` | Partial | Crypto exists; keystore/identity services are not yet separated. |
+| `services/device/` | `services/device/accelmgr`, `inputmgr`, `actuator_mgr` | Strong | Good separation for device policy managers. |
+| `services/network/` | `services/network/netmgr`, `services/network/netstack` | Partial | Duplicate legacy net daemons remain (`services/netmgr`, `services/netstack`, `services/netfast`). |
 
-package "Service Layer" {
-  package "Core Managers" {
-    [memmgr]
-    [schedmgr]
-    [devmgr]
-    [telemetrymgr]
-  }
-  package "Network" {
-    [netmgr]
-    [netstack]
-    [netfast]
-  }
-  package "Platform" {
-    [file_system]
-    [crypto]
-    [console]
-    [boot_displayd]
-  }
-}
+## Service status matrix (implementation + structure)
 
-[netmgr] --> [netstack]
-[file_system] --> [drivers]
-@enduml
-```
-
-## Service status matrix
-
-| Service area | Current status | Done | To do | Roadmap linkage |
+| Service area | Current status | Evidence in tree | Next structural action | Roadmap linkage |
 | --- | --- | --- | --- | --- |
-| Core managers (`coremgr`, `memmgr`, `schedmgr`, `devmgr`, `storagemgr`, `faultmgr`, `telemetrymgr`) | Scaffold-heavy | Build wiring and service boundaries exist. | Implement stable event loops, IPC contracts, policy engines, and lifecycle integration. | Phase 1, Phase 2 |
-| Naming/orchestration (`init`, `namesvc`, `servicemgr`) | Scaffold/Partial | Bootstrap and registry basics exist. | Production-ready capability-safe registration/discovery and orchestration control flow. | Phase 1 |
-| Network (`netmgr`, `netstack`, `netfast`, legacy `net`) | Partial | Control-plane tables and protocol modules exist for net split. | Security enforcement, fast-path integration, daemon loop hardening, TCP/depth closure. | Phase 1, Phase 3 |
-| Platform (`file_system`, `crypto`, `console`, `boot_displayd`) | Partial/Scaffold | VFS and crypto service skeleton plus boot display baseline exist. | Durable storage backend, full IPC transport, richer console/UX/runtime integration. | Phase 2, Phase 3 |
+| Core management | Partial | both `services/core/*` and flat `services/*mgr` | Converge all managers under `services/core/` with compatibility shims for include paths. | Phase 1 |
+| Naming and orchestration | Partial | `services/namesvc`, `services/servicemgr`, `services/core/init` | Consolidate registry + orchestration contracts into a single `core/` namespace. | Phase 1 |
+| Network control/data plane | Partial | parallel `services/network/*` and top-level `net*` services | Select canonical location (`services/network/*`) and deprecate duplicates. | Phase 1, Phase 3 |
+| Platform-facing system services | Partial | `services/system/filesystem`, `console`, `boot_displayd` | Tighten IPC contracts and phase out ad-hoc direct couplings. | Phase 2 |
+| Security services | Scaffold/Partial | `services/security/crypto` only | Add keystore, attestation, and policy service boundaries. | Phase 2, Phase 4 |
+
+## Coding tasks identified
+
+1. **Service tree consolidation:** move flat managers (`services/coremgr`, `services/devmgr`, `services/memmgr`, `services/schedmgr`, `services/storagemgr`, `services/telemetrymgr`) behind canonical `services/core/*` modules.
+2. **Duplicate network path cleanup:** keep `services/network/netmgr` and `services/network/netstack` as canonical; convert `services/netmgr`, `services/netstack`, `services/netfast` into wrappers or remove after migration.
+3. **Security boundary completion:** split `services/security/crypto` responsibilities into crypto provider vs key management service and define explicit IPC IDs in `idl/services/`.
+4. **Header/API normalization:** update `services/include/services/*` headers to avoid stale include paths during migration.

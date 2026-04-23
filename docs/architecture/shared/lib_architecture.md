@@ -29,6 +29,7 @@ The top-level `lib/` directory contains platform-agnostic, dependency-discipline
 * **Explicit Allocations:** Must not call kernel-internal allocators (`kalloc`, etc.) directly. Memory ownership and allocator functions must be explicitly injected or passed.
 * **Platform Agnostic:** Should rely on generic architectural definitions or explicit HAL abstractions, not hardcoded hardware assumptions.
 * **Header Placement:** Only keep a header under `lib/include/` if it is supported as a shared/public library contract. If it is only used by the kernel, it must be moved to `kernel/include/`.
+* **Build Enforcement:** The `lib/` CMake layer must fail configuration if shared-library targets attempt to link to kernel-private targets.
 
 **Examples of Valid Contents:**
 * Generic data structures (e.g., intrusive lists, ring buffers)

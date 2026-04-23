@@ -18,13 +18,13 @@ The Bharat-OS Software Development Kit (SDK) provides the essential libraries, h
 ### Linux / macOS
 ```bash
 cd user/sdk/
-./build.sh --arch x86_64 --clean
+./build.sh build --target x86_64
 ```
 
 ### Windows (PowerShell)
 ```powershell
 cd user\sdk\
-.\build.ps1 -Arch x86_64 -Clean
+.\build.ps1 build --target x86_64
 ```
 
 ## Output Structure

@@ -1,5 +1,5 @@
-#include "../../../../include/mm/prot_domain.h"
-#include "../../../../include/console/console_core.h"
+#include <mm/prot_domain.h>
+#include <console/console_core.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -20,7 +20,7 @@ typedef struct {
 } mpu_backend_state_t;
 
 // TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "../../../../include/slab.h"
+#include <slab.h>
 
 static prot_domain_t* arm32_mpu_create(void) {
     prot_domain_t* domain = (prot_domain_t*)kmalloc(sizeof(prot_domain_t)); // Using basic alloc for demo

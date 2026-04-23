@@ -1,28 +1,16 @@
-# services/device/accelmgr
+# Accelerator Manager (accelmgr)
 
-## Purpose
-This module is a **device policy manager**, not a driver. It owns routing policy, fallback logic, and model selection. Real accelerator hardware control drivers reside in `drivers/accel/`.
+## Overview
+The Accelerator Manager (`accelmgr`) is a core user-space service responsible for policy orchestration over advanced hardware features (NPUs, GPUs, and other compute offloads). It enforces permissions, admissions, queues, and thermal constraints.
 
-Hardware-aware accelerator abstraction service. Critical for future hardware architectures involving offloaded computing elements.
+## Placement & Boundaries
+- **Policy Engine:** Resides entirely in `services/device/accelmgr/`.
+- **Hardware Agnostic:** Uses the Feature Class Taxonomy (e.g. `CLASS_TENSOR_ML`). It contains NO vendor-specific driver code.
+- **Dispatch Tie-in:** Provides the telemetry and power state (`backend_dispatch_context_t`) that `lib/runtime/` uses to select between software and hardware backends.
 
 ## Responsibilities
-- **Hardware Abstraction**: Handles GPUs, NPUs, FPGAs, and DSPs.
-- **Command-Queue Brokering**: Manages issuing commands to accelerator queues.
-- **Memory Registration**: Facilitates shared memory setup for hardware offloading.
-- **Capability Issuance**: Grants tasks rights to utilize specific accelerators.
-- **FPGA Bitstream Deployment**: Loads and dynamically configures FPGAs.
-- **Backend Selection**: Runtime routing of tasks to the most suitable backend.
-- **Throttling & Performance Counters**: Collects metrics and throttles workloads if necessary.
-
-*(Note: The kernel only provides secure queue doorbells, DMA isolation, interrupt delivery, and shared memory registration.)*
-
-## Dependencies
-- **May depend on:** `lib/runtime`, `lib/ipc`, standard C library headers.
-- **Must not depend on:** `subsys/*`, `ui/*`, direct kernel-private headers.
-
-## Immediate TODOs
-- Register capability API to allocate queues.
-- Hook up basic mock DSP/GPU abstractions.
-
-## Status
-Stub.
+1. **Backend Admission:** Controls which processes can utilize advanced hardware.
+2. **Queue Policy:** Determines prioritization when hardware is contended.
+3. **Thermal Throttling:** Interfaces with `powermgr` and `thermalmgr` to degrade accelerators (or force software fallbacks) when temperatures rise.
+4. **Safe-mode Disablement:** Hooks into system health and fault domains to entirely disable failing accelerators.
+5. **Telemetry Surfacing:** Collects metrics (backend selected, fallbacks, throttles, faults) via `accel_telemetry.idl`.

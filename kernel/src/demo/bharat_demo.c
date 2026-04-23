@@ -133,7 +133,7 @@ static void high_priority_thread(void)
     }
     g_hi_done = 1U;
     while (1) {
-        kthread_yield();
+        bh_thread_yield();
     }
 }
 
@@ -145,7 +145,7 @@ static void low_priority_thread(void)
     }
     g_lo_done = 1U;
     while (1) {
-        kthread_yield();
+        bh_thread_yield();
     }
 }
 
@@ -156,7 +156,7 @@ static void demo_scheduler(void)
     g_lo_log_count = 0U;
 
     DEMO_PRINT("  [SCHED] Creating kernel process...\n");
-    kprocess_t *proc = process_create("bharat-demo");
+    bh_process_t *proc = process_create("bharat-demo");
     if (proc == NULL) {
         DEMO_PRINT("  [SCHED] WARN: process_create() returned NULL (stub env).\n");
         DEMO_PRINT("  [SCHED] Scheduler demo -- PARTIAL (stub mode)\n");
@@ -191,7 +191,7 @@ static void demo_scheduler(void)
     }
 
     /* Yield so that both threads can run */
-    kthread_yield();
+    bh_thread_yield();
 
     /* Report results */
     DEMO_PRINT("  [SCHED] HI-PRI done=");
@@ -211,7 +211,7 @@ static void demo_scheduler(void)
     // Demonstrate remote handoff if multi-core is simulated or available
     DEMO_PRINT("  [SCHED] Requesting remote thread handoff to core 1...\n");
     if (lo_tid != 0U) {
-        kthread_t *lo_thread = sched_find_thread_by_id(lo_tid);
+        bh_thread_t *lo_thread = sched_find_thread_by_id(lo_tid);
         if (lo_thread) {
             int ret = sched_request_remote_handoff(lo_thread, 1, 0xDEADBEEF);
             if (ret == 0) {
@@ -233,7 +233,7 @@ static void demo_ipc(void)
 {
     demo_section("ASYNC IPC");
 
-    kthread_t *cur = sched_current_thread();
+    bh_thread_t *cur = sched_current_thread();
     if (cur == NULL) {
         DEMO_PRINT("  [IPC]  No running thread context - skipping full test.\n");
         return;

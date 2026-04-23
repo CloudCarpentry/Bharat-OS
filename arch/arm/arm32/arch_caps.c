@@ -1,6 +1,6 @@
 #include <arch/arch_caps.h>
 #include <arch/arch_cap_profile.h>
-#include <profile.h>
+#include <profile/profile.h>
 
 arch_caps_t arch_get_caps(void) {
     arch_caps_t caps = {0};

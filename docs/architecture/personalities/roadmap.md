@@ -3,8 +3,8 @@ title: Personalities Roadmap
 status: active
 owner: Architecture Team
 reviewers: ["Core Team"]
-version: 1.0
-last_updated: "2024-03-23"
+version: 1.1
+last_updated: "2026-04-22"
 tags: ["architecture", "personalities", "roadmap"]
 ---
 
@@ -69,6 +69,17 @@ These milestones focus on deeper integration, high-performance concurrency, and 
   - Hardware Abstraction Layer (HAL) pass-through: Allowing Android user-space HALs to interact securely with Bharat-OS drivers via capability-gated IPC.
   - Zygote process spawning utilizing optimized multikernel memory sharing.
   - SELinux compatibility layer mapped to Bharat-OS capabilities.
+
+
+## Cross-Architecture Priority Track (x86_64, arm64, riscv64)
+
+To deliver Linux and Android personalities as production-grade features, all roadmap milestones must now be validated across three primary architectures:
+
+- x86_64
+- arm64
+- riscv64
+
+Execution and ownership details are tracked in `multi-arch-personality-roadmap.md`. This document is now the source of truth for ISA-specific bring-up tasks, KPI gates, and phased release criteria.
 
 ## Code Structure Constraints
 

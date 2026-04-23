@@ -1,7 +1,7 @@
 # CPU Affinity & NUMA
 
 ## Overview
-In multi-core systems, especially Non-Uniform Memory Access (NUMA) architectures, the physical location of a thread (`kthread_t`) significantly impacts its performance. Bharat-OS allows explicit control over where threads execute.
+In multi-core systems, especially Non-Uniform Memory Access (NUMA) architectures, the physical location of a thread (`bh_thread_t`) significantly impacts its performance. Bharat-OS allows explicit control over where threads execute.
 
 ## CPU Affinity (Pinning)
 CPU Affinity is the property that determines which physical CPU cores a thread is allowed to run on.

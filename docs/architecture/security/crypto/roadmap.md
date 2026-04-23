@@ -11,25 +11,36 @@ tags: [security, crypto, roadmap]
 
 This roadmap outlines the phased implementation plan for the Bharat-OS Cryptography and Security subsystem. It is designed to establish a solid foundation in the kernel first (mechanisms), followed by the user-space services (policies and algorithms), and finally integration with the rest of the operating system.
 
+## Implementation snapshot (as of 2026-04-21)
+
+The architecture remains target-state oriented, but the following items now have concrete kernel code:
+
+* Provider registry and invocation entry points are implemented in `kernel/src/security/crypto_registry.c`.
+* Capability-gated crypto stubs are implemented in `kernel/src/security/crypto_caps.c`.
+* Secure memory zeroization and secure page wrappers are implemented in `kernel/src/crypto/secure_mem.c`.
+* Kernel self-tests exist for provider registration, capability checks, unsupported op handling, RNG convenience API, and key zeroization dispatch in `kernel/src/tests/security/test_crypto_registry.c`.
+
+The largest remaining gaps are formal capability-object integration (beyond stubs), full secure-element backends, and service-level production wiring.
+
 ## Phase A: Contracts & Architecture (Current)
 
 The goal of this phase is to establish the structural boundaries and the ABI contracts between the kernel and user-space services.
 
 *   [x] Define the 4-Layer Security Architecture model.
 *   [x] Document the boundary between kernel mechanisms and user-space policies.
-*   [ ] Define the internal kernel crypto capability types (`CAP_TYPE_CRYPTO_PROVIDER`, `CAP_TYPE_CRYPTO_KEY`, `CAP_TYPE_RNG`, `CAP_TYPE_SEALER`).
-*   [ ] Define the kernel-side crypto provider interface and the operations it must support (`CRYPTO_OP_GET_RANDOM`, `CRYPTO_OP_HASH_BUFFER`, etc.).
-*   [ ] Define the user-space (UAPI) contract for interacting with the kernel's crypto providers.
+*   [x] Define the internal kernel crypto capability types (`CAP_TYPE_CRYPTO_PROVIDER`, `CAP_TYPE_CRYPTO_KEY`, `CAP_TYPE_RNG`, `CAP_TYPE_SEALER`).
+*   [x] Define the kernel-side crypto provider interface and the operations it must support (`CRYPTO_OP_GET_RANDOM`, `CRYPTO_OP_HASH_BUFFER`, etc.).
+*   [x] Define the user-space (UAPI) contract for interacting with the kernel's crypto providers.
 
 ## Phase B: Kernel Primitives
 
 This phase implements the core, low-level mechanisms within the kernel, strictly adhering to the contracts defined in Phase A.
 
-*   [ ] **Provider Registry:** Implement the central registry where hardware-specific drivers (accelerators, secure elements, RNGs) can register themselves.
-*   [ ] **Capability-Checked Invocation:** Implement the unified API for user-space to request cryptographic operations, enforcing the required capabilities before routing the request to the registered provider.
-*   [ ] **Zeroization Helpers:** Implement compiler-safe primitives (e.g., `memset_explicit()`) for clearing sensitive memory buffers.
+*   [x] **Provider Registry:** Implement the central registry where hardware-specific drivers (accelerators, secure elements, RNGs) can register themselves.
+*   [x] **Capability-Checked Invocation:** Implement the unified API for user-space to request cryptographic operations, enforcing the required capabilities before routing the request to the registered provider.
+*   [x] **Zeroization Helpers:** Implement compiler-safe primitives (e.g., `memset_explicit()`) for clearing sensitive memory buffers.
 *   [ ] **Secure Memory Allocation:** Implement memory allocation tags or classes to guarantee buffers are not swapped, dumped, or accessed by unauthorized DMA.
-*   [ ] **Entropy API:** Implement a unified API for exposing hardware RNGs to user-space and kernel subsystems.
+*   [x] **Entropy API:** Implement a unified API for exposing hardware RNGs to user-space and kernel subsystems.
 
 ## Phase C: Hardware Backends
 

@@ -24,46 +24,45 @@
 
 /* ── Multiboot 1 constants ──────────────────────────────────────────────── */
 #define MB1_MAGIC    0x1BADB002
-#define MB1_FLAGS    0x00000003  /* ALIGN + MEMINFO (no VIDINFO/VBE for QEMU -kernel) */
+#define MB1_FLAGS    0x00000003  /* ALIGN + MEMINFO */
 
-/* ── Boot Headers (Multiboot 1 & 2 + PVH ELF Note) ─────────────────────
- * Must be in the first 8 KiB (v1) or 32 KiB (v2) of the image.
- */
+/* Boot Headers (Multiboot 1 & 2 + PVH ELF Note) */
 .section .multiboot, "a"
 .align 8
 
-.align 8
-/* Multiboot 1 Header */
+/* Multiboot 1 Header (Must be in the first 8 KB) */
 mb1_header:
     .long MB1_MAGIC
     .long MB1_FLAGS
     .long -(MB1_MAGIC + MB1_FLAGS)
-    .long 0 /* header_addr */
-    .long 0 /* load_addr */
-    .long 0 /* load_end_addr */
-    .long 0 /* bss_end_addr */
-    .long 0 /* entry_addr */
-    .long 0 /* mode_type (0 = linear graphics) */
-    .long 1024 /* width */
-    .long 768 /* height */
-    .long 32 /* depth */
+    /* Note: Since we use an ELF bootloader, we don't need header_addr, load_addr, etc. here.
+     * The ELF headers provide that info unless MULTIBOOT_AOUT_KLUDGE is set.
+     */
 
+/* Multiboot 2 Header (Must be in the first 32 KB) */
 .align 8
-/* Multiboot 2 Header */
 mb2_start:
-    .long  MB2_MAGIC
-    .long  MB2_ARCH_X86
+    .long  0xe85250d6   /* MB2_MAGIC */
+    .long  0            /* MB2_ARCH_X86 */
     .long  (mb2_end - mb2_start)
-    .long  -(MB2_MAGIC + MB2_ARCH_X86 + (mb2_end - mb2_start))
+    .long  -(0xe85250d6 + 0 + (mb2_end - mb2_start))
 
-    /* Framebuffer Request Tag (Type 5) */
+    /* Header Address Tag (Type 2) */
     .align 8
-    .short 5            /* type = framebuffer */
-    .short 1            /* flags = optional */
-    .long  20           /* size = 20 bytes */
-    .long  1024         /* width */
-    .long  768          /* height */
-    .long  32           /* depth (bpp) */
+    .short 2
+    .short 0
+    .long  24
+    .long  mb2_start    /* header_addr */
+    .long  mb2_start    /* load_addr */
+    .long  kernel_end   /* load_end_addr */
+    .long  bss_end      /* bss_end_addr */
+
+    /* Entry Address Tag (Type 3) */
+    .align 8
+    .short 3            /* type = entry address */
+    .short 0            /* flags */
+    .long  12           /* size */
+    .long  _start       /* entry addr */
 
     /* end tag */
     .align 8
@@ -72,10 +71,7 @@ mb2_start:
     .long  8
 mb2_end:
 
-.align 8
-/* PVH ELF Note (Requirement for QEMU -kernel to load 64-bit ELF) 
- * Specifically looking for type XEN_ELFNOTE_PHYS32_ENTRY (18)
- */
+/* PVH ELF Note */
 .section .note.Xen, "a", @note
 .align 4
     .long 4              /* name len ("Xen\0") */
@@ -83,6 +79,7 @@ mb2_end:
     .long 18             /* type (XEN_ELFNOTE_PHYS32_ENTRY) */
     .ascii "Xen\0"
     .long _start         /* entry point (physical address) */
+
 
 /* ── Minimal bootstrap page tables (identity-map first 1 GiB) ────────────
  * All in .bss — zeroed by the boot code itself before use.
@@ -109,10 +106,10 @@ _start:
     movl %ebx, %esi
     movl $stack_top, %esp   /* physical address — no arithmetic needed */
 
-    /* Zero the three page-table pages */
+    /* Zero the page-table pages (PML4 + PDPT + 4xPDT = 6 pages) */
     movl $pml4,  %edi
     xorl %eax,   %eax
-    movl $(3*4096/4), %ecx
+    movl $(6*4096/4), %ecx
     rep stosl
 
     /* PML4[0] and PML4[256] → PDPT (identity and high-half physical map) */

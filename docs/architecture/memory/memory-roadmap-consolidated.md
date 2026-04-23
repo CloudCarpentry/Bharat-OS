@@ -2,85 +2,127 @@
 
 This roadmap tracks the convergence of the memory management subsystem in Bharat-OS toward a production-grade multikernel architecture.
 
-## 1. Executive Summary & Code State
+## 1. Executive Summary & Current Reality
 
-The memory stack is split into a **Minimal Memory Core** (PMM, MPU-lite, early alloc) and an **Advanced VM** tier (ASpace, paging).
+The memory stack is split into a **Minimal Memory Core** (PMM, MMU-lite/MPU pathways, early alloc) and an **Advanced VM** tier (ASpace, sparse mappings, demand faults).
 
-### Current Code State
-- **PMM (`kernel/src/mm/pmm/`)**: Core zoned buddy allocator and contiguous APIs are complete. Successfully boots and initializes memory per-core.
-- **VM Base Objects (`kernel/src/mm/vm/objects/`)**: Base structures for anonymous and device objects are implemented, including lifecycle reference counting.
-- **ASpace (`kernel/src/mm/vm/aspace/`)**: Interval trees and base APIs are mature.
-- **Fault Handling (`kernel/src/mm/vm/fault/`)**: Handlers are present but demand paging and COW require alignment with hardware COW breaks.
-- **HAL Common (`hal/hal_pt.c`)**: Neutral architecture capability contracts (`hal_pt_caps`) are in place.
-- **Architecture Backends**: Phase 2 is complete. The 64-bit architecture backends (x86_64, arm64, riscv64) are successfully integrated, booting, and initializing memory correctly with stable per-core page table mapping.
+### Current strengths (implemented baseline)
+- **Explicit memory model API exists** with capability signaling for MMU-full / MMU-lite / MPU-style operation.
+- **Architecture capability reporting exists** for major targets (`x86_64`, `arm64`, `riscv64`, `arm32`, `riscv32`) and already reflects protection-model diversity.
+- **VM space objects expose timing-class controls** (`prefault`, lazy realize, runtime page-table allocation gating).
+
+### Gaps to close for production
+1. **Memory model selection is still build-time centric**
+   - `mem_model_get_current()` behavior is macro/profile-driven.
+   - Required next step: boot-time runtime negotiation and fail-closed validation against hardware capabilities.
+2. **Distributed VM lifecycle still has non-authoritative pathways**
+   - Destroy path still contains TODO-level remote realization cleanup semantics.
+   - Realize path still includes deprecated/quarantined walk patterns.
+   - Required next step: monitor-confirmed map/unmap/realize/destroy completion with rollback invariants.
+3. **MMU-lite / MPU contract surface needs stricter declarations**
+   - Service-level feature availability needs to be explicit and test-validated.
+   - Required next step: hard deny unsupported semantics (no implied demand paging, no fake fine-grain `mprotect`, explicit sharing limits).
+4. **IOMMU / NUMA / hugepage plumbing is uneven**
+   - Some profile paths still contain placeholders/stubs.
+   - Required next step: per-profile capability matrix that disables unsupported paths and verifies no accidental runtime dependency.
 
 ## 2. Capability-Gated Build Features
 
-We are replacing reliance on monolithic profiles with explicit capability flags in CMake:
-*   `BHARAT_ENABLE_ADVANCED_VM`
-*   `BHARAT_ENABLE_MMU`
-*   `BHARAT_ENABLE_MPU`
-*   `BHARAT_ENABLE_IOMMU`
-*   `BHARAT_ENABLE_DMA_MAP`
+Bharat-OS exposes build flags but production correctness now requires runtime verification in addition to compile-time selection:
 
-## 3. Architecture Backends Progress
+- `BHARAT_ENABLE_ADVANCED_VM`
+- `BHARAT_ENABLE_MMU`
+- `BHARAT_ENABLE_MPU`
+- `BHARAT_ENABLE_IOMMU`
+- `BHARAT_ENABLE_DMA_MAP`
+- `BHARAT_ENABLE_NUMA`
+- `BHARAT_ENABLE_HUGEPAGE`
 
-| Architecture | MMU Status | TLB Shootdowns | Cache Mgmt | Hardware Huge Pages |
-|---|---|---|---|---|
-| **x86_64** | ✅ Done (4-level) | ✅ Local/Remote IPI | ✅ Supported | 🔜 Planned |
-| **arm64** | ✅ Done | ✅ IPI/Shootdowns | ✅ MAIR setup | 🔜 Planned |
-| **riscv64** | ✅ Done (Sv39/48) | ✅ `sfence.vma` | ✅ Supported | 🔜 Planned (Svpbmt) |
-| **arm32/riscv32** | ✅ Done (MMU-lite) | ❌ N/A | ❌ N/A | 🔜 Planned (LPAE) |
-| **cortex-m / RV32IMAC** | ✅ Done (MPU-only) | ❌ N/A | ❌ N/A | ❌ N/A |
+> Build flags are intent, not proof. Boot-time hardware validation is the authoritative gate.
 
-## 4. Algorithmic Efficiency & Bottlenecks
+## 3. Production Memory Validation Matrix (new requirement)
 
-### Current State
-- **PMM**: Uses buddy allocator with NUMA zones and per-core node caches (`pmm_pcache`).
-- **TLB Shootdown**: Synchronous loop blocks CPU completely.
-- **Page Table Pool**: Utilizes single spinlock.
+At boot, the kernel must validate:
 
-### Planned Improvements
-- **PMM Lock Contention**: Migrate to lock-free localized zone structures or fine-grained locking.
-- **Page Table Allocator**: Introduce per-core PT slab caches to improve concurrent faults.
-- **TLB Latency**: Optimize uRPC polling and introduce asynchronous lazy-invalidation where valid.
+- **Detected architecture capabilities** (`arch_caps`, HAL translation/cache/IOMMU traits)
+- **Requested profile contract** (MMU-full vs MMU-lite vs MPU-only)
+- **Required memory guarantees** (faultability, protection granularity, sharing semantics, DMA isolation behavior)
 
-## 5. Next Phases
+If any required guarantee is not supported, boot must **fail closed** (or explicitly enter a documented degraded mode only if policy allows).
 
-### Phase 3: Hardware Specialization and IOMMU
-- **IOMMU Domains**: Full device domain lifecycle management (currently `null`).
-- **Non-Coherent DMA**: APIs for cache flushing/invalidation around DMA boundaries for Edge profiles.
-- **NUMA Awareness**: Scheduler memory affinity hints.
-- **32-Bit Context Isolation**: Safe execution separation on MPU-only devices.
+## 4. Contract surface by profile (must be explicit)
 
-### Phase 4: Heterogeneous Compute + Accelerator Memory
-- **Accelerator Memory Contracts**: `MEM_ACCEL_SHARED`, `MEM_ACCEL_PINNED`.
-- **Queueing/Fence Primitives**: Command submission and synchronization.
-- **Virtual Mock Backend**: Virtual accelerator driver to validate isolation end-to-end.
+| Contract Item | MMU-full | MMU-lite | MPU-only |
+|---|---|---|---|
+| Demand paging | Required | Not guaranteed (typically disabled) | Unsupported |
+| Sparse per-page protection transitions | Required | Limited/profile-defined | Unsupported (region granularity only) |
+| Shared memory semantics | Full VM contract | Limited/explicit profile contract | Region-based only |
+| Runtime page fault handling | Required | Optional/limited | Unsupported |
+| DMA isolation via IOMMU | Preferred/required by profile | Optional | Optional (software + region controls when absent) |
+| NUMA placement hints | Optional+supported on server targets | Optional/no-op on small targets | Usually no-op |
+| Hugepage promotion | Optional | Optional/typically disabled | Unsupported |
 
-## 6. Execution Plan Summary
-1. **Refactor `prot_domain.c`**: Remove architecture `#ifdefs` and rely strictly on HAL caps.
-2. **Optimize PMM/PT Locks**: Introduce lockless/per-core primitives.
-3. **Implement THP Skeleton**: Activate `mm_promote_hugepage` logic.
-4. **Advance HAL Support**: Plumb `PCID`, `Svpbmt`, and ARM32 `LPAE` capabilities through unified MPA.
+## 5. Authoritative VM ownership flow (must converge)
 
-## Memory Architecture Diagram
+Target authoritative flow:
+
+1. **Request admission** (capability + profile-contract validation)
+2. **Ownership transfer/lock** for mapping intent
+3. **Monitor-mediated execution** for distributed updates
+4. **Completion confirmation** from target ownership domain
+5. **Commit or fault-safe rollback** (no partial-visible state)
+6. **Lifecycle closure** on destroy/unmap with remote realization cleanup guarantees
+
+## 6. Roadmap phases (updated)
+
+### Phase A — Runtime model truthfulness (P0)
+- Replace compile-time-only model assumptions with runtime capability negotiation.
+- Add boot validation matrix and fail-closed behavior.
+- Add CI checks that profile declarations match runtime capability probes.
+
+### Phase B — Distributed VM lifecycle authority (P0)
+- Remove deprecated realization walk paths.
+- Close TODOs in remote realization teardown on destroy.
+- Add monitor-confirmed completion and rollback checks.
+
+### Phase C — MMU-lite/MPU contract hardening (P1)
+- Publish profile-level unsupported feature list as machine-readable policy.
+- Enforce unsupported-return behavior for paging/fine-grain-protect APIs.
+- Add conformance tests per translation model.
+
+### Phase D — IOMMU/NUMA/hugepage profile gating (P1)
+- Eliminate stubs from active call paths or hard-disable via profile matrix.
+- Verify no accidental dependence in constrained profiles.
+- Add profile-aware test matrix coverage.
+
+## 7. Execution Plan Summary
+
+1. Implement boot-time `arch_caps × profile × guarantees` validator.
+2. Wire validator output into early memory init; fail closed on mismatch.
+3. Finalize authoritative distributed VM lifecycle state machine with rollback.
+4. Freeze MMU-lite/MPU service contracts and enforce at syscall/service boundary.
+5. Gate IOMMU/NUMA/hugepage functionality through explicit profile capability matrix + CI.
+
+## 8. Mermaid timeline (planning artifact)
 
 ```mermaid
 gantt
-    title Memory Subsystem Roadmap
-    dateFormat YYYY-MM-DD
-    section Phase 1 (Completed)
-    PMM & Frameworks      :done,    des1, 2024-01-01, 2024-04-01
-    HAL Interface Setup   :done,    des2, 2024-04-01, 2024-06-01
-    section Phase 2 (Completed)
-    VM Objects & ASpace   :done,    des3, 2024-06-01, 2024-10-01
-    Arch Backends (64-bit):done,    des4, 2024-08-01, 2024-12-01
-    Arch Backends (32-bit):done,    des5, 2024-11-01, 2025-02-01
-    section Phase 3 (Planned)
-    IOMMU Integration     :         des6, 2025-02-01, 2025-05-01
-    NUMA / DMA Sync       :         des7, 2025-04-01, 2025-07-01
-    section Phase 4 (Planned)
-    Accel Memory Domains  :         des8, 2025-07-01, 2025-09-01
-    Job & Queue Contracts :         des9, 2025-08-01, 2025-10-01
+    title Memory Subsystem Production Convergence
+    dateFormat  YYYY-MM-DD
+    section P0 (Correctness)
+    Runtime model negotiation + fail-closed boot    :active, a1, 2026-04-01, 2026-06-15
+    Distributed VM lifecycle authority cleanup       :a2, 2026-05-01, 2026-07-15
+    section P1 (Contract hardening)
+    MMU-lite / MPU contract freeze + enforcement     :a3, 2026-06-15, 2026-08-15
+    IOMMU / NUMA / hugepage profile-gating matrix    :a4, 2026-07-01, 2026-09-01
+    section P2 (Validation depth)
+    Cross-profile memory conformance CI              :a5, 2026-08-01, 2026-10-01
 ```
+
+## 9. AI-adjacent memory/accelerator primitive track
+
+For the AI-enabling (but kernel-minimal) extension plan, see:
+
+- [AI-Adjacent Memory & Accelerator Primitive Roadmap](./ai-adjacent-memory-accel-roadmap.md)
+
+This track intentionally limits kernel additions to memory/accelerator/security primitives and keeps model/runtime/framework semantics in services and libraries.

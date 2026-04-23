@@ -68,7 +68,7 @@ int ai_kernel_collect_telemetry(kernel_telemetry_t* out) {
         return -1;
     }
 
-    kthread_t* current = sched_current_thread();
+    bh_thread_t* current = sched_current_thread();
     if (!current) {
         return -1;
     }

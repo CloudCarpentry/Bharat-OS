@@ -1,5 +1,11 @@
 # Architecture Decision Record: Boot and Runtime Lifecycle Contract
 
+### Contract Status
+- **Spec**: ✅ Documented and versioned
+- **Implemented**: 🚧 Pending kernel/service behavior merge
+- **Validated**: ❌ Pending stress/fault-injection tests
+
+
 ## Context and Problem Statement
 
 As Bharat-OS targets multiple hardware profiles ranging from tiny embedded control loops to complex cloud gateways, the kernel initialization path historically risked becoming cluttered with profile-specific `ifdef` logic (e.g., `#ifdef BHARAT_PROFILE_DRONE`).

@@ -7,5 +7,5 @@ def get_boot_config(kernel_path):
     check_sbi_environment()
     return {
         "kernel_path": kernel_path,
-        "qemu_flags": ["-machine", "virt"]
+        "qemu_flags": []
     }

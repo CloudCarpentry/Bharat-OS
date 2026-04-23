@@ -5,6 +5,7 @@
 #include "../../../include/mm/tlb.h"
 #include "../../../include/mm/pmm.h"
 #include "../../../include/slab.h"
+#include "../../../include/mm/aspace_profile.h"
 
 // M1: Legacy VMM is now just a thin shim over ASpace/Region/Object layers.
 
@@ -124,8 +125,11 @@ phys_addr_t vmm_get_kernel_root(void) {
 }
 
 address_space_t *mm_create_address_space(void) {
+    uint32_t create_flags = 0; // Legacy basic creation
     address_space_t *as = NULL;
-    if (aspace_create(&as, 0) != 0) return NULL;
+
+    // Defer explicit legality checks entirely to the authoritative aspace_create boundary
+    if (aspace_create(&as, create_flags) != 0) return NULL;
     return as;
 }
 

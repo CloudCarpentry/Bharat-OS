@@ -11,6 +11,7 @@ void arm_fdt_parse_common(boot_info_t *boot, const void *fdt_ptr) {
         system_discovery_t* discovery = hal_get_system_discovery();
         fdt_parse_discovery(fdt_ptr, discovery);
         boot->source = BOOT_SOURCE_UBOOT_FDT;
+        boot->firmware.fdt_ptr = (void*)fdt_ptr;
 
         if (discovery->boot_video.valid) {
             boot->console.type = BOOT_CONSOLE_FRAMEBUFFER;

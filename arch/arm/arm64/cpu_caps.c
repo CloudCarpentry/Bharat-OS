@@ -2,6 +2,8 @@
 #include "../../common/cpu_caps_state.h"
 #include <stdint.h>
 
+extern uint32_t hal_cpu_get_id(void);
+
 #define READ_SYSREG(reg) \
     ({ uint64_t _val; __asm__ volatile("mrs %0, " #reg : "=r"(_val)); _val; })
 
@@ -74,4 +76,7 @@ void arch_cpu_caps_init(void) {
 }
 
 void arch_cpu_caps_init_ap(void) {
+    arch_cpu_caps_record_t ap_caps;
+    arm64_probe_caps(&ap_caps);
+    cpu_caps_state_set_ap(hal_cpu_get_id(), &ap_caps);
 }

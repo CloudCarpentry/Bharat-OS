@@ -1,24 +1,32 @@
 # Scheduler Roadmap
 
-## Current Status (v1 Baseline)
-Based on current code analysis in `kernel/src/sched/` and `kernel/src/ai_sched.c`:
-- ✅ **Basic Thread Queueing**: Implemented (`sched_create_thread`, `sched_enqueue`, `sched_dispatch`).
-- ✅ **Core Time Accounting**: Basic timer tick and context switch accounting exist.
-- ✅ **AI Governor Ingestion**: Implemented a bounded ingestion queue (`ai_kernel_ingest_suggestion_ipc`) for telemetry-driven scheduling hints.
-- ✅ **AI Telemetry Tracking**: Implemented `ai_sched_update_telemetry(ctx, cycles, inst)` to record execution counts for CPI analysis.
-- 🟡 **CFS/MLFQ Algorithms**: Basic priority queues exist, but full CFS `vruntime` fairness tracking is still being hardened for GP profiles.
-- 🟡 **Per-Core Runqueues**: The multikernel architecture mandates per-core structures, which are partially implemented but need robust lockless fast-paths.
-- 🔴 **RT/EDF Scheduling**: Hard real-time deadline scheduling is currently deferred; static priorities are honored, but strict deadline admission control is not yet implemented.
-- 🔴 **Load Balancing**: Automatic cross-core thread migration (work stealing) is currently deferred in favor of explicit placement or AI Governor suggestions.
-- 🟡 **Cross-Core Remote Enqueue**: Implementing capability-protected cross-core thread handoff via uRPC to form the baseline for future full migration.
+## Status snapshot (from current scheduler code)
 
-## Near-Term Goals (Next 3-6 Months)
-1. **Stabilize CFS for GP Profile**: Fully implement and test the Red-Black tree (or equivalent) for `vruntime`-based fair scheduling.
-2. **Lockless Per-Core Runqueues**: Ensure that the `sched_dispatch` fast path requires zero cross-core locks or cache-line bouncing.
-3. **AI Governor Action Execution**: Fully implement the kernel execution side of `AI_ACTION_MIGRATE_TASK` and `AI_ACTION_ADJUST_PRIORITY` suggestions.
-4. **Cross-Core Thread Handoff Path**: Refine and stabilize the explicit remote enqueue/handoff path over uRPC with proper capability authorization.
+### Stable baseline
 
-## Long-Term Vision (1+ Years)
-1. **Hard Real-Time Profile (EDF)**: Implement strict Earliest Deadline First scheduling for the `BHARAT_KERNEL_PROFILE_RT` configuration, including admission control to guarantee schedulability.
-2. **NUMA-Aware Work Stealing**: Implement a decentralized load balancer that understands NUMA topologies and capability table replication costs before migrating threads.
-3. **Energy-Aware Scheduling (EAS)**: Integrate thermal and power domain data to prefer packing tasks onto fewer cores (or LITTLE cores) when battery life is prioritized over latency.
+- Per-core runqueue model with remote enqueue inbox.
+- Priority scheduling path with bitmap/list invariants.
+- CFS and EDF queue structures integrated.
+- EDF and RMS admission checks with per-core utilization budgets.
+- Tick-driven wakeup/preemption and periodic balance hook.
+- AI hint ingestion queue with bounded pending buffer.
+
+### Under active hardening
+
+- Full router-contract migration across all scheduler mutation paths.
+- Cross-core balancing heuristics (affinity/topology/NUMA sensitivity).
+- Observability for cross-core handoff and AI action outcomes.
+- Extended stress/fuzz tests for policy transitions and queue pressure.
+
+## Next milestones
+
+1. Finish router-boundary refactor and document ownership preconditions for each mutation path.
+2. Expand scheduler host test matrix for policy-specific invariants (priority/CFS/EDF/RMS).
+3. Add structured trace and reason-code surfaces for AI action acceptance/rejection.
+4. Improve migration quality with partition/topology-aware constraints.
+
+## Longer horizon
+
+- Stronger mixed-criticality validation with explicit partition contracts.
+- Profile-tuned scheduling presets and conformance suites.
+- Multikernel domain-level scheduling coordination contracts.

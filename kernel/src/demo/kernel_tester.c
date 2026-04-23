@@ -18,7 +18,7 @@ static void test_sched_yield_smoke(void) {
    * Instead, verify the scheduler is live by reading its tick counter
    * and checking the current thread handle is valid.                   */
   uint64_t t0 = sched_get_ticks();
-  kthread_t *cur = sched_current_thread();
+  bh_thread_t *cur = sched_current_thread();
   uint64_t t1 = sched_get_ticks();
   (void)t0; (void)t1;
   if (cur != (void*)0) {

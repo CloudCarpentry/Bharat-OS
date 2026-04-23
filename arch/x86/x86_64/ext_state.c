@@ -25,7 +25,7 @@ bool arch_ext_state_enabled(void) {
     return (g_arch_ext_desc.size > 0);
 }
 
-int arch_ext_state_thread_init(kthread_t *t) {
+int arch_ext_state_thread_init(bh_thread_t *t) {
     const arch_ext_state_desc_t *d = arch_ext_state_desc();
     if (!d || d->size == 0) {
         ((cpu_context_t*)t->cpu_context)->ext = NULL;
@@ -48,7 +48,7 @@ int arch_ext_state_thread_init(kthread_t *t) {
     return 0;
 }
 
-void arch_ext_state_thread_destroy(kthread_t *t) {
+void arch_ext_state_thread_destroy(bh_thread_t *t) {
     if (t && t->cpu_context) {
         cpu_context_t *ctx = (cpu_context_t*)t->cpu_context;
         if (ctx->ext) {
@@ -58,12 +58,12 @@ void arch_ext_state_thread_destroy(kthread_t *t) {
     }
 }
 
-void arch_ext_state_save(kthread_t *t) {
+void arch_ext_state_save(bh_thread_t *t) {
     if (!t || !((cpu_context_t*)t->cpu_context)->ext) return;
     // Stub: Eager XSAVE/FXSAVE to t->ext
 }
 
-void arch_ext_state_restore(kthread_t *t) {
+void arch_ext_state_restore(bh_thread_t *t) {
     if (!t || !((cpu_context_t*)t->cpu_context)->ext) return;
     // Stub: Eager XRSTOR/FXRSTOR from t->ext
 }
@@ -76,7 +76,7 @@ void arch_kernel_fpu_end(void) {
     // Stub: Handle kernel FPU end
 }
 
-bool arch_ext_state_handle_fault(struct kthread *t) {
+bool arch_ext_state_handle_fault(struct bh_thread *t) {
     (void)t;
     // x86_64 uses eager FPU saving or handles #NM faults here
     return false;

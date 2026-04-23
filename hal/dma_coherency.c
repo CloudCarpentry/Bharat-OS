@@ -1,4 +1,4 @@
-#include "../../include/hal/hal_dma.h"
+#include "hal/hal_dma.h"
 
 static const hal_dma_ops_t *g_hal_dma_ops;
 

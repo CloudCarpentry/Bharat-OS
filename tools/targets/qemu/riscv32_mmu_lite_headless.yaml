@@ -1,0 +1,61 @@
+name: riscv32_mmu_lite_headless
+kind: qemu_target
+
+arch: riscv32
+board: qemu-virt-riscv32
+device_profile: edge
+personality_profile: native
+execution_profile: mix
+
+build:
+  cmake_preset: riscv32-qemu-mmu-lite-headless
+  cmake_defs:
+    BHARAT_ARCH_FAMILY: RISCV32
+    BHARAT_DEVICE_PROFILE: EDGE
+    BHARAT_PERSONALITY_PROFILE: NATIVE
+    BHARAT_TARGET_BOARD: virt
+    BHARAT_BOOT_GUI: OFF
+    BHARAT_PROFILE_MMU_FULL: OFF
+    BHARAT_PROFILE_MMU_LITE: ON
+    BHARAT_PROFILE_MPU_ONLY: OFF
+    BHARAT_ENABLE_MMU: ON
+    BHARAT_ENABLE_MPU: OFF
+    BHARAT_ENABLE_ADVANCED_VM: ON
+    BHARAT_ENABLE_IOMMU: OFF
+    BHARAT_ENABLE_DMA_MAP: ON
+    BHARAT_ENABLE_COW: OFF
+    BHARAT_ENABLE_DEMAND_PAGING: OFF
+    BHARAT_ENABLE_SHARED_MEMORY: OFF
+    BHARAT_ENABLE_NUMA: OFF
+    BHARAT_ENABLE_MEMORY_STATS: OFF
+
+kernel:
+  canonical_artifacts:
+    elf: kernel/kernel.elf
+    map: kernel/kernel.map
+
+boot:
+  protocol: opensbi_payload
+  artifact_format: elf
+  dtb:
+    mode: qemu_generated
+
+package:
+  transforms: []
+
+run:
+  backend: qemu
+  machine: virt
+  memory: 512M
+  nographic: true
+  serial:
+    - stdio
+  boot_artifact: kernel/kernel.elf
+  extra_args:
+    - -bios
+    - /usr/lib/riscv32-linux-gnu/opensbi/generic/fw_dynamic.bin
+
+debug:
+  backend: gdb_remote
+  stop_on_entry: false
+  gdb_port: 1234

@@ -65,8 +65,8 @@ trap_common:
     # We allocate space for x86_trap_frame_t. Size of generic trap_frame_t is 288 bytes.
     # x86_trap_frame_t adds 16 bytes for error_code and cr2, total 304 bytes allocated on top of vector/error_code.
     # struct is: trap_frame_t base, uint64_t error_code, uint64_t cr2
-    # The CPU/stubs pushed vector and error_code. We allocate 304 bytes.
-    subq $304, %rsp
+    # The CPU/stubs pushed vector and error_code. We allocate 312 bytes to keep %rsp 16-byte aligned.
+    subq $312, %rsp
 
     # Save General Purpose Registers (map x86_64 to gpr[0..14])
     movq %rax, 0(%rsp)     # gpr[0]
@@ -85,33 +85,33 @@ trap_common:
     movq %r14, 104(%rsp)   # gpr[13]
     movq %r15, 112(%rsp)   # gpr[14]
 
-    # Hardware/Stub pushed state (offsets relative to current rsp due to subq 304):
-    # [rsp+304] = Vector (cause)
-    # [rsp+312] = Error Code
-    # [rsp+320] = RIP (pc)
-    # [rsp+328] = CS
-    # [rsp+336] = RFLAGS (status)
-    # [rsp+344] = RSP (sp)
-    # [rsp+352] = SS
+    # Hardware/Stub pushed state (offsets relative to current rsp due to subq 312):
+    # [rsp+312] = Vector (cause)
+    # [rsp+320] = Error Code
+    # [rsp+328] = RIP (pc)
+    # [rsp+336] = CS
+    # [rsp+344] = RFLAGS (status)
+    # [rsp+352] = RSP (sp)
+    # [rsp+360] = SS
 
     # pc
-    movq 320(%rsp), %rax
+    movq 328(%rsp), %rax
     movq %rax, 256(%rsp)
 
     # sp
-    movq 344(%rsp), %rax
+    movq 352(%rsp), %rax
     movq %rax, 248(%rsp)
 
     # cause (vector number)
-    movq 304(%rsp), %rax
+    movq 312(%rsp), %rax
     movq %rax, 264(%rsp)
 
     # status (RFLAGS)
-    movq 336(%rsp), %rax
+    movq 344(%rsp), %rax
     movq %rax, 272(%rsp)
 
     # Determine type: Vector < 32 or Vector == 128 is SYNC (0), else IRQ (1)
-    movq 304(%rsp), %rax # Vector
+    movq 312(%rsp), %rax # Vector
     cmpq $32, %rax
     jb .L_is_sync
     cmpq $128, %rax
@@ -123,7 +123,7 @@ trap_common:
 .L_type_done:
 
     # from_user: (CS & 3) == 3
-    movq 328(%rsp), %rax # CS
+    movq 336(%rsp), %rax # CS
     andq $3, %rax
     cmpq $3, %rax
     sete %al
@@ -131,7 +131,7 @@ trap_common:
     movl %eax, 284(%rsp) # from_user (uint32_t)
 
     # Copy Error Code to x86_trap_frame_t extension
-    movq 312(%rsp), %rax
+    movq 320(%rsp), %rax
     movq %rax, 288(%rsp) # error_code
 
     # Read CR2 and copy to x86_trap_frame_t extension
@@ -143,7 +143,7 @@ trap_common:
 
     # Reload pc in case it changed
     movq 256(%rsp), %rax
-    movq %rax, 320(%rsp)
+    movq %rax, 328(%rsp)
 
     # Restore registers
     movq 0(%rsp), %rax
@@ -162,5 +162,5 @@ trap_common:
     movq 104(%rsp), %r14
     movq 112(%rsp), %r15
 
-    addq $320, %rsp # Skip x86_trap_frame(304) + vector(8) + error_code(8) = 320
+    addq $328, %rsp # Skip x86_trap_frame(304) + padding(8) + vector(8) + error_code(8) = 328
     iretq

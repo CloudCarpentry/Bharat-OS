@@ -51,7 +51,7 @@ void test_accelerator_caps(void);
 
 int main(void) {
     sched_init();
-    kprocess_t* p = process_create("cap-misuse");
+    bh_process_t* p = process_create("cap-misuse");
     assert(p != NULL);
 
     cap_table_init_for_process(p);
@@ -114,7 +114,7 @@ void tlb_shootdown(address_space_t *as, virt_addr_t vaddr) {
 }
 
 void test_accelerator_caps(void) {
-    kprocess_t* p = process_create("accel-test");
+    bh_process_t* p = process_create("accel-test");
     assert(p != NULL);
     cap_table_init_for_process(p);
     capability_table_t* t = (capability_table_t*)p->security_sandbox_ctx;

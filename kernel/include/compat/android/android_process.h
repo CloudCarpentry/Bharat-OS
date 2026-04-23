@@ -13,7 +13,7 @@
 
 /**
  * @brief Android task/process personality tag.
- * Extends `kprocess_t` or `kthread_t` personality metadata.
+ * Extends `bh_process_t` or `bh_thread_t` personality metadata.
  */
 typedef struct {
     uint32_t process_id;           // Logical Process ID (PID)

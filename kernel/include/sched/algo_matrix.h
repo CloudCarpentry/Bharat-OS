@@ -25,12 +25,12 @@ typedef enum {
 /* --- Scheduler Run-Queue Algorithm Ops --- */
 
 // Forward declarations
-struct kthread;
+struct bh_thread;
 
 typedef struct {
-    struct kthread* (*pick_next_ready)(uint32_t core_id);
-    void (*enqueue_task)(struct kthread* thread, uint32_t core_id);
-    void (*dequeue_task)(struct kthread* thread, uint32_t core_id);
+    struct bh_thread* (*pick_next_ready)(uint32_t core_id);
+    void (*enqueue_task)(struct bh_thread* thread, uint32_t core_id);
+    void (*dequeue_task)(struct bh_thread* thread, uint32_t core_id);
 } sched_algo_ops_t;
 
 /* --- Generic Search/Sort Algorithm Ops --- */

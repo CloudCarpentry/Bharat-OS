@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [ "$#" -lt 3 ]; then
-  echo "usage: $0 <arch:x86_64|riscv64> <kernel.elf> <log-file> [expected-marker ...]" >&2
+  echo "usage: $0 <arch:x86_64|arm64|riscv64> <kernel.elf> <log-file> [expected-marker ...]" >&2
   exit 2
 fi
 
@@ -32,6 +32,19 @@ case "$ARCH" in
     QEMU_BIN=qemu-system-riscv64
     QEMU_ARGS=(
       -machine virt
+      -kernel "$KERNEL"
+      -m 256M
+      -no-reboot
+      -nographic
+      -monitor none
+      -serial stdio
+    )
+    ;;
+  arm64)
+    QEMU_BIN=qemu-system-aarch64
+    QEMU_ARGS=(
+      -machine virt
+      -cpu cortex-a57
       -kernel "$KERNEL"
       -m 256M
       -no-reboot

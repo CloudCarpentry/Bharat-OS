@@ -13,28 +13,13 @@ void kernel_main(uintptr_t fdt_ptr) {
     boot_info_init(&boot);
 
     hal_serial_init();
-    hal_serial_write("!ARM64 Boot Started\n");
-    hal_serial_write("!FDT ptr initial: ");
+    hal_serial_write("ARM64 Boot Started\n");
+    hal_serial_write("FDT Ptr: ");
     hal_serial_write_hex(fdt_ptr);
     hal_serial_write("\n");
 
-    if (fdt_ptr == 0) {
-        // Probe common locations for QEMU virt
-        fdt_ptr = 0x40000000;
-        hal_serial_write("!Probing FDT at fallback: ");
-        hal_serial_write_hex(fdt_ptr);
-        hal_serial_write("\n");
-    }
-
     if (fdt_ptr == 0 || !fdt_is_valid((void*)fdt_ptr)) {
-        // Probe common locations for QEMU virt
-        fdt_ptr = 0x40000000;
-        hal_serial_write("!Probing FDT at fallback: ");
-        hal_serial_write_hex(fdt_ptr);
-        hal_serial_write("\n");
-        if (!fdt_is_valid((void*)fdt_ptr)) {
-            kernel_panic("FDT not provided by bootloader and fallback failed");
-        }
+        kernel_panic("FDT missing or invalid: boot contract violation");
     }
 
     extern void arm_fdt_parse_common(boot_info_t *boot, const void *fdt_ptr);

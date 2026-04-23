@@ -1,0 +1,29 @@
+name: ABI Compatibility Gate
+
+on:
+  push:
+    branches: [ developer ]
+  pull_request:
+    branches: [ developer ]
+  workflow_dispatch:
+
+jobs:
+  abi-check:
+    name: Check ABI Drift
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: |
+          pip install pycparser
+
+      - name: Verify ABI Manifests
+        run: |
+          python3 tools/abi/generate_abi_manifests.py --check

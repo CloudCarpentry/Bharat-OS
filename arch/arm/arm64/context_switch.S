@@ -63,9 +63,9 @@ arch_context_switch:
 
     ret
 
-.global arch_kthread_start_trampoline
-.type arch_kthread_start_trampoline, @function
-arch_kthread_start_trampoline:
+.global arch_bh_thread_start_trampoline
+.type arch_bh_thread_start_trampoline, @function
+arch_bh_thread_start_trampoline:
     // x19 holds the true entry point, setup by arch_prepare_initial_context
     mov x0, x19
     blr x0

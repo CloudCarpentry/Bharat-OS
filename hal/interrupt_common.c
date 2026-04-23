@@ -2,6 +2,7 @@
 #include "hal/hal.h"
 #include "kernel_safety.h"
 #include "spinlock.h"
+#include "device/irq_domain.h"
 #if __has_include("bharat_config.h")
 #include "bharat_config.h"
 #endif
@@ -433,33 +434,46 @@ void hal_interrupt_handle_trap_irq(uint64_t hw_cause,
                                    void (*timer_handler)(void),
                                    hal_irq_dispatch_fn_t dispatch_fn,
                                    void* dispatch_ctx) {
-    uint32_t irq = hal_interrupt_get_active_irq(hw_cause);
+    uint32_t hwirq = hal_interrupt_get_active_irq(hw_cause);
 
-    if (irq == hal_irq_timer_vector() && timer_handler) {
+    // Timer vector is often handled outside generic routing, check raw hwirq first
+    if (hwirq == hal_irq_timer_vector() && timer_handler) {
         timer_handler();
-    } else {
-#if defined(BHARAT_IRQ_DISPATCH_RT)
-        if (hal_interrupt_is_registered(irq)) {
-            hal_interrupt_dispatch(irq);
-        } else if (dispatch_fn) {
-            dispatch_fn(irq, dispatch_ctx);
-        }
-#elif defined(BHARAT_IRQ_DISPATCH_MIXED)
-        if (hal_interrupt_is_registered(irq)) {
-            hal_interrupt_dispatch(irq);
-        } else if (dispatch_fn) {
-            dispatch_fn(irq, dispatch_ctx);
-        } else {
-            hal_interrupt_dispatch(irq);
-        }
-#else
-        if (dispatch_fn) {
-            dispatch_fn(irq, dispatch_ctx);
-        } else {
-            hal_interrupt_dispatch(irq);
-        }
-#endif
+        hal_interrupt_end_of_interrupt(hwirq);
+        return;
     }
 
-    hal_interrupt_end_of_interrupt(irq);
+    uint32_t virq = 0;
+    irq_domain_t* root_domain = irq_domain_get_default();
+
+    // Domain translation is mandatory. Do not fallback to raw hwirq dispatch.
+    if (!root_domain || irq_domain_translate(root_domain, hwirq, &virq) != 0) {
+        // Unmapped or no domain initialized yet, fail safely without dispatching.
+        hal_interrupt_end_of_interrupt(hwirq);
+        return;
+    }
+
+#if defined(BHARAT_IRQ_DISPATCH_RT)
+    if (hal_interrupt_is_registered(virq)) {
+        hal_interrupt_dispatch(virq);
+    } else if (dispatch_fn) {
+        dispatch_fn(virq, dispatch_ctx);
+    }
+#elif defined(BHARAT_IRQ_DISPATCH_MIXED)
+    if (hal_interrupt_is_registered(virq)) {
+        hal_interrupt_dispatch(virq);
+    } else if (dispatch_fn) {
+        dispatch_fn(virq, dispatch_ctx);
+    } else {
+        hal_interrupt_dispatch(virq);
+    }
+#else
+    if (dispatch_fn) {
+        dispatch_fn(virq, dispatch_ctx);
+    } else {
+        hal_interrupt_dispatch(virq);
+    }
+#endif
+
+    hal_interrupt_end_of_interrupt(hwirq);
 }

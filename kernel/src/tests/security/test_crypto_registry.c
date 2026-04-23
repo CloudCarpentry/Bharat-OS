@@ -151,11 +151,54 @@ static int test_get_random_convenience(void) {
     return 0;
 }
 
+static int test_zeroize_dispatch(void) {
+    crypto_registry_init();
+
+    int provider_id = crypto_provider_register(&mock_info, &mock_ops);
+    if (provider_id <= 0) return -1;
+
+    uint8_t keybuf[8];
+    memset(keybuf, 0xA5, sizeof(keybuf));
+
+    crypto_op_args_t args = {
+        .op = CRYPTO_OP_ZEROIZE_KEY,
+        .input_buf = keybuf,
+        .input_len = sizeof(keybuf),
+    };
+
+    crypto_cap_grant(CAP_TYPE_CRYPTO_KEY);
+    int err = crypto_provider_invoke(provider_id, &args);
+    if (err != 0) return -2;
+    if (keybuf[0] != 0x00) return -3;
+
+    crypto_provider_unregister(provider_id);
+    return 0;
+}
+
+static int test_invalid_provider_registration(void) {
+    crypto_registry_init();
+
+    crypto_provider_info_t invalid = mock_info;
+    invalid.backend_class = 0;
+
+    int err = crypto_provider_register(&invalid, &mock_ops);
+    if (err != -SYS_EINVAL) return -1;
+
+    invalid = mock_info;
+    invalid.name[0] = '\0';
+    err = crypto_provider_register(&invalid, &mock_ops);
+    if (err != -SYS_EINVAL) return -2;
+
+    return 0;
+}
+
 static int ktest_crypto_registry_run(void) {
     if (test_provider_registration() != 0) return -1;
     if (test_capability_checks() != 0) return -1;
     if (test_unsupported_operation() != 0) return -1;
     if (test_get_random_convenience() != 0) return -1;
+    if (test_zeroize_dispatch() != 0) return -1;
+    if (test_invalid_provider_registration() != 0) return -1;
     return 0;
 }
 

@@ -56,6 +56,9 @@ typedef struct dma_buffer {
 
     // Binding
     iova_domain_t *domain;
+    dma_direction_t active_dir;
+    bool mapped_to_device;
+    bool owned_by_device;
 
     struct dma_buffer *next;
 } dma_buffer_t;

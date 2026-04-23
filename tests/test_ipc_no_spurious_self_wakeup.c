@@ -23,7 +23,7 @@ static void dummy_entry(void) {}
 void test_ipc_no_spurious_self_wakeup(void) {
     sched_init();
 
-    kprocess_t* proc = process_create("test_spurious");
+    bh_process_t* proc = process_create("test_spurious");
     assert(proc != NULL);
 
     capability_table_t* table = (capability_table_t*)proc->security_sandbox_ctx;
@@ -32,7 +32,7 @@ void test_ipc_no_spurious_self_wakeup(void) {
     uint32_t send_cap, recv_cap;
     assert(ipc_endpoint_create(table, &send_cap, &recv_cap) == IPC_OK);
 
-    kthread_t* self = thread_create(proc, dummy_entry);
+    bh_thread_t* self = thread_create(proc, dummy_entry);
 
     while (sched_current_thread() != self) {
         sched_yield();

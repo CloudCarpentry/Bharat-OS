@@ -65,10 +65,10 @@ static void dummy_thread_entry(void) {}
 // We measure the time taken to run sched_on_timer_tick for BENCH_ITERS.
 static void bench_sched_on_timer_tick_with_n_threads(int num_threads, int should_wakeup) {
   sched_init();
-  kprocess_t *p = process_create("bench");
+  bh_process_t *p = process_create("bench");
   assert(p != NULL);
 
-  kthread_t *threads[128];
+  bh_thread_t *threads[128];
 
   // Create threads
   for (int i = 0; i < num_threads && i < 128; i++) {

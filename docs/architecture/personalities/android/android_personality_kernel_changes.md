@@ -18,7 +18,7 @@ This document details the required changes to the core kernel to efficiently run
 
 ## 1. Personality-Neutral Process Model
 
-To handle Android semantics natively, the core kernel process model (`kernel/include/sched.h`) has been updated to include a `personality` field in `kprocess_t` and `kthread_t`.
+To handle Android semantics natively, the core kernel process model (`kernel/include/sched.h`) has been updated to include a `personality` field in `bh_process_t` and `bh_thread_t`.
 
 - **Syscall Dispatch:** The trap/syscall layer must route incoming calls based on the `personality` tag, redirecting Android-specific system calls or POSIX deviations to the Android compatibility subsystem.
 - **Exception/Signal Handling:** The kernel must provide personality-specific exception/signal translation hooks to map native trap states to Android-specific (or Linux-like) signal structures.

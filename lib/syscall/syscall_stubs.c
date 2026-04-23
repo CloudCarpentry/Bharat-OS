@@ -46,3 +46,14 @@ int bharat_sched_set_affinity(uint64_t tid, uint32_t affinity_mask) {
 long bharat_syscall(long sysno, long arg1, long arg2, long arg3, long arg4, long arg5, long arg6) {
     return bharat_syscall_arch(sysno, arg1, arg2, arg3, arg4, arg5, arg6);
 }
+
+#if __SIZEOF_POINTER__ == 4
+__attribute__((weak))
+uint64_t __atomic_fetch_add_8(volatile void *ptr, uint64_t val, int memorder) {
+    (void)memorder;
+    volatile uint64_t *p = (volatile uint64_t *)ptr;
+    uint64_t old = *p;
+    *p = old + val;
+    return old;
+}
+#endif

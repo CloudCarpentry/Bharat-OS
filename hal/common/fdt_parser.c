@@ -2,6 +2,7 @@
 #include "hal/hal.h"
 #include "hal/hal_boot.h"
 #include "boot/boot_info.h"
+#include "bharat/display/boot_video.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -48,16 +49,40 @@ static void* hal_memset(void* s, int c, size_t n) {
     return s;
 }
 
-static size_t hal_strlen(const char* s) {
-    size_t len = 0;
-    while (*s++) len++;
-    return len;
+static int fdt_bounded_strnlen(const char *s, size_t max_len, size_t *out_len) {
+    if (!s || !out_len) {
+        return -1;
+    }
+
+    for (size_t i = 0; i < max_len; ++i) {
+        if (s[i] == '\0') {
+            *out_len = i;
+            return 0;
+        }
+    }
+
+    return -1; // no NUL found within bounds
 }
 
 static const char *fdt_get_string(const struct fdt_header *fdt,
                                   uint32_t offset) {
-  return (const char *)((uintptr_t)fdt + fdt32_to_cpu(fdt->off_dt_strings) +
-                        offset);
+  uint32_t strings_off = fdt32_to_cpu(fdt->off_dt_strings);
+  uint32_t strings_size = fdt32_to_cpu(fdt->size_dt_strings);
+
+  if (offset >= strings_size) {
+      return NULL;
+  }
+
+  const char *str = (const char *)((uintptr_t)fdt + strings_off + offset);
+
+  // Ensure the string is NUL-terminated within the strings block
+  size_t max_len = strings_size - offset;
+  size_t out_len = 0;
+  if (fdt_bounded_strnlen(str, max_len, &out_len) != 0) {
+      return NULL;
+  }
+
+  return str;
 }
 
 #define MAX_FDT_DEPTH 32
@@ -74,11 +99,6 @@ bool fdt_is_valid(const void *fdt_ptr) {
     return false;
   const struct fdt_header *fdt = (const struct fdt_header *)fdt_ptr;
   uint32_t magic = fdt32_to_cpu(fdt->magic);
-  hal_serial_write("FDT: Checking magic at ");
-  hal_serial_write_hex((uintptr_t)fdt_ptr);
-  hal_serial_write(" magic=");
-  hal_serial_write_hex(magic);
-  hal_serial_write("\n");
   return (magic == FDT_MAGIC);
 }
 
@@ -103,6 +123,7 @@ int fdt_parse(const void *fdt_ptr, void *boot_info_ptr,
 
   uint32_t off_dt_struct = fdt32_to_cpu(fdt->off_dt_struct);
   const uint32_t *p = (const uint32_t *)((uintptr_t)fdt + off_dt_struct);
+  const uint32_t *end = (const uint32_t *)((uintptr_t)p + fdt32_to_cpu(fdt->size_dt_struct));
 
   int depth = 0;
   const char *current_node_name = NULL;
@@ -120,16 +141,28 @@ int fdt_parse(const void *fdt_ptr, void *boot_info_ptr,
   const void *reg_data = NULL;
   uint32_t reg_len = 0;
 
-  while (1) {
+  while (p < end) {
+    size_t remaining_for_tag = (size_t)((const uint8_t *)end - (const uint8_t *)p);
+    if (remaining_for_tag < 4) {
+      return -1;
+    }
+
     uint32_t tag = fdt32_to_cpu(*p++);
     if (tag == FDT_BEGIN_NODE) {
       current_node_name = (const char *)p;
 
-      // Align to 4 bytes
-      size_t len = 0;
-      while (current_node_name[len] != '\0')
-        len++;
-      p += (len + 4) / 4;
+      size_t remaining = (size_t)((const uint8_t *)end - (const uint8_t *)p);
+      size_t name_len = 0;
+      if (fdt_bounded_strnlen(current_node_name, remaining, &name_len) != 0) {
+        return -1;
+      }
+
+      // Include terminating NUL, then align to 4 bytes
+      size_t consumed = (name_len + 1U + 3U) & ~3U;
+      if (consumed > remaining) {
+        return -1;
+      }
+      p = (const uint32_t *)((const uint8_t *)p + consumed);
 
       if (depth < MAX_FDT_DEPTH - 1) {
         address_cells[depth + 1] = address_cells[depth];
@@ -218,12 +251,26 @@ int fdt_parse(const void *fdt_ptr, void *boot_info_ptr,
       if (depth <= 0)
         break;
     } else if (tag == FDT_PROP) {
+      size_t remaining_for_prop = (size_t)((const uint8_t *)end - (const uint8_t *)p);
+      if (remaining_for_prop < 8) {
+        return -1;
+      }
+
       uint32_t len = fdt32_to_cpu(*p++);
       uint32_t nameoff = fdt32_to_cpu(*p++);
       const char *prop_name = fdt_get_string(fdt, nameoff);
+      if (!prop_name) {
+          return -1;
+      }
       const void *prop_data = p;
 
-      p += (len + 3) / 4; // Align to 4 bytes
+      size_t consumed = (len + 3U) & ~3U;
+      size_t remaining = (size_t)((const uint8_t *)end - (const uint8_t *)p);
+      if (consumed > remaining) {
+        return -1;
+      }
+
+      p = (const uint32_t *)((const uint8_t *)p + consumed);
 
       if (str_eq(prop_name, "device_type") &&
           str_eq((const char *)prop_data, "memory")) {
@@ -235,6 +282,11 @@ int fdt_parse(const void *fdt_ptr, void *boot_info_ptr,
         const char *comp = (const char *)prop_data;
         size_t c_len = 0;
         while (c_len < len) {
+          size_t str_len = 0;
+          if (fdt_bounded_strnlen(comp + c_len, len - c_len, &str_len) != 0) {
+            break; // Truncated or malformed compatible string
+          }
+
           if (str_eq(comp + c_len, "ns16550a") ||
               str_eq(comp + c_len, "arm,pl011") ||
               str_eq(comp + c_len, "brcm,bcm2835-aux-uart")) {
@@ -249,9 +301,7 @@ int fdt_parse(const void *fdt_ptr, void *boot_info_ptr,
                      str_eq(comp + c_len, "arm,cortex-a15-gic")) {
             is_gic = 1;
           }
-          while (c_len < len && comp[c_len] != '\0')
-            c_len++;
-          c_len++;
+          c_len += str_len + 1;
         }
       } else if (str_eq(prop_name, "#address-cells")) {
         if (depth < MAX_FDT_DEPTH) {
@@ -287,6 +337,10 @@ typedef struct {
     uint32_t reg_len;
     uint32_t ac;
     uint32_t sc;
+    /* simple-framebuffer specific properties */
+    uint32_t fb_width;
+    uint32_t fb_height;
+    uint32_t fb_stride;
 } fdt_node_state_t;
 
 // New unified function to parse FDT and fill out discovery structs
@@ -309,11 +363,26 @@ int fdt_parse_discovery(const void *fdt_ptr, system_discovery_t *discovery) {
   stack[0].sc = 2;
 
   while (p < end) {
+    size_t remaining_for_tag = (size_t)((const uint8_t *)end - (const uint8_t *)p);
+    if (remaining_for_tag < 4) {
+      return -1;
+    }
+
     uint32_t tag = fdt32_to_cpu(*p++);
     if (tag == FDT_BEGIN_NODE) {
       const char *node_name = (const char *)p;
-      size_t name_len = hal_strlen(node_name);
-      p += (name_len + 4) / 4;
+
+      size_t remaining = (size_t)((const uint8_t *)end - (const uint8_t *)p);
+      size_t name_len = 0;
+      if (fdt_bounded_strnlen(node_name, remaining, &name_len) != 0) {
+        return -1;
+      }
+
+      size_t consumed = (name_len + 1U + 3U) & ~3U;
+      if (consumed > remaining) {
+        return -1;
+      }
+      p = (const uint32_t *)((const uint8_t *)p + consumed);
 
       depth++;
       if (depth >= MAX_FDT_DEPTH) return -1;
@@ -382,19 +451,50 @@ int fdt_parse_discovery(const void *fdt_ptr, system_discovery_t *discovery) {
           discovery->irq_ctrls[discovery->irq_ctrl_count].size = size;
           discovery->irq_ctrl_count++;
         } else if (s->is_fb) {
-          discovery->boot_video.phys_addr = base;
-          discovery->boot_video.size = size;
-          discovery->boot_video.valid = true;
+          discovery->boot_video.phys_addr    = base;
+          discovery->boot_video.size         = size;
+          /* width/height/stride gathered from properties below */
+          discovery->boot_video.width        = s->fb_width;
+          discovery->boot_video.height       = s->fb_height;
+          discovery->boot_video.stride_bytes = s->fb_stride;
+          discovery->boot_video.format       = PIXEL_FORMAT_XRGB8888;
+          /* Mark valid only if we have non-zero geometry */
+          discovery->boot_video.valid = (s->fb_width > 0 && s->fb_height > 0 &&
+                                         s->fb_stride > 0 && base != 0);
+          if (!discovery->boot_video.valid) {
+            /* Fallback: derive stride from width assuming 32bpp */
+            if (s->fb_width > 0 && s->fb_height > 0 && s->fb_stride == 0) {
+                discovery->boot_video.stride_bytes = s->fb_width * 4;
+                discovery->boot_video.size = (size > 0) ? size :
+                    (uint64_t)s->fb_height * s->fb_width * 4;
+                discovery->boot_video.valid = true;
+            }
+          }
         }
       }
       depth--;
       if (depth < 0) break;
     } else if (tag == FDT_PROP) {
+      size_t remaining_for_prop = (size_t)((const uint8_t *)end - (const uint8_t *)p);
+      if (remaining_for_prop < 8) {
+        return -1;
+      }
+
       uint32_t len = fdt32_to_cpu(*p++);
       uint32_t nameoff = fdt32_to_cpu(*p++);
       const char *prop_name = fdt_get_string(fdt, nameoff);
+      if (!prop_name) {
+          return -1;
+      }
       const void *prop_data = p;
-      p += (len + 3) / 4;
+
+      size_t consumed = (len + 3U) & ~3U;
+      size_t remaining = (size_t)((const uint8_t *)end - (const uint8_t *)p);
+      if (consumed > remaining) {
+        return -1;
+      }
+
+      p = (const uint32_t *)((const uint8_t *)p + consumed);
 
       if (str_eq(prop_name, "reg")) {
         stack[depth].reg_data = prop_data;
@@ -403,10 +503,27 @@ int fdt_parse_discovery(const void *fdt_ptr, system_discovery_t *discovery) {
         stack[depth].ac = fdt32_to_cpu(*(const uint32_t *)prop_data);
       } else if (str_eq(prop_name, "#size-cells")) {
         stack[depth].sc = fdt32_to_cpu(*(const uint32_t *)prop_data);
+      } else if (str_eq(prop_name, "width")) {
+        if (len >= 4)
+            stack[depth].fb_width = fdt32_to_cpu(*(const uint32_t *)prop_data);
+      } else if (str_eq(prop_name, "height")) {
+        if (len >= 4)
+            stack[depth].fb_height = fdt32_to_cpu(*(const uint32_t *)prop_data);
+      } else if (str_eq(prop_name, "stride")) {
+        if (len >= 4)
+            stack[depth].fb_stride = fdt32_to_cpu(*(const uint32_t *)prop_data);
+      } else if (str_eq(prop_name, "format")) {
+        /* e.g. "a8r8g8b8" — we just accept any, default to XRGB8888 */
+        (void)prop_data;
       } else if (str_eq(prop_name, "compatible")) {
         const char *comp = (const char *)prop_data;
         size_t c_len = 0;
         while (c_len < len) {
+          size_t str_len = 0;
+          if (fdt_bounded_strnlen(comp + c_len, len - c_len, &str_len) != 0) {
+            break; // Truncated or malformed compatible string
+          }
+
           if (str_eq(comp + c_len, "arm,gic-v3") || str_eq(comp + c_len, "arm,cortex-a15-gic") ||
               str_eq(comp + c_len, "arm,gic-400") || str_eq(comp + c_len, "arm,gic-v2")) {
             stack[depth].is_gic = 1;
@@ -415,8 +532,7 @@ int fdt_parse_discovery(const void *fdt_ptr, system_discovery_t *discovery) {
           } else if (str_eq(comp + c_len, "simple-framebuffer")) {
             stack[depth].is_fb = 1;
           }
-          while (c_len < len && comp[c_len] != '\0') c_len++;
-          c_len++;
+          c_len += str_len + 1;
         }
       }
     } else if (tag == FDT_END) {

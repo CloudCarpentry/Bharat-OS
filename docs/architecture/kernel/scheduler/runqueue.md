@@ -6,7 +6,7 @@ In the Bharat-OS multikernel design, scheduling is fundamentally decentralized. 
 ## Per-CPU Runqueues
 Every CPU core maintains its own completely independent `runqueue_t` structure.
 
--   **Locality:** A thread (`kthread_t`) is assigned to a specific CPU's runqueue when it becomes `Ready`.
+-   **Locality:** A thread (`bh_thread_t`) is assigned to a specific CPU's runqueue when it becomes `Ready`.
 -   **Locking:** Because only the local CPU accesses its own runqueue during a context switch, the scheduler can operate locklessly (or with a very fast, uncontended local spinlock disabled with local IRQs off) in the fast path.
 -   **Cache Affinity:** Keeping a thread on the same CPU maximizes the L1/L2 cache hit rate, improving performance.
 

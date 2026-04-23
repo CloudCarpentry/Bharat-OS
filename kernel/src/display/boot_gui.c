@@ -293,9 +293,11 @@ int boot_gui_run(void) {
     }
 
     /* 2. Probe the boot video handoff from the machine layer */
-    if (boot_video_collect(&g_gui_handoff) != 0 || !g_gui_handoff.valid) {
-        hal_serial_write("  [GUI] No valid framebuffer handoff from bootloader.\n");
-        return -1;
+    if (!g_gui_handoff.valid) {
+        if (boot_video_collect(&g_gui_handoff) != 0 || !g_gui_handoff.valid) {
+            hal_serial_write("  [GUI] No valid framebuffer handoff from bootloader.\n");
+            return -1;
+        }
     }
 
     /* 3. Validate geometry */
@@ -304,7 +306,15 @@ int boot_gui_run(void) {
         return -1;
     }
 
-    /* 4. Set up state: use identity-mapped physical address.
+    hal_serial_write("  [GUI] Video phys=");
+    hal_serial_write_hex(g_gui_handoff.phys_addr);
+    hal_serial_write(" virt=");
+    hal_serial_write_hex(g_gui_handoff.virt_addr);
+    hal_serial_write(" size=");
+    hal_serial_write_hex(g_gui_handoff.size);
+    hal_serial_write("\n");
+
+    /* 4. Set up state: use identity-mapped physical address if not mapped.
      *    This is safe because UEFI/Grub/OpenSBI establish a 1:1 map before
      *    calling kernel_main, and we haven't torn it down yet at this point. */
     uint8_t bpp = 0;
@@ -319,7 +329,7 @@ int boot_gui_run(void) {
         return -1;
     }
 
-    g_gui.fb      = (void *)(uintptr_t)g_gui_handoff.phys_addr;
+    g_gui.fb      = (void *)(uintptr_t)g_gui_handoff.virt_addr;
     g_gui.width   = g_gui_handoff.width;
     g_gui.height  = g_gui_handoff.height;
     g_gui.stride  = g_gui_handoff.stride_bytes;
@@ -340,5 +350,13 @@ bool boot_gui_is_active(void) {
 
 const boot_video_handoff_t *boot_gui_get_handoff(void) {
     if (!g_gui.active) return NULL;
+    return &g_gui_handoff;
+}
+
+/*
+ * Export a pointer to our internal handoff state so that boot_video_map.c
+ * can update the virtual address after the MMU is initialized.
+ */
+boot_video_handoff_t* boot_video_get_handoff_ptr(void) {
     return &g_gui_handoff;
 }

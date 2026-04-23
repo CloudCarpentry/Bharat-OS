@@ -8,21 +8,15 @@
 vfs_node_t *vfs_root = NULL;
 
 size_t vfs_strnlen(const char *s, size_t max_len) {
-    size_t i = 0;
-    if (!s) return 0;
-    while (i < max_len && s[i] != '\0') i++;
-    return i;
+    (void)s;
+    (void)max_len;
+    return 0;
 }
 
 int vfs_path_prefix_match(const char *path, const char *prefix) {
-    size_t i = 0;
-    if (!path || !prefix) return 0;
-    while (prefix[i] != '\0' && path[i] != '\0') {
-        if (prefix[i] != path[i]) return 0;
-        i++;
-    }
-    if (prefix[i] != '\0') return 0;
-    return (path[i] == '\0' || path[i] == '/');
+    (void)path;
+    (void)prefix;
+    return K_ERR_REQUIRES_FS_SERVICE;
 }
 
 int vfs_register_driver(const vfs_driver_info_t *info) {

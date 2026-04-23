@@ -1,6 +1,7 @@
 #include "../../kernel/include/hal/hal_pt.h"
 #include "../../kernel/include/hal/hal_pt_walk.h"
 #include "../../kernel/include/hal/hal_tlb.h"
+#include "../../kernel/include/hal/hal_mpa.h"
 #include "../../kernel/include/mm.h"
 #include "../../kernel/include/numa.h"
 #include "../../kernel/include/mm/physmap.h"
@@ -317,3 +318,50 @@ const hal_translate_ops_t* hal_translate_ops(void) {
     return &riscv32_translate_ops;
 }
 #endif
+
+static phys_addr_t riscv32_mpa_make_table(uint32_t level) {
+    (void)level;
+    return mm_alloc_page(NUMA_NODE_ANY);
+}
+
+static int riscv32_mpa_map_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
+    return riscv32_map_page(root_pt, vaddr, paddr, flags);
+}
+
+static int riscv32_mpa_unmap_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *unmapped_paddr) {
+    return riscv32_unmap_page(root_pt, vaddr, unmapped_paddr);
+}
+
+static void riscv32_mpa_set_root(phys_addr_t root) {
+    uint32_t satp = (1u << 31) | ((uint32_t)(root >> 12) & 0x003FFFFFu); // Sv32
+    __asm__ volatile("csrw satp, %0" :: "r"(satp) : "memory");
+    __asm__ volatile("sfence.vma zero, zero" ::: "memory");
+}
+
+static void riscv32_mpa_flush_tlb_local(virt_addr_t vaddr, uint16_t asid) {
+    (void)asid;
+    riscv32_tlb_flush_page_local(vaddr);
+}
+
+static phys_addr_t riscv32_mpa_get_root(void) {
+    uint32_t satp;
+    __asm__ volatile("csrr %0, satp" : "=r"(satp));
+    return ((phys_addr_t)(satp & 0x003FFFFFu)) << 12;
+}
+
+mem_protect_ops_t riscv32_mem_protect_ops = {
+    .supported_caps = MPA_CAP_VIRT | MPA_CAP_EXEC_PERM | MPA_CAP_WRITE | MPA_CAP_USER | MPA_CAP_DEVICE,
+    .cpu_ops = {
+        .make_table = riscv32_mpa_make_table,
+        .map_page = riscv32_mpa_map_page,
+        .unmap_page = riscv32_mpa_unmap_page,
+        .set_root = riscv32_mpa_set_root,
+        .flush_tlb_local = riscv32_mpa_flush_tlb_local,
+        .get_root = riscv32_mpa_get_root,
+    },
+    .iommu_ops = {
+        .probe = NULL,
+    }
+};
+
+mem_protect_ops_t *active_mem_protect = &riscv32_mem_protect_ops;

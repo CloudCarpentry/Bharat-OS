@@ -1,3 +1,4 @@
+#include "mm/mem_model.h"
 #include "../../include/mm/tlb.h"
 #include "../../include/mm/tlb_internal.h"
 #include "../../include/hal/hal_tlb.h"
@@ -5,7 +6,13 @@
 #include "../../include/bharat/cpu_local.h"
 
 int tlb_invalidate_local(vm_aspace_t *aspace, uintptr_t va, size_t len, tlb_inv_kind_t kind) {
+    mem_model_t model = mem_model_get_current();
+    if (model == MEM_MODEL_MPU || model == MEM_MODEL_NONE) return 0; // truthful no-op for MPU_ONLY
     if (!aspace || !active_hal_tlb) return -1;
+    if (model == MEM_MODEL_MMU_LITE && (kind == TLB_INV_PAGE || kind == TLB_INV_RANGE)) {
+        kind = TLB_INV_ASPACE;
+    }
+
 
     uint32_t current_core = hal_cpu_get_id();
 

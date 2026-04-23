@@ -1,5 +1,7 @@
 # Storage & Filesystem Strategy (Advanced)
 
+> Consolidation note: normative storage/filesystem architecture now lives in `docs/architecture/storage/` (`vfs-and-filesystem-architecture.md`, `file-system-detailed-design.md`, `sandbox-policy.md`, `roadmap.md`). This document remains an advanced strategy companion for long-horizon ideas and must not be read as current-state or normative contract.
+
 ## Goals
 
 Bharat-OS should expose a single, capability-safe storage model that can host:

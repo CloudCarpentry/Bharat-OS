@@ -13,6 +13,6 @@ This application is automatically built when running the top-level SDK build scr
 
 ```bash
 cd user/sdk/
-./build.sh --arch x86_64
+./build.sh build --target x86_64
 ```
 The resulting executable will be located in `user/sdk/build/x86_64/sample_app`.

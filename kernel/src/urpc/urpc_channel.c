@@ -57,3 +57,8 @@ urpc_channel_state_t urpc_channel_get_state(uint32_t target_core) {
     if (target_core >= BHARAT_MAX_CPUS) return URPC_CHANNEL_ERROR;
     return g_urpc_states[target_core];
 }
+
+int urpc_channel_can_route(ipc_traffic_type_t traffic, uint32_t payload_len, bool cross_core) {
+    return ipc_profile_select_transport(traffic, cross_core) == IPC_TRANSPORT_URPC &&
+           ipc_profile_payload_supported(traffic, payload_len, cross_core);
+}

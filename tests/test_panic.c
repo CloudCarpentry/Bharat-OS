@@ -20,6 +20,8 @@ extern uint8_t _pstore_end __attribute__((alias("_pstore_data_end")));
 // Mocks
 void hal_cpu_disable_interrupts(void) {}
 void hal_serial_write(const char *s) { (void)s; }
+void console_enter_panic(void) {}
+void console_panic_flush_backends(void) {}
 
 void ipc_async_check_timeouts(uint64_t current_ticks) { (void)current_ticks; }
 

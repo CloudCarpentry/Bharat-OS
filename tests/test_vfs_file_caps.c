@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "fs/vfs.h"
+#include "../../lib/fs/fs_client.h"
 #include "fs/file.h"
 #include "fs/mount.h"
 
@@ -57,10 +58,11 @@ int main(void) {
     capability_t bad_mount_cap = {
         .target_object_id = 0,
         .rights_mask = 0,
+        .capability_id = 1,
     };
 
-    assert(vfs_mount_fs("/", &fs_root, &bad_mount_cap) == -1);
-    assert(vfs_mount_fs("/", &fs_root, &mount_cap) == 0);
+    assert(fs_mount("/", &fs_root, &bad_mount_cap) == -2);
+    assert(fs_mount("/", &fs_root, &mount_cap) == 0);
 
     capability_t good_cap = {
         .capability_id = 1,
@@ -83,31 +85,31 @@ int main(void) {
         .owner_core_id = 0,
     };
 
-    assert(vfs_open_file("/", VFS_OPEN_READ | VFS_OPEN_WRITE, &good_cap, &fd) == 0);
+    assert(fs_open("/", VFS_OPEN_READ | VFS_OPEN_WRITE, &good_cap, &fd) == 0);
     assert(fd >= 0);
 
     // Write should be denied when capability lacks right
-    assert(vfs_write_file(fd, "test", 4, &bad_rights_cap) == -1);
+    assert(fs_write(fd, "test", 4, &bad_rights_cap) == -4);
 
     // Write should be denied when capability targets different object
-    assert(vfs_write_file(fd, "test", 4, &bad_object_cap) == -1);
+    assert(fs_write(fd, "test", 4, &bad_object_cap) == -4);
 
     // Write should succeed with good cap
-    assert(vfs_write_file(fd, "test", 4, &good_cap) == 4);
+    assert(fs_write(fd, "test", 4, &good_cap) == 4);
 
     // Read should be denied when capability lacks right
-    assert(vfs_read_file(fd, read_buf, 4, &bad_rights_cap) == -1);
+    assert(fs_read(fd, read_buf, 4, &bad_rights_cap) == -4);
 
     // Read should be denied when capability targets different object
-    assert(vfs_read_file(fd, read_buf, 4, &bad_object_cap) == -1);
+    assert(fs_read(fd, read_buf, 4, &bad_object_cap) == -4);
 
     // Open read denied without read right
     int denied_read_fd;
-    assert(vfs_open_file("/", VFS_OPEN_READ, &bad_rights_cap, &denied_read_fd) == -1);
+    assert(fs_open("/", VFS_OPEN_READ, &bad_rights_cap, &denied_read_fd) == -3);
 
     // Open write denied without write right
     int denied_write_fd;
-    assert(vfs_open_file("/", VFS_OPEN_WRITE, &bad_rights_cap, &denied_write_fd) == -1);
+    assert(fs_open("/", VFS_OPEN_WRITE, &bad_rights_cap, &denied_write_fd) == -3);
 
     // Read should succeed with good cap
     // Note: since our mem_write just copies to g_memory_fs without updating any size metadata,
@@ -122,25 +124,51 @@ int main(void) {
     // Let's open another fd for reading.
 
     int read_fd;
-    assert(vfs_open_file("/", VFS_OPEN_READ, &good_cap, &read_fd) == 0);
-    assert(vfs_read_file(read_fd, read_buf, 4, &good_cap) == 4);
+    assert(fs_open("/", VFS_OPEN_READ, &good_cap, &read_fd) == 0);
+    assert(fs_read(read_fd, read_buf, 4, &good_cap) == 4);
     assert(memcmp(read_buf, "test", 4) == 0);
 
     // Verify that a file opened as write-only cannot be read from
     int write_only_fd;
-    assert(vfs_open_file("/", VFS_OPEN_WRITE, &good_cap, &write_only_fd) == 0);
+    assert(fs_open("/", VFS_OPEN_WRITE, &good_cap, &write_only_fd) == 0);
     // Read should be denied because handle lacks VFS_OPEN_READ, even though good_cap has CAP_RIGHT_READ
-    assert(vfs_read_file(write_only_fd, read_buf, 4, &good_cap) == -1);
-    assert(vfs_close_file(write_only_fd, &good_cap) == 0);
+    assert(fs_read(write_only_fd, read_buf, 4, &good_cap) == -3);
+    assert(fs_close(write_only_fd, &good_cap) == 0);
 
-    assert(vfs_close_file(read_fd, &good_cap) == 0);
+    assert(fs_close(read_fd, &good_cap) == 0);
 
     // Close should be denied for bad object
-    assert(vfs_close_file(fd, &bad_object_cap) == -1);
+    assert(fs_close(fd, &bad_object_cap) == -4);
 
     // Close should succeed with good cap
-    assert(vfs_close_file(fd, &good_cap) == 0);
+    assert(fs_close(fd, &good_cap) == 0);
 
     puts("test_vfs_file_caps: PASS");
     return 0;
+}
+void* arch_memcpy(void* dest, const void* src, size_t n, uint32_t flags) {
+    (void)flags;
+    char* d = (char*)dest;
+    const char* s = (const char*)src;
+    while(n--) *d++ = *s++;
+    return dest;
+}
+void* arch_memset(void* s, int c, size_t n, uint32_t flags) {
+    (void)flags;
+    char* p = (char*)s;
+    while(n--) *p++ = (char)c;
+    return s;
+}
+void* arch_memmove(void* dest, const void* src, size_t n, uint32_t flags) {
+    (void)flags;
+    char* d = (char*)dest;
+    const char* s = (const char*)src;
+    if (d < s) {
+        while (n--) *d++ = *s++;
+    } else {
+        d += n;
+        s += n;
+        while (n--) *--d = *--s;
+    }
+    return dest;
 }

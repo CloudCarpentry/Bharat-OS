@@ -77,8 +77,9 @@ bool boot_selftest_is_test_allowed(const boot_test_meta_t *meta) {
 static const char* stage_to_str(boot_test_stage_t stage) {
     switch(stage) {
         case BOOT_TEST_STAGE_EARLY: return "early";
-        case BOOT_TEST_STAGE_SECURITY: return "security";
         case BOOT_TEST_STAGE_MEMORY: return "memory";
+        case BOOT_TEST_STAGE_IPC: return "ipc";
+        case BOOT_TEST_STAGE_SECURITY: return "security";
         case BOOT_TEST_STAGE_PLATFORM: return "platform";
         case BOOT_TEST_STAGE_RUNTIME: return "runtime";
         default: return "unknown";

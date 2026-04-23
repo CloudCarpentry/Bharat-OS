@@ -4,6 +4,7 @@
 #include "benchmark/benchmark.h"
 #include "fs/mount.h"
 #include "fs/vfs.h"
+#include "../../lib/fs/fs_client.h"
 
 // Note: We don't redefine vfs_root here because it's already in vfs.c
 // and we are linking against vfs.c
@@ -21,22 +22,22 @@ void benchmark_mount_resolution(void) {
     vfs_mount_test_reset_state();
 
     // Mount some paths to create a bit of a search space
-    vfs_mount_fs("/", &mock_node, &mock_cap);
-    vfs_mount_fs("/home", &mock_node, &mock_cap);
-    vfs_mount_fs("/home/user", &mock_node, &mock_cap);
-    vfs_mount_fs("/home/user/docs", &mock_node, &mock_cap);
-    vfs_mount_fs("/usr", &mock_node, &mock_cap);
-    vfs_mount_fs("/usr/bin", &mock_node, &mock_cap);
-    vfs_mount_fs("/usr/local", &mock_node, &mock_cap);
-    vfs_mount_fs("/var/log", &mock_node, &mock_cap);
-    vfs_mount_fs("/etc", &mock_node, &mock_cap);
-    vfs_mount_fs("/tmp", &mock_node, &mock_cap);
-    vfs_mount_fs("/dev", &mock_node, &mock_cap);
-    vfs_mount_fs("/proc", &mock_node, &mock_cap);
-    vfs_mount_fs("/sys", &mock_node, &mock_cap);
-    vfs_mount_fs("/mnt", &mock_node, &mock_cap);
-    vfs_mount_fs("/media", &mock_node, &mock_cap);
-    vfs_mount_fs("/opt", &mock_node, &mock_cap);
+    fs_mount("/", &mock_node, &mock_cap);
+    fs_mount("/home", &mock_node, &mock_cap);
+    fs_mount("/home/user", &mock_node, &mock_cap);
+    fs_mount("/home/user/docs", &mock_node, &mock_cap);
+    fs_mount("/usr", &mock_node, &mock_cap);
+    fs_mount("/usr/bin", &mock_node, &mock_cap);
+    fs_mount("/usr/local", &mock_node, &mock_cap);
+    fs_mount("/var/log", &mock_node, &mock_cap);
+    fs_mount("/etc", &mock_node, &mock_cap);
+    fs_mount("/tmp", &mock_node, &mock_cap);
+    fs_mount("/dev", &mock_node, &mock_cap);
+    fs_mount("/proc", &mock_node, &mock_cap);
+    fs_mount("/sys", &mock_node, &mock_cap);
+    fs_mount("/mnt", &mock_node, &mock_cap);
+    fs_mount("/media", &mock_node, &mock_cap);
+    fs_mount("/opt", &mock_node, &mock_cap);
 
     const int ITERATIONS = 1000000; // 1M iterations for a faster but still meaningful test
     const char* path_to_resolve = "/home/user/docs/work/project/file.txt";

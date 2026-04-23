@@ -28,7 +28,7 @@ typedef struct {
 void hwsec_init_features(cpu_security_features_t* features_out);
 
 // Apply a secure shadow stack to the specified thread (CET)
-int hwsec_enable_shadow_stack(kthread_t* thread);
+int hwsec_enable_shadow_stack(bh_thread_t* thread);
 
 // Enforce Memory Protection Keys (MPK) onto an address space
 int hwsec_apply_memory_keys(address_space_t* as, uint32_t pkey, uint32_t access_rights);

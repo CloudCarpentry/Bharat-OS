@@ -21,3 +21,11 @@ int bharat_sched_set_affinity(uint64_t tid, uint32_t affinity_mask);
 #ifdef __cplusplus
 }
 #endif
+int bharat_intent_set(uint64_t tid, const void* intent);
+int bharat_intent_get(uint64_t tid, void* intent);
+
+int bharat_mem_alloc_class(size_t size, uint32_t mem_class, uint32_t flags, uint64_t* out_addr);
+
+int bharat_fault_domain_create(const void* attr, uint64_t* out_domain);
+int bharat_fault_domain_destroy(uint64_t domain);
+int bharat_fault_domain_attach(uint64_t domain, uint64_t tid);

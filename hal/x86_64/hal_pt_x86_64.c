@@ -30,6 +30,15 @@ const size_t g_kernel_physmap_size = 0x8000000000ULL; // 512GB
 #define X86_LARGE_2M_SIZE (1ULL << 21)
 
 static void x86_tlb_flush_page_local(virt_addr_t vaddr);
+bool g_x86_mmu_finalized = false;
+extern const virt_addr_t g_kernel_virt_offset;
+
+static void* x86_phys_to_virt(phys_addr_t phys) { 
+    if (!g_x86_mmu_finalized) {
+        return (void*)phys;
+    }
+    return (void*)(phys + g_kernel_virt_offset); 
+}
 
 // Arch-private raw descriptor
 typedef uint64_t pte_raw_t;
@@ -149,7 +158,7 @@ static int x86_pt_walk(phys_addr_t root_pt, virt_addr_t vaddr, bool create, uint
     uint64_t pd_idx = (aligned_vaddr >> 21) & 0x1FF;
     uint64_t pt_idx = (aligned_vaddr >> 12) & 0x1FF;
 
-    pt_t* pml4 = (pt_t*)(uintptr_t)root_pt;
+    pt_t* pml4 = (pt_t*)x86_phys_to_virt(root_pt);
     uint64_t dir_flags = X86_PT_PRESENT | X86_PT_RW;
     if (alloc_flags & HAL_PT_FLAG_USER) {
         dir_flags |= X86_PT_USER;
@@ -163,13 +172,13 @@ static int x86_pt_walk(phys_addr_t root_pt, virt_addr_t vaddr, bool create, uint
         }
         phys_addr_t new_pdp = pt_cache_alloc();
         if (!new_pdp) return -2;
-        pt_t* pdp_ptr = (pt_t*)(uintptr_t)new_pdp;
+        pt_t* pdp_ptr = (pt_t*)x86_phys_to_virt(new_pdp);
         for(int i=0; i<512; i++) pdp_ptr->entries[i] = 0;
         pml4->entries[pml4_idx] = new_pdp | dir_flags;
     }
 
     phys_addr_t pdp_pa = pml4->entries[pml4_idx] & X86_PAGE_MASK;
-    pt_t* pdp = (pt_t*)(uintptr_t)pdp_pa;
+    pt_t* pdp = (pt_t*)x86_phys_to_virt(pdp_pa);
 
     if ((pdp->entries[pdp_idx] & X86_PT_PRESENT) == 0) {
         if (!create) {
@@ -179,7 +188,7 @@ static int x86_pt_walk(phys_addr_t root_pt, virt_addr_t vaddr, bool create, uint
         }
         phys_addr_t new_pd = pt_cache_alloc();
         if (!new_pd) return -2;
-        pt_t* pd_ptr = (pt_t*)(uintptr_t)new_pd;
+        pt_t* pd_ptr = (pt_t*)x86_phys_to_virt(new_pd);
         for(int i=0; i<512; i++) pd_ptr->entries[i] = 0;
         pdp->entries[pdp_idx] = new_pd | dir_flags;
     } else if (pdp->entries[pdp_idx] & X86_PT_HUGE) {
@@ -196,7 +205,7 @@ static int x86_pt_walk(phys_addr_t root_pt, virt_addr_t vaddr, bool create, uint
     }
 
     phys_addr_t pd_pa = pdp->entries[pdp_idx] & X86_PAGE_MASK;
-    pt_t* pd = (pt_t*)(uintptr_t)pd_pa;
+    pt_t* pd = (pt_t*)x86_phys_to_virt(pd_pa);
 
     if ((pd->entries[pd_idx] & X86_PT_PRESENT) == 0) {
         if (!create) {
@@ -206,7 +215,7 @@ static int x86_pt_walk(phys_addr_t root_pt, virt_addr_t vaddr, bool create, uint
         }
         phys_addr_t new_pt = pt_cache_alloc();
         if (!new_pt) return -2;
-        pt_t* pt_ptr = (pt_t*)(uintptr_t)new_pt;
+        pt_t* pt_ptr = (pt_t*)x86_phys_to_virt(new_pt);
         for(int i=0; i<512; i++) pt_ptr->entries[i] = 0;
         pd->entries[pd_idx] = new_pt | dir_flags;
     } else if (pd->entries[pd_idx] & X86_PT_HUGE) {
@@ -216,7 +225,7 @@ static int x86_pt_walk(phys_addr_t root_pt, virt_addr_t vaddr, bool create, uint
             phys_addr_t huge_base = pte_to_pa(pd->entries[pd_idx], 21);
             phys_addr_t new_pt = pt_cache_alloc();
             if (!new_pt) return -2;
-            pt_t* split_pt = (pt_t*)(uintptr_t)new_pt;
+            pt_t* split_pt = (pt_t*)x86_phys_to_virt(new_pt);
             uint64_t split_flags = (pd->entries[pd_idx] & ~X86_PAGE_MASK) & ~X86_PT_HUGE;
             for (size_t i = 0; i < 512; i++) {
                 split_pt->entries[i] = (huge_base + (i * PAGE_SIZE)) | split_flags;
@@ -236,7 +245,7 @@ static int x86_pt_walk(phys_addr_t root_pt, virt_addr_t vaddr, bool create, uint
     }
 
     phys_addr_t pt_pa = pd->entries[pd_idx] & X86_PAGE_MASK;
-    pt_t* pt = (pt_t*)(uintptr_t)pt_pa;
+    pt_t* pt = (pt_t*)x86_phys_to_virt(pt_pa);
 
     out_result->present = (pt->entries[pt_idx] & X86_PT_PRESENT) != 0;
     out_result->level = 1;
@@ -269,6 +278,7 @@ static int x86_pt_map_4k(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t pad
     if (res.level == 1 && res.entry_va) {
         pte_raw_t* pte = (pte_raw_t*)res.entry_va;
         *pte = aligned_paddr | flags_to_x86(flags);
+        x86_tlb_flush_page_local(vaddr);
         return 0;
     }
     return -1; // Should not reach here for 4k map unless error
@@ -478,17 +488,9 @@ void x86_64_init_hardening(void) {
 
 static translate_backend_kind_t x86_backend_type(void) { return TRANSLATE_BACKEND_MMU; }
 static translate_exec_class_t x86_exec_class(void) { return TRANSLATE_EXEC_MMU_FULL; }
-bool g_x86_mmu_finalized = false;
 
 void x86_pt_set_mmu_finalized(bool finalized) {
     g_x86_mmu_finalized = finalized;
-}
-
-static void* x86_phys_to_virt(phys_addr_t phys) { 
-    if (!g_x86_mmu_finalized) {
-        return (void*)phys;
-    }
-    return (void*)(phys + g_kernel_virt_offset); 
 }
 
 static phys_addr_t x86_virt_to_phys(const void* virt) { 

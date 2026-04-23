@@ -1,6 +1,7 @@
 #include "hal/hal_irq.h"
 #include "hal/hal_ipi.h"
 #include "hal/hal_boot.h"
+#include "device/irq_domain.h"
 
 #define LAPIC_SVR_OFFSET 0x0F0
 #define LAPIC_ICR_LOW_OFFSET 0x300
@@ -22,8 +23,20 @@ static inline void x86_outb(uint16_t port, uint8_t value) {
   __asm__ volatile("outb %0, %1" : : "a"(value), "Nd"(port));
 }
 
+static irq_domain_t* g_apic_root_domain = NULL;
+
 void hal_irq_init_boot(void) {
     hal_irq_generic_init_boot();
+
+    // Create root domain for APIC
+    g_apic_root_domain = irq_domain_create("apic-root", 0, 256, NULL);
+    if (g_apic_root_domain) {
+        for (uint32_t i = 0; i < 256; i++) {
+            irq_domain_map(g_apic_root_domain, i, i);
+        }
+        irq_domain_set_default(g_apic_root_domain);
+    }
+
     // Enable local APIC (set Spurious Interrupt Vector Register)
     lapic_write(LAPIC_SVR_OFFSET, 0x1FF | 0x100);
 

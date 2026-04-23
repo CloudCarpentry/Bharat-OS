@@ -2,6 +2,10 @@
 
 ## 1. Executive Summary
 
+**Related Contracts:**
+* [VM Authority Path Contract](./vm-authority-path.md)
+* [AI-Adjacent Memory & Accelerator Primitive Roadmap](./ai-adjacent-memory-accel-roadmap.md)
+
 Bharat-OS implements a capability-gated multikernel memory architecture that enforces strict separation between mechanisms (physical memory allocation, hardware translation) and policies (virtual memory semantics, demand paging). The memory subsystem provides a robust foundation encompassing physical memory management (PMM), virtual memory objects, address spaces, and hardware translation through a capability-aware HAL.
 
 The primary design principle is **strict ownership**: no layer may reach around its adjacent layer. This prevents architecture leakage, ensures profile truthfulness (e.g., distinguishing between MMU and MPU contexts), and guarantees determinism.
@@ -23,7 +27,9 @@ flowchart TD
 
     G[Memory Allocations] --> H{alloc_class_t}
     H -->|MEM_NORMAL, MEM_RT, MEM_PACKET| D
+    H -->|MEM_TENSOR, MEM_MODEL_RO, MEM_SCRATCH_LOWLAT| D
     H -->|MEM_DMA, MEM_SECURE| I[Specialized Pools / CMA]
+    H -->|MEM_TENSOR_PINNED, MEM_SHARED_ACCEL| I
 ```
 
 ### 2.1 PMM Invariants
@@ -293,3 +299,32 @@ Memory correctness is verified using:
 3. **Lockdep** for multithreaded debugging.
 
 Benchmark metrics cover VM allocations, DMA throughput, and HAL latencies across architectures.
+
+## 10. Multi-Architecture Verification via QEMU
+
+To verify the memory model enforcement and AI-adjacent primitives across different architecture profiles, use the following headless build and execution strategy:
+
+### 10.1 Headless Build Matrix
+Run the standard build tool for each profile:
+```bash
+# Build x86_64 Desktop (MMU-full)
+./build.sh build --target-yaml tools/targets/qemu/x86_64_desktop_headless.yaml
+
+# Build ARM64 Desktop (MMU-full)
+./build.sh build --target-yaml tools/targets/qemu/arm64_desktop_headless.yaml
+
+# Build ARM32 MMU-lite (MMU-lite)
+./build.sh build --target-yaml tools/targets/qemu/arm32_mmu_lite_headless.yaml
+
+# Build RISC-V64 Desktop (MMU-full)
+./build.sh build --target-yaml tools/targets/qemu/riscv64_desktop_headless.yaml
+```
+
+### 10.2 Host Conformance Tests
+For fast iterative verification of admission logic and capability matrices, execute the host test suite:
+```bash
+mkdir -p build/host && cd build/host
+cmake ../../ -DBHARAT_BUILD_HOST_TESTS=ON
+make test_mem_model_ai
+./tests/host/test_mem_model_ai
+```

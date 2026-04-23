@@ -1,3 +1,13 @@
+#if __riscv_xlen == 64
+#define LREG ld
+#define SREG sd
+#define REGBYTES 8
+#else
+#define LREG lw
+#define SREG sw
+#define REGBYTES 4
+#endif
+
 .text
 .global arch_context_switch
 .type arch_context_switch, @function
@@ -8,78 +18,77 @@
 arch_context_switch:
     beqz a0, .L_restore
 
-    sd s0,  0(a0)
-    sd s1,  8(a0)
-    sd s2,  16(a0)
-    sd s3,  24(a0)
-    sd s4,  32(a0)
-    sd s5,  40(a0)
-    sd s6,  48(a0)
-    sd s7,  56(a0)
-    sd s8,  64(a0)
-    sd s9,  72(a0)
-    sd s10, 80(a0)
-    sd s11, 88(a0)
+    SREG s0,  0*REGBYTES(a0)
+    SREG s1,  1*REGBYTES(a0)
+    SREG s2,  2*REGBYTES(a0)
+    SREG s3,  3*REGBYTES(a0)
+    SREG s4,  4*REGBYTES(a0)
+    SREG s5,  5*REGBYTES(a0)
+    SREG s6,  6*REGBYTES(a0)
+    SREG s7,  7*REGBYTES(a0)
+    SREG s8,  8*REGBYTES(a0)
+    SREG s9,  9*REGBYTES(a0)
+    SREG s10, 10*REGBYTES(a0)
+    SREG s11, 11*REGBYTES(a0)
 
     csrr t0, sstatus
-    sd t0, 96(a0)
+    SREG t0, 12*REGBYTES(a0)
 
-    sd ra, 128(a0)
-    sd sp, 136(a0)
+    SREG ra, 16*REGBYTES(a0)
+    SREG sp, 17*REGBYTES(a0)
 
-    addi sp, sp, -16
-    sd a0, 0(sp)
-    sd a1, 8(sp)
+    addi sp, sp, -(2*REGBYTES)
+    SREG a0, 0*REGBYTES(sp)
+    SREG a1, 1*REGBYTES(sp)
     call arch_ext_state_context_switch_out
-    ld a1, 8(sp)
-    ld a0, 0(sp)
-    addi sp, sp, 16
+    LREG a1, 1*REGBYTES(sp)
+    LREG a0, 0*REGBYTES(sp)
+    addi sp, sp, (2*REGBYTES)
 
 .L_restore:
-    addi sp, sp, -16
-    sd a0, 0(sp)
-    sd a1, 8(sp)
+    addi sp, sp, -(2*REGBYTES)
+    SREG a0, 0*REGBYTES(sp)
+    SREG a1, 1*REGBYTES(sp)
     mv a0, a1
     call arch_ext_state_context_switch_in
-    ld a1, 8(sp)
-    ld a0, 0(sp)
-    addi sp, sp, 16
+    LREG a1, 1*REGBYTES(sp)
+    LREG a0, 0*REGBYTES(sp)
+    addi sp, sp, (2*REGBYTES)
 
-    ld sp, 136(a1)
-    ld ra, 128(a1)
+    LREG sp, 17*REGBYTES(a1)
+    LREG ra, 16*REGBYTES(a1)
 
-    ld t0, 96(a1)
+    LREG t0, 12*REGBYTES(a1)
     csrw sstatus, t0
 
-    ld s0,  0(a1)
-    ld s1,  8(a1)
-    ld s2,  16(a1)
-    ld s3,  24(a1)
-    ld s4,  32(a1)
-    ld s5,  40(a1)
-    ld s6,  48(a1)
-    ld s7,  56(a1)
-    ld s8,  64(a1)
-    ld s9,  72(a1)
-    ld s10, 80(a1)
-    ld s11, 88(a1)
+    LREG s0,  0*REGBYTES(a1)
+    LREG s1,  1*REGBYTES(a1)
+    LREG s2,  2*REGBYTES(a1)
+    LREG s3,  3*REGBYTES(a1)
+    LREG s4,  4*REGBYTES(a1)
+    LREG s5,  5*REGBYTES(a1)
+    LREG s6,  6*REGBYTES(a1)
+    LREG s7,  7*REGBYTES(a1)
+    LREG s8,  8*REGBYTES(a1)
+    LREG s9,  9*REGBYTES(a1)
+    LREG s10, 10*REGBYTES(a1)
+    LREG s11, 11*REGBYTES(a1)
 
-    addi sp, sp, -32
-    sd a0, 0(sp)
-    sd a1, 8(sp)
-    sd ra, 16(sp)
+    addi sp, sp, -(4*REGBYTES)
+    SREG a0, 0*REGBYTES(sp)
+    SREG a1, 1*REGBYTES(sp)
+    SREG ra, 2*REGBYTES(sp)
     call arch_post_switch
-    ld ra, 16(sp)
-    ld a1, 8(sp)
-    ld a0, 0(sp)
-    addi sp, sp, 32
+    LREG ra, 2*REGBYTES(sp)
+    LREG a1, 1*REGBYTES(sp)
+    LREG a0, 0*REGBYTES(sp)
+    addi sp, sp, (4*REGBYTES)
 
     ret
 
 .global riscv_fp_state_save
 .type riscv_fp_state_save, @function
-// a0 = arch_ext_state_t*
-// offset 16 is where fpr starts
+# a0 = arch_ext_state_t*
 riscv_fp_state_save:
     fsd f0,  16(a0)
     fsd f1,  24(a0)
@@ -116,13 +125,11 @@ riscv_fp_state_save:
 
     csrr t0, fcsr
     sw t0, 272(a0)
-
     ret
 
 .global riscv_fp_state_restore
 .type riscv_fp_state_restore, @function
-// a0 = arch_ext_state_t*
-// offset 16 is where fpr starts
+# a0 = arch_ext_state_t*
 riscv_fp_state_restore:
     fld f0,  16(a0)
     fld f1,  24(a0)
@@ -159,5 +166,4 @@ riscv_fp_state_restore:
 
     lw t0, 272(a0)
     csrw fcsr, t0
-
     ret

@@ -1,0 +1,43 @@
+service bharat.monitor.accel_telemetry.v1 = 16 {
+    // Accelerator Telemetry Interface
+    // Collects runtime statistics on hardware usage, fallback events, and thermal throttling.
+
+    // Pushes telemetry counters from a backend provider
+    rpc PushTelemetry(TelemetryUpdate) -> StatusResponse {
+        qos = best_effort;
+        timeout_ms = 100;
+    }
+
+    // Fetch aggregated health data across all hardware classes
+    rpc QueryTelemetry(TelemetryQuery) -> TelemetryReport {
+        qos = reliable;
+        timeout_ms = 500;
+    }
+}
+
+message TelemetryUpdate {
+    uint32  feature_class;
+    uint64  backend_selected_count;
+    uint64  fallback_sw_count;
+    uint64  throttled_count;
+    uint64  faults_encountered;
+    uint64  queue_latency_us;
+    uint64  bytes_mapped;
+    uint64  dma_sync_failures;
+}
+
+message TelemetryQuery {
+    uint32  feature_class;
+}
+
+message TelemetryReport {
+    int32   status;
+    uint64  total_hw_ops;
+    uint64  total_sw_ops;
+    uint64  total_faults;
+    uint64  avg_latency_us;
+}
+
+message StatusResponse {
+    int32   status;
+}

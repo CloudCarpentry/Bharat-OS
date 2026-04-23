@@ -36,9 +36,9 @@ system_discovery_t* hal_get_system_discovery(void) {
 }
 
 // For sched tests we need these
-kprocess_t* process_create(const char* name) {
+bh_process_t* process_create(const char* name) {
     // Stub
-    kprocess_t* p = kmalloc(sizeof(kprocess_t));
+    bh_process_t* p = kmalloc(sizeof(bh_process_t));
     memset(p, 0, sizeof(*p));
     return p;
 }

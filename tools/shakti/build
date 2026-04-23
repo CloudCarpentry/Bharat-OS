@@ -37,4 +37,4 @@ if [[ ! "$TARGET" =~ ^shakti- ]]; then
 fi
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-exec "$ROOT_DIR/tools/build.sh" riscv64 "${RUN}" "${CLEAN}" --board "$TARGET"
+exec "$ROOT_DIR/build.sh" riscv64 "${RUN}" "${CLEAN}" --board "$TARGET"

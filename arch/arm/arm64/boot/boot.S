@@ -23,41 +23,50 @@ _start:
     /* Preserve device tree pointer passed in x0 by bootloader/QEMU */
     mov x19, x0
 
-    /* Direct MMIO write to PL011 for early debug confirmation */
-    mov x15, #0x09000000
-    mov x16, #'!'
-    str w16, [x15]
-
-    /* Read CPU ID (MPIDR_EL1) and only let CPU 0 continue for now */
+    /* Read CPU ID (MPIDR_EL1) */
     mrs x1, mpidr_el1
     and x1, x1, #0xFF
-    cbnz x1, .halt_loop
 
-    /* Setup stack */
-    ldr x1, =stack_top
-    mov sp, x1
+    /* Only let CPU 0 continue for now */
+    cbnz x1, .secondary_core
+
+    /* Setup stack for primary core */
+    ldr x2, =stack_bottom
+    mov x3, #16384 /* 16 KiB stack per core */
+    mul x4, x1, x3
+    add x2, x2, x4
+    add x2, x2, x3 /* Point to top of core's stack */
+    mov sp, x2
 
     /* Clear BSS */
-    ldr x1, =bss_start
-    ldr x2, =bss_end
-    cbz x2, 2f
+    ldr x2, =bss_start
+    ldr x3, =bss_end
+    cbz x3, 2f
 1:
-    cmp x1, x2
+    cmp x2, x3
     b.hs 2f
-    str xzr, [x1], #8
+    str xzr, [x2], #8
     b 1b
 2:
 
     /* Enable FPU/SIMD at EL1 */
-    mrs x1, cpacr_el1
-    orr x1, x1, #(3 << 20) /* FPEN bits 20:21 = 0b11 */
-    msr cpacr_el1, x1
+    mrs x2, cpacr_el1
+    orr x2, x2, #(3 << 20) /* FPEN bits 20:21 = 0b11 */
+    msr cpacr_el1, x2
     isb
 
     /* Jump to C kernel_main */
     mov x0, x19
     bl kernel_main
 
+.secondary_core:
+    /* Setup stack for secondary cores too */
+    ldr x2, =stack_bottom
+    mov x3, #16384 /* 16 KiB stack per core */
+    mul x4, x1, x3
+    add x2, x2, x4
+    add x2, x2, x3 /* Point to top of core's stack */
+    mov sp, x2
 .halt_loop:
     wfi
     b .halt_loop
@@ -65,5 +74,5 @@ _start:
 .section .bss, "aw", @nobits
 .align 16
 stack_bottom:
-    .skip 16384 /* 16 KiB stack */
+    .skip 65536 /* 16 KiB stack * 4 cores */
 stack_top:

@@ -254,6 +254,34 @@
       }
     },
     {
+      "name": "arm32-qemu-mmu-lite-headless",
+      "displayName": "Cross ARM32 QEMU MMU-Lite (Release)",
+      "description": "Cross-compile ARM32 MMU-lite profile for QEMU headless runs",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/arm32-qemu-mmu-lite-headless",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/arm32-elf.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "ARCH": "arm32",
+        "BHARAT_DEVICE_PROFILE": "EDGE",
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "OFF",
+        "BHARAT_PROFILE_MMU_FULL": "OFF",
+        "BHARAT_PROFILE_MMU_LITE": "ON",
+        "BHARAT_PROFILE_MPU_ONLY": "OFF",
+        "BHARAT_ENABLE_MMU": "ON",
+        "BHARAT_ENABLE_MPU": "OFF",
+        "BHARAT_ENABLE_ADVANCED_VM": "ON",
+        "BHARAT_ENABLE_IOMMU": "OFF",
+        "BHARAT_ENABLE_DMA_MAP": "ON",
+        "BHARAT_ENABLE_COW": "OFF",
+        "BHARAT_ENABLE_DEMAND_PAGING": "OFF",
+        "BHARAT_ENABLE_SHARED_MEMORY": "OFF",
+        "BHARAT_ENABLE_NUMA": "OFF",
+        "BHARAT_ENABLE_MEMORY_STATS": "OFF"
+      }
+    },
+    {
       "name": "riscv32-edge",
       "displayName": "Cross RISC-V32 Edge (Release)",
       "description": "Cross-compile RISC-V32 Edge profile on Linux",
@@ -264,6 +292,34 @@
         "CMAKE_BUILD_TYPE": "Release",
         "BHARAT_DEVICE_PROFILE": "EDGE",
         "BHARAT_TARGET_BOARD": "virt"
+      }
+    },
+    {
+      "name": "riscv32-qemu-mmu-lite-headless",
+      "displayName": "Cross RISCV32 QEMU MMU-Lite (Release)",
+      "description": "Cross-compile RISCV32 MMU-lite profile for QEMU headless runs",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/riscv32-qemu-mmu-lite-headless",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/riscv32-elf.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "ARCH": "riscv32",
+        "BHARAT_DEVICE_PROFILE": "EDGE",
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "OFF",
+        "BHARAT_PROFILE_MMU_FULL": "OFF",
+        "BHARAT_PROFILE_MMU_LITE": "ON",
+        "BHARAT_PROFILE_MPU_ONLY": "OFF",
+        "BHARAT_ENABLE_MMU": "ON",
+        "BHARAT_ENABLE_MPU": "OFF",
+        "BHARAT_ENABLE_ADVANCED_VM": "ON",
+        "BHARAT_ENABLE_IOMMU": "OFF",
+        "BHARAT_ENABLE_DMA_MAP": "ON",
+        "BHARAT_ENABLE_COW": "OFF",
+        "BHARAT_ENABLE_DEMAND_PAGING": "OFF",
+        "BHARAT_ENABLE_SHARED_MEMORY": "OFF",
+        "BHARAT_ENABLE_NUMA": "OFF",
+        "BHARAT_ENABLE_MEMORY_STATS": "OFF"
       }
     },
     {
@@ -545,6 +601,269 @@
         "BHARAT_TARGET_BOARD": "virt",
         "BHARAT_BOOT_GUI": "ON"
       }
+    },
+    {
+      "name": "arm64-mobile-debug",
+      "displayName": "Cross ARM64 Mobile (Debug)",
+      "description": "Cross-compile ARM64 Mobile profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/arm64-mobile-debug",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/aarch64-elf-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BHARAT_DEVICE_PROFILE": "MOBILE",
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "ON"
+      }
+    },
+    {
+      "name": "arm64-mobile-release",
+      "displayName": "Cross ARM64 Mobile (Release)",
+      "description": "Cross-compile ARM64 Mobile profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/arm64-mobile-release",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/aarch64-elf-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BHARAT_DEVICE_PROFILE": "MOBILE",
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "ON"
+      }
+    },
+    {
+      "name": "riscv64-mobile-debug",
+      "displayName": "Cross RISC-V64 Mobile (Debug)",
+      "description": "Cross-compile RISC-V64 Mobile profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/riscv64-mobile-debug",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/riscv64-elf-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BHARAT_DEVICE_PROFILE": "MOBILE",
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "ON"
+      }
+    },
+    {
+      "name": "riscv64-mobile-release",
+      "displayName": "Cross RISC-V64 Mobile (Release)",
+      "description": "Cross-compile RISC-V64 Mobile profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/riscv64-mobile-release",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/riscv64-elf-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BHARAT_DEVICE_PROFILE": "MOBILE",
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "ON"
+      }
+    },
+    {
+      "name": "arm32-iot-debug",
+      "displayName": "Cross ARM32 IOT (Debug)",
+      "description": "Cross-compile ARM32 IOT profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/arm32-iot-debug",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/arm32-elf.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BHARAT_DEVICE_PROFILE": "IOT",
+        "BHARAT_TARGET_BOARD": "avh-corstone310",
+        "BHARAT_BOOT_GUI": "OFF"
+      }
+    },
+    {
+      "name": "arm32-iot-release",
+      "displayName": "Cross ARM32 IOT (Release)",
+      "description": "Cross-compile ARM32 IOT profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/arm32-iot-release",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/arm32-elf.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BHARAT_DEVICE_PROFILE": "IOT",
+        "BHARAT_TARGET_BOARD": "avh-corstone310",
+        "BHARAT_BOOT_GUI": "OFF"
+      }
+    },
+    {
+      "name": "riscv32-iot-debug",
+      "displayName": "Cross RISC-V32 IOT (Debug)",
+      "description": "Cross-compile RISC-V32 IOT profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/riscv32-iot-debug",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/riscv32-elf-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BHARAT_DEVICE_PROFILE": "IOT",
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "OFF"
+      }
+    },
+    {
+      "name": "riscv32-iot-release",
+      "displayName": "Cross RISC-V32 IOT (Release)",
+      "description": "Cross-compile RISC-V32 IOT profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/riscv32-iot-release",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/riscv32-elf-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BHARAT_DEVICE_PROFILE": "IOT",
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "OFF"
+      }
+    },
+    {
+      "name": "experimental-services",
+      "displayName": "Experimental Services Build (Debug)",
+      "description": "Build with all scaffold-heavy experimental service groups enabled",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/experimental-services",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/x86_64-elf-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BHARAT_DEVICE_PROFILE": "DESKTOP",
+        "BHARAT_TARGET_BOARD": "qemu-virt",
+        "BHARAT_BUILD_USER_SERVICES_STUBS": "ON",
+        "BHARAT_BUILD_CORE_SERVICES": "ON",
+        "BHARAT_BUILD_NETWORK_STUBS": "ON"
+      }
+    },
+    {
+      "name": "arm64-automobile-mix-1cpu",
+      "inherits": [
+        "arm64-edge"
+      ],
+      "cacheVariables": {
+        "BHARAT_SYSTEM_PROFILE": "AUTOMOBILE",
+        "BHARAT_EXECUTION_MODE": "MIXED_CRITICAL",
+        "BHARAT_LOGICAL_CPU_COUNT": "1",
+        "BHARAT_ENABLE_EXECUTION_MODE_FRAMEWORK": "ON",
+        "BHARAT_ENABLE_TEMPORAL_PARTITION_FALLBACK": "ON",
+        "BHARAT_ENABLE_SCHED_CLASS_FIFO_RT": "ON",
+        "BHARAT_ENABLE_SCHED_CLASS_FAIR": "ON"
+      }
+    },
+    {
+      "name": "arm64-automobile-mix-2cpu",
+      "inherits": [
+        "arm64-edge"
+      ],
+      "cacheVariables": {
+        "BHARAT_SYSTEM_PROFILE": "AUTOMOBILE",
+        "BHARAT_EXECUTION_MODE": "MIXED_CRITICAL",
+        "BHARAT_LOGICAL_CPU_COUNT": "2",
+        "BHARAT_ENABLE_EXECUTION_MODE_FRAMEWORK": "ON",
+        "BHARAT_ENABLE_TEMPORAL_PARTITION_FALLBACK": "ON",
+        "BHARAT_ENABLE_SCHED_CLASS_FIFO_RT": "ON",
+        "BHARAT_ENABLE_SCHED_CLASS_FAIR": "ON"
+      }
+    },
+    {
+      "name": "arm64-automobile-mix-4cpu",
+      "inherits": [
+        "arm64-edge"
+      ],
+      "cacheVariables": {
+        "BHARAT_SYSTEM_PROFILE": "AUTOMOBILE",
+        "BHARAT_EXECUTION_MODE": "MIXED_CRITICAL",
+        "BHARAT_LOGICAL_CPU_COUNT": "4",
+        "BHARAT_ENABLE_EXECUTION_MODE_FRAMEWORK": "ON",
+        "BHARAT_ENABLE_TEMPORAL_PARTITION_FALLBACK": "ON",
+        "BHARAT_ENABLE_SCHED_CLASS_FIFO_RT": "ON",
+        "BHARAT_ENABLE_SCHED_CLASS_FAIR": "ON"
+      }
+    },
+    {
+      "name": "arm64-mobile-gp-1cpu",
+      "inherits": [
+        "arm64-edge"
+      ],
+      "cacheVariables": {
+        "BHARAT_SYSTEM_PROFILE": "MOBILE",
+        "BHARAT_EXECUTION_MODE": "GENERAL_PURPOSE",
+        "BHARAT_LOGICAL_CPU_COUNT": "1",
+        "BHARAT_ENABLE_EXECUTION_MODE_FRAMEWORK": "ON",
+        "BHARAT_ENABLE_TEMPORAL_PARTITION_FALLBACK": "ON",
+        "BHARAT_ENABLE_SCHED_CLASS_FIFO_RT": "ON",
+        "BHARAT_ENABLE_SCHED_CLASS_FAIR": "ON"
+      }
+    },
+    {
+      "name": "arm64-mobile-mix-2cpu",
+      "inherits": [
+        "arm64-edge"
+      ],
+      "cacheVariables": {
+        "BHARAT_SYSTEM_PROFILE": "MOBILE",
+        "BHARAT_EXECUTION_MODE": "MIXED_CRITICAL",
+        "BHARAT_LOGICAL_CPU_COUNT": "2",
+        "BHARAT_ENABLE_EXECUTION_MODE_FRAMEWORK": "ON",
+        "BHARAT_ENABLE_TEMPORAL_PARTITION_FALLBACK": "ON",
+        "BHARAT_ENABLE_SCHED_CLASS_FIFO_RT": "ON",
+        "BHARAT_ENABLE_SCHED_CLASS_FAIR": "ON"
+      }
+    },
+    {
+      "name": "arm64-mobile-mix-4cpu",
+      "inherits": [
+        "arm64-edge"
+      ],
+      "cacheVariables": {
+        "BHARAT_SYSTEM_PROFILE": "MOBILE",
+        "BHARAT_EXECUTION_MODE": "MIXED_CRITICAL",
+        "BHARAT_LOGICAL_CPU_COUNT": "4",
+        "BHARAT_ENABLE_EXECUTION_MODE_FRAMEWORK": "ON",
+        "BHARAT_ENABLE_TEMPORAL_PARTITION_FALLBACK": "ON",
+        "BHARAT_ENABLE_SCHED_CLASS_FIFO_RT": "ON",
+        "BHARAT_ENABLE_SCHED_CLASS_FAIR": "ON"
+      }
+    },
+    {
+      "name": "riscv64-appliance-rt-1cpu",
+      "inherits": [
+        "riscv64-edge"
+      ],
+      "cacheVariables": {
+        "BHARAT_SYSTEM_PROFILE": "APPLIANCE",
+        "BHARAT_EXECUTION_MODE": "REALTIME",
+        "BHARAT_LOGICAL_CPU_COUNT": "1",
+        "BHARAT_ENABLE_EXECUTION_MODE_FRAMEWORK": "ON",
+        "BHARAT_ENABLE_TEMPORAL_PARTITION_FALLBACK": "ON",
+        "BHARAT_ENABLE_SCHED_CLASS_FIFO_RT": "ON",
+        "BHARAT_ENABLE_SCHED_CLASS_FAIR": "OFF"
+      }
+    },
+    {
+      "name": "x86_64-mobile-gp-2cpu",
+      "inherits": [
+        "x86_64-dev"
+      ],
+      "cacheVariables": {
+        "BHARAT_SYSTEM_PROFILE": "MOBILE",
+        "BHARAT_EXECUTION_MODE": "GENERAL_PURPOSE",
+        "BHARAT_LOGICAL_CPU_COUNT": "2",
+        "BHARAT_ENABLE_EXECUTION_MODE_FRAMEWORK": "ON",
+        "BHARAT_ENABLE_TEMPORAL_PARTITION_FALLBACK": "ON",
+        "BHARAT_ENABLE_SCHED_CLASS_FIFO_RT": "ON",
+        "BHARAT_ENABLE_SCHED_CLASS_FAIR": "ON"
+      }
+    },
+    {
+      "name": "x86_64-desktop-gp-4cpu",
+      "inherits": [
+        "x86_64-dev"
+      ],
+      "cacheVariables": {
+        "BHARAT_SYSTEM_PROFILE": "DESKTOP",
+        "BHARAT_EXECUTION_MODE": "GENERAL_PURPOSE",
+        "BHARAT_LOGICAL_CPU_COUNT": "4",
+        "BHARAT_ENABLE_EXECUTION_MODE_FRAMEWORK": "ON",
+        "BHARAT_ENABLE_TEMPORAL_PARTITION_FALLBACK": "ON",
+        "BHARAT_ENABLE_SCHED_CLASS_FIFO_RT": "ON",
+        "BHARAT_ENABLE_SCHED_CLASS_FAIR": "ON"
+      }
     }
   ],
   "buildPresets": [
@@ -605,8 +924,16 @@
       "configurePreset": "arm32-edge"
     },
     {
+      "name": "arm32-qemu-mmu-lite-headless",
+      "configurePreset": "arm32-qemu-mmu-lite-headless"
+    },
+    {
       "name": "riscv32-edge",
       "configurePreset": "riscv32-edge"
+    },
+    {
+      "name": "riscv32-qemu-mmu-lite-headless",
+      "configurePreset": "riscv32-qemu-mmu-lite-headless"
     },
     {
       "name": "arm64-gui",
@@ -687,6 +1014,42 @@
     {
       "name": "riscv64-laptop-release",
       "configurePreset": "riscv64-laptop-release"
+    },
+    {
+      "name": "arm64-mobile-debug",
+      "configurePreset": "arm64-mobile-debug"
+    },
+    {
+      "name": "arm64-mobile-release",
+      "configurePreset": "arm64-mobile-release"
+    },
+    {
+      "name": "riscv64-mobile-debug",
+      "configurePreset": "riscv64-mobile-debug"
+    },
+    {
+      "name": "riscv64-mobile-release",
+      "configurePreset": "riscv64-mobile-release"
+    },
+    {
+      "name": "arm32-iot-debug",
+      "configurePreset": "arm32-iot-debug"
+    },
+    {
+      "name": "arm32-iot-release",
+      "configurePreset": "arm32-iot-release"
+    },
+    {
+      "name": "riscv32-iot-debug",
+      "configurePreset": "riscv32-iot-debug"
+    },
+    {
+      "name": "riscv32-iot-release",
+      "configurePreset": "riscv32-iot-release"
+    },
+    {
+      "name": "experimental-services",
+      "configurePreset": "experimental-services"
     }
   ],
   "testPresets": [
@@ -924,6 +1287,94 @@
     {
       "name": "riscv64-medical-release",
       "configurePreset": "riscv64-medical-release",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "arm64-mobile-debug",
+      "configurePreset": "arm64-mobile-debug",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "arm64-mobile-release",
+      "configurePreset": "arm64-mobile-release",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "riscv64-mobile-debug",
+      "configurePreset": "riscv64-mobile-debug",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "riscv64-mobile-release",
+      "configurePreset": "riscv64-mobile-release",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "arm32-iot-debug",
+      "configurePreset": "arm32-iot-debug",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "arm32-iot-release",
+      "configurePreset": "arm32-iot-release",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "riscv32-iot-debug",
+      "configurePreset": "riscv32-iot-debug",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "riscv32-iot-release",
+      "configurePreset": "riscv32-iot-release",
       "output": {
         "outputOnFailure": true
       },

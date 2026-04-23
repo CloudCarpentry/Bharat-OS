@@ -8,6 +8,12 @@ tags: ["architecture", "dma", "capabilities", "memory", "lease"]
 
 # DMA Grant Model
 
+### Contract Status
+- **Spec**: ✅ Documented and versioned
+- **Implemented**: 🚧 Pending kernel/service behavior merge
+- **Validated**: ❌ Pending stress/fault-injection tests
+
+
 ## 1. DMA ≠ Normal Memory
 
 In Bharat-OS, hardware accelerators and DMA controllers require direct access to physical memory. However, delegating a standard memory `CAP_TYPE_FRAME` capability to a device or service is dangerous:

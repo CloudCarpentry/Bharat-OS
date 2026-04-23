@@ -15,18 +15,20 @@ Contains high-level system design documents, subcomponent architectures, kernel 
 * [Boot Selftest Policy](architecture/BOOT_SELFTEST_POLICY.md)
 * [Network Architecture](architecture/network-architecture.md)
 
-### [Build & Environment (`docs/build/`)](build/)
+### [Build & Environment (`docs/dev/build/`)](dev/build/)
 Guides for setting up your environment, building, running, and testing Bharat-OS.
-* [Environment Preparation](build/ENV_PREP.md)
-* [Build Guide: ARM64](build/BUILD_ARM64.md)
-* [Build Guide: RISC-V 64](build/BUILD_RISCV64.md)
-* [Build Guide: x86_64](build/BUILD_X86_64.md)
-* [Host Build, Test, and Run Guide](build/HOST_BUILD_TEST_RUN_GUIDE.md)
+* [Environment Preparation](dev/build/ENV_PREP.md)
+* [Build Guide: ARM64](dev/build/BUILD_ARM64.md)
+* [Build Guide: RISC-V 64](dev/build/BUILD_RISCV64.md)
+* [Build Guide: x86_64](dev/build/BUILD_X86_64.md)
+* [Build System Guide](dev/build/HOST_BUILD_TEST_RUN_GUIDE.md)
 
 ### [Developer Guidelines (`docs/dev/`)](dev/)
 Contains best practices, status trackers, and implementation plans.
 * [Current Code Status](dev/current-code-status.md) - *The source of truth for implementation status vs. architecture plans.*
 * [Developer Guidelines](dev/developer_guidelines.md)
+* [Shell Contributor Guide](dev/shell-contributor-guide.md)
+* [Shell Testing Guide](dev/shell-testing.md)
 * [Release Versioning](dev/release-versioning.md)
 
 ### [Research & References (`docs/research_doc/`)](research_doc/)

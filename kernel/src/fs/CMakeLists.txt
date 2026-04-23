@@ -6,7 +6,6 @@ add_library(k_fs OBJECT
     ../../src/fs/path.c
     ../../src/fs/block.c
     ../../src/fs/object_store.c
-    ../../src/fs/blob_backend.c
 )
 
 target_include_directories(k_fs PRIVATE ../../include ../../include/generated ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/lib/include ${CMAKE_SOURCE_DIR}/boot/include)

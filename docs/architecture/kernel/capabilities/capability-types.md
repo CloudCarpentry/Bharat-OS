@@ -11,7 +11,7 @@ Every capability in the Bharat-OS kernel points to an underlying object and carr
     - **Rights:** `GRANT` (delegate).
 
 2.  **Thread Control Block (`CAP_TYPE_TCB`)**
-    - **Description:** Points to a thread object (`kthread_t`).
+    - **Description:** Points to a thread object (`bh_thread_t`).
     - **Operations:** Suspend, Resume, Bind to IPC Endpoint, Read/Write Registers.
     - **Rights:** `SCHEDULE`, `MODIFY`.
 
@@ -26,7 +26,7 @@ Every capability in the Bharat-OS kernel points to an underlying object and carr
     - **Rights:** `READ`, `WRITE`, `EXECUTE`.
 
 5.  **IPC Endpoint (`CAP_TYPE_ENDPOINT`)**
-    - **Description:** A synchronous communication portal (`ep_t`).
+    - **Description:** A synchronous communication portal (`bh_endpoint_t`).
     - **Operations:** Send Message, Receive Message, Grant Capability.
     - **Rights:** `SEND`, `RECEIVE`, `DELEGATE`.
 

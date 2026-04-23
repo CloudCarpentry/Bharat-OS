@@ -1,4 +1,6 @@
-set(BHARAT_DRIVER_NET_SOURCES)
+set(BHARAT_DRIVER_NET_SOURCES
+    core/net_driver_core.c
+)
 
 if(BHARAT_ENABLE_DRIVER_VIRTIO_NET)
     list(APPEND BHARAT_DRIVER_NET_SOURCES virtio_net/virtio_net.c)

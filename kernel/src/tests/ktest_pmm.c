@@ -1,3 +1,4 @@
+#include "bharat_config.h"
 #include "mm.h"
 #include "numa.h"
 #include "tests/ktest.h"
@@ -28,6 +29,46 @@ bool test_pmm_order_alloc(void) {
   return true;
 }
 
+
+#include "mm/pmm_pcache.h"
+
+bool test_pmm_remote_free_bounds(void) {
+    if (MAX_SUPPORTED_CORES < 2) return true; // Need SMP
+
+    pmm_core_state_t *target = &g_pmm_cores[1];
+    spin_lock(&target->inbox.lock);
+
+    // Simulate enqueuing PMM_INBOX_SIZE + 1 items
+    uint32_t queued = 0;
+    uint32_t failed = 0;
+
+    for (int i = 0; i < PMM_INBOX_SIZE + 1; i++) {
+        uint32_t next_head = (target->inbox.head + 1) % PMM_INBOX_SIZE;
+        if (next_head != target->inbox.tail) {
+            target->inbox.pages[target->inbox.head] = 0x1000 * i;
+            target->inbox.head = next_head;
+            target->inbox.enqueue_count++;
+            queued++;
+        } else {
+            target->inbox.enqueue_failures++;
+            failed++;
+        }
+    }
+    spin_unlock(&target->inbox.lock);
+
+    KTEST_ASSERT(queued == PMM_INBOX_SIZE - 1, "Inbox failed to bound enqueues");
+    KTEST_ASSERT(failed == 2, "Inbox failed to reject overflow enqueues");
+
+    // Clean up
+    spin_lock(&target->inbox.lock);
+    target->inbox.head = 0;
+    target->inbox.tail = 0;
+    spin_unlock(&target->inbox.lock);
+
+    return true;
+}
+
+
 bool test_pmm_buddy_merging(void) {
   // This is a bit tricky to test without knowing initial state,
   // but we can try to allocate two adjacent pages and see if we can get a
@@ -51,9 +92,10 @@ static ktest_case_t pmm_tests[] = {
     {"PMM Single Page", test_pmm_single_page_alloc_free},
     {"PMM Order Alloc", test_pmm_order_alloc},
     {"PMM Buddy Merging", test_pmm_buddy_merging},
+    {"PMM Remote Free Bounds", test_pmm_remote_free_bounds},
 };
 
-void ktest_pmm_run(void) { ktest_run_suite("PMM Unit Tests", pmm_tests, 3); }
+void ktest_pmm_run(void) { ktest_run_suite("PMM Unit Tests", pmm_tests, 4); }
 
 static int boot_test_pmm_alloc(void) {
   if (test_pmm_single_page_alloc_free()) {

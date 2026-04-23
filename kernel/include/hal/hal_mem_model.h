@@ -4,13 +4,14 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "../mm.h"
+#include "../mm/mem_model.h"
 
-typedef enum {
-    HAL_MEM_MODEL_NONE,
-    HAL_MEM_MODEL_MPU,
-    HAL_MEM_MODEL_MMU_LITE,
-    HAL_MEM_MODEL_MMU
-} hal_mem_model_t;
+// Compatibility typedef and macros for the old HAL memory model enum
+typedef mem_model_t hal_mem_model_t;
+#define HAL_MEM_MODEL_NONE MEM_MODEL_NONE
+#define HAL_MEM_MODEL_MPU MEM_MODEL_MPU
+#define HAL_MEM_MODEL_MMU_LITE MEM_MODEL_MMU_LITE
+#define HAL_MEM_MODEL_MMU MEM_MODEL_MMU_FULL
 
 typedef struct hal_mem_backend_ops {
     int (*map)(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t paddr, size_t size, uint32_t flags);

@@ -6,7 +6,7 @@ This guide explains how developers configure, select, and interact with the Bhar
 
 ## 1. How the Profile is Selected
 
-The profile is determined at build time through CMake parameters. The build scripts (`tools/build.sh` or `tools/build.ps1`) combine:
+The profile is determined at build time through CMake parameters. The build scripts (`./build.sh` or `.\build.ps1`) combine:
 
 1.  **Architecture:** E.g., `--arch arm64` or `-Arch riscv64`.
 2.  **Board Configuration:** The specific hardware layout.
@@ -96,10 +96,10 @@ E2E testing relies on capturing serial logs or defined memory markers. Avoid fra
 
 ```bash
 # Validating Desktop Profile Boot
-./tools/build.sh --arch arm64 --profile DESKTOP
+./build.sh build --target DESKTOP
 qemu-system-aarch64 ... | grep -q "sysmgr: started ui_mgr"
 
 # Validating Appliance Profile Boot
-./tools/build.sh --arch arm64 --profile APPLIANCE
+./build.sh build --target APPLIANCE
 qemu-system-aarch64 ... | grep -q "sysmgr: filtered ui_mgr (unsupported profile)"
 ```

@@ -3,6 +3,8 @@
 
 #define VIRT_CAN_QUEUE_SIZE 128
 
+int virt_can_poll_rx(can_controller_t* ctrl, can_frame_t* out_frame);
+
 typedef struct {
     can_frame_t rx_queue[VIRT_CAN_QUEUE_SIZE];
     uint32_t head;
@@ -54,6 +56,11 @@ static int virt_can_transmit(can_controller_t* ctrl, const can_frame_t* frame) {
     return 0;
 }
 
+
+static int virt_can_receive(can_controller_t* ctrl, can_frame_t* out_frame) {
+    return virt_can_poll_rx(ctrl, out_frame);
+}
+
 static int virt_can_set_filters(can_controller_t* ctrl, const can_filter_t* filters, size_t count) {
     (void)ctrl; (void)filters; (void)count;
     // Virt CAN doesn't implement hardware filters, assume all pass for software routing
@@ -88,6 +95,7 @@ static const can_controller_ops_t virt_can_ops = {
     .start = virt_can_start,
     .stop = virt_can_stop,
     .transmit = virt_can_transmit,
+    .receive = virt_can_receive,
     .set_filters = virt_can_set_filters,
     .get_state = virt_can_get_state,
     .get_stats = virt_can_get_stats,
@@ -99,6 +107,14 @@ int virt_can_register(void) {
     g_virt_can_ctrl.controller_id = 0;
     g_virt_can_ctrl.ops = &virt_can_ops;
     g_virt_can_ctrl.priv = &g_virt_can_priv;
+    g_virt_can_ctrl.caps.classical_can = true;
+    g_virt_can_ctrl.caps.can_fd = true;
+    g_virt_can_ctrl.caps.loopback = true;
+    g_virt_can_ctrl.caps.listen_only = true;
+    g_virt_can_ctrl.caps.min_bitrate = 10000;
+    g_virt_can_ctrl.caps.max_bitrate = 1000000;
+    g_virt_can_ctrl.caps.min_data_bitrate = 10000;
+    g_virt_can_ctrl.caps.max_data_bitrate = 2000000;
 
     memset(&g_virt_can_priv, 0, sizeof(g_virt_can_priv));
     g_virt_can_priv.state = CAN_CTRL_STOPPED;

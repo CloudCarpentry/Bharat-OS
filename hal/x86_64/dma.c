@@ -1,5 +1,5 @@
 #include "../../kernel/include/hal/hal_dma.h"
-#include "../../kernel/include/hal/iommu.h"
+#include "hal/hal_iommu.h"
 #include "../../kernel/include/numa.h"
 #include "../../kernel/include/mm.h"
 

@@ -59,21 +59,21 @@ int main(void) {
   printf("hello scheduler test app\n");
 
   sched_init();
-  kprocess_t *p = process_create("hello");
+  bh_process_t *p = process_create("hello");
   assert(p != NULL);
 
-  kthread_t *a = thread_create(p, hello_a);
-  kthread_t *b = thread_create(p, hello_b);
+  bh_thread_t *a = thread_create(p, hello_a);
+  bh_thread_t *b = thread_create(p, hello_b);
   assert(a && b);
 
   assert(sched_set_thread_priority(a->thread_id, 3) == 0);
   assert(sched_set_thread_priority(b->thread_id, 9) == 0);
 
-  kthread_yield();
+  bh_thread_yield();
   assert(sched_current_thread() == b);
 
   sched_sleep(2);
-  kthread_yield();
+  bh_thread_yield();
   assert(sched_current_thread() != b);
 
   sched_on_timer_tick();

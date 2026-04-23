@@ -44,7 +44,7 @@ static void fake_zero_page(phys_addr_t paddr, size_t size) {
 }
 
 __attribute__((weak)) uint16_t numa_get_current_node(void) { return 0; }
-__attribute__((weak)) kthread_t *sched_current_thread(void) { return NULL; }
+__attribute__((weak)) bh_thread_t *sched_current_thread(void) { return NULL; }
 __attribute__((weak)) int sched_ai_apply_suggestion(const ai_suggestion_t* suggestion) { return 0; }
 __attribute__((weak)) void hal_mm_get_zone_limits(void) {}
 __attribute__((weak)) void *hal_get_system_discovery(void) { return NULL; }

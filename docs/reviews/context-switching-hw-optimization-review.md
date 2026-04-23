@@ -1,33 +1,46 @@
-# Context Switching Review: Kernel + Subsystem
+# Context Switching Review: Kernel + Subsystem (revalidated)
 
 ## Scope
-- Kernel scheduler context-switch path (`sched.c`) and architecture-facing selection hooks.
-- Subsystem CPU allocation model (`subsys/src/*.c`).
+- Kernel scheduler runqueue selection and context-switch path.
+- Subsystem CPU allocation mask handling in `services/core/subsysmgr`.
+- HAL topology query surface used by scheduling/allocation policy.
 
-## Findings (Gaps)
-1. **L1 scheduler path claimed bitmap optimization but still performed full linear scans.**
-   - Existing code comments mentioned `__builtin_clz`-style bitmask selection, but implementation still iterated all priorities.
-2. **Redundant context-switch churn when scheduler re-selected the currently running thread.**
-   - This inflated software switch counters and wasted preemption path work.
-3. **No hardware-informed dynamic slice adaptation in runtime path.**
-   - Telemetry was collected but not used to tune slice length.
-4. **Subsystem CPU masks were not normalized against platform-supported core range.**
-   - A subsystem could carry an all-zero or out-of-range mask until runtime use.
+## Alignment Check Against Current Code
 
-## Improvement Plan
-1. Add and maintain a per-core active-priority bitmask in runqueue state.
-2. Use highest-set-bit selection (`clz`) in L1 pick-next path for O(1) priority discovery.
-3. Avoid no-op switch accounting when next == current.
-4. Feed AI complexity telemetry back into bounded time-slice tuning.
-5. Normalize subsystem CPU masks at creation/start so execution domains always map to valid cores.
+### 1) Priority selection and bitmap path
+**Status: aligned (implemented).**
+- Runqueue selection uses a priority bitmap and bit-scan helpers via `sched_pick_priority_from_bitmap()`.
+- Highest-priority and lowest-priority paths are selected with `__builtin_clz` / `__builtin_ctz` (policy dependent), not linear priority scans.
 
-## Implemented in this change
-- Added `active_priority_mask` maintenance on enqueue/dequeue and used it in L1 scheduler selection.
-- Added self-switch fast path in `sched_switch_to`.
-- Added bounded dynamic time-slice shaping based on predicted complexity.
-- Added subsystem CPU mask normalization helper and enforcement at subsystem creation/start.
+### 2) Redundant self-switch accounting
+**Status: aligned (implemented).**
+- `sched_switch_to()` early-returns when `current == next`, so no context-switch counters or arch save/restore path are executed for a no-op switch.
 
-## Next candidates (not yet implemented)
-- Save/restore SIMD/FPU/vector context lazily by arch (x86 XSAVE/XRSTOR, ARM64 FP/SIMD, RISC-V V extension).
-- Add explicit CPU count query in HAL (instead of fixed max assumption in multiple modules).
-- Introduce per-core runqueue locking + remote wakeups/IPI balancing for true SMP concurrency.
+### 3) Hardware-/telemetry-informed slice shaping
+**Status: partially aligned.**
+- AI telemetry and complexity signals are integrated in scheduler AI paths.
+- Runtime usage exists, but end-to-end policy remains heuristic and not yet tied to deeper per-arch hardware pressure signals (cache miss, memory stalls, etc.).
+
+### 4) Subsystem CPU mask normalization
+**Status: aligned and improved.**
+- Subsystem CPU masks are normalized in create/start paths.
+- Updated to use HAL CPU-topology query so normalization is based on discovered CPU count rather than a fixed compile-time core cap in this module.
+
+## Current Gaps (remaining)
+1. **Lazy extended-context switching is still not implemented.**
+   - Save/restore hooks exist, but no clear arch-specific lazy ownership strategy (e.g., XSAVE ownership tracking / trap-on-first-use model).
+2. **Topology shape is still coarse for policy.**
+   - Query returns discovered CPU count and basic SMP indicator, but no cluster/perf-class data for heterogeneous scheduling decisions.
+3. **SMP scalability work remains open.**
+   - Per-core queue locking exists, but full remote balancing/coalescing and explicit cross-core work-stealing policy is still an ongoing area.
+
+## Next Code Task (selected)
+### Task: **Topology-aware subsystem placement follow-through**
+After replacing the fixed subsystem core limit with HAL topology query, the next task is:
+1. Add per-subsystem allocation policy modes (packed/spread).
+2. Use topology metadata (once extended) to map masks to performance or efficiency clusters.
+3. Add tests for edge masks (`0`, out-of-range, full-mask) under different discovered CPU counts.
+
+## Work started in this update
+- Added `hal_cpu_topology_query()` implementation backed by discovered platform topology.
+- Switched subsystem CPU mask normalization to use `hal_cpu_topology_query()` instead of local fixed `MAX_SUPPORTED_CORES`.

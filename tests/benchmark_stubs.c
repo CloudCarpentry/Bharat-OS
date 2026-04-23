@@ -76,19 +76,18 @@ void hal_fpu_disable(void) {
 void hal_fpu_enable(void) {
 }
 
-void hal_fpu_save_state(void* kthread) {
-    (void)kthread;
+void hal_fpu_save_state(void* bh_thread) {
+    (void)bh_thread;
 }
 
-void hal_fpu_restore_state(void* kthread) {
-    (void)kthread;
+void hal_fpu_restore_state(void* bh_thread) {
+    (void)bh_thread;
 }
 
-void hal_fpu_init_thread_state(void* kthread) {
-    (void)kthread;
+void hal_fpu_init_thread_state(void* bh_thread) {
+    (void)bh_thread;
 }
 
-#include "../kernel/include/hal/mmu_ops.h"
 #include "../kernel/include/capability.h"
 #include "../kernel/include/bharat/cpu_local.h"
 #include "../kernel/include/mm/mm_remote.h"
@@ -110,7 +109,7 @@ __attribute__((weak)) void mm_remote_tlb_flush(uint32_t target_core, uint64_t as
 mm_mailbox_slot_t __attribute__((weak)) g_mm_mailboxes[64];
 
 uint64_t __attribute__((weak)) hal_timer_monotonic_ticks(void) { return 0; }
-#include "../kernel/include/hal/vmm.h"
+
 
 // Fallback legacy VMM bindings for tests that bypass active_mmu
 int __attribute__((weak)) hal_vmm_get_mapping(phys_addr_t root_table, virt_addr_t vaddr, phys_addr_t* paddr, uint32_t* flags) {
@@ -154,66 +153,7 @@ void __attribute__((weak)) tlb_shootdown(address_space_t *as, virt_addr_t vaddr)
 }
 
 __attribute__((weak)) void mm_inc_page_ref(phys_addr_t page) { (void)page; }
-__attribute__((weak)) phys_addr_t __attribute__((weak)) mm_alloc_pages_order(int order, uint32_t preferred_numa_node, uint32_t flags) { (void)order; (void)preferred_numa_node; (void)flags; return 0; }
-
-// Provide an active_mmu stub for testing environments where we mock out VMM hardware layer
-mmu_ops_t *active_mmu = NULL;
-
-static phys_addr_t stub_mmu_create_table(void) { return 0x1000U; }
-static void stub_mmu_destroy_table(phys_addr_t root) { (void)root; }
-static phys_addr_t stub_mmu_clone_kernel(phys_addr_t kernel_root) { (void)kernel_root; return 0x3000U; }
-static int stub_mmu_map(phys_addr_t root, virt_addr_t virt, phys_addr_t phys, size_t size, mmu_flags_t flags) {
-    (void)root; (void)virt; (void)phys; (void)size; (void)flags;
-    return 0;
-}
-static int stub_mmu_unmap(phys_addr_t root, virt_addr_t virt, size_t size, phys_addr_t *unmapped_phys) {
-    (void)root; (void)virt; (void)size;
-    if (unmapped_phys) *unmapped_phys = 0x2000U;
-    return 0;
-}
-static int stub_mmu_protect(phys_addr_t root, virt_addr_t virt, size_t size, mmu_flags_t new_flags) {
-    (void)root; (void)virt; (void)size; (void)new_flags;
-    return 0;
-}
-static int stub_mmu_query(phys_addr_t root, virt_addr_t virt, phys_addr_t *phys_out, mmu_flags_t *flags_out) {
-    (void)root; (void)virt;
-    if (phys_out) *phys_out = 0x4000U;
-    if (flags_out) *flags_out = 0;
-    return 0;
-}
-static void stub_mmu_activate(phys_addr_t root) { (void)root; }
-static void stub_mmu_deactivate(void) {}
-static void stub_mmu_tlb_flush_page(virt_addr_t virt) { (void)virt; }
-static void stub_mmu_tlb_flush_all(void) {}
-static void stub_mmu_tlb_flush_asid(uint16_t asid) { (void)asid; }
-
-static mmu_ops_t stub_mmu_ops = {
-    .create_table     = stub_mmu_create_table,
-    .destroy_table    = stub_mmu_destroy_table,
-    .clone_kernel     = stub_mmu_clone_kernel,
-    .map              = stub_mmu_map,
-    .unmap            = stub_mmu_unmap,
-    .protect          = stub_mmu_protect,
-    .query            = stub_mmu_query,
-    .activate         = stub_mmu_activate,
-    .deactivate       = stub_mmu_deactivate,
-    .tlb_flush_page   = stub_mmu_tlb_flush_page,
-    .tlb_flush_all    = stub_mmu_tlb_flush_all,
-    .tlb_flush_asid   = stub_mmu_tlb_flush_asid,
-
-    .page_size        = 4096,
-    .huge_page_sizes  = NULL,
-    .levels           = 4,
-    .has_nx           = true,
-    .asid_bits        = 0,
-    .has_user_kernel_split = false,
-};
-
-void arch_mmu_init(void) {
-    active_mmu = &stub_mmu_ops;
-}
-
-
+__attribute__((weak)) phys_addr_t mm_alloc_pages_order(int order, uint32_t preferred_numa_node, uint32_t flags) { (void)order; (void)preferred_numa_node; (void)flags; return 0; }
 __attribute__((weak)) void hal_tlb_flush(unsigned long long vaddr) {
     (void)vaddr;
 }
@@ -243,7 +183,7 @@ __attribute__((weak)) void arch_context_switch(cpu_context_t* prev, cpu_context_
     (void)next;
 }
 
-__attribute__((weak)) int arch_ext_state_thread_init(kthread_t *t) {
+__attribute__((weak)) int arch_ext_state_thread_init(bh_thread_t *t) {
     (void)t;
     return 0;
 }
@@ -254,15 +194,15 @@ int __attribute__((weak)) vmm_handle_cow_fault(address_space_t* as, virt_addr_t 
     return 0;
 }
 
-__attribute__((weak)) void arch_ext_state_thread_destroy(kthread_t *t) {
+__attribute__((weak)) void arch_ext_state_thread_destroy(bh_thread_t *t) {
     (void)t;
 }
 
-__attribute__((weak)) void arch_ext_state_save(kthread_t *t) {
+__attribute__((weak)) void arch_ext_state_save(bh_thread_t *t) {
     (void)t;
 }
 
-__attribute__((weak)) void arch_ext_state_restore(kthread_t *t) {
+__attribute__((weak)) void arch_ext_state_restore(bh_thread_t *t) {
     (void)t;
 }
 
@@ -383,3 +323,4 @@ __attribute__((weak)) prot_domain_t* mock_prot_domain_create(void) { return (pro
 __attribute__((weak)) prot_domain_ops_t mmu_full_ops_x86_64 = { .create = mock_prot_domain_create };
 __attribute__((weak)) prot_domain_ops_t mmu_lite_ops_common = { .create = mock_prot_domain_create };
 __attribute__((weak)) prot_domain_ops_t prot_none_ops = { .create = mock_prot_domain_create };
+__attribute__((weak)) void* sched_find_thread_slot_by_tid_local(void* rq, uint64_t tid) { (void)rq; (void)tid; return NULL; }

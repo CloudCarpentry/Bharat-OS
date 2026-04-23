@@ -16,7 +16,7 @@ typedef struct {
     uint32_t next_index;
     uint32_t timeout_heap_pos;
     ipc_async_state_t state;
-    kthread_t* waiting_thread;
+    bh_thread_t* waiting_thread;
     uint64_t deadline_ticks;
     uint32_t endpoint_ref;
     uint32_t qos_priority;
@@ -32,8 +32,8 @@ void ipc_async_init(void);
 /*
  * Create an asynchronous IPC request object.
  */
-ipc_async_request_t* ipc_async_request_create(kthread_t* thread, uint32_t endpoint_ref, uint64_t timeout_ms);
-ipc_async_request_t* ipc_async_request_create_ex(kthread_t* thread,
+ipc_async_request_t* ipc_async_request_create(bh_thread_t* thread, uint32_t endpoint_ref, uint64_t timeout_ms);
+ipc_async_request_t* ipc_async_request_create_ex(bh_thread_t* thread,
                                                   uint32_t endpoint_ref,
                                                   uint64_t timeout_ms,
                                                   uint32_t qos_priority,

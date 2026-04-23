@@ -50,3 +50,21 @@ target_include_directories(test_namesvc_registry_contract PRIVATE
     ${REPO_ROOT}/lib/cap/include
     ${REPO_ROOT}/lib/runtime/include
 )
+
+add_executable(test_namesvc_ipc_caps
+    test_namesvc_ipc_caps.c
+    ${REPO_ROOT}/kernel/src/ipc/contract_validate.c
+    ${REPO_ROOT}/services/namesvc/src/registry.c
+    ${REPO_ROOT}/services/namesvc/src/ipc_dispatch.c
+    ${REPO_ROOT}/services/namesvc/src/ipc_auth.c
+    ${REPO_ROOT}/lib/cap/src/cap_validate.c
+)
+target_include_directories(test_namesvc_ipc_caps PRIVATE
+    ${REPO_ROOT}/kernel/include
+    ${REPO_ROOT}/include
+    ${REPO_ROOT}/services/namesvc/include
+    ${REPO_ROOT}/services/namesvc/src
+    ${REPO_ROOT}/lib/ipc/include
+    ${REPO_ROOT}/lib/cap/include
+)
+add_test(NAME test_namesvc_ipc_caps COMMAND test_namesvc_ipc_caps)

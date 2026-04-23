@@ -1,92 +1,87 @@
-# Proposed Drivers Architecture and Roadmap
+# Proposed Drivers Architecture and Roadmap (Aligned to Current Tree)
 
-This document outlines the potential drivers that can be implemented in the `drivers/` directory, mapped against target architectures (x86_64, arm64, riscv64) and device profiles (Automotive, Drone/Robotics, Edge/Mobile, Datacenter). It aligns with the Bharat-OS capability-based driver boundary model and multikernel messaging architecture.
+This document tracks **what exists now** and the production-grade first slice implemented for network and CAN driver classes.
 
-## 1. Bus and Interconnect Drivers (`drivers/bus/`)
+## What already exists in tree (baseline)
 
-Bus drivers are responsible for hardware discovery, capability enumeration, and IOMMU group assignment.
+- Bus foundations: `drivers/bus/{i2c,spi,usb,gpio,cluster_bus}`.
+- Network baseline: `drivers/net/virtio_net` plus generic class contract in `drivers/net/core`.
+- Storage baseline: `drivers/storage/nvme` and `drivers/block/virtio_blk`.
+- Display baseline: `drivers/display/{drm,virtio_gpu}`.
+- Input baseline: `drivers/input/{virtio_input,i2c_hid}`.
+- Serial breadth: `drivers/serial/{ns16550,pl011,dw_apb_uart,imx_lpuart,cadence_uart,sifive_uart}`.
+- Class and device examples: `drivers/class/{can,sensor,motor,actuator}`, `drivers/devices/{virt_can,can_loopback,fpga_mgr,ptp_clock}`.
 
-| Driver Proposal | Description | Architecture Focus | Primary Profiles |
-| :--- | :--- | :--- | :--- |
-| **PCIe Host Bridge** | Comprehensive PCIe enumeration, MSI/MSI-X setup, and PCIe capability management. | x86_64, arm64, riscv64 | Cloud, Edge, Automotive |
-| **I2C/SPI Generic Core** | Master/Slave controller abstractions for low-speed peripherals and sensors. | arm64, riscv64 | Drone, Edge, Automotive |
-| **CXL (Compute Express Link)** | High-speed cache-coherent interconnect for memory expansion and accelerators. | x86_64, arm64 | Cloud, Datacenter |
-| **MIPI I3C** | Next-generation sensor bus, backwards compatible with I2C, used in modern mobile and IoT. | arm64, riscv64 | Mobile, Edge |
-| **USB xHCI / DWC3** | Universal Serial Bus 3.0+ host and dual-role controller drivers. | x86_64, arm64, riscv64 | Desktop, Edge, Automotive |
+## Networking + CAN first-slice status
 
-## 2. Network Drivers (`drivers/net/` & `drivers/class/can/`)
+### Implemented in this slice
 
-Network drivers operate in user-space isolated domains, forwarding packets to the `netstack` via lockless shared memory (URPC).
+1. **Common network class contract (`drivers/include/drivers/net/net_driver.h`)**
+   - Device descriptor with MAC, MTU, queue counts, carrier state, and feature flags.
+   - Ops table: `probe/init/start/stop/tx/rx/poll/irq` + MTU/promisc controls.
+   - Common stats counters and explicit lifecycle state.
+   - Registry helpers in `drivers/net/core/net_driver_core.c`.
 
-| Driver Proposal | Description | Architecture Focus | Primary Profiles |
-| :--- | :--- | :--- | :--- |
-| **Intel ixgbe / i40e** | 10GbE / 40GbE server NIC drivers with SR-IOV support. | x86_64 | Cloud, Datacenter |
-| **Mellanox ConnectX (mlx5)** | High-throughput NIC driver with RDMA (RoCE) hardware offload support. | x86_64, arm64 | Cloud, Datacenter |
-| **NXP ENETC** | Ethernet controller common in NXP automotive and edge SoCs (e.g., i.MX8). | arm64 | Automotive, Edge |
-| **NVIDIA Orin Ethernet** | 10GbE MAC designed for autonomous driving platforms. | arm64 | Automotive, Robotics |
-| **Bosch M_CAN** | Native Controller Area Network (CAN FD) driver for ECU communications. | arm64, riscv64 | Automotive, Drone |
-| **802.11ax / Wi-Fi 6 (Generic)** | PCIe-based wireless network controller framework. | x86_64, arm64 | Mobile, Edge, Drone |
+2. **`drivers/net/` baseline hardening**
+   - `virtio_net` migrated to use the common contract.
+   - TX path now flows through queue-aware generic helpers.
+   - RX queue + poll fallback path available for QEMU-friendly mock RX tests.
+   - Carrier and MTU handling are fail-closed; invalid MTU returns an error.
 
-## 3. Storage Drivers (`drivers/storage/`)
+3. **`drivers/class/can/` production baseline**
+   - Controller contract extended with capabilities, bitrate bounds, loopback/listen-only toggles, poll/irq hooks.
+   - State machine helpers: stopped/error-active/error-passive/bus-off/recovering.
+   - Queue-backed TX/RX plumbing and acceptance-filtered RX delivery.
+   - Error/statistics updates for bus-off, overruns, drops, and error-frame accounting.
 
-Storage drivers manage block devices and non-volatile memory, serving the `file_system` subsystem.
+4. **Profile-aware build stance**
+   - CAN core remains policy-controlled through `cmake/modules/BharatComponentPolicy.cmake`.
+   - Automotive profiles continue forcing CAN core + loopback on.
+   - Desktop/headless targets keep generic NIC (`virtio-net`) path available.
 
-| Driver Proposal | Description | Architecture Focus | Primary Profiles |
-| :--- | :--- | :--- | :--- |
-| **NVMe (PCIe)** | High-performance Non-Volatile Memory Express block driver. | x86_64, arm64, riscv64 | Cloud, Desktop, Edge |
-| **UFS (Universal Flash Storage)** | High-speed serial interface for embedded flash storage (replaces eMMC). | arm64 | Mobile, Automotive |
-| **eMMC / SDHost** | Secure Digital Host Controller for SD cards and embedded MMC. | arm64, riscv64 | Drone, Edge, Automotive |
-| **SPI NOR Flash** | Low-level flash driver for bootloaders, OTA recovery, and littlefs. | arm64, riscv64 | Drone, Edge, Automotive |
+### Deliberately deferred
 
-## 4. Display and Graphics Drivers (`drivers/display/`)
+- Physical NIC families (ixgbe/i40e/mlx5/ENETC).
+- Hardware-backed CAN FD controller drivers.
+- Service-level CAN orchestration (`services/network/can/*`) beyond existing `services/can/*` primitives.
+- Full IRQ-driven data path for all NIC backends (poll fallback remains required).
 
-Display drivers manage framebuffers, display controllers (CRTCs), and command pushing to GPUs.
+## Validation scope guidance
 
-| Driver Proposal | Description | Architecture Focus | Primary Profiles |
-| :--- | :--- | :--- | :--- |
-| **DRM/KMS Generic Core** | Direct Rendering Manager and Kernel Mode Setting abstraction framework. | All | Desktop, Automotive |
-| **virtio-gpu** | Virtualized GPU driver for QEMU/KVM environments. | x86_64, arm64, riscv64 | Cloud, Development |
-| **ARM Mali (Panfrost/Bifrost)** | Open-source driver approach for ARM Mali GPUs. | arm64 | Mobile, Automotive |
-| **NXP DCSS / LCDIF** | Display controllers for i.MX8 automotive/industrial SoCs. | arm64 | Automotive, Edge |
-| **MIPI DSI Host** | Display Serial Interface driver for embedded mobile panels. | arm64, riscv64 | Mobile, Automotive |
+- **Build coverage:** `x86_64_desktop_headless`, `arm64_desktop_headless`, `riscv64_desktop_headless`.
+- **Runtime truthfulness:** if QEMU target lacks real CAN hardware, validate with loopback/controller tests only and do not claim hardware parity.
+- **Host coverage:** contract/state/queue/filter tests in `tests/host/drivers` and `tests/host/services`.
 
-## 5. Accelerator Drivers (`drivers/accel/`)
+## Updated proposal by domain
 
-Accelerator drivers manage DMA setups, IOMMU mappings, and command queues for NPUs, DSPs, and FPGAs.
+### 1) Bus and interconnect (`drivers/bus/`)
 
-| Driver Proposal | Description | Architecture Focus | Primary Profiles |
-| :--- | :--- | :--- | :--- |
-| **virtio-npu / virtio-accel** | Virtualized Neural Processing Unit interface. | x86_64, arm64 | Cloud, Development |
-| **NVIDIA NVDLA** | Open-source Deep Learning Accelerator driver. | arm64, riscv64 | Automotive, Edge, Drone |
-| **Google Edge TPU (PCIe/USB)** | Tensor Processing Unit driver for local AI inference. | x86_64, arm64 | Edge, Robotics |
-| **Xilinx ZynqMP FPGA Manager**| Driver for reconfiguring programmable logic bitstreams at runtime. | arm64 | Edge, Robotics |
-| **Intel QAT** | QuickAssist Technology for cryptographic and compression offload. | x86_64 | Cloud, Datacenter |
+| Proposal | Current baseline | Priority |
+| --- | --- | --- |
+| PCIe host bridge + full enumeration | Baseline scaffold now in `drivers/bus/pcie` (enumeration TODO) | High |
+| I3C support | Missing | Medium |
+| USB host hardening (xHCI/DWC3 profiles) | Generic USB folder exists | Medium |
 
-## 6. Input and Human Interface Drivers (`drivers/input/`)
+### 2) Network (`drivers/net/`, `drivers/class/can/`)
 
-Input drivers route human interface events (touch, key, rotary) to the UI subsystem.
+| Proposal | Current baseline | Priority |
+| --- | --- | --- |
+| Common net class contract + virtio baseline | Landed (`drivers/include/drivers/net/net_driver.h`, `drivers/net/core`, `virtio_net`) | High |
+| CAN core state/queue/filter contract | Landed (`drivers/class/can/can_controller_core.c`) | High |
+| Physical NIC families + real CAN FD | Missing | High |
+| Wi-Fi 6 framework | Missing | Medium |
 
-| Driver Proposal | Description | Architecture Focus | Primary Profiles |
-| :--- | :--- | :--- | :--- |
-| **virtio-input** | Virtual keyboard, mouse, and tablet device driver. | x86_64, arm64, riscv64 | Cloud, Desktop |
-| **I2C HID** | Human Interface Device protocol over I2C (touchpads, touchscreens). | arm64, x86_64 | Mobile, Desktop |
-| **FocalTech / Goodix Touch** | Specific I2C touchscreen controller drivers. | arm64, riscv64 | Mobile, Automotive |
-| **Rotary Encoder (GPIO)** | GPIO-based quadrature encoder driver (e.g., for car infotainment knobs). | arm64, riscv64 | Automotive, Edge |
+### 3) Storage (`drivers/storage/`, `drivers/block/`)
 
-## 7. Sensor Drivers (`drivers/class/sensor/`)
+| Proposal | Current baseline | Priority |
+| --- | --- | --- |
+| NVMe production path | `drivers/storage/nvme` exists | High (maturity) |
+| UFS + eMMC host stacks | Missing | Medium |
+| SPI NOR + recovery integration | Missing | Medium |
 
-Sensor drivers provide environmental and kinematic data, primarily for the EDGE and DRONE profiles.
+## Integration rules (unchanged)
 
-| Driver Proposal | Description | Architecture Focus | Primary Profiles |
-| :--- | :--- | :--- | :--- |
-| **InvenSense MPU6050 / ICM20948** | 6-axis and 9-axis IMU (Accelerometer/Gyroscope) via I2C/SPI. | arm64, riscv64 | Drone, Robotics |
-| **Bosch BME280** | Environmental sensor (Temperature, Humidity, Pressure). | arm64, riscv64 | Edge, Drone |
-| **LIDAR Generic (UART/SPI)** | Interface for 2D/3D spinning LIDARs (e.g., RPLIDAR). | arm64, x86_64 | Robotics, Automotive |
-| **GNSS / GPS (NMEA over UART)** | Serial driver handling GPS location streaming. | arm64, riscv64 | Drone, Automotive |
-
-## Summary of Integration Path
-
-1. **Hardware Abstraction**: All drivers must use the Bharat-OS HAL (`hal_mm`, `hal_interrupt`, `hal_mpa`) rather than raw architecture-specific registers.
-2. **Capability Safety**: Device MMIO regions and IRQs must be claimed via `devmgr` and verified through capability tokens before mapping.
-3. **Data Path**: Drivers (like Network and Storage) must expose a URPC (shared ring-buffer) interface to subsystems (`netstack`, `file_system`) to minimize synchronous IPC overhead.
-4. **CMake Policy**: New drivers are guarded by `BHARAT_ENABLE_DRIVER_*` flags and bound to specific profiles in `cmake/modules/BharatComponentPolicy.cmake`.
+1. Drivers must consume HAL contracts rather than architecture-private register logic.
+2. Device MMIO/IRQ/DMA authority must be capability-validated through manager paths.
+3. High-throughput paths should prefer URPC/shared-memory interfaces over synchronous RPC for data plane.
+4. Driver enablement should remain profile-gated through build policy toggles.

@@ -8,6 +8,12 @@ tags: ["architecture", "capability", "distributed", "multikernel", "consistency"
 
 # Distributed Capability Consistency
 
+### Contract Status
+- **Spec**: ✅ Documented and versioned
+- **Implemented**: 🚧 Pending kernel/service behavior merge
+- **Validated**: ❌ Pending stress/fault-injection tests
+
+
 ## 1. The Distributed Multikernel Context
 
 Bharat-OS capabilities are conceptually sound within a single core's CSpace (rights attenuation, derivation trees, revocation). However, in a true multikernel architecture, capabilities are frequently delegated across core boundaries.

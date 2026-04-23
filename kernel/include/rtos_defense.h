@@ -30,12 +30,12 @@ typedef struct {
 } rtos_constraints_t;
 
 // Elevate a standard kernel thread to a defense-grade Hard RTOS thread
-int rtos_elevate_thread(kthread_t* thread, rtos_constraints_t* constraints);
+int rtos_elevate_thread(bh_thread_t* thread, rtos_constraints_t* constraints);
 
 // Pet the hardware watchdog (called periodically by the RTOS task)
 void rtos_watchdog_pet(void);
 
 // Register a Fault Handler for Modular Redundancy mismatch or missed deadlines
-void rtos_register_fault_handler(void (*handler)(kthread_t* failed_thread));
+void rtos_register_fault_handler(void (*handler)(bh_thread_t* failed_thread));
 
 #endif // BHARAT_RTOS_DEFENSE_H

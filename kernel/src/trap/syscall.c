@@ -7,7 +7,7 @@
 #define ENOSYS 38
 
 long trap_dispatch_syscall(trap_frame_t *frame, const trap_info_t *info) {
-    kthread_t *t = sched_current_thread();
+    bh_thread_t *t = sched_current_thread();
     if (!t || !t->process || !t->process->personality_ops ||
         !t->process->personality_ops->handle_syscall) {
         return -ENOSYS;

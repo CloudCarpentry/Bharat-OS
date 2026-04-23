@@ -95,13 +95,13 @@ uint8_t ai_model_ready(void);
 void ai_sched_calibrate_silicon(void);
 
 // Task structure definitions for AI priority queue
-struct kthread;
+struct bh_thread;
 
 typedef struct learned_task {
     uint64_t id;
     int32_t base_weight;
     uint64_t vruntime;
-    struct kthread *kthread_ptr;
+    struct bh_thread *bh_thread_ptr;
 } learned_task_t;
 
 #ifndef BHARAT_MAX_TASKS
@@ -119,8 +119,8 @@ typedef struct {
     uint32_t size;
 } learned_task_heap_t;
 
-struct kthread* fallback_scheduler(struct kthread *run_queue);
-struct kthread* ai_sched_select_task(struct kthread *run_queue);
+struct bh_thread* fallback_scheduler(struct bh_thread *run_queue);
+struct bh_thread* ai_sched_select_task(struct bh_thread *run_queue);
 void heap_insert(learned_task_heap_t *heap, learned_task_t *task);
 learned_task_t* heap_extract_min(learned_task_heap_t *heap);
 learned_task_t* select_and_update_queue(learned_task_heap_t *heap, learned_task_t *prev_task, uint64_t execution_time, uint64_t system_weight);

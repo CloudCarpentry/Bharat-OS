@@ -14,3 +14,4 @@ The `diag` service manages system diagnostics. This includes collecting metrics,
 
 - Hardware interfacing occurs through HAL/Drivers. The `diag` service only provides the policy/logic layer over collected telemetry.
 - IPC is used to expose diagnostic queries to other user-space managers.
+- Telemetry contracts strictly follow the separation between UAPI, IDL, and IPC defined in [uapi-idl-ipc-boundary.md](../../core/uapi-idl-ipc-boundary.md).

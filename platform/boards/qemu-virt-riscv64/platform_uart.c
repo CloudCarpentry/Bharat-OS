@@ -1,16 +1,20 @@
-#include "console/uart_driver.h"
-#include "../../../drivers/serial/ns16550/ns16550.h"
+#include "platform/device_profile.h"
+#include <stddef.h>
 
-static uart_device_t g_boot_uart = {
-    .ops = &uart_ns16550_ops,
-    .base = 0x10000000UL, // QEMU virt RISC-V NS16550 base address
-    .reg_shift = 0,
-    .reg_width = 1,
-    .input_clock_hz = 0, // Usually unused for basic init, or pre-configured by SBI
-    .baud_rate = 115200,
-    .opaque = NULL
+static const platform_device_profile_t g_device_profile = {
+    .boot_console = {
+        .driver_name = "ns16550",
+        .base_address = 0x10000000UL, // QEMU virt RISC-V NS16550 base address
+        .reg_shift = 0,
+        .reg_width = 1,
+        .input_clock_hz = 0, // Usually unused for basic init, or pre-configured by SBI
+        .baud_rate = 115200
+    },
+    .has_uart = true,
+    .has_input = true,
+    .has_display = true
 };
 
-uart_device_t *platform_get_boot_uart(void) {
-    return &g_boot_uart;
+const platform_device_profile_t *platform_get_device_profile(void) {
+    return &g_device_profile;
 }

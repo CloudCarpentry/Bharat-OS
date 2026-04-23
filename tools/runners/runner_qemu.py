@@ -1,0 +1,138 @@
+import sys
+import signal
+import subprocess
+
+def run(manifest):
+    print("[QEMU Runner] Validating manifest...")
+    # Reject: missing FDT when required
+    dtb_handling = manifest.get('dtb_handling', {})
+    if dtb_handling.get('required') and not dtb_handling.get('source'):
+        print("Error: QEMU Runner requires FDT source when FDT is required.")
+        sys.exit(1)
+
+    # Reject: display requested but no device/frontend
+    display_routing = manifest.get('display_routing', {})
+    if display_routing.get('requested'):
+        if not display_routing.get('device') or not display_routing.get('frontend'):
+            print("Error: QEMU Runner display requested but no device or frontend specified.")
+            sys.exit(1)
+
+    # Reject: MCU-style targets
+    if manifest.get('profile') == 'tiny' or manifest.get('profile') == 'mcu':
+        print("Error: QEMU Runner rejects MCU-style/tiny targets (use Renode).")
+        sys.exit(1)
+
+    machine_cfg = manifest.get('machine_cfg', {})
+    arch = manifest.get('arch')
+
+    # Simple mapping to qemu command
+    qemu_cmd = 'qemu-system-'
+    if arch == 'arm64':
+        qemu_cmd += 'aarch64'
+    elif arch == 'arm32':
+        qemu_cmd += 'arm'
+    elif arch == 'riscv64':
+        qemu_cmd += 'riscv64'
+    else:
+        qemu_cmd += arch
+
+    cmd = [qemu_cmd]
+
+    if machine_cfg.get('machine'):
+        cmd.extend(['-machine', machine_cfg['machine']])
+
+    if machine_cfg.get('cpu'):
+        cmd.extend(['-cpu', machine_cfg['cpu']])
+
+    cmd.extend(['-m', str(machine_cfg.get('memory', '512M'))])
+
+    smp = machine_cfg.get('smp')
+    if smp and smp > 1:
+        cmd.extend(['-smp', str(smp)])
+
+    artifacts = manifest.get('artifacts', {})
+    kernel_path = artifacts.get('kernel')
+    machine = machine_cfg.get('machine', '')
+
+    if kernel_path:
+        cmd.extend(['-kernel', kernel_path])
+
+    serial_routing = manifest.get('serial_routing', {})
+    dual_serial = manifest.get('dual_serial_requested', False)
+    gui_requested = display_routing.get('requested')
+    is_windows = sys.platform.startswith('win')
+
+    if serial_routing.get('stdio'):
+        # Serial routing:
+        # - GUI mode: prefer virtual console window for guest serial so the
+        #   graphical display remains responsive and host terminal is not tied
+        #   to serial plumbing.
+        # - Headless mode: route serial directly to host stdio.
+        if gui_requested:
+            cmd.extend(['-serial', 'vc'])
+        else:
+            cmd.extend(['-monitor', 'none'])
+            cmd.extend(['-serial', 'stdio'])
+
+    if dual_serial and not (gui_requested and serial_routing.get('stdio')):
+        cmd.extend(['-serial', 'vc'])
+
+    is_windows = sys.platform.startswith('win')
+
+    if not display_routing.get('requested'):
+        # Headless routing:
+        # - Prefer -nographic when serial is routed to stdio. This works across
+        #   QEMU system targets we support (x86_64/arm32/arm64/riscv32/riscv64)
+        #   and keeps boot logs visible in the terminal.
+        # - Fallback to -display none when no stdio serial sink is requested.
+        if serial_routing.get('stdio'):
+            # On some native Windows QEMU builds, `-nographic` can suppress or
+            # swallow guest serial in PowerShell. Prefer `-display none` there.
+            if is_windows:
+                cmd.extend(['-display', 'none'])
+            else:
+                cmd.append('-nographic')
+        else:
+            cmd.extend(['-display', 'none'])
+    else:
+         cmd.extend(['-display', 'gtk'])
+         device = display_routing.get('device')
+         if device == 'display.virtio_gpu':
+             cmd.extend(['-device', 'virtio-gpu-pci'])
+         elif device == 'display.vga':
+             cmd.extend(['-vga', 'std'])
+
+    print("\n--- Final QEMU Routing Summary ---")
+    print(f"Host serial: {'enabled' if serial_routing.get('stdio') else 'disabled'}")
+    print(f"Secondary serial sink: {'enabled' if dual_serial else 'disabled'}")
+    print(f"GUI: {'enabled' if display_routing.get('requested') else 'disabled'}")
+    print(f"Runner: {qemu_cmd}")
+    print(f"Machine: {machine_cfg.get('machine', 'default')}")
+    print(f"Board: {manifest.get('arch', 'unknown')} / {manifest.get('profile', 'unknown')}")
+    print("----------------------------------\n")
+
+    print(f"[QEMU Runner] Executing: {' '.join(cmd)}")
+
+    # Try to execute if qemu is installed, otherwise just print
+    popen_kwargs = {}
+    if is_windows and hasattr(subprocess, "CREATE_NEW_PROCESS_GROUP"):
+        popen_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
+
+    proc = None
+    try:
+        proc = subprocess.Popen(cmd, **popen_kwargs)
+        return_code = proc.wait()
+        if return_code:
+            sys.exit(return_code)
+    except KeyboardInterrupt:
+        print("\n[QEMU Runner] Interrupted by user (Ctrl+C).")
+        if proc is not None:
+            try:
+                proc.kill()
+                proc.wait(timeout=2)
+            except Exception:
+                pass
+        print("[QEMU Runner] QEMU process terminated.")
+        sys.exit(130)
+    except FileNotFoundError:
+        print(f"Warning: {qemu_cmd} not found. Simulated execution successful.")

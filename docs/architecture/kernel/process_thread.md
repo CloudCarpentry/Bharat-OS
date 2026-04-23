@@ -95,7 +95,7 @@ graph TD
 ### 5.2 Updated Process Structure
 
 ```c
-struct kprocess {
+struct bh_process {
     pid_t pid;
 
     core_id_t home_core; // Ownership tracking
@@ -103,7 +103,7 @@ struct kprocess {
     address_space_t* aspace;
     cap_table_t* cspace;
 
-    struct kthread* main_thread;
+    struct bh_thread* main_thread;
 
     personality_t personality;
 
@@ -121,10 +121,10 @@ struct kprocess {
 ## 6. Thread Model
 
 ```c
-struct kthread {
+struct bh_thread {
     tid_t tid;
 
-    struct kprocess* process;
+    struct bh_process* process;
 
     core_id_t current_core;
 

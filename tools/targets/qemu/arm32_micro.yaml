@@ -1,0 +1,48 @@
+name: arm32_micro
+kind: qemu_target
+
+arch: arm32
+board: qemu-virt-arm32
+device_profile: micro
+personality_profile: native
+execution_profile: mix
+footprint_profile: micro_arm32
+
+build:
+  cmake_preset: arm32-qemu-mmu-lite-headless
+  cmake_defs:
+    BHARAT_ARCH_FAMILY: ARM32
+    BHARAT_DEVICE_PROFILE: MICRO
+    BHARAT_PERSONALITY_PROFILE: NATIVE
+    BHARAT_TARGET_BOARD: virt
+    BHARAT_BOOT_GUI: OFF
+    BHARAT_PROFILE_MMU_FULL: OFF
+    BHARAT_PROFILE_MMU_LITE: OFF
+    BHARAT_PROFILE_MPU_ONLY: ON
+
+kernel:
+  canonical_artifacts:
+    elf: kernel/kernel.elf
+
+boot:
+  protocol: linux_arm64
+  artifact_format: raw_bin
+  dtb:
+    mode: qemu_generated
+    required: true
+
+package:
+  transforms:
+    - type: elf_to_bin
+      input: kernel/kernel.elf
+      output: kernel/kernel.bin
+
+run:
+  backend: qemu
+  machine: virt
+  cpu: cortex-a15
+  memory: 256M
+  nographic: true
+  serial:
+    - stdio
+  boot_artifact: kernel/kernel.bin

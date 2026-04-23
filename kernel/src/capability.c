@@ -136,7 +136,7 @@ capability_table_t* cap_table_create(void) {
     return NULL;
 }
 
-int cap_table_init_for_process(kprocess_t* proc) {
+int cap_table_init_for_process(bh_process_t* proc) {
     if (!BHARAT_PTR_NON_NULL(proc)) {
         return -1;
     }

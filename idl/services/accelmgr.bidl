@@ -1,0 +1,75 @@
+service bharat.device.accelmgr.v1 = 15 {
+    // Accelerator Manager Interface
+    // Provides global policy orchestration for NPU, GPU, and other compute backends.
+
+    // Request admission for a specific accelerator backend context
+    rpc RequestAdmission(AdmissionRequest) -> AdmissionResponse {
+        qos = reliable;
+        timeout_ms = 1000;
+    }
+
+    // Release an accelerator context
+    rpc ReleaseContext(ReleaseRequest) -> StatusResponse {
+        qos = reliable;
+        timeout_ms = 500;
+    }
+
+    // Query current accelerator health and thermal status
+    rpc QueryHealth(HealthQuery) -> HealthResponse {
+        qos = reliable;
+        timeout_ms = 500;
+    }
+
+    // Coordinate thermal throttling constraints
+    rpc SetThermalConstraint(ThermalConstraint) -> StatusResponse {
+        qos = reliable;
+        timeout_ms = 500;
+    }
+
+    // Enter safe mode (disables advanced hardware, forces software fallback)
+    rpc SetSafeMode(SafeModeRequest) -> StatusResponse {
+        qos = reliable;
+        timeout_ms = 1000;
+    }
+}
+
+message AdmissionRequest {
+    uint32  client_id;
+    uint32  feature_class;
+    uint32  requested_qos;
+    bool    requires_isolation;
+}
+
+message AdmissionResponse {
+    int32   status;           // 0 on success, negative on denial
+    uint32  granted_qos;      // The actual QoS tier granted
+    uint32  context_id;       // Handle for future operations
+}
+
+message ReleaseRequest {
+    uint32  context_id;
+}
+
+message HealthQuery {
+    uint32  feature_class;
+}
+
+message HealthResponse {
+    uint32  state;            // ABSENT, PRESENT, DEGRADED
+    uint32  temperature_c;
+    uint32  utilization_pct;
+}
+
+message ThermalConstraint {
+    uint32  feature_class;
+    uint32  max_power_mw;
+}
+
+message SafeModeRequest {
+    bool    enable_safe_mode;
+    string  reason;
+}
+
+message StatusResponse {
+    int32   status;
+}

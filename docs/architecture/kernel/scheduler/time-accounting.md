@@ -1,7 +1,7 @@
 # Time Accounting
 
 ## Overview
-The `scheduler` cluster requires precise and efficient time tracking to distribute CPU time fairly among threads (`kthread_t`) and accurately enforce timeouts (e.g., `sys_sleep()`, `sys_futex_wait_timeout()`).
+The `scheduler` cluster requires precise and efficient time tracking to distribute CPU time fairly among threads (`bh_thread_t`) and accurately enforce timeouts (e.g., `sys_sleep()`, `sys_futex_wait_timeout()`).
 
 ## High-Resolution Timers vs. Ticks
 

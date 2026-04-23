@@ -416,6 +416,23 @@ CI must fail if:
 - generated BIDL bindings use the wrong status type
 - a kernel-private header becomes part of UAPI transitively
 
+To enforce this, we have developed `tools/abi/generate_abi_manifests.py` and run it automatically in GitHub Actions via `.github/workflows/abi-compat.yml`. This system splits the guardrails into four independent gates:
+
+1. **Syscall table policy**: Checks `syscall_table.def` to ensure numbers are append-only.
+2. **Carrier layout compatibility**: Parses UAPI headers (using `pycparser`) to enforce struct fields remain append-only and do not change types.
+3. **IDL/BIDL compatibility**: Parses `.bidl` files to track RPC signatures, enum constants, and struct layouts.
+4. **SDK symbol compatibility**: Tracks exported symbols using `nm`.
+
+### How to update baselines
+
+Intentional boundary changes require an explicit update process. Only approved PRs should include baseline updates. Developers can run the script with the `--update` flag:
+
+```bash
+python3 tools/abi/generate_abi_manifests.py --update
+```
+
+This will update the `.json` manifest files inside the `contracts/abi/` directory. CI will run the script in `--check` mode.
+
 ---
 
 ## 12. Immediate Repository Rules
@@ -547,3 +564,20 @@ A stable kernel boundary requires:
 - CI-backed ABI drift enforcement
 
 This is the line between “headers that currently compile” and a real OS ABI that can survive growth.
+
+---
+
+## 17. Companion policy: native standard surface vs compatibility
+
+The syscall ABI freeze defined in this document protects low-level kernel/user binary compatibility.
+To avoid architecture drift at the SDK/runtime layer, Bharat-OS also maintains a separate policy for
+what belongs to native Bharat contracts versus personality compatibility APIs.
+
+See:
+
+- `docs/dev/bharat-native-standard-surface-and-compat-boundary.md`
+
+Use both documents together when proposing new public headers:
+
+- This document answers: **is it stable/ABI-safe and correctly layered?**
+- The companion policy answers: **is it Bharat-native or compatibility-only?**

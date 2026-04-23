@@ -1,7 +1,6 @@
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
-#include "../include/capability_checks.h"
 #include "../include/ipc_dispatch.h"
 #include "../include/ipc_auth.h"
 #include <bharat/cap/cap.h>
@@ -155,6 +154,9 @@ int main(void) {
     // Handle 4: Stale read stats cap
     add_mock_cap(4, BHARAT_CAP_OBJ_NET_IFACE, 5, BHARAT_CAP_RIGHT_NET_READ_STATS, BHARAT_CAP_SCOPE_OBJECT, 5, false, true);
 
+    // Handle 5: Wrong object type cap (e.g. given ROUTE_TABLE when expecting NET_IFACE)
+    add_mock_cap(5, BHARAT_CAP_OBJ_ROUTE_TABLE, 5, BHARAT_CAP_RIGHT_NET_READ_STATS, BHARAT_CAP_SCOPE_OBJECT, 5, false, false);
+
     netmgr_ipc_req_t req;
     netmgr_ipc_res_t res;
     bharat_ipc_msg_header_t hdr;
@@ -251,6 +253,30 @@ int main(void) {
     hdr.capability_transfer = 0;
     netmgr_ipc_handle_request(&hdr, &req, &res);
     assert(res.status == NETMGR_STATUS_ERR_INVAL);
+
+    // Test 9: End-to-end Read-only Request (Query Interface State)
+    memset(&req, 0, sizeof(req)); memset(&res, 0, sizeof(res)); memset(&hdr, 0, sizeof(hdr));
+    req.opcode = NETMGR_OP_QUERY_STATS;
+    hdr.opcode = NETMGR_OP_QUERY_STATS;
+    req.u.query_stats.if_id = 5;
+    hdr.capability_transfer = 2; // Read stats right
+    hdr.interface_version = 1;
+    hdr.payload_size = sizeof(struct netmgr_req_iface_id);
+    netmgr_ipc_handle_request(&hdr, &req, &res);
+    assert(res.status == NETMGR_STATUS_OK);
+
+    // Test 10: Wrong object type capability -> should fail
+    memset(&req, 0, sizeof(req)); memset(&res, 0, sizeof(res)); memset(&hdr, 0, sizeof(hdr));
+    req.opcode = NETMGR_OP_QUERY_STATS;
+    hdr.opcode = NETMGR_OP_QUERY_STATS;
+    req.u.query_stats.if_id = 5;
+    hdr.capability_transfer = 5; // Cap is for ROUTE_TABLE instead of NET_IFACE
+    hdr.interface_version = 1;
+    hdr.payload_size = sizeof(struct netmgr_req_iface_id);
+    netmgr_ipc_handle_request(&hdr, &req, &res);
+    assert(res.status == NETMGR_STATUS_ERR_PERM);
+
+    printf("All capability tests passed successfully.\n");
 
     return 0;
 }

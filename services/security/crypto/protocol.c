@@ -1,6 +1,10 @@
 #include "crypto_service.h"
 
 crypto_status_t crypto_protocol_validate(const crypto_request_msg_t *req, uint32_t len) {
+    if (req == NULL) {
+        return CRYPTO_STATUS_ERR_BAD_PARAM;
+    }
+
     if (len < sizeof(crypto_msg_header_t)) {
         return CRYPTO_STATUS_ERR_BAD_PARAM;
     }

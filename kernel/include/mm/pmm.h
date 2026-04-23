@@ -45,15 +45,7 @@ typedef enum {
     PMM_ALLOC_PINNED     = 1u << 2,
 } pmm_alloc_flags_t;
 
-typedef enum alloc_class {
-    MEM_NORMAL = 0,
-    MEM_DMA,
-    MEM_RT,
-    MEM_SECURE,
-    MEM_PACKET,
-    MEM_LOWPOWER,
-    MEM_PERSISTENT
-} alloc_class_t;
+#include "bharat/mem_class.h"
 
 typedef struct {
     uint64_t phys_addr;

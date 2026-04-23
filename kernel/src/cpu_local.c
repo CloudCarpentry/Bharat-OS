@@ -1,6 +1,8 @@
 #include <bharat/cpu_local.h>
 #include <stddef.h>
 
+extern void arch_cpu_local_set(cpu_local_t *cl);
+
 cpu_local_t g_cpu_locals[MAX_CPUS] __attribute__((aligned(64)));
 
 void cpu_local_init(uint32_t cpu_id) {
@@ -13,12 +15,5 @@ void cpu_local_init(uint32_t cpu_id) {
     cl->current_as_id = 0;
     cl->current_as = NULL;
 
-#if defined(__aarch64__)
-    __asm__ volatile ("msr tpidr_el1, %0" :: "r"(cl));
-#elif defined(__riscv)
-    __asm__ volatile ("mv tp, %0" :: "r"(cl));
-#elif defined(__x86_64__)
-    // Usually written to MSR_GS_BASE by HAL
-    // We defer to HAL or fallback array lookup.
-#endif
+    arch_cpu_local_set(cl);
 }

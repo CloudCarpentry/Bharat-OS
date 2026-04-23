@@ -64,7 +64,7 @@ char _pstore_start[1024];
 char _pstore_end[1024];
 
 memory_node_id_t numa_get_current_node(void) { return 0; }
-kthread_t *sched_current_thread(void) { return NULL; }
+bh_thread_t *sched_current_thread(void) { return NULL; }
 int sched_ai_apply_suggestion(const ai_suggestion_t *suggestion) { (void)suggestion; return 0; }
 
 // Memory block to test with

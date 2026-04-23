@@ -136,6 +136,17 @@ Safety-critical Human-Machine Interface for in-vehicle infotainment (IVI) and in
 
 ---
 
+
+## Next Task: Execution Roadmap
+
+A ticket-oriented implementation roadmap with file paths, milestones, and acceptance criteria now lives in:
+
+- `docs/architecture/ui/ui_execution_roadmap.md`
+
+This roadmap keeps UI first-class while preserving the boundary that GUI policy remains out of kernel space.
+
+---
+
 ## Non-Goals (Kernel)
 
 - No kernel-mode graphics driver.
