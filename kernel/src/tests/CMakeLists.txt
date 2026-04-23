@@ -10,6 +10,7 @@ add_library(k_test_support OBJECT
     ktest_urpc_handoff.c
     security/test_crypto_registry.c
     ktest_string.c
+    ktest_memops.c
     ktest_rt_sched.c
     ktest_irq_domain.c
 )
