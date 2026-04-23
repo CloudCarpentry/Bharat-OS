@@ -335,26 +335,44 @@ add_subdirectory(src/lib)
 add_subdirectory(src/tests)
 add_subdirectory(src/monitor)
 
+set(BHARAT_BOOT_ROOT_CANDIDATES
+    "${CMAKE_SOURCE_DIR}/core/boot"
+    "${CMAKE_SOURCE_DIR}/boot"
+)
+set(BHARAT_BOOT_ROOT "")
+foreach(_boot_root IN LISTS BHARAT_BOOT_ROOT_CANDIDATES)
+    if(EXISTS "${_boot_root}/src")
+        set(BHARAT_BOOT_ROOT "${_boot_root}")
+        if(_boot_root MATCHES "/boot$" AND NOT _boot_root MATCHES "/core/boot$")
+            message(WARNING "[migration-warning] Using legacy boot source root: ${_boot_root}")
+        endif()
+        break()
+    endif()
+endforeach()
+if(NOT BHARAT_BOOT_ROOT)
+    message(FATAL_ERROR "No boot source root found in core/boot or boot")
+endif()
+
 set(KERNEL_SRCS
     ${BOOT_SRC}
     src/mm/physmap.c
     src/mm/mem_model.c
     src/mm/footprint.c
     src/mm/prot_domain.c
-    ../boot/common/boot_ui_select.c
+    ${BHARAT_BOOT_ROOT}/common/boot_ui_select.c
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/boot_video.c>
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/display_handoff.c>
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/display_fallback.c>
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/boot_gui.c>
     src/kernel_boot.c
-    ../boot/src/boot_info.c
-    ../boot/src/boot_validate.c
-    ../boot/src/boot_security.c
-    ../boot/src/adapters/multiboot2/multiboot2_adapter.c
-    ../boot/src/adapters/fdt/fdt_adapter.c
-    ../boot/src/adapters/opensbi/opensbi_adapter.c
-    ../boot/src/adapters/uboot/uboot_adapter.c
-    ../boot/src/adapters/uefi/uefi_adapter.c
+    ${BHARAT_BOOT_ROOT}/src/boot_info.c
+    ${BHARAT_BOOT_ROOT}/src/boot_validate.c
+    ${BHARAT_BOOT_ROOT}/src/boot_security.c
+    ${BHARAT_BOOT_ROOT}/src/adapters/multiboot2/multiboot2_adapter.c
+    ${BHARAT_BOOT_ROOT}/src/adapters/fdt/fdt_adapter.c
+    ${BHARAT_BOOT_ROOT}/src/adapters/opensbi/opensbi_adapter.c
+    ${BHARAT_BOOT_ROOT}/src/adapters/uboot/uboot_adapter.c
+    ${BHARAT_BOOT_ROOT}/src/adapters/uefi/uefi_adapter.c
     src/display/fb_core.c
     src/profile/${KERNEL_PROFILE_LOWER}/profile.c
     $<$<STREQUAL:${ARCH},x86_64>:../arch/x86/x86_64/boot/entry.c>

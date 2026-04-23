@@ -7,6 +7,7 @@ This tracker is the execution companion for `project-structure-refactor-plan.md`
 - Phase A (QEMU target YAML relocation): **Completed**.
 - Phase B (tooling compatibility hardening): **In progress**.
 - Phase C (interface moves): **Completed** (`idl/` + `uapi/` + `sdk` slices completed).
+- Phase D.1a (boot source/common move): **In progress** (`boot/src` + `boot/common` moved to `core/boot` with compatibility symlinks).
 
 ## Phase Checklist
 
@@ -17,7 +18,7 @@ This tracker is the execution companion for `project-structure-refactor-plan.md`
 | B.2 | Apply alias helper to target loaders/validators outside build pipeline | Pending | Next medium chunk. |
 | B.3 | CI guard for newly introduced legacy root references | Pending | Start warning-only, then enforce. |
 | C | `idl/`, `uapi/`, `sdk/` to `interface/` | Completed | C1 (`idl`), C2 (`uapi`), C3 (`sdk`) complete; legacy compatibility symlinks retained. |
-| D | `boot/`, `kernel/`, `arch/`, etc. to `core/` | Pending | Atomic compile-safe slices only. |
+| D | `boot/`, `kernel/`, `arch/`, etc. to `core/` | In progress | D1a landed: kernel now resolves boot runtime sources from `core/boot` first with legacy fallback. |
 | E | Remove fallbacks + enforce new roots | Pending | Convert warnings to CI failures. |
 
 ## Mandatory Validation Matrix (per phase)
@@ -98,3 +99,16 @@ Every migration PR must update:
 - `./build.sh all --target riscv64_desktop_headless_android`: **timeout-bounded warning with known runtime panic** (`PMM: Double free detected!`) observed during run stage.
 - `./build.sh all --target arm32_mmu_lite_headless`: **timeout-bounded warning** (build/run path starts).
 - `./build.sh all --target riscv32_mmu_lite_headless`: **build+package pass; run fails due missing OpenSBI firmware path** (`/usr/lib/riscv32-linux-gnu/opensbi/generic/fw_dynamic.bin`).
+
+## Validation Outcomes (2026-04-23, Phase D1a)
+
+- Migration slice: moved `boot/src/` and `boot/common/` into `core/boot/`; preserved `boot/src` and `boot/common` as compatibility symlinks.
+- `./build.sh build --target x86_64_desktop_headless`: **pass**.
+- `./build.sh package --target x86_64_desktop_headless`: **pass**.
+- `./build.sh run --target x86_64_desktop_headless`: **timeout-bounded warning** (QEMU interactive run started; bounded in automation).
+- `./build.sh all --target x86_64_desktop_headless_linux`: **timeout-bounded warning** (build/run path starts).
+- `./build.sh all --target arm64_desktop_headless_linux`: **timeout-bounded warning** (build/run path starts).
+- `./build.sh all --target riscv64_desktop_headless_linux`: **timeout-bounded warning** (build/run path starts).
+- `./build.sh all --target x86_64_desktop_headless_android`: **timeout-bounded warning** (build/run path starts).
+- `./build.sh all --target arm64_desktop_headless_android`: **timeout-bounded warning** (build/run path starts).
+- `./build.sh all --target riscv64_desktop_headless_android`: **timeout-bounded warning** (build/run path starts).
