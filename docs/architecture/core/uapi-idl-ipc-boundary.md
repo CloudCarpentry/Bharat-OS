@@ -43,7 +43,7 @@ Or conceptually:
 
 **Definition:** Service interface contracts that define *how components interact*, not *what the internal data structures look like*.
 
-**Scope:** The `idl/` directory.
+**Scope:** The `interface/idl/` directory (legacy alias: `idl/` during migration).
 
 **Must Include:**
 * RPC methods (e.g., `Subscribe`, `Publish`, `ReadSnapshot`).
@@ -74,7 +74,7 @@ Or conceptually:
 ## Folder Placement Rules
 
 * **`uapi/`**: Contains stable shared contracts (e.g., `uapi/bharat/system/telemetry.h`).
-* **`idl/`**: Contains service interface definitions (e.g., `idl/telemetry_v1.bidl`).
+* **`interface/idl/`**: Contains service interface definitions (e.g., `interface/idl/telemetry_v1.bidl`).
 * **`lib/ipc/` or `lib/urpc/`**: Implements transport mechanisms.
 * **`services/`**: Contains service implementations that provide or consume IDL interfaces.
 * **`kernel/`**: Emits or consumes UAPI types directly and leverages IPC, but typically does not participate in IDL-level RPC policies.
@@ -107,7 +107,7 @@ typedef struct {
 } bharat_event_header_t;
 ```
 
-**IDL (`idl/telemetry_v1.bidl`):**
+**IDL (`interface/idl/telemetry_v1.bidl`):**
 ```text
 rpc Subscribe(SubscribeReq) -> SubscribeResp
 rpc GetEventSnapshot(GetEventSnapshotReq) -> GetEventSnapshotResp
@@ -127,7 +127,7 @@ typedef struct {
 } bharat_counter_t;
 ```
 
-**IDL (`idl/telemetry_v1.bidl`):**
+**IDL (`interface/idl/telemetry_v1.bidl`):**
 ```text
 rpc ListCounters(ListCountersReq) -> ListCountersResp
 rpc ReadCounterSnapshot(ReadCounterSnapshotReq) -> ReadCounterSnapshotResp
