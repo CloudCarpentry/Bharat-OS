@@ -1,24 +1,32 @@
-# Project Structure Refactor Plan
+# Project Structure Refactor Plan (Incremental, No Big-Bang)
 
 ## Objective
 
-Reduce top-level repository clutter by grouping folders into clear responsibility zones while preserving architecture boundaries and enabling incremental migration.
+Migrate to a zone-based repository structure in controlled phases so that:
 
-## Why refactor now
+1. builds/tests/runs keep working at every phase,
+2. documentation stays aligned with code reality,
+3. tooling can evolve without blocking code migration.
 
-The architecture guidance already emphasizes:
+This plan is based on the current repo layout and build system behavior (`build.sh` -> `tools/build.py` with target YAMLs under `tools/targets/qemu`).
 
-- One folder = one primary responsibility.
-- Separation of mechanism (`kernel`, `drivers`, `hal`) from policy (`services`, `stacks`, `personalities`).
-- Contract-first integration using `uapi/` and `idl/`.
+---
 
-Current layout is functional but has too many root-level first-class concepts, increasing onboarding and ownership complexity.
+## Current-state constraints observed from code/docs
 
-## Proposed target model (zone-based root)
+- `./build.sh` is a thin wrapper that delegates to `python3 tools/build.py`, so migration must preserve script entry points even if internal paths change.  
+- Build/run presets and target model are already centralized around `tools/build.py` and YAML targets in `tools/targets/qemu/`, including Linux/Android headless variants.  
+- Multi-arch run support is documented around QEMU binaries for x86_64, arm64, riscv64, arm32, and riscv32 paths.
+
+Implication: safest strategy is **compatibility-first path translation**, then progressive folder moves.
+
+---
+
+## Target structure (unchanged goal)
 
 ```text
 Bharat-OS/
-  core/            # OS runtime internals
+  core/
     arch/
     hal/
     kernel/
@@ -30,14 +38,14 @@ Bharat-OS/
     personalities/
     lib/
 
-  interface/       # external contracts + consumer-facing integration
+  interface/
     uapi/
     idl/
     sdk/
     contracts/
-    include/       # only if truly public umbrella headers
+    include/
 
-  delivery/        # build, packaging, targets, release ops
+  delivery/
     tools/
     cmake/
     configs/
@@ -52,100 +60,304 @@ Bharat-OS/
   .github/
 ```
 
-## Mapping: current root -> proposed zone
+---
 
-| Current root | Proposed location | Notes |
-| --- | --- | --- |
-| `arch/` | `core/arch/` | ISA implementation remains unchanged; path moves only. |
-| `boot/` | `core/boot/` | Keeps early boot with mechanism layer. |
-| `hal/` | `core/hal/` | Supports HAL boundary cleanup initiative. |
-| `platform/` | `core/platform/` | Board/machine integration stays close to core. |
-| `kernel/` | `core/kernel/` | Keeps mechanism-centric internals grouped. |
-| `drivers/` | `core/drivers/` | Driver taxonomy cleanup can proceed in place. |
-| `services/` | `core/services/` | Continue consolidation into domain buckets. |
-| `stacks/` | `core/stacks/` | Cross-layer subsystem composition remains centralized. |
-| `personalities/` | `core/personalities/` | Compatibility/domain personality ownership retained. |
-| `lib/` | `core/lib/` | Runtime/internal libraries stay near core execution path. |
-| `uapi/` | `interface/uapi/` | Public contract surface. |
-| `idl/` | `interface/idl/` | Interface definitions + generation source. |
-| `sdk/` | `interface/sdk/` | Consumer and integration SDKs. |
-| `contracts/` | `interface/contracts/` | ABI and protocol contract package area. |
-| `include/` | `interface/include/` | Keep only externally consumable headers. |
-| `tools/` | `delivery/tools/` | Build/dev/CI tooling bucket. |
-| `cmake/` | `delivery/cmake/` | Build system modules and toolchain definitions. |
-| `configs/` | `delivery/configs/` | Build/runtime configuration profiles. |
-| `targets/` | `delivery/targets/` | Target matrix, platform presets. |
-| `release/` | `delivery/release/` | Release manifests and packaging metadata. |
-| `assets/` | `delivery/assets/` | Packaging/branding/runtime assets. |
-| `tests/` | `quality/tests/` | Test ownership and quality domain clarity. |
-| `docs/` | `docs/` | Stays at root for discoverability. |
-| `.github/` | `.github/` | Stays at root for GitHub conventions. |
+## Working rules for every phase (must follow)
 
-## Migration principles
+### A) Safe migration rule
 
-1. **Do not break builds abruptly**: use temporary compatibility aliases in build scripts.
-2. **Move low-coupling folders first** (`release`, `targets`, `contracts`, parts of `sdk`).
-3. **Use contract gates**: no new cross-layer API without `uapi/idl` artifacts.
-4. **Track ownership**: update CODEOWNERS and subsystem owners by zone.
-5. **Protect kernel boundary**: extract policy logic from kernel paths where possible.
+- Move only one bounded slice at a time.
+- Keep old paths functional via compatibility shims/aliases until the phase closes.
+- If something breaks, fix in the same phase before merge.
 
-## Phased implementation plan
+### B) Documentation rule
 
-### Phase 0 - Prep (1-2 sprints)
+For each phase PR, update at least:
 
-- Publish approved target layout and ownership matrix.
-- Add CI checks for forbidden new root-level directories.
-- Add CI warning for new interfaces missing `uapi/idl` backing.
+- relevant architecture/build docs under `docs/`,
+- developer build/run instructions,
+- any changed command examples (old + new during transition).
 
-### Phase 1 - Non-disruptive scaffolding (1 sprint)
+### C) Validation rule
 
-- Create `core/`, `interface/`, `delivery/`, `quality/` directories.
-- Add build-system path aliases and deprecation notices.
-- Keep old paths functional via indirection.
+Run phase validation commands (build/package/run/all) and capture outcomes in phase notes/PR.
 
-### Phase 2 - Low-risk moves (1-2 sprints)
+### D) Tooling-change rule
 
-- Move: `release`, `targets`, `contracts`, selected `sdk` subtrees.
-- Update scripts, CI configs, docs references.
-- Validate with full build/test matrix.
+If tooling must change in a phase (expected), do it in this order:
 
-### Phase 3 - Core path migration (2-4 sprints)
+1. Add backward-compatible behavior.
+2. Migrate callers/docs.
+3. Remove deprecated path/flags in a later cleanup phase.
 
-- Move mechanism and policy trees under `core/`.
-- Consolidate `services/*mgr` into domain buckets during migration.
-- Begin HAL path normalization where architecture-specific internals are leaking abstraction.
+---
 
-### Phase 4 - Interface hardening (1-2 sprints)
+## Phase-by-phase execution plan
 
-- Move `uapi`, `idl`, remaining `sdk`, `include` under `interface/`.
-- Enforce contract discipline for new APIs.
-- Version and publish interface artifacts consistently.
+## Phase 0 — Baseline Freeze + Guardrails (Sprint 1)
 
-### Phase 5 - Cleanup and lock (1 sprint)
+**Goal:** Prepare repo/CI for safe movement without changing structure yet.
 
-- Remove temporary aliases.
-- Fail CI on legacy paths.
-- Update contributor onboarding docs and architecture snapshots.
+**Code tasks**
 
-## Risk register and mitigations
+- Add a migration tracking doc/table with phase IDs, owners, and status.
+- Add CI check that rejects creation of new top-level roots outside approved zones.
+- Add CI check to detect hardcoded soon-to-be-legacy root paths in changed files.
+
+**Tooling tasks**
+
+- Add a path-alias utility layer in build tooling (logical path -> actual path).
+- Add warning mechanism for deprecated paths (warning-only in this phase).
+
+**Docs tasks**
+
+- Update build docs to clearly state transitional behavior.
+- Add migration policy page in `docs/dev/` linking this plan.
+
+**Exit criteria**
+
+- CI guardrails active.
+- No functional path changes yet.
+- Team can merge regular work with guardrails on.
+
+---
+
+## Phase 1 — Zone Scaffolding (Sprint 2)
+
+**Goal:** Create destination zones and introduce compatibility indirection.
+
+**Code tasks**
+
+- Create empty/top-level zone folders: `core/`, `interface/`, `delivery/`, `quality/`.
+- Add build-system include/search indirection so old and new locations resolve.
+- Keep all existing paths authoritative for now; new zones are scaffolding.
+
+**Tooling tasks**
+
+- Build scripts resolve through alias map first, direct path second.
+- Add logging that reports which path was used (old/new).
+
+**Docs tasks**
+
+- Document alias behavior and expected deprecation timeline.
+
+**Exit criteria**
+
+- Zero behavior change for contributors.
+- All commands still work from legacy paths.
+
+---
+
+## Phase 2 — Low-risk Delivery/Interface Moves (Sprints 3–4)
+
+**Goal:** Move low-coupling directories first.
+
+**Move scope**
+
+- `release/` -> `delivery/release/`
+- `targets/` -> `delivery/targets/`
+- `contracts/` -> `interface/contracts/`
+- selected `sdk/` modules -> `interface/sdk/` (stable modules first)
+
+**Code tasks**
+
+- Physically move one subtree per PR (small PRs).
+- Add compatibility links/mappings for moved paths.
+- Update import/include/script references incrementally.
+
+**Tooling tasks**
+
+- Update tooling path constants to prefer new locations.
+- Keep fallback to old locations.
+
+**Docs tasks**
+
+- Update references in README/build docs where paths changed.
+
+**Exit criteria**
+
+- All moved folders accessed via new paths.
+- Legacy fallback still present and tested.
+
+---
+
+## Phase 3 — Core Runtime Migration (Sprints 5–8)
+
+**Goal:** Move mechanism + policy trees under `core/` without breaking runtime.
+
+**Move scope (recommended order)**
+
+1. `boot/` -> `core/boot/`
+2. `kernel/` -> `core/kernel/`
+3. `hal/`, `arch/`, `platform/` -> `core/*`
+4. `drivers/`, `services/`, `stacks/`, `personalities/`, `lib/` -> `core/*`
+
+**Why this order**
+
+- `boot`/`kernel` are high-impact; migrate with maximum visibility first.
+- HAL/arch/platform then follow with boundary cleanup.
+- service/policy trees move once core path plumbing is stable.
+
+**Code tasks**
+
+- Migrate includes and CMake path wiring in atomic slices.
+- Keep adapter headers/modules where needed to avoid import breakage.
+- Fix all compile/runtime regressions in-phase.
+
+**Tooling tasks**
+
+- Enhance path translator to cover core tree moves.
+- Emit structured deprecation report in CI logs.
+
+**Docs tasks**
+
+- Update architecture tree diagrams and component location docs.
+- Update contributor docs for new source paths.
+
+**Exit criteria**
+
+- Core trees primarily served from `core/`.
+- Legacy paths still work through compatibility layer.
+
+---
+
+## Phase 4 — Interface Consolidation + Contract Enforcement (Sprints 9–10)
+
+**Goal:** Finalize public-facing surfaces under `interface/` and enforce contract-first discipline.
+
+**Move scope**
+
+- `uapi/` -> `interface/uapi/`
+- `idl/` -> `interface/idl/`
+- remaining `sdk/` -> `interface/sdk/`
+- public umbrella headers from `include/` -> `interface/include/`
+
+**Code/tasks**
+
+- Add CI gate: new public APIs require `uapi/idl` linkage.
+- Ensure generated or packaged interface artifacts read from new paths.
+
+**Tooling/docs**
+
+- Update packaging/release paths for interface artifacts.
+- Update API/SDK documentation and examples.
+
+**Exit criteria**
+
+- Interface assets fully centralized.
+- Contract gate enabled and enforced.
+
+---
+
+## Phase 5 — Quality/Tests Move + Cleanup Lock (Sprints 11–12)
+
+**Goal:** finalize remaining moves and remove temporary compatibility.
+
+**Move scope**
+
+- `tests/` -> `quality/tests/`
+- `tools/`, `cmake/`, `configs/`, `assets/` -> `delivery/*` (if not already completed)
+
+**Cleanup tasks**
+
+- Remove alias/fallback code.
+- Convert deprecated-path warnings to hard CI failures.
+- Remove all legacy-path references from docs/scripts.
+
+**Exit criteria**
+
+- New zone structure is authoritative.
+- No legacy-path usage in code, CI, or docs.
+
+---
+
+## Validation matrix to run in every phase
+
+Use this baseline command suite (or updated equivalent if tooling evolves in that phase).
+
+```bash
+./build.sh build --target x86_64_desktop_headless
+./build.sh package --target x86_64_desktop_headless
+./build.sh run --target x86_64_desktop_headless
+
+./build.sh all --target x86_64_desktop_headless_linux
+./build.sh all --target arm64_desktop_headless_linux
+./build.sh all --target riscv64_desktop_headless_linux
+
+./build.sh all --target x86_64_desktop_headless_android
+./build.sh all --target arm64_desktop_headless_android
+./build.sh all --target riscv64_desktop_headless_android
+```
+
+### Recommended expansion for 5 QEMU hardware arcs
+
+To cover all 5 practical QEMU families currently represented in docs/targets:
+
+```bash
+./build.sh all --target arm32_mmu_lite_headless
+./build.sh all --target riscv32_mmu_lite_headless
+```
+
+(Along with x86_64, arm64, riscv64 already listed above.)
+
+### If QEMU is missing, install first
+
+Ubuntu/Debian example:
+
+```bash
+sudo apt update
+sudo apt install -y qemu-system-x86 qemu-system-arm qemu-system-misc
+```
+
+---
+
+## PR slicing strategy (important)
+
+- Prefer **one directory move per PR** + mandatory fixes.
+- Keep PRs below a manageable diff size to reduce merge conflicts.
+- Use branch naming like: `refactor/phase-3-boot-core-move`.
+- Each PR must include:
+  - move summary,
+  - compatibility updates,
+  - doc updates,
+  - validation command results.
+
+---
+
+## Tooling evolution policy (because commands may change)
+
+When build/run commands are updated in future phases:
+
+1. Keep old commands functional for at least one phase via compatibility parser.
+2. Print migration hint in command output.
+3. Update all docs/examples in same PR.
+4. Flip old command support from warning -> error only in cleanup phase.
+
+---
+
+## Risks and mitigations
 
 | Risk | Impact | Mitigation |
 | --- | --- | --- |
-| Broken imports/includes | High | Compatibility include paths + staged deprecation window. |
-| Build script regressions | High | Path translation layer + CI matrix before each phase merge. |
-| Tooling drift | Medium | Pin and update all scripts in one migration branch per phase. |
-| Ownership ambiguity | Medium | CODEOWNERS by zone + explicit subsystem maintainers. |
-| Merge conflicts during move | Medium | Short-lived migration branches + freeze windows for touched trees. |
+| Include/import path breakage | High | Compatibility include dirs + adapter headers + phase-specific compile checks |
+| Runtime break after path move | High | Mandatory `build/package/run/all` matrix before merge |
+| Tooling drift during refactor | High | Alias resolver + dual-path support + explicit deprecation policy |
+| Docs become stale | Medium | “No code move without doc update” phase gate |
+| Cross-team merge conflicts | Medium | Small PR batches + short freeze windows around large moves |
+
+---
 
 ## Definition of done
 
-- Root-level directories reduced to zone-oriented buckets and required platform conventions.
-- No active references to legacy paths in build scripts, CI, or docs.
-- `services` consolidation and `uapi/idl` contract gate active in CI.
-- Architecture folder structure document updated with post-migration alignment snapshot.
+- Zone-oriented root structure fully adopted.
+- Legacy paths removed from code/tooling/docs.
+- CI enforces new structure and interface contract discipline.
+- Build/test/run matrix passes on supported QEMU targets.
 
-## Immediate next actions
+---
 
-1. Approve this plan and target mapping table.
-2. Create tracking epic with one ticket per phase.
-3. Start Phase 0 CI guardrails before any large move.
+## Immediate next actions (start now)
+
+1. Execute Phase 0 guardrails in a dedicated PR.
+2. Create phase tickets with exact directory scope and validation checklist.
+3. Start Phase 1 scaffolding only after CI guardrails are merged.
