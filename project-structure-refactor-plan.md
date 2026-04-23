@@ -20,7 +20,7 @@ This plan is based on the current repo layout and build system behavior (`build.
 | B1 | Shared alias helper adoption for target matrix + loader | ✅ Completed | `tools/targets/loader.py` now uses shared alias helper/fallback primitives. |
 | B2 | CI legacy reference guard (warning mode) | ✅ Completed | `tools/ci/check_migration_refs.py` added and wired into `kernel-ci` workflow. |
 | B3 | Guard escalation to strict mode | ⏳ Planned | Flip to `--strict` after two additional migration slices. |
-| C1 | Interface `idl/` move | ⏳ Planned | Move in one PR with generator fallback support. |
+| C1 | Interface `idl/` move | ✅ Completed | `interface/idl/` is now authoritative; legacy `idl` path is preserved as a compatibility symlink and tooling fallback. |
 | D1 | `boot/` to `core/boot/` | ⏳ Planned | First high-impact core move with CMake compatibility includes. |
 
 ---

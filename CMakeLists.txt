@@ -41,12 +41,29 @@ file(MAKE_DIRECTORY "${BHARAT_GEN_INCLUDE_DIR}/bharat")
 
 # Process static IDL generation explicitly early to guarantee header availability
 set(BHARAT_IDL_GEN_SCRIPT "${CMAKE_SOURCE_DIR}/tools/bidl/bidlc.py")
+set(BHARAT_IDL_ROOT_CANDIDATES
+    "${CMAKE_SOURCE_DIR}/interface/idl"
+    "${CMAKE_SOURCE_DIR}/idl"
+)
+set(BHARAT_IDL_ROOT "")
+foreach(_idl_root IN LISTS BHARAT_IDL_ROOT_CANDIDATES)
+    if(EXISTS "${_idl_root}")
+        set(BHARAT_IDL_ROOT "${_idl_root}")
+        if(_idl_root MATCHES "/idl$" AND NOT _idl_root MATCHES "/interface/idl$")
+            message(WARNING "[migration-warning] Using legacy IDL root: ${_idl_root}")
+        endif()
+        break()
+    endif()
+endforeach()
+if(NOT BHARAT_IDL_ROOT)
+    message(FATAL_ERROR "No IDL root found in interface/idl or idl")
+endif()
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
 # Generate monitor service IDL
 execute_process(
     COMMAND "${Python3_EXECUTABLE}" "${BHARAT_IDL_GEN_SCRIPT}"
-            "${CMAKE_SOURCE_DIR}/idl/monitor_v1.bidl"
+            "${BHARAT_IDL_ROOT}/monitor_v1.bidl"
             "${BHARAT_GEN_INCLUDE_DIR}"
     WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
     RESULT_VARIABLE IDL_MONITOR_RESULT
@@ -58,7 +75,7 @@ endif()
 # Generate cap service IDL
 execute_process(
     COMMAND "${Python3_EXECUTABLE}" "${BHARAT_IDL_GEN_SCRIPT}"
-            "${CMAKE_SOURCE_DIR}/idl/cap_v1.bidl"
+            "${BHARAT_IDL_ROOT}/cap_v1.bidl"
             "${BHARAT_GEN_INCLUDE_DIR}"
     WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
     RESULT_VARIABLE IDL_CAP_RESULT
