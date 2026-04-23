@@ -23,7 +23,7 @@ This plan is based on the current repo layout and build system behavior (`build.
 | C1 | Interface `idl/` move | ✅ Completed | `interface/idl/` is now authoritative; legacy `idl` path is preserved as a compatibility symlink and tooling fallback. |
 | C2 | Interface `uapi/` move | ✅ Completed | `interface/uapi/` is now authoritative; legacy `uapi` path is preserved as a compatibility symlink. |
 | C3 | Interface `sdk/` move | ✅ Completed | `interface/sdk/` is now authoritative; legacy `sdk` path is preserved as a compatibility symlink. |
-| D1 | `boot/` to `core/boot/` | ⏳ Planned | First high-impact core move with CMake compatibility includes. |
+| D1 | `boot/` to `core/boot/` | 🚧 In progress | D1a completed: `boot/src` + `boot/common` moved to `core/boot` with legacy symlink compatibility and CMake source-root fallback. |
 
 ---
 
