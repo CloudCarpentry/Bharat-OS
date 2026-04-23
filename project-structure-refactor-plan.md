@@ -22,6 +22,7 @@ This plan is based on the current repo layout and build system behavior (`build.
 | B3 | Guard escalation to strict mode | ⏳ Planned | Flip to `--strict` after two additional migration slices. |
 | C1 | Interface `idl/` move | ✅ Completed | `interface/idl/` is now authoritative; legacy `idl` path is preserved as a compatibility symlink and tooling fallback. |
 | C2 | Interface `uapi/` move | ✅ Completed | `interface/uapi/` is now authoritative; legacy `uapi` path is preserved as a compatibility symlink. |
+| C3 | Interface `sdk/` move | ✅ Completed | `interface/sdk/` is now authoritative; legacy `sdk` path is preserved as a compatibility symlink. |
 | D1 | `boot/` to `core/boot/` | ⏳ Planned | First high-impact core move with CMake compatibility includes. |
 
 ---
@@ -257,6 +258,36 @@ If tooling must change in a phase (expected), do it in this order:
 - Update API/SDK documentation and examples.
 
 **Exit criteria**
+
+- All contract assets (uapi/idl/sdk/include) resolve primarily from `interface/`.
+- CI detects any new direct references to deprecated roots in changed files.
+
+---
+
+## Near-term incremental PR sequence (recommended medium chunks)
+
+This is the execution order to avoid a big-bang refactor while still moving fast:
+
+1. **C3 (done): SDK root relocation**
+   - Move `sdk/` -> `interface/sdk/`.
+   - Keep `sdk` compatibility symlink for legacy references.
+   - Validate full build matrix.
+2. **D1a: Boot source move with compatibility wrappers**
+   - Move `boot/src/` + `boot/common/` into `core/boot/`.
+   - Keep `boot/` forwarding CMake and include wrappers.
+   - Update only direct build references in the same PR.
+3. **D1b: Boot include/public header move**
+   - Move `boot/include/` to `core/boot/include/`.
+   - Keep umbrella compatibility headers in `boot/include/boot`.
+4. **D2: Kernel tree move**
+   - Move `kernel/` -> `core/kernel/` with top-level CMake forwarding.
+   - Keep old `kernel/` path as compatibility shim until D4.
+5. **D3: HAL/arch/platform move**
+   - Move one tree per PR (`hal`, then `arch`, then `platform`).
+   - Add include alias paths and CI deprecation warnings.
+6. **D4: Drivers/services/stacks/personalities/lib move**
+   - Move low-coupling trees first (`lib`, `stacks`) then service-heavy trees.
+   - Keep temporary adapters and remove only after Phase E strict mode.
 
 - Interface assets fully centralized.
 - Contract gate enabled and enforced.

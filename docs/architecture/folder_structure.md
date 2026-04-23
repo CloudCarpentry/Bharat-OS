@@ -1,7 +1,7 @@
 ---
 title: Bharat-OS Project Folder Structure
 status: Active
-version: 1.1
+version: 1.2
 owner: Architecture Team
 reviewers: Core Maintainers
 last_updated: 2026-04-23
@@ -22,7 +22,7 @@ This document defines target folder boundaries and records the **current alignme
 - Mechanism (kernel/drivers/hal) and policy (services/stacks/personalities) should stay separated.
 - External contracts should be versioned and published through `interface/uapi/` + `interface/idl/` (legacy root aliases may exist during migration).
 
-## Current alignment snapshot (2026-04-21)
+## Current alignment snapshot (2026-04-23)
 
 | Area | Target direction | Current alignment | Notes |
 | --- | --- | --- | --- |
@@ -34,7 +34,7 @@ This document defines target folder boundaries and records the **current alignme
 | `services/` | policy managers by domain | Partial | New `services/core|system|device|network` exists alongside legacy flat managers. |
 | `personalities/` | compatibility/domain personalities | Strong | `compat/{linux,android,windows}` and `domain/automotive` present. |
 | `stacks/` | composed cross-layer subsystems | Partial | Present (`network`, `can`, `ui`, `storage`) but ownership boundaries need tighter contracts. |
-| `interface/uapi/` + `interface/idl/` | explicit contract surface | Partial | `idl` and `uapi` interface slices are moved; broader contract adoption enforcement is still in progress. |
+| `interface/uapi/` + `interface/idl/` + `interface/sdk/` | explicit contract surface | Partial | `idl`, `uapi`, and `sdk` are now under `interface/`; enforcement and include-surface migration remain in progress. |
 
 ## Target structure (logical)
 
@@ -60,6 +60,7 @@ Bharat-OS/
   interface/
     uapi/
     idl/
+    sdk/
   lib/
   tests/
   tools/

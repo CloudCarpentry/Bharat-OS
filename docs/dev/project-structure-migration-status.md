@@ -6,7 +6,7 @@ This tracker is the execution companion for `project-structure-refactor-plan.md`
 
 - Phase A (QEMU target YAML relocation): **Completed**.
 - Phase B (tooling compatibility hardening): **In progress**.
-- Phase C (interface moves): **In progress** (`idl/` + `uapi/` slices completed).
+- Phase C (interface moves): **Completed** (`idl/` + `uapi/` + `sdk` slices completed).
 
 ## Phase Checklist
 
@@ -16,7 +16,7 @@ This tracker is the execution companion for `project-structure-refactor-plan.md`
 | B.1 | Shared path-alias helper for migration-aware tooling | Completed | Added `tools/build/path_aliases.py` and routed target path resolution through it. |
 | B.2 | Apply alias helper to target loaders/validators outside build pipeline | Pending | Next medium chunk. |
 | B.3 | CI guard for newly introduced legacy root references | Pending | Start warning-only, then enforce. |
-| C | `idl/`, `uapi/`, `sdk/` to `interface/` | In progress | C1 complete (`idl/`), C2 complete (`uapi/`) with legacy compatibility symlinks; remaining SDK modules pending. |
+| C | `idl/`, `uapi/`, `sdk/` to `interface/` | Completed | C1 (`idl`), C2 (`uapi`), C3 (`sdk`) complete; legacy compatibility symlinks retained. |
 | D | `boot/`, `kernel/`, `arch/`, etc. to `core/` | Pending | Atomic compile-safe slices only. |
 | E | Remove fallbacks + enforce new roots | Pending | Convert warnings to CI failures. |
 
@@ -83,3 +83,18 @@ Every migration PR must update:
 - `./build.sh all --target arm64_desktop_headless_android`: **timeout-bounded warning** (build/run path starts).
 - `./build.sh all --target riscv64_desktop_headless_android`: **timeout-bounded warning** (build/run path starts).
 
+## Validation Outcomes (2026-04-23, Phase C3)
+
+- Migration slice: moved `sdk/` -> `interface/sdk/` and kept `sdk` compatibility symlink.
+- Installed QEMU host runners via `apt-get install -y qemu-system-x86 qemu-system-arm qemu-system-misc`.
+- `./build.sh build --target x86_64_desktop_headless`: **pass**.
+- `./build.sh package --target x86_64_desktop_headless`: **pass**.
+- `./build.sh run --target x86_64_desktop_headless`: **timeout-bounded run with successful boot output**; runtime self-tests reached `rt_sched` and preserved one existing EDF test failure before timeout.
+- `./build.sh all --target x86_64_desktop_headless_linux`: **timeout-bounded warning** (build/run path starts).
+- `./build.sh all --target arm64_desktop_headless_linux`: **timeout-bounded warning** (build/run path starts).
+- `./build.sh all --target riscv64_desktop_headless_linux`: **timeout-bounded warning with known runtime panic** (`PMM: Double free detected!`) observed during run stage.
+- `./build.sh all --target x86_64_desktop_headless_android`: **timeout-bounded warning** (build/run path starts).
+- `./build.sh all --target arm64_desktop_headless_android`: **timeout-bounded warning** (build/run path starts).
+- `./build.sh all --target riscv64_desktop_headless_android`: **timeout-bounded warning with known runtime panic** (`PMM: Double free detected!`) observed during run stage.
+- `./build.sh all --target arm32_mmu_lite_headless`: **timeout-bounded warning** (build/run path starts).
+- `./build.sh all --target riscv32_mmu_lite_headless`: **build+package pass; run fails due missing OpenSBI firmware path** (`/usr/lib/riscv32-linux-gnu/opensbi/generic/fw_dynamic.bin`).
