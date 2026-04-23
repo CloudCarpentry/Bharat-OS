@@ -37,7 +37,7 @@ Both wrappers forward directly to `tools/build.py`. The Python CLI is authoritat
 Each subcommand requires exactly one target selector:
 
 - `--target <name>` (legacy targets from `build_config.json`)
-- `--target-yaml <path>` (explicit target YAML in `tools/targets/`)
+- `--target-yaml <path>` (explicit target YAML; preferred under `delivery/targets/`)
 
 Examples:
 
@@ -45,14 +45,14 @@ Examples:
 # Windows PowerShell
 .\build.ps1 build --target x86_64_desktop_headless
 .\build.ps1 all --target x86_64_desktop_headless
-.\build.ps1 run --target-yaml tools/targets/qemu/x86_64_desktop_headless.yaml
+.\build.ps1 run --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml
 ```
 
 ```bash
 # Linux/macOS/WSL
 ./build.sh build --target x86_64_desktop_headless
 ./build.sh all --target x86_64_desktop_headless
-./build.sh run --target-yaml tools/targets/qemu/x86_64_desktop_headless.yaml
+./build.sh run --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml
 ```
 
 > Legacy positional syntax still works (for example `.\build.ps1 x86_64_desktop_headless --run`), but it is compatibility-only and emits a warning. Prefer explicit subcommands.
@@ -414,4 +414,3 @@ See YAML targets under:
 - Root wrappers (`/build.sh`, `/build.ps1`) are the stable commands users should run.
 - `tools/build.sh` and `tools/build.ps1` are compatibility shims.
 - New build/run feature behavior must be implemented in `tools/build.py`.
-
