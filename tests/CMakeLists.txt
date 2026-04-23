@@ -382,7 +382,11 @@ add_executable(test_iommu_stub test_iommu_stub.c ../kernel/src/mm/iommu/iommu_st
 target_include_directories(test_iommu_stub PRIVATE ../kernel/include ../lib/include ../include)
 add_test(NAME test_iommu_stub COMMAND test_iommu_stub)
 
-add_executable(test_dma_lifecycle_host test_dma_lifecycle_host.c ../kernel/src/mm/dma/dma.c ../hal/dma_coherency.c)
+add_executable(test_dma_lifecycle_host test_dma_lifecycle_host.c
+    ../kernel/src/mm/dma/dma.c
+    ../kernel/src/mm/iommu/iommu_domain.c
+    ../kernel/src/capability.c
+    ../hal/dma_coherency.c)
 target_include_directories(test_dma_lifecycle_host PRIVATE ../kernel/include ../include ../lib/include)
 add_test(NAME test_dma_lifecycle_host COMMAND test_dma_lifecycle_host)
 
