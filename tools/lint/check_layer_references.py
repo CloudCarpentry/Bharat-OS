@@ -17,22 +17,22 @@ from pathlib import Path
 INCLUDE_RE = re.compile(r'^\s*#\s*include\s*[<\"]([^>\"]+)[>\"]')
 SYMBOL_LEAKAGE_RE = re.compile(r'\b(fsd_|netmgr_|devmgr_)[a-zA-Z0-9_]+')
 
-LAYER_PREFIX = {
-    "kernel": "kernel/",
-    "hal": "hal/",
-    "arch": "arch/",
-    "platform": "platform/",
-    "drivers": "drivers/",
-    "services": "services/",
-    "stacks": "stacks/",
-    "user": "user/",
-    "sdk": "sdk/",
-    "uapi": "uapi/",
-    "lib": "lib/",
-    "boot": "boot/",
-    "include": "include/",
-    "personalities": "personalities/",
-    "tests": "tests/",
+LAYER_PREFIXES = {
+    "kernel": ("kernel/",),
+    "hal": ("hal/",),
+    "arch": ("arch/",),
+    "platform": ("platform/",),
+    "drivers": ("drivers/",),
+    "services": ("services/",),
+    "stacks": ("stacks/",),
+    "user": ("user/",),
+    "sdk": ("sdk/",),
+    "uapi": ("interface/uapi/", "uapi/"),
+    "lib": ("lib/",),
+    "boot": ("boot/",),
+    "include": ("include/",),
+    "personalities": ("personalities/",),
+    "tests": ("tests/",),
 }
 
 # Policy keeps kernel-side layers freestanding and prevents upward dependencies.
@@ -49,10 +49,10 @@ ALLOWED_REFS = {
     "uapi": {"uapi", "include", "lib"},
     "lib": {"lib", "include", "uapi"},
     "boot": {"boot", "hal", "arch", "platform", "include", "uapi"},
-    "include": set(LAYER_PREFIX.keys()) | {"other"},
+    "include": set(LAYER_PREFIXES.keys()) | {"other"},
     "personalities": {"personalities", "sdk", "lib", "include", "uapi", "services", "stacks", "user"},
-    "tests": set(LAYER_PREFIX.keys()) | {"other"},
-    "other": set(LAYER_PREFIX.keys()) | {"other"},
+    "tests": set(LAYER_PREFIXES.keys()) | {"other"},
+    "other": set(LAYER_PREFIXES.keys()) | {"other"},
 }
 
 FREESTANDING_LAYERS = {"kernel", "hal", "arch", "boot", "platform"}
@@ -79,16 +79,16 @@ class Violation:
 
 
 def detect_layer(path: str) -> str:
-    for layer, prefix in LAYER_PREFIX.items():
-        if path.startswith(prefix):
+    for layer, prefixes in LAYER_PREFIXES.items():
+        if any(path.startswith(prefix) for prefix in prefixes):
             return layer
     return "other"
 
 
 def include_target_layer(repo_root: Path, source_layer: str, include_target: str) -> str | None:
     top = include_target.split("/", 1)[0]
-    for layer, prefix in LAYER_PREFIX.items():
-        if top != prefix.rstrip("/"):
+    for layer, prefixes in LAYER_PREFIXES.items():
+        if not any(top == prefix.rstrip("/") for prefix in prefixes):
             continue
 
         # Treat kernel-private headers (kernel/include/lib/*) as kernel internals,

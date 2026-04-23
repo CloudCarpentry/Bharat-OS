@@ -4,7 +4,7 @@ status: Active
 version: 1.1
 owner: Architecture Team
 reviewers: Core Maintainers
-last_updated: 2026-04-21
+last_updated: 2026-04-23
 tags:
   - architecture
   - structure
@@ -20,7 +20,7 @@ This document defines target folder boundaries and records the **current alignme
 
 - One folder = one primary responsibility.
 - Mechanism (kernel/drivers/hal) and policy (services/stacks/personalities) should stay separated.
-- External contracts should be versioned and published through `uapi/` + `idl/`.
+- External contracts should be versioned and published through `interface/uapi/` + `interface/idl/` (legacy root aliases may exist during migration).
 
 ## Current alignment snapshot (2026-04-21)
 
@@ -34,7 +34,7 @@ This document defines target folder boundaries and records the **current alignme
 | `services/` | policy managers by domain | Partial | New `services/core|system|device|network` exists alongside legacy flat managers. |
 | `personalities/` | compatibility/domain personalities | Strong | `compat/{linux,android,windows}` and `domain/automotive` present. |
 | `stacks/` | composed cross-layer subsystems | Partial | Present (`network`, `can`, `ui`, `storage`) but ownership boundaries need tighter contracts. |
-| `uapi/` + `idl/` | explicit contract surface | Partial | Directories exist, but adoption is not yet consistently enforced across subsystems. |
+| `interface/uapi/` + `interface/idl/` | explicit contract surface | Partial | `idl` and `uapi` interface slices are moved; broader contract adoption enforcement is still in progress. |
 
 ## Target structure (logical)
 
@@ -57,8 +57,9 @@ Bharat-OS/
     domain/
     common/
   stacks/
-  uapi/
-  idl/
+  interface/
+    uapi/
+    idl/
   lib/
   tests/
   tools/
@@ -71,11 +72,11 @@ Bharat-OS/
 2. **HAL boundary cleanup:** move or wrap architecture-specific HAL internals to preserve abstraction contract clarity.
 3. **Kernel policy extraction:** migrate profile/personality-heavy policy from kernel paths into services/personalities where possible.
 4. **Driver taxonomy finalization:** document and enforce ownership split for `block` vs `storage`, `class` vs device-specific drivers.
-5. **Contract discipline:** require `uapi/idl`-backed interfaces for new cross-component APIs.
+5. **Contract discipline:** require `interface/uapi` + `interface/idl`-backed interfaces for new cross-component APIs.
 
 ## Coding tasks identified from structure audit
 
 - Create a phased rename/move plan for legacy services with compatibility headers and build aliases.
-- Add CI lint that fails when new cross-layer interfaces are introduced without `idl/` or `uapi/` artifacts.
+- Add CI lint that fails when new cross-layer interfaces are introduced without `interface/idl` or `interface/uapi` artifacts.
 - Introduce architecture-boundary checks to prevent new policy code under `kernel/src/profile` unless explicitly approved.
 - Add a driver ownership manifest (`drivers/registry`) mapping each driver to canonical subsystem and service owner.

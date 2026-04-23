@@ -21,6 +21,7 @@ This plan is based on the current repo layout and build system behavior (`build.
 | B2 | CI legacy reference guard (warning mode) | ✅ Completed | `tools/ci/check_migration_refs.py` added and wired into `kernel-ci` workflow. |
 | B3 | Guard escalation to strict mode | ⏳ Planned | Flip to `--strict` after two additional migration slices. |
 | C1 | Interface `idl/` move | ✅ Completed | `interface/idl/` is now authoritative; legacy `idl` path is preserved as a compatibility symlink and tooling fallback. |
+| C2 | Interface `uapi/` move | ✅ Completed | `interface/uapi/` is now authoritative; legacy `uapi` path is preserved as a compatibility symlink. |
 | D1 | `boot/` to `core/boot/` | ⏳ Planned | First high-impact core move with CMake compatibility includes. |
 
 ---
@@ -433,9 +434,9 @@ This section converts the phase model into concrete, code-aware slices from the 
 ### Phase C — Interface migration in thin slices
 
 **Scope order**
-1. `idl/` -> `interface/idl/` (schema + tooling references),
-2. `uapi/` -> `interface/uapi/`,
-3. remaining `sdk/` modules -> `interface/sdk/`.
+1. `idl/` -> `interface/idl/` (completed),
+2. `uapi/` -> `interface/uapi/` (completed),
+3. remaining `sdk/` modules -> `interface/sdk/` (next).
 
 **Code tasks**
 - One subtree move per PR.
