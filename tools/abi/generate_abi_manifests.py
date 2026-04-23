@@ -1,16 +1,30 @@
 #!/usr/bin/env python3
 import sys
 import argparse
+import os
 from check_syscalls import check_syscalls, generate_syscall_manifest
 from check_struct_layouts import check_struct_layouts, generate_struct_manifest
 from check_idl_compat import check_idl_compat, generate_idl_manifest
 from check_sdk_symbols import check_sdk_symbols, generate_sdk_manifest
 import common
 
-MANIFEST_DIR = "contracts/abi"
+MANIFEST_DIR_CANDIDATES = [
+    "interface/contracts/abi",
+    "contracts/abi",
+]
+
+
+def resolve_manifest_dir():
+    for path in MANIFEST_DIR_CANDIDATES:
+        if os.path.exists(path):
+            if path == "contracts/abi":
+                print(f"[migration-warning] Using legacy ABI manifest path: {path}")
+            return path
+    return MANIFEST_DIR_CANDIDATES[0]
 
 def get_manifest_path(name):
-    return f"{MANIFEST_DIR}/{name}.json"
+    manifest_dir = resolve_manifest_dir()
+    return f"{manifest_dir}/{name}.json"
 
 def main():
     parser = argparse.ArgumentParser(description="ABI Manifest Generator and Checker")

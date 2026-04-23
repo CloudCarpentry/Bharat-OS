@@ -431,7 +431,7 @@ Intentional boundary changes require an explicit update process. Only approved P
 python3 tools/abi/generate_abi_manifests.py --update
 ```
 
-This will update the `.json` manifest files inside the `contracts/abi/` directory. CI will run the script in `--check` mode.
+This will update the `.json` manifest files inside the `interface/contracts/abi/` directory (with temporary fallback support for `contracts/abi/` during migration). CI will run the script in `--check` mode.
 
 ---
 

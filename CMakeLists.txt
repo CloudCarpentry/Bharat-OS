@@ -14,7 +14,24 @@ include(BharatComponentPolicy)
 include(${CMAKE_SOURCE_DIR}/cmake/BharatConstraints.cmake)
 
 # Versioning Identity System: Generate and load from manifest
-set(BHARAT_MANIFEST_JSON "${CMAKE_SOURCE_DIR}/release/manifest/os-release.json")
+set(BHARAT_MANIFEST_CANDIDATES
+    "${CMAKE_SOURCE_DIR}/delivery/release/manifest/os-release.json"
+    "${CMAKE_SOURCE_DIR}/release/manifest/os-release.json"
+)
+set(BHARAT_MANIFEST_JSON "")
+foreach(_manifest_path IN LISTS BHARAT_MANIFEST_CANDIDATES)
+    if(EXISTS "${_manifest_path}")
+        set(BHARAT_MANIFEST_JSON "${_manifest_path}")
+        if(_manifest_path MATCHES "/release/manifest/os-release.json$"
+           AND NOT _manifest_path MATCHES "/delivery/release/manifest/os-release.json$")
+            message(WARNING "[migration-warning] Using legacy manifest path: ${_manifest_path}")
+        endif()
+        break()
+    endif()
+endforeach()
+if(NOT BHARAT_MANIFEST_JSON)
+    message(FATAL_ERROR "No os-release manifest found in delivery/release/manifest or release/manifest")
+endif()
 set(BHARAT_GEN_SCRIPT "${CMAKE_SOURCE_DIR}/tools/gen_manifest.py")
 set(BHARAT_GEN_DIR "${CMAKE_BINARY_DIR}/generated")
 set(BHARAT_GEN_INCLUDE_DIR "${BHARAT_GEN_DIR}/include")
