@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-include(cmake/test_component_policy.cmake)
+include(delivery/cmake/test_component_policy.cmake)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Generic")
     # This file shouldn't be processed if we are building the kernel (cross-compiling)

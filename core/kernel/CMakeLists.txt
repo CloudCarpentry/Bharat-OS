@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 project(BharatOS_Kernel C ASM)
 set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 # ── Toolchain file provides all compiler/linker settings.
-# Pass -DCMAKE_TOOLCHAIN_FILE=../cmake/toolchains/<arch>-elf.cmake at configure time.
+# Pass -DCMAKE_TOOLCHAIN_FILE=../delivery/cmake/toolchains/<arch>-elf.cmake at configure time.
 # See BUILD.md for exact commands for each platform.
 
 # Provide an interface library for kernel components to share common includes

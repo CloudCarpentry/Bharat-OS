@@ -111,11 +111,11 @@ get_arch_cmake_flags() {
 get_toolchain_file() {
   local arch="$1"
   case "$arch" in
-    x86_64) printf '%s\n' "cmake/toolchains/x86_64-elf-clang.cmake" ;;
-    arm64) printf '%s\n' "cmake/toolchains/aarch64-elf-clang.cmake" ;;
-    arm32) printf '%s\n' "cmake/toolchains/arm32-elf.cmake" ;;
-    riscv64) printf '%s\n' "cmake/toolchains/riscv64-elf-clang.cmake" ;;
-    riscv32) printf '%s\n' "cmake/toolchains/riscv32-elf.cmake" ;;
+    x86_64) printf '%s\n' "delivery/cmake/toolchains/x86_64-elf-clang.cmake" ;;
+    arm64) printf '%s\n' "delivery/cmake/toolchains/aarch64-elf-clang.cmake" ;;
+    arm32) printf '%s\n' "delivery/cmake/toolchains/arm32-elf.cmake" ;;
+    riscv64) printf '%s\n' "delivery/cmake/toolchains/riscv64-elf-clang.cmake" ;;
+    riscv32) printf '%s\n' "delivery/cmake/toolchains/riscv32-elf.cmake" ;;
     *) return 1 ;;
   esac
 }

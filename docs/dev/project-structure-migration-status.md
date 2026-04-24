@@ -7,7 +7,7 @@ This tracker is the execution companion for `project-structure-refactor-plan.md`
 - Phase A (QEMU target YAML relocation): **Completed**.
 - Phase B (tooling compatibility hardening): **Completed** (B.1/B.2/B.3 complete; CI guard now enforces strict mode).
 - Phase B.4 (delivery configs/assets relocation + legacy symlink trimming): **Completed** (`configs/` and `assets/` now canonical under `delivery/`; obsolete `quality/*` compatibility symlink fanout removed).
-- Phase B.5 follow-up (root delivery compatibility cleanup): **Completed** (root `configs`, `assets`, and `targets` symlinks removed after canonical-path migration).
+- Phase B.5 follow-up (root delivery compatibility cleanup): **Completed** (root `configs`, `assets`, `targets`, and now `cmake` symlinks removed after canonical-path migration).
 - Phase C (interface moves): **Completed** (`idl/` + `uapi/` + `sdk` slices completed).
 - Phase D.1 (boot tree migration): **Completed** (D1a/D1b migrated boot sources+headers/protocols/discovery into `core/boot`; D1c wired kernel include selection through migration-aware `BHARAT_BOOT_INCLUDE_DIR`; D1e removed legacy `boot/{src,common,include,discovery,protocols}` symlink fanout and migrated in-repo include path usage to canonical `core/boot/*`; D1f removed legacy `boot/*` fallback selection from `core/kernel` CMake wiring so boot inputs are now canonical-only).
 - Phase D.2c (kernel source tree move, bounded slice): **In progress** (remaining `kernel/src/*` moved to `core/kernel/src/*`; legacy `kernel/src/*` compatibility symlink wrappers retained).
@@ -26,7 +26,7 @@ This tracker is the execution companion for `project-structure-refactor-plan.md`
 | B.2 | Apply alias helper to target loaders/validators outside build pipeline | Completed | ABI tooling now resolves canonical `interface/*` paths through `tools/build/path_aliases.py` with migration warnings for legacy aliases. |
 | B.3 | CI guard for newly introduced legacy root references | Completed | `kernel-ci` runs `tools/ci/check_migration_refs.py --strict` and guards completed migration roots (`delivery/targets`, `interface/{idl,uapi,contracts}`). |
 | B.4 | Move `configs/` + `assets/` into `delivery/` and prune obsolete compatibility symlinks | Completed | Canonical paths are now `delivery/configs` and `delivery/assets`; obsolete `quality/*` symlink fanout removed and root delivery symlinks were later dropped in B.5. |
-| B.5 | Remove root delivery symlinks once callers are canonicalized | Completed | Root `configs`, `assets`, and `targets` symlinks removed; canonical paths under `delivery/` are authoritative. |
+| B.5 | Remove root delivery symlinks once callers are canonicalized | Completed | Root `configs`, `assets`, `targets`, and `cmake` symlinks removed; canonical paths under `delivery/` are authoritative. |
 | C | `idl/`, `uapi/`, `sdk/` to `interface/` | Completed | C1 (`idl`), C2 (`uapi`), C3 (`sdk`) complete; legacy compatibility symlinks retained. |
 | D | `boot/`, `kernel/`, `arch/`, etc. to `core/` | In progress | D1 is now complete (canonical `core/boot/*`, legacy `boot/{src,common,include,discovery,protocols}` symlink fanout removed, in-repo include paths migrated, and `core/kernel` CMake now uses canonical `core/boot/*` roots only). D2b landed (`kernel/include`), D2c landed (remaining `kernel/src/*` now canonical in `core/kernel/src/*` with `kernel/src/*` symlink wrappers), D2f landed (`kernel/CMakeLists.txt` + `kernel/linker*.ld` moved to canonical `core/kernel/*` with legacy symlink compatibility), and D4a landed (`lib/` + `stacks/` moved under `core/*` with compatibility symlinks). |
 | F | `include/` + `user/` canonicalization | Completed | F1 landed (`interface/include` canonical, `include` symlink retained); F2 landed (`experience/user` canonical, `user` symlink retained) with migration-aware CMake root selection. |
@@ -59,6 +59,13 @@ Every migration PR must update:
 1. User-facing build/run docs (e.g., `BUILD.md`, `README.md` command examples).
 2. Architecture/developer docs that mention moved paths.
 3. This tracker with phase status and validation outcomes.
+
+
+## Validation Outcomes (2026-04-24, Phase B.5 follow-up: cmake symlink trim)
+
+- Migration slice: removed root `cmake` compatibility symlink after updating in-repo callers to canonical `delivery/cmake/*` paths.
+- Path updates: switched host test policy include to `delivery/cmake/test_component_policy.cmake` and updated `run_qemu_e2e.sh` toolchain path mapping to `delivery/cmake/toolchains/*`.
+- Validation commands executed for build/package/run and Linux/Android multi-arch `all` targets (see command log in PR for pass/timeout details).
 
 ## Validation Outcomes (2026-04-23, Phase C1)
 
