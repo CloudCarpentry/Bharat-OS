@@ -19,7 +19,7 @@ This plan is based on the current repo layout and build system behavior (`build.
 | A | QEMU YAML move to `delivery/targets/qemu` | ✅ Completed | Alias translation exists in `tools/build/path_aliases.py` and resolver wiring. |
 | B1 | Shared alias helper adoption for target matrix + loader | ✅ Completed | `tools/targets/loader.py` now uses shared alias helper/fallback primitives. |
 | B2 | Alias helper adoption for ABI tooling path resolution | ✅ Completed | `tools/abi/{check_idl_compat.py,check_struct_layouts.py,generate_abi_manifests.py}` now resolve `interface/*` canonical paths via shared `tools/build/path_aliases.py` helpers with legacy fallback warnings. |
-| B3 | Guard escalation to strict mode | ⏳ Planned | Flip to `--strict` after two additional migration slices. |
+| B3 | Guard escalation to strict mode | ✅ Completed | `kernel-ci` now runs `tools/ci/check_migration_refs.py --strict`; guard patterns cover completed A/C/B2 legacy roots. |
 | C1 | Interface `idl/` move | ✅ Completed | `interface/idl/` is now authoritative; legacy `idl` path is preserved as a compatibility symlink and tooling fallback. |
 | C2 | Interface `uapi/` move | ✅ Completed | `interface/uapi/` is now authoritative; legacy `uapi` path is preserved as a compatibility symlink. |
 | C3 | Interface `sdk/` move | ✅ Completed | `interface/sdk/` is now authoritative; legacy `sdk` path is preserved as a compatibility symlink. |

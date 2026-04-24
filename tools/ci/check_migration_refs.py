@@ -7,11 +7,18 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-LEGACY_PATTERNS = ("tools/targets/qemu/",)
+LEGACY_PATTERNS = (
+    "tools/targets/qemu/",
+    "targets/target_matrix.json",
+    "idl/",
+    "include/bharat/uapi/",
+    "contracts/abi/",
+)
 ALLOWED_FILES = {
     "BUILD.md",
     "project-structure-refactor-plan.md",
     "tools/build/path_aliases.py",
+    "docs/dev/project-structure-migration-status.md",
 }
 
 
