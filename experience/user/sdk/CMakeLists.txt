@@ -14,7 +14,7 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../include)
 else()
     # Integrated mode: we are building from the top-level repo
-    include_directories(${CMAKE_SOURCE_DIR}/include)
+    include_directories(${CMAKE_SOURCE_DIR}/interface/include)
 endif()
 
 # Allow building with multikernel features / Shakti
@@ -37,7 +37,7 @@ target_include_directories(bharat PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     target_include_directories(bharat PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
 else()
-    target_include_directories(bharat PRIVATE ${CMAKE_SOURCE_DIR}/include)
+    target_include_directories(bharat PRIVATE ${CMAKE_SOURCE_DIR}/interface/include)
 endif()
 
 # Note: bharat_user_buildopts and bharat_freestanding are defined in the main project.

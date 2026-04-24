@@ -18,7 +18,7 @@ add_library(k_init OBJECT
 target_include_directories(k_init PRIVATE
     ${BHARAT_KERNEL_INCLUDE_DIR}
     ${BHARAT_KERNEL_INCLUDE_DIR}/generated
-    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/interface/include
     ${BHARAT_LIB_ROOT}/include
     ${BHARAT_BOOT_INCLUDE_DIR}
     ${CMAKE_SOURCE_DIR}/services/core/subsysmgr/include

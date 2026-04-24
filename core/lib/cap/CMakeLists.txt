@@ -6,7 +6,7 @@ add_library(bharat_libcap_base STATIC src/cap.c src/cap_validate.c)
 
 # Set the public include directory
 target_include_directories(bharat_libcap_base PUBLIC include)
-target_include_directories(bharat_libcap_base PUBLIC ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(bharat_libcap_base PUBLIC ${CMAKE_SOURCE_DIR}/interface/include)
 
 # Keep the build freestanding and warning-clean using common targets
 target_link_libraries(bharat_libcap_base PUBLIC bharat_freestanding)

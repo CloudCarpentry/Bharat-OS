@@ -418,13 +418,13 @@ add_test(NAME test_benchmark_hw_caps COMMAND test_benchmark_hw_caps)
 
 add_executable(test_syscall_abi test_syscall_abi.c)
 target_include_directories(test_syscall_abi PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/interface/include
     ${CMAKE_SOURCE_DIR}/kernel/include
 )
 add_test(NAME SyscallABITest COMMAND test_syscall_abi)
 
 add_executable(test_elf_parser test_elf_parser.c)
-target_include_directories(test_elf_parser PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(test_elf_parser PRIVATE ${CMAKE_SOURCE_DIR}/interface/include)
 target_link_libraries(test_elf_parser PRIVATE elf_parser)
 add_test(NAME ELFParserTest COMMAND test_elf_parser)
 add_executable(test_storage_profile test_storage_profile.c ../stacks/storage/profile.c)
