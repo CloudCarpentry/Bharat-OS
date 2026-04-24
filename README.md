@@ -552,7 +552,7 @@ Equivalent modern command:
 - `kernel/` — microkernel core (MM, IPC, scheduler, HAL, capability system).
 - `subsys/` — subsystem services (including AI governor bridge layer).
 - `lib/` — shared user-space facing library surfaces.
-- `tests/` — host-based tests for kernel/runtime components.
+- `quality/tests/` — canonical host/unit/e2e tests for kernel/runtime components (`tests/` remains a compatibility symlink during migration).
 - `docs/` — architecture docs, ADRs, and implementation reviews.
 
 ## Research references

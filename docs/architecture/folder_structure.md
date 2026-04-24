@@ -35,7 +35,7 @@ This document defines target folder boundaries and records the **current alignme
 | `core/personalities/` | compatibility/domain personalities | Strong | Canonical tree is `core/personalities/*`; legacy `personalities/` symlink remains during migration. |
 | `stacks/` | composed cross-layer subsystems | Partial | Present (`network`, `can`, `ui`, `storage`) but ownership boundaries need tighter contracts. |
 | `interface/uapi/` + `interface/idl/` + `interface/sdk/` | explicit contract surface | Partial | `idl`, `uapi`, and `sdk` are now under `interface/`; enforcement and include-surface migration remain in progress. |
-| `quality/tests/` | test harnesses, host/unit/e2e suites | Partial | Canonical e2e tree is now `quality/tests/e2e`; legacy `tests/e2e` symlink remains during migration. |
+| `quality/tests/` | test harnesses, host/unit/e2e suites | Active | Canonical host/unit/e2e test tree now lives under `quality/tests/`; legacy `tests` is retained as a compatibility symlink during migration cleanup. |
 
 ## Target structure (logical)
 
