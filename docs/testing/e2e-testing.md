@@ -4,7 +4,7 @@ Bharat-OS uses a two-layer E2E testing approach focusing on QEMU CI matrices and
 
 ## QEMU Matrix
 
-The current QEMU E2E test matrix is defined in `tests/e2e/qemu_matrix.json` and split into two stages:
+The current QEMU E2E test matrix is defined in `quality/tests/e2e/qemu_matrix.json` (legacy alias: `tests/e2e/qemu_matrix.json`) and split into two stages:
 1. **Smoke Tests:** Stable, representative architectures and GP profiles (e.g., `x86_64-gp`, `arm64-gp`, `riscv64-gp`).
 2. **Extended Tests:** Slower or secondary combinations (e2e-qemu-extended).
 
@@ -16,7 +16,7 @@ Physical board testing is triggered via `workflow_dispatch` through self-hosted 
 
 ## Success Criteria
 
-Pass/fail is determined by analyzing the serial log output from the kernel boot process using `tests/e2e/assert_log.py`.
+Pass/fail is determined by analyzing the serial log output from the kernel boot process using `quality/tests/e2e/assert_log.py` (legacy alias: `tests/e2e/assert_log.py`).
 It specifically looks for canonical markers in stdout, like `BOOT: pmm initialized`, while ensuring there are no `[PANIC]` messages.
 
 ---
@@ -27,9 +27,11 @@ There are two ways to run the E2E tests locally: natively via scripts, and using
 
 ### 1. Running the script directly
 
-You can invoke the Python script for any single profile defined in `tests/e2e/profiles/`:
+You can invoke the Python script for any single profile defined in `quality/tests/e2e/profiles/` (legacy alias: `tests/e2e/profiles/`):
 
 ```bash
+./quality/tests/e2e/run_e2e.py quality/tests/e2e/profiles/x86_64-gp.yaml
+# legacy alias still works during migration:
 ./tests/e2e/run_e2e.py tests/e2e/profiles/x86_64-gp.yaml
 ```
 

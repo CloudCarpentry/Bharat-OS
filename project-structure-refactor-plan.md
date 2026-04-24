@@ -27,6 +27,7 @@ This plan is based on the current repo layout and build system behavior (`build.
 | D2 | `kernel/` to `core/kernel/` | 🚧 In progress | D2a completed: `kernel/src/{core,init,boot}` migrated to `core/kernel/src/*`; D2b completed: `kernel/include` moved to `core/kernel/include`; D2c completed: remaining `kernel/src/*` moved into `core/kernel/src/*` with legacy symlink wrappers retained at `kernel/src/*`. |
 | D3 | `arch/` + `hal/` + `platform/` to `core/*` | ✅ Completed | D3a completed: `arch/` moved to canonical `core/arch/` with legacy `arch` symlink compatibility and top-level CMake wiring updated to prefer `core/arch`. D3b completed: `hal/` moved to canonical `core/hal/` with legacy `hal` symlink compatibility and top-level CMake wiring updated to prefer `core/hal`. D3c completed: `platform/` moved to canonical `core/platform` with legacy `platform` symlink compatibility and top-level CMake wiring updated to prefer `core/platform`. |
 | D4 | `lib/` + `stacks/` + `drivers/` + `services/` + `personalities/` to `core/*` (bounded slice) | ✅ Completed | D4a completed: `lib/` and `stacks` moved to canonical `core/lib` and `core/stacks`; legacy `lib` and `stacks` symlinks retained for compatibility. D4b completed: `drivers/`, `services/`, and `personalities/` moved to canonical `core/*` locations with legacy symlink compatibility retained, and top-level CMake wiring updated to prefer `core/*` roots. |
+| E1 | `tests/e2e` to `quality/tests/e2e` (bounded Phase 5 slice) | ✅ Completed | Canonical e2e test harness now lives under `quality/tests/e2e`; legacy `tests/e2e` path is retained as a compatibility symlink while docs and scripts transition. |
 
 ---
 
@@ -304,6 +305,7 @@ This is the execution order to avoid a big-bang refactor while still moving fast
 **Move scope**
 
 - `tests/` -> `quality/tests/`
+  - E1 completed: moved `tests/e2e/` to `quality/tests/e2e/` with `tests/e2e` compatibility symlink retained.
 - `tools/`, `cmake/`, `configs/`, `assets/` -> `delivery/*` (if not already completed)
 
 **Cleanup tasks**
@@ -517,7 +519,7 @@ This section converts the phase model into concrete, code-aware slices from the 
 - **D4 (active): platform/services/lib ecosystem**
   - D4a (completed): moved `lib/` to `core/lib/` and `stacks/` to `core/stacks/`; retained `lib` and `stacks` as compatibility symlinks.
   - Top-level build wiring now prefers canonical `add_subdirectory(core/lib)` and `add_subdirectory(core/stacks)` while legacy path references still resolve through symlinks.
-  - D4b (next): move `platform`, then `drivers`, `services`, `personalities` in bounded slices with compatibility roots.
+  - D4b (completed): moved `platform`, then `drivers`, `services`, and `personalities` to canonical `core/*` roots with compatibility symlinks retained during transition.
 
 ---
 
