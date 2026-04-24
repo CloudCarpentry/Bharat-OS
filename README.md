@@ -1,11 +1,11 @@
 # Bharat-OS
 
 <p align="center">
-  <img src="assets/branding/logo-icon.png" alt="Bharat-OS logo" width="140" />
+  <img src="delivery/assets/branding/logo-icon.png" alt="Bharat-OS logo" width="140" />
 </p>
 
 <p align="center">
-  <img src="assets/branding/banner-dark.png" alt="Bharat-OS banner" />
+  <img src="delivery/assets/branding/banner-dark.png" alt="Bharat-OS banner" />
 </p>
 
 <p align="center"><em>Official Bharat-OS logo and banner assets</em></p>

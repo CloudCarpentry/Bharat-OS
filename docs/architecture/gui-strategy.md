@@ -73,7 +73,7 @@ On top of the framebuffer server, a Wayland compositor runs as an unprivileged t
 
 ## Phase 3 — Theme & Branding Application
 
-Once basic windowing works, apply the Bharat-OS brand palette (see `assets/branding/brand-guide.md`):
+Once basic windowing works, apply the Bharat-OS brand palette (see `delivery/assets/branding/brand-guide.md` (legacy `assets/` compatibility symlink remains during migration)):
 
 - Window decorations in navy `#0A0F1E` with saffron `#FF9933` focus rings.
 - Custom cursor set with Ashoka Chakra motif.

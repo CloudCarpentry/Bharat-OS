@@ -30,6 +30,6 @@ The footprint model is intentionally independent from ISA and personality:
 
 The machine-readable matrix lives at:
 
-- `configs/footprint/footprint_matrix.csv`
+- `delivery/configs/footprint/footprint_matrix.csv` (legacy `configs/` compatibility symlink remains during migration)
 
 Build, package, and run tooling must resolve per-target constraints from that matrix.
