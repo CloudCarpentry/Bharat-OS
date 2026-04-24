@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <assert.h>
-#include "../../../drivers/input/i2c_hid/i2c_hid.h"
+#include "../../../core/drivers/input/i2c_hid/i2c_hid.h"
 #include <string.h>
 
 static int mock_i2c_state = 0; // 0: Init, 1: Reading HID desc

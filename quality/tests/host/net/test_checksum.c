@@ -5,7 +5,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 
-#include "../../../services/netstack/src/checksum.h"
+#include "../../../core/services/netstack/src/checksum.h"
 
 // Define panic locally to prevent link errors
 void panic(const char *msg) {

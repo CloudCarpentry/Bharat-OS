@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <assert.h>
-#include "../../../drivers/display/drm/drm_core.h"
-#include "../../../drivers/display/drm/drm_registry.h"
+#include "../../../core/drivers/display/drm/drm_core.h"
+#include "../../../core/drivers/display/drm/drm_registry.h"
 
 int mock_mode_valid(drm_device_t *dev, const drm_mode_t *mode) {
     (void)dev;

@@ -4,7 +4,7 @@
 #include "benchmark/benchmark.h"
 #include "fs/mount.h"
 #include "fs/vfs.h"
-#include "../../lib/fs/fs_client.h"
+#include "../../core/lib/fs/fs_client.h"
 
 // Note: We don't redefine vfs_root here because it's already in vfs.c
 // and we are linking against vfs.c

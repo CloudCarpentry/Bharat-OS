@@ -4,10 +4,10 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "../services/core/subsysmgr/include/subsys.h"
+#include "../core/services/core/subsysmgr/include/subsys.h"
 
 // Stubs for subsys_test_runner.c
-#include "../services/core/subsysmgr/include/bharat/subsys_test.h"
+#include "../core/services/core/subsysmgr/include/bharat/subsys_test.h"
 const subsys_test_t __subsys_tests_start[0] = {};
 const subsys_test_t __subsys_tests_end[0] = {};
 

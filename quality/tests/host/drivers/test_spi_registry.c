@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
-#include "../../../drivers/bus/spi/spi_registry.h"
+#include "../../../core/drivers/bus/spi/spi_registry.h"
 
 int mock_transfer_one_message(struct spi_controller *ctrl, spi_message_t *msg) {
     (void)ctrl;

@@ -2,9 +2,9 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "../../stacks/storage/fs/blob/blob_backend.h"
+#include "../../core/stacks/storage/fs/blob/blob_backend.h"
 #include "fs/vfs.h"
-#include "../../lib/fs/fs_client.h"
+#include "../../core/lib/fs/fs_client.h"
 #include "fs/mount.h"
 #include "fs/file.h"
 #include "capability.h"

@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <assert.h>
-#include "../../../drivers/display/drm/drm_registry.h"
+#include "../../../core/drivers/display/drm/drm_registry.h"
 
 int mock_load(drm_device_t *dev) {
     (void)dev;

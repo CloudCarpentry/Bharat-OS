@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
-#include "../../../drivers/bus/i2c/i2c_registry.h"
+#include "../../../core/drivers/bus/i2c/i2c_registry.h"
 
 int mock_master_xfer(i2c_controller_t *ctrl, i2c_msg_t *msgs, int num) {
     (void)ctrl;

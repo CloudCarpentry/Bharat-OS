@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "../../services/vm_manager/vm_manager.h"
+#include "../../core/services/vm_manager/vm_manager.h"
 #include <bharat/uapi/ipc/status.h>
 
 void test_vm_lifecycle(void) {

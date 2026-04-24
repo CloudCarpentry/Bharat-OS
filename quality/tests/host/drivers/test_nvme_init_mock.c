@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
-#include "../../../drivers/storage/nvme/nvme_core.h"
-#include "../../../drivers/storage/nvme/nvme_regs.h"
-#include "../../../drivers/storage/nvme/nvme_mock.h"
+#include "../../../core/drivers/storage/nvme/nvme_core.h"
+#include "../../../core/drivers/storage/nvme/nvme_regs.h"
+#include "../../../core/drivers/storage/nvme/nvme_mock.h"
 
 // Define a small buffer to represent MMIO
 static __attribute__((aligned(8))) uint8_t mock_mmio[4096];

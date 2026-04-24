@@ -3,9 +3,9 @@
 #include <string.h>
 #include <stdbool.h>
 
-#include "../../services/process_manager/process_manager.h"
-#include "../../services/vm_manager/vm_manager.h"
-#include "../../services/servicemgr/servicemgr.h"
+#include "../../core/services/process_manager/process_manager.h"
+#include "../../core/services/vm_manager/vm_manager.h"
+#include "../../core/services/servicemgr/servicemgr.h"
 #include <bharat/uapi/ipc/status.h>
 
 void test_e2e_service_orchestration(void) {

@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "../../services/process_manager/process_manager.h"
+#include "../../core/services/process_manager/process_manager.h"
 #include <bharat/uapi/ipc/status.h>
 
 void test_process_lifecycle(void) {

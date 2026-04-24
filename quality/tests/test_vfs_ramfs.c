@@ -4,10 +4,10 @@
 #include <string.h>
 
 #include "fs/vfs.h"
-#include "../../lib/fs/fs_client.h"
+#include "../../core/lib/fs/fs_client.h"
 #include "fs/file.h"
 #include "fs/mount.h"
-#include "../../stacks/storage/fs/ramfs/ramfs.h"
+#include "../../core/stacks/storage/fs/ramfs/ramfs.h"
 
 // Provide dummy kmalloc/kfree since it's host-side tests
 void* kmalloc(size_t size) {

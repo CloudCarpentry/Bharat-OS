@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "../../services/servicemgr/servicemgr.h"
+#include "../../core/services/servicemgr/servicemgr.h"
 #include <bharat/uapi/ipc/status.h>
 
 void test_servicemgr_lifecycle(void) {

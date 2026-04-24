@@ -4,7 +4,7 @@
 
 #include "compat/android/android_binder_dist.h"
 #include "personality/translation_events.h"
-#include "../../personalities/compat/linux/linux_compat.h"
+#include "../../core/personalities/compat/linux/linux_compat.h"
 
 void bh_platform_early_console_write_string(const char* str) {
     (void)str;

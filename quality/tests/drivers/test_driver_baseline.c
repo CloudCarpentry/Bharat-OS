@@ -1,9 +1,9 @@
 #include <assert.h>
-#include "../../drivers/include/driver_core.h"
-#include "../../drivers/core/device_registry.h"
-#include "../../drivers/core/driver_registry.h"
-#include "../../drivers/core/event.h"
-#include "../../services/core/devmgr/devmgr_skeleton.h"
+#include "../../core/drivers/include/driver_core.h"
+#include "../../core/drivers/core/device_registry.h"
+#include "../../core/drivers/core/driver_registry.h"
+#include "../../core/drivers/core/event.h"
+#include "../../core/services/core/devmgr/devmgr_skeleton.h"
 
 // Bring in initializers
 int gpio_core_init(void);

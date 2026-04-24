@@ -3,7 +3,7 @@
 #include <string.h>
 
 #include "fs/vfs.h"
-#include "../../lib/fs/fs_client.h"
+#include "../../core/lib/fs/fs_client.h"
 #include "fs/file.h"
 #include "fs/mount.h"
 
