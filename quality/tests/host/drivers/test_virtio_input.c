@@ -3,7 +3,7 @@
 #include <stdio.h>
 
 #include "../../../drivers/input/virtio_input/virtio_input.h"
-#include "../../../uapi/bharat/input/input.h"
+#include "../../../interface/uapi/bharat/input/input.h"
 
 #ifndef REL_X
 #define REL_X 0x00

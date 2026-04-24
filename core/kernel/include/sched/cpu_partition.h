@@ -1,7 +1,7 @@
 #ifndef BHARAT_KERNEL_SCHED_CPU_PARTITION_H
 #define BHARAT_KERNEL_SCHED_CPU_PARTITION_H
 
-#include <uapi/system/execution_mode.h>
+#include <bharat/uapi/system/execution_mode.h>
 
 #ifdef __cplusplus
 extern "C" {

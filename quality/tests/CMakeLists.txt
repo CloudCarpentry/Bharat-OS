@@ -566,7 +566,7 @@ add_executable(test_constraint_validation
 )
 target_include_directories(test_constraint_validation PRIVATE
     ${CMAKE_SOURCE_DIR}/kernel/include
-    ${CMAKE_SOURCE_DIR}/uapi
+    ${CMAKE_SOURCE_DIR}/interface/uapi
 )
 target_sources(test_constraint_validation PRIVATE ${CMAKE_SOURCE_DIR}/kernel/src/core/constraints/constraints_common.c ${CMAKE_SOURCE_DIR}/kernel/src/core/constraints/constraint_validate.c)
 add_test(NAME test_constraint_validation COMMAND test_constraint_validation)

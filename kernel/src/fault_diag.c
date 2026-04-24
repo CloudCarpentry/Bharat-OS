@@ -1,1 +1,0 @@
-../../core/kernel/src/fault_diag.c

@@ -1,1 +1,0 @@
-../../core/kernel/src/stack_protector.c

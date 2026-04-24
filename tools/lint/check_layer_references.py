@@ -27,7 +27,7 @@ LAYER_PREFIXES = {
     "stacks": ("stacks/",),
     "user": ("experience/user/", "user/"),
     "sdk": ("sdk/",),
-    "uapi": ("interface/uapi/", "uapi/"),
+    "uapi": ("interface/uapi/",),
     "lib": ("lib/",),
     "boot": ("boot/",),
     "include": ("interface/include/", "include/"),

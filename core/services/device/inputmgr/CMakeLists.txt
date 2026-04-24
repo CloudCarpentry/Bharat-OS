@@ -6,7 +6,7 @@ add_library(inputmgr STATIC
 
 target_include_directories(inputmgr PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    ${CMAKE_SOURCE_DIR}/uapi
+    ${CMAKE_SOURCE_DIR}/interface/uapi
     ${CMAKE_SOURCE_DIR}/drivers/input/include
 )
 

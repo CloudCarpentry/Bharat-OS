@@ -1,1 +1,0 @@
-../../core/kernel/src/power_thermal_perf.c
