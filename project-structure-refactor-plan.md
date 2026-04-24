@@ -28,6 +28,8 @@ This plan is based on the current repo layout and build system behavior (`build.
 | D3 | `arch/` + `hal/` + `platform/` to `core/*` | ✅ Completed | D3a completed: `arch/` moved to canonical `core/arch/` with legacy `arch` symlink compatibility and top-level CMake wiring updated to prefer `core/arch`. D3b completed: `hal/` moved to canonical `core/hal/` with legacy `hal` symlink compatibility and top-level CMake wiring updated to prefer `core/hal`. D3c completed: `platform/` moved to canonical `core/platform` with legacy `platform` symlink compatibility and top-level CMake wiring updated to prefer `core/platform`. |
 | D4 | `lib/` + `stacks/` + `drivers/` + `services/` + `personalities/` to `core/*` (bounded slice) | ✅ Completed | D4a completed: `lib/` and `stacks` moved to canonical `core/lib` and `core/stacks`; legacy `lib` and `stacks` symlinks retained for compatibility. D4b completed: `drivers/`, `services/`, and `personalities/` moved to canonical `core/*` locations with legacy symlink compatibility retained, and top-level CMake wiring updated to prefer `core/*` roots. |
 | E1 | `tests/` to `quality/tests/` (bounded Phase 5 slice) | ✅ Completed | Canonical host/unit/e2e test tree now lives under `quality/tests`; legacy `tests` path is retained as a compatibility symlink while docs and scripts transition. |
+| F1 | Public umbrella `include/` to `interface/include/` | ✅ Completed | Canonical public header tree now resides in `interface/include`; legacy `include` is retained as a compatibility symlink and alias helper support was added. |
+| F2 | `user/` apps+SDK to `experience/user/` | ✅ Completed | Canonical user-space tree now resides in `experience/user`; legacy `user` is retained as a compatibility symlink and top-level CMake prefers canonical path with fallback warning. |
 
 ---
 
@@ -74,6 +76,9 @@ Bharat-OS/
 
   quality/
     tests/
+
+  experience/
+    user/
 
   docs/
   .github/
@@ -410,7 +415,7 @@ When build/run commands are updated in future phases:
 
 1. Record current migration status in a tracker doc and keep it updated per PR.
 2. Complete Phase B tooling unification (shared alias helper + CI reference guard).
-3. Continue interface/core moves using thin-slice PRs with mandatory validation matrix.
+3. Continue delivery tooling migration (`tools/`, `cmake/`, `configs/`, `assets`) using thin-slice PRs with mandatory validation matrix.
 
 ---
 
