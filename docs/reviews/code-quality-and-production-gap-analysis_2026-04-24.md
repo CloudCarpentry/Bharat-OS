@@ -133,23 +133,23 @@ This is the recommended execution order.
 
 ## P0 (Release-blocking: do first)
 
-1. **Finish capability enforcement end-to-end**
-   - Enforce strict mediation in every manager dispatch and privileged operation path.
-   - Remove/retire any default-allow or mocked authorization behavior.
-   - Add mandatory negative tests (invalid caps, replay, confused-deputy style requests).
+### Finish capability enforcement end-to-end
+- Enforce strict mediation in every manager dispatch and privileged operation path.
+- Remove/retire any default-allow or mocked authorization behavior.
+- Add mandatory negative tests (invalid caps, replay, confused-deputy style requests).
 
-2. **Close bootstrap/runtime wiring for core service chain**
-   - Replace `stub_start` activation in init manifest path with real service launch/probe/ready contracts.
-   - Harden `init → namesvc → servicemgr → faultmgr` lifecycle semantics with deterministic timeout/retry policy outcomes.
+### Close bootstrap/runtime wiring for core service chain
+- Replace stub_start activation in init manifest path with real service launch/probe/ready contracts.
+- Harden init → namesvc → servicemgr → faultmgr lifecycle semantics with deterministic timeout/retry policy outcomes.
 
-3. **Replace trust/bring-up placeholders in boot + HAL critical path**
-   - UEFI/multiboot/SBI adapters: move from compile-safe placeholder to validated runtime behavior per target profile.
-   - IOMMU/security backends: production implementations (or explicit profile-level disable with policy constraints) required.
+### Replace trust/bring-up placeholders in boot + HAL critical path
+- UEFI/multiboot/SBI adapters: move from compile-safe placeholder to validated runtime behavior per target profile.
+- IOMMU/security backends: production implementations (or explicit profile-level disable with policy constraints) required.
 
-4. **Establish production verification gates in CI**
-   - Security regression suite (capability mediation, unauthorized IPC, policy bypass attempts).
-   - Fault injection + soak tests for service restart/containment and watchdog outcomes.
-   - Profile-specific boot-to-ready acceptance checks with objective pass/fail criteria.
+### Establish production verification gates in CI
+- Security regression suite (capability mediation, unauthorized IPC, policy bypass attempts).
+- Fault injection + soak tests for service restart/containment and watchdog outcomes.
+- Profile-specific boot-to-ready acceptance checks with objective pass/fail criteria.
 
 ## P1 (High priority after P0)
 
