@@ -6,22 +6,9 @@ set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 # See BUILD.md for exact commands for each platform.
 
 # Provide an interface library for kernel components to share common includes
-set(BHARAT_BOOT_INCLUDE_CANDIDATES
-    ${CMAKE_SOURCE_DIR}/core/boot/include
-    ${CMAKE_SOURCE_DIR}/boot/include
-)
-set(BHARAT_BOOT_INCLUDE_DIR "")
-foreach(_boot_include IN LISTS BHARAT_BOOT_INCLUDE_CANDIDATES)
-    if(EXISTS "${_boot_include}/boot/boot_info.h")
-        set(BHARAT_BOOT_INCLUDE_DIR "${_boot_include}")
-        if(_boot_include MATCHES "/boot/include$" AND NOT _boot_include MATCHES "/core/boot/include$")
-            message(WARNING "[migration-warning] Using legacy boot include root: ${_boot_include}")
-        endif()
-        break()
-    endif()
-endforeach()
-if(NOT BHARAT_BOOT_INCLUDE_DIR)
-    message(FATAL_ERROR "No boot include root found in core/boot/include or boot/include")
+set(BHARAT_BOOT_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/core/boot/include")
+if(NOT EXISTS "${BHARAT_BOOT_INCLUDE_DIR}/boot/boot_info.h")
+    message(FATAL_ERROR "Missing canonical boot include root: ${BHARAT_BOOT_INCLUDE_DIR}")
 endif()
 
 add_library(bharat_kernel_includes INTERFACE)
@@ -413,22 +400,9 @@ add_subdirectory(src/lib)
 add_subdirectory(src/tests)
 add_subdirectory(src/monitor)
 
-set(BHARAT_BOOT_ROOT_CANDIDATES
-    "${CMAKE_SOURCE_DIR}/core/boot"
-    "${CMAKE_SOURCE_DIR}/boot"
-)
-set(BHARAT_BOOT_ROOT "")
-foreach(_boot_root IN LISTS BHARAT_BOOT_ROOT_CANDIDATES)
-    if(EXISTS "${_boot_root}/src")
-        set(BHARAT_BOOT_ROOT "${_boot_root}")
-        if(_boot_root MATCHES "/boot$" AND NOT _boot_root MATCHES "/core/boot$")
-            message(WARNING "[migration-warning] Using legacy boot source root: ${_boot_root}")
-        endif()
-        break()
-    endif()
-endforeach()
-if(NOT BHARAT_BOOT_ROOT)
-    message(FATAL_ERROR "No boot source root found in core/boot or boot")
+set(BHARAT_BOOT_ROOT "${CMAKE_SOURCE_DIR}/core/boot")
+if(NOT EXISTS "${BHARAT_BOOT_ROOT}/src")
+    message(FATAL_ERROR "Missing canonical boot source root: ${BHARAT_BOOT_ROOT}")
 endif()
 
 set(KERNEL_SRCS
