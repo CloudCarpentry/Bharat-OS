@@ -25,6 +25,7 @@ This plan is based on the current repo layout and build system behavior (`build.
 | C3 | Interface `sdk/` move | ✅ Completed | `interface/sdk/` is now authoritative; legacy `sdk` path is preserved as a compatibility symlink. |
 | D1 | `boot/` to `core/boot/` | 🚧 In progress | D1a + D1b completed: sources/common/include/discovery/protocols are now canonical in `core/boot/*`; legacy `boot/*` wrappers remain for compatibility. |
 | D2 | `kernel/` to `core/kernel/` | 🚧 In progress | D2a completed: `kernel/src/{core,init,boot}` migrated to `core/kernel/src/*`; D2b completed: `kernel/include` moved to `core/kernel/include`; D2c completed: remaining `kernel/src/*` moved into `core/kernel/src/*` with legacy symlink wrappers retained at `kernel/src/*`. |
+| D3 | `arch/` + `hal/` to `core/*` | 🚧 In progress | D3a completed: `arch/` moved to canonical `core/arch/` with legacy `arch` symlink compatibility and top-level CMake wiring updated to prefer `core/arch`. |
 
 ---
 
@@ -507,9 +508,10 @@ This section converts the phase model into concrete, code-aware slices from the 
   - `kernel/CMakeLists.txt` now resolves kernel include roots from candidate list (`core/kernel/include` preferred, `kernel/include` fallback with migration warning).
   - D2c (completed): moved the remaining canonical kernel sources from `kernel/src/*` into `core/kernel/src/*`.
   - Legacy compatibility is preserved by keeping `kernel/src/*` entries as symlinks that forward to `core/kernel/src/*`, so existing references and scripts continue to resolve during transition.
-- **D3 (next): arch + hal staged move**
-  - Move `arch` first (path-heavy compile graph), then `hal`.
-  - Add alias validation in CI for newly added legacy refs.
+- **D3 (active): arch + hal staged move**
+  - D3a (completed): moved `arch/` to `core/arch/`; retained `arch` compatibility symlink so existing source references remain valid during transition.
+  - Top-level build wiring now resolves architecture layer via `add_subdirectory(core/arch)` while legacy path references continue to resolve through the symlink.
+  - D3b (next): move `hal/` to `core/hal/` with compatibility link/wrappers and phased reference updates.
 - **D4 (next): platform/services/lib ecosystem**
   - Move `lib` and `stacks` first (low coupling), then `platform`, `drivers`, `services`, `personalities`.
   - Keep temporary compatibility roots for one full phase before strict mode.
