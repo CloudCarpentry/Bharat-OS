@@ -14,7 +14,7 @@ add_executable(schedmgr ${SOURCES})
 
 # Target include directories
 target_include_directories(schedmgr PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/interface/include
     ${CMAKE_SOURCE_DIR}/services/include
 )
 

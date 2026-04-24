@@ -3,7 +3,7 @@ import os
 import sys
 import common
 
-SYSCALL_TABLE_PATH = "include/bharat/uapi/syscall_table.def"
+SYSCALL_TABLE_PATH = "interface/include/bharat/uapi/syscall_table.def"
 
 def generate_syscall_manifest():
     if not os.path.exists(SYSCALL_TABLE_PATH):

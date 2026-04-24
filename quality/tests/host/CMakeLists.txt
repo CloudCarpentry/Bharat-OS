@@ -175,44 +175,44 @@ target_include_directories(test_netmgr_address_table PRIVATE ../../services/netm
 add_test(NAME host_test_netmgr_address_table COMMAND test_netmgr_address_table)
 
 add_executable(test_pmm_pcache test_pmm_pcache.c ../../kernel/src/mm/pmm/pmm.c ../../kernel/src/mm/pmm/pmm_pcache.c ../../kernel/src/mm/pmm/numa.c)
-target_include_directories(test_pmm_pcache PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/kernel/src ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/lib/include ${CMAKE_SOURCE_DIR}/core/boot/include)
+target_include_directories(test_pmm_pcache PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/kernel/src ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/lib/include ${CMAKE_SOURCE_DIR}/core/boot/include)
 add_test(NAME host_test_pmm_pcache COMMAND test_pmm_pcache)
 add_executable(test_netmgr_interface_table services/test_netmgr_interface_table.c ../../services/netmgr/src/interface_table.c ../../lib/runtime/src/freestanding_string.c)
 target_include_directories(test_netmgr_interface_table PRIVATE ../../services/netmgr/src ../../services/netmgr/include ../../services/core/subsysmgr/include ../../lib/net/include ../../lib/runtime/include)
 add_test(NAME host_test_netmgr_interface_table COMMAND test_netmgr_interface_table)
 
 add_executable(test_smp_tlb_active_cores test_smp_tlb_active_cores.c ../../kernel/src/mm/tlb/tlb_shootdown.c ../../kernel/src/mm/tlb/tlb_pending.c ../../kernel/src/mm/tlb/tlb_stats.c host_stubs.c ../../kernel/src/lib/base/string.c)
-target_include_directories(test_smp_tlb_active_cores PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/kernel/src ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/core/boot/include ${CMAKE_SOURCE_DIR}/lib/include ${CMAKE_BINARY_DIR}/generated/include ${CMAKE_SOURCE_DIR}/services/monitor/generated)
+target_include_directories(test_smp_tlb_active_cores PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/kernel/src ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/boot/include ${CMAKE_SOURCE_DIR}/lib/include ${CMAKE_BINARY_DIR}/generated/include ${CMAKE_SOURCE_DIR}/services/monitor/generated)
 add_test(NAME host_test_smp_tlb_active_cores COMMAND test_smp_tlb_active_cores)
 
 # Memory host conformance expansion (2026-03-23)
 # HAL contracts + generic PT/TLB contracts
 add_executable(host_test_hal_pt_common ../../tests/mm/pt_common_tests.c ../../hal/hal_pt.c)
-target_include_directories(host_test_hal_pt_common PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/core/boot/include)
+target_include_directories(host_test_hal_pt_common PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/boot/include)
 add_test(NAME host_test_hal_pt_common COMMAND host_test_hal_pt_common)
 
 add_executable(host_test_hal_pt_fallbacks ../../tests/test_hal_pt_fallbacks.c ../../hal/hal_pt.c)
-target_include_directories(host_test_hal_pt_fallbacks PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/core/boot/include)
+target_include_directories(host_test_hal_pt_fallbacks PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/boot/include)
 add_test(NAME host_test_hal_pt_fallbacks COMMAND host_test_hal_pt_fallbacks)
 
 add_executable(host_test_hal_caps_consistency ../../tests/test_hal_caps_consistency.c ../../hal/hal_pt.c)
-target_include_directories(host_test_hal_caps_consistency PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/core/boot/include)
+target_include_directories(host_test_hal_caps_consistency PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/boot/include)
 add_test(NAME host_test_hal_caps_consistency COMMAND host_test_hal_caps_consistency)
 
 add_executable(host_test_mon_vm test_mon_vm.c host_stubs.c ../../kernel/src/monitor/mon_vm_dispatch.c ../../kernel/src/monitor/mon_vm_service.c ../../kernel/src/monitor/mon_vm_state.c)
-target_include_directories(host_test_mon_vm PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/kernel/src ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/lib/include)
+target_include_directories(host_test_mon_vm PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/kernel/src ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/lib/include)
 add_test(NAME host_test_mon_vm COMMAND host_test_mon_vm)
 
 # VMM / ASpace / VM base-object conformance currently remains in top-level tests
 # (`test_vmm_aspace`) due additional prot-domain and arch-cap dependencies.
 
 add_executable(host_test_vmm_fault ../test_vmm_fault.c host_stubs.c ../../kernel/src/mm/vm/fault/fault.c ../../kernel/src/mm/vm/objects/vm_object.c ../../kernel/src/mm/vm/objects/vm_object_refcount.c ../../kernel/src/mm/vm/aspace/vm_space.c ../../kernel/src/mm/vm/aspace/aspace.c ../../kernel/src/mm/pmm/early_alloc.c ../../kernel/src/mm/pmm/pmm.c ../../kernel/src/mm/pmm/pt_pool.c ../../kernel/src/mm/tlb/tlb_shootdown.c ../../kernel/src/capability.c ../../kernel/src/cap/cap_policy.c ../benchmark_stubs.c ../../kernel/src/lib/base/string.c ../../arch/common/memops_scalar.c mock_panic.c)
-target_include_directories(host_test_vmm_fault PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/kernel/src ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/core/boot/include ${CMAKE_SOURCE_DIR}/lib/include ${CMAKE_BINARY_DIR}/generated/include)
+target_include_directories(host_test_vmm_fault PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/kernel/src ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/boot/include ${CMAKE_SOURCE_DIR}/lib/include ${CMAKE_BINARY_DIR}/generated/include)
 target_compile_definitions(host_test_vmm_fault PRIVATE TESTING=1)
 add_test(NAME host_test_vmm_fault COMMAND host_test_vmm_fault)
 
 add_executable(test_uapi_abi test_uapi_abi.c)
-target_include_directories(test_uapi_abi PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(test_uapi_abi PRIVATE ${CMAKE_SOURCE_DIR}/interface/include)
 add_test(NAME host_test_uapi_abi COMMAND test_uapi_abi)
 
 add_executable(test_hal_cpu_features
@@ -222,7 +222,7 @@ add_executable(test_hal_cpu_features
 target_include_directories(test_hal_cpu_features PRIVATE
     ${CMAKE_SOURCE_DIR}/kernel/include
     ${CMAKE_SOURCE_DIR}/hal/include
-    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/interface/include
     ${CMAKE_SOURCE_DIR}/lib/include
     ${CMAKE_SOURCE_DIR})
 add_test(NAME host_test_hal_cpu_features COMMAND test_hal_cpu_features)
@@ -299,7 +299,7 @@ if(BHARAT_BUILD_HOST_TESTS)
 
     # Memory Model AI-adjacent Primitives Host Test
     add_executable(test_mem_model_ai test_mem_model_ai.c ../../kernel/src/mm/mem_class.c)
-    target_include_directories(test_mem_model_ai PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/lib/include)
+    target_include_directories(test_mem_model_ai PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/lib/include)
     add_test(NAME host_test_mem_model_ai COMMAND test_mem_model_ai)
 endif()
 add_executable(test_fdt_parser test_fdt_parser.c ../../hal/common/fdt_parser.c)

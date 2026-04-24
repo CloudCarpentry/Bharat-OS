@@ -11,7 +11,7 @@ add_executable(devmgr ${SOURCES})
 
 # Target include directories
 target_include_directories(devmgr PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/interface/include
 )
 
 # Link against common runtime library and IPC library

@@ -14,7 +14,7 @@ add_executable(telemetrymgr ${SOURCES})
 
 # Target include directories
 target_include_directories(telemetrymgr PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/interface/include
     ${CMAKE_SOURCE_DIR}/services/include
 )
 

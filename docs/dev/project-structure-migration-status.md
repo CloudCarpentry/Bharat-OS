@@ -13,9 +13,9 @@ This tracker is the execution companion for `project-structure-refactor-plan.md`
 - Phase D.2c (kernel source tree move, bounded slice): **In progress** (remaining `kernel/src/*` moved to `core/kernel/src/*`; legacy `kernel/src/*` compatibility symlink wrappers retained).
 - Phase D.2f (kernel root build assets move, bounded slice): **In progress** (`kernel/CMakeLists.txt` and `kernel/linker*.ld` moved to canonical `core/kernel/*`; legacy `kernel/*` symlink compatibility retained).
 - Phase D.4a (lib + stacks bounded move): **In progress** (`lib/` and `stacks/` moved to canonical `core/lib/` and `core/stacks/`; legacy symlink compatibility retained).
-- Phase F.1 (public include tree): **Completed** (`include/` moved to canonical `interface/include/`; legacy `include` retained as symlink).
+- Phase F.1 (public include tree): **Completed** (`include/` moved to canonical `interface/include/`; legacy root `include` symlink removed after canonical include-path migration in CMake).
 - Phase F.2 (user-space tree): **Completed** (`user/` moved to canonical `experience/user/`; legacy `user` retained as symlink and top-level CMake now prefers `experience/user`).
-- Phase F.2 follow-up (root experience/interface/quality symlink trimming): **Completed** (root `user`, `tests`, `idl`, and `sdk` compatibility symlinks removed; `include`/`uapi` kept temporarily for compatibility).
+- Phase F.2 follow-up (root experience/interface/quality symlink trimming): **Completed** (root `user`, `tests`, `idl`, and `sdk` compatibility symlinks removed; `uapi` was previously removed and `include` has now also been removed after canonical caller migration).
 
 ## Phase Checklist
 
@@ -29,8 +29,8 @@ This tracker is the execution companion for `project-structure-refactor-plan.md`
 | B.5 | Remove root delivery symlinks once callers are canonicalized | Completed | Root `configs`, `assets`, `targets`, and `cmake` symlinks removed; canonical paths under `delivery/` are authoritative. |
 | C | `idl/`, `uapi/`, `sdk/` to `interface/` | Completed | C1 (`idl`), C2 (`uapi`), C3 (`sdk`) complete; legacy compatibility symlink for `uapi` removed after migrating in-repo callers to canonical `interface/*` paths. |
 | D | `boot/`, `kernel/`, `arch/`, etc. to `core/` | In progress | D1 is now complete (canonical `core/boot/*`, legacy `boot/{src,common,include,discovery,protocols}` symlink fanout removed, in-repo include paths migrated, and `core/kernel` CMake now uses canonical `core/boot/*` roots only). D2b landed (`kernel/include`), D2c landed (remaining `kernel/src/*` now canonical in `core/kernel/src/*` with compatibility), followed by consolidation to a single `kernel/src` compatibility symlink, D2f landed (`kernel/CMakeLists.txt` + `kernel/linker*.ld` moved to canonical `core/kernel/*` with legacy symlink compatibility), and D4a landed (`lib/` + `stacks/` moved under `core/*` with compatibility symlinks). |
-| F | `include/` + `user/` canonicalization | Completed | F1 landed (`interface/include` canonical, `include` symlink retained); F2 landed (`experience/user` canonical, `user` symlink retained) with migration-aware CMake root selection. |
-| F.3 | Trim root interface/experience/quality compatibility symlinks | Completed | Removed root `user`, `tests`, `idl`, and `sdk` symlinks; retained the `include` symlink for active compatibility needs after removing `uapi`. |
+| F | `include/` + `user/` canonicalization | Completed | F1 landed (`interface/include` canonical, root `include` symlink removed after caller migration); F2 landed (`experience/user` canonical, root `user` symlink removed in F.3) with migration-aware CMake root selection. |
+| F.3 | Trim root interface/experience/quality compatibility symlinks | Completed | Removed root `user`, `tests`, `idl`, and `sdk` symlinks; follow-up cleanup removed the remaining root `include` symlink after canonical include migration. |
 | E | Remove fallbacks + enforce new roots | Pending | Convert warnings to CI failures. |
 
 ## Mandatory Validation Matrix (per phase)

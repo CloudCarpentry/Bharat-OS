@@ -10,7 +10,7 @@ target_include_directories(subsys_manager PUBLIC
     ${CMAKE_SOURCE_DIR}/lib/include
     ${CMAKE_SOURCE_DIR}/lib/packet/include
     ${CMAKE_SOURCE_DIR}/hal/include
-    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/interface/include
     ${CMAKE_SOURCE_DIR}/stacks/network/include
 )
 target_link_libraries(subsys_manager PUBLIC

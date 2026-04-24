@@ -11,7 +11,7 @@ add_executable(coremgr ${SOURCES})
 
 # Target include directories
 target_include_directories(coremgr PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/interface/include
 )
 
 # Link against common runtime library and IPC library (assuming lib/runtime, lib/ipc)

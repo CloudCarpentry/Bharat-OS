@@ -30,7 +30,7 @@ This plan is based on the current repo layout and build system behavior (`build.
 | D3 | `arch/` + `hal/` + `platform/` to `core/*` | ✅ Completed | D3a–D3c completed. Legacy top-level `arch`, `hal`, and `platform` compatibility symlinks have been removed; canonical roots are `core/arch`, `core/hal`, and `core/platform`. |
 | D4 | `lib/` + `stacks/` + `drivers/` + `services/` + `personalities/` to `core/*` (bounded slice) | ✅ Completed | D4a–D4b completed. Canonical roots remain `core/*`; top-level compatibility symlinks for `lib`, `stacks`, `drivers`, `services`, and `personalities` are still retained for transition-safe host test compatibility. |
 | E1 | `tests/` to `quality/tests/` (bounded Phase 5 slice) | ✅ Completed | Canonical host/unit/e2e test tree now lives under `quality/tests`; root `tests` compatibility symlink has been removed after in-repo path migration. |
-| F1 | Public umbrella `include/` to `interface/include/` | ✅ Completed | Canonical public header tree now resides in `interface/include`; root `include` compatibility symlink remains temporarily for broad CMake include compatibility while migration cleanup continues. |
+| F1 | Public umbrella `include/` to `interface/include/` | ✅ Completed | Canonical public header tree now resides in `interface/include`; root `include` compatibility symlink has been removed after migrating in-repo CMake include wiring to the canonical interface path. |
 | F2 | `user/` apps+SDK to `experience/user/` | ✅ Completed | Canonical user-space tree now resides in `experience/user`; root `user` compatibility symlink has been removed and top-level CMake still prefers canonical path with fallback warning support. |
 
 ---

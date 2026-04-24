@@ -9,7 +9,7 @@ add_library(k_monitor OBJECT
 target_include_directories(k_monitor PRIVATE
     ../../include
     ../../include/generated
-    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/interface/include
     ${CMAKE_SOURCE_DIR}/lib/include
     ${BHARAT_BOOT_INCLUDE_DIR}
     ${CMAKE_SOURCE_DIR}/services/core/subsysmgr/include
