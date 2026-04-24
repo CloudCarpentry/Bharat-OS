@@ -5,7 +5,7 @@ This tracker is the execution companion for `project-structure-refactor-plan.md`
 ## Current Snapshot (2026-04-24)
 
 - Phase A (QEMU target YAML relocation): **Completed**.
-- Phase B (tooling compatibility hardening): **In progress**.
+- Phase B (tooling compatibility hardening): **In progress** (B.2 completed for ABI tooling path resolution; B.3 strict CI enforcement pending).
 - Phase C (interface moves): **Completed** (`idl/` + `uapi/` + `sdk` slices completed).
 - Phase D.1 (boot tree migration): **In progress** (D1a `boot/src` + `boot/common` moved; D1c kernel sub-target include wiring now resolves boot headers via migration-aware `BHARAT_BOOT_INCLUDE_DIR`; D1d converted `boot/include`, `boot/discovery`, and `boot/protocols` compatibility wrappers into symlinks to canonical `core/boot/*` paths).
 - Phase D.2c (kernel source tree move, bounded slice): **In progress** (remaining `kernel/src/*` moved to `core/kernel/src/*`; legacy `kernel/src/*` compatibility symlink wrappers retained).
@@ -17,7 +17,7 @@ This tracker is the execution companion for `project-structure-refactor-plan.md`
 | --- | --- | --- | --- |
 | A | Move QEMU target YAMLs to `delivery/targets/qemu/` + alias support | Completed | `tools/build/target_resolver.py` accepts legacy path references. |
 | B.1 | Shared path-alias helper for migration-aware tooling | Completed | Added `tools/build/path_aliases.py` and routed target path resolution through it. |
-| B.2 | Apply alias helper to target loaders/validators outside build pipeline | Pending | Next medium chunk. |
+| B.2 | Apply alias helper to target loaders/validators outside build pipeline | Completed | ABI tooling now resolves canonical `interface/*` paths through `tools/build/path_aliases.py` with migration warnings for legacy aliases. |
 | B.3 | CI guard for newly introduced legacy root references | Pending | Start warning-only, then enforce. |
 | C | `idl/`, `uapi/`, `sdk/` to `interface/` | Completed | C1 (`idl`), C2 (`uapi`), C3 (`sdk`) complete; legacy compatibility symlinks retained. |
 | D | `boot/`, `kernel/`, `arch/`, etc. to `core/` | In progress | D1a landed; D1d landed (`boot/include`, `boot/discovery`, `boot/protocols` now compatibility symlinks); D2b landed (`kernel/include`), D2c landed (remaining `kernel/src/*` now canonical in `core/kernel/src/*` with `kernel/src/*` symlink wrappers), and D4a landed (`lib/` + `stacks/` moved under `core/*` with compatibility symlinks). |
@@ -84,7 +84,7 @@ Every migration PR must update:
 - `./build.sh all --target riscv64_desktop_headless_linux`: **timeout-bounded warning** (build/run path starts).
 - `./build.sh all --target x86_64_desktop_headless_android`: **timeout-bounded warning** (build/run path starts).
 - `./build.sh all --target arm64_desktop_headless_android`: **timeout-bounded warning** (build/run path starts).
-- `./build.sh all --target riscv64_desktop_headless_android`: **timeout-bounded warning** (build/run path starts).
+- `./build.sh all --target riscv64_desktop_headless_android`: **timeout-bounded warning with known runtime panic** (`PMM: Double free detected!`) during run stage.
 
 ## Validation Outcomes (2026-04-23, Phase C3)
 
@@ -113,7 +113,7 @@ Every migration PR must update:
 - `./build.sh all --target riscv64_desktop_headless_linux`: **timeout-bounded warning** (build/run path starts).
 - `./build.sh all --target x86_64_desktop_headless_android`: **timeout-bounded warning** (build/run path starts).
 - `./build.sh all --target arm64_desktop_headless_android`: **timeout-bounded warning** (build/run path starts).
-- `./build.sh all --target riscv64_desktop_headless_android`: **timeout-bounded warning** (build/run path starts).
+- `./build.sh all --target riscv64_desktop_headless_android`: **timeout-bounded warning with known runtime panic** (`PMM: Double free detected!`) during run stage.
 
 ## Validation Outcomes (2026-04-24, Phase D2b)
 
@@ -127,7 +127,7 @@ Every migration PR must update:
 - `./build.sh all --target riscv64_desktop_headless_linux`: **timeout-bounded warning** (build/run path starts).
 - `./build.sh all --target x86_64_desktop_headless_android`: **timeout-bounded warning** (build/run path starts).
 - `./build.sh all --target arm64_desktop_headless_android`: **timeout-bounded warning** (build/run path starts).
-- `./build.sh all --target riscv64_desktop_headless_android`: **timeout-bounded warning** (build/run path starts).
+- `./build.sh all --target riscv64_desktop_headless_android`: **timeout-bounded warning with known runtime panic** (`PMM: Double free detected!`) during run stage.
 - `./build.sh all --target arm32_mmu_lite_headless`: **timeout-bounded warning** (build/run path starts).
 - `./build.sh all --target riscv32_mmu_lite_headless`: **failed at run stage** due missing OpenSBI firmware path (`/usr/lib/riscv32-linux-gnu/opensbi/generic/fw_dynamic.bin`) on host.
 
@@ -142,7 +142,7 @@ Every migration PR must update:
 - `./build.sh all --target riscv64_desktop_headless_linux`: **timeout-bounded warning** (build/run path starts).
 - `./build.sh all --target x86_64_desktop_headless_android`: **timeout-bounded warning** (build/run path starts).
 - `./build.sh all --target arm64_desktop_headless_android`: **timeout-bounded warning** (build/run path starts).
-- `./build.sh all --target riscv64_desktop_headless_android`: **timeout-bounded warning** (build/run path starts).
+- `./build.sh all --target riscv64_desktop_headless_android`: **timeout-bounded warning with known runtime panic** (`PMM: Double free detected!`) during run stage.
 
 
 ## Validation Outcomes (2026-04-24, Phase D1c)
@@ -178,4 +178,18 @@ Every migration PR must update:
 - `./build.sh all --target riscv64_desktop_headless_linux`: **timeout-bounded warning** (build/run path starts).
 - `./build.sh all --target x86_64_desktop_headless_android`: **timeout-bounded warning** (build/run path starts).
 - `./build.sh all --target arm64_desktop_headless_android`: **timeout-bounded warning** (build/run path starts).
-- `./build.sh all --target riscv64_desktop_headless_android`: **timeout-bounded warning** (build/run path starts).
+- `./build.sh all --target riscv64_desktop_headless_android`: **timeout-bounded warning with known runtime panic** (`PMM: Double free detected!`) during run stage.
+
+## Validation Outcomes (2026-04-24, Phase B.2)
+
+- Migration slice: unified ABI tooling migration path resolution using shared alias helpers in `tools/build/path_aliases.py` (IDL, UAPI, ABI-manifest roots now prefer canonical `interface/*` paths).
+- `python3 -m py_compile tools/build/path_aliases.py tools/abi/check_idl_compat.py tools/abi/generate_abi_manifests.py tools/abi/check_struct_layouts.py`: **pass**.
+- `./build.sh build --target x86_64_desktop_headless`: **pass**.
+- `./build.sh package --target x86_64_desktop_headless`: **pass**.
+- `./build.sh run --target x86_64_desktop_headless`: **timeout-bounded warning** (QEMU interactive run started; bounded in automation).
+- `./build.sh all --target x86_64_desktop_headless_linux`: **timeout-bounded warning** (build/run path starts).
+- `./build.sh all --target arm64_desktop_headless_linux`: **timeout-bounded warning** (build/run path starts).
+- `./build.sh all --target riscv64_desktop_headless_linux`: **timeout-bounded warning** (build/run path starts).
+- `./build.sh all --target x86_64_desktop_headless_android`: **timeout-bounded warning** (build/run path starts).
+- `./build.sh all --target arm64_desktop_headless_android`: **timeout-bounded warning** (build/run path starts).
+- `./build.sh all --target riscv64_desktop_headless_android`: **timeout-bounded warning with known runtime panic** (`PMM: Double free detected!`) during run stage.

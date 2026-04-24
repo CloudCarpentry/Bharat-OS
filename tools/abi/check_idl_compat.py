@@ -1,6 +1,9 @@
 import os
 import re
+from pathlib import Path
+
 import common
+from tools.build.path_aliases import resolve_idl_alias
 
 IDL_DIR_CANDIDATES = (
     "interface/idl",
@@ -10,10 +13,11 @@ IDL_DIR_CANDIDATES = (
 
 def resolve_idl_dir():
     for path in IDL_DIR_CANDIDATES:
-        if os.path.exists(path):
-            if path == "idl":
-                print(f"[migration-warning] Using legacy IDL path: {path}")
-            return path
+        resolved_path, used_alias = resolve_idl_alias(Path(path))
+        if resolved_path.exists():
+            if used_alias:
+                print(f"[migration-warning] Using aliased IDL path: {path} -> {resolved_path}")
+            return str(resolved_path)
     return IDL_DIR_CANDIDATES[0]
 
 def parse_bidl(path):
