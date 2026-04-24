@@ -8,7 +8,7 @@ This tracker is the execution companion for `project-structure-refactor-plan.md`
 - Phase B (tooling compatibility hardening): **In progress**.
 - Phase C (interface moves): **Completed** (`idl/` + `uapi/` + `sdk` slices completed).
 - Phase D.1a (boot source/common move): **In progress** (`boot/src` + `boot/common` moved to `core/boot` with compatibility symlinks).
-- Phase D.2b (kernel include root move): **In progress** (`kernel/include` moved to `core/kernel/include` with compatibility symlink + include-root resolution fallback in `kernel/CMakeLists.txt`).
+- Phase D.2c (kernel source tree move, bounded slice): **In progress** (remaining `kernel/src/*` moved to `core/kernel/src/*`; legacy `kernel/src/*` compatibility symlink wrappers retained).
 
 ## Phase Checklist
 
@@ -19,7 +19,7 @@ This tracker is the execution companion for `project-structure-refactor-plan.md`
 | B.2 | Apply alias helper to target loaders/validators outside build pipeline | Pending | Next medium chunk. |
 | B.3 | CI guard for newly introduced legacy root references | Pending | Start warning-only, then enforce. |
 | C | `idl/`, `uapi/`, `sdk/` to `interface/` | Completed | C1 (`idl`), C2 (`uapi`), C3 (`sdk`) complete; legacy compatibility symlinks retained. |
-| D | `boot/`, `kernel/`, `arch/`, etc. to `core/` | In progress | D1a landed; D2b landed: kernel include root now resolves from `core/kernel/include` first with legacy fallback. |
+| D | `boot/`, `kernel/`, `arch/`, etc. to `core/` | In progress | D1a landed; D2b landed (`kernel/include`), and D2c landed (remaining `kernel/src/*` now canonical in `core/kernel/src/*` with `kernel/src/*` symlink wrappers). |
 | E | Remove fallbacks + enforce new roots | Pending | Convert warnings to CI failures. |
 
 ## Mandatory Validation Matrix (per phase)
@@ -129,3 +129,16 @@ Every migration PR must update:
 - `./build.sh all --target riscv64_desktop_headless_android`: **timeout-bounded warning** (build/run path starts).
 - `./build.sh all --target arm32_mmu_lite_headless`: **timeout-bounded warning** (build/run path starts).
 - `./build.sh all --target riscv32_mmu_lite_headless`: **failed at run stage** due missing OpenSBI firmware path (`/usr/lib/riscv32-linux-gnu/opensbi/generic/fw_dynamic.bin`) on host.
+
+## Validation Outcomes (2026-04-24, Phase D2c)
+
+- Migration slice: moved remaining `kernel/src/*` sources into `core/kernel/src/*`; preserved compatibility via per-entry symlinks under `kernel/src/*`.
+- `./build.sh build --target x86_64_desktop_headless`: **pass**.
+- `./build.sh package --target x86_64_desktop_headless`: **pass**.
+- `./build.sh run --target x86_64_desktop_headless`: **timeout-bounded warning** (QEMU interactive run started; bounded in automation).
+- `./build.sh all --target x86_64_desktop_headless_linux`: **timeout-bounded warning** (build/run path starts).
+- `./build.sh all --target arm64_desktop_headless_linux`: **timeout-bounded warning** (build/run path starts).
+- `./build.sh all --target riscv64_desktop_headless_linux`: **timeout-bounded warning** (build/run path starts).
+- `./build.sh all --target x86_64_desktop_headless_android`: **timeout-bounded warning** (build/run path starts).
+- `./build.sh all --target arm64_desktop_headless_android`: **timeout-bounded warning** (build/run path starts).
+- `./build.sh all --target riscv64_desktop_headless_android`: **timeout-bounded warning** (build/run path starts).
