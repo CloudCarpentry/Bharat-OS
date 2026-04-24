@@ -1,4 +1,4 @@
-#include "../../include/bharat/accel/accel.h"
+#include <bharat/accel/accel.h>
 #include "../../include/kernel/status.h"
 #include "../../include/mm/accel_mem.h"
 #include "../../include/mm/dma.h"

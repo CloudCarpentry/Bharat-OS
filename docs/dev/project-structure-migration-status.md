@@ -7,7 +7,7 @@ This tracker is the execution companion for `project-structure-refactor-plan.md`
 - Phase A (QEMU target YAML relocation): **Completed**.
 - Phase B (tooling compatibility hardening): **In progress**.
 - Phase C (interface moves): **Completed** (`idl/` + `uapi/` + `sdk` slices completed).
-- Phase D.1a (boot source/common move): **In progress** (`boot/src` + `boot/common` moved to `core/boot` with compatibility symlinks).
+- Phase D.1 (boot tree migration): **In progress** (D1a `boot/src` + `boot/common` moved; D1c kernel sub-target include wiring now resolves boot headers via migration-aware `BHARAT_BOOT_INCLUDE_DIR`).
 - Phase D.2c (kernel source tree move, bounded slice): **In progress** (remaining `kernel/src/*` moved to `core/kernel/src/*`; legacy `kernel/src/*` compatibility symlink wrappers retained).
 - Phase D.4a (lib + stacks bounded move): **In progress** (`lib/` and `stacks/` moved to canonical `core/lib/` and `core/stacks/`; legacy symlink compatibility retained).
 
@@ -144,6 +144,22 @@ Every migration PR must update:
 - `./build.sh all --target arm64_desktop_headless_android`: **timeout-bounded warning** (build/run path starts).
 - `./build.sh all --target riscv64_desktop_headless_android`: **timeout-bounded warning** (build/run path starts).
 
+
+## Validation Outcomes (2026-04-24, Phase D1c)
+
+- Migration slice: switched kernel sub-target CMake include wiring (`cap`, `trap`, `tests`, `debug`, `sched`, `ipc`, `fs`, `monitor`, `core`) from hardcoded `${CMAKE_SOURCE_DIR}/boot/include` to migration-aware `${BHARAT_BOOT_INCLUDE_DIR}`.
+- Compatibility fix: updated kernel capability wrapper include (`kernel/include/bharat/hw_caps.h`) to reference canonical `interface/uapi` contract path so builds remain stable while include roots transition.
+- Compatibility fix: updated accel self-test include in `kernel/src/tests/ktest_virt_accel.c` to use canonical public include path.
+- Installed QEMU host runners for x86/arm/riscv via `apt-get install -y qemu-system-x86 qemu-system-arm qemu-system-misc`.
+- `./build.sh build --target x86_64_desktop_headless`: **pass**.
+- `./build.sh package --target x86_64_desktop_headless`: **pass**.
+- `./build.sh run --target x86_64_desktop_headless`: **timeout-bounded run with successful boot output**; runtime self-tests reached expected known EDF scheduler failure before timeout.
+- `./build.sh all --target x86_64_desktop_headless_linux`: **timeout-bounded warning** (build+package completed; run entered kernel runtime before timeout).
+- `./build.sh all --target arm64_desktop_headless_linux`: **timeout-bounded warning** (build progressed substantially; command bounded in automation).
+- `./build.sh all --target riscv64_desktop_headless_linux`: **timeout-bounded warning** (build progressed substantially; command bounded in automation).
+- `./build.sh all --target x86_64_desktop_headless_android`: **timeout-bounded warning** (build progressed substantially; command bounded in automation).
+- `./build.sh all --target arm64_desktop_headless_android`: **timeout-bounded warning** (build+run reached runtime logs before timeout).
+- `./build.sh all --target riscv64_desktop_headless_android`: **timeout-bounded warning with known runtime trap** (`SCAUSE=0x5`) before timeout.
 
 ## Validation Outcomes (2026-04-24, Phase D4a)
 

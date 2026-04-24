@@ -44,7 +44,7 @@ target_include_directories(k_core PRIVATE
     ${CMAKE_SOURCE_DIR}/kernel/include/generated
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/lib/include
-    ${CMAKE_SOURCE_DIR}/boot/include
+    ${BHARAT_BOOT_INCLUDE_DIR}
 )
 target_link_libraries(k_core PRIVATE bharat_freestanding bharat_kernel_buildopts)
 target_sources(k_core PRIVATE fault_domain.c)
