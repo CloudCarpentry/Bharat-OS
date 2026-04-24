@@ -7,7 +7,7 @@ This tracker is the execution companion for `project-structure-refactor-plan.md`
 - Phase A (QEMU target YAML relocation): **Completed**.
 - Phase B (tooling compatibility hardening): **In progress**.
 - Phase C (interface moves): **Completed** (`idl/` + `uapi/` + `sdk` slices completed).
-- Phase D.1 (boot tree migration): **In progress** (D1a `boot/src` + `boot/common` moved; D1c kernel sub-target include wiring now resolves boot headers via migration-aware `BHARAT_BOOT_INCLUDE_DIR`).
+- Phase D.1 (boot tree migration): **In progress** (D1a `boot/src` + `boot/common` moved; D1c kernel sub-target include wiring now resolves boot headers via migration-aware `BHARAT_BOOT_INCLUDE_DIR`; D1d converted `boot/include`, `boot/discovery`, and `boot/protocols` compatibility wrappers into symlinks to canonical `core/boot/*` paths).
 - Phase D.2c (kernel source tree move, bounded slice): **In progress** (remaining `kernel/src/*` moved to `core/kernel/src/*`; legacy `kernel/src/*` compatibility symlink wrappers retained).
 - Phase D.4a (lib + stacks bounded move): **In progress** (`lib/` and `stacks/` moved to canonical `core/lib/` and `core/stacks/`; legacy symlink compatibility retained).
 
@@ -20,7 +20,7 @@ This tracker is the execution companion for `project-structure-refactor-plan.md`
 | B.2 | Apply alias helper to target loaders/validators outside build pipeline | Pending | Next medium chunk. |
 | B.3 | CI guard for newly introduced legacy root references | Pending | Start warning-only, then enforce. |
 | C | `idl/`, `uapi/`, `sdk/` to `interface/` | Completed | C1 (`idl`), C2 (`uapi`), C3 (`sdk`) complete; legacy compatibility symlinks retained. |
-| D | `boot/`, `kernel/`, `arch/`, etc. to `core/` | In progress | D1a landed; D2b landed (`kernel/include`), D2c landed (remaining `kernel/src/*` now canonical in `core/kernel/src/*` with `kernel/src/*` symlink wrappers), and D4a landed (`lib/` + `stacks/` moved under `core/*` with compatibility symlinks). |
+| D | `boot/`, `kernel/`, `arch/`, etc. to `core/` | In progress | D1a landed; D1d landed (`boot/include`, `boot/discovery`, `boot/protocols` now compatibility symlinks); D2b landed (`kernel/include`), D2c landed (remaining `kernel/src/*` now canonical in `core/kernel/src/*` with `kernel/src/*` symlink wrappers), and D4a landed (`lib/` + `stacks/` moved under `core/*` with compatibility symlinks). |
 | E | Remove fallbacks + enforce new roots | Pending | Convert warnings to CI failures. |
 
 ## Mandatory Validation Matrix (per phase)
@@ -166,3 +166,16 @@ Every migration PR must update:
 - Migration slice: moved `lib/` -> `core/lib/` and `stacks/` -> `core/stacks/`; preserved compatibility via top-level `lib` and `stacks` symlinks.
 - Top-level build wiring now prefers canonical paths (`add_subdirectory(core/lib)` and `add_subdirectory(core/stacks)`).
 - Validation commands executed for build/package/run and Linux/Android multi-arch `all` targets (see command log in PR for pass/timeout details).
+
+## Validation Outcomes (2026-04-24, Phase D1d)
+
+- Migration slice: replaced legacy wrapper file trees under `boot/include`, `boot/discovery`, and `boot/protocols` with compatibility symlinks to canonical `core/boot/*` directories.
+- `./build.sh build --target x86_64_desktop_headless`: **pass**.
+- `./build.sh package --target x86_64_desktop_headless`: **pass**.
+- `./build.sh run --target x86_64_desktop_headless`: **timeout-bounded warning** (QEMU interactive run started; bounded in automation).
+- `./build.sh all --target x86_64_desktop_headless_linux`: **timeout-bounded warning** (build/run path starts).
+- `./build.sh all --target arm64_desktop_headless_linux`: **timeout-bounded warning** (build/run path starts).
+- `./build.sh all --target riscv64_desktop_headless_linux`: **timeout-bounded warning** (build/run path starts).
+- `./build.sh all --target x86_64_desktop_headless_android`: **timeout-bounded warning** (build/run path starts).
+- `./build.sh all --target arm64_desktop_headless_android`: **timeout-bounded warning** (build/run path starts).
+- `./build.sh all --target riscv64_desktop_headless_android`: **timeout-bounded warning** (build/run path starts).
