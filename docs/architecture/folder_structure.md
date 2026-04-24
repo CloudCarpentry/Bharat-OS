@@ -33,7 +33,7 @@ This document defines target folder boundaries and records the **current alignme
 | `core/drivers/` | hardware driver implementations | Strong | Canonical tree is `core/drivers/*`; legacy `drivers/` symlink remains during migration. |
 | `core/services/` | policy managers by domain | Partial | Canonical tree is `core/services/*`; migration from flat manager naming continues under the new root. |
 | `core/personalities/` | compatibility/domain personalities | Strong | Canonical tree is `core/personalities/*`; legacy `personalities/` symlink remains during migration. |
-| `stacks/` | composed cross-layer subsystems | Partial | Present (`network`, `can`, `ui`, `storage`) but ownership boundaries need tighter contracts. |
+| `core/stacks/` | composed cross-layer subsystems | Partial | Canonical tree is `core/stacks/*`; legacy `stacks/` symlink remains during migration. |
 | `interface/uapi/` + `interface/idl/` + `interface/sdk/` | explicit contract surface | Partial | `idl`, `uapi`, and `sdk` are now under `interface/`; enforcement and include-surface migration remain in progress. |
 | `quality/tests/` | test harnesses, host/unit/e2e suites | Active | Canonical host/unit/e2e test tree now lives under `quality/tests/`; legacy `tests` is retained as a compatibility symlink during migration cleanup. |
 
@@ -67,6 +67,8 @@ Bharat-OS/
   quality/
     tests/
   delivery/
+    assets/
+    configs/
     targets/
     release/
   tools/
