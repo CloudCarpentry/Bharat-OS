@@ -14,6 +14,18 @@ _TARGET_MATRIX_ALIASES: tuple[tuple[str, str], ...] = (
     ("targets/target_matrix.json", "delivery/targets/target_matrix.json"),
 )
 
+_IDL_ALIASES: tuple[tuple[str, str], ...] = (
+    ("idl/", "interface/idl/"),
+)
+
+_UAPI_ALIASES: tuple[tuple[str, str], ...] = (
+    ("include/bharat/uapi/", "interface/uapi/"),
+)
+
+_ABI_MANIFEST_ALIASES: tuple[tuple[str, str], ...] = (
+    ("contracts/abi/", "interface/contracts/abi/"),
+)
+
 
 def resolve_migration_alias(path: Path, aliases: tuple[tuple[str, str], ...]) -> tuple[Path, bool]:
     """Resolve repository path aliases during incremental migrations.
@@ -46,6 +58,18 @@ def resolve_target_yaml_alias(path: Path) -> tuple[Path, bool]:
 
 def resolve_target_matrix_alias(path: Path) -> tuple[Path, bool]:
     return resolve_migration_alias(path, _TARGET_MATRIX_ALIASES)
+
+
+def resolve_idl_alias(path: Path) -> tuple[Path, bool]:
+    return resolve_migration_alias(path, _IDL_ALIASES)
+
+
+def resolve_uapi_alias(path: Path) -> tuple[Path, bool]:
+    return resolve_migration_alias(path, _UAPI_ALIASES)
+
+
+def resolve_abi_manifest_alias(path: Path) -> tuple[Path, bool]:
+    return resolve_migration_alias(path, _ABI_MANIFEST_ALIASES)
 
 
 def repo_path_candidates(*relative_paths: str) -> list[Path]:

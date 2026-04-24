@@ -2,11 +2,13 @@
 import sys
 import argparse
 import os
+from pathlib import Path
 from check_syscalls import check_syscalls, generate_syscall_manifest
 from check_struct_layouts import check_struct_layouts, generate_struct_manifest
 from check_idl_compat import check_idl_compat, generate_idl_manifest
 from check_sdk_symbols import check_sdk_symbols, generate_sdk_manifest
 import common
+from tools.build.path_aliases import resolve_abi_manifest_alias
 
 MANIFEST_DIR_CANDIDATES = [
     "interface/contracts/abi",
@@ -16,10 +18,11 @@ MANIFEST_DIR_CANDIDATES = [
 
 def resolve_manifest_dir():
     for path in MANIFEST_DIR_CANDIDATES:
-        if os.path.exists(path):
-            if path == "contracts/abi":
-                print(f"[migration-warning] Using legacy ABI manifest path: {path}")
-            return path
+        resolved_path, used_alias = resolve_abi_manifest_alias(Path(path))
+        if resolved_path.exists():
+            if used_alias:
+                print(f"[migration-warning] Using aliased ABI manifest path: {path} -> {resolved_path}")
+            return str(resolved_path)
     return MANIFEST_DIR_CANDIDATES[0]
 
 def get_manifest_path(name):

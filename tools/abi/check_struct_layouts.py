@@ -1,10 +1,21 @@
 import os
 import sys
 import glob
+from pathlib import Path
 from pycparser import c_parser, c_ast
 import common
+from tools.build.path_aliases import resolve_uapi_alias
 
-UAPI_DIR = "include/bharat/uapi"
+UAPI_DIR = "interface/uapi"
+
+
+def resolve_uapi_dir() -> str:
+    resolved_path, used_alias = resolve_uapi_alias(Path(UAPI_DIR))
+    if resolved_path.exists():
+        if used_alias:
+            print(f"[migration-warning] Using aliased UAPI path: {UAPI_DIR} -> {resolved_path}")
+        return str(resolved_path)
+    return UAPI_DIR
 
 def remove_comments(text):
     import re
@@ -91,8 +102,9 @@ class StructVisitor(c_ast.NodeVisitor):
 def generate_struct_manifest():
     parser = c_parser.CParser()
     manifest = {}
+    uapi_dir = resolve_uapi_dir()
 
-    for root, dirs, files in os.walk(UAPI_DIR):
+    for root, dirs, files in os.walk(uapi_dir):
         for file in files:
             if not file.endswith('.h'):
                 continue
