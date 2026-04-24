@@ -294,7 +294,7 @@ if(BHARAT_BUILD_HOST_TESTS)
 
     # VirtIO Input Host Tests
     add_executable(test_virtio_input ${CMAKE_SOURCE_DIR}/tests/host/drivers/test_virtio_input.c ${CMAKE_SOURCE_DIR}/drivers/input/virtio_input/virtio_input.c)
-    target_include_directories(test_virtio_input PRIVATE ${CMAKE_SOURCE_DIR}/drivers/input/virtio_input ${CMAKE_SOURCE_DIR}/drivers/input/include ${CMAKE_SOURCE_DIR}/uapi)
+    target_include_directories(test_virtio_input PRIVATE ${CMAKE_SOURCE_DIR}/drivers/input/virtio_input ${CMAKE_SOURCE_DIR}/drivers/input/include ${CMAKE_SOURCE_DIR}/interface/uapi)
     add_test(NAME host_test_virtio_input COMMAND test_virtio_input)
 
     # Memory Model AI-adjacent Primitives Host Test

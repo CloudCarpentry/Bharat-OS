@@ -9,8 +9,8 @@ extern "C" {
 #endif
 
 // Include the standard taxonomy for feature classes
-#include "uapi/capability/feature_class.h"
-#include "uapi/capability/hw_caps.h"
+#include "interface/uapi/capability/feature_class.h"
+#include "interface/uapi/capability/hw_caps.h"
 
 typedef enum {
     BACKEND_TYPE_SOFTWARE_FALLBACK = 0,
