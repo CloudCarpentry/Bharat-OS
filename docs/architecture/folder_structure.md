@@ -28,11 +28,11 @@ This document defines target folder boundaries and records the **current alignme
 | --- | --- | --- | --- |
 | `arch/` | ISA-specific implementation | Strong | Includes `arm`, `riscv`, `x86`, plus `xtensa`, `arc`, `shakti`. |
 | `hal/` | abstraction contracts + generic glue | Partial | Contains arch-specific directories (`hal/arm64`, `hal/x86_64`, etc.), which blurs strict abstraction-only intent. |
-| `platform/` | board/soc/machine integration | Strong | `platform/common`, `platform/boards`, `platform/qemu` present. |
+| `core/platform/` | board/soc/machine integration | Strong | Canonical tree is `core/platform/*`; legacy `platform/` symlink remains during migration. |
 | `kernel/` | minimal mechanism core | Partial | Core migration is active: canonical sources and headers now live under `core/kernel/{src,include}`; `kernel/src/*` and `kernel/include` compatibility symlink wrappers are retained while profile/subsystem policy extraction is still in progress. |
-| `drivers/` | hardware driver implementations | Strong | Rich domain structure exists; some taxonomy overlaps remain (`block` vs `storage`, `class` vs `devices`). |
-| `services/` | policy managers by domain | Partial | New `services/core|system|device|network` exists alongside legacy flat managers. |
-| `personalities/` | compatibility/domain personalities | Strong | `compat/{linux,android,windows}` and `domain/automotive` present. |
+| `core/drivers/` | hardware driver implementations | Strong | Canonical tree is `core/drivers/*`; legacy `drivers/` symlink remains during migration. |
+| `core/services/` | policy managers by domain | Partial | Canonical tree is `core/services/*`; migration from flat manager naming continues under the new root. |
+| `core/personalities/` | compatibility/domain personalities | Strong | Canonical tree is `core/personalities/*`; legacy `personalities/` symlink remains during migration. |
 | `stacks/` | composed cross-layer subsystems | Partial | Present (`network`, `can`, `ui`, `storage`) but ownership boundaries need tighter contracts. |
 | `interface/uapi/` + `interface/idl/` + `interface/sdk/` | explicit contract surface | Partial | `idl`, `uapi`, and `sdk` are now under `interface/`; enforcement and include-surface migration remain in progress. |
 
@@ -40,29 +40,34 @@ This document defines target folder boundaries and records the **current alignme
 
 ```text
 Bharat-OS/
-  arch/
-  boot/
-  hal/
-  platform/
-  kernel/
-  drivers/
-  services/
-    core/
-    system/
-    security/
-    device/
-    network/
-  personalities/
-    compat/
-    domain/
-    common/
-  stacks/
+  core/
+    arch/
+    boot/
+    hal/
+    platform/
+    kernel/
+    drivers/
+    services/
+      core/
+      system/
+      security/
+      device/
+      network/
+    personalities/
+      compat/
+      domain/
+      common/
+    stacks/
+    lib/
   interface/
     uapi/
     idl/
     sdk/
-  lib/
-  tests/
+  quality/
+    tests/
+  delivery/
+    targets/
+    release/
   tools/
   docs/
 ```
