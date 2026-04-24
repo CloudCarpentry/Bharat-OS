@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
-#include "../services/namesvc/src/registry.h"
+#include "../core/services/namesvc/src/registry.h"
 #include <bharat/cap/cap.h>
 
 bool bharat_cap_is_valid(bharat_cap_handle_t handle) {

@@ -2,16 +2,16 @@
 #include <string.h>
 #include <assert.h>
 
-#include "../services/netstack/src/netbuf.h"
-#include "../services/netstack/src/checksum.h"
-#include "../services/netstack/src/ethernet.h"
-#include "../services/netstack/src/arp.h"
-#include "../services/netstack/src/ipv4.h"
-#include "../services/netstack/src/icmp.h"
-#include "../services/netstack/src/udp.h"
-#include "../services/netstack/src/socket_table.h"
-#include "../services/netstack/src/loopback.h"
-#include "../services/netstack/src/driver_virtio_adapter.h"
+#include "../core/services/netstack/src/netbuf.h"
+#include "../core/services/netstack/src/checksum.h"
+#include "../core/services/netstack/src/ethernet.h"
+#include "../core/services/netstack/src/arp.h"
+#include "../core/services/netstack/src/ipv4.h"
+#include "../core/services/netstack/src/icmp.h"
+#include "../core/services/netstack/src/udp.h"
+#include "../core/services/netstack/src/socket_table.h"
+#include "../core/services/netstack/src/loopback.h"
+#include "../core/services/netstack/src/driver_virtio_adapter.h"
 
 // Expose internal mocked function
 extern void virtio_net_mock_rx(const void *buffer, size_t length);

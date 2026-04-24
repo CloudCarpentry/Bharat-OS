@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "../lib/ipc/include/bharat/ipc/ipc.h"
+#include "../core/lib/ipc/include/bharat/ipc/ipc.h"
 
 typedef struct {
     uint8_t bytes[128];

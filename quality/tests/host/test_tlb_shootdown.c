@@ -9,8 +9,8 @@
 #include "../../kernel/include/bharat/cpu_local.h"
 #include "../../kernel/include/hal/hal.h"
 #include "../../kernel/include/urpc/urpc_bootstrap.h"
-#include "../../services/core/subsysmgr/include/bharat/msg/transport.h"
-#include "../../services/monitor/generated/bharat_monitor_v1_types.h"
+#include "../../core/services/core/subsysmgr/include/bharat/msg/transport.h"
+#include "../../core/services/monitor/generated/bharat_monitor_v1_types.h"
 
 // --- Mocking ---
 

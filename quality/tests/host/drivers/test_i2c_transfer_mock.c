@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <assert.h>
-#include "../../../drivers/bus/i2c/i2c_registry.h"
-#include "../../../drivers/bus/i2c/i2c_core.h"
+#include "../../../core/drivers/bus/i2c/i2c_registry.h"
+#include "../../../core/drivers/bus/i2c/i2c_core.h"
 #include <string.h>
 
 static int mock_transfer_called = 0;

@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
-#include "../../../services/security/crypto/crypto_service.h"
+#include "../../../core/services/security/crypto/crypto_service.h"
 
 static void test_crypto_protocol_validate(void) {
     printf("Running test_crypto_protocol_validate...\n");

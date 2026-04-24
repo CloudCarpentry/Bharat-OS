@@ -3,9 +3,9 @@
 // Inclusion test to ensure no redefinition conflicts
 #include <stddef.h>
 #include <stdint.h>
-#include "../lib/posix/include/unistd.h"
+#include "../core/lib/posix/include/unistd.h"
 
-#include "../personalities/compat/linux/linux_compat.h"
+#include "../core/personalities/compat/linux/linux_compat.h"
 
 int main() {
     printf("Running POSIX header integration tests...\n");

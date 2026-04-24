@@ -4,9 +4,9 @@
 #include <string.h>
 
 #include <bharat/uapi/init/init_boot_context.h>
-#include "../../services/core/init/init_profile.h"
-#include "../../services/core/init/init_manifest.h"
-#include "../../services/core/init/init_contract.h"
+#include "../../core/services/core/init/init_profile.h"
+#include "../../core/services/core/init/init_manifest.h"
+#include "../../core/services/core/init/init_contract.h"
 
 // Define stubs for linking
 int bharat_runtime_log(const char *msg) {

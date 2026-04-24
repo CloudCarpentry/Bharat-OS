@@ -11,11 +11,11 @@ void bharat_runtime_log(const char *msg) {
 void bharat_sched_yield(void) {}
 
 // Include headers to test
-#include "../../services/core/init/init_manifest.h"
-#include "../../services/core/init/init_profile.h"
-#include "../../services/core/init/init_status.h"
-#include "../../services/core/init/init_runtime.h"
-#include "../../services/core/init/init_handoff.h"
+#include "../../core/services/core/init/init_manifest.h"
+#include "../../core/services/core/init/init_profile.h"
+#include "../../core/services/core/init/init_status.h"
+#include "../../core/services/core/init/init_runtime.h"
+#include "../../core/services/core/init/init_handoff.h"
 
 #define BHARAT_INIT_BOARD_ANY_TEST           (0xFFFFFFFFFFFFFFFFULL)
 #define BHARAT_INIT_PERSONALITY_ANY_TEST     (0xFFFFFFFFFFFFFFFFULL)

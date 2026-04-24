@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <assert.h>
-#include "../../../../personalities/compat/linux/linux_compat.h"
+#include "../../../../core/personalities/compat/linux/linux_compat.h"
 
 // Mock for bh_translation_event_record
 void bh_translation_event_record(int event) {
