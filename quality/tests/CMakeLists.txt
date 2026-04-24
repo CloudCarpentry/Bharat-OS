@@ -193,7 +193,7 @@ target_include_directories(test_ai_governor PRIVATE ../kernel/include ../lib/inc
 target_compile_definitions(test_ai_governor PRIVATE TESTING=1)
 add_test(NAME test_ai_governor COMMAND test_ai_governor)
 
-add_executable(test_ai_kernel_bridge test_ai_kernel_bridge.c ../kernel/src/mm/vm/aspace/vm_space.c ../kernel/src/ipc/endpoint_ipc.c ../hal/timer_common.c ../kernel/staging/ai/ai_kernel_bridge.c $<TARGET_OBJECTS:bharat_test_sched_mocks>)
+add_executable(test_ai_kernel_bridge test_ai_kernel_bridge.c ../kernel/src/mm/vm/aspace/vm_space.c ../kernel/src/ipc/endpoint_ipc.c ../hal/timer_common.c ../core/kernel/staging/ai/ai_kernel_bridge.c $<TARGET_OBJECTS:bharat_test_sched_mocks>)
 target_include_directories(test_ai_kernel_bridge PRIVATE ../kernel/include ../lib/include)
 target_compile_definitions(test_ai_kernel_bridge PRIVATE TESTING=1)
 add_test(NAME test_ai_kernel_bridge COMMAND test_ai_kernel_bridge)
