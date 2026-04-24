@@ -24,6 +24,7 @@ This plan is based on the current repo layout and build system behavior (`build.
 | C2 | Interface `uapi/` move | ✅ Completed | `interface/uapi/` is now authoritative; legacy `uapi` path is preserved as a compatibility symlink. |
 | C3 | Interface `sdk/` move | ✅ Completed | `interface/sdk/` is now authoritative; legacy `sdk` path is preserved as a compatibility symlink. |
 | D1 | `boot/` to `core/boot/` | 🚧 In progress | D1a + D1b completed: sources/common/include/discovery/protocols are now canonical in `core/boot/*`; legacy `boot/*` wrappers remain for compatibility. |
+| D2 | `kernel/` to `core/kernel/` | 🚧 In progress | D2a completed: `kernel/src/{core,init,boot}` migrated to `core/kernel/src/*`; legacy `kernel/src/*` symlinks and CMake source-root fallback keep existing paths working. |
 
 ---
 
@@ -498,9 +499,11 @@ This section converts the phase model into concrete, code-aware slices from the 
   - D1b (this slice): `boot/include`, `boot/discovery`, and `boot/protocols` moved to `core/boot/{include,discovery,protocols}`.
   - Compatibility retained with legacy wrappers in `boot/include/*`, `boot/discovery/*`, and `boot/protocols/*`.
   - Build wiring now resolves boot include/protocol roots through candidate lists (`core/boot/*` first, `boot/*` fallback with warning).
-- **D2 (next): kernel tree move**
-  - Start with `kernel/src/{init,core,boot}` into `core/kernel/src/*` and keep `kernel/` forwarding CMake.
-  - Preserve `kernel/include` include root while introducing `core/kernel/include` as preferred.
+- **D2 (active): kernel tree move**
+  - D2a (completed): moved `kernel/src/{init,core,boot}` into `core/kernel/src/*`.
+  - `kernel/src/{init,core,boot}` remain as compatibility symlinks so legacy references still resolve.
+  - `kernel/CMakeLists.txt` now resolves a kernel source-root candidate list (`core/kernel/src` preferred, `kernel/src` fallback with migration warning).
+  - D2b (next): preserve `kernel/include` include root while introducing `core/kernel/include` as preferred.
 - **D3 (next): arch + hal staged move**
   - Move `arch` first (path-heavy compile graph), then `hal`.
   - Add alias validation in CI for newly added legacy refs.

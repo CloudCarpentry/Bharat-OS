@@ -341,13 +341,31 @@ if(BHARAT_ENABLE_ADVANCED_VM)
     target_compile_options(bharat_mm_vmm PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
 endif()
 # ── Core kernel sources ──────────────────────────────────────────────────────
-add_subdirectory(src/core)
+set(BHARAT_KERNEL_SRC_ROOT_CANDIDATES
+    "${CMAKE_SOURCE_DIR}/core/kernel/src"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src"
+)
+set(BHARAT_KERNEL_SRC_ROOT "")
+foreach(_kernel_src_root IN LISTS BHARAT_KERNEL_SRC_ROOT_CANDIDATES)
+    if(EXISTS "${_kernel_src_root}/core/CMakeLists.txt" AND EXISTS "${_kernel_src_root}/init/CMakeLists.txt")
+        set(BHARAT_KERNEL_SRC_ROOT "${_kernel_src_root}")
+        if(_kernel_src_root MATCHES "/kernel/src$" AND NOT _kernel_src_root MATCHES "/core/kernel/src$")
+            message(WARNING "[migration-warning] Using legacy kernel source root: ${_kernel_src_root}")
+        endif()
+        break()
+    endif()
+endforeach()
+if(NOT BHARAT_KERNEL_SRC_ROOT)
+    message(FATAL_ERROR "No kernel source root found in core/kernel/src or kernel/src")
+endif()
+
+add_subdirectory("${BHARAT_KERNEL_SRC_ROOT}/core" "${CMAKE_CURRENT_BINARY_DIR}/src_core")
 add_subdirectory(src/sched)
 add_subdirectory(src/ipc)
 add_subdirectory(src/cap)
 add_subdirectory(src/trap)
 add_subdirectory(src/debug)
-add_subdirectory(src/init)
+add_subdirectory("${BHARAT_KERNEL_SRC_ROOT}/init" "${CMAKE_CURRENT_BINARY_DIR}/src_init")
 add_subdirectory(src/fs)
 add_subdirectory(src/lib)
 add_subdirectory(src/tests)
@@ -475,7 +493,11 @@ endif()
 # Make sure kernel targets can find platform headers
 target_include_directories(bharat_kernel_includes INTERFACE ${CMAKE_SOURCE_DIR}/platform/include)
 
-list(APPEND KERNEL_SRCS src/display/boot_video_map.c src/boot/boot_mode.c src/boot/boot_selftest.c)
+list(APPEND KERNEL_SRCS
+    src/display/boot_video_map.c
+    ${BHARAT_KERNEL_SRC_ROOT}/boot/boot_mode.c
+    ${BHARAT_KERNEL_SRC_ROOT}/boot/boot_selftest.c
+)
 
 # ── Kernel ELF ──────────────────────────────────────────────────────────────
 add_executable(kernel.elf
@@ -626,8 +648,8 @@ endif()
 
 if(BHARAT_ENABLE_CONSTRAINTS)
     target_sources(kernel.elf PRIVATE
-        src/core/constraints/constraints_common.c
-        src/core/constraints/constraint_validate.c
+        ${BHARAT_KERNEL_SRC_ROOT}/core/constraints/constraints_common.c
+        ${BHARAT_KERNEL_SRC_ROOT}/core/constraints/constraint_validate.c
         src/sys/sys_constraints.c
         src/sched/constraint_apply.c
         src/sched/constraint_trace.c

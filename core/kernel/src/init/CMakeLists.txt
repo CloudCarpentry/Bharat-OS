@@ -17,16 +17,23 @@ if(NOT BHARAT_BOOT_PROTOCOLS_ROOT)
 endif()
 
 add_library(k_init OBJECT
-    ../../src/main.c
+    ${CMAKE_SOURCE_DIR}/kernel/src/main.c
     init_bootstrap.c
     ${BHARAT_BOOT_PROTOCOLS_ROOT}/boot_args.c
-    ../../src/device/device_manager.c
-    ../../src/device/device_dma.c
-    ../../src/device/builtin_drivers.c
-    ../../src/device/pci.c
-    ../../src/device/irq_domain.c
-    ../../src/power_thermal_perf.c
+    ${CMAKE_SOURCE_DIR}/kernel/src/device/device_manager.c
+    ${CMAKE_SOURCE_DIR}/kernel/src/device/device_dma.c
+    ${CMAKE_SOURCE_DIR}/kernel/src/device/builtin_drivers.c
+    ${CMAKE_SOURCE_DIR}/kernel/src/device/pci.c
+    ${CMAKE_SOURCE_DIR}/kernel/src/device/irq_domain.c
+    ${CMAKE_SOURCE_DIR}/kernel/src/power_thermal_perf.c
 )
 
-target_include_directories(k_init PRIVATE ../../include ../../include/generated ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/lib/include ${BHARAT_BOOT_INCLUDE_DIR} ${CMAKE_SOURCE_DIR}/services/core/subsysmgr/include)
+target_include_directories(k_init PRIVATE
+    ${CMAKE_SOURCE_DIR}/kernel/include
+    ${CMAKE_SOURCE_DIR}/kernel/include/generated
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/lib/include
+    ${BHARAT_BOOT_INCLUDE_DIR}
+    ${CMAKE_SOURCE_DIR}/services/core/subsysmgr/include
+)
 target_link_libraries(k_init PRIVATE bharat_freestanding bharat_kernel_buildopts)
