@@ -6,6 +6,6 @@ if(BHARAT_ENABLE_SUBSYS_ANDROID)
         android_security.c
         android_binder_dist.c
     )
-    target_include_directories(bharatos_personality_android PUBLIC ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/lib/include ${CMAKE_SOURCE_DIR}/services/core/subsysmgr/include)
+    target_include_directories(bharatos_personality_android PUBLIC ${CMAKE_SOURCE_DIR}/core/kernel/include ${CMAKE_SOURCE_DIR}/core/lib/include ${CMAKE_SOURCE_DIR}/core/services/core/subsysmgr/include)
     target_link_libraries(bharatos_personality_android PUBLIC bharat_user_buildopts bharat_freestanding)
 endif()

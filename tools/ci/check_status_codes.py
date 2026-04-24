@@ -72,16 +72,16 @@ def check_duplicates(val_to_names, file_desc):
 
 def main():
     root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    kstatus_file = os.path.join(root_dir, 'kernel', 'include', 'kernel', 'status.h')
-    sys_errno_file = os.path.join(root_dir, 'include', 'bharat', 'uapi', 'sys_errno.h')
+    kstatus_file = os.path.join(root_dir, 'core', 'kernel', 'include', 'kernel', 'status.h')
+    sys_errno_file = os.path.join(root_dir, 'interface', 'include', 'bharat', 'uapi', 'sys_errno.h')
 
     print(f"Checking kernel status codes in {kstatus_file}...")
     k_name_to_val, k_val_to_names = parse_header(kstatus_file, "K_ERR_", is_negative=True)
-    k_errors = check_duplicates(k_val_to_names, "kernel/include/kernel/status.h")
+    k_errors = check_duplicates(k_val_to_names, "core/kernel/include/kernel/status.h")
 
     print(f"Checking UAPI sys_errno codes in {sys_errno_file}...")
     sys_name_to_val, sys_val_to_names = parse_header(sys_errno_file, "SYS_E", is_negative=False)
-    sys_errors = check_duplicates(sys_val_to_names, "include/bharat/uapi/sys_errno.h")
+    sys_errors = check_duplicates(sys_val_to_names, "interface/include/bharat/uapi/sys_errno.h")
 
     total_errors = k_errors + sys_errors
 

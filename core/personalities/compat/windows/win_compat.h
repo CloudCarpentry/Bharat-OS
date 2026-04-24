@@ -2,7 +2,7 @@
 #define BHARAT_WIN_COMPAT_H
 
 #include "subsys.h"
-#include "../../kernel/include/capability.h"
+#include "capability.h"
 
 /*
  * Bharat-OS Windows/NT Compatibility Layer

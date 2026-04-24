@@ -3,13 +3,13 @@ project(boot_displayd C)
 
 add_executable(boot_displayd
     main.c
-    ${CMAKE_SOURCE_DIR}/stacks/ui/lcd/tiny_ui.c
+    ${CMAKE_SOURCE_DIR}/core/stacks/ui/lcd/tiny_ui.c
 )
 target_link_libraries(boot_displayd PRIVATE bharat_user_buildopts bharat_freestanding)
 
 target_include_directories(boot_displayd PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/kernel/include
+    ${CMAKE_SOURCE_DIR}/interface/include
+    ${CMAKE_SOURCE_DIR}/core/kernel/include
 )
 
 # Use PIC to fix linker issues since the environment defaults to PIE

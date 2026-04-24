@@ -2,7 +2,7 @@
 #define BHARAT_LINUX_COMPAT_H
 
 #include <stdint.h>
-#include "../../../services/core/subsysmgr/include/subsys.h"
+#include "subsys.h"
 
 #define LINUX_MAX_FDS 256
 

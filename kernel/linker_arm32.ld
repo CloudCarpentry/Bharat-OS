@@ -1,1 +1,0 @@
-../core/kernel/linker_arm32.ld
