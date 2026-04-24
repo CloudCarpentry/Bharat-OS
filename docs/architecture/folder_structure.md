@@ -22,14 +22,14 @@ This document defines target folder boundaries and records the **current alignme
 - Mechanism (kernel/drivers/hal) and policy (services/stacks/personalities) should stay separated.
 - External contracts should be versioned and published through `interface/uapi/` + `interface/idl/` (legacy root aliases may exist during migration).
 
-## Current alignment snapshot (2026-04-23)
+## Current alignment snapshot (2026-04-24)
 
 | Area | Target direction | Current alignment | Notes |
 | --- | --- | --- | --- |
 | `arch/` | ISA-specific implementation | Strong | Includes `arm`, `riscv`, `x86`, plus `xtensa`, `arc`, `shakti`. |
 | `hal/` | abstraction contracts + generic glue | Partial | Contains arch-specific directories (`hal/arm64`, `hal/x86_64`, etc.), which blurs strict abstraction-only intent. |
 | `platform/` | board/soc/machine integration | Strong | `platform/common`, `platform/boards`, `platform/qemu` present. |
-| `kernel/` | minimal mechanism core | Partial | Core migration is active: `kernel/src/{core,init,boot}` and `kernel/include` now resolve via `core/kernel/*` compatibility paths; profile/subsystem policy is still mixed in some paths. |
+| `kernel/` | minimal mechanism core | Partial | Core migration is active: canonical sources and headers now live under `core/kernel/{src,include}`; `kernel/src/*` and `kernel/include` compatibility symlink wrappers are retained while profile/subsystem policy extraction is still in progress. |
 | `drivers/` | hardware driver implementations | Strong | Rich domain structure exists; some taxonomy overlaps remain (`block` vs `storage`, `class` vs `devices`). |
 | `services/` | policy managers by domain | Partial | New `services/core|system|device|network` exists alongside legacy flat managers. |
 | `personalities/` | compatibility/domain personalities | Strong | `compat/{linux,android,windows}` and `domain/automotive` present. |
