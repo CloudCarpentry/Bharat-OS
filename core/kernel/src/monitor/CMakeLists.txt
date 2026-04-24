@@ -11,7 +11,7 @@ target_include_directories(k_monitor PRIVATE
     ../../include/generated
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/lib/include
-    ${CMAKE_SOURCE_DIR}/boot/include
+    ${BHARAT_BOOT_INCLUDE_DIR}
     ${CMAKE_SOURCE_DIR}/services/core/subsysmgr/include
 )
 

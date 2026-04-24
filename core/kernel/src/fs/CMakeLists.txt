@@ -8,5 +8,5 @@ add_library(k_fs OBJECT
     ../../src/fs/object_store.c
 )
 
-target_include_directories(k_fs PRIVATE ../../include ../../include/generated ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/lib/include ${CMAKE_SOURCE_DIR}/boot/include)
+target_include_directories(k_fs PRIVATE ../../include ../../include/generated ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/lib/include ${BHARAT_BOOT_INCLUDE_DIR})
 target_link_libraries(k_fs PRIVATE bharat_freestanding bharat_kernel_buildopts)
