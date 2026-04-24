@@ -21,8 +21,8 @@ This document defines mandatory build-system governance for Bharat-OS contributo
 
 ## 1.3 Component-policy contract
 
-- `cmake/modules/BharatComponentPolicy.cmake` is the single source of truth for profile/personality/board
-  driven component requirements.
+- `delivery/cmake/modules/BharatComponentPolicy.cmake` is the canonical single source of truth for profile/personality/board
+  driven component requirements (legacy `cmake/modules/BharatComponentPolicy.cmake` remains as a compatibility symlink during migration).
 - All top-level configuration entry points (presets, wrapper scripts, CI jobs, and agents) must pass:
   - `BHARAT_DEVICE_PROFILE`
   - `BHARAT_PERSONALITY_PROFILE`

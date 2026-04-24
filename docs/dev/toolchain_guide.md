@@ -11,7 +11,7 @@ Supported target architectures:
 - `arm64`
 - `riscv64`
 
-Toolchains are defined in `cmake/toolchains/<arch>-elf.cmake`.
+Toolchains are canonically defined in `delivery/cmake/toolchains/<arch>-elf.cmake` (legacy `cmake/toolchains/*` paths remain supported via compatibility symlink during migration).
 
 ## Host vs. Target Environments
 - **Host System:** The machine executing the compiler (e.g., your laptop running Ubuntu or Windows).
@@ -25,7 +25,7 @@ The toolchain files ensure that CMake correctly identifies `CMAKE_SYSTEM_NAME` (
 ```bash
 ./build.sh build --target x86_64
 ```
-*Behind the scenes: Calls CMake using `cmake/toolchains/x86_64-elf.cmake`.*
+*Behind the scenes: Calls CMake using `delivery/cmake/toolchains/x86_64-elf.cmake` (or legacy-compatible `cmake/toolchains/x86_64-elf.cmake`).*
 
 ### 2. Building the SDK
 ```bash

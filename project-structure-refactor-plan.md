@@ -21,6 +21,7 @@ This plan is based on the current repo layout and build system behavior (`build.
 | B2 | Alias helper adoption for ABI tooling path resolution | ✅ Completed | `tools/abi/{check_idl_compat.py,check_struct_layouts.py,generate_abi_manifests.py}` now resolve `interface/*` canonical paths via shared `tools/build/path_aliases.py` helpers with legacy fallback warnings. |
 | B3 | Guard escalation to strict mode | ✅ Completed | `kernel-ci` now runs `tools/ci/check_migration_refs.py --strict`; guard patterns cover completed A/C/B2 legacy roots. |
 | B4 | Delivery config/assets root relocation + legacy symlink trimming | ✅ Completed | `configs/` and `assets/` now canonicalize to `delivery/{configs,assets}` with compatibility symlinks; obsolete `quality/*` compatibility symlink fanout removed. |
+| B5 | Delivery CMake root relocation (`cmake/` -> `delivery/cmake/`) | ✅ Completed | Canonical CMake modules/toolchains now live under `delivery/cmake`; legacy top-level `cmake` is retained as a compatibility symlink while callers migrate. |
 | C1 | Interface `idl/` move | ✅ Completed | `interface/idl/` is now authoritative; legacy `idl` path is preserved as a compatibility symlink and tooling fallback. |
 | C2 | Interface `uapi/` move | ✅ Completed | `interface/uapi/` is now authoritative; legacy `uapi` path is preserved as a compatibility symlink. |
 | C3 | Interface `sdk/` move | ✅ Completed | `interface/sdk/` is now authoritative; legacy `sdk` path is preserved as a compatibility symlink. |
@@ -416,7 +417,7 @@ When build/run commands are updated in future phases:
 
 1. Record current migration status in a tracker doc and keep it updated per PR.
 2. Complete Phase B tooling unification (shared alias helper + CI reference guard).
-3. Continue delivery tooling migration (`tools/`, `cmake/`, `configs/`, `assets`) using thin-slice PRs with mandatory validation matrix.
+3. Continue delivery tooling migration (`tools/`) using thin-slice PRs with mandatory validation matrix; `cmake/`, `configs/`, and `assets/` now canonicalize under `delivery/` with compatibility shims.
 
 ---
 

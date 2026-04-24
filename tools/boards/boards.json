@@ -12,8 +12,8 @@
       "qemu_system": "qemu-system-x86_64",
       "default_toolchain": "gcc",
       "toolchains": {
-        "gcc": "cmake/toolchains/x86_64-gcc.cmake",
-        "llvm": "cmake/toolchains/x86_64-llvm.cmake"
+        "gcc": "delivery/cmake/toolchains/x86_64-gcc.cmake",
+        "llvm": "delivery/cmake/toolchains/x86_64-llvm.cmake"
       },
       "hardware_profile": "EDGE",
       "tier": "LINUX_LIKE",
@@ -38,8 +38,8 @@
       "qemu_system": "qemu-system-aarch64",
       "default_toolchain": "gcc",
       "toolchains": {
-        "gcc": "cmake/toolchains/arm64-gcc.cmake",
-        "llvm": "cmake/toolchains/arm64-llvm.cmake"
+        "gcc": "delivery/cmake/toolchains/arm64-gcc.cmake",
+        "llvm": "delivery/cmake/toolchains/arm64-llvm.cmake"
       },
       "hardware_profile": "EDGE",
       "tier": "LINUX_LIKE",
@@ -64,8 +64,8 @@
       "qemu_system": "qemu-system-riscv64",
       "default_toolchain": "gcc",
       "toolchains": {
-        "gcc": "cmake/toolchains/riscv64-gcc.cmake",
-        "llvm": "cmake/toolchains/riscv64-llvm.cmake"
+        "gcc": "delivery/cmake/toolchains/riscv64-gcc.cmake",
+        "llvm": "delivery/cmake/toolchains/riscv64-llvm.cmake"
       },
       "hardware_profile": "EDGE",
       "tier": "LINUX_LIKE",
@@ -91,8 +91,8 @@
       "qemu_system": "qemu-system-riscv64",
       "default_toolchain": "gcc",
       "toolchains": {
-        "gcc": "cmake/toolchains/riscv64-gcc.cmake",
-        "llvm": "cmake/toolchains/riscv64-llvm.cmake"
+        "gcc": "delivery/cmake/toolchains/riscv64-gcc.cmake",
+        "llvm": "delivery/cmake/toolchains/riscv64-llvm.cmake"
       },
       "hardware_profile": "AUTOMOTIVE_ECU",
       "tier": "LINUX_LIKE",
@@ -118,8 +118,8 @@
       "qemu_system": "qemu-system-aarch64",
       "default_toolchain": "gcc",
       "toolchains": {
-        "gcc": "cmake/toolchains/arm64-gcc.cmake",
-        "llvm": "cmake/toolchains/arm64-llvm.cmake"
+        "gcc": "delivery/cmake/toolchains/arm64-gcc.cmake",
+        "llvm": "delivery/cmake/toolchains/arm64-llvm.cmake"
       },
       "hardware_profile": "AUTOMOTIVE_ECU",
       "tier": "LINUX_LIKE",
@@ -144,9 +144,9 @@
       "qemu_system": "qemu-system-riscv64",
       "default_toolchain": "shakti-elf",
       "toolchains": {
-        "gcc": "cmake/toolchains/riscv64-gcc.cmake",
-        "llvm": "cmake/toolchains/riscv64-llvm.cmake",
-        "shakti-elf": "cmake/toolchains/riscv64-shakti-elf.cmake"
+        "gcc": "delivery/cmake/toolchains/riscv64-gcc.cmake",
+        "llvm": "delivery/cmake/toolchains/riscv64-llvm.cmake",
+        "shakti-elf": "delivery/cmake/toolchains/riscv64-shakti-elf.cmake"
       },
       "hardware_profile": "EDGE",
       "tier": "LINUX_LIKE",
@@ -171,9 +171,9 @@
       "qemu_system": "qemu-system-riscv64",
       "default_toolchain": "shakti-elf",
       "toolchains": {
-        "gcc": "cmake/toolchains/riscv64-gcc.cmake",
-        "llvm": "cmake/toolchains/riscv64-llvm.cmake",
-        "shakti-elf": "cmake/toolchains/riscv64-shakti-elf.cmake"
+        "gcc": "delivery/cmake/toolchains/riscv64-gcc.cmake",
+        "llvm": "delivery/cmake/toolchains/riscv64-llvm.cmake",
+        "shakti-elf": "delivery/cmake/toolchains/riscv64-shakti-elf.cmake"
       },
       "hardware_profile": "EDGE",
       "tier": "LINUX_LIKE",
