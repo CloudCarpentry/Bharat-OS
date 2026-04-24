@@ -10,6 +10,8 @@ This tracker is the execution companion for `project-structure-refactor-plan.md`
 - Phase D.1 (boot tree migration): **In progress** (D1a `boot/src` + `boot/common` moved; D1c kernel sub-target include wiring now resolves boot headers via migration-aware `BHARAT_BOOT_INCLUDE_DIR`; D1d converted `boot/include`, `boot/discovery`, and `boot/protocols` compatibility wrappers into symlinks to canonical `core/boot/*` paths).
 - Phase D.2c (kernel source tree move, bounded slice): **In progress** (remaining `kernel/src/*` moved to `core/kernel/src/*`; legacy `kernel/src/*` compatibility symlink wrappers retained).
 - Phase D.4a (lib + stacks bounded move): **In progress** (`lib/` and `stacks/` moved to canonical `core/lib/` and `core/stacks/`; legacy symlink compatibility retained).
+- Phase F.1 (public include tree): **Completed** (`include/` moved to canonical `interface/include/`; legacy `include` retained as symlink).
+- Phase F.2 (user-space tree): **Completed** (`user/` moved to canonical `experience/user/`; legacy `user` retained as symlink and top-level CMake now prefers `experience/user`).
 
 ## Phase Checklist
 
@@ -21,6 +23,7 @@ This tracker is the execution companion for `project-structure-refactor-plan.md`
 | B.3 | CI guard for newly introduced legacy root references | Completed | `kernel-ci` runs `tools/ci/check_migration_refs.py --strict` and guards completed migration roots (`delivery/targets`, `interface/{idl,uapi,contracts}`). |
 | C | `idl/`, `uapi/`, `sdk/` to `interface/` | Completed | C1 (`idl`), C2 (`uapi`), C3 (`sdk`) complete; legacy compatibility symlinks retained. |
 | D | `boot/`, `kernel/`, `arch/`, etc. to `core/` | In progress | D1a landed; D1d landed (`boot/include`, `boot/discovery`, `boot/protocols` now compatibility symlinks); D2b landed (`kernel/include`), D2c landed (remaining `kernel/src/*` now canonical in `core/kernel/src/*` with `kernel/src/*` symlink wrappers), and D4a landed (`lib/` + `stacks/` moved under `core/*` with compatibility symlinks). |
+| F | `include/` + `user/` canonicalization | Completed | F1 landed (`interface/include` canonical, `include` symlink retained); F2 landed (`experience/user` canonical, `user` symlink retained) with migration-aware CMake root selection. |
 | E | Remove fallbacks + enforce new roots | Pending | Convert warnings to CI failures. |
 
 ## Mandatory Validation Matrix (per phase)
@@ -207,3 +210,18 @@ Every migration PR must update:
 - `./build.sh all --target x86_64_desktop_headless_android`: **timeout-bounded warning** (build/run path starts).
 - `./build.sh all --target arm64_desktop_headless_android`: **timeout-bounded warning** (build/run path starts).
 - `./build.sh all --target riscv64_desktop_headless_android`: **timeout-bounded warning** (build/run path starts).
+
+## Validation Outcomes (2026-04-24, Phases F1 + F2)
+
+- Migration slice F1: moved root `include/` to canonical `interface/include/`; retained top-level `include` symlink for compatibility.
+- Migration slice F2: moved root `user/` to canonical `experience/user/`; retained top-level `user` symlink and updated top-level CMake to prefer canonical root with legacy fallback warning.
+- Installed QEMU runners for x86/arm/riscv + user emulation support via `apt-get install -y qemu-system-x86 qemu-system-arm qemu-system-misc qemu-user-static binfmt-support`.
+- `./build.sh build --target x86_64_desktop_headless`: **pass**.
+- `./build.sh package --target x86_64_desktop_headless`: **pass**.
+- `./build.sh run --target x86_64_desktop_headless`: **timeout-bounded run with successful boot output**; runtime self-tests reached expected known EDF scheduler failure before timeout.
+- `./build.sh all --target x86_64_desktop_headless_linux`: **timeout-bounded warning** (build+run path starts and reaches runtime logs).
+- `./build.sh all --target arm64_desktop_headless_linux`: **timeout-bounded warning** (build+run path starts and reaches runtime logs).
+- `./build.sh all --target riscv64_desktop_headless_linux`: **timeout-bounded warning with known runtime panic** (`PMM: Double free detected!`) before timeout.
+- `./build.sh all --target x86_64_desktop_headless_android`: **timeout-bounded warning** (build+run path starts and reaches runtime logs).
+- `./build.sh all --target arm64_desktop_headless_android`: **timeout-bounded warning** (build+run path starts and reaches runtime logs).
+- `./build.sh all --target riscv64_desktop_headless_android`: **timeout-bounded warning with known runtime panic** (`PMM: Double free detected!`) before timeout.

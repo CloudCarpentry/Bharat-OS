@@ -22,6 +22,14 @@ _UAPI_ALIASES: tuple[tuple[str, str], ...] = (
     ("include/bharat/uapi/", "interface/uapi/"),
 )
 
+_PUBLIC_INCLUDE_ALIASES: tuple[tuple[str, str], ...] = (
+    ("include/", "interface/include/"),
+)
+
+_USER_TREE_ALIASES: tuple[tuple[str, str], ...] = (
+    ("user/", "experience/user/"),
+)
+
 _ABI_MANIFEST_ALIASES: tuple[tuple[str, str], ...] = (
     ("contracts/abi/", "interface/contracts/abi/"),
 )
@@ -66,6 +74,14 @@ def resolve_idl_alias(path: Path) -> tuple[Path, bool]:
 
 def resolve_uapi_alias(path: Path) -> tuple[Path, bool]:
     return resolve_migration_alias(path, _UAPI_ALIASES)
+
+
+def resolve_public_include_alias(path: Path) -> tuple[Path, bool]:
+    return resolve_migration_alias(path, _PUBLIC_INCLUDE_ALIASES)
+
+
+def resolve_user_tree_alias(path: Path) -> tuple[Path, bool]:
+    return resolve_migration_alias(path, _USER_TREE_ALIASES)
 
 
 def resolve_abi_manifest_alias(path: Path) -> tuple[Path, bool]:
