@@ -48,6 +48,7 @@ bharat_select_root(BHARAT_ARCH_ROOT "${CMAKE_SOURCE_DIR}/core/arch" "${CMAKE_SOU
 bharat_select_root(BHARAT_HAL_ROOT "${CMAKE_SOURCE_DIR}/core/hal" "${CMAKE_SOURCE_DIR}/hal" "common/discovery.c" "hal")
 bharat_select_root(BHARAT_PLATFORM_ROOT "${CMAKE_SOURCE_DIR}/core/platform" "${CMAKE_SOURCE_DIR}/platform" "boards/qemu-virt-x86_64/board.c" "platform")
 bharat_select_root(BHARAT_LIB_ROOT "${CMAKE_SOURCE_DIR}/core/lib" "${CMAKE_SOURCE_DIR}/lib" "include/ipc_user.h" "lib")
+bharat_select_root(BHARAT_KERNEL_STAGING_ROOT "${CMAKE_SOURCE_DIR}/core/kernel/staging" "${CMAKE_SOURCE_DIR}/kernel/staging" "ai/ai_kernel_bridge.c" "kernel staging")
 set(BHARAT_KERNEL_INCLUDE_CANDIDATES
     ${CMAKE_SOURCE_DIR}/core/kernel/include
     ${CMAKE_CURRENT_SOURCE_DIR}/include

@@ -8,7 +8,7 @@ add_library(k_core OBJECT
     ${CMAKE_SOURCE_DIR}/kernel/src/multicore.c
     ${CMAKE_SOURCE_DIR}/kernel/src/subsystem/profile.c
     ${CMAKE_SOURCE_DIR}/kernel/src/profile/profile.c
-    ${CMAKE_SOURCE_DIR}/kernel/staging/ai/ai_kernel_bridge.c
+    ${BHARAT_KERNEL_STAGING_ROOT}/ai/ai_kernel_bridge.c
     ${CMAKE_SOURCE_DIR}/kernel/src/security/isolation.c
     ${CMAKE_SOURCE_DIR}/kernel/src/security/credentials.c
     ${CMAKE_SOURCE_DIR}/kernel/src/security/policy.c
