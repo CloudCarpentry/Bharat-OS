@@ -352,7 +352,26 @@ add_subdirectory(core/stacks)
 add_subdirectory(core/personalities)
 
 if(BHARAT_BUILD_HOST_TESTS)
-    add_subdirectory(tests)
+    set(BHARAT_TESTS_ROOT_CANDIDATES
+        "${CMAKE_SOURCE_DIR}/quality/tests"
+        "${CMAKE_SOURCE_DIR}/tests"
+    )
+    set(BHARAT_TESTS_ROOT "")
+    foreach(_tests_root IN LISTS BHARAT_TESTS_ROOT_CANDIDATES)
+        if(EXISTS "${_tests_root}/CMakeLists.txt")
+            set(BHARAT_TESTS_ROOT "${_tests_root}")
+            if(_tests_root MATCHES "/tests$" AND NOT _tests_root MATCHES "/quality/tests$")
+                message(WARNING "[migration-warning] Using legacy tests root: ${_tests_root}")
+            endif()
+            break()
+        endif()
+    endforeach()
+
+    if(NOT BHARAT_TESTS_ROOT)
+        message(FATAL_ERROR "No tests root found in quality/tests or tests")
+    endif()
+
+    add_subdirectory("${BHARAT_TESTS_ROOT}" "${CMAKE_BINARY_DIR}/bharat_tests")
 endif()
 
 # Host-test compatibility targets:
