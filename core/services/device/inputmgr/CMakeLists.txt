@@ -7,7 +7,7 @@ add_library(inputmgr STATIC
 target_include_directories(inputmgr PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     ${CMAKE_SOURCE_DIR}/interface/uapi
-    ${CMAKE_SOURCE_DIR}/drivers/input/include
+    ${CMAKE_SOURCE_DIR}/core/drivers/input/include
 )
 
 target_link_libraries(inputmgr PRIVATE bharat_user_buildopts bharat_freestanding)

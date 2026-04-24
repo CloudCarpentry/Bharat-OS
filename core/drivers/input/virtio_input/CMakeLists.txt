@@ -10,5 +10,5 @@ endif()
 
 add_library(bharatos_driver_input_virtio_input STATIC ${BHARAT_DRIVER_VIRTIO_INPUT_SOURCES})
 target_include_directories(bharatos_driver_input_virtio_input PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_include_directories(bharatos_driver_input_virtio_input PRIVATE ${CMAKE_SOURCE_DIR}/drivers/input/include)
+target_include_directories(bharatos_driver_input_virtio_input PRIVATE ${CMAKE_SOURCE_DIR}/core/drivers/input/include)
 target_compile_options(bharatos_driver_input_virtio_input PRIVATE -ffreestanding -nostdlib -Wall)

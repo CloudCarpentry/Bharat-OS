@@ -13,11 +13,11 @@ add_library(hal_common OBJECT
 )
 
 target_include_directories(hal_common PRIVATE 
-    ${CMAKE_SOURCE_DIR}/hal/include
-    ${CMAKE_SOURCE_DIR}/kernel/src
-    ${CMAKE_SOURCE_DIR}/kernel/include 
-    ${CMAKE_SOURCE_DIR}/kernel/include/generated 
-    ${CMAKE_SOURCE_DIR}/drivers/include
+    ${CMAKE_SOURCE_DIR}/core/hal/include
+    ${CMAKE_SOURCE_DIR}/core/kernel/src
+    ${CMAKE_SOURCE_DIR}/core/kernel/include 
+    ${CMAKE_SOURCE_DIR}/core/kernel/include/generated 
+    ${CMAKE_SOURCE_DIR}/core/drivers/include
     ${CMAKE_SOURCE_DIR}/interface/include)
 target_link_libraries(hal_common PRIVATE bharat_freestanding bharat_kernel_buildopts)
 

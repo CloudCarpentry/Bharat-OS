@@ -21,6 +21,6 @@ target_include_directories(k_init PRIVATE
     ${CMAKE_SOURCE_DIR}/interface/include
     ${BHARAT_LIB_ROOT}/include
     ${BHARAT_BOOT_INCLUDE_DIR}
-    ${CMAKE_SOURCE_DIR}/services/core/subsysmgr/include
+    ${CMAKE_SOURCE_DIR}/core/services/core/subsysmgr/include
 )
 target_link_libraries(k_init PRIVATE bharat_freestanding bharat_kernel_buildopts)

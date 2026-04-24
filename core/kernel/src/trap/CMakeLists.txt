@@ -5,5 +5,5 @@ add_library(k_trap OBJECT
     ../../src/fault_diag.c
 )
 
-target_include_directories(k_trap PRIVATE ../../include ../../include/generated ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/lib/include ${BHARAT_BOOT_INCLUDE_DIR})
+target_include_directories(k_trap PRIVATE ../../include ../../include/generated ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/lib/include ${BHARAT_BOOT_INCLUDE_DIR})
 target_link_libraries(k_trap PRIVATE bharat_freestanding bharat_kernel_buildopts)

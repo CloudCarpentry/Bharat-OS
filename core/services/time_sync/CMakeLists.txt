@@ -12,5 +12,5 @@ if (BHARAT_AUTOMOTIVE_PROFILE)
             bharat_libipc
             bharat_libcap
     )
-    target_include_directories(time_sync_service PRIVATE ${CMAKE_SOURCE_DIR}/services/include)
+    target_include_directories(time_sync_service PRIVATE ${CMAKE_SOURCE_DIR}/core/services/include)
 endif()

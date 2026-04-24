@@ -22,5 +22,6 @@ int32_t process_manager_handle_create(const pm_req_create_t *req, pm_resp_create
 int32_t process_manager_handle_start(const pm_req_start_t *req, pm_resp_start_t *resp);
 int32_t process_manager_handle_stop(const pm_req_stop_t *req, pm_resp_stop_t *resp);
 int32_t process_manager_handle_query(const pm_req_query_t *req, pm_resp_query_t *resp);
+int32_t process_manager_authorize(uint32_t opcode, const void *req, bharat_cap_handle_t caller_cap);
 
 #endif // PROCESS_MANAGER_H

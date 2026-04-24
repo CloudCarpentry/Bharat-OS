@@ -3,7 +3,7 @@ project(BharatOS-Tests C)
 
 enable_testing()
 
-if(EXISTS "${CMAKE_SOURCE_DIR}/kernel" AND EXISTS "${CMAKE_SOURCE_DIR}/tests")
+if(EXISTS "${CMAKE_SOURCE_DIR}/core/kernel" AND EXISTS "${CMAKE_SOURCE_DIR}/core/tests")
     set(REPO_ROOT "${CMAKE_SOURCE_DIR}")
 elseif(EXISTS "${CMAKE_SOURCE_DIR}/../kernel")
     get_filename_component(REPO_ROOT "${CMAKE_SOURCE_DIR}/.." ABSOLUTE)
@@ -251,7 +251,7 @@ if (EXISTS "${CMAKE_SOURCE_DIR}/core/personalities/compat/android/android_person
         ../core/personalities/common/translation_events.c
         subsys/test_personality_stubs.c
     )
-    target_include_directories(test_android_personality PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/core/lib/include ${CMAKE_SOURCE_DIR}/core/services/core/subsysmgr/include)
+    target_include_directories(test_android_personality PRIVATE ${CMAKE_SOURCE_DIR}/core/kernel/include ${CMAKE_SOURCE_DIR}/core/lib/include ${CMAKE_SOURCE_DIR}/core/services/core/subsysmgr/include)
     add_test(NAME test_android_personality COMMAND test_android_personality)
 
     if (EXISTS "${CMAKE_SOURCE_DIR}/core/personalities/compat/linux/linux_compat.c")
@@ -261,7 +261,7 @@ if (EXISTS "${CMAKE_SOURCE_DIR}/core/personalities/compat/android/android_person
             ../core/personalities/compat/android/android_binder_dist.c
             ../core/personalities/common/translation_events.c
         )
-        target_include_directories(test_personality_translation_guards PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/core/lib/include ${CMAKE_SOURCE_DIR}/core/services/core/subsysmgr/include)
+        target_include_directories(test_personality_translation_guards PRIVATE ${CMAKE_SOURCE_DIR}/core/kernel/include ${CMAKE_SOURCE_DIR}/core/lib/include ${CMAKE_SOURCE_DIR}/core/services/core/subsysmgr/include)
         add_test(NAME test_personality_translation_guards COMMAND test_personality_translation_guards)
     endif()
 endif()
@@ -419,7 +419,7 @@ add_test(NAME test_benchmark_hw_caps COMMAND test_benchmark_hw_caps)
 add_executable(test_syscall_abi test_syscall_abi.c)
 target_include_directories(test_syscall_abi PRIVATE
     ${CMAKE_SOURCE_DIR}/interface/include
-    ${CMAKE_SOURCE_DIR}/kernel/include
+    ${CMAKE_SOURCE_DIR}/core/kernel/include
 )
 add_test(NAME SyscallABITest COMMAND test_syscall_abi)
 
@@ -565,8 +565,8 @@ add_executable(test_constraint_validation
     core/test_constraint_validation.c
 )
 target_include_directories(test_constraint_validation PRIVATE
-    ${CMAKE_SOURCE_DIR}/kernel/include
+    ${CMAKE_SOURCE_DIR}/core/kernel/include
     ${CMAKE_SOURCE_DIR}/interface/uapi
 )
-target_sources(test_constraint_validation PRIVATE ${CMAKE_SOURCE_DIR}/kernel/src/core/constraints/constraints_common.c ${CMAKE_SOURCE_DIR}/kernel/src/core/constraints/constraint_validate.c)
+target_sources(test_constraint_validation PRIVATE ${CMAKE_SOURCE_DIR}/core/kernel/src/core/constraints/constraints_common.c ${CMAKE_SOURCE_DIR}/core/kernel/src/core/constraints/constraint_validate.c)
 add_test(NAME test_constraint_validation COMMAND test_constraint_validation)

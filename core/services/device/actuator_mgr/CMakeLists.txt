@@ -12,5 +12,5 @@ if (BHARAT_AUTOMOTIVE_PROFILE)
             bharat_libipc
             bharat_libcap
     )
-    target_include_directories(actuator_mgr_service PRIVATE ${CMAKE_SOURCE_DIR}/services/include ${CMAKE_SOURCE_DIR}/drivers/include)
+    target_include_directories(actuator_mgr_service PRIVATE ${CMAKE_SOURCE_DIR}/core/services/include ${CMAKE_SOURCE_DIR}/core/drivers/include)
 endif()

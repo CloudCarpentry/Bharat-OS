@@ -15,6 +15,6 @@ endif()
 
 add_library(bharatos_driver_display STATIC ${BHARAT_DRIVER_DISPLAY_SOURCES})
 target_include_directories(bharatos_driver_display PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../include)
-target_include_directories(bharatos_driver_display PRIVATE ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/kernel/include)
+target_include_directories(bharatos_driver_display PRIVATE ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/kernel/include)
 target_link_libraries(bharatos_driver_display PRIVATE bharat_kernel_buildopts bharat_freestanding bharat_generated_includes)
 target_compile_options(bharatos_driver_display PRIVATE -ffreestanding -nostdlib -Wall)

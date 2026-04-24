@@ -5,13 +5,13 @@ add_library(subsys_manager STATIC
     ../../../personalities/common/version_registry.c
 )
 target_include_directories(subsys_manager PUBLIC
-    ${CMAKE_SOURCE_DIR}/services/core/subsysmgr/include
-    ${CMAKE_SOURCE_DIR}/kernel/include
-    ${CMAKE_SOURCE_DIR}/lib/include
-    ${CMAKE_SOURCE_DIR}/lib/packet/include
-    ${CMAKE_SOURCE_DIR}/hal/include
+    ${CMAKE_SOURCE_DIR}/core/services/core/subsysmgr/include
+    ${CMAKE_SOURCE_DIR}/core/kernel/include
+    ${CMAKE_SOURCE_DIR}/core/lib/include
+    ${CMAKE_SOURCE_DIR}/core/lib/packet/include
+    ${CMAKE_SOURCE_DIR}/core/hal/include
     ${CMAKE_SOURCE_DIR}/interface/include
-    ${CMAKE_SOURCE_DIR}/stacks/network/include
+    ${CMAKE_SOURCE_DIR}/core/stacks/network/include
 )
 target_link_libraries(subsys_manager PUBLIC
     bharat_freestanding
