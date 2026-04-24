@@ -25,7 +25,8 @@ This plan is based on the current repo layout and build system behavior (`build.
 | C3 | Interface `sdk/` move | ✅ Completed | `interface/sdk/` is now authoritative; legacy `sdk` path is preserved as a compatibility symlink. |
 | D1 | `boot/` to `core/boot/` | 🚧 In progress | D1a + D1b completed: sources/common/include/discovery/protocols are now canonical in `core/boot/*`; legacy `boot/*` wrappers remain for compatibility. |
 | D2 | `kernel/` to `core/kernel/` | 🚧 In progress | D2a completed: `kernel/src/{core,init,boot}` migrated to `core/kernel/src/*`; D2b completed: `kernel/include` moved to `core/kernel/include`; D2c completed: remaining `kernel/src/*` moved into `core/kernel/src/*` with legacy symlink wrappers retained at `kernel/src/*`. |
-| D3 | `arch/` + `hal/` to `core/*` | 🚧 In progress | D3a completed: `arch/` moved to canonical `core/arch/` with legacy `arch` symlink compatibility and top-level CMake wiring updated to prefer `core/arch`. D3b completed: `hal/` moved to canonical `core/hal/` with legacy `hal` symlink compatibility and top-level CMake wiring updated to prefer `core/hal`. |
+| D3 | `arch/` + `hal/` to `core/*` | ✅ Completed | D3a completed: `arch/` moved to canonical `core/arch/` with legacy `arch` symlink compatibility and top-level CMake wiring updated to prefer `core/arch`. D3b completed: `hal/` moved to canonical `core/hal/` with legacy `hal` symlink compatibility and top-level CMake wiring updated to prefer `core/hal`. |
+| D4 | `lib/` + `stacks/` to `core/*` (bounded slice) | 🚧 In progress | D4a completed: `lib/` and `stacks/` moved to canonical `core/lib` and `core/stacks`; legacy `lib` and `stacks` symlinks retained for compatibility. |
 
 ---
 
@@ -469,7 +470,7 @@ This section converts the phase model into concrete, code-aware slices from the 
 **Scope order**
 1. `idl/` -> `interface/idl/` (completed),
 2. `uapi/` -> `interface/uapi/` (completed),
-3. remaining `sdk/` modules -> `interface/sdk/` (next).
+3. remaining `sdk/` modules -> `interface/sdk/` (completed).
 
 **Code tasks**
 - One subtree move per PR.
@@ -513,9 +514,10 @@ This section converts the phase model into concrete, code-aware slices from the 
   - Top-level build wiring now resolves architecture layer via `add_subdirectory(core/arch)` while legacy path references continue to resolve through the symlink.
   - D3b (completed): moved `hal/` to `core/hal/`; retained `hal` compatibility symlink so existing source references remain valid during transition.
   - Top-level build wiring now resolves the HAL layer via `add_subdirectory(core/hal)` while legacy path references continue to resolve through the symlink.
-- **D4 (next): platform/services/lib ecosystem**
-  - Move `lib` and `stacks` first (low coupling), then `platform`, `drivers`, `services`, `personalities`.
-  - Keep temporary compatibility roots for one full phase before strict mode.
+- **D4 (active): platform/services/lib ecosystem**
+  - D4a (completed): moved `lib/` to `core/lib/` and `stacks/` to `core/stacks/`; retained `lib` and `stacks` as compatibility symlinks.
+  - Top-level build wiring now prefers canonical `add_subdirectory(core/lib)` and `add_subdirectory(core/stacks)` while legacy path references still resolve through symlinks.
+  - D4b (next): move `platform`, then `drivers`, `services`, `personalities` in bounded slices with compatibility roots.
 
 ---
 
