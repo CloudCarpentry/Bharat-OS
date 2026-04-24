@@ -1,1 +1,0 @@
-../core/kernel/linker_riscv32.ld

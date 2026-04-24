@@ -13,52 +13,28 @@ endif()
 
 add_library(bharat_kernel_includes INTERFACE)
 
-function(bharat_select_root out_var canonical_root legacy_root sentinel_rel kind_label)
-    set(_candidates "${canonical_root}" "${legacy_root}")
-    set(_selected "")
-    foreach(_candidate IN LISTS _candidates)
-        if(EXISTS "${_candidate}/${sentinel_rel}")
-            set(_selected "${_candidate}")
-            if(_candidate STREQUAL "${legacy_root}")
-                message(WARNING "[migration-warning] Using legacy ${kind_label} root: ${_candidate}")
-            endif()
-            break()
-        endif()
-    endforeach()
-    if(NOT _selected)
-        message(FATAL_ERROR "No ${kind_label} root found in ${canonical_root} or ${legacy_root}")
+function(bharat_require_root out_var canonical_root sentinel_rel kind_label)
+    if(NOT EXISTS "${canonical_root}/${sentinel_rel}")
+        message(FATAL_ERROR "Missing canonical ${kind_label} root: ${canonical_root}")
     endif()
-    set(${out_var} "${_selected}" PARENT_SCOPE)
+    set(${out_var} "${canonical_root}" PARENT_SCOPE)
 endfunction()
 
-bharat_select_root(BHARAT_ARCH_ROOT "${CMAKE_SOURCE_DIR}/core/arch" "${CMAKE_SOURCE_DIR}/arch" "x86/x86_64/boot/boot.S" "arch")
-bharat_select_root(BHARAT_HAL_ROOT "${CMAKE_SOURCE_DIR}/core/hal" "${CMAKE_SOURCE_DIR}/hal" "common/discovery.c" "hal")
-bharat_select_root(BHARAT_PLATFORM_ROOT "${CMAKE_SOURCE_DIR}/core/platform" "${CMAKE_SOURCE_DIR}/platform" "boards/qemu-virt-x86_64/board.c" "platform")
-bharat_select_root(BHARAT_LIB_ROOT "${CMAKE_SOURCE_DIR}/core/lib" "${CMAKE_SOURCE_DIR}/lib" "include/ipc_user.h" "lib")
-bharat_select_root(BHARAT_KERNEL_STAGING_ROOT "${CMAKE_SOURCE_DIR}/core/kernel/staging" "${CMAKE_SOURCE_DIR}/kernel/staging" "ai/ai_kernel_bridge.c" "kernel staging")
-set(BHARAT_KERNEL_INCLUDE_CANDIDATES
-    ${CMAKE_SOURCE_DIR}/core/kernel/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-)
-set(BHARAT_KERNEL_INCLUDE_DIR "")
-foreach(_kernel_include IN LISTS BHARAT_KERNEL_INCLUDE_CANDIDATES)
-    if(EXISTS "${_kernel_include}/bharat_config.h.in")
-        set(BHARAT_KERNEL_INCLUDE_DIR "${_kernel_include}")
-        if(_kernel_include MATCHES "/kernel/include$" AND NOT _kernel_include MATCHES "/core/kernel/include$")
-            message(WARNING "[migration-warning] Using legacy kernel include root: ${_kernel_include}")
-        endif()
-        break()
-    endif()
-endforeach()
-if(NOT BHARAT_KERNEL_INCLUDE_DIR)
-    message(FATAL_ERROR "No kernel include root found in core/kernel/include or kernel/include")
+bharat_require_root(BHARAT_ARCH_ROOT "${CMAKE_SOURCE_DIR}/core/arch" "x86/x86_64/boot/boot.S" "arch")
+bharat_require_root(BHARAT_HAL_ROOT "${CMAKE_SOURCE_DIR}/core/hal" "common/discovery.c" "hal")
+bharat_require_root(BHARAT_PLATFORM_ROOT "${CMAKE_SOURCE_DIR}/core/platform" "boards/qemu-virt-x86_64/board.c" "platform")
+bharat_require_root(BHARAT_LIB_ROOT "${CMAKE_SOURCE_DIR}/core/lib" "include/ipc_user.h" "lib")
+bharat_require_root(BHARAT_KERNEL_STAGING_ROOT "${CMAKE_SOURCE_DIR}/core/kernel/staging" "ai/ai_kernel_bridge.c" "kernel staging")
+set(BHARAT_KERNEL_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/core/kernel/include")
+if(NOT EXISTS "${BHARAT_KERNEL_INCLUDE_DIR}/bharat_config.h.in")
+    message(FATAL_ERROR "Missing canonical kernel include root: ${BHARAT_KERNEL_INCLUDE_DIR}")
 endif()
 
 target_include_directories(bharat_kernel_includes INTERFACE
     ${BHARAT_KERNEL_INCLUDE_DIR}
     ${BHARAT_KERNEL_INCLUDE_DIR}/generated
     ${BHARAT_HAL_ROOT}/include
-    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/interface/include
     ${BHARAT_LIB_ROOT}/include
     ${BHARAT_BOOT_INCLUDE_DIR}
     ${BHARAT_HAL_ROOT}/include
@@ -353,7 +329,7 @@ if(BHARAT_ENABLE_ADVANCED_VM)
         src/mm/tlb/monitor_client.c
         src/mm/vm/aspace/aspace_switch.c
     )
-    target_include_directories(bharat_mm_tlb PRIVATE ${CMAKE_SOURCE_DIR}/services/core/subsysmgr/include)
+    target_include_directories(bharat_mm_tlb PRIVATE ${CMAKE_SOURCE_DIR}/core/services/core/subsysmgr/include)
     target_link_libraries(bharat_mm_tlb PRIVATE bharat_kernel_includes bharat_kernel_buildopts)
     target_compile_options(bharat_mm_tlb PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
 
@@ -370,22 +346,9 @@ if(BHARAT_ENABLE_ADVANCED_VM)
     target_compile_options(bharat_mm_vmm PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
 endif()
 # ── Core kernel sources ──────────────────────────────────────────────────────
-set(BHARAT_KERNEL_SRC_ROOT_CANDIDATES
-    "${CMAKE_SOURCE_DIR}/core/kernel/src"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src"
-)
-set(BHARAT_KERNEL_SRC_ROOT "")
-foreach(_kernel_src_root IN LISTS BHARAT_KERNEL_SRC_ROOT_CANDIDATES)
-    if(EXISTS "${_kernel_src_root}/core/CMakeLists.txt" AND EXISTS "${_kernel_src_root}/init/CMakeLists.txt")
-        set(BHARAT_KERNEL_SRC_ROOT "${_kernel_src_root}")
-        if(_kernel_src_root MATCHES "/kernel/src$" AND NOT _kernel_src_root MATCHES "/core/kernel/src$")
-            message(WARNING "[migration-warning] Using legacy kernel source root: ${_kernel_src_root}")
-        endif()
-        break()
-    endif()
-endforeach()
-if(NOT BHARAT_KERNEL_SRC_ROOT)
-    message(FATAL_ERROR "No kernel source root found in core/kernel/src or kernel/src")
+set(BHARAT_KERNEL_SRC_ROOT "${CMAKE_SOURCE_DIR}/core/kernel/src")
+if(NOT EXISTS "${BHARAT_KERNEL_SRC_ROOT}/core/CMakeLists.txt" OR NOT EXISTS "${BHARAT_KERNEL_SRC_ROOT}/init/CMakeLists.txt")
+    message(FATAL_ERROR "Missing canonical kernel source root: ${BHARAT_KERNEL_SRC_ROOT}")
 endif()
 
 add_subdirectory("${BHARAT_KERNEL_SRC_ROOT}/core" "${CMAKE_CURRENT_BINARY_DIR}/src_core")

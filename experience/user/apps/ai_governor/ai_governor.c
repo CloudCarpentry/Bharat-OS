@@ -3,9 +3,8 @@
 #include <unistd.h>
 // Include the new AI scheduler headers
 // Note: In a real build system, the include path might need to be adjusted
-#include "../../kernel/include/sched/ai_sched.h"
-
-#include "../../kernel/include/subsystem_profile.h"
+#include "sched/ai_sched.h"
+#include "subsystem_profile.h"
 
 typedef enum {
     PROFILE_TIER_A,

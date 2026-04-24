@@ -3,23 +3,9 @@ project(BharatOS VERSION 0.8.0 LANGUAGES C ASM)
 
 enable_testing()
 
-# Resolve canonical CMake asset root with legacy fallback during migration
-set(BHARAT_CMAKE_ROOT_CANDIDATES
-    "${CMAKE_SOURCE_DIR}/delivery/cmake"
-    "${CMAKE_SOURCE_DIR}/cmake"
-)
-set(BHARAT_CMAKE_ROOT "")
-foreach(_cmake_root IN LISTS BHARAT_CMAKE_ROOT_CANDIDATES)
-    if(EXISTS "${_cmake_root}")
-        set(BHARAT_CMAKE_ROOT "${_cmake_root}")
-        if(_cmake_root MATCHES "/cmake$" AND NOT _cmake_root MATCHES "/delivery/cmake$")
-            message(WARNING "[migration-warning] Using legacy CMake root: ${_cmake_root}")
-        endif()
-        break()
-    endif()
-endforeach()
-if(NOT BHARAT_CMAKE_ROOT)
-    message(FATAL_ERROR "No CMake root found in delivery/cmake or cmake")
+set(BHARAT_CMAKE_ROOT "${CMAKE_SOURCE_DIR}/delivery/cmake")
+if(NOT EXISTS "${BHARAT_CMAKE_ROOT}")
+    message(FATAL_ERROR "Missing canonical CMake root: ${BHARAT_CMAKE_ROOT}")
 endif()
 
 # Make the modules directory visible to CMake
@@ -361,24 +347,10 @@ add_subdirectory(core/arch)
 add_subdirectory(core/boot)
 add_subdirectory(core/hal)
 add_subdirectory(core/platform)
-set(BHARAT_KERNEL_CMAKE_CANDIDATES
-    "${CMAKE_SOURCE_DIR}/core/kernel/CMakeLists.txt"
-    "${CMAKE_SOURCE_DIR}/kernel/CMakeLists.txt"
-)
-set(BHARAT_KERNEL_SUBDIR "")
-foreach(_kernel_cmake IN LISTS BHARAT_KERNEL_CMAKE_CANDIDATES)
-    if(EXISTS "${_kernel_cmake}")
-        get_filename_component(BHARAT_KERNEL_SUBDIR "${_kernel_cmake}" DIRECTORY)
-        if(BHARAT_KERNEL_SUBDIR MATCHES "/kernel$" AND NOT BHARAT_KERNEL_SUBDIR MATCHES "/core/kernel$")
-            message(WARNING "[migration-warning] Using legacy kernel CMake root: ${BHARAT_KERNEL_SUBDIR}")
-        endif()
-        break()
-    endif()
-endforeach()
-if(NOT BHARAT_KERNEL_SUBDIR)
-    message(FATAL_ERROR "No kernel CMake root found in core/kernel or kernel")
+if(NOT EXISTS "${CMAKE_SOURCE_DIR}/core/kernel/CMakeLists.txt")
+    message(FATAL_ERROR "Missing canonical kernel CMake root: ${CMAKE_SOURCE_DIR}/core/kernel")
 endif()
-add_subdirectory(${BHARAT_KERNEL_SUBDIR} kernel)
+add_subdirectory(core/kernel kernel)
 add_subdirectory(core/lib)
 add_subdirectory(core/drivers)
 add_subdirectory(core/services)
