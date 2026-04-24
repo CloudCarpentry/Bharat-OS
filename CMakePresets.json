@@ -12,7 +12,7 @@
       "description": "Host build for tests on Linux using Clang",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/host-test",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/host-linux-clang.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/host-linux-clang.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "BHARAT_BUILD_HOST_TESTS": "ON",
@@ -26,7 +26,7 @@
       "description": "Cross-compile for Tiny MPU profile on Linux",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/tiny-mpu-debug",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/arm32-elf.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/arm32-elf.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "ARCH": "arm32",
@@ -51,7 +51,7 @@
       "description": "Cross-compile for Tiny MPU profile on Linux",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/tiny-mpu-release",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/arm32-elf.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/arm32-elf.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "ARCH": "arm32",
@@ -76,7 +76,7 @@
       "description": "Cross-compile for Edge MMU-Lite profile on Linux",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/edge-mmu-lite-debug",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/aarch64-elf-clang.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/aarch64-elf-clang.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "ARCH": "arm64",
@@ -101,7 +101,7 @@
       "description": "Cross-compile for Full VM profile on Linux",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/gp-fullvm-release",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/x86_64-elf-clang.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/x86_64-elf-clang.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "ARCH": "x86_64",
@@ -126,7 +126,7 @@
       "description": "Cross-compile for Full VM profile on Linux",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/gp-fullvm-debug",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/x86_64-elf-clang.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/x86_64-elf-clang.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "ARCH": "x86_64",
@@ -151,7 +151,7 @@
       "description": "CI smoke tests build on Linux using Clang",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/ci-smoke",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/host-linux-clang.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/host-linux-clang.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "BHARAT_BUILD_HOST_TESTS": "ON",
@@ -165,7 +165,7 @@
       "description": "Cross-compile x86_64 target on Linux (Release)",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/x86_64-dev",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/x86_64-elf-clang.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/x86_64-elf-clang.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "BHARAT_DEVICE_PROFILE": "DESKTOP",
@@ -178,7 +178,7 @@
       "description": "Cross-compile x86_64 target on Linux (Debug)",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/x86_64-debug",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/x86_64-elf-clang.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/x86_64-elf-clang.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "BHARAT_DEVICE_PROFILE": "DESKTOP",
@@ -192,7 +192,7 @@
       "description": "Cross-compile ARM64 Edge profile on Linux",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/arm64-edge",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/aarch64-elf-clang.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/aarch64-elf-clang.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "BHARAT_DEVICE_PROFILE": "EDGE",
@@ -233,7 +233,7 @@
       "description": "Cross-compile RISC-V Edge profile on Linux",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/riscv64-edge",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/riscv64-elf-clang.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/riscv64-elf-clang.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "BHARAT_DEVICE_PROFILE": "EDGE",
@@ -246,7 +246,7 @@
       "description": "Cross-compile ARM32 Edge profile on Linux",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/arm32-edge",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/arm32-elf.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/arm32-elf.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "BHARAT_DEVICE_PROFILE": "EDGE",
@@ -259,7 +259,7 @@
       "description": "Cross-compile ARM32 MMU-lite profile for QEMU headless runs",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/arm32-qemu-mmu-lite-headless",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/arm32-elf.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/arm32-elf.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "ARCH": "arm32",
@@ -287,7 +287,7 @@
       "description": "Cross-compile RISC-V32 Edge profile on Linux",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/riscv32-edge",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/riscv32-elf.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/riscv32-elf.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "BHARAT_DEVICE_PROFILE": "EDGE",
@@ -300,7 +300,7 @@
       "description": "Cross-compile RISCV32 MMU-lite profile for QEMU headless runs",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/riscv32-qemu-mmu-lite-headless",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/riscv32-elf.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/riscv32-elf.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "ARCH": "riscv32",
@@ -328,7 +328,7 @@
       "description": "ARM64 build optimized for GUI/QEMU console development",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/arm64-gui",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/aarch64-elf-clang.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/aarch64-elf-clang.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "BHARAT_DEVICE_PROFILE": "EDGE",
@@ -342,7 +342,7 @@
       "description": "RISC-V64 build optimized for GUI/QEMU console development",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/riscv64-gui",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/riscv64-elf-clang.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/riscv64-elf-clang.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "BHARAT_DEVICE_PROFILE": "EDGE",
@@ -356,7 +356,7 @@
       "description": "Cross-compile ARM64 Automobile profile on Linux",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/arm64-automobile-debug",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/aarch64-elf-clang.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/aarch64-elf-clang.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "BHARAT_DEVICE_PROFILE": "AUTOMOBILE",
@@ -370,7 +370,7 @@
       "description": "Cross-compile ARM64 Automobile profile on Linux",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/arm64-automobile-release",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/aarch64-elf-clang.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/aarch64-elf-clang.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "BHARAT_DEVICE_PROFILE": "AUTOMOBILE",
@@ -384,7 +384,7 @@
       "description": "Cross-compile RISC-V64 EV Automobile profile on Linux",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/riscv64-ev-automobile-debug",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/riscv64-elf-clang.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/riscv64-elf-clang.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "BHARAT_DEVICE_PROFILE": "EV_AUTOMOBILE",
@@ -398,7 +398,7 @@
       "description": "Cross-compile RISC-V64 EV Automobile profile on Linux",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/riscv64-ev-automobile-release",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/riscv64-elf-clang.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/riscv64-elf-clang.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "BHARAT_DEVICE_PROFILE": "EV_AUTOMOBILE",
@@ -412,7 +412,7 @@
       "description": "Cross-compile ARM32 Drone profile on Linux",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/arm32-drone-debug",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/arm32-elf.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/arm32-elf.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "BHARAT_DEVICE_PROFILE": "DRONE",
@@ -426,7 +426,7 @@
       "description": "Cross-compile ARM32 Drone profile on Linux",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/arm32-drone-release",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/arm32-elf.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/arm32-elf.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "BHARAT_DEVICE_PROFILE": "DRONE",
@@ -440,7 +440,7 @@
       "description": "Cross-compile RISC-V32 Robot profile on Linux",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/riscv32-robot-debug",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/riscv32-elf.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/riscv32-elf.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "BHARAT_DEVICE_PROFILE": "ROBOT",
@@ -454,7 +454,7 @@
       "description": "Cross-compile RISC-V32 Robot profile on Linux",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/riscv32-robot-release",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/riscv32-elf.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/riscv32-elf.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "BHARAT_DEVICE_PROFILE": "ROBOT",
@@ -468,7 +468,7 @@
       "description": "Cross-compile ARM64 Medical profile on Linux",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/arm64-medical-debug",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/aarch64-elf-clang.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/aarch64-elf-clang.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "BHARAT_DEVICE_PROFILE": "MEDICAL",
@@ -482,7 +482,7 @@
       "description": "Cross-compile ARM64 Medical profile on Linux",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/arm64-medical-release",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/aarch64-elf-clang.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/aarch64-elf-clang.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "BHARAT_DEVICE_PROFILE": "MEDICAL",
@@ -496,7 +496,7 @@
       "description": "Cross-compile RISC-V64 Medical profile on Linux",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/riscv64-medical-debug",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/riscv64-elf-clang.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/riscv64-elf-clang.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "BHARAT_DEVICE_PROFILE": "MEDICAL",
@@ -510,7 +510,7 @@
       "description": "Cross-compile RISC-V64 Medical profile on Linux",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/riscv64-medical-release",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/riscv64-elf-clang.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/riscv64-elf-clang.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "BHARAT_DEVICE_PROFILE": "MEDICAL",
@@ -524,7 +524,7 @@
       "description": "Cross-compile x86_64 Laptop profile on Linux",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/x86_64-laptop-debug",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/x86_64-elf-clang.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/x86_64-elf-clang.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "BHARAT_DEVICE_PROFILE": "LAPTOP",
@@ -538,7 +538,7 @@
       "description": "Cross-compile x86_64 Laptop profile on Linux",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/x86_64-laptop-release",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/x86_64-elf-clang.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/x86_64-elf-clang.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "BHARAT_DEVICE_PROFILE": "LAPTOP",
@@ -552,7 +552,7 @@
       "description": "Cross-compile ARM64 Laptop profile on Linux",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/arm64-laptop-debug",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/aarch64-elf-clang.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/aarch64-elf-clang.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "BHARAT_DEVICE_PROFILE": "LAPTOP",
@@ -566,7 +566,7 @@
       "description": "Cross-compile ARM64 Laptop profile on Linux",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/arm64-laptop-release",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/aarch64-elf-clang.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/aarch64-elf-clang.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "BHARAT_DEVICE_PROFILE": "LAPTOP",
@@ -580,7 +580,7 @@
       "description": "Cross-compile RISC-V64 Laptop profile on Linux",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/riscv64-laptop-debug",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/riscv64-elf-clang.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/riscv64-elf-clang.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "BHARAT_DEVICE_PROFILE": "LAPTOP",
@@ -594,7 +594,7 @@
       "description": "Cross-compile RISC-V64 Laptop profile on Linux",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/riscv64-laptop-release",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/riscv64-elf-clang.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/riscv64-elf-clang.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "BHARAT_DEVICE_PROFILE": "LAPTOP",
@@ -608,7 +608,7 @@
       "description": "Cross-compile ARM64 Mobile profile on Linux",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/arm64-mobile-debug",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/aarch64-elf-clang.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/aarch64-elf-clang.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "BHARAT_DEVICE_PROFILE": "MOBILE",
@@ -622,7 +622,7 @@
       "description": "Cross-compile ARM64 Mobile profile on Linux",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/arm64-mobile-release",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/aarch64-elf-clang.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/aarch64-elf-clang.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "BHARAT_DEVICE_PROFILE": "MOBILE",
@@ -636,7 +636,7 @@
       "description": "Cross-compile RISC-V64 Mobile profile on Linux",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/riscv64-mobile-debug",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/riscv64-elf-clang.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/riscv64-elf-clang.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "BHARAT_DEVICE_PROFILE": "MOBILE",
@@ -650,7 +650,7 @@
       "description": "Cross-compile RISC-V64 Mobile profile on Linux",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/riscv64-mobile-release",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/riscv64-elf-clang.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/riscv64-elf-clang.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "BHARAT_DEVICE_PROFILE": "MOBILE",
@@ -664,7 +664,7 @@
       "description": "Cross-compile ARM32 IOT profile on Linux",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/arm32-iot-debug",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/arm32-elf.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/arm32-elf.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "BHARAT_DEVICE_PROFILE": "IOT",
@@ -678,7 +678,7 @@
       "description": "Cross-compile ARM32 IOT profile on Linux",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/arm32-iot-release",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/arm32-elf.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/arm32-elf.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "BHARAT_DEVICE_PROFILE": "IOT",
@@ -692,7 +692,7 @@
       "description": "Cross-compile RISC-V32 IOT profile on Linux",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/riscv32-iot-debug",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/riscv32-elf-clang.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/riscv32-elf-clang.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "BHARAT_DEVICE_PROFILE": "IOT",
@@ -706,7 +706,7 @@
       "description": "Cross-compile RISC-V32 IOT profile on Linux",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/riscv32-iot-release",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/riscv32-elf-clang.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/riscv32-elf-clang.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "BHARAT_DEVICE_PROFILE": "IOT",
@@ -720,7 +720,7 @@
       "description": "Build with all scaffold-heavy experimental service groups enabled",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/experimental-services",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/x86_64-elf-clang.cmake",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/x86_64-elf-clang.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "BHARAT_DEVICE_PROFILE": "DESKTOP",

@@ -3,15 +3,34 @@ project(BharatOS VERSION 0.8.0 LANGUAGES C ASM)
 
 enable_testing()
 
+# Resolve canonical CMake asset root with legacy fallback during migration
+set(BHARAT_CMAKE_ROOT_CANDIDATES
+    "${CMAKE_SOURCE_DIR}/delivery/cmake"
+    "${CMAKE_SOURCE_DIR}/cmake"
+)
+set(BHARAT_CMAKE_ROOT "")
+foreach(_cmake_root IN LISTS BHARAT_CMAKE_ROOT_CANDIDATES)
+    if(EXISTS "${_cmake_root}")
+        set(BHARAT_CMAKE_ROOT "${_cmake_root}")
+        if(_cmake_root MATCHES "/cmake$" AND NOT _cmake_root MATCHES "/delivery/cmake$")
+            message(WARNING "[migration-warning] Using legacy CMake root: ${_cmake_root}")
+        endif()
+        break()
+    endif()
+endforeach()
+if(NOT BHARAT_CMAKE_ROOT)
+    message(FATAL_ERROR "No CMake root found in delivery/cmake or cmake")
+endif()
+
 # Make the modules directory visible to CMake
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/modules")
+list(APPEND CMAKE_MODULE_PATH "${BHARAT_CMAKE_ROOT}/modules")
 
 # Load Common Build Policies
 include(BharatCommon)
 include(BharatProfiles)
 include(BharatPersonality)
 include(BharatComponentPolicy)
-include(${CMAKE_SOURCE_DIR}/cmake/BharatConstraints.cmake)
+include(${BHARAT_CMAKE_ROOT}/BharatConstraints.cmake)
 
 # Versioning Identity System: Generate and load from manifest
 set(BHARAT_MANIFEST_CANDIDATES
@@ -131,7 +150,7 @@ set(BHARAT_ISA_FEATURES "" CACHE STRING "Target ISA features as a semicolon-sepa
 set(BHARAT_ACCELERATOR_CLASSES "" CACHE STRING "Target accelerator classes as a semicolon-separated list (e.g., gpu;npu;dsp;crypto;vpu)")
 
 # Execution Mode Framework Integration
-set(BHARAT_EXECUTION_MODE_MODULE "${CMAKE_CURRENT_SOURCE_DIR}/cmake/BharatExecutionMode.cmake")
+set(BHARAT_EXECUTION_MODE_MODULE "${BHARAT_CMAKE_ROOT}/BharatExecutionMode.cmake")
 if(EXISTS "${BHARAT_EXECUTION_MODE_MODULE}")
     include("${BHARAT_EXECUTION_MODE_MODULE}")
 else()
