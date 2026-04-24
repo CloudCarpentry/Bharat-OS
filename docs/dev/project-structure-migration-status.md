@@ -7,6 +7,7 @@ This tracker is the execution companion for `project-structure-refactor-plan.md`
 - Phase A (QEMU target YAML relocation): **Completed**.
 - Phase B (tooling compatibility hardening): **Completed** (B.1/B.2/B.3 complete; CI guard now enforces strict mode).
 - Phase B.4 (delivery configs/assets relocation + legacy symlink trimming): **Completed** (`configs/` and `assets/` now canonical under `delivery/`; obsolete `quality/*` compatibility symlink fanout removed).
+- Phase B.5 follow-up (root delivery compatibility cleanup): **Completed** (root `configs`, `assets`, and `targets` symlinks removed after canonical-path migration).
 - Phase C (interface moves): **Completed** (`idl/` + `uapi/` + `sdk` slices completed).
 - Phase D.1 (boot tree migration): **Completed** (D1a/D1b migrated boot sources+headers/protocols/discovery into `core/boot`; D1c wired kernel include selection through migration-aware `BHARAT_BOOT_INCLUDE_DIR`; D1e removed legacy `boot/{src,common,include,discovery,protocols}` symlink fanout and migrated in-repo include path usage to canonical `core/boot/*`; D1f removed legacy `boot/*` fallback selection from `core/kernel` CMake wiring so boot inputs are now canonical-only).
 - Phase D.2c (kernel source tree move, bounded slice): **In progress** (remaining `kernel/src/*` moved to `core/kernel/src/*`; legacy `kernel/src/*` compatibility symlink wrappers retained).
@@ -14,6 +15,7 @@ This tracker is the execution companion for `project-structure-refactor-plan.md`
 - Phase D.4a (lib + stacks bounded move): **In progress** (`lib/` and `stacks/` moved to canonical `core/lib/` and `core/stacks/`; legacy symlink compatibility retained).
 - Phase F.1 (public include tree): **Completed** (`include/` moved to canonical `interface/include/`; legacy `include` retained as symlink).
 - Phase F.2 (user-space tree): **Completed** (`user/` moved to canonical `experience/user/`; legacy `user` retained as symlink and top-level CMake now prefers `experience/user`).
+- Phase F.2 follow-up (root experience/interface/quality symlink trimming): **Completed** (root `user`, `tests`, `idl`, and `sdk` compatibility symlinks removed; `include`/`uapi` kept temporarily for compatibility).
 
 ## Phase Checklist
 
@@ -23,10 +25,12 @@ This tracker is the execution companion for `project-structure-refactor-plan.md`
 | B.1 | Shared path-alias helper for migration-aware tooling | Completed | Added `tools/build/path_aliases.py` and routed target path resolution through it. |
 | B.2 | Apply alias helper to target loaders/validators outside build pipeline | Completed | ABI tooling now resolves canonical `interface/*` paths through `tools/build/path_aliases.py` with migration warnings for legacy aliases. |
 | B.3 | CI guard for newly introduced legacy root references | Completed | `kernel-ci` runs `tools/ci/check_migration_refs.py --strict` and guards completed migration roots (`delivery/targets`, `interface/{idl,uapi,contracts}`). |
-| B.4 | Move `configs/` + `assets/` into `delivery/` and prune obsolete compatibility symlinks | Completed | Canonical paths are now `delivery/configs` and `delivery/assets`; root `configs`/`assets` symlinks preserve compatibility while unused `quality/*` symlink fanout has been removed. |
+| B.4 | Move `configs/` + `assets/` into `delivery/` and prune obsolete compatibility symlinks | Completed | Canonical paths are now `delivery/configs` and `delivery/assets`; obsolete `quality/*` symlink fanout removed and root delivery symlinks were later dropped in B.5. |
+| B.5 | Remove root delivery symlinks once callers are canonicalized | Completed | Root `configs`, `assets`, and `targets` symlinks removed; canonical paths under `delivery/` are authoritative. |
 | C | `idl/`, `uapi/`, `sdk/` to `interface/` | Completed | C1 (`idl`), C2 (`uapi`), C3 (`sdk`) complete; legacy compatibility symlinks retained. |
 | D | `boot/`, `kernel/`, `arch/`, etc. to `core/` | In progress | D1 is now complete (canonical `core/boot/*`, legacy `boot/{src,common,include,discovery,protocols}` symlink fanout removed, in-repo include paths migrated, and `core/kernel` CMake now uses canonical `core/boot/*` roots only). D2b landed (`kernel/include`), D2c landed (remaining `kernel/src/*` now canonical in `core/kernel/src/*` with `kernel/src/*` symlink wrappers), D2f landed (`kernel/CMakeLists.txt` + `kernel/linker*.ld` moved to canonical `core/kernel/*` with legacy symlink compatibility), and D4a landed (`lib/` + `stacks/` moved under `core/*` with compatibility symlinks). |
 | F | `include/` + `user/` canonicalization | Completed | F1 landed (`interface/include` canonical, `include` symlink retained); F2 landed (`experience/user` canonical, `user` symlink retained) with migration-aware CMake root selection. |
+| F.3 | Trim root interface/experience/quality compatibility symlinks | Completed | Removed root `user`, `tests`, `idl`, and `sdk` symlinks; retained `include` and `uapi` symlinks for active compatibility needs. |
 | E | Remove fallbacks + enforce new roots | Pending | Convert warnings to CI failures. |
 
 ## Mandatory Validation Matrix (per phase)
@@ -218,6 +222,20 @@ Every migration PR must update:
 - `./build.sh all --target x86_64_desktop_headless_linux`: **timeout-bounded warning** (build/run path starts).
 - `./build.sh all --target arm64_desktop_headless_linux`: **timeout-bounded warning** (build/run path starts).
 - `./build.sh all --target riscv64_desktop_headless_linux`: **timeout-bounded warning** (build/run path starts).
+
+## Validation Outcomes (2026-04-24, Phase B.5 + F.3)
+
+- Migration slice: removed root compatibility symlinks `configs`, `assets`, `targets`, `tests`, `user`, `idl`, and `sdk`; retained `include` and `uapi` symlinks because current CMake include wiring still relies on those compatibility roots.
+- Environment prep: installed QEMU runners for x86/arm/riscv families via `apt-get install -y qemu-system-x86 qemu-system-arm qemu-system-misc`.
+- `./build.sh build --target x86_64_desktop_headless`: **pass**.
+- `./build.sh package --target x86_64_desktop_headless`: **pass**.
+- `./build.sh run --target x86_64_desktop_headless`: **timeout-bounded warning with successful boot output**; runtime reached known EDF scheduler self-test failure before timeout.
+- `./build.sh all --target x86_64_desktop_headless_linux`: **timeout-bounded warning** (build+package complete; run reached runtime logs before timeout).
+- `./build.sh all --target arm64_desktop_headless_linux`: **timeout-bounded warning** (build+package complete; run reached runtime logs before timeout).
+- `./build.sh all --target riscv64_desktop_headless_linux`: **timeout-bounded warning with known runtime panic** (`PMM: Double free detected!`) before timeout.
+- `./build.sh all --target x86_64_desktop_headless_android`: **timeout-bounded warning** (build+package complete; run reached runtime logs before timeout).
+- `./build.sh all --target arm64_desktop_headless_android`: **timeout-bounded warning** (build+package complete; run reached runtime logs before timeout).
+- `./build.sh all --target riscv64_desktop_headless_android`: **timeout-bounded warning with known runtime panic** (`PMM: Double free detected!`) before timeout.
 - `./build.sh all --target x86_64_desktop_headless_android`: **timeout-bounded warning** (build/run path starts).
 - `./build.sh all --target arm64_desktop_headless_android`: **timeout-bounded warning** (build/run path starts).
 - `./build.sh all --target riscv64_desktop_headless_android`: **timeout-bounded warning with known runtime panic** (`PMM: Double free detected!`) during run stage.
