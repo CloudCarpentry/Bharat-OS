@@ -356,7 +356,7 @@ add_subdirectory(core/drivers)
 add_subdirectory(core/services)
 set(BHARAT_USER_ROOT_CANDIDATES
     "${CMAKE_SOURCE_DIR}/experience/user"
-    "${CMAKE_SOURCE_DIR}/user"
+    "${CMAKE_SOURCE_DIR}/core/user"
 )
 set(BHARAT_USER_ROOT "")
 foreach(_user_root IN LISTS BHARAT_USER_ROOT_CANDIDATES)
@@ -378,7 +378,7 @@ add_subdirectory(core/personalities)
 if(BHARAT_BUILD_HOST_TESTS)
     set(BHARAT_TESTS_ROOT_CANDIDATES
         "${CMAKE_SOURCE_DIR}/quality/tests"
-        "${CMAKE_SOURCE_DIR}/tests"
+        "${CMAKE_SOURCE_DIR}/core/tests"
     )
     set(BHARAT_TESTS_ROOT "")
     foreach(_tests_root IN LISTS BHARAT_TESTS_ROOT_CANDIDATES)

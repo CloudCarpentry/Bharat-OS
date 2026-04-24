@@ -3,3 +3,14 @@ target_link_libraries(servicemgr PRIVATE bharat_user_buildopts bharat_freestandi
 target_include_directories(servicemgr PRIVATE ../../kernel/include ../../include)
 
 bharat_configure_userspace_binary(servicemgr)
+
+if(CMAKE_CROSSCOMPILING)
+    message(STATUS "Skipping test_servicemgr_caps build during cross-compilation")
+else()
+    add_executable(test_servicemgr_caps tests/test_servicemgr_caps.c servicemgr.c)
+    target_include_directories(test_servicemgr_caps PRIVATE ../../kernel/include ../../include ../../lib/cap/include ../../lib/ipc/include ../../../interface/include)
+    target_link_libraries(test_servicemgr_caps PRIVATE bharat_libcap_base)
+    set_target_properties(test_servicemgr_caps PROPERTIES COMPILE_OPTIONS "")
+    set_target_properties(test_servicemgr_caps PROPERTIES LINK_OPTIONS "")
+    add_test(NAME test_servicemgr_caps COMMAND test_servicemgr_caps)
+endif()

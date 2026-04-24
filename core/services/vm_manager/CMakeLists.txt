@@ -3,3 +3,14 @@ target_link_libraries(vm_manager PRIVATE bharat_user_buildopts bharat_freestandi
 target_include_directories(vm_manager PRIVATE ../../kernel/include ../../include)
 
 bharat_configure_userspace_binary(vm_manager)
+
+if(CMAKE_CROSSCOMPILING)
+    message(STATUS "Skipping test_vm_manager_caps build during cross-compilation")
+else()
+    add_executable(test_vm_manager_caps tests/test_vm_manager_caps.c vm_manager.c)
+    target_include_directories(test_vm_manager_caps PRIVATE ../../kernel/include ../../include ../../lib/cap/include ../../lib/ipc/include ../../../interface/include)
+    target_link_libraries(test_vm_manager_caps PRIVATE bharat_libcap_base)
+    set_target_properties(test_vm_manager_caps PROPERTIES COMPILE_OPTIONS "")
+    set_target_properties(test_vm_manager_caps PROPERTIES LINK_OPTIONS "")
+    add_test(NAME test_vm_manager_caps COMMAND test_vm_manager_caps)
+endif()

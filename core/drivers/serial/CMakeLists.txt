@@ -61,10 +61,10 @@ target_compile_options(serial_drivers PRIVATE
 )
 
 target_include_directories(serial_drivers PRIVATE
-    ${CMAKE_SOURCE_DIR}/kernel/include
-    ${CMAKE_SOURCE_DIR}/kernel/include/generated
-    ${CMAKE_SOURCE_DIR}/drivers/include
-    ${CMAKE_SOURCE_DIR}/platform/include
+    ${CMAKE_SOURCE_DIR}/core/kernel/include
+    ${CMAKE_SOURCE_DIR}/core/kernel/include/generated
+    ${CMAKE_SOURCE_DIR}/core/drivers/include
+    ${CMAKE_SOURCE_DIR}/core/platform/include
 )
 
 target_link_libraries(serial_drivers PRIVATE bharat_freestanding bharat_kernel_buildopts)

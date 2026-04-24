@@ -175,39 +175,39 @@ target_include_directories(test_netmgr_address_table PRIVATE ../../core/services
 add_test(NAME host_test_netmgr_address_table COMMAND test_netmgr_address_table)
 
 add_executable(test_pmm_pcache test_pmm_pcache.c ../../kernel/src/mm/pmm/pmm.c ../../kernel/src/mm/pmm/pmm_pcache.c ../../kernel/src/mm/pmm/numa.c)
-target_include_directories(test_pmm_pcache PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/kernel/src ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/lib/include ${CMAKE_SOURCE_DIR}/core/boot/include)
+target_include_directories(test_pmm_pcache PRIVATE ${CMAKE_SOURCE_DIR}/core/kernel/include ${CMAKE_SOURCE_DIR}/core/kernel/src ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/lib/include ${CMAKE_SOURCE_DIR}/core/boot/include)
 add_test(NAME host_test_pmm_pcache COMMAND test_pmm_pcache)
 add_executable(test_netmgr_interface_table services/test_netmgr_interface_table.c ../../core/services/netmgr/src/interface_table.c ../../core/lib/runtime/src/freestanding_string.c)
 target_include_directories(test_netmgr_interface_table PRIVATE ../../core/services/netmgr/src ../../core/services/netmgr/include ../../core/services/core/subsysmgr/include ../../core/lib/net/include ../../core/lib/runtime/include)
 add_test(NAME host_test_netmgr_interface_table COMMAND test_netmgr_interface_table)
 
 add_executable(test_smp_tlb_active_cores test_smp_tlb_active_cores.c ../../kernel/src/mm/tlb/tlb_shootdown.c ../../kernel/src/mm/tlb/tlb_pending.c ../../kernel/src/mm/tlb/tlb_stats.c host_stubs.c ../../kernel/src/lib/base/string.c)
-target_include_directories(test_smp_tlb_active_cores PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/kernel/src ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/boot/include ${CMAKE_SOURCE_DIR}/core/lib/include ${CMAKE_BINARY_DIR}/generated/include ${CMAKE_SOURCE_DIR}/core/services/monitor/generated)
+target_include_directories(test_smp_tlb_active_cores PRIVATE ${CMAKE_SOURCE_DIR}/core/kernel/include ${CMAKE_SOURCE_DIR}/core/kernel/src ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/boot/include ${CMAKE_SOURCE_DIR}/core/lib/include ${CMAKE_BINARY_DIR}/generated/include ${CMAKE_SOURCE_DIR}/core/services/monitor/generated)
 add_test(NAME host_test_smp_tlb_active_cores COMMAND test_smp_tlb_active_cores)
 
 # Memory host conformance expansion (2026-03-23)
 # HAL contracts + generic PT/TLB contracts
 add_executable(host_test_hal_pt_common ../../tests/mm/pt_common_tests.c ../../hal/hal_pt.c)
-target_include_directories(host_test_hal_pt_common PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/boot/include)
+target_include_directories(host_test_hal_pt_common PRIVATE ${CMAKE_SOURCE_DIR}/core/kernel/include ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/boot/include)
 add_test(NAME host_test_hal_pt_common COMMAND host_test_hal_pt_common)
 
 add_executable(host_test_hal_pt_fallbacks ../../tests/test_hal_pt_fallbacks.c ../../hal/hal_pt.c)
-target_include_directories(host_test_hal_pt_fallbacks PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/boot/include)
+target_include_directories(host_test_hal_pt_fallbacks PRIVATE ${CMAKE_SOURCE_DIR}/core/kernel/include ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/boot/include)
 add_test(NAME host_test_hal_pt_fallbacks COMMAND host_test_hal_pt_fallbacks)
 
 add_executable(host_test_hal_caps_consistency ../../tests/test_hal_caps_consistency.c ../../hal/hal_pt.c)
-target_include_directories(host_test_hal_caps_consistency PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/boot/include)
+target_include_directories(host_test_hal_caps_consistency PRIVATE ${CMAKE_SOURCE_DIR}/core/kernel/include ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/boot/include)
 add_test(NAME host_test_hal_caps_consistency COMMAND host_test_hal_caps_consistency)
 
 add_executable(host_test_mon_vm test_mon_vm.c host_stubs.c ../../kernel/src/monitor/mon_vm_dispatch.c ../../kernel/src/monitor/mon_vm_service.c ../../kernel/src/monitor/mon_vm_state.c)
-target_include_directories(host_test_mon_vm PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/kernel/src ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/lib/include)
+target_include_directories(host_test_mon_vm PRIVATE ${CMAKE_SOURCE_DIR}/core/kernel/include ${CMAKE_SOURCE_DIR}/core/kernel/src ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/lib/include)
 add_test(NAME host_test_mon_vm COMMAND host_test_mon_vm)
 
 # VMM / ASpace / VM base-object conformance currently remains in top-level tests
 # (`test_vmm_aspace`) due additional prot-domain and arch-cap dependencies.
 
 add_executable(host_test_vmm_fault ../test_vmm_fault.c host_stubs.c ../../kernel/src/mm/vm/fault/fault.c ../../kernel/src/mm/vm/objects/vm_object.c ../../kernel/src/mm/vm/objects/vm_object_refcount.c ../../kernel/src/mm/vm/aspace/vm_space.c ../../kernel/src/mm/vm/aspace/aspace.c ../../kernel/src/mm/pmm/early_alloc.c ../../kernel/src/mm/pmm/pmm.c ../../kernel/src/mm/pmm/pt_pool.c ../../kernel/src/mm/tlb/tlb_shootdown.c ../../kernel/src/capability.c ../../kernel/src/cap/cap_policy.c ../benchmark_stubs.c ../../kernel/src/lib/base/string.c ../../arch/common/memops_scalar.c mock_panic.c)
-target_include_directories(host_test_vmm_fault PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/kernel/src ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/boot/include ${CMAKE_SOURCE_DIR}/core/lib/include ${CMAKE_BINARY_DIR}/generated/include)
+target_include_directories(host_test_vmm_fault PRIVATE ${CMAKE_SOURCE_DIR}/core/kernel/include ${CMAKE_SOURCE_DIR}/core/kernel/src ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/boot/include ${CMAKE_SOURCE_DIR}/core/lib/include ${CMAKE_BINARY_DIR}/generated/include)
 target_compile_definitions(host_test_vmm_fault PRIVATE TESTING=1)
 add_test(NAME host_test_vmm_fault COMMAND host_test_vmm_fault)
 
@@ -220,8 +220,8 @@ add_executable(test_hal_cpu_features
     ../../arch/common/cpu_caps_state.c
     ../../hal/common/cpu_features.c)
 target_include_directories(test_hal_cpu_features PRIVATE
-    ${CMAKE_SOURCE_DIR}/kernel/include
-    ${CMAKE_SOURCE_DIR}/hal/include
+    ${CMAKE_SOURCE_DIR}/core/kernel/include
+    ${CMAKE_SOURCE_DIR}/core/hal/include
     ${CMAKE_SOURCE_DIR}/interface/include
     ${CMAKE_SOURCE_DIR}/core/lib/include
     ${CMAKE_SOURCE_DIR})
@@ -252,54 +252,54 @@ add_test(NAME host_test_e2e_service_runtime COMMAND test_e2e_service_runtime)
 
 if(BHARAT_BUILD_HOST_TESTS)
     # I2C Core Host Tests
-    add_executable(test_i2c_registry ${CMAKE_SOURCE_DIR}/tests/host/drivers/test_i2c_registry.c ${CMAKE_SOURCE_DIR}/core/drivers/bus/i2c/i2c_core.c ${CMAKE_SOURCE_DIR}/core/drivers/bus/i2c/i2c_registry.c)
+    add_executable(test_i2c_registry ${CMAKE_SOURCE_DIR}/core/tests/host/drivers/test_i2c_registry.c ${CMAKE_SOURCE_DIR}/core/drivers/bus/i2c/i2c_core.c ${CMAKE_SOURCE_DIR}/core/drivers/bus/i2c/i2c_registry.c)
     target_include_directories(test_i2c_registry PRIVATE ${CMAKE_SOURCE_DIR}/core/drivers/bus/i2c)
     add_test(NAME host_test_i2c_registry COMMAND test_i2c_registry)
 
-    add_executable(test_i2c_transfer_mock ${CMAKE_SOURCE_DIR}/tests/host/drivers/test_i2c_transfer_mock.c ${CMAKE_SOURCE_DIR}/core/drivers/bus/i2c/i2c_core.c ${CMAKE_SOURCE_DIR}/core/drivers/bus/i2c/i2c_registry.c)
+    add_executable(test_i2c_transfer_mock ${CMAKE_SOURCE_DIR}/core/tests/host/drivers/test_i2c_transfer_mock.c ${CMAKE_SOURCE_DIR}/core/drivers/bus/i2c/i2c_core.c ${CMAKE_SOURCE_DIR}/core/drivers/bus/i2c/i2c_registry.c)
     target_include_directories(test_i2c_transfer_mock PRIVATE ${CMAKE_SOURCE_DIR}/core/drivers/bus/i2c)
     add_test(NAME host_test_i2c_transfer_mock COMMAND test_i2c_transfer_mock)
 
     # SPI Core Host Tests
-    add_executable(test_spi_registry ${CMAKE_SOURCE_DIR}/tests/host/drivers/test_spi_registry.c ${CMAKE_SOURCE_DIR}/core/drivers/bus/spi/spi_core.c ${CMAKE_SOURCE_DIR}/core/drivers/bus/spi/spi_registry.c)
+    add_executable(test_spi_registry ${CMAKE_SOURCE_DIR}/core/tests/host/drivers/test_spi_registry.c ${CMAKE_SOURCE_DIR}/core/drivers/bus/spi/spi_core.c ${CMAKE_SOURCE_DIR}/core/drivers/bus/spi/spi_registry.c)
     target_include_directories(test_spi_registry PRIVATE ${CMAKE_SOURCE_DIR}/core/drivers/bus/spi)
     add_test(NAME host_test_spi_registry COMMAND test_spi_registry)
 
-    add_executable(test_spi_transfer_mock ${CMAKE_SOURCE_DIR}/tests/host/drivers/test_spi_transfer_mock.c ${CMAKE_SOURCE_DIR}/core/drivers/bus/spi/spi_core.c ${CMAKE_SOURCE_DIR}/core/drivers/bus/spi/spi_registry.c)
+    add_executable(test_spi_transfer_mock ${CMAKE_SOURCE_DIR}/core/tests/host/drivers/test_spi_transfer_mock.c ${CMAKE_SOURCE_DIR}/core/drivers/bus/spi/spi_core.c ${CMAKE_SOURCE_DIR}/core/drivers/bus/spi/spi_registry.c)
     target_include_directories(test_spi_transfer_mock PRIVATE ${CMAKE_SOURCE_DIR}/core/drivers/bus/spi)
     add_test(NAME host_test_spi_transfer_mock COMMAND test_spi_transfer_mock)
 
     # DRM Core Host Tests
-    add_executable(test_drm_registry ${CMAKE_SOURCE_DIR}/tests/host/drivers/test_drm_registry.c ${CMAKE_SOURCE_DIR}/core/drivers/display/drm/drm_core.c ${CMAKE_SOURCE_DIR}/core/drivers/display/drm/drm_registry.c)
+    add_executable(test_drm_registry ${CMAKE_SOURCE_DIR}/core/tests/host/drivers/test_drm_registry.c ${CMAKE_SOURCE_DIR}/core/drivers/display/drm/drm_core.c ${CMAKE_SOURCE_DIR}/core/drivers/display/drm/drm_registry.c)
     target_include_directories(test_drm_registry PRIVATE ${CMAKE_SOURCE_DIR}/core/drivers/display/drm)
     add_test(NAME host_test_drm_registry COMMAND test_drm_registry)
 
-    add_executable(test_drm_mode_validation ${CMAKE_SOURCE_DIR}/tests/host/drivers/test_drm_mode_validation.c ${CMAKE_SOURCE_DIR}/core/drivers/display/drm/drm_core.c ${CMAKE_SOURCE_DIR}/core/drivers/display/drm/drm_registry.c)
+    add_executable(test_drm_mode_validation ${CMAKE_SOURCE_DIR}/core/tests/host/drivers/test_drm_mode_validation.c ${CMAKE_SOURCE_DIR}/core/drivers/display/drm/drm_core.c ${CMAKE_SOURCE_DIR}/core/drivers/display/drm/drm_registry.c)
     target_include_directories(test_drm_mode_validation PRIVATE ${CMAKE_SOURCE_DIR}/core/drivers/display/drm)
     add_test(NAME host_test_drm_mode_validation COMMAND test_drm_mode_validation)
 
     # NVMe Core Host Tests
-    add_executable(test_nvme_init_mock ${CMAKE_SOURCE_DIR}/tests/host/drivers/test_nvme_init_mock.c ${CMAKE_SOURCE_DIR}/core/drivers/storage/nvme/nvme_core.c ${CMAKE_SOURCE_DIR}/core/drivers/storage/nvme/nvme_admin.c ${CMAKE_SOURCE_DIR}/core/drivers/storage/nvme/nvme_queue.c)
+    add_executable(test_nvme_init_mock ${CMAKE_SOURCE_DIR}/core/tests/host/drivers/test_nvme_init_mock.c ${CMAKE_SOURCE_DIR}/core/drivers/storage/nvme/nvme_core.c ${CMAKE_SOURCE_DIR}/core/drivers/storage/nvme/nvme_admin.c ${CMAKE_SOURCE_DIR}/core/drivers/storage/nvme/nvme_queue.c)
     target_include_directories(test_nvme_init_mock PRIVATE ${CMAKE_SOURCE_DIR}/core/drivers/storage/nvme)
     add_test(NAME host_test_nvme_init_mock COMMAND test_nvme_init_mock)
 
     # I2C HID Host Tests
-    add_executable(test_i2c_hid_probe ${CMAKE_SOURCE_DIR}/tests/host/drivers/test_i2c_hid_probe.c ${CMAKE_SOURCE_DIR}/core/drivers/input/i2c_hid/i2c_hid.c ${CMAKE_SOURCE_DIR}/core/drivers/bus/i2c/i2c_core.c ${CMAKE_SOURCE_DIR}/core/drivers/bus/i2c/i2c_registry.c)
+    add_executable(test_i2c_hid_probe ${CMAKE_SOURCE_DIR}/core/tests/host/drivers/test_i2c_hid_probe.c ${CMAKE_SOURCE_DIR}/core/drivers/input/i2c_hid/i2c_hid.c ${CMAKE_SOURCE_DIR}/core/drivers/bus/i2c/i2c_core.c ${CMAKE_SOURCE_DIR}/core/drivers/bus/i2c/i2c_registry.c)
     target_include_directories(test_i2c_hid_probe PRIVATE ${CMAKE_SOURCE_DIR}/core/drivers/input/i2c_hid ${CMAKE_SOURCE_DIR}/core/drivers/bus/i2c)
     add_test(NAME host_test_i2c_hid_probe COMMAND test_i2c_hid_probe)
 
-    add_executable(test_i2c_hid_failures ${CMAKE_SOURCE_DIR}/tests/host/drivers/test_i2c_hid_failures.c ${CMAKE_SOURCE_DIR}/core/drivers/input/i2c_hid/i2c_hid.c ${CMAKE_SOURCE_DIR}/core/drivers/bus/i2c/i2c_core.c ${CMAKE_SOURCE_DIR}/core/drivers/bus/i2c/i2c_registry.c)
+    add_executable(test_i2c_hid_failures ${CMAKE_SOURCE_DIR}/core/tests/host/drivers/test_i2c_hid_failures.c ${CMAKE_SOURCE_DIR}/core/drivers/input/i2c_hid/i2c_hid.c ${CMAKE_SOURCE_DIR}/core/drivers/bus/i2c/i2c_core.c ${CMAKE_SOURCE_DIR}/core/drivers/bus/i2c/i2c_registry.c)
     target_include_directories(test_i2c_hid_failures PRIVATE ${CMAKE_SOURCE_DIR}/core/drivers/input/i2c_hid ${CMAKE_SOURCE_DIR}/core/drivers/bus/i2c)
     add_test(NAME host_test_i2c_hid_failures COMMAND test_i2c_hid_failures)
 
     # VirtIO Input Host Tests
-    add_executable(test_virtio_input ${CMAKE_SOURCE_DIR}/tests/host/drivers/test_virtio_input.c ${CMAKE_SOURCE_DIR}/core/drivers/input/virtio_input/virtio_input.c)
+    add_executable(test_virtio_input ${CMAKE_SOURCE_DIR}/core/tests/host/drivers/test_virtio_input.c ${CMAKE_SOURCE_DIR}/core/drivers/input/virtio_input/virtio_input.c)
     target_include_directories(test_virtio_input PRIVATE ${CMAKE_SOURCE_DIR}/core/drivers/input/virtio_input ${CMAKE_SOURCE_DIR}/core/drivers/input/include ${CMAKE_SOURCE_DIR}/interface/uapi)
     add_test(NAME host_test_virtio_input COMMAND test_virtio_input)
 
     # Memory Model AI-adjacent Primitives Host Test
     add_executable(test_mem_model_ai test_mem_model_ai.c ../../kernel/src/mm/mem_class.c)
-    target_include_directories(test_mem_model_ai PRIVATE ${CMAKE_SOURCE_DIR}/kernel/include ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/lib/include)
+    target_include_directories(test_mem_model_ai PRIVATE ${CMAKE_SOURCE_DIR}/core/kernel/include ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/lib/include)
     add_test(NAME host_test_mem_model_ai COMMAND test_mem_model_ai)
 endif()
 add_executable(test_fdt_parser test_fdt_parser.c ../../hal/common/fdt_parser.c)

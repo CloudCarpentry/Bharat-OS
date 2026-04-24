@@ -28,5 +28,6 @@ int32_t servicemgr_handle_stop(const sm_req_stop_t *req, sm_resp_stop_t *resp);
 int32_t servicemgr_handle_query(const sm_req_query_t *req, sm_resp_query_t *resp);
 int32_t servicemgr_handle_heartbeat(const sm_req_heartbeat_t *req, sm_resp_heartbeat_t *resp);
 void servicemgr_check_health(uint32_t current_time);
+int32_t servicemgr_authorize(uint32_t opcode, const void *req, bharat_cap_handle_t caller_cap);
 
 #endif // SERVICEMGR_H

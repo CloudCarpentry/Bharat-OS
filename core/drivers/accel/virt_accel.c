@@ -1,5 +1,5 @@
-#include "../../include/bharat/accel/accel.h"
-#include "../../kernel/include/kernel/status.h"
+#include <bharat/accel/accel.h>
+#include <kernel/status.h>
 
 // Pure mock device driver, strictly backend logic. No test logic here.
 

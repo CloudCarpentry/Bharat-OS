@@ -25,5 +25,6 @@ int32_t vm_manager_handle_unmap(const vm_req_unmap_t *req, vm_resp_unmap_t *resp
 int32_t vm_manager_handle_protect(const vm_req_protect_t *req, vm_resp_protect_t *resp);
 int32_t vm_manager_handle_query(const vm_req_query_t *req, vm_resp_query_t *resp);
 int32_t vm_manager_handle_fault(const vm_req_fault_t *req, vm_resp_fault_t *resp);
+int32_t vm_manager_authorize(uint32_t opcode, const void *req, bharat_cap_handle_t caller_cap);
 
 #endif // VM_MANAGER_H

@@ -28,7 +28,11 @@ target_link_libraries(bharat_runtime_tensor PUBLIC bharat_freestanding bharat_ru
 bharat_configure_userspace_library(bharat_runtime_tensor)
 
 # Set the public include directory
-target_include_directories(bharat_libruntime PUBLIC include ${CMAKE_SOURCE_DIR}/interface/uapi/runtime)
+target_include_directories(bharat_libruntime PUBLIC
+    include
+    ${CMAKE_SOURCE_DIR}/interface/uapi/runtime
+    ${CMAKE_SOURCE_DIR}/core/kernel/include
+)
 target_link_libraries(bharat_libruntime PRIVATE bharat_runtime_backend_dispatch bharat_runtime_crypto bharat_runtime_tensor)
 
 # Runtime depends on cap and ipc headers
