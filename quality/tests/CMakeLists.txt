@@ -40,7 +40,7 @@ add_library(bharat_test_sched_mocks OBJECT
 target_include_directories(bharat_test_sched_mocks PRIVATE
     ../kernel/include
     ../include
-    ../boot/include
+    ../core/boot/include
     ../lib/include
 )
 target_compile_definitions(bharat_test_sched_mocks PRIVATE TESTING=1)
@@ -51,21 +51,21 @@ add_executable(test_hal_pt_common
     mm/pt_common_tests.c
     ../hal/hal_pt.c
 )
-target_include_directories(test_hal_pt_common PRIVATE ../kernel/include ../include ../boot/include)
+target_include_directories(test_hal_pt_common PRIVATE ../kernel/include ../include ../core/boot/include)
 add_test(NAME test_hal_pt_common COMMAND test_hal_pt_common)
 
 add_executable(test_hal_pt_fallbacks
     test_hal_pt_fallbacks.c
     ../hal/hal_pt.c
 )
-target_include_directories(test_hal_pt_fallbacks PRIVATE ../kernel/include ../include ../boot/include)
+target_include_directories(test_hal_pt_fallbacks PRIVATE ../kernel/include ../include ../core/boot/include)
 add_test(NAME test_hal_pt_fallbacks COMMAND test_hal_pt_fallbacks)
 
 add_executable(test_hal_caps_consistency
     test_hal_caps_consistency.c
     ../hal/hal_pt.c
 )
-target_include_directories(test_hal_caps_consistency PRIVATE ../kernel/include ../include ../boot/include)
+target_include_directories(test_hal_caps_consistency PRIVATE ../kernel/include ../include ../core/boot/include)
 add_test(NAME test_hal_caps_consistency COMMAND test_hal_caps_consistency)
 
 # The following legacy tests are preserved here but should eventually
@@ -81,7 +81,7 @@ target_compile_definitions(test_stress_concurrency PRIVATE TESTING=1)
 target_compile_options(test_stress_concurrency PRIVATE -g -O0)
 target_link_libraries(test_stress_concurrency PRIVATE pthread)
 add_test(NAME test_stress_concurrency COMMAND test_stress_concurrency)
-target_include_directories(test_panic PRIVATE ../kernel/include ../include ../lib/include ../boot/include)
+target_include_directories(test_panic PRIVATE ../kernel/include ../include ../lib/include ../core/boot/include)
 add_test(NAME test_panic COMMAND test_panic)
 
 add_executable(test_hal_interrupts test_hal_interrupts.c ../hal/interrupt_common.c)
@@ -130,7 +130,7 @@ add_test(NAME test_scheduler COMMAND test_scheduler)
 
 if (EXISTS "${CMAKE_SOURCE_DIR}/personalities/compat/linux/linux_compat.c")
     add_executable(test_trap_syscall test_trap_syscall.c ../kernel/src/trap/trap.c ../kernel/src/trap/syscall.c ../kernel/src/ipc/endpoint_ipc.c ../personalities/compat/linux/linux_compat.c ../personalities/common/personality_registry.c $<TARGET_OBJECTS:bharat_test_sched_mocks>)
-    target_include_directories(test_trap_syscall PRIVATE ../kernel/include ../services/core/subsysmgr/include ../include ../lib/include ../boot/include ../subsys/include)
+    target_include_directories(test_trap_syscall PRIVATE ../kernel/include ../services/core/subsysmgr/include ../include ../lib/include ../core/boot/include ../subsys/include)
     target_compile_definitions(test_trap_syscall PRIVATE TESTING=1)
     add_test(NAME test_trap_syscall COMMAND test_trap_syscall)
     # Compatibility alias for common typo used in ad-hoc commands.
@@ -179,13 +179,13 @@ add_test(NAME test_memory_edgecases COMMAND test_memory_edgecases)
 
 if (EXISTS "${CMAKE_SOURCE_DIR}/personalities/compat/linux/linux_compat.c")
     add_executable(test_tier_a_integration test_tier_a_integration.c ../kernel/src/trap/trap.c ../kernel/src/trap/syscall.c ../kernel/src/ipc/endpoint_ipc.c ../personalities/compat/linux/linux_compat.c ../personalities/common/personality_registry.c $<TARGET_OBJECTS:bharat_test_sched_mocks>)
-    target_include_directories(test_tier_a_integration PRIVATE ../kernel/include ../services/core/subsysmgr/include ../include ../subsys/include ../lib/include ../boot/include)
+    target_include_directories(test_tier_a_integration PRIVATE ../kernel/include ../services/core/subsysmgr/include ../include ../subsys/include ../lib/include ../core/boot/include)
     target_compile_definitions(test_tier_a_integration PRIVATE TESTING=1)
     add_test(NAME test_tier_a_integration COMMAND test_tier_a_integration)
 endif()
 
 add_executable(test_riscv_shakti_bsp test_riscv_shakti_bsp.c ../hal/riscv/shakti_bsp.c ../hal/common/fdt_parser.c)
-target_include_directories(test_riscv_shakti_bsp PRIVATE ../kernel/include ../include ../boot/include)
+target_include_directories(test_riscv_shakti_bsp PRIVATE ../kernel/include ../include ../core/boot/include)
 add_test(NAME test_riscv_shakti_bsp COMMAND test_riscv_shakti_bsp)
 
 add_executable(test_ai_governor test_ai_governor.c ../user/apps/ai_governor/ai_governor.c $<TARGET_OBJECTS:bharat_test_sched_mocks>)
@@ -351,7 +351,7 @@ if (EXISTS "${CMAKE_SOURCE_DIR}/personalities/compat/linux/linux_compat.c" AND E
         ../user/ui/fbui/core/fb_render.c
         $<TARGET_OBJECTS:bharat_test_sched_mocks>
     )
-    target_include_directories(test_integration_core_subsys PRIVATE ../kernel/include ../services/core/subsysmgr/include ../include ../lib/include ../boot/include)
+    target_include_directories(test_integration_core_subsys PRIVATE ../kernel/include ../services/core/subsysmgr/include ../include ../lib/include ../core/boot/include)
     target_compile_definitions(test_integration_core_subsys PRIVATE TESTING=1 BHARAT_PROFILE_DATACENTER=1 BHARAT_PERSONALITY_LINUX=1 BHARAT_ARCH_X86=1)
     add_test(NAME test_integration_core_subsys COMMAND test_integration_core_subsys)
 endif()
@@ -364,7 +364,7 @@ if (EXISTS "${CMAKE_SOURCE_DIR}/personalities/domain/automotive/automotive.c")
         ../user/ui/fbui/core/fb_render.c
         $<TARGET_OBJECTS:bharat_test_sched_mocks>
     )
-    target_include_directories(test_profile_edge PRIVATE ../kernel/include ../services/core/subsysmgr/include ../include ../lib/include ../boot/include)
+    target_include_directories(test_profile_edge PRIVATE ../kernel/include ../services/core/subsysmgr/include ../include ../lib/include ../core/boot/include)
     target_compile_definitions(test_profile_edge PRIVATE TESTING=1 BHARAT_PROFILE_EDGE=1 BHARAT_PERSONALITY_AUTOMOTIVE=1 BHARAT_ARCH_ARM=1)
     add_test(NAME test_profile_edge COMMAND test_profile_edge)
 endif()
@@ -395,15 +395,15 @@ target_include_directories(test_smp_hal PRIVATE ../kernel/include)
 add_test(NAME test_smp_hal COMMAND test_smp_hal)
 
 add_executable(test_pmm_production test_pmm_production.c host/mock_panic.c ../kernel/src/mm/pmm/pmm.c ../kernel/src/mm/pmm/pmm_pcache.c)
-target_include_directories(test_pmm_production PRIVATE ../kernel/include ../kernel/src ../include ../lib/include ../boot/include)
+target_include_directories(test_pmm_production PRIVATE ../kernel/include ../kernel/src ../include ../lib/include ../core/boot/include)
 add_test(NAME test_pmm_production COMMAND test_pmm_production)
 
 add_executable(test_pmm_zone_alloc test_pmm_zone_alloc.c host/mock_panic.c ../kernel/src/mm/pmm/pmm.c ../kernel/src/mm/pmm/pmm_pcache.c)
-target_include_directories(test_pmm_zone_alloc PRIVATE ../kernel/include ../kernel/src ../include ../lib/include ../boot/include)
+target_include_directories(test_pmm_zone_alloc PRIVATE ../kernel/include ../kernel/src ../include ../lib/include ../core/boot/include)
 add_test(NAME test_pmm_zone_alloc COMMAND test_pmm_zone_alloc)
 
 add_executable(test_pmm_refpin test_pmm_refpin.c host/mock_panic.c ../kernel/src/mm/pmm/pmm.c ../kernel/src/mm/pmm/pmm_pcache.c)
-target_include_directories(test_pmm_refpin PRIVATE ../kernel/include ../kernel/src ../include ../lib/include ../boot/include)
+target_include_directories(test_pmm_refpin PRIVATE ../kernel/include ../kernel/src ../include ../lib/include ../core/boot/include)
 add_test(NAME test_pmm_refpin COMMAND test_pmm_refpin)
 
 add_executable(test_sched_reap test_sched_reap.c $<TARGET_OBJECTS:bharat_test_sched_mocks>)
@@ -505,7 +505,7 @@ foreach(test_target IN LISTS BHARAT_NOSTDLIB_TEST_TARGETS)
 endforeach()
 
 add_executable(test_boot_e2e test_boot_e2e.c test_arch_caps.c ../kernel/src/kernel_boot.c ../kernel/src/lib/base/string.c $<TARGET_OBJECTS:bharat_test_sched_mocks>)
-target_include_directories(test_boot_e2e PRIVATE ../kernel/include ../include ../lib/include ../boot/include)
+target_include_directories(test_boot_e2e PRIVATE ../kernel/include ../include ../lib/include ../core/boot/include)
 add_test(NAME boot_e2e COMMAND test_boot_e2e)
 
 add_executable(test_init_manifest host/test_init_manifest.c ../services/core/init/init_events.c)
@@ -528,7 +528,7 @@ target_compile_definitions(test_execution_mode_quad_core PRIVATE TESTING=1)
 add_test(NAME test_execution_mode_quad_core COMMAND test_execution_mode_quad_core)
 
 add_executable(test_irq_domain host/test_irq_domain_host.c ../kernel/src/tests/ktest_irq_domain.c ../kernel/src/device/irq_domain.c)
-target_include_directories(test_irq_domain PRIVATE ../kernel/include ../include ../hal/include ../boot/include ../)
+target_include_directories(test_irq_domain PRIVATE ../kernel/include ../include ../hal/include ../core/boot/include ../)
 target_compile_definitions(test_irq_domain PRIVATE TESTING=1 HOST_TEST_BUILD)
 add_test(NAME test_irq_domain COMMAND test_irq_domain)
 

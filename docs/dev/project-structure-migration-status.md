@@ -8,7 +8,7 @@ This tracker is the execution companion for `project-structure-refactor-plan.md`
 - Phase B (tooling compatibility hardening): **Completed** (B.1/B.2/B.3 complete; CI guard now enforces strict mode).
 - Phase B.4 (delivery configs/assets relocation + legacy symlink trimming): **Completed** (`configs/` and `assets/` now canonical under `delivery/`; obsolete `quality/*` compatibility symlink fanout removed).
 - Phase C (interface moves): **Completed** (`idl/` + `uapi/` + `sdk` slices completed).
-- Phase D.1 (boot tree migration): **In progress** (D1a `boot/src` + `boot/common` moved; D1c kernel sub-target include wiring now resolves boot headers via migration-aware `BHARAT_BOOT_INCLUDE_DIR`; D1d converted `boot/include`, `boot/discovery`, and `boot/protocols` compatibility wrappers into symlinks to canonical `core/boot/*` paths).
+- Phase D.1 (boot tree migration): **Completed** (D1a/D1b migrated boot sources+headers/protocols/discovery into `core/boot`; D1c wired kernel include selection through migration-aware `BHARAT_BOOT_INCLUDE_DIR`; D1e removed legacy `boot/{src,common,include,discovery,protocols}` symlink fanout and migrated in-repo include path usage to canonical `core/boot/*`).
 - Phase D.2c (kernel source tree move, bounded slice): **In progress** (remaining `kernel/src/*` moved to `core/kernel/src/*`; legacy `kernel/src/*` compatibility symlink wrappers retained).
 - Phase D.2f (kernel root build assets move, bounded slice): **In progress** (`kernel/CMakeLists.txt` and `kernel/linker*.ld` moved to canonical `core/kernel/*`; legacy `kernel/*` symlink compatibility retained).
 - Phase D.4a (lib + stacks bounded move): **In progress** (`lib/` and `stacks/` moved to canonical `core/lib/` and `core/stacks/`; legacy symlink compatibility retained).
@@ -25,7 +25,7 @@ This tracker is the execution companion for `project-structure-refactor-plan.md`
 | B.3 | CI guard for newly introduced legacy root references | Completed | `kernel-ci` runs `tools/ci/check_migration_refs.py --strict` and guards completed migration roots (`delivery/targets`, `interface/{idl,uapi,contracts}`). |
 | B.4 | Move `configs/` + `assets/` into `delivery/` and prune obsolete compatibility symlinks | Completed | Canonical paths are now `delivery/configs` and `delivery/assets`; root `configs`/`assets` symlinks preserve compatibility while unused `quality/*` symlink fanout has been removed. |
 | C | `idl/`, `uapi/`, `sdk/` to `interface/` | Completed | C1 (`idl`), C2 (`uapi`), C3 (`sdk`) complete; legacy compatibility symlinks retained. |
-| D | `boot/`, `kernel/`, `arch/`, etc. to `core/` | In progress | D1a landed; D1d landed (`boot/include`, `boot/discovery`, `boot/protocols` now compatibility symlinks); D2b landed (`kernel/include`), D2c landed (remaining `kernel/src/*` now canonical in `core/kernel/src/*` with `kernel/src/*` symlink wrappers), D2f landed (`kernel/CMakeLists.txt` + `kernel/linker*.ld` moved to canonical `core/kernel/*` with legacy symlink compatibility), and D4a landed (`lib/` + `stacks/` moved under `core/*` with compatibility symlinks). |
+| D | `boot/`, `kernel/`, `arch/`, etc. to `core/` | In progress | D1 is now complete (canonical `core/boot/*`, legacy `boot/{src,common,include,discovery,protocols}` symlink fanout removed, in-repo include paths migrated). D2b landed (`kernel/include`), D2c landed (remaining `kernel/src/*` now canonical in `core/kernel/src/*` with `kernel/src/*` symlink wrappers), D2f landed (`kernel/CMakeLists.txt` + `kernel/linker*.ld` moved to canonical `core/kernel/*` with legacy symlink compatibility), and D4a landed (`lib/` + `stacks/` moved under `core/*` with compatibility symlinks). |
 | F | `include/` + `user/` canonicalization | Completed | F1 landed (`interface/include` canonical, `include` symlink retained); F2 landed (`experience/user` canonical, `user` symlink retained) with migration-aware CMake root selection. |
 | E | Remove fallbacks + enforce new roots | Pending | Convert warnings to CI failures. |
 
@@ -187,6 +187,13 @@ Every migration PR must update:
 - Migration slice: moved `lib/` -> `core/lib/` and `stacks/` -> `core/stacks/`; preserved compatibility via top-level `lib` and `stacks` symlinks.
 - Top-level build wiring now prefers canonical paths (`add_subdirectory(core/lib)` and `add_subdirectory(core/stacks)`).
 - Validation commands executed for build/package/run and Linux/Android multi-arch `all` targets (see command log in PR for pass/timeout details).
+
+
+## Validation Outcomes (2026-04-24, Phase D1e)
+
+- Migration slice: removed legacy `boot/{src,common,include,discovery,protocols}` symlink fanout after migrating in-repo include path consumers to canonical `core/boot/*` locations.
+- Build wiring cleanup: removed top-level compatibility `add_subdirectory(boot)` shim invocation; canonical `add_subdirectory(core/boot)` remains authoritative.
+- Validation commands executed for build/package/run and Linux/Android multi-arch `all` targets for x86_64/arm64/riscv64 (see command log in PR for pass/timeout details).
 
 ## Validation Outcomes (2026-04-24, Phase D1d)
 

@@ -360,7 +360,6 @@ endif()
 add_subdirectory(core/arch)
 add_subdirectory(core/boot)
 add_subdirectory(core/hal)
-add_subdirectory(boot)
 add_subdirectory(core/platform)
 set(BHARAT_KERNEL_CMAKE_CANDIDATES
     "${CMAKE_SOURCE_DIR}/core/kernel/CMakeLists.txt"
