@@ -338,7 +338,7 @@ endif()
 
 # Add subdirectories
 
-add_subdirectory(arch)
+add_subdirectory(core/arch)
 add_subdirectory(core/boot)
 add_subdirectory(boot)
 add_subdirectory(hal)
