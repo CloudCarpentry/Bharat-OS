@@ -25,9 +25,27 @@ if(NOT BHARAT_BOOT_INCLUDE_DIR)
 endif()
 
 add_library(bharat_kernel_includes INTERFACE)
-target_include_directories(bharat_kernel_includes INTERFACE
+set(BHARAT_KERNEL_INCLUDE_CANDIDATES
+    ${CMAKE_SOURCE_DIR}/core/kernel/include
     ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/generated
+)
+set(BHARAT_KERNEL_INCLUDE_DIR "")
+foreach(_kernel_include IN LISTS BHARAT_KERNEL_INCLUDE_CANDIDATES)
+    if(EXISTS "${_kernel_include}/bharat_config.h.in")
+        set(BHARAT_KERNEL_INCLUDE_DIR "${_kernel_include}")
+        if(_kernel_include MATCHES "/kernel/include$" AND NOT _kernel_include MATCHES "/core/kernel/include$")
+            message(WARNING "[migration-warning] Using legacy kernel include root: ${_kernel_include}")
+        endif()
+        break()
+    endif()
+endforeach()
+if(NOT BHARAT_KERNEL_INCLUDE_DIR)
+    message(FATAL_ERROR "No kernel include root found in core/kernel/include or kernel/include")
+endif()
+
+target_include_directories(bharat_kernel_includes INTERFACE
+    ${BHARAT_KERNEL_INCLUDE_DIR}
+    ${BHARAT_KERNEL_INCLUDE_DIR}/generated
     ${CMAKE_SOURCE_DIR}/hal/include
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/lib/include
@@ -134,8 +152,8 @@ if(NOT DEFINED CONFIG_URPC)
     set(CONFIG_URPC 1)
 endif()
 configure_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/bharat_config.h.in
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/generated/bharat_config.h
+    ${BHARAT_KERNEL_INCLUDE_DIR}/bharat_config.h.in
+    ${BHARAT_KERNEL_INCLUDE_DIR}/generated/bharat_config.h
 )
 option(BHARAT_BOOT_GUI "Enable boot-time GUI handoff metadata" ON)
 if(NOT DEFINED BHARAT_BOOT_HW_PROFILE OR "${BHARAT_BOOT_HW_PROFILE}" STREQUAL "")
