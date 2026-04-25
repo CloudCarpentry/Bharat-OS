@@ -1,11 +1,11 @@
-#include <interface/uapi/syscall/syscall_nr.h>
+#include <uapi/syscall/syscall_nr.h>
 
 #if defined(__x86_64__)
-#include <interface/uapi/arch/x86_64/syscall.h>
+#include <uapi/arch/x86_64/syscall.h>
 #elif defined(__aarch64__)
-#include <interface/uapi/arch/arm64/syscall.h>
+#include <uapi/arch/arm64/syscall.h>
 #elif defined(__riscv)
-#include <interface/uapi/arch/riscv64/syscall.h>
+#include <uapi/arch/riscv64/syscall.h>
 #else
 #error "Unsupported architecture"
 #endif

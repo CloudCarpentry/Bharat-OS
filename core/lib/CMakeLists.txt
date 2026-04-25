@@ -114,6 +114,8 @@ add_library(transport ALIAS bharat_libtransport)
 set(BH_SDK_INCLUDES
     ${CMAKE_CURRENT_SOURCE_DIR}/runtime/include
     ${CMAKE_SOURCE_DIR}/interface
+    ${CMAKE_SOURCE_DIR}/interface/include
+    ${CMAKE_SOURCE_DIR}/core/lib
 )
 
 add_library(bharatsys STATIC

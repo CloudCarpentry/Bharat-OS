@@ -1,6 +1,6 @@
 #include <stdlib.h>
-#include <interface/uapi/syscall/syscall_nr.h>
-#include <core/lib/syscall/common/syscall.h>
+#include <uapi/syscall/syscall_nr.h>
+#include <syscall/common/syscall.h>
 
 /* Minimal slab-like allocator can be implemented here later for better performance.
    For now, we use direct syscalls as a baseline. */
