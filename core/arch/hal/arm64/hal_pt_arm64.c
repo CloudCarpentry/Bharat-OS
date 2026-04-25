@@ -610,6 +610,8 @@ static const hal_pt_caps_t arm64_pt_caps = {
     .supports_linear_physmap = true,
 };
 
+extern hal_tlb_ops_t arm64_hal_tlb_ops;
+
 hal_pt_ops_t arm64_hal_pt_ops = {
     .backend_type          = TRANSLATE_BACKEND_MMU,
     .caps                  = &arm64_pt_caps,
@@ -624,6 +626,10 @@ hal_pt_ops_t arm64_hal_pt_ops = {
     .protect_range         = arm64_pt_protect_range,
     .query_mapping         = arm64_pt_query_mapping,
 };
+
+void arch_hal_pt_init(void) {
+    hal_pt_register_ops(&arm64_hal_pt_ops, &arm64_hal_tlb_ops);
+}
 
 static const hal_tlb_caps_t arm64_tlb_caps = {
     .supports_page_flush = true,
