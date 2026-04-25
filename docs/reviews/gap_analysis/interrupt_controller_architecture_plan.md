@@ -18,11 +18,11 @@ This plan defines how Bharat-OS can evolve one interrupt subsystem that supports
 
 1. **A generic IRQ API exists** (`hal_irq_*`, `hal_interrupt_*`) with registration, shared handlers, affinity metadata, and deferred work hooks.
 2. **Per-arch controller backends exist** for:
-   - x86_64 APIC (`hal/x86_64/apic.c`)
-   - arm64 GICv3 (`hal/arm64/gicv3.c`)
-   - riscv64 PLIC (`hal/riscv64/plic.c`)
+   - x86_64 APIC (`core/hal/x86_64/apic.c`)
+   - arm64 GICv3 (`core/hal/arm64/gicv3.c`)
+   - riscv64 PLIC (`core/hal/riscv64/plic.c`)
 3. **Discovery already models multiple interrupt controllers** (APIC, IOAPIC, GICv2/v3, ITS, PLIC, AIA placeholders) in `hal_discovery.h`.
-4. **MSI-domain concept exists** (`kernel/include/device/irq_domain.h`) and is partially wired on arm64 ITS + x86 stubs.
+4. **MSI-domain concept exists** (`core/kernel/include/device/irq_domain.h`) and is partially wired on arm64 ITS + x86 stubs.
 
 ### Gaps / architectural risks
 
@@ -35,7 +35,7 @@ This plan defines how Bharat-OS can evolve one interrupt subsystem that supports
 4. **Affinity and routing are metadata-first, hardware-second**: generic affinity is tracked, but backend reprogramming is mostly stubbed.
 5. **arm32/riscv32 parity is incomplete** for a production interrupt stack (arm32 stubs are still minimal; riscv32 lacks equivalent full PLIC backend path).
 6. **Feature-level extensibility (ISR budget, QoS, NMI/FIQ policy, virtualization interrupt injection) is not first-class yet.**
-7. **Header/API drift exists**: `hal/include/hal/hal_irq.h` currently exposes only minimal prototypes and does not match the richer API surface this plan assumes.
+7. **Header/API drift exists**: `core/hal/include/core/hal/hal_irq.h` currently exposes only minimal prototypes and does not match the richer API surface this plan assumes.
 
 ## Target architecture model
 
@@ -46,7 +46,7 @@ Adopt a **three-layer interrupt architecture**:
 2. **IRQ domain + routing layer**
    - Maps hardware interrupt identities to kernel virq space.
    - Composes hierarchical domains (e.g., GPIO expander -> GIC SPI; MSI device -> ITS/IMSIC).
-3. **Controller driver layer (arch/SoC specific)**
+3. **Controller driver layer (core/arch/SoC specific)**
    - APIC/IOAPIC, GICv2/v3+ITS, PLIC/APLIC/IMSIC, board-local intc.
 
 ### Core design principles

@@ -60,14 +60,14 @@ Hardware
 # Kernel Directory Layout
 
 ```
-kernel/
-    arch/
+core/kernel/
+    core/arch/
         x86_64/
         arm64/
         riscv64/
         shakti/
 
-    hal/
+    core/hal/
         cpu/
         interrupt/
         timer/
@@ -82,7 +82,7 @@ kernel/
 
     ipc/
 
-    drivers/
+    core/drivers/
         storage
         network
         gpu
@@ -123,9 +123,9 @@ Responsibilities include:
 Example:
 
 ```
-hal/x86_64/apic.c
-hal/arm64/gic.c
-hal/riscv64/plic.c
+core/hal/x86_64/apic.c
+core/hal/arm64/gic.c
+core/hal/riscv64/plic.c
 ```
 
 ---

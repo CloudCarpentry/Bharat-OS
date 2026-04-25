@@ -16,7 +16,7 @@ tags:
 
 ### Contract Status
 - **Spec**: ✅ Documented and versioned
-- **Implemented**: 🚧 Pending kernel/service behavior merge
+- **Implemented**: 🚧 Pending core/kernel/service behavior merge
 - **Validated**: ❌ Pending stress/fault-injection tests
 
 

@@ -2,7 +2,7 @@
 
 ### Contract Status
 - **Spec**: ✅ Documented and versioned
-- **Implemented**: 🚧 Pending kernel/service behavior merge
+- **Implemented**: 🚧 Pending core/kernel/service behavior merge
 - **Validated**: ❌ Pending stress/fault-injection tests
 
 
@@ -56,7 +56,7 @@ The existing separation implies three logical domains, which are adopted here:
 
 ### 5.2 Compatibility Personalities
 *   **Examples:** Linux, Android, Windows (future).
-*   **Purpose:** These adapt and translate foreign expectations into Bharat kernel/services, not pollute the kernel with foreign semantics.
+*   **Purpose:** These adapt and translate foreign expectations into Bharat core/kernel/services, not pollute the kernel with foreign semantics.
 
 ### 5.3 Domain Personalities
 *   **Examples:** Automotive, safety/minimal, cloud appliance (future).

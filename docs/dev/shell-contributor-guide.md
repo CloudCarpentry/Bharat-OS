@@ -6,7 +6,7 @@ This guide defines contribution rules for Bharat-OS shell work. Follow this befo
 
 Applies to:
 
-- `services/system/shell/` (runtime, parser, dispatch, output, auth)
+- `core/services/system/shell/` (runtime, parser, dispatch, output, auth)
 - optional shared helpers in `lib/cli/` or `lib/msg/cli/`
 - shell architecture/profile docs in `docs/architecture/system/`
 
@@ -14,7 +14,7 @@ Applies to:
 
 ### Do
 
-- Keep system shell runtime in `services/system/shell/`.
+- Keep system shell runtime in `core/services/system/shell/`.
 - Integrate command handlers through service contracts (IPC/service APIs).
 - Add explicit capability metadata for each privileged command.
 - Maintain bounded parsing and bounded memory behavior.
@@ -33,7 +33,7 @@ Applies to:
 
 1. Kernel owns primitives and enforcement mechanisms, not shell policy.
 2. Shell service owns command parsing, dispatch, and per-profile policy evaluation.
-3. Compatibility/POSIX shell is deferred and belongs under `personalities/compat/`.
+3. Compatibility/POSIX shell is deferred and belongs under `core/personalities/compat/`.
 
 ## Command design requirements
 
@@ -67,10 +67,10 @@ PRs touching shell runtime should verify:
 
 ## Suggested implementation layout
 
-- `services/system/shell/include/`
-- `services/system/shell/src/`
-- `services/system/shell/tests/`
-- `services/system/shell/src/commands/`
+- `core/services/system/shell/include/`
+- `core/services/system/shell/src/`
+- `core/services/system/shell/quality/tests/`
+- `core/services/system/shell/src/commands/`
 
 ## Review guidance
 

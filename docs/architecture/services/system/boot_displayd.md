@@ -1,4 +1,4 @@
-# Boot Display Service (`services/system/boot_displayd`)
+# Boot Display Service (`core/services/system/boot_displayd`)
 
 ## Overview
 
@@ -13,8 +13,8 @@
 
 ## Current Implementation Baseline
 
-- Service entrypoint: `services/system/boot_displayd/main.c`
-- Tiny renderer/runtime: `stacks/ui/lcd/tiny_ui.c`
+- Service entrypoint: `core/services/system/boot_displayd/main.c`
+- Tiny renderer/runtime: `core/stacks/ui/lcd/tiny_ui.c`
 - Public contract: `include/bharat/ui/tiny_ui.h`
 
 The current baseline intentionally stays policy-light and profile-friendly: page-oriented rendering, low-memory compatible buffers, and no direct board-driver reach-around.

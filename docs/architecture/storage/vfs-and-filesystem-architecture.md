@@ -16,29 +16,29 @@ For sandbox policy details, see `sandbox-policy.md`.
 
 | Area | Primary ownership | Must do | Must not do |
 |---|---|---|---|
-| `drivers/block/*` | Block frontend engines | Consume normalized block requests, submit hardware-facing I/O | Path parsing, namespace logic, mount policy, POSIX permission semantics |
-| `drivers/storage/*` | Transport/controller specialization | Implement protocol/controller queueing and device management | Path policy, VFS policy, capability policy decisions |
-| `stacks/storage/*` | Reusable storage primitives | Provide block/cache/profile/backend adapter building blocks | Own user ABI contract or global namespace policy |
-| `services/system/filesystem/*` | Filesystem service policy | Own namespace, mount, FD lifecycle, capability-aware access policy, request dispatch | Push policy back into kernel internals |
-| `kernel/include/fs/*` | Shared kernel-service contract types | Define minimal shared ABI/type contracts needed by both sides | Encode namespace/mount/path policy |
-| `kernel/src/fs/*` | Transitional mechanism-only compatibility surface | Keep minimal dispatch/forwarding/error bridging while migration completes | Introduce new pathname, namespace, mount, or sandbox policy |
+| `core/drivers/block/*` | Block frontend engines | Consume normalized block requests, submit hardware-facing I/O | Path parsing, namespace logic, mount policy, POSIX permission semantics |
+| `core/drivers/storage/*` | Transport/controller specialization | Implement protocol/controller queueing and device management | Path policy, VFS policy, capability policy decisions |
+| `core/stacks/storage/*` | Reusable storage primitives | Provide block/cache/profile/backend adapter building blocks | Own user ABI contract or global namespace policy |
+| `core/services/system/filesystem/*` | Filesystem service policy | Own namespace, mount, FD lifecycle, capability-aware access policy, request dispatch | Push policy back into kernel internals |
+| `core/kernel/include/fs/*` | Shared kernel-service contract types | Define minimal shared ABI/type contracts needed by both sides | Encode namespace/mount/path policy |
+| `core/kernel/src/fs/*` | Transitional mechanism-only compatibility surface | Keep minimal dispatch/forwarding/error bridging while migration completes | Introduce new pathname, namespace, mount, or sandbox policy |
 | `lib/fs/*` | Client boundary | Provide stable client entrypoints while service IPC/runtime matures | Re-implement service policy logic |
 
 ---
 
 ## 3. Layer contract
 
-### Layer A — Drivers (`drivers/block`, `drivers/storage`)
+### Layer A — Drivers (`core/drivers/block`, `core/drivers/storage`)
 
 - Hardware/transport mechanism only.
 - No policy authority for namespace, mount, descriptor, or capability semantics.
 
-### Layer B — Storage stack (`stacks/storage`)
+### Layer B — Storage stack (`core/stacks/storage`)
 
 - Reusable mechanisms (block API, cache, profile resolution, backend adapters).
 - May encode tunable behavior, but not user-visible policy ownership.
 
-### Layer C — Filesystem service (`services/system/filesystem`)
+### Layer C — Filesystem service (`core/services/system/filesystem`)
 
 - Sole owner of:
   - namespace visibility,
@@ -46,7 +46,7 @@ For sandbox policy details, see `sandbox-policy.md`.
   - file descriptor lifecycle,
   - capability interpretation for filesystem access.
 
-### Layer D — Kernel compatibility surface (`kernel/include/fs`, `kernel/src/fs`)
+### Layer D — Kernel compatibility surface (`core/kernel/include/fs`, `core/kernel/src/fs`)
 
 - Transitional surface only.
 - Kernel stays mechanism-oriented and migration-safe.
@@ -60,7 +60,7 @@ For sandbox policy details, see `sandbox-policy.md`.
 
 ## 4. Kernel FS transitional allowlist (normative)
 
-`kernel/src/fs/*` is temporary and constrained.
+`core/kernel/src/fs/*` is temporary and constrained.
 
 ### Allowed in kernel FS transitional code
 
@@ -107,7 +107,7 @@ Authorization for storage-class use is service-owned policy, with sandbox policy
 
 A storage/filesystem PR must update this document when it changes any normative boundary involving:
 
-- ownership movement across driver/stack/service/kernel/lib layers,
+- ownership movement across driver/stack/service/core/kernel/lib layers,
 - kernel transitional allowlist scope,
 - capability/policy ownership boundaries.
 

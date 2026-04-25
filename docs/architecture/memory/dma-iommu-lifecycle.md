@@ -14,7 +14,7 @@ This document defines the strict lifecycle and ownership model for device memory
 - **Coherency Awareness:** The system explicitly distinguishes between hardware-coherent devices and non-coherent devices. Cache maintenance operations are mandatory for non-coherent transfers.
 - **IOMMU Isolation:** If an IOMMU is present (`HW_CAP_STATE_PRESENT` or higher in `bharat_hw_caps_t`), all DMA-capable devices must be bound to a protection domain. Direct physical bypass is forbidden unless explicitly permitted by policy.
 - **Capability-Based Authorization:** All DMA and IOMMU lifecycle operations (mapping, unmapping, attaching) must be authorized by the caller holding appropriate capabilities (`CAP_TYPE_DMA_GRANT`, `CAP_TYPE_DMA_DOMAIN`).
-- **Distributed Consistency:** In a multi-kernel/per-core environment, IOMMU TLB invalidations and lifecycle state must be synchronized across cores using uRPC.
+- **Distributed Consistency:** In a multi-core/kernel/per-core environment, IOMMU TLB invalidations and lifecycle state must be synchronized across cores using uRPC.
 - **Interrupt-Driven Faults:** IOMMU isolation violations are reported via the IRQ system to ensure immediate kernel response.
 
 ## DMA Lifecycle
@@ -67,16 +67,16 @@ If the system supports an IOMMU, it intercepts the `hal_dma_map` calls.
 - If the fault is non-recoverable, the kernel enters a panic state to prevent data corruption or security breach.
 
 ## Current Implementation Notes (April 22, 2026)
-- Implemented in `kernel/src/mm/dma/dma.c`:
+- Implemented in `core/kernel/src/mm/dma/dma.c`:
   - explicit map/unmap state tracking (`mapped_to_device`, `owned_by_device`, `active_dir`)
   - pin-before-map validation
   - HAL DMA map/unmap integration plus non-coherent sync hooks
   - IOMMU map error propagation and rollback semantics
   - **Capability validation** for all lifecycle transitions.
-- Implemented in `kernel/src/mm/iommu/`:
+- Implemented in `core/kernel/src/mm/iommu/`:
   - `iommu_domain.c`: Cross-core invalidation via uRPC.
   - `iommu_fault.c`: IRQ integration for fault reporting.
-- Host validation in `tests/test_dma_lifecycle_host.c` covers:
+- Host validation in `quality/tests/test_dma_lifecycle_host.c` covers:
   - map/unmap ownership transitions
   - double-map rejection
   - sync invocation on non-coherent path

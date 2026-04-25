@@ -10,7 +10,7 @@
 * Capability rights use `CAP_RIGHT_*`
 * uRPC state enums use `URPC_*`
 * DMA grant state enums use `DMA_GRANT_*`
-* Public kernel/UAPI names must be stable once merged
+* Public core/kernel/UAPI names must be stable once merged
 * Do not use synonyms for the same security concept across modules
 
 ## Canonical Terms

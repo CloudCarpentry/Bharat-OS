@@ -120,7 +120,7 @@ This document outlines the phased implementation plan for the Bharat-OS SDK and 
 A clean layout to support this phased rollout:
 
 ```text
-sdk/
+interface/sdk/
   include/
     stdio.h
     stdlib.h
@@ -152,7 +152,7 @@ sdk/
     poll/
     mmap/
     spawn/
-  personalities/
+  core/personalities/
     linux/
     embedded/
     appliance/
@@ -166,7 +166,7 @@ sdk/
 To immediately execute this plan, the following sequence of tasks should be completed:
 
 * [ ] **Task 1:** Define Bharat user ABI and syscall/service boundary.
-* [ ] **Task 2:** Create `sdk/include` and minimal CRT.
+* [ ] **Task 2:** Create `interface/sdk/include` and minimal CRT.
 * [ ] **Task 3:** Implement `libsys` for thread, vm, time, IPC/wait, and object/handle ops.
 * [ ] **Task 4:** Implement libc core: string, stdlib, errno, assert, minimal stdio, malloc.
 * [ ] **Task 5:** Create POSIX subset matrix and mark each API: native, shim, stub, deferred.

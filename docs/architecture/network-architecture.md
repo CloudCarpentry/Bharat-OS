@@ -15,9 +15,9 @@ This document defines:
 ## 2. Current State
 
 Today, networking exists in multiple partially overlapping forms:
-* `services/net` (monolithic, legacy)
-* `services/netmgr` (control-plane direction)
-* `services/netstack` (data-plane direction)
+* `core/services/net` (monolithic, legacy)
+* `core/services/netmgr` (control-plane direction)
+* `core/services/netstack` (data-plane direction)
 * `lib/net`, `lib/packet` (shared abstractions)
 
 Limitations:
@@ -40,7 +40,7 @@ Bharat-OS networking is structured into:
 * DHCP / configuration
 * policy management
 
-→ `services/netmgr`
+→ `core/services/netmgr`
 
 #### Data Plane
 * packet processing
@@ -48,7 +48,7 @@ Bharat-OS networking is structured into:
 * ARP/NDP
 * UDP/TCP
 
-→ `services/netstack`
+→ `core/services/netstack`
 
 #### Shared Libraries
 * common types → `lib/net`
@@ -58,7 +58,7 @@ Bharat-OS networking is structured into:
 * system-wide contracts
 * profile abstraction
 
-→ `stacks/network`
+→ `core/stacks/network`
 
 ---
 
@@ -81,10 +81,10 @@ Bharat-OS will evolve beyond traditional networking into a full **communications
 
 | Layer         | Component         |
 | ------------- | ----------------- |
-| Subsystem     | stacks/network    |
-| Control Plane | services/netmgr   |
-| Data Plane    | services/netstack |
-| Legacy        | services/net      |
+| Subsystem     | core/stacks/network    |
+| Control Plane | core/services/netmgr   |
+| Data Plane    | core/services/netstack |
+| Legacy        | core/services/net      |
 | Shared Types  | lib/net           |
 | Packet Model  | lib/packet        |
 
@@ -124,7 +124,7 @@ Bharat-OS will evolve beyond traditional networking into a full **communications
 
 ## 8. Transitional Note
 
-`services/net` is considered **legacy** and will be decomposed into:
+`core/services/net` is considered **legacy** and will be decomposed into:
 * `netmgr` (control plane)
 * `netstack` (data plane)
 

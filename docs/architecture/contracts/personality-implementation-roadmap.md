@@ -27,17 +27,17 @@ Create `docs/architecture/contracts/personality-naming.md`. Replace "NONE" with 
 ---
 
 ## Epic 2 — Restructure repo around personality as a first-class layer
-### Ticket 2.1 — Create real `personalities/` implementation roots
+### Ticket 2.1 — Create real `core/personalities/` implementation roots
 **Status:** IN PROGRESS
-Ensure `personalities/common/`, `personalities/native/`, `personalities/compat/linux/`, `personalities/compat/android/`, `personalities/domain/automotive/` exist and become active.
+Ensure `core/personalities/common/`, `core/personalities/native/`, `core/personalities/compat/linux/`, `core/personalities/compat/android/`, `core/personalities/domain/automotive/` exist and become active.
 
 ### Ticket 2.2 — Move personality logic out of trap-local silos
 **Status:** IN PROGRESS
-Move personality-specific logic toward the dedicated `personalities/` layer, leaving only a narrow trap hook inside kernel.
+Move personality-specific logic toward the dedicated `core/personalities/` layer, leaving only a narrow trap hook inside kernel.
 
 ### Ticket 2.3 — Add personality dispatch contract
 **Status:** PENDING
-Create `kernel/include/personality/personality_hooks.h` and `personalities/common/personality_registry.c`.
+Create `core/kernel/include/personality/personality_hooks.h` and `core/personalities/common/personality_registry.c`.
 
 ---
 
@@ -52,7 +52,7 @@ Every `.bidl` service should be able to declare visible personalities, wrappers,
 
 ### Ticket 3.3 — Add personality visibility manifest
 **Status:** PENDING
-Create `uapi/bharat/personality/personality_manifest.h`.
+Create `interface/uapi/bharat/personality/personality_manifest.h`.
 
 ---
 
@@ -63,11 +63,11 @@ Replace "NONE" with "NATIVE" in architecture and code/build surface.
 
 ### Ticket 4.2 — Define Bharat native SDK surface
 **Status:** PENDING
-Define `user/sdk/native/` and `user/sdk/include/bharat/sdk/...`.
+Define `user/interface/sdk/native/` and `user/interface/sdk/include/bharat/interface/sdk/...`.
 
 ### Ticket 4.3 — Native-first input vertical slice
 **Status:** PENDING
-Add native input IDL, native SDK bindings, and keep `uapi/bharat/input/input.h` as native ABI event format.
+Add native input IDL, native SDK bindings, and keep `interface/uapi/bharat/input/input.h` as native ABI event format.
 
 ---
 
@@ -82,18 +82,18 @@ Create `docs/architecture/contracts/android-compat-mapping.md`.
 
 ### Ticket 5.3 — Compatibility shim layer boundary
 **Status:** PENDING
-Create `personalities/compat/common/` and `lib/compat/`.
+Create `core/personalities/compat/common/` and `lib/compat/`.
 
 ---
 
 ## Epic 6 — Domain personality framework
 ### Ticket 6.1 — Automotive personality contract
 **Status:** PENDING
-Create `personalities/domain/automotive/` and `docs/architecture/contracts/automotive-personality.md`.
+Create `core/personalities/domain/automotive/` and `docs/architecture/contracts/automotive-personality.md`.
 
 ### Ticket 6.2 — Safety/minimal native personality
 **Status:** PENDING
-Create `personalities/domain/safety_minimal/`.
+Create `core/personalities/domain/safety_minimal/`.
 
 ---
 
@@ -115,7 +115,7 @@ Control service exposure per personality (e.g., native desktop vs safety).
 ## Epic 8 — Personality-aware SDK and app model
 ### Ticket 8.1 — Split SDK by personality facade
 **Status:** PENDING
-`user/sdk/core/`, `user/sdk/native/`, `user/sdk/compat/linux/`, `user/sdk/compat/android/`.
+`user/interface/sdk/core/`, `user/interface/sdk/native/`, `user/interface/sdk/compat/linux/`, `user/interface/sdk/compat/android/`.
 
 ### Ticket 8.2 — Forbid apps from bypassing personality facade
 **Status:** PENDING

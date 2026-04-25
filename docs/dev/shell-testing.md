@@ -2,7 +2,7 @@
 
 ## Scope
 
-This guide covers the production-grade minimal system/admin shell under `services/system/shell/` and its alignment path with `services/system/console/`.
+This guide covers the production-grade minimal system/admin shell under `core/services/system/shell/` and its alignment path with `core/services/system/console/`.
 
 ## Build enablement
 
@@ -45,7 +45,7 @@ Privileged examples:
 
 ## Host test coverage
 
-`services/system/shell/tests/` includes:
+`core/services/system/shell/quality/tests/` includes:
 
 - parser bounds/malformed input tests
 - registry sanity tests

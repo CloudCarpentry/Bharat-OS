@@ -6,7 +6,7 @@ The Hardware Capability Model provides a normalized, architecture-agnostic way t
 ## Principles
 - **No Raw ISA Names:** Components must communicate via generalized capability flags, not architecture-specific macros (e.g., use `CAP_CPU_VECTOR` instead of checking for NEON or AVX).
 - **Single Source of Truth:** `bharat_hw_caps_t` is the canonical record populated during boot.
-- **Strict Boundary:** No board-specific or platform-specific structures are exposed outside the `platform/` directory.
+- **Strict Boundary:** No board-specific or platform-specific structures are exposed outside the `core/platform/` directory.
 
 ## Capability Categories
 
@@ -42,7 +42,7 @@ Capabilities are not merely binary. Their state is captured as:
 - `DEGRADED`: Hardware is present but failing, thermally throttled, or partially isolated.
 
 ## Flow
-1. **Boot/Discovery:** `platform/` code queries the hardware/device tree.
-2. **Translation:** `platform/` maps raw discoveries into `bharat_hw_caps_t`.
+1. **Boot/Discovery:** `core/platform/` code queries the hardware/device tree.
+2. **Translation:** `core/platform/` maps raw discoveries into `bharat_hw_caps_t`.
 3. **Registration:** The populated capability structure is registered with the Kernel Capability Registry.
-4. **Consumption:** `services/` and `lib/runtime` query the registry to make dispatch and policy decisions.
+4. **Consumption:** `core/services/` and `lib/runtime` query the registry to make dispatch and policy decisions.

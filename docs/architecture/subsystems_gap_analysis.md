@@ -8,26 +8,26 @@ This document reviews the Bharat-OS subsystem structure (GUI, Console, Framebuff
 
 ### 2.1 Console Subsystem
 *   **Inventory:**
-    *   **HAL Layer:** Basic early-boot serial routines exist in `kernel/include/hal/hal.h` (`hal_serial_init`, `hal_serial_write_char`, etc.).
-    *   **x86_64:** `kernel/include/hal/serial.h` has a basic COM1 `outb`/`inb` polling implementation.
+    *   **HAL Layer:** Basic early-boot serial routines exist in `core/kernel/include/core/hal/hal.h` (`hal_serial_init`, `hal_serial_write_char`, etc.).
+    *   **x86_64:** `core/kernel/include/core/hal/serial.h` has a basic COM1 `outb`/`inb` polling implementation.
     *   **RISC-V/SHAKTI:** Basic UART base addresses exist in `shakti_bsp.c`.
 *   **Gaps & Problems:**
     *   No generic terminal/console abstraction layer.
-    *   No multiplexing (e.g., routing `printf` from different kernel/user domains).
+    *   No multiplexing (e.g., routing `printf` from different core/kernel/user domains).
     *   No split between early-boot polling console and interrupt-driven runtime console.
-    *   No user-space `services/console` daemon to handle TTY/PTY emulation.
+    *   No user-space `core/services/console` daemon to handle TTY/PTY emulation.
 
 ### 2.2 GUI / Framebuffer / Display Path
 *   **Inventory:**
     *   **UI Layer:** `ui/fbui/core/` contains `fb_render.c` with a basic software 2D renderer (fill rect, draw line, blit) assuming a flat 32-bpp framebuffer (`bharat_display_device_t`).
 *   **Gaps & Problems:**
-    *   **Coupling:** `fb_render.c` references `bharat_display_device_t`, but this device struct is not cleanly defined in the core kernel's device framework (`kernel/include/device.h`).
+    *   **Coupling:** `fb_render.c` references `bharat_display_device_t`, but this device struct is not cleanly defined in the core kernel's device framework (`core/kernel/include/device.h`).
     *   No HAL/Driver mapping for setting up framebuffers (e.g., parsing UEFI GOP on x86, or configuring DRM/KMS on ARM/RISC-V).
     *   No text-mode console rendering over the framebuffer.
 
 ### 2.3 File System
 *   **Inventory:**
-    *   **Service Layer:** `services/file_system/main.c` exists but is just an empty stub with `TODO`s for POSIX semantics and block devices.
+    *   **Service Layer:** `core/services/file_system/main.c` exists but is just an empty stub with `TODO`s for POSIX semantics and block devices.
 *   **Gaps & Problems:**
     *   No core VFS (Virtual File System) interface (`mount`, `open`, `read`, `write`, `ioctl`).
     *   No initial RAM-backed filesystem (ramfs/tmpfs) for early boot or diskless profiles.
@@ -35,13 +35,13 @@ This document reviews the Bharat-OS subsystem structure (GUI, Console, Framebuff
 
 ### 2.4 Network Module
 *   **Inventory:**
-    *   **Device Layer:** `kernel/include/device.h` defines `DEVICE_CLASS_ETHERNET` and `DEVICE_CLASS_WIFI`.
-    *   **Driver:** `drivers/ptp_clock/ptp_clock.c` exists (likely stubbed).
-    *   **IO Layer:** `kernel/include/io_subsys.h` outlines a high-throughput zero-copy ring (`io_ring_t`, `zero_copy_nic_ring_t`) inspired by io_uring/DPDK.
+    *   **Device Layer:** `core/kernel/include/device.h` defines `DEVICE_CLASS_ETHERNET` and `DEVICE_CLASS_WIFI`.
+    *   **Driver:** `core/drivers/ptp_clock/ptp_clock.c` exists (likely stubbed).
+    *   **IO Layer:** `core/kernel/include/io_subsys.h` outlines a high-throughput zero-copy ring (`io_ring_t`, `zero_copy_nic_ring_t`) inspired by io_uring/DPDK.
 *   **Gaps & Problems:**
     *   No generic network device abstraction (`netdev`).
     *   No packet buffer abstraction (`mbuf`/`skb`).
-    *   No user-space network service (`services/net/`) to handle protocols (ARP, IP, UDP, TCP).
+    *   No user-space network service (`core/services/net/`) to handle protocols (ARP, IP, UDP, TCP).
 
 ## 3. Subsystem Layering & Separation
 
@@ -54,15 +54,15 @@ To support multi-arch and multi-profile scaling without bloating the microkernel
     *   URPC/IPC channels.
 *   **Hardware Abstraction Layer (HAL) / BSP:**
     *   Architecture-specific initialization (e.g., GIC/PLIC).
-    *   **SHAKTI SDK Note:** The HAL/BSP must parse the FDT (Device Tree) or use static definitions to expose the UART, PLIC, CLINT, and RAM. SHAKTI-specific memory maps and boot sequences remain entirely in `kernel/src/hal/riscv/shakti_bsp.c`.
+    *   **SHAKTI SDK Note:** The HAL/BSP must parse the FDT (Device Tree) or use static definitions to expose the UART, PLIC, CLINT, and RAM. SHAKTI-specific memory maps and boot sequences remain entirely in `core/kernel/src/core/hal/riscv/shakti_bsp.c`.
 *   **Drivers (User-Space / Bounded Kernel):**
     *   Actual drivers for UART, NICs, and GPUs. These interact with hardware via capability-gated MMIO windows and interrupts.
 *   **Services (User-Space Daemons):**
-    *   `services/console`: Owns the active UART driver capability. Provides TTY streams to other apps via URPC.
-    *   `services/file_system`: Implements VFS, ramfs, and later block-backed FS. Exposes file handles via capabilities.
-    *   `services/net`: Owns the NIC driver capability via `io_setup_zero_copy_nic_ring`. Implements the network stack (L2-L4).
+    *   `core/services/console`: Owns the active UART driver capability. Provides TTY streams to other apps via URPC.
+    *   `core/services/file_system`: Implements VFS, ramfs, and later block-backed FS. Exposes file handles via capabilities.
+    *   `core/services/net`: Owns the NIC driver capability via `io_setup_zero_copy_nic_ring`. Implements the network stack (L2-L4).
 *   **Personality/Profile Layer:**
-    *   Translates POSIX `read(fd)` syscalls into IPC messages to `services/file_system` or `services/console`.
+    *   Translates POSIX `read(fd)` syscalls into IPC messages to `core/services/file_system` or `core/services/console`.
 
 ## 4. SHAKTI SDK Specific Expectations
 
@@ -84,8 +84,8 @@ The SHAKTI SDK provides a specific toolchain and boot environment (often OpenSBI
 ### Phase 1: Minimal Usable Services (Next Step)
 *   **Goal:** Basic interaction without complex protocols.
 *   **Tasks:**
-    *   **Console:** Implement a simple `services/console` that reads from a serial driver and multiplexes log output.
-    *   **File System:** Implement a basic in-memory `ramfs` in `services/file_system` with open/read/write semantics over IPC.
+    *   **Console:** Implement a simple `core/services/console` that reads from a serial driver and multiplexes log output.
+    *   **File System:** Implement a basic in-memory `ramfs` in `core/services/file_system` with open/read/write semantics over IPC.
     *   **Framebuffer:** Connect the existing `fbui` to a dummy or predefined VRAM region. Add a text-rendering mode to `fbui` so the console can output to the screen.
     *   **Network:** Define the `netdev` interface and packet buffer structs. No protocol stack yet.
 
@@ -94,7 +94,7 @@ The SHAKTI SDK provides a specific toolchain and boot environment (often OpenSBI
 *   **Tasks:**
     *   Implement real UART interrupts (instead of polling).
     *   Map Block Device drivers to the VFS.
-    *   Implement an L2 packet switch and basic ARP/UDP in `services/net`.
+    *   Implement an L2 packet switch and basic ARP/UDP in `core/services/net`.
     *   Implement driver stubs for QEMU VirtIO (net, blk, gpu) for easy multi-arch testing.
 
 ### Phase 3: Advanced GUI & Personality Separation

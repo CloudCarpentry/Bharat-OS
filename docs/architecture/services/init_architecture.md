@@ -1,8 +1,8 @@
-# Bharat-OS Init Service Architecture (`services/init`)
+# Bharat-OS Init Service Architecture (`core/services/init`)
 
 ## 1. Overview and Core Philosophy
 
-Bharat-OS is transitioning toward a service-oriented control plane where the kernel retains strictly deterministic mechanisms and services own policy and orchestration. In this architecture, `services/init` (located at `services/core/init`) is the **first policy orchestrator**. It is not a monolithic, permanently running god-process (like a traditional Linux `init` or Windows Service Control Manager).
+Bharat-OS is transitioning toward a service-oriented control plane where the kernel retains strictly deterministic mechanisms and services own policy and orchestration. In this architecture, `core/services/init` (located at `core/services/core/init`) is the **first policy orchestrator**. It is not a monolithic, permanently running god-process (like a traditional Linux `init` or Windows Service Control Manager).
 
 Its primary jobs are:
 1. **Establish the minimal runtime contract**: Handshake with the kernel, discover boot profiles/capabilities, and launch mandatory core services.
@@ -16,13 +16,13 @@ This document describes the current baseline (stub) state and the fully develope
 ## 2. Current State vs. Future State
 
 ### Current State (Stub/Transition)
-Currently, `services/core/init` is stubbed.
-- The kernel uses `kernel_start_init_service()` (in `kernel/src/init/init_bootstrap.c`) to create a `sysmgr` process and thread.
+Currently, `core/services/core/init` is stubbed.
+- The kernel uses `kernel_start_init_service()` (in `core/kernel/src/init/init_bootstrap.c`) to create a `sysmgr` process and thread.
 - Full user-space ELF loading and true capability bootstrapping is deferred. A degrading boot mode is reported.
-- `services/core/init/init_main.c` exists as a stub that initializes the runtime (`bharat_runtime_init()`), attempts to acquire a root capability (`bharat_runtime_get_bootstrap_cap()`), resolves a profile context (`init_profile_get_context()`), and runs a minimal status loop that suspends itself when done.
+- `core/services/core/init/init_main.c` exists as a stub that initializes the runtime (`bharat_runtime_init()`), attempts to acquire a root capability (`bharat_runtime_get_bootstrap_cap()`), resolves a profile context (`init_profile_get_context()`), and runs a minimal status loop that suspends itself when done.
 
 ### Future State
-The complete `services/init` will follow a layered approach heavily dependent on hardware profiles and manifest files, ensuring that from tiny MCUs to rich desktop systems, the boot orchestration scales gracefully.
+The complete `core/services/init` will follow a layered approach heavily dependent on hardware profiles and manifest files, ensuring that from tiny MCUs to rich desktop systems, the boot orchestration scales gracefully.
 
 ---
 
@@ -49,7 +49,7 @@ Different profiles dictate how the core engine executes.
 - `init_profile_cloud.c`: Strong emphasis on early networking/telemetry and service recovery.
 
 ### Layer C: Handoff Targets
-Once `services/init` completes its bootstrap orchestration, responsibility is transitioned to domain experts:
+Once `core/services/init` completes its bootstrap orchestration, responsibility is transitioned to domain experts:
 - **`servicemgr`**: Service lifecycle, restart backoffs, dependency monitoring.
 - **`faultmgr`**: Fault domain isolation and system-wide recovery policies.
 - **`namesvc`**: General capability/namespace registration.

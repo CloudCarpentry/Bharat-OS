@@ -45,7 +45,7 @@ Exit criteria:
 
 - [ ] complete service request surface for `openat/read/write/stat/mkdir/unlink/rename`.
 - [ ] remove ambiguous duplicate transitional symbols/ownership patterns.
-- [ ] convert remaining tests/consumers to clean service boundary usage.
+- [ ] convert remaining quality/tests/consumers to clean service boundary usage.
 
 Exit criteria:
 - service path is authoritative for normal FS operations;
@@ -107,5 +107,5 @@ For every storage/filesystem PR:
    - current-state changes → `file-system-detailed-design.md`
    - future sequencing changes → `roadmap.md`
    - sandbox-policy changes → `sandbox-policy.md`
-2. If interfaces in `kernel/include/fs`, `stacks/include/bharat/stacks/storage`, or `lib/fs` change, update contract text in same PR.
+2. If interfaces in `core/kernel/include/fs`, `core/stacks/include/bharat/core/stacks/storage`, or `lib/fs` change, update contract text in same PR.
 3. Keep transitional claims explicit; do not document planned behavior as shipped.

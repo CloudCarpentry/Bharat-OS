@@ -4,7 +4,7 @@
 
 Superseded (by implementation)
 
-*Note: As of the latest architecture implementation in `kernel/src/sched/ai_sched.c`, the AI heuristic scheduling model is embedded directly in the kernel (Ring 0). It uses architectural hooks to sample PMC data and synchronously adjusts time slices. This ADR is kept for historical context.*
+*Note: As of the latest architecture implementation in `core/kernel/src/sched/ai_sched.c`, the AI heuristic scheduling model is embedded directly in the kernel (Ring 0). It uses architectural hooks to sample PMC data and synchronously adjusts time slices. This ADR is kept for historical context.*
 
 ## Context
 

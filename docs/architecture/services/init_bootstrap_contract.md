@@ -1,8 +1,8 @@
-# Bharat-OS `services/init` — Design Principles & Architecture
+# Bharat-OS `core/services/init` — Design Principles & Architecture
 
 ## 1. Purpose
 
-This document defines the **correct role, scope, and architecture of `services/init`** in Bharat-OS.
+This document defines the **correct role, scope, and architecture of `core/services/init`** in Bharat-OS.
 
 The goal is to ensure:
 
@@ -178,7 +178,7 @@ Services should **self-register**.
 
 ```
 service:
-  → start (platform/loader)
+  → start (core/platform/loader)
   → register with namesvc
   → signal ready
 
@@ -432,7 +432,7 @@ This design:
 
 ---
 
-# 21. Kernel Self-Tests vs Init Boot GatingA large part of Bharat-OS correctness today comes from low-level kernel self-tests and bring-up validation such as:- PMM self-tests- VMM self-tests- page-table / TLB checks- trap and fault-path checks- discovery / FDT / platform parsing checks- timer / IRQ / early console sanity- low-level IPC and capability primitive checksThese mechanisms are essential, but they do **NOT** belong inside `services/init`.### Core Rule```textKernel runs mechanism self-tests.Init consumes summarized results and makes boot policy decisions.Servicemgr / faultmgr own long-term lifecycle and runtime recovery.
+# 21. Kernel Self-Tests vs Init Boot GatingA large part of Bharat-OS correctness today comes from low-level kernel self-tests and bring-up validation such as:- PMM self-tests- VMM self-tests- page-table / TLB checks- trap and fault-path checks- discovery / FDT / platform parsing checks- timer / IRQ / early console sanity- low-level IPC and capability primitive checksThese mechanisms are essential, but they do **NOT** belong inside `core/services/init`.### Core Rule```textKernel runs mechanism self-tests.Init consumes summarized results and makes boot policy decisions.Servicemgr / faultmgr own long-term lifecycle and runtime recovery.
 
 22. Responsibility Split
     22.1 What stays in Kernel
@@ -606,7 +606,7 @@ creates drift between kernel truth and init truth
 
 increases tiny/RT footprint
 
-violates kernel/service boundary
+violates core/kernel/service boundary
 
 Bad Pattern 2 — Kernel directly owning service bootstrap policy
 Kernel self-tests must not expand into service-graph policy ownership.

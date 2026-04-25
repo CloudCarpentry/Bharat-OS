@@ -11,7 +11,7 @@ This review applies Bharat-OS's stated direction: **small mechanism kernel, stri
 
 - `arch` / `hal` / `platform` are hardware-mechanism layers.
 - `kernel` may depend downward on hardware/mechanism layers, but not upward into user policy layers.
-- `services`, `stacks`, `user`, `sdk` should prefer `uapi/include/lib` contracts and avoid direct hardware headers.
+- `services`, `stacks`, `user`, `sdk` should prefer `interface/uapi/include/lib` contracts and avoid direct hardware headers.
 - `lib` must remain reusable and avoid direct `hal` dependencies.
 
 ## 2) Full-Tree Scan Result
@@ -31,40 +31,40 @@ This review applies Bharat-OS's stated direction: **small mechanism kernel, stri
 | `stacks` | `hal` | 1 | Protocol stack bypasses service/UAPI boundary to hardware layer.
 | `user` | `hal` | 1 | User app path directly includes HAL; should route through UAPI/SDK.
 | `services` | `boot` | 1 | Service code consumes boot internals directly.
-| `services` | `hal` | 1 | Service code takes direct HAL dependency rather than kernel/UAPI mediation.
+| `services` | `hal` | 1 | Service code takes direct HAL dependency rather than core/kernel/UAPI mediation.
 
 ## 4) Representative Wrong References (headers included)
 
 ### A. `kernel -> tests`
-- `kernel/src/kernel_boot.c:34` includes `tests/ktest.h`
-- `kernel/src/boot/boot_selftest.c:3` includes `tests/ktest.h`
-- `kernel/src/tests/ktest_capability.c:20` includes `tests/ktest.h`
+- `core/kernel/src/kernel_boot.c:34` includes `quality/tests/ktest.h`
+- `core/kernel/src/boot/boot_selftest.c:3` includes `quality/tests/ktest.h`
+- `core/kernel/src/quality/tests/ktest_capability.c:20` includes `quality/tests/ktest.h`
 
 ### B. `services -> drivers`
-- `services/include/services/can/can_service_protocol.h:6` includes `drivers/can/can_controller.h`
-- `services/include/services/actuator_mgr/actuator_mgr_protocol.h:2` includes `drivers/actuator/actuator_device.h`
-- `services/include/services/sensor_hub/sensor_hub_protocol.h:2` includes `drivers/sensor/sensor_sample.h`
+- `core/services/include/core/services/can/can_service_protocol.h:6` includes `core/drivers/can/can_controller.h`
+- `core/services/include/core/services/actuator_mgr/actuator_mgr_protocol.h:2` includes `core/drivers/actuator/actuator_device.h`
+- `core/services/include/core/services/sensor_hub/sensor_hub_protocol.h:2` includes `core/drivers/sensor/sensor_sample.h`
 
 ### C. `lib -> hal`
-- `lib/include/game_engine_gfx.h:5` includes `hal/gpu.h`
-- `lib/include/gui.h:5` includes `hal/gpu.h`
+- `lib/include/game_engine_gfx.h:5` includes `core/hal/gpu.h`
+- `lib/include/gui.h:5` includes `core/hal/gpu.h`
 
-### D. `services/stacks/user -> hal/boot`
-- `stacks/network/skb.c:2` includes `hal/hal.h`
-- `user/ui/fbui/core/fb_demo_app.c:5` includes `hal/hal.h`
-- `services/core/subsysmgr/subsys_test_runner.c:2` includes `boot/boot_args.h`
-- `services/core/subsysmgr/subsys_test_runner.c:3` includes `hal/hal.h`
+### D. `core/services/core/stacks/user -> core/hal/boot`
+- `core/stacks/network/skb.c:2` includes `core/hal/hal.h`
+- `user/ui/fbui/core/fb_demo_app.c:5` includes `core/hal/hal.h`
+- `core/services/core/subsysmgr/subsys_test_runner.c:2` includes `boot/boot_args.h`
+- `core/services/core/subsysmgr/subsys_test_runner.c:3` includes `core/hal/hal.h`
 
 ## 5) Priority Fix Plan (cleanliness-first)
 
 1. **P0 — isolate test headers from kernel production paths**
-   - Move `tests/ktest.h` to a kernel-private test interface (`kernel/include/tests/`) or gate with dedicated test build flags.
+   - Move `quality/tests/ktest.h` to a kernel-private test interface (`core/kernel/include/quality/tests/`) or gate with dedicated test build flags.
 2. **P0 — service protocol decoupling from drivers**
-   - Replace direct driver type includes in `services/include/...` with neutral DTO types in `include/bharat/uapi/...`.
-3. **P1 — remove HAL includes from `lib/`, `user/`, `stacks/`**
+   - Replace direct driver type includes in `core/services/include/...` with neutral DTO types in `include/bharat/interface/uapi/...`.
+3. **P1 — remove HAL includes from `lib/`, `user/`, `core/stacks/`**
    - Introduce adapter contracts in `uapi`/SDK and inject hardware execution via service or syscall boundary.
 4. **P1 — remove service direct `boot`/`hal` coupling**
-   - Define a boot-context UAPI payload handed from kernel/init contract instead of including `boot/*` headers.
+   - Define a boot-context UAPI payload handed from core/kernel/init contract instead of including `boot/*` headers.
 5. **P2 — enforce in CI**
    - Run `tools/lint/check_layer_references.py --strict` in CI once above items are resolved.
 

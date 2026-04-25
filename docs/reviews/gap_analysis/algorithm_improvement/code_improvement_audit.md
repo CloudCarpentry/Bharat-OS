@@ -8,7 +8,7 @@ This audit cross-checks the gap-analysis notes in this folder against the *curre
 - **Code reality:** `sched_find_thread_slot_by_tid_local()` still scans `SCHED_MAX_THREADS` linearly for each lookup.
 - **Why it matters:** This function is used by multiple scheduling and IPC paths, so worst-case cost grows with thread-capacity rather than active thread count.
 - **Where to improve:**
-  - `kernel/src/sched/sched.c` (`sched_find_thread_slot_by_tid_local`)
+  - `core/kernel/src/sched/sched.c` (`sched_find_thread_slot_by_tid_local`)
   - callers in scheduler and IPC paths should use a faster index once introduced.
 - **Suggested change:** Add a per-runqueue `tid -> slot_index` hash table (open addressing) plus generation checks; keep the current scan as debug fallback.
 
@@ -16,7 +16,7 @@ This audit cross-checks the gap-analysis notes in this folder against the *curre
 - **Code reality:** the virtio adapter copies packets from `packet_buf_t` to `netbuf` on RX and from `netbuf` back to `packet_buf_t` on TX.
 - **Why it matters:** this adds two O(n) memory copies in the fast path even when no transformation is needed.
 - **Where to improve:**
-  - `services/netstack/src/driver_virtio_adapter.c`
+  - `core/services/netstack/src/driver_virtio_adapter.c`
 - **Suggested change:** introduce a zero-copy wrapper path (shared buffer ownership + refcount handoff) between `packet_buf_t` and `netbuf_t`.
 
 ### 3) User/runtime memcpy/memset implementations are still scalar loops
@@ -31,14 +31,14 @@ This audit cross-checks the gap-analysis notes in this folder against the *curre
 - **Code reality:** ARP cache is fixed-size (`ARP_CACHE_SIZE = 16`) with linear scan; eviction is now LRU-style (monotonic recency) instead of fixed-index replacement.
 - **Why it matters:** lookup and update costs are O(n), and eviction quality is poor under churn.
 - **Where to improve:**
-  - `services/netstack/src/arp.c`
+  - `core/services/netstack/src/arp.c`
 - **Suggested change:** next step is a small hash table to remove linear scan cost; LRU/timestamp eviction baseline is now in place.
 
 ### 5) NUMA migration tracking uses chained hash tables without synchronization
 - **Code reality:** NUMA access/page-node tracking already moved beyond a simple list to hash buckets, but mutation and traversal are unsynchronized.
 - **Why it matters:** when called concurrently (multi-core page access accounting), list corruption and inaccurate counts are possible.
 - **Where to improve:**
-  - `kernel/src/mm/pmm/numa.c`
+  - `core/kernel/src/mm/pmm/numa.c`
 - **Suggested change:** add per-bucket locks (or RCU-style reads + locked writes) and bounded bucket depth monitoring.
 
 ## Medium-priority improvements
@@ -55,7 +55,7 @@ This audit cross-checks the gap-analysis notes in this folder against the *curre
 - **Code reality:** opcodes are routed correctly, but all handlers return `CRYPTO_STATUS_ERR_NOT_IMPL`.
 - **Why it matters:** all crypto requests currently fail, and no offload/software backend selection exists yet.
 - **Where to improve:**
-  - `services/security/crypto/dispatch.c`
+  - `core/services/security/crypto/dispatch.c`
 - **Suggested change:** implement provider registry + capability-based backend selection (HW offload first, constant-time software fallback).
 
 ## Already improved versus the older gap notes
@@ -80,7 +80,7 @@ This audit cross-checks the gap-analysis notes in this folder against the *curre
 
 ## Implemented in this update (small scoped task)
 
-- **ARP cache eviction quality improved** in `services/netstack/src/arp.c`:
+- **ARP cache eviction quality improved** in `core/services/netstack/src/arp.c`:
   - Added monotonic `last_used` tracking per entry.
   - Switched full-cache replacement from fixed slot (`index 0`) to least-recently-used entry.
   - Updated cache hits to refresh recency.

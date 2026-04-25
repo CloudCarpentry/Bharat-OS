@@ -1,8 +1,8 @@
-# Bharat-OS `services/init` Deep Analysis and Implementation Plan
+# Bharat-OS `core/services/init` Deep Analysis and Implementation Plan
 
 ## 1) Executive Summary
 
-`services/core/init` already follows the right **directional idea** (manifest filtering, profile gating, dependency-aware start order, and supervisor handoff hook), but it is still a scaffold-level bootstrap with stub launch functions and compile-time simulated context.
+`core/services/core/init` already follows the right **directional idea** (manifest filtering, profile gating, dependency-aware start order, and supervisor handoff hook), but it is still a scaffold-level bootstrap with stub launch functions and compile-time simulated context.
 
 The correct next step is **not** to turn init into a permanent god-process. Instead, Bharat-OS should keep init as a **small, profile-aware bootstrap policy orchestrator** that:
 
@@ -24,7 +24,7 @@ This document provides:
 
 ## 2.1 What already exists and is good
 
-### A. Bootstrap flow exists in `services/core/init`
+### A. Bootstrap flow exists in `core/services/core/init`
 - `init_main.c` initializes runtime, reads bootstrap capability, builds boot context, runs runtime graph, and idles.
 - This already establishes init as first userspace coordinator.
 
@@ -56,7 +56,7 @@ This document provides:
 
 ### B. Boot context is mostly compile-time/defaulted
 - Profile detection and capability set are macro-driven placeholders.
-- Board/platform/personality discovery is not sourced from a kernel boot contract yet.
+- Board/core/platform/personality discovery is not sourced from a kernel boot contract yet.
 
 ### C. Dependency model is minimal and not externally introspectable
 - In-memory only; no boot graph export contract for diagnostics tooling.
@@ -136,7 +136,7 @@ This document provides:
 Use one engine + profile modules (avoid giant preprocessor branching):
 
 ```text
-services/core/init/
+core/services/core/init/
   include/
     init_contract.h
     init_boot_context.h
@@ -360,7 +360,7 @@ Exit criteria:
 
 ## 11) Definition of Done (for “proper init”) 
 
-`services/init` is considered properly defined when all are true:
+`core/services/init` is considered properly defined when all are true:
 
 1. **Bootstrap-only authority:** init owns early boot, not lifelong supervision.
 2. **Profile-aware behavior:** one engine, adapter policy per profile.
@@ -373,10 +373,10 @@ Exit criteria:
 
 ## 12) Immediate Next Actions (Repository Practical)
 
-1. Align `services/core/init/README.md` language to “bootstrap orchestrator + handoff,” removing broad “root supervisor forever” phrasing.
-2. Add `init_boot_context` kernel handoff contract header under `include/bharat/uapi/init/`.
+1. Align `core/services/core/init/README.md` language to “bootstrap orchestrator + handoff,” removing broad “root supervisor forever” phrasing.
+2. Add `init_boot_context` kernel handoff contract header under `include/bharat/interface/uapi/init/`.
 3. Replace `stub_start` for `namesvc` and `servicemgr` with real launch callbacks (even if minimal platform shim).
 4. Implement phase publication and structured boot summary object.
-5. Add `docs/architecture/services/init-handoff-protocol.md` to formalize transfer semantics.
+5. Add `docs/architecture/core/services/init-handoff-protocol.md` to formalize transfer semantics.
 
 This sequence preserves current progress while steering implementation toward a profile-native, non-monolithic Bharat-OS init.

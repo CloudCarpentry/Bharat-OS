@@ -6,12 +6,12 @@ Bharat-OS strictly separates its library ecosystems into layers to maintain a se
 
 The core principle:
 > `lib/` is for reusable libraries with controlled dependencies.
-> `kernel/src/lib/` is for kernel implementation support.
+> `core/kernel/src/lib/` is for kernel implementation support.
 
 ### 1. Hard Split Between Three Layers
-* **`kernel/src/lib/`**: Kernel-private helpers. May use kernel allocators (`kalloc`), kernel locking, per-core state, and trap-safe assumptions. Its headers reside in `kernel/include/lib/`.
+* **`core/kernel/src/lib/`**: Kernel-private helpers. May use kernel allocators (`kalloc`), kernel locking, per-core state, and trap-safe assumptions. Its headers reside in `core/kernel/include/lib/`.
 * **`lib/`**: Reusable user-space/shared library code. Must have **zero** kernel dependency. Provides portable fallback implementations. Its headers reside in `lib/include/`.
-* **`hal/` or `arch/`**: Hardware/ISA optimized implementations selected by the build/arch/profile system (e.g., `arch_memcpy`).
+* **`core/hal/` or `core/arch/`**: Hardware/ISA optimized implementations selected by the build/core/arch/profile system (e.g., `arch_memcpy`).
 
 ### 2. Root `lib/` (Shared, Reusable Library Space)
 
@@ -28,7 +28,7 @@ The top-level `lib/` directory contains platform-agnostic, dependency-discipline
 * **No Implicit Privileges:** Cannot assume execution in ring 0, disabled interrupts, or elevated context.
 * **Explicit Allocations:** Must not call kernel-internal allocators (`kalloc`, etc.) directly. Memory ownership and allocator functions must be explicitly injected or passed.
 * **Platform Agnostic:** Should rely on generic architectural definitions or explicit HAL abstractions, not hardcoded hardware assumptions.
-* **Header Placement:** Only keep a header under `lib/include/` if it is supported as a shared/public library contract. If it is only used by the kernel, it must be moved to `kernel/include/`.
+* **Header Placement:** Only keep a header under `lib/include/` if it is supported as a shared/public library contract. If it is only used by the kernel, it must be moved to `core/kernel/include/`.
 * **Build Enforcement:** The `lib/` CMake layer must fail configuration if shared-library targets attempt to link to kernel-private targets.
 
 **Examples of Valid Contents:**
@@ -38,17 +38,17 @@ The top-level `lib/` directory contains platform-agnostic, dependency-discipline
 * Byte-order conversion helpers
 * BIDL runtime support (encode/decode/bounds checking)
 
-### 2. `kernel/src/lib/` (Kernel-Private Utilities)
+### 2. `core/kernel/src/lib/` (Kernel-Private Utilities)
 
-The `kernel/src/lib/` directory contains helpers and utilities explicitly bound to the kernel implementation. It is **not** a shared API surface.
+The `core/kernel/src/lib/` directory contains helpers and utilities explicitly bound to the kernel implementation. It is **not** a shared API surface.
 
 **Authorized Consumers:**
 * Core kernel subsystems
 * Architecture and HAL bridging logic within the kernel
 * In-kernel boot and test frameworks
 
-**Rules for `kernel/src/lib/` Code:**
-* **Kernel-Private Include:** Kernel-only DS implementations (like Cuckoo hash, Radix Tree, uRPC rings) MUST NOT place their headers in `lib/include/`. They belong in `kernel/include/lib/` to prevent publishing an API that user-space can see but cannot link against.
+**Rules for `core/kernel/src/lib/` Code:**
+* **Kernel-Private Include:** Kernel-only DS implementations (like Cuckoo hash, Radix Tree, uRPC rings) MUST NOT place their headers in `lib/include/`. They belong in `core/kernel/include/lib/` to prevent publishing an API that user-space can see but cannot link against.
 * **Privileged Execution:** May freely use kernel internals, spinlocks, scheduler state, IRQ masks, and CPU-local contexts.
 * **Implicit Allocations:** May directly depend on kernel allocators (`kalloc`, `vm_alloc`).
 * **Fault Handling:** May contain fault-safe formatting or panic helpers specific to the kernel domain.
@@ -170,10 +170,10 @@ The architecture explicitly splits Interface Definition Language (BIDL) manageme
    * Defines schema structure, wire formats, versioning, and capability transfer rules.
 
 2. **Source-of-Truth Definition Layer:**
-   * Located in `contracts/` (e.g., `contracts/bidl/`, `contracts/services/`).
+   * Located in `contracts/` (e.g., `contracts/binterface/idl/`, `contracts/core/services/`).
    * Contains the authoritative `.bidl` definition files. No executable code lives here.
 
 3. **Runtime / Helper Layer:**
    * Located in `lib/bidl_runtime/`.
    * Contains the actual executable logic: message builders, bounds checkers, encode/decode routines, and generated stubs.
-   * May be used by services and host tools. If the kernel requires raw parsing, specialized fault-safe helpers belong in `kernel/src/lib/bidl_runtime/`.
+   * May be used by services and host tools. If the kernel requires raw parsing, specialized fault-safe helpers belong in `core/kernel/src/lib/bidl_runtime/`.

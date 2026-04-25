@@ -51,13 +51,13 @@ Fast boot supports safety and real-time lanes.
 
 Kernel/subsystem APIs for this plan are implemented in:
 
-- `services/core/subsysmgr/include/bharat/automotive/automotive.h`
-- `personalities/automotive/automotive.c`
-- `kernel/include/ipc_async.h`
-- `kernel/src/ipc/async_ipc.c`
-- `kernel/src/ipc/ipc_timeout.c`
-- `kernel/include/sched.h`
-- `kernel/src/sched.c`
+- `core/services/core/subsysmgr/include/bharat/automotive/automotive.h`
+- `core/personalities/automotive/automotive.c`
+- `core/kernel/include/ipc_async.h`
+- `core/kernel/src/ipc/async_ipc.c`
+- `core/kernel/src/ipc/ipc_timeout.c`
+- `core/kernel/include/sched.h`
+- `core/kernel/src/sched.c`
 
 These interfaces are intentionally conservative and profile-driven so integrators can tune policy
 without changing scheduler or bus-driver internals.

@@ -15,10 +15,10 @@ This roadmap outlines the phased implementation plan for the Bharat-OS Cryptogra
 
 The architecture remains target-state oriented, but the following items now have concrete kernel code:
 
-* Provider registry and invocation entry points are implemented in `kernel/src/security/crypto_registry.c`.
-* Capability-gated crypto stubs are implemented in `kernel/src/security/crypto_caps.c`.
-* Secure memory zeroization and secure page wrappers are implemented in `kernel/src/crypto/secure_mem.c`.
-* Kernel self-tests exist for provider registration, capability checks, unsupported op handling, RNG convenience API, and key zeroization dispatch in `kernel/src/tests/security/test_crypto_registry.c`.
+* Provider registry and invocation entry points are implemented in `core/kernel/src/security/crypto_registry.c`.
+* Capability-gated crypto stubs are implemented in `core/kernel/src/security/crypto_caps.c`.
+* Secure memory zeroization and secure page wrappers are implemented in `core/kernel/src/crypto/secure_mem.c`.
+* Kernel self-tests exist for provider registration, capability checks, unsupported op handling, RNG convenience API, and key zeroization dispatch in `core/kernel/src/quality/tests/security/test_crypto_registry.c`.
 
 The largest remaining gaps are formal capability-object integration (beyond stubs), full secure-element backends, and service-level production wiring.
 

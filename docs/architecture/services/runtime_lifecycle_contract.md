@@ -2,7 +2,7 @@
 
 ### Contract Status
 - **Spec**: ✅ Documented and versioned
-- **Implemented**: 🚧 Pending kernel/service behavior merge
+- **Implemented**: 🚧 Pending core/kernel/service behavior merge
 - **Validated**: ❌ Pending stress/fault-injection tests
 
 
@@ -10,7 +10,7 @@
 
 Bharat-OS enforces a strict architectural boundary: the kernel is mechanism only, while user-space services handle policy and orchestration. This document formalizes the runtime behavior of the core OS services responsible for lifecycle management: `servicemgr`, `process_manager`, and `vm_manager`.
 
-All interaction with these services uses typed IPC message contracts defined in the `uapi/` and `idl/` directories, conforming to the Bharat-OS uRPC/IPC mechanisms.
+All interaction with these services uses typed IPC message contracts defined in the `interface/uapi/` and `interface/idl/` directories, conforming to the Bharat-OS uRPC/IPC mechanisms.
 
 ## 1. servicemgr (Service Supervisor)
 
@@ -26,7 +26,7 @@ The `servicemgr` acts as the root supervisor and registry for all core system se
 `UNKNOWN -> UNREGISTERED -> STOPPED -> STARTING -> RUNNING -> CRASHED -> BACKOFF`
 
 ### UAPI Interface
-Defined in `include/bharat/uapi/servicemgr/contract.h`:
+Defined in `include/bharat/interface/uapi/servicemgr/contract.h`:
 - `SM_OP_REGISTER`: Registers a new service.
 - `SM_OP_START`: Transitions service to `STARTING`.
 - `SM_OP_STOP`: Transitions service to `STOPPED`.
@@ -48,7 +48,7 @@ The `process_manager` handles high-level process lifecycle orchestration, polici
 `UNKNOWN -> CREATED -> READY -> RUNNING -> STOPPING -> EXITED -> FAILED`
 
 ### UAPI Interface
-Defined in `include/bharat/uapi/process_manager/contract.h`:
+Defined in `include/bharat/interface/uapi/process_manager/contract.h`:
 - `PM_OP_CREATE`: Allocates process metadata and transitions to `CREATED`.
 - `PM_OP_START`: Triggers execution, transitioning to `RUNNING`.
 - `PM_OP_STOP`: Requests termination, transitioning to `STOPPING`.
@@ -69,7 +69,7 @@ The `vm_manager` manages address space lifecycles, virtual regions, and memory m
 `UNKNOWN -> DECLARED -> VALIDATED -> PROGRAMMED -> ACTIVE -> REVOKED`
 
 ### UAPI Interface
-Defined in `include/bharat/uapi/vm_manager/contract.h`:
+Defined in `include/bharat/interface/uapi/vm_manager/contract.h`:
 - `VM_OP_MAP`: Declares a new memory region mapping (`DECLARED`).
 - `VM_OP_UNMAP`: Revokes a memory region (`REVOKED`).
 - `VM_OP_PROTECT`: Modifies memory protection flags (`VALIDATED`).

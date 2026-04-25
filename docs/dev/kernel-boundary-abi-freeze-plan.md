@@ -40,8 +40,8 @@ Bharat-OS has three distinct interface layers.
 
 Location:
 
-- `kernel/include/`
-- `kernel/src/`
+- `core/kernel/include/`
+- `core/kernel/src/`
 
 Purpose:
 
@@ -62,7 +62,7 @@ Rules:
 
 Canonical location:
 
-- `include/bharat/uapi/`
+- `include/bharat/interface/uapi/`
 
 Purpose:
 
@@ -87,13 +87,13 @@ Rules:
 Location:
 
 - `user/`
-- `services/`
+- `core/services/`
 - generated BIDL bindings
 - runtime libraries consuming UAPI
 
 Rules:
 
-- User-space may include `include/bharat/uapi/`
+- User-space may include `include/bharat/interface/uapi/`
 - User-space must not include kernel-private headers
 - User-space-visible status and struct layouts must come only from UAPI
 
@@ -105,7 +105,7 @@ Rules:
 
 All stable ABI definitions must live under:
 
-- `include/bharat/uapi/`
+- `include/bharat/interface/uapi/`
 
 This includes:
 
@@ -120,7 +120,7 @@ This includes:
 
 The following are prohibited:
 
-- duplicate UAPI headers under `kernel/include/uapi/`
+- duplicate UAPI headers under `core/kernel/include/interface/uapi/`
 - wrapper headers that re-export canonical UAPI definitions
 - alternate copies of `SYS_*`, syscall IDs, or ABI-visible struct definitions
 - duplicate include-guard names across wrapper and canonical headers
@@ -262,7 +262,7 @@ Rules:
 
 Recommended implementation:
 
-- `kernel/src/lib/status.c`
+- `core/kernel/src/lib/status.c`
 - `kstatus_to_sys_errno(...)`
 
 ### 6.2 Syscall errno must not leak into BIDL contracts
@@ -290,17 +290,17 @@ Generated code must assert:
 Kernel code may include:
 
 - kernel-private headers
-- canonical UAPI headers from `include/bharat/uapi/`
+- canonical UAPI headers from `include/bharat/interface/uapi/`
 
 User-space code may include:
 
-- canonical UAPI headers from `include/bharat/uapi/`
+- canonical UAPI headers from `include/bharat/interface/uapi/`
 
 ### Forbidden
 
 UAPI headers must not include:
 
-- `kernel/include/...`
+- `core/kernel/include/...`
 - private kernel implementation headers
 - profile-specific or arch-private internal headers
 
@@ -443,11 +443,11 @@ The following repository-level rules are now in force.
 
 Canonical user-visible ABI definitions belong only in:
 
-- `include/bharat/uapi/`
+- `include/bharat/interface/uapi/`
 
 ### Rule B
 
-`kernel/include/uapi/` must not contain shadow copies or wrapper re-export headers for canonical UAPI.
+`core/kernel/include/interface/uapi/` must not contain shadow copies or wrapper re-export headers for canonical UAPI.
 
 ### Rule C
 
@@ -479,7 +479,7 @@ Kernel-private status values must be translated before crossing the syscall boun
 
 4. centralize `kstatus_t` → `sys_errno_t` mapping
 5. audit syscalls for ad-hoc errno returns
-6. audit services/BIDL replies for raw syscall errno leakage
+6. audit core/services/BIDL replies for raw syscall errno leakage
 
 ### Phase 3 — ABI validation
 
@@ -569,7 +569,7 @@ This is the line between “headers that currently compile” and a real OS ABI 
 
 ## 17. Companion policy: native standard surface vs compatibility
 
-The syscall ABI freeze defined in this document protects low-level kernel/user binary compatibility.
+The syscall ABI freeze defined in this document protects low-level core/kernel/user binary compatibility.
 To avoid architecture drift at the SDK/runtime layer, Bharat-OS also maintains a separate policy for
 what belongs to native Bharat contracts versus personality compatibility APIs.
 

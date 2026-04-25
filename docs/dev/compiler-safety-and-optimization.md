@@ -7,7 +7,7 @@ In kernel code, the optimization order must be:
 3. **Efficient after correctness is locked**
 4. **Architecture-specialized only in isolated files**
 
-This matches Bharat-OS's core direction: minimal kernel, clear boundaries, arch-specific implementation in `arch/`, abstraction contracts in `hal/`, and platform wiring in `platform/`.
+This matches Bharat-OS's core direction: minimal kernel, clear boundaries, arch-specific implementation in `core/arch/`, abstraction contracts in `core/hal/`, and platform wiring in `core/platform/`.
 
 ## The Challenge
 
@@ -32,7 +32,7 @@ Use 3 tiers:
 * used during early boot and as fallback
 
 **Tier B: arch-optimized functions**
-* in `arch/...`
+* in `core/arch/...`
 * only compiled when that target is active
 * NEON/RVV/SSE/REP MOVSB or similar later
 
@@ -64,11 +64,11 @@ Early boot must use only scalar-safe routines with no vector assumptions or plat
 
 ### 7. Add explicit architecture gating everywhere
 
-Never let common code accidentally compile target-specific inline asm. `arch/` owns ISA-specific implementations.
+Never let common code accidentally compile target-specific inline asm. `core/arch/` owns ISA-specific implementations.
 
 ### 8. Put the policy in one header
 
-Use `kernel/include/bharat/compiler_safety.h` to provide one consistent contract across all builds.
+Use `core/kernel/include/bharat/compiler_safety.h` to provide one consistent contract across all builds.
 
 ### 9. Add per-file optimization policy
 
@@ -85,6 +85,6 @@ Fail CI if `memset` contains a direct call to `memset`, or `memcpy` to `memcpy`.
 3. Optimized arch versions are optional and must never be the only implementation.
 4. Common code must use feature checks, not compiler version checks.
 5. No target-specific inline assembly in shared files without full target guards.
-6. Early boot must default to generic safe routines until platform/CPU state is confirmed.
+6. Early boot must default to generic safe routines until core/platform/CPU state is confirmed.
 
 **Efficiency without breaking safety:** Safe scalar first, optimized later by dispatch. This provides reliable boot on mismatched toolchains and fast steady-state runtime.

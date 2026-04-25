@@ -29,7 +29,7 @@ Bharat-OS adopts a **compatibility-first interrupt evolution strategy** with one
    - owns `irq_desc` lifecycle, handler dispatch, state transitions, accounting, and deferred work.
 2. **IRQ domain/routing layer**
    - is the only translation path from hardware interrupt identity to virtual IRQ.
-3. **Controller drivers (arch/SoC specific)**
+3. **Controller drivers (core/arch/SoC specific)**
    - implement claim/eoi/mask/unmask/type/affinity/ipi ops without embedding policy.
 
 ### Compatibility rule (non-breaking requirement)

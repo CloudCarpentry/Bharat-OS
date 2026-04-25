@@ -5,18 +5,18 @@
 This document defines the canonical Bharat-OS system shell architecture and aligns it with the current console subsystem reality.
 
 - Kernel provides primitives and enforcement.
-- `services/system/console/` is the stream broker boundary (currently scaffold).
-- `services/system/shell/` provides parser/dispatch/policy enforcement.
+- `core/services/system/console/` is the stream broker boundary (currently scaffold).
+- `core/services/system/shell/` provides parser/dispatch/policy enforcement.
 - Profile policy determines availability and command surface.
 
 > Non-negotiable: kernel does not own shell policy.
 
 ## Runtime placement and boundaries
 
-- Runtime shell service: `services/system/shell/`
-- Runtime console service: `services/system/console/`
+- Runtime shell service: `core/services/system/shell/`
+- Runtime console service: `core/services/system/console/`
 - Optional shared CLI helpers: `lib/cli/` or `lib/msg/cli/`
-- Deferred POSIX compatibility shell: `personalities/compat/`
+- Deferred POSIX compatibility shell: `core/personalities/compat/`
 
 Shell handlers must use service contracts/backend APIs and must not access kernel internals directly.
 

@@ -18,12 +18,12 @@ Design contracts, subsystem architecture, roadmap notes, and cross-component bou
 Key subfolders:
 - `boot/`
 - `core/`
-- `kernel/`
+- `core/kernel/`
 - `memory/`
 - `storage/`
 - `security/`
 - `network/`
-- `personalities/`
+- `core/personalities/`
 - `contracts/`
 
 ### 2) ADRs (`docs/adr/`)

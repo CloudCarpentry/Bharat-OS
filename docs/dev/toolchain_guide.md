@@ -29,13 +29,13 @@ The toolchain files ensure that CMake correctly identifies `CMAKE_SYSTEM_NAME` (
 
 ### 2. Building the SDK
 ```bash
-cd user/sdk/
+cd user/interface/sdk/
 ./build.sh build --target arm64
 ```
 *Behind the scenes: Leverages the exact same toolchain files to ensure ABI consistency.*
 
 ## Environment Validation
-The build scripts in `tools/` and `user/sdk/` have been enhanced to perform basic environment validation, verifying that CMake and Ninja/Make exist before proceeding, which prevents cryptic linker errors later.
+The build scripts in `tools/` and `user/interface/sdk/` have been enhanced to perform basic environment validation, verifying that CMake and Ninja/Make exist before proceeding, which prevents cryptic linker errors later.
 
 ## Debugging Build Failures
 1. Check that the correct `ARCH` is passed.

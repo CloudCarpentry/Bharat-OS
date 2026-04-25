@@ -57,7 +57,7 @@ Common code should key off declared architecture capabilities, not inferred poin
 
 ### 1) Portability cleanup before new bring-up
 
-Audit and normalize shared kernel/HAL code for 32/64-bit safety:
+Audit and normalize shared core/kernel/HAL code for 32/64-bit safety:
 
 - address and size types (`uintptr_t`, `size_t`, `vaddr_t`, `paddr_t`)
 - page-table entry abstractions
@@ -95,8 +95,8 @@ Avoid spreading `#ifdef` logic across 64-bit backends.
 
 Use dedicated backend trees:
 
-- `kernel/src/hal/arm32/...`
-- `kernel/src/hal/riscv32/...`
+- `core/kernel/src/core/hal/arm32/...`
+- `core/kernel/src/core/hal/riscv32/...`
 
 Each backend should own its own:
 

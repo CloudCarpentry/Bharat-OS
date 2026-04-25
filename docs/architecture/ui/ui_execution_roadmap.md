@@ -13,7 +13,7 @@
   - generic display/input capability-bit registry added
   - canonical display/input capability structs and input event wire shape added
   - host test added for UI class/capability contract stability
-  - tiny LCD/framebuffer renderer core added under `stacks/ui/lcd/`
+  - tiny LCD/framebuffer renderer core added under `core/stacks/ui/lcd/`
   - `boot_displayd` now uses the shared tiny UI renderer/state model
   - host test added for tiny UI page/input/progress rendering behavior
 
@@ -23,17 +23,17 @@
 
 - **Kernel/HAL/Drivers:** mechanism only (buffer primitives, sync/timing, DMA/IOMMU hooks, device interrupts, capability enforcement hooks).
 - **Services:** orchestration and policy (`uimgr`, `displayd`, `inputd`, `compositord`, `boot_displayd`, `trusted_uid`).
-- **Stacks:** reusable UI/media composition and adapters (`stacks/ui/*`, `stacks/media/*`, `stacks/vehicle/ui`).
+- **Stacks:** reusable UI/media composition and adapters (`core/stacks/ui/*`, `core/stacks/media/*`, `core/stacks/vehicle/ui`).
 - **Personalities:** compatibility and domain shell behavior (`compat/*/gui`, `domain/*/ui`).
 
-> Rule: no widget policy, no shell policy, no window/compositor policy in `kernel/`.
+> Rule: no widget policy, no shell policy, no window/compositor policy in `core/kernel/`.
 
 ---
 
 ## 2) Repository Target Shape
 
 ```text
-drivers/
+core/drivers/
   display/
     fb/
     drm_like/
@@ -50,7 +50,7 @@ drivers/
     ir/
     can_input/
 
-services/
+core/services/
   core/
     devmgr/
     uimgr/
@@ -61,7 +61,7 @@ services/
     compositord/
     trusted_uid/
 
-stacks/
+core/stacks/
   ui/
     core/
     lcd/
@@ -80,7 +80,7 @@ stacks/
   vehicle/
     ui/
 
-personalities/
+core/personalities/
   compat/
     linux/gui/
     android/gui/
@@ -193,12 +193,12 @@ Create the canonical device-class foundation for GUI-related hardware.
 - display mode/plane/framebuffer capability structs
 
 ### Likely code areas
-- `drivers/include/driver_core.h`
-- `drivers/display/include/...`
-- `drivers/input/include/...`
-- `services/core/devmgr/` (or equivalent)
-- `uapi/` or `idl/services/` for service-visible contracts
-- `tests/`
+- `core/drivers/include/driver_core.h`
+- `core/drivers/display/include/...`
+- `core/drivers/input/include/...`
+- `core/services/core/devmgr/` (or equivalent)
+- `interface/uapi/` or `interface/idl/core/services/` for service-visible contracts
+- `quality/tests/`
 
 ### New classes/subclasses
 - `DISPLAY_CLASS_PANEL`
@@ -236,7 +236,7 @@ Create the canonical device-class foundation for GUI-related hardware.
 Implement first shippable GUI path for low-end devices and safe-mode/boot flows.
 
 ### Deliverables
-- `services/system/boot_displayd/`
+- `core/services/system/boot_displayd/`
 - tiny renderer stack
 - framebuffer/panel output contract
 - text + icon + status page rendering
@@ -245,9 +245,9 @@ Implement first shippable GUI path for low-end devices and safe-mode/boot flows.
 - watchdog/error display hooks
 
 ### Placement
-- service: `services/system/boot_displayd/`
-- stack/runtime: `stacks/ui/lcd/`
-- drivers stay in `drivers/display/` and `drivers/input/`
+- service: `core/services/system/boot_displayd/`
+- stack/runtime: `core/stacks/ui/lcd/`
+- drivers stay in `core/drivers/display/` and `core/drivers/input/`
 
 ### Features
 - monochrome and RGB framebuffer support
@@ -279,11 +279,11 @@ Implement mechanism layer required by compositor/media/rich shell work.
 - capability-checked buffer submit path
 
 ### Likely paths
-- `stacks/ui/core/`
-- `stacks/media/compositor/` or `stacks/media/core/`
-- `services/system/displayd/`
-- `uapi/ipc/`
-- `idl/services/`
+- `core/stacks/ui/core/`
+- `core/stacks/media/compositor/` or `core/stacks/media/core/`
+- `core/services/system/displayd/`
+- `interface/uapi/ipc/`
+- `interface/idl/core/services/`
 - kernel hooks only if strictly mechanism
 
 ### Must define
@@ -309,11 +309,11 @@ Implement mechanism layer required by compositor/media/rich shell work.
 Provide first production shell for medical/automotive/appliance class systems.
 
 ### Deliverables
-- `services/core/uimgr/`
-- `services/system/inputd/`
-- `services/system/displayd/`
-- `services/system/trusted_uid/`
-- `stacks/ui/hmi/`
+- `core/services/core/uimgr/`
+- `core/services/system/inputd/`
+- `core/services/system/displayd/`
+- `core/services/system/trusted_uid/`
+- `core/stacks/ui/hmi/`
 
 ### Functional scope
 - session and seat management
@@ -337,7 +337,7 @@ Provide first production shell for medical/automotive/appliance class systems.
 Best first open-source GUI integration for embedded/HMI profiles.
 
 ### New area
-- `stacks/ui/adapters/lvgl/`
+- `core/stacks/ui/adapters/lvgl/`
 
 ### Acceptance
 - LVGL demo runs through Bharat-OS display/input contracts

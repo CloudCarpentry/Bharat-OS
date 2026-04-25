@@ -10,8 +10,8 @@ Additionally, in Bharat-OS's multikernel and capability-based architecture, embe
 
 ## Decision
 We have decided to split the CAN subsystem into two distinct layers:
-1. **Generic Controller Core (Kernel/HAL):** A minimal layer (`drivers/can_core`) implementing basic interrupt handling, MMIO-safe controller access, timestamp capture, and fast-path ring enqueue/dequeue. The core defines a generic `can_controller_ops_t` vtable and an FD-ready `can_frame_t`.
-2. **Userspace CAN Service (`services/can`):** A privileged userspace domain responsible for:
+1. **Generic Controller Core (Kernel/HAL):** A minimal layer (`core/drivers/can_core`) implementing basic interrupt handling, MMIO-safe controller access, timestamp capture, and fast-path ring enqueue/dequeue. The core defines a generic `can_controller_ops_t` vtable and an FD-ready `can_frame_t`.
+2. **Userspace CAN Service (`core/services/can`):** A privileged userspace domain responsible for:
     - Client registration and IPC capability enforcement (Tx/Rx rights).
     - Software filtering and gateway routing between buses or remote ECUs.
     - Diagnostics, stats aggregation, and bus-off recovery policies.
@@ -24,7 +24,7 @@ A `virt_can` backend was introduced alongside the core implementation to provide
 
 ## Consequences
 - **Security:** Errant or malicious user applications cannot directly crash the CAN bus or spoof critical messages. All operations are mediated by the CAN service and backed by IPC capabilities.
-- **Reliability:** If the CAN routing logic panics, the `services/can` process can be restarted independently without crashing the entire system or interrupting the underlying hardware controller state machine.
+- **Reliability:** If the CAN routing logic panics, the `core/services/can` process can be restarted independently without crashing the entire system or interrupting the underlying hardware controller state machine.
 - **Portability:** The kernel core provides a generic vtable. Adding an STM32 bxCAN or NXP FlexCAN driver only requires implementing the `can_controller_ops_t` and registering with the core.
 - **Testing:** The architecture is fully testable natively on the host via `virt_can` unit tests.
 
