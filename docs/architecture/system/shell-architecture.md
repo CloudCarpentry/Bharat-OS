@@ -56,6 +56,21 @@ Shell handlers must use service contracts/backend APIs and must not access kerne
 - No full shell↔console daemon wiring for true end-to-end TTY/session path.
 - Remote/script/compat modes are build-flag placeholders today.
 
+## Implementation work items (tracked from this architecture)
+
+### Completed in current shell code
+
+- Added an interactive shell runtime loop in `shell_service.c` with bounded line input (`SHELL_MAX_INPUT_LEN`) and explicit stdout flush behavior.
+- Hardened command matching to avoid fixed-size command reconstruction buffers during multi-token lookup.
+- Added elapsed-time timeout enforcement using command metadata (`timeout_ms`) and timeout audit events.
+
+### Remaining for full production contract
+
+- Replace stub backend (`shell_backend_stub.c`) with service IPC backend wiring to console daemon transport.
+- Introduce explicit session bootstrap/auth handshake prior to enabling privileged command catalogs.
+- Wire cancellation-aware timeout path into backend/service calls instead of post-handler elapsed checks.
+- Add QEMU run-stage evidence collection once cross-tree build blockers are resolved (currently failing at missing `core/lib/syscall/syscall_stubs.c` during target configure).
+
 ## Security and capability model
 
 Mandatory controls:
