@@ -1,6 +1,8 @@
 #ifndef BHARAT_CONFIG_H
 #define BHARAT_CONFIG_H
 
+/* AUTO-GENERATED VIA CMAKE configure_file(bharat_config.h.in -> generated/bharat_config.h). */
+/* Edit bharat_config.h.in, not generated/bharat_config.h. */
 /* Architecture Family */
 #define BHARAT_ARCH_X86 1
 /* #undef BHARAT_ARCH_ARM */
