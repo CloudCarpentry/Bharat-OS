@@ -172,6 +172,9 @@ if(NOT DEFINED ARCH)
     endif()
 endif()
 string(TOLOWER "${ARCH}" ARCH)
+
+set(ARCH_CRYPTO_SRC ${BHARAT_ARCH_ROOT}/common/arch_crypto_stub.c)
+set(ARCH_TLB_ACCEL_SRC ${BHARAT_ARCH_ROOT}/common/arch_tlb_accel_stub.c)
 # ── Boot and HAL sources (arch-specific) ────────────────────────────────────
 if(ARCH STREQUAL "x86_64")
     set(BOOT_SRC ${BHARAT_ARCH_ROOT}/x86/x86_64/boot/boot.S)
@@ -179,6 +182,8 @@ if(ARCH STREQUAL "x86_64")
     set(ARCH_CONTEXT_SWITCH ${BHARAT_ARCH_ROOT}/x86/x86_64/context_switch.c ${BHARAT_ARCH_ROOT}/x86/x86_64/context_switch.S)
     set(ARCH_CPU_CAPS_SRC ${BHARAT_ARCH_ROOT}/x86/x86_64/cpu_caps.c)
     set(ARCH_EXT_STATE_SRC ${BHARAT_ARCH_ROOT}/x86/x86_64/ext_state.c)
+    list(APPEND ARCH_CRYPTO_SRC ${BHARAT_ARCH_ROOT}/x86/x86_64/arch_crypto_x86.c)
+    list(APPEND ARCH_TLB_ACCEL_SRC ${BHARAT_ARCH_ROOT}/x86/x86_64/tlb_accel.c)
 elseif(ARCH STREQUAL "riscv64")
     set(BOOT_SRC ${BHARAT_ARCH_ROOT}/riscv/riscv64/boot/boot.S)
     set(ARCH_HAL ${BHARAT_HAL_ROOT}/riscv/hal_cpu.c ${BHARAT_HAL_ROOT}/riscv/discovery.c ${BHARAT_HAL_ROOT}/riscv/hal_mm.c ${BHARAT_HAL_ROOT}/riscv/boot/feature_probe.c ${BHARAT_HAL_ROOT}/riscv/trap_entry.S ${BHARAT_HAL_ROOT}/riscv64/hal_pt_riscv64.c ${BHARAT_HAL_ROOT}/hal_pt.c ${BHARAT_HAL_ROOT}/riscv/iopmp.c ${BHARAT_HAL_ROOT}/riscv/plic.c ${BHARAT_HAL_ROOT}/riscv/sbi_timer_ipi.c ${BHARAT_HAL_ROOT}/riscv64/dma.c ${BHARAT_HAL_ROOT}/riscv64/hal_secure_boot.c ${BHARAT_HAL_ROOT}/riscv64/cpu_relax.c ${BHARAT_HAL_ROOT}/common/iommu/null/null_iommu.c ${BHARAT_HAL_ROOT}/riscv64/iommu/riscv_iommu/riscv_iommu_stub.c)
@@ -414,6 +419,8 @@ set(KERNEL_SRCS
     ${ARCH_HAL_EXTRA}
     ${ARCH_CONTEXT_SWITCH}
     ${ARCH_CPU_CAPS_SRC}
+    ${ARCH_CRYPTO_SRC}
+    ${ARCH_TLB_ACCEL_SRC}
     # arch/common source files (fixed string.h dependency)
     ${BHARAT_ARCH_ROOT}/common/cpu_caps_state.c
     ${BHARAT_ARCH_ROOT}/common/accel_caps_publish.c

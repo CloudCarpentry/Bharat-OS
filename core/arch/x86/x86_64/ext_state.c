@@ -1,6 +1,12 @@
 #include "../../include/arch/arch_ext_state.h"
 #include "sched/sched.h"
 #include "../../include/slab.h"
+#include "arch/arch_cpu_caps.h"
+
+// Assembly-visible XSAVE policy knobs.
+uint32_t g_x86_ext_state_use_xsave = 0;
+uint32_t g_x86_ext_state_xcr0_lo = 0;
+uint32_t g_x86_ext_state_xcr0_hi = 0;
 
 static arch_ext_state_desc_t g_arch_ext_desc = {
     .size = 0,
@@ -10,11 +16,32 @@ static arch_ext_state_desc_t g_arch_ext_desc = {
     .lazy_allowed = false
 };
 
+static inline uint64_t x86_read_xcr0(void) {
+    uint32_t eax, edx;
+    __asm__ volatile("xgetbv" : "=a"(eax), "=d"(edx) : "c"(0));
+    return ((uint64_t)edx << 32) | eax;
+}
+
 void arch_ext_state_boot_init(void) {
-    // Stub: Calculate XSAVE area size based on capabilities
-    g_arch_ext_desc.size = 512; // 512 bytes is enough for basic fxsave
-    g_arch_ext_desc.align = 64; // XSAVE demands 64-byte alignment (fxsave demands 16)
-    g_arch_ext_desc.flags = ARCH_EXT_NONE;
+    // Baseline x87/SSE save area.
+    g_arch_ext_desc.size = 512;
+    g_arch_ext_desc.align = 64;
+    g_arch_ext_desc.flags = ARCH_EXT_FP_SIMD;
+
+    const bool avx_usable = arch_cpu_has_system_all(ARCH_CPU_FEAT_X86_AVX);
+
+    if (avx_usable) {
+        const uint64_t xcr0 = x86_read_xcr0();
+
+        // Enable XSAVE path only when kernel is actually using AVX state.
+        g_x86_ext_state_use_xsave = 1;
+        g_x86_ext_state_xcr0_lo = (uint32_t)(xcr0 & 0xFFFFFFFFu);
+        g_x86_ext_state_xcr0_hi = (uint32_t)(xcr0 >> 32);
+
+        // Conservative, aligned XSAVE image reservation.
+        g_arch_ext_desc.size = 1024;
+        g_arch_ext_desc.flags |= ARCH_EXT_VECTOR;
+    }
 }
 
 const arch_ext_state_desc_t *arch_ext_state_desc(void) {
@@ -32,15 +59,13 @@ int arch_ext_state_thread_init(bh_thread_t *t) {
         return 0;
     }
 
-    // Allocate aligned extended state memory
     void *mem = kmem_aligned_alloc(d->align, d->size);
     if (!mem) {
-        return -1; // -ENOMEM equivalent
+        return -1;
     }
 
-    // memset is safe if not empty
     unsigned char *ptr = (unsigned char *)mem;
-    for(size_t i = 0; i < d->size; i++) {
+    for (size_t i = 0; i < d->size; i++) {
         ptr[i] = 0;
     }
 
@@ -60,24 +85,19 @@ void arch_ext_state_thread_destroy(bh_thread_t *t) {
 
 void arch_ext_state_save(bh_thread_t *t) {
     if (!t || !((cpu_context_t*)t->cpu_context)->ext) return;
-    // Stub: Eager XSAVE/FXSAVE to t->ext
 }
 
 void arch_ext_state_restore(bh_thread_t *t) {
     if (!t || !((cpu_context_t*)t->cpu_context)->ext) return;
-    // Stub: Eager XRSTOR/FXRSTOR from t->ext
 }
 
 void arch_kernel_fpu_begin(void) {
-    // Stub: Handle kernel FPU begin
 }
 
 void arch_kernel_fpu_end(void) {
-    // Stub: Handle kernel FPU end
 }
 
 bool arch_ext_state_handle_fault(struct bh_thread *t) {
     (void)t;
-    // x86_64 uses eager FPU saving or handles #NM faults here
     return false;
 }
