@@ -1,15 +1,9 @@
 #include "device_registry.h"
 #include "event.h"
 #include "match.h"
+#include "driver_core_internal.h"
+#include "bharat/uapi/sys_errno.h"
 #include <stddef.h>
-
-static int _strcmp(const char *s1, const char *s2) {
-    while (*s1 && (*s1 == *s2)) {
-        s1++;
-        s2++;
-    }
-    return *(const unsigned char *)s1 - *(const unsigned char *)s2;
-}
 
 // Extremely minimal skeleton, using a fixed size array for simplicity in this baseline PR.
 #define MAX_DEVICES 128
@@ -25,7 +19,17 @@ int device_registry_init(void) {
 }
 
 int device_register(device_desc_t* dev) {
-    if (!dev || g_device_count >= MAX_DEVICES) return -1;
+    /* Current contract: driver/device registration is boot-time or single-writer only.
+     * Runtime hotplug requires adding locking/RCU/sequence-counter protection
+     * before concurrent mutation is enabled. */
+
+    if (!dev) return -SYS_EINVAL;
+    if (!driver_core_name_valid(dev->name)) return -SYS_EINVAL;
+
+    if (g_device_count >= MAX_DEVICES) return -SYS_ENOSPC;
+
+    // Check for duplicates
+    if (device_find_by_name(dev->name)) return -SYS_EEXIST;
 
     // Add to registry
     for (int i = 0; i < MAX_DEVICES; i++) {
@@ -41,7 +45,7 @@ int device_register(device_desc_t* dev) {
             return 0;
         }
     }
-    return -1;
+    return -SYS_ENOSPC;
 }
 
 void device_unregister(device_desc_t* dev) {
@@ -61,9 +65,13 @@ void device_unregister(device_desc_t* dev) {
 device_desc_t* device_find_by_name(const char* name) {
     if (!name) return NULL;
     for (int i = 0; i < MAX_DEVICES; i++) {
-        if (g_devices[i] && g_devices[i]->name && _strcmp(g_devices[i]->name, name) == 0) {
+        if (g_devices[i] && driver_core_streq(g_devices[i]->name, name)) {
             return g_devices[i];
         }
     }
     return NULL;
+}
+
+int device_registry_get_count(void) {
+    return g_device_count;
 }
