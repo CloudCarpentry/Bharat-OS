@@ -52,7 +52,7 @@ Shell handlers must use service contracts/backend APIs and must not access kerne
 ### Missing / partial
 
 - Shell main runtime loop + interactive IPC session plumbing is not complete.
-- Backend is stubbed (`shell_backend_stub.c`) instead of live service IPC.
+- Backend now uses a uRPC request/response transport shim (`shell_backend_urpc.c`) so command handlers already execute through an IPC-shaped boundary.
 - No full shell↔console daemon wiring for true end-to-end TTY/session path.
 - Remote/script/compat modes are build-flag placeholders today.
 
@@ -66,7 +66,7 @@ Shell handlers must use service contracts/backend APIs and must not access kerne
 
 ### Remaining for full production contract
 
-- Replace stub backend (`shell_backend_stub.c`) with service IPC backend wiring to console daemon transport.
+- Replace uRPC in-process shim with console-daemon transport wiring while preserving the same backend API contract.
 - Introduce explicit session bootstrap/auth handshake prior to enabling privileged command catalogs.
 - Wire cancellation-aware timeout path into backend/service calls instead of post-handler elapsed checks.
 - Add QEMU run-stage evidence collection once cross-tree build blockers are resolved (currently failing at missing `core/lib/syscall/syscall_stubs.c` during target configure).
