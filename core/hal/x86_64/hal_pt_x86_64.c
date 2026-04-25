@@ -639,10 +639,11 @@ hal_tlb_ops_t x86_hal_tlb_ops = {
 };
 
 void x86_pt_caps_init(void) {
-    arch_tlb_fast_ctx_init();
-
-    x86_pt_caps.supports_pcid = arch_cpu_has_system_all(ARCH_CPU_FEAT_X86_PCID);
-    x86_tlb_caps.supports_asid_selective_flush = arch_tlb_fast_ctx_supported();
+    g_x86_pcid_supported = arch_cpu_has_system_all(ARCH_CPU_FEAT_X86_PCID);
+    if (g_x86_pcid_supported) {
+        x86_pt_caps.supports_pcid = true;
+        x86_tlb_caps.supports_asid_selective_flush = true;
+    }
 }
 
 // Implement the specific functions from mem_protect_cpu_ops

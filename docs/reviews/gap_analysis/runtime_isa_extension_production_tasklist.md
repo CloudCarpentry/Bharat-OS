@@ -1,7 +1,7 @@
 # Runtime ISA Extension Strategy → Production Tasklist
 
-**Date:** 2026-04-25  
-**Reviewed doc:** `docs/reviews/gap_analysis/runtime_isa_extension_strategy.md`  
+**Date:** 2026-04-25
+**Reviewed doc:** `docs/reviews/gap_analysis/runtime_isa_extension_strategy.md`
 **Focus requested:** low-level ISA implementation work in `core/arch/*` and HAL abstraction in `core/hal/*`.
 
 ---
@@ -240,11 +240,11 @@ So the production gap is no longer “build API from zero”; it is now **harden
 
 ## 3) Recommended execution order (production roadmap)
 
-1. **Correctness hardening** (dependency checks, heterogeneity-safe APIs, CPUID/ID register fixes).  
-2. **Dispatch layer** (single fastops dispatch + mandatory fallbacks).  
-3. **Low-risk acceleration** (x86 AES/PCLMUL, arm64 LSE+crypto, riscv bitmanip).  
-4. **CI coverage** (feature present/absent permutations).  
-5. **Advanced vectors** (AVX-class/SVE/RVV only after context-state readiness).  
+1. **Correctness hardening** (dependency checks, heterogeneity-safe APIs, CPUID/ID register fixes).
+2. **Dispatch layer** (single fastops dispatch + mandatory fallbacks).
+3. **Low-risk acceleration** (x86 AES/PCLMUL, arm64 LSE+crypto, riscv bitmanip).
+4. **CI coverage** (feature present/absent permutations).
+5. **Advanced vectors** (AVX-class/SVE/RVV only after context-state readiness).
 
 ---
 
