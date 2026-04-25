@@ -1,3 +1,14 @@
+---
+title: Context Switching Review: Kernel + Subsystem (revalidated)
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - reviews
+see_also:
+  - README.md
+---
 # Context Switching Review: Kernel + Subsystem (revalidated)
 
 ## Scope

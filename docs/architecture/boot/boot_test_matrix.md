@@ -1,3 +1,15 @@
+---
+title: Boot Test Matrix
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - boot
+see_also:
+  - README.md
+---
 # Boot Test Matrix
 
 **Status**: Active

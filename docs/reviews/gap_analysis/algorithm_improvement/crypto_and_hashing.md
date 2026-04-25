@@ -1,3 +1,15 @@
+---
+title: Cryptography and Hashing Inefficiencies
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - reviews
+  - gap_analysis
+see_also:
+  - README.md
+---
 # Cryptography and Hashing Inefficiencies
 
 This document tracks where cryptography or hashing logic currently operates in software and flags opportunities to substitute these with hardware offloading or hardware-accelerated CPU instructions.

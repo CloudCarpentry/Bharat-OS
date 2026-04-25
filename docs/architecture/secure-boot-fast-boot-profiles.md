@@ -1,3 +1,14 @@
+---
+title: Secure Boot + Fast Boot Profiles (Automotive/RTOS/Robot/Drone)
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+see_also:
+  - README.md
+---
 # Secure Boot + Fast Boot Profiles (Automotive/RTOS/Robot/Drone)
 
 ## What this adds

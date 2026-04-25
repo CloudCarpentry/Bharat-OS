@@ -1,3 +1,14 @@
+---
+title: ADR-012: CAN Subsystem and Userspace Routing Architecture
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - adr
+see_also:
+  - README.md
+---
 # ADR-012: CAN Subsystem and Userspace Routing Architecture
 
 ## Status

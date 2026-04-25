@@ -1,3 +1,15 @@
+---
+title: Bharat-OS Library Layering Architecture
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - shared
+see_also:
+  - README.md
+---
 # Bharat-OS Library Layering Architecture
 
 ## Purpose and Principles

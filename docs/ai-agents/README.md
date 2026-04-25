@@ -1,3 +1,14 @@
+---
+title: AI Agent & Skill Documentation Kit
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - ai-agents
+see_also:
+  - README.md
+---
 # AI Agent & Skill Documentation Kit
 
 This folder provides a **portable documentation structure** for code agents and IDE assistants, so teams can keep one source of truth and adapt it across tools such as:

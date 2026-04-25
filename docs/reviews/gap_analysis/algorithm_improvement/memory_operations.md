@@ -1,3 +1,15 @@
+---
+title: Memory Operations Inefficiencies
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - reviews
+  - gap_analysis
+see_also:
+  - README.md
+---
 # Memory Operations Inefficiencies
 
 This document tracks where the codebase relies heavily on slow, generic software implementations of `memcpy` and `memset` in critical paths, and lists opportunities for hardware optimizations.

@@ -1,3 +1,15 @@
+---
+title: Backend Telemetry Model
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - core
+see_also:
+  - README.md
+---
 # Backend Telemetry Model
 
 ## Overview

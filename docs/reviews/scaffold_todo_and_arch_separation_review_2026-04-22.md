@@ -1,3 +1,14 @@
+---
+title: Bharat-OS – Scaffold, TODO, and Architecture-Separation Review
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - reviews
+see_also:
+  - README.md
+---
 # Bharat-OS – Scaffold, TODO, and Architecture-Separation Review
 **Date:** 2026-04-22  
 **Branch reviewed:** `developer`  

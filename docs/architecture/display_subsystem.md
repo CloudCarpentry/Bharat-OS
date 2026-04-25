@@ -1,3 +1,14 @@
+---
+title: Display and Output Architecture
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+see_also:
+  - README.md
+---
 # Display and Output Architecture
 
 The graphical and output presentation system in Bharat-OS defines multiple levels of abstraction. Unlike conventional OSes that treat the desktop compositor as the sole interface, we provide an intentionally layered approach that scales down to headless devices and up to complex multi-monitor desktop workstations.

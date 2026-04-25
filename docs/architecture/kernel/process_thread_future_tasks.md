@@ -1,3 +1,15 @@
+---
+title: Process & Thread Management Architecture - Future Implementation Plan
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - kernel
+see_also:
+  - README.md
+---
 # Process & Thread Management Architecture - Future Implementation Plan
 
 **Version:** v2.0 (Proposed - True Multikernel)

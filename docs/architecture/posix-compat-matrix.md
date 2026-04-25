@@ -1,3 +1,14 @@
+---
+title: POSIX Compatibility Matrix
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+see_also:
+  - README.md
+---
 # POSIX Compatibility Matrix
 
 POSIX compatibility is a profile, not an all-or-nothing guarantee. In Bharat-OS, POSIX is implemented via a multi-tiered compatibility strategy aimed at fast bring-up, deterministic edge deployment, and minimal monolithic assumptions in the core kernel.

@@ -1,3 +1,15 @@
+---
+title: Bharat-OS Task and Thread Model
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - kernel
+see_also:
+  - README.md
+---
 # Bharat-OS Task and Thread Model
 
 ## Overview

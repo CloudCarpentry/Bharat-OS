@@ -1,3 +1,15 @@
+---
+title: Service Identity and Incarnation
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - core
+see_also:
+  - README.md
+---
 # Service Identity and Incarnation
 
 This document details the primitives governing service identity and restarting within the Bharat-OS multikernel.

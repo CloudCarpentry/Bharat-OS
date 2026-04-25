@@ -1,3 +1,14 @@
+---
+title: ADR-006: NUMA-Ready (Not NUMA-Complete) Architecture
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - adr
+see_also:
+  - README.md
+---
 # ADR-006: NUMA-Ready (Not NUMA-Complete) Architecture
 
 ## Status

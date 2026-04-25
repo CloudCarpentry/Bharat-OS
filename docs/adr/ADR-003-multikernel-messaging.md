@@ -1,3 +1,14 @@
+---
+title: ADR-003: Multikernel Messaging Spine
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - adr
+see_also:
+  - README.md
+---
 # ADR-003: Multikernel Messaging Spine
 
 ## Status

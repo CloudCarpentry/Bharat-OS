@@ -1,3 +1,15 @@
+---
+title: Shell Profile Matrix
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - system
+see_also:
+  - README.md
+---
 # Shell Profile Matrix
 
 This matrix maps Bharat-OS product profiles to shell class, access mode, and operational policy.

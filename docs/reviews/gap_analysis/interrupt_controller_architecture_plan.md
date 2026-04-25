@@ -1,3 +1,15 @@
+---
+title: Interrupt Controller Architecture Analysis & Evolution Plan
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - reviews
+  - gap_analysis
+see_also:
+  - README.md
+---
 # Interrupt Controller Architecture Analysis & Evolution Plan
 
 ## Scope and target architectures

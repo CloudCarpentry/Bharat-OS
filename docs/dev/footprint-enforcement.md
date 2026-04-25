@@ -1,3 +1,14 @@
+---
+title: Footprint Enforcement
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - dev
+see_also:
+  - README.md
+---
 # Footprint Enforcement
 
 Footprint enforcement is performed as part of target validation.

@@ -1,3 +1,14 @@
+---
+title: Memory + File Operation Layer Placement Review (memset/memcpy/memmove/open/openat)
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - reviews
+see_also:
+  - README.md
+---
 # Memory + File Operation Layer Placement Review (memset/memcpy/memmove/open/openat)
 
 Date: 2026-04-20  

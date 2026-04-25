@@ -1,3 +1,14 @@
+---
+title: ADR: Allocation Classes
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - adr
+see_also:
+  - README.md
+---
 # ADR: Allocation Classes
 
 ## Context

@@ -1,3 +1,14 @@
+---
+title: ARM32 + RV32 EDGE-Tier Architecture Expansion Plan
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+see_also:
+  - README.md
+---
 # ARM32 + RV32 EDGE-Tier Architecture Expansion Plan
 
 This document defines how Bharat-OS should add 32-bit architecture support without splitting into separate kernel personalities.

@@ -1,3 +1,15 @@
+---
+title: Proposed Drivers Architecture and Roadmap (Aligned to Current Tree)
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - components
+see_also:
+  - README.md
+---
 # Proposed Drivers Architecture and Roadmap (Aligned to Current Tree)
 
 This document tracks **what exists now** and the production-grade first slice implemented for network and CAN driver classes.

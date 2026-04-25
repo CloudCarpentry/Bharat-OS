@@ -1,3 +1,14 @@
+---
+title: Bharat-OS Threat Model and Mandatory Access Control (MAC) Baseline
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+see_also:
+  - README.md
+---
 # Bharat-OS Threat Model and Mandatory Access Control (MAC) Baseline
 
 This document defines the minimum security model expected for production Bharat-OS kernels.

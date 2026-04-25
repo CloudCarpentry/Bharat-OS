@@ -1,3 +1,14 @@
+---
+title: Bharat-OS Deep Code Review & Production Gap Analysis (2026-04-24)
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - reviews
+see_also:
+  - README.md
+---
 # Bharat-OS Deep Code Review & Production Gap Analysis (2026-04-24)
 
 ## 1) Review objective

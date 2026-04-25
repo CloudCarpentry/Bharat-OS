@@ -1,3 +1,14 @@
+---
+title: PR Spec: Driver Core Baseline, Device Manager Contract, and Edge I/O Production Slice
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+see_also:
+  - README.md
+---
 # PR Spec: Driver Core Baseline, Device Manager Contract, and Edge I/O Production Slice
 
 ## 1. Goal and Non-Goals

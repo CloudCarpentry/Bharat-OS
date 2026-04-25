@@ -1,3 +1,14 @@
+---
+title: Host Testing & QEMU Runner Review (2026-04-21)
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - reviews
+see_also:
+  - README.md
+---
 # Host Testing & QEMU Runner Review (2026-04-21)
 
 ## Scope

@@ -1,3 +1,14 @@
+---
+title: End-to-End Testing
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - testing
+see_also:
+  - README.md
+---
 # End-to-End Testing
 
 Bharat-OS uses a two-layer E2E testing approach focusing on QEMU CI matrices and manual hardware testing paths. Due to the profile-driven architecture of the OS, the test matrix validates combinations of architecture and device/personality profiles.

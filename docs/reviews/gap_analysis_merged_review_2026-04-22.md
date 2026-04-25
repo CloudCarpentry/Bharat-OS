@@ -1,3 +1,14 @@
+---
+title: Merged Review: `docs/reviews/gap_analysis` + `docs/reviews`
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - reviews
+see_also:
+  - README.md
+---
 # Merged Review: `docs/reviews/gap_analysis` + `docs/reviews`
 
 Date: 2026-04-22  

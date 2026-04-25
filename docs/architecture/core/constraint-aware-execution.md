@@ -1,3 +1,15 @@
+---
+title: Constraint-Aware Execution Substrate
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - core
+see_also:
+  - README.md
+---
 # Constraint-Aware Execution Substrate
 
 This document outlines the core architecture for Bharat-OS constraint-aware execution.

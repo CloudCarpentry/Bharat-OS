@@ -1,3 +1,15 @@
+---
+title: Personality Naming and Vocabulary
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - contracts
+see_also:
+  - README.md
+---
 # Personality Naming and Vocabulary
 
 ## 1. Overview

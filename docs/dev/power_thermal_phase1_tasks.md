@@ -1,3 +1,14 @@
+---
+title: Phase 1 Implementation Task Pack: Power and Thermal Governance
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - dev
+see_also:
+  - README.md
+---
 # Phase 1 Implementation Task Pack: Power and Thermal Governance
 
 This document outlines the Phase 1 implementation tasks for the Power and Thermal Governance subsystem in Bharat-OS. The tasks are designed to build out the minimal kernel framework and null backends, enabling a stable foundation for advanced policy services in later phases.

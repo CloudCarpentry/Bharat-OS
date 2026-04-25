@@ -1,3 +1,14 @@
+---
+title: CMake Governance, Versioning, and Agent/Developer Rules
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - dev
+see_also:
+  - README.md
+---
 # CMake Governance, Versioning, and Agent/Developer Rules
 
 This document defines mandatory build-system governance for Bharat-OS contributors (human and code agents).

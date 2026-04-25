@@ -1,3 +1,15 @@
+---
+title: Boot Flow: RISC-V (64-bit)
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - boot
+see_also:
+  - README.md
+---
 # Boot Flow: RISC-V (64-bit)
 
 ## Overview

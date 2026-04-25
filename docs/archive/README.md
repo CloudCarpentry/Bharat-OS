@@ -1,3 +1,14 @@
+---
+title: Documentation Archive
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - archive
+see_also:
+  - README.md
+---
 # Documentation Archive
 
 This folder stores superseded or low-signal documents that are kept for historical traceability, not as active guidance.

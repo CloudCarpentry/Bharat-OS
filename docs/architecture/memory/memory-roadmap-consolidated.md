@@ -1,3 +1,15 @@
+---
+title: Memory Architecture Roadmap & State
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - memory
+see_also:
+  - README.md
+---
 # Memory Architecture Roadmap & State
 
 This roadmap tracks the convergence of the memory management subsystem in Bharat-OS toward a production-grade multikernel architecture.

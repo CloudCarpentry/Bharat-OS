@@ -1,3 +1,14 @@
+---
+title: ADR: Memory HAL Unification and Multikernel Memory Model
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - adr
+see_also:
+  - README.md
+---
 # ADR: Memory HAL Unification and Multikernel Memory Model
 
 ## Status

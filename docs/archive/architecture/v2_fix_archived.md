@@ -1,3 +1,15 @@
+---
+title: Address-Translation Architecture Redesign (v2_fix)
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - archive
+  - architecture
+see_also:
+  - README.md
+---
 # Address-Translation Architecture Redesign (v2_fix)
 
 This document serves as the master plan for refactoring the Bharat-OS page-table and virtual memory subsystems into a robust, multi-tier address-translation architecture.

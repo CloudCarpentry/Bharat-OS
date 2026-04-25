@@ -1,3 +1,15 @@
+---
+title: Execution Mode and CPU Partitioning Architecture
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - core
+see_also:
+  - README.md
+---
 # Execution Mode and CPU Partitioning Architecture
 
 This document describes the design and rationale for the execution mode and CPU partitioning framework in Bharat-OS.

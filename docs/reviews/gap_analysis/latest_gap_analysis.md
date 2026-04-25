@@ -1,3 +1,15 @@
+---
+title: Bharat-OS – Critical Gap Analysis & Execution Roadmap
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - reviews
+  - gap_analysis
+see_also:
+  - README.md
+---
 # Bharat-OS – Critical Gap Analysis & Execution Roadmap
 
 ## 1. Executive Summary

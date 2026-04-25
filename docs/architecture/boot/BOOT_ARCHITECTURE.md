@@ -1,3 +1,15 @@
+---
+title: Bharat-OS Boot Architecture
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - boot
+see_also:
+  - README.md
+---
 # Bharat-OS Boot Architecture
 
 ## 1. Purpose

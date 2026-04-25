@@ -1,3 +1,14 @@
+---
+title: Bharat-OS SDK and Libc Implementation Plan
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+see_also:
+  - README.md
+---
 # Bharat-OS SDK and Libc Implementation Plan
 
 This document outlines the phased implementation plan for the Bharat-OS SDK and libc layer, transforming the kernel into a testable OS platform.

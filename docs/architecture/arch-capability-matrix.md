@@ -1,3 +1,14 @@
+---
+title: Architecture Capability Matrix
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+see_also:
+  - README.md
+---
 # Architecture Capability Matrix
 
 This document defines the expected architecture capabilities for the runtime tiers.

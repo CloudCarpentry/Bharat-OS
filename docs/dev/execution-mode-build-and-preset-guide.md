@@ -1,3 +1,14 @@
+---
+title: Execution Mode Build and Preset Guide
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - dev
+see_also:
+  - README.md
+---
 # Execution Mode Build and Preset Guide
 
 This document explains the CMake integration and the provided presets for configuring Bharat-OS with the Execution Mode and CPU Partitioning framework.

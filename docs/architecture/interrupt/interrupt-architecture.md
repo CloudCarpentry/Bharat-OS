@@ -1,3 +1,15 @@
+---
+title: Interrupt Architecture
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - interrupt
+see_also:
+  - README.md
+---
 # Interrupt Architecture
 
 ## Overview

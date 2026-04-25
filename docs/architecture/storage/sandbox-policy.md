@@ -1,3 +1,15 @@
+---
+title: Storage Sandbox Policy (Canonical)
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - storage
+see_also:
+  - README.md
+---
 # Storage Sandbox Policy (Canonical)
 
 ## 1. Purpose

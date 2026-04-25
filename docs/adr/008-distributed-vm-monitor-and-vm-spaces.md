@@ -1,3 +1,14 @@
+---
+title: ADR 008: Distributed VM Monitor and VM Spaces
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - adr
+see_also:
+  - README.md
+---
 # ADR 008: Distributed VM Monitor and VM Spaces
 
 ## Status

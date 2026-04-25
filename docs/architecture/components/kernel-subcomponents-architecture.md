@@ -1,3 +1,15 @@
+---
+title: Kernel Subcomponents Architecture (Repository-Aligned Status + Roadmap)
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - components
+see_also:
+  - README.md
+---
 # Kernel Subcomponents Architecture (Repository-Aligned Status + Roadmap)
 
 This document decomposes kernel subcomponents according to the **current `core/kernel/src` tree** and maps closure tasks.

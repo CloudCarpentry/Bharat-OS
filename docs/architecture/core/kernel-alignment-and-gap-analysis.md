@@ -1,3 +1,15 @@
+---
+title: 📘 Bharat-OS Core Architecture Alignment
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - core
+see_also:
+  - README.md
+---
 # 📘 Bharat-OS Core Architecture Alignment
 
 **File:** `docs/architecture/core/kernel-alignment-and-gap-analysis.md`

@@ -1,3 +1,15 @@
+---
+title: Process Manager Service Architecture
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - services
+see_also:
+  - README.md
+---
 # Process Manager Service Architecture
 
 **Version:** v1.0 (Proposed)

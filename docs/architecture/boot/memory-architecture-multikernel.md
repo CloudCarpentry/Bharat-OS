@@ -1,3 +1,15 @@
+---
+title: 1. Executive Summary
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - boot
+see_also:
+  - README.md
+---
 # 1. Executive Summary
 
 This document defines the **Bharat-OS Memory Architecture** aligned with:

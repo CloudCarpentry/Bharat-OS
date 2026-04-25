@@ -1,3 +1,14 @@
+---
+title: EDGE32 Portability Audit
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+see_also:
+  - README.md
+---
 # EDGE32 Portability Audit
 
 This document summarizes the current status of pointer-width inference and portability assumptions that must be addressed before the full arm32 and riscv32 (EDGE32 Tier 2) ports can be considered fully functional.

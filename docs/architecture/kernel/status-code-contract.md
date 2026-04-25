@@ -1,3 +1,15 @@
+---
+title: Status Code and Error Unification Contract
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - kernel
+see_also:
+  - README.md
+---
 # Status Code and Error Unification Contract
 
 ### Contract Status

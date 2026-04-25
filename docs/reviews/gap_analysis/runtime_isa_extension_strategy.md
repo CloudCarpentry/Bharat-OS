@@ -1,3 +1,15 @@
+---
+title: Runtime ISA Extension Leverage in Core Kernel: Gap Analysis (x86_64, arm64, riscv64)
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - reviews
+  - gap_analysis
+see_also:
+  - README.md
+---
 # Runtime ISA Extension Leverage in Core Kernel: Gap Analysis (x86_64, arm64, riscv64)
 
 **Date:** 2026-03-19  

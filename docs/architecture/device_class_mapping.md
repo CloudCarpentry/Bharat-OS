@@ -1,3 +1,14 @@
+---
+title: Device Class Registry Mapping
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+see_also:
+  - README.md
+---
 # Device Class Registry Mapping
 
 The `bharat_device_class_t` and `bharat_device_descriptor_t` defined in `include/bharat/interface/uapi/device/device_class.h` provide a normalized classification and descriptor contract across the system.

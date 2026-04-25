@@ -1,3 +1,14 @@
+---
+title: Shell Contributor Guide
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - dev
+see_also:
+  - README.md
+---
 # Shell Contributor Guide
 
 This guide defines contribution rules for Bharat-OS shell work. Follow this before opening implementation PRs.

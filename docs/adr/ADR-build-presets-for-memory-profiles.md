@@ -1,3 +1,14 @@
+---
+title: ADR: Build Presets for Memory Profiles
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - adr
+see_also:
+  - README.md
+---
 # ADR: Build Presets for Memory Profiles
 
 ## Context

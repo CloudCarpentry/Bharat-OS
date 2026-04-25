@@ -1,3 +1,15 @@
+---
+title: Edge Connectivity Profiles Architecture
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - network
+see_also:
+  - README.md
+---
 # Edge Connectivity Profiles Architecture
 
 ## Overview

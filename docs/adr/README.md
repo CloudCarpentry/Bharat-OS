@@ -1,79 +1,84 @@
+---
+title: ADR Guide and Index
+status: Active
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - adr
+  - decision-log
+see_also:
+  - ../README.md
+  - ../architecture/contracts/naming-conventions.md
+---
+
 # ADR Guide and Index
 
-This directory (`docs/adr`) is the canonical location for Architecture Decision Records (ADRs) in Bharat-OS. This page provides guidelines on how to write and update an ADR, followed by the index of accepted decisions.
+`docs/adr/` is the canonical location for Bharat-OS Architecture Decision Records.
 
-If you have questions about the ADR process or need to propose a new one, please contact **Divyang Panchasara**.
+## ADR Lifecycle
 
-## How to Write and Update an ADR
-
-An ADR captures an important architectural decision made along with its context and consequences.
-
-### 1. Naming and Creating a New ADR
-- File name must follow the pattern `ADR-XXX-short-descriptive-title.md` (e.g., `ADR-014-new-subsystem.md`).
-- Continue the numeric ordering from the highest numbered ADR currently in the folder.
-
-### 2. Format / Template
-Each ADR should include YAML frontmatter and follow the standard structure:
-
-```markdown
----
-title: ADR-XXX Short Title
-status: Proposed | Accepted | Rejected | Superseded
-owner: Your Name
-reviewers: Reviewer Names
-version: 1.0
-last_updated: YYYY-MM-DD
-tags: tag1, tag2
----
-
-# ADR-XXX: Short Title
-
-## Context
-Describe the forces at play, the technological context, or the problem being solved. What is the current situation? Why is a decision necessary?
-
-## Decision
-What is the proposed change or decision? Write this in clear, assertive language.
-
-## Consequences
-What becomes easier or more difficult because of this change? Are there new risks or maintenance burdens? Are there performance or security implications?
+```mermaid
+stateDiagram-v2
+  [*] --> Proposed
+  Proposed --> Accepted: consensus + merge
+  Proposed --> Rejected: decision not adopted
+  Accepted --> Superseded: replaced by newer ADR
+  Rejected --> [*]
+  Superseded --> [*]
 ```
 
-### 3. Review and Update Process
-- **Drafting:** Create a pull request adding the ADR with a status of `Proposed`.
-- **Review:** Gather feedback from the team and stakeholders. Divyang Panchasara and other key reviewers should be tagged.
-- **Acceptance:** Once consensus is reached, the status is changed to `Accepted` and the PR is merged.
-- **Updates:** If an ADR becomes obsolete due to a newer decision, do not delete it. Instead, update its status to `Superseded` and link to the new ADR that replaces it.
+## ADR Template Contract
 
----
+Use this minimum structure for all new ADRs:
 
-## Accepted ADR Index
+| Section | Required | Notes |
+|---|---|---|
+| Frontmatter | Yes | `title`, `status`, `owner`, `last_updated`, `tags`, optional `see_also`. |
+| Context | Yes | What problem or force requires a decision? |
+| Decision | Yes | The chosen approach, stated clearly. |
+| Consequences | Yes | Trade-offs, risks, and follow-up work. |
+| References | Recommended | Links to related ADRs / architecture contracts. |
 
-1. [ADR-001: Microkernel vs Hybrid](ADR-001-microkernel-vs-hybrid.md)
-2. [ADR-002: Capability Model](ADR-002-capability-model.md)
-3. [ADR-003: Multikernel Messaging](ADR-003-multikernel-messaging.md)
-4. [ADR-004: Linux Personality First](ADR-004-linux-personality-first.md)
-5. [ADR-005: ML Stays Out of Ring 0](ADR-005-ml-stays-out-of-ring-0.md)
-6. [ADR-006: NUMA Awareness](ADR-006-numa-awareness.md)
-7. [ADR-007: Experimental Scope](ADR-007-experimental-scope.md)
-8. [ADR-008: Distributed VM Monitor and VM Spaces](008-distributed-vm-monitor-and-vm-spaces.md)
-   *(Also: [ADR-008: AI Scheduler Plugin Contract](ADR-008-ai-scheduler-plugin-contract.md))*
-9. [ADR-009: SDK Libc Strategy](009-sdk-libc-strategy.md)
-   *(Also: [ADR-009: Documentation Status and Claims](ADR-009-documentation-status-and-claims.md))*
-10. [ADR-010: Distributed Kernel Ownership](ADR-010-distributed-kernel-ownership.md)
-11. [ADR-011: Structured Kernel Panic and Diagnostics](ADR-011-structured-kernel-panic-and-diagnostics.md)
-12. [ADR-012: CAN Subsystem Architecture](ADR-012-can-subsystem-architecture.md)
-    *(Also: [ADR-012: Interrupt Controller Evolution](ADR-012-interrupt-controller-evolution.md))*
-13. [ADR-013: Multikernel Memory Protection Architecture](ADR-013-multikernel-memory-protection-architecture.md)
-14. [ADR-014: Library Layering and Data Structures](ADR-014-library-layering-and-data-structures.md)
-15. [ADR-015: Documentation Information Architecture and Archive Policy](ADR-015-documentation-information-architecture.md)
+## Naming Rules
 
-### Additional Architecture and Memory ADRs
-- [ADR: Allocation Classes](ADR-allocation-classes.md)
-- [ADR: Boot Runtime Contract](ADR-boot-runtime-contract.md)
-- [ADR: Build Presets for Memory Profiles](ADR-build-presets-for-memory-profiles.md)
-- [ADR: Cross-Core Thread Handoff](ADR-001-cross-core-thread-handoff.md)
-- [ADR: Memory Core vs Advanced VM Split](ADR-memory-core-vs-advanced-vm-split.md)
-- [ADR: Memory HAL Unification](ADR-memory-hal-unification.md)
-- [ADR: Memory Profile Gating](ADR-memory-profile-gating.md)
+- Preferred pattern: `ADR-XXX-short-title.md`.
+- Legacy files with alternate numbering are retained for traceability.
+- Do not renumber historical ADRs after merge.
 
-*(Note: Some ADR numbers overlap slightly from legacy tracking and are preserved here for historical context).*
+## ADR Index
+
+### Numbered ADRs
+
+| ADR | Title | File |
+|---|---|---|
+| ADR-001 | Microkernel vs Hybrid | [`ADR-001-microkernel-vs-hybrid.md`](ADR-001-microkernel-vs-hybrid.md) |
+| ADR-002 | Capability Model | [`ADR-002-capability-model.md`](ADR-002-capability-model.md) |
+| ADR-003 | Multikernel Messaging | [`ADR-003-multikernel-messaging.md`](ADR-003-multikernel-messaging.md) |
+| ADR-004 | Linux Personality First | [`ADR-004-linux-personality-first.md`](ADR-004-linux-personality-first.md) |
+| ADR-005 | ML Stays Out of Ring 0 | [`ADR-005-ml-stays-out-of-ring-0.md`](ADR-005-ml-stays-out-of-ring-0.md) |
+| ADR-006 | NUMA Awareness | [`ADR-006-numa-awareness.md`](ADR-006-numa-awareness.md) |
+| ADR-007 | Experimental Scope | [`ADR-007-experimental-scope.md`](ADR-007-experimental-scope.md) |
+| ADR-008 | Distributed VM Monitor and VM Spaces | [`008-distributed-vm-monitor-and-vm-spaces.md`](008-distributed-vm-monitor-and-vm-spaces.md) |
+| ADR-008 | AI Scheduler Plugin Contract | [`ADR-008-ai-scheduler-plugin-contract.md`](ADR-008-ai-scheduler-plugin-contract.md) |
+| ADR-009 | SDK Libc Strategy | [`009-sdk-libc-strategy.md`](009-sdk-libc-strategy.md) |
+| ADR-009 | Documentation Status and Claims | [`ADR-009-documentation-status-and-claims.md`](ADR-009-documentation-status-and-claims.md) |
+| ADR-010 | Distributed Kernel Ownership | [`ADR-010-distributed-kernel-ownership.md`](ADR-010-distributed-kernel-ownership.md) |
+| ADR-011 | Structured Kernel Panic and Diagnostics | [`ADR-011-structured-kernel-panic-and-diagnostics.md`](ADR-011-structured-kernel-panic-and-diagnostics.md) |
+| ADR-012 | CAN Subsystem Architecture | [`ADR-012-can-subsystem-architecture.md`](ADR-012-can-subsystem-architecture.md) |
+| ADR-012 | Interrupt Controller Evolution | [`ADR-012-interrupt-controller-evolution.md`](ADR-012-interrupt-controller-evolution.md) |
+| ADR-013 | Multikernel Memory Protection Architecture | [`ADR-013-multikernel-memory-protection-architecture.md`](ADR-013-multikernel-memory-protection-architecture.md) |
+| ADR-014 | Library Layering and Data Structures | [`ADR-014-library-layering-and-data-structures.md`](ADR-014-library-layering-and-data-structures.md) |
+| ADR-015 | Documentation Information Architecture | [`ADR-015-documentation-information-architecture.md`](ADR-015-documentation-information-architecture.md) |
+
+### Functional ADR Extensions
+
+| Topic | File |
+|---|---|
+| Allocation classes | [`ADR-allocation-classes.md`](ADR-allocation-classes.md) |
+| Boot/runtime contract | [`ADR-boot-runtime-contract.md`](ADR-boot-runtime-contract.md) |
+| Build presets by memory profile | [`ADR-build-presets-for-memory-profiles.md`](ADR-build-presets-for-memory-profiles.md) |
+| Cross-core thread handoff | [`ADR-001-cross-core-thread-handoff.md`](ADR-001-cross-core-thread-handoff.md) |
+| Memory core vs advanced VM split | [`ADR-memory-core-vs-advanced-vm-split.md`](ADR-memory-core-vs-advanced-vm-split.md) |
+| Memory HAL unification | [`ADR-memory-hal-unification.md`](ADR-memory-hal-unification.md) |
+| Memory profile gating | [`ADR-memory-profile-gating.md`](ADR-memory-profile-gating.md) |

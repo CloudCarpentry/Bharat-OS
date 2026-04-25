@@ -1,3 +1,15 @@
+---
+title: Console Subsystem Roadmap
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - kernel
+see_also:
+  - README.md
+---
 # Console Subsystem Roadmap
 
 This roadmap tracks the functional implementation of the Bharat-OS Console Subsystem.

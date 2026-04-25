@@ -1,3 +1,14 @@
+---
+title: ADR-013: Multikernel Memory Protection Architecture (MPA)
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - adr
+see_also:
+  - README.md
+---
 # ADR-013: Multikernel Memory Protection Architecture (MPA)
 
 ## Status

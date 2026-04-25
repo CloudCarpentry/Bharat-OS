@@ -1,3 +1,14 @@
+---
+title: Profile-Driven Storage and Network Subsystems
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+see_also:
+  - README.md
+---
 # Profile-Driven Storage and Network Subsystems
 
 This note defines how Bharat-OS selects storage and networking capabilities from:

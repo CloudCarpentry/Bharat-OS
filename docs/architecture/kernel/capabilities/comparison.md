@@ -1,3 +1,15 @@
+---
+title: Comparison: POSIX vs. seL4 vs. Bharat-OS
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - kernel
+see_also:
+  - README.md
+---
 # Comparison: POSIX vs. seL4 vs. Bharat-OS
 
 ## Overview

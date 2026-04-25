@@ -1,3 +1,15 @@
+---
+title: Context Switch and Syscall/Trap Gates
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - kernel
+see_also:
+  - README.md
+---
 # Context Switch and Syscall/Trap Gates
 
 This document defines the current in-kernel context switch mechanism and syscall/trap gate contract, adapting our architecture to the multikernel Barrelfish/seL4 model.

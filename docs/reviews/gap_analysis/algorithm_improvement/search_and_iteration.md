@@ -1,3 +1,15 @@
+---
+title: Search and Iteration Inefficiencies
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - reviews
+  - gap_analysis
+see_also:
+  - README.md
+---
 # Search and Iteration Inefficiencies
 
 This document identifies areas in the codebase where inefficient $O(n)$ search algorithms and linear array iterations are used instead of more optimal data structures (like hash maps or trees) or hardware-assisted search mechanisms.

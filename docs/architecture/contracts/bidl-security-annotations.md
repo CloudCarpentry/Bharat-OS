@@ -1,3 +1,15 @@
+---
+title: BIDL Security Annotations
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - contracts
+see_also:
+  - README.md
+---
 # BIDL Security Annotations
 
 BIDL serves as the declarative authority contract for Bharat-OS. The generated dispatcher runtimes rely on security annotations to enforce capability and lease boundaries automatically. Manual dispatcher bypasses are forbidden.

@@ -1,3 +1,14 @@
+---
+title: Subsystems Architecture Review & Gap Analysis
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+see_also:
+  - README.md
+---
 # Subsystems Architecture Review & Gap Analysis
 
 ## 1. Overview & Goal
