@@ -2,7 +2,7 @@
 #define BHARAT_UAPI_OBJECT_H
 
 #include <stdint.h>
-#include <interface/uapi/handle/handle.h>
+#include <uapi/handle/handle.h>
 
 struct bh_object_info {
     uint32_t type;

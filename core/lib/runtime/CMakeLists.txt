@@ -3,7 +3,7 @@ project(BharatOS_Lib_Runtime C ASM)
 
 # Create crt0 as an OBJECT library so it can be explicitly linked into every binary
 add_library(bharat_crt0 OBJECT src/crt0.c)
-target_include_directories(bharat_crt0 PUBLIC include)
+target_include_directories(bharat_crt0 PUBLIC include ${CMAKE_SOURCE_DIR}/interface ${CMAKE_SOURCE_DIR}/core/lib/syscall/common)
 target_link_libraries(bharat_crt0 PUBLIC bharat_freestanding bharat_syscall)
 
 # Add the lib/runtime static library

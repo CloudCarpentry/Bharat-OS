@@ -32,6 +32,7 @@ const size_t g_kernel_physmap_size = 0x8000000000ULL; // 512GB
 
 static void x86_tlb_flush_page_local(virt_addr_t vaddr);
 bool g_x86_mmu_finalized = false;
+static bool g_x86_pcid_supported = false;
 extern const virt_addr_t g_kernel_virt_offset;
 
 static void* x86_phys_to_virt(phys_addr_t phys) { 

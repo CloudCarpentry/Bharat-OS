@@ -2,7 +2,7 @@
 #define BHARAT_UAPI_SERVICE_H
 
 #include <stdint.h>
-#include <interface/uapi/ipc/ipc.h>
+#include <uapi/ipc/ipc.h>
 
 struct bh_service_info {
     char name[64];

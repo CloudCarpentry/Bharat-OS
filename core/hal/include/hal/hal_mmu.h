@@ -21,6 +21,15 @@ enum hal_memory_model {
  *
  * Detailed hardware features reported by the architecture/platform.
  */
+
+/* Supported page-size mask bits for hal_mem_caps_t.page_sizes_mask */
+enum hal_page_size_bits {
+    HAL_PAGE_SIZE_4K = (1u << 0),
+    HAL_PAGE_SIZE_2M = (1u << 1),
+    HAL_PAGE_SIZE_1G = (1u << 2),
+    HAL_PAGE_SIZE_4M = (1u << 3),
+};
+
 typedef struct hal_mem_caps {
     enum hal_memory_model model;
 

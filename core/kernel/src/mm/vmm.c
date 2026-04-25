@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include "mm/aspace_profile.h"
 #include "debug/mm_invariants.h"
+#include "kernel/status.h"
 
 address_space_t kernel_space;
 static int kernel_space_ready = 0;
