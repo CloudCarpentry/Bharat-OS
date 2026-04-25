@@ -5,13 +5,14 @@ set(SHELL_TEST_SRCS
     ../src/shell_dispatch.c
     ../src/shell_auth.c
     ../src/shell_output.c
-    ../src/shell_backend_stub.c
+    ../src/shell_backend_urpc.c
+    ../../../lib/urpc/urpc.c
     ../src/commands/shell_commands.c
 )
 
 function(add_shell_test name source)
     add_executable(${name} ${source} ${SHELL_TEST_SRCS})
-    target_include_directories(${name} PRIVATE ../include)
+    target_include_directories(${name} PRIVATE ../include ../../../lib)
     target_compile_definitions(${name} PRIVATE SHELL_NO_MAIN=1)
     add_test(NAME ${name} COMMAND ${name})
 endfunction()

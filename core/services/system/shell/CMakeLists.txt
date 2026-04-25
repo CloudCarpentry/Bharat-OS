@@ -15,7 +15,8 @@ set(SHELL_SOURCES
     src/shell_dispatch.c
     src/shell_auth.c
     src/shell_output.c
-    src/shell_backend_stub.c
+    src/shell_backend_urpc.c
+    ../../../lib/urpc/urpc.c
     src/commands/shell_commands.c
 )
 
@@ -26,6 +27,7 @@ target_link_libraries(system_shell PRIVATE
 )
 target_include_directories(system_shell PRIVATE
     include
+    ../../../lib
 )
 
 if(CONFIG_SHELL_MINI)
