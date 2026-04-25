@@ -2,7 +2,7 @@
 #define BHARAT_UAPI_IPC_H
 
 #include <stdint.h>
-#include <interface/uapi/capability/capability.h>
+#include <uapi/capability/capability.h>
 
 typedef bh_cap_t bh_endpoint_t;
 

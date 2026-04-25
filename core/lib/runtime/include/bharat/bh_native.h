@@ -3,12 +3,12 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <interface/uapi/capability/capability.h>
-#include <interface/uapi/handle/handle.h>
-#include <interface/uapi/ipc/ipc.h>
-#include <interface/uapi/memory/memory.h>
-#include <interface/uapi/time/time.h>
-#include <interface/uapi/object/object.h>
+#include <uapi/capability/capability.h>
+#include <uapi/handle/handle.h>
+#include <uapi/ipc/ipc.h>
+#include <uapi/memory/memory.h>
+#include <uapi/time/time.h>
+#include <uapi/object/object.h>
 
 /* Capability Management */
 int bh_cap_revoke(bh_cap_t cap);
