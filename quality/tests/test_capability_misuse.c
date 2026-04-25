@@ -71,6 +71,24 @@ int main(void) {
     uint32_t delegated = 0;
     assert(cap_table_delegate(t, t, cap, CAP_RIGHT_MEMORY_MAP, &delegated) != 0);
 
+    // Negative tests for newly enforced syscalls (simulated via manual cap checks if direct syscalls not available in host test)
+    capability_entry_t entry_misuse;
+    // 1. Thread creation with invalid process cap
+    assert(cap_table_lookup(t, 9999, CAP_TYPE_PROCESS, CAP_RIGHT_PROCESS_MANAGE, &entry_misuse) != 0);
+
+    // 2. VMM map with wrong cap type
+    uint32_t endp_cap;
+    cap_table_grant(t, CAP_TYPE_ENDPOINT, 0, CAP_RIGHT_ENDPOINT_SEND, &endp_cap);
+    assert(cap_table_lookup(t, endp_cap, CAP_TYPE_MEMORY, CAP_RIGHT_MEMORY_MAP, &entry_misuse) != 0);
+
+    // 3. Resource allocation with insufficient rights
+    uint32_t proc_cap;
+    cap_table_grant(t, CAP_TYPE_PROCESS, 0, CAP_RIGHT_DELEGATE, &proc_cap);
+    assert(cap_table_lookup(t, proc_cap, CAP_TYPE_PROCESS, CAP_RIGHT_RESOURCE_ALLOC, &entry_misuse) != 0);
+
+    // 4. Fault domain management with wrong right
+    assert(cap_table_lookup(t, proc_cap, CAP_TYPE_PROCESS, CAP_RIGHT_FAULT_DOMAIN_MANAGE, &entry_misuse) != 0);
+
     printf("Capability misuse tests passed.\n");
 
     test_accelerator_caps();

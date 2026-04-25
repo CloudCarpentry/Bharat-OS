@@ -10,7 +10,7 @@ tags: ["architecture", "personalities"]
 
 # Linux Personality Syscall Plan
 
-> **Note on Code Structure:** Following the centralized error model, Linux syscall handlers must return Linux-specific error codes to user-space, but internally map to the core `include/bharat/errno.h` (e.g., `BH_EINVAL`). The syscall architecture separates traps (`kernel/src/arch/*/trap.c`) from personalities (`kernel/src/personality/linux/`).
+> **Note on Code Structure:** Following the centralized error model, Linux syscall handlers must return Linux-specific error codes to user-space, but internally map to the core `include/bharat/errno.h` (e.g., `BH_EINVAL`). The syscall architecture separates traps (`core/kernel/src/core/arch/*/trap.c`) from personalities (`core/kernel/src/personality/linux/`).
 
 This document outlines the phased implementation plan for adding the Linux Personality subsystem to Bharat-OS. The subsystem acts as a compatibility layer translating Linux syscalls to Bharat-OS internal operations.
 

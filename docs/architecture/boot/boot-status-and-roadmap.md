@@ -5,8 +5,8 @@
 This document summarizes the current implementation status and roadmap for the Bharat-OS boot architecture. The maturity taxonomy used aligns with the canonical definitions: **Scaffold**, **Partial**, **Baseline**, and **Production**.
 
 ### Kernel & Core Boot
-*   **Kernel Early Boot (`kernel/main.c`)**: Baseline. The thin orchestrator receives normalized boot info, initializes CPU-local early state, handles BSP/AP split, and calls staged common boot functions.
-*   **Boot Phase Orchestration**: Baseline. The BSP boot flow is phase-based (early boot -> security/bootstrap setup -> memory setup -> platform/runtime services setup -> runtime entry selection).
+*   **Kernel Early Boot (`core/kernel/main.c`)**: Baseline. The thin orchestrator receives normalized boot info, initializes CPU-local early state, handles BSP/AP split, and calls staged common boot functions.
+*   **Boot Phase Orchestration**: Baseline. The BSP boot flow is phase-based (early boot -> security/bootstrap setup -> memory setup -> core/platform/runtime services setup -> runtime entry selection).
 *   **Boot Contracts (`boot_info_t`)**: Baseline. Standardization on `boot_info_t` under `boot/include/boot/` is complete. Adapters for Multiboot2, FDT, and OpenSBI normalize hardware-specific properties into this structure prior to early validation.
 
 ### Initialization & Service Launch

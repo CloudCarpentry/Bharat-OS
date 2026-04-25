@@ -11,7 +11,7 @@ This matrix maps Bharat-OS product profiles to shell class, access mode, and ope
 | Edge / gateway / network appliance | Admin shell | Operator-facing | prod, dev, recovery | Strong capability gates and audit required. |
 | Automotive / drone / robotics | Restricted admin + mini recovery | Hidden/operator | prod, recovery, factory | Safety runtime restricts mutating commands; break-glass path must be explicit. |
 | Cloud / server / developer platforms | Full admin shell | Visible | dev, prod, recovery | Broader diagnostics and automation-friendly output. |
-| Linux personality target (deferred) | Compatibility shell | Personality-facing | dev/prod (personality-scoped) | Implement later in `personalities/compat/`; keep separate from core system shell. |
+| Linux personality target (deferred) | Compatibility shell | Personality-facing | dev/prod (personality-scoped) | Implement later in `core/personalities/compat/`; keep separate from core system shell. |
 
 ## Policy expectations by profile
 

@@ -6,8 +6,8 @@ For Bharat-OS, a **trimmed, profile-driven connectivity stack** is crucial for e
 
 This architecture is divided into three layers:
 1.  **Core Network Substrate (`lib/net/`):** A small, stable layer providing packet buffers, link/address/route abstractions, eventing, timers, and basic protocol parsing (Ethernet, IPv4, UDP, etc.).
-2.  **Optional Protocol Stacks (`services/network/netstack/`):** Loaded per profile. Features include IPv4, IPv6, UDP, TCP, DHCP client, DNS stub, mDNS, CoAP, MQTT, BLE host subset, etc.
-3.  **Radio / Device Service Layer (`services/network/`):** Separate manager services like `netmgr`, `wifimgr`, `blemgr`, `meshmgr`, controlling policy, lifecycle, and connections.
+2.  **Optional Protocol Stacks (`core/services/network/netstack/`):** Loaded per profile. Features include IPv4, IPv6, UDP, TCP, DHCP client, DNS stub, mDNS, CoAP, MQTT, BLE host subset, etc.
+3.  **Radio / Device Service Layer (`core/services/network/`):** Separate manager services like `netmgr`, `wifimgr`, `blemgr`, `meshmgr`, controlling policy, lifecycle, and connections.
 
 ## "Trimmed-Down" Definition
 
@@ -60,8 +60,8 @@ Bharat-OS uses explicit profiles to dictate network capabilities.
 ## Component Responsibilities
 
 *   **Kernel:** IRQ delivery, DMA support, IOMMU hooks, capability checks for device access, shared memory primitives, timers, synchronization, low-level transport primitives.
-*   **Services (`services/network/`):** Policy, interface lifecycle, scan/join/connect logic, IP assignment, routing policy, reconnect policy, BLE pairing policy, service discovery, telemetry.
-*   **Drivers (`drivers/net/`, `drivers/wifi/`, `drivers/bluetooth/`):** NIC/Wi-Fi/BLE controller specifics, firmware loading, queue management, DMA rings, interrupt handling, power-state transitions.
+*   **Services (`core/services/network/`):** Policy, interface lifecycle, scan/join/connect logic, IP assignment, routing policy, reconnect policy, BLE pairing policy, service discovery, telemetry.
+*   **Drivers (`core/drivers/net/`, `core/drivers/wifi/`, `core/drivers/bluetooth/`):** NIC/Wi-Fi/BLE controller specifics, firmware loading, queue management, DMA rings, interrupt handling, power-state transitions.
 
 ## Wi-Fi and BLE Managers
 

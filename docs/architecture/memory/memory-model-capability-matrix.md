@@ -87,5 +87,5 @@ Bharat-OS classifies AI-adjacent memory classes into two tiers for cross-profile
 ## Per-core Ownership Philosophy
 
 The fundamental philosophy of per-core ownership remains in place regardless of the memory model:
-- The **abstract authority path** stays identical: `fault/request -> aspace/protection context -> region/object -> arch/hal backend`.
+- The **abstract authority path** stays identical: `fault/request -> aspace/protection context -> region/object -> core/arch/hal backend`.
 - Heavy per-core structures (like large PMM cache magazines) are tied to `MEM_CAP_PER_CORE_PMM_CACHE` (optional on memory-constrained targets), but the strict ownership mechanics remain true everywhere.

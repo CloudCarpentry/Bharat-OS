@@ -2,7 +2,7 @@
 
 ## 1. Purpose and Scope
 
-This document defines the **currently implemented BIDL v1 profile** used by the in-repo tooling (`tools/bidl/bidlc.py` and `tools/abi/check_idl_compat.py`).
+This document defines the **currently implemented BIDL v1 profile** used by the in-repo tooling (`tools/binterface/idl/bidlc.py` and `tools/abi/check_idl_compat.py`).
 
 It is intentionally narrower than the broader architectural language drafts in `docs/architecture/contracts/`.
 
@@ -12,11 +12,11 @@ Use this document when you need to know what parses and code-generates **today**
 
 ## 2. Implementation Status (as of April 22, 2026)
 
-Bharat-OS currently has multiple IDL-style syntaxes in `idl/` (e.g., `service/message`, `package+struct`, `namespace/interface/method`).
+Bharat-OS currently has multiple IDL-style syntaxes in `interface/idl/` (e.g., `service/message`, `package+struct`, `namespace/interface/method`).
 
 Only the `service ... rpc ... message/struct ...` family is handled by the active Python tooling used for codegen/compat checks.
 
-- `tools/bidl/bidlc.py` parses:
+- `tools/binterface/idl/bidlc.py` parses:
   - `service <qualified_name> = <service_id> { ... }`
   - `rpc <Method>(<Req>) -> <Resp>`
   - `message <Name> { ... }`

@@ -28,17 +28,17 @@ For sandbox policy details, see `sandbox-policy.md`.
 
 ## 3. Layer contract
 
-### Layer A — Drivers (`drivers/block`, `drivers/storage`)
+### Layer A — Drivers (`core/drivers/block`, `core/drivers/storage`)
 
 - Hardware/transport mechanism only.
 - No policy authority for namespace, mount, descriptor, or capability semantics.
 
-### Layer B — Storage stack (`stacks/storage`)
+### Layer B — Storage stack (`core/stacks/storage`)
 
 - Reusable mechanisms (block API, cache, profile resolution, backend adapters).
 - May encode tunable behavior, but not user-visible policy ownership.
 
-### Layer C — Filesystem service (`services/system/filesystem`)
+### Layer C — Filesystem service (`core/services/system/filesystem`)
 
 - Sole owner of:
   - namespace visibility,
@@ -46,7 +46,7 @@ For sandbox policy details, see `sandbox-policy.md`.
   - file descriptor lifecycle,
   - capability interpretation for filesystem access.
 
-### Layer D — Kernel compatibility surface (`kernel/include/fs`, `kernel/src/fs`)
+### Layer D — Kernel compatibility surface (`core/kernel/include/fs`, `core/kernel/src/fs`)
 
 - Transitional surface only.
 - Kernel stays mechanism-oriented and migration-safe.
@@ -60,7 +60,7 @@ For sandbox policy details, see `sandbox-policy.md`.
 
 ## 4. Kernel FS transitional allowlist (normative)
 
-`kernel/src/fs/*` is temporary and constrained.
+`core/kernel/src/fs/*` is temporary and constrained.
 
 ### Allowed in kernel FS transitional code
 
@@ -107,7 +107,7 @@ Authorization for storage-class use is service-owned policy, with sandbox policy
 
 A storage/filesystem PR must update this document when it changes any normative boundary involving:
 
-- ownership movement across driver/stack/service/kernel/lib layers,
+- ownership movement across driver/stack/service/core/kernel/lib layers,
 - kernel transitional allowlist scope,
 - capability/policy ownership boundaries.
 

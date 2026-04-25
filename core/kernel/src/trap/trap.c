@@ -156,40 +156,74 @@ long syscall_dispatch(syscall_id_t id, uintptr_t arg0, uintptr_t arg1,
   case SYSCALL_NOP:
     return TRAP_SUCCESS;
   case SYSCALL_THREAD_CREATE: {
-    uintptr_t *out_tid = (uintptr_t *)(uintptr_t)arg1;
-    if (!trap_user_ptr_valid(arg0)) {
-        return TRAP_ERR_FAULT;
-    }
-    if (!trap_user_range_valid(arg1, (size_t)sizeof(*out_tid))) {
+    const bharat_sys_thread_create_args_t *args =
+        SYSCALL_ARGS_FROM_USER(bharat_sys_thread_create_args_t, arg0);
+    uint64_t *out_tid = (uint64_t *)(uintptr_t)args->out_tid_ptr;
+    if (!trap_user_range_valid(args->out_tid_ptr, (size_t)sizeof(*out_tid))) {
       return TRAP_ERR_FAULT;
     }
+    capability_entry_t e;
+    if (cap_table_lookup(trap_current_cap_table(), args->process_cap, CAP_TYPE_PROCESS, CAP_RIGHT_PROCESS_MANAGE, &e) != 0) {
+      return TRAP_ERR_PERM;
+    }
+    bh_process_t *target_proc = (bh_process_t *)e.object_ref;
     return kstatus_to_sysret(
-        (kstatus_t)sched_sys_thread_create(trap_current_process(), (void (*)(void))(uintptr_t)arg0, (uint64_t *)out_tid));
+        (kstatus_t)sched_sys_thread_create(target_proc, (void (*)(void))(uintptr_t)args->entry_point, out_tid));
   }
-  case SYSCALL_THREAD_DESTROY:
-    return kstatus_to_sysret((kstatus_t)sched_sys_thread_destroy((uint64_t)arg0));
+  case SYSCALL_THREAD_DESTROY: {
+    capability_entry_t e;
+    if (cap_table_lookup(trap_current_cap_table(), (uint32_t)arg0, CAP_TYPE_THREAD, CAP_RIGHT_REVOKE, &e) != 0) {
+      return TRAP_ERR_PERM;
+    }
+    return kstatus_to_sysret((kstatus_t)sched_sys_thread_destroy((uint64_t)e.object_ref));
+  }
   case SYSCALL_SCHED_YIELD:
     bh_thread_yield();
     return TRAP_SUCCESS;
   case SYSCALL_SCHED_SLEEP:
     return kstatus_to_sysret((kstatus_t)sched_sys_sleep((uint64_t)arg0));
-  case SYSCALL_SCHED_SET_PRIORITY:
-    return kstatus_to_sysret((kstatus_t)sched_sys_set_priority((uint64_t)arg0, (uint32_t)arg1));
-  case SYSCALL_SCHED_SET_AFFINITY:
-    return kstatus_to_sysret((kstatus_t)sched_sys_set_affinity((uint64_t)arg0, (uint32_t)arg1));
+  case SYSCALL_SCHED_SET_PRIORITY: {
+    const bharat_sys_sched_attr_args_t *args =
+        SYSCALL_ARGS_FROM_USER(bharat_sys_sched_attr_args_t, arg0);
+    capability_entry_t e;
+    if (cap_table_lookup(trap_current_cap_table(), args->thread_cap, CAP_TYPE_THREAD, CAP_RIGHT_SCHEDULE, &e) != 0) {
+      return TRAP_ERR_PERM;
+    }
+    return kstatus_to_sysret((kstatus_t)sched_sys_set_priority((uint64_t)e.object_ref, (uint32_t)args->value));
+  }
+  case SYSCALL_SCHED_SET_AFFINITY: {
+    const bharat_sys_sched_attr_args_t *args =
+        SYSCALL_ARGS_FROM_USER(bharat_sys_sched_attr_args_t, arg0);
+    capability_entry_t e;
+    if (cap_table_lookup(trap_current_cap_table(), args->thread_cap, CAP_TYPE_THREAD, CAP_RIGHT_SCHEDULE, &e) != 0) {
+      return TRAP_ERR_PERM;
+    }
+    return kstatus_to_sysret((kstatus_t)sched_sys_set_affinity((uint64_t)e.object_ref, (uint32_t)args->value));
+  }
   case SYSCALL_VMM_MAP_PAGE: {
     const bharat_sys_vmm_map_page_args_t *args =
         SYSCALL_ARGS_FROM_USER(bharat_sys_vmm_map_page_args_t, arg0);
     if (!trap_user_ptr_valid(args->vaddr)) {
         return TRAP_ERR_FAULT;
     }
-    return kstatus_to_sysret((kstatus_t)vmm_map_page((virt_addr_t)args->vaddr, (phys_addr_t)args->paddr, args->flags));
+    capability_entry_t e;
+    if (cap_table_lookup(trap_current_cap_table(), args->cap_id, CAP_TYPE_MEMORY, CAP_RIGHT_MEMORY_MAP, &e) != 0) {
+      return TRAP_ERR_PERM;
+    }
+    return kstatus_to_sysret((kstatus_t)vmm_map_page((virt_addr_t)args->vaddr, (phys_addr_t)e.object_ref, args->flags));
   }
-  case SYSCALL_VMM_UNMAP_PAGE:
-    if (!trap_user_ptr_valid(arg0)) {
+  case SYSCALL_VMM_UNMAP_PAGE: {
+    const bharat_sys_vmm_unmap_page_args_t *args =
+        SYSCALL_ARGS_FROM_USER(bharat_sys_vmm_unmap_page_args_t, arg0);
+    if (!trap_user_ptr_valid(args->vaddr)) {
         return TRAP_ERR_FAULT;
     }
-    return kstatus_to_sysret((kstatus_t)vmm_unmap_page((virt_addr_t)arg0));
+    capability_entry_t e;
+    if (cap_table_lookup(trap_current_cap_table(), args->cap_id, CAP_TYPE_MEMORY, CAP_RIGHT_MEMORY_UNMAP, &e) != 0) {
+      return TRAP_ERR_PERM;
+    }
+    return kstatus_to_sysret((kstatus_t)vmm_unmap_page((virt_addr_t)args->vaddr));
+  }
   case SYSCALL_CAPABILITY_INVOKE: {
     const bharat_sys_cap_invoke_args_t *args =
         SYSCALL_ARGS_FROM_USER(bharat_sys_cap_invoke_args_t, arg0);
@@ -247,38 +281,78 @@ long syscall_dispatch(syscall_id_t id, uintptr_t arg0, uintptr_t arg1,
   }
 
   case SYSCALL_INTENT_SET: {
-    if (!trap_user_range_valid(arg1, (size_t)sizeof(bharat_intent_t))) {
+    const bharat_sys_intent_args_t *args =
+        SYSCALL_ARGS_FROM_USER(bharat_sys_intent_args_t, arg0);
+    capability_entry_t e;
+    if (cap_table_lookup(trap_current_cap_table(), args->thread_cap, CAP_TYPE_THREAD, CAP_RIGHT_SCHEDULE, &e) != 0) {
+      return TRAP_ERR_PERM;
+    }
+    if (!trap_user_range_valid(args->intent_ptr, (size_t)sizeof(bharat_intent_t))) {
       return TRAP_ERR_FAULT;
     }
-    return kstatus_to_sysret((kstatus_t)sched_sys_intent_set((uint64_t)arg0, (const void*)(uintptr_t)arg1));
+    return kstatus_to_sysret((kstatus_t)sched_sys_intent_set((uint64_t)e.object_ref, (const void*)(uintptr_t)args->intent_ptr));
   }
   case SYSCALL_INTENT_GET: {
-    if (!trap_user_range_valid(arg1, (size_t)sizeof(bharat_intent_t))) {
+    const bharat_sys_intent_args_t *args =
+        SYSCALL_ARGS_FROM_USER(bharat_sys_intent_args_t, arg0);
+    capability_entry_t e;
+    if (cap_table_lookup(trap_current_cap_table(), args->thread_cap, CAP_TYPE_THREAD, CAP_RIGHT_SCHEDULE, &e) != 0) {
+      return TRAP_ERR_PERM;
+    }
+    if (!trap_user_range_valid(args->intent_ptr, (size_t)sizeof(bharat_intent_t))) {
       return TRAP_ERR_FAULT;
     }
-    return kstatus_to_sysret((kstatus_t)sched_sys_intent_get((uint64_t)arg0, (void*)(uintptr_t)arg1));
+    return kstatus_to_sysret((kstatus_t)sched_sys_intent_get((uint64_t)e.object_ref, (void*)(uintptr_t)args->intent_ptr));
   }
   case SYSCALL_MEM_ALLOC_CLASS: {
-    uint64_t *out_addr = (uint64_t*)(uintptr_t)arg3;
-    if (!trap_user_range_valid(arg3, (size_t)sizeof(*out_addr))) {
+    const bharat_sys_mem_alloc_args_t *args =
+        SYSCALL_ARGS_FROM_USER(bharat_sys_mem_alloc_args_t, arg0);
+    uint64_t *out_addr = (uint64_t*)(uintptr_t)args->out_addr_ptr;
+    if (!trap_user_range_valid(args->out_addr_ptr, (size_t)sizeof(*out_addr))) {
       return TRAP_ERR_FAULT;
     }
-    return kstatus_to_sysret((kstatus_t)sys_mem_alloc_class((size_t)arg0, (uint32_t)arg1, (uint32_t)arg2, out_addr));
+    capability_entry_t e;
+    if (cap_table_lookup(trap_current_cap_table(), args->resource_cap, CAP_TYPE_PROCESS, CAP_RIGHT_RESOURCE_ALLOC, &e) != 0) {
+      return TRAP_ERR_PERM;
+    }
+    return kstatus_to_sysret((kstatus_t)sys_mem_alloc_class((size_t)args->size, (uint32_t)args->mem_class, (uint32_t)args->flags, out_addr));
   }
   case SYSCALL_FAULT_DOMAIN_CREATE: {
-    if (!trap_user_range_valid(arg0, (size_t)sizeof(bharat_fault_domain_attr_t))) {
+    const bharat_sys_fault_domain_args_t *args =
+        SYSCALL_ARGS_FROM_USER(bharat_sys_fault_domain_args_t, arg0);
+    capability_entry_t e;
+    if (cap_table_lookup(trap_current_cap_table(), args->cap_id, CAP_TYPE_PROCESS, CAP_RIGHT_FAULT_DOMAIN_MANAGE, &e) != 0) {
+      return TRAP_ERR_PERM;
+    }
+    if (!trap_user_range_valid(args->attr_ptr, (size_t)sizeof(bharat_fault_domain_attr_t))) {
       return TRAP_ERR_FAULT;
     }
-    uint64_t *out_domain = (uint64_t*)(uintptr_t)arg1;
-    if (!trap_user_range_valid(arg1, (size_t)sizeof(*out_domain))) {
+    uint64_t *out_domain = (uint64_t*)(uintptr_t)args->out_domain_ptr;
+    if (!trap_user_range_valid(args->out_domain_ptr, (size_t)sizeof(*out_domain))) {
       return TRAP_ERR_FAULT;
     }
-    return kstatus_to_sysret((kstatus_t)sys_fault_domain_create((const void*)(uintptr_t)arg0, out_domain));
+    return kstatus_to_sysret((kstatus_t)sys_fault_domain_create((const void*)(uintptr_t)args->attr_ptr, out_domain));
   }
-  case SYSCALL_FAULT_DOMAIN_DESTROY:
-    return kstatus_to_sysret((kstatus_t)sys_fault_domain_destroy((uint64_t)arg0));
-  case SYSCALL_FAULT_DOMAIN_ATTACH:
-    return kstatus_to_sysret((kstatus_t)sys_fault_domain_attach((uint64_t)arg0, (uint64_t)arg1));
+  case SYSCALL_FAULT_DOMAIN_DESTROY: {
+    capability_entry_t e;
+    if (cap_table_lookup(trap_current_cap_table(), (uint32_t)arg0, CAP_TYPE_PROCESS, CAP_RIGHT_FAULT_DOMAIN_MANAGE, &e) != 0) {
+      return TRAP_ERR_PERM;
+    }
+    return kstatus_to_sysret((kstatus_t)sys_fault_domain_destroy((uint64_t)e.object_ref));
+  }
+  case SYSCALL_FAULT_DOMAIN_ATTACH: {
+    const bharat_sys_fault_domain_args_t *args =
+        SYSCALL_ARGS_FROM_USER(bharat_sys_fault_domain_args_t, arg0);
+    capability_entry_t e;
+    if (cap_table_lookup(trap_current_cap_table(), args->cap_id, CAP_TYPE_PROCESS, CAP_RIGHT_FAULT_DOMAIN_MANAGE, &e) != 0) {
+      return TRAP_ERR_PERM;
+    }
+    capability_entry_t te;
+    if (cap_table_lookup(trap_current_cap_table(), args->thread_cap, CAP_TYPE_THREAD, CAP_RIGHT_SCHEDULE, &te) != 0) {
+      return TRAP_ERR_PERM;
+    }
+    return kstatus_to_sysret((kstatus_t)sys_fault_domain_attach((uint64_t)e.object_ref, (uint64_t)te.object_ref));
+  }
   default:
     return TRAP_ERR_NOSYS;
   }
@@ -288,7 +362,7 @@ long syscall_dispatch(syscall_id_t id, uintptr_t arg0, uintptr_t arg1,
 
 int trap_dispatch(trap_frame_t *frame, const trap_info_t *info) {
   if (!frame || !info) {
-    return TRAP_ERR_INVAL;
+    return (int)TRAP_ERR_INVAL;
   }
 
   extern void vmm_process_local_urpc_messages(uint32_t core_id);
@@ -311,7 +385,7 @@ int trap_dispatch(trap_frame_t *frame, const trap_info_t *info) {
   }
   case TRAP_CLASS_SYSCALL: {
     if (info->origin == TRAP_ORIGIN_KERNEL) {
-      return TRAP_ERR_PERM;
+      return (int)TRAP_ERR_PERM;
     }
 
     long rc = trap_dispatch_syscall(frame, info);
@@ -369,9 +443,9 @@ long trap_handle(trap_frame_t *frame) {
 
   trap_info_t info = {0};
   info.origin = frame->from_user ? TRAP_ORIGIN_USER : TRAP_ORIGIN_KERNEL;
-  info.ip = frame->pc;
-  info.sp = frame->sp;
-  info.arch_code = frame->cause;
+  info.ip = (virt_addr_t)frame->pc;
+  info.sp = (virt_addr_t)frame->sp;
+  info.arch_code = (uint32_t)frame->cause;
 
   if (frame->type == TRAP_TYPE_IRQ) {
     info.trap_class = TRAP_CLASS_INTERRUPT;
@@ -397,6 +471,6 @@ long trap_handle(trap_frame_t *frame) {
     }
   }
 
-  return trap_dispatch(frame, &info);
+  return (long)trap_dispatch(frame, &info);
 }
 // Needs updating with the new cases.

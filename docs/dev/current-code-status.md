@@ -16,8 +16,8 @@ Use these labels consistently across status docs and roadmap updates:
 
 ## Scope and method
 
-- Reviewed build wiring (`CMakeLists.txt`, `services/CMakeLists.txt`, `subsys/CMakeLists.txt`).
-- Reviewed service entry points (`services/*/main.c`, `services/*/src/main.c`).
+- Reviewed build wiring (`CMakeLists.txt`, `core/services/CMakeLists.txt`, `subsys/CMakeLists.txt`).
+- Reviewed service entry points (`core/services/*/main.c`, `core/services/*/src/main.c`).
 - Reviewed non-trivial networking control/data-plane modules and selected subsystem modules.
 
 ---
@@ -76,7 +76,7 @@ Use these labels consistently across status docs and roadmap updates:
 
 *Note: The legacy `net` monolithic service is deprecated and transitional. `netmgr` and `netstack` represent the canonical forward path.*
 
-## `services/netmgr` (control plane)
+## `core/services/netmgr` (control plane)
 Implemented modules include:
 - Interface table lifecycle (create/delete/get/admin-state).
 - Address table add/remove/get.
@@ -92,7 +92,7 @@ Current limitations:
 - Full blocking IPC wait is waiting on scheduler integration; falls back to yielding loop for now.
 - System registry bindings are still mocked until `namesvc` is fully operational.
 
-## `services/netstack` (data plane)
+## `core/services/netstack` (data plane)
 Implemented modules include:
 - Net buffer manipulation and checksum helpers.
 - IPv4 RX/TX parsing + checksum validation + local/loopback/broadcast handling.

@@ -57,7 +57,7 @@ This document provides a comprehensive code review and enhancement plan for Bhar
 
 ### Current State
 - **Endpoints (`endpoint_ipc.c`)**: Implements synchronous, capability-guarded endpoints (`ipc_endpoint_t`) using a static array.
-- **Multikernel/URPC**: Shared memory ring buffers (Lockless URPC) exist for high-performance, cross-core, and AI Governor messaging.
+- **Multicore/kernel/URPC**: Shared memory ring buffers (Lockless URPC) exist for high-performance, cross-core, and AI Governor messaging.
 
 ### Strengths
 - **Capability Security**: IPC operations explicitly require `CAP_PERM_SEND` or `CAP_PERM_RECEIVE`.

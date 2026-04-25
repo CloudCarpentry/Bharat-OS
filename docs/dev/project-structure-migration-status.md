@@ -8,11 +8,11 @@ This tracker is the execution companion for `project-structure-refactor-plan.md`
 - Phase B (tooling compatibility hardening): **Completed** (B.1/B.2/B.3 complete; CI guard now enforces strict mode).
 - Phase B.4 (delivery configs/assets relocation + legacy symlink trimming): **Completed** (`configs/` and `assets/` now canonical under `delivery/`; obsolete `quality/*` compatibility symlink fanout removed).
 - Phase B.5 follow-up (root delivery compatibility cleanup): **Completed** (root `configs`, `assets`, `targets`, and now `cmake` symlinks removed after canonical-path migration).
-- Phase C (interface moves): **Completed** (`idl/` + `uapi/` + `sdk` slices completed).
+- Phase C (interface moves): **Completed** (`interface/idl/` + `interface/uapi/` + `sdk` slices completed).
 - Phase D.1 (boot tree migration): **Completed** (D1a/D1b migrated boot sources+headers/protocols/discovery into `core/boot`; D1c wired kernel include selection through migration-aware `BHARAT_BOOT_INCLUDE_DIR`; D1e removed legacy `boot/{src,common,include,discovery,protocols}` symlink fanout and migrated in-repo include path usage to canonical `core/boot/*`; D1f removed legacy `boot/*` fallback selection from `core/kernel` CMake wiring so boot inputs are now canonical-only).
-- Phase D.2c (kernel source tree move, bounded slice): **In progress** (remaining `kernel/src/*` moved to `core/kernel/src/*`; legacy `kernel/src/*` compatibility symlink wrappers retained).
-- Phase D.2f (kernel root build assets move, bounded slice): **In progress** (`kernel/CMakeLists.txt` and `kernel/linker*.ld` moved to canonical `core/kernel/*`; legacy `kernel/*` symlink compatibility retained).
-- Phase D.4a (lib + stacks bounded move): **In progress** (`lib/` and `stacks/` moved to canonical `core/lib/` and `core/stacks/`; legacy symlink compatibility retained).
+- Phase D.2c (kernel source tree move, bounded slice): **In progress** (remaining `core/kernel/src/*` moved to `core/kernel/src/*`; legacy `core/kernel/src/*` compatibility symlink wrappers retained).
+- Phase D.2f (kernel root build assets move, bounded slice): **In progress** (`core/kernel/CMakeLists.txt` and `core/kernel/linker*.ld` moved to canonical `core/kernel/*`; legacy `core/kernel/*` symlink compatibility retained).
+- Phase D.4a (lib + stacks bounded move): **In progress** (`lib/` and `core/stacks/` moved to canonical `core/lib/` and `core/stacks/`; legacy symlink compatibility retained).
 - Phase F.1 (public include tree): **Completed** (`include/` moved to canonical `interface/include/`; legacy root `include` symlink removed after canonical include-path migration in CMake).
 - Phase F.2 (user-space tree): **Completed** (`user/` moved to canonical `experience/user/`; legacy `user` retained as symlink and top-level CMake now prefers `experience/user`).
 - Phase F.2 follow-up (root experience/interface/quality symlink trimming): **Completed** (root `user`, `tests`, `idl`, and `sdk` compatibility symlinks removed; `uapi` was previously removed and `include` has now also been removed after canonical caller migration).
@@ -27,8 +27,8 @@ This tracker is the execution companion for `project-structure-refactor-plan.md`
 | B.3 | CI guard for newly introduced legacy root references | Completed | `kernel-ci` runs `tools/ci/check_migration_refs.py --strict` and guards completed migration roots (`delivery/targets`, `interface/{idl,uapi,contracts}`). |
 | B.4 | Move `configs/` + `assets/` into `delivery/` and prune obsolete compatibility symlinks | Completed | Canonical paths are now `delivery/configs` and `delivery/assets`; obsolete `quality/*` symlink fanout removed and root delivery symlinks were later dropped in B.5. |
 | B.5 | Remove root delivery symlinks once callers are canonicalized | Completed | Root `configs`, `assets`, `targets`, and `cmake` symlinks removed; canonical paths under `delivery/` are authoritative. |
-| C | `idl/`, `uapi/`, `sdk/` to `interface/` | Completed | C1 (`idl`), C2 (`uapi`), C3 (`sdk`) complete; legacy compatibility symlink for `uapi` removed after migrating in-repo callers to canonical `interface/*` paths. |
-| D | `boot/`, `kernel/`, `arch/`, etc. to `core/` | In progress | D1 is now complete (canonical `core/boot/*`, legacy `boot/{src,common,include,discovery,protocols}` symlink fanout removed, in-repo include paths migrated, and `core/kernel` CMake now uses canonical `core/boot/*` roots only). D2b landed (`kernel/include`), D2c landed (remaining `kernel/src/*` now canonical in `core/kernel/src/*` with compatibility), followed by consolidation to a single `kernel/src` compatibility symlink, D2f landed (`kernel/CMakeLists.txt` + `kernel/linker*.ld` moved to canonical `core/kernel/*` with legacy symlink compatibility), and D4a landed (`lib/` + `stacks/` moved under `core/*` with compatibility symlinks). |
+| C | `interface/idl/`, `interface/uapi/`, `interface/sdk/` to `interface/` | Completed | C1 (`idl`), C2 (`uapi`), C3 (`sdk`) complete; legacy compatibility symlink for `uapi` removed after migrating in-repo callers to canonical `interface/*` paths. |
+| D | `boot/`, `core/kernel/`, `core/arch/`, etc. to `core/` | In progress | D1 is now complete (canonical `core/boot/*`, legacy `boot/{src,common,include,discovery,protocols}` symlink fanout removed, in-repo include paths migrated, and `core/kernel` CMake now uses canonical `core/boot/*` roots only). D2b landed (`core/kernel/include`), D2c landed (remaining `core/kernel/src/*` now canonical in `core/kernel/src/*` with compatibility), followed by consolidation to a single `core/kernel/src` compatibility symlink, D2f landed (`core/kernel/CMakeLists.txt` + `core/kernel/linker*.ld` moved to canonical `core/kernel/*` with legacy symlink compatibility), and D4a landed (`lib/` + `core/stacks/` moved under `core/*` with compatibility symlinks). |
 | F | `include/` + `user/` canonicalization | Completed | F1 landed (`interface/include` canonical, root `include` symlink removed after caller migration); F2 landed (`experience/user` canonical, root `user` symlink removed in F.3) with migration-aware CMake root selection. |
 | F.3 | Trim root interface/experience/quality compatibility symlinks | Completed | Removed root `user`, `tests`, `idl`, and `sdk` symlinks; follow-up cleanup removed the remaining root `include` symlink after canonical include migration. |
 | E | Remove fallbacks + enforce new roots | Pending | Convert warnings to CI failures. |
@@ -105,7 +105,7 @@ Every migration PR must update:
 
 ## Validation Outcomes (2026-04-23, Phase C3)
 
-- Migration slice: moved `sdk/` -> `interface/sdk/` and kept `sdk` compatibility symlink.
+- Migration slice: moved `interface/sdk/` -> `interface/sdk/` and kept `sdk` compatibility symlink.
 - Installed QEMU host runners via `apt-get install -y qemu-system-x86 qemu-system-arm qemu-system-misc`.
 - `./build.sh build --target x86_64_desktop_headless`: **pass**.
 - `./build.sh package --target x86_64_desktop_headless`: **pass**.
@@ -134,8 +134,8 @@ Every migration PR must update:
 
 ## Validation Outcomes (2026-04-24, Phase D2b)
 
-- Migration slice: moved `kernel/include/` to `core/kernel/include/`; preserved `kernel/include` as compatibility symlink.
-- `kernel/CMakeLists.txt` now resolves kernel include root from a candidate list (`core/kernel/include` first, `kernel/include` fallback with migration warning).
+- Migration slice: moved `core/kernel/include/` to `core/kernel/include/`; preserved `core/kernel/include` as compatibility symlink.
+- `core/kernel/CMakeLists.txt` now resolves kernel include root from a candidate list (`core/kernel/include` first, `core/kernel/include` fallback with migration warning).
 - `./build.sh build --target x86_64_desktop_headless`: **pass**.
 - `./build.sh package --target x86_64_desktop_headless`: **pass**.
 - `./build.sh run --target x86_64_desktop_headless`: **timeout-bounded warning** (QEMU interactive run started; bounded in automation).
@@ -150,7 +150,7 @@ Every migration PR must update:
 
 ## Validation Outcomes (2026-04-24, Phase D2c)
 
-- Migration slice: moved remaining `kernel/src/*` sources into `core/kernel/src/*`; preserved compatibility via per-entry symlinks under `kernel/src/*`.
+- Migration slice: moved remaining `core/kernel/src/*` sources into `core/kernel/src/*`; preserved compatibility via per-entry symlinks under `core/kernel/src/*`.
 - `./build.sh build --target x86_64_desktop_headless`: **pass**.
 - `./build.sh package --target x86_64_desktop_headless`: **pass**.
 - `./build.sh run --target x86_64_desktop_headless`: **timeout-bounded warning** (QEMU interactive run started; bounded in automation).
@@ -163,7 +163,7 @@ Every migration PR must update:
 
 ## Validation Outcomes (2026-04-24, Phase D2f)
 
-- Migration slice: moved `kernel/CMakeLists.txt` and `kernel/linker*.ld` to canonical `core/kernel/*`; preserved compatibility via legacy `kernel/*` symlinks.
+- Migration slice: moved `core/kernel/CMakeLists.txt` and `core/kernel/linker*.ld` to canonical `core/kernel/*`; preserved compatibility via legacy `core/kernel/*` symlinks.
 - Build wiring update: top-level `CMakeLists.txt` now resolves kernel CMake root from a canonical-first candidate list (`core/kernel` preferred, `kernel` fallback with migration warning).
 - Environment prep: installed QEMU system emulators for x86/arm/riscv via `apt-get update && apt-get install -y qemu-system-x86 qemu-system-arm qemu-system-misc`.
 - `./build.sh build --target x86_64_desktop_headless`: **pass**.
@@ -180,8 +180,8 @@ Every migration PR must update:
 ## Validation Outcomes (2026-04-24, Phase D1c)
 
 - Migration slice: switched kernel sub-target CMake include wiring (`cap`, `trap`, `tests`, `debug`, `sched`, `ipc`, `fs`, `monitor`, `core`) from hardcoded `${CMAKE_SOURCE_DIR}/boot/include` to migration-aware `${BHARAT_BOOT_INCLUDE_DIR}`.
-- Compatibility fix: updated kernel capability wrapper include (`kernel/include/bharat/hw_caps.h`) to reference canonical `interface/uapi` contract path so builds remain stable while include roots transition.
-- Compatibility fix: updated accel self-test include in `kernel/src/tests/ktest_virt_accel.c` to use canonical public include path.
+- Compatibility fix: updated kernel capability wrapper include (`core/kernel/include/bharat/hw_caps.h`) to reference canonical `interface/uapi` contract path so builds remain stable while include roots transition.
+- Compatibility fix: updated accel self-test include in `core/kernel/src/quality/tests/ktest_virt_accel.c` to use canonical public include path.
 - Installed QEMU host runners for x86/arm/riscv via `apt-get install -y qemu-system-x86 qemu-system-arm qemu-system-misc`.
 - `./build.sh build --target x86_64_desktop_headless`: **pass**.
 - `./build.sh package --target x86_64_desktop_headless`: **pass**.
@@ -195,7 +195,7 @@ Every migration PR must update:
 
 ## Validation Outcomes (2026-04-24, Phase D4a)
 
-- Migration slice: moved `lib/` -> `core/lib/` and `stacks/` -> `core/stacks/`; preserved compatibility via top-level `lib` and `stacks` symlinks.
+- Migration slice: moved `lib/` -> `core/lib/` and `core/stacks/` -> `core/stacks/`; preserved compatibility via top-level `lib` and `stacks` symlinks.
 - Top-level build wiring now prefers canonical paths (`add_subdirectory(core/lib)` and `add_subdirectory(core/stacks)`).
 - Validation commands executed for build/package/run and Linux/Android multi-arch `all` targets (see command log in PR for pass/timeout details).
 
@@ -266,7 +266,7 @@ Every migration PR must update:
 ## Validation Outcomes (2026-04-24, Phase D1f)
 
 - Migration slice: removed legacy `boot/*` fallback selection in `core/kernel/CMakeLists.txt` and `core/kernel/src/init/CMakeLists.txt`; kernel build wiring now requires canonical `core/boot/{include,protocols,src}` roots.
-- Canonical path follow-up: migrated kernel subdirectory CMake source/include references to canonical resolver variables (`BHARAT_KERNEL_SRC_ROOT`, `BHARAT_KERNEL_INCLUDE_DIR`, `BHARAT_LIB_ROOT`, `BHARAT_ARCH_ROOT`) to reduce dependency on legacy `kernel/*`, `lib/*`, and `arch/*` compatibility links during D1/D2 progression.
+- Canonical path follow-up: migrated kernel subdirectory CMake source/include references to canonical resolver variables (`BHARAT_KERNEL_SRC_ROOT`, `BHARAT_KERNEL_INCLUDE_DIR`, `BHARAT_LIB_ROOT`, `BHARAT_ARCH_ROOT`) to reduce dependency on legacy `core/kernel/*`, `lib/*`, and `core/arch/*` compatibility links during D1/D2 progression.
 - Environment prep: installed QEMU multi-arch runners via `apt-get update && apt-get install -y qemu-system-x86 qemu-system-arm qemu-system-misc`.
 - `./build.sh build --target x86_64_desktop_headless`: **pass**.
 - `./build.sh package --target x86_64_desktop_headless`: **pass**.

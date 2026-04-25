@@ -1,12 +1,12 @@
 # Memory + File Operation Layer Placement Review (memset/memcpy/memmove/open/openat)
 
 Date: 2026-04-20  
-Scope: placement consistency for low-level memory and file-open operations across `arch/`, `hal/`, `kernel/`, `lib/`, and SDK-facing layers.
+Scope: placement consistency for low-level memory and file-open operations across `core/arch/`, `core/hal/`, `core/kernel/`, `lib/`, and SDK-facing layers.
 
 ## 1) Executive summary
 
 The codebase already has **good architectural intent** for layered placement:
-- `arch/` exposes explicit memory-op dispatch contracts (`arch_memcpy/arch_memset/arch_memmove`) and scalar safe fallbacks.
+- `core/arch/` exposes explicit memory-op dispatch contracts (`arch_memcpy/arch_memset/arch_memmove`) and scalar safe fallbacks.
 - `lib/string` provides portable, kernel-independent baseline implementations.
 - architecture docs/ADR define mechanism vs policy boundaries and explicitly require optimized hardware paths behind stable interfaces.
 
@@ -23,8 +23,8 @@ Overall rating: **Medium risk now, high payoff if unified in one pass**.
 ### 2.1 Memory ops
 
 - `lib/string/string.c` defines portable `memcpy`, `memset`, `memmove` (SDK/shared reusable C implementation).
-- `arch/common/memops_scalar.c` defines kernel-safe scalar fallbacks and tier-0 raw memset (`arch_memset_raw`) with anti-recursion guidance.
-- `kernel/include/arch/memops.h` already provides a context-flagged dispatch contract for `arch_mem*` and safe scalar variants.
+- `core/arch/common/memops_scalar.c` defines kernel-safe scalar fallbacks and tier-0 raw memset (`arch_memset_raw`) with anti-recursion guidance.
+- `core/kernel/include/core/arch/memops.h` already provides a context-flagged dispatch contract for `arch_mem*` and safe scalar variants.
 - `tools/check_no_recursive_memops.py` validates no recursive calls in memops symbols in compiled ELF.
 - Some libs still define local duplicate helpers:
   - `lib/transport/loopback.c` (`internal_memcpy` + `internal_memset`)
@@ -32,11 +32,11 @@ Overall rating: **Medium risk now, high payoff if unified in one pass**.
 
 ### 2.2 File open/openat path
 
-- `kernel/src/fs/file.c` currently provides **compatibility stubs** returning `K_ERR_REQUIRES_FS_SERVICE` for open/read/write/close APIs.
-- `services/system/filesystem/fd_mgr.c` currently holds actual open/read/write/close logic and exports `vfs_open*` functions.
+- `core/kernel/src/fs/file.c` currently provides **compatibility stubs** returning `K_ERR_REQUIRES_FS_SERVICE` for open/read/write/close APIs.
+- `core/services/system/filesystem/fd_mgr.c` currently holds actual open/read/write/close logic and exports `vfs_open*` functions.
 - `lib/fs/fs_client.c` directly forwards `fs_open/fs_read/...` to those service-side `vfs_*` symbols.
 - `lib/runtime/host/runtime_host.c` has a separate runtime API (`bharat_runtime_file_open`) but it is still unimplemented.
-- There is **no `openat` implementation** in kernel/lib/service path yet, so introducing it now without placement cleanup would likely extend inconsistency.
+- There is **no `openat` implementation** in core/kernel/lib/service path yet, so introducing it now without placement cleanup would likely extend inconsistency.
 
 ---
 
@@ -44,7 +44,7 @@ Overall rating: **Medium risk now, high payoff if unified in one pass**.
 
 ## 3.1 `memset/memcpy/memmove`
 
-### `arch/`
+### `core/arch/`
 Own:
 - ISA-specific mechanisms and instruction-level fastpaths.
 - context-sensitive dispatch implementation details (e.g., IRQ-safe / early-boot constraints).
@@ -52,15 +52,15 @@ Own:
 Do not own:
 - API policy about when user-space or services should call memory ops.
 
-### `hal/`
+### `core/hal/`
 Own:
 - optional architecture-neutral memory-op contract surface if needed for cross-platform modules (only if more than kernel uses it).
-- capability discovery translation (what fastpaths are available) from platform/arch to unified contract.
+- capability discovery translation (what fastpaths are available) from core/platform/arch to unified contract.
 
 Do not own:
 - board-specific tuning tables and service policy.
 
-### `kernel/`
+### `core/kernel/`
 Own:
 - canonical kernel memory-op entrypoints for ring-0 use (with flags for context safety).
 - no-recursion safety guarantees and trap/boot-safe fallback enforcement.
@@ -82,15 +82,15 @@ Do not own:
 
 ## 3.2 `open/openat`
 
-### `arch/` and `hal/`
+### `core/arch/` and `core/hal/`
 - Should not own file-open semantics. No `open/openat` policy/mechanism here.
 
-### `kernel/`
+### `core/kernel/`
 Own:
 - mechanism contracts only: capability checks, descriptor/token model definitions, IPC/UAPI syscall entry points.
 - no file-system global policy or direct mount namespace policy logic beyond mechanism boundaries.
 
-### `services/system/filesystem`
+### `core/services/system/filesystem`
 Own:
 - concrete path resolution, mount namespace logic, FD table policy, and implementation orchestration.
 - service-side implementation of `open/openat` semantics over kernel mechanisms.
@@ -119,7 +119,7 @@ Own:
 ### Phase A — memory ops normalization
 
 1. [x] Define two canonical facades and ban others:
-   - `arch_mem*` for kernel/ring-0 context-sensitive use.
+   - `arch_mem*` for core/kernel/ring-0 context-sensitive use.
    - `mem*` from `lib/string` (or `freestanding_string.h`) for shared/lib/sdk use.
 2. [x] Replace per-file `internal_mem*` duplicates with one selected facade per layer.
 3. [x] Keep `tools/check_no_recursive_memops.py` in CI as a hard guard.
@@ -141,7 +141,7 @@ Own:
    - no direct service implementation symbol imports from generic lib APIs (must go through contract header).
    - *Status: Heuristic-based linter implemented in `tools/lint/check_layer_references.py`.*
 2. [x] Add architecture conformance test matrix for memops behavior equivalence and overlap safety.
-   - *Status: `kernel/src/tests/ktest_memops.c` added to validate `arch_mem*` primitives.*
+   - *Status: `core/kernel/src/quality/tests/ktest_memops.c` added to validate `arch_mem*` primitives.*
 
 ---
 

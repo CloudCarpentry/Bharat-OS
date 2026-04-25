@@ -20,7 +20,7 @@ Without libc + SDK:
 * Edge bring-up takes too much bespoke work.
 
 With a real SDK:
-* `services/netmgr`, `servicemgr`, drivers, and test apps stop reinventing runtime support.
+* `core/services/netmgr`, `servicemgr`, drivers, and test apps stop reinventing runtime support.
 * Common embedded and systems code can be compiled quickly.
 * Utilities, benchmarks, and protocol stacks can be ported.
 * Kernel/services can be validated with realistic apps.

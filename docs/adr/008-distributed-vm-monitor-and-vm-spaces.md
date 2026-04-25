@@ -4,7 +4,7 @@
 Accepted (Actively Implemented)
 
 ## Context
-The current Virtual Memory Management (VMM) model (`kernel/src/mm/vmm.c` and `address_space_t`) assumes a monolithic, single-core perspective of address spaces. This design tightly couples the logical address space description with the physical page table programming (via `mmu_ops`).
+The current Virtual Memory Management (VMM) model (`core/kernel/src/mm/vmm.c` and `address_space_t`) assumes a monolithic, single-core perspective of address spaces. This design tightly couples the logical address space description with the physical page table programming (via `mmu_ops`).
 
 As Bharat-OS evolves toward a distributed multikernel architecture, this monolithic approach presents several critical problems:
 1. **Lack of Distributed Coherence:** There is no robust mechanism for cross-core TLB shootdowns, address-space migration, or remote invalidation.

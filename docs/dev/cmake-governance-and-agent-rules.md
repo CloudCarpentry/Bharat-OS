@@ -7,7 +7,7 @@ This document defines mandatory build-system governance for Bharat-OS contributo
 ## 1.1 Directory layout contract
 
 - Root `CMakeLists.txt` owns global options, profile toggles, and top-level composition.
-- Subsystem `CMakeLists.txt` files (e.g., `services/`, `drivers/`, `subsys/`, `lib/`) own only local target wiring.
+- Subsystem `CMakeLists.txt` files (e.g., `core/services/`, `core/drivers/`, `subsys/`, `lib/`) own only local target wiring.
 - New components must be introduced through the nearest local `CMakeLists.txt` first, then promoted to top-level composition only when required.
 
 ## 1.2 Target hygiene

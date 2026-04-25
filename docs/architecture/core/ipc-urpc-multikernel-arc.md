@@ -64,8 +64,8 @@ All system interactions must follow:
 - IPI or event-based wakeup
 
 👉 **Files:**
-- `kernel/src/ipc/multikernel.c`
-- `kernel/include/advanced/multikernel.h`
+- `core/kernel/src/ipc/multikernel.c`
+- `core/kernel/include/advanced/multikernel.h`
 
 ### 🔹 L1 — Delivery Layer (Protocol Engine) 🟡 Partial
 Responsible for:
@@ -76,9 +76,9 @@ Responsible for:
 - Transaction lifecycle (Partial: Begin, Complete, Poll Timeouts)
 
 👉 **To be implemented in:**
-- `kernel/src/ipc/mk_proto.c`
+- `core/kernel/src/ipc/mk_proto.c`
 👉 **To be implemented in:**
-- `kernel/src/ipc/mk_proto.c`
+- `core/kernel/src/ipc/mk_proto.c`
 
 ### 🔹 L2 — Object RPC Layer
 Handles:

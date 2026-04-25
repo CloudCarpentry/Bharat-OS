@@ -1,47 +1,60 @@
 # Bharat-OS Documentation
 
-Welcome to the Bharat-OS documentation directory. This folder contains all the reference material, design specs, build instructions, and developer guidelines for the project.
+This directory is the canonical documentation hub for Bharat-OS.
 
-## Directory Structure
+## Start here
 
-To help navigate the codebase and the documentation, we have organized the content into several focused categories:
+- **Architecture index:** [`docs/architecture/README.md`](architecture/README.md)
+- **ADR index:** [`docs/adr/README.md`](adr/README.md)
+- **Build/run/testing docs:** [`docs/testing/`](testing/) and root-level [`BUILD.md`](../BUILD.md)
+- **Repository code map:** [`docs/architecture/repository-code-map.md`](architecture/repository-code-map.md)
+- **Archived material:** [`docs/archive/`](archive/)
 
-### [Architecture (`docs/architecture/`)](architecture/)
-Contains high-level system design documents, subcomponent architectures, kernel models, and network/storage strategies.
-* [Kernel Architecture](architecture/000_KERNEL_ARCHITECTURE.md)
-* [Process & Scheduler Architecture](architecture/core/process-scheduler-architecture.md)
-* [Automotive Architecture](architecture/AUTOMOTIVE_ARCHITECTURE.md)
-* [Boot Architecture](architecture/boot/BOOT_ARCHITECTURE.md)
-* [Boot Selftest Policy](architecture/BOOT_SELFTEST_POLICY.md)
-* [Network Architecture](architecture/network-architecture.md)
+## Active documentation layout
 
-### [Build & Environment (`docs/dev/build/`)](dev/build/)
-Guides for setting up your environment, building, running, and testing Bharat-OS.
-* [Environment Preparation](dev/build/ENV_PREP.md)
-* [Build Guide: ARM64](dev/build/BUILD_ARM64.md)
-* [Build Guide: RISC-V 64](dev/build/BUILD_RISCV64.md)
-* [Build Guide: x86_64](dev/build/BUILD_X86_64.md)
-* [Build System Guide](dev/build/HOST_BUILD_TEST_RUN_GUIDE.md)
+### 1) Architecture (`docs/architecture/`)
+Design contracts, subsystem architecture, roadmap notes, and cross-component boundaries.
 
-### [Developer Guidelines (`docs/dev/`)](dev/)
-Contains best practices, status trackers, and implementation plans.
-* [Current Code Status](dev/current-code-status.md) - *The source of truth for implementation status vs. architecture plans.*
-* [Developer Guidelines](dev/developer_guidelines.md)
-* [Shell Contributor Guide](dev/shell-contributor-guide.md)
-* [Shell Testing Guide](dev/shell-testing.md)
-* [Release Versioning](dev/release-versioning.md)
+Key subfolders:
+- `boot/`
+- `core/`
+- `core/kernel/`
+- `memory/`
+- `storage/`
+- `security/`
+- `network/`
+- `core/personalities/`
+- `contracts/`
 
-### [Research & References (`docs/research_doc/`)](research_doc/)
-Papers, external research, and bibliographies that inform the design of Bharat-OS.
-* [Papers](research_doc/papers.md)
-* [References (BibTeX)](research_doc/references.bib)
+### 2) ADRs (`docs/adr/`)
+Decision records that take precedence when roadmap or design docs disagree.
 
-### Other Key Directories
-* **[ADRs (`docs/adr/`)](adr/)**: Architectural Decision Records detailing major design choices over time.
-* **[AI Agents (`docs/ai-agents/`)](ai-agents/)**: Instructions, rules, and boundaries for AI agents interacting with this repository.
-* **[Boards (`docs/boards/`)](boards/)**: Board-specific technical documents and hardware support matrices.
-* **[Profiles (`docs/profiles/`)](profiles/)**: Documentation defining different capability and hardware tiers.
+### 3) Testing (`docs/testing/`)
+Execution matrix and end-to-end testing guidance.
 
----
+### 4) AI agent guidance (`docs/ai-agents/`)
+Standards, templates, and platform-specific agent instructions.
 
-*Note: The architecture documents in `docs/architecture/` are forward-looking. For the current, code-backed implementation reality, always refer to [`docs/dev/current-code-status.md`](dev/current-code-status.md).*
+### 5) Supporting docs
+- `docs/dev/`
+- `docs/boards/`
+- `docs/profiles/`
+- `docs/reviews/`
+- `docs/research_doc/`
+
+### 6) Archive (`docs/archive/`)
+Superseded/legacy material retained for traceability.
+
+## Source-of-truth rule
+
+When there is a conflict:
+
+1. **Accepted ADRs in `docs/adr/`** win.
+2. Then architecture contracts (`docs/architecture/contracts/`).
+3. Then subsystem roadmap/design docs.
+
+## Documentation quality rules
+
+- Prefer links to real code paths (for example `core/`, `interface/`, `quality/`, `tools/`, `delivery/`).
+- Use explicit status labels (`Draft`, `Active`, `Superseded`) for planning docs.
+- Move stale content to `docs/archive/` instead of deleting it.

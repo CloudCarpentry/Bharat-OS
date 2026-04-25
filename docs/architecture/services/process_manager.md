@@ -77,4 +77,4 @@ When a process terminates, the orchestration ensures clean teardown:
 
 ## 6. Implementation Notes
 
-Currently, `services/process_manager/main.c` is a TODO shell. The next step is to formalize this orchestrator contract using BIDL (Bharat Interface Definition Language) so other services and runtimes can depend on its interfaces for spawn, exec, kill, wait, and reap operations.
+Currently, `core/services/process_manager/main.c` is a TODO shell. The next step is to formalize this orchestrator contract using BIDL (Bharat Interface Definition Language) so other services and runtimes can depend on its interfaces for spawn, exec, kill, wait, and reap operations.

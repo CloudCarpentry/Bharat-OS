@@ -10,7 +10,7 @@
 
 - Provide explicit file paths and expected diff shape in prompts.
 - Add guardrails in issue templates and PR templates.
-- Require tests/checks in PR automation.
+- Require quality/tests/checks in PR automation.
 
 ## Workflow Suggestion
 

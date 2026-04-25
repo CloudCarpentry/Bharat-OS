@@ -11,7 +11,7 @@ tags: [security, crypto, architecture]
 
 Bharat-OS enforces a strict boundary between the kernel's **trust-enforcing mechanisms** and the user-space **policy/algorithm services**.
 
-The guiding rule is: **keep cryptography mechanisms in the kernel only where the kernel must enforce trust, isolation, boot integrity, or hardware binding; push algorithms, protocols, policy, and most key lifecycle work into services/stacks.** This aligns with the Bharat-OS direction of a small stable core kernel with profile-driven services/stacks layered on top.
+The guiding rule is: **keep cryptography mechanisms in the kernel only where the kernel must enforce trust, isolation, boot integrity, or hardware binding; push algorithms, protocols, policy, and most key lifecycle work into core/services/stacks.** This aligns with the Bharat-OS direction of a small stable core kernel with profile-driven core/services/stacks layered on top.
 
 ## 4-Layer Security Architecture
 

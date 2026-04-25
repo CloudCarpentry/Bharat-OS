@@ -37,15 +37,15 @@ Bharat-OS Core
   -> optional SHAKTI-SDK compatibility shim
 ```
 
-SHAKTI support belongs in HAL/platform/backends, not in core kernel semantics.
+SHAKTI support belongs in HAL/core/platform/backends, not in core kernel semantics.
 
 ## Repository shape and ownership
 
 Recommended structure:
 
 ```text
-kernel/
-  arch/
+core/kernel/
+  core/arch/
     riscv64/
       core/
       generic/
@@ -56,24 +56,24 @@ kernel/
         irq/
         mm/
         smp/
-drivers/
+core/drivers/
   interrupt/
     plic_shakti.c
     clint_shakti.c
   serial/
     uart_shakti.c
-platform/
+core/platform/
   shakti/
     boards/
     common/
-sdk/
-  shakti_sdk/
+interface/sdk/
+  shakti_interface/sdk/
     include/
     bsp_shim/
     make/
 ```
 
-Existing Bharat-OS directories already align with this split (`kernel/src/hal`, `drivers/`, `tools/boards/`, `docs/`). Implementation should preserve that separation.
+Existing Bharat-OS directories already align with this split (`core/kernel/src/hal`, `core/drivers/`, `tools/boards/`, `docs/`). Implementation should preserve that separation.
 
 ## Platform contract (Phase 0)
 
@@ -163,7 +163,7 @@ These wrappers should map to existing Bharat build/upload/debug machinery rather
 
 ## SHAKTI-SDK compatibility shim (Phase 3)
 
-Create optional shim under `sdk/shakti_sdk/` with familiar BSP-like names at boundary, while internal kernel/driver APIs remain Bharat-native.
+Create optional shim under `interface/sdk/shakti_interface/sdk/` with familiar BSP-like names at boundary, while internal core/kernel/driver APIs remain Bharat-native.
 
 Initial shim surface:
 

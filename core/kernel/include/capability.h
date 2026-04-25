@@ -30,6 +30,7 @@ typedef enum {
     CAP_TYPE_ACCEL_ADMIN = 18,
     CAP_TYPE_DMA_DOMAIN = 19,
     CAP_TYPE_DMA_GRANT = 20,
+    CAP_TYPE_THREAD = 21,
 } cap_type_t;
 
 typedef uint64_t cap_rights_mask_t;
@@ -74,6 +75,10 @@ typedef enum {
     CAP_RIGHT_BIT_READ                 = 31,
     CAP_RIGHT_BIT_WRITE                = 32,
     CAP_RIGHT_BIT_EXECUTE              = 33,
+    CAP_RIGHT_BIT_VMM_MANAGE           = 34,
+    CAP_RIGHT_BIT_FAULT_DOMAIN_MANAGE  = 35,
+    CAP_RIGHT_BIT_PROCESS_MANAGE       = 36,
+    CAP_RIGHT_BIT_RESOURCE_ALLOC       = 37,
 } cap_rights_t;
 
 // Standardize capability right mask macros on uint64_t
@@ -114,6 +119,10 @@ typedef enum {
 #define CAP_RIGHT_READ                 (UINT64_C(1) << CAP_RIGHT_BIT_READ)
 #define CAP_RIGHT_WRITE                (UINT64_C(1) << CAP_RIGHT_BIT_WRITE)
 #define CAP_RIGHT_EXECUTE              (UINT64_C(1) << CAP_RIGHT_BIT_EXECUTE)
+#define CAP_RIGHT_VMM_MANAGE           (UINT64_C(1) << CAP_RIGHT_BIT_VMM_MANAGE)
+#define CAP_RIGHT_FAULT_DOMAIN_MANAGE  (UINT64_C(1) << CAP_RIGHT_BIT_FAULT_DOMAIN_MANAGE)
+#define CAP_RIGHT_PROCESS_MANAGE       (UINT64_C(1) << CAP_RIGHT_BIT_PROCESS_MANAGE)
+#define CAP_RIGHT_RESOURCE_ALLOC       (UINT64_C(1) << CAP_RIGHT_BIT_RESOURCE_ALLOC)
 
 #define CAP_RIGHT_ALL                  (~UINT64_C(0))
 

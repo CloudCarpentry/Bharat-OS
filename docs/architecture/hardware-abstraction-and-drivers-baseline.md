@@ -15,7 +15,7 @@ This document captures the current HAL and driver-framework baseline in kernel s
   - driver registration API (`device_register_driver`),
   - MMIO window registry and lookup (`device_register_mmio_window`, `device_lookup_mmio_window`),
   - generic IRQ fanout (`device_dispatch_irq`).
-- Built-in baseline drivers/windows:
+- Built-in baseline core/drivers/windows:
   - UART/SPI/I2C/SDMMC/Ethernet driver records,
   - Ethernet RX/TX MMIO window registration for NIC IDs.
 - Zero-copy NIC integration now resolves MMIO windows through device framework lookups instead of local hardcoded tables.

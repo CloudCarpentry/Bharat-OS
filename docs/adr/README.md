@@ -65,6 +65,7 @@ What becomes easier or more difficult because of this change? Are there new risk
     *(Also: [ADR-012: Interrupt Controller Evolution](ADR-012-interrupt-controller-evolution.md))*
 13. [ADR-013: Multikernel Memory Protection Architecture](ADR-013-multikernel-memory-protection-architecture.md)
 14. [ADR-014: Library Layering and Data Structures](ADR-014-library-layering-and-data-structures.md)
+15. [ADR-015: Documentation Information Architecture and Archive Policy](ADR-015-documentation-information-architecture.md)
 
 ### Additional Architecture and Memory ADRs
 - [ADR: Allocation Classes](ADR-allocation-classes.md)

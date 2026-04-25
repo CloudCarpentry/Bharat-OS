@@ -2,7 +2,7 @@
 
 ### Contract Status
 - **Spec**: ✅ Documented and versioned
-- **Implemented**: 🚧 Pending kernel/service behavior merge
+- **Implemented**: 🚧 Pending core/kernel/service behavior merge
 - **Validated**: ❌ Pending stress/fault-injection tests
 
 
@@ -13,14 +13,14 @@ This document outlines the strict mapping rules between the internal kernel stat
 ### 1.1 Kernel Internal Status (`kstatus_t`)
 * **Type:** `int32_t`
 * **Range:** `0` (Success) to negative values (`-1` and below).
-* **Location:** `kernel/include/kernel/status.h`
+* **Location:** `core/kernel/include/core/kernel/status.h`
 * **Usage:** Used exclusively inside the kernel boundary, driver boundaries, and kernel-side subsystems.
 * **Format:** Values are prefixed with `K_ERR_`.
 
 ### 1.2 User-Facing Status (`sys_errno_t`)
 * **Type:** `int32_t`
 * **Range:** Positive values (e.g., `1` for `SYS_EPERM`). The syscall boundary generally returns these as negative values (e.g., `-SYS_EPERM`).
-* **Location:** `uapi/bharat/sys_errno.h`
+* **Location:** `interface/uapi/bharat/sys_errno.h`
 * **Usage:** Used as the return code for syscalls, exposed to userspace applications and standard libraries.
 * **Format:** Values are prefixed with `SYS_E`.
 

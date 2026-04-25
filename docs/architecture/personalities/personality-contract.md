@@ -9,7 +9,7 @@ version: 1.0
 
 ### Contract Status
 - **Spec**: ✅ Documented and versioned
-- **Implemented**: 🚧 Pending kernel/service behavior merge
+- **Implemented**: 🚧 Pending core/kernel/service behavior merge
 - **Validated**: ❌ Pending stress/fault-injection tests
 
 
@@ -50,4 +50,4 @@ Personalities are strictly user-space components (or user-space service extensio
 
 ## 6. Runtime Hosting Dependency
 
-All personalities must eventually target the shared **Runtime Hosting Layer** (`uapi/runtime/`, `lib/runtime/host/`) when integrating major managed runtimes (Java, Python, .NET, Node.js). Personalities should not implement bespoke bare-metal hooks for these runtimes if a shared abstraction exists.
+All personalities must eventually target the shared **Runtime Hosting Layer** (`interface/uapi/runtime/`, `lib/runtime/host/`) when integrating major managed runtimes (Java, Python, .NET, Node.js). Personalities should not implement bespoke bare-metal hooks for these runtimes if a shared abstraction exists.

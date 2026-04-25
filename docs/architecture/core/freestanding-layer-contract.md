@@ -11,7 +11,7 @@ tags: ["architecture", "layering", "freestanding", "lint"]
 
 ### Contract Status
 - **Spec**: ✅ Documented and versioned
-- **Implemented**: 🚧 Pending kernel/service behavior merge
+- **Implemented**: 🚧 Pending core/kernel/service behavior merge
 - **Validated**: ❌ Pending stress/fault-injection tests
 
 
@@ -27,27 +27,27 @@ The purpose of this contract is to stop architecture drift by making layer bound
 
 | Layer | Freestanding | Allowed direct dependencies |
 |---|---|---|
-| `arch/` | ✅ Yes | `arch/` internals only, plus shared include/UAPI contracts |
-| `hal/` | ✅ Yes | `hal/`, `arch/`, shared include/UAPI contracts |
-| `kernel/` | ✅ Yes | `kernel/`, `hal/`, `arch/`, platform/boot glue, shared include/UAPI contracts |
-| `lib/` | ❌ No (hosted) | `uapi/`, runtime/services abstractions |
-| `services/` | ❌ No (hosted) | `lib/`, `uapi/` |
-| `stacks/` | ❌ No (hosted) | `services/`, `lib/`, `uapi/` |
+| `core/arch/` | ✅ Yes | `core/arch/` internals only, plus shared include/UAPI contracts |
+| `core/hal/` | ✅ Yes | `core/hal/`, `core/arch/`, shared include/UAPI contracts |
+| `core/kernel/` | ✅ Yes | `core/kernel/`, `core/hal/`, `core/arch/`, core/platform/boot glue, shared include/UAPI contracts |
+| `lib/` | ❌ No (hosted) | `interface/uapi/`, runtime/services abstractions |
+| `core/services/` | ❌ No (hosted) | `lib/`, `interface/uapi/` |
+| `core/stacks/` | ❌ No (hosted) | `core/services/`, `lib/`, `interface/uapi/` |
 
 > Design intent: kernel-side layers remain self-contained execution environments and do not absorb hosted policy/runtime concerns.
 
 ## 2) Hard rules
 
-### Kernel-side (`kernel/`, `hal/`, `arch/`, `platform/`, `boot/`)
+### Kernel-side (`core/kernel/`, `core/hal/`, `core/arch/`, `core/platform/`, `boot/`)
 
 - Must remain freestanding in design and implementation.
-- Must not depend on hosted user/runtime layers (`services/`, `stacks/`, top-level `lib/` contracts).
+- Must not depend on hosted user/runtime layers (`core/services/`, `core/stacks/`, top-level `lib/` contracts).
 - Must not include hosted C runtime headers directly:
   - `<stdio.h>`
   - `<stdlib.h>`
   - `<string.h>`
 
-### Hosted layers (`lib/`, `services/`, `stacks/`, `user/`)
+### Hosted layers (`lib/`, `core/services/`, `core/stacks/`, `user/`)
 
 - May use hosted/runtime constructs.
 - Must consume kernel contracts via UAPI and defined interfaces, not kernel internals.

@@ -100,13 +100,13 @@ The memory stack is divided into explicit layers, each with strict responsibilit
 
 | Layer | Responsibility | Must Not Know About |
 |---|---|---|
-| **PMM** (`kernel/src/mm/pmm/`) | Physical frames, buddy allocation, contiguous alloc | Virtual memory policies, demand faults |
-| **VM Object** (`kernel/src/mm/vm/objects/`) | Backing semantics, lifecycle, page fault resolution | Hardware translation formats |
-| **Address Space** (`kernel/src/mm/vm/aspace/`) | Region reservations, overlap rules | Physical allocation policies |
-| **HAL PT** (`kernel/include/hal/hal_pt.h`) | Hardware page table programming | VM object semantics |
-| **HAL TLB** (`kernel/src/mm/tlb/`) | Invalidation coordination | PMM frame ownership |
-| **Fault Engine** (`kernel/src/mm/vm/fault/`) | Decoding traps, orchestrating lookup | PMM internal structures |
-| **DMA/IOMMU** (`kernel/src/mm/dma/`) | Device-visible mappings, IOVA domains | General user-space semantics |
+| **PMM** (`core/kernel/src/mm/pmm/`) | Physical frames, buddy allocation, contiguous alloc | Virtual memory policies, demand faults |
+| **VM Object** (`core/kernel/src/mm/vm/objects/`) | Backing semantics, lifecycle, page fault resolution | Hardware translation formats |
+| **Address Space** (`core/kernel/src/mm/vm/aspace/`) | Region reservations, overlap rules | Physical allocation policies |
+| **HAL PT** (`core/kernel/include/core/hal/hal_pt.h`) | Hardware page table programming | VM object semantics |
+| **HAL TLB** (`core/kernel/src/mm/tlb/`) | Invalidation coordination | PMM frame ownership |
+| **Fault Engine** (`core/kernel/src/mm/vm/fault/`) | Decoding traps, orchestrating lookup | PMM internal structures |
+| **DMA/IOMMU** (`core/kernel/src/mm/dma/`) | Device-visible mappings, IOVA domains | General user-space semantics |
 
 ### Layer Ownership Map
 
@@ -242,7 +242,7 @@ flowchart LR
 
 ### 7.4 Monitor VM Channel Coordination
 
-The distributed VM implementation relies on the Monitor VM Channel for inter-core memory coordination. The monitor (`kernel/src/monitor/mon_vm_service.c` and `mon_vm_dispatch.c`) is strictly a mechanism layer, providing bounded-completion URPC/IPC capabilities to the advanced VM and TLB controllers.
+The distributed VM implementation relies on the Monitor VM Channel for inter-core memory coordination. The monitor (`core/kernel/src/monitor/mon_vm_service.c` and `mon_vm_dispatch.c`) is strictly a mechanism layer, providing bounded-completion URPC/IPC capabilities to the advanced VM and TLB controllers.
 
 **Design Guarantees:**
 1. **Bounded Wait:** Operations are dispatched with strict limits on wait times (e.g., `mon_vm_wait_for_acks` terminates on timeout or terminal error rather than indefinite blocking).
@@ -326,5 +326,5 @@ For fast iterative verification of admission logic and capability matrices, exec
 mkdir -p build/host && cd build/host
 cmake ../../ -DBHARAT_BUILD_HOST_TESTS=ON
 make test_mem_model_ai
-./tests/host/test_mem_model_ai
+./quality/tests/host/test_mem_model_ai
 ```

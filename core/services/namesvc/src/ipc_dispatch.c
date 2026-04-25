@@ -2,14 +2,10 @@
 #include <registry.h>
 #include <ipc/contract_validate.h>
 #include <ipc_auth.h>
-
-static void custom_memset_ipc(void *s, int c, unsigned long n) {
-    unsigned char *p = s;
-    while(n--) *p++ = (unsigned char)c;
-}
+#include <bharat/runtime/freestanding_string.h>
 
 void namesvc_ipc_handle_request(const bharat_ipc_contract_header_t *hdr, const namesvc_ipc_req_t *req, namesvc_ipc_res_t *res) {
-    custom_memset_ipc(res, 0, sizeof(namesvc_ipc_res_t));
+    memset(res, 0, sizeof(namesvc_ipc_res_t));
 
     if (!hdr || !req) {
         res->status = NAMESVC_STATUS_ERR_INVAL;

@@ -64,7 +64,7 @@ Across both folders, the same macro-pattern appears:
 
 Use this normalized classification in future reports to prevent ambiguity:
 
-- **G0 — Present and validated:** implemented with tests/coverage evidence.
+- **G0 — Present and validated:** implemented with quality/tests/coverage evidence.
 - **G1 — Present but fragile:** implemented, but lacks robustness/observability/perf confidence.
 - **G2 — Present as scaffold/stub:** API exists, core behavior partial.
 - **G3 — Missing:** required capability absent.
@@ -75,7 +75,7 @@ Use this normalized classification in future reports to prevent ambiguity:
 1. **Correctness hardening first**
    - IPC lifecycle, teardown semantics, error propagation, authority checks.
 2. **Boundary and ownership enforcement**
-   - Layer compliance checks and responsibility matrix across kernel/HAL/services.
+   - Layer compliance checks and responsibility matrix across core/kernel/HAL/services.
 3. **Performance on proven hotspots**
    - Scheduler lookup paths, context-switch-adjacent costs, checksum/hash/memory hotspots.
 4. **Interrupt/ISA phased acceleration**

@@ -9,6 +9,7 @@
 #include "../../include/kernel.h"
 #include "boot/boot_info.h"
 #include "arch/arch_caps.h"
+#include "arch/arch_cpu_caps.h"
 
 // Note: Test depends on active_hal_pt which is populated early in boot.
 // For host tests, a mock or the actual host-compiled arch HAL PT might be active.
@@ -27,6 +28,17 @@ void ktest_hal_pt_run(void) {
         KPRINT("FAIL: active_hal_pt->caps is NULL\n");
         return;
     }
+
+    // Feature contract test: fast TLB context capability must map into HAL TLB caps.
+#if defined(__x86_64__)
+    if (arch_cpu_has_system_all(ARCH_CPU_FEAT_COMMON_FAST_TLB_CTX)) {
+        const hal_tlb_caps_t *tlb_caps = hal_tlb_caps();
+        if (!tlb_caps || !tlb_caps->supports_asid_selective_flush) {
+            KPRINT("FAIL: FAST_TLB_CTX cpu capability not reflected in HAL TLB caps\n");
+            return;
+        }
+    }
+#endif
 
     // Test 1: Address Space Creation
     phys_addr_t new_as = active_hal_pt->create_address_space(0);

@@ -17,11 +17,11 @@ You asked whether the kernel can detect "extra" ISA features at runtime and use 
 
 The current CPU capability interface is present but minimal:
 
-- `arch_cpu_caps_init()` exists as an API surface in `kernel/include/arch/arch_cpu_caps.h`.
+- `arch_cpu_caps_init()` exists as an API surface in `core/kernel/include/core/arch/arch_cpu_caps.h`.
 - Per-architecture implementations are currently stubs in:
-  - `arch/x86/x86_64/cpu_caps.c`
-  - `arch/arm/arm64/cpu_caps.c`
-  - `arch/riscv/riscv64/cpu_caps.c`
+  - `core/arch/x86/x86_64/cpu_caps.c`
+  - `core/arch/arm/arm64/cpu_caps.c`
+  - `core/arch/riscv/riscv64/cpu_caps.c`
 
 This means the kernel has **no reliable runtime feature map** to decide whether to enable optimized code paths.
 
@@ -109,18 +109,18 @@ This means the kernel has **no reliable runtime feature map** to decide whether 
 ## 5) Suggested Code Changes in This Repo
 
 ### Phase 1 (Foundation)
-- Expand `kernel/include/arch/arch_cpu_caps.h` with:
+- Expand `core/kernel/include/core/arch/arch_cpu_caps.h` with:
   - enumerated feature IDs,
   - query helpers (`arch_cpu_has(feature)`),
   - optional per-cpu feature record.
 - Replace stubs in:
-  - `arch/x86/x86_64/cpu_caps.c`
-  - `arch/arm/arm64/cpu_caps.c`
-  - `arch/riscv/riscv64/cpu_caps.c`
+  - `core/arch/x86/x86_64/cpu_caps.c`
+  - `core/arch/arm/arm64/cpu_caps.c`
+  - `core/arch/riscv/riscv64/cpu_caps.c`
   with real probe logic.
 
 ### Phase 2 (Low-risk acceleration)
-- Introduce a small `kernel/src/arch/common/fastops_dispatch.c` (or similar) for dispatch hooks.
+- Introduce a small `core/kernel/src/core/arch/common/fastops_dispatch.c` (or similar) for dispatch hooks.
 - Wire architecture-specific fast paths for:
   - `memcpy`/`memset`/page-clear,
   - selected crypto primitives,

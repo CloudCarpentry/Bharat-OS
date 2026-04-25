@@ -43,8 +43,8 @@ build:
 
 kernel:
   canonical_artifacts:
-    elf: kernel/kernel.elf
-    map: kernel/kernel.map
+    elf: core/kernel/kernel.elf
+    map: core/kernel/kernel.map
 
 boot:
   protocol: elf_direct
@@ -65,7 +65,7 @@ run:
   nographic: true
   serial:
     - stdio
-  boot_artifact: kernel/kernel.elf
+  boot_artifact: core/kernel/kernel.elf
 
 debug:
   backend: gdb_remote
@@ -95,7 +95,7 @@ build:
 
 kernel:
   canonical_artifacts:
-    elf: kernel/kernel.elf
+    elf: core/kernel/kernel.elf
 
 boot:
   protocol: raw_entry
@@ -106,7 +106,7 @@ boot:
 package:
   transforms:
     - type: elf_to_bin
-      input: kernel/kernel.elf
+      input: core/kernel/kernel.elf
       output: flash_payload.bin
 
 flash:
@@ -118,7 +118,7 @@ flash:
 
 debug:
   backend: gdb_remote
-  symbols: kernel/kernel.elf
+  symbols: core/kernel/kernel.elf
 ```
 
 ## Validation Rules

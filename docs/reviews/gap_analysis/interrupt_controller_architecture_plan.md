@@ -18,11 +18,11 @@ This plan defines how Bharat-OS can evolve one interrupt subsystem that supports
 
 1. **A generic IRQ API exists** (`hal_irq_*`, `hal_interrupt_*`) with registration, shared handlers, affinity metadata, and deferred work hooks.
 2. **Per-arch controller backends exist** for:
-   - x86_64 APIC (`hal/x86_64/apic.c`)
-   - arm64 GICv3 (`hal/arm64/gicv3.c`)
-   - riscv64 PLIC (`hal/riscv64/plic.c`)
+   - x86_64 APIC (`core/hal/x86_64/apic.c`)
+   - arm64 GICv3 (`core/hal/arm64/gicv3.c`)
+   - riscv64 PLIC (`core/hal/riscv64/plic.c`)
 3. **Discovery already models multiple interrupt controllers** (APIC, IOAPIC, GICv2/v3, ITS, PLIC, AIA placeholders) in `hal_discovery.h`.
-4. **MSI-domain concept exists** (`kernel/include/device/irq_domain.h`) and is partially wired on arm64 ITS + x86 stubs.
+4. **MSI-domain concept exists** (`core/kernel/include/device/irq_domain.h`) and is partially wired on arm64 ITS + x86 stubs.
 
 ### Gaps / architectural risks
 
@@ -35,7 +35,7 @@ This plan defines how Bharat-OS can evolve one interrupt subsystem that supports
 4. **Affinity and routing are metadata-first, hardware-second**: generic affinity is tracked, but backend reprogramming is mostly stubbed.
 5. **arm32/riscv32 parity is incomplete** for a production interrupt stack (arm32 stubs are still minimal; riscv32 lacks equivalent full PLIC backend path).
 6. **Feature-level extensibility (ISR budget, QoS, NMI/FIQ policy, virtualization interrupt injection) is not first-class yet.**
-7. **Header/API drift exists**: `hal/include/hal/hal_irq.h` currently exposes only minimal prototypes and does not match the richer API surface this plan assumes.
+7. **Header/API drift exists**: `core/hal/include/core/hal/hal_irq.h` currently exposes only minimal prototypes and does not match the richer API surface this plan assumes.
 
 ## Target architecture model
 
@@ -46,7 +46,7 @@ Adopt a **three-layer interrupt architecture**:
 2. **IRQ domain + routing layer**
    - Maps hardware interrupt identities to kernel virq space.
    - Composes hierarchical domains (e.g., GPIO expander -> GIC SPI; MSI device -> ITS/IMSIC).
-3. **Controller driver layer (arch/SoC specific)**
+3. **Controller driver layer (core/arch/SoC specific)**
    - APIC/IOAPIC, GICv2/v3+ITS, PLIC/APLIC/IMSIC, board-local intc.
 
 ### Core design principles
@@ -170,12 +170,45 @@ Rules:
    - tracepoints for claim/dispatch/eoi latency and spurious IRQ rate
    - per-controller health counters
 
+## Phase 5: Production profile, Harvard, and board conformance hardening
+
+### Objective
+
+Make the interrupt subsystem production-grade by enforcing **profile-aware policy**, **Harvard-safe behavior**, and **board-level feature contracts** in runtime and CI.
+
+### Implementation tasks
+
+1. **Interrupt profile policy engine**
+   - Add `irq_profile_policy_init(profile, arch_caps, board_caps)` in irq-core.
+   - Compute allowed modes (shared IRQ, MSI/MSI-X, remap/posting, threaded IRQ requirement, ISR budgets).
+2. **Board interrupt capability descriptor**
+   - Extend board/platform metadata with controller topology, vector capacities, secure partitioning, wakeup lines, and local controller model.
+   - Publish via HAL discovery contract consumed by irq-core.
+3. **Harvard-safe interrupt memory layout**
+   - Add linker section contracts and assertions for vector stubs (exec-only region) vs descriptor/state tables (data region).
+   - Add required cache/barrier hooks for platforms needing I/D sync when reprogramming dispatch metadata.
+4. **Security hardening tasks**
+   - Add per-IRQ provenance metadata and optional MSI source validation hooks.
+   - Add interrupt storm containment mode with profile-selectable threshold actions (throttle, isolate CPU, quarantine device domain).
+5. **Conformance and fault-injection tests**
+   - `interrupt_profile_selftest`: validates required-vs-available capability matrix at boot.
+   - `interrupt_domain_fuzz`: random map/unmap/affinity churn with leak detection.
+   - `interrupt_fault_injection`: synthetic spurious/duplicate/late-eoi scenarios per architecture backend.
+
+### Exit criteria
+
+- No profile can boot with a silently unsupported required interrupt capability.
+- At least one board per architecture class passes conformance suite in CI.
+- Harvard/split-memory targets pass vector/data placement assertions and synchronization checks.
+- Capability-gated fast paths prove fallback parity in automated tests.
+
 ## Practical execution order (recommended)
 
 1. ~~**Week 1-2**: Unify trap/IRQ flow and wire real controller ops binding.~~ **(Completed)**
 2. **Week 3-4**: Domain-first conversion for existing x86_64/arm64/riscv64 backends.
 3. **Week 5-6**: arm32 + riscv32 baseline backend completion.
 4. **Week 7+**: MSI-X scaling, accelerator policies, AIA/x2APIC advanced features.
+5. **Week 9+**: Profile/board/Harvard production hardening and conformance gates.
 
 ## ADR alignment
 
