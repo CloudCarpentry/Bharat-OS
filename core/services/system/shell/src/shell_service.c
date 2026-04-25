@@ -2,14 +2,14 @@
 
 #include "shell_string.h"
 
-#include <stdio.h>
-
 #include "shell_dispatch.h"
 #include "shell_output.h"
 #include "shell_parser.h"
 #include "shell_session.h"
 
-#ifndef SHELL_NO_MAIN
+#if defined(BHARAT_HOST_TEST) && !defined(SHELL_NO_MAIN)
+#include <stdio.h>
+
 static void trim_line_end(char* line) {
     size_t len;
 
@@ -73,7 +73,7 @@ shell_status_code_t shell_process_line(shell_session_t* session,
     return response.code;
 }
 
-#ifndef SHELL_NO_MAIN
+#if defined(BHARAT_HOST_TEST) && !defined(SHELL_NO_MAIN)
 int main(void) {
     shell_session_t session;
     const shell_backend_api_t* backend = shell_default_backend();
@@ -92,5 +92,26 @@ int main(void) {
     }
 
     return 0;
+}
+#elif !defined(SHELL_NO_MAIN)
+int main(void) {
+    shell_session_t session;
+    const shell_backend_api_t* backend = shell_default_backend();
+    char out[SHELL_MAX_OUTPUT_LEN];
+
+    shell_session_init(&session,
+                       SHELL_MODE_DEV,
+                       SHELL_CAP_DIAG | SHELL_CAP_REBOOT | SHELL_CAP_SVC_WRITE | SHELL_CAP_FACTORY);
+
+    for (;;) {
+        shell_response_t idle = {
+            .code = SHELL_RC_OK,
+            .message = "shell service idle",
+            .payload = NULL,
+        };
+        shell_format_response(session.output_mode, &idle, out, sizeof(out));
+        (void)backend;
+        (void)out;
+    }
 }
 #endif

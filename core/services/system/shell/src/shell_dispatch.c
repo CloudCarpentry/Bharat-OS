@@ -2,8 +2,6 @@
 
 #include "shell_string.h"
 
-#include <sys/time.h>
-
 #include "shell_auth.h"
 #include "shell_registry.h"
 
@@ -77,14 +75,15 @@ static size_t command_token_count(const char* command) {
     return count;
 }
 
-static uint64_t monotonic_ms(void) {
-    struct timeval tv;
-
-    if (gettimeofday(&tv, NULL) != 0) {
+static uint64_t monotonic_ms(const shell_backend_api_t* backend) {
+    uint64_t now = 0;
+    if (!backend || !backend->get_uptime_ms) {
         return 0u;
     }
-
-    return ((uint64_t)tv.tv_sec * 1000u) + ((uint64_t)tv.tv_usec / 1000u);
+    if (backend->get_uptime_ms(&now) != 0) {
+        return 0u;
+    }
+    return now;
 }
 
 shell_response_t shell_dispatch(shell_session_t* session,
@@ -128,9 +127,9 @@ shell_response_t shell_dispatch(shell_session_t* session,
         return mk(access, "access denied", matched->command);
     }
 
-    start_ms = monotonic_ms();
+    start_ms = monotonic_ms(backend);
     response = matched->handler(session, backend, argv);
-    end_ms = monotonic_ms();
+    end_ms = monotonic_ms(backend);
 
     if (matched->timeout_ms > 0u) {
         if (end_ms > start_ms && (end_ms - start_ms) > matched->timeout_ms) {
