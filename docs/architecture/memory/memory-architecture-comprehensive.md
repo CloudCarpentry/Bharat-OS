@@ -217,9 +217,13 @@ This matrix is the executable contract for memory behavior across Bharat-OS memo
 
 ```mermaid
 flowchart TD
-    Start[Initialization] --> Query{Query Hardware Capabilities<br/>`hal_pt_caps()`, `hal_tlb_caps()`}
+    Start[Initialization] --> Query{Query Hardware Capabilities<br/>`hal_mem_get_caps()`}
 
-    Query -->|Full Sparse-MMU<br/>Fine-grained Page Ops| MMUFull[Select: MMU-full Profile]
+    Query --> Validator{Kernel Memory Validator<br/>`mm_validate_model()`}
+    Validator -->|Mismatch / Insecure| Panic[Fail Closed / Panic]
+    Validator -->|Compatible| Selected[Validated Memory Model]
+
+    Selected -->|Full Sparse-MMU<br/>Fine-grained Page Ops| MMUFull[Select: MMU-full Profile]
     Query -->|Partial MMU<br/>Fallback-heavy Page Ops| MMULite[Select: MMU-lite Profile]
     Query -->|No Sparse-MMU<br/>Region-based Only| MPUOnly[Select: MPU-only Profile]
 
