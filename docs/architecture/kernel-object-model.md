@@ -1,3 +1,14 @@
+---
+title: Kernel Object Model
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+see_also:
+  - README.md
+---
 # Kernel Object Model
 
 ## Overview

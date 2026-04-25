@@ -1,3 +1,15 @@
+---
+title: Drivers Subcomponents Architecture (Repository-Aligned Status + Roadmap)
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - components
+see_also:
+  - README.md
+---
 # Drivers Subcomponents Architecture (Repository-Aligned Status + Roadmap)
 
 This document maps driver domains to the **current `core/drivers/` folder tree** and captures concrete convergence tasks.

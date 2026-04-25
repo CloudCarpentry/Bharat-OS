@@ -1,3 +1,14 @@
+---
+title: Bharat-OS Release and Versioning Policy
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - dev
+see_also:
+  - README.md
+---
 # Bharat-OS Release and Versioning Policy
 
 Bharat-OS uses a manifest-driven release identity system. A single version is not applied monolithically to all services. Instead, the OS uses a component-based versioning approach, combining multiple independently versioned artifacts into a defined release structure.

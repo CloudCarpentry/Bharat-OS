@@ -1,3 +1,15 @@
+---
+title: Algorithm Improvement Code Audit (Validated Against Current Tree)
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - reviews
+  - gap_analysis
+see_also:
+  - README.md
+---
 # Algorithm Improvement Code Audit (Validated Against Current Tree)
 
 This audit cross-checks the gap-analysis notes in this folder against the *current* codebase and lists the concrete algorithmic hotspots still worth improving.

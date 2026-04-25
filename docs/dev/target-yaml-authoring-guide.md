@@ -1,3 +1,14 @@
+---
+title: Target YAML Authoring Guide
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - dev
+see_also:
+  - README.md
+---
 # Target YAML Authoring Guide
 
 This guide explains how to define declarative targets for the Bharat-OS build and execution pipeline. Target YAML files describe the full lifecycle of a target: how it is built, packaged, run, flashed, and debugged.

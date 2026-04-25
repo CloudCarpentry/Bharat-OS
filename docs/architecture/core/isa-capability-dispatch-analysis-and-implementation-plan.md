@@ -1,3 +1,15 @@
+---
+title: ISA Capability & Dispatch Analysis + Implementation Plan
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - core
+see_also:
+  - README.md
+---
 # ISA Capability & Dispatch Analysis + Implementation Plan
 
 ## Purpose

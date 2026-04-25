@@ -1,3 +1,15 @@
+---
+title: Bharat-OS UI/Display Roadmap (Ticket-Oriented, Production-Grade)
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - ui
+see_also:
+  - README.md
+---
 # Bharat-OS UI/Display Roadmap (Ticket-Oriented, Production-Grade)
 
 **Status:** Wave 1 completed; Wave 2 implementation in progress  

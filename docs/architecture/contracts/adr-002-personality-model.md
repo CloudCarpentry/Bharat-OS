@@ -1,3 +1,15 @@
+---
+title: ADR 002: Personality Model Architecture
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - contracts
+see_also:
+  - README.md
+---
 # ADR 002: Personality Model Architecture
 
 ## 1. Status

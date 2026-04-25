@@ -1,3 +1,14 @@
+---
+title: Distributed Kernel Implementation Plan (Automotive & Mobility)
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+see_also:
+  - README.md
+---
 # Distributed Kernel Implementation Plan (Automotive & Mobility)
 
 This plan converts the automotive architecture direction into an executable engineering program for Bharat-OS kernel, subsystem, and OS layers.

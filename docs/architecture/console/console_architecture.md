@@ -1,3 +1,15 @@
+---
+title: Console and Shell Architecture (Aligned Runtime Contract)
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - console
+see_also:
+  - README.md
+---
 # Console and Shell Architecture (Aligned Runtime Contract)
 
 This document defines the **current Bharat-OS console + shell architecture contract** and aligns it with the code that exists today.

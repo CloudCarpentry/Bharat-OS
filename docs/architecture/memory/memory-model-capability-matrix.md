@@ -1,3 +1,15 @@
+---
+title: Bharat-OS Memory Architecture: Capability Model
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - memory
+see_also:
+  - README.md
+---
 # Bharat-OS Memory Architecture: Capability Model
 
 Bharat-OS supports a variety of target architectures with varying memory management hardware capabilities. Instead of forcing heavy virtual memory (VM) semantics onto all architectures, we have established a **canonical memory model capability matrix**.

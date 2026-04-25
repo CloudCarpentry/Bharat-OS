@@ -1,3 +1,14 @@
+---
+title: Device Profiles and Subsystem Matrix
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+see_also:
+  - README.md
+---
 # Device Profiles and Subsystem Matrix
 
 This document summarizes how Bharat-OS maps a common microkernel core to different device categories and deployment profiles.

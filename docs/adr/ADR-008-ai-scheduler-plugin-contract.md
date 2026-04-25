@@ -1,3 +1,14 @@
+---
+title: ADR-008: AI Scheduler Contract Across Profiles and Architectures
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - adr
+see_also:
+  - README.md
+---
 # ADR-008: AI Scheduler Contract Across Profiles and Architectures
 
 ### Contract Status

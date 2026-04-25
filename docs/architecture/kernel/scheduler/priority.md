@@ -1,3 +1,15 @@
+---
+title: Priority & Priority Inversion
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - kernel
+see_also:
+  - README.md
+---
 # Priority & Priority Inversion
 
 ## Overview

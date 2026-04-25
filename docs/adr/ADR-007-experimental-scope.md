@@ -1,3 +1,14 @@
+---
+title: ADR-007: Scope Restriction — Experimental vs. v1 Core
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - adr
+see_also:
+  - README.md
+---
 # ADR-007: Scope Restriction — Experimental vs. v1 Core
 
 **Date:** 2026-03-06

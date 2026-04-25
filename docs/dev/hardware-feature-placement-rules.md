@@ -1,3 +1,14 @@
+---
+title: Hardware Feature Placement and Ownership Rules
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - dev
+see_also:
+  - README.md
+---
 # Hardware Feature Placement and Ownership Rules
 
 ## Overview

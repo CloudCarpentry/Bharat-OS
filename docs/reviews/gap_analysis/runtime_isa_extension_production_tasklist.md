@@ -1,3 +1,15 @@
+---
+title: Runtime ISA Extension Strategy → Production Tasklist
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - reviews
+  - gap_analysis
+see_also:
+  - README.md
+---
 # Runtime ISA Extension Strategy → Production Tasklist
 
 **Date:** 2026-04-25

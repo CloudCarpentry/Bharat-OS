@@ -1,3 +1,14 @@
+---
+title: Bharat-OS SDK and Libc Architecture
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+see_also:
+  - README.md
+---
 # Bharat-OS SDK and Libc Architecture
 
 For edge devices, drones, gateways, robotics nodes, and appliance-class systems, the winning move is not "full desktop POSIX first". The winning move is:

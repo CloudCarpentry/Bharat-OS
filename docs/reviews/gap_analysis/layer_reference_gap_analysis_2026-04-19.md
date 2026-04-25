@@ -1,3 +1,15 @@
+---
+title: Layer Reference Gap Analysis — Kernel/HAL/Arch/Platform/Services/Stacks/User-SDK/UIPC
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - reviews
+  - gap_analysis
+see_also:
+  - README.md
+---
 # Layer Reference Gap Analysis — Kernel/HAL/Arch/Platform/Services/Stacks/User-SDK/UIPC
 
 _Date:_ 2026-04-19  

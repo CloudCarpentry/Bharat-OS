@@ -1,3 +1,15 @@
+---
+title: Build System Guide (Authoritative)
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - dev
+  - build
+see_also:
+  - README.md
+---
 # Build System Guide (Authoritative)
 
 This is the current, code-aligned guide for Bharat-OS build tooling.

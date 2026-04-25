@@ -1,60 +1,82 @@
+---
+title: Bharat-OS Documentation Hub
+status: Active
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - index
+  - information-architecture
+see_also:
+  - architecture/README.md
+  - adr/README.md
+  - testing/run-matrix.md
+---
+
 # Bharat-OS Documentation
 
 This directory is the canonical documentation hub for Bharat-OS.
 
-## Start here
+## Documentation Information Architecture
 
-- **Architecture index:** [`docs/architecture/README.md`](architecture/README.md)
-- **ADR index:** [`docs/adr/README.md`](adr/README.md)
-- **Build/run/testing docs:** [`docs/testing/`](testing/) and root-level [`BUILD.md`](../BUILD.md)
-- **Repository code map:** [`docs/architecture/repository-code-map.md`](architecture/repository-code-map.md)
-- **Archived material:** [`docs/archive/`](archive/)
+```mermaid
+flowchart TD
+  A[docs/] --> B[architecture/]
+  A --> C[adr/]
+  A --> D[dev/]
+  A --> E[testing/]
+  A --> F[reviews/]
+  A --> G[ai-agents/]
+  A --> H[archive/]
+  B --> B1[Subsystem + contracts + roadmaps]
+  C --> C1[Architecture decisions]
+  D --> D1[Contributor + build + policy guides]
+  E --> E1[Test matrix + E2E]
+  F --> F1[Gap analysis + audit notes]
+  H --> H1[Superseded docs]
+```
 
-## Active documentation layout
+## Source-of-Truth Precedence
 
-### 1) Architecture (`docs/architecture/`)
-Design contracts, subsystem architecture, roadmap notes, and cross-component boundaries.
+| Priority | Source | Why it wins |
+|---|---|---|
+| 1 | Accepted ADRs (`docs/adr/`) | Records explicit design decisions. |
+| 2 | Contracts (`docs/architecture/contracts/`) | Defines stable interfaces/boundaries. |
+| 3 | Subsystem architecture docs | Defines implementation direction. |
+| 4 | Reviews / plans | Tracks gaps and execution details. |
 
-Key subfolders:
-- `boot/`
-- `core/`
-- `core/kernel/`
-- `memory/`
-- `storage/`
-- `security/`
-- `network/`
-- `core/personalities/`
-- `contracts/`
+## Directory Map
 
-### 2) ADRs (`docs/adr/`)
-Decision records that take precedence when roadmap or design docs disagree.
+| Area | Purpose | Entry Point |
+|---|---|---|
+| `architecture/` | Core architecture, contracts, subsystems, profile plans | [`docs/architecture/README.md`](architecture/README.md) |
+| `adr/` | Architecture Decision Records lifecycle + index | [`docs/adr/README.md`](adr/README.md) |
+| `dev/` | Developer workflows, tooling, governance docs | [`docs/dev/developer_guidelines.md`](dev/developer_guidelines.md) |
+| `testing/` | E2E and run-matrix guidance | [`docs/testing/run-matrix.md`](testing/run-matrix.md) |
+| `ai-agents/` | Agent guardrails and templates | [`docs/ai-agents/README.md`](ai-agents/README.md) |
+| `reviews/` | Gap assessments and architecture audits | [`docs/reviews/gap_analysis/latest_gap_analysis.md`](reviews/gap_analysis/latest_gap_analysis.md) |
+| `archive/` | Historical/superseded material | [`docs/archive/README.md`](archive/README.md) |
 
-### 3) Testing (`docs/testing/`)
-Execution matrix and end-to-end testing guidance.
+## Standard Document Contract
 
-### 4) AI agent guidance (`docs/ai-agents/`)
-Standards, templates, and platform-specific agent instructions.
+Each Markdown document under `docs/` should include:
 
-### 5) Supporting docs
-- `docs/dev/`
-- `docs/boards/`
-- `docs/profiles/`
-- `docs/reviews/`
-- `docs/research_doc/`
+1. YAML frontmatter (`title`, `status`, `owner`, `last_updated`, `tags`, `see_also`).
+2. Clear section hierarchy (`## Context`, `## Design/Decision`, `## Risks/Consequences`, `## References`) where applicable.
+3. Explicit links to related docs via `see_also`.
 
-### 6) Archive (`docs/archive/`)
-Superseded/legacy material retained for traceability.
+## Status Vocabulary
 
-## Source-of-truth rule
+| Status | Meaning |
+|---|---|
+| `Draft` | In progress, not yet accepted as baseline. |
+| `Proposed` | Ready for review/decision. |
+| `Accepted` / `Active` | Current approved baseline. |
+| `Superseded` | Replaced by a newer authoritative doc. |
 
-When there is a conflict:
+## Quick Start
 
-1. **Accepted ADRs in `docs/adr/`** win.
-2. Then architecture contracts (`docs/architecture/contracts/`).
-3. Then subsystem roadmap/design docs.
-
-## Documentation quality rules
-
-- Prefer links to real code paths (for example `core/`, `interface/`, `quality/`, `tools/`, `delivery/`).
-- Use explicit status labels (`Draft`, `Active`, `Superseded`) for planning docs.
-- Move stale content to `docs/archive/` instead of deleting it.
+- New contributors: start with [`docs/dev/developer_guidelines.md`](dev/developer_guidelines.md).
+- Architecture deep dive: start with [`docs/architecture/README.md`](architecture/README.md).
+- Decisions and rationale: use [`docs/adr/README.md`](adr/README.md).
+- Validation pathways: use [`docs/testing/e2e-testing.md`](testing/e2e-testing.md).

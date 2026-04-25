@@ -1,3 +1,15 @@
+---
+title: TriCore / Renesas RX Strategy
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - isa
+see_also:
+  - README.md
+---
 # TriCore / Renesas RX Strategy
 
 This note captures the selection posture for safety and industrial domains.

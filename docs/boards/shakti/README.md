@@ -1,3 +1,15 @@
+---
+title: SHAKTI Board Support Notes
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - boards
+  - shakti
+see_also:
+  - README.md
+---
 # SHAKTI Board Support Notes
 
 This folder tracks SHAKTI board-specific support status for Bharat-OS.

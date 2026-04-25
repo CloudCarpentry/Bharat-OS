@@ -1,3 +1,14 @@
+---
+title: Device Profiles and Use-cases
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+see_also:
+  - README.md
+---
 # Device Profiles and Use-cases
 
 This document maps Bharat-OS architectural features to practical deployment classes and distinguishes **implemented baseline** vs **roadmap**.

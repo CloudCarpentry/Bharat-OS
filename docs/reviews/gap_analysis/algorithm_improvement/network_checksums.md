@@ -1,3 +1,15 @@
+---
+title: Network Checksums and CRC Inefficiencies
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - reviews
+  - gap_analysis
+see_also:
+  - README.md
+---
 # Network Checksums and CRC Inefficiencies
 
 This document tracks where software computation is used for Checksum validation, Generation, and Cyclic Redundancy Checks (CRCs). These are typically expensive operations per-packet or per-message, making them prime candidates for hardware offloading.

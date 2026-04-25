@@ -1,3 +1,15 @@
+---
+title: AI-Adjacent Memory & Accelerator Primitive Roadmap
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - memory
+see_also:
+  - README.md
+---
 # AI-Adjacent Memory & Accelerator Primitive Roadmap
 
 ## 1. Goal and Position

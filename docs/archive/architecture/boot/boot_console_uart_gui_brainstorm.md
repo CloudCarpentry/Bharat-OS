@@ -1,3 +1,15 @@
+---
+title: Boot-Level Display, Console, UART, and Basic GUI: Architecture Brainstorm
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - archive
+  - architecture
+see_also:
+  - README.md
+---
 # Boot-Level Display, Console, UART, and Basic GUI: Architecture Brainstorm
 
 ## 1) Problem Statement and Goals

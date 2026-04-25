@@ -1,3 +1,14 @@
+---
+title: Kernel and OS-Level Integration Across Hardware Architectures and Accelerators
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - research_doc
+see_also:
+  - README.md
+---
 # Kernel and OS-Level Integration Across Hardware Architectures and Accelerators
 
 ## Executive summary

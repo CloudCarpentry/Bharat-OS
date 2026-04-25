@@ -1,3 +1,15 @@
+---
+title: Virtual Memory Authority Path Contract
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - memory
+see_also:
+  - README.md
+---
 # Virtual Memory Authority Path Contract
 
 This document defines the authoritative path for Virtual Memory (VM) management in Bharat-OS. It outlines the strict sequence of authority from page fault down to hardware execution, identifying ownership boundaries, policy versus mechanism, and the treatment of legacy mapping paths.

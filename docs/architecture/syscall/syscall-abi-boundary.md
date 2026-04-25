@@ -1,3 +1,15 @@
+---
+title: Syscall ABI Boundary Hardening
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - syscall
+see_also:
+  - README.md
+---
 # Syscall ABI Boundary Hardening
 
 This document explains the architecture and governance of the Bharat-OS native syscall boundary.

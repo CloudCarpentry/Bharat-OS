@@ -1,3 +1,14 @@
+---
+title: Multiprocessor and NUMA Baseline (v1)
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+see_also:
+  - README.md
+---
 # Multiprocessor and NUMA Baseline (v1)
 
 This document captures the current multiprocessor/NUMA baseline for Bharat-OS.

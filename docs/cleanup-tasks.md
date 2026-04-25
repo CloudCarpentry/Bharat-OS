@@ -1,3 +1,14 @@
+---
+title: Bharat-OS Cleanup and Structural Alignment Tasks
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - general
+see_also:
+  - README.md
+---
 # Bharat-OS Cleanup and Structural Alignment Tasks
 
 This document outlines the required cleanup tasks and folder structure improvements needed to bring the repository fully in line with the architectural boundaries defined in `docs/architecture/folder_structure.md`.

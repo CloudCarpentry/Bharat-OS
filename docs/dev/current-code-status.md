@@ -1,3 +1,14 @@
+---
+title: Bharat-OS Current Code Status (March 2026)
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - dev
+see_also:
+  - README.md
+---
 # Bharat-OS Current Code Status (March 2026)
 
 This document summarizes **what is actually implemented in code today** versus what is scaffolded.

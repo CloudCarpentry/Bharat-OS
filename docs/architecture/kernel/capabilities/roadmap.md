@@ -1,3 +1,15 @@
+---
+title: Capabilities Roadmap
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - kernel
+see_also:
+  - README.md
+---
 # Capabilities Roadmap
 
 ## Current Status (v1 Baseline)

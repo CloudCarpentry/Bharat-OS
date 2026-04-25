@@ -1,3 +1,15 @@
+---
+title: Bharat-OS Footprint Tier Model
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - footprint
+see_also:
+  - README.md
+---
 # Bharat-OS Footprint Tier Model
 
 This document defines the **official footprint contract** for Bharat-OS targets.

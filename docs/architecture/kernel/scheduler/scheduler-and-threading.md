@@ -1,3 +1,15 @@
+---
+title: Scheduler and Threading Baseline
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - kernel
+see_also:
+  - README.md
+---
 # Scheduler and Threading Baseline
 
 This document reflects the scheduler/threading baseline from current kernel code under `core/kernel/src/sched/` and `core/kernel/include/sched/`.

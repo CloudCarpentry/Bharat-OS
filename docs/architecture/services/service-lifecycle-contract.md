@@ -1,3 +1,15 @@
+---
+title: Service Lifecycle Contract
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - services
+see_also:
+  - README.md
+---
 # Service Lifecycle Contract
 
 ### Contract Status

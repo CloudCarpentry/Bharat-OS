@@ -1,3 +1,15 @@
+---
+title: Boot Display Service (`core/services/system/boot_displayd`)
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - services
+see_also:
+  - README.md
+---
 # Boot Display Service (`core/services/system/boot_displayd`)
 
 ## Overview

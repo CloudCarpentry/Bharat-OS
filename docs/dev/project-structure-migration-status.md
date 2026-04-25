@@ -1,3 +1,14 @@
+---
+title: Project Structure Migration Status
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - dev
+see_also:
+  - README.md
+---
 # Project Structure Migration Status
 
 This tracker is the execution companion for `project-structure-refactor-plan.md`.

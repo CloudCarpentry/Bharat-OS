@@ -1,3 +1,14 @@
+---
+title: Bharat-OS Boot Self-Test Policy
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+see_also:
+  - README.md
+---
 # Bharat-OS Boot Self-Test Policy
 
 ## Purpose

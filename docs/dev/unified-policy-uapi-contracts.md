@@ -1,3 +1,14 @@
+---
+title: Unified Policy UAPI Contracts (interface/uapi/policy)
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - dev
+see_also:
+  - README.md
+---
 # Unified Policy UAPI Contracts (interface/uapi/policy)
 
 ## Scope

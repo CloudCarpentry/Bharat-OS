@@ -1,3 +1,15 @@
+---
+title: Shell Architecture and Production Contract
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - system
+see_also:
+  - README.md
+---
 # Shell Architecture and Production Contract
 
 ## Purpose

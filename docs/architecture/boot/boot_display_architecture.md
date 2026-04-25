@@ -1,3 +1,15 @@
+---
+title: Boot Display Architecture
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - boot
+see_also:
+  - README.md
+---
 # Boot Display Architecture
 
 **Bharat-OS boot graphics is a user-space, capability-mediated, machine-discovered subsystem that selects the best available display path at boot, while preserving text/serial fallback and keeping GUI policy out of the kernel.**

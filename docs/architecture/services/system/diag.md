@@ -1,3 +1,15 @@
+---
+title: Diagnostic Service (`core/services/system/diag`)
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - services
+see_also:
+  - README.md
+---
 # Diagnostic Service (`core/services/system/diag`)
 
 ## Overview

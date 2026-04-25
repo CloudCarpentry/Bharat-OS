@@ -1,3 +1,14 @@
+---
+title: Architecture Decision Record: Boot and Runtime Lifecycle Contract
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - adr
+see_also:
+  - README.md
+---
 # Architecture Decision Record: Boot and Runtime Lifecycle Contract
 
 ### Contract Status

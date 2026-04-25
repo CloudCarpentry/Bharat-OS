@@ -1,3 +1,15 @@
+---
+title: Services Subcomponents Architecture (Repository-Aligned Status + Roadmap)
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - components
+see_also:
+  - README.md
+---
 # Services Subcomponents Architecture (Repository-Aligned Status + Roadmap)
 
 This document maps the service layer to the **current repository structure** and highlights consolidation work needed to align with `docs/architecture/folder_structure.md`.

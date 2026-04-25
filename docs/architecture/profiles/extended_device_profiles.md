@@ -1,3 +1,15 @@
+---
+title: Extended Device Profiles and Use Cases Matrix
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - profiles
+see_also:
+  - README.md
+---
 # Extended Device Profiles and Use Cases Matrix
 
 This document defines the comprehensive matrix of target deployment profiles for Bharat-OS, spanning edge microcontrollers to data center servers. It details the required memory models, scheduler mixes, hardware subsystems (BUS, SoC, DMA, Accelerators), and the future roadmap for distributed kernel connectivity.

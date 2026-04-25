@@ -1,3 +1,14 @@
+---
+title: Bharat-OS IDL (BIDL) v1 Grammar (Current Implementation Profile)
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+see_also:
+  - README.md
+---
 # Bharat-OS IDL (BIDL) v1 Grammar (Current Implementation Profile)
 
 ## 1. Purpose and Scope

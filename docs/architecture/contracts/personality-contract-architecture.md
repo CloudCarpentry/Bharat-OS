@@ -1,3 +1,15 @@
+---
+title: Personality Contract Architecture
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - contracts
+see_also:
+  - README.md
+---
 # Personality Contract Architecture
 
 ### Contract Status

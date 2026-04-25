@@ -1,3 +1,15 @@
+---
+title: Bharat-OS `core/services/init` Deep Analysis and Implementation Plan
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - security
+see_also:
+  - README.md
+---
 # Bharat-OS `core/services/init` Deep Analysis and Implementation Plan
 
 ## 1) Executive Summary

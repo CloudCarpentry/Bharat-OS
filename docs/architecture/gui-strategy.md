@@ -1,3 +1,14 @@
+---
+title: GUI Strategy — Bharat-OS
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+see_also:
+  - README.md
+---
 # GUI Strategy — Bharat-OS
 
 **Status:** Planned (user-space service, deferred post v1 kernel)

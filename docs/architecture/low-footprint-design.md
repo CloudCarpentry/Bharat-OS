@@ -1,3 +1,14 @@
+---
+title: Low-Footprint Design and Analysis
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+see_also:
+  - README.md
+---
 # Low-Footprint Design and Analysis
 
 This document details the strategies and analysis for running Bharat-OS on resource-constrained hardware, specifically focusing on the **Nano** and **RT (Real-Time)** profiles.

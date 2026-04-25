@@ -1,3 +1,15 @@
+---
+title: Boot and Runtime Lifecycle Contract
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - core
+see_also:
+  - README.md
+---
 # Boot and Runtime Lifecycle Contract
 
 ## 1. Purpose

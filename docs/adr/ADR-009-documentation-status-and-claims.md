@@ -1,3 +1,14 @@
+---
+title: ADR-009: Documentation Status Labels and Research-Influenced Claims
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - adr
+see_also:
+  - README.md
+---
 # ADR-009: Documentation Status Labels and Research-Influenced Claims
 
 ## Status

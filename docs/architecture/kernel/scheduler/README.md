@@ -1,3 +1,15 @@
+---
+title: Kernel Scheduler Documentation
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - kernel
+see_also:
+  - README.md
+---
 # Kernel Scheduler Documentation
 
 This folder is the single source of truth for scheduler architecture, implementation status, and roadmap.

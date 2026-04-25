@@ -1,3 +1,15 @@
+---
+title: Build, Packaging, Run, Flash, and Debug Contract
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - core
+see_also:
+  - README.md
+---
 # Build, Packaging, Run, Flash, and Debug Contract
 
 This document outlines the manifest-driven target delivery pipeline architecture for Bharat-OS. The pipeline transforms declarative inputs (YAML targets or legacy JSON configs) into runnable or flashable artifacts while strictly decoupling the compilation, packaging, and execution phases.

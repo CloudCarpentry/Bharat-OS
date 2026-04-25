@@ -1,3 +1,14 @@
+---
+title: `KERNEL_ARCHITECTURE.md`
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+see_also:
+  - README.md
+---
 Operating systems are strange beasts. They sit between **physics and abstraction**. On one side: electrons, buses, cache lines, interrupts. On the other: files, processes, sockets, GUIs. A good kernel architecture document is essentially a **map of that borderland**.
 
 For a serious OS repository like **Bharat-OS**, three documents anchor the project:

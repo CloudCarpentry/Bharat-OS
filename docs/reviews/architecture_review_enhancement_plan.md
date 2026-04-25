@@ -1,3 +1,14 @@
+---
+title: Architecture Review and Enhancement Plan
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - reviews
+see_also:
+  - README.md
+---
 # Architecture Review and Enhancement Plan
 
 ## Executive Summary

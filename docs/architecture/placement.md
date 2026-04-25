@@ -1,3 +1,14 @@
+---
+title: Architecture Placement Contract
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+see_also:
+  - README.md
+---
 # Architecture Placement Contract
 
 Bharat-OS enforces strict architectural boundaries to keep the system modular, portable, and secure. Contributors must adhere to these placement rules.

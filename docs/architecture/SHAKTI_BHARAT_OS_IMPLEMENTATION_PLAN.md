@@ -1,3 +1,14 @@
+---
+title: SHAKTI Integration Plan for Bharat-OS
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+see_also:
+  - README.md
+---
 # SHAKTI Integration Plan for Bharat-OS
 
 This document defines a **clean-integration plan** for SHAKTI support in Bharat-OS without contaminating architecture-neutral kernel surfaces.

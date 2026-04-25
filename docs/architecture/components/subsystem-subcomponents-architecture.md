@@ -1,3 +1,15 @@
+---
+title: Subsystem Subcomponents Architecture (Repository-Aligned Status + Roadmap)
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - components
+see_also:
+  - README.md
+---
 # Subsystem Subcomponents Architecture (Repository-Aligned Status + Roadmap)
 
 This document tracks subsystem-level decomposition against the current repository layout (`core/personalities/`, `core/stacks/`, and core/kernel/service subsystem touchpoints).

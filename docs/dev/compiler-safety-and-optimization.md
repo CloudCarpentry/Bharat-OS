@@ -1,3 +1,14 @@
+---
+title: Compiler Safety and Optimization
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - dev
+see_also:
+  - README.md
+---
 # Compiler Safety and Optimization
 
 In kernel code, the optimization order must be:

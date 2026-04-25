@@ -1,3 +1,15 @@
+---
+title: Process & Scheduler Architecture in Bharat-OS
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - core
+see_also:
+  - README.md
+---
 # Process & Scheduler Architecture in Bharat-OS
 
 This document outlines the fundamental shift in how Bharat-OS handles processes, threads, and scheduling compared to traditional monolithic operating systems like Linux, Windows, macOS, iOS, and Android.

@@ -1,3 +1,14 @@
+---
+title: Legacy VFS & Storage Architecture Note
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+see_also:
+  - README.md
+---
 # Legacy VFS & Storage Architecture Note
 
 This file is retained for compatibility with old references.

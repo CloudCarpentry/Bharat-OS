@@ -1,3 +1,15 @@
+---
+title: Kernel IPC Architecture
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - kernel
+see_also:
+  - README.md
+---
 # Kernel IPC Architecture
 
 This document aggregates the theoretical primitives for Inter-Process Communication (IPC) in Bharat-OS. The primary cross-core messaging mechanism moving forward is **URPC**. For details regarding that, see the `urpc/` directory. The primitives below define legacy or specialized IPC support.

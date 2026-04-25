@@ -1,3 +1,15 @@
+---
+title: UAPI, IDL, and IPC Boundary
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - core
+see_also:
+  - README.md
+---
 # UAPI, IDL, and IPC Boundary
 
 This document explicitly defines the separation of concerns between UAPI, IDL, and IPC layers in Bharat-OS. Maintaining strict discipline around these boundaries is critical for a stable ABI, decoupled service interactions, and long-term architectural health.

@@ -1,3 +1,15 @@
+---
+title: Bharat-OS IPC Architecture
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - kernel
+see_also:
+  - README.md
+---
 # Bharat-OS IPC Architecture
 
 This document describes the design and guarantees of the Inter-Process Communication (IPC) subsystems in Bharat-OS. The communication architecture is divided into a layered model spanning local interactions, asynchronous requests, and cross-core multikernel transports.
