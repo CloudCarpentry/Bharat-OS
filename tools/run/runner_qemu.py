@@ -97,25 +97,77 @@ def run_qemu(manifest_path: Path) -> int:
 
     import time
 
+    # Headless boot success marker
+    BOOT_MARKER = "BOOT: kernel_main reached"
+    TIMEOUT_SEC = 15
+    marker_observed = False
+
     proc = None
     try:
-        proc = subprocess.Popen(cmd)
-        # Polling loop allows KeyboardInterrupt (Ctrl+C) to be caught on Windows
-        while proc.poll() is None:
-            time.sleep(0.1)
-    except KeyboardInterrupt:
-        print("\n[Run] Terminating QEMU...")
-        if proc:
-            # Try gentle termination first
-            proc.terminate()
+        # Use a pipe for stdout to monitor serial output
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+
+        start_time = time.time()
+
+        # We need a non-blocking way to read from the pipe
+        import threading
+        import queue
+
+        def reader(pipe, q):
             try:
-                proc.wait(timeout=2)
-            except subprocess.TimeoutExpired:
-                proc.kill()
+                for line in pipe:
+                    q.put(line)
+            except Exception:
+                pass
+            finally:
+                pipe.close()
+
+        q = queue.Queue()
+        t = threading.Thread(target=reader, args=(proc.stdout, q))
+        t.daemon = True
+        t.start()
+
+        while proc.poll() is None:
+            try:
+                line = q.get_nowait()
+                sys.stdout.write(line)
+                sys.stdout.flush()
+                if BOOT_MARKER in line:
+                    print(f"\n[Run] Boot marker observed: {BOOT_MARKER}")
+                    print(f"[Run] PASS: {target_name} booted successfully")
+                    marker_observed = True
+                    break
+            except queue.Empty:
+                pass
+
+            if time.time() - start_time > TIMEOUT_SEC:
+                print(f"\n[Run] FAIL: Timeout ({TIMEOUT_SEC}s) reached before boot marker.")
+                break
+
+            time.sleep(0.1)
+
+    except KeyboardInterrupt:
+        print("\n[Run] Terminating QEMU (User Interrupted)...")
+    finally:
+        if proc:
+            if proc.poll() is None:
+                # Try gentle termination first
+                proc.terminate()
+                try:
+                    proc.wait(timeout=2)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+
+            # Flush remaining output if any
+            while not q.empty():
+                sys.stdout.write(q.get_nowait())
+                sys.stdout.flush()
+
+    if marker_observed:
         return 0
+    else:
+        if proc and proc.returncode != 0 and proc.returncode is not None:
+             print(f"[Run] QEMU exited with code {proc.returncode}")
 
-    if proc and proc.returncode != 0:
-        print(f"[Run] QEMU exited with code {proc.returncode}")
-        return proc.returncode
-
-    return 0
+        print(f"[Run] FAIL: boot marker not observed for {target_name}")
+        return 1
