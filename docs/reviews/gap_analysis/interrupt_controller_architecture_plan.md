@@ -170,12 +170,45 @@ Rules:
    - tracepoints for claim/dispatch/eoi latency and spurious IRQ rate
    - per-controller health counters
 
+## Phase 5: Production profile, Harvard, and board conformance hardening
+
+### Objective
+
+Make the interrupt subsystem production-grade by enforcing **profile-aware policy**, **Harvard-safe behavior**, and **board-level feature contracts** in runtime and CI.
+
+### Implementation tasks
+
+1. **Interrupt profile policy engine**
+   - Add `irq_profile_policy_init(profile, arch_caps, board_caps)` in irq-core.
+   - Compute allowed modes (shared IRQ, MSI/MSI-X, remap/posting, threaded IRQ requirement, ISR budgets).
+2. **Board interrupt capability descriptor**
+   - Extend board/platform metadata with controller topology, vector capacities, secure partitioning, wakeup lines, and local controller model.
+   - Publish via HAL discovery contract consumed by irq-core.
+3. **Harvard-safe interrupt memory layout**
+   - Add linker section contracts and assertions for vector stubs (exec-only region) vs descriptor/state tables (data region).
+   - Add required cache/barrier hooks for platforms needing I/D sync when reprogramming dispatch metadata.
+4. **Security hardening tasks**
+   - Add per-IRQ provenance metadata and optional MSI source validation hooks.
+   - Add interrupt storm containment mode with profile-selectable threshold actions (throttle, isolate CPU, quarantine device domain).
+5. **Conformance and fault-injection tests**
+   - `interrupt_profile_selftest`: validates required-vs-available capability matrix at boot.
+   - `interrupt_domain_fuzz`: random map/unmap/affinity churn with leak detection.
+   - `interrupt_fault_injection`: synthetic spurious/duplicate/late-eoi scenarios per architecture backend.
+
+### Exit criteria
+
+- No profile can boot with a silently unsupported required interrupt capability.
+- At least one board per architecture class passes conformance suite in CI.
+- Harvard/split-memory targets pass vector/data placement assertions and synchronization checks.
+- Capability-gated fast paths prove fallback parity in automated tests.
+
 ## Practical execution order (recommended)
 
 1. ~~**Week 1-2**: Unify trap/IRQ flow and wire real controller ops binding.~~ **(Completed)**
 2. **Week 3-4**: Domain-first conversion for existing x86_64/arm64/riscv64 backends.
 3. **Week 5-6**: arm32 + riscv32 baseline backend completion.
 4. **Week 7+**: MSI-X scaling, accelerator policies, AIA/x2APIC advanced features.
+5. **Week 9+**: Profile/board/Harvard production hardening and conformance gates.
 
 ## ADR alignment
 
