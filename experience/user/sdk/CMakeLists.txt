@@ -23,14 +23,9 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "riscv")
     file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/dummy_exit.c "void bharat_exit(int status) { while(1); }")
     add_library(bharat STATIC lib/src/syscalls.c lib/src/riscv_syscalls.S ${CMAKE_CURRENT_BINARY_DIR}/dummy_exit.c)
 else()
-    # Provide a dummy syscall stub if compiling for testing natively (x86_64, arm64) since they lack ASM implementations
-    file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/dummy_syscall.c "
-        long bharat_syscall(long sysno, long arg1, long arg2, long arg3, long arg4, long arg5, long arg6) { return -1; }
-        void bharat_exit(int status) { while(1); }
-    ")
-    add_library(bharat STATIC lib/src/syscalls.c ${CMAKE_CURRENT_BINARY_DIR}/dummy_syscall.c)
+    # For non-RISC-V builds, rely on core syscall implementations; no dummy syscalls needed
+    add_library(bharat STATIC lib/src/syscalls.c)
 endif()
-
 # Provide headers publicly
 target_include_directories(bharat PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
