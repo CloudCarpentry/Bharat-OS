@@ -43,6 +43,8 @@ typedef enum {
 #define SCHED_MAX_PRIORITY 31U
 #define MAX_PRIORITY_LEVELS (SCHED_MAX_PRIORITY + 1U)
 
+#define BH_THREAD_FLAG_IDLE (1U << 0)
+
 typedef struct arch_ext_state arch_ext_state_t;
 
 typedef struct {
@@ -198,6 +200,8 @@ struct bh_thread {
     // Fault state
     thread_fault_t pending_fault;
     bool fault_pending;
+
+    uint32_t flags;
 };
 
 int thread_raise_fault(bh_thread_t *thread, thread_fault_t fault);
