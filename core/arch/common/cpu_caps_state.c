@@ -91,14 +91,31 @@ const arch_cpu_caps_record_t *arch_cpu_caps_system_any(void) {
 }
 
 bool arch_cpu_has(int feat) {
+    return arch_cpu_has_system_all(feat);
+}
+
+bool arch_cpu_has_system_all(int feat) {
     return arch_cpu_caps_test(&g_system_caps_all.usable, feat);
 }
 
 bool arch_cpu_has_on(size_t cpu_index, int feat) {
+    return arch_cpu_has_cpu(cpu_index, feat);
+}
+
+bool arch_cpu_has_cpu(size_t cpu_index, int feat) {
     if (cpu_index < MAX_CPUS) {
         return arch_cpu_caps_test(&g_per_cpu_caps[cpu_index].usable, feat);
     }
     return false;
+}
+
+bool arch_cpu_has_system_any(int feat) {
+    return arch_cpu_caps_test(&g_system_caps_any.usable, feat);
+}
+
+bool arch_cpu_has_current(int feat) {
+    unsigned int cpu_id = hal_cpu_get_id();
+    return arch_cpu_has_cpu(cpu_id, feat);
 }
 
 void cpu_caps_state_set_boot(const arch_cpu_caps_record_t *caps) {

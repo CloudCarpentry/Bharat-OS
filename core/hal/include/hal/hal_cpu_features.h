@@ -35,3 +35,8 @@ bool hal_cpu_has_feature(size_t cpu_id, hal_cpu_feature_t feature);
 bool hal_cpu_has_system_feature(hal_cpu_feature_t feature, hal_cpu_feature_scope_t scope);
 bool hal_cpu_feature_set_for_cpu(size_t cpu_id, hal_cpu_feature_set_t *out);
 bool hal_cpu_feature_set_system(hal_cpu_feature_scope_t scope, hal_cpu_feature_set_t *out);
+
+/* Explicit scope helpers for callsites that want readability and safety-by-default. */
+bool hal_cpu_has_feature_current(hal_cpu_feature_t feature);
+bool hal_cpu_has_system_feature_all(hal_cpu_feature_t feature);
+bool hal_cpu_has_system_feature_any(hal_cpu_feature_t feature);

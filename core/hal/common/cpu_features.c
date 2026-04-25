@@ -1,6 +1,7 @@
 #include "hal/hal_cpu_features.h"
 
 #include "arch/arch_cpu_caps.h"
+#include "hal/hal.h"
 #include <string.h>
 
 static inline void feature_set_bit(uint64_t *bits, hal_cpu_feature_t feature, bool enabled) {
@@ -103,8 +104,29 @@ bool hal_cpu_has_feature(size_t cpu_id, hal_cpu_feature_t feature) {
 }
 
 bool hal_cpu_has_system_feature(hal_cpu_feature_t feature, hal_cpu_feature_scope_t scope) {
+    if (scope == HAL_CPU_FEATURE_SCOPE_ANY) {
+        return hal_cpu_has_system_feature_any(feature);
+    }
+    return hal_cpu_has_system_feature_all(feature);
+}
+
+bool hal_cpu_has_feature_current(hal_cpu_feature_t feature) {
+    return hal_cpu_has_feature((size_t)hal_cpu_get_id(), feature);
+}
+
+bool hal_cpu_has_system_feature_all(hal_cpu_feature_t feature) {
     hal_cpu_feature_set_t set;
-    if (!hal_cpu_feature_set_system(scope, &set) || feature >= HAL_CPU_FEATURE__COUNT) {
+    if (!hal_cpu_feature_set_system(HAL_CPU_FEATURE_SCOPE_ALL, &set) ||
+        feature >= HAL_CPU_FEATURE__COUNT) {
+        return false;
+    }
+    return (set.usable_bits[(size_t)feature / 64u] & (1ULL << ((size_t)feature % 64u))) != 0;
+}
+
+bool hal_cpu_has_system_feature_any(hal_cpu_feature_t feature) {
+    hal_cpu_feature_set_t set;
+    if (!hal_cpu_feature_set_system(HAL_CPU_FEATURE_SCOPE_ANY, &set) ||
+        feature >= HAL_CPU_FEATURE__COUNT) {
         return false;
     }
     return (set.usable_bits[(size_t)feature / 64u] & (1ULL << ((size_t)feature % 64u))) != 0;

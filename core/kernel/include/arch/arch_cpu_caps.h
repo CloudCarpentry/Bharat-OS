@@ -64,9 +64,16 @@ const arch_cpu_caps_record_t *arch_cpu_caps_for_cpu(size_t cpu_index);
 const arch_cpu_caps_record_t *arch_cpu_caps_system_all(void);
 const arch_cpu_caps_record_t *arch_cpu_caps_system_any(void);
 
-// Helper to query the usable bitset of system_all
+// Scoped helpers for usable feature checks.
+bool arch_cpu_has_system_all(int feat);
+bool arch_cpu_has_system_any(int feat);
+bool arch_cpu_has_current(int feat);
+bool arch_cpu_has_cpu(size_t cpu_index, int feat);
+
+// Legacy helper names (kept for compatibility).
+// arch_cpu_has() == arch_cpu_has_system_all()
 bool arch_cpu_has(int feat);
-// Helper to query the usable bitset of a specific CPU
+// arch_cpu_has_on() == arch_cpu_has_cpu()
 bool arch_cpu_has_on(size_t cpu_index, int feat);
 // Helper to query a specific bitset
 bool arch_cpu_caps_test(const arch_cpu_caps_t *caps, int feat);
