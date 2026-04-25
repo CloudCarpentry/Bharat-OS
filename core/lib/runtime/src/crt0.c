@@ -1,14 +1,23 @@
 #include <stdint.h>
 #include <stddef.h>
+#include <interface/uapi/syscall/syscall_nr.h>
+#include <core/lib/syscall/common/syscall.h>
 
-extern int main(int argc, char** argv);
-extern void bharat_exit(int status);
+extern int main(int argc, char* argv[], char* envp[]);
+
+/* TODO: Implement real TLS initialization for __thread variables */
+static void init_tls(void) {
+    /* Dummy for now */
+}
 
 __attribute__((used))
-void _start(void) {
-    // For now, simple _start for freestanding C
-    int ret = main(0, 0);
-    bharat_exit(ret);
+void _start(int argc, char* argv[], char* envp[]) {
+    init_tls();
+
+    int ret = main(argc, argv, envp);
+
+    bh_syscall(SYSCALL_THREAD_EXIT, ret, 0, 0, 0, 0, 0);
+
     while (1) {}
 }
 

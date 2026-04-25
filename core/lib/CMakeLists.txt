@@ -109,6 +109,37 @@ add_library(ool_desc ALIAS bharat_libdiag)
 add_library(transport ALIAS bharat_libtransport)
 
 # ---------------------------------------------------------
+# Bharat SDK Components
+# ---------------------------------------------------------
+set(BH_SDK_INCLUDES
+    ${CMAKE_CURRENT_SOURCE_DIR}/runtime/include
+    ${CMAKE_SOURCE_DIR}/interface
+)
+
+add_library(bharatsys STATIC
+    syscall/common/syscall.c
+)
+target_include_directories(bharatsys PUBLIC ${BH_SDK_INCLUDES})
+bharat_configure_userspace_library(bharatsys)
+
+add_library(bharatc STATIC
+    runtime/src/crt0.c
+    runtime/src/malloc/malloc.c
+    runtime/src/string/string.c
+    runtime/src/stdio/stdio.c
+    runtime/src/errno/errno.c
+    runtime/src/bharat/bh_native.c
+)
+target_include_directories(bharatc PUBLIC ${BH_SDK_INCLUDES})
+target_link_libraries(bharatc PUBLIC bharatsys)
+bharat_configure_userspace_library(bharatc)
+
+# Installation targets for sysroot
+install(TARGETS bharatc bharatsys DESTINATION lib)
+install(DIRECTORY runtime/include/ DESTINATION include)
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/interface/uapi DESTINATION include/interface)
+
+# ---------------------------------------------------------
 # Layer boundary enforcement
 # ---------------------------------------------------------
 # Enforce the architecture rule from docs/architecture/shared/lib_architecture.md:
