@@ -31,6 +31,7 @@ const size_t g_kernel_physmap_size = 0x8000000000ULL; // 512GB
 #define X86_LARGE_2M_SIZE (1ULL << 21)
 
 static void x86_tlb_flush_page_local(virt_addr_t vaddr);
+void x86_pt_caps_init(void);
 bool g_x86_mmu_finalized = false;
 static bool g_x86_pcid_supported = false;
 extern const virt_addr_t g_kernel_virt_offset;
@@ -547,6 +548,8 @@ static hal_pt_caps_t x86_pt_caps = {
     .supports_linear_physmap = true,
 };
 
+extern hal_tlb_ops_t x86_hal_tlb_ops;
+
 hal_pt_ops_t x86_hal_pt_ops = {
     .backend_type          = TRANSLATE_BACKEND_MMU,
     .caps                  = &x86_pt_caps,
@@ -561,6 +564,12 @@ hal_pt_ops_t x86_hal_pt_ops = {
     .protect_range         = x86_pt_protect_range,
     .query_mapping         = x86_pt_query_mapping,
 };
+
+void arch_hal_pt_init(void) {
+    x86_pt_caps_init();
+    x86_pt_set_mmu_finalized(true);
+    hal_pt_register_ops(&x86_hal_pt_ops, &x86_hal_tlb_ops);
+}
 
 // --- x86_64 TLB Operations ---
 

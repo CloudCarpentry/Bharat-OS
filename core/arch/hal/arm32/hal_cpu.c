@@ -5,6 +5,11 @@
 
 void hal_cpu_init(void) {}
 
+bool hal_cpu_is_syscall(const void *trap_frame) {
+    (void)trap_frame;
+    return false;
+}
+
 bool hal_cpu_is_page_fault(const void *trap_frame) {
     (void)trap_frame;
     return false;

@@ -253,6 +253,8 @@ static const hal_pt_caps_t riscv32_pt_caps = {
     .supports_linear_physmap = false,
 };
 
+extern hal_tlb_ops_t riscv32_hal_tlb_ops;
+
 hal_pt_ops_t riscv32_hal_pt_ops = {
     .backend_type          = TRANSLATE_BACKEND_MMU,
     .caps                  = &riscv32_pt_caps,
@@ -267,6 +269,10 @@ hal_pt_ops_t riscv32_hal_pt_ops = {
     .protect_range         = NULL,
     .query_mapping         = NULL,
 };
+
+void arch_hal_pt_init(void) {
+    hal_pt_register_ops(&riscv32_hal_pt_ops, &riscv32_hal_tlb_ops);
+}
 
 static void riscv32_tlb_flush_page_local(virt_addr_t vaddr) {
     asm volatile(

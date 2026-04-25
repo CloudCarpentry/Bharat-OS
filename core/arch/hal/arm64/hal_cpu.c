@@ -37,6 +37,14 @@ void hal_cpu_reboot(void) {
 // TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "trap.h"
 
+bool hal_cpu_is_syscall(const void *trap_frame) {
+    if (!trap_frame) return false;
+    const trap_frame_t *tf = (const trap_frame_t *)trap_frame;
+    if (tf->type != TRAP_TYPE_SYNC) return false;
+    uint64_t ec = tf->cause >> 26;
+    return (ec == 0x15); // SVC instruction in AArch64
+}
+
 bool hal_cpu_is_page_fault(const void *trap_frame) {
     if (!trap_frame) return false;
     const trap_frame_t *tf = (const trap_frame_t *)trap_frame;
