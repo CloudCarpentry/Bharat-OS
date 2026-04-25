@@ -1,18 +1,14 @@
 /*
  * hal/x86_64/hash/hash_x86_64.c
  *
- * x86-64 hardware-accelerated CRC32 hash function.
+ * HAL layer must stay policy/abstraction-only. ISA-optimized hash logic now lives
+ * under core/arch/x86/x86_64/hash/.
  */
 
-#include "arch/hash.h"
-#include <immintrin.h>
+#include "arch/arch_cpu_caps.h"
+#include <stdbool.h>
 
-size_t arch_hash_func(uint64_t key, int seed, size_t size) {
-    uint64_t hash;
-    if (seed == 0) {
-        hash = _mm_crc32_u64(0, key);
-    } else {
-        hash = _mm_crc32_u64(0xdeadbeef, key);
-    }
-    return hash % size;
+bool hal_hash_x86_64_runtime_accel_available(void) {
+    return arch_cpu_has_system_any(ARCH_CPU_FEAT_X86_AES) ||
+           arch_cpu_has_system_any(ARCH_CPU_FEAT_X86_PCLMUL);
 }

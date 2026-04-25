@@ -7,6 +7,7 @@
 #include "../../kernel/include/mm/physmap.h"
 #include "../../kernel/include/mm/pt_cache.h"
 #include "../../kernel/include/arch/arch_cpu_caps.h"
+#include "../../kernel/include/arch/arch_tlb_accel.h"
 #include <stdbool.h>
 
 // Direct-Map Subsystem Configuration
@@ -521,8 +522,6 @@ const hal_translate_ops_t* hal_translate_ops(void) {
     return &x86_translate_ops;
 }
 
-bool g_x86_pcid_supported = false;
-
 static hal_pt_caps_t x86_pt_caps = {
     .backend_kind = TRANSLATE_BACKEND_MMU,
     .exec_class = TRANSLATE_EXEC_MMU_FULL,
@@ -571,20 +570,12 @@ static void x86_tlb_flush_page_local(virt_addr_t vaddr) {
 static void x86_tlb_flush_all_local(void) {
     uintptr_t cr3;
     __asm__ volatile("mov %%cr3, %0" : "=r"(cr3));
-    if (g_x86_pcid_supported) {
-        cr3 &= ~(1ULL << 63); // Clear bit 63 to flush
-    }
+    arch_tlb_prepare_full_flush_cr3(&cr3);
     __asm__ volatile("mov %0, %%cr3" :: "r"(cr3) : "memory");
 }
 
 static void x86_tlb_flush_asid_local(uint16_t asid) {
-    if (g_x86_pcid_supported) {
-        struct {
-            uint64_t pcid: 12;
-            uint64_t reserved: 52;
-        } desc = { .pcid = asid, .reserved = 0 };
-        __asm__ volatile("invpcid %0, %1" :: "m"(desc), "r"(1ULL) : "memory");
-    } else {
+    if (!arch_tlb_flush_asid(asid)) {
         x86_tlb_flush_all_local();
     }
 }
@@ -648,11 +639,10 @@ hal_tlb_ops_t x86_hal_tlb_ops = {
 };
 
 void x86_pt_caps_init(void) {
-    g_x86_pcid_supported = arch_cpu_has_system_all(ARCH_CPU_FEAT_X86_PCID);
-    if (g_x86_pcid_supported) {
-        x86_pt_caps.supports_pcid = true;
-        x86_tlb_caps.supports_asid_selective_flush = true;
-    }
+    arch_tlb_fast_ctx_init();
+
+    x86_pt_caps.supports_pcid = arch_cpu_has_system_all(ARCH_CPU_FEAT_X86_PCID);
+    x86_tlb_caps.supports_asid_selective_flush = arch_tlb_fast_ctx_supported();
 }
 
 // Implement the specific functions from mem_protect_cpu_ops
@@ -686,7 +676,10 @@ static void x86_mpa_set_root(phys_addr_t root) {
 }
 
 static void x86_mpa_flush_tlb_local(virt_addr_t vaddr, uint16_t asid) {
-    (void)asid; // Assuming no PCID for this specific simple local flush
+    if (arch_tlb_flush_addr_asid((uintptr_t)vaddr, asid)) {
+        return;
+    }
+
     __asm__ volatile("invlpg (%0)" :: "r"(vaddr) : "memory");
 }
 

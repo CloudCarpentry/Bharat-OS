@@ -17,78 +17,112 @@ static inline uint64_t x86_read_xcr0(void) {
     return ((uint64_t)edx << 32) | eax;
 }
 
+static bool x86_vector_policy_allows(void) {
+#ifdef BHARAT_X86_DISABLE_VECTOR_CONTEXT
+    return false;
+#else
+    return true;
+#endif
+}
+
 static void x86_probe_caps(arch_cpu_caps_record_t *caps) {
     arch_cpu_caps_zero(&caps->raw);
     arch_cpu_caps_zero(&caps->usable);
 
     uint32_t eax, ebx, ecx, edx;
+    uint32_t max_leaf = 0;
 
-    // Standard Features (Leaf 1)
+    x86_cpuid(0, 0, &max_leaf, &ebx, &ecx, &edx);
+    if (max_leaf < 1) {
+        return;
+    }
+
     x86_cpuid(1, 0, &eax, &ebx, &ecx, &edx);
 
-    // ecx bits
-    if (ecx & (1 << 1)) {
+    const bool xsave_hw = (ecx & (1u << 26)) != 0;
+    const bool osxsave = (ecx & (1u << 27)) != 0;
+    const bool avx_hw = (ecx & (1u << 28)) != 0;
+    const bool fma_hw = (ecx & (1u << 12)) != 0;
+
+    if (ecx & (1u << 1)) {
         arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_X86_PCLMUL);
         arch_cpu_caps_set(&caps->usable, ARCH_CPU_FEAT_X86_PCLMUL);
     }
-    if (ecx & (1 << 25)) {
+    if (ecx & (1u << 25)) {
         arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_X86_AES);
         arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_COMMON_AES);
         arch_cpu_caps_set(&caps->usable, ARCH_CPU_FEAT_X86_AES);
         arch_cpu_caps_set(&caps->usable, ARCH_CPU_FEAT_COMMON_AES);
     }
 
-    // osxsave check
-    bool osxsave = (ecx & (1 << 27)) != 0;
-
-    // Extended Features (Leaf 7, Subleaf 0)
-    x86_cpuid(7, 0, &eax, &ebx, &ecx, &edx);
-
-    // ebx bits
-    if (ebx & (1 << 0)) {
-        arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_X86_FSGSBASE);
-        arch_cpu_caps_set(&caps->usable, ARCH_CPU_FEAT_X86_FSGSBASE);
-    }
-    if (ebx & (1 << 10)) {
-        arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_X86_INVPCID);
-        arch_cpu_caps_set(&caps->usable, ARCH_CPU_FEAT_X86_INVPCID);
-    }
-    if (ebx & (1 << 29)) {
-        arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_X86_SHA);
-        arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_COMMON_SHA);
-        arch_cpu_caps_set(&caps->usable, ARCH_CPU_FEAT_X86_SHA);
-        arch_cpu_caps_set(&caps->usable, ARCH_CPU_FEAT_COMMON_SHA);
-    }
-
-    // ecx bits
-    if (ecx & (1 << 17)) {
+    // PCID is reported in leaf 1 ECX[17].
+    if (ecx & (1u << 17)) {
         arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_X86_PCID);
         arch_cpu_caps_set(&caps->usable, ARCH_CPU_FEAT_X86_PCID);
     }
 
-    // Vector Features Gating
-    x86_cpuid(1, 0, &eax, &ebx, &ecx, &edx);
-    if (ecx & (1 << 28)) arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_X86_AVX);
-    if (ecx & (1 << 12)) arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_X86_FMA);
+    if (avx_hw) {
+        arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_X86_AVX);
+    }
+    if (fma_hw) {
+        arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_X86_FMA);
+    }
 
-    x86_cpuid(7, 0, &eax, &ebx, &ecx, &edx);
-    if (ebx & (1 << 5)) arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_X86_AVX2);
+    bool avx2_hw = false;
+    bool invpcid_hw = false;
 
-    if (osxsave) {
-        uint64_t xcr0 = x86_read_xcr0();
-        // check if XMM (bit 1) and YMM (bit 2) state are enabled by OS
-        if ((xcr0 & 6) == 6) {
-            if (arch_cpu_caps_test(&caps->raw, ARCH_CPU_FEAT_X86_AVX)) {
-                arch_cpu_caps_set(&caps->usable, ARCH_CPU_FEAT_X86_AVX);
-                arch_cpu_caps_set(&caps->usable, ARCH_CPU_FEAT_COMMON_VECTOR); // vector available
-            }
-            if (arch_cpu_caps_test(&caps->raw, ARCH_CPU_FEAT_X86_FMA)) {
-                arch_cpu_caps_set(&caps->usable, ARCH_CPU_FEAT_X86_FMA);
-            }
-            if (arch_cpu_caps_test(&caps->raw, ARCH_CPU_FEAT_X86_AVX2)) {
-                arch_cpu_caps_set(&caps->usable, ARCH_CPU_FEAT_X86_AVX2);
-            }
+    if (max_leaf >= 7) {
+        x86_cpuid(7, 0, &eax, &ebx, &ecx, &edx);
+
+        if (ebx & (1u << 0)) {
+            arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_X86_FSGSBASE);
+            arch_cpu_caps_set(&caps->usable, ARCH_CPU_FEAT_X86_FSGSBASE);
         }
+        if (ebx & (1u << 10)) {
+            invpcid_hw = true;
+            arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_X86_INVPCID);
+            arch_cpu_caps_set(&caps->usable, ARCH_CPU_FEAT_X86_INVPCID);
+        }
+        if (ebx & (1u << 29)) {
+            arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_X86_SHA);
+            arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_COMMON_SHA);
+            arch_cpu_caps_set(&caps->usable, ARCH_CPU_FEAT_X86_SHA);
+            arch_cpu_caps_set(&caps->usable, ARCH_CPU_FEAT_COMMON_SHA);
+        }
+        if (ebx & (1u << 5)) {
+            avx2_hw = true;
+            arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_X86_AVX2);
+        }
+    }
+
+    // Vector usable == HW detected + XSAVE plumbing + kernel context policy.
+    bool vector_context_ready = false;
+    if (xsave_hw && osxsave) {
+        const uint64_t xcr0 = x86_read_xcr0();
+        // XMM (bit 1) + YMM (bit 2) states must be enabled by OS/kernel.
+        vector_context_ready = (xcr0 & 0x6u) == 0x6u;
+    }
+
+    if (avx_hw && vector_context_ready && x86_vector_policy_allows()) {
+        arch_cpu_caps_set(&caps->usable, ARCH_CPU_FEAT_X86_AVX);
+        arch_cpu_caps_set(&caps->usable, ARCH_CPU_FEAT_COMMON_VECTOR);
+
+        if (fma_hw) {
+            arch_cpu_caps_set(&caps->usable, ARCH_CPU_FEAT_X86_FMA);
+        }
+
+        if (avx2_hw) {
+            arch_cpu_caps_set(&caps->usable, ARCH_CPU_FEAT_X86_AVX2);
+        }
+    }
+
+    // Fast TLB context switch requires both tags (PCID) and selective invalidate (INVPCID).
+    if (arch_cpu_caps_test(&caps->raw, ARCH_CPU_FEAT_X86_PCID) && invpcid_hw) {
+        arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_COMMON_FAST_TLB_CTX);
+    }
+    if (arch_cpu_caps_test(&caps->usable, ARCH_CPU_FEAT_X86_PCID) &&
+        arch_cpu_caps_test(&caps->usable, ARCH_CPU_FEAT_X86_INVPCID)) {
+        arch_cpu_caps_set(&caps->usable, ARCH_CPU_FEAT_COMMON_FAST_TLB_CTX);
     }
 }
 
