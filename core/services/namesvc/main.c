@@ -1,4 +1,5 @@
 #include <bharat/runtime/runtime.h>
+#include <bharat/runtime/freestanding_string.h>
 #include <bharat/ipc/ipc.h>
 #include "src/registry.h"
 #include "include/ipc_dispatch.h"
@@ -17,21 +18,6 @@ BHARAT_REGISTER_COMPONENT(
     BHARAT_BUILD_EPOCH,
     BHARAT_BUILD_TIME_UTC
 );
-
-// Custom memset and memcpy
-static void *custom_memset_main(void *s, int c, unsigned long n) {
-    unsigned char *p = s;
-    while(n--) *p++ = (unsigned char)c;
-    return s;
-}
-
-static void *custom_memcpy_main(void *dest, const void *src, unsigned long n) {
-    unsigned char *d = dest;
-    const unsigned char *s = src;
-    while (n--) *d++ = *s++;
-    return dest;
-}
-
 
 int main(int argc, char **argv) {
     (void)argc;
@@ -55,9 +41,9 @@ int main(int argc, char **argv) {
 
     // Simulate main IPC loop handling registration/lookup requests
     while(1) {
-        custom_memset_main(&hdr, 0, sizeof(hdr));
-        custom_memset_main(&req, 0, sizeof(req));
-        custom_memset_main(&res, 0, sizeof(res));
+        memset(&hdr, 0, sizeof(hdr));
+        memset(&req, 0, sizeof(req));
+        memset(&res, 0, sizeof(res));
 
         // Use the transport shim to receive the contract header and payload
         // In a real system, the transport would unmarshal into `hdr`.
@@ -76,7 +62,7 @@ int main(int argc, char **argv) {
             }
 
             bharat_ipc_contract_header_t rep_hdr;
-            custom_memset_main(&rep_hdr, 0, sizeof(rep_hdr));
+            memset(&rep_hdr, 0, sizeof(rep_hdr));
             rep_hdr.message_id = hdr.message_id;
             rep_hdr.payload_size = sizeof(res);
 
