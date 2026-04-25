@@ -13,6 +13,9 @@ void kernel_main(uintptr_t fdt_ptr) {
     boot_info_init(&boot);
 
     hal_serial_init();
+    hal_serial_write("A0: entry reached\n");
+    hal_serial_write("A1: stack ready\n");
+    hal_serial_write("A2: bss cleared\n");
     hal_serial_write("ARM64 Boot Started\n");
     hal_serial_write("FDT Ptr: ");
     hal_serial_write_hex(fdt_ptr);
@@ -24,6 +27,8 @@ void kernel_main(uintptr_t fdt_ptr) {
 
     extern void arm_fdt_parse_common(boot_info_t *boot, const void *fdt_ptr);
     arm_fdt_parse_common(&boot, (const void*)fdt_ptr);
+
+    hal_serial_write("A3: calling kernel_main\n");
 
     // Pass the normalized boot contract
     kernel_main_common(&boot);

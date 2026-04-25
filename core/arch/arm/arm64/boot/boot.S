@@ -59,6 +59,9 @@ _start:
     mov x0, x19
     bl kernel_main
 
+    /* Should not return */
+    b .halt_loop
+
 .secondary_core:
     /* Setup stack for secondary cores too */
     ldr x2, =stack_bottom
