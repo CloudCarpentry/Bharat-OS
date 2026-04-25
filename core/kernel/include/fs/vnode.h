@@ -33,6 +33,9 @@ struct vfs_node {
     // Back pointer to the filesystem instance
     struct fs_superblock* sb;
 
+    // The mount context this vnode was resolved through
+    struct vfs_mount* mnt_context;
+
     // Reference count and state flags
     uint32_t refcount;
 

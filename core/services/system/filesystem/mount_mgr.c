@@ -55,6 +55,13 @@ int vfs_mount_fs(const char* target_path, vfs_node_t* fs_root, capability_t* cal
     vfs_strcpy(g_mounts[g_mount_count].target_path, target_path, sizeof(g_mounts[g_mount_count].target_path));
     g_mounts[g_mount_count].target_path_len = vfs_strnlen(target_path, sizeof(g_mounts[g_mount_count].target_path));
     g_mounts[g_mount_count].root_node = fs_root;
+    g_mounts[g_mount_count].mount_cap = *caller_cap;
+    g_mounts[g_mount_count].origin_id = caller_cap->capability_id; // Simple mapping for now
+
+    // Default production flags if not specified
+    if (g_mounts[g_mount_count].mount_flags == 0) {
+        g_mounts[g_mount_count].mount_flags = VFS_MOUNT_NOEXEC | VFS_MOUNT_NOSUID;
+    }
 
     if (vfs_path_prefix_match(target_path, "/")) {
         vfs_root = fs_root;
@@ -102,6 +109,9 @@ vfs_node_t* vfs_resolve_mount_path(const char* path, capability_t* caller_cap) {
         if (mount_len >= best_len) {
             best_len = mount_len;
             best_node = g_mounts[i].root_node;
+            if (best_node) {
+                best_node->mnt_context = &g_mounts[i];
+            }
         }
     }
 
@@ -112,6 +122,10 @@ vfs_node_t* vfs_resolve_mount_path(const char* path, capability_t* caller_cap) {
             caller_cap->target_object_id == VFS_NAMESPACE_OBJECT_ID ||
             caller_cap->target_object_id == vfs_root->object_id) {
             best_node = vfs_root;
+            // Root mount context handling could be improved, but for now:
+            if (best_node && g_mount_count > 0 && vfs_path_prefix_match(g_mounts[0].target_path, "/")) {
+                best_node->mnt_context = &g_mounts[0];
+            }
         }
     }
 

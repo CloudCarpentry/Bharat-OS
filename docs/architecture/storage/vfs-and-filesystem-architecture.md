@@ -19,10 +19,10 @@ For sandbox policy details, see `sandbox-policy.md`.
 | `drivers/block/*` | Block frontend engines | Consume normalized block requests, submit hardware-facing I/O | Path parsing, namespace logic, mount policy, POSIX permission semantics |
 | `drivers/storage/*` | Transport/controller specialization | Implement protocol/controller queueing and device management | Path policy, VFS policy, capability policy decisions |
 | `stacks/storage/*` | Reusable storage primitives | Provide block/cache/profile/backend adapter building blocks | Own user ABI contract or global namespace policy |
-| `services/system/filesystem/*` | Filesystem service policy | Own namespace, mount, FD lifecycle, capability-aware access policy, request dispatch | Push policy back into kernel internals |
-| `kernel/include/fs/*` | Shared kernel-service contract types | Define minimal shared ABI/type contracts needed by both sides | Encode namespace/mount/path policy |
-| `kernel/src/fs/*` | Transitional mechanism-only compatibility surface | Keep minimal dispatch/forwarding/error bridging while migration completes | Introduce new pathname, namespace, mount, or sandbox policy |
-| `lib/fs/*` | Client boundary | Provide stable client entrypoints while service IPC/runtime matures | Re-implement service policy logic |
+| `core/services/system/filesystem/*` | Filesystem service policy | Own namespace, mount, FD lifecycle, capability-aware access policy, request dispatch | Push policy back into kernel internals |
+| `core/kernel/include/fs/*` | Shared kernel-service contract types | Define minimal shared ABI/type contracts needed by both sides | Encode namespace/mount/path policy |
+| `core/kernel/src/fs/*` | Transitional mechanism-only compatibility surface | Keep minimal dispatch/forwarding/error bridging while migration completes | Introduce new pathname, namespace, mount, or sandbox policy |
+| `core/lib/fs/*` | Client boundary | Provide stable client entrypoints while service IPC/runtime matures | Re-implement service policy logic |
 
 ---
 
