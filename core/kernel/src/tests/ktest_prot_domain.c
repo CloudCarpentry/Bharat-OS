@@ -2,6 +2,7 @@
 #include "../../include/mm/prot_domain.h"
 #include "../../include/arch/arch_caps.h"
 #include "../../include/hal/hal.h"
+#include "../../include/hal/hal_pt.h"
 
 static bool test_prot_domain_create_destroy(void) {
     prot_domain_t* domain = prot_domain_create();
@@ -72,22 +73,60 @@ static bool test_mmu_sparse_mapping(void) {
     prot_domain_t* domain = prot_domain_create();
     KTEST_ASSERT(domain != NULL, "Domain create failed");
 
-    // Use an address outside PML4[0] and PML4[256] so we don't accidentally
-    // modify the shared identity map / kernel mappings in x86_64 boot state.
-    // 0x0000008000000000 is 512 GiB, which uses PML4[1].
-    uintptr_t test_vaddr = 0x0000008000000000ULL;
-    int ret = prot_domain_map_region(domain, test_vaddr, 0x80000000, 4096, 0);
-    KTEST_ASSERT(ret == 0, "Sparse mapping failed");
+    // Test 1: Map low VA
+    uintptr_t low_vaddr = 0x0000000040000000ULL; // 1 GiB
+    int ret = prot_domain_map_region(domain, low_vaddr, 0x10000000, 4096, HAL_PT_FLAG_READ);
+    KTEST_ASSERT(ret == 0, "Low VA mapping failed");
 
+    // Test 2: Map sparse high lower-half VA (512 GiB)
+    uintptr_t high_vaddr = 0x0000008000000000ULL;
+    ret = prot_domain_map_region(domain, high_vaddr, 0x80000000, 4096, HAL_PT_FLAG_READ);
+    KTEST_ASSERT(ret == 0, "Sparse high VA mapping failed");
+
+    // Test 3: Map two sparse VAs far apart
+    uintptr_t very_high_vaddr = 0x00007f0000000000ULL;
+    ret = prot_domain_map_region(domain, very_high_vaddr, 0x90000000, 4096, HAL_PT_FLAG_READ);
+    KTEST_ASSERT(ret == 0, "Very high sparse VA mapping failed");
+
+    // Test 4: Query and verify
     uintptr_t paddr = 0;
-    ret = prot_domain_query_region(domain, test_vaddr, &paddr, NULL);
+    ret = prot_domain_query_region(domain, high_vaddr, &paddr, NULL);
     KTEST_ASSERT(ret == 0, "Sparse query failed");
-    if (paddr != 0x80000000) {
-        hal_serial_write("PMM: Error: Expected 0x80000000, got 0x");
-        hal_serial_write_hex(paddr);
-        hal_serial_write("\n");
-    }
     KTEST_ASSERT(paddr == 0x80000000, "Sparse query address mismatch");
+
+    ret = prot_domain_query_region(domain, very_high_vaddr, &paddr, NULL);
+    KTEST_ASSERT(ret == 0, "Very high sparse query failed");
+    KTEST_ASSERT(paddr == 0x90000000, "Very high sparse query address mismatch");
+
+    // Test 5: Unmap and Verify
+    ret = prot_domain_unmap_region(domain, high_vaddr, 4096);
+    KTEST_ASSERT(ret == 0, "Unmap sparse VA failed");
+    ret = prot_domain_query_region(domain, high_vaddr, &paddr, NULL);
+    KTEST_ASSERT(ret != 0, "Query after unmap should fail");
+
+    // Test 6: Protect sparse VA
+    ret = prot_domain_protect_region(domain, very_high_vaddr, 4096, HAL_PT_FLAG_READ | HAL_PT_FLAG_WRITE);
+    KTEST_ASSERT(ret == 0, "Protect sparse VA failed");
+    uint32_t flags = 0;
+    ret = prot_domain_query_region(domain, very_high_vaddr, &paddr, &flags);
+    KTEST_ASSERT(ret == 0, "Query after protect failed");
+    KTEST_ASSERT(flags & HAL_PT_FLAG_WRITE, "Protect flags not updated");
+
+    // Test 6.1: Remap sparse VA
+    ret = prot_domain_map_region(domain, very_high_vaddr, 0xA0000000, 4096, HAL_PT_FLAG_READ);
+    KTEST_ASSERT(ret == 0, "Remap sparse VA failed");
+    ret = prot_domain_query_region(domain, very_high_vaddr, &paddr, &flags);
+    KTEST_ASSERT(ret == 0, "Query after remap failed");
+    KTEST_ASSERT(paddr == 0xA0000000, "Remap address mismatch");
+
+    // Test 7: Reject non-canonical VA
+    uintptr_t non_canonical = 0x0000800000000000ULL;
+    ret = prot_domain_map_region(domain, non_canonical, 0x10000000, 4096, HAL_PT_FLAG_READ);
+    KTEST_ASSERT(ret != 0, "Non-canonical mapping should be rejected");
+
+    // Test 8: Reject unmapped unprotect/unmap
+    ret = prot_domain_unmap_region(domain, 0x0000001234567000ULL, 4096);
+    KTEST_ASSERT(ret != 0, "Unmap of unmapped region should fail");
 
     prot_domain_destroy(domain);
     return true;
