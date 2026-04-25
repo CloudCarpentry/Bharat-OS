@@ -21,14 +21,7 @@ void kernel_main(uint64_t hart_id, uintptr_t fdt_ptr) {
     hal_serial_write("\n");
 
     if (fdt_ptr == 0 || !fdt_is_valid((void*)fdt_ptr)) {
-        /* Fallback for QEMU virt: FDT at end of 256MB RAM */
-        fdt_ptr = 0x8fe00000;
-        hal_serial_write("Probing FDT at fallback: ");
-        hal_serial_write_hex(fdt_ptr);
-        hal_serial_write("\n");
-        if (!fdt_is_valid((void*)fdt_ptr)) {
-            kernel_panic("FDT not provided by bootloader and fallback failed");
-        }
+        kernel_panic("FDT missing or invalid: boot contract violation");
     }
 
     hal_riscv_set_boot_info(hart_id, (uint64_t)fdt_ptr);

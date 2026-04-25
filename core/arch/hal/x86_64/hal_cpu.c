@@ -75,6 +75,12 @@ void hal_cpu_reboot(void) {
 // TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "trap.h"
 
+bool hal_cpu_is_syscall(const void *trap_frame) {
+    if (!trap_frame) return false;
+    const trap_frame_t *tf = (const trap_frame_t *)trap_frame;
+    return (tf->cause == 0x80U); // x86_64 uses INT 0x80 for legacy or custom
+}
+
 bool hal_cpu_is_page_fault(const void *trap_frame) {
     if (!trap_frame) return false;
     const trap_frame_t *tf = (const trap_frame_t *)trap_frame;
