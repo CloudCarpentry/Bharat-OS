@@ -28,6 +28,8 @@ target_link_libraries(system_shell PRIVATE
 target_include_directories(system_shell PRIVATE
     include
     ../../../lib
+    ../../../lib/runtime/include
+    ${CMAKE_SOURCE_DIR}/interface
 )
 
 if(CONFIG_SHELL_MINI)
