@@ -79,3 +79,63 @@ All interrupt logic must pass through the multi-arch headless build and test mat
 *   **Tracepoints**: Hooking into `claim`, `dispatch`, and `eoi` to measure handling latency.
 *   **Spurious Rate Counters**: Tracking unhandled interrupts.
 *   **Health Counters**: Per-controller observability for active/pending metrics.
+
+## Production-Grade Profile and Board Adaptation
+
+To move from architecture-ready to production-grade, interrupt behavior must be selected by a **profile contract** and validated against **board capabilities** at boot.
+
+### Profile-driven interrupt policy
+
+Interrupt runtime behavior should be computed from `profile × arch_caps × board_caps`, not from architecture checks alone.
+
+* **RT/Safety profile**
+  * Enforce bounded ISR budget and strict threaded-bottom-half policy.
+  * Disallow shared IRQ lines for safety-critical devices unless explicitly waived.
+  * Require deterministic affinity pinning and reserved CPU shielding for critical vectors.
+* **General-purpose profile**
+  * Allow shared IRQs and adaptive interrupt moderation.
+  * Prefer throughput-optimized MSI-X spreading across CPUs.
+* **Edge/minimal profile (including Harvard-style MCU layouts)**
+  * Compile-time trim of advanced routing features (ITS/IMSIC/remapping) when unavailable.
+  * Use static vector tables and fixed virq ranges with fail-closed overflow handling.
+  * Enforce explicit MMIO-safe controller access wrappers for split instruction/data memory constraints.
+
+### Harvard-architecture readiness requirements
+
+For Harvard or Harvard-like targets (separate instruction/data memory constraints), the interrupt subsystem must additionally guarantee:
+
+1. **Vector/table placement policy**: ISR entry stubs and vector tables are placed in executable memory regions, while mutable descriptor state remains in data memory.
+2. **No implicit self-modifying paths**: runtime patching of vector code is prohibited unless profile explicitly enables secure patch flow.
+3. **Cache/ordering hooks**: board HAL provides mandatory instruction/data synchronization hooks when changing interrupt routing metadata that affects executable dispatch.
+4. **ISR code-size budgeting**: per-profile hard limit for top-half footprint to preserve deterministic instruction memory usage.
+
+### Board/platform feature contract
+
+Each board descriptor should declare an interrupt feature contract used by boot validation:
+
+* Controller topology (single, cascaded, hierarchical domain tree).
+* MSI/MSI-X availability and vector count limits.
+* Local interrupt controller availability per core/hart.
+* Secure/non-secure interrupt partitions (TrustZone-like or equivalent).
+* Wakeup-capable interrupt lines for low-power states.
+
+Boot should fail closed (or degrade according to profile policy) when required contract fields are absent.
+
+### New coding tasks for production-grade interrupt stack
+
+1. **Implement `irq_profile_policy` runtime object**
+   * Inputs: `arch_caps`, board interrupt descriptor, selected profile.
+   * Outputs: allowed IRQ features, ISR budget class, affinity constraints, fallback mode.
+2. **Add board interrupt capability schema** (`board_interrupt_caps`)
+   * Parse from board/platform descriptors and expose through HAL discovery API.
+3. **Introduce Harvard-safe vector placement API**
+   * Explicit sections/macros for vector stubs vs mutable IRQ data.
+   * Add compile/link assertions for forbidden placement.
+4. **Conformance gate: `interrupt_profile_selftest`**
+   * Validates profile requirements (e.g., MSI required/forbidden, shared IRQ policy, secure partition policy) during boot tests.
+5. **Domain hierarchy validator**
+   * Verifies parent/child domain invariants and reports mapping leaks/unbalanced unmap at shutdown test stage.
+6. **Interrupt security hardening**
+   * Per-IRQ provenance tagging, spoofed-MSI detection hooks, and optional rate-limited quarantine mode.
+7. **Board-aware CI matrix expansion**
+   * Add at least one board configuration per architecture class (x86 server, arm64 edge, arm32 MCU-like, riscv64 SBC, riscv32 embedded) with interrupt conformance must-pass checks.

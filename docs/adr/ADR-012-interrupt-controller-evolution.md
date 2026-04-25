@@ -84,3 +84,14 @@ Interrupt-related ISA extensions and accelerators (NPU/GPU/DSP/PCIe MSI-X heavy 
 1. Update kernel subcomponent architecture docs with explicit interrupt submodule status and phased non-breaking migration order.
 2. Keep gap-analysis plan synchronized with the compatibility-first rules and architecture parity matrix.
 3. Track backend conformance against the mandatory ops contract in implementation reviews.
+4. Add profile/board interrupt contract validation (`profile × arch_caps × board_caps`) as a boot-time gate for production releases.
+5. Add Harvard-architecture-safe interrupt vector/data placement constraints for MCU-class and split-memory targets.
+
+### Profile/board/Harvard enforcement addendum (2026-04-25)
+
+To preserve compatibility while enabling production deployment across heterogeneous boards, interrupt evolution adopts these additional constraints:
+
+- **Profile truth over architecture assumptions:** IRQ policy is derived from the active runtime profile and board contract, not ISA alone.
+- **Board contract is normative:** missing required interrupt capabilities must fail-closed or enter explicitly declared degraded mode.
+- **Harvard-safe portability:** targets with separate instruction/data memory must use explicit vector/data placement rules and synchronization hooks, with compile/link checks where possible.
+- **Security-first production mode:** MSI/remap/posting accelerations stay capability-gated and always retain verified fallback paths.
