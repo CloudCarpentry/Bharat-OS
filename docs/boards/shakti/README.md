@@ -24,4 +24,4 @@ This folder tracks SHAKTI board-specific support status for Bharat-OS.
 - `booting`
 - `validated`
 
-Keep board-specific constants isolated to platform/backend layers; do not place board maps into scheduler/mm/ipc/core capability code.
+Keep board-specific constants isolated to core/platform/backend layers; do not place board maps into scheduler/mm/ipc/core capability code.

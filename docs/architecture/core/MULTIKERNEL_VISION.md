@@ -22,19 +22,19 @@ The goal is to eliminate global locks, unbounded contention, and cross-core cach
 
 Below is an assessment of the current state of core kernel subsystems against our multikernel vision, highlighting what needs to mature.
 
-### 1. Scheduler (`kernel/src/sched.c`)
+### 1. Scheduler (`core/kernel/src/sched.c`)
 - **Current State**: High maturity for multikernel. Uses purely per-core runqueues (`g_cpu_locals[core].runqueue`), per-core locks, and explicit migration via core affinity masks.
 - **Needs to Mature**:
   - **Cross-core thread operations**: Global thread array `g_threads` and `g_processes` are shared. While slots are allocated atomically or locked locally, finding a thread by ID still scans a global list.
   - **Thread Reaper**: `sched_reap_terminated_threads` uses a global lock (`g_reap_lock`), which could become a contention point across cores. Reaping should ideally be localized per-core or delegated to a specific GP core via message passing.
 
-### 2. Physical Memory Manager (PMM) (`kernel/src/mm/pmm/pmm.c`)
+### 2. Physical Memory Manager (PMM) (`core/kernel/src/mm/pmm/pmm.c`)
 - **Current State**: Medium maturity. PMM is NUMA-aware, which aligns well with multikernel concepts, but it currently relies on NUMA node-level locks (`zone_t.lock`).
 - **Needs to Mature**:
   - **Per-Core Caches**: To truly realize the multikernel vision, PMM needs per-core page magazines (caches) to satisfy >95% of allocations completely lock-free. Falling back to the NUMA node lock should be a slow-path exception.
   - **Page Reference Counting**: `pmm_ref_put` relies heavily on atomic compare-and-swap (CAS) operations on shared page metadata. In a strict message-passing system, releasing remote pages might benefit from deferred bulk-free messages to the owning core.
 
-### 3. Translation Lookaside Buffer (TLB) (`kernel/src/mm/tlb/tlb_coordinator.c`)
+### 3. Translation Lookaside Buffer (TLB) (`core/kernel/src/mm/tlb/tlb_coordinator.c`)
 - **Current State**: Medium maturity. The system correctly uses URPC and mailbox messaging to trigger remote TLB shootdowns rather than stalling cores.
 - **Needs to Mature**:
   - **Shootdown Coordination**: The `g_pending_requests` array used to track TLB invalidation acknowledgments is protected by a global spinlock (`g_pending_requests_lock`). This creates a cross-core serialization bottleneck during heavy memory unmap operations.
@@ -45,18 +45,18 @@ The page-table and memory protection model is fundamental to the multikernel app
 
 For complete details on the implementation format, HAL vtable, and frame ownership invariant, refer to the [Multikernel Memory Protection Architecture](multikernel-memory-protection-architecture.md) specification.
 
-### 4. Interrupts (IRQ) & IPI (`hal/interrupt_common.c`)
+### 4. Interrupts (IRQ) & IPI (`core/hal/interrupt_common.c`)
 - **Current State**: High maturity. IRQ routing natively supports affinity, and deferred work (Bottom-Halves) is implemented via strictly per-core queues (`g_deferred_queues[cpu_id]`).
 - **Needs to Mature**:
   - **Global IRQ Descriptor Lock**: The `g_irq_descriptors` array uses a spinlock per IRQ line. While partitioned by IRQ, configuring shared IRQs across cores could still cause minor contention. However, since IRQ configuration is usually a slow-path/boot-time operation, this violation is highly tolerable for the RT vision.
 
-### 5. Capabilities & Security (`kernel/src/capability.c`)
+### 5. Capabilities & Security (`core/kernel/src/capability.c`)
 - **Current State**: Medium maturity. The model correctly uses per-core capability tables (`g_cpu_locals[i].cap_table`), which is excellent for multikernel design.
 - **Needs to Mature**:
   - **Delegation/Revocation Locks**: `cap_table_delegate` has been partially refactored to use uRPC for cross-core capability delegation instead of cross-table spinlocks. It routes remote destination-table mutation through uRPC while retaining a synchronous API semantics via polling for an ACK. `cap_table_revoke` uses a similar synchronous polling approach for ACKs. In a strict Barrelfish model, altering a remote core's capability table must be completely asynchronous. The next evolution is full asynchronous APIs for both delegation and revocation.
   - **Tree Traversal**: Revocation traverses sibling lists that might span across tables owned by different cores. This logic must be refactored to use distributed state protocols (e.g., 2-phase commit or asynchronous distributed revocation).
 
-### 6. Inter-Process Communication (IPC / uRPC) (`kernel/src/urpc/urpc_channel.c`)
+### 6. Inter-Process Communication (IPC / uRPC) (`core/kernel/src/urpc/urpc_channel.c`)
 - **Current State**: Medium maturity. The bootstrap mechanism exists to send BIND/ACK messages between cores.
 - **Needs to Mature**:
   - **Performance**: The current uRPC implementation relies heavily on basic array state tracking (`g_urpc_states`). To support high-throughput GP and low-latency RT profiles, uRPC must mature into a fully cache-aligned, lock-free ring buffer architecture (e.g., using shared memory purely for unidirectional queues with memory barriers).

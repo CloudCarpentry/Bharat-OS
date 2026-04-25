@@ -21,20 +21,20 @@ Following an external architectural review of Bharat-OS, it was noted that the k
 - **Windows NT & Darwin personalities** — enormous compatibility surfaces with hundreds of syscalls; research-horizon only.
 - **Distributed Shared Memory (DSM)** — depends on RDMA and CXL; not a bring-up concern.
 
-Mixing these headers into `kernel/include/` with the stable v1 core creates confusion about what is actively maintained, increases the cognitive load for new contributors, and risks accidental inclusions from verified kernel code paths.
+Mixing these headers into `core/kernel/include/` with the stable v1 core creates confusion about what is actively maintained, increases the cognitive load for new contributors, and risks accidental inclusions from verified kernel code paths.
 
 ---
 
 ## Decision
 
-All headers and source files that are **not needed to boot and run a basic Bharat-OS kernel on QEMU (x86_64 or riscv64)** are moved to `kernel/include/experimental/`.
+All headers and source files that are **not needed to boot and run a basic Bharat-OS kernel on QEMU (x86_64 or riscv64)** are moved to `core/kernel/include/experimental/`.
 
 The canonical experimental directories are:
 
 ```
-kernel/include/experimental/        # General research headers
-kernel/include/experimental/fs/     # Advanced filesystems (BFS, DFS)
-kernel/include/experimental/personality/  # OS compatibility layers
+core/kernel/include/experimental/        # General research headers
+core/kernel/include/experimental/fs/     # Advanced filesystems (BFS, DFS)
+core/kernel/include/experimental/personality/  # OS compatibility layers
 ```
 
 ### Rules for `experimental/`
@@ -63,4 +63,4 @@ Compatibility personality layers are prioritised as follows:
 - **Positive:** Kernel include tree is clean; easy to identify what is in scope for v1 verification.
 - **Positive:** New contributors can work on the core without being confused by RDMA or BFS headers.
 - **Positive:** Experimental headers are preserved and ready for future development phases.
-- **Negative:** Any external tooling that was `#include`-ing these headers directly from `kernel/include/` will need its paths updated to `kernel/include/experimental/`.
+- **Negative:** Any external tooling that was `#include`-ing these headers directly from `core/kernel/include/` will need its paths updated to `core/kernel/include/experimental/`.

@@ -17,7 +17,7 @@ The Bharat-OS Software Development Kit (SDK) provides the essential libraries, h
 
 ### Linux / macOS
 ```bash
-cd user/sdk/
+cd user/interface/sdk/
 ./build.sh build --target x86_64
 ```
 
@@ -28,13 +28,13 @@ cd user\sdk\
 ```
 
 ## Output Structure
-After building, the artifacts are placed in `user/sdk/build/<arch>/`:
+After building, the artifacts are placed in `user/interface/sdk/build/<arch>/`:
 - `libbharat_sdk.a`: The static SDK library.
 - `sample_app`: The compiled sample executable.
 
 ## Troubleshooting
-- **CMake Error: Toolchain file not found:** Ensure you are running the script from within the `user/sdk/` directory.
-- **Linker Errors (e.g., `undefined reference to bharat_syscall`):** Verify that your architecture provides a syscall implementation in `user/sdk/lib/src/`.
+- **CMake Error: Toolchain file not found:** Ensure you are running the script from within the `user/interface/sdk/` directory.
+- **Linker Errors (e.g., `undefined reference to bharat_syscall`):** Verify that your architecture provides a syscall implementation in `user/interface/sdk/lib/src/`.
 
 ## Next Steps
 To understand the underlying toolchain behavior, see the [Toolchain Guide](toolchain_guide.md).

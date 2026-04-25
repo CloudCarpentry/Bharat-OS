@@ -22,15 +22,15 @@ This document outlines the concrete, phased implementation steps to achieve this
 The immediate goal is to separate process/thread lifecycle management from the scheduler logic and **remove all global state**.
 
 ### Step 1.1: Introduce Per-Core State Structures
-*   Create `kernel/include/proc/core_local.h` defining `struct core_local_state`.
+*   Create `core/kernel/include/proc/core_local.h` defining `struct core_local_state`.
 *   Move global arrays like `g_threads` and `g_processes` into `core_local_state` as `local_threads` and `local_processes`.
 *   Replace `g_urpc_states` with a `urpc_ring_t` implementation per core.
 
 ### Step 1.2: Create the `proc` Subsystem Scaffold
-*   Create new directories: `kernel/include/proc/` and `kernel/src/proc/`.
-*   Create headers: `kernel/include/proc/process.h` and `kernel/include/proc/thread.h`.
-*   Create source files: `kernel/src/proc/process.c` and `kernel/src/proc/thread.c`.
-*   Update `kernel/src/CMakeLists.txt` to include the new `proc` subdirectory.
+*   Create new directories: `core/kernel/include/proc/` and `core/kernel/src/proc/`.
+*   Create headers: `core/kernel/include/proc/process.h` and `core/kernel/include/proc/thread.h`.
+*   Create source files: `core/kernel/src/proc/process.c` and `core/kernel/src/proc/thread.c`.
+*   Update `core/kernel/src/CMakeLists.txt` to include the new `proc` subdirectory.
 
 ### Step 1.3: Define the New Core Objects (Home Core Ownership)
 *   In `process.h`, define the new `struct bh_process` with essential fields including `home_core` ownership tracking, a localized children list, and `proc_channel`.
@@ -43,9 +43,9 @@ The immediate goal is to separate process/thread lifecycle management from the s
 *   Implement asynchronous ZOMBIE cleanup. When a thread on Core B exits and its parent is on Core A, Core B's local reaper sends a `THREAD_EXITED_EVENT` uRPC message to Core A.
 
 ### Step 1.5: Expand the Personality ABI Contract
-*   Update `kernel/include/personality_ops.h` to expand `personality_ops_t`.
+*   Update `core/kernel/include/personality_ops.h` to expand `personality_ops_t`.
 *   Add the new contract fields for distributed awareness: `create_process_model`, `create_thread_model`, `exit_process`, `clone_or_fork`, etc.
-*   Update `kernel/src/personality/personality_default.c` with stub implementations.
+*   Update `core/kernel/src/personality/personality_default.c` with stub implementations.
 
 ---
 
@@ -76,7 +76,7 @@ With the distributed kernel core established, focus shifts to the user-space orc
 *   Create a BIDL definition for the `process_manager` service defining operations for: `spawn`, `exec`, `kill`, `wait`, `reap`.
 
 ### Step 3.2: Implement the Process Manager Scaffold
-*   Expand `services/process_manager/main.c` from its current TODO state.
+*   Expand `core/services/process_manager/main.c` from its current TODO state.
 *   Implement the IPC dispatch loop handling the new BIDL contract.
 *   Ensure the Process Manager understands core targeting and issues capability grants to specific core-local endpoints.
 

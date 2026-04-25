@@ -9,10 +9,10 @@ This index maps Bharat-OS architecture documentation to the current repository s
 3. [`core/README.md`](core/README.md) – core runtime/control-plane architecture.
 4. [`boot/BOOT_ARCHITECTURE.md`](boot/BOOT_ARCHITECTURE.md) – boot contracts and bring-up shape.
 5. [`kernel-object-model.md`](kernel-object-model.md), then the detailed kernel folders:
-   - [`kernel/scheduler/README.md`](kernel/scheduler/README.md)
-   - [`kernel/tasks-threads/README.md`](kernel/tasks-threads/README.md)
-   - [`kernel/ipc/README.md`](kernel/ipc/README.md)
-   - [`kernel/urpc/README.md`](kernel/urpc/README.md)
+   - [`core/kernel/scheduler/README.md`](core/kernel/scheduler/README.md)
+   - [`core/kernel/tasks-threads/README.md`](core/kernel/tasks-threads/README.md)
+   - [`core/kernel/ipc/README.md`](core/kernel/ipc/README.md)
+   - [`core/kernel/urpc/README.md`](core/kernel/urpc/README.md)
 6. [`memory/memory-architecture-comprehensive.md`](memory/memory-architecture-comprehensive.md)
 7. [`storage/README.md`](storage/README.md)
 8. [`security/crypto/overview.md`](security/crypto/overview.md)
@@ -22,12 +22,12 @@ This index maps Bharat-OS architecture documentation to the current repository s
 
 - **Boot:** `boot/`
 - **Core runtime model:** `core/`
-- **Kernel internals:** `kernel/`, `interrupt/`
+- **Kernel internals:** `core/kernel/`, `interrupt/`
 - **Memory:** `memory/`
 - **Storage:** `storage/`
 - **Security & crypto:** `security/`
 - **Network:** `network/`
-- **Personalities & compat layers:** `personalities/`
+- **Personalities & compat layers:** `core/personalities/`
 - **Formal contracts/specs:** `contracts/`
 
 ## Documentation cleanup status

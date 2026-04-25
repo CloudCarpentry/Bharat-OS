@@ -2,7 +2,7 @@
 
 ## Current State Findings
 
-Bharat-OS historically intermingled reusable library functions with kernel-specific mechanisms, resulting in unclear boundaries. A key symptom of this ambiguity is the presence of generic helpers within `kernel/src/lib/` or internal memory helpers that lack strict layer definition and abstraction.
+Bharat-OS historically intermingled reusable library functions with kernel-specific mechanisms, resulting in unclear boundaries. A key symptom of this ambiguity is the presence of generic helpers within `core/kernel/src/lib/` or internal memory helpers that lack strict layer definition and abstraction.
 
 This roadmap outlines the plan to strictly enforce the boundaries defined in `docs/architecture/shared/lib_architecture.md`.
 
@@ -11,15 +11,15 @@ This roadmap outlines the plan to strictly enforce the boundaries defined in `do
 ### Phase 1: Boundary Definition and Initial Enforcement (Immediate)
 
 1. **Establish Canonical Locations:**
-   * Create boundary `README.md` files in `lib/` and `kernel/src/lib/` explaining the core policy.
-   * Formalize the rule: `lib/` must not depend on `kernel/`.
-   * **Header Isolation:** Relocate any headers intended for kernel-only implementations from `lib/include/` into a kernel-private include layer such as `kernel/include/lib/` or `kernel/include/ds/`. Only keep a header under `lib/include/` if it is supported as a shared/public library contract.
+   * Create boundary `README.md` files in `lib/` and `core/kernel/src/lib/` explaining the core policy.
+   * Formalize the rule: `lib/` must not depend on `core/kernel/`.
+   * **Header Isolation:** Relocate any headers intended for kernel-only implementations from `lib/include/` into a kernel-private include layer such as `core/kernel/include/lib/` or `core/kernel/include/ds/`. Only keep a header under `lib/include/` if it is supported as a shared/public library contract.
 2. **Build System Restrictions:**
    * Introduce CMake rules (e.g., in `lib/CMakeLists.txt` or a common policy file) that strictly prevent target linkage from `lib/` back to kernel targets.
    * **Status (2026-04-22):** Implemented a configure-time enforcement pass in `lib/CMakeLists.txt` that fails configuration if any `lib/` target links kernel-private targets.
 3. **Identify Misplaced Code:**
-   * Audit `kernel/src/lib/` (e.g., `rbtree.c`, `string.c`, `status.c`) and migrate purely logical, zero-kernel-state data structures (like standard linked lists or rbtrees, if allocation-free) to `lib/`.
-   * Conversely, move any helper currently in `lib/` that relies on kernel locking, traps, or physical memory allocation directly into `kernel/src/lib/`.
+   * Audit `core/kernel/src/lib/` (e.g., `rbtree.c`, `string.c`, `status.c`) and migrate purely logical, zero-kernel-state data structures (like standard linked lists or rbtrees, if allocation-free) to `lib/`.
+   * Conversely, move any helper currently in `lib/` that relies on kernel locking, traps, or physical memory allocation directly into `core/kernel/src/lib/`.
 
 ### Phase 2: Hardware-Accelerated Dispatch Architecture (Near Term)
 

@@ -23,7 +23,7 @@ Policy decisions—such as model selection, graph compilation, and routing acros
 
 ## 2. Why this fits Bharat-OS
 
-- **Aligns with repository boundaries**: Maintains the separation of `arch/`, `hal/`, `kernel/`, `drivers/`, and `services/`.
+- **Aligns with repository boundaries**: Maintains the separation of `core/arch/`, `core/hal/`, `core/kernel/`, `core/drivers/`, and `core/services/`.
 - **Extends the capability model**: Leverages existing multikernel principles, including strict ownership, capability-gated isolation, and profile-aware execution.
 - **Natural extension of memory architecture**: Built upon existing memory domains, DMA structures, and IOMMU hardware isolation concepts rather than side-stepping them.
 - **Future-proofs AI workloads**: Creates a scalable path for ML hardware acceleration without polluting the kernel with fast-moving framework specific logic.
@@ -62,55 +62,55 @@ If a target profile lacks hardware features like coherent DMA, IOMMU page-based 
 
 ## 4. Recommended Repository Boundaries
 
-### 4.1 Kernel (`kernel/`)
+### 4.1 Kernel (`core/kernel/`)
 
 The minimal heterogeneous compute substrate.
 
-- `kernel/include/accel/accel_types.h`
-- `kernel/include/accel/accel_job.h`
-- `kernel/src/accel/accel_core.c` (registration, descriptors)
-- `kernel/src/accel/accel_queue.c` (submission, scheduling)
-- `kernel/src/accel/accel_fence.c` (completions, sync)
-- `kernel/src/accel/accel_telemetry.c`
-- `kernel/src/accel/accel_fault.c`
-- `kernel/src/mm/accel/` (or via standard DMA extensions)
-- Hooks in `kernel/src/sched/` for fallback/hint handoff.
+- `core/kernel/include/accel/accel_types.h`
+- `core/kernel/include/accel/accel_job.h`
+- `core/kernel/src/accel/accel_core.c` (registration, descriptors)
+- `core/kernel/src/accel/accel_queue.c` (submission, scheduling)
+- `core/kernel/src/accel/accel_fence.c` (completions, sync)
+- `core/kernel/src/accel/accel_telemetry.c`
+- `core/kernel/src/accel/accel_fault.c`
+- `core/kernel/src/mm/accel/` (or via standard DMA extensions)
+- Hooks in `core/kernel/src/sched/` for fallback/hint handoff.
 
-### 4.2 HAL (`hal/`)
+### 4.2 HAL (`core/hal/`)
 
 Abstraction contracts only; no architecture implementations.
 
-- `hal/include/hal/hal_accel.h`
+- `core/hal/include/core/hal/hal_accel.h`
 - Hooks for DMA, IOMMU, and memory cache maintenance related to accelerator needs.
 - Defines standard accelerator capability queries, queue programming hooks, and fence bindings.
 
-### 4.3 Arch (`arch/`)
+### 4.3 Arch (`core/arch/`)
 
 ISA/CPU feature detection and capability normalization.
 
 - Normalizes hardware features (vector width, dot-product, fp16/bf16, SVE, AMX) into a portable software capability structure (`accel_discovery_t`).
 - Supports CPU fallback routines by reporting deterministic compute capabilities.
 
-### 4.4 Drivers (`drivers/accel/`)
+### 4.4 Drivers (`core/drivers/accel/`)
 
 Concrete implementations mapping HAL contracts to hardware.
 
-- `drivers/accel/common/`
-- `drivers/accel/gpu/`
-- `drivers/accel/npu/`
-- `drivers/accel/virt/` (virtual, paravirtual, or mock backend)
+- `core/drivers/accel/common/`
+- `core/drivers/accel/gpu/`
+- `core/drivers/accel/npu/`
+- `core/drivers/accel/virt/` (virtual, paravirtual, or mock backend)
 
-### 4.5 Services (`services/device/`)
+### 4.5 Services (`core/services/device/`)
 
 Policy managers.
 
-- `services/device/accelmgr/`: Discovers accelerators, publishes policy, tracks lifecycle and availability.
-- `services/device/aigov/`: Evaluates thermal/power constraints, sets deadline latency classes, issues fallback hints.
+- `core/services/device/accelmgr/`: Discovers accelerators, publishes policy, tracks lifecycle and availability.
+- `core/services/device/aigov/`: Evaluates thermal/power constraints, sets deadline latency classes, issues fallback hints.
 
 ### 4.6 Runtime and UAPI
 
 - `lib/runtime/accel/`: User space model loading and queue binding.
-- `uapi/capability/accel.h`: ABI contract for accelerator capability descriptors, fences, and shared structures.
+- `interface/uapi/capability/accel.h`: ABI contract for accelerator capability descriptors, fences, and shared structures.
 
 ## 5. Execution Model
 

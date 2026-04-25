@@ -5,7 +5,7 @@
 This document captures a strict Bharat-OS architecture stance:
 
 - Keep **AI framework and model semantics out of kernel ABI**.
-- Add only **AI-adjacent OS primitives** in kernel/MM/capability contracts.
+- Add only **AI-adjacent OS primitives** in core/kernel/MM/capability contracts.
 - Place policy, orchestration, model/runtime logic in services and libraries.
 
 This aligns with existing repository boundaries and current architecture direction:
@@ -22,15 +22,15 @@ This aligns with existing repository boundaries and current architecture directi
 1. **Base memory class taxonomy exists** (`MEM_NORMAL`, `MEM_DMA`, `MEM_RT`, `MEM_SECURE`, etc.), but no explicit tensor/model/stream classes yet.
 2. **Kernel accelerator memory primitives exist** for buffer lifecycle, pin/unpin, scatter-gather generation, IOVA bind/unbind, and sync directions.
 3. **Capability policy already includes accelerator capability families** (`CAP_TYPE_ACCEL_DEVICE`, `CAP_TYPE_ACCEL_QUEUE`, `CAP_TYPE_ACCEL_BUFFER`, `CAP_TYPE_ACCEL_TELEMETRY`, `CAP_TYPE_ACCEL_ADMIN`) with rights masks.
-4. **`services/device/accelmgr` exists** with the right policy-level intent (admission, queue policy, thermal throttling, telemetry), but implementation is still minimal.
-5. **Driver/runtime stubs exist** (`drivers/accel/virt_accel.c`, `lib/runtime/accel/tensor_dispatch.c`) indicating architectural direction is present, while production behavior is not yet complete.
+4. **`core/services/device/accelmgr` exists** with the right policy-level intent (admission, queue policy, thermal throttling, telemetry), but implementation is still minimal.
+5. **Driver/runtime stubs exist** (`core/drivers/accel/virt_accel.c`, `lib/runtime/accel/tensor_dispatch.c`) indicating architectural direction is present, while production behavior is not yet complete.
 
 ### 2.2 Gaps relative to target design
 
 1. **No explicit AI-oriented alloc classes** integrated into the top-level `alloc_class_t` contract.
 2. **No generic cross-device kernel job/fence object contract** yet as a stable UAPI/IDL pair.
 3. **Capability model needs quota/domain granularity** (queue classes, bandwidth budgets, model-compartment access, fault-domain tags).
-4. **Telemetry and fault containment are partially represented but not fully normalized as a production contract across kernel/driver/service layers.**
+4. **Telemetry and fault containment are partially represented but not fully normalized as a production contract across core/kernel/driver/service layers.**
 5. **Roadmap sequencing is not yet written as memory-first + accel contract phases tied to correctness priorities.**
 
 ## 3. Architecture Split (normative)
@@ -57,10 +57,10 @@ This aligns with existing repository boundaries and current architecture directi
 
 ## 3.3 Placement by folder
 
-- `kernel/` and `kernel/src/mm/`: primitive contracts only
-- `drivers/accel/...`: device queue programming, DMA, MMIO, interrupt completion
-- `services/device/accelmgr/`: admission, routing, fallback, quotas, throttling
-- `services/device/aigov/`: policy/governance and safety profile logic
+- `core/kernel/` and `core/kernel/src/mm/`: primitive contracts only
+- `core/drivers/accel/...`: device queue programming, DMA, MMIO, interrupt completion
+- `core/services/device/accelmgr/`: admission, routing, fallback, quotas, throttling
+- `core/services/device/aigov/`: policy/governance and safety profile logic
 - `lib/runtime/accel/`: graph/runtime/backend plugins and CPU fallback kernels
 
 ## 4. Proposed Primitive Additions (small, stable set)
@@ -71,7 +71,7 @@ Bharat-OS classifies AI-adjacent primitives into three tiers so profile support 
 
 - **Tier U (Universal):** must exist as a kernel contract for every profile and memory model, even when implemented in constrained form.
 - **Tier P (Profile-conditional):** centrally defined contract shapes that are enabled only when profile + memory model + hardware can enforce the semantics.
-- **Tier X (Non-kernel AI):** never kernel-universal; always implemented in services/runtime/drivers.
+- **Tier X (Non-kernel AI):** never kernel-universal; always implemented in core/services/runtime/drivers.
 
 This prevents architectural over-claiming on MMU-lite/MPU-only systems and enforces fail-closed admission for unsupported semantics.
 
@@ -146,32 +146,32 @@ Accept hints such as:
 - memory-bandwidth-heavy
 - accelerator-preferred
 
-Policy decisions stay in services/plugin policy.
+Policy decisions stay in core/services/plugin policy.
 
 ## 5. Implementation Roadmap (ticket-oriented)
 
 ### Phase 0 — Correctness-first contract freeze (P0)
 
 1. Freeze accelerator-memory primitive scope and non-goals.
-2. Publish normative kernel/service boundary table.
+2. Publish normative core/kernel/service boundary table.
 3. Add tests ensuring no ML/framework API enters kernel UAPI headers.
 
 ### Phase 1 — Memory and capability primitives (P0)
 
-1. Add AI-adjacent alloc classes in `kernel/include/bharat/mem_class.h`.
+1. Add AI-adjacent alloc classes in `core/kernel/include/bharat/mem_class.h`.
 2. Map new classes into PMM/VMM policy hooks without policy leakage.
 3. Introduce capability rights/profile checks for queue-class and domain usage.
 4. Add fail-closed validation for unsupported profile features.
 
 ### Phase 2 — Job/fence contract + minimal UAPI/IDL (P1)
 
-1. Define neutral job/fence descriptor headers (`include/bharat/uapi/device/accel_*`).
+1. Define neutral job/fence descriptor headers (`include/bharat/interface/uapi/device/accel_*`).
 2. Add kernel validation path (rights, buffer ownership, deadline metadata).
 3. Add completion/error/fault-domain state machine tests.
 
 ### Phase 3 — Service/runtime integration (P1)
 
-1. Expand `services/device/accelmgr/` into admission + routing broker.
+1. Expand `core/services/device/accelmgr/` into admission + routing broker.
 2. Connect telemetry and fault reporting into service-facing interfaces.
 3. Extend `lib/runtime/accel/` to select backend via capability + profile truthfulness.
 
@@ -224,8 +224,8 @@ Policy decisions stay in services/plugin policy.
 
 Based on current repository state, the first production blocker is **profile truthfulness at runtime**:
 
-1. `kernel/CMakeLists.txt` emits `BHARAT_PROFILE_*` compile definitions for memory profile selection.
-2. `kernel/src/mm/mem_model.c` currently keyed primarily off `CONFIG_MEM_MODEL_*` macros.
+1. `core/kernel/CMakeLists.txt` emits `BHARAT_PROFILE_*` compile definitions for memory profile selection.
+2. `core/kernel/src/mm/mem_model.c` currently keyed primarily off `CONFIG_MEM_MODEL_*` macros.
 3. This mismatch can misreport MMU/MPU model at runtime and silently weaken fail-closed behavior.
 
 Therefore, the immediate memory task order is:

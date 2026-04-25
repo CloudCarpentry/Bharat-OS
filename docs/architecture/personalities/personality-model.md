@@ -10,9 +10,9 @@ tags: ["architecture", "personalities"]
 
 # Personality Compatibility Model
 
-> **Note on Code Structure:** Following recent architectural convergence, the personality layer is explicitly separated from the core architecture. Implementations reside in the `personalities/` tree (with sub-directories like `compat/linux/`, `compat/android/`), mapping specific ABIs to core operations exposed via `uapi/`.
+> **Note on Code Structure:** Following recent architectural convergence, the personality layer is explicitly separated from the core architecture. Implementations reside in the `core/personalities/` tree (with sub-directories like `compat/linux/`, `compat/android/`), mapping specific ABIs to core operations exposed via `interface/uapi/`.
 
-In a modern microkernel/multikernel architecture like Bharat-OS, forcing a single monolithic application binary interface (ABI) across all workloads limits flexibility and drags unnecessary state into the kernel.
+In a modern microcore/kernel/multikernel architecture like Bharat-OS, forcing a single monolithic application binary interface (ABI) across all workloads limits flexibility and drags unnecessary state into the kernel.
 
 Instead, Bharat-OS defines a **Native Bharat Personality** and supports **compat personalities** layered above the core capability-driven kernel primitives. This document outlines the distinct personality compatibilities we aim to implement to support different deployment profiles.
 
@@ -37,7 +37,7 @@ This is the default, native OS contract for Bharat-OS apps. It is not Linux-comp
   * Capability-scoped read/write/map/stat-like operations.
   * Process create/destroy and thread create/exit/join primitives directly to UAPI.
   * Sandboxing enforced by capability possession and rights narrowing.
-* **Architecture Placement:** Uses the `uapi/` explicit boundary for syscall headers, capability contracts, shared IPC structures, and stable ABI types.
+* **Architecture Placement:** Uses the `interface/uapi/` explicit boundary for syscall headers, capability contracts, shared IPC structures, and stable ABI types.
 
 ### 2. Linux Personality (Compat Layer)
 **Best for:** Developer adoption, general-purpose porting, tools, and testing.
@@ -80,6 +80,6 @@ This personality bridges the gap between full general-purpose Linux and strict e
 ## Architectural Placement
 
 Compat personalities reside as services or adapters built around the UAPI:
-* `kernel/` -> `uapi/` (Bharat-native ABI) -> `personalities/compat/linux/`
+* `core/kernel/` -> `interface/uapi/` (Bharat-native ABI) -> `core/personalities/compat/linux/`
 
-For example, a legacy application compiled with a Linux toolchain will interact with the Linux compat personality layer (`compat/linux/`), which translates standard POSIX `openat()` or `read()` operations down into capability-scoped, native UAPI IPC messages sent to `services/system/filesystem/`.
+For example, a legacy application compiled with a Linux toolchain will interact with the Linux compat personality layer (`compat/linux/`), which translates standard POSIX `openat()` or `read()` operations down into capability-scoped, native UAPI IPC messages sent to `core/services/system/filesystem/`.

@@ -134,7 +134,7 @@ The previous four-contract freeze recommendation remains useful, but should be u
 
 Each contract should now include **three gates**:
 - **Spec gate** (documented and versioned)
-- **Implementation gate** (kernel/service behavior merged)
+- **Implementation gate** (core/kernel/service behavior merged)
 - **Validation gate** (stress + fault-injection + profile matrix tests)
 
 ---

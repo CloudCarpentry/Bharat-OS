@@ -4,9 +4,9 @@
 This document provides explicit guidelines for contributors adding new drivers or subsystems to Bharat-OS.
 
 ## Where New Code Goes
-- All hardware-specific control logic must go into `drivers/` (e.g., `drivers/bus/gpio/`, `drivers/led/`).
-- Do **not** put hardware specific or driver policy logic inside `kernel/`. The kernel is mechanism-only (e.g., memory mapping, IRQ routing).
-- User-space policy, orchestration, and permissions belong in `services/`.
+- All hardware-specific control logic must go into `core/drivers/` (e.g., `core/drivers/bus/gpio/`, `core/drivers/led/`).
+- Do **not** put hardware specific or driver policy logic inside `core/kernel/`. The kernel is mechanism-only (e.g., memory mapping, IRQ routing).
+- User-space policy, orchestration, and permissions belong in `core/services/`.
 
 ## Driver Design Rules
 1. **Lifecycle**: Every driver must implement explicit `probe()` and `remove()` functions. Cleanup on failure must be idempotent, and no state should leak after removal.

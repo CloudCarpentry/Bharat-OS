@@ -1,7 +1,7 @@
 # Capabilities Roadmap
 
 ## Current Status (v1 Baseline)
-Based on current code analysis in `kernel/src/cap/` and `kernel/src/ipc/`:
+Based on current code analysis in `core/kernel/src/cap/` and `core/kernel/src/ipc/`:
 - ✅ **Basic Capability Table (`capability_table_t`)**: Implemented.
 - ✅ **Capability Entries**: Implemented types (`SEND`, `RECEIVE`, `MAP`, `UNMAP`, `SCHEDULE`, `DELEGATE`).
 - ✅ **Capability Transfer Policy**: Basic `cap_can_transfer` and `cap_transfer_rights_valid` exist to enforce rights attenuation.

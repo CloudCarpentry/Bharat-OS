@@ -6,9 +6,9 @@ It supersedes older assumptions that a userspace console already provides full T
 
 ## 1) Executive summary
 
-- Kernel console is the only production-meaningful output path today (`kernel/src/console/*`).
-- `services/system/console` exists, but is still a scaffold with TODO URPC routing and mock capability-acquisition flow.
-- `services/system/shell` exists and is substantially ahead of console service in maturity (bounded parser, capability-aware dispatch, tests), but it currently runs against a stub backend and is not yet wired to console URPC.
+- Kernel console is the only production-meaningful output path today (`core/kernel/src/console/*`).
+- `core/services/system/console` exists, but is still a scaffold with TODO URPC routing and mock capability-acquisition flow.
+- `core/services/system/shell` exists and is substantially ahead of console service in maturity (bounded parser, capability-aware dispatch, tests), but it currently runs against a stub backend and is not yet wired to console URPC.
 - Therefore, **console and shell are architecturally compatible but not yet fully integrated at runtime**.
 
 ## 2) Layering contract (must remain stable)
@@ -24,15 +24,15 @@ The kernel owns mechanism only:
 
 Code anchors:
 
-- `kernel/src/console/console_core.c`
-- `kernel/src/console/console_policy.c`
-- `kernel/src/console/console_buffer.c`
-- `kernel/src/console/serial_console.c`
-- `kernel/src/console/framebuffer_console.c`
+- `core/kernel/src/console/console_core.c`
+- `core/kernel/src/console/console_policy.c`
+- `core/kernel/src/console/console_buffer.c`
+- `core/kernel/src/console/serial_console.c`
+- `core/kernel/src/console/framebuffer_console.c`
 
 ## 2.2 Userspace console service policy/runtime brokering
 
-`services/system/console/main.c` is intended to own:
+`core/services/system/console/main.c` is intended to own:
 
 - stream brokering (`stdin/stdout/stderr` style channels),
 - session/TTY attachment,
@@ -43,7 +43,7 @@ Current state: scaffold loop + placeholder IPC calls.
 
 ## 2.3 Userspace shell service command plane
 
-`services/system/shell/` owns:
+`core/services/system/shell/` owns:
 
 - line parsing,
 - command registry/dispatch,
@@ -69,7 +69,7 @@ Current state: implemented and unit-tested on host; still backend-stub based.
 
 ## 4) Shell implementation status (as of this update)
 
-Implemented in `services/system/shell/`:
+Implemented in `core/services/system/shell/`:
 
 - bounded parser (`SHELL_MAX_INPUT_LEN`, `SHELL_MAX_TOKENS`),
 - capability/mode gated dispatch,
@@ -108,7 +108,7 @@ Not yet implemented (or intentionally stubbed):
 
 7. Remote shell transport gate (`CONFIG_SHELL_REMOTE`) with auth and rate limits.
 8. Recovery/factory distinct command profiles and test matrix.
-9. Compatibility shell landing zone in `personalities/compat/` (kept separate from system shell).
+9. Compatibility shell landing zone in `core/personalities/compat/` (kept separate from system shell).
 
 ## 6) Unified roadmap (console + shell)
 

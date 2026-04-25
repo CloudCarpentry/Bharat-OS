@@ -301,10 +301,10 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Likely Code Areas**
 
-* `kernel/src/sched/`
-* `kernel/include/`
-* `kernel/src/tests/`
-* `tests/host/` or equivalent scheduler harness
+* `core/kernel/src/sched/`
+* `core/kernel/include/`
+* `core/kernel/src/quality/tests/`
+* `quality/tests/host/` or equivalent scheduler harness
 
 **Acceptance Criteria**
 
@@ -328,12 +328,12 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Likely Code Areas**
 
-* `kernel/src/mm/tlb_coordinator.c`
-* `kernel/include/hal/`
-* `kernel/src/hal/x86_64/`
-* `kernel/src/hal/arm64/`
-* `kernel/src/hal/riscv64/`
-* `tests/mm/`
+* `core/kernel/src/mm/tlb_coordinator.c`
+* `core/kernel/include/core/hal/`
+* `core/kernel/src/core/hal/x86_64/`
+* `core/kernel/src/core/hal/arm64/`
+* `core/kernel/src/core/hal/riscv64/`
+* `quality/tests/mm/`
 
 **Acceptance Criteria**
 
@@ -356,10 +356,10 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Likely Code Areas**
 
-* `kernel/src/mm/pmm/`
-* `kernel/src/mm/`
-* `kernel/src/tests/`
-* `tests/mm/`
+* `core/kernel/src/mm/pmm/`
+* `core/kernel/src/mm/`
+* `core/kernel/src/quality/tests/`
+* `quality/tests/mm/`
 
 **Acceptance Criteria**
 
@@ -388,9 +388,9 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Likely Code Areas**
 
-* `services/netmgr/src/capability_checks.c`
-* `services/netmgr/src/ipc_dispatch.c`
-* `services/netmgr/tests/`
+* `core/services/netmgr/src/capability_checks.c`
+* `core/services/netmgr/src/ipc_dispatch.c`
+* `core/services/netmgr/quality/tests/`
 
 **Acceptance Criteria**
 
@@ -412,9 +412,9 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 **Likely Code Areas**
 
 * `lib/`
-* `services/*/`
-* `idl/`
-* `uapi/`
+* `core/services/*/`
+* `interface/idl/`
+* `interface/uapi/`
 
 **Acceptance Criteria**
 
@@ -441,9 +441,9 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Likely Code Areas**
 
-* `services/process_manager/`
-* `idl/`
-* `uapi/`
+* `core/services/process_manager/`
+* `interface/idl/`
+* `interface/uapi/`
 
 **Acceptance Criteria**
 
@@ -464,12 +464,12 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Likely Code Areas**
 
-* `services/vm_manager/`
-* `services/memdom_manager/`
-* `kernel/src/mm/vm/`
-* `kernel/src/mm/mpu/`
-* `idl/`
-* `uapi/`
+* `core/services/vm_manager/`
+* `core/services/memdom_manager/`
+* `core/kernel/src/mm/vm/`
+* `core/kernel/src/mm/mpu/`
+* `interface/idl/`
+* `interface/uapi/`
 
 **Acceptance Criteria**
 
@@ -490,8 +490,8 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Likely Code Areas**
 
-* `services/servicemgr/` or equivalent
-* `services/`
+* `core/services/servicemgr/` or equivalent
+* `core/services/`
 * `boot/`
 
 **Acceptance Criteria**
@@ -539,10 +539,10 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Likely Code Areas**
 
-* `kernel/src/mm/vm/fault/`
-* `kernel/src/mm/vm/aspace/`
-* `kernel/src/mm/vm/objects/`
-* `kernel/src/hal/*/`
+* `core/kernel/src/mm/vm/fault/`
+* `core/kernel/src/mm/vm/aspace/`
+* `core/kernel/src/mm/vm/objects/`
+* `core/kernel/src/core/hal/*/`
 * `docs/architecture/memory/`
 
 **Acceptance Criteria**
@@ -567,8 +567,8 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Likely Code Areas**
 
-* `kernel/src/mm/`
-* `kernel/src/mm/pmm/`
+* `core/kernel/src/mm/`
+* `core/kernel/src/mm/pmm/`
 * `docs/architecture/memory/`
 
 **Acceptance Criteria**
@@ -594,9 +594,9 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Likely Code Areas**
 
-* `kernel/src/mm/iommu/`
-* `kernel/include/hal/`
-* `drivers/`
+* `core/kernel/src/mm/iommu/`
+* `core/kernel/include/core/hal/`
+* `core/drivers/`
 * `docs/architecture/memory/`
 
 **Acceptance Criteria**
@@ -620,8 +620,8 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Likely Code Areas**
 
-* `kernel/src/mm/pmm/`
-* `kernel/src/mm/vm/aspace/`
+* `core/kernel/src/mm/pmm/`
+* `core/kernel/src/mm/vm/aspace/`
 
 **Acceptance Criteria**
 
@@ -644,8 +644,8 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Likely Code Areas**
 
-* `tests/mm/`
-* `kernel/src/tests/`
+* `quality/tests/mm/`
+* `core/kernel/src/quality/tests/`
 
 **Acceptance Criteria**
 
@@ -666,14 +666,14 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Tasks**
 
-* Mark legacy services/subsystems deprecated
+* Mark legacy core/services/subsystems deprecated
 * Remove duplicate runtime wiring where replacements exist
 * Update build defaults to reflect supported paths only
 
 **Likely Code Areas**
 
-* `services/CMakeLists.txt`
-* `stacks/`
+* `core/services/CMakeLists.txt`
+* `core/stacks/`
 * legacy `net/` vs `netmgr` / `netstack`
 
 **Acceptance Criteria**

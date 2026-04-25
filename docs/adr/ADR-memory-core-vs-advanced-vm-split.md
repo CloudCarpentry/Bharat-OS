@@ -30,7 +30,7 @@ The memory subsystem will be explicitly split into a **Minimal Memory Core** and
 *   Distributed / cross-core memory coordination
 *   Full mapping lifecycle
 
-The build system (`kernel/CMakeLists.txt`) will be refactored to conditionally link the Advanced VM components based on the `BHARAT_ENABLE_ADVANCED_VM` capability flag.
+The build system (`core/kernel/CMakeLists.txt`) will be refactored to conditionally link the Advanced VM components based on the `BHARAT_ENABLE_ADVANCED_VM` capability flag.
 
 ## Rationale
 

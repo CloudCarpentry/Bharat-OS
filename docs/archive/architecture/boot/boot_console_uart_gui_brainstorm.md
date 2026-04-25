@@ -303,22 +303,22 @@ Memory strategy:
 
 ## In Kernel Core
 
-- `kernel/console/console_manager.c`
-- `kernel/console/log_buffer.c`
-- `kernel/bootui/boot_splash.c`
-- `kernel/bootui/boot_policy.c`
+- `core/kernel/console/console_manager.c`
+- `core/kernel/console/log_buffer.c`
+- `core/kernel/bootui/boot_splash.c`
+- `core/kernel/bootui/boot_policy.c`
 
 ## In Drivers
 
-- `drivers/uart/*`
-- `drivers/video/simplefb/*`
-- `drivers/gpu/*` (full modeset)
+- `core/drivers/uart/*`
+- `core/drivers/video/simplefb/*`
+- `core/drivers/gpu/*` (full modeset)
 
 ## In User-space Early Services
 
-- `services/boot-uxd/`
-- `services/log-forwarder/`
-- `services/boot-handoffd/`
+- `core/services/boot-uxd/`
+- `core/services/log-forwarder/`
+- `core/services/boot-handoffd/`
 
 ## In Product Stack
 

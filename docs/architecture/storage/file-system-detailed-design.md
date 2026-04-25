@@ -10,7 +10,7 @@ It is not a normative boundary spec. Normative rules live in `vfs-and-filesystem
 
 ## 2. Current implementation map
 
-## 2.1 Filesystem service (`services/system/filesystem/`)
+## 2.1 Filesystem service (`core/services/system/filesystem/`)
 
 - `main.c`
   - profile-aware startup path,
@@ -24,7 +24,7 @@ It is not a normative boundary spec. Normative rules live in `vfs-and-filesystem
 - `mount_mgr.c`, `namespace_mgr.c`, `vfs_stub.c`
   - service-side mount/namespace and VFS helper scaffolding.
 
-## 2.2 Storage stack (`stacks/storage/`)
+## 2.2 Storage stack (`core/stacks/storage/`)
 
 - `block/block.c`
   - normalized request validation/routing,
@@ -43,11 +43,11 @@ It is not a normative boundary spec. Normative rules live in `vfs-and-filesystem
 - `fs/blob/blob_backend.c`
   - compatibility placeholder (not production blob backend).
 
-## 2.3 Kernel FS boundary (`kernel/src/fs`, `kernel/include/fs`)
+## 2.3 Kernel FS boundary (`core/kernel/src/fs`, `core/kernel/include/fs`)
 
 - Mixed transitional state remains:
-  - `kernel/include/fs/*` provides shared contracts/types.
-  - `kernel/src/fs/*` still contains compatibility-oriented behavior in some units.
+  - `core/kernel/include/fs/*` provides shared contracts/types.
+  - `core/kernel/src/fs/*` still contains compatibility-oriented behavior in some units.
 
 ## 2.4 Client boundary (`lib/fs`)
 
@@ -77,7 +77,7 @@ Current tree remains hybrid by design during migration:
 4. **Blob backend maturity gap**
    - blob backend remains placeholder compatibility surface.
 5. **Cutover completeness gap**
-   - not all tests/consumers are fully migrated to clean service-owned paths.
+   - not all quality/tests/consumers are fully migrated to clean service-owned paths.
 
 ---
 

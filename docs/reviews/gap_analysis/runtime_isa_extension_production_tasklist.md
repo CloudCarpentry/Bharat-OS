@@ -10,7 +10,7 @@
 
 The referenced strategy doc assumes CPU capability probes are still stubs. In the current tree, runtime CPU-capability plumbing exists and is partially implemented:
 
-- Shared capability model and query API are present in `core/kernel/include/arch/arch_cpu_caps.h`.
+- Shared capability model and query API are present in `core/kernel/include/core/arch/arch_cpu_caps.h`.
 - Per-arch probe implementations exist in:
   - `core/arch/x86/x86_64/cpu_caps.c`
   - `core/arch/arm/arm64/cpu_caps.c`
@@ -36,7 +36,7 @@ So the production gap is no longer “build API from zero”; it is now **harden
 - Add policy hook(s) so security/perf policy can disable usable bits without changing raw probes.
 
 **Primary files**
-- `core/kernel/include/arch/arch_cpu_caps.h`
+- `core/kernel/include/core/arch/arch_cpu_caps.h`
 - `core/arch/common/cpu_caps_state.c`
 - `core/hal/common/cpu_features.c`
 
@@ -48,11 +48,11 @@ So the production gap is no longer “build API from zero”; it is now **harden
 - Ensure all optimized kernel paths check either:
   - `system_all` (safe globally), or
   - current-CPU bit when execution is strictly CPU-local and non-migrating.
-- Add API helper names in arch/HAL to make scope explicit (`_system_all`, `_system_any`, `_current_cpu`).
+- Add API helper names in core/arch/HAL to make scope explicit (`_system_all`, `_system_any`, `_current_cpu`).
 
 **Primary files**
-- `core/kernel/include/arch/arch_cpu_caps.h`
-- `core/hal/include/hal/hal_cpu_features.h`
+- `core/kernel/include/core/arch/arch_cpu_caps.h`
+- `core/hal/include/core/hal/hal_cpu_features.h`
 - callsites in memops/crypto/atomic dispatch modules.
 
 ### C. Common fast-path dispatch table
@@ -70,7 +70,7 @@ So the production gap is no longer “build API from zero”; it is now **harden
 **Primary files**
 - `core/arch/common/fastops_dispatch.c` (new)
 - `core/arch/common/memops_scalar.c`
-- `core/kernel/include/arch/memops.h`
+- `core/kernel/include/core/arch/memops.h`
 - `core/lib/runtime/crypto/crypto_dispatch.c`
 
 ### D. Telemetry and verification hooks
@@ -136,7 +136,7 @@ So the production gap is no longer “build API from zero”; it is now **harden
 
 **Primary files**
 - `core/arch/arm/arm64/cpu_caps.c`
-- `core/kernel/include/arch/arch_cpu_caps.h` and arm64 feature defs
+- `core/kernel/include/core/arch/arch_cpu_caps.h` and arm64 feature defs
 
 ### B. LSE and atomic fast-path routing
 
@@ -209,8 +209,8 @@ So the production gap is no longer “build API from zero”; it is now **harden
 - Keep raw/usable + system_all/system_any semantics visible to subsystems.
 
 **Primary files**
-- `core/hal/include/hal/hal_cpu_features.h`
-- `core/hal/include/hal/hal_isa_caps.h`
+- `core/hal/include/core/hal/hal_cpu_features.h`
+- `core/hal/include/core/hal/hal_isa_caps.h`
 - `core/hal/common/cpu_features.c`
 - `core/hal/common/discovery.c`
 
@@ -223,7 +223,7 @@ So the production gap is no longer “build API from zero”; it is now **harden
   - `hal_accel_has_bitmanip_any_cpu()` etc.
 
 **Primary files**
-- `core/hal/include/hal/*.h`
+- `core/hal/include/core/hal/*.h`
 - `core/hal/common/*.c`
 
 ### C. Test/CI matrix integration

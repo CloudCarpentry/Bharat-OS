@@ -1,6 +1,6 @@
 # Scheduler and Threading Baseline
 
-This document reflects the scheduler/threading baseline from current kernel code under `kernel/src/sched/` and `kernel/include/sched/`.
+This document reflects the scheduler/threading baseline from current kernel code under `core/kernel/src/sched/` and `core/kernel/include/sched/`.
 
 ## Core data model
 
@@ -41,12 +41,12 @@ The scheduler remains architecture-neutral at API level and depends on HAL/arch 
 
 ## Test coverage (current)
 
-Scheduler behavior is validated in both host and kernel/user-level tests, including:
+Scheduler behavior is validated in both host and core/kernel/user-level tests, including:
 
-- scheduler functional tests (`tests/test_scheduler.c`, `tests/host/test_sched.c`),
-- scheduler partition validation (`tests/host/test_sched_partition_validation.c`),
-- scheduler benchmarks (`tests/test_bench_sched*.c`, `tests/benchmark/suites/scheduler/bench_sched.c`),
-- kernel selftests (`kernel/src/tests/ktest_sched*.c`).
+- scheduler functional tests (`quality/tests/test_scheduler.c`, `quality/tests/host/test_sched.c`),
+- scheduler partition validation (`quality/tests/host/test_sched_partition_validation.c`),
+- scheduler benchmarks (`quality/tests/test_bench_sched*.c`, `quality/tests/benchmark/suites/scheduler/bench_sched.c`),
+- kernel selftests (`core/kernel/src/quality/tests/ktest_sched*.c`).
 
 ## Known gaps to harden
 

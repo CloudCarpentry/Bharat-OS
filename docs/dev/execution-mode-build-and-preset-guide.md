@@ -27,17 +27,17 @@ When `BHARAT_LOGICAL_CPU_COUNT` is set to a non-zero value, the execution mode f
 ## Adding New Product Profiles
 
 To add a new product profile:
-1. Add the enum value to `bharat_system_profile_t` in `uapi/system/execution_mode.h`.
+1. Add the enum value to `bharat_system_profile_t` in `interface/uapi/system/execution_mode.h`.
 2. Add the profile name string to the `BHARAT_SYSTEM_PROFILE` STRINGS property in `cmake/BharatExecutionMode.cmake`.
 3. Create a CMake preset in `CMakePresets.json` combining the new profile with a valid execution mode and architecture.
 
 ## Adding a New Scheduler Class
 
 To add a new scheduler class safely:
-1. Define its mask in `bharat_sched_class_mask_t` in `uapi/system/execution_mode.h`.
+1. Define its mask in `bharat_sched_class_mask_t` in `interface/uapi/system/execution_mode.h`.
 2. Implement a `sched_class_ops_t` instance for the new algorithm.
 3. Call `sched_class_register(&my_new_class_ops)` during kernel boot initialization.
-4. Update `cpu_partition_init` logic in `kernel/src/sched/cpu_partition.c` if the default mappings for the target profiles need to incorporate the new class.
+4. Update `cpu_partition_init` logic in `core/kernel/src/sched/cpu_partition.c` if the default mappings for the target profiles need to incorporate the new class.
 
 ## Presets
 

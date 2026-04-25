@@ -1,7 +1,7 @@
 # uRPC Roadmap
 
 ## Current Status (v1 Baseline)
-Based on current code analysis in `kernel/src/ipc/` and `<advanced/multikernel.h>`:
+Based on current code analysis in `core/kernel/src/ipc/` and `<advanced/multikernel.h>`:
 - ✅ **Basic Ring Buffer API (L0 Transport)**: `urpc_init_ring`, `urpc_send`, and `urpc_receive` are implemented as lockless queues (`multikernel.c`).
 - ✅ **Channel Bindings**: `mk_establish_channel` and associated multikernel init paths establish connections.
 - ✅ **Wire Format**: The v1 binary message format (including canonical headers and capability wire descriptors) is defined and implemented.

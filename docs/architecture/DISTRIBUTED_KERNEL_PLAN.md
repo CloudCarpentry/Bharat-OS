@@ -21,7 +21,7 @@ This approach aligns with multikernel research systems (like Barrelfish): explic
 ### Phase 0 — Stabilize the Current Foundation
 
 **Goal:** Make the current URPC / SMP code robust enough that later distributed ownership does not collapse into a fragile mess.
-**Target File:** `kernel/src/ipc/multikernel.c` (currently a transport skeleton with visible core-0 bias).
+**Target File:** `core/kernel/src/ipc/multikernel.c` (currently a transport skeleton with visible core-0 bias).
 
 **Actions:**
 *   Introduce a message type table for kernel control messages (`MK_MSG_MEM_RESERVE`, `MK_MSG_PROC_LOOKUP`, etc.).
@@ -32,18 +32,18 @@ This approach aligns with multikernel research systems (like Barrelfish): explic
 *   Implement a small replay-safe transaction cache to prevent duplicate commits on retransmissions.
 
 **New Companion Files:**
-*   `kernel/include/ipc/mk_proto.h`
-*   `kernel/include/ipc/mk_txn.h`
-*   `kernel/src/ipc/mk_proto.c`
-*   `kernel/src/ipc/mk_txn.c`
+*   `core/kernel/include/ipc/mk_proto.h`
+*   `core/kernel/include/ipc/mk_txn.h`
+*   `core/kernel/src/ipc/mk_proto.c`
+*   `core/kernel/src/ipc/mk_txn.c`
 
 ### Phase 1 — Introduce Ownership Before Distributed Commit
 
 **Goal:** Stop treating global kernel objects as anonymously shared blobs. Establish "Which core owns this object?" before attempting any 2PC.
 
 **New Subsystem:**
-*   `kernel/include/multikernel/ownership.h`
-*   `kernel/src/multikernel/ownership.c`
+*   `core/kernel/include/multicore/kernel/ownership.h`
+*   `core/kernel/src/multicore/kernel/ownership.c`
 
 **Policy (First Version):** Use deterministic ownership, not consensus.
 *   **Physical frames:** Owner determined by NUMA node / frame range.
@@ -55,7 +55,7 @@ This approach aligns with multikernel research systems (like Barrelfish): explic
 
 **Goal:** Physical frame allocation is the cleanest place to eliminate shared global state. The current PMM uses shared allocator structures with locks (SMP-ish semantics).
 
-**Target File:** `kernel/src/mm/pmm.c`
+**Target File:** `core/kernel/src/mm/pmm.c`
 
 **Actions:** Split PMM into two modes (preserve current SMP path, add distributed ownership path).
 *   Break allocator into: local frame cache, owned frame pool, remote reservation path.
@@ -64,14 +64,14 @@ This approach aligns with multikernel research systems (like Barrelfish): explic
 *   Protocol: Use 2PC-lite for frame reservations (prepare/reserve, commit/free, abort).
 
 **New Files:**
-*   `kernel/include/mm/pmm_dist.h`
-*   `kernel/src/mm/pmm_dist.c`
+*   `core/kernel/include/mm/pmm_dist.h`
+*   `core/kernel/src/mm/pmm_dist.c`
 
 ### Phase 3 — Refactor Process and Thread Ownership
 
 **Goal:** Currently, execution is partly distributed (per-core runqueues), but identity (PCB/TCB metadata) is globally shared. Separate execution placement from object ownership and migration authority.
 
-**Target File:** `kernel/src/sched.c`
+**Target File:** `core/kernel/src/sched.c`
 
 **Actions:**
 *   Add `owner_core` to process and thread structs.
@@ -80,16 +80,16 @@ This approach aligns with multikernel research systems (like Barrelfish): explic
 *   Restrict global balancing logic (currently biased to core 0) into a policy module.
 
 **New Files:**
-*   `kernel/include/proc/proc_owner.h`
-*   `kernel/src/proc/proc_owner.c`
-*   `kernel/include/sched/sched_migrate.h`
-*   `kernel/src/sched_migrate.c`
+*   `core/kernel/include/proc/proc_owner.h`
+*   `core/kernel/src/proc/proc_owner.c`
+*   `core/kernel/include/sched/sched_migrate.h`
+*   `core/kernel/src/sched_migrate.c`
 
 ### Phase 4 — Refactor VMM / Address-Space Ownership
 
 **Goal:** Transition from treating address-space metadata as shared truth with cross-core shootdowns to an owner-serialized model.
 
-**Target File:** `kernel/src/mm/vmm.c`
+**Target File:** `core/kernel/src/mm/vmm.c`
 
 **Actions:**
 *   Add `owner_core` to address-space/vm-space objects.
@@ -97,38 +97,38 @@ This approach aligns with multikernel research systems (like Barrelfish): explic
 *   Protocol: Owner validates change, increments mapping epoch, and sends targeted invalidation messages (no global broadcast).
 
 **New Files:**
-*   `kernel/include/mm/vmm_dist.h`
-*   `kernel/src/mm/vmm_dist.c`
-*   `kernel/include/mm/tlb_proto.h`
-*   `kernel/src/mm/tlb_proto.c`
+*   `core/kernel/include/mm/vmm_dist.h`
+*   `core/kernel/src/mm/vmm_dist.c`
+*   `core/kernel/include/mm/tlb_proto.h`
+*   `core/kernel/src/mm/tlb_proto.c`
 
 ### Phase 5 — Capability and Security Object Ownership
 
 **Goal:** Apply capability ownership to avoid chaos across cores.
 
-**Target Files:** Capability system modules (e.g., `kernel/src/cap/`).
+**Target Files:** Capability system modules (e.g., `core/kernel/src/cap/`).
 
 **Actions:**
 *   Implement capability owner, remote retype requests, revoke broadcasts, reference tracking, and generation numbers/epochs.
 *   Protocol: Owner-serialized updates. Revoke is an ordered broadcast from the owner, requiring acks from holders before teardown.
 
 **New Files:**
-*   `kernel/include/cap/cap_proto.h`
-*   `kernel/src/cap/cap_dist.c`
+*   `core/kernel/include/cap/cap_proto.h`
+*   `core/kernel/src/cap/cap_dist.c`
 
 ### Phase 6 — Replace "Master-Core Drift" with Monitor Cores
 
 **Goal:** Eliminate implicit "master core" behavior (especially core 0 bias) at runtime.
 
-**Target Files:** `kernel/src/multicore.c` (restrict to bootstrap), `kernel/src/ipc/multikernel.c` (route via monitors).
+**Target Files:** `core/kernel/src/multicore.c` (restrict to bootstrap), `core/kernel/src/ipc/multikernel.c` (route via monitors).
 
 **Actions:** Introduce a "monitor role".
 *   Responsibilities: ownership directory, heartbeat/liveness, transaction timeout cleanup, migration orchestration.
 *   Deployment: one monitor per core, deterministic responsibility per object range.
 
 **New Files:**
-*   `kernel/include/multikernel/monitor.h`
-*   `kernel/src/multikernel/monitor.c`
+*   `core/kernel/include/multicore/kernel/monitor.h`
+*   `core/kernel/src/multicore/kernel/monitor.c`
 
 ### Phase 7 — Add Optional Consensus Only Where Worth the Pain
 
@@ -137,8 +137,8 @@ This approach aligns with multikernel research systems (like Barrelfish): explic
 **Potential use cases:** Global namespace allocation, replicated monitor metadata, distributed service registry.
 
 **New Files (Later):**
-*   `kernel/include/multikernel/consensus.h`
-*   `kernel/src/multikernel/raft_lite.c`
+*   `core/kernel/include/multicore/kernel/consensus.h`
+*   `core/kernel/src/multicore/kernel/raft_lite.c`
 
 ---
 

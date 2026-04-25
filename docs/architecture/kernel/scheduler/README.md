@@ -6,11 +6,11 @@ This folder is the single source of truth for scheduler architecture, implementa
 
 The scheduler implementation lives primarily in:
 
-- `kernel/src/sched/`
-- `kernel/include/sched/`
-- `tests/test_scheduler.c`
-- `tests/host/test_sched.c`
-- `tests/host/test_sched_partition_validation.c`
+- `core/kernel/src/sched/`
+- `core/kernel/include/sched/`
+- `quality/tests/test_scheduler.c`
+- `quality/tests/host/test_sched.c`
+- `quality/tests/host/test_sched_partition_validation.c`
 
 ## Current implementation shape (code-backed)
 

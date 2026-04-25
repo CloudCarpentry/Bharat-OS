@@ -109,7 +109,7 @@ Page Fault / Syscall -> address_space_t -> Region Tree -> VM Object -> Memory Ba
 #### HAL = contracts only
 
 ```text
-hal/include/
+core/hal/include/
   hal_mem_model.h
   hal_pt.h
   hal_tlb.h
@@ -123,7 +123,7 @@ hal/include/
 #### ARCH = implementation
 
 ```text
-arch/
+core/arch/
   x86_64/mm/
   arm64/mm/
   riscv64/mm/

@@ -2,7 +2,7 @@
 
 ### Contract Status
 - **Spec**: ✅ Documented and versioned
-- **Implemented**: 🚧 Pending kernel/service behavior merge
+- **Implemented**: 🚧 Pending core/kernel/service behavior merge
 - **Validated**: ❌ Pending stress/fault-injection tests
 
 
@@ -48,7 +48,7 @@ Strict RT composition must not be forced into GP fairness behavior by global sta
 
 ## Router Contract Surface
 
-The router API is defined in `kernel/include/sched/sched_router_contract.h` and is the only cross-class mutation gateway.
+The router API is defined in `core/kernel/include/sched/sched_router_contract.h` and is the only cross-class mutation gateway.
 
 Required operations:
 - `sched_router_enqueue(...)`

@@ -18,35 +18,35 @@ This document provides a deep implementation-status and gap-analysis review of t
 
 ### Memory Management (MM)
 * **Status:** Implemented but incomplete
-* **Details:** The PMM (Physical Memory Manager) and VMM (Virtual Memory Manager) with cacheability properties are reasonably structured in `kernel/src/mm`. Memory classes like zswap are present. However, static pool allocation—critical for RTOS/safety profiles to avoid heap dependency in critical paths—is weak or missing proper generic enforcement across the HAL.
+* **Details:** The PMM (Physical Memory Manager) and VMM (Virtual Memory Manager) with cacheability properties are reasonably structured in `core/kernel/src/mm`. Memory classes like zswap are present. However, static pool allocation—critical for RTOS/safety profiles to avoid heap dependency in critical paths—is weak or missing proper generic enforcement across the HAL.
 
 ### Scheduler / Real-Time Behavior
 * **Status:** Implemented but incomplete
-* **Details:** The scheduler (`kernel/src/sched.c`) implements an O(1) wait queue embedded in thread structs (no kmalloc) and supports policies like `SCHED_POLICY_ROUND_ROBIN`, `SCHED_POLICY_PRIORITY`, etc., which satisfies core constraints. AI scheduler infrastructure (`ai_sched.c`) and distributed execution groups (`sched_deg.c`) exist. However, true strict preemption controls and bounded critical sections needed for safety profiles are missing robust architectural enforcement (largely relying on basic interrupts).
+* **Details:** The scheduler (`core/kernel/src/sched.c`) implements an O(1) wait queue embedded in thread structs (no kmalloc) and supports policies like `SCHED_POLICY_ROUND_ROBIN`, `SCHED_POLICY_PRIORITY`, etc., which satisfies core constraints. AI scheduler infrastructure (`ai_sched.c`) and distributed execution groups (`sched_deg.c`) exist. However, true strict preemption controls and bounded critical sections needed for safety profiles are missing robust architectural enforcement (largely relying on basic interrupts).
 
 ### Interrupt / Timer / IPI Stack
 * **Status:** Stub / Placeholder
-* **Details:** `interrupt_common.c` and `timer_common.c` exist in `kernel/src/hal/`, but they are very small (few lines) and function mostly as interfaces. Real hardware drivers (e.g., APIC, GICv3) are poorly implemented or stubbed. Clock source (monotonic) and clock event splitting are weak.
+* **Details:** `interrupt_common.c` and `timer_common.c` exist in `core/kernel/src/core/hal/`, but they are very small (few lines) and function mostly as interfaces. Real hardware drivers (e.g., APIC, GICv3) are poorly implemented or stubbed. Clock source (monotonic) and clock event splitting are weak.
 
 ### IPC / Multikernel Messaging
 * **Status:** Endpoint IPC (Baseline), uRPC Transport (Baseline), Async IPC (Partial), Protocol/Delivery (Missing)
-* **Details:** The IPC subsystem has solid primitives, but the middle multikernel/delivery layers are currently scaffolded. Local **Endpoint IPC** is mature and capability-protected (`endpoint_ipc.c`). Local **Async IPC** (`async_ipc.c`) is partial, as it relies on a central global table. For cross-core interaction, the **uRPC Transport** (`multikernel.c`) provides baseline lockless SPSC ring buffers, but the L1 Protocol Delivery engine (ACK/NACK, transactions, timeouts) in `mk_proto.c` is missing/scaffolded. Multikernel capability validations (`mk_dispatch.c`) currently use a relaxed default-allow placeholder and are incomplete.
+* **Details:** The IPC subsystem has solid primitives, but the middle multicore/kernel/delivery layers are currently scaffolded. Local **Endpoint IPC** is mature and capability-protected (`endpoint_ipc.c`). Local **Async IPC** (`async_ipc.c`) is partial, as it relies on a central global table. For cross-core interaction, the **uRPC Transport** (`multikernel.c`) provides baseline lockless SPSC ring buffers, but the L1 Protocol Delivery engine (ACK/NACK, transactions, timeouts) in `mk_proto.c` is missing/scaffolded. Multikernel capability validations (`mk_dispatch.c`) currently use a relaxed default-allow placeholder and are incomplete.
 
 ### Security / Isolation / Capabilities
 * **Status:** Implemented but incomplete
-* **Details:** The VFS capability model (`vfs_mount_t`, `vfs_file_t`) and the general object capability engine (`kernel/src/capability.c`, `security/isolation.c`, `policy.c`) are well underway. Secure boot attestation (`secure_boot.c`) is plumbed, but raw signature verification happens at a basic level or defers to firmware rather than robust OS integration for all target profiles.
+* **Details:** The VFS capability model (`vfs_mount_t`, `vfs_file_t`) and the general object capability engine (`core/kernel/src/capability.c`, `security/isolation.c`, `policy.c`) are well underway. Secure boot attestation (`secure_boot.c`) is plumbed, but raw signature verification happens at a basic level or defers to firmware rather than robust OS integration for all target profiles.
 
 ### Driver Model / DMA / IOMMU
 * **Status:** Stub / Placeholder
-* **Details:** IOMMU (`iommu_stub.c`) and VFIO (`vfio.c`) are heavily stubbed. The core driver model (`kernel/src/device/`) has basic probing but lacks deterministic init ordering for safety buses (CAN/SPI/I2C/UART).
+* **Details:** IOMMU (`iommu_stub.c`) and VFIO (`vfio.c`) are heavily stubbed. The core driver model (`core/kernel/src/device/`) has basic probing but lacks deterministic init ordering for safety buses (CAN/SPI/I2C/UART).
 
 ### Storage / Filesystem
 * **Status:** Stub / Placeholder (Architecturally needs rework)
-* **Details:** `kernel/src/fs/vfs.c` is minimal string-matching logic for paths and drivers. The VFS layer relies purely on stubs. It lacks the lightweight compact inode/path caches necessary for the Edge/IoT profiles.
+* **Details:** `core/kernel/src/fs/vfs.c` is minimal string-matching logic for paths and drivers. The VFS layer relies purely on stubs. It lacks the lightweight compact inode/path caches necessary for the Edge/IoT profiles.
 
 ### Networking
 * **Status:** Not implemented
-* **Details:** Aside from some basic ethernet hooks inside the automotive personality and a `ptp_clock.c` stub, a real, lightweight embedded TCP/UDP stack or zero-copy packet path is missing from the kernel/core.
+* **Details:** Aside from some basic ethernet hooks inside the automotive personality and a `ptp_clock.c` stub, a real, lightweight embedded TCP/UDP stack or zero-copy packet path is missing from the core/kernel/core.
 
 ### GUI / Console / Framebuffer
 * **Status:** Stub / Placeholder
@@ -54,11 +54,11 @@ This document provides a deep implementation-status and gap-analysis review of t
 
 ### Observability / Watchdog / Recovery
 * **Status:** Implemented but incomplete
-* **Details:** The automotive personality (`personalities/automotive/automotive.c`) has robust watchdog array and domain health tracking. Core kernel panic recovery (`panic.c`) has a toggle but is not a deeply resilient synchronous fault containment domain.
+* **Details:** The automotive personality (`core/personalities/automotive/automotive.c`) has robust watchdog array and domain health tracking. Core kernel panic recovery (`panic.c`) has a toggle but is not a deeply resilient synchronous fault containment domain.
 
 ### Personality Support
 * **Status:** Implemented but incomplete
-* **Details:** `personalities/linux/linux_compat.c` exists for desktop/server. The Android and Automotive layers are largely API wrappers (e.g., `automotive.c` is ~500 lines of queues, watchdogs, and hooks) but miss full hardware linkage.
+* **Details:** `core/personalities/linux/linux_compat.c` exists for desktop/server. The Android and Automotive layers are largely API wrappers (e.g., `automotive.c` is ~500 lines of queues, watchdogs, and hooks) but miss full hardware linkage.
 
 ---
 
@@ -75,7 +75,7 @@ This document provides a deep implementation-status and gap-analysis review of t
 * **Highest Priority:** Splitting HAL timers into monotonic vs deadline (one-shot per core) properly and building real deterministic I2C/SPI drivers for flight controllers/sensors.
 
 ### Automobile (Automotive ECU/Infotainment)
-* **Usable Subsystems:** `personalities/automotive/automotive.c` provides a good software model for bounded deterministic queues, watchdog domain health, and boot stage planning.
+* **Usable Subsystems:** `core/personalities/automotive/automotive.c` provides a good software model for bounded deterministic queues, watchdog domain health, and boot stage planning.
 * **Missing for Production:** Genuine underlying CAN/LIN/Ethernet drivers (the `subsys_automotive_send_can_frame` merely returns true), IOMMU/VFIO protection for isolating untrusted devices (IOMMU is a stub), strong Crash Consistency.
 * **Highest Priority:** IOMMU implementations (VT-d/SMMU) and real CAN driver integration with the deterministic queues.
 
@@ -106,6 +106,6 @@ This document provides a deep implementation-status and gap-analysis review of t
 * **Profile-Specific:** Static Memory Pools (RTOS/Drone), Watchdog hardware integration (Automotive/Drone), Power Management (Mobile/Edge).
 
 ### Architectural Division (Where to implement)
-* **Core Kernel (`kernel/src/`):** VFS core logic, Scheduler preemption constraints, Static memory pool API, Networking API.
-* **Architecture Specific (`kernel/src/hal/`):** Timers (APIC/GIC/PLIC), Interrupt routing, IOMMU hardware interaction, Hardware watchdog triggers.
+* **Core Kernel (`core/kernel/src/`):** VFS core logic, Scheduler preemption constraints, Static memory pool API, Networking API.
+* **Architecture Specific (`core/kernel/src/core/hal/`):** Timers (APIC/GIC/PLIC), Interrupt routing, IOMMU hardware interaction, Hardware watchdog triggers.
 * **Personality Layer (`subsys/`):** Linux POSIX path resolution mappings, Automotive health state machine (already largely there), Android Binder routing.

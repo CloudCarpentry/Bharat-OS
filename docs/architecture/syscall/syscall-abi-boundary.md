@@ -5,7 +5,7 @@ This document explains the architecture and governance of the Bharat-OS native s
 ## Native Syscall Dispatch Flow
 
 1.  **Trap Entry:** When a userspace process executes a syscall instruction (`ecall`, `int 0x80`, etc.), the hardware traps into the kernel.
-2.  **Architecture Trap Handler:** The `arch/` layer extracts the trap frame and identifies the trap class as `TRAP_CLASS_SYSCALL`.
+2.  **Architecture Trap Handler:** The `core/arch/` layer extracts the trap frame and identifies the trap class as `TRAP_CLASS_SYSCALL`.
 3.  **Personality Dispatch:** The generic `trap_handle` calls `trap_dispatch_syscall`, which delegates to the `personality_ops->handle_syscall` of the current process.
 4.  **Native Handler:** For native processes, this resolves to `default_handle_syscall` (in `core/personalities/native/personality_native.c`), which calls `syscall_dispatch`.
 5.  **Execution:** `syscall_dispatch` (in `core/kernel/src/trap/trap.c`) performs parameter validation and invokes the internal kernel service.
@@ -15,14 +15,14 @@ This document explains the architecture and governance of the Bharat-OS native s
 
 Bharat-OS maintains a strict separation between internal kernel status and the external syscall ABI:
 
--   **`kstatus_t`:** Rich, internal kernel status codes (defined in `core/kernel/include/kernel/status.h`). Used for precise error reporting between kernel subsystems.
--   **`sys_errno_t`:** Stable, POSIX-style error codes returned to userspace (defined in `interface/include/bharat/uapi/sys_errno.h`).
+-   **`kstatus_t`:** Rich, internal kernel status codes (defined in `core/kernel/include/core/kernel/status.h`). Used for precise error reporting between kernel subsystems.
+-   **`sys_errno_t`:** Stable, POSIX-style error codes returned to userspace (defined in `interface/include/bharat/interface/uapi/sys_errno.h`).
 
 **Rule:** Kernel code must never return raw `sys_errno_t` values. All internal functions return `kstatus_t`. Translation occurs exclusively at the syscall boundary using `kstatus_to_sysret()`.
 
 ## Syscall ABI Governance
 
-To ensure long-term stability and compatibility, the following rules apply to `interface/include/bharat/uapi/syscall_table.def`:
+To ensure long-term stability and compatibility, the following rules apply to `interface/include/bharat/interface/uapi/syscall_table.def`:
 
 1.  **Append-Only:** New syscalls must be added to the end of the table with a new unique number.
 2.  **No Renumbering:** Once assigned, a syscall number must never change.

@@ -23,7 +23,7 @@ These presets will internally set a series of precise capability flags (e.g., `B
 
 ## Rationale
 
-1. **Explicit Capabilities:** By moving to capability flags (`BHARAT_ENABLE_ADVANCED_VM`, `BHARAT_ENABLE_MMU`), the CMake logic in `kernel/CMakeLists.txt` becomes much clearer. We conditionally link modules (like the VMM or IOMMU) based on their specific capability flag, not a vague profile string.
+1. **Explicit Capabilities:** By moving to capability flags (`BHARAT_ENABLE_ADVANCED_VM`, `BHARAT_ENABLE_MMU`), the CMake logic in `core/kernel/CMakeLists.txt` becomes much clearer. We conditionally link modules (like the VMM or IOMMU) based on their specific capability flag, not a vague profile string.
 2. **Matrix Testing:** This approach allows us to easily create a test harness that iterates over specific presets (e.g., `tiny-mpu`, `mmu-lite`, `full-virtual-memory`) to ensure they compile and link correctly without missing symbol errors.
 3. **Decoupling:** It decouples the *device profile* (the product intent) from the *hardware capability* (the MMU model). A small edge device may still require IOMMU for safety isolation, and this model supports that seamlessly.
 

@@ -1,4 +1,4 @@
-# Bharat-OS `services/init` — Profile Implementation Task Plan
+# Bharat-OS `core/services/init` — Profile Implementation Task Plan
 
 ## 1. Purpose
 
@@ -192,8 +192,8 @@ Deliver reboot-reason policy + failed-upgrade diagnostic manifest handling.
 
 ## 5. Suggested Initial Backlog (Actionable Tickets)
 
-1. Add `services/core/init/include/init_boot_context.h` with versioned context structs.
-2. Add `services/core/init/include/init_manifest.h` with boot classes and descriptor schema.
+1. Add `core/services/core/init/include/init_boot_context.h` with versioned context structs.
+2. Add `core/services/core/init/include/init_manifest.h` with boot classes and descriptor schema.
 3. Implement `init_state_machine.c` with explicit transition table.
 4. Implement `init_manifest_engine.c` with profile/capability filtering.
 5. Implement `init_dependency_validator.c` for DAG validation.

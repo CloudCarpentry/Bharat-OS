@@ -12,7 +12,7 @@ This document describes the Bharat-OS boot architecture, including:
 
 ## 2. Design goals
 
-* keep `kernel/main.c` thin
+* keep `core/kernel/main.c` thin
 * support multiple architectures and boards
 * support headless and display-capable systems
 * support production, diagnostic, recovery, manufacturing, and benchmark flows
@@ -81,7 +81,7 @@ Boot mode is resolved from:
 
 ### 4.1 `main.c`
 
-`kernel/main.c` is the thin kernel entry orchestrator.
+`core/kernel/main.c` is the thin kernel entry orchestrator.
 Its responsibilities are limited to:
 
 * receiving normalized boot info
@@ -122,7 +122,7 @@ The common BSP boot flow is phase-based:
 1. early boot
 2. security/bootstrap setup
 3. memory setup
-4. platform/runtime services setup
+4. core/platform/runtime services setup
 5. runtime entry selection
 
 This structure allows the kernel to remain readable and portable.
@@ -167,8 +167,8 @@ Boot mode is not:
 
 Boot mode is a boot-session routing decision, so it belongs in:
 
-* `kernel/include/boot`
-* `kernel/src/boot`
+* `core/kernel/include/boot`
+* `core/kernel/src/boot`
 
 This keeps:
 
@@ -211,10 +211,10 @@ Planned follow-up tasks include:
 
 ## 11. File ownership
 
-* `kernel/main.c` — thin common kernel entry
-* `kernel/src/kernel_boot.c` — phase orchestration
-* `kernel/include/boot/boot_mode.h` — boot mode interface
-* `kernel/src/boot/boot_mode.c` — boot mode selection logic
+* `core/kernel/main.c` — thin common kernel entry
+* `core/kernel/src/kernel_boot.c` — phase orchestration
+* `core/kernel/include/boot/boot_mode.h` — boot mode interface
+* `core/kernel/src/boot/boot_mode.c` — boot mode selection logic
 
 ## 12. Summary
 
@@ -265,7 +265,7 @@ Normal boot runs only mandatory checks by default, while diagnostic and manufact
 This keeps production boot deterministic while still supporting bring-up, validation, and benchmarking flows.
 
 ## Canonical Boot Contract Architecture Update
-As of Phase 1, Bharat-OS standardizes on `boot_info_t` under `boot/include/boot/`, deprecating ad-hoc parsers in `kernel/main.c`. Adapters (Multiboot2, FDT, OpenSBI) normalize all hardware-specific properties into this structure prior to early validation. See `docs/architecture/boot/` for details on validation and security posture handling.
+As of Phase 1, Bharat-OS standardizes on `boot_info_t` under `boot/include/boot/`, deprecating ad-hoc parsers in `core/kernel/main.c`. Adapters (Multiboot2, FDT, OpenSBI) normalize all hardware-specific properties into this structure prior to early validation. See `docs/architecture/boot/` for details on validation and security posture handling.
 
 ## 13. Current Status & Roadmap
 

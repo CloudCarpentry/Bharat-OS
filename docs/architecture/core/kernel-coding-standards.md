@@ -26,7 +26,7 @@ Bharat-OS employs a dual-layer strategy for memory primitives:
 - General kernel subsystem logic that executes in standard context.
 **Under the Hood:** These functions default to calling architecture-specific hardware-accelerated operations (`arch_memset`, `arch_memcpy`) with safe default flags (`ARCH_MEMOP_F_DEFAULT | ARCH_MEMOP_F_NO_SIMD`).
 
-### 2. The Architectural Hardware Primitives (`<arch/memops.h>`)
+### 2. The Architectural Hardware Primitives (`<core/arch/memops.h>`)
 **Purpose:** Exposes raw architecture-specific implementations (accelerated or scalar) that can be precisely controlled via execution context flags (`ARCH_MEMOP_F_EARLY_BOOT`, `ARCH_MEMOP_F_IRQ_SAFE`, etc.).
 **When to Use:**
 - Early boot code (before hardware accelerators are initialized)
@@ -40,4 +40,4 @@ Bharat-OS employs a dual-layer strategy for memory primitives:
 ## Rules
 1. **Never include `<string.h>`** inside the kernel.
 2. Generic kernel code must include `"lib/string.h"` and use standard functions (e.g., `memset`).
-3. Hardware-sensitive code (early boot, TLB, critical IRQ paths) must include `"arch/memops.h"` and explicitly use `arch_memset_scalar` or `arch_memset` with the appropriate safe flags.
+3. Hardware-sensitive code (early boot, TLB, critical IRQ paths) must include `"core/arch/memops.h"` and explicitly use `arch_memset_scalar` or `arch_memset` with the appropriate safe flags.

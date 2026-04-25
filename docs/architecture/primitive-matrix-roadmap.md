@@ -9,7 +9,7 @@ Keep the kernel focused on deterministic mechanisms, push policy into services, 
 | Primitive / Contract | Where it belongs | Why it matters for Linux translation | Why it matters for Android translation | Priority |
 | --- | --- | --- | --- | --- |
 | **Per-core ownership model** | **Kernel** | Lets Linux personality map threads/processes onto a real multikernel-safe substrate instead of fake shared-global state. | Needed for binder-like, service-heavy Android execution without collapsing into global kernel bottlenecks. | **P0** |
-| **Message-only cross-core action contract** | **Kernel + uapi/lib** | Makes remote wakeup, remote lookup, TLB/IPI-style coordination explicit. | Supports Android service/process model with strong isolation and scalable SMP. | **P0** |
+| **Message-only cross-core action contract** | **Kernel + interface/uapi/lib** | Makes remote wakeup, remote lookup, TLB/IPI-style coordination explicit. | Supports Android service/process model with strong isolation and scalable SMP. | **P0** |
 | **Bounded invalidation protocol** (request id, ack, timeout, fail report) | **Kernel + HAL** | Required for correct `mmap`/`fork`/process VM semantics under Linux compatibility. | Critical for app/service churn, graphics buffers, shared mappings. | **P0** |
 | **Per-core PMM caches / magazines** | **Kernel** | Gives stable allocator behavior beneath Linux-facing memory APIs. | Reduces latency spikes on mobile/embedded profiles. | **P0** |
 | **Unified VM authority path** (`fault -> aspace -> object/region -> HAL`) | **Kernel** | Essential for correct POSIX/Linux VM semantics and future file-backed/shared memory behavior. | Needed for ashmem-like / dmabuf-like / graphics-oriented Android memory flows. | **P0** |
@@ -26,9 +26,9 @@ Keep the kernel focused on deterministic mechanisms, push policy into services, 
 | **DMA / IOMMU lifecycle contract** | **Kernel + HAL + drivers** | Needed for safe device mappings under Linux driver compatibility work. | Required for graphics/camera/accelerator security. | **P1** |
 | **Telemetry / health / audit event export** | **Kernel exports, services aggregate** | Helps debug personality correctness and runtime conformance. | Needed for production Android-class observability and safety cases. | **P1** |
 | **Translation-grade object model** (handle, event, wait, shared memory, queue) | **Kernel + uapi + lib** | Real substrate for mapping POSIX/Linux objects cleanly. | Also underpins binder-adjacent and surfaceflinger-adjacent designs. | **P1** |
-| **Netif + routing substrate** | **Stacks/net + services/network** | Linux networking compatibility needs a real network stack surface. | Android networking stack depends on this being real, not stubbed. | **P2** |
-| **Persistent event / crash log contract** | **Stacks/storage + services/system** | Helps post-mortem debug of Linux personality/runtime faults. | Important for Android recovery and field diagnostics. | **P2** |
-| **Secure update / rollback lifecycle** | **Services/system + stacks/storage** | Supports distro-like upgrades for Linux personality safely. | Essential for OTA-oriented Android-style deployment. | **P2** |
+| **Netif + routing substrate** | **Stacks/net + core/services/network** | Linux networking compatibility needs a real network stack surface. | Android networking stack depends on this being real, not stubbed. | **P2** |
+| **Persistent event / crash log contract** | **Stacks/storage + core/services/system** | Helps post-mortem debug of Linux personality/runtime faults. | Important for Android recovery and field diagnostics. | **P2** |
+| **Secure update / rollback lifecycle** | **Services/system + core/stacks/storage** | Supports distro-like upgrades for Linux personality safely. | Essential for OTA-oriented Android-style deployment. | **P2** |
 | **Advanced accelerator governance** | **Services/device + runtime/lib** | Useful later for GPU/AI translation, not foundational today. | Important for future Android AI/media workloads, not first priority. | **P3** |
 | **AI-informed scheduling policy** | **Service, not kernel** | Linux can benefit later, but kernel should not depend on opaque ML policy. | Android may use it later for tuning, but it must stay optional. | **P3** |
 | **Carbon-aware scheduling** | **External policy/service/orchestrator** | Nice for cloud, irrelevant to core kernel correctness. | Not core for Android device OS. | **P3** |
@@ -39,7 +39,7 @@ Keep the kernel focused on deterministic mechanisms, push policy into services, 
 - Services own policy and orchestration.
 - No shared mutable state across cores.
 - All cross-core actions should be message-based.
-- External contracts belong in UAPI/personalities/stacks, not smeared into kernel.
+- External contracts belong in UAPI/core/personalities/stacks, not smeared into kernel.
 
 ## Production-grade top 10 shortlist
 

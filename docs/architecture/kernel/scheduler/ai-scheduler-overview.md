@@ -8,15 +8,15 @@ Bharat-OS keeps scheduling **mechanism** in kernel and treats AI inputs as **bou
 
 ### Core telemetry and context
 
-- Telemetry/context structures: `kernel/include/sched/ai_sched.h`
-- Telemetry update + fallback sampling + simple complexity prediction: `kernel/src/sched/ai_sched.c`
+- Telemetry/context structures: `core/kernel/include/sched/ai_sched.h`
+- Telemetry update + fallback sampling + simple complexity prediction: `core/kernel/src/sched/ai_sched.c`
 
 `ai_sched_collect_sample(...)` first tries `ai_sched_arch_sample_pmc(...)` (weak hook, arch-overridable). If PMCs are unavailable, it uses deterministic fallback estimation from timeslice/profile scaling.
 
 ### Suggestion ingestion and execution boundary
 
-- Queue ingress: `sched_enqueue_ai_suggestion(...)` in `kernel/src/sched/sched_ai_ingest.c`
-- Queue drain: `sched_process_pending_ai_suggestions(...)` in `kernel/src/sched/sched_ai_ingest.c`
+- Queue ingress: `sched_enqueue_ai_suggestion(...)` in `core/kernel/src/sched/sched_ai_ingest.c`
+- Queue drain: `sched_process_pending_ai_suggestions(...)` in `core/kernel/src/sched/sched_ai_ingest.c`
 - Action execution: `sched_ai_apply_suggestion(...)` path in scheduler core modules
 
 Suggestions are queued and processed from scheduler/tick paths, not executed directly in receive context.

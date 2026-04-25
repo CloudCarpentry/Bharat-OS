@@ -71,7 +71,7 @@ Bharat-OS will implement power and thermal management as a layered resource gove
 * adaptive throttling policy
 * optional AI-assisted optimization
 
-**Multi-kernel/distributed coordination uses**
+**Multi-core/kernel/distributed coordination uses**
 * IPC for local policy-control paths
 * URPC for cross-kernel or cross-partition power/thermal budget coordination
 
@@ -233,7 +233,7 @@ Policy daemons / trusted services.
 ## 6. Proposed directory structure
 
 ```
-kernel/
+core/kernel/
   include/
     power/
       power.h
@@ -265,7 +265,7 @@ kernel/
       cooling_device.c
       emergency_power.c
 
-hal/
+core/hal/
   common/
     power/
       null_power.c
@@ -285,7 +285,7 @@ hal/
   x86_64/
     power/
     thermal/
-  platform/
+  core/platform/
     qemu/
     stm32/
     rpi/
@@ -294,7 +294,7 @@ hal/
     laptop_ref/
     server_ref/
 
-drivers/
+core/drivers/
   power/
     regulator/
     pmic/
@@ -309,7 +309,7 @@ drivers/
     pwm_cooling/
     dvfs_cooling/
 
-services/
+core/services/
   core/
     powerd/
     thermald/

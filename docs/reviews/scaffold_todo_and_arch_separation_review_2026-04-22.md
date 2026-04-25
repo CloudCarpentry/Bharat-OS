@@ -18,12 +18,12 @@ The goal is to reduce architecture drift and improve code truthfulness, maintain
 
 This review follows the Bharat-OS architectural boundary model:
 
-- `arch/` = ISA / CPU-specific implementation
-- `hal/` = abstraction contracts and common glue
-- `platform/` = board / SoC / machine integration
-- `kernel/` = mechanism only
-- `services/` = policy / orchestration
-- `stacks/` = composed subsystem stacks
+- `core/arch/` = ISA / CPU-specific implementation
+- `core/hal/` = abstraction contracts and common glue
+- `core/platform/` = board / SoC / machine integration
+- `core/kernel/` = mechanism only
+- `core/services/` = policy / orchestration
+- `core/stacks/` = composed subsystem stacks
 
 ---
 
@@ -134,17 +134,17 @@ First-pass aggregate counts from this scan:
 
 | ID | Area | File/Path | Finding Type | Summary | Current Owner | Correct Owner | Action | Priority | Status |
 |----|------|-----------|--------------|---------|---------------|---------------|--------|----------|--------|
-| F-001 | MM | `hal/hal_pt.c` | Mixed arch | Architecture-specific TLB and PT initialization mixed with weak symbols (mid-file include debt removed in follow-up pass) | hal | arch/hal | SPLIT_BY_ARCH | P1 | IN_PROGRESS |
-| F-002 | CPU | `hal/common/discovery.c` | Mixed arch | `x86_64`, `aarch64`, `riscv` CPU capabilities parsing mixed in common HAL | hal | arch/hal | SPLIT_BY_ARCH | P1 | OPEN |
-| F-003 | Power | `kernel/src/power_thermal_perf.c` | Policy Creep / Mixed arch | Kernel contains topology defaults and thermal policy logic; compile-time arch checks removed, remaining policy move still pending | kernel | services/arch | MOVE_TO_CORRECT_LAYER | P0 | IN_PROGRESS |
-| F-004 | Storage | `services/system/filesystem/main.c` | Mixed arch / Mock | App profile and HW arch checks directly in filesystem service main; simulated block device | services | stacks/services | KEEP_AS_SCAFFOLD_WITH_TRACKING | P1 | DONE |
-| F-005 | Video | `kernel/src/display/boot_video_map.c` | Mixed arch | TLB flushes and VA calculations using arch macros directly in kernel | kernel | arch/hal | MOVE_TO_CORRECT_LAYER | P1 | DONE |
-| F-006 | Drivers | `drivers/serial/ns16550/ns16550.c` | Mixed arch | Architecture-specific `x86_inb`/`x86_outb` mixed with MMIO | drivers | arch/drivers | SPLIT_BY_ARCH | P1 | OPEN |
-| F-007 | Benchmark | `kernel/src/benchmark/benchmark.c` | Scaffold / Mixed arch | Fake memory usage, `clock_gettime` fallback, mixed arch `rdtsc` implementations | kernel | kernel/arch | SPLIT_BY_ARCH | P2 | OPEN |
-| F-008 | CPU | `kernel/src/cpu_local.c` | Mixed arch | Arch-specific `msr tpidr_el1`, `mv tp` inline assembly in kernel | kernel | arch/kernel | SPLIT_BY_ARCH | P1 | DONE |
-| F-009 | Tests | `kernel/src/tests/ktest_unmapped_fault.c` | Mixed arch | Architecture-specific memory map macros and inline assembly | kernel | arch/kernel | SPLIT_BY_ARCH | P2 | OPEN |
-| F-010 | Tests | `services/faultmgr/main.c` | Scaffold | Infinite loops with `break` to avoid stub freezing; missing real IPC | services | services | KEEP_AS_SCAFFOLD_WITH_TRACKING | P2 | OPEN |
-| F-011 | Build | `services/devmgr/CMakeLists.txt` | Build | Gating off devmgr components / `TODO` missing libraries | services | services | GATE_OFF_BY_DEFAULT | P1 | OPEN |
+| F-001 | MM | `core/hal/hal_pt.c` | Mixed arch | Architecture-specific TLB and PT initialization mixed with weak symbols (mid-file include debt removed in follow-up pass) | hal | core/arch/hal | SPLIT_BY_ARCH | P1 | IN_PROGRESS |
+| F-002 | CPU | `core/hal/common/discovery.c` | Mixed arch | `x86_64`, `aarch64`, `riscv` CPU capabilities parsing mixed in common HAL | hal | core/arch/hal | SPLIT_BY_ARCH | P1 | OPEN |
+| F-003 | Power | `core/kernel/src/power_thermal_perf.c` | Policy Creep / Mixed arch | Kernel contains topology defaults and thermal policy logic; compile-time arch checks removed, remaining policy move still pending | kernel | core/services/arch | MOVE_TO_CORRECT_LAYER | P0 | IN_PROGRESS |
+| F-004 | Storage | `core/services/system/filesystem/main.c` | Mixed arch / Mock | App profile and HW arch checks directly in filesystem service main; simulated block device | services | core/stacks/services | KEEP_AS_SCAFFOLD_WITH_TRACKING | P1 | DONE |
+| F-005 | Video | `core/kernel/src/display/boot_video_map.c` | Mixed arch | TLB flushes and VA calculations using arch macros directly in kernel | kernel | core/arch/hal | MOVE_TO_CORRECT_LAYER | P1 | DONE |
+| F-006 | Drivers | `core/drivers/serial/ns16550/ns16550.c` | Mixed arch | Architecture-specific `x86_inb`/`x86_outb` mixed with MMIO | drivers | core/arch/drivers | SPLIT_BY_ARCH | P1 | OPEN |
+| F-007 | Benchmark | `core/kernel/src/benchmark/benchmark.c` | Scaffold / Mixed arch | Fake memory usage, `clock_gettime` fallback, mixed arch `rdtsc` implementations | kernel | core/kernel/arch | SPLIT_BY_ARCH | P2 | OPEN |
+| F-008 | CPU | `core/kernel/src/cpu_local.c` | Mixed arch | Arch-specific `msr tpidr_el1`, `mv tp` inline assembly in kernel | kernel | core/arch/kernel | SPLIT_BY_ARCH | P1 | DONE |
+| F-009 | Tests | `core/kernel/src/quality/tests/ktest_unmapped_fault.c` | Mixed arch | Architecture-specific memory map macros and inline assembly | kernel | core/arch/kernel | SPLIT_BY_ARCH | P2 | OPEN |
+| F-010 | Tests | `core/services/faultmgr/main.c` | Scaffold | Infinite loops with `break` to avoid stub freezing; missing real IPC | services | services | KEEP_AS_SCAFFOLD_WITH_TRACKING | P2 | OPEN |
+| F-011 | Build | `core/services/devmgr/CMakeLists.txt` | Build | Gating off devmgr components / `TODO` missing libraries | services | services | GATE_OFF_BY_DEFAULT | P1 | OPEN |
 
 ---
 
@@ -158,11 +158,11 @@ Typical smell:
 **Preferred direction**
 - common contract in shared header,
 - arch-specific implementation under:
-  - `arch/x86/x86_64/...`
-  - `arch/arm/arm32/...`
-  - `arch/arm/arm64/...`
-  - `arch/riscv/riscv32/...`
-  - `arch/riscv/riscv64/...`
+  - `core/arch/x86/x86_64/...`
+  - `core/arch/arm/arm32/...`
+  - `core/arch/arm/arm64/...`
+  - `core/arch/riscv/riscv32/...`
+  - `core/arch/riscv/riscv64/...`
 
 ### 7.2 HAL vs arch confusion
 Typical smell:
@@ -176,11 +176,11 @@ Typical smell:
 
 ### 7.3 Kernel policy creep
 Typical smell:
-- retry/backoff/fallback/routing/model selection/policy decisions inside `kernel/`.
+- retry/backoff/fallback/routing/model selection/policy decisions inside `core/kernel/`.
 
 **Preferred direction**
 - kernel keeps deterministic mechanisms only,
-- policy moves to `services/` or `stacks/`.
+- policy moves to `core/services/` or `core/stacks/`.
 
 ### 7.4 Transitional compatibility ownership
 Typical smell:
@@ -294,15 +294,15 @@ This review item is only considered complete when:
 - build defaults reflect real maturity,
 - retained scaffolds are explicitly tracked,
 - architecture ownership is cleaner than before.
-| F-001 | Services/build | `services/CMakeLists.txt` | Build truthfulness | `system/filesystem` built by default though implementation remains scaffold-heavy | services | services | GATE_OFF_BY_DEFAULT | P0 | DONE |
-| F-002 | Storage stack | `stacks/storage/block/block.c` | Fake success | Unknown device path returned success and stub info, masking unsupported runtime path | stacks/storage | stacks/storage | IMPLEMENT_NOW | P0 | DONE |
-| F-003 | Service architecture split | `services/system/filesystem/main.c` | Mixed arch | Single service source carried x86/arm/riscv arch-selection preprocessor branches | services/system | services/system | SPLIT_BY_ARCH | P1 | DONE |
-| F-004 | HAL common routing | `hal/hal_pt.c` | Mixed arch | Cross-arch dispatch in common file; acceptable as contract router, but needs follow-up for cleaner registration model | hal | hal+arch | KEEP_AS_SCAFFOLD_WITH_TRACKING | P2 | OPEN |
-| F-005 | Service lifecycle scaffolds | `services/core/init/init_manifest.c` | Scaffold | Multiple services use `stub_start` execution path | services/core | services/core | KEEP_AS_SCAFFOLD_WITH_TRACKING | P1 | OPEN |
-| F-006 | Legacy network ownership | `services/CMakeLists.txt` + `services/legacy/net` | Transitional duplication | Legacy monolithic network service coexists with netmgr/netstack forward path | services/legacy + services/net* | services/net* | DEPRECATE_AND_REMOVE | P1 | OPEN |
-| F-007 | Kernel compatibility include debt | `kernel/include/**` (multiple) | TODO debt | repeated include-order compatibility TODOs in public headers | kernel/include | kernel/include | MOVE_TO_CORRECT_LAYER | P2 | OPEN |
+| F-001 | Services/build | `core/services/CMakeLists.txt` | Build truthfulness | `system/filesystem` built by default though implementation remains scaffold-heavy | services | services | GATE_OFF_BY_DEFAULT | P0 | DONE |
+| F-002 | Storage stack | `core/stacks/storage/block/block.c` | Fake success | Unknown device path returned success and stub info, masking unsupported runtime path | core/stacks/storage | core/stacks/storage | IMPLEMENT_NOW | P0 | DONE |
+| F-003 | Service architecture split | `core/services/system/filesystem/main.c` | Mixed arch | Single service source carried x86/arm/riscv arch-selection preprocessor branches | core/services/system | core/services/system | SPLIT_BY_ARCH | P1 | DONE |
+| F-004 | HAL common routing | `core/hal/hal_pt.c` | Mixed arch | Cross-arch dispatch in common file; acceptable as contract router, but needs follow-up for cleaner registration model | hal | hal+arch | KEEP_AS_SCAFFOLD_WITH_TRACKING | P2 | OPEN |
+| F-005 | Service lifecycle scaffolds | `core/services/core/init/init_manifest.c` | Scaffold | Multiple services use `stub_start` execution path | core/services/core | core/services/core | KEEP_AS_SCAFFOLD_WITH_TRACKING | P1 | OPEN |
+| F-006 | Legacy network ownership | `core/services/CMakeLists.txt` + `core/services/legacy/net` | Transitional duplication | Legacy monolithic network service coexists with netmgr/netstack forward path | core/services/legacy + core/services/net* | core/services/net* | DEPRECATE_AND_REMOVE | P1 | OPEN |
+| F-007 | Kernel compatibility include debt | `core/kernel/include/**` (multiple) | TODO debt | repeated include-order compatibility TODOs in public headers | core/kernel/include | core/kernel/include | MOVE_TO_CORRECT_LAYER | P2 | OPEN |
 | F-008 | Boot adapter scaffolds | `boot/src/adapters/uefi/uefi_adapter.c` | Scaffold | compile-safe placeholder returns unsupported behavior | boot | boot/platform | KEEP_AS_SCAFFOLD_WITH_TRACKING | P2 | OPEN |
-| F-009 | Service stubs enabled by path | `services/system/filesystem/*` | Scaffold runtime | VFS flow still stub-driven (`vfs_stub.c`) and demo request path | services/system | services/system + stacks/storage | IMPLEMENT_NOW | P1 | IN_PROGRESS |
+| F-009 | Service stubs enabled by path | `core/services/system/filesystem/*` | Scaffold runtime | VFS flow still stub-driven (`vfs_stub.c`) and demo request path | core/services/system | core/services/system + core/stacks/storage | IMPLEMENT_NOW | P1 | IN_PROGRESS |
 | F-010 | Compatibility wrappers | `tools/build/legacy_adapter.py`, wrappers | Transitional path | Legacy CLI/build path still actively supported | tools/build | tools/build | KEEP_AS_SCAFFOLD_WITH_TRACKING | P2 | OPEN |
 
 ---
@@ -310,11 +310,11 @@ This review item is only considered complete when:
 ## 7. High-risk categories and current status
 
 ### 7.1 Mixed architecture in one source file
-- **Addressed in first pass:** `services/system/filesystem/main.c` split into per-arch files.
+- **Addressed in first pass:** `core/services/system/filesystem/main.c` split into per-arch files.
 - **Remaining examples:** routing files in HAL and syscall stubs still contain macro dispatch.
 
 ### 7.2 HAL vs arch confusion
-- `hal/hal_pt.c` remains a central router. Acceptable currently, but should move to registration-driven init in follow-up.
+- `core/hal/hal_pt.c` remains a central router. Acceptable currently, but should move to registration-driven init in follow-up.
 
 ### 7.3 Kernel policy creep
 - Initial scan found policy-like compatibility debt in kernel headers; no risky kernel behavior rewrite in this pass.
@@ -347,7 +347,7 @@ This review item is only considered complete when:
 2. Remove policy from mechanism-layer code paths where found.
 
 ### Phase C — Architecture split
-1. Evaluate `hal/hal_pt.c` and `lib/syscall/syscall_stubs.c` for cleaner arch registration/split models.
+1. Evaluate `core/hal/hal_pt.c` and `lib/syscall/syscall_stubs.c` for cleaner arch registration/split models.
 2. Ensure split paths are covered in CI build matrix.
 
 ### Phase D — Hardening
@@ -386,11 +386,11 @@ This review item is only considered complete when:
 ## 12. Open tracking sections
 
 ### Completed
-- Split `kernel/src/cpu_local.c` inline assembly into architecture-specific files under `arch/`.
-- Replace inline-assembly architecture-specific flushes in `kernel/src/display/boot_video_map.c` with neutral HAL call `hal_tlb_invalidate_all()`.
-- Gated scaffolded/experimental service `system/filesystem` behind `BHARAT_BUILD_EXPERIMENTAL_SERVICES` in `services/CMakeLists.txt`.
-- Removed include-order compatibility debt in `hal/hal_pt.c` by moving `mm/tlb.h` into the regular include block.
-- Reduced architecture coupling in `kernel/src/power_thermal_perf.c` by switching default topology sizing to `hal_cpu_topology_query()` and removing compile-time arch branches.
+- Split `core/kernel/src/cpu_local.c` inline assembly into architecture-specific files under `core/arch/`.
+- Replace inline-assembly architecture-specific flushes in `core/kernel/src/display/boot_video_map.c` with neutral HAL call `hal_tlb_invalidate_all()`.
+- Gated scaffolded/experimental service `system/filesystem` behind `BHARAT_BUILD_EXPERIMENTAL_SERVICES` in `core/services/CMakeLists.txt`.
+- Removed include-order compatibility debt in `core/hal/hal_pt.c` by moving `mm/tlb.h` into the regular include block.
+- Reduced architecture coupling in `core/kernel/src/power_thermal_perf.c` by switching default topology sizing to `hal_cpu_topology_query()` and removing compile-time arch branches.
 
 ### In progress
 -

@@ -1,4 +1,4 @@
-# Diagnostic Service (`services/system/diag`)
+# Diagnostic Service (`core/services/system/diag`)
 
 ## Overview
 

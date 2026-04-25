@@ -2,7 +2,7 @@
 
 ## Scope
 - Kernel scheduler runqueue selection and context-switch path.
-- Subsystem CPU allocation mask handling in `services/core/subsysmgr`.
+- Subsystem CPU allocation mask handling in `core/services/core/subsysmgr`.
 - HAL topology query surface used by scheduling/allocation policy.
 
 ## Alignment Check Against Current Code

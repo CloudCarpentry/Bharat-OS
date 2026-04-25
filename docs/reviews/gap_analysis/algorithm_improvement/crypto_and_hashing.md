@@ -4,20 +4,20 @@ This document tracks where cryptography or hashing logic currently operates in s
 
 ## Subsystems
 
-### 1. Crypto Service (`services/security/crypto/dispatch.c`, `crypto_service.h`)
+### 1. Crypto Service (`core/services/security/crypto/dispatch.c`, `crypto_service.h`)
 The Crypto service is currently stubbed to handle requests in software via `handle_hash_init`, `handle_hash_update`, etc.
-*   **File:** `services/security/crypto/dispatch.c`, `services/security/crypto/crypto_service.h`
+*   **File:** `core/services/security/crypto/dispatch.c`, `core/services/security/crypto/crypto_service.h`
 *   **Context:** Handling crypto opcodes (`CRYPTO_OP_HASH_INIT`, `CRYPTO_OP_AEAD_SEAL`) in user-space.
 *   **Improvement Suggestion:**
-    *   **Hardware / Accelerator Offload:** Integrate hardware cryptography offloading (via `services/device/accelmgr` or direct device assignments). Replace generic software algorithms with CPU extensions where offload hardware is unavailable:
+    *   **Hardware / Accelerator Offload:** Integrate hardware cryptography offloading (via `core/services/device/accelmgr` or direct device assignments). Replace generic software algorithms with CPU extensions where offload hardware is unavailable:
         *   **x86_64:** AES-NI for block ciphers, SHA extensions for hashing.
         *   **ARM64:** Cryptographic Extensions (CE) for AES, SHA-1, SHA-256.
         *   **RISC-V:** Scalar Cryptography Extensions (Zk*) for AES and hashing.
     *   **Algorithmic:** When relying on software crypto, make sure that side-channel resilient algorithms are implemented (e.g., constant time crypto libraries instead of naive implementations).
 
-### 2. Physical Page Hashing (`kernel/src/mm/zswap.c`)
+### 2. Physical Page Hashing (`core/kernel/src/mm/zswap.c`)
 ZSwap compression maps rely on a trivial modulus hashing function.
-*   **File:** `kernel/src/mm/zswap.c`
+*   **File:** `core/kernel/src/mm/zswap.c`
 *   **Context:** `#define ZSWAP_HASH_TABLE_SIZE 1024` with `return key % ZSWAP_HASH_TABLE_SIZE;`.
 *   **Improvement Suggestion:**
     *   **Algorithmic/Hardware:** The naive modulus hash creates an uneven distribution of collision buckets for physically contiguous pages. Replace this with a hardware-accelerated CRC32 hash (e.g., `crc32` instruction on x86_64 and ARM64, `crc32c` on RISC-V) for rapid $O(1)$ and evenly distributed page map lookups.

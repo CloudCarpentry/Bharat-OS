@@ -27,7 +27,7 @@ These flags will be passed to the C preprocessor via `bharat_config.h` (e.g., `#
 
 1.  **Granularity:** This allows fine-grained control over the kernel's memory subsystem. We can build an `EDGE` profile that has `BHARAT_ENABLE_MMU=ON` and `BHARAT_ENABLE_IOMMU=ON`, or an `EDGE` profile that has `BHARAT_ENABLE_MPU=ON` and `BHARAT_ENABLE_ADVANCED_VM=OFF`.
 2.  **Safety and Isolation:** Even small edge devices may require an IOMMU for safety isolation (e.g., in automotive or medical profiles). Decoupling memory features from the device profile enables this flexibility without rewriting the profile logic.
-3.  **Build System Simplicity:** The `kernel/CMakeLists.txt` file will simply check these boolean capability flags to determine which libraries and source files to include, rather than maintaining complex logic spanning architecture, board, and profile.
+3.  **Build System Simplicity:** The `core/kernel/CMakeLists.txt` file will simply check these boolean capability flags to determine which libraries and source files to include, rather than maintaining complex logic spanning architecture, board, and profile.
 
 ## Consequences
 

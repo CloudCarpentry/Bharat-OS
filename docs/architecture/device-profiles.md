@@ -101,57 +101,57 @@ The following 8 tasks form the core engineering plan to realize the Nano/Edge/Fu
 * **Goal**: Replace `#ifdef` scatter with a structured profile descriptor.
 * **High-Level Task**: Define `kernel_profile_t` and enums (`PROFILE_EDGE_MIN`, etc.). Update the build system to generate a specific profile header.
 * **Low-Level Code Map**:
-  * Modify `kernel/include/profile/profile.h` to define the new profile enums instead of relying on legacy `KernelExecutionProfile`.
-  * Add the profile bounds structure (max cores, capability table size, trace level, etc.) to a new or existing header, e.g., `kernel/include/profile/kernel_profile.h`.
-  * Update `kernel/src/kernel_boot.c` to validate the loaded profile object early in `boot_common_early()`.
+  * Modify `core/kernel/include/profile/profile.h` to define the new profile enums instead of relying on legacy `KernelExecutionProfile`.
+  * Add the profile bounds structure (max cores, capability table size, trace level, etc.) to a new or existing header, e.g., `core/kernel/include/profile/kernel_profile.h`.
+  * Update `core/kernel/src/kernel_boot.c` to validate the loaded profile object early in `boot_common_early()`.
 
 ### 2. Add subsystem registry with profile filtering
 * **Goal**: Enable optional subsystems to self-register and be conditionally dropped based on the active profile.
 * **High-Level Task**: Create a `subsystem_registry_t` mechanism. Let subsystems define their init level, mask, and dependencies.
 * **Low-Level Code Map**:
-  * Update `kernel/include/subsystem_profile.h` to introduce `subsystem_registry_t` with macro-based self-registration (similar to module init or linker-set arrays).
-  * Refactor `bharat_subsystems_init()` in `kernel/src/kernel_boot.c` or a dedicated registry implementation file to iterate over the registry and only initialize subsystems that match the active profile mask.
+  * Update `core/kernel/include/subsystem_profile.h` to introduce `subsystem_registry_t` with macro-based self-registration (similar to module init or linker-set arrays).
+  * Refactor `bharat_subsystems_init()` in `core/kernel/src/kernel_boot.c` or a dedicated registry implementation file to iterate over the registry and only initialize subsystems that match the active profile mask.
 
 ### 3. Split MM into minimal core and advanced VM module
 * **Goal**: Keep only fixed page allocation, minimal address space abstraction, map/unmap/protect, and fault basics in the core. Move large page sophistication, migration, complex reclaim, and debug-heavy walkers to advanced VM.
 * **High-Level Task**: Refactor the `mm` subsystem.
 * **Low-Level Code Map**:
-  * `kernel/src/mm/pmm/pmm.c` and `kernel/include/mm/pmm.h`: Audit and separate core allocations from NUMA/migration logic.
-  * Move advanced features out of `kernel.elf`'s core link list for `Nano` builds. Ensure the build system (`kernel/CMakeLists.txt`) can conditionally exclude `bharat_mm_vmm` features based on the profile.
+  * `core/kernel/src/mm/pmm/pmm.c` and `core/kernel/include/mm/pmm.h`: Audit and separate core allocations from NUMA/migration logic.
+  * Move advanced features out of `kernel.elf`'s core link list for `Nano` builds. Ensure the build system (`core/kernel/CMakeLists.txt`) can conditionally exclude `bharat_mm_vmm` features based on the profile.
 
 ### 4. Add allocation class tags
 * **Goal**: Support swapping allocator backends per profile without touching callers.
 * **High-Level Task**: Introduce `MEM_NORMAL`, `MEM_RT`, `MEM_DMA`, `MEM_SECURE`, `MEM_PACKET` classes.
 * **Low-Level Code Map**:
-  * Add an `alloc_class_t` enum to `kernel/include/mm/pmm.h` or a dedicated `kernel/include/mm/alloc_class.h`.
+  * Add an `alloc_class_t` enum to `core/kernel/include/mm/pmm.h` or a dedicated `core/kernel/include/mm/alloc_class.h`.
   * Update `pmm_alloc_pages()` or wrapper macros to accept the allocation class instead of relying purely on legacy zones (`PMM_ZONE_NORMAL`, etc.).
 
 ### 5. Convert core kernel objects to bounded pools for compact profiles
 * **Goal**: Eliminate unbounded linked-list growth in hot paths and hidden heap dependencies.
 * **High-Level Task**: Implement static object pools for threads, endpoints, capabilities, timers, and IRQ descriptors when a compact profile is selected.
 * **Low-Level Code Map**:
-  * Update `kernel/include/sched/sched.h` and `kernel/src/sched/` to use array-based bounded thread pools instead of heap allocations when `#if PROFILE_IS_COMPACT`.
-  * Update `kernel/include/ipc/` and capability management (`kernel/src/cap/`) to pre-allocate slots based on the bounds defined in the active `kernel_profile_t`.
+  * Update `core/kernel/include/sched/sched.h` and `core/kernel/src/sched/` to use array-based bounded thread pools instead of heap allocations when `#if PROFILE_IS_COMPACT`.
+  * Update `core/kernel/include/ipc/` and capability management (`core/kernel/src/cap/`) to pre-allocate slots based on the bounds defined in the active `kernel_profile_t`.
 
 ### 6. Add fault domains + restart metadata
 * **Goal**: Support safe restart of device managers or network managers without rebooting the whole system.
 * **High-Level Task**: Add fault domains, restart policies, safe-mode markers, and fault reason codes to process/service control blocks.
 * **Low-Level Code Map**:
-  * Define `fault_domain_t` and `restart_policy_t` in `kernel/include/kernel/kernel_safety.h` or `kernel/include/sched/fault_domain.h`.
-  * Augment the scheduler process descriptor (`bh_process_t` or equivalent in `kernel/src/sched/`) to track these metadata fields.
-  * Update the fault handler (`kernel/src/trap/` and `kernel/src/mm/vm/fault/fault.c`) to query the fault domain and trigger partial restarts via IPC instead of global panics.
+  * Define `fault_domain_t` and `restart_policy_t` in `core/kernel/include/core/kernel/kernel_safety.h` or `core/kernel/include/sched/fault_domain.h`.
+  * Augment the scheduler process descriptor (`bh_process_t` or equivalent in `core/kernel/src/sched/`) to track these metadata fields.
+  * Update the fault handler (`core/kernel/src/trap/` and `core/kernel/src/mm/vm/fault/fault.c`) to query the fault domain and trigger partial restarts via IPC instead of global panics.
 
 ### 7. Standardize IPC/uRPC endpoint descriptor and message classes
 * **Goal**: Standardize IPC classes to prevent bloat and maintain a compact endpoint descriptor.
 * **High-Level Task**: Define explicit standard classes: control, dataplane, telemetry, safety, storage, power. Keep one compact endpoint structure.
 * **Low-Level Code Map**:
-  * Update `kernel/include/ipc/ipc_endpoint.h` and `kernel/include/urpc/` message envelopes to include an explicit `msg_class` enum.
-  * Refactor existing IPC paths to validate against these classes. Clean up any ad-hoc or duplicated messaging structures across `services/`.
+  * Update `core/kernel/include/ipc/ipc_endpoint.h` and `core/kernel/include/urpc/` message envelopes to include an explicit `msg_class` enum.
+  * Refactor existing IPC paths to validate against these classes. Clean up any ad-hoc or duplicated messaging structures across `core/services/`.
 
 ### 8. Introduce class-based device registration and move policy to services
 * **Goal**: The kernel should only know device class, IRQ binding, MMIO resource, DMA constraints, and power state hooks. All policy (routing, thermal, update, storage mounts) moves to user space.
 * **High-Level Task**: Standardize the device framework around generic classes.
 * **Low-Level Code Map**:
-  * Enhance `kernel/include/device.h`. Ensure `device_driver_t` and `device_desc_t` do not contain subsystem-specific operational policy.
-  * Sweep `kernel/src/device/` (or related board files) to ensure no routing or thermal policy is hardcoded.
-  * Enforce that actual drivers/policy live in `services/core/`, `services/system/`, `services/device/`, etc. (e.g., thermal throttling belongs in `services/device/thermal_mgr`).
+  * Enhance `core/kernel/include/device.h`. Ensure `device_driver_t` and `device_desc_t` do not contain subsystem-specific operational policy.
+  * Sweep `core/kernel/src/device/` (or related board files) to ensure no routing or thermal policy is hardcoded.
+  * Enforce that actual core/drivers/policy live in `core/services/core/`, `core/services/system/`, `core/services/device/`, etc. (e.g., thermal throttling belongs in `core/services/device/thermal_mgr`).

@@ -1,4 +1,4 @@
-# Unified Policy UAPI Contracts (uapi/policy)
+# Unified Policy UAPI Contracts (interface/uapi/policy)
 
 ## Scope
 
@@ -12,11 +12,11 @@ Layer ownership remains aligned with Bharat-OS principles:
 
 ## New UAPI headers
 
-- `include/bharat/uapi/policy/contract.h`
+- `include/bharat/interface/uapi/policy/contract.h`
   - policy opcodes for boot snapshot resolution, runtime updates, and SLO gate workflows
   - snapshot schema capturing profile/hardware/tier/subsystem state
   - first-class SLO domains and enforcement action vocabulary
-- `include/bharat/uapi/policy/status.h`
+- `include/bharat/interface/uapi/policy/status.h`
   - policy-level status aliases and policy-specific failures (profile mismatch, unsupported tier, SLO gate failure)
 
 ## Contract model

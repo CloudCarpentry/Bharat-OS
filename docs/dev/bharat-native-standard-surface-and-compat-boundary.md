@@ -35,7 +35,7 @@ Low-level C/runtime support that remains intentionally boring and predictable:
 
 ### 2.2 Bharat system base surface (native)
 
-First-class Bharat contracts exposed in `uapi/` + native SDK layers:
+First-class Bharat contracts exposed in `interface/uapi/` + native SDK layers:
 
 - object handles
 - capabilities and rights
@@ -88,7 +88,7 @@ Stacks own domain composition (e.g., storage/network/ui stacks) without redefini
 
 ### 3.4 UAPI boundary (external contract)
 
-`include/bharat/uapi/` is the explicit external contract boundary.
+`include/bharat/interface/uapi/` is the explicit external contract boundary.
 Any layout-visible type or stable constant crossing protection/domain boundaries must be defined there.
 
 ---
@@ -147,9 +147,9 @@ Scope: foreign semantic surfaces that should never define native identity.
 Representative paths:
 
 - `bharat/compat/posix/*`
-- `sdk/compat/linux/*`
-- `sdk/compat/android/*`
-- `personalities/*`
+- `interface/sdk/compat/linux/*`
+- `interface/sdk/compat/android/*`
+- `core/personalities/*`
 
 ---
 
@@ -243,7 +243,7 @@ When adding any new public header:
 1. classify as BH Base / BH Core / BH Services / BH Compat
 2. justify placement in the PR description
 3. state whether the header is ABI-visible
-4. if ABI-visible, define types in `include/bharat/uapi/`
+4. if ABI-visible, define types in `include/bharat/interface/uapi/`
 5. add compatibility notes if mirroring POSIX/Linux behavior
 
 Reject PRs that add Unix-assumption APIs directly into native core without explicit architecture approval.

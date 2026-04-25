@@ -26,7 +26,7 @@ Or conceptually:
 
 **Definition:** Stable, versioned, language-agnostic data contracts shared across the kernel, user-space services, and external consumers.
 
-**Scope:** The `uapi/` directory.
+**Scope:** The `interface/uapi/` directory.
 
 **Must Include:**
 * C structs defining exact memory layout.
@@ -43,7 +43,7 @@ Or conceptually:
 
 **Definition:** Service interface contracts that define *how components interact*, not *what the internal data structures look like*.
 
-**Scope:** The `interface/idl/` directory (legacy alias: `idl/` during migration).
+**Scope:** The `interface/idl/` directory (legacy alias: `interface/idl/` during migration).
 
 **Must Include:**
 * RPC methods (e.g., `Subscribe`, `Publish`, `ReadSnapshot`).
@@ -73,11 +73,11 @@ Or conceptually:
 
 ## Folder Placement Rules
 
-* **`uapi/`**: Contains stable shared contracts (e.g., `uapi/bharat/system/telemetry.h`).
+* **`interface/uapi/`**: Contains stable shared contracts (e.g., `interface/uapi/bharat/system/telemetry.h`).
 * **`interface/idl/`**: Contains service interface definitions (e.g., `interface/idl/telemetry_v1.bidl`).
 * **`lib/ipc/` or `lib/urpc/`**: Implements transport mechanisms.
-* **`services/`**: Contains service implementations that provide or consume IDL interfaces.
-* **`kernel/`**: Emits or consumes UAPI types directly and leverages IPC, but typically does not participate in IDL-level RPC policies.
+* **`core/services/`**: Contains service implementations that provide or consume IDL interfaces.
+* **`core/kernel/`**: Emits or consumes UAPI types directly and leverages IPC, but typically does not participate in IDL-level RPC policies.
 
 ## DOs and DON'Ts
 
@@ -97,7 +97,7 @@ Or conceptually:
 
 ### Example 1: Telemetry Event
 
-**UAPI (`uapi/bharat/system/telemetry.h`):**
+**UAPI (`interface/uapi/bharat/system/telemetry.h`):**
 ```c
 typedef struct {
     uint64_t timestamp;
@@ -118,7 +118,7 @@ rpc GetEventSnapshot(GetEventSnapshotReq) -> GetEventSnapshotResp
 
 ### Example 2: Telemetry Counter
 
-**UAPI (`uapi/bharat/system/telemetry.h`):**
+**UAPI (`interface/uapi/bharat/system/telemetry.h`):**
 ```c
 typedef struct {
     uint32_t counter_id;
