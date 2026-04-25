@@ -2,9 +2,9 @@
 #define BHARAT_CONFIG_H
 
 /* Architecture Family */
-/* #undef BHARAT_ARCH_X86 */
+#define BHARAT_ARCH_X86 1
 /* #undef BHARAT_ARCH_ARM */
-#define BHARAT_ARCH_RISCV 1
+/* #undef BHARAT_ARCH_RISCV */
 
 /* Architecture Bitness */
 /* #undef BHARAT_ARCH_32BIT */
@@ -37,8 +37,8 @@
 /* #undef BHARAT_IRQ_DISPATCH_RT */
 
 /* Personality Profile */
-/* #undef BHARAT_PERSONALITY_NATIVE */
-#define BHARAT_PERSONALITY_LINUX 1
+#define BHARAT_PERSONALITY_NATIVE 1
+/* #undef BHARAT_PERSONALITY_LINUX */
 /* #undef BHARAT_PERSONALITY_WINDOWS */
 /* #undef BHARAT_PERSONALITY_MAC */
 

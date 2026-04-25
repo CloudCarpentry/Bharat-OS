@@ -63,8 +63,17 @@ int fsd_open_file(const char* path, int flags, capability_t* caller_cap, int* ou
     if (flags & VFS_OPEN_READ) requested_rights |= 1;
     if (flags & VFS_OPEN_WRITE) requested_rights |= 2;
 
-    if ((caller_cap->rights_mask & requested_rights) != requested_rights && caller_cap->capability_id != 0) return -3;
-    if (caller_cap->target_object_id != node->object_id && caller_cap->capability_id != 0) return -3;
+    /* Enforce deny-by-default on open */
+    if (caller_cap->capability_id != 0) {
+        if ((caller_cap->rights_mask & requested_rights) != requested_rights) return -3;
+        if (caller_cap->target_object_id != node->object_id && caller_cap->target_object_id != VFS_NAMESPACE_OBJECT_ID) return -3;
+    }
+
+    /* Enforce mount-level constraints (e.g. read-only mount) */
+    vfs_mount_t* mnt = node->mnt_context;
+    if (mnt && (mnt->mount_flags & VFS_MOUNT_READONLY) && (flags & VFS_OPEN_WRITE)) {
+        return -6; // EROFS
+    }
 
     while (__atomic_test_and_set(&g_open_files_lock, __ATOMIC_ACQUIRE)) {}
     for (size_t i = 0; i < VFS_MAX_OPEN_FILES; ++i) {

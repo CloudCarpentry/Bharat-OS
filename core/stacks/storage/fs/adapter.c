@@ -9,6 +9,13 @@ int fs_adapter_register(fs_adapter_t* adapter) {
     if (!adapter || !adapter->name) {
         return -1;
     }
+
+    /* Enforce maturity policy: DISABLED or STUB backends cannot be registered as active adapters
+     * in a production-ready foundation. They must fail clearly. */
+    if (adapter->maturity == BH_STORAGE_BACKEND_DISABLED) {
+        return -2;
+    }
+
     if (g_adapter_count >= MAX_ADAPTERS) {
         return -1;
     }

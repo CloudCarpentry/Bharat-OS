@@ -16,6 +16,11 @@ This directory is the **canonical home** for Bharat-OS storage and filesystem ar
 3. Apply sandbox policy constraints.
 4. Use roadmap for planned changes.
 
+## Authoritative source of truth
+
+**The current `developer` branch folder structure is authoritative.**
+Older service/system/filesystem or stacks/storage references in documents are historical/proposed only unless those folders exist in the code. Storage/filesystem implementation currently follows the active repository layout.
+
 ## Consolidation note
 
 Older architecture notes discussed overlapping topics and are now subordinate to this folder for storage/filesystem boundaries:

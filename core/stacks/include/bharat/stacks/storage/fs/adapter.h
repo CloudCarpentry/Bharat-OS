@@ -4,6 +4,17 @@
 #include <stdint.h>
 #include <stddef.h>
 
+/**
+ * @brief Filesystem backend maturity states.
+ */
+typedef enum {
+    BH_STORAGE_BACKEND_DISABLED = 0,
+    BH_STORAGE_BACKEND_STUB,
+    BH_STORAGE_BACKEND_EXPERIMENTAL,
+    BH_STORAGE_BACKEND_BASELINE,
+    BH_STORAGE_BACKEND_PRODUCTION
+} bh_storage_maturity_t;
+
 // Filesystem Adapter Boundary
 typedef struct fs_vnode {
     uint64_t inode_num;
@@ -14,6 +25,7 @@ typedef struct fs_vnode {
 
 typedef struct fs_adapter {
     const char* name;
+    bh_storage_maturity_t maturity;
     int (*mount)(uint32_t device_id, void** out_fs_handle);
     int (*unmount)(void* fs_handle);
     int (*lookup)(void* fs_handle, fs_vnode_t* dir, const char* name, fs_vnode_t** out_vnode);

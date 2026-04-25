@@ -25,9 +25,19 @@ typedef struct vfs_mount {
     // Mount flags (e.g., read-only, no-exec)
     uint32_t mount_flags;
 
+    // Provenance metadata
+    uint32_t origin_id;         // System component or service ID that issued the mount
+    uint64_t mount_time;        // Boot-relative timestamp of mount
+
     // References to next mount in system list or namespace mount graph
     struct vfs_mount* next;
 } vfs_mount_t;
+
+// Production-grade mount flags
+#define VFS_MOUNT_READONLY (1u << 0)
+#define VFS_MOUNT_NOEXEC   (1u << 1)
+#define VFS_MOUNT_NODEV    (1u << 2)
+#define VFS_MOUNT_NOSUID   (1u << 3)
 
 // Capability-checked mount request
 int vfs_mount_fs(const char* target_path, vfs_node_t* fs_root, capability_t* caller_cap);
