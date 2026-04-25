@@ -165,16 +165,24 @@ int main(void) {
     // those boundaries. We verify the failure is TRAP_ERR_INVAL (-22), showing the validation logic
     // successfully catches pointers outside of the simulated valid ranges.
 
+    bharat_sys_thread_create_args_t thread_args = {
+        .process_cap = 0, // Invalid
+        .entry_point = (uint64_t)(uintptr_t)user_entry,
+        .out_tid_ptr = (uint64_t)(uintptr_t)tid_ptr,
+    };
     long rc = syscall_dispatch(SYSCALL_THREAD_CREATE,
-                               (uint64_t)(uintptr_t)user_entry,
-                               (uint64_t)(uintptr_t)tid_ptr,
-                               0,0,0,0);
-    assert(rc == -22 || rc == 0);
+                               (uint64_t)(uintptr_t)&thread_args,
+                               0, 0, 0, 0, 0);
+    assert(rc == -1 || rc == -22); // -1 is EPERM (TRAP_ERR_PERM)
 
+    bharat_sys_thread_create_args_t thread_args2 = {
+        .process_cap = 0,
+        .entry_point = (uint64_t)(uintptr_t)user_entry,
+        .out_tid_ptr = 0x10U, // Invalid user ptr
+    };
     long rc2 = syscall_dispatch(SYSCALL_THREAD_CREATE,
-                            (uint64_t)(uintptr_t)user_entry,
-                            0x10U,
-                            0,0,0,0);
+                            (uint64_t)(uintptr_t)&thread_args2,
+                            0,0,0,0,0);
     assert(rc2 == -22);
 
     uint32_t send_cap = 0;

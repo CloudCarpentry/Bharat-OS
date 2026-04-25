@@ -63,6 +63,48 @@ static int test_cap_policy_semantics(void) {
     return 0;
 }
 
+static int test_cap_thread_process_mediation(void) {
+    capability_table_t* table = cap_table_create();
+    ASSERT_RET(table != NULL, -1);
+
+    uint32_t proc_cap;
+    // Grant process cap with limited rights
+    int ret = cap_table_grant(table, CAP_TYPE_PROCESS, 0x100, CAP_RIGHT_DELEGATE, &proc_cap);
+    ASSERT_RET(ret == 0, -2);
+
+    capability_entry_t entry;
+    // Should fail lookup for PROCESS_MANAGE
+    ret = cap_table_lookup(table, proc_cap, CAP_TYPE_PROCESS, CAP_RIGHT_PROCESS_MANAGE, &entry);
+    ASSERT_RET(ret != 0, -3);
+
+    // Grant proper process cap
+    uint32_t proc_cap_full;
+    ret = cap_table_grant(table, CAP_TYPE_PROCESS, 0x100, CAP_RIGHT_PROCESS_MANAGE, &proc_cap_full);
+    ASSERT_RET(ret == 0, -4);
+    ret = cap_table_lookup(table, proc_cap_full, CAP_TYPE_PROCESS, CAP_RIGHT_PROCESS_MANAGE, &entry);
+    ASSERT_RET(ret == 0, -5);
+
+    // Test THREAD cap
+    uint32_t thread_cap;
+    ret = cap_table_grant(table, CAP_TYPE_THREAD, 0x200, CAP_RIGHT_SCHEDULE, &thread_cap);
+    ASSERT_RET(ret == 0, -6);
+    ret = cap_table_lookup(table, thread_cap, CAP_TYPE_THREAD, CAP_RIGHT_SCHEDULE, &entry);
+    ASSERT_RET(ret == 0, -7);
+    ASSERT_RET(entry.object_ref == 0x200, -8);
+
+    cap_table_destroy(table);
+    return 0;
+}
+
+static int ktest_cap_mediation_run(void) {
+    hal_serial_write("  [TEST] test_cap_thread_process_mediation... ");
+    if (test_cap_thread_process_mediation() != 0) return -1;
+    hal_serial_write("PASSED\n");
+    return 0;
+}
+
+REGISTER_BOOT_SELFTEST("capability_mediation_tests", "capabilities", ktest_cap_mediation_run, BOOT_TEST_STAGE_EARLY, BOOT_TEST_MANDATORY, 0, false)
+
 static int test_cap_basic_grant(void) {
     capability_table_t* table = cap_table_create();
     ASSERT_RET(table != NULL, -1);

@@ -13,6 +13,8 @@ static const cap_rights_mask_t k_cap_valid_rights_accel_telemetry = (CAP_RIGHT_R
 static const cap_rights_mask_t k_cap_valid_rights_accel_admin = (CAP_RIGHT_RESET | CAP_RIGHT_PARTITION | CAP_RIGHT_FW_LOAD | CAP_RIGHT_DELEGATE);
 static const cap_rights_mask_t k_cap_valid_rights_dma_grant = (CAP_RIGHT_DMA_MAP | CAP_RIGHT_MEMORY_UNMAP | CAP_RIGHT_DELEGATE);
 static const cap_rights_mask_t k_cap_valid_rights_dma_domain = (CAP_RIGHT_DELEGATE);
+static const cap_rights_mask_t k_cap_valid_rights_process = (CAP_RIGHT_PROCESS_MANAGE | CAP_RIGHT_FAULT_DOMAIN_MANAGE | CAP_RIGHT_RESOURCE_ALLOC | CAP_RIGHT_DELEGATE);
+static const cap_rights_mask_t k_cap_valid_rights_thread = (CAP_RIGHT_SCHEDULE | CAP_RIGHT_DELEGATE);
 
 // Internal helper: Returns valid mask for capability type, or 0 if type not transferrable
 static cap_rights_mask_t cap_valid_rights_for_type(cap_type_t type) {
@@ -23,7 +25,7 @@ static cap_rights_mask_t cap_valid_rights_for_type(cap_type_t type) {
         return k_cap_valid_rights_endpoint;
     case CAP_TYPE_MEMORY:
     case CAP_TYPE_NET_BUFFER:
-        return k_cap_valid_rights_memory;
+        return k_cap_valid_rights_memory | CAP_RIGHT_VMM_MANAGE;
     case CAP_TYPE_CRYPTO_DEVICE:
         return k_cap_valid_rights_crypto_device;
     case CAP_TYPE_CRYPTO_KEY:
@@ -48,7 +50,11 @@ static cap_rights_mask_t cap_valid_rights_for_type(cap_type_t type) {
     case CAP_TYPE_DMA_DOMAIN:
         return k_cap_valid_rights_dma_domain;
     case CAP_TYPE_SCHED:
+        return k_cap_valid_rights_thread;
+    case CAP_TYPE_THREAD:
+        return k_cap_valid_rights_thread;
     case CAP_TYPE_PROCESS:
+        return k_cap_valid_rights_process;
     case CAP_TYPE_NONE:
     case CAP_TYPE_IMPORTED_PROXY:
     default:

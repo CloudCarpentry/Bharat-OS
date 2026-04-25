@@ -104,8 +104,8 @@ sys_errno_t kstatus_to_sys_errno(kstatus_t st) {
 }
 
 long kstatus_to_sysret(kstatus_t st) {
-    if (st == K_OK) {
-        return 0;
+    if (st >= 0) {
+        return (long)st;
     }
     return -(long)kstatus_to_sys_errno(st);
 }

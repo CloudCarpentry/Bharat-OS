@@ -11,10 +11,14 @@
 
 typedef struct bharat_sys_vmm_map_page_args {
     uint64_t vaddr;
-    uint64_t paddr;
+    uint32_t cap_id;
     uint32_t flags;
-    uint32_t reserved0;
 } bharat_sys_vmm_map_page_args_t;
+
+typedef struct bharat_sys_vmm_unmap_page_args {
+    uint64_t vaddr;
+    uint32_t cap_id;
+} bharat_sys_vmm_unmap_page_args_t;
 
 typedef struct bharat_sys_cap_invoke_args {
     uint64_t cap_id;
@@ -52,6 +56,37 @@ typedef struct bharat_sys_cap_delegate_args {
     uint32_t requested_rights;
     uint64_t out_cap_ptr;
 } bharat_sys_cap_delegate_args_t;
+
+typedef struct bharat_sys_thread_create_args {
+    uint32_t process_cap;
+    uint64_t entry_point;
+    uint64_t out_tid_ptr;
+} bharat_sys_thread_create_args_t;
+
+typedef struct bharat_sys_sched_attr_args {
+    uint32_t thread_cap;
+    uint32_t value;
+} bharat_sys_sched_attr_args_t;
+
+typedef struct bharat_sys_mem_alloc_args {
+    uint32_t resource_cap;
+    uint64_t size;
+    uint32_t mem_class;
+    uint32_t flags;
+    uint64_t out_addr_ptr;
+} bharat_sys_mem_alloc_args_t;
+
+typedef struct bharat_sys_fault_domain_args {
+    uint32_t cap_id;
+    uint64_t attr_ptr;
+    uint64_t out_domain_ptr;
+    uint32_t thread_cap;
+} bharat_sys_fault_domain_args_t;
+
+typedef struct bharat_sys_intent_args {
+    uint32_t thread_cap;
+    uint64_t intent_ptr;
+} bharat_sys_intent_args_t;
 
 #endif /* BHARAT_UAPI_SYSCALL_ARGS_H */
 // Add args structs if needed, but since we are trying to keep it simple, we might just pass args directly if they fit in registers.
