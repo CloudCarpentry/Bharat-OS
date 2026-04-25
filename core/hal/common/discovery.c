@@ -1,6 +1,7 @@
 #include "hal/hal_discovery.h"
 #include <hal/hal_cpu_topology.h>
 #include "arch/arch_cpu_caps.h"
+#include "arch/common/accel_caps_publish.h"
 #include "boot/boot_info.h"
 #include <stddef.h>
 #include <stdbool.h>
@@ -113,104 +114,5 @@ void hal_discovery_publish_cpu_caps(void) {
     accel_set(&sys->accel.usable_any_mask, HAL_ACCEL_FEAT_STRONG_ATOMICS,
               arch_cpu_caps_test(&caps_any->usable, ARCH_CPU_FEAT_COMMON_STRONG_ATOMICS));
 
-#if defined(__x86_64__)
-    accel_set(&sys->accel.raw_all_mask, HAL_ACCEL_FEAT_X86_AVX,
-              arch_cpu_caps_test(&caps_all->raw, ARCH_CPU_FEAT_X86_AVX));
-    accel_set(&sys->accel.raw_any_mask, HAL_ACCEL_FEAT_X86_AVX,
-              arch_cpu_caps_test(&caps_any->raw, ARCH_CPU_FEAT_X86_AVX));
-    accel_set(&sys->accel.usable_all_mask, HAL_ACCEL_FEAT_X86_AVX,
-              arch_cpu_caps_test(&caps_all->usable, ARCH_CPU_FEAT_X86_AVX));
-    accel_set(&sys->accel.usable_any_mask, HAL_ACCEL_FEAT_X86_AVX,
-              arch_cpu_caps_test(&caps_any->usable, ARCH_CPU_FEAT_X86_AVX));
-
-    accel_set(&sys->accel.raw_all_mask, HAL_ACCEL_FEAT_X86_AVX2,
-              arch_cpu_caps_test(&caps_all->raw, ARCH_CPU_FEAT_X86_AVX2));
-    accel_set(&sys->accel.raw_any_mask, HAL_ACCEL_FEAT_X86_AVX2,
-              arch_cpu_caps_test(&caps_any->raw, ARCH_CPU_FEAT_X86_AVX2));
-    accel_set(&sys->accel.usable_all_mask, HAL_ACCEL_FEAT_X86_AVX2,
-              arch_cpu_caps_test(&caps_all->usable, ARCH_CPU_FEAT_X86_AVX2));
-    accel_set(&sys->accel.usable_any_mask, HAL_ACCEL_FEAT_X86_AVX2,
-              arch_cpu_caps_test(&caps_any->usable, ARCH_CPU_FEAT_X86_AVX2));
-
-    accel_set(&sys->accel.raw_all_mask, HAL_ACCEL_FEAT_X86_FMA,
-              arch_cpu_caps_test(&caps_all->raw, ARCH_CPU_FEAT_X86_FMA));
-    accel_set(&sys->accel.raw_any_mask, HAL_ACCEL_FEAT_X86_FMA,
-              arch_cpu_caps_test(&caps_any->raw, ARCH_CPU_FEAT_X86_FMA));
-    accel_set(&sys->accel.usable_all_mask, HAL_ACCEL_FEAT_X86_FMA,
-              arch_cpu_caps_test(&caps_all->usable, ARCH_CPU_FEAT_X86_FMA));
-    accel_set(&sys->accel.usable_any_mask, HAL_ACCEL_FEAT_X86_FMA,
-              arch_cpu_caps_test(&caps_any->usable, ARCH_CPU_FEAT_X86_FMA));
-
-    accel_set(&sys->accel.raw_all_mask, HAL_ACCEL_FEAT_X86_PCLMUL,
-              arch_cpu_caps_test(&caps_all->raw, ARCH_CPU_FEAT_X86_PCLMUL));
-    accel_set(&sys->accel.raw_any_mask, HAL_ACCEL_FEAT_X86_PCLMUL,
-              arch_cpu_caps_test(&caps_any->raw, ARCH_CPU_FEAT_X86_PCLMUL));
-    accel_set(&sys->accel.usable_all_mask, HAL_ACCEL_FEAT_X86_PCLMUL,
-              arch_cpu_caps_test(&caps_all->usable, ARCH_CPU_FEAT_X86_PCLMUL));
-    accel_set(&sys->accel.usable_any_mask, HAL_ACCEL_FEAT_X86_PCLMUL,
-              arch_cpu_caps_test(&caps_any->usable, ARCH_CPU_FEAT_X86_PCLMUL));
-#elif defined(__aarch64__)
-    accel_set(&sys->accel.raw_all_mask, HAL_ACCEL_FEAT_ARM64_SVE,
-              arch_cpu_caps_test(&caps_all->raw, ARCH_CPU_FEAT_ARM64_SVE));
-    accel_set(&sys->accel.raw_any_mask, HAL_ACCEL_FEAT_ARM64_SVE,
-              arch_cpu_caps_test(&caps_any->raw, ARCH_CPU_FEAT_ARM64_SVE));
-    accel_set(&sys->accel.usable_all_mask, HAL_ACCEL_FEAT_ARM64_SVE,
-              arch_cpu_caps_test(&caps_all->usable, ARCH_CPU_FEAT_ARM64_SVE));
-    accel_set(&sys->accel.usable_any_mask, HAL_ACCEL_FEAT_ARM64_SVE,
-              arch_cpu_caps_test(&caps_any->usable, ARCH_CPU_FEAT_ARM64_SVE));
-
-    accel_set(&sys->accel.raw_all_mask, HAL_ACCEL_FEAT_ARM64_SVE2,
-              arch_cpu_caps_test(&caps_all->raw, ARCH_CPU_FEAT_ARM64_SVE2));
-    accel_set(&sys->accel.raw_any_mask, HAL_ACCEL_FEAT_ARM64_SVE2,
-              arch_cpu_caps_test(&caps_any->raw, ARCH_CPU_FEAT_ARM64_SVE2));
-    accel_set(&sys->accel.usable_all_mask, HAL_ACCEL_FEAT_ARM64_SVE2,
-              arch_cpu_caps_test(&caps_all->usable, ARCH_CPU_FEAT_ARM64_SVE2));
-    accel_set(&sys->accel.usable_any_mask, HAL_ACCEL_FEAT_ARM64_SVE2,
-              arch_cpu_caps_test(&caps_any->usable, ARCH_CPU_FEAT_ARM64_SVE2));
-#elif defined(__riscv)
-    accel_set(&sys->accel.raw_all_mask, HAL_ACCEL_FEAT_RISCV_V,
-              arch_cpu_caps_test(&caps_all->raw, ARCH_CPU_FEAT_RISCV_V));
-    accel_set(&sys->accel.raw_any_mask, HAL_ACCEL_FEAT_RISCV_V,
-              arch_cpu_caps_test(&caps_any->raw, ARCH_CPU_FEAT_RISCV_V));
-    accel_set(&sys->accel.usable_all_mask, HAL_ACCEL_FEAT_RISCV_V,
-              arch_cpu_caps_test(&caps_all->usable, ARCH_CPU_FEAT_RISCV_V));
-    accel_set(&sys->accel.usable_any_mask, HAL_ACCEL_FEAT_RISCV_V,
-              arch_cpu_caps_test(&caps_any->usable, ARCH_CPU_FEAT_RISCV_V));
-
-    accel_set(&sys->accel.raw_all_mask, HAL_ACCEL_FEAT_RISCV_ZBA,
-              arch_cpu_caps_test(&caps_all->raw, ARCH_CPU_FEAT_RISCV_ZBA));
-    accel_set(&sys->accel.raw_any_mask, HAL_ACCEL_FEAT_RISCV_ZBA,
-              arch_cpu_caps_test(&caps_any->raw, ARCH_CPU_FEAT_RISCV_ZBA));
-    accel_set(&sys->accel.usable_all_mask, HAL_ACCEL_FEAT_RISCV_ZBA,
-              arch_cpu_caps_test(&caps_all->usable, ARCH_CPU_FEAT_RISCV_ZBA));
-    accel_set(&sys->accel.usable_any_mask, HAL_ACCEL_FEAT_RISCV_ZBA,
-              arch_cpu_caps_test(&caps_any->usable, ARCH_CPU_FEAT_RISCV_ZBA));
-
-    accel_set(&sys->accel.raw_all_mask, HAL_ACCEL_FEAT_RISCV_ZBB,
-              arch_cpu_caps_test(&caps_all->raw, ARCH_CPU_FEAT_RISCV_ZBB));
-    accel_set(&sys->accel.raw_any_mask, HAL_ACCEL_FEAT_RISCV_ZBB,
-              arch_cpu_caps_test(&caps_any->raw, ARCH_CPU_FEAT_RISCV_ZBB));
-    accel_set(&sys->accel.usable_all_mask, HAL_ACCEL_FEAT_RISCV_ZBB,
-              arch_cpu_caps_test(&caps_all->usable, ARCH_CPU_FEAT_RISCV_ZBB));
-    accel_set(&sys->accel.usable_any_mask, HAL_ACCEL_FEAT_RISCV_ZBB,
-              arch_cpu_caps_test(&caps_any->usable, ARCH_CPU_FEAT_RISCV_ZBB));
-
-    accel_set(&sys->accel.raw_all_mask, HAL_ACCEL_FEAT_RISCV_ZBC,
-              arch_cpu_caps_test(&caps_all->raw, ARCH_CPU_FEAT_RISCV_ZBC));
-    accel_set(&sys->accel.raw_any_mask, HAL_ACCEL_FEAT_RISCV_ZBC,
-              arch_cpu_caps_test(&caps_any->raw, ARCH_CPU_FEAT_RISCV_ZBC));
-    accel_set(&sys->accel.usable_all_mask, HAL_ACCEL_FEAT_RISCV_ZBC,
-              arch_cpu_caps_test(&caps_all->usable, ARCH_CPU_FEAT_RISCV_ZBC));
-    accel_set(&sys->accel.usable_any_mask, HAL_ACCEL_FEAT_RISCV_ZBC,
-              arch_cpu_caps_test(&caps_any->usable, ARCH_CPU_FEAT_RISCV_ZBC));
-
-    accel_set(&sys->accel.raw_all_mask, HAL_ACCEL_FEAT_RISCV_ZBS,
-              arch_cpu_caps_test(&caps_all->raw, ARCH_CPU_FEAT_RISCV_ZBS));
-    accel_set(&sys->accel.raw_any_mask, HAL_ACCEL_FEAT_RISCV_ZBS,
-              arch_cpu_caps_test(&caps_any->raw, ARCH_CPU_FEAT_RISCV_ZBS));
-    accel_set(&sys->accel.usable_all_mask, HAL_ACCEL_FEAT_RISCV_ZBS,
-              arch_cpu_caps_test(&caps_all->usable, ARCH_CPU_FEAT_RISCV_ZBS));
-    accel_set(&sys->accel.usable_any_mask, HAL_ACCEL_FEAT_RISCV_ZBS,
-              arch_cpu_caps_test(&caps_any->usable, ARCH_CPU_FEAT_RISCV_ZBS));
-#endif
+    arch_accel_caps_publish_target(&sys->accel, caps_all, caps_any);
 }

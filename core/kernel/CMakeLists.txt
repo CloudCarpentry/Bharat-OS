@@ -416,6 +416,7 @@ set(KERNEL_SRCS
     ${ARCH_CPU_CAPS_SRC}
     # arch/common source files (fixed string.h dependency)
     ${BHARAT_ARCH_ROOT}/common/cpu_caps_state.c
+    ${BHARAT_ARCH_ROOT}/common/accel_caps_publish.c
     $<$<STREQUAL:${ARCH},x86_64>:${BHARAT_ARCH_ROOT}/x86/x86_64/arch_caps.c>
     $<$<STREQUAL:${ARCH},x86_64>:${BHARAT_ARCH_ROOT}/x86/x86_64/arch_console.c>
     $<$<STREQUAL:${ARCH},arm32>:${BHARAT_ARCH_ROOT}/arm/arm32/arch_console.c>
