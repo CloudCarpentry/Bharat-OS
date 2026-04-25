@@ -184,7 +184,7 @@ if (EXISTS "${CMAKE_SOURCE_DIR}/personalities/compat/linux/linux_compat.c")
     add_test(NAME test_tier_a_integration COMMAND test_tier_a_integration)
 endif()
 
-add_executable(test_riscv_shakti_bsp test_riscv_shakti_bsp.c ../hal/riscv/shakti_bsp.c ../hal/common/fdt_parser.c)
+add_executable(test_riscv_shakti_bsp test_riscv_shakti_bsp.c ../arch/hal/riscv/shakti_bsp.c ../hal/common/fdt_parser.c)
 target_include_directories(test_riscv_shakti_bsp PRIVATE ../kernel/include ../include ../boot/include)
 add_test(NAME test_riscv_shakti_bsp COMMAND test_riscv_shakti_bsp)
 
