@@ -648,7 +648,7 @@ hal_tlb_ops_t x86_hal_tlb_ops = {
 };
 
 void x86_pt_caps_init(void) {
-    g_x86_pcid_supported = arch_cpu_has(ARCH_CPU_FEAT_X86_PCID);
+    g_x86_pcid_supported = arch_cpu_has_system_all(ARCH_CPU_FEAT_X86_PCID);
     if (g_x86_pcid_supported) {
         x86_pt_caps.supports_pcid = true;
         x86_tlb_caps.supports_asid_selective_flush = true;
