@@ -100,6 +100,87 @@ The shell and console are considered aligned only when:
 - `CONFIG_SHELL_SCRIPT`
 - `CONFIG_SHELL_COMPAT_POSIX` (deferred)
 
+## Production build profiles (shell-focused)
+
+The shell service is compiled under `core/services/system/shell/` and currently defaults to:
+
+- `CONFIG_SHELL_ADMIN=ON`
+- `CONFIG_SHELL_RECOVERY=ON`
+- `CONFIG_SHELL_MINI=OFF`
+- `CONFIG_SHELL_REMOTE=OFF`
+- `CONFIG_SHELL_SCRIPT=OFF`
+- `CONFIG_SHELL_COMPAT_POSIX=OFF`
+
+For production-grade shell rollout, define explicit build variants rather than relying on ad-hoc local toggles.
+
+### Recommended CMake variants
+
+```bash
+# 1) Recovery-first mini shell (small footprint)
+cmake --preset=x86_64-dev \
+  -DCONFIG_SHELL_MINI=ON \
+  -DCONFIG_SHELL_ADMIN=OFF \
+  -DCONFIG_SHELL_RECOVERY=ON \
+  -DCONFIG_SHELL_REMOTE=OFF \
+  -DCONFIG_SHELL_SCRIPT=OFF
+
+# 2) Operator/admin shell (default operational profile)
+cmake --preset=x86_64-dev \
+  -DCONFIG_SHELL_MINI=OFF \
+  -DCONFIG_SHELL_ADMIN=ON \
+  -DCONFIG_SHELL_RECOVERY=ON \
+  -DCONFIG_SHELL_REMOTE=OFF \
+  -DCONFIG_SHELL_SCRIPT=OFF
+
+# 3) Extended diagnostics shell (lab only, not fleet default)
+cmake --preset=x86_64-dev \
+  -DCONFIG_SHELL_MINI=OFF \
+  -DCONFIG_SHELL_ADMIN=ON \
+  -DCONFIG_SHELL_RECOVERY=ON \
+  -DCONFIG_SHELL_REMOTE=ON \
+  -DCONFIG_SHELL_SCRIPT=ON
+```
+
+`CONFIG_SHELL_COMPAT_POSIX` remains deferred and must not be used as a blocker for core system shell production readiness.
+
+## QEMU validation builds and run flow
+
+To validate shell + console behavior on emulator targets, use the delivery target specs and the unified build runner:
+
+```bash
+# x86_64 baseline
+python3 tools/build.py all --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml
+
+# arm64 baseline
+python3 tools/build.py all --target-yaml delivery/targets/qemu/arm64_desktop_headless.yaml
+
+# riscv64 baseline
+python3 tools/build.py all --target-yaml delivery/targets/qemu/riscv64_desktop_headless.yaml
+```
+
+If `all` is too slow for iteration, split the stages:
+
+```bash
+python3 tools/build.py build --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml
+python3 tools/build.py package --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml
+python3 tools/build.py run --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml
+```
+
+## Interactive shell acceptance criteria (QEMU)
+
+A QEMU run is considered shell-ready only when all checks pass:
+
+1. Boot reaches stable serial console output in `-nographic` mode.
+2. Shell session can receive typed input and return output over console stream.
+3. Read-only commands succeed (`help`, `version`, `status`, `uptime`).
+4. One privileged command path is validated in both states:
+   - denied path in restricted mode (expected),
+   - allowed path with required capability in permitted mode.
+5. Structured output (`mode kv`) emits machine-parsable response contract.
+6. Negative-path checks: malformed command, unknown command, backend unavailable.
+
+Until full shell↔console IPC is landed, keep these as mandatory milestone gates with explicit “expected gap” notes in release evidence.
+
 ## Near-term roadmap
 
 ### Phase 1 — Integration completion
