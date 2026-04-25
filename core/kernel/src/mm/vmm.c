@@ -67,8 +67,14 @@ static void ensure_kernel_space_ready(void) {
 }
 
 #include "mm/prot_domain.h"
+#include "mm/mem_validator.h"
 
 int vmm_init(void) {
+    // Perform memory model validation before initializing VMM structures
+    if (mm_validate_model() != K_OK) {
+        return -1;
+    }
+
     // CRITICAL: Capture bootstrap CR3 before any CR3 switches
     // This is the hardware root with complete identity + high-half mappings
     if (!bootstrap_root_pt && active_mem_protect && active_mem_protect->cpu_ops.get_root) {
@@ -145,6 +151,26 @@ int vmm_is_kernel_space_ready(void) {
 
 int mm_vmm_map_page(address_space_t* as, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
     if (!as) return -1;
+
+    mem_model_t model = mm_get_validated_model();
+    hal_mem_caps_t caps;
+    hal_mem_get_caps(&caps);
+
+    /*
+     * Policy Guard: Reject arbitrary mapping on restricted models.
+     */
+    if (model == MEM_MODEL_MPU) {
+        // MPU-only targets do not support arbitrary sparse page mapping.
+        // They must use region-based allocation.
+        return K_ERR_UNSUPPORTED;
+    }
+
+    if (model == MEM_MODEL_MMU_LITE) {
+        // MMU-lite might reject certain flags (e.g., User access if not supported)
+        if ((flags & PAGE_USER) && !caps.supports_user_mode) {
+            return K_ERR_PROFILE_RESTRICTED;
+        }
+    }
 
     // Use the unified MPA HAL abstraction instead of the old MMU ops or prot_domain
     if (!active_mem_protect || !active_mem_protect->cpu_ops.map_page) return -1;

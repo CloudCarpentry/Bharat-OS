@@ -378,6 +378,7 @@ set(KERNEL_SRCS
     ${BOOT_SRC}
     src/mm/physmap.c
     src/mm/mem_model.c
+    src/mm/mem_validator.c
     src/mm/footprint.c
     src/mm/prot_domain.c
     ${BHARAT_BOOT_ROOT}/common/boot_ui_select.c
@@ -427,19 +428,25 @@ set(KERNEL_SRCS
     ${BHARAT_ARCH_ROOT}/common/accel_caps_publish.c
     $<$<STREQUAL:${ARCH},x86_64>:${BHARAT_ARCH_ROOT}/x86/x86_64/arch_caps.c>
     $<$<STREQUAL:${ARCH},x86_64>:${BHARAT_ARCH_ROOT}/x86/x86_64/arch_console.c>
+    $<$<STREQUAL:${ARCH},x86_64>:${BHARAT_ARCH_ROOT}/x86/x86_64/hal_mmu.c>
     $<$<STREQUAL:${ARCH},arm32>:${BHARAT_ARCH_ROOT}/arm/arm32/arch_console.c>
     $<$<STREQUAL:${ARCH},arm64>:${BHARAT_ARCH_ROOT}/arm/arm64/arch_caps.c>
     $<$<STREQUAL:${ARCH},arm64>:${BHARAT_ARCH_ROOT}/arm/arm64/arch_console.c>
+    $<$<STREQUAL:${ARCH},arm64>:${BHARAT_ARCH_ROOT}/arm/arm64/hal_mmu.c>
     $<$<STREQUAL:${ARCH},riscv64>:${BHARAT_ARCH_ROOT}/riscv/riscv64/arch_caps.c>
     $<$<STREQUAL:${ARCH},riscv64>:${BHARAT_ARCH_ROOT}/riscv/riscv64/arch_console.c>
+    $<$<STREQUAL:${ARCH},riscv64>:${BHARAT_ARCH_ROOT}/riscv/riscv64/hal_mmu.c>
     $<$<STREQUAL:${ARCH},arm32>:${BHARAT_ARCH_ROOT}/arm/arm32/arch_caps.c>
+    $<$<STREQUAL:${ARCH},arm32>:${BHARAT_ARCH_ROOT}/arm/arm32/hal_mmu.c>
     $<$<STREQUAL:${ARCH},riscv32>:${BHARAT_ARCH_ROOT}/riscv/riscv32/arch_caps.c>
+    $<$<STREQUAL:${ARCH},riscv32>:${BHARAT_ARCH_ROOT}/riscv/riscv32/hal_mmu.c>
     ${ARCH_EXT_STATE_SRC}
     ${BHARAT_HAL_ROOT}/hal_mem_backend.c
     ${BHARAT_HAL_ROOT}/common/iommu_adapter.c
     ${BHARAT_HAL_ROOT}/dma_coherency.c
     ${BHARAT_HAL_ROOT}/interrupt_common.c
     ${BHARAT_HAL_ROOT}/timer_common.c
+    ${BHARAT_HAL_ROOT}/hal_mmu_caps.c
     src/atomic64_fallback.c
     src/lib/base/status.c
     src/mm/dma/dma.c
