@@ -451,6 +451,10 @@ static bh_thread_t *sched_create_bootstrap_thread(bh_process_t *parent,
   list_init(&slot->run_node);
   list_init(&slot->wait_node);
 
+  if (kind == SCHED_BOOTSTRAP_IDLE) {
+    slot->thread.flags |= BH_THREAD_FLAG_IDLE;
+  }
+
   if (enqueue != 0U) {
     (void)sched_enqueue(&slot->thread, core);
   }
@@ -551,6 +555,22 @@ bh_thread_t *thread_create_detached(bh_process_t *parent, void (*entry_point)(vo
   slot->thread.preferred_numa_node = 0U;
   slot->thread.bound_core_id = sched_clamp_core(hal_cpu_get_id());
   slot->thread.affinity_mask = SCHED_AFFINITY_ANY;
+
+  // Initialize constraints with sane defaults
+  slot->thread.constraints.cpu_mask = SCHED_AFFINITY_ANY;
+  slot->thread.constraints.flags = 0;
+  slot->thread.constraints.latency_class = 0;
+  slot->thread.constraints.energy_class = 0;
+
+  slot->thread.priority = 1U; // Default priority
+  slot->thread.base_priority = 1U;
+  slot->thread.absolute_deadline_ms = 0; // 0 indicates no absolute deadline set yet
+
+  // RT attributes defaults
+  slot->thread.rt_attr.wcet_ms = 0;
+  slot->thread.rt_attr.period_ms = 0;
+  slot->thread.rt_attr.deadline_ms = 0;
+
   slot->thread.wake_deadline_ms = 0U;
   slot->thread.context_switch_count = 0U;
   slot->creation_core_id = sched_clamp_core(hal_cpu_get_id());
