@@ -2,6 +2,8 @@
 
 #include "shell_string.h"
 
+#include <sys/time.h>
+
 #include "shell_auth.h"
 #include "shell_registry.h"
 
@@ -10,29 +12,48 @@ static shell_response_t mk(shell_status_code_t code, const char* msg, const char
     return r;
 }
 
+static bool tokens_equal(const char* token, const char* command_token, size_t len) {
+    size_t i;
+    if (!token || !command_token) {
+        return false;
+    }
+    for (i = 0; i < len; ++i) {
+        if (token[i] != command_token[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
 static bool command_matches(const char* command, const shell_argv_t* argv) {
-    char buf[32];
     size_t i = 0;
     size_t token_idx = 0;
-    size_t out = 0;
+    size_t token_start = 0;
+    size_t token_len;
 
     if (!command || !argv) {
         return false;
     }
 
-    while (command[i] != '\0' && token_idx < argv->count) {
-        size_t token_len = shell_strlen(argv->tokens[token_idx]);
-        if (out + token_len + 1u >= sizeof(buf)) {
+    while (command[i] != '\0') {
+        if (token_idx >= argv->count) {
             return false;
         }
-        shell_memcpy(&buf[out], argv->tokens[token_idx], token_len);
-        out += token_len;
-
+        token_start = i;
         while (command[i] != '\0' && command[i] != ' ') {
             ++i;
         }
+        token_len = i - token_start;
+
+        if (shell_strlen(argv->tokens[token_idx]) != token_len) {
+            return false;
+        }
+        if (token_len > 0u &&
+            !tokens_equal(argv->tokens[token_idx], &command[token_start], token_len)) {
+            return false;
+        }
+
         if (command[i] == ' ') {
-            buf[out++] = ' ';
             while (command[i] == ' ') {
                 ++i;
             }
@@ -42,8 +63,7 @@ static bool command_matches(const char* command, const shell_argv_t* argv) {
         break;
     }
 
-    buf[out] = '\0';
-    return shell_strcmp(buf, command) == 0;
+    return true;
 }
 
 static size_t command_token_count(const char* command) {
@@ -57,6 +77,16 @@ static size_t command_token_count(const char* command) {
     return count;
 }
 
+static uint64_t monotonic_ms(void) {
+    struct timeval tv;
+
+    if (gettimeofday(&tv, NULL) != 0) {
+        return 0u;
+    }
+
+    return ((uint64_t)tv.tv_sec * 1000u) + ((uint64_t)tv.tv_usec / 1000u);
+}
+
 shell_response_t shell_dispatch(shell_session_t* session,
                                 const shell_backend_api_t* backend,
                                 const shell_argv_t* argv) {
@@ -66,6 +96,8 @@ shell_response_t shell_dispatch(shell_session_t* session,
     size_t i;
     shell_status_code_t access;
     shell_response_t response;
+    uint64_t start_ms;
+    uint64_t end_ms;
 
     if (!session || !argv || argv->count == 0) {
         return mk(SHELL_RC_INVALID_ARG, "invalid input", NULL);
@@ -96,7 +128,19 @@ shell_response_t shell_dispatch(shell_session_t* session,
         return mk(access, "access denied", matched->command);
     }
 
+    start_ms = monotonic_ms();
     response = matched->handler(session, backend, argv);
+    end_ms = monotonic_ms();
+
+    if (matched->timeout_ms > 0u) {
+        if (end_ms > start_ms && (end_ms - start_ms) > matched->timeout_ms) {
+            if (backend && backend->audit_event) {
+                backend->audit_event("timeout", matched->command, SHELL_RC_TIMEOUT);
+            }
+            return mk(SHELL_RC_TIMEOUT, "command timeout", matched->command);
+        }
+    }
+
     shell_session_auth_success(session);
     if (backend && backend->audit_event && response.code != SHELL_RC_OK) {
         backend->audit_event("failed", matched->command, response.code);

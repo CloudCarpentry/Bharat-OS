@@ -2,10 +2,28 @@
 
 #include "shell_string.h"
 
+#include <stdio.h>
+
 #include "shell_dispatch.h"
 #include "shell_output.h"
 #include "shell_parser.h"
 #include "shell_session.h"
+
+#ifndef SHELL_NO_MAIN
+static void trim_line_end(char* line) {
+    size_t len;
+
+    if (!line) {
+        return;
+    }
+
+    len = shell_strlen(line);
+    while (len > 0u && (line[len - 1u] == '\n' || line[len - 1u] == '\r')) {
+        line[len - 1u] = '\0';
+        --len;
+    }
+}
+#endif
 
 shell_status_code_t shell_process_line(shell_session_t* session,
                                        const shell_backend_api_t* backend,
@@ -55,6 +73,24 @@ shell_status_code_t shell_process_line(shell_session_t* session,
     return response.code;
 }
 
+#ifndef SHELL_NO_MAIN
 int main(void) {
+    shell_session_t session;
+    const shell_backend_api_t* backend = shell_default_backend();
+    char line[SHELL_MAX_INPUT_LEN];
+    char out[SHELL_MAX_OUTPUT_LEN];
+
+    shell_session_init(&session,
+                       SHELL_MODE_DEV,
+                       SHELL_CAP_DIAG | SHELL_CAP_REBOOT | SHELL_CAP_SVC_WRITE | SHELL_CAP_FACTORY);
+
+    while (fgets(line, sizeof(line), stdin) != NULL) {
+        trim_line_end(line);
+        (void)shell_process_line(&session, backend, line, out, sizeof(out));
+        puts(out);
+        fflush(stdout);
+    }
+
     return 0;
 }
+#endif
