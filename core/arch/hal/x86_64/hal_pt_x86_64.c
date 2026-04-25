@@ -154,6 +154,14 @@ static void x86_pt_destroy_address_space(phys_addr_t root_pt) {
 static int x86_pt_walk(phys_addr_t root_pt, virt_addr_t vaddr, bool create, uint32_t alloc_flags, page_table_walk_result_t *out_result) {
     if (root_pt == 0U || !out_result) return -1;
 
+    // Canonical address check for 48-bit x86_64:
+    // Bits 48-63 must be a copy of bit 47.
+    // Lower half: 0 to 0x00007FFFFFFFFFFF
+    // Upper half: 0xFFFF800000000000 to 0xFFFFFFFFFFFFFFFF
+    if ((vaddr > 0x00007FFFFFFFFFFFULL) && (vaddr < 0xFFFF800000000000ULL)) {
+        return -3; // Non-canonical address
+    }
+
     virt_addr_t aligned_vaddr = align_down(vaddr);
 
     uint64_t pml4_idx = (aligned_vaddr >> 39) & 0x1FF;
