@@ -9,9 +9,12 @@
 extern const platform_device_profile_t *platform_get_device_profile(void);
 
 void hal_serial_init(void) {
+    *(volatile uint32_t*)0x09000000 = 's';
     const platform_device_profile_t *profile = platform_get_device_profile();
+    *(volatile uint32_t*)0x09000000 = 'm';
     if (profile) {
         uart_device_t *uart = serial_driver_match_boot_console(profile);
+        *(volatile uint32_t*)0x09000000 = 'b';
         if (uart) {
             early_console_bind(uart);
         }
