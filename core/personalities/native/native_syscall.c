@@ -1,6 +1,7 @@
 #include "trap/syscall_context.h"
 #include <bharat/uapi/syscall/nr.h>
 #include <bharat/uapi/capability/rights.h>
+#include "capability.h"
 
 extern long bh_sys_nop(bh_syscall_ctx_t *ctx);
 extern long bh_sys_thread_create(bh_syscall_ctx_t *ctx);
