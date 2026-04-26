@@ -46,7 +46,7 @@
       "preset": "arm64-edge",
       "arch": "arm64",
       "profile": "DESKTOP",
-      "personality": "LINUX",
+      "personality": "NATIVE",
       "board": "virt",
       "display": {
         "enabled": true,
@@ -58,7 +58,7 @@
       "preset": "arm64-edge",
       "arch": "arm64",
       "profile": "DESKTOP",
-      "personality": "LINUX",
+      "personality": "NATIVE",
       "board": "virt",
       "display": {
         "enabled": false,
@@ -452,7 +452,7 @@
       "preset": "arm64-edge",
       "arch": "arm64",
       "profile": "DESKTOP",
-      "personality": "LINUX",
+      "personality": "NATIVE",
       "board": "virt",
       "display": {
         "enabled": false,
@@ -470,7 +470,7 @@
       "preset": "arm64-edge",
       "arch": "arm64",
       "profile": "DESKTOP",
-      "personality": "LINUX",
+      "personality": "NATIVE",
       "board": "virt",
       "display": {
         "enabled": false,
@@ -488,7 +488,7 @@
       "preset": "arm64-edge",
       "arch": "arm64",
       "profile": "DESKTOP",
-      "personality": "LINUX",
+      "personality": "NATIVE",
       "board": "virt",
       "display": {
         "enabled": false,
@@ -734,7 +734,7 @@
       "preset": "arm64-edge",
       "arch": "arm64",
       "profile": "DESKTOP",
-      "personality": "LINUX",
+      "personality": "NATIVE",
       "board": "virt",
       "display": {
         "enabled": false,
@@ -752,7 +752,7 @@
       "preset": "arm64-edge",
       "arch": "arm64",
       "profile": "DESKTOP",
-      "personality": "LINUX",
+      "personality": "NATIVE",
       "board": "virt",
       "display": {
         "enabled": false,
@@ -770,7 +770,7 @@
       "preset": "arm64-edge",
       "arch": "arm64",
       "profile": "DESKTOP",
-      "personality": "LINUX",
+      "personality": "NATIVE",
       "board": "virt",
       "display": {
         "enabled": false,
@@ -986,7 +986,7 @@
       "preset": "arm64-edge",
       "arch": "arm64",
       "profile": "DESKTOP",
-      "personality": "LINUX",
+      "personality": "NATIVE",
       "board": "virt",
       "display": {
         "enabled": false,
