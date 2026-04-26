@@ -83,6 +83,20 @@ Use these labels consistently across status docs and roadmap updates:
 
 ---
 
+## 3) Memory runtime validation details
+
+### Runtime Memory Profile Validation
+Status: **Partial** / M0 baseline
+
+The kernel now has a boot/runtime validation path that checks detected memory capabilities against the selected memory model/profile contract. This does not complete PMM ownership, TLB shootdown, VM lifecycle, DMA/IOMMU, or full memory production hardening.
+
+Implemented features include:
+- `hal_mem_caps_t` normalization into kernel `mem_runtime_caps_t`.
+- `mem_profile_contract_t` derivation from build configuration.
+- `mem_runtime_validate_profile()` implementation with fail-closed rules.
+- Integration into `mm_validate_model()` during early boot.
+
+
 ## 3) Core Subsystem implementation details
 
 ### Capability Validation Framework
