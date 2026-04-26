@@ -41,9 +41,10 @@ sequenceDiagram
     G->>H: handler(ctx)
     H->>K: typed operation / service call
     H-->>G: result
-    G->>A: arch_trap_set_syscall_return()
-    G-->>P: status
-    P-->>T: return to user
+    G-->>P: status (normalized long)
+    P-->>T: return to trap_dispatch_syscall
+    T->>A: arch_trap_set_syscall_return(frame, rc)
+    T-->>U: return to user
 ```
 
 ### B. Component Ownership

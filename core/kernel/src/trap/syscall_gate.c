@@ -11,14 +11,41 @@
 kstatus_t bh_syscall_policy_check(bh_syscall_ctx_t *ctx, const bh_syscall_desc_t *desc) {
     if (!ctx || !desc) return K_ERR_INVALID_ARG;
 
+    kstatus_t status = K_OK;
+
     // 1. Syscall allowed for personality (already checked by table lookup, but for double-check)
+    // No personality fallback allowed: unsupported Linux syscall cannot fall through to native.
+    // This is implicitly enforced by the fact that each personality has its own table
+    // and the gate uses ONLY that table.
 
-    // 2. Syscall allowed for process sandbox/profile
+    // 2. CAP_REQUIRED check: Must have enforceable rights
+    if (desc->flags & BH_SYSCALL_F_CAP_REQUIRED) {
+        if (desc->required_rights == 0) {
+            // FAIL CLOSED: CAP_REQUIRED syscall without specified rights is a descriptor bug
+            status = K_ERR_DENIED;
+        }
+    }
 
-    // 3. CAP_REQUIRED check (Stage 4 will harden)
-    // if (desc->flags & BH_SYSCALL_F_CAP_REQUIRED) { ... }
+    // 3. Fast path constraints
+    if (status == K_OK && (desc->flags & BH_SYSCALL_F_FAST)) {
+        // Fast path syscalls must not block or jump to services
+        if (desc->flags & (BH_SYSCALL_F_BLOCKING | BH_SYSCALL_F_SERVICE_CALL)) {
+            status = K_ERR_INVALID_ARG;
+        }
+        // Fast path syscalls must not perform usercopy unless explicitly whitelisted (none yet)
+        if (status == K_OK && (desc->flags & (BH_SYSCALL_F_USER_READ | BH_SYSCALL_F_USER_WRITE))) {
+            status = K_ERR_INVALID_ARG;
+        }
+    }
 
-    return K_OK;
+    // 4. Syscall allowed for process sandbox/profile
+    // TODO: Implement profile-based filtering (e.g. Tiny profile may disable certain syscall groups)
+
+    if (status != K_OK) {
+        bh_syscall_stats_inc_denied(hal_cpu_get_id());
+    }
+
+    return status;
 }
 
 const bh_personality_syscall_table_t *personality_get_syscall_table(bh_personality_id_t id) {
@@ -48,6 +75,9 @@ const bh_personality_syscall_table_t *personality_get_syscall_table(bh_personali
  * 6. Dispatch to handler
  *
  * Return value is the syscall result (normalized to personality-specific error space).
+ *
+ * CONTRACT: This function MUST NOT call arch_trap_set_syscall_return().
+ * Return register ownership belongs to the top-level trap_dispatch_syscall().
  */
 long bh_syscall_gate(trap_frame_t *frame, const trap_info_t *info) {
     if (!frame || !info) {
@@ -91,22 +121,6 @@ long bh_syscall_gate(trap_frame_t *frame, const trap_info_t *info) {
         return kstatus_to_sysret(K_ERR_INVALID_ARG);
     }
 
-    // Flag validation
-    if (desc->flags & BH_SYSCALL_F_FAST) {
-        // Fast path syscalls must not block or jump to services
-        if (desc->flags & (BH_SYSCALL_F_BLOCKING | BH_SYSCALL_F_SERVICE_CALL)) {
-            return kstatus_to_sysret(K_ERR_INVALID_ARG);
-        }
-        // Fast path syscalls must not perform usercopy (must be explicitly whitelisted if needed later)
-        if (desc->flags & (BH_SYSCALL_F_USER_READ | BH_SYSCALL_F_USER_WRITE)) {
-            return kstatus_to_sysret(K_ERR_INVALID_ARG);
-        }
-    }
-
-    // CAP_REQUIRED must have enforceable rights
-    if ((desc->flags & BH_SYSCALL_F_CAP_REQUIRED) && desc->required_rights == 0) {
-        return kstatus_to_sysret(K_ERR_DENIED);
-    }
 
     ctx.desc = desc;
 

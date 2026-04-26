@@ -14,9 +14,12 @@ kstatus_t mm_user_range_validate_current(uintptr_t ptr, size_t len, uint32_t acc
 
 #if defined(BHARAT_ENABLE_VMA_USERCOPY)
     // Stage 2: Actual VMA/page table validation would go here.
-    // return real_aspace_validate(sched_current_aspace(), ptr, len, access);
-    return K_ERR_UNSUPPORTED; // Not yet implemented
+    // In strict mode (Stage 2 enabled), we fail closed if validation logic is missing.
+
+    // TODO: Implement real_aspace_validate(sched_current_aspace(), ptr, len, access);
+    return K_ERR_UNSUPPORTED;
 #else
+    // Fallback to Stage 1.5 (Numeric check only)
     return K_OK;
 #endif
 }

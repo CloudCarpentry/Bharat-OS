@@ -7,6 +7,9 @@
 /**
  * trap_dispatch_syscall: Entry point from generic trap handler.
  * Routes execution through the thread's personality.
+ *
+ * CONTRACT: This function is the SOLE OWNER of arch_trap_set_syscall_return().
+ * All personality handlers and the common gate must return a normalized long.
  */
 long trap_dispatch_syscall(trap_frame_t *frame, const trap_info_t *info) {
     bh_thread_t *current = sched_current_thread();
