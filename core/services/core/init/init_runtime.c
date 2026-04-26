@@ -1,6 +1,7 @@
 #include "init_runtime.h"
 #include "init_handoff.h"
 #include "init_contract.h"
+#include "init_graph.h"
 #include <bharat/runtime/runtime.h>
 #include <errno.h>
 #include <stdio.h>
@@ -152,10 +153,15 @@ int init_runtime_run(init_boot_context_t *ctx) {
 
     // 1. Filter manifest
     rt.phase = INIT_PHASE_MANIFEST_SELECTED;
+    init_service_desc_t filtered_manifest[INIT_SERVICE_ID_MAX];
+    size_t filtered_count = 0;
+
     for (size_t i = 0; i < g_init_manifest_count; i++) {
-        if (rt.manifest_count >= INIT_SERVICE_ID_MAX) break;
+        if (filtered_count >= INIT_SERVICE_ID_MAX) break;
 
         if (filter_service(&g_init_manifest[i], ctx)) {
+            filtered_manifest[filtered_count] = g_init_manifest[i];
+
             init_service_id_t id = g_init_manifest[i].id;
             rt.service_order[rt.manifest_count] = id;
             rt.services[id].desc = &g_init_manifest[i];
@@ -167,7 +173,16 @@ int init_runtime_run(init_boot_context_t *ctx) {
                 rt.services[id].required_for_boot = true;
             }
             rt.manifest_count++;
+            filtered_count++;
         }
+    }
+
+    init_graph_result_t graph_rc = init_graph_validate(filtered_manifest, filtered_count, ctx);
+    if (graph_rc != INIT_GRAPH_OK) {
+        rt.failure_class = init_graph_failure_to_init_failure(graph_rc);
+        rt.outcome = INIT_BOOT_OUTCOME_SAFE_MODE;
+        ctx->safe_mode_requested = true;
+        goto finish;
     }
 
     rt.phase = INIT_PHASE_GRAPH_VALIDATED;

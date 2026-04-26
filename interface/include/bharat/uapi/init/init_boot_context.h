@@ -37,8 +37,8 @@ typedef enum {
 
 typedef enum {
     INIT_KERNEL_HEALTH_OK = 0,
-    INIT_KERNEL_HEALTH_DEGRADED,
-    INIT_KERNEL_HEALTH_UNSAFE,
+    INIT_KERNEL_HEALTH_DEGRADED = 1,
+    INIT_KERNEL_HEALTH_UNSAFE = 2,
 } init_kernel_health_level_t;
 
 typedef struct {
@@ -71,6 +71,12 @@ typedef struct {
 
     init_kernel_health_summary_t kernel_health;
 } init_boot_context_t;
+
+/**
+ * Validates the boot context.
+ * Checks ABI version and sanity of fields.
+ */
+bool init_boot_context_is_valid(const init_boot_context_t *ctx);
 
 #ifdef __cplusplus
 }

@@ -1,64 +1,30 @@
-# services/init
+# Init Service
 
-## Purpose
-The first trusted user-space bootstrap service, acting strictly as a **bootstrap coordinator**. It launches the minimum control-plane graph, enforces startup order for early boot, applies health gates based on kernel boot status, and handles early boot failure policy (for example safe mode). It is designed to be profile-aware and deterministic.
+## Responsibility
+Temporary bootstrap coordinator.
 
-**Crucially, `init` is NOT a permanent service supervisor, process tree owner, or a Linux-style systemd clone.** After early boot convergence and graph validation, `init` hands off long-lived lifecycle management, fault handling, restart policy, and dependency supervision to `servicemgr` (with `faultmgr` integration). It may then exit or become quiescent depending on profile.
+## Non-responsibility
+- Not a permanent service supervisor.
+- Does not own long-running policy after handoff.
 
-## Control-plane split (authoritative model)
+## Boot context
+Uses `init_boot_context_t` from `interface/include/bharat/uapi/init/init_boot_context.h`.
+Validation is performed via `init_boot_context_is_valid`.
 
-The Bharat-OS control plane is intentionally split into three layers:
+## Profile model
+Selected runtime profile is an enum.
+Manifest service applicability uses profile masks.
 
-1. **`init`**: trusted bootstrap only.
-2. **`servicemgr`**: long-lived lifecycle authority.
-3. **policy manager (`policymgr`, profile-dependent)**: runtime policy decisions based on profile + hardware + policy config.
+## Manifest validation
+Dependency validation runs before `CORE_STARTING` using `init_graph_validate`.
+It checks for:
+- Duplicate service IDs
+- Unknown or filtered dependencies
+- Dependency cycles
+- Absence of CORE services
+- Missing required capabilities for critical services
 
-This prevents policy-heavy orchestration from collapsing into a single permanent init daemon and keeps the kernel/services separation clean.
-
-## Bootstrap lifecycle
-
-### Stage 0: Kernel handoff (mechanism only)
-The kernel performs mechanism-level bring-up and launches the first trusted user-space service.
-
-### Stage 1: `init` bootstrap
-`init` validates boot context and starts the minimum control-plane services:
-- `capmgr`
-- `devmgr`
-- `process_manager`
-- `vm_manager`
-- `servicemgr`
-- optional `policymgr` (profile-specific)
-
-### Stage 2: `servicemgr` takeover
-`servicemgr` becomes lifecycle owner:
-- service start/stop/restart
-- dependency satisfaction
-- restart/backoff tracking
-- watchdog + health contracts
-- boot-phase transitions and degraded-mode handling
-
-### Stage 3: policy-driven runtime
-`policymgr` (when present) selects runtime behavior by profile/hardware policy:
-- allowed service sets
-- scheduler and power posture
-- lazy/dynamic activation posture
-- fault/degradation policy
-
-## Profile guidance
-
-- **Small RT/appliance/wearable:** static manifest, fixed graph, minimal `init`, compact `servicemgr`, optional compile-time policy.
-- **Automotive/robotics/medical:** safety-first boot classes, strict supervision, watchdog/fault-domain integration, degraded-mode guarantees.
-- **Desktop/server/cloud:** dynamic manifests, richer dependency graphs, stronger telemetry and runtime policy.
-
-## Dependencies
-- **May depend on:** `lib/runtime`, `lib/ipc`, `lib/cap`, standard C library headers.
-- **Must not depend on:** other `services/*` (no service-to-service compile-time dependency), `subsys/*`, `ui/*`.
-- **Must not use:** direct kernel-private headers or duplicate kernel self-test logic.
-
-## Planned Public API
-- Subsystem init hooks / normalized boot context contract (`init_boot_context.h`).
-- Structured handoff protocol to `servicemgr`.
-- Machine-readable boot status/failure reporting.
-
-## Status
-Evolving into the capability-aligned bootstrap coordinator phase.
+## Bootstrap-deferred mode
+Kernel may report that the userspace loader is not wired.
+This is explicit degraded/bootstrap-deferred behavior, not a successful user init launch.
+It is indicated by the outcome `INIT_BOOT_OUTCOME_BOOTSTRAP_DEFERRED`.
