@@ -34,10 +34,8 @@ typedef enum {
     SCHED_POLICY_RMS = 4
 } sched_policy_t;
 
-typedef enum {
-    PERSONALITY_NATIVE = 0,
-    PERSONALITY_LINUX = 1
-} personality_type_t;
+#include "trap/syscall_regs.h"
+typedef bh_personality_id_t personality_type_t;
 
 
 #define SCHED_MAX_PRIORITY 31U
@@ -205,6 +203,7 @@ struct bh_thread {
 };
 
 int thread_raise_fault(bh_thread_t *thread, thread_fault_t fault);
+int sched_mark_thread_terminated(bh_thread_t *thread);
 
 struct bh_process {
     uint64_t process_id;

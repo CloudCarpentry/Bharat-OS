@@ -4,6 +4,10 @@ void linux_vfs_init(void);
 #include <stddef.h>
 
 #include "personality/translation_events.h"
+#include "trap/syscall_regs.h"
+#include "trap/syscall_context.h"
+
+extern const bh_personality_syscall_table_t *linux_personality_get_table(void);
 
 static subsys_instance_t* g_linux_instance;
 
@@ -52,6 +56,36 @@ static int test_linux_syscall_sanity(void) {
 
 REGISTER_SUBSYS_TEST("linux", "syscall_translation_sanity", test_linux_syscall_sanity, 1, 1)
 
+// Transitional helper to route legacy calls through the new descriptor-based gate logic
+long linux_syscall_handler(long sysno, long arg1, long arg2, long arg3, long arg4, long arg5, long arg6) {
+    bh_syscall_ctx_t ctx = {0};
+    ctx.personality = BH_PERSONALITY_LINUX;
+    ctx.regs.nr = (uintptr_t)sysno;
+    ctx.regs.arg[0] = (uintptr_t)arg1;
+    ctx.regs.arg[1] = (uintptr_t)arg2;
+    ctx.regs.arg[2] = (uintptr_t)arg3;
+    ctx.regs.arg[3] = (uintptr_t)arg4;
+    ctx.regs.arg[4] = (uintptr_t)arg5;
+    ctx.regs.arg[5] = (uintptr_t)arg6;
+
+    if (!g_linux_instance || !g_linux_instance->is_running) {
+        return -38; // ENOSYS equivalent
+    }
+
+    const bh_personality_syscall_table_t *table = linux_personality_get_table();
+    if (!table || ctx.regs.nr > table->max_syscall_nr) {
+        return -38;
+    }
+
+    const bh_syscall_desc_t *desc = &table->table[ctx.regs.nr];
+    if (!desc || !desc->handler) {
+        return -38;
+    }
+
+    return desc->handler(&ctx);
+}
+
+// Rest of VFS and FD mapping...
 static linux_fd_map_t fd_table[LINUX_MAX_FDS];
 static int next_fd = 3;
 
@@ -74,103 +108,4 @@ void linux_vfs_init(void) {
     linux_map_fd_to_capability(g_linux_instance, 0, 0, LINUX_FD_TYPE_CONSOLE);
     linux_map_fd_to_capability(g_linux_instance, 1, 0, LINUX_FD_TYPE_CONSOLE);
     linux_map_fd_to_capability(g_linux_instance, 2, 0, LINUX_FD_TYPE_CONSOLE);
-}
-
-// Ensure proper console outputs for E2E tests
-void bh_platform_early_console_write_string(const char* str); // Mock declaration
-
-long linux_syscall_handler(long sysno, long arg1, long arg2, long arg3, long arg4, long arg5, long arg6) {
-    (void)arg1;
-    (void)arg2;
-    (void)arg3;
-    (void)arg4;
-    (void)arg5;
-    (void)arg6;
-
-    bh_translation_event_record(BH_TRANSLATION_EVENT_BOUNDARY_ENTER);
-
-    if (!g_linux_instance || !g_linux_instance->is_running) {
-        bh_translation_event_record(BH_TRANSLATION_EVENT_FALLBACK);
-        LINUX_RETURN(-38);
-    }
-
-    switch (sysno) {
-        case 0: // read
-            if (arg1 >= 0 && arg1 < LINUX_MAX_FDS && fd_table[arg1].type != LINUX_FD_TYPE_NONE) {
-                if (fd_table[arg1].type == LINUX_FD_TYPE_CONSOLE) {
-                    bh_translation_event_record(BH_TRANSLATION_EVENT_FALLBACK);
-                    LINUX_RETURN(-38);
-                }
-                bh_translation_event_record(BH_TRANSLATION_EVENT_FALLBACK);
-                LINUX_RETURN(-38);
-            }
-            bh_translation_event_record(BH_TRANSLATION_EVENT_CACHE_MISS);
-            LINUX_RETURN(-9);
-        case 1: // write
-            if (arg1 >= 0 && arg1 < LINUX_MAX_FDS && fd_table[arg1].type != LINUX_FD_TYPE_NONE) {
-                if (fd_table[arg1].type == LINUX_FD_TYPE_CONSOLE) {
-                    // E2E test marker
-                    bh_platform_early_console_write_string("[LINUX] file-I/O smoke pass\n");
-                    LINUX_RETURN(arg3);
-                }
-                bh_translation_event_record(BH_TRANSLATION_EVENT_FALLBACK);
-                LINUX_RETURN(-38);
-            }
-            bh_translation_event_record(BH_TRANSLATION_EVENT_CACHE_MISS);
-            LINUX_RETURN(-9);
-        case 2: // open
-        case 257: { // openat
-            int fd = next_fd++;
-            if (fd >= LINUX_MAX_FDS) {
-                bh_translation_event_record(BH_TRANSLATION_EVENT_FALLBACK);
-                LINUX_RETURN(-24);
-            }
-            linux_map_fd_to_capability(g_linux_instance, fd, 0, LINUX_FD_TYPE_FILE);
-            LINUX_RETURN(fd);
-        }
-        case 3: // close
-            if (arg1 >= 0 && arg1 < LINUX_MAX_FDS && fd_table[arg1].type != LINUX_FD_TYPE_NONE) {
-                fd_table[arg1].ref_count--;
-                if (fd_table[arg1].ref_count <= 0) {
-                    fd_table[arg1].type = LINUX_FD_TYPE_NONE;
-                    fd_table[arg1].linux_fd = -1;
-                    fd_table[arg1].backing_capability = 0;
-                }
-                LINUX_RETURN(0);
-            }
-            bh_translation_event_record(BH_TRANSLATION_EVENT_CACHE_MISS);
-            LINUX_RETURN(-9);
-        case 202: // futex (sync primitive)
-            bh_platform_early_console_write_string("[LINUX] futex sync exercised\n");
-            LINUX_RETURN(0);
-        case 9:
-        case 10:
-        case 11:
-        case 12:
-        case 13:
-        case 14:
-        case 57:
-        case 59:
-        case 63:
-        case 228:
-        case 230:
-            bh_translation_event_record(BH_TRANSLATION_EVENT_FALLBACK);
-            LINUX_RETURN(-38);
-        case 16:
-            if (arg1 >= 0 && arg1 < LINUX_MAX_FDS && fd_table[arg1].type == LINUX_FD_TYPE_CONSOLE) {
-                bh_translation_event_record(BH_TRANSLATION_EVENT_FALLBACK);
-                LINUX_RETURN(-38);
-            }
-            LINUX_RETURN(-25);
-        case 39: // getpid
-        case 186:
-            LINUX_RETURN(1);
-        case 60:
-        case 231:
-            g_linux_instance->is_running = 0;
-            LINUX_RETURN(0);
-        default:
-            bh_translation_event_record(BH_TRANSLATION_EVENT_FALLBACK);
-            LINUX_RETURN(-38);
-    }
 }

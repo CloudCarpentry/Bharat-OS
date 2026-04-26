@@ -24,6 +24,7 @@ extern long bh_sys_fault_domain_attach(bh_syscall_ctx_t *ctx);
 extern long bh_sys_read(bh_syscall_ctx_t *ctx);
 extern long bh_sys_write(bh_syscall_ctx_t *ctx);
 extern long bh_sys_get_subsystem_caps(bh_syscall_ctx_t *ctx);
+extern long bh_sys_thread_exit(bh_syscall_ctx_t *ctx);
 
 static const bh_syscall_desc_t native_syscall_table[] = {
     [SYSCALL_NOP] = { SYSCALL_NOP, "nop", 0, BH_SYSCALL_F_FAST, 0, bh_sys_nop },
@@ -49,6 +50,7 @@ static const bh_syscall_desc_t native_syscall_table[] = {
     [SYSCALL_READ] = { SYSCALL_READ, "read", 3, BH_SYSCALL_F_BLOCKING | BH_SYSCALL_F_USER_WRITE, 0, bh_sys_read },
     [SYSCALL_WRITE] = { SYSCALL_WRITE, "write", 3, BH_SYSCALL_F_BLOCKING | BH_SYSCALL_F_USER_READ, 0, bh_sys_write },
     [SYSCALL_GET_SUBSYSTEM_CAPS] = { SYSCALL_GET_SUBSYSTEM_CAPS, "get_subsystem_caps", 2, BH_SYSCALL_F_USER_WRITE, 0, bh_sys_get_subsystem_caps },
+    [SYSCALL_THREAD_EXIT] = { SYSCALL_THREAD_EXIT, "thread_exit", 1, BH_SYSCALL_F_FAST, 0, bh_sys_thread_exit },
 };
 
 static const bh_personality_syscall_table_t native_personality = {

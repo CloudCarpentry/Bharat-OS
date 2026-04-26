@@ -5,6 +5,8 @@
 #include "capability.h"
 #include "ipc_endpoint.h"
 #include "mm.h"
+#include "hal/hal.h"
+#include "bharat/cpu_local.h"
 #include <bharat/uapi/syscall_args.h>
 
 #define TRAP_SUCCESS 0L
@@ -311,6 +313,26 @@ long bh_sys_fault_domain_attach(bh_syscall_ctx_t *ctx) {
 long bh_sys_read(bh_syscall_ctx_t *ctx) {
     (void)ctx;
     return TRAP_SUCCESS;
+}
+
+long bh_sys_thread_exit(bh_syscall_ctx_t *ctx) {
+    bh_thread_t *current = sched_current_thread();
+    if (current) {
+        // status is in ctx->regs.arg[0]
+        (void)sched_mark_thread_terminated(current);
+
+        // Since we are terminating the current thread, we must never return to user space.
+        // We clear the current thread and trigger an immediate reschedule.
+        uint32_t core = hal_cpu_get_id();
+        // Accessing g_cpu_locals requires including its header or extern
+        extern cpu_local_t g_cpu_locals[];
+        g_cpu_locals[core].runqueue.current_thread = NULL;
+        bh_thread_yield();
+
+        // Should never reach here
+        while(1);
+    }
+    return kstatus_to_sysret(K_ERR_BAD_THREAD);
 }
 
 long bh_sys_write(bh_syscall_ctx_t *ctx) {
