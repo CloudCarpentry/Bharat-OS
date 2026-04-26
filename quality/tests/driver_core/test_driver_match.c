@@ -3,6 +3,7 @@
 #include "match.h"
 #include "device_registry.h"
 #include "driver_registry.h"
+#include "binding.h"
 #include "bharat/uapi/sys_errno.h"
 
 static int probe_count = 0;
@@ -53,8 +54,10 @@ void test_match_scoring() {
     probe_count = 0;
     assert(driver_match_device(&dev) == 0);
     // Should match drv_compat because it has the highest score
-    assert(dev.driver_data == &drv_compat);
-    assert(probe_count == 1);
+    device_binding_t* binding = device_binding_find_by_dev(&dev);
+    assert(binding != NULL);
+    assert(binding->driver == &drv_compat);
+    assert(binding->state == DRIVER_STATE_MATCHED);
 
     // Now test with a device that only matches class
     device_desc_t dev_class_only = {
@@ -63,7 +66,9 @@ void test_match_scoring() {
         .compatible_id = "vendor,unknown-v1"
     };
     assert(driver_match_device(&dev_class_only) == 0);
-    assert(dev_class_only.driver_data == &drv_class);
+    binding = device_binding_find_by_dev(&dev_class_only);
+    assert(binding != NULL);
+    assert(binding->driver == &drv_class);
 
     printf("test_match_scoring passed!\n");
 }
@@ -96,14 +101,50 @@ void test_match_tie_breaker() {
     };
 
     assert(driver_match_device(&dev) == 0);
-    assert(dev.driver_data == &drv2); // Higher priority wins
+    device_binding_t* binding = device_binding_find_by_dev(&dev);
+    assert(binding != NULL);
+    assert(binding->driver == &drv2); // Higher priority wins
 
     printf("test_match_tie_breaker passed!\n");
+}
+
+void test_match_ambiguous() {
+    printf("Running test_match_ambiguous...\n");
+    device_registry_init();
+    driver_registry_init();
+
+    driver_desc_t drv1 = {
+        .name = "drv1",
+        .match_class = CLASS_GPIO,
+        .probe = mock_probe,
+        .priority = 10
+    };
+
+    driver_desc_t drv2 = {
+        .name = "drv2",
+        .match_class = CLASS_GPIO,
+        .probe = mock_probe,
+        .priority = 10 // Same priority
+    };
+
+    driver_register(&drv1);
+    driver_register(&drv2);
+
+    device_desc_t dev = {
+        .name = "test-device",
+        .dev_class = CLASS_GPIO
+    };
+
+    // Should be ambiguous
+    assert(driver_match_device(&dev) == -SYS_EBUSY);
+
+    printf("test_match_ambiguous passed!\n");
 }
 
 int main() {
     test_match_scoring();
     test_match_tie_breaker();
+    test_match_ambiguous();
     printf("All match scoring tests passed!\n");
     return 0;
 }

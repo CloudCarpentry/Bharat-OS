@@ -6,6 +6,7 @@ add_library(bharatos_driver_baseline_core STATIC
     match.c
     event.c
     power.c
+    binding.c
 )
 
 target_include_directories(bharatos_driver_baseline_core PUBLIC ../include)

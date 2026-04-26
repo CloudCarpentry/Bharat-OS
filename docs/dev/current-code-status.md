@@ -71,7 +71,7 @@ Use these labels consistently across status docs and roadmap updates:
 | `telemetrymgr` | **Scaffold** | Placeholder metrics aggregation loop. |
 | `process_manager` | **Scaffold** | TODO-only main path. |
 | `vm_manager` | **Scaffold** | TODO-only main path. |
-| `drivers` | **Scaffold** | TODO-only main path. |
+| `drivers` | **Scaffold** | TODO-only main path. (Registry contract is **Partial/D0 Baseline**). |
 | `console` | **Scaffold** | Infinite loop + TODO URPC routing. |
 | `boot_displayd` | **Partial** | Framebuffer rectangle helper + mocked early UI flow. |
 | `file_system` | **Partial** | Calls `vfs_init()` and outlines mount/URPC flow; persistent backing FS path still pending. |
@@ -116,6 +116,23 @@ A reusable, strict, fail-closed capability validation framework has been introdu
 - Not yet enforced across all IPC/service entry points.
 - Capability lifecycle revocation semantics are still partial.
 - Security-domain scope model is intentionally minimal (PID-only) in this phase.
+
+### Driver Registry Contract
+**Status: Partial / D0 Baseline**
+
+The driver registry and device binding contract has been hardened to provide a deterministic matching and lifecycle management path. This decouples hardware description from driver operation and tracks the active relationship.
+
+**Current progress:**
+- Established canonical `device_desc_t`, `driver_desc_t`, and `device_binding_t` descriptors.
+- Deterministic match scoring: Highest score wins, then highest priority, then reject ambiguity.
+- Formalized lifecycle state machine (REGISTERED, MATCHED, PROBED, STARTED, STOPPED, REMOVED, FAILED) enforced at the core level.
+- Host-side verification tests for registration, matching, and lifecycle transitions.
+- Preliminary documentation in `docs/architecture/drivers/driver-registry-contract.md`.
+
+**Current limitations:**
+- Driver service runtime remains a scaffold.
+- Capability mediation for driver operations is documented but not yet wired.
+- Most existing drivers are still skeletal and do not fully implement the new lifecycle hooks.
 
 ---
 

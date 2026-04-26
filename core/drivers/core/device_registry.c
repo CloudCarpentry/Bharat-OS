@@ -1,6 +1,7 @@
 #include "device_registry.h"
 #include "event.h"
 #include "match.h"
+#include "binding.h"
 #include "driver_core_internal.h"
 #include "bharat/uapi/sys_errno.h"
 #include <stddef.h>
@@ -9,9 +10,12 @@
 #define MAX_DEVICES 128
 static device_desc_t* g_devices[MAX_DEVICES];
 static int g_device_count = 0;
+static uint32_t g_next_device_registry_id = 1;
 
 int device_registry_init(void) {
     g_device_count = 0;
+    g_next_device_registry_id = 1;
+    device_binding_registry_init();
     for(int i = 0; i < MAX_DEVICES; i++) {
         g_devices[i] = NULL;
     }
@@ -34,6 +38,7 @@ int device_register(device_desc_t* dev) {
     // Add to registry
     for (int i = 0; i < MAX_DEVICES; i++) {
         if (g_devices[i] == NULL) {
+            dev->device_registry_id = g_next_device_registry_id++;
             g_devices[i] = dev;
             g_device_count++;
 
