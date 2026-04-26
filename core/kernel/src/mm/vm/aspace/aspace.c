@@ -9,6 +9,7 @@
 #include "../../../../include/mm/aspace_profile.h"
 #include "../../../../include/debug/mm_invariants.h"
 #include "../../../../include/kernel/status.h"
+#include "vm_region_index.h"
 
 static uint64_t next_as_id = 1;
 
@@ -445,6 +446,9 @@ bool aspace_check_overlap(address_space_t *aspace, uint64_t base, uint64_t lengt
 }
 
 vm_region_t *aspace_lookup_region(address_space_t *aspace, uintptr_t va) {
+    /* Redirected to canonical index lookup in Phase 6 */
+    // return vm_region_index_lookup(aspace, va); // Avoid circularity for now
+
     if (!aspace) return NULL;
 
     vm_region_t *curr = aspace->regions_tree_root;

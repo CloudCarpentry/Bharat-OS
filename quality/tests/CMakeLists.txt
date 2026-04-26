@@ -584,6 +584,7 @@ add_test(NAME test_unmapped_fault COMMAND test_unmapped_fault)
 
 add_subdirectory(drivers)
 add_subdirectory(driver_core)
+add_subdirectory(core/ds)
 add_executable(test_constraint_validation
     core/test_constraint_validation.c
 )
