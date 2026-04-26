@@ -3,6 +3,7 @@
 #include "sched/sched.h"
 #include "bharat/mem_class.h"
 #include "mm/mem_model.h"
+#include "mm/mem_validator.h"
 #include "kernel/status.h"
 
 static uint64_t class_allocations[MEM_CLASS_MAX] = {0};
@@ -40,7 +41,7 @@ bool mem_class_is_supported(alloc_class_t cls, mem_model_t model) {
 int sys_mem_alloc_class(size_t size, uint32_t mem_class, uint32_t flags, uint64_t* out_addr) {
     if (!out_addr) return K_ERR_INVALID_ARG;
 
-    mem_model_t model = mem_model_get_current();
+    mem_model_t model = mm_get_validated_model();
     if (!mem_class_is_supported((alloc_class_t)mem_class, model)) {
         return K_ERR_PROFILE_RESTRICTED;
     }

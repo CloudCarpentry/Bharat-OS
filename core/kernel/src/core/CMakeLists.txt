@@ -41,7 +41,7 @@ add_library(k_core OBJECT
 
 target_include_directories(k_core PRIVATE
     ${BHARAT_KERNEL_INCLUDE_DIR}
-    ${BHARAT_KERNEL_INCLUDE_DIR}/generated
+    ${BHARAT_GENERATED_INCLUDE_DIR}
     ${CMAKE_SOURCE_DIR}/interface/include
     ${BHARAT_LIB_ROOT}/include
     ${BHARAT_BOOT_INCLUDE_DIR}

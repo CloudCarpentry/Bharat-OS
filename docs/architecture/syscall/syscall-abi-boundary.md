@@ -45,6 +45,15 @@ To ensure long-term stability and compatibility, the following rules apply to `i
 
 The `tools/abi/check_syscalls.py` tool enforces these rules by comparing the current `syscall_table.def` against a committed baseline manifest in `interface/contracts/abi/syscalls.json`. This check is part of the CI pipeline.
 
+## Syscall Implementation Backends
+
+To maintain a clean ABI boundary, Bharat-OS distinguishes between architecture-specific syscall entries and generic fallbacks:
+
+-   **Arch-specific Assembly:** (e.g., `experience/user/sdk/lib/src/riscv_syscalls.S`). This is the preferred implementation for production-grade SDK and user-space binaries. It provides the thinnest possible wrapper around the hardware trap instruction.
+-   **Generic Fallback:** (`core/lib/syscall/syscall_stubs.c`). This implementation provides a C-based fallback and is primarily intended for host-based testing or early bring-up of new architectures.
+
+**Rule:** `core/lib/syscall/syscall_stubs.c` must not be linked when an architecture-specific syscall backend is present. This is enforced by guarding the `bharat_syscall` definition in `syscall_stubs.c` with the `BHARAT_HAS_ARCH_SYSCALL_BACKEND` macro. Architecture-specific assembly backends are located in the `experience/user/sdk/lib/src/` directory and integrated via `core/lib/syscall/CMakeLists.txt`.
+
 ## Why Native ABI Hardening First?
 
 Hardening the native syscall boundary and establishing ABI drift gates is a prerequisite for implementing Linux compatibility (personalities). A stable and secure native foundation ensures that compatibility layers are built on a well-defined contract, preventing "leaks" of internal kernel state and ensuring that security invariants are maintained across different execution personalities.

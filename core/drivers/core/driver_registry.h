@@ -8,4 +8,14 @@ int driver_register(driver_desc_t* drv);
 void driver_unregister(driver_desc_t* drv);
 driver_desc_t** driver_registry_get_all(int* count_out);
 
+/**
+ * @brief Get the current number of registered drivers.
+ */
+int driver_registry_get_count(void);
+
+/**
+ * @brief Find a driver by name.
+ */
+driver_desc_t* driver_find_by_name(const char* name);
+
 #endif // BHARAT_DRIVER_DRIVER_REGISTRY_H

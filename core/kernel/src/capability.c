@@ -1,4 +1,5 @@
 #include "capability.h"
+#include "cap_policy.h"
 #include <bharat/cpu_local.h>
 #include "kernel_safety.h"
 #include "bharat/urpc.h"
@@ -44,32 +45,7 @@ static inline void cap_unlock_two_tables(capability_table_t* a, capability_table
   ensures \result == 0 || \result == 1;
 */
 static int cap_rights_valid(cap_type_t type, uint64_t rights) {
-    switch (type) {
-    case CAP_TYPE_ENDPOINT:
-        return (rights & ~(CAP_RIGHT_ENDPOINT_SEND | CAP_RIGHT_ENDPOINT_RECEIVE | CAP_RIGHT_DELEGATE)) == 0U;
-    case CAP_TYPE_MEMORY:
-        return (rights & ~(CAP_RIGHT_MEMORY_MAP | CAP_RIGHT_MEMORY_UNMAP | CAP_RIGHT_MEMORY_SHARE | CAP_RIGHT_DELEGATE)) == 0U;
-    case CAP_TYPE_SCHED:
-        return (rights & ~(CAP_RIGHT_SCHEDULE | CAP_RIGHT_DELEGATE)) == 0U;
-    case CAP_TYPE_PROCESS:
-        return (rights & ~(CAP_RIGHT_DELEGATE)) == 0U;
-    case CAP_TYPE_ACCEL_DEVICE:
-        return (rights & ~(CAP_RIGHT_ALL | CAP_RIGHT_DERIVE | CAP_RIGHT_DELEGATE)) == 0U;
-    case CAP_TYPE_ACCEL_QUEUE:
-        return (rights & ~(CAP_RIGHT_ENQUEUE | CAP_RIGHT_CANCEL | CAP_RIGHT_QUERY | CAP_RIGHT_DELEGATE)) == 0U;
-    case CAP_TYPE_ACCEL_BUFFER:
-        return (rights & ~(CAP_RIGHT_MEMORY_MAP | CAP_RIGHT_BIND | CAP_RIGHT_MEMORY_SHARE | CAP_RIGHT_SYNC_CPU | CAP_RIGHT_SYNC_DEV | CAP_RIGHT_DELEGATE)) == 0U;
-    case CAP_TYPE_ACCEL_TELEMETRY:
-        return (rights & ~(CAP_RIGHT_READ_STATS | CAP_RIGHT_READ_FAULTS | CAP_RIGHT_DELEGATE)) == 0U;
-    case CAP_TYPE_ACCEL_ADMIN:
-        return (rights & ~(CAP_RIGHT_RESET | CAP_RIGHT_PARTITION | CAP_RIGHT_FW_LOAD | CAP_RIGHT_DELEGATE)) == 0U;
-    case CAP_TYPE_DMA_DOMAIN:
-        return (rights & ~(CAP_RIGHT_ALL | CAP_RIGHT_DELEGATE)) == 0U;
-    case CAP_TYPE_DMA_GRANT:
-        return (rights & ~(CAP_RIGHT_DMA_MAP | CAP_RIGHT_MEMORY_UNMAP | CAP_RIGHT_REVOKE | CAP_RIGHT_DELEGATE)) == 0U;
-    default:
-        return 0;
-    }
+    return cap_transfer_rights_valid(type, rights);
 }
 
 /*@
@@ -959,4 +935,33 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
     }
 
     return 0;
+}
+
+
+kstatus_t cap_lookup_thread(const capability_table_t *table, uint32_t cap_id, cap_rights_mask_t required_rights, bh_thread_object_t *out) {
+    capability_entry_t e;
+    int ret = cap_table_lookup(table, cap_id, CAP_TYPE_THREAD, required_rights, &e);
+    if (ret != 0) return (ret == -3) ? K_ERR_CAP_DENIED : K_ERR_CAP_INVALID;
+    out->tid = (uint64_t)e.object_ref;
+    out->thread = NULL;
+    return K_OK;
+}
+
+kstatus_t cap_lookup_process(const capability_table_t *table, uint32_t cap_id, cap_rights_mask_t required_rights, bh_process_object_t *out) {
+    capability_entry_t e;
+    int ret = cap_table_lookup(table, cap_id, CAP_TYPE_PROCESS, required_rights, &e);
+    if (ret != 0) return (ret == -3) ? K_ERR_CAP_DENIED : K_ERR_CAP_INVALID;
+    out->process = (struct bh_process *)e.object_ref;
+    if (out->process) { out->pid = out->process->process_id; } else { out->pid = 0; }
+    return K_OK;
+}
+
+kstatus_t cap_lookup_memory(const capability_table_t *table, uint32_t cap_id, cap_rights_mask_t required_rights, bh_memory_object_t *out) {
+    capability_entry_t e;
+    int ret = cap_table_lookup(table, cap_id, CAP_TYPE_MEMORY, required_rights, &e);
+    if (ret != 0) return (ret == -3) ? K_ERR_CAP_DENIED : K_ERR_CAP_INVALID;
+    out->base = (phys_addr_t)e.object_ref;
+    out->size = 4096;
+    out->flags = e.flags;
+    return K_OK;
 }
