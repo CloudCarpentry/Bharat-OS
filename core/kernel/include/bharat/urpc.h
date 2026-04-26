@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include "urpc/urpc_bootstrap.h"
 #include "ipc/ipc_profile_policy.h"
+#include <bharat/uapi/ipc/status.h>
 
 // Define standard URPC message types
 typedef enum {
@@ -68,9 +69,10 @@ typedef enum {
     URPC_CHANNEL_ERROR
 } urpc_channel_state_t;
 
-int urpc_channel_bind(uint32_t target_core);
-int urpc_channel_accept(uint32_t source_core);
-int urpc_channel_close(uint32_t target_core);
+bool urpc_channel_transition_allowed(urpc_channel_state_t from, urpc_channel_state_t to);
+bharat_status_t urpc_channel_bind(uint32_t target_core);
+bharat_status_t urpc_channel_accept(uint32_t source_core);
+bharat_status_t urpc_channel_close(uint32_t target_core);
 urpc_channel_state_t urpc_channel_get_state(uint32_t target_core);
 int urpc_channel_can_route(ipc_traffic_type_t traffic, uint32_t payload_len, bool cross_core);
 

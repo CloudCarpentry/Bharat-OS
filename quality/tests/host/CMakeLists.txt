@@ -144,6 +144,10 @@ add_executable(test_ipc_profile test_ipc_profile.c ../../kernel/src/profile/prof
 target_include_directories(test_ipc_profile PRIVATE ../../kernel/include ../../include ../../core/lib/include)
 add_test(NAME host_test_ipc_profile COMMAND test_ipc_profile)
 
+add_executable(test_ipc_urpc_reliability test_ipc_urpc_reliability.c ../../kernel/src/ipc/contract_validate.c ../../kernel/src/ipc/ipc_status.c ../../kernel/src/ipc/ipc_traffic.c ../../kernel/src/urpc/urpc_channel.c ../../kernel/src/ipc/ipc_profile_policy.c ../../kernel/src/mm/mem_model.c ../../kernel/src/profile/profile.c)
+target_include_directories(test_ipc_urpc_reliability PRIVATE ../../kernel/include ../../include ../../core/lib/include)
+add_test(NAME host_test_ipc_urpc_reliability COMMAND test_ipc_urpc_reliability)
+
 add_executable(test_ipc_urpc_policy_rt_mpu test_ipc_urpc_policy_matrix.c ../../kernel/src/ipc/ipc_profile_policy.c ../../kernel/src/mm/mem_model.c ../../kernel/src/profile/profile.c)
 target_include_directories(test_ipc_urpc_policy_rt_mpu PRIVATE ../../kernel/include ../../include ../../core/lib/include)
 target_compile_definitions(test_ipc_urpc_policy_rt_mpu PRIVATE CONFIG_PROFILE_AUTOMOBILE=1 CONFIG_MEM_MODEL_MPU=1 BHARAT_KERNEL_PROFILE_RT=1 EXPECT_PREFER_URPC=1 EXPECT_ALLOW_BULK_IPC=0 EXPECT_URPC_MAX=32 EXPECT_CONTROL_TRANSPORT=IPC_TRANSPORT_URPC EXPECT_BULK_TRANSPORT=IPC_TRANSPORT_URPC)
