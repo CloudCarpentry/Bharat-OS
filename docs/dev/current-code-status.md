@@ -83,7 +83,22 @@ Use these labels consistently across status docs and roadmap updates:
 
 ---
 
-## 3) Networking implementation details
+## 3) Memory runtime validation details
+
+### Runtime Memory Profile Validation
+Status: **Partial** / M0 baseline
+
+The kernel now has a boot/runtime validation path that checks detected memory capabilities against the selected memory model/profile contract. This does not complete PMM ownership, TLB shootdown, VM lifecycle, DMA/IOMMU, or full memory production hardening.
+
+Implemented features include:
+- `hal_mem_caps_t` normalization into kernel `mem_runtime_caps_t`.
+- `mem_profile_contract_t` derivation from build configuration.
+- `mem_runtime_validate_profile()` implementation with fail-closed rules.
+- Integration into `mm_validate_model()` during early boot.
+
+---
+
+## 4) Networking implementation details
 
 *Note: The legacy `net` monolithic service is deprecated and transitional. `netmgr` and `netstack` represent the canonical forward path.*
 
@@ -116,14 +131,14 @@ Current limitations:
 
 ---
 
-## 4) Gap summary (docs-to-code)
+## 5) Gap summary (docs-to-code)
 
 1. **Status precision gap**: several services are buildable but still lifecycle scaffolds.
 2. **Enforcement gap**: capability checks in some manager paths were historically placeholder-permissive; however, the major `netmgr` bypass has been closed (fail-closed shim). Full capability routing is still needed.
 3. **Runtime wiring gap**: multiple daemons initialize state but do not yet run complete production event loops.
 4. **Hardening gap**: observability, failure semantics, and profile-specific guarantees need deeper closure.
 
-## 4.1) Security production gate (explicit blocker)
+## 5.1) Security production gate (explicit blocker)
 
 To avoid status inflation, this repository treats capability enforcement maturity as a hard release gate:
 
@@ -134,7 +149,7 @@ To avoid status inflation, this repository treats capability enforcement maturit
 
 ---
 
-## 5) Contributor update rules
+## 6) Contributor update rules
 
 When updating this document:
 
@@ -144,7 +159,7 @@ When updating this document:
 4. If architecture docs are more aspirational, retain them, but record the current reality here.
 
 
-## 6) Component architecture drill-down docs
+## 7) Component architecture drill-down docs
 
 For diagram-based decomposition and roadmap mapping by domain, see:
 
@@ -153,13 +168,13 @@ For diagram-based decomposition and roadmap mapping by domain, see:
 - `docs/architecture/components/services-subcomponents-architecture.md`
 - `docs/architecture/components/drivers-subcomponents-architecture.md`
 
-## 7) Memory hardening roadmap
+## 8) Memory hardening roadmap
 
 For the current memory production hardening plan and profile/architecture acceptance matrix, see:
 
 - `docs/architecture/memory/memory-roadmap-consolidated.md`
 
-## 8) Service Deployment Profiles
+## 9) Service Deployment Profiles
 
 Services in Bharat-OS are not universally mandatory. They are deployed via three primary profile tiers to accommodate hardware constraints:
 

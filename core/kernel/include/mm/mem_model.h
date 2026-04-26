@@ -4,6 +4,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "bharat/mem_class.h"
+#include "kernel/status.h"
+
+// Forward declaration for HAL capabilities
+struct hal_mem_caps;
 
 /**
  * Memory Model Architectures
@@ -36,6 +40,41 @@ typedef uint64_t mpa_caps_t;
 #define MEM_CAP_PER_CORE_PMM_CACHE   (1ULL << 9)
 
 /**
+ * Memory Runtime Capabilities (Kernel-normalized)
+ */
+typedef struct mem_runtime_caps {
+    bool supports_mmu;
+    bool supports_mmu_lite;
+    bool supports_mpu;
+
+    bool supports_demand_paging;
+    bool supports_page_protection;
+    bool supports_region_protection;
+    bool supports_shared_memory;
+
+    bool supports_dma_map;
+    bool supports_iommu;
+    bool supports_numa;
+    bool supports_hugepage;
+} mem_runtime_caps_t;
+
+/**
+ * Memory Profile Contract
+ */
+typedef struct mem_profile_contract {
+    mem_model_t model;
+
+    bool require_demand_paging;
+    bool require_page_protection;
+    bool require_region_protection;
+    bool require_shared_memory;
+    bool require_dma_isolation;
+    bool require_iommu;
+    bool require_numa;
+    bool require_hugepage;
+} mem_profile_contract_t;
+
+/**
  * API Contract for Unsupported Operations:
  *
  * - Any operation requesting a feature not supported by the current memory model
@@ -49,6 +88,16 @@ typedef uint64_t mpa_caps_t;
  * Get the current canonical memory model.
  */
 mem_model_t mem_model_get_current(void);
+
+/**
+ * Normalizes HAL capabilities into kernel runtime capabilities.
+ */
+kstatus_t mem_runtime_caps_from_hal(const struct hal_mem_caps *hal_caps, mem_runtime_caps_t *out_caps);
+
+/**
+ * Derives the memory profile contract from the current build configuration.
+ */
+kstatus_t mem_profile_contract_from_build(mem_profile_contract_t *out_contract);
 
 /**
  * Query the capability bits of the current memory model.
