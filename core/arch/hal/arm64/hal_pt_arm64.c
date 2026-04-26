@@ -257,6 +257,16 @@ static int arm64_pt_map_4k(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t p
     virt_addr_t aligned_vaddr = align_down(vaddr);
     phys_addr_t aligned_paddr = (phys_addr_t)align_down((virt_addr_t)paddr);
 
+    /* Canonical VA check for 48-bit address space.
+     * Bits [63:48] must all be 0 (user/lower) or all be 1 (kernel/upper).
+     * Equivalently, a signed arithmetic right-shift by 47 must yield either
+     * 0 (lower-canonical) or -1 (upper-canonical); any other result means
+     * the address falls in the non-canonical hole and the CPU would fault. */
+    int64_t signed_va = (int64_t)aligned_vaddr;
+    if ((signed_va >> 47) != 0 && (signed_va >> 47) != -1LL) {
+        return -1; /* non-canonical address */
+    }
+
     uint64_t pgd_idx = (aligned_vaddr >> 39) & 0x1FF;
     uint64_t pud_idx = (aligned_vaddr >> 30) & 0x1FF;
     uint64_t pmd_idx = (aligned_vaddr >> 21) & 0x1FF;
