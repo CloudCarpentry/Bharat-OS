@@ -15,7 +15,7 @@ set(SHELL_SOURCES
     src/shell_dispatch.c
     src/shell_auth.c
     src/shell_output.c
-    src/shell_backend_urpc.c
+    src/shell_backend_runtime.c
     ../../../lib/urpc/urpc.c
     src/commands/shell_commands.c
 )
@@ -24,11 +24,16 @@ add_executable(system_shell ${SHELL_SOURCES})
 target_link_libraries(system_shell PRIVATE
     bharat_user_buildopts
     bharat_freestanding
+    bharat_libruntime
+    bharat_libipc
+    bharat_libcap
 )
 target_include_directories(system_shell PRIVATE
     include
     ../../../lib
     ../../../lib/runtime/include
+    ../../../lib/cap/include
+    ../../../lib/ipc/include
     ${CMAKE_SOURCE_DIR}/interface
 )
 

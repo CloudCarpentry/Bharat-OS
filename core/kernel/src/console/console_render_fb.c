@@ -44,6 +44,7 @@ void console_render_fb_init(framebuffer_console_state_t *state) {
     state->cursor_col = 0;
     state->clear_supported = true;
     state->scroll_supported = true;
+    utf8_decoder_init(&state->decoder);
 
     console_render_fb_clear(state);
 }
@@ -107,22 +108,45 @@ void console_render_fb_write_char(framebuffer_console_state_t *state, char c) {
     if (c == '\n') {
         state->cursor_col = 0;
         state->cursor_row++;
+        utf8_decoder_init(&state->decoder);
     } else if (c == '\r') {
         state->cursor_col = 0;
+        utf8_decoder_init(&state->decoder);
     } else if (c == '\t') {
         state->cursor_col = (state->cursor_col + 8) & ~7;
         if (state->cursor_col >= state->cols) {
             state->cursor_col = 0;
             state->cursor_row++;
         }
+        utf8_decoder_init(&state->decoder);
     } else {
-        draw_char_glyph(state, c, state->cursor_col, state->cursor_row);
-        state->cursor_col++;
+        uint32_t status = utf8_decode(&state->decoder, (uint8_t)c);
+        if (status == UTF8_ACCEPT) {
+            uint32_t cp = state->decoder.codepoint;
+            // For now, kernel only renders ASCII directly
+            if (cp <= 0x7F) {
+                draw_char_glyph(state, (char)cp, state->cursor_col, state->cursor_row);
+            } else {
+                // Replacement glyph '?'
+                draw_char_glyph(state, '?', state->cursor_col, state->cursor_row);
+            }
+            state->cursor_col++;
 
-        if (state->cursor_col >= state->cols) {
-            state->cursor_col = 0;
-            state->cursor_row++;
+            if (state->cursor_col >= state->cols) {
+                state->cursor_col = 0;
+                state->cursor_row++;
+            }
+        } else if (status == UTF8_REJECT) {
+            // Invalid UTF-8: replacement glyph '?' and reset
+            draw_char_glyph(state, '?', state->cursor_col, state->cursor_row);
+            state->cursor_col++;
+            if (state->cursor_col >= state->cols) {
+                state->cursor_col = 0;
+                state->cursor_row++;
+            }
+            utf8_decoder_init(&state->decoder);
         }
+        // If status is still some other state, we are in the middle of a sequence.
     }
 
     if (state->cursor_row >= state->rows) {
@@ -134,36 +158,7 @@ void console_render_fb_write_char(framebuffer_console_state_t *state, char c) {
 void console_render_fb_write(framebuffer_console_state_t *state, const char *data, size_t len) {
     if (!state || !data) return;
 
-    // Instead of calling _write_char and repeatedly checking wrap/scroll for every char,
-    // we do an optimized bulk write.
     for (size_t i = 0; i < len; i++) {
-        char c = data[i];
-
-        if (c == '\n') {
-            state->cursor_col = 0;
-            state->cursor_row++;
-        } else if (c == '\r') {
-            state->cursor_col = 0;
-        } else if (c == '\t') {
-            state->cursor_col = (state->cursor_col + 8) & ~7;
-            if (state->cursor_col >= state->cols) {
-                state->cursor_col = 0;
-                state->cursor_row++;
-            }
-        } else {
-            draw_char_glyph(state, c, state->cursor_col, state->cursor_row);
-            state->cursor_col++;
-
-            if (state->cursor_col >= state->cols) {
-                state->cursor_col = 0;
-                state->cursor_row++;
-            }
-        }
-
-        // Only scroll if we really fell off the edge during this loop
-        if (state->cursor_row >= state->rows) {
-            console_render_fb_scroll(state);
-            state->cursor_row = state->rows - 1;
-        }
+        console_render_fb_write_char(state, data[i]);
     }
 }

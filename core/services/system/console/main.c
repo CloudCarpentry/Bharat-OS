@@ -1,127 +1,141 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
+
 #include <bharat/ipc/ipc.h>
 #include <bharat/cap/cap.h>
+#include "bharat/uapi/display/lease.h"
+#include "bharat/runtime/runtime.h"
+#include "bharat/uapi/ipc/status.h"
+#include "font_8x16.h"
 
-/*
- * Bharat-OS User-Space Console Daemon
- *
- * Provides multiplexed TTY streams and logging over URPC to various
- * personalities and applications. This daemon assumes ownership of the UART/Display capabilities.
- */
-
-// Well-known endpoint for the manager service that grants hardware capabilities
-#define CONSOLE_MANAGER_ENDPOINT ((bharat_cap_handle_t)10)
-
-// Definitions mirror console_v1.bidl operations
-typedef struct {
-    uint32_t opcode;
-    uint32_t payload_len;
-    uint32_t stream_id;
-    uint32_t flags;
-} console_msg_hdr_t;
-
-typedef enum {
-    CONSOLE_BACKEND_NONE = 0,
-    CONSOLE_BACKEND_UART = 1,
-    CONSOLE_BACKEND_FRAMEBUFFER = 2
-} console_backend_kind_t;
+#define DISPLAY_BROKER_ENDPOINT 15
 
 typedef struct {
-    uint32_t request_type;
-    uint32_t preferred_backend;
-} console_cap_request_t;
+    uint32_t width;
+    uint32_t height;
+    uint32_t cursor_x;
+    uint32_t cursor_y;
+    uint32_t *fb_pixels;
+    bharat_display_lease_id_t lease_id;
+    bool active;
+} fb_text_backend_t;
 
-typedef struct {
-    uint32_t status;
-    uint32_t granted_backend;
-} console_cap_response_t;
+static fb_text_backend_t g_fb_backend;
 
-static bharat_cap_handle_t g_output_cap = BHARAT_CAP_INVALID_HANDLE;
-static console_backend_kind_t g_active_backend = CONSOLE_BACKEND_NONE;
+static void fb_render_char(char c, uint32_t x, uint32_t y, uint32_t color) {
+    if (!g_fb_backend.fb_pixels || !g_fb_backend.active) return;
 
-static void console_service_write(console_msg_hdr_t *hdr, const uint8_t *payload) {
-    if (!bharat_cap_is_valid(g_output_cap)) return;
+    const uint8_t *glyph = g_console_font_8x16[(uint8_t)c];
+    // Fallback for unsupported glyphs
+    if (glyph[0] == 0 && glyph[1] == 0 && glyph[2] == 0 && c != ' ' && c != 0) {
+        glyph = g_console_font_8x16[(uint8_t)'?'];
+    }
 
-    // Use IPC to write to the granted hardware capability
-    // This proxies the actual standard output down to the kernel/driver capability
+    // Bounds check for character position
+    if ((x + 1) * 8 > g_fb_backend.width || (y + 1) * 16 > g_fb_backend.height) return;
 
-    // In a real implementation this would involve an IPC call or shared memory URPC
-    // bharat_ipc_send(g_output_cap, ...);
-
-    (void)hdr;
-    (void)payload;
-}
-
-static void console_service_flush(uint32_t stream_id) {
-    if (!bharat_cap_is_valid(g_output_cap)) return;
-
-    (void)stream_id;
-    // Skeleton: Flush the underlying hardware capability
-}
-
-static bharat_cap_handle_t console_acquire_output_capability(console_backend_kind_t* granted_backend) {
-    console_cap_request_t req;
-    req.request_type = 1; // Generic 'request hardware cap' opcode
-    req.preferred_backend = CONSOLE_BACKEND_UART; // Prefer UART initially
-
-    bharat_ipc_msg_header_t send_hdr;
-    send_hdr.message_id = 1; // MSG_ACQUIRE_CAP
-    send_hdr.payload_size = sizeof(req);
-    send_hdr.capability_transfer = BHARAT_CAP_INVALID_HANDLE;
-
-    console_cap_response_t res;
-    bharat_ipc_msg_header_t recv_hdr;
-    recv_hdr.message_id = 0;
-    recv_hdr.payload_size = 0;
-    recv_hdr.capability_transfer = BHARAT_CAP_INVALID_HANDLE;
-
-    // Send the capability request
-    // int32_t ret = bharat_ipc_call(CONSOLE_MANAGER_ENDPOINT, &send_hdr, &req, &recv_hdr, &res, sizeof(res));
-    int32_t ret = -1; // Mock failure until fully implemented
-    res.status = 1;
-
-    if (ret == 0 && res.status == 0) {
-        if (granted_backend) {
-            *granted_backend = (console_backend_kind_t)res.granted_backend;
+    for (int row = 0; row < 16; row++) {
+        for (int col = 0; col < 8; col++) {
+            if (glyph[row] & (0x80 >> col)) {
+                uint32_t px = (y * 16 + row) * g_fb_backend.width + (x * 8 + col);
+                g_fb_backend.fb_pixels[px] = color;
+            }
         }
-        return recv_hdr.capability_transfer;
     }
+}
 
-    if (granted_backend) {
-        *granted_backend = CONSOLE_BACKEND_NONE;
+static void console_write_fb(const char *buf, size_t len) {
+    if (!g_fb_backend.active) return;
+
+    // Truncate overly long writes to avoid blocking service for too long
+    if (len > 4096) len = 4096;
+
+    for (size_t i = 0; i < len; i++) {
+        if (buf[i] == '\n') {
+            g_fb_backend.cursor_x = 0;
+            g_fb_backend.cursor_y++;
+        } else if (buf[i] == '\r') {
+            g_fb_backend.cursor_x = 0;
+        } else {
+            fb_render_char(buf[i], g_fb_backend.cursor_x, g_fb_backend.cursor_y, 0xFFFFFFFF);
+            g_fb_backend.cursor_x++;
+            if ((g_fb_backend.cursor_x + 1) * 8 > g_fb_backend.width) {
+                g_fb_backend.cursor_x = 0;
+                g_fb_backend.cursor_y++;
+            }
+        }
+
+        if ((g_fb_backend.cursor_y + 1) * 16 > g_fb_backend.height) {
+            // Simple wrap around
+            g_fb_backend.cursor_y = 0;
+        }
     }
-    return BHARAT_CAP_INVALID_HANDLE;
+}
+
+static void console_init_fb(void) {
+    struct { uint32_t display_id; uint32_t requested_rights; } req;
+    struct { uint32_t status; uint32_t lease_id; uint32_t granted_rights; uint64_t fb_ptr; } resp;
+
+    req.display_id = 1;
+    req.requested_rights = BHARAT_DISPLAY_RIGHT_LEASE | BHARAT_DISPLAY_RIGHT_WRITE | BHARAT_DISPLAY_RIGHT_PRESENT;
+
+    bharat_ipc_msg_header_t req_hdr = { .opcode = 1, .payload_size = sizeof(req) };
+    bharat_ipc_msg_header_t resp_hdr;
+
+    if (bharat_ipc_call(DISPLAY_BROKER_ENDPOINT, &req_hdr, &req, &resp_hdr, &resp, sizeof(resp)) == 0 && resp.status == BHARAT_STATUS_OK) {
+        g_fb_backend.lease_id = resp.lease_id;
+        g_fb_backend.width = 800;
+        g_fb_backend.height = 480;
+        g_fb_backend.fb_pixels = (void*)resp.fb_ptr;
+        g_fb_backend.cursor_x = 0;
+        g_fb_backend.cursor_y = 0;
+        g_fb_backend.active = true;
+        bharat_runtime_log("Console FB backend initialized");
+    } else {
+        g_fb_backend.active = false;
+        bharat_runtime_log("Console FB backend unavailable, falling back to UART only");
+    }
+}
+
+static void send_reply(bharat_cap_handle_t target, bharat_ipc_msg_header_t *orig_hdr, bharat_status_t status) {
+    bharat_ipc_msg_header_t reply_hdr = *orig_hdr;
+    reply_hdr.flags |= BHARAT_IPC_FLAG_REPLY;
+    reply_hdr.status = status;
+    reply_hdr.payload_size = 0;
+    bharat_ipc_send(target, &reply_hdr, NULL);
 }
 
 int main(int argc, char** argv) {
-    (void)argc;
-    (void)argv;
+    (void)argc; (void)argv;
+    bharat_runtime_log("Console service starting");
 
-    g_output_cap = console_acquire_output_capability(&g_active_backend);
+    // Framebuffer is optional
+    console_init_fb();
 
-    if (!bharat_cap_is_valid(g_output_cap)) {
-        /*
-         * We failed to acquire a valid hardware backend capability.
-         * The daemon remains alive to handle future URPC requests or
-         * retry initialization, but it cannot perform hardware output yet.
-         */
+    bharat_ipc_msg_header_t hdr;
+    uint8_t payload[4096];
+
+    while (true) {
+        int32_t ret = bharat_ipc_recv(BHARAT_CAP_INVALID_HANDLE, &hdr, payload, sizeof(payload));
+        if (ret == 0) {
+            switch (hdr.opcode) {
+                case 2: // WriteStream
+                    // Multiplexed output
+                    // 1. UART (stubbed)
+                    // 2. FB
+                    console_write_fb((char*)payload, hdr.payload_size);
+                    send_reply(hdr.reply_endpoint, &hdr, BHARAT_STATUS_OK);
+                    break;
+                case 4: // OpenSession
+                    // In real system, validate rights and create session object
+                    send_reply(hdr.reply_endpoint, &hdr, BHARAT_STATUS_OK);
+                    break;
+                default:
+                    send_reply(hdr.reply_endpoint, &hdr, BHARAT_IPC_STATUS_ERR_OPCODE);
+                    break;
+            }
+        }
     }
-
-    // Initialize the main service loop
-    bool running = true;
-    while(running) {
-        // 1. Wait for incoming URPC messages (IPC receive)
-        // 2. Decode the message header (console_msg_hdr_t)
-        // 3. Dispatch based on opcode (e.g., WRITE, FLUSH, ATTACH_TTY)
-
-        // Example handling:
-        // if (opcode == MSG_WRITE) console_service_write(&hdr, payload);
-
-        // Yield or block for IPC
-        // bharat_thread_yield();
-    }
-
     return 0;
 }

@@ -1,6 +1,7 @@
 #include "trap/syscall_context.h"
 #include <bharat/uapi/syscall/nr.h>
 #include <bharat/uapi/capability/rights.h>
+#include "capability.h"
 
 /* Temporary shims for missing UAPI rights */
 #ifndef BH_CAP_RIGHT_RESOURCE_ALLOC
