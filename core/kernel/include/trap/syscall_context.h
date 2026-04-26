@@ -17,7 +17,7 @@ typedef struct bh_syscall_desc {
 typedef struct bh_personality_syscall_table {
     const char *name;
     uint32_t abi_version;
-    uint32_t max_syscall_nr;
+    uint32_t max_syscall_nr; // Maximum valid syscall number (index)
     const bh_syscall_desc_t *table;
 } bh_personality_syscall_table_t;
 

@@ -2,23 +2,14 @@
 #include "personality_ops.h"
 #include "trap_types.h"
 #include "trap.h"
-#include "trap_frame_ops.h"
+#include "trap/syscall_regs.h"
 
-extern long linux_syscall_handler(long sysno, long arg1, long arg2, long arg3,
-                                  long arg4, long arg5, long arg6);
+extern long bh_syscall_gate(trap_frame_t *frame, const trap_info_t *info);
 
 static long linux_handle_syscall(struct bh_thread *thread, struct trap_frame *frame, const struct trap_info *info) {
     (void)thread;
-    (void)info;
-    return linux_syscall_handler(
-        trap_frame_get_syscall_no(frame),
-        trap_frame_get_arg0(frame),
-        trap_frame_get_arg1(frame),
-        trap_frame_get_arg2(frame),
-        trap_frame_get_arg3(frame),
-        trap_frame_get_arg4(frame),
-        trap_frame_get_arg5(frame)
-    );
+    // Dispatch via common secure syscall gate
+    return bh_syscall_gate(frame, info);
 }
 
 static int linux_handle_user_fault(struct bh_thread *thread, struct trap_frame *frame, const struct trap_info *info) {

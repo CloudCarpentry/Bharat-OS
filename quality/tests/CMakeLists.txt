@@ -129,7 +129,7 @@ target_compile_definitions(test_scheduler PRIVATE TESTING=1)
 add_test(NAME test_scheduler COMMAND test_scheduler)
 
 if (EXISTS "${CMAKE_SOURCE_DIR}/core/personalities/compat/linux/linux_compat.c")
-    add_executable(test_trap_syscall test_trap_syscall.c ../kernel/src/trap/trap.c ../kernel/src/trap/syscall.c ../kernel/src/ipc/endpoint_ipc.c ../core/personalities/compat/linux/linux_compat.c ../core/personalities/common/personality_registry.c $<TARGET_OBJECTS:bharat_test_sched_mocks>)
+    add_executable(test_trap_syscall test_trap_syscall.c ../kernel/src/trap/trap.c ../kernel/src/trap/syscall.c ../kernel/src/trap/syscall_gate.c ../kernel/src/trap/syscall_stats.c ../kernel/src/ipc/endpoint_ipc.c ../core/personalities/compat/linux/linux_compat.c ../core/personalities/common/personality_registry.c $<TARGET_OBJECTS:bharat_test_sched_mocks>)
     target_include_directories(test_trap_syscall PRIVATE ../kernel/include ../core/services/core/subsysmgr/include ../include ../core/lib/include ../core/boot/include ../subsys/include)
     target_compile_definitions(test_trap_syscall PRIVATE TESTING=1)
     add_test(NAME test_trap_syscall COMMAND test_trap_syscall)

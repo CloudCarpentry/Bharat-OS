@@ -1,6 +1,7 @@
 add_library(k_trap OBJECT
     ../../src/trap/trap.c
     ../../src/trap/syscall.c
+    ../../src/trap/syscall_gate.c
     ../../src/trap/usercopy.c
     ../../src/trap/syscall_stats.c
     ../../src/trap/trap_fault.c

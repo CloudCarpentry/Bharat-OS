@@ -20,7 +20,7 @@ typedef enum {
 } syscall_id_t;
 
 enum {
-    SYSCALL_MAX = SYSCALL_GET_SUBSYSTEM_CAPS
+    SYSCALL_MAX = SYSCALL_THREAD_EXIT
 };
 
 #ifdef __cplusplus
