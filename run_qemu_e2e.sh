@@ -358,6 +358,8 @@ fi
 echo "======================================"
 echo " Summary: PASS=${PASS_COUNT} FAIL=${FAIL_COUNT} SKIP=${SKIP_COUNT}"
 echo " Logs: e2e_logs/"
+echo " To validate boot logs against contract:"
+echo "   python3 tools/testing/check_boot_log.py --target <target> --log <logfile> --contract quality/contracts/boot/headless_boot_contract.yaml"
 echo "======================================"
 
 if [[ "$FAIL_COUNT" -ne 0 ]]; then
