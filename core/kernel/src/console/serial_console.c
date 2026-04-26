@@ -9,6 +9,8 @@ typedef struct {
     uart_device_t *uart;
     bool translate_lf_to_crlf;
     console_output_mode_t mode;
+    utf8_decoder_t decoder;
+    utf8_decoder_t atomic_decoder;
 } serial_console_state_t;
 
 static bool serial_init(console_backend_t *backend) {
@@ -16,8 +18,13 @@ static bool serial_init(console_backend_t *backend) {
     serial_console_state_t *state = (serial_console_state_t *)backend->state;
     if (!state->uart || !state->uart->ops || !state->uart->ops->init) return false;
 
+    utf8_decoder_init(&state->decoder);
+    utf8_decoder_init(&state->atomic_decoder);
+
     return state->uart->ops->init(state->uart);
 }
+
+#include "console_internal.h"
 
 static size_t serial_write(console_backend_t *backend, const char *data, size_t len) {
 
@@ -27,18 +34,35 @@ static size_t serial_write(console_backend_t *backend, const char *data, size_t 
 
     if (!uart || !uart->ops) return 0;
 
-    if (uart->ops->write) {
-        return uart->ops->write(uart, data, len);
-    } else if (uart->ops->putc) {
+    if (uart->ops->putc) {
         size_t written = 0;
         for (size_t i = 0; i < len; i++) {
-            if (state->translate_lf_to_crlf && data[i] == '\n') {
-                uart->ops->putc(uart, '\r');
+            uint8_t b = (uint8_t)data[i];
+            uint32_t status = utf8_decode(&state->decoder, b);
+
+            if (status == UTF8_ACCEPT) {
+                // For LF -> CRLF translation, we only care about the single-byte LF
+                if (state->translate_lf_to_crlf && b == '\n') {
+                    uart->ops->putc(uart, '\r');
+                }
+                uart->ops->putc(uart, b);
+                written++;
+            } else if (status == UTF8_REJECT) {
+                // Invalid UTF-8: replace with '?' and reset
+                uart->ops->putc(uart, '?');
+                written++;
+                utf8_decoder_init(&state->decoder);
+            } else {
+                // In the middle of a multi-byte sequence, pass through
+                uart->ops->putc(uart, b);
+                written++;
             }
-            uart->ops->putc(uart, data[i]);
-            written++;
         }
         return written;
+    } else if (uart->ops->write) {
+        // Fallback for drivers providing bulk write - we don't sanitize here
+        // to avoid expensive copies in the kernel write path.
+        return uart->ops->write(uart, data, len);
     }
 
     return 0;
@@ -54,11 +78,23 @@ static size_t serial_write_atomic(console_backend_t *backend, const char *data, 
 
     size_t written = 0;
     for (size_t i = 0; i < len; i++) {
-        if (state->translate_lf_to_crlf && data[i] == '\n') {
-            uart->ops->putc(uart, '\r');
+        uint8_t b = (uint8_t)data[i];
+        uint32_t status = utf8_decode(&state->atomic_decoder, b);
+
+        if (status == UTF8_ACCEPT) {
+            if (state->translate_lf_to_crlf && b == '\n') {
+                uart->ops->putc(uart, '\r');
+            }
+            uart->ops->putc(uart, b);
+            written++;
+        } else if (status == UTF8_REJECT) {
+            uart->ops->putc(uart, '?');
+            written++;
+            utf8_decoder_init(&state->atomic_decoder);
+        } else {
+            uart->ops->putc(uart, b);
+            written++;
         }
-        uart->ops->putc(uart, data[i]);
-        written++;
     }
     return written;
 }
