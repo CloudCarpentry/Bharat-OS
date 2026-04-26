@@ -37,6 +37,10 @@ enum {
     BHARAT_IPC_FLAG_CAP_TRANSFER   = (1u << 2),
 };
 
+#define BHARAT_IPC_FLAGS_ALL_V1 (BHARAT_IPC_FLAG_REPLY | \
+                                 BHARAT_IPC_FLAG_NONBLOCK | \
+                                 BHARAT_IPC_FLAG_CAP_TRANSFER)
+
 #ifdef __cplusplus
 }
 #endif
