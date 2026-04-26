@@ -5,6 +5,8 @@ add_library(k_ds OBJECT
     bh_range_tree.c
     bh_ring.c
     bh_seqlock.c
+    bh_bitmap.c
+    bh_handle_table.c
 )
 target_link_libraries(k_ds PRIVATE bharat_kernel_includes bharat_kernel_buildopts)
 target_compile_options(k_ds PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
