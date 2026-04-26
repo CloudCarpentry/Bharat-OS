@@ -14,6 +14,7 @@ add_library(k_sched OBJECT
     sched_deg.c
     algo_matrix.c
     ai_sched.c
+    sched_invariants.c
 )
 
 target_sources(k_sched PRIVATE sched_test_support.c)

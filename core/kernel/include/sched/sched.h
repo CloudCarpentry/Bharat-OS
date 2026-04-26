@@ -27,6 +27,14 @@ typedef enum {
 } thread_state_t;
 
 typedef enum {
+    THREAD_OWNER_NONE,
+    THREAD_OWNER_RUNQUEUE,
+    THREAD_OWNER_RUNNING,
+    THREAD_OWNER_BLOCKED,
+    THREAD_OWNER_REMOTE_PENDING,
+} thread_sched_owner_state_t;
+
+typedef enum {
     SCHED_POLICY_ROUND_ROBIN = 0,
     SCHED_POLICY_CLOUD_FAIR  = 1,
     SCHED_POLICY_PRIORITY = 2,
@@ -60,6 +68,26 @@ typedef struct {
     uint64_t period_ms;
     uint64_t wcet_ms;
 } bh_thread_attr_t;
+
+typedef enum {
+    SCHED_REMOTE_WAKE,
+    SCHED_REMOTE_MIGRATE,
+    SCHED_REMOTE_BLOCK,
+    SCHED_REMOTE_YIELD,
+    SCHED_REMOTE_ENQUEUE,
+} sched_remote_cmd_type_t;
+
+typedef struct sched_remote_cmd {
+    uint64_t cmd_id;
+    sched_remote_cmd_type_t type;
+    uint32_t source_cpu;
+    uint32_t target_cpu;
+    uint64_t thread_id;
+    uint64_t expected_thread_generation;
+    uint32_t flags;
+    uint32_t priority;
+    list_head_t list;
+} sched_remote_cmd_t;
 
 struct bh_thread;
 typedef struct bh_thread bh_thread_t;
@@ -95,7 +123,7 @@ typedef struct sched_rq {
     uint64_t rt_budget_used;
     uint64_t rt_budget_total;
 
-    // Remote Enqueue Inbox (Protected by lock)
+    // Remote Scheduler Command Inbox (Protected by lock)
     list_head_t pending_inbox;
     uint8_t resched_pending; // Flag to avoid IPI storms
 
@@ -128,6 +156,8 @@ typedef struct sched_rq {
     void *pending_suggestions;
     uint8_t *bootstrap_stacks;
 } sched_rq_t;
+
+typedef sched_rq_t sched_core_state_t;
 
 typedef struct {
     bh_thread_t* head;
@@ -202,6 +232,12 @@ struct bh_thread {
     bool fault_pending;
 
     uint32_t flags;
+
+    // Phase K0: Invariant tracking
+    uint32_t owner_cpu;
+    uint64_t sched_generation;
+    thread_sched_owner_state_t owner_state;
+    bool enqueued;
 };
 
 int thread_raise_fault(bh_thread_t *thread, thread_fault_t fault);

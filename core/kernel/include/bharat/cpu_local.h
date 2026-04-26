@@ -59,6 +59,8 @@ typedef struct __attribute__((aligned(64))) cpu_local {
 // Provide an array of locals for all CPUs.
 extern cpu_local_t g_cpu_locals[MAX_CPUS] __attribute__((aligned(64)));
 
+typedef cpu_local_t kernel_core_t;
+
 void cpu_local_init(uint32_t cpu_id);
 
 #include <hal/cpu_local.h>
@@ -66,6 +68,10 @@ void cpu_local_init(uint32_t cpu_id);
 /* Architecture specific `this_cpu()` implementation */
 static inline cpu_local_t *this_cpu(void) {
     return hal_cpu_local_ptr();
+}
+
+static inline kernel_core_t *this_kernel_core(void) {
+    return (kernel_core_t *)this_cpu();
 }
 
 // Helpers for the current address space

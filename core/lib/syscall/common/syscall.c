@@ -1,11 +1,17 @@
 #include <uapi/syscall/syscall_nr.h>
 
 #if defined(__x86_64__)
-#include <uapi/arch/x86_64/syscall.h>
+#include <bharat/uapi/arch/x86_64/syscall.h>
 #elif defined(__aarch64__)
-#include <uapi/arch/arm64/syscall.h>
+#include <bharat/uapi/arch/arm64/syscall.h>
 #elif defined(__riscv)
-#include <uapi/arch/riscv64/syscall.h>
+#if __riscv_xlen == 64
+#include <bharat/uapi/arch/riscv64/syscall.h>
+#else
+#include <bharat/uapi/arch/riscv32/syscall.h>
+#endif
+#elif defined(__arm__)
+#include <bharat/uapi/arch/arm32/syscall.h>
 #else
 #error "Unsupported architecture"
 #endif

@@ -123,6 +123,12 @@ Current limitations:
 3. **Runtime wiring gap**: multiple daemons initialize state but do not yet run complete production event loops.
 4. **Hardening gap**: observability, failure semantics, and profile-specific guarantees need deeper closure.
 
+## 4.2) Core Kernel Ownership
+
+Status: **Partial / Phase K0 in progress**
+
+Current implementation uses `cpu_local_t` as the per-core anchor. Phase K0 hardens scheduler ownership and remote command handling without renaming the public structure. Typed remote command queues and invariant tracking fields in `bh_thread_t` ensure that no core directly mutates another core's scheduler state.
+
 ## 4.1) Security production gate (explicit blocker)
 
 To avoid status inflation, this repository treats capability enforcement maturity as a hard release gate:

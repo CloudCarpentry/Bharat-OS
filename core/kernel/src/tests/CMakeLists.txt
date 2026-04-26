@@ -13,6 +13,7 @@ add_library(k_test_support OBJECT
     ktest_memops.c
     ktest_rt_sched.c
     ktest_irq_domain.c
+    ktest_sched_ipi.c
 )
 
 target_include_directories(k_test_support PRIVATE ../../include ${BHARAT_GENERATED_INCLUDE_DIR} ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/lib/include ${BHARAT_BOOT_INCLUDE_DIR})

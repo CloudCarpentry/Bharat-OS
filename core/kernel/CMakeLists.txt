@@ -468,6 +468,7 @@ set(KERNEL_SRCS
     src/demo/kernel_tester.c
     src/demo/bharat_demo.c
     src/tests/ktest_sched.c
+    src/tests/sched/test_sched_invariants.c
     src/tests/ktest_prot_domain.c
     src/tests/ktest_basic_sanity.c
 )

@@ -69,6 +69,7 @@ static void mk_handle_thread_lookup_req(mk_channel_t *channel, urpc_msg_t *msg) 
 }
 
 static void mk_handle_thread_wake_req(mk_channel_t *channel, urpc_msg_t *msg) {
+    (void)channel;
     if (msg->payload_size != sizeof(mk_msg_remote_lookup_t)) {
         return; // Payload size validation failed
     }
@@ -78,11 +79,15 @@ static void mk_handle_thread_wake_req(mk_channel_t *channel, urpc_msg_t *msg) {
 
     thread_slot_t *slot = sched_find_thread_slot_by_tid_local(&g_cpu_locals[local_core].runqueue, payload.id);
     if (slot) {
+        // Enforce per-core ownership: use sched_wakeup_with_priority which now enqueues to local inbox
+        // when called on the home core (or we could just call sched_wakeup_with_priority).
+        // Actually, since we are already on the target core, we can just call it.
         sched_wakeup_with_priority(&slot->thread, payload.arg);
     }
 }
 
 static void mk_handle_thread_enqueue_req(mk_channel_t *channel, urpc_msg_t *msg) {
+    (void)channel;
     if (msg->payload_size != sizeof(mk_msg_remote_lookup_t)) {
         return; // Payload size validation failed
     }

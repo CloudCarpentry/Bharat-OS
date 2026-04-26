@@ -6,24 +6,49 @@
 extern void sched_init(void);
 
 // Provide a mock cpu id since we run on a uniprocessor host test runner
-static uint32_t current_mock_cpu = 0;
+uint32_t current_mock_cpu = 0;
 
+#if defined(BHARAT_HOST_TEST) || !defined(__KERNEL__)
 uint32_t hal_cpu_get_id(void) {
     return current_mock_cpu;
 }
 
-static uint32_t mock_ipi_sent_to = UINT32_MAX;
+uint32_t mock_ipi_sent_to = UINT32_MAX;
 
 void hal_send_ipi_payload(uint32_t target_core, uint64_t payload) {
     (void)payload;
     mock_ipi_sent_to = target_core;
 }
+#else
+// In kernel builds, these are provided by the arch HAL.
+// We use weak stubs or just rely on the HAL.
+extern uint32_t hal_cpu_get_id(void);
+extern void hal_send_ipi_payload(uint32_t target_core, uint64_t payload);
+uint32_t mock_ipi_sent_to = UINT32_MAX;
+#endif
 
 static void dummy_thread_entry(void) {
     while(1) {}
 }
 
+static bool sched_test_multicore_available(void) {
+#if defined(BHARAT_HOST_TEST) || !defined(__KERNEL__)
+    return true; // Always assume multicore testable in host/mock mode
+#else
+    extern uint32_t g_active_core_count;
+    if (g_active_core_count >= 2) {
+        return true;
+    }
+    return false;
+#endif
+}
+
 bool test_sched_remote_enqueue_ipi(void) {
+    if (!sched_test_multicore_available()) {
+        KTEST_PRINT(" [SKIP] sched_remote_ipi requires >= 2 online cores\n");
+        return true;
+    }
+
     sched_init();
 
     // Create a new process and thread
@@ -70,6 +95,9 @@ bool test_sched_remote_enqueue_ipi(void) {
 }
 
 bool test_sched_ipi_coalescing(void) {
+    if (!sched_test_multicore_available()) {
+        return true; // Skip (logged by first test)
+    }
     sched_init();
 
     bh_process_t *proc = process_create("test_proc2");
