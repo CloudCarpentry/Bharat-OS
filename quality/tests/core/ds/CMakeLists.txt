@@ -5,9 +5,13 @@ set(DS_TESTS
     test_bh_ring
     test_bh_seqlock
     test_bh_rcu_stub
+    test_bh_list
+    test_bh_bitmap
+    test_bh_handle_table
 )
 
 foreach(test_name IN LISTS DS_TESTS)
+    set(src "")
     if(test_name STREQUAL "test_bh_id_allocator")
         set(src bh_id_allocator.c)
     elseif(test_name STREQUAL "test_bh_range_tree")
@@ -18,12 +22,22 @@ foreach(test_name IN LISTS DS_TESTS)
         set(src bh_seqlock.c)
     elseif(test_name STREQUAL "test_bh_rcu_stub")
         set(src bh_rcu_stub.c)
+    elseif(test_name STREQUAL "test_bh_bitmap")
+        set(src bh_bitmap.c)
+    elseif(test_name STREQUAL "test_bh_handle_table")
+        set(src bh_handle_table.c)
     endif()
 
-    add_executable(${test_name} ${test_name}.c
-        ${CMAKE_SOURCE_DIR}/core/kernel/src/ds/${src}
-        ${CMAKE_SOURCE_DIR}/core/kernel/src/lib/base/status.c
-    )
+    if(src STREQUAL "")
+        add_executable(${test_name} ${test_name}.c
+            ${CMAKE_SOURCE_DIR}/core/kernel/src/lib/base/status.c
+        )
+    else()
+        add_executable(${test_name} ${test_name}.c
+            ${CMAKE_SOURCE_DIR}/core/kernel/src/ds/${src}
+            ${CMAKE_SOURCE_DIR}/core/kernel/src/lib/base/status.c
+        )
+    endif()
 
     target_include_directories(${test_name} PRIVATE
         ${CMAKE_SOURCE_DIR}/core/kernel/include

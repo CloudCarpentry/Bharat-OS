@@ -10,260 +10,160 @@ tags:
   - algorithms
 ---
 
-# Epic E3-X — Kernel Algorithmic Foundations
+# Bharat-OS Kernel Algorithmic Foundations
 
-## Objective
+## 1. Purpose
+
 Introduce production-grade kernel algorithms and verification foundations required for scalable VM, object indexing, read-mostly metadata, safe hooks, storage metadata, and memory-safe kernel coding.
 
----
+## 2. Core Principle: Algorithm Placement Follows Ownership
 
-## E3-X-S1 — VM range index replacement strategy
+Algorithm is not selected because it is advanced. Algorithm is selected because it matches the ownership, latency, memory, and security boundary of that subsystem.
 
-### Objective
-Replace linear or ad-hoc VM region lookup with a scalable range index suitable for address-space regions.
+Bharat-OS must not place algorithms only by convenience. Every algorithm must be placed according to ownership, latency criticality, architecture dependency, and policy weight.
 
-**Recommended algorithm direction:**
-Maple-tree style range index or augmented interval tree.
-*Recommendation:* Maple-tree-inspired range index for VM regions, because it is optimized for range lookups and dense virtual address layouts. If implementation complexity is too high, start with an augmented red-black interval tree and keep the API compatible with a future Maple-style backend.
+- **Mechanism** belongs in the kernel, HAL, or drivers.
+- **Policy** belongs in services, stacks, or personalities.
 
-### Likely code areas
-- `core/kernel/include/ds/`
-- `core/kernel/src/ds/`
-- `core/kernel/src/mm/vm/`
-- `core/kernel/include/mm/`
-- `quality/tests/host/`
-- `docs/architecture/memory/`
+## 3. Current Repository Path Mapping
 
-### Tasks
-1. Define `vm_range_index` API contract.
-2. Compare interval tree vs Maple-style range tree.
-3. Define lookup, insert, remove, split, merge behavior.
-4. Define concurrency model: lock-based first, RCU-read later.
-5. Define migration plan from existing VM region lookup.
-6. Add benchmark requirements for region lookup scale.
+The canonical locations for kernel algorithmic foundations are:
 
-### Acceptance criteria
-- Roadmap defines chosen first implementation strategy.
-- API supports lookup by address and range-overlap query.
-- API does not expose internal tree representation.
-- Migration plan avoids touching active VM logic in this story.
+| Component | Repository Path |
+|---|---|
+| Core Kernel Sources | `core/kernel/src/` |
+| Kernel DS Headers | `core/kernel/include/bharat/kernel/ds/` |
+| Kernel DS Sources | `core/kernel/src/ds/` |
+| Scheduler | `core/kernel/src/sched/` |
+| Memory Management | `core/kernel/src/mm/` |
+| Capabilities | `core/kernel/src/cap/` |
+| IPC / uRPC | `core/kernel/src/ipc/`, `core/kernel/src/urpc/` |
+| System Services | `core/services/system/` |
 
-### Verification strategy
-- Unit tests for insert/remove/overlap.
-- Fuzz tests for random region maps.
-- Benchmark: lookup performance across 10, 100, 1k, 10k regions.
-- Invariant checks: no overlap unless explicitly allowed.
+## 4. Algorithm Placement Matrix
 
----
+| Algorithm Type | Correct Location | Reason |
+|---|---|---|
+| Per-core run queues, priority queues, deadline queues | `core/kernel/src/sched/` | Scheduler mechanism; latency-critical |
+| TLB shootdown queue/ring, ack bitmap, timeout tracking | `core/kernel/src/mm/` + HAL contract | Cross-core memory correctness |
+| Page allocator magazines, free lists, bitmap allocators | `core/kernel/src/mm/pmm/` | Core memory mechanism |
+| VM region lookup tree | `core/kernel/src/mm/vm/` | Address-space mechanism |
+| Capability lookup table, generation counters, revoke list | `core/kernel/src/cap/` | Security-critical authority path |
+| IPC/URPC ring buffer, message queue, endpoint registry | `core/kernel/src/ipc/`, `core/kernel/src/urpc/` | Cross-core/service mechanism |
+| Driver/device matching tables | `core/drivers/registry/`, `core/drivers/core/` | Driver-owned discovery/matching |
+| Network route table, ARP/neighbor cache, packet queues | `core/services/network/` or `core/stacks/net/` | Networking stack/policy, not core kernel |
+| Filesystem path tree, mount namespace, fd table policy | `core/services/system/filesystem/` | VFS policy belongs outside kernel |
+| Generic reusable structures | `core/kernel/src/ds/` | Shared building blocks |
 
-## E3-X-S2 — Kernel RCU/read-mostly primitive
+## 5. Canonical Kernel Data-Structure Primitives
 
-### Objective
-Introduce a minimal kernel read-mostly synchronization primitive for data that is frequently read and rarely updated.
+### 1. Intrusive Doubly Linked List (`bh_list.h`)
+Use for: scheduler runnable queues, wait queues, timer buckets, object lifecycle lists.
+- `bh_list_node_t`
+- `bh_list_init`
+- `bh_list_push_back`
+- `bh_list_remove`
 
-**Recommended direction:**
-RCU-lite first, full preemptible RCU later.
-For Bharat-OS, start small:
-- non-preemptible or cooperative RCU-lite
-- per-core read-side nesting
-- epoch/grace-period tracking
-- deferred callback queue
+### 2. Bitmap Allocator (`bh_bitmap.h`)
+Use for: small ID allocation, CPU masks, page-frame availability map, capability slot availability.
+- `bh_bitmap_t`
+- `bh_bitmap_find_first_clear`
+- `bh_bitmap_set_range`
 
-### Likely code areas
-- `core/kernel/include/sync/`
-- `core/kernel/src/sync/`
-- `core/kernel/src/sched/`
-- `core/kernel/src/ipc/`
-- `quality/tests/host/`
+### 3. Ring Buffer (`bh_ring.h`)
+Use for: IPC/URPC queues, TLB shootdown requests, telemetry event buffers.
+- `bh_ring_t`
+- `bh_ring_push`
+- `bh_ring_pop`
 
-### Tasks
-1. Define `rcu_read_lock()`/`rcu_read_unlock()` contract.
-2. Define `synchronize_rcu()` baseline behavior.
-3. Define `call_rcu()` deferred free contract.
-4. Define UP behavior: read lock is mostly compiler/barrier discipline.
-5. Define SMP behavior: grace period requires all cores to pass quiescent state.
-6. Document RT constraints and non-goals.
+### 4. Generation-Based Handle Table (`bh_handle_table.h`)
+Use for: capability handles, process/thread handles, IPC endpoint handles.
+Purpose: prevent stale handle reuse, support revoke and lifecycle validation.
+- `bh_handle_table_t`
+- `bh_handle_alloc`
+- `bh_handle_lookup`
+- `bh_handle_revoke`
 
-### Acceptance criteria
-- Roadmap clearly separates RCU-lite from full production RCU.
-- UP and SMP behavior are both defined.
-- RT-mode limitations are documented.
-- No scheduler implementation is changed in this story.
+### 5. Red-Black Tree / Ordered Tree
+Use for: VM region lookup, timer deadline ordering, ordered memory ranges.
+- `bh_rbtree_t`
+- `bh_rbtree_insert`
+- `bh_rbtree_find_le`
 
-### Verification strategy
-- Host model tests for epoch transitions.
-- Simulated multi-core quiescent-state tests.
-- Negative test: object not reclaimed before grace period.
-- Stress test plan for read-mostly object table.
+### 6. Radix Tree / Trie
+Use for: page-table-like sparse indexes, object ID namespace.
+- `bh_radix_t`
+- `bh_radix_insert`
+- `bh_radix_lookup`
 
----
+## 6. Naming Convention
 
-## E3-X-S3 — XArray/radix-style object index
+### Global Rule
+Use `bh_` for internal Bharat-OS primitives.
+Use `bharat_` only for stable UAPI/ABI-facing names where readability and external identity matter.
 
-### Objective
-Create a scalable object index for kernel objects such as handles, capabilities, VM objects, endpoints, devices, or file descriptors.
+### Type Naming
+| Kind | Format | Example |
+|---|---|---|
+| Struct typedef | `bh_<noun>_t` | `bh_ring_t` |
+| Enum typedef | `bh_<domain>_<noun>_t` | `bh_sched_class_t` |
+| Enum value | `BH_<DOMAIN>_<VALUE>` | `BH_MEM_CLASS_DMA` |
+| Function | `bh_<module>_<verb>` | `bh_ring_push` |
+| Static helper | `<module>_<verb>_local` | `ring_push_local` |
+| Constants | `BH_<MODULE>_<NAME>` | `BH_RING_MIN_CAPACITY` |
 
-**Recommended direction:**
-XArray/radix-tree inspired sparse integer-key index.
+## 7. Hot-Path Rules
+- Avoid heap allocation.
+- Prefer intrusive structures.
+- Prefer per-core ownership.
+- Avoid global locks.
+- Name lock-aware APIs clearly: `_locked`, `_nolock`, `_try`, `_irqsave`.
 
-### Likely code areas
-- `core/kernel/include/ds/`
-- `core/kernel/src/ds/`
-- `core/kernel/src/capability/`
-- `core/kernel/src/ipc/`
-- `core/kernel/src/mm/`
-- `quality/tests/host/`
+## 8. Small-Device, MMU-Lite, and MPU-Only Constraints
+- Provide fixed-capacity or compile-time bounded mode.
+- Avoid unbounded dynamic growth.
+- If a primitive requires an MMU, document the restriction.
 
-### Tasks
-1. Define `kobject_index` API.
-2. Support insert, lookup, remove, reserve ID, allocate next ID.
-3. Define ID generation and stale-ID avoidance strategy.
-4. Define RCU-read compatibility for future.
-5. Define memory allocation constraints for small-device builds.
+## 9. Code-Agent Checklist
 
-### Acceptance criteria
-- Roadmap defines object-index API without coupling to capabilities.
-- Sparse ID space support is required.
-- Future RCU-read compatibility is documented.
-- Small-device memory limits are considered.
+Before adding a new algorithm, answer:
 
-### Verification strategy
-- Unit tests for sparse inserts/removes.
-- Duplicate ID rejection.
-- Reuse-after-remove generation test plan.
-- Fuzz test with random insert/remove/lookup.
+1. **Is this mechanism or policy?** Mechanism lives in kernel/lib/drivers. Policy lives in services/stacks/personalities.
+2. **Is this architecture-specific?** If yes, implementation belongs in `arch/`, contract in `hal/include/`.
+3. **Is this reusable across kernel subsystems?** If yes, put it in `core/kernel/src/ds/`.
+4. **Does it touch user-visible ABI?** If yes, put stable types in `uapi/`.
+5. **Does it run on hot path?** Optimize for no locks, no heap, per-core data.
+6. **Does it support small devices?** Use fixed-capacity or bounded growth.
+7. **Does it have tests?** Host test for data structures is mandatory.
 
----
+## 10. Immediate Implementation Backlog
 
-## E3-X-S4 — Verified kernel hook prototype
+The following priorities define the roadmap for applying these foundations:
 
-### Objective
-Introduce a safe kernel hook mechanism for observability, policy callbacks, and future verified extensions without arbitrary function-pointer chaos.
-
-**Recommended direction:**
-typed hook table + static registration + verifier rules.
-Not dynamic eBPF yet. Start with verified static hooks.
-
-### Likely code areas
-- `core/kernel/include/verify/`
-- `core/kernel/src/verify/`
-- `core/kernel/include/hooks/` (if existing)
-- `core/kernel/src/init/`
-- `quality/tests/host/`
-- `docs/architecture/kernel/`
-
-### Tasks
-1. Define hook type descriptor.
-2. Define allowed hook points.
-3. Define registration-time validation.
-4. Define no-blocking / no-allocation / bounded-time rules.
-5. Define future path to bytecode/eBPF-like verification.
-
-### Acceptance criteria
-- Hook prototype is typed and bounded.
-- Invalid hook signature is rejected.
-- Hook registration is static or early-boot only.
-- No runtime dynamic loading in this phase.
-
-### Verification strategy
-- Compile-time signature tests where possible.
-- Registration validation tests.
-- Negative tests for invalid hook point.
-- Documentation of safety rules.
+1. **PMM per-core magazines**: Per-core magazine cache + remote free queue.
+2. **TLB shootdown**: Ring queue + request ID + ack bitmap + timeout.
+3. **Capability table**: Generation-based handle table + rights bitmap.
+4. **Scheduler runnable queues**: Intrusive list or priority bucket queues.
+5. **VM region lookup**: Ordered tree/rbtree first; maple-tree-like structure later.
 
 ---
 
-## E3-X-S5 — Storage metadata tree strategy
+## E3-X Stories (Preserved Roadmap)
 
-### Objective
-Define the metadata tree strategy for future production-grade storage and filesystem layers.
+### E3-X-S1 — VM range index replacement strategy
+Replace linear or ad-hoc VM region lookup with a scalable range index (Maple-tree style or Red-Black).
 
-**Recommended direction:**
-B+tree or copy-on-write B-tree depending on storage profile.
+### E3-X-S2 — Kernel RCU/read-mostly primitive
+Introduce RCU-lite for read-mostly synchronization (non-preemptible first).
 
-*For small devices:*
-littlefs-style log/tree metadata strategy.
+### E3-X-S3 — XArray/radix-style object index
+Scalable sparse integer-key index for handles, capabilities, etc.
 
-*For desktop/cloud:*
-B+tree / extent tree / COW metadata option.
+### E3-X-S4 — Verified kernel hook prototype
+Typed hook table + static registration for safe observability.
 
-### Likely code areas
-- `core/stacks/storage/`
-- `core/stacks/storage/metadata/`
-- `core/kernel/include/ds/`
-- `core/kernel/src/ds/`
-- `core/drivers/storage/`
-- `docs/architecture/storage/`
-- `quality/tests/host/`
+### E3-X-S5 — Storage metadata tree strategy
+B+tree or COW B-tree for filesystem layers.
 
-### Tasks
-1. Define storage metadata tree requirements.
-2. Separate kernel DS primitives from storage policy.
-3. Define extent-index requirements.
-4. Define crash-consistency expectations.
-5. Define small-device vs full-storage strategy.
-
-### Acceptance criteria
-- Roadmap does not put filesystem policy into kernel.
-- Shared DS primitives can live under `core/kernel/ds` only if policy-free.
-- Storage metadata policy belongs under `core/stacks/storage/metadata`.
-- Small-device and desktop/cloud profiles have different strategies.
-
-### Verification strategy
-- Metadata tree model tests.
-- Crash simulation plan.
-- Extent lookup benchmark plan.
-- Small-device memory budget analysis.
-
----
-
-## E3-X-S6 — Memory-safe kernel abstraction layer
-
-### Objective
-Reduce kernel memory-safety bugs by introducing safer abstractions for slices, spans, checked arithmetic, bounded copies, and typed ownership.
-
-**Recommended direction:**
-C-safe abstraction layer with optional future Rust exploration.
-Bharat-OS remains C-first for kernel baseline work. E3-X-S6 introduces memory-safe C abstractions such as checked arithmetic, span/slice types, bounded copies, ownership annotations, and static-analysis hooks. Rust may be evaluated later for selected isolated components, but this story is not a Rust rewrite.
-
-### Likely code areas
-- `core/kernel/include/ds/`
-- `core/kernel/include/verify/`
-- `core/kernel/src/ds/`
-- `core/kernel/src/verify/`
-- `core/kernel/include/lib/`
-- `quality/tests/host/`
-- `docs/dev/`
-
-### Tasks
-1. Define kernel span/slice type.
-2. Define checked arithmetic helpers.
-3. Define safe copy/move wrappers.
-4. Define ownership annotation macros.
-5. Define compiler-safety rules for freestanding kernel builds.
-6. Define static-analysis/lint hooks.
-
-### Acceptance criteria
-- Roadmap defines memory-safe abstractions without forcing broad migration.
-- Existing memops are not replaced in this story.
-- Checked arithmetic and span APIs are proposed as opt-in first.
-- Static-analysis path is documented.
-
-### Verification strategy
-- Unit tests for checked arithmetic overflow.
-- Unit tests for span bounds checks.
-- Compile-time tests for annotation macros where possible.
-- Future CI lint plan.
-
----
-
-## Implementation Status
-
-| Primitive | Header | Implementation | Tests | Integrated With | Status |
-|---|---|---|---|---|---|
-| RCU stub | `bh_rcu.h` | `bh_rcu_stub.c` | `test_bh_rcu_stub.c` | none | baseline |
-| Seqlock | `bh_seqlock.h` | `bh_seqlock.c` | `test_bh_seqlock.c` | none | baseline |
-| ID allocator | `bh_id_allocator.h` | `bh_id_allocator.c` | `test_bh_id_allocator.c` | capability slot/object ID path | partial |
-| Range tree/table | `bh_range_tree.h` | `bh_range_tree.c` | `test_bh_range_tree.c` | VM region lookup adapter | partial |
-| Ring buffer | `bh_ring.h` | `bh_ring.c` | `test_bh_ring.c` | core msgq | baseline |
-| Core MsgQ | `bh_core_msgq.h` | `bh_core_msgq.c` | none (uses ring tests) | future TLB/URPC | baseline |
+### E3-X-S6 — Memory-safe kernel abstraction layer
+Checked arithmetic, span/slice types, and ownership annotations for C.
