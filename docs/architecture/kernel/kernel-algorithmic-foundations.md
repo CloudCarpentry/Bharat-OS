@@ -254,3 +254,16 @@ Bharat-OS remains C-first for kernel baseline work. E3-X-S6 introduces memory-sa
 - Unit tests for span bounds checks.
 - Compile-time tests for annotation macros where possible.
 - Future CI lint plan.
+
+---
+
+## Implementation Status
+
+| Primitive | Header | Implementation | Tests | Integrated With | Status |
+|---|---|---|---|---|---|
+| RCU stub | `bh_rcu.h` | `bh_rcu_stub.c` | `test_bh_rcu_stub.c` | none | baseline |
+| Seqlock | `bh_seqlock.h` | `bh_seqlock.c` | `test_bh_seqlock.c` | none | baseline |
+| ID allocator | `bh_id_allocator.h` | `bh_id_allocator.c` | `test_bh_id_allocator.c` | capability slot/object ID path | partial |
+| Range tree/table | `bh_range_tree.h` | `bh_range_tree.c` | `test_bh_range_tree.c` | VM region lookup adapter | partial |
+| Ring buffer | `bh_ring.h` | `bh_ring.c` | `test_bh_ring.c` | core msgq | baseline |
+| Core MsgQ | `bh_core_msgq.h` | `bh_core_msgq.c` | none (uses ring tests) | future TLB/URPC | baseline |

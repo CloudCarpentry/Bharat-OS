@@ -314,6 +314,7 @@ if(BHARAT_ENABLE_ADVANCED_VM)
     add_library(bharat_mm_aspace OBJECT
         src/mm/vm/aspace/aspace.c
         src/mm/vm/aspace/vm_space.c
+        src/mm/vm/aspace/vm_region_index.c
     )
     target_link_libraries(bharat_mm_aspace PRIVATE bharat_kernel_includes bharat_kernel_buildopts)
     target_compile_options(bharat_mm_aspace PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
@@ -378,6 +379,7 @@ add_subdirectory(src/trap)
 add_subdirectory(src/debug)
 add_subdirectory("${BHARAT_KERNEL_SRC_ROOT}/init" "${CMAKE_CURRENT_BINARY_DIR}/src_init")
 add_subdirectory(src/fs)
+add_subdirectory(src/ds)
 add_subdirectory(src/lib)
 add_subdirectory(src/tests)
 add_subdirectory(src/monitor)
@@ -517,6 +519,7 @@ add_executable(kernel.elf
     $<TARGET_OBJECTS:bharat_mm_iommu>
     $<TARGET_OBJECTS:bharat_mm_pmm>
     $<TARGET_OBJECTS:bharat_librbtree_obj>
+    $<TARGET_OBJECTS:k_ds>
     $<TARGET_OBJECTS:k_core>
     $<TARGET_OBJECTS:k_sched>
     $<TARGET_OBJECTS:k_ipc>

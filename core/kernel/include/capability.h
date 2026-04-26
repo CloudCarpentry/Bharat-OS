@@ -6,6 +6,7 @@
 #include "sched/sched.h"
 #include "spinlock.h"
 #include "kernel/status.h"
+#include <bharat/kernel/ds/bh_id_allocator.h>
 
 typedef enum {
     CAP_TYPE_NONE = 0,
@@ -188,7 +189,8 @@ typedef enum {
 
 typedef struct __attribute__((aligned(64))) capability_table {
     capability_entry_t entries[64];
-    uint32_t next_id;
+    bh_id_allocator_t id_allocator;
+    uint8_t id_bitmap[8]; // 64 bits for 64 entries
     spinlock_t lock;
     uint32_t owner_pid;
     uint32_t numa_node;
