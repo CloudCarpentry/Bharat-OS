@@ -4,8 +4,8 @@
 /* AUTO-GENERATED VIA CMAKE configure_file(bharat_config.h.in -> generated/bharat_config.h). */
 /* Edit bharat_config.h.in, not generated/bharat_config.h. */
 /* Architecture Family */
-/* #undef BHARAT_ARCH_X86 */
-#define BHARAT_ARCH_ARM 1
+#define BHARAT_ARCH_X86 1
+/* #undef BHARAT_ARCH_ARM */
 /* #undef BHARAT_ARCH_RISCV */
 
 /* Architecture Bitness */
@@ -39,8 +39,8 @@
 /* #undef BHARAT_IRQ_DISPATCH_RT */
 
 /* Personality Profile */
-/* #undef BHARAT_PERSONALITY_NATIVE */
-#define BHARAT_PERSONALITY_LINUX 1
+#define BHARAT_PERSONALITY_NATIVE 1
+/* #undef BHARAT_PERSONALITY_LINUX */
 /* #undef BHARAT_PERSONALITY_WINDOWS */
 /* #undef BHARAT_PERSONALITY_MAC */
 
