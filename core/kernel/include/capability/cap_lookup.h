@@ -53,4 +53,38 @@ static inline kstatus_t bh_syscall_cap_lookup_endpoint(bh_syscall_ctx_t *ctx,
                                (uint32_t)cap_id, required_rights, out);
 }
 
+static inline kstatus_t bh_syscall_cap_lookup_fault_domain(bh_syscall_ctx_t *ctx,
+                                                           uintptr_t cap_id,
+                                                           uint64_t required_rights,
+                                                           void **out_ref) {
+    if (!ctx || !ctx->process || !ctx->process->security_sandbox_ctx) {
+        return K_ERR_DENIED;
+    }
+    capability_entry_t entry;
+    kstatus_t st = cap_table_lookup((capability_table_t *)ctx->process->security_sandbox_ctx,
+                                    (uint32_t)cap_id, CAP_TYPE_PROCESS, required_rights, &entry);
+    if (st == K_OK) {
+        if (entry.state != CAP_STATE_LIVE) return K_ERR_DENIED;
+        if (out_ref) *out_ref = (void *)entry.object_ref;
+    }
+    return st;
+}
+
+static inline kstatus_t bh_syscall_cap_lookup_sched_control(bh_syscall_ctx_t *ctx,
+                                                            uintptr_t cap_id,
+                                                            uint64_t required_rights,
+                                                            void **out_ref) {
+    if (!ctx || !ctx->process || !ctx->process->security_sandbox_ctx) {
+        return K_ERR_DENIED;
+    }
+    capability_entry_t entry;
+    kstatus_t st = cap_table_lookup((capability_table_t *)ctx->process->security_sandbox_ctx,
+                                    (uint32_t)cap_id, CAP_TYPE_SCHED, required_rights, &entry);
+    if (st == K_OK) {
+        if (entry.state != CAP_STATE_LIVE) return K_ERR_DENIED;
+        if (out_ref) *out_ref = (void *)entry.object_ref;
+    }
+    return st;
+}
+
 #endif /* BHARAT_KERNEL_CAP_LOOKUP_H */
