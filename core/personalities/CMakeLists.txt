@@ -3,10 +3,22 @@ project(BharatOS_Personalities C ASM)
 
 add_subdirectory(common)
 add_subdirectory(native)
-add_subdirectory(compat/linux)
-add_subdirectory(compat/windows)
-add_subdirectory(compat/android)
-add_subdirectory(domain/automotive)
+
+if(BHARAT_ENABLE_SUBSYS_LINUX)
+    add_subdirectory(compat/linux)
+endif()
+
+if(BHARAT_ENABLE_SUBSYS_WINDOWS)
+    add_subdirectory(compat/windows)
+endif()
+
+if(BHARAT_ENABLE_SUBSYS_ANDROID)
+    add_subdirectory(compat/android)
+endif()
+
+if(BHARAT_ENABLE_SUBSYS_AUTOMOTIVE)
+    add_subdirectory(domain/automotive)
+endif()
 
 add_library(bharatos_personalities INTERFACE)
 target_link_libraries(bharatos_personalities INTERFACE
