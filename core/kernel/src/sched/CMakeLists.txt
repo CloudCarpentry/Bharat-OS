@@ -15,6 +15,8 @@ add_library(k_sched OBJECT
     algo_matrix.c
     ai_sched.c
     sched_invariants.c
+    cpu_partition.c
+    cpu_partition_validate.c
 )
 
 target_sources(k_sched PRIVATE sched_test_support.c)
