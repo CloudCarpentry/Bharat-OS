@@ -22,6 +22,20 @@ This document defines target folder boundaries and records the **current alignme
 - Mechanism (kernel/driverscore/hal) and policy (services/stacks/personalities) should stay separated.
 - External contracts should be versioned and published through `interface/uapi/` + `interface/idl/` (legacy root aliases may exist during migration).
 
+### Kernel algorithmic foundation directories
+
+- `core/kernel/include/ds/` and `core/kernel/src/ds/`
+  contain policy-free kernel data structures such as range indexes,
+  sparse object indexes, intrusive lists, and bounded queues.
+
+- `core/kernel/include/sync/` and `core/kernel/src/sync/`
+  contain kernel synchronization primitives such as RCU-lite, sequence
+  counters, barriers, and lock helpers.
+
+- `core/kernel/include/verify/` and `core/kernel/src/verify/`
+  contain verification helpers, checked arithmetic, hook validation,
+  invariant helpers, and safety annotations.
+
 ## Current alignment snapshot (2026-04-24)
 
 | Area | Target direction | Current alignment | Notes |
