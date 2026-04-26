@@ -1,24 +1,14 @@
 #include "personality_ops.h"
-
 #include "trap_frame_ops.h"
+#include "trap/syscall_regs.h"
 
-extern long syscall_dispatch(syscall_id_t id, uintptr_t arg0, uintptr_t arg1,
-                      uintptr_t arg2, uintptr_t arg3, uintptr_t arg4,
-                      uintptr_t arg5);
+// bh_syscall_gate is now the common entry point
+extern long bh_syscall_gate(trap_frame_t *frame, const trap_info_t *info);
 
 static long default_handle_syscall(bh_thread_t *thread, trap_frame_t *frame, const trap_info_t *info) {
     (void)thread;
-    (void)info;
-
-    return syscall_dispatch(
-        trap_frame_get_syscall_no(frame),
-        trap_frame_get_arg0(frame),
-        trap_frame_get_arg1(frame),
-        trap_frame_get_arg2(frame),
-        trap_frame_get_arg3(frame),
-        trap_frame_get_arg4(frame),
-        trap_frame_get_arg5(frame)
-    );
+    // Native personality simply calls the common gate
+    return bh_syscall_gate(frame, info);
 }
 
 static int default_handle_user_fault(bh_thread_t *thread, trap_frame_t *frame, const trap_info_t *info) {

@@ -5,6 +5,7 @@
 
 #include "sched/sched.h"
 #include "spinlock.h"
+#include "kernel/status.h"
 
 typedef enum {
     CAP_TYPE_NONE = 0,
@@ -246,6 +247,26 @@ int cap_table_lookup(const capability_table_t* table,
                      cap_type_t required_type,
                      cap_rights_mask_t required_rights,
                      capability_entry_t* out_entry);
+
+typedef struct bh_thread_object {
+    uint64_t tid;
+    struct bh_thread *thread;
+} bh_thread_object_t;
+
+typedef struct bh_process_object {
+    uint32_t pid;
+    struct bh_process *process;
+} bh_process_object_t;
+
+typedef struct bh_memory_object {
+    phys_addr_t base;
+    size_t size;
+    uint32_t flags;
+} bh_memory_object_t;
+
+kstatus_t cap_lookup_thread(const capability_table_t *table, uint32_t cap_id, cap_rights_mask_t required_rights, bh_thread_object_t *out);
+kstatus_t cap_lookup_process(const capability_table_t *table, uint32_t cap_id, cap_rights_mask_t required_rights, bh_process_object_t *out);
+kstatus_t cap_lookup_memory(const capability_table_t *table, uint32_t cap_id, cap_rights_mask_t required_rights, bh_memory_object_t *out);
 
 /*@
   requires src != \null;
