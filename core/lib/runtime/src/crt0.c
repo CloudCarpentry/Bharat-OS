@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <uapi/syscall/syscall_nr.h>
-#include <syscall.h>
+#include <syscall/common/syscall.h>
 
 extern int main(int argc, char* argv[], char* envp[]);
 

@@ -7,7 +7,7 @@
 #else
 #include <stdio.h>
 #include <uapi/syscall/syscall_nr.h>
-#include <syscall.h>
+#include <syscall/common/syscall.h>
 #define BH_WRITE(buf, len) bh_syscall(SYSCALL_IPC_SEND, 1, (long)buf, (long)len, 0, 0, 0)
 #endif
 

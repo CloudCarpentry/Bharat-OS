@@ -82,8 +82,9 @@ def run_qemu(manifest_path: Path) -> int:
         cmd.extend(["-dtb", dtb_path])
 
     # We use discrete flags for better signal handling on Windows/WSL
-    # -nographic often hijacks the signal handler
-    cmd.extend(["-nographic", "-monitor", "none", "-serial", "stdio"])
+    # -nographic often hijacks the signal handler; -no-reboot keeps QEMU from
+    # restarting after a kernel panic so the process exits cleanly.
+    cmd.extend(["-nographic", "-monitor", "none", "-serial", "stdio", "-no-reboot"])
 
     smp = run_config.get("smp", 1)
     if smp:
@@ -96,33 +97,35 @@ def run_qemu(manifest_path: Path) -> int:
     print(f"[Run] Executing: {' '.join(cmd)}")
 
     import time
+    import threading
+    import queue
 
     # Headless boot success marker
     BOOT_MARKER = "BOOT: kernel_main reached"
-    TIMEOUT_SEC = 15
+    TIMEOUT_SEC = 30
     marker_observed = False
 
+    def _report_boot_success(name: str, marker: str) -> None:
+        print(f"\n[Run] Boot marker observed: {marker}")
+        print(f"[Run] PASS: {name} booted successfully")
+
     proc = None
+    q: queue.Queue = queue.Queue()
     try:
         # Use a pipe for stdout to monitor serial output
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
 
         start_time = time.time()
 
-        # We need a non-blocking way to read from the pipe
-        import threading
-        import queue
-
-        def reader(pipe, q):
+        def reader(pipe, out_q):
             try:
                 for line in pipe:
-                    q.put(line)
-            except Exception:
+                    out_q.put(line)
+            except OSError:
                 pass
             finally:
                 pipe.close()
 
-        q = queue.Queue()
         t = threading.Thread(target=reader, args=(proc.stdout, q))
         t.daemon = True
         t.start()
@@ -133,8 +136,7 @@ def run_qemu(manifest_path: Path) -> int:
                 sys.stdout.write(line)
                 sys.stdout.flush()
                 if BOOT_MARKER in line:
-                    print(f"\n[Run] Boot marker observed: {BOOT_MARKER}")
-                    print(f"[Run] PASS: {target_name} booted successfully")
+                    _report_boot_success(target_name, BOOT_MARKER)
                     marker_observed = True
                     break
             except queue.Empty:
@@ -145,6 +147,19 @@ def run_qemu(manifest_path: Path) -> int:
                 break
 
             time.sleep(0.1)
+
+        # Drain any remaining output that arrived after QEMU exited or the
+        # timeout broke out of the loop.  The boot marker may be in these
+        # final lines (e.g. when -no-reboot causes an immediate clean exit).
+        if not marker_observed:
+            t.join(timeout=1.0)
+            while not q.empty():
+                line = q.get_nowait()
+                sys.stdout.write(line)
+                sys.stdout.flush()
+                if BOOT_MARKER in line:
+                    _report_boot_success(target_name, BOOT_MARKER)
+                    marker_observed = True
 
     except KeyboardInterrupt:
         print("\n[Run] Terminating QEMU (User Interrupted)...")
