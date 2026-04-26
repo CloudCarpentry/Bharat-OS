@@ -26,6 +26,20 @@ def parse_args():
                 "--dry-run", action="store_true", help="Perform a dry run for flashing."
             )
 
+        if cmd in ("run", "all"):
+            subparser.add_argument(
+                "--gui", action="store_true", help="Override: Enable graphical display."
+            )
+            subparser.add_argument(
+                "--headless", action="store_true", help="Override: Disable graphical display (nographic)."
+            )
+            subparser.add_argument(
+                "--interactive", action="store_true", help="Override: Keep QEMU open until manually closed."
+            )
+            subparser.add_argument(
+                "--smoke", action="store_true", help="Override: Exit QEMU automatically after boot marker or timeout."
+            )
+
     # peek at the first argument to see if it's a valid command
     valid_commands = ["configure", "build", "package", "run", "flash", "debug", "all"]
 
@@ -81,5 +95,12 @@ def parse_args():
         parser.error(
             "You must provide either --target-yaml or --target for the chosen command."
         )
+
+    # Validate conflicting flags
+    if getattr(args, "gui", False) and getattr(args, "headless", False):
+        parser.error("Cannot specify both --gui and --headless.")
+
+    if getattr(args, "interactive", False) and getattr(args, "smoke", False):
+        parser.error("Cannot specify both --interactive and --smoke.")
 
     return args

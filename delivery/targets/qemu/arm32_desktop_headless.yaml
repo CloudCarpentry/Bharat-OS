@@ -1,0 +1,47 @@
+name: arm32_desktop_headless
+kind: qemu_target
+
+arch: arm32
+board: qemu-virt-arm32
+device_profile: desktop
+personality_profile: native
+execution_profile: gp
+
+build:
+  cmake_preset: arm32-edge
+  cmake_defs:
+    BHARAT_ARCH_FAMILY: ARM32
+    BHARAT_DEVICE_PROFILE: DESKTOP
+    BHARAT_PERSONALITY_PROFILE: NATIVE
+    BHARAT_TARGET_BOARD: virt
+    BHARAT_BOOT_GUI: OFF
+
+kernel:
+  canonical_artifacts:
+    elf: kernel/kernel.elf
+    map: kernel/kernel.map
+
+boot:
+  protocol: linux_arm64
+  artifact_format: elf
+  dtb:
+    mode: qemu_generated
+    required: true
+
+package:
+  transforms: []
+
+run:
+  backend: qemu
+  machine: virt
+  cpu: cortex-a15
+  memory: 512M
+  nographic: true
+  serial:
+    - stdio
+  boot_artifact: kernel/kernel.elf
+
+debug:
+  backend: gdb_remote
+  stop_on_entry: false
+  gdb_port: 1234
