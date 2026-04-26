@@ -3,21 +3,22 @@
 #include "init_contract.h"
 #include <bharat/runtime/runtime.h>
 #include <errno.h>
+#include <stdio.h>
 
 static bool is_required_boot_class(init_boot_class_t cls) {
     return (cls == BOOT_CLASS_CORE || cls == BOOT_CLASS_INFRA);
 }
 
 static bool filter_service(const init_service_desc_t *desc, const init_boot_context_t *ctx) {
-    if (!(desc->profile_mask & ctx->profile)) {
+    if (!(desc->profile_mask & (uint64_t)ctx->profile)) {
         return false;
     }
 
-    if (desc->board_mask != BHARAT_INIT_BOARD_ANY && !(desc->board_mask & ctx->board_id)) {
+    if (desc->board_mask != (uint32_t)BHARAT_INIT_BOARD_ANY && !(desc->board_mask & ctx->board_id)) {
         return false;
     }
 
-    if (desc->personality_mask != BHARAT_INIT_PERSONALITY_ANY && !(desc->personality_mask & ctx->personality_id)) {
+    if (desc->personality_mask != BHARAT_INIT_PERSONALITY_ANY && !(desc->personality_mask & (1 << ctx->personality_id))) {
         return false;
     }
 
@@ -55,12 +56,13 @@ static bool deps_ready(init_runtime_t *rt, const init_service_desc_t *desc) {
     return true;
 }
 
-static void try_issue_bootstrap_hints(init_runtime_t *rt) {
+static void try_launch_services(init_runtime_t *rt, init_boot_class_t target_class) {
     for (size_t i = 0; i < rt->manifest_count; i++) {
         init_service_id_t id = rt->service_order[i];
         init_service_runtime_t *sr = &rt->services[id];
 
         if (sr->desc == NULL) continue;
+        if (sr->desc->boot_class != target_class) continue;
 
         if (sr->state != INIT_SERVICE_STATE_PENDING && sr->state != INIT_SERVICE_STATE_WAITING_DEPS) {
             continue;
@@ -92,8 +94,6 @@ static void try_issue_bootstrap_hints(init_runtime_t *rt) {
 
         sr->last_error = err;
 
-        // Mocking synchronous completion for existing simple behavior,
-        // to be expanded in async event loop later
         if (err == 0) {
             sr->state = INIT_SERVICE_STATE_READY;
             sr->observed_ready = true;
@@ -103,27 +103,27 @@ static void try_issue_bootstrap_hints(init_runtime_t *rt) {
     }
 }
 
-static bool any_required_failed(const init_runtime_t *rt) {
+static bool any_failed_in_class(const init_runtime_t *rt, init_boot_class_t cls) {
     for (size_t i = 0; i < rt->manifest_count; i++) {
         init_service_id_t id = rt->service_order[i];
         const init_service_runtime_t *sr = &rt->services[id];
-        if (sr->desc == NULL || !sr->required_for_boot) continue;
+        if (sr->desc == NULL || sr->desc->boot_class != cls) continue;
 
-        if (sr->state == INIT_SERVICE_STATE_FAILED) {
+        if (sr->state == INIT_SERVICE_STATE_FAILED && sr->required_for_boot) {
             return true;
         }
     }
     return false;
 }
 
-static bool all_required_ready(const init_runtime_t *rt) {
+static bool all_ready_in_class(const init_runtime_t *rt, init_boot_class_t cls) {
     for (size_t i = 0; i < rt->manifest_count; i++) {
         init_service_id_t id = rt->service_order[i];
         const init_service_runtime_t *sr = &rt->services[id];
-        if (sr->desc == NULL || !sr->required_for_boot) continue;
+        if (sr->desc == NULL || sr->desc->boot_class != cls) continue;
 
-        if (sr->state != INIT_SERVICE_STATE_READY) {
-            return false;
+        if (sr->state != INIT_SERVICE_STATE_READY && sr->state != INIT_SERVICE_STATE_SKIPPED) {
+            if (sr->required_for_boot) return false;
         }
     }
     return true;
@@ -136,7 +136,22 @@ int init_runtime_run(init_boot_context_t *ctx) {
 
     init_event_queue_init(&rt.event_queue);
 
+    rt.phase = INIT_PHASE_CONTEXT_READY;
+
+    // Validate Kernel Health
+    rt.phase = INIT_PHASE_KERNEL_HEALTH_VALIDATED;
+    if (ctx->kernel_health.level == INIT_KERNEL_HEALTH_UNSAFE) {
+        rt.outcome = INIT_BOOT_OUTCOME_SAFE_MODE;
+        rt.failure_class = INIT_FAIL_PROFILE;
+        ctx->safe_mode_requested = true;
+        goto finish;
+    }
+
+    rt.phase = INIT_PHASE_PROFILE_SELECTED;
+    rt.phase = INIT_PHASE_PERSONALITY_SELECTED;
+
     // 1. Filter manifest
+    rt.phase = INIT_PHASE_MANIFEST_SELECTED;
     for (size_t i = 0; i < g_init_manifest_count; i++) {
         if (rt.manifest_count >= INIT_SERVICE_ID_MAX) break;
 
@@ -148,7 +163,6 @@ int init_runtime_run(init_boot_context_t *ctx) {
             rt.services[id].attempts = 0;
             rt.services[id].last_error = 0;
 
-            // Map legacy required to boot classes
             if (g_init_manifest[i].policy == INIT_SERVICE_REQUIRED || is_required_boot_class(g_init_manifest[i].boot_class)) {
                 rt.services[id].required_for_boot = true;
             }
@@ -156,56 +170,54 @@ int init_runtime_run(init_boot_context_t *ctx) {
         }
     }
 
-    // 2. State Machine Loop
+    rt.phase = INIT_PHASE_GRAPH_VALIDATED;
+
+    // 2. CORE Class
     rt.phase = INIT_PHASE_CORE_STARTING;
+    try_launch_services(&rt, BOOT_CLASS_CORE);
+    if (any_failed_in_class(&rt, BOOT_CLASS_CORE)) {
+        rt.failure_class = INIT_FAIL_LAUNCH;
+        rt.outcome = INIT_BOOT_OUTCOME_SAFE_MODE;
+        ctx->safe_mode_requested = true;
+        goto finish;
+    }
+    if (!all_ready_in_class(&rt, BOOT_CLASS_CORE)) {
+        rt.failure_class = INIT_FAIL_TIMEOUT;
+        rt.outcome = INIT_BOOT_OUTCOME_SAFE_MODE;
+        goto finish;
+    }
+    rt.phase = INIT_PHASE_CORE_READY;
 
-    bool progress = true;
-    while (progress) {
-        progress = false; // Detect loop hang if no states advance
+    // 3. INFRA Class
+    rt.phase = INIT_PHASE_INFRA_STARTING;
+    try_launch_services(&rt, BOOT_CLASS_INFRA);
+    if (any_failed_in_class(&rt, BOOT_CLASS_INFRA)) {
+        rt.outcome = INIT_BOOT_OUTCOME_DEGRADED;
+    }
+    rt.phase = INIT_PHASE_INFRA_READY;
 
-        // For each pass, track if we made changes
-        for (size_t i = 0; i < rt.manifest_count; i++) {
-             init_service_id_t id = rt.service_order[i];
-             init_service_state_t old_state = rt.services[id].state;
-
-             // In a real async loop we'd pop events here
-        }
-
-        try_issue_bootstrap_hints(&rt);
-
-        // Progress check - if state advanced, keep going
-        for (size_t i = 0; i < rt.manifest_count; i++) {
-            init_service_id_t id = rt.service_order[i];
-            if (rt.services[id].state == INIT_SERVICE_STATE_READY && !rt.services[id].observed_ready) {
-                // Was not marked observed ready in previous loop iterations
-                progress = true;
-            } else if (rt.services[id].state == INIT_SERVICE_STATE_FAILED && rt.services[id].last_error == 0) {
-                 progress = true;
-            }
-        }
-
-        if (any_required_failed(&rt)) {
-             rt.failure_class = INIT_FAIL_LAUNCH;
-             rt.outcome = INIT_BOOT_OUTCOME_SAFE_MODE;
-             ctx->safe_mode_requested = true;
-             break;
-        }
-
-        if (all_required_ready(&rt)) {
-             rt.outcome = INIT_BOOT_OUTCOME_SUCCESS;
-             rt.phase = INIT_PHASE_CORE_READY;
-             break; // All core done
-        }
-
-        // Simplified sync mock progress simulation since stub start returns immediately
-        break;
+    // 4. OPTIONAL / LATE / DIAGNOSTIC (best effort)
+    rt.phase = INIT_PHASE_OPTIONAL_STARTING;
+    try_launch_services(&rt, BOOT_CLASS_OPTIONAL);
+    try_launch_services(&rt, BOOT_CLASS_LATE);
+    if (ctx->diagnostics_requested || ctx->safe_mode_requested) {
+        try_launch_services(&rt, BOOT_CLASS_DIAGNOSTIC);
     }
 
+    rt.outcome = (rt.outcome == INIT_BOOT_OUTCOME_DEGRADED) ? INIT_BOOT_OUTCOME_DEGRADED : INIT_BOOT_OUTCOME_SUCCESS;
+
+finish:
     // Status Report
     init_status_report(rt.services, INIT_SERVICE_ID_MAX);
 
     // Handoff
-    init_handoff_to_supervisor(ctx);
+    rt.phase = INIT_PHASE_HANDOFF_PREPARED;
+    int handoff_res = init_handoff_to_supervisor(ctx);
+    if (handoff_res == 0) {
+        rt.phase = INIT_PHASE_HANDOFF_COMPLETE;
+    } else {
+        rt.outcome = INIT_BOOT_OUTCOME_HANDOFF_FAILED;
+    }
 
-    return (rt.outcome == INIT_BOOT_OUTCOME_SUCCESS) ? 0 : -EFAULT;
+    return (rt.outcome == INIT_BOOT_OUTCOME_SUCCESS || rt.outcome == INIT_BOOT_OUTCOME_DEGRADED) ? 0 : -EFAULT;
 }

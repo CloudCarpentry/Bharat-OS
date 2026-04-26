@@ -20,11 +20,12 @@ static int bootstrap_launch_first_service(void) {
     // sched_enqueue();
 
     console_write_raw("  [BOOTSTRAP] userspace loader not wired yet; deferring services/init launch\n", 76);
+    console_write_raw("  [BOOTSTRAP] outcome: INIT_BOOT_OUTCOME_BOOTSTRAP_DEFERRED\n", 60);
     return 0;
 }
 
 static void bootstrap_thread_entry(void) {
-    console_write_raw("  [BOOTSTRAP] Launching services/init...\n", 41);
+    console_write_raw("  [BOOTSTRAP] Launching services/init (SIMULATED)...\n", 53);
 
     int rc = bootstrap_launch_first_service();
     if (rc != 0) {
@@ -33,6 +34,7 @@ static void bootstrap_thread_entry(void) {
     }
 
     console_write_raw("  [BOOTSTRAP] services/init launch deferred (degraded boot)\n", 59);
+    console_write_raw("  [BOOTSTRAP] TODO: wire real userspace ELF loader\n", 51);
 
     thread_destroy(sched_current_thread());
     bh_thread_yield();
