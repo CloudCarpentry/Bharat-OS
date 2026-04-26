@@ -2,7 +2,7 @@
 title: Syscall ABI Boundary Hardening
 status: Active
 owner: Documentation Working Group
-last_updated: 2026-05-22
+last_updated: 2026-06-05
 tags:
   - docs
   - architecture
@@ -18,29 +18,67 @@ This document explains the architecture and governance of the Bharat-OS secure s
 
 Bharat-OS uses a unified, high-performance secure substrate for all syscall personalities (Native, Linux, Android, Windows).
 
-1.  **Trap Entry:** Userspace executes a syscall instruction (`SVC`, `ecall`, `int 0x80`).
-2.  **Architecture Trap Handler:** `core/arch/` extracts the trap frame and classifies it using `arch_trap_is_syscall(frame)`.
-3.  **Trap Dispatch:** `trap_handle` calls `trap_dispatch_syscall(frame, info)`.
-4.  **Personality Routing:** `trap_dispatch_syscall` (in `core/kernel/src/trap/syscall.c`) routes to the current thread's `personality_ops->handle_syscall`.
-5.  **Common Syscall Gate:** The personality handler (e.g., Native or Linux) calls the common `bh_syscall_gate(frame, info)`.
-6.  **Secure Substrate (`bh_syscall_gate`):**
-    -   Calls `arch_trap_extract_syscall()` to fill `bh_syscall_regs_t`.
-    -   Identifies personality and looks up the associated `bh_personality_syscall_table_t`.
-    -   Validates syscall number bounds and looks up the `bh_syscall_desc_t`.
-    -   Updates performance observability stats (total, fast, slow).
-    -   Executes the typed handler.
-7.  **Return Path:** `trap_dispatch_syscall` calls `arch_trap_set_syscall_return()` to place the result in the correct architectural register.
+### A. Unified Syscall Flow
 
-## kstatus_t vs sys_errno_t
+```mermaid
+sequenceDiagram
+    participant U as User code / SDK / Compat app
+    participant A as Arch syscall entry
+    participant T as trap_dispatch_syscall
+    participant P as Personality ops
+    participant G as bh_syscall_gate
+    participant D as Personality syscall table
+    participant H as Syscall handler
+    participant K as Kernel / Service primitive
 
-Bharat-OS maintains a strict separation between internal kernel status and the external syscall ABI:
+    U->>A: syscall / svc / ecall / int 0x80
+    A->>T: trap_frame + trap_info
+    T->>P: handle_syscall(frame, info)
+    P->>G: common gate
+    G->>A: arch_trap_extract_syscall()
+    G->>D: lookup descriptor by personality + nr
+    G->>G: validate context, flags, policy
+    G->>H: handler(ctx)
+    H->>K: typed operation / service call
+    H-->>G: result
+    G->>A: arch_trap_set_syscall_return()
+    G-->>P: status
+    P-->>T: return to user
+```
 
--   **`kstatus_t`:** Internal kernel status codes (defined in `core/kernel/include/core/kernel/status.h`).
--   **`sys_errno_t`:** Stable error codes returned to userspace (defined in `interface/include/bharat/uapi/sys_errno.h`).
+### B. Component Ownership
 
-**Translation Rule:** Translation occurs via `kstatus_to_sysret()` in the syscall dispatch path or within the personality-specific error normalization logic.
+```mermaid
+flowchart TD
+    Arch[arch/* syscall_extract.c] --> Gate[core/kernel/src/trap/syscall_gate.c]
+    Trap[core/kernel/src/trap/syscall.c] --> Pers[personality_ops.handle_syscall]
+    Pers --> Gate
+    Gate --> Native[core/personalities/native/native_syscall.c]
+    Gate --> Linux[core/personalities/compat/linux/linux_syscall.c]
+    Gate --> Android[future android overlay]
+    Gate --> Windows[future NT-style personality]
 
-## Syscall ABI Governance
+    UAPI[interface/include/bharat/uapi/syscall] --> Native
+    UAPI --> SDK[experience/user/sdk]
+```
+
+### C. Implementation Status
+
+```mermaid
+flowchart LR
+    Done[Complete] --> Gate[Common syscall gate]
+    Done --> Native[Native table]
+    Done --> LinuxMin[Minimal Linux table]
+    Done --> Usercopy[Stage 1.5 usercopy]
+    Done --> X86Int[x86_64 int 0x80 transitional]
+    Future[Future] --> X86Fast[x86_64 syscall/sysret]
+    Future --> VMA[VMA/page-backed usercopy]
+    Future --> Android[Android overlay]
+    Future --> Windows[Windows NT object model]
+    Future --> VDSO[vDSO fast page]
+```
+
+## Governance and ABI
 
 The canonical source of truth for syscall numbers is `interface/include/bharat/uapi/syscall/table.def` and the manifest `interface/contracts/abi/syscalls.json`.
 
@@ -53,18 +91,7 @@ The canonical source of truth for syscall numbers is `interface/include/bharat/u
 
 The `tools/abi/check_syscalls.py` tool enforces these rules against the baseline manifest.
 
-## Syscall Implementation Backends
-
--   **Arch-specific Assembly:** (e.g., `experience/user/sdk/lib/src/x86_64_syscalls.S`). Preferred for production.
--   **Generic Fallback:** (`core/lib/syscall/syscall_stubs.c`). For host-tests or bring-up.
-
-### x86_64 Architecture Note
-The x86_64 ABI is temporarily using `int $0x80` for consistency between SDK and kernel. The target production ABI is `SYSCALL/SYSRET`. Do not benchmark performance on the transitional path.
-
-### ARM64 Architecture Note
-ARM64 syscall detection decodes `ESR_EL1.EC` (bits [31:26]) to identify `SVC` from lower Exception Levels (EC 0x15).
-
-## Usercopy Hardening
+## Usercopy Hardening (Stage 1.5)
 
 All data transfers between kernel and userspace must use the checked usercopy primitives:
 
@@ -72,4 +99,21 @@ All data transfers between kernel and userspace must use the checked usercopy pr
 -   `copy_to_user_checked()`
 -   `copy_user_string_checked()`
 
-Current hardening (Stage 1.5) includes NULL rejection, pointer overflow checks, and max copy size limits. Future Stage 2 will integrate with the VMM for full VMA/page permission validation.
+**Hardening Rules:**
+- NULL rejection if `len > 0`.
+- Pointer + length overflow checks.
+- Strict max copy size: `BH_USERCOPY_MAX_BYTES` (default 4096).
+- User range validation.
+
+## Architecture Notes
+
+### x86_64
+The x86_64 ABI is temporarily using `int $0x80` for consistency. The target production ABI is `SYSCALL/SYSRET`.
+
+### ARM64
+ARM64 syscall detection decodes `ESR_EL1.EC` (0x15).
+```c
+/* Bharat-OS currently treats all SVC-from-EL0 exceptions as syscall entry.
+ * ISS/SVC immediate is reserved for future ABI versioning/debug use.
+ */
+```

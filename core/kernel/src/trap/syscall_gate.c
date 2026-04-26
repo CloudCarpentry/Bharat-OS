@@ -7,7 +7,38 @@
 #include "fault_diag.h"
 #include "kernel/status.h"
 
-extern const bh_personality_syscall_table_t *personality_get_syscall_table(bh_personality_id_t id);
+extern const bh_personality_syscall_table_t native_personality;
+extern const bh_personality_syscall_table_t *linux_personality_get_table(void);
+extern const bh_personality_syscall_table_t *android_personality_get_table(void);
+extern const bh_personality_syscall_table_t *windows_personality_get_table(void);
+
+kstatus_t bh_syscall_policy_check(bh_syscall_ctx_t *ctx, const bh_syscall_desc_t *desc) {
+    if (!ctx || !desc) return K_ERR_INVALID_ARG;
+
+    // 1. Syscall allowed for personality (already checked by table lookup, but for double-check)
+
+    // 2. Syscall allowed for process sandbox/profile
+
+    // 3. CAP_REQUIRED check (Stage 4 will harden)
+    // if (desc->flags & BH_SYSCALL_F_CAP_REQUIRED) { ... }
+
+    return K_OK;
+}
+
+const bh_personality_syscall_table_t *personality_get_syscall_table(bh_personality_id_t id) {
+    switch (id) {
+        case BH_PERSONALITY_NATIVE:
+            return &native_personality;
+        case BH_PERSONALITY_LINUX:
+            return linux_personality_get_table();
+        case BH_PERSONALITY_ANDROID:
+            return android_personality_get_table();
+        case BH_PERSONALITY_WINDOWS:
+            return windows_personality_get_table();
+        default:
+            return NULL;
+    }
+}
 
 /**
  * bh_syscall_gate: The common secure syscall gate substrate.
@@ -31,11 +62,14 @@ long bh_syscall_gate(trap_frame_t *frame, const trap_info_t *info) {
     ctx.thread = sched_current_thread();
     if (ctx.thread) {
         ctx.process = ctx.thread->process;
-        // In future, personality should be stored in bh_process_t/bh_thread_t
         ctx.personality = ctx.thread->personality;
     } else {
-        // Fallback for early boot or system threads if they ever trigger syscalls
-        ctx.personality = BH_PERSONALITY_NATIVE;
+        // FAIL CLOSED: No user context for userspace syscall
+        return kstatus_to_sysret(K_ERR_DENIED);
+    }
+
+    if (!ctx.process) {
+        return kstatus_to_sysret(K_ERR_DENIED);
     }
 
     // 1. Arch-specific extraction
@@ -57,6 +91,20 @@ long bh_syscall_gate(trap_frame_t *frame, const trap_info_t *info) {
         return kstatus_to_sysret(K_ERR_UNSUPPORTED);
     }
 
+    if (desc->arg_count > 6) {
+        return kstatus_to_sysret(K_ERR_INVALID_ARG);
+    }
+
+    if ((desc->flags & BH_SYSCALL_F_FAST) && (desc->flags & BH_SYSCALL_F_BLOCKING)) {
+        return kstatus_to_sysret(K_ERR_INVALID_ARG);
+    }
+
+    if ((desc->flags & BH_SYSCALL_F_FAST) && (desc->flags & BH_SYSCALL_F_SERVICE_CALL)) {
+        return kstatus_to_sysret(K_ERR_INVALID_ARG);
+    }
+
+    ctx.desc = desc;
+
     // 4. Performance stats
     uint32_t core_id = hal_cpu_get_id();
     bh_syscall_stats_inc_total(core_id);
@@ -66,8 +114,12 @@ long bh_syscall_gate(trap_frame_t *frame, const trap_info_t *info) {
         bh_syscall_stats_inc_slow(core_id);
     }
 
-    // 5. Generic Policy Hooks (Stage 4 will harden)
-    // if (desc->flags & BH_SYSCALL_F_CAP_REQUIRED) { ... }
+    // 5. Generic Policy Hooks
+    kstatus_t policy_st = bh_syscall_policy_check(&ctx, desc);
+    if (policy_st != K_OK) {
+        // TODO: Increment denied stat
+        return kstatus_to_sysret(policy_st);
+    }
 
     // 6. Dispatch
     long rc = desc->handler(&ctx);

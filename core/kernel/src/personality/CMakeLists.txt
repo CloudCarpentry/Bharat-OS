@@ -1,5 +1,4 @@
 add_library(bharatos_kernel_personality OBJECT
-    native/native_personality_table.c
     native/native_syscall_handlers.c
     linux/linux_personality.c
     android/android_personality.c
