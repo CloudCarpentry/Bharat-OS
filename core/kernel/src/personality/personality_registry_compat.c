@@ -1,4 +1,5 @@
 #include "personality/personality_hooks.h"
+#include "bh_personality_registry.h"
 #include <stddef.h>
 
 static const personality_ops_t* current_personality_ops = NULL;

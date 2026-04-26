@@ -8,6 +8,7 @@ add_library(k_core OBJECT
     ${BHARAT_KERNEL_SRC_ROOT}/multicore.c
     ${BHARAT_KERNEL_SRC_ROOT}/subsystem/profile.c
     ${BHARAT_KERNEL_SRC_ROOT}/profile/profile.c
+    ../profile/profile_policy.c
     ${BHARAT_KERNEL_STAGING_ROOT}/ai/ai_kernel_bridge.c
     ${BHARAT_KERNEL_SRC_ROOT}/security/isolation.c
     ${BHARAT_KERNEL_SRC_ROOT}/security/credentials.c
@@ -42,6 +43,7 @@ add_library(k_core OBJECT
 target_include_directories(k_core PRIVATE
     ${BHARAT_KERNEL_INCLUDE_DIR}
     ${BHARAT_GENERATED_INCLUDE_DIR}
+    ${CMAKE_SOURCE_DIR}/core/personalities/runtime/include
     ${CMAKE_SOURCE_DIR}/interface/include
     ${BHARAT_LIB_ROOT}/include
     ${BHARAT_BOOT_INCLUDE_DIR}

@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.20)
 project(BharatOS_Personalities C ASM)
 
-add_subdirectory(common)
+add_subdirectory(runtime)
+add_subdirectory(abi/linux)
 add_subdirectory(native)
 
 if(BHARAT_ENABLE_SUBSYS_LINUX)
@@ -21,21 +22,24 @@ if(BHARAT_ENABLE_SUBSYS_AUTOMOTIVE)
 endif()
 
 add_library(bharatos_personalities INTERFACE)
-target_link_libraries(bharatos_personalities INTERFACE
-  bharatos_personality_common
-  bharatos_personality_native
-)
 
-if(BHARAT_ENABLE_SUBSYS_LINUX)
-    target_link_libraries(bharatos_personalities INTERFACE bharatos_personality_linux)
+if(BHARAT_ENABLE_PERSONALITIES)
+    target_link_libraries(bharatos_personalities INTERFACE
+        bharatos_personality_runtime
+        bharatos_personality_native
+    )
 endif()
 
-if(BHARAT_ENABLE_SUBSYS_WINDOWS)
-    target_link_libraries(bharatos_personalities INTERFACE bharatos_personality_windows)
+if(BHARAT_ENABLE_SUBSYS_LINUX)
+    target_link_libraries(bharatos_personalities INTERFACE bharatos_personality_linux bharatos_personality_abi_linux)
 endif()
 
 if(BHARAT_ENABLE_SUBSYS_ANDROID)
     target_link_libraries(bharatos_personalities INTERFACE bharatos_personality_android)
+endif()
+
+if(BHARAT_ENABLE_SUBSYS_WINDOWS)
+    target_link_libraries(bharatos_personalities INTERFACE bharatos_personality_windows)
 endif()
 
 if(BHARAT_ENABLE_SUBSYS_AUTOMOTIVE)

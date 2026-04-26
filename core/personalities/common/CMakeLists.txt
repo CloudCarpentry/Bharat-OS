@@ -1,3 +1,0 @@
-add_library(bharatos_personality_common OBJECT version_registry.c personality_registry.c translation_events.c)
-target_include_directories(bharatos_personality_common PUBLIC ${CMAKE_SOURCE_DIR}/core/kernel/include ${CMAKE_SOURCE_DIR}/core/lib/include ${CMAKE_SOURCE_DIR}/interface/include)
-target_link_libraries(bharatos_personality_common PUBLIC bharat_user_buildopts bharat_freestanding bharat_generated_includes)

@@ -10,6 +10,7 @@ add_library(bharatos_personality_native OBJECT
 target_include_directories(bharatos_personality_native
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_SOURCE_DIR}/core/personalities/runtime/include
         ${CMAKE_SOURCE_DIR}/core/kernel/include
         ${CMAKE_SOURCE_DIR}/interface/include
         ${CMAKE_SOURCE_DIR}/core/lib/include
