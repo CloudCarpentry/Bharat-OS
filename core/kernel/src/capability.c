@@ -84,7 +84,7 @@ capability_table_t* cap_table_create(void) {
             g_cap_tables_used[i] = 1U;
             capability_table_t* t = &g_cpu_locals[i].cap_table;
             spin_lock_init(&t->lock);
-            t->next_id = 1U;
+            bh_id_allocator_init(&t->id_allocator, t->id_bitmap, BHARAT_ARRAY_SIZE(t->entries));
             t->numa_node = 0U; // Placeholder, would be set to actual node in full implementation
             t->owner_pid = 0U;
             /*@
@@ -159,10 +159,10 @@ int cap_table_grant(capability_table_t* table,
       loop assigns i, table->entries[0..BHARAT_ARRAY_SIZE(table->entries)-1], table->next_id, found_id, ret;
       loop variant BHARAT_ARRAY_SIZE(table->entries) - i;
     */
-    for (size_t i = 0; i < BHARAT_ARRAY_SIZE(table->entries); ++i) {
-        capability_entry_t* e = &table->entries[i];
-        if (e->in_use == 0U) {
-            e->id = table->next_id++;
+    uint32_t slot_idx;
+    if (bh_id_allocator_alloc(&table->id_allocator, &slot_idx) == K_OK) {
+            capability_entry_t* e = &table->entries[slot_idx];
+            e->id = slot_idx + 1; // Keep 1-based IDs if expected, or just use slot_idx
             e->state = CAP_STATE_LIVE;
             e->type = type;
             e->rights = rights;
@@ -190,8 +190,6 @@ int cap_table_grant(capability_table_t* table,
             e->in_use = 1U;
             found_id = e->id | (e->generation << 16);
             ret = 0;
-            break;
-        }
     }
 
     spin_unlock(&table->lock);
@@ -303,10 +301,10 @@ static int cap_table_delegate_local(capability_table_t* src,
         uint32_t found_id = 0;
         ret = -2;
 
-        for (size_t i = 0; i < BHARAT_ARRAY_SIZE(dst->entries); ++i) {
-            capability_entry_t* dst_entry = &dst->entries[i];
-            if (dst_entry->in_use == 0U) {
-                dst_entry->id = dst->next_id++;
+        uint32_t dst_slot_idx;
+        if (bh_id_allocator_alloc(&dst->id_allocator, &dst_slot_idx) == K_OK) {
+                capability_entry_t* dst_entry = &dst->entries[dst_slot_idx];
+                dst_entry->id = dst_slot_idx + 1;
                 dst_entry->state = CAP_STATE_LIVE;
                 dst_entry->type = src_entry->type;
                 dst_entry->rights = delegated_rights;
@@ -335,13 +333,11 @@ static int cap_table_delegate_local(capability_table_t* src,
                 dst_entry->in_use = 1U;
 
                 src_entry->first_child.table = dst;
-                src_entry->first_child.slot = (uint32_t)i;
+                src_entry->first_child.slot = dst_slot_idx;
                 src_entry->first_child.generation = dst_entry->generation;
 
                 found_id = dst_entry->id | (dst_entry->generation << 16);
                 ret = 0;
-                break;
-            }
         }
 
         if (ret == 0 && out_new_cap_id) {
@@ -562,11 +558,11 @@ void cap_handle_delegate_req(uint64_t payload, uint32_t source_core) {
     uint32_t dst_generation = 0;
 
     // Allocate slot in dst table
-    for (size_t i = 0; i < BHARAT_ARRAY_SIZE(dst->entries); ++i) {
-        capability_entry_t* dst_entry = &dst->entries[i];
-        if (dst_entry->in_use == 0U) {
-            dst_entry->id = dst->next_id++;
-            dst_entry->state = CAP_STATE_LIVE;
+    uint32_t dst_slot_idx;
+    if (bh_id_allocator_alloc(&dst->id_allocator, &dst_slot_idx) == K_OK) {
+        capability_entry_t* dst_entry = &dst->entries[dst_slot_idx];
+        dst_entry->id = dst_slot_idx + 1;
+        dst_entry->state = CAP_STATE_LIVE;
             dst_entry->type = req->type;
             dst_entry->rights = req->rights;
             dst_entry->object_ref = req->object_ref;
@@ -593,11 +589,9 @@ void cap_handle_delegate_req(uint64_t payload, uint32_t source_core) {
             dst_entry->in_use = 1U;
 
             found_id = dst_entry->id;
-            dst_slot = (uint32_t)i;
+            dst_slot = dst_slot_idx;
             dst_generation = dst_entry->generation;
             ret = 0;
-            break;
-        }
     }
 
     spin_unlock(&dst->lock);
@@ -930,6 +924,7 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
         cap->generation++;
         cap->state = CAP_STATE_FREE;
         cap->in_use = 0U;
+        bh_id_allocator_free(&frame.table->id_allocator, frame.slot);
 
         spin_unlock(&frame.table->lock);
     }

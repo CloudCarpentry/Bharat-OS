@@ -88,5 +88,37 @@ if __name__ == "__main__":
         print("Syscall ABI check passed.")
         sys.exit(0)
 
+    # 4. Reject raw numeric syscall invocations and dummy 1001
+    def check_raw_numbers():
+        success = True
+        dirs = ['experience', 'services', 'tests', 'lib', 'core', 'interface']
+        for d in dirs:
+            if not os.path.exists(d): continue
+            # Look for bharat_syscall(1, ...) etc.
+            # Use grep-like logic
+            import subprocess
+            try:
+                # Reject bharat_syscall(1, ...) but allow bharat_syscall(SYSCALL_NR, ...)
+                cmd = ["grep", "-rE", r"bharat_syscall\(\s*[0-9]+", d]
+                res = subprocess.run(cmd, capture_output=True, text=True)
+                if res.returncode == 0:
+                    common.report_error(f"Raw numeric syscall invocation found in {d}:\n{res.stdout}")
+                    success = False
+
+                # Reject dummy 1001
+                cmd = ["grep", "-r", "1001", d]
+                res = subprocess.run(cmd, capture_output=True, text=True)
+                if res.returncode == 0:
+                    # Filter out matches in binary files or false positives if needed
+                    common.report_error(f"Dummy syscall number 1001 found in {d}:\n{res.stdout}")
+                    success = False
+            except Exception as e:
+                print(f"Warning: could not run grep check: {e}")
+        return success
+
+    if args.check:
+        if not check_raw_numbers():
+            sys.exit(1)
+
     # Default to print current
     print(current)

@@ -58,7 +58,7 @@ long bh_sys_sched_set_priority(bh_syscall_ctx_t *ctx) {
     if (st != K_OK) return kstatus_to_sysret(st);
 
     bh_thread_object_t target;
-    st = bh_syscall_cap_lookup_thread(ctx, args.thread_cap, CAP_RIGHT_PROCESS_MANAGE, &target);
+    st = bh_syscall_cap_lookup_thread(ctx, args.thread_cap, CAP_RIGHT_SCHEDULE, &target);
     if (st != K_OK) return kstatus_to_sysret(st);
 
     return kstatus_to_sysret((kstatus_t)sched_sys_set_priority(target.tid, (uint32_t)args.value));
@@ -70,7 +70,7 @@ long bh_sys_sched_set_affinity(bh_syscall_ctx_t *ctx) {
     if (st != K_OK) return kstatus_to_sysret(st);
 
     bh_thread_object_t target;
-    st = bh_syscall_cap_lookup_thread(ctx, args.thread_cap, CAP_RIGHT_PROCESS_MANAGE, &target);
+    st = bh_syscall_cap_lookup_thread(ctx, args.thread_cap, CAP_RIGHT_SCHEDULE, &target);
     if (st != K_OK) return kstatus_to_sysret(st);
 
     return kstatus_to_sysret((kstatus_t)sched_sys_set_affinity(target.tid, (uint32_t)args.value));
@@ -306,11 +306,11 @@ long bh_sys_fault_domain_create(bh_syscall_ctx_t *ctx) {
 }
 
 long bh_sys_fault_domain_destroy(bh_syscall_ctx_t *ctx) {
-    bh_process_object_t target;
-    kstatus_t st = bh_syscall_cap_lookup_process(ctx, (uint32_t)ctx->regs.arg[0], CAP_RIGHT_PROCESS_MANAGE, &target);
+    void *domain_ref;
+    kstatus_t st = bh_syscall_cap_lookup_fault_domain(ctx, (uint32_t)ctx->regs.arg[0], CAP_RIGHT_FAULT_DOMAIN_MANAGE, &domain_ref);
     if (st != K_OK) return kstatus_to_sysret(st);
 
-    return kstatus_to_sysret((kstatus_t)sys_fault_domain_destroy((uint64_t)target.process)); // Still using object_ref for now
+    return kstatus_to_sysret((kstatus_t)sys_fault_domain_destroy((uintptr_t)domain_ref));
 }
 
 long bh_sys_fault_domain_attach(bh_syscall_ctx_t *ctx) {
@@ -318,15 +318,15 @@ long bh_sys_fault_domain_attach(bh_syscall_ctx_t *ctx) {
     kstatus_t st = copy_from_user_checked(&args, ctx->regs.arg[0], sizeof(args));
     if (st != K_OK) return kstatus_to_sysret(st);
 
-    bh_process_object_t domain_proc;
-    st = bh_syscall_cap_lookup_process(ctx, args.cap_id, CAP_RIGHT_FAULT_DOMAIN_MANAGE, &domain_proc);
+    void *domain_ref;
+    st = bh_syscall_cap_lookup_fault_domain(ctx, args.cap_id, CAP_RIGHT_FAULT_DOMAIN_MANAGE, &domain_ref);
     if (st != K_OK) return kstatus_to_sysret(st);
 
     bh_thread_object_t target_thread;
     st = bh_syscall_cap_lookup_thread(ctx, args.thread_cap, CAP_RIGHT_PROCESS_MANAGE, &target_thread);
     if (st != K_OK) return kstatus_to_sysret(st);
 
-    return kstatus_to_sysret((kstatus_t)sys_fault_domain_attach((uint64_t)domain_proc.process, target_thread.tid));
+    return kstatus_to_sysret((kstatus_t)sys_fault_domain_attach((uintptr_t)domain_ref, target_thread.tid));
 }
 
 long bh_sys_read(bh_syscall_ctx_t *ctx) {

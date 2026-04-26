@@ -136,13 +136,21 @@ target_include_directories(test_sched PRIVATE ../../kernel/include ../../include
 
 add_test(NAME host_test_sched COMMAND test_sched)
 
-add_executable(test_sched_admission test_sched_admission.c ../../core/kernel/src/sched/sched_admission.c ../../core/kernel/src/sched/cpu_partition.c)
+add_executable(test_sched_admission test_sched_admission.c ../../core/kernel/src/sched/sched_admission.c ../../core/kernel/src/sched/cpu_partition.c ../../core/kernel/src/sched/cpu_partition_validate.c)
 target_include_directories(test_sched_admission PRIVATE
     ../../core/kernel/include
     ../../interface/include
     ../../core/lib/include
 )
 add_test(NAME host_test_sched_admission COMMAND test_sched_admission)
+
+add_executable(test_cpu_partition sched/test_cpu_partition.c ../../core/kernel/src/sched/cpu_partition.c ../../core/kernel/src/sched/cpu_partition_validate.c)
+target_include_directories(test_cpu_partition PRIVATE
+    ../../core/kernel/include
+    ../../interface/include
+    ../../core/lib/include
+)
+add_test(NAME host_test_cpu_partition COMMAND test_cpu_partition)
 
 add_executable(test_lib_string test_lib_string.c ../../core/lib/string/string.c)
 add_test(NAME host_test_lib_string COMMAND test_lib_string)

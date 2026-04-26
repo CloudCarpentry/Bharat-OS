@@ -7,6 +7,7 @@
 #include "fault_diag.h"
 #include "kernel/status.h"
 #include "bharat/personality/personality_interface.h"
+#include "profile/profile_policy.h"
 
 // Forward declarations for personality tables, guarded by configuration.
 #if defined(BHARAT_PERSONALITY_NATIVE)
@@ -30,6 +31,12 @@ kstatus_t bh_syscall_policy_check(bh_syscall_ctx_t *ctx, const bh_syscall_desc_t
 
     kstatus_t status = K_OK;
 
+    // 1. Personality and Profile Allowlist
+    if (!bh_profile_allows_personality(ctx->personality)) {
+        return K_ERR_DENIED;
+    }
+
+    // 2. CAP_REQUIRED check: Must have enforceable rights
     if (desc->flags & BH_SYSCALL_F_CAP_REQUIRED) {
         if (desc->required_rights == 0) {
             status = K_ERR_DENIED;
@@ -40,8 +47,22 @@ kstatus_t bh_syscall_policy_check(bh_syscall_ctx_t *ctx, const bh_syscall_desc_t
         if (desc->flags & (BH_SYSCALL_F_BLOCKING | BH_SYSCALL_F_SERVICE_CALL)) {
             status = K_ERR_INVALID_ARG;
         }
+        // Fast path syscalls must not perform usercopy
         if (status == K_OK && (desc->flags & (BH_SYSCALL_F_USER_READ | BH_SYSCALL_F_USER_WRITE))) {
             status = K_ERR_INVALID_ARG;
+        }
+    }
+
+    // 4. Profile-based trait enforcement
+    if (status == K_OK) {
+        // Deny blocking syscalls if profile forbids them
+        if ((desc->flags & BH_SYSCALL_F_BLOCKING) && !bh_profile_allows_blocking_syscall()) {
+            status = K_ERR_DENIED;
+        }
+
+        // Deny service calls on MPU-only/Tiny profiles if not service-rich
+        if ((desc->flags & BH_SYSCALL_F_SERVICE_CALL) && !bh_profile_has_trait(BH_PROFILE_TRAIT_SERVICE_RICH)) {
+            status = K_ERR_DENIED;
         }
     }
 

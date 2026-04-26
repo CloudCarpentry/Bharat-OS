@@ -126,14 +126,22 @@ static void x86_probe_caps(arch_cpu_caps_record_t *caps) {
     }
 }
 
+extern void x86_64_init_syscall(void);
+
 void arch_cpu_caps_init(void) {
     arch_cpu_caps_record_t boot_caps;
     x86_probe_caps(&boot_caps);
     cpu_caps_state_set_boot(&boot_caps);
+#if defined(BHARAT_X86_64_ENABLE_FAST_SYSCALL)
+    x86_64_init_syscall();
+#endif
 }
 
 void arch_cpu_caps_init_ap(void) {
     arch_cpu_caps_record_t ap_caps;
     x86_probe_caps(&ap_caps);
     cpu_caps_state_set_ap(hal_cpu_get_id(), &ap_caps);
+#if defined(BHARAT_X86_64_ENABLE_FAST_SYSCALL)
+    x86_64_init_syscall();
+#endif
 }
