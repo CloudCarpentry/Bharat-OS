@@ -8,4 +8,9 @@ int device_register(device_desc_t* dev);
 void device_unregister(device_desc_t* dev);
 device_desc_t* device_find_by_name(const char* name);
 
+/**
+ * @brief Get the current number of registered devices.
+ */
+int device_registry_get_count(void);
+
 #endif // BHARAT_DRIVER_DEVICE_REGISTRY_H

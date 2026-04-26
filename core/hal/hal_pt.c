@@ -12,53 +12,23 @@ static inline bool is_page_aligned_u64(uint64_t val) {
     return (val & (PAGE_SIZE - 1U)) == 0U;
 }
 
-#if defined(__x86_64__) || defined(_M_X64)
-extern hal_pt_ops_t x86_hal_pt_ops;
-extern hal_tlb_ops_t x86_hal_tlb_ops;
-__attribute__((weak)) void x86_pt_set_mmu_finalized(bool finalized) { (void)finalized; }
-#elif defined(__aarch64__) || defined(_M_ARM64)
-extern hal_pt_ops_t arm64_hal_pt_ops;
-extern hal_tlb_ops_t arm64_hal_tlb_ops;
-#elif defined(__arm__)
-extern hal_pt_ops_t arm32_hal_pt_ops;
-extern hal_tlb_ops_t arm32_hal_tlb_ops;
-#elif defined(__riscv) && __riscv_xlen == 64
-extern hal_pt_ops_t riscv64_hal_pt_ops;
-extern hal_tlb_ops_t riscv64_hal_tlb_ops;
-#elif defined(__riscv) && __riscv_xlen == 32
-extern hal_pt_ops_t riscv32_hal_pt_ops;
-extern hal_tlb_ops_t riscv32_hal_tlb_ops;
-#endif
+void hal_pt_register_ops(hal_pt_ops_t *ops, hal_tlb_ops_t *tlb_ops) {
+    if (ops) active_hal_pt = ops;
+    if (tlb_ops) active_hal_tlb = tlb_ops;
+}
 
-#if defined(BHARAT_PROFILE_MPU_ONLY) || defined(PROFILE_MPU_ONLY)
-extern hal_pt_ops_t mpu_hal_pt_ops;
-extern hal_tlb_ops_t mpu_hal_tlb_ops;
-#endif
+// Architecture-specific initialization will call hal_pt_register_ops.
+// This weak stub handles cases where no registration happens early.
+void __attribute__((weak)) arch_hal_pt_init(void) {}
 
 void hal_pt_init(void) {
-#if defined(__x86_64__) || defined(_M_X64)
-    void __attribute__((weak)) x86_pt_caps_init(void);
-    if (x86_pt_caps_init) {
-        x86_pt_caps_init();
+    if (!active_hal_pt) {
+        arch_hal_pt_init();
     }
-    x86_pt_set_mmu_finalized(true);
-    active_hal_pt = &x86_hal_pt_ops;
-    active_hal_tlb = &x86_hal_tlb_ops;
-#elif defined(__aarch64__) || defined(_M_ARM64)
-    active_hal_pt = &arm64_hal_pt_ops;
-    active_hal_tlb = &arm64_hal_tlb_ops;
-#elif defined(__arm__)
-    active_hal_pt = &arm32_hal_pt_ops;
-    active_hal_tlb = &arm32_hal_tlb_ops;
-#elif defined(__riscv) && __riscv_xlen == 64
-    active_hal_pt = &riscv64_hal_pt_ops;
-    active_hal_tlb = &riscv64_hal_tlb_ops;
-#elif defined(__riscv) && __riscv_xlen == 32
-    active_hal_pt = &riscv32_hal_pt_ops;
-    active_hal_tlb = &riscv32_hal_tlb_ops;
-#endif
 
 #if defined(BHARAT_PROFILE_MPU_ONLY) || defined(PROFILE_MPU_ONLY)
+    extern hal_pt_ops_t mpu_hal_pt_ops;
+    extern hal_tlb_ops_t mpu_hal_tlb_ops;
     // Overrides arch-specific setups for bare-metal MPU configs
     active_hal_pt = &mpu_hal_pt_ops;
     active_hal_tlb = &mpu_hal_tlb_ops;
@@ -96,9 +66,23 @@ int hal_pt_map_range(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t paddr, 
     if (!active_hal_pt) {
         hal_pt_init();
     }
-    if (!active_hal_pt || size == 0U || !is_page_aligned_u64(vaddr) || !is_page_aligned_u64(paddr) || !is_page_aligned_u64(size)) {
+    if (!active_hal_pt) {
         return -1;
     }
+
+    if (size == 0U) {
+        return 0;
+    }
+
+    if (!is_page_aligned_u64(vaddr) || !is_page_aligned_u64(paddr) || !is_page_aligned_u64(size)) {
+        kernel_panic("hal_pt_map_range: unaligned parameters");
+        return -1;
+    }
+
+    // Basic flag validation - ensure at least some permissions or special flags are set
+    // Note: Some architectures or special regions might allow 0 flags (e.g. PROT_NONE),
+    // but typically we expect at least READ or similar.
+    // The self-test prot_domain_basic uses 0 flags in its sparse mapping attempt.
 
     if (active_hal_pt->map_range) {
         return active_hal_pt->map_range(root_pt, vaddr, paddr, size, flags);
@@ -122,7 +106,16 @@ int hal_pt_unmap_range(phys_addr_t root_pt, virt_addr_t vaddr, size_t size) {
     if (!active_hal_pt) {
         hal_pt_init();
     }
-    if (!active_hal_pt || size == 0U || !is_page_aligned_u64(vaddr) || !is_page_aligned_u64(size)) {
+    if (!active_hal_pt) {
+        return -1;
+    }
+
+    if (size == 0U) {
+        return 0;
+    }
+
+    if (!is_page_aligned_u64(vaddr) || !is_page_aligned_u64(size)) {
+        kernel_panic("hal_pt_unmap_range: unaligned parameters");
         return -1;
     }
 

@@ -12,8 +12,23 @@ void sched_edf_enqueue(sched_rq_t *rq, bh_thread_t *thread) {
 
         if (absolute_deadline < entry->absolute_deadline_ms) {
             link = &parent->rb_left;
-        } else {
+        } else if (absolute_deadline > entry->absolute_deadline_ms) {
             link = &parent->rb_right;
+        } else {
+            // Tie-breaker: higher priority first (lower value in Bharat is higher priority?
+            // Actually SCHED_MAX_PRIORITY is 31, so higher value is higher priority)
+            if (thread->priority > entry->priority) {
+                link = &parent->rb_left;
+            } else if (thread->priority < entry->priority) {
+                link = &parent->rb_right;
+            } else {
+                // Second tie-breaker: lower thread ID first
+                if (thread->thread_id < entry->thread_id) {
+                    link = &parent->rb_left;
+                } else {
+                    link = &parent->rb_right;
+                }
+            }
         }
     }
 
@@ -29,7 +44,7 @@ void sched_edf_dequeue(sched_rq_t *rq, bh_thread_t *thread) {
 }
 
 int sched_admission_edf(bh_thread_t *thread, uint64_t wcet_ms, uint64_t period_ms, uint64_t deadline_ms) {
-    if (!thread || period_ms == 0 || wcet_ms > period_ms) {
+    if (!thread || period_ms == 0 || wcet_ms == 0 || wcet_ms > deadline_ms || deadline_ms > period_ms) {
         return -1;
     }
 
@@ -39,7 +54,7 @@ int sched_admission_edf(bh_thread_t *thread, uint64_t wcet_ms, uint64_t period_m
     thread->rt_attr.deadline_ms = deadline_ms;
     thread->absolute_deadline_ms = 0; // calculated on enqueue
 
-    // Calculate bandwidth contribution
+    // Calculate bandwidth contribution (utilization * 1000)
     uint64_t bandwidth_needed = (wcet_ms * 1000) / period_ms;
 
     uint32_t core = thread->bound_core_id;

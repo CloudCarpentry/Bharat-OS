@@ -23,17 +23,14 @@ kernel:
 
 boot:
   protocol: linux_arm64
-  artifact_format: raw_bin
+  artifact_format: elf
   dtb:
     mode: qemu_generated
     required: true
     handoff_register: x0
 
 package:
-  transforms:
-    - type: elf_to_bin
-      input: kernel/kernel.elf
-      output: kernel/kernel.bin
+  transforms: []
 
 run:
   backend: qemu
@@ -43,7 +40,12 @@ run:
   nographic: true
   serial:
     - stdio
-  boot_artifact: kernel/kernel.bin
+  boot_artifact: kernel/kernel.elf
+  extra_args:
+    - "-machine"
+    - "virt,gic-version=3"
+    - "-d"
+    - "guest_errors,unimp"
 
 debug:
   backend: gdb_remote

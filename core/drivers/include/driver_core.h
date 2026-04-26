@@ -64,6 +64,13 @@ typedef struct driver_desc {
     struct bus_desc* supported_bus;
     const char* match_compatible_id;
 
+    /* Match scoring extensions */
+    uint32_t match_vendor_id;
+    uint32_t match_device_id;
+    device_class_t match_class;
+    uint32_t match_flags;
+    int32_t priority;
+
     int (*probe)(device_desc_t* dev);
     void (*remove)(device_desc_t* dev);
     int (*suspend)(device_desc_t* dev);
@@ -101,5 +108,9 @@ typedef struct {
     device_event_type_t type;
     device_desc_t* device;
 } device_event_t;
+
+/* Match wildcards */
+#define BH_DRIVER_MATCH_ANY_U16 0xFFFF
+#define BH_DRIVER_MATCH_ANY_U32 0xFFFFFFFFu
 
 #endif // BHARAT_DRIVER_CORE_H

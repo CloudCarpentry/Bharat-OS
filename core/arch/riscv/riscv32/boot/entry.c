@@ -15,15 +15,11 @@ void kernel_main(uint64_t hart_id, uintptr_t fdt_ptr) {
     hal_riscv_set_boot_info(hart_id, (uint64_t)fdt_ptr);
 
     if (fdt_ptr == 0 || !fdt_is_valid((void*)fdt_ptr)) {
-        fdt_ptr = 0x40000000;
+        kernel_panic("FDT missing or invalid: boot contract violation");
     }
 
     extern void riscv_fdt_parse_common(boot_info_t *boot, const void *fdt_ptr);
-    if (fdt_is_valid((void*)fdt_ptr)) {
-        riscv_fdt_parse_common(&boot, (const void*)fdt_ptr);
-    } else {
-        kernel_panic("FDT NOT FOUND AT FALLBACK!");
-    }
+    riscv_fdt_parse_common(&boot, (const void*)fdt_ptr);
 
     kernel_main_common(&boot);
 }

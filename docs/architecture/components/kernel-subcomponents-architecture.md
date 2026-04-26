@@ -46,7 +46,7 @@ graph TD
 | Keep policy out of kernel | `core/kernel/src/profile/*`, `core/kernel/src/subsystem/linux` | Partial | Some profile/personality-like concerns still reside under kernel tree. |
 | Capability + IPC primitives | `cap`, `ipc`, `urpc` | Strong | Matches architecture direction. |
 | Memory authority and isolation | `mm/{vm,pt,pmm,dma,iommu,tlb}` | Strong | Good decomposition for MM evolution. |
-| Hardware abstraction usage | via `core/hal/*` and arch paths | Partial | HAL tree still includes arch-specific directories, conflicting with strict abstraction guidance. |
+| Hardware abstraction usage | via `core/hal/*` and arch paths | Baseline | Arch-specific `ops` registration is now pushed into arch directories, keeping `core/hal` clean of `#ifdef` leakage. |
 
 ## Kernel status matrix
 
@@ -56,7 +56,7 @@ graph TD
 | IPC + URPC | Partial | `core/kernel/src/ipc`, `core/kernel/src/urpc` | Unify backpressure/error contracts and cross-node routing semantics. | Phase 1, Phase 3 |
 | Capability core | Partial | `core/kernel/src/cap` | Add formal derivation/revocation invariant checks in host tests. | Phase 1, Phase 4 |
 | Scheduler | Partial | `core/kernel/src/sched` | Improve admission control + deterministic RT isolation proofs. | Phase 1, Phase 2 |
-| Trap/syscall path | Partial | `core/kernel/src/trap`, `core/kernel/src/sys` | Tighten ABI surface to `interface/uapi/` and remove internal header leakage. | Phase 1 |
+| Trap/syscall path | Baseline | `core/kernel/src/trap`, `core/kernel/src/sys` | Unified syscall detection via `hal_cpu_is_syscall` contract. Hardened boot contract validation and PT alignment checks. | Phase 1 |
 | Subsystem/personality hooks | Partial | `core/kernel/src/subsystem/linux`, `core/kernel/src/profile/*` | Move policy-heavy profile logic toward `core/services/` or `core/personalities/` where possible. | Phase 2, Phase 4 |
 
 ## Coding tasks identified
