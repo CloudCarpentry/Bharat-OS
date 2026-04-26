@@ -56,6 +56,31 @@ int cpu_partition_init(bharat_execution_config_t *config) {
                 config->cpu_partitions[i].allowed_sched_classes = BHARAT_SCHED_CLASS_SYSTEM | BHARAT_SCHED_CLASS_FAIR;
             }
         }
+    } else if (config->active_cpu_count == 3) {
+        if (config->execution_mode == BHARAT_EXEC_MODE_GENERAL_PURPOSE) {
+            for (int i = 0; i < 3; i++) {
+                config->cpu_partitions[i].role = BHARAT_CPU_PARTITION_SYSTEM;
+                config->cpu_partitions[i].allowed_sched_classes = BHARAT_SCHED_CLASS_SYSTEM | BHARAT_SCHED_CLASS_FAIR;
+            }
+        } else if (config->execution_mode == BHARAT_EXEC_MODE_REALTIME) {
+            config->cpu_partitions[0].role = BHARAT_CPU_PARTITION_SYSTEM;
+            config->cpu_partitions[0].allowed_sched_classes = BHARAT_SCHED_CLASS_SYSTEM;
+
+            config->cpu_partitions[1].role = BHARAT_CPU_PARTITION_REALTIME;
+            config->cpu_partitions[1].allowed_sched_classes = BHARAT_SCHED_CLASS_FIFO_RT;
+
+            config->cpu_partitions[2].role = BHARAT_CPU_PARTITION_SPARE;
+            config->cpu_partitions[2].allowed_sched_classes = BHARAT_SCHED_CLASS_NONE;
+        } else if (config->execution_mode == BHARAT_EXEC_MODE_MIXED_CRITICAL) {
+            config->cpu_partitions[0].role = BHARAT_CPU_PARTITION_SYSTEM;
+            config->cpu_partitions[0].allowed_sched_classes = BHARAT_SCHED_CLASS_SYSTEM;
+
+            config->cpu_partitions[1].role = BHARAT_CPU_PARTITION_REALTIME;
+            config->cpu_partitions[1].allowed_sched_classes = BHARAT_SCHED_CLASS_FIFO_RT;
+
+            config->cpu_partitions[2].role = BHARAT_CPU_PARTITION_BEST_EFFORT;
+            config->cpu_partitions[2].allowed_sched_classes = BHARAT_SCHED_CLASS_FAIR;
+        }
     } else if (config->active_cpu_count >= 4) {
         // Spatial Mapping (example base rules)
         if (config->execution_mode == BHARAT_EXEC_MODE_MIXED_CRITICAL) {

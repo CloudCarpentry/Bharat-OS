@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-include(delivery/cmake/test_component_policy.cmake)
+include(cmake/test_component_policy.cmake)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Generic")
     # This file shouldn't be processed if we are building the kernel (cross-compiling)
@@ -135,6 +135,14 @@ add_executable(test_sched test_sched.c host_stubs.c ../../core/lib/rbtree/rbtree
 target_include_directories(test_sched PRIVATE ../../kernel/include ../../include ../../core/lib/include)
 
 add_test(NAME host_test_sched COMMAND test_sched)
+
+add_executable(test_sched_admission test_sched_admission.c ../../core/kernel/src/sched/sched_admission.c ../../core/kernel/src/sched/cpu_partition.c)
+target_include_directories(test_sched_admission PRIVATE
+    ../../core/kernel/include
+    ../../interface/include
+    ../../core/lib/include
+)
+add_test(NAME host_test_sched_admission COMMAND test_sched_admission)
 
 add_executable(test_lib_string test_lib_string.c ../../core/lib/string/string.c)
 add_test(NAME host_test_lib_string COMMAND test_lib_string)
