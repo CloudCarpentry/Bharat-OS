@@ -45,6 +45,7 @@ typedef struct thread_slot {
   uint8_t is_sleeping;
   uint8_t is_blocked;
   uint32_t creation_core_id;
+  sched_remote_cmd_t remote_cmd;
 } thread_slot_t;
 
 typedef struct process_slot {
@@ -94,5 +95,11 @@ bool sched_is_core_admissible(bh_thread_t *t, int cpu_id);
 void sched_switch_to(bh_thread_t *next, uint32_t core_id);
 void sched_update_telemetry(bh_thread_t *thread);
 void sched_validate_rq(sched_rq_t *rq);
+
+// Invariant checks
+void sched_invariant_check_thread(bh_thread_t *thread);
+void sched_invariant_on_enqueue(bh_thread_t *thread, uint32_t core_id);
+void sched_invariant_on_dequeue(bh_thread_t *thread);
+void sched_invariant_on_switch(bh_thread_t *prev, bh_thread_t *next, uint32_t core_id);
 
 #endif // BHARAT_SCHED_INTERNAL_H

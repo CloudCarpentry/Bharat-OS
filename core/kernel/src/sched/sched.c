@@ -379,6 +379,12 @@ void sched_reset_core_runqueues(void) {
     rq->reap_head = UINT32_MAX;
     rq->reap_tail = UINT32_MAX;
 
+    for (uint32_t i = 0; i < SCHED_MAX_THREADS; ++i) {
+        if (rq->threads) {
+            list_init(&((thread_slot_t*)rq->threads)[i].remote_cmd.list);
+        }
+    }
+
     if (!rq->threads) rq->threads = (struct thread_slot*)kmalloc(sizeof(thread_slot_t) * SCHED_MAX_THREADS);
     if (!rq->processes) rq->processes = (struct process_slot*)kmalloc(sizeof(process_slot_t) * SCHED_MAX_PROCESSES);
     if (!rq->bootstrap_threads) rq->bootstrap_threads = (struct thread_slot*)kmalloc(sizeof(thread_slot_t) * SCHED_BOOTSTRAP_THREAD_TYPES);
@@ -397,6 +403,7 @@ void sched_reset_core_runqueues(void) {
         ((thread_slot_t*)rq->threads)[i].next_free = (i + 1U < SCHED_MAX_THREADS) ? (uint32_t)(i + 1U) : UINT32_MAX;
         ((thread_slot_t*)rq->threads)[i].reap_next = UINT32_MAX;
         ((thread_slot_t*)rq->threads)[i].reap_pending = 0U;
+        list_init(&((thread_slot_t*)rq->threads)[i].remote_cmd.list);
     }
 
     rq->free_process_head = 0U;
@@ -429,6 +436,7 @@ static bh_thread_t *sched_create_bootstrap_thread(bh_process_t *parent,
   slot->thread.constraints.cpu_mask = 0xFFFFFFFF; // Admissible everywhere by default
   slot->thread.home_core_id = sched_clamp_core(hal_cpu_get_id());
   slot->thread.generation = 1U;
+  slot->thread.sched_generation = 1U;
   slot->thread.personality = BH_PERSONALITY_NATIVE;
   slot->thread.state = THREAD_STATE_READY;
   slot->thread.priority = priority;
@@ -546,6 +554,7 @@ bh_thread_t *thread_create_detached(bh_process_t *parent, void (*entry_point)(vo
   slot->thread.process = parent;
   slot->thread.home_core_id = sched_clamp_core(hal_cpu_get_id());
   slot->thread.generation = 1U;
+  slot->thread.sched_generation = 1U;
   slot->thread.personality = BH_PERSONALITY_NATIVE;
   slot->thread.state = THREAD_STATE_READY;
   slot->thread.priority = 1U;
@@ -709,11 +718,13 @@ bh_thread_t *sched_pick_next_ready(uint32_t core_id) {
   if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
       next = sched_cfs_pick_next(rq);
       if (next) {
+          sched_invariant_on_dequeue(next);
           sched_cfs_dequeue(rq, next);
       }
   } else if (g_policy == SCHED_POLICY_EDF) {
       next = sched_edf_pick_next(rq);
       if (next) {
+          sched_invariant_on_dequeue(next);
           sched_edf_dequeue(rq, next);
       }
   } else {
@@ -723,6 +734,7 @@ bh_thread_t *sched_pick_next_ready(uint32_t core_id) {
           list_head_t *head = &rq->ready_queue[prio];
           list_head_t *node = head->prev;
           thread_slot_t *slot = (thread_slot_t *)(void *)((char *)node - offsetof(thread_slot_t, run_node));
+          sched_invariant_on_dequeue(&slot->thread);
           list_del(node);
           list_init(node);
           sched_ready_bitmap_clear_if_empty(rq, (uint32_t)prio);
@@ -798,6 +810,7 @@ void sched_switch_to(bh_thread_t *next, uint32_t core_id) {
     thread_slot_t *slot = sched_find_thread_slot_by_tid_local(rq, current->thread_id);
     if (slot && slot->is_on_runqueue == 0U) {
         current->state = THREAD_STATE_READY;
+        sched_invariant_on_enqueue(current, core_id);
         if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
             sched_cfs_enqueue(rq, current);
         } else if (g_policy == SCHED_POLICY_EDF) {
@@ -811,6 +824,8 @@ void sched_switch_to(bh_thread_t *next, uint32_t core_id) {
         sched_validate_rq(rq);
     }
   }
+
+  sched_invariant_on_switch(current, next, core_id);
 
   next->state = THREAD_STATE_RUNNING;
   next->context_switch_count++;

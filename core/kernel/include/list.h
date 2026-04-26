@@ -31,6 +31,13 @@ static inline int list_empty(const list_head_t *head) {
     return head->next == head;
 }
 
+static inline void list_add_tail(list_head_t *new_node, list_head_t *head) {
+    new_node->next = head;
+    new_node->prev = head->prev;
+    head->prev->next = new_node;
+    head->prev = new_node;
+}
+
 // Macro to resolve the struct containing this list node
 #define list_entry(ptr, type, member) \
     ((type *)((char *)(ptr) - offsetof(type, member)))

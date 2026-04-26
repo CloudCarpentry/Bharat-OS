@@ -6,7 +6,13 @@
 #elif defined(__aarch64__)
 #include <bharat/uapi/arch/arm64/syscall.h>
 #elif defined(__riscv)
+#if __riscv_xlen == 64
 #include <bharat/uapi/arch/riscv64/syscall.h>
+#else
+#include <bharat/uapi/arch/riscv32/syscall.h>
+#endif
+#elif defined(__arm__)
+#include <bharat/uapi/arch/arm32/syscall.h>
 #else
 #error "Unsupported architecture"
 #endif

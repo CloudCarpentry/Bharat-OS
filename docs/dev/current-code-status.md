@@ -185,6 +185,12 @@ To avoid status inflation, this repository treats capability enforcement maturit
 - Fail-closed behavior (like the current `netmgr` shim through `bharat_cap_validate()`) is required as an interim baseline, but does not by itself qualify as full production security.
 - Promotion to **Production** requires strict, code-backed capability checks across manager and dispatch paths, plus validation evidence.
 
+## 5.2) Core Kernel Ownership
+
+Status: **Partial / Phase K0 in progress**
+
+Current implementation uses `cpu_local_t` as the per-core anchor. Phase K0 hardens scheduler ownership and remote command handling without renaming the public structure. Typed remote command queues and invariant tracking fields in `bh_thread_t` ensure that no core directly mutates another core's scheduler state.
+
 ---
 
 ## 6) Contributor update rules

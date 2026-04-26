@@ -15,7 +15,7 @@ void sched_reschedule(void) {
 
   sched_rq_t *rq = &g_cpu_locals[core].runqueue;
 
-  // Empty remote enqueue inbox
+  // Empty remote scheduler command inbox
   if (rq->resched_pending != 0U || !list_empty(&rq->pending_inbox)) {
       spin_lock(&rq->lock);
       rq->resched_pending = 0U; // Clear flag since we are draining now
@@ -24,21 +24,52 @@ void sched_reschedule(void) {
       bh_thread_t *highest_prio_arrived = NULL;
 
       while (curr != &rq->pending_inbox) {
-          thread_slot_t *slot = (thread_slot_t *)(void *)((char *)curr - offsetof(thread_slot_t, wait_node));
+          sched_remote_cmd_t *cmd = (sched_remote_cmd_t *)(void *)((char *)curr - offsetof(sched_remote_cmd_t, list));
           curr = curr->next;
 
-          list_del(&slot->wait_node);
-          list_init(&slot->wait_node);
+          list_del(&cmd->list);
+          list_init(&cmd->list);
 
-          bh_thread_t* thread = &slot->thread;
+          bh_thread_t* thread = sched_find_thread_by_id(cmd->thread_id);
+          if (!thread) {
+              continue;
+          }
+
+          // Validation: Check generation
+          if (thread->sched_generation != cmd->expected_thread_generation) {
+              continue;
+          }
+
+          thread_slot_t *slot = sched_find_thread_slot_by_tid_local(rq, thread->thread_id);
+          if (!slot) {
+              continue;
+          }
+
+          if (cmd->type == SCHED_REMOTE_WAKE) {
+              if (cmd->priority <= SCHED_MAX_PRIORITY && cmd->priority > thread->priority) {
+                  thread->priority = cmd->priority;
+              }
+              if (thread->state != THREAD_STATE_SLEEPING && thread->state != THREAD_STATE_BLOCKED) {
+                  continue;
+              }
+              thread->wake_deadline_ms = 0U;
+              if (slot->is_sleeping != 0U) {
+                sched_sleep_dequeue(slot);
+              }
+              if (slot->is_blocked != 0U) {
+                sched_block_dequeue(slot);
+              }
+          }
+
           thread->state = THREAD_STATE_READY;
+          sched_invariant_on_enqueue(thread, core);
 
           if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
             sched_cfs_enqueue(rq, thread);
           } else if (g_policy == SCHED_POLICY_EDF) {
             if (thread->rt_attr.period_ms > 0 && thread->rt_attr.deadline_ms > 0) {
                 if (thread->absolute_deadline_ms == 0) {
-                    thread->absolute_deadline_ms = g_cpu_locals[sched_clamp_core(hal_cpu_get_id())].runqueue.total_ticks + thread->rt_attr.deadline_ms;
+                    thread->absolute_deadline_ms = g_cpu_locals[core].runqueue.total_ticks + thread->rt_attr.deadline_ms;
                 }
             }
             sched_edf_enqueue(rq, thread);

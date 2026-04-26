@@ -15,17 +15,32 @@ int sched_enqueue(bh_thread_t *thread, uint32_t core_id) {
   bool is_local = (core_id == current_core);
 
   if (!is_local) {
-      mk_msg_remote_lookup_t req = {
-          .request_id = 0,
-          .src_core = current_core,
-          .target_core = core_id,
-          .id = thread->thread_id,
-          .arg = core_id
-      };
-      mk_channel_t *chan = NULL;
-      if (mk_get_channel(current_core, core_id, chan) == 0 && chan) {
-          mk_send_message(chan, MK_MSG_THREAD_ENQUEUE_REQ, &req, sizeof(req));
+      sched_rq_t *target_rq = &g_cpu_locals[core_id].runqueue;
+      thread_slot_t *slot = sched_find_thread_slot_by_tid_local(&g_cpu_locals[thread->home_core_id].runqueue, thread->thread_id);
+      if (!slot) return -1;
+
+      spin_lock(&target_rq->lock);
+
+      target_rq->remote_enqueues++;
+
+      sched_remote_cmd_t *cmd = &slot->remote_cmd;
+      cmd->type = SCHED_REMOTE_ENQUEUE;
+      cmd->source_cpu = current_core;
+      cmd->target_cpu = core_id;
+      cmd->thread_id = thread->thread_id;
+      cmd->expected_thread_generation = thread->sched_generation;
+      cmd->priority = thread->priority;
+
+      list_add_tail(&cmd->list, &target_rq->pending_inbox);
+
+      if (target_rq->resched_pending == 0) {
+          target_rq->resched_pending = 1;
+          target_rq->ipi_sent++;
+          spin_unlock(&target_rq->lock);
           hal_send_ipi_payload(1U << core_id, MK_MSG_THREAD_ENQUEUE_REQ);
+      } else {
+          target_rq->ipi_coalesced++;
+          spin_unlock(&target_rq->lock);
       }
       return 0;
   }
@@ -39,6 +54,7 @@ int sched_enqueue(bh_thread_t *thread, uint32_t core_id) {
   hal_cpu_disable_interrupts();
 
   if (slot->is_on_runqueue != 0U) {
+    sched_invariant_on_dequeue(thread);
     if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
       sched_cfs_dequeue(rq, thread);
     } else if (g_policy == SCHED_POLICY_EDF) {
@@ -57,12 +73,14 @@ int sched_enqueue(bh_thread_t *thread, uint32_t core_id) {
   thread->bound_core_id = core_id;
   thread->state = THREAD_STATE_READY;
 
+  sched_invariant_on_enqueue(thread, core_id);
+
   if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
     sched_cfs_enqueue(rq, thread);
   } else if (g_policy == SCHED_POLICY_EDF) {
     if (thread->rt_attr.period_ms > 0 && thread->rt_attr.deadline_ms > 0) {
         if (thread->absolute_deadline_ms == 0) {
-            thread->absolute_deadline_ms = g_cpu_locals[sched_clamp_core(hal_cpu_get_id())].runqueue.total_ticks + thread->rt_attr.deadline_ms;
+            thread->absolute_deadline_ms = g_cpu_locals[current_core].runqueue.total_ticks + thread->rt_attr.deadline_ms;
         }
     }
     sched_edf_enqueue(rq, thread);
@@ -111,13 +129,13 @@ int sched_pick_priority_from_bitmap(const sched_rq_t *rq, int highest) {
 }
 
 static void sched_dequeue_task_l0(bh_thread_t *thread, uint32_t core_id) {
-  (void)core_id;
   if (!thread) {
     return;
   }
   sched_rq_t *rq = &g_cpu_locals[core_id].runqueue;
   thread_slot_t *slot = sched_find_thread_slot_by_tid_local(rq, thread->thread_id);
   if (slot && slot->is_on_runqueue != 0U) {
+    sched_invariant_on_dequeue(thread);
     if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
       sched_cfs_dequeue(rq, thread);
     } else {
