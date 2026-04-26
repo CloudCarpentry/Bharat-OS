@@ -11,15 +11,7 @@ bharat_syscall:
     // r9  = arg5
     // [stack] = arg6
 
-    // x86_64 syscall convention:
-    // %rax = sysno
-    // %rdi = arg0
-    // %rsi = arg1
-    // %rdx = arg2
-    // %r10 = arg3
-    // %r8  = arg4
-    // %r9  = arg5
-
+    // Using legacy INT 0x80 for now as kernel does not yet support SYSCALL/SYSRET MSRs
     movq %rdi, %rax
     movq %rsi, %rdi
     movq %rdx, %rsi
@@ -28,5 +20,5 @@ bharat_syscall:
     movq %r9,  %r8
     movq 8(%rsp), %r9
 
-    syscall
+    int $0x80
     ret

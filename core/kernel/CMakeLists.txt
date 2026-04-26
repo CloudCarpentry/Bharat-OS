@@ -373,6 +373,7 @@ add_subdirectory("${BHARAT_KERNEL_SRC_ROOT}/core" "${CMAKE_CURRENT_BINARY_DIR}/s
 add_subdirectory(src/sched)
 add_subdirectory(src/ipc)
 add_subdirectory(src/cap)
+add_subdirectory(src/personality)
 add_subdirectory(src/trap)
 add_subdirectory(src/debug)
 add_subdirectory("${BHARAT_KERNEL_SRC_ROOT}/init" "${CMAKE_CURRENT_BINARY_DIR}/src_init")
@@ -519,6 +520,7 @@ add_executable(kernel.elf
     $<TARGET_OBJECTS:k_ipc>
     $<TARGET_OBJECTS:k_cap>
     $<TARGET_OBJECTS:k_trap>
+    $<TARGET_OBJECTS:bharatos_kernel_personality>
     $<TARGET_OBJECTS:bharatos_personality_native>
     $<TARGET_OBJECTS:bharatos_personality_common>
     $<TARGET_OBJECTS:k_debug>
