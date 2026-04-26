@@ -1,6 +1,5 @@
 #include "bharat/subsys/version.h"
-
-#include <bharat/version.h>
+#include "bh_personality_version.h"
 
 #ifndef BHARAT_KERNEL_VERSION
 #define BHARAT_KERNEL_VERSION "unknown"

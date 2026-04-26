@@ -2,6 +2,8 @@
 #include "trap_frame_ops.h"
 #include "trap/syscall_regs.h"
 #include "trap/syscall_context.h"
+#include "bh_personality_registry.h"
+#include "bh_personality.h"
 
 // bh_syscall_gate is now the common entry point
 extern long bh_syscall_gate(trap_frame_t *frame, const trap_info_t *info);
@@ -37,4 +39,8 @@ const personality_ops_t default_personality_ops = {
 
 const personality_ops_t *personality_native_get_ops(void) {
     return &default_personality_ops;
+}
+
+void native_personality_init(void) {
+    bh_personality_registry_register(BH_PERSONALITY_NATIVE, &default_personality_ops);
 }

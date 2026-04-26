@@ -2,10 +2,11 @@ add_library(subsys_manager STATIC
     manager.c
     subsys_test_runner.c
     ../../../stacks/network/skb.c
-    ../../../personalities/common/version_registry.c
+    ../../../personalities/runtime/src/version_registry.c
 )
 target_include_directories(subsys_manager PUBLIC
     ${CMAKE_SOURCE_DIR}/core/services/core/subsysmgr/include
+    ${CMAKE_SOURCE_DIR}/core/personalities/runtime/include
     ${CMAKE_SOURCE_DIR}/core/kernel/include
     ${CMAKE_SOURCE_DIR}/core/lib/include
     ${CMAKE_SOURCE_DIR}/core/lib/packet/include

@@ -17,11 +17,12 @@ add_library(k_sched OBJECT
     sched_invariants.c
     cpu_partition.c
     cpu_partition_validate.c
+    execution_mode.c
 )
 
 target_sources(k_sched PRIVATE sched_test_support.c)
 
-target_include_directories(k_sched PRIVATE ../../include ${BHARAT_GENERATED_INCLUDE_DIR} ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/lib/include ${BHARAT_BOOT_INCLUDE_DIR})
+target_include_directories(k_sched PRIVATE ../../include ${BHARAT_GENERATED_INCLUDE_DIR} ${CMAKE_SOURCE_DIR}/core/personalities/runtime/include ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/lib/include ${BHARAT_BOOT_INCLUDE_DIR})
 target_link_libraries(k_sched PRIVATE bharat_freestanding bharat_kernel_buildopts)
 
 add_test(

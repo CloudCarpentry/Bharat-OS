@@ -10,6 +10,7 @@
 #include "spinlock.h"
 #include "personality_ops.h"
 #include <stdbool.h>
+#include "bh_process_personality.h"
 
 /*
  * Bharat-OS Process & Thread Management
@@ -251,7 +252,7 @@ struct bh_process {
     uint32_t generation;
 
     // Personality tagging for subsystems (e.g., Linux, Android, Windows)
-    uint32_t personality;
+    bh_process_personality_t personality;
 
     // Ops mapping syscalls/faults to personality specific behavior
     const struct personality_ops* personality_ops;

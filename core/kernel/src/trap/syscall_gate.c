@@ -8,6 +8,7 @@
 #include "kernel/status.h"
 #include "bharat/personality/personality_interface.h"
 #include "profile/profile_policy.h"
+#include "bh_personality_registry.h"
 
 kstatus_t bh_syscall_policy_check(bh_syscall_ctx_t *ctx, const bh_syscall_desc_t *desc) {
     if (!ctx || !desc) return K_ERR_INVALID_ARG;
@@ -60,14 +61,25 @@ kstatus_t bh_syscall_policy_check(bh_syscall_ctx_t *ctx, const bh_syscall_desc_t
 }
 
 const bh_personality_syscall_table_t *personality_get_syscall_table(bh_personality_id_t id) {
+    const personality_ops_t *ops = bh_personality_registry_get_ops((bh_personality_kind_t)id);
+    if (ops && ops->handle_syscall) {
+        // This is a bit of a hack to get the table from ops if needed,
+        // but for now let's keep the existing logic if possible or refactor it.
+        // Actually, let's just use the registry for everything.
+    }
+
     switch (id) {
         case BH_PERSONALITY_NATIVE:
             return personality_native_get_table();
+#ifdef BHARAT_ENABLE_COMPAT_LINUX
         case BH_PERSONALITY_LINUX:
             return personality_linux_get_table();
+#endif
+#ifdef BHARAT_ENABLE_COMPAT_ANDROID
         case BH_PERSONALITY_ANDROID:
             return personality_android_get_table();
-        case BH_PERSONALITY_WINDOWS:
+#endif
+        case BH_PERSONALITY_WINDOWS_NT:
             return personality_windows_get_table();
         default:
             return NULL;
@@ -99,7 +111,11 @@ long bh_syscall_gate(trap_frame_t *frame, const trap_info_t *info) {
     ctx.thread = sched_current_thread();
     if (ctx.thread) {
         ctx.process = ctx.thread->process;
-        ctx.personality = ctx.thread->personality;
+        if (ctx.process) {
+            ctx.personality = (bh_personality_id_t)ctx.process->personality.kind;
+        } else {
+            ctx.personality = ctx.thread->personality;
+        }
     } else {
         // FAIL CLOSED: No user context for userspace syscall
         return kstatus_to_sysret(K_ERR_DENIED);

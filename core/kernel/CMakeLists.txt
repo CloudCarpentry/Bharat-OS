@@ -38,6 +38,7 @@ file(MAKE_DIRECTORY "${BHARAT_GENERATED_INCLUDE_DIR}")
 target_include_directories(bharat_kernel_includes INTERFACE
     ${BHARAT_KERNEL_INCLUDE_DIR}
     ${BHARAT_KERNEL_INCLUDE_DIR}/generated
+    ${CMAKE_SOURCE_DIR}/core/personalities/runtime/include
     ${BHARAT_HAL_ROOT}/include
     ${CMAKE_SOURCE_DIR}/interface/include
     ${BHARAT_LIB_ROOT}/include
@@ -192,7 +193,7 @@ set(ARCH_TLB_ACCEL_SRC ${BHARAT_ARCH_ROOT}/common/arch_tlb_accel_stub.c)
 if(ARCH STREQUAL "x86_64")
     set(BOOT_SRC ${BHARAT_ARCH_ROOT}/x86/x86_64/boot/boot.S)
     set(ARCH_HAL ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/hal_cpu.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/hal_discovery.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/hal_mm.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/trap_entry.S ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/hal_pt_x86_64.c ${BHARAT_HAL_ROOT}/common/hal_pt.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/vtd_iommu.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/hal_irq.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/hal_timer.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/dma.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/hal_secure_boot.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/cpu_relax.c ${BHARAT_HAL_ROOT}/common/iommu/null/null_iommu.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/iommu/intel_vtd/intel_vtd_stub.c)
-    set(ARCH_CONTEXT_SWITCH ${BHARAT_ARCH_ROOT}/x86/x86_64/context_switch.c ${BHARAT_ARCH_ROOT}/x86/x86_64/context_switch.S)
+    set(ARCH_CONTEXT_SWITCH ${BHARAT_ARCH_ROOT}/x86/x86_64/context_switch.c ${BHARAT_ARCH_ROOT}/x86/x86_64/context_switch.S ${BHARAT_ARCH_ROOT}/x86/x86_64/syscall_entry.S)
     set(ARCH_CPU_CAPS_SRC ${BHARAT_ARCH_ROOT}/x86/x86_64/cpu_caps.c)
     set(ARCH_EXT_STATE_SRC ${BHARAT_ARCH_ROOT}/x86/x86_64/ext_state.c)
     list(APPEND ARCH_CRYPTO_SRC ${BHARAT_ARCH_ROOT}/x86/x86_64/arch_crypto_x86.c)
@@ -527,9 +528,10 @@ add_executable(kernel.elf
     $<TARGET_OBJECTS:k_trap>
     $<TARGET_OBJECTS:bharatos_kernel_personality>
     $<TARGET_OBJECTS:bharatos_personality_native>
-    $<TARGET_OBJECTS:bharatos_personality_common>
-    $<$<BOOL:${BHARAT_ENABLE_SUBSYS_LINUX}>:$<TARGET_OBJECTS:bharatos_personality_linux>>
-    $<$<BOOL:${BHARAT_ENABLE_SUBSYS_ANDROID}>:$<TARGET_OBJECTS:bharatos_personality_android>>
+    $<TARGET_OBJECTS:bharatos_personality_runtime>
+    $<$<BOOL:${BHARAT_ENABLE_COMPAT_LINUX}>:$<TARGET_OBJECTS:bharatos_personality_linux>>
+    $<$<BOOL:${BHARAT_ENABLE_COMPAT_LINUX}>:$<TARGET_OBJECTS:bharatos_personality_abi_linux>>
+    $<$<BOOL:${BHARAT_ENABLE_COMPAT_ANDROID}>:$<TARGET_OBJECTS:bharatos_personality_android>>
     $<$<BOOL:${BHARAT_ENABLE_SUBSYS_WINDOWS}>:$<TARGET_OBJECTS:bharatos_personality_windows>>
     $<$<BOOL:${BHARAT_ENABLE_SUBSYS_AUTOMOTIVE}>:$<TARGET_OBJECTS:bharatos_personality_automotive>>
     $<TARGET_OBJECTS:k_debug>

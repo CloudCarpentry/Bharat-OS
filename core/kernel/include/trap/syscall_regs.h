@@ -5,19 +5,14 @@
 #include <stdbool.h>
 #include "trap.h"
 #include "kernel/status.h"
+#include "bh_personality.h"
 
 typedef struct bh_syscall_regs {
     uintptr_t nr;
     uintptr_t arg[6];
 } bh_syscall_regs_t;
 
-typedef enum bh_personality_id {
-    BH_PERSONALITY_NATIVE = 0,
-    BH_PERSONALITY_LINUX,
-    BH_PERSONALITY_ANDROID,
-    BH_PERSONALITY_WINDOWS,
-    BH_PERSONALITY_MAX
-} bh_personality_id_t;
+typedef bh_personality_kind_t bh_personality_id_t;
 
 typedef struct bh_syscall_ctx {
     struct bh_thread *thread;

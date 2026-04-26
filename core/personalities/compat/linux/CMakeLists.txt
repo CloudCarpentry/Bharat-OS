@@ -1,5 +1,17 @@
-if(BHARAT_ENABLE_SUBSYS_LINUX)
-    add_library(bharatos_personality_linux STATIC linux_compat.c linux_syscall.c)
-    target_include_directories(bharatos_personality_linux PUBLIC ${CMAKE_SOURCE_DIR}/core/kernel/include ${CMAKE_SOURCE_DIR}/core/lib/include ${CMAKE_SOURCE_DIR}/core/services/core/subsysmgr/include ${CMAKE_SOURCE_DIR}/interface/include)
-    target_link_libraries(bharatos_personality_linux PUBLIC bharat_user_buildopts bharat_freestanding)
-endif()
+cmake_minimum_required(VERSION 3.20)
+
+add_library(bharatos_personality_linux STATIC
+    linux_personality.c
+    linux_syscall.c
+)
+
+target_include_directories(bharatos_personality_linux
+    PUBLIC
+        include
+        ${CMAKE_SOURCE_DIR}/core/personalities/runtime/include
+        ${CMAKE_SOURCE_DIR}/core/personalities/abi/linux/include
+        ${CMAKE_SOURCE_DIR}/core/personalities/abi/posix/include
+        ${CMAKE_SOURCE_DIR}/core/kernel/include
+        ${CMAKE_SOURCE_DIR}/core/lib/include
+        ${CMAKE_SOURCE_DIR}/interface/include
+)

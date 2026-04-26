@@ -9,6 +9,7 @@ add_library(k_monitor OBJECT
 target_include_directories(k_monitor PRIVATE
     ../../include
     ${BHARAT_GENERATED_INCLUDE_DIR}
+    ${CMAKE_SOURCE_DIR}/core/personalities/runtime/include
     ${CMAKE_SOURCE_DIR}/interface/include
     ${CMAKE_SOURCE_DIR}/core/lib/include
     ${BHARAT_BOOT_INCLUDE_DIR}
