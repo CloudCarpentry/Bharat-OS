@@ -4,6 +4,14 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+/**
+ * @file driver_core.h
+ * @brief Bharat-OS Driver Core canonical descriptors and types.
+ *
+ * D0 — Driver Registry Contract Hardening:
+ * This header defines the stable contract for drivers and devices in Bharat-OS.
+ */
+
 // ---------------------------------------------------------
 // Device Classes
 // ---------------------------------------------------------
@@ -32,19 +40,38 @@ typedef enum {
 } device_class_t;
 
 // ---------------------------------------------------------
+// Lifecycle States
+// ---------------------------------------------------------
+typedef enum driver_lifecycle_state {
+    DRIVER_STATE_REGISTERED = 0,
+    DRIVER_STATE_MATCHED,
+    DRIVER_STATE_PROBED,
+    DRIVER_STATE_STARTED,
+    DRIVER_STATE_STOPPED,
+    DRIVER_STATE_REMOVED,
+    DRIVER_STATE_FAILED,
+} driver_lifecycle_state_t;
+
+// ---------------------------------------------------------
 // Core Descriptors
 // ---------------------------------------------------------
 struct bus_desc;
 struct driver_desc;
 
+/**
+ * @brief device_desc_t is the canonical Bharat-OS device descriptor.
+ * It describes the identity and hardware properties of a device.
+ */
 typedef struct device_desc {
     const char* name;
+    uint32_t device_registry_id; /**< Registry-assigned unique handle (dynamic) */
     device_class_t dev_class;
     struct bus_desc* bus;
     const char* instance_path;
     const char* compatible_id;
     uint32_t vendor_id;
-    uint32_t device_id;
+    uint32_t device_id;          /**< Hardware-reported device ID */
+    uint32_t hw_device_id;       /**< Optional hardware identity (e.g. PCI ID, FDT handle) */
 
     uint32_t capability_flags;
     uint32_t power_flags;
@@ -55,11 +82,16 @@ typedef struct device_desc {
     struct device_desc* first_child;
 
     void* bus_data;
-    void* driver_data;
+    void* driver_data;           /**< Deprecated: use device_binding_t for bound state */
 } device_desc_t;
 
+/**
+ * @brief driver_desc_t is the canonical Bharat-OS driver descriptor.
+ * It describes the driver's capabilities and lifecycle operations.
+ */
 typedef struct driver_desc {
     const char* name;
+    uint32_t driver_registry_id; /**< Registry-assigned unique handle (dynamic) */
     device_class_t supported_class;
     struct bus_desc* supported_bus;
     const char* match_compatible_id;
@@ -78,6 +110,20 @@ typedef struct driver_desc {
     int (*reset)(device_desc_t* dev);
     void (*fault)(device_desc_t* dev);
 } driver_desc_t;
+
+/**
+ * @brief device_binding_t is the canonical relationship/lifecycle object.
+ * It tracks the active binding between a device and a driver.
+ */
+typedef struct device_binding {
+    uint32_t binding_id;
+    device_desc_t *device;
+    driver_desc_t *driver;
+    driver_lifecycle_state_t state;
+    int match_score;
+    uint32_t match_priority;
+    void *driver_ctx;
+} device_binding_t;
 
 typedef struct bus_desc {
     const char* name;

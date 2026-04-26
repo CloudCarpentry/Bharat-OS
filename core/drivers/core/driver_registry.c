@@ -6,9 +6,11 @@
 #define MAX_DRIVERS 64
 static driver_desc_t* g_drivers[MAX_DRIVERS];
 static int g_driver_count = 0;
+static uint32_t g_next_driver_registry_id = 1;
 
 int driver_registry_init(void) {
     g_driver_count = 0;
+    g_next_driver_registry_id = 1;
     for(int i = 0; i < MAX_DRIVERS; i++) {
         g_drivers[i] = NULL;
     }
@@ -30,6 +32,7 @@ int driver_register(driver_desc_t* drv) {
 
     for (int i = 0; i < MAX_DRIVERS; i++) {
         if (g_drivers[i] == NULL) {
+            drv->driver_registry_id = g_next_driver_registry_id++;
             g_drivers[i] = drv;
             g_driver_count++;
             return 0;
@@ -44,6 +47,7 @@ void driver_unregister(driver_desc_t* drv) {
         if (g_drivers[i] == drv) {
             g_drivers[i] = NULL;
             g_driver_count--;
+            // Registry IDs are generally not reused for simplicity in D0
             return;
         }
     }
