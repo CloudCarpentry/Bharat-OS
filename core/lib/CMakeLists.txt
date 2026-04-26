@@ -30,6 +30,19 @@ target_link_libraries(bharat_version_api PUBLIC bharat_freestanding bharat_gener
 bharat_configure_userspace_library(bharat_version_api)
 
 # ---------------------------------------------------------
+# bharat_libgfx (Graphics Primitives)
+# ---------------------------------------------------------
+add_library(bharat_libgfx STATIC
+    gfx/framebuffer.c
+    gfx/region.c
+)
+target_include_directories(bharat_libgfx PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/gfx
+)
+target_link_libraries(bharat_libgfx PUBLIC bharat_freestanding)
+bharat_configure_userspace_library(bharat_libgfx)
+
+# ---------------------------------------------------------
 # Subdirectories that define specific libs
 # ---------------------------------------------------------
 add_subdirectory(elf)

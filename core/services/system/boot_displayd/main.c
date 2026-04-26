@@ -2,6 +2,7 @@
 #include <stdint.h>
 
 #include "bharat/ui/tiny_ui.h"
+#include "bharat/uapi/display/boot_display.h"
 
 static bharat_ui_input_action_t boot_displayd_map_mock_input(unsigned tick) {
     if (tick % 5u == 0u) {
@@ -11,6 +12,9 @@ static bharat_ui_input_action_t boot_displayd_map_mock_input(unsigned tick) {
 }
 
 int main(void) {
+    bharat_boot_display_state_t current_state = BHARAT_BOOT_DISPLAY_STATE_SPLASH_ALLOWED;
+    (void)current_state;
+
     static uint32_t mock_fb_memory[800u * 480u];
 
     bharat_tiny_fb_t fb = {

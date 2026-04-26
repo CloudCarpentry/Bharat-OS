@@ -165,6 +165,15 @@ add_executable(test_ui_device_class_contract test_ui_device_class_contract.c)
 target_include_directories(test_ui_device_class_contract PRIVATE ../include)
 add_test(NAME test_ui_device_class_contract COMMAND test_ui_device_class_contract)
 
+add_executable(test_ui_abi test_ui_abi.c)
+target_include_directories(test_ui_abi PRIVATE ../include)
+add_test(NAME test_ui_abi COMMAND test_ui_abi)
+
+add_executable(test_headless_compositor test_headless_compositor.c)
+target_include_directories(test_headless_compositor PRIVATE ../include ../)
+target_link_libraries(test_headless_compositor PRIVATE bharat_headless_compositor)
+add_test(NAME test_headless_compositor COMMAND test_headless_compositor)
+
 add_executable(test_tiny_ui_stack
     test_tiny_ui_stack.c
     ../core/stacks/ui/lcd/tiny_ui.c
