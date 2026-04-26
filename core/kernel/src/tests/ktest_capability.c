@@ -260,6 +260,97 @@ static int test_cap_rights_attenuation(void) {
     return 0;
 }
 
+static int test_cap_validate_framework(void) {
+    capability_table_t* table = cap_table_create();
+    ASSERT_RET(table != NULL, -1);
+    table->owner_pid = 100;
+
+    uint32_t cap_id;
+    int status_grant = cap_table_grant(table, CAP_TYPE_MEMORY, 0x8000, CAP_RIGHT_MEMORY_MAP | CAP_RIGHT_MEMORY_SHARE, &cap_id);
+    ASSERT_RET(status_grant == 0, -2);
+
+    capability_entry_t *entry = NULL;
+    cap_validation_request_t req = {
+        .cap_id = cap_id,
+        .expected_object_type = CAP_TYPE_MEMORY,
+        .required_rights = CAP_RIGHT_MEMORY_MAP,
+        .requester_pid = 100,
+        .expected_generation = 0
+    };
+
+    // 1. Success case
+    kstatus_t status = cap_validate_ex(table, &req, &entry);
+    ASSERT_RET(status == K_OK, -3);
+    ASSERT_RET(entry != NULL, -4);
+    ASSERT_RET(entry->id == (cap_id & 0xFFFF), -5);
+
+    // 2. Success case - return entry optional
+    status = cap_validate_ex(table, &req, NULL);
+    ASSERT_RET(status == K_OK, -6);
+
+    // 3. Invalid handle ID
+    req.cap_id = cap_id + 1;
+    status = cap_validate_ex(table, &req, &entry);
+    ASSERT_RET(status == K_ERR_NOT_FOUND, -7);
+    ASSERT_RET(entry == NULL, -8);
+    req.cap_id = cap_id;
+
+    // 4. Wrong object type
+    req.expected_object_type = CAP_TYPE_ENDPOINT;
+    status = cap_validate_ex(table, &req, &entry);
+    ASSERT_RET(status == K_ERR_CAP_WRONG_TYPE, -9);
+    req.expected_object_type = CAP_TYPE_MEMORY;
+
+    // 5. Missing rights
+    req.required_rights = CAP_RIGHT_MEMORY_UNMAP;
+    status = cap_validate_ex(table, &req, &entry);
+    ASSERT_RET(status == K_ERR_CAP_DENIED, -10);
+    req.required_rights = CAP_RIGHT_MEMORY_MAP;
+
+    // 6. Wrong requester PID (Scope)
+    req.requester_pid = 101;
+    status = cap_validate_ex(table, &req, &entry);
+    ASSERT_RET(status == K_ERR_CAP_DENIED, -11);
+    req.requester_pid = 100;
+
+    // 7. Stale generation in handle
+    uint32_t stale_handle = (cap_id & 0xFFFF) | (0x55 << 16);
+    req.cap_id = stale_handle;
+    status = cap_validate_ex(table, &req, &entry);
+    ASSERT_RET(status == K_ERR_CAP_STALE, -12);
+    req.cap_id = cap_id;
+
+    // 8. Stale generation in request
+    req.expected_generation = 0x99;
+    status = cap_validate_ex(table, &req, &entry);
+    ASSERT_RET(status == K_ERR_CAP_STALE, -13);
+    req.expected_generation = (cap_id >> 16); // match actual
+    status = cap_validate_ex(table, &req, &entry);
+    ASSERT_RET(status == K_OK, -14);
+    req.expected_generation = 0;
+
+    // 9. Revoked capability (manually set state to test the path)
+    spin_lock(&table->lock);
+    for (size_t i = 0; i < 64; i++) {
+        if (table->entries[i].in_use && table->entries[i].id == (cap_id & 0xFFFF)) {
+            table->entries[i].state = CAP_STATE_REVOKED;
+            break;
+        }
+    }
+    spin_unlock(&table->lock);
+    status = cap_validate_ex(table, &req, &entry);
+    ASSERT_RET(status == K_ERR_CAP_REVOKED, -15);
+
+    // 10. Null table or request
+    status = cap_validate_ex(NULL, &req, &entry);
+    ASSERT_RET(status == K_ERR_INVALID_ARG, -16);
+    status = cap_validate_ex(table, NULL, &entry);
+    ASSERT_RET(status == K_ERR_INVALID_ARG, -17);
+
+    cap_table_destroy(table);
+    return 0;
+}
+
 static int test_cap_stale_handle(void) {
     capability_table_t* table = cap_table_create();
     ASSERT_RET(table != NULL, -1);
@@ -369,6 +460,10 @@ static int ktest_cap_run(void) {
 
     hal_serial_write("  [TEST] test_cap_stale_handle... ");
     if (test_cap_stale_handle() != 0) return -1;
+    hal_serial_write("PASSED\n");
+
+    hal_serial_write("  [TEST] test_cap_validate_framework... ");
+    if (test_cap_validate_framework() != 0) return -1;
     hal_serial_write("PASSED\n");
 
     hal_serial_write("  [TEST] test_cap_policy_semantics... ");

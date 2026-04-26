@@ -96,6 +96,27 @@ Implemented features include:
 - `mem_runtime_validate_profile()` implementation with fail-closed rules.
 - Integration into `mm_validate_model()` during early boot.
 
+
+## 3) Core Subsystem implementation details
+
+### Capability Validation Framework
+**Status: Partial / Phase K3-S0 baseline**
+
+A reusable, strict, fail-closed capability validation framework has been introduced to the kernel. This serves as the canonical validation path for object types, rights, scope (PID-based), and generation/stale-handle checks.
+
+**Current progress:**
+- Canonical `cap_validate_ex()` implementation.
+- Internal helpers for granular validation (rights, type, scope, generation).
+- Rich internal error mapping via `kstatus_t` (e.g., `K_ERR_CAP_STALE`, `K_ERR_CAP_REVOKED`).
+- Comprehensive negative-path unit tests in `ktest_capability`.
+- Initial contract documentation in `docs/architecture/kernel/capability-validation-contract.md`.
+
+**Current limitations:**
+- Not yet wired into every syscall boundary.
+- Not yet enforced across all IPC/service entry points.
+- Capability lifecycle revocation semantics are still partial.
+- Security-domain scope model is intentionally minimal (PID-only) in this phase.
+
 ---
 
 ## 4) Networking implementation details
@@ -134,7 +155,7 @@ Current limitations:
 ## 5) Gap summary (docs-to-code)
 
 1. **Status precision gap**: several services are buildable but still lifecycle scaffolds.
-2. **Enforcement gap**: capability checks in some manager paths were historically placeholder-permissive; however, the major `netmgr` bypass has been closed (fail-closed shim). Full capability routing is still needed.
+2. **Enforcement gap**: capability checks in some manager paths were historically placeholder-permissive; however, the major `netmgr` bypass has been closed (fail-closed shim). Full capability routing is still needed. The Phase K3-S0 validation framework provides the tools to close this gap.
 3. **Runtime wiring gap**: multiple daemons initialize state but do not yet run complete production event loops.
 4. **Hardening gap**: observability, failure semantics, and profile-specific guarantees need deeper closure.
 
