@@ -1,4 +1,5 @@
 #include "init_profile.h"
+#include <stddef.h>
 
 // Bring in capability flags that might be needed for the mock population,
 // eventually they should be moved to a generic uapi/init cap header, but for now we define locally if needed.
@@ -44,10 +45,26 @@ const init_profile_policy_t *init_profile_get_policy(init_profile_t profile) {
     return &g_default_policy;
 }
 
+uint64_t init_profile_to_mask(init_profile_t profile) {
+    return (uint64_t)profile;
+}
+
+bool init_profile_mask_allows(uint64_t mask, init_profile_t profile) {
+    return (mask & (uint64_t)profile) != 0;
+}
+
+const char *init_profile_name(init_profile_t profile) {
+    const init_profile_policy_t *policy = init_profile_get_policy(profile);
+    return policy->name;
+}
+
 void init_profile_get_context(init_boot_context_t *ctx) {
     if (!ctx) return;
 
-    // Default to TINY if nothing specified, to be safe
+    // Initialize with safe defaults
+    __builtin_memset(ctx, 0, sizeof(init_boot_context_t));
+
+    ctx->abi_version = BHARAT_INIT_BOOT_CONTEXT_ABI_VERSION;
     ctx->boot_session_id = 0; // Mock default
     ctx->profile = INIT_PROFILE_TINY;
     ctx->arch_id = 0;
@@ -60,6 +77,12 @@ void init_profile_get_context(init_boot_context_t *ctx) {
     ctx->reset_reason = 0;
     ctx->safe_mode_requested = false;
     ctx->diagnostics_requested = false;
+    ctx->failed_update_revert = false;
+
+    // Kernel health summary default
+    ctx->kernel_health.level = INIT_KERNEL_HEALTH_OK;
+    ctx->kernel_health.failed_selftest_mask = 0;
+    ctx->kernel_health.degraded_feature_mask = 0;
 
 #if defined(BHARAT_INIT_PROFILE_TINY)
     ctx->profile = INIT_PROFILE_TINY;
