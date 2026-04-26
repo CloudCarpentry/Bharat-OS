@@ -4,6 +4,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define HAL_PAGE_SIZE_4K (1U << 0)
+#define HAL_PAGE_SIZE_2M (1U << 1)
+#define HAL_PAGE_SIZE_4M (1U << 2)
+#define HAL_PAGE_SIZE_1G (1U << 3)
 /**
  * HAL Memory Models
  *

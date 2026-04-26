@@ -9,6 +9,7 @@
 #include "../../kernel/include/arch/arch_cpu_caps.h"
 #include "../../kernel/include/arch/arch_tlb_accel.h"
 #include <stdbool.h>
+static bool g_x86_pcid_supported = false;
 
 // Direct-Map Subsystem Configuration
 // For x86_64, the standard high-half mapping base
