@@ -15,3 +15,7 @@ void bh_syscall_stats_inc_fast(uint32_t core_id) {
 void bh_syscall_stats_inc_slow(uint32_t core_id) {
     if (core_id < MAX_CPUS) g_per_core_stats[core_id].slow_calls++;
 }
+
+void bh_syscall_stats_inc_denied(uint32_t core_id) {
+    if (core_id < MAX_CPUS) g_per_core_stats[core_id].denied_calls++;
+}

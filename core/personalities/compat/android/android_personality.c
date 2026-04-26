@@ -1,5 +1,7 @@
 #include "compat/android/android_personality.h"
 #include "personality/personality_types.h"
+#include "trap/syscall_context.h"
+#include "personality_ops.h"
 
 // Ensure proper console outputs for E2E tests
 void bh_platform_early_console_write_string(const char* str); // Mock declaration
@@ -66,4 +68,15 @@ int android_obj_lookup(android_obj_id_t id, android_logical_obj_t* out_obj) {
     }
 
     return -1; // Not found
+}
+
+extern const bh_personality_syscall_table_t *personality_linux_get_table(void);
+extern const personality_ops_t *personality_linux_get_ops(void);
+
+const bh_personality_syscall_table_t *personality_android_get_table(void) {
+    return personality_linux_get_table();
+}
+
+const personality_ops_t *personality_android_get_ops(void) {
+    return personality_linux_get_ops();
 }

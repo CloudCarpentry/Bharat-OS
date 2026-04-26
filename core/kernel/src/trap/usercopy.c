@@ -1,6 +1,7 @@
 #include "trap/usercopy.h"
 #include <stdbool.h>
 #include "kernel/status.h"
+#include "mm/user_range.h"
 
 /**
  * Stage 1.5 Usercopy Hardening:
@@ -8,14 +9,12 @@
  * - Pointer + length overflow checks
  * - Max copy size enforcement
  * - User range validation
- * - TODO: Stage 2: validate against current process aspace/VMA/page permissions.
+ * - Stage 2 (Adapter ready): validate against current process aspace/VMA/page permissions.
  */
 
 #ifndef BH_USERCOPY_MAX_BYTES
 #define BH_USERCOPY_MAX_BYTES 4096U
 #endif
-
-extern int trap_user_range_valid(uintptr_t ptr, size_t len);
 
 static void* internal_memcpy(void* dst, const void* src, size_t n) {
     char* d = (char*)dst;
@@ -32,8 +31,9 @@ kstatus_t copy_from_user_checked(void *dst, uintptr_t src, size_t len) {
     // Overflow check before range validation
     if (src > UINTPTR_MAX - len) return K_ERR_FAULT;
 
-    // Range check
-    if (!trap_user_range_valid(src, len)) return K_ERR_FAULT;
+    // Range check (Stage 2 adapter)
+    kstatus_t st = mm_user_range_validate_current(src, len, BH_USER_ACCESS_READ);
+    if (st != K_OK) return st;
 
     // TODO: fault-recoverable copy where arch supports it
     internal_memcpy(dst, (const void *)src, len);
@@ -48,8 +48,9 @@ kstatus_t copy_to_user_checked(uintptr_t dst, const void *src, size_t len) {
     // Overflow check before range validation
     if (dst > UINTPTR_MAX - len) return K_ERR_FAULT;
 
-    // Range check
-    if (!trap_user_range_valid(dst, len)) return K_ERR_FAULT;
+    // Range check (Stage 2 adapter)
+    kstatus_t st = mm_user_range_validate_current(dst, len, BH_USER_ACCESS_WRITE);
+    if (st != K_OK) return st;
 
     // TODO: fault-recoverable copy where arch supports it
     internal_memcpy((void *)dst, src, len);
@@ -61,13 +62,15 @@ kstatus_t copy_user_string_checked(char *dst, uintptr_t src, size_t max_len) {
     if (!dst || src == 0) return K_ERR_INVALID_ARG;
     if (max_len > BH_USERCOPY_MAX_BYTES) return K_ERR_OVERFLOW;
 
-    if (!trap_user_range_valid(src, 1)) return K_ERR_FAULT;
+    kstatus_t st = mm_user_range_validate_current(src, 1, BH_USER_ACCESS_READ);
+    if (st != K_OK) return st;
 
     size_t len = 0;
     const char *s = (const char *)src;
     while (len < max_len) {
         // Repeated range check for safety during byte-by-byte copy
-        if (!trap_user_range_valid((uintptr_t)&s[len], 1)) return K_ERR_FAULT;
+        st = mm_user_range_validate_current((uintptr_t)&s[len], 1, BH_USER_ACCESS_READ);
+        if (st != K_OK) return st;
 
         dst[len] = s[len];
         if (dst[len] == '\0') return K_OK;

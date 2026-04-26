@@ -7,7 +7,7 @@
 extern long bh_syscall_gate(trap_frame_t *frame, const trap_info_t *info);
 extern const bh_personality_syscall_table_t native_personality;
 
-const bh_personality_syscall_table_t *personality_get_native_table(void) {
+const bh_personality_syscall_table_t *personality_native_get_table(void) {
     return &native_personality;
 }
 
@@ -34,3 +34,7 @@ const personality_ops_t default_personality_ops = {
     .handle_user_fault = default_handle_user_fault,
     .map_fault_to_signal = default_map_fault_to_signal,
 };
+
+const personality_ops_t *personality_native_get_ops(void) {
+    return &default_personality_ops;
+}

@@ -6,11 +6,7 @@
 #include "sched/sched.h"
 #include "fault_diag.h"
 #include "kernel/status.h"
-
-extern const bh_personality_syscall_table_t native_personality;
-extern const bh_personality_syscall_table_t *linux_personality_get_table(void);
-extern const bh_personality_syscall_table_t *android_personality_get_table(void);
-extern const bh_personality_syscall_table_t *windows_personality_get_table(void);
+#include "bharat/personality/personality_interface.h"
 
 kstatus_t bh_syscall_policy_check(bh_syscall_ctx_t *ctx, const bh_syscall_desc_t *desc) {
     if (!ctx || !desc) return K_ERR_INVALID_ARG;
@@ -28,13 +24,13 @@ kstatus_t bh_syscall_policy_check(bh_syscall_ctx_t *ctx, const bh_syscall_desc_t
 const bh_personality_syscall_table_t *personality_get_syscall_table(bh_personality_id_t id) {
     switch (id) {
         case BH_PERSONALITY_NATIVE:
-            return &native_personality;
+            return personality_native_get_table();
         case BH_PERSONALITY_LINUX:
-            return linux_personality_get_table();
+            return personality_linux_get_table();
         case BH_PERSONALITY_ANDROID:
-            return android_personality_get_table();
+            return personality_android_get_table();
         case BH_PERSONALITY_WINDOWS:
-            return windows_personality_get_table();
+            return personality_windows_get_table();
         default:
             return NULL;
     }
@@ -95,12 +91,21 @@ long bh_syscall_gate(trap_frame_t *frame, const trap_info_t *info) {
         return kstatus_to_sysret(K_ERR_INVALID_ARG);
     }
 
-    if ((desc->flags & BH_SYSCALL_F_FAST) && (desc->flags & BH_SYSCALL_F_BLOCKING)) {
-        return kstatus_to_sysret(K_ERR_INVALID_ARG);
+    // Flag validation
+    if (desc->flags & BH_SYSCALL_F_FAST) {
+        // Fast path syscalls must not block or jump to services
+        if (desc->flags & (BH_SYSCALL_F_BLOCKING | BH_SYSCALL_F_SERVICE_CALL)) {
+            return kstatus_to_sysret(K_ERR_INVALID_ARG);
+        }
+        // Fast path syscalls must not perform usercopy (must be explicitly whitelisted if needed later)
+        if (desc->flags & (BH_SYSCALL_F_USER_READ | BH_SYSCALL_F_USER_WRITE)) {
+            return kstatus_to_sysret(K_ERR_INVALID_ARG);
+        }
     }
 
-    if ((desc->flags & BH_SYSCALL_F_FAST) && (desc->flags & BH_SYSCALL_F_SERVICE_CALL)) {
-        return kstatus_to_sysret(K_ERR_INVALID_ARG);
+    // CAP_REQUIRED must have enforceable rights
+    if ((desc->flags & BH_SYSCALL_F_CAP_REQUIRED) && desc->required_rights == 0) {
+        return kstatus_to_sysret(K_ERR_DENIED);
     }
 
     ctx.desc = desc;
@@ -117,7 +122,7 @@ long bh_syscall_gate(trap_frame_t *frame, const trap_info_t *info) {
     // 5. Generic Policy Hooks
     kstatus_t policy_st = bh_syscall_policy_check(&ctx, desc);
     if (policy_st != K_OK) {
-        // TODO: Increment denied stat
+        bh_syscall_stats_inc_denied(core_id);
         return kstatus_to_sysret(policy_st);
     }
 
