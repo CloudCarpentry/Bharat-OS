@@ -1,6 +1,7 @@
 #pragma once
 
 #include "console_base_types.h"
+#include "console_internal.h"
 #include <stdbool.h>
 
 typedef struct {
@@ -18,6 +19,7 @@ typedef struct {
     const void *font;
     bool clear_supported;
     bool scroll_supported;
+    utf8_decoder_t decoder;
 } framebuffer_console_state_t;
 
 void console_render_fb_init(framebuffer_console_state_t *state);
