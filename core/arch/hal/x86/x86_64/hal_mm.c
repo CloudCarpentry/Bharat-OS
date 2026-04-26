@@ -1,5 +1,6 @@
 #include <stdbool.h>
 #include "hal/hal_capabilities.h"
+#include "hal/hal_mm.h"
 #include "hal/hal_mmu.h"
 #include <string.h>
 
@@ -26,6 +27,27 @@ int hal_mem_get_caps(hal_mem_caps_t *caps) {
     caps->supports_iommu = true;
 
     return 0;
+}
+
+void hal_mm_get_zone_limits(hal_mm_zone_limits_t *out) {
+    if (!out) return;
+    out->dma_low_start = 0;
+    out->dma_low_end = 0x00FFFFFFu;     /* first 16 MiB */
+    out->dma32_start = 0;
+    out->dma32_end = 0xFFFFFFFFu;       /* first 4 GiB */
+    out->normal_start = 0x100000000ULL; /* above 4 GiB */
+    out->normal_end = (uintptr_t)-1;
+    out->flags = 0;
+}
+
+void hal_mm_backend_caps(hal_mm_backend_caps_t *out) {
+    if (!out) return;
+    out->kind = HAL_MM_BACKEND_MMU_FULL;
+    out->map_granule = 4096;
+    out->protect_granule = 4096;
+    out->alloc_granule = 4096;
+    out->max_regions = 0;
+    out->flags = 1;
 }
 
 static const hal_arch_capabilities_t g_x86_64_caps = {
