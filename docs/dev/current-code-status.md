@@ -83,7 +83,29 @@ Use these labels consistently across status docs and roadmap updates:
 
 ---
 
-## 3) Networking implementation details
+## 3) Core Subsystem implementation details
+
+### Capability Validation Framework
+**Status: Partial / Phase K3-S0 baseline**
+
+A reusable, strict, fail-closed capability validation framework has been introduced to the kernel. This serves as the canonical validation path for object types, rights, scope (PID-based), and generation/stale-handle checks.
+
+**Current progress:**
+- Canonical `cap_validate_ex()` implementation.
+- Internal helpers for granular validation (rights, type, scope, generation).
+- Rich internal error mapping via `kstatus_t` (e.g., `K_ERR_CAP_STALE`, `K_ERR_CAP_REVOKED`).
+- Comprehensive negative-path unit tests in `ktest_capability`.
+- Initial contract documentation in `docs/architecture/kernel/capability-validation-contract.md`.
+
+**Current limitations:**
+- Not yet wired into every syscall boundary.
+- Not yet enforced across all IPC/service entry points.
+- Capability lifecycle revocation semantics are still partial.
+- Security-domain scope model is intentionally minimal (PID-only) in this phase.
+
+---
+
+## 4) Networking implementation details
 
 *Note: The legacy `net` monolithic service is deprecated and transitional. `netmgr` and `netstack` represent the canonical forward path.*
 
@@ -116,14 +138,14 @@ Current limitations:
 
 ---
 
-## 4) Gap summary (docs-to-code)
+## 5) Gap summary (docs-to-code)
 
 1. **Status precision gap**: several services are buildable but still lifecycle scaffolds.
-2. **Enforcement gap**: capability checks in some manager paths were historically placeholder-permissive; however, the major `netmgr` bypass has been closed (fail-closed shim). Full capability routing is still needed.
+2. **Enforcement gap**: capability checks in some manager paths were historically placeholder-permissive; however, the major `netmgr` bypass has been closed (fail-closed shim). Full capability routing is still needed. The Phase K3-S0 validation framework provides the tools to close this gap.
 3. **Runtime wiring gap**: multiple daemons initialize state but do not yet run complete production event loops.
 4. **Hardening gap**: observability, failure semantics, and profile-specific guarantees need deeper closure.
 
-## 4.1) Security production gate (explicit blocker)
+## 5.1) Security production gate (explicit blocker)
 
 To avoid status inflation, this repository treats capability enforcement maturity as a hard release gate:
 
@@ -134,7 +156,7 @@ To avoid status inflation, this repository treats capability enforcement maturit
 
 ---
 
-## 5) Contributor update rules
+## 6) Contributor update rules
 
 When updating this document:
 
@@ -144,7 +166,7 @@ When updating this document:
 4. If architecture docs are more aspirational, retain them, but record the current reality here.
 
 
-## 6) Component architecture drill-down docs
+## 7) Component architecture drill-down docs
 
 For diagram-based decomposition and roadmap mapping by domain, see:
 
@@ -153,13 +175,13 @@ For diagram-based decomposition and roadmap mapping by domain, see:
 - `docs/architecture/components/services-subcomponents-architecture.md`
 - `docs/architecture/components/drivers-subcomponents-architecture.md`
 
-## 7) Memory hardening roadmap
+## 8) Memory hardening roadmap
 
 For the current memory production hardening plan and profile/architecture acceptance matrix, see:
 
 - `docs/architecture/memory/memory-roadmap-consolidated.md`
 
-## 8) Service Deployment Profiles
+## 9) Service Deployment Profiles
 
 Services in Bharat-OS are not universally mandatory. They are deployed via three primary profile tiers to accommodate hardware constraints:
 

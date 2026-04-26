@@ -268,6 +268,26 @@ kstatus_t cap_lookup_thread(const capability_table_t *table, uint32_t cap_id, ca
 kstatus_t cap_lookup_process(const capability_table_t *table, uint32_t cap_id, cap_rights_mask_t required_rights, bh_process_object_t *out);
 kstatus_t cap_lookup_memory(const capability_table_t *table, uint32_t cap_id, cap_rights_mask_t required_rights, bh_memory_object_t *out);
 
+typedef struct cap_validation_request {
+    uint32_t cap_id;
+    cap_type_t expected_object_type;
+    cap_rights_mask_t required_rights;
+    uint32_t requester_pid;
+    uint64_t expected_generation;
+} cap_validation_request_t;
+
+/**
+ * @brief Canonical fail-closed capability validation.
+ *
+ * @param table Pointer to the capability table.
+ * @param req Validation request parameters.
+ * @param out_entry Optional output pointer to receive the validated entry.
+ * @return K_OK on success, or an appropriate K_ERR_* on failure.
+ */
+kstatus_t cap_validate_ex(capability_table_t *table,
+                          const cap_validation_request_t *req,
+                          capability_entry_t **out_entry);
+
 /*@
   requires src != \null;
   requires dst != \null;
