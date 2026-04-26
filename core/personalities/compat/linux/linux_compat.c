@@ -7,7 +7,11 @@ void linux_vfs_init(void);
 #include "trap/syscall_regs.h"
 #include "trap/syscall_context.h"
 
-extern const bh_personality_syscall_table_t *linux_personality_get_table(void);
+extern const bh_personality_syscall_table_t bh_linux_syscall_table;
+
+const bh_personality_syscall_table_t *linux_personality_get_table(void) {
+    return &bh_linux_syscall_table;
+}
 
 static subsys_instance_t* g_linux_instance;
 
@@ -56,7 +60,9 @@ static int test_linux_syscall_sanity(void) {
 
 REGISTER_SUBSYS_TEST("linux", "syscall_translation_sanity", test_linux_syscall_sanity, 1, 1)
 
-// Transitional helper to route legacy calls through the new descriptor-based gate logic
+/* Transitional legacy switch. New Linux personality syscalls must use
+ * linux_syscall.c descriptor table through bh_syscall_gate().
+ */
 long linux_syscall_handler(long sysno, long arg1, long arg2, long arg3, long arg4, long arg5, long arg6) {
     bh_syscall_ctx_t ctx = {0};
     ctx.personality = BH_PERSONALITY_LINUX;

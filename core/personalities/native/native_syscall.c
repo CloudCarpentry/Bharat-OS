@@ -1,5 +1,5 @@
 #include "trap/syscall_context.h"
-#include <bharat/uapi/syscall_nr.h>
+#include <bharat/uapi/syscall/nr.h>
 
 extern long bh_sys_nop(bh_syscall_ctx_t *ctx);
 extern long bh_sys_thread_create(bh_syscall_ctx_t *ctx);
@@ -53,28 +53,9 @@ static const bh_syscall_desc_t native_syscall_table[] = {
     [SYSCALL_THREAD_EXIT] = { SYSCALL_THREAD_EXIT, "thread_exit", 1, BH_SYSCALL_F_FAST, 0, bh_sys_thread_exit },
 };
 
-static const bh_personality_syscall_table_t native_personality = {
+const bh_personality_syscall_table_t native_personality = {
     .name = "native",
     .abi_version = 1,
-    .max_syscall_nr = SYSCALL_MAX,
+    .max_syscall_nr = 23,
     .table = native_syscall_table
 };
-
-extern const bh_personality_syscall_table_t *linux_personality_get_table(void);
-extern const bh_personality_syscall_table_t *android_personality_get_table(void);
-extern const bh_personality_syscall_table_t *windows_personality_get_table(void);
-
-const bh_personality_syscall_table_t *personality_get_syscall_table(bh_personality_id_t id) {
-    switch (id) {
-        case BH_PERSONALITY_NATIVE:
-            return &native_personality;
-        case BH_PERSONALITY_LINUX:
-            return linux_personality_get_table();
-        case BH_PERSONALITY_ANDROID:
-            return android_personality_get_table();
-        case BH_PERSONALITY_WINDOWS:
-            return windows_personality_get_table();
-        default:
-            return NULL;
-    }
-}

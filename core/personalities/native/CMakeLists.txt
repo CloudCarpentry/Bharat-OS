@@ -4,6 +4,7 @@ project(BharatOS_PersonalityNative C ASM)
 # The Native personality implementation
 add_library(bharatos_personality_native OBJECT
     personality_native.c
+    native_syscall.c
 )
 
 target_include_directories(bharatos_personality_native

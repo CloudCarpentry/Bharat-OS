@@ -8,6 +8,9 @@ bool arch_trap_is_syscall(const trap_frame_t *frame) {
     if (!frame) return false;
     // ARM64: SVC instruction from EL0.
     // Decodes ESR_EL1.EC from the cause field (which stores full ESR on Bharat ARM64).
+    /* Bharat-OS currently treats all SVC-from-EL0 exceptions as syscall entry.
+     * ISS/SVC immediate is reserved for future ABI versioning/debug use.
+     */
     return (ARM64_ESR_EC(frame->cause) == ARM64_EC_SVC64);
 }
 

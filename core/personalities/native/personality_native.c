@@ -1,9 +1,15 @@
 #include "personality_ops.h"
 #include "trap_frame_ops.h"
 #include "trap/syscall_regs.h"
+#include "trap/syscall_context.h"
 
 // bh_syscall_gate is now the common entry point
 extern long bh_syscall_gate(trap_frame_t *frame, const trap_info_t *info);
+extern const bh_personality_syscall_table_t native_personality;
+
+const bh_personality_syscall_table_t *personality_get_native_table(void) {
+    return &native_personality;
+}
 
 static long default_handle_syscall(bh_thread_t *thread, trap_frame_t *frame, const trap_info_t *info) {
     (void)thread;
