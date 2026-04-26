@@ -1,16 +1,7 @@
 #include "init_profile.h"
 #include <stddef.h>
 
-// Bring in capability flags that might be needed for the mock population,
-// eventually they should be moved to a generic uapi/init cap header, but for now we define locally if needed.
-#ifndef BHARAT_INIT_CAP_NONE
-#define BHARAT_INIT_CAP_NONE            (0)
-#define BHARAT_INIT_CAP_NETWORK         (1 << 0)
-#define BHARAT_INIT_CAP_STORAGE         (1 << 1)
-#define BHARAT_INIT_CAP_DISPLAY         (1 << 2)
-#define BHARAT_INIT_CAP_SENSORS         (1 << 3)
-#define BHARAT_INIT_CAP_MMU             (1 << 4)
-#endif
+#include <bharat/uapi/init/init_capability.h>
 
 static const init_profile_policy_t g_default_policy = {
     .name = "unknown",
@@ -19,30 +10,48 @@ static const init_profile_policy_t g_default_policy = {
     .allow_optional_failure = true,
 };
 
-static const init_profile_policy_t g_profile_policies[] = {
-    [0] = {0},
-    [1] = { .name = "tiny", .strict_core_deadlines = false, .quiesce_after_handoff = false, .allow_optional_failure = true },
-    [2] = { .name = "small", .strict_core_deadlines = false, .quiesce_after_handoff = false, .allow_optional_failure = true },
-    [4] = { .name = "embedded_rich", .strict_core_deadlines = true, .quiesce_after_handoff = true, .allow_optional_failure = true },
-    [8] = { .name = "rt", .strict_core_deadlines = true, .quiesce_after_handoff = false, .allow_optional_failure = true },
-    [16] = { .name = "mobile", .strict_core_deadlines = true, .quiesce_after_handoff = true, .allow_optional_failure = true },
-    [32] = { .name = "desktop", .strict_core_deadlines = false, .quiesce_after_handoff = false, .allow_optional_failure = true },
-    [64] = { .name = "drone", .strict_core_deadlines = true, .quiesce_after_handoff = true, .allow_optional_failure = false },
-    [128] = { .name = "cloud", .strict_core_deadlines = true, .quiesce_after_handoff = true, .allow_optional_failure = true },
-    [256] = { .name = "automotive", .strict_core_deadlines = true, .quiesce_after_handoff = true, .allow_optional_failure = true },
-    [512] = { .name = "tv", .strict_core_deadlines = false, .quiesce_after_handoff = true, .allow_optional_failure = true },
-    [1024] = { .name = "appliance", .strict_core_deadlines = true, .quiesce_after_handoff = true, .allow_optional_failure = false },
-    [2048] = { .name = "watch", .strict_core_deadlines = true, .quiesce_after_handoff = true, .allow_optional_failure = true },
-};
+static const init_profile_policy_t g_policy_tiny = { .name = "tiny", .strict_core_deadlines = false, .quiesce_after_handoff = false, .allow_optional_failure = true };
+static const init_profile_policy_t g_policy_small = { .name = "small", .strict_core_deadlines = false, .quiesce_after_handoff = false, .allow_optional_failure = true };
+static const init_profile_policy_t g_policy_embedded_rich = { .name = "embedded_rich", .strict_core_deadlines = true, .quiesce_after_handoff = true, .allow_optional_failure = true };
+static const init_profile_policy_t g_policy_rt = { .name = "rt", .strict_core_deadlines = true, .quiesce_after_handoff = false, .allow_optional_failure = true };
+static const init_profile_policy_t g_policy_mobile = { .name = "mobile", .strict_core_deadlines = true, .quiesce_after_handoff = true, .allow_optional_failure = true };
+static const init_profile_policy_t g_policy_desktop = { .name = "desktop", .strict_core_deadlines = false, .quiesce_after_handoff = false, .allow_optional_failure = true };
+static const init_profile_policy_t g_policy_drone = { .name = "drone", .strict_core_deadlines = true, .quiesce_after_handoff = true, .allow_optional_failure = false };
+static const init_profile_policy_t g_policy_cloud = { .name = "cloud", .strict_core_deadlines = true, .quiesce_after_handoff = true, .allow_optional_failure = true };
+static const init_profile_policy_t g_policy_automotive = { .name = "automotive", .strict_core_deadlines = true, .quiesce_after_handoff = true, .allow_optional_failure = true };
+static const init_profile_policy_t g_policy_tv = { .name = "tv", .strict_core_deadlines = false, .quiesce_after_handoff = true, .allow_optional_failure = true };
+static const init_profile_policy_t g_policy_appliance = { .name = "appliance", .strict_core_deadlines = true, .quiesce_after_handoff = true, .allow_optional_failure = false };
+static const init_profile_policy_t g_policy_watch = { .name = "watch", .strict_core_deadlines = true, .quiesce_after_handoff = true, .allow_optional_failure = true };
 
 const init_profile_policy_t *init_profile_get_policy(init_profile_t profile) {
-    if (profile > 0 && profile < (init_profile_t)(sizeof(g_profile_policies) / sizeof(g_profile_policies[0]))) {
-        const init_profile_policy_t *policy = &g_profile_policies[profile];
-        if (policy->name != NULL) {
-            return policy;
-        }
+    switch (profile) {
+    case INIT_PROFILE_TINY:
+        return &g_policy_tiny;
+    case INIT_PROFILE_SMALL:
+        return &g_policy_small;
+    case INIT_PROFILE_EMBEDDED_RICH:
+        return &g_policy_embedded_rich;
+    case INIT_PROFILE_RT:
+        return &g_policy_rt;
+    case INIT_PROFILE_MOBILE:
+        return &g_policy_mobile;
+    case INIT_PROFILE_DESKTOP:
+        return &g_policy_desktop;
+    case INIT_PROFILE_DRONE:
+        return &g_policy_drone;
+    case INIT_PROFILE_CLOUD:
+        return &g_policy_cloud;
+    case INIT_PROFILE_AUTOMOTIVE:
+        return &g_policy_automotive;
+    case INIT_PROFILE_TV:
+        return &g_policy_tv;
+    case INIT_PROFILE_APPLIANCE:
+        return &g_policy_appliance;
+    case INIT_PROFILE_WATCH:
+        return &g_policy_watch;
+    default:
+        return &g_default_policy;
     }
-    return &g_default_policy;
 }
 
 uint64_t init_profile_to_mask(init_profile_t profile) {

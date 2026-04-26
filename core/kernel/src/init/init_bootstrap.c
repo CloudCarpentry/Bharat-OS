@@ -19,8 +19,8 @@ static int bootstrap_launch_first_service(void) {
     // grant bootstrap caps/handles
     // sched_enqueue();
 
-    console_write_raw("  [BOOTSTRAP] userspace loader not wired yet; deferring services/init launch\n", 76);
-    console_write_raw("  [BOOTSTRAP] outcome: INIT_BOOT_OUTCOME_BOOTSTRAP_DEFERRED\n", 60);
+    console_write_raw("  [BOOTSTRAP] services/init launch deferred: userspace loader unavailable\n", 74);
+    console_write_raw("  [BOOTSTRAP] boot outcome: BOOTSTRAP_DEFERRED\n", 47);
     return 0;
 }
 

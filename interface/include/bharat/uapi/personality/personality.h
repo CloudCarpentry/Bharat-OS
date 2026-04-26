@@ -14,6 +14,7 @@ typedef enum {
     BHARAT_PERSONALITY_POSIX_LITE = 3,
     BHARAT_PERSONALITY_AUTOMOTIVE = 4,
     BHARAT_PERSONALITY_ROBOTICS = 5,
+    BHARAT_PERSONALITY_MAX = 31
 } bharat_personality_id_t;
 
 #ifdef __cplusplus

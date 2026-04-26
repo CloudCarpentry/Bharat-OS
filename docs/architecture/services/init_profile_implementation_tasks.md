@@ -32,10 +32,10 @@ The intent is to keep `init` as a **short-lived bootstrap coordinator**, while p
 
 These tasks are mandatory before profile-specific behavior can work.
 
-### T0 — Boot Context + Kernel Health Contract
-- Define `init_boot_context_t` and `kboot_health_summary_t` headers shared by kernel + init.
+### T0 — Boot Context + Kernel Health Contract (COMPLETED)
+- Define `init_boot_context_t` and `init_kernel_health_summary_t` headers in UAPI.
 - Pass reboot reason, safe mode request, profile hint, capability mask, and kernel self-test results.
-- Reject invalid/unknown contract versions.
+- Reject invalid/unknown contract versions via `init_boot_context_is_valid`.
 
 ### T1 — Init State Machine Core
 Implement deterministic state machine phases:
@@ -50,7 +50,7 @@ Implement deterministic state machine phases:
 9. `HANDOFF_COMPLETE`
 10. `QUIESCENT/EXIT`
 
-### T2 — Manifest Engine + Boot Classes
+### T2 — Manifest Engine + Boot Classes (COMPLETED)
 - Add manifest schema with boot classes:
   - `BOOT_CLASS_CORE`
   - `BOOT_CLASS_INFRA`
