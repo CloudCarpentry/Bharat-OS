@@ -12,7 +12,7 @@ see_also:
 # Memory + File Operation Layer Placement Review (memset/memcpy/memmove/open/openat)
 
 Date: 2026-04-20  
-Scope: placement consistency for low-level memory and file-open operations across `core/arch/`, `core/hal/`, `core/kernel/`, `lib/`, and SDK-facing layers.
+Scope: placement consistency for low-level memory and file-open operations across `core/arch/`, `corecore/hal/`, `core/kernel/`, `lib/`, and SDK-facing layers.
 
 ## 1) Executive summary
 
@@ -63,7 +63,7 @@ Own:
 Do not own:
 - API policy about when user-space or services should call memory ops.
 
-### `core/hal/`
+### `corecore/hal/`
 Own:
 - optional architecture-neutral memory-op contract surface if needed for cross-platform modules (only if more than kernel uses it).
 - capability discovery translation (what fastpaths are available) from core/platform/arch to unified contract.
@@ -93,7 +93,7 @@ Do not own:
 
 ## 3.2 `open/openat`
 
-### `core/arch/` and `core/hal/`
+### `core/arch/` and `corecore/hal/`
 - Should not own file-open semantics. No `open/openat` policy/mechanism here.
 
 ### `core/kernel/`

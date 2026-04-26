@@ -1,6 +1,6 @@
 ---
 title: Bharat-OS Comprehensive Memory Architecture
-status: Draft
+status: Proposed
 owner: Documentation Working Group
 last_updated: 2026-04-25
 tags:
@@ -115,7 +115,7 @@ The memory stack is divided into explicit layers, each with strict responsibilit
 | **PMM** (`core/kernel/src/mm/pmm/`) | Physical frames, buddy allocation, contiguous alloc | Virtual memory policies, demand faults |
 | **VM Object** (`core/kernel/src/mm/vm/objects/`) | Backing semantics, lifecycle, page fault resolution | Hardware translation formats |
 | **Address Space** (`core/kernel/src/mm/vm/aspace/`) | Region reservations, overlap rules | Physical allocation policies |
-| **HAL PT** (`core/kernel/include/core/hal/hal_pt.h`) | Hardware page table programming | VM object semantics |
+| **HAL PT** (`core/kernel/include/corecore/halcore/hal_pt.h`) | Hardware page table programming | VM object semantics |
 | **HAL TLB** (`core/kernel/src/mm/tlb/`) | Invalidation coordination | PMM frame ownership |
 | **Fault Engine** (`core/kernel/src/mm/vm/fault/`) | Decoding traps, orchestrating lookup | PMM internal structures |
 | **DMA/IOMMU** (`core/kernel/src/mm/dma/`) | Device-visible mappings, IOVA domains | General user-space semantics |

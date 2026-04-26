@@ -1,6 +1,6 @@
 ---
 title: Real-Time Support
-status: Draft
+status: Proposed
 owner: Documentation Working Group
 last_updated: 2026-04-25
 tags:

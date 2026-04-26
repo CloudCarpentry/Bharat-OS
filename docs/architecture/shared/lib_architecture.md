@@ -1,6 +1,6 @@
 ---
 title: Bharat-OS Library Layering Architecture
-status: Draft
+status: Proposed
 owner: Documentation Working Group
 last_updated: 2026-04-25
 tags:
@@ -23,7 +23,7 @@ The core principle:
 ### 1. Hard Split Between Three Layers
 * **`core/kernel/src/lib/`**: Kernel-private helpers. May use kernel allocators (`kalloc`), kernel locking, per-core state, and trap-safe assumptions. Its headers reside in `core/kernel/include/lib/`.
 * **`lib/`**: Reusable user-space/shared library code. Must have **zero** kernel dependency. Provides portable fallback implementations. Its headers reside in `lib/include/`.
-* **`core/hal/` or `core/arch/`**: Hardware/ISA optimized implementations selected by the build/core/arch/profile system (e.g., `arch_memcpy`).
+* **`corecore/hal/` or `core/arch/`**: Hardware/ISA optimized implementations selected by the build/core/arch/profile system (e.g., `arch_memcpy`).
 
 ### 2. Root `lib/` (Shared, Reusable Library Space)
 

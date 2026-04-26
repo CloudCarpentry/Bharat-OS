@@ -1,6 +1,6 @@
 ---
 title: Kernel Subcomponents Architecture (Repository-Aligned Status + Roadmap)
-status: Draft
+status: Proposed
 owner: Documentation Working Group
 last_updated: 2026-04-25
 tags:
@@ -46,7 +46,7 @@ graph TD
 | Keep policy out of kernel | `core/kernel/src/profile/*`, `core/kernel/src/subsystem/linux` | Partial | Some profile/personality-like concerns still reside under kernel tree. |
 | Capability + IPC primitives | `cap`, `ipc`, `urpc` | Strong | Matches architecture direction. |
 | Memory authority and isolation | `mm/{vm,pt,pmm,dma,iommu,tlb}` | Strong | Good decomposition for MM evolution. |
-| Hardware abstraction usage | via `core/hal/*` and arch paths | Partial | HAL tree still includes arch-specific directories, conflicting with strict abstraction guidance. |
+| Hardware abstraction usage | via `corecore/hal/*` and arch paths | Partial | HAL tree still includes arch-specific directories, conflicting with strict abstraction guidance. |
 
 ## Kernel status matrix
 

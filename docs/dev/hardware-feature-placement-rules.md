@@ -21,7 +21,7 @@ This document enforces strict boundaries for where different parts of a hardware
 - **Allowed:** Assembly routines, raw register definitions, context switching, basic MMU/TLB instruction wrappers.
 - **Forbidden:** Hardware discovery, policy logic, complex dispatching.
 
-### 2. `core/hal/` (Contracts)
+### 2. `corecore/hal/` (Contracts)
 - **Role:** The abstraction layer translating standard OS expectations into `core/arch/` or `core/platform/` calls.
 - **Allowed:** Interface definitions (`hal_caps.h`, `hal_dma.h`), generic stubs.
 - **Forbidden:** Board-specific implementations, vendor-specific driver logic.

@@ -10,7 +10,7 @@ tags: ["architecture", "profiles"]
 
 # Profile-first roadmap: core/kernel/core impact and subsystem deltas
 
-> **Note on Code Structure:** Profile configurations strictly isolate policy from mechanism. For example, generic power and thermal logic lives in `core/kernel/src/power/`, while hardware fallback backends are implemented in `core/hal/common/power/` and `core/hal/common/battery/`. Hard safety paths remain in-kernel, while profile-specific policies (like drone reserve modes or battery saver fan curves) must be handled by user-space services.
+> **Note on Code Structure:** Profile configurations strictly isolate policy from mechanism. For example, generic power and thermal logic lives in `core/kernel/src/power/`, while hardware fallback backends are implemented in `corecore/hal/common/power/` and `corecore/hal/common/battery/`. Hard safety paths remain in-kernel, while profile-specific policies (like drone reserve modes or battery saver fan curves) must be handled by user-space services.
 
 This document maps each hardware/deployment profile to:
 

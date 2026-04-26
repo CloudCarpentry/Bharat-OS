@@ -22,7 +22,7 @@ This document connects architecture documentation to the current code layout, so
 | `core/arch/` | ISA-specific core/kernel/bring-up code (`x86`, `arm`, `riscv`, etc.) | `docs/architecture/boot/*`, `docs/architecture/arch-capability-matrix.md`, `docs/architecture/hardware-abstraction-and-drivers-baseline.md` |
 | `core/boot/` | Common boot-time orchestration and handoff contracts | `docs/architecture/boot/BOOT_ARCHITECTURE.md`, `docs/architecture/boot/boot_contract.md`, `docs/architecture/core/boot-runtime-lifecycle.md` |
 | `core/kernel/` | Core mechanism layer (scheduling, tasks/threads, IPC/URPC, isolation contracts) | `docs/architecture/core/kernel/*`, `docs/architecture/kernel-object-model.md`, `docs/architecture/status-code-contract.md` |
-| `core/hal/` | Hardware abstraction interfaces and arch-facing adaptation | `docs/architecture/hardware-abstraction-and-drivers-baseline.md`, `docs/architecture/pr-spec-driver-baseline.md` |
+| `corecore/hal/` | Hardware abstraction interfaces and arch-facing adaptation | `docs/architecture/hardware-abstraction-and-drivers-baseline.md`, `docs/architecture/pr-spec-driver-baseline.md` |
 | `core/platform/` | Board/SoC integration and platform wiring | `docs/architecture/device-profiles.md`, `docs/architecture/device-profiles-and-use-cases.md` |
 | `core/drivers/` | Driver implementations and model evolution | `docs/architecture/driver-model.md`, `docs/architecture/components/drivers-subcomponents-architecture.md` |
 | `core/services/` | Userspace/system service policy plane | `docs/architecture/components/services-subcomponents-architecture.md`, `docs/architecture/system/shell-architecture.md` |
