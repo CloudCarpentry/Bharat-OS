@@ -206,6 +206,20 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 ### Goals
 * Introduce highly concurrent, RCU-safe, and verified data structures to support multicore scalability and safety.
+* E3-X is a cross-cutting kernel foundation epic. It can progress in parallel with later roadmap phases where it does not touch active subsystem implementation paths.
+
+### Stories
+
+For detailed contracts, acceptance criteria, and verification strategy, see [Kernel Algorithmic Foundations](../../architecture/kernel/kernel-algorithmic-foundations.md).
+
+| Story | Objective | Priority | Dependencies |
+| --- | --- | --- | --- |
+| E3-X-S1 | VM range index replacement (Maple Tree-inspired) | P1 | None |
+| E3-X-S2 | Kernel RCU/read-mostly primitive | P1 | E0-S1 |
+| E3-X-S3 | XArray/radix-style object index | P1 | E3-X-S2 |
+| E3-X-S4 | Verified kernel hook prototype | P2 | None |
+| E3-X-S5 | Storage metadata tree strategy | P2 | None |
+| E3-X-S6 | C-safe kernel abstraction layer | P1 | None |
 
 ### Tasks
 * Implement VM range index replacement (Maple Tree-inspired).
@@ -213,7 +227,7 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 * Implement XArray/radix-style object index.
 * Build verified kernel hook prototype.
 * Define storage metadata tree strategy.
-* Develop memory-safe kernel abstraction layer (Rust).
+* Develop C-safe kernel abstraction layer with optional future Rust exploration. Bharat-OS remains C-first for kernel baseline work. E3-X-S6 introduces memory-safe C abstractions; Rust may be evaluated later for isolated components.
 
 ### Deliverables
 * Scalable, lock-free read paths for critical kernel registries.

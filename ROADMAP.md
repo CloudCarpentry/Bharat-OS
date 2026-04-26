@@ -55,6 +55,7 @@ This roadmap tracks Bharat-OS from a bootable microkernel baseline toward a prod
 | Hardware-accelerated compositor | **Scaffold** | Planned progression from framebuffer-first strategy. |
 | Isabelle/HOL proof foundations | **Scaffold** | Verification scope documented, formal chain not yet integrated. |
 | Linux/Android personality maturity | **Partial** | Contracts/architecture documented; end-to-end compatibility depth is ongoing. |
+| Epic E3-X: Kernel Algorithmic Foundations | **Scaffold** | Cross-cutting foundation for scalable VM, object indexing, and RCU. See `latest_gap_analysis.md`. |
 
 ## Phase 5: Image release automation and distribution (future plan)
 
