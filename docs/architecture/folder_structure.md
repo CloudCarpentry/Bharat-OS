@@ -47,6 +47,14 @@ Bharat-OS/
     hal/
     platform/
     kernel/
+      include/
+        ds/
+        sync/
+        verify/
+      src/
+        ds/
+        sync/
+        verify/
     drivers/
     services/
       core/
@@ -59,6 +67,8 @@ Bharat-OS/
       domain/
       common/
     stacks/
+      storage/
+        metadata/
     lib/
   interface/
     uapi/
