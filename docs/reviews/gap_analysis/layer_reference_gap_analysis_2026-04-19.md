@@ -58,14 +58,14 @@ This review applies Bharat-OS's stated direction: **small mechanism kernel, stri
 - `core/services/include/core/services/sensor_hub/sensor_hub_protocol.h:2` includes `core/drivers/sensor/sensor_sample.h`
 
 ### C. `lib -> hal`
-- `lib/include/game_engine_gfx.h:5` includes `core/hal/gpu.h`
-- `lib/include/gui.h:5` includes `core/hal/gpu.h`
+- `lib/include/game_engine_gfx.h:5` includes `corecore/hal/gpu.h`
+- `lib/include/gui.h:5` includes `corecore/hal/gpu.h`
 
-### D. `core/services/core/stacks/user -> core/hal/boot`
-- `core/stacks/network/skb.c:2` includes `core/hal/hal.h`
-- `user/ui/fbui/core/fb_demo_app.c:5` includes `core/hal/hal.h`
+### D. `core/services/core/stacks/user -> corecore/hal/boot`
+- `core/stacks/network/skb.c:2` includes `corecore/halcore/hal.h`
+- `user/ui/fbui/core/fb_demo_app.c:5` includes `corecore/halcore/hal.h`
 - `core/services/core/subsysmgr/subsys_test_runner.c:2` includes `boot/boot_args.h`
-- `core/services/core/subsysmgr/subsys_test_runner.c:3` includes `core/hal/hal.h`
+- `core/services/core/subsysmgr/subsys_test_runner.c:3` includes `corecore/halcore/hal.h`
 
 ## 5) Priority Fix Plan (cleanliness-first)
 

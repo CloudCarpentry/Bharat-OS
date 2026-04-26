@@ -341,10 +341,10 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 **Likely Code Areas**
 
 * `core/kernel/src/mm/tlb_coordinator.c`
-* `core/kernel/include/core/hal/`
-* `core/kernel/src/core/hal/x86_64/`
-* `core/kernel/src/core/hal/arm64/`
-* `core/kernel/src/core/hal/riscv64/`
+* `core/kernel/include/corecore/hal/`
+* `core/kernel/src/corecore/hal/x86_64/`
+* `core/kernel/src/corecore/hal/arm64/`
+* `core/kernel/src/corecore/hal/riscv64/`
 * `quality/tests/mm/`
 
 **Acceptance Criteria**
@@ -554,7 +554,7 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 * `core/kernel/src/mm/vm/fault/`
 * `core/kernel/src/mm/vm/aspace/`
 * `core/kernel/src/mm/vm/objects/`
-* `core/kernel/src/core/hal/*/`
+* `core/kernel/src/corecore/hal/*/`
 * `docs/architecture/memory/`
 
 **Acceptance Criteria**
@@ -607,7 +607,7 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 **Likely Code Areas**
 
 * `core/kernel/src/mm/iommu/`
-* `core/kernel/include/core/hal/`
+* `core/kernel/include/corecore/hal/`
 * `core/drivers/`
 * `docs/architecture/memory/`
 

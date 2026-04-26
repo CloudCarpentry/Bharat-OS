@@ -19,7 +19,7 @@ This document defines target folder boundaries and records the **current alignme
 ## Boundary rules
 
 - One folder = one primary responsibility.
-- Mechanism (kernel/drivers/hal) and policy (services/stacks/personalities) should stay separated.
+- Mechanism (kernel/driverscore/hal) and policy (services/stacks/personalities) should stay separated.
 - External contracts should be versioned and published through `interface/uapi/` + `interface/idl/` (legacy root aliases may exist during migration).
 
 ## Current alignment snapshot (2026-04-24)
