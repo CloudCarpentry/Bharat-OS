@@ -27,3 +27,12 @@ jobs:
       - name: Verify ABI Manifests
         run: |
           python3 tools/abi/generate_abi_manifests.py --check
+          python3 tools/abi/check_syscalls.py --check
+
+      - name: Reject raw syscall numbers
+        run: |
+          ! grep -R "bharat_syscall([[:space:]]*[0-9]" experience interface core quality boot delivery
+
+      - name: Reject removed dummy syscall
+        run: |
+          ! grep -R "SYSCALL_DEF(.*, 1001)" interface/include/bharat/uapi/syscall/table.def

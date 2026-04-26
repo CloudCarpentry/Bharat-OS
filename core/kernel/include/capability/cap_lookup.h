@@ -42,6 +42,15 @@ static inline kstatus_t bh_syscall_cap_lookup_process(bh_syscall_ctx_t *ctx,
                               (uint32_t)cap_id, required_rights, out);
 }
 
-// TODO: Add bh_syscall_cap_lookup_endpoint when bh_endpoint_object_t is defined
+static inline kstatus_t bh_syscall_cap_lookup_endpoint(bh_syscall_ctx_t *ctx,
+                                                      uintptr_t cap_id,
+                                                      uint64_t required_rights,
+                                                      bh_endpoint_object_t *out) {
+    if (!ctx || !ctx->process || !ctx->process->security_sandbox_ctx) {
+        return K_ERR_DENIED;
+    }
+    return cap_lookup_endpoint((capability_table_t *)ctx->process->security_sandbox_ctx,
+                               (uint32_t)cap_id, required_rights, out);
+}
 
 #endif /* BHARAT_KERNEL_CAP_LOOKUP_H */

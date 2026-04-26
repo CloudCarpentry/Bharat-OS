@@ -268,6 +268,13 @@ kstatus_t cap_lookup_thread(const capability_table_t *table, uint32_t cap_id, ca
 kstatus_t cap_lookup_process(const capability_table_t *table, uint32_t cap_id, cap_rights_mask_t required_rights, bh_process_object_t *out);
 kstatus_t cap_lookup_memory(const capability_table_t *table, uint32_t cap_id, cap_rights_mask_t required_rights, bh_memory_object_t *out);
 
+typedef struct bh_endpoint_object {
+    uintptr_t endpoint_id;
+    void *endpoint_ref;
+} bh_endpoint_object_t;
+
+kstatus_t cap_lookup_endpoint(const capability_table_t *table, uint32_t cap_id, cap_rights_mask_t required_rights, bh_endpoint_object_t *out);
+
 typedef struct cap_validation_request {
     uint32_t cap_id;
     cap_type_t expected_object_type;

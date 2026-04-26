@@ -23,7 +23,7 @@ long bh_sys_thread_create(bh_syscall_ctx_t *ctx) {
     if (st != K_OK) return kstatus_to_sysret(st);
 
     bh_process_object_t target;
-    st = bh_syscall_cap_lookup_process(ctx, args.process_cap, BH_CAP_RIGHT_CREATE, &target);
+    st = bh_syscall_cap_lookup_process(ctx, args.process_cap, CAP_RIGHT_RESOURCE_ALLOC, &target);
     if (st != K_OK) return kstatus_to_sysret(st);
 
     uint64_t out_tid;
@@ -37,7 +37,7 @@ long bh_sys_thread_create(bh_syscall_ctx_t *ctx) {
 
 long bh_sys_thread_destroy(bh_syscall_ctx_t *ctx) {
     bh_thread_object_t target;
-    kstatus_t st = bh_syscall_cap_lookup_thread(ctx, (uint32_t)ctx->regs.arg[0], BH_CAP_RIGHT_DESTROY, &target);
+    kstatus_t st = bh_syscall_cap_lookup_thread(ctx, (uint32_t)ctx->regs.arg[0], CAP_RIGHT_PROCESS_MANAGE, &target);
     if (st != K_OK) return kstatus_to_sysret(st);
 
     return kstatus_to_sysret((kstatus_t)sched_sys_thread_destroy(target.tid));
@@ -58,7 +58,7 @@ long bh_sys_sched_set_priority(bh_syscall_ctx_t *ctx) {
     if (st != K_OK) return kstatus_to_sysret(st);
 
     bh_thread_object_t target;
-    st = bh_syscall_cap_lookup_thread(ctx, args.thread_cap, BH_CAP_RIGHT_CONTROL, &target);
+    st = bh_syscall_cap_lookup_thread(ctx, args.thread_cap, CAP_RIGHT_PROCESS_MANAGE, &target);
     if (st != K_OK) return kstatus_to_sysret(st);
 
     return kstatus_to_sysret((kstatus_t)sched_sys_set_priority(target.tid, (uint32_t)args.value));
@@ -70,7 +70,7 @@ long bh_sys_sched_set_affinity(bh_syscall_ctx_t *ctx) {
     if (st != K_OK) return kstatus_to_sysret(st);
 
     bh_thread_object_t target;
-    st = bh_syscall_cap_lookup_thread(ctx, args.thread_cap, BH_CAP_RIGHT_CONTROL, &target);
+    st = bh_syscall_cap_lookup_thread(ctx, args.thread_cap, CAP_RIGHT_PROCESS_MANAGE, &target);
     if (st != K_OK) return kstatus_to_sysret(st);
 
     return kstatus_to_sysret((kstatus_t)sched_sys_set_affinity(target.tid, (uint32_t)args.value));
@@ -88,7 +88,7 @@ long bh_sys_vmm_map_page(bh_syscall_ctx_t *ctx) {
     }
 
     bh_memory_object_t mem;
-    st = bh_syscall_cap_lookup_memory(ctx, args.cap_id, BH_CAP_RIGHT_MAP, &mem);
+    st = bh_syscall_cap_lookup_memory(ctx, args.cap_id, CAP_RIGHT_MEMORY_MAP, &mem);
     if (st != K_OK) return kstatus_to_sysret(st);
 
     return kstatus_to_sysret((kstatus_t)vmm_map_page((virt_addr_t)args.vaddr, (phys_addr_t)mem.base, args.flags));
@@ -105,7 +105,7 @@ long bh_sys_vmm_unmap_page(bh_syscall_ctx_t *ctx) {
     }
 
     bh_memory_object_t mem;
-    st = bh_syscall_cap_lookup_memory(ctx, args.cap_id, BH_CAP_RIGHT_UNMAP, &mem);
+    st = bh_syscall_cap_lookup_memory(ctx, args.cap_id, CAP_RIGHT_MEMORY_UNMAP, &mem);
     if (st != K_OK) return kstatus_to_sysret(st);
 
     return kstatus_to_sysret((kstatus_t)vmm_unmap_page((virt_addr_t)args.vaddr));
@@ -118,6 +118,8 @@ long bh_sys_cap_invoke(bh_syscall_ctx_t *ctx) {
     kstatus_t st = copy_from_user_checked(&args, ctx->regs.arg[0], sizeof(args));
     if (st != K_OK) return kstatus_to_sysret(st);
 
+    // No direct typed lookup here as cap_invoke is a generic multiplexer,
+    // but the descriptor already enforces CAP_RIGHT_BIT_QUERY/CONTROL.
     return kstatus_to_sysret((kstatus_t)cap_invoke(args.cap_id, args.opcode, args.arg0, args.arg1));
 }
 
@@ -160,9 +162,11 @@ long bh_sys_endpoint_send(bh_syscall_ctx_t *ctx) {
     kstatus_t st = copy_from_user_checked(&args, ctx->regs.arg[0], sizeof(args));
     if (st != K_OK) return kstatus_to_sysret(st);
 
-    capability_table_t *table = (capability_table_t *)ctx->process->security_sandbox_ctx;
-    if (!table) return kstatus_to_sysret(K_ERR_DENIED);
+    bh_endpoint_object_t ep;
+    st = bh_syscall_cap_lookup_endpoint(ctx, args.send_cap, CAP_RIGHT_ENDPOINT_SEND, &ep);
+    if (st != K_OK) return kstatus_to_sysret(st);
 
+    capability_table_t *table = (capability_table_t *)ctx->process->security_sandbox_ctx;
     return kstatus_to_sysret(
         ipc_status_to_kstatus(ipc_endpoint_send(table, args.send_cap, (const void *)(uintptr_t)args.payload_ptr,
                           args.payload_len, args.timeout_ticks, args.cap_to_send, args.cap_send_rights)));
@@ -173,9 +177,11 @@ long bh_sys_endpoint_receive(bh_syscall_ctx_t *ctx) {
     kstatus_t st = copy_from_user_checked(&args, ctx->regs.arg[0], sizeof(args));
     if (st != K_OK) return kstatus_to_sysret(st);
 
-    capability_table_t *table = (capability_table_t *)ctx->process->security_sandbox_ctx;
-    if (!table) return kstatus_to_sysret(K_ERR_DENIED);
+    bh_endpoint_object_t ep;
+    st = bh_syscall_cap_lookup_endpoint(ctx, args.recv_cap, CAP_RIGHT_ENDPOINT_RECEIVE, &ep);
+    if (st != K_OK) return kstatus_to_sysret(st);
 
+    capability_table_t *table = (capability_table_t *)ctx->process->security_sandbox_ctx;
     uint32_t len_received, cap_received;
     kstatus_t res = ipc_status_to_kstatus(ipc_endpoint_receive(table, args.recv_cap, (void *)(uintptr_t)args.out_payload_ptr,
                              args.out_payload_capacity, &len_received, args.timeout_ticks, &cap_received));
@@ -196,8 +202,14 @@ long bh_sys_cap_delegate(bh_syscall_ctx_t *ctx) {
     kstatus_t st = copy_from_user_checked(&args, ctx->regs.arg[0], sizeof(args));
     if (st != K_OK) return kstatus_to_sysret(st);
 
+    // Validate source capability exists and has DELEGATE right
+    capability_entry_t e;
     capability_table_t *table = (capability_table_t *)ctx->process->security_sandbox_ctx;
     if (!table) return kstatus_to_sysret(K_ERR_DENIED);
+
+    if (cap_table_lookup(table, args.src_cap, CAP_TYPE_NONE, CAP_RIGHT_DELEGATE, &e) != 0) {
+        return kstatus_to_sysret(K_ERR_DENIED);
+    }
 
     uint32_t out_cap;
     kstatus_t res = (kstatus_t)cap_table_delegate(table, table, args.src_cap, args.requested_rights, &out_cap);
@@ -218,7 +230,7 @@ long bh_sys_intent_set(bh_syscall_ctx_t *ctx) {
     if (st != K_OK) return kstatus_to_sysret(st);
 
     bh_thread_object_t target;
-    st = bh_syscall_cap_lookup_thread(ctx, args.thread_cap, BH_CAP_RIGHT_CONTROL, &target);
+    st = bh_syscall_cap_lookup_thread(ctx, args.thread_cap, CAP_RIGHT_PROCESS_MANAGE, &target);
     if (st != K_OK) return kstatus_to_sysret(st);
 
     bharat_intent_t intent;
@@ -234,7 +246,7 @@ long bh_sys_intent_get(bh_syscall_ctx_t *ctx) {
     if (st != K_OK) return kstatus_to_sysret(st);
 
     bh_thread_object_t target;
-    st = bh_syscall_cap_lookup_thread(ctx, args.thread_cap, BH_CAP_RIGHT_CONTROL, &target);
+    st = bh_syscall_cap_lookup_thread(ctx, args.thread_cap, CAP_RIGHT_PROCESS_MANAGE, &target);
     if (st != K_OK) return kstatus_to_sysret(st);
 
     bharat_intent_t intent;
@@ -254,7 +266,7 @@ long bh_sys_mem_alloc_class(bh_syscall_ctx_t *ctx) {
     if (st != K_OK) return kstatus_to_sysret(st);
 
     bh_process_object_t target;
-    st = bh_syscall_cap_lookup_process(ctx, args.resource_cap, BH_CAP_RIGHT_CONTROL, &target);
+    st = bh_syscall_cap_lookup_process(ctx, args.resource_cap, CAP_RIGHT_RESOURCE_ALLOC, &target);
     if (st != K_OK) return kstatus_to_sysret(st);
 
     uint64_t out_addr;
@@ -277,7 +289,7 @@ long bh_sys_fault_domain_create(bh_syscall_ctx_t *ctx) {
     if (st != K_OK) return kstatus_to_sysret(st);
 
     bh_process_object_t target;
-    st = bh_syscall_cap_lookup_process(ctx, args.cap_id, BH_CAP_RIGHT_CONTROL, &target);
+    st = bh_syscall_cap_lookup_process(ctx, args.cap_id, CAP_RIGHT_RESOURCE_ALLOC, &target);
     if (st != K_OK) return kstatus_to_sysret(st);
 
     bharat_fault_domain_attr_t attr;
@@ -295,7 +307,7 @@ long bh_sys_fault_domain_create(bh_syscall_ctx_t *ctx) {
 
 long bh_sys_fault_domain_destroy(bh_syscall_ctx_t *ctx) {
     bh_process_object_t target;
-    kstatus_t st = bh_syscall_cap_lookup_process(ctx, (uint32_t)ctx->regs.arg[0], BH_CAP_RIGHT_DESTROY, &target);
+    kstatus_t st = bh_syscall_cap_lookup_process(ctx, (uint32_t)ctx->regs.arg[0], CAP_RIGHT_PROCESS_MANAGE, &target);
     if (st != K_OK) return kstatus_to_sysret(st);
 
     return kstatus_to_sysret((kstatus_t)sys_fault_domain_destroy((uint64_t)target.process)); // Still using object_ref for now
@@ -307,11 +319,11 @@ long bh_sys_fault_domain_attach(bh_syscall_ctx_t *ctx) {
     if (st != K_OK) return kstatus_to_sysret(st);
 
     bh_process_object_t domain_proc;
-    st = bh_syscall_cap_lookup_process(ctx, args.cap_id, BH_CAP_RIGHT_CONTROL, &domain_proc);
+    st = bh_syscall_cap_lookup_process(ctx, args.cap_id, CAP_RIGHT_FAULT_DOMAIN_MANAGE, &domain_proc);
     if (st != K_OK) return kstatus_to_sysret(st);
 
     bh_thread_object_t target_thread;
-    st = bh_syscall_cap_lookup_thread(ctx, args.thread_cap, BH_CAP_RIGHT_CONTROL, &target_thread);
+    st = bh_syscall_cap_lookup_thread(ctx, args.thread_cap, CAP_RIGHT_PROCESS_MANAGE, &target_thread);
     if (st != K_OK) return kstatus_to_sysret(st);
 
     return kstatus_to_sysret((kstatus_t)sys_fault_domain_attach((uint64_t)domain_proc.process, target_thread.tid));
