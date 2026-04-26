@@ -1,6 +1,6 @@
 ---
 title: Subsystems Architecture Review & Gap Analysis
-status: Draft
+status: Proposed
 owner: Documentation Working Group
 last_updated: 2026-04-25
 tags:
@@ -19,8 +19,8 @@ This document reviews the Bharat-OS subsystem structure (GUI, Console, Framebuff
 
 ### 2.1 Console Subsystem
 *   **Inventory:**
-    *   **HAL Layer:** Basic early-boot serial routines exist in `core/kernel/include/core/hal/hal.h` (`hal_serial_init`, `hal_serial_write_char`, etc.).
-    *   **x86_64:** `core/kernel/include/core/hal/serial.h` has a basic COM1 `outb`/`inb` polling implementation.
+    *   **HAL Layer:** Basic early-boot serial routines exist in `core/kernel/include/corecore/halcore/hal.h` (`hal_serial_init`, `hal_serial_write_char`, etc.).
+    *   **x86_64:** `core/kernel/include/corecore/hal/serial.h` has a basic COM1 `outb`/`inb` polling implementation.
     *   **RISC-V/SHAKTI:** Basic UART base addresses exist in `shakti_bsp.c`.
 *   **Gaps & Problems:**
     *   No generic terminal/console abstraction layer.
@@ -65,7 +65,7 @@ To support multi-arch and multi-profile scaling without bloating the microkernel
     *   URPC/IPC channels.
 *   **Hardware Abstraction Layer (HAL) / BSP:**
     *   Architecture-specific initialization (e.g., GIC/PLIC).
-    *   **SHAKTI SDK Note:** The HAL/BSP must parse the FDT (Device Tree) or use static definitions to expose the UART, PLIC, CLINT, and RAM. SHAKTI-specific memory maps and boot sequences remain entirely in `core/kernel/src/core/hal/riscv/shakti_bsp.c`.
+    *   **SHAKTI SDK Note:** The HAL/BSP must parse the FDT (Device Tree) or use static definitions to expose the UART, PLIC, CLINT, and RAM. SHAKTI-specific memory maps and boot sequences remain entirely in `core/kernel/src/corecore/hal/riscv/shakti_bsp.c`.
 *   **Drivers (User-Space / Bounded Kernel):**
     *   Actual drivers for UART, NICs, and GPUs. These interact with hardware via capability-gated MMIO windows and interrupts.
 *   **Services (User-Space Daemons):**

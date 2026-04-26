@@ -1,23 +1,26 @@
 #include "trap/syscall_regs.h"
 #include "hal/hal.h"
 
+#define ARM64_ESR_EC(esr) (((esr) >> 26) & 0x3f)
+#define ARM64_EC_SVC64    0x15
+
 bool arch_trap_is_syscall(const trap_frame_t *frame) {
     if (!frame) return false;
     // ARM64: SVC instruction from EL0.
-    // This usually comes as EC=0x15 in ESR_EL1.
-    // For now, check if cause (which trap_entry.S might set) is SVC.
-    // If trap_entry.S uses a specific cause for SVC, we check it here.
-    return (frame->cause == 0x15);
+    // Decodes ESR_EL1.EC from the cause field (which stores full ESR on Bharat ARM64).
+    /* Bharat-OS currently treats all SVC-from-EL0 exceptions as syscall entry.
+     * ISS/SVC immediate is reserved for future ABI versioning/debug use.
+     */
+    return (ARM64_ESR_EC(frame->cause) == ARM64_EC_SVC64);
 }
 
 kstatus_t arch_trap_extract_syscall(const trap_frame_t *frame, bh_syscall_regs_t *out) {
     if (!frame || !out) return K_ERR_INVALID_ARG;
 
-    // ARM64 Syscall ABI:
-    // nr:  x8
+    // ARM64 Syscall ABI (Standard SMCCC/Bharat convention):
+    // nr:   x8
     // args: x0, x1, x2, x3, x4, x5
-    // Need to verify how trap_entry.S maps registers.
-    // Usually x0-x30 are gpr[0-30].
+    // Note: trap_entry.S maps x0..x30 to gpr[0..30].
     out->nr     = frame->gpr[8];
     out->arg[0] = frame->gpr[0];
     out->arg[1] = frame->gpr[1];

@@ -437,7 +437,7 @@ static bh_thread_t *sched_create_bootstrap_thread(bh_process_t *parent,
   slot->thread.home_core_id = sched_clamp_core(hal_cpu_get_id());
   slot->thread.generation = 1U;
   slot->thread.sched_generation = 1U;
-  slot->thread.personality = PERSONALITY_NATIVE;
+  slot->thread.personality = BH_PERSONALITY_NATIVE;
   slot->thread.state = THREAD_STATE_READY;
   slot->thread.priority = priority;
   slot->thread.base_priority = priority;
@@ -555,7 +555,7 @@ bh_thread_t *thread_create_detached(bh_process_t *parent, void (*entry_point)(vo
   slot->thread.home_core_id = sched_clamp_core(hal_cpu_get_id());
   slot->thread.generation = 1U;
   slot->thread.sched_generation = 1U;
-  slot->thread.personality = PERSONALITY_NATIVE;
+  slot->thread.personality = BH_PERSONALITY_NATIVE;
   slot->thread.state = THREAD_STATE_READY;
   slot->thread.priority = 1U;
   slot->thread.base_priority = 1U;

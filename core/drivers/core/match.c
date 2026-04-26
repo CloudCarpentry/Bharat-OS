@@ -1,6 +1,7 @@
 #include "match.h"
 #include "driver_registry.h"
 #include "driver_core_internal.h"
+#include "binding.h"
 #include "bharat/uapi/sys_errno.h"
 #include <stddef.h>
 
@@ -58,7 +59,7 @@ int driver_match_device(device_desc_t* dev) {
 
     driver_desc_t* best_drv = NULL;
     int best_score = 0;
-    int best_index = -1;
+    bool ambiguous = false;
 
     for (int i = 0; i < drv_capacity; i++) {
         driver_desc_t* drv = drivers[i];
@@ -66,37 +67,31 @@ int driver_match_device(device_desc_t* dev) {
 
         int score = calculate_match_score(dev, drv);
         if (score > 0) {
-            bool is_better = false;
             if (score > best_score) {
-                is_better = true;
-            } else if (score == best_score) {
-                // Tie-breaker:
-                // 1. higher driver priority
-                if (drv->priority > best_drv->priority) {
-                    is_better = true;
-                } else if (drv->priority == best_drv->priority) {
-                    // 2. earlier registration order (lower index)
-                    if (best_index == -1 || i < best_index) {
-                        is_better = true;
-                    }
-                    // 3. driver name lexical order (omitted for simplicity, registration order is stable)
-                }
-            }
-
-            if (is_better) {
                 best_score = score;
                 best_drv = drv;
-                best_index = i;
+                ambiguous = false;
+            } else if (score == best_score) {
+                // Tie-breaker: explicit priority
+                if (drv->priority > best_drv->priority) {
+                    best_drv = drv;
+                    ambiguous = false;
+                } else if (drv->priority == best_drv->priority) {
+                    // Still tied - ambiguous
+                    ambiguous = true;
+                }
             }
         }
     }
 
-    if (best_drv && best_drv->probe) {
-        int ret = best_drv->probe(dev);
-        if (ret == 0) {
-            dev->driver_data = (void*)best_drv; // Mark as bound
-            return 0;
-        }
+    if (ambiguous) {
+        return -SYS_EBUSY; // Use EBUSY for ambiguous match in the absence of EALREADY
+    }
+
+    if (best_drv) {
+        device_binding_t* binding = device_binding_create(dev, best_drv, best_score);
+        if (!binding) return -SYS_ENOSPC;
+        return 0;
     }
 
     return -SYS_ENOENT;

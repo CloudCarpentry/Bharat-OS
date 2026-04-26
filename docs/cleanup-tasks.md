@@ -33,8 +33,8 @@ The architecture document outlines a strict, semantically sharp hierarchy. The c
 
 ### A. Top-Level Directory Discrepancies
 
-1. **`staging/`**: The target structure expects a `staging/` directory at the root. Currently, staging code is nested under `core/kernel/staging/`. It should be moved to the root to keep the `core/kernel/` scope minimal and strictly focused on core mechanisms.
-2. **`include/` (root)**: The HAL and Kernel are designed to own their own `include/` boundaries. Having a global `include/` directory is an anti-pattern under the current rules. Its contents (e.g., `include/bharat/` and `include/core/arch/`) should be migrated to `core/kernel/include/`, `core/hal/include/`, or `interface/uapi/` depending on their domain.
+1. **`staging/`**: The target structure expects a `staging/` directory at the root. Currently, staging code is nested under `staging/`. It should be moved to the root to keep the `core/kernel/` scope minimal and strictly focused on core mechanisms.
+2. **`include/` (root)**: The HAL and Kernel are designed to own their own `include/` boundaries. Having a global `include/` directory is an anti-pattern under the current rules. Its contents (e.g., `include/bharat/` and `include/core/arch/`) should be migrated to `core/kernel/include/`, `corecore/hal/include/`, or `interface/uapi/` depending on their domain.
 3. **`contracts/`**: This top-level folder should likely be integrated into `interface/uapi/`, `interface/idl/`, or `docs/`.
 4. **`targets/` & `release/`**: Build matrices and artifacts should be consolidated under `tools/` or `staging/` to minimize root clutter.
 5. **`user/`**: User-facing library code and applications should reside in `lib/` or `core/services/` as dictated by the target structure.

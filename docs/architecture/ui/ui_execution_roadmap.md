@@ -1,6 +1,6 @@
 ---
 title: Bharat-OS UI/Display Roadmap (Ticket-Oriented, Production-Grade)
-status: Draft
+status: Proposed
 owner: Documentation Working Group
 last_updated: 2026-04-25
 tags:

@@ -5,6 +5,19 @@
 #include "init_status.h"
 #include "init_manifest.h"
 
+typedef enum {
+    INIT_HANDOFF_TARGET_SERVICEMGR = 1,
+    INIT_HANDOFF_TARGET_FAULTMGR = 2,
+    INIT_HANDOFF_TARGET_TELEMETRYMGR = 3,
+} init_handoff_target_t;
+
+typedef enum {
+    INIT_HANDOFF_OK = 0,
+    INIT_HANDOFF_TARGET_MISSING,
+    INIT_HANDOFF_TIMEOUT,
+    INIT_HANDOFF_REJECTED,
+} init_handoff_result_t;
+
 typedef struct {
     uint32_t boot_session_id;
     init_profile_t profile;

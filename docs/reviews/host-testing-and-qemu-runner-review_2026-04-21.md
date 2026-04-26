@@ -26,14 +26,14 @@ This review replaces the retired `docs/current/host_master.md` document with a c
 ## Code task identified and implemented
 
 ### Task
-Fix x86_64 build break caused by unresolved `core/hal/hal_cpu_topology.h` includes while compiling core/kernel/HAL and subsystem sources.
+Fix x86_64 build break caused by unresolved `corecore/halcore/hal_cpu_topology.h` includes while compiling core/kernel/HAL and subsystem sources.
 
 ### Root cause
-The topology header existed only under `core/hal/include/core/hal/`, while several core/kernel/subsystem sources included it as `core/hal/hal_cpu_topology.h` through include paths rooted at `core/kernel/include` and service include trees.
+The topology header existed only under `corecore/hal/include/corecore/hal/`, while several core/kernel/subsystem sources included it as `corecore/halcore/hal_cpu_topology.h` through include paths rooted at `core/kernel/include` and service include trees.
 
 ### Fix
-- Added `${CMAKE_SOURCE_DIR}/core/hal/include` to `hal_common` private include directories.
-- Added a canonical exported copy at `core/kernel/include/core/hal/hal_cpu_topology.h` so core/kernel/subsystem include roots resolve consistently without changing header precedence for other HAL headers.
+- Added `${CMAKE_SOURCE_DIR}/corecore/hal/include` to `hal_common` private include directories.
+- Added a canonical exported copy at `core/kernel/include/corecore/halcore/hal_cpu_topology.h` so core/kernel/subsystem include roots resolve consistently without changing header precedence for other HAL headers.
 
 ## Verification done
 

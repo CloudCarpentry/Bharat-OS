@@ -24,7 +24,7 @@ typedef struct bh_syscall_ctx {
     struct bh_process *process;
     bh_personality_id_t personality;
     bh_syscall_regs_t regs;
-    // const struct bh_syscall_desc *desc; // Added later
+    const struct bh_syscall_desc *desc;
 } bh_syscall_ctx_t;
 
 bool arch_trap_is_syscall(const trap_frame_t *frame);

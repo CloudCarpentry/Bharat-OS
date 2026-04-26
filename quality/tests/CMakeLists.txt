@@ -129,7 +129,7 @@ target_compile_definitions(test_scheduler PRIVATE TESTING=1)
 add_test(NAME test_scheduler COMMAND test_scheduler)
 
 if (EXISTS "${CMAKE_SOURCE_DIR}/core/personalities/compat/linux/linux_compat.c")
-    add_executable(test_trap_syscall test_trap_syscall.c ../kernel/src/trap/trap.c ../kernel/src/trap/syscall.c ../kernel/src/ipc/endpoint_ipc.c ../core/personalities/compat/linux/linux_compat.c ../core/personalities/common/personality_registry.c $<TARGET_OBJECTS:bharat_test_sched_mocks>)
+    add_executable(test_trap_syscall test_trap_syscall.c ../kernel/src/trap/trap.c ../kernel/src/trap/syscall.c ../kernel/src/trap/syscall_gate.c ../kernel/src/trap/syscall_stats.c ../kernel/src/ipc/endpoint_ipc.c ../core/personalities/compat/linux/linux_compat.c ../core/personalities/common/personality_registry.c $<TARGET_OBJECTS:bharat_test_sched_mocks>)
     target_include_directories(test_trap_syscall PRIVATE ../kernel/include ../core/services/core/subsysmgr/include ../include ../core/lib/include ../core/boot/include ../subsys/include)
     target_compile_definitions(test_trap_syscall PRIVATE TESTING=1)
     add_test(NAME test_trap_syscall COMMAND test_trap_syscall)
@@ -164,6 +164,15 @@ add_test(NAME test_capability_misuse COMMAND test_capability_misuse)
 add_executable(test_ui_device_class_contract test_ui_device_class_contract.c)
 target_include_directories(test_ui_device_class_contract PRIVATE ../include)
 add_test(NAME test_ui_device_class_contract COMMAND test_ui_device_class_contract)
+
+add_executable(test_ui_abi test_ui_abi.c)
+target_include_directories(test_ui_abi PRIVATE ../include)
+add_test(NAME test_ui_abi COMMAND test_ui_abi)
+
+add_executable(test_headless_compositor test_headless_compositor.c)
+target_include_directories(test_headless_compositor PRIVATE ../include ../)
+target_link_libraries(test_headless_compositor PRIVATE bharat_headless_compositor)
+add_test(NAME test_headless_compositor COMMAND test_headless_compositor)
 
 add_executable(test_tiny_ui_stack
     test_tiny_ui_stack.c

@@ -4,7 +4,7 @@ import sys
 import argparse
 import common
 
-SYSCALL_TABLE_PATH = "interface/include/bharat/uapi/syscall_table.def"
+SYSCALL_TABLE_PATH = "interface/include/bharat/uapi/syscall/table.def"
 MANIFEST_PATH = "interface/contracts/abi/syscalls.json"
 
 def get_all_entries():

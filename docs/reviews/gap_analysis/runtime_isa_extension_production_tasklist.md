@@ -14,7 +14,7 @@ see_also:
 
 **Date:** 2026-04-25
 **Reviewed doc:** `docs/reviews/gap_analysis/runtime_isa_extension_strategy.md`
-**Focus requested:** low-level ISA implementation work in `core/arch/*` and HAL abstraction in `core/hal/*`.
+**Focus requested:** low-level ISA implementation work in `core/arch/*` and HAL abstraction in `corecore/hal/*`.
 
 ---
 
@@ -28,8 +28,8 @@ The referenced strategy doc assumes CPU capability probes are still stubs. In th
   - `core/arch/arm/arm64/cpu_caps.c`
   - `core/arch/riscv/riscv64/cpu_caps.c`
 - HAL-level mapping/publication is already wired in:
-  - `core/hal/common/cpu_features.c`
-  - `core/hal/common/discovery.c`
+  - `corecore/hal/common/cpu_features.c`
+  - `corecore/hal/common/discovery.c`
 
 So the production gap is no longer “build API from zero”; it is now **hardening, correctness gating, heterogeneous CPU handling, and accelerated path dispatch integration**.
 
@@ -50,7 +50,7 @@ So the production gap is no longer “build API from zero”; it is now **harden
 **Primary files**
 - `core/kernel/include/core/arch/arch_cpu_caps.h`
 - `core/arch/common/cpu_caps_state.c`
-- `core/hal/common/cpu_features.c`
+- `corecore/hal/common/cpu_features.c`
 
 ### B. Per-CPU heterogeneity correctness
 
@@ -64,7 +64,7 @@ So the production gap is no longer “build API from zero”; it is now **harden
 
 **Primary files**
 - `core/kernel/include/core/arch/arch_cpu_caps.h`
-- `core/hal/include/core/hal/hal_cpu_features.h`
+- `corecore/hal/include/corecore/halcore/hal_cpu_features.h`
 - callsites in memops/crypto/atomic dispatch modules.
 
 ### C. Common fast-path dispatch table
@@ -94,13 +94,13 @@ So the production gap is no longer “build API from zero”; it is now **harden
 - A/B boot knobs to force-disable each acceleration family.
 
 **Primary files**
-- `core/hal/common/discovery.c`
+- `corecore/hal/common/discovery.c`
 - arch-specific boot/options parsing paths
 - runtime debug/service exposure module (existing telemetry surface).
 
 ---
 
-## 2.2 x86_64 tasks (`core/arch/x86/x86_64` + `core/hal/x86_64`)
+## 2.2 x86_64 tasks (`core/arch/x86/x86_64` + `corecore/hal/x86_64`)
 
 ### A. Correct CPUID leaf usage and gating fixes
 
@@ -122,8 +122,8 @@ So the production gap is no longer “build API from zero”; it is now **harden
 
 **Primary files**
 - `core/arch/x86/x86_64/cpu_caps.c`
-- `core/hal/x86_64/hal_pt_x86_64.c`
-- `core/hal/x86_64/apic.c` (if shootdown policy ties here)
+- `corecore/hal/x86_64core/hal_pt_x86_64.c`
+- `corecore/hal/x86_64/apic.c` (if shootdown policy ties here)
 
 ### C. First production fast paths
 
@@ -133,12 +133,12 @@ So the production gap is no longer “build API from zero”; it is now **harden
 
 **Primary files**
 - `core/arch/x86/x86_64/memops_fast_string.c`
-- `core/hal/x86_64/hash/hash_x86_64.c`
+- `corecore/hal/x86_64/hash/hash_x86_64.c`
 - `core/lib/runtime/crypto/crypto_dispatch.c`
 
 ---
 
-## 2.3 arm64 tasks (`core/arch/arm/arm64` + `core/hal/arm64`)
+## 2.3 arm64 tasks (`core/arch/arm/arm64` + `corecore/hal/arm64`)
 
 ### A. Feature decoding completeness
 
@@ -159,7 +159,7 @@ So the production gap is no longer “build API from zero”; it is now **harden
 **Primary files**
 - `core/arch/arm/arm64/cpu_caps.c`
 - arm64 lock/atomic implementation files (where atomics are defined)
-- `core/hal/common/cpu_features.c`
+- `corecore/hal/common/cpu_features.c`
 
 ### C. SVE/SVE2 production-readiness track
 
@@ -174,7 +174,7 @@ So the production gap is no longer “build API from zero”; it is now **harden
 
 ---
 
-## 2.4 riscv64 tasks (`core/arch/riscv/riscv64` + `core/hal/riscv64`)
+## 2.4 riscv64 tasks (`core/arch/riscv/riscv64` + `corecore/hal/riscv64`)
 
 ### A. Replace compile-time-only extension model
 
@@ -184,9 +184,9 @@ So the production gap is no longer “build API from zero”; it is now **harden
 
 **Primary files**
 - `core/arch/riscv/riscv64/cpu_caps.c`
-- `core/hal/riscv64/discovery.c`
-- `core/hal/riscv64/boot_sbi.c`
-- `core/hal/riscv64/topology_fdt.c`
+- `corecore/hal/riscv64/discovery.c`
+- `corecore/hal/riscv64/boot_sbi.c`
+- `corecore/hal/riscv64/topology_fdt.c`
 
 ### B. Minimal stable extension set enablement
 
@@ -196,7 +196,7 @@ So the production gap is no longer “build API from zero”; it is now **harden
 
 **Primary files**
 - `core/arch/riscv/riscv64/cpu_caps.c`
-- `core/hal/riscv64/dma.c`
+- `corecore/hal/riscv64/dma.c`
 - bitmap/scheduler/capability utility modules that can exploit bitmanip.
 
 ### C. RVV readiness gates
@@ -212,7 +212,7 @@ So the production gap is no longer “build API from zero”; it is now **harden
 
 ---
 
-## 2.5 HAL abstraction tasks (`core/hal`)
+## 2.5 HAL abstraction tasks (`corecore/hal`)
 
 ### A. Unify ISA capability surface for subsystems
 
@@ -221,10 +221,10 @@ So the production gap is no longer “build API from zero”; it is now **harden
 - Keep raw/usable + system_all/system_any semantics visible to subsystems.
 
 **Primary files**
-- `core/hal/include/core/hal/hal_cpu_features.h`
-- `core/hal/include/core/hal/hal_isa_caps.h`
-- `core/hal/common/cpu_features.c`
-- `core/hal/common/discovery.c`
+- `corecore/hal/include/corecore/halcore/hal_cpu_features.h`
+- `corecore/hal/include/corecore/halcore/hal_isa_caps.h`
+- `corecore/hal/common/cpu_features.c`
+- `corecore/hal/common/discovery.c`
 
 ### B. HAL-level dispatch helpers for safe usage
 
@@ -235,8 +235,8 @@ So the production gap is no longer “build API from zero”; it is now **harden
   - `hal_accel_has_bitmanip_any_cpu()` etc.
 
 **Primary files**
-- `core/hal/include/core/hal/*.h`
-- `core/hal/common/*.c`
+- `corecore/hal/include/corecore/hal/*.h`
+- `corecore/hal/common/*.c`
 
 ### C. Test/CI matrix integration
 

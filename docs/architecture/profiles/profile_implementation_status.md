@@ -26,7 +26,7 @@ This document provides a deep implementation-status and gap-analysis review of t
 
 ### Interrupt / Timer / IPI Stack
 * **Status:** Stub / Placeholder
-* **Details:** `interrupt_common.c` and `timer_common.c` exist in `core/kernel/src/core/hal/`, but they are very small (few lines) and function mostly as interfaces. Real hardware drivers (e.g., APIC, GICv3) are poorly implemented or stubbed. Clock source (monotonic) and clock event splitting are weak.
+* **Details:** `interrupt_common.c` and `timer_common.c` exist in `core/kernel/src/corecore/hal/`, but they are very small (few lines) and function mostly as interfaces. Real hardware drivers (e.g., APIC, GICv3) are poorly implemented or stubbed. Clock source (monotonic) and clock event splitting are weak.
 
 ### IPC / Multikernel Messaging
 * **Status:** Endpoint IPC (Baseline), uRPC Transport (Baseline), Async IPC (Partial), Protocol/Delivery (Missing)
@@ -107,5 +107,5 @@ This document provides a deep implementation-status and gap-analysis review of t
 
 ### Architectural Division (Where to implement)
 * **Core Kernel (`core/kernel/src/`):** VFS core logic, Scheduler preemption constraints, Static memory pool API, Networking API.
-* **Architecture Specific (`core/kernel/src/core/hal/`):** Timers (APIC/GIC/PLIC), Interrupt routing, IOMMU hardware interaction, Hardware watchdog triggers.
+* **Architecture Specific (`core/kernel/src/corecore/hal/`):** Timers (APIC/GIC/PLIC), Interrupt routing, IOMMU hardware interaction, Hardware watchdog triggers.
 * **Personality Layer (`subsys/`):** Linux POSIX path resolution mappings, Automotive health state machine (already largely there), Android Binder routing.

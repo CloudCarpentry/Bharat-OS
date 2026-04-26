@@ -13,14 +13,14 @@ Bharat-OS historically intermingled reusable library functions with kernel-speci
 * **Strict Layer Separation:** `lib/` must remain reusable and free from kernel dependencies, while `core/kernel/src/lib/` may use kernel-specific features (allocators, locking, traps).
 * **SDK Integrity:** Headers placed in `lib/include/` imply a reusable shared ABI surface. Kernel-only features must not pollute this namespace.
 * **Profile-Driven Enablement:** The build system must support profile stripping. Giant monolithic libraries should be avoided in favor of narrow feature flags and independent modules.
-* **Hardware Acceleration Strategy:** Provide a generic portable fallback (in `lib/` or `core/hal/common/`), overridden by architecture-specific hooks (`core/arch/`, `core/hal/`) behind stable interfaces.
+* **Hardware Acceleration Strategy:** Provide a generic portable fallback (in `lib/` or `corecore/hal/common/`), overridden by architecture-specific hooks (`core/arch/`, `corecore/hal/`) behind stable interfaces.
 
 ## Decision
 We enforce a strict 3-layer library model:
 
 1. **`core/kernel/src/lib/` & `core/kernel/include/lib/`**: Strictly kernel-internal helpers (e.g., Radix Tree, MCS locks, uRPC rings). These implementations use kernel allocators/state, and their headers **must** reside in `core/kernel/include/lib/`, not `lib/include/`.
 2. **`lib/` & `lib/include/`**: Reusable user-space/shared library code (e.g., portable string/memory functions). Zero kernel dependency.
-3. **`core/hal/` & `core/arch/`**: Hardware/ISA optimized implementations (e.g., `arch_memcpy`) with portable fallbacks in `core/hal/common/`.
+3. **`corecore/hal/` & `core/arch/`**: Hardware/ISA optimized implementations (e.g., `arch_memcpy`) with portable fallbacks in `corecore/hal/common/`.
 
 As part of this decision:
 * Data structure headers previously in `lib/include/ds/` and `lib/include/sync/` (which lack portable shared implementations) are relocated to `core/kernel/include/lib/ds/` and `core/kernel/include/lib/sync/`.

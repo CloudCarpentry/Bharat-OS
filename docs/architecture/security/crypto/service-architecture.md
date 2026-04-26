@@ -1,6 +1,6 @@
 ---
 title: Service-Level Security Architecture
-status: Draft
+status: Proposed
 owner: Divyang Panchasara
 version: 1.0
 last_updated: 2024-05-15

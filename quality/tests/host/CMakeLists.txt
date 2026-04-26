@@ -215,6 +215,18 @@ add_executable(test_uapi_abi test_uapi_abi.c)
 target_include_directories(test_uapi_abi PRIVATE ${CMAKE_SOURCE_DIR}/interface/include)
 add_test(NAME host_test_uapi_abi COMMAND test_uapi_abi)
 
+add_executable(host_test_framebuffer gfx/test_framebuffer.c ../../core/lib/gfx/framebuffer.c)
+target_include_directories(host_test_framebuffer PRIVATE ../../core/lib/gfx ../../)
+add_test(NAME host_test_framebuffer COMMAND host_test_framebuffer)
+
+add_executable(host_test_region gfx/test_region.c ../../core/lib/gfx/region.c)
+target_include_directories(host_test_region PRIVATE ../../core/lib/gfx ../../)
+add_test(NAME host_test_region COMMAND host_test_region)
+
+add_executable(host_test_input_layout input/test_input_layout.c)
+target_include_directories(host_test_input_layout PRIVATE ../../interface/include)
+add_test(NAME host_test_input_layout COMMAND host_test_input_layout)
+
 add_executable(test_hal_cpu_features
     test_hal_cpu_features.c
     ../../arch/common/cpu_caps_state.c

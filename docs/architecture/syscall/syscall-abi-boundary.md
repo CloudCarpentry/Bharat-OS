@@ -1,8 +1,8 @@
 ---
 title: Syscall ABI Boundary Hardening
-status: Draft
+status: Active
 owner: Documentation Working Group
-last_updated: 2026-04-25
+last_updated: 2026-06-05
 tags:
   - docs
   - architecture
@@ -12,48 +12,108 @@ see_also:
 ---
 # Syscall ABI Boundary Hardening
 
-This document explains the architecture and governance of the Bharat-OS native syscall boundary.
+This document explains the architecture and governance of the Bharat-OS secure syscall substrate.
 
-## Native Syscall Dispatch Flow
+## Common Syscall Substrate Flow
 
-1.  **Trap Entry:** When a userspace process executes a syscall instruction (`ecall`, `int 0x80`, etc.), the hardware traps into the kernel.
-2.  **Architecture Trap Handler:** The `core/arch/` layer extracts the trap frame and identifies the trap class as `TRAP_CLASS_SYSCALL`.
-3.  **Personality Dispatch:** The generic `trap_handle` calls `trap_dispatch_syscall`, which delegates to the `personality_ops->handle_syscall` of the current process.
-4.  **Native Handler:** For native processes, this resolves to `default_handle_syscall` (in `core/personalities/native/personality_native.c`), which calls `syscall_dispatch`.
-5.  **Execution:** `syscall_dispatch` (in `core/kernel/src/trap/trap.c`) performs parameter validation and invokes the internal kernel service.
-6.  **Return Mapping:** The internal `kstatus_t` result is mapped to a `sys_errno_t` via `kstatus_to_sysret` before returning to userspace.
+Bharat-OS uses a unified, high-performance secure substrate for all syscall personalities (Native, Linux, Android, Windows).
 
-## kstatus_t vs sys_errno_t
+### A. Unified Syscall Flow
 
-Bharat-OS maintains a strict separation between internal kernel status and the external syscall ABI:
+```mermaid
+sequenceDiagram
+    participant U as User code / SDK / Compat app
+    participant A as Arch syscall entry
+    participant T as trap_dispatch_syscall
+    participant P as Personality ops
+    participant G as bh_syscall_gate
+    participant D as Personality syscall table
+    participant H as Syscall handler
+    participant K as Kernel / Service primitive
 
--   **`kstatus_t`:** Rich, internal kernel status codes (defined in `core/kernel/include/core/kernel/status.h`). Used for precise error reporting between kernel subsystems.
--   **`sys_errno_t`:** Stable, POSIX-style error codes returned to userspace (defined in `interface/include/bharat/interface/uapi/sys_errno.h`).
+    U->>A: syscall / svc / ecall / int 0x80
+    A->>T: trap_frame + trap_info
+    T->>P: handle_syscall(frame, info)
+    P->>G: common gate
+    G->>A: arch_trap_extract_syscall()
+    G->>D: lookup descriptor by personality + nr
+    G->>G: validate context, flags, policy
+    G->>H: handler(ctx)
+    H->>K: typed operation / service call
+    H-->>G: result
+    G->>A: arch_trap_set_syscall_return()
+    G-->>P: status
+    P-->>T: return to user
+```
 
-**Rule:** Kernel code must never return raw `sys_errno_t` values. All internal functions return `kstatus_t`. Translation occurs exclusively at the syscall boundary using `kstatus_to_sysret()`.
+### B. Component Ownership
 
-## Syscall ABI Governance
+```mermaid
+flowchart TD
+    Arch[arch/* syscall_extract.c] --> Gate[core/kernel/src/trap/syscall_gate.c]
+    Trap[core/kernel/src/trap/syscall.c] --> Pers[personality_ops.handle_syscall]
+    Pers --> Gate
+    Gate --> Native[core/personalities/native/native_syscall.c]
+    Gate --> Linux[core/personalities/compat/linux/linux_syscall.c]
+    Gate --> Android[future android overlay]
+    Gate --> Windows[future NT-style personality]
 
-To ensure long-term stability and compatibility, the following rules apply to `interface/include/bharat/interface/uapi/syscall_table.def`:
+    UAPI[interface/include/bharat/uapi/syscall] --> Native
+    UAPI --> SDK[experience/user/sdk]
+```
 
-1.  **Append-Only:** New syscalls must be added to the end of the table with a new unique number.
-2.  **No Renumbering:** Once assigned, a syscall number must never change.
-3.  **No Deletions:** Syscalls cannot be removed from the table. If a syscall is deprecated, it should be kept as a stub returning `K_ERR_UNSUPPORTED`.
-4.  **No Renames:** Syscall names in the UAPI are part of the contract and should not be changed.
+### C. Implementation Status
+
+```mermaid
+flowchart LR
+    Done[Complete] --> Gate[Common syscall gate]
+    Done --> Native[Native table]
+    Done --> LinuxMin[Minimal Linux table]
+    Done --> Usercopy[Stage 1.5 usercopy]
+    Done --> X86Int[x86_64 int 0x80 transitional]
+    Future[Future] --> X86Fast[x86_64 syscall/sysret]
+    Future --> VMA[VMA/page-backed usercopy]
+    Future --> Android[Android overlay]
+    Future --> Windows[Windows NT object model]
+    Future --> VDSO[vDSO fast page]
+```
+
+## Governance and ABI
+
+The canonical source of truth for syscall numbers is `interface/include/bharat/uapi/syscall/table.def` and the manifest `interface/contracts/abi/syscalls.json`.
+
+1.  **Append-Only:** New syscalls must be added to the end of the table.
+2.  **No Renumbering:** Syscall numbers are immutable once assigned.
+3.  **No Deletions:** Deprecated syscalls become stubs returning `K_ERR_UNSUPPORTED`.
+4.  **No Renames:** UAPI names are part of the stable contract.
 
 ### ABI Drift Verification
 
-The `tools/abi/check_syscalls.py` tool enforces these rules by comparing the current `syscall_table.def` against a committed baseline manifest in `interface/contracts/abi/syscalls.json`. This check is part of the CI pipeline.
+The `tools/abi/check_syscalls.py` tool enforces these rules against the baseline manifest.
 
-## Syscall Implementation Backends
+## Usercopy Hardening (Stage 1.5)
 
-To maintain a clean ABI boundary, Bharat-OS distinguishes between architecture-specific syscall entries and generic fallbacks:
+All data transfers between kernel and userspace must use the checked usercopy primitives:
 
--   **Arch-specific Assembly:** (e.g., `experience/user/sdk/lib/src/riscv_syscalls.S`). This is the preferred implementation for production-grade SDK and user-space binaries. It provides the thinnest possible wrapper around the hardware trap instruction.
--   **Generic Fallback:** (`core/lib/syscall/syscall_stubs.c`). This implementation provides a C-based fallback and is primarily intended for host-based testing or early bring-up of new architectures.
+-   `copy_from_user_checked()`
+-   `copy_to_user_checked()`
+-   `copy_user_string_checked()`
 
-**Rule:** `core/lib/syscall/syscall_stubs.c` must not be linked when an architecture-specific syscall backend is present. This is enforced by guarding the `bharat_syscall` definition in `syscall_stubs.c` with the `BHARAT_HAS_ARCH_SYSCALL_BACKEND` macro. Architecture-specific assembly backends are located in the `experience/user/sdk/lib/src/` directory and integrated via `core/lib/syscall/CMakeLists.txt`.
+**Hardening Rules:**
+- NULL rejection if `len > 0`.
+- Pointer + length overflow checks.
+- Strict max copy size: `BH_USERCOPY_MAX_BYTES` (default 4096).
+- User range validation.
 
-## Why Native ABI Hardening First?
+## Architecture Notes
 
-Hardening the native syscall boundary and establishing ABI drift gates is a prerequisite for implementing Linux compatibility (personalities). A stable and secure native foundation ensures that compatibility layers are built on a well-defined contract, preventing "leaks" of internal kernel state and ensuring that security invariants are maintained across different execution personalities.
+### x86_64
+The x86_64 ABI is temporarily using `int $0x80` for consistency. The target production ABI is `SYSCALL/SYSRET`.
+
+### ARM64
+ARM64 syscall detection decodes `ESR_EL1.EC` (0x15).
+```c
+/* Bharat-OS currently treats all SVC-from-EL0 exceptions as syscall entry.
+ * ISS/SVC immediate is reserved for future ABI versioning/debug use.
+ */
+```

@@ -1,6 +1,6 @@
 ---
 title: Bharat-OS Message Wire Format v1
-status: Draft
+status: Proposed
 owner: Documentation Working Group
 last_updated: 2026-04-25
 tags:

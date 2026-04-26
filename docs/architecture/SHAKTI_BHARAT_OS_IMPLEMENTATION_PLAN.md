@@ -1,6 +1,6 @@
 ---
 title: SHAKTI Integration Plan for Bharat-OS
-status: Draft
+status: Proposed
 owner: Documentation Working Group
 last_updated: 2026-04-25
 tags:
@@ -84,7 +84,7 @@ interface/sdk/
     make/
 ```
 
-Existing Bharat-OS directories already align with this split (`core/kernel/src/hal`, `core/drivers/`, `tools/boards/`, `docs/`). Implementation should preserve that separation.
+Existing Bharat-OS directories already align with this split (`core/kernel/srccore/hal`, `core/drivers/`, `tools/boards/`, `docs/`). Implementation should preserve that separation.
 
 ## Platform contract (Phase 0)
 

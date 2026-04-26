@@ -965,3 +965,101 @@ kstatus_t cap_lookup_memory(const capability_table_t *table, uint32_t cap_id, ca
     out->flags = e.flags;
     return K_OK;
 }
+
+static kstatus_t cap_validate_rights_internal(cap_rights_mask_t entry_rights, cap_rights_mask_t required_rights) {
+    if ((entry_rights & required_rights) != required_rights) {
+        return K_ERR_CAP_DENIED;
+    }
+    return K_OK;
+}
+
+static kstatus_t cap_validate_object_type_internal(cap_type_t entry_type, cap_type_t expected_type) {
+    if (expected_type != CAP_TYPE_NONE && entry_type != expected_type) {
+        return K_ERR_CAP_WRONG_TYPE;
+    }
+    return K_OK;
+}
+
+static kstatus_t cap_validate_scope_internal(const capability_table_t *table, uint32_t requester_pid) {
+    // If requester_pid is 0, we assume scope check is not requested or it's a kernel internal caller
+    if (requester_pid == 0) {
+        return K_OK;
+    }
+
+    if (table->owner_pid != 0 && table->owner_pid != requester_pid) {
+        return K_ERR_CAP_DENIED;
+    }
+    return K_OK;
+}
+
+static kstatus_t cap_validate_generation_internal(uint32_t entry_gen, uint64_t expected_gen) {
+    if (expected_gen != 0 && (uint32_t)expected_gen != entry_gen) {
+        return K_ERR_CAP_STALE;
+    }
+    return K_OK;
+}
+
+kstatus_t cap_validate_ex(capability_table_t *table,
+                          const cap_validation_request_t *req,
+                          capability_entry_t **out_entry) {
+    if (!table || !req) {
+        return K_ERR_INVALID_ARG;
+    }
+
+    if (out_entry) {
+        *out_entry = NULL;
+    }
+
+    uint32_t id_only = req->cap_id & 0xFFFF;
+    uint32_t handle_gen = req->cap_id >> 16;
+
+    kstatus_t status = K_ERR_NOT_FOUND;
+    capability_entry_t *found_entry = NULL;
+
+    spin_lock(&table->lock);
+
+    for (size_t i = 0; i < BHARAT_ARRAY_SIZE(table->entries); ++i) {
+        capability_entry_t *e = &table->entries[i];
+        if (e->in_use != 0U && e->id == id_only) {
+            // 1. Generation check (handle vs entry)
+            if (handle_gen != 0 && e->generation != handle_gen) {
+                status = K_ERR_CAP_STALE;
+                break;
+            }
+
+            // 2. Expected generation check (request vs entry)
+            status = cap_validate_generation_internal(e->generation, req->expected_generation);
+            if (status != K_OK) break;
+
+            // 3. State check
+            if (e->state != CAP_STATE_LIVE) {
+                status = K_ERR_CAP_REVOKED;
+                break;
+            }
+
+            // 4. Object type check
+            status = cap_validate_object_type_internal(e->type, req->expected_object_type);
+            if (status != K_OK) break;
+
+            // 5. Rights check
+            status = cap_validate_rights_internal(e->rights, req->required_rights);
+            if (status != K_OK) break;
+
+            // 6. Scope check
+            status = cap_validate_scope_internal(table, req->requester_pid);
+            if (status != K_OK) break;
+
+            found_entry = e;
+            status = K_OK;
+            break;
+        }
+    }
+
+    spin_unlock(&table->lock);
+
+    if (status == K_OK && out_entry) {
+        *out_entry = found_entry;
+    }
+
+    return status;
+}

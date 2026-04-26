@@ -19,7 +19,7 @@ This document outlines the Phase 1 implementation tasks for the Power and Therma
 * create `core/kernel/include/power/`
 * create `core/kernel/include/battery/`
 * define generic enums, IDs, capability flags, and small core structs
-* add `core/hal/common/power/null_power.c` and `core/hal/common/power/null_thermal.c`
+* add `corecore/hal/common/power/null_power.c` and `corecore/hal/common/power/null_thermal.c`
 * no real policy yet
 
 **Acceptance Criteria:**

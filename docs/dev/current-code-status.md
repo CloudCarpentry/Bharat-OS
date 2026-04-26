@@ -71,7 +71,7 @@ Use these labels consistently across status docs and roadmap updates:
 | `telemetrymgr` | **Scaffold** | Placeholder metrics aggregation loop. |
 | `process_manager` | **Scaffold** | TODO-only main path. |
 | `vm_manager` | **Scaffold** | TODO-only main path. |
-| `drivers` | **Scaffold** | TODO-only main path. |
+| `drivers` | **Scaffold** | TODO-only main path. (Registry contract is **Partial/D0 Baseline**). |
 | `console` | **Scaffold** | Infinite loop + TODO URPC routing. |
 | `boot_displayd` | **Partial** | Framebuffer rectangle helper + mocked early UI flow. |
 | `file_system` | **Partial** | Calls `vfs_init()` and outlines mount/URPC flow; persistent backing FS path still pending. |
@@ -83,7 +83,60 @@ Use these labels consistently across status docs and roadmap updates:
 
 ---
 
-## 3) Networking implementation details
+## 3) Memory runtime validation details
+
+### Runtime Memory Profile Validation
+Status: **Partial** / M0 baseline
+
+The kernel now has a boot/runtime validation path that checks detected memory capabilities against the selected memory model/profile contract. This does not complete PMM ownership, TLB shootdown, VM lifecycle, DMA/IOMMU, or full memory production hardening.
+
+Implemented features include:
+- `hal_mem_caps_t` normalization into kernel `mem_runtime_caps_t`.
+- `mem_profile_contract_t` derivation from build configuration.
+- `mem_runtime_validate_profile()` implementation with fail-closed rules.
+- Integration into `mm_validate_model()` during early boot.
+
+
+## 3) Core Subsystem implementation details
+
+### Capability Validation Framework
+**Status: Partial / Phase K3-S0 baseline**
+
+A reusable, strict, fail-closed capability validation framework has been introduced to the kernel. This serves as the canonical validation path for object types, rights, scope (PID-based), and generation/stale-handle checks.
+
+**Current progress:**
+- Canonical `cap_validate_ex()` implementation.
+- Internal helpers for granular validation (rights, type, scope, generation).
+- Rich internal error mapping via `kstatus_t` (e.g., `K_ERR_CAP_STALE`, `K_ERR_CAP_REVOKED`).
+- Comprehensive negative-path unit tests in `ktest_capability`.
+- Initial contract documentation in `docs/architecture/kernel/capability-validation-contract.md`.
+
+**Current limitations:**
+- Not yet wired into every syscall boundary.
+- Not yet enforced across all IPC/service entry points.
+- Capability lifecycle revocation semantics are still partial.
+- Security-domain scope model is intentionally minimal (PID-only) in this phase.
+
+### Driver Registry Contract
+**Status: Partial / D0 Baseline**
+
+The driver registry and device binding contract has been hardened to provide a deterministic matching and lifecycle management path. This decouples hardware description from driver operation and tracks the active relationship.
+
+**Current progress:**
+- Established canonical `device_desc_t`, `driver_desc_t`, and `device_binding_t` descriptors.
+- Deterministic match scoring: Highest score wins, then highest priority, then reject ambiguity.
+- Formalized lifecycle state machine (REGISTERED, MATCHED, PROBED, STARTED, STOPPED, REMOVED, FAILED) enforced at the core level.
+- Host-side verification tests for registration, matching, and lifecycle transitions.
+- Preliminary documentation in `docs/architecture/drivers/driver-registry-contract.md`.
+
+**Current limitations:**
+- Driver service runtime remains a scaffold.
+- Capability mediation for driver operations is documented but not yet wired.
+- Most existing drivers are still skeletal and do not fully implement the new lifecycle hooks.
+
+---
+
+## 4) Networking implementation details
 
 *Note: The legacy `net` monolithic service is deprecated and transitional. `netmgr` and `netstack` represent the canonical forward path.*
 
@@ -116,20 +169,14 @@ Current limitations:
 
 ---
 
-## 4) Gap summary (docs-to-code)
+## 5) Gap summary (docs-to-code)
 
 1. **Status precision gap**: several services are buildable but still lifecycle scaffolds.
-2. **Enforcement gap**: capability checks in some manager paths were historically placeholder-permissive; however, the major `netmgr` bypass has been closed (fail-closed shim). Full capability routing is still needed.
+2. **Enforcement gap**: capability checks in some manager paths were historically placeholder-permissive; however, the major `netmgr` bypass has been closed (fail-closed shim). Full capability routing is still needed. The Phase K3-S0 validation framework provides the tools to close this gap.
 3. **Runtime wiring gap**: multiple daemons initialize state but do not yet run complete production event loops.
 4. **Hardening gap**: observability, failure semantics, and profile-specific guarantees need deeper closure.
 
-## 4.2) Core Kernel Ownership
-
-Status: **Partial / Phase K0 in progress**
-
-Current implementation uses `cpu_local_t` as the per-core anchor. Phase K0 hardens scheduler ownership and remote command handling without renaming the public structure. Typed remote command queues and invariant tracking fields in `bh_thread_t` ensure that no core directly mutates another core's scheduler state.
-
-## 4.1) Security production gate (explicit blocker)
+## 5.1) Security production gate (explicit blocker)
 
 To avoid status inflation, this repository treats capability enforcement maturity as a hard release gate:
 
@@ -138,9 +185,15 @@ To avoid status inflation, this repository treats capability enforcement maturit
 - Fail-closed behavior (like the current `netmgr` shim through `bharat_cap_validate()`) is required as an interim baseline, but does not by itself qualify as full production security.
 - Promotion to **Production** requires strict, code-backed capability checks across manager and dispatch paths, plus validation evidence.
 
+## 5.2) Core Kernel Ownership
+
+Status: **Partial / Phase K0 in progress**
+
+Current implementation uses `cpu_local_t` as the per-core anchor. Phase K0 hardens scheduler ownership and remote command handling without renaming the public structure. Typed remote command queues and invariant tracking fields in `bh_thread_t` ensure that no core directly mutates another core's scheduler state.
+
 ---
 
-## 5) Contributor update rules
+## 6) Contributor update rules
 
 When updating this document:
 
@@ -150,7 +203,7 @@ When updating this document:
 4. If architecture docs are more aspirational, retain them, but record the current reality here.
 
 
-## 6) Component architecture drill-down docs
+## 7) Component architecture drill-down docs
 
 For diagram-based decomposition and roadmap mapping by domain, see:
 
@@ -159,13 +212,13 @@ For diagram-based decomposition and roadmap mapping by domain, see:
 - `docs/architecture/components/services-subcomponents-architecture.md`
 - `docs/architecture/components/drivers-subcomponents-architecture.md`
 
-## 7) Memory hardening roadmap
+## 8) Memory hardening roadmap
 
 For the current memory production hardening plan and profile/architecture acceptance matrix, see:
 
 - `docs/architecture/memory/memory-roadmap-consolidated.md`
 
-## 8) Service Deployment Profiles
+## 9) Service Deployment Profiles
 
 Services in Bharat-OS are not universally mandatory. They are deployed via three primary profile tiers to accommodate hardware constraints:
 

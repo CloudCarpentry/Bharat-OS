@@ -1,6 +1,6 @@
 ---
 title: Bharat-OS Heterogeneous Compute Architecture and Roadmap
-status: Draft
+status: Proposed
 owner: Architecture Team
 reviewers: Core Maintainers
 version: 1.0
@@ -23,7 +23,7 @@ Policy decisions—such as model selection, graph compilation, and routing acros
 
 ## 2. Why this fits Bharat-OS
 
-- **Aligns with repository boundaries**: Maintains the separation of `core/arch/`, `core/hal/`, `core/kernel/`, `core/drivers/`, and `core/services/`.
+- **Aligns with repository boundaries**: Maintains the separation of `core/arch/`, `corecore/hal/`, `core/kernel/`, `core/drivers/`, and `core/services/`.
 - **Extends the capability model**: Leverages existing multikernel principles, including strict ownership, capability-gated isolation, and profile-aware execution.
 - **Natural extension of memory architecture**: Built upon existing memory domains, DMA structures, and IOMMU hardware isolation concepts rather than side-stepping them.
 - **Future-proofs AI workloads**: Creates a scalable path for ML hardware acceleration without polluting the kernel with fast-moving framework specific logic.
@@ -76,11 +76,11 @@ The minimal heterogeneous compute substrate.
 - `core/kernel/src/mm/accel/` (or via standard DMA extensions)
 - Hooks in `core/kernel/src/sched/` for fallback/hint handoff.
 
-### 4.2 HAL (`core/hal/`)
+### 4.2 HAL (`corecore/hal/`)
 
 Abstraction contracts only; no architecture implementations.
 
-- `core/hal/include/core/hal/hal_accel.h`
+- `corecore/hal/include/corecore/halcore/hal_accel.h`
 - Hooks for DMA, IOMMU, and memory cache maintenance related to accelerator needs.
 - Defines standard accelerator capability queries, queue programming hooks, and fence bindings.
 

@@ -1,6 +1,6 @@
 ---
 title: Bharat-OS `core/services/init` — Design Principles & Architecture
-status: Draft
+status: Proposed
 owner: Documentation Working Group
 last_updated: 2026-04-25
 tags:
@@ -329,10 +329,21 @@ init/
 
 ```c
 typedef struct {
-    uint32_t profile;
-    uint64_t capability_mask;
+    uint32_t abi_version;
+    uint32_t boot_session_id;
+    init_profile_t profile;
+    uint32_t arch_id;
     uint32_t platform_id;
+    uint32_t board_id;
+    uint32_t personality_id;
+    uint64_t capability_mask;
+    uint64_t hw_feature_mask;
+    init_boot_reason_t boot_reason;
+    uint32_t reset_reason;
     bool safe_mode_requested;
+    bool diagnostics_requested;
+    bool failed_update_revert;
+    init_kernel_health_summary_t kernel_health;
 } init_boot_context_t;
 ```
 

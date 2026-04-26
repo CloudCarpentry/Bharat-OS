@@ -13,19 +13,13 @@ typedef enum {
 
 #include "init_status.h"
 #include <bharat/uapi/init/init_boot_context.h>
+#include <bharat/uapi/personality/personality.h>
+
+#include <bharat/uapi/init/init_capability.h>
 
 typedef uint64_t bharat_init_profile_mask_t;
-typedef uint64_t bharat_init_cap_mask_t;
 typedef uint64_t bharat_init_board_mask_t;
 typedef uint64_t bharat_init_personality_mask_t;
-
-// Capability bitmask flags
-#define BHARAT_INIT_CAP_NONE            (0)
-#define BHARAT_INIT_CAP_NETWORK         (1 << 0)
-#define BHARAT_INIT_CAP_STORAGE         (1 << 1)
-#define BHARAT_INIT_CAP_DISPLAY         (1 << 2)
-#define BHARAT_INIT_CAP_SENSORS         (1 << 3)
-#define BHARAT_INIT_CAP_MMU             (1 << 4)
 
 // Profile mask flags (mapped to shared uapi profile enum values)
 #define BHARAT_INIT_PROFILE_TINY            ((bharat_init_profile_mask_t)INIT_PROFILE_TINY)
@@ -40,6 +34,14 @@ typedef uint64_t bharat_init_personality_mask_t;
 #define BHARAT_INIT_PROFILE_TV              ((bharat_init_profile_mask_t)INIT_PROFILE_TV)
 #define BHARAT_INIT_PROFILE_APPLIANCE       ((bharat_init_profile_mask_t)INIT_PROFILE_APPLIANCE)
 #define BHARAT_INIT_PROFILE_WATCH           ((bharat_init_profile_mask_t)INIT_PROFILE_WATCH)
+
+// Personality mask flags
+#define BHARAT_INIT_PERSONALITY_NATIVE      (1 << BHARAT_PERSONALITY_NATIVE)
+#define BHARAT_INIT_PERSONALITY_LINUX       (1 << BHARAT_PERSONALITY_LINUX)
+#define BHARAT_INIT_PERSONALITY_ANDROID     (1 << BHARAT_PERSONALITY_ANDROID)
+#define BHARAT_INIT_PERSONALITY_POSIX_LITE  (1 << BHARAT_PERSONALITY_POSIX_LITE)
+#define BHARAT_INIT_PERSONALITY_AUTOMOTIVE  (1 << BHARAT_PERSONALITY_AUTOMOTIVE)
+#define BHARAT_INIT_PERSONALITY_ROBOTICS    (1 << BHARAT_PERSONALITY_ROBOTICS)
 
 // Platform mask placeholders (example)
 #define BHARAT_INIT_BOARD_ANY           (0xFFFFFFFFU)

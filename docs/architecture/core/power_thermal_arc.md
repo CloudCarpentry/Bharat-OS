@@ -265,7 +265,7 @@ core/kernel/
       cooling_device.c
       emergency_power.c
 
-core/hal/
+corecore/hal/
   common/
     power/
       null_power.c

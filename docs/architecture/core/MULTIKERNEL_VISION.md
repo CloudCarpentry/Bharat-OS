@@ -1,6 +1,6 @@
 ---
 title: Multikernel (Per-Core) Architecture Vision & Maturity
-status: Draft
+status: Proposed
 owner: Architecture Team
 version: 1.0.0
 last_updated: 2024-05-15
@@ -45,7 +45,7 @@ The page-table and memory protection model is fundamental to the multikernel app
 
 For complete details on the implementation format, HAL vtable, and frame ownership invariant, refer to the [Multikernel Memory Protection Architecture](multikernel-memory-protection-architecture.md) specification.
 
-### 4. Interrupts (IRQ) & IPI (`core/hal/interrupt_common.c`)
+### 4. Interrupts (IRQ) & IPI (`corecore/hal/interrupt_common.c`)
 - **Current State**: High maturity. IRQ routing natively supports affinity, and deferred work (Bottom-Halves) is implemented via strictly per-core queues (`g_deferred_queues[cpu_id]`).
 - **Needs to Mature**:
   - **Global IRQ Descriptor Lock**: The `g_irq_descriptors` array uses a spinlock per IRQ line. While partitioned by IRQ, configuring shared IRQs across cores could still cause minor contention. However, since IRQ configuration is usually a slow-path/boot-time operation, this violation is highly tolerable for the RT vision.
