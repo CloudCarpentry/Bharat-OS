@@ -9,6 +9,7 @@
 #include "../../kernel/include/arch/arch_cpu_caps.h"
 #include "../../kernel/include/arch/arch_tlb_accel.h"
 #include <stdbool.h>
+static bool g_x86_pcid_supported = false;
 
 // Direct-Map Subsystem Configuration
 // For x86_64, the standard high-half mapping base
@@ -31,6 +32,7 @@ const size_t g_kernel_physmap_size = 0x8000000000ULL; // 512GB
 #define X86_LARGE_2M_SIZE (1ULL << 21)
 
 static void x86_tlb_flush_page_local(virt_addr_t vaddr);
+void x86_pt_caps_init(void);
 bool g_x86_mmu_finalized = false;
 static bool g_x86_pcid_supported = false;
 extern const virt_addr_t g_kernel_virt_offset;
@@ -152,6 +154,14 @@ static void x86_pt_destroy_address_space(phys_addr_t root_pt) {
 
 static int x86_pt_walk(phys_addr_t root_pt, virt_addr_t vaddr, bool create, uint32_t alloc_flags, page_table_walk_result_t *out_result) {
     if (root_pt == 0U || !out_result) return -1;
+
+    // Canonical address check for 48-bit x86_64:
+    // Bits 48-63 must be a copy of bit 47.
+    // Lower half: 0 to 0x00007FFFFFFFFFFF
+    // Upper half: 0xFFFF800000000000 to 0xFFFFFFFFFFFFFFFF
+    if ((vaddr > 0x00007FFFFFFFFFFFULL) && (vaddr < 0xFFFF800000000000ULL)) {
+        return -3; // Non-canonical address
+    }
 
     virt_addr_t aligned_vaddr = align_down(vaddr);
 
@@ -547,6 +557,8 @@ static hal_pt_caps_t x86_pt_caps = {
     .supports_linear_physmap = true,
 };
 
+extern hal_tlb_ops_t x86_hal_tlb_ops;
+
 hal_pt_ops_t x86_hal_pt_ops = {
     .backend_type          = TRANSLATE_BACKEND_MMU,
     .caps                  = &x86_pt_caps,
@@ -561,6 +573,12 @@ hal_pt_ops_t x86_hal_pt_ops = {
     .protect_range         = x86_pt_protect_range,
     .query_mapping         = x86_pt_query_mapping,
 };
+
+void arch_hal_pt_init(void) {
+    x86_pt_caps_init();
+    x86_pt_set_mmu_finalized(true);
+    hal_pt_register_ops(&x86_hal_pt_ops, &x86_hal_tlb_ops);
+}
 
 // --- x86_64 TLB Operations ---
 

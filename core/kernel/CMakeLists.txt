@@ -31,6 +31,10 @@ if(NOT EXISTS "${BHARAT_KERNEL_INCLUDE_DIR}/bharat_config.h.in")
     message(FATAL_ERROR "Missing canonical kernel include root: ${BHARAT_KERNEL_INCLUDE_DIR}")
 endif()
 
+# Define and create the generated include directory in the build tree
+set(BHARAT_GENERATED_INCLUDE_DIR "${CMAKE_BINARY_DIR}/generated/include")
+file(MAKE_DIRECTORY "${BHARAT_GENERATED_INCLUDE_DIR}")
+
 target_include_directories(bharat_kernel_includes INTERFACE
     ${BHARAT_KERNEL_INCLUDE_DIR}
     ${BHARAT_KERNEL_INCLUDE_DIR}/generated
@@ -41,6 +45,11 @@ target_include_directories(bharat_kernel_includes INTERFACE
     ${BHARAT_HAL_ROOT}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
+# In standalone kernel builds, define the bharat_generated_includes target
+if(NOT TARGET bharat_generated_includes)
+    add_library(bharat_generated_includes INTERFACE)
+    target_include_directories(bharat_generated_includes INTERFACE "${BHARAT_GENERATED_INCLUDE_DIR}")
+endif()
 target_link_libraries(bharat_kernel_includes INTERFACE bharat_generated_includes)
 
 # Kernel subdir can be configured standalone (without top-level CMakeLists).
@@ -139,9 +148,12 @@ endif()
 if(NOT DEFINED CONFIG_URPC)
     set(CONFIG_URPC 1)
 endif()
+
+# Generate the configuration header into the build directory
 configure_file(
-    ${BHARAT_KERNEL_INCLUDE_DIR}/bharat_config.h.in
-    ${BHARAT_KERNEL_INCLUDE_DIR}/generated/bharat_config.h
+    "${BHARAT_KERNEL_INCLUDE_DIR}/bharat_config.h.in"
+    "${BHARAT_GENERATED_INCLUDE_DIR}/bharat_config.h"
+    @ONLY
 )
 option(BHARAT_BOOT_GUI "Enable boot-time GUI handoff metadata" ON)
 if(NOT DEFINED BHARAT_BOOT_HW_PROFILE OR "${BHARAT_BOOT_HW_PROFILE}" STREQUAL "")

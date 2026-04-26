@@ -45,8 +45,16 @@ void kernel_main(uint32_t magic, multiboot_information_t *mb_info) {
         kernel_panic("Invalid Multiboot magic number!");
     }
 
+    if (mb_info == NULL) {
+        kernel_panic("Multiboot information pointer is NULL");
+    }
+
     // Parse multiboot into platform and generic boot info
     x86_64_parse_multiboot(magic, mb_info, &plat, &boot);
+
+    if (boot.mem_region_count == 0) {
+        kernel_panic("No memory regions detected via Multiboot");
+    }
 
     // Provide generic hints
     boot.source = BOOT_SOURCE_MULTIBOOT2;

@@ -301,6 +301,8 @@ static const hal_pt_caps_t arm32_pt_caps = {
     .supports_linear_physmap = false,
 };
 
+extern hal_tlb_ops_t arm32_hal_tlb_ops;
+
 hal_pt_ops_t arm32_hal_pt_ops = {
     .backend_type          = TRANSLATE_BACKEND_MMU,
     .caps                  = &arm32_pt_caps,
@@ -315,6 +317,10 @@ hal_pt_ops_t arm32_hal_pt_ops = {
     .protect_range         = NULL,
     .query_mapping         = NULL,
 };
+
+void arch_hal_pt_init(void) {
+    hal_pt_register_ops(&arm32_hal_pt_ops, &arm32_hal_tlb_ops);
+}
 
 static void arm32_tlb_flush_page_local(virt_addr_t vaddr) {
     asm volatile("mcr p15, 0, %0, c8, c7, 1" : : "r" (vaddr));

@@ -1,4 +1,5 @@
 #include "capability.h"
+#include "cap_policy.h"
 #include <bharat/cpu_local.h>
 #include "kernel_safety.h"
 #include "bharat/urpc.h"
@@ -44,32 +45,7 @@ static inline void cap_unlock_two_tables(capability_table_t* a, capability_table
   ensures \result == 0 || \result == 1;
 */
 static int cap_rights_valid(cap_type_t type, uint64_t rights) {
-    switch (type) {
-    case CAP_TYPE_ENDPOINT:
-        return (rights & ~(CAP_RIGHT_ENDPOINT_SEND | CAP_RIGHT_ENDPOINT_RECEIVE | CAP_RIGHT_DELEGATE)) == 0U;
-    case CAP_TYPE_MEMORY:
-        return (rights & ~(CAP_RIGHT_MEMORY_MAP | CAP_RIGHT_MEMORY_UNMAP | CAP_RIGHT_MEMORY_SHARE | CAP_RIGHT_DELEGATE)) == 0U;
-    case CAP_TYPE_SCHED:
-        return (rights & ~(CAP_RIGHT_SCHEDULE | CAP_RIGHT_DELEGATE)) == 0U;
-    case CAP_TYPE_PROCESS:
-        return (rights & ~(CAP_RIGHT_DELEGATE)) == 0U;
-    case CAP_TYPE_ACCEL_DEVICE:
-        return (rights & ~(CAP_RIGHT_ALL | CAP_RIGHT_DERIVE | CAP_RIGHT_DELEGATE)) == 0U;
-    case CAP_TYPE_ACCEL_QUEUE:
-        return (rights & ~(CAP_RIGHT_ENQUEUE | CAP_RIGHT_CANCEL | CAP_RIGHT_QUERY | CAP_RIGHT_DELEGATE)) == 0U;
-    case CAP_TYPE_ACCEL_BUFFER:
-        return (rights & ~(CAP_RIGHT_MEMORY_MAP | CAP_RIGHT_BIND | CAP_RIGHT_MEMORY_SHARE | CAP_RIGHT_SYNC_CPU | CAP_RIGHT_SYNC_DEV | CAP_RIGHT_DELEGATE)) == 0U;
-    case CAP_TYPE_ACCEL_TELEMETRY:
-        return (rights & ~(CAP_RIGHT_READ_STATS | CAP_RIGHT_READ_FAULTS | CAP_RIGHT_DELEGATE)) == 0U;
-    case CAP_TYPE_ACCEL_ADMIN:
-        return (rights & ~(CAP_RIGHT_RESET | CAP_RIGHT_PARTITION | CAP_RIGHT_FW_LOAD | CAP_RIGHT_DELEGATE)) == 0U;
-    case CAP_TYPE_DMA_DOMAIN:
-        return (rights & ~(CAP_RIGHT_ALL | CAP_RIGHT_DELEGATE)) == 0U;
-    case CAP_TYPE_DMA_GRANT:
-        return (rights & ~(CAP_RIGHT_DMA_MAP | CAP_RIGHT_MEMORY_UNMAP | CAP_RIGHT_REVOKE | CAP_RIGHT_DELEGATE)) == 0U;
-    default:
-        return 0;
-    }
+    return cap_transfer_rights_valid(type, rights);
 }
 
 /*@

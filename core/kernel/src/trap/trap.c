@@ -450,15 +450,7 @@ long trap_handle(trap_frame_t *frame) {
   if (frame->type == TRAP_TYPE_IRQ) {
     info.trap_class = TRAP_CLASS_INTERRUPT;
   } else {
-#if defined(__x86_64__)
-    uintptr_t trap_cause_syscall = 0x80U;
-#elif defined(__riscv)
-    uintptr_t trap_cause_syscall = 8U;
-#else
-    uintptr_t trap_cause_syscall = 0xFFFFU;
-#endif
-
-    if (frame->cause == trap_cause_syscall) {
+    if (hal_cpu_is_syscall(frame)) {
       info.trap_class = TRAP_CLASS_SYSCALL;
     } else if (hal_cpu_is_page_fault(frame)) {
       info.trap_class = TRAP_CLASS_PAGE_FAULT;

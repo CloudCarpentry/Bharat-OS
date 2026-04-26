@@ -2,7 +2,7 @@
 build*/
 out/
 bin/
-kernel/include/generated/
+# Note: core/kernel/include/generated/ contains a committed fail-fast shim
 
 # Object files and libraries
 *.o

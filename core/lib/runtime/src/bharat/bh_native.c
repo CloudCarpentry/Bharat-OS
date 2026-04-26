@@ -1,6 +1,6 @@
 #include <bharat/bh_native.h>
 #include <uapi/syscall/syscall_nr.h>
-#include <syscall.h>
+#include <syscall/common/syscall.h>
 
 int bh_cap_revoke(bh_cap_t cap) {
     return (int)bh_syscall(SYSCALL_CAP_REVOKE, (long)cap, 0, 0, 0, 0, 0);

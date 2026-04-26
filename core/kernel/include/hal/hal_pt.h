@@ -120,9 +120,12 @@ typedef struct hal_pt_ops {
     int         (*query_mapping)(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *paddr, size_t *mapped_size, uint32_t *flags);
 } hal_pt_ops_t;
 
+#include "../../include/hal/hal_tlb.h"
+
 extern hal_pt_ops_t *active_hal_pt;
 
 void hal_pt_init(void);
+void hal_pt_register_ops(hal_pt_ops_t *ops, hal_tlb_ops_t *tlb_ops);
 
 phys_addr_t hal_pt_create_address_space(phys_addr_t kernel_root_table);
 void hal_pt_destroy_address_space(phys_addr_t root_pt);

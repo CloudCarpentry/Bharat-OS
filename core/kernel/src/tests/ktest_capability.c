@@ -92,6 +92,21 @@ static int test_cap_thread_process_mediation(void) {
     ASSERT_RET(ret == 0, -7);
     ASSERT_RET(entry.object_ref == 0x200, -8);
 
+    // Negative test: stale/revoked handle
+    cap_table_revoke(table, thread_cap);
+    ret = cap_table_lookup(table, thread_cap, CAP_TYPE_THREAD, CAP_RIGHT_SCHEDULE, &entry);
+    ASSERT_RET(ret != 0, -9);
+
+    // Negative test: over-scoped/delegated rights escalation
+    uint32_t restricted_mem_cap;
+    ret = cap_table_grant(table, CAP_TYPE_MEMORY, 0x5000, CAP_RIGHT_MEMORY_MAP | CAP_RIGHT_DELEGATE, &restricted_mem_cap);
+    ASSERT_RET(ret == 0, -10);
+
+    uint32_t escalated_mem_cap;
+    // Try to escalate: delegate with WRITE which parent doesn't have (MEMORY_MAP doesn't imply UNMAP)
+    ret = cap_table_delegate(table, table, restricted_mem_cap, CAP_RIGHT_MEMORY_MAP | CAP_RIGHT_MEMORY_UNMAP, &escalated_mem_cap);
+    ASSERT_RET(ret != 0, -11);
+
     cap_table_destroy(table);
     return 0;
 }
