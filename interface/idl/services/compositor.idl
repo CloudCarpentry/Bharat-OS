@@ -1,0 +1,24 @@
+/**
+ * Compositor Service Contract
+ */
+interface bharat_compositor {
+    /**
+     * Creates a new surface.
+     */
+    create_surface(uint32_t width, uint32_t height) -> (uint64_t surface_id, int32_t status);
+
+    /**
+     * Destroys a surface.
+     */
+    destroy_surface(uint64_t surface_id) -> (int32_t status);
+
+    /**
+     * Submits a buffer to a surface.
+     */
+    submit_buffer(uint64_t surface_id, uint64_t buffer_id) -> (int32_t status);
+
+    /**
+     * Requests presentation of the current state.
+     */
+    present() -> (int32_t status);
+}
