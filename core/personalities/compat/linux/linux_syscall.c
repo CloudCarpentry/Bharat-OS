@@ -14,19 +14,24 @@ extern long bh_sys_read(bh_syscall_ctx_t *ctx);
 extern long bh_sys_write(bh_syscall_ctx_t *ctx);
 extern long bh_sys_thread_exit(bh_syscall_ctx_t *ctx);
 
+#include "sched/sched.h"
+
+// Linux errno mappings (subset for stubs)
+#define LINUX_ENOSYS 38
+
 static long linux_sys_getpid(bh_syscall_ctx_t *ctx) {
-    (void)ctx;
-    return 1; // Stub
+    if (!ctx || !ctx->process) return -1;
+    return (long)ctx->process->process_id;
 }
 
 static long linux_sys_gettid(bh_syscall_ctx_t *ctx) {
-    (void)ctx;
-    return 1; // Stub
+    if (!ctx || !ctx->thread) return -1;
+    return (long)ctx->thread->thread_id;
 }
 
 static long linux_sys_futex(bh_syscall_ctx_t *ctx) {
     (void)ctx;
-    return 0; // Stub
+    return -LINUX_ENOSYS; // Do not fake success
 }
 
 static const bh_syscall_desc_t linux_syscall_table[] = {

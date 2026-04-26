@@ -7,16 +7,17 @@
 #include "fault_diag.h"
 #include "kernel/status.h"
 #include "bharat/personality/personality_interface.h"
+#include "profile/profile_policy.h"
 
 kstatus_t bh_syscall_policy_check(bh_syscall_ctx_t *ctx, const bh_syscall_desc_t *desc) {
     if (!ctx || !desc) return K_ERR_INVALID_ARG;
 
     kstatus_t status = K_OK;
 
-    // 1. Syscall allowed for personality (already checked by table lookup, but for double-check)
-    // No personality fallback allowed: unsupported Linux syscall cannot fall through to native.
-    // This is implicitly enforced by the fact that each personality has its own table
-    // and the gate uses ONLY that table.
+    // 1. Personality and Profile Allowlist
+    if (!bh_profile_allows_personality(ctx->personality)) {
+        return K_ERR_DENIED;
+    }
 
     // 2. CAP_REQUIRED check: Must have enforceable rights
     if (desc->flags & BH_SYSCALL_F_CAP_REQUIRED) {
@@ -32,14 +33,24 @@ kstatus_t bh_syscall_policy_check(bh_syscall_ctx_t *ctx, const bh_syscall_desc_t
         if (desc->flags & (BH_SYSCALL_F_BLOCKING | BH_SYSCALL_F_SERVICE_CALL)) {
             status = K_ERR_INVALID_ARG;
         }
-        // Fast path syscalls must not perform usercopy unless explicitly whitelisted (none yet)
+        // Fast path syscalls must not perform usercopy
         if (status == K_OK && (desc->flags & (BH_SYSCALL_F_USER_READ | BH_SYSCALL_F_USER_WRITE))) {
             status = K_ERR_INVALID_ARG;
         }
     }
 
-    // 4. Syscall allowed for process sandbox/profile
-    // TODO: Implement profile-based filtering (e.g. Tiny profile may disable certain syscall groups)
+    // 4. Profile-based trait enforcement
+    if (status == K_OK) {
+        // Deny blocking syscalls if profile forbids them
+        if ((desc->flags & BH_SYSCALL_F_BLOCKING) && !bh_profile_allows_blocking_syscall()) {
+            status = K_ERR_DENIED;
+        }
+
+        // Deny service calls on MPU-only/Tiny profiles if not service-rich
+        if ((desc->flags & BH_SYSCALL_F_SERVICE_CALL) && !bh_profile_has_trait(BH_PROFILE_TRAIT_SERVICE_RICH)) {
+            status = K_ERR_DENIED;
+        }
+    }
 
     if (status != K_OK) {
         bh_syscall_stats_inc_denied(hal_cpu_get_id());

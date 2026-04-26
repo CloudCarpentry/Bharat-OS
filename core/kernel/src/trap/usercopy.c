@@ -23,6 +23,20 @@ static void* internal_memcpy(void* dst, const void* src, size_t n) {
     return dst;
 }
 
+__attribute__((weak))
+kstatus_t arch_copy_from_user_nofault(void *dst, const void *src, size_t len) {
+    // Fallback: not production-safe, only valid after mm_user_range_validate_current succeeds
+    internal_memcpy(dst, src, len);
+    return K_OK;
+}
+
+__attribute__((weak))
+kstatus_t arch_copy_to_user_nofault(void *dst, const void *src, size_t len) {
+    // Fallback: not production-safe, only valid after mm_user_range_validate_current succeeds
+    internal_memcpy(dst, src, len);
+    return K_OK;
+}
+
 kstatus_t copy_from_user_checked(void *dst, uintptr_t src, size_t len) {
     if (len == 0) return K_OK;
     if (!dst || src == 0) return K_ERR_INVALID_ARG;
@@ -35,9 +49,7 @@ kstatus_t copy_from_user_checked(void *dst, uintptr_t src, size_t len) {
     kstatus_t st = mm_user_range_validate_current(src, len, BH_USER_ACCESS_READ);
     if (st != K_OK) return st;
 
-    // TODO: fault-recoverable copy where arch supports it
-    internal_memcpy(dst, (const void *)src, len);
-    return K_OK;
+    return arch_copy_from_user_nofault(dst, (const void *)src, len);
 }
 
 kstatus_t copy_to_user_checked(uintptr_t dst, const void *src, size_t len) {
@@ -52,9 +64,7 @@ kstatus_t copy_to_user_checked(uintptr_t dst, const void *src, size_t len) {
     kstatus_t st = mm_user_range_validate_current(dst, len, BH_USER_ACCESS_WRITE);
     if (st != K_OK) return st;
 
-    // TODO: fault-recoverable copy where arch supports it
-    internal_memcpy((void *)dst, src, len);
-    return K_OK;
+    return arch_copy_to_user_nofault((void *)dst, src, len);
 }
 
 kstatus_t copy_user_string_checked(char *dst, uintptr_t src, size_t max_len) {
