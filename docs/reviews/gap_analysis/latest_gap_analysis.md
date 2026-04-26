@@ -202,6 +202,26 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 ---
 
+## Phase E3-X: Scalable Kernel Data Structures & Verification Framework (CROSS-CUTTING)
+
+### Goals
+* Introduce highly concurrent, RCU-safe, and verified data structures to support multicore scalability and safety.
+
+### Tasks
+* Implement VM range index replacement (Maple Tree-inspired).
+* Introduce Kernel RCU/read-mostly primitives.
+* Implement XArray/radix-style object index.
+* Build verified kernel hook prototype.
+* Define storage metadata tree strategy.
+* Develop memory-safe kernel abstraction layer (Rust).
+
+### Deliverables
+* Scalable, lock-free read paths for critical kernel registries.
+* Verified execution environment for kernel hooks.
+* Documented strategy for modern storage metadata.
+
+---
+
 ## Phase 4: Architecture Alignment
 
 ### Goals
@@ -341,10 +361,10 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 **Likely Code Areas**
 
 * `core/kernel/src/mm/tlb_coordinator.c`
-* `core/kernel/include/core/hal/`
-* `core/kernel/src/core/hal/x86_64/`
-* `core/kernel/src/core/hal/arm64/`
-* `core/kernel/src/core/hal/riscv64/`
+* `core/kernel/include/corecore/hal/`
+* `core/kernel/src/corecore/hal/x86_64/`
+* `core/kernel/src/corecore/hal/arm64/`
+* `core/kernel/src/corecore/hal/riscv64/`
 * `quality/tests/mm/`
 
 **Acceptance Criteria**
@@ -554,7 +574,7 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 * `core/kernel/src/mm/vm/fault/`
 * `core/kernel/src/mm/vm/aspace/`
 * `core/kernel/src/mm/vm/objects/`
-* `core/kernel/src/core/hal/*/`
+* `core/kernel/src/corecore/hal/*/`
 * `docs/architecture/memory/`
 
 **Acceptance Criteria**
@@ -607,7 +627,7 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 **Likely Code Areas**
 
 * `core/kernel/src/mm/iommu/`
-* `core/kernel/include/core/hal/`
+* `core/kernel/include/corecore/hal/`
 * `core/drivers/`
 * `docs/architecture/memory/`
 
@@ -663,6 +683,79 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 * Tests pass across all three translation profiles (MMU-full, MMU-lite, MPU-only)
 * Explicit unsupported-return tests succeed for paging features on MPU-only targets
+
+---
+
+## Epic E3-X — Scalable Kernel Data Structures & Verification Framework
+
+**Objective:** Introduce highly concurrent, RCU-safe, and verified data structures to support multicore scalability and safety. This is a cross-cutting epic supporting Phase 0, Phase 1, and Phase 3.
+
+### Story E3-X-S1 — VM range index replacement strategy
+**Objective:** Evaluate and implement Maple Tree-like range index for VM regions.
+**Likely Code Areas:** `core/kernel/src/mm/vm/`, `core/kernel/include/mm/`
+**Tasks:**
+- Implement/Evaluate concurrent range index.
+- Measure lock contention vs. current implementation.
+- Provide simple list-based fallback for MPU/Tiny profiles.
+**Acceptance Criteria:**
+- VM lookup path benchmarked.
+- Lock contention reduced under multicore workload.
+**Verification Strategy:** Multicore map/unmap stress tests, lookup performance benchmarks.
+
+### Story E3-X-S2 — Kernel RCU/read-mostly primitive
+**Objective:** Introduce Bharat-OS RCU-style read-side API.
+**Likely Code Areas:** `core/kernel/include/sync/`, `core/kernel/src/sync/`, `core/kernel/selftest/`
+**Tasks:**
+- Implement RCU-style read-side API (`rcu_read_lock/unlock`).
+- Implement grace-period/reclaim path using uRPC messages.
+**Acceptance Criteria:**
+- Read-side critical sections are lockless.
+- Grace-period reclaim is explicit and documented.
+**Verification Strategy:** RCU selftests covering reader/update/reclaim ordering across cores.
+
+### Story E3-X-S3 — XArray/radix-style object index
+**Objective:** Add scalable ID-to-object index for pages, capabilities, devices, or handles.
+**Likely Code Areas:** `core/kernel/include/ds/`, `core/kernel/src/ds/`, `core/kernel/selftest/ds/`
+**Tasks:**
+- Implement RCU-safe multi-level radix tree (XArray).
+- Support sparse integer indexes.
+**Acceptance Criteria:**
+- Supports sparse integer indexes efficiently.
+- Concurrent lookup/update contract documented.
+**Verification Strategy:** Sparse index unit tests, concurrent lookup stress tests.
+
+### Story E3-X-S4 — Verified kernel hook prototype
+**Objective:** Build an eBPF-inspired verifier for bounded policy/tracing programs.
+**Likely Code Areas:** `core/kernel/src/verify/`, `interface/uapi/verify/`, `core/services/security/`
+**Tasks:**
+- Implement bytecode verifier for termination and memory safety.
+- Build demo hook for tracing.
+**Acceptance Criteria:**
+- Verifier rejects unbounded loops and OOB access.
+- Demo hook functional in trace-only mode.
+**Verification Strategy:** Negative-path tests with unsafe bytecodes, tracing performance tests.
+
+### Story E3-X-S5 — Storage metadata tree strategy
+**Objective:** Define log-structured B-tree direction for modern storage.
+**Likely Code Areas:** `core/stacks/storage/`, `core/drivers/block/`, `docs/architecture/storage/`
+**Tasks:**
+- Define write-amplification and crash-consistency rules.
+- Document log-structured B-tree design.
+**Acceptance Criteria:**
+- NVMe/server profile has benchmark target.
+- Tiny/IoT profile can disable this path.
+**Verification Strategy:** Write amplification analysis, crash recovery simulation tests.
+
+### Story E3-X-S6 — Memory-safe kernel abstraction layer
+**Objective:** Develop safe Rust wrappers for inherently unsafe C-based kernel structures.
+**Likely Code Areas:** `core/kernel/src/rust/`, `core/kernel/include/`
+**Tasks:**
+- Create safe Rust abstractions for lists, locks, and refcounts.
+- Integrate with existing C kernel structures via FFI.
+**Acceptance Criteria:**
+- Compile-time memory safety guaranteed for wrapped structures.
+- No performance regression vs raw C implementation.
+**Verification Strategy:** Rust test suite, safety property proofs (where applicable).
 
 ---
 
@@ -791,6 +884,17 @@ A story is complete only when all are true:
 * Architecture docs updated
 * Build/runtime wiring updated
 * Legacy path impact assessed
+
+**For every new kernel data structure:**
+- concurrency model must be documented
+- ownership and reclaim model must be documented
+- profile gating must be defined
+- unit tests must exist
+- stress tests must exist for SMP-sensitive paths
+- benchmarks must compare old vs new path
+- no unbounded waits are allowed
+- capability enforcement impact must be reviewed
+- fallback path must exist for tiny, MPU-only, or MMU-lite profiles where relevant
 
 ### Release Gates
 

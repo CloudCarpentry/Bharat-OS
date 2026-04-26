@@ -1,6 +1,6 @@
 ---
 title: ARM32 + RV32 EDGE-Tier Architecture Expansion Plan
-status: Draft
+status: Proposed
 owner: Documentation Working Group
 last_updated: 2026-04-25
 tags:
@@ -106,8 +106,8 @@ Avoid spreading `#ifdef` logic across 64-bit backends.
 
 Use dedicated backend trees:
 
-- `core/kernel/src/core/hal/arm32/...`
-- `core/kernel/src/core/hal/riscv32/...`
+- `core/kernel/src/corecore/hal/arm32/...`
+- `core/kernel/src/corecore/hal/riscv32/...`
 
 Each backend should own its own:
 

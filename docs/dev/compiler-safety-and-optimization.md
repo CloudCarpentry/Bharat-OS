@@ -18,7 +18,7 @@ In kernel code, the optimization order must be:
 3. **Efficient after correctness is locked**
 4. **Architecture-specialized only in isolated files**
 
-This matches Bharat-OS's core direction: minimal kernel, clear boundaries, arch-specific implementation in `core/arch/`, abstraction contracts in `core/hal/`, and platform wiring in `core/platform/`.
+This matches Bharat-OS's core direction: minimal kernel, clear boundaries, arch-specific implementation in `core/arch/`, abstraction contracts in `corecore/hal/`, and platform wiring in `core/platform/`.
 
 ## The Challenge
 

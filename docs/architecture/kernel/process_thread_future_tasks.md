@@ -1,6 +1,6 @@
 ---
 title: Process & Thread Management Architecture - Future Implementation Plan
-status: Draft
+status: Proposed
 owner: Documentation Working Group
 last_updated: 2026-04-25
 tags:

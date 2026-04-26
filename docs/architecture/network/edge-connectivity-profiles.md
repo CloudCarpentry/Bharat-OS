@@ -1,6 +1,6 @@
 ---
 title: Edge Connectivity Profiles Architecture
-status: Draft
+status: Proposed
 owner: Documentation Working Group
 last_updated: 2026-04-25
 tags:

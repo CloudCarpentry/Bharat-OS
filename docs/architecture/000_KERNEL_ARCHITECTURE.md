@@ -1,6 +1,6 @@
 ---
 title: `KERNEL_ARCHITECTURE.md`
-status: Draft
+status: Proposed
 owner: Documentation Working Group
 last_updated: 2026-04-25
 tags:
@@ -78,7 +78,7 @@ core/kernel/
         riscv64/
         shakti/
 
-    core/hal/
+    corecore/hal/
         cpu/
         interrupt/
         timer/
@@ -134,9 +134,9 @@ Responsibilities include:
 Example:
 
 ```
-core/hal/x86_64/apic.c
-core/hal/arm64/gic.c
-core/hal/riscv64/plic.c
+corecore/hal/x86_64/apic.c
+corecore/hal/arm64/gic.c
+corecore/hal/riscv64/plic.c
 ```
 
 ---
