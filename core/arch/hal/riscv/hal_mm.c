@@ -1,3 +1,5 @@
+#include <stdbool.h>
+#include "hal/hal_capabilities.h"
 #include "hal/hal_mm.h"
 
 void hal_mm_get_zone_limits(hal_mm_zone_limits_t *out) {
@@ -29,4 +31,14 @@ void hal_mm_backend_caps(hal_mm_backend_caps_t *out) {
     out->alloc_granule = 4096;
     out->max_regions = 0;
     out->flags = 1;
+}
+
+const hal_arch_capabilities_t *hal_get_arch_capabilities(void) {
+#if __riscv_xlen == 32
+    extern const hal_arch_capabilities_t *hal_get_arch_capabilities_riscv32(void);
+    return hal_get_arch_capabilities_riscv32();
+#else
+    extern const hal_arch_capabilities_t *hal_get_arch_capabilities_riscv64(void);
+    return hal_get_arch_capabilities_riscv64();
+#endif
 }

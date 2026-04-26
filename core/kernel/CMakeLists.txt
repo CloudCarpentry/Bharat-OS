@@ -179,7 +179,7 @@ set(ARCH_TLB_ACCEL_SRC ${BHARAT_ARCH_ROOT}/common/arch_tlb_accel_stub.c)
 # ── Boot and HAL sources (arch-specific) ────────────────────────────────────
 if(ARCH STREQUAL "x86_64")
     set(BOOT_SRC ${BHARAT_ARCH_ROOT}/x86/x86_64/boot/boot.S)
-    set(ARCH_HAL ${BHARAT_ARCH_HAL_ROOT}/x86_64/hal_cpu.c ${BHARAT_ARCH_HAL_ROOT}/x86_64/discovery.c ${BHARAT_ARCH_HAL_ROOT}/x86_64/hal_mm.c ${BHARAT_ARCH_HAL_ROOT}/x86_64/trap_entry.S ${BHARAT_ARCH_HAL_ROOT}/x86_64/hal_pt_x86_64.c ${BHARAT_HAL_ROOT}/hal_pt.c ${BHARAT_ARCH_HAL_ROOT}/x86_64/vtd_iommu.c ${BHARAT_ARCH_HAL_ROOT}/x86_64/apic.c ${BHARAT_ARCH_HAL_ROOT}/x86_64/timer.c ${BHARAT_ARCH_HAL_ROOT}/x86_64/dma.c ${BHARAT_ARCH_HAL_ROOT}/x86_64/hal_secure_boot.c ${BHARAT_ARCH_HAL_ROOT}/x86_64/cpu_relax.c ${BHARAT_HAL_ROOT}/common/iommu/null/null_iommu.c ${BHARAT_ARCH_HAL_ROOT}/x86_64/iommu/intel_vtd/intel_vtd_stub.c)
+    set(ARCH_HAL ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/hal_cpu.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/hal_discovery.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/hal_mm.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/trap_entry.S ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/hal_pt_x86_64.c ${BHARAT_HAL_ROOT}/hal_pt.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/vtd_iommu.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/hal_irq.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/hal_timer.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/dma.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/hal_secure_boot.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/cpu_relax.c ${BHARAT_HAL_ROOT}/common/iommu/null/null_iommu.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/iommu/intel_vtd/intel_vtd_stub.c)
     set(ARCH_CONTEXT_SWITCH ${BHARAT_ARCH_ROOT}/x86/x86_64/context_switch.c ${BHARAT_ARCH_ROOT}/x86/x86_64/context_switch.S)
     set(ARCH_CPU_CAPS_SRC ${BHARAT_ARCH_ROOT}/x86/x86_64/cpu_caps.c)
     set(ARCH_EXT_STATE_SRC ${BHARAT_ARCH_ROOT}/x86/x86_64/ext_state.c)
@@ -187,7 +187,7 @@ if(ARCH STREQUAL "x86_64")
     list(APPEND ARCH_TLB_ACCEL_SRC ${BHARAT_ARCH_ROOT}/x86/x86_64/tlb_accel.c)
 elseif(ARCH STREQUAL "riscv64")
     set(BOOT_SRC ${BHARAT_ARCH_ROOT}/riscv/riscv64/boot/boot.S)
-    set(ARCH_HAL ${BHARAT_ARCH_HAL_ROOT}/riscv/hal_cpu.c ${BHARAT_ARCH_HAL_ROOT}/riscv/discovery.c ${BHARAT_ARCH_HAL_ROOT}/riscv/hal_mm.c ${BHARAT_ARCH_HAL_ROOT}/riscv/boot/feature_probe.c ${BHARAT_ARCH_HAL_ROOT}/riscv/trap_entry.S ${BHARAT_ARCH_HAL_ROOT}/riscv64/hal_pt_riscv64.c ${BHARAT_HAL_ROOT}/hal_pt.c ${BHARAT_ARCH_HAL_ROOT}/riscv/iopmp.c ${BHARAT_ARCH_HAL_ROOT}/riscv/plic.c ${BHARAT_ARCH_HAL_ROOT}/riscv/sbi_timer_ipi.c ${BHARAT_ARCH_HAL_ROOT}/riscv64/dma.c ${BHARAT_ARCH_HAL_ROOT}/riscv64/hal_secure_boot.c ${BHARAT_ARCH_HAL_ROOT}/riscv64/cpu_relax.c ${BHARAT_HAL_ROOT}/common/iommu/null/null_iommu.c ${BHARAT_ARCH_HAL_ROOT}/riscv64/iommu/riscv_iommu/riscv_iommu_stub.c)
+    set(ARCH_HAL ${BHARAT_ARCH_HAL_ROOT}/riscv/hal_cpu.c ${BHARAT_ARCH_HAL_ROOT}/riscv/hal_discovery.c ${BHARAT_ARCH_HAL_ROOT}/riscv/hal_mm.c ${BHARAT_ARCH_HAL_ROOT}/riscv/boot/feature_probe.c ${BHARAT_ARCH_HAL_ROOT}/riscv/trap_entry.S ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv64/hal_pt_riscv64.c ${BHARAT_HAL_ROOT}/hal_pt.c ${BHARAT_ARCH_HAL_ROOT}/riscv/iopmp.c ${BHARAT_ARCH_HAL_ROOT}/riscv/hal_irq.c ${BHARAT_ARCH_HAL_ROOT}/riscv/hal_timer.c ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv64/dma.c ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv64/hal_secure_boot.c ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv64/cpu_relax.c ${BHARAT_HAL_ROOT}/common/iommu/null/null_iommu.c ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv64/iommu/riscv_iommu/riscv_iommu_stub.c)
     set(ARCH_HAL_EXTRA ${BHARAT_ARCH_HAL_ROOT}/riscv/shakti_bsp.c)
     # VirtIO GPU display driver: only for qemu-virt + GUI enabled
     if(BHARAT_BOOT_GUI AND "${BHARAT_RISCV_SOC_PROFILE}" STREQUAL "qemu-virt")
@@ -199,21 +199,21 @@ elseif(ARCH STREQUAL "riscv64")
     set(ARCH_EXT_STATE_SRC ${BHARAT_ARCH_ROOT}/riscv/riscv64/ext_state.c)
 elseif(ARCH STREQUAL "riscv32")
     set(BOOT_SRC ${BHARAT_ARCH_ROOT}/riscv/riscv32/boot/boot.S)
-    set(ARCH_HAL ${BHARAT_ARCH_HAL_ROOT}/riscv/hal_cpu.c ${BHARAT_ARCH_HAL_ROOT}/riscv/boot/feature_probe.c ${BHARAT_ARCH_HAL_ROOT}/riscv/trap_entry.S ${BHARAT_ARCH_HAL_ROOT}/riscv32/hal_pt_riscv32.c ${BHARAT_HAL_ROOT}/hal_pt.c ${BHARAT_ARCH_HAL_ROOT}/riscv/iopmp.c ${BHARAT_ARCH_HAL_ROOT}/riscv/plic.c ${BHARAT_ARCH_HAL_ROOT}/riscv/sbi_timer_ipi.c ${BHARAT_HAL_ROOT}/common/hal_secure_boot_unsupported.c ${BHARAT_ARCH_HAL_ROOT}/riscv32/cpu_relax.c ${BHARAT_HAL_ROOT}/common/iommu/null/null_iommu.c ${BHARAT_ARCH_HAL_ROOT}/riscv32/discovery.c ${BHARAT_ARCH_HAL_ROOT}/riscv32/hal_mm.c ${BHARAT_ARCH_ROOT}/riscv/riscv32/boot/entry.c)
+    set(ARCH_HAL ${BHARAT_ARCH_HAL_ROOT}/riscv/hal_cpu.c ${BHARAT_ARCH_HAL_ROOT}/riscv/boot/feature_probe.c ${BHARAT_ARCH_HAL_ROOT}/riscv/trap_entry.S ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv32/hal_pt_riscv32.c ${BHARAT_HAL_ROOT}/hal_pt.c ${BHARAT_ARCH_HAL_ROOT}/riscv/iopmp.c ${BHARAT_ARCH_HAL_ROOT}/riscv/hal_irq.c ${BHARAT_ARCH_HAL_ROOT}/riscv/hal_timer.c ${BHARAT_HAL_ROOT}/common/hal_secure_boot_unsupported.c ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv32/cpu_relax.c ${BHARAT_HAL_ROOT}/common/iommu/null/null_iommu.c ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv32/hal_discovery.c ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv32/hal_mm.c ${BHARAT_ARCH_ROOT}/riscv/riscv32/boot/entry.c)
     set(ARCH_HAL_EXTRA ${BHARAT_ARCH_HAL_ROOT}/riscv/shakti_bsp.c)
     set(ARCH_CONTEXT_SWITCH ${BHARAT_ARCH_ROOT}/riscv/riscv64/context_switch.c ${BHARAT_ARCH_ROOT}/riscv/riscv64/context_switch.S)
     set(ARCH_CPU_CAPS_SRC ${BHARAT_ARCH_ROOT}/riscv/riscv64/cpu_caps.c)
     set(ARCH_EXT_STATE_SRC ${BHARAT_ARCH_ROOT}/riscv/riscv64/ext_state.c)
 elseif(ARCH STREQUAL "arm64")
     set(BOOT_SRC ${BHARAT_ARCH_ROOT}/arm/arm64/boot/boot.S)
-    set(ARCH_HAL ${BHARAT_ARCH_HAL_ROOT}/arm64/hal_cpu.c ${BHARAT_ARCH_HAL_ROOT}/arm64/discovery.c ${BHARAT_ARCH_HAL_ROOT}/arm64/hal_mm.c ${BHARAT_ARCH_HAL_ROOT}/arm64/trap_entry.S ${BHARAT_ARCH_HAL_ROOT}/arm64/hal_pt_arm64.c ${BHARAT_HAL_ROOT}/hal_pt.c ${BHARAT_ARCH_HAL_ROOT}/arm64/smmu.c ${BHARAT_ARCH_HAL_ROOT}/arm64/gicv3.c ${BHARAT_ARCH_HAL_ROOT}/arm64/timer_generic.c ${BHARAT_ARCH_HAL_ROOT}/arm64/dma.c ${BHARAT_ARCH_HAL_ROOT}/arm64/hal_secure_boot.c ${BHARAT_ARCH_HAL_ROOT}/arm64/cpu_relax.c ${BHARAT_HAL_ROOT}/common/iommu/null/null_iommu.c ${BHARAT_ARCH_HAL_ROOT}/arm64/iommu/arm_smmu/arm_smmu_stub.c)
+    set(ARCH_HAL ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/hal_cpu.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/hal_discovery.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/hal_mm.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/trap_entry.S ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/hal_pt_arm64.c ${BHARAT_HAL_ROOT}/hal_pt.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/smmu.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/hal_irq.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/hal_timer.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/dma.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/hal_secure_boot.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/cpu_relax.c ${BHARAT_HAL_ROOT}/common/iommu/null/null_iommu.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/iommu/arm_smmu/arm_smmu_stub.c)
     set(ARCH_CONTEXT_SWITCH ${BHARAT_ARCH_ROOT}/arm/arm64/context_switch.c ${BHARAT_ARCH_ROOT}/arm/arm64/context_switch.S)
-    set(ARCH_HAL_EXTRA ${BHARAT_ARCH_HAL_ROOT}/arm64/topology_fdt.c)
+    set(ARCH_HAL_EXTRA ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/topology_fdt.c)
     set(ARCH_CPU_CAPS_SRC ${BHARAT_ARCH_ROOT}/arm/arm64/cpu_caps.c)
     set(ARCH_EXT_STATE_SRC ${BHARAT_ARCH_ROOT}/arm/arm64/ext_state.c)
 elseif(ARCH STREQUAL "arm32")
     set(BOOT_SRC ${BHARAT_ARCH_ROOT}/arm/arm32/boot/boot.S)
-    set(ARCH_HAL ${BHARAT_ARCH_HAL_ROOT}/arm32/hal_cpu.c ${BHARAT_ARCH_HAL_ROOT}/arm32/trap_entry.S ${BHARAT_ARCH_HAL_ROOT}/arm32/hal_pt_arm32.c ${BHARAT_HAL_ROOT}/hal_pt.c ${BHARAT_ARCH_HAL_ROOT}/arm32/discovery.c ${BHARAT_ARCH_HAL_ROOT}/arm32/timer_generic.c ${BHARAT_ARCH_HAL_ROOT}/mpu/arm32/mpu_backend.c ${BHARAT_ARCH_HAL_ROOT}/arm32/dma.c ${BHARAT_HAL_ROOT}/common/hal_secure_boot_unsupported.c ${BHARAT_ARCH_HAL_ROOT}/arm32/cpu_relax.c ${BHARAT_HAL_ROOT}/common/iommu/null/null_iommu.c)
+    set(ARCH_HAL ${BHARAT_ARCH_HAL_ROOT}/arm/arm32/hal_cpu.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm32/trap_entry.S ${BHARAT_ARCH_HAL_ROOT}/arm/arm32/hal_pt_arm32.c ${BHARAT_HAL_ROOT}/hal_pt.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm32/hal_discovery.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm32/hal_timer.c ${BHARAT_ARCH_HAL_ROOT}/mpu/arm32/mpu_backend.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm32/dma.c ${BHARAT_HAL_ROOT}/common/hal_secure_boot_unsupported.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm32/cpu_relax.c ${BHARAT_HAL_ROOT}/common/iommu/null/null_iommu.c)
     set(ARCH_CONTEXT_SWITCH ${BHARAT_ARCH_ROOT}/arm/arm32/context_switch.c ${BHARAT_ARCH_ROOT}/arm/arm32/context_switch.S)
     set(ARCH_CPU_CAPS_SRC ${BHARAT_ARCH_ROOT}/arm/arm32/cpu_caps.c)
     set(ARCH_EXT_STATE_SRC ${BHARAT_ARCH_ROOT}/arm/arm32/ext_state.c)
@@ -428,25 +428,25 @@ set(KERNEL_SRCS
     ${BHARAT_ARCH_ROOT}/common/accel_caps_publish.c
     $<$<STREQUAL:${ARCH},x86_64>:${BHARAT_ARCH_ROOT}/x86/x86_64/arch_caps.c>
     $<$<STREQUAL:${ARCH},x86_64>:${BHARAT_ARCH_ROOT}/x86/x86_64/arch_console.c>
-    $<$<STREQUAL:${ARCH},x86_64>:${BHARAT_ARCH_ROOT}/x86/x86_64/hal_mmu.c>
+    $<$<STREQUAL:${ARCH},x86_64>:${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/hal_mm.c>
     $<$<STREQUAL:${ARCH},arm32>:${BHARAT_ARCH_ROOT}/arm/arm32/arch_console.c>
     $<$<STREQUAL:${ARCH},arm64>:${BHARAT_ARCH_ROOT}/arm/arm64/arch_caps.c>
     $<$<STREQUAL:${ARCH},arm64>:${BHARAT_ARCH_ROOT}/arm/arm64/arch_console.c>
-    $<$<STREQUAL:${ARCH},arm64>:${BHARAT_ARCH_ROOT}/arm/arm64/hal_mmu.c>
+    $<$<STREQUAL:${ARCH},arm64>:${BHARAT_ARCH_HAL_ROOT}/arm/arm64/hal_mm.c>
     $<$<STREQUAL:${ARCH},riscv64>:${BHARAT_ARCH_ROOT}/riscv/riscv64/arch_caps.c>
     $<$<STREQUAL:${ARCH},riscv64>:${BHARAT_ARCH_ROOT}/riscv/riscv64/arch_console.c>
-    $<$<STREQUAL:${ARCH},riscv64>:${BHARAT_ARCH_ROOT}/riscv/riscv64/hal_mmu.c>
+    $<$<STREQUAL:${ARCH},riscv64>:${BHARAT_ARCH_HAL_ROOT}/riscv/riscv64/hal_mm.c>
     $<$<STREQUAL:${ARCH},arm32>:${BHARAT_ARCH_ROOT}/arm/arm32/arch_caps.c>
-    $<$<STREQUAL:${ARCH},arm32>:${BHARAT_ARCH_ROOT}/arm/arm32/hal_mmu.c>
+    $<$<STREQUAL:${ARCH},arm32>:${BHARAT_ARCH_HAL_ROOT}/arm/arm32/hal_mm.c>
     $<$<STREQUAL:${ARCH},riscv32>:${BHARAT_ARCH_ROOT}/riscv/riscv32/arch_caps.c>
-    $<$<STREQUAL:${ARCH},riscv32>:${BHARAT_ARCH_ROOT}/riscv/riscv32/hal_mmu.c>
+    $<$<STREQUAL:${ARCH},riscv32>:${BHARAT_ARCH_HAL_ROOT}/riscv/riscv32/hal_mm.c>
     ${ARCH_EXT_STATE_SRC}
-    ${BHARAT_HAL_ROOT}/hal_mem_backend.c
+    ${BHARAT_HAL_ROOT}/common/hal_mem_backend.c
     ${BHARAT_HAL_ROOT}/common/iommu_adapter.c
-    ${BHARAT_HAL_ROOT}/dma_coherency.c
-    ${BHARAT_HAL_ROOT}/interrupt_common.c
-    ${BHARAT_HAL_ROOT}/timer_common.c
-    ${BHARAT_HAL_ROOT}/hal_mmu_caps.c
+    ${BHARAT_HAL_ROOT}/common/hal_dma_coherency.c
+    ${BHARAT_HAL_ROOT}/common/hal_interrupt_common.c
+    ${BHARAT_HAL_ROOT}/common/hal_timer_common.c
+    ${BHARAT_HAL_ROOT}/common/hal_mmu_caps.c
     src/atomic64_fallback.c
     src/lib/base/status.c
     src/mm/dma/dma.c

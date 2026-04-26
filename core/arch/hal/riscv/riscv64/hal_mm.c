@@ -1,3 +1,5 @@
+#include <stdbool.h>
+#include "hal/hal_capabilities.h"
 #include "hal/hal_mmu.h"
 #include <string.h>
 
@@ -21,4 +23,24 @@ int hal_mem_get_caps(hal_mem_caps_t *caps) {
     caps->supports_iommu = true; // IOMMU
 
     return 0;
+}
+
+static const hal_arch_capabilities_t g_riscv64_caps = {
+    .arch_name = "riscv64",
+    .arch_bits = 64,
+    .support_level = BH_ARCH_SUPPORT_RUNTIME_SUPPORTED,
+    .memory_model = BH_MEMORY_MODEL_MMU_FULL,
+    .has_smp = true,
+    .has_irq_controller = true,
+    .has_monotonic_timer = true,
+    .has_cycle_counter = true,
+    .has_dma = true,
+    .has_iommu = true,
+    .has_cache_ops = true,
+    .has_tlb_ops = true,
+    .max_supported_cores = 32
+};
+
+const hal_arch_capabilities_t *hal_get_arch_capabilities_riscv64(void) {
+    return &g_riscv64_caps;
 }
