@@ -2,6 +2,7 @@ import json
 import os
 import subprocess
 import sys
+import platform
 from pathlib import Path
 from shutil import which
 
@@ -17,16 +18,42 @@ def load_run_manifest(path: Path) -> dict:
         return json.load(f)
 
 
-def run_qemu(manifest_path: Path) -> int:
+def run_qemu(manifest_path: Path, mode_override: str = None, display_override: str = None) -> int:
+    """
+    Launches QEMU based on a run manifest and optional CLI overrides.
+
+    :param manifest_path: Path to the run-manifest.json
+    :param mode_override: 'smoke' or 'interactive'
+    :param display_override: 'gui' or 'headless'
+    """
     manifest = load_run_manifest(manifest_path)
 
     target_name = manifest.get("target_name")
-    print(f"\n[Run] Launching QEMU for {target_name}...")
 
     arch = manifest.get("arch")
     run_config = manifest.get("run_config", {})
     artifacts = manifest.get("artifacts", {})
     boot_contract = manifest.get("boot_contract", {})
+
+    # Determine Display Mode
+    # Priority: CLI override > Manifest config
+    nographic_manifest = run_config.get("nographic", False)
+    if display_override == "gui":
+        nographic = False
+    elif display_override == "headless":
+        nographic = True
+    else:
+        nographic = nographic_manifest
+
+    # Determine Run Mode
+    # Priority: CLI override > Default based on display
+    if mode_override:
+        run_mode = mode_override
+    else:
+        # Default: GUI targets are interactive, headless targets are smoke
+        run_mode = "interactive" if not nographic else "smoke"
+
+    print(f"\n[Run] Launching QEMU for {target_name} ({run_mode} mode, {'headless' if nographic else 'gui'})...")
 
     boot_artifact = artifacts.get("boot_artifact")
 
@@ -44,13 +71,27 @@ def run_qemu(manifest_path: Path) -> int:
         "riscv32": "qemu-system-riscv32",
     }
 
-    runner = qemu_bin_map.get(arch)
-    if not runner:
+    runner_base = qemu_bin_map.get(arch)
+    if not runner_base:
         print(f"Error: Unknown architecture '{arch}' for QEMU runner.")
         sys.exit(1)
 
-    if not check_command(runner):
-        print(f"\nERROR: Runner '{runner}' not found in PATH.")
+    # Windows support for .exe suffix
+    runners_to_try = [runner_base]
+    if platform.system() == "Windows":
+        runners_to_try.insert(0, f"{runner_base}.exe")
+
+    runner = None
+    for r in runners_to_try:
+        if check_command(r):
+            runner = r
+            break
+
+    if not runner:
+        tried = " or ".join(runners_to_try)
+        print(f"\nERROR: QEMU runner '{tried}' not found in PATH.")
+        if platform.system() == "Windows":
+             print("TIP: Ensure QEMU is installed and added to your System PATH.")
         sys.exit(1)
 
     cmd = [runner]
@@ -81,10 +122,15 @@ def run_qemu(manifest_path: Path) -> int:
     if dtb_path:
         cmd.extend(["-dtb", dtb_path])
 
-    # We use discrete flags for better signal handling on Windows/WSL
-    # -nographic often hijacks the signal handler; -no-reboot keeps QEMU from
-    # restarting after a kernel panic so the process exits cleanly.
-    cmd.extend(["-nographic", "-monitor", "none", "-serial", "stdio", "-no-reboot"])
+    # Display / Serial configuration
+    if nographic:
+        cmd.extend(["-nographic", "-monitor", "none", "-serial", "stdio"])
+    else:
+        # For GUI, we still want serial output to stdio for logs
+        cmd.extend(["-serial", "stdio"])
+
+    # Always add -no-reboot to prevent infinite loops on panic
+    cmd.append("-no-reboot")
 
     smp = run_config.get("smp", 1)
     if smp:
@@ -138,28 +184,36 @@ def run_qemu(manifest_path: Path) -> int:
                 if BOOT_MARKER in line:
                     _report_boot_success(target_name, BOOT_MARKER)
                     marker_observed = True
-                    break
+                    if run_mode == "smoke":
+                        break
             except queue.Empty:
                 pass
 
-            if time.time() - start_time > TIMEOUT_SEC:
+            if run_mode == "smoke" and (time.time() - start_time > TIMEOUT_SEC):
                 print(f"\n[Run] FAIL: Timeout ({TIMEOUT_SEC}s) reached before boot marker.")
                 break
 
             time.sleep(0.1)
 
-        # Drain any remaining output that arrived after QEMU exited or the
-        # timeout broke out of the loop.  The boot marker may be in these
-        # final lines (e.g. when -no-reboot causes an immediate clean exit).
-        if not marker_observed:
-            t.join(timeout=1.0)
-            while not q.empty():
-                line = q.get_nowait()
-                sys.stdout.write(line)
-                sys.stdout.flush()
-                if BOOT_MARKER in line:
-                    _report_boot_success(target_name, BOOT_MARKER)
-                    marker_observed = True
+        # In interactive mode, continue reading until process exits
+        if run_mode == "interactive":
+            while proc.poll() is None:
+                try:
+                    line = q.get_nowait()
+                    sys.stdout.write(line)
+                    sys.stdout.flush()
+                except queue.Empty:
+                    time.sleep(0.1)
+
+        # Drain any remaining output
+        t.join(timeout=1.0)
+        while not q.empty():
+            line = q.get_nowait()
+            sys.stdout.write(line)
+            sys.stdout.flush()
+            if BOOT_MARKER in line and not marker_observed:
+                _report_boot_success(target_name, BOOT_MARKER)
+                marker_observed = True
 
     except KeyboardInterrupt:
         print("\n[Run] Terminating QEMU (User Interrupted)...")
@@ -178,11 +232,8 @@ def run_qemu(manifest_path: Path) -> int:
                 sys.stdout.write(q.get_nowait())
                 sys.stdout.flush()
 
-    if marker_observed:
-        return 0
+    if run_mode == "smoke":
+        return 0 if marker_observed else 1
     else:
-        if proc and proc.returncode != 0 and proc.returncode is not None:
-             print(f"[Run] QEMU exited with code {proc.returncode}")
-
-        print(f"[Run] FAIL: boot marker not observed for {target_name}")
-        return 1
+        # In interactive mode, we return the QEMU exit code
+        return proc.returncode if proc.returncode is not None else 0
