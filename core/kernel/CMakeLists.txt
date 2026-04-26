@@ -394,6 +394,7 @@ set(KERNEL_SRCS
     src/mm/mem_validator.c
     src/mm/footprint.c
     src/mm/prot_domain.c
+    src/mm/user_range.c
     ${BHARAT_BOOT_ROOT}/common/boot_ui_select.c
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/boot_video.c>
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/display_handoff.c>
@@ -523,6 +524,10 @@ add_executable(kernel.elf
     $<TARGET_OBJECTS:bharatos_kernel_personality>
     $<TARGET_OBJECTS:bharatos_personality_native>
     $<TARGET_OBJECTS:bharatos_personality_common>
+    $<$<BOOL:${BHARAT_ENABLE_SUBSYS_LINUX}>:bharatos_personality_linux>
+    $<$<BOOL:${BHARAT_ENABLE_SUBSYS_ANDROID}>:bharatos_personality_android>
+    $<$<BOOL:${BHARAT_ENABLE_SUBSYS_WINDOWS}>:bharatos_personality_windows>
+    $<$<BOOL:${BHARAT_ENABLE_SUBSYS_AUTOMOTIVE}>:bharatos_personality_automotive>
     $<TARGET_OBJECTS:k_debug>
     $<TARGET_OBJECTS:k_init>
     $<TARGET_OBJECTS:k_fs>

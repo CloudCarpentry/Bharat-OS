@@ -8,8 +8,9 @@ void linux_vfs_init(void);
 #include "trap/syscall_context.h"
 
 extern const bh_personality_syscall_table_t bh_linux_syscall_table;
+extern long bh_syscall_gate(trap_frame_t *frame, const trap_info_t *info);
 
-const bh_personality_syscall_table_t *linux_personality_get_table(void) {
+const bh_personality_syscall_table_t *personality_linux_get_table(void) {
     return &bh_linux_syscall_table;
 }
 
@@ -78,7 +79,7 @@ long linux_syscall_handler(long sysno, long arg1, long arg2, long arg3, long arg
         return -38; // ENOSYS equivalent
     }
 
-    const bh_personality_syscall_table_t *table = linux_personality_get_table();
+    const bh_personality_syscall_table_t *table = personality_linux_get_table();
     if (!table || ctx.regs.nr > table->max_syscall_nr) {
         return -38;
     }
@@ -89,6 +90,31 @@ long linux_syscall_handler(long sysno, long arg1, long arg2, long arg3, long arg
     }
 
     return desc->handler(&ctx);
+}
+
+static long linux_handle_syscall(bh_thread_t *thread, trap_frame_t *frame, const trap_info_t *info) {
+    (void)thread;
+    return bh_syscall_gate(frame, info);
+}
+
+static int linux_handle_user_fault(bh_thread_t *thread, trap_frame_t *frame, const trap_info_t *info) {
+    (void)thread; (void)frame; (void)info;
+    return -1;
+}
+
+static int linux_map_fault_to_signal(const trap_info_t *info) {
+    (void)info;
+    return 11; // SIGSEGV
+}
+
+static const personality_ops_t linux_personality_ops = {
+    .handle_syscall = linux_handle_syscall,
+    .handle_user_fault = linux_handle_user_fault,
+    .map_fault_to_signal = linux_map_fault_to_signal,
+};
+
+const personality_ops_t *personality_linux_get_ops(void) {
+    return &linux_personality_ops;
 }
 
 // Rest of VFS and FD mapping...

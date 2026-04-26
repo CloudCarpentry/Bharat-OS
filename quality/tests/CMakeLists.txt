@@ -68,6 +68,18 @@ add_executable(test_hal_caps_consistency
 target_include_directories(test_hal_caps_consistency PRIVATE ../kernel/include ../include ../core/boot/include)
 add_test(NAME test_hal_caps_consistency COMMAND test_hal_caps_consistency)
 
+add_executable(test_arch_syscall
+    test_arch_syscall.c
+    ../core/arch/x86/x86_64/syscall_extract.c
+)
+target_include_directories(test_arch_syscall PRIVATE
+    ../kernel/include
+    ../include
+    ../core/lib/include
+)
+target_compile_definitions(test_arch_syscall PRIVATE TRAP_FRAME_DEFINED=1)
+add_test(NAME test_arch_syscall COMMAND test_arch_syscall)
+
 # The following legacy tests are preserved here but should eventually
 # migrate to kernel/src/test or tests/host as appropriate.
 add_executable(test_panic test_panic.c ../kernel/src/panic.c ../kernel/src/fault_diag.c $<TARGET_OBJECTS:bharat_test_sched_mocks>)
@@ -496,6 +508,7 @@ set(BHARAT_NOSTDLIB_TEST_TARGETS
     test_storage_profile
     test_boot_e2e
     test_android_personality
+    test_arch_syscall
 )
 
 foreach(test_target IN LISTS BHARAT_NOSTDLIB_TEST_TARGETS)

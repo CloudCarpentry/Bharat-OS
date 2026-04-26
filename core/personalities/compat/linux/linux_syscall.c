@@ -35,8 +35,8 @@ static const bh_syscall_desc_t linux_syscall_table[] = {
     [LINUX_SYS_GETPID]     = { LINUX_SYS_GETPID, "getpid", 0, BH_SYSCALL_F_FAST, 0, linux_sys_getpid },
     [LINUX_SYS_GETTID]     = { LINUX_SYS_GETTID, "gettid", 0, BH_SYSCALL_F_FAST, 0, linux_sys_gettid },
     [LINUX_SYS_FUTEX]      = { LINUX_SYS_FUTEX, "futex", 6, BH_SYSCALL_F_BLOCKING, 0, linux_sys_futex },
-    [LINUX_SYS_EXIT]       = { LINUX_SYS_EXIT, "exit", 1, BH_SYSCALL_F_FAST, 0, bh_sys_thread_exit },
-    [LINUX_SYS_EXIT_GROUP] = { LINUX_SYS_EXIT_GROUP, "exit_group", 1, BH_SYSCALL_F_FAST, 0, bh_sys_thread_exit },
+    [LINUX_SYS_EXIT]       = { LINUX_SYS_EXIT, "exit", 1, 0, 0, bh_sys_thread_exit },
+    [LINUX_SYS_EXIT_GROUP] = { LINUX_SYS_EXIT_GROUP, "exit_group", 1, 0, 0, bh_sys_thread_exit },
 };
 
 const bh_personality_syscall_table_t bh_linux_syscall_table = {
