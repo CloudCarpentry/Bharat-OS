@@ -64,6 +64,7 @@ typedef int32_t kstatus_t;
 #define K_ERR_CAP_OWNERSHIP     ((kstatus_t)-772)
 #define K_ERR_LABEL_VIOLATION   ((kstatus_t)-773)
 #define K_ERR_SANDBOX_VIOLATION ((kstatus_t)-774)
+#define K_ERR_CAP_STALE         ((kstatus_t)-775)
 
 /* ── IPC / URPC ───────────────── -1024 .. -1279 */
 #define K_ERR_IPC_NO_ENDPOINT   ((kstatus_t)-1024)
