@@ -273,6 +273,21 @@ void boot_common_platform_services(const boot_info_t *boot) {
     KPRINT("  [TRAP] Initializing syscall/trap gate...\n");
 #include "personality/personality_hooks.h"
 #include "bharat/personality/personality_interface.h"
+#include "bh_personality_registry.h"
+
+#ifdef BHARAT_ENABLE_PERSONALITIES
+    extern void native_personality_init(void);
+    native_personality_init();
+#ifdef BHARAT_ENABLE_COMPAT_LINUX
+    extern void linux_personality_init(void);
+    linux_personality_init();
+#endif
+#ifdef BHARAT_ENABLE_COMPAT_ANDROID
+    extern void android_personality_init(void);
+    android_personality_init();
+#endif
+#endif
+
     personality_register_ops(personality_native_get_ops());
 
     if (trap_init() != 0) {

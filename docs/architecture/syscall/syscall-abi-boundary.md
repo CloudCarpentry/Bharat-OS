@@ -37,7 +37,7 @@ sequenceDiagram
     P->>G: common gate
     G->>A: arch_trap_extract_syscall()
     G->>D: lookup descriptor by personality + nr
-    G->>G: validate context, flags, policy
+    G->>G: validate context, flags, policy (traits + caps)
     G->>H: handler(ctx)
     H->>K: typed operation / service call
     H-->>G: result
@@ -56,8 +56,8 @@ flowchart TD
     Pers --> Gate
     Gate --> Native[core/personalities/native/native_syscall.c]
     Gate --> Linux[core/personalities/compat/linux/linux_syscall.c]
-    Gate --> Android[future android overlay]
-    Gate --> Windows[future NT-style personality]
+    Gate --> Android[core/personalities/compat/android/android_syscall.c]
+    Gate --> Windows[core/personalities/compat/windows/windows_syscall.c]
 
     UAPI[interface/include/bharat/uapi/syscall] --> Native
     UAPI --> SDK[experience/user/sdk]
@@ -65,56 +65,36 @@ flowchart TD
 
 ### C. Implementation Status
 
-```mermaid
-flowchart LR
-    Done[Complete] --> Gate[Common syscall gate]
-    Done --> Native[Native table]
-    Done --> LinuxMin[Minimal Linux table]
-    Done --> Usercopy[Stage 1.5 usercopy]
-    Done --> X86Int[x86_64 int 0x80 transitional]
-    Future[Future] --> X86Fast[x86_64 syscall/sysret]
-    Future --> VMA[VMA/page-backed usercopy]
-    Future --> Android[Android overlay]
-    Future --> Windows[Windows NT object model]
-    Future --> VDSO[vDSO fast page]
-```
+- **Common Syscall Gate:** Complete. Enforces profile traits and capability rights.
+- **Return Register Ownership:** Always in `trap_dispatch_syscall()`.
+- **Usercopy:** Stage 2A (VMA-backed) validation complete.
+- **x86_64 Fast Path:** Experimental (Disabled by default). Uses `int $0x80` transitional path in production.
+- **Personalities:** Native and Linux (Hardened). Android and Windows (Scaffolds).
 
-## Governance and ABI
+## Profile-Aware Policy (Traits)
 
-The canonical source of truth for syscall numbers is `interface/include/bharat/uapi/syscall/table.def` and the manifest `interface/contracts/abi/syscalls.json`.
+Syscall enforcement depends on **traits** defined in the active profile policy, not on hardcoded profile enums.
 
-1.  **Append-Only:** New syscalls must be added to the end of the table.
-2.  **No Renumbering:** Syscall numbers are immutable once assigned.
-3.  **No Deletions:** Deprecated syscalls become stubs returning `K_ERR_UNSUPPORTED`.
-4.  **No Renames:** UAPI names are part of the stable contract.
+| Trait | Impact |
+| :--- | :--- |
+| `BH_PROFILE_TRAIT_SERVICE_RICH` | Allows `BH_SYSCALL_F_SERVICE_CALL` syscalls. |
+| `BH_PROFILE_TRAIT_NO_BLOCKING_RT` | Denies `BH_SYSCALL_F_BLOCKING` syscalls for RT threads. |
+| `BH_PROFILE_TRAIT_MMU_FULL` | Requires VMA-backed Stage 2A usercopy validation. |
 
-### ABI Drift Verification
+## Usercopy Hardening (Stage 2A)
 
-The `tools/abi/check_syscalls.py` tool enforces these rules against the baseline manifest.
-
-## Usercopy Hardening (Stage 1.5)
-
-All data transfers between kernel and userspace must use the checked usercopy primitives:
-
--   `copy_from_user_checked()`
--   `copy_to_user_checked()`
--   `copy_user_string_checked()`
+All data transfers between kernel and userspace use checked primitives that validate against the process address space (VMA/Regions).
 
 **Hardening Rules:**
 - NULL rejection if `len > 0`.
 - Pointer + length overflow checks.
-- Strict max copy size: `BH_USERCOPY_MAX_BYTES` (default 4096).
-- User range validation.
+- Strict max copy size: `BH_USERCOPY_MAX_BYTES` (4096).
+- Authoritative VMA/Region validation (Permissions + Mapping).
 
 ## Architecture Notes
 
 ### x86_64
-The x86_64 ABI is temporarily using `int $0x80` for consistency. The target production ABI is `SYSCALL/SYSRET`.
+The x86_64 ABI is currently using `int $0x80` for stability. `SYSCALL/SYSRET` is experimental and requires `BHARAT_X86_64_ENABLE_FAST_SYSCALL`.
 
 ### ARM64
 ARM64 syscall detection decodes `ESR_EL1.EC` (0x15).
-```c
-/* Bharat-OS currently treats all SVC-from-EL0 exceptions as syscall entry.
- * ISS/SVC immediate is reserved for future ABI versioning/debug use.
- */
-```

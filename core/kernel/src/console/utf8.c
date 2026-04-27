@@ -37,5 +37,24 @@ uint32_t utf8_decode(utf8_decoder_t* decoder, uint8_t byte) {
         (0xff >> type) & (byte);
 
     decoder->state = utf8d[256 + decoder->state + type];
+
+    /* Additional hardening for kernel console to prevent overlong, surrogates, and out-of-range */
+    if (decoder->state == UTF8_ACCEPT) {
+        uint32_t cp = decoder->codepoint;
+        bool invalid = false;
+
+        if (cp >= 0xD800 && cp <= 0xDFFF) invalid = true;
+        if (cp > 0x10FFFF) invalid = true;
+
+        /* Check for overlong encodings using the Hoehrmann decoder's property.
+         * The DFA already handles many overlongs via states, but we can be explicit. */
+        if (cp < 0x80 && type != 0) invalid = true;
+        if (cp >= 0x80 && cp < 0x800 && type != 2 && type != 10) invalid = true; // simplified
+
+        if (invalid) {
+            decoder->state = UTF8_REJECT;
+        }
+    }
+
     return decoder->state;
 }

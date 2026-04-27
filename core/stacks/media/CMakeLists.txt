@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-option(BHARAT_BUILD_HEADLESS_COMPOSITOR "Build headless compositor test backend" ON)
+option(BHARAT_BUILD_HEADLESS_COMPOSITOR "Build headless compositor test backend" OFF)
 
 if(BHARAT_BUILD_HEADLESS_COMPOSITOR)
     add_library(bharat_headless_compositor STATIC

@@ -9,6 +9,11 @@ type console_backend_kind_t enum {
     CONSOLE_BACKEND_FRAMEBUFFER = 2
 };
 
+// TTY rights for the granular service capability model.
+const uint32 TTY_RIGHT_READ   = 0x00000001;
+const uint32 TTY_RIGHT_WRITE  = 0x00000002;
+const uint32 TTY_RIGHT_ATTACH = 0x00000004;
+
 struct console_cap_request_t {
     uint32 request_type;
     uint32 preferred_backend;
@@ -36,4 +41,25 @@ operation WriteStream {
 operation FlushStream {
     opcode = 3;
     capability_required = true;
+};
+
+struct tty_session_request_t {
+    uint32 requested_rights;
+};
+
+struct tty_session_response_t {
+    uint32 status;
+    uint32 session_id;
+};
+
+operation OpenSession {
+    opcode = 4;
+    input = tty_session_request_t;
+    output = tty_session_response_t;
+};
+
+operation ReadSession {
+    opcode = 5;
+    input = uint32; // session_id
+    output_bytes = true;
 };
