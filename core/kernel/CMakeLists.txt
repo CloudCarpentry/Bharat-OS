@@ -531,7 +531,8 @@ add_executable(kernel.elf
     $<$<BOOL:${BHARAT_ENABLE_SUBSYS_LINUX}>:$<TARGET_OBJECTS:bharatos_personality_linux>>
     $<$<BOOL:${BHARAT_ENABLE_SUBSYS_ANDROID}>:$<TARGET_OBJECTS:bharatos_personality_android>>
     $<$<BOOL:${BHARAT_ENABLE_SUBSYS_WINDOWS}>:$<TARGET_OBJECTS:bharatos_personality_windows>>
-    $<$<BOOL:${BHARAT_ENABLE_SUBSYS_AUTOMOTIVE}>:$<TARGET_OBJECTS:bharatos_personality_automotive>>
+    $<$<BOOL:${BHARAT_ENABLE_SUBSYS_AUTOMOTIVE}>:$<TARGET_OBJECTS:bharatos_personality_automotive>
+    $<TARGET_OBJECTS:bharatos_stack_vehicle>>
     $<TARGET_OBJECTS:k_debug>
     $<TARGET_OBJECTS:k_init>
     $<TARGET_OBJECTS:k_fs>

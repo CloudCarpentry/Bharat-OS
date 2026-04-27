@@ -1,5 +1,5 @@
 #include <bharat/kernel/ds/bh_handle_table.h>
-#include <string.h>
+#include <lib/base/string.h>
 
 kstatus_t bh_handle_table_init(bh_handle_table_t *table, void *storage, size_t capacity) {
     if (!table || !storage || capacity == 0) {

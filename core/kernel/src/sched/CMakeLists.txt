@@ -17,6 +17,9 @@ add_library(k_sched OBJECT
     sched_invariants.c
     cpu_partition.c
     cpu_partition_validate.c
+    execution_mode.c
+    execution_mode.c
+    execution_mode.c
 )
 
 target_sources(k_sched PRIVATE sched_test_support.c)

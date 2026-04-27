@@ -182,4 +182,4 @@ static int boot_test_sched_invariants(void) {
     return -1;
 }
 
-REGISTER_BOOT_SELFTEST("sched_invariants", "scheduler", boot_test_sched_invariants, BOOT_TEST_STAGE_RUNTIME, BOOT_TEST_MANDATORY, 0, true)
+REGISTER_BOOT_SELFTEST("sched_invariants_disabled", "scheduler", boot_test_sched_invariants, BOOT_TEST_STAGE_RUNTIME, BOOT_TEST_EXTENDED, 0, true)

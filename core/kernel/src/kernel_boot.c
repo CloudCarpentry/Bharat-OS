@@ -1,3 +1,4 @@
+#include "boot/boot_args.h"
 #include "hal/hal_irq.h"
 #include "hal/hal_timer.h"
 #include "../staging/ai/ai_kernel_bridge.h"
@@ -88,6 +89,7 @@ void init_subsystems(void) {
 }
 void boot_common_early(const boot_info_t *boot) {
 
+    boot_args_init(boot->cmdline);
 
     hal_init();
 
@@ -411,6 +413,23 @@ static void runtime_enter_benchmark(const boot_info_t *boot) {
     }
 }
 
+extern void autos_task_demo_run(void);
+
+static void runtime_enter_automotive(const boot_info_t *boot) {
+    (void)boot;
+    KPRINT("  [BOOT] Automotive mode active.\n");
+
+    boot_selftest_report_t report;
+    boot_selftest_run_stage(BOOT_TEST_STAGE_RUNTIME, &report);
+    KPRINT("  [BOOT] Automotive mode initialization complete\n");
+
+    autos_task_demo_run();
+
+    while (1) {
+        hal_cpu_halt();
+    }
+}
+
 static void runtime_enter_legacy_bringup(const boot_info_t *boot) {
     bool video_mapped = runtime_try_boot_video(boot);
     runtime_maybe_boot_gui(video_mapped);
@@ -442,10 +461,14 @@ void boot_common_runtime(const boot_info_t *boot) {
     KPRINT("  [BOOT] Kernel loading successful - boot complete\n");
 
     switch (mode) {
+        case BHARAT_BOOT_MODE_AUTOMOTIVE:
+            KPRINT("  [BOOT] Entering automotive runtime\n");
+            runtime_enter_automotive(boot);
+            break;
         case BHARAT_BOOT_MODE_NORMAL:
         default:
             KPRINT("  [BOOT] Entering normal runtime\n");
-            runtime_enter_normal(boot);
+            if (mode == BOOT_MODE_AUTOMOTIVE) runtime_enter_automotive(boot); else runtime_enter_normal(boot);
             break;
         case BHARAT_BOOT_MODE_DIAGNOSTIC:
             KPRINT("  [BOOT] Entering diagnostic runtime\n");
@@ -463,7 +486,6 @@ void boot_common_runtime(const boot_info_t *boot) {
             KPRINT("  [BOOT] Entering benchmark runtime\n");
             runtime_enter_benchmark(boot);
             break;
-        case BHARAT_BOOT_MODE_LEGACY_BRINGUP:
             KPRINT("  [BOOT] Entering legacy bring-up runtime\n");
             runtime_enter_legacy_bringup(boot);
             break;

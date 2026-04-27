@@ -13,7 +13,7 @@ static const cap_rights_mask_t k_cap_valid_rights_accel_telemetry = (CAP_RIGHT_R
 static const cap_rights_mask_t k_cap_valid_rights_accel_admin = (CAP_RIGHT_RESET | CAP_RIGHT_PARTITION | CAP_RIGHT_FW_LOAD | CAP_RIGHT_DELEGATE);
 static const cap_rights_mask_t k_cap_valid_rights_dma_grant = (CAP_RIGHT_DMA_MAP | CAP_RIGHT_MEMORY_UNMAP | CAP_RIGHT_DELEGATE);
 static const cap_rights_mask_t k_cap_valid_rights_dma_domain = (CAP_RIGHT_DELEGATE);
-static const cap_rights_mask_t k_cap_valid_rights_process = (CAP_RIGHT_PROCESS_MANAGE | CAP_RIGHT_FAULT_DOMAIN_MANAGE | CAP_RIGHT_RESOURCE_ALLOC | CAP_RIGHT_DELEGATE);
+static const cap_rights_mask_t k_cap_valid_rights_process = (CAP_RIGHT_PROCESS_MANAGE | CAP_RIGHT_DELEGATE | CAP_RIGHT_RESOURCE_ALLOC);
 static const cap_rights_mask_t k_cap_valid_rights_thread = (CAP_RIGHT_SCHEDULE | CAP_RIGHT_DELEGATE);
 
 // Internal helper: Returns valid mask for capability type, or 0 if type not transferrable

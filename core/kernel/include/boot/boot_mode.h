@@ -19,6 +19,8 @@ typedef boot_mode_t bharat_boot_mode_t;
 #define BHARAT_BOOT_MODE_SAFE          BOOT_MODE_SAFE
 #define BHARAT_BOOT_MODE_MANUFACTURING BOOT_MODE_PROVISIONING
 #define BHARAT_BOOT_MODE_BENCHMARK     BOOT_MODE_BENCHMARK
+
+#define BHARAT_BOOT_MODE_AUTOMOTIVE    BOOT_MODE_AUTOMOTIVE
 #define BHARAT_BOOT_MODE_LEGACY_BRINGUP BOOT_MODE_LEGACY_BRINGUP
 
 const char *bharat_boot_mode_name(bharat_boot_mode_t mode);

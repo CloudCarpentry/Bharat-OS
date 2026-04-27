@@ -39,14 +39,14 @@ typedef enum {
 
 // Mode definitions
 typedef enum {
-    BOOT_MODE_NORMAL = 0,
+    BOOT_MODE_AUTOMOTIVE = 0, BOOT_MODE_NORMAL = 1,
     BOOT_MODE_DEBUG,
     BOOT_MODE_SELFTEST,
     BOOT_MODE_RECOVERY,
     BOOT_MODE_SAFE,
     BOOT_MODE_PROVISIONING,
     BOOT_MODE_BENCHMARK,
-    BOOT_MODE_LEGACY_BRINGUP
+     BOOT_MODE_LEGACY_BRINGUP
 } boot_mode_t;
 
 // Security posture definitions

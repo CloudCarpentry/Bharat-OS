@@ -1,4 +1,4 @@
-#include <string.h>
+#include <lib/base/string.h>
 #include "headless_backend.h"
 
 void bharat_headless_compositor_init(bharat_headless_compositor_t *ctx) {
