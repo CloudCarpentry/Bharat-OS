@@ -29,7 +29,6 @@ extern const bh_personality_syscall_table_t windows_personality;
 
 kstatus_t bh_syscall_policy_check(bh_syscall_ctx_t *ctx, const bh_syscall_desc_t *desc) {
     if (!ctx || !desc) return K_ERR_INVALID_ARG;
-
     kstatus_t status = K_OK;
 
     // 1. Personality and Profile Allowlist
@@ -70,7 +69,6 @@ kstatus_t bh_syscall_policy_check(bh_syscall_ctx_t *ctx, const bh_syscall_desc_t
     if (status != K_OK) {
         bh_syscall_stats_inc_denied(hal_cpu_get_id());
     }
-
     return status;
 }
 
@@ -89,14 +87,17 @@ const bh_personality_syscall_table_t *personality_get_syscall_table(bh_personali
 #endif
 #if defined(BHARAT_PERSONALITY_LINUX)
         case BH_PERSONALITY_LINUX:
+#if BHARAT_ENABLE_SUBSYS_LINUX
             return personality_linux_get_table();
 #endif
 #if defined(BHARAT_PERSONALITY_ANDROID)
         case BH_PERSONALITY_ANDROID:
+#if BHARAT_ENABLE_SUBSYS_ANDROID
             return personality_android_get_table();
 #endif
 #if defined(BHARAT_PERSONALITY_WINDOWS)
         case BH_PERSONALITY_WINDOWS:
+#if BHARAT_ENABLE_SUBSYS_WINDOWS
             return personality_windows_get_table();
 #endif
         default:
@@ -108,7 +109,6 @@ long bh_syscall_gate(trap_frame_t *frame, const trap_info_t *info) {
     if (!frame || !info) {
         return kstatus_to_sysret(K_ERR_INVALID_ARG);
     }
-
     bh_syscall_ctx_t ctx = {0};
     ctx.thread = sched_current_thread();
     if (ctx.thread) {
@@ -121,7 +121,6 @@ long bh_syscall_gate(trap_frame_t *frame, const trap_info_t *info) {
     } else {
         return kstatus_to_sysret(K_ERR_DENIED);
     }
-
     if (!ctx.process) {
         return kstatus_to_sysret(K_ERR_DENIED);
     }
@@ -129,7 +128,6 @@ long bh_syscall_gate(trap_frame_t *frame, const trap_info_t *info) {
     if (arch_trap_extract_syscall(frame, &ctx.regs) != K_OK) {
         return kstatus_to_sysret(K_ERR_INVALID_ARG);
     }
-
     fault_diag_record_syscall(ctx.regs.nr);
 
     const bh_personality_syscall_table_t *table = personality_get_syscall_table(ctx.personality);
@@ -141,7 +139,6 @@ long bh_syscall_gate(trap_frame_t *frame, const trap_info_t *info) {
     if (desc->nr != ctx.regs.nr || !desc->handler) {
         return kstatus_to_sysret(K_ERR_UNSUPPORTED);
     }
-
     if (desc->arg_count > 6) {
         return kstatus_to_sysret(K_ERR_INVALID_ARG);
     }

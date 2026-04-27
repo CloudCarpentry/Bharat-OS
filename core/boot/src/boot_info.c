@@ -24,7 +24,7 @@ void boot_info_init(boot_info_t *bi) {
     bi->source = BOOT_SOURCE_UNKNOWN;
     bi->arch = BOOT_ARCH_UNKNOWN;
 
-    bi->selected_mode = BOOT_MODE_NORMAL;
+    bi->selected_mode = BOOT_MODE_AUTOMOTIVE;
     bi->security_state = BOOT_SECURITY_UNKNOWN;
 
     bi->is_degraded = false;

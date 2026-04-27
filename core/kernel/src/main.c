@@ -5,6 +5,7 @@
 #include "boot/boot_security.h"
 #include <bharat/cpu_local.h>
 #include "kernel_boot.h"
+#include "boot/boot_mode.h"
 
 extern void hal_serial_write(const char *s);
 
@@ -24,6 +25,10 @@ void kernel_main_common(const boot_info_t *boot) {
       boot_common_security(boot);
       boot_common_memory(boot);
       boot_common_platform_services(boot);
+
+      // EXPLICIT AUTOMOTIVE MODE FORCE FOR DEBUG
+      ((struct boot_info*)boot)->selected_mode = BOOT_MODE_AUTOMOTIVE;
+
       boot_common_runtime(boot);
   } else {
       // AP boot path

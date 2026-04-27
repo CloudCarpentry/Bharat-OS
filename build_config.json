@@ -986,24 +986,6 @@
         "BHARAT_IRQ_DISPATCH_MODE": "MIXED"
       }
     },
-    "arm32_mmu_lite_headless_gp": {
-      "preset": "arm32-qemu-mmu-lite-headless",
-      "arch": "arm32",
-      "profile": "EDGE",
-      "personality": "NATIVE",
-      "board": "virt",
-      "display": {
-        "enabled": false,
-        "class": "none"
-      },
-      "run": false,
-      "cmake_defs": {
-        "BHARAT_IRQ_DISPATCH_GENERIC": "1",
-        "BHARAT_IRQ_DISPATCH_RT": "0",
-        "BHARAT_IRQ_DISPATCH_MIXED": "0",
-        "BHARAT_IRQ_DISPATCH_MODE": "GENERIC"
-      }
-    },
     "arm32_rt_headless": {
       "preset": "arm32-qemu-mmu-lite-headless",
       "arch": "arm32",
@@ -1175,6 +1157,24 @@
       "display": {
         "enabled": false,
         "class": "none"
+      },
+      "run": false
+    },
+    "arm64_automotive_headless": {
+      "preset": "arm64-edge",
+      "arch": "arm64",
+      "profile": "AUTOMOTIVE_ECU",
+      "personality": "NATIVE",
+      "board": "virt",
+      "display": {
+        "enabled": false,
+        "class": "none"
+      },
+      "cmake_defs": {
+        "BHARAT_ENABLE_SUBSYS_AUTOMOTIVE": "ON",
+        "BHARAT_BOOT_HW_PROFILE": "rtos",
+        "BHARAT_ENABLE_ADVANCED_VM": "ON",
+        "BHARAT_ENABLE_KERNEL_SELFTESTS": "ON"
       },
       "run": false
     }

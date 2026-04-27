@@ -1,6 +1,6 @@
 #include <bharat/kernel/ds/bh_id_allocator.h>
 #include <kernel/status.h>
-#include <string.h>
+#include <lib/base/string.h>
 
 kstatus_t bh_id_allocator_init(bh_id_allocator_t *alloc, uint8_t *bitmap, uint32_t capacity) {
     if (!alloc || !bitmap || capacity == 0) {

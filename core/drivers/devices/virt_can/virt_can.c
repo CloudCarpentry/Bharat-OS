@@ -1,5 +1,5 @@
 #include "drivers/can/can_controller.h"
-#include <string.h>
+#include <lib/base/string.h>
 
 #define VIRT_CAN_QUEUE_SIZE 128
 

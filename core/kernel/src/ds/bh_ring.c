@@ -1,6 +1,6 @@
 #include <bharat/kernel/ds/bh_ring.h>
 #include <kernel/status.h>
-#include <string.h>
+#include <lib/base/string.h>
 
 void bh_ring_init(bh_ring_t *ring, void *storage, uint32_t capacity, uint32_t element_size) {
     ring->storage = (uint8_t *)storage;

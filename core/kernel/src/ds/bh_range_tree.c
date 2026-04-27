@@ -1,6 +1,6 @@
 #include <bharat/kernel/ds/bh_range_tree.h>
 #include <kernel/status.h>
-#include <string.h>
+#include <lib/base/string.h>
 
 void bh_range_tree_init(bh_range_tree_t *tree, bh_range_t *storage, uint32_t capacity) {
     tree->ranges = storage;

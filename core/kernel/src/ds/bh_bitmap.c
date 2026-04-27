@@ -1,5 +1,5 @@
 #include <bharat/kernel/ds/bh_bitmap.h>
-#include <string.h>
+#include <lib/base/string.h>
 
 kstatus_t bh_bitmap_init(bh_bitmap_t *bitmap, void *storage, size_t size_bits) {
     if (!bitmap || !storage) {

@@ -1,5 +1,5 @@
 #include "i2c_registry.h"
-#include <string.h>
+#include <lib/base/string.h>
 
 #define MAX_I2C_CONTROLLERS 16
 static i2c_controller_t *g_controllers[MAX_I2C_CONTROLLERS] = {NULL};

@@ -1,5 +1,6 @@
 add_library(k_debug OBJECT
     ../../src/panic.c
+    ../../src/trace/bh_fast_trace.c
     ../../src/trace/trace.c
     ../../src/debug/early_console.c
     ../../src/debug/hal_serial_compat.c

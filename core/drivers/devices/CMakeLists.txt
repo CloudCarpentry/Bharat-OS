@@ -23,7 +23,7 @@ endif()
 
 add_library(bharatos_driver_devices STATIC ${BHARAT_DRIVER_DEVICES_SOURCES})
 target_include_directories(bharatos_driver_devices PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../include)
-target_include_directories(bharatos_driver_devices PRIVATE
+target_include_directories(bharatos_driver_devices PRIVATE ${CMAKE_SOURCE_DIR}/core/stacks/include  ${CMAKE_SOURCE_DIR}/core/stacks/include
     ${CMAKE_SOURCE_DIR}/core/lib/packet/include
     ${CMAKE_SOURCE_DIR}/interface/include
     ${CMAKE_SOURCE_DIR}/core/kernel/include

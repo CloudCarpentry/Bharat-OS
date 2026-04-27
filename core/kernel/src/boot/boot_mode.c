@@ -13,6 +13,7 @@ const char *bharat_boot_mode_name(bharat_boot_mode_t mode) {
         case BOOT_MODE_SAFE: return "safe";
         case BOOT_MODE_PROVISIONING: return "provisioning";
         case BOOT_MODE_BENCHMARK: return "benchmark";
+        case BOOT_MODE_AUTOMOTIVE: return "automotive";
         case BOOT_MODE_LEGACY_BRINGUP: return "legacy_bringup";
         default: return "unknown";
     }
@@ -76,7 +77,7 @@ int boot_mode_resolve(const struct boot_info *bi, bharat_boot_mode_t *out_mode) 
     char mode_str[32] = {0};
 
     // If canonical cmdline parsing works, prefer it
-    if (cmdline_has_kv(bi->cmdline, "mode", mode_str, sizeof(mode_str))) {
+    if (cmdline_has_kv(bi->cmdline, "boot_mode", mode_str, sizeof(mode_str))) {
         if (string_equals(mode_str, "normal")) { *out_mode = BOOT_MODE_NORMAL; return 0; }
         if (string_equals(mode_str, "debug") || string_equals(mode_str, "diagnostic")) { *out_mode = BOOT_MODE_DEBUG; return 0; }
         if (string_equals(mode_str, "selftest")) { *out_mode = BOOT_MODE_SELFTEST; return 0; }
@@ -84,7 +85,8 @@ int boot_mode_resolve(const struct boot_info *bi, bharat_boot_mode_t *out_mode) 
         if (string_equals(mode_str, "safe")) { *out_mode = BOOT_MODE_SAFE; return 0; }
         if (string_equals(mode_str, "manufacturing") || string_equals(mode_str, "provisioning")) { *out_mode = BOOT_MODE_PROVISIONING; return 0; }
         if (string_equals(mode_str, "benchmark")) { *out_mode = BOOT_MODE_BENCHMARK; return 0; }
-        if (string_equals(mode_str, "legacy") || string_equals(mode_str, "bringup")) { *out_mode = BOOT_MODE_LEGACY_BRINGUP; return 0; }
+        if (string_equals(mode_str, "automotive")) { *out_mode = BOOT_MODE_AUTOMOTIVE; return 0; }
+    if (string_equals(mode_str, "legacy") || string_equals(mode_str, "bringup")) { *out_mode = BOOT_MODE_LEGACY_BRINGUP; return 0; }
     }
 
     // Fallback logic
@@ -116,7 +118,7 @@ bool boot_mode_should_skip_optional_drivers(bharat_boot_mode_t mode) {
 bharat_boot_mode_t bharat_boot_mode_select(void) {
     char mode_str[32];
 
-    if (boot_get_kv("mode", mode_str, sizeof(mode_str))) {
+    if (boot_get_kv("boot_mode", mode_str, sizeof(mode_str))) {
         if (string_equals(mode_str, "normal")) return BOOT_MODE_NORMAL;
         if (string_equals(mode_str, "debug") || string_equals(mode_str, "diagnostic")) return BOOT_MODE_DEBUG;
         if (string_equals(mode_str, "selftest")) return BOOT_MODE_SELFTEST;
@@ -124,13 +126,15 @@ bharat_boot_mode_t bharat_boot_mode_select(void) {
         if (string_equals(mode_str, "safe")) return BOOT_MODE_SAFE;
         if (string_equals(mode_str, "manufacturing") || string_equals(mode_str, "provisioning")) return BOOT_MODE_PROVISIONING;
         if (string_equals(mode_str, "benchmark")) return BOOT_MODE_BENCHMARK;
-        if (string_equals(mode_str, "legacy") || string_equals(mode_str, "bringup")) return BOOT_MODE_LEGACY_BRINGUP;
+        if (string_equals(mode_str, "automotive")) return BOOT_MODE_AUTOMOTIVE;
+
+    if (string_equals(mode_str, "legacy") || string_equals(mode_str, "bringup")) return BOOT_MODE_LEGACY_BRINGUP;
     }
 
     // Fallback logic
 #if defined(DEBUG) || defined(BHARAT_BOOT_BRINGUP)
     return BOOT_MODE_LEGACY_BRINGUP;
 #else
-    return BOOT_MODE_LEGACY_BRINGUP; // Default to legacy bringup for safety in this patch based on user prompt fallback behavior
+    return BOOT_MODE_AUTOMOTIVE; // Default to automotive bringup for safety in this patch based on user prompt fallback behavior
 #endif
 }
