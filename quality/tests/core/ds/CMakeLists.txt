@@ -8,6 +8,9 @@ set(DS_TESTS
     test_bh_list
     test_bh_bitmap
     test_bh_handle_table
+    test_bh_cpumask
+    test_bh_mpsc_queue
+    test_bh_registry
 )
 
 foreach(test_name IN LISTS DS_TESTS)
@@ -26,6 +29,12 @@ foreach(test_name IN LISTS DS_TESTS)
         set(src bh_bitmap.c)
     elseif(test_name STREQUAL "test_bh_handle_table")
         set(src bh_handle_table.c)
+    elseif(test_name STREQUAL "test_bh_cpumask")
+        set(src bh_cpumask.c)
+    elseif(test_name STREQUAL "test_bh_mpsc_queue")
+        set(src bh_mpsc_queue.c)
+    elseif(test_name STREQUAL "test_bh_registry")
+        set(src bh_registry.c)
     endif()
 
     if(src STREQUAL "")
