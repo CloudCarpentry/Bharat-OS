@@ -1,5 +1,5 @@
 #include "trap/syscall_context.h"
-#include <bharat/uapi/syscall/nr.h>
+#include <bharat/uapi/syscall/bh_syscall_numbers.h>
 #include <bharat/uapi/capability/rights.h>
 #include "capability.h"
 
@@ -57,36 +57,36 @@ extern long bh_sys_write(bh_syscall_ctx_t *ctx);
 extern long bh_sys_get_subsystem_caps(bh_syscall_ctx_t *ctx);
 extern long bh_sys_thread_exit(bh_syscall_ctx_t *ctx);
 
-static const bh_syscall_desc_t native_syscall_table[] = {
-    [SYSCALL_NOP] = { SYSCALL_NOP, "nop", 0, BH_SYSCALL_F_FAST, 0, bh_sys_nop },
-    [SYSCALL_THREAD_CREATE] = { SYSCALL_THREAD_CREATE, "thread_create", 1, BH_SYSCALL_F_CAP_REQUIRED | BH_SYSCALL_F_USER_READ | BH_SYSCALL_F_USER_WRITE, BH_CAP_RIGHT_RESOURCE_ALLOC, bh_sys_thread_create },
-    [SYSCALL_THREAD_DESTROY] = { SYSCALL_THREAD_DESTROY, "thread_destroy", 1, BH_SYSCALL_F_CAP_REQUIRED, BH_CAP_RIGHT_PROCESS_MANAGE, bh_sys_thread_destroy },
-    [SYSCALL_SCHED_YIELD] = { SYSCALL_SCHED_YIELD, "sched_yield", 0, BH_SYSCALL_F_FAST, 0, bh_sys_sched_yield },
-    [SYSCALL_SCHED_SLEEP] = { SYSCALL_SCHED_SLEEP, "sched_sleep", 1, BH_SYSCALL_F_BLOCKING, 0, bh_sys_sched_sleep },
-    [SYSCALL_VMM_MAP_PAGE] = { SYSCALL_VMM_MAP_PAGE, "vmm_map_page", 1, BH_SYSCALL_F_CAP_REQUIRED | BH_SYSCALL_F_USER_READ, BH_CAP_RIGHT_MEMORY_MAP, bh_sys_vmm_map_page },
-    [SYSCALL_VMM_UNMAP_PAGE] = { SYSCALL_VMM_UNMAP_PAGE, "vmm_unmap_page", 1, BH_SYSCALL_F_CAP_REQUIRED | BH_SYSCALL_F_USER_READ, BH_CAP_RIGHT_MEMORY_UNMAP, bh_sys_vmm_unmap_page },
-    [SYSCALL_CAPABILITY_INVOKE] = { SYSCALL_CAPABILITY_INVOKE, "cap_invoke", 1, BH_SYSCALL_F_CAP_REQUIRED | BH_SYSCALL_F_USER_READ, BH_CAP_RIGHT_QUERY | BH_CAP_RIGHT_CRYPT_USE, bh_sys_cap_invoke },
-    [SYSCALL_ENDPOINT_CREATE] = { SYSCALL_ENDPOINT_CREATE, "endpoint_create", 1, BH_SYSCALL_F_CAP_REQUIRED | BH_SYSCALL_F_USER_READ | BH_SYSCALL_F_USER_WRITE, BH_CAP_RIGHT_RESOURCE_ALLOC, bh_sys_endpoint_create },
-    [SYSCALL_ENDPOINT_SEND] = { SYSCALL_ENDPOINT_SEND, "endpoint_send", 1, BH_SYSCALL_F_CAP_REQUIRED | BH_SYSCALL_F_BLOCKING | BH_SYSCALL_F_USER_READ, BH_CAP_RIGHT_ENDPOINT_SEND, bh_sys_endpoint_send },
-    [SYSCALL_ENDPOINT_RECEIVE] = { SYSCALL_ENDPOINT_RECEIVE, "endpoint_receive", 1, BH_SYSCALL_F_CAP_REQUIRED | BH_SYSCALL_F_BLOCKING | BH_SYSCALL_F_USER_WRITE, BH_CAP_RIGHT_ENDPOINT_RECEIVE, bh_sys_endpoint_receive },
-    [SYSCALL_CAPABILITY_DELEGATE] = { SYSCALL_CAPABILITY_DELEGATE, "cap_delegate", 1, BH_SYSCALL_F_CAP_REQUIRED | BH_SYSCALL_F_USER_READ | BH_SYSCALL_F_USER_WRITE, BH_CAP_RIGHT_DELEGATE, bh_sys_cap_delegate },
-    [SYSCALL_SCHED_SET_PRIORITY] = { SYSCALL_SCHED_SET_PRIORITY, "sched_set_priority", 1, BH_SYSCALL_F_CAP_REQUIRED | BH_SYSCALL_F_USER_READ, BH_CAP_RIGHT_SCHEDULE, bh_sys_sched_set_priority },
-    [SYSCALL_SCHED_SET_AFFINITY] = { SYSCALL_SCHED_SET_AFFINITY, "sched_set_affinity", 1, BH_SYSCALL_F_CAP_REQUIRED | BH_SYSCALL_F_USER_READ, BH_CAP_RIGHT_SCHEDULE, bh_sys_sched_set_affinity },
-    [SYSCALL_INTENT_SET] = { SYSCALL_INTENT_SET, "intent_set", 1, BH_SYSCALL_F_CAP_REQUIRED | BH_SYSCALL_F_USER_READ, BH_CAP_RIGHT_QUERY, bh_sys_intent_set },
-    [SYSCALL_INTENT_GET] = { SYSCALL_INTENT_GET, "intent_get", 1, BH_SYSCALL_F_CAP_REQUIRED | BH_SYSCALL_F_USER_READ | BH_SYSCALL_F_USER_WRITE, BH_CAP_RIGHT_QUERY, bh_sys_intent_get },
-    [SYSCALL_MEM_ALLOC_CLASS] = { SYSCALL_MEM_ALLOC_CLASS, "mem_alloc_class", 1, BH_SYSCALL_F_CAP_REQUIRED | BH_SYSCALL_F_USER_READ | BH_SYSCALL_F_USER_WRITE, BH_CAP_RIGHT_RESOURCE_ALLOC, bh_sys_mem_alloc_class },
-    [SYSCALL_FAULT_DOMAIN_CREATE] = { SYSCALL_FAULT_DOMAIN_CREATE, "fault_domain_create", 1, BH_SYSCALL_F_CAP_REQUIRED | BH_SYSCALL_F_USER_READ | BH_SYSCALL_F_USER_WRITE, BH_CAP_RIGHT_RESOURCE_ALLOC, bh_sys_fault_domain_create },
-    [SYSCALL_FAULT_DOMAIN_DESTROY] = { SYSCALL_FAULT_DOMAIN_DESTROY, "fault_domain_destroy", 1, BH_SYSCALL_F_CAP_REQUIRED, BH_CAP_RIGHT_FAULT_DOMAIN_MANAGE, bh_sys_fault_domain_destroy },
-    [SYSCALL_FAULT_DOMAIN_ATTACH] = { SYSCALL_FAULT_DOMAIN_ATTACH, "fault_domain_attach", 1, BH_SYSCALL_F_CAP_REQUIRED | BH_SYSCALL_F_USER_READ, BH_CAP_RIGHT_FAULT_DOMAIN_MANAGE, bh_sys_fault_domain_attach },
-    [SYSCALL_READ] = { SYSCALL_READ, "read", 3, BH_SYSCALL_F_CAP_REQUIRED | BH_SYSCALL_F_BLOCKING | BH_SYSCALL_F_USER_WRITE, BH_CAP_RIGHT_READ, bh_sys_read },
-    [SYSCALL_WRITE] = { SYSCALL_WRITE, "write", 3, BH_SYSCALL_F_CAP_REQUIRED | BH_SYSCALL_F_BLOCKING | BH_SYSCALL_F_USER_READ, BH_CAP_RIGHT_WRITE, bh_sys_write },
-    [SYSCALL_GET_SUBSYSTEM_CAPS] = { SYSCALL_GET_SUBSYSTEM_CAPS, "get_subsystem_caps", 2, BH_SYSCALL_F_CAP_REQUIRED | BH_SYSCALL_F_USER_WRITE, BH_CAP_RIGHT_QUERY, bh_sys_get_subsystem_caps },
-    [SYSCALL_THREAD_EXIT] = { SYSCALL_THREAD_EXIT, "thread_exit", 1, BH_SYSCALL_F_FAST, 0, bh_sys_thread_exit },
+static const bh_syscall_meta_t native_syscall_table[] = {
+    [BH_SYS_NOP] = { BH_SYS_NOP, "nop", BH_SYS_CLASS_SYSTEM, 0, BH_SYSCALL_F_FAST, 0, false, false, false, bh_sys_nop },
+    [BH_SYS_THREAD_CREATE] = { BH_SYS_THREAD_CREATE, "thread_create", BH_SYS_CLASS_PROCESS, 1, BH_SYSCALL_F_CAP_REQUIRED | BH_SYSCALL_F_USER_READ | BH_SYSCALL_F_USER_WRITE, BH_CAP_RIGHT_RESOURCE_ALLOC, true, true, true, bh_sys_thread_create },
+    [BH_SYS_THREAD_DESTROY] = { BH_SYS_THREAD_DESTROY, "thread_destroy", BH_SYS_CLASS_PROCESS, 1, BH_SYSCALL_F_CAP_REQUIRED, BH_CAP_RIGHT_PROCESS_MANAGE, true, false, false, bh_sys_thread_destroy },
+    [BH_SYS_SCHED_YIELD] = { BH_SYS_SCHED_YIELD, "sched_yield", 0, BH_SYS_CLASS_SYSTEM, BH_SYSCALL_F_FAST, 0, false, false, false, bh_sys_sched_yield },
+    [BH_SYS_SCHED_SLEEP] = { BH_SYS_SCHED_SLEEP, "sched_sleep", BH_SYS_CLASS_SYSTEM, 1, BH_SYSCALL_F_BLOCKING, 0, false, false, false, bh_sys_sched_sleep },
+    [BH_SYS_VMM_MAP_PAGE] = { BH_SYS_VMM_MAP_PAGE, "vmm_map_page", BH_SYS_CLASS_MEMORY, 1, BH_SYSCALL_F_CAP_REQUIRED | BH_SYSCALL_F_USER_READ, BH_CAP_RIGHT_MEMORY_MAP, true, true, false, bh_sys_vmm_map_page },
+    [BH_SYS_VMM_UNMAP_PAGE] = { BH_SYS_VMM_UNMAP_PAGE, "vmm_unmap_page", BH_SYS_CLASS_MEMORY, 1, BH_SYSCALL_F_CAP_REQUIRED | BH_SYSCALL_F_USER_READ, BH_CAP_RIGHT_MEMORY_UNMAP, true, true, false, bh_sys_vmm_unmap_page },
+    [BH_SYS_CAPABILITY_INVOKE] = { BH_SYS_CAPABILITY_INVOKE, "cap_invoke", BH_SYS_CLASS_CAPABILITY, 1, BH_SYSCALL_F_CAP_REQUIRED | BH_SYSCALL_F_USER_READ, BH_CAP_RIGHT_QUERY | BH_CAP_RIGHT_CRYPT_USE, true, true, false, bh_sys_cap_invoke },
+    [BH_SYS_ENDPOINT_CREATE] = { BH_SYS_ENDPOINT_CREATE, "endpoint_create", BH_SYS_CLASS_IPC, 1, BH_SYSCALL_F_CAP_REQUIRED | BH_SYSCALL_F_USER_READ | BH_SYSCALL_F_USER_WRITE, BH_CAP_RIGHT_RESOURCE_ALLOC, true, true, true, bh_sys_endpoint_create },
+    [BH_SYS_ENDPOINT_SEND] = { BH_SYS_ENDPOINT_SEND, "endpoint_send", BH_SYS_CLASS_IPC, 1, BH_SYSCALL_F_CAP_REQUIRED | BH_SYSCALL_F_BLOCKING | BH_SYSCALL_F_USER_READ, BH_CAP_RIGHT_ENDPOINT_SEND, true, true, false, bh_sys_endpoint_send },
+    [BH_SYS_ENDPOINT_RECEIVE] = { BH_SYS_ENDPOINT_RECEIVE, "endpoint_receive", BH_SYS_CLASS_IPC, 1, BH_SYSCALL_F_CAP_REQUIRED | BH_SYSCALL_F_BLOCKING | BH_SYSCALL_F_USER_WRITE, BH_CAP_RIGHT_ENDPOINT_RECEIVE, true, false, true, bh_sys_endpoint_receive },
+    [BH_SYS_CAPABILITY_DELEGATE] = { BH_SYS_CAPABILITY_DELEGATE, "cap_delegate", BH_SYS_CLASS_CAPABILITY, 1, BH_SYSCALL_F_CAP_REQUIRED | BH_SYSCALL_F_USER_READ | BH_SYSCALL_F_USER_WRITE, BH_CAP_RIGHT_DELEGATE, true, true, true, bh_sys_cap_delegate },
+    [BH_SYS_SCHED_SET_PRIORITY] = { BH_SYS_SCHED_SET_PRIORITY, "sched_set_priority", BH_SYS_CLASS_SYSTEM, 1, BH_SYSCALL_F_CAP_REQUIRED | BH_SYSCALL_F_USER_READ, BH_CAP_RIGHT_SCHEDULE, true, true, false, bh_sys_sched_set_priority },
+    [BH_SYS_SCHED_SET_AFFINITY] = { BH_SYS_SCHED_SET_AFFINITY, "sched_set_affinity", BH_SYS_CLASS_SYSTEM, 1, BH_SYSCALL_F_CAP_REQUIRED | BH_SYSCALL_F_USER_READ, BH_CAP_RIGHT_SCHEDULE, true, true, false, bh_sys_sched_set_affinity },
+    [BH_SYS_INTENT_SET] = { BH_SYS_INTENT_SET, "intent_set", BH_SYS_CLASS_SYSTEM, 1, BH_SYSCALL_F_CAP_REQUIRED | BH_SYSCALL_F_USER_READ, BH_CAP_RIGHT_QUERY, true, true, false, bh_sys_intent_set },
+    [BH_SYS_INTENT_GET] = { BH_SYS_INTENT_GET, "intent_get", BH_SYS_CLASS_SYSTEM, 1, BH_SYSCALL_F_CAP_REQUIRED | BH_SYSCALL_F_USER_READ | BH_SYSCALL_F_USER_WRITE, BH_CAP_RIGHT_QUERY, true, true, true, bh_sys_intent_get },
+    [BH_SYS_MEM_ALLOC_CLASS] = { BH_SYS_MEM_ALLOC_CLASS, "mem_alloc_class", BH_SYS_CLASS_MEMORY, 1, BH_SYSCALL_F_CAP_REQUIRED | BH_SYSCALL_F_USER_READ | BH_SYSCALL_F_USER_WRITE, BH_CAP_RIGHT_RESOURCE_ALLOC, true, true, true, bh_sys_mem_alloc_class },
+    [BH_SYS_FAULT_DOMAIN_CREATE] = { BH_SYS_FAULT_DOMAIN_CREATE, "fault_domain_create", BH_SYS_CLASS_SYSTEM, 1, BH_SYSCALL_F_CAP_REQUIRED | BH_SYSCALL_F_USER_READ | BH_SYSCALL_F_USER_WRITE, BH_CAP_RIGHT_RESOURCE_ALLOC, true, true, true, bh_sys_fault_domain_create },
+    [BH_SYS_FAULT_DOMAIN_DESTROY] = { BH_SYS_FAULT_DOMAIN_DESTROY, "fault_domain_destroy", BH_SYS_CLASS_SYSTEM, 1, BH_SYSCALL_F_CAP_REQUIRED, BH_CAP_RIGHT_FAULT_DOMAIN_MANAGE, true, false, false, bh_sys_fault_domain_destroy },
+    [BH_SYS_FAULT_DOMAIN_ATTACH] = { BH_SYS_FAULT_DOMAIN_ATTACH, "fault_domain_attach", BH_SYS_CLASS_SYSTEM, 1, BH_SYSCALL_F_CAP_REQUIRED | BH_SYSCALL_F_USER_READ, BH_CAP_RIGHT_FAULT_DOMAIN_MANAGE, true, true, false, bh_sys_fault_domain_attach },
+    [BH_SYS_READ] = { BH_SYS_READ, "read", BH_SYS_CLASS_IO, 3, BH_SYSCALL_F_CAP_REQUIRED | BH_SYSCALL_F_BLOCKING | BH_SYSCALL_F_USER_WRITE, BH_CAP_RIGHT_READ, true, false, true, bh_sys_read },
+    [BH_SYS_WRITE] = { BH_SYS_WRITE, "write", BH_SYS_CLASS_IO, 3, BH_SYSCALL_F_CAP_REQUIRED | BH_SYSCALL_F_BLOCKING | BH_SYSCALL_F_USER_READ, BH_CAP_RIGHT_WRITE, true, true, false, bh_sys_write },
+    [BH_SYS_GET_SUBSYSTEM_CAPS] = { BH_SYS_GET_SUBSYSTEM_CAPS, "get_subsystem_caps", BH_SYS_CLASS_SYSTEM, 2, BH_SYSCALL_F_CAP_REQUIRED | BH_SYSCALL_F_USER_WRITE, BH_CAP_RIGHT_QUERY, true, false, true, bh_sys_get_subsystem_caps },
+    [BH_SYS_THREAD_EXIT] = { BH_SYS_THREAD_EXIT, "thread_exit", BH_SYS_CLASS_PROCESS, 1, BH_SYSCALL_F_FAST, 0, false, false, false, bh_sys_thread_exit },
 };
 
 const bh_personality_syscall_table_t native_personality = {
     .name = "native",
     .abi_version = 1,
-    .max_syscall_nr = SYSCALL_THREAD_EXIT,
+    .max_syscall_nr = BH_SYS_THREAD_EXIT,
     .table = native_syscall_table
 };
