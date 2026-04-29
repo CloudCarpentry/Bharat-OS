@@ -13,7 +13,7 @@ void namesvc_ipc_handle_request(const bharat_ipc_contract_header_t *hdr, const n
     }
 
     // Baseline validation of the contract header
-    int validation_status = bharat_ipc_contract_validate(hdr, 1, NAMESVC_OP_REGISTER, NAMESVC_OP_LIST_INTERFACES, 0);
+    int validation_status = bharat_ipc_contract_validate(hdr, 1, BHARAT_NAMESVC_OP_REGISTER, BHARAT_NAMESVC_OP_LIST_INTERFACES, 0);
     if (validation_status != BHARAT_IPC_STATUS_OK) {
         if (validation_status == BHARAT_IPC_STATUS_ERR_VERSION) {
             res->status = BHARAT_IPC_STATUS_ERR_VERSION;
@@ -30,39 +30,36 @@ void namesvc_ipc_handle_request(const bharat_ipc_contract_header_t *hdr, const n
     }
 
     switch (req->opcode) {
-        case NAMESVC_OP_REGISTER:
+        case BHARAT_NAMESVC_OP_REGISTER:
             res->status = namesvc_registry_add(
                 req->u.reg.service_name,
-                req->u.reg.interface_name,
+                req->u.reg.service_id,
                 req->u.reg.interface_version,
                 req->u.reg.transport_flags,
                 hdr->capability_transfer
             );
             break;
 
-        case NAMESVC_OP_LOOKUP:
+        case BHARAT_NAMESVC_OP_LOOKUP:
             res->status = namesvc_registry_lookup(
                 req->u.lookup.service_name,
-                req->u.lookup.interface_name,
-                req->u.lookup.interface_version,
+                req->u.lookup.requested_version,
                 req->u.lookup.exact_version,
                 &res->u.lookup_res.endpoint,
+                &res->u.lookup_res.service_id,
                 &res->u.lookup_res.interface_version,
                 &res->u.lookup_res.transport_flags
             );
             break;
 
-        case NAMESVC_OP_REMOVE:
+        case BHARAT_NAMESVC_OP_UNREGISTER:
             res->status = namesvc_registry_remove(
-                req->u.remove.service_name,
-                req->u.remove.interface_name,
-                req->u.remove.interface_version
+                req->u.unreg.service_name
             );
             break;
 
-        case NAMESVC_OP_LIST_INTERFACES:
-            // Placeholder: currently not returning list data, just OK if service exists
-            res->status = NAMESVC_STATUS_ERR_INVAL; // To be implemented later
+        case BHARAT_NAMESVC_OP_LIST_INTERFACES:
+            res->status = NAMESVC_STATUS_ERR_UNSUPPORTED;
             break;
 
         default:

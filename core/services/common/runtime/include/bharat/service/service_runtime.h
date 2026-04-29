@@ -6,6 +6,7 @@
 #include <bharat/uapi/service_status.h>
 #include <bharat/uapi/ipc/contract.h>
 #include <bharat/uapi/servicemgr/contract.h>
+#include <bharat/uapi/services/service_ids.h>
 #include <bharat/ipc/ipc.h>
 
 #ifdef __cplusplus
@@ -13,7 +14,7 @@ extern "C" {
 #endif
 
 typedef struct {
-    uint32_t service_id;
+    bharat_service_id_t service_id;
     uint64_t incarnation_id;
     bharat_ipc_endpoint_t endpoint;
     void *user_data;
@@ -21,7 +22,7 @@ typedef struct {
 } bh_service_ctx_t;
 
 typedef struct {
-    uint32_t service_id;
+    bharat_service_id_t service_id;
     const char *service_name;
     bharat_ipc_endpoint_t endpoint;
     void *user_data;
@@ -62,6 +63,25 @@ bharat_status_t bh_service_signal_ready(bh_service_ctx_t *ctx);
  * @brief Send a heartbeat to the service manager.
  */
 bharat_status_t bh_service_send_heartbeat(bh_service_ctx_t *ctx, uint32_t health_state);
+
+/**
+ * @brief Create an IPC endpoint for a service.
+ *
+ * @param service_id The service ID requesting the endpoint.
+ * @param flags Creation flags.
+ * @return bharat_ipc_endpoint_t The received endpoint handle or BHARAT_CAP_INVALID_HANDLE.
+ */
+bharat_ipc_endpoint_t service_runtime_create_endpoint(bharat_service_id_t service_id, uint32_t flags);
+
+/**
+ * @brief Binds a service to the namesvc bootstrap endpoint.
+ *
+ * This is a transitional Phase A helper for namesvc itself.
+ *
+ * @param endpoint The endpoint handle to bind as the bootstrap namesvc.
+ * @return bharat_status_t BHARAT_STATUS_OK on success.
+ */
+bharat_status_t service_runtime_bind_namesvc_bootstrap(bharat_ipc_endpoint_t endpoint);
 
 #ifdef __cplusplus
 }

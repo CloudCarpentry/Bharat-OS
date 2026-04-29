@@ -6,6 +6,13 @@
 #include "bharat/component_version.h"
 #include "bharat/buildinfo.h"
 
+#include <bharat/ipc/ipc.h>
+#include <bharat/service/service_runtime.h>
+#include <bharat/namesvc/client.h>
+#include <bharat/uapi/services/service_ids.h>
+#include <bharat/runtime/freestanding_string.h>
+#include <bharat/syscalls.h>
+
 BHARAT_REGISTER_COMPONENT(
     BHARAT_COMPONENT_NAME,
     BHARAT_COMPONENT_KIND,
@@ -19,19 +26,25 @@ BHARAT_REGISTER_COMPONENT(
     BHARAT_BUILD_TIME_UTC
 );
 
-#include <bharat/ipc/ipc.h>
-
-#include <bharat/runtime/freestanding_string.h>
-#include <bharat/syscalls.h>
-
 // Static service state
 static bharat_ipc_endpoint_t g_netmgr_endpoint = BHARAT_CAP_INVALID_HANDLE;
 static uint32_t g_health_ticks = 0;
 
 static int netmgr_bind_endpoint(void) {
-    // TODO(PR3.1-RUNTIME): Wire this to the real namesvc/registry once the API is available.
-    // For now, this cleanly returns a startup failure instead of hiding behind a mock.
-    return -1; // Missing registry API
+    // Create endpoint through service runtime
+    g_netmgr_endpoint = service_runtime_create_endpoint(BHARAT_SERVICE_NETMGR, 0);
+    if (!bharat_cap_is_valid(g_netmgr_endpoint)) {
+        return -1;
+    }
+
+    // Register with namesvc
+    // Version 1 is hardcoded as per requirement "Validate IPC Contract/Version (Version 1)" in ipc_dispatch.c
+    int ret = namesvc_register("netmgr", BHARAT_SERVICE_NETMGR, g_netmgr_endpoint, 1, 0);
+    if (ret != NAMESVC_STATUS_OK) {
+        return -1;
+    }
+
+    return 0;
 }
 
 static void service_poll_ipc(void) {
@@ -43,21 +56,26 @@ static void service_poll_ipc(void) {
     memset(&req, 0, sizeof(req));
     memset(&res, 0, sizeof(res));
 
-    // Non-blocking or blocking receive; stubs might just return an error if no message.
+    // Bounded receive - if no message, returns error and we yield
     int ret = bharat_ipc_recv(g_netmgr_endpoint, &hdr, &req, sizeof(req));
-    if (ret == 0) {
+    if (ret == BHARAT_IPC_STATUS_OK) {
         netmgr_ipc_handle_request(&hdr, &req, &res);
 
         // Send reply back using the transfer capability provided by the caller
-        if (bharat_cap_is_valid(hdr.capability_transfer)) {
+        if (bharat_cap_is_valid(hdr.reply_endpoint)) {
             bharat_ipc_msg_header_t rep_hdr;
             memset(&rep_hdr, 0, sizeof(rep_hdr));
+            rep_hdr.header_version = BHARAT_IPC_HEADER_VERSION_V1;
             rep_hdr.message_id = hdr.message_id;
+            rep_hdr.service_id = BHARAT_SERVICE_NETMGR;
+            rep_hdr.opcode = req.opcode;
             rep_hdr.payload_size = sizeof(res);
-            bharat_ipc_send(hdr.capability_transfer, &rep_hdr, &res);
+            bharat_ipc_send(hdr.reply_endpoint, &rep_hdr, &res);
         }
     } else {
         // Yield if no message received, until we have a real blocking wait/poll.
+        // TODO(SERVICE-RUNTIME): Replace bounded poll with blocking receive
+        // once kernel IPC wait queues are production-ready.
         bharat_sched_yield();
     }
 }
@@ -86,9 +104,6 @@ void netmgr_event_loop(void) {
 
 int main(void) {
     if (netmgr_bind_endpoint() != 0) {
-        // Log fatal exit reason once before shutdown
-        // TODO(PR3.1-RUNTIME): Replace with proper service logger when available
-        // printf("netmgr: FATAL - failed to bind endpoint\n");
         return -1;
     }
 
