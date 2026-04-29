@@ -25,7 +25,7 @@ int accel_mem_buffer_create(size_t size, size_t alignment, accel_mem_flags_t fla
     buf->flags = flags;
     buf->owner_cap = owner;
     buf->state = ACCEL_BUF_STATE_CREATED;
-    buf->ref_count = 1;
+    bh_refcount_init(&buf->ref_count, 1);
 
     buf->num_pages = (size + PAGE_SIZE - 1) / PAGE_SIZE;
     buf->phys_pages = kmalloc(buf->num_pages * sizeof(uintptr_t));

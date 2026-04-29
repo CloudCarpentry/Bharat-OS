@@ -42,6 +42,7 @@ core/kernel/include/bharat/kernel/ds
 | `radix_tree` | Needs hardening | `core/kernel/src/lib/ds/` | `radix_tree.h` | Capability Map | Lockless lookup | `kalloc` (Hidden) | None | Hidden dynamic allocation | Move to `src/ds`, remove `kalloc` dependency. |
 | `cuckoo_hash` | Needs hardening | `core/kernel/src/lib/ds/` | `cuckoo_hash.h` | Thread Lookup | Lockless lookup | Static | None | No host tests | Move to `src/ds`, add host tests. |
 | `wait_queue` | Needs hardening | `core/kernel/include/sched/` | `sched.h` | Scheduler, IPC | Scheduler-locked | Intrusive | Covered by sched tests | Embedded implementation | Extract to generic `bh_waitq` (KDS-010). |
+| `bh_refcount` | Production-ready | `core/kernel/src/ds/` | `bh_refcount.h` | PMM, VM Objects | Lockless (Atomics) | Static | High | No resurrection from zero | Keep as canonical refcount. |
 
 ## 4. Duplicate/Overlap Findings
 
@@ -56,7 +57,6 @@ core/kernel/include/bharat/kernel/ds
 
 | Missing Primitive | Needed By | Existing Candidate Elsewhere | Recommendation | Priority |
 | ----------------- | --------- | ---------------------------- | -------------- | -------- |
-| `bh_refcount` | PMM, VM Objects | Ad-hoc `atomic_t` usage | Add `bh_refcount` with saturating logic. | P0 |
 | `bh_cpumask` | Scheduler, TLB | Raw `uint64_t` or `active_mask` | Add `bh_cpumask` for N-core scaling. | P1 |
 | `bh_mpsc_queue` | TLB Shootdown | None | Add lock-free Multi-Producer Single-Consumer. | P1 |
 | `bh_registry` | Primitives, Personalities | Ad-hoc static arrays | Generic boot-time registry helper. | P2 |

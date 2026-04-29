@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include "../../include/capability.h"
+#include "bharat/kernel/ds/bh_refcount.h"
 
 /**
  * Accelerator Memory Policy Flags
@@ -51,7 +52,7 @@ typedef struct accel_buffer {
 
     accel_buf_state_t state;
     uint32_t pin_count;
-    uint32_t ref_count;
+    bh_refcount_t ref_count;
 
     uintptr_t *phys_pages;
     size_t num_pages;

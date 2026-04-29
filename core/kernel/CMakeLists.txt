@@ -279,6 +279,7 @@ add_library(bharat_mm_pmm OBJECT
     src/mm/pmm/numa.c
     src/mm/mem_class.c
     src/mm/pmm/numa_policy.c
+    src/mm/pmm/pmm_lifecycle.c
 )
 target_link_libraries(bharat_mm_pmm PRIVATE bharat_kernel_includes bharat_kernel_buildopts)
 target_compile_options(bharat_mm_pmm PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
