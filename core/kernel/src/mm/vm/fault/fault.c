@@ -42,6 +42,11 @@ vm_fault_result_t vm_handle_fault(const vm_fault_event_t *event) {
         return VM_FAULT_KILL;
     }
 
+    // Reject faults on DYING or DESTROYED address spaces
+    if (event->aspace->state == ASPACE_STATE_DYING || event->aspace->state == ASPACE_STATE_DESTROYED) {
+        return VM_FAULT_KILL;
+    }
+
     fault_ctx_t ctx = {
         .aspace = event->aspace,
         .fault_addr = event->fault_addr,

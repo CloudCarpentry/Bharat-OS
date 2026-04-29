@@ -351,8 +351,11 @@ static void gdt_set_system_descriptor(int index, uint64_t base, uint32_t limit,
   g_gdt[index + 1] = (base >> 32);
 }
 
+#include "hal/hal_internal.h"
+
 void hal_init(void) {
   hal_serial_init();
+  arch_discover_hw_caps();
   console_write_raw("H0\n", 3);
   // g_x86_64_serial_backend removed. Boot UART is used via early_console abstraction.
 
@@ -364,10 +367,10 @@ void hal_init(void) {
     core_id = 0; // Safeguard
 
   g_gdt[0] = 0;
-  g_gdt[1] = 0x00af9a000000ffff; // KCode
-  g_gdt[2] = 0x00af92000000ffff; // KData
-  g_gdt[3] = 0x00affa000000ffff; // UCode
-  g_gdt[4] = 0x00aff2000000ffff; // UData
+  g_gdt[1] = 0x00af9a000000ffff; // KCode (0x08)
+  g_gdt[2] = 0x00af92000000ffff; // KData (0x10)
+  g_gdt[3] = 0x00aff2000000ffff; // UData (0x18)
+  g_gdt[4] = 0x00affa000000ffff; // UCode (0x20)
 
   tss_entry_t *tss = &g_tss[core_id];
   tss->rsp0 = (uint64_t)g_per_core_stacks[core_id] + 16384;

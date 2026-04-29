@@ -71,36 +71,6 @@ static void trap_device_irq_dispatch(uint32_t irq, void* ctx) {
   device_dispatch_irq(irq);
 }
 
-int trap_user_ptr_valid(uintptr_t ptr) {
-  uintptr_t USER_MIN = (uintptr_t)0x1000;
-  uintptr_t USER_MAX = (uintptr_t)0x7FFFFFFF; // Compact 32-bit layout
-
-  if (arch_has_cap(ARCH_CAP_USERSPACE_HIGHHALF) && arch_has_cap(ARCH_CAP_64BIT_VA)) {
-#if defined(__BHARAT_64BIT__) || defined(_WIN64) || defined(__LP64__) || defined(__x86_64__) || defined(__aarch64__) || defined(__riscv_xlen) && (__riscv_xlen == 64)
-      USER_MAX = (uintptr_t)0x00007FFFFFFFFFFFULL;
-#endif
-  }
-
-  return (ptr >= USER_MIN && ptr <= USER_MAX);
-}
-
-int trap_user_range_valid(uintptr_t ptr, size_t len) {
-  if (len == 0) {
-    return 1;
-  }
-
-  if (!trap_user_ptr_valid(ptr)) {
-    return 0;
-  }
-
-  uintptr_t end_inclusive = ptr + len - 1;
-  if (end_inclusive < ptr) {
-    return 0;
-  }
-
-  return trap_user_ptr_valid(end_inclusive);
-}
-
 static kstatus_t ipc_status_to_kstatus(int ipc_status) {
     switch (ipc_status) {
         case IPC_OK: return K_OK;

@@ -4,6 +4,7 @@
 #include "numa.h"
 #include "profile/profile.h"
 #include "spinlock.h"
+#include "panic.h"
 
 #include "sched/sched.h"
 #include "early_alloc.h"
@@ -793,6 +794,11 @@ int mm_pmm_init(uint32_t magic, const boot_info_t *boot) {
   g_pmm_initialized = true;
 
   early_alloc_init(0);
+
+  if (mem_model_validate_hal_caps(mem_model_get_current(), hal_memory_caps()) != K_OK) {
+    kernel_panic("PMM: Memory model requested by profile is not supported by HAL/Hardware!");
+  }
+
   pmm_pcache_init_all();
   active_numa_nodes = 0U;
 
@@ -911,7 +917,6 @@ void mm_free_page(phys_addr_t page_addr) {
   }
 
   if (page->state == PMM_PAGE_STATE_FREE) {
-    extern void kernel_panic(const char*);
     hal_serial_write("PMM: Double free of phys: ");
     hal_serial_write_hex(page_addr);
     hal_serial_write(" from PC: ");
@@ -958,8 +963,8 @@ void mm_free_page(phys_addr_t page_addr) {
   }
 
   // Local Magazine fast path for order-0 pages
-  if (order == 0 && core_state && core_state->active && node_id < 4) {
-      if (page->owner_core_id == current_core) {
+  if (order == 0 && core_state && core_state->active && pmm_numa_node_valid(node_id) && pmm_page_can_enter_pcache(page)) {
+      if (pmm_page_owned_by_core(page, current_core)) {
           hal_cpu_disable_interrupts();
           pmm_pcache_t *pcache = &core_state->node_caches[node_id];
 
@@ -982,8 +987,6 @@ void mm_free_page(phys_addr_t page_addr) {
                   page_t *drain_page = phys_to_page(drain_phys);
 
                   if (drain_page) {
-                      // Avoid infinite loop: clear owner_core_id so mm_free_page ignores local cache for these pages
-
                       drain_page->ref_count = 1; // restore dropping reference semantics for mm_free_page
                       drain_page->state = PMM_PAGE_STATE_ALLOCATED; // avoid double free check on re-entry
                       mm_free_page(drain_phys);
@@ -1001,23 +1004,17 @@ void mm_free_page(phys_addr_t page_addr) {
               hal_cpu_enable_interrupts();
               return;
           }
-      } else if (page->owner_core_id < BHARAT_MAX_CPUS && g_pmm_cores[page->owner_core_id].active) {
+      } else if (pmm_core_id_valid(page->owner_core_id) && g_pmm_cores[page->owner_core_id].active) {
           // Deferred remote free
-          pmm_remote_inbox_t *inbox = &g_pmm_cores[page->owner_core_id].inbox;
-          spin_lock(&inbox->lock);
-
-          uint32_t next_head = (inbox->head + 1) % PMM_INBOX_SIZE;
-          if (next_head != inbox->tail) {
-              inbox->pages[inbox->head] = page_addr;
-              inbox->head = next_head;
-              inbox->enqueue_count++;
-              spin_unlock(&inbox->lock);
+          if (pmm_pcache_remote_free_enqueue(page->owner_core_id, page_addr) == K_OK) {
+              page->state = PMM_PAGE_STATE_FREE;
+              page->ref_count = 0;
+              page->flags = 0;
+              page->pin_count = 0;
+              page->order = 0;
               return;
-          } else {
-              inbox->enqueue_failures++;
-              spin_unlock(&inbox->lock);
-              // Fallback to zone slow path
           }
+          // Fallback to zone slow path if inbox full
       }
   }
 

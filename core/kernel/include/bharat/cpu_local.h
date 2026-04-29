@@ -36,7 +36,10 @@ struct bh_thread;
 
 /* In a real implementation we define this structure */
 typedef struct __attribute__((aligned(64))) cpu_local {
-    uint32_t          cpu_id;
+    struct cpu_local *self;           // Offset 0
+    uintptr_t         kernel_stack;   // Offset 8
+    uintptr_t         user_stack;     // Offset 16
+    uint32_t          cpu_id;         // Offset 24
     // We will place a pointer for now, or the struct itself if we can refactor sched.h.
     sched_rq_t        runqueue;       // per-core, no lock needed
     capability_table_t cap_table;     // per-core capability namespace
@@ -44,7 +47,6 @@ typedef struct __attribute__((aligned(64))) cpu_local {
     void             *urpc_ports[MAX_CPUS]; // struct urpc_port *
     struct bh_thread   *current;        // currently running thread
     struct bh_thread   *idle;           // per-core idle thread
-    uintptr_t         kernel_stack;
 
     // Active address space
     uint64_t          current_as_id;

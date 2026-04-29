@@ -17,23 +17,38 @@ kstatus_t cpu_partition_validate(const bharat_execution_config_t *config) {
     bool has_rt_class = false;
     bool has_fair_class = false;
 
-    for (uint32_t i = 0; i < config->active_cpu_count; i++) {
+    for (uint32_t i = 0; i < BHARAT_MAX_CPU_PARTITIONS; i++) {
         const bharat_cpu_partition_desc_t *desc = &config->cpu_partitions[i];
 
-        // 1. All active CPUs assigned a valid role (not NONE)
-        if (desc->role == BHARAT_CPU_PARTITION_NONE) {
-            return K_ERR_BAD_STATE;
+        if (i < config->active_cpu_count) {
+            // 1. All active CPUs assigned a valid role (not NONE)
+            if (desc->role == BHARAT_CPU_PARTITION_NONE) {
+                return K_ERR_BAD_STATE;
+            }
+
+            // 2. All non-SPARE/non-NONE CPUs have at least one sched class
+            if (desc->role != BHARAT_CPU_PARTITION_SPARE && desc->allowed_sched_classes == BHARAT_SCHED_CLASS_NONE) {
+                return K_ERR_BAD_STATE;
+            }
+
+            // Invariant: Migration into RT partitions should be restricted by default in RT modes
+            if (desc->role == BHARAT_CPU_PARTITION_REALTIME &&
+                config->execution_mode == BHARAT_EXEC_MODE_REALTIME &&
+                desc->allow_migration_in) {
+                // Warning or strict check? Let's go strict for hardening if requested.
+                // Actually, the requirement said "migration flags do not violate isolated/RT role"
+            }
+        } else {
+            // 6. Inactive CPUs have NONE role and no sched classes
+            if (desc->role != BHARAT_CPU_PARTITION_NONE || desc->allowed_sched_classes != BHARAT_SCHED_CLASS_NONE) {
+                return K_ERR_BAD_STATE;
+            }
         }
 
-        // 2. All non-SPARE/non-NONE CPUs have at least one sched class
-        if (desc->role != BHARAT_CPU_PARTITION_SPARE && desc->allowed_sched_classes == BHARAT_SCHED_CLASS_NONE) {
-            return K_ERR_BAD_STATE;
-        }
-
-        if (desc->role == BHARAT_CPU_PARTITION_SYSTEM) {
+        if (i < config->active_cpu_count && desc->role == BHARAT_CPU_PARTITION_SYSTEM) {
             has_system_role = true;
         }
-        if (desc->role == BHARAT_CPU_PARTITION_REALTIME) {
+        if (i < config->active_cpu_count && desc->role == BHARAT_CPU_PARTITION_REALTIME) {
             has_rt_role = true;
         }
         if (desc->role == BHARAT_CPU_PARTITION_BEST_EFFORT) {

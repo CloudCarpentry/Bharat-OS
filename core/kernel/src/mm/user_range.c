@@ -1,15 +1,31 @@
 #include "mm/user_range.h"
 #include "trap.h"
 
-// Forward declaration of the basic numeric check
-extern int trap_user_range_valid(uintptr_t ptr, size_t len);
-
 #include "mm/aspace.h"
 #include "sched/sched.h"
+#include "arch/arch_caps.h"
+
+static int mm_user_numeric_range_valid(uintptr_t ptr, size_t len) {
+    uintptr_t USER_MIN = (uintptr_t)0x1000;
+    uintptr_t USER_MAX = (uintptr_t)0x7FFFFFFF; // Compact 32-bit layout default
+
+    if (arch_has_cap(ARCH_CAP_USERSPACE_HIGHHALF) && arch_has_cap(ARCH_CAP_64BIT_VA)) {
+        // High-half 64-bit userspace (e.g. Canonical x86_64 or ARM64)
+        USER_MAX = (uintptr_t)0x00007FFFFFFFFFFFULL;
+    }
+
+    if (len == 0) return 1;
+    if (ptr < USER_MIN || ptr > USER_MAX) return 0;
+
+    uintptr_t end_inclusive = ptr + len - 1;
+    if (end_inclusive < ptr || end_inclusive > USER_MAX) return 0;
+
+    return 1;
+}
 
 kstatus_t mm_user_range_validate_current(uintptr_t ptr, size_t len, uint32_t access) {
     // Stage 1.5: Numeric range check
-    if (!trap_user_range_valid(ptr, len)) {
+    if (!mm_user_numeric_range_valid(ptr, len)) {
         return K_ERR_FAULT;
     }
 

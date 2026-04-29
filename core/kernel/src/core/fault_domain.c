@@ -12,7 +12,7 @@ int sys_fault_domain_create(const void* attr, uint64_t* out_domain) {
     // Basic validation
     bharat_fault_domain_attr_t local_attr;
     // We already verified the range in trap dispatch, but here we do a safe copy.
-    // However trap_user_range_valid ensures it's readable. So a memcpy is safe.
+    // mm_user_range_validate_current ensures it's readable. So a memcpy is safe.
     memcpy(&local_attr, attr, sizeof(bharat_fault_domain_attr_t));
     if (local_attr.version != 1) return -1;
 

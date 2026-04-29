@@ -42,12 +42,23 @@ int iommu_detach_device(iommu_device_t *dev) {
     return K_ERR_UNSUPPORTED;
 }
 
-int iommu_map(iommu_domain_t *dom, uintptr_t iova, uint64_t pa,
-              size_t len, uint64_t prot, uint64_t flags) {
+kstatus_t iommu_map(
+    bh_iommu_domain_t *domain,
+    uintptr_t iova,
+    uintptr_t paddr,
+    size_t len,
+    uint32_t flags
+) {
+    (void)domain; (void)iova; (void)paddr; (void)len; (void)flags;
     return K_ERR_UNSUPPORTED;
 }
 
-int iommu_unmap(iommu_domain_t *dom, uintptr_t iova, size_t len) {
+kstatus_t iommu_unmap(
+    bh_iommu_domain_t *domain,
+    uintptr_t iova,
+    size_t len
+) {
+    (void)domain; (void)iova; (void)len;
     return K_ERR_UNSUPPORTED;
 }
 
