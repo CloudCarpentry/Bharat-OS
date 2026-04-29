@@ -1,5 +1,7 @@
 #include <bharat/service/service_runtime.h>
 #include <bharat/ipc/ipc.h>
+#include <bharat/uapi/services/bootstrap.h>
+#include <ipc_user.h>
 #include <stddef.h>
 #include <string.h>
 
@@ -87,5 +89,36 @@ bharat_status_t bh_service_send_heartbeat(bh_service_ctx_t *ctx, uint32_t health
     };
 
     bharat_ipc_send(SYSTEM_SERVICEMGR_ENDPOINT, &header, &req);
+    return BHARAT_STATUS_OK;
+}
+
+bharat_ipc_endpoint_t service_runtime_create_endpoint(bharat_service_id_t service_id, uint32_t flags) {
+    (void)service_id;
+    (void)flags;
+    uint32_t send_cap = 0;
+    uint32_t recv_cap = 0;
+
+    long ret = ipc_endpoint_create(&send_cap, &recv_cap);
+    if (ret != 0) {
+        return BHARAT_CAP_INVALID_HANDLE;
+    }
+
+    return (bharat_ipc_endpoint_t)recv_cap;
+}
+
+bharat_status_t service_runtime_bind_namesvc_bootstrap(bharat_ipc_endpoint_t endpoint) {
+    // Phase A Transitional: In a real kernel, this might be a privileged syscall
+    // or set up by the loader. For now, we assume the environment respects
+    // BHARAT_BOOTSTRAP_NAMESVC_ENDPOINT.
+    // If the endpoint handle is already what we expect, great.
+    // If not, we might need a way to alias it, but for this slice we'll assume
+    // the first created endpoint in namesvc *is* the bootstrap one or the
+    // kernel/init has assigned it.
+
+    if (endpoint == BHARAT_BOOTSTRAP_NAMESVC_ENDPOINT) {
+        return BHARAT_STATUS_OK;
+    }
+
+    // TODO(SERVICE-RUNTIME): Implement handle aliasing/rebinding if needed.
     return BHARAT_STATUS_OK;
 }
