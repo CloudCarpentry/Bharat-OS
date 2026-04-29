@@ -41,6 +41,14 @@ static virt_addr_t align_down(virt_addr_t value) {
     return value & RISCV_PAGE_MASK;
 }
 
+
+static bool riscv64_is_canonical(virt_addr_t vaddr) {
+    /* Canonical check for Sv39: bits [63:38] must match bit 38 */
+    int64_t signed_va = (int64_t)vaddr;
+    int64_t shifted = signed_va >> 38;
+    return (shifted == 0 || shifted == -1);
+}
+
 static bool table_empty(pt_t* table) {
     for (size_t i = 0; i < 512; i++) {
         if (table->entries[i] & RISCV_PT_V) {
@@ -124,6 +132,7 @@ static int riscv64_pt_map_4k(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t
     if (root_pt == 0U || paddr == 0U) return -1;
 
     virt_addr_t aligned_vaddr = align_down(vaddr);
+    if (!riscv64_is_canonical(aligned_vaddr)) return -1;
     phys_addr_t aligned_paddr = (phys_addr_t)align_down((virt_addr_t)paddr);
 
     uint64_t vpn2 = (aligned_vaddr >> 30) & 0x1FF;
@@ -163,6 +172,7 @@ static int riscv64_pt_unmap_4k(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr
     if (root_pt == 0U) return -1;
 
     virt_addr_t aligned_vaddr = align_down(vaddr);
+    if (!riscv64_is_canonical(aligned_vaddr)) return -1;
 
     uint64_t vpn2 = (aligned_vaddr >> 30) & 0x1FF;
     uint64_t vpn1 = (aligned_vaddr >> 21) & 0x1FF;
@@ -198,6 +208,7 @@ static int riscv64_pt_protect_4k(phys_addr_t root_pt, virt_addr_t vaddr, uint32_
     if (root_pt == 0U) return -1;
 
     virt_addr_t aligned_vaddr = align_down(vaddr);
+    if (!riscv64_is_canonical(aligned_vaddr)) return -1;
 
     uint64_t vpn2 = (aligned_vaddr >> 30) & 0x1FF;
     uint64_t vpn1 = (aligned_vaddr >> 21) & 0x1FF;
@@ -223,6 +234,7 @@ static int riscv64_pt_query_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_ad
     if (root_pt == 0U) return -1;
 
     virt_addr_t aligned_vaddr = align_down(vaddr);
+    if (!riscv64_is_canonical(aligned_vaddr)) return -1;
 
     uint64_t vpn2 = (aligned_vaddr >> 30) & 0x1FF;
     uint64_t vpn1 = (aligned_vaddr >> 21) & 0x1FF;

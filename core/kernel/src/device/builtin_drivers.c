@@ -121,12 +121,12 @@ int device_register_builtin_drivers(void) {
             return -7;
         }
         if (register_mmio(DEVICE_CLASS_ETHERNET, 0U, 0U,
-                          0x40000000U, 0x8000000000U,
+                          0x40000000U, 0x2000000000U,
                           0x10000U, 10U) != 0) {
             return -8;
         }
         if (register_mmio(DEVICE_CLASS_ETHERNET, 0U, 1U,
-                          0x40010000U, 0x8000010000U,
+                          0x40010000U, 0x2000010000U,
                           0x10000U, 10U) != 0) {
             return -8;
         }

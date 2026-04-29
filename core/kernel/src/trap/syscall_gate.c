@@ -91,6 +91,9 @@ const bh_personality_syscall_table_t *personality_get_syscall_table(bh_personali
         case BH_PERSONALITY_ANDROID:
 #if BHARAT_ENABLE_SUBSYS_ANDROID
             return personality_android_get_table();
+#else
+            return NULL;
+#endif
 #endif
             break;
 #endif
@@ -98,6 +101,9 @@ const bh_personality_syscall_table_t *personality_get_syscall_table(bh_personali
         case BH_PERSONALITY_WINDOWS:
 #if BHARAT_ENABLE_SUBSYS_WINDOWS
             return personality_windows_get_table();
+#else
+            return NULL;
+#endif
 #endif
             break;
 #endif

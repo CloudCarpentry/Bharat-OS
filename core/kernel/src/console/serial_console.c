@@ -25,6 +25,7 @@ static bool serial_init(console_backend_t *backend) {
     return state->uart->ops->init(state->uart);
 }
 
+
 static size_t serial_write(console_backend_t *backend, const char *data, size_t len) {
 
     if (!backend || !backend->state || !data) return 0;

@@ -308,7 +308,6 @@ void boot_common_platform_services(const boot_info_t *boot) {
     extern void android_personality_init(void);
     android_personality_init();
 #endif
-#endif
 
     personality_register_ops(personality_native_get_ops());
 
@@ -465,7 +464,7 @@ static void runtime_enter_automotive(const boot_info_t *boot) {
 #ifdef BHARAT_ENABLE_SUBSYS_AUTOMOTIVE
     autos_task_demo_run();
 #else
-    KPRINT("  [BOOT] ERR: Automotive subsystem not enabled in this build!\n");
+    KPRINT("  [BOOT] Automotive subsystem disabled in this build.\n");
 #endif
 
     while (1) {
