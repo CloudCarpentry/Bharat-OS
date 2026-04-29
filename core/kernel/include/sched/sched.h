@@ -24,7 +24,8 @@ typedef enum {
     THREAD_STATE_SLEEPING,
     THREAD_STATE_TERMINATED,
     THREAD_STATE_DEG_PENDING,
-    THREAD_STATE_REMOTE_HANDOFF_PENDING
+    THREAD_STATE_REMOTE_HANDOFF_PENDING,
+    THREAD_STATE_QUARANTINED
 } thread_state_t;
 
 typedef enum {
@@ -74,6 +75,10 @@ typedef enum {
     SCHED_REMOTE_BLOCK,
     SCHED_REMOTE_YIELD,
     SCHED_REMOTE_ENQUEUE,
+    SCHED_REMOTE_DEQUEUE,
+    SCHED_REMOTE_HANDOFF,
+    SCHED_REMOTE_SET_AFFINITY,
+    SCHED_REMOTE_QUARANTINE
 } sched_remote_cmd_type_t;
 
 typedef struct sched_remote_cmd {
@@ -139,6 +144,8 @@ typedef struct sched_rq {
     uint64_t total_ticks;
     uint64_t context_switches;
     uint32_t throttled;
+    bool sched_isolated;
+    uint32_t isolation_reason;
     spinlock_t lock;
 
     // Deferred reaping queue
@@ -241,6 +248,7 @@ struct bh_thread {
 
 int thread_raise_fault(bh_thread_t *thread, thread_fault_t fault);
 int sched_mark_thread_terminated(bh_thread_t *thread);
+int sched_quarantine_thread(bh_thread_t *thread, uint32_t reason);
 
 struct bh_process {
     uint64_t process_id;

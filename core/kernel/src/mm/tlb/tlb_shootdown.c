@@ -153,13 +153,34 @@ static void tlb_handle_failure(tlb_failure_policy_t policy, uint64_t aspace_id, 
         case TLB_FAIL_KERNEL_PANIC:
             kernel_panic("TLB Shootdown Timeout: Revocation failed. System halted to prevent corruption.");
             break;
-        case TLB_FAIL_ISOLATE_ASPACE:
-            // TODO(PR3.1-HARDENING): Implement address space isolation/poisoning
-            kernel_panic("TLB_FAIL_ISOLATE_ASPACE: Critical failure, isolation not yet implemented.");
+        case TLB_FAIL_ISOLATE_ASPACE: {
+            // Find the aspace object to mark it poisoned.
+            // In a real system we'd look it up by ID if we don't have the pointer.
+            // For now we assume we are called from a context where we can find it.
+            // Since we don't have a global aspace lookup by ID easily accessible here,
+            // we will need to rely on the caller to handle isolation if possible,
+            // or we implement a basic lookup.
+            // Given the instruction, we'll mark aspace poisoned.
+            // We'll add a helper to vmm_send_tlb_invalidate_ex to do this.
             break;
+        }
         default:
             break;
     }
+}
+
+static tlb_failure_policy_t tlb_default_failure_policy(void) {
+#if defined(BHARAT_PROFILE_RTOS) || defined(BHARAT_PROFILE_SAFETY)
+    return TLB_FAIL_ISOLATE_ASPACE;
+#elif defined(BHARAT_KERNEL_HARDENING_FATAL)
+    return TLB_FAIL_KERNEL_PANIC;
+#else
+    return TLB_FAIL_RETURN_ERROR;
+#endif
+}
+
+static bool tlb_failure_policy_is_fatal(tlb_failure_policy_t policy) {
+    return policy == TLB_FAIL_KERNEL_PANIC;
 }
 
 kstatus_t vmm_send_tlb_invalidate_ex(vm_aspace_t *aspace,
@@ -212,17 +233,16 @@ kstatus_t vmm_send_tlb_invalidate_ex(vm_aspace_t *aspace,
         status = tlb_wait_for_acks_bounded(current_core, slot);
         if (status != K_OK) {
             tlb_handle_failure(failure_policy, aspace->object_id, reqid);
+            if (failure_policy == TLB_FAIL_ISOLATE_ASPACE) {
+                aspace_mark_poisoned(aspace);
+            }
         }
         tlb_pending_free(current_core, slot);
     } else {
-        // Fallback waiting
-        uint32_t wait_loops = 0;
-        while (wait_loops < BHARAT_TLB_ACK_TIMEOUT_LOOPS) {
-            arch_cpu_relax();
-            vmm_process_urpc_messages();
-            wait_loops++;
-        }
-        // Fallback doesn't track ACKs, so we can't easily report error.
+        // We no longer allow ACK-less success. If we couldn't allocate a slot,
+        // we must fail or we must have a pre-allocated emergency slot.
+        // For now, return error.
+        status = K_ERR_NO_RESOURCES;
     }
 
     return status;
@@ -233,7 +253,7 @@ void vmm_send_tlb_invalidate(vm_aspace_t *aspace,
                              uint64_t len,
                              uint32_t type)
 {
-    vmm_send_tlb_invalidate_ex(aspace, va, len, type, TLB_FAIL_KERNEL_PANIC);
+    vmm_send_tlb_invalidate_ex(aspace, va, len, type, tlb_default_failure_policy());
 }
 
 int monitor_handle_tlb_invalidate(
@@ -378,6 +398,26 @@ void vmm_process_urpc_messages(void) {
 
     // Process legacy bootstrap g_mm_mailboxes (Fallback)
     mm_mailbox_slot_t* mailbox = &g_mm_mailboxes[current_core];
+    if (mailbox->valid) {
+        // Handle mailbox message
+        if (mailbox->msg.type == MM_MSG_TLB_FLUSH) {
+             bharat_monitor_v1_TlbInvalidateReq_t req;
+             req.aspace_id = mailbox->msg.as_id;
+             req.va_start = mailbox->msg.va;
+             req.length = mailbox->msg.len;
+             req.type = (mailbox->msg.scope == TLB_SCOPE_PAGE) ? 0 : (mailbox->msg.scope == TLB_SCOPE_RANGE) ? 1 : 2;
+             req.generation = mailbox->msg.seq;
+
+             bharat_monitor_v1_TlbInvalidateResp_t resp = {0};
+             monitor_handle_tlb_invalidate(NULL, &req, &resp);
+
+             // ACK via the new protocol even if requested via legacy mailbox
+             tlb_pending_ack(req.generation, current_core);
+        }
+        spin_lock(&mailbox->lock);
+        mailbox->valid = 0;
+        spin_unlock(&mailbox->lock);
+    }
 
     // Process capability delegations from URPC bootstrap ring (for simplicity since transport isn't fully routed here yet)
     for (int c = 0; c < MAX_CPUS; c++) {
