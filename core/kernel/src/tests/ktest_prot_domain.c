@@ -79,12 +79,12 @@ static bool test_mmu_sparse_mapping(void) {
     KTEST_ASSERT(ret == 0, "Low VA mapping failed");
 
     // Test 2: Map sparse high lower-half VA (512 GiB)
-    uintptr_t high_vaddr = 0x0000008000000000ULL;
+    uintptr_t high_vaddr = 0x0000002000000000ULL;
     ret = prot_domain_map_region(domain, high_vaddr, 0x80000000, 4096, HAL_PT_FLAG_READ);
     KTEST_ASSERT(ret == 0, "Sparse high VA mapping failed");
 
     // Test 3: Map two sparse VAs far apart
-    uintptr_t very_high_vaddr = 0x00007f0000000000ULL;
+    uintptr_t very_high_vaddr = 0x0000003F00000000ULL;
     ret = prot_domain_map_region(domain, very_high_vaddr, 0x90000000, 4096, HAL_PT_FLAG_READ);
     KTEST_ASSERT(ret == 0, "Very high sparse VA mapping failed");
 

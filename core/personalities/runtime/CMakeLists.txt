@@ -12,3 +12,5 @@ target_include_directories(bharatos_personality_runtime
         ${CMAKE_SOURCE_DIR}/core/kernel/include
         ${CMAKE_SOURCE_DIR}/interface/include
 )
+
+target_link_libraries(bharatos_personality_runtime PRIVATE bharat_freestanding)

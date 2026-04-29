@@ -73,13 +73,6 @@ kstatus_t bh_syscall_policy_check(bh_syscall_ctx_t *ctx, const bh_syscall_desc_t
 }
 
 const bh_personality_syscall_table_t *personality_get_syscall_table(bh_personality_id_t id) {
-    const personality_ops_t *ops = bh_personality_registry_get_ops((bh_personality_kind_t)id);
-    if (ops && ops->handle_syscall) {
-        // This is a bit of a hack to get the table from ops if needed,
-        // but for now let's keep the existing logic if possible or refactor it.
-        // Actually, let's just use the registry for everything.
-    }
-
     switch (id) {
 #if defined(BHARAT_PERSONALITY_NATIVE)
         case BH_PERSONALITY_NATIVE:
@@ -89,16 +82,25 @@ const bh_personality_syscall_table_t *personality_get_syscall_table(bh_personali
         case BH_PERSONALITY_LINUX:
 #if BHARAT_ENABLE_SUBSYS_LINUX
             return personality_linux_get_table();
+#else
+            return NULL;
+#endif
 #endif
 #if defined(BHARAT_PERSONALITY_ANDROID)
         case BH_PERSONALITY_ANDROID:
 #if BHARAT_ENABLE_SUBSYS_ANDROID
             return personality_android_get_table();
+#else
+            return NULL;
+#endif
 #endif
 #if defined(BHARAT_PERSONALITY_WINDOWS)
         case BH_PERSONALITY_WINDOWS:
 #if BHARAT_ENABLE_SUBSYS_WINDOWS
             return personality_windows_get_table();
+#else
+            return NULL;
+#endif
 #endif
         default:
             return NULL;

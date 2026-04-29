@@ -2,6 +2,7 @@
 #include "drivers/serial/uart_driver.h"
 #include "console/console_discovery.h"
 #include "console/console_core.h"
+#include "console_internal.h"
 #include <stddef.h>
 #include <stdbool.h>
 
@@ -24,7 +25,6 @@ static bool serial_init(console_backend_t *backend) {
     return state->uart->ops->init(state->uart);
 }
 
-#include "console_internal.h"
 
 static size_t serial_write(console_backend_t *backend, const char *data, size_t len) {
 
