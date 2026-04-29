@@ -26,8 +26,7 @@ int accel_iova_bind(accel_buffer_t *buf, struct iommu_domain *domain) {
     iova_start = allocated_iova;
 
     while (entry) {
-        int map_ret = iommu_map(domain, iova_start, entry->phys_addr, entry->length,
-                                VM_PROT_READ | VM_PROT_WRITE, 0);
+        kstatus_t map_ret = iommu_map(domain, iova_start, entry->phys_addr, entry->length, 0);
 
         if (map_ret != K_OK) {
             uintptr_t unmap_iova = allocated_iova;

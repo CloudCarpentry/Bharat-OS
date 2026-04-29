@@ -39,8 +39,25 @@
 #include "arch/arch_caps.h"
 #include "boot/boot_mode.h"
 #include "boot/boot_selftest.h"
+#include "hal/hal_hw_caps.h"
+#include "kernel/primitive.h"
 
 #define KPRINT(s) console_write_raw(s, string_length(s))
+
+static void print_hw_caps_summary(const hal_hw_caps_t *caps) {
+    if (!caps) return;
+
+    KPRINT("  [HAL] Hardware Capability Summary:\n");
+    if (caps->has_mmu) KPRINT("    - MMU: Present\n");
+    if (caps->has_mpu) KPRINT("    - MPU: Present\n");
+    if (caps->has_iommu) KPRINT("    - IOMMU: Present\n");
+    if (caps->has_dma_coherent) KPRINT("    - DMA Coherency: Supported\n");
+    if (caps->has_high_res_timer) KPRINT("    - High-Res Timer: Present\n");
+    if (caps->has_atomic_64) KPRINT("    - Atomic64: Supported\n");
+    if (caps->has_vector) KPRINT("    - Vector/SIMD: Present\n");
+    if (caps->has_crypto_accel) KPRINT("    - Crypto Accel: Present\n");
+    if (caps->has_accel_device) KPRINT("    - Accel Device: Present\n");
+}
 
 static void print_boot_diagnostics(const boot_info_t *boot) {
     if (!boot) return;
@@ -105,7 +122,12 @@ void boot_common_early(const boot_info_t *boot) {
 
     KPRINT("  [HAL] Initialising hardware on BSP...\n");
     hal_discovery_init(boot);
+    const hal_hw_caps_t *internal_caps = hal_get_internal_hw_caps();
+    print_hw_caps_summary(internal_caps);
     KPRINT("  [HAL] Ready.\n");
+
+    KPRINT("  [CORE] Initializing primitive registry...\n");
+    bh_kernel_primitive_registry_init(internal_caps);
 
     KPRINT("  [PROFILE] Applying hardware profile hooks...\n");
     profile_init();

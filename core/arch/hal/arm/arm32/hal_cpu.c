@@ -44,7 +44,10 @@ uint64_t hal_cpu_get_fault_address(const void *trap_frame) {
     return 0;
 }
 
-void hal_init(void) {}
+#include "hal/hal_internal.h"
+void hal_init(void) {
+    arch_discover_hw_caps();
+}
 uint32_t hal_mm_backend_caps(void) { return 0; }
 void hal_send_ipi_payload(uint32_t cpu, uint64_t payload) { (void)cpu; (void)payload; }
 

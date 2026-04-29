@@ -38,6 +38,7 @@ add_library(k_core OBJECT
     ${BHARAT_KERNEL_SRC_ROOT}/power/cooling_device.c
     ${BHARAT_KERNEL_SRC_ROOT}/power/power_qos.c
     hw_caps_registry.c
+    primitive_registry.c
 )
 
 target_include_directories(k_core PRIVATE
@@ -47,6 +48,7 @@ target_include_directories(k_core PRIVATE
     ${CMAKE_SOURCE_DIR}/interface/include
     ${BHARAT_LIB_ROOT}/include
     ${BHARAT_BOOT_INCLUDE_DIR}
+    ${BHARAT_HAL_ROOT}/include
 )
 target_link_libraries(k_core PRIVATE bharat_freestanding bharat_kernel_buildopts)
 target_sources(k_core PRIVATE fault_domain.c)

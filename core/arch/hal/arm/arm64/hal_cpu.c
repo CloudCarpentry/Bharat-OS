@@ -199,6 +199,8 @@ void hal_send_ipi_payload(uint32_t target_core, uint64_t payload) {
 
 // --- Trap / Interrupt Handling ---
 
+#include "hal/hal_internal.h"
+
 extern void vector_table_el1(void); // Defined in trap_entry.S
 
 void hal_init(void) {
@@ -207,6 +209,7 @@ void hal_init(void) {
 
   // Configure MMU (TCR_EL1, MAIR_EL1)
   hal_serial_init();
+  arch_discover_hw_caps();
 }
 
 void hal_tlb_flush(unsigned long long vaddr) {
