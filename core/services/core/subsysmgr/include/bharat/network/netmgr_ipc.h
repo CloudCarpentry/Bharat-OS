@@ -32,7 +32,8 @@ typedef enum {
     NETMGR_STATUS_ERR_PERM = -2,
     NETMGR_STATUS_ERR_NOTFOUND = -3,
     NETMGR_STATUS_ERR_NOSPACE = -4,
-    NETMGR_STATUS_ERR_BUSY = -5
+    NETMGR_STATUS_ERR_BUSY = -5,
+    NETMGR_STATUS_ERR_UNSUPPORTED = -6
 } netmgr_status_t;
 
 struct netmgr_req_create_iface {
@@ -85,6 +86,9 @@ typedef struct {
         struct netmgr_req_add_route add_route;
         struct netmgr_req_remove_route remove_route;
         struct netmgr_req_iface_id neighbor_flush;
+        struct netmgr_req_iface_id neighbor_query;
+        struct netmgr_req_iface_id query_driver_policy;
+        struct netmgr_req_iface_id query_driver_health;
         struct netmgr_req_iface_id restart_driver;
         uint8_t raw[112];
     } u;

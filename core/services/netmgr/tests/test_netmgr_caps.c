@@ -1,7 +1,10 @@
+#include <stdio.h>
 #include <assert.h>
 #include <string.h>
-#include <stdio.h>
+#include <stdbool.h>
 #include "../include/ipc_dispatch.h"
+#include "../include/ipc_contract.h"
+#include "../include/ipc_ops.h"
 #include "../include/ipc_auth.h"
 #include <bharat/cap/cap.h>
 #include <bharat/cap/cap_validate.h>
@@ -276,7 +279,65 @@ int main(void) {
     netmgr_ipc_handle_request(&hdr, &req, &res);
     assert(res.status == NETMGR_STATUS_ERR_PERM);
 
-    printf("All capability tests passed successfully.\n");
+    // Test 11: Audit log verification on failure
+    netmgr_clear_last_audit();
+    memset(&req, 0, sizeof(req)); memset(&res, 0, sizeof(res)); memset(&hdr, 0, sizeof(hdr));
+    req.opcode = NETMGR_OP_CREATE_IFACE;
+    hdr.opcode = NETMGR_OP_CREATE_IFACE;
+    hdr.capability_transfer = 0; // Invalid
+    hdr.interface_version = 1;
+    hdr.payload_size = sizeof(struct netmgr_req_create_iface);
+    netmgr_ipc_handle_request(&hdr, &req, &res);
+    assert(res.status == NETMGR_STATUS_ERR_PERM);
+    const netmgr_audit_entry_t *audit = netmgr_get_last_audit();
+    assert(audit->valid == true);
+    assert(audit->status == BHARAT_CAP_INVALID);
+    assert(audit->required_rights == BHARAT_CAP_RIGHT_NET_ADMIN);
+
+    // Test 12: Authorized but unimplemented handler -> ERR_UNSUPPORTED
+    memset(&req, 0, sizeof(req)); memset(&res, 0, sizeof(res)); memset(&hdr, 0, sizeof(hdr));
+    req.opcode = NETMGR_OP_NEIGHBOR_QUERY;
+    hdr.opcode = NETMGR_OP_NEIGHBOR_QUERY;
+    req.u.neighbor_query.if_id = 5;
+    hdr.capability_transfer = 1; // Admin global
+    hdr.interface_version = 1;
+    hdr.payload_size = sizeof(struct netmgr_req_iface_id);
+    netmgr_ipc_handle_request(&hdr, &req, &res);
+    if (res.status != NETMGR_STATUS_ERR_UNSUPPORTED) {
+        printf("Test 12 failed, got status %d\n", res.status);
+    }
+    assert(res.status == NETMGR_STATUS_ERR_UNSUPPORTED);
+
+    // Test 13: Unauthorized unimplemented handler -> ERR_PERM (no leak)
+    memset(&req, 0, sizeof(req)); memset(&res, 0, sizeof(res)); memset(&hdr, 0, sizeof(hdr));
+    req.opcode = NETMGR_OP_NEIGHBOR_QUERY;
+    hdr.opcode = NETMGR_OP_NEIGHBOR_QUERY;
+    req.u.neighbor_query.if_id = 5;
+    hdr.capability_transfer = 2; // Read stats only, but NEIGHBOR_QUERY requires NEIGHBOR_QUERY right
+    hdr.interface_version = 1;
+    hdr.payload_size = sizeof(struct netmgr_req_iface_id);
+    netmgr_ipc_handle_request(&hdr, &req, &res);
+    assert(res.status == NETMGR_STATUS_ERR_PERM);
+
+    // Test 14: Contract coverage - Ensure all opcodes in netmgr_ipc.h have a contract
+    // We can iterate through known opcodes and check if netmgr_get_op_descriptor returns non-NULL
+    uint32_t opcodes[] = {
+        NETMGR_OP_CREATE_IFACE, NETMGR_OP_DELETE_IFACE, NETMGR_OP_SET_ADMIN_STATE,
+        NETMGR_OP_QUERY_IFACES, NETMGR_OP_QUERY_STATS, NETMGR_OP_ADD_ADDR,
+        NETMGR_OP_REMOVE_ADDR, NETMGR_OP_ADD_ROUTE, NETMGR_OP_REMOVE_ROUTE,
+        NETMGR_OP_NEIGHBOR_FLUSH, NETMGR_OP_NEIGHBOR_QUERY,
+        NETMGR_OP_QUERY_DRIVER_POLICY, NETMGR_OP_QUERY_DRIVER_HEALTH,
+        NETMGR_OP_RESTART_DRIVER
+    };
+    for (size_t i = 0; i < sizeof(opcodes)/sizeof(opcodes[0]); i++) {
+        const netmgr_op_descriptor_t *d = netmgr_get_op_descriptor(opcodes[i]);
+        if (!d) {
+            printf("Contract coverage test failed for opcode %u\n", opcodes[i]);
+        }
+        assert(d != NULL);
+    }
+
+    printf("All capability and contract tests passed successfully.\n");
 
     return 0;
 }
