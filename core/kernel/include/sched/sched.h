@@ -28,12 +28,19 @@ typedef enum {
 } thread_state_t;
 
 typedef enum {
-    THREAD_OWNER_NONE,
-    THREAD_OWNER_RUNQUEUE,
-    THREAD_OWNER_RUNNING,
-    THREAD_OWNER_BLOCKED,
-    THREAD_OWNER_REMOTE_PENDING,
-} thread_sched_owner_state_t;
+    SCHED_QUEUE_NOT_QUEUED,
+    SCHED_QUEUE_QUEUED,
+    SCHED_QUEUE_RUNNING,
+    SCHED_QUEUE_BLOCKED,
+    SCHED_QUEUE_MIGRATING,
+    SCHED_QUEUE_DYING
+} sched_queue_state_t;
+
+typedef enum {
+    SCHED_MIGRATE_NONE,
+    SCHED_MIGRATE_PENDING,
+    SCHED_MIGRATE_IN_FLIGHT,
+} sched_migration_state_t;
 
 typedef enum {
     SCHED_POLICY_ROUND_ROBIN = 0,
@@ -76,13 +83,21 @@ typedef enum {
     SCHED_REMOTE_ENQUEUE,
 } sched_remote_cmd_type_t;
 
+struct bh_thread;
+typedef struct bh_thread bh_thread_t;
+
+typedef struct {
+    bh_thread_t *thread;
+    uint32_t generation;
+    uint32_t thread_id;
+    uint32_t source_cpu;
+    uint32_t target_cpu;
+} sched_thread_ref_t;
+
 typedef struct sched_remote_cmd {
     uint64_t cmd_id;
     sched_remote_cmd_type_t type;
-    uint32_t source_cpu;
-    uint32_t target_cpu;
-    uint64_t thread_id;
-    uint64_t expected_thread_generation;
+    sched_thread_ref_t thread_ref;
     uint32_t flags;
     uint32_t priority;
     list_head_t list;
@@ -132,6 +147,7 @@ typedef struct sched_rq {
     uint64_t ipi_coalesced;
     uint64_t inbox_drains;
     uint64_t remote_preemptions;
+    uint64_t remote_stale_refs;
 
     uint32_t runnable_count;
     list_head_t sleeping_list;
@@ -232,10 +248,11 @@ struct bh_thread {
 
     uint32_t flags;
 
-    // Phase K0: Invariant tracking
-    uint32_t owner_cpu;
-    uint64_t sched_generation;
-    thread_sched_owner_state_t owner_state;
+    // Phase K0/P0: Invariant tracking
+    uint32_t sched_owner_cpu;
+    uint32_t sched_generation;
+    sched_queue_state_t sched_queue_state;
+    sched_migration_state_t sched_migration_state;
     bool enqueued;
 };
 

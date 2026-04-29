@@ -1,4 +1,5 @@
 #include "sched/sched.h"
+#include "sched/sched_invariants.h"
 #include "sched_internal.h"
 #include "panic.h"
 
@@ -19,16 +20,19 @@ int sched_enqueue(bh_thread_t *thread, uint32_t core_id) {
       thread_slot_t *slot = sched_find_thread_slot_by_tid_local(&g_cpu_locals[thread->home_core_id].runqueue, thread->thread_id);
       if (!slot) return -1;
 
+      sched_invariant_check_remote_enqueue_path(thread);
+
       spin_lock(&target_rq->lock);
 
       target_rq->remote_enqueues++;
 
       sched_remote_cmd_t *cmd = &slot->remote_cmd;
       cmd->type = SCHED_REMOTE_ENQUEUE;
-      cmd->source_cpu = current_core;
-      cmd->target_cpu = core_id;
-      cmd->thread_id = thread->thread_id;
-      cmd->expected_thread_generation = thread->sched_generation;
+      cmd->thread_ref.thread = thread;
+      cmd->thread_ref.thread_id = (uint32_t)thread->thread_id;
+      cmd->thread_ref.generation = thread->sched_generation;
+      cmd->thread_ref.source_cpu = current_core;
+      cmd->thread_ref.target_cpu = core_id;
       cmd->priority = thread->priority;
 
       list_add_tail(&cmd->list, &target_rq->pending_inbox);

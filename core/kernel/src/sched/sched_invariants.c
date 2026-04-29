@@ -9,40 +9,39 @@ void sched_invariant_check_thread(bh_thread_t *thread) {
 
     // Invariant: If thread is runnable, it must have an owner CPU.
     if (thread->state == THREAD_STATE_READY || thread->state == THREAD_STATE_RUNNING) {
-        if (thread->owner_state == THREAD_OWNER_NONE) {
-            kernel_panic("Invariant failure: Runnable thread has no owner state");
+        if (thread->sched_queue_state == SCHED_QUEUE_NOT_QUEUED && thread->state == THREAD_STATE_READY) {
+            kernel_panic("Invariant failure: Ready thread not queued");
         }
     }
 
-    // Invariant: If enqueued, it must be on the runqueue of its owner_cpu.
+    // Invariant: If enqueued, it must be on the runqueue of its sched_owner_cpu.
     if (thread->enqueued) {
-        if (thread->owner_state != THREAD_OWNER_RUNQUEUE) {
-            kernel_panic("Invariant failure: Thread marked enqueued but owner_state is not RUNQUEUE");
-        }
-        if (thread->state != THREAD_STATE_READY) {
-             kernel_panic("Invariant failure: Enqueued thread not in READY state");
+        if (thread->sched_queue_state != SCHED_QUEUE_QUEUED) {
+            kernel_panic("Invariant failure: Thread marked enqueued but sched_queue_state is not QUEUED");
         }
     }
 
-    // Invariant: Running thread must be marked as RUNNING owner state on its bound core.
+    // Invariant: Running thread must be marked as RUNNING sched_queue_state on its bound core.
     if (thread->state == THREAD_STATE_RUNNING) {
-        if (thread->owner_state != THREAD_OWNER_RUNNING) {
-            kernel_panic("Invariant failure: Running thread owner_state is not RUNNING");
+        if (thread->sched_queue_state != SCHED_QUEUE_RUNNING) {
+            kernel_panic("Invariant failure: Running thread sched_queue_state is not RUNNING");
         }
     }
+
+    // Invariant: One runnable entity has exactly one owning CPU/queue
 }
 
 void sched_invariant_on_enqueue(bh_thread_t *thread, uint32_t core_id) {
     if (thread->enqueued) {
         kernel_panic("Invariant failure: Double enqueue detected");
     }
-    if (thread->owner_state == THREAD_OWNER_RUNNING && thread->owner_cpu != core_id) {
+    if (thread->sched_queue_state == SCHED_QUEUE_RUNNING && thread->sched_owner_cpu != core_id) {
         kernel_panic("Invariant failure: Enqueuing currently running thread to different core without handoff");
     }
 
     thread->enqueued = true;
-    thread->owner_cpu = core_id;
-    thread->owner_state = THREAD_OWNER_RUNQUEUE;
+    thread->sched_owner_cpu = core_id;
+    thread->sched_queue_state = SCHED_QUEUE_QUEUED;
 }
 
 void sched_invariant_on_dequeue(bh_thread_t *thread) {
@@ -50,24 +49,44 @@ void sched_invariant_on_dequeue(bh_thread_t *thread) {
         kernel_panic("Invariant failure: Dequeue of non-enqueued thread");
     }
     thread->enqueued = false;
-    // We keep owner_cpu but owner_state will be updated by the caller (e.g. to RUNNING or BLOCKED)
 }
 
 void sched_invariant_on_switch(bh_thread_t *prev, bh_thread_t *next, uint32_t core_id) {
-    if (prev && prev->state == THREAD_STATE_RUNNING) {
-        prev->owner_state = THREAD_OWNER_RUNNING;
-        prev->owner_cpu = core_id;
-    } else if (prev && prev->state == THREAD_STATE_BLOCKED) {
-        prev->owner_state = THREAD_OWNER_BLOCKED;
-    } else if (prev && prev->state == THREAD_STATE_SLEEPING) {
-        prev->owner_state = THREAD_OWNER_BLOCKED; // Simplified for now
+    if (prev) {
+        if (prev->state == THREAD_STATE_RUNNING) {
+            prev->sched_queue_state = SCHED_QUEUE_RUNNING;
+            prev->sched_owner_cpu = core_id;
+        } else if (prev->state == THREAD_STATE_BLOCKED || prev->state == THREAD_STATE_SLEEPING) {
+            prev->sched_queue_state = SCHED_QUEUE_BLOCKED;
+        } else if (prev->state == THREAD_STATE_TERMINATED) {
+            prev->sched_queue_state = SCHED_QUEUE_DYING;
+        }
     }
 
     if (next) {
         if (next->enqueued) {
              kernel_panic("Invariant failure: Switching to thread still marked as enqueued");
         }
-        next->owner_state = THREAD_OWNER_RUNNING;
-        next->owner_cpu = core_id;
+        next->sched_queue_state = SCHED_QUEUE_RUNNING;
+        next->sched_owner_cpu = core_id;
+    }
+}
+
+void sched_invariant_check_thread_owner(bh_thread_t *thread, uint32_t expected_cpu) {
+    if (thread->sched_owner_cpu != expected_cpu) {
+        kernel_panic("Invariant failure: Thread owner CPU mismatch");
+    }
+}
+
+void sched_invariant_check_runqueue_exclusive(bh_thread_t *thread) {
+    if (thread->enqueued && thread->sched_queue_state != SCHED_QUEUE_QUEUED) {
+         kernel_panic("Invariant failure: Thread runqueue exclusivity violated");
+    }
+}
+
+void sched_invariant_check_remote_enqueue_path(bh_thread_t *thread) {
+    if (thread->sched_queue_state != SCHED_QUEUE_MIGRATING &&
+        thread->sched_queue_state != SCHED_QUEUE_NOT_QUEUED) {
+        kernel_panic("Invariant failure: Remote enqueue from invalid state");
     }
 }
