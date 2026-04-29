@@ -4,11 +4,11 @@
 bool arch_trap_is_syscall(const trap_frame_t *frame) {
     if (!frame) return false;
     /*
-     * x86_64: Transitional consistent path using INT 0x80.
-     * Target production ABI is SYSCALL/SYSRET MSR-based entry.
-     * Do not benchmark performance on this transitional path.
+     * x86_64:
+     * - Transitional path using INT 0x80 (cause 0x80)
+     * - Production path using SYSCALL (pseudo-cause 0x100)
      */
-    return (frame->cause == 128 || frame->cause == 0x80U);
+    return (frame->cause == 0x80U || frame->cause == 0x100U);
 }
 
 kstatus_t arch_trap_extract_syscall(const trap_frame_t *frame, bh_syscall_regs_t *out) {

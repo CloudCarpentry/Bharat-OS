@@ -364,10 +364,10 @@ void hal_init(void) {
     core_id = 0; // Safeguard
 
   g_gdt[0] = 0;
-  g_gdt[1] = 0x00af9a000000ffff; // KCode
-  g_gdt[2] = 0x00af92000000ffff; // KData
-  g_gdt[3] = 0x00affa000000ffff; // UCode
-  g_gdt[4] = 0x00aff2000000ffff; // UData
+  g_gdt[1] = 0x00af9a000000ffff; // KCode (0x08)
+  g_gdt[2] = 0x00af92000000ffff; // KData (0x10)
+  g_gdt[3] = 0x00aff2000000ffff; // UData (0x18)
+  g_gdt[4] = 0x00affa000000ffff; // UCode (0x20)
 
   tss_entry_t *tss = &g_tss[core_id];
   tss->rsp0 = (uint64_t)g_per_core_stacks[core_id] + 16384;
