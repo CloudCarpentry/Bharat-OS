@@ -1,5 +1,6 @@
 #include "trap/syscall_context.h"
-#include "trap/usercopy.h"
+#include "syscall/usercopy.h"
+#include "trap/syscall_status.h"
 #include "kernel/status.h"
 #include "sched/sched.h"
 #include "capability.h"
@@ -14,113 +15,106 @@
 #define TRAP_SUCCESS 0L
 
 long bh_sys_nop(bh_syscall_ctx_t *ctx) {
-    return TRAP_SUCCESS;
+    return (long)BH_OK;
 }
 
 long bh_sys_thread_create(bh_syscall_ctx_t *ctx) {
     bharat_sys_thread_create_args_t args;
-    kstatus_t st = copy_from_user_checked(&args, ctx->regs.arg[0], sizeof(args));
-    if (st != K_OK) return kstatus_to_sysret(st);
+    bh_status_t st = bh_copy_from_user(&args, (const void *)ctx->regs.arg[0], sizeof(args));
+    if (st != BH_OK) return (long)st;
 
     bh_process_object_t target;
-    st = bh_syscall_cap_lookup_process(ctx, args.process_cap, CAP_RIGHT_RESOURCE_ALLOC, &target);
-    if (st != K_OK) return kstatus_to_sysret(st);
+    kstatus_t kst = bh_syscall_cap_lookup_process(ctx, args.process_cap, CAP_RIGHT_RESOURCE_ALLOC, &target);
+    if (kst != K_OK) return kstatus_to_native_sysret(kst);
 
     uint64_t out_tid;
     kstatus_t res = (kstatus_t)sched_sys_thread_create(target.process, (void (*)(void))(uintptr_t)args.entry_point, &out_tid);
     if (res == K_OK) {
-        st = copy_to_user_checked(args.out_tid_ptr, &out_tid, sizeof(out_tid));
-        if (st != K_OK) return kstatus_to_sysret(st);
+        st = bh_copy_to_user((void *)args.out_tid_ptr, &out_tid, sizeof(out_tid));
+        if (st != BH_OK) return (long)st;
     }
-    return kstatus_to_sysret(res);
+    return kstatus_to_native_sysret(res);
 }
 
 long bh_sys_thread_destroy(bh_syscall_ctx_t *ctx) {
     bh_thread_object_t target;
-    kstatus_t st = bh_syscall_cap_lookup_thread(ctx, (uint32_t)ctx->regs.arg[0], CAP_RIGHT_PROCESS_MANAGE, &target);
-    if (st != K_OK) return kstatus_to_sysret(st);
+    kstatus_t kst = bh_syscall_cap_lookup_thread(ctx, (uint32_t)ctx->regs.arg[0], CAP_RIGHT_PROCESS_MANAGE, &target);
+    if (kst != K_OK) return kstatus_to_native_sysret(kst);
 
-    return kstatus_to_sysret((kstatus_t)sched_sys_thread_destroy(target.tid));
+    return kstatus_to_native_sysret((kstatus_t)sched_sys_thread_destroy(target.tid));
 }
 
 long bh_sys_sched_yield(bh_syscall_ctx_t *ctx) {
     bh_thread_yield();
-    return TRAP_SUCCESS;
+    return (long)BH_OK;
 }
 
 long bh_sys_sched_sleep(bh_syscall_ctx_t *ctx) {
-    return kstatus_to_sysret((kstatus_t)sched_sys_sleep((uint64_t)ctx->regs.arg[0]));
+    return kstatus_to_native_sysret((kstatus_t)sched_sys_sleep((uint64_t)ctx->regs.arg[0]));
 }
 
 long bh_sys_sched_set_priority(bh_syscall_ctx_t *ctx) {
     bharat_sys_sched_attr_args_t args;
-    kstatus_t st = copy_from_user_checked(&args, ctx->regs.arg[0], sizeof(args));
-    if (st != K_OK) return kstatus_to_sysret(st);
+    bh_status_t st = bh_copy_from_user(&args, (const void *)ctx->regs.arg[0], sizeof(args));
+    if (st != BH_OK) return (long)st;
 
     bh_thread_object_t target;
-    st = bh_syscall_cap_lookup_thread(ctx, args.thread_cap, CAP_RIGHT_SCHEDULE, &target);
-    if (st != K_OK) return kstatus_to_sysret(st);
+    kstatus_t kst = bh_syscall_cap_lookup_thread(ctx, args.thread_cap, CAP_RIGHT_SCHEDULE, &target);
+    if (kst != K_OK) return kstatus_to_native_sysret(kst);
 
-    return kstatus_to_sysret((kstatus_t)sched_sys_set_priority(target.tid, (uint32_t)args.value));
+    return kstatus_to_native_sysret((kstatus_t)sched_sys_set_priority(target.tid, (uint32_t)args.value));
 }
 
 long bh_sys_sched_set_affinity(bh_syscall_ctx_t *ctx) {
     bharat_sys_sched_attr_args_t args;
-    kstatus_t st = copy_from_user_checked(&args, ctx->regs.arg[0], sizeof(args));
-    if (st != K_OK) return kstatus_to_sysret(st);
+    bh_status_t st = bh_copy_from_user(&args, (const void *)ctx->regs.arg[0], sizeof(args));
+    if (st != BH_OK) return (long)st;
 
     bh_thread_object_t target;
-    st = bh_syscall_cap_lookup_thread(ctx, args.thread_cap, CAP_RIGHT_SCHEDULE, &target);
-    if (st != K_OK) return kstatus_to_sysret(st);
+    kstatus_t kst = bh_syscall_cap_lookup_thread(ctx, args.thread_cap, CAP_RIGHT_SCHEDULE, &target);
+    if (kst != K_OK) return kstatus_to_native_sysret(kst);
 
-    return kstatus_to_sysret((kstatus_t)sched_sys_set_affinity(target.tid, (uint32_t)args.value));
+    return kstatus_to_native_sysret((kstatus_t)sched_sys_set_affinity(target.tid, (uint32_t)args.value));
 }
 
 long bh_sys_vmm_map_page(bh_syscall_ctx_t *ctx) {
     bharat_sys_vmm_map_page_args_t args;
-    kstatus_t st = copy_from_user_checked(&args, ctx->regs.arg[0], sizeof(args));
-    if (st != K_OK) return kstatus_to_sysret(st);
+    bh_status_t st = bh_copy_from_user(&args, (const void *)ctx->regs.arg[0], sizeof(args));
+    if (st != BH_OK) return (long)st;
 
-    // Initial Stage 1 validation of user range
-    extern int trap_user_ptr_valid(uintptr_t ptr);
-    if (!trap_user_ptr_valid(args.vaddr)) {
-        return kstatus_to_sysret(K_ERR_FAULT);
-    }
+    st = bh_user_range_validate((const void *)args.vaddr, PAGE_SIZE, BH_USER_ACCESS_READ);
+    if (st != BH_OK) return (long)st;
 
     bh_memory_object_t mem;
-    st = bh_syscall_cap_lookup_memory(ctx, args.cap_id, CAP_RIGHT_MEMORY_MAP, &mem);
-    if (st != K_OK) return kstatus_to_sysret(st);
+    kstatus_t kst = bh_syscall_cap_lookup_memory(ctx, args.cap_id, CAP_RIGHT_MEMORY_MAP, &mem);
+    if (kst != K_OK) return kstatus_to_native_sysret(kst);
 
-    return kstatus_to_sysret((kstatus_t)vmm_map_page((virt_addr_t)args.vaddr, (phys_addr_t)mem.base, args.flags));
+    return kstatus_to_native_sysret((kstatus_t)vmm_map_page((virt_addr_t)args.vaddr, (phys_addr_t)mem.base, args.flags));
 }
 
 long bh_sys_vmm_unmap_page(bh_syscall_ctx_t *ctx) {
     bharat_sys_vmm_unmap_page_args_t args;
-    kstatus_t st = copy_from_user_checked(&args, ctx->regs.arg[0], sizeof(args));
-    if (st != K_OK) return kstatus_to_sysret(st);
+    bh_status_t st = bh_copy_from_user(&args, (const void *)ctx->regs.arg[0], sizeof(args));
+    if (st != BH_OK) return (long)st;
 
-    extern int trap_user_ptr_valid(uintptr_t ptr);
-    if (!trap_user_ptr_valid(args.vaddr)) {
-        return kstatus_to_sysret(K_ERR_FAULT);
-    }
+    st = bh_user_range_validate((const void *)args.vaddr, PAGE_SIZE, BH_USER_ACCESS_READ);
+    if (st != BH_OK) return (long)st;
 
     bh_memory_object_t mem;
-    st = bh_syscall_cap_lookup_memory(ctx, args.cap_id, CAP_RIGHT_MEMORY_UNMAP, &mem);
-    if (st != K_OK) return kstatus_to_sysret(st);
+    kstatus_t kst = bh_syscall_cap_lookup_memory(ctx, args.cap_id, CAP_RIGHT_MEMORY_UNMAP, &mem);
+    if (kst != K_OK) return kstatus_to_native_sysret(kst);
 
-    return kstatus_to_sysret((kstatus_t)vmm_unmap_page((virt_addr_t)args.vaddr));
+    return kstatus_to_native_sysret((kstatus_t)vmm_unmap_page((virt_addr_t)args.vaddr));
 }
 
 int cap_invoke(uintptr_t cap_id, uintptr_t opcode, uintptr_t arg0, uintptr_t arg1);
 
 long bh_sys_cap_invoke(bh_syscall_ctx_t *ctx) {
     bharat_sys_cap_invoke_args_t args;
-    kstatus_t st = copy_from_user_checked(&args, ctx->regs.arg[0], sizeof(args));
-    if (st != K_OK) return kstatus_to_sysret(st);
+    bh_status_t st = bh_copy_from_user(&args, (const void *)ctx->regs.arg[0], sizeof(args));
+    if (st != BH_OK) return (long)st;
 
-    // No direct typed lookup here as cap_invoke is a generic multiplexer,
-    // but the descriptor already enforces CAP_RIGHT_BIT_QUERY/CONTROL.
-    return kstatus_to_sysret((kstatus_t)cap_invoke(args.cap_id, args.opcode, args.arg0, args.arg1));
+    return kstatus_to_native_sysret((kstatus_t)cap_invoke(args.cap_id, args.opcode, args.arg0, args.arg1));
 }
 
 static kstatus_t ipc_status_to_kstatus(int ipc_status) {
@@ -140,46 +134,52 @@ static kstatus_t ipc_status_to_kstatus(int ipc_status) {
 
 long bh_sys_endpoint_create(bh_syscall_ctx_t *ctx) {
     bharat_sys_endpoint_create_args_t args;
-    kstatus_t st = copy_from_user_checked(&args, ctx->regs.arg[0], sizeof(args));
-    if (st != K_OK) return kstatus_to_sysret(st);
+    bh_status_t st = bh_copy_from_user(&args, (const void *)ctx->regs.arg[0], sizeof(args));
+    if (st != BH_OK) return (long)st;
 
     capability_table_t *table = (capability_table_t *)ctx->process->security_sandbox_ctx;
-    if (!table) return kstatus_to_sysret(K_ERR_DENIED);
+    if (!table) return kstatus_to_native_sysret(K_ERR_DENIED);
 
     uint32_t send_cap, recv_cap;
     kstatus_t res = ipc_status_to_kstatus(ipc_endpoint_create(table, &send_cap, &recv_cap));
     if (res == K_OK) {
-        st = copy_to_user_checked(args.out_send_cap_ptr, &send_cap, sizeof(send_cap));
-        if (st != K_OK) return kstatus_to_sysret(st);
-        st = copy_to_user_checked(args.out_recv_cap_ptr, &recv_cap, sizeof(recv_cap));
-        if (st != K_OK) return kstatus_to_sysret(st);
+        st = bh_copy_to_user((void *)args.out_send_cap_ptr, &send_cap, sizeof(send_cap));
+        if (st != BH_OK) return (long)st;
+        st = bh_copy_to_user((void *)args.out_recv_cap_ptr, &recv_cap, sizeof(recv_cap));
+        if (st != BH_OK) return (long)st;
     }
-    return kstatus_to_sysret(res);
+    return kstatus_to_native_sysret(res);
 }
 
 long bh_sys_endpoint_send(bh_syscall_ctx_t *ctx) {
     bharat_sys_endpoint_send_args_t args;
-    kstatus_t st = copy_from_user_checked(&args, ctx->regs.arg[0], sizeof(args));
-    if (st != K_OK) return kstatus_to_sysret(st);
+    bh_status_t st = bh_copy_from_user(&args, (const void *)ctx->regs.arg[0], sizeof(args));
+    if (st != BH_OK) return (long)st;
 
     bh_endpoint_object_t ep;
-    st = bh_syscall_cap_lookup_endpoint(ctx, args.send_cap, CAP_RIGHT_ENDPOINT_SEND, &ep);
-    if (st != K_OK) return kstatus_to_sysret(st);
+    kstatus_t kst = bh_syscall_cap_lookup_endpoint(ctx, args.send_cap, CAP_RIGHT_ENDPOINT_SEND, &ep);
+    if (kst != K_OK) return kstatus_to_native_sysret(kst);
+
+    st = bh_user_range_validate((const void *)args.payload_ptr, args.payload_len, BH_USER_ACCESS_READ);
+    if (st != BH_OK) return (long)st;
 
     capability_table_t *table = (capability_table_t *)ctx->process->security_sandbox_ctx;
-    return kstatus_to_sysret(
+    return kstatus_to_native_sysret(
         ipc_status_to_kstatus(ipc_endpoint_send(table, args.send_cap, (const void *)(uintptr_t)args.payload_ptr,
                           args.payload_len, args.timeout_ticks, args.cap_to_send, args.cap_send_rights)));
 }
 
 long bh_sys_endpoint_receive(bh_syscall_ctx_t *ctx) {
     bharat_sys_endpoint_receive_args_t args;
-    kstatus_t st = copy_from_user_checked(&args, ctx->regs.arg[0], sizeof(args));
-    if (st != K_OK) return kstatus_to_sysret(st);
+    bh_status_t st = bh_copy_from_user(&args, (const void *)ctx->regs.arg[0], sizeof(args));
+    if (st != BH_OK) return (long)st;
 
     bh_endpoint_object_t ep;
-    st = bh_syscall_cap_lookup_endpoint(ctx, args.recv_cap, CAP_RIGHT_ENDPOINT_RECEIVE, &ep);
-    if (st != K_OK) return kstatus_to_sysret(st);
+    kstatus_t kst = bh_syscall_cap_lookup_endpoint(ctx, args.recv_cap, CAP_RIGHT_ENDPOINT_RECEIVE, &ep);
+    if (kst != K_OK) return kstatus_to_native_sysret(kst);
+
+    st = bh_user_range_validate((void *)args.out_payload_ptr, args.out_payload_capacity, BH_USER_ACCESS_WRITE);
+    if (st != BH_OK) return (long)st;
 
     capability_table_t *table = (capability_table_t *)ctx->process->security_sandbox_ctx;
     uint32_t len_received, cap_received;
@@ -187,37 +187,37 @@ long bh_sys_endpoint_receive(bh_syscall_ctx_t *ctx) {
                              args.out_payload_capacity, &len_received, args.timeout_ticks, &cap_received));
 
     if (res == K_OK) {
-        st = copy_to_user_checked(args.out_len_ptr, &len_received, sizeof(len_received));
-        if (st != K_OK) return kstatus_to_sysret(st);
+        st = bh_copy_to_user((void *)args.out_len_ptr, &len_received, sizeof(len_received));
+        if (st != BH_OK) return (long)st;
         if (args.out_received_cap_ptr) {
-            st = copy_to_user_checked(args.out_received_cap_ptr, &cap_received, sizeof(cap_received));
-            if (st != K_OK) return kstatus_to_sysret(st);
+            st = bh_copy_to_user((void *)args.out_received_cap_ptr, &cap_received, sizeof(cap_received));
+            if (st != BH_OK) return (long)st;
         }
     }
-    return kstatus_to_sysret(res);
+    return kstatus_to_native_sysret(res);
 }
 
 long bh_sys_cap_delegate(bh_syscall_ctx_t *ctx) {
     bharat_sys_cap_delegate_args_t args;
-    kstatus_t st = copy_from_user_checked(&args, ctx->regs.arg[0], sizeof(args));
-    if (st != K_OK) return kstatus_to_sysret(st);
+    bh_status_t st = bh_copy_from_user(&args, (const void *)ctx->regs.arg[0], sizeof(args));
+    if (st != BH_OK) return (long)st;
 
     // Validate source capability exists and has DELEGATE right
     capability_entry_t e;
     capability_table_t *table = (capability_table_t *)ctx->process->security_sandbox_ctx;
-    if (!table) return kstatus_to_sysret(K_ERR_DENIED);
+    if (!table) return kstatus_to_native_sysret(K_ERR_DENIED);
 
     if (cap_table_lookup(table, args.src_cap, CAP_TYPE_NONE, CAP_RIGHT_DELEGATE, &e) != 0) {
-        return kstatus_to_sysret(K_ERR_DENIED);
+        return kstatus_to_native_sysret(K_ERR_DENIED);
     }
 
     uint32_t out_cap;
     kstatus_t res = (kstatus_t)cap_table_delegate(table, table, args.src_cap, args.requested_rights, &out_cap);
     if (res == K_OK) {
-        st = copy_to_user_checked(args.out_cap_ptr, &out_cap, sizeof(out_cap));
-        if (st != K_OK) return kstatus_to_sysret(st);
+        st = bh_copy_to_user((void *)args.out_cap_ptr, &out_cap, sizeof(out_cap));
+        if (st != BH_OK) return (long)st;
     }
-    return kstatus_to_sysret(res);
+    return kstatus_to_native_sysret(res);
 }
 
 int sched_sys_intent_set(uint64_t tid, const void* intent);
@@ -226,56 +226,56 @@ int sched_sys_intent_get(uint64_t tid, void* intent);
 
 long bh_sys_intent_set(bh_syscall_ctx_t *ctx) {
     bharat_sys_intent_args_t args;
-    kstatus_t st = copy_from_user_checked(&args, ctx->regs.arg[0], sizeof(args));
-    if (st != K_OK) return kstatus_to_sysret(st);
+    bh_status_t st = bh_copy_from_user(&args, (const void *)ctx->regs.arg[0], sizeof(args));
+    if (st != BH_OK) return (long)st;
 
     bh_thread_object_t target;
-    st = bh_syscall_cap_lookup_thread(ctx, args.thread_cap, CAP_RIGHT_PROCESS_MANAGE, &target);
-    if (st != K_OK) return kstatus_to_sysret(st);
+    kstatus_t kst = bh_syscall_cap_lookup_thread(ctx, args.thread_cap, CAP_RIGHT_PROCESS_MANAGE, &target);
+    if (kst != K_OK) return kstatus_to_native_sysret(kst);
 
     bharat_intent_t intent;
-    st = copy_from_user_checked(&intent, args.intent_ptr, sizeof(intent));
-    if (st != K_OK) return kstatus_to_sysret(st);
+    st = bh_copy_from_user(&intent, (const void *)args.intent_ptr, sizeof(intent));
+    if (st != BH_OK) return (long)st;
 
-    return kstatus_to_sysret((kstatus_t)sched_sys_intent_set(target.tid, &intent));
+    return kstatus_to_native_sysret((kstatus_t)sched_sys_intent_set(target.tid, &intent));
 }
 
 long bh_sys_intent_get(bh_syscall_ctx_t *ctx) {
     bharat_sys_intent_args_t args;
-    kstatus_t st = copy_from_user_checked(&args, ctx->regs.arg[0], sizeof(args));
-    if (st != K_OK) return kstatus_to_sysret(st);
+    bh_status_t st = bh_copy_from_user(&args, (const void *)ctx->regs.arg[0], sizeof(args));
+    if (st != BH_OK) return (long)st;
 
     bh_thread_object_t target;
-    st = bh_syscall_cap_lookup_thread(ctx, args.thread_cap, CAP_RIGHT_PROCESS_MANAGE, &target);
-    if (st != K_OK) return kstatus_to_sysret(st);
+    kstatus_t kst = bh_syscall_cap_lookup_thread(ctx, args.thread_cap, CAP_RIGHT_PROCESS_MANAGE, &target);
+    if (kst != K_OK) return kstatus_to_native_sysret(kst);
 
     bharat_intent_t intent;
     kstatus_t res = (kstatus_t)sched_sys_intent_get(target.tid, &intent);
     if (res == K_OK) {
-        st = copy_to_user_checked(args.intent_ptr, &intent, sizeof(intent));
-        if (st != K_OK) return kstatus_to_sysret(st);
+        st = bh_copy_to_user((void *)args.intent_ptr, &intent, sizeof(intent));
+        if (st != BH_OK) return (long)st;
     }
-    return kstatus_to_sysret(res);
+    return kstatus_to_native_sysret(res);
 }
 
 int sys_mem_alloc_class(size_t size, uint32_t mem_class, uint32_t flags, uint64_t* out_addr);
 
 long bh_sys_mem_alloc_class(bh_syscall_ctx_t *ctx) {
     bharat_sys_mem_alloc_args_t args;
-    kstatus_t st = copy_from_user_checked(&args, ctx->regs.arg[0], sizeof(args));
-    if (st != K_OK) return kstatus_to_sysret(st);
+    bh_status_t st = bh_copy_from_user(&args, (const void *)ctx->regs.arg[0], sizeof(args));
+    if (st != BH_OK) return (long)st;
 
     bh_process_object_t target;
-    st = bh_syscall_cap_lookup_process(ctx, args.resource_cap, CAP_RIGHT_RESOURCE_ALLOC, &target);
-    if (st != K_OK) return kstatus_to_sysret(st);
+    kstatus_t kst = bh_syscall_cap_lookup_process(ctx, args.resource_cap, CAP_RIGHT_RESOURCE_ALLOC, &target);
+    if (kst != K_OK) return kstatus_to_native_sysret(kst);
 
     uint64_t out_addr;
     kstatus_t res = (kstatus_t)sys_mem_alloc_class((size_t)args.size, (uint32_t)args.mem_class, (uint32_t)args.flags, &out_addr);
     if (res == K_OK) {
-        st = copy_to_user_checked(args.out_addr_ptr, &out_addr, sizeof(out_addr));
-        if (st != K_OK) return kstatus_to_sysret(st);
+        st = bh_copy_to_user((void *)args.out_addr_ptr, &out_addr, sizeof(out_addr));
+        if (st != BH_OK) return (long)st;
     }
-    return kstatus_to_sysret(res);
+    return kstatus_to_native_sysret(res);
 }
 
 int sys_fault_domain_create(const void* attr, uint64_t* out_domain);
@@ -285,81 +285,71 @@ int sys_fault_domain_attach(uint64_t domain, uint64_t tid);
 
 long bh_sys_fault_domain_create(bh_syscall_ctx_t *ctx) {
     bharat_sys_fault_domain_args_t args;
-    kstatus_t st = copy_from_user_checked(&args, ctx->regs.arg[0], sizeof(args));
-    if (st != K_OK) return kstatus_to_sysret(st);
+    bh_status_t st = bh_copy_from_user(&args, (const void *)ctx->regs.arg[0], sizeof(args));
+    if (st != BH_OK) return (long)st;
 
     bh_process_object_t target;
-    st = bh_syscall_cap_lookup_process(ctx, args.cap_id, CAP_RIGHT_RESOURCE_ALLOC, &target);
-    if (st != K_OK) return kstatus_to_sysret(st);
+    kstatus_t kst = bh_syscall_cap_lookup_process(ctx, args.cap_id, CAP_RIGHT_RESOURCE_ALLOC, &target);
+    if (kst != K_OK) return kstatus_to_native_sysret(kst);
 
     bharat_fault_domain_attr_t attr;
-    st = copy_from_user_checked(&attr, args.attr_ptr, sizeof(attr));
-    if (st != K_OK) return kstatus_to_sysret(st);
+    st = bh_copy_from_user(&attr, (const void *)args.attr_ptr, sizeof(attr));
+    if (st != BH_OK) return (long)st;
 
     uint64_t out_domain;
     kstatus_t res = (kstatus_t)sys_fault_domain_create(&attr, &out_domain);
     if (res == K_OK) {
-        st = copy_to_user_checked(args.out_domain_ptr, &out_domain, sizeof(out_domain));
-        if (st != K_OK) return kstatus_to_sysret(st);
+        st = bh_copy_to_user((void *)args.out_domain_ptr, &out_domain, sizeof(out_domain));
+        if (st != BH_OK) return (long)st;
     }
-    return kstatus_to_sysret(res);
+    return kstatus_to_native_sysret(res);
 }
 
 long bh_sys_fault_domain_destroy(bh_syscall_ctx_t *ctx) {
     void *domain_ref;
-    kstatus_t st = bh_syscall_cap_lookup_fault_domain(ctx, (uint32_t)ctx->regs.arg[0], CAP_RIGHT_FAULT_DOMAIN_MANAGE, &domain_ref);
-    if (st != K_OK) return kstatus_to_sysret(st);
+    kstatus_t kst = bh_syscall_cap_lookup_fault_domain(ctx, (uint32_t)ctx->regs.arg[0], CAP_RIGHT_FAULT_DOMAIN_MANAGE, &domain_ref);
+    if (kst != K_OK) return kstatus_to_native_sysret(kst);
 
-    return kstatus_to_sysret((kstatus_t)sys_fault_domain_destroy((uintptr_t)domain_ref));
+    return kstatus_to_native_sysret((kstatus_t)sys_fault_domain_destroy((uintptr_t)domain_ref));
 }
 
 long bh_sys_fault_domain_attach(bh_syscall_ctx_t *ctx) {
     bharat_sys_fault_domain_args_t args;
-    kstatus_t st = copy_from_user_checked(&args, ctx->regs.arg[0], sizeof(args));
-    if (st != K_OK) return kstatus_to_sysret(st);
+    bh_status_t st = bh_copy_from_user(&args, (const void *)ctx->regs.arg[0], sizeof(args));
+    if (st != BH_OK) return (long)st;
 
     void *domain_ref;
-    st = bh_syscall_cap_lookup_fault_domain(ctx, args.cap_id, CAP_RIGHT_FAULT_DOMAIN_MANAGE, &domain_ref);
-    if (st != K_OK) return kstatus_to_sysret(st);
+    kstatus_t kst = bh_syscall_cap_lookup_fault_domain(ctx, args.cap_id, CAP_RIGHT_FAULT_DOMAIN_MANAGE, &domain_ref);
+    if (kst != K_OK) return kstatus_to_native_sysret(kst);
 
     bh_thread_object_t target_thread;
-    st = bh_syscall_cap_lookup_thread(ctx, args.thread_cap, CAP_RIGHT_PROCESS_MANAGE, &target_thread);
-    if (st != K_OK) return kstatus_to_sysret(st);
+    kst = bh_syscall_cap_lookup_thread(ctx, args.thread_cap, CAP_RIGHT_PROCESS_MANAGE, &target_thread);
+    if (kst != K_OK) return kstatus_to_native_sysret(kst);
 
-    return kstatus_to_sysret((kstatus_t)sys_fault_domain_attach((uintptr_t)domain_ref, target_thread.tid));
+    return kstatus_to_native_sysret((kstatus_t)sys_fault_domain_attach((uintptr_t)domain_ref, target_thread.tid));
 }
 
 long bh_sys_read(bh_syscall_ctx_t *ctx) {
-    (void)ctx;
-    return TRAP_SUCCESS;
+    return (long)BH_ERR_NOT_SUPPORTED;
 }
 
 long bh_sys_thread_exit(bh_syscall_ctx_t *ctx) {
     bh_thread_t *current = sched_current_thread();
     if (current) {
-        // status is in ctx->regs.arg[0]
         (void)sched_mark_thread_terminated(current);
-
-        // Since we are terminating the current thread, we must never return to user space.
-        // We clear the current thread and trigger an immediate reschedule.
         uint32_t core = hal_cpu_get_id();
-        // Accessing g_cpu_locals requires including its header or extern
         extern cpu_local_t g_cpu_locals[];
         g_cpu_locals[core].runqueue.current_thread = NULL;
         bh_thread_yield();
-
-        // Should never reach here
         while(1);
     }
-    return kstatus_to_sysret(K_ERR_BAD_THREAD);
+    return (long)BH_ERR_BAD_STATE;
 }
 
 long bh_sys_write(bh_syscall_ctx_t *ctx) {
-    (void)ctx;
-    return TRAP_SUCCESS;
+    return (long)BH_ERR_NOT_SUPPORTED;
 }
 
 long bh_sys_get_subsystem_caps(bh_syscall_ctx_t *ctx) {
-    (void)ctx;
-    return TRAP_SUCCESS;
+    return (long)BH_ERR_NOT_SUPPORTED;
 }
