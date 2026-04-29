@@ -351,8 +351,11 @@ static void gdt_set_system_descriptor(int index, uint64_t base, uint32_t limit,
   g_gdt[index + 1] = (base >> 32);
 }
 
+#include "hal/hal_internal.h"
+
 void hal_init(void) {
   hal_serial_init();
+  arch_discover_hw_caps();
   console_write_raw("H0\n", 3);
   // g_x86_64_serial_backend removed. Boot UART is used via early_console abstraction.
 

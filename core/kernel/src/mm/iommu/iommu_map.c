@@ -6,10 +6,11 @@
 
 extern const hal_iommu_ops_t *hal_iommu_get_ops(void);
 
-int iommu_map(iommu_domain_t *dom, uintptr_t iova, uint64_t pa,
-              size_t len, uint64_t prot, uint64_t flags) {
+kstatus_t iommu_map(bh_iommu_domain_t *dom, uintptr_t iova, uintptr_t paddr,
+              size_t len, uint32_t flags) {
+    (void)flags;
     if (!dom || len == 0 || !iommu_available()) {
-        return -1;
+        return K_ERR_INVALID_ARG;
     }
 
     capability_table_t *ct = sched_current_cap_table();
@@ -24,20 +25,22 @@ int iommu_map(iommu_domain_t *dom, uintptr_t iova, uint64_t pa,
                 }
             }
         }
-        if (!found) return -100; // Unauthorized
+        if (!found) return K_ERR_DENIED; // Unauthorized
     }
 
     const hal_iommu_ops_t *ops = hal_iommu_get_ops();
     if (ops && ops->map) {
-        return ops->map(dom, iova, pa, len, prot, flags);
+        // Map flags to prot/flags for old HAL API if needed,
+        // but here we keep it simple for the migration.
+        return ops->map(dom, iova, paddr, len, 0, flags);
     }
 
-    return -1;
+    return K_ERR_UNSUPPORTED;
 }
 
-int iommu_unmap(iommu_domain_t *dom, uintptr_t iova, size_t len) {
+kstatus_t iommu_unmap(bh_iommu_domain_t *dom, uintptr_t iova, size_t len) {
     if (!dom || len == 0 || !iommu_available()) {
-        return -1;
+        return K_ERR_INVALID_ARG;
     }
 
     capability_table_t *ct = sched_current_cap_table();
@@ -52,7 +55,7 @@ int iommu_unmap(iommu_domain_t *dom, uintptr_t iova, size_t len) {
                 }
             }
         }
-        if (!found) return -100; // Unauthorized
+        if (!found) return K_ERR_DENIED; // Unauthorized
     }
 
     const hal_iommu_ops_t *ops = hal_iommu_get_ops();
@@ -60,5 +63,5 @@ int iommu_unmap(iommu_domain_t *dom, uintptr_t iova, size_t len) {
         return ops->unmap(dom, iova, len);
     }
 
-    return -1;
+    return K_ERR_UNSUPPORTED;
 }

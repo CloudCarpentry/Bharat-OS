@@ -234,10 +234,13 @@ void hal_cpu_disable_interrupts(void) {
 
 // --- Trap / Interrupt Handling ---
 
+#include "hal/hal_internal.h"
+
 extern void trap_entry(void);
 
 void hal_init(void) {
   riscv_bsp_config_t cfg;
+  arch_discover_hw_caps();
 
   // Setup trap vectors (stvec) for Supervisor mode.
 #ifdef CONFIG_RISCV_M_MODE
