@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include "hal/hal_capabilities.h"
 #include "hal/hal_mmu.h"
+#include "hal/hal_mm.h"
 #include <string.h>
 
 int hal_mem_get_caps(hal_mem_caps_t *caps) {
@@ -38,4 +39,21 @@ static const hal_arch_capabilities_t g_tricore_caps = {
 
 const hal_arch_capabilities_t *hal_get_arch_capabilities(void) {
     return &g_tricore_caps;
+}
+
+static const hal_memory_caps_t tricore32_memory_caps = {
+    .supports_mmu_full = false,
+    .supports_mmu_lite = false,
+    .supports_mpu_only = true,
+    .supports_user_kernel_split = false,
+    .supports_page_protection = true,
+    .supports_execute_disable = true,
+    .supports_asid = false,
+    .supports_range_tlb_flush = false,
+    .min_page_size = 0,
+    .max_address_bits = 32
+};
+
+const hal_memory_caps_t *hal_memory_caps(void) {
+    return &tricore32_memory_caps;
 }

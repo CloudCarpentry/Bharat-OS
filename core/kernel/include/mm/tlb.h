@@ -20,10 +20,17 @@ typedef enum {
     TLB_INV_FULL,
 } tlb_inv_kind_t;
 
+typedef enum {
+    TLB_FAIL_RETURN_ERROR = 0,
+    TLB_FAIL_ISOLATE_ASPACE,
+    TLB_FAIL_KERNEL_PANIC
+} tlb_failure_policy_t;
+
 int tlb_init(void);
 
 int tlb_invalidate_local(vm_aspace_t *as, uintptr_t va, size_t len, tlb_inv_kind_t kind);
 int tlb_invalidate_remote(vm_aspace_t *as, uintptr_t va, size_t len, tlb_inv_kind_t kind);
+int tlb_invalidate_remote_ex(vm_aspace_t *as, uintptr_t va, size_t len, tlb_inv_kind_t kind, tlb_failure_policy_t failure_policy);
 int tlb_invalidate_all(vm_aspace_t *as, uintptr_t va, size_t len, tlb_inv_kind_t kind);
 
 // Backward compatibility or direct call for one page shootdown

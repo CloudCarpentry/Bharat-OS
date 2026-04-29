@@ -23,14 +23,14 @@ void mm_switch_active_aspace(uint32_t core_id, address_space_t *prev_as, address
     }
 
     if (prev_as) {
-        __atomic_and_fetch(&prev_as->active_mask, ~(1ULL << core_id), __ATOMIC_SEQ_CST);
+        aspace_deactivate_on_cpu(prev_as, core_id);
     }
 
     if (next_as) {
         g_cpu_locals[core_id].current_as = next_as;
         g_cpu_locals[core_id].current_as_id = next_as->object_id;
         g_tlb_cpu_state[core_id].active_aspace = next_as;
-        __atomic_or_fetch(&next_as->active_mask, (1ULL << core_id), __ATOMIC_SEQ_CST);
+        aspace_activate_on_cpu(next_as, core_id);
     } else {
         g_cpu_locals[core_id].current_as = NULL;
         g_cpu_locals[core_id].current_as_id = KERNEL_AS_ID;

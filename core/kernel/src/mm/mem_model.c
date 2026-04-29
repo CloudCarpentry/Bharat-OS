@@ -95,3 +95,26 @@ uint64_t mem_model_get_caps(void) {
             return MEM_CAP_NONE;
     }
 }
+
+kstatus_t mem_model_validate_hal_caps(mem_model_t model, const hal_memory_caps_t *hal_caps) {
+    if (!hal_caps) return K_ERR_INVALID_ARG;
+
+    switch (model) {
+        case MEM_MODEL_MMU_FULL:
+            if (!hal_caps->supports_mmu_full) return K_ERR_UNSUPPORTED;
+            if (!hal_caps->supports_user_kernel_split) return K_ERR_UNSUPPORTED;
+            if (!hal_caps->supports_page_protection) return K_ERR_UNSUPPORTED;
+            if (!hal_caps->supports_execute_disable) return K_ERR_UNSUPPORTED;
+            break;
+        case MEM_MODEL_MMU_LITE:
+            if (!hal_caps->supports_mmu_lite && !hal_caps->supports_mmu_full) return K_ERR_UNSUPPORTED;
+            break;
+        case MEM_MODEL_MPU:
+            if (!hal_caps->supports_mpu_only && !hal_caps->supports_mmu_full) return K_ERR_UNSUPPORTED;
+            break;
+        default:
+            break;
+    }
+
+    return K_OK;
+}

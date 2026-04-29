@@ -44,6 +44,7 @@ kstatus_t cpu_partition_init(bharat_execution_config_t *config) {
         config->cpu_partitions[0].allowed_sched_classes =
             BHARAT_SCHED_CLASS_SYSTEM |
             BHARAT_SCHED_CLASS_FIFO_RT |
+            BHARAT_SCHED_CLASS_DEADLINE_RT |
             BHARAT_SCHED_CLASS_FAIR;
     } else if (config->active_cpu_count == 2) {
         // Compressed mapping
@@ -52,7 +53,7 @@ kstatus_t cpu_partition_init(bharat_execution_config_t *config) {
 
             // CPU0: SYSTEM + RT
             config->cpu_partitions[0].role = BHARAT_CPU_PARTITION_SYSTEM;
-            config->cpu_partitions[0].allowed_sched_classes = BHARAT_SCHED_CLASS_SYSTEM | BHARAT_SCHED_CLASS_FIFO_RT;
+            config->cpu_partitions[0].allowed_sched_classes = BHARAT_SCHED_CLASS_SYSTEM | BHARAT_SCHED_CLASS_FIFO_RT | BHARAT_SCHED_CLASS_DEADLINE_RT;
 
             // CPU1: BEST EFFORT (or SPARE for pure realtime)
             if (config->execution_mode == BHARAT_EXEC_MODE_MIXED_CRITICAL) {
@@ -80,7 +81,7 @@ kstatus_t cpu_partition_init(bharat_execution_config_t *config) {
             config->cpu_partitions[0].allowed_sched_classes = BHARAT_SCHED_CLASS_SYSTEM;
 
             config->cpu_partitions[1].role = BHARAT_CPU_PARTITION_REALTIME;
-            config->cpu_partitions[1].allowed_sched_classes = BHARAT_SCHED_CLASS_FIFO_RT;
+            config->cpu_partitions[1].allowed_sched_classes = BHARAT_SCHED_CLASS_FIFO_RT | BHARAT_SCHED_CLASS_DEADLINE_RT;
 
             config->cpu_partitions[2].role = BHARAT_CPU_PARTITION_SPARE;
             config->cpu_partitions[2].allowed_sched_classes = BHARAT_SCHED_CLASS_NONE;
@@ -89,7 +90,7 @@ kstatus_t cpu_partition_init(bharat_execution_config_t *config) {
             config->cpu_partitions[0].allowed_sched_classes = BHARAT_SCHED_CLASS_SYSTEM;
 
             config->cpu_partitions[1].role = BHARAT_CPU_PARTITION_REALTIME;
-            config->cpu_partitions[1].allowed_sched_classes = BHARAT_SCHED_CLASS_FIFO_RT;
+            config->cpu_partitions[1].allowed_sched_classes = BHARAT_SCHED_CLASS_FIFO_RT | BHARAT_SCHED_CLASS_DEADLINE_RT;
 
             config->cpu_partitions[2].role = BHARAT_CPU_PARTITION_BEST_EFFORT;
             config->cpu_partitions[2].allowed_sched_classes = BHARAT_SCHED_CLASS_FAIR;
@@ -101,10 +102,10 @@ kstatus_t cpu_partition_init(bharat_execution_config_t *config) {
             config->cpu_partitions[0].allowed_sched_classes = BHARAT_SCHED_CLASS_SYSTEM;
 
             config->cpu_partitions[1].role = BHARAT_CPU_PARTITION_REALTIME;
-            config->cpu_partitions[1].allowed_sched_classes = BHARAT_SCHED_CLASS_FIFO_RT;
+            config->cpu_partitions[1].allowed_sched_classes = BHARAT_SCHED_CLASS_FIFO_RT | BHARAT_SCHED_CLASS_DEADLINE_RT;
 
             config->cpu_partitions[2].role = BHARAT_CPU_PARTITION_REALTIME;
-            config->cpu_partitions[2].allowed_sched_classes = BHARAT_SCHED_CLASS_FIFO_RT;
+            config->cpu_partitions[2].allowed_sched_classes = BHARAT_SCHED_CLASS_FIFO_RT | BHARAT_SCHED_CLASS_DEADLINE_RT;
 
             for (uint32_t i = 3; i < config->active_cpu_count; i++) {
                 config->cpu_partitions[i].role = BHARAT_CPU_PARTITION_BEST_EFFORT;
@@ -121,7 +122,7 @@ kstatus_t cpu_partition_init(bharat_execution_config_t *config) {
 
             for (uint32_t i = 1; i < config->active_cpu_count; i++) {
                 config->cpu_partitions[i].role = BHARAT_CPU_PARTITION_REALTIME;
-                config->cpu_partitions[i].allowed_sched_classes = BHARAT_SCHED_CLASS_FIFO_RT;
+                config->cpu_partitions[i].allowed_sched_classes = BHARAT_SCHED_CLASS_FIFO_RT | BHARAT_SCHED_CLASS_DEADLINE_RT;
             }
         } else {
             // Default fallback for unknown mode with >= 4 CPUs
@@ -162,4 +163,32 @@ bool cpu_partition_allows_all_classes(uint32_t cpu_id, bharat_sched_class_mask_t
         return false;
     }
     return (desc->allowed_sched_classes & class_mask) == class_mask;
+}
+
+bool cpu_partition_is_housekeeping(uint32_t cpu_id) {
+    const bharat_cpu_partition_desc_t *desc = cpu_partition_get(cpu_id);
+    return desc ? desc->housekeeping : false;
+}
+
+bool cpu_partition_is_rt_dedicated(uint32_t cpu_id) {
+    const bharat_cpu_partition_desc_t *desc = cpu_partition_get(cpu_id);
+    if (!desc) return false;
+    return (desc->role == BHARAT_CPU_PARTITION_REALTIME);
+}
+
+bool cpu_partition_can_accept_migration(uint32_t cpu_id, bharat_sched_class_mask_t class_mask) {
+    const bharat_cpu_partition_desc_t *desc = cpu_partition_get(cpu_id);
+    if (!desc || !desc->allow_migration_in) return false;
+    return (desc->allowed_sched_classes & class_mask) != 0;
+}
+
+bool cpu_partition_can_send_migration(uint32_t cpu_id, bharat_sched_class_mask_t class_mask) {
+    const bharat_cpu_partition_desc_t *desc = cpu_partition_get(cpu_id);
+    if (!desc || !desc->allow_migration_out) return false;
+    return (desc->allowed_sched_classes & class_mask) != 0;
+}
+
+bool cpu_partition_should_receive_irq(uint32_t cpu_id) {
+    const bharat_cpu_partition_desc_t *desc = cpu_partition_get(cpu_id);
+    return desc ? desc->irq_preferred : false;
 }

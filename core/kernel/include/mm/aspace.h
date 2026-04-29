@@ -8,6 +8,7 @@
 #include "../../include/spinlock.h"
 #include "../../include/numa.h"
 #include "../../include/mm.h"
+#include "kernel/status.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -15,6 +16,13 @@ extern "C" {
 
 #define VM_REGION_FLAG_STACK (1 << 0)
 #define VM_REGION_FLAG_COW   (1 << 1)
+
+typedef enum {
+    ASPACE_STATE_CREATED = 0,
+    ASPACE_STATE_ACTIVE,
+    ASPACE_STATE_DYING,
+    ASPACE_STATE_DESTROYED
+} aspace_state_t;
 
 typedef struct vm_region {
     uintptr_t base;
@@ -63,6 +71,7 @@ typedef struct vm_address_space {
     uint64_t user_limit;     // Max user VA
 
     uint32_t flags;
+    aspace_state_t state;
     void *owner;             // process/container owner pointer
 
     uint32_t timing_class;   // From vm_timing_class_t
@@ -105,6 +114,13 @@ int aspace_find_region(vm_address_space_t *aspace, uint64_t vaddr, vm_region_t *
 // Authoritative VA lookup
 vm_region_t *aspace_lookup_region(address_space_t *aspace, uintptr_t va);
 vm_object_t *aspace_lookup_object(address_space_t *aspace, uintptr_t va, vm_region_t **out_region, uint64_t *out_object_offset);
+
+// Lifecycle hardening APIs
+kstatus_t aspace_activate_on_cpu(address_space_t *aspace, uint32_t cpu_id);
+kstatus_t aspace_deactivate_on_cpu(address_space_t *aspace, uint32_t cpu_id);
+uint64_t  aspace_get_active_mask(address_space_t *aspace);
+uint64_t  aspace_next_tlb_generation(address_space_t *aspace);
+bool      aspace_is_valid_for_tlb(address_space_t *aspace);
 
 // Utility: overlap check (mostly internal but exposed for testing)
 bool aspace_check_overlap(address_space_t *aspace, uint64_t base, uint64_t length);

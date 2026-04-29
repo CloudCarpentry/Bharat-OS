@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include "bharat/mem_class.h"
 #include "kernel/status.h"
+#include "hal/hal_mm.h"
 
 // Forward declaration for HAL capabilities
 struct hal_mem_caps;
@@ -115,5 +116,11 @@ static inline bool mem_model_has_cap(mpa_caps_t cap) {
  * Validates whether a memory class is supported by the given memory model.
  */
 bool mem_class_is_supported(alloc_class_t cls, mem_model_t model);
+
+/**
+ * Validates the current memory model against HAL provided capabilities.
+ * Fails closed if the model is not supported by hardware.
+ */
+kstatus_t mem_model_validate_hal_caps(mem_model_t model, const hal_memory_caps_t *hal_caps);
 
 #endif // BHARAT_MM_MEM_MODEL_H

@@ -66,3 +66,20 @@ static const hal_arch_capabilities_t g_arm64_caps = {
 const hal_arch_capabilities_t *hal_get_arch_capabilities(void) {
     return &g_arm64_caps;
 }
+
+static const hal_memory_caps_t arm64_memory_caps = {
+    .supports_mmu_full = true,
+    .supports_mmu_lite = false,
+    .supports_mpu_only = false,
+    .supports_user_kernel_split = true,
+    .supports_page_protection = true,
+    .supports_execute_disable = true,
+    .supports_asid = true,
+    .supports_range_tlb_flush = true,
+    .min_page_size = 4096,
+    .max_address_bits = 48
+};
+
+const hal_memory_caps_t *hal_memory_caps(void) {
+    return &arm64_memory_caps;
+}

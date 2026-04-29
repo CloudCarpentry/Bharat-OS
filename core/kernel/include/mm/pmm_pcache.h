@@ -6,6 +6,7 @@
 #include "mm.h"
 #include "spinlock.h"
 #include "atomic.h"
+#include "kernel/status.h"
 
 // Scoped to order-0 only for Phase 1
 #define PMM_PCACHE_ORDER 0
@@ -53,10 +54,47 @@ typedef struct {
     pmm_remote_inbox_t inbox;
 } pmm_core_state_t;
 
-extern pmm_core_state_t g_pmm_cores[256]; // Assuming MAX_CORES 256
+#include "hal/hal_boot.h"
+
+extern pmm_core_state_t g_pmm_cores[BHARAT_MAX_CPUS];
 
 void pmm_pcache_init_all(void);
 void pmm_core_local_init(uint32_t core_id);
 void pmm_drain_remote_frees(uint32_t core_id);
+
+/**
+ * @brief Enqueue a page for remote free to its owner core.
+ * @param core_id The ID of the owner core.
+ * @param page_addr The physical address of the page.
+ * @return K_OK on success, error code otherwise.
+ */
+kstatus_t pmm_pcache_remote_free_enqueue(uint32_t core_id, phys_addr_t page_addr);
+
+/**
+ * @brief Check if a core ID is valid for PMM operations.
+ */
+bool pmm_core_id_valid(uint32_t core_id);
+
+/**
+ * @brief Check if a NUMA node ID is valid.
+ */
+bool pmm_numa_node_valid(uint32_t node_id);
+
+/**
+ * @brief Check if a page can enter the per-core cache.
+ * Pinned pages or pages with multiple references cannot.
+ */
+struct page;
+bool pmm_page_can_enter_pcache(struct page *page);
+
+/**
+ * @brief Check if a page is owned by a specific core.
+ */
+bool pmm_page_owned_by_core(struct page *page, uint32_t core_id);
+
+/**
+ * @brief Check if a remote inbox has space for more pages.
+ */
+bool pmm_remote_inbox_has_space(uint32_t core_id);
 
 #endif // BHARAT_PMM_PCACHE_H

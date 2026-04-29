@@ -10,6 +10,7 @@
 #include "../../../../include/debug/mm_invariants.h"
 #include "../../../../include/kernel/status.h"
 #include "vm_region_index.h"
+#include "hal/hal_boot.h"
 
 static uint64_t next_as_id = 1;
 
@@ -121,6 +122,7 @@ int aspace_create(address_space_t **out_aspace, uint32_t flags) {
     spin_lock_init(&as->lock);
     as->tlb_gen = 1;
     as->active_mask = 0;
+    as->state = ASPACE_STATE_CREATED;
     as->regions_tree_root = NULL;
     as->regions = NULL;
     as->region_count = 0;
@@ -145,6 +147,7 @@ int aspace_destroy(address_space_t *aspace) {
     if (!aspace) return K_ERR_INVALID_ARG;
 
     spin_lock(&aspace->lock);
+    aspace->state = ASPACE_STATE_DYING;
 
     vm_region_t *curr = aspace->regions;
     while (curr) {
@@ -173,6 +176,7 @@ int aspace_destroy(address_space_t *aspace) {
         aspace->prot_domain = NULL;
     }
 
+    aspace->state = ASPACE_STATE_DESTROYED;
     spin_unlock(&aspace->lock);
     kfree(aspace);
     return K_OK;
@@ -474,6 +478,53 @@ int aspace_find_region(address_space_t *aspace, uint64_t vaddr, vm_region_t **ou
     return K_ERR_NOT_FOUND;
 }
 
+// Lifecycle hardening APIs
+kstatus_t aspace_activate_on_cpu(address_space_t *aspace, uint32_t cpu_id) {
+    if (!aspace) return K_ERR_INVALID_ARG;
+    if (cpu_id >= BHARAT_MAX_CPUS) return K_ERR_INVALID_ARG;
+
+    spin_lock(&aspace->lock);
+    if (aspace->state == ASPACE_STATE_DESTROYED || aspace->state == ASPACE_STATE_DYING) {
+        spin_unlock(&aspace->lock);
+        return K_ERR_BAD_STATE;
+    }
+
+    aspace->state = ASPACE_STATE_ACTIVE;
+    __atomic_or_fetch(&aspace->active_mask, (1ULL << cpu_id), __ATOMIC_SEQ_CST);
+    spin_unlock(&aspace->lock);
+    return K_OK;
+}
+
+kstatus_t aspace_deactivate_on_cpu(address_space_t *aspace, uint32_t cpu_id) {
+    if (!aspace) return K_ERR_INVALID_ARG;
+    if (cpu_id >= BHARAT_MAX_CPUS) return K_ERR_INVALID_ARG;
+
+    // We don't necessarily lock here if we want it to be fast during switch,
+    // but the requirement said to use named APIs.
+    __atomic_and_fetch(&aspace->active_mask, ~(1ULL << cpu_id), __ATOMIC_SEQ_CST);
+
+    // If mask is empty and state was active, we could potentially move it back to created,
+    // but typically it stays ACTIVE once it has been used.
+
+    return K_OK;
+}
+
+uint64_t aspace_get_active_mask(address_space_t *aspace) {
+    if (!aspace) return 0;
+    return __atomic_load_n(&aspace->active_mask, __ATOMIC_ACQUIRE);
+}
+
+uint64_t aspace_next_tlb_generation(address_space_t *aspace) {
+    if (!aspace) return 0;
+    return __atomic_add_fetch(&aspace->tlb_gen, 1, __ATOMIC_SEQ_CST);
+}
+
+bool aspace_is_valid_for_tlb(address_space_t *aspace) {
+    if (!aspace) return false;
+    aspace_state_t state = __atomic_load_n(&aspace->state, __ATOMIC_ACQUIRE);
+    return (state == ASPACE_STATE_ACTIVE || state == ASPACE_STATE_CREATED);
+}
+
 vm_object_t *aspace_lookup_object(address_space_t *aspace, uintptr_t va, vm_region_t **out_region, uint64_t *out_object_offset) {
     vm_region_t *r = aspace_lookup_region(aspace, va);
     if (!r || !r->object) return NULL;
@@ -524,6 +575,7 @@ static int insert_region_sorted(address_space_t *aspace, vm_region_t *new_region
 
 int aspace_region_reserve(address_space_t *aspace, uintptr_t base, size_t length, uint32_t prot, uint32_t map_flags, vm_inherit_t inherit, vm_region_t **out_region) {
     if (!aspace || length == 0) return K_ERR_INVALID_ARG;
+    if (aspace->state == ASPACE_STATE_DYING || aspace->state == ASPACE_STATE_DESTROYED) return K_ERR_BAD_STATE;
 
     base = base & ~(PAGE_SIZE - 1);
     length = (length + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
@@ -562,6 +614,7 @@ int aspace_region_reserve(address_space_t *aspace, uintptr_t base, size_t length
 
 int aspace_region_attach(address_space_t *aspace, uintptr_t base, size_t length, uint32_t prot, uint32_t map_flags, vm_inherit_t inherit, vm_object_t *object, uint64_t object_offset, vm_region_t **out_region) {
     if (!aspace || length == 0) return K_ERR_INVALID_ARG;
+    if (aspace->state == ASPACE_STATE_DYING || aspace->state == ASPACE_STATE_DESTROYED) return K_ERR_BAD_STATE;
 
     base = base & ~(PAGE_SIZE - 1);
     length = (length + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
@@ -604,6 +657,7 @@ int aspace_region_attach(address_space_t *aspace, uintptr_t base, size_t length,
 
 int aspace_region_detach(address_space_t *aspace, uintptr_t base) {
     if (!aspace) return K_ERR_INVALID_ARG;
+    if (aspace->state == ASPACE_STATE_DYING || aspace->state == ASPACE_STATE_DESTROYED) return K_ERR_BAD_STATE;
 
     base = base & ~(PAGE_SIZE - 1);
 
@@ -637,6 +691,7 @@ int aspace_region_detach(address_space_t *aspace, uintptr_t base) {
 
 int aspace_clone(address_space_t *src, address_space_t **out_clone, uint32_t clone_flags) {
     if (!src || !out_clone) return K_ERR_INVALID_ARG;
+    if (src->state == ASPACE_STATE_DYING || src->state == ASPACE_STATE_DESTROYED) return K_ERR_BAD_STATE;
 
     address_space_t *dst = NULL;
     int ret = aspace_create(&dst, clone_flags);
@@ -683,6 +738,8 @@ int aspace_clone(address_space_t *src, address_space_t **out_clone, uint32_t clo
 // ============================================================================
 
 int aspace_map_region(address_space_t *aspace, uint64_t vaddr_hint, uint64_t length, uint32_t prot, uint32_t map_flags, vm_object_t *object, uint64_t object_offset, uint64_t *out_vaddr) {
+    if (!aspace) return K_ERR_INVALID_ARG;
+    if (aspace->state == ASPACE_STATE_DYING || aspace->state == ASPACE_STATE_DESTROYED) return K_ERR_BAD_STATE;
     // Basic wrapper to map legacy calls to the new attach logic.
     // If vaddr_hint is 0, we'd normally search for a hole. In the new logic, attach requires base.
     // TODO(PR3.1-TRANSITION): Support dynamic vaddr allocation rather than forcing hardcoded hints
@@ -697,11 +754,15 @@ int aspace_map_region(address_space_t *aspace, uint64_t vaddr_hint, uint64_t len
 }
 
 int aspace_unmap_region(address_space_t *aspace, uint64_t base, uint64_t length) {
+    if (!aspace) return K_ERR_INVALID_ARG;
+    if (aspace->state == ASPACE_STATE_DYING || aspace->state == ASPACE_STATE_DESTROYED) return K_ERR_BAD_STATE;
     (void)length; // Assume unmapping the whole region matched by base
     return aspace_region_detach(aspace, base);
 }
 
 int aspace_protect_region(address_space_t *aspace, uint64_t base, uint64_t length, uint32_t new_prot) {
+    if (!aspace) return K_ERR_INVALID_ARG;
+    if (aspace->state == ASPACE_STATE_DYING || aspace->state == ASPACE_STATE_DESTROYED) return K_ERR_BAD_STATE;
     (void)length;
     vm_region_t *r = aspace_lookup_region(aspace, base);
     if (r) {

@@ -428,7 +428,9 @@ static void runtime_enter_benchmark(const boot_info_t *boot) {
     }
 }
 
+#ifdef BHARAT_ENABLE_SUBSYS_AUTOMOTIVE
 extern void autos_task_demo_run(void);
+#endif
 
 static void runtime_enter_automotive(const boot_info_t *boot) {
     (void)boot;
@@ -438,7 +440,11 @@ static void runtime_enter_automotive(const boot_info_t *boot) {
     boot_selftest_run_stage(BOOT_TEST_STAGE_RUNTIME, &report);
     KPRINT("  [BOOT] Automotive mode initialization complete\n");
 
+#ifdef BHARAT_ENABLE_SUBSYS_AUTOMOTIVE
     autos_task_demo_run();
+#else
+    KPRINT("  [BOOT] ERR: Automotive subsystem not enabled in this build!\n");
+#endif
 
     while (1) {
         hal_cpu_halt();
@@ -483,7 +489,7 @@ void boot_common_runtime(const boot_info_t *boot) {
         case BHARAT_BOOT_MODE_NORMAL:
         default:
             KPRINT("  [BOOT] Entering normal runtime\n");
-            if (mode == BOOT_MODE_AUTOMOTIVE) runtime_enter_automotive(boot); else runtime_enter_normal(boot);
+            runtime_enter_normal(boot);
             break;
         case BHARAT_BOOT_MODE_DIAGNOSTIC:
             KPRINT("  [BOOT] Entering diagnostic runtime\n");
