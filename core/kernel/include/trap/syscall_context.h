@@ -30,6 +30,8 @@ typedef struct bh_syscall_meta {
     uint32_t arg_count;
     uint64_t flags;
     uint64_t required_rights;
+    uint8_t  cap_arg_index;
+    uint32_t required_cap_type;
     bool requires_capability;
     bool copies_from_user;
     bool copies_to_user;
@@ -46,6 +48,9 @@ typedef struct bh_personality_syscall_table {
     const bh_syscall_meta_t *table;
 } bh_personality_syscall_table_t;
 
+#include "kernel/status.h"
+kstatus_t bh_syscall_table_validate(const bh_personality_syscall_table_t *table);
+
 // Flags
 #define BH_SYSCALL_F_FAST          (1u << 0)
 #define BH_SYSCALL_F_BLOCKING      (1u << 1)
@@ -55,5 +60,7 @@ typedef struct bh_personality_syscall_table {
 #define BH_SYSCALL_F_SERVICE_CALL  (1u << 5)
 #define BH_SYSCALL_F_COMPAT        (1u << 6)
 #define BH_SYSCALL_F_AUDIT         (1u << 7)
+
+#define BH_SYS_CAP_INDEX_NONE UINT8_MAX
 
 #endif /* BHARAT_SYSCALL_CONTEXT_H */

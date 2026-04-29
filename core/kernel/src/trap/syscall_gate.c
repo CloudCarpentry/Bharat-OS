@@ -10,6 +10,7 @@
 #include "bharat/personality/personality_interface.h"
 #include "profile/profile_policy.h"
 #include "bh_personality_registry.h"
+#include "syscall/syscall_capability.h"
 
 kstatus_t bh_syscall_policy_check(bh_syscall_ctx_t *ctx, const bh_syscall_meta_t *desc) {
     if (!ctx || !desc) return K_ERR_INVALID_ARG;
@@ -20,12 +21,24 @@ kstatus_t bh_syscall_policy_check(bh_syscall_ctx_t *ctx, const bh_syscall_meta_t
         return K_ERR_DENIED;
     }
 
-    // 2. CAP_REQUIRED check: Must have enforceable rights
+    // 2. CAP_REQUIRED check: Enforce capability metadata centrally
     if (desc->flags & BH_SYSCALL_F_CAP_REQUIRED) {
-        if (desc->required_rights == 0 && desc->requires_capability) {
-             // If capability is required but no specific rights defined, we still need a check later
-             // but if it's F_CAP_REQUIRED it must specify at least one bit or the metadata is invalid.
-             // (Exception: some syscalls might just check for possession of ANY right on a specific type)
+        if (desc->cap_arg_index != BH_SYS_CAP_INDEX_NONE) {
+            if (desc->cap_arg_index >= desc->arg_count) {
+                return K_ERR_BAD_STATE; // Metadata error
+            }
+
+            uint32_t cap_id = (uint32_t)ctx->regs.arg[desc->cap_arg_index];
+            bh_status_t bh_st = bh_syscall_validate_capability(ctx, cap_id,
+                                                               desc->required_cap_type,
+                                                               desc->required_rights);
+            if (bh_st != BH_OK) {
+                // Map BH_ERR back to kstatus for policy check result
+                // This is a bit circular but ensures the gate returns the right sysret
+                return K_ERR_DENIED;
+            }
+        } else if (desc->requires_capability) {
+             // Fallback for legacy transitional metadata if cap_arg_index not yet set
         }
     }
 
@@ -139,12 +152,18 @@ long bh_syscall_gate(trap_frame_t *frame, const trap_info_t *info) {
     }
 
     /* Personality-specific translation */
+    long result = desc->handler(&ctx);
+
+    const personality_ops_t *ops = bh_personality_registry_get_ops(ctx.personality);
+    if (ops && ops->normalize_syscall_return) {
+        return ops->normalize_syscall_return(result);
+    }
+
     if (ctx.personality == BH_PERSONALITY_NATIVE) {
-        return desc->handler(&ctx);
+        return result;
     } else {
         /* Compatibility personality: result should be translated to personality-specific errno */
-        long res = desc->handler(&ctx);
-        /* If handler returned a kernel status instead of translated long, we should catch it here */
-        return res;
+        /* If no explicit normalization hook, use native fallback but this might be wrong for Linux */
+        return kstatus_to_native_sysret((kstatus_t)result);
     }
 }

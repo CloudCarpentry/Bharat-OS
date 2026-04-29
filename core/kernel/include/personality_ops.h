@@ -20,4 +20,6 @@ typedef struct personality_ops {
                              const trap_info_t *info);
 
     int (*map_fault_to_signal)(const trap_info_t *info);
+
+    long (*normalize_syscall_return)(long result);
 } personality_ops_t;
