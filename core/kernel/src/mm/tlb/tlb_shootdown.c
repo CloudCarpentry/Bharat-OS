@@ -26,9 +26,60 @@
 #include "../../../include/hal/hal_ipi.h"
 
 // Bring in the generated definitions
+#ifndef BHARAT_HOST_TEST
 #include "bharat_monitor_v1_types.h"
 #include "../../../../services/core/subsysmgr/include/bharat/msg/transport.h"
 #include "../../../../services/core/subsysmgr/include/bharat/msg/wire.h"
+#else
+// Minimal mocks for host tests
+typedef struct {
+    uint64_t aspace_id;
+    uint64_t va_start;
+    uint64_t length;
+    uint32_t type;
+    uint32_t generation;
+} bharat_monitor_v1_TlbInvalidateReq_t;
+
+typedef struct {
+    uint32_t status;
+} bharat_monitor_v1_TlbInvalidateResp_t;
+
+typedef struct {
+    int dummy;
+    struct {
+        int (*send)(void* t, const void* buf, size_t len);
+        int (*recv)(void* t, void* buf, size_t max, size_t* rx_len);
+        int (*poll)(void* t, int timeout);
+    }* ops;
+} bharat_transport_t;
+
+#define BHARAT_MSG_HEADER_MIN_LEN 16
+#define BHARAT_MSG_OK 0
+#define BHARAT_MSG_VERSION_MAJOR 1
+#define BHARAT_MSG_VERSION_MINOR 0
+#define BHARAT_MSG_FLAG_RESPONSE 1
+
+typedef struct {
+    uint8_t version_major;
+    uint8_t version_minor;
+    uint8_t header_len;
+    uint8_t flags;
+    uint16_t service_id;
+    uint16_t opcode;
+    uint32_t request_id;
+    uint32_t src_node;
+    uint32_t dst_node;
+    uint32_t total_len;
+} bharat_msg_header_t;
+
+static inline int bharat_msg_header_decode(const void* buf, size_t len, bharat_msg_header_t* hdr) { return -1; }
+static inline int bharat_msg_header_encode(const bharat_msg_header_t* hdr, void* buf, size_t max) { return -1; }
+static inline bool bharat_msg_is_request(uint8_t flags) { return false; }
+static inline bool bharat_msg_is_response(uint8_t flags) { return (flags & BHARAT_MSG_FLAG_RESPONSE) != 0; }
+static inline uint64_t bharat_load_le64(const void* p) { return 0; }
+static inline uint32_t bharat_load_le32(const void* p) { return 0; }
+static inline void bharat_store_le32(void* p, uint32_t v) {}
+#endif
 
 // Optional transport resolver hook for core->transport routing.
 // Keep a weak local stub so kernel linking does not depend on a board/service
@@ -46,146 +97,143 @@ extern void cap_handle_delegate_ack(uint64_t payload);
 extern void cap_handle_revoke_req(uint64_t payload, uint32_t source_core);
 extern void cap_handle_revoke_ack(uint64_t payload);
 
-static
+static kstatus_t tlb_send_via_transport(uint32_t core, const bharat_monitor_v1_TlbInvalidateReq_t* req) {
+    bharat_transport_t* t = transport_for_core(core);
+    if (t) {
+         return bharat_monitor_v1_call_tlb_invalidate(t, core, req, NULL);
+    }
+    return K_ERR_NOT_FOUND;
+}
 
-// Send the TLB Invalidate using the Monitor service format over URPC
-void vmm_send_tlb_invalidate(vm_aspace_t *aspace,
-                             uint64_t va,
-                             uint64_t len,
-                             uint32_t type)
+static void tlb_send_via_mailbox_legacy(uint32_t core, uint32_t current_core, uint32_t type, vm_aspace_t* aspace, uint64_t va, uint64_t len, uint32_t generation) {
+    mm_mailbox_slot_t* mailbox = &g_mm_mailboxes[core];
+    spin_lock(&mailbox->lock);
+    mailbox->msg.type = MM_MSG_TLB_FLUSH;
+    mailbox->msg.scope = (type == 0) ? TLB_SCOPE_PAGE : (type == 1) ? TLB_SCOPE_RANGE : TLB_SCOPE_ASPACE;
+    mailbox->msg.sender_core = current_core;
+    mailbox->msg.as_id = aspace ? aspace->object_id : 0;
+    mailbox->msg.va = va;
+    mailbox->msg.len = len;
+    mailbox->msg.seq = generation;
+    mailbox->valid = 1;
+    mailbox->req_seq++;
+    spin_unlock(&mailbox->lock);
+
+    hal_ipi_send(core, HAL_IPI_TLB_SHOOTDOWN);
+}
+
+static kstatus_t tlb_wait_for_acks_bounded(uint32_t current_core, int slot) {
+    #define BHARAT_TLB_ACK_TIMEOUT_LOOPS 1000000
+    #define BHARAT_TLB_MAX_RETRIES 3
+
+    uint32_t retry_count = 0;
+    while (retry_count < BHARAT_TLB_MAX_RETRIES) {
+        uint32_t wait_loops = 0;
+        while (wait_loops < BHARAT_TLB_ACK_TIMEOUT_LOOPS) {
+            if (tlb_pending_is_complete(current_core, slot)) {
+                return K_OK;
+            }
+            arch_cpu_relax();
+            vmm_process_urpc_messages();
+            wait_loops++;
+        }
+        retry_count++;
+    }
+    return K_ERR_TIMEOUT;
+}
+
+static void tlb_handle_failure(tlb_failure_policy_t policy, uint64_t aspace_id, uint32_t reqid) {
+    uint32_t core = hal_cpu_get_id();
+    // Use console_log if available, otherwise KPRINT fallback
+    console_log(CONSOLE_LEVEL_PANIC,
+        "TLB: Shootdown failure! core=%u aspace=%lu reqid=0x%x policy=%d\n",
+        core, aspace_id, reqid, (int)policy);
+
+    switch (policy) {
+        case TLB_FAIL_KERNEL_PANIC:
+            kernel_panic("TLB Shootdown Timeout: Revocation failed. System halted to prevent corruption.");
+            break;
+        case TLB_FAIL_ISOLATE_ASPACE:
+            // TODO(PR3.1-HARDENING): Implement address space isolation/poisoning
+            kernel_panic("TLB_FAIL_ISOLATE_ASPACE: Critical failure, isolation not yet implemented.");
+            break;
+        default:
+            break;
+    }
+}
+
+kstatus_t vmm_send_tlb_invalidate_ex(vm_aspace_t *aspace,
+                                uint64_t va,
+                                uint64_t len,
+                                uint32_t type,
+                                tlb_failure_policy_t failure_policy)
 {
-
-
-
+    if (!aspace_is_valid_for_tlb(aspace)) return K_ERR_INVALID_ARG;
 
     bharat_monitor_v1_TlbInvalidateReq_t req = {0};
-
-    req.aspace_id = aspace ? aspace->object_id : 0;
+    req.aspace_id = aspace->object_id;
     req.va_start  = va;
     req.length    = len;
     req.type      = type;
 
     uint32_t current_core = hal_cpu_get_id();
-
-    // The generation counter now lives on the address space, allowing proper monotonic sequence tracking globally
-    address_space_t *as = NULL;
-    if (aspace && g_cpu_locals[current_core].current_as_id == aspace->object_id) {
-        as = g_cpu_locals[current_core].current_as;
-    }
-
-    // Fallback if not current
-    if (!as) {
-        for (int i=0; i<MAX_CPUS; i++) {
-            if (aspace && g_cpu_locals[i].current_as && g_cpu_locals[i].current_as->object_id == aspace->object_id) {
-                as = g_cpu_locals[i].current_as;
-                break;
-            }
-        }
-    }
-
-    uint64_t target_mask = __atomic_load_n(&as->active_mask, __ATOMIC_ACQUIRE);
-    req.generation = __atomic_add_fetch(&as->tlb_gen, 1, __ATOMIC_SEQ_CST);
+    uint64_t target_mask = aspace_get_active_mask(aspace);
 
     // Do not wait for self
     target_mask &= ~(1ULL << current_core);
 
     if (target_mask == 0) {
-        return; // Nothing to do remotely
+        return K_OK;
     }
 
-    // Allocate tracking slot
     uint32_t reqid = 0;
-    int slot = tlb_pending_alloc(aspace ? aspace->object_id : 0, target_mask, &reqid);
+    int slot = tlb_pending_alloc(aspace->object_id, target_mask, &reqid);
 
-    // In fallback mode, we still send the shootdown but we wait sequentially without tracking
-    // For this simple version, we encode our generation if we fail allocation
-    uint32_t final_reqid = reqid;
     if (slot < 0) {
-        final_reqid = tlb_reqid_encode(current_core, 0xFF, req.generation & 0xFFFF);
+        // Fallback reqid
+        reqid = tlb_reqid_encode(current_core, 0xFF, (uint32_t)aspace->tlb_gen & 0xFFFF);
         tlb_pending_get_stats(current_core)->fallback_count++;
     }
 
-    req.generation = final_reqid;
+    req.generation = reqid;
+    (void)aspace_next_tlb_generation(aspace);
 
     for (int core = 0; core < MAX_CPUS; core++) {
-
         if (core == current_core) continue;
-
-        // Strictly target only CPUs tracked in the active mask
         if (!(target_mask & (1ULL << core))) continue;
 
-        bharat_transport_t* t = transport_for_core(core);
-        if (t) {
-             // Dispatch without synchronously waiting inside the transport call
-             bharat_monitor_v1_call_tlb_invalidate(
-                t,
-                core,
-                &req,
-                NULL
-            );
-        } else {
-             // Fallback to legacy mailbox
-             mm_mailbox_slot_t* mailbox = &g_mm_mailboxes[core];
-             spin_lock(&mailbox->lock);
-             mailbox->msg.type = MM_MSG_TLB_FLUSH;
-             mailbox->msg.scope = (type == 0) ? TLB_SCOPE_PAGE : (type == 1) ? TLB_SCOPE_RANGE : TLB_SCOPE_ASPACE;
-             mailbox->msg.sender_core = current_core;
-             mailbox->msg.as_id = aspace ? aspace->object_id : 0;
-             mailbox->msg.va = va;
-             mailbox->msg.len = len;
-             mailbox->msg.seq = req.generation; // Use the generated reqid for sequence tracking
-             mailbox->valid = 1;
-             mailbox->req_seq++;
-             spin_unlock(&mailbox->lock);
-
-             // notify via proper HAL IPI API
-             hal_ipi_send(core, HAL_IPI_TLB_SHOOTDOWN);
+        if (tlb_send_via_transport(core, &req) != K_OK) {
+             tlb_send_via_mailbox_legacy(core, current_core, type, aspace, va, len, req.generation);
         }
     }
 
+    kstatus_t status = K_OK;
     if (slot >= 0) {
-        // Synchronous wait with timeout and retry policy
-        #define BHARAT_TLB_ACK_TIMEOUT_LOOPS 1000000
-        #define BHARAT_TLB_MAX_RETRIES 3
-
-        uint32_t retry_count = 0;
-        bool success = false;
-
-        while (retry_count < BHARAT_TLB_MAX_RETRIES) {
-            uint32_t wait_loops = 0;
-            while (wait_loops < BHARAT_TLB_ACK_TIMEOUT_LOOPS) {
-                if (tlb_pending_is_complete(current_core, slot)) {
-                    success = true;
-                    break; // All acks received
-                }
-
-                // Let CPU relax and process incoming messages
-                arch_cpu_relax();
-                vmm_process_urpc_messages(); // check if acks arrived
-                wait_loops++;
-            }
-
-            if (success) break;
-            retry_count++;
+        status = tlb_wait_for_acks_bounded(current_core, slot);
+        if (status != K_OK) {
+            tlb_handle_failure(failure_policy, aspace->object_id, reqid);
         }
-
-        if (!success) {
-            // TIMEOUT path for revocation. We fail closed.
-            kernel_panic("TLB Shootdown Timeout: Revocation failed, system isolated to prevent memory corruption.");
-        }
-
-        // Free slot
         tlb_pending_free(current_core, slot);
     } else {
-        // Fallback waiting (spinning without slot state tracking, relying directly on transport ack if possible)
-        // Here we can simply wait on mailboxes, or a small wait loop
+        // Fallback waiting
         uint32_t wait_loops = 0;
         while (wait_loops < BHARAT_TLB_ACK_TIMEOUT_LOOPS) {
             arch_cpu_relax();
             vmm_process_urpc_messages();
             wait_loops++;
         }
+        // Fallback doesn't track ACKs, so we can't easily report error.
     }
+
+    return status;
+}
+
+void vmm_send_tlb_invalidate(vm_aspace_t *aspace,
+                             uint64_t va,
+                             uint64_t len,
+                             uint32_t type)
+{
+    vmm_send_tlb_invalidate_ex(aspace, va, len, type, TLB_FAIL_KERNEL_PANIC);
 }
 
 int monitor_handle_tlb_invalidate(
@@ -228,7 +276,7 @@ int monitor_handle_tlb_invalidate(
     return 0;
 }
 
-int tlb_invalidate_remote(vm_aspace_t *aspace, uintptr_t va, size_t len, tlb_inv_kind_t kind) {
+int tlb_invalidate_remote_ex(vm_aspace_t *aspace, uintptr_t va, size_t len, tlb_inv_kind_t kind, tlb_failure_policy_t failure_policy) {
     if (!aspace || !active_hal_tlb) return -1;
 
     uint32_t type;
@@ -240,12 +288,17 @@ int tlb_invalidate_remote(vm_aspace_t *aspace, uintptr_t va, size_t len, tlb_inv
 
     arch_caps_t caps = arch_get_caps();
     if (arch_caps_test(caps, ARCH_CAP_SMP)) {
-        vmm_send_tlb_invalidate(aspace, va, len, type);
+        kstatus_t status = vmm_send_tlb_invalidate_ex(aspace, va, len, type, failure_policy);
         uint32_t current_core = hal_cpu_get_id();
         g_tlb_cpu_state[current_core].shootdowns_sent++;
+        if (status != K_OK) return -1;
     }
 
     return 0;
+}
+
+int tlb_invalidate_remote(vm_aspace_t *aspace, uintptr_t va, size_t len, tlb_inv_kind_t kind) {
+    return tlb_invalidate_remote_ex(aspace, va, len, kind, TLB_FAIL_RETURN_ERROR);
 }
 
 int tlb_invalidate_all(vm_aspace_t *aspace, uintptr_t va, size_t len, tlb_inv_kind_t kind) {

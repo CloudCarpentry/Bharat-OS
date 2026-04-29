@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include "hal/hal_capabilities.h"
 #include "hal/hal_mmu.h"
+#include "hal/hal_mm.h"
 #include <string.h>
 
 int hal_mem_get_caps(hal_mem_caps_t *caps) {
@@ -43,4 +44,21 @@ static const hal_arch_capabilities_t g_riscv32_caps = {
 
 const hal_arch_capabilities_t *hal_get_arch_capabilities_riscv32(void) {
     return &g_riscv32_caps;
+}
+
+static const hal_memory_caps_t riscv32_memory_caps = {
+    .supports_mmu_full = false,
+    .supports_mmu_lite = true,
+    .supports_mpu_only = false,
+    .supports_user_kernel_split = true,
+    .supports_page_protection = true,
+    .supports_execute_disable = true,
+    .supports_asid = true,
+    .supports_range_tlb_flush = true,
+    .min_page_size = 4096,
+    .max_address_bits = 32
+};
+
+const hal_memory_caps_t *hal_memory_caps(void) {
+    return &riscv32_memory_caps;
 }

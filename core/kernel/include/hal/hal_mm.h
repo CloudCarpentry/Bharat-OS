@@ -36,4 +36,19 @@ typedef struct hal_mm_backend_caps {
 // Get capabilities of the VMM backend
 void hal_mm_backend_caps(hal_mm_backend_caps_t *out);
 
+typedef struct hal_memory_caps {
+    bool supports_mmu_full;
+    bool supports_mmu_lite;
+    bool supports_mpu_only;
+    bool supports_user_kernel_split;
+    bool supports_page_protection;
+    bool supports_execute_disable;
+    bool supports_asid;
+    bool supports_range_tlb_flush;
+    uint32_t min_page_size;
+    uint32_t max_address_bits;
+} hal_memory_caps_t;
+
+const hal_memory_caps_t *hal_memory_caps(void);
+
 #endif // BHARAT_HAL_MM_H
