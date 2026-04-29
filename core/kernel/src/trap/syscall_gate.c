@@ -86,6 +86,7 @@ const bh_personality_syscall_table_t *personality_get_syscall_table(bh_personali
             return &bh_linux_syscall_table;
 #endif
             break;
+        }
 #endif
 #if defined(BHARAT_PERSONALITY_ANDROID)
         case BH_PERSONALITY_ANDROID:
@@ -93,7 +94,6 @@ const bh_personality_syscall_table_t *personality_get_syscall_table(bh_personali
             return personality_android_get_table();
 #else
             return NULL;
-#endif
 #endif
             break;
 #endif
@@ -103,7 +103,6 @@ const bh_personality_syscall_table_t *personality_get_syscall_table(bh_personali
             return personality_windows_get_table();
 #else
             return NULL;
-#endif
 #endif
             break;
 #endif

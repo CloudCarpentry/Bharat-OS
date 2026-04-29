@@ -21,25 +21,22 @@ typedef uint64_t virt_addr_t;
 #include "mm_coloring.h"
 // TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "mm/pmm.h"
+#include "bharat/kernel/ds/bh_refcount.h"
 
 // Page metadata structure for Buddy Allocator
 typedef struct __attribute__((aligned(16))) page {
-  list_head_t list;
-  uint16_t ref_count;
-  uint16_t numa_node;
-  uint32_t flags;
-  // For buddy system: an order field or similar can be kept, or inferred.
-  // For simplicity, we can keep the order in the list if needed,
-  // but typically a page's block order is stored in metadata.
-  int order;
-  // Ownership tracking
-  uint32_t owner_core_id;
-  uint64_t object_id;
-
-  uint16_t zone;
-  uint16_t owner_class;
-  uint16_t pin_count;
-  uint16_t state;
+  list_head_t list;           // 16 bytes
+  bh_refcount_t ref_count;    // 4 bytes
+  uint32_t flags;             // 4 bytes
+  uint32_t owner_core_id;     // 4 bytes
+  uint64_t object_id;         // 8 bytes
+  int8_t order;               // 1 byte
+  uint8_t numa_node;          // 1 byte
+  uint8_t zone;               // 1 byte
+  uint8_t owner_class;        // 1 byte
+  uint16_t pin_count;         // 2 bytes
+  uint16_t state;             // 2 bytes (pmm_page_state_t)
+  uint16_t reserved;          // 2 bytes padding
 } page_t;
 
 typedef page_t page_frame_t;

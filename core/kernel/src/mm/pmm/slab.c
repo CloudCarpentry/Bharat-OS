@@ -152,7 +152,7 @@ void kfree(void* ptr) {
     // Otherwise it's a direct page allocation
     page_t *page = phys_to_page(paddr);
     if (page) {
-        page->ref_count = 1; // Prepare for mm_free_page
+        bh_refcount_init(&page->ref_count, 1); // Prepare for mm_free_page
         mm_free_page(paddr);
     }
 }

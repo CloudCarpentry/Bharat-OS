@@ -308,6 +308,7 @@ void boot_common_platform_services(const boot_info_t *boot) {
     extern void android_personality_init(void);
     android_personality_init();
 #endif
+#endif
 
     personality_register_ops(personality_native_get_ops());
 

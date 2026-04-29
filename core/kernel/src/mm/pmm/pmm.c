@@ -24,6 +24,7 @@
 #include "mm/pt_cache.h"
 #include "mm/physmap.h"
 #include "mm/pmm_pcache.h"
+#include "pmm_lifecycle.h"
 
 #define MAX_ORDER                                                              \
   12 // allows order 11 -> 2048 pages -> 8MB, and order 9 -> 512 pages -> 2MB
@@ -124,7 +125,7 @@ static void *pmm_alloc_pages_order_colored(int order, uint32_t numa_node,
           page_t *page = phys_to_page(phys);
           if (page) {
               page->order = 0;
-              page->ref_count = 1;
+              bh_refcount_init(&page->ref_count, 1);
               page->flags = PAGE_FLAG_KERNEL;
               page->state = PMM_PAGE_STATE_ALLOCATED;
               page->owner_core_id = current_core;
@@ -148,7 +149,7 @@ static void *pmm_alloc_pages_order_colored(int order, uint32_t numa_node,
           page_t *page = phys_to_page(phys);
           if (page) {
               page->order = 0;
-              page->ref_count = 1;
+              bh_refcount_init(&page->ref_count, 1);
               page->flags = PAGE_FLAG_KERNEL;
               page->state = PMM_PAGE_STATE_ALLOCATED;
               page->owner_core_id = current_core;
@@ -197,7 +198,7 @@ static void *pmm_alloc_pages_order_colored(int order, uint32_t numa_node,
           page_t *page = phys_to_page(phys);
           if (page) {
               page->order = 0;
-              page->ref_count = 1;
+              bh_refcount_init(&page->ref_count, 1);
               page->flags = PAGE_FLAG_KERNEL;
               page->state = PMM_PAGE_STATE_ALLOCATED;
               page->owner_core_id = current_core;
@@ -232,8 +233,8 @@ static void *pmm_alloc_pages_order_colored(int order, uint32_t numa_node,
           --l;
           size_t offset = (1ULL << l);
           page_t *buddy = page + offset;
-          buddy->order = l;
-          buddy->ref_count = 0;
+          buddy->order = (int8_t)l;
+          bh_refcount_init(&buddy->ref_count, 0);
           buddy->flags = 0;
 
           uint32_t buddy_color = get_page_color(page_to_phys(buddy));
@@ -241,8 +242,8 @@ static void *pmm_alloc_pages_order_colored(int order, uint32_t numa_node,
           zone->free_count[l][buddy_color]++;
         }
 
-        page->order = order;
-        page->ref_count = 1;
+        page->order = (int8_t)order;
+        bh_refcount_init(&page->ref_count, 1);
         page->flags = PAGE_FLAG_KERNEL; // By default give kernel pages
         page->state = PMM_PAGE_STATE_ALLOCATED;
         page->owner_core_id = current_core;
@@ -282,8 +283,8 @@ static void *pmm_alloc_pages_order_colored(int order, uint32_t numa_node,
           --l;
           size_t offset = (1ULL << l);
           page_t *buddy = page + offset;
-          buddy->order = l;
-          buddy->ref_count = 0;
+          buddy->order = (int8_t)l;
+          bh_refcount_init(&buddy->ref_count, 0);
           buddy->flags = 0;
 
           uint32_t buddy_color = get_page_color(page_to_phys(buddy));
@@ -291,8 +292,8 @@ static void *pmm_alloc_pages_order_colored(int order, uint32_t numa_node,
           zone->free_count[l][buddy_color]++;
         }
 
-        page->order = order;
-        page->ref_count = 1;
+        page->order = (int8_t)order;
+        bh_refcount_init(&page->ref_count, 1);
         page->flags = PAGE_FLAG_KERNEL;
         page->state = PMM_PAGE_STATE_ALLOCATED;
         page->owner_core_id = current_core;
@@ -403,7 +404,7 @@ int pmm_alloc_contiguous_ex(uint32_t page_count, pmm_zone_t zone, alloc_class_t 
     phys_addr_t free_phys = base_phys + i * PAGE_SIZE;
     page_t *p = phys_to_page(free_phys);
     if (p) {
-        p->ref_count = 1;
+        bh_refcount_init(&p->ref_count, 1);
         p->order = 0;
     }
     mm_free_page(free_phys);
@@ -430,7 +431,7 @@ int pmm_free_pages(const pmm_block_t *block) {
       if (page) {
           if (page->pin_count > 0) return -1;
           page->order = 0; // Just in case
-          page->ref_count = 1; // prepare for mm_free_page
+          bh_refcount_init(&page->ref_count, 1); // prepare for mm_free_page
       }
       mm_free_page(p);
     }
@@ -439,8 +440,8 @@ int pmm_free_pages(const pmm_block_t *block) {
       page_t *page = phys_to_page(phys);
       if (page) {
           if (page->pin_count > 0) return -1;
-          page->order = block->order;
-          page->ref_count = 1; // prepare for mm_free_page
+          page->order = (int8_t)block->order;
+          bh_refcount_init(&page->ref_count, 1); // prepare for mm_free_page
       }
       mm_free_page(phys);
       return 0;
@@ -452,9 +453,8 @@ int pmm_ref_get(uint64_t phys_addr) {
     // - ref_count > 0 means the page is live and has at least one owner.
     // - callers must hold a valid live reference before taking another one.
     page_t *page = phys_to_page(phys_addr);
-    if (page && page->ref_count > 0U) {
-        atomic16_fetch_and_add(&page->ref_count, 1U);
-        return 0;
+    if (page) {
+        return (pmm_page_get(page) == K_OK) ? 0 : -1;
     }
     return -1;
 }
@@ -463,31 +463,15 @@ int pmm_ref_put(uint64_t phys_addr) {
     page_t *page = phys_to_page(phys_addr);
     if (!page) return -1;
 
-    // Lifecycle invariant:
-    // - pinned pages can be live, but pinning does not own a refcount.
-    // - dropping the final reference while pin_count > 0 must fail without
-    //   mutating ref_count so the page remains safely owned.
-    while (1) {
-        uint16_t old_ref = __atomic_load_n(&page->ref_count, __ATOMIC_ACQUIRE);
-        if (old_ref == 0U) {
-            return -1;
+    bool is_last = false;
+    kstatus_t status = pmm_page_put(page, &is_last);
+    if (status == K_OK) {
+        if (is_last) {
+            mm_free_page(phys_addr);
         }
-        uint16_t pin_count = __atomic_load_n(&page->pin_count, __ATOMIC_ACQUIRE);
-        if (old_ref == 1U && pin_count > 0U) {
-            return -1;
-        }
-
-        uint16_t new_ref = (uint16_t)(old_ref - 1U);
-        if (__atomic_compare_exchange_n(&page->ref_count, &old_ref, new_ref, false, __ATOMIC_SEQ_CST, __ATOMIC_ACQUIRE)) {
-            if (new_ref == 0U) {
-                // mm_free_page() contract: call sites drop the final live reference
-                // and may pass ref_count == 0. mm_free_page() handles this case
-                // and transitions the state to PMM_PAGE_STATE_FREE.
-                mm_free_page(phys_addr);
-            }
-            return 0;
-        }
+        return 0;
     }
+    return -1;
 }
 
 int pmm_pin(uint64_t phys_addr) {
@@ -497,7 +481,7 @@ int pmm_pin(uint64_t phys_addr) {
     //   manage ref_count separately.
     page_t *page = phys_to_page(phys_addr);
     if (!page) return -1;
-    atomic16_fetch_and_add(&page->pin_count, 1U);
+    __atomic_fetch_add(&page->pin_count, 1U, __ATOMIC_SEQ_CST);
     return 0;
 }
 
@@ -666,7 +650,7 @@ static void mark_page_free(phys_addr_t phys) {
   if (!p) {
     return;
   }
-  p->ref_count = 1;
+  bh_refcount_init(&p->ref_count, 1);
   p->order = 0; // Ensure initial order is 0 when freed into the buddy system!
   p->state = PMM_PAGE_STATE_ALLOCATED; // Pretend it was allocated to avoid double free panic
   mm_free_page(phys);
@@ -734,8 +718,8 @@ static void pmm_add_region(phys_addr_t base, size_t size, uint32_t type,
   // Pass 1: Initialize all metadata structures
   for (size_t j = 0; j < page_count; j++) {
     page_t *p = &global_pages_ptrs[node_id][j];
-    p->ref_count = 1;
-    p->numa_node = node_id;
+    bh_refcount_init(&p->ref_count, 1);
+    p->numa_node = (uint8_t)node_id;
     p->flags = 0;
     p->order = 0; // Initialize order to 0 so buddy merging works immediately
     p->state = PMM_PAGE_STATE_RESERVED; // Default to reserved
@@ -744,9 +728,9 @@ static void pmm_add_region(phys_addr_t base, size_t size, uint32_t type,
 
     phys_addr_t paddr = base + (j * PAGE_SIZE);
     if (paddr >= limits.dma32_start && paddr <= limits.dma32_end) {
-      p->zone = PMM_ZONE_DMA32;
+      p->zone = (uint8_t)PMM_ZONE_DMA32;
     } else {
-      p->zone = PMM_ZONE_NORMAL;
+      p->zone = (uint8_t)PMM_ZONE_NORMAL;
     }
   }
 
@@ -851,7 +835,7 @@ phys_addr_t mm_alloc_page(uint32_t preferred_numa_node) {
   (void)preferred_numa_node;
   if (pmm_alloc_pages_ex(0, PMM_ZONE_ANY, MEM_NORMAL, PMM_ALLOC_NONE, &block) == 0) {
     page_t *p = phys_to_page(block.phys_addr);
-    if (p) p->owner_class = PMM_OWNER_CLASS_KERNEL;
+    if (p) p->owner_class = (uint8_t)PMM_OWNER_CLASS_KERNEL;
     return block.phys_addr;
   }
   return 0;
@@ -877,7 +861,7 @@ int mm_alloc_dma_pages(size_t size, uint32_t preferred_numa_node,
   // Set class for all pages
   for (uint32_t i = 0; i < block.page_count; i++) {
       page_t *p = phys_to_page(block.phys_addr + i * PAGE_SIZE);
-      if (p) p->owner_class = PMM_OWNER_CLASS_DMA;
+      if (p) p->owner_class = (uint8_t)PMM_OWNER_CLASS_DMA;
   }
 
   *out_phys = block.phys_addr;
@@ -908,9 +892,8 @@ int mm_free_dma_pages(phys_addr_t phys, void *kernel_virt, size_t size) {
 
 void mm_free_page(phys_addr_t page_addr) {
   // Freeing contract:
-  // - page must not be pinned (callers enforce this).
-  // - caller may invoke with ref_count == 1 (drop-to-free) or ref_count == 0
-  //   (already dropped by an external CAS path such as pmm_ref_put()).
+  // - If refcount > 0, we must decrement it. If we are NOT the last ref, return.
+  // - If refcount == 0, we must ensure we are the only one proceeding to free.
   page_t *page = phys_to_page(page_addr);
   if (!page) {
     return;
@@ -936,16 +919,18 @@ void mm_free_page(phys_addr_t page_addr) {
       }
   }
 
-  uint16_t observed = page->ref_count;
+  uint32_t observed = bh_refcount_read(&page->ref_count);
   if (observed > 0U) {
-    uint16_t old_ref = atomic16_fetch_and_sub(&page->ref_count, 1);
-    if (old_ref != 1U) {
+    bool is_last = false;
+    kstatus_t status = bh_refcount_dec_and_test(&page->ref_count, &is_last);
+    if (status != K_OK || !is_last) {
       return;
     }
   } else {
-    uint16_t expected = 0;
-    if (!__atomic_compare_exchange_n(&page->ref_count, &expected, 0U, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)) {
-      return;
+    // Re-verify ref_count is still 0 and no one else is freeing it.
+    uint32_t expected = 0;
+    if (!__atomic_compare_exchange_n(&page->ref_count.value, &expected, 0U, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)) {
+        return;
     }
   }
 
@@ -972,7 +957,7 @@ void mm_free_page(phys_addr_t page_addr) {
               pcache->pages[pcache->count++] = page_addr;
               pcache->local_frees++;
               page->state = PMM_PAGE_STATE_FREE;
-              page->ref_count = 0;
+              bh_refcount_init(&page->ref_count, 0);
               page->flags = 0;
               page->pin_count = 0;
               page->order = 0;
@@ -987,7 +972,7 @@ void mm_free_page(phys_addr_t page_addr) {
                   page_t *drain_page = phys_to_page(drain_phys);
 
                   if (drain_page) {
-                      drain_page->ref_count = 1; // restore dropping reference semantics for mm_free_page
+                      bh_refcount_init(&drain_page->ref_count, 1); // restore dropping reference semantics for mm_free_page
                       drain_page->state = PMM_PAGE_STATE_ALLOCATED; // avoid double free check on re-entry
                       mm_free_page(drain_phys);
                   }
@@ -997,7 +982,7 @@ void mm_free_page(phys_addr_t page_addr) {
               pcache->pages[pcache->count++] = page_addr;
               pcache->local_frees++;
               page->state = PMM_PAGE_STATE_FREE;
-              page->ref_count = 0;
+              bh_refcount_init(&page->ref_count, 0);
               page->flags = 0;
               page->pin_count = 0;
               page->order = 0;
@@ -1007,8 +992,8 @@ void mm_free_page(phys_addr_t page_addr) {
       } else if (pmm_core_id_valid(page->owner_core_id) && g_pmm_cores[page->owner_core_id].active) {
           // Deferred remote free
           if (pmm_pcache_remote_free_enqueue(page->owner_core_id, page_addr) == K_OK) {
-              page->state = PMM_PAGE_STATE_FREE;
-              page->ref_count = 0;
+              page->state = PMM_PAGE_STATE_REMOTE_FREE_PENDING;
+              bh_refcount_init(&page->ref_count, 0);
               page->flags = 0;
               page->pin_count = 0;
               page->order = 0;
@@ -1044,7 +1029,7 @@ void mm_free_page(phys_addr_t page_addr) {
       break;
     }
 
-    if (buddy->ref_count > 0U || buddy->order != order) {
+    if (bh_refcount_read(&buddy->ref_count) > 0U || buddy->order != order) {
       break;
     }
 
@@ -1074,8 +1059,8 @@ void mm_free_page(phys_addr_t page_addr) {
     ++order;
   }
 
-  page->order = order;
-  page->ref_count = 0;
+  page->order = (int8_t)order;
+  bh_refcount_init(&page->ref_count, 0);
   page->flags = 0;
   page->state = PMM_PAGE_STATE_FREE;
   page->pin_count = 0;
@@ -1091,8 +1076,8 @@ void mm_free_page(phys_addr_t page_addr) {
 #ifndef Profile_RTOS
 void mm_inc_page_ref(phys_addr_t page_addr) {
   page_t *page = phys_to_page(page_addr);
-  if (page && page->ref_count > 0U) {
-    atomic16_fetch_and_add(&page->ref_count, 1U);
+  if (page) {
+    (void)pmm_page_get(page);
   }
 }
 #else
@@ -1132,7 +1117,7 @@ void pmm_free_page(void *page) {
 // Refcount Helpers
 void page_get(page_t *page) {
     if (page) {
-        atomic16_fetch_and_add(&page->ref_count, 1U);
+        (void)pmm_page_get(page);
     }
 }
 
@@ -1144,11 +1129,5 @@ void page_put(page_t *page) {
 
 bool page_try_get(page_t *page) {
     if (!page) return false;
-    uint16_t old = __atomic_load_n(&page->ref_count, __ATOMIC_ACQUIRE);
-    while (old > 0) {
-        if (__atomic_compare_exchange_n(&page->ref_count, &old, old + 1, false, __ATOMIC_SEQ_CST, __ATOMIC_ACQUIRE)) {
-            return true;
-        }
-    }
-    return false;
+    return pmm_page_get(page) == K_OK;
 }
