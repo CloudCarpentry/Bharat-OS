@@ -52,6 +52,7 @@ typedef int32_t kstatus_t;
 #define K_ERR_NO_TASK           ((kstatus_t)-512)
 #define K_ERR_BAD_THREAD        ((kstatus_t)-513)
 #define K_ERR_NOT_RUNNABLE      ((kstatus_t)-514)
+#define K_ERR_ISOLATED          ((kstatus_t)-519)
 #define K_ERR_ALREADY_BLOCKED   ((kstatus_t)-515)
 #define K_ERR_WRONG_AFFINITY    ((kstatus_t)-516)
 #define K_ERR_DEADLINE_MISS     ((kstatus_t)-517)

@@ -59,6 +59,43 @@ void sched_reschedule(void) {
               if (slot->is_blocked != 0U) {
                 sched_block_dequeue(slot);
               }
+          } else if (cmd->type == SCHED_REMOTE_DEQUEUE) {
+              if (slot->is_on_runqueue != 0U) {
+                  sched_invariant_on_dequeue(thread);
+                  if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
+                      sched_cfs_dequeue(rq, thread);
+                  } else {
+                      list_del(&slot->run_node);
+                      list_init(&slot->run_node);
+                      sched_ready_bitmap_clear_if_empty(rq, thread->priority);
+                  }
+                  slot->is_on_runqueue = 0U;
+                  if (rq->runnable_count > 0U) {
+                      rq->runnable_count--;
+                  }
+              }
+              continue; // DEQUEUE is complete
+          } else if (cmd->type == SCHED_REMOTE_QUARANTINE) {
+              sched_quarantine_thread(thread, 0xBAD);
+              if (slot->is_on_runqueue != 0U) {
+                  sched_invariant_on_dequeue(thread);
+                  if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
+                      sched_cfs_dequeue(rq, thread);
+                  } else {
+                      list_del(&slot->run_node);
+                      list_init(&slot->run_node);
+                      sched_ready_bitmap_clear_if_empty(rq, thread->priority);
+                  }
+                  slot->is_on_runqueue = 0U;
+                  if (rq->runnable_count > 0U) {
+                      rq->runnable_count--;
+                  }
+              }
+              continue;
+          }
+
+          if (thread->state == THREAD_STATE_QUARANTINED) {
+              continue;
           }
 
           thread->state = THREAD_STATE_READY;

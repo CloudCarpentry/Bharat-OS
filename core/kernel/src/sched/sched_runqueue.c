@@ -16,6 +16,11 @@ int sched_enqueue(bh_thread_t *thread, uint32_t core_id) {
 
   if (!is_local) {
       sched_rq_t *target_rq = &g_cpu_locals[core_id].runqueue;
+
+      if (target_rq->sched_isolated) {
+          return K_ERR_ISOLATED;
+      }
+
       thread_slot_t *slot = sched_find_thread_slot_by_tid_local(&g_cpu_locals[thread->home_core_id].runqueue, thread->thread_id);
       if (!slot) return -1;
 
