@@ -17,6 +17,11 @@ int sched_enqueue(bh_thread_t *thread, uint32_t core_id) {
 
   if (!is_local) {
       sched_rq_t *target_rq = &g_cpu_locals[core_id].runqueue;
+
+      if (target_rq->sched_isolated) {
+          return K_ERR_ISOLATED;
+      }
+
       thread_slot_t *slot = sched_find_thread_slot_by_tid_local(&g_cpu_locals[thread->home_core_id].runqueue, thread->thread_id);
       if (!slot) return -1;
 
@@ -28,11 +33,10 @@ int sched_enqueue(bh_thread_t *thread, uint32_t core_id) {
 
       sched_remote_cmd_t *cmd = &slot->remote_cmd;
       cmd->type = SCHED_REMOTE_ENQUEUE;
-      cmd->thread_ref.thread = thread;
-      cmd->thread_ref.thread_id = (uint32_t)thread->thread_id;
-      cmd->thread_ref.generation = thread->sched_generation;
-      cmd->thread_ref.source_cpu = current_core;
-      cmd->thread_ref.target_cpu = core_id;
+      cmd->source_cpu = current_core;
+      cmd->target_cpu = core_id;
+      cmd->thread_id = thread->thread_id;
+      cmd->expected_thread_generation = thread->sched_generation;
       cmd->priority = thread->priority;
 
       list_add_tail(&cmd->list, &target_rq->pending_inbox);

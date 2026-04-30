@@ -1,12 +1,15 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <string.h>
 
 #include "bharat/uapi/display/lease.h"
 #include "bharat/uapi/display/display.h"
 #include "bharat/uapi/ipc/status.h"
 #include "bharat/uapi/ipc/manifest.h"
 #include "bharat/runtime/runtime.h"
+#include <bharat/service/service_runtime.h>
+#include <bharat/ipc/ipc.h>
 
 /**
  * Bharat-OS Display Broker Service
@@ -15,8 +18,6 @@
  * model. It manages display leases and provides clients with a simulated shared pointer
  * to the framebuffer memory. This model is intended to be replaced by VM-backed
  * shared mapping capabilities in a future phase.
- *
- * TODO: Replace shared pointer model with VM-backed buffer capability mapping.
  */
 
 #define MAX_LEASES 4
@@ -66,7 +67,7 @@ static void broker_init(void) {
     g_displays[0].current_mode.pixel_format = 1; // XRGB8888
 }
 
-static void send_reply(bharat_cap_handle_t target, bharat_ipc_msg_header_t *orig_hdr, bharat_status_t status, void *payload, uint32_t payload_size) {
+static void send_reply(bharat_cap_handle_t target, const bharat_ipc_msg_header_t *orig_hdr, bharat_status_t status, void *payload, uint32_t payload_size) {
     bharat_ipc_msg_header_t reply_hdr = *orig_hdr;
     reply_hdr.flags |= BHARAT_IPC_FLAG_REPLY;
     reply_hdr.status = status;
@@ -74,13 +75,13 @@ static void send_reply(bharat_cap_handle_t target, bharat_ipc_msg_header_t *orig
     bharat_ipc_send(target, &reply_hdr, payload);
 }
 
-static void handle_request_lease(bharat_ipc_msg_header_t *hdr, void *payload) {
+static void handle_request_lease(const bharat_ipc_msg_header_t *hdr, const void *payload) {
     if (hdr->payload_size < 8) {
         send_reply(hdr->reply_endpoint, hdr, BHARAT_IPC_STATUS_ERR_LENGTH, NULL, 0);
         return;
     }
 
-    struct { uint32_t display_id; uint32_t requested_rights; } *req = payload;
+    const struct { uint32_t display_id; uint32_t requested_rights; } *req = payload;
     struct { uint32_t status; uint32_t lease_id; uint32_t granted_rights; uint64_t fb_ptr; } resp;
 
     uint32_t disp_id = req->display_id;
@@ -128,13 +129,13 @@ static void handle_request_lease(bharat_ipc_msg_header_t *hdr, void *payload) {
     }
 }
 
-static void handle_present(bharat_ipc_msg_header_t *hdr, void *payload) {
+static void handle_present(const bharat_ipc_msg_header_t *hdr, const void *payload) {
     if (hdr->payload_size < 8) {
         send_reply(hdr->reply_endpoint, hdr, BHARAT_IPC_STATUS_ERR_LENGTH, NULL, 0);
         return;
     }
 
-    struct { uint32_t lease_id; uint32_t buffer_handle; } *req = payload;
+    const struct { uint32_t lease_id; uint32_t buffer_handle; } *req = payload;
 
     // Validate lease
     int lease_idx = -1;
@@ -154,41 +155,38 @@ static void handle_present(bharat_ipc_msg_header_t *hdr, void *payload) {
         return;
     }
 
-    // In this transitional model, "Present" might just be a no-op or trigger a HW refresh.
-    // We validate bounds if buffer handles were real, but here we just OK it.
     send_reply(hdr->reply_endpoint, hdr, BHARAT_STATUS_OK, NULL, 0);
 }
 
+bharat_status_t bh_service_handle_msg(bh_service_ctx_t *ctx, const bh_msg_t *msg) {
+    (void)ctx;
+    switch (msg->header.opcode) {
+        case 1: // RequestLease
+            handle_request_lease(&msg->header, msg->payload);
+            break;
+        case 2: // ReleaseLease
+            send_reply(msg->header.reply_endpoint, &msg->header, BHARAT_STATUS_OK, NULL, 0);
+            break;
+        case 3: // Present
+            handle_present(&msg->header, msg->payload);
+            break;
+        default:
+            send_reply(msg->header.reply_endpoint, &msg->header, BHARAT_IPC_STATUS_ERR_OPCODE, NULL, 0);
+            break;
+    }
+    return BHARAT_STATUS_OK;
+}
+
 int main(void) {
+    bharat_runtime_init();
     broker_init();
     bharat_runtime_log("Display Broker started (transitional shared-pointer model)");
 
-    bharat_ipc_msg_header_t hdr;
-    uint8_t payload[1024];
+    bh_service_start_info_t info = {
+        .service_id = 0x00010007,
+        .service_name = "display_broker",
+        .endpoint = BHARAT_CAP_INVALID_HANDLE // Should be acquired from namesvc
+    };
 
-    while (true) {
-        // Blocking receive
-        int32_t ret = bharat_ipc_recv(BHARAT_CAP_INVALID_HANDLE, &hdr, payload, sizeof(payload));
-        if (ret == 0) {
-            switch (hdr.opcode) {
-                case 1: // RequestLease
-                    handle_request_lease(&hdr, payload);
-                    break;
-                case 2: // ReleaseLease
-                    // Implement Release
-                    send_reply(hdr.reply_endpoint, &hdr, BHARAT_STATUS_OK, NULL, 0);
-                    break;
-                case 3: // Present
-                    handle_present(&hdr, payload);
-                    break;
-                default:
-                    send_reply(hdr.reply_endpoint, &hdr, BHARAT_IPC_STATUS_ERR_OPCODE, NULL, 0);
-                    break;
-            }
-        } else {
-            // Error in receive, possibly yield
-            // bharat_thread_yield();
-        }
-    }
-    return 0;
+    return bh_service_main(&info);
 }

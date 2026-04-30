@@ -5,7 +5,7 @@
 
 typedef struct {
     char service_name[NAMESVC_MAX_NAME_LEN];
-    char interface_name[NAMESVC_MAX_NAME_LEN];
+    bharat_service_id_t service_id;
     uint32_t interface_version;
     uint32_t transport_flags;
     bharat_cap_handle_t endpoint;
@@ -19,11 +19,11 @@ void namesvc_registry_init(void) {
 }
 
 int32_t namesvc_registry_add(const char *service_name,
-                             const char *interface_name,
+                             bharat_service_id_t service_id,
                              uint32_t interface_version,
                              uint32_t transport_flags,
                              bharat_cap_handle_t endpoint) {
-    if (!service_name || service_name[0] == '\0' || !interface_name || interface_name[0] == '\0') {
+    if (!service_name || service_name[0] == '\0') {
         return NAMESVC_STATUS_ERR_INVAL;
     }
 
@@ -34,9 +34,7 @@ int32_t namesvc_registry_add(const char *service_name,
     int free_slot = -1;
     for (int i = 0; i < MAX_REGISTRY_ENTRIES; i++) {
         if (registry[i].in_use) {
-            if (strncmp(registry[i].service_name, service_name, NAMESVC_MAX_NAME_LEN - 1) == 0 &&
-                strncmp(registry[i].interface_name, interface_name, NAMESVC_MAX_NAME_LEN - 1) == 0) {
-
+            if (strncmp(registry[i].service_name, service_name, NAMESVC_MAX_NAME_LEN - 1) == 0) {
                 // If it's the exact same version, reject as exists/conflict
                 if (registry[i].interface_version == interface_version) {
                     return NAMESVC_STATUS_ERR_EXISTS;
@@ -54,9 +52,7 @@ int32_t namesvc_registry_add(const char *service_name,
     strncpy(registry[free_slot].service_name, service_name, NAMESVC_MAX_NAME_LEN - 1);
     registry[free_slot].service_name[NAMESVC_MAX_NAME_LEN - 1] = '\0';
 
-    strncpy(registry[free_slot].interface_name, interface_name, NAMESVC_MAX_NAME_LEN - 1);
-    registry[free_slot].interface_name[NAMESVC_MAX_NAME_LEN - 1] = '\0';
-
+    registry[free_slot].service_id = service_id;
     registry[free_slot].interface_version = interface_version;
     registry[free_slot].transport_flags = transport_flags;
     registry[free_slot].endpoint = endpoint;
@@ -66,13 +62,13 @@ int32_t namesvc_registry_add(const char *service_name,
 }
 
 int32_t namesvc_registry_lookup(const char *service_name,
-                                const char *interface_name,
                                 uint32_t requested_version,
                                 bool exact_version,
-                                bharat_cap_handle_t *endpoint,
+                                bharat_handle_t *endpoint,
+                                bharat_service_id_t *out_service_id,
                                 uint32_t *out_version,
                                 uint32_t *out_transport_flags) {
-    if (!service_name || service_name[0] == '\0' || !interface_name || interface_name[0] == '\0' || !endpoint) {
+    if (!service_name || service_name[0] == '\0' || !endpoint) {
         return NAMESVC_STATUS_ERR_INVAL;
     }
 
@@ -81,17 +77,13 @@ int32_t namesvc_registry_lookup(const char *service_name,
 
     for (int i = 0; i < MAX_REGISTRY_ENTRIES; i++) {
         if (registry[i].in_use) {
-            if (strncmp(registry[i].service_name, service_name, NAMESVC_MAX_NAME_LEN - 1) == 0 &&
-                strncmp(registry[i].interface_name, interface_name, NAMESVC_MAX_NAME_LEN - 1) == 0) {
-
+            if (strncmp(registry[i].service_name, service_name, NAMESVC_MAX_NAME_LEN - 1) == 0) {
                 if (exact_version) {
                     if (registry[i].interface_version == requested_version) {
                         best_match_idx = i;
                         break;
                     }
                 } else {
-                    // For compatible version, assume higher version >= requested version is backwards compatible.
-                    // Or for now, just find the highest version >= requested_version
                     if (registry[i].interface_version >= requested_version) {
                         if (best_match_idx == -1 || registry[i].interface_version > best_version) {
                             best_match_idx = i;
@@ -105,6 +97,7 @@ int32_t namesvc_registry_lookup(const char *service_name,
 
     if (best_match_idx != -1) {
         *endpoint = registry[best_match_idx].endpoint;
+        if (out_service_id) *out_service_id = registry[best_match_idx].service_id;
         if (out_version) *out_version = registry[best_match_idx].interface_version;
         if (out_transport_flags) *out_transport_flags = registry[best_match_idx].transport_flags;
         return NAMESVC_STATUS_OK;
@@ -113,25 +106,21 @@ int32_t namesvc_registry_lookup(const char *service_name,
     return NAMESVC_STATUS_ERR_NOTFOUND;
 }
 
-int32_t namesvc_registry_remove(const char *service_name,
-                                const char *interface_name,
-                                uint32_t interface_version) {
-    if (!service_name || service_name[0] == '\0' || !interface_name || interface_name[0] == '\0') {
+int32_t namesvc_registry_remove(const char *service_name) {
+    if (!service_name || service_name[0] == '\0') {
         return NAMESVC_STATUS_ERR_INVAL;
     }
 
+    bool found = false;
     for (int i = 0; i < MAX_REGISTRY_ENTRIES; i++) {
         if (registry[i].in_use) {
-            if (strncmp(registry[i].service_name, service_name, NAMESVC_MAX_NAME_LEN - 1) == 0 &&
-                strncmp(registry[i].interface_name, interface_name, NAMESVC_MAX_NAME_LEN - 1) == 0 &&
-                registry[i].interface_version == interface_version) {
-
+            if (strncmp(registry[i].service_name, service_name, NAMESVC_MAX_NAME_LEN - 1) == 0) {
                 registry[i].in_use = false;
                 registry[i].endpoint = BHARAT_CAP_INVALID_HANDLE;
-                return NAMESVC_STATUS_OK;
+                found = true;
             }
         }
     }
 
-    return NAMESVC_STATUS_ERR_NOTFOUND;
+    return found ? NAMESVC_STATUS_OK : NAMESVC_STATUS_ERR_NOTFOUND;
 }

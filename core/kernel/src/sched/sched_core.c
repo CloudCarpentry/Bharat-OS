@@ -30,23 +30,20 @@ void sched_reschedule(void) {
           list_del(&cmd->list);
           list_init(&cmd->list);
 
-          bh_thread_t* thread = cmd->thread_ref.thread;
+          bh_thread_t* thread = sched_find_thread_by_id(cmd->thread_id);
           if (!thread) {
               continue;
           }
 
-          // Validation: Check generation and thread ID
-          if (thread->sched_generation != cmd->thread_ref.generation ||
-              thread->thread_id != cmd->thread_ref.thread_id) {
-              rq->remote_stale_refs++;
+          // Validation: Check generation
+          if (thread->sched_generation != cmd->expected_thread_generation) {
               continue;
           }
 
           // Invariant: Verify destination CPU matches expected owner
-          if (thread->sched_owner_cpu != core &&
-              thread->sched_queue_state != SCHED_QUEUE_MIGRATING &&
-              thread->sched_queue_state != SCHED_QUEUE_NOT_QUEUED) {
-              rq->remote_stale_refs++;
+          if (thread->owner_cpu != core &&
+              thread->owner_state != THREAD_OWNER_REMOTE_PENDING &&
+              thread->owner_state != THREAD_OWNER_NONE) {
               continue;
           }
 
@@ -70,12 +67,48 @@ void sched_reschedule(void) {
                 sched_block_dequeue(slot);
               }
           } else if (cmd->type == SCHED_REMOTE_MIGRATE || cmd->type == SCHED_REMOTE_ENQUEUE) {
-              if (thread->sched_queue_state == SCHED_QUEUE_MIGRATING) {
-                  thread->sched_queue_state = SCHED_QUEUE_NOT_QUEUED;
-                  thread->sched_owner_cpu = core;
+              if (thread->owner_state == THREAD_OWNER_REMOTE_PENDING) {
+                  thread->owner_state = THREAD_OWNER_NONE;
+                  thread->owner_cpu = core;
                   thread->bound_core_id = core;
-                  thread->sched_migration_state = SCHED_MIGRATE_NONE;
               }
+          } else if (cmd->type == SCHED_REMOTE_DEQUEUE) {
+              if (slot->is_on_runqueue != 0U) {
+                  sched_invariant_on_dequeue(thread);
+                  if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
+                      sched_cfs_dequeue(rq, thread);
+                  } else {
+                      list_del(&slot->run_node);
+                      list_init(&slot->run_node);
+                      sched_ready_bitmap_clear_if_empty(rq, thread->priority);
+                  }
+                  slot->is_on_runqueue = 0U;
+                  if (rq->runnable_count > 0U) {
+                      rq->runnable_count--;
+                  }
+              }
+              continue; // DEQUEUE is complete
+          } else if (cmd->type == SCHED_REMOTE_QUARANTINE) {
+              sched_quarantine_thread(thread, 0xBAD);
+              if (slot->is_on_runqueue != 0U) {
+                  sched_invariant_on_dequeue(thread);
+                  if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
+                      sched_cfs_dequeue(rq, thread);
+                  } else {
+                      list_del(&slot->run_node);
+                      list_init(&slot->run_node);
+                      sched_ready_bitmap_clear_if_empty(rq, thread->priority);
+                  }
+                  slot->is_on_runqueue = 0U;
+                  if (rq->runnable_count > 0U) {
+                      rq->runnable_count--;
+                  }
+              }
+              continue;
+          }
+
+          if (thread->state == THREAD_STATE_QUARANTINED) {
+              continue;
           }
 
           thread->state = THREAD_STATE_READY;

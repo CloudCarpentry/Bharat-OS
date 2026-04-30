@@ -1,15 +1,15 @@
 #include "ipc_auth.h"
 #include <bharat/cap/cap_validate.h>
-#include <bharat/namesvc/namesvc_ipc.h>
+#include <bharat/uapi/namesvc/contract.h>
 #include <bharat/uapi/ipc/status.h>
 
 static uint64_t namesvc_required_rights(uint32_t opcode) {
     switch (opcode) {
-        case NAMESVC_OP_LOOKUP:
+        case BHARAT_NAMESVC_OP_LOOKUP:
             return BHARAT_CAP_RIGHT_READ;
-        case NAMESVC_OP_REGISTER:
-        case NAMESVC_OP_REMOVE:
-        case NAMESVC_OP_LIST_INTERFACES:
+        case BHARAT_NAMESVC_OP_REGISTER:
+        case BHARAT_NAMESVC_OP_UNREGISTER:
+        case BHARAT_NAMESVC_OP_LIST_INTERFACES:
             return BHARAT_CAP_RIGHT_WRITE;
         default:
             return 0;
@@ -17,6 +17,12 @@ static uint64_t namesvc_required_rights(uint32_t opcode) {
 }
 
 int namesvc_authorize(uint32_t opcode, bharat_cap_handle_t caller_cap) {
+    // For lookup, we don't strictly require a capability transfer if it's just a query.
+    // However, namesvc_register MUST provide a capability.
+    if (opcode == BHARAT_NAMESVC_OP_LOOKUP) {
+        return BHARAT_IPC_STATUS_OK;
+    }
+
     if (caller_cap == BHARAT_CAP_INVALID_HANDLE) {
         return BHARAT_IPC_STATUS_ERR_PERM;
     }

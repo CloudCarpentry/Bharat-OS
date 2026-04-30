@@ -12,6 +12,7 @@ target_link_libraries(display_broker PRIVATE
     bharat_libruntime
     bharat_libipc
     bharat_libcap
+    bharat_service_runtime
 )
 target_include_directories(display_broker PRIVATE
     ${CMAKE_SOURCE_DIR}/interface

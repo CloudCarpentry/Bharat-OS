@@ -1,7 +1,10 @@
 #include <stdint.h>
 #include <stdbool.h>
+#include <string.h>
 
 #include "services/telemetrymgr/thermal_policy.h"
+#include <bharat/service/service_runtime.h>
+#include <bharat/runtime/runtime.h>
 
 /**
  * @file main.c
@@ -37,17 +40,29 @@ void init_telemetrymgr(void) {
     g_state.latest = thermal_policy_apply(g_state.zones, g_state.zone_count);
 }
 
+bharat_status_t bh_service_handle_msg(bh_service_ctx_t *ctx, const bh_msg_t *msg) {
+    (void)ctx;
+    // Handle telemetry recording, metrics query, and supervisor lifecycle events land here.
+    bharat_runtime_log("telemetrymgr: received message (opcode: %d)", msg->header.opcode);
+
+    // Process thermal policy on each message for now
+    g_state.latest = thermal_policy_apply(g_state.zones, g_state.zone_count);
+
+    return BHARAT_STATUS_OK;
+}
+
 int main(int argc, char **argv) {
     (void)argc;
     (void)argv;
 
+    bharat_runtime_init();
     init_telemetrymgr();
 
-    // Main event loop placeholder. Keep one iteration in hosted builds.
-    while (true) {
-        g_state.latest = thermal_policy_apply(g_state.zones, g_state.zone_count);
-        break;
-    }
+    bh_service_start_info_t info = {
+        .service_id = 0x00010008,
+        .service_name = "telemetrymgr",
+        .endpoint = BHARAT_CAP_INVALID_HANDLE
+    };
 
-    return (int)g_state.latest.severity;
+    return bh_service_main(&info);
 }

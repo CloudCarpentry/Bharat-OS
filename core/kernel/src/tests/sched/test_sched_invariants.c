@@ -42,8 +42,8 @@ bool test_sched_ownership_invariants(void) {
     sched_enqueue(thread, 0);
 
     KTEST_ASSERT(thread->enqueued, "Thread should be enqueued");
-    KTEST_ASSERT(thread->sched_owner_cpu == 0, "Owner CPU mismatch");
-    KTEST_ASSERT(thread->sched_queue_state == SCHED_QUEUE_QUEUED, "Owner state mismatch");
+    KTEST_ASSERT(thread->owner_cpu == 0, "Owner CPU mismatch");
+    KTEST_ASSERT(thread->owner_state == THREAD_OWNER_RUNQUEUE, "Owner state mismatch");
 
     // Picking the thread should update its state
     bh_thread_t *picked = NULL;
@@ -69,8 +69,8 @@ bool test_sched_ownership_invariants(void) {
     KTEST_ASSERT(!thread->enqueued, "Picked thread should not be marked enqueued");
 
     // Manual state update for the "mock" switch in test
-    thread->sched_queue_state = SCHED_QUEUE_RUNNING;
-    thread->sched_owner_cpu = 0;
+    thread->owner_state = THREAD_OWNER_RUNNING;
+    thread->owner_cpu = 0;
 
     // Clean up
     thread->state = THREAD_STATE_TERMINATED;

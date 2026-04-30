@@ -29,6 +29,9 @@ uint32_t netmgr_extract_if_id_add_addr(const netmgr_ipc_req_t *req);
 uint32_t netmgr_extract_if_id_remove_addr(const netmgr_ipc_req_t *req);
 uint32_t netmgr_extract_if_id_add_route(const netmgr_ipc_req_t *req);
 uint32_t netmgr_extract_if_id_neighbor_flush(const netmgr_ipc_req_t *req);
+uint32_t netmgr_extract_if_id_neighbor_query(const netmgr_ipc_req_t *req);
+uint32_t netmgr_extract_if_id_query_driver_policy(const netmgr_ipc_req_t *req);
+uint32_t netmgr_extract_if_id_query_driver_health(const netmgr_ipc_req_t *req);
 uint32_t netmgr_extract_if_id_restart_driver(const netmgr_ipc_req_t *req);
 uint32_t netmgr_extract_if_id_none(const netmgr_ipc_req_t *req); // For CREATE, REMOVE_ROUTE, etc.
 

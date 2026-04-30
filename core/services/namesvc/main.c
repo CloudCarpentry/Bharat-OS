@@ -1,6 +1,7 @@
-#include <bharat/runtime/runtime.h>
+#include <bharat/service/service_runtime.h>
 #include <bharat/runtime/freestanding_string.h>
 #include <bharat/ipc/ipc.h>
+#include <bharat/uapi/services/bootstrap.h>
 #include "src/registry.h"
 #include "include/ipc_dispatch.h"
 #include "bharat/component_version.h"
@@ -23,61 +24,59 @@ int main(int argc, char **argv) {
     (void)argc;
     (void)argv;
 
-    bharat_runtime_init();
+    // namesvc uses a minimal bootstrap instead of full bharat_runtime_init()
+    // to avoid circular dependencies with services it provides.
 
-    bharat_runtime_log("services/namesvc: Starting endpoint registry.");
+    // Create our endpoint
+    bharat_ipc_endpoint_t my_endpoint = service_runtime_create_endpoint(BHARAT_SERVICE_NAMESVC, 0);
+    if (!bharat_cap_is_valid(my_endpoint)) {
+        return -1;
+    }
+
+    // Bind to the well-known bootstrap handle
+    if (service_runtime_bind_namesvc_bootstrap(my_endpoint) != BHARAT_STATUS_OK) {
+        return -1;
+    }
 
     namesvc_registry_init();
 
-    // In a real implementation, we would create our own endpoint and pass it to init or register it globally.
-    // Since we don't have full bindings for capability creation in the stub, we just mock the endpoint handle.
-    bharat_cap_handle_t my_endpoint = 1; // MOCK endpoint for namesvc itself
+    // Use a simple log since we might not have a full logger yet
+    // bharat_runtime_log("namesvc: ready");
 
-    bharat_runtime_log("services/namesvc: Registry initialized. Awaiting connections.");
-
-    bharat_ipc_contract_header_t hdr;
+    bharat_ipc_msg_header_t hdr;
     namesvc_ipc_req_t req;
     namesvc_ipc_res_t res;
 
-    // Simulate main IPC loop handling registration/lookup requests
     while(1) {
         memset(&hdr, 0, sizeof(hdr));
         memset(&req, 0, sizeof(req));
         memset(&res, 0, sizeof(res));
 
-        // Use the transport shim to receive the contract header and payload
-        // In a real system, the transport would unmarshal into `hdr`.
-        int ret = bharat_ipc_recv(my_endpoint, (bharat_ipc_msg_header_t*)&hdr, &req, sizeof(req));
+        int ret = bharat_ipc_recv(my_endpoint, &hdr, &req, sizeof(req));
 
-        if (ret == 0) {
-            // Dispatch to the centralized contract handler
+        if (ret == BHARAT_IPC_STATUS_OK) {
             namesvc_ipc_handle_request(&hdr, &req, &res);
 
-            if (res.status == NAMESVC_STATUS_OK) {
-                if (req.opcode == NAMESVC_OP_REGISTER) {
-                    bharat_runtime_log("services/namesvc: Registered endpoint.");
-                } else if (req.opcode == NAMESVC_OP_LOOKUP) {
-                    bharat_runtime_log("services/namesvc: Lookup successful.");
-                }
-            }
-
-            bharat_ipc_contract_header_t rep_hdr;
+            bharat_ipc_msg_header_t rep_hdr;
             memset(&rep_hdr, 0, sizeof(rep_hdr));
+            rep_hdr.header_version = BHARAT_IPC_HEADER_VERSION_V1;
             rep_hdr.message_id = hdr.message_id;
+            rep_hdr.service_id = BHARAT_SERVICE_NAMESVC;
+            rep_hdr.opcode = req.opcode;
             rep_hdr.payload_size = sizeof(res);
 
-            if (req.opcode == NAMESVC_OP_LOOKUP && res.status == NAMESVC_STATUS_OK) {
+            if (req.opcode == BHARAT_NAMESVC_OP_LOOKUP && res.status == NAMESVC_STATUS_OK) {
                 rep_hdr.capability_transfer = res.u.lookup_res.endpoint;
             }
 
-            // In a real system, reply_endpoint from the incoming contract header is used to reply.
-            bharat_ipc_send(hdr.reply_endpoint, (bharat_ipc_msg_header_t*)&rep_hdr, &res);
+            if (bharat_cap_is_valid(hdr.reply_endpoint)) {
+                bharat_ipc_send(hdr.reply_endpoint, &rep_hdr, &res);
+            }
         } else {
-             // For stub compilation, we just break to avoid infinite loop taking 100% CPU when recv doesn't block
-             break;
+             // For Phase A, we yield if no message
+             bharat_sched_yield();
         }
     }
 
-    bharat_runtime_shutdown();
     return 0;
 }
