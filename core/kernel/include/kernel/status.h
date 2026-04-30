@@ -38,6 +38,7 @@ typedef int32_t kstatus_t;
 #define K_ERR_DENIED            ((kstatus_t)-16)
 #define K_ERR_INTERNAL_BUG      ((kstatus_t)-17)
 #define K_ERR_INVALID_SYSCALL   ((kstatus_t)-18)
+#define K_ERR_NO_RESOURCES      ((kstatus_t)-19)
 
 /* ── Memory / VMM / PMM ───────── -256 .. -511 */
 #define K_ERR_NO_MEMORY         ((kstatus_t)-256)

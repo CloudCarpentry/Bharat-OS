@@ -1,4 +1,7 @@
 .section .text
 .global trap_entry
 trap_entry:
-    mret
+    /* riscv32 trap path is a stub */
+1:
+    wfi
+    j 1b
