@@ -7,12 +7,8 @@ add_library(k_init OBJECT
     ${BHARAT_KERNEL_SRC_ROOT}/main.c
     init_bootstrap.c
     ${BHARAT_BOOT_PROTOCOLS_ROOT}/boot_args.c
-    ${BHARAT_KERNEL_SRC_ROOT}/device/device_manager.c
     ${BHARAT_KERNEL_SRC_ROOT}/device/device_dma.c
-    ${BHARAT_KERNEL_SRC_ROOT}/device/builtin_drivers.c
-    ${BHARAT_KERNEL_SRC_ROOT}/device/pci.c
     ${BHARAT_KERNEL_SRC_ROOT}/device/irq_domain.c
-    ${BHARAT_KERNEL_SRC_ROOT}/power_thermal_perf.c
 )
 
 target_include_directories(k_init PRIVATE

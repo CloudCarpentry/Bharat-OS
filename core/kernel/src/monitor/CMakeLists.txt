@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
 add_library(k_monitor OBJECT
-    mon_vm_service.c
-    mon_vm_dispatch.c
     mon_vm_state.c
 )
 

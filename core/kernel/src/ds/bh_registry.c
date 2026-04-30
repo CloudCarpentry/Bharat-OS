@@ -1,5 +1,5 @@
 #include "bharat/kernel/ds/bh_registry.h"
-#include <string.h>
+#include "lib/base/string.h"
 
 kstatus_t bh_registry_init(bh_registry_t *registry, bh_registry_entry_t *storage, uint32_t capacity) {
     if (!registry || !storage || capacity == 0) {

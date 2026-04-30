@@ -8,12 +8,9 @@ add_library(k_sched OBJECT
     sched_gp.c
     sched_migrate.c
     sched_pi.c
-    sched_ai_ingest.c
-    sched_ai_guard.c
     sched_router.c
     sched_deg.c
     algo_matrix.c
-    ai_sched.c
     sched_invariants.c
     cpu_partition.c
     cpu_partition_validate.c

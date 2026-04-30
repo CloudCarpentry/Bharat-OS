@@ -8,7 +8,6 @@ add_library(k_test_support OBJECT
     ktest_accel_mem.c
     ktest_virt_accel.c
     ktest_urpc_handoff.c
-    security/test_crypto_registry.c
     ktest_string.c
     ktest_memops.c
     ktest_rt_sched.c

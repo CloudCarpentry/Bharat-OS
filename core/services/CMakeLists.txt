@@ -3,6 +3,7 @@ project(BharatOS_Services C ASM)
 
 option(BHARAT_ENABLE_SYSTEM_SHELL "Build capability-aware system shell service" ON)
 
+add_subdirectory(common/runtime)
 add_subdirectory(core/subsysmgr)
 add_subdirectory(process_manager)
 add_subdirectory(vm_manager)

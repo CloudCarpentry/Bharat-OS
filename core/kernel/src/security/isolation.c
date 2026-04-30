@@ -1,6 +1,6 @@
 #include "mm/address_token.h"
 #include "security/isolation.h"
-#include "security/audit.h"
+#include <bharat/kernel/security/audit.h>
 #include "hal/hal_iommu.h"
 #include "profile/profile.h"
 #include "device.h"

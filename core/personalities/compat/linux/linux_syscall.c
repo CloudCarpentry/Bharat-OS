@@ -25,11 +25,11 @@ extern long bh_sys_write(bh_syscall_ctx_t *ctx);
 extern long bh_sys_thread_exit(bh_syscall_ctx_t *ctx);
 
 static const bh_syscall_desc_t linux_syscall_table_x86_64[] = {
-    [LINUX_X86_64_SYS_READ]       = { LINUX_X86_64_SYS_READ, "read", 3, BH_SYSCALL_F_BLOCKING | BH_SYSCALL_F_USER_WRITE, 0, bh_sys_read },
-    [LINUX_X86_64_SYS_WRITE]      = { LINUX_X86_64_SYS_WRITE, "write", 3, BH_SYSCALL_F_BLOCKING | BH_SYSCALL_F_USER_READ, 0, bh_sys_write },
-    [LINUX_X86_64_SYS_GETPID]     = { LINUX_X86_64_SYS_GETPID, "getpid", 0, BH_SYSCALL_F_FAST, 0, linux_sys_getpid },
-    [LINUX_X86_64_SYS_EXIT]       = { LINUX_X86_64_SYS_EXIT, "exit", 1, 0, 0, bh_sys_thread_exit },
-    [LINUX_X86_64_SYS_EXIT_GROUP] = { LINUX_X86_64_SYS_EXIT_GROUP, "exit_group", 1, 0, 0, bh_sys_thread_exit },
+    [LINUX_X86_64_SYS_READ]       = { .nr = LINUX_X86_64_SYS_READ, .name = "read", .arg_count = 3, .flags = BH_SYSCALL_F_BLOCKING | BH_SYSCALL_F_USER_WRITE, .handler = bh_sys_read },
+    [LINUX_X86_64_SYS_WRITE]      = { .nr = LINUX_X86_64_SYS_WRITE, .name = "write", .arg_count = 3, .flags = BH_SYSCALL_F_BLOCKING | BH_SYSCALL_F_USER_READ, .handler = bh_sys_write },
+    [LINUX_X86_64_SYS_GETPID]     = { .nr = LINUX_X86_64_SYS_GETPID, .name = "getpid", .arg_count = 0, .flags = BH_SYSCALL_F_FAST, .handler = linux_sys_getpid },
+    [LINUX_X86_64_SYS_EXIT]       = { .nr = LINUX_X86_64_SYS_EXIT, .name = "exit", .arg_count = 1, .handler = bh_sys_thread_exit },
+    [LINUX_X86_64_SYS_EXIT_GROUP] = { .nr = LINUX_X86_64_SYS_EXIT_GROUP, .name = "exit_group", .arg_count = 1, .handler = bh_sys_thread_exit },
 };
 
 const bh_personality_syscall_table_t bh_linux_syscall_table = {

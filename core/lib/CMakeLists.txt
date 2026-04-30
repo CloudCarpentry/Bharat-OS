@@ -16,6 +16,7 @@ add_library(bharat_libtransport STATIC urpc/urpc.c transport/loopback.c)
 target_include_directories(bharat_libtransport PUBLIC
     urpc
     ${CMAKE_SOURCE_DIR}/core/services/core/subsysmgr/include
+    ${CMAKE_SOURCE_DIR}/interface/include
     runtime/include
 )
 target_link_libraries(bharat_libtransport PUBLIC bharat_freestanding)
@@ -84,6 +85,7 @@ if (CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|ARM64")
 endif()
 target_include_directories(bharat_libmsg PUBLIC
     ${CMAKE_SOURCE_DIR}/core/services/core/subsysmgr/include
+    ${CMAKE_SOURCE_DIR}/interface/include
     runtime/include
 )
 target_link_libraries(bharat_libmsg PUBLIC bharat_freestanding)

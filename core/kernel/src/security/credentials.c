@@ -1,5 +1,5 @@
 #include "security/credentials.h"
-#include "security/audit.h"
+#include <bharat/kernel/security/audit.h>
 
 #define BHARAT_MAX_CRED_PROCS 64U
 
