@@ -34,6 +34,7 @@ typedef enum {
     THREAD_OWNER_RUNNING,
     THREAD_OWNER_BLOCKED,
     THREAD_OWNER_REMOTE_PENDING,
+    THREAD_OWNER_QUARANTINED,
 } thread_sched_owner_state_t;
 
 typedef enum {
@@ -70,6 +71,24 @@ typedef struct {
 } bh_thread_attr_t;
 
 typedef enum {
+    SCHED_REMOTE_CMD_EMPTY = 0,
+    SCHED_REMOTE_CMD_PENDING,
+    SCHED_REMOTE_CMD_ACKED,
+    SCHED_REMOTE_CMD_FAILED,
+    SCHED_REMOTE_CMD_TIMEOUT
+} sched_remote_cmd_state_t;
+
+typedef enum {
+    SCHED_MIGRATION_NONE = 0,
+    SCHED_MIGRATION_DEQUEUE_REQUESTED,
+    SCHED_MIGRATION_DEQUEUED,
+    SCHED_MIGRATION_ENQUEUE_REQUESTED,
+    SCHED_MIGRATION_COMMITTED,
+    SCHED_MIGRATION_ROLLBACK_REQUESTED,
+    SCHED_MIGRATION_FAILED
+} sched_migration_state_t;
+
+typedef enum {
     SCHED_REMOTE_WAKE,
     SCHED_REMOTE_MIGRATE,
     SCHED_REMOTE_BLOCK,
@@ -87,6 +106,7 @@ typedef struct bh_thread bh_thread_t;
 typedef struct sched_remote_cmd {
     uint64_t cmd_id;
     sched_remote_cmd_type_t type;
+    sched_remote_cmd_state_t state;
     uint32_t source_cpu;
     uint32_t target_cpu;
     uint64_t thread_id;
@@ -106,6 +126,7 @@ typedef enum {
     THREAD_FAULT_NONE = 0,
     THREAD_FAULT_SEGV,
     THREAD_FAULT_STACK_OVERFLOW,
+    THREAD_FAULT_MIGRATION_ROLLBACK_FAILED,
 } thread_fault_t;
 
 typedef struct sched_rq {
@@ -244,6 +265,10 @@ struct bh_thread {
     uint64_t sched_generation;
     thread_sched_owner_state_t owner_state;
     bool enqueued;
+
+    // Migration state
+    uint32_t migration_target_cpu;
+    sched_migration_state_t migration_state;
 };
 
 int thread_raise_fault(bh_thread_t *thread, thread_fault_t fault);

@@ -176,7 +176,16 @@ Current limitations:
 3. **Runtime wiring gap**: multiple daemons initialize state but do not yet run complete production event loops.
 4. **Hardening gap**: observability, failure semantics, and profile-specific guarantees need deeper closure.
 
-## 5.1) Security production gate (explicit blocker)
+## 5.1) Architecture maturity gate
+
+To maintain transparency and prevent status inflation, architecture production claims are gated by `delivery/targets/arch_maturity.yaml`.
+
+- **Tier 1 (x86_64, arm64, riscv64)** are full production candidates only after required maturity checks (boot, trap, syscall, MMU, SMP) pass.
+- **Tier 2 (arm32, riscv32)** are EDGE32 targets and must not be marked as production candidates while core components (trap, syscall, MMU) remain as `stub`, `unsupported`, or `scaffold`.
+- **Production Candidate vs. Production Certified**: A "production candidate" status (e.g., for `riscv64`) indicates the architecture is eligible for deeper validation. It does not equate to production certification.
+- The gate is conservative and serves as a baseline check; it does not replace functional verification through QEMU or hardware tests.
+
+## 5.2) Security production gate (explicit blocker)
 
 To avoid status inflation, this repository treats capability enforcement maturity as a hard release gate:
 
@@ -185,7 +194,7 @@ To avoid status inflation, this repository treats capability enforcement maturit
 - Fail-closed behavior (like the current `netmgr` shim through `bharat_cap_validate()`) is required as an interim baseline, but does not by itself qualify as full production security.
 - Promotion to **Production** requires strict, code-backed capability checks across manager and dispatch paths, plus validation evidence.
 
-## 5.2) Core Kernel Ownership
+## 5.3) Core Kernel Ownership
 
 Status: **Partial / Phase K0 in progress**
 
