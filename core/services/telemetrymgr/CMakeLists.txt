@@ -20,7 +20,9 @@ target_include_directories(telemetrymgr PRIVATE
 
 # Link against common runtime library and IPC library
 target_link_libraries(telemetrymgr PRIVATE
-    # TODO: Add runtime and ipc libraries when available
+    bharat_service_runtime
+    bharat_libipc
+    bharat_libruntime
 )
 
 bharat_configure_userspace_binary(telemetrymgr)

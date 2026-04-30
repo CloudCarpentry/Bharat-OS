@@ -162,6 +162,7 @@ typedef struct {
 #define MK_MSG_PROCESS_LOOKUP_REQ   0x6005
 #define MK_MSG_PROCESS_LOOKUP_RESP  0x6006
 #define MK_MSG_THREAD_ENQUEUE_REQ   0x6007
+#define MK_MSG_THREAD_DEQUEUE_REQ   0x6009
 #define MK_MSG_THREAD_WAKE_REQ      0x6008
 
 // Payload struct for remote operations

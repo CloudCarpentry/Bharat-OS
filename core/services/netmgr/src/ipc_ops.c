@@ -12,6 +12,9 @@ uint32_t netmgr_extract_if_id_add_addr(const netmgr_ipc_req_t *req) { return req
 uint32_t netmgr_extract_if_id_remove_addr(const netmgr_ipc_req_t *req) { return req->u.remove_addr.if_id; }
 uint32_t netmgr_extract_if_id_add_route(const netmgr_ipc_req_t *req) { return req->u.add_route.if_id; }
 uint32_t netmgr_extract_if_id_neighbor_flush(const netmgr_ipc_req_t *req) { return req->u.neighbor_flush.if_id; }
+uint32_t netmgr_extract_if_id_neighbor_query(const netmgr_ipc_req_t *req) { return req->u.neighbor_query.if_id; }
+uint32_t netmgr_extract_if_id_query_driver_policy(const netmgr_ipc_req_t *req) { return req->u.query_driver_policy.if_id; }
+uint32_t netmgr_extract_if_id_query_driver_health(const netmgr_ipc_req_t *req) { return req->u.query_driver_health.if_id; }
 uint32_t netmgr_extract_if_id_restart_driver(const netmgr_ipc_req_t *req) { return req->u.restart_driver.if_id; }
 uint32_t netmgr_extract_if_id_none(const netmgr_ipc_req_t *req) { (void)req; return 0; }
 

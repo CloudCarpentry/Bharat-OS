@@ -106,10 +106,11 @@ void sched_wakeup_with_priority(bh_thread_t *thread, uint32_t wakeup_priority) {
 
       sched_remote_cmd_t *cmd = &slot->remote_cmd;
       cmd->type = SCHED_REMOTE_WAKE;
-      cmd->source_cpu = current_core;
-      cmd->target_cpu = thread->home_core_id;
-      cmd->thread_id = thread->thread_id;
-      cmd->expected_thread_generation = thread->sched_generation;
+      cmd->thread_ref.thread = thread;
+      cmd->thread_ref.thread_id = (uint32_t)thread->thread_id;
+      cmd->thread_ref.generation = thread->sched_generation;
+      cmd->thread_ref.source_cpu = current_core;
+      cmd->thread_ref.target_cpu = thread->home_core_id;
       cmd->priority = wakeup_priority;
 
       list_add_tail(&cmd->list, &target_rq->pending_inbox);

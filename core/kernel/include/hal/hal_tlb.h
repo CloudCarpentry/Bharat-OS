@@ -55,4 +55,9 @@ void hal_tlb_invalidate_all(void);
 void hal_tlb_init(void);
 const hal_tlb_caps_t *hal_tlb_caps(void);
 
+// KERN-P0-002: Bounded TLB Shootdown HAL Wrappers
+void hal_tlb_invalidate_local_page(virt_addr_t va);
+void hal_tlb_invalidate_local_range(virt_addr_t start, size_t len);
+void hal_tlb_invalidate_local_aspace(uint64_t aspace_id);
+
 #endif // BHARAT_HAL_TLB_H

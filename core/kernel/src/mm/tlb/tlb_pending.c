@@ -2,6 +2,8 @@
 #include "../../../include/hal/hal.h"
 #include "../../../include/bharat/cpu_local.h"
 
+extern uint32_t g_active_core_count;
+
 // 8 bits core, 8 bits slot, 16 bits generation
 #define REQID_CORE_SHIFT 24
 #define REQID_SLOT_SHIFT 16
@@ -32,6 +34,12 @@ void tlb_pending_init(void) {
 
 int tlb_pending_alloc(uint64_t aspace_id, uint64_t target_mask, uint32_t* out_reqid) {
     uint32_t core_id = hal_cpu_get_id();
+
+    // Topology validation
+    if (core_id >= g_active_core_count) return -1;
+    if (target_mask & ~((1ULL << g_active_core_count) - 1)) return -1;
+    if (target_mask & (1ULL << core_id)) return -1; // Should not include self
+
     for (int s = 0; s < BHARAT_TLB_MAX_PENDING_PER_CORE; s++) {
         if (!g_tlb_pending[core_id][s].in_use) {
             g_tlb_pending[core_id][s].in_use = 1;
@@ -63,7 +71,8 @@ void tlb_pending_ack(uint32_t reqid, uint32_t acking_core) {
     uint32_t core_id, slot, gen;
     tlb_reqid_decode(reqid, &core_id, &slot, &gen);
 
-    if (core_id >= MAX_CPUS || slot >= BHARAT_TLB_MAX_PENDING_PER_CORE) return;
+    if (core_id >= g_active_core_count || slot >= BHARAT_TLB_MAX_PENDING_PER_CORE) return;
+    if (acking_core >= g_active_core_count) return;
 
     tlb_pending_entry_t* entry = &g_tlb_pending[core_id][slot];
 
@@ -94,6 +103,6 @@ void tlb_pending_free(uint32_t current_core, int slot) {
 }
 
 tlb_pending_stats_t* tlb_pending_get_stats(uint32_t core_id) {
-    if (core_id >= MAX_CPUS) return NULL;
+    if (core_id >= g_active_core_count) return NULL;
     return &g_tlb_stats[core_id];
 }

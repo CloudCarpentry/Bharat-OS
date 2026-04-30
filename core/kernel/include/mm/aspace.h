@@ -21,6 +21,7 @@ typedef enum {
     ASPACE_STATE_CREATED = 0,
     ASPACE_STATE_ACTIVE,
     ASPACE_STATE_DYING,
+    ASPACE_STATE_POISONED,
     ASPACE_STATE_DESTROYED
 } aspace_state_t;
 
@@ -118,6 +119,7 @@ vm_object_t *aspace_lookup_object(address_space_t *aspace, uintptr_t va, vm_regi
 // Lifecycle hardening APIs
 kstatus_t aspace_activate_on_cpu(address_space_t *aspace, uint32_t cpu_id);
 kstatus_t aspace_deactivate_on_cpu(address_space_t *aspace, uint32_t cpu_id);
+void      aspace_mark_poisoned(address_space_t *aspace);
 uint64_t  aspace_get_active_mask(address_space_t *aspace);
 uint64_t  aspace_next_tlb_generation(address_space_t *aspace);
 bool      aspace_is_valid_for_tlb(address_space_t *aspace);

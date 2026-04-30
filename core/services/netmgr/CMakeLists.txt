@@ -12,6 +12,7 @@ set(NETMGR_SOURCES
     src/ipc_dispatch.c
     src/ipc_ops.c
     src/ipc_auth.c
+    src/ipc_auth_core.c
     src/ipc_contract.c
     src/service_manifest.c
     ../../kernel/src/ipc/contract_validate.c
@@ -49,7 +50,23 @@ bharat_configure_userspace_binary(netmgr)
 if(CMAKE_CROSSCOMPILING)
     message(STATUS "Skipping test_netmgr_caps build during cross-compilation")
 else()
-    add_executable(test_netmgr_caps tests/test_netmgr_caps.c tests/test_netmgr_caps_stubs.c src/ipc_dispatch.c src/ipc_contract.c src/ipc_auth.c src/ipc_ops.c ../../kernel/src/ipc/contract_validate.c)
+    # Core Auth Unit Test (Host)
+    add_executable(test_netmgr_caps_host
+        tests/test_netmgr_caps_host.c
+        src/ipc_auth_core.c
+    )
+    target_compile_definitions(test_netmgr_caps_host PRIVATE BHARAT_SERVICE_HOST_TEST=1)
+    target_include_directories(test_netmgr_caps_host PRIVATE
+        src
+        include
+        ../../include
+        ../../lib/net/include
+        ../../services/core/subsysmgr/include
+    )
+    add_test(NAME test_netmgr_caps_host COMMAND test_netmgr_caps_host)
+
+    # Legacy/Integration Test (Optional, may need shim hardening)
+    add_executable(test_netmgr_caps tests/test_netmgr_caps.c tests/test_netmgr_caps_stubs.c src/ipc_dispatch.c src/ipc_contract.c src/ipc_auth.c src/ipc_auth_core.c src/ipc_ops.c ../../kernel/src/ipc/contract_validate.c)
     target_include_directories(test_netmgr_caps PRIVATE src include ../../include ../../lib/cap/include ../../lib/net/include ../core/subsysmgr/include ../../lib/ipc/include ../../kernel/include ../../lib/runtime/include)
     target_link_libraries(test_netmgr_caps PRIVATE bharat_libpacket bharat_libruntime bharat_libnet bharat_libipc bharat_libcap_base)
     set_target_properties(test_netmgr_caps PROPERTIES COMPILE_OPTIONS "")
