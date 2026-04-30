@@ -37,6 +37,7 @@ void sched_reschedule(void) {
 
           // Validation: Check generation
           if (thread->sched_generation != cmd->expected_thread_generation) {
+              cmd->state = SCHED_REMOTE_CMD_FAILED;
               continue;
           }
 
@@ -44,11 +45,13 @@ void sched_reschedule(void) {
           if (thread->owner_cpu != core &&
               thread->owner_state != THREAD_OWNER_REMOTE_PENDING &&
               thread->owner_state != THREAD_OWNER_NONE) {
+              cmd->state = SCHED_REMOTE_CMD_FAILED;
               continue;
           }
 
           thread_slot_t *slot = sched_find_thread_slot_by_tid_local(&g_cpu_locals[thread->home_core_id].runqueue, thread->thread_id);
           if (!slot) {
+              cmd->state = SCHED_REMOTE_CMD_FAILED;
               continue;
           }
 
@@ -66,11 +69,104 @@ void sched_reschedule(void) {
               if (slot->is_blocked != 0U) {
                 sched_block_dequeue(slot);
               }
-          } else if (cmd->type == SCHED_REMOTE_MIGRATE || cmd->type == SCHED_REMOTE_ENQUEUE) {
+          } else if (cmd->type == SCHED_REMOTE_MIGRATE) {
+              // Remote migration Phase 1: Old owner dequeue
+              if (slot->is_on_runqueue != 0U) {
+                  sched_invariant_on_dequeue(thread);
+                  if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
+                      sched_cfs_dequeue(rq, thread);
+                  } else {
+                      list_del(&slot->run_node);
+                      list_init(&slot->run_node);
+                      sched_ready_bitmap_clear_if_empty(rq, thread->priority);
+                  }
+                  slot->is_on_runqueue = 0U;
+                  if (rq->runnable_count > 0U) {
+                      rq->runnable_count--;
+                  }
+              }
+              thread->owner_state = THREAD_OWNER_REMOTE_PENDING;
+              thread->migration_state = SCHED_MIGRATION_DEQUEUED;
+
+              // Transition to Phase 2: Remote enqueue request to target CPU
+              uint32_t target_cpu = thread->migration_target_cpu;
+              sched_rq_t *target_rq = &g_cpu_locals[target_cpu].runqueue;
+
+              // We reuse the current cmd slot or assume a new one is available in Phase 2
+              // For simplicity and safety, we trigger Phase 2 enqueue here
+              spin_lock(&target_rq->lock);
+              cmd->type = SCHED_REMOTE_ENQUEUE;
+              cmd->source_cpu = core;
+              cmd->target_cpu = target_cpu;
+              cmd->state = SCHED_REMOTE_CMD_PENDING;
+
+              list_add_tail(&cmd->list, &target_rq->pending_inbox);
+              if (target_rq->resched_pending == 0) {
+                  target_rq->resched_pending = 1;
+                  spin_unlock(&target_rq->lock);
+                  hal_send_ipi_payload(1U << target_cpu, MK_MSG_THREAD_ENQUEUE_REQ);
+              } else {
+                  spin_unlock(&target_rq->lock);
+              }
+              thread->migration_state = SCHED_MIGRATION_ENQUEUE_REQUESTED;
+              continue; // Command is now pending on target_cpu
+          } else if (cmd->type == SCHED_REMOTE_ENQUEUE) {
+              if (thread->migration_state == SCHED_MIGRATION_COMMITTED) {
+                  // Already handled
+                  cmd->state = SCHED_REMOTE_CMD_ACKED;
+                  continue;
+              }
+
               if (thread->owner_state == THREAD_OWNER_REMOTE_PENDING) {
+                  // Validate admissibility on target core
+                  if (!sched_is_core_admissible(thread, core)) {
+                      // Rollback attempt to old owner
+                      cmd->state = SCHED_REMOTE_CMD_FAILED;
+                      uint32_t old_owner = cmd->source_cpu;
+                      sched_rq_t *old_rq = &g_cpu_locals[old_owner].runqueue;
+
+                      spin_lock(&old_rq->lock);
+                      cmd->type = SCHED_REMOTE_ENQUEUE; // Rollback enqueue
+                      cmd->target_cpu = old_owner;
+                      cmd->source_cpu = core;
+                      cmd->state = SCHED_REMOTE_CMD_PENDING;
+                      list_add_tail(&cmd->list, &old_rq->pending_inbox);
+
+                      if (old_rq->resched_pending == 0) {
+                          old_rq->resched_pending = 1;
+                          spin_unlock(&old_rq->lock);
+                          hal_send_ipi_payload(1U << old_owner, MK_MSG_THREAD_ENQUEUE_REQ);
+                      } else {
+                          spin_unlock(&old_rq->lock);
+                      }
+                      thread->migration_state = SCHED_MIGRATION_ROLLBACK_REQUESTED;
+                      continue;
+                  }
+
                   thread->owner_state = THREAD_OWNER_NONE;
                   thread->owner_cpu = core;
                   thread->bound_core_id = core;
+                  thread->migration_state = SCHED_MIGRATION_COMMITTED;
+                  cmd->state = SCHED_REMOTE_CMD_ACKED;
+              } else if (thread->migration_state == SCHED_MIGRATION_ROLLBACK_REQUESTED) {
+                  // Successful rollback
+                  thread->owner_state = THREAD_OWNER_NONE;
+                  thread->owner_cpu = core;
+                  // bound_core_id didn't change yet or we restore it
+                  thread->bound_core_id = core;
+                  thread->migration_state = SCHED_MIGRATION_NONE; // Reset
+                  cmd->state = SCHED_REMOTE_CMD_ACKED;
+              } else if (thread->owner_state == THREAD_OWNER_REMOTE_PENDING &&
+                         thread->migration_state == SCHED_MIGRATION_ROLLBACK_REQUESTED) {
+                  // Rollback failed as well -> Quarantine
+                  sched_quarantine_thread(thread, THREAD_FAULT_MIGRATION_ROLLBACK_FAILED);
+                  thread->migration_state = SCHED_MIGRATION_FAILED;
+                  cmd->state = SCHED_REMOTE_CMD_FAILED;
+                  continue;
+              } else if (thread->migration_state == SCHED_MIGRATION_ENQUEUE_REQUESTED && thread->bound_core_id == core) {
+                  // This handles local re-enqueue or redundant enqueue
+                  thread->migration_state = SCHED_MIGRATION_NONE;
+                  cmd->state = SCHED_REMOTE_CMD_ACKED;
               }
           } else if (cmd->type == SCHED_REMOTE_DEQUEUE) {
               if (slot->is_on_runqueue != 0U) {
@@ -107,11 +203,21 @@ void sched_reschedule(void) {
               continue;
           }
 
-          if (thread->state == THREAD_STATE_QUARANTINED) {
+          if (thread->state == THREAD_STATE_QUARANTINED || thread->owner_state == THREAD_OWNER_QUARANTINED) {
+              if (thread->migration_state == SCHED_MIGRATION_ROLLBACK_REQUESTED) {
+                  thread->migration_state = SCHED_MIGRATION_FAILED;
+                  thread->pending_fault = THREAD_FAULT_MIGRATION_ROLLBACK_FAILED;
+              }
               continue;
           }
 
-          thread->state = THREAD_STATE_READY;
+          if (cmd->type == SCHED_REMOTE_WAKE) {
+              thread->state = THREAD_STATE_READY;
+          }
+
+          if (thread->migration_state == SCHED_MIGRATION_COMMITTED) {
+              thread->migration_state = SCHED_MIGRATION_NONE;
+          }
           sched_invariant_on_enqueue(thread, core);
 
           if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
