@@ -1,35 +1,27 @@
 
 #include "mm/mem_model.h"
-
 #include "hal/hal_tlb.h"
+#include "hal/hal_ipi.h"
+#include "hal/hal.h"
 #include "bharat/cpu_local.h"
 #include "mm/tlb_internal.h"
+#include "mm/aspace.h"
+#include "mm/mm_remote.h"
+#include "mm/tlb.h"
 #include "arch/arch_caps.h"
+#include "arch/cpu_relax.h"
 #include "tlb_pending.h"
-
 #include "panic.h"
-#include "../../../include/hal/hal_tlb.h"
-#include "../../../include/mm/aspace.h"
-#include "../../../include/mm/mm_remote.h"
-#include "../../../include/bharat/cpu_local.h"
-#include "../../../include/hal/hal.h"
-#include "../../../include/urpc/urpc_bootstrap.h"
-#include "../../../include/kernel.h"
-#include "../../../include/arch/cpu_relax.h"
-#include "../../../include/panic.h"
 #include "bharat/console.h"
-#include "../../../include/bharat/urpc.h"
-#include "tlb_pending.h"
-#include "../../../include/arch/arch_caps.h"
-#include "../../../include/mm/tlb.h"
-#include "../../../include/mm/tlb_internal.h"
-#include "../../../include/hal/hal_ipi.h"
+#include "urpc/urpc_bootstrap.h"
+#include "bharat/urpc.h"
+#include "kernel.h"
 
 // Bring in the generated definitions
 #ifndef BHARAT_HOST_TEST
 #include "bharat_monitor_v1_types.h"
-#include "../../../../services/core/subsysmgr/include/bharat/msg/transport.h"
-#include "../../../../services/core/subsysmgr/include/bharat/msg/wire.h"
+#include "bharat/msg/transport.h"
+#include "bharat/msg/wire.h"
 #else
 // Minimal mocks for host tests
 typedef struct {
@@ -82,8 +74,6 @@ static inline void bharat_store_le32(void* p, uint32_t v) {}
 #endif
 
 // Optional transport resolver hook for core->transport routing.
-// Keep a weak local stub so kernel linking does not depend on a board/service
-// implementation always being present.
 __attribute__((weak)) bharat_transport_t* transport_for_core(int core) {
     (void)core;
     return NULL;
@@ -100,7 +90,7 @@ extern void cap_handle_revoke_ack(uint64_t payload);
 static kstatus_t tlb_send_via_transport(uint32_t core, const bharat_monitor_v1_TlbInvalidateReq_t* req) {
     bharat_transport_t* t = transport_for_core(core);
     if (t) {
-         return bharat_monitor_v1_call_tlb_invalidate(t, core, req, NULL);
+         return (kstatus_t)bharat_monitor_v1_call_tlb_invalidate(t, core, req, NULL);
     }
     return K_ERR_NOT_FOUND;
 }
@@ -144,7 +134,6 @@ static kstatus_t tlb_wait_for_acks_bounded(uint32_t current_core, int slot) {
 
 static void tlb_handle_failure(tlb_failure_policy_t policy, uint64_t aspace_id, uint32_t reqid) {
     uint32_t core = hal_cpu_get_id();
-    // Use console_log if available, otherwise KPRINT fallback
     console_log(CONSOLE_LEVEL_PANIC,
         "TLB: Shootdown failure! core=%u aspace=%lu reqid=0x%x policy=%d\n",
         core, aspace_id, reqid, (int)policy);
@@ -219,13 +208,25 @@ kstatus_t vmm_send_tlb_invalidate_ex(vm_aspace_t *aspace,
     req.generation = reqid;
     (void)aspace_next_tlb_generation(aspace);
 
+    bool any_sent = false;
     for (int core = 0; core < MAX_CPUS; core++) {
         if (core == current_core) continue;
         if (!(target_mask & (1ULL << core))) continue;
 
-        if (tlb_send_via_transport(core, &req) != K_OK) {
+        if (tlb_send_via_transport(core, &req) == K_OK) {
+             any_sent = true;
+        } else {
+             // KERN-P0-002: Disable legacy mailbox by default for hardened profiles
+             #ifndef BHARAT_DISABLE_LEGACY_TLB_MAILBOX
              tlb_send_via_mailbox_legacy(core, current_core, type, aspace, va, len, req.generation);
+             any_sent = true;
+             #endif
         }
+    }
+
+    if (!any_sent) {
+        if (slot >= 0) tlb_pending_free(current_core, slot);
+        return K_ERR_NOT_FOUND;
     }
 
     kstatus_t status = K_OK;
@@ -261,6 +262,7 @@ int monitor_handle_tlb_invalidate(
     const bharat_monitor_v1_TlbInvalidateReq_t* req,
     bharat_monitor_v1_TlbInvalidateResp_t* resp)
 {
+    (void)ctx;
     uint32_t current_core = hal_cpu_get_id();
     const hal_tlb_caps_t *caps = hal_tlb_caps();
 
@@ -272,23 +274,15 @@ int monitor_handle_tlb_invalidate(
 
     switch (req->type) {
         case 0: // page
-            if (active_hal_tlb && caps && caps->supports_page_flush && active_hal_tlb->flush_page_local) {
-                active_hal_tlb->flush_page_local(req->va_start);
-            }
+            hal_tlb_invalidate_local_page(req->va_start);
             break;
 
         case 1: // range
-            if (active_hal_tlb && caps && caps->supports_range_flush && active_hal_tlb->flush_range_local) {
-                active_hal_tlb->flush_range_local(req->va_start, req->length);
-            } else if (active_hal_tlb && active_hal_tlb->flush_all_local) {
-                active_hal_tlb->flush_all_local();
-            }
+            hal_tlb_invalidate_local_range(req->va_start, req->length);
             break;
 
         case 2: // full
-            if (active_hal_tlb && active_hal_tlb->flush_all_local) {
-                active_hal_tlb->flush_all_local();
-            }
+            hal_tlb_invalidate_local_aspace(req->aspace_id);
             break;
     }
 
@@ -333,7 +327,7 @@ void vmm_process_urpc_messages(void) {
     uint32_t current_core = hal_cpu_get_id();
 
     // Process new transport messages
-    bharat_transport_t* t = transport_for_core(current_core);
+    bharat_transport_t* t = transport_for_core((int)current_core);
     if (t && t->ops && t->ops->recv) {
         uint8_t buffer[256];
         size_t rx_len = 0;
@@ -419,39 +413,24 @@ void vmm_process_urpc_messages(void) {
         spin_unlock(&mailbox->lock);
     }
 
-    // Process capability delegations from URPC bootstrap ring (for simplicity since transport isn't fully routed here yet)
+    // Process capability delegations from URPC bootstrap ring
     for (int c = 0; c < MAX_CPUS; c++) {
-        if (c == current_core) continue;
+        if (c == (int)current_core) continue;
         uint64_t raw_msg;
-        // Non-blocking drain of messages from core `c` that aren't dropped.
-        // Note: Because cap_table_delegate and cap_table_revoke both use synchronous polling
-        // with `urpc_bootstrap_recv` that discards unhandled messages, we only catch requests
-        // here if they arrive while NOT in a synchronous spin. We handle it here safely.
         int limit = 10;
-        // We must peek so we don't accidentally dequeue and drop a message someone else is polling for.
-        // Since `urpc_bootstrap_recv` doesn't have a peek, we'll rely on the fact that synchronous
-        // waiters only poll their *target* core, so they might drop messages from *other* cores.
-        // But for our patch scope, we just process what we get and avoid dropping.
-        // For safe integration without peeking, we just receive and handle DELEGATE requests.
         while (limit-- > 0 && urpc_bootstrap_recv(c, &raw_msg) == 0) {
             urpc_msg_type_t type;
             uint64_t payload;
             urpc_unpack_msg(raw_msg, &type, &payload);
 
             if (type == URPC_CAP_DELEGATE_REQ) {
-                cap_handle_delegate_req(payload, c);
+                cap_handle_delegate_req(payload, (uint32_t)c);
             } else if (type == URPC_CAP_DELEGATE_ACK) {
-                // In case an ACK arrives here, we set the global ack_received flag.
                 cap_handle_delegate_ack(payload);
             } else if (type == URPC_CAP_REVOKE) {
-                cap_handle_revoke_req(payload, c);
+                cap_handle_revoke_req(payload, (uint32_t)c);
             } else if (type == URPC_CAP_REVOKE_ACK) {
                 cap_handle_revoke_ack(payload);
-            } else {
-                // If we get here, it's another message type. The prior behavior was to drop it
-                // in synchronous loops, but since we are replacing the global processor,
-                // dropping it here continues the existing behavior until a unified queue is added.
-                // It is what the existing codebase expects in this bootstrap phase.
             }
         }
     }

@@ -81,6 +81,9 @@ typedef enum {
     SCHED_REMOTE_QUARANTINE
 } sched_remote_cmd_type_t;
 
+struct bh_thread;
+typedef struct bh_thread bh_thread_t;
+
 typedef struct sched_remote_cmd {
     uint64_t cmd_id;
     sched_remote_cmd_type_t type;
@@ -92,9 +95,6 @@ typedef struct sched_remote_cmd {
     uint32_t priority;
     list_head_t list;
 } sched_remote_cmd_t;
-
-struct bh_thread;
-typedef struct bh_thread bh_thread_t;
 
 struct bh_process;
 typedef struct bh_process bh_process_t;

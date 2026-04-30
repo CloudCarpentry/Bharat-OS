@@ -2,6 +2,7 @@
 #define BHARAT_SCHED_INTERNAL_H
 
 #include "sched/sched.h"
+#include "sched/sched_invariants.h"
 #include <bharat/cpu_local.h>
 #include "list.h"
 #include "bharat_config.h"

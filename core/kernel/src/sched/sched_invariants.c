@@ -82,6 +82,8 @@ void sched_invariant_check_thread(bh_thread_t *thread) {
             handle_violation(VIOLATION_RUNNING_WRONG_OWNER, thread, "Invariant failure: Running thread owner_state is not RUNNING");
         }
     }
+
+    // Invariant: One runnable entity has exactly one owning CPU/queue
 }
 
 void sched_invariant_on_enqueue(bh_thread_t *thread, uint32_t core_id) {
@@ -109,10 +111,8 @@ void sched_invariant_on_switch(bh_thread_t *prev, bh_thread_t *next, uint32_t co
     if (prev && prev->state == THREAD_STATE_RUNNING) {
         prev->owner_state = THREAD_OWNER_RUNNING;
         prev->owner_cpu = core_id;
-    } else if (prev && prev->state == THREAD_STATE_BLOCKED) {
+    } else if (prev && (prev->state == THREAD_STATE_BLOCKED || prev->state == THREAD_STATE_SLEEPING)) {
         prev->owner_state = THREAD_OWNER_BLOCKED;
-    } else if (prev && prev->state == THREAD_STATE_SLEEPING) {
-        prev->owner_state = THREAD_OWNER_BLOCKED; // Simplified for now
     }
 
     if (next) {
@@ -121,5 +121,24 @@ void sched_invariant_on_switch(bh_thread_t *prev, bh_thread_t *next, uint32_t co
         }
         next->owner_state = THREAD_OWNER_RUNNING;
         next->owner_cpu = core_id;
+    }
+}
+
+void sched_invariant_check_thread_owner(bh_thread_t *thread, uint32_t expected_cpu) {
+    if (thread->owner_cpu != expected_cpu) {
+        handle_violation(VIOLATION_RUNNING_WRONG_OWNER, thread, "Invariant failure: Thread owner CPU mismatch");
+    }
+}
+
+void sched_invariant_check_runqueue_exclusive(bh_thread_t *thread) {
+    if (thread->enqueued && thread->owner_state != THREAD_OWNER_RUNQUEUE) {
+        handle_violation(VIOLATION_ENQUEUED_WRONG_OWNER, thread, "Invariant failure: Thread runqueue exclusivity violated");
+    }
+}
+
+void sched_invariant_check_remote_enqueue_path(bh_thread_t *thread) {
+    if (thread->owner_state != THREAD_OWNER_REMOTE_PENDING &&
+        thread->owner_state != THREAD_OWNER_NONE) {
+        handle_violation(VIOLATION_RUNNING_ENQUEUE_NO_HANDOFF, thread, "Invariant failure: Remote enqueue from invalid state");
     }
 }

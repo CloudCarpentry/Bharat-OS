@@ -1,4 +1,5 @@
 #include "sched/sched.h"
+#include "sched/sched_invariants.h"
 #include "sched_internal.h"
 #include "panic.h"
 
@@ -23,6 +24,8 @@ int sched_enqueue(bh_thread_t *thread, uint32_t core_id) {
 
       thread_slot_t *slot = sched_find_thread_slot_by_tid_local(&g_cpu_locals[thread->home_core_id].runqueue, thread->thread_id);
       if (!slot) return -1;
+
+      sched_invariant_check_remote_enqueue_path(thread);
 
       spin_lock(&target_rq->lock);
 

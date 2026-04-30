@@ -62,3 +62,5 @@ run_vm_tests.sh
 build/
 !tools/build/
 !docs/dev/build/
+test_sched_hardening
+test_tlb_hardening

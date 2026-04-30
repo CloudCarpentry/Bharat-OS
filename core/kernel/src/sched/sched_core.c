@@ -40,7 +40,14 @@ void sched_reschedule(void) {
               continue;
           }
 
-          thread_slot_t *slot = sched_find_thread_slot_by_tid_local(rq, thread->thread_id);
+          // Invariant: Verify destination CPU matches expected owner
+          if (thread->owner_cpu != core &&
+              thread->owner_state != THREAD_OWNER_REMOTE_PENDING &&
+              thread->owner_state != THREAD_OWNER_NONE) {
+              continue;
+          }
+
+          thread_slot_t *slot = sched_find_thread_slot_by_tid_local(&g_cpu_locals[thread->home_core_id].runqueue, thread->thread_id);
           if (!slot) {
               continue;
           }
@@ -58,6 +65,12 @@ void sched_reschedule(void) {
               }
               if (slot->is_blocked != 0U) {
                 sched_block_dequeue(slot);
+              }
+          } else if (cmd->type == SCHED_REMOTE_MIGRATE || cmd->type == SCHED_REMOTE_ENQUEUE) {
+              if (thread->owner_state == THREAD_OWNER_REMOTE_PENDING) {
+                  thread->owner_state = THREAD_OWNER_NONE;
+                  thread->owner_cpu = core;
+                  thread->bound_core_id = core;
               }
           } else if (cmd->type == SCHED_REMOTE_DEQUEUE) {
               if (slot->is_on_runqueue != 0U) {
