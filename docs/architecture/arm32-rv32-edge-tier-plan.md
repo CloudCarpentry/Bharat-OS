@@ -17,8 +17,8 @@ This document defines how Bharat-OS should add 32-bit architecture support witho
 
 Bharat-OS will support five CPU families in two runtime tiers:
 
-- **Tier 1 (Full Baseline):** `x86_64`, `arm64`, `riscv64`
-- **Tier 2 (EDGE32 Compact Ports):** `arm32`, `riscv32`
+- **Tier 1 (Full Baseline / `full`):** `x86_64`, `arm64`, `riscv64`
+- **Tier 2 (EDGE32 Compact Ports / `edge32`):** `arm32`, `riscv32`
 
 Tier 2 is first-class in product scope, but starts with a smaller mandatory feature envelope to avoid premature parity churn.
 
