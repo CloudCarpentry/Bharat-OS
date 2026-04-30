@@ -290,6 +290,11 @@ void boot_common_platform_services(const boot_info_t *boot) {
     KPRINT("  [IPC] Async IPC ready.\n");
 
     KPRINT("  [TRAP] Initializing syscall/trap gate...\n");
+
+#ifdef BHARAT_ARCH_TRAP_UNSUPPORTED
+    kernel_panic("Architecture trap path unsupported: runtime boot disabled for this target");
+#endif
+
 #include "personality/personality_hooks.h"
 #include "bharat/personality/personality_interface.h"
 #include "bh_personality_registry.h"
