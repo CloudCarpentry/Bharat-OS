@@ -49,8 +49,12 @@ int sched_migrate_task(bh_thread_t *thread, uint32_t new_node) {
   if ((thread->affinity_mask & (1U << new_node)) == 0U) {
     return -2;
   }
-  if (thread->state == THREAD_STATE_QUARANTINED) {
+  if (thread->state == THREAD_STATE_QUARANTINED || thread->owner_state == THREAD_OWNER_QUARANTINED) {
     return K_ERR_BAD_STATE;
+  }
+
+  if (thread->migration_state != SCHED_MIGRATION_NONE) {
+      return K_ERR_IN_PROGRESS;
   }
 
   thread_slot_t *slot = sched_find_thread_slot_by_tid_local(&g_cpu_locals[thread->home_core_id].runqueue, thread->thread_id);
@@ -58,56 +62,90 @@ int sched_migrate_task(bh_thread_t *thread, uint32_t new_node) {
     return -1;
   }
 
+  if (slot->remote_cmd.state == SCHED_REMOTE_CMD_PENDING) {
+      return K_ERR_IN_PROGRESS;
+  }
+
   uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
   uint32_t bound_core = thread->bound_core_id;
 
-  if (slot->is_on_runqueue != 0U) {
-    if (bound_core == current_core) {
-        hal_cpu_disable_interrupts();
-        sched_rq_t *rq = &g_cpu_locals[current_core].runqueue;
-        if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
-          sched_cfs_dequeue(rq, thread);
-        } else {
-          list_del(&slot->run_node);
-          list_init(&slot->run_node);
-          sched_ready_bitmap_clear_if_empty(rq, thread->priority);
-        }
-        slot->is_on_runqueue = 0U;
-        if (rq->runnable_count > 0U) {
-          rq->runnable_count--;
-        }
-        hal_cpu_enable_interrupts();
-    } else {
-        // Remote dequeue via message
-        sched_rq_t *target_rq = &g_cpu_locals[bound_core].runqueue;
-        spin_lock(&target_rq->lock);
-
-        sched_remote_cmd_t *cmd = &slot->remote_cmd;
-        cmd->type = SCHED_REMOTE_DEQUEUE;
-        cmd->source_cpu = current_core;
-        cmd->target_cpu = bound_core;
-        cmd->thread_id = thread->thread_id;
-        cmd->expected_thread_generation = thread->sched_generation;
-
-        list_add_tail(&cmd->list, &target_rq->pending_inbox);
-        if (target_rq->resched_pending == 0) {
-            target_rq->resched_pending = 1;
-            spin_unlock(&target_rq->lock);
-            hal_send_ipi_payload(1U << bound_core, MK_MSG_THREAD_DEQUEUE_REQ);
-        } else {
-            spin_unlock(&target_rq->lock);
-        }
-        // Note: we don't wait for completion here, assuming the remote core will eventually process it.
-        // For a full production implementation we might need a sync point.
-    }
+  if (bound_core == new_node) {
+      return 0;
   }
 
-  thread->bound_core_id = new_node;
-  thread->preferred_numa_node = (uint8_t)new_node;
-  if (thread->state == THREAD_STATE_READY) {
-    return sched_enqueue(thread, new_node); // Enqueues into target core's inbox if remote
+  thread->migration_target_cpu = new_node;
+
+  if (bound_core == current_core) {
+      // Phase 1: Local dequeue
+      hal_cpu_disable_interrupts();
+      sched_rq_t *rq = &g_cpu_locals[current_core].runqueue;
+      if (slot->is_on_runqueue != 0U) {
+          if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
+            sched_cfs_dequeue(rq, thread);
+          } else {
+            list_del(&slot->run_node);
+            list_init(&slot->run_node);
+            sched_ready_bitmap_clear_if_empty(rq, thread->priority);
+          }
+          slot->is_on_runqueue = 0U;
+          if (rq->runnable_count > 0U) {
+            rq->runnable_count--;
+          }
+      }
+      thread->migration_state = SCHED_MIGRATION_DEQUEUED;
+      thread->owner_state = THREAD_OWNER_REMOTE_PENDING;
+      hal_cpu_enable_interrupts();
+
+      // Phase 2: Remote enqueue request
+      sched_rq_t *target_rq = &g_cpu_locals[new_node].runqueue;
+      spin_lock(&target_rq->lock);
+
+      sched_remote_cmd_t *cmd = &slot->remote_cmd;
+      cmd->type = SCHED_REMOTE_ENQUEUE;
+      cmd->state = SCHED_REMOTE_CMD_PENDING;
+      cmd->source_cpu = current_core;
+      cmd->target_cpu = new_node;
+      cmd->thread_id = thread->thread_id;
+      cmd->expected_thread_generation = thread->sched_generation;
+
+      list_add_tail(&cmd->list, &target_rq->pending_inbox);
+      if (target_rq->resched_pending == 0) {
+          target_rq->resched_pending = 1;
+          spin_unlock(&target_rq->lock);
+          hal_send_ipi_payload(1U << new_node, MK_MSG_THREAD_ENQUEUE_REQ);
+      } else {
+          spin_unlock(&target_rq->lock);
+      }
+
+      thread->migration_state = SCHED_MIGRATION_ENQUEUE_REQUESTED;
+      thread->preferred_numa_node = (uint8_t)new_node;
+      return K_ERR_IN_PROGRESS;
+  } else {
+      // Phase 1: Remote dequeue request (to old owner)
+      sched_rq_t *old_owner_rq = &g_cpu_locals[bound_core].runqueue;
+      spin_lock(&old_owner_rq->lock);
+
+      sched_remote_cmd_t *cmd = &slot->remote_cmd;
+      cmd->type = SCHED_REMOTE_MIGRATE; // Re-purposed as "PREPARE" (remote dequeue for migration)
+      cmd->state = SCHED_REMOTE_CMD_PENDING;
+      cmd->source_cpu = current_core;
+      cmd->target_cpu = bound_core;
+      cmd->thread_id = thread->thread_id;
+      cmd->expected_thread_generation = thread->sched_generation;
+
+      list_add_tail(&cmd->list, &old_owner_rq->pending_inbox);
+      if (old_owner_rq->resched_pending == 0) {
+          old_owner_rq->resched_pending = 1;
+          spin_unlock(&old_owner_rq->lock);
+          hal_send_ipi_payload(1U << bound_core, MK_MSG_THREAD_DEQUEUE_REQ);
+      } else {
+          spin_unlock(&old_owner_rq->lock);
+      }
+
+      thread->migration_state = SCHED_MIGRATION_DEQUEUE_REQUESTED;
+      thread->preferred_numa_node = (uint8_t)new_node;
+      return K_ERR_IN_PROGRESS;
   }
-  return 0;
 }
 
 int sched_set_thread_preferred_node(uint64_t tid, uint8_t node_id) {
@@ -141,17 +179,44 @@ int sched_throttle_core(uint32_t core_id) {
   return 0;
 }
 
+kstatus_t sched_wait_remote_cmd_ack(sched_remote_cmd_t *cmd, uint32_t timeout_loops) {
+    if (!cmd) return K_ERR_INVALID_ARG;
+    for (uint32_t i = 0; i < timeout_loops; ++i) {
+        if (cmd->state == SCHED_REMOTE_CMD_ACKED) return K_OK;
+        if (cmd->state == SCHED_REMOTE_CMD_FAILED) return K_ERR_BAD_STATE;
+        if (cmd->state == SCHED_REMOTE_CMD_TIMEOUT) return K_ERR_TIMEOUT;
+        hal_cpu_relax();
+    }
+    return K_ERR_TIMEOUT;
+}
+
 int sched_quarantine_thread(bh_thread_t *thread, uint32_t reason) {
   if (!thread) return -1;
 
   thread->state = THREAD_STATE_QUARANTINED;
-  thread->pending_fault = (thread_fault_t)reason; // Reuse for now
+  thread->owner_state = THREAD_OWNER_QUARANTINED;
+  thread->pending_fault = (thread_fault_t)reason;
 
-  // If enqueued, remove it
-  if (thread->enqueued) {
-      // For now we just mark it, a proper implementation would trigger a dequeue command if remote
-      // or dequeue locally if local.
-      // Keeping it simple as per instructions.
+  // If enqueued locally, remove it
+  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  if (thread->bound_core_id == current_core) {
+      thread_slot_t *slot = sched_find_thread_slot_by_tid_local(&g_cpu_locals[current_core].runqueue, thread->thread_id);
+      if (slot && slot->is_on_runqueue) {
+          hal_cpu_disable_interrupts();
+          sched_rq_t *rq = &g_cpu_locals[current_core].runqueue;
+          if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
+            sched_cfs_dequeue(rq, thread);
+          } else {
+            list_del(&slot->run_node);
+            list_init(&slot->run_node);
+            sched_ready_bitmap_clear_if_empty(rq, thread->priority);
+          }
+          slot->is_on_runqueue = 0U;
+          if (rq->runnable_count > 0U) {
+            rq->runnable_count--;
+          }
+          hal_cpu_enable_interrupts();
+      }
   }
 
   return 0;
