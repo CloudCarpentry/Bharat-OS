@@ -1,6 +1,6 @@
 #include "secure_boot.h"
 #include "hal/hal_secure_boot.h"
-#include "security/audit.h"
+#include <bharat/kernel/security/audit.h>
 
 /* Default policy for generic hardware if no board-specific override exists */
 static const bharat_boot_policy_t g_default_boot_policy

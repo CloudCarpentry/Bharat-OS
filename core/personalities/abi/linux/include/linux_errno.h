@@ -37,4 +37,7 @@
 #define LINUX_ERANGE           POSIX_ERANGE
 #define LINUX_ENOSYS           POSIX_ENOSYS
 
+#include "kernel/status.h"
+int linux_errno_from_bh_status(kstatus_t status);
+
 #endif // LINUX_ERRNO_H

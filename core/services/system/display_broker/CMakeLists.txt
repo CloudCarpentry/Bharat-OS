@@ -20,6 +20,7 @@ target_include_directories(display_broker PRIVATE
     ${CMAKE_SOURCE_DIR}/core/lib/ipc/include
     ${CMAKE_SOURCE_DIR}/core/lib/cap/include
     ${CMAKE_SOURCE_DIR}/core/lib/runtime/include
+    ${CMAKE_SOURCE_DIR}/core/services/common/runtime/include
 )
 
 bharat_configure_userspace_binary(display_broker)

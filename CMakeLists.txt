@@ -125,6 +125,9 @@ option(BHARAT_ENABLE_PERSONALITIES "Enable personality framework" ON)
 option(BHARAT_ENABLE_COMPAT_LINUX "Enable Linux compatibility personality" OFF)
 option(BHARAT_ENABLE_COMPAT_ANDROID "Enable Android compatibility personality" OFF)
 
+# Staging / Experimental Components
+option(BHARAT_BUILD_STAGING "Build staging/ experimental modules" OFF)
+
 # Default Init Profile
 set(BHARAT_DEFAULT_INIT_PROFILE "DESKTOP" CACHE STRING "Target default init profile (TINY, SMALL, EMBEDDED_RICH, MOBILE, DESKTOP, DRONE)")
 set_property(CACHE BHARAT_DEFAULT_INIT_PROFILE PROPERTY STRINGS TINY SMALL EMBEDDED_RICH MOBILE DESKTOP DRONE)

@@ -1,7 +1,6 @@
 #include "boot/boot_args.h"
 #include "hal/hal_irq.h"
 #include "hal/hal_timer.h"
-#include "../staging/ai/ai_kernel_bridge.h"
 #include "sched/ai_sched.h"
 #include "sched/algo_matrix.h"
 #include "core/multikernel.h"
@@ -21,10 +20,9 @@
 #include "power_thermal_perf.h"
 #include "profile/profile.h"
 #include "secure_boot.h"
-#include "security/audit.h"
+#include <bharat/kernel/security/audit.h>
 #include "security/credentials.h"
 #include "security/isolation.h"
-#include "security/policy.h"
 #include "profile/subsystem_profile.h"
 #include "trap.h"
 #include "boot/boot_args.h"
@@ -173,10 +171,9 @@ void boot_common_security(const boot_info_t *boot) {
     if (bharat_secure_boot_verify_early() != 0) {
       kernel_panic("secure-boot verification failed");
     }
-    (void)bharat_audit_init();
+    bh_audit_log_event(0, "Kernel security initialization");
     (void)bharat_credentials_init();
     (void)bharat_isolation_init();
-    (void)bharat_policy_init(BHARAT_POLICY_MODE_ENFORCING);
     (void)bharat_secure_boot_stage_hook(BHARAT_BOOT_STAGE_KERNEL,
                                         0xB4AA7001ULL);
     KPRINT("  [SEC] Secure-boot policy accepted.\n");

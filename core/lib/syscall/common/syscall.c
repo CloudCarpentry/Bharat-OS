@@ -1,4 +1,4 @@
-#include <uapi/syscall/syscall_nr.h>
+#include <bharat/uapi/syscall_nr.h>
 
 #if defined(__x86_64__)
 #include <bharat/uapi/arch/x86_64/syscall.h>

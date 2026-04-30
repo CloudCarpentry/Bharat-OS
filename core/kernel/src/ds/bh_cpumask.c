@@ -1,5 +1,5 @@
 #include "bharat/kernel/ds/bh_cpumask.h"
-#include <string.h>
+#include "lib/base/string.h"
 
 void bh_cpumask_zero(bh_cpumask_t *mask) {
     if (!mask) return;

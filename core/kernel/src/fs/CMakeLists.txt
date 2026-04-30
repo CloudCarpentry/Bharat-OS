@@ -1,11 +1,5 @@
 add_library(k_fs OBJECT
-    ../../src/fs/vfs.c
-    ../../src/fs/mount.c
-    ../../src/fs/file.c
-    ../../src/fs/namespace.c
-    ../../src/fs/path.c
-    ../../src/fs/block.c
-    ../../src/fs/object_store.c
+    ../../src/fs/kernel_bootfs.c
 )
 
 target_include_directories(k_fs PRIVATE ../../include ${BHARAT_GENERATED_INCLUDE_DIR} ${CMAKE_SOURCE_DIR}/core/personalities/runtime/include ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/lib/include ${BHARAT_BOOT_INCLUDE_DIR})
