@@ -57,12 +57,212 @@ We intentionally keep architecture documents forward-looking while maintaining c
 
 ## Device Profiles & Use-cases
 
-Bharat-OS targets multiple deployment classes. These profiles describe **how the current baseline maps to real devices today**, and what is planned next:
+Bharat-OS is intentionally profile-driven: the same small capability-oriented kernel can be composed with different services, drivers, stacks, and personalities depending on the device class. This avoids building a separate OS for every product category while still allowing deterministic, safety-aware, and resource-bounded deployments.
+
+> Current status: these profiles describe Bharat-OS architecture direction and implementation mapping. They are not yet production-certification claims. Safety, automotive, aerospace, and industrial deployments require additional validation, fault-containment, timing analysis, certification artifacts, and hardware-specific qualification.
 
 - **Mobile / Wearables (EDGE profile):** capability isolation, bounded footprint, and power-aware scheduling hooks are available now; production-grade power control policy is roadmap.
 - **Robotics / Drones (EDGE + RTOS-leaning):** deterministic IPC pathways and architecture portability are present; stronger real-time admission and fault-containment depth are roadmap.
 - **Network appliances / Edge gateways:** capability-mediated driver boundaries and multikernel messaging baseline are present; mature data-plane acceleration is roadmap.
 - **Data-center / clustered nodes:** NUMA/multicore scaffolding and URPC primitives are present; full distributed scheduling and high-scale service orchestration are roadmap.
+
+For automotive, industrial, aerospace, and cockpit profile mapping, see [Device Profiles and Use Cases](docs/architecture/device-profiles-and-use-cases.md).
+For safety-profile maturity and certification-readiness gaps, see [Safety-Oriented Profile Roadmap](docs/architecture/safety-oriented-profile-roadmap.md).
+
+### Safety-Oriented Profile Composition
+
+```mermaid
+graph TD
+    subgraph Apps["Apps / Domain Workloads"]
+        ADAS["ADAS / Perception"]
+        Cockpit["Digital Cockpit"]
+        Control["Industrial / Aerospace Control"]
+        Gateway["Gateway ECU"]
+    end
+
+    subgraph Services["User-space Services"]
+        SafetyMgr["Safety Manager"]
+        Telemetry["Telemetry & Diagnostics"]
+        DeviceMgr["Device Manager"]
+        NetMgr["Network / Gateway Manager"]
+        VehicleStack["Vehicle / Sensor / Actuator Stack"]
+        DisplayMgr["Display / Cockpit UI Manager"]
+        AIGov["AI / Accelerator Governor"]
+    end
+
+    subgraph Kernel["Bharat-OS Microkernel"]
+        Cap["Capabilities"]
+        IPC["IPC / URPC"]
+        Sched["Scheduler / Deadlines"]
+        MM["VMM / PMM"]
+        Fault["Fault Domains"]
+    end
+
+    subgraph HW["Hardware / HAL"]
+        CPU["CPU Cores"]
+        Sensors["Sensors / Buses"]
+        Accel["GPU / NPU / DSP"]
+        Display["Display"]
+        Network["Ethernet / CAN / Radio"]
+    end
+
+    ADAS --> VehicleStack
+    Cockpit --> DisplayMgr
+    Control --> SafetyMgr
+    Gateway --> NetMgr
+
+    VehicleStack --> IPC
+    DisplayMgr --> IPC
+    NetMgr --> IPC
+    SafetyMgr --> Fault
+    Telemetry --> IPC
+    AIGov --> Sched
+
+    IPC --> Cap
+    Sched --> CPU
+    MM --> CPU
+    Cap --> Sensors
+    Cap --> Accel
+    Cap --> Display
+    Cap --> Network
+```
+
+### ADAS / Autonomous Driving
+
+Bharat-OS is a good fit for future ADAS and autonomous-driving control platforms because the architecture separates safety-critical control paths from policy-heavy user-space services.
+
+Potential value:
+
+- **Mixed-criticality partitioning:** perception, planning, control, telemetry, diagnostics, and UI can run in isolated domains with explicit capabilities.
+- **Deterministic IPC/URPC:** low-latency message paths can connect camera/radar/lidar preprocessing, fusion, planning, and actuator-control services without making the kernel policy-heavy.
+- **Restartable user-space drivers:** sensor or accelerator drivers can fail and restart without forcing whole-system failure.
+- **AI/accelerator-aware scheduling roadmap:** AI inference workloads can be placed by a user-space governor while the kernel keeps bounded deterministic fallback behavior.
+- **Fault-domain design path:** perception failure, sensor timeout, control-path deadline miss, and driver crash can be classified into fault domains and routed to safe-state policy.
+
+Example mapping:
+
+| ADAS function | Bharat-OS mapping |
+| --- | --- |
+| Camera/radar/lidar input | User-space sensor drivers + capability-gated DMA/MMIO |
+| Perception pipeline | Accelerator/NPU/GPU service domain |
+| Sensor fusion | RT or latency-sensitive service domain |
+| Planning/control | RT profile with deadline-aware scheduling |
+| Vehicle communication | CAN/Ethernet gateway service |
+| Diagnostics | Telemetry + fault-domain service |
+| Safe fallback | Safety manager + watchdog + safe-state transition |
+
+### Gateway ECUs
+
+Bharat-OS can target gateway ECUs because its architecture naturally separates network-facing, vehicle-bus-facing, and diagnostic domains.
+
+Potential value:
+
+- **Capability-mediated networking:** each network interface, bus, or diagnostic endpoint can expose only the rights required by that service.
+- **Gateway service isolation:** routing, filtering, diagnostics, OTA, and telemetry can be separate services rather than one privileged monolith.
+- **Restartable communication stacks:** CAN, Ethernet, SOME/IP-like services, diagnostics, and update channels can restart independently.
+- **Policy outside kernel:** routing, firewall, diagnostic access, and update policy stay in services, keeping the kernel smaller.
+
+Example mapping:
+
+| Gateway ECU function | Bharat-OS mapping |
+| --- | --- |
+| CAN/CAN-FD bus access | Vehicle stack + bus driver capability |
+| Automotive Ethernet | Network stack + netmgr control plane |
+| Diagnostics | Isolated diagnostic service |
+| Firewall/routing | User-space gateway policy service |
+| OTA/update | Secure update service roadmap |
+| Fault reporting | Telemetry/diagnostic event service |
+
+### Industrial Control
+
+For industrial control, Bharat-OS should focus on deterministic timing, strong isolation, and resilient service recovery.
+
+Potential value:
+
+- **RT-leaning profile:** deterministic memory allocation, deadline metadata, and bounded IPC paths can support PLC-like and motion-control workloads.
+- **Sensor/actuator isolation:** actuator control can be capability-gated and separated from HMI, logging, and remote-management services.
+- **Fault containment:** a failed HMI, logging service, or network service should not directly corrupt control-loop execution.
+- **Small deployment footprint:** profile-based composition can disable unnecessary media, desktop, or cloud features.
+
+Example mapping:
+
+| Industrial function | Bharat-OS mapping |
+| --- | --- |
+| Control loop | RT service with deadline metadata |
+| Sensor sampling | Sensor manager + timestamped ring buffer |
+| Actuator command | Actuator queue + safe-stop path |
+| HMI panel | Framebuffer/lightweight UI profile |
+| Remote monitoring | Network + telemetry service |
+| Safety interlock | Watchdog + safety manager |
+
+### Aerospace Systems
+
+Aerospace use cases require extreme caution, but Bharat-OS has architectural ingredients that are useful for future research and prototyping.
+
+Potential value:
+
+- **Minimal trusted kernel base:** only scheduling, memory, traps, capabilities, IPC/uRPC, and fault handling should remain in kernel.
+- **Strict domain separation:** navigation, telemetry, payload, communications, and diagnostics can run as isolated services.
+- **Fault-domain model:** service failure can be isolated and escalated to safe-mode policy instead of uncontrolled system-wide failure.
+- **Cross-architecture portability:** x86_64, ARM64, and RISC-V targets allow experimentation across development boards, simulators, and future custom silicon.
+
+Example mapping:
+
+| Aerospace function | Bharat-OS mapping |
+| --- | --- |
+| Flight-critical loop | RT/safety profile service |
+| Telemetry | Isolated telemetry service |
+| Payload control | Separate capability-bounded service |
+| Communication bus | Network/radio stack service |
+| Health monitoring | Fault-domain + watchdog framework |
+| Safe mode | Safety manager policy service |
+
+### Digital Cockpit / Infotainment
+
+Digital cockpit is different from ADAS: it needs UI, media, Android/Linux compatibility paths, and strong separation from vehicle-control domains.
+
+Potential value:
+
+- **Domain split:** infotainment, cluster, navigation, voice assistant, media, and vehicle-status display can be separated.
+- **Display tiers:** headless, text console, framebuffer, lightweight embedded UI, and full compositor can be enabled by profile.
+- **Multi-personality direction:** Linux/Android personality work can support app/runtime compatibility without moving those compatibility layers into the kernel.
+- **Safety-aware UI isolation:** cluster-critical display paths can be separated from entertainment or third-party app domains.
+
+Example mapping:
+
+| Cockpit function | Bharat-OS mapping |
+| --- | --- |
+| Instrument cluster | Lightweight UI/framebuffer service |
+| Infotainment | Media stack + Android/Linux personality path |
+| Navigation | App/service domain |
+| Vehicle status | Read-only vehicle data capability |
+| Voice/AI assistant | User-space AI/accelerator service |
+| Secure warning overlay | Trusted UI/display broker roadmap |
+
+### Why Bharat-OS is interesting for these domains
+
+Bharat-OS is not trying to be a monolithic general-purpose OS. Its value is in a smaller capability-oriented kernel plus profile-selected services:
+
+- **Capability-based security:** access to memory, devices, IPC endpoints, and services is explicit and revocable.
+- **Microkernel layering:** policy-heavy behavior stays outside ring-0.
+- **Multikernel direction:** cross-core coordination uses explicit messaging rather than hidden global sharing.
+- **Profile-aware composition:** builds can select only the services needed for automotive, industrial, aerospace, cockpit, edge, or cloud profiles.
+- **Restartable services and drivers:** user-space services can be supervised, restarted, or isolated.
+- **Safety roadmap:** watchdogs, fault domains, deadline primitives, telemetry, and safe-state transitions can become common reusable foundations.
+
+### Near-term maturity gaps for safety-oriented profiles
+
+Before claiming production readiness for ADAS, gateway ECUs, industrial control, aerospace, or cockpit systems, Bharat-OS must close these gaps:
+
+- bounded scheduler and cross-core migration behavior
+- bounded TLB shootdown and memory invalidation protocol
+- strict capability enforcement at every IPC/service boundary
+- real service supervisor with restart/backoff/watchdog policy
+- fault-domain and safe-state transition framework
+- deadline/timer primitives with tests
+- device-class registry for sensors, actuators, display, network, storage, and accelerator devices
+- telemetry and diagnostic event service
+- clear separation between kernel mechanisms, services, stacks, and domain personalities
 
 ### High-Level Architecture
 
@@ -339,16 +539,6 @@ graph LR
     Detect -->|Edge| Edge
     Detect -->|Datacenter| Datacenter
 ```
-
-### Device Profiles & Use-cases
-
-Bharat-OS is intentionally profile-driven instead of forcing one heavyweight image on every board.
-
-- **Mobile & embedded:** revocable capabilities for sensor isolation, user-space driver recovery, and Bharat-RT static allocation for deterministic latency.
-- **Edge & IoT gateways:** small attack surface, real-time tuning, and hot-swappable network/USB drivers.
-- **Robotics & UAVs:** mixed-criticality partitioning, dedicated-core workflows, and low-latency URPC messaging between control/perception tasks.
-- **Network appliances:** isolated user-space drivers plus fast-path packet processing and restart without whole-system panic.
-- **Datacenter/cloud:** multikernel-friendly scaling on many-core/NUMA systems with demand paging and policy-driven AI scheduling.
 
 ### Subsystem Model
 
