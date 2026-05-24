@@ -400,6 +400,7 @@ set(KERNEL_SRCS
     src/mm/physmap.c
     src/mm/mem_model.c
     src/mm/mem_validator.c
+    src/mm/mem_profile_validation.c
     src/mm/footprint.c
     src/mm/prot_domain.c
     src/mm/user_range.c

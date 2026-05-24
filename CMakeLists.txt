@@ -170,6 +170,13 @@ set(BHARAT_PLATFORM_FIRMWARE "" CACHE STRING "Target platform firmware (e.g., AC
 set(BHARAT_BOOT_HW_PROFILE "generic" CACHE STRING "Boot hardware profile (generic, desktop, server, vm, laptop, edge, rtos, automotive_ecu, automotive_infotainment)")
 set_property(CACHE BHARAT_BOOT_HW_PROFILE PROPERTY STRINGS generic desktop server vm laptop edge rtos automotive_ecu automotive_infotainment)
 
+# Memory Protection Model Validation
+if(BHARAT_DEVICE_PROFILE MATCHES "AUTOMOTIVE|SAFETY|MEDICAL")
+    if(NOT BHARAT_ENABLE_MMU AND NOT BHARAT_ENABLE_MPU)
+        message(FATAL_ERROR "Profile ${BHARAT_DEVICE_PROFILE} requires at least MPU or MMU memory protection.")
+    endif()
+endif()
+
 # IRQ dispatch profile
 set(BHARAT_IRQ_DISPATCH_MODE "AUTO" CACHE STRING "IRQ dispatch mode (AUTO, GENERIC, MIXED, RT)")
 set_property(CACHE BHARAT_IRQ_DISPATCH_MODE PROPERTY STRINGS AUTO GENERIC MIXED RT)
@@ -267,6 +274,22 @@ bharat_set_profile_flag(BHARAT_ARCH_RISCV "RISCV" "${BHARAT_ARCH_FAMILY}")
 # Architecture Bitness
 bharat_set_profile_flag(BHARAT_ARCH_32BIT "32" "${BHARAT_ARCH_BITS}")
 bharat_set_profile_flag(BHARAT_ARCH_64BIT "64" "${BHARAT_ARCH_BITS}")
+
+# Architecture Name String
+if(BHARAT_ARCH_FAMILY STREQUAL "X86" AND BHARAT_ARCH_BITS EQUAL 64)
+    set(BHARAT_ARCH_NAME "x86_64")
+elseif(BHARAT_ARCH_FAMILY STREQUAL "ARM" AND BHARAT_ARCH_BITS EQUAL 64)
+    set(BHARAT_ARCH_NAME "arm64")
+elseif(BHARAT_ARCH_FAMILY STREQUAL "RISCV" AND BHARAT_ARCH_BITS EQUAL 64)
+    set(BHARAT_ARCH_NAME "riscv64")
+elseif(BHARAT_ARCH_FAMILY STREQUAL "ARM" AND BHARAT_ARCH_BITS EQUAL 32)
+    set(BHARAT_ARCH_NAME "arm32")
+elseif(BHARAT_ARCH_FAMILY STREQUAL "RISCV" AND BHARAT_ARCH_BITS EQUAL 32)
+    set(BHARAT_ARCH_NAME "riscv32")
+else()
+    set(BHARAT_ARCH_NAME "unknown")
+endif()
+add_compile_definitions(BHARAT_ARCH_NAME="${BHARAT_ARCH_NAME}")
 
 # Architecture Variant
 bharat_set_profile_flag(BHARAT_ARCH_VARIANT_GENERIC "GENERIC" "${BHARAT_ARCH_VARIANT}")
