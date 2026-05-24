@@ -15,16 +15,24 @@ int hal_mem_get_caps(hal_mem_caps_t *caps) {
     caps->page_sizes_mask = HAL_PAGE_SIZE_4K | HAL_PAGE_SIZE_2M | HAL_PAGE_SIZE_1G;
 
     caps->supports_nx = true;
+    caps->supports_execute_never = true;
+    caps->supports_user_no_exec = true; // SMEP
     caps->supports_asid = true; // PCID
     caps->supports_global = true;
     caps->supports_user_mode = true;
+    caps->supports_user_kernel_isolation = true;
     caps->supports_write_protect = true;
+
+    caps->supports_iommu = true;
     caps->supports_hugepages = true;
     caps->supports_dirty_accessed = true;
+    caps->supports_tlb_shootdown = true;
+    caps->supports_range_invalidate = true;
+    caps->supports_dma_mapping = true;
+    caps->supports_guard_pages = true;
+    caps->supports_copy_user_validation = true;
 
-    // IOMMU depends on chipset (VT-d), but the architecture supports it.
-    // For now we report based on architecture capability.
-    caps->supports_iommu = true;
+    caps->page_table_levels = 4;
 
     return 0;
 }

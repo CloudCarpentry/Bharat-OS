@@ -86,15 +86,17 @@ Use these labels consistently across status docs and roadmap updates:
 ## 3) Memory runtime validation details
 
 ### Runtime Memory Profile Validation
-Status: **Partial** / M0 baseline
+Status: **Baseline** / M0.1 Conformance Gate
 
-The kernel now has a boot/runtime validation path that checks detected memory capabilities against the selected memory model/profile contract. This does not complete PMM ownership, TLB shootdown, VM lifecycle, DMA/IOMMU, or full memory production hardening.
+The kernel implements a multi-architecture memory protection conformance gate. It enforces that the selected device profile (DESKTOP, AUTOMOTIVE, EDGE) is safely supported by the detected hardware/HAL capabilities.
 
 Implemented features include:
-- `hal_mem_caps_t` normalization into kernel `mem_runtime_caps_t`.
-- `mem_profile_contract_t` derivation from build configuration.
-- `mem_runtime_validate_profile()` implementation with fail-closed rules.
-- Integration into `mm_validate_model()` during early boot.
+- **Extended HAL Contract**: `hal_mem_caps_t` now reports explicit security capabilities (user/kernel isolation, NX, TLB shootdown, DMA/IOMMU presence).
+- **MEMCAP Conformance Gate**: Boot-time validation (MEMCAP) logs architectural truth and fails-closed for invalid profile/backend combinations.
+- **Maturity-Gate Integration**: `tools/check_arch_maturity.py` ensures architecture claims in `arch_maturity.yaml` match required memory models.
+- **Build-time Enforcement**: CMake and C-preprocessor checks prevent safety-critical profiles from building without memory protection.
+- **Normalization**: Improved `hal_mem_caps_t` to kernel `mem_runtime_caps_t` mapping.
+- **Fail-Closed Policy**: Profiles like `AUTOMOTIVE` or `DESKTOP` will panic early if hardware cannot provide required isolation.
 
 
 ## 3) Core Subsystem implementation details

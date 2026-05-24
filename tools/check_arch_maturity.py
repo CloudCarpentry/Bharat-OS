@@ -16,9 +16,10 @@ sys.path.append('/usr/lib/python3/dist-packages')
 # TODO: Cross-check delivery/targets/target_matrix.json once target metadata is stable.
 
 REQUIRED_ARCHES = ["x86_64", "arm64", "riscv64", "arm32", "riscv32"]
-REQUIRED_FIELDS = ["boot", "trap", "syscall", "mmu", "smp"]
+REQUIRED_FIELDS = ["boot", "trap", "syscall", "mmu", "smp", "memory_model"]
 METADATA_FIELDS = ["tier", "notes", "production_candidate"]
 FORBIDDEN_FOR_PRODUCTION = ["stub", "unsupported", "scaffold"]
+FORBIDDEN_MODEL_FOR_PRODUCTION = ["NONE", "PROT_NONE"]
 
 def load_yaml(filepath):
     try:
@@ -84,6 +85,7 @@ def main():
             pass
 
         is_prod_candidate = fields.get("production_candidate", False)
+        tier = fields.get("tier", "unknown")
 
         # 2. Check for minimum required fields presence
         for field in REQUIRED_FIELDS:
@@ -91,17 +93,27 @@ def main():
                 print(f"ERROR: {arch} is missing required field: {field}")
                 errors += 1
 
-        # 3. Generic maturity field check
+        # 3. Memory model specific checks
+        memory_model = fields.get("memory_model")
+        if tier == "full" and memory_model != "MMU_FULL":
+            print(f"ERROR: {arch} is tier 'full' but memory_model is '{memory_model}' (expected MMU_FULL)")
+            errors += 1
+
+        if is_prod_candidate and memory_model in FORBIDDEN_MODEL_FOR_PRODUCTION:
+            print(f"ERROR: {arch} has memory_model='{memory_model}', but production_candidate=true.")
+            errors += 1
+
+        # 4. Generic maturity field check
         for field, value in fields.items():
-            if field in METADATA_FIELDS:
+            if field in METADATA_FIELDS or field == "memory_model":
                 continue
 
-            # 3a. Forbidden values check for production candidates
+            # 4a. Forbidden values check for production candidates
             if is_prod_candidate and value in FORBIDDEN_FOR_PRODUCTION:
                 print(f"ERROR: {arch}.{field} is '{value}', but production_candidate=true.")
                 errors += 1
 
-            # 3b. Warning for 'partial' in production candidates
+            # 4b. Warning for 'partial' in production candidates
             if is_prod_candidate and value == "partial":
                 print(f"WARNING: {arch}.{field} is partial; production_candidate=true means candidate only, not production-certified.")
                 warnings += 1

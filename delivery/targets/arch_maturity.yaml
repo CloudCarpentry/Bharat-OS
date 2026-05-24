@@ -1,5 +1,6 @@
 x86_64:
   tier: full
+  memory_model: MMU_FULL
   boot: baseline
   trap: baseline
   syscall: baseline
@@ -9,6 +10,7 @@ x86_64:
 
 arm64:
   tier: full
+  memory_model: MMU_FULL
   boot: baseline
   trap: baseline
   syscall: baseline
@@ -18,6 +20,7 @@ arm64:
 
 riscv64:
   tier: full
+  memory_model: MMU_FULL
   boot: baseline
   trap: baseline
   syscall: partial
@@ -27,6 +30,7 @@ riscv64:
 
 arm32:
   tier: edge32
+  memory_model: MMU_LITE
   boot: partial
   trap: stub
   syscall: unsupported
@@ -36,6 +40,7 @@ arm32:
 
 riscv32:
   tier: edge32
+  memory_model: MMU_LITE
   boot: partial
   trap: stub
   syscall: unsupported

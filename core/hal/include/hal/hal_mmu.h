@@ -36,18 +36,27 @@ typedef struct hal_mem_caps {
 
     /* Features */
     bool supports_nx;           /* No-Execute / Execute-Never support */
+    bool supports_execute_never;/* Explicit Execute-Never capability */
+    bool supports_user_no_exec; /* Support for User-No-Execute (UXN/SMEP) */
     bool supports_asid;         /* Address Space ID / PCID support */
     bool supports_global;       /* Global bit support */
     bool supports_user_mode;    /* Hardware distinguishes User/Supervisor access */
+    bool supports_user_kernel_isolation; /* Can hardware/HAL strictly isolate U/K */
     bool supports_write_protect;/* Hardware supports Read-Only mappings */
 
     /* Advanced Features */
     bool supports_iommu;        /* System has at least one IOMMU/SMMU */
     bool supports_hugepages;    /* Support for large (>4K) translations */
     bool supports_dirty_accessed;/* Hardware manages Dirty/Accessed bits */
+    bool supports_tlb_shootdown; /* Hardware/HAL supports cross-core TLB invalidation */
+    bool supports_range_invalidate; /* Efficiently invalidate address ranges */
+    bool supports_dma_mapping;  /* Backend handles DMA/IOMMU mapping logic */
+    bool supports_guard_pages;  /* Backend supports guard-page unmapped zones */
+    bool supports_copy_user_validation; /* Backend provides safe copy_to_user/from_user checks */
 
     /* Implementation-specific details */
     uint32_t max_mpu_regions;   /* For MPU-only models */
+    uint8_t page_table_levels;  /* Number of page table levels (if MMU) */
 } hal_mem_caps_t;
 
 /**

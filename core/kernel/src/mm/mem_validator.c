@@ -1,8 +1,10 @@
 #include "mm/mem_validator.h"
+#include "mm/mem_profile_validation.h"
 #include "hal/hal_mmu.h"
 #include "console/console_core.h"
 #include "kernel/status.h"
 #include <string.h>
+#include <stdio.h>
 
 static mem_model_t validated_model = MEM_MODEL_NONE;
 static bool validation_complete = false;
@@ -76,6 +78,19 @@ int mm_validate_model(void) {
         return status;
     }
 
+    /*
+     * MEMCAP Logging (Production Conformance)
+     */
+    console_log(CONSOLE_LEVEL_INFO, "MEMCAP: arch=%s model=%s user_kernel_isolation=%s nx=%s asid=%s tlb_shootdown=%s dma=%s iommu=%s\n",
+                BHARAT_ARCH_NAME,
+                model_to_str(hal_caps.model),
+                hal_caps.supports_user_kernel_isolation ? "true" : "false",
+                hal_caps.supports_nx ? "true" : "false",
+                hal_caps.supports_asid ? "true" : "false",
+                hal_caps.supports_tlb_shootdown ? "true" : "false",
+                hal_caps.supports_dma_mapping ? "true" : "false",
+                hal_caps.supports_iommu ? "true" : "false");
+
     status = mem_runtime_caps_from_hal(&hal_caps, &runtime_caps);
     if (status != K_OK) {
         console_log(CONSOLE_LEVEL_PANIC, "MEM: Failed to normalize memory capabilities!\n");
@@ -88,23 +103,27 @@ int mm_validate_model(void) {
         return status;
     }
 
-    console_log(CONSOLE_LEVEL_INFO, "MEM: Initializing memory model validation...\n");
-    console_log(CONSOLE_LEVEL_INFO, "MEM: Detected Hardware Model: %s\n", model_to_str(hal_caps.model));
-    console_log(CONSOLE_LEVEL_INFO, "MEM: Requested Software Model: %s\n",
-                model_to_str((enum hal_memory_model)contract.model));
-
+    /* 1. Legacy/Internal Contract Validation */
     status = mem_runtime_validate_profile(&runtime_caps, &contract);
-
     if (status != K_OK) {
-        console_log(CONSOLE_LEVEL_PANIC, "MEM: CRITICAL - Runtime profile validation %s!\n",
-                    mem_runtime_validation_status_to_string(status));
+        console_log(CONSOLE_LEVEL_PANIC, "MEMCAP: selected_profile=%s validation=FAIL_CONTRACT\n",
+                    mem_profile_get_active_name());
+        return status;
+    }
+
+    /* 2. New Strict Profile-based Security Requirement Validation */
+    status = mem_profile_validate_requirements(&hal_caps);
+    if (status != K_OK) {
+        console_log(CONSOLE_LEVEL_PANIC, "MEMCAP: selected_profile=%s validation=FAIL_CLOSED\n",
+                    mem_profile_get_active_name());
         return status;
     }
 
     validated_model = contract.model;
     validation_complete = true;
 
-    console_log(CONSOLE_LEVEL_INFO, "MEM: Memory model validation successful.\n");
+    console_log(CONSOLE_LEVEL_INFO, "MEMCAP: selected_profile=%s validation=PASS\n",
+                mem_profile_get_active_name());
     return K_OK;
 }
 

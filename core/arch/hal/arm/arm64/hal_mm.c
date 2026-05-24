@@ -15,13 +15,24 @@ int hal_mem_get_caps(hal_mem_caps_t *caps) {
     caps->page_sizes_mask = HAL_PAGE_SIZE_4K | HAL_PAGE_SIZE_2M | HAL_PAGE_SIZE_1G;
 
     caps->supports_nx = true;    // XN
+    caps->supports_execute_never = true;
+    caps->supports_user_no_exec = true; // UXN
     caps->supports_asid = true;
     caps->supports_global = true;
     caps->supports_user_mode = true;
+    caps->supports_user_kernel_isolation = true;
     caps->supports_write_protect = true;
+
+    caps->supports_iommu = true; // SMMU
     caps->supports_hugepages = true;
     caps->supports_dirty_accessed = true;
-    caps->supports_iommu = true; // SMMU
+    caps->supports_tlb_shootdown = true;
+    caps->supports_range_invalidate = true;
+    caps->supports_dma_mapping = true;
+    caps->supports_guard_pages = true;
+    caps->supports_copy_user_validation = true;
+
+    caps->page_table_levels = 4;
 
     return 0;
 }

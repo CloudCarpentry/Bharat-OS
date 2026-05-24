@@ -15,8 +15,17 @@ int hal_mem_get_caps(hal_mem_caps_t *caps) {
     caps->max_mpu_regions = 8; // RX600/700 series typical
 
     caps->supports_nx = true;
+    caps->supports_execute_never = true;
+    caps->supports_user_no_exec = false;
     caps->supports_user_mode = true;
+    caps->supports_user_kernel_isolation = false;
     caps->supports_write_protect = true;
+
+    caps->supports_tlb_shootdown = false;
+    caps->supports_range_invalidate = false;
+    caps->supports_dma_mapping = false;
+    caps->supports_guard_pages = false;
+    caps->supports_copy_user_validation = false;
 
     return 0;
 }
