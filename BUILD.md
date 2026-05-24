@@ -328,6 +328,14 @@ python3 tools/run_qemu_matrix.py --headless --smoke
 python3 tools/run_qemu_matrix.py --gui --build-only
 ```
 
+### Documentation and Profile Consistency
+
+To ensure that all build profiles are properly documented in the README and architecture docs:
+
+```bash
+python3 tools/check_profiles.py
+```
+
 ---
 
 ## 11) Wrapper script summary (`build.ps1` and `build.sh`)
