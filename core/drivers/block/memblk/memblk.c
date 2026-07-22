@@ -36,6 +36,10 @@ typedef struct {
 static memblk_instance_t g_instances[2];
 static bool g_registered = false;
 
+// Persistent backing storage for simulation
+static uint8_t g_persistent_backing[2][MEMBLK_TOTAL_SECTORS * MEMBLK_SECTOR_SIZE];
+static bool g_backing_enabled[2] = {false, false};
+
 static memblk_instance_t *find_instance_by_channel(void *channel) {
     for (uint32_t i = 0; i < 2; ++i) {
         for (uint32_t c = 0; c < MEMBLK_MAX_CHANNELS; ++c) {
@@ -73,7 +77,12 @@ static io_status_t memblk_stop(void *driver_ctx) {
 }
 
 static io_status_t memblk_get_caps(void *driver_ctx, io_device_caps_t *out_caps) {
-    (void)driver_ctx;
+    memblk_instance_t *inst = (memblk_instance_t *)driver_ctx;
+    uint32_t idx = 0;
+    if (inst && inst->id == 43U) {
+        idx = 1;
+    }
+
     if (!out_caps) return IO_STATUS_INVALID_ARGUMENT;
 
     out_caps->media_class = IO_MEDIA_RAM;
@@ -98,8 +107,8 @@ static io_status_t memblk_get_caps(void *driver_ctx, io_device_caps_t *out_caps)
     out_caps->fua_supported = true;
     out_caps->discard_supported = true;
     out_caps->write_zeroes_supported = true;
-    out_caps->volatile_write_cache = false;
-    out_caps->power_loss_protection = true;
+    out_caps->volatile_write_cache = g_backing_enabled[idx];
+    out_caps->power_loss_protection = !g_backing_enabled[idx];
     out_caps->polling_supported = true;
     out_caps->hybrid_completion_supported = false;
 
@@ -277,6 +286,10 @@ void memblk_init(void) {
     g_instances[0].dev.state = IO_DEV_STATE_READY;
     g_instances[0].dev.role = IO_DEVICE_ROLE_SYSTEM;
 
+    if (g_backing_enabled[0]) {
+        memcpy(g_instances[0].storage, g_persistent_backing[0], sizeof(g_instances[0].storage));
+    }
+
     // memblk1
     g_instances[1].id = 43U;
     memblk_get_caps(&g_instances[1], &g_instances[1].dev.caps);
@@ -286,6 +299,10 @@ void memblk_init(void) {
     g_instances[1].dev.driver_context = &g_instances[1];
     g_instances[1].dev.state = IO_DEV_STATE_READY;
     g_instances[1].dev.role = IO_DEVICE_ROLE_DATA;
+
+    if (g_backing_enabled[1]) {
+        memcpy(g_instances[1].storage, g_persistent_backing[1], sizeof(g_instances[1].storage));
+    }
 
     block_driver_register(&g_memblk_ops);
     block_device_register(&g_instances[0].dev);
@@ -309,6 +326,47 @@ void memblk_inject_error(bool enable) {
 void memblk_inject_delay(uint32_t delay_loops) {
     g_instances[0].inject_delay = delay_loops;
     g_instances[1].inject_delay = delay_loops;
+}
+
+void memblk_attach_backing(uint32_t device_id, bool enable) {
+    uint32_t idx = (device_id == 43U) ? 1 : 0;
+    g_backing_enabled[idx] = enable;
+    memblk_instance_t *inst = find_instance_by_device_id(device_id);
+    if (inst) {
+        inst->dev.caps.volatile_write_cache = enable;
+        inst->dev.caps.power_loss_protection = !enable;
+        if (enable) {
+            memcpy(g_persistent_backing[idx], inst->storage, sizeof(inst->storage));
+        }
+    }
+}
+
+void memblk_power_cycle(uint32_t device_id) {
+    uint32_t idx = (device_id == 43U) ? 1 : 0;
+    memblk_instance_t *inst = find_instance_by_device_id(device_id);
+    if (inst) {
+        // Discard channels, queues, and completions
+        for (uint32_t c = 0; c < MEMBLK_MAX_CHANNELS; ++c) {
+            inst->channels[c].in_use = false;
+            inst->channels[c].comp_head = 0U;
+            inst->channels[c].comp_tail = 0U;
+            inst->channels[c].comp_count = 0U;
+            for (uint32_t q = 0; q < MEMBLK_QUEUE_DEPTH; ++q) {
+                inst->channels[q].queue[q].active = false;
+            }
+        }
+        // Restore storage from persistent backing to simulate loss of volatile controller cache!
+        if (g_backing_enabled[idx]) {
+            memcpy(inst->storage, g_persistent_backing[idx], sizeof(inst->storage));
+        }
+    }
+}
+
+void memblk_reopen(uint32_t device_id) {
+    memblk_instance_t *inst = find_instance_by_device_id(device_id);
+    if (inst) {
+        memblk_reset(inst);
+    }
 }
 
 // Copy helper to support scatter-gather segments as well as raw buffer fallbacks
@@ -354,6 +412,14 @@ static void perform_io_copy(memblk_instance_t *inst, const io_request_t *req, bo
             }
         }
     }
+
+    // Handle persistent commit if non-volatile or FUA write
+    uint32_t idx = (inst->id == 43U) ? 1 : 0;
+    if (is_write && g_backing_enabled[idx]) {
+        if ((req->flags & IO_REQ_FUA) || !inst->dev.caps.volatile_write_cache) {
+            memcpy(g_persistent_backing[idx] + start_offset, &inst->storage[start_offset], total_bytes);
+        }
+    }
 }
 
 static void tick_instance(memblk_instance_t *inst) {
@@ -381,11 +447,20 @@ static void tick_instance(memblk_instance_t *inst) {
                         perform_io_copy(inst, req, false);
                     } else if (req->opcode == IO_OP_WRITE) {
                         perform_io_copy(inst, req, true);
+                    } else if (req->opcode == IO_OP_FLUSH) {
+                        uint32_t idx = (inst->id == 43U) ? 1 : 0;
+                        if (g_backing_enabled[idx]) {
+                            memcpy(g_persistent_backing[idx], inst->storage, sizeof(inst->storage));
+                        }
                     } else if (req->opcode == IO_OP_DISCARD) {
                         uint64_t start_offset = req->lba * MEMBLK_SECTOR_SIZE;
                         uint32_t total_bytes = req->block_count * MEMBLK_SECTOR_SIZE;
                         if (start_offset + total_bytes <= sizeof(inst->storage)) {
                             memset(&inst->storage[start_offset], 0, total_bytes);
+                            uint32_t idx = (inst->id == 43U) ? 1 : 0;
+                            if (g_backing_enabled[idx]) {
+                                memset(g_persistent_backing[idx] + start_offset, 0, total_bytes);
+                            }
                         }
                     }
                 }

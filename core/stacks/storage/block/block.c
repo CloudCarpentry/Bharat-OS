@@ -1,4 +1,5 @@
 #include <bharat/stacks/storage/block.h>
+#include <bharat/stacks/storage/persistent/health.h>
 #include <bharat/io_config.h>
 #include <lib/base/string.h>
 
@@ -10,6 +11,41 @@ static uint32_t g_driver_count = 0U;
 
 static block_device_t *g_devices[MAX_REG_DEVICES];
 static uint32_t g_device_count = 0U;
+
+#define MAX_ACTIVE_REQUESTS 256U
+
+typedef struct {
+    io_request_id_t id;
+    io_opcode_t opcode;
+    uint32_t block_count;
+    bool active;
+} active_req_entry_t;
+
+static active_req_entry_t g_active_reqs[MAX_ACTIVE_REQUESTS];
+
+static void track_request(io_request_id_t id, io_opcode_t opcode, uint32_t block_count) {
+    for (uint32_t i = 0; i < MAX_ACTIVE_REQUESTS; ++i) {
+        if (!g_active_reqs[i].active) {
+            g_active_reqs[i].id = id;
+            g_active_reqs[i].opcode = opcode;
+            g_active_reqs[i].block_count = block_count;
+            g_active_reqs[i].active = true;
+            return;
+        }
+    }
+}
+
+static bool untrack_request(io_request_id_t id, io_opcode_t *out_opcode, uint32_t *out_block_count) {
+    for (uint32_t i = 0; i < MAX_ACTIVE_REQUESTS; ++i) {
+        if (g_active_reqs[i].active && g_active_reqs[i].id == id) {
+            if (out_opcode) *out_opcode = g_active_reqs[i].opcode;
+            if (out_block_count) *out_block_count = g_active_reqs[i].block_count;
+            g_active_reqs[i].active = false;
+            return true;
+        }
+    }
+    return false;
+}
 
 io_status_t block_driver_register(const block_driver_ops_t *ops) {
     if (!ops) return IO_STATUS_INVALID_ARGUMENT;
@@ -71,6 +107,7 @@ io_status_t block_device_unregister(io_device_id_t device_id) {
             g_devices[i]->state = IO_DEV_STATE_REMOVED;
             g_devices[i] = NULL;
             if (g_device_count > 0U) g_device_count--;
+            storage_health_inc_removal(device_id);
             return IO_STATUS_OK;
         }
     }
@@ -138,7 +175,28 @@ io_status_t block_submit(io_device_id_t device_id, void *channel, const io_reque
     if (!dev) return IO_STATUS_INVALID_ARGUMENT;
     if (!dev->ops || !dev->ops->submit) return IO_STATUS_NOT_SUPPORTED;
 
-    return dev->ops->submit(channel, request);
+    storage_health_inc_submitted(device_id);
+    if (request) {
+        track_request(request->id, request->opcode, request->block_count);
+    }
+
+    io_status_t status = dev->ops->submit(channel, request);
+    if (status == IO_STATUS_QUEUE_FULL) {
+        storage_health_inc_queue_full(device_id);
+        if (request) {
+            io_opcode_t unused_op;
+            uint32_t unused_count;
+            untrack_request(request->id, &unused_op, &unused_count);
+        }
+    } else if (status != IO_STATUS_OK) {
+        storage_health_inc_failed(device_id);
+        if (request) {
+            io_opcode_t unused_op;
+            uint32_t unused_count;
+            untrack_request(request->id, &unused_op, &unused_count);
+        }
+    }
+    return status;
 }
 
 io_status_t block_submit_batch(io_device_id_t device_id, void *channel, const io_request_t *requests, uint32_t request_count, uint32_t *accepted_count) {
@@ -146,23 +204,47 @@ io_status_t block_submit_batch(io_device_id_t device_id, void *channel, const io
     if (!dev) return IO_STATUS_INVALID_ARGUMENT;
     if (!dev->ops) return IO_STATUS_NOT_SUPPORTED;
 
-    if (dev->ops->submit_batch) {
-        return dev->ops->submit_batch(channel, requests, request_count, accepted_count);
+    for (uint32_t i = 0; i < request_count; ++i) {
+        storage_health_inc_submitted(device_id);
+        track_request(requests[i].id, requests[i].opcode, requests[i].block_count);
     }
 
-    // Fallback: submit individually
-    if (!dev->ops->submit) return IO_STATUS_NOT_SUPPORTED;
-    uint32_t accepted = 0U;
-    for (uint32_t i = 0; i < request_count; ++i) {
-        io_status_t status = dev->ops->submit(channel, &requests[i]);
-        if (status == IO_STATUS_OK) {
-            accepted++;
-        } else {
-            break;
+    io_status_t status;
+    if (dev->ops->submit_batch) {
+        status = dev->ops->submit_batch(channel, requests, request_count, accepted_count);
+        if (status != IO_STATUS_OK) {
+            storage_health_inc_failed(device_id);
+            uint32_t acc = accepted_count ? *accepted_count : 0;
+            for (uint32_t i = acc; i < request_count; ++i) {
+                io_opcode_t unused_op;
+                uint32_t unused_count;
+                untrack_request(requests[i].id, &unused_op, &unused_count);
+            }
         }
+    } else {
+        // Fallback: submit individually
+        if (!dev->ops->submit) return IO_STATUS_NOT_SUPPORTED;
+        uint32_t accepted = 0U;
+        for (uint32_t i = 0; i < request_count; ++i) {
+            io_status_t sub_status = dev->ops->submit(channel, &requests[i]);
+            if (sub_status == IO_STATUS_OK) {
+                accepted++;
+            } else {
+                io_opcode_t unused_op;
+                uint32_t unused_count;
+                untrack_request(requests[i].id, &unused_op, &unused_count);
+                if (sub_status == IO_STATUS_QUEUE_FULL) {
+                    storage_health_inc_queue_full(device_id);
+                } else {
+                    storage_health_inc_failed(device_id);
+                }
+                break;
+            }
+        }
+        if (accepted_count) *accepted_count = accepted;
+        status = (accepted > 0U) ? IO_STATUS_OK : IO_STATUS_QUEUE_FULL;
     }
-    if (accepted_count) *accepted_count = accepted;
-    return (accepted > 0U) ? IO_STATUS_OK : IO_STATUS_QUEUE_FULL;
+    return status;
 }
 
 io_status_t block_poll_completions(io_device_id_t device_id, void *channel, io_completion_t *completions, uint32_t capacity, uint32_t *completion_count) {
@@ -170,7 +252,36 @@ io_status_t block_poll_completions(io_device_id_t device_id, void *channel, io_c
     if (!dev) return IO_STATUS_INVALID_ARGUMENT;
     if (!dev->ops || !dev->ops->poll_completions) return IO_STATUS_NOT_SUPPORTED;
 
-    return dev->ops->poll_completions(channel, completions, capacity, completion_count);
+    io_status_t status = dev->ops->poll_completions(channel, completions, capacity, completion_count);
+    if (status == IO_STATUS_OK && completion_count && *completion_count > 0) {
+        uint32_t block_size = dev->caps.logical_block_size;
+        if (block_size == 0) block_size = 512;
+        for (uint32_t i = 0; i < *completion_count; ++i) {
+            io_status_t comp_status = completions[i].status;
+            io_opcode_t opcode = IO_OP_READ;
+            uint32_t block_count = completions[i].transferred_blocks;
+
+            bool tracked = untrack_request(completions[i].id, &opcode, &block_count);
+            if (!tracked) {
+                // fallback defaults
+                opcode = IO_OP_READ;
+                block_count = completions[i].transferred_blocks;
+            }
+
+            if (comp_status == IO_STATUS_OK) {
+                storage_health_inc_completed(device_id);
+                storage_health_inc_op_completed(device_id, opcode, block_count, block_size);
+            } else if (comp_status == IO_STATUS_CANCELLED) {
+                storage_health_inc_cancelled(device_id);
+            } else if (comp_status == IO_STATUS_TIMEOUT) {
+                storage_health_inc_timed_out(device_id);
+                storage_health_inc_failed(device_id);
+            } else {
+                storage_health_inc_failed(device_id);
+            }
+        }
+    }
+    return status;
 }
 
 io_status_t block_cancel(io_device_id_t device_id, void *channel, io_request_id_t request_id) {

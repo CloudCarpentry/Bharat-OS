@@ -5,6 +5,11 @@ add_library(bharat_stacks_storage STATIC
     fs/adapter.c
     fs/ramfs/ramfs.c
     fs/blob/blob_backend.c
+    persistent/health.c
+    persistent/durability.c
+    persistent/event_log.c
+    persistent/config_store.c
+    persistent/rollback.c
 )
 target_include_directories(bharat_stacks_storage PUBLIC ../include)
 target_include_directories(bharat_stacks_storage PRIVATE ../../kernel/include)
