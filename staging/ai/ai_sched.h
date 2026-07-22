@@ -1,6 +1,10 @@
 #ifndef BHARAT_AI_SCHED_H
 #define BHARAT_AI_SCHED_H
 
+#ifndef BHARAT_KERNEL_SCHED_AI_SCHED_H
+#define BHARAT_KERNEL_SCHED_AI_SCHED_H
+#endif
+
 #include <stdint.h>
 
 /*
@@ -62,6 +66,9 @@ typedef struct {
     uint32_t historical_cpi_window[10];
     uint32_t window_index;
     uint32_t predicted_complexity;
+    uint32_t model_id;
+    uint32_t flags;
+    uint64_t last_suggestion_id;
 } ai_sched_context_t;
 
 void ai_sched_init_context(ai_sched_context_t* ctx);

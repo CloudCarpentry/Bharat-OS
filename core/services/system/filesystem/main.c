@@ -6,15 +6,26 @@
 #include "bharat/stacks/storage/cache/cache.h"
 #include "bharat/stacks/storage/profile.h"
 #include "fs_arch_profile.h"
+#include <bharat/io_config.h>
+#include <stdlib.h>
 
-// Reference happy path execution
-extern int virtio_blk_submit_request(void* sg_list, uint32_t num_sgs);
-extern void virtio_blk_init(void);
+extern void block_stacks_init(void);
+
+// Userspace compatibility wrappers for transitional code
+void* kmalloc(size_t size) {
+    return malloc(size);
+}
+
+void kfree(void* ptr) {
+    free(ptr);
+}
+
+static io_device_id_t g_system_device_id = 42; // default fallback
 
 static storage_app_profile_t fs_select_profile(void) {
-#if defined(CONFIG_PROFILE_AUTOMOBILE) || defined(CONFIG_PROFILE_DRONE)
+#if defined(BHARAT_PROFILE_AUTOMOTIVE_ECU) || defined(BHARAT_PROFILE_DRONE) || defined(BHARAT_PROFILE_RTOS)
     return STORAGE_APP_PROFILE_RT;
-#elif defined(CONFIG_PROFILE_DATACENTER)
+#elif defined(BHARAT_PROFILE_DATACENTER)
     return STORAGE_APP_PROFILE_DATACENTER;
 #else
     return STORAGE_APP_PROFILE_EDGE;
@@ -54,19 +65,24 @@ void handle_fs_urpc_request(void* msg) {
         .status = -1
     };
 
-    block_queue_request(0, &breq); // Stacks block abstraction
+    block_queue_request(g_system_device_id, &breq); // Stacks block abstraction
 }
 
 int main(void) {
-    // 1. Initialize drivers
-    virtio_blk_init();
+    // 1. Initialize storage stack and drivers
+    block_stacks_init();
 
-    // 2. Initialize cache and storage policy based on profile/device/arch.
-    if (fs_storage_stack_init(0) != 0) {
+    // 2. Discover default system storage device
+    if (block_device_find_by_role(IO_DEVICE_ROLE_SYSTEM, &g_system_device_id) != IO_STATUS_OK) {
+        g_system_device_id = 42; // default fallback (memblk0)
+    }
+
+    // 3. Initialize cache and storage policy based on profile/device/arch.
+    if (fs_storage_stack_init(g_system_device_id) != 0) {
         return -1;
     }
 
-    // 3. Wait for incoming capability requests
+    // 4. Wait for incoming capability requests
     // (Simulate an incoming uRPC request loop)
 
     return 0;

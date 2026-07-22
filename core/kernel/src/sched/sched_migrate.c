@@ -1,5 +1,6 @@
 #include "sched/sched.h"
 #include "sched_internal.h"
+#include "arch/cpu_relax.h"
 
 void sched_balance_once(void) {
   uint32_t busiest = 0U;
@@ -185,7 +186,7 @@ kstatus_t sched_wait_remote_cmd_ack(sched_remote_cmd_t *cmd, uint32_t timeout_lo
         if (cmd->state == SCHED_REMOTE_CMD_ACKED) return K_OK;
         if (cmd->state == SCHED_REMOTE_CMD_FAILED) return K_ERR_BAD_STATE;
         if (cmd->state == SCHED_REMOTE_CMD_TIMEOUT) return K_ERR_TIMEOUT;
-        hal_cpu_relax();
+        arch_cpu_relax();
     }
     return K_ERR_TIMEOUT;
 }

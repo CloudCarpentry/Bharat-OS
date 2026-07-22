@@ -71,7 +71,7 @@ graph TB
 | Core management | Partial | both `core/services/core/*` and flat `core/services/*mgr` | Converge all managers under `core/services/core/` with compatibility shims for include paths. | Phase 1 |
 | Naming and orchestration | Partial | `core/services/namesvc`, `core/services/servicemgr`, `core/services/core/init` | Consolidate registry + orchestration contracts into a single `core/` namespace. | Phase 1 |
 | Network control/data plane | Partial | parallel `core/services/network/*` and top-level `net*` services | Select canonical location (`core/services/network/*`) and deprecate duplicates. | Phase 1, Phase 3 |
-| Platform-facing system services | Partial | `core/services/system/filesystem`, `console`, `boot_displayd` | Tighten IPC contracts and phase out ad-hoc direct couplings. | Phase 2 |
+| Platform-facing system services | Baseline | `core/services/system/filesystem`, `console`, `boot_displayd` | Decoupled filesystem from physical drivers, routing block IO through composable fabric (E5-S0). | Phase 2 |
 | Security services | Scaffold/Partial | `core/services/security/crypto` only | Add keystore, attestation, and policy service boundaries. | Phase 2, Phase 4 |
 
 ## Coding tasks identified
