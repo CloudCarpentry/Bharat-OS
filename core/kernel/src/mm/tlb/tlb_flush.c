@@ -64,3 +64,21 @@ void hal_tlb_invalidate_all(void) {
         }
     }
 }
+
+void hal_tlb_invalidate_local_page(virt_addr_t va) {
+    if (active_hal_tlb && active_hal_tlb->flush_page_local) {
+        active_hal_tlb->flush_page_local(va);
+    }
+}
+
+void hal_tlb_invalidate_local_range(virt_addr_t start, size_t len) {
+    if (active_hal_tlb && active_hal_tlb->flush_range_local) {
+        active_hal_tlb->flush_range_local(start, len);
+    }
+}
+
+void hal_tlb_invalidate_local_aspace(uint64_t aspace_id) {
+    if (active_hal_tlb && active_hal_tlb->flush_asid_local) {
+        active_hal_tlb->flush_asid_local(aspace_id & 0xFFFF);
+    }
+}

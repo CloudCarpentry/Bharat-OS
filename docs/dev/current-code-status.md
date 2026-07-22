@@ -67,6 +67,8 @@ Use these labels consistently across status docs and roadmap updates:
 | `devmgr` | **Scaffold** | Placeholder for enumeration/hotplug. |
 | `accelmgr` | **Scaffold** | Placeholder orchestration loop. |
 | `storagemgr` | **Scaffold** | Placeholder storage policy loop. |
+| `Adaptive I/O Fabric` | **Baseline** | Composable async block contract, multi-device registry, and decoupled filesystem routing (E5-S0). |
+| `memblk` | **Baseline** | Reference asynchronous driver with deterministic test controls and error injection. |
 | `faultmgr` | **Scaffold** | Placeholder crash containment loop. |
 | `telemetrymgr` | **Scaffold** | Placeholder metrics aggregation loop. |
 | `process_manager` | **Scaffold** | TODO-only main path. |
@@ -100,6 +102,19 @@ Implemented features include:
 
 
 ## 3) Core Subsystem implementation details
+
+### Adaptive I/O Fabric & Composable Storage Registry
+**Status: Baseline / Phase E5-S0**
+
+A capability-safe, asynchronous, zero-copy-capable block storage architecture has been established. It enables dynamic driver and device composition without hardcoding driver-specific dependencies in the upper virtual filesystem layer.
+
+**Current progress:**
+- **I/O Build Policy**: Resolves canonical profiles (`TINY`, `EMBEDDED`, `BALANCED`, `THROUGHPUT`, `REALTIME`) and generates `<bharat/io_config.h>`.
+- **Async Storage Contract**: Standardizes public `io_request_t` and `io_completion_t` structures, request states, and command/merging flags.
+- **Composable Registry**: Supports registering and enumerating multiple runtime devices concurrently (e.g., `memblk0`, `memblk1`, `virtio-blk0`).
+- **Memblk Reference Driver**: Full async completions, queue backpressure, cancellation, flush ordering, and deterministic test advancement.
+- **Filesystem Decoupling**: File system service retrieves devices dynamically by role (e.g., `IO_DEVICE_ROLE_SYSTEM`) instead of hardcoding device `0`.
+- **Explicit Stub Errors**: Unimplemented driver stubs like `virtio_blk` now return explicit `NOT_SUPPORTED` / `-ENOTSUP` errors instead of faking success.
 
 ### Capability Validation Framework
 **Status: Partial / Phase K3-S0 baseline**

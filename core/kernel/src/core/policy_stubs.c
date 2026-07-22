@@ -90,22 +90,6 @@ int ipc_profile_payload_supported(uint32_t transport_id, uint32_t payload_size) 
 }
 
 /* AI Scheduler Stubs */
-void ai_sched_calibrate_silicon(void) {}
-
-void ai_sched_init_context(ai_sched_context_t *ctx) {
-    if (ctx) {
-        ctx->thread_id = 0;
-    }
-}
-
-void ai_sched_collect_sample(ai_sched_context_t *ctx,
-                             uint64_t time_slice_ms,
-                             uint64_t cpu_time_consumed,
-                             uint32_t run_queue_depth,
-                             uint32_t context_switches) {
-    (void)ctx; (void)time_slice_ms; (void)cpu_time_consumed;
-    (void)run_queue_depth; (void)context_switches;
-}
 
 int sched_ai_apply_suggestion(const ai_suggestion_t* suggestion) {
     (void)suggestion;

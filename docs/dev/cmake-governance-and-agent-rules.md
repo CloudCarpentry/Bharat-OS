@@ -34,6 +34,7 @@ This document defines mandatory build-system governance for Bharat-OS contributo
 
 - `delivery/cmake/modules/BharatComponentPolicy.cmake` is the canonical single source of truth for profile/personality/board
   driven component requirements (legacy `cmake/modules/BharatComponentPolicy.cmake` remains as a compatibility symlink during migration).
+- `delivery/cmake/modules/BharatIOPolicy.cmake` is the canonical build policy resolver and validator for all storage and Adaptive I/O configurations.
 - All top-level configuration entry points (presets, wrapper scripts, CI jobs, and agents) must pass:
   - `BHARAT_DEVICE_PROFILE`
   - `BHARAT_PERSONALITY_PROFILE`

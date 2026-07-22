@@ -16,6 +16,7 @@ include(BharatCommon)
 include(BharatProfiles)
 include(BharatPersonality)
 include(BharatComponentPolicy)
+include(BharatIOPolicy)
 include(${BHARAT_CMAKE_ROOT}/BharatConstraints.cmake)
 
 # Versioning Identity System: Generate and load from manifest

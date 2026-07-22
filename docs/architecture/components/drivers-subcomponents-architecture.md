@@ -60,14 +60,14 @@ graph TD
 | --- | --- | --- | --- | --- |
 | Bus drivers | Partial | `core/drivers/bus/*` populated | Add PCIe host + robust discovery glue for x86/arm64/riscv64. | Phase 1 |
 | Network drivers | Partial | `core/drivers/net/virtio_net` | Add physical NIC implementations and capability-safe queue provisioning. | Phase 3 |
-| Storage/block drivers | Partial | `core/drivers/block/virtio_blk`, `core/drivers/storage/nvme` | Decide canonical split (`block` frontend vs `storage` transport) and document ownership. | Phase 2, Phase 3 |
+| Storage/block drivers | Baseline | `core/drivers/block/virtio_blk`, `core/drivers/storage/nvme`, `core/drivers/block/memblk` | Decoupled block drivers from filesystem, registering via composable block driver/device registry (E5-S0). | Phase 2, Phase 3 |
 | Display drivers | Partial | `core/drivers/display/drm`, `virtio_gpu` | Promote from boot/display to compositor-ready path and memory fencing rules. | Phase 2, Phase 4 |
 | Accelerator drivers | Scaffold | `core/drivers/accel/`, `core/drivers/devices/fpga_mgr` | Implement map/unmap lifecycle, IOMMU integration, and URPC queue contracts. | Phase 3 |
 | Device classes | Partial | `core/drivers/class/{can,sensor,motor,actuator}` | Ensure class drivers delegate transport specifics to `bus/*` implementations. | Phase 2 |
 
 ## Coding tasks identified
 
-1. **Resolve block/storage duplication:** publish a `core/drivers/block` vs `core/drivers/storage` contract and migrate one implementation path to avoid dual registration logic.
+1. **Resolve block/storage duplication:** resolved in E5-S0 via a generic `block_driver_ops_t` and `block_device_t` registration interface under `core/stacks/storage/block`.
 2. **Promote discovery stack:** add PCI/ACPI/FDT-aware bus discovery adapters for real hardware in addition to virtio-centric workflows.
 3. **Class-driver contract hardening:** extend new net/CAN class contracts to additional classes and enforce bus-agnostic class APIs.
 4. **Accelerator maturity:** create common queue, fence, and DMA map APIs under `core/drivers/accel/` to remove per-device ad hoc flows.

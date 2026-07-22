@@ -81,7 +81,14 @@ add_subdirectory(net)
 add_subdirectory(display)
 add_subdirectory(storage)
 add_subdirectory(input)
-add_subdirectory(block/virtio_blk)
+
+if(BHARAT_ENABLE_DRIVER_VIRTIO_BLK)
+    add_subdirectory(block/virtio_blk)
+endif()
+
+if(BHARAT_ENABLE_DRIVER_MEMBLK)
+    add_subdirectory(block/memblk)
+endif()
 
 # Driver Core Baseline Subdirectories
 if(BHARAT_ENABLE_DRIVER_CORE)
@@ -102,8 +109,15 @@ target_link_libraries(bharatos_drivers INTERFACE
   bharatos_driver_display
   bharatos_driver_storage
   bharatos_driver_input
-  driver_virtio_blk
 )
+
+if(BHARAT_ENABLE_DRIVER_VIRTIO_BLK)
+  target_link_libraries(bharatos_drivers INTERFACE driver_virtio_blk)
+endif()
+
+if(BHARAT_ENABLE_DRIVER_MEMBLK)
+  target_link_libraries(bharatos_drivers INTERFACE driver_memblk)
+endif()
 
 if(BHARAT_ENABLE_DRIVER_CORE)
   target_link_libraries(bharatos_drivers INTERFACE bharatos_driver_baseline_core)
