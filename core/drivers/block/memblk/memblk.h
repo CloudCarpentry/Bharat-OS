@@ -16,6 +16,11 @@ void memblk_inject_error(bool enable);
 void memblk_inject_delay(uint32_t delay_loops);
 void memblk_tick(void);
 
+// Reboot-persistence & fault-injection helpers
+void memblk_attach_backing(uint32_t device_id, bool enable);
+void memblk_power_cycle(uint32_t device_id);
+void memblk_reopen(uint32_t device_id);
+
 #ifdef __cplusplus
 }
 #endif

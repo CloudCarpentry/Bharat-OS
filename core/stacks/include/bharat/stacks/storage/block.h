@@ -14,7 +14,9 @@ typedef enum {
     IO_DEVICE_ROLE_SYSTEM,
     IO_DEVICE_ROLE_DATA,
     IO_DEVICE_ROLE_REMOVABLE,
-    IO_DEVICE_ROLE_TEST
+    IO_DEVICE_ROLE_TEST,
+    IO_DEVICE_ROLE_EVENT_LOG,
+    IO_DEVICE_ROLE_CONFIG
 } io_device_role_t;
 
 typedef struct {

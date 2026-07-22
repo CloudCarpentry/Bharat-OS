@@ -1,71 +1,38 @@
 #ifndef BHARAT_FS_BLOCK_H
 #define BHARAT_FS_BLOCK_H
 
+#warning "This header is legacy/deprecated. Prevent new code from including this. Use <bharat/io/block.h> or <bharat/stacks/storage/block.h> instead."
+
 #include <stdint.h>
 #include <stddef.h>
-#include "../../staging/formal/formal_verif.h"
 
-/*
- * Generic block layer abstractions.
- * Provides a unified contract for asynchronous and synchronous I/O
- * (e.g., NVMe, virtio-blk, MMC, RAM disks).
- */
+#ifdef __cplusplus
+extern "C" {
+#endif
 
+// Legacy types marked deprecated with non-clashing names
 typedef enum {
-    BLOCK_HINT_SYNC,
-    BLOCK_HINT_DIRECT,
-    BLOCK_HINT_BUFFERED,
-    BLOCK_HINT_POLLING
-} block_io_hint_t;
+    BLOCK_REQ_READ_DEPRECATED,
+    BLOCK_REQ_WRITE_DEPRECATED,
+    BLOCK_REQ_FLUSH_DEPRECATED
+} block_req_type_legacy_t __attribute__((deprecated("Use io_opcode_t instead")));
 
-typedef enum {
-    BLOCK_REQ_READ,
-    BLOCK_REQ_WRITE,
-    BLOCK_REQ_FLUSH,
-    BLOCK_REQ_DISCARD
-} block_req_type_t;
-
-// Asynchronous block request structure
-typedef struct block_request {
-    block_req_type_t type;
-    uint64_t sector_offset;
-    uint32_t sector_count;
-    void* buffer;           // Buffer for read/write
-
-    // Hint for elevator/scheduler policies
-    block_io_hint_t hint;
-
-    // Capability gating access to this block operation
-    capability_t* cap;
-
-    // Completion callback (for async operations)
-    void (*complete)(struct block_request* req, int status);
-
-    // Status and next pointer for request queueing
+typedef struct {
+    block_req_type_legacy_t type;
+    uint64_t lba;
+    uint32_t num_blocks;
+    void* buffer;
     int status;
-    struct block_request* next;
-} block_request_t;
+} block_request_legacy_t __attribute__((deprecated("Use io_request_t instead")));
 
-// A block device registered with the generic block layer
-typedef struct block_device {
-    char name[32];
-    uint32_t sector_size;
-    uint64_t total_sectors;
+typedef struct {
+    uint32_t device_id;
+    uint32_t block_size;
+    uint64_t total_blocks;
+} block_device_info_legacy_t __attribute__((deprecated("Use io_device_caps_t instead")));
 
-    // Device specific data (e.g. nvme namespace, virtio handle)
-    void* driver_data;
-
-    // Operations implemented by the underlying driver
-    int (*submit_request)(struct block_device* dev, block_request_t* req);
-    int (*flush)(struct block_device* dev);
-    int (*get_info)(struct block_device* dev, void* info_out);
-
-} block_device_t;
-
-// Register a block device with the generic block layer
-int block_device_register(block_device_t* dev, capability_t* cap);
-
-// Allocate and submit a request to a block device
-int block_request_submit(block_device_t* dev, block_request_t* req, capability_t* cap);
+#ifdef __cplusplus
+}
+#endif
 
 #endif // BHARAT_FS_BLOCK_H
