@@ -9,7 +9,9 @@
 kstatus_t arch_copy_from_user_nofault(void *dst, const void *src, size_t len) {
     if (len == 0) return K_OK;
 
+    uint64_t prev_pan = 1;
     #if defined(__aarch64__)
+    __asm__ __volatile__("mrs %0, pan" : "=r"(prev_pan) :: "memory");
     __asm__ __volatile__("msr pan, #0" ::: "memory");
     #endif
 
@@ -32,7 +34,7 @@ kstatus_t arch_copy_from_user_nofault(void *dst, const void *src, size_t len) {
             "   .short 0\n"
             ".previous\n"
             : "=r"(val), "+r"(status)
-            : "r"((uintptr_t)src + i), "i"(K_ERR_FAULT), "i"(BH_EX_UACCESS_RD), "1"(status)
+            : "r"((uintptr_t)src + i), "i"(K_ERR_FAULT), "i"(BH_EX_UACCESS_RD)
             : "memory"
         );
         if (status != K_OK) {
@@ -42,7 +44,7 @@ kstatus_t arch_copy_from_user_nofault(void *dst, const void *src, size_t len) {
     }
 
     #if defined(__aarch64__)
-    __asm__ __volatile__("msr pan, #1" ::: "memory");
+    __asm__ __volatile__("msr pan, %0" :: "r"(prev_pan) : "memory");
     #endif
 
     return status;
@@ -51,7 +53,9 @@ kstatus_t arch_copy_from_user_nofault(void *dst, const void *src, size_t len) {
 kstatus_t arch_copy_to_user_nofault(void *dst, const void *src, size_t len) {
     if (len == 0) return K_OK;
 
+    uint64_t prev_pan = 1;
     #if defined(__aarch64__)
+    __asm__ __volatile__("mrs %0, pan" : "=r"(prev_pan) :: "memory");
     __asm__ __volatile__("msr pan, #0" ::: "memory");
     #endif
 
@@ -60,21 +64,21 @@ kstatus_t arch_copy_to_user_nofault(void *dst, const void *src, size_t len) {
     for (; i < len; i++) {
         uint8_t val = *((const uint8_t *)src + i);
         __asm__ __volatile__(
-            "1: strb %w2, [%1]\n"
+            "1: strb %w1, [%2]\n"
             "2:\n"
             ".section .fixup,\"ax\"\n"
-            "3: mov %w0, %4\n"
+            "3: mov %w0, %3\n"
             "   b 2b\n"
             ".previous\n"
             ".section __ex_table,\"a\"\n"
             "   .balign 4\n"
             "   .long 1b - .\n"
             "   .long 3b - .\n"
-            "   .short %5\n"
+            "   .short %4\n"
             "   .short 0\n"
             ".previous\n"
             : "+r"(status)
-            : "r"((uintptr_t)dst + i), "r"(val), "i"(K_ERR_FAULT), "i"(BH_EX_UACCESS_WR), "r"(status)
+            : "r"(val), "r"((uintptr_t)dst + i), "i"(K_ERR_FAULT), "i"(BH_EX_UACCESS_WR)
             : "memory"
         );
         if (status != K_OK) {
@@ -83,7 +87,7 @@ kstatus_t arch_copy_to_user_nofault(void *dst, const void *src, size_t len) {
     }
 
     #if defined(__aarch64__)
-    __asm__ __volatile__("msr pan, #1" ::: "memory");
+    __asm__ __volatile__("msr pan, %0" :: "r"(prev_pan) : "memory");
     #endif
 
     return status;

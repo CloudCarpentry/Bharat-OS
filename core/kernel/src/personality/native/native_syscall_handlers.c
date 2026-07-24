@@ -5,6 +5,7 @@
 #include "sched/sched.h"
 #include "capability.h"
 #include "capability/cap_lookup.h"
+#include "syscall/syscall_capability.h"
 #include "ipc_endpoint.h"
 #include "mm.h"
 #include "hal/hal.h"
@@ -202,14 +203,11 @@ long bh_sys_cap_delegate(bh_syscall_ctx_t *ctx) {
     bh_status_t st = bh_copy_from_user(&args, (const void *)ctx->regs.arg[0], sizeof(args));
     if (st != BH_OK) return (long)st;
 
-    // Validate source capability exists and has DELEGATE right
-    capability_entry_t e;
+    bh_status_t bh_st = bh_syscall_validate_capability(ctx, args.src_cap, CAP_TYPE_NONE, CAP_RIGHT_DELEGATE);
+    if (bh_st != BH_OK) return (long)bh_st;
+
     capability_table_t *table = (capability_table_t *)ctx->process->security_sandbox_ctx;
     if (!table) return kstatus_to_native_sysret(K_ERR_DENIED);
-
-    if (cap_table_lookup(table, args.src_cap, CAP_TYPE_NONE, CAP_RIGHT_DELEGATE, &e) != 0) {
-        return kstatus_to_native_sysret(K_ERR_DENIED);
-    }
 
     uint32_t out_cap;
     kstatus_t res = (kstatus_t)cap_table_delegate(table, table, args.src_cap, args.requested_rights, &out_cap);

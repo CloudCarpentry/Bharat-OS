@@ -22,6 +22,16 @@ kstatus_t bh_syscall_policy_check(bh_syscall_ctx_t *ctx, const bh_syscall_meta_t
     }
 
     // 2. CAP_REQUIRED check: Enforce capability metadata centrally
+    if (desc->cap_source_kind == BH_SYS_CAP_SOURCE_IMPLICIT_PROCESS) {
+        if (!ctx->process) {
+            return K_ERR_DENIED;
+        }
+    } else if (desc->cap_source_kind == BH_SYS_CAP_SOURCE_IMPLICIT_THREAD) {
+        if (!ctx->thread) {
+            return K_ERR_DENIED;
+        }
+    }
+
     if (desc->flags & BH_SYSCALL_F_CAP_REQUIRED) {
         if (desc->cap_arg_index != BH_SYS_CAP_INDEX_NONE) {
             if (desc->cap_arg_index >= desc->arg_count) {
