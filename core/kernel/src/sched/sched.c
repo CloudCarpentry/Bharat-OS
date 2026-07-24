@@ -101,32 +101,33 @@ static uint32_t sched_configured_core_count(void) {
 
 
 thread_slot_t *sched_find_thread_slot_by_tid_local(sched_rq_t *rq, uint64_t tid) {
-  thread_slot_t *slots = (thread_slot_t *)rq->threads;
-  if (slots) {
-    for (size_t i = 0; i < SCHED_MAX_THREADS; ++i) {
-      if (slots[i].in_use != 0U && slots[i].thread.thread_id == tid) {
-        return &slots[i];
-      }
-    }
+  uint16_t home_core = bh_tid_home_core(tid);
+  uint16_t slot_idx = bh_tid_slot(tid);
+  if (home_core >= g_active_core_count || !rq || rq != &g_cpu_locals[home_core].runqueue) {
+    return NULL;
   }
-  slots = (thread_slot_t *)rq->bootstrap_threads;
-  if (slots) {
-    for (uint32_t i = 0; i < SCHED_BOOTSTRAP_THREAD_TYPES; ++i) {
-      if (slots[i].in_use != 0U && slots[i].thread.thread_id == tid) {
-        return &slots[i];
-      }
+  if (slot_idx < SCHED_MAX_THREADS) {
+    thread_slot_t *slots = (thread_slot_t *)rq->threads;
+    if (slots && slots[slot_idx].in_use && slots[slot_idx].thread.thread_id == tid) {
+      return &slots[slot_idx];
+    }
+  } else if (slot_idx >= SCHED_MAX_THREADS && slot_idx < SCHED_MAX_THREADS + SCHED_BOOTSTRAP_THREAD_TYPES) {
+    thread_slot_t *slots = (thread_slot_t *)rq->bootstrap_threads;
+    uint32_t b_idx = slot_idx - SCHED_MAX_THREADS;
+    if (slots && slots[b_idx].in_use && slots[b_idx].thread.thread_id == tid) {
+      return &slots[b_idx];
     }
   }
   return NULL;
 }
 
-thread_slot_t *sched_resolve_tid_owner_slow(uint64_t tid) {
-  for (uint32_t core = 0; core < g_active_core_count; ++core) {
-    sched_rq_t *rq = &g_cpu_locals[core].runqueue;
-    thread_slot_t* slot = sched_find_thread_slot_by_tid_local(rq, tid);
-    if (slot) return slot;
+thread_slot_t *sched_find_thread_slot_by_tid(uint64_t tid) {
+  uint16_t home_core = bh_tid_home_core(tid);
+  if (home_core >= g_active_core_count) {
+    return NULL;
   }
-  return NULL;
+  sched_rq_t *rq = &g_cpu_locals[home_core].runqueue;
+  return sched_find_thread_slot_by_tid_local(rq, tid);
 }
 
 static thread_slot_t *sched_find_free_thread_slot(void) {
@@ -367,7 +368,21 @@ void sched_reset_core_runqueues(void) {
     spin_lock_init(&rq->lock);
     list_init(&rq->sleeping_list);
     list_init(&rq->blocked_list);
-    list_init(&rq->pending_inbox);
+
+    bh_mpsc_queue_init(&rq->remote.queue, rq->remote.slots, SCHED_REMOTE_CMD_CAPACITY);
+    rq->remote.resched_pending = 0U;
+    rq->remote.submitted = 0U;
+    rq->remote.consumed = 0U;
+    rq->remote.full = 0U;
+    rq->remote.ipi_sent = 0U;
+    rq->remote.ipi_coalesced = 0U;
+
+    for (uint32_t i = 0; i < SCHED_REMOTE_CMD_CAPACITY; ++i) {
+        rq->outbound_cmds[i].state = SCHED_REMOTE_CMD_EMPTY;
+    }
+
+    rq->load_snapshot.runnable_count = 0;
+    rq->load_snapshot.load_seq = 0;
     for (uint32_t p = 0; p < MAX_PRIORITY_LEVELS; ++p) {
       list_init(&rq->ready_queue[p]);
     }
@@ -378,12 +393,6 @@ void sched_reset_core_runqueues(void) {
 
     rq->reap_head = UINT32_MAX;
     rq->reap_tail = UINT32_MAX;
-
-    for (uint32_t i = 0; i < SCHED_MAX_THREADS; ++i) {
-        if (rq->threads) {
-            list_init(&((thread_slot_t*)rq->threads)[i].remote_cmd.list);
-        }
-    }
 
     if (!rq->threads) rq->threads = (struct thread_slot*)kmalloc(sizeof(thread_slot_t) * SCHED_MAX_THREADS);
     if (!rq->processes) rq->processes = (struct process_slot*)kmalloc(sizeof(process_slot_t) * SCHED_MAX_PROCESSES);
@@ -400,10 +409,10 @@ void sched_reset_core_runqueues(void) {
     for (size_t i = 0; i < SCHED_MAX_THREADS; ++i) {
         ((thread_slot_t*)rq->threads)[i].in_use = 0U;
         ((thread_slot_t*)rq->threads)[i].is_bootstrap = 0U;
+        ((thread_slot_t*)rq->threads)[i].generation = 0U;
         ((thread_slot_t*)rq->threads)[i].next_free = (i + 1U < SCHED_MAX_THREADS) ? (uint32_t)(i + 1U) : UINT32_MAX;
         ((thread_slot_t*)rq->threads)[i].reap_next = UINT32_MAX;
         ((thread_slot_t*)rq->threads)[i].reap_pending = 0U;
-        list_init(&((thread_slot_t*)rq->threads)[i].remote_cmd.list);
     }
 
     rq->free_process_head = 0U;
@@ -429,12 +438,18 @@ static bh_thread_t *sched_create_bootstrap_thread(bh_process_t *parent,
   memset(slot, 0, sizeof(*slot));
   slot->in_use = 1U;
   slot->is_bootstrap = 1U;
+  slot->generation = 1U;
 
-  slot->thread.thread_id = atomic64_fetch_and_add_ptr(&g_next_thread_id, 1);
+  uint32_t slot_idx = SCHED_MAX_THREADS + kind;
+  slot->thread.thread_id =
+      ((uint64_t)slot->generation << 32)
+    | ((uint64_t)core << 16)
+    | slot_idx;
+
   slot->thread.process_id = parent ? parent->process_id : 0U;
   slot->thread.process = parent;
   slot->thread.constraints.cpu_mask = 0xFFFFFFFF; // Admissible everywhere by default
-  slot->thread.home_core_id = sched_clamp_core(hal_cpu_get_id());
+  slot->thread.home_core_id = core;
   slot->thread.generation = 1U;
   slot->thread.sched_generation = 1U;
   slot->thread.personality = BH_PERSONALITY_NATIVE;
@@ -546,15 +561,25 @@ bh_thread_t *thread_create_detached(bh_process_t *parent, void (*entry_point)(vo
   uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
   sched_rq_t *rq = &g_cpu_locals[current_core].runqueue;
 
+  uint32_t slot_idx = (uint32_t)(slot - (thread_slot_t*)rq->threads);
+  uint32_t prev_gen = slot->generation;
   memset(slot, 0, sizeof(*slot));
+  slot->generation = prev_gen + 1U;
+  if (slot->generation == 0U) {
+    slot->generation++;
+  }
   slot->in_use = 1U;
 
-  slot->thread.thread_id = atomic64_fetch_and_add_ptr(&g_next_thread_id, 1);
+  slot->thread.thread_id =
+      ((uint64_t)slot->generation << 32)
+    | ((uint64_t)current_core << 16)
+    | slot_idx;
+
   slot->thread.process_id = parent ? parent->process_id : 0U;
   slot->thread.process = parent;
-  slot->thread.home_core_id = sched_clamp_core(hal_cpu_get_id());
-  slot->thread.generation = 1U;
-  slot->thread.sched_generation = 1U;
+  slot->thread.home_core_id = current_core;
+  slot->thread.generation = slot->generation;
+  slot->thread.sched_generation = slot->generation;
   slot->thread.personality = BH_PERSONALITY_NATIVE;
   slot->thread.state = THREAD_STATE_READY;
   slot->thread.priority = 1U;
@@ -763,7 +788,7 @@ bh_thread_t *sched_pick_next_ready(uint32_t core_id) {
       return rq->idle_thread;
   }
 
-  thread_slot_t *slot = sched_find_thread_slot_by_tid_local(rq, next->thread_id);
+  thread_slot_t *slot = sched_find_thread_slot_by_tid(next->thread_id);
   if (slot) {
       slot->is_on_runqueue = 0U;
   }
@@ -807,7 +832,7 @@ void sched_switch_to(bh_thread_t *next, uint32_t core_id) {
   if (current && current != rq->idle_thread &&
       current->state == THREAD_STATE_RUNNING) {
 
-    thread_slot_t *slot = sched_find_thread_slot_by_tid_local(rq, current->thread_id);
+    thread_slot_t *slot = sched_find_thread_slot_by_tid(current->thread_id);
     if (slot && slot->is_on_runqueue == 0U) {
         current->state = THREAD_STATE_READY;
         sched_invariant_on_enqueue(current, core_id);
@@ -948,7 +973,7 @@ int sched_sys_sleep(uint64_t millis) {
 
 
 bh_thread_t *sched_find_thread_by_id(uint64_t tid) {
-  thread_slot_t *slot = sched_resolve_tid_owner_slow(tid);
+  thread_slot_t *slot = sched_find_thread_slot_by_tid(tid);
   return slot ? &slot->thread : NULL;
 }
 

@@ -124,7 +124,7 @@ int sched_sys_thread_create(bh_process_t *parent, void (*entry_point)(void), uin
 }
 
 int sched_sys_thread_destroy(uint64_t tid) {
-  thread_slot_t *slot = sched_resolve_tid_owner_slow(tid);
+  thread_slot_t *slot = sched_find_thread_slot_by_tid(tid);
   if (!slot) {
     return -1;
   }

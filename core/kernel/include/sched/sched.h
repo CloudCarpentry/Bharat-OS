@@ -11,6 +11,46 @@
 #include "personality_ops.h"
 #include <stdbool.h>
 #include "bh_process_personality.h"
+#include "bharat/kernel/ds/bh_mpsc_queue.h"
+
+#define BH_TID_SLOT_BITS       16U
+#define BH_TID_CORE_BITS       16U
+#define BH_TID_GENERATION_BITS 32U
+
+static inline uint16_t bh_tid_slot(uint64_t tid)
+{
+    return (uint16_t)(tid & 0xFFFFU);
+}
+
+static inline uint16_t bh_tid_home_core(uint64_t tid)
+{
+    return (uint16_t)((tid >> 16) & 0xFFFFU);
+}
+
+static inline uint32_t bh_tid_generation(uint64_t tid)
+{
+    return (uint32_t)(tid >> 32);
+}
+
+typedef struct {
+    volatile uint32_t runnable_count;
+    volatile uint32_t load_seq;
+} sched_load_snapshot_t;
+
+#define SCHED_REMOTE_CMD_CAPACITY 256U
+
+typedef struct {
+    bh_mpsc_queue_t queue;
+    bh_mpsc_slot_t slots[SCHED_REMOTE_CMD_CAPACITY];
+
+    volatile uint32_t resched_pending;
+
+    uint64_t submitted;
+    uint64_t consumed;
+    uint64_t full;
+    uint64_t ipi_sent;
+    uint64_t ipi_coalesced;
+} sched_remote_inbox_t;
 
 /*
  * Bharat-OS Process & Thread Management
@@ -97,7 +137,12 @@ typedef enum {
     SCHED_REMOTE_DEQUEUE,
     SCHED_REMOTE_HANDOFF,
     SCHED_REMOTE_SET_AFFINITY,
-    SCHED_REMOTE_QUARANTINE
+    SCHED_REMOTE_QUARANTINE,
+    SCHED_REMOTE_STEAL_REQ,
+    SCHED_REMOTE_MIGRATE_PREPARE,
+    SCHED_REMOTE_MIGRATE_COMMIT,
+    SCHED_REMOTE_MIGRATE_ROLLBACK,
+    SCHED_REMOTE_SET_PRIORITY
 } sched_remote_cmd_type_t;
 
 struct bh_thread;
@@ -148,9 +193,16 @@ typedef struct sched_rq {
     uint64_t rt_budget_used;
     uint64_t rt_budget_total;
 
-    // Remote Scheduler Command Inbox (Protected by lock)
-    list_head_t pending_inbox;
-    uint8_t resched_pending; // Flag to avoid IPI storms
+    // Remote Scheduler Command Inbox (MPSC Lock-Free)
+    sched_remote_inbox_t remote;
+
+    // Outbound Command Pool & load snapshot
+    sched_remote_cmd_t outbound_cmds[SCHED_REMOTE_CMD_CAPACITY];
+    volatile uint64_t outbound_alloc_bitmap;
+    sched_load_snapshot_t load_snapshot;
+
+    // Flag to avoid IPI storms
+    uint8_t resched_pending;
 
     // Debug counters
     uint64_t remote_enqueues;
@@ -377,5 +429,9 @@ void sched_notify_ipc_ready(uint32_t core_id, uint32_t msg_type);
 // Tickless operation for Hard-RT OpenRAN
 void sched_disable_tick_for_core(uint32_t core_id);
 #endif
+
+sched_rq_t *sched_local_rq(void);
+void sched_assert_local_rq(sched_rq_t *rq);
+kstatus_t sched_remote_submit(uint32_t target_cpu, const sched_remote_cmd_t *cmd);
 
 #endif // BHARAT_SCHED_H

@@ -22,39 +22,31 @@ int sched_enqueue(bh_thread_t *thread, uint32_t core_id) {
           return K_ERR_ISOLATED;
       }
 
-      thread_slot_t *slot = sched_find_thread_slot_by_tid_local(&g_cpu_locals[thread->home_core_id].runqueue, thread->thread_id);
-      if (!slot) return -1;
-
       sched_invariant_check_remote_enqueue_path(thread);
 
-      spin_lock(&target_rq->lock);
+      sched_remote_cmd_t *cmd = sched_allocate_outbound_cmd();
+      if (!cmd) {
+          return K_ERR_NO_RESOURCES;
+      }
 
-      target_rq->remote_enqueues++;
-
-      sched_remote_cmd_t *cmd = &slot->remote_cmd;
       cmd->type = SCHED_REMOTE_ENQUEUE;
       cmd->source_cpu = current_core;
       cmd->target_cpu = core_id;
       cmd->thread_id = thread->thread_id;
       cmd->expected_thread_generation = thread->sched_generation;
       cmd->priority = thread->priority;
+      cmd->state = SCHED_REMOTE_CMD_PENDING;
 
-      list_add_tail(&cmd->list, &target_rq->pending_inbox);
-
-      if (target_rq->resched_pending == 0) {
-          target_rq->resched_pending = 1;
-          target_rq->ipi_sent++;
-          spin_unlock(&target_rq->lock);
-          hal_send_ipi_payload(1U << core_id, MK_MSG_THREAD_ENQUEUE_REQ);
-      } else {
-          target_rq->ipi_coalesced++;
-          spin_unlock(&target_rq->lock);
+      kstatus_t status = sched_remote_submit(core_id, cmd);
+      if (status != K_OK) {
+          cmd->state = SCHED_REMOTE_CMD_EMPTY;
+          return status;
       }
       return 0;
   }
 
   sched_rq_t *rq = &g_cpu_locals[core_id].runqueue;
-  thread_slot_t *slot = sched_find_thread_slot_by_tid_local(rq, thread->thread_id);
+  thread_slot_t *slot = sched_find_thread_slot_by_tid(thread->thread_id);
   if (!slot) {
     return -1;
   }
@@ -141,7 +133,7 @@ static void sched_dequeue_task_l0(bh_thread_t *thread, uint32_t core_id) {
     return;
   }
   sched_rq_t *rq = &g_cpu_locals[core_id].runqueue;
-  thread_slot_t *slot = sched_find_thread_slot_by_tid_local(rq, thread->thread_id);
+  thread_slot_t *slot = sched_find_thread_slot_by_tid(thread->thread_id);
   if (slot && slot->is_on_runqueue != 0U) {
     sched_invariant_on_dequeue(thread);
     if (g_policy == SCHED_POLICY_CLOUD_FAIR) {

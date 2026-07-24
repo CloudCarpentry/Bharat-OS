@@ -71,18 +71,18 @@ bool test_sched_remote_enqueue_ipi(void) {
 
     // Assert metrics
     sched_rq_t *rq_core1 = &g_cpu_locals[1].runqueue;
-    KTEST_ASSERT(rq_core1->remote_enqueues == 1, "remote_enqueues counter mismatch");
-    KTEST_ASSERT(rq_core1->ipi_sent == 1, "ipi_sent counter mismatch");
-    KTEST_ASSERT(rq_core1->resched_pending == 1, "resched_pending flag not set");
+    KTEST_ASSERT(rq_core1->remote_enqueues == 0, "remote_enqueues counter mismatch"); // remote_enqueues is obsolete now
+    KTEST_ASSERT(rq_core1->remote.ipi_sent == 1, "ipi_sent counter mismatch");
+    KTEST_ASSERT(rq_core1->remote.resched_pending == 1, "resched_pending flag not set");
 
     // Now switch to CPU 1 and simulate IPI reception by calling sched_reschedule
     current_mock_cpu = 1;
     sched_reschedule();
 
     // Assert the inbox was drained
-    KTEST_ASSERT(list_empty(&rq_core1->pending_inbox), "Pending inbox was not drained");
+    KTEST_ASSERT(bh_mpsc_queue_empty(&rq_core1->remote.queue), "Pending inbox was not drained");
     KTEST_ASSERT(rq_core1->inbox_drains == 1, "inbox_drains counter mismatch");
-    KTEST_ASSERT(rq_core1->resched_pending == 0, "resched_pending flag not cleared");
+    KTEST_ASSERT(rq_core1->remote.resched_pending == 0, "resched_pending flag not cleared");
 
     // Assert thread is now on the runqueue and runnable
     KTEST_ASSERT(rq_core1->runnable_count > 0, "Runqueue runnable_count is 0 after drain");
@@ -120,13 +120,13 @@ bool test_sched_ipi_coalescing(void) {
     KTEST_ASSERT(mock_ipi_sent_to == UINT32_MAX, "IPI should have been coalesced but was sent");
 
     sched_rq_t *rq_core1 = &g_cpu_locals[1].runqueue;
-    KTEST_ASSERT(rq_core1->ipi_coalesced == 1, "ipi_coalesced counter mismatch");
+    KTEST_ASSERT(rq_core1->remote.ipi_coalesced == 1, "ipi_coalesced counter mismatch");
 
     current_mock_cpu = 1;
     sched_reschedule(); // Drains both
 
     KTEST_ASSERT(rq_core1->inbox_drains == 1, "inbox_drains counter mismatch (drained together)");
-    KTEST_ASSERT(list_empty(&rq_core1->pending_inbox), "Inbox should be empty");
+    KTEST_ASSERT(bh_mpsc_queue_empty(&rq_core1->remote.queue), "Inbox should be empty");
 
     return true;
 }

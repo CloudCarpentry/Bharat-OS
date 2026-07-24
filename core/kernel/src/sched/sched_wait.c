@@ -98,31 +98,20 @@ void sched_wakeup_with_priority(bh_thread_t *thread, uint32_t wakeup_priority) {
 
   uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
   if (thread->home_core_id != current_core) {
-      sched_rq_t *target_rq = &g_cpu_locals[thread->home_core_id].runqueue;
-      thread_slot_t *slot = sched_find_thread_slot_by_tid_local(&g_cpu_locals[thread->home_core_id].runqueue, thread->thread_id);
-      if (!slot) return;
+      sched_remote_cmd_t *cmd = sched_allocate_outbound_cmd();
+      if (!cmd) {
+          return;
+      }
 
-      spin_lock(&target_rq->lock);
-
-      sched_remote_cmd_t *cmd = &slot->remote_cmd;
       cmd->type = SCHED_REMOTE_WAKE;
       cmd->source_cpu = current_core;
       cmd->target_cpu = thread->home_core_id;
       cmd->thread_id = thread->thread_id;
       cmd->expected_thread_generation = thread->sched_generation;
       cmd->priority = wakeup_priority;
+      cmd->state = SCHED_REMOTE_CMD_PENDING;
 
-      list_add_tail(&cmd->list, &target_rq->pending_inbox);
-
-      if (target_rq->resched_pending == 0) {
-          target_rq->resched_pending = 1;
-          target_rq->ipi_sent++;
-          spin_unlock(&target_rq->lock);
-          hal_send_ipi_payload(1U << thread->home_core_id, MK_MSG_THREAD_WAKE_REQ);
-      } else {
-          target_rq->ipi_coalesced++;
-          spin_unlock(&target_rq->lock);
-      }
+      sched_remote_submit(thread->home_core_id, cmd);
       return;
   }
 
