@@ -1,11 +1,19 @@
 ---
-title: "Service Incarnation Model"
-status: "Draft"
-version: "0.1"
-last_updated: "2024-03-24"
-tags: ["architecture", "ipc", "urpc", "multikernel", "identity", "restarts"]
+title: Service Incarnation Model
+status: Draft
+owner: Documentation Working Group
+last_updated: 2024-03-24
+tags:
+  - architecture
+  - ipc
+  - urpc
+  - multikernel
+  - identity
+  - restarts
+see_also:
+  - README.md
+version: 0.1
 ---
-
 # Service Incarnation Model
 
 ## 1. The Restart-Safety Problem

@@ -1,3 +1,14 @@
+---
+title: Bharat-OS Exception Table ABI Contract
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+see_also:
+  - README.md
+---
 # Bharat-OS Exception Table ABI Contract
 
 This document describes the canonical, unified Exception Table ABI contract across all Tier-1 architectures natively targeted by Bharat-OS (x86_64, ARM64, and RISC-V64).

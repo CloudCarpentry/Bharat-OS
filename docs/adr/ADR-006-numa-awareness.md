@@ -1,5 +1,5 @@
 ---
-title: ADR-006: NUMA-Ready (Not NUMA-Complete) Architecture
+title: "ADR-006: NUMA-Ready (Not NUMA-Complete) Architecture"
 status: Accepted
 owner: Documentation Working Group
 last_updated: 2026-04-25

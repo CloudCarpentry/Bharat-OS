@@ -1,5 +1,5 @@
 ---
-title: Context Switching Review: Kernel + Subsystem (revalidated)
+title: "Context Switching Review: Kernel + Subsystem (revalidated)"
 status: Draft
 owner: Documentation Working Group
 last_updated: 2026-04-25

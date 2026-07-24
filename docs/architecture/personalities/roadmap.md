@@ -2,12 +2,17 @@
 title: Personalities Roadmap
 status: active
 owner: Architecture Team
-reviewers: ["Core Team"]
+last_updated: 2026-04-22
+tags:
+  - architecture
+  - personalities
+  - roadmap
+see_also:
+  - README.md
+reviewers:
+  - Core Team
 version: 1.1
-last_updated: "2026-04-22"
-tags: ["architecture", "personalities", "roadmap"]
 ---
-
 # Bharat-OS Personalities Roadmap
 
 This document outlines the phased development roadmap for Bharat-OS personalities, enabling application compatibility for POSIX, Linux, and Android environments on top of the capability-based multikernel architecture.

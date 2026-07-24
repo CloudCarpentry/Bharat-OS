@@ -1,3 +1,14 @@
+---
+title: Core Arch Production Grade Review - 2026-04-25
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - reviews
+see_also:
+  - README.md
+---
 # Core Arch Production Grade Review - 2026-04-25
 
 ## Files Reviewed

@@ -2,10 +2,15 @@
 title: Personalities Documentation Index
 status: active
 owner: Architecture Team
+last_updated: 2026-04-22
+tags:
+  - docs
+  - architecture
+  - personalities
+see_also:
+  - ../README.md
 version: 1.1
-last_updated: "2026-04-22"
 ---
-
 # Personalities Documentation (Consolidated)
 
 This folder is the canonical architecture location for personality design and planning.

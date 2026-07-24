@@ -2,8 +2,6 @@
 title: Bharat-OS Profile-Driven Multi-Kernel Architecture
 status: proposed
 owner: kernel-architecture
-reviewers: []
-version: 0.1
 last_updated: 2026-03-23
 tags:
   - kernel
@@ -13,8 +11,11 @@ tags:
   - capability
   - multi-kernel
   - distributed
+see_also:
+  - README.md
+reviewers:
+version: 0.1
 ---
-
 # ARC: Bharat-OS Profile-Driven Multi-Kernel Architecture
 
 ## 1. Status

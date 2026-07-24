@@ -1,17 +1,18 @@
 ---
 title: Profile Contracts and Mechanisms
 status: Proposed
-version: 1.0
 owner: Architecture Team
-reviewers: Core Maintainers
 last_updated: 2024-03-24
 tags:
   - architecture
   - contracts
   - mechanisms
   - mixed-criticality
+see_also:
+  - README.md
+version: 1.0
+reviewers: Core Maintainers
 ---
-
 # Bharat-OS Profile Contracts and Mechanisms
 
 ### Contract Status

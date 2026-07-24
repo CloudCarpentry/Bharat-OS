@@ -9,7 +9,6 @@ tags:
 see_also:
   - README.md
 ---
-
 ### Boot Subsystem Refactor
 The core boot flow has been heavily refactored:
 1. Architecture-agnostic `main.c`: No FDT or Multiboot specific tags are parsed here.

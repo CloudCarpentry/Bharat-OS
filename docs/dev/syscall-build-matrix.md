@@ -1,3 +1,14 @@
+---
+title: Bharat-OS Syscall Build Matrix
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - dev
+see_also:
+  - README.md
+---
 # Bharat-OS Syscall Build Matrix
 
 This document defines the supported syscall configurations across architecture families and bitness.

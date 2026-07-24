@@ -8,8 +8,9 @@ tags:
   - kernel
   - roadmap
   - algorithms
+see_also:
+  - README.md
 ---
-
 # Bharat-OS Kernel Algorithmic Foundations
 
 ## 1. Purpose

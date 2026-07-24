@@ -2,12 +2,23 @@
 title: Multi-Architecture Personality Enablement Roadmap
 status: active
 owner: Architecture Team
-reviewers: ["Core Team", "Perf Team"]
+last_updated: 2026-04-22
+tags:
+  - architecture
+  - personalities
+  - x86_64
+  - arm64
+  - riscv64
+  - linux
+  - android
+  - performance
+see_also:
+  - README.md
+reviewers:
+  - Core Team
+  - Perf Team
 version: 1.0
-last_updated: "2026-04-22"
-tags: ["architecture", "personalities", "x86_64", "arm64", "riscv64", "linux", "android", "performance"]
 ---
-
 # Multi-Architecture Personality Enablement Roadmap
 
 ## Objective

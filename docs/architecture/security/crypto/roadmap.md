@@ -2,11 +2,15 @@
 title: Cryptography & Security Roadmap
 status: Proposed
 owner: Divyang Panchasara
-version: 1.0
 last_updated: 2024-05-15
-tags: [security, crypto, roadmap]
+tags:
+  - security
+  - crypto
+  - roadmap
+see_also:
+  - README.md
+version: 1.0
 ---
-
 # Cryptography & Security Roadmap
 
 This roadmap outlines the phased implementation plan for the Bharat-OS Cryptography and Security subsystem. It is designed to establish a solid foundation in the kernel first (mechanisms), followed by the user-space services (policies and algorithms), and finally integration with the rest of the operating system.

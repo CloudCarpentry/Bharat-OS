@@ -1,5 +1,5 @@
 ---
-title: Bharat-OS `core/services/init` — Design Principles & Architecture
+title: "Bharat-OS `core/services/init` — Design Principles & Architecture"
 status: Proposed
 owner: Documentation Working Group
 last_updated: 2026-04-25

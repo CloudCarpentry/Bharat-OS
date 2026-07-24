@@ -2,12 +2,16 @@
 title: Linux Personality Architecture
 status: active
 owner: Architecture Team
-reviewers: ["Core Team"]
+last_updated: 2026-04-22
+tags:
+  - architecture
+  - personalities
+see_also:
+  - README.md
+reviewers:
+  - Core Team
 version: 1.1
-last_updated: "2026-04-22"
-tags: ["architecture", "personalities"]
 ---
-
 # Linux Personality Architecture
 
 > **Note on Code Structure:** The Linux personality is located in `core/kernel/src/personality/linux/`. It translates Linux Syscall ABI numbers directly into Bharat-OS primitives via a structured dispatch table, avoiding any architectural monolithic dependencies in core subsystems.

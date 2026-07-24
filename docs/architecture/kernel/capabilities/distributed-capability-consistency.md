@@ -1,11 +1,18 @@
 ---
-title: "Distributed Capability Consistency"
-status: "Draft"
-version: "0.1"
-last_updated: "2024-03-24"
-tags: ["architecture", "capability", "distributed", "multikernel", "consistency"]
+title: Distributed Capability Consistency
+status: Draft
+owner: Documentation Working Group
+last_updated: 2024-03-24
+tags:
+  - architecture
+  - capability
+  - distributed
+  - multikernel
+  - consistency
+see_also:
+  - README.md
+version: 0.1
 ---
-
 # Distributed Capability Consistency
 
 ### Contract Status
