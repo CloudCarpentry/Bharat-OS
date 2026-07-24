@@ -10,7 +10,8 @@
  * link against this library.
  */
 
-int bharat_runtime_init(void) {
+int bharat_runtime_init(const void *startup_ptr) {
+    (void)startup_ptr;
     // TODO: Initialize capability arena and establish URPC connection to service manager.
     return 0;
 }

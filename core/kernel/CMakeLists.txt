@@ -522,6 +522,7 @@ list(APPEND KERNEL_SRCS
     src/display/boot_video_map.c
     ${BHARAT_KERNEL_SRC_ROOT}/boot/boot_mode.c
     ${BHARAT_KERNEL_SRC_ROOT}/boot/boot_selftest.c
+    src/process/user_image_loader.c
 )
 
 # ── Kernel ELF ──────────────────────────────────────────────────────────────
@@ -572,7 +573,7 @@ if(BHARAT_ENABLE_ADVANCED_VM)
     )
 endif()
 # Architecture-specific code model and PIE flags are set below
-target_link_libraries(kernel.elf subsys_manager bharat_libmsg bharat_kernel_buildopts bharatos_drivers serial_drivers bharat_kernel_includes board_fabric bharat_platform_headers)
+target_link_libraries(kernel.elf subsys_manager bharat_libmsg bharat_kernel_buildopts bharatos_drivers serial_drivers bharat_kernel_includes board_fabric bharat_platform_headers elf_parser)
 if(BHARAT_ENABLE_FBUI)
     target_link_libraries(kernel.elf fbui)
 endif()

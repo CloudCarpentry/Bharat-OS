@@ -30,6 +30,7 @@ typedef enum {
 #define VM_MAP_DEVICE          (1ULL << 5)
 #define VM_MAP_GLOBAL          (1ULL << 6)
 #define VM_MAP_RT_CRITICAL     (1ULL << 7)
+#define VM_MAP_FIXED           (1ULL << 8)
 
 // Common arch-agnostic mapping permissions
 #define VM_PROT_READ    (1ULL << 0)

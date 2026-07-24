@@ -122,6 +122,10 @@ def run_qemu(manifest_path: Path, mode_override: str = None, display_override: s
     if dtb_path:
         cmd.extend(["-dtb", dtb_path])
 
+    init_module = artifacts.get("init_module")
+    if arch == "x86_64" and init_module:
+        cmd.extend(["-initrd", f"{init_module} services/init"])
+
     # Display / Serial configuration
     if nographic:
         cmd.extend(["-nographic", "-monitor", "none", "-serial", "stdio"])
