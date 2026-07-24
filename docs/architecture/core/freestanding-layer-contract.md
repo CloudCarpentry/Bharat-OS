@@ -1,12 +1,17 @@
 ---
-title: "Freestanding Layer Contract (Kernel/HAL/Arch)"
-status: "active"
-owner: "Core Architecture Team"
-version: "1.0"
-last_updated: "2026-04-19"
-tags: ["architecture", "layering", "freestanding", "lint"]
+title: Freestanding Layer Contract (Kernel/HAL/Arch)
+status: active
+owner: Core Architecture Team
+last_updated: 2026-04-19
+tags:
+  - architecture
+  - layering
+  - freestanding
+  - lint
+see_also:
+  - README.md
+version: 1.0
 ---
-
 # Freestanding Layer Contract (Kernel/HAL/Arch)
 
 ### Contract Status

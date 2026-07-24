@@ -1,7 +1,6 @@
 ---
 title: Architecture-to-Code Mapping
 status: Active
-version: 1.0
 owner: Architecture Team
 last_updated: 2026-04-25
 tags:
@@ -9,8 +8,10 @@ tags:
   - repository
   - code-map
   - docs-consolidation
+see_also:
+  - README.md
+version: 1.0
 ---
-
 # Architecture-to-Code Mapping
 
 This document connects architecture documentation to the current code layout, so design docs can be validated quickly against implementation paths.

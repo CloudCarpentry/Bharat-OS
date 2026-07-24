@@ -1,3 +1,14 @@
+---
+title: Bharat-OS Naming Conventions
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - dev
+see_also:
+  - README.md
+---
 # Bharat-OS Naming Conventions
 
 This document outlines the naming conventions for Bharat-OS to ensure consistency across the codebase, especially for UAPI and new subsystems.

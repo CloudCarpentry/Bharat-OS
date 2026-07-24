@@ -1,11 +1,19 @@
 ---
-title: "Accelerator Capability Model"
-status: "Draft"
-version: "0.1"
-last_updated: "2024-03-24"
-tags: ["architecture", "accelerator", "capabilities", "dma", "gpu", "npu"]
+title: Accelerator Capability Model
+status: Draft
+owner: Documentation Working Group
+last_updated: 2024-03-24
+tags:
+  - architecture
+  - accelerator
+  - capabilities
+  - dma
+  - gpu
+  - npu
+see_also:
+  - README.md
+version: 0.1
 ---
-
 # Accelerator Capability Model
 
 ## 1. The Missing Model for Complex Devices

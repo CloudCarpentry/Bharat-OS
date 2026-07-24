@@ -1,5 +1,5 @@
 ---
-title: ADR-012: CAN Subsystem and Userspace Routing Architecture
+title: "ADR-012: CAN Subsystem and Userspace Routing Architecture"
 status: Accepted
 owner: Documentation Working Group
 last_updated: 2026-04-25

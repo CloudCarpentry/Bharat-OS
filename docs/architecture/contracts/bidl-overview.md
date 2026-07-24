@@ -1,11 +1,17 @@
 ---
-title: "BIDL Overview & Scope"
-status: "Draft"
-version: "0.1"
-last_updated: "2024-03-24"
-tags: ["architecture", "ipc", "bidl", "contracts"]
+title: BIDL Overview & Scope
+status: Draft
+owner: Documentation Working Group
+last_updated: 2024-03-24
+tags:
+  - architecture
+  - ipc
+  - bidl
+  - contracts
+see_also:
+  - README.md
+version: 0.1
 ---
-
 # Bharat Interface Definition Language (BIDL)
 
 ## What is BIDL?

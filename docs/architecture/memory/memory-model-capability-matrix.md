@@ -1,5 +1,5 @@
 ---
-title: Bharat-OS Memory Architecture: Capability Model
+title: "Bharat-OS Memory Architecture: Capability Model"
 status: Proposed
 owner: Documentation Working Group
 last_updated: 2026-04-25

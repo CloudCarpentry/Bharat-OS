@@ -1,3 +1,14 @@
+---
+title: Digital Cockpit Infotainment
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - use-cases
+see_also:
+  - README.md
+---
 ### Digital Cockpit / Infotainment
 
 Digital cockpit is different from ADAS: it needs UI, media, Android/Linux compatibility paths, and strong separation from vehicle-control domains.

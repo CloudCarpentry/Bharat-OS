@@ -1,3 +1,15 @@
+---
+title: Memory Architecture Review and Gap Analysis (April 2026)
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - memory
+see_also:
+  - README.md
+---
 # Memory Architecture Review and Gap Analysis (April 2026)
 
 ## 1. Overview

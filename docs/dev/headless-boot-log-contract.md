@@ -1,3 +1,14 @@
+---
+title: Headless Boot Log Contract and Parser
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - dev
+see_also:
+  - README.md
+---
 # Headless Boot Log Contract and Parser
 
 Bharat-OS uses a machine-readable boot contract to verify that headless QEMU/hardware runs reach their expected state. This prevents relying on manual log inspection and provides a clear PASS/FAIL signal for CI and coding agents.

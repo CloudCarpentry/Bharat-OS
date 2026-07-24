@@ -1,3 +1,15 @@
+---
+title: Shell Runtime and Rights
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - shell
+see_also:
+  - README.md
+---
 # Shell Runtime and Rights
 
 ## Responsibility Boundary

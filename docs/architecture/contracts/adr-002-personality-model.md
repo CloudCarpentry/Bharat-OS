@@ -1,5 +1,5 @@
 ---
-title: ADR 002: Personality Model Architecture
+title: "ADR 002: Personality Model Architecture"
 status: Proposed
 owner: Documentation Working Group
 last_updated: 2026-04-25

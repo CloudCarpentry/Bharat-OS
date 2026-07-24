@@ -2,9 +2,15 @@
 title: Personality Performance Contract
 status: active
 owner: Architecture Team
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - personalities
+see_also:
+  - README.md
 version: 1.0
 ---
-
 # Personality Performance Contract
 
 ### Contract Status

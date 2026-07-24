@@ -1,3 +1,14 @@
+---
+title: Automotive Build Hygiene Follow-ups
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - reviews
+see_also:
+  - README.md
+---
 # Automotive Build Hygiene Follow-ups
 
 This document tracks build hygiene issues discovered while implementing the automotive emulator and fast trace foundation. These issues were fixed with minimal patches to unblock the automotive profile but require deeper architectural cleanup.

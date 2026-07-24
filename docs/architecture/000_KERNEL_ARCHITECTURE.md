@@ -1,5 +1,5 @@
 ---
-title: `KERNEL_ARCHITECTURE.md`
+title: KERNEL_ARCHITECTURE.md
 status: Proposed
 owner: Documentation Working Group
 last_updated: 2026-04-25

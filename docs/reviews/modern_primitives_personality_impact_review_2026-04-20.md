@@ -1,5 +1,5 @@
 ---
-title: Bharat-OS Review: Modern Primitives, Risk, and Personality Impact (Linux/Android)
+title: "Bharat-OS Review: Modern Primitives, Risk, and Personality Impact (Linux/Android)"
 status: Draft
 owner: Documentation Working Group
 last_updated: 2026-04-25

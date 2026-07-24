@@ -1,5 +1,5 @@
 ---
-title: ADR-004: Linux Compatibility as a Deferred Personality
+title: "ADR-004: Linux Compatibility as a Deferred Personality"
 status: Accepted
 owner: Documentation Working Group
 last_updated: 2026-04-25

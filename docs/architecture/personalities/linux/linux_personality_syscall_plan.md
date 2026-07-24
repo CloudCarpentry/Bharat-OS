@@ -2,12 +2,16 @@
 title: Linux Personality Syscall Plan
 status: active
 owner: Architecture Team
-reviewers: ["Core Team"]
+last_updated: 2024-03-23
+tags:
+  - architecture
+  - personalities
+see_also:
+  - README.md
+reviewers:
+  - Core Team
 version: 1.0
-last_updated: "2024-03-23"
-tags: ["architecture", "personalities"]
 ---
-
 # Linux Personality Syscall Plan
 
 > **Note on Code Structure:** Following the centralized error model, Linux syscall handlers must return Linux-specific error codes to user-space, but internally map to the core `include/bharat/errno.h` (e.g., `BH_EINVAL`). The syscall architecture separates traps (`core/kernel/src/core/arch/*/trap.c`) from personalities (`core/kernel/src/personality/linux/`).

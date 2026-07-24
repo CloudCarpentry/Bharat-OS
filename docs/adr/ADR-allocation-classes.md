@@ -1,5 +1,5 @@
 ---
-title: ADR: Allocation Classes
+title: "ADR: Allocation Classes"
 status: Accepted
 owner: Documentation Working Group
 last_updated: 2026-04-25

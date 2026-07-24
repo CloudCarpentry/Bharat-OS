@@ -1,3 +1,15 @@
+---
+title: Bharat-OS Text and Unicode Contract
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - text
+see_also:
+  - README.md
+---
 # Bharat-OS Text and Unicode Contract
 
 ## 1. Goals

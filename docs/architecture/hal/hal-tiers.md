@@ -1,3 +1,15 @@
+---
+title: Bharat-OS HAL Architecture Tiers
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - hal
+see_also:
+  - README.md
+---
 # Bharat-OS HAL Architecture Tiers
 
 To ensure build truthfulness and prevent the "illusion of completeness," Bharat-OS classifies architecture support into five distinct Tiers.

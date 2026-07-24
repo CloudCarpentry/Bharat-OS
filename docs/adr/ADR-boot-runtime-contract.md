@@ -1,5 +1,5 @@
 ---
-title: Architecture Decision Record: Boot and Runtime Lifecycle Contract
+title: "Architecture Decision Record: Boot and Runtime Lifecycle Contract"
 status: Accepted
 owner: Documentation Working Group
 last_updated: 2026-04-25

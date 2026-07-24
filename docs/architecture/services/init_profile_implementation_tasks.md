@@ -1,5 +1,5 @@
 ---
-title: Bharat-OS `core/services/init` — Profile Implementation Task Plan
+title: "Bharat-OS `core/services/init` — Profile Implementation Task Plan"
 status: Proposed
 owner: Documentation Working Group
 last_updated: 2026-04-25
