@@ -22,11 +22,12 @@ kernel:
     map: kernel/kernel.map
 
 boot:
-  protocol: linux_arm64
+  protocol: linux_arm32
   artifact_format: elf
   dtb:
     mode: qemu_generated
     required: true
+    handoff_register: r2
 
 package:
   transforms: []

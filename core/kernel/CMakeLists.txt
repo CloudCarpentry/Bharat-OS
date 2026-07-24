@@ -437,8 +437,10 @@ set(KERNEL_SRCS
     $<$<AND:$<STREQUAL:${ARCH},arm64>,$<STREQUAL:${KERNEL_PROFILE_LOWER},generic>>:${BHARAT_PLATFORM_ROOT}/boards/qemu-virt-arm64/machine_display.c>
     $<$<AND:$<STREQUAL:${ARCH},arm64>,$<NOT:$<STREQUAL:${KERNEL_PROFILE_LOWER},generic>>>:${BHARAT_PLATFORM_ROOT}/boards/bcm2711-rpi4/board.c>
     $<$<AND:$<STREQUAL:${ARCH},arm32>,$<STREQUAL:${BHARAT_BOOT_HW_PROFILE},avh-corstone310>>:${BHARAT_PLATFORM_ROOT}/boards/avh-corstone310/board.c>
+    $<$<AND:$<STREQUAL:${ARCH},arm32>,$<NOT:$<STREQUAL:${BHARAT_BOOT_HW_PROFILE},avh-corstone310>>>:${BHARAT_PLATFORM_ROOT}/boards/qemu-virt-arm32/board.c>
     $<$<AND:$<STREQUAL:${ARCH},riscv64>,$<STREQUAL:${BHARAT_RISCV_SOC_PROFILE},qemu-virt>>:${BHARAT_PLATFORM_ROOT}/boards/qemu-virt-riscv64/board.c>
     $<$<AND:$<STREQUAL:${ARCH},riscv64>,$<NOT:$<STREQUAL:${BHARAT_RISCV_SOC_PROFILE},qemu-virt>>>:${BHARAT_PLATFORM_ROOT}/boards/shakti-ref/board.c>
+    $<$<STREQUAL:${ARCH},riscv32>:${BHARAT_PLATFORM_ROOT}/boards/qemu-virt-riscv32/board.c>
     # NOTE: HAL sources removed - compiled via hal/* library targets instead
     ${ARCH_HAL}
     ${BHARAT_HAL_ROOT}/common/fdt_parser.c

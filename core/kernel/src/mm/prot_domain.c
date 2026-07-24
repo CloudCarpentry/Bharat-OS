@@ -21,7 +21,8 @@ static prot_domain_t* generic_create(void) {
     domain->mode = active_mode;
     domain->ops = active_backend;
 
-    if (active_hal_pt) {
+    if (active_hal_pt && active_mode == PROT_MODE_MMU_FULL) {
+        /* MMU_FULL: each domain needs a real page-table root address space. */
         extern phys_addr_t vmm_get_kernel_root(void);
         domain->backend_state = (void*)(uintptr_t)hal_pt_create_address_space(vmm_get_kernel_root());
         if (!domain->backend_state) {
@@ -29,6 +30,11 @@ static prot_domain_t* generic_create(void) {
             return NULL;
         }
     } else {
+        /*
+         * MMU_LITE / MPU_ONLY / PROT_NONE: no per-domain page-table root.
+         * MPU regions are programmed directly into hardware registers, not
+         * through an address-space descriptor, so backend_state stays NULL.
+         */
         domain->backend_state = NULL;
     }
 
