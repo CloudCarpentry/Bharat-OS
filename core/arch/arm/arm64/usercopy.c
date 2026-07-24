@@ -11,8 +11,16 @@ kstatus_t arch_copy_from_user_nofault(void *dst, const void *src, size_t len) {
 
     uint64_t prev_pan = 1;
     #if defined(__aarch64__)
-    __asm__ __volatile__("mrs %0, pan" : "=r"(prev_pan) :: "memory");
-    __asm__ __volatile__("msr pan, #0" ::: "memory");
+    __asm__ __volatile__(
+        ".arch_extension pan\n\t"
+        "mrs %0, pan"
+        : "=r"(prev_pan) :: "memory"
+    );
+    __asm__ __volatile__(
+        ".arch_extension pan\n\t"
+        "msr pan, #0"
+        ::: "memory"
+    );
     #endif
 
     kstatus_t status = K_OK;
@@ -44,7 +52,11 @@ kstatus_t arch_copy_from_user_nofault(void *dst, const void *src, size_t len) {
     }
 
     #if defined(__aarch64__)
-    __asm__ __volatile__("msr pan, %0" :: "r"(prev_pan) : "memory");
+    __asm__ __volatile__(
+        ".arch_extension pan\n\t"
+        "msr pan, %0"
+        :: "r"(prev_pan) : "memory"
+    );
     #endif
 
     return status;
@@ -55,8 +67,16 @@ kstatus_t arch_copy_to_user_nofault(void *dst, const void *src, size_t len) {
 
     uint64_t prev_pan = 1;
     #if defined(__aarch64__)
-    __asm__ __volatile__("mrs %0, pan" : "=r"(prev_pan) :: "memory");
-    __asm__ __volatile__("msr pan, #0" ::: "memory");
+    __asm__ __volatile__(
+        ".arch_extension pan\n\t"
+        "mrs %0, pan"
+        : "=r"(prev_pan) :: "memory"
+    );
+    __asm__ __volatile__(
+        ".arch_extension pan\n\t"
+        "msr pan, #0"
+        ::: "memory"
+    );
     #endif
 
     kstatus_t status = K_OK;
@@ -87,7 +107,11 @@ kstatus_t arch_copy_to_user_nofault(void *dst, const void *src, size_t len) {
     }
 
     #if defined(__aarch64__)
-    __asm__ __volatile__("msr pan, %0" :: "r"(prev_pan) : "memory");
+    __asm__ __volatile__(
+        ".arch_extension pan\n\t"
+        "msr pan, %0"
+        :: "r"(prev_pan) : "memory"
+    );
     #endif
 
     return status;

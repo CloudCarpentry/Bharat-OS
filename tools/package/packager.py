@@ -76,7 +76,15 @@ def execute_package(plan: PackagePlan, repo_root: Path) -> PackageOutputs:
 
     if plan.target.boot.dtb.required and plan.target.boot.dtb.mode == "qemu_generated":
         dtb_path = plan.manifest_dir / "hw.dtb"
-        dtb_cmd = ["qemu-system-" + ("aarch64" if plan.target.arch == "arm64" else plan.target.arch)]
+        qemu_bin_map = {
+            "x86_64": "qemu-system-x86_64",
+            "arm64": "qemu-system-aarch64",
+            "riscv64": "qemu-system-riscv64",
+            "arm32": "qemu-system-arm",
+            "riscv32": "qemu-system-riscv32",
+        }
+        qemu_exe = qemu_bin_map.get(plan.target.arch, f"qemu-system-{plan.target.arch}")
+        dtb_cmd = [qemu_exe]
         if plan.target.run and plan.target.run.machine:
             dtb_cmd.extend(["-machine", plan.target.run.machine + ",dumpdtb=" + str(dtb_path)])
 

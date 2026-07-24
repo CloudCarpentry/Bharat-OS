@@ -66,8 +66,21 @@ The exception table (`__ex_table`) resides in read-only memory, while recovery f
 
 ---
 
-## 4. Platform Implementation Guidelines
+## 4. Platform Implementation Guidelines & Trap Protections
 
-- **x86_64:** Inline assemblies in `usercopy.c` must use `%c` modifiers to output naked immediate constants for `.short` assembler directives to prevent compiler-added `$` prefixes from polluting the generated assembly as unresolved symbols.
-- **ARM64:** PAN state (PSTATE.PAN) must be preserved and restored around the copy block.
-- **RISC-V64:** SUM state (sstatus.SUM) must be preserved and restored around the copy block.
+### Architectural Access Control & Fault Protection Matrix
+
+| Architecture | Hardware Security Mechanism | Assembly Directive / Opcode | User Access Enable | Isolation Restore | Notes |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **x86_64** | **SMAP** (Supervisor Mode Access Prevention) | `stac` / `clac` | `stac` (Sets `EFLAGS.AC=1`) | `clac` (Clears `EFLAGS.AC=0`) | Operands use `%c` modifier for naked immediate constants in fixup table. |
+| **ARM64** | **PAN** (Privileged Access Never) | `.arch_extension pan` | `msr pan, #0` (`PSTATE.PAN=0`) | `msr pan, %0` (`PSTATE.PAN=prev_pan`) | Assembly block MUST specify `.arch_extension pan` to prevent assembler errors under baseline `aarch64-unknown-none-elf` target flags. |
+| **RISC-V64** | **SUM** (Supervisor User Memory) | `sstatus.SUM` bit | `csrs sstatus, %0` (Set `SUM=1`) | `csrc sstatus, %0` (Clear `SUM=0`) | Preserves `sstatus` across usercopy; faulting instruction branches via `.fixup`. |
+| **ARM32** | Domain Access Control (DACR) / Boundary Check | `uaccess` boundary | Software range check | Software range check | Edge-tier MMU-lite configuration. |
+| **RISC-V32** | PMP / Page Boundary Verification | `uaccess` boundary | Software range check | Software range check | Edge-tier MMU-lite configuration. |
+
+### Critical Safety Invariants for Developers
+
+1. **Do Not Remove PAN/SMAP/SUM Restoration:** Every usercopy function (`arch_copy_from_user_nofault`, `arch_copy_to_user_nofault`) MUST restore the original state before returning, even when an exception occurs (handled via `.fixup`).
+2. **Assembler Extension Scope:** The `.arch_extension pan` directive is local to inline assembly blocks in `usercopy.c`. It permits opcode compilation without altering target CPU ABI or kernel trap frame layout.
+3. **No Unhandled Traps:** All kernel-to-user copy operations MUST be wrapped in `__ex_table` entries. Unwrapped accesses to user pointers inside kernel space will cause unrecoverable page faults.
+

@@ -56,7 +56,7 @@ static int bootstrap_launch_first_service(void) {
     // Use a high base priority for init
     thread->priority = 1;
 
-    arch_prepare_initial_context(&thread->cpu_context, (void (*)(void))result.entry_point, result.user_stack_top);
+    arch_prepare_initial_context((cpu_context_t*)thread->cpu_context, (void (*)(void))result.entry_point, result.user_stack_top);
 
     // Pass startup_va as arg0 to the user process
     // For x86_64, arg0 is in rdi which is gpr[1] via arch_prepare_initial_context (usually, but actually rdi is mapped to arg[0] on syscalls).

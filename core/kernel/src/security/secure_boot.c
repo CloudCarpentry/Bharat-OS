@@ -17,7 +17,7 @@ static const bharat_boot_policy_t g_default_boot_policy
         .perf_mode = BHARAT_BOOT_PERF_FAST,
         .timer_tick_hz = 500U,
         .smp_target_cores = 2U,
-        .enable_zswap = 1U,
+        .enable_zswap = 0U,   /* Edge/embedded: no memory compression - too resource constrained */
         .enable_ai_governor = 0U,
 #elif defined(BHARAT_BOOT_HW_PROFILE_mobile)
         .security_level = BHARAT_BOOT_SECURITY_ENFORCED,

@@ -43,16 +43,16 @@ Examples:
 
 ```powershell
 # Windows PowerShell
-.\build.ps1 build --target x86_64_desktop_headless
-.\build.ps1 all --target x86_64_desktop_headless
-.\build.ps1 run --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml
+.\tools\build.ps1 build --target x86_64_desktop_headless
+.\tools\build.ps1 all --target x86_64_desktop_headless
+.\tools\build.ps1 run --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml
 ```
 
 ```bash
 # Linux/macOS/WSL
-./build.sh build --target x86_64_desktop_headless
-./build.sh all --target x86_64_desktop_headless
-./build.sh run --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml
+./tools/build.sh build --target x86_64_desktop_headless
+./tools/build.sh all --target x86_64_desktop_headless
+./tools/build.sh run --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml
 ```
 
 > Legacy positional syntax still works (for example `.\build.ps1 x86_64_desktop_headless --run`), but it is compatibility-only and emits a warning. Prefer explicit subcommands.
@@ -140,24 +140,31 @@ export PATH="$(brew --prefix llvm)/bin:$PATH"
 ## 3) Build pipeline stages (what each command does)
 
 ### `configure`
+
 Runs CMake configure preset and writes build manifest metadata.
 
 ### `build`
+
 Runs configure + compile for the selected preset.
 
 ### `package`
+
 Generates packaging artifacts/manifests (run/flash/debug manifests + footprint report).
 
 ### `run`
+
 Packages (if needed) and launches QEMU for the target.
 
 ### `all`
+
 Build + package + run in one command.
 
 ### `flash`
+
 Packages and runs flashing backend (currently OpenOCD backend path).
 
 ### `debug`
+
 Generates/validates debug path, but current workflow reports that full debug automation is not yet implemented.
 
 Output layout uses CMake preset name:
@@ -209,9 +216,9 @@ Runtime command includes serial-first bring-up (`-nographic -monitor none -seria
 
 ```powershell
 # PowerShell
-.\build.ps1 all --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml --smoke
-.\build.ps1 all --target-yaml delivery/targets/qemu/x86_64_desktop_gui.yaml --interactive
-.\build.ps1 all --target-yaml delivery/targets/qemu/arm64_desktop_headless.yaml --smoke
+.\tools\build.ps1 all --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml --smoke
+.\tools\build.ps1 all --target-yaml delivery/targets/qemu/x86_64_desktop_gui.yaml --interactive
+.\tools\build.ps1 all --target-yaml delivery/targets/qemu/arm64_desktop_headless.yaml --smoke
 ```
 
 ```bash
@@ -221,26 +228,43 @@ Runtime command includes serial-first bring-up (`-nographic -monitor none -seria
 ./build.sh all --target-yaml delivery/targets/qemu/arm64_desktop_headless.yaml --smoke
 ```
 
-## 5.1 Canonical headless run commands (PowerShell)
+## 5.1 Canonical headless smoke-test commands (all 5 architectures)
+
+All commands verified with `[Run] PASS` on QEMU. Build + package + run in one shot.
+
+| Architecture | Profile | Target YAML |
+|---|---|---|
+| x86_64 | Desktop GP | `x86_64_desktop_headless.yaml` |
+| arm64 | Desktop GP | `arm64_desktop_headless.yaml` |
+| riscv64 | Desktop GP | `riscv64_desktop_headless.yaml` |
+| arm32 | Edge MMU-Lite | `arm32_mmu_lite_headless.yaml` |
+| riscv32 | Edge MMU-Lite | `riscv32_mmu_lite_headless.yaml` |
 
 ```powershell
-.\build.ps1 all --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml --smoke
-.\build.ps1 all --target-yaml delivery/targets/qemu/arm64_desktop_headless.yaml --smoke
-.\build.ps1 all --target-yaml delivery/targets/qemu/arm32_desktop_headless.yaml --smoke
-.\build.ps1 all --target-yaml delivery/targets/qemu/riscv64_desktop_headless.yaml --smoke
-.\build.ps1 all --target-yaml delivery/targets/qemu/riscv32_desktop_headless.yaml --smoke
+# PowerShell (Windows)
+
+# 64-bit desktop-class targets
+.\tools\build.ps1 all --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml --smoke
+.\tools\build.ps1 all --target-yaml delivery/targets/qemu/arm64_desktop_headless.yaml --smoke
+.\tools\build.ps1 all --target-yaml delivery/targets/qemu/riscv64_desktop_headless.yaml --smoke
+
+# 32-bit edge/embedded targets (MMU-Lite, single core, EDGE device profile)
+.\tools\build.ps1 all --target-yaml delivery/targets/qemu/arm32_mmu_lite_headless.yaml --smoke
+.\tools\build.ps1 all --target-yaml delivery/targets/qemu/riscv32_mmu_lite_headless.yaml --smoke
 ```
 
 ## 5.2 Canonical headless run commands (WSL/Linux/macOS)
 
 ### Personality Targets (Linux & Android)
+
 You can explicitly build the desktop GP profile with a specific personality:
+
 ```bash
 ./build.sh all --target x86_64_desktop_headless_linux
 ./build.sh all --target x86_64_desktop_headless_android
 ```
-These test targets assert that the ABI boundaries and dispatch tables do not cause build breakage or kernel panics during early boot.
 
+These test targets assert that the ABI boundaries and dispatch tables do not cause build breakage or kernel panics during early boot.
 
 ```bash
 ./build.sh all --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml --smoke

@@ -11,9 +11,8 @@
 
 bool arch_trap_is_syscall(const trap_frame_t *frame) {
     if (!frame) return false;
-    // On ARM32, we distinguish syscall by trap type or specific cause
-    // This is typically set by the low-level trap entry logic.
-    return (frame->type == TRAP_TYPE_SYSCALL);
+    // On ARM32, SVC exception (Software Interrupt) has cause code 2
+    return (frame->cause == 2 || (frame->type == TRAP_TYPE_SYNC && frame->cause == 0));
 }
 
 kstatus_t arch_trap_extract_syscall(const trap_frame_t *frame, bh_syscall_regs_t *out) {

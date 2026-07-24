@@ -27,13 +27,6 @@
 
 #define BH_USER_STACK_DEFAULT_SIZE (64U * 1024U)
 
-static void mem_zero(void *ptr, size_t size) {
-    uint8_t *p = (uint8_t *)ptr;
-    for (size_t i = 0; i < size; ++i) {
-        p[i] = 0;
-    }
-}
-
 static void mem_copy(void *dst, const void *src, size_t size) {
     uint8_t *d = (uint8_t *)dst;
     const uint8_t *s = (const uint8_t *)src;
@@ -95,7 +88,6 @@ kstatus_t bh_user_image_load(
 
         uint64_t start_addr = seg->virtual_address;
         uint64_t aligned_start = start_addr & ~(PAGE_SIZE - 1);
-        uint64_t offset_in_page = start_addr - aligned_start;
         uint64_t end_addr = start_addr + seg->memory_size;
         uint64_t aligned_end = (end_addr + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
         uint64_t map_size = aligned_end - aligned_start;
@@ -127,10 +119,9 @@ kstatus_t bh_user_image_load(
         }
 
         // Copy file data
-        void *dst = (void *)(uintptr_t)(aligned_start); // In a high-half kernel, this user VA is not directly accessible!
         // We must map it or use physmap.
         for (uint64_t off = 0; off < map_size; off += PAGE_SIZE) {
-             phys_addr_t paddr = 0;
+             uintptr_t paddr = 0;
              uint32_t out_prot = 0;
              prot_domain_query_region(aspace->prot_domain, aligned_start + off, &paddr, &out_prot);
              if (paddr) {

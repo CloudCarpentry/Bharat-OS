@@ -24,7 +24,7 @@ kstatus_t arch_copy_from_user_nofault(void *dst, const void *src, size_t len) {
             "   .balign 4\n"
             "   .long 1b - .\n"
             "   .long 3b - .\n"
-            "   .short %4\n"
+            "   .short %c4\n"
             "   .short 0\n"
             ".previous\n"
             : "=r"(val), "+r"(status)
@@ -57,7 +57,7 @@ kstatus_t arch_copy_to_user_nofault(void *dst, const void *src, size_t len) {
             "   .balign 4\n"
             "   .long 1b - .\n"
             "   .long 3b - .\n"
-            "   .short %4\n"
+            "   .short %c4\n"
             "   .short 0\n"
             ".previous\n"
             : "+r"(status)
