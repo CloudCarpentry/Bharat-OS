@@ -1,7 +1,19 @@
+---
+title: IPC Roadmap
+status: Proposed
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - kernel
+see_also:
+  - README.md
+---
 # IPC Roadmap
 
 ## Current Status (v1 Baseline)
-Based on current code analysis in `kernel/src/ipc/`:
+Based on current code analysis in `core/kernel/src/ipc/`:
 - ✅ **Synchronous Endpoints (`ipc_endpoint.c`)**: Core `ipc_endpoint_create`, `ipc_endpoint_send`, and `ipc_endpoint_receive` APIs are implemented and considered mature.
 - ✅ **Capability Delegation**: Endpoints successfully transfer capabilities across process boundaries with rights attenuation.
 - ✅ **Blocking Queues**: Sender/Receiver wait queues are implemented for synchronous rendezvous.

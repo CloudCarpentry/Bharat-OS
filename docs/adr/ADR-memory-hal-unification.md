@@ -1,3 +1,14 @@
+---
+title: ADR: Memory HAL Unification and Multikernel Memory Model
+status: Accepted
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - adr
+see_also:
+  - README.md
+---
 # ADR: Memory HAL Unification and Multikernel Memory Model
 
 ## Status
@@ -21,7 +32,7 @@ We will:
 2. Introduce memory backend abstraction (`hal_mem_model_t` and `hal_mem_backend_ops_t`).
 3. Enforce per-core memory ownership.
 4. Implement message-based TLB coordination.
-5. Move arch-specific code to `/arch/.../mm`.
+5. Move arch-specific code to `/core/arch/.../mm`.
 6. Remove legacy abstractions (`hal_vmm_*`, `mmu_ops_t`).
 
 ## Consequences

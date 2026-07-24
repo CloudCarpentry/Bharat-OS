@@ -1,0 +1,17 @@
+#ifndef LINUX_SYSCALL_NUMBERS_X86_64_H
+#define LINUX_SYSCALL_NUMBERS_X86_64_H
+
+#define LINUX_X86_64_SYS_READ          0
+#define LINUX_X86_64_SYS_WRITE         1
+#define LINUX_X86_64_SYS_OPEN          2
+#define LINUX_X86_64_SYS_CLOSE         3
+#define LINUX_X86_64_SYS_FSTAT         5
+#define LINUX_X86_64_SYS_MMAP          9
+#define LINUX_X86_64_SYS_MUNMAP        11
+#define LINUX_X86_64_SYS_BRK           12
+#define LINUX_X86_64_SYS_GETPID        39
+#define LINUX_X86_64_SYS_EXIT          60
+#define LINUX_X86_64_SYS_EXIT_GROUP    231
+#define LINUX_X86_64_SYS_OPENAT        257
+
+#endif // LINUX_SYSCALL_NUMBERS_X86_64_H

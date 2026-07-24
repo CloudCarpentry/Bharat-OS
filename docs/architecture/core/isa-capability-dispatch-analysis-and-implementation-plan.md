@@ -1,3 +1,15 @@
+---
+title: ISA Capability & Dispatch Analysis + Implementation Plan
+status: Proposed
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - core
+see_also:
+  - README.md
+---
 # ISA Capability & Dispatch Analysis + Implementation Plan
 
 ## Purpose
@@ -14,21 +26,21 @@ Guiding model:
 
 ### Code reviewed
 
-- `kernel/include/arch/arch_cpu_caps.h`
-- `arch/common/cpu_caps_state.c`
-- `arch/x86/x86_64/cpu_caps.c`
-- `arch/arm/arm64/cpu_caps.c`
-- `arch/riscv/riscv64/cpu_caps.c`
-- `arch/arm/arm32/cpu_caps.c`
-- `kernel/include/hal/hal_discovery.h`
-- `hal/common/discovery.c`
-- `kernel/include/arch/memops.h`
-- `arch/common/memops_scalar.c`
-- `arch/x86/x86_64/memops.c`
-- `arch/arm/arm64/memops.c`
-- `arch/riscv/riscv64/memops.c`
-- `hal/include/hal/hal_isa_caps.h`
-- `hal/include/hal/hal_cpu.h`
+- `core/kernel/include/core/arch/arch_cpu_caps.h`
+- `core/arch/common/cpu_caps_state.c`
+- `core/arch/x86/x86_64/cpu_caps.c`
+- `core/arch/arm/arm64/cpu_caps.c`
+- `core/arch/riscv/riscv64/cpu_caps.c`
+- `core/arch/arm/arm32/cpu_caps.c`
+- `core/kernel/include/corecore/halcore/hal_discovery.h`
+- `corecore/hal/common/discovery.c`
+- `core/kernel/include/core/arch/memops.h`
+- `core/arch/common/memops_scalar.c`
+- `core/arch/x86/x86_64/memops.c`
+- `core/arch/arm/arm64/memops.c`
+- `core/arch/riscv/riscv64/memops.c`
+- `corecore/hal/include/corecore/halcore/hal_isa_caps.h`
+- `corecore/hal/include/corecore/halcore/hal_cpu.h`
 
 ### Docs reviewed
 
@@ -50,14 +62,14 @@ Guiding model:
 
 ### Not implemented / partial
 
-- No canonical HAL contract for CPU features at `hal/include/hal/hal_cpu_features.h` (or equivalent strongly typed API).
+- No canonical HAL contract for CPU features at `corecore/hal/include/corecore/halcore/hal_cpu_features.h` (or equivalent strongly typed API).
 - Existing `hal_isa_caps.h` is minimal (`isa_name`, `has_mmu`, `has_mpu`, `min_alignment`) and does not represent modern feature classes.
 - No per-cluster/package feature record in HAL API.
 - No user/service-facing stable query API for capabilities (beyond internal discovery structs).
 
 ### Needs improvement
 
-- Normalize around generalized HAL feature classes (vector, scalable vector, matrix, memory tagging, branch protection, crypto, bitmanip, cache block ops) and map ISA details in `arch/`.
+- Normalize around generalized HAL feature classes (vector, scalable vector, matrix, memory tagging, branch protection, crypto, bitmanip, cache block ops) and map ISA details in `core/arch/`.
 
 ---
 
@@ -104,22 +116,22 @@ Guiding model:
 
 ---
 
-## 4) Architectural boundary compliance (`arch/`, `hal/`, `platform/`)
+## 4) Architectural boundary compliance (`core/arch/`, `corecore/hal/`, `core/platform/`)
 
 ### Implemented
 
-- Most ISA probing logic is in `arch/*/cpu_caps.c`, aligned with boundary goals.
-- HAL common layer (`hal/common/discovery.c`) translates arch features into higher-level masks.
+- Most ISA probing logic is in `core/arch/*/cpu_caps.c`, aligned with boundary goals.
+- HAL common layer (`corecore/hal/common/discovery.c`) translates arch features into higher-level masks.
 
 ### Not implemented / partial
 
-- Repository still has arch-specific directories under `hal/` (known and documented boundary blur).
-- Capability normalization currently lives partly in kernel headers (`kernel/include/hal/hal_discovery.h`) rather than a tighter HAL contract package.
+- Repository still has arch-specific directories under `corecore/hal/` (known and documented boundary blur).
+- Capability normalization currently lives partly in kernel headers (`core/kernel/include/corecore/halcore/hal_discovery.h`) rather than a tighter HAL contract package.
 
 ### Needs improvement
 
-- Keep raw ISA parse and feature probing in `arch/`.
-- Move/introduce a canonical HAL-facing feature contract in `hal/include/hal/` and make all callers consume that API.
+- Keep raw ISA parse and feature probing in `core/arch/`.
+- Move/introduce a canonical HAL-facing feature contract in `corecore/hal/include/corecore/hal/` and make all callers consume that API.
 
 ---
 
@@ -142,8 +154,8 @@ Guiding model:
 
 **Add files**
 
-- `hal/include/hal/hal_cpu_features.h`
-- `hal/common/cpu_features.c`
+- `corecore/hal/include/corecore/halcore/hal_cpu_features.h`
+- `corecore/hal/common/cpu_features.c`
 
 **Deliverables**
 
@@ -153,15 +165,15 @@ Guiding model:
 
 **Acceptance criteria**
 
-- No direct ISA macro checks outside `arch/` and arch mapping units for new call sites.
+- No direct ISA macro checks outside `core/arch/` and arch mapping units for new call sites.
 - Build passes for x86_64, arm64, riscv64 targets.
 
 ### Task 1.2: Real AP probing and aggregation
 
 **Change files**
 
-- `arch/*/*/cpu_caps.c` (all supported ISAs)
-- `arch/common/cpu_caps_state.c`
+- `core/arch/*/*/cpu_caps.c` (all supported ISAs)
+- `core/arch/common/cpu_caps_state.c`
 
 **Deliverables**
 
@@ -177,7 +189,7 @@ Guiding model:
 
 **Change file**
 
-- `arch/arm/arm32/cpu_caps.c`
+- `core/arch/arm/arm32/cpu_caps.c`
 
 **Deliverables**
 
@@ -195,8 +207,8 @@ Guiding model:
 
 **Add files**
 
-- `hal/common/memops/ops.c`
-- `hal/include/hal/hal_memops_ops.h`
+- `corecore/hal/common/memops/ops.c`
+- `corecore/hal/include/corecore/halcore/hal_memops_ops.h`
 
 **Deliverables**
 
@@ -212,14 +224,14 @@ Guiding model:
 
 **Add files**
 
-- `hal/common/bitops/ops.c`
-- `hal/common/crypto/ops.c`
-- `hal/common/cacheops/ops.c`
+- `corecore/hal/common/bitops/ops.c`
+- `corecore/hal/common/crypto/ops.c`
+- `corecore/hal/common/cacheops/ops.c`
 
 **Deliverables**
 
 - Same dispatch pattern as memops.
-- Arch implementations remain in `arch/`; HAL only selects and exposes contracts.
+- Arch implementations remain in `core/arch/`; HAL only selects and exposes contracts.
 
 **Acceptance criteria**
 
@@ -286,7 +298,7 @@ Guiding model:
   - normalized HAL feature advertisement,
   - boot-selected dispatch tables for hot primitives,
   - and verified generic fallback behavior.
-- No ISA-fragmented conditionals are scattered through kernel/services fast paths.
+- No ISA-fragmented conditionals are scattered through core/kernel/services fast paths.
 - Feature enablement policy is profile-driven and auditable.
 
 ---
@@ -296,17 +308,17 @@ Guiding model:
 Completed in this change set:
 
 - Added canonical HAL CPU feature query contract:
-  - `hal/include/hal/hal_cpu_features.h`
-  - `hal/common/cpu_features.c`
+  - `corecore/hal/include/corecore/halcore/hal_cpu_features.h`
+  - `corecore/hal/common/cpu_features.c`
 - Completed AP capability probing hooks for:
-  - `arch/x86/x86_64/cpu_caps.c`
-  - `arch/arm/arm64/cpu_caps.c`
-  - `arch/riscv/riscv64/cpu_caps.c`
-  - `arch/arm/arm32/cpu_caps.c`
+  - `core/arch/x86/x86_64/cpu_caps.c`
+  - `core/arch/arm/arm64/cpu_caps.c`
+  - `core/arch/riscv/riscv64/cpu_caps.c`
+  - `core/arch/arm/arm32/cpu_caps.c`
 - Implemented true `system_all` / `system_any` aggregation over online CPUs in:
-  - `arch/common/cpu_caps_state.c`
+  - `core/arch/common/cpu_caps_state.c`
 - Added host verification test:
-  - `tests/host/test_hal_cpu_features.c`
+  - `quality/tests/host/test_hal_cpu_features.c`
 
 Remaining high-priority follow-up:
 

@@ -2,7 +2,7 @@
 build*/
 out/
 bin/
-kernel/include/generated/
+# Note: core/kernel/include/generated/ contains a committed fail-fast shim
 
 # Object files and libraries
 *.o
@@ -30,6 +30,9 @@ Makefile
 !cmake/*.cmake
 !cmake/toolchains/*.cmake
 !cmake/modules/*.cmake
+!delivery/cmake/*.cmake
+!delivery/cmake/toolchains/*.cmake
+!delivery/cmake/modules/*.cmake
 !tests/host/cmake/*.cmake
 cmake_install.cmake
 compile_commands.json
@@ -59,3 +62,5 @@ run_vm_tests.sh
 build/
 !tools/build/
 !docs/dev/build/
+test_sched_hardening
+test_tlb_hardening

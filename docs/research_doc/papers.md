@@ -1,3 +1,14 @@
+---
+title: Foundational Research Papers
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - research_doc
+see_also:
+  - README.md
+---
 # Foundational Research Papers
 
 Bharat-OS draws heavy inspiration from several foundational operating systems and academic works. The following papers provide the canonical design guidance and architectural underpinnings for the OS.

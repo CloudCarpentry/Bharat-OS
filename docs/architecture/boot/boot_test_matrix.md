@@ -1,3 +1,15 @@
+---
+title: Boot Test Matrix
+status: Proposed
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - boot
+see_also:
+  - README.md
+---
 # Boot Test Matrix
 
 **Status**: Active
@@ -15,4 +27,4 @@ The Boot Test Matrix validates the `boot_info_t` conversion, error reporting, me
    - Security constraints: `test_boot_policy.c` refuses verified states unless the hardware supports and tracks them.
 
 2. **E2E QEMU Runs**:
-   - `tests/e2e/boot/run_boot_tests.sh` simulates and parses the Multiboot2, OpenSBI, and FDT outputs against `kernel_panic` behavior and deterministic success lines (`BOOT: Normalized handoff contract established`).
+   - `quality/tests/e2e/boot/run_boot_tests.sh` (legacy alias: `quality/tests/e2e/boot/run_boot_tests.sh`) simulates and parses the Multiboot2, OpenSBI, and FDT outputs against `kernel_panic` behavior and deterministic success lines (`BOOT: Normalized handoff contract established`).

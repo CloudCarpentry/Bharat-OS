@@ -1,8 +1,20 @@
+---
+title: Thread Lifecycle and State Machine
+status: Proposed
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - kernel
+see_also:
+  - README.md
+---
 # Thread Lifecycle and State Machine
 
 ### Contract Status
 - **Spec**: ✅ Documented and versioned
-- **Implemented**: 🚧 Pending kernel/service behavior merge
+- **Implemented**: 🚧 Pending core/kernel/service behavior merge
 - **Validated**: ❌ Pending stress/fault-injection tests
 
 

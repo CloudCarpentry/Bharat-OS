@@ -18,7 +18,7 @@ The Android Compatibility Personality is designed to provide application ecosyst
 
 *   The personality hosts the Android Runtime (ART).
 *   It provides the required native memory mappings, threading behaviors (e.g., standard Bionic libc expectations), and JNI environments required by ART.
-*   This relies heavily on the shared **Runtime Hosting Layer** (`uapi/runtime/`) for standard process and memory hooks.
+*   This relies heavily on the shared **Runtime Hosting Layer** (`interface/uapi/runtime/`) for standard process and memory hooks.
 
 ## 3. Binder IPC Strategy
 

@@ -1,3 +1,15 @@
+---
+title: UAPI, IDL, and IPC Boundary
+status: Proposed
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - core
+see_also:
+  - README.md
+---
 # UAPI, IDL, and IPC Boundary
 
 This document explicitly defines the separation of concerns between UAPI, IDL, and IPC layers in Bharat-OS. Maintaining strict discipline around these boundaries is critical for a stable ABI, decoupled service interactions, and long-term architectural health.
@@ -26,7 +38,7 @@ Or conceptually:
 
 **Definition:** Stable, versioned, language-agnostic data contracts shared across the kernel, user-space services, and external consumers.
 
-**Scope:** The `uapi/` directory.
+**Scope:** The `interface/uapi/` directory.
 
 **Must Include:**
 * C structs defining exact memory layout.
@@ -43,7 +55,7 @@ Or conceptually:
 
 **Definition:** Service interface contracts that define *how components interact*, not *what the internal data structures look like*.
 
-**Scope:** The `idl/` directory.
+**Scope:** The `interface/idl/` directory (legacy alias: `interface/idl/` during migration).
 
 **Must Include:**
 * RPC methods (e.g., `Subscribe`, `Publish`, `ReadSnapshot`).
@@ -73,11 +85,11 @@ Or conceptually:
 
 ## Folder Placement Rules
 
-* **`uapi/`**: Contains stable shared contracts (e.g., `uapi/bharat/system/telemetry.h`).
-* **`idl/`**: Contains service interface definitions (e.g., `idl/telemetry_v1.bidl`).
+* **`interface/uapi/`**: Contains stable shared contracts (e.g., `interface/uapi/bharat/system/telemetry.h`).
+* **`interface/idl/`**: Contains service interface definitions (e.g., `interface/idl/telemetry_v1.bidl`).
 * **`lib/ipc/` or `lib/urpc/`**: Implements transport mechanisms.
-* **`services/`**: Contains service implementations that provide or consume IDL interfaces.
-* **`kernel/`**: Emits or consumes UAPI types directly and leverages IPC, but typically does not participate in IDL-level RPC policies.
+* **`core/services/`**: Contains service implementations that provide or consume IDL interfaces.
+* **`core/kernel/`**: Emits or consumes UAPI types directly and leverages IPC, but typically does not participate in IDL-level RPC policies.
 
 ## DOs and DON'Ts
 
@@ -97,7 +109,7 @@ Or conceptually:
 
 ### Example 1: Telemetry Event
 
-**UAPI (`uapi/bharat/system/telemetry.h`):**
+**UAPI (`interface/uapi/bharat/system/telemetry.h`):**
 ```c
 typedef struct {
     uint64_t timestamp;
@@ -107,7 +119,7 @@ typedef struct {
 } bharat_event_header_t;
 ```
 
-**IDL (`idl/telemetry_v1.bidl`):**
+**IDL (`interface/idl/telemetry_v1.bidl`):**
 ```text
 rpc Subscribe(SubscribeReq) -> SubscribeResp
 rpc GetEventSnapshot(GetEventSnapshotReq) -> GetEventSnapshotResp
@@ -118,7 +130,7 @@ rpc GetEventSnapshot(GetEventSnapshotReq) -> GetEventSnapshotResp
 
 ### Example 2: Telemetry Counter
 
-**UAPI (`uapi/bharat/system/telemetry.h`):**
+**UAPI (`interface/uapi/bharat/system/telemetry.h`):**
 ```c
 typedef struct {
     uint32_t counter_id;
@@ -127,7 +139,7 @@ typedef struct {
 } bharat_counter_t;
 ```
 
-**IDL (`idl/telemetry_v1.bidl`):**
+**IDL (`interface/idl/telemetry_v1.bidl`):**
 ```text
 rpc ListCounters(ListCountersReq) -> ListCountersResp
 rpc ReadCounterSnapshot(ReadCounterSnapshotReq) -> ReadCounterSnapshotResp

@@ -1,3 +1,15 @@
+---
+title: Shell Profile Matrix
+status: Proposed
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - system
+see_also:
+  - README.md
+---
 # Shell Profile Matrix
 
 This matrix maps Bharat-OS product profiles to shell class, access mode, and operational policy.
@@ -11,7 +23,7 @@ This matrix maps Bharat-OS product profiles to shell class, access mode, and ope
 | Edge / gateway / network appliance | Admin shell | Operator-facing | prod, dev, recovery | Strong capability gates and audit required. |
 | Automotive / drone / robotics | Restricted admin + mini recovery | Hidden/operator | prod, recovery, factory | Safety runtime restricts mutating commands; break-glass path must be explicit. |
 | Cloud / server / developer platforms | Full admin shell | Visible | dev, prod, recovery | Broader diagnostics and automation-friendly output. |
-| Linux personality target (deferred) | Compatibility shell | Personality-facing | dev/prod (personality-scoped) | Implement later in `personalities/compat/`; keep separate from core system shell. |
+| Linux personality target (deferred) | Compatibility shell | Personality-facing | dev/prod (personality-scoped) | Implement later in `core/personalities/compat/`; keep separate from core system shell. |
 
 ## Policy expectations by profile
 
@@ -55,6 +67,44 @@ This matrix maps Bharat-OS product profiles to shell class, access mode, and ope
 | `CONFIG_SHELL_SCRIPT` | off | off | optional | off/restricted | optional |
 | `CONFIG_SHELL_COMPAT_POSIX` | n/a | n/a | n/a | n/a | deferred |
 
+## QEMU build matrix for shell bring-up
+
+Use these delivery targets for repeatable build+run validation of shell behavior:
+
+| Validation lane | Target YAML | Primary intent | Expected shell profile |
+|---|---|---|---|
+| x86_64 headless | `delivery/targets/qemu/x86_64_desktop_headless.yaml` | Fastest developer bring-up and command-path checks | Admin + recovery |
+| arm64 headless | `delivery/targets/qemu/arm64_desktop_headless.yaml` | Cross-arch parity checks for console/shell path | Admin + recovery |
+| riscv64 headless | `delivery/targets/qemu/riscv64_desktop_headless.yaml` | RISC-V parity and regression guardrail | Admin + recovery |
+
+Canonical command shape:
+
+```bash
+python3 tools/build.py all --target-yaml <one-of-the-targets-above>
+```
+
+## Minimum shell command test set per build
+
+Each QEMU lane should execute at least the following command sequence after boot:
+
+1. `help`
+2. `version`
+3. `status`
+4. `uptime`
+5. `mode kv`
+6. `sys info`
+7. `svc list`
+8. `reboot` (or another privileged command) with explicit policy expectation:
+   - deny in restricted/prod session without capability,
+   - allow only when capability + mode policy permit.
+
+This command set proves:
+
+- Input path works (interactive command ingestion),
+- Output path works (human + machine-readable),
+- Registry resolution works for single-token and multi-token commands,
+- Capability/mode policy enforcement works for mutating operations.
+
 ## Command policy baseline
 
 | Command class | Dev | Prod | Factory | Recovery | Safety-critical runtime |
@@ -75,3 +125,4 @@ When adding a new profile, document:
 4. Mutating command policy and required capabilities.
 5. Audit and rate-limit requirements.
 6. Safety restrictions (if applicable).
+7. QEMU validation lane and shell command test set evidence.

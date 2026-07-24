@@ -10,12 +10,12 @@ tags: ["architecture", "personalities"]
 
 # Personality Layer Model
 
-> **Note on Code Structure:** The architecture enforces a strict separation. Syscalls hit a generic trap layer (`kernel/src/arch/*/trap.c`) and are routed through the native UAPI. Foreign ABIs are supported through compatibility layers (`personalities/compat/linux/`, etc.) that translate POSIX and other semantics into native IPC/uRPC requests.
+> **Note on Code Structure:** The architecture enforces a strict separation. Syscalls hit a generic trap layer (`core/kernel/src/core/arch/*/trap.c`) and are routed through the native UAPI. Foreign ABIs are supported through compatibility layers (`core/personalities/compat/linux/`, etc.) that translate POSIX and other semantics into native IPC/uRPC requests.
 
 
 ## 0. Documentation Entry Point
 
-Use `docs/architecture/personalities/README.md` as the canonical index for all personality-layer architecture and roadmap content.
+Use `docs/architecture/core/personalities/README.md` as the canonical index for all personality-layer architecture and roadmap content.
 
 ## Overview
 
@@ -31,9 +31,9 @@ Instead, the OS defines a **Native Bharat Personality** and corresponding UAPI, 
 
 This is the real OS contract for Bharat-native apps. It does not use POSIX paths or ambient file descriptors.
 
-- **Native UAPI (`uapi/`):** Defines the stable public contracts (process/thread syscalls, capability rights, IPC message layouts, native handles).
+- **Native UAPI (`interface/uapi/`):** Defines the stable public contracts (process/thread syscalls, capability rights, IPC message layouts, native handles).
 - **Capability-Driven:** File access occurs via capability/object handle acquisition, followed by service-mediated lookup.
-- **Service Ownership:** `services/system/filesystem/` owns the namespace and mount policies. `stacks/storage/` owns the composed storage internals.
+- **Service Ownership:** `core/services/system/filesystem/` owns the namespace and mount policies. `core/stacks/storage/` owns the composed storage internals.
 
 ## 2. Compat Personalities (e.g., Linux POSIX)
 

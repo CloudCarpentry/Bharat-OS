@@ -1,0 +1,59 @@
+version: 1
+description: "Bharat-OS Headless Boot Contract baseline"
+
+common:
+  forbidden: &common_forbidden
+    - "PANIC"
+    - "ASSERT"
+    - "FAULT"
+    - "triple fault"
+    - "Unhandled exception"
+    - "kernel oops"
+    - "segmentation fault"
+    - "TIMEOUT"
+    - "QEMU TIMEOUT"
+    - "BOOT TIMEOUT"
+
+targets:
+  x86_64_desktop_headless:
+    description: "x86_64 baseline headless boot"
+    required:
+      - "BOOT: kernel_main reached"
+      - "KT: capability"
+      - "KT: scheduler"
+    allowed_skip:
+      - "SKIP: sched_remote_ipi requires >=2 online cores"
+    forbidden: *common_forbidden
+    timeout_seconds: 30
+
+  arm64_desktop_headless:
+    description: "ARM64 baseline headless boot"
+    required:
+      - "BOOT: kernel_main reached"
+    forbidden: *common_forbidden
+    timeout_seconds: 30
+
+  riscv64_desktop_headless:
+    description: "RISC-V 64 baseline headless boot"
+    required:
+      - "BOOT: kernel_main reached"
+    forbidden: *common_forbidden
+    timeout_seconds: 30
+
+  arm32_mmu_lite_headless:
+    description: "ARM32 MMU-Lite headless boot"
+    required:
+      - "BOOT: kernel_main reached"
+    allowed_skip:
+      - "SKIP: SMP test requires >=2 online cores"
+    forbidden: *common_forbidden
+    timeout_seconds: 30
+
+  riscv32_mmu_lite_headless:
+    description: "RISC-V 32 MMU-Lite headless boot"
+    required:
+      - "BOOT: kernel_main reached"
+    allowed_skip:
+      - "SKIP: SMP test requires >=2 online cores"
+    forbidden: *common_forbidden
+    timeout_seconds: 30

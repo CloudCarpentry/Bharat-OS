@@ -1,3 +1,15 @@
+---
+title: Antigravity IDE Integration Guide
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - ai-agents
+  - ide
+see_also:
+  - README.md
+---
 # Antigravity IDE Integration Guide
 
 ## Recommended Setup

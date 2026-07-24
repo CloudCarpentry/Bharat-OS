@@ -1,3 +1,14 @@
+---
+title: Bharat-OS Toolchain Guide
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - dev
+see_also:
+  - README.md
+---
 # Bharat-OS Toolchain Guide
 
 ## Purpose
@@ -11,7 +22,7 @@ Supported target architectures:
 - `arm64`
 - `riscv64`
 
-Toolchains are defined in `cmake/toolchains/<arch>-elf.cmake`.
+Toolchains are canonically defined in `delivery/cmake/toolchains/<arch>-elf.cmake` (legacy `cmake/toolchains/*` paths remain supported via compatibility symlink during migration).
 
 ## Host vs. Target Environments
 - **Host System:** The machine executing the compiler (e.g., your laptop running Ubuntu or Windows).
@@ -25,17 +36,17 @@ The toolchain files ensure that CMake correctly identifies `CMAKE_SYSTEM_NAME` (
 ```bash
 ./build.sh build --target x86_64
 ```
-*Behind the scenes: Calls CMake using `cmake/toolchains/x86_64-elf.cmake`.*
+*Behind the scenes: Calls CMake using `delivery/cmake/toolchains/x86_64-elf.cmake` (or legacy-compatible `cmake/toolchains/x86_64-elf.cmake`).*
 
 ### 2. Building the SDK
 ```bash
-cd user/sdk/
+cd user/interface/sdk/
 ./build.sh build --target arm64
 ```
 *Behind the scenes: Leverages the exact same toolchain files to ensure ABI consistency.*
 
 ## Environment Validation
-The build scripts in `tools/` and `user/sdk/` have been enhanced to perform basic environment validation, verifying that CMake and Ninja/Make exist before proceeding, which prevents cryptic linker errors later.
+The build scripts in `tools/` and `user/interface/sdk/` have been enhanced to perform basic environment validation, verifying that CMake and Ninja/Make exist before proceeding, which prevents cryptic linker errors later.
 
 ## Debugging Build Failures
 1. Check that the correct `ARCH` is passed.

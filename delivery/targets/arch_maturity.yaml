@@ -1,0 +1,49 @@
+x86_64:
+  tier: full
+  memory_model: MMU_FULL
+  boot: baseline
+  trap: baseline
+  syscall: baseline
+  mmu: baseline
+  smp: baseline
+  production_candidate: true
+
+arm64:
+  tier: full
+  memory_model: MMU_FULL
+  boot: baseline
+  trap: baseline
+  syscall: baseline
+  mmu: baseline
+  smp: partial
+  production_candidate: true
+
+riscv64:
+  tier: full
+  memory_model: MMU_FULL
+  boot: baseline
+  trap: baseline
+  syscall: partial
+  mmu: baseline
+  smp: partial
+  production_candidate: true
+
+arm32:
+  tier: edge32
+  memory_model: MMU_LITE
+  boot: partial
+  trap: stub
+  syscall: unsupported
+  mmu: scaffold
+  smp: unsupported
+  production_candidate: false
+
+riscv32:
+  tier: edge32
+  memory_model: MMU_LITE
+  boot: partial
+  trap: stub
+  syscall: unsupported
+  mmu: scaffold
+  smp: unsupported
+  production_candidate: false

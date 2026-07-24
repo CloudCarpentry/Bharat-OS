@@ -1,3 +1,15 @@
+---
+title: Bharat-OS Comprehensive Memory Architecture
+status: Proposed
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - memory
+see_also:
+  - README.md
+---
 # Bharat-OS Comprehensive Memory Architecture
 
 ## 1. Executive Summary
@@ -100,13 +112,13 @@ The memory stack is divided into explicit layers, each with strict responsibilit
 
 | Layer | Responsibility | Must Not Know About |
 |---|---|---|
-| **PMM** (`kernel/src/mm/pmm/`) | Physical frames, buddy allocation, contiguous alloc | Virtual memory policies, demand faults |
-| **VM Object** (`kernel/src/mm/vm/objects/`) | Backing semantics, lifecycle, page fault resolution | Hardware translation formats |
-| **Address Space** (`kernel/src/mm/vm/aspace/`) | Region reservations, overlap rules | Physical allocation policies |
-| **HAL PT** (`kernel/include/hal/hal_pt.h`) | Hardware page table programming | VM object semantics |
-| **HAL TLB** (`kernel/src/mm/tlb/`) | Invalidation coordination | PMM frame ownership |
-| **Fault Engine** (`kernel/src/mm/vm/fault/`) | Decoding traps, orchestrating lookup | PMM internal structures |
-| **DMA/IOMMU** (`kernel/src/mm/dma/`) | Device-visible mappings, IOVA domains | General user-space semantics |
+| **PMM** (`core/kernel/src/mm/pmm/`) | Physical frames, buddy allocation, contiguous alloc | Virtual memory policies, demand faults |
+| **VM Object** (`core/kernel/src/mm/vm/objects/`) | Backing semantics, lifecycle, page fault resolution | Hardware translation formats |
+| **Address Space** (`core/kernel/src/mm/vm/aspace/`) | Region reservations, overlap rules | Physical allocation policies |
+| **HAL PT** (`core/kernel/include/corecore/halcore/hal_pt.h`) | Hardware page table programming | VM object semantics |
+| **HAL TLB** (`core/kernel/src/mm/tlb/`) | Invalidation coordination | PMM frame ownership |
+| **Fault Engine** (`core/kernel/src/mm/vm/fault/`) | Decoding traps, orchestrating lookup | PMM internal structures |
+| **DMA/IOMMU** (`core/kernel/src/mm/dma/`) | Device-visible mappings, IOVA domains | General user-space semantics |
 
 ### Layer Ownership Map
 
@@ -217,9 +229,13 @@ This matrix is the executable contract for memory behavior across Bharat-OS memo
 
 ```mermaid
 flowchart TD
-    Start[Initialization] --> Query{Query Hardware Capabilities<br/>`hal_pt_caps()`, `hal_tlb_caps()`}
+    Start[Initialization] --> Query{Query Hardware Capabilities<br/>`hal_mem_get_caps()`}
 
-    Query -->|Full Sparse-MMU<br/>Fine-grained Page Ops| MMUFull[Select: MMU-full Profile]
+    Query --> Validator{Kernel Memory Validator<br/>`mm_validate_model()`}
+    Validator -->|Mismatch / Insecure| Panic[Fail Closed / Panic]
+    Validator -->|Compatible| Selected[Validated Memory Model]
+
+    Selected -->|Full Sparse-MMU<br/>Fine-grained Page Ops| MMUFull[Select: MMU-full Profile]
     Query -->|Partial MMU<br/>Fallback-heavy Page Ops| MMULite[Select: MMU-lite Profile]
     Query -->|No Sparse-MMU<br/>Region-based Only| MPUOnly[Select: MPU-only Profile]
 
@@ -242,7 +258,7 @@ flowchart LR
 
 ### 7.4 Monitor VM Channel Coordination
 
-The distributed VM implementation relies on the Monitor VM Channel for inter-core memory coordination. The monitor (`kernel/src/monitor/mon_vm_service.c` and `mon_vm_dispatch.c`) is strictly a mechanism layer, providing bounded-completion URPC/IPC capabilities to the advanced VM and TLB controllers.
+The distributed VM implementation relies on the Monitor VM Channel for inter-core memory coordination. The monitor (`core/kernel/src/monitor/mon_vm_service.c` and `mon_vm_dispatch.c`) is strictly a mechanism layer, providing bounded-completion URPC/IPC capabilities to the advanced VM and TLB controllers.
 
 **Design Guarantees:**
 1. **Bounded Wait:** Operations are dispatched with strict limits on wait times (e.g., `mon_vm_wait_for_acks` terminates on timeout or terminal error rather than indefinite blocking).
@@ -326,5 +342,5 @@ For fast iterative verification of admission logic and capability matrices, exec
 mkdir -p build/host && cd build/host
 cmake ../../ -DBHARAT_BUILD_HOST_TESTS=ON
 make test_mem_model_ai
-./tests/host/test_mem_model_ai
+./quality/tests/host/test_mem_model_ai
 ```

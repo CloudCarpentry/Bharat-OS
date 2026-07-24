@@ -1,15 +1,27 @@
+---
+title: Network Checksums and CRC Inefficiencies
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - reviews
+  - gap_analysis
+see_also:
+  - README.md
+---
 # Network Checksums and CRC Inefficiencies
 
 This document tracks where software computation is used for Checksum validation, Generation, and Cyclic Redundancy Checks (CRCs). These are typically expensive operations per-packet or per-message, making them prime candidates for hardware offloading.
 
 ## Subsystems
 
-### 1. Network Stack - ICMP, TCP/IP Checksums (`services/netstack/src/icmp.c`)
+### 1. Network Stack - ICMP, TCP/IP Checksums (`core/services/netstack/src/icmp.c`)
 The network stack computes generic IP/ICMP checksums on headers manually.
-*   **File:** `services/netstack/src/icmp.c`
+*   **File:** `core/services/netstack/src/icmp.c`
 *   **Context:** Explicit verification and calculation (e.g., `net_checksum(icmph, netbuf_len(nb))`).
 *   **Improvement Suggestion:**
-    *   **Hardware Offloading:** Almost all modern network interface cards (NICs) support Checksum Offload (Tx/Rx Checksum Offloading). The `packet_buf_t` structure contains a `flags` field intended to communicate offloads between `netstack` and drivers (e.g., `drivers/virtio_net/virtio_net.c`).
+    *   **Hardware Offloading:** Almost all modern network interface cards (NICs) support Checksum Offload (Tx/Rx Checksum Offloading). The `packet_buf_t` structure contains a `flags` field intended to communicate offloads between `netstack` and drivers (e.g., `core/drivers/virtio_net/virtio_net.c`).
     *   **Architecture Update:** Ensure drivers negotiate Checksum Offloading (CSUM) with the hardware (e.g., VirtIO features `VIRTIO_NET_F_CSUM` / `VIRTIO_NET_F_GUEST_CSUM`). Skip software checksum verification if the hardware has already flagged the packet as valid.
     *   **Algorithmic:** When hardware offload is unavailable, replacing byte-level summation with vectorized/SIMD addition arrays across large buffers (e.g., AVX2 instructions summing multiple words at a time) will drastically reduce software overhead.
 

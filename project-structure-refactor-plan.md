@@ -12,6 +12,29 @@ This plan is based on the current repo layout and build system behavior (`build.
 
 ---
 
+## Migration tracker (live)
+
+| ID | Slice | Status | Notes |
+| --- | --- | --- | --- |
+| A | QEMU YAML move to `delivery/targets/qemu` | ✅ Completed | Alias translation exists in `tools/build/path_aliases.py` and resolver wiring. |
+| B1 | Shared alias helper adoption for target matrix + loader | ✅ Completed | `tools/targets/loader.py` now uses shared alias helper/fallback primitives. |
+| B2 | Alias helper adoption for ABI tooling path resolution | ✅ Completed | `tools/abi/{check_idl_compat.py,check_struct_layouts.py,generate_abi_manifests.py}` now resolve `interface/*` canonical paths via shared `tools/build/path_aliases.py` helpers with legacy fallback warnings. |
+| B3 | Guard escalation to strict mode | ✅ Completed | `kernel-ci` now runs `tools/ci/check_migration_refs.py --strict`; guard patterns cover completed A/C/B2 legacy roots. |
+| B4 | Delivery config/assets root relocation + legacy symlink trimming | ✅ Completed | `configs/` and `assets/` now canonicalize to `delivery/{configs,assets}`; root compatibility symlinks have been removed after canonical caller migration, and obsolete `quality/*` compatibility symlink fanout is removed. |
+| B5 | Delivery CMake root relocation (`cmake/` -> `delivery/cmake/`) | ✅ Completed | Canonical CMake modules/toolchains now live under `delivery/cmake`; legacy top-level `cmake` compatibility symlink has been removed after migrating in-repo callers to canonical `delivery/cmake` paths. |
+| C1 | Interface `idl/` move | ✅ Completed | `interface/idl/` is authoritative; root `idl` compatibility symlink has been removed, and tooling fallback remains for legacy path inputs. |
+| C2 | Interface `uapi/` move | ✅ Completed | `interface/uapi/` is authoritative; root `uapi` compatibility symlink has been removed after canonical include/cmake caller migration. |
+| C3 | Interface `sdk/` move | ✅ Completed | `interface/sdk/` is authoritative; root `sdk` compatibility symlink has been removed. |
+| D1 | `boot/` to `core/boot/` | ✅ Completed | D1a + D1b completed: sources/common/include/discovery/protocols are canonical in `core/boot/*`; D1c completed: kernel sub-target CMake include wiring now uses migration-aware `BHARAT_BOOT_INCLUDE_DIR`; D1e completed: legacy `boot/{src,common,include,discovery,protocols}` symlink fanout removed after migrating in-repo build/test include paths to `core/boot/*`; D1f completed: kernel build wiring now requires canonical `core/boot/*` roots (no legacy boot root fallback in `core/kernel` CMake). |
+| D2 | `kernel/` to `core/kernel/` | ✅ Completed | D2a–D2f completed. Canonical kernel build now requires `core/kernel/*`; legacy `kernel/{CMakeLists.txt,include,src,staging,linker*.ld}` compatibility symlinks have been removed after canonical caller migration. |
+| D3 | `arch/` + `hal/` + `platform/` to `core/*` | ✅ Completed | D3a–D3c completed. Legacy top-level `arch`, `hal`, and `platform` compatibility symlinks have been removed; canonical roots are `core/arch`, `core/hal`, and `core/platform`. |
+| D4 | `lib/` + `stacks/` + `drivers/` + `services/` + `personalities/` to `core/*` (bounded slice) | ✅ Completed | D4a–D4c completed. Canonical roots are now enforced under `core/*`; top-level compatibility symlinks for `lib`, `stacks`, `drivers`, `services`, and `personalities` have been removed after migrating in-repo callers/tests to canonical `core/*` paths. |
+| E1 | `tests/` to `quality/tests/` (bounded Phase 5 slice) | ✅ Completed | Canonical host/unit/e2e test tree now lives under `quality/tests`; root `tests` compatibility symlink has been removed after in-repo path migration. |
+| F1 | Public umbrella `include/` to `interface/include/` | ✅ Completed | Canonical public header tree now resides in `interface/include`; root `include` compatibility symlink has been removed after migrating in-repo CMake include wiring to the canonical interface path. |
+| F2 | `user/` apps+SDK to `experience/user/` | ✅ Completed | Canonical user-space tree now resides in `experience/user`; root `user` compatibility symlink has been removed and top-level CMake still prefers canonical path with fallback warning support. |
+
+---
+
 ## Current-state constraints observed from code/docs
 
 - `./build.sh` is a thin wrapper that delegates to `python3 tools/build.py`, so migration must preserve script entry points even if internal paths change.  
@@ -55,6 +78,9 @@ Bharat-OS/
 
   quality/
     tests/
+
+  experience/
+    user/
 
   docs/
   .github/
@@ -244,6 +270,36 @@ If tooling must change in a phase (expected), do it in this order:
 
 **Exit criteria**
 
+- All contract assets (uapi/idl/sdk/include) resolve primarily from `interface/`.
+- CI detects any new direct references to deprecated roots in changed files.
+
+---
+
+## Near-term incremental PR sequence (recommended medium chunks)
+
+This is the execution order to avoid a big-bang refactor while still moving fast:
+
+1. **C3 (done): SDK root relocation**
+   - Move `sdk/` -> `interface/sdk/`.
+   - Keep `sdk` compatibility symlink for legacy references.
+   - Validate full build matrix.
+2. **D1a: Boot source move with compatibility wrappers**
+   - Move `boot/src/` + `boot/common/` into `core/boot/`.
+   - Keep `boot/` forwarding CMake and include wrappers.
+   - Update only direct build references in the same PR.
+3. **D1b: Boot include/public header move**
+   - Move `boot/include/` to `core/boot/include/`.
+   - Keep umbrella compatibility headers in `boot/include/boot`.
+4. **D2: Kernel tree move**
+   - Move `kernel/` -> `core/kernel/` with top-level CMake forwarding.
+   - Keep old `kernel/` path as compatibility shim until D4.
+5. **D3: HAL/arch/platform move**
+   - Move one tree per PR (`hal`, then `arch`, then `platform`).
+   - Add include alias paths and CI deprecation warnings.
+6. **D4: Drivers/services/stacks/personalities/lib move**
+   - Move low-coupling trees first (`lib`, `stacks`) then service-heavy trees.
+   - Keep temporary adapters and remove only after Phase E strict mode.
+
 - Interface assets fully centralized.
 - Contract gate enabled and enforced.
 
@@ -255,7 +311,8 @@ If tooling must change in a phase (expected), do it in this order:
 
 **Move scope**
 
-- `tests/` -> `quality/tests/`
+- `tests/` -> `quality/tests/` (completed)
+  - E1 completed: moved the full `tests/` tree into `quality/tests/` and retained `tests` as a compatibility symlink.
 - `tools/`, `cmake/`, `configs/`, `assets/` -> `delivery/*` (if not already completed)
 
 **Cleanup tasks**
@@ -356,8 +413,135 @@ When build/run commands are updated in future phases:
 
 ---
 
-## Immediate next actions (start now)
+## Immediate next actions (updated to current repository state)
 
-1. Execute Phase 0 guardrails in a dedicated PR.
-2. Create phase tickets with exact directory scope and validation checklist.
-3. Start Phase 1 scaffolding only after CI guardrails are merged.
+1. Record current migration status in a tracker doc and keep it updated per PR.
+2. Complete Phase B tooling unification (shared alias helper + CI reference guard).
+3. Continue delivery tooling migration (`tools/`) using thin-slice PRs with mandatory validation matrix; `cmake/`, `configs/`, and `assets/` now canonicalize under `delivery/` with compatibility shims.
+
+---
+
+## Repo-informed execution backlog (practical medium chunks)
+
+This section converts the phase model into concrete, code-aware slices from the current tree.
+
+### Phase A (completed) — QEMU target YAML relocation (medium chunk, low runtime risk)
+
+**Objective**
+- Relocate QEMU target YAMLs from `tools/targets/qemu/` to `delivery/targets/qemu/` with compatibility path translation.
+
+**Why first**
+- Build orchestration is already centralized in `tools/build.py`.
+- YAML target resolution is the least invasive place to add old->new aliasing before larger tree movement.
+
+**Code changes**
+- Move all `tools/targets/qemu/*.yaml` to `delivery/targets/qemu/`.
+- Keep old CLI usage functional by translating `--target-yaml tools/targets/qemu/...` to `delivery/targets/qemu/...` in resolver logic.
+- Emit migration warning when aliasing is used.
+
+**Validation gate**
+- Run full build/package/run/all matrix listed in this plan.
+- If a command fails due to missing host tool (e.g., QEMU binary), classify as environment/tooling issue and document.
+
+**Docs**
+- Update build docs to mark `delivery/targets/qemu/` as preferred and `tools/targets/qemu/` as legacy alias.
+
+**Current status**
+- YAML targets already reside in `delivery/targets/qemu/`.
+- Compatibility aliasing is active in `tools/build.py` target resolution.
+
+---
+
+### Phase B (active) — Tools root transition (`tools/targets` + `tools/ci` compatibility)
+
+**Scope**
+- Begin shifting non-runtime tooling assets to `delivery/targets` and `delivery/tools`.
+
+**Code tasks**
+- Introduce a reusable path-alias helper in Python tooling (`tools/build/*`, validators, lints).
+- Keep a two-way fallback (`delivery/*` preferred, legacy root fallback).
+- Add a CI check for new references to legacy roots in touched files.
+
+**Execution order (medium chunks)**
+1. Extract alias logic into a shared helper module and wire `target_resolver.py` to use it.
+2. Apply the same helper to other target-consuming scripts (`tools/targets/loader.py`, validation scripts).
+3. Add CI guard for newly introduced `tools/targets/qemu/` references.
+4. Flip guard from warning to error after two migration phases.
+
+**Validation**
+- Same matrix + lint stage.
+- Confirm warning visibility in CI logs.
+
+---
+
+### Phase C — Interface migration in thin slices
+
+**Scope order**
+1. `idl/` -> `interface/idl/` (completed),
+2. `uapi/` -> `interface/uapi/` (completed),
+3. remaining `sdk/` modules -> `interface/sdk/` (completed).
+
+**Code tasks**
+- One subtree move per PR.
+- Keep include/tool fallbacks until end of Phase D.
+- Update code generators and package manifests to consume new interface paths first.
+
+**Validation**
+- Matrix + contract validation + interface artifact generation checks.
+
+---
+
+### Phase D — Core runtime path migration in bounded units
+
+**Recommended PR order**
+1. `boot/` -> `core/boot/`
+2. `kernel/` -> `core/kernel/`
+3. `hal/` + `arch/` -> `core/hal/`, `core/arch/`
+4. `platform/`, `drivers/`, `services/`, `stacks/`, `personalities/`, `lib/` -> `core/*`
+
+**Code tasks per PR**
+- Add include path compatibility at CMake level.
+- Keep adapter include headers where path churn is high.
+- Require compile + runtime checks before merge.
+
+**Detailed medium-chunk execution (repo-aware)**
+- **D1 (done in parts): boot canonicalization in `core/boot`**
+  - D1a (already done): `boot/src` and `boot/common` moved to `core/boot`.
+  - D1b (this slice): `boot/include`, `boot/discovery`, and `boot/protocols` moved to `core/boot/{include,discovery,protocols}`.
+  - Follow-up D1e completed: removed legacy `boot/{src,common,include,discovery,protocols}` symlink fanout after migrating in-repo callers to canonical `core/boot/*` paths.
+  - Build wiring now resolves boot include/protocol roots through candidate lists (`core/boot/*` first, `boot/*` fallback with warning).
+- **D2 (active): kernel tree move**
+  - D2a (completed): moved `kernel/src/{init,core,boot}` into `core/kernel/src/*`.
+  - `kernel/src/{init,core,boot}` remain as compatibility symlinks so legacy references still resolve.
+  - `kernel/CMakeLists.txt` now resolves a kernel source-root candidate list (`core/kernel/src` preferred, `kernel/src` fallback with migration warning).
+  - D2b (completed): moved `kernel/include` to `core/kernel/include` and retained `kernel/include` as compatibility symlink.
+  - `kernel/CMakeLists.txt` now resolves kernel include roots from candidate list (`core/kernel/include` preferred, `kernel/include` fallback with migration warning).
+  - D2c (completed): moved the remaining canonical kernel sources from `kernel/src/*` into `core/kernel/src/*`.
+  - Legacy compatibility is preserved by keeping `kernel/src/*` entries as symlinks that forward to `core/kernel/src/*`, so existing references and scripts continue to resolve during transition.
+  - D2e (completed): moved `kernel/staging/*` into canonical `core/kernel/staging/*` and inverted compatibility so legacy `kernel/staging` now forwards to the canonical tree via symlink.
+  - Kernel CMake wiring now resolves staging sources through a canonical-first candidate list (`core/kernel/staging` preferred, `kernel/staging` fallback with migration warning).
+  - D2f (completed): moved kernel root build assets (`CMakeLists.txt` + linker scripts) into canonical `core/kernel/*`.
+  - Legacy compatibility is preserved via `kernel/CMakeLists.txt` and `kernel/linker*.ld` symlinks that forward to `core/kernel/*`.
+  - Top-level CMake now resolves kernel root from a canonical-first candidate list (`core/kernel` preferred, `kernel` fallback with migration warning).
+- **D3 (active): arch + hal staged move**
+  - D3a (completed): moved `arch/` to `core/arch/`; retained `arch` compatibility symlink so existing source references remain valid during transition.
+  - Top-level build wiring now resolves architecture layer via `add_subdirectory(core/arch)` while legacy path references continue to resolve through the symlink.
+  - D3b (completed): moved `hal/` to `core/hal/`; retained `hal` compatibility symlink so existing source references remain valid during transition.
+  - Top-level build wiring now resolves the HAL layer via `add_subdirectory(core/hal)` while legacy path references continue to resolve through the symlink.
+- **D4 (active): platform/services/lib ecosystem**
+  - D4a (completed): moved `lib/` to `core/lib/` and `stacks/` to `core/stacks/`; retained `lib` and `stacks` as compatibility symlinks.
+  - Top-level build wiring now prefers canonical `add_subdirectory(core/lib)` and `add_subdirectory(core/stacks)` while legacy path references still resolve through symlinks.
+  - D4b (completed): moved `platform`, then `drivers`, `services`, and `personalities` to canonical `core/*` roots with compatibility symlinks retained during transition.
+  - D4c (completed): migrated in-repo quality/experience callers off legacy top-level `lib|stacks|drivers|services|personalities` paths and removed the remaining root compatibility symlinks to enforce canonical `core/*` roots.
+
+---
+
+### Phase E — Cleanup and enforcement
+
+**Tasks**
+- Convert migration warnings to CI errors.
+- Remove fallback aliases after all docs/scripts are updated.
+- Enforce that new contributions use only zone-based paths.
+
+**Done condition**
+- Legacy paths absent from source, docs, and scripts.

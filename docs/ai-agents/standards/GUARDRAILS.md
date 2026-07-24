@@ -1,3 +1,15 @@
+---
+title: Agent Guardrails
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - ai-agents
+  - standards
+see_also:
+  - README.md
+---
 # Agent Guardrails
 
 Guardrails define hard boundaries and review gates for automated coding activity.

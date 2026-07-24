@@ -1,3 +1,15 @@
+---
+title: ADR 002: Personality Model Architecture
+status: Proposed
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - contracts
+see_also:
+  - README.md
+---
 # ADR 002: Personality Model Architecture
 
 ## 1. Status
@@ -30,6 +42,6 @@ All UAPI, IDL, capability models, and SDKs must be authored "native-first". Comp
 
 ## 4. Consequences
 *   The previous `NONE` personality is renamed to `NATIVE` (`BHARAT_PERSONALITY_NATIVE`) to reflect its standing as the golden path.
-*   Personality logic currently residing in kernel trap handlers (e.g., `kernel/src/personality/personality_default.c`) must be moved to a dedicated `personalities/` boundary, accessed only via registry/hooks.
+*   Personality logic currently residing in kernel trap handlers (e.g., `core/kernel/src/personality/personality_default.c`) must be moved to a dedicated `core/personalities/` boundary, accessed only via registry/hooks.
 *   UAPI, IDL, and SDK visibility will become personality-aware, filtering which syscalls and services are exposed.
 *   The system architecture is redefined as: **Personality → UAPI view → capability policy → IDL/service contract → SDK binding → app/runtime usage**.

@@ -1,3 +1,14 @@
+---
+title: Migrating from build_config.json
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - dev
+see_also:
+  - README.md
+---
 # Migrating from build_config.json
 
 This document explains the transition from the legacy `build_config.json` to the new declarative Target YAML pipeline.

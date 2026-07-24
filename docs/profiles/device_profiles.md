@@ -1,3 +1,14 @@
+---
+title: Device Profiles
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - profiles
+see_also:
+  - README.md
+---
 # Device Profiles
 
 Bharat-OS supports multiple interaction models and required subsystems based on the specific device class. Instead of forcing a one-size-fits-all binary, we define these device profiles. Each profile establishes the base functionality required, ensuring optimal performance for its given domain.

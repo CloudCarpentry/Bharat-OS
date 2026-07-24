@@ -1,8 +1,20 @@
-# Bharat-OS `services/init` — Design Principles & Architecture
+---
+title: Bharat-OS `core/services/init` — Design Principles & Architecture
+status: Proposed
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - services
+see_also:
+  - README.md
+---
+# Bharat-OS `core/services/init` — Design Principles & Architecture
 
 ## 1. Purpose
 
-This document defines the **correct role, scope, and architecture of `services/init`** in Bharat-OS.
+This document defines the **correct role, scope, and architecture of `core/services/init`** in Bharat-OS.
 
 The goal is to ensure:
 
@@ -178,7 +190,7 @@ Services should **self-register**.
 
 ```
 service:
-  → start (platform/loader)
+  → start (core/platform/loader)
   → register with namesvc
   → signal ready
 
@@ -317,10 +329,21 @@ init/
 
 ```c
 typedef struct {
-    uint32_t profile;
-    uint64_t capability_mask;
+    uint32_t abi_version;
+    uint32_t boot_session_id;
+    init_profile_t profile;
+    uint32_t arch_id;
     uint32_t platform_id;
+    uint32_t board_id;
+    uint32_t personality_id;
+    uint64_t capability_mask;
+    uint64_t hw_feature_mask;
+    init_boot_reason_t boot_reason;
+    uint32_t reset_reason;
     bool safe_mode_requested;
+    bool diagnostics_requested;
+    bool failed_update_revert;
+    init_kernel_health_summary_t kernel_health;
 } init_boot_context_t;
 ```
 
@@ -432,7 +455,7 @@ This design:
 
 ---
 
-# 21. Kernel Self-Tests vs Init Boot GatingA large part of Bharat-OS correctness today comes from low-level kernel self-tests and bring-up validation such as:- PMM self-tests- VMM self-tests- page-table / TLB checks- trap and fault-path checks- discovery / FDT / platform parsing checks- timer / IRQ / early console sanity- low-level IPC and capability primitive checksThese mechanisms are essential, but they do **NOT** belong inside `services/init`.### Core Rule```textKernel runs mechanism self-tests.Init consumes summarized results and makes boot policy decisions.Servicemgr / faultmgr own long-term lifecycle and runtime recovery.
+# 21. Kernel Self-Tests vs Init Boot GatingA large part of Bharat-OS correctness today comes from low-level kernel self-tests and bring-up validation such as:- PMM self-tests- VMM self-tests- page-table / TLB checks- trap and fault-path checks- discovery / FDT / platform parsing checks- timer / IRQ / early console sanity- low-level IPC and capability primitive checksThese mechanisms are essential, but they do **NOT** belong inside `core/services/init`.### Core Rule```textKernel runs mechanism self-tests.Init consumes summarized results and makes boot policy decisions.Servicemgr / faultmgr own long-term lifecycle and runtime recovery.
 
 22. Responsibility Split
     22.1 What stays in Kernel
@@ -606,7 +629,7 @@ creates drift between kernel truth and init truth
 
 increases tiny/RT footprint
 
-violates kernel/service boundary
+violates core/kernel/service boundary
 
 Bad Pattern 2 — Kernel directly owning service bootstrap policy
 Kernel self-tests must not expand into service-graph policy ownership.

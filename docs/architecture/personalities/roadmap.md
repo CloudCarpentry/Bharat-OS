@@ -16,7 +16,7 @@ This document outlines the phased development roadmap for Bharat-OS personalitie
 
 The personality layer provides standard application binary interfaces (ABIs) and system call semantics. By cleanly separating the personality (policy) from the core kernel (mechanisms), Bharat-OS can natively run applications designed for different operating systems without requiring a monolithic global lock or shared state.
 
-All personalities route their requests through `kernel/src/arch/*/trap.c` which invokes the appropriate, table-driven personality dispatcher (e.g., `kernel/src/personality/linux/`).
+All personalities route their requests through `core/kernel/src/core/arch/*/trap.c` which invokes the appropriate, table-driven personality dispatcher (e.g., `core/kernel/src/personality/linux/`).
 
 ## Short-Term Milestones (Demoable Targets)
 
@@ -34,7 +34,7 @@ The immediate focus is to achieve minimum viable execution for essential use cas
 ### Milestone 2: Minimal Linux Personality (v0.2)
 - **Goal:** Boot a pre-compiled Linux binary (e.g., busybox, statically linked) on a Bharat-OS node.
 - **Deliverables:**
-  - Pluggable Linux Syscall ABI trap handler (`kernel/src/personality/linux/`).
+  - Pluggable Linux Syscall ABI trap handler (`core/kernel/src/personality/linux/`).
   - Translation of core Linux syscalls to Bharat-OS primitives:
     - Process/Thread: `clone` (thread-first), `execve`, `exit_group`.
     - Memory: `mmap` (anonymous), `munmap`, `mprotect`.
@@ -84,6 +84,6 @@ Execution and ownership details are tracked in `multi-arch-personality-roadmap.m
 ## Code Structure Constraints
 
 When contributing to personalities, adhere to these structural rules:
-1. **No Core Taint:** Personality-specific structures (e.g., Linux file descriptors, Android Binder nodes) must not leak into core subsystems (`kernel/src/vfs/`, `kernel/src/mm/`).
+1. **No Core Taint:** Personality-specific structures (e.g., Linux file descriptors, Android Binder nodes) must not leak into core subsystems (`core/kernel/src/vfs/`, `core/kernel/src/mm/`).
 2. **Table-Driven Dispatch:** Syscalls must use generic dispatch tables (`g_syscall_table`) indexed by ABI numbers, avoiding massive `switch` statements.
 3. **Unified Errors:** Personality code maps local errors (e.g., Linux's `-EINVAL`) to the unified core `include/bharat/errno.h` using standard POSIX names prefixed with `BH_`.

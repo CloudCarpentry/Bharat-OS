@@ -1,0 +1,24 @@
+target:
+  name: arm64_automotive_headless
+  arch: arm64
+  platform: qemu_virt
+  profile: AUTOMOTIVE
+  personality: AUTOMOTIVE
+  capabilities:
+    - MMU
+    - CAN
+    - SENSORS
+    - DISPLAY
+  services:
+    - id: NAMESVC
+      policy: REQUIRED
+    - id: PROCESS_MANAGER
+      policy: REQUIRED
+    - id: FAULTMGR
+      policy: REQUIRED
+    - id: DEVMGR
+      policy: REQUIRED
+    - id: SERVICEMGR
+      policy: REQUIRED
+    - id: BOOT_DISPLAYD
+      policy: OPTIONAL

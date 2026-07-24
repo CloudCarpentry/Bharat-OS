@@ -1,3 +1,14 @@
+---
+title: Boot-console milestone and follow-up task set (2026-04-15)
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - dev
+see_also:
+  - README.md
+---
 # Boot-console milestone and follow-up task set (2026-04-15)
 
 ## Milestone committed in this phase

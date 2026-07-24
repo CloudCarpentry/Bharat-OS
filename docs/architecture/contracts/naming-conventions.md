@@ -1,3 +1,15 @@
+---
+title: Naming Conventions
+status: Proposed
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - contracts
+see_also:
+  - README.md
+---
 # Naming Conventions
 
 ## Naming Rules
@@ -10,7 +22,7 @@
 * Capability rights use `CAP_RIGHT_*`
 * uRPC state enums use `URPC_*`
 * DMA grant state enums use `DMA_GRANT_*`
-* Public kernel/UAPI names must be stable once merged
+* Public core/kernel/UAPI names must be stable once merged
 * Do not use synonyms for the same security concept across modules
 
 ## Canonical Terms

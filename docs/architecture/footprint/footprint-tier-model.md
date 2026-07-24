@@ -1,3 +1,15 @@
+---
+title: Bharat-OS Footprint Tier Model
+status: Proposed
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - footprint
+see_also:
+  - README.md
+---
 # Bharat-OS Footprint Tier Model
 
 This document defines the **official footprint contract** for Bharat-OS targets.
@@ -30,6 +42,6 @@ The footprint model is intentionally independent from ISA and personality:
 
 The machine-readable matrix lives at:
 
-- `configs/footprint/footprint_matrix.csv`
+- `delivery/configs/footprint/footprint_matrix.csv` (legacy `configs/` compatibility symlink remains during migration)
 
 Build, package, and run tooling must resolve per-target constraints from that matrix.

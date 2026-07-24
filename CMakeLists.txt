@@ -3,18 +3,42 @@ project(BharatOS VERSION 0.8.0 LANGUAGES C ASM)
 
 enable_testing()
 
+set(BHARAT_CMAKE_ROOT "${CMAKE_SOURCE_DIR}/delivery/cmake")
+if(NOT EXISTS "${BHARAT_CMAKE_ROOT}")
+    message(FATAL_ERROR "Missing canonical CMake root: ${BHARAT_CMAKE_ROOT}")
+endif()
+
 # Make the modules directory visible to CMake
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/modules")
+list(APPEND CMAKE_MODULE_PATH "${BHARAT_CMAKE_ROOT}/modules")
 
 # Load Common Build Policies
 include(BharatCommon)
 include(BharatProfiles)
 include(BharatPersonality)
 include(BharatComponentPolicy)
-include(${CMAKE_SOURCE_DIR}/cmake/BharatConstraints.cmake)
+option(BHARAT_ENABLE_DMA_MAP "Enable DMA map APIs" ON)
+include(BharatIOPolicy)
+include(${BHARAT_CMAKE_ROOT}/BharatConstraints.cmake)
 
 # Versioning Identity System: Generate and load from manifest
-set(BHARAT_MANIFEST_JSON "${CMAKE_SOURCE_DIR}/release/manifest/os-release.json")
+set(BHARAT_MANIFEST_CANDIDATES
+    "${CMAKE_SOURCE_DIR}/delivery/release/manifest/os-release.json"
+    "${CMAKE_SOURCE_DIR}/release/manifest/os-release.json"
+)
+set(BHARAT_MANIFEST_JSON "")
+foreach(_manifest_path IN LISTS BHARAT_MANIFEST_CANDIDATES)
+    if(EXISTS "${_manifest_path}")
+        set(BHARAT_MANIFEST_JSON "${_manifest_path}")
+        if(_manifest_path MATCHES "/release/manifest/os-release.json$"
+           AND NOT _manifest_path MATCHES "/delivery/release/manifest/os-release.json$")
+            message(WARNING "[migration-warning] Using legacy manifest path: ${_manifest_path}")
+        endif()
+        break()
+    endif()
+endforeach()
+if(NOT BHARAT_MANIFEST_JSON)
+    message(FATAL_ERROR "No os-release manifest found in delivery/release/manifest or release/manifest")
+endif()
 set(BHARAT_GEN_SCRIPT "${CMAKE_SOURCE_DIR}/tools/gen_manifest.py")
 set(BHARAT_GEN_DIR "${CMAKE_BINARY_DIR}/generated")
 set(BHARAT_GEN_INCLUDE_DIR "${BHARAT_GEN_DIR}/include")
@@ -24,12 +48,44 @@ file(MAKE_DIRECTORY "${BHARAT_GEN_INCLUDE_DIR}/bharat")
 
 # Process static IDL generation explicitly early to guarantee header availability
 set(BHARAT_IDL_GEN_SCRIPT "${CMAKE_SOURCE_DIR}/tools/bidl/bidlc.py")
+set(BHARAT_IDL_ROOT_CANDIDATES
+    "${CMAKE_SOURCE_DIR}/interface/idl"
+    "${CMAKE_SOURCE_DIR}/idl"
+)
+set(BHARAT_IDL_ROOT "")
+foreach(_idl_root IN LISTS BHARAT_IDL_ROOT_CANDIDATES)
+    if(EXISTS "${_idl_root}")
+        set(BHARAT_IDL_ROOT "${_idl_root}")
+        if(_idl_root MATCHES "/idl$" AND NOT _idl_root MATCHES "/interface/idl$")
+            message(WARNING "[migration-warning] Using legacy IDL root: ${_idl_root}")
+        endif()
+        break()
+    endif()
+endforeach()
+if(NOT BHARAT_IDL_ROOT)
+    message(FATAL_ERROR "No IDL root found in interface/idl or idl")
+endif()
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
+
+# Generate syscall ABI headers
+message(STATUS "Generating Syscall ABI headers...")
+execute_process(
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/tools/abi/syscall_abi.py"
+            "--generate"
+            "--output-inc" "${CMAKE_BINARY_DIR}/generated/kernel/syscall/native_syscall_table.inc"
+            "--output-def" "${CMAKE_BINARY_DIR}/generated/include/bharat/uapi/syscall/generated/table.def"
+            "--output-numbers" "${CMAKE_BINARY_DIR}/generated/include/bharat/uapi/syscall/generated/numbers.h"
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+    RESULT_VARIABLE SYSCALL_GEN_RESULT
+)
+if(NOT SYSCALL_GEN_RESULT EQUAL 0)
+    message(FATAL_ERROR "Failed to generate Syscall ABI headers: ${SYSCALL_GEN_RESULT}")
+endif()
 
 # Generate monitor service IDL
 execute_process(
     COMMAND "${Python3_EXECUTABLE}" "${BHARAT_IDL_GEN_SCRIPT}"
-            "${CMAKE_SOURCE_DIR}/idl/monitor_v1.bidl"
+            "${BHARAT_IDL_ROOT}/monitor_v1.bidl"
             "${BHARAT_GEN_INCLUDE_DIR}"
     WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
     RESULT_VARIABLE IDL_MONITOR_RESULT
@@ -41,7 +97,7 @@ endif()
 # Generate cap service IDL
 execute_process(
     COMMAND "${Python3_EXECUTABLE}" "${BHARAT_IDL_GEN_SCRIPT}"
-            "${CMAKE_SOURCE_DIR}/idl/cap_v1.bidl"
+            "${BHARAT_IDL_ROOT}/cap_v1.bidl"
             "${BHARAT_GEN_INCLUDE_DIR}"
     WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
     RESULT_VARIABLE IDL_CAP_RESULT
@@ -68,7 +124,7 @@ include("${BHARAT_GEN_DIR}/BharatVersion.cmake")
 
 # Provide an interface target so components can inherit generated includes safely
 add_library(bharat_generated_includes INTERFACE)
-target_include_directories(bharat_generated_includes INTERFACE "${BHARAT_GEN_INCLUDE_DIR}")
+target_include_directories(bharat_generated_includes INTERFACE "${BHARAT_GEN_INCLUDE_DIR}" "${CMAKE_BINARY_DIR}/generated")
 
 # Architecture selection
 bharat_set_arch_defaults()
@@ -81,6 +137,13 @@ set_property(CACHE BHARAT_DEVICE_PROFILE PROPERTY STRINGS DESKTOP MOBILE EDGE DA
 # Personality Profile
 set(BHARAT_PERSONALITY_PROFILE "NATIVE" CACHE STRING "Target personality profile (NATIVE, LINUX, ANDROID, WINDOWS, MAC)")
 set_property(CACHE BHARAT_PERSONALITY_PROFILE PROPERTY STRINGS NATIVE LINUX ANDROID WINDOWS MAC)
+
+option(BHARAT_ENABLE_PERSONALITIES "Enable personality framework" ON)
+option(BHARAT_ENABLE_COMPAT_LINUX "Enable Linux compatibility personality" OFF)
+option(BHARAT_ENABLE_COMPAT_ANDROID "Enable Android compatibility personality" OFF)
+
+# Staging / Experimental Components
+option(BHARAT_BUILD_STAGING "Build staging/ experimental modules" OFF)
 
 # Default Init Profile
 set(BHARAT_DEFAULT_INIT_PROFILE "DESKTOP" CACHE STRING "Target default init profile (TINY, SMALL, EMBEDDED_RICH, MOBILE, DESKTOP, DRONE)")
@@ -97,7 +160,7 @@ set(BHARAT_ISA_FEATURES "" CACHE STRING "Target ISA features as a semicolon-sepa
 set(BHARAT_ACCELERATOR_CLASSES "" CACHE STRING "Target accelerator classes as a semicolon-separated list (e.g., gpu;npu;dsp;crypto;vpu)")
 
 # Execution Mode Framework Integration
-set(BHARAT_EXECUTION_MODE_MODULE "${CMAKE_CURRENT_SOURCE_DIR}/cmake/BharatExecutionMode.cmake")
+set(BHARAT_EXECUTION_MODE_MODULE "${BHARAT_CMAKE_ROOT}/BharatExecutionMode.cmake")
 if(EXISTS "${BHARAT_EXECUTION_MODE_MODULE}")
     include("${BHARAT_EXECUTION_MODE_MODULE}")
 else()
@@ -123,6 +186,13 @@ set(BHARAT_PLATFORM_FIRMWARE "" CACHE STRING "Target platform firmware (e.g., AC
 # Boot Hardware Profile
 set(BHARAT_BOOT_HW_PROFILE "generic" CACHE STRING "Boot hardware profile (generic, desktop, server, vm, laptop, edge, rtos, automotive_ecu, automotive_infotainment)")
 set_property(CACHE BHARAT_BOOT_HW_PROFILE PROPERTY STRINGS generic desktop server vm laptop edge rtos automotive_ecu automotive_infotainment)
+
+# Memory Protection Model Validation
+if(BHARAT_DEVICE_PROFILE MATCHES "AUTOMOTIVE|SAFETY|MEDICAL")
+    if(NOT BHARAT_ENABLE_MMU AND NOT BHARAT_ENABLE_MPU)
+        message(FATAL_ERROR "Profile ${BHARAT_DEVICE_PROFILE} requires at least MPU or MMU memory protection.")
+    endif()
+endif()
 
 # IRQ dispatch profile
 set(BHARAT_IRQ_DISPATCH_MODE "AUTO" CACHE STRING "IRQ dispatch mode (AUTO, GENERIC, MIXED, RT)")
@@ -222,6 +292,22 @@ bharat_set_profile_flag(BHARAT_ARCH_RISCV "RISCV" "${BHARAT_ARCH_FAMILY}")
 bharat_set_profile_flag(BHARAT_ARCH_32BIT "32" "${BHARAT_ARCH_BITS}")
 bharat_set_profile_flag(BHARAT_ARCH_64BIT "64" "${BHARAT_ARCH_BITS}")
 
+# Architecture Name String
+if(BHARAT_ARCH_FAMILY STREQUAL "X86" AND BHARAT_ARCH_BITS EQUAL 64)
+    set(BHARAT_ARCH_NAME "x86_64")
+elseif(BHARAT_ARCH_FAMILY STREQUAL "ARM" AND BHARAT_ARCH_BITS EQUAL 64)
+    set(BHARAT_ARCH_NAME "arm64")
+elseif(BHARAT_ARCH_FAMILY STREQUAL "RISCV" AND BHARAT_ARCH_BITS EQUAL 64)
+    set(BHARAT_ARCH_NAME "riscv64")
+elseif(BHARAT_ARCH_FAMILY STREQUAL "ARM" AND BHARAT_ARCH_BITS EQUAL 32)
+    set(BHARAT_ARCH_NAME "arm32")
+elseif(BHARAT_ARCH_FAMILY STREQUAL "RISCV" AND BHARAT_ARCH_BITS EQUAL 32)
+    set(BHARAT_ARCH_NAME "riscv32")
+else()
+    set(BHARAT_ARCH_NAME "unknown")
+endif()
+add_compile_definitions(BHARAT_ARCH_NAME="${BHARAT_ARCH_NAME}")
+
 # Architecture Variant
 bharat_set_profile_flag(BHARAT_ARCH_VARIANT_GENERIC "GENERIC" "${BHARAT_ARCH_VARIANT}")
 bharat_set_profile_flag(BHARAT_ARCH_VARIANT_SHAKTI "SHAKTI" "${BHARAT_ARCH_VARIANT}")
@@ -304,20 +390,59 @@ endif()
 
 # Add subdirectories
 
-add_subdirectory(arch)
-add_subdirectory(boot)
-add_subdirectory(hal)
-add_subdirectory(platform)
-add_subdirectory(kernel)
-add_subdirectory(lib)
-add_subdirectory(drivers)
-add_subdirectory(services)
-add_subdirectory(user)
-add_subdirectory(stacks)
-add_subdirectory(personalities)
+add_subdirectory(core/arch)
+add_subdirectory(core/boot)
+add_subdirectory(core/hal)
+add_subdirectory(core/platform)
+if(NOT EXISTS "${CMAKE_SOURCE_DIR}/core/kernel/CMakeLists.txt")
+    message(FATAL_ERROR "Missing canonical kernel CMake root: ${CMAKE_SOURCE_DIR}/core/kernel")
+endif()
+add_subdirectory(core/kernel kernel)
+add_subdirectory(core/lib)
+add_subdirectory(core/drivers)
+add_subdirectory(core/services)
+set(BHARAT_USER_ROOT_CANDIDATES
+    "${CMAKE_SOURCE_DIR}/experience/user"
+    "${CMAKE_SOURCE_DIR}/core/user"
+)
+set(BHARAT_USER_ROOT "")
+foreach(_user_root IN LISTS BHARAT_USER_ROOT_CANDIDATES)
+    if(EXISTS "${_user_root}/CMakeLists.txt")
+        set(BHARAT_USER_ROOT "${_user_root}")
+        if(_user_root MATCHES "/user$" AND NOT _user_root MATCHES "/experience/user$")
+            message(WARNING "[migration-warning] Using legacy user root: ${_user_root}")
+        endif()
+        break()
+    endif()
+endforeach()
+if(NOT BHARAT_USER_ROOT)
+    message(FATAL_ERROR "No user root found in experience/user or user")
+endif()
+add_subdirectory("${BHARAT_USER_ROOT}" "${CMAKE_BINARY_DIR}/bharat_user")
+add_subdirectory(core/stacks)
+add_subdirectory(core/personalities)
 
 if(BHARAT_BUILD_HOST_TESTS)
-    add_subdirectory(tests)
+    set(BHARAT_TESTS_ROOT_CANDIDATES
+        "${CMAKE_SOURCE_DIR}/quality/tests"
+        "${CMAKE_SOURCE_DIR}/core/tests"
+    )
+    set(BHARAT_TESTS_ROOT "")
+    foreach(_tests_root IN LISTS BHARAT_TESTS_ROOT_CANDIDATES)
+        if(EXISTS "${_tests_root}/CMakeLists.txt")
+            set(BHARAT_TESTS_ROOT "${_tests_root}")
+            if(_tests_root MATCHES "/tests$" AND NOT _tests_root MATCHES "/quality/tests$")
+                message(WARNING "[migration-warning] Using legacy tests root: ${_tests_root}")
+            endif()
+            break()
+        endif()
+    endforeach()
+
+    if(NOT BHARAT_TESTS_ROOT)
+        message(FATAL_ERROR "No tests root found in quality/tests or tests")
+    endif()
+
+    add_subdirectory("${BHARAT_TESTS_ROOT}" "${CMAKE_BINARY_DIR}/bharat_tests")
 endif()
 
 # Host-test compatibility targets:

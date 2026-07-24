@@ -1,4 +1,16 @@
-# Bharat-OS `services/init` — Profile Implementation Task Plan
+---
+title: Bharat-OS `core/services/init` — Profile Implementation Task Plan
+status: Proposed
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - services
+see_also:
+  - README.md
+---
+# Bharat-OS `core/services/init` — Profile Implementation Task Plan
 
 ## 1. Purpose
 
@@ -20,10 +32,10 @@ The intent is to keep `init` as a **short-lived bootstrap coordinator**, while p
 
 These tasks are mandatory before profile-specific behavior can work.
 
-### T0 — Boot Context + Kernel Health Contract
-- Define `init_boot_context_t` and `kboot_health_summary_t` headers shared by kernel + init.
+### T0 — Boot Context + Kernel Health Contract (COMPLETED)
+- Define `init_boot_context_t` and `init_kernel_health_summary_t` headers in UAPI.
 - Pass reboot reason, safe mode request, profile hint, capability mask, and kernel self-test results.
-- Reject invalid/unknown contract versions.
+- Reject invalid/unknown contract versions via `init_boot_context_is_valid`.
 
 ### T1 — Init State Machine Core
 Implement deterministic state machine phases:
@@ -38,7 +50,7 @@ Implement deterministic state machine phases:
 9. `HANDOFF_COMPLETE`
 10. `QUIESCENT/EXIT`
 
-### T2 — Manifest Engine + Boot Classes
+### T2 — Manifest Engine + Boot Classes (COMPLETED)
 - Add manifest schema with boot classes:
   - `BOOT_CLASS_CORE`
   - `BOOT_CLASS_INFRA`
@@ -192,8 +204,8 @@ Deliver reboot-reason policy + failed-upgrade diagnostic manifest handling.
 
 ## 5. Suggested Initial Backlog (Actionable Tickets)
 
-1. Add `services/core/init/include/init_boot_context.h` with versioned context structs.
-2. Add `services/core/init/include/init_manifest.h` with boot classes and descriptor schema.
+1. Add `core/services/core/init/include/init_boot_context.h` with versioned context structs.
+2. Add `core/services/core/init/include/init_manifest.h` with boot classes and descriptor schema.
 3. Implement `init_state_machine.c` with explicit transition table.
 4. Implement `init_manifest_engine.c` with profile/capability filtering.
 5. Implement `init_dependency_validator.c` for DAG validation.

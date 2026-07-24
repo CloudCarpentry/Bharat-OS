@@ -1,10 +1,21 @@
+---
+title: ADR-005: ML Heuristics Kept Out of Ring-0
+status: Accepted
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - adr
+see_also:
+  - README.md
+---
 # ADR-005: ML Heuristics Kept Out of Ring-0
 
 ## Status
 
 Superseded (by implementation)
 
-*Note: As of the latest architecture implementation in `kernel/src/sched/ai_sched.c`, the AI heuristic scheduling model is embedded directly in the kernel (Ring 0). It uses architectural hooks to sample PMC data and synchronously adjusts time slices. This ADR is kept for historical context.*
+*Note: As of the latest architecture implementation in `core/kernel/src/sched/ai_sched.c`, the AI heuristic scheduling model is embedded directly in the kernel (Ring 0). It uses architectural hooks to sample PMC data and synchronously adjusts time slices. This ADR is kept for historical context.*
 
 ## Context
 

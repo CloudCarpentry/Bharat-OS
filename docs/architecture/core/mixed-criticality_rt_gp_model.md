@@ -1,6 +1,6 @@
 ---
 title: Mixed-Criticality RT & GP Model
-status: Draft
+status: Proposed
 version: 1.0
 owner: Architecture Team
 reviewers: Core Maintainers

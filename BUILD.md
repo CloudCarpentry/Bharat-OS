@@ -37,7 +37,7 @@ Both wrappers forward directly to `tools/build.py`. The Python CLI is authoritat
 Each subcommand requires exactly one target selector:
 
 - `--target <name>` (legacy targets from `build_config.json`)
-- `--target-yaml <path>` (explicit target YAML in `tools/targets/`)
+- `--target-yaml <path>` (explicit target YAML; preferred under `delivery/targets/`)
 
 Examples:
 
@@ -45,17 +45,23 @@ Examples:
 # Windows PowerShell
 .\build.ps1 build --target x86_64_desktop_headless
 .\build.ps1 all --target x86_64_desktop_headless
-.\build.ps1 run --target-yaml tools/targets/qemu/x86_64_desktop_headless.yaml
+.\build.ps1 run --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml
 ```
 
 ```bash
 # Linux/macOS/WSL
 ./build.sh build --target x86_64_desktop_headless
 ./build.sh all --target x86_64_desktop_headless
-./build.sh run --target-yaml tools/targets/qemu/x86_64_desktop_headless.yaml
+./build.sh run --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml
 ```
 
 > Legacy positional syntax still works (for example `.\build.ps1 x86_64_desktop_headless --run`), but it is compatibility-only and emits a warning. Prefer explicit subcommands.
+
+### Transitional path compatibility (active migration behavior)
+
+- Preferred target YAML location: `delivery/targets/qemu/*.yaml`
+- Preferred target matrix location: `delivery/targets/target_matrix.json`
+- Legacy paths under `tools/targets/qemu` and `targets/` are still accepted through alias translation during migration phases and emit migration warnings where applicable.
 
 ---
 
@@ -185,54 +191,44 @@ Output layout uses CMake preset name:
 
 Runtime command includes serial-first bring-up (`-nographic -monitor none -serial stdio`) so headless logs stream to your terminal.
 
+### Run Modes (Smoke vs Interactive)
+
+- **Smoke mode (`--smoke`):** QEMU exits automatically once the boot success marker is detected or a timeout is reached. Useful for CI.
+- **Interactive mode (`--interactive`):** QEMU stays open until manually closed. Default for GUI targets.
+
+### Display Overrides
+
+- **`--gui`:** Force graphical display enabled.
+- **`--headless`:** Force graphical display disabled (`-nographic`).
+
 ---
 
 ## 5) Preset command cookbook
 
+### Daily commands
+
+```powershell
+# PowerShell
+.\build.ps1 all --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml --smoke
+.\build.ps1 all --target-yaml delivery/targets/qemu/x86_64_desktop_gui.yaml --interactive
+.\build.ps1 all --target-yaml delivery/targets/qemu/arm64_desktop_headless.yaml --smoke
+```
+
+```bash
+# WSL/Linux/macOS
+./build.sh all --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml --smoke
+./build.sh all --target-yaml delivery/targets/qemu/x86_64_desktop_gui.yaml --interactive
+./build.sh all --target-yaml delivery/targets/qemu/arm64_desktop_headless.yaml --smoke
+```
+
 ## 5.1 Canonical headless run commands (PowerShell)
 
 ```powershell
-.\build.ps1 all --target x86_64_desktop_headless
-.\build.ps1 all --target arm64_desktop_headless
-.\build.ps1 all --target riscv64_desktop_headless
-.\build.ps1 all --target arm32_mmu_lite_headless
-.\build.ps1 all --target riscv32_mmu_lite_headless
-
-.\build.ps1 all --target x86_64_desktop_headless_gp
-.\build.ps1 all --target x86_64_desktop_headless_rt
-.\build.ps1 all --target x86_64_desktop_headless_mix
-
-.\build.ps1 all --target arm64_desktop_headless_gp
-.\build.ps1 all --target arm64_desktop_headless_rt
-.\build.ps1 all --target arm64_desktop_headless_mix
-
-.\build.ps1 all --target riscv64_desktop_headless_gp
-.\build.ps1 all --target riscv64_desktop_headless_rt
-.\build.ps1 all --target riscv64_desktop_headless_mix
-
-.\build.ps1 all --target arm32_mmu_lite_headless_gp
-.\build.ps1 all --target arm32_mmu_lite_headless_rt
-.\build.ps1 all --target arm32_mmu_lite_headless_mix
-
-.\build.ps1 all --target riscv32_mmu_lite_headless_gp
-.\build.ps1 all --target riscv32_mmu_lite_headless_rt
-.\build.ps1 all --target riscv32_mmu_lite_headless_mix
-
-.\build.ps1 all --target x86_64_gp_headless
-.\build.ps1 all --target x86_64_rt_headless
-.\build.ps1 all --target x86_64_mix_headless
-.\build.ps1 all --target arm64_gp_headless
-.\build.ps1 all --target arm64_rt_headless
-.\build.ps1 all --target arm64_mix_headless
-.\build.ps1 all --target riscv64_gp_headless
-.\build.ps1 all --target riscv64_rt_headless
-.\build.ps1 all --target riscv64_mix_headless
-.\build.ps1 all --target arm32_gp_headless
-.\build.ps1 all --target arm32_rt_headless
-.\build.ps1 all --target arm32_mix_headless
-.\build.ps1 all --target riscv32_gp_headless
-.\build.ps1 all --target riscv32_rt_headless
-.\build.ps1 all --target riscv32_mix_headless
+.\build.ps1 all --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml --smoke
+.\build.ps1 all --target-yaml delivery/targets/qemu/arm64_desktop_headless.yaml --smoke
+.\build.ps1 all --target-yaml delivery/targets/qemu/arm32_desktop_headless.yaml --smoke
+.\build.ps1 all --target-yaml delivery/targets/qemu/riscv64_desktop_headless.yaml --smoke
+.\build.ps1 all --target-yaml delivery/targets/qemu/riscv32_desktop_headless.yaml --smoke
 ```
 
 ## 5.2 Canonical headless run commands (WSL/Linux/macOS)
@@ -247,67 +243,29 @@ These test targets assert that the ABI boundaries and dispatch tables do not cau
 
 
 ```bash
-./build.sh all --target x86_64_desktop_headless
-./build.sh all --target arm64_desktop_headless
-./build.sh all --target riscv64_desktop_headless
-./build.sh all --target x86_64_desktop_headless_linux
-./build.sh all --target arm64_desktop_headless_linux
-./build.sh all --target riscv64_desktop_headless_linux
-./build.sh all --target x86_64_desktop_headless_android
-./build.sh all --target arm64_desktop_headless_android
-./build.sh all --target riscv64_desktop_headless_android
-./build.sh all --target arm32_mmu_lite_headless
-./build.sh all --target riscv32_mmu_lite_headless
-
-./build.sh all --target x86_64_desktop_headless_gp
-./build.sh all --target x86_64_desktop_headless_rt
-./build.sh all --target x86_64_desktop_headless_mix
-
-./build.sh all --target arm64_desktop_headless_gp
-./build.sh all --target arm64_desktop_headless_rt
-./build.sh all --target arm64_desktop_headless_mix
-
-./build.sh all --target riscv64_desktop_headless_gp
-./build.sh all --target riscv64_desktop_headless_rt
-./build.sh all --target riscv64_desktop_headless_mix
-
-./build.sh all --target arm32_mmu_lite_headless_gp
-./build.sh all --target arm32_mmu_lite_headless_rt
-./build.sh all --target arm32_mmu_lite_headless_mix
-
-./build.sh all --target riscv32_mmu_lite_headless_gp
-./build.sh all --target riscv32_mmu_lite_headless_rt
-./build.sh all --target riscv32_mmu_lite_headless_mix
-
-./build.sh all --target x86_64_gp_headless
-./build.sh all --target x86_64_rt_headless
-./build.sh all --target x86_64_mix_headless
-./build.sh all --target arm64_gp_headless
-./build.sh all --target arm64_rt_headless
-./build.sh all --target arm64_mix_headless
-./build.sh all --target riscv64_gp_headless
-./build.sh all --target riscv64_rt_headless
-./build.sh all --target riscv64_mix_headless
-./build.sh all --target arm32_gp_headless
-./build.sh all --target arm32_rt_headless
-./build.sh all --target arm32_mix_headless
-./build.sh all --target riscv32_gp_headless
-./build.sh all --target riscv32_rt_headless
-./build.sh all --target riscv32_mix_headless
+./build.sh all --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml --smoke
+./build.sh all --target-yaml delivery/targets/qemu/arm64_desktop_headless.yaml --smoke
+./build.sh all --target-yaml delivery/targets/qemu/arm32_desktop_headless.yaml --smoke
+./build.sh all --target-yaml delivery/targets/qemu/riscv64_desktop_headless.yaml --smoke
+./build.sh all --target-yaml delivery/targets/qemu/riscv32_desktop_headless.yaml --smoke
 ```
 
 ## 5.3 GUI presets (examples)
 
 ```powershell
-.\build.ps1 all --target x86_64_desktop_gui
-.\build.ps1 all --target arm64_desktop_gui
-.\build.ps1 all --target riscv64_desktop_gui
+.\build.ps1 all --target-yaml delivery/targets/qemu/x86_64_desktop_gui.yaml --interactive
+.\build.ps1 all --target-yaml delivery/targets/qemu/arm64_desktop_gui.yaml --interactive
+.\build.ps1 all --target-yaml delivery/targets/qemu/arm32_desktop_gui.yaml --interactive
+.\build.ps1 all --target-yaml delivery/targets/qemu/riscv64_desktop_gui.yaml --interactive
+.\build.ps1 all --target-yaml delivery/targets/qemu/riscv32_desktop_gui.yaml --interactive
 ```
 
 ```bash
-./build.sh all --target x86_64_desktop_gui
-./build.sh all --target arm64_desktop_gui
-./build.sh all --target riscv64_desktop_gui
+./build.sh all --target-yaml delivery/targets/qemu/x86_64_desktop_gui.yaml --interactive
+./build.sh all --target-yaml delivery/targets/qemu/arm64_desktop_gui.yaml --interactive
+./build.sh all --target-yaml delivery/targets/qemu/arm32_desktop_gui.yaml --interactive
+./build.sh all --target-yaml delivery/targets/qemu/riscv64_desktop_gui.yaml --interactive
+./build.sh all --target-yaml delivery/targets/qemu/riscv32_desktop_gui.yaml --interactive
 ```
 
 ## 5.4 Legacy positional example requested by users
@@ -341,77 +299,47 @@ Equivalent modern command:
 YAML target path equivalent:
 
 ```bash
-./build.sh all --target-yaml tools/targets/qemu/x86_64_desktop_headless.yaml
+./build.sh all --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml
 ```
 
 ---
 
 ## 7) Debug workflow
 
-Current state:
-
-- `build.py debug` exists in CLI.
-- The main debug stage prints `Debug workflow not fully implemented yet.`
-- You can still use helper debugger attach scripts:
-  - `tools/debug.sh`
-  - `tools/debug.ps1`
-
-Typical pattern:
-
-1. launch QEMU with gdb stub enabled from target extra args (if configured),
-2. attach with debug helper script.
-
 ---
 
 ## 8) Board and hardware flashing workflow
-
-For hardware/board flows, use `flash` with a target that includes flash configuration.
-
-```powershell
-.\build.ps1 flash --target <board_target>
-.\build.ps1 flash --target <board_target> --dry-run
-```
-
-```bash
-./build.sh flash --target <board_target>
-./build.sh flash --target <board_target> --dry-run
-```
-
-Flash backend currently implemented: **OpenOCD**.
-
-Install OpenOCD first (`openocd` command in PATH).
 
 ---
 
 ## 9) Discovering available presets and targets
 
-List CLI usage:
+---
+
+## 10) Matrix commands
+
+You can build and test all QEMU targets at once:
 
 ```bash
-./build.sh --help
-./build.sh build --help
+# Build and smoke-test all headless targets
+python3 tools/run_qemu_matrix.py --headless --smoke
+
+# Build all GUI targets without launching
+python3 tools/run_qemu_matrix.py --gui --build-only
 ```
 
-Print all legacy target names from `build_config.json`:
+### Documentation and Profile Consistency
+
+To ensure that all build profiles are properly documented in the README and architecture docs:
 
 ```bash
-python3 - <<'PY'
-import json
-cfg = json.load(open('build_config.json'))['builds']
-for name in cfg:
-    print(name)
-PY
+python3 tools/check_profiles.py
 ```
-
-See YAML targets under:
-
-- `tools/targets/qemu/`
 
 ---
 
-## 10) Wrapper script summary (`build.ps1` and `build.sh`)
+## 11) Wrapper script summary (`build.ps1` and `build.sh`)
 
 - Root wrappers (`/build.sh`, `/build.ps1`) are the stable commands users should run.
 - `tools/build.sh` and `tools/build.ps1` are compatibility shims.
 - New build/run feature behavior must be implemented in `tools/build.py`.
-

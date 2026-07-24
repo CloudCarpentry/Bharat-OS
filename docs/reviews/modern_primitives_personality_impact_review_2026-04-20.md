@@ -1,3 +1,14 @@
+---
+title: Bharat-OS Review: Modern Primitives, Risk, and Personality Impact (Linux/Android)
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - reviews
+see_also:
+  - README.md
+---
 # Bharat-OS Review: Modern Primitives, Risk, and Personality Impact (Linux/Android)
 
 **Date:** 2026-04-20

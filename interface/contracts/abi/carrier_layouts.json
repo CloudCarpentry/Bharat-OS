@@ -1,0 +1,725 @@
+{
+  "accel_fence_t": {
+    "fields": [
+      {
+        "name": "fence_id",
+        "type": "uint64_t"
+      },
+      {
+        "name": "status",
+        "type": "uint32_t"
+      },
+      {
+        "name": "error_code",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "accel_job_t": {
+    "fields": [
+      {
+        "name": "job_id",
+        "type": "uint64_t"
+      },
+      {
+        "name": "type",
+        "type": "uint32_t"
+      },
+      {
+        "name": "flags",
+        "type": "uint32_t"
+      },
+      {
+        "name": "input_buffer_handle",
+        "type": "uint64_t"
+      },
+      {
+        "name": "output_buffer_handle",
+        "type": "uint64_t"
+      },
+      {
+        "name": "deadline_ns",
+        "type": "uint64_t"
+      },
+      {
+        "name": "priority",
+        "type": "uint32_t"
+      },
+      {
+        "name": "fault_domain_tag",
+        "type": "uint32_t"
+      },
+      {
+        "name": "opaque_cmd",
+        "type": "uint8_t[64]"
+      }
+    ]
+  },
+  "bh_exec_constraints_t": {
+    "fields": [
+      {
+        "name": "flags",
+        "type": "uint32_t"
+      },
+      {
+        "name": "cpu_mask_hint",
+        "type": "uint32_t"
+      },
+      {
+        "name": "latency_target_us",
+        "type": "uint32_t"
+      },
+      {
+        "name": "energy_budget_uw",
+        "type": "uint32_t"
+      },
+      {
+        "name": "priority_class",
+        "type": "uint32_t"
+      },
+      {
+        "name": "memory_budget_kb",
+        "type": "uint32_t"
+      },
+      {
+        "name": "isolation_domain",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bh_text_input_event_t": {
+    "fields": [
+      {
+        "name": "timestamp_ns",
+        "type": "uint64_t"
+      },
+      {
+        "name": "codepoint",
+        "type": "uint32_t"
+      },
+      {
+        "name": "modifiers",
+        "type": "uint32_t"
+      },
+      {
+        "name": "utf8",
+        "type": "uint8_t[4]"
+      },
+      {
+        "name": "utf8_len",
+        "type": "uint8_t"
+      }
+    ]
+  },
+  "bh_text_span_t": {
+    "fields": [
+      {
+        "name": "data",
+        "type": "char*"
+      },
+      {
+        "name": "len",
+        "type": "size_t"
+      },
+      {
+        "name": "encoding",
+        "type": "bh_text_encoding_t"
+      }
+    ]
+  },
+  "bh_trace_record_t": {
+    "fields": [
+      {
+        "name": "timestamp_ns",
+        "type": "uint64_t"
+      },
+      {
+        "name": "cpu_id",
+        "type": "uint32_t"
+      },
+      {
+        "name": "event_id",
+        "type": "uint32_t"
+      },
+      {
+        "name": "arg0",
+        "type": "uint64_t"
+      },
+      {
+        "name": "arg1",
+        "type": "uint64_t"
+      },
+      {
+        "name": "arg2",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bh_watchdog_heartbeat_t": {
+    "fields": [
+      {
+        "name": "task_id",
+        "type": "uint32_t"
+      },
+      {
+        "name": "period_ns",
+        "type": "uint64_t"
+      },
+      {
+        "name": "last_seen_ns",
+        "type": "uint64_t"
+      },
+      {
+        "name": "missed_count",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_display_buffer_t": {
+    "fields": [
+      {
+        "name": "width",
+        "type": "uint32_t"
+      },
+      {
+        "name": "height",
+        "type": "uint32_t"
+      },
+      {
+        "name": "stride_bytes",
+        "type": "uint32_t"
+      },
+      {
+        "name": "pixel_format",
+        "type": "uint32_t"
+      },
+      {
+        "name": "buffer_id",
+        "type": "uint64_t"
+      },
+      {
+        "name": "capability_id",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bharat_display_mode_t": {
+    "fields": [
+      {
+        "name": "width",
+        "type": "uint32_t"
+      },
+      {
+        "name": "height",
+        "type": "uint32_t"
+      },
+      {
+        "name": "refresh_hz",
+        "type": "uint32_t"
+      },
+      {
+        "name": "pixel_format",
+        "type": "uint32_t"
+      },
+      {
+        "name": "flags",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_fault_domain_attr_t": {
+    "fields": [
+      {
+        "name": "version",
+        "type": "uint32_t"
+      },
+      {
+        "name": "flags",
+        "type": "uint32_t"
+      },
+      {
+        "name": "name",
+        "type": "char[32]"
+      }
+    ]
+  },
+  "bharat_gui_surface_t": {
+    "fields": [
+      {
+        "name": "surface_id",
+        "type": "uint64_t"
+      },
+      {
+        "name": "owner_pid",
+        "type": "uint32_t"
+      },
+      {
+        "name": "z_order",
+        "type": "uint32_t"
+      },
+      {
+        "name": "width",
+        "type": "uint32_t"
+      },
+      {
+        "name": "height",
+        "type": "uint32_t"
+      },
+      {
+        "name": "state",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_input_event_t": {
+    "fields": [
+      {
+        "name": "timestamp_ns",
+        "type": "uint64_t"
+      },
+      {
+        "name": "type",
+        "type": "uint16_t"
+      },
+      {
+        "name": "code",
+        "type": "uint16_t"
+      },
+      {
+        "name": "value",
+        "type": "int32_t"
+      },
+      {
+        "name": "device_id",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_intent_t": {
+    "fields": [
+      {
+        "name": "version",
+        "type": "uint32_t"
+      },
+      {
+        "name": "priority",
+        "type": "uint32_t"
+      },
+      {
+        "name": "deadline_ns",
+        "type": "uint64_t"
+      },
+      {
+        "name": "flags",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_kernel_footprint_t": {
+    "fields": []
+  },
+  "bharat_sys_cap_delegate_args_t": {
+    "fields": [
+      {
+        "name": "src_cap",
+        "type": "uint32_t"
+      },
+      {
+        "name": "requested_rights",
+        "type": "uint32_t"
+      },
+      {
+        "name": "out_cap_ptr",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bharat_sys_cap_invoke_args_t": {
+    "fields": [
+      {
+        "name": "cap_id",
+        "type": "uint64_t"
+      },
+      {
+        "name": "opcode",
+        "type": "uint64_t"
+      },
+      {
+        "name": "arg0",
+        "type": "uint64_t"
+      },
+      {
+        "name": "arg1",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bharat_sys_endpoint_create_args_t": {
+    "fields": [
+      {
+        "name": "out_send_cap_ptr",
+        "type": "uint64_t"
+      },
+      {
+        "name": "out_recv_cap_ptr",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bharat_sys_endpoint_receive_args_t": {
+    "fields": [
+      {
+        "name": "recv_cap",
+        "type": "uint32_t"
+      },
+      {
+        "name": "out_payload_capacity",
+        "type": "uint32_t"
+      },
+      {
+        "name": "out_payload_ptr",
+        "type": "uint64_t"
+      },
+      {
+        "name": "out_len_ptr",
+        "type": "uint64_t"
+      },
+      {
+        "name": "timeout_ticks",
+        "type": "uint64_t"
+      },
+      {
+        "name": "out_received_cap_ptr",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bharat_sys_endpoint_send_args_t": {
+    "fields": [
+      {
+        "name": "send_cap",
+        "type": "uint32_t"
+      },
+      {
+        "name": "payload_len",
+        "type": "uint32_t"
+      },
+      {
+        "name": "payload_ptr",
+        "type": "uint64_t"
+      },
+      {
+        "name": "timeout_ticks",
+        "type": "uint64_t"
+      },
+      {
+        "name": "cap_to_send",
+        "type": "uint32_t"
+      },
+      {
+        "name": "cap_send_rights",
+        "type": "uint32_t"
+      },
+      {
+        "name": "reserved0",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bharat_sys_fault_domain_args_t": {
+    "fields": [
+      {
+        "name": "cap_id",
+        "type": "uint32_t"
+      },
+      {
+        "name": "attr_ptr",
+        "type": "uint64_t"
+      },
+      {
+        "name": "out_domain_ptr",
+        "type": "uint64_t"
+      },
+      {
+        "name": "thread_cap",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_sys_intent_args_t": {
+    "fields": [
+      {
+        "name": "thread_cap",
+        "type": "uint32_t"
+      },
+      {
+        "name": "intent_ptr",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bharat_sys_mem_alloc_args_t": {
+    "fields": [
+      {
+        "name": "resource_cap",
+        "type": "uint32_t"
+      },
+      {
+        "name": "size",
+        "type": "uint64_t"
+      },
+      {
+        "name": "mem_class",
+        "type": "uint32_t"
+      },
+      {
+        "name": "flags",
+        "type": "uint32_t"
+      },
+      {
+        "name": "out_addr_ptr",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bharat_sys_sched_attr_args_t": {
+    "fields": [
+      {
+        "name": "thread_cap",
+        "type": "uint32_t"
+      },
+      {
+        "name": "value",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_sys_thread_create_args_t": {
+    "fields": [
+      {
+        "name": "process_cap",
+        "type": "uint32_t"
+      },
+      {
+        "name": "entry_point",
+        "type": "uint64_t"
+      },
+      {
+        "name": "out_tid_ptr",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bharat_sys_vmm_map_page_args_t": {
+    "fields": [
+      {
+        "name": "vaddr",
+        "type": "uint64_t"
+      },
+      {
+        "name": "cap_id",
+        "type": "uint32_t"
+      },
+      {
+        "name": "flags",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_sys_vmm_unmap_page_args_t": {
+    "fields": [
+      {
+        "name": "vaddr",
+        "type": "uint64_t"
+      },
+      {
+        "name": "cap_id",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bnet_ip_addr_t": {
+    "fields": [
+      {
+        "name": "family",
+        "type": "bnet_ip_family_t"
+      },
+      {
+        "name": "addr",
+        "type": ""
+      }
+    ]
+  },
+  "bnet_ip_prefix_t": {
+    "fields": [
+      {
+        "name": "prefix",
+        "type": "bnet_ip_addr_t"
+      },
+      {
+        "name": "length",
+        "type": "uint8_t"
+      }
+    ]
+  },
+  "bnet_mac_addr_t": {
+    "fields": [
+      {
+        "name": "addr",
+        "type": "uint8_t[6]"
+      }
+    ]
+  },
+  "bnet_packet_meta_t": {
+    "fields": [
+      {
+        "name": "flags",
+        "type": "uint32_t"
+      },
+      {
+        "name": "length",
+        "type": "uint16_t"
+      },
+      {
+        "name": "offload",
+        "type": "uint16_t"
+      }
+    ]
+  },
+  "bnet_route_key_t": {
+    "fields": [
+      {
+        "name": "dest",
+        "type": "bnet_ip_prefix_t"
+      },
+      {
+        "name": "gateway",
+        "type": "bnet_ip_addr_t"
+      },
+      {
+        "name": "iface_id",
+        "type": "bnet_interface_id_t"
+      },
+      {
+        "name": "metric",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bnet_stats_t": {
+    "fields": [
+      {
+        "name": "rx_packets",
+        "type": "uint64_t"
+      },
+      {
+        "name": "tx_packets",
+        "type": "uint64_t"
+      },
+      {
+        "name": "rx_bytes",
+        "type": "uint64_t"
+      },
+      {
+        "name": "tx_bytes",
+        "type": "uint64_t"
+      },
+      {
+        "name": "rx_errors",
+        "type": "uint64_t"
+      },
+      {
+        "name": "tx_errors",
+        "type": "uint64_t"
+      },
+      {
+        "name": "rx_dropped",
+        "type": "uint64_t"
+      },
+      {
+        "name": "tx_dropped",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "crypto_op_args_t": {
+    "fields": [
+      {
+        "name": "op",
+        "type": "crypto_op_class_t"
+      },
+      {
+        "name": "input_buf",
+        "type": "void*"
+      },
+      {
+        "name": "input_len",
+        "type": "size_t"
+      },
+      {
+        "name": "output_buf",
+        "type": "void*"
+      },
+      {
+        "name": "output_len",
+        "type": "size_t"
+      },
+      {
+        "name": "key_handle",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "crypto_provider_info_t": {
+    "fields": [
+      {
+        "name": "provider_id",
+        "type": "uint32_t"
+      },
+      {
+        "name": "backend_class",
+        "type": "crypto_backend_class_t"
+      },
+      {
+        "name": "supported_ops_mask",
+        "type": "uint32_t"
+      },
+      {
+        "name": "name",
+        "type": "char[32]"
+      }
+    ]
+  },
+  "namesvc_ipc_req_t": {
+    "fields": [
+      {
+        "name": "opcode",
+        "type": "uint32_t"
+      },
+      {
+        "name": "reserved",
+        "type": "uint32_t"
+      },
+      {
+        "name": "u",
+        "type": ""
+      }
+    ]
+  },
+  "namesvc_ipc_res_t": {
+    "fields": [
+      {
+        "name": "status",
+        "type": "int32_t"
+      },
+      {
+        "name": "reserved",
+        "type": "uint32_t"
+      },
+      {
+        "name": "u",
+        "type": ""
+      }
+    ]
+  }
+}

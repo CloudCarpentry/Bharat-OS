@@ -1,8 +1,19 @@
+---
+title: Context Switching Review: Kernel + Subsystem (revalidated)
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - reviews
+see_also:
+  - README.md
+---
 # Context Switching Review: Kernel + Subsystem (revalidated)
 
 ## Scope
 - Kernel scheduler runqueue selection and context-switch path.
-- Subsystem CPU allocation mask handling in `services/core/subsysmgr`.
+- Subsystem CPU allocation mask handling in `core/services/core/subsysmgr`.
 - HAL topology query surface used by scheduling/allocation policy.
 
 ## Alignment Check Against Current Code

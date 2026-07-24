@@ -1,3 +1,14 @@
+---
+title: Current Implementation Review (Status + Remaining Gaps)
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - reviews
+see_also:
+  - README.md
+---
 # Current Implementation Review (Status + Remaining Gaps)
 
 This review tracks the implementation state of Bharat-OS and prioritizes what remains for production readiness.
