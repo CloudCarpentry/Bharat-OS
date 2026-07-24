@@ -7,5 +7,5 @@ if(BHARAT_ENABLE_SUBSYS_WINDOWS)
         ${CMAKE_SOURCE_DIR}/core/services/core/subsysmgr/include
         ${CMAKE_SOURCE_DIR}/interface/include
     )
-    target_link_libraries(bharatos_personality_windows PUBLIC bharat_user_buildopts bharat_freestanding)
+    target_link_libraries(bharatos_personality_windows PUBLIC bharat_user_buildopts bharat_freestanding bharat_generated_includes)
 endif()

@@ -16,4 +16,4 @@ target_include_directories(bharatos_personality_automotive PRIVATE
     ${CMAKE_SOURCE_DIR}/core
 )
 
-target_link_libraries(bharatos_personality_automotive PRIVATE bharat_kernel_buildopts)
+target_link_libraries(bharatos_personality_automotive PRIVATE bharat_kernel_buildopts bharat_generated_includes)

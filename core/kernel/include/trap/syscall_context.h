@@ -20,6 +20,20 @@ typedef enum bh_syscall_class {
     BH_SYS_CLASS_SYSTEM
 } bh_syscall_class_t;
 
+typedef enum bh_syscall_cap_source_kind {
+    BH_SYS_CAP_SOURCE_NONE = 0,
+    BH_SYS_CAP_SOURCE_REGISTER,
+    BH_SYS_CAP_SOURCE_STRUCT_FIELD,
+    BH_SYS_CAP_SOURCE_IMPLICIT_PROCESS,
+    BH_SYS_CAP_SOURCE_IMPLICIT_THREAD
+} bh_syscall_cap_source_kind_t;
+
+typedef enum bh_syscall_cap_val_phase {
+    BH_SYS_CAP_VAL_NONE = 0,
+    BH_SYS_CAP_VAL_BEFORE_HANDLER,
+    BH_SYS_CAP_VAL_AFTER_USERCOPY
+} bh_syscall_cap_val_phase_t;
+
 /**
  * Production-grade Syscall Metadata
  */
@@ -32,6 +46,9 @@ typedef struct bh_syscall_meta {
     uint64_t required_rights;
     uint8_t  cap_arg_index;
     uint32_t required_cap_type;
+    bh_syscall_cap_source_kind_t cap_source_kind;
+    const char *cap_source_field;
+    bh_syscall_cap_val_phase_t cap_val_phase;
     bh_syscall_handler_t handler;
 } bh_syscall_meta_t;
 

@@ -50,7 +50,7 @@ target_include_directories(bharat_kernel_includes INTERFACE
 # In standalone kernel builds, define the bharat_generated_includes target
 if(NOT TARGET bharat_generated_includes)
     add_library(bharat_generated_includes INTERFACE)
-    target_include_directories(bharat_generated_includes INTERFACE "${BHARAT_GENERATED_INCLUDE_DIR}")
+    target_include_directories(bharat_generated_includes INTERFACE "${BHARAT_GENERATED_INCLUDE_DIR}" "${CMAKE_BINARY_DIR}/generated")
 endif()
 target_link_libraries(bharat_kernel_includes INTERFACE bharat_generated_includes)
 

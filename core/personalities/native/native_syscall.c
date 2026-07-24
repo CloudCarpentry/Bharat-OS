@@ -3,34 +3,6 @@
 #include <bharat/uapi/capability/rights.h>
 #include "capability.h"
 
-/* Temporary shims for missing UAPI rights */
-#ifndef BH_CAP_RIGHT_RESOURCE_ALLOC
-#define BH_CAP_RIGHT_RESOURCE_ALLOC BH_CAP_RIGHT_CONTROL
-#endif
-#ifndef BH_CAP_RIGHT_PROCESS_MANAGE
-#define BH_CAP_RIGHT_PROCESS_MANAGE BH_CAP_RIGHT_CONTROL
-#endif
-#ifndef BH_CAP_RIGHT_MEMORY_MAP
-#define BH_CAP_RIGHT_MEMORY_MAP BH_CAP_RIGHT_MAP
-#endif
-#ifndef BH_CAP_RIGHT_MEMORY_UNMAP
-#define BH_CAP_RIGHT_MEMORY_UNMAP BH_CAP_RIGHT_UNMAP
-#endif
-#ifndef BH_CAP_RIGHT_CRYPT_USE
-#define BH_CAP_RIGHT_CRYPT_USE BH_CAP_RIGHT_EXECUTE
-#endif
-#ifndef BH_CAP_RIGHT_ENDPOINT_SEND
-#define BH_CAP_RIGHT_ENDPOINT_SEND BH_CAP_RIGHT_SEND
-#endif
-#ifndef BH_CAP_RIGHT_ENDPOINT_RECEIVE
-#define BH_CAP_RIGHT_ENDPOINT_RECEIVE BH_CAP_RIGHT_RECEIVE
-#endif
-#ifndef BH_CAP_RIGHT_SCHEDULE
-#define BH_CAP_RIGHT_SCHEDULE BH_CAP_RIGHT_CONTROL
-#endif
-#ifndef BH_CAP_RIGHT_FAULT_DOMAIN_MANAGE
-#define BH_CAP_RIGHT_FAULT_DOMAIN_MANAGE BH_CAP_RIGHT_CONTROL
-#endif
 
 extern long bh_sys_nop(bh_syscall_ctx_t *ctx);
 extern long bh_sys_thread_create(bh_syscall_ctx_t *ctx);

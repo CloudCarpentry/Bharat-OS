@@ -124,7 +124,7 @@ include("${BHARAT_GEN_DIR}/BharatVersion.cmake")
 
 # Provide an interface target so components can inherit generated includes safely
 add_library(bharat_generated_includes INTERFACE)
-target_include_directories(bharat_generated_includes INTERFACE "${BHARAT_GEN_INCLUDE_DIR}")
+target_include_directories(bharat_generated_includes INTERFACE "${BHARAT_GEN_INCLUDE_DIR}" "${CMAKE_BINARY_DIR}/generated")
 
 # Architecture selection
 bharat_set_arch_defaults()

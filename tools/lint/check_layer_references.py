@@ -18,21 +18,21 @@ INCLUDE_RE = re.compile(r'^\s*#\s*include\s*[<\"]([^>\"]+)[>\"]')
 SYMBOL_LEAKAGE_RE = re.compile(r'\b(fsd_|netmgr_|devmgr_)[a-zA-Z0-9_]+')
 
 LAYER_PREFIXES = {
-    "kernel": ("kernel/",),
-    "hal": ("hal/",),
-    "arch": ("arch/",),
-    "platform": ("platform/",),
-    "drivers": ("drivers/",),
-    "services": ("services/",),
-    "stacks": ("stacks/",),
+    "kernel": ("core/kernel/", "kernel/"),
+    "hal": ("core/hal/", "hal/"),
+    "arch": ("core/arch/", "arch/"),
+    "platform": ("core/platform/", "platform/"),
+    "drivers": ("core/drivers/", "drivers/"),
+    "services": ("core/services/", "services/"),
+    "stacks": ("core/stacks/", "stacks/"),
     "user": ("experience/user/", "user/"),
-    "sdk": ("sdk/",),
+    "sdk": ("interface/sdk/", "sdk/"),
     "uapi": ("interface/uapi/",),
-    "lib": ("lib/",),
-    "boot": ("boot/",),
+    "lib": ("core/lib/", "lib/"),
+    "boot": ("core/boot/", "boot/"),
     "include": ("interface/include/", "include/"),
-    "personalities": ("personalities/",),
-    "tests": ("tests/",),
+    "personalities": ("core/personalities/", "personalities/"),
+    "tests": ("quality/tests/", "tests/"),
 }
 
 # Policy keeps kernel-side layers freestanding and prevents upward dependencies.
@@ -87,20 +87,18 @@ def detect_layer(path: str) -> str:
 
 def include_target_layer(repo_root: Path, source_layer: str, include_target: str) -> str | None:
     top = include_target.split("/", 1)[0]
+    # Check direct match with layer prefix first
     for layer, prefixes in LAYER_PREFIXES.items():
-        if not any(top == prefix.rstrip("/") for prefix in prefixes):
-            continue
-
-        # Treat kernel-private headers (kernel/include/lib/*) as kernel internals,
-        # not top-level hosted /lib dependencies.
-        if (
-            layer == "lib"
-            and source_layer in FREESTANDING_LAYERS
-            and (repo_root / "kernel" / "include" / include_target).exists()
-        ):
-            return "kernel"
-
-        return layer
+        if any(top == prefix.rstrip("/") for prefix in prefixes):
+            # Treat kernel-private headers (kernel/include/lib/*) as kernel internals,
+            # not top-level hosted /lib dependencies.
+            if (
+                layer == "lib"
+                and source_layer in FREESTANDING_LAYERS
+                and (repo_root / "core" / "kernel" / "include" / include_target).exists()
+            ):
+                return "kernel"
+            return layer
     return None
 
 

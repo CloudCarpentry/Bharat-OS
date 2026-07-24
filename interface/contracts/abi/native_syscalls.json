@@ -28,7 +28,12 @@
         }
       ],
       "capability": {
-        "source": "args",
+        "source": {
+          "kind": "struct_field",
+          "argument": "args",
+          "field": "process_cap"
+        },
+        "validation_phase": "after_usercopy",
         "object_type": "CAP_TYPE_PROCESS",
         "rights": ["BH_CAP_RIGHT_RESOURCE_ALLOC"],
         "scope": "current_process"
@@ -51,7 +56,11 @@
         }
       ],
       "capability": {
-        "source": "thread_cap",
+        "source": {
+          "kind": "register",
+          "argument": "thread_cap"
+        },
+        "validation_phase": "before_handler",
         "object_type": "CAP_TYPE_THREAD",
         "rights": ["BH_CAP_RIGHT_PROCESS_MANAGE"],
         "scope": "current_process"
@@ -85,7 +94,12 @@
         }
       ],
       "capability": {
-        "source": "args",
+        "source": {
+          "kind": "struct_field",
+          "argument": "args",
+          "field": "cap_id"
+        },
+        "validation_phase": "after_usercopy",
         "object_type": "CAP_TYPE_MEMORY",
         "rights": ["BH_CAP_RIGHT_MEMORY_MAP"],
         "scope": "current_process"
@@ -108,7 +122,12 @@
         }
       ],
       "capability": {
-        "source": "args",
+        "source": {
+          "kind": "struct_field",
+          "argument": "args",
+          "field": "cap_id"
+        },
+        "validation_phase": "after_usercopy",
         "object_type": "CAP_TYPE_MEMORY",
         "rights": ["BH_CAP_RIGHT_MEMORY_UNMAP"],
         "scope": "current_process"
@@ -131,7 +150,12 @@
         }
       ],
       "capability": {
-        "source": "args",
+        "source": {
+          "kind": "struct_field",
+          "argument": "args",
+          "field": "cap_id"
+        },
+        "validation_phase": "after_usercopy",
         "object_type": "CAP_TYPE_NONE",
         "rights": ["BH_CAP_RIGHT_QUERY", "BH_CAP_RIGHT_CRYPT_USE"],
         "scope": "current_process"
@@ -154,7 +178,10 @@
         }
       ],
       "capability": {
-        "source": "args",
+        "source": {
+          "kind": "implicit_current_process"
+        },
+        "validation_phase": "before_handler",
         "object_type": "CAP_TYPE_PROCESS",
         "rights": ["BH_CAP_RIGHT_RESOURCE_ALLOC"],
         "scope": "current_process"
@@ -177,7 +204,12 @@
         }
       ],
       "capability": {
-        "source": "args",
+        "source": {
+          "kind": "struct_field",
+          "argument": "args",
+          "field": "send_cap"
+        },
+        "validation_phase": "after_usercopy",
         "object_type": "CAP_TYPE_ENDPOINT",
         "rights": ["BH_CAP_RIGHT_ENDPOINT_SEND"],
         "scope": "current_process"
@@ -200,7 +232,12 @@
         }
       ],
       "capability": {
-        "source": "args",
+        "source": {
+          "kind": "struct_field",
+          "argument": "args",
+          "field": "recv_cap"
+        },
+        "validation_phase": "after_usercopy",
         "object_type": "CAP_TYPE_ENDPOINT",
         "rights": ["BH_CAP_RIGHT_ENDPOINT_RECEIVE"],
         "scope": "current_process"
@@ -223,7 +260,12 @@
         }
       ],
       "capability": {
-        "source": "args",
+        "source": {
+          "kind": "struct_field",
+          "argument": "args",
+          "field": "src_cap"
+        },
+        "validation_phase": "after_usercopy",
         "object_type": "CAP_TYPE_NONE",
         "rights": ["BH_CAP_RIGHT_DELEGATE"],
         "scope": "current_process"
@@ -264,7 +306,12 @@
         }
       ],
       "capability": {
-        "source": "args",
+        "source": {
+          "kind": "struct_field",
+          "argument": "args",
+          "field": "thread_cap"
+        },
+        "validation_phase": "after_usercopy",
         "object_type": "CAP_TYPE_SCHED",
         "rights": ["BH_CAP_RIGHT_SCHEDULE"],
         "scope": "current_process"
@@ -287,7 +334,12 @@
         }
       ],
       "capability": {
-        "source": "args",
+        "source": {
+          "kind": "struct_field",
+          "argument": "args",
+          "field": "thread_cap"
+        },
+        "validation_phase": "after_usercopy",
         "object_type": "CAP_TYPE_SCHED",
         "rights": ["BH_CAP_RIGHT_SCHEDULE"],
         "scope": "current_process"
@@ -310,7 +362,12 @@
         }
       ],
       "capability": {
-        "source": "args",
+        "source": {
+          "kind": "struct_field",
+          "argument": "args",
+          "field": "thread_cap"
+        },
+        "validation_phase": "after_usercopy",
         "object_type": "CAP_TYPE_PROCESS",
         "rights": ["BH_CAP_RIGHT_QUERY"],
         "scope": "current_process"
@@ -333,7 +390,12 @@
         }
       ],
       "capability": {
-        "source": "args",
+        "source": {
+          "kind": "struct_field",
+          "argument": "args",
+          "field": "thread_cap"
+        },
+        "validation_phase": "after_usercopy",
         "object_type": "CAP_TYPE_PROCESS",
         "rights": ["BH_CAP_RIGHT_QUERY"],
         "scope": "current_process"
@@ -356,7 +418,12 @@
         }
       ],
       "capability": {
-        "source": "args",
+        "source": {
+          "kind": "struct_field",
+          "argument": "args",
+          "field": "resource_cap"
+        },
+        "validation_phase": "after_usercopy",
         "object_type": "CAP_TYPE_MEMORY",
         "rights": ["BH_CAP_RIGHT_RESOURCE_ALLOC"],
         "scope": "current_process"
@@ -379,7 +446,12 @@
         }
       ],
       "capability": {
-        "source": "args",
+        "source": {
+          "kind": "struct_field",
+          "argument": "args",
+          "field": "cap_id"
+        },
+        "validation_phase": "after_usercopy",
         "object_type": "CAP_TYPE_PROCESS",
         "rights": ["BH_CAP_RIGHT_RESOURCE_ALLOC"],
         "scope": "current_process"
@@ -402,7 +474,11 @@
         }
       ],
       "capability": {
-        "source": "domain_cap",
+        "source": {
+          "kind": "register",
+          "argument": "domain_cap"
+        },
+        "validation_phase": "before_handler",
         "object_type": "CAP_TYPE_NONE",
         "rights": ["BH_CAP_RIGHT_FAULT_DOMAIN_MANAGE"],
         "scope": "current_process"
@@ -425,7 +501,12 @@
         }
       ],
       "capability": {
-        "source": "args",
+        "source": {
+          "kind": "struct_field",
+          "argument": "args",
+          "field": "cap_id"
+        },
+        "validation_phase": "after_usercopy",
         "object_type": "CAP_TYPE_NONE",
         "rights": ["BH_CAP_RIGHT_FAULT_DOMAIN_MANAGE"],
         "scope": "current_process"
@@ -461,7 +542,11 @@
         }
       ],
       "capability": {
-        "source": "fd",
+        "source": {
+          "kind": "register",
+          "argument": "fd"
+        },
+        "validation_phase": "before_handler",
         "object_type": "CAP_TYPE_NONE",
         "rights": ["BH_CAP_RIGHT_READ"],
         "scope": "current_process"
@@ -497,7 +582,11 @@
         }
       ],
       "capability": {
-        "source": "fd",
+        "source": {
+          "kind": "register",
+          "argument": "fd"
+        },
+        "validation_phase": "before_handler",
         "object_type": "CAP_TYPE_NONE",
         "rights": ["BH_CAP_RIGHT_WRITE"],
         "scope": "current_process"
@@ -527,7 +616,11 @@
         }
       ],
       "capability": {
-        "source": "subsys_id",
+        "source": {
+          "kind": "register",
+          "argument": "subsys_id"
+        },
+        "validation_phase": "before_handler",
         "object_type": "CAP_TYPE_NONE",
         "rights": ["BH_CAP_RIGHT_QUERY"],
         "scope": "current_process"

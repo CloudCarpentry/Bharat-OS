@@ -24,6 +24,18 @@ CLASS_MAPPING = {
     "capability": "BH_SYS_CLASS_CAPABILITY"
 }
 
+KIND_MAPPING = {
+    "register": "BH_SYS_CAP_SOURCE_REGISTER",
+    "struct_field": "BH_SYS_CAP_SOURCE_STRUCT_FIELD",
+    "implicit_current_process": "BH_SYS_CAP_SOURCE_IMPLICIT_PROCESS",
+    "implicit_current_thread": "BH_SYS_CAP_SOURCE_IMPLICIT_THREAD",
+}
+
+VAL_PHASE_MAPPING = {
+    "before_handler": "BH_SYS_CAP_VAL_BEFORE_HANDLER",
+    "after_usercopy": "BH_SYS_CAP_VAL_AFTER_USERCOPY",
+}
+
 def load_json(path):
     if not os.path.exists(path):
         return None
@@ -68,6 +80,20 @@ def validate_schema(manifest):
                 if ck not in cap:
                     print(f"Schema Error: Capability for {sc['symbol']} missing key '{ck}'")
                     return False
+
+            source = cap["source"]
+            if isinstance(source, dict):
+                if "kind" not in source:
+                    print(f"Schema Error: Capability source object in {sc['symbol']} must have 'kind'")
+                    return False
+                if source["kind"] in ["register", "struct_field"]:
+                    if "argument" not in source:
+                        print(f"Schema Error: Capability source object {source['kind']} in {sc['symbol']} must have 'argument'")
+                        return False
+                if source["kind"] == "struct_field":
+                    if "field" not in source:
+                        print(f"Schema Error: Capability source object struct_field in {sc['symbol']} must have 'field'")
+                        return False
 
     return True
 
@@ -114,17 +140,27 @@ def validate_semantics(manifest):
         # Capability index matching
         if sc["capability"] is not None:
             source = sc["capability"]["source"]
-            arg_names = [a["name"] for a in sc["arguments"]]
-            if source not in arg_names:
-                print(f"Semantic Error: Syscall {sym} capability source '{source}' not in arguments list")
-                return False
+            if isinstance(source, dict):
+                kind = source["kind"]
+                if kind in ["register", "struct_field"]:
+                    arg_name = source["argument"]
+                else:
+                    arg_name = None
+            else:
+                kind = "register"
+                arg_name = source
+
+            if arg_name is not None:
+                arg_names = [a["name"] for a in sc["arguments"]]
+                if arg_name not in arg_names:
+                    print(f"Semantic Error: Syscall {sym} capability source '{arg_name}' not in arguments list")
+                    return False
 
     return True
 
 def check_raw_numbers_in_source():
     success = True
     dirs = ['experience', 'services', 'tests', 'lib', 'core', 'interface', 'quality']
-    # Scan files for raw numeric syscalls or 1001
     pattern_syscall = re.compile(r'\bbharat_syscall\s*\(\s*[0-9]+\b')
     pattern_dummy = re.compile(r'\b1001\b')
 
@@ -133,11 +169,9 @@ def check_raw_numbers_in_source():
             continue
         for root, _, files in os.walk(d):
             for file in files:
-                # Only check source files
                 if not (file.endswith('.c') or file.endswith('.h') or file.endswith('.S') or file.endswith('.cpp')):
                     continue
                 filepath = os.path.join(root, file)
-                # Skip build artifact scripts or generator files
                 if "syscall_abi.py" in filepath or "check_syscalls.py" in filepath:
                     continue
                 try:
@@ -147,7 +181,6 @@ def check_raw_numbers_in_source():
                                 print(f"Raw Syscall Code Error: Raw numeric syscall invocation in {filepath}:{line_idx}: {line.strip()}")
                                 success = False
                             if pattern_dummy.search(line):
-                                # Check if it's a false positive or genuinely the old dummy syscall 1001
                                 if "1001" in line and not line.strip().startswith("//") and not line.strip().startswith("/*"):
                                     print(f"Raw Syscall Code Error: Dummy syscall number 1001 in {filepath}:{line_idx}: {line.strip()}")
                                     success = False
@@ -160,17 +193,59 @@ def compare_lock(manifest, lock_data):
         print("Lock Check Error: Lock file data is missing.")
         return False
 
-    # Check append-only rules
-    lock_syscalls = {sc["number"]: sc["symbol"] for sc in lock_data.get("syscalls", [])}
+    lock_syscalls = {sc["number"]: sc for sc in lock_data.get("syscalls", [])}
     manifest_syscalls = {sc["number"]: sc for sc in manifest["syscalls"]}
 
-    for num, sym in lock_syscalls.items():
+    for num, l_sc in lock_syscalls.items():
         if num not in manifest_syscalls:
-            print(f"ABI Breakage Error: Syscall {sym} ({num}) was removed from the manifest. Syscall deletions are forbidden.")
+            print(f"ABI Breakage Error: Syscall {l_sc['symbol']} ({num}) was removed from the manifest. Syscall deletions are forbidden.")
             return False
-        curr_sym = manifest_syscalls[num]["symbol"]
-        if curr_sym != sym:
-            print(f"ABI Breakage Error: Syscall number {num} changed its symbol from {sym} to {curr_sym}. Renaming or renumbering is forbidden.")
+
+        m_sc = manifest_syscalls[num]
+
+        # Check basic properties
+        if m_sc["symbol"] != l_sc["symbol"]:
+            print(f"ABI Breakage Error: Syscall number {num} changed its symbol from {l_sc['symbol']} to {m_sc['symbol']}. Renaming or renumbering is forbidden.")
+            return False
+
+        # Validate arguments list
+        l_args = l_sc.get("arguments", [])
+        m_args = m_sc.get("arguments", [])
+        if len(l_args) != len(m_args):
+            print(f"ABI Breakage Error: Syscall {m_sc['symbol']} changed argument count from {len(l_args)} to {len(m_args)}.")
+            return False
+
+        for i, (l_arg, m_arg) in enumerate(zip(l_args, m_args)):
+            for field in ["name", "kind", "type", "direction", "size_source"]:
+                if l_arg.get(field) != m_arg.get(field):
+                    print(f"ABI Breakage Error: Syscall {m_sc['symbol']} argument {i} changed field '{field}' from '{l_arg.get(field)}' to '{m_arg.get(field)}'.")
+                    return False
+
+        # Validate capability
+        l_cap = l_sc.get("capability")
+        m_cap = m_sc.get("capability")
+        if (l_cap is None) != (m_cap is None):
+            print(f"ABI Breakage Error: Syscall {m_sc['symbol']} changed capability presence.")
+            return False
+
+        if l_cap is not None:
+            # Check fields
+            for field in ["object_type", "scope", "validation_phase"]:
+                if l_cap.get(field) != m_cap.get(field):
+                    print(f"ABI Breakage Error: Syscall {m_sc['symbol']} capability changed field '{field}' from '{l_cap.get(field)}' to '{m_cap.get(field)}'.")
+                    return False
+            # Check source
+            if l_cap.get("source") != m_cap.get("source"):
+                print(f"ABI Breakage Error: Syscall {m_sc['symbol']} capability source changed from '{l_cap.get('source')}' to '{m_cap.get('source')}'.")
+                return False
+            # Check rights (order-independent comparison)
+            if sorted(l_cap.get("rights", [])) != sorted(m_cap.get("rights", [])):
+                print(f"ABI Breakage Error: Syscall {m_sc['symbol']} capability rights changed from {l_cap.get('rights')} to {m_cap.get('rights')}.")
+                return False
+
+        # Validate traits
+        if sorted(l_sc.get("traits", [])) != sorted(m_sc.get("traits", [])):
+            print(f"ABI Breakage Error: Syscall {m_sc['symbol']} traits changed from {l_sc.get('traits')} to {m_sc.get('traits')}.")
             return False
 
     return True
@@ -210,30 +285,50 @@ def generate_headers(manifest, output_inc, output_def, output_numbers):
             arg_count = len(sc["arguments"])
             handler = sc["handler"]
 
-            # Compute flags
-            flags = []
-            if sc["capability"] is not None:
-                flags.append("BH_SYSCALL_F_CAP_REQUIRED")
-            for t in sc["traits"]:
-                if t in TRAIT_FLAGS:
-                    flags.append(TRAIT_FLAGS[t])
-            flags_str = " | ".join(flags) if flags else "0"
-
             # Capability metadata
             if sc["capability"] is not None:
                 cap = sc["capability"]
                 # Get index of source
                 source_idx = "BH_SYS_CAP_INDEX_NONE"
-                for i, arg in enumerate(sc["arguments"]):
-                    if arg["name"] == cap["source"]:
-                        source_idx = str(i)
-                        break
+                source = cap["source"]
+                if isinstance(source, dict):
+                    kind = source["kind"]
+                    arg_name = source.get("argument")
+                    field_name = source.get("field", "")
+                    val_phase = cap.get("validation_phase", "before_handler")
+                else:
+                    kind = "register"
+                    arg_name = source
+                    field_name = ""
+                    val_phase = "before_handler"
+
+                if arg_name is not None:
+                    for i, arg in enumerate(sc["arguments"]):
+                        if arg["name"] == arg_name:
+                            source_idx = str(i)
+                            break
                 rights_str = " | ".join(cap["rights"]) if cap["rights"] else "0"
                 obj_type = cap["object_type"]
+                cap_kind_str = KIND_MAPPING.get(kind, "BH_SYS_CAP_SOURCE_NONE")
+                cap_field_str = f'"{field_name}"' if field_name else "NULL"
+                cap_phase_str = VAL_PHASE_MAPPING.get(val_phase, "BH_SYS_CAP_VAL_NONE")
             else:
                 source_idx = "BH_SYS_CAP_INDEX_NONE"
                 rights_str = "0"
                 obj_type = "CAP_TYPE_NONE"
+                cap_kind_str = "BH_SYS_CAP_SOURCE_NONE"
+                cap_field_str = "NULL"
+                cap_phase_str = "BH_SYS_CAP_VAL_NONE"
+                val_phase = "none"
+
+            # Compute flags
+            flags = []
+            if sc["capability"] is not None and val_phase == "before_handler":
+                flags.append("BH_SYSCALL_F_CAP_REQUIRED")
+            for t in sc["traits"]:
+                if t in TRAIT_FLAGS:
+                    flags.append(TRAIT_FLAGS[t])
+            flags_str = " | ".join(flags) if flags else "0"
 
             f.write(f"[{sym}] = {{\n")
             f.write(f"    .nr = {sym},\n")
@@ -244,6 +339,9 @@ def generate_headers(manifest, output_inc, output_def, output_numbers):
             f.write(f"    .required_rights = {rights_str},\n")
             f.write(f"    .cap_arg_index = {source_idx},\n")
             f.write(f"    .required_cap_type = {obj_type},\n")
+            f.write(f"    .cap_source_kind = {cap_kind_str},\n")
+            f.write(f"    .cap_source_field = {cap_field_str},\n")
+            f.write(f"    .cap_val_phase = {cap_phase_str},\n")
             f.write(f"    .handler = {handler}\n")
             f.write("},\n")
 
@@ -293,7 +391,17 @@ def main():
         sys.exit(0)
 
     if args.update_lock:
-        save_json(args.lock, {"version": manifest["version"], "syscalls": [{"number": sc["number"], "symbol": sc["symbol"]} for sc in manifest["syscalls"]]})
+        lock_syscalls = [
+            {
+                "number": sc["number"],
+                "symbol": sc["symbol"],
+                "arguments": sc["arguments"],
+                "capability": sc["capability"],
+                "traits": sc["traits"]
+            }
+            for sc in manifest["syscalls"]
+        ]
+        save_json(args.lock, {"version": manifest["version"], "syscalls": lock_syscalls})
         print(f"Updated lock file: {args.lock}")
         sys.exit(0)
 
