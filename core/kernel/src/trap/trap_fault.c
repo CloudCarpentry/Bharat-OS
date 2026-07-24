@@ -2,6 +2,7 @@
 #include "sched/sched.h"
 #include "panic.h"
 #include "fault_diag.h"
+#include "exception_table.h"
 
 int (*g_test_fault_hook)(trap_frame_t *frame, const trap_info_t *info) = NULL;
 
@@ -14,6 +15,11 @@ int trap_handle_fault(trap_frame_t *frame, const trap_info_t *info) {
     }
 
     if (info->origin == TRAP_ORIGIN_KERNEL) {
+        // Attempt exception table recovery before panicking on kernel exceptions
+        if (trap_try_exception_fixup(frame, info->fault_addr, info->arch_code)) {
+            return 0; // Recovered successfully
+        }
+
         panic_context_t pctx = {
             .message = "Kernel exception",
             .cause_str = "unhandled_kernel_trap",

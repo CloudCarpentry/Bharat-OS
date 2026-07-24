@@ -102,29 +102,32 @@ class StructVisitor(c_ast.NodeVisitor):
 def generate_struct_manifest():
     parser = c_parser.CParser()
     manifest = {}
-    uapi_dir = resolve_uapi_dir()
+    uapi_dirs = [resolve_uapi_dir(), "interface/include/bharat/uapi"]
 
-    for root, dirs, files in os.walk(uapi_dir):
-        for file in files:
-            if not file.endswith('.h'):
-                continue
+    for uapi_dir in uapi_dirs:
+        if not os.path.exists(uapi_dir):
+            continue
+        for root, dirs, files in os.walk(uapi_dir):
+            for file in files:
+                if not file.endswith('.h'):
+                    continue
 
-            filepath = os.path.join(root, file)
-            # Some headers might have complex macros we can't parse easily with pycparser without a real CPP.
-            # We'll try to parse, and if it fails, we skip or report.
-            # Specifically we care about syscall_args.h and stable UAPI structs.
-            try:
-                text = preprocess(filepath)
-                ast = parser.parse(text, filename=filepath)
-                visitor = StructVisitor()
-                visitor.visit(ast)
+                filepath = os.path.join(root, file)
+                # Some headers might have complex macros we can't parse easily with pycparser without a real CPP.
+                # We'll try to parse, and if it fails, we skip or report.
+                # Specifically we care about syscall_args.h and stable UAPI structs.
+                try:
+                    text = preprocess(filepath)
+                    ast = parser.parse(text, filename=filepath)
+                    visitor = StructVisitor()
+                    visitor.visit(ast)
 
-                for k, v in visitor.structs.items():
-                    manifest[k] = v
-            except Exception as e:
-                # Silently ignore unparseable files, unless they are carrier structs
-                if 'syscall_args' in filepath:
-                    common.report_error(f"Failed to parse {filepath}: {e}")
+                    for k, v in visitor.structs.items():
+                        manifest[k] = v
+                except Exception as e:
+                    # Silently ignore unparseable files, unless they are carrier structs
+                    if 'syscall_args' in filepath:
+                        common.report_error(f"Failed to parse {filepath}: {e}")
 
     return manifest
 

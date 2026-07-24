@@ -37,8 +37,6 @@ kstatus_t bh_syscall_policy_check(bh_syscall_ctx_t *ctx, const bh_syscall_meta_t
                 // This is a bit circular but ensures the gate returns the right sysret
                 return K_ERR_DENIED;
             }
-        } else if (desc->requires_capability) {
-             // Fallback for legacy transitional metadata if cap_arg_index not yet set
         }
     }
 
@@ -137,7 +135,7 @@ long bh_syscall_gate(trap_frame_t *frame, const trap_info_t *info) {
     fault_diag_record_syscall(ctx.regs.nr);
 
     const bh_personality_syscall_table_t *table = personality_get_syscall_table(ctx.personality);
-    if (!table || !table->table || ctx.regs.nr > table->max_syscall_nr) {
+    if (!table || !table->table || ctx.regs.nr >= table->entry_count) {
         return kstatus_to_native_sysret(K_ERR_INVALID_SYSCALL);
     }
 
@@ -145,7 +143,7 @@ long bh_syscall_gate(trap_frame_t *frame, const trap_info_t *info) {
 
     /* Metadata-driven Fail Closed Dispatch */
     if (desc->nr != ctx.regs.nr || !desc->handler) {
-        return kstatus_to_native_sysret(K_ERR_UNSUPPORTED);
+        return kstatus_to_native_sysret(K_ERR_INVALID_SYSCALL);
     }
 
     /* Argument count validation */

@@ -269,7 +269,7 @@ static int test_cap_validate_framework(void) {
     int status_grant = cap_table_grant(table, CAP_TYPE_MEMORY, 0x8000, CAP_RIGHT_MEMORY_MAP | CAP_RIGHT_MEMORY_SHARE, &cap_id);
     ASSERT_RET(status_grant == 0, -2);
 
-    capability_entry_t *entry = NULL;
+    capability_entry_t entry;
     cap_validation_request_t req = {
         .cap_id = cap_id,
         .expected_object_type = CAP_TYPE_MEMORY,
@@ -281,8 +281,7 @@ static int test_cap_validate_framework(void) {
     // 1. Success case
     kstatus_t status = cap_validate_ex(table, &req, &entry);
     ASSERT_RET(status == K_OK, -3);
-    ASSERT_RET(entry != NULL, -4);
-    ASSERT_RET(entry->id == (cap_id & 0xFFFF), -5);
+    ASSERT_RET(entry.id == (cap_id & 0xFFFF), -5);
 
     // 2. Success case - return entry optional
     status = cap_validate_ex(table, &req, NULL);
@@ -292,7 +291,6 @@ static int test_cap_validate_framework(void) {
     req.cap_id = cap_id + 1;
     status = cap_validate_ex(table, &req, &entry);
     ASSERT_RET(status == K_ERR_NOT_FOUND, -7);
-    ASSERT_RET(entry == NULL, -8);
     req.cap_id = cap_id;
 
     // 4. Wrong object type

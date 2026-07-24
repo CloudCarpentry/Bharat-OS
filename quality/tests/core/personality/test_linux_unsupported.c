@@ -36,7 +36,7 @@ bh_thread_t* sched_current_thread(void) { return &mock_thread; }
 // External symbols expected by bh_syscall_gate
 const bh_personality_syscall_table_t *personality_native_get_table(void) { return NULL; }
 const bh_personality_syscall_table_t *personality_linux_get_table(void) {
-    static bh_personality_syscall_table_t empty_table = { .table = NULL, .max_syscall_nr = 0 };
+    static bh_personality_syscall_table_t empty_table = { .table = NULL, .entry_count = 0 };
     return &empty_table;
 }
 const bh_personality_syscall_table_t *personality_android_get_table(void) { return NULL; }

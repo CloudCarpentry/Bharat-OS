@@ -10,14 +10,14 @@ static long win_sys_unsupported(bh_syscall_ctx_t *ctx) {
     return STATUS_NOT_IMPLEMENTED;
 }
 
-static const bh_syscall_desc_t windows_syscall_table[] = {
-    [0] = { 0, "NtUnsupported", 0, 0, 0, win_sys_unsupported },
+static const bh_syscall_meta_t windows_syscall_table[] = {
+    [0] = { 0, "NtUnsupported", 0, 0, 0, 0, 0, 0, win_sys_unsupported },
 };
 
 const bh_personality_syscall_table_t windows_personality_table = {
     .name = "windows",
     .abi_version = 1,
-    .max_syscall_nr = 0,
+    .entry_count = 1,
     .table = windows_syscall_table
 };
 

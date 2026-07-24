@@ -60,11 +60,20 @@ static inline kstatus_t bh_syscall_cap_lookup_fault_domain(bh_syscall_ctx_t *ctx
     if (!ctx || !ctx->process || !ctx->process->security_sandbox_ctx) {
         return K_ERR_DENIED;
     }
+    if (!bh_cap_is_valid_encoding((uint32_t)cap_id)) {
+        return K_ERR_CAP_INVALID;
+    }
+    cap_validation_request_t req = {
+        .cap_id = (uint32_t)cap_id,
+        .expected_object_type = CAP_TYPE_PROCESS,
+        .required_rights = required_rights,
+        .requester_pid = ctx->process->process_id,
+        .expected_generation = bh_cap_generation((uint32_t)cap_id)
+    };
     capability_entry_t entry;
-    kstatus_t st = cap_table_lookup((capability_table_t *)ctx->process->security_sandbox_ctx,
-                                    (uint32_t)cap_id, CAP_TYPE_PROCESS, required_rights, &entry);
+    kstatus_t st = cap_validate_ex((capability_table_t *)ctx->process->security_sandbox_ctx,
+                                   &req, &entry);
     if (st == K_OK) {
-        if (entry.state != CAP_STATE_LIVE) return K_ERR_DENIED;
         if (out_ref) *out_ref = (void *)entry.object_ref;
     }
     return st;
@@ -77,11 +86,20 @@ static inline kstatus_t bh_syscall_cap_lookup_sched_control(bh_syscall_ctx_t *ct
     if (!ctx || !ctx->process || !ctx->process->security_sandbox_ctx) {
         return K_ERR_DENIED;
     }
+    if (!bh_cap_is_valid_encoding((uint32_t)cap_id)) {
+        return K_ERR_CAP_INVALID;
+    }
+    cap_validation_request_t req = {
+        .cap_id = (uint32_t)cap_id,
+        .expected_object_type = CAP_TYPE_SCHED,
+        .required_rights = required_rights,
+        .requester_pid = ctx->process->process_id,
+        .expected_generation = bh_cap_generation((uint32_t)cap_id)
+    };
     capability_entry_t entry;
-    kstatus_t st = cap_table_lookup((capability_table_t *)ctx->process->security_sandbox_ctx,
-                                    (uint32_t)cap_id, CAP_TYPE_SCHED, required_rights, &entry);
+    kstatus_t st = cap_validate_ex((capability_table_t *)ctx->process->security_sandbox_ctx,
+                                   &req, &entry);
     if (st == K_OK) {
-        if (entry.state != CAP_STATE_LIVE) return K_ERR_DENIED;
         if (out_ref) *out_ref = (void *)entry.object_ref;
     }
     return st;

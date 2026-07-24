@@ -1,0 +1,101 @@
+{
+  "version": 1,
+  "syscalls": [
+    {
+      "number": 0,
+      "symbol": "BH_SYS_NOP"
+    },
+    {
+      "number": 1,
+      "symbol": "BH_SYS_THREAD_CREATE"
+    },
+    {
+      "number": 2,
+      "symbol": "BH_SYS_THREAD_DESTROY"
+    },
+    {
+      "number": 3,
+      "symbol": "BH_SYS_SCHED_YIELD"
+    },
+    {
+      "number": 4,
+      "symbol": "BH_SYS_VMM_MAP_PAGE"
+    },
+    {
+      "number": 5,
+      "symbol": "BH_SYS_VMM_UNMAP_PAGE"
+    },
+    {
+      "number": 6,
+      "symbol": "BH_SYS_CAPABILITY_INVOKE"
+    },
+    {
+      "number": 7,
+      "symbol": "BH_SYS_ENDPOINT_CREATE"
+    },
+    {
+      "number": 8,
+      "symbol": "BH_SYS_ENDPOINT_SEND"
+    },
+    {
+      "number": 9,
+      "symbol": "BH_SYS_ENDPOINT_RECEIVE"
+    },
+    {
+      "number": 10,
+      "symbol": "BH_SYS_CAPABILITY_DELEGATE"
+    },
+    {
+      "number": 11,
+      "symbol": "BH_SYS_SCHED_SLEEP"
+    },
+    {
+      "number": 12,
+      "symbol": "BH_SYS_SCHED_SET_PRIORITY"
+    },
+    {
+      "number": 13,
+      "symbol": "BH_SYS_SCHED_SET_AFFINITY"
+    },
+    {
+      "number": 14,
+      "symbol": "BH_SYS_INTENT_SET"
+    },
+    {
+      "number": 15,
+      "symbol": "BH_SYS_INTENT_GET"
+    },
+    {
+      "number": 16,
+      "symbol": "BH_SYS_MEM_ALLOC_CLASS"
+    },
+    {
+      "number": 17,
+      "symbol": "BH_SYS_FAULT_DOMAIN_CREATE"
+    },
+    {
+      "number": 18,
+      "symbol": "BH_SYS_FAULT_DOMAIN_DESTROY"
+    },
+    {
+      "number": 19,
+      "symbol": "BH_SYS_FAULT_DOMAIN_ATTACH"
+    },
+    {
+      "number": 20,
+      "symbol": "BH_SYS_READ"
+    },
+    {
+      "number": 21,
+      "symbol": "BH_SYS_WRITE"
+    },
+    {
+      "number": 22,
+      "symbol": "BH_SYS_GET_SUBSYSTEM_CAPS"
+    },
+    {
+      "number": 23,
+      "symbol": "BH_SYS_THREAD_EXIT"
+    }
+  ]
+}

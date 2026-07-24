@@ -14,6 +14,7 @@ add_library(k_init OBJECT
 target_include_directories(k_init PRIVATE
     ${BHARAT_KERNEL_INCLUDE_DIR}
     ${BHARAT_KERNEL_INCLUDE_DIR}/generated
+    ${BHARAT_GENERATED_INCLUDE_DIR}
     ${CMAKE_SOURCE_DIR}/core/personalities/runtime/include
     ${CMAKE_SOURCE_DIR}/interface/include
     ${BHARAT_LIB_ROOT}/include

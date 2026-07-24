@@ -51,7 +51,7 @@ int main(void) {
     } \
     used_numbers[number] = 1;
 
-#include <bharat/uapi/syscall_table.def>
+#include <bharat/uapi/syscall/table.def>
 #undef SYSCALL_DEF
 
     printf("Syscall ABI consistency tests passed.\n");
