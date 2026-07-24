@@ -1,8 +1,19 @@
+---
+title: Target YAML Authoring Guide
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - dev
+see_also:
+  - README.md
+---
 # Target YAML Authoring Guide
 
 This guide explains how to define declarative targets for the Bharat-OS build and execution pipeline. Target YAML files describe the full lifecycle of a target: how it is built, packaged, run, flashed, and debugged.
 
-Targets are stored in `tools/targets/` (e.g., `tools/targets/qemu/`, `tools/targets/boards/`).
+Targets are stored in `delivery/targets/` (preferred, e.g., `delivery/targets/qemu/`). During migration, legacy `tools/targets/qemu/` path references are accepted via compatibility aliasing.
 
 ## YAML Schema Overview
 
@@ -43,8 +54,8 @@ build:
 
 kernel:
   canonical_artifacts:
-    elf: kernel/kernel.elf
-    map: kernel/kernel.map
+    elf: core/kernel/kernel.elf
+    map: core/kernel/kernel.map
 
 boot:
   protocol: elf_direct
@@ -65,7 +76,7 @@ run:
   nographic: true
   serial:
     - stdio
-  boot_artifact: kernel/kernel.elf
+  boot_artifact: core/kernel/kernel.elf
 
 debug:
   backend: gdb_remote
@@ -95,7 +106,7 @@ build:
 
 kernel:
   canonical_artifacts:
-    elf: kernel/kernel.elf
+    elf: core/kernel/kernel.elf
 
 boot:
   protocol: raw_entry
@@ -106,7 +117,7 @@ boot:
 package:
   transforms:
     - type: elf_to_bin
-      input: kernel/kernel.elf
+      input: core/kernel/kernel.elf
       output: flash_payload.bin
 
 flash:
@@ -118,7 +129,7 @@ flash:
 
 debug:
   backend: gdb_remote
-  symbols: kernel/kernel.elf
+  symbols: core/kernel/kernel.elf
 ```
 
 ## Validation Rules

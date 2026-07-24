@@ -9,7 +9,7 @@ version: 1.0
 
 ### Contract Status
 - **Spec**: ✅ Documented and versioned
-- **Implemented**: 🚧 Pending kernel/service behavior merge
+- **Implemented**: 🚧 Pending core/kernel/service behavior merge
 - **Validated**: ❌ Pending stress/fault-injection tests
 
 
@@ -38,7 +38,7 @@ The goal is **near-native semantics and performance**.
 ## D. Layering Alignment
 
 The Linux personality must respect the established repository structure and architectural boundaries:
-*   **Kernel (`kernel/`):** Mechanism only. Contains generic trap entry, scheduling, VM, IPC, and primitive wait/wake.
-*   **Services (`services/`):** Policy orchestration. Manages permissions, lifecycle, and higher-level OS constructs.
-*   **Personalities (`personalities/compat/linux/`):** ABI mapping only. Adapts Linux userland calls to the core kernel and service mechanisms without bringing its own parallel OS logic.
+*   **Kernel (`core/kernel/`):** Mechanism only. Contains generic trap entry, scheduling, VM, IPC, and primitive wait/wake.
+*   **Services (`core/services/`):** Policy orchestration. Manages permissions, lifecycle, and higher-level OS constructs.
+*   **Personalities (`core/personalities/compat/linux/`):** ABI mapping only. Adapts Linux userland calls to the core kernel and service mechanisms without bringing its own parallel OS logic.
 *   **Android Relationship:** The Android personality is strictly defined as "Linux personality + Android Delta" (e.g., Binder, Ashmem, Bionic differences). It does not duplicate Linux functionality.

@@ -18,7 +18,7 @@ The guiding principle for application interfaces in Bharat-OS is:
 
 > **Kernel mechanisms are native. Services are native. UAPI is native. Compat personalities translate into native.**
 
-This document defines the active roadmap for the **Native UAPI** boundary across `include/bharat/uapi/` and `uapi/`. It is the explicit contract for syscall numbers, capability contracts, shared IPC structures, and stable ABI types.
+This document defines the active roadmap for the **Native UAPI** boundary across `include/bharat/interface/uapi/` and `interface/uapi/`. It is the explicit contract for syscall numbers, capability contracts, shared IPC structures, and stable ABI types.
 
 Foreign ABIs (Linux/POSIX/Android) are **not** the core identity of the OS; they are compatibility personalities that consume these native contracts.
 
@@ -28,18 +28,18 @@ The latest additive primitive set in the repo now includes:
 
 1. **Intent execution primitives**
    - `SYSCALL_INTENT_SET`, `SYSCALL_INTENT_GET`.
-   - UAPI type: `bharat_intent_t` (`include/bharat/uapi/system/intent.h`).
+   - UAPI type: `bharat_intent_t` (`include/bharat/interface/uapi/system/intent.h`).
    - Kernel entry path wired through trap dispatch and scheduler syscall stubs.
 
 2. **Memory semantic class primitive**
    - `SYSCALL_MEM_ALLOC_CLASS`.
-   - Memory class taxonomy present in `kernel/include/bharat/mem_class.h`.
-   - Kernel stub path available in `kernel/src/mm/mem_class.c`.
+   - Memory class taxonomy present in `core/kernel/include/bharat/mem_class.h`.
+   - Kernel stub path available in `core/kernel/src/mm/mem_class.c`.
 
 3. **Fault-domain primitives**
    - `SYSCALL_FAULT_DOMAIN_CREATE`, `SYSCALL_FAULT_DOMAIN_DESTROY`, `SYSCALL_FAULT_DOMAIN_ATTACH`.
-   - UAPI type: `bharat_fault_domain_attr_t` (`include/bharat/uapi/system/fault_domain.h`).
-   - Kernel path wired through `kernel/src/core/fault_domain.c` and trap dispatch.
+   - UAPI type: `bharat_fault_domain_attr_t` (`include/bharat/interface/uapi/system/fault_domain.h`).
+   - Kernel path wired through `core/kernel/src/core/fault_domain.c` and trap dispatch.
 
 These primitives are implemented as **additive v1 APIs** and do not replace legacy compatibility-facing behavior.
 
@@ -47,10 +47,10 @@ These primitives are implemented as **additive v1 APIs** and do not replace lega
 
 The native contract is cleanly separated across the system architecture:
 
-* **`kernel/`**: mechanisms only (scheduling, memory, syscall/traps, capabilities, IPC/uRPC, faults, minimal coordination).
-* **`include/bharat/uapi/` + `uapi/`**: Bharat-native ABI and stable public contracts.
-* **`services/`**: policy and orchestration (namespace, lifecycle, supervision, telemetry).
-* **`personalities/compat/*`**: strict compatibility adapters mapping foreign semantics into native contracts.
+* **`core/kernel/`**: mechanisms only (scheduling, memory, syscall/traps, capabilities, IPC/uRPC, faults, minimal coordination).
+* **`include/bharat/interface/uapi/` + `interface/uapi/`**: Bharat-native ABI and stable public contracts.
+* **`core/services/`**: policy and orchestration (namespace, lifecycle, supervision, telemetry).
+* **`core/personalities/compat/*`**: strict compatibility adapters mapping foreign semantics into native contracts.
 
 ## 4. Native UAPI Domains
 
@@ -101,4 +101,4 @@ This keeps Linux/Android compatibility viable without becoming “working but sl
 
 ## 7. Immediate Documentation Follow-up
 
-To reduce fragmentation, personality architecture, performance contract, and roadmap references are consolidated under `docs/architecture/personalities/` with one index entrypoint.
+To reduce fragmentation, personality architecture, performance contract, and roadmap references are consolidated under `docs/architecture/core/personalities/` with one index entrypoint.

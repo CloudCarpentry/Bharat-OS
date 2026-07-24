@@ -1,3 +1,15 @@
+---
+title: uRPC (User-level Remote Procedure Call)
+status: Proposed
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - kernel
+see_also:
+  - README.md
+---
 # uRPC (User-level Remote Procedure Call)
 
 ## Overview
@@ -23,7 +35,7 @@ uRPC is the protocol that implements this explicit, lockless message passing. It
 - **L1 Protocol / Delivery Engine:** Scaffold / Missing
 - **Distributed Capability Safe Messaging:** Partial / Incomplete
 
-For cross-core multikernel messaging, the OS uses the **uRPC transport**. This relies on asynchronous, cache-friendly SPSC ring buffers established between cores (located in `kernel/src/ipc/multikernel.c` and `kernel/include/advanced/multikernel.h`).
+For cross-core multikernel messaging, the OS uses the **uRPC transport**. This relies on asynchronous, cache-friendly SPSC ring buffers established between cores (located in `core/kernel/src/ipc/multikernel.c` and `core/kernel/include/advanced/multikernel.h`).
 
 While the fundamental L0 uRPC transport (ring buffers, acquire/release ordering, basic delivery hooks) is in place, the **L1 Protocol Engine** (responsible for ACK/NACK semantics, retry policies, transaction lifecycles, and timeouts) is currently stubbed out or scaffolded. Additionally, explicit ownership and cross-core capability validations are still incomplete.
 

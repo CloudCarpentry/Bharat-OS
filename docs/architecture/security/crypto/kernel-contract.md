@@ -1,6 +1,6 @@
 ---
 title: Kernel Cryptographic Contract
-status: Draft
+status: Proposed
 owner: Divyang Panchasara
 version: 1.0
 last_updated: 2024-05-15
@@ -11,7 +11,7 @@ tags: [security, crypto, kernel, contract]
 
 ### Contract Status
 - **Spec**: ✅ Documented and versioned
-- **Implemented**: 🚧 Pending kernel/service behavior merge
+- **Implemented**: 🚧 Pending core/kernel/service behavior merge
 - **Validated**: ❌ Pending stress/fault-injection tests
 
 

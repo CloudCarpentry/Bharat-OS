@@ -1,8 +1,24 @@
 import os
 import re
-import common
+from pathlib import Path
 
-IDL_DIR = "idl"
+import common
+from tools.build.path_aliases import resolve_idl_alias
+
+IDL_DIR_CANDIDATES = (
+    "interface/idl",
+    "idl",
+)
+
+
+def resolve_idl_dir():
+    for path in IDL_DIR_CANDIDATES:
+        resolved_path, used_alias = resolve_idl_alias(Path(path))
+        if resolved_path.exists():
+            if used_alias:
+                print(f"[migration-warning] Using aliased IDL path: {path} -> {resolved_path}")
+            return str(resolved_path)
+    return IDL_DIR_CANDIDATES[0]
 
 def parse_bidl(path):
     with open(path, 'r') as f:
@@ -88,8 +104,9 @@ def parse_bidl(path):
 
 def generate_idl_manifest():
     manifest = {}
+    idl_dir = resolve_idl_dir()
 
-    for root, dirs, files in os.walk(IDL_DIR):
+    for root, dirs, files in os.walk(idl_dir):
         for file in files:
             if not file.endswith('.bidl'):
                 continue

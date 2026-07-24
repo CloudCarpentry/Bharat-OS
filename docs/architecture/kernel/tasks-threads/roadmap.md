@@ -1,7 +1,19 @@
+---
+title: Tasks & Threads Roadmap
+status: Proposed
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - kernel
+see_also:
+  - README.md
+---
 # Tasks & Threads Roadmap
 
 ## Current Status (v1 Baseline)
-Based on current code analysis in `kernel/src/sched/` and `kernel/src/trap/`:
+Based on current code analysis in `core/kernel/src/sched/` and `core/kernel/src/trap/`:
 - ✅ **Basic Thread Control Block (`bh_thread_t`)**: Implemented.
 - ✅ **Context Switching**: Implemented core trap frame saving/restoring (`trap_frame_t`).
 - ✅ **Syscall Dispatch**: Basic `syscall_dispatch` and `trap_handle` implemented.

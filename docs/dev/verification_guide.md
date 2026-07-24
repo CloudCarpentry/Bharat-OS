@@ -1,3 +1,14 @@
+---
+title: Local Multi-Architecture Verification Guide
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - dev
+see_also:
+  - README.md
+---
 # Local Multi-Architecture Verification Guide
 
 This guide describes how to verify Bharat-OS across all supported architectures and profiles using local tools.

@@ -1,3 +1,14 @@
+---
+title: Bharat-OS Benchmark Framework Guide
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - dev
+see_also:
+  - README.md
+---
 # Bharat-OS Benchmark Framework Guide
 
 ## 1. Goals
@@ -29,7 +40,7 @@ The framework is designed to run across three backends using a single unified AP
 
 ### Directory Structure
 ```text
-tests/benchmark/
+quality/tests/benchmark/
 ├── include/
 │   ├── bench.h
 │   ├── bench_metrics.h
@@ -94,4 +105,4 @@ All outputs include an environment stamp (arch, profile, compiler, core count) t
 - **B0** and **B1** are purely informational in CI.
 
 ## 9. Future Kernel-Mode Extension
-Phase 4 of the framework roadmap includes porting the runner backend to `kernel/tests/bench/` to allow seamless bare-metal, profile-aware benchmarking directly on the target hardware without relying on host stubs.
+Phase 4 of the framework roadmap includes porting the runner backend to `core/kernel/quality/tests/bench/` to allow seamless bare-metal, profile-aware benchmarking directly on the target hardware without relying on host stubs.

@@ -1,3 +1,14 @@
+---
+title: Developer Reference: Profile Boot Configuration
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - dev
+see_also:
+  - README.md
+---
 # Developer Reference: Profile Boot Configuration
 
 ## Overview
@@ -13,7 +24,7 @@ The profile is determined at build time through CMake parameters. The build scri
 3.  **Device Profile:** E.g., `DESKTOP`, `NETWORK_APPLIANCE`, `DRONE`.
 4.  **Kernel Execution Profile:** E.g., `GP` (General Purpose), `RT` (Real-Time), `MIX`.
 
-This results in a combined `bharat_subsystem_profile_t` structure embedded in the compiled kernel and accessible via `kernel/include/profile/profile.h`.
+This results in a combined `bharat_subsystem_profile_t` structure embedded in the compiled kernel and accessible via `core/kernel/include/profile/profile.h`.
 
 ### Example Build Output
 
@@ -35,7 +46,7 @@ The System Policy Manager (`sysmgr`) queries these parameters via the `bharat_bo
 
 ## 3. Registering a New Service
 
-When you write a new service, you **must not** modify the kernel's `main()` or scattered `#ifdef` blocks. Instead, your service must be registered in the Subsystem Registry (`kernel/include/subsystem_profile.h` or equivalent domain registry).
+When you write a new service, you **must not** modify the kernel's `main()` or scattered `#ifdef` blocks. Instead, your service must be registered in the Subsystem Registry (`core/kernel/include/subsystem_profile.h` or equivalent domain registry).
 
 ### Service Descriptor
 

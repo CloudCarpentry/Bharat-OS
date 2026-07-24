@@ -1,3 +1,15 @@
+---
+title: Bharat-OS Memory Architecture: Capability Model
+status: Proposed
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - memory
+see_also:
+  - README.md
+---
 # Bharat-OS Memory Architecture: Capability Model
 
 Bharat-OS supports a variety of target architectures with varying memory management hardware capabilities. Instead of forcing heavy virtual memory (VM) semantics onto all architectures, we have established a **canonical memory model capability matrix**.
@@ -87,5 +99,5 @@ Bharat-OS classifies AI-adjacent memory classes into two tiers for cross-profile
 ## Per-core Ownership Philosophy
 
 The fundamental philosophy of per-core ownership remains in place regardless of the memory model:
-- The **abstract authority path** stays identical: `fault/request -> aspace/protection context -> region/object -> arch/hal backend`.
+- The **abstract authority path** stays identical: `fault/request -> aspace/protection context -> region/object -> core/archcore/hal backend`.
 - Heavy per-core structures (like large PMM cache magazines) are tied to `MEM_CAP_PER_CORE_PMM_CACHE` (optional on memory-constrained targets), but the strict ownership mechanics remain true everywhere.

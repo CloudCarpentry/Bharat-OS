@@ -1,3 +1,15 @@
+---
+title: Claude Runtime Notes
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - ai-agents
+  - platforms
+see_also:
+  - README.md
+---
 # Claude Runtime Notes
 
 ## Recommended Inputs

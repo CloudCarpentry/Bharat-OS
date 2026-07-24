@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "syscalls": [
+    { "number": 0, "name": "BH_SYS_NOP", "status": "stable" },
+    { "number": 1, "name": "BH_SYS_THREAD_CREATE", "status": "stable" },
+    { "number": 2, "name": "BH_SYS_THREAD_DESTROY", "status": "stable" },
+    { "number": 3, "name": "BH_SYS_SCHED_YIELD", "status": "stable" },
+    { "number": 4, "name": "BH_SYS_VMM_MAP_PAGE", "status": "stable" },
+    { "number": 5, "name": "BH_SYS_VMM_UNMAP_PAGE", "status": "stable" },
+    { "number": 6, "name": "BH_SYS_CAPABILITY_INVOKE", "status": "stable" },
+    { "number": 7, "name": "BH_SYS_ENDPOINT_CREATE", "status": "stable" },
+    { "number": 8, "name": "BH_SYS_ENDPOINT_SEND", "status": "stable" },
+    { "number": 9, "name": "BH_SYS_ENDPOINT_RECEIVE", "status": "stable" },
+    { "number": 10, "name": "BH_SYS_CAPABILITY_DELEGATE", "status": "stable" },
+    { "number": 11, "name": "BH_SYS_SCHED_SLEEP", "status": "stable" },
+    { "number": 12, "name": "BH_SYS_SCHED_SET_PRIORITY", "status": "stable" },
+    { "number": 13, "name": "BH_SYS_SCHED_SET_AFFINITY", "status": "stable" },
+    { "number": 14, "name": "BH_SYS_INTENT_SET", "status": "stable" },
+    { "number": 15, "name": "BH_SYS_INTENT_GET", "status": "stable" },
+    { "number": 16, "name": "BH_SYS_MEM_ALLOC_CLASS", "status": "stable" },
+    { "number": 17, "name": "BH_SYS_FAULT_DOMAIN_CREATE", "status": "stable" },
+    { "number": 18, "name": "BH_SYS_FAULT_DOMAIN_DESTROY", "status": "stable" },
+    { "number": 19, "name": "BH_SYS_FAULT_DOMAIN_ATTACH", "status": "stable" },
+    { "number": 20, "name": "BH_SYS_READ", "status": "stable" },
+    { "number": 21, "name": "BH_SYS_WRITE", "status": "stable" },
+    { "number": 22, "name": "BH_SYS_GET_SUBSYSTEM_CAPS", "status": "stable" },
+    { "number": 23, "name": "BH_SYS_THREAD_EXIT", "status": "stable" }
+  ]
+}

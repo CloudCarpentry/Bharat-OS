@@ -1,0 +1,648 @@
+{
+  "version": 1,
+  "syscalls": [
+    {
+      "number": 0,
+      "symbol": "BH_SYS_NOP",
+      "arguments": [],
+      "capability": null,
+      "traits": [
+        "fast"
+      ]
+    },
+    {
+      "number": 1,
+      "symbol": "BH_SYS_THREAD_CREATE",
+      "arguments": [
+        {
+          "name": "args",
+          "kind": "user_struct",
+          "type": "bh_thread_create_args_t",
+          "direction": "in"
+        }
+      ],
+      "capability": {
+        "source": {
+          "kind": "struct_field",
+          "argument": "args",
+          "field": "process_cap"
+        },
+        "validation_phase": "after_usercopy",
+        "object_type": "CAP_TYPE_PROCESS",
+        "rights": [
+          "BH_CAP_RIGHT_RESOURCE_ALLOC"
+        ],
+        "scope": "current_process"
+      },
+      "traits": [
+        "user_read",
+        "user_write"
+      ]
+    },
+    {
+      "number": 2,
+      "symbol": "BH_SYS_THREAD_DESTROY",
+      "arguments": [
+        {
+          "name": "thread_cap",
+          "kind": "scalar",
+          "type": "uint32_t",
+          "direction": "in"
+        }
+      ],
+      "capability": {
+        "source": {
+          "kind": "register",
+          "argument": "thread_cap"
+        },
+        "validation_phase": "before_handler",
+        "object_type": "CAP_TYPE_THREAD",
+        "rights": [
+          "BH_CAP_RIGHT_PROCESS_MANAGE"
+        ],
+        "scope": "current_process"
+      },
+      "traits": []
+    },
+    {
+      "number": 3,
+      "symbol": "BH_SYS_SCHED_YIELD",
+      "arguments": [],
+      "capability": null,
+      "traits": [
+        "fast"
+      ]
+    },
+    {
+      "number": 4,
+      "symbol": "BH_SYS_VMM_MAP_PAGE",
+      "arguments": [
+        {
+          "name": "args",
+          "kind": "user_struct",
+          "type": "bh_vmm_map_args_t",
+          "direction": "in"
+        }
+      ],
+      "capability": {
+        "source": {
+          "kind": "struct_field",
+          "argument": "args",
+          "field": "cap_id"
+        },
+        "validation_phase": "after_usercopy",
+        "object_type": "CAP_TYPE_MEMORY",
+        "rights": [
+          "BH_CAP_RIGHT_MEMORY_MAP"
+        ],
+        "scope": "current_process"
+      },
+      "traits": [
+        "user_read"
+      ]
+    },
+    {
+      "number": 5,
+      "symbol": "BH_SYS_VMM_UNMAP_PAGE",
+      "arguments": [
+        {
+          "name": "args",
+          "kind": "user_struct",
+          "type": "bh_vmm_unmap_args_t",
+          "direction": "in"
+        }
+      ],
+      "capability": {
+        "source": {
+          "kind": "struct_field",
+          "argument": "args",
+          "field": "cap_id"
+        },
+        "validation_phase": "after_usercopy",
+        "object_type": "CAP_TYPE_MEMORY",
+        "rights": [
+          "BH_CAP_RIGHT_MEMORY_UNMAP"
+        ],
+        "scope": "current_process"
+      },
+      "traits": [
+        "user_read"
+      ]
+    },
+    {
+      "number": 6,
+      "symbol": "BH_SYS_CAPABILITY_INVOKE",
+      "arguments": [
+        {
+          "name": "args",
+          "kind": "user_struct",
+          "type": "bh_cap_invoke_args_t",
+          "direction": "in"
+        }
+      ],
+      "capability": {
+        "source": {
+          "kind": "struct_field",
+          "argument": "args",
+          "field": "cap_id"
+        },
+        "validation_phase": "after_usercopy",
+        "object_type": "CAP_TYPE_NONE",
+        "rights": [
+          "BH_CAP_RIGHT_QUERY",
+          "BH_CAP_RIGHT_CRYPT_USE"
+        ],
+        "scope": "current_process"
+      },
+      "traits": [
+        "user_read"
+      ]
+    },
+    {
+      "number": 7,
+      "symbol": "BH_SYS_ENDPOINT_CREATE",
+      "arguments": [
+        {
+          "name": "args",
+          "kind": "user_struct",
+          "type": "bh_endpoint_create_args_t",
+          "direction": "in"
+        }
+      ],
+      "capability": {
+        "source": {
+          "kind": "implicit_current_process"
+        },
+        "validation_phase": "before_handler",
+        "object_type": "CAP_TYPE_PROCESS",
+        "rights": [
+          "BH_CAP_RIGHT_RESOURCE_ALLOC"
+        ],
+        "scope": "current_process"
+      },
+      "traits": [
+        "user_read",
+        "user_write"
+      ]
+    },
+    {
+      "number": 8,
+      "symbol": "BH_SYS_ENDPOINT_SEND",
+      "arguments": [
+        {
+          "name": "args",
+          "kind": "user_struct",
+          "type": "bh_endpoint_send_args_t",
+          "direction": "in"
+        }
+      ],
+      "capability": {
+        "source": {
+          "kind": "struct_field",
+          "argument": "args",
+          "field": "send_cap"
+        },
+        "validation_phase": "after_usercopy",
+        "object_type": "CAP_TYPE_ENDPOINT",
+        "rights": [
+          "BH_CAP_RIGHT_ENDPOINT_SEND"
+        ],
+        "scope": "current_process"
+      },
+      "traits": [
+        "blocking",
+        "user_read"
+      ]
+    },
+    {
+      "number": 9,
+      "symbol": "BH_SYS_ENDPOINT_RECEIVE",
+      "arguments": [
+        {
+          "name": "args",
+          "kind": "user_struct",
+          "type": "bh_endpoint_recv_args_t",
+          "direction": "out"
+        }
+      ],
+      "capability": {
+        "source": {
+          "kind": "struct_field",
+          "argument": "args",
+          "field": "recv_cap"
+        },
+        "validation_phase": "after_usercopy",
+        "object_type": "CAP_TYPE_ENDPOINT",
+        "rights": [
+          "BH_CAP_RIGHT_ENDPOINT_RECEIVE"
+        ],
+        "scope": "current_process"
+      },
+      "traits": [
+        "blocking",
+        "user_write"
+      ]
+    },
+    {
+      "number": 10,
+      "symbol": "BH_SYS_CAPABILITY_DELEGATE",
+      "arguments": [
+        {
+          "name": "args",
+          "kind": "user_struct",
+          "type": "bh_cap_delegate_args_t",
+          "direction": "in_out"
+        }
+      ],
+      "capability": {
+        "source": {
+          "kind": "struct_field",
+          "argument": "args",
+          "field": "src_cap"
+        },
+        "validation_phase": "after_usercopy",
+        "object_type": "CAP_TYPE_NONE",
+        "rights": [
+          "BH_CAP_RIGHT_DELEGATE"
+        ],
+        "scope": "current_process"
+      },
+      "traits": [
+        "user_read",
+        "user_write"
+      ]
+    },
+    {
+      "number": 11,
+      "symbol": "BH_SYS_SCHED_SLEEP",
+      "arguments": [
+        {
+          "name": "duration_ms",
+          "kind": "scalar",
+          "type": "uint32_t",
+          "direction": "in"
+        }
+      ],
+      "capability": null,
+      "traits": [
+        "blocking"
+      ]
+    },
+    {
+      "number": 12,
+      "symbol": "BH_SYS_SCHED_SET_PRIORITY",
+      "arguments": [
+        {
+          "name": "args",
+          "kind": "user_struct",
+          "type": "bh_sched_priority_args_t",
+          "direction": "in"
+        }
+      ],
+      "capability": {
+        "source": {
+          "kind": "struct_field",
+          "argument": "args",
+          "field": "thread_cap"
+        },
+        "validation_phase": "after_usercopy",
+        "object_type": "CAP_TYPE_SCHED",
+        "rights": [
+          "BH_CAP_RIGHT_SCHEDULE"
+        ],
+        "scope": "current_process"
+      },
+      "traits": [
+        "user_read"
+      ]
+    },
+    {
+      "number": 13,
+      "symbol": "BH_SYS_SCHED_SET_AFFINITY",
+      "arguments": [
+        {
+          "name": "args",
+          "kind": "user_struct",
+          "type": "bh_sched_affinity_args_t",
+          "direction": "in"
+        }
+      ],
+      "capability": {
+        "source": {
+          "kind": "struct_field",
+          "argument": "args",
+          "field": "thread_cap"
+        },
+        "validation_phase": "after_usercopy",
+        "object_type": "CAP_TYPE_SCHED",
+        "rights": [
+          "BH_CAP_RIGHT_SCHEDULE"
+        ],
+        "scope": "current_process"
+      },
+      "traits": [
+        "user_read"
+      ]
+    },
+    {
+      "number": 14,
+      "symbol": "BH_SYS_INTENT_SET",
+      "arguments": [
+        {
+          "name": "args",
+          "kind": "user_struct",
+          "type": "bh_intent_set_args_t",
+          "direction": "in"
+        }
+      ],
+      "capability": {
+        "source": {
+          "kind": "struct_field",
+          "argument": "args",
+          "field": "thread_cap"
+        },
+        "validation_phase": "after_usercopy",
+        "object_type": "CAP_TYPE_PROCESS",
+        "rights": [
+          "BH_CAP_RIGHT_QUERY"
+        ],
+        "scope": "current_process"
+      },
+      "traits": [
+        "user_read"
+      ]
+    },
+    {
+      "number": 15,
+      "symbol": "BH_SYS_INTENT_GET",
+      "arguments": [
+        {
+          "name": "args",
+          "kind": "user_struct",
+          "type": "bh_intent_get_args_t",
+          "direction": "in_out"
+        }
+      ],
+      "capability": {
+        "source": {
+          "kind": "struct_field",
+          "argument": "args",
+          "field": "thread_cap"
+        },
+        "validation_phase": "after_usercopy",
+        "object_type": "CAP_TYPE_PROCESS",
+        "rights": [
+          "BH_CAP_RIGHT_QUERY"
+        ],
+        "scope": "current_process"
+      },
+      "traits": [
+        "user_read",
+        "user_write"
+      ]
+    },
+    {
+      "number": 16,
+      "symbol": "BH_SYS_MEM_ALLOC_CLASS",
+      "arguments": [
+        {
+          "name": "args",
+          "kind": "user_struct",
+          "type": "bh_mem_alloc_args_t",
+          "direction": "in_out"
+        }
+      ],
+      "capability": {
+        "source": {
+          "kind": "struct_field",
+          "argument": "args",
+          "field": "resource_cap"
+        },
+        "validation_phase": "after_usercopy",
+        "object_type": "CAP_TYPE_MEMORY",
+        "rights": [
+          "BH_CAP_RIGHT_RESOURCE_ALLOC"
+        ],
+        "scope": "current_process"
+      },
+      "traits": [
+        "user_read",
+        "user_write"
+      ]
+    },
+    {
+      "number": 17,
+      "symbol": "BH_SYS_FAULT_DOMAIN_CREATE",
+      "arguments": [
+        {
+          "name": "args",
+          "kind": "user_struct",
+          "type": "bh_fault_domain_create_args_t",
+          "direction": "in_out"
+        }
+      ],
+      "capability": {
+        "source": {
+          "kind": "struct_field",
+          "argument": "args",
+          "field": "cap_id"
+        },
+        "validation_phase": "after_usercopy",
+        "object_type": "CAP_TYPE_PROCESS",
+        "rights": [
+          "BH_CAP_RIGHT_RESOURCE_ALLOC"
+        ],
+        "scope": "current_process"
+      },
+      "traits": [
+        "user_read",
+        "user_write"
+      ]
+    },
+    {
+      "number": 18,
+      "symbol": "BH_SYS_FAULT_DOMAIN_DESTROY",
+      "arguments": [
+        {
+          "name": "domain_cap",
+          "kind": "scalar",
+          "type": "uint32_t",
+          "direction": "in"
+        }
+      ],
+      "capability": {
+        "source": {
+          "kind": "register",
+          "argument": "domain_cap"
+        },
+        "validation_phase": "before_handler",
+        "object_type": "CAP_TYPE_NONE",
+        "rights": [
+          "BH_CAP_RIGHT_FAULT_DOMAIN_MANAGE"
+        ],
+        "scope": "current_process"
+      },
+      "traits": []
+    },
+    {
+      "number": 19,
+      "symbol": "BH_SYS_FAULT_DOMAIN_ATTACH",
+      "arguments": [
+        {
+          "name": "args",
+          "kind": "user_struct",
+          "type": "bh_fault_domain_attach_args_t",
+          "direction": "in"
+        }
+      ],
+      "capability": {
+        "source": {
+          "kind": "struct_field",
+          "argument": "args",
+          "field": "cap_id"
+        },
+        "validation_phase": "after_usercopy",
+        "object_type": "CAP_TYPE_NONE",
+        "rights": [
+          "BH_CAP_RIGHT_FAULT_DOMAIN_MANAGE"
+        ],
+        "scope": "current_process"
+      },
+      "traits": [
+        "user_read"
+      ]
+    },
+    {
+      "number": 20,
+      "symbol": "BH_SYS_READ",
+      "arguments": [
+        {
+          "name": "fd",
+          "kind": "scalar",
+          "type": "int",
+          "direction": "in"
+        },
+        {
+          "name": "buf",
+          "kind": "pointer",
+          "type": "void",
+          "direction": "out",
+          "size_source": "count"
+        },
+        {
+          "name": "count",
+          "kind": "scalar",
+          "type": "size_t",
+          "direction": "in"
+        }
+      ],
+      "capability": {
+        "source": {
+          "kind": "register",
+          "argument": "fd"
+        },
+        "validation_phase": "before_handler",
+        "object_type": "CAP_TYPE_NONE",
+        "rights": [
+          "BH_CAP_RIGHT_READ"
+        ],
+        "scope": "current_process"
+      },
+      "traits": [
+        "blocking",
+        "user_write"
+      ]
+    },
+    {
+      "number": 21,
+      "symbol": "BH_SYS_WRITE",
+      "arguments": [
+        {
+          "name": "fd",
+          "kind": "scalar",
+          "type": "int",
+          "direction": "in"
+        },
+        {
+          "name": "buf",
+          "kind": "pointer",
+          "type": "const void",
+          "direction": "in",
+          "size_source": "count"
+        },
+        {
+          "name": "count",
+          "kind": "scalar",
+          "type": "size_t",
+          "direction": "in"
+        }
+      ],
+      "capability": {
+        "source": {
+          "kind": "register",
+          "argument": "fd"
+        },
+        "validation_phase": "before_handler",
+        "object_type": "CAP_TYPE_NONE",
+        "rights": [
+          "BH_CAP_RIGHT_WRITE"
+        ],
+        "scope": "current_process"
+      },
+      "traits": [
+        "blocking",
+        "user_read"
+      ]
+    },
+    {
+      "number": 22,
+      "symbol": "BH_SYS_GET_SUBSYSTEM_CAPS",
+      "arguments": [
+        {
+          "name": "subsys_id",
+          "kind": "scalar",
+          "type": "uint32_t",
+          "direction": "in"
+        },
+        {
+          "name": "out_caps",
+          "kind": "pointer",
+          "type": "void",
+          "direction": "out",
+          "size_source": "sizeof(bh_subsystem_caps_t)"
+        }
+      ],
+      "capability": {
+        "source": {
+          "kind": "register",
+          "argument": "subsys_id"
+        },
+        "validation_phase": "before_handler",
+        "object_type": "CAP_TYPE_NONE",
+        "rights": [
+          "BH_CAP_RIGHT_QUERY"
+        ],
+        "scope": "current_process"
+      },
+      "traits": [
+        "user_write"
+      ]
+    },
+    {
+      "number": 23,
+      "symbol": "BH_SYS_THREAD_EXIT",
+      "arguments": [
+        {
+          "name": "exit_code",
+          "kind": "scalar",
+          "type": "int",
+          "direction": "in"
+        }
+      ],
+      "capability": null,
+      "traits": [
+        "fast"
+      ]
+    }
+  ]
+}

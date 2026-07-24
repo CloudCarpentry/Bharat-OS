@@ -1,3 +1,14 @@
+---
+title: Bharat-OS Architecture Review Refresh: Authority, Lifecycle, and Failure Containment
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - reviews
+see_also:
+  - README.md
+---
 # Bharat-OS Architecture Review Refresh: Authority, Lifecycle, and Failure Containment
 
 **Date:** 2026-04-21  
@@ -134,7 +145,7 @@ The previous four-contract freeze recommendation remains useful, but should be u
 
 Each contract should now include **three gates**:
 - **Spec gate** (documented and versioned)
-- **Implementation gate** (kernel/service behavior merged)
+- **Implementation gate** (core/kernel/service behavior merged)
 - **Validation gate** (stress + fault-injection + profile matrix tests)
 
 ---

@@ -1,8 +1,19 @@
+---
+title: Crypto Boundary Architecture
+status: Proposed
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+see_also:
+  - README.md
+---
 # Crypto Boundary Architecture
 
 ## Kernel vs Service Responsibility Matrix
 
-Bharat-OS implements a strict capability-oriented microkernel design. The kernel remains minimal and is responsible only for mechanisms, isolation, and hardware mediation. Cryptographic policies, algorithms, and key management are strictly delegated to an isolated user-space service domain (`services/security/crypto`).
+Bharat-OS implements a strict capability-oriented microkernel design. The kernel remains minimal and is responsible only for mechanisms, isolation, and hardware mediation. Cryptographic policies, algorithms, and key management are strictly delegated to an isolated user-space service domain (`core/services/security/crypto`).
 
 ### Kernel Responsibilities (Mechanism)
 

@@ -1,3 +1,14 @@
+---
+title: IPC Architecture Critical Review (March 21, 2026)
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - reviews
+see_also:
+  - README.md
+---
 # IPC Architecture Critical Review (March 21, 2026)
 
 This review evaluates `docs/IPC_ARCHITECTURE.md` against the current implementation and assesses readiness across:

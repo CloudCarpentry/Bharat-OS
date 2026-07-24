@@ -1,3 +1,15 @@
+---
+title: Agent Specification (Cross-Platform)
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - ai-agents
+  - standards
+see_also:
+  - README.md
+---
 # Agent Specification (Cross-Platform)
 
 Use this document as the shared baseline for any code agent operating in the repo.

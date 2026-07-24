@@ -1,3 +1,15 @@
+---
+title: VS Code Integration Guide
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - ai-agents
+  - ide
+see_also:
+  - README.md
+---
 # VS Code Integration Guide
 
 ## Recommended Setup

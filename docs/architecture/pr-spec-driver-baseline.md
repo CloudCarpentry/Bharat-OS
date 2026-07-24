@@ -1,3 +1,14 @@
+---
+title: PR Spec: Driver Core Baseline, Device Manager Contract, and Edge I/O Production Slice
+status: Proposed
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+see_also:
+  - README.md
+---
 # PR Spec: Driver Core Baseline, Device Manager Contract, and Edge I/O Production Slice
 
 ## 1. Goal and Non-Goals
@@ -26,29 +37,29 @@
 - `docs/dev/driver-contributor-rules.md`
 
 ### Driver Core
-- `drivers/core/device_registry.h` / `.c`
-- `drivers/core/driver_registry.h` / `.c`
-- `drivers/core/match.h` / `.c`
-- `drivers/core/event.h` / `.c`
-- `drivers/core/power.h` / `.c`
-- `drivers/include/driver_core.h` (Centralized class enums, descriptors)
+- `core/drivers/core/device_registry.h` / `.c`
+- `core/drivers/core/driver_registry.h` / `.c`
+- `core/drivers/core/match.h` / `.c`
+- `core/drivers/core/event.h` / `.c`
+- `core/drivers/core/power.h` / `.c`
+- `core/drivers/include/driver_core.h` (Centralized class enums, descriptors)
 
 ### Edge I/O Production Slice
-- `drivers/bus/gpio/gpio_core.h` / `.c`
-- `drivers/bus/gpio/pinctrl_core.h` / `.c`
-- `drivers/bus/gpio/pwm_core.h` / `.c`
-- `drivers/led/led_core.h` / `.c`
-- `drivers/input/gpio_keys.h` / `.c`
+- `core/drivers/bus/gpio/gpio_core.h` / `.c`
+- `core/drivers/bus/gpio/pinctrl_core.h` / `.c`
+- `core/drivers/bus/gpio/pwm_core.h` / `.c`
+- `core/drivers/led/led_core.h` / `.c`
+- `core/drivers/input/gpio_keys.h` / `.c`
 
 ### USB Baseline
-- `drivers/bus/usb/usb_core.h` (Contracts only)
+- `core/drivers/bus/usb/usb_core.h` (Contracts only)
 
 ### Service Skeleton
-- `services/core/devmgr/devmgr_skeleton.h` / `.c`
+- `core/services/core/devmgr/devmgr_skeleton.h` / `.c`
 
 ### Build and Testing
-- CMakeLists.txt modifications for build gating in `drivers/`
-- Host/unit tests for driver core lifecycle and Edge I/O components in `tests/drivers/`
+- CMakeLists.txt modifications for build gating in `core/drivers/`
+- Host/unit tests for driver core lifecycle and Edge I/O components in `quality/tests/core/drivers/`
 
 ## 3. Contract Shapes
 
@@ -80,7 +91,7 @@ Target Architectures: Primarily tested and gated for `x86_64` (QEMU) and `arm64`
 ## 6. Migration Notes
 
 - Existing drivers (if any) are not migrated in this PR.
-- This PR sets the structural precedent; future PRs will migrate legacy drivers to the `drivers/` directory using these contracts.
+- This PR sets the structural precedent; future PRs will migrate legacy drivers to the `core/drivers/` directory using these contracts.
 - Kernel changes are minimal; the kernel remains mechanism-focused.
 
 ## 7. Implementation Boundaries

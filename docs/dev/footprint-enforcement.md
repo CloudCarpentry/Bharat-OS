@@ -1,3 +1,14 @@
+---
+title: Footprint Enforcement
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - dev
+see_also:
+  - README.md
+---
 # Footprint Enforcement
 
 Footprint enforcement is performed as part of target validation.
@@ -6,7 +17,7 @@ Footprint enforcement is performed as part of target validation.
 
 The build pipeline enforces:
 
-1. `profile_id` exists in `configs/footprint/footprint_matrix.csv`.
+1. `profile_id` exists in `delivery/configs/footprint/footprint_matrix.csv` (legacy `configs/` compatibility symlink remains during migration).
 2. Target `arch` matches the matrix row.
 3. Protection model compatibility (MMU/MPU expectations).
 4. Target memory (from run config) satisfies `boot_min_ram_kb`.

@@ -1,10 +1,21 @@
+---
+title: Kernel and OS-Level Integration Across Hardware Architectures and Accelerators
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - research_doc
+see_also:
+  - README.md
+---
 # Kernel and OS-Level Integration Across Hardware Architectures and Accelerators
 
 ## Executive summary
 
 Kernel/OS integration across diverse compute and accelerator hardware is ultimately a problem of **consistency boundaries**: which agents can access which memory, with what ordering guarantees, under what privilege/virtualization model, and how events (interrupts/completions) are delivered. CPU ISAs differ meaningfully in memory ordering, privilege levels, and interrupt controller architecture (e.g., x86 TSO vs Arm/RISC-V weaker models; APIC vs GIC vs PLIC). These differences shape the kernel’s synchronization primitives, scheduler assumptions, and low-level boot/firmware interfaces. citeturn2search30turn2search25turn1search0turn1search5
 
-Accelerators (GPUs, NPUs/TPUs, FPGAs, SmartNICs/DPUs, crypto/compression engines, storage offloads) introduce a second axis: **asynchronous, DMA-heavy execution** with strict isolation needs. The dominant kernel/OS engineering challenge is very often not compute, but **data movement + isolation**: DMA mapping, IOMMU protection, queueing, completion signaling, buffer sharing/zero-copy, and multi-tenant virtualization (SR-IOV, VFIO-based assignment, paravirtual devices). citeturn15search0turn3search6turn3search1turn4search2turn4search3
+Accelerators (GPUs, NPUs/TPUs, FPGAs, SmartNICs/DPUs, crypto/compression engines, storage offloads) introduce a second axis: **asynchronous, DMA-heavy execution** with strict isolation needs. The dominant core/kernel/OS engineering challenge is very often not compute, but **data movement + isolation**: DMA mapping, IOMMU protection, queueing, completion signaling, buffer sharing/zero-copy, and multi-tenant virtualization (SR-IOV, VFIO-based assignment, paravirtual devices). citeturn15search0turn3search6turn3search1turn4search2turn4search3
 
 Three integration “modes” consistently emerge in practice:
 
@@ -42,16 +53,16 @@ Cross-cutting concepts (apply to every architecture/accelerator):
 
 ## Taxonomy of hardware architectures and key attributes
 
-The taxonomy below focuses on architectural attributes that have direct kernel/OS implications: **memory model**, **interrupt model**, **privilege levels**, **coherency**, and **virtualization support**.
+The taxonomy below focuses on architectural attributes that have direct core/kernel/OS implications: **memory model**, **interrupt model**, **privilege levels**, **coherency**, and **virtualization support**.
 
 ### Comparison table of architecture attributes
 
 | Architecture class | Representative examples | Memory model and consistency | Interrupt model | Privilege levels and isolation | Coherency and memory topology | Virtualization and device assignment |
 |---|---|---|---|---|---|---|
 | General-purpose CPUs: x86-64 | Server/PC CPUs from entity["company","Intel","semiconductor company"] and entity["company","AMD","semiconductor company"] | x86 is commonly characterized as TSO-like relative to weaker ISAs, which simplifies some lock-free reasoning but still requires fences for some patterns. citeturn2search30turn2search32 | APIC/x2APIC style interrupt routing; MSI/MSI-X for PCIe devices (OS-managed). citeturn0search5turn1search23 | Ring-based protection (architecturally defined privilege levels) with paging-based isolation; system programming semantics documented in vendor manuals. citeturn0search1turn0search7turn0search0 | Cache-coherent multi-core; NUMA is common in servers; coherency is typically implicit for CPU cores, but devices require DMA/IOMMU discipline. citeturn15search0turn3search2 | Hardware virtualization extensions (VT-x/AMD-V) and second-level translation (EPT/NPT) are standard patterns; VT-d/IOMMU underpins safe assignment. citeturn0search1turn0search7turn3search2turn3search6 |
-| General-purpose CPUs: Armv8-A/AArch64 | Systems designed around entity["company","Arm","semiconductor ip company"] architecture | Weaker memory ordering than x86; explicit barriers (DMB/DSB/ISB) are central to correct low-level concurrency. citeturn2search13turn2search21turn2search37 | GIC family (GICv3/v4 etc.) widely used; virtualization-aware interrupt delivery is a key server requirement. citeturn1search0turn1search20 | Exception levels EL0–EL3 define privilege partitions (user/kernel/hypervisor/secure monitor). citeturn0search26turn0search24 | SoCs vary: coherent interconnects (ACE/CHI-class) are common; some devices may be non-coherent, requiring explicit cache maintenance + DMA APIs. citeturn13search5turn15search0turn5view1 | EL2 provides architectural virtualization; SMMU provides IOMMU-style DMA isolation in many platforms. citeturn0search26turn3search26turn3search6 |
+| General-purpose CPUs: Armv8-A/AArch64 | Systems designed around entity["company","Arm","semiconductor ip company"] architecture | Weaker memory ordering than x86; explicit barriers (DMB/DSB/ISB) are central to correct low-level concurrency. citeturn2search13turn2search21turn2search37 | GIC family (GICv3/v4 etc.) widely used; virtualization-aware interrupt delivery is a key server requirement. citeturn1search0turn1search20 | Exception levels EL0–EL3 define privilege partitions (user/core/kernel/hypervisor/secure monitor). citeturn0search26turn0search24 | SoCs vary: coherent interconnects (ACE/CHI-class) are common; some devices may be non-coherent, requiring explicit cache maintenance + DMA APIs. citeturn13search5turn15search0turn5view1 | EL2 provides architectural virtualization; SMMU provides IOMMU-style DMA isolation in many platforms. citeturn0search26turn3search26turn3search6 |
 | General-purpose CPUs: RISC-V (RV64/RV32) | Designs standardized by entity["organization","RISC-V International","open isa standards body"] | RISC-V defines a formal weak memory model (RVWMO) and relies on explicit fences/atomics. citeturn2search25turn2search10 | Common platform interrupt controller model uses PLIC (platform-level) and timer/software interrupt mechanisms in platform specs. citeturn1search5turn1search8 | Privilege modes (M/S/U) and optional hypervisor extensions define isolation boundaries. citeturn0search11turn0search11 | Coherency is platform-dependent (SoC design choice); many embedded-class devices are non-coherent → DMA discipline matters. citeturn15search0turn5view1 | Hypervisor extensions and IOMMU support exist but are less uniform across the ecosystem than mature x86 server platforms; secure DMA isolation remains a design focus. citeturn0search11turn3search6 |
-| GPUs (discrete and integrated) | CUDA/HIP/Level Zero-class devices; kernel arbitration often via DRM-like subsystems | Typically distinct device memory spaces; coherence between CPU and GPU can be explicit and policy-driven (e.g., HIP coherence controls; CUDA unified memory semantics). citeturn21search1turn21search4turn21search5 | Usually PCIe MSI/MSI-X or platform interrupts; many stacks prefer polling in user space for throughput. citeturn4search2turn1search23 | GPU command submission is mediated by kernel/user-space driver stacks; OS must enforce per-process contexts and memory isolation. citeturn21search7turn21search11 | Buffer managers (e.g., GEM/TTM concepts) and cross-device buffer sharing (dma-buf) are core to zero-copy pipelines. citeturn21search7turn21search11 | Virtualization via mediated devices, SR-IOV (where supported), and IOMMU-backed pass-through; isolation requires strict DMA mapping and context separation. citeturn3search6turn21search11 |
+| GPUs (discrete and integrated) | CUDA/HIP/Level Zero-class devices; kernel arbitration often via DRM-like subsystems | Typically distinct device memory spaces; coherence between CPU and GPU can be explicit and policy-driven (e.g., HIP coherence controls; CUDA unified memory semantics). citeturn21search1turn21search4turn21search5 | Usually PCIe MSI/MSI-X or platform interrupts; many stacks prefer polling in user space for throughput. citeturn4search2turn1search23 | GPU command submission is mediated by core/kernel/user-space driver stacks; OS must enforce per-process contexts and memory isolation. citeturn21search7turn21search11 | Buffer managers (e.g., GEM/TTM concepts) and cross-device buffer sharing (dma-buf) are core to zero-copy pipelines. citeturn21search7turn21search11 | Virtualization via mediated devices, SR-IOV (where supported), and IOMMU-backed pass-through; isolation requires strict DMA mapping and context separation. citeturn3search6turn21search11 |
 | NPUs / TPUs (ML ASICs) | Cloud-scale TPU pods from entity["company","Google","technology company"] and similar | Often optimize matrix ops with specialized memory hierarchies; host/device memory semantics vary by programming model and platform. citeturn17search5turn17search0turn21search5 | Platform-specific; completions can be interrupt-driven or polled, depending on the runtime. citeturn17search0turn21search2 | Typically exposed through high-level runtimes; OS-level concerns focus on isolation, scheduling quotas, and data-path efficiency in the presence of large DMA. citeturn17search0turn3search6 | May use coherent fabrics within pods/boards, but host memory coherency is not guaranteed—buffer ownership and synchronization are critical. citeturn17search5turn21search4 | Multi-tenant exposure is often mediated at the runtime/VM layer; device assignment still depends on IOMMU and virtualization layers. citeturn11search0turn3search6 |
 | FPGAs | Data-center accelerator cards (e.g., Alveo-class) | State depends on bitstream; memory is typically DMA-accessed via PCIe; ordering depends on PCIe + driver fences. citeturn8search3turn15search0 | PCIe MSI/MSI-X, or polling depending on framework. citeturn1search23turn4search2 | OS must treat reconfiguration as privilege-sensitive (bitstream authenticity, tenancy, and reset semantics). citeturn8search3turn3search6 | Often used as streaming accelerators (PCIe DMA) rather than cache-coherent peers; zero-copy pipelines are valuable. citeturn8search3turn21search11 | Commonly assigned via VFIO; SR-IOV is less typical (depends on the card design); IOMMU is essential for user-space frameworks. citeturn3search6turn4search7 |
 | SmartNICs / DPUs | ConnectX-7/BlueField-class devices, Pensando-class DPUs | Put compute in the I/O path: NIC-local memory + DMA into host; coherence with host is generally explicit. citeturn8search4turn7search3turn15search0 | High-rate event streams: interrupts can overwhelm → polling, adaptive interrupt moderation, and queue steering matter. citeturn4search2turn20search26 | Contain their own cores/firmware; OS must reason about trust boundaries (host vs DPU) and secure provisioning. citeturn7search3turn8search2 | Integrate flow tables/offload engines; host sees queues + DMA; often benefits from pinned hugepages and careful NUMA placement. citeturn4search26turn20search26 | Strong SR-IOV usage patterns; can offload/partition networking/security/storage functions per tenant. citeturn8search4turn7search3turn3search1 |
@@ -61,7 +72,7 @@ The taxonomy below focuses on architectural attributes that have direct kernel/O
 
 ## Kernel and OS design implications by architecture class
 
-The practical kernel/OS implications are best understood as **how each architecture forces choices** in: drivers, scheduling, memory management, interrupt handling, power management, and security/isolation.
+The practical core/kernel/OS implications are best understood as **how each architecture forces choices** in: drivers, scheduling, memory management, interrupt handling, power management, and security/isolation.
 
 **x86-64 CPUs (server/PC)**  
 Driver writers benefit from mature PCIe ecosystem norms (ACPI enumeration, MSI/MSI-X, widespread IOMMU availability), but must still correctly use DMA mapping APIs and IOMMU scoping for security and correctness. citeturn18view0turn15search0turn3search6  
@@ -114,7 +125,7 @@ This section catalogs accelerator domains and shows the **dominant OS-facing pro
 
 ### Comparison table of accelerators and programming models
 
-| Accelerator domain | Representative hardware (examples) | Primary “official” references | Typical OS-facing programming model | Notes for kernel/OS integration |
+| Accelerator domain | Representative hardware (examples) | Primary “official” references | Typical OS-facing programming model | Notes for core/kernel/OS integration |
 |---|---|---|---|---|
 | Crypto + compression offload | Intel QuickAssist Adapter 8960/8970; inline crypto in high-end NICs; crypto-enabled DPUs | QAT adapter product brief (up to 100Gbps, SR-IOV support). citeturn9search3turn7search2; ConnectX-7 datasheet (inline TLS/IPsec/MACsec claims). citeturn8search4; BlueField-3 datasheet. citeturn7search3 | PCIe device with MMIO + DMA queues; completions via interrupts or polling; virtualization via SR-IOV; user-space via VFIO is common for high throughput. citeturn3search6turn3search1turn4search7 | Key trade-off: offload saves CPU but can add PCIe latency and introduces key-material handling/attestation considerations. QAT materials show TLS handshake gains in examples. citeturn9search30 |
 | ML training/inference accelerators | NVIDIA H100; AMD MI300X; Cloud TPU v4/v5e; Gaudi-class accelerators | H100 PCIe product brief. citeturn7search0; MI300X datasheet. citeturn7search5; TPU v4/v5e architecture docs. citeturn17search1turn17search0; MLPerf results pages. citeturn9search32turn9search12 | Often: PCIe or module fabrics + user-space runtime; memory mgmt via pinned buffers / unified memory abstractions; multi-tenant exposure via VM assignment or mediated runtimes. citeturn21search4turn3search6turn11search0 | OS focus: massive DMA + topology awareness (NUMA / HBM locality), stable job scheduling with quotas, and isolation (IOMMU, cgroups, virtualization). citeturn3search6turn11search3 |
@@ -139,7 +150,7 @@ This section catalogs accelerator domains and shows the **dominant OS-facing pro
 
 ## Algorithm-to-accelerator mapping and performance trade-offs
 
-Accelerators only help when the workload’s **kernel** (in the algorithmic sense) matches the device’s strengths **and** the OS-level data path avoids turning PCIe/DMA overhead into the bottleneck. The mapping below emphasizes expected benefit envelopes and the trade-offs that kernel/OS integration must manage: latency vs throughput, power, and isolation.
+Accelerators only help when the workload’s **kernel** (in the algorithmic sense) matches the device’s strengths **and** the OS-level data path avoids turning PCIe/DMA overhead into the bottleneck. The mapping below emphasizes expected benefit envelopes and the trade-offs that core/kernel/OS integration must manage: latency vs throughput, power, and isolation.
 
 ### Comparison table of algorithms, expected benefits, and trade-offs
 
@@ -181,7 +192,7 @@ In accelerator contexts, the trade-off is that driver support and evolving devic
 ### Security and isolation models to treat as “non-negotiable”
 
 - **DMA isolation:** IOMMU-backed containment is the baseline for any untrusted device or user-space driver model. citeturn3search6turn3search2turn3search26  
-- **Buffer sharing with synchronization:** dma-buf provides a kernel framework for sharing DMA-capable buffers across drivers/subsystems with synchronization semantics. citeturn21search11  
+- **Buffer sharing with synchronization:** dma-buf provides a kernel framework for sharing DMA-capable buffers across core/drivers/subsystems with synchronization semantics. citeturn21search11  
 - **Policy hooks:** LSM demonstrates how kernels can enforce consistent policy decisions around object access, which is relevant to accelerator device files, ioctls, and memory pinning controls. citeturn15search2turn15search5  
 
 ### Data-path diagram: kernel vs user-space driver integration
@@ -219,7 +230,7 @@ The prototypes below are intentionally OS-agnostic at the concept level, but pro
 Goal: fastest path to measurable results, while enforcing DMA isolation.
 
 - **Core idea:** bind a PCIe accelerator (crypto/compression card, FPGA, or NIC VF) to VFIO; map BARs in user space; allocate pinned DMA buffers; implement a userspace submission/completion library. SPDK’s documentation is a concrete model for BAR mapping and zero-copy data movement. citeturn4search3turn4search7turn3search6  
-- **API sketch:** `accel_submit(job_desc*, iovecs, fence_fd)` returning a completion handle; optionally integrate with an async completion ring (io_uring-like). io_uring’s ring concept illustrates the kernel/userspace shared-queue pattern. citeturn11search2turn11search10  
+- **API sketch:** `accel_submit(job_desc*, iovecs, fence_fd)` returning a completion handle; optionally integrate with an async completion ring (io_uring-like). io_uring’s ring concept illustrates the core/kernel/userspace shared-queue pattern. citeturn11search2turn11search10  
 - **Data path:** userspace builds descriptors → device DMA reads/writes buffers → poll or eventfd for completion → userspace callback.
 
 **Prototype B: “Kernel Accelerator Work Queue” (AWQ) subsystem**  

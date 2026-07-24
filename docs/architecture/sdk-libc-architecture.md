@@ -1,3 +1,14 @@
+---
+title: Bharat-OS SDK and Libc Architecture
+status: Proposed
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+see_also:
+  - README.md
+---
 # Bharat-OS SDK and Libc Architecture
 
 For edge devices, drones, gateways, robotics nodes, and appliance-class systems, the winning move is not "full desktop POSIX first". The winning move is:
@@ -20,7 +31,7 @@ Without libc + SDK:
 * Edge bring-up takes too much bespoke work.
 
 With a real SDK:
-* `services/netmgr`, `servicemgr`, drivers, and test apps stop reinventing runtime support.
+* `core/services/netmgr`, `servicemgr`, drivers, and test apps stop reinventing runtime support.
 * Common embedded and systems code can be compiled quickly.
 * Utilities, benchmarks, and protocol stacks can be ported.
 * Kernel/services can be validated with realistic apps.

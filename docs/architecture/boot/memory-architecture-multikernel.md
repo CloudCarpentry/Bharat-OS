@@ -1,10 +1,22 @@
+---
+title: 1. Executive Summary
+status: Proposed
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - boot
+see_also:
+  - README.md
+---
 # 1. Executive Summary
 
 This document defines the **Bharat-OS Memory Architecture** aligned with:
 
 * **Multikernel design (per-core kernel instances)**
 * **Profile-driven hardware support (MMU / MMU-lite / MPU)**
-* **Strict separation of concerns across `/arch`, `/hal`, `/kernel`, `/services`**
+* **Strict separation of concerns across `/arch`, `core/hal`, `/kernel`, `/services`**
 
 The design eliminates:
 
@@ -60,7 +72,7 @@ Supports:
 
 ```text
 /arch     → hardware implementation
-/hal      → contracts only
+core/hal      → contracts only
 /kernel   → authority + orchestration
 /services → policy
 ```
@@ -109,7 +121,7 @@ Page Fault / Syscall -> address_space_t -> Region Tree -> VM Object -> Memory Ba
 #### HAL = contracts only
 
 ```text
-hal/include/
+corecore/hal/include/
   hal_mem_model.h
   hal_pt.h
   hal_tlb.h
@@ -123,7 +135,7 @@ hal/include/
 #### ARCH = implementation
 
 ```text
-arch/
+core/arch/
   x86_64/mm/
   arm64/mm/
   riscv64/mm/

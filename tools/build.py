@@ -65,7 +65,11 @@ def main() -> int:
         if not target.run:
             print("Error: Target does not support 'run' action.")
             return 1
-        return run_qemu(package_outputs.manifest_paths["run"])
+
+        mode_override = "smoke" if getattr(args, "smoke", False) else "interactive" if getattr(args, "interactive", False) else None
+        display_override = "gui" if getattr(args, "gui", False) else "headless" if getattr(args, "headless", False) else None
+
+        return run_qemu(package_outputs.manifest_paths["run"], mode_override=mode_override, display_override=display_override)
 
     if args.command == "flash":
         if not target.flash:

@@ -1,3 +1,15 @@
+---
+title: RISC-V64 Build Quickstart
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - dev
+  - build
+see_also:
+  - README.md
+---
 # RISC-V64 Build Quickstart
 
 ## Build only

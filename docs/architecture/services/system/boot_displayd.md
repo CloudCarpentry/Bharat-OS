@@ -1,4 +1,16 @@
-# Boot Display Service (`services/system/boot_displayd`)
+---
+title: Boot Display Service (`core/services/system/boot_displayd`)
+status: Proposed
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - services
+see_also:
+  - README.md
+---
+# Boot Display Service (`core/services/system/boot_displayd`)
 
 ## Overview
 
@@ -13,8 +25,8 @@
 
 ## Current Implementation Baseline
 
-- Service entrypoint: `services/system/boot_displayd/main.c`
-- Tiny renderer/runtime: `stacks/ui/lcd/tiny_ui.c`
+- Service entrypoint: `core/services/system/boot_displayd/main.c`
+- Tiny renderer/runtime: `core/stacks/ui/lcd/tiny_ui.c`
 - Public contract: `include/bharat/ui/tiny_ui.h`
 
 The current baseline intentionally stays policy-light and profile-friendly: page-oriented rendering, low-memory compatible buffers, and no direct board-driver reach-around.

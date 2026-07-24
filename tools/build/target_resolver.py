@@ -1,6 +1,7 @@
 import sys
 from pathlib import Path
 
+from tools.build.path_aliases import resolve_target_yaml_alias
 from tools.build.models import (
     BootConfig,
     BuildConfig,
@@ -17,7 +18,6 @@ from tools.build.models import (
 
 SCHEMA_PATH = Path(__file__).parent.parent / "schemas" / "target.schema.yaml"
 
-
 def _require_yaml_deps():
     try:
         import yaml  # type: ignore
@@ -32,10 +32,23 @@ def _require_yaml_deps():
 
 def load_yaml_target(path: Path) -> dict:
     yaml, _ = _require_yaml_deps()
-    if not path.exists():
+    resolved_path = resolve_target_yaml_path(path)
+    if not resolved_path.exists():
         raise FileNotFoundError(f"Target YAML not found: {path}")
-    with open(path, "r") as f:
+    with open(resolved_path, "r") as f:
         return yaml.safe_load(f)
+
+
+def resolve_target_yaml_path(path: Path) -> Path:
+    """
+    Resolve YAML target path through migration aliases.
+    Preferred location is delivery/targets/qemu, while tools/targets/qemu is
+    kept as a legacy alias during transition.
+    """
+    resolved_path, used_alias = resolve_target_yaml_alias(path)
+    if used_alias:
+        print(f"[migration-warning] Using aliased target-yaml path: {path} -> {resolved_path}")
+    return resolved_path
 
 def validate_yaml_target(raw: dict) -> None:
     yaml, jsonschema = _require_yaml_deps()
@@ -77,6 +90,7 @@ def augment_package_config(package_cfg: PackageConfig, arch: str, boot: BootConf
     return PackageConfig(transforms=transforms)
 
 def resolve_yaml_target(path: Path) -> ResolvedTarget:
+    resolved_path = resolve_target_yaml_path(path)
     raw = load_yaml_target(path)
     validate_yaml_target(raw)
 
@@ -184,7 +198,7 @@ def resolve_yaml_target(path: Path) -> ResolvedTarget:
         flash=flash_cfg,
         debug=debug_cfg,
         footprint_profile=raw.get("footprint_profile"),
-        source_metadata={"source_kind": "yaml", "source_path": str(path)}
+        source_metadata={"source_kind": "yaml", "source_path": str(resolved_path)}
     )
 
 def resolve_target_input(target: str | None, target_yaml: str | None) -> TargetInput:

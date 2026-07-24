@@ -1,3 +1,15 @@
+---
+title: Skill Specification (Cross-Platform)
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - ai-agents
+  - standards
+see_also:
+  - README.md
+---
 # Skill Specification (Cross-Platform)
 
 A skill is a reusable package of instructions + optional scripts/templates that an agent can invoke for a specific class of tasks.

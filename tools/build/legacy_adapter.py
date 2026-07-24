@@ -68,8 +68,12 @@ def resolve_legacy_target(target_name: str, repo_root: Path) -> ResolvedTarget:
     nographic = not gui_enabled
 
     # Fallback boot logic guessing
-    protocol = "linux_arm64" if arch in ("arm64", "arm32") else "multiboot2" if arch == "x86_64" else "opensbi_payload"
-    artifact_format = "raw_bin" if protocol == "linux_arm64" else "elf"
+    # ARM64/ARM32: load the ELF directly so QEMU uses its own embedded bootrom
+    # to determine the load address and provide the DTB via x0.  This matches
+    # what run_qemu_e2e.sh does and avoids the raw-binary + dumpdtb path that
+    # misbehaves on some Windows QEMU versions.
+    protocol = "elf" if arch in ("arm64", "arm32") else "multiboot2" if arch == "x86_64" else "opensbi_payload"
+    artifact_format = "elf"
 
     transforms = []
     boot_artifact = "kernel/kernel.elf"
@@ -82,16 +86,17 @@ def resolve_legacy_target(target_name: str, repo_root: Path) -> ResolvedTarget:
         ))
         boot_artifact = "kernel/kernel.elf32"
 
-    if artifact_format == "raw_bin":
-        transforms.append(PackageTransformConfig(
-            type="elf_to_bin",
-            input="kernel/kernel.elf",
-            output="kernel/kernel.bin"
-        ))
-        boot_artifact = "kernel/kernel.bin"
+    # ARM64: QEMU handles the DTB internally when no -dtb flag is given;
+    # ARM32/RISC-V still need the generated DTB.
+    dtb_required = arch in ("arm32", "riscv64", "riscv32")
+    dtb_mode = "qemu_generated" if dtb_required else "firmware_provided"
 
-    dtb_mode = "qemu_generated"
-    default_cpu = "cortex-a72" if arch == "arm64" else None
+    # Use CPU/machine values that match target_matrix.json for better compatibility.
+    arm64_cpu_map = {"arm64": "cortex-a57"}
+    arm64_machine_map = {"arm64": "virt,gic-version=2"}
+    default_cpu = arm64_cpu_map.get(arch, None)
+    default_machine = arm64_machine_map.get(arch, "virt" if arch in ("arm64", "riscv64", "arm32", "riscv32") else "q35")
+
     extra_args = legacy_cfg.get("extra_args", [])
 
     arch_family_map = {
@@ -133,15 +138,16 @@ def resolve_legacy_target(target_name: str, repo_root: Path) -> ResolvedTarget:
         boot=BootConfig(
             protocol=protocol,
             artifact_format=artifact_format,
-            dtb=DtbConfig(mode=dtb_mode, required=(arch == "arm64"))
+            dtb=DtbConfig(mode=dtb_mode, required=dtb_required)
         ),
         package=PackageConfig(
             transforms=transforms
         ),
         run=RunConfig(
             backend="qemu",
-            machine="virt" if arch in ("arm64", "riscv64", "arm32", "riscv32") else "q35",
+            machine=default_machine,
             cpu=default_cpu,
+            memory="256M",
             boot_artifact=boot_artifact,
             nographic=nographic,
             serial=["stdio"],

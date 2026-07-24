@@ -1,3 +1,15 @@
+---
+title: GitHub Copilot Runtime Notes
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - ai-agents
+  - platforms
+see_also:
+  - README.md
+---
 # GitHub Copilot Runtime Notes
 
 ## Recommended Inputs
@@ -10,7 +22,7 @@
 
 - Provide explicit file paths and expected diff shape in prompts.
 - Add guardrails in issue templates and PR templates.
-- Require tests/checks in PR automation.
+- Require quality/tests/checks in PR automation.
 
 ## Workflow Suggestion
 

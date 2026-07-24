@@ -1,3 +1,14 @@
+---
+title: `KERNEL_ARCHITECTURE.md`
+status: Proposed
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+see_also:
+  - README.md
+---
 Operating systems are strange beasts. They sit between **physics and abstraction**. On one side: electrons, buses, cache lines, interrupts. On the other: files, processes, sockets, GUIs. A good kernel architecture document is essentially a **map of that borderland**.
 
 For a serious OS repository like **Bharat-OS**, three documents anchor the project:
@@ -60,14 +71,14 @@ Hardware
 # Kernel Directory Layout
 
 ```
-kernel/
-    arch/
+core/kernel/
+    core/arch/
         x86_64/
         arm64/
         riscv64/
         shakti/
 
-    hal/
+    corecore/hal/
         cpu/
         interrupt/
         timer/
@@ -82,7 +93,7 @@ kernel/
 
     ipc/
 
-    drivers/
+    core/drivers/
         storage
         network
         gpu
@@ -123,9 +134,9 @@ Responsibilities include:
 Example:
 
 ```
-hal/x86_64/apic.c
-hal/arm64/gic.c
-hal/riscv64/plic.c
+corecore/hal/x86_64/apic.c
+corecore/hal/arm64/gic.c
+corecore/hal/riscv64/plic.c
 ```
 
 ---

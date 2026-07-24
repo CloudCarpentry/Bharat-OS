@@ -1,0 +1,14 @@
+target:
+  name: arm32_tiny_iot_headless
+  arch: arm32
+  platform: qemu_virt
+  profile: TINY
+  personality: NATIVE
+  capabilities:
+    - MMU
+    - SENSORS
+  services:
+    - id: NAMESVC
+      policy: REQUIRED
+    - id: DEVMGR
+      policy: REQUIRED

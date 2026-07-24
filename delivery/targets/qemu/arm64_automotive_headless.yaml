@@ -1,0 +1,56 @@
+name: arm64_automotive_headless
+kind: qemu_target
+
+arch: arm64
+board: qemu-virt-arm64
+device_profile: rtos
+personality_profile: automotive
+execution_profile: rt
+
+build:
+  cmake_preset: arm64-edge
+  cmake_defs:
+    BHARAT_ARCH_FAMILY: ARM64
+    BHARAT_BOOT_HW_PROFILE: rtos
+    BHARAT_DEVICE_PROFILE: AUTOMOTIVE_ECU
+    BHARAT_PERSONALITY_PROFILE: NATIVE
+    BHARAT_ENABLE_SUBSYS_AUTOMOTIVE: ON
+    BHARAT_TARGET_BOARD: virt
+    BHARAT_BOOT_GUI: OFF
+
+kernel:
+  canonical_artifacts:
+    elf: kernel/kernel.elf
+    map: kernel/kernel.map
+
+boot:
+  protocol: linux_arm64
+  artifact_format: elf
+  dtb:
+    mode: qemu_generated
+    required: true
+    handoff_register: x0
+  cmdline: "boot_mode=automotive ktest=0"
+
+package:
+  transforms: []
+
+run:
+  backend: qemu
+  machine: virt
+  cpu: cortex-a57
+  memory: 512M
+  nographic: true
+  serial:
+    - stdio
+  boot_artifact: kernel/kernel.elf
+  extra_args:
+    - "-machine"
+    - "virt,gic-version=3"
+    - "-d"
+    - "guest_errors,unimp"
+
+debug:
+  backend: gdb_remote
+  stop_on_entry: false
+  gdb_port: 1234

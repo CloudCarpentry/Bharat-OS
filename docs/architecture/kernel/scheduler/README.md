@@ -1,3 +1,15 @@
+---
+title: Kernel Scheduler Documentation
+status: Proposed
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - kernel
+see_also:
+  - README.md
+---
 # Kernel Scheduler Documentation
 
 This folder is the single source of truth for scheduler architecture, implementation status, and roadmap.
@@ -6,11 +18,11 @@ This folder is the single source of truth for scheduler architecture, implementa
 
 The scheduler implementation lives primarily in:
 
-- `kernel/src/sched/`
-- `kernel/include/sched/`
-- `tests/test_scheduler.c`
-- `tests/host/test_sched.c`
-- `tests/host/test_sched_partition_validation.c`
+- `core/kernel/src/sched/`
+- `core/kernel/include/sched/`
+- `quality/tests/test_scheduler.c`
+- `quality/tests/host/test_sched.c`
+- `quality/tests/host/test_sched_partition_validation.c`
 
 ## Current implementation shape (code-backed)
 

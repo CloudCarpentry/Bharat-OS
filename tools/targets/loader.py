@@ -2,11 +2,36 @@ import json
 import os
 import sys
 
+from tools.build.path_aliases import (
+    first_existing_path,
+    repo_path_candidates,
+    resolve_target_matrix_alias,
+)
+
+
+def _candidate_matrix_paths():
+    return repo_path_candidates(
+        "delivery/targets/target_matrix.json",
+        "targets/target_matrix.json",
+    )
+
+
 def load_target_matrix(matrix_path=None):
     if not matrix_path:
-        matrix_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'targets', 'target_matrix.json')
+        matrix_path = first_existing_path(_candidate_matrix_paths())
+    else:
+        requested_path = matrix_path if isinstance(matrix_path, str) else str(matrix_path)
+        resolved, used_alias = resolve_target_matrix_alias(os.path.abspath(requested_path))
+        matrix_path = str(resolved)
+        if used_alias:
+            print(f"[migration-warning] Using aliased target-matrix path: {os.path.abspath(requested_path)} -> {resolved}")
+
+    if not matrix_path:
+        print("Error loading target matrix: no target_matrix.json found in delivery/targets or targets.")
+        sys.exit(1)
+
     try:
-        with open(matrix_path, 'r') as f:
+        with open(str(matrix_path), "r") as f:
             return json.load(f)
     except Exception as e:
         print(f"Error loading {matrix_path}: {e}")

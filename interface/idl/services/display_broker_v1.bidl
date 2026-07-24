@@ -1,0 +1,41 @@
+// display_broker_v1.bidl
+// BIDL definition for the Display Broker Service in Bharat-OS
+
+interface bharat.display_broker.v1;
+
+import "bharat/uapi/display/lease.h";
+import "bharat/uapi/display/display.h";
+
+struct display_lease_request_t {
+    uint32 display_id;
+    uint32 requested_rights;
+};
+
+struct display_lease_response_t {
+    uint32 status;
+    uint32 lease_id;
+    uint32 granted_rights;
+};
+
+struct display_present_t {
+    uint32 lease_id;
+    uint32 buffer_handle;
+};
+
+operation RequestLease {
+    opcode = 1;
+    input = display_lease_request_t;
+    output = display_lease_response_t;
+};
+
+operation ReleaseLease {
+    opcode = 2;
+    input = uint32; // lease_id
+    output = uint32; // status
+};
+
+operation Present {
+    opcode = 3;
+    input = display_present_t;
+    output = uint32; // status
+};

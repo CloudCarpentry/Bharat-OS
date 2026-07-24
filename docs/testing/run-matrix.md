@@ -1,3 +1,14 @@
+---
+title: Unified Multi-Arch SMP Run Matrix
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - testing
+see_also:
+  - README.md
+---
 # Unified Multi-Arch SMP Run Matrix
 
 Bharat-OS supports a systematic execution matrix to test Single-core (UP) and Multi-core (SMP) operations across varying architectures and execution profiles.

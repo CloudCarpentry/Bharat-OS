@@ -1,3 +1,14 @@
+---
+title: EDGE32 Portability Audit
+status: Proposed
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+see_also:
+  - README.md
+---
 # EDGE32 Portability Audit
 
 This document summarizes the current status of pointer-width inference and portability assumptions that must be addressed before the full arm32 and riscv32 (EDGE32 Tier 2) ports can be considered fully functional.
@@ -14,7 +25,7 @@ This document summarizes the current status of pointer-width inference and porta
 
 ## Syscall Argument Packing
 - **Status**: Needs Audit
-- **Details**: Kernel entry points and syscall abstractions must cleanly serialize arguments regardless of whether registers are 32 or 64-bit wide. This likely requires specialized ABI definitions in `kernel/include/arch/` to marshal 64-bit values into two 32-bit registers for Tier 2 architectures.
+- **Details**: Kernel entry points and syscall abstractions must cleanly serialize arguments regardless of whether registers are 32 or 64-bit wide. This likely requires specialized ABI definitions in `core/kernel/include/core/arch/` to marshal 64-bit values into two 32-bit registers for Tier 2 architectures.
 - **Action**: Must fix before RV32/ARM32 bring-ups.
 
 ## Capability/Object Identifiers

@@ -1,3 +1,14 @@
+---
+title: Secure Boot + Fast Boot Profiles (Automotive/RTOS/Robot/Drone)
+status: Proposed
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+see_also:
+  - README.md
+---
 # Secure Boot + Fast Boot Profiles (Automotive/RTOS/Robot/Drone)
 
 ## What this adds
@@ -42,7 +53,7 @@ cmake -S . -B build-x86 -G Ninja `
   -DBHARAT_PLATFORM_FIRMWARE=ACPI `
   -DBHARAT_BOOT_HW_PROFILE=desktop
 cmake --build build-x86
-qemu-system-x86_64 -kernel build-x86/kernel/kernel.elf -serial stdio
+qemu-system-x86_64 -kernel build-x86/core/kernel/kernel.elf -serial stdio
 ```
 
 ### Example: ARM64 QEMU (automotive-like fast policy)
@@ -56,7 +67,7 @@ cmake -S . -B build-arm -G Ninja `
   -DBHARAT_BOOT_HW_PROFILE=edge
 cmake --build build-arm
 qemu-system-aarch64 -M virt -cpu cortex-a57 -nographic `
-  -kernel build-arm/kernel/kernel.elf
+  -kernel build-arm/core/kernel/kernel.elf
 ```
 
 ### Example: RISC-V QEMU (RTOS ultra-fast policy)
@@ -70,7 +81,7 @@ cmake -S . -B build-rv -G Ninja `
   -DBHARAT_DEVICE_PROFILE=DRONE
 cmake --build build-rv
 qemu-system-riscv64 -M virt -nographic -bios default `
-  -kernel build-rv/kernel/kernel.elf
+  -kernel build-rv/core/kernel/kernel.elf
 ```
 
 ## Flash/run on real boards (generic production flow)

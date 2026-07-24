@@ -1,0 +1,50 @@
+# Bharat-OS Components Maturity Manifest (Canonical Source of Truth)
+
+components:
+  native_syscall:
+    name: "Native Syscall Boundary"
+    maturity: "baseline"
+    evidence: "quality/tests/test_trap_syscall.c"
+    blockers: []
+
+  cross_arch_usercopy:
+    name: "Unified 12-Byte Usercopy & Exception Table"
+    maturity: "baseline"
+    evidence: "core/arch/x86/x86_64/usercopy.c, docs/architecture/exception-table-contract.md"
+    blockers: []
+
+  abi_lock:
+    name: "Metadata-Driven ABI Lock"
+    maturity: "baseline"
+    evidence: "tools/abi/syscall_abi.py"
+    blockers: []
+
+  layer_linter:
+    name: "Architecture Layer Linter"
+    maturity: "baseline"
+    evidence: "tools/lint/check_layer_references.py"
+    blockers: []
+
+  cmake_dep_linter:
+    name: "CMake Target-Dependency Linter"
+    maturity: "baseline"
+    evidence: "tools/lint/check_cmake_dependencies.py"
+    blockers: []
+
+  netmgr:
+    name: "Network Manager (netmgr)"
+    maturity: "partial"
+    evidence: "core/services/netmgr"
+    blockers: ["Production blocking receive"]
+
+  process_manager:
+    name: "Process Manager (process_mgr)"
+    maturity: "scaffold"
+    evidence: "core/services/process_manager"
+    blockers: ["Real ELF execution loading"]
+
+  vm_manager:
+    name: "Virtual Memory Manager (vm_mgr)"
+    maturity: "scaffold"
+    evidence: "core/services/vm_manager"
+    blockers: ["On-demand page-pool orchestration"]

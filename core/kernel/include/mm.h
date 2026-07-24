@@ -1,0 +1,140 @@
+#ifndef BHARAT_MM_H
+#define BHARAT_MM_H
+
+#include <stdint.h>
+#include <stddef.h>
+
+/*
+ * Bharat-OS Memory Management Subsystem
+ * Supports NUMA-awareness for datacenter scalability and standard paging.
+ */
+
+// Basic page definitions (Assuming 4KB base pages)
+#define PAGE_SIZE 4096
+
+typedef uint64_t phys_addr_t;
+typedef uint64_t virt_addr_t;
+
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
+#include "list.h"
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
+#include "mm_coloring.h"
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
+#include "mm/pmm.h"
+#include "bharat/kernel/ds/bh_refcount.h"
+
+// Page metadata structure for Buddy Allocator
+typedef struct __attribute__((aligned(16))) page {
+  list_head_t list;           // 16 bytes
+  bh_refcount_t ref_count;    // 4 bytes
+  uint32_t flags;             // 4 bytes
+  uint32_t owner_core_id;     // 4 bytes
+  uint64_t object_id;         // 8 bytes
+  int8_t order;               // 1 byte
+  uint8_t numa_node;          // 1 byte
+  uint8_t zone;               // 1 byte
+  uint8_t owner_class;        // 1 byte
+  uint16_t pin_count;         // 2 bytes
+  uint16_t state;             // 2 bytes (pmm_page_state_t)
+  uint16_t reserved;          // 2 bytes padding
+} page_t;
+
+typedef page_t page_frame_t;
+
+// Convert page struct pointer back to physical address
+phys_addr_t page_to_phys(page_t *page);
+page_t *phys_to_page(phys_addr_t phys);
+
+// NUMA Node Definition
+typedef struct {
+  uint32_t node_id;
+  phys_addr_t start_addr;
+  uint64_t total_pages;
+  uint64_t free_pages;
+  // Implementation specific bitmap or buddy allocator metadata here
+  void *allocator_metadata;
+} numa_node_t;
+
+// Virtual Memory Page Flags
+#define PAGE_COW 0x100  // Copy-on-Write Flag
+#define PAGE_USER 0x200 // User accessible flag
+
+// Buddy Allocator page flags
+#define PAGE_FLAG_RESERVED (1 << 0)
+#define PAGE_FLAG_KERNEL (1 << 1)
+#define PAGE_FLAG_USER (1 << 2)
+
+// Initialize physical memory allocator natively using normalized boot_info
+struct boot_info;
+int mm_pmm_init(uint32_t magic, const struct boot_info *boot);
+
+// Base Page Allocation (NUMA aware)
+phys_addr_t mm_alloc_page(uint32_t preferred_numa_node);
+phys_addr_t mm_alloc_pages_order(int order, uint32_t preferred_numa_node,
+                                 uint32_t flags);
+phys_addr_t pmm_alloc_pages_colored(int order, uint32_t preferred_numa_node,
+                                    uint32_t flags,
+                                    mm_color_config_t *color_config);
+void mm_free_page(phys_addr_t page);
+
+typedef enum {
+    BHARAT_DMA_COHERENT      = 1u << 0,
+    BHARAT_DMA_UNCACHED      = 1u << 1,
+    BHARAT_DMA_WRITE_COMBINE = 1u << 2,
+    BHARAT_DMA_32BIT_ONLY    = 1u << 3,
+    BHARAT_DMA_ZERO          = 1u << 4,
+} bharat_dma_flags_t;
+
+int mm_alloc_dma_pages(size_t size,
+                       uint32_t preferred_numa_node,
+                       uint32_t dma_flags,
+                       phys_addr_t *out_phys,
+                       void **out_kernel_virt);
+int mm_free_dma_pages(phys_addr_t phys, void *kernel_virt, size_t size);
+int mm_memset_phys_range(phys_addr_t phys, uint8_t value, size_t size);
+int mm_zero_phys_range(phys_addr_t phys, size_t size);
+
+// Support for Copy-on-Write (CoW) page reference counting
+void mm_inc_page_ref(phys_addr_t page);
+
+// Virtual Memory Management (Architecture agnostic paging)
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
+#include "spinlock.h"
+
+typedef struct vm_address_space address_space_t;
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
+#include "mm/aspace.h"
+
+int vmm_init(void);
+int vmm_map_page(virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags);
+int vmm_unmap_page(virt_addr_t vaddr);
+phys_addr_t vmm_get_kernel_root(void);
+int vmm_is_kernel_space_ready(void);
+
+int mm_vmm_map_page(address_space_t *as, virt_addr_t vaddr, phys_addr_t paddr,
+                    uint32_t flags);
+int mm_vmm_unmap_page(address_space_t *as, virt_addr_t vaddr);
+
+// Forward declaration for capability_token_t is not straightforward because
+// it's a typedef of an anonymous struct in formal_verif.h. So we include it
+// directly.
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
+#include "../staging/formal/formal_verif.h"
+int vmm_map_device_mmio(virt_addr_t vaddr, phys_addr_t paddr, capability_t *cap,
+                        int is_npu);
+
+// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
+#include "mm/address_token.h"
+int vmm_map_device_mmio_token(virt_addr_t vaddr, phys_addr_t paddr,
+                              uint64_t size, const bharat_addr_token_t *token,
+                              int is_npu);
+
+// Create a new empty hardware address space
+address_space_t *mm_create_address_space(void);
+
+void vmm_process_local_urpc_messages(uint32_t core_id);
+
+#endif // BHARAT_MM_H
+
+void tlb_shootdown(address_space_t *as, virt_addr_t vaddr);
+#define PAGE_EXEC 0x400

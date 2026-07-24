@@ -1,3 +1,15 @@
+---
+title: Build/Test/Run Modernization Plan
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - dev
+  - build
+see_also:
+  - README.md
+---
 # Build/Test/Run Modernization Plan
 
 This plan tracks migration to a YAML-target-first, preset-driven build workflow.

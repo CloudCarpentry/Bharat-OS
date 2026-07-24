@@ -35,7 +35,7 @@ Every Native application is deployed with a strict manifest.
   "services": [
     {
       "name": "demo_worker",
-      "ipc_contract": "bidl/demo_v1"
+      "ipc_contract": "binterface/idl/demo_v1"
     }
   ]
 }
@@ -69,5 +69,5 @@ The Native personality is the purest expression of the Bharat-OS capability mode
 ## 7. SDK Contract
 
 *   **Languages:** C, C++, and Rust are first-class native languages.
-*   **Headers:** Found in `sdk/native/include/`.
-*   **Libraries:** Link against `libbharat_native`, which provides safe wrappers around raw `uapi/` syscalls.
+*   **Headers:** Found in `interface/sdk/native/include/`.
+*   **Libraries:** Link against `libbharat_native`, which provides safe wrappers around raw `interface/uapi/` syscalls.

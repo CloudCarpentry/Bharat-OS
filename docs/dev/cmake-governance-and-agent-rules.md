@@ -1,3 +1,14 @@
+---
+title: CMake Governance, Versioning, and Agent/Developer Rules
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - dev
+see_also:
+  - README.md
+---
 # CMake Governance, Versioning, and Agent/Developer Rules
 
 This document defines mandatory build-system governance for Bharat-OS contributors (human and code agents).
@@ -7,7 +18,7 @@ This document defines mandatory build-system governance for Bharat-OS contributo
 ## 1.1 Directory layout contract
 
 - Root `CMakeLists.txt` owns global options, profile toggles, and top-level composition.
-- Subsystem `CMakeLists.txt` files (e.g., `services/`, `drivers/`, `subsys/`, `lib/`) own only local target wiring.
+- Subsystem `CMakeLists.txt` files (e.g., `core/services/`, `core/drivers/`, `subsys/`, `lib/`) own only local target wiring.
 - New components must be introduced through the nearest local `CMakeLists.txt` first, then promoted to top-level composition only when required.
 
 ## 1.2 Target hygiene
@@ -21,8 +32,9 @@ This document defines mandatory build-system governance for Bharat-OS contributo
 
 ## 1.3 Component-policy contract
 
-- `cmake/modules/BharatComponentPolicy.cmake` is the single source of truth for profile/personality/board
-  driven component requirements.
+- `delivery/cmake/modules/BharatComponentPolicy.cmake` is the canonical single source of truth for profile/personality/board
+  driven component requirements (legacy `cmake/modules/BharatComponentPolicy.cmake` remains as a compatibility symlink during migration).
+- `delivery/cmake/modules/BharatIOPolicy.cmake` is the canonical build policy resolver and validator for all storage and Adaptive I/O configurations.
 - All top-level configuration entry points (presets, wrapper scripts, CI jobs, and agents) must pass:
   - `BHARAT_DEVICE_PROFILE`
   - `BHARAT_PERSONALITY_PROFILE`

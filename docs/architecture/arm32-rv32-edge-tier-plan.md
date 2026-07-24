@@ -1,3 +1,14 @@
+---
+title: ARM32 + RV32 EDGE-Tier Architecture Expansion Plan
+status: Proposed
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+see_also:
+  - README.md
+---
 # ARM32 + RV32 EDGE-Tier Architecture Expansion Plan
 
 This document defines how Bharat-OS should add 32-bit architecture support without splitting into separate kernel personalities.
@@ -6,8 +17,10 @@ This document defines how Bharat-OS should add 32-bit architecture support witho
 
 Bharat-OS will support five CPU families in two runtime tiers:
 
-- **Tier 1 (Full Baseline):** `x86_64`, `arm64`, `riscv64`
-- **Tier 2 (EDGE32 Compact Ports):** `arm32`, `riscv32`
+- **Tier 1 (Full Baseline / `full`):** `x86_64`, `arm64`, `riscv64`
+- **Tier 2 (EDGE32 Compact Ports / `edge32`):** `arm32`, `riscv32`
+
+arm32 and riscv32 are EDGE32 targets. In the current developer branch they must remain non-production runtime targets while trap/syscall paths are explicitly marked unsupported.
 
 Tier 2 is first-class in product scope, but starts with a smaller mandatory feature envelope to avoid premature parity churn.
 
@@ -57,7 +70,7 @@ Common code should key off declared architecture capabilities, not inferred poin
 
 ### 1) Portability cleanup before new bring-up
 
-Audit and normalize shared kernel/HAL code for 32/64-bit safety:
+Audit and normalize shared core/kernel/HAL code for 32/64-bit safety:
 
 - address and size types (`uintptr_t`, `size_t`, `vaddr_t`, `paddr_t`)
 - page-table entry abstractions
@@ -95,8 +108,8 @@ Avoid spreading `#ifdef` logic across 64-bit backends.
 
 Use dedicated backend trees:
 
-- `kernel/src/hal/arm32/...`
-- `kernel/src/hal/riscv32/...`
+- `core/kernel/src/corecore/hal/arm32/...`
+- `core/kernel/src/corecore/hal/riscv32/...`
 
 Each backend should own its own:
 

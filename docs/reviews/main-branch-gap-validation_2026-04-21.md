@@ -1,3 +1,14 @@
+---
+title: Main branch gap validation (refresh)
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - reviews
+see_also:
+  - README.md
+---
 # Main branch gap validation (refresh)
 
 Date: 2026-04-21  

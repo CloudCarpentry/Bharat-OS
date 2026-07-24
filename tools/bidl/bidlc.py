@@ -140,7 +140,10 @@ def main():
     gen_types(service, outdir)
     gen_dispatch(service, outdir)
 
-    print("Generated for service:", service["name"])
+    if service["name"]:
+        print("Generated for service:", service["name"])
+    else:
+        print("[CodeGen] Warning: Skipping unnamed service definition in", sys.argv[1])
 
 
 if __name__ == "__main__":

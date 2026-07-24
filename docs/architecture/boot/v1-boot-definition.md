@@ -1,3 +1,15 @@
+---
+title: v1 Boot Definition
+status: Proposed
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - boot
+see_also:
+  - README.md
+---
 # v1 Boot Definition
 
 ## Purpose
@@ -90,7 +102,7 @@ After Phase 1 boot stability is reached, v1 must prove the capability-mediated I
 
 1. Launch one trivial user-space `hello` task/service.
 2. Grant it exactly one IPC endpoint capability.
-3. Send one IPC request message from the kernel/root task side.
+3. Send one IPC request message from the core/kernel/root task side.
 4. Receive one reply from the `hello` service.
 5. Print success on serial console.
 

@@ -1,47 +1,82 @@
-# Bharat-OS Documentation
-
-Welcome to the Bharat-OS documentation directory. This folder contains all the reference material, design specs, build instructions, and developer guidelines for the project.
-
-## Directory Structure
-
-To help navigate the codebase and the documentation, we have organized the content into several focused categories:
-
-### [Architecture (`docs/architecture/`)](architecture/)
-Contains high-level system design documents, subcomponent architectures, kernel models, and network/storage strategies.
-* [Kernel Architecture](architecture/000_KERNEL_ARCHITECTURE.md)
-* [Process & Scheduler Architecture](architecture/core/process-scheduler-architecture.md)
-* [Automotive Architecture](architecture/AUTOMOTIVE_ARCHITECTURE.md)
-* [Boot Architecture](architecture/boot/BOOT_ARCHITECTURE.md)
-* [Boot Selftest Policy](architecture/BOOT_SELFTEST_POLICY.md)
-* [Network Architecture](architecture/network-architecture.md)
-
-### [Build & Environment (`docs/dev/build/`)](dev/build/)
-Guides for setting up your environment, building, running, and testing Bharat-OS.
-* [Environment Preparation](dev/build/ENV_PREP.md)
-* [Build Guide: ARM64](dev/build/BUILD_ARM64.md)
-* [Build Guide: RISC-V 64](dev/build/BUILD_RISCV64.md)
-* [Build Guide: x86_64](dev/build/BUILD_X86_64.md)
-* [Build System Guide](dev/build/HOST_BUILD_TEST_RUN_GUIDE.md)
-
-### [Developer Guidelines (`docs/dev/`)](dev/)
-Contains best practices, status trackers, and implementation plans.
-* [Current Code Status](dev/current-code-status.md) - *The source of truth for implementation status vs. architecture plans.*
-* [Developer Guidelines](dev/developer_guidelines.md)
-* [Shell Contributor Guide](dev/shell-contributor-guide.md)
-* [Shell Testing Guide](dev/shell-testing.md)
-* [Release Versioning](dev/release-versioning.md)
-
-### [Research & References (`docs/research_doc/`)](research_doc/)
-Papers, external research, and bibliographies that inform the design of Bharat-OS.
-* [Papers](research_doc/papers.md)
-* [References (BibTeX)](research_doc/references.bib)
-
-### Other Key Directories
-* **[ADRs (`docs/adr/`)](adr/)**: Architectural Decision Records detailing major design choices over time.
-* **[AI Agents (`docs/ai-agents/`)](ai-agents/)**: Instructions, rules, and boundaries for AI agents interacting with this repository.
-* **[Boards (`docs/boards/`)](boards/)**: Board-specific technical documents and hardware support matrices.
-* **[Profiles (`docs/profiles/`)](profiles/)**: Documentation defining different capability and hardware tiers.
-
+---
+title: Bharat-OS Documentation Hub
+status: Active
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - index
+  - information-architecture
+see_also:
+  - architecture/README.md
+  - adr/README.md
+  - testing/run-matrix.md
 ---
 
-*Note: The architecture documents in `docs/architecture/` are forward-looking. For the current, code-backed implementation reality, always refer to [`docs/dev/current-code-status.md`](dev/current-code-status.md).*
+# Bharat-OS Documentation
+
+This directory is the canonical documentation hub for Bharat-OS.
+
+## Documentation Information Architecture
+
+```mermaid
+flowchart TD
+  A[docs/] --> B[architecture/]
+  A --> C[adr/]
+  A --> D[dev/]
+  A --> E[testing/]
+  A --> F[reviews/]
+  A --> G[ai-agents/]
+  A --> H[archive/]
+  B --> B1[Subsystem + contracts + roadmaps]
+  C --> C1[Architecture decisions]
+  D --> D1[Contributor + build + policy guides]
+  E --> E1[Test matrix + E2E]
+  F --> F1[Gap analysis + audit notes]
+  H --> H1[Superseded docs]
+```
+
+## Source-of-Truth Precedence
+
+| Priority | Source | Why it wins |
+|---|---|---|
+| 1 | Accepted ADRs (`docs/adr/`) | Records explicit design decisions. |
+| 2 | Contracts (`docs/architecture/contracts/`) | Defines stable interfaces/boundaries. |
+| 3 | Subsystem architecture docs | Defines implementation direction. |
+| 4 | Reviews / plans | Tracks gaps and execution details. |
+
+## Directory Map
+
+| Area | Purpose | Entry Point |
+|---|---|---|
+| `architecture/` | Core architecture, contracts, subsystems, profile plans | [`docs/architecture/README.md`](architecture/README.md) |
+| `adr/` | Architecture Decision Records lifecycle + index | [`docs/adr/README.md`](adr/README.md) |
+| `dev/` | Developer workflows, tooling, governance docs | [`docs/dev/developer_guidelines.md`](dev/developer_guidelines.md) |
+| `testing/` | E2E and run-matrix guidance | [`docs/testing/run-matrix.md`](testing/run-matrix.md) |
+| `ai-agents/` | Agent guardrails and templates | [`docs/ai-agents/README.md`](ai-agents/README.md) |
+| `reviews/` | Gap assessments and architecture audits | [`docs/reviews/gap_analysis/latest_gap_analysis.md`](reviews/gap_analysis/latest_gap_analysis.md) |
+| `archive/` | Historical/superseded material | [`docs/archive/README.md`](archive/README.md) |
+
+## Standard Document Contract
+
+Each Markdown document under `docs/` should include:
+
+1. YAML frontmatter (`title`, `status`, `owner`, `last_updated`, `tags`, `see_also`).
+2. Clear section hierarchy (`## Context`, `## Design/Decision`, `## Risks/Consequences`, `## References`) where applicable.
+3. Explicit links to related docs via `see_also`.
+
+## Status Vocabulary
+
+| Status | Meaning |
+|---|---|
+| `Draft` | In progress, not yet accepted as baseline. |
+| `Proposed` | Ready for review/decision. |
+| `Accepted` / `Active` | Current approved baseline. |
+| `Superseded` | Replaced by a newer authoritative doc. |
+
+## Quick Start
+
+- New contributors: start with [`docs/dev/developer_guidelines.md`](dev/developer_guidelines.md).
+- Architecture deep dive: start with [`docs/architecture/README.md`](architecture/README.md).
+- Decisions and rationale: use [`docs/adr/README.md`](adr/README.md).
+- Validation pathways: use [`docs/testing/e2e-testing.md`](testing/e2e-testing.md).

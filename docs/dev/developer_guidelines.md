@@ -1,3 +1,14 @@
+---
+title: Bharat-OS Developer Guidelines
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - dev
+see_also:
+  - README.md
+---
 # Bharat-OS Developer Guidelines
 
 This document outlines the modern C guidelines for kernel and embedded development within the Bharat-OS project, focusing heavily on the **C23 standard (ISO/IEC 9899:2024)**. For embedded, OS, and kernel development, these features are essential for memory safety, compile-time optimization, and hardware-level bit manipulation.

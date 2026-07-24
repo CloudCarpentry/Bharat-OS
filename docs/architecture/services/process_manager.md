@@ -1,3 +1,15 @@
+---
+title: Process Manager Service Architecture
+status: Proposed
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - services
+see_also:
+  - README.md
+---
 # Process Manager Service Architecture
 
 **Version:** v1.0 (Proposed)
@@ -77,4 +89,4 @@ When a process terminates, the orchestration ensures clean teardown:
 
 ## 6. Implementation Notes
 
-Currently, `services/process_manager/main.c` is a TODO shell. The next step is to formalize this orchestrator contract using BIDL (Bharat Interface Definition Language) so other services and runtimes can depend on its interfaces for spawn, exec, kill, wait, and reap operations.
+Currently, `core/services/process_manager/main.c` is a TODO shell. The next step is to formalize this orchestrator contract using BIDL (Bharat Interface Definition Language) so other services and runtimes can depend on its interfaces for spawn, exec, kill, wait, and reap operations.

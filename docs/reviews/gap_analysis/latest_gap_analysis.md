@@ -1,3 +1,15 @@
+---
+title: Bharat-OS – Critical Gap Analysis & Execution Roadmap
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - reviews
+  - gap_analysis
+see_also:
+  - README.md
+---
 # Bharat-OS – Critical Gap Analysis & Execution Roadmap
 
 ## 1. Executive Summary
@@ -190,6 +202,40 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 ---
 
+## Phase E3-X: Scalable Kernel Data Structures & Verification Framework (CROSS-CUTTING)
+
+### Goals
+* Introduce highly concurrent, RCU-safe, and verified data structures to support multicore scalability and safety.
+* E3-X is a cross-cutting kernel foundation epic. It can progress in parallel with later roadmap phases where it does not touch active subsystem implementation paths.
+
+### Stories
+
+For detailed contracts, acceptance criteria, and verification strategy, see [Kernel Algorithmic Foundations](../../architecture/kernel/kernel-algorithmic-foundations.md).
+
+| Story | Objective | Priority | Dependencies |
+| --- | --- | --- | --- |
+| E3-X-S1 | VM range index replacement (Maple Tree-inspired) | P1 | None |
+| E3-X-S2 | Kernel RCU/read-mostly primitive | P1 | E0-S1 |
+| E3-X-S3 | XArray/radix-style object index | P1 | E3-X-S2 |
+| E3-X-S4 | Verified kernel hook prototype | P2 | None |
+| E3-X-S5 | Storage metadata tree strategy | P2 | None |
+| E3-X-S6 | C-safe kernel abstraction layer | P1 | None |
+
+### Tasks
+* Implement VM range index replacement (Maple Tree-inspired).
+* Introduce Kernel RCU/read-mostly primitives.
+* Implement XArray/radix-style object index.
+* Build verified kernel hook prototype.
+* Define storage metadata tree strategy.
+* Develop C-safe kernel abstraction layer with optional future Rust exploration. Bharat-OS remains C-first for kernel baseline work. E3-X-S6 introduces memory-safe C abstractions; Rust may be evaluated later for isolated components.
+
+### Deliverables
+* Scalable, lock-free read paths for critical kernel registries.
+* Verified execution environment for kernel hooks.
+* Documented strategy for modern storage metadata.
+
+---
+
 ## Phase 4: Architecture Alignment
 
 ### Goals
@@ -301,10 +347,10 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Likely Code Areas**
 
-* `kernel/src/sched/`
-* `kernel/include/`
-* `kernel/src/tests/`
-* `tests/host/` or equivalent scheduler harness
+* `core/kernel/src/sched/`
+* `core/kernel/include/`
+* `core/kernel/src/quality/tests/`
+* `quality/tests/host/` or equivalent scheduler harness
 
 **Acceptance Criteria**
 
@@ -328,12 +374,12 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Likely Code Areas**
 
-* `kernel/src/mm/tlb_coordinator.c`
-* `kernel/include/hal/`
-* `kernel/src/hal/x86_64/`
-* `kernel/src/hal/arm64/`
-* `kernel/src/hal/riscv64/`
-* `tests/mm/`
+* `core/kernel/src/mm/tlb_coordinator.c`
+* `core/kernel/include/corecore/hal/`
+* `core/kernel/src/corecore/hal/x86_64/`
+* `core/kernel/src/corecore/hal/arm64/`
+* `core/kernel/src/corecore/hal/riscv64/`
+* `quality/tests/mm/`
 
 **Acceptance Criteria**
 
@@ -356,10 +402,10 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Likely Code Areas**
 
-* `kernel/src/mm/pmm/`
-* `kernel/src/mm/`
-* `kernel/src/tests/`
-* `tests/mm/`
+* `core/kernel/src/mm/pmm/`
+* `core/kernel/src/mm/`
+* `core/kernel/src/quality/tests/`
+* `quality/tests/mm/`
 
 **Acceptance Criteria**
 
@@ -388,9 +434,9 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Likely Code Areas**
 
-* `services/netmgr/src/capability_checks.c`
-* `services/netmgr/src/ipc_dispatch.c`
-* `services/netmgr/tests/`
+* `core/services/netmgr/src/capability_checks.c`
+* `core/services/netmgr/src/ipc_dispatch.c`
+* `core/services/netmgr/quality/tests/`
 
 **Acceptance Criteria**
 
@@ -412,9 +458,9 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 **Likely Code Areas**
 
 * `lib/`
-* `services/*/`
-* `idl/`
-* `uapi/`
+* `core/services/*/`
+* `interface/idl/`
+* `interface/uapi/`
 
 **Acceptance Criteria**
 
@@ -441,9 +487,9 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Likely Code Areas**
 
-* `services/process_manager/`
-* `idl/`
-* `uapi/`
+* `core/services/process_manager/`
+* `interface/idl/`
+* `interface/uapi/`
 
 **Acceptance Criteria**
 
@@ -464,12 +510,12 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Likely Code Areas**
 
-* `services/vm_manager/`
-* `services/memdom_manager/`
-* `kernel/src/mm/vm/`
-* `kernel/src/mm/mpu/`
-* `idl/`
-* `uapi/`
+* `core/services/vm_manager/`
+* `core/services/memdom_manager/`
+* `core/kernel/src/mm/vm/`
+* `core/kernel/src/mm/mpu/`
+* `interface/idl/`
+* `interface/uapi/`
 
 **Acceptance Criteria**
 
@@ -490,8 +536,8 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Likely Code Areas**
 
-* `services/servicemgr/` or equivalent
-* `services/`
+* `core/services/servicemgr/` or equivalent
+* `core/services/`
 * `boot/`
 
 **Acceptance Criteria**
@@ -539,10 +585,10 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Likely Code Areas**
 
-* `kernel/src/mm/vm/fault/`
-* `kernel/src/mm/vm/aspace/`
-* `kernel/src/mm/vm/objects/`
-* `kernel/src/hal/*/`
+* `core/kernel/src/mm/vm/fault/`
+* `core/kernel/src/mm/vm/aspace/`
+* `core/kernel/src/mm/vm/objects/`
+* `core/kernel/src/corecore/hal/*/`
 * `docs/architecture/memory/`
 
 **Acceptance Criteria**
@@ -567,8 +613,8 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Likely Code Areas**
 
-* `kernel/src/mm/`
-* `kernel/src/mm/pmm/`
+* `core/kernel/src/mm/`
+* `core/kernel/src/mm/pmm/`
 * `docs/architecture/memory/`
 
 **Acceptance Criteria**
@@ -594,9 +640,9 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Likely Code Areas**
 
-* `kernel/src/mm/iommu/`
-* `kernel/include/hal/`
-* `drivers/`
+* `core/kernel/src/mm/iommu/`
+* `core/kernel/include/corecore/hal/`
+* `core/drivers/`
 * `docs/architecture/memory/`
 
 **Acceptance Criteria**
@@ -620,8 +666,8 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Likely Code Areas**
 
-* `kernel/src/mm/pmm/`
-* `kernel/src/mm/vm/aspace/`
+* `core/kernel/src/mm/pmm/`
+* `core/kernel/src/mm/vm/aspace/`
 
 **Acceptance Criteria**
 
@@ -644,13 +690,86 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Likely Code Areas**
 
-* `tests/mm/`
-* `kernel/src/tests/`
+* `quality/tests/mm/`
+* `core/kernel/src/quality/tests/`
 
 **Acceptance Criteria**
 
 * Tests pass across all three translation profiles (MMU-full, MMU-lite, MPU-only)
 * Explicit unsupported-return tests succeed for paging features on MPU-only targets
+
+---
+
+## Epic E3-X — Scalable Kernel Data Structures & Verification Framework
+
+**Objective:** Introduce highly concurrent, RCU-safe, and verified data structures to support multicore scalability and safety. This is a cross-cutting epic supporting Phase 0, Phase 1, and Phase 3.
+
+### Story E3-X-S1 — VM range index replacement strategy
+**Objective:** Evaluate and implement Maple Tree-like range index for VM regions.
+**Likely Code Areas:** `core/kernel/src/mm/vm/`, `core/kernel/include/mm/`
+**Tasks:**
+- Implement/Evaluate concurrent range index.
+- Measure lock contention vs. current implementation.
+- Provide simple list-based fallback for MPU/Tiny profiles.
+**Acceptance Criteria:**
+- VM lookup path benchmarked.
+- Lock contention reduced under multicore workload.
+**Verification Strategy:** Multicore map/unmap stress tests, lookup performance benchmarks.
+
+### Story E3-X-S2 — Kernel RCU/read-mostly primitive
+**Objective:** Introduce Bharat-OS RCU-style read-side API.
+**Likely Code Areas:** `core/kernel/include/sync/`, `core/kernel/src/sync/`, `core/kernel/selftest/`
+**Tasks:**
+- Implement RCU-style read-side API (`rcu_read_lock/unlock`).
+- Implement grace-period/reclaim path using uRPC messages.
+**Acceptance Criteria:**
+- Read-side critical sections are lockless.
+- Grace-period reclaim is explicit and documented.
+**Verification Strategy:** RCU selftests covering reader/update/reclaim ordering across cores.
+
+### Story E3-X-S3 — XArray/radix-style object index
+**Objective:** Add scalable ID-to-object index for pages, capabilities, devices, or handles.
+**Likely Code Areas:** `core/kernel/include/ds/`, `core/kernel/src/ds/`, `core/kernel/selftest/ds/`
+**Tasks:**
+- Implement RCU-safe multi-level radix tree (XArray).
+- Support sparse integer indexes.
+**Acceptance Criteria:**
+- Supports sparse integer indexes efficiently.
+- Concurrent lookup/update contract documented.
+**Verification Strategy:** Sparse index unit tests, concurrent lookup stress tests.
+
+### Story E3-X-S4 — Verified kernel hook prototype
+**Objective:** Build an eBPF-inspired verifier for bounded policy/tracing programs.
+**Likely Code Areas:** `core/kernel/src/verify/`, `interface/uapi/verify/`, `core/services/security/`
+**Tasks:**
+- Implement bytecode verifier for termination and memory safety.
+- Build demo hook for tracing.
+**Acceptance Criteria:**
+- Verifier rejects unbounded loops and OOB access.
+- Demo hook functional in trace-only mode.
+**Verification Strategy:** Negative-path tests with unsafe bytecodes, tracing performance tests.
+
+### Story E3-X-S5 — Storage metadata tree strategy
+**Objective:** Define log-structured B-tree direction for modern storage.
+**Likely Code Areas:** `core/stacks/storage/`, `core/drivers/block/`, `docs/architecture/storage/`
+**Tasks:**
+- Define write-amplification and crash-consistency rules.
+- Document log-structured B-tree design.
+**Acceptance Criteria:**
+- NVMe/server profile has benchmark target.
+- Tiny/IoT profile can disable this path.
+**Verification Strategy:** Write amplification analysis, crash recovery simulation tests.
+
+### Story E3-X-S6 — Memory-safe kernel abstraction layer
+**Objective:** Develop safe Rust wrappers for inherently unsafe C-based kernel structures.
+**Likely Code Areas:** `core/kernel/src/rust/`, `core/kernel/include/`
+**Tasks:**
+- Create safe Rust abstractions for lists, locks, and refcounts.
+- Integrate with existing C kernel structures via FFI.
+**Acceptance Criteria:**
+- Compile-time memory safety guaranteed for wrapped structures.
+- No performance regression vs raw C implementation.
+**Verification Strategy:** Rust test suite, safety property proofs (where applicable).
 
 ---
 
@@ -666,14 +785,14 @@ This roadmap focuses on **closing correctness, ownership, and runtime gaps first
 
 **Tasks**
 
-* Mark legacy services/subsystems deprecated
+* Mark legacy core/services/subsystems deprecated
 * Remove duplicate runtime wiring where replacements exist
 * Update build defaults to reflect supported paths only
 
 **Likely Code Areas**
 
-* `services/CMakeLists.txt`
-* `stacks/`
+* `core/services/CMakeLists.txt`
+* `core/stacks/`
 * legacy `net/` vs `netmgr` / `netstack`
 
 **Acceptance Criteria**
@@ -779,6 +898,17 @@ A story is complete only when all are true:
 * Architecture docs updated
 * Build/runtime wiring updated
 * Legacy path impact assessed
+
+**For every new kernel data structure:**
+- concurrency model must be documented
+- ownership and reclaim model must be documented
+- profile gating must be defined
+- unit tests must exist
+- stress tests must exist for SMP-sensitive paths
+- benchmarks must compare old vs new path
+- no unbounded waits are allowed
+- capability enforcement impact must be reviewed
+- fallback path must exist for tiny, MPU-only, or MMU-lite profiles where relevant
 
 ### Release Gates
 

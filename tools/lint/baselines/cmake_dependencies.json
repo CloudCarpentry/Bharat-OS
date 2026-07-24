@@ -1,0 +1,6 @@
+[
+  "kernel.elf -> subsys_manager",
+  "kernel.elf -> bharatos_personality_runtime",
+  "kernel.elf -> bharatos_personality_native",
+  "kernel.elf -> bharatos_personality_windows"
+]
