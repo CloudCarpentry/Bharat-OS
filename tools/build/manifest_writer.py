@@ -40,6 +40,8 @@ def write_run_manifest(target: ResolvedTarget, package_outputs: PackageOutputs, 
 
         elif a.kind == "dtb":
             artifacts["dtb_path"] = str(a.path)
+        elif a.kind == "init_module":
+            artifacts["init_module"] = str(a.path)
 
     if not "boot_artifact" in artifacts:
         # Fallback to kernel elf if no transform produced a specific boot artifact

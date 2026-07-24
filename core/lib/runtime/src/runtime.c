@@ -2,21 +2,37 @@
 #include <stdint.h>
 #include <stddef.h>
 
-void bharat_runtime_init(void) {
-    // Stub implementation: initialize memory, TLS, thread structs
+#include <bharat/uapi/init/bootstrap.h>
+#include <bharat/uapi/syscall_nr.h>
+#include <bharat/uapi/syscall/bh_syscall.h>
+
+
+static bharat_handle_t g_bootstrap_cap = BHARAT_INVALID_HANDLE;
+
+void bharat_runtime_init(const void *startup_ptr) {
+    // Initialize memory, TLS, thread structs
+    const bharat_user_startup_t *startup = (const bharat_user_startup_t *)startup_ptr;
+    if (startup) {
+        g_bootstrap_cap = startup->bootstrap.bootstrap_cap;
+    }
 }
 
 void bharat_runtime_shutdown(void) {
     // Stub implementation: clean up resources, close handles
 }
 
-bharat_cap_handle_t bharat_runtime_get_bootstrap_cap(void) {
-    return BHARAT_CAP_INVALID_HANDLE;
+bharat_handle_t bharat_runtime_get_bootstrap_cap(void) {
+    return g_bootstrap_cap;
+}
+
+static size_t runtime_strlen(const char *s) {
+    size_t len = 0;
+    while (s && s[len]) len++;
+    return len;
 }
 
 void bharat_runtime_log(const char *msg) {
-    // Stub implementation: write to fd 1 or raw console for now
-    (void)msg;
+    bharat_syscall(SYSCALL_WRITE, 1, (uintptr_t)msg, runtime_strlen(msg), 0, 0, 0);
 }
 
 void bharat_runtime_panic(const char *reason) {
@@ -28,7 +44,7 @@ void bharat_runtime_panic(const char *reason) {
 }
 
 int bharat_runtime_main_wrapper(int argc, char **argv, int (*main_fn)(int, char**)) {
-    bharat_runtime_init();
+    bharat_runtime_init(NULL);
 
     int result = -1;
     if (main_fn) {

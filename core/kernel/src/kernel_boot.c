@@ -102,7 +102,10 @@ void init_subsystems(void) {
         current++;
     }
 }
+const boot_info_t* g_boot_info = NULL;
+
 void boot_common_early(const boot_info_t *boot) {
+    g_boot_info = boot;
 
     boot_args_init(boot->cmdline);
 

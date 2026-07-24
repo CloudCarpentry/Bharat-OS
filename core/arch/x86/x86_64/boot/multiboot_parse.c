@@ -112,6 +112,16 @@ static void parse_multiboot2(multiboot_information_t *mb_info, boot_info_t *boot
                 }
                 break;
             }
+            case MULTIBOOT_TAG_TYPE_MODULE: {
+                multiboot_tag_module_t *mod = (multiboot_tag_module_t *)tag;
+                boot_info_add_module(
+                    boot_info,
+                    mod->mod_start,
+                    mod->mod_end - mod->mod_start,
+                    mod->cmdline
+                );
+                break;
+            }
             case MULTIBOOT_TAG_TYPE_CMDLINE: {
                 multiboot_tag_string_t *cmd = (multiboot_tag_string_t *)tag;
                 size_t len = tag->size - sizeof(multiboot_tag_t);
