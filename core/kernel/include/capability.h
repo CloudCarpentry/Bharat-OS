@@ -2,6 +2,23 @@
 #define BHARAT_CAPABILITY_H
 
 #include <stdint.h>
+#include <stdbool.h>
+
+#define BH_CAP_SLOT_MASK        0xFFFFU
+#define BH_CAP_GEN_SHIFT        16U
+#define BH_CAP_GEN_MASK         0xFFFF0000U
+
+static inline uint32_t bh_cap_index(uint32_t cap_id) {
+    return cap_id & BH_CAP_SLOT_MASK;
+}
+
+static inline uint32_t bh_cap_generation(uint32_t cap_id) {
+    return cap_id >> BH_CAP_GEN_SHIFT;
+}
+
+static inline bool bh_cap_is_valid_encoding(uint32_t cap_id) {
+    return cap_id != 0 && bh_cap_generation(cap_id) != 0;
+}
 
 #include "sched/sched.h"
 #include "spinlock.h"
@@ -295,7 +312,7 @@ typedef struct cap_validation_request {
  */
 kstatus_t cap_validate_ex(capability_table_t *table,
                           const cap_validation_request_t *req,
-                          capability_entry_t **out_entry);
+                          capability_entry_t *out_entry);
 
 /*@
   requires src != \null;

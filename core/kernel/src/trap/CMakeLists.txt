@@ -15,6 +15,11 @@ add_library(k_trap OBJECT
     $<$<STREQUAL:${ARCH},arm32>:${CMAKE_SOURCE_DIR}/core/arch/arm/arm32/syscall_extract.c>
     $<$<STREQUAL:${ARCH},riscv64>:${CMAKE_SOURCE_DIR}/core/arch/riscv/riscv64/syscall_extract.c>
     $<$<STREQUAL:${ARCH},riscv32>:${CMAKE_SOURCE_DIR}/core/arch/riscv/riscv32/syscall_extract.c>
+    $<$<STREQUAL:${ARCH},x86_64>:${CMAKE_SOURCE_DIR}/core/arch/x86/x86_64/usercopy.c>
+    $<$<STREQUAL:${ARCH},arm64>:${CMAKE_SOURCE_DIR}/core/arch/arm/arm64/usercopy.c>
+    $<$<STREQUAL:${ARCH},arm32>:${CMAKE_SOURCE_DIR}/core/arch/arm/arm32/usercopy.c>
+    $<$<STREQUAL:${ARCH},riscv64>:${CMAKE_SOURCE_DIR}/core/arch/riscv/riscv64/usercopy.c>
+    $<$<STREQUAL:${ARCH},riscv32>:${CMAKE_SOURCE_DIR}/core/arch/riscv/riscv32/usercopy.c>
 )
 
 target_include_directories(k_trap PRIVATE ../../include ${BHARAT_GENERATED_INCLUDE_DIR} ${CMAKE_SOURCE_DIR}/core/personalities/runtime/include ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/lib/include ${BHARAT_BOOT_INCLUDE_DIR})

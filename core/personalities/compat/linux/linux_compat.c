@@ -80,11 +80,11 @@ long linux_syscall_handler(long sysno, long arg1, long arg2, long arg3, long arg
     }
 
     const bh_personality_syscall_table_t *table = personality_linux_get_table();
-    if (!table || ctx.regs.nr > table->max_syscall_nr) {
+    if (!table || ctx.regs.nr >= table->entry_count) {
         return -38;
     }
 
-    const bh_syscall_desc_t *desc = &table->table[ctx.regs.nr];
+    const bh_syscall_meta_t *desc = &table->table[ctx.regs.nr];
     if (!desc || !desc->handler) {
         return -38;
     }

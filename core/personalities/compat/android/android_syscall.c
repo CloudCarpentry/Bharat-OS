@@ -6,14 +6,15 @@
 extern const bh_personality_syscall_table_t bh_linux_syscall_table;
 
 // Future: Binder/Ashmem/Property handlers will be added here
-static const bh_syscall_desc_t android_syscall_table[] = {
+static const bh_syscall_meta_t android_syscall_table[] = {
     // Placeholder for Android-specific extensions
+    {0}
 };
 
 const bh_personality_syscall_table_t android_personality_table = {
     .name = "android",
     .abi_version = 1,
-    .max_syscall_nr = 0, // Fallback to Linux or fail closed
+    .entry_count = 0, // Fallback to Linux or fail closed
     .table = android_syscall_table
 };
 

@@ -33,11 +33,11 @@ bh_thread_t* sched_current_thread(void) { return &mock_thread; }
 static long mock_native_handler(bh_syscall_ctx_t *ctx) { return 123; }
 static long mock_linux_handler(bh_syscall_ctx_t *ctx) { return 456; }
 
-static bh_syscall_desc_t native_table[] = { [100] = {100, "test", 0, 0, 0, mock_native_handler} };
-static bh_syscall_desc_t linux_table[] = { [100] = {100, "test", 0, 0, 0, mock_linux_handler} };
+static bh_syscall_meta_t native_table[] = { [100] = {100, "test", 0, 0, 0, 0, 0, 0, mock_native_handler} };
+static bh_syscall_meta_t linux_table[] = { [100] = {100, "test", 0, 0, 0, 0, 0, 0, mock_linux_handler} };
 
-static bh_personality_syscall_table_t native_ptable = { .table = native_table, .max_syscall_nr = 100 };
-static bh_personality_syscall_table_t linux_ptable = { .table = linux_table, .max_syscall_nr = 100 };
+static bh_personality_syscall_table_t native_ptable = { .table = native_table, .entry_count = 101 };
+static bh_personality_syscall_table_t linux_ptable = { .table = linux_table, .entry_count = 101 };
 
 // External symbols expected by bh_syscall_gate
 const bh_personality_syscall_table_t *personality_native_get_table(void) { return &native_ptable; }

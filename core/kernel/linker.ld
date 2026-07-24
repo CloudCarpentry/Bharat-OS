@@ -36,6 +36,7 @@ SECTIONS
     {
         *(.text)
         *(.text.*)
+        *(.fixup)
     }
 
     /* ── Read-only data ──────────────────────────────────────────────── */
@@ -43,6 +44,12 @@ SECTIONS
     {
         *(.rodata)
         *(.rodata.*)
+
+        . = ALIGN(8);
+        __ex_table_start = .;
+        KEEP(*(__ex_table))
+        __ex_table_end = .;
+        ASSERT((__ex_table_end - __ex_table_start) % 12 == 0, "corrupt exception table");
 
         . = ALIGN(8);
         __start_bharat_services = .;

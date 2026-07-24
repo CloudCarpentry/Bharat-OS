@@ -24,6 +24,7 @@ function(run_policy_case case_name expected_result)
             -S "${REPO_ROOT}"
             -B "${case_build_dir}"
             -DBHARAT_BUILD_HOST_TESTS=OFF
+            -DBHARAT_ENABLE_DMA_MAP=ON
             ${RPC_CMAKE_ARGS}
         RESULT_VARIABLE case_result
         OUTPUT_VARIABLE case_stdout

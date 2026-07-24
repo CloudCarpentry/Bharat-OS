@@ -10,16 +10,23 @@ bh_status_t bh_syscall_validate_capability(bh_syscall_ctx_t *ctx,
         return BH_ERR_ACCESS_DENIED;
     }
 
-    capability_table_t *table = (capability_table_t *)ctx->process->security_sandbox_ctx;
-    capability_entry_t entry;
-
-    kstatus_t st = cap_table_lookup(table, cap_id, expected_type, required_rights, &entry);
-    if (st != K_OK) {
-        return kstatus_to_bh_status(st);
+    if (!bh_cap_is_valid_encoding(cap_id)) {
+        return BH_ERR_BAD_CAPABILITY;
     }
 
-    if (entry.state != CAP_STATE_LIVE) {
-        return BH_ERR_STALE_CAPABILITY;
+    capability_table_t *table = (capability_table_t *)ctx->process->security_sandbox_ctx;
+    cap_validation_request_t req = {
+        .cap_id = cap_id,
+        .expected_object_type = (cap_type_t)expected_type,
+        .required_rights = required_rights,
+        .requester_pid = ctx->process->process_id,
+        .expected_generation = bh_cap_generation(cap_id)
+    };
+
+    capability_entry_t entry;
+    kstatus_t st = cap_validate_ex(table, &req, &entry);
+    if (st != K_OK) {
+        return kstatus_to_bh_status(st);
     }
 
     return BH_OK;

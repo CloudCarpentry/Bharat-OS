@@ -6,7 +6,7 @@
 kstatus_t bh_syscall_table_validate(const bh_personality_syscall_table_t *table) {
     if (!table || !table->table) return K_ERR_INVALID_ARG;
 
-    for (uint32_t i = 0; i <= table->max_syscall_nr; i++) {
+    for (uint32_t i = 0; i < table->entry_count; i++) {
         const bh_syscall_meta_t *desc = &table->table[i];
 
         // Skip empty slots if any (though usually they should be stubs)

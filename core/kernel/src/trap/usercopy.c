@@ -25,22 +25,19 @@ static void* internal_memcpy(void* dst, const void* src, size_t n) {
 
 __attribute__((weak))
 kstatus_t arch_copy_from_user_nofault(void *dst, const void *src, size_t len) {
-    // Fallback: not production-safe, only valid after mm_user_range_validate_current succeeds
-    internal_memcpy(dst, src, len);
-    return K_OK;
+    (void)dst; (void)src; (void)len;
+    return K_ERR_UNSUPPORTED;
 }
 
 __attribute__((weak))
 kstatus_t arch_copy_to_user_nofault(void *dst, const void *src, size_t len) {
-    // Fallback: not production-safe, only valid after mm_user_range_validate_current succeeds
-    internal_memcpy(dst, src, len);
-    return K_OK;
+    (void)dst; (void)src; (void)len;
+    return K_ERR_UNSUPPORTED;
 }
 
 kstatus_t copy_from_user_checked(void *dst, uintptr_t src, size_t len) {
     if (len == 0) return K_OK;
     if (!dst || src == 0) return K_ERR_INVALID_ARG;
-    if (len > BH_USERCOPY_MAX_BYTES) return K_ERR_OVERFLOW;
 
     // Overflow check before range validation
     if (src > UINTPTR_MAX - len) return K_ERR_FAULT;
@@ -55,7 +52,6 @@ kstatus_t copy_from_user_checked(void *dst, uintptr_t src, size_t len) {
 kstatus_t copy_to_user_checked(uintptr_t dst, const void *src, size_t len) {
     if (len == 0) return K_OK;
     if (dst == 0 || !src) return K_ERR_INVALID_ARG;
-    if (len > BH_USERCOPY_MAX_BYTES) return K_ERR_OVERFLOW;
 
     // Overflow check before range validation
     if (dst > UINTPTR_MAX - len) return K_ERR_FAULT;
@@ -70,20 +66,15 @@ kstatus_t copy_to_user_checked(uintptr_t dst, const void *src, size_t len) {
 kstatus_t copy_user_string_checked(char *dst, uintptr_t src, size_t max_len) {
     if (max_len == 0) return K_OK;
     if (!dst || src == 0) return K_ERR_INVALID_ARG;
-    if (max_len > BH_USERCOPY_MAX_BYTES) return K_ERR_OVERFLOW;
-
-    kstatus_t st = mm_user_range_validate_current(src, 1, BH_USER_ACCESS_READ);
-    if (st != K_OK) return st;
 
     size_t len = 0;
-    const char *s = (const char *)src;
     while (len < max_len) {
-        // Repeated range check for safety during byte-by-byte copy
-        st = mm_user_range_validate_current((uintptr_t)&s[len], 1, BH_USER_ACCESS_READ);
+        char c;
+        kstatus_t st = copy_from_user_checked(&c, src + len, 1);
         if (st != K_OK) return st;
 
-        dst[len] = s[len];
-        if (dst[len] == '\0') return K_OK;
+        dst[len] = c;
+        if (c == '\0') return K_OK;
         len++;
     }
 

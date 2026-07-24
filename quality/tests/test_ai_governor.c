@@ -83,7 +83,7 @@ int main() {
     };
 
     urpc_send_called = 0;
-    ai_governor_suggest_action(1001, &telemetry_high_penalty, &config, &mock_ring);
+    ai_governor_suggest_action(2001, &telemetry_high_penalty, &config, &mock_ring);
 
     assert(urpc_send_called == 1);
     assert(last_sent_message.msg_type == AI_MSG_TYPE_SUGGESTION);
@@ -91,7 +91,7 @@ int main() {
 
     ai_suggestion_t* sent_suggestion_1 = (ai_suggestion_t*)last_sent_message.payload_data;
     assert(sent_suggestion_1->action == AI_ACTION_MIGRATE_TASK);
-    assert(sent_suggestion_1->target_id == 1001);
+    assert(sent_suggestion_1->target_id == 2001);
     assert(sent_suggestion_1->value == 0); // Should migrate from 1 to 0
 
 

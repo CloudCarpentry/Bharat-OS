@@ -38,6 +38,7 @@ file(MAKE_DIRECTORY "${BHARAT_GENERATED_INCLUDE_DIR}")
 target_include_directories(bharat_kernel_includes INTERFACE
     ${BHARAT_KERNEL_INCLUDE_DIR}
     ${BHARAT_KERNEL_INCLUDE_DIR}/generated
+    ${CMAKE_BINARY_DIR}/generated
     ${CMAKE_SOURCE_DIR}/core/personalities/runtime/include
     ${BHARAT_HAL_ROOT}/include
     ${CMAKE_SOURCE_DIR}/interface/include
@@ -404,6 +405,7 @@ set(KERNEL_SRCS
     src/mm/footprint.c
     src/mm/prot_domain.c
     src/mm/user_range.c
+    src/mm/exception_table.c
     ${BHARAT_BOOT_ROOT}/common/boot_ui_select.c
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/boot_video.c>
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/display_handoff.c>

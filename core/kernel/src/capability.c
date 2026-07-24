@@ -933,64 +933,6 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
 }
 
 
-kstatus_t cap_lookup_thread(const capability_table_t *table, uint32_t cap_id, cap_rights_mask_t required_rights, bh_thread_object_t *out) {
-    capability_entry_t e;
-    int ret = cap_table_lookup(table, cap_id, CAP_TYPE_THREAD, required_rights, &e);
-    if (ret != 0) {
-        if (ret == -3) return K_ERR_CAP_DENIED;
-        if (ret == -6) return K_ERR_CAP_STALE;
-        if (ret == -7) return K_ERR_CAP_REVOKED;
-        return K_ERR_CAP_INVALID;
-    }
-    out->tid = (uint64_t)e.object_ref;
-    out->thread = NULL;
-    return K_OK;
-}
-
-kstatus_t cap_lookup_process(const capability_table_t *table, uint32_t cap_id, cap_rights_mask_t required_rights, bh_process_object_t *out) {
-    capability_entry_t e;
-    int ret = cap_table_lookup(table, cap_id, CAP_TYPE_PROCESS, required_rights, &e);
-    if (ret != 0) {
-        if (ret == -3) return K_ERR_CAP_DENIED;
-        if (ret == -6) return K_ERR_CAP_STALE;
-        if (ret == -7) return K_ERR_CAP_REVOKED;
-        return K_ERR_CAP_INVALID;
-    }
-    out->process = (struct bh_process *)e.object_ref;
-    if (out->process) { out->pid = out->process->process_id; } else { out->pid = 0; }
-    return K_OK;
-}
-
-kstatus_t cap_lookup_memory(const capability_table_t *table, uint32_t cap_id, cap_rights_mask_t required_rights, bh_memory_object_t *out) {
-    capability_entry_t e;
-    int ret = cap_table_lookup(table, cap_id, CAP_TYPE_MEMORY, required_rights, &e);
-    if (ret != 0) {
-        if (ret == -3) return K_ERR_CAP_DENIED;
-        if (ret == -6) return K_ERR_CAP_STALE;
-        if (ret == -7) return K_ERR_CAP_REVOKED;
-        return K_ERR_CAP_INVALID;
-    }
-    out->base = (phys_addr_t)e.object_ref;
-    out->size = 4096;
-    out->flags = e.flags;
-    return K_OK;
-}
-
-kstatus_t cap_lookup_endpoint(const capability_table_t *table, uint32_t cap_id, cap_rights_mask_t required_rights, bh_endpoint_object_t *out) {
-    capability_entry_t e;
-    int ret = cap_table_lookup(table, cap_id, CAP_TYPE_ENDPOINT, required_rights, &e);
-    if (ret != 0) {
-        if (ret == -3) return K_ERR_CAP_DENIED;
-        if (ret == -6) return K_ERR_CAP_STALE;
-        if (ret == -7) return K_ERR_CAP_REVOKED;
-        return K_ERR_CAP_INVALID;
-    }
-
-    out->endpoint_id = (uintptr_t)e.id;
-    out->endpoint_ref = (void *)e.object_ref;
-    return K_OK;
-}
-
 static kstatus_t cap_validate_rights_internal(cap_rights_mask_t entry_rights, cap_rights_mask_t required_rights) {
     if ((entry_rights & required_rights) != required_rights) {
         return K_ERR_CAP_DENIED;
@@ -1026,20 +968,15 @@ static kstatus_t cap_validate_generation_internal(uint32_t entry_gen, uint64_t e
 
 kstatus_t cap_validate_ex(capability_table_t *table,
                           const cap_validation_request_t *req,
-                          capability_entry_t **out_entry) {
+                          capability_entry_t *out_entry) {
     if (!table || !req) {
         return K_ERR_INVALID_ARG;
     }
 
-    if (out_entry) {
-        *out_entry = NULL;
-    }
-
-    uint32_t id_only = req->cap_id & 0xFFFF;
-    uint32_t handle_gen = req->cap_id >> 16;
+    uint32_t id_only = bh_cap_index(req->cap_id);
+    uint32_t handle_gen = bh_cap_generation(req->cap_id);
 
     kstatus_t status = K_ERR_NOT_FOUND;
-    capability_entry_t *found_entry = NULL;
 
     spin_lock(&table->lock);
 
@@ -1074,7 +1011,9 @@ kstatus_t cap_validate_ex(capability_table_t *table,
             status = cap_validate_scope_internal(table, req->requester_pid);
             if (status != K_OK) break;
 
-            found_entry = e;
+            if (out_entry) {
+                *out_entry = *e; // Copy by value!
+            }
             status = K_OK;
             break;
         }
@@ -1082,9 +1021,90 @@ kstatus_t cap_validate_ex(capability_table_t *table,
 
     spin_unlock(&table->lock);
 
-    if (status == K_OK && out_entry) {
-        *out_entry = found_entry;
-    }
-
     return status;
+}
+
+kstatus_t cap_lookup_thread(const capability_table_t *table, uint32_t cap_id, cap_rights_mask_t required_rights, bh_thread_object_t *out) {
+    if (!table || !out) return K_ERR_INVALID_ARG;
+    if (!bh_cap_is_valid_encoding(cap_id)) return K_ERR_CAP_INVALID;
+
+    cap_validation_request_t req = {
+        .cap_id = cap_id,
+        .expected_object_type = CAP_TYPE_THREAD,
+        .required_rights = required_rights,
+        .requester_pid = table->owner_pid,
+        .expected_generation = bh_cap_generation(cap_id)
+    };
+
+    capability_entry_t e;
+    kstatus_t st = cap_validate_ex((capability_table_t *)table, &req, &e);
+    if (st != K_OK) return st;
+
+    out->tid = (uint64_t)e.object_ref;
+    out->thread = (struct bh_thread *)e.object_ref;
+    return K_OK;
+}
+
+kstatus_t cap_lookup_process(const capability_table_t *table, uint32_t cap_id, cap_rights_mask_t required_rights, bh_process_object_t *out) {
+    if (!table || !out) return K_ERR_INVALID_ARG;
+    if (!bh_cap_is_valid_encoding(cap_id)) return K_ERR_CAP_INVALID;
+
+    cap_validation_request_t req = {
+        .cap_id = cap_id,
+        .expected_object_type = CAP_TYPE_PROCESS,
+        .required_rights = required_rights,
+        .requester_pid = table->owner_pid,
+        .expected_generation = bh_cap_generation(cap_id)
+    };
+
+    capability_entry_t e;
+    kstatus_t st = cap_validate_ex((capability_table_t *)table, &req, &e);
+    if (st != K_OK) return st;
+
+    out->process = (struct bh_process *)e.object_ref;
+    if (out->process) { out->pid = out->process->process_id; } else { out->pid = 0; }
+    return K_OK;
+}
+
+kstatus_t cap_lookup_memory(const capability_table_t *table, uint32_t cap_id, cap_rights_mask_t required_rights, bh_memory_object_t *out) {
+    if (!table || !out) return K_ERR_INVALID_ARG;
+    if (!bh_cap_is_valid_encoding(cap_id)) return K_ERR_CAP_INVALID;
+
+    cap_validation_request_t req = {
+        .cap_id = cap_id,
+        .expected_object_type = CAP_TYPE_MEMORY,
+        .required_rights = required_rights,
+        .requester_pid = table->owner_pid,
+        .expected_generation = bh_cap_generation(cap_id)
+    };
+
+    capability_entry_t e;
+    kstatus_t st = cap_validate_ex((capability_table_t *)table, &req, &e);
+    if (st != K_OK) return st;
+
+    out->base = (phys_addr_t)e.object_ref;
+    out->size = 4096;
+    out->flags = e.flags;
+    return K_OK;
+}
+
+kstatus_t cap_lookup_endpoint(const capability_table_t *table, uint32_t cap_id, cap_rights_mask_t required_rights, bh_endpoint_object_t *out) {
+    if (!table || !out) return K_ERR_INVALID_ARG;
+    if (!bh_cap_is_valid_encoding(cap_id)) return K_ERR_CAP_INVALID;
+
+    cap_validation_request_t req = {
+        .cap_id = cap_id,
+        .expected_object_type = CAP_TYPE_ENDPOINT,
+        .required_rights = required_rights,
+        .requester_pid = table->owner_pid,
+        .expected_generation = bh_cap_generation(cap_id)
+    };
+
+    capability_entry_t e;
+    kstatus_t st = cap_validate_ex((capability_table_t *)table, &req, &e);
+    if (st != K_OK) return st;
+
+    out->endpoint_id = (uintptr_t)e.id;
+    out->endpoint_ref = (void *)e.object_ref;
+    return K_OK;
 }

@@ -137,7 +137,7 @@ add_library(bharatsys STATIC
     syscall/common/syscall.c
 )
 target_include_directories(bharatsys PUBLIC ${BH_SDK_INCLUDES})
-target_link_libraries(bharatsys PUBLIC bharat_freestanding)
+target_link_libraries(bharatsys PUBLIC bharat_freestanding bharat_generated_includes)
 bharat_configure_userspace_library(bharatsys)
 
 add_library(bharatc STATIC

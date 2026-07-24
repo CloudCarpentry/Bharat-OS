@@ -5,7 +5,7 @@ add_executable(crypto
     key_store.c
     drbg.c
 )
-target_include_directories(crypto PRIVATE ../../kernel/include ../../services/core/subsysmgr/include ../../lib/bharat_libtransport)
+target_include_directories(crypto PRIVATE ../../kernel/include ../../services/core/subsysmgr/include ../../lib/bharat_libtransport ${CMAKE_SOURCE_DIR}/core/stacks/include)
 
 target_link_libraries(crypto PRIVATE bharat_libtransport subsys_manager bharat_libruntime)
 

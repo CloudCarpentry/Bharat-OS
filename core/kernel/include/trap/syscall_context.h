@@ -32,19 +32,13 @@ typedef struct bh_syscall_meta {
     uint64_t required_rights;
     uint8_t  cap_arg_index;
     uint32_t required_cap_type;
-    bool requires_capability;
-    bool copies_from_user;
-    bool copies_to_user;
     bh_syscall_handler_t handler;
 } bh_syscall_meta_t;
-
-/* For backward compatibility during transition */
-typedef bh_syscall_meta_t bh_syscall_desc_t;
 
 typedef struct bh_personality_syscall_table {
     const char *name;
     uint32_t abi_version;
-    uint32_t max_syscall_nr; // Maximum valid syscall number (index)
+    uint32_t entry_count; // Entry count of the syscall table
     const bh_syscall_meta_t *table;
 } bh_personality_syscall_table_t;
 

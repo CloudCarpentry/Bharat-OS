@@ -16,6 +16,7 @@ include(BharatCommon)
 include(BharatProfiles)
 include(BharatPersonality)
 include(BharatComponentPolicy)
+option(BHARAT_ENABLE_DMA_MAP "Enable DMA map APIs" ON)
 include(BharatIOPolicy)
 include(${BHARAT_CMAKE_ROOT}/BharatConstraints.cmake)
 
@@ -65,6 +66,21 @@ if(NOT BHARAT_IDL_ROOT)
     message(FATAL_ERROR "No IDL root found in interface/idl or idl")
 endif()
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
+
+# Generate syscall ABI headers
+message(STATUS "Generating Syscall ABI headers...")
+execute_process(
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/tools/abi/syscall_abi.py"
+            "--generate"
+            "--output-inc" "${CMAKE_BINARY_DIR}/generated/kernel/syscall/native_syscall_table.inc"
+            "--output-def" "${CMAKE_BINARY_DIR}/generated/include/bharat/uapi/syscall/generated/table.def"
+            "--output-numbers" "${CMAKE_BINARY_DIR}/generated/include/bharat/uapi/syscall/generated/numbers.h"
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+    RESULT_VARIABLE SYSCALL_GEN_RESULT
+)
+if(NOT SYSCALL_GEN_RESULT EQUAL 0)
+    message(FATAL_ERROR "Failed to generate Syscall ABI headers: ${SYSCALL_GEN_RESULT}")
+endif()
 
 # Generate monitor service IDL
 execute_process(

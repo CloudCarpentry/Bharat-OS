@@ -38,8 +38,8 @@ void test_header_encode_decode() {
     in_hdr.flags         = BHARAT_MSG_FLAG_REQUEST | BHARAT_MSG_FLAG_RELIABLE;
     in_hdr.total_len     = BHARAT_MSG_HEADER_MIN_LEN + 100;
     in_hdr.request_id    = 0xDEADBEEFCAFEBABEULL;
-    in_hdr.src_node      = 1001;
-    in_hdr.dst_node      = 1002;
+    in_hdr.src_node      = 2001;
+    in_hdr.dst_node      = 2002;
     in_hdr.cap_count     = 0;
     in_hdr.desc_count    = 0;
     in_hdr.header_crc    = 0; // Filled later
