@@ -60,18 +60,35 @@ int sched_adjust_priority(bh_thread_t *thread, uint32_t new_priority) {
     new_priority = SCHED_MAX_PRIORITY;
   }
 
+  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  bool is_local = (thread->bound_core_id == current_core);
+
+  if (!is_local) {
+      // Remote core owns the thread. Submit a remote SET_PRIORITY command.
+      sched_remote_cmd_t *cmd = sched_allocate_outbound_cmd();
+      if (!cmd) {
+          return K_ERR_NO_RESOURCES;
+      }
+      cmd->type = SCHED_REMOTE_SET_PRIORITY;
+      cmd->source_cpu = current_core;
+      cmd->target_cpu = thread->bound_core_id;
+      cmd->thread_id = thread->thread_id;
+      cmd->expected_thread_generation = thread->sched_generation;
+      cmd->priority = new_priority;
+      cmd->state = SCHED_REMOTE_CMD_PENDING;
+
+      kstatus_t status = sched_remote_submit(thread->bound_core_id, cmd);
+      if (status != K_OK) {
+          cmd->state = SCHED_REMOTE_CMD_EMPTY;
+          return status;
+      }
+      return 0;
+  }
+
   thread_slot_t *slot = sched_find_thread_slot_by_tid_local(&g_cpu_locals[thread->home_core_id].runqueue, thread->thread_id);
 
   if (slot && slot->is_on_runqueue != 0U) {
-    uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
-    bool is_local = (thread->bound_core_id == current_core);
-
-    if (is_local) {
-        hal_cpu_disable_interrupts();
-    } else {
-        // Fallback for safety. In strict multikernel, we should send an IPI to mutate.
-        spin_lock(&g_cpu_locals[thread->bound_core_id].runqueue.lock);
-    }
+    hal_cpu_disable_interrupts();
 
     sched_rq_t *rq = &g_cpu_locals[thread->bound_core_id].runqueue;
 
@@ -88,16 +105,12 @@ int sched_adjust_priority(bh_thread_t *thread, uint32_t new_priority) {
       rq->runnable_count--;
     }
 
-    if (is_local) {
-        hal_cpu_enable_interrupts();
-    } else {
-        spin_unlock(&g_cpu_locals[thread->bound_core_id].runqueue.lock);
-    }
+    hal_cpu_enable_interrupts();
   }
 
   thread->priority = new_priority;
   if (thread->state == THREAD_STATE_READY) {
-    (void)sched_enqueue(thread, thread->bound_core_id); // Defer via enqueue inbox
+    (void)sched_enqueue(thread, thread->bound_core_id);
   }
   return 0;
 }

@@ -1,5 +1,6 @@
 #include "sched/sched.h"
 #include "sched_internal.h"
+#include "panic.h"
 
 void arch_post_switch(void) {
   uint32_t core = sched_clamp_core(hal_cpu_get_id());
@@ -15,23 +16,78 @@ void sched_reschedule(void) {
 
   sched_rq_t *rq = &g_cpu_locals[core].runqueue;
 
-  // Empty remote scheduler command inbox
-  if (rq->resched_pending != 0U || !list_empty(&rq->pending_inbox)) {
+  // Empty remote scheduler command inbox (MPSC Lock-Free)
+  if (rq->remote.resched_pending != 0U || !bh_mpsc_queue_empty(&rq->remote.queue)) {
       spin_lock(&rq->lock);
-      rq->resched_pending = 0U; // Clear flag since we are draining now
-      list_head_t *curr = rq->pending_inbox.next;
+      rq->remote.resched_pending = 0U; // Clear flag since we are draining now
       uint32_t drained = 0;
       bh_thread_t *highest_prio_arrived = NULL;
 
-      while (curr != &rq->pending_inbox) {
-          sched_remote_cmd_t *cmd = (sched_remote_cmd_t *)(void *)((char *)curr - offsetof(sched_remote_cmd_t, list));
-          curr = curr->next;
+      void *val = NULL;
+      while (bh_mpsc_queue_pop(&rq->remote.queue, &val) == K_OK) {
+          sched_remote_cmd_t *cmd = (sched_remote_cmd_t *)val;
+          if (!cmd) {
+              continue;
+          }
+          __atomic_fetch_add(&rq->remote.consumed, 1, __ATOMIC_RELAXED);
 
-          list_del(&cmd->list);
-          list_init(&cmd->list);
+          if (cmd->type == SCHED_REMOTE_STEAL_REQ) {
+              bh_thread_t *victim = sched_find_steal_candidate(core, cmd->target_cpu);
+              if (victim) {
+                  thread_slot_t *v_slot = sched_find_thread_slot_by_tid(victim->thread_id);
+                  if (v_slot) {
+                      if (v_slot->is_on_runqueue != 0U) {
+                          sched_invariant_on_dequeue(victim);
+                          if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
+                              sched_cfs_dequeue(rq, victim);
+                          } else {
+                              list_del(&v_slot->run_node);
+                              list_init(&v_slot->run_node);
+                              sched_ready_bitmap_clear_if_empty(rq, victim->priority);
+                          }
+                          v_slot->is_on_runqueue = 0U;
+                          if (rq->runnable_count > 0U) {
+                              rq->runnable_count--;
+                          }
+                      }
+                      victim->owner_state = THREAD_OWNER_REMOTE_PENDING;
+                      victim->migration_state = SCHED_MIGRATION_DEQUEUED;
+                      victim->migration_target_cpu = cmd->target_cpu;
+
+                      sched_remote_cmd_t *enq_cmd = sched_allocate_outbound_cmd();
+                      if (enq_cmd) {
+                          enq_cmd->type = SCHED_REMOTE_ENQUEUE;
+                          enq_cmd->source_cpu = core;
+                          enq_cmd->target_cpu = cmd->target_cpu;
+                          enq_cmd->thread_id = victim->thread_id;
+                          enq_cmd->expected_thread_generation = victim->sched_generation;
+                          enq_cmd->priority = victim->priority;
+                          enq_cmd->state = SCHED_REMOTE_CMD_PENDING;
+
+                          sched_remote_submit(cmd->target_cpu, enq_cmd);
+                          victim->migration_state = SCHED_MIGRATION_ENQUEUE_REQUESTED;
+                      } else {
+                          victim->owner_state = THREAD_OWNER_NONE;
+                          victim->migration_state = SCHED_MIGRATION_NONE;
+                          sched_invariant_on_enqueue(victim, core);
+                          if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
+                              sched_cfs_enqueue(rq, victim);
+                          } else {
+                              list_add(&v_slot->run_node, &rq->ready_queue[victim->priority]);
+                              sched_ready_bitmap_set(rq, victim->priority);
+                          }
+                          v_slot->is_on_runqueue = 1U;
+                          rq->runnable_count++;
+                      }
+                  }
+              }
+              cmd->state = SCHED_REMOTE_CMD_ACKED;
+              continue;
+          }
 
           bh_thread_t* thread = sched_find_thread_by_id(cmd->thread_id);
           if (!thread) {
+              cmd->state = SCHED_REMOTE_CMD_FAILED;
               continue;
           }
 
@@ -49,7 +105,7 @@ void sched_reschedule(void) {
               continue;
           }
 
-          thread_slot_t *slot = sched_find_thread_slot_by_tid_local(&g_cpu_locals[thread->home_core_id].runqueue, thread->thread_id);
+          thread_slot_t *slot = sched_find_thread_slot_by_tid(thread->thread_id);
           if (!slot) {
               cmd->state = SCHED_REMOTE_CMD_FAILED;
               continue;
@@ -69,7 +125,7 @@ void sched_reschedule(void) {
               if (slot->is_blocked != 0U) {
                 sched_block_dequeue(slot);
               }
-          } else if (cmd->type == SCHED_REMOTE_MIGRATE) {
+          } else if (cmd->type == SCHED_REMOTE_MIGRATE || cmd->type == SCHED_REMOTE_MIGRATE_PREPARE) {
               // Remote migration Phase 1: Old owner dequeue
               if (slot->is_on_runqueue != 0U) {
                   sched_invariant_on_dequeue(thread);
@@ -88,28 +144,26 @@ void sched_reschedule(void) {
               thread->owner_state = THREAD_OWNER_REMOTE_PENDING;
               thread->migration_state = SCHED_MIGRATION_DEQUEUED;
 
-              // Transition to Phase 2: Remote enqueue request to target CPU
+              // Transition to Phase 2: Remote enqueue request to target CPU using the new MPSC submit!
               uint32_t target_cpu = thread->migration_target_cpu;
-              sched_rq_t *target_rq = &g_cpu_locals[target_cpu].runqueue;
+              sched_remote_cmd_t *new_cmd = sched_allocate_outbound_cmd();
+              if (new_cmd) {
+                  new_cmd->type = SCHED_REMOTE_ENQUEUE;
+                  new_cmd->source_cpu = core;
+                  new_cmd->target_cpu = target_cpu;
+                  new_cmd->thread_id = thread->thread_id;
+                  new_cmd->expected_thread_generation = thread->sched_generation;
+                  new_cmd->priority = thread->priority;
+                  new_cmd->state = SCHED_REMOTE_CMD_PENDING;
 
-              // We reuse the current cmd slot or assume a new one is available in Phase 2
-              // For simplicity and safety, we trigger Phase 2 enqueue here
-              spin_lock(&target_rq->lock);
-              cmd->type = SCHED_REMOTE_ENQUEUE;
-              cmd->source_cpu = core;
-              cmd->target_cpu = target_cpu;
-              cmd->state = SCHED_REMOTE_CMD_PENDING;
-
-              list_add_tail(&cmd->list, &target_rq->pending_inbox);
-              if (target_rq->resched_pending == 0) {
-                  target_rq->resched_pending = 1;
-                  spin_unlock(&target_rq->lock);
-                  hal_send_ipi_payload(1U << target_cpu, MK_MSG_THREAD_ENQUEUE_REQ);
+                  sched_remote_submit(target_cpu, new_cmd);
+                  thread->migration_state = SCHED_MIGRATION_ENQUEUE_REQUESTED;
               } else {
-                  spin_unlock(&target_rq->lock);
+                  cmd->state = SCHED_REMOTE_CMD_FAILED;
+                  thread->migration_state = SCHED_MIGRATION_FAILED;
               }
-              thread->migration_state = SCHED_MIGRATION_ENQUEUE_REQUESTED;
-              continue; // Command is now pending on target_cpu
+              cmd->state = SCHED_REMOTE_CMD_ACKED;
+              continue;
           } else if (cmd->type == SCHED_REMOTE_ENQUEUE) {
               if (thread->migration_state == SCHED_MIGRATION_COMMITTED) {
                   // Already handled
@@ -123,23 +177,22 @@ void sched_reschedule(void) {
                       // Rollback attempt to old owner
                       cmd->state = SCHED_REMOTE_CMD_FAILED;
                       uint32_t old_owner = cmd->source_cpu;
-                      sched_rq_t *old_rq = &g_cpu_locals[old_owner].runqueue;
 
-                      spin_lock(&old_rq->lock);
-                      cmd->type = SCHED_REMOTE_ENQUEUE; // Rollback enqueue
-                      cmd->target_cpu = old_owner;
-                      cmd->source_cpu = core;
-                      cmd->state = SCHED_REMOTE_CMD_PENDING;
-                      list_add_tail(&cmd->list, &old_rq->pending_inbox);
+                      sched_remote_cmd_t *rollback_cmd = sched_allocate_outbound_cmd();
+                      if (rollback_cmd) {
+                          rollback_cmd->type = SCHED_REMOTE_ENQUEUE; // Rollback enqueue
+                          rollback_cmd->target_cpu = old_owner;
+                          rollback_cmd->source_cpu = core;
+                          rollback_cmd->thread_id = thread->thread_id;
+                          rollback_cmd->expected_thread_generation = thread->sched_generation;
+                          rollback_cmd->state = SCHED_REMOTE_CMD_PENDING;
 
-                      if (old_rq->resched_pending == 0) {
-                          old_rq->resched_pending = 1;
-                          spin_unlock(&old_rq->lock);
-                          hal_send_ipi_payload(1U << old_owner, MK_MSG_THREAD_ENQUEUE_REQ);
+                          sched_remote_submit(old_owner, rollback_cmd);
+                          thread->migration_state = SCHED_MIGRATION_ROLLBACK_REQUESTED;
                       } else {
-                          spin_unlock(&old_rq->lock);
+                          sched_quarantine_thread(thread, THREAD_FAULT_MIGRATION_ROLLBACK_FAILED);
+                          thread->migration_state = SCHED_MIGRATION_FAILED;
                       }
-                      thread->migration_state = SCHED_MIGRATION_ROLLBACK_REQUESTED;
                       continue;
                   }
 
@@ -152,7 +205,6 @@ void sched_reschedule(void) {
                   // Successful rollback
                   thread->owner_state = THREAD_OWNER_NONE;
                   thread->owner_cpu = core;
-                  // bound_core_id didn't change yet or we restore it
                   thread->bound_core_id = core;
                   thread->migration_state = SCHED_MIGRATION_NONE; // Reset
                   cmd->state = SCHED_REMOTE_CMD_ACKED;
@@ -183,6 +235,7 @@ void sched_reschedule(void) {
                       rq->runnable_count--;
                   }
               }
+              cmd->state = SCHED_REMOTE_CMD_ACKED;
               continue; // DEQUEUE is complete
           } else if (cmd->type == SCHED_REMOTE_QUARANTINE) {
               sched_quarantine_thread(thread, 0xBAD);
@@ -200,6 +253,40 @@ void sched_reschedule(void) {
                       rq->runnable_count--;
                   }
               }
+              cmd->state = SCHED_REMOTE_CMD_ACKED;
+              continue;
+          } else if (cmd->type == SCHED_REMOTE_SET_PRIORITY) {
+              if (slot->is_on_runqueue != 0U) {
+                  sched_invariant_on_dequeue(thread);
+                  if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
+                      sched_cfs_dequeue(rq, thread);
+                  } else if (g_policy == SCHED_POLICY_EDF) {
+                      sched_edf_dequeue(rq, thread);
+                  } else {
+                      list_del(&slot->run_node);
+                      list_init(&slot->run_node);
+                      sched_ready_bitmap_clear_if_empty(rq, thread->priority);
+                  }
+                  slot->is_on_runqueue = 0U;
+                  if (rq->runnable_count > 0U) {
+                      rq->runnable_count--;
+                  }
+              }
+              thread->priority = cmd->priority;
+              if (thread->state == THREAD_STATE_READY) {
+                  sched_invariant_on_enqueue(thread, core);
+                  if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
+                      sched_cfs_enqueue(rq, thread);
+                  } else if (g_policy == SCHED_POLICY_EDF) {
+                      sched_edf_enqueue(rq, thread);
+                  } else {
+                      list_add(&slot->run_node, &rq->ready_queue[thread->priority]);
+                      sched_ready_bitmap_set(rq, thread->priority);
+                  }
+                  slot->is_on_runqueue = 1U;
+                  rq->runnable_count++;
+              }
+              cmd->state = SCHED_REMOTE_CMD_ACKED;
               continue;
           }
 
@@ -250,14 +337,17 @@ void sched_reschedule(void) {
           }
       }
       spin_unlock(&rq->lock);
+      sched_publish_load(rq);
   }
 
   if (g_cpu_locals[core].runqueue.throttled != 0U && g_cpu_locals[core].runqueue.idle_thread) {
+    sched_publish_load(rq);
     sched_switch_to(g_cpu_locals[core].runqueue.idle_thread, core);
     return;
   }
 
   bh_thread_t *next = sched_pick_next_ready(core);
+  sched_publish_load(rq);
   sched_switch_to(next, core);
 }
 
@@ -266,6 +356,7 @@ void sched_on_timer_tick(void) {
 
 
   uint32_t core = sched_clamp_core(hal_cpu_get_id());
+  sched_publish_load(&g_cpu_locals[core].runqueue);
 
   ipc_async_check_timeouts(g_cpu_locals[core].runqueue.total_ticks);
 
@@ -325,7 +416,7 @@ void sched_on_timer_tick(void) {
           current->absolute_deadline_ms += current->rt_attr.period_ms;
           current->cpu_time_consumed = 0U;
 
-          thread_slot_t *slot = sched_find_thread_slot_by_tid_local(rq, current->thread_id);
+          thread_slot_t *slot = sched_find_thread_slot_by_tid(current->thread_id);
           if (slot) {
               // Suspend the thread until the start of the next period
               current->wake_deadline_ms = current->absolute_deadline_ms - current->rt_attr.deadline_ms;
@@ -367,3 +458,73 @@ void sched_on_timer_tick(void) {
   }
 }
 
+sched_rq_t *sched_local_rq(void) {
+  uint32_t core = sched_clamp_core(hal_cpu_get_id());
+  return &g_cpu_locals[core].runqueue;
+}
+
+void sched_assert_local_rq(sched_rq_t *rq) {
+  uint32_t core = sched_clamp_core(hal_cpu_get_id());
+  if (rq != &g_cpu_locals[core].runqueue) {
+    kernel_panic("sched_assert_local_rq failed: mutation of remote runqueue");
+  }
+}
+
+sched_remote_cmd_t *sched_allocate_outbound_cmd(void) {
+  uint32_t core = sched_clamp_core(hal_cpu_get_id());
+  sched_rq_t *rq = &g_cpu_locals[core].runqueue;
+  for (uint32_t i = 0; i < SCHED_REMOTE_CMD_CAPACITY; ++i) {
+    if (rq->outbound_cmds[i].state != SCHED_REMOTE_CMD_PENDING) {
+      sched_remote_cmd_t *cmd = &rq->outbound_cmds[i];
+      cmd->cmd_id = i;
+      cmd->type = (sched_remote_cmd_type_t)0;
+      cmd->state = SCHED_REMOTE_CMD_PENDING;
+      cmd->source_cpu = core;
+      cmd->target_cpu = 0;
+      cmd->thread_id = 0;
+      cmd->expected_thread_generation = 0;
+      cmd->flags = 0;
+      cmd->priority = 0;
+      list_init(&cmd->list);
+      return cmd;
+    }
+  }
+  return NULL;
+}
+
+kstatus_t sched_remote_submit(uint32_t target_cpu, const sched_remote_cmd_t *cmd) {
+  if (target_cpu >= g_active_core_count) {
+    return K_ERR_INVALID_ARG;
+  }
+  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  if (target_cpu == current_core) {
+    return K_ERR_INVALID_ARG;
+  }
+
+  sched_rq_t *target_rq = &g_cpu_locals[target_cpu].runqueue;
+
+  // Cast away const since bh_mpsc_queue_push takes void *
+  kstatus_t status = bh_mpsc_queue_push(&target_rq->remote.queue, (void *)cmd);
+  if (status != K_OK) {
+    __atomic_fetch_add(&target_rq->remote.full, 1, __ATOMIC_RELAXED);
+    return K_ERR_NO_RESOURCES;
+  }
+
+  __atomic_fetch_add(&target_rq->remote.submitted, 1, __ATOMIC_RELAXED);
+
+  uint32_t expected = 0;
+  if (__atomic_compare_exchange_n(&target_rq->remote.resched_pending, &expected, 1, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)) {
+      __atomic_fetch_add(&target_rq->remote.ipi_sent, 1, __ATOMIC_RELAXED);
+      uint64_t msg = MK_MSG_THREAD_ENQUEUE_REQ;
+      if (cmd->type == SCHED_REMOTE_WAKE) {
+          msg = MK_MSG_THREAD_WAKE_REQ;
+      } else if (cmd->type == SCHED_REMOTE_MIGRATE || cmd->type == SCHED_REMOTE_MIGRATE_PREPARE) {
+          msg = MK_MSG_THREAD_DEQUEUE_REQ;
+      }
+      hal_send_ipi_payload(1U << target_cpu, msg);
+  } else {
+      __atomic_fetch_add(&target_rq->remote.ipi_coalesced, 1, __ATOMIC_RELAXED);
+  }
+
+  return K_OK;
+}
