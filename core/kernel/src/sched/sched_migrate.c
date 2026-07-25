@@ -2,19 +2,9 @@
 #include "sched_internal.h"
 #include "arch/cpu_relax.h"
 
-uint32_t sched_read_published_load(uint32_t core_id) {
-  if (core_id >= g_active_core_count) return 0;
-  sched_rq_t *rq = &g_cpu_locals[core_id].runqueue;
-  uint32_t seq, count;
-  do {
-    seq = __atomic_load_n(&rq->load_snapshot.load_seq, __ATOMIC_ACQUIRE);
-    count = __atomic_load_n(&rq->load_snapshot.runnable_count, __ATOMIC_ACQUIRE);
-  } while ((seq & 1) != 0 || seq != __atomic_load_n(&rq->load_snapshot.load_seq, __ATOMIC_ACQUIRE));
-  return count;
-}
-
 bh_thread_t *sched_find_steal_candidate(uint32_t core_id, uint32_t target_cpu) {
-  sched_rq_t *rq = &g_cpu_locals[core_id].runqueue;
+  (void)core_id;
+  sched_rq_t *rq = sched_local_rq();
 
   for (uint32_t p = 0; p < MAX_PRIORITY_LEVELS; ++p) {
     list_head_t *head = &rq->ready_queue[p];
@@ -48,7 +38,11 @@ void sched_balance_once(void) {
   uint32_t min_depth = UINT32_MAX;
 
   for (uint32_t core = 0; core < g_active_core_count; ++core) {
-    uint32_t depth = sched_read_published_load(core);
+    sched_load_snapshot_t snap;
+    uint32_t depth = 0;
+    if (sched_read_load_snapshot(core, &snap) == K_OK) {
+        depth = snap.runnable_count;
+    }
     if (depth > max_depth) {
       max_depth = depth;
       busiest = core;
@@ -85,28 +79,32 @@ int sched_migrate_task(bh_thread_t *thread, uint32_t new_node) {
     return K_ERR_BAD_STATE;
   }
 
-  if (thread->migration_state != SCHED_MIGRATION_NONE) {
+  uint32_t m_state = __atomic_load_n(&thread->migration_state, __ATOMIC_ACQUIRE);
+  if (m_state != SCHED_MIGRATION_NONE) {
       return K_ERR_IN_PROGRESS;
   }
 
-  thread_slot_t *slot = sched_find_thread_slot_by_tid_local(&g_cpu_locals[thread->home_core_id].runqueue, thread->thread_id);
+  thread_slot_t *slot = sched_find_thread_slot_by_tid(thread->thread_id);
   if (!slot) {
     return -1;
   }
 
   uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
-  uint32_t bound_core = thread->bound_core_id;
+  uint32_t owner = __atomic_load_n(&thread->owner_cpu, __ATOMIC_ACQUIRE);
 
-  if (bound_core == new_node) {
+  if (owner == new_node) {
       return 0;
   }
 
+  // Increment migration epoch at start of migration
+  uint32_t epoch = __atomic_fetch_add(&thread->migration_epoch, 1, __ATOMIC_SEQ_CST) + 1;
+
   thread->migration_target_cpu = new_node;
 
-  if (bound_core == current_core) {
-      // Phase 1: Local dequeue
+  if (owner == current_core) {
+      // Local owner: Phase 1: Local dequeue
       hal_cpu_disable_interrupts();
-      sched_rq_t *rq = &g_cpu_locals[current_core].runqueue;
+      sched_rq_t *rq = sched_local_rq();
       if (slot->is_on_runqueue != 0U) {
           if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
             sched_cfs_dequeue(rq, thread);
@@ -120,16 +118,16 @@ int sched_migrate_task(bh_thread_t *thread, uint32_t new_node) {
             rq->runnable_count--;
           }
       }
-      thread->migration_state = SCHED_MIGRATION_DEQUEUED;
+      sched_migration_transition(thread, SCHED_MIGRATION_NONE, SCHED_MIGRATION_DEQUEUED);
       thread->owner_state = THREAD_OWNER_REMOTE_PENDING;
       hal_cpu_enable_interrupts();
 
-      // Phase 2: Remote enqueue request
+      // Local owner: Phase 2: Remote enqueue request to new_node
       sched_remote_cmd_t *cmd = sched_allocate_outbound_cmd();
       if (!cmd) {
           hal_cpu_disable_interrupts();
           thread->owner_state = THREAD_OWNER_NONE;
-          thread->migration_state = SCHED_MIGRATION_NONE;
+          sched_migration_transition(thread, SCHED_MIGRATION_DEQUEUED, SCHED_MIGRATION_NONE);
           sched_invariant_on_enqueue(thread, current_core);
           if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
             sched_cfs_enqueue(rq, thread);
@@ -148,18 +146,19 @@ int sched_migrate_task(bh_thread_t *thread, uint32_t new_node) {
       cmd->target_cpu = new_node;
       cmd->thread_id = thread->thread_id;
       cmd->expected_thread_generation = thread->sched_generation;
+      cmd->migration_epoch = epoch;
       cmd->priority = thread->priority;
       cmd->state = SCHED_REMOTE_CMD_PENDING;
 
-      thread->migration_state = SCHED_MIGRATION_ENQUEUE_REQUESTED;
+      sched_migration_transition(thread, SCHED_MIGRATION_DEQUEUED, SCHED_MIGRATION_COMMIT_SENT);
       thread->preferred_numa_node = (uint8_t)new_node;
 
       kstatus_t status = sched_remote_submit(new_node, cmd);
       if (status != K_OK) {
-          cmd->state = SCHED_REMOTE_CMD_EMPTY;
+          sched_remote_cmd_release(cmd);
           hal_cpu_disable_interrupts();
           thread->owner_state = THREAD_OWNER_NONE;
-          thread->migration_state = SCHED_MIGRATION_NONE;
+          sched_migration_transition(thread, SCHED_MIGRATION_COMMIT_SENT, SCHED_MIGRATION_NONE);
           sched_invariant_on_enqueue(thread, current_core);
           if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
             sched_cfs_enqueue(rq, thread);
@@ -174,7 +173,7 @@ int sched_migrate_task(bh_thread_t *thread, uint32_t new_node) {
       }
       return K_ERR_IN_PROGRESS;
   } else {
-      // Phase 1: Remote dequeue request (to old owner A)
+      // Remote owner: Send prepare command to owner core
       sched_remote_cmd_t *cmd = sched_allocate_outbound_cmd();
       if (!cmd) {
           return K_ERR_NO_RESOURCES;
@@ -182,40 +181,70 @@ int sched_migrate_task(bh_thread_t *thread, uint32_t new_node) {
 
       cmd->type = SCHED_REMOTE_MIGRATE_PREPARE;
       cmd->source_cpu = current_core;
-      cmd->target_cpu = bound_core;
+      cmd->target_cpu = owner;
       cmd->thread_id = thread->thread_id;
       cmd->expected_thread_generation = thread->sched_generation;
+      cmd->migration_epoch = epoch;
       cmd->state = SCHED_REMOTE_CMD_PENDING;
 
-      thread->migration_state = SCHED_MIGRATION_DEQUEUE_REQUESTED;
+      sched_migration_transition(thread, SCHED_MIGRATION_NONE, SCHED_MIGRATION_PREPARE_SENT);
       thread->preferred_numa_node = (uint8_t)new_node;
 
-      kstatus_t status = sched_remote_submit(bound_core, cmd);
+      kstatus_t status = sched_remote_submit(owner, cmd);
       if (status != K_OK) {
-          cmd->state = SCHED_REMOTE_CMD_EMPTY;
-          thread->migration_state = SCHED_MIGRATION_NONE;
+          sched_remote_cmd_release(cmd);
+          sched_migration_transition(thread, SCHED_MIGRATION_PREPARE_SENT, SCHED_MIGRATION_NONE);
           return status;
       }
       return K_ERR_IN_PROGRESS;
   }
 }
 
-int sched_set_thread_preferred_node(uint64_t tid, uint8_t node_id) {
-  return sched_migrate_task(sched_find_thread_by_id(tid), node_id);
+int sched_migrate_tid(uint64_t tid, uint32_t target_cpu) {
+  bh_thread_t *thread = sched_find_thread_by_id(tid);
+  if (!thread) return -1;
+  return sched_migrate_task(thread, target_cpu);
 }
 
-int sched_sys_set_affinity(uint64_t tid, uint32_t affinity_mask) {
+int sched_set_thread_preferred_node(uint64_t tid, uint8_t node_id) {
+  return sched_migrate_tid(tid, node_id);
+}
+
+int sched_set_affinity(uint64_t tid, uint32_t mask) {
   bh_thread_t *thread = sched_find_thread_by_id(tid);
-  if (!thread || affinity_mask == 0U) {
+  if (!thread || mask == 0U) {
     return -1;
   }
-  thread->affinity_mask = affinity_mask;
 
-  uint32_t current_core = thread->bound_core_id;
-  if ((affinity_mask & (1U << current_core)) == 0U) {
+  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t owner = __atomic_load_n(&thread->owner_cpu, __ATOMIC_ACQUIRE);
+
+  if (owner != current_core) {
+      sched_remote_cmd_t *cmd = sched_allocate_outbound_cmd();
+      if (!cmd) return K_ERR_NO_RESOURCES;
+      cmd->type = SCHED_REMOTE_SET_AFFINITY;
+      cmd->source_cpu = current_core;
+      cmd->target_cpu = owner;
+      cmd->thread_id = thread->thread_id;
+      cmd->expected_thread_generation = thread->sched_generation;
+      cmd->flags = mask; // pass affinity mask here
+      cmd->state = SCHED_REMOTE_CMD_PENDING;
+
+      kstatus_t status = sched_remote_submit(owner, cmd);
+      if (status != K_OK) {
+          sched_remote_cmd_release(cmd);
+          return status;
+      }
+      return 0;
+  }
+
+  thread->affinity_mask = mask;
+
+  uint32_t bound = thread->bound_core_id;
+  if ((mask & (1U << bound)) == 0U) {
     for (uint32_t core = 0; core < g_active_core_count; ++core) {
-      if ((affinity_mask & (1U << core)) != 0U) {
-        return sched_migrate_task(thread, core);
+      if ((mask & (1U << core)) != 0U) {
+        return sched_migrate_tid(tid, core);
       }
     }
     return -1;
@@ -223,12 +252,8 @@ int sched_sys_set_affinity(uint64_t tid, uint32_t affinity_mask) {
   return 0;
 }
 
-int sched_throttle_core(uint32_t core_id) {
-  if (core_id >= g_active_core_count) {
-    return -1;
-  }
-  g_cpu_locals[core_id].runqueue.throttled = 1U;
-  return 0;
+int sched_sys_set_affinity(uint64_t tid, uint32_t affinity_mask) {
+  return sched_set_affinity(tid, affinity_mask);
 }
 
 kstatus_t sched_wait_remote_cmd_ack(sched_remote_cmd_t *cmd, uint32_t timeout_loops) {
@@ -252,10 +277,10 @@ int sched_quarantine_thread(bh_thread_t *thread, uint32_t reason) {
   // If enqueued locally, remove it
   uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
   if (thread->bound_core_id == current_core) {
-      thread_slot_t *slot = sched_find_thread_slot_by_tid_local(&g_cpu_locals[current_core].runqueue, thread->thread_id);
+      sched_rq_t *rq = sched_local_rq();
+      thread_slot_t *slot = sched_find_thread_slot_by_tid_local(rq, thread->thread_id);
       if (slot && slot->is_on_runqueue) {
           hal_cpu_disable_interrupts();
-          sched_rq_t *rq = &g_cpu_locals[current_core].runqueue;
           if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
             sched_cfs_dequeue(rq, thread);
           } else {
@@ -274,32 +299,58 @@ int sched_quarantine_thread(bh_thread_t *thread, uint32_t reason) {
   return 0;
 }
 
-int sched_request_remote_handoff(bh_thread_t *thread, uint32_t target_core, uint32_t auth_token) {
-  if (!thread || target_core >= g_active_core_count) {
-    return -1; // Invalid argument
+int sched_quarantine_tid(uint64_t tid, uint32_t reason) {
+  bh_thread_t *thread = sched_find_thread_by_id(tid);
+  if (!thread) return -1;
+  return sched_quarantine_thread(thread, reason);
+}
+
+int sched_request_handoff_tid(uint64_t tid, uint32_t target_cpu, uint32_t auth_token) {
+  bh_thread_t *thread = sched_find_thread_by_id(tid);
+  if (!thread || target_cpu >= g_active_core_count) {
+    return -1;
   }
 
   uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
-  if (target_core == current_core) {
-    return -1; // Cannot handoff to self
+  uint32_t owner = __atomic_load_n(&thread->owner_cpu, __ATOMIC_ACQUIRE);
+
+  if (owner != current_core) {
+    sched_remote_cmd_t *cmd = sched_allocate_outbound_cmd();
+    if (!cmd) return K_ERR_NO_RESOURCES;
+    cmd->type = SCHED_REMOTE_HANDOFF;
+    cmd->source_cpu = current_core;
+    cmd->target_cpu = target_cpu;
+    cmd->thread_id = thread->thread_id;
+    cmd->expected_thread_generation = thread->sched_generation;
+    cmd->flags = auth_token;
+    cmd->state = SCHED_REMOTE_CMD_PENDING;
+
+    kstatus_t status = sched_remote_submit(owner, cmd);
+    if (status != K_OK) {
+        sched_remote_cmd_release(cmd);
+        return status;
+    }
+    return 0;
   }
 
-  thread_slot_t *slot = sched_find_thread_slot_by_tid_local(&g_cpu_locals[thread->home_core_id].runqueue, thread->thread_id);
+  if (target_cpu == current_core) {
+    return -1;
+  }
+
+  thread_slot_t *slot = sched_find_thread_slot_by_tid(thread->thread_id);
   if (!slot) {
     return -1;
   }
 
   hal_cpu_disable_interrupts();
 
-  // Validate state - only READY threads can be handed off
   if (thread->state != THREAD_STATE_READY) {
     hal_cpu_enable_interrupts();
-    return -2; // Invalid state
+    return -2;
   }
 
-  sched_rq_t *rq = &g_cpu_locals[current_core].runqueue;
+  sched_rq_t *rq = sched_local_rq();
 
-  // Dequeue from local runqueue
   if (slot->is_on_runqueue != 0U) {
     if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
       sched_cfs_dequeue(rq, thread);
@@ -314,15 +365,12 @@ int sched_request_remote_handoff(bh_thread_t *thread, uint32_t target_core, uint
     }
   }
 
-  // Transition to pending handoff state
   thread->state = THREAD_STATE_REMOTE_HANDOFF_PENDING;
 
   hal_cpu_enable_interrupts();
 
-  // Prepare and send uRPC message
   mk_channel_t channel;
-  if (mk_get_channel(current_core, target_core, &channel) != 0) {
-    // If channel fails, revert state and re-enqueue locally
+  if (mk_get_channel(current_core, target_cpu, &channel) != 0) {
     hal_cpu_disable_interrupts();
     thread->state = THREAD_STATE_READY;
     if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
@@ -334,13 +382,13 @@ int sched_request_remote_handoff(bh_thread_t *thread, uint32_t target_core, uint
     slot->is_on_runqueue = 1U;
     rq->runnable_count++;
     hal_cpu_enable_interrupts();
-    return -3; // Channel error
+    return -3;
   }
 
   mk_msg_thread_handoff_t payload = {
     .thread_id = thread->thread_id,
     .source_core = current_core,
-    .target_core = target_core,
+    .target_core = target_cpu,
     .priority = thread->priority,
     .flags = 0
   };
@@ -349,14 +397,13 @@ int sched_request_remote_handoff(bh_thread_t *thread, uint32_t target_core, uint
     .type = MK_MSG_THREAD_HANDOFF_REQ,
     .payload_size = sizeof(payload),
     .src_core = current_core,
-    .dst_core = target_core,
+    .dst_core = target_cpu,
     .auth_token = auth_token
   };
   __builtin_memcpy(msg.payload_data, &payload, sizeof(payload));
 
   int ret = mk_send_message(&channel, msg.type, msg.payload_data, msg.payload_size);
   if (ret != 0) {
-      // If send fails, revert state and re-enqueue locally
       hal_cpu_disable_interrupts();
       thread->state = THREAD_STATE_READY;
       if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
@@ -368,7 +415,7 @@ int sched_request_remote_handoff(bh_thread_t *thread, uint32_t target_core, uint
       slot->is_on_runqueue = 1U;
       rq->runnable_count++;
       hal_cpu_enable_interrupts();
-      return -4; // Send error
+      return -4;
   }
 
   return 0;

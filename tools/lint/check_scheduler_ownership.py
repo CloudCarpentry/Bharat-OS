@@ -4,7 +4,7 @@
 Verifies that scheduler files obey the multikernel ownership-based rules:
 - No remote runqueue lock acquiring.
 - No direct remote ready_queue/list mutations.
-- No g_cpu_locals[remote_cpu].runqueue.xxx access.
+- No g_cpu_locals[remote_cpu].runqueue.xxx access (except in approved internal access files).
 - No use of legacy pending_inbox.
 """
 
@@ -15,8 +15,11 @@ from pathlib import Path
 # Files under core/kernel/src/sched/ to check
 SCHED_DIR = Path("core/kernel/src/sched")
 
+# Files allowed to reference g_cpu_locals[...].runqueue
+ALLOWED_RUNQUEUE_ACCESS_FILES = {"sched.c", "sched_core.c", "sched_test_support.c"}
+
 # Regex to detect violation of remote runqueue field access
-REMOTE_RQ_ACCESS_RE = re.compile(r'g_cpu_locals\[[^\]]+\]\.runqueue\.(ready_queue|ready_bitmap|cfs_runqueue|edf_runqueue|sleeping_list|blocked_list|lock|runnable_count|free_thread_head|threads|processes|bootstrap_threads)')
+REMOTE_RQ_ACCESS_RE = re.compile(r'g_cpu_locals\[[^\]]+\]\.runqueue')
 
 # Regex to detect usage of the legacy pending_inbox
 PENDING_INBOX_RE = re.compile(r'\bpending_inbox\b')
@@ -39,13 +42,10 @@ def check_file(path: Path) -> list[str]:
         if REMOTE_LOCK_RE.search(line):
             violations.append(f"{path}:{i}: Direct lock acquisition of remote runqueue")
 
-        # 2. Check for remote runqueue field access (except if the index is exactly local core)
-        if REMOTE_RQ_ACCESS_RE.search(line):
-            match = re.search(r'g_cpu_locals\[([^\]]+)\]\.runqueue', line)
-            if match:
-                index = match.group(1).strip()
-                if index not in ("core", "core_id", "current_core", "current_cpu", "cpu_id", "hal_cpu_get_id()", "creation_core", "bound_core", "home_core"):
-                    violations.append(f"{path}:{i}: Direct access to remote runqueue fields ('{match.group(0)}')")
+        # 2. Check for direct runqueue access if the file is not allowed
+        if path.name not in ALLOWED_RUNQUEUE_ACCESS_FILES:
+            if REMOTE_RQ_ACCESS_RE.search(line):
+                violations.append(f"{path}:{i}: Direct reference to runqueue via 'g_cpu_locals' (file not in allowlist)")
 
         # 3. Check for legacy pending_inbox
         if PENDING_INBOX_RE.search(line):

@@ -16,9 +16,7 @@ int sched_enqueue(bh_thread_t *thread, uint32_t core_id) {
   bool is_local = (core_id == current_core);
 
   if (!is_local) {
-      sched_rq_t *target_rq = &g_cpu_locals[core_id].runqueue;
-
-      if (target_rq->sched_isolated) {
+      if (sched_read_isolated_snapshot(core_id)) {
           return K_ERR_ISOLATED;
       }
 
@@ -39,13 +37,13 @@ int sched_enqueue(bh_thread_t *thread, uint32_t core_id) {
 
       kstatus_t status = sched_remote_submit(core_id, cmd);
       if (status != K_OK) {
-          cmd->state = SCHED_REMOTE_CMD_EMPTY;
+          sched_remote_cmd_release(cmd);
           return status;
       }
       return 0;
   }
 
-  sched_rq_t *rq = &g_cpu_locals[core_id].runqueue;
+  sched_rq_t *rq = sched_local_rq();
   thread_slot_t *slot = sched_find_thread_slot_by_tid(thread->thread_id);
   if (!slot) {
     return -1;
@@ -80,7 +78,7 @@ int sched_enqueue(bh_thread_t *thread, uint32_t core_id) {
   } else if (g_policy == SCHED_POLICY_EDF) {
     if (thread->rt_attr.period_ms > 0 && thread->rt_attr.deadline_ms > 0) {
         if (thread->absolute_deadline_ms == 0) {
-            thread->absolute_deadline_ms = g_cpu_locals[current_core].runqueue.total_ticks + thread->rt_attr.deadline_ms;
+            thread->absolute_deadline_ms = rq->total_ticks + thread->rt_attr.deadline_ms;
         }
     }
     sched_edf_enqueue(rq, thread);
@@ -99,7 +97,11 @@ int sched_enqueue(bh_thread_t *thread, uint32_t core_id) {
 }
 
 uint32_t sched_run_queue_depth(uint32_t core_id) {
-  return g_cpu_locals[core_id].runqueue.runnable_count;
+  sched_load_snapshot_t snap;
+  if (sched_read_load_snapshot(core_id, &snap) == K_OK) {
+    return snap.runnable_count;
+  }
+  return 0;
 }
 
 void sched_ready_bitmap_set(sched_rq_t *rq, uint32_t prio) {
@@ -132,7 +134,8 @@ static void sched_dequeue_task_l0(bh_thread_t *thread, uint32_t core_id) {
   if (!thread) {
     return;
   }
-  sched_rq_t *rq = &g_cpu_locals[core_id].runqueue;
+  (void)core_id;
+  sched_rq_t *rq = sched_local_rq();
   thread_slot_t *slot = sched_find_thread_slot_by_tid(thread->thread_id);
   if (slot && slot->is_on_runqueue != 0U) {
     sched_invariant_on_dequeue(thread);

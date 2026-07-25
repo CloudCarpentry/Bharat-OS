@@ -69,7 +69,6 @@ thread_slot_t *sched_find_thread_slot_by_tid_local(sched_rq_t *rq, uint64_t tid)
 thread_slot_t *sched_find_thread_slot_by_tid(uint64_t tid);
 sched_remote_cmd_t *sched_allocate_outbound_cmd(void);
 uint32_t sched_clamp_core(uint32_t core_id);
-uint32_t sched_read_published_load(uint32_t core_id);
 bh_thread_t *sched_find_steal_candidate(uint32_t core_id, uint32_t target_cpu);
 
 static inline void sched_publish_load(sched_rq_t *rq) {
@@ -79,6 +78,7 @@ static inline void sched_publish_load(sched_rq_t *rq) {
   __atomic_store_n(&rq->load_snapshot.load_seq, seq + 2, __ATOMIC_RELEASE);
 }
 int sched_mark_thread_terminated(bh_thread_t *thread);
+int sched_enqueue_reap(thread_slot_t *slot);
 void sched_reap_terminated_threads(void);
 void sched_process_pending_ai_suggestions(void);
 void sched_sleep_enqueue(thread_slot_t *slot, uint32_t core_id);
