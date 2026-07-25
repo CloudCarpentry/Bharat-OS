@@ -7,8 +7,7 @@ int process_destroy(bh_process_t *process) {
     return -1;
   }
 
-  uint32_t current_core = sched_clamp_core(process->owner_core_id);
-  sched_rq_t *rq = &g_cpu_locals[current_core].runqueue;
+  sched_rq_t *rq = sched_local_rq();
 
   process_slot_t *slot = NULL;
   for (size_t i = 0; i < SCHED_MAX_PROCESSES; ++i) {
@@ -58,8 +57,7 @@ int thread_destroy(bh_thread_t *thread) {
     return -1;
   }
 
-  uint32_t creation_core = sched_clamp_core(thread->home_core_id);
-  sched_rq_t *rq = &g_cpu_locals[creation_core].runqueue;
+  sched_rq_t *rq = sched_local_rq();
   thread_slot_t *slot = sched_find_thread_slot_by_tid_local(rq, thread->thread_id);
   if (!slot) {
     return -1;
@@ -123,12 +121,36 @@ int sched_sys_thread_create(bh_process_t *parent, void (*entry_point)(void), uin
   return 0;
 }
 
-int sched_sys_thread_destroy(uint64_t tid) {
-  thread_slot_t *slot = sched_find_thread_slot_by_tid(tid);
-  if (!slot) {
-    return -1;
+int sched_terminate_tid(uint64_t tid) {
+  bh_thread_t *thread = sched_find_thread_by_id(tid);
+  if (!thread) return -1;
+
+  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t owner = __atomic_load_n(&thread->owner_cpu, __ATOMIC_ACQUIRE);
+
+  if (owner != current_core) {
+      sched_remote_cmd_t *cmd = sched_allocate_outbound_cmd();
+      if (!cmd) return K_ERR_NO_RESOURCES;
+      cmd->type = SCHED_REMOTE_TERMINATE;
+      cmd->source_cpu = current_core;
+      cmd->target_cpu = owner;
+      cmd->thread_id = thread->thread_id;
+      cmd->expected_thread_generation = thread->sched_generation;
+      cmd->state = SCHED_REMOTE_CMD_PENDING;
+
+      kstatus_t status = sched_remote_submit(owner, cmd);
+      if (status != K_OK) {
+          sched_remote_cmd_release(cmd);
+          return status;
+      }
+      return 0;
   }
-  return sched_mark_thread_terminated(&slot->thread);
+
+  return sched_mark_thread_terminated(thread);
+}
+
+int sched_sys_thread_destroy(uint64_t tid) {
+  return sched_terminate_tid(tid);
 }
 
 int thread_raise_fault(bh_thread_t *thread, thread_fault_t fault) {

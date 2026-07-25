@@ -237,7 +237,7 @@ void sched_detach_thread_from_queues(thread_slot_t *slot) {
   }
 }
 
-static int sched_enqueue_reap(thread_slot_t *slot) {
+int sched_enqueue_reap(thread_slot_t *slot) {
   if (!slot || slot->is_bootstrap != 0U) {
     return -1;
   }
@@ -269,19 +269,44 @@ int sched_mark_thread_terminated(bh_thread_t *thread) {
   if (!thread) {
     return -1;
   }
-  thread_slot_t *slot = sched_find_thread_slot_by_tid_local(&g_cpu_locals[thread->home_core_id].runqueue, thread->thread_id);
+  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  thread_slot_t *slot = sched_find_thread_slot_by_tid(thread->thread_id);
   if (!slot) {
     return -1;
   }
   if (thread->state == THREAD_STATE_TERMINATED) {
-    return sched_enqueue_reap(slot);
+    if (thread->home_core_id == current_core) {
+      return sched_enqueue_reap(slot);
+    }
+    return 0;
   }
 
   thread->state = THREAD_STATE_TERMINATED;
+  __atomic_store_n(&thread->owner_state, THREAD_OWNER_NONE, __ATOMIC_RELEASE);
+
   if (thread != sched_current_thread()) {
     sched_detach_thread_from_queues(slot);
   }
-  return sched_enqueue_reap(slot);
+
+  if (thread->home_core_id == current_core) {
+    return sched_enqueue_reap(slot);
+  } else {
+    sched_remote_cmd_t *cmd = sched_allocate_outbound_cmd();
+    if (cmd) {
+      cmd->type = SCHED_REMOTE_REAP;
+      cmd->source_cpu = current_core;
+      cmd->target_cpu = thread->home_core_id;
+      cmd->thread_id = thread->thread_id;
+      cmd->expected_thread_generation = thread->sched_generation;
+      cmd->state = SCHED_REMOTE_CMD_PENDING;
+      kstatus_t status = sched_remote_submit(thread->home_core_id, cmd);
+      if (status != K_OK) {
+        sched_remote_cmd_release(cmd);
+        return status;
+      }
+    }
+  }
+  return 0;
 }
 
 void sched_reap_terminated_threads(void) {
@@ -377,7 +402,14 @@ void sched_reset_core_runqueues(void) {
     rq->remote.ipi_sent = 0U;
     rq->remote.ipi_coalesced = 0U;
 
+    for (uint32_t w = 0; w < SCHED_CMD_BITMAP_WORDS; ++w) {
+        rq->outbound_alloc_bitmap[w] = 0U;
+    }
+
     for (uint32_t i = 0; i < SCHED_REMOTE_CMD_CAPACITY; ++i) {
+        rq->outbound_cmds[i].handle.slot = i;
+        rq->outbound_cmds[i].handle.origin_cpu = core;
+        rq->outbound_cmds[i].handle.generation = 1;
         rq->outbound_cmds[i].state = SCHED_REMOTE_CMD_EMPTY;
     }
 
@@ -1017,5 +1049,41 @@ bh_thread_t *sched_cfs_pick_next(sched_rq_t *rq) {
     return (bh_thread_t *)(void *)((char *)left - offsetof(bh_thread_t, cfs_node));
 }
 
+kstatus_t sched_get_thread_snapshot(uint64_t tid, sched_thread_snapshot_t *out) {
+  if (!out) return K_ERR_INVALID_ARG;
+  bh_thread_t *thread = sched_find_thread_by_id(tid);
+  if (!thread) return -1;
+
+  out->thread_id = thread->thread_id;
+  out->home_core_id = thread->home_core_id;
+  out->bound_core_id = thread->bound_core_id;
+  out->owner_cpu = __atomic_load_n(&thread->owner_cpu, __ATOMIC_ACQUIRE);
+  out->state = (uint32_t)thread->state;
+  out->priority = thread->priority;
+  out->affinity_mask = thread->affinity_mask;
+  out->migration_state = (uint32_t)__atomic_load_n(&thread->migration_state, __ATOMIC_ACQUIRE);
+  out->migration_epoch = __atomic_load_n(&thread->migration_epoch, __ATOMIC_ACQUIRE);
+  return K_OK;
+}
+
+int sched_set_constraints(uint64_t tid, const bh_exec_constraints_k_t *c) {
+  if (!c) return -1;
+  bh_thread_t *thread = sched_find_thread_by_id(tid);
+  if (!thread) return -1;
+  thread->constraints = *c;
+  return 0;
+}
+
+int sched_get_constraints(uint64_t tid, bh_exec_constraints_k_t *c) {
+  if (!c) return -1;
+  bh_thread_t *thread = sched_find_thread_by_id(tid);
+  if (!thread) return -1;
+  *c = thread->constraints;
+  return 0;
+}
+
+bool sched_thread_exists(uint64_t tid) {
+  return (sched_find_thread_by_id(tid) != NULL);
+}
 
 

@@ -57,8 +57,7 @@ int sched_admission_edf(bh_thread_t *thread, uint64_t wcet_ms, uint64_t period_m
     // Calculate bandwidth contribution (utilization * 1000)
     uint64_t bandwidth_needed = (wcet_ms * 1000) / period_ms;
 
-    uint32_t core = thread->bound_core_id;
-    sched_rq_t *rq = &g_cpu_locals[core].runqueue;
+    sched_rq_t *rq = sched_local_rq();
 
     spin_lock(&rq->lock);
     if (rq->rt_budget_total == 0) {
@@ -95,8 +94,7 @@ int sched_admission_rms(bh_thread_t *thread, uint64_t wcet_ms, uint64_t period_m
     // Optional bounds checking for n tasks: U <= n(2^(1/n) - 1). Simplified to 0.69 bound.
     uint64_t bandwidth_needed = (wcet_ms * 1000) / period_ms;
 
-    uint32_t core = thread->bound_core_id;
-    sched_rq_t *rq = &g_cpu_locals[core].runqueue;
+    sched_rq_t *rq = sched_local_rq();
 
     spin_lock(&rq->lock);
     if (rq->rt_budget_total == 0) {

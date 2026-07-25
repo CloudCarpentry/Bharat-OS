@@ -110,8 +110,11 @@ typedef struct {
     uint64_t wcet_ms;
 } bh_thread_attr_t;
 
+#define SCHED_CMD_BITMAP_WORDS 8
+
 typedef enum {
     SCHED_REMOTE_CMD_EMPTY = 0,
+    SCHED_REMOTE_CMD_RESERVED,
     SCHED_REMOTE_CMD_PENDING,
     SCHED_REMOTE_CMD_ACKED,
     SCHED_REMOTE_CMD_FAILED,
@@ -120,11 +123,11 @@ typedef enum {
 
 typedef enum {
     SCHED_MIGRATION_NONE = 0,
-    SCHED_MIGRATION_DEQUEUE_REQUESTED,
+    SCHED_MIGRATION_PREPARE_SENT,
     SCHED_MIGRATION_DEQUEUED,
-    SCHED_MIGRATION_ENQUEUE_REQUESTED,
+    SCHED_MIGRATION_COMMIT_SENT,
     SCHED_MIGRATION_COMMITTED,
-    SCHED_MIGRATION_ROLLBACK_REQUESTED,
+    SCHED_MIGRATION_ROLLBACK_SENT,
     SCHED_MIGRATION_FAILED
 } sched_migration_state_t;
 
@@ -142,20 +145,52 @@ typedef enum {
     SCHED_REMOTE_MIGRATE_PREPARE,
     SCHED_REMOTE_MIGRATE_COMMIT,
     SCHED_REMOTE_MIGRATE_ROLLBACK,
-    SCHED_REMOTE_SET_PRIORITY
+    SCHED_REMOTE_SET_PRIORITY,
+    SCHED_REMOTE_SET_THROTTLE,
+    SCHED_REMOTE_TERMINATE,
+    SCHED_REMOTE_REAP
 } sched_remote_cmd_type_t;
 
 struct bh_thread;
 typedef struct bh_thread bh_thread_t;
 
+typedef struct {
+    uint16_t slot;
+    uint16_t origin_cpu;
+    uint32_t generation;
+} sched_cmd_handle_t;
+
+typedef struct {
+    uint64_t thread_id;
+    uint32_t home_core_id;
+    uint32_t bound_core_id;
+    uint32_t owner_cpu;
+    uint32_t state;
+    uint32_t priority;
+    uint32_t affinity_mask;
+    uint32_t migration_state;
+    uint32_t migration_epoch;
+} sched_thread_snapshot_t;
+
 typedef struct sched_remote_cmd {
-    uint64_t cmd_id;
+    sched_cmd_handle_t handle;
+    uint64_t cmd_id; // Keep cmd_id for any backward-compatible field lookup
+
     sched_remote_cmd_type_t type;
-    sched_remote_cmd_state_t state;
+    volatile uint32_t state;
+
     uint32_t source_cpu;
     uint32_t target_cpu;
+
     uint64_t thread_id;
     uint64_t expected_thread_generation;
+
+    uint32_t migration_epoch;
+    int32_t result;
+
+    uint64_t submit_tick;
+    uint64_t deadline_tick;
+
     uint32_t flags;
     uint32_t priority;
     list_head_t list;
@@ -198,7 +233,7 @@ typedef struct sched_rq {
 
     // Outbound Command Pool & load snapshot
     sched_remote_cmd_t outbound_cmds[SCHED_REMOTE_CMD_CAPACITY];
-    volatile uint64_t outbound_alloc_bitmap;
+    volatile uint32_t outbound_alloc_bitmap[SCHED_CMD_BITMAP_WORDS];
     sched_load_snapshot_t load_snapshot;
 
     // Flag to avoid IPI storms
@@ -321,6 +356,7 @@ struct bh_thread {
     // Migration state
     uint32_t migration_target_cpu;
     sched_migration_state_t migration_state;
+    uint32_t migration_epoch;
 };
 
 int thread_raise_fault(bh_thread_t *thread, thread_fault_t fault);
@@ -386,25 +422,35 @@ void sched_reschedule(void);
 bh_thread_t* sched_current(void);
 int sched_enqueue(bh_thread_t* thread, uint32_t core_id);
 void sched_sleep(uint64_t millis);
-void sched_wakeup(bh_thread_t* thread);
-void sched_wakeup_with_priority(bh_thread_t* thread, uint32_t wakeup_priority);
+int sched_wake_tid(uint64_t tid);
+int sched_wake_tid_with_priority(uint64_t tid, uint32_t priority);
+
+void sched_wakeup(bh_thread_t *thread);
+void sched_wakeup_with_priority(bh_thread_t *thread, uint32_t wakeup_priority);
 
 // AI governor integration helpers
-bh_thread_t* sched_find_thread_by_id(uint64_t tid);
 int sched_set_thread_priority(uint64_t tid, uint32_t new_priority);
 int sched_set_thread_preferred_node(uint64_t tid, uint8_t node_id);
 int sched_ai_apply_suggestion(const ai_suggestion_t* suggestion);
 int sched_enqueue_ai_suggestion(const ai_suggestion_t* suggestion);
-int sched_migrate_task(bh_thread_t* thread, uint32_t new_node);
-int sched_adjust_priority(bh_thread_t* thread, uint32_t new_priority);
+int sched_migrate_tid(uint64_t tid, uint32_t target_cpu);
+int sched_set_priority(uint64_t tid, uint32_t priority);
+int sched_set_affinity(uint64_t tid, uint32_t mask);
+int sched_terminate_tid(uint64_t tid);
+int sched_quarantine_tid(uint64_t tid, uint32_t reason);
 int sched_throttle_core(uint32_t core_id);
 
 // Cross-core remote handoff
-int sched_request_remote_handoff(bh_thread_t* thread, uint32_t target_core, uint32_t auth_token);
+int sched_request_handoff_tid(uint64_t tid, uint32_t target_cpu, uint32_t auth_token);
+kstatus_t sched_get_thread_snapshot(uint64_t tid, sched_thread_snapshot_t *out);
 
 // RT Scheduler Admissions
 int sched_admission_edf(bh_thread_t* thread, uint64_t wcet_ms, uint64_t period_ms, uint64_t deadline_ms);
 int sched_admission_rms(bh_thread_t* thread, uint64_t wcet_ms, uint64_t period_ms);
+
+int sched_set_constraints(uint64_t tid, const bh_exec_constraints_k_t *c);
+int sched_get_constraints(uint64_t tid, bh_exec_constraints_k_t *c);
+bool sched_thread_exists(uint64_t tid);
 
 // System-call style entry points used by trap/syscall layer
 int sched_sys_thread_create(bh_process_t* parent, void (*entry_point)(void), uint64_t* out_tid);
@@ -433,5 +479,10 @@ void sched_disable_tick_for_core(uint32_t core_id);
 sched_rq_t *sched_local_rq(void);
 void sched_assert_local_rq(sched_rq_t *rq);
 kstatus_t sched_remote_submit(uint32_t target_cpu, const sched_remote_cmd_t *cmd);
+void sched_remote_cmd_release(sched_remote_cmd_t *cmd);
+kstatus_t sched_read_load_snapshot(uint32_t cpu, sched_load_snapshot_t *out);
+bool sched_read_isolated_snapshot(uint32_t cpu);
+kstatus_t sched_migration_transition(bh_thread_t *thread, sched_migration_state_t expected, sched_migration_state_t next);
+void sched_remote_cmd_poll_timeouts(void);
 
 #endif // BHARAT_SCHED_H
