@@ -1,6 +1,7 @@
 #include "sched/sched.h"
 #include "sched_internal.h"
 #include "arch/cpu_relax.h"
+#include "panic.h"
 
 bh_thread_t *sched_find_steal_candidate(uint32_t core_id, uint32_t target_cpu) {
   (void)core_id;
@@ -270,12 +271,16 @@ kstatus_t sched_wait_remote_cmd_ack(sched_remote_cmd_t *cmd, uint32_t timeout_lo
 int sched_quarantine_thread(bh_thread_t *thread, uint32_t reason) {
   if (!thread) return -1;
 
+  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  if (__atomic_load_n(&thread->owner_cpu, __ATOMIC_ACQUIRE) != current_core) {
+      kernel_panic("sched_quarantine_thread: executing on non-owner CPU");
+  }
+
   thread->state = THREAD_STATE_QUARANTINED;
   thread->owner_state = THREAD_OWNER_QUARANTINED;
   thread->pending_fault = (thread_fault_t)reason;
 
   // If enqueued locally, remove it
-  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
   if (thread->bound_core_id == current_core) {
       sched_rq_t *rq = sched_local_rq();
       thread_slot_t *slot = sched_find_thread_slot_by_tid_local(rq, thread->thread_id);
@@ -302,6 +307,29 @@ int sched_quarantine_thread(bh_thread_t *thread, uint32_t reason) {
 int sched_quarantine_tid(uint64_t tid, uint32_t reason) {
   bh_thread_t *thread = sched_find_thread_by_id(tid);
   if (!thread) return -1;
+
+  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t owner = __atomic_load_n(&thread->owner_cpu, __ATOMIC_ACQUIRE);
+
+  if (owner != current_core) {
+      sched_remote_cmd_t *cmd = sched_allocate_outbound_cmd();
+      if (!cmd) return K_ERR_NO_RESOURCES;
+      cmd->type = SCHED_REMOTE_QUARANTINE;
+      cmd->source_cpu = current_core;
+      cmd->target_cpu = owner;
+      cmd->thread_id = thread->thread_id;
+      cmd->expected_thread_generation = thread->sched_generation;
+      cmd->flags = reason;
+      cmd->state = SCHED_REMOTE_CMD_PENDING;
+
+      kstatus_t status = sched_remote_submit(owner, cmd);
+      if (status != K_OK) {
+          sched_remote_cmd_release(cmd);
+          return status;
+      }
+      return 0;
+  }
+
   return sched_quarantine_thread(thread, reason);
 }
 

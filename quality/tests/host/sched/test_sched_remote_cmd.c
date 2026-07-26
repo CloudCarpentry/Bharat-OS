@@ -3,7 +3,6 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
 
 #define MAX_CPUS 32U
 #define SCHED_REMOTE_CMD_CAPACITY 256U
@@ -18,6 +17,22 @@ typedef enum {
     SCHED_REMOTE_CMD_TIMEOUT
 } sched_remote_cmd_state_t;
 
+typedef enum {
+    SCHED_REMOTE_WAKE,
+    SCHED_REMOTE_MIGRATE,
+    SCHED_REMOTE_BLOCK,
+    SCHED_REMOTE_YIELD,
+    SCHED_REMOTE_ENQUEUE,
+    SCHED_REMOTE_DEQUEUE,
+    SCHED_REMOTE_HANDOFF,
+    SCHED_REMOTE_SET_AFFINITY,
+    SCHED_REMOTE_QUARANTINE,
+    SCHED_REMOTE_STEAL_REQ,
+    SCHED_REMOTE_SET_PRIORITY,
+    SCHED_REMOTE_TERMINATE,
+    SCHED_REMOTE_REAP
+} sched_remote_cmd_type_t;
+
 typedef struct {
     uint16_t slot;
     uint16_t origin_cpu;
@@ -25,33 +40,66 @@ typedef struct {
 } sched_cmd_handle_t;
 
 typedef struct {
-    struct {
-        void *next, *prev;
-    } list;
-} list_head_t;
-
-typedef struct sched_remote_cmd {
     sched_cmd_handle_t handle;
-    uint64_t cmd_id;
-    uint32_t type;
-    volatile uint32_t state;
+    sched_remote_cmd_type_t type;
     uint32_t source_cpu;
     uint32_t target_cpu;
     uint64_t thread_id;
     uint64_t expected_thread_generation;
     uint32_t migration_epoch;
-    int32_t result;
-    uint64_t submit_tick;
-    uint64_t deadline_tick;
     uint32_t flags;
     uint32_t priority;
-    list_head_t list;
-} sched_remote_cmd_t;
+} sched_remote_cmd_envelope_t;
 
 typedef struct {
-    sched_remote_cmd_t outbound_cmds[SCHED_REMOTE_CMD_CAPACITY];
+    volatile uint64_t seq;
+    sched_remote_cmd_envelope_t value;
+} sched_cmd_slot_t;
+
+typedef struct {
+    sched_cmd_slot_t slots[SCHED_REMOTE_CMD_CAPACITY];
+    uint32_t capacity;
+    uint32_t mask;
+    volatile uint64_t head;
+    uint64_t tail;
+} sched_cmd_ring_t;
+
+typedef enum {
+    SCHED_COMPLETION_ACK = 0,
+    SCHED_COMPLETION_NACK,
+} sched_completion_kind_t;
+
+typedef struct {
+    sched_cmd_handle_t handle;
+    int32_t result;
+    uint16_t responder_cpu;
+    uint8_t kind;
+    uint8_t reserved;
+} sched_remote_completion_t;
+
+typedef struct {
+    volatile uint64_t seq;
+    sched_remote_completion_t value;
+} sched_completion_slot_t;
+
+typedef struct {
+    sched_completion_slot_t slots[SCHED_REMOTE_CMD_CAPACITY];
+    uint32_t capacity;
+    uint32_t mask;
+    volatile uint64_t head;
+    uint64_t tail;
+} sched_completion_ring_t;
+
+typedef struct {
+    sched_cmd_ring_t cmd_ring;
+    sched_completion_ring_t completion_ring;
+    uint32_t resched_pending;
+} sched_remote_inbox_t;
+
+typedef struct {
+    sched_remote_cmd_envelope_t outbound_cmds[SCHED_REMOTE_CMD_CAPACITY];
     volatile uint32_t outbound_alloc_bitmap[SCHED_CMD_BITMAP_WORDS];
-    uint64_t total_ticks;
+    sched_remote_inbox_t remote;
 } sched_rq_t;
 
 typedef struct {
@@ -62,96 +110,98 @@ cpu_local_t g_cpu_locals[MAX_CPUS];
 uint32_t g_active_core_count = 4;
 static uint32_t mock_cpu_id = 0;
 
-uint32_t hal_cpu_get_id(void) { return mock_cpu_id; }
-uint32_t sched_clamp_core(uint32_t core_id) { return core_id; }
+void sched_cmd_ring_init(sched_cmd_ring_t *q, uint32_t capacity) {
+    q->capacity = capacity;
+    q->mask = capacity - 1;
+    q->head = 0;
+    q->tail = 0;
+    for (uint32_t i = 0; i < capacity; i++) {
+        q->slots[i].seq = i;
+    }
+}
 
-sched_remote_cmd_t *test_allocate_outbound_cmd(void) {
-    uint32_t core = sched_clamp_core(hal_cpu_get_id());
-    sched_rq_t *rq = &g_cpu_locals[core].runqueue;
-    uint32_t slot_idx = 0xFFFF;
-
-    for (uint32_t w = 0; w < SCHED_CMD_BITMAP_WORDS; ++w) {
-        uint32_t val = __atomic_load_n(&rq->outbound_alloc_bitmap[w], __ATOMIC_ACQUIRE);
-        while (val != 0xFFFFFFFFU) {
-            uint32_t free_bit = __builtin_ctz(~val);
-            uint32_t new_val = val | (1U << free_bit);
-            if (__atomic_compare_exchange_n(&rq->outbound_alloc_bitmap[w], &val, new_val, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) {
-                slot_idx = w * 32 + free_bit;
-                break;
-            }
-        }
-        if (slot_idx != 0xFFFF) {
+bool sched_cmd_ring_push(sched_cmd_ring_t *q, const sched_remote_cmd_envelope_t *value) {
+    sched_cmd_slot_t *slot;
+    uint64_t pos = q->head;
+    while (1) {
+        slot = &q->slots[pos & q->mask];
+        uint64_t seq = slot->seq;
+        int64_t diff = (int64_t)seq - (int64_t)pos;
+        if (diff == 0) {
+            q->head = pos + 1;
             break;
+        } else if (diff < 0) {
+            return false; // Full
+        } else {
+            pos = q->head;
         }
     }
-
-    if (slot_idx >= SCHED_REMOTE_CMD_CAPACITY) {
-        return NULL;
-    }
-
-    sched_remote_cmd_t *cmd = &rq->outbound_cmds[slot_idx];
-    cmd->handle.generation++;
-    if (cmd->handle.generation == 0) {
-        cmd->handle.generation = 1;
-    }
-    cmd->cmd_id = slot_idx;
-    cmd->state = SCHED_REMOTE_CMD_RESERVED;
-    return cmd;
+    slot->value = *value;
+    slot->seq = pos + 1;
+    return true;
 }
 
-void test_remote_cmd_release(sched_remote_cmd_t *cmd) {
-    if (!cmd) return;
-    uint16_t slot = cmd->handle.slot;
-    uint32_t w = slot / 32;
-    uint32_t bit = slot % 32;
-    uint32_t mask = ~(1U << bit);
-
-    __atomic_store_n(&cmd->state, SCHED_REMOTE_CMD_EMPTY, __ATOMIC_RELEASE);
-
-    uint32_t core = cmd->handle.origin_cpu;
-    sched_rq_t *rq = &g_cpu_locals[core].runqueue;
-    __atomic_fetch_and(&rq->outbound_alloc_bitmap[w], mask, __ATOMIC_ACQ_REL);
+bool sched_cmd_ring_pop(sched_cmd_ring_t *q, sched_remote_cmd_envelope_t *out_value) {
+    sched_cmd_slot_t *slot;
+    uint64_t pos = q->tail;
+    slot = &q->slots[pos & q->mask];
+    uint64_t seq = slot->seq;
+    int64_t diff = (int64_t)seq - (int64_t)(pos + 1);
+    if (diff == 0) {
+        q->tail = pos + 1;
+        *out_value = slot->value;
+        slot->seq = pos + q->mask + 1;
+        return true;
+    }
+    return false; // Empty
 }
 
-void test_alloc_and_exhaustion(void) {
-    printf("Running test_alloc_and_exhaustion...\n");
-    mock_cpu_id = 0;
-    sched_rq_t *rq = &g_cpu_locals[0].runqueue;
-    memset(rq, 0, sizeof(sched_rq_t));
-    for (uint32_t i = 0; i < SCHED_REMOTE_CMD_CAPACITY; ++i) {
-        rq->outbound_cmds[i].handle.slot = i;
-        rq->outbound_cmds[i].handle.origin_cpu = 0;
-        rq->outbound_cmds[i].handle.generation = 1;
-        rq->outbound_cmds[i].state = SCHED_REMOTE_CMD_EMPTY;
-    }
+void test_basic_publish_consume(void) {
+    printf("Running test_basic_publish_consume...\n");
+    sched_cmd_ring_t ring;
+    sched_cmd_ring_init(&ring, 4);
 
-    // Allocate all 256 slots
-    sched_remote_cmd_t *cmds[SCHED_REMOTE_CMD_CAPACITY];
-    for (uint32_t i = 0; i < SCHED_REMOTE_CMD_CAPACITY; ++i) {
-        cmds[i] = test_allocate_outbound_cmd();
-        assert(cmds[i] != NULL);
-        assert(cmds[i]->cmd_id == i);
-        assert(cmds[i]->state == SCHED_REMOTE_CMD_RESERVED);
-    }
+    sched_remote_cmd_envelope_t env = {
+        .handle = { .slot = 1, .origin_cpu = 0, .generation = 10 },
+        .type = SCHED_REMOTE_WAKE,
+        .thread_id = 100
+    };
 
-    // Next allocation must fail due to exhaustion
-    sched_remote_cmd_t *fail_cmd = test_allocate_outbound_cmd();
-    assert(fail_cmd == NULL);
+    bool ok = sched_cmd_ring_push(&ring, &env);
+    assert(ok);
 
-    // Release slot 5
-    test_remote_cmd_release(cmds[5]);
-    assert(rq->outbound_cmds[5].state == SCHED_REMOTE_CMD_EMPTY);
+    sched_remote_cmd_envelope_t popped;
+    ok = sched_cmd_ring_pop(&ring, &popped);
+    assert(ok);
+    assert(popped.handle.slot == 1);
+    assert(popped.handle.generation == 10);
+    assert(popped.thread_id == 100);
 
-    // Re-allocate should get slot 5 and incremented generation
-    sched_remote_cmd_t *re_cmd = test_allocate_outbound_cmd();
-    assert(re_cmd != NULL);
-    assert(re_cmd->cmd_id == 5);
-    assert(re_cmd->handle.generation == 3); // 2 -> 3
-    printf("test_alloc_and_exhaustion passed!\n");
+    // Empty now
+    ok = sched_cmd_ring_pop(&ring, &popped);
+    assert(!ok);
+    printf("test_basic_publish_consume passed!\n");
+}
+
+void test_queue_full(void) {
+    printf("Running test_queue_full...\n");
+    sched_cmd_ring_t ring;
+    sched_cmd_ring_init(&ring, 2);
+
+    sched_remote_cmd_envelope_t env = { .thread_id = 1 };
+    assert(sched_cmd_ring_push(&ring, &env));
+    assert(sched_cmd_ring_push(&ring, &env));
+    assert(!sched_cmd_ring_push(&ring, &env)); // Full
+
+    sched_remote_cmd_envelope_t popped;
+    assert(sched_cmd_ring_pop(&ring, &popped));
+    assert(sched_cmd_ring_push(&ring, &env)); // Can push again
+    printf("test_queue_full passed!\n");
 }
 
 int main(void) {
-    test_alloc_and_exhaustion();
-    printf("ALL TESTS PASSED\n");
+    test_basic_publish_consume();
+    test_queue_full();
+    printf("ALL BASIC PROTOCOL TESTS PASSED\n");
     return 0;
 }

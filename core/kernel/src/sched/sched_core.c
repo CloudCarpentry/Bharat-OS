@@ -7,6 +7,18 @@ void arch_post_switch(void) {
   hal_cpu_enable_interrupts();
 }
 
+static void sched_remote_respond(const sched_remote_cmd_envelope_t *env, uint8_t kind, int32_t result) {
+    sched_remote_completion_t comp;
+    comp.handle = env->handle;
+    comp.result = result;
+    comp.responder_cpu = (uint16_t)sched_clamp_core(hal_cpu_get_id());
+    comp.kind = kind;
+    comp.reserved = 0;
+
+    sched_rq_t *origin_rq = &g_cpu_locals[env->handle.origin_cpu].runqueue;
+    sched_completion_ring_push(&origin_rq->remote.completion_ring, &comp);
+}
+
 void sched_reschedule(void) {
   uint32_t core = sched_clamp_core(hal_cpu_get_id());
   sched_remote_cmd_poll_timeouts();
@@ -18,22 +30,18 @@ void sched_reschedule(void) {
   sched_rq_t *rq = &g_cpu_locals[core].runqueue;
 
   // Empty remote scheduler command inbox (MPSC Lock-Free)
-  if (rq->remote.resched_pending != 0U || !bh_mpsc_queue_empty(&rq->remote.queue)) {
+  if (rq->remote.resched_pending != 0U || !sched_cmd_ring_empty(&rq->remote.cmd_ring)) {
       spin_lock(&rq->lock);
       rq->remote.resched_pending = 0U; // Clear flag since we are draining now
       uint32_t drained = 0;
       bh_thread_t *highest_prio_arrived = NULL;
 
-      void *val = NULL;
-      while (bh_mpsc_queue_pop(&rq->remote.queue, &val) == K_OK) {
-          sched_remote_cmd_t *cmd = (sched_remote_cmd_t *)val;
-          if (!cmd) {
-              continue;
-          }
+      sched_remote_cmd_envelope_t envelope;
+      while (sched_cmd_ring_pop(&rq->remote.cmd_ring, &envelope) == K_OK) {
           __atomic_fetch_add(&rq->remote.consumed, 1, __ATOMIC_RELAXED);
 
-          if (cmd->type == SCHED_REMOTE_STEAL_REQ) {
-              bh_thread_t *victim = sched_find_steal_candidate(core, cmd->target_cpu);
+          if (envelope.type == SCHED_REMOTE_STEAL_REQ) {
+              bh_thread_t *victim = sched_find_steal_candidate(core, envelope.target_cpu);
               if (victim) {
                   thread_slot_t *v_slot = sched_find_thread_slot_by_tid(victim->thread_id);
                   if (v_slot) {
@@ -54,20 +62,20 @@ void sched_reschedule(void) {
                       uint32_t epoch = __atomic_fetch_add(&victim->migration_epoch, 1, __ATOMIC_SEQ_CST) + 1;
                       victim->owner_state = THREAD_OWNER_REMOTE_PENDING;
                       victim->migration_state = SCHED_MIGRATION_DEQUEUED;
-                      victim->migration_target_cpu = cmd->target_cpu;
+                      victim->migration_target_cpu = envelope.target_cpu;
 
                       sched_remote_cmd_t *enq_cmd = sched_allocate_outbound_cmd();
                       if (enq_cmd) {
                           enq_cmd->type = SCHED_REMOTE_ENQUEUE;
                           enq_cmd->source_cpu = core;
-                          enq_cmd->target_cpu = cmd->target_cpu;
+                          enq_cmd->target_cpu = envelope.target_cpu;
                           enq_cmd->thread_id = victim->thread_id;
                           enq_cmd->expected_thread_generation = victim->sched_generation;
                           enq_cmd->migration_epoch = epoch;
                           enq_cmd->priority = victim->priority;
                           enq_cmd->state = SCHED_REMOTE_CMD_PENDING;
 
-                          kstatus_t status = sched_remote_submit(cmd->target_cpu, enq_cmd);
+                          kstatus_t status = sched_remote_submit(envelope.target_cpu, enq_cmd);
                           if (status == K_OK) {
                               victim->migration_state = SCHED_MIGRATION_COMMIT_SENT;
                           } else {
@@ -99,19 +107,19 @@ void sched_reschedule(void) {
                       }
                   }
               }
-              cmd->state = SCHED_REMOTE_CMD_ACKED;
+              sched_remote_respond(&envelope, SCHED_COMPLETION_ACK, 0);
               continue;
           }
 
-          bh_thread_t* thread = sched_find_thread_by_id(cmd->thread_id);
+          bh_thread_t* thread = sched_find_thread_by_id(envelope.thread_id);
           if (!thread) {
-              cmd->state = SCHED_REMOTE_CMD_FAILED;
+              sched_remote_respond(&envelope, SCHED_COMPLETION_NACK, -1);
               continue;
           }
 
           // Validation: Check generation
-          if (thread->sched_generation != cmd->expected_thread_generation) {
-              cmd->state = SCHED_REMOTE_CMD_FAILED;
+          if (thread->sched_generation != envelope.expected_thread_generation) {
+              sched_remote_respond(&envelope, SCHED_COMPLETION_NACK, -2);
               continue;
           }
 
@@ -119,21 +127,22 @@ void sched_reschedule(void) {
           if (thread->owner_cpu != core &&
               thread->owner_state != THREAD_OWNER_REMOTE_PENDING &&
               thread->owner_state != THREAD_OWNER_NONE) {
-              cmd->state = SCHED_REMOTE_CMD_FAILED;
+              sched_remote_respond(&envelope, SCHED_COMPLETION_NACK, -3);
               continue;
           }
 
           thread_slot_t *slot = sched_find_thread_slot_by_tid(thread->thread_id);
           if (!slot) {
-              cmd->state = SCHED_REMOTE_CMD_FAILED;
+              sched_remote_respond(&envelope, SCHED_COMPLETION_NACK, -4);
               continue;
           }
 
-          if (cmd->type == SCHED_REMOTE_WAKE) {
-              if (cmd->priority <= SCHED_MAX_PRIORITY && cmd->priority > thread->priority) {
-                  thread->priority = cmd->priority;
+          if (envelope.type == SCHED_REMOTE_WAKE) {
+              if (envelope.priority <= SCHED_MAX_PRIORITY && envelope.priority > thread->priority) {
+                  thread->priority = envelope.priority;
               }
               if (thread->state != THREAD_STATE_SLEEPING && thread->state != THREAD_STATE_BLOCKED) {
+                  sched_remote_respond(&envelope, SCHED_COMPLETION_ACK, 0);
                   continue;
               }
               thread->wake_deadline_ms = 0U;
@@ -143,7 +152,7 @@ void sched_reschedule(void) {
               if (slot->is_blocked != 0U) {
                 sched_block_dequeue(slot);
               }
-          } else if (cmd->type == SCHED_REMOTE_MIGRATE || cmd->type == SCHED_REMOTE_MIGRATE_PREPARE) {
+          } else if (envelope.type == SCHED_REMOTE_MIGRATE || envelope.type == SCHED_REMOTE_MIGRATE_PREPARE) {
               // Remote migration Phase 1: Old owner dequeue
               if (slot->is_on_runqueue != 0U) {
                   sched_invariant_on_dequeue(thread);
@@ -162,13 +171,13 @@ void sched_reschedule(void) {
               __atomic_store_n(&thread->owner_state, THREAD_OWNER_REMOTE_PENDING, __ATOMIC_RELEASE);
               __atomic_store_n(&thread->migration_state, SCHED_MIGRATION_DEQUEUED, __ATOMIC_RELEASE);
 
-              cmd->state = SCHED_REMOTE_CMD_ACKED;
+              sched_remote_respond(&envelope, SCHED_COMPLETION_ACK, 0);
               continue;
-          } else if (cmd->type == SCHED_REMOTE_ENQUEUE) {
+          } else if (envelope.type == SCHED_REMOTE_ENQUEUE) {
               uint32_t mig_state = __atomic_load_n(&thread->migration_state, __ATOMIC_ACQUIRE);
               if (mig_state == SCHED_MIGRATION_COMMITTED) {
                   // Already handled
-                  cmd->state = SCHED_REMOTE_CMD_ACKED;
+                  sched_remote_respond(&envelope, SCHED_COMPLETION_ACK, 0);
                   continue;
               }
 
@@ -177,7 +186,7 @@ void sched_reschedule(void) {
                   // Validate admissibility on target core
                   if (!sched_is_core_admissible(thread, core)) {
                       // Reject commit
-                      cmd->state = SCHED_REMOTE_CMD_FAILED;
+                      sched_remote_respond(&envelope, SCHED_COMPLETION_NACK, -5);
                       continue;
                   }
 
@@ -185,16 +194,19 @@ void sched_reschedule(void) {
                   thread->bound_core_id = core;
                   __atomic_store_n(&thread->owner_state, THREAD_OWNER_NONE, __ATOMIC_RELEASE);
                   __atomic_store_n(&thread->migration_state, SCHED_MIGRATION_COMMITTED, __ATOMIC_RELEASE);
-                  cmd->state = SCHED_REMOTE_CMD_ACKED;
+                  sched_remote_respond(&envelope, SCHED_COMPLETION_ACK, 0);
               } else if (mig_state == SCHED_MIGRATION_ROLLBACK_SENT) {
                   // Rollback enqueue accepted on old owner
                   __atomic_store_n(&thread->owner_cpu, core, __ATOMIC_RELEASE);
                   thread->bound_core_id = core;
                   __atomic_store_n(&thread->owner_state, THREAD_OWNER_NONE, __ATOMIC_RELEASE);
                   __atomic_store_n(&thread->migration_state, SCHED_MIGRATION_NONE, __ATOMIC_RELEASE);
-                  cmd->state = SCHED_REMOTE_CMD_ACKED;
+                  sched_remote_respond(&envelope, SCHED_COMPLETION_ACK, 0);
+              } else {
+                  sched_remote_respond(&envelope, SCHED_COMPLETION_NACK, -6);
+                  continue;
               }
-          } else if (cmd->type == SCHED_REMOTE_DEQUEUE) {
+          } else if (envelope.type == SCHED_REMOTE_DEQUEUE) {
               if (slot->is_on_runqueue != 0U) {
                   sched_invariant_on_dequeue(thread);
                   if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
@@ -209,27 +221,13 @@ void sched_reschedule(void) {
                       rq->runnable_count--;
                   }
               }
-              cmd->state = SCHED_REMOTE_CMD_ACKED;
+              sched_remote_respond(&envelope, SCHED_COMPLETION_ACK, 0);
               continue; // DEQUEUE is complete
-          } else if (cmd->type == SCHED_REMOTE_QUARANTINE) {
-              sched_quarantine_thread(thread, 0xBAD);
-              if (slot->is_on_runqueue != 0U) {
-                  sched_invariant_on_dequeue(thread);
-                  if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
-                      sched_cfs_dequeue(rq, thread);
-                  } else {
-                      list_del(&slot->run_node);
-                      list_init(&slot->run_node);
-                      sched_ready_bitmap_clear_if_empty(rq, thread->priority);
-                  }
-                  slot->is_on_runqueue = 0U;
-                  if (rq->runnable_count > 0U) {
-                      rq->runnable_count--;
-                  }
-              }
-              cmd->state = SCHED_REMOTE_CMD_ACKED;
+          } else if (envelope.type == SCHED_REMOTE_QUARANTINE) {
+              sched_quarantine_thread(thread, envelope.flags);
+              sched_remote_respond(&envelope, SCHED_COMPLETION_ACK, 0);
               continue;
-          } else if (cmd->type == SCHED_REMOTE_SET_PRIORITY) {
+          } else if (envelope.type == SCHED_REMOTE_SET_PRIORITY) {
               if (slot->is_on_runqueue != 0U) {
                   sched_invariant_on_dequeue(thread);
                   if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
@@ -246,7 +244,7 @@ void sched_reschedule(void) {
                       rq->runnable_count--;
                   }
               }
-              thread->priority = cmd->priority;
+              thread->priority = envelope.priority;
               if (thread->state == THREAD_STATE_READY) {
                   sched_invariant_on_enqueue(thread, core);
                   if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
@@ -260,27 +258,31 @@ void sched_reschedule(void) {
                   slot->is_on_runqueue = 1U;
                   rq->runnable_count++;
               }
-              cmd->state = SCHED_REMOTE_CMD_ACKED;
+              sched_remote_respond(&envelope, SCHED_COMPLETION_ACK, 0);
               continue;
-          } else if (cmd->type == SCHED_REMOTE_SET_THROTTLE) {
-              rq->throttled = cmd->flags;
-              cmd->state = SCHED_REMOTE_CMD_ACKED;
+          } else if (envelope.type == SCHED_REMOTE_SET_THROTTLE) {
+              rq->throttled = envelope.flags;
+              sched_remote_respond(&envelope, SCHED_COMPLETION_ACK, 0);
               continue;
-          } else if (cmd->type == SCHED_REMOTE_TERMINATE) {
+          } else if (envelope.type == SCHED_REMOTE_TERMINATE) {
               sched_mark_thread_terminated(thread);
-              cmd->state = SCHED_REMOTE_CMD_ACKED;
+              sched_remote_respond(&envelope, SCHED_COMPLETION_ACK, 0);
               continue;
-          } else if (cmd->type == SCHED_REMOTE_REAP) {
+          } else if (envelope.type == SCHED_REMOTE_REAP) {
               sched_enqueue_reap(slot);
-              cmd->state = SCHED_REMOTE_CMD_ACKED;
+              sched_remote_respond(&envelope, SCHED_COMPLETION_ACK, 0);
               continue;
-          } else if (cmd->type == SCHED_REMOTE_HANDOFF) {
-              sched_request_handoff_tid(thread->thread_id, cmd->target_cpu, cmd->flags);
-              cmd->state = SCHED_REMOTE_CMD_ACKED;
+          } else if (envelope.type == SCHED_REMOTE_HANDOFF) {
+              sched_request_handoff_tid(thread->thread_id, envelope.target_cpu, envelope.flags);
+              sched_remote_respond(&envelope, SCHED_COMPLETION_ACK, 0);
               continue;
-          } else if (cmd->type == SCHED_REMOTE_SET_AFFINITY) {
-              thread->affinity_mask = cmd->flags;
-              cmd->state = SCHED_REMOTE_CMD_ACKED;
+          } else if (envelope.type == SCHED_REMOTE_SET_AFFINITY) {
+              thread->affinity_mask = envelope.flags;
+              sched_remote_respond(&envelope, SCHED_COMPLETION_ACK, 0);
+              continue;
+          } else if (envelope.type == SCHED_REMOTE_SET_CONSTRAINTS) {
+              thread->constraints = envelope.constraints;
+              sched_remote_respond(&envelope, SCHED_COMPLETION_ACK, 0);
               continue;
           }
 
@@ -289,10 +291,11 @@ void sched_reschedule(void) {
                   thread->migration_state = SCHED_MIGRATION_FAILED;
                   thread->pending_fault = THREAD_FAULT_MIGRATION_ROLLBACK_FAILED;
               }
+              sched_remote_respond(&envelope, SCHED_COMPLETION_NACK, -7);
               continue;
           }
 
-          if (cmd->type == SCHED_REMOTE_WAKE) {
+          if (envelope.type == SCHED_REMOTE_WAKE) {
               thread->state = THREAD_STATE_READY;
           }
 
@@ -322,6 +325,7 @@ void sched_reschedule(void) {
           slot->is_on_runqueue = 1U;
           rq->runnable_count++;
           drained++;
+          sched_remote_respond(&envelope, SCHED_COMPLETION_ACK, 0);
       }
       if (drained > 0) {
           rq->inbox_drains++;
@@ -550,8 +554,19 @@ kstatus_t sched_remote_submit(uint32_t target_cpu, const sched_remote_cmd_t *cmd
   mutable_cmd->deadline_tick = rq->total_ticks + 10U; // 10 ticks deadline
   __atomic_store_n(&mutable_cmd->state, SCHED_REMOTE_CMD_PENDING, __ATOMIC_RELEASE);
 
-  // Cast away const since bh_mpsc_queue_push takes void *
-  kstatus_t status = bh_mpsc_queue_push(&target_rq->remote.queue, (void *)cmd);
+  sched_remote_cmd_envelope_t envelope;
+  envelope.handle = cmd->handle;
+  envelope.type = cmd->type;
+  envelope.source_cpu = cmd->source_cpu;
+  envelope.target_cpu = cmd->target_cpu;
+  envelope.thread_id = cmd->thread_id;
+  envelope.expected_thread_generation = cmd->expected_thread_generation;
+  envelope.migration_epoch = cmd->migration_epoch;
+  envelope.flags = cmd->flags;
+  envelope.priority = cmd->priority;
+  envelope.constraints = cmd->constraints;
+
+  kstatus_t status = sched_cmd_ring_push(&target_rq->remote.cmd_ring, &envelope);
   if (status != K_OK) {
     __atomic_store_n(&mutable_cmd->state, SCHED_REMOTE_CMD_RESERVED, __ATOMIC_RELEASE);
     __atomic_fetch_add(&target_rq->remote.full, 1, __ATOMIC_RELAXED);
@@ -618,17 +633,49 @@ void sched_remote_cmd_poll_timeouts(void) {
   sched_rq_t *rq = &g_cpu_locals[core].runqueue;
   uint64_t current_ticks = rq->total_ticks;
 
+  // 1. Scan for timeouts
   for (uint32_t i = 0; i < SCHED_REMOTE_CMD_CAPACITY; ++i) {
     sched_remote_cmd_t *cmd = &rq->outbound_cmds[i];
     uint32_t state = __atomic_load_n(&cmd->state, __ATOMIC_ACQUIRE);
 
     if (state == SCHED_REMOTE_CMD_PENDING) {
       if (cmd->deadline_tick > 0 && current_ticks >= cmd->deadline_tick) {
-        // Mark as timed out
         __atomic_store_n(&cmd->state, SCHED_REMOTE_CMD_TIMEOUT, __ATOMIC_RELEASE);
-        state = SCHED_REMOTE_CMD_TIMEOUT;
       }
     }
+  }
+
+  // 2. Process all completions in our ring
+  sched_remote_completion_t completion;
+  while (sched_completion_ring_pop(&rq->remote.completion_ring, &completion) == K_OK) {
+    uint16_t slot_idx = completion.handle.slot;
+    if (slot_idx >= SCHED_REMOTE_CMD_CAPACITY) {
+      continue;
+    }
+    sched_remote_cmd_t *cmd = &rq->outbound_cmds[slot_idx];
+
+    // Authoritative generation validation:
+    if (cmd->handle.generation != completion.handle.generation) {
+      // Stale completion from an old, timed-out command. Ignore completely!
+      continue;
+    }
+
+    uint32_t current_state = __atomic_load_n(&cmd->state, __ATOMIC_ACQUIRE);
+    if (current_state != SCHED_REMOTE_CMD_PENDING) {
+      // Command already retired/timed out or duplicate. Ignore!
+      continue;
+    }
+
+    // Update state based on completion result
+    uint32_t next_state = (completion.kind == SCHED_COMPLETION_ACK) ? SCHED_REMOTE_CMD_ACKED : SCHED_REMOTE_CMD_FAILED;
+    cmd->result = completion.result;
+    __atomic_store_n(&cmd->state, next_state, __ATOMIC_RELEASE);
+  }
+
+  // 3. Process actions on finalized/terminal commands
+  for (uint32_t i = 0; i < SCHED_REMOTE_CMD_CAPACITY; ++i) {
+    sched_remote_cmd_t *cmd = &rq->outbound_cmds[i];
+    uint32_t state = __atomic_load_n(&cmd->state, __ATOMIC_ACQUIRE);
 
     if (state == SCHED_REMOTE_CMD_ACKED || state == SCHED_REMOTE_CMD_FAILED || state == SCHED_REMOTE_CMD_TIMEOUT) {
       // Terminal state observed by originating CPU
@@ -756,4 +803,142 @@ void sched_remote_cmd_poll_timeouts(void) {
       sched_remote_cmd_release(cmd);
     }
   }
+}
+
+kstatus_t sched_cmd_ring_init(sched_cmd_ring_t *q, sched_cmd_slot_t *slots, uint32_t capacity) {
+    if (!q || !slots || capacity < 2 || (capacity & (capacity - 1)) != 0) {
+        return K_ERR_INVALID_ARG;
+    }
+    q->slots = slots;
+    q->capacity = capacity;
+    q->mask = capacity - 1;
+    q->head = 0;
+    q->tail = 0;
+
+    for (uint32_t i = 0; i < capacity; i++) {
+        q->slots[i].seq = i;
+        __builtin_memset(&q->slots[i].value, 0, sizeof(sched_remote_cmd_envelope_t));
+    }
+    return K_OK;
+}
+
+kstatus_t sched_cmd_ring_push(sched_cmd_ring_t *q, const sched_remote_cmd_envelope_t *value) {
+    if (!q || !value) return K_ERR_INVALID_ARG;
+    sched_cmd_slot_t *slot;
+    uint64_t pos = q->head;
+
+    while (true) {
+        slot = &q->slots[pos & q->mask];
+        uint64_t seq = __atomic_load_n(&slot->seq, __ATOMIC_ACQUIRE);
+        int64_t diff = (int64_t)seq - (int64_t)pos;
+
+        if (diff == 0) {
+            if (__atomic_compare_exchange_n(&q->head, &pos, pos + 1, false, __ATOMIC_RELAXED, __ATOMIC_RELAXED)) {
+                break;
+            }
+        } else if (diff < 0) {
+            return K_ERR_AGAIN;
+        } else {
+            pos = __atomic_load_n(&q->head, __ATOMIC_RELAXED);
+        }
+    }
+
+    slot->value = *value;
+    __atomic_store_n(&slot->seq, pos + 1, __ATOMIC_RELEASE);
+    return K_OK;
+}
+
+kstatus_t sched_cmd_ring_pop(sched_cmd_ring_t *q, sched_remote_cmd_envelope_t *out_value) {
+    if (!q) return K_ERR_INVALID_ARG;
+    sched_cmd_slot_t *slot;
+    uint64_t pos = q->tail;
+
+    slot = &q->slots[pos & q->mask];
+    uint64_t seq = __atomic_load_n(&slot->seq, __ATOMIC_ACQUIRE);
+    int64_t diff = (int64_t)seq - (int64_t)(pos + 1);
+
+    if (diff == 0) {
+        q->tail = pos + 1;
+        if (out_value) {
+            *out_value = slot->value;
+        }
+        __atomic_store_n(&slot->seq, pos + q->mask + 1, __ATOMIC_RELEASE);
+        return K_OK;
+    }
+    return K_ERR_AGAIN;
+}
+
+bool sched_cmd_ring_empty(const sched_cmd_ring_t *q) {
+    if (!q) return true;
+    uint64_t head = __atomic_load_n(&q->head, __ATOMIC_RELAXED);
+    return q->tail == head;
+}
+
+kstatus_t sched_completion_ring_init(sched_completion_ring_t *q, sched_completion_slot_t *slots, uint32_t capacity) {
+    if (!q || !slots || capacity < 2 || (capacity & (capacity - 1)) != 0) {
+        return K_ERR_INVALID_ARG;
+    }
+    q->slots = slots;
+    q->capacity = capacity;
+    q->mask = capacity - 1;
+    q->head = 0;
+    q->tail = 0;
+
+    for (uint32_t i = 0; i < capacity; i++) {
+        q->slots[i].seq = i;
+        __builtin_memset(&q->slots[i].value, 0, sizeof(sched_remote_completion_t));
+    }
+    return K_OK;
+}
+
+kstatus_t sched_completion_ring_push(sched_completion_ring_t *q, const sched_remote_completion_t *value) {
+    if (!q || !value) return K_ERR_INVALID_ARG;
+    sched_completion_slot_t *slot;
+    uint64_t pos = q->head;
+
+    while (true) {
+        slot = &q->slots[pos & q->mask];
+        uint64_t seq = __atomic_load_n(&slot->seq, __ATOMIC_ACQUIRE);
+        int64_t diff = (int64_t)seq - (int64_t)pos;
+
+        if (diff == 0) {
+            if (__atomic_compare_exchange_n(&q->head, &pos, pos + 1, false, __ATOMIC_RELAXED, __ATOMIC_RELAXED)) {
+                break;
+            }
+        } else if (diff < 0) {
+            return K_ERR_AGAIN;
+        } else {
+            pos = __atomic_load_n(&q->head, __ATOMIC_RELAXED);
+        }
+    }
+
+    slot->value = *value;
+    __atomic_store_n(&slot->seq, pos + 1, __ATOMIC_RELEASE);
+    return K_OK;
+}
+
+kstatus_t sched_completion_ring_pop(sched_completion_ring_t *q, sched_remote_completion_t *out_value) {
+    if (!q) return K_ERR_INVALID_ARG;
+    sched_completion_slot_t *slot;
+    uint64_t pos = q->tail;
+
+    slot = &q->slots[pos & q->mask];
+    uint64_t seq = __atomic_load_n(&slot->seq, __ATOMIC_ACQUIRE);
+    int64_t diff = (int64_t)seq - (int64_t)(pos + 1);
+
+    if (diff == 0) {
+        q->tail = pos + 1;
+        if (out_value) {
+            *out_value = slot->value;
+        }
+        __atomic_store_n(&slot->seq, pos + q->mask + 1, __ATOMIC_RELEASE);
+        return K_OK;
+    }
+    return K_ERR_AGAIN;
+}
+
+bool sched_completion_ring_empty(const sched_completion_ring_t *q) {
+    if (!q) return true;
+    uint64_t head = __atomic_load_n(&q->head, __ATOMIC_RELAXED);
+    return q->tail == head;
 }
