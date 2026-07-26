@@ -2,28 +2,28 @@
 #include "sched_internal.h"
 
 void sched_edf_enqueue(sched_rq_t *rq, bh_thread_t *thread) {
+    sched_entity_t *entity = sched_find_entity_by_thread(thread);
+    if (!entity) return;
+
     struct rb_node **link = &rq->edf_runqueue.rb_node;
     struct rb_node *parent = NULL;
-    uint64_t absolute_deadline = thread->absolute_deadline_ms;
+    uint64_t absolute_deadline = entity->absolute_deadline;
 
     while (*link) {
         parent = *link;
-        bh_thread_t *entry = (bh_thread_t *)(void *)((char *)parent - offsetof(bh_thread_t, edf_node));
+        sched_entity_t *entry = (sched_entity_t *)(void *)((char *)parent - offsetof(sched_entity_t, edf_node));
 
-        if (absolute_deadline < entry->absolute_deadline_ms) {
+        if (absolute_deadline < entry->absolute_deadline) {
             link = &parent->rb_left;
-        } else if (absolute_deadline > entry->absolute_deadline_ms) {
+        } else if (absolute_deadline > entry->absolute_deadline) {
             link = &parent->rb_right;
         } else {
-            // Tie-breaker: higher priority first (lower value in Bharat is higher priority?
-            // Actually SCHED_MAX_PRIORITY is 31, so higher value is higher priority)
-            if (thread->priority > entry->priority) {
+            if (entity->priority > entry->priority) {
                 link = &parent->rb_left;
-            } else if (thread->priority < entry->priority) {
+            } else if (entity->priority < entry->priority) {
                 link = &parent->rb_right;
             } else {
-                // Second tie-breaker: lower thread ID first
-                if (thread->thread_id < entry->thread_id) {
+                if (entity->tid < entry->tid) {
                     link = &parent->rb_left;
                 } else {
                     link = &parent->rb_right;
@@ -32,15 +32,18 @@ void sched_edf_enqueue(sched_rq_t *rq, bh_thread_t *thread) {
         }
     }
 
-    rb_link_node(&thread->edf_node, parent, link);
-    rb_insert_color(&thread->edf_node, &rq->edf_runqueue);
+    rb_link_node(&entity->edf_node, parent, link);
+    rb_insert_color(&entity->edf_node, &rq->edf_runqueue);
 }
 
 void sched_edf_dequeue(sched_rq_t *rq, bh_thread_t *thread) {
+    sched_entity_t *entity = sched_find_entity_by_thread(thread);
+    if (!entity) return;
+
     if (rq->edf_runqueue.rb_node == NULL) {
         return;
     }
-    rb_erase(&thread->edf_node, &rq->edf_runqueue);
+    rb_erase(&entity->edf_node, &rq->edf_runqueue);
 }
 
 int sched_admission_edf(bh_thread_t *thread, uint64_t wcet_ms, uint64_t period_ms, uint64_t deadline_ms) {

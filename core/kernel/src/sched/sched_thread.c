@@ -80,6 +80,11 @@ int thread_destroy(bh_thread_t *thread) {
 
   sched_detach_thread_from_queues(slot);
 
+  sched_entity_t *entity = sched_find_entity_by_thread(thread);
+  if (entity) {
+    sched_free_entity(thread->owner_cpu, entity);
+  }
+
   // Clean up architecture extended state
   arch_ext_state_thread_destroy(thread);
 

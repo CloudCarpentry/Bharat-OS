@@ -71,6 +71,15 @@ sched_remote_cmd_t *sched_allocate_outbound_cmd(void);
 uint32_t sched_clamp_core(uint32_t core_id);
 bh_thread_t *sched_find_steal_candidate(uint32_t core_id, uint32_t target_cpu);
 
+sched_entity_t *sched_allocate_entity(uint32_t core);
+void sched_free_entity(uint32_t core, sched_entity_t *entity);
+sched_entity_t *sched_find_entity_by_thread(const bh_thread_t *thread);
+kstatus_t sched_remote_respond_cell(uint16_t origin_cpu, uint16_t slot, uint32_t generation, uint8_t kind, int32_t result);
+void sched_completion_arm(sched_rq_t *rq, uint16_t slot, uint32_t generation);
+kstatus_t sched_completion_publish(uint16_t origin_cpu, uint16_t slot, uint32_t generation, uint16_t responder_cpu, uint8_t kind, int32_t result, uint32_t epoch, const void *payload, size_t payload_size);
+void sched_log_txn(sched_rq_t *rq, sched_cmd_handle_t handle, uint64_t tid, uint32_t epoch, uint16_t cmd_type, uint16_t outcome, int32_t result);
+bool sched_find_txn(sched_rq_t *rq, sched_cmd_handle_t handle, uint16_t *out_outcome, int32_t *out_result);
+
 static inline void sched_publish_load(sched_rq_t *rq) {
   uint32_t seq = rq->load_snapshot.load_seq;
   __atomic_store_n(&rq->load_snapshot.load_seq, seq + 1, __ATOMIC_RELEASE);

@@ -81,13 +81,8 @@ int sched_migrate_task(bh_thread_t *thread, uint32_t new_node) {
   }
 
   uint32_t m_state = __atomic_load_n(&thread->migration_state, __ATOMIC_ACQUIRE);
-  if (m_state != SCHED_MIGRATION_NONE) {
+  if (m_state != SCHED_MIG_NONE) {
       return K_ERR_IN_PROGRESS;
-  }
-
-  thread_slot_t *slot = sched_find_thread_slot_by_tid(thread->thread_id);
-  if (!slot) {
-    return -1;
   }
 
   uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
@@ -103,78 +98,45 @@ int sched_migrate_task(bh_thread_t *thread, uint32_t new_node) {
   thread->migration_target_cpu = new_node;
 
   if (owner == current_core) {
-      // Local owner: Phase 1: Local dequeue
-      hal_cpu_disable_interrupts();
-      sched_rq_t *rq = sched_local_rq();
-      if (slot->is_on_runqueue != 0U) {
-          if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
-            sched_cfs_dequeue(rq, thread);
-          } else {
-            list_del(&slot->run_node);
-            list_init(&slot->run_node);
-            sched_ready_bitmap_clear_if_empty(rq, thread->priority);
-          }
-          slot->is_on_runqueue = 0U;
-          if (rq->runnable_count > 0U) {
-            rq->runnable_count--;
-          }
+      sched_entity_t *entity = sched_find_entity_by_thread(thread);
+      if (!entity) {
+          return -1;
       }
-      sched_migration_transition(thread, SCHED_MIGRATION_NONE, SCHED_MIGRATION_DEQUEUED);
-      thread->owner_state = THREAD_OWNER_REMOTE_PENDING;
-      hal_cpu_enable_interrupts();
 
-      // Local owner: Phase 2: Remote enqueue request to new_node
+      // Local owner: Phase 1: Submit TARGET_RESERVE command
       sched_remote_cmd_t *cmd = sched_allocate_outbound_cmd();
       if (!cmd) {
-          hal_cpu_disable_interrupts();
-          thread->owner_state = THREAD_OWNER_NONE;
-          sched_migration_transition(thread, SCHED_MIGRATION_DEQUEUED, SCHED_MIGRATION_NONE);
-          sched_invariant_on_enqueue(thread, current_core);
-          if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
-            sched_cfs_enqueue(rq, thread);
-          } else {
-            list_add(&slot->run_node, &rq->ready_queue[thread->priority]);
-            sched_ready_bitmap_set(rq, thread->priority);
-          }
-          slot->is_on_runqueue = 1U;
-          rq->runnable_count++;
-          hal_cpu_enable_interrupts();
           return K_ERR_NO_RESOURCES;
       }
 
-      cmd->type = SCHED_REMOTE_ENQUEUE;
+      cmd->type = SCHED_REMOTE_MIGRATE_RESERVE;
       cmd->source_cpu = current_core;
       cmd->target_cpu = new_node;
       cmd->thread_id = thread->thread_id;
       cmd->expected_thread_generation = thread->sched_generation;
       cmd->migration_epoch = epoch;
       cmd->priority = thread->priority;
+      cmd->vruntime = entity->vruntime;
+      cmd->absolute_deadline = entity->absolute_deadline;
+      cmd->rt_attr = entity->rt_attr;
+      cmd->context = entity->context;
       cmd->state = SCHED_REMOTE_CMD_PENDING;
 
-      sched_migration_transition(thread, SCHED_MIGRATION_DEQUEUED, SCHED_MIGRATION_COMMIT_SENT);
+      sched_migration_transition(thread, SCHED_MIG_NONE, SCHED_MIG_RESERVE_SENT);
+      entity->migration_state = SCHED_MIG_RESERVE_SENT;
+      entity->migration_epoch = epoch;
       thread->preferred_numa_node = (uint8_t)new_node;
 
       kstatus_t status = sched_remote_submit(new_node, cmd);
       if (status != K_OK) {
           sched_remote_cmd_release(cmd);
-          hal_cpu_disable_interrupts();
-          thread->owner_state = THREAD_OWNER_NONE;
-          sched_migration_transition(thread, SCHED_MIGRATION_COMMIT_SENT, SCHED_MIGRATION_NONE);
-          sched_invariant_on_enqueue(thread, current_core);
-          if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
-            sched_cfs_enqueue(rq, thread);
-          } else {
-            list_add(&slot->run_node, &rq->ready_queue[thread->priority]);
-            sched_ready_bitmap_set(rq, thread->priority);
-          }
-          slot->is_on_runqueue = 1U;
-          rq->runnable_count++;
-          hal_cpu_enable_interrupts();
+          sched_migration_transition(thread, SCHED_MIG_RESERVE_SENT, SCHED_MIG_NONE);
+          entity->migration_state = SCHED_MIG_NONE;
           return status;
       }
       return K_ERR_IN_PROGRESS;
   } else {
-      // Remote owner: Send prepare command to owner core
+      // Remote owner: Send prepare command to owner core (which will then coordinator locally)
       sched_remote_cmd_t *cmd = sched_allocate_outbound_cmd();
       if (!cmd) {
           return K_ERR_NO_RESOURCES;
@@ -188,13 +150,13 @@ int sched_migrate_task(bh_thread_t *thread, uint32_t new_node) {
       cmd->migration_epoch = epoch;
       cmd->state = SCHED_REMOTE_CMD_PENDING;
 
-      sched_migration_transition(thread, SCHED_MIGRATION_NONE, SCHED_MIGRATION_PREPARE_SENT);
+      sched_migration_transition(thread, SCHED_MIG_NONE, SCHED_MIG_RESERVE_SENT);
       thread->preferred_numa_node = (uint8_t)new_node;
 
       kstatus_t status = sched_remote_submit(owner, cmd);
       if (status != K_OK) {
           sched_remote_cmd_release(cmd);
-          sched_migration_transition(thread, SCHED_MIGRATION_PREPARE_SENT, SCHED_MIGRATION_NONE);
+          sched_migration_transition(thread, SCHED_MIG_RESERVE_SENT, SCHED_MIG_NONE);
           return status;
       }
       return K_ERR_IN_PROGRESS;
