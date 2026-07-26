@@ -77,7 +77,6 @@ void tlb_pending_ack(uint32_t reqid, uint32_t acking_core) {
     tlb_pending_entry_t* entry = &g_tlb_pending[core_id][slot];
 
     // Validate that it's in use and generation matches
-    // Note: since this is atomic and bounded per requester, we use atomic OR on ack_mask
     if (__atomic_load_n(&entry->in_use, __ATOMIC_ACQUIRE) &&
         __atomic_load_n(&entry->request_id, __ATOMIC_ACQUIRE) == reqid) {
 
@@ -85,6 +84,8 @@ void tlb_pending_ack(uint32_t reqid, uint32_t acking_core) {
         uint64_t prev = __atomic_fetch_or(&entry->ack_mask, mask, __ATOMIC_RELEASE);
         if (!(prev & mask)) {
             __atomic_add_fetch(&g_tlb_stats[core_id].acks_received, 1, __ATOMIC_RELAXED);
+        } else {
+            __atomic_add_fetch(&g_tlb_stats[core_id].duplicate_acks, 1, __ATOMIC_RELAXED);
         }
     } else {
         __atomic_add_fetch(&g_tlb_stats[core_id].stale_acks, 1, __ATOMIC_RELAXED);
@@ -105,4 +106,12 @@ void tlb_pending_free(uint32_t current_core, int slot) {
 tlb_pending_stats_t* tlb_pending_get_stats(uint32_t core_id) {
     if (core_id >= g_active_core_count) return NULL;
     return &g_tlb_stats[core_id];
+}
+
+uint64_t tlb_pending_get_missing_mask(uint32_t core_id, int slot) {
+    if (core_id >= g_active_core_count || slot >= BHARAT_TLB_MAX_PENDING_PER_CORE) return 0;
+    tlb_pending_entry_t* entry = &g_tlb_pending[core_id][slot];
+    if (!__atomic_load_n(&entry->in_use, __ATOMIC_ACQUIRE)) return 0;
+    uint64_t ack = __atomic_load_n(&entry->ack_mask, __ATOMIC_ACQUIRE);
+    return entry->target_mask & ~ack;
 }

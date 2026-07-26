@@ -1,8 +1,8 @@
-
 #include "mm/mem_model.h"
 #include "hal/hal_tlb.h"
 #include "hal/hal_ipi.h"
 #include "hal/hal.h"
+#include "hal/hal_timer.h"
 #include "bharat/cpu_local.h"
 #include "mm/tlb_internal.h"
 #include "mm/aspace.h"
@@ -17,6 +17,15 @@
 #include "bharat/urpc.h"
 #include "kernel.h"
 
+// Central fallback policy configuration
+#ifndef BHARAT_TLB_LEGACY_MAILBOX_FALLBACK
+  #if defined(BHARAT_PROFILE_MMU_FULL) || defined(BHARAT_PROFILE_RTOS) || defined(BHARAT_PROFILE_SAFETY) || defined(BHARAT_KERNEL_HARDENING_FATAL)
+    #define BHARAT_TLB_LEGACY_MAILBOX_FALLBACK 0
+  #else
+    #define BHARAT_TLB_LEGACY_MAILBOX_FALLBACK 1
+  #endif
+#endif
+
 // Bring in the generated definitions
 #ifndef BHARAT_HOST_TEST
 #include "bharat_monitor_v1_types.h"
@@ -24,6 +33,8 @@
 #include "bharat/msg/wire.h"
 #else
 // Minimal mocks for host tests
+#include <bharat/uapi/subsys/msg_types.h>
+
 typedef struct {
     uint64_t aspace_id;
     uint64_t va_start;
@@ -36,41 +47,85 @@ typedef struct {
     uint32_t status;
 } bharat_monitor_v1_TlbInvalidateResp_t;
 
-typedef struct {
-    int dummy;
-    struct {
-        int (*send)(void* t, const void* buf, size_t len);
-        int (*recv)(void* t, void* buf, size_t max, size_t* rx_len);
-        int (*poll)(void* t, int timeout);
+typedef struct bharat_transport {
+    const struct {
+        int (*send)(struct bharat_transport* self, const uint8_t* buf, size_t len);
+        int (*recv)(struct bharat_transport* self, uint8_t* buf, size_t cap, size_t* out_len);
+        uint32_t (*get_caps)(struct bharat_transport* self);
+        size_t (*get_mtu)(struct bharat_transport* self);
+        int (*poll)(struct bharat_transport* self, int timeout_ms);
     }* ops;
+    void* ctx;
+    uint32_t local_id;
 } bharat_transport_t;
 
-#define BHARAT_MSG_HEADER_MIN_LEN 16
+#define BHARAT_MSG_HEADER_MIN_LEN 44
+#define BHARAT_MSG_MAGIC         0x42485254  // "BHRT"
 #define BHARAT_MSG_OK 0
 #define BHARAT_MSG_VERSION_MAJOR 1
 #define BHARAT_MSG_VERSION_MINOR 0
-#define BHARAT_MSG_FLAG_RESPONSE 1
+#define BHARAT_MSG_FLAG_REQUEST      (1U << 0)
+#define BHARAT_MSG_FLAG_RESPONSE     (1U << 1)
 
 typedef struct {
-    uint8_t version_major;
-    uint8_t version_minor;
-    uint8_t header_len;
-    uint8_t flags;
+    uint8_t  version_major;
+    uint8_t  version_minor;
+    uint16_t header_len;
     uint16_t service_id;
     uint16_t opcode;
-    uint32_t request_id;
+    uint32_t flags;
+    uint32_t total_len;
+    uint64_t request_id;
     uint32_t src_node;
     uint32_t dst_node;
-    uint32_t total_len;
+    uint16_t cap_count;
+    uint16_t desc_count;
+    uint32_t header_crc;
 } bharat_msg_header_t;
 
-static inline int bharat_msg_header_decode(const void* buf, size_t len, bharat_msg_header_t* hdr) { return -1; }
-static inline int bharat_msg_header_encode(const bharat_msg_header_t* hdr, void* buf, size_t max) { return -1; }
-static inline bool bharat_msg_is_request(uint8_t flags) { return false; }
-static inline bool bharat_msg_is_response(uint8_t flags) { return (flags & BHARAT_MSG_FLAG_RESPONSE) != 0; }
-static inline uint64_t bharat_load_le64(const void* p) { return 0; }
-static inline uint32_t bharat_load_le32(const void* p) { return 0; }
-static inline void bharat_store_le32(void* p, uint32_t v) {}
+static inline int bharat_msg_header_decode(const void* buf, size_t len, bharat_msg_header_t* hdr) {
+    if (!buf || !hdr) return -1;
+    if (len < BHARAT_MSG_HEADER_MIN_LEN) return -1;
+    uint32_t magic = bharat_load_le32((const uint8_t*)buf + 0x00);
+    if (magic != BHARAT_MSG_MAGIC) return -1;
+    hdr->version_major = ((const uint8_t*)buf)[0x04];
+    hdr->version_minor = ((const uint8_t*)buf)[0x05];
+    hdr->header_len    = bharat_load_le16((const uint8_t*)buf + 0x06);
+    hdr->service_id    = bharat_load_le16((const uint8_t*)buf + 0x08);
+    hdr->opcode        = bharat_load_le16((const uint8_t*)buf + 0x0A);
+    hdr->flags         = bharat_load_le32((const uint8_t*)buf + 0x0C);
+    hdr->total_len     = bharat_load_le32((const uint8_t*)buf + 0x10);
+    hdr->request_id    = bharat_load_le64((const uint8_t*)buf + 0x14);
+    hdr->src_node      = bharat_load_le32((const uint8_t*)buf + 0x1C);
+    hdr->dst_node      = bharat_load_le32((const uint8_t*)buf + 0x20);
+    hdr->cap_count     = bharat_load_le16((const uint8_t*)buf + 0x24);
+    hdr->desc_count    = bharat_load_le16((const uint8_t*)buf + 0x26);
+    hdr->header_crc    = bharat_load_le32((const uint8_t*)buf + 0x28);
+    return BHARAT_MSG_OK;
+}
+
+static inline int bharat_msg_header_encode(const bharat_msg_header_t* hdr, void* buf, size_t max) {
+    if (!hdr || !buf) return -1;
+    if (max < hdr->header_len || max < BHARAT_MSG_HEADER_MIN_LEN) return -1;
+    bharat_store_le32((uint8_t*)buf + 0x00, BHARAT_MSG_MAGIC);
+    ((uint8_t*)buf)[0x04] = hdr->version_major;
+    ((uint8_t*)buf)[0x05] = hdr->version_minor;
+    bharat_store_le16((uint8_t*)buf + 0x06, hdr->header_len);
+    bharat_store_le16((uint8_t*)buf + 0x08, hdr->service_id);
+    bharat_store_le16((uint8_t*)buf + 0x0A, hdr->opcode);
+    bharat_store_le32((uint8_t*)buf + 0x0C, hdr->flags);
+    bharat_store_le32((uint8_t*)buf + 0x10, hdr->total_len);
+    bharat_store_le64((uint8_t*)buf + 0x14, hdr->request_id);
+    bharat_store_le32((uint8_t*)buf + 0x1C, hdr->src_node);
+    bharat_store_le32((uint8_t*)buf + 0x20, hdr->dst_node);
+    bharat_store_le16((uint8_t*)buf + 0x24, hdr->cap_count);
+    bharat_store_le16((uint8_t*)buf + 0x26, hdr->desc_count);
+    bharat_store_le32((uint8_t*)buf + 0x28, hdr->header_crc);
+    return BHARAT_MSG_OK;
+}
+
+static inline bool bharat_msg_is_request(uint32_t flags) { return (flags & BHARAT_MSG_FLAG_REQUEST) != 0; }
+static inline bool bharat_msg_is_response(uint32_t flags) { return (flags & BHARAT_MSG_FLAG_RESPONSE) != 0; }
 #endif
 
 // Optional transport resolver hook for core->transport routing.
@@ -78,7 +133,7 @@ __attribute__((weak)) bharat_transport_t* transport_for_core(int core) {
     (void)core;
     return NULL;
 }
-extern int bharat_monitor_v1_call_tlb_invalidate(bharat_transport_t* t, int dst, const bharat_monitor_v1_TlbInvalidateReq_t* req, void* ctx);
+extern int bharat_monitor_v1_send_tlb_invalidate(bharat_transport_t* t, int dst, const bharat_monitor_v1_TlbInvalidateReq_t* req, uint64_t reqid, void* ctx);
 
 // Forward declarations
 extern void vmm_process_urpc_messages(void);
@@ -87,10 +142,10 @@ extern void cap_handle_delegate_ack(uint64_t payload);
 extern void cap_handle_revoke_req(uint64_t payload, uint32_t source_core);
 extern void cap_handle_revoke_ack(uint64_t payload);
 
-static kstatus_t tlb_send_via_transport(uint32_t core, const bharat_monitor_v1_TlbInvalidateReq_t* req) {
+static kstatus_t tlb_send_via_transport(uint32_t core, const bharat_monitor_v1_TlbInvalidateReq_t* req, uint64_t reqid) {
     bharat_transport_t* t = transport_for_core(core);
     if (t) {
-         return (kstatus_t)bharat_monitor_v1_call_tlb_invalidate(t, core, req, NULL);
+         return (kstatus_t)bharat_monitor_v1_send_tlb_invalidate(t, core, req, reqid, NULL);
     }
     return K_ERR_NOT_FOUND;
 }
@@ -112,24 +167,20 @@ static void tlb_send_via_mailbox_legacy(uint32_t core, uint32_t current_core, ui
     hal_ipi_send(core, HAL_IPI_TLB_SHOOTDOWN);
 }
 
-static kstatus_t tlb_wait_for_acks_bounded(uint32_t current_core, int slot) {
-    #define BHARAT_TLB_ACK_TIMEOUT_LOOPS 1000000
-    #define BHARAT_TLB_MAX_RETRIES 3
-
-    uint32_t retry_count = 0;
-    while (retry_count < BHARAT_TLB_MAX_RETRIES) {
-        uint32_t wait_loops = 0;
-        while (wait_loops < BHARAT_TLB_ACK_TIMEOUT_LOOPS) {
-            if (tlb_pending_is_complete(current_core, slot)) {
-                return K_OK;
-            }
-            arch_cpu_relax();
-            vmm_process_urpc_messages();
-            wait_loops++;
-        }
-        retry_count++;
+static inline uint64_t tlb_get_timeout_ticks(void) {
+    uint64_t freq = hal_timer_read_freq();
+    if (freq == 0) {
+#ifdef BHARAT_HOST_TEST
+        return 10000; // Provide an explicit fake monotonic clock timeout in host tests
+#else
+        #if defined(BHARAT_PROFILE_SAFETY) || defined(BHARAT_PROFILE_RTOS)
+        kernel_panic("TLB: Monotonic timer unavailable in safety/RT profile!");
+        #endif
+        return 1000000; // default fallback if allowed
+#endif
     }
-    return K_ERR_TIMEOUT;
+    // 10 ms per attempt
+    return freq / 100;
 }
 
 static void tlb_handle_failure(tlb_failure_policy_t policy, uint64_t aspace_id, uint32_t reqid) {
@@ -142,17 +193,9 @@ static void tlb_handle_failure(tlb_failure_policy_t policy, uint64_t aspace_id, 
         case TLB_FAIL_KERNEL_PANIC:
             kernel_panic("TLB Shootdown Timeout: Revocation failed. System halted to prevent corruption.");
             break;
-        case TLB_FAIL_ISOLATE_ASPACE: {
-            // Find the aspace object to mark it poisoned.
-            // In a real system we'd look it up by ID if we don't have the pointer.
-            // For now we assume we are called from a context where we can find it.
-            // Since we don't have a global aspace lookup by ID easily accessible here,
-            // we will need to rely on the caller to handle isolation if possible,
-            // or we implement a basic lookup.
-            // Given the instruction, we'll mark aspace poisoned.
-            // We'll add a helper to vmm_send_tlb_invalidate_ex to do this.
+        case TLB_FAIL_ISOLATE_ASPACE:
+            // Handled in caller using aspace_mark_poisoned
             break;
-        }
         default:
             break;
     }
@@ -168,10 +211,6 @@ static tlb_failure_policy_t tlb_default_failure_policy(void) {
 #endif
 }
 
-static bool tlb_failure_policy_is_fatal(tlb_failure_policy_t policy) {
-    return policy == TLB_FAIL_KERNEL_PANIC;
-}
-
 kstatus_t vmm_send_tlb_invalidate_ex(vm_aspace_t *aspace,
                                 uint64_t va,
                                 uint64_t len,
@@ -179,12 +218,6 @@ kstatus_t vmm_send_tlb_invalidate_ex(vm_aspace_t *aspace,
                                 tlb_failure_policy_t failure_policy)
 {
     if (!aspace_is_valid_for_tlb(aspace)) return K_ERR_INVALID_ARG;
-
-    bharat_monitor_v1_TlbInvalidateReq_t req = {0};
-    req.aspace_id = aspace->object_id;
-    req.va_start  = va;
-    req.length    = len;
-    req.type      = type;
 
     uint32_t current_core = hal_cpu_get_id();
     uint64_t target_mask = aspace_get_active_mask(aspace);
@@ -200,52 +233,126 @@ kstatus_t vmm_send_tlb_invalidate_ex(vm_aspace_t *aspace,
     int slot = tlb_pending_alloc(aspace->object_id, target_mask, &reqid);
 
     if (slot < 0) {
-        // Fallback reqid
-        reqid = tlb_reqid_encode(current_core, 0xFF, (uint32_t)aspace->tlb_gen & 0xFFFF);
-        tlb_pending_get_stats(current_core)->fallback_count++;
+        tlb_pending_stats_t* stats = tlb_pending_get_stats(current_core);
+        if (stats) stats->fallback_count++;
+        return K_ERR_NO_RESOURCES;
     }
 
-    req.generation = reqid;
+    bharat_monitor_v1_TlbInvalidateReq_t req = {0};
+    req.aspace_id = aspace->object_id;
+    req.va_start  = va;
+    req.length    = len;
+    req.type      = type;
+    req.generation = aspace->tlb_gen; // Keep actual coherency generation
+
     (void)aspace_next_tlb_generation(aspace);
 
-    bool any_sent = false;
-    for (int core = 0; core < MAX_CPUS; core++) {
-        if (core == current_core) continue;
-        if (!(target_mask & (1ULL << core))) continue;
-
-        if (tlb_send_via_transport(core, &req) == K_OK) {
-             any_sent = true;
-        } else {
-             // KERN-P0-002: Disable legacy mailbox by default for hardened profiles
-             #ifndef BHARAT_DISABLE_LEGACY_TLB_MAILBOX
-             tlb_send_via_mailbox_legacy(core, current_core, type, aspace, va, len, req.generation);
-             any_sent = true;
-             #endif
-        }
-    }
-
-    if (!any_sent) {
-        if (slot >= 0) tlb_pending_free(current_core, slot);
-        return K_ERR_NOT_FOUND;
-    }
-
+    uint64_t active_target_mask = target_mask;
+    uint32_t retry_count = 0;
     kstatus_t status = K_OK;
-    if (slot >= 0) {
-        status = tlb_wait_for_acks_bounded(current_core, slot);
-        if (status != K_OK) {
-            tlb_handle_failure(failure_policy, aspace->object_id, reqid);
-            if (failure_policy == TLB_FAIL_ISOLATE_ASPACE) {
-                aspace_mark_poisoned(aspace);
+    uint64_t timeout_ticks = tlb_get_timeout_ticks();
+    uint64_t start_tick = hal_timer_monotonic_ticks();
+
+    #define BHARAT_TLB_MAX_RETRIES 3
+
+    while (retry_count < BHARAT_TLB_MAX_RETRIES) {
+        if (retry_count > 0) {
+            tlb_pending_stats_t* stats = tlb_pending_get_stats(current_core);
+            if (stats) stats->retries++;
+        }
+
+        bool any_sent = false;
+        uint64_t dispatch_failure_mask = 0;
+
+        for (int core = 0; core < MAX_CPUS; core++) {
+            if (core == current_core) continue;
+            if (!(active_target_mask & (1ULL << core))) continue;
+
+            if (tlb_send_via_transport(core, &req, reqid) == K_OK) {
+                 any_sent = true;
+            } else {
+                 #if BHARAT_TLB_LEGACY_MAILBOX_FALLBACK
+                 tlb_send_via_mailbox_legacy(core, current_core, type, aspace, va, len, reqid);
+                 any_sent = true;
+                 tlb_pending_stats_t* stats = tlb_pending_get_stats(current_core);
+                 if (stats) stats->legacy_fallback_usage++;
+                 console_log(CONSOLE_LEVEL_WARN, "TLB: Fallback to legacy mailbox on core %u\n", core);
+                 #else
+                 dispatch_failure_mask |= (1ULL << core);
+                 tlb_pending_stats_t* stats = tlb_pending_get_stats(current_core);
+                 if (stats) stats->send_failures++;
+                 #endif
             }
         }
-        tlb_pending_free(current_core, slot);
-    } else {
-        // We no longer allow ACK-less success. If we couldn't allocate a slot,
-        // we must fail or we must have a pre-allocated emergency slot.
-        // For now, return error.
-        status = K_ERR_NO_RESOURCES;
+
+        if (!any_sent && retry_count == 0) {
+            tlb_pending_free(current_core, slot);
+            return K_ERR_NOT_FOUND;
+        }
+
+        uint64_t attempt_start = hal_timer_monotonic_ticks();
+        uint64_t deadline = attempt_start + timeout_ticks;
+        bool complete = false;
+
+        while (hal_timer_monotonic_ticks() < deadline) {
+            if (tlb_pending_is_complete(current_core, slot)) {
+                complete = true;
+                break;
+            }
+            arch_cpu_relax();
+            vmm_process_urpc_messages();
+        }
+
+        if (complete) {
+            status = K_OK;
+            break;
+        }
+
+        // Timeout or partial completion on this attempt
+        uint64_t elapsed_ticks = hal_timer_monotonic_ticks() - start_tick;
+        uint64_t missing_mask = tlb_pending_get_missing_mask(current_core, slot);
+
+        tlb_failure_snapshot_t diag = {0};
+        diag.request_id = reqid;
+        diag.aspace_id = aspace->object_id;
+        diag.tlb_generation = req.generation;
+        diag.target_mask = target_mask;
+        diag.ack_mask = target_mask & ~missing_mask;
+        diag.missing_mask = missing_mask;
+        diag.dispatch_failure_mask = dispatch_failure_mask;
+        diag.retry_count = retry_count;
+        diag.start_tick = start_tick;
+        diag.elapsed_ticks = elapsed_ticks;
+        diag.final_status = (int)K_ERR_TIMEOUT;
+        diag.valid = true;
+
+        tlb_diag_set_last_failure(current_core, &diag);
+
+        tlb_pending_stats_t* stats = tlb_pending_get_stats(current_core);
+        if (stats) {
+            stats->timeouts++;
+            if (missing_mask != target_mask) {
+                stats->partial_completions++;
+            }
+        }
+
+        status = K_ERR_TIMEOUT;
+        retry_count++;
+
+        if (retry_count < BHARAT_TLB_MAX_RETRIES) {
+            // Retry only for the remaining missing CPUs
+            active_target_mask = missing_mask;
+        }
     }
 
+    if (status != K_OK) {
+        tlb_handle_failure(failure_policy, aspace->object_id, reqid);
+        if (failure_policy == TLB_FAIL_ISOLATE_ASPACE) {
+            aspace_mark_poisoned(aspace);
+        }
+    }
+
+    tlb_pending_free(current_core, slot);
     return status;
 }
 
@@ -264,7 +371,6 @@ int monitor_handle_tlb_invalidate(
 {
     (void)ctx;
     uint32_t current_core = hal_cpu_get_id();
-    const hal_tlb_caps_t *caps = hal_tlb_caps();
 
     // Ignore if not running this aspace
     if (g_cpu_locals[current_core].current_as_id != req->aspace_id) {
@@ -315,12 +421,28 @@ int tlb_invalidate_remote(vm_aspace_t *aspace, uintptr_t va, size_t len, tlb_inv
     return tlb_invalidate_remote_ex(aspace, va, len, kind, TLB_FAIL_RETURN_ERROR);
 }
 
-int tlb_invalidate_all(vm_aspace_t *aspace, uintptr_t va, size_t len, tlb_inv_kind_t kind) {
-    if (!aspace || !active_hal_tlb) return -1;
+kstatus_t tlb_invalidate_all_ex(vm_aspace_t *aspace, uintptr_t va, size_t len, tlb_inv_kind_t kind, tlb_failure_policy_t failure_policy) {
+    if (!aspace || !active_hal_tlb) return K_ERR_INVALID_ARG;
 
-    tlb_invalidate_remote(aspace, va, len, kind);
-    tlb_invalidate_local(aspace, va, len, kind);
-    return 0;
+    uint32_t type;
+    switch(kind) {
+        case TLB_INV_PAGE: type = 0; break;
+        case TLB_INV_RANGE: type = 1; break;
+        default: type = 2; break;
+    }
+
+    kstatus_t status = vmm_send_tlb_invalidate_ex(aspace, va, len, type, failure_policy);
+    if (status != K_OK) return status;
+
+    int local_status = tlb_invalidate_local(aspace, va, len, kind);
+    if (local_status != 0) return K_ERR_INVALID_ARG;
+
+    return K_OK;
+}
+
+int tlb_invalidate_all(vm_aspace_t *aspace, uintptr_t va, size_t len, tlb_inv_kind_t kind) {
+    kstatus_t status = tlb_invalidate_all_ex(aspace, va, len, kind, tlb_default_failure_policy());
+    return (status == K_OK) ? 0 : -1;
 }
 
 void vmm_process_urpc_messages(void) {
@@ -368,6 +490,7 @@ void vmm_process_urpc_messages(void) {
                         tx_hdr.opcode        = 3; // OP_TLBINVALIDATE
                         tx_hdr.flags         = BHARAT_MSG_FLAG_RESPONSE;
                         tx_hdr.request_id    = hdr.request_id; // Match sequence
+                        tx_hdr.src_node      = current_core;
                         tx_hdr.dst_node      = hdr.src_node;
                         tx_hdr.total_len     = BHARAT_MSG_HEADER_MIN_LEN + sizeof(bharat_monitor_v1_TlbInvalidateResp_t);
 

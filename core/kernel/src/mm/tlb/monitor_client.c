@@ -2,19 +2,22 @@
 #include "../../../services/core/subsysmgr/include/bharat/msg/transport.h"
 #include "bharat_monitor_v1_types.h"
 #include "../../../services/core/subsysmgr/include/bharat/msg/wire.h"
+#include "hal/hal.h"
 
 // The opcode for TlbInvalidate
 #define OP_TLBINVALIDATE 3
 // The service ID for bharat.monitor.v1
 #define SERVICE_ID_MONITOR_V1 1
 
-int bharat_monitor_v1_call_tlb_invalidate(
+int bharat_monitor_v1_send_tlb_invalidate(
     bharat_transport_t* t,
     int dst,
     const bharat_monitor_v1_TlbInvalidateReq_t* req,
+    uint64_t reqid,
     void* ctx)
 {
-    if (!t || !t->ops || !t->ops->send || !t->ops->recv) {
+    (void)ctx;
+    if (!t || !t->ops || !t->ops->send) {
         return BHARAT_MSG_ERR_TRANSPORT_FAIL;
     }
 
@@ -27,7 +30,8 @@ int bharat_monitor_v1_call_tlb_invalidate(
     hdr.service_id    = SERVICE_ID_MONITOR_V1;
     hdr.opcode        = OP_TLBINVALIDATE;
     hdr.flags         = BHARAT_MSG_FLAG_REQUEST;
-    hdr.request_id    = req->generation; // Use generation as sequence
+    hdr.request_id    = reqid; // Use correct transaction request_id
+    hdr.src_node      = hal_cpu_get_id();
     hdr.dst_node      = dst;
     hdr.total_len     = BHARAT_MSG_HEADER_MIN_LEN + sizeof(bharat_monitor_v1_TlbInvalidateReq_t);
 
@@ -41,9 +45,6 @@ int bharat_monitor_v1_call_tlb_invalidate(
     }
 
     // Since we don't have a generated encoder, we manually copy the struct payload.
-    // Assuming little-endian local architecture for this prototype, or just flat copy.
-    // In a strict implementation, we'd use bharat_store_leXX.
-    // For simplicity of this minimal required path, we do a raw copy.
     uint8_t* payload = buffer + BHARAT_MSG_HEADER_MIN_LEN;
 
     // Manual packing
@@ -58,43 +59,15 @@ int bharat_monitor_v1_call_tlb_invalidate(
         return ret;
     }
 
-    // Wait for response synchronously
-    uint32_t wait_count = 0;
-    while (wait_count < 100000) { // simple bounded wait / timeout
-        if (t->ops->poll) {
-            t->ops->poll(t, 1);
-        }
+    return 0; // Success
+}
 
-        size_t rx_len = 0;
-        ret = t->ops->recv(t, buffer, sizeof(buffer), &rx_len);
-        if (ret == BHARAT_MSG_OK && rx_len >= BHARAT_MSG_HEADER_MIN_LEN) {
-            bharat_msg_header_t rx_hdr;
-            int dec_ret = bharat_msg_header_decode(buffer, rx_len, &rx_hdr);
-            if (dec_ret == BHARAT_MSG_OK) {
-                // Check if it's the response for our request
-                if (rx_hdr.service_id == SERVICE_ID_MONITOR_V1 &&
-                    rx_hdr.opcode == OP_TLBINVALIDATE &&
-                    bharat_msg_is_response(rx_hdr.flags) &&
-                    rx_hdr.request_id == req->generation) {
-
-                    // Decode payload
-                    if (rx_len >= BHARAT_MSG_HEADER_MIN_LEN + sizeof(bharat_monitor_v1_TlbInvalidateResp_t)) {
-                        uint8_t* rx_payload = buffer + BHARAT_MSG_HEADER_MIN_LEN;
-                        bharat_monitor_v1_TlbInvalidateResp_t resp;
-                        resp.status = bharat_load_le32(rx_payload);
-
-                        // We got our success
-                        return resp.status;
-                    }
-                }
-            }
-        }
-
-        // Let CPU relax
-        __asm__ volatile("nop");
-        wait_count++;
-    }
-
-    // Timeout
-    return BHARAT_MSG_ERR_TIMEOUT;
+int bharat_monitor_v1_call_tlb_invalidate(
+    bharat_transport_t* t,
+    int dst,
+    const bharat_monitor_v1_TlbInvalidateReq_t* req,
+    void* ctx)
+{
+    // Keeping for backward compatibility wrapper if needed, using req->generation as reqid
+    return bharat_monitor_v1_send_tlb_invalidate(t, dst, req, (uint64_t)req->generation, ctx);
 }
