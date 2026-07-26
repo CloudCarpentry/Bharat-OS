@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="820" viewBox="0 0 1400 820">
+<rect width="1400" height="820" rx="28" fill="#0A0F1E"/>
+<text x="70" y="78" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="42" font-weight="700">Bharat-OS Platform Stack</text>
+<text x="70" y="116" fill="#8A9BB0" font-family="Inter, Arial, sans-serif" font-size="21">Mechanisms stay small; policy and product differentiation move upward</text>
+
+<g font-family="Inter, Arial, sans-serif">
+  <rect x="160" y="160" width="1080" height="72" rx="16" fill="#19243A" stroke="#53657D"/>
+  <text x="700" y="204" text-anchor="middle" fill="#FFFFFF" font-size="24" font-weight="700">Applications &amp; Domain Workloads</text>
+
+  <rect x="200" y="248" width="1000" height="72" rx="16" fill="#15283D" stroke="#3B82F6"/>
+  <text x="700" y="292" text-anchor="middle" fill="#FFFFFF" font-size="23" font-weight="700">Personalities — Native • Linux • Android • Domain</text>
+
+  <rect x="240" y="336" width="920" height="72" rx="16" fill="#17332A" stroke="#138808"/>
+  <text x="700" y="380" text-anchor="middle" fill="#FFFFFF" font-size="23" font-weight="700">Stacks — Network • Storage • Vehicle • Media • AI</text>
+
+  <rect x="280" y="424" width="840" height="72" rx="16" fill="#2C2938" stroke="#9B7EDE"/>
+  <text x="700" y="468" text-anchor="middle" fill="#FFFFFF" font-size="23" font-weight="700">Services — Policy • Security • Device • Telemetry • Power</text>
+
+  <rect x="320" y="512" width="760" height="86" rx="18" fill="#382514" stroke="#FF9933" stroke-width="2"/>
+  <text x="700" y="548" text-anchor="middle" fill="#FFFFFF" font-size="23" font-weight="800">Minimal Kernel</text>
+  <text x="700" y="578" text-anchor="middle" fill="#E8D5BD" font-size="17">Scheduling • Memory • Capabilities • IPC/uRPC • Faults • Syscalls</text>
+
+  <rect x="360" y="614" width="680" height="66" rx="15" fill="#1D293A" stroke="#6B7C93"/>
+  <text x="700" y="655" text-anchor="middle" fill="#FFFFFF" font-size="22" font-weight="700">HAL Contracts</text>
+
+  <rect x="400" y="696" width="600" height="66" rx="15" fill="#151D2B" stroke="#6B7C93"/>
+  <text x="700" y="736" text-anchor="middle" fill="#FFFFFF" font-size="21" font-weight="700">RISC-V • ARM64 • x86_64 • Platform / SoC</text>
+</g>
+
+<g stroke="#8A9BB0" stroke-width="2" fill="none" opacity="0.7">
+  <path d="M700 232 L700 248"/>
+  <path d="M700 320 L700 336"/>
+  <path d="M700 408 L700 424"/>
+  <path d="M700 496 L700 512"/>
+  <path d="M700 598 L700 614"/>
+  <path d="M700 680 L700 696"/>
+</g>
+
+<text x="1120" y="555" fill="#FF9933" font-family="JetBrains Mono, monospace" font-size="16">mechanism</text>
+<text x="1120" y="466" fill="#C4B5FD" font-family="JetBrains Mono, monospace" font-size="16">policy</text>
+<text x="1120" y="380" fill="#6EE7B7" font-family="JetBrains Mono, monospace" font-size="16">composition</text>
+</svg>
