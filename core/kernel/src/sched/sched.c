@@ -195,17 +195,18 @@ void sched_detach_thread_from_queues(thread_slot_t *slot) {
     return;
   }
   bh_thread_t *thread = &slot->thread;
-  uint32_t core_id = sched_clamp_core(thread->bound_core_id);
-  sched_rq_t *rq = &g_cpu_locals[core_id].runqueue;
-
   uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
-  bool is_local = (core_id == current_core);
 
-  if (is_local) {
-      hal_cpu_disable_interrupts();
-  } else {
-      spin_lock(&rq->lock);
+  // Assert local ownership and local runqueue
+  if (thread->owner_cpu != current_core &&
+      thread->owner_state != THREAD_OWNER_REMOTE_PENDING) {
+      kernel_panic("sched_detach_thread_from_queues failed: not local owner");
   }
+
+  sched_rq_t *rq = sched_local_rq();
+  sched_assert_local_rq(rq);
+
+  hal_cpu_disable_interrupts();
 
   if (slot->is_on_runqueue != 0U) {
     if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
@@ -230,11 +231,7 @@ void sched_detach_thread_from_queues(thread_slot_t *slot) {
     sched_block_dequeue(slot);
   }
 
-  if (is_local) {
-      hal_cpu_enable_interrupts();
-  } else {
-      spin_unlock(&rq->lock);
-  }
+  hal_cpu_enable_interrupts();
 }
 
 int sched_enqueue_reap(thread_slot_t *slot) {
@@ -270,6 +267,9 @@ int sched_mark_thread_terminated(bh_thread_t *thread) {
     return -1;
   }
   uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  if (__atomic_load_n(&thread->owner_cpu, __ATOMIC_ACQUIRE) != current_core) {
+      kernel_panic("sched_mark_thread_terminated: executing on non-owner CPU");
+  }
   thread_slot_t *slot = sched_find_thread_slot_by_tid(thread->thread_id);
   if (!slot) {
     return -1;
@@ -394,7 +394,8 @@ void sched_reset_core_runqueues(void) {
     list_init(&rq->sleeping_list);
     list_init(&rq->blocked_list);
 
-    bh_mpsc_queue_init(&rq->remote.queue, rq->remote.slots, SCHED_REMOTE_CMD_CAPACITY);
+    sched_cmd_ring_init(&rq->remote.cmd_ring, rq->remote.cmd_slots, SCHED_REMOTE_CMD_CAPACITY);
+    sched_completion_ring_init(&rq->remote.completion_ring, rq->remote.completion_slots, SCHED_REMOTE_CMD_CAPACITY);
     rq->remote.resched_pending = 0U;
     rq->remote.submitted = 0U;
     rq->remote.consumed = 0U;
@@ -1070,6 +1071,29 @@ int sched_set_constraints(uint64_t tid, const bh_exec_constraints_k_t *c) {
   if (!c) return -1;
   bh_thread_t *thread = sched_find_thread_by_id(tid);
   if (!thread) return -1;
+
+  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t owner = __atomic_load_n(&thread->owner_cpu, __ATOMIC_ACQUIRE);
+
+  if (owner != current_core) {
+      sched_remote_cmd_t *cmd = sched_allocate_outbound_cmd();
+      if (!cmd) return K_ERR_NO_RESOURCES;
+      cmd->type = SCHED_REMOTE_SET_CONSTRAINTS;
+      cmd->source_cpu = current_core;
+      cmd->target_cpu = owner;
+      cmd->thread_id = thread->thread_id;
+      cmd->expected_thread_generation = thread->sched_generation;
+      cmd->constraints = *c;
+      cmd->state = SCHED_REMOTE_CMD_PENDING;
+
+      kstatus_t status = sched_remote_submit(owner, cmd);
+      if (status != K_OK) {
+          sched_remote_cmd_release(cmd);
+          return status;
+      }
+      return 0;
+  }
+
   thread->constraints = *c;
   return 0;
 }

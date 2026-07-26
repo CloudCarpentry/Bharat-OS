@@ -80,7 +80,7 @@ bool test_sched_remote_enqueue_ipi(void) {
     sched_reschedule();
 
     // Assert the inbox was drained
-    KTEST_ASSERT(bh_mpsc_queue_empty(&rq_core1->remote.queue), "Pending inbox was not drained");
+    KTEST_ASSERT(sched_cmd_ring_empty(&rq_core1->remote.cmd_ring), "Pending inbox was not drained");
     KTEST_ASSERT(rq_core1->inbox_drains == 1, "inbox_drains counter mismatch");
     KTEST_ASSERT(rq_core1->remote.resched_pending == 0, "resched_pending flag not cleared");
 
@@ -126,7 +126,7 @@ bool test_sched_ipi_coalescing(void) {
     sched_reschedule(); // Drains both
 
     KTEST_ASSERT(rq_core1->inbox_drains == 1, "inbox_drains counter mismatch (drained together)");
-    KTEST_ASSERT(bh_mpsc_queue_empty(&rq_core1->remote.queue), "Inbox should be empty");
+    KTEST_ASSERT(sched_cmd_ring_empty(&rq_core1->remote.cmd_ring), "Inbox should be empty");
 
     return true;
 }
