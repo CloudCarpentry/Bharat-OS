@@ -28,6 +28,11 @@ static inline uint16_t bh_tid_home_core(uint64_t tid)
     return (uint16_t)((tid >> 16) & 0xFFFFU);
 }
 
+static inline uint16_t bh_tid_identity_home_cpu(uint64_t tid)
+{
+    return bh_tid_home_core(tid);
+}
+
 static inline uint32_t bh_tid_generation(uint64_t tid)
 {
     return (uint32_t)(tid >> 32);
@@ -58,8 +63,30 @@ typedef enum {
     SCHED_REMOTE_SET_THROTTLE,
     SCHED_REMOTE_TERMINATE,
     SCHED_REMOTE_REAP,
-    SCHED_REMOTE_SET_CONSTRAINTS
+    SCHED_REMOTE_SET_CONSTRAINTS,
+    SCHED_REMOTE_MIGRATE_RESERVE,
+    SCHED_REMOTE_MIGRATE_COMMIT_IDENTITY,
+    SCHED_REMOTE_MIGRATE_STAGE,
+    SCHED_REMOTE_MIGRATE_ACTIVATE,
+    SCHED_REMOTE_MIGRATE_RETIRE,
+    SCHED_REMOTE_QUERY_STATE
 } sched_remote_cmd_type_t;
+
+typedef struct arch_ext_state arch_ext_state_t;
+
+typedef struct {
+    uint64_t regs[16];     // Offset 0
+    uint64_t pc;           // Offset 128
+    uint64_t sp;           // Offset 136
+    uint64_t fpu_regs[32]; // Offset 144 (for inline FPU regs e.g. arm64 d8-d15, riscv fs0-fs11)
+    arch_ext_state_t *ext; // Offset 400
+} cpu_context_t;
+
+typedef struct {
+    uint64_t deadline_ms;
+    uint64_t period_ms;
+    uint64_t wcet_ms;
+} bh_thread_attr_t;
 
 typedef struct {
     uint16_t slot;
@@ -78,6 +105,13 @@ typedef struct {
     uint32_t flags;
     uint32_t priority;
     bh_exec_constraints_k_t constraints;
+
+    cpu_context_t context;
+    int64_t vruntime;
+    uint64_t absolute_deadline;
+    bh_thread_attr_t rt_attr;
+    uint16_t target_entity_slot;
+    uint32_t target_entity_generation;
 } sched_remote_cmd_envelope_t;
 
 typedef struct {
@@ -177,22 +211,6 @@ typedef bh_personality_id_t personality_type_t;
 
 #define BH_THREAD_FLAG_IDLE (1U << 0)
 
-typedef struct arch_ext_state arch_ext_state_t;
-
-typedef struct {
-    uint64_t regs[16];     // Offset 0
-    uint64_t pc;           // Offset 128
-    uint64_t sp;           // Offset 136
-    uint64_t fpu_regs[32]; // Offset 144 (for inline FPU regs e.g. arm64 d8-d15, riscv fs0-fs11)
-    arch_ext_state_t *ext; // Offset 400
-} cpu_context_t;
-
-typedef struct {
-    uint64_t deadline_ms;
-    uint64_t period_ms;
-    uint64_t wcet_ms;
-} bh_thread_attr_t;
-
 #define SCHED_CMD_BITMAP_WORDS 8
 
 typedef enum {
@@ -205,17 +223,114 @@ typedef enum {
 } sched_remote_cmd_state_t;
 
 typedef enum {
-    SCHED_MIGRATION_NONE = 0,
-    SCHED_MIGRATION_PREPARE_SENT,
-    SCHED_MIGRATION_DEQUEUED,
-    SCHED_MIGRATION_COMMIT_SENT,
-    SCHED_MIGRATION_COMMITTED,
-    SCHED_MIGRATION_ROLLBACK_SENT,
-    SCHED_MIGRATION_FAILED
+    SCHED_MIG_NONE = 0,
+    SCHED_MIG_RESERVE_SENT,
+    SCHED_MIG_TARGET_RESERVED,
+    SCHED_MIG_SOURCE_FROZEN,
+    SCHED_MIG_TARGET_PREPARED,
+    SCHED_MIG_OWNER_COMMIT_SENT,
+    SCHED_MIG_OWNER_COMMITTED,
+    SCHED_MIG_ACTIVATE_SENT,
+    SCHED_MIG_TARGET_ACTIVE,
+    SCHED_MIG_SOURCE_RETIRED,
+    SCHED_MIG_ROLLBACK_SENT,
+    SCHED_MIG_ROLLED_BACK,
+    SCHED_MIG_RECONCILING,
+    SCHED_MIG_FAILED
 } sched_migration_state_t;
+
+#define SCHED_MIGRATION_NONE          SCHED_MIG_NONE
+#define SCHED_MIGRATION_PREPARE_SENT  SCHED_MIG_RESERVE_SENT
+#define SCHED_MIGRATION_DEQUEUED      SCHED_MIG_SOURCE_FROZEN
+#define SCHED_MIGRATION_COMMIT_SENT   SCHED_MIG_OWNER_COMMIT_SENT
+#define SCHED_MIGRATION_COMMITTED     SCHED_MIG_TARGET_ACTIVE
+#define SCHED_MIGRATION_ROLLBACK_SENT SCHED_MIG_ROLLBACK_SENT
+#define SCHED_MIGRATION_FAILED        SCHED_MIG_FAILED
+
+#define SCHED_RECENT_TXN_COUNT 256
+
+typedef struct {
+    sched_cmd_handle_t handle;
+
+    uint64_t tid;
+    uint32_t migration_epoch;
+    uint16_t command_type;
+
+    uint16_t outcome; // SCHED_COMPLETION_ACK or SCHED_COMPLETION_NACK
+    int32_t result;
+
+    uint64_t completed_tick;
+} sched_recent_txn_t;
+
+typedef struct {
+    uint16_t cpu;
+    uint16_t slot;
+    uint32_t entity_generation;
+    uint32_t migration_epoch;
+} sched_owner_locator_t;
 
 struct bh_thread;
 typedef struct bh_thread bh_thread_t;
+
+typedef struct {
+    uint64_t tid;
+    uint32_t entity_generation;
+    uint32_t owner_cpu;
+    uint32_t state; // thread_state_t values
+    uint32_t priority;
+    uint32_t base_priority;
+    uint32_t affinity_mask;
+    bh_exec_constraints_k_t constraints;
+    int64_t vruntime;
+    uint64_t absolute_deadline;
+    bh_thread_attr_t rt_attr;
+    cpu_context_t context;
+    list_head_t run_node;
+    list_head_t wait_node;
+    struct rb_node cfs_node;
+    struct rb_node edf_node;
+    uint32_t migration_epoch;
+    sched_migration_state_t migration_state;
+    bool runnable;
+    bool is_sleeping;
+    bool is_blocked;
+    uint8_t is_on_runqueue;
+} sched_entity_t;
+
+typedef struct {
+    sched_entity_t entity;
+    uint32_t generation;
+    uint32_t next_free;
+    uint8_t in_use;
+} sched_entity_slot_t;
+
+#define SCHED_MAX_LOCAL_ENTITIES 256U
+
+#define COMPLETION_EMPTY     0U
+#define COMPLETION_ARMED     1U
+#define COMPLETION_PUBLISHED 2U
+
+typedef struct {
+    volatile uint32_t state; // COMPLETION_EMPTY, COMPLETION_ARMED, COMPLETION_PUBLISHED
+    uint32_t generation;
+
+    int32_t result;
+    uint16_t responder_cpu;
+    uint8_t kind; // SCHED_COMPLETION_ACK or SCHED_COMPLETION_NACK
+    uint8_t reserved;
+
+    uint32_t migration_epoch;
+
+    union {
+        sched_owner_locator_t locator;
+
+        struct {
+            uint32_t observed_state;
+            sched_owner_locator_t owner;
+            uint32_t owner_epoch;
+        } query;
+    } payload;
+} sched_completion_cell_t;
 
 typedef struct {
     uint64_t thread_id;
@@ -251,6 +366,14 @@ typedef struct sched_remote_cmd {
     uint32_t flags;
     uint32_t priority;
     bh_exec_constraints_k_t constraints;
+
+    cpu_context_t context;
+    int64_t vruntime;
+    uint64_t absolute_deadline;
+    bh_thread_attr_t rt_attr;
+    uint16_t target_entity_slot;
+    uint32_t target_entity_generation;
+
     list_head_t list;
 } sched_remote_cmd_t;
 
@@ -327,6 +450,17 @@ typedef struct sched_rq {
     void *mutex_owners;
     void *pending_suggestions;
     uint8_t *bootstrap_stacks;
+
+    // Per-core execution entity pool
+    sched_entity_slot_t entities[SCHED_MAX_LOCAL_ENTITIES];
+    uint32_t free_entity_head;
+
+    // Outbound command completion cells
+    sched_completion_cell_t completions[SCHED_REMOTE_CMD_CAPACITY];
+
+    // Recent transaction cache
+    sched_recent_txn_t recent_txns[SCHED_RECENT_TXN_COUNT];
+    uint32_t recent_txn_head;
 } sched_rq_t;
 
 typedef sched_rq_t sched_core_state_t;
@@ -372,11 +506,9 @@ struct bh_thread {
     // CFS Scheduler metadata
     int64_t vruntime;
     uint32_t weight;
-    struct rb_node cfs_node;
 
     // EDF Scheduler metadata
     uint64_t absolute_deadline_ms;
-    struct rb_node edf_node;
 
     uint8_t preferred_numa_node;
     ai_sched_context_t* ai_sched_ctx;
@@ -407,6 +539,8 @@ struct bh_thread {
     uint64_t sched_generation;
     thread_sched_owner_state_t owner_state;
     bool enqueued;
+
+    sched_owner_locator_t owner_locator;
 
     // Migration state
     uint32_t migration_target_cpu;
@@ -488,6 +622,7 @@ int sched_set_thread_priority(uint64_t tid, uint32_t new_priority);
 int sched_set_thread_preferred_node(uint64_t tid, uint8_t node_id);
 int sched_ai_apply_suggestion(const ai_suggestion_t* suggestion);
 int sched_enqueue_ai_suggestion(const ai_suggestion_t* suggestion);
+int sched_migrate_task(bh_thread_t *thread, uint32_t new_node);
 int sched_migrate_tid(uint64_t tid, uint32_t target_cpu);
 int sched_set_priority(uint64_t tid, uint32_t priority);
 int sched_set_affinity(uint64_t tid, uint32_t mask);

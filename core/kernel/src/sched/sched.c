@@ -457,6 +457,25 @@ void sched_reset_core_runqueues(void) {
     memset(rq->bootstrap_threads, 0, sizeof(thread_slot_t) * SCHED_BOOTSTRAP_THREAD_TYPES);
     memset(rq->mutex_owners, 0, sizeof(mutex_owner_entry_t) * SCHED_MAX_THREADS);
     memset(rq->pending_suggestions, 0, sizeof(suggestion_queue_t));
+
+    rq->free_entity_head = 0U;
+    for (size_t i = 0; i < SCHED_MAX_LOCAL_ENTITIES; ++i) {
+        rq->entities[i].in_use = 0U;
+        rq->entities[i].generation = 0U;
+        rq->entities[i].next_free = (i + 1U < SCHED_MAX_LOCAL_ENTITIES) ? (uint32_t)(i + 1U) : UINT32_MAX;
+    }
+
+    for (size_t i = 0; i < SCHED_REMOTE_CMD_CAPACITY; ++i) {
+        rq->completions[i].state = SCHED_REMOTE_CMD_EMPTY;
+        rq->completions[i].generation = 0U;
+    }
+
+    rq->recent_txn_head = 0U;
+    for (size_t i = 0; i < SCHED_RECENT_TXN_COUNT; ++i) {
+        rq->recent_txns[i].handle.slot = 0xFFFF;
+        rq->recent_txns[i].handle.origin_cpu = 0xFFFF;
+        rq->recent_txns[i].handle.generation = 0;
+    }
   }
 }
 
@@ -791,12 +810,19 @@ bh_thread_t *sched_pick_next_ready(uint32_t core_id) {
       if (prio >= 0) {
           list_head_t *head = &rq->ready_queue[prio];
           list_head_t *node = head->prev;
-          thread_slot_t *slot = (thread_slot_t *)(void *)((char *)node - offsetof(thread_slot_t, run_node));
-          sched_invariant_on_dequeue(&slot->thread);
-          list_del(node);
-          list_init(node);
-          sched_ready_bitmap_clear_if_empty(rq, (uint32_t)prio);
-          next = &slot->thread;
+          sched_entity_t *entity = (sched_entity_t *)(void *)((char *)node - offsetof(sched_entity_t, run_node));
+          bh_thread_t *thread_picked = sched_find_thread_by_id(entity->tid);
+          if (thread_picked) {
+              sched_invariant_on_dequeue(thread_picked);
+              list_del(node);
+              list_init(node);
+              sched_ready_bitmap_clear_if_empty(rq, (uint32_t)prio);
+              next = thread_picked;
+              entity->is_on_runqueue = 0U;
+              if (rq->runnable_count > 0) {
+                  rq->runnable_count--;
+              }
+          }
       }
   }
 
@@ -821,12 +847,9 @@ bh_thread_t *sched_pick_next_ready(uint32_t core_id) {
       return rq->idle_thread;
   }
 
-  thread_slot_t *slot = sched_find_thread_slot_by_tid(next->thread_id);
-  if (slot) {
-      slot->is_on_runqueue = 0U;
-  }
-  if (rq->runnable_count > 0U) {
-    rq->runnable_count--;
+  sched_entity_t *entity = sched_find_entity_by_thread(next);
+  if (entity) {
+      entity->is_on_runqueue = 0U;
   }
 
   return next;
@@ -865,19 +888,20 @@ void sched_switch_to(bh_thread_t *next, uint32_t core_id) {
   if (current && current != rq->idle_thread &&
       current->state == THREAD_STATE_RUNNING) {
 
-    thread_slot_t *slot = sched_find_thread_slot_by_tid(current->thread_id);
-    if (slot && slot->is_on_runqueue == 0U) {
+    sched_entity_t *curr_entity = sched_find_entity_by_thread(current);
+    if (curr_entity && curr_entity->is_on_runqueue == 0U) {
         current->state = THREAD_STATE_READY;
+        curr_entity->state = THREAD_STATE_READY;
         sched_invariant_on_enqueue(current, core_id);
         if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
             sched_cfs_enqueue(rq, current);
         } else if (g_policy == SCHED_POLICY_EDF) {
             sched_edf_enqueue(rq, current);
         } else {
-            list_add(&slot->run_node, &rq->ready_queue[current->priority]);
+            list_add(&curr_entity->run_node, &rq->ready_queue[current->priority]);
             sched_ready_bitmap_set(rq, current->priority);
         }
-        slot->is_on_runqueue = 1U;
+        curr_entity->is_on_runqueue = 1U;
         rq->runnable_count++;
         sched_validate_rq(rq);
     }
@@ -942,7 +966,8 @@ bh_thread_t *sched_edf_pick_next(sched_rq_t *rq) {
     if (!left) {
         return NULL;
     }
-    return (bh_thread_t *)(void *)((char *)left - offsetof(bh_thread_t, edf_node));
+    sched_entity_t *entity = (sched_entity_t *)(void *)((char *)left - offsetof(sched_entity_t, edf_node));
+    return sched_find_thread_by_id(entity->tid);
 }
 
 
@@ -1047,7 +1072,8 @@ bh_thread_t *sched_cfs_pick_next(sched_rq_t *rq) {
     if (!left) {
         return NULL;
     }
-    return (bh_thread_t *)(void *)((char *)left - offsetof(bh_thread_t, cfs_node));
+    sched_entity_t *entity = (sched_entity_t *)(void *)((char *)left - offsetof(sched_entity_t, cfs_node));
+    return sched_find_thread_by_id(entity->tid);
 }
 
 kstatus_t sched_get_thread_snapshot(uint64_t tid, sched_thread_snapshot_t *out) {
@@ -1110,4 +1136,141 @@ bool sched_thread_exists(uint64_t tid) {
   return (sched_find_thread_by_id(tid) != NULL);
 }
 
+sched_entity_t *sched_allocate_entity(uint32_t core) {
+  sched_rq_t *rq = &g_cpu_locals[core].runqueue;
+  if (rq->free_entity_head == UINT32_MAX) {
+    return NULL;
+  }
+  uint32_t idx = rq->free_entity_head;
+  sched_entity_slot_t *slot = &rq->entities[idx];
+  rq->free_entity_head = slot->next_free;
+
+  slot->in_use = 1;
+  slot->generation++;
+  if (slot->generation == 0) slot->generation = 1;
+
+  __builtin_memset(&slot->entity, 0, sizeof(sched_entity_t));
+  slot->entity.entity_generation = slot->generation;
+  slot->entity.owner_cpu = core;
+  list_init(&slot->entity.run_node);
+  list_init(&slot->entity.wait_node);
+
+  return &slot->entity;
+}
+
+void sched_free_entity(uint32_t core, sched_entity_t *entity) {
+  if (!entity) return;
+  sched_rq_t *rq = &g_cpu_locals[core].runqueue;
+  sched_entity_slot_t *slots = rq->entities;
+  ptrdiff_t diff = (sched_entity_slot_t *)((char *)entity - offsetof(sched_entity_slot_t, entity)) - slots;
+  if (diff < 0 || diff >= (ptrdiff_t)SCHED_MAX_LOCAL_ENTITIES) {
+    return;
+  }
+  uint32_t idx = (uint32_t)diff;
+  sched_entity_slot_t *slot = &slots[idx];
+  if (slot->in_use) {
+    slot->in_use = 0;
+    slot->next_free = rq->free_entity_head;
+    rq->free_entity_head = idx;
+  }
+}
+
+sched_entity_t *sched_find_entity_by_thread(const bh_thread_t *thread) {
+  if (!thread) return NULL;
+  uint32_t owner = thread->owner_cpu;
+  if (owner >= g_active_core_count) return NULL;
+  sched_rq_t *rq = &g_cpu_locals[owner].runqueue;
+
+  uint16_t slot = thread->owner_locator.slot;
+  if (slot < SCHED_MAX_LOCAL_ENTITIES) {
+    sched_entity_slot_t *eslot = &rq->entities[slot];
+    if (eslot->in_use && eslot->entity.tid == thread->thread_id) {
+      return &eslot->entity;
+    }
+  }
+
+  for (size_t i = 0; i < SCHED_MAX_LOCAL_ENTITIES; ++i) {
+    if (rq->entities[i].in_use && rq->entities[i].entity.tid == thread->thread_id) {
+      return &rq->entities[i].entity;
+    }
+  }
+  return NULL;
+}
+
+kstatus_t sched_remote_respond_cell(uint16_t origin_cpu, uint16_t slot, uint32_t generation, uint8_t kind, int32_t result) {
+  uint16_t current_cpu = (uint16_t)sched_clamp_core(hal_cpu_get_id());
+  return sched_completion_publish(origin_cpu, slot, generation, current_cpu, kind, result, 0, NULL, 0);
+}
+
+void sched_completion_arm(sched_rq_t *rq, uint16_t slot, uint32_t generation) {
+  if (!rq || slot >= SCHED_REMOTE_CMD_CAPACITY) return;
+  sched_completion_cell_t *cell = &rq->completions[slot];
+  cell->generation = generation;
+  cell->result = 0;
+  cell->responder_cpu = 0;
+  cell->kind = 0;
+  cell->migration_epoch = 0;
+  __builtin_memset(&cell->payload, 0, sizeof(cell->payload));
+  __atomic_store_n(&cell->state, COMPLETION_ARMED, __ATOMIC_RELEASE);
+}
+
+kstatus_t sched_completion_publish(uint16_t origin_cpu, uint16_t slot, uint32_t generation, uint16_t responder_cpu, uint8_t kind, int32_t result, uint32_t epoch, const void *payload, size_t payload_size) {
+  if (origin_cpu >= g_active_core_count || slot >= SCHED_REMOTE_CMD_CAPACITY) {
+    return K_ERR_INVALID_ARG;
+  }
+  sched_rq_t *origin_rq = &g_cpu_locals[origin_cpu].runqueue;
+  sched_completion_cell_t *cell = &origin_rq->completions[slot];
+
+  // Protect completion cells against late ACK + slot reuse
+  if (__atomic_load_n(&cell->state, __ATOMIC_ACQUIRE) != COMPLETION_ARMED) {
+    return K_ERR_BAD_STATE;
+  }
+  if (cell->generation != generation) {
+    return K_ERR_BAD_STATE; // Stale or mismatch
+  }
+
+  cell->result = result;
+  cell->responder_cpu = responder_cpu;
+  cell->kind = kind;
+  cell->migration_epoch = epoch;
+
+  if (payload && payload_size > 0) {
+    size_t copy_sz = (payload_size > sizeof(cell->payload)) ? sizeof(cell->payload) : payload_size;
+    __builtin_memcpy(&cell->payload, payload, copy_sz);
+  }
+
+  __atomic_store_n(&cell->state, COMPLETION_PUBLISHED, __ATOMIC_RELEASE);
+  return K_OK;
+}
+
+void sched_log_txn(sched_rq_t *rq, sched_cmd_handle_t handle, uint64_t tid, uint32_t epoch, uint16_t cmd_type, uint16_t outcome, int32_t result) {
+  if (!rq) return;
+  uint32_t head = rq->recent_txn_head;
+  sched_recent_txn_t *txn = &rq->recent_txns[head];
+
+  txn->handle = handle;
+  txn->tid = tid;
+  txn->migration_epoch = epoch;
+  txn->command_type = cmd_type;
+  txn->outcome = outcome;
+  txn->result = result;
+  txn->completed_tick = rq->total_ticks;
+
+  rq->recent_txn_head = (head + 1) % SCHED_RECENT_TXN_COUNT;
+}
+
+bool sched_find_txn(sched_rq_t *rq, sched_cmd_handle_t handle, uint16_t *out_outcome, int32_t *out_result) {
+  if (!rq) return false;
+  for (size_t i = 0; i < SCHED_RECENT_TXN_COUNT; ++i) {
+    sched_recent_txn_t *txn = &rq->recent_txns[i];
+    if (txn->handle.slot == handle.slot &&
+        txn->handle.origin_cpu == handle.origin_cpu &&
+        txn->handle.generation == handle.generation) {
+      if (out_outcome) *out_outcome = txn->outcome;
+      if (out_result) *out_result = txn->result;
+      return true;
+    }
+  }
+  return false;
+}
 
