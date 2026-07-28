@@ -90,6 +90,8 @@ static void log_hex64(uint64_t val) {
 }
 
 static void virt_scan_pci_ecam_for_vga(system_discovery_t *discovery) {
+    enum { PCI_SCAN_BUS_COUNT = 4 };
+
     if (!discovery || discovery->boot_video.valid) return;
     
     if (discovery->pci_host_count == 0 || discovery->pci_hosts[0].ecam_base == 0) {
@@ -100,13 +102,15 @@ static void virt_scan_pci_ecam_for_vga(system_discovery_t *discovery) {
     uint64_t phys_ecam = discovery->pci_hosts[0].ecam_base;
     uint64_t ecam_size = discovery->pci_hosts[0].ecam_size;
     if (ecam_size == 0) ecam_size = 0x1000000;
+    uint64_t scan_ecam_size = (uint64_t)PCI_SCAN_BUS_COUNT << 20;
+    if (scan_ecam_size > ecam_size) scan_ecam_size = ecam_size;
 
     hal_serial_write("BHARAT_DISPLAY:PCI_ECAM=");
     log_hex64(phys_ecam);
     hal_serial_write("\n");
 
     uintptr_t virt_ecam = 0;
-    if (qemu_display_map_mmio(phys_ecam, ecam_size, &virt_ecam) != 0) {
+    if (qemu_display_map_mmio(phys_ecam, scan_ecam_size, &virt_ecam) != 0) {
         hal_serial_write("BHARAT_DISPLAY:FAIL=ECAM_MAP\n");
         return;
     }
@@ -129,7 +133,7 @@ static void virt_scan_pci_ecam_for_vga(system_discovery_t *discovery) {
 
     bool vga_found = false;
 
-    for (int bus = 0; bus < 4 && !vga_found; bus++) {
+    for (int bus = 0; bus < PCI_SCAN_BUS_COUNT && !vga_found; bus++) {
         for (int dev = 0; dev < 32 && !vga_found; dev++) {
             volatile uint32_t *ecam_dev = (volatile uint32_t *)(virt_ecam + ((uintptr_t)bus << 20) + ((uintptr_t)dev << 15));
             uint32_t vendor_device = ecam_dev[0];
