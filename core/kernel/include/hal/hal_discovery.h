@@ -100,6 +100,10 @@ typedef struct {
     uint16_t segment;   // PCI Segment Group Number
     uint8_t bus_start;
     uint8_t bus_end;
+    uint64_t mmio32_base;
+    uint64_t mmio32_size;
+    uint64_t mmio64_base;
+    uint64_t mmio64_size;
 } pci_host_desc_t;
 
 // --- IOMMUs ---
@@ -190,6 +194,7 @@ typedef struct {
     accel_discovery_t accel;
 
     boot_video_handoff_t boot_video;
+    bool fdt_parsed;
 } system_discovery_t;
 
 // TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.

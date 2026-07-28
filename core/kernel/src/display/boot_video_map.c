@@ -5,6 +5,7 @@
 #include "hal/hal_mpa.h"
 #include "hal/hal_tlb.h"
 #include "bharat/display/boot_video.h"
+#include "bharat/display/display_caps.h"
 #include "mm/physmap.h"
 
 // Early boot video map logic.
@@ -38,17 +39,14 @@ int boot_video_map(const boot_info_t *boot) {
      */
     virt_addr_t fb_virt = 0;
 
+#if defined(__x86_64__)
     if (physmap_has_linear_map()) {
         void *virt_ptr = physmap_phys_to_virt(fb_phys);
         if (!virt_ptr) return -1;
         fb_virt = (virt_addr_t)(uintptr_t)virt_ptr;
     } else {
         /* No linear physmap — install an explicit mapping. */
-#if defined(__x86_64__)
         fb_virt = 0xFFFF800000000000ULL | (fb_phys & 0xFFFFFFFF);
-#else
-        fb_virt = 0xFFFF900000000000ULL | (fb_phys & 0xFFFFFFFF);
-#endif
         uint32_t flags = HAL_PT_FLAG_READ | HAL_PT_FLAG_WRITE | HAL_PT_FLAG_DEVICE;
         phys_addr_t current_root = active_mem_protect->cpu_ops.get_root();
         if (hal_pt_map_range(current_root, fb_virt, fb_phys, fb_size, flags) != 0) {
@@ -56,6 +54,37 @@ int boot_video_map(const boot_info_t *boot) {
         }
         hal_tlb_invalidate_all();
     }
+#else
+    // For other architectures (ARM64, RISC-V), try existing mapping truth check.
+    extern const uint64_t g_kernel_virt_offset;
+    fb_virt = g_kernel_virt_offset + fb_phys;
+
+    phys_addr_t current_root = active_mem_protect->cpu_ops.get_root();
+    if (current_root == 0) {
+        extern phys_addr_t vmm_get_kernel_root(void);
+        current_root = vmm_get_kernel_root();
+    }
+
+    phys_addr_t existing_pa = 0;
+    size_t mapped_size = 0;
+    uint32_t existing_flags = 0;
+    bool already_mapped = false;
+
+    if (current_root != 0 && hal_pt_query_mapping(current_root, fb_virt, &existing_pa, &mapped_size, &existing_flags) == 0) {
+        if (existing_pa == fb_phys) {
+            already_mapped = true;
+        }
+    }
+
+    if (!already_mapped) {
+        uint32_t flags = HAL_PT_FLAG_READ | HAL_PT_FLAG_WRITE | HAL_PT_FLAG_DEVICE;
+        if (current_root == 0) return -1;
+        if (hal_pt_map_range(current_root, fb_virt, fb_phys, fb_size, flags) != 0) {
+            return -1;
+        }
+        hal_tlb_invalidate_all();
+    }
+#endif
 
     // Pre-populate the GUI handoff with the correct mapped virtual address so
     // that boot_gui_run() finds it valid and skips the boot_video_collect()
@@ -83,5 +112,56 @@ int boot_video_map(const boot_info_t *boot) {
     }
 #endif
 
+    return 0;
+}
+
+int qemu_display_map_mmio(uint64_t phys, size_t size, uintptr_t *out_virt) {
+    if (phys == 0 || size == 0 || !out_virt) {
+        return -1;
+    }
+
+    // 1. Align range to page boundaries
+    uint64_t page_offset = phys & 0xFFFU;
+    uint64_t aligned_phys = phys & ~0xFFFU;
+    uint64_t aligned_size = (size + page_offset + 0xFFFU) & ~0xFFFU;
+
+    // 2. Derive a canonical kernel MMIO VA using g_kernel_virt_offset
+    extern const uint64_t g_kernel_virt_offset;
+    uint64_t aligned_virt = g_kernel_virt_offset + aligned_phys;
+
+    // 3. Obtain active kernel PT root
+    if (!active_mem_protect || !active_mem_protect->cpu_ops.get_root) {
+        return -1;
+    }
+    phys_addr_t current_root = active_mem_protect->cpu_ops.get_root();
+    if (current_root == 0) {
+        extern phys_addr_t vmm_get_kernel_root(void);
+        current_root = vmm_get_kernel_root();
+    }
+    if (current_root == 0) {
+        return -1;
+    }
+
+    // 4. Check whether mapping already exists
+    phys_addr_t existing_pa = 0;
+    size_t mapped_size = 0;
+    uint32_t existing_flags = 0;
+    bool already_mapped = false;
+
+    if (hal_pt_query_mapping(current_root, aligned_virt, &existing_pa, &mapped_size, &existing_flags) == 0) {
+        if (existing_pa == aligned_phys) {
+            already_mapped = true;
+        }
+    }
+
+    if (!already_mapped) {
+        uint32_t flags = HAL_PT_FLAG_READ | HAL_PT_FLAG_WRITE | HAL_PT_FLAG_DEVICE;
+        if (hal_pt_map_range(current_root, aligned_virt, aligned_phys, aligned_size, flags) != 0) {
+            return -1;
+        }
+        hal_tlb_invalidate_all();
+    }
+
+    *out_virt = (uintptr_t)(aligned_virt + page_offset);
     return 0;
 }
