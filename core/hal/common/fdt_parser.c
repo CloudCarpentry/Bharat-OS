@@ -459,8 +459,10 @@ int fdt_parse_discovery(const void *fdt_ptr, system_discovery_t *discovery) {
         } else if (s->is_pci && discovery->pci_host_count < BHARAT_MAX_PCI_HOSTS) {
           discovery->pci_hosts[discovery->pci_host_count].ecam_base = base;
           discovery->pci_hosts[discovery->pci_host_count].ecam_size = size;
+          discovery->pci_hosts[discovery->pci_host_count].mmio32_pci_base = 0;
           discovery->pci_hosts[discovery->pci_host_count].mmio32_base = 0;
           discovery->pci_hosts[discovery->pci_host_count].mmio32_size = 0;
+          discovery->pci_hosts[discovery->pci_host_count].mmio64_pci_base = 0;
           discovery->pci_hosts[discovery->pci_host_count].mmio64_base = 0;
           discovery->pci_hosts[discovery->pci_host_count].mmio64_size = 0;
 
@@ -477,6 +479,13 @@ int fdt_parse_discovery(const void *fdt_ptr, system_discovery_t *discovery) {
                   uint32_t flags_word = fdt32_to_cpu(r_cell[i]);
                   uint32_t space_type = (flags_word >> 24) & 0x3;
 
+                  /* PCI ranges always use three child address cells.  The
+                   * first contains flags and the remaining two are the PCI
+                   * bus address.  Keep it separate from the parent CPU
+                   * address: on ARM virt these address spaces are offset. */
+                  uint64_t pci_base = ((uint64_t)fdt32_to_cpu(r_cell[i + 1]) << 32) |
+                                      fdt32_to_cpu(r_cell[i + 2]);
+
                   uint64_t parent_base = 0;
                   if (p_ac == 2) {
                       parent_base = ((uint64_t)fdt32_to_cpu(r_cell[i + 3]) << 32) | fdt32_to_cpu(r_cell[i + 4]);
@@ -492,9 +501,11 @@ int fdt_parse_discovery(const void *fdt_ptr, system_discovery_t *discovery) {
                   }
 
                   if (space_type == 0x2) { // 32-bit MMIO
+                      discovery->pci_hosts[discovery->pci_host_count].mmio32_pci_base = pci_base;
                       discovery->pci_hosts[discovery->pci_host_count].mmio32_base = parent_base;
                       discovery->pci_hosts[discovery->pci_host_count].mmio32_size = range_size;
                   } else if (space_type == 0x3) { // 64-bit MMIO
+                      discovery->pci_hosts[discovery->pci_host_count].mmio64_pci_base = pci_base;
                       discovery->pci_hosts[discovery->pci_host_count].mmio64_base = parent_base;
                       discovery->pci_hosts[discovery->pci_host_count].mmio64_size = range_size;
                   }
