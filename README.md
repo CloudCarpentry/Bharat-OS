@@ -85,11 +85,16 @@ Access is capability-mediated. Every operation's authority explicitly identifies
 *(Note: Complete, system-wide capability enforcement across all async IPC paths is an ongoing target architecture under active hardening; our transitional image currently uses boot-time configurations as we close these gates.)*
 
 ### H — Heterogeneous Compute
-Bharat-OS treats CPUs, GPUs, NPUs, DSPs, high-speed NICs, and domain accelerators as first-class managed resources rather than isolated or opaque peripherals. The platform strictly enforces a clean architectural separation:
-* **Kernel:** Focuses strictly on deterministic execution mechanisms, queue registers, memory isolation, and IPC/uRPC primitives.
-* **Drivers:** Handle unprivileged low-level device and register control.
-* **Services:** Manage accelerator placement, scheduling policy, failover governance, power, and thermal decisions.
-* **Runtime:** Handles high-level analytical models, graph compilation, and unprivileged execution backends.
+Bharat-OS is designed to treat CPUs, GPUs, NPUs, DSPs, high-speed NICs, and domain accelerators as first-class managed compute resources rather than opaque peripherals.
+
+The architecture separates heterogeneous compute across four layers:
+
+* **Kernel:** Provides deterministic mechanisms for capability enforcement, queue/fence primitives, memory isolation, DMA/IOMMU integration, IPC/uRPC, and fault containment.
+* **Drivers:** Implement device-specific queue, register, interrupt, and data-movement mechanisms behind stable hardware contracts.
+* **Services:** Manage accelerator admission, placement, scheduling policy, health, failover, power, and thermal governance.
+* **Runtime:** Selects execution backends and handles higher-level workload and graph execution outside the kernel.
+
+**Current implementation status:** Bharat-OS already contains accelerator-specific capability types, neutral job/fence contracts, backend-dispatch infrastructure, accelerator-memory primitives, virtual accelerator scaffolding, and `accelmgr`/telemetry service contracts. End-to-end hardware accelerator execution and policy orchestration remain under active implementation and validation.
 
 ### A — Architecture Independent
 Stable, unified HAL and trap boundaries separate common operating mechanisms from ISA-specific and SoC-specific implementations.
@@ -196,6 +201,8 @@ We enforce strict, evidence-based governance to ensure that code, build graphs, 
 | Network Manager (netmgr) | 🟡 **PARTIAL** | `core/services/netmgr` | Production blocking receive |
 | Process Manager (process_mgr) | ⚪ **SCAFFOLD** | `core/services/process_manager` | Real ELF execution loading |
 | Virtual Memory Manager (vm_mgr) | ⚪ **SCAFFOLD** | `core/services/vm_manager` | On-demand page-pool orchestration |
+| Accelerator Capability & Dispatch Substrate | 🟡 **PARTIAL** | `core/kernel/include/capability.h, core/lib/runtime/backend_dispatch` | Production device queue realization, End-to-end accelerator service mediation |
+| Heterogeneous Compute Control Plane | ⚪ **SCAFFOLD** | `core/services/device/accelmgr, core/drivers/accel/virt_accel.c` | Real accelmgr event loop, Truthful hardware backend execution, Accelerator admission and telemetry integration |
 
 <!-- END MATURITY TABLE -->
 
