@@ -17,7 +17,7 @@ struct prot_domain;
 typedef struct prot_domain prot_domain_t;
 
 typedef struct prot_domain_ops {
-    prot_domain_t* (*create)(void);
+    int (*create)(prot_domain_t** out_domain);
     void (*destroy)(prot_domain_t* domain);
     void (*activate)(prot_domain_t* domain);
     int (*map_region)(prot_domain_t* domain, uintptr_t vaddr, uintptr_t paddr, size_t size, uint32_t flags);
@@ -36,7 +36,7 @@ struct prot_domain {
 void prot_domain_init(void);
 
 // Core API
-prot_domain_t* prot_domain_create(void);
+int prot_domain_create(prot_domain_t** out_domain);
 void prot_domain_destroy(prot_domain_t* domain);
 void prot_domain_activate(prot_domain_t* domain);
 int prot_domain_map_region(prot_domain_t* domain, uintptr_t vaddr, uintptr_t paddr, size_t size, uint32_t flags);

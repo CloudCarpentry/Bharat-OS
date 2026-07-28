@@ -4,9 +4,40 @@
 #include "../../include/hal/hal.h"
 #include "../../include/hal/hal_pt.h"
 
+#include "../../include/hal/hal_mpu.h"
+
+static int mock_program_region(uint32_t region_id, phys_addr_t base, size_t size, uint32_t flags) {
+    (void)region_id; (void)base; (void)size; (void)flags;
+    return 0;
+}
+static int mock_disable_region(uint32_t region_id) {
+    (void)region_id;
+    return 0;
+}
+static const hal_mpu_caps_t mock_caps = {
+    .max_regions = 16,
+    .supports_subregions = false,
+    .requires_power_of_two_size = false,
+    .min_region_alignment = 32
+};
+static const hal_mpu_caps_t* mock_get_caps(void) {
+    return &mock_caps;
+}
+static hal_mpu_ops_t mock_mpu_ops = {
+    .program_region = mock_program_region,
+    .disable_region = mock_disable_region,
+    .get_caps = mock_get_caps
+};
+
 static bool test_prot_domain_create_destroy(void) {
-    prot_domain_t* domain = prot_domain_create();
-    KTEST_ASSERT(domain != NULL, "prot_domain_create should succeed");
+    hal_mpu_ops_t *old_ops = active_hal_mpu;
+    if (!active_hal_mpu) {
+        hal_mpu_register_ops(&mock_mpu_ops);
+    }
+
+    prot_domain_t* domain = NULL;
+    int pd_err = prot_domain_create(&domain);
+    KTEST_ASSERT(pd_err == K_OK && domain != NULL, "prot_domain_create should succeed");
 
     arch_caps_t caps = arch_get_caps();
     if (arch_caps_test(caps, ARCH_CAP_MMU_FULL)) {
@@ -20,6 +51,7 @@ static bool test_prot_domain_create_destroy(void) {
     }
 
     prot_domain_destroy(domain);
+    active_hal_mpu = old_ops;
     return true;
 }
 
@@ -29,8 +61,14 @@ static bool test_mpu_exhaustion(void) {
         return true; // Skip if not MPU
     }
 
-    prot_domain_t* domain = prot_domain_create();
-    KTEST_ASSERT(domain != NULL, "Domain create failed");
+    hal_mpu_ops_t *old_ops = active_hal_mpu;
+    if (!active_hal_mpu) {
+        hal_mpu_register_ops(&mock_mpu_ops);
+    }
+
+    prot_domain_t* domain = NULL;
+    int pd_err = prot_domain_create(&domain);
+    KTEST_ASSERT(pd_err == K_OK && domain != NULL, "Domain create failed");
 
     int i = 0;
     while(1) {
@@ -42,6 +80,7 @@ static bool test_mpu_exhaustion(void) {
         i++;
     }
     prot_domain_destroy(domain);
+    active_hal_mpu = old_ops;
     return true;
 }
 
@@ -51,8 +90,14 @@ static bool test_mpu_overlap(void) {
         return true; // Skip if not MPU
     }
 
-    prot_domain_t* domain = prot_domain_create();
-    KTEST_ASSERT(domain != NULL, "Domain create failed");
+    hal_mpu_ops_t *old_ops = active_hal_mpu;
+    if (!active_hal_mpu) {
+        hal_mpu_register_ops(&mock_mpu_ops);
+    }
+
+    prot_domain_t* domain = NULL;
+    int pd_err = prot_domain_create(&domain);
+    KTEST_ASSERT(pd_err == K_OK && domain != NULL, "Domain create failed");
 
     int ret = prot_domain_map_region(domain, 0x1000, 0x1000, 0x2000, 0);
     KTEST_ASSERT(ret == 0, "Map region 1 failed");
@@ -61,6 +106,7 @@ static bool test_mpu_overlap(void) {
     KTEST_ASSERT(ret < 0, "Map overlapping region 2 should fail");
 
     prot_domain_destroy(domain);
+    active_hal_mpu = old_ops;
     return true;
 }
 
@@ -70,8 +116,9 @@ static bool test_mmu_sparse_mapping(void) {
         return true; // Skip if not MMU
     }
 
-    prot_domain_t* domain = prot_domain_create();
-    KTEST_ASSERT(domain != NULL, "Domain create failed");
+    prot_domain_t* domain = NULL;
+    int pd_err = prot_domain_create(&domain);
+    KTEST_ASSERT(pd_err == K_OK && domain != NULL, "Domain create failed");
 
     // Test 1: Map low VA
     uintptr_t low_vaddr = 0x0000000040000000ULL; // 1 GiB
@@ -138,8 +185,9 @@ static bool test_prot_none_fail_fast(void) {
         return true; // Skip if supported
     }
 
-    prot_domain_t* domain = prot_domain_create();
-    KTEST_ASSERT(domain != NULL, "Domain create failed");
+    prot_domain_t* domain = NULL;
+    int pd_err = prot_domain_create(&domain);
+    KTEST_ASSERT(pd_err == K_OK && domain != NULL, "Domain create failed");
 
     int ret = prot_domain_map_region(domain, 0x10000000, 0x80000000, 4096, 0);
     KTEST_ASSERT(ret == -1, "Mapping on PROT_MODE_NONE should always fail explicitly with ERR_NOT_SUPPORTED");

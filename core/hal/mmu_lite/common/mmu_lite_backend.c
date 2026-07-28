@@ -1,9 +1,12 @@
 #include "mm/prot_domain.h"
 #include "slab.h"
+#include "kernel/status.h"
 #include <stddef.h>
 
 #define ERR_NOT_SUPPORTED -1
 #define MAX_LITE_REGIONS 64
+
+static prot_domain_ops_t mmu_lite_ops_common;
 
 // MMU Lite backend
 // Acts as a structured hardware boundary: eager mappings, constrained features, flat contiguous limits.
@@ -28,14 +31,14 @@ extern void lite_hw_pt_activate(void* pt);
 extern int lite_hw_map(void* pt, uintptr_t v, uintptr_t p, size_t s, uint32_t f);
 extern int lite_hw_unmap(void* pt, uintptr_t v, size_t s);
 
-static prot_domain_t* mmu_lite_create(void) {
+static int mmu_lite_create(prot_domain_t** out_domain) {
     prot_domain_t* domain = (prot_domain_t*)kmalloc(sizeof(prot_domain_t));
-    if (!domain) return NULL;
+    if (!domain) return K_ERR_NO_MEMORY;
 
     mmu_lite_backend_state_t* state = (mmu_lite_backend_state_t*)kmalloc(sizeof(mmu_lite_backend_state_t));
     if (!state) {
         kfree(domain);
-        return NULL;
+        return K_ERR_NO_MEMORY;
     }
 
     for (int i = 0; i < MAX_LITE_REGIONS; i++) {
@@ -45,8 +48,10 @@ static prot_domain_t* mmu_lite_create(void) {
     state->hardware_root_pt = NULL; // We'll stub this out for now
 
     domain->mode = PROT_MODE_MMU_LITE;
+    domain->ops = &mmu_lite_ops_common;
     domain->backend_state = state;
-    return domain;
+    *out_domain = domain;
+    return K_OK;
 }
 
 static void mmu_lite_destroy(prot_domain_t* domain) {
@@ -140,7 +145,7 @@ static int mmu_lite_query_region(prot_domain_t* domain, uintptr_t vaddr, uintptr
     return -1;
 }
 
-prot_domain_ops_t mmu_lite_ops_common = {
+static prot_domain_ops_t mmu_lite_ops_common = {
     .create = mmu_lite_create,
     .destroy = mmu_lite_destroy,
     .activate = mmu_lite_activate,

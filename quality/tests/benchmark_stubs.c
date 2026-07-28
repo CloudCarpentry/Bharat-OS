@@ -319,7 +319,7 @@ __attribute__((weak)) void hal_mm_backend_caps(hal_mm_backend_caps_t *out) {
     }
 }
 
-__attribute__((weak)) prot_domain_t* mock_prot_domain_create(void) { return (prot_domain_t*)0x1234; }
+__attribute__((weak)) int mock_prot_domain_create(prot_domain_t** out) { *out = (prot_domain_t*)0x1234; return 0; }
 __attribute__((weak)) prot_domain_ops_t mmu_full_ops_x86_64 = { .create = mock_prot_domain_create };
 __attribute__((weak)) prot_domain_ops_t mmu_lite_ops_common = { .create = mock_prot_domain_create };
 __attribute__((weak)) prot_domain_ops_t prot_none_ops = { .create = mock_prot_domain_create };
