@@ -1,4 +1,5 @@
 #include "../../../../include/mm/vm_space.h"
+#include "../../../../include/mm/mem_model.h"
 #include "../../../../include/mm/arch_vm.h"
 #include "../../../../include/mm.h"
 #include "../../../../include/monitor/mon_vm_ops.h"
@@ -33,6 +34,15 @@ static uint64_t next_space_id = 1;
 int vm_space_create(vm_space_t **out, mem_profile_t profile, vm_timing_class_t timing) {
     if (!out) return -1;
 
+    // Validate legacy profile matches actual memory model
+    mem_model_t current_model = mem_model_get_current();
+    if (profile == MEM_PROFILE_MPU_ONLY && current_model != MEM_MODEL_MPU) {
+        return -1;
+    }
+    if (profile != MEM_PROFILE_MPU_ONLY && current_model == MEM_MODEL_MPU) {
+        return -1;
+    }
+
     vm_space_t *space = (vm_space_t *)kmalloc(sizeof(vm_space_t));
     if (!space) return -1;
 
@@ -43,6 +53,16 @@ int vm_space_create(vm_space_t **out, mem_profile_t profile, vm_timing_class_t t
     space->timing_class = timing;
     space->flags = 0;
     space->rt_flags = 0;
+
+    // Call canonical creator
+    address_space_t *as = NULL;
+    int as_ret = aspace_create(&as, 0);
+    if (as_ret != K_OK) {
+        kfree(space);
+        return -1;
+    }
+    as->timing_class = timing;
+    space->aspace = as;
 
     // Initialize cap handle to 0
     space->owner_cap.generation = 0;
@@ -88,6 +108,11 @@ int vm_space_destroy(vm_space_t *space) {
     // TODO: Send MON_VM_SPACE_DESTROY to clean up remote realizations
     // Note: True tear down logic should iterate `space->regions` but this object
     // itself is a legacy distributed address space concept.
+
+    if (space->aspace) {
+        aspace_destroy(space->aspace);
+        space->aspace = NULL;
+    }
 
     spinlock_release(&space->lock);
     kfree(space);
@@ -158,12 +183,16 @@ int vm_activate_local(vm_space_t *space) {
         local_state.core_id = core_id;
         // Strictly ordered update to software active_aspace before hardware switch
         address_space_t *prev = g_cpu_locals[core_id].current_as;
-        mm_switch_active_aspace(core_id, prev, (address_space_t *)space);
+        mm_switch_active_aspace(core_id, prev, space->aspace);
         active_arch_vm_ops->activate(space, &local_state);
     }
 
     spinlock_acquire(&space->lock);
-    space->active_cores |= (1ULL << core_id);
+    if (space->aspace) {
+        space->active_cores = aspace_get_active_mask(space->aspace);
+    } else {
+        space->active_cores |= (1ULL << core_id);
+    }
     spinlock_release(&space->lock);
 
     return 0;
