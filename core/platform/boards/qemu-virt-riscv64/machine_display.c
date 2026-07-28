@@ -67,12 +67,14 @@ static void virt_scan_pci_ecam_for_vga(system_discovery_t *discovery) {
     }
     hal_serial_write("BHARAT_DISPLAY:ECAM_MAP=PASS\n");
 
+    uint64_t pci_mmio_base = discovery->pci_hosts[0].mmio32_pci_base;
     uint64_t mmio_base = discovery->pci_hosts[0].mmio32_base;
     uint64_t mmio_size = discovery->pci_hosts[0].mmio32_size;
     if (mmio_base == 0 || mmio_size == 0) {
         // Fallback for RISC-V 64 QEMU virt PCIe MMIO range
         mmio_base = 0x40000000ULL;
         mmio_size = 0x20000000ULL;
+        pci_mmio_base = 0x40000000ULL;
     }
 
     hal_serial_write("BHARAT_DISPLAY:PCI_MMIO_BASE=");
@@ -118,10 +120,12 @@ static void virt_scan_pci_ecam_for_vga(system_discovery_t *discovery) {
 
                     uint32_t bar0 = orig_bar0;
                     uint32_t bar2 = orig_bar2;
+                    uint64_t pci_alloc_base = pci_mmio_base;
+                    if (pci_alloc_base == 0) pci_alloc_base = size0;
 
                     // Assign BAR0 if unprogrammed
                     if ((bar0 & 0xFFFFFFF0) == 0) {
-                        bar0 = (uint32_t)mmio_base;
+                        bar0 = (uint32_t)pci_alloc_base;
                         ecam_dev[4] = bar0;
                     }
                     // Assign BAR2 if unprogrammed
@@ -134,8 +138,14 @@ static void virt_scan_pci_ecam_for_vga(system_discovery_t *discovery) {
                     // Enable Memory Space (bit 1) + Bus Master (bit 2)
                     ecam_dev[1] |= 0x06;
 
-                    uint64_t fb_phys = bar0 & 0xFFFFFFF0;
-                    uint64_t mmio_phys = bar2 & 0xFFFFFFF0;
+                    uint64_t fb_bus = bar0 & 0xFFFFFFF0;
+                    uint64_t mmio_bus = bar2 & 0xFFFFFFF0;
+                    if (fb_bus < pci_mmio_base || mmio_bus < pci_mmio_base) {
+                        hal_serial_write("BHARAT_DISPLAY:FAIL=BAR_BELOW_PCI_RANGE\n");
+                        return;
+                    }
+                    uint64_t fb_phys = mmio_base + (fb_bus - pci_mmio_base);
+                    uint64_t mmio_phys = mmio_base + (mmio_bus - pci_mmio_base);
 
                     hal_serial_write("BHARAT_DISPLAY:BAR0=");
                     log_hex64(fb_phys);
