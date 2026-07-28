@@ -74,6 +74,11 @@ void tlb_pending_ack(uint32_t reqid, uint32_t acking_core) {
     if (core_id >= g_active_core_count || slot >= BHARAT_TLB_MAX_PENDING_PER_CORE) return;
     if (acking_core >= g_active_core_count) return;
 
+    // Enforce requester-local ownership: only the core that owns the slot may update its state
+    if (core_id != hal_cpu_get_id()) {
+        return;
+    }
+
     tlb_pending_entry_t* entry = &g_tlb_pending[core_id][slot];
 
     // Validate that it's in use and generation matches

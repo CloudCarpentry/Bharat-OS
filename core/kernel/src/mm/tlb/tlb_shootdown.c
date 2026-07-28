@@ -128,6 +128,15 @@ static inline bool bharat_msg_is_request(uint32_t flags) { return (flags & BHARA
 static inline bool bharat_msg_is_response(uint32_t flags) { return (flags & BHARAT_MSG_FLAG_RESPONSE) != 0; }
 #endif
 
+typedef struct {
+    volatile uint32_t request_id;
+    volatile uint32_t status;
+    volatile uint32_t acking_core;
+    volatile uint32_t valid;
+} tlb_legacy_resp_t;
+
+static tlb_legacy_resp_t g_tlb_legacy_resps[MAX_CPUS][BHARAT_TLB_MAX_PENDING_PER_CORE];
+
 // Optional transport resolver hook for core->transport routing.
 __attribute__((weak)) bharat_transport_t* transport_for_core(int core) {
     (void)core;
@@ -137,6 +146,46 @@ extern int bharat_monitor_v1_send_tlb_invalidate(bharat_transport_t* t, int dst,
 
 // Forward declarations
 extern void vmm_process_urpc_messages(void);
+
+void tlb_send_completion(uint32_t request_id, uint32_t origin_cpu, uint32_t status) {
+    uint32_t core_id, slot, gen;
+    tlb_reqid_decode(request_id, &core_id, &slot, &gen);
+
+    if (core_id >= MAX_CPUS || slot >= BHARAT_TLB_MAX_PENDING_PER_CORE) return;
+
+    bharat_transport_t* t = transport_for_core((int)origin_cpu);
+    if (t) {
+        // Normal transport available -> send response message
+        bharat_msg_header_t tx_hdr = {0};
+        tx_hdr.version_major = BHARAT_MSG_VERSION_MAJOR;
+        tx_hdr.version_minor = BHARAT_MSG_VERSION_MINOR;
+        tx_hdr.header_len    = BHARAT_MSG_HEADER_MIN_LEN;
+        tx_hdr.service_id    = 1; // monitor_v1
+        tx_hdr.opcode        = 3; // OP_TLBINVALIDATE
+        tx_hdr.flags         = BHARAT_MSG_FLAG_RESPONSE;
+        tx_hdr.request_id    = request_id;
+        tx_hdr.src_node      = hal_cpu_get_id();
+        tx_hdr.dst_node      = origin_cpu;
+        tx_hdr.total_len     = BHARAT_MSG_HEADER_MIN_LEN + sizeof(bharat_monitor_v1_TlbInvalidateResp_t);
+
+        uint8_t tx_buf[256];
+        if (bharat_msg_header_encode(&tx_hdr, tx_buf, sizeof(tx_buf)) == BHARAT_MSG_OK) {
+            bharat_store_le32(tx_buf + BHARAT_MSG_HEADER_MIN_LEN, status);
+            if (t->ops && t->ops->send) {
+                t->ops->send(t, tx_buf, tx_hdr.total_len);
+            }
+        }
+    } else {
+        // Legacy mailbox fallback response queue
+        g_tlb_legacy_resps[origin_cpu][slot].request_id = request_id;
+        g_tlb_legacy_resps[origin_cpu][slot].status = status;
+        g_tlb_legacy_resps[origin_cpu][slot].acking_core = hal_cpu_get_id();
+        __atomic_store_n(&g_tlb_legacy_resps[origin_cpu][slot].valid, 1, __ATOMIC_RELEASE);
+
+        // IPI notification doorbell
+        hal_ipi_send(origin_cpu, HAL_IPI_TLB_SHOOTDOWN);
+    }
+}
 extern void cap_handle_delegate_req(uint64_t payload, uint32_t source_core);
 extern void cap_handle_delegate_ack(uint64_t payload);
 extern void cap_handle_revoke_req(uint64_t payload, uint32_t source_core);
@@ -173,10 +222,8 @@ static inline uint64_t tlb_get_timeout_ticks(void) {
 #ifdef BHARAT_HOST_TEST
         return 10000; // Provide an explicit fake monotonic clock timeout in host tests
 #else
-        #if defined(BHARAT_PROFILE_SAFETY) || defined(BHARAT_PROFILE_RTOS)
-        kernel_panic("TLB: Monotonic timer unavailable in safety/RT profile!");
-        #endif
-        return 1000000; // default fallback if allowed
+        kernel_panic("TLB: Monotonic timer is completely unavailable!");
+        return 0; // unreachable
 #endif
     }
     // 10 ms per attempt
@@ -506,10 +553,37 @@ void vmm_process_urpc_messages(void) {
                     // It's a response to us
                     uint32_t req_id = hdr.request_id;
                     uint32_t acking_core = hdr.src_node;
+                    uint32_t status = 0;
+                    if (rx_len >= BHARAT_MSG_HEADER_MIN_LEN + sizeof(bharat_monitor_v1_TlbInvalidateResp_t)) {
+                        status = bharat_load_le32(buffer + BHARAT_MSG_HEADER_MIN_LEN);
+                    }
 
                     tlb_pending_ack(req_id, acking_core);
+
+                    if (status != 0) {
+                        // Handle NACK status
+                    }
                 }
             }
+        }
+    }
+
+    // Process legacy responses (requester-side polling/clearing)
+    for (int s = 0; s < BHARAT_TLB_MAX_PENDING_PER_CORE; s++) {
+        if (__atomic_load_n(&g_tlb_legacy_resps[current_core][s].valid, __ATOMIC_ACQUIRE)) {
+            uint32_t req_id = g_tlb_legacy_resps[current_core][s].request_id;
+            uint32_t status = g_tlb_legacy_resps[current_core][s].status;
+            uint32_t acking_core = g_tlb_legacy_resps[current_core][s].acking_core;
+
+            // Call tlb_pending_ack locally on the requester core
+            tlb_pending_ack(req_id, acking_core);
+
+            // Handle NACK status if status != 0
+            if (status != 0) {
+                // Potential telemetry or logging of remote execution failure / NACK
+            }
+
+            __atomic_store_n(&g_tlb_legacy_resps[current_core][s].valid, 0, __ATOMIC_RELEASE);
         }
     }
 
@@ -528,8 +602,8 @@ void vmm_process_urpc_messages(void) {
              bharat_monitor_v1_TlbInvalidateResp_t resp = {0};
              monitor_handle_tlb_invalidate(NULL, &req, &resp);
 
-             // ACK via the new protocol even if requested via legacy mailbox
-             tlb_pending_ack(req.generation, current_core);
+             // Call safe completion dispatcher to route the ACK/NACK back
+             tlb_send_completion(req.generation, mailbox->msg.sender_core, resp.status);
         }
         spin_lock(&mailbox->lock);
         mailbox->valid = 0;
