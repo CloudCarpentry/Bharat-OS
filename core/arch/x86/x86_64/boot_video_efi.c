@@ -20,6 +20,11 @@ static uint32_t pci_read_config_32(uint8_t bus, uint8_t slot, uint8_t func, uint
     return tmp;
 }
 
+static inline void bochs_vbe_outw(uint16_t reg, uint16_t val) {
+    __asm__ volatile("outw %0, %1" : : "a"(reg), "d"((uint16_t)0x01CE));
+    __asm__ volatile("outw %0, %1" : : "a"(val), "d"((uint16_t)0x01CF));
+}
+
 void x86_64_scan_pci_for_vga(boot_video_handoff_t *out_handoff) {
     for (int bus = 0; bus < 8; bus++) {
         for (int slot = 0; slot < 32; slot++) {
@@ -30,6 +35,13 @@ void x86_64_scan_pci_for_vga(boot_video_handoff_t *out_handoff) {
                 
                 hal_serial_write("PCI: Found VGA framebuffer via BAR0 scan.\n");
                 
+                // Hardware initialization: set Bochs VBE to 1024x768x32 LFB
+                bochs_vbe_outw(0x4, 0x00); // VBE_DISPI_INDEX_ENABLE = 0 (disabled)
+                bochs_vbe_outw(0x1, 1024); // VBE_DISPI_INDEX_XRES = 1024
+                bochs_vbe_outw(0x2, 768);  // VBE_DISPI_INDEX_YRES = 768
+                bochs_vbe_outw(0x3, 32);   // VBE_DISPI_INDEX_BPP = 32
+                bochs_vbe_outw(0x4, 0x41); // VBE_DISPI_ENABLED | VBE_DISPI_LFB_ENABLED
+
                 boot_video_handoff_t h = {0};
                 h.valid = true;
                 h.path = BOOT_VIDEO_PATH_FIRMWARE_FB;

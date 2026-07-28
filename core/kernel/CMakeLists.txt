@@ -435,11 +435,12 @@ set(KERNEL_SRCS
     $<$<STREQUAL:${ARCH},x86_64>:${BHARAT_ARCH_ROOT}/x86/x86_64/boot_video_efi.c>
     $<$<STREQUAL:${ARCH},x86_64>:${BHARAT_PLATFORM_ROOT}/boards/qemu-virt-x86_64/machine_display.c>
     $<$<AND:$<STREQUAL:${ARCH},arm64>,$<STREQUAL:${KERNEL_PROFILE_LOWER},generic>>:${BHARAT_PLATFORM_ROOT}/boards/qemu-virt-arm64/board.c>
-    $<$<AND:$<STREQUAL:${ARCH},arm64>,$<STREQUAL:${KERNEL_PROFILE_LOWER},generic>>:${BHARAT_PLATFORM_ROOT}/boards/qemu-virt-arm64/machine_display.c>
+    $<$<STREQUAL:${ARCH},arm64>:${BHARAT_PLATFORM_ROOT}/boards/qemu-virt-arm64/machine_display.c>
     $<$<AND:$<STREQUAL:${ARCH},arm64>,$<NOT:$<STREQUAL:${KERNEL_PROFILE_LOWER},generic>>>:${BHARAT_PLATFORM_ROOT}/boards/bcm2711-rpi4/board.c>
     $<$<AND:$<STREQUAL:${ARCH},arm32>,$<STREQUAL:${BHARAT_BOOT_HW_PROFILE},avh-corstone310>>:${BHARAT_PLATFORM_ROOT}/boards/avh-corstone310/board.c>
     $<$<AND:$<STREQUAL:${ARCH},arm32>,$<NOT:$<STREQUAL:${BHARAT_BOOT_HW_PROFILE},avh-corstone310>>>:${BHARAT_PLATFORM_ROOT}/boards/qemu-virt-arm32/board.c>
     $<$<AND:$<STREQUAL:${ARCH},riscv64>,$<STREQUAL:${BHARAT_RISCV_SOC_PROFILE},qemu-virt>>:${BHARAT_PLATFORM_ROOT}/boards/qemu-virt-riscv64/board.c>
+    $<$<STREQUAL:${ARCH},riscv64>:${BHARAT_PLATFORM_ROOT}/boards/qemu-virt-riscv64/machine_display.c>
     $<$<AND:$<STREQUAL:${ARCH},riscv64>,$<NOT:$<STREQUAL:${BHARAT_RISCV_SOC_PROFILE},qemu-virt>>>:${BHARAT_PLATFORM_ROOT}/boards/shakti-ref/board.c>
     $<$<STREQUAL:${ARCH},riscv32>:${BHARAT_PLATFORM_ROOT}/boards/qemu-virt-riscv32/board.c>
     # NOTE: HAL sources removed - compiled via hal/* library targets instead

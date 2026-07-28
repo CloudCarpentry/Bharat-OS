@@ -333,6 +333,7 @@ typedef struct {
     int is_plic;
     int is_gic;
     int is_fb;
+    int is_pci;
     const void *reg_data;
     uint32_t reg_len;
     uint32_t ac;
@@ -450,6 +451,10 @@ int fdt_parse_discovery(const void *fdt_ptr, system_discovery_t *discovery) {
           discovery->irq_ctrls[discovery->irq_ctrl_count].base = base;
           discovery->irq_ctrls[discovery->irq_ctrl_count].size = size;
           discovery->irq_ctrl_count++;
+        } else if (s->is_pci && discovery->pci_host_count < BHARAT_MAX_PCI_HOSTS) {
+          discovery->pci_hosts[discovery->pci_host_count].ecam_base = base;
+          discovery->pci_hosts[discovery->pci_host_count].ecam_size = size;
+          discovery->pci_host_count++;
         } else if (s->is_fb) {
           discovery->boot_video.phys_addr    = base;
           discovery->boot_video.size         = size;
@@ -531,6 +536,8 @@ int fdt_parse_discovery(const void *fdt_ptr, system_discovery_t *discovery) {
             stack[depth].is_plic = 1;
           } else if (str_eq(comp + c_len, "simple-framebuffer")) {
             stack[depth].is_fb = 1;
+          } else if (str_eq(comp + c_len, "pci-host-ecam-generic") || str_eq(comp + c_len, "pci-host-cam-generic")) {
+            stack[depth].is_pci = 1;
           }
           c_len += str_len + 1;
         }

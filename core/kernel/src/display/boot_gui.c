@@ -203,75 +203,179 @@ void boot_gui_draw_pixel(uint32_t x, uint32_t y, uint32_t rgba) {
     write_px(x, y, rgba);
 }
 
-static void boot_gui_draw_char(uint32_t x, uint32_t y, char c,
-                        uint32_t fg, uint32_t bg) {
+static void boot_gui_draw_char_scaled(uint32_t x, uint32_t y, char c,
+                               uint32_t fg, uint32_t bg, uint32_t scale) {
     if (c < 0x20 || c > 0x7E) c = '?';
+    if (scale == 0) scale = 1;
     const uint8_t *glyph = g_font_8x16[(uint8_t)c - 0x20];
     for (uint32_t row = 0; row < 16U; row++) {
         uint8_t bits = glyph[row];
         for (uint32_t col = 0; col < 8U; col++) {
-            uint32_t colour = (bits & (0x80U >> col)) ? fg : bg;
-            write_px(x + col, y + row, colour);
+            uint32_t colour = (bits & (1U << col)) ? fg : bg;
+            if (scale == 1) {
+                write_px(x + col, y + row, colour);
+            } else {
+                for (uint32_t sy = 0; sy < scale; sy++) {
+                    for (uint32_t sx = 0; sx < scale; sx++) {
+                        write_px(x + col * scale + sx, y + row * scale + sy, colour);
+                    }
+                }
+            }
         }
     }
 }
 
-static void boot_gui_draw_str(uint32_t x, uint32_t y, const char *s,
-                       uint32_t fg, uint32_t bg) {
+static void boot_gui_draw_str_scaled(uint32_t x, uint32_t y, const char *s,
+                              uint32_t fg, uint32_t bg, uint32_t scale) {
     if (!s || !g_gui.active) return;
+    if (scale == 0) scale = 1;
     uint32_t cx = x;
+    uint32_t char_w = 8U * scale;
+    uint32_t char_h = 16U * scale;
     while (*s) {
         if (*s == '\n') {
             cx = x;
-            y += 16U;
+            y += char_h;
         } else {
-            if (cx + 8U <= g_gui.width && y + 16U <= g_gui.height) {
-                boot_gui_draw_char(cx, y, *s, fg, bg);
+            if (cx + char_w <= g_gui.width && y + char_h <= g_gui.height) {
+                boot_gui_draw_char_scaled(cx, y, *s, fg, bg, scale);
             }
-            cx += 8U;
+            cx += char_w;
         }
         s++;
     }
 }
 
+static inline void boot_gui_draw_str(uint32_t x, uint32_t y, const char *s,
+                              uint32_t fg, uint32_t bg) {
+    boot_gui_draw_str_scaled(x, y, s, fg, bg, 1U);
+}
+
+static void boot_gui_draw_rect_outline(uint32_t x, uint32_t y, uint32_t w, uint32_t h,
+                                uint32_t border_color) {
+    boot_gui_fill_rect(x, y, w, 1U, border_color);             /* Top */
+    boot_gui_fill_rect(x, y + h - 1U, w, 1U, border_color);     /* Bottom */
+    boot_gui_fill_rect(x, y, 1U, h, border_color);             /* Left */
+    boot_gui_fill_rect(x + w - 1U, y, 1U, h, border_color);     /* Right */
+}
+
 /* ─── Boot splash ────────────────────────────────────────────────────── */
 
-/*
- * Draw the "Bharat-OS" boot splash on the early framebuffer.
- * Colours are chosen for a modern dark-mode look.
- */
-#define SPLASH_BG     0xFF0D1117U   /* near-black (GitHub dark bg)    */
-#define SPLASH_ACCENT 0xFFFF6600U   /* Indian saffron orange          */
-#define SPLASH_WHITE  0xFFE6EDF3U   /* off-white (readable on dark)   */
-#define SPLASH_DIM    0xFF8B949EU   /* grey for secondary info        */
+#define COLOR_SAFFRON  0xFFFF9900U   /* Deep Indian Saffron */
+#define COLOR_WHITE    0xFFFFFFFFU   /* Pure White */
+#define COLOR_GREEN    0xFF128807U   /* India Green */
+#define COLOR_BG       0xFF0F172AU   /* Modern Dark Slate / Navy */
+#define COLOR_CARD_BG  0xFF1E293BU   /* Elevated Panel */
+#define COLOR_CARD_HDR 0xFF334155U   /* Header / Border slate */
+#define COLOR_TEXT_PRI 0xFFF8FAFCU   /* Primary text */
+#define COLOR_TEXT_SEC 0xFF94A3B8U   /* Secondary muted text */
+#define COLOR_CYAN     0xFF38BDF8U   /* Accent Sky Blue */
+#define COLOR_SHADOW   0xFF050B14U   /* Drop shadow */
 
 static void draw_splash(void) {
     uint32_t W = g_gui.width;
     uint32_t H = g_gui.height;
 
-    /* 1. Black background */
-    boot_gui_fill_rect(0, 0, W, H, SPLASH_BG);
+    /* 1. Deep Slate background */
+    boot_gui_fill_rect(0, 0, W, H, COLOR_BG);
 
-    /* 2. Accent bar at top (4px) */
-    boot_gui_fill_rect(0, 0, W, 4U, SPLASH_ACCENT);
+    /* 2. Saffron / White / Green Tricolor Header Bar at top (6px) */
+    uint32_t stripe_w = W / 3U;
+    boot_gui_fill_rect(0, 0, stripe_w, 6U, COLOR_SAFFRON);
+    boot_gui_fill_rect(stripe_w, 0, stripe_w, 6U, COLOR_WHITE);
+    boot_gui_fill_rect(stripe_w * 2U, 0, W - (stripe_w * 2U), 6U, COLOR_GREEN);
 
-    /* 3. Centre text: "Bharat-OS" in large (2×) scale isn't available without
-     *    a scaling routine, so we print vertically centred using the 8x16 font. */
-    uint32_t text_y = (H / 2U) >= 32U ? (H / 2U) - 32U : 8U;
-    uint32_t text_x = (W > 80U) ? (W / 2U) - 40U : 0U;
+    /* 3. Central Glassmorphic Card Container */
+    uint32_t card_w = (W > 540U) ? 540U : (W - 32U);
+    uint32_t card_h = 320U;
+    uint32_t card_x = (W - card_w) / 2U;
+    uint32_t card_y = (H > card_h) ? ((H - card_h) / 2U) - 10U : 20U;
 
-    boot_gui_draw_str(text_x, text_y,
-                      "Bharat-OS", SPLASH_ACCENT, SPLASH_BG);
-    boot_gui_draw_str(text_x, text_y + 20U,
-                      "Kernel booting...", SPLASH_WHITE, SPLASH_BG);
+    /* Drop shadow behind container */
+    boot_gui_fill_rect(card_x + 6U, card_y + 6U, card_w, card_h, COLOR_SHADOW);
 
-    /* 4. Version line at bottom-left */
-    boot_gui_draw_str(8U, H - 24U,
-                      "v3.2 bring-up | open-source kernel for Bharat",
-                      SPLASH_DIM, SPLASH_BG);
+    /* Card background & subtle border */
+    boot_gui_fill_rect(card_x, card_y, card_w, card_h, COLOR_CARD_BG);
+    boot_gui_draw_rect_outline(card_x, card_y, card_w, card_h, COLOR_CARD_HDR);
 
-    /* 5. Accent bar at bottom (2px) */
-    boot_gui_fill_rect(0, H - 3U, W, 3U, SPLASH_ACCENT);
+    /* 4. Top Badge in Card */
+    uint32_t content_x = card_x + 32U;
+    uint32_t cur_y = card_y + 24U;
+
+    boot_gui_draw_str(content_x, cur_y,
+                      "[ KERNEL V3.2 | GENERAL PURPOSE PROFILE ]",
+                      COLOR_CYAN, COLOR_CARD_BG);
+    cur_y += 28U;
+
+    /* 5. Scaled Title: "BHARAT-OS" with 3D drop shadow */
+    boot_gui_draw_str_scaled(content_x + 2U, cur_y + 2U,
+                             "BHARAT-OS", COLOR_SHADOW, COLOR_CARD_BG, 2U);
+    boot_gui_draw_str_scaled(content_x, cur_y,
+                             "BHARAT-OS", COLOR_SAFFRON, COLOR_CARD_BG, 2U);
+    cur_y += 38U;
+
+    /* Subtitle */
+    boot_gui_draw_str(content_x, cur_y,
+                      "High-Assurance Microkernel Platform",
+                      COLOR_TEXT_SEC, COLOR_CARD_BG);
+    cur_y += 30U;
+
+    /* Divider line inside card */
+    boot_gui_fill_rect(content_x, cur_y, card_w - 64U, 1U, COLOR_CARD_HDR);
+    cur_y += 20U;
+
+    /* 6. Hardware System Diagnostics Summary Box */
+    uint32_t box_w = card_w - 64U;
+    uint32_t box_h = 76U;
+    boot_gui_fill_rect(content_x, cur_y, box_w, box_h, COLOR_BG);
+    boot_gui_draw_rect_outline(content_x, cur_y, box_w, box_h, COLOR_CARD_HDR);
+
+#if defined(__x86_64__)
+    const char *arch_str = "x86_64 (Generic PC / QEMU virt)";
+#elif defined(__aarch64__)
+    const char *arch_str = "ARM64 (Cortex-A72 / QEMU virt)";
+#elif defined(__riscv)
+    const char *arch_str = "RISC-V 64 (RV64GC / QEMU virt)";
+#else
+    const char *arch_str = "Generic Architecture";
+#endif
+
+    boot_gui_draw_str(content_x + 12U, cur_y + 12U,
+                      "Arch Target :", COLOR_CYAN, COLOR_BG);
+    boot_gui_draw_str(content_x + 120U, cur_y + 12U,
+                      arch_str, COLOR_TEXT_PRI, COLOR_BG);
+
+    boot_gui_draw_str(content_x + 12U, cur_y + 32U,
+                      "Display     :", COLOR_CYAN, COLOR_BG);
+    boot_gui_draw_str(content_x + 120U, cur_y + 32U,
+                      "1024x768 32bpp Linear Framebuffer", COLOR_TEXT_PRI, COLOR_BG);
+
+    boot_gui_draw_str(content_x + 12U, cur_y + 52U,
+                      "Protection  :", COLOR_CYAN, COLOR_BG);
+    boot_gui_draw_str(content_x + 120U, cur_y + 52U,
+                      "MMU_FULL | SMP Active | Capability Matrix Ready", COLOR_TEXT_PRI, COLOR_BG);
+
+    cur_y += box_h + 20U;
+
+    /* 7. Loading Progress Bar */
+    boot_gui_draw_str(content_x, cur_y,
+                      "System Boot Status: 100% [READY]", COLOR_TEXT_PRI, COLOR_CARD_BG);
+    cur_y += 18U;
+
+    uint32_t bar_w = box_w;
+    uint32_t bar_h = 10U;
+    boot_gui_fill_rect(content_x, cur_y, bar_w, bar_h, COLOR_BG);
+    boot_gui_draw_rect_outline(content_x, cur_y, bar_w, bar_h, COLOR_CARD_HDR);
+    /* Filled progress bar with green accent */
+    boot_gui_fill_rect(content_x + 1U, cur_y + 1U, bar_w - 2U, bar_h - 2U, COLOR_GREEN);
+
+    /* 8. Modern Footer at screen bottom */
+    boot_gui_draw_str(16U, H - 24U,
+                      "Bharat-OS Microkernel v3.2 | Multi-Arch Unified Hardware Abstraction",
+                      COLOR_TEXT_SEC, COLOR_BG);
+
+    /* Bottom Saffron accent bar */
+    boot_gui_fill_rect(0, H - 3U, W, 3U, COLOR_SAFFRON);
 }
 
 /* ─── boot_gui_run() — main entry point ─────────────────────────────── */

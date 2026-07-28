@@ -9,6 +9,7 @@
 #include "hal/hal_pt.h"
 #include "hal/hal_tlb.h"
 #include "hal/hal_discovery.h"
+#include "bharat/display/display_caps.h"
 #include "ipc_async.h"
 #include "kernel.h"
 #include "console/console_core.h"
@@ -344,8 +345,24 @@ extern void bharat_demo_app(void);
 
 extern int boot_video_map(const boot_info_t *boot);
 
-static bool runtime_try_boot_video(const boot_info_t *boot) {
-    if (!boot || boot->console.type != BOOT_CONSOLE_FRAMEBUFFER) {
+static bool runtime_try_boot_video(const boot_info_t *boot_in) {
+    if (!boot_in) return false;
+    boot_info_t *boot = (boot_info_t *)boot_in;
+
+    if (boot->console.type != BOOT_CONSOLE_FRAMEBUFFER) {
+        machine_display_caps_t caps = {0};
+        extern int machine_get_display_caps(machine_display_caps_t *out) __attribute__((weak));
+        if (machine_get_display_caps) {
+            machine_get_display_caps(&caps);
+        }
+    }
+
+    extern const boot_info_t *g_boot_info;
+    if (g_boot_info && g_boot_info->console.type == BOOT_CONSOLE_FRAMEBUFFER) {
+        boot->console = g_boot_info->console;
+    }
+
+    if (boot->console.type != BOOT_CONSOLE_FRAMEBUFFER) {
         return false;
     }
 

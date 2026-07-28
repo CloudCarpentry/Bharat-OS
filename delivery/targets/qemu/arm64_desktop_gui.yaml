@@ -45,7 +45,7 @@ run:
     - "-machine"
     - "virt,gic-version=3"
     - "-device"
-    - "virtio-gpu-pci"
+    - "bochs-display"
     - "-device"
     - "virtio-keyboard-pci"
     - "-device"
