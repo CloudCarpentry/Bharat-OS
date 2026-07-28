@@ -15,6 +15,7 @@ typedef struct {
     uint8_t mask[16];
     uint8_t gateway[16];
     uint32_t metric;
+    uint8_t prefix_len;
     bool valid;
 } netmgr_route_t;
 
