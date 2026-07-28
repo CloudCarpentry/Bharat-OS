@@ -65,6 +65,22 @@ else()
     )
     add_test(NAME test_netmgr_caps_host COMMAND test_netmgr_caps_host)
 
+    # Route Table Hardening Test (Host)
+    add_executable(test_route_table
+        tests/test_route_table.c
+        src/route_table.c
+        ../../lib/runtime/src/freestanding_string.c
+    )
+    target_include_directories(test_route_table PRIVATE
+        src
+        include
+        ../../include
+        ../../lib/net/include
+        ../../services/core/subsysmgr/include
+        ../../lib/runtime/include
+    )
+    add_test(NAME test_route_table COMMAND test_route_table)
+
     # Legacy/Integration Test (Optional, may need shim hardening)
     add_executable(test_netmgr_caps tests/test_netmgr_caps.c tests/test_netmgr_caps_stubs.c src/ipc_dispatch.c src/ipc_contract.c src/ipc_auth.c src/ipc_auth_core.c src/ipc_ops.c ../../kernel/src/ipc/contract_validate.c)
     target_include_directories(test_netmgr_caps PRIVATE src include ../../include ../../lib/cap/include ../../lib/net/include ../core/subsysmgr/include ../../lib/ipc/include ../../kernel/include ../../lib/runtime/include)
