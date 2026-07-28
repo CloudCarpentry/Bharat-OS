@@ -65,7 +65,7 @@ static bool machine_discovery_boot_video(const boot_video_handoff_t **video_out)
 
 extern void hal_serial_write(const char *str);
 
-static void log_hex32(uint32_t val) {
+static void __attribute__((unused)) log_hex32(uint32_t val) {
     char buf[11];
     buf[0] = '0'; buf[1] = 'x';
     const char *hex = "0123456789abcdef";
@@ -197,8 +197,8 @@ static void virt_scan_pci_ecam_for_vga(system_discovery_t *discovery) {
                     }
 
                     // On ARM64, RAM starts at 0x40000000. Ensure no overlap with RAM range!
-                    if ((fb_phys >= 0x40000000 && fb_phys < 0x40000000 + 0x40000000) ||
-                        (mmio_phys >= 0x40000000 && mmio_phys < 0x40000000 + 0x40000000)) {
+                    if ((fb_phys >= 0x40000000ULL && fb_phys < 0x40000000ULL + 0x40000000ULL) ||
+                        (mmio_phys >= 0x40000000ULL && mmio_phys < 0x40000000ULL + 0x40000000ULL)) {
                         hal_serial_write("BHARAT_DISPLAY:FAIL=BAR_ALLOC_RAM_OVERLAP\n");
                         return;
                     }
@@ -211,9 +211,9 @@ static void virt_scan_pci_ecam_for_vga(system_discovery_t *discovery) {
                     }
                     hal_serial_write("BHARAT_DISPLAY:CTRL_MAP=PASS\n");
 
-                    // Program Bochs VBE registers
+                    // Program Bochs VBE registers (mapped at offset 0x500 in BAR2)
                     if (virt_mmio != 0) {
-                        volatile uint16_t *vbe = (volatile uint16_t *)virt_mmio;
+                        volatile uint16_t *vbe = (volatile uint16_t *)(virt_mmio + 0x500);
                         vbe[4] = 0x00; // VBE_DISPI_INDEX_ENABLE = 0
                         vbe[1] = 1024; // VBE_DISPI_INDEX_XRES = 1024
                         vbe[2] = 768;  // VBE_DISPI_INDEX_YRES = 768

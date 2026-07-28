@@ -55,34 +55,41 @@ int boot_video_map(const boot_info_t *boot) {
         hal_tlb_invalidate_all();
     }
 #else
-    // For other architectures (ARM64, RISC-V), try existing mapping truth check.
-    extern const uint64_t g_kernel_virt_offset;
-    fb_virt = g_kernel_virt_offset + fb_phys;
+    // For other architectures (ARM64, RISC-V), resolve virtual address via physmap.
+    void *vptr = physmap_phys_to_virt(fb_phys);
+    if (!vptr) return -1;
+    fb_virt = (virt_addr_t)(uintptr_t)vptr;
 
-    phys_addr_t current_root = active_mem_protect->cpu_ops.get_root();
-    if (current_root == 0) {
-        extern phys_addr_t vmm_get_kernel_root(void);
-        current_root = vmm_get_kernel_root();
-    }
+    if (physmap_has_linear_map()) {
+        phys_addr_t page_offset = fb_phys & 0xFFFU;
+        phys_addr_t aligned_phys = fb_phys & ~0xFFFU;
+        virt_addr_t aligned_virt = fb_virt & ~0xFFFU;
+        size_t aligned_size = (fb_size + page_offset + 0xFFFU) & ~0xFFFU;
 
-    phys_addr_t existing_pa = 0;
-    size_t mapped_size = 0;
-    uint32_t existing_flags = 0;
-    bool already_mapped = false;
-
-    if (current_root != 0 && hal_pt_query_mapping(current_root, fb_virt, &existing_pa, &mapped_size, &existing_flags) == 0) {
-        if (existing_pa == fb_phys) {
-            already_mapped = true;
+        phys_addr_t current_root = active_mem_protect ? active_mem_protect->cpu_ops.get_root() : 0U;
+        if (current_root == 0) {
+            extern phys_addr_t vmm_get_kernel_root(void);
+            current_root = vmm_get_kernel_root();
         }
-    }
 
-    if (!already_mapped) {
-        uint32_t flags = HAL_PT_FLAG_READ | HAL_PT_FLAG_WRITE | HAL_PT_FLAG_DEVICE;
-        if (current_root == 0) return -1;
-        if (hal_pt_map_range(current_root, fb_virt, fb_phys, fb_size, flags) != 0) {
-            return -1;
+        phys_addr_t existing_pa = 0;
+        size_t mapped_size = 0;
+        uint32_t existing_flags = 0;
+        bool already_mapped = false;
+
+        if (current_root != 0 && hal_pt_query_mapping(current_root, aligned_virt, &existing_pa, &mapped_size, &existing_flags) == 0) {
+            if (existing_pa == aligned_phys) {
+                already_mapped = true;
+            }
         }
-        hal_tlb_invalidate_all();
+
+        if (!already_mapped && current_root != 0) {
+            uint32_t flags = HAL_PT_FLAG_READ | HAL_PT_FLAG_WRITE | HAL_PT_FLAG_DEVICE;
+            if (hal_pt_map_range(current_root, aligned_virt, aligned_phys, aligned_size, flags) != 0) {
+                return -1;
+            }
+            hal_tlb_invalidate_all();
+        }
     }
 #endif
 
@@ -120,48 +127,42 @@ int qemu_display_map_mmio(uint64_t phys, size_t size, uintptr_t *out_virt) {
         return -1;
     }
 
-    // 1. Align range to page boundaries
+    if (!physmap_has_linear_map()) {
+        *out_virt = (uintptr_t)phys;
+        return 0;
+    }
+
     uint64_t page_offset = phys & 0xFFFU;
     uint64_t aligned_phys = phys & ~0xFFFU;
     uint64_t aligned_size = (size + page_offset + 0xFFFU) & ~0xFFFU;
 
-    // 2. Derive a canonical kernel MMIO VA using g_kernel_virt_offset
-    extern const uint64_t g_kernel_virt_offset;
-    uint64_t aligned_virt = g_kernel_virt_offset + aligned_phys;
-
-    // 3. Obtain active kernel PT root
-    if (!active_mem_protect || !active_mem_protect->cpu_ops.get_root) {
-        return -1;
-    }
-    phys_addr_t current_root = active_mem_protect->cpu_ops.get_root();
-    if (current_root == 0) {
-        extern phys_addr_t vmm_get_kernel_root(void);
-        current_root = vmm_get_kernel_root();
-    }
-    if (current_root == 0) {
+    void *virt_ptr = physmap_phys_to_virt(phys);
+    if (!virt_ptr) {
         return -1;
     }
 
-    // 4. Check whether mapping already exists
-    phys_addr_t existing_pa = 0;
-    size_t mapped_size = 0;
-    uint32_t existing_flags = 0;
-    bool already_mapped = false;
+    uintptr_t base_virt = (uintptr_t)virt_ptr;
+    virt_addr_t aligned_virt = (virt_addr_t)base_virt & ~0xFFFU;
 
-    if (hal_pt_query_mapping(current_root, aligned_virt, &existing_pa, &mapped_size, &existing_flags) == 0) {
-        if (existing_pa == aligned_phys) {
-            already_mapped = true;
+    if (active_mem_protect && active_mem_protect->cpu_ops.get_root) {
+        phys_addr_t current_root = active_mem_protect->cpu_ops.get_root();
+        if (current_root == 0) {
+            extern phys_addr_t vmm_get_kernel_root(void);
+            current_root = vmm_get_kernel_root();
+        }
+        if (current_root != 0) {
+            phys_addr_t existing_pa = 0;
+            size_t mapped_size = 0;
+            uint32_t existing_flags = 0;
+            if (hal_pt_query_mapping(current_root, aligned_virt, &existing_pa, &mapped_size, &existing_flags) != 0 ||
+                existing_pa != aligned_phys) {
+                uint32_t flags = HAL_PT_FLAG_READ | HAL_PT_FLAG_WRITE | HAL_PT_FLAG_DEVICE;
+                (void)hal_pt_map_range(current_root, aligned_virt, aligned_phys, aligned_size, flags);
+                hal_tlb_invalidate_all();
+            }
         }
     }
 
-    if (!already_mapped) {
-        uint32_t flags = HAL_PT_FLAG_READ | HAL_PT_FLAG_WRITE | HAL_PT_FLAG_DEVICE;
-        if (hal_pt_map_range(current_root, aligned_virt, aligned_phys, aligned_size, flags) != 0) {
-            return -1;
-        }
-        hal_tlb_invalidate_all();
-    }
-
-    *out_virt = (uintptr_t)(aligned_virt + page_offset);
+    *out_virt = base_virt;
     return 0;
 }
