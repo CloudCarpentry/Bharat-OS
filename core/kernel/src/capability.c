@@ -4,7 +4,10 @@
 #include "kernel_safety.h"
 #include "bharat/urpc.h"
 #include "hal/hal.h"
+#include "hal/hal_timer.h"
 #include "slab.h"
+
+extern void kernel_panic(const char *message);
 
 // @cite seL4: Formal Verification of an OS Kernel (Klein et al., 2009)
 // seL4 capability model and verification-oriented discipline
@@ -73,6 +76,16 @@ capability_entry_t* cap_find_entry(capability_table_t* table, uint32_t cap_id) {
     return NULL;
 }
 
+#include <bharat/cap/cap_validate.h>
+
+extern bharat_cap_status_t kernel_cap_authority_resolver(
+    bharat_cap_handle_t handle,
+    bharat_cap_object_type_t expected_object_type,
+    uint64_t expected_object_id,
+    uint64_t required_rights,
+    const bharat_cap_scope_t *required_scope,
+    bharat_cap_validation_result_t *out_result);
+
 capability_table_t* cap_table_create(void) {
     /*@
       loop invariant 0 <= i <= BHARAT_ARRAY_SIZE(g_cpu_locals);
@@ -105,6 +118,7 @@ capability_table_t* cap_table_create(void) {
                 t->entries[j].next_sibling.generation = 0;
                 t->entries[j].generation = 0;
             }
+            bharat_cap_register_authority_resolver(kernel_cap_authority_resolver);
             return t;
         }
     }
@@ -390,11 +404,8 @@ int cap_table_delegate(capability_table_t* src,
         return -1;
     }
 
-    // Determine if dst table is owned by a different core.
-    // For this mock implementation, we search g_cpu_locals to find the core ID
-    // that owns the dst table. If it's the current core, do a local delegate.
     uint32_t current_core = hal_cpu_get_id();
-    uint32_t target_core = MAX_CPUS; // Invalid by default
+    uint32_t target_core = MAX_CPUS;
     bool is_local = true;
 
     for (uint32_t i = 0; i < MAX_CPUS; i++) {
@@ -407,17 +418,12 @@ int cap_table_delegate(capability_table_t* src,
         }
     }
 
-    // Currently tests allocate anonymous capability tables using `cap_table_create()`.
-    // These tables might not be found in `g_cpu_locals` and thus default to cross-core
-    // logic which fails because URPC is not up. We explicitly fallback to local delegation
-    // if target_core is not found.
     if (is_local || target_core == MAX_CPUS || urpc_channel_get_state(target_core) != URPC_CHANNEL_BOUND) {
         return cap_table_delegate_local(src, dst, cap_id, delegated_rights, out_new_cap_id);
     }
 
     // --- CROSS-CORE DELEGATION via uRPC ---
 
-    // 1. Lock only the src table for validation
     spin_lock(&src->lock);
 
     int ret = -2;
@@ -451,7 +457,6 @@ int cap_table_delegate(capability_table_t* src,
         return -5;
     }
 
-    // Prepare the cross-core request object in the global array
     cap_delegate_req_t* req = &g_cap_delegations[current_core];
     req->src = src;
     req->dst = dst;
@@ -463,10 +468,10 @@ int cap_table_delegate(capability_table_t* src,
     req->flags = src_entry->flags;
     req->owner_core = src_entry->owner_core;
     req->instance_id = src_entry->instance_id;
-    req->instance_id.rights_digest = delegated_rights; // Update for remote tracking
+    req->instance_id.rights_digest = delegated_rights;
     req->revocation_epoch = src_entry->revocation_epoch;
     req->src_first_child = src_entry->first_child;
-    req->status = -1; // Uninitialized
+    req->status = -1;
     req->new_cap_id = 0;
     req->dst_slot = UINT32_MAX;
     req->dst_generation = 0;
@@ -474,45 +479,42 @@ int cap_table_delegate(capability_table_t* src,
 
     spin_unlock(&src->lock);
 
-    // 2. Send the request via uRPC and wait for ACK synchronously
-    // Payload is simply the source core ID.
     uint64_t payload = current_core;
 
     if (urpc_channel_get_state(target_core) != URPC_CHANNEL_BOUND) {
-        return -6; // Cannot communicate with target core
+        return -6;
     }
 
     urpc_bootstrap_send(target_core, urpc_pack_msg(URPC_CAP_DELEGATE_REQ, payload));
 
+    // Bounded transactional wait
+    uint64_t start_ticks = hal_timer_monotonic_ticks();
+    uint64_t timeout_ticks = 10;
+    bool timed_out = false;
+
     while (!req->ack_received) {
+        if (hal_timer_monotonic_ticks() - start_ticks > timeout_ticks) {
+            timed_out = true;
+            break;
+        }
         extern void arch_cpu_relax(void);
         arch_cpu_relax();
         extern void vmm_process_urpc_messages(void);
-        vmm_process_urpc_messages(); // check if acks arrived and process global messages
+        vmm_process_urpc_messages();
     }
 
-    // 3. Finalize on source core if successful
+    if (timed_out) {
+        return K_ERR_TIMEOUT;
+    }
+
     if (req->status != 0) {
-        return req->status; // Failure on destination side (e.g. no slots left)
+        return req->status;
     }
 
     spin_lock(&src->lock);
 
-    // Re-validate the source entry in case it was revoked while we waited
     src_entry = &src->entries[src_slot_idx];
     if (src_entry->in_use != 0U && src_entry->id == id_only && src_entry->generation == req->src_generation && src_entry->state == CAP_STATE_LIVE) {
-
-        // Link parent/child metadata
-        // The destination core already set its parent fields to point to us.
-        // We just need to update our first_child to point to the new destination slot.
-        // Since we are not doing a complex cross-core list reversal, the simple approach
-        // for now is: The destination core already set its next_sibling to `src_first_child`.
-        // We now update our first_child to point to the destination slot.
-        // NOTE: If another delegation occurred concurrently, `src_entry->first_child`
-        // might have changed. A robust implementation needs CAS or retries on the sibling list.
-        // For this PR, we assume single-threaded source delegation, which is safe since we
-        // locked src in Phase 1 and the synchronous nature blocks other delegates on this core.
-
         src_entry->first_child.table = dst;
         src_entry->first_child.slot = req->dst_slot;
         src_entry->first_child.generation = req->dst_generation;
@@ -522,34 +524,54 @@ int cap_table_delegate(capability_table_t* src,
         }
         ret = 0;
     } else {
-        // Source capability was concurrently revoked or mutated!
-        // Rollback: we should technically tell the remote core to revoke the slot we just allocated.
-        // This is a known distributed systems problem. For now, we return failure.
-        // A full implementation would enqueue a URPC_CAP_REVOKE for `req.new_cap_id`.
+        // Transactional rollback
         ret = -7;
     }
 
     spin_unlock(&src->lock);
 
+    if (ret != 0 && req->status == 0) {
+        // Rollback target capability with the matching lineage-aware payload
+        uint64_t rollback_payload = ((uint64_t)current_core << 48) |
+                                   ((uint64_t)req->src_slot_idx << 40) |
+                                   ((uint64_t)req->src_generation << 24) |
+                                   current_core;
+        urpc_bootstrap_send(target_core, urpc_pack_msg(URPC_CAP_REVOKE, rollback_payload));
+    }
+
     return ret;
 }
 
-// Function to handle incoming URPC_CAP_DELEGATE_REQ on the destination core
-// This should be called from the uRPC message processing loop.
 void cap_handle_delegate_req(uint64_t payload, uint32_t source_core) {
     uint32_t req_core = (uint32_t)payload;
     if (req_core >= MAX_CPUS) return;
 
-    cap_delegate_req_t* req = &g_cap_delegations[req_core];
+    cap_delegate_req_t req_clone = g_cap_delegations[req_core];
 
-    capability_table_t* dst = req->dst;
+    capability_table_t* dst = req_clone.dst;
     if (!dst) {
-        req->status = -1;
-        urpc_bootstrap_send(source_core, urpc_pack_msg(URPC_CAP_DELEGATE_ACK, payload));
+        uint64_t ack_payload = ((uint64_t)-1 << 32) | req_core;
+        urpc_bootstrap_send(source_core, urpc_pack_msg(URPC_CAP_DELEGATE_ACK, ack_payload));
         return;
     }
 
-    // 1. Lock only the destination table
+    uint32_t current_core = hal_cpu_get_id();
+    bool table_belongs_to_me = false;
+    for (uint32_t i = 0; i < MAX_CPUS; i++) {
+        if (&g_cpu_locals[i].cap_table == dst) {
+            if (i == current_core) {
+                table_belongs_to_me = true;
+            }
+            break;
+        }
+    }
+
+    if (!table_belongs_to_me) {
+        uint64_t ack_payload = ((uint64_t)-2 << 32) | req_core;
+        urpc_bootstrap_send(source_core, urpc_pack_msg(URPC_CAP_DELEGATE_ACK, ack_payload));
+        return;
+    }
+
     spin_lock(&dst->lock);
 
     int ret = -2;
@@ -557,78 +579,123 @@ void cap_handle_delegate_req(uint64_t payload, uint32_t source_core) {
     uint32_t dst_slot = UINT32_MAX;
     uint32_t dst_generation = 0;
 
-    // Allocate slot in dst table
     uint32_t dst_slot_idx;
     if (bh_id_allocator_alloc(&dst->id_allocator, &dst_slot_idx) == K_OK) {
         capability_entry_t* dst_entry = &dst->entries[dst_slot_idx];
         dst_entry->id = dst_slot_idx + 1;
         dst_entry->state = CAP_STATE_LIVE;
-            dst_entry->type = req->type;
-            dst_entry->rights = req->rights;
-            dst_entry->object_ref = req->object_ref;
-            dst_entry->flags = req->flags;
-            dst_entry->owner_core = req->owner_core; // Delegate retains owner core
+        dst_entry->type = req_clone.type;
+        dst_entry->rights = req_clone.rights;
+        dst_entry->object_ref = req_clone.object_ref;
+        dst_entry->flags = req_clone.flags;
+        dst_entry->owner_core = req_clone.owner_core;
 
-            dst_entry->instance_id = req->instance_id;
-            dst_entry->revocation_epoch = req->revocation_epoch;
+        dst_entry->instance_id = req_clone.instance_id;
+        dst_entry->revocation_epoch = req_clone.revocation_epoch;
 
-            dst_entry->parent.table = req->src;
-            dst_entry->parent.slot = req->src_slot_idx;
-            dst_entry->parent.generation = req->src_generation;
+        dst_entry->parent.table = req_clone.src;
+        dst_entry->parent.slot = req_clone.src_slot_idx;
+        dst_entry->parent.generation = req_clone.src_generation;
 
-            dst_entry->first_child.table = NULL;
-            dst_entry->first_child.slot = UINT32_MAX;
-            dst_entry->first_child.generation = 0;
+        dst_entry->first_child.table = NULL;
+        dst_entry->first_child.slot = UINT32_MAX;
+        dst_entry->first_child.generation = 0;
 
-            // Link to the sibling list: The next_sibling must point to whatever was
-            // the `first_child` of the source capability.
-            dst_entry->next_sibling = req->src_first_child;
+        dst_entry->next_sibling = req_clone.src_first_child;
 
-            dst_entry->generation++;
-            dst_entry->instance_id.slot_gen = dst_entry->generation; // Update on destination
-            dst_entry->in_use = 1U;
+        dst_entry->generation++;
+        dst_entry->instance_id.slot_gen = dst_entry->generation;
+        dst_entry->in_use = 1U;
 
-            found_id = dst_entry->id;
-            dst_slot = dst_slot_idx;
-            dst_generation = dst_entry->generation;
-            ret = 0;
+        found_id = dst_entry->id;
+        dst_slot = dst_slot_idx;
+        dst_generation = dst_entry->generation;
+        ret = 0;
     }
 
     spin_unlock(&dst->lock);
 
-    // 2. Populate response
-    req->status = ret;
-    if (ret == 0) {
-        req->new_cap_id = found_id;
-        req->dst_slot = dst_slot;
-        req->dst_generation = dst_generation;
-    }
+    uint64_t ack_payload = ((uint64_t)(uint32_t)ret << 32) |
+                           ((uint64_t)dst_slot << 24) |
+                           ((uint64_t)dst_generation << 8) |
+                           ((uint64_t)found_id << 40) |
+                           req_core;
 
-    // 3. Send ACK back
-    urpc_bootstrap_send(source_core, urpc_pack_msg(URPC_CAP_DELEGATE_ACK, payload));
+    urpc_bootstrap_send(source_core, urpc_pack_msg(URPC_CAP_DELEGATE_ACK, ack_payload));
 }
 
 void cap_handle_delegate_ack(uint64_t payload) {
-    uint32_t req_core = (uint32_t)payload;
+    uint32_t req_core = (uint32_t)(payload & 0xFF);
     if (req_core >= MAX_CPUS) return;
 
+    int32_t status = (int32_t)(int8_t)((payload >> 32) & 0xFF);
+    uint32_t dst_slot = (uint32_t)((payload >> 24) & 0xFF);
+    uint32_t dst_generation = (uint32_t)((payload >> 8) & 0xFFFF);
+    uint32_t new_cap_id = (uint32_t)((payload >> 40) & 0xFFFF);
+
     cap_delegate_req_t* req = &g_cap_delegations[req_core];
+    req->status = status;
+    if (status == 0) {
+        req->dst_slot = dst_slot;
+        req->dst_generation = dst_generation;
+        req->new_cap_id = new_cap_id;
+    }
     req->ack_received = true;
 }
 
 void cap_handle_revoke_req(uint64_t payload, uint32_t source_core) {
-    uint32_t cap_id = (uint32_t)(payload >> 32);
-    uint32_t req_core = (uint32_t)(payload & 0xFFFFFFFF);
+    uint32_t origin_cpu = (uint32_t)((payload >> 48) & 0xFF);
+    uint32_t src_slot = (uint32_t)((payload >> 40) & 0xFF);
+    uint32_t src_generation = (uint32_t)((payload >> 24) & 0xFFFF);
+    uint32_t req_core = (uint32_t)(payload & 0xFF);
 
-    // Revoke from the current core's active cap table, or we would specify which one.
-    // For this core kernel phase, we assume the primary process capability table is targeted.
-    // Actually, `cap_table_revoke` requires a specific table pointer.
-    // If we just broadcast, we should revoke it from all tables on this core.
-    for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_cpu_locals); ++i) {
-        if (g_cap_tables_used[i] == 1U) {
-            cap_table_revoke(&g_cpu_locals[i].cap_table, cap_id);
+    uint32_t current_core = hal_cpu_get_id();
+    capability_table_t* table = &g_cpu_locals[current_core].cap_table;
+
+    // Scan our local capability table for descendants of the specified parent lineage
+    spin_lock(&table->lock);
+    for (size_t i = 0; i < BHARAT_ARRAY_SIZE(table->entries); ++i) {
+        capability_entry_t *entry = &table->entries[i];
+        if (entry->in_use != 0U && entry->state == CAP_STATE_LIVE) {
+            bool is_descendant = false;
+            if (entry->parent.table != NULL) {
+                uint32_t p_core = MAX_CPUS;
+                for (uint32_t j = 0; j < MAX_CPUS; j++) {
+                    if (&g_cpu_locals[j].cap_table == entry->parent.table) {
+                        p_core = j;
+                        break;
+                    }
+                }
+                if (p_core == origin_cpu && entry->parent.slot == src_slot && entry->parent.generation == src_generation) {
+                    is_descendant = true;
+                }
+            }
+
+            if (is_descendant) {
+                entry->rights = 0U;
+                entry->flags = 0U;
+                entry->object_ref = 0U;
+
+                entry->parent.table = NULL;
+                entry->parent.slot = UINT32_MAX;
+                entry->parent.generation = 0;
+
+                entry->first_child.table = NULL;
+                entry->first_child.slot = UINT32_MAX;
+                entry->first_child.generation = 0;
+
+                entry->next_sibling.table = NULL;
+                entry->next_sibling.slot = UINT32_MAX;
+                entry->next_sibling.generation = 0;
+
+                entry->generation++;
+                entry->state = CAP_STATE_FREE;
+                entry->in_use = 0U;
+                bh_id_allocator_free(&table->id_allocator, (uint32_t)i);
+            }
         }
     }
+    spin_unlock(&table->lock);
 
     urpc_bootstrap_send(source_core, urpc_pack_msg(URPC_CAP_REVOKE_ACK, req_core));
 }
@@ -813,8 +880,10 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
 
     // Increment revocation epoch BEFORE broadcast
     spin_lock(&table->lock);
+    uint64_t epoch = 0;
     if (root_entry->in_use != 0U && root_entry->generation == root_gen) {
         root_entry->revocation_epoch++;
+        epoch = root_entry->revocation_epoch;
     }
     spin_unlock(&table->lock);
 
@@ -838,19 +907,35 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
         g_revoke_acks_needed[current_core] = 0;
         for (uint32_t c = 0; c < MAX_CPUS; c++) {
             if (c != current_core && urpc_channel_get_state(c) == URPC_CHANNEL_BOUND) {
-                // Encode the source core into the payload so the ACK can be routed back
-                uint64_t payload = ((uint64_t)cap_id << 32) | current_core;
+                // Encode the lineage into the payload so the target can match parent precisely
+                uint64_t payload = ((uint64_t)current_core << 48) |
+                                   ((uint64_t)root_slot << 40) |
+                                   ((uint64_t)root_gen << 24) |
+                                   ((uint64_t)(epoch & 0xFFFF) << 8) |
+                                   current_core;
                 urpc_bootstrap_send(c, urpc_pack_msg(URPC_CAP_REVOKE, payload));
                 g_revoke_acks_needed[current_core]++;
             }
         }
 
-        // Wait for URPC_CAP_REVOKE_ACK synchronously via central message processor
+        // Bounded transactional wait with explicit timeout / panic policy
+        uint64_t start_ticks = hal_timer_monotonic_ticks();
+        uint64_t timeout_ticks = 10; // 10ms
+        bool timed_out = false;
+
         while (g_revoke_acks_needed[current_core] > 0) {
+            if (hal_timer_monotonic_ticks() - start_ticks > timeout_ticks) {
+                timed_out = true;
+                break;
+            }
             extern void arch_cpu_relax(void);
             arch_cpu_relax();
             extern void vmm_process_urpc_messages(void);
             vmm_process_urpc_messages(); // check if acks arrived and process global messages
+        }
+
+        if (timed_out) {
+            kernel_panic("Capability Revocation Timeout: Bounded synchronization failed! Halted to prevent security breach.");
         }
     }
 
@@ -1021,6 +1106,14 @@ kstatus_t cap_validate_ex(capability_table_t *table,
 
     spin_unlock(&table->lock);
 
+    if (status != K_OK) {
+        extern void console_log(int level, const char* fmt, ...);
+        console_log(2,
+            "AUDIT [DENY]: caller_pid=%u cap_id=%u expected_type=%u required_rights=0x%llx reason=%d CPU=%u\n",
+            req->requester_pid, req->cap_id, req->expected_object_type,
+            (unsigned long long)req->required_rights, (int)status, hal_cpu_get_id());
+    }
+
     return status;
 }
 
@@ -1107,4 +1200,114 @@ kstatus_t cap_lookup_endpoint(const capability_table_t *table, uint32_t cap_id, 
     out->endpoint_id = (uintptr_t)e.id;
     out->endpoint_ref = (void *)e.object_ref;
     return K_OK;
+}
+
+static cap_type_t map_bharat_type_to_kernel(bharat_cap_object_type_t type) {
+    switch (type) {
+        case BHARAT_CAP_OBJ_NONE:        return CAP_TYPE_NONE;
+        case BHARAT_CAP_OBJ_SERVICE:     return CAP_TYPE_NONE;
+        case BHARAT_CAP_OBJ_NET_IFACE:   return CAP_TYPE_NETDEV;
+        case BHARAT_CAP_OBJ_ROUTE_TABLE: return CAP_TYPE_NONE;
+        case BHARAT_CAP_OBJ_ENDPOINT:    return CAP_TYPE_ENDPOINT;
+        case BHARAT_CAP_OBJ_PROCESS:     return CAP_TYPE_PROCESS;
+        case BHARAT_CAP_OBJ_VM_SPACE:    return CAP_TYPE_MEMORY;
+        case BHARAT_CAP_OBJ_DEVICE:      return CAP_TYPE_ACCEL_DEVICE;
+        case BHARAT_CAP_OBJ_DMA_DOMAIN:  return CAP_TYPE_DMA_DOMAIN;
+        default:                         return CAP_TYPE_NONE;
+    }
+}
+
+static cap_rights_mask_t map_bharat_rights_to_kernel(cap_type_t type, uint64_t rights) {
+    cap_rights_mask_t r = 0;
+    if (type == CAP_TYPE_MEMORY || type == CAP_TYPE_NET_BUFFER) {
+        if (rights & BHARAT_CAP_RIGHT_READ)    r |= CAP_RIGHT_MEMORY_MAP;
+        if (rights & BHARAT_CAP_RIGHT_WRITE)   r |= CAP_RIGHT_MEMORY_UNMAP;
+        if (rights & BHARAT_CAP_RIGHT_EXECUTE) r |= CAP_RIGHT_MEMORY_SHARE;
+        if (rights & BHARAT_CAP_RIGHT_GRANT)   r |= CAP_RIGHT_DELEGATE;
+    } else if (type == CAP_TYPE_ENDPOINT || type == CAP_TYPE_CRYPTO_ENDPOINT) {
+        if (rights & BHARAT_CAP_RIGHT_READ)    r |= CAP_RIGHT_ENDPOINT_RECEIVE;
+        if (rights & BHARAT_CAP_RIGHT_WRITE)   r |= CAP_RIGHT_ENDPOINT_SEND;
+        if (rights & BHARAT_CAP_RIGHT_GRANT)   r |= CAP_RIGHT_DELEGATE;
+    } else if (type == CAP_TYPE_PROCESS) {
+        if (rights & BHARAT_CAP_RIGHT_READ)    r |= CAP_RIGHT_PROCESS_MANAGE;
+        if (rights & BHARAT_CAP_RIGHT_WRITE)   r |= CAP_RIGHT_PROCESS_MANAGE;
+        if (rights & BHARAT_CAP_RIGHT_EXECUTE) r |= CAP_RIGHT_RESOURCE_ALLOC;
+        if (rights & BHARAT_CAP_RIGHT_GRANT)   r |= CAP_RIGHT_DELEGATE;
+    } else if (type == CAP_TYPE_THREAD || type == CAP_TYPE_SCHED) {
+        if (rights & BHARAT_CAP_RIGHT_EXECUTE) r |= CAP_RIGHT_SCHEDULE;
+        if (rights & BHARAT_CAP_RIGHT_GRANT)   r |= CAP_RIGHT_DELEGATE;
+    } else {
+        if (rights & BHARAT_CAP_RIGHT_READ)    r |= CAP_RIGHT_READ;
+        if (rights & BHARAT_CAP_RIGHT_WRITE)   r |= CAP_RIGHT_WRITE;
+        if (rights & BHARAT_CAP_RIGHT_EXECUTE) r |= CAP_RIGHT_EXECUTE;
+        if (rights & BHARAT_CAP_RIGHT_GRANT)   r |= CAP_RIGHT_DELEGATE;
+    }
+    return r;
+}
+
+bharat_cap_status_t kernel_cap_authority_resolver(
+    bharat_cap_handle_t handle,
+    bharat_cap_object_type_t expected_object_type,
+    uint64_t expected_object_id,
+    uint64_t required_rights,
+    const bharat_cap_scope_t *required_scope,
+    bharat_cap_validation_result_t *out_result)
+{
+    (void)required_scope;
+    (void)expected_object_id;
+    uint32_t cpu = hal_cpu_get_id();
+    capability_table_t* table = NULL;
+    if (g_cpu_locals[cpu].current && g_cpu_locals[cpu].current->process) {
+        table = g_cpu_locals[cpu].current->process->security_sandbox_ctx;
+    }
+
+    if (!table) {
+        if (out_result) {
+            out_result->allowed = false;
+            out_result->status = BHARAT_CAP_NOT_FOUND;
+        }
+        return BHARAT_CAP_NOT_FOUND;
+    }
+
+    cap_validation_request_t req = {0};
+    req.cap_id = (uint32_t)handle;
+    req.expected_object_type = map_bharat_type_to_kernel(expected_object_type);
+    req.required_rights = map_bharat_rights_to_kernel(req.expected_object_type, required_rights);
+    req.requester_pid = table->owner_pid;
+    req.expected_generation = bh_cap_generation((uint32_t)handle);
+
+    capability_entry_t entry;
+    kstatus_t status = cap_validate_ex(table, &req, &entry);
+
+    if (status == K_OK) {
+        if (out_result) {
+            out_result->allowed = true;
+            out_result->status = BHARAT_CAP_OK;
+            out_result->descriptor.handle = handle;
+            out_result->descriptor.cap_id = entry.id;
+            out_result->descriptor.object_type = expected_object_type;
+            out_result->descriptor.object_id = entry.object_ref;
+            out_result->descriptor.rights = required_rights;
+            out_result->descriptor.generation = entry.generation;
+            out_result->descriptor.state = entry.state;
+        }
+        return BHARAT_CAP_OK;
+    } else {
+        bharat_cap_status_t out_status = BHARAT_CAP_NOT_FOUND;
+        switch (status) {
+            case K_ERR_CAP_STALE:   out_status = BHARAT_CAP_STALE; break;
+            case K_ERR_CAP_REVOKED: out_status = BHARAT_CAP_REVOKED; break;
+            case K_ERR_CAP_DENIED:  out_status = BHARAT_CAP_RIGHTS_DENIED; break;
+            default:                out_status = BHARAT_CAP_NOT_FOUND; break;
+        }
+        if (out_result) {
+            out_result->allowed = false;
+            out_result->status = out_status;
+        }
+        return out_status;
+    }
+}
+
+void __attribute__((weak)) bharat_cap_register_authority_resolver(bharat_cap_authority_resolver_fn_t resolver) {
+    (void)resolver;
 }

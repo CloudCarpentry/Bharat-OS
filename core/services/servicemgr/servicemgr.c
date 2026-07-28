@@ -220,12 +220,69 @@ void servicemgr_check_health(uint64_t current_ticks) {
     }
 }
 
+#include <bharat/cap/cap_authz.h>
+
+static const bharat_service_authz_desc_t servicemgr_authz_descs[] = {
+    {
+        .opcode = SM_OP_REGISTER,
+        .object_type = BHARAT_CAP_OBJ_SERVICE,
+        .required_rights = BHARAT_CAP_RIGHT_WRITE,
+    },
+    {
+        .opcode = SM_OP_START,
+        .object_type = BHARAT_CAP_OBJ_SERVICE,
+        .required_rights = BHARAT_CAP_RIGHT_WRITE,
+    },
+    {
+        .opcode = SM_OP_STOP,
+        .object_type = BHARAT_CAP_OBJ_SERVICE,
+        .required_rights = BHARAT_CAP_RIGHT_WRITE,
+    },
+    {
+        .opcode = SM_OP_QUERY,
+        .object_type = BHARAT_CAP_OBJ_SERVICE,
+        .required_rights = BHARAT_CAP_RIGHT_READ,
+    },
+    {
+        .opcode = SM_OP_HEARTBEAT,
+        .object_type = BHARAT_CAP_OBJ_SERVICE,
+        .required_rights = BHARAT_CAP_RIGHT_WRITE,
+    },
+    {
+        .opcode = SM_OP_SIGNAL_READY,
+        .object_type = BHARAT_CAP_OBJ_SERVICE,
+        .required_rights = BHARAT_CAP_RIGHT_WRITE,
+    }
+};
+
 int32_t servicemgr_authorize(uint32_t opcode, const void *req, bharat_cap_handle_t caller_cap) {
     if (caller_cap == BHARAT_CAP_INVALID_HANDLE) {
         return BHARAT_IPC_STATUS_ERR_PERM;
     }
-    // Simple mock authorization
-    return BHARAT_IPC_STATUS_OK;
+
+    uint64_t target_service_id = 0;
+    if (opcode == SM_OP_REGISTER) {
+        target_service_id = 0;
+    } else if (opcode == SM_OP_START) {
+        target_service_id = ((const sm_req_start_t *)req)->service_id;
+    } else if (opcode == SM_OP_STOP) {
+        target_service_id = ((const sm_req_stop_t *)req)->service_id;
+    } else if (opcode == SM_OP_QUERY) {
+        target_service_id = ((const sm_req_query_t *)req)->service_id;
+    } else if (opcode == SM_OP_HEARTBEAT) {
+        target_service_id = ((const sm_req_heartbeat_t *)req)->service_id;
+    } else if (opcode == SM_OP_SIGNAL_READY) {
+        target_service_id = ((const sm_req_heartbeat_t *)req)->service_id;
+    }
+
+    return bharat_service_dispatch_authorize(
+        SERVICEMGR_SERVICE_ID,
+        opcode,
+        servicemgr_authz_descs,
+        sizeof(servicemgr_authz_descs) / sizeof(servicemgr_authz_descs[0]),
+        caller_cap,
+        target_service_id
+    );
 }
 
 void servicemgr_loop(bharat_ipc_endpoint_t endpoint) {

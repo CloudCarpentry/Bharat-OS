@@ -2,9 +2,14 @@
 #include <stddef.h>
 
 static bharat_cap_validate_fn_t g_test_backend = NULL;
+static bharat_cap_authority_resolver_fn_t g_authority_resolver = NULL;
 
 void bharat_cap_set_validate_backend_for_tests(bharat_cap_validate_fn_t fn) {
     g_test_backend = fn;
+}
+
+void bharat_cap_register_authority_resolver(bharat_cap_authority_resolver_fn_t resolver) {
+    g_authority_resolver = resolver;
 }
 
 bharat_cap_status_t bharat_cap_validate(
@@ -19,9 +24,13 @@ bharat_cap_status_t bharat_cap_validate(
         return g_test_backend(handle, expected_object_type, expected_object_id, required_rights, required_scope, out_result);
     }
 
+    if (g_authority_resolver) {
+        return g_authority_resolver(handle, expected_object_type, expected_object_id, required_rights, required_scope, out_result);
+    }
+
     // Default production path (not fully implemented in Phase 1, waiting on CapMgr/Syscall runtime mapping)
     // In a complete system this would issue an IPC to the capability service or a syscall.
-    // For now, if no test backend is set, we fail closed.
+    // For now, if no test backend or authority resolver is set, we fail closed.
 
     if (out_result) {
         out_result->allowed = false;
