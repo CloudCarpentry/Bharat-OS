@@ -411,6 +411,7 @@ set(KERNEL_SRCS
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/display_handoff.c>
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/display_fallback.c>
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/boot_gui.c>
+    $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/boot_display_bridge.c>
     src/kernel_boot.c
     ${BHARAT_BOOT_ROOT}/src/boot_info.c
     ${BHARAT_BOOT_ROOT}/src/boot_validate.c

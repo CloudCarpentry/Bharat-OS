@@ -239,6 +239,10 @@ add_executable(host_test_framebuffer gfx/test_framebuffer.c ../../core/lib/gfx/f
 target_include_directories(host_test_framebuffer PRIVATE ../../core/lib/gfx ../../)
 add_test(NAME host_test_framebuffer COMMAND host_test_framebuffer)
 
+add_executable(host_test_boot_display_bridge gfx/test_boot_display_bridge.c)
+target_include_directories(host_test_boot_display_bridge PRIVATE ../../core/kernel/include ../../interface/include ../../core/boot/include ../../core/hal/include ../../)
+add_test(NAME host_test_boot_display_bridge COMMAND host_test_boot_display_bridge)
+
 add_executable(host_test_region gfx/test_region.c ../../core/lib/gfx/region.c)
 target_include_directories(host_test_region PRIVATE ../../core/lib/gfx ../../)
 add_test(NAME host_test_region COMMAND host_test_region)

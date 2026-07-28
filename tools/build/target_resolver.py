@@ -119,7 +119,8 @@ def resolve_yaml_target(path: Path) -> ResolvedTarget:
             required=dtb_raw.get("required", False),
             path=dtb_raw.get("path"),
             handoff_register=dtb_raw.get("handoff_register")
-        )
+        ),
+        cmdline=boot_raw.get("cmdline")
     )
 
     package_raw = raw.get("package", {})

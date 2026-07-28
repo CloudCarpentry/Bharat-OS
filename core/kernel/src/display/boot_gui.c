@@ -337,6 +337,10 @@ int boot_gui_run(void) {
     g_gui.bpp     = bpp;
     g_gui.active  = true;
 
+    /* Register the display device with the generic display subsystem */
+    extern int boot_display_register_from_handoff(const boot_video_handoff_t *handoff);
+    boot_display_register_from_handoff(&g_gui_handoff);
+
     /* 5. Draw boot splash */
     draw_splash();
 
