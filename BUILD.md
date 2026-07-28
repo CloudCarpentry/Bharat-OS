@@ -219,7 +219,9 @@ Runtime command includes serial-first bring-up (`-nographic -monitor none -seria
 .\tools\build.ps1 all --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml --smoke
 .\tools\build.ps1 all --target-yaml delivery/targets/qemu/x86_64_desktop_gui.yaml --interactive
 .\tools\build.ps1 all --target-yaml delivery/targets/qemu/arm64_desktop_headless.yaml --smoke
+.\tools\build.ps1 all --target-yaml delivery/targets/qemu/arm64_desktop_gui.yaml --interactive
 .\tools\build.ps1 all --target-yaml delivery/targets/qemu/riscv64_desktop_headless.yaml --smoke
+.\tools\build.ps1 run --target-yaml delivery/targets/qemu/riscv64_desktop_gui.yaml --interactive
 .\tools\build.ps1 all --target-yaml delivery/targets/qemu/arm32_mmu_lite_headless.yaml --smoke
 .\tools\build.ps1 all --target-yaml delivery/targets/qemu/riscv32_mmu_lite_headless.yaml --smoke
 ```
@@ -238,13 +240,13 @@ Runtime command includes serial-first bring-up (`-nographic -monitor none -seria
 
 All commands verified with `[Run] PASS` on QEMU. Build + package + run in one shot.
 
-| Architecture | Profile | Target YAML |
-|---|---|---|
-| x86_64 | Desktop GP | `x86_64_desktop_headless.yaml` |
-| arm64 | Desktop GP | `arm64_desktop_headless.yaml` |
-| riscv64 | Desktop GP | `riscv64_desktop_headless.yaml` |
-| arm32 | Edge MMU-Lite | `arm32_mmu_lite_headless.yaml` |
-| riscv32 | Edge MMU-Lite | `riscv32_mmu_lite_headless.yaml` |
+| Architecture | Profile       | Target YAML                      |
+| ------------ | ------------- | -------------------------------- |
+| x86_64       | Desktop GP    | `x86_64_desktop_headless.yaml`   |
+| arm64        | Desktop GP    | `arm64_desktop_headless.yaml`    |
+| riscv64      | Desktop GP    | `riscv64_desktop_headless.yaml`  |
+| arm32        | Edge MMU-Lite | `arm32_mmu_lite_headless.yaml`   |
+| riscv32      | Edge MMU-Lite | `riscv32_mmu_lite_headless.yaml` |
 
 ```powershell
 # PowerShell (Windows)
