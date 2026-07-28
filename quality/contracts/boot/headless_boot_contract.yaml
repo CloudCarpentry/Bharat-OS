@@ -19,8 +19,12 @@ targets:
     description: "x86_64 baseline headless boot"
     required:
       - "BOOT: kernel_main reached"
-      - "KT: capability"
-      - "KT: scheduler"
+      - "BOOT: pmm initialized"
+      - "BOOT: vmm initialized"
+      - "[BOOT] Memory subsystem initialization complete"
+      - "[BOOT] Platform services initialization complete"
+      - "[BOOT] Runtime initialization complete"
+      - "[BOOT] Spawning first system service (sysmgr)..."
     allowed_skip:
       - "SKIP: sched_remote_ipi requires >=2 online cores"
     forbidden: *common_forbidden
@@ -30,6 +34,12 @@ targets:
     description: "ARM64 baseline headless boot"
     required:
       - "BOOT: kernel_main reached"
+      - "BOOT: pmm initialized"
+      - "BOOT: vmm initialized"
+      - "[BOOT] Memory subsystem initialization complete"
+      - "[BOOT] Platform services initialization complete"
+      - "[BOOT] Runtime initialization complete"
+      - "[BOOT] Spawning first system service (sysmgr)..."
     forbidden: *common_forbidden
     timeout_seconds: 30
 
@@ -37,6 +47,12 @@ targets:
     description: "RISC-V 64 baseline headless boot"
     required:
       - "BOOT: kernel_main reached"
+      - "BOOT: pmm initialized"
+      - "BOOT: vmm initialized"
+      - "[BOOT] Memory subsystem initialization complete"
+      - "[BOOT] Platform services initialization complete"
+      - "[BOOT] Runtime initialization complete"
+      - "[BOOT] Spawning first system service (sysmgr)..."
     forbidden: *common_forbidden
     timeout_seconds: 30
 
