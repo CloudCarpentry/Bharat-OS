@@ -103,7 +103,13 @@ int aspace_create(address_space_t **out_aspace, uint32_t flags) {
     mem_model_t current_model = mem_model_get_current();
 
     // Create protection domain backend first
-    as->prot_domain = prot_domain_create();
+    as->prot_domain = NULL;
+    kstatus_t pd_err = prot_domain_create(&as->prot_domain);
+    if (pd_err != K_OK && current_model != MEM_MODEL_NONE) {
+        kfree(as);
+        mm_stats.aspace_create_failures++;
+        return pd_err;
+    }
 
     // Setup page table / root_pt based on profile/model
     if (current_model == MEM_MODEL_MPU || profile == ASPACE_PROFILE_REGION_ONLY) {
