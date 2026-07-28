@@ -41,6 +41,23 @@ typedef struct {
 struct bharat_accel_device;
 
 /**
+ * Explicit emulated / virtual accelerator job descriptor
+ */
+typedef enum {
+    VIRT_ACCEL_OP_RELU_F32 = 1,
+} virt_accel_opcode_t;
+
+typedef struct {
+    virt_accel_opcode_t opcode;
+
+    const float *input;
+    size_t input_elements;
+
+    float *output;
+    size_t output_elements;
+} virt_accel_job_t;
+
+/**
  * Accelerator Operations
  */
 typedef struct {
