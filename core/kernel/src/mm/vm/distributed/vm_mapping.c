@@ -35,7 +35,7 @@ int vm_map(vm_space_t *space, const vm_map_req_t *req) {
     }
 
     // Refactor to use Address Space Region tree for authority instead of mappings.head
-    address_space_t *aspace = (address_space_t *)space;
+    address_space_t *aspace = space->aspace;
     vm_region_t *r = NULL;
     int attach_ret = aspace_region_attach(aspace, req->va, req->len, req->prot, req->map_flags, VM_INHERIT_COPY_META, NULL, 0, &r);
     if (attach_ret != 0) {
@@ -51,6 +51,11 @@ int vm_map(vm_space_t *space, const vm_map_req_t *req) {
     mon_vm_send_map(space, req, is_strict);
 
     spinlock_release(&space->lock);
+
+    // Synchronize active_cores from canonical active_mask
+    if (space->aspace) {
+        space->active_cores = aspace_get_active_mask(space->aspace);
+    }
 
     // If local core is active, realize immediately
     if (space->active_cores & (1ULL << hal_cpu_get_id())) {
@@ -68,7 +73,7 @@ int vm_unmap(vm_space_t *space, uintptr_t va, size_t len) {
 
     spinlock_acquire(&space->lock);
 
-    address_space_t *aspace = (address_space_t *)space;
+    address_space_t *aspace = space->aspace;
     int detach_ret = aspace_region_detach(aspace, va);
     if (detach_ret == 0) {
         space->generation++; // Bump generation for revoke
@@ -77,6 +82,11 @@ int vm_unmap(vm_space_t *space, uintptr_t va, size_t len) {
     }
 
     spinlock_release(&space->lock);
+
+    // Synchronize active_cores from canonical active_mask
+    if (space->aspace) {
+        space->active_cores = aspace_get_active_mask(space->aspace);
+    }
 
     if (detach_ret == 0) {
         // Local invalidation
@@ -96,7 +106,7 @@ int vm_protect(vm_space_t *space, uintptr_t va, size_t len, uint64_t prot, uint6
 
     spinlock_acquire(&space->lock);
 
-    address_space_t *aspace = (address_space_t *)space;
+    address_space_t *aspace = space->aspace;
     vm_region_t *r = aspace_lookup_region(aspace, va);
     if (r) {
         r->prot = prot;
@@ -110,6 +120,11 @@ int vm_protect(vm_space_t *space, uintptr_t va, size_t len, uint64_t prot, uint6
     }
 
     spinlock_release(&space->lock);
+
+    // Synchronize active_cores from canonical active_mask
+    if (space->aspace) {
+        space->active_cores = aspace_get_active_mask(space->aspace);
+    }
 
     if (space->active_cores & (1ULL << hal_cpu_get_id())) {
         if (active_arch_vm_ops && active_arch_vm_ops->protect) {

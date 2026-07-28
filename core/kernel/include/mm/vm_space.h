@@ -43,6 +43,8 @@ typedef struct {
     void *root; // Tree root placeholder
 } vm_region_tree_t;
 
+#include "aspace.h"
+
 // The canonical distributed address space object
 typedef struct vm_space {
     spinlock_t lock;
@@ -52,6 +54,8 @@ typedef struct vm_space {
 
     mem_profile_t profile;
     vm_timing_class_t timing_class;
+
+    address_space_t *aspace; // Explicit 1:1 ownership of the canonical address space
 
     uint32_t flags;
     uint32_t rt_flags;
