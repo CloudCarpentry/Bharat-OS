@@ -11,12 +11,12 @@
 
 // Early boot entry for ARM64
 void kernel_main(uintptr_t fdt_ptr) {
+    /* boot.S has already enabled the PL011.  Keep this path allocation-free
+     * and use the raw UART until kernel_main_common() discovers and registers
+     * the normal console backend.  Binding the profile-based UART here used
+     * indirect driver calls before the early console was initialized and
+     * could trap immediately after this marker on QEMU's ARM virt machine. */
     hal_serial_write("BOOT: kernel_main reached\n");
-
-    if (fdt_ptr == 0) fdt_ptr = 0x40000000;
-
-    extern void hal_serial_init(void);
-    hal_serial_init();
 
     if (fdt_ptr == 0) fdt_ptr = 0x40000000;
 
