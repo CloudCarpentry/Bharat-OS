@@ -5,6 +5,7 @@
 #include "hal/hal_mpa.h"
 #include "hal/hal_tlb.h"
 #include "bharat/display/boot_video.h"
+#include "mm/physmap.h"
 
 // Early boot video map logic.
 int boot_video_map(const boot_info_t *boot) {
@@ -18,31 +19,65 @@ int boot_video_map(const boot_info_t *boot) {
 
     phys_addr_t fb_phys = boot->console.fb_phys_base;
     size_t fb_size = (size_t)boot->console.fb_height * boot->console.fb_pitch;
-    uint32_t flags = HAL_PT_FLAG_READ | HAL_PT_FLAG_WRITE;
 
+    /*
+     * Resolve the kernel virtual address for the framebuffer MMIO region.
+     *
+     * On x86_64, boot.S establishes a 4 GiB identity map at BOTH the low half
+     * (PML4[0]) and the high-half alias (PML4[256], base 0xFFFF800000000000).
+     * physmap_phys_to_virt() returns (phys + 0xFFFF800000000000), which is
+     * already backed by those boot-time 2 MiB huge pages — no new PT entries
+     * are needed.  Calling hal_pt_map_range here would split the existing 2 MiB
+     * page, producing an unreliable intermediate state and serving no purpose.
+     *
+     * For other architectures (ARM64, RISC-V) physmap_phys_to_virt() similarly
+     * returns the correctly-mapped high-half address once the MMU is up.
+     *
+     * We only fall back to hal_pt_map_range if the physmap linear map is not
+     * available (e.g. very early, or MPU-only targets).
+     */
+    virt_addr_t fb_virt = 0;
+
+    if (physmap_has_linear_map()) {
+        void *virt_ptr = physmap_phys_to_virt(fb_phys);
+        if (!virt_ptr) return -1;
+        fb_virt = (virt_addr_t)(uintptr_t)virt_ptr;
+    } else {
+        /* No linear physmap — install an explicit mapping. */
 #if defined(__x86_64__)
-    // For x86_64, use the higher-half alias (PML4 index 256) which is already mapped in boot.S
-    virt_addr_t fb_virt = 0xFFFF800000000000ULL | (fb_phys & 0xFFFFFFFF);
+        fb_virt = 0xFFFF800000000000ULL | (fb_phys & 0xFFFFFFFF);
 #else
-    // For ARM/RISC-V, use a high canonical address
-    virt_addr_t fb_virt = 0xFFFF900000000000ULL | (fb_phys & 0xFFFFFFFF);
+        fb_virt = 0xFFFF900000000000ULL | (fb_phys & 0xFFFFFFFF);
 #endif
-
-    phys_addr_t current_root = active_mem_protect->cpu_ops.get_root();
-    
-    if (hal_pt_map_range(current_root, fb_virt, fb_phys, fb_size, flags) != 0) {
-        return -1;
+        uint32_t flags = HAL_PT_FLAG_READ | HAL_PT_FLAG_WRITE | HAL_PT_FLAG_DEVICE;
+        phys_addr_t current_root = active_mem_protect->cpu_ops.get_root();
+        if (hal_pt_map_range(current_root, fb_virt, fb_phys, fb_size, flags) != 0) {
+            return -1;
+        }
+        hal_tlb_invalidate_all();
     }
-    
-    // Full TLB flush
-    hal_tlb_invalidate_all();
 
-    // Update the handoff's virtual address for the GUI to find.
+    // Pre-populate the GUI handoff with the correct mapped virtual address so
+    // that boot_gui_run() finds it valid and skips the boot_video_collect()
+    // call that would otherwise overwrite virt_addr back to the physical address,
+    // causing a page fault when the GUI first writes to the framebuffer.
 #if BHARAT_BOOT_GUI
     extern boot_video_handoff_t* boot_video_get_handoff_ptr(void) __attribute__((weak));
+    extern int boot_video_collect(boot_video_handoff_t *out);
     if (boot_video_get_handoff_ptr) {
         boot_video_handoff_t* handoff = boot_video_get_handoff_ptr();
+        if (handoff && !handoff->valid) {
+            // Fully populate the handoff from the machine layer now, while we
+            // know the correct virtual address.  This prevents boot_gui_run()
+            // from calling boot_video_collect() later (which would reset
+            // virt_addr to the raw physical address before the mapping takes
+            // effect in the GUI's framebuffer pointer).
+            boot_video_collect(handoff);
+        }
         if (handoff) {
+            // Always stamp the remapped virtual address — even if the handoff
+            // was already populated by a prior call, the mapping we just
+            // resolved is what the CPU will actually use.
             handoff->virt_addr = fb_virt;
         }
     }
