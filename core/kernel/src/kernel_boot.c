@@ -350,11 +350,20 @@ static bool runtime_try_boot_video(const boot_info_t *boot_in) {
     boot_info_t *boot = (boot_info_t *)boot_in;
 
     if (boot->console.type != BOOT_CONSOLE_FRAMEBUFFER) {
+#if BHARAT_BOOT_GUI
         machine_display_caps_t caps = {0};
         extern int machine_get_display_caps(machine_display_caps_t *out) __attribute__((weak));
         if (machine_get_display_caps) {
             machine_get_display_caps(&caps);
         }
+#else
+        /*
+         * Headless build.
+         *
+         * Do not actively discover/program optional graphical PCI hardware.
+         */
+        return false;
+#endif
     }
 
     extern const boot_info_t *g_boot_info;
