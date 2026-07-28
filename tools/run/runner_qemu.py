@@ -141,6 +141,10 @@ def run_qemu(manifest_path: Path, mode_override: str = None, display_override: s
     if arch == "x86_64" and init_module:
         cmd.extend(["-initrd", f"{init_module} services/init"])
 
+    cmdline = boot_contract.get("cmdline")
+    if cmdline:
+        cmd.extend(["-append", cmdline])
+
     # Display / Serial configuration
     if nographic:
         cmd.extend(["-nographic", "-monitor", "none", "-serial", "stdio"])

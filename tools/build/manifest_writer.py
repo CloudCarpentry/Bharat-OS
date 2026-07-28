@@ -66,6 +66,7 @@ def write_run_manifest(target: ResolvedTarget, package_outputs: PackageOutputs, 
         "artifacts": artifacts,
         "boot_contract": {
             "protocol": target.boot.protocol,
+            "cmdline": target.boot.cmdline,
             "dtb": {
                 "mode": target.boot.dtb.mode,
                 "required": target.boot.dtb.required,
