@@ -23,7 +23,7 @@ int mon_vm_send_tlb_invalidate_all(vm_space_t *space, bool strict);
 // RT readiness
 int mon_vm_send_prepare_rt(vm_space_t *space, uint32_t target_core_id);
 
-// Synchronously wait for ACKs on a strict transaction
-int mon_vm_wait_for_acks(uint64_t txn_id, cpu_mask_t required_cores);
+// Synchronously wait for ACKs on a strict transaction using monotonic timed retries
+int mon_vm_wait_for_acks(mon_vm_tx_handle_t handle, const mon_vm_msg_t *msg_template);
 
 #endif // BHARAT_MON_VM_OPS_H

@@ -8,15 +8,17 @@
 #include "../../../../include/spinlock.h"
 #include "../../../../include/bharat/cpu_local.h"
 #include "../../../../include/mm/mm_aspace_switch.h"
+#include "../../../../include/mm/prot_domain.h"
 #include <stddef.h>
 #include <stdint.h>
 
-// Mock hal_get_core_id if it's not defined
+// Pre-allocated active spaces database (mock)
+vm_space_t* g_active_spaces[128] = {0};
+
 #ifndef hal_get_core_id
 extern uint32_t hal_get_core_id(void);
 #endif
 
-// Mock spinlock_acquire/release if they are not defined in spinlock.h
 #ifndef spinlock_acquire
 #define spinlock_acquire spin_lock
 #endif
@@ -34,7 +36,6 @@ static uint64_t next_space_id = 1;
 int vm_space_create(vm_space_t **out, mem_profile_t profile, vm_timing_class_t timing) {
     if (!out) return -1;
 
-    // Validate legacy profile matches actual memory model
     mem_model_t current_model = mem_model_get_current();
     if (profile == MEM_PROFILE_MPU_ONLY && current_model != MEM_MODEL_MPU) {
         return -1;
@@ -64,26 +65,32 @@ int vm_space_create(vm_space_t **out, mem_profile_t profile, vm_timing_class_t t
     as->timing_class = timing;
     space->aspace = as;
 
-    // Initialize cap handle to 0
     space->owner_cap.generation = 0;
     space->owner_cap.slot = 0;
     space->owner_cap.table = NULL;
 
     space->regions.root = NULL;
     space->mappings.head = NULL;
-    space->allowed_cores = ~0ULL; // Allow all by default for MVP
+    space->allowed_cores = ~0ULL;
     space->active_cores = 0;
     space->realized_cores = 0;
     space->pending_cores = 0;
     space->rt_ready_cores = 0;
     space->home_monitor = hal_cpu_get_id();
 
-    // Timing-specific policies
     space->require_prefault = (timing >= VM_TIMING_FIRM_RT);
     space->allow_lazy_realize = (timing < VM_TIMING_FIRM_RT);
     space->allow_runtime_pt_alloc = (timing < VM_TIMING_HARD_RT);
     space->allow_remote_fault_recovery = (timing < VM_TIMING_HARD_RT);
     space->allow_demand_paging = (timing <= VM_TIMING_SOFT_RT);
+
+    // Register into active spaces database
+    for (int i = 0; i < 128; i++) {
+        if (!g_active_spaces[i]) {
+            g_active_spaces[i] = space;
+            break;
+        }
+    }
 
     *out = space;
     return 0;
@@ -94,20 +101,13 @@ int vm_space_destroy(vm_space_t *space) {
 
     spinlock_acquire(&space->lock);
 
-    // QUARANTINED DEPRECATED PATH: Legacy registry clean up
-    // DO NOT DELETE yet; wait for unified authority path (fault -> aspace -> region -> HAL)
-    // tests to pass before removing this explicit loop.
-    vm_mapping_t *curr = space->mappings.head;
-    while (curr) {
-        vm_mapping_t *next = curr->next;
-        kfree(curr);
-        curr = next;
+    // Remove from active spaces database
+    for (int i = 0; i < 128; i++) {
+        if (g_active_spaces[i] == space) {
+            g_active_spaces[i] = NULL;
+            break;
+        }
     }
-    space->mappings.head = NULL;
-
-    // TODO: Send MON_VM_SPACE_DESTROY to clean up remote realizations
-    // Note: True tear down logic should iterate `space->regions` but this object
-    // itself is a legacy distributed address space concept.
 
     if (space->aspace) {
         aspace_destroy(space->aspace);
@@ -121,29 +121,27 @@ int vm_space_destroy(vm_space_t *space) {
 
 int vm_realize_on_core(vm_space_t *space, uint32_t core_id, bool strict) {
     (void)strict;
-    if (!space) return -1;
+    if (!space || !space->aspace) return -1;
 
-    // Triggered locally or remotely to force a realization sync
-    // In a full implementation, this walks `space->mappings` and calls `arch_vm_ops_t->map`.
+    prot_domain_t *pd = space->aspace->prot_domain;
+    if (!pd) return -1;
 
-    if (active_arch_vm_ops && active_arch_vm_ops->space_init) {
-        vm_core_state_t local_state = {0};
-        local_state.core_id = core_id;
-        // Mock init
-        active_arch_vm_ops->space_init(space, &local_state);
-
-        // QUARANTINED DEPRECATED PATH: Walk mappings and realize them
-        // Correct path is lazy faults or walk address_space_t -> regions.
-        // DO NOT DELETE until unified authority path tests pass.
-        vm_mapping_t *curr = space->mappings.head;
-        while (curr) {
-            active_arch_vm_ops->map(space, &local_state, curr->va_start, curr->pa_start, curr->length, curr->prot, curr->mem_type, curr->flags);
-            curr = curr->next;
+    // Realize by walking the authoritative regions list
+    vm_region_t *curr = space->aspace->regions;
+    while (curr) {
+        phys_addr_t pa = 0;
+        if (curr->object && curr->object->kind == VM_OBJECT_DEVICE) {
+            pa = curr->object->u.device.phys_base + curr->object_offset;
+        } else if (curr->object && curr->object->kind == VM_OBJECT_DMA) {
+            pa = curr->object->u.dma.phys_base + curr->object_offset;
         }
 
-        space->realized_cores |= (1ULL << core_id);
+        // Execute hardware programming on the core
+        prot_domain_map_region(pd, curr->base, pa, curr->length, curr->prot);
+        curr = curr->next;
     }
 
+    space->realized_cores |= (1ULL << core_id);
     return 0;
 }
 
@@ -154,7 +152,6 @@ int vm_prepare_rt_core(vm_space_t *space, uint32_t core_id) {
         return -1; // Not an RT space
     }
 
-    // Fully pre-realize and validate
     int ret = vm_realize_on_core(space, core_id, true);
     if (ret == 0) {
         spinlock_acquire(&space->lock);
@@ -178,13 +175,12 @@ int vm_activate_local(vm_space_t *space) {
         vm_realize_on_core(space, core_id, false);
     }
 
-    if (active_arch_vm_ops && active_arch_vm_ops->activate) {
-        vm_core_state_t local_state = {0};
-        local_state.core_id = core_id;
+    if (space->aspace && space->aspace->prot_domain) {
+        prot_domain_activate(space->aspace->prot_domain);
+
         // Strictly ordered update to software active_aspace before hardware switch
         address_space_t *prev = g_cpu_locals[core_id].current_as;
         mm_switch_active_aspace(core_id, prev, space->aspace);
-        active_arch_vm_ops->activate(space, &local_state);
     }
 
     spinlock_acquire(&space->lock);
