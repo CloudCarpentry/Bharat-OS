@@ -1,11 +1,10 @@
 ---
-title: Bharat-OS: Experimental Support Strategy for Various Boards
+title: "Bharat-OS: Experimental Support Strategy for Various Boards"
 status: Draft
 owner: Documentation Working Group
 last_updated: 2026-04-25
 tags:
   - docs
-  - general
 see_also:
   - README.md
 ---

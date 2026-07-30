@@ -1,9 +1,12 @@
 #include <stdint.h>
 #include <stddef.h>
-#include <uapi/syscall/syscall_nr.h>
-#include <syscall/common/syscall.h>
+#include <bharat/uapi/syscall_nr.h>
+#include <bharat/uapi/syscall/bh_syscall.h>
 
-extern int main(int argc, char* argv[], char* envp[]);
+#include <bharat/uapi/init/bootstrap.h>
+#include <bharat/runtime/runtime.h>
+
+extern int main(int argc, char* argv[]);
 
 /* TODO: Implement real TLS initialization for __thread variables */
 static void init_tls(void) {
@@ -11,12 +14,17 @@ static void init_tls(void) {
 }
 
 __attribute__((used))
-void _start(int argc, char* argv[], char* envp[]) {
+void _start(const bharat_user_startup_t *startup) {
     init_tls();
 
-    int ret = main(argc, argv, envp);
+    bharat_runtime_init(startup);
 
-    bh_syscall(SYSCALL_THREAD_EXIT, ret, 0, 0, 0, 0, 0);
+    int ret = main(
+        startup ? (int)startup->argc : 0,
+        startup ? (char **)startup->argv : NULL
+    );
+
+    bharat_syscall(SYSCALL_THREAD_EXIT, ret, 0, 0, 0, 0, 0);
 
     while (1) {}
 }

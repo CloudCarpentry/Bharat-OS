@@ -20,7 +20,6 @@ typedef struct tlb_cpu_state {
 
 extern tlb_cpu_state_t g_tlb_cpu_state[MAX_CPUS];
 
-// Optional arch hook contract (used by coordinator internal)
-// hal_tlb.h has ops. We can use them directly or bridge them.
+void tlb_diag_set_last_failure(uint32_t cpu, const tlb_failure_snapshot_t *in);
 
 #endif // BHARAT_MM_TLB_INTERNAL_H

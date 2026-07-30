@@ -64,3 +64,4 @@ build/
 !docs/dev/build/
 test_sched_hardening
 test_tlb_hardening
+test_mon_vm

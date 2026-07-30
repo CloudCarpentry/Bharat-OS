@@ -568,7 +568,11 @@ static phys_addr_t arm64_virt_to_phys(const void* virt) {
     }
 }
 
-static bool arm64_has_linear_physmap(void) { return true; }
+static bool arm64_has_linear_physmap(void) {
+    return g_arm64_kernel_map.mode == ARM64_KVA_MODE_LINEAR_MAP &&
+           g_arm64_kernel_map.ready &&
+           g_arm64_kernel_map.size != 0;
+}
 static phys_addr_t arm64_linear_physmap_base(void) {
     if (g_arm64_kernel_map.mode == ARM64_KVA_MODE_LINEAR_MAP) {
         return g_arm64_kernel_map.virt_base;

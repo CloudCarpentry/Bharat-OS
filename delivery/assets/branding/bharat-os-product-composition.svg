@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="720" viewBox="0 0 1400 720">
+<rect width="1400" height="720" rx="28" fill="#0A0F1E"/>
+<text x="70" y="80" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="42" font-weight="700">One Core. Many Products.</text>
+<text x="70" y="118" fill="#8A9BB0" font-family="Inter, Arial, sans-serif" font-size="21">Avoid product-by-product OS forks; compose profiles over a stable architectural foundation</text>
+
+<g font-family="Inter, Arial, sans-serif">
+  <rect x="515" y="230" width="370" height="200" rx="30" fill="#182033" stroke="#FF9933" stroke-width="3"/>
+  <text x="700" y="295" text-anchor="middle" fill="#FFFFFF" font-size="33" font-weight="800">Bharat-OS</text>
+  <text x="700" y="334" text-anchor="middle" fill="#8A9BB0" font-size="18">Capability + IPC + MM + Scheduler</text>
+  <text x="700" y="362" text-anchor="middle" fill="#8A9BB0" font-size="18">HAL + Services + Profile Contracts</text>
+  <text x="700" y="400" text-anchor="middle" fill="#FF9933" font-size="17" font-weight="700">STABLE PLATFORM FOUNDATION</text>
+
+  <rect x="90" y="195" width="300" height="120" rx="22" fill="#132B28" stroke="#138808"/>
+  <text x="240" y="242" text-anchor="middle" fill="#FFFFFF" font-size="25" font-weight="700">Bharat Edge</text>
+  <text x="240" y="276" text-anchor="middle" fill="#8A9BB0" font-size="16">AI gateway • camera • edge node</text>
+
+  <rect x="90" y="455" width="300" height="120" rx="22" fill="#17263A" stroke="#3B82F6"/>
+  <text x="240" y="502" text-anchor="middle" fill="#FFFFFF" font-size="25" font-weight="700">Bharat Network</text>
+  <text x="240" y="536" text-anchor="middle" fill="#8A9BB0" font-size="16">gateway • telecom • secure appliance</text>
+
+  <rect x="1010" y="195" width="300" height="120" rx="22" fill="#302315" stroke="#FF9933"/>
+  <text x="1160" y="242" text-anchor="middle" fill="#FFFFFF" font-size="25" font-weight="700">Bharat Industrial</text>
+  <text x="1160" y="276" text-anchor="middle" fill="#8A9BB0" font-size="16">robotics • controller • automation</text>
+
+  <rect x="1010" y="455" width="300" height="120" rx="22" fill="#2A2137" stroke="#A78BFA"/>
+  <text x="1160" y="502" text-anchor="middle" fill="#FFFFFF" font-size="25" font-weight="700">Bharat AI</text>
+  <text x="1160" y="536" text-anchor="middle" fill="#8A9BB0" font-size="16">CPU • GPU • NPU orchestration</text>
+
+  <text x="700" y="645" text-anchor="middle" fill="#FFFFFF" font-size="25" font-weight="700">Build the operating platform once. Compose the product many times.</text>
+</g>
+
+<g stroke="#8A9BB0" stroke-width="3" fill="none" opacity="0.9">
+  <path d="M515 290 C455 275, 430 260, 390 255"/>
+  <path d="M515 370 C455 405, 430 475, 390 510"/>
+  <path d="M885 290 C945 275, 970 260, 1010 255"/>
+  <path d="M885 370 C945 405, 970 475, 1010 510"/>
+</g>
+</svg>

@@ -46,11 +46,13 @@ static void handle_violation(sched_invariant_violation_t violation, bh_thread_t 
                 sched_quarantine_thread(thread, (uint32_t)violation);
             }
             break;
-        case SCHED_FAULT_ACTION_ISOLATE_CORE:
+        case SCHED_FAULT_ACTION_ISOLATE_CORE: {
             // Minimal core isolation: just set a flag on this core for now
-            g_cpu_locals[hal_cpu_get_id()].runqueue.sched_isolated = true;
-            g_cpu_locals[hal_cpu_get_id()].runqueue.isolation_reason = (uint32_t)violation;
+            sched_rq_t *rq = sched_local_rq();
+            rq->sched_isolated = true;
+            rq->isolation_reason = (uint32_t)violation;
             break;
+        }
         default:
             break;
     }

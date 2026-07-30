@@ -1,5 +1,5 @@
 ---
-title: PR Spec: Driver Core Baseline, Device Manager Contract, and Edge I/O Production Slice
+title: "PR Spec: Driver Core Baseline, Device Manager Contract, and Edge I/O Production Slice"
 status: Proposed
 owner: Documentation Working Group
 last_updated: 2026-04-25

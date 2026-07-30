@@ -24,7 +24,7 @@
 
 /* ── Multiboot 1 constants ──────────────────────────────────────────────── */
 #define MB1_MAGIC    0x1BADB002
-#define MB1_FLAGS    0x00000003  /* ALIGN + MEMINFO */
+#define MB1_FLAGS    0x00000007  /* ALIGN + MEMINFO + VIDEO_MODE */
 
 /* Boot Headers (Multiboot 1 & 2 + PVH ELF Note) */
 .section .multiboot, "a"
@@ -35,9 +35,17 @@ mb1_header:
     .long MB1_MAGIC
     .long MB1_FLAGS
     .long -(MB1_MAGIC + MB1_FLAGS)
-    /* Note: Since we use an ELF bootloader, we don't need header_addr, load_addr, etc. here.
-     * The ELF headers provide that info unless MULTIBOOT_AOUT_KLUDGE is set.
-     */
+    /* Address fields (required if bit 16 set; 0 if not used) */
+    .long 0
+    .long 0
+    .long 0
+    .long 0
+    .long 0
+    /* Graphics mode fields (required if bit 2 set) */
+    .long 0    /* mode_type: 0 = linear graphics */
+    .long 1024 /* width */
+    .long 768  /* height */
+    .long 32   /* depth */
 
 /* Multiboot 2 Header (Must be in the first 32 KB) */
 .align 8
@@ -63,6 +71,15 @@ mb2_start:
     .short 0            /* flags */
     .long  12           /* size */
     .long  _start       /* entry addr */
+
+    /* Framebuffer Tag (Type 7) */
+    .align 8
+    .short 7            /* type = framebuffer */
+    .short 0            /* flags */
+    .long  20           /* size */
+    .long  1024         /* width */
+    .long  768          /* height */
+    .long  32           /* depth */
 
     /* end tag */
     .align 8

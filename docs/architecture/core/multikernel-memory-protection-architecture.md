@@ -2,11 +2,18 @@
 title: Multikernel Memory Protection Architecture
 status: Proposed
 owner: Architecture Team
-version: 1.0.0
 last_updated: 2024-05-15
-tags: [multikernel, memory, mmu, mpu, iommu, urpc]
+tags:
+  - multikernel
+  - memory
+  - mmu
+  - mpu
+  - iommu
+  - urpc
+see_also:
+  - README.md
+version: 1.0.0
 ---
-
 # Multikernel Memory Protection Architecture
 
 In a multikernel architecture, there is no single shared page table that all CPUs look up under a lock. Instead, each core runs its own kernel instance with its own local page-table root. Cores communicate about memory exclusively via uRPC messages.

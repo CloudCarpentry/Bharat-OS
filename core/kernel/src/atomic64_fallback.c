@@ -68,4 +68,57 @@ uint64_t __umoddi3(uint64_t n, uint64_t d) {
     }
     return r;
 }
+
+void __atomic_store_8(volatile void *ptr, uint64_t val, int memorder) {
+    (void)memorder;
+    arch_atomic64_lock();
+    volatile uint64_t *p = (volatile uint64_t *)ptr;
+    *p = val;
+    arch_atomic64_unlock();
+}
+
+uint64_t __atomic_exchange_8(volatile void *ptr, uint64_t newval, int memorder) {
+    (void)memorder;
+    arch_atomic64_lock();
+    volatile uint64_t *p = (volatile uint64_t *)ptr;
+    uint64_t old = *p;
+    *p = newval;
+    arch_atomic64_unlock();
+    return old;
+}
+
+bool __atomic_compare_exchange_8(volatile void *ptr,
+                                  void *expected,
+                                  uint64_t desired,
+                                  bool weak,
+                                  int success_model,
+                                  int failure_model) {
+    (void)weak;
+    (void)success_model;
+    (void)failure_model;
+    arch_atomic64_lock();
+    volatile uint64_t *p = (volatile uint64_t *)ptr;
+    uint64_t cur = *p;
+    uint64_t exp;
+    __builtin_memcpy(&exp, expected, sizeof(uint64_t));
+    bool ok = (cur == exp);
+    if (ok) {
+        *p = desired;
+    } else {
+        __builtin_memcpy(expected, &cur, sizeof(uint64_t));
+    }
+    arch_atomic64_unlock();
+    return ok;
+}
+
+uint64_t __atomic_add_fetch_8(volatile void *ptr, uint64_t val, int memorder) {
+    (void)memorder;
+    arch_atomic64_lock();
+    volatile uint64_t *p = (volatile uint64_t *)ptr;
+    uint64_t newval = *p + val;
+    *p = newval;
+    arch_atomic64_unlock();
+    return newval;
+}
 #endif
+

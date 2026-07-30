@@ -1,5 +1,5 @@
 ---
-title: ADR-007: Scope Restriction — Experimental vs. v1 Core
+title: "ADR-007: Scope Restriction — Experimental vs. v1 Core"
 status: Accepted
 owner: Documentation Working Group
 last_updated: 2026-04-25

@@ -2,11 +2,16 @@
 title: Cross-Core Thread Handoff
 status: accepted
 owner: Divyang Panchasara
-version: 1.0
 last_updated: 2024-05-24
-tags: [scheduler, urpc, capabilities, multikernel]
+tags:
+  - scheduler
+  - urpc
+  - capabilities
+  - multikernel
+see_also:
+  - README.md
+version: 1.0
 ---
-
 # ADR: Capability-Protected Cross-Core Thread Handoff via uRPC
 
 ## Context & Problem Statement

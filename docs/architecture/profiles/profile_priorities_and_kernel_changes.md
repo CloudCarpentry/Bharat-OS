@@ -2,12 +2,16 @@
 title: Profile Priorities and Kernel Changes
 status: active
 owner: Architecture Team
-reviewers: ["Core Team"]
+last_updated: 2024-03-23
+tags:
+  - architecture
+  - profiles
+see_also:
+  - README.md
+reviewers:
+  - Core Team
 version: 1.0
-last_updated: "2024-03-23"
-tags: ["architecture", "profiles"]
 ---
-
 # Profile-first roadmap: core/kernel/core impact and subsystem deltas
 
 > **Note on Code Structure:** Profile configurations strictly isolate policy from mechanism. For example, generic power and thermal logic lives in `core/kernel/src/power/`, while hardware fallback backends are implemented in `corecore/hal/common/power/` and `corecore/hal/common/battery/`. Hard safety paths remain in-kernel, while profile-specific policies (like drone reserve modes or battery saver fan curves) must be handled by user-space services.

@@ -90,7 +90,7 @@ bool test_sched_remote_command_validation(void) {
     sched_enqueue(thread, 1);
 
     sched_rq_t *rq1 = &g_cpu_locals[1].runqueue;
-    KTEST_ASSERT(!list_empty(&rq1->pending_inbox), "Inbox empty");
+    KTEST_ASSERT(!sched_cmd_ring_empty(&rq1->remote.cmd_ring), "Inbox empty");
 
     // Simulate generation mismatch
     uint64_t old_gen = thread->sched_generation;
@@ -101,7 +101,7 @@ bool test_sched_remote_command_validation(void) {
     current_mock_cpu = 1;
     sched_reschedule();
 
-    KTEST_ASSERT(list_empty(&rq1->pending_inbox), "Inbox not drained");
+    KTEST_ASSERT(sched_cmd_ring_empty(&rq1->remote.cmd_ring), "Inbox not drained");
     KTEST_ASSERT(rq1->runnable_count == 0, "Thread wrongly enqueued despite generation mismatch");
 
     // Fix generation and try again
@@ -135,7 +135,7 @@ bool test_sched_remote_mutation_prevention(void) {
     sched_enqueue(thread, target_cpu);
 
     KTEST_ASSERT(target_rq->runnable_count == initial_count, "Remote enqueue mutated target runqueue count directly!");
-    KTEST_ASSERT(!list_empty(&target_rq->pending_inbox), "Remote enqueue failed to populate inbox");
+    KTEST_ASSERT(!sched_cmd_ring_empty(&target_rq->remote.cmd_ring), "Remote enqueue failed to populate inbox");
 
     // Cleanup
     thread->state = THREAD_STATE_TERMINATED;

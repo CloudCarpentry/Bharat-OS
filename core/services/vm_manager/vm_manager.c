@@ -18,6 +18,41 @@ static const region_entry_t *vm_manager_find_region(uint32_t region_id) {
     return NULL;
 }
 
+#include <bharat/cap/cap_authz.h>
+
+static const bharat_service_authz_desc_t vm_manager_authz_descs[] = {
+    {
+        .opcode = VM_OP_MAP,
+        .object_type = BHARAT_CAP_OBJ_VM_SPACE,
+        .required_rights = BHARAT_CAP_RIGHT_WRITE,
+        .required_feature_cap = BHARAT_MEM_CAP_PAGE_MAP,
+    },
+    {
+        .opcode = VM_OP_FAULT,
+        .object_type = BHARAT_CAP_OBJ_VM_SPACE,
+        .required_rights = BHARAT_CAP_RIGHT_WRITE,
+        .required_feature_cap = BHARAT_MEM_CAP_DEMAND_FAULT,
+    },
+    {
+        .opcode = VM_OP_UNMAP,
+        .object_type = BHARAT_CAP_OBJ_VM_SPACE,
+        .required_rights = BHARAT_CAP_RIGHT_WRITE,
+        .required_feature_cap = BHARAT_MEM_CAP_PAGE_MAP,
+    },
+    {
+        .opcode = VM_OP_PROTECT,
+        .object_type = BHARAT_CAP_OBJ_VM_SPACE,
+        .required_rights = BHARAT_CAP_RIGHT_WRITE,
+        .required_feature_cap = BHARAT_MEM_CAP_PAGE_PROTECT,
+    },
+    {
+        .opcode = VM_OP_QUERY,
+        .object_type = BHARAT_CAP_OBJ_VM_SPACE,
+        .required_rights = BHARAT_CAP_RIGHT_READ,
+        .required_feature_cap = BHARAT_MEM_CAP_PAGE_MAP,
+    }
+};
+
 int32_t vm_manager_authorize(
     uint32_t opcode,
     const void *req,
@@ -27,26 +62,17 @@ int32_t vm_manager_authorize(
         return BHARAT_IPC_STATUS_ERR_PERM;
     }
 
-    uint64_t required_rights = 0;
     uint64_t target_vm_space = 0;
-    bharat_cap_scope_t scope = {
-        .kind = BHARAT_CAP_SCOPE_OBJECT,
-        .scope_id = 0
-    };
 
     switch (opcode) {
         case VM_OP_MAP: {
             const vm_req_map_t *typed_req = (const vm_req_map_t *)req;
-            required_rights = BHARAT_CAP_RIGHT_WRITE;
             target_vm_space = typed_req->aspace_id;
-            scope.scope_id = typed_req->aspace_id;
             break;
         }
         case VM_OP_FAULT: {
             const vm_req_fault_t *typed_req = (const vm_req_fault_t *)req;
-            required_rights = BHARAT_CAP_RIGHT_WRITE;
             target_vm_space = typed_req->aspace_id;
-            scope.scope_id = typed_req->aspace_id;
             break;
         }
         case VM_OP_UNMAP:
@@ -56,15 +82,12 @@ int32_t vm_manager_authorize(
             if (opcode == VM_OP_UNMAP) {
                 const vm_req_unmap_t *typed_req = (const vm_req_unmap_t *)req;
                 region_id = typed_req->region_id;
-                required_rights = BHARAT_CAP_RIGHT_WRITE;
             } else if (opcode == VM_OP_PROTECT) {
                 const vm_req_protect_t *typed_req = (const vm_req_protect_t *)req;
                 region_id = typed_req->region_id;
-                required_rights = BHARAT_CAP_RIGHT_WRITE;
             } else {
                 const vm_req_query_t *typed_req = (const vm_req_query_t *)req;
                 region_id = typed_req->region_id;
-                required_rights = BHARAT_CAP_RIGHT_READ;
             }
 
             const region_entry_t *region = vm_manager_find_region(region_id);
@@ -72,27 +95,20 @@ int32_t vm_manager_authorize(
                 return BHARAT_IPC_STATUS_ERR_NOT_FOUND;
             }
             target_vm_space = region->aspace_id;
-            scope.scope_id = region->aspace_id;
             break;
         }
         default:
             return BHARAT_IPC_STATUS_ERR_OPCODE;
     }
 
-    bharat_cap_validation_result_t vr = {0};
-    bharat_cap_status_t st = bharat_cap_validate(
+    return bharat_service_dispatch_authorize(
+        VM_MANAGER_SERVICE_ID,
+        opcode,
+        vm_manager_authz_descs,
+        sizeof(vm_manager_authz_descs) / sizeof(vm_manager_authz_descs[0]),
         caller_cap,
-        BHARAT_CAP_OBJ_VM_SPACE,
-        target_vm_space,
-        required_rights,
-        &scope,
-        &vr);
-
-    if (st != BHARAT_CAP_OK || !vr.allowed) {
-        return BHARAT_IPC_STATUS_ERR_PERM;
-    }
-
-    return BHARAT_IPC_STATUS_OK;
+        target_vm_space
+    );
 }
 
 void vm_manager_init(void) {

@@ -64,21 +64,6 @@ void sched_notify_ipc_ready(uint32_t core_id, uint32_t msg_type) {
 
 void sched_process_pending_ai_suggestions(void) {}
 
-int mon_vm_send_map(uint64_t aspace_id, uint64_t vaddr, uint64_t paddr, uint64_t size, uint32_t flags) {
-    (void)aspace_id; (void)vaddr; (void)paddr; (void)size; (void)flags;
-    return 0;
-}
-
-int mon_vm_send_unmap(uint64_t aspace_id, uint64_t vaddr, uint64_t size) {
-    (void)aspace_id; (void)vaddr; (void)size;
-    return 0;
-}
-
-int mon_vm_send_protect(uint64_t aspace_id, uint64_t vaddr, uint64_t size, uint32_t new_flags) {
-    (void)aspace_id; (void)vaddr; (void)size; (void)new_flags;
-    return 0;
-}
-
 int ipc_profile_select_transport(uint32_t service_id) {
     (void)service_id;
     return 0;

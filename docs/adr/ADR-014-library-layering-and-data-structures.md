@@ -1,9 +1,15 @@
 ---
+title: "ADR-014: Library Layering and Kernel-Private Data Structures"
 status: accepted
-date: 2025-03-25
 owner: Divyang Panchasara
+last_updated: 2026-04-25
+tags:
+  - docs
+  - adr
+see_also:
+  - README.md
+date: 2025-03-25
 ---
-
 # ADR-014: Library Layering and Kernel-Private Data Structures
 
 ## Context and Problem Statement

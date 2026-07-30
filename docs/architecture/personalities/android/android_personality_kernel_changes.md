@@ -2,12 +2,16 @@
 title: Android Personality Kernel Changes
 status: active
 owner: Architecture Team
-reviewers: ["Core Team"]
+last_updated: 2024-03-23
+tags:
+  - architecture
+  - personalities
+see_also:
+  - README.md
+reviewers:
+  - Core Team
 version: 1.0
-last_updated: "2024-03-23"
-tags: ["architecture", "personalities"]
 ---
-
 # Android Personality: Core Kernel Changes Required
 
 ## Introduction

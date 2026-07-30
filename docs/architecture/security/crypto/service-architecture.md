@@ -2,11 +2,16 @@
 title: Service-Level Security Architecture
 status: Proposed
 owner: Divyang Panchasara
-version: 1.0
 last_updated: 2024-05-15
-tags: [security, crypto, user-space, service]
+tags:
+  - security
+  - crypto
+  - user-space
+  - service
+see_also:
+  - README.md
+version: 1.0
 ---
-
 # Service-Level Security Architecture
 
 In Bharat-OS, the complex algorithms, policies, and protocols related to cryptography and security are implemented outside the kernel in dedicated user-space services. This enforces the microkernel philosophy, keeping the core kernel lean, reducing its attack surface, and allowing specialized configurations (e.g., automotive profiles versus general-purpose server profiles) to swap out entire policy layers without modifying the kernel.

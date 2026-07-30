@@ -1,3 +1,15 @@
+---
+title: Bharat-OS SDK Syscall Backend Contract
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - syscall
+see_also:
+  - README.md
+---
 # Bharat-OS SDK Syscall Backend Contract
 
 This document defines the requirements and conventions for architecture-specific syscall backends in the Bharat-OS SDK.

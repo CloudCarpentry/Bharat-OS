@@ -8,8 +8,9 @@ tags:
   - kernel
   - concurrency
   - verification
+see_also:
+  - README.md
 ---
-
 # Concurrent Kernel Data Structures and Verification
 
 ## Executive Summary

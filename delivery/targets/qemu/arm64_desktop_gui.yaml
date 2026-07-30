@@ -34,7 +34,7 @@ package:
 
 run:
   backend: qemu
-  machine: virt
+  machine: "virt,gic-version=3,highmem-ecam=off"
   cpu: cortex-a72
   memory: 1024M
   nographic: false
@@ -42,10 +42,8 @@ run:
     - stdio
   boot_artifact: kernel/kernel.elf
   extra_args:
-    - "-machine"
-    - "virt,gic-version=3"
     - "-device"
-    - "virtio-gpu-pci"
+    - "bochs-display"
     - "-device"
     - "virtio-keyboard-pci"
     - "-device"

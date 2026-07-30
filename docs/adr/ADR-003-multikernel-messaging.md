@@ -1,5 +1,5 @@
 ---
-title: ADR-003: Multikernel Messaging Spine
+title: "ADR-003: Multikernel Messaging Spine"
 status: Accepted
 owner: Documentation Working Group
 last_updated: 2026-04-25

@@ -1,5 +1,5 @@
 ---
-title: Merged Review: `docs/reviews/gap_analysis` + `docs/reviews`
+title: "Merged Review: `docs/reviews/gap_analysis` + `docs/reviews`"
 status: Draft
 owner: Documentation Working Group
 last_updated: 2026-04-25

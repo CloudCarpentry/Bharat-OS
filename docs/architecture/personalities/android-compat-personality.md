@@ -2,9 +2,15 @@
 title: Android Compatibility Personality
 status: active
 owner: Architecture Team
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - personalities
+see_also:
+  - README.md
 version: 1.0
 ---
-
 # Android Compatibility Personality
 
 The Android Compatibility Personality is designed to provide application ecosystem leverage for mobile, embedded, and consumer profile use cases. It aims to host Android application frameworks and runtimes above the Bharat-OS native core.

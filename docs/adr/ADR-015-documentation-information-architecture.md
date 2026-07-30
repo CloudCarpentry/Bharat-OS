@@ -2,16 +2,17 @@
 title: ADR-015 Documentation Information Architecture and Archive Policy
 status: Accepted
 owner: Architecture Team
-reviewers: Core Maintainers
-version: 1.0
 last_updated: 2026-04-25
 tags:
   - documentation
   - governance
   - architecture
   - repository-structure
+see_also:
+  - README.md
+reviewers: Core Maintainers
+version: 1.0
 ---
-
 # ADR-015: Documentation Information Architecture and Archive Policy
 
 ## Context

@@ -1,5 +1,5 @@
 ---
-title: ADR: Memory Core vs Advanced VM Split
+title: "ADR: Memory Core vs Advanced VM Split"
 status: Accepted
 owner: Documentation Working Group
 last_updated: 2026-04-25

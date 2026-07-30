@@ -1,17 +1,18 @@
 ---
 title: RT and Mixed-Criticality Benchmark Plan
 status: Draft
-version: 1.0
 owner: Core QA / Architecture
-reviewers: Core Maintainers
 last_updated: 2024-03-24
 tags:
   - benchmarking
   - verification
   - realtime
   - mixed-criticality
+see_also:
+  - README.md
+version: 1.0
+reviewers: Core Maintainers
 ---
-
 # Bharat-OS RT and Mixed-Criticality Benchmark Plan
 
 This document outlines the rigorous engineering benchmarks required to validate the mixed-criticality architecture of Bharat-OS. The goal is to prove, through data, that the capability kernel provides the necessary deterministic mechanisms and that the service layer successfully enforces profile contracts.

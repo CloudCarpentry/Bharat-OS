@@ -26,7 +26,7 @@ __attribute__((weak)) void kcache_free(int cache_id, void *obj) {
     free(obj);
 }
 
-__attribute__((weak)) prot_domain_t *prot_domain_create(void) { return (prot_domain_t *)malloc(256); }
+__attribute__((weak)) int prot_domain_create(prot_domain_t **out) { *out = (prot_domain_t *)malloc(256); return 0; }
 __attribute__((weak)) void prot_domain_init(void) {}
 __attribute__((weak)) phys_addr_t vmm_get_kernel_root(void) { return 0; }
 __attribute__((weak)) int mm_zero_phys_range(phys_addr_t start, size_t len) { (void)start; (void)len; return 0; }

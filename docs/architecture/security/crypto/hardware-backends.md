@@ -2,11 +2,16 @@
 title: Cryptographic Hardware Backends
 status: Proposed
 owner: Divyang Panchasara
-version: 1.0
 last_updated: 2024-05-15
-tags: [security, crypto, hardware, architecture]
+tags:
+  - security
+  - crypto
+  - hardware
+  - architecture
+see_also:
+  - README.md
+version: 1.0
 ---
-
 # Cryptographic Hardware Backends
 
 Bharat-OS must support a diverse range of hardware security features across different architectures (x86_64, ARM64, RISC-V). To handle this complexity, the kernel defines three abstract backend classes that hardware drivers must implement. This ensures a stable internal API regardless of the underlying hardware.

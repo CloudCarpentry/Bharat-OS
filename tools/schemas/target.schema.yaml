@@ -63,6 +63,8 @@ properties:
         enum: [linux_arm64, multiboot2, opensbi_payload, raw_entry, uefi, elf_direct]
       artifact_format:
         type: string
+      cmdline:
+        type: string
       dtb:
         type: object
         properties:

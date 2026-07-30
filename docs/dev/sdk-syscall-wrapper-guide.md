@@ -1,3 +1,14 @@
+---
+title: SDK Syscall Wrapper Guide
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - dev
+see_also:
+  - README.md
+---
 # SDK Syscall Wrapper Guide
 
 ## Status

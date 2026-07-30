@@ -1,3 +1,15 @@
+---
+title: Bharat-OS Syscall Architecture Parity Matrix
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - syscall
+see_also:
+  - README.md
+---
 # Bharat-OS Syscall Architecture Parity Matrix
 
 This document tracks the status of syscall and userspace support across all supported hardware architectures.

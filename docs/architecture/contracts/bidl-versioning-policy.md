@@ -1,11 +1,18 @@
 ---
-title: "BIDL Versioning Policy"
-status: "Draft"
-version: "0.1"
-last_updated: "2024-03-24"
-tags: ["architecture", "ipc", "bidl", "contracts", "versioning"]
+title: BIDL Versioning Policy
+status: Draft
+owner: Documentation Working Group
+last_updated: 2024-03-24
+tags:
+  - architecture
+  - ipc
+  - bidl
+  - contracts
+  - versioning
+see_also:
+  - README.md
+version: 0.1
 ---
-
 # BIDL Versioning Policy
 
 This document outlines the contract compatibility rules for the Bharat Interface Definition Language (BIDL) to prevent ABI breakage and ensure backward compatibility during system updates.

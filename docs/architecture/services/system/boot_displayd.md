@@ -1,5 +1,5 @@
 ---
-title: Boot Display Service (`core/services/system/boot_displayd`)
+title: "Boot Display Service (`core/services/system/boot_displayd`)"
 status: Proposed
 owner: Documentation Working Group
 last_updated: 2026-04-25

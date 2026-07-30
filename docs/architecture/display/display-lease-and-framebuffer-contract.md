@@ -1,3 +1,15 @@
+---
+title: Display Lease and Framebuffer Contract
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - display
+see_also:
+  - README.md
+---
 # Display Lease and Framebuffer Contract
 
 ## Responsibility Boundary

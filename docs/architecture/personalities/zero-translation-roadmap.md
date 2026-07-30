@@ -2,11 +2,16 @@
 title: Personality Zero-Translation Roadmap
 status: active
 owner: Architecture Team
+last_updated: 2026-04-22
+tags:
+  - architecture
+  - personalities
+  - performance
+  - compatibility
+see_also:
+  - README.md
 version: 1.1
-last_updated: "2026-04-22"
-tags: ["architecture", "personalities", "performance", "compatibility"]
 ---
-
 # Personality Zero-Translation Roadmap
 
 ## Goal

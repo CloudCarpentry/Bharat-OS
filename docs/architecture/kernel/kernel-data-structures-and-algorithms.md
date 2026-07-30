@@ -9,8 +9,9 @@ tags:
   - data-structures
   - algorithms
   - roadmap
+see_also:
+  - README.md
 ---
-
 # Bharat-OS Kernel Data Structures and Algorithmic Foundations
 
 ## 1. Purpose

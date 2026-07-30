@@ -2,9 +2,15 @@
 title: Native Personality
 status: active
 owner: Architecture Team
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - personalities
+see_also:
+  - README.md
 version: 1.0
 ---
-
 # Native Personality (Bharat-OS Reference)
 
 The Native Personality is the reference platform for Bharat-OS. It is not an emulation or compatibility layer; it is the raw, unrestricted (save for capability constraints) application platform. It defines the true OS contract.

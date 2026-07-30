@@ -1,5 +1,5 @@
 ---
-title: Bharat-OS Architecture Review Refresh: Authority, Lifecycle, and Failure Containment
+title: "Bharat-OS Architecture Review Refresh: Authority, Lifecycle, and Failure Containment"
 status: Draft
 owner: Documentation Working Group
 last_updated: 2026-04-25

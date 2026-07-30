@@ -2,12 +2,16 @@
 title: Personality Model
 status: active
 owner: Architecture Team
-reviewers: ["Core Team"]
+last_updated: 2024-03-23
+tags:
+  - architecture
+  - personalities
+see_also:
+  - README.md
+reviewers:
+  - Core Team
 version: 1.0
-last_updated: "2024-03-23"
-tags: ["architecture", "personalities"]
 ---
-
 # Personality Compatibility Model
 
 > **Note on Code Structure:** Following recent architectural convergence, the personality layer is explicitly separated from the core architecture. Implementations reside in the `core/personalities/` tree (with sub-directories like `compat/linux/`, `compat/android/`), mapping specific ABIs to core operations exposed via `interface/uapi/`.

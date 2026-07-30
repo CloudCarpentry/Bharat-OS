@@ -344,8 +344,42 @@ long bh_sys_thread_exit(bh_syscall_ctx_t *ctx) {
     return (long)BH_ERR_BAD_STATE;
 }
 
+#include "console/console_core.h"
+#define BH_CONSOLE_WRITE_MAX_BYTES 4096
+
 long bh_sys_write(bh_syscall_ctx_t *ctx) {
-    return (long)BH_ERR_NOT_SUPPORTED;
+    int fd = (int)ctx->regs.arg[0];
+    uintptr_t user_buf = ctx->regs.arg[1];
+    size_t count = (size_t)ctx->regs.arg[2];
+
+    if (fd != 1 && fd != 2)
+        return (long)BH_ERR_NOT_SUPPORTED;
+
+    if (count > BH_CONSOLE_WRITE_MAX_BYTES)
+        return (long)BH_ERR_INVALID_ARGUMENT;
+
+    size_t done = 0;
+
+    while (done < count) {
+        char temp[CONSOLE_MAX_RECORD_TEXT - 1];
+
+        size_t n = count - done;
+        if (n > sizeof(temp))
+            n = sizeof(temp);
+
+        bh_status_t st =
+            bh_copy_from_user(temp,
+                              (const void *)(user_buf + done),
+                              n);
+
+        if (st != BH_OK)
+            return done ? (long)done : (long)st;
+
+        console_write_raw(temp, n);
+        done += n;
+    }
+
+    return (long)done;
 }
 
 long bh_sys_get_subsystem_caps(bh_syscall_ctx_t *ctx) {

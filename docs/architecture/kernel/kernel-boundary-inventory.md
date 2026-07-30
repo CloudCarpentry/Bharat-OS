@@ -1,3 +1,15 @@
+---
+title: Kernel Boundary Inventory
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - kernel
+see_also:
+  - README.md
+---
 # Kernel Boundary Inventory
 
 This document lists kernel modules and their classification regarding the "Minimal Kernel" boundary enforcement.

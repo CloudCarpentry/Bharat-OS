@@ -1,5 +1,5 @@
 ---
-title: ADR-005: ML Heuristics Kept Out of Ring-0
+title: "ADR-005: ML Heuristics Kept Out of Ring-0"
 status: Accepted
 owner: Documentation Working Group
 last_updated: 2026-04-25

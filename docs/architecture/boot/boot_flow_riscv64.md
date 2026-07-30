@@ -1,5 +1,5 @@
 ---
-title: Boot Flow: RISC-V (64-bit)
+title: "Boot Flow: RISC-V (64-bit)"
 status: Proposed
 owner: Documentation Working Group
 last_updated: 2026-04-25

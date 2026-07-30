@@ -48,4 +48,7 @@ typedef struct display_probe_result {
 int machine_get_display_caps(machine_display_caps_t *out);
 int machine_probe_boot_video(display_probe_result_t *out, boot_video_handoff_t *video);
 
+// QEMU Display MMIO mapping helper
+int qemu_display_map_mmio(uint64_t phys, size_t size, uintptr_t *out_virt);
+
 #endif // BHARAT_DISPLAY_CAPS_H

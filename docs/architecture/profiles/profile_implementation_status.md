@@ -2,12 +2,16 @@
 title: Profile Implementation Status
 status: active
 owner: Architecture Team
-reviewers: ["Core Team"]
+last_updated: 2024-03-23
+tags:
+  - architecture
+  - profiles
+see_also:
+  - README.md
+reviewers:
+  - Core Team
 version: 1.0
-last_updated: "2024-03-23"
-tags: ["architecture", "profiles"]
 ---
-
 # Bharat-OS Profile Implementation Status & Gap Analysis
 
 > **Note on Code Structure:** Bharat-OS kernel execution profiles (RT, GP, MIX) are configured via CMake (`BHARAT_KERNEL_PROFILE_RT`, etc.) derived from the device profile (`BHARAT_DEVICE_PROFILE`). These are accessible at runtime via the `KernelExecutionProfile` enum and `get_kernel_execution_profile()` in `profile.h`. Profile implementations map directly to core primitives (e.g., table-driven scheduler selections, RT priority boundaries, or QoS domains).

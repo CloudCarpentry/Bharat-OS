@@ -2,11 +2,16 @@
 title: Kernel Cryptographic Contract
 status: Proposed
 owner: Divyang Panchasara
-version: 1.0
 last_updated: 2024-05-15
-tags: [security, crypto, kernel, contract]
+tags:
+  - security
+  - crypto
+  - kernel
+  - contract
+see_also:
+  - README.md
+version: 1.0
 ---
-
 # Kernel Cryptographic Contract
 
 ### Contract Status

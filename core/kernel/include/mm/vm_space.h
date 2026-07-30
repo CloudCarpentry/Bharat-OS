@@ -43,6 +43,18 @@ typedef struct {
     void *root; // Tree root placeholder
 } vm_region_tree_t;
 
+#include "aspace.h"
+#include "monitor/mon_vm_proto.h"
+
+// Per-space Mutation Kind
+typedef enum {
+    VM_MUTATION_NONE = 0,
+    VM_MUTATION_MAP,
+    VM_MUTATION_UNMAP,
+    VM_MUTATION_PROTECT,
+    VM_MUTATION_DESTROY
+} vm_mutation_kind_t;
+
 // The canonical distributed address space object
 typedef struct vm_space {
     spinlock_t lock;
@@ -52,6 +64,8 @@ typedef struct vm_space {
 
     mem_profile_t profile;
     vm_timing_class_t timing_class;
+
+    address_space_t *aspace; // Explicit 1:1 ownership of the canonical address space
 
     uint32_t flags;
     uint32_t rt_flags;
@@ -79,6 +93,10 @@ typedef struct vm_space {
     bool allow_runtime_pt_alloc;
     bool allow_remote_fault_recovery;
     bool allow_demand_paging;
+
+    // Per-space mutation/lifecycle gate ownership fields
+    vm_mutation_kind_t mutation_kind;
+    mon_vm_tx_handle_t mutation_tx;
 } vm_space_t;
 
 // Per-core realization state

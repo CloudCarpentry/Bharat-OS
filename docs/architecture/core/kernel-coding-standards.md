@@ -1,13 +1,19 @@
 ---
 title: "Kernel Coding Standards: Memory and String Primitives"
-status: "active"
-owner: "Bharat-OS Team"
-reviewers: ["Core Architecture Team"]
-version: "1.0"
-last_updated: "2024-03-23"
-tags: ["standards", "kernel", "libc", "memory"]
+status: active
+owner: Bharat-OS Team
+last_updated: 2024-03-23
+tags:
+  - standards
+  - kernel
+  - libc
+  - memory
+see_also:
+  - README.md
+reviewers:
+  - Core Architecture Team
+version: 1.0
 ---
-
 # Kernel Coding Standards: Memory and String Primitives
 
 ## Overview

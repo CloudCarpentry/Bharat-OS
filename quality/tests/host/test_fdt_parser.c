@@ -161,6 +161,84 @@ int main() {
         return 1;
     }
 
+    // Case 7: FDT Idempotence
+    INIT_FDT();
+    *p++ = cpu_to_fdt32(FDT_BEGIN_NODE);
+    strcpy((char *)p, "node1"); // 6 bytes -> 8 aligned
+    p += 2;
+    *p++ = cpu_to_fdt32(FDT_END_NODE);
+    *p++ = cpu_to_fdt32(FDT_END);
+    fdt->size_dt_struct = cpu_to_fdt32((uint8_t*)p - (buffer + sizeof(struct fdt_header)));
+
+    res = fdt_parse_discovery(buffer, &disco);
+    if (res != 0) {
+        printf("Test 7 (Idempotence part 1) Failed\n");
+        return 1;
+    }
+    // Now parse again. It should be idempotent (return 0 and not duplicate/alter counts)
+    res = fdt_parse_discovery(buffer, &disco);
+    if (res != 0) {
+        printf("Test 7 (Idempotence part 2) Failed\n");
+        return 1;
+    }
+
+    // Case 8: PCI Ranges Property Extraction
+    INIT_FDT();
+    strcpy(str_table, "compatible");
+    strcpy(str_table + 11, "reg");
+    strcpy(str_table + 15, "ranges");
+    fdt->size_dt_strings = cpu_to_fdt32(128);
+
+    *p++ = cpu_to_fdt32(FDT_BEGIN_NODE);
+    strcpy((char *)p, "pcie@0");
+    p += 2;
+
+    // compatible = "pci-host-ecam-generic"
+    *p++ = cpu_to_fdt32(FDT_PROP);
+    char pci_comp[] = "pci-host-ecam-generic";
+    *p++ = cpu_to_fdt32(sizeof(pci_comp));
+    *p++ = cpu_to_fdt32(0); // "compatible" offset
+    uint32_t comp_pad_len = (sizeof(pci_comp) + 3) & ~3U;
+    memset((char*)p, 0, comp_pad_len);
+    memcpy((char*)p, pci_comp, sizeof(pci_comp));
+    p += comp_pad_len / 4;
+
+    // reg (ECAM)
+    *p++ = cpu_to_fdt32(FDT_PROP);
+    *p++ = cpu_to_fdt32(16); // 16 bytes
+    *p++ = cpu_to_fdt32(11); // "reg" offset
+    *p++ = cpu_to_fdt32(0); // ecam base
+    *p++ = cpu_to_fdt32(0x30000000);
+    *p++ = cpu_to_fdt32(0); // ecam size
+    *p++ = cpu_to_fdt32(0x10000000);
+
+    // ranges
+    *p++ = cpu_to_fdt32(FDT_PROP);
+    *p++ = cpu_to_fdt32(28); // 1 entry of 7 cells = 28 bytes
+    *p++ = cpu_to_fdt32(15); // "ranges" offset
+    // 1 entry: space_type=0x2 (32-bit MMIO), parent_base=0x40000000, size=0x20000000
+    *p++ = cpu_to_fdt32(0x02000000); // flags
+    *p++ = cpu_to_fdt32(0); // child base
+    *p++ = cpu_to_fdt32(0x40000000);
+    *p++ = cpu_to_fdt32(0); // parent base
+    *p++ = cpu_to_fdt32(0x40000000);
+    *p++ = cpu_to_fdt32(0); // size
+    *p++ = cpu_to_fdt32(0x20000000);
+
+    *p++ = cpu_to_fdt32(FDT_END_NODE);
+    *p++ = cpu_to_fdt32(FDT_END);
+    fdt->size_dt_struct = cpu_to_fdt32((uint8_t*)p - (buffer + sizeof(struct fdt_header)));
+
+    res = fdt_parse_discovery(buffer, &disco);
+    if (res != 0 || disco.pci_host_count == 0) {
+        printf("Test 8 Failed: PCIe ranges parsing. res=%d count=%d\n", res, disco.pci_host_count);
+        return 1;
+    }
+    if (disco.pci_hosts[0].mmio32_base != 0x40000000 || disco.pci_hosts[0].mmio32_size != 0x20000000) {
+        printf("Test 8 Failed: base=0x%lx size=0x%lx\n", disco.pci_hosts[0].mmio32_base, disco.pci_hosts[0].mmio32_size);
+        return 1;
+    }
+
     printf("All advanced boundary tests passed!\n");
     return 0;
 }

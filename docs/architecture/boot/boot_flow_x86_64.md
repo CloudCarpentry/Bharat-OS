@@ -1,5 +1,5 @@
 ---
-title: Boot Flow: x86_64
+title: "Boot Flow: x86_64"
 status: Proposed
 owner: Documentation Working Group
 last_updated: 2026-04-25

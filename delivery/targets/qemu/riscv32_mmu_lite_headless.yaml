@@ -51,9 +51,6 @@ run:
   serial:
     - stdio
   boot_artifact: kernel/kernel.elf
-  extra_args:
-    - -bios
-    - /usr/lib/riscv32-linux-gnu/opensbi/generic/fw_dynamic.bin
 
 debug:
   backend: gdb_remote

@@ -12,7 +12,7 @@ int main(int argc, char **argv) {
 }
 
 int services_init_main(void) {
-    bharat_runtime_init();
+    // bharat_runtime_init is now called by _start
 
     bharat_runtime_log("services/init: Starting user-space bootstrap (manifest-driven).");
 

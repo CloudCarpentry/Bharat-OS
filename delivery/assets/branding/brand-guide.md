@@ -57,6 +57,40 @@ Colors: `[bharat-os` in saffron `#FF9933`, `kernel]$` in green `#138808`, cursor
 
 ---
 
+## Architecture Visual Language
+
+Architecture diagrams should use the following semantic palette to ensure consistency and clarity across all engineering and platform visual materials:
+
+### Semantic Color Usage
+
+| Meaning / Target | Color / Token | Hex |
+|---|---|---|
+| Primary Accent / Core Mechanism | Saffron Orange | `#FF9933` |
+| Completed / Trusted / Success State | India Green | `#138808` |
+| Primary Dark Background | Navy Blue | `#0A0F1E` |
+| Neutral / Internal Structures / Cards | Dark Slate | `#2D3A4A` |
+| Supporting Text / Metadata | Secondary Gray | `#8A9BB0` |
+| General Software / Interface Blue | Blue | `#3B82F6` |
+| Transitional State | Amber / Orange | `#FF6F00` |
+| Target State / Production-Grade | Teal / Emerald Green | `#00BFA5` |
+
+### Diagram Consistency Rules
+
+1. **Dark Backgrounds by Default:** Prefer dark-background (`#0A0F1E`) diagrams for all GitHub README and documentation assets to match the cohesive developer aesthetic.
+2. **Minimal Styling Complexity:** Favor flat or minimal gradients, minimal/subtle shadows, and rounded but restrained container cards. Avoid ornamental circuitry or excessive decorative elements that reduce technical scannability.
+3. **SVG as the Canonical Source:** Always check in and reference SVG files in documentation. SVGs are easily version-controlled and scale perfectly.
+4. **Readable at GitHub README Width:** Keep text sizes, labels, and line/stroke weights large enough to remain fully readable when scaled to a standard GitHub README view (approx. 1100–1400px wide). Avoid embedding tiny explanatory paragraph text inside the SVGs.
+5. **No Color-Only Maturity Representation:** Do not encode critical architectural or component maturity status using color alone. Always provide explicit semantic labels (e.g., `[BASELINE]`, `[PARTIAL]`, `[TRANSITIONAL]`, `[SCAFFOLD]`, or `[TARGET]`) so that the diagrams are accessible and clear without color.
+6. **No Clutter or National Motifs:** Respect the brand identity. The Bharat identity should come through cleanly via consistent typography and saffron/green accent colors—do **not** include repeated flag motifs or decorate every engineering diagram with the Ashoka Chakra.
+
+### Accessibility
+
+- **Contrast:** Ensure all text-on-background combinations in diagrams meet accessible contrast standards (e.g., high-contrast white or saffron text on dark navy cards).
+- **Titles and Descriptions:** Include semantic `<title>` and `<desc>` tags inside SVG files to enable screen-reader parsing where practical.
+- **Alt Text:** When embedding SVGs or images in Markdown, always provide descriptive `alt` text explaining what the diagram represents.
+
+---
+
 ## Usage Rules
 
 1. Do **not** stretch or distort the logo.

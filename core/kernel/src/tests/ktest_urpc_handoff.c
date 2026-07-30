@@ -63,7 +63,7 @@ bool test_urpc_thread_handoff_valid(void) {
     sched_enqueue(t, sender_core);
 
     // Send handoff request
-    int ret = sched_request_remote_handoff(t, target_core, valid_auth_token);
+    int ret = sched_request_handoff_tid(t->thread_id, target_core, valid_auth_token);
     KTEST_ASSERT(ret == 0, "Handoff request failed");
     KTEST_ASSERT(t->state == THREAD_STATE_REMOTE_HANDOFF_PENDING, "Thread state not updated");
     KTEST_ASSERT(g_msg_sent_count == 1, "Message not sent");

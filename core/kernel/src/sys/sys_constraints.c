@@ -26,19 +26,11 @@ static void bh_copy_exec_constraints_kern_to_uapi(
 }
 
 static int thread_set_constraints(int tid, const bh_exec_constraints_k_t *c) {
-    bh_thread_t *thread = sched_find_thread_by_id(tid);
-    if (!thread) return -1;
-
-    thread->constraints = *c;
-    return 0;
+    return sched_set_constraints(tid, c);
 }
 
 static int thread_get_constraints(int tid, bh_exec_constraints_k_t *out_c) {
-    bh_thread_t *thread = sched_find_thread_by_id(tid);
-    if (!thread) return -1;
-
-    *out_c = thread->constraints;
-    return 0;
+    return sched_get_constraints(tid, out_c);
 }
 
 int sys_thread_set_constraints(int tid, const bh_exec_constraints_t *user_c) {
@@ -54,14 +46,13 @@ int sys_thread_set_constraints(int tid, const bh_exec_constraints_t *user_c) {
         return -1;
 
     // Reschedule the thread to enforce new constraints (per constraint-aware scheduling rules)
-    bh_thread_t* thread = sched_find_thread_by_id(tid);
-    if (thread && thread->state == THREAD_STATE_RUNNING) {
-        // Trigger a reschedule on the thread's core to force the new constraint to be evaluated
-        // For MVP, we can just yield the core if it's running locally, or rely on normal quantum expiration.
-        // It's tricky to preempt remotely without ipi_reschedule exposing, so we'll just yield if local.
-        uint32_t current_core = hal_cpu_get_id();
-        if (thread->bound_core_id == current_core) {
-            sched_reschedule();
+    sched_thread_snapshot_t snap;
+    if (sched_get_thread_snapshot(tid, &snap) == K_OK) {
+        if (snap.state == THREAD_STATE_RUNNING) {
+            uint32_t current_core = hal_cpu_get_id();
+            if (snap.bound_core_id == current_core) {
+                sched_reschedule();
+            }
         }
     }
 

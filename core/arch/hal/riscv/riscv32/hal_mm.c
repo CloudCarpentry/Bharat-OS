@@ -1,7 +1,7 @@
 #include <stdbool.h>
 #include "hal/hal_capabilities.h"
-#include "hal/hal_mmu.h"
 #include "hal/hal_mm.h"
+#include "hal/hal_mmu.h"
 #include <string.h>
 
 int hal_mem_get_caps(hal_mem_caps_t *caps) {
@@ -37,20 +37,44 @@ int hal_mem_get_caps(hal_mem_caps_t *caps) {
     return 0;
 }
 
+// Required by pmm.c (pmm_register_region)
+void hal_mm_get_zone_limits(hal_mm_zone_limits_t *out) {
+    if (!out) return;
+    // riscv32: single flat 32-bit address space (QEMU virt RAM at 0x80000000)
+    out->dma_low_start = 0;
+    out->dma_low_end   = 0;
+    out->dma32_start   = 0x80000000UL;
+    out->dma32_end     = 0xFFFFFFFFUL;
+    out->normal_start  = 0x80000000UL;
+    out->normal_end    = 0xFFFFFFFFUL;
+    out->flags = 0;
+}
+
+// Required by prot_domain.c (prot_domain_init)
+void hal_mm_backend_caps(hal_mm_backend_caps_t *out) {
+    if (!out) return;
+    out->kind           = HAL_MM_BACKEND_MMU_LITE;
+    out->map_granule    = 4096;
+    out->protect_granule= 4096;
+    out->alloc_granule  = 4096;
+    out->max_regions    = 0;
+    out->flags          = 1;
+}
+
 static const hal_arch_capabilities_t g_riscv32_caps = {
-    .arch_name = "riscv32",
-    .arch_bits = 32,
+    .arch_name     = "riscv32",
+    .arch_bits     = 32,
     .support_level = BH_ARCH_SUPPORT_BOOT_SUPPORTED,
-    .memory_model = BH_MEMORY_MODEL_MMU_LITE,
-    .has_smp = false,
-    .has_irq_controller = true,
-    .has_monotonic_timer = true,
-    .has_cycle_counter = true,
-    .has_dma = false,
-    .has_iommu = false,
+    .memory_model  = BH_MEMORY_MODEL_MMU_LITE,
+    .has_smp       = false,
+    .has_irq_controller   = true,
+    .has_monotonic_timer  = true,
+    .has_cycle_counter    = true,
+    .has_dma       = false,
+    .has_iommu     = false,
     .has_cache_ops = true,
-    .has_tlb_ops = true,
-    .max_supported_cores = 1
+    .has_tlb_ops   = true,
+    .max_supported_cores  = 1
 };
 
 const hal_arch_capabilities_t *hal_get_arch_capabilities_riscv32(void) {
@@ -58,15 +82,15 @@ const hal_arch_capabilities_t *hal_get_arch_capabilities_riscv32(void) {
 }
 
 static const hal_memory_caps_t riscv32_memory_caps = {
-    .supports_mmu_full = false,
-    .supports_mmu_lite = true,
-    .supports_mpu_only = false,
+    .supports_mmu_full  = false,
+    .supports_mmu_lite  = true,
+    .supports_mpu_only  = false,
     .supports_user_kernel_split = true,
-    .supports_page_protection = true,
-    .supports_execute_disable = true,
-    .supports_asid = true,
-    .supports_range_tlb_flush = true,
-    .min_page_size = 4096,
+    .supports_page_protection   = true,
+    .supports_execute_disable   = true,
+    .supports_asid              = true,
+    .supports_range_tlb_flush   = true,
+    .min_page_size  = 4096,
     .max_address_bits = 32
 };
 

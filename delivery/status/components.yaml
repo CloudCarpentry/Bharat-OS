@@ -48,3 +48,20 @@ components:
     maturity: "scaffold"
     evidence: "core/services/vm_manager"
     blockers: ["On-demand page-pool orchestration"]
+
+  accelerator_substrate:
+    name: "Accelerator Capability & Dispatch Substrate"
+    maturity: "partial"
+    evidence: "core/kernel/include/capability.h, core/lib/runtime/backend_dispatch"
+    blockers:
+      - "Production device queue realization"
+      - "End-to-end accelerator service mediation"
+
+  heterogeneous_compute:
+    name: "Heterogeneous Compute Control Plane"
+    maturity: "scaffold"
+    evidence: "core/services/device/accelmgr, core/drivers/accel/virt_accel.c"
+    blockers:
+      - "Real accelmgr event loop"
+      - "Truthful hardware backend execution"
+      - "Accelerator admission and telemetry integration"

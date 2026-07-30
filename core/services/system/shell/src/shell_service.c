@@ -5,6 +5,8 @@
 #include "shell_parser.h"
 #include "shell_session.h"
 #include "bharat/runtime/runtime.h"
+#include <bharat/ipc/ipc.h>
+#include <bharat/cap/cap.h>
 
 #define CONSOLE_ENDPOINT 20
 

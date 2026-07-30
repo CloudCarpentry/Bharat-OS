@@ -1,3 +1,14 @@
+---
+title: Kernel Algorithmic Foundations — Code Mapping
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - reviews
+see_also:
+  - README.md
+---
 # Kernel Algorithmic Foundations — Code Mapping
 
 ## Purpose

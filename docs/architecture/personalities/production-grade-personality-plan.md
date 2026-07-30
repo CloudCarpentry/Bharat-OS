@@ -2,12 +2,22 @@
 title: Linux + Android Production-Grade Personality Plan
 status: active
 owner: Compatibility Team
-reviewers: ["Kernel Team", "Perf Team", "CI/Infra Team"]
+last_updated: 2026-04-22
+tags:
+  - architecture
+  - personalities
+  - linux
+  - android
+  - production
+  - performance
+see_also:
+  - README.md
+reviewers:
+  - Kernel Team
+  - Perf Team
+  - CI/Infra Team
 version: 1.0
-last_updated: "2026-04-22"
-tags: ["architecture", "personalities", "linux", "android", "production", "performance"]
 ---
-
 # Linux + Android Production-Grade Personality Plan
 
 ## Why this plan exists

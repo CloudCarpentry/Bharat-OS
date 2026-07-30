@@ -1,5 +1,5 @@
 ---
-title: Phase 1 Implementation Task Pack: Power and Thermal Governance
+title: "Phase 1 Implementation Task Pack: Power and Thermal Governance"
 status: Draft
 owner: Documentation Working Group
 last_updated: 2026-04-25

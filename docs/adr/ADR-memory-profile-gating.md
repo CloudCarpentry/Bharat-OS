@@ -1,5 +1,5 @@
 ---
-title: ADR: Memory Profile Gating
+title: "ADR: Memory Profile Gating"
 status: Accepted
 owner: Documentation Working Group
 last_updated: 2026-04-25

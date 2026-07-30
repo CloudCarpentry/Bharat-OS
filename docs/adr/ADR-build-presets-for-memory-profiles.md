@@ -1,5 +1,5 @@
 ---
-title: ADR: Build Presets for Memory Profiles
+title: "ADR: Build Presets for Memory Profiles"
 status: Accepted
 owner: Documentation Working Group
 last_updated: 2026-04-25

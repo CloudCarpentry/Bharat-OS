@@ -1,5 +1,5 @@
 ---
-title: ADR 011: Structured Kernel Panic and Diagnostics
+title: "ADR 011: Structured Kernel Panic and Diagnostics"
 status: Accepted
 owner: Documentation Working Group
 last_updated: 2026-04-25

@@ -11,7 +11,6 @@ see_also:
   - ../README.md
   - ../architecture/contracts/naming-conventions.md
 ---
-
 # ADR Guide and Index
 
 `docs/adr/` is the canonical location for Bharat-OS Architecture Decision Records.

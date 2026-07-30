@@ -1,3 +1,14 @@
+---
+title: TLB Shootdown Hardening Review
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - reviews
+see_also:
+  - README.md
+---
 # TLB Shootdown Hardening Review
 
 ## Status

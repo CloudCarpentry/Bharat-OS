@@ -178,7 +178,7 @@ bharat_status_t bh_service_handle_msg(bh_service_ctx_t *ctx, const bh_msg_t *msg
 }
 
 int main(void) {
-    bharat_runtime_init();
+    // bharat_runtime_init is now called by _start
     broker_init();
     bharat_runtime_log("Display Broker started (transitional shared-pointer model)");
 

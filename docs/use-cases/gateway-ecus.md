@@ -1,3 +1,14 @@
+---
+title: Gateway Ecus
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - use-cases
+see_also:
+  - README.md
+---
 ### Gateway ECUs
 
 Bharat-OS can target gateway ECUs because its architecture naturally separates network-facing, vehicle-bus-facing, and diagnostic domains.

@@ -101,6 +101,16 @@ typedef bharat_cap_status_t (*bharat_cap_validate_fn_t)(
  */
 void bharat_cap_set_validate_backend_for_tests(bharat_cap_validate_fn_t fn);
 
+typedef bharat_cap_status_t (*bharat_cap_authority_resolver_fn_t)(
+    bharat_cap_handle_t handle,
+    bharat_cap_object_type_t expected_object_type,
+    uint64_t expected_object_id,
+    uint64_t required_rights,
+    const bharat_cap_scope_t *required_scope,
+    bharat_cap_validation_result_t *out_result);
+
+void bharat_cap_register_authority_resolver(bharat_cap_authority_resolver_fn_t resolver);
+
 #ifdef __cplusplus
 }
 #endif

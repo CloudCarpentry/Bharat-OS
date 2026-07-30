@@ -44,7 +44,7 @@ typedef enum {
  * @brief Initialize the runtime hosting environment.
  * @return 0 on success, negative error code on failure.
  */
-int bharat_runtime_init(void);
+int bharat_runtime_init(const void *startup_ptr);
 
 /**
  * @brief Spawn a new child process/task bounded by a capability.

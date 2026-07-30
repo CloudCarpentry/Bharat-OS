@@ -1,14 +1,7 @@
 ---
 title: IPC + uRPC + Multikernel Communication Architecture
 status: Proposed
-see_also:
-  - ../contracts/naming-conventions.md
-  - service-identity-and-incarnation.md
 owner: Kernel Architecture
-reviewers:
-  - Core Kernel Team
-  - IPC / Multikernel Maintainers
-version: 0.2
 last_updated: 2026-04-22
 tags:
   - ipc
@@ -17,8 +10,14 @@ tags:
   - capability
   - architecture
   - profiles
+see_also:
+  - ../contracts/naming-conventions.md
+  - service-identity-and-incarnation.md
+reviewers:
+  - Core Kernel Team
+  - IPC / Multikernel Maintainers
+version: 0.2
 ---
-
 # Bharat-OS ARC: IPC + uRPC + Multikernel Communication Architecture
 
 ## Contract Status — IPC/URPC Reliability

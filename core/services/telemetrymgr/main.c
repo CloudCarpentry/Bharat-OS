@@ -55,7 +55,7 @@ int main(int argc, char **argv) {
     (void)argc;
     (void)argv;
 
-    bharat_runtime_init();
+    // bharat_runtime_init is now called by _start
     init_telemetrymgr();
 
     bh_service_start_info_t info = {

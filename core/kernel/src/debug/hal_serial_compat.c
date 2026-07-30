@@ -25,7 +25,11 @@ void hal_serial_write_char(char c) {
 void hal_serial_write(const char *s) {
     if (!s) return;
     while (*s != '\0') {
-        early_console_putc(*s);
+        if (early_console_is_bound()) {
+            early_console_putc(*s);
+        } else {
+            *(volatile uint32_t *)0x09000000 = (uint32_t)*s;
+        }
         s++;
     }
 }

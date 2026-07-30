@@ -1,3 +1,14 @@
+---
+title: Aerospace Systems
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - use-cases
+see_also:
+  - README.md
+---
 ### Aerospace Systems
 
 Aerospace use cases require extreme caution, but Bharat-OS has architectural ingredients that are useful for future research and prototyping.

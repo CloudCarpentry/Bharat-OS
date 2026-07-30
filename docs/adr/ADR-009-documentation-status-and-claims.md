@@ -1,5 +1,5 @@
 ---
-title: ADR-009: Documentation Status Labels and Research-Influenced Claims
+title: "ADR-009: Documentation Status Labels and Research-Influenced Claims"
 status: Accepted
 owner: Documentation Working Group
 last_updated: 2026-04-25

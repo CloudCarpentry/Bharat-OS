@@ -2,9 +2,15 @@
 title: Linux Compatibility Personality
 status: active
 owner: Architecture Team
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - personalities
+see_also:
+  - README.md
 version: 1.0
 ---
-
 # Linux Compatibility Personality
 
 The Linux Compatibility Personality provides a POSIX-like user space to accelerate ecosystem unlock for developer tools, existing C/C++ projects, and headless server workloads (e.g., Python, Node.js).

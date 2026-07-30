@@ -49,6 +49,7 @@ class BootConfig:
     protocol: str             # linux_arm64 | multiboot2 | opensbi_payload | raw_entry | uefi | ...
     artifact_format: str      # elf | raw_bin | boot_image | efi | flash_image
     dtb: DtbConfig
+    cmdline: Optional[str] = None
 
 
 @dataclass

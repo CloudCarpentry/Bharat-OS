@@ -1,3 +1,14 @@
+---
+title: Industrial Control
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - use-cases
+see_also:
+  - README.md
+---
 ### Industrial Control
 
 For industrial control, Bharat-OS should focus on deterministic timing, strong isolation, and resilient service recovery.

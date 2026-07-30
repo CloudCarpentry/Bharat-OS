@@ -2,9 +2,15 @@
 title: Linux Personality Benchmark Plan
 status: active
 owner: Architecture Team
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - personalities
+see_also:
+  - README.md
 version: 1.0
 ---
-
 # Linux Personality Benchmark Plan
 
 This document outlines the mandatory microbenchmarks and validation methodology for evaluating the performance of the Bharat-OS Linux personality. The goal is to enforce the "no translation tax" rule and prove that Linux compatibility hot paths run at near-native speeds.

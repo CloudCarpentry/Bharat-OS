@@ -2,9 +2,15 @@
 title: Linux Personality Contract
 status: active
 owner: Architecture Team
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - personalities
+see_also:
+  - README.md
 version: 1.0
 ---
-
 # Linux Personality Contract
 
 ### Contract Status

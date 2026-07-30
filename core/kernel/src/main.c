@@ -27,7 +27,7 @@ void kernel_main_common(const boot_info_t *boot) {
       boot_common_platform_services(boot);
 
       // EXPLICIT AUTOMOTIVE MODE FORCE FOR DEBUG
-      ((struct boot_info*)boot)->selected_mode = BOOT_MODE_AUTOMOTIVE;
+      // ((struct boot_info*)boot)->selected_mode = BOOT_MODE_AUTOMOTIVE;
 
       boot_common_runtime(boot);
   } else {

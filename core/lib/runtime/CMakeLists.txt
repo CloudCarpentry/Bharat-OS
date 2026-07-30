@@ -14,22 +14,29 @@ target_link_libraries(bharat_crt0 PUBLIC bharat_freestanding bharat_syscall)
 # Add the lib/runtime static library
 add_library(bharat_libruntime STATIC src/runtime.c src/freestanding_string.c host/runtime_host.c)
 
+# Common includes needed for userspace runtime and driver object layers
+set(BHARAT_RUNTIME_COMMON_INCLUDES
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/interface
+    ${CMAKE_SOURCE_DIR}/interface/include
+)
+
 # Add backend dispatch framework (Gated behind feature if needed, currently unconditionally available as an object/static)
 add_library(bharat_runtime_backend_dispatch OBJECT backend_dispatch/backend_registry.c)
-target_include_directories(bharat_runtime_backend_dispatch PRIVATE ${CMAKE_SOURCE_DIR}/interface)
-target_link_libraries(bharat_runtime_backend_dispatch PUBLIC bharat_freestanding)
+target_include_directories(bharat_runtime_backend_dispatch PRIVATE ${BHARAT_RUNTIME_COMMON_INCLUDES})
+target_link_libraries(bharat_runtime_backend_dispatch PUBLIC bharat_user_buildopts)
 bharat_configure_userspace_library(bharat_runtime_backend_dispatch)
 
 # Crypto Pilot
 add_library(bharat_runtime_crypto OBJECT crypto/crypto_dispatch.c)
-target_include_directories(bharat_runtime_crypto PRIVATE ${CMAKE_SOURCE_DIR}/interface)
-target_link_libraries(bharat_runtime_crypto PUBLIC bharat_freestanding bharat_runtime_backend_dispatch)
+target_include_directories(bharat_runtime_crypto PRIVATE ${BHARAT_RUNTIME_COMMON_INCLUDES})
+target_link_libraries(bharat_runtime_crypto PUBLIC bharat_user_buildopts bharat_runtime_backend_dispatch)
 bharat_configure_userspace_library(bharat_runtime_crypto)
 
 # Tensor Pilot
 add_library(bharat_runtime_tensor OBJECT accel/tensor_dispatch.c)
-target_include_directories(bharat_runtime_tensor PRIVATE ${CMAKE_SOURCE_DIR}/interface)
-target_link_libraries(bharat_runtime_tensor PUBLIC bharat_freestanding bharat_runtime_backend_dispatch)
+target_include_directories(bharat_runtime_tensor PRIVATE ${BHARAT_RUNTIME_COMMON_INCLUDES})
+target_link_libraries(bharat_runtime_tensor PUBLIC bharat_user_buildopts bharat_runtime_backend_dispatch)
 bharat_configure_userspace_library(bharat_runtime_tensor)
 
 # Set the public include directory

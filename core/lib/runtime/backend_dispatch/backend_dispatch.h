@@ -49,6 +49,11 @@ typedef struct {
 int backend_registry_add(const backend_provider_t *provider);
 
 /**
+ * Reset/Clear the backend registry (useful for isolated tests).
+ */
+void backend_registry_reset(void);
+
+/**
  * Select the optimal backend based on capabilities, profile, and current context.
  * Always returns a software fallback if a hardware backend is absent or unavailable
  * due to safe mode / power constraints.

@@ -1,3 +1,15 @@
+---
+title: Bharat-OS Driver Registry Contract (D0 Baseline)
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - drivers
+see_also:
+  - README.md
+---
 # Bharat-OS Driver Registry Contract (D0 Baseline)
 
 This document describes the hardened contract for driver registration and device-to-driver binding in Bharat-OS.

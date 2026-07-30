@@ -2,8 +2,6 @@
 title: Bharat-OS Heterogeneous Compute Architecture and Roadmap
 status: Proposed
 owner: Architecture Team
-reviewers: Core Maintainers
-version: 1.0
 last_updated: 2024-03-24
 tags:
   - architecture
@@ -11,8 +9,11 @@ tags:
   - accelerator
   - ai
   - memory
+see_also:
+  - README.md
+reviewers: Core Maintainers
+version: 1.0
 ---
-
 # Bharat-OS Heterogeneous Compute Architecture and Roadmap
 
 ## 1. Executive Summary

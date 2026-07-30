@@ -1,3 +1,15 @@
+---
+title: Bharat-OS Architecture Register ABI
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - syscall
+see_also:
+  - README.md
+---
 # Bharat-OS Architecture Register ABI
 
 This document defines the register mapping for syscall extraction across all supported architectures.

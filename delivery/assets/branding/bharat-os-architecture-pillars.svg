@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="660" viewBox="0 0 1400 660">
+<rect width="1400" height="660" rx="28" fill="#0A0F1E"/>
+<defs>
+  <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+    <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#000000" flood-opacity="0.25"/>
+  </filter>
+</defs>
+<text x="70" y="82" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="44" font-weight="700">The BHARAT Architecture</text>
+<text x="70" y="122" fill="#8A9BB0" font-family="Inter, Arial, sans-serif" font-size="22">Six principles that turn a kernel into a reusable product platform</text>
+
+<g filter="url(#shadow)">
+  <rect x="70" y="175" width="190" height="350" rx="22" fill="#121A2B" stroke="#FF9933" stroke-width="2"/>
+  <rect x="280" y="175" width="190" height="350" rx="22" fill="#121A2B" stroke="#526D82" stroke-width="2"/>
+  <rect x="490" y="175" width="190" height="350" rx="22" fill="#121A2B" stroke="#526D82" stroke-width="2"/>
+  <rect x="700" y="175" width="190" height="350" rx="22" fill="#121A2B" stroke="#526D82" stroke-width="2"/>
+  <rect x="910" y="175" width="190" height="350" rx="22" fill="#121A2B" stroke="#526D82" stroke-width="2"/>
+  <rect x="1120" y="175" width="210" height="350" rx="22" fill="#121A2B" stroke="#138808" stroke-width="2"/>
+</g>
+
+<g font-family="Inter, Arial, sans-serif">
+  <text x="165" y="255" text-anchor="middle" fill="#FF9933" font-size="72" font-weight="800">B</text>
+  <text x="375" y="255" text-anchor="middle" fill="#FFFFFF" font-size="72" font-weight="800">H</text>
+  <text x="585" y="255" text-anchor="middle" fill="#FFFFFF" font-size="72" font-weight="800">A</text>
+  <text x="795" y="255" text-anchor="middle" fill="#FFFFFF" font-size="72" font-weight="800">R</text>
+  <text x="1005" y="255" text-anchor="middle" fill="#FFFFFF" font-size="72" font-weight="800">A</text>
+  <text x="1225" y="255" text-anchor="middle" fill="#138808" font-size="72" font-weight="800">T</text>
+
+  <text x="165" y="305" text-anchor="middle" fill="#FFFFFF" font-size="20" font-weight="700">Bound Authority</text>
+  <text x="375" y="305" text-anchor="middle" fill="#FFFFFF" font-size="20" font-weight="700">Heterogeneous</text>
+  <text x="375" y="332" text-anchor="middle" fill="#FFFFFF" font-size="20" font-weight="700">Compute</text>
+  <text x="585" y="305" text-anchor="middle" fill="#FFFFFF" font-size="20" font-weight="700">Architecture</text>
+  <text x="585" y="332" text-anchor="middle" fill="#FFFFFF" font-size="20" font-weight="700">Independent</text>
+  <text x="795" y="305" text-anchor="middle" fill="#FFFFFF" font-size="20" font-weight="700">Resource</text>
+  <text x="795" y="332" text-anchor="middle" fill="#FFFFFF" font-size="20" font-weight="700">Ownership</text>
+  <text x="1005" y="305" text-anchor="middle" fill="#FFFFFF" font-size="20" font-weight="700">Adaptive</text>
+  <text x="1005" y="332" text-anchor="middle" fill="#FFFFFF" font-size="20" font-weight="700">Profiles</text>
+  <text x="1225" y="305" text-anchor="middle" fill="#FFFFFF" font-size="20" font-weight="700">Trusted</text>
+  <text x="1225" y="332" text-anchor="middle" fill="#FFFFFF" font-size="20" font-weight="700">Lifecycle</text>
+
+  <text x="165" y="380" text-anchor="middle" fill="#8A9BB0" font-size="16">Capabilities make</text>
+  <text x="165" y="402" text-anchor="middle" fill="#8A9BB0" font-size="16">authority explicit.</text>
+
+  <text x="375" y="380" text-anchor="middle" fill="#8A9BB0" font-size="16">CPU • GPU • NPU</text>
+  <text x="375" y="402" text-anchor="middle" fill="#8A9BB0" font-size="16">as managed resources.</text>
+
+  <text x="585" y="380" text-anchor="middle" fill="#8A9BB0" font-size="16">RISC-V • ARM • x86</text>
+  <text x="585" y="402" text-anchor="middle" fill="#8A9BB0" font-size="16">behind stable contracts.</text>
+
+  <text x="795" y="380" text-anchor="middle" fill="#8A9BB0" font-size="16">Per-core ownership;</text>
+  <text x="795" y="402" text-anchor="middle" fill="#8A9BB0" font-size="16">message-based coordination.</text>
+
+  <text x="1005" y="380" text-anchor="middle" fill="#8A9BB0" font-size="16">One foundation,</text>
+  <text x="1005" y="402" text-anchor="middle" fill="#8A9BB0" font-size="16">many product profiles.</text>
+
+  <text x="1225" y="380" text-anchor="middle" fill="#8A9BB0" font-size="16">Telemetry • updates</text>
+  <text x="1225" y="402" text-anchor="middle" fill="#8A9BB0" font-size="16">fault containment.</text>
+
+  <text x="700" y="595" text-anchor="middle" fill="#FFFFFF" font-size="24" font-weight="700">Verified. Sovereign. Open.</text>
+  <text x="700" y="626" text-anchor="middle" fill="#8A9BB0" font-size="17">Build the operating platform once. Compose the product many times.</text>
+</g>
+</svg>

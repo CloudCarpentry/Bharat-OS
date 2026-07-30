@@ -1,9 +1,7 @@
 ---
 title: Mixed-Criticality RT & GP Model
 status: Proposed
-version: 1.0
 owner: Architecture Team
-reviewers: Core Maintainers
 last_updated: 2024-03-24
 tags:
   - architecture
@@ -11,8 +9,11 @@ tags:
   - mixed-criticality
   - scheduling
   - profiles
+see_also:
+  - README.md
+version: 1.0
+reviewers: Core Maintainers
 ---
-
 # Mixed-Criticality Architecture in Bharat-OS
 
 Bharat-OS does not utilize a rigid “one OS per device type” or a binary "RT kernel vs. GP kernel" split. Instead, the architectural foundation of Bharat-OS is built upon a **small capability kernel + profile-driven policy/services + mixed-criticality partitions/channels**.

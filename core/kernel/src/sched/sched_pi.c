@@ -52,7 +52,7 @@ void sched_on_mutex_release(bh_thread_t *owner, void *mutex) {
   sched_restore_priority(owner);
 }
 
-int sched_adjust_priority(bh_thread_t *thread, uint32_t new_priority) {
+int sched_adjust_priority_local(bh_thread_t *thread, uint32_t new_priority) {
   if (!thread) {
     return -1;
   }
@@ -60,20 +60,13 @@ int sched_adjust_priority(bh_thread_t *thread, uint32_t new_priority) {
     new_priority = SCHED_MAX_PRIORITY;
   }
 
-  thread_slot_t *slot = sched_find_thread_slot_by_tid_local(&g_cpu_locals[thread->home_core_id].runqueue, thread->thread_id);
+  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  sched_rq_t *rq = sched_local_rq();
+
+  thread_slot_t *slot = sched_find_thread_slot_by_tid(thread->thread_id);
 
   if (slot && slot->is_on_runqueue != 0U) {
-    uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
-    bool is_local = (thread->bound_core_id == current_core);
-
-    if (is_local) {
-        hal_cpu_disable_interrupts();
-    } else {
-        // Fallback for safety. In strict multikernel, we should send an IPI to mutate.
-        spin_lock(&g_cpu_locals[thread->bound_core_id].runqueue.lock);
-    }
-
-    sched_rq_t *rq = &g_cpu_locals[thread->bound_core_id].runqueue;
+    hal_cpu_disable_interrupts();
 
     if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
       sched_cfs_dequeue(rq, thread);
@@ -88,25 +81,57 @@ int sched_adjust_priority(bh_thread_t *thread, uint32_t new_priority) {
       rq->runnable_count--;
     }
 
-    if (is_local) {
-        hal_cpu_enable_interrupts();
-    } else {
-        spin_unlock(&g_cpu_locals[thread->bound_core_id].runqueue.lock);
-    }
+    hal_cpu_enable_interrupts();
   }
 
   thread->priority = new_priority;
   if (thread->state == THREAD_STATE_READY) {
-    (void)sched_enqueue(thread, thread->bound_core_id); // Defer via enqueue inbox
+    (void)sched_enqueue(thread, current_core);
   }
   return 0;
 }
 
+int sched_set_priority(uint64_t tid, uint32_t priority) {
+  bh_thread_t *thread = sched_find_thread_by_id(tid);
+  if (!thread) return -1;
+
+  if (priority > SCHED_MAX_PRIORITY) {
+    priority = SCHED_MAX_PRIORITY;
+  }
+
+  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t owner = __atomic_load_n(&thread->owner_cpu, __ATOMIC_ACQUIRE);
+
+  if (owner != current_core) {
+      // Route command to owner_cpu.
+      sched_remote_cmd_t *cmd = sched_allocate_outbound_cmd();
+      if (!cmd) {
+          return K_ERR_NO_RESOURCES;
+      }
+      cmd->type = SCHED_REMOTE_SET_PRIORITY;
+      cmd->source_cpu = current_core;
+      cmd->target_cpu = owner;
+      cmd->thread_id = thread->thread_id;
+      cmd->expected_thread_generation = thread->sched_generation;
+      cmd->priority = priority;
+      cmd->state = SCHED_REMOTE_CMD_PENDING;
+
+      kstatus_t status = sched_remote_submit(owner, cmd);
+      if (status != K_OK) {
+          sched_remote_cmd_release(cmd);
+          return status;
+      }
+      return 0;
+  }
+
+  return sched_adjust_priority_local(thread, priority);
+}
+
 int sched_set_thread_priority(uint64_t tid, uint32_t new_priority) {
-  return sched_adjust_priority(sched_find_thread_by_id(tid), new_priority);
+  return sched_set_priority(tid, new_priority);
 }
 
 int sched_sys_set_priority(uint64_t tid, uint32_t new_priority) {
-  return sched_set_thread_priority(tid, new_priority);
+  return sched_set_priority(tid, new_priority);
 }
 

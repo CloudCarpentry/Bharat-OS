@@ -48,7 +48,7 @@ add_executable(sample_app sample_app/main.c)
 # Note: In an integrated build, we should just use the global function
 if (TARGET bharat_crt0)
     bharat_configure_userspace_binary(sample_app)
-    target_link_libraries(sample_app PRIVATE bharat bharat_user_buildopts bharat_freestanding)
+    target_link_libraries(sample_app PRIVATE bharat bharat_user_buildopts bharat_freestanding bharat_libruntime)
 else()
     target_link_libraries(sample_app PRIVATE bharat)
     target_compile_options(sample_app PRIVATE -ffreestanding -nostdlib -fPIC)

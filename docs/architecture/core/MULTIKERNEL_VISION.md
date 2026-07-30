@@ -2,11 +2,17 @@
 title: Multikernel (Per-Core) Architecture Vision & Maturity
 status: Proposed
 owner: Architecture Team
-version: 1.0.0
 last_updated: 2024-05-15
-tags: [multikernel, barrelfish, real-time, automotive, architecture]
+tags:
+  - multikernel
+  - barrelfish
+  - real-time
+  - automotive
+  - architecture
+see_also:
+  - README.md
+version: 1.0.0
 ---
-
 # Multikernel Vision and Subsystem Maturity
 
 Bharat-OS is transitioning towards a highly decoupled, Barrelfish-like **multikernel architecture**, where each CPU core operates with high autonomy and communication between cores happens via strict message passing (uRPC/IPC) rather than implicit shared memory. This is foundational for our ability to cleanly support diverse profiles (Real-Time, General Purpose, Hybrid) across heterogeneous SoC domains (e.g., Automotive, Edge, Robotics, Drones) spanning x86_64, arm64, arm32, riscv64, and riscv32 hardware.

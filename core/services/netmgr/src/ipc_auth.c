@@ -70,6 +70,8 @@ static void netmgr_audit_cap_failure(
 #endif
 }
 
+#include <bharat/cap/cap_authz.h>
+
 int netmgr_authorize(
     bharat_cap_handle_t caller_cap,
     bharat_cap_object_type_t object_type,
@@ -83,19 +85,27 @@ int netmgr_authorize(
         return BHARAT_IPC_STATUS_ERR_PERM;
     }
 
-    bharat_cap_validation_result_t vr = {0};
+    bharat_service_authz_desc_t desc = {
+        .opcode = 0,
+        .object_type = object_type,
+        .required_rights = required_rights,
+        .scope_source = BHARAT_AUTHZ_SCOPE_OBJECT,
+        .object_source = BHARAT_AUTHZ_OBJ_SRC_REQUEST,
+        .validation_phase = BHARAT_AUTHZ_PHASE_PRE_HANDLER
+    };
 
-    bharat_cap_status_t st = bharat_cap_validate(
+    int32_t status = bharat_service_dispatch_authorize(
+        0x00010004,
+        0,
+        &desc,
+        1,
         caller_cap,
-        object_type,
-        object_id,
-        required_rights,
-        required_scope,
-        &vr);
+        object_id
+    );
 
-    if (st != BHARAT_CAP_OK || !vr.allowed) {
+    if (status != BHARAT_IPC_STATUS_OK) {
         netmgr_audit_cap_failure(caller_cap, object_type, object_id,
-                                 required_rights, required_scope, vr.status);
+                                 required_rights, required_scope, BHARAT_CAP_RIGHTS_DENIED);
         return BHARAT_IPC_STATUS_ERR_PERM;
     }
 

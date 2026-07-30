@@ -1,3 +1,16 @@
+---
+title: Execution Mode & CPU Partition Admission Contract
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - kernel
+  - scheduler
+see_also:
+  - README.md
+---
 # Execution Mode & CPU Partition Admission Contract
 
 ## Overview

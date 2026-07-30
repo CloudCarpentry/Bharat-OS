@@ -2,12 +2,19 @@
 title: Bharat-OS Native UAPI Roadmap
 status: active
 owner: Architecture Team
-reviewers: ["Core Team"]
+last_updated: 2026-04-21
+tags:
+  - architecture
+  - uapi
+  - native
+  - capabilities
+  - primitives
+see_also:
+  - README.md
+reviewers:
+  - Core Team
 version: 1.1
-last_updated: "2026-04-21"
-tags: ["architecture", "uapi", "native", "capabilities", "primitives"]
 ---
-
 # Bharat-OS Native UAPI (Application Binary Interface) Roadmap
 
 ## 1. Introduction

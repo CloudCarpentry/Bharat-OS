@@ -1,11 +1,18 @@
 ---
-title: "BIDL Runtime Mapping"
-status: "Draft"
-version: "0.1"
-last_updated: "2024-03-24"
-tags: ["architecture", "ipc", "bidl", "runtime", "urpc"]
+title: BIDL Runtime Mapping
+status: Draft
+owner: Documentation Working Group
+last_updated: 2024-03-24
+tags:
+  - architecture
+  - ipc
+  - bidl
+  - runtime
+  - urpc
+see_also:
+  - README.md
+version: 0.1
 ---
-
 # BIDL Runtime Mapping
 
 This document describes how the abstract Bharat Interface Definition Language (BIDL) concepts map onto the concrete Bharat-OS runtime constructs: endpoint IPC, cross-core uRPC, namesvc discovery metadata, and capability enforcement.

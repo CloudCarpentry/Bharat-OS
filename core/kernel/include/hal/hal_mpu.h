@@ -25,4 +25,13 @@ int hal_mpu_disable_region(uint32_t region_id);
 void hal_mpu_activate_local(void);
 void hal_mpu_deactivate_local(void);
 
+typedef struct hal_mpu_ops {
+    int (*program_region)(uint32_t region_id, phys_addr_t base, size_t size, uint32_t flags);
+    int (*disable_region)(uint32_t region_id);
+    const hal_mpu_caps_t* (*get_caps)(void);
+} hal_mpu_ops_t;
+
+extern hal_mpu_ops_t *active_hal_mpu;
+void hal_mpu_register_ops(hal_mpu_ops_t *ops);
+
 #endif // BHARAT_HAL_MPU_H

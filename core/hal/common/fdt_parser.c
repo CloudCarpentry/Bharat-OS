@@ -333,8 +333,11 @@ typedef struct {
     int is_plic;
     int is_gic;
     int is_fb;
+    int is_pci;
     const void *reg_data;
     uint32_t reg_len;
+    const void *ranges_data;
+    uint32_t ranges_len;
     uint32_t ac;
     uint32_t sc;
     /* simple-framebuffer specific properties */
@@ -347,6 +350,9 @@ typedef struct {
 int fdt_parse_discovery(const void *fdt_ptr, system_discovery_t *discovery) {
   if (!fdt_is_valid(fdt_ptr) || !discovery) {
     return -1;
+  }
+  if (discovery->fdt_parsed) {
+    return 0;
   }
 
   const struct fdt_header *fdt = (const struct fdt_header *)fdt_ptr;
@@ -450,6 +456,62 @@ int fdt_parse_discovery(const void *fdt_ptr, system_discovery_t *discovery) {
           discovery->irq_ctrls[discovery->irq_ctrl_count].base = base;
           discovery->irq_ctrls[discovery->irq_ctrl_count].size = size;
           discovery->irq_ctrl_count++;
+        } else if (s->is_pci && discovery->pci_host_count < BHARAT_MAX_PCI_HOSTS) {
+          discovery->pci_hosts[discovery->pci_host_count].ecam_base = base;
+          discovery->pci_hosts[discovery->pci_host_count].ecam_size = size;
+          discovery->pci_hosts[discovery->pci_host_count].mmio32_pci_base = 0;
+          discovery->pci_hosts[discovery->pci_host_count].mmio32_base = 0;
+          discovery->pci_hosts[discovery->pci_host_count].mmio32_size = 0;
+          discovery->pci_hosts[discovery->pci_host_count].mmio64_pci_base = 0;
+          discovery->pci_hosts[discovery->pci_host_count].mmio64_base = 0;
+          discovery->pci_hosts[discovery->pci_host_count].mmio64_size = 0;
+
+          if (s->ranges_data && s->ranges_len > 0) {
+              const uint32_t *r_cell = (const uint32_t *)s->ranges_data;
+              uint32_t r_len_cells = s->ranges_len / 4;
+              uint32_t p_ac = stack[depth-1].ac;
+              uint32_t c_sc = s->sc;
+              if (c_sc == 0) c_sc = 2; // Default to 2
+              if (p_ac == 0) p_ac = 2; // Default to 2
+              uint32_t entry_cells = 3 + p_ac + c_sc;
+
+              for (uint32_t i = 0; i + entry_cells <= r_len_cells; i += entry_cells) {
+                  uint32_t flags_word = fdt32_to_cpu(r_cell[i]);
+                  uint32_t space_type = (flags_word >> 24) & 0x3;
+
+                  /* PCI ranges always use three child address cells.  The
+                   * first contains flags and the remaining two are the PCI
+                   * bus address.  Keep it separate from the parent CPU
+                   * address: on ARM virt these address spaces are offset. */
+                  uint64_t pci_base = ((uint64_t)fdt32_to_cpu(r_cell[i + 1]) << 32) |
+                                      fdt32_to_cpu(r_cell[i + 2]);
+
+                  uint64_t parent_base = 0;
+                  if (p_ac == 2) {
+                      parent_base = ((uint64_t)fdt32_to_cpu(r_cell[i + 3]) << 32) | fdt32_to_cpu(r_cell[i + 4]);
+                  } else {
+                      parent_base = fdt32_to_cpu(r_cell[i + 3]);
+                  }
+
+                  uint64_t range_size = 0;
+                  if (c_sc == 2) {
+                      range_size = ((uint64_t)fdt32_to_cpu(r_cell[i + 3 + p_ac]) << 32) | fdt32_to_cpu(r_cell[i + 4 + p_ac]);
+                  } else {
+                      range_size = fdt32_to_cpu(r_cell[i + 3 + p_ac]);
+                  }
+
+                  if (space_type == 0x2) { // 32-bit MMIO
+                      discovery->pci_hosts[discovery->pci_host_count].mmio32_pci_base = pci_base;
+                      discovery->pci_hosts[discovery->pci_host_count].mmio32_base = parent_base;
+                      discovery->pci_hosts[discovery->pci_host_count].mmio32_size = range_size;
+                  } else if (space_type == 0x3) { // 64-bit MMIO
+                      discovery->pci_hosts[discovery->pci_host_count].mmio64_pci_base = pci_base;
+                      discovery->pci_hosts[discovery->pci_host_count].mmio64_base = parent_base;
+                      discovery->pci_hosts[discovery->pci_host_count].mmio64_size = range_size;
+                  }
+              }
+          }
+          discovery->pci_host_count++;
         } else if (s->is_fb) {
           discovery->boot_video.phys_addr    = base;
           discovery->boot_video.size         = size;
@@ -499,6 +561,9 @@ int fdt_parse_discovery(const void *fdt_ptr, system_discovery_t *discovery) {
       if (str_eq(prop_name, "reg")) {
         stack[depth].reg_data = prop_data;
         stack[depth].reg_len = len;
+      } else if (str_eq(prop_name, "ranges")) {
+        stack[depth].ranges_data = prop_data;
+        stack[depth].ranges_len = len;
       } else if (str_eq(prop_name, "#address-cells")) {
         stack[depth].ac = fdt32_to_cpu(*(const uint32_t *)prop_data);
       } else if (str_eq(prop_name, "#size-cells")) {
@@ -531,6 +596,8 @@ int fdt_parse_discovery(const void *fdt_ptr, system_discovery_t *discovery) {
             stack[depth].is_plic = 1;
           } else if (str_eq(comp + c_len, "simple-framebuffer")) {
             stack[depth].is_fb = 1;
+          } else if (str_eq(comp + c_len, "pci-host-ecam-generic") || str_eq(comp + c_len, "pci-host-cam-generic")) {
+            stack[depth].is_pci = 1;
           }
           c_len += str_len + 1;
         }
@@ -539,5 +606,6 @@ int fdt_parse_discovery(const void *fdt_ptr, system_discovery_t *discovery) {
       break;
     }
   }
+  discovery->fdt_parsed = true;
   return 0;
 }

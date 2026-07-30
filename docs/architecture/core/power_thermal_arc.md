@@ -2,12 +2,14 @@
 title: Power and Thermal Governance for Bharat-OS
 status: Proposed
 owner: TBD
+last_updated: 2024-05-24
+tags:
+  - power, thermal, architecture
+see_also:
+  - README.md
 reviewers: TBD
 version: 0.1
-last_updated: 2024-05-24
-tags: power, thermal, architecture
 ---
-
 # Profile-Driven, Capability-Governed Power and Thermal Architecture for Bharat-OS
 
 ## 1. Context

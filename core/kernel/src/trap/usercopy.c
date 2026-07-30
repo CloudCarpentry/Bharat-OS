@@ -16,12 +16,6 @@
 #define BH_USERCOPY_MAX_BYTES 4096U
 #endif
 
-static void* internal_memcpy(void* dst, const void* src, size_t n) {
-    char* d = (char*)dst;
-    const char* s = (const char*)src;
-    while (n--) *d++ = *s++;
-    return dst;
-}
 
 __attribute__((weak))
 kstatus_t arch_copy_from_user_nofault(void *dst, const void *src, size_t len) {

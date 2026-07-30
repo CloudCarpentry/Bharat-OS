@@ -15,25 +15,15 @@ ENTRY(_start)
 SECTIONS
 {
     /* ── Load base ───────────────────────────────────────────────────────
-     * 0x100000 = 1 MiB. This is where GRUB/QEMU -kernel will DMA the image.
+     * 0x40010000 = QEMU virt ARM32 RAM base + offset
      */
-    . = 0x100000;
-
-    /* ── Multiboot2 header — must appear within the first 32 KiB ─────── */
-    .multiboot ALIGN(8) :
-    {
-        KEEP(*(.multiboot))
-    }
-
-    /* ── ELF Notes (PVH entry point info) ───────────────────────────── */
-    .note ALIGN(8) :
-    {
-        KEEP(*(.note.*))
-    }
+    . = 0x40010000;
 
     /* ── Read-only text ──────────────────────────────────────────────── */
     .text ALIGN(4096) :
     {
+        KEEP(*(.text.boot))
+        KEEP(*(.text.init))
         *(.text)
         *(.text.*)
         *(.fixup)

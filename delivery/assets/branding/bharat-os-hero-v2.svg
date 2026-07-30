@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="500" viewBox="0 0 1600 500">
+<rect width="1600" height="500" rx="28" fill="#0A0F1E"/>
+<defs>
+  <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#FF9933" stop-opacity="0.95"/>
+    <stop offset="1" stop-color="#138808" stop-opacity="0.85"/>
+  </linearGradient>
+</defs>
+<g opacity="0.18" stroke="url(#g1)" stroke-width="2">
+  <path d="M1000 50 L1450 180 L1220 430 L920 320 Z"/>
+  <path d="M1080 90 L1380 210 L1200 365 L980 290 Z"/>
+  <circle cx="1190" cy="240" r="125" fill="none"/>
+  <circle cx="1190" cy="240" r="78" fill="none"/>
+</g>
+<rect x="110" y="90" width="14" height="260" rx="7" fill="#FF9933"/>
+<rect x="110" y="350" width="14" height="55" rx="7" fill="#138808"/>
+<g font-family="Inter, Arial, sans-serif">
+  <text x="165" y="165" fill="#FFFFFF" font-size="62" font-weight="800">Bharat-OS</text>
+  <text x="165" y="222" fill="#FFFFFF" font-size="29" font-weight="600">Secure, composable operating substrate for software-defined edge systems</text>
+  <text x="165" y="282" fill="#8A9BB0" font-size="21">Capability-oriented • Heterogeneous compute • RISC-V / ARM / x86 • Profile-driven</text>
+  <text x="165" y="355" fill="#FF9933" font-size="25" font-weight="700">Verified.</text>
+  <text x="285" y="355" fill="#FFFFFF" font-size="25" font-weight="700">Sovereign.</text>
+  <text x="425" y="355" fill="#138808" font-size="25" font-weight="700">Open.</text>
+  <text x="165" y="400" fill="#8A9BB0" font-size="18">Build the operating platform once. Compose the product many times.</text>
+</g>
+</svg>
