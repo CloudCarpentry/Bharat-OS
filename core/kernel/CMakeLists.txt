@@ -527,6 +527,7 @@ list(APPEND KERNEL_SRCS
     ${BHARAT_KERNEL_SRC_ROOT}/boot/boot_mode.c
     ${BHARAT_KERNEL_SRC_ROOT}/boot/boot_selftest.c
     src/process/user_image_loader.c
+    src/device/device_mmio.c
 )
 
 # ── Kernel ELF ──────────────────────────────────────────────────────────────
