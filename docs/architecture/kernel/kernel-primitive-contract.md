@@ -1,3 +1,15 @@
+---
+title: Kernel Primitive Contract
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - kernel
+see_also:
+  - README.md
+---
 # Kernel Primitive Contract
 
 ## Status

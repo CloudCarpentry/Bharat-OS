@@ -16,63 +16,73 @@ int sched_enqueue(bh_thread_t *thread, uint32_t core_id) {
   bool is_local = (core_id == current_core);
 
   if (!is_local) {
-      sched_rq_t *target_rq = &g_cpu_locals[core_id].runqueue;
-
-      if (target_rq->sched_isolated) {
+      if (sched_read_isolated_snapshot(core_id)) {
           return K_ERR_ISOLATED;
       }
 
-      thread_slot_t *slot = sched_find_thread_slot_by_tid_local(&g_cpu_locals[thread->home_core_id].runqueue, thread->thread_id);
-      if (!slot) return -1;
-
       sched_invariant_check_remote_enqueue_path(thread);
 
-      spin_lock(&target_rq->lock);
+      sched_remote_cmd_t *cmd = sched_allocate_outbound_cmd();
+      if (!cmd) {
+          return K_ERR_NO_RESOURCES;
+      }
 
-      target_rq->remote_enqueues++;
-
-      sched_remote_cmd_t *cmd = &slot->remote_cmd;
       cmd->type = SCHED_REMOTE_ENQUEUE;
       cmd->source_cpu = current_core;
       cmd->target_cpu = core_id;
       cmd->thread_id = thread->thread_id;
       cmd->expected_thread_generation = thread->sched_generation;
       cmd->priority = thread->priority;
+      cmd->state = SCHED_REMOTE_CMD_PENDING;
 
-      list_add_tail(&cmd->list, &target_rq->pending_inbox);
-
-      if (target_rq->resched_pending == 0) {
-          target_rq->resched_pending = 1;
-          target_rq->ipi_sent++;
-          spin_unlock(&target_rq->lock);
-          hal_send_ipi_payload(1U << core_id, MK_MSG_THREAD_ENQUEUE_REQ);
-      } else {
-          target_rq->ipi_coalesced++;
-          spin_unlock(&target_rq->lock);
+      kstatus_t status = sched_remote_submit(core_id, cmd);
+      if (status != K_OK) {
+          sched_remote_cmd_release(cmd);
+          return status;
       }
       return 0;
   }
 
-  sched_rq_t *rq = &g_cpu_locals[core_id].runqueue;
-  thread_slot_t *slot = sched_find_thread_slot_by_tid_local(rq, thread->thread_id);
-  if (!slot) {
-    return -1;
-  }
+  sched_rq_t *rq = sched_local_rq();
 
   hal_cpu_disable_interrupts();
 
-  if (slot->is_on_runqueue != 0U) {
+  sched_entity_t *entity = sched_find_entity_by_thread(thread);
+  if (!entity) {
+    entity = sched_allocate_entity(current_core);
+    if (!entity) {
+      hal_cpu_enable_interrupts();
+      return -1;
+    }
+    entity->tid = thread->thread_id;
+    thread->owner_cpu = current_core;
+    thread->owner_locator.cpu = (uint16_t)current_core;
+    ptrdiff_t diff = (sched_entity_slot_t *)((char *)entity - offsetof(sched_entity_slot_t, entity)) - rq->entities;
+    thread->owner_locator.slot = (uint16_t)diff;
+    thread->owner_locator.entity_generation = entity->entity_generation;
+    thread->owner_locator.migration_epoch = thread->migration_epoch;
+
+    entity->priority = thread->priority;
+    entity->base_priority = thread->base_priority;
+    entity->affinity_mask = thread->affinity_mask;
+    entity->vruntime = thread->vruntime;
+    entity->absolute_deadline = thread->absolute_deadline_ms;
+    entity->rt_attr = thread->rt_attr;
+    thread->cpu_context = &entity->context;
+  }
+
+  if (entity->is_on_runqueue != 0U) {
     sched_invariant_on_dequeue(thread);
     if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
       sched_cfs_dequeue(rq, thread);
     } else if (g_policy == SCHED_POLICY_EDF) {
       sched_edf_dequeue(rq, thread);
     } else {
-      list_del(&slot->run_node);
-      list_init(&slot->run_node);
-      sched_ready_bitmap_clear_if_empty(rq, thread->priority);
+      list_del(&entity->run_node);
+      list_init(&entity->run_node);
+      sched_ready_bitmap_clear_if_empty(rq, entity->priority);
     }
-    slot->is_on_runqueue = 0U;
+    entity->is_on_runqueue = 0U;
     if (rq->runnable_count > 0U) {
       rq->runnable_count--;
     }
@@ -80,6 +90,8 @@ int sched_enqueue(bh_thread_t *thread, uint32_t core_id) {
 
   thread->bound_core_id = core_id;
   thread->state = THREAD_STATE_READY;
+  entity->state = THREAD_STATE_READY;
+  entity->runnable = true;
 
   sched_invariant_on_enqueue(thread, core_id);
 
@@ -88,16 +100,17 @@ int sched_enqueue(bh_thread_t *thread, uint32_t core_id) {
   } else if (g_policy == SCHED_POLICY_EDF) {
     if (thread->rt_attr.period_ms > 0 && thread->rt_attr.deadline_ms > 0) {
         if (thread->absolute_deadline_ms == 0) {
-            thread->absolute_deadline_ms = g_cpu_locals[current_core].runqueue.total_ticks + thread->rt_attr.deadline_ms;
+            thread->absolute_deadline_ms = rq->total_ticks + thread->rt_attr.deadline_ms;
+            entity->absolute_deadline = thread->absolute_deadline_ms;
         }
     }
     sched_edf_enqueue(rq, thread);
   } else {
-    list_add(&slot->run_node, &rq->ready_queue[thread->priority]);
-    sched_ready_bitmap_set(rq, thread->priority);
+    list_add(&entity->run_node, &rq->ready_queue[entity->priority]);
+    sched_ready_bitmap_set(rq, entity->priority);
   }
 
-  slot->is_on_runqueue = 1U;
+  entity->is_on_runqueue = 1U;
   rq->runnable_count++;
 
   sched_validate_rq(rq);
@@ -107,7 +120,11 @@ int sched_enqueue(bh_thread_t *thread, uint32_t core_id) {
 }
 
 uint32_t sched_run_queue_depth(uint32_t core_id) {
-  return g_cpu_locals[core_id].runqueue.runnable_count;
+  sched_load_snapshot_t snap;
+  if (sched_read_load_snapshot(core_id, &snap) == K_OK) {
+    return snap.runnable_count;
+  }
+  return 0;
 }
 
 void sched_ready_bitmap_set(sched_rq_t *rq, uint32_t prio) {
@@ -140,18 +157,19 @@ static void sched_dequeue_task_l0(bh_thread_t *thread, uint32_t core_id) {
   if (!thread) {
     return;
   }
-  sched_rq_t *rq = &g_cpu_locals[core_id].runqueue;
-  thread_slot_t *slot = sched_find_thread_slot_by_tid_local(rq, thread->thread_id);
-  if (slot && slot->is_on_runqueue != 0U) {
+  (void)core_id;
+  sched_rq_t *rq = sched_local_rq();
+  sched_entity_t *entity = sched_find_entity_by_thread(thread);
+  if (entity && entity->is_on_runqueue != 0U) {
     sched_invariant_on_dequeue(thread);
     if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
       sched_cfs_dequeue(rq, thread);
     } else {
-      list_del(&slot->run_node);
-      list_init(&slot->run_node);
-      sched_ready_bitmap_clear_if_empty(rq, thread->priority);
+      list_del(&entity->run_node);
+      list_init(&entity->run_node);
+      sched_ready_bitmap_clear_if_empty(rq, entity->priority);
     }
-    slot->is_on_runqueue = 0U;
+    entity->is_on_runqueue = 0U;
     if (rq->runnable_count > 0U) {
       rq->runnable_count--;
     }

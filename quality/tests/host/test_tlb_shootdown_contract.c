@@ -35,7 +35,8 @@ typedef struct {
 // Mocks
 static bool g_panic_reached = false;
 uint32_t hal_cpu_get_id(void) { return 0; }
-void arch_cpu_relax(void) {}
+static uint64_t g_fake_ticks = 0;
+void arch_cpu_relax(void) { g_fake_ticks++; }
 void kernel_panic(const char* m) {
     printf("PANIC (Expected): %s\n", m);
     g_panic_reached = true;
@@ -66,20 +67,40 @@ bool tlb_pending_is_complete(uint32_t current_core, int slot) {
     return true;
 }
 void tlb_pending_free(uint32_t current_core, int slot) {}
-typedef struct { uint32_t fallback_count; } tlb_pending_stats_t;
-tlb_pending_stats_t mock_stats;
+typedef struct {
+    uint32_t fallback_count;
+    uint32_t retries;
+    uint32_t timeouts;
+    uint32_t send_failures;
+    uint32_t partial_completions;
+    uint32_t legacy_fallback_usage;
+} tlb_pending_stats_t;
+static tlb_pending_stats_t mock_stats;
 tlb_pending_stats_t* tlb_pending_get_stats(uint32_t core_id) { return &mock_stats; }
 uint32_t tlb_reqid_encode(uint32_t c, uint32_t s, uint32_t g) { return 0; }
 void tlb_pending_ack(uint32_t req_id, uint32_t acking_core) {}
+uint64_t tlb_pending_get_missing_mask(uint32_t core_id, int slot) { return 0; }
 
 // aspace mocks
 bool aspace_is_valid_for_tlb(address_space_t *aspace) { return true; }
 uint64_t aspace_get_active_mask(address_space_t *aspace) { return aspace->active_mask; }
 uint64_t aspace_next_tlb_generation(address_space_t *aspace) { return ++aspace->tlb_gen; }
+void aspace_mark_poisoned(address_space_t *aspace) { aspace->flags |= ASPACE_STATE_POISONED; }
 
 // transport mocks
 bharat_transport_t* transport_for_core(int core) { return NULL; }
-int bharat_monitor_v1_call_tlb_invalidate(bharat_transport_t* t, int dst, const bharat_monitor_v1_TlbInvalidateReq_t* req, void* ctx) { return 0; }
+int bharat_monitor_v1_send_tlb_invalidate(bharat_transport_t* t, int dst, const bharat_monitor_v1_TlbInvalidateReq_t* req, uint64_t reqid, void* ctx) { return 0; }
+
+// hal_timer mocks
+uint64_t hal_timer_read_freq(void) { return 1000; }
+uint64_t hal_timer_monotonic_ticks(void) { return g_fake_ticks; }
+
+// console/hal_tlb mocks
+void console_log(int level, const char* fmt, ...) { (void)level; (void)fmt; }
+void console_write_raw(const char* s, size_t len) { (void)s; (void)len; }
+void hal_tlb_invalidate_local_page(virt_addr_t va) { (void)va; }
+void hal_tlb_invalidate_local_range(virt_addr_t start, size_t len) { (void)start; (void)len; }
+void hal_tlb_invalidate_local_aspace(uint64_t aspace_id) { (void)aspace_id; }
 
 // hal_ipi mocks
 void hal_ipi_send(uint32_t core, uint32_t ipi) {}
@@ -106,8 +127,10 @@ void test_tlb_shootdown_timeout(void) {
     as.object_id = 1;
     as.active_mask = (1ULL << 1); // Target CPU 1
     as.tlb_gen = 1;
+    as.flags = 0;
 
     g_simulate_tlb_timeout = true;
+    g_fake_ticks = 0;
 
     // Expect failure with TLB_FAIL_RETURN_ERROR
     int ret = tlb_invalidate_remote_ex(&as, 0x1000, 0x1000, TLB_INV_PAGE, TLB_FAIL_RETURN_ERROR);
@@ -116,6 +139,8 @@ void test_tlb_shootdown_timeout(void) {
 
     // Expect panic with TLB_FAIL_KERNEL_PANIC
     g_panic_reached = false;
+    as.flags = 0; // Clear poisoned
+    g_fake_ticks = 0;
     ret = tlb_invalidate_remote_ex(&as, 0x1000, 0x1000, TLB_INV_PAGE, TLB_FAIL_KERNEL_PANIC);
     assert(g_panic_reached == true);
 }

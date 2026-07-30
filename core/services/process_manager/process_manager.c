@@ -11,6 +11,31 @@ char *strncpy(char *dest, const char *src, size_t n);
 static process_entry_t process_table[MAX_PROCESSES];
 static uint32_t next_pid = 1;
 
+#include <bharat/cap/cap_authz.h>
+
+static const bharat_service_authz_desc_t process_manager_authz_descs[] = {
+    {
+        .opcode = PM_OP_CREATE,
+        .object_type = BHARAT_CAP_OBJ_PROCESS,
+        .required_rights = BHARAT_CAP_RIGHT_WRITE,
+    },
+    {
+        .opcode = PM_OP_QUERY,
+        .object_type = BHARAT_CAP_OBJ_PROCESS,
+        .required_rights = BHARAT_CAP_RIGHT_READ,
+    },
+    {
+        .opcode = PM_OP_START,
+        .object_type = BHARAT_CAP_OBJ_PROCESS,
+        .required_rights = BHARAT_CAP_RIGHT_EXECUTE,
+    },
+    {
+        .opcode = PM_OP_STOP,
+        .object_type = BHARAT_CAP_OBJ_PROCESS,
+        .required_rights = BHARAT_CAP_RIGHT_EXECUTE,
+    }
+};
+
 int32_t process_manager_authorize(
     uint32_t opcode,
     const void *req,
@@ -20,53 +45,36 @@ int32_t process_manager_authorize(
         return BHARAT_IPC_STATUS_ERR_PERM;
     }
 
-    uint64_t required_rights = 0;
     uint64_t target_object_id = 0;
-    bharat_cap_scope_t scope = {
-        .kind = BHARAT_CAP_SCOPE_SERVICE,
-        .scope_id = 0
-    };
 
     switch (opcode) {
         case PM_OP_CREATE: {
-            required_rights = BHARAT_CAP_RIGHT_WRITE;
+            target_object_id = 0;
             break;
         }
         case PM_OP_QUERY: {
             const pm_req_query_t *typed_req = (const pm_req_query_t *)req;
-            required_rights = BHARAT_CAP_RIGHT_READ;
             target_object_id = typed_req->process_id;
-            scope.kind = BHARAT_CAP_SCOPE_OBJECT;
-            scope.scope_id = typed_req->process_id;
             break;
         }
         case PM_OP_START:
         case PM_OP_STOP: {
             const pm_req_start_t *typed_req = (const pm_req_start_t *)req;
-            required_rights = BHARAT_CAP_RIGHT_EXECUTE;
             target_object_id = typed_req->process_id;
-            scope.kind = BHARAT_CAP_SCOPE_OBJECT;
-            scope.scope_id = typed_req->process_id;
             break;
         }
         default:
             return BHARAT_IPC_STATUS_ERR_OPCODE;
     }
 
-    bharat_cap_validation_result_t vr = {0};
-    bharat_cap_status_t st = bharat_cap_validate(
+    return bharat_service_dispatch_authorize(
+        PROCESS_MANAGER_SERVICE_ID,
+        opcode,
+        process_manager_authz_descs,
+        sizeof(process_manager_authz_descs) / sizeof(process_manager_authz_descs[0]),
         caller_cap,
-        BHARAT_CAP_OBJ_PROCESS,
-        target_object_id,
-        required_rights,
-        &scope,
-        &vr);
-
-    if (st != BHARAT_CAP_OK || !vr.allowed) {
-        return BHARAT_IPC_STATUS_ERR_PERM;
-    }
-
-    return BHARAT_IPC_STATUS_OK;
+        target_object_id
+    );
 }
 
 void process_manager_init(void) {

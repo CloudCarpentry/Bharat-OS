@@ -17,6 +17,7 @@ const struct bh_exception_entry *exception_table_lookup(uintptr_t pc) {
 }
 
 bool trap_try_exception_fixup(trap_frame_t *tf, uintptr_t fault_addr, uint32_t fault_flags) {
+    (void)fault_addr;
     if (!tf) return false;
 
     // If trap is from userspace, it is never a kernel exception-table fixup

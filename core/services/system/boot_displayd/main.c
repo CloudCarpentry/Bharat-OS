@@ -6,6 +6,8 @@
 #include "bharat/uapi/display/boot_display.h"
 #include "bharat/uapi/display/lease.h"
 #include "bharat/runtime/runtime.h"
+#include <bharat/ipc/ipc.h>
+#include <bharat/cap/cap.h>
 
 #define DISPLAY_BROKER_ENDPOINT 15 // Simulated well-known endpoint
 

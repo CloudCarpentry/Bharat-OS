@@ -21,6 +21,12 @@ typedef struct {
     uint64_t stale_acks;
     uint64_t allocation_failures;
     uint64_t fallback_count;
+    uint64_t duplicate_acks;
+    uint64_t retries;
+    uint64_t timeouts;
+    uint64_t send_failures;
+    uint64_t partial_completions;
+    uint64_t legacy_fallback_usage;
 } tlb_pending_stats_t;
 
 // Encodes request ID from component pieces.
@@ -48,5 +54,8 @@ void tlb_pending_free(uint32_t current_core, int slot);
 
 // Retrieve stats pointer for a given core
 tlb_pending_stats_t* tlb_pending_get_stats(uint32_t core_id);
+
+// Returns the missing target mask (targets that have not acknowledged yet)
+uint64_t tlb_pending_get_missing_mask(uint32_t core_id, int slot);
 
 #endif // BHARAT_MM_TLB_PENDING_H

@@ -1,16 +1,21 @@
 #include "mm/prot_domain.h"
 #include "slab.h"
+#include "kernel/status.h"
 #include <stddef.h>
 
 #define ERR_NOT_SUPPORTED -1
 
-static prot_domain_t* prot_none_create(void) {
+static prot_domain_ops_t prot_none_ops;
+
+static int prot_none_create(prot_domain_t** out_domain) {
     prot_domain_t* domain = (prot_domain_t*)kmalloc(sizeof(prot_domain_t));
-    if (!domain) return NULL;
+    if (!domain) return K_ERR_NO_MEMORY;
 
     domain->mode = PROT_MODE_NONE;
+    domain->ops = &prot_none_ops;
     domain->backend_state = NULL;
-    return domain;
+    *out_domain = domain;
+    return K_OK;
 }
 
 static void prot_none_destroy(prot_domain_t* domain) {
@@ -46,7 +51,7 @@ static int prot_none_query_region(prot_domain_t* domain, uintptr_t vaddr, uintpt
     return 0;
 }
 
-prot_domain_ops_t prot_none_ops = {
+static prot_domain_ops_t prot_none_ops = {
     .create = prot_none_create,
     .destroy = prot_none_destroy,
     .activate = prot_none_activate,

@@ -1,11 +1,18 @@
 ---
-title: "BIDL Adoption Roadmap"
-status: "Draft"
-version: "0.1"
-last_updated: "2024-03-24"
-tags: ["architecture", "ipc", "bidl", "contracts", "roadmap"]
+title: BIDL Adoption Roadmap
+status: Draft
+owner: Documentation Working Group
+last_updated: 2024-03-24
+tags:
+  - architecture
+  - ipc
+  - bidl
+  - contracts
+  - roadmap
+see_also:
+  - README.md
+version: 0.1
 ---
-
 # BIDL Adoption Roadmap
 
 This document outlines the phased execution plan for introducing the Bharat Interface Definition Language (BIDL) into Bharat-OS. It is structured as a ticket-grade program breakdown for code agents and contributors.

@@ -100,21 +100,35 @@ int aspace_create(address_space_t **out_aspace, uint32_t flags) {
     address_space_t *as = (address_space_t *)kmalloc(sizeof(address_space_t));
     if (!as) { mm_stats.aspace_create_failures++; return K_ERR_NO_MEMORY; }
 
-    if (!active_hal_pt) hal_pt_init();
+    mem_model_t current_model = mem_model_get_current();
 
+    // Create protection domain backend first
+    as->prot_domain = NULL;
+    kstatus_t pd_err = prot_domain_create(&as->prot_domain);
+    if (pd_err != K_OK && current_model != MEM_MODEL_NONE) {
+        kfree(as);
+        mm_stats.aspace_create_failures++;
+        return pd_err;
+    }
 
-    as->prot_domain = prot_domain_create();
+    // Setup page table / root_pt based on profile/model
+    if (current_model == MEM_MODEL_MPU || profile == ASPACE_PROFILE_REGION_ONLY) {
+        // MPU strictly bypasses page-table root allocation and TLB setup
+        as->root_pt = 0;
+    } else {
+        if (!active_hal_pt) hal_pt_init();
 
-    // TODO(PR3.1-TRANSITION): Isolate legacy root PT allocation logic while transitioning fully to prot_domain backend
-    as->root_pt = aspace_create_root_pt_from_prot_domain(as);
-    if (!as->root_pt) {
-        as->root_pt = aspace_create_root_pt_via_fallback(as);
-        if (!as->root_pt && active_hal_pt && active_hal_pt->create_address_space) {
-            if (as->prot_domain) {
-                prot_domain_destroy(as->prot_domain);
+        // TODO(PR3.1-TRANSITION): Isolate legacy root PT allocation logic while transitioning fully to prot_domain backend
+        as->root_pt = aspace_create_root_pt_from_prot_domain(as);
+        if (!as->root_pt) {
+            as->root_pt = aspace_create_root_pt_via_fallback(as);
+            if (!as->root_pt && active_hal_pt && active_hal_pt->create_address_space) {
+                if (as->prot_domain) {
+                    prot_domain_destroy(as->prot_domain);
+                }
+                kfree(as);
+                return K_ERR_NO_MEMORY;
             }
-            kfree(as);
-            return K_ERR_NO_MEMORY;
         }
     }
 

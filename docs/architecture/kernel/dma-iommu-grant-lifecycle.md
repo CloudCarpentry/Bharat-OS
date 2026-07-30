@@ -1,3 +1,15 @@
+---
+title: DMA/IOMMU Grant Lifecycle
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - kernel
+see_also:
+  - README.md
+---
 # DMA/IOMMU Grant Lifecycle
 
 ## Status

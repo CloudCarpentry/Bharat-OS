@@ -2,12 +2,24 @@
 #include "../../include/mm/tlb_internal.h"
 #include "../../include/hal/hal_tlb.h"
 #include "../../include/bharat/cpu_local.h"
+#include "arch/arch_caps.h"
+#include "hal/hal_timer.h"
 
 tlb_cpu_state_t g_tlb_cpu_state[MAX_CPUS];
 
 int tlb_init(void) {
     extern void tlb_pending_init(void);
     tlb_pending_init();
+
+#ifndef BHARAT_HOST_TEST
+    extern void kernel_panic(const char *message);
+    if (arch_has_cap(ARCH_CAP_SMP)) {
+        if (hal_timer_read_freq() == 0) {
+            kernel_panic("TLB: Monotonic timer unavailable with SMP TLB shootdown enabled!");
+        }
+    }
+#endif
+
     for (int i = 0; i < MAX_CPUS; i++) {
         g_tlb_cpu_state[i].active_aspace = NULL;
         g_tlb_cpu_state[i].active_asid = 0;

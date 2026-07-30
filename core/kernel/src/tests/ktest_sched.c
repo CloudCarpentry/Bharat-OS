@@ -141,9 +141,9 @@ bool test_sched_remote_enqueue(void) {
     int ret1 = sched_enqueue(t1, 1);
     KTEST_ASSERT(ret1 == 0, "Enqueue remote failed");
 
-    // We verify it ended up in rq1's pending_inbox since the lockless race fix defers it
+    // We verify it ended up in rq1's remote.queue since the lockless race fix defers it
     KTEST_ASSERT(g_cpu_locals[1].runqueue.runnable_count == 0, "Remote enqueue wrongly mutated running count directly");
-    KTEST_ASSERT(!list_empty(&g_cpu_locals[1].runqueue.pending_inbox), "Pending inbox empty on remote enqueue");
+    KTEST_ASSERT(!sched_cmd_ring_empty(&g_cpu_locals[1].runqueue.remote.cmd_ring), "Pending inbox empty on remote enqueue");
 
     // Remote core processes its inbox during reschedule
     sched_reschedule();

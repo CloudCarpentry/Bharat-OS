@@ -2,11 +2,15 @@
 title: Cryptography & Security Subsystem Overview
 status: Proposed
 owner: Divyang Panchasara
-version: 1.0
 last_updated: 2024-05-15
-tags: [security, crypto, architecture]
+tags:
+  - security
+  - crypto
+  - architecture
+see_also:
+  - README.md
+version: 1.0
 ---
-
 # Cryptography & Security Subsystem
 
 Bharat-OS enforces a strict boundary between the kernel's **trust-enforcing mechanisms** and the user-space **policy/algorithm services**.

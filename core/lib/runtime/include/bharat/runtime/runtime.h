@@ -3,8 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <bharat/cap/cap.h>
-#include <bharat/ipc/ipc.h>
+#include <bharat/uapi/abi_types.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -18,7 +17,7 @@ extern "C" {
 /**
  * @brief Initialize the runtime framework for the process.
  */
-void bharat_runtime_init(void);
+void bharat_runtime_init(const void *startup_ptr);
 
 /**
  * @brief Shutdown the runtime framework gracefully.
@@ -27,9 +26,9 @@ void bharat_runtime_shutdown(void);
 
 /**
  * @brief Obtain a bootstrap capability handle provided by the environment.
- * @return The bootstrap capability handle, or BHARAT_CAP_INVALID_HANDLE.
+ * @return The bootstrap capability handle, or BHARAT_INVALID_HANDLE.
  */
-bharat_cap_handle_t bharat_runtime_get_bootstrap_cap(void);
+bharat_handle_t bharat_runtime_get_bootstrap_cap(void);
 
 /**
  * @brief Simple log hook for service output.

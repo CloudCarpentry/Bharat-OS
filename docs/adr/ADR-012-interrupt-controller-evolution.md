@@ -1,5 +1,5 @@
 ---
-title: ADR-012: Interrupt Controller Evolution with Compatibility-First Core IRQ Model
+title: "ADR-012: Interrupt Controller Evolution with Compatibility-First Core IRQ Model"
 status: Accepted
 owner: Documentation Working Group
 last_updated: 2026-04-25

@@ -1,3 +1,15 @@
+---
+title: x86_64 Syscall Entry Contract
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - syscall
+see_also:
+  - README.md
+---
 # x86_64 Syscall Entry Contract
 
 This document describes the production syscall entry path for x86_64 in Bharat-OS.

@@ -1,11 +1,18 @@
 ---
-title: "DMA Grant Model"
-status: "Draft"
-version: "0.1"
-last_updated: "2024-03-24"
-tags: ["architecture", "dma", "capabilities", "memory", "lease"]
+title: DMA Grant Model
+status: Draft
+owner: Documentation Working Group
+last_updated: 2024-03-24
+tags:
+  - architecture
+  - dma
+  - capabilities
+  - memory
+  - lease
+see_also:
+  - README.md
+version: 0.1
 ---
-
 # DMA Grant Model
 
 ### Contract Status

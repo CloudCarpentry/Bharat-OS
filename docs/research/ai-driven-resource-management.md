@@ -1,3 +1,14 @@
+---
+title: Ai Driven Resource Management
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - research
+see_also:
+  - README.md
+---
 ## 🧠 AI-Driven Resource Management
 
 Detailed mapping is documented in [`docs/architecture/device-profiles-and-use-cases.md`](docs/architecture/device-profiles-and-use-cases.md).

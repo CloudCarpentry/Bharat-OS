@@ -6,12 +6,25 @@
 static const backend_provider_t *g_registry[MAX_BACKENDS];
 static uint32_t g_registry_count = 0;
 
+#include <string.h>
+
 int backend_registry_add(const backend_provider_t *provider) {
     if (!provider || !provider->name) return -1;
     if (g_registry_count >= MAX_BACKENDS) return -1;
 
+    // Reject duplicate provider identity/name to prevent ordering/telemetry ambiguity
+    for (uint32_t i = 0; i < g_registry_count; i++) {
+        if (strcmp(g_registry[i]->name, provider->name) == 0) {
+            return -2;
+        }
+    }
+
     g_registry[g_registry_count++] = provider;
     return 0;
+}
+
+void backend_registry_reset(void) {
+    g_registry_count = 0;
 }
 
 const backend_provider_t *backend_dispatch_select(

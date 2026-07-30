@@ -2,12 +2,16 @@
 title: Personality Layer Architecture
 status: active
 owner: Architecture Team
-reviewers: ["Core Team"]
+last_updated: 2026-04-21
+tags:
+  - architecture
+  - personalities
+see_also:
+  - README.md
+reviewers:
+  - Core Team
 version: 1.1
-last_updated: "2026-04-21"
-tags: ["architecture", "personalities"]
 ---
-
 # Personality Layer Model
 
 > **Note on Code Structure:** The architecture enforces a strict separation. Syscalls hit a generic trap layer (`core/kernel/src/core/arch/*/trap.c`) and are routed through the native UAPI. Foreign ABIs are supported through compatibility layers (`core/personalities/compat/linux/`, etc.) that translate POSIX and other semantics into native IPC/uRPC requests.

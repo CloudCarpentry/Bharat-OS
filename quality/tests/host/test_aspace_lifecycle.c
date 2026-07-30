@@ -9,7 +9,7 @@
 
 // Mock dependencies
 void hal_pt_init(void) {}
-struct prot_domain* prot_domain_create(void) { return NULL; }
+int prot_domain_create(struct prot_domain** out) { *out = NULL; return 0; }
 void prot_domain_destroy(struct prot_domain* pd) { (void)pd; }
 void mm_stats_inc_aspace_create_calls(void) {}
 phys_addr_t vmm_get_kernel_root(void) { return 0; }

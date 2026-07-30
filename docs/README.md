@@ -12,7 +12,6 @@ see_also:
   - adr/README.md
   - testing/run-matrix.md
 ---
-
 # Bharat-OS Documentation
 
 This directory is the canonical documentation hub for Bharat-OS.

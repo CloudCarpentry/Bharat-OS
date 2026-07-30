@@ -1,17 +1,18 @@
 ---
 title: Bharat-OS Project Folder Structure
 status: Active
-version: 1.2
 owner: Architecture Team
-reviewers: Core Maintainers
 last_updated: 2026-04-24
 tags:
   - architecture
   - structure
   - boundaries
   - repository
+see_also:
+  - README.md
+version: 1.2
+reviewers: Core Maintainers
 ---
-
 # Bharat-OS Project Folder Structure
 
 This document defines target folder boundaries and records the **current alignment snapshot** from the repository tree.

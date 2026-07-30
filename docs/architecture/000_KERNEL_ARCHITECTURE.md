@@ -1,5 +1,5 @@
 ---
-title: `KERNEL_ARCHITECTURE.md`
+title: KERNEL_ARCHITECTURE.md
 status: Proposed
 owner: Documentation Working Group
 last_updated: 2026-04-25
@@ -203,6 +203,15 @@ Features include:
 # Scheduler
 
 The scheduler manages CPU time across tasks.
+
+### Sovereign Owner-Local Execution Model
+In accordance with Bharat-OS's distributed ownership model, the scheduler implements a **Sovereign Owner-Local Execution Model**. This architecture physically decouples stable thread identity (`bh_thread_t`) on the home core (the identity authority) from core-local mutable scheduling state (`sched_entity_t`).
+
+*   **Stable Thread Identity (`bh_thread_t`)**: Associated permanently with the TID's home CPU and stable forever.
+*   **Owner-Local Execution Entity (`sched_entity_t`)**: Stored strictly within the active CPU's sovereign scheduling pool. All queue operations, CFS tree insertions, deadlines, priority updates, and context switches manipulate this local entity.
+*   **Five-Phase Transactional Migration**: Migration is executed using a five-phase transaction protocol (`RESERVE → FREEZE → STAGE → OWNER_COMMIT → ACTIVATE → RETIRE`) with CAS-like verification on the home CPU and reliable, slot-designated completion cells.
+
+For detailed design decisions, state transitions, and idempotency guarantees, see [ADR-016: Owner-Local Scheduler Entities and Five-Phase Transactional Migration](../adr/ADR-016-owner-local-scheduler-entities.md).
 
 Scheduler implementations may include:
 

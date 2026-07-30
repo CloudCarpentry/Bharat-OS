@@ -128,6 +128,10 @@ static void riscv64_pt_destroy_address_space(phys_addr_t root_pt) {
     }
 }
 
+static inline bool riscv64_is_leaf(uint64_t entry) {
+    return (entry & RISCV_PT_V) && (entry & (RISCV_PT_R | RISCV_PT_W | RISCV_PT_X));
+}
+
 static int riscv64_pt_map_4k(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
     if (root_pt == 0U || paddr == 0U) return -1;
 
@@ -140,6 +144,7 @@ static int riscv64_pt_map_4k(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t
     uint64_t vpn0 = (aligned_vaddr >> 12) & 0x1FF;
 
     pt_t* l2_table = (pt_t*)physmap_phys_to_virt(root_pt);
+    if (!l2_table) return -1;
 
     uint64_t table_flags = RISCV_PT_V; // Intermediate tables only need V bit
 
@@ -147,20 +152,57 @@ static int riscv64_pt_map_4k(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t
         phys_addr_t new_l1 = mm_alloc_page(NUMA_NODE_ANY);
         if (!new_l1) return -2;
         pt_t* l1_ptr = (pt_t*)physmap_phys_to_virt(new_l1);
-        for(int i=0; i<512; i++) l1_ptr->entries[i] = 0;
+        if (l1_ptr) {
+            for(int i=0; i<512; i++) l1_ptr->entries[i] = 0;
+        }
+        l2_table->entries[vpn2] = ((new_l1 >> 12) << 10) | table_flags;
+    } else if (riscv64_is_leaf(l2_table->entries[vpn2])) {
+        phys_addr_t giga_phys_base = (l2_table->entries[vpn2] >> 10) << 12;
+        if ((giga_phys_base + (aligned_vaddr & 0x3FFFFFFF)) == aligned_paddr) {
+            return 0;
+        }
+        uint64_t giga_flags = l2_table->entries[vpn2] & 0x3FF;
+        phys_addr_t new_l1 = mm_alloc_page(NUMA_NODE_ANY);
+        if (!new_l1) return -2;
+        pt_t* l1_ptr = (pt_t*)physmap_phys_to_virt(new_l1);
+        if (l1_ptr) {
+            for(int i=0; i<512; i++) {
+                l1_ptr->entries[i] = (((giga_phys_base + ((uint64_t)i << 21)) >> 12) << 10) | giga_flags;
+            }
+        }
         l2_table->entries[vpn2] = ((new_l1 >> 12) << 10) | table_flags;
     }
 
     pt_t* l1_table = (pt_t*)physmap_phys_to_virt((l2_table->entries[vpn2] >> 10) << 12);
+    if (!l1_table) return -1;
+
     if ((l1_table->entries[vpn1] & RISCV_PT_V) == 0) {
         phys_addr_t new_l0 = mm_alloc_page(NUMA_NODE_ANY);
         if (!new_l0) return -2;
         pt_t* l0_ptr = (pt_t*)physmap_phys_to_virt(new_l0);
-        for(int i=0; i<512; i++) l0_ptr->entries[i] = 0;
+        if (l0_ptr) {
+            for(int i=0; i<512; i++) l0_ptr->entries[i] = 0;
+        }
+        l1_table->entries[vpn1] = ((new_l0 >> 12) << 10) | table_flags;
+    } else if (riscv64_is_leaf(l1_table->entries[vpn1])) {
+        phys_addr_t mega_phys_base = (l1_table->entries[vpn1] >> 10) << 12;
+        if ((mega_phys_base + (aligned_vaddr & 0x1FFFFF)) == aligned_paddr) {
+            return 0;
+        }
+        uint64_t mega_flags = l1_table->entries[vpn1] & 0x3FF;
+        phys_addr_t new_l0 = mm_alloc_page(NUMA_NODE_ANY);
+        if (!new_l0) return -2;
+        pt_t* l0_ptr = (pt_t*)physmap_phys_to_virt(new_l0);
+        if (l0_ptr) {
+            for(int i=0; i<512; i++) {
+                l0_ptr->entries[i] = (((mega_phys_base + ((uint64_t)i << 12)) >> 12) << 10) | mega_flags;
+            }
+        }
         l1_table->entries[vpn1] = ((new_l0 >> 12) << 10) | table_flags;
     }
 
     pt_t* l0_table = (pt_t*)physmap_phys_to_virt((l1_table->entries[vpn1] >> 10) << 12);
+    if (!l0_table) return -1;
 
     uint64_t pte_flags = flags_to_riscv(flags);
     l0_table->entries[vpn0] = ((aligned_paddr >> 12) << 10) | pte_flags;
@@ -179,12 +221,12 @@ static int riscv64_pt_unmap_4k(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr
     uint64_t vpn0 = (aligned_vaddr >> 12) & 0x1FF;
 
     pt_t* l2_table = (pt_t*)physmap_phys_to_virt(root_pt);
-    if ((l2_table->entries[vpn2] & RISCV_PT_V) == 0) return -2;
+    if (!l2_table || (l2_table->entries[vpn2] & RISCV_PT_V) == 0 || riscv64_is_leaf(l2_table->entries[vpn2])) return -2;
     pt_t* l1_table = (pt_t*)physmap_phys_to_virt((l2_table->entries[vpn2] >> 10) << 12);
-    if ((l1_table->entries[vpn1] & RISCV_PT_V) == 0) return -2;
+    if (!l1_table || (l1_table->entries[vpn1] & RISCV_PT_V) == 0 || riscv64_is_leaf(l1_table->entries[vpn1])) return -2;
     pt_t* l0_table = (pt_t*)physmap_phys_to_virt((l1_table->entries[vpn1] >> 10) << 12);
 
-    if ((l0_table->entries[vpn0] & RISCV_PT_V) == 0) return -2;
+    if (!l0_table || (l0_table->entries[vpn0] & RISCV_PT_V) == 0) return -2;
 
     if (unmapped_paddr) {
         *unmapped_paddr = (l0_table->entries[vpn0] >> 10) << 12;
@@ -215,12 +257,12 @@ static int riscv64_pt_protect_4k(phys_addr_t root_pt, virt_addr_t vaddr, uint32_
     uint64_t vpn0 = (aligned_vaddr >> 12) & 0x1FF;
 
     pt_t* l2_table = (pt_t*)physmap_phys_to_virt(root_pt);
-    if ((l2_table->entries[vpn2] & RISCV_PT_V) == 0) return -2;
+    if (!l2_table || (l2_table->entries[vpn2] & RISCV_PT_V) == 0 || riscv64_is_leaf(l2_table->entries[vpn2])) return -2;
     pt_t* l1_table = (pt_t*)physmap_phys_to_virt((l2_table->entries[vpn2] >> 10) << 12);
-    if ((l1_table->entries[vpn1] & RISCV_PT_V) == 0) return -2;
+    if (!l1_table || (l1_table->entries[vpn1] & RISCV_PT_V) == 0 || riscv64_is_leaf(l1_table->entries[vpn1])) return -2;
     pt_t* l0_table = (pt_t*)physmap_phys_to_virt((l1_table->entries[vpn1] >> 10) << 12);
 
-    if ((l0_table->entries[vpn0] & RISCV_PT_V) == 0) return -2;
+    if (!l0_table || (l0_table->entries[vpn0] & RISCV_PT_V) == 0) return -2;
 
     uint64_t paddr = (l0_table->entries[vpn0] >> 10) << 12;
     uint64_t pte_flags = flags_to_riscv(new_flags);
@@ -241,12 +283,25 @@ static int riscv64_pt_query_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_ad
     uint64_t vpn0 = (aligned_vaddr >> 12) & 0x1FF;
 
     pt_t* l2_table = (pt_t*)physmap_phys_to_virt(root_pt);
-    if ((l2_table->entries[vpn2] & RISCV_PT_V) == 0) return -2;
-    pt_t* l1_table = (pt_t*)physmap_phys_to_virt((l2_table->entries[vpn2] >> 10) << 12);
-    if ((l1_table->entries[vpn1] & RISCV_PT_V) == 0) return -2;
-    pt_t* l0_table = (pt_t*)physmap_phys_to_virt((l1_table->entries[vpn1] >> 10) << 12);
+    if (!l2_table || (l2_table->entries[vpn2] & RISCV_PT_V) == 0) return -2;
 
-    if ((l0_table->entries[vpn0] & RISCV_PT_V) == 0) return -2;
+    if (riscv64_is_leaf(l2_table->entries[vpn2])) {
+        if (paddr) *paddr = ((l2_table->entries[vpn2] >> 10) << 12) + (aligned_vaddr & 0x3FFFFFFF);
+        if (flags) *flags = riscv_to_flags(l2_table->entries[vpn2]);
+        return 0;
+    }
+
+    pt_t* l1_table = (pt_t*)physmap_phys_to_virt((l2_table->entries[vpn2] >> 10) << 12);
+    if (!l1_table || (l1_table->entries[vpn1] & RISCV_PT_V) == 0) return -2;
+
+    if (riscv64_is_leaf(l1_table->entries[vpn1])) {
+        if (paddr) *paddr = ((l1_table->entries[vpn1] >> 10) << 12) + (aligned_vaddr & 0x1FFFFF);
+        if (flags) *flags = riscv_to_flags(l1_table->entries[vpn1]);
+        return 0;
+    }
+
+    pt_t* l0_table = (pt_t*)physmap_phys_to_virt((l1_table->entries[vpn1] >> 10) << 12);
+    if (!l0_table || (l0_table->entries[vpn0] & RISCV_PT_V) == 0) return -2;
 
     if (paddr) *paddr = (l0_table->entries[vpn0] >> 10) << 12;
     if (flags) *flags = riscv_to_flags(l0_table->entries[vpn0] & ~RISCV_PAGE_MASK);
@@ -315,16 +370,26 @@ static void* riscv64_phys_to_virt(phys_addr_t phys) {
     if ((satp >> 60) == 0) {
         return (void*)phys; // MMU is disabled (Bare mode), return identity mapping
     }
-    return (void*)(phys + g_kernel_virt_offset);
+    if (phys >= 0x80000000ULL) {
+        return (void*)(g_kernel_virt_offset + (phys - 0x80000000ULL));
+    }
+    return (void*)(g_kernel_virt_offset + 0x80000000ULL + phys);
 }
 
 static phys_addr_t riscv64_virt_to_phys(const void* virt) {
+    uintptr_t v = (uintptr_t)virt;
     uint64_t satp;
     asm volatile("csrr %0, satp" : "=r"(satp));
     if ((satp >> 60) == 0) {
-        return (phys_addr_t)virt; // MMU is disabled (Bare mode), return identity mapping
+        return (phys_addr_t)v; // MMU is disabled (Bare mode), return identity mapping
     }
-    return (phys_addr_t)((uintptr_t)virt - g_kernel_virt_offset);
+    if (v >= (g_kernel_virt_offset + 0x80000000ULL)) {
+        return (phys_addr_t)(v - (g_kernel_virt_offset + 0x80000000ULL));
+    }
+    if (v >= g_kernel_virt_offset) {
+        return (phys_addr_t)(v - g_kernel_virt_offset + 0x80000000ULL);
+    }
+    return (phys_addr_t)v;
 }
 
 static bool riscv64_has_linear_physmap(void) { 

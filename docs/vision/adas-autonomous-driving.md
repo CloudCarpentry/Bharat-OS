@@ -1,3 +1,14 @@
+---
+title: Adas Autonomous Driving
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - vision
+see_also:
+  - README.md
+---
 ### ADAS / Autonomous Driving
 
 Bharat-OS is a good fit for future ADAS and autonomous-driving control platforms because the architecture separates safety-critical control paths from policy-heavy user-space services.

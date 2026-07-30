@@ -2,11 +2,17 @@
 title: Bharat-OS Console Subsystem Architecture
 status: draft
 owner: Divyang Panchasara
-version: 1.1.0
 last_updated: 2024-05-24
-tags: [architecture, console, kernel, drivers, uart]
+tags:
+  - architecture
+  - console
+  - kernel
+  - drivers
+  - uart
+see_also:
+  - README.md
+version: 1.1.0
 ---
-
 # Bharat-OS Console Subsystem Architecture
 
 The Bharat-OS console subsystem provides a robust, production-baseline, capability-driven stack designed for early boot diagnostics, runtime structured formatting, and hardened panic modes across a highly heterogeneous hardware landscape. It spans multiple device profiles (Automotive, Drone, Medical, Edge, Mobile, Desktop, Datacenter) and architectures (ARM32/64, RISCV32/64, x86_64).

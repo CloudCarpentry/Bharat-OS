@@ -47,6 +47,8 @@ properties:
         type: string
       canonical_elf:
         type: string
+      init_module:
+        type: string
   boot_contract:
     type: object
     properties:

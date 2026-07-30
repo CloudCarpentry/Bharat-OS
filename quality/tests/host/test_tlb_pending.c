@@ -6,6 +6,7 @@
 #include <string.h>
 
 // Mocks
+uint32_t g_active_core_count = 4;
 uint32_t hal_cpu_get_id(void) { return 0; }
 
 void test_tlb_pending_basic(void) {

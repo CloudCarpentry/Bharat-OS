@@ -1,3 +1,15 @@
+---
+title: Memory Model HAL Contract
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - memory
+see_also:
+  - README.md
+---
 # Memory Model HAL Contract
 
 ## Overview

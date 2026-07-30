@@ -91,7 +91,17 @@ def run_qemu(manifest_path: Path, mode_override: str = None, display_override: s
         tried = " or ".join(runners_to_try)
         print(f"\nERROR: QEMU runner '{tried}' not found in PATH.")
         if platform.system() == "Windows":
-             print("TIP: Ensure QEMU is installed and added to your System PATH.")
+            print("TIP: Ensure QEMU is installed and added to your System PATH.")
+        if arch in ("riscv32", "riscv64"):
+            print(f"TIP: RISC-V QEMU may be a separate package. Try:")
+            print(f"     Ubuntu/Debian: sudo apt install qemu-system-misc")
+            print(f"     Fedora/RHEL:   sudo dnf install qemu-system-riscv")
+            print(f"     macOS:         brew install qemu")
+        elif arch in ("arm32", "arm64"):
+            print(f"TIP: ARM QEMU may be a separate package. Try:")
+            print(f"     Ubuntu/Debian: sudo apt install qemu-system-arm")
+            print(f"     Fedora/RHEL:   sudo dnf install qemu-system-arm")
+            print(f"     macOS:         brew install qemu")
         sys.exit(1)
 
     cmd = [runner]
@@ -116,11 +126,24 @@ def run_qemu(manifest_path: Path, mode_override: str = None, display_override: s
         print("Error: QEMU Runner requires DTB path but none was provided.")
         sys.exit(1)
 
-    # Basic generic boot logic based on protocol
+    # Boot artifact: passed via -kernel for all supported protocols.
+    # - multiboot2 (x86_64): QEMU acts as bootloader, loads the ELF32 directly.
+    # - linux_arm64/linux_arm32: QEMU jumps to the ELF load address, passes DTB in x0/r2.
+    # - opensbi_payload (riscv64/riscv32): QEMU's built-in OpenSBI firmware boots first,
+    #   then jumps to the -kernel ELF at 0x80200000 in S-mode.  No explicit -bios needed
+    #   because QEMU virt defaults to its bundled OpenSBI when -bios is omitted.
     cmd.extend(["-kernel", boot_artifact])
 
     if dtb_path:
         cmd.extend(["-dtb", dtb_path])
+
+    init_module = artifacts.get("init_module")
+    if arch == "x86_64" and init_module:
+        cmd.extend(["-initrd", f"{init_module} services/init"])
+
+    cmdline = boot_contract.get("cmdline")
+    if cmdline:
+        cmd.extend(["-append", cmdline])
 
     # Display / Serial configuration
     if nographic:
@@ -136,9 +159,31 @@ def run_qemu(manifest_path: Path, mode_override: str = None, display_override: s
     if smp:
         cmd.extend(["-smp", str(smp)])
 
+    # Append extra_args, but strip any -machine entries: the machine flag was
+    # already emitted above from run_config["machine"].  A stale -machine in
+    # extra_args would produce a duplicate that makes QEMU refuse to start.
     extra_args = run_config.get("extra_args", [])
     if extra_args:
-        cmd.extend(extra_args)
+        filtered_extra: list[str] = []
+        skip_next = False
+        for arg in extra_args:
+            if skip_next:
+                skip_next = False
+                print(f"[Run] WARNING: Ignoring duplicate -machine value '{arg}' in extra_args "
+                      f"(machine already set to '{machine}').")
+                continue
+            if arg == "-machine":
+                # Next token is the machine string — skip both
+                skip_next = True
+                print(f"[Run] WARNING: Ignoring duplicate -machine flag in extra_args "
+                      f"(machine already set to '{machine}').")
+                continue
+            if arg.startswith("-machine="):
+                print(f"[Run] WARNING: Ignoring duplicate '{arg}' in extra_args "
+                      f"(machine already set to '{machine}').")
+                continue
+            filtered_extra.append(arg)
+        cmd.extend(filtered_extra)
 
     print(f"[Run] Executing: {' '.join(cmd)}")
 
@@ -148,12 +193,44 @@ def run_qemu(manifest_path: Path, mode_override: str = None, display_override: s
 
     # Headless boot success marker
     BOOT_MARKER = "BOOT: kernel_main reached"
-    TIMEOUT_SEC = 30
-    marker_observed = False
+    TIMEOUT_SEC = 60  # 60s: RISC-V OpenSBI + kernel init can be slow on CI hosts
 
-    def _report_boot_success(name: str, marker: str) -> None:
-        print(f"\n[Run] Boot marker observed: {marker}")
-        print(f"[Run] PASS: {name} booted successfully")
+    # Load boot contract
+    repo_root = Path(__file__).resolve().parent.parent.parent
+    contract_path = repo_root / "quality" / "contracts" / "boot" / "headless_boot_contract.yaml"
+    required_markers = []
+    forbidden_markers = []
+
+    if contract_path.exists():
+        try:
+            import yaml
+            with open(contract_path, "r") as f:
+                contract = yaml.safe_load(f)
+
+            targets = contract.get("targets", {})
+            target_config = targets.get(target_name)
+            if target_config:
+                if "alias_of" in target_config:
+                    target_config = targets.get(target_config["alias_of"])
+
+                if target_config:
+                    required_raw = target_config.get("required", [])
+                    forbidden_raw = target_config.get("forbidden", [])
+
+                    required_markers = [m if isinstance(m, str) else m.get("marker") or m.get("pattern") for m in required_raw if m]
+                    forbidden_markers = [m if isinstance(m, str) else m.get("marker") or m.get("pattern") for m in forbidden_raw if m]
+        except Exception as e:
+            print(f"[Run] Warning: Failed to parse boot contract: {e}")
+
+    if not required_markers:
+        # Fallback to entry liveness marker
+        required_markers = [BOOT_MARKER]
+        forbidden_markers = ["PANIC", "ASSERT", "FAULT", "Unhandled exception"]
+
+    observed_required = set()
+    contract_satisfied = False
+    failure_observed = False
+    failure_reason = None
 
     proc = None
     q: queue.Queue = queue.Queue()
@@ -181,16 +258,33 @@ def run_qemu(manifest_path: Path, mode_override: str = None, display_override: s
                 line = q.get_nowait()
                 sys.stdout.write(line)
                 sys.stdout.flush()
-                if BOOT_MARKER in line:
-                    _report_boot_success(target_name, BOOT_MARKER)
-                    marker_observed = True
+
+                # Check forbidden markers
+                for forbidden in forbidden_markers:
+                    if forbidden in line:
+                        failure_observed = True
+                        failure_reason = f"Forbidden marker '{forbidden}' found in log: {line.strip()}"
+                        break
+
+                if failure_observed:
+                    break
+
+                # Check required markers
+                for req in required_markers:
+                    if req not in observed_required and req in line:
+                        observed_required.add(req)
+
+                # Check if all required are satisfied
+                if len(observed_required) == len(required_markers):
+                    contract_satisfied = True
                     if run_mode == "smoke":
                         break
             except queue.Empty:
                 pass
 
             if run_mode == "smoke" and (time.time() - start_time > TIMEOUT_SEC):
-                print(f"\n[Run] FAIL: Timeout ({TIMEOUT_SEC}s) reached before boot marker.")
+                failure_observed = True
+                failure_reason = f"Timeout ({TIMEOUT_SEC}s) reached before all required markers were observed."
                 break
 
             time.sleep(0.1)
@@ -202,6 +296,13 @@ def run_qemu(manifest_path: Path, mode_override: str = None, display_override: s
                     line = q.get_nowait()
                     sys.stdout.write(line)
                     sys.stdout.flush()
+
+                    # Check forbidden markers even in interactive mode
+                    for forbidden in forbidden_markers:
+                        if forbidden in line:
+                            failure_observed = True
+                            failure_reason = f"Forbidden marker '{forbidden}' found in log: {line.strip()}"
+                            break
                 except queue.Empty:
                     time.sleep(0.1)
 
@@ -211,9 +312,20 @@ def run_qemu(manifest_path: Path, mode_override: str = None, display_override: s
             line = q.get_nowait()
             sys.stdout.write(line)
             sys.stdout.flush()
-            if BOOT_MARKER in line and not marker_observed:
-                _report_boot_success(target_name, BOOT_MARKER)
-                marker_observed = True
+
+            # Check forbidden
+            for forbidden in forbidden_markers:
+                if forbidden in line:
+                    failure_observed = True
+                    failure_reason = f"Forbidden marker '{forbidden}' found in log: {line.strip()}"
+
+            # Check required
+            for req in required_markers:
+                if req not in observed_required and req in line:
+                    observed_required.add(req)
+
+        if len(observed_required) == len(required_markers):
+            contract_satisfied = True
 
     except KeyboardInterrupt:
         print("\n[Run] Terminating QEMU (User Interrupted)...")
@@ -233,7 +345,20 @@ def run_qemu(manifest_path: Path, mode_override: str = None, display_override: s
                 sys.stdout.flush()
 
     if run_mode == "smoke":
-        return 0 if marker_observed else 1
+        if contract_satisfied and not failure_observed:
+            print(f"\n[Run] PASS: All {len(required_markers)} required boot contract markers observed successfully, and no forbidden markers found.")
+            return 0
+        else:
+            print(f"\n[Run] FAIL: Boot contract was NOT satisfied.")
+            if failure_observed:
+                print(f"Reason: {failure_reason}")
+            else:
+                missing = [m for m in required_markers if m not in observed_required]
+                print(f"Missing required markers: {missing}")
+            return 1
     else:
-        # In interactive mode, we return the QEMU exit code
+        # In interactive mode, we return the QEMU exit code or 1 if there was a failure
+        if failure_observed:
+            print(f"\n[Run] FAILURE DETECTED: {failure_reason}")
+            return 1
         return proc.returncode if proc.returncode is not None else 0

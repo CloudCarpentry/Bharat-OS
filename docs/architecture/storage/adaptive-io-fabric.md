@@ -1,3 +1,15 @@
+---
+title: Adaptive Storage & I/O Fabric Specification
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - storage
+see_also:
+  - README.md
+---
 # Adaptive Storage & I/O Fabric Specification
 
 ## 1. Scope & Non-Goals

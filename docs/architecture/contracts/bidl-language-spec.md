@@ -1,11 +1,18 @@
 ---
-title: "BIDL Language Specification"
-status: "Draft"
-version: "0.1"
-last_updated: "2024-03-24"
-tags: ["architecture", "ipc", "bidl", "contracts", "spec"]
+title: BIDL Language Specification
+status: Draft
+owner: Documentation Working Group
+last_updated: 2024-03-24
+tags:
+  - architecture
+  - ipc
+  - bidl
+  - contracts
+  - spec
+see_also:
+  - README.md
+version: 0.1
 ---
-
 # BIDL Language Specification
 
 The Bharat Interface Definition Language (BIDL) provides a C-like, strongly-typed syntax for defining IPC and uRPC contracts. This document outlines the minimal, phase-1 grammar and semantics.

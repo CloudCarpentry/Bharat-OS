@@ -7,6 +7,10 @@
  */
 #include "bharat/display/display_caps.h"
 #include "hal/hal_discovery.h"
+#include "hal/hal_pt.h"
+#include "hal/hal_tlb.h"
+#include "hal/hal_mpa.h"
+#include "mm/physmap.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -59,8 +63,231 @@ static bool machine_discovery_boot_video(const boot_video_handoff_t **video_out)
     return true;
 }
 
+extern void hal_serial_write(const char *str);
+
+static void __attribute__((unused)) log_hex32(uint32_t val) {
+    char buf[11];
+    buf[0] = '0'; buf[1] = 'x';
+    const char *hex = "0123456789abcdef";
+    for (int i = 7; i >= 0; i--) {
+        buf[2 + i] = hex[val & 0xF];
+        val >>= 4;
+    }
+    buf[10] = '\0';
+    hal_serial_write(buf);
+}
+
+static void log_hex64(uint64_t val) {
+    hal_serial_write("0x");
+    const char *hex = "0123456789abcdef";
+    char buf[17];
+    for (int i = 15; i >= 0; i--) {
+        buf[i] = hex[val & 0xF];
+        val >>= 4;
+    }
+    buf[16] = '\0';
+    hal_serial_write(buf);
+}
+
+static void virt_scan_pci_ecam_for_vga(system_discovery_t *discovery) {
+    enum { PCI_SCAN_BUS_COUNT = 4 };
+
+    if (!discovery || discovery->boot_video.valid) return;
+    
+    if (discovery->pci_host_count == 0 || discovery->pci_hosts[0].ecam_base == 0) {
+        hal_serial_write("BHARAT_DISPLAY:FAIL=NO_PCI_HOST\n");
+        return;
+    }
+
+    uint64_t phys_ecam = discovery->pci_hosts[0].ecam_base;
+    uint64_t ecam_size = discovery->pci_hosts[0].ecam_size;
+    if (ecam_size == 0) ecam_size = 0x1000000;
+    uint64_t scan_ecam_size = (uint64_t)PCI_SCAN_BUS_COUNT << 20;
+    if (scan_ecam_size > ecam_size) scan_ecam_size = ecam_size;
+
+    hal_serial_write("BHARAT_DISPLAY:PCI_ECAM=");
+    log_hex64(phys_ecam);
+    hal_serial_write("\n");
+
+    uintptr_t virt_ecam = 0;
+    if (qemu_display_map_mmio(phys_ecam, scan_ecam_size, &virt_ecam) != 0) {
+        hal_serial_write("BHARAT_DISPLAY:FAIL=ECAM_MAP\n");
+        return;
+    }
+    hal_serial_write("BHARAT_DISPLAY:ECAM_MAP=PASS\n");
+
+    uint64_t pci_mmio_base = discovery->pci_hosts[0].mmio32_pci_base;
+    uint64_t mmio_base = discovery->pci_hosts[0].mmio32_base;
+    uint64_t mmio_size = discovery->pci_hosts[0].mmio32_size;
+    if (mmio_base == 0 || mmio_size == 0) {
+        // Fallback for ARM64 QEMU virt PCIe MMIO range
+        mmio_base = 0x10000000ULL;
+        mmio_size = 0x2EFF0000ULL;
+        pci_mmio_base = 0;
+    }
+
+    hal_serial_write("BHARAT_DISPLAY:PCI_MMIO_BASE=");
+    log_hex64(mmio_base);
+    hal_serial_write("\n");
+    hal_serial_write("BHARAT_DISPLAY:PCI_MMIO_SIZE=");
+    log_hex64(mmio_size);
+    hal_serial_write("\n");
+
+    bool vga_found = false;
+
+    for (int bus = 0; bus < PCI_SCAN_BUS_COUNT && !vga_found; bus++) {
+        for (int dev = 0; dev < 32 && !vga_found; dev++) {
+            volatile uint32_t *ecam_dev = (volatile uint32_t *)(virt_ecam + ((uintptr_t)bus << 20) + ((uintptr_t)dev << 15));
+            uint32_t vendor_device = ecam_dev[0];
+
+            if (vendor_device != 0xFFFFFFFF && vendor_device != 0x00000000) {
+                uint16_t vendor_id = vendor_device & 0xFFFF;
+                uint16_t device_id = (vendor_device >> 16) & 0xFFFF;
+
+                if (vendor_id == 0x1234 || (vendor_id == 0x1b36 && (device_id == 0x0100 || device_id == 0x000d))) {
+                    hal_serial_write("BHARAT_DISPLAY:VGA_FOUND\n");
+                    vga_found = true;
+
+                    // Read current BARs
+                    uint32_t orig_bar0 = ecam_dev[4];
+                    uint32_t orig_bar2 = ecam_dev[6];
+
+                    // Probe sizes
+                    ecam_dev[4] = 0xFFFFFFFF;
+                    uint32_t mask0 = ecam_dev[4];
+                    ecam_dev[4] = orig_bar0;
+
+                    ecam_dev[6] = 0xFFFFFFFF;
+                    uint32_t mask2 = ecam_dev[6];
+                    ecam_dev[6] = orig_bar2;
+
+                    uint32_t size0 = ~(mask0 & 0xFFFFFFF0) + 1;
+                    uint32_t size2 = ~(mask2 & 0xFFFFFFF0) + 1;
+
+                    if (size0 == 0 || size0 > 0x10000000) size0 = 0x1000000; // default 16MB
+                    if (size2 == 0 || size2 > 0x10000000) size2 = 0x1000;    // default 4KB
+
+                    uint32_t bar0 = orig_bar0;
+                    uint32_t bar2 = orig_bar2;
+                    uint64_t pci_alloc_base = pci_mmio_base;
+
+                    /* A zero BAR means disabled, even when the PCI range
+                     * itself starts at bus address zero.  Leave the first
+                     * framebuffer-sized slot unused in that case. */
+                    if (pci_alloc_base == 0) pci_alloc_base = size0;
+
+                    // Assign BAR0 if unprogrammed
+                    if ((bar0 & 0xFFFFFFF0) == 0) {
+                        bar0 = (uint32_t)pci_alloc_base;
+                        ecam_dev[4] = bar0;
+                    }
+                    // Assign BAR2 if unprogrammed
+                    if ((bar2 & 0xFFFFFFF0) == 0) {
+                        uint32_t aligned_bar2 = (bar0 + size0 + size2 - 1) & ~(size2 - 1);
+                        bar2 = aligned_bar2;
+                        ecam_dev[6] = bar2;
+                    }
+
+                    // Enable Memory Space (bit 1) + Bus Master (bit 2)
+                    ecam_dev[1] |= 0x06;
+
+                    uint64_t fb_bus = bar0 & 0xFFFFFFF0;
+                    uint64_t mmio_bus = bar2 & 0xFFFFFFF0;
+                    if (fb_bus < pci_mmio_base || mmio_bus < pci_mmio_base) {
+                        hal_serial_write("BHARAT_DISPLAY:FAIL=BAR_BELOW_PCI_RANGE\n");
+                        return;
+                    }
+                    uint64_t fb_phys = mmio_base + (fb_bus - pci_mmio_base);
+                    uint64_t mmio_phys = mmio_base + (mmio_bus - pci_mmio_base);
+
+                    hal_serial_write("BHARAT_DISPLAY:BAR0=");
+                    log_hex64(fb_phys);
+                    hal_serial_write("\n");
+                    hal_serial_write("BHARAT_DISPLAY:BAR2=");
+                    log_hex64(mmio_phys);
+                    hal_serial_write("\n");
+
+                    // Validate BAR allocations are within discovered PCI MMIO boundaries and don't overlap with RAM
+                    if (fb_phys < mmio_base || fb_phys + size0 > mmio_base + mmio_size ||
+                        mmio_phys < mmio_base || mmio_phys + size2 > mmio_base + mmio_size) {
+                        hal_serial_write("BHARAT_DISPLAY:FAIL=BAR_ALLOC_OUT_OF_BOUNDS\n");
+                        return;
+                    }
+
+                    // On ARM64, RAM starts at 0x40000000. Ensure no overlap with RAM range!
+                    if ((fb_phys >= 0x40000000ULL && fb_phys < 0x40000000ULL + 0x40000000ULL) ||
+                        (mmio_phys >= 0x40000000ULL && mmio_phys < 0x40000000ULL + 0x40000000ULL)) {
+                        hal_serial_write("BHARAT_DISPLAY:FAIL=BAR_ALLOC_RAM_OVERLAP\n");
+                        return;
+                    }
+
+                    // Map control BAR
+                    uintptr_t virt_mmio = 0;
+                    if (qemu_display_map_mmio(mmio_phys, size2, &virt_mmio) != 0) {
+                        hal_serial_write("BHARAT_DISPLAY:FAIL=CTRL_MAP\n");
+                        return;
+                    }
+                    hal_serial_write("BHARAT_DISPLAY:CTRL_MAP=PASS\n");
+
+                    // Program Bochs VBE registers (mapped at offset 0x500 in BAR2)
+                    if (virt_mmio != 0) {
+                        volatile uint16_t *vbe = (volatile uint16_t *)(virt_mmio + 0x500);
+                        vbe[4] = 0x00; // VBE_DISPI_INDEX_ENABLE = 0
+                        vbe[1] = 1024; // VBE_DISPI_INDEX_XRES = 1024
+                        vbe[2] = 768;  // VBE_DISPI_INDEX_YRES = 768
+                        vbe[3] = 32;   // VBE_DISPI_INDEX_BPP = 32
+                        vbe[4] = 0x41; // VBE_DISPI_ENABLED | VBE_DISPI_LFB_ENABLED
+                    }
+
+                    // Map Framebuffer BAR
+                    uintptr_t virt_fb = 0;
+                    if (qemu_display_map_mmio(fb_phys, size0, &virt_fb) != 0) {
+                        hal_serial_write("BHARAT_DISPLAY:FAIL=FB_MAP\n");
+                        return;
+                    }
+                    hal_serial_write("BHARAT_DISPLAY:FB_MAP=PASS\n");
+
+                    discovery->boot_video.phys_addr    = fb_phys;
+                    discovery->boot_video.virt_addr    = virt_fb;
+                    discovery->boot_video.width        = 1024;
+                    discovery->boot_video.height       = 768;
+                    discovery->boot_video.stride_bytes = 1024 * 4;
+                    discovery->boot_video.size         = 1024 * 768 * 4;
+                    discovery->boot_video.format       = PIXEL_FORMAT_ARGB8888;
+                    discovery->boot_video.valid        = true;
+
+                    /* Synchronize g_boot_info console for kernel_boot.c UI activation */
+                    extern const boot_info_t *g_boot_info;
+                    if (g_boot_info) {
+                        boot_info_t *b = (boot_info_t *)g_boot_info;
+                        b->console.type = BOOT_CONSOLE_FRAMEBUFFER;
+                        b->console.fb_phys_base = fb_phys;
+                        b->console.fb_width = 1024;
+                        b->console.fb_height = 768;
+                        b->console.fb_pitch = 1024 * 4;
+                        b->console.fb_bpp = 32;
+                    }
+
+                    hal_serial_write("BHARAT_DISPLAY:MODE=1024x768x32\n");
+                    hal_serial_write("BHARAT_DISPLAY:READY\n");
+                    return;
+                }
+            }
+        }
+    }
+
+    if (!vga_found) {
+        hal_serial_write("BHARAT_DISPLAY:FAIL=VGA_NOT_FOUND\n");
+    }
+}
+
 int machine_get_display_caps(machine_display_caps_t *out) {
     if (!out) return -1;
+
+    const system_discovery_t *raw_disc = hal_get_system_discovery();
+    if (raw_disc) {
+        virt_scan_pci_ecam_for_vga((system_discovery_t*)raw_disc);
+    }
 
     const boot_video_handoff_t *video = NULL;
     if (machine_discovery_boot_video(&video)) {
@@ -101,6 +328,11 @@ int machine_get_display_caps(machine_display_caps_t *out) {
 int machine_probe_boot_video(display_probe_result_t *out,
                              boot_video_handoff_t   *video) {
     if (!out) return -1;
+
+    system_discovery_t* discovery = hal_get_system_discovery();
+    if (discovery) {
+        virt_scan_pci_ecam_for_vga(discovery);
+    }
 
     const boot_video_handoff_t *discovered = NULL;
     if (machine_discovery_boot_video(&discovered)) {

@@ -39,7 +39,7 @@ run:
   boot_artifact: kernel/kernel.elf
   extra_args:
     - "-device"
-    - "virtio-gpu-pci"
+    - "bochs-display"
     - "-device"
     - "virtio-keyboard-pci"
     - "-device"

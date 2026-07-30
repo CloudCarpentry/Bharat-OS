@@ -38,19 +38,15 @@ _start:
 
 .real_start:
     UART_INIT
-    UART_PUT_CHAR_LIT '1'
     /* Preserve device tree pointer passed in x0 by bootloader/QEMU */
     mov x19, x0
-    UART_PUT_CHAR_LIT '2'
 
     /* Read CPU ID (MPIDR_EL1) */
     mrs x1, mpidr_el1
     and x1, x1, #0xFF
-    UART_PUT_CHAR_LIT '3'
 
     /* Only let CPU 0 continue for now */
     cbnz x1, .secondary_core
-    UART_PUT_CHAR_LIT '4'
 
     /* Setup stack for primary core */
     ldr x2, =stack_bottom
@@ -59,12 +55,10 @@ _start:
     add x2, x2, x4
     add x2, x2, x3 /* Point to top of core's stack */
     mov sp, x2
-    UART_PUT_CHAR_LIT '5'
 
     /* Clear BSS */
     ldr x2, =bss_start
     ldr x3, =bss_end
-    UART_PUT_CHAR_LIT '6'
     cbz x3, 2f
 1:
     cmp x2, x3
@@ -72,7 +66,6 @@ _start:
     str xzr, [x2], #8
     b 1b
 2:
-    UART_PUT_CHAR_LIT '7'
 
     /* -------------------------------------------------------
      * EL2 -> EL1 transition
@@ -88,10 +81,9 @@ _start:
     cmp x2, #2
     b.ne .at_el1
 
-    /* Running at EL2: allow FP/SIMD from EL1/EL0 (clear CPTR_EL2.TFP) */
-    mrs x2, cptr_el2
-    bic x2, x2, #(1 << 10)
-    msr cptr_el2, x2
+    /* Running at EL2: allow all FP/SIMD and CPACR accesses from EL1 (clear CPTR_EL2) */
+    msr cptr_el2, xzr
+    isb
 
     /* HCR_EL2.RW = 1 so EL1 runs AArch64 */
     mov x2, #(1 << 31)
@@ -109,12 +101,17 @@ _start:
     eret
 
 .at_el1:
+    /* Setup stack for EL1h */
+    ldr x2, =stack_bottom
+    mov x3, #16384
+    add x2, x2, x3
+    mov sp, x2
+
     /* Now definitely at EL1 - enable FPU/SIMD */
     mrs x2, cpacr_el1
     orr x2, x2, #(3 << 20)    /* FPEN = 0b11: no FP/SIMD traps */
     msr cpacr_el1, x2
     isb
-    UART_PUT_CHAR_LIT '8'
 
     /* Jump to C kernel_main */
     mov x0, x19

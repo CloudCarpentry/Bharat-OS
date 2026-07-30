@@ -1,3 +1,14 @@
+---
+title: Syscall / Kernel / SDK / Lib Conflict Analysis (2026-04-26)
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - reviews
+see_also:
+  - README.md
+---
 # Syscall / Kernel / SDK / Lib Conflict Analysis (2026-04-26)
 
 ## Scope

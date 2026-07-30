@@ -28,6 +28,50 @@
 
 #define MAX_ORDER                                                              \
   12 // allows order 11 -> 2048 pages -> 8MB, and order 9 -> 512 pages -> 2MB
+
+#define MAX_PMM_BOOT_RESERVATIONS 16
+typedef struct {
+    phys_addr_t start;
+    phys_addr_t end;       /* exclusive */
+    uint32_t type;
+    bool releasable;
+} pmm_boot_reserved_range_t;
+
+static pmm_boot_reserved_range_t boot_reservations[MAX_PMM_BOOT_RESERVATIONS];
+static uint32_t boot_reservation_count = 0;
+
+static void pmm_boot_reservations_init(const boot_info_t *boot) {
+    if (!boot) return;
+
+    if (boot->kernel_phys_start < boot->kernel_phys_end) {
+        if (boot_reservation_count < MAX_PMM_BOOT_RESERVATIONS) {
+            boot_reservations[boot_reservation_count].start = boot->kernel_phys_start;
+            boot_reservations[boot_reservation_count].end = boot->kernel_phys_end;
+            boot_reservations[boot_reservation_count].type = PMM_REGION_TYPE_RESERVED;
+            boot_reservations[boot_reservation_count].releasable = false;
+            boot_reservation_count++;
+        }
+    }
+
+    for (uint32_t i = 0; i < boot->module_count; ++i) {
+        if (boot_reservation_count < MAX_PMM_BOOT_RESERVATIONS) {
+            boot_reservations[boot_reservation_count].start = boot->modules[i].phys_start;
+            boot_reservations[boot_reservation_count].end = boot->modules[i].phys_start + boot->modules[i].size;
+            boot_reservations[boot_reservation_count].type = PMM_REGION_TYPE_MODULES;
+            boot_reservations[boot_reservation_count].releasable = true;
+            boot_reservation_count++;
+        }
+    }
+}
+
+static bool pmm_boot_page_is_reserved(phys_addr_t paddr) {
+    for (uint32_t i = 0; i < boot_reservation_count; ++i) {
+        if (paddr >= boot_reservations[i].start && paddr < boot_reservations[i].end) {
+            return true;
+        }
+    }
+    return false;
+}
 #define MAX_NUMA_NODES 4
 #define PMM_RECLAIM_BATCH 32U
 #define PMM_LOW_WATERMARK_PAGES 128U
@@ -748,6 +792,9 @@ static void pmm_add_region(phys_addr_t base, size_t size, uint32_t type,
     region_start = (region_start + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
 
     for (phys_addr_t paddr = region_start; paddr < region_end; paddr += PAGE_SIZE) {
+      if (pmm_boot_page_is_reserved(paddr)) {
+          continue;
+      }
       mark_page_free(paddr);
     }
   }
@@ -776,6 +823,8 @@ int mm_pmm_init(uint32_t magic, const boot_info_t *boot) {
     return 0;
   }
   g_pmm_initialized = true;
+
+  pmm_boot_reservations_init(boot);
 
   early_alloc_init(0);
 

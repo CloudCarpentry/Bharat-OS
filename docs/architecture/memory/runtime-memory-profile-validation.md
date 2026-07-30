@@ -1,3 +1,15 @@
+---
+title: Runtime Memory Profile Validation
+status: Draft
+owner: Documentation Working Group
+last_updated: 2026-04-25
+tags:
+  - docs
+  - architecture
+  - memory
+see_also:
+  - README.md
+---
 # Runtime Memory Profile Validation
 
 ## Status

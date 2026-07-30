@@ -10,6 +10,11 @@
 .section .text.init
 .global _start
 _start:
+    /*
+     * Park all secondary harts.
+     * OpenSBI sets a0=0 for the primary hart before jumping to the payload.
+     * Any hart with a0 != 0 is a secondary — spin it in WFI.
+     */
     bnez a0, .halt_loop
 
     /* Setup stack */
@@ -25,7 +30,11 @@ _start:
     bltu t0, t1, 1b
 2:
 
-    /* Jump to C kernel_main */
+    /*
+     * Jump to C kernel_main(hart_id, fdt_ptr).
+     * a0 = hart_id (== 0 here), a1 = dtb_phys_addr — both preserved from
+     * OpenSBI handoff and passed directly as the first two arguments.
+     */
     call kernel_main
 
 .halt_loop:

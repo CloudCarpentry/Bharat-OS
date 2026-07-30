@@ -1,17 +1,18 @@
 ---
 title: Benchmark Trace Schema
 status: Draft
-version: 1.0
 owner: Core QA / Architecture
-reviewers: Core Maintainers
 last_updated: 2024-03-24
 tags:
   - benchmarking
   - verification
   - telemetry
   - schema
+see_also:
+  - README.md
+version: 1.0
+reviewers: Core Maintainers
 ---
-
 # Benchmark Trace Schema
 
 This document defines the standard JSON schema for all telemetry and benchmark traces collected by the Bharat-OS benchmark runner. This format must be adhered to by all automated tests designed to validate RT and mixed-criticality contracts.

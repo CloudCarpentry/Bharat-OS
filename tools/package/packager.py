@@ -7,6 +7,48 @@ from tools.package.artifact_registry import ArtifactRegistry
 from tools.build.manifest_writer import write_run_manifest, write_flash_manifest, write_debug_manifest
 
 
+FDT_MAGIC = 0xD00DFEED
+FDT_HEADER_SIZE = 40
+
+
+def _compact_qemu_dtb(dtb_path: Path) -> None:
+    """Remove QEMU dumpdtb padding so it cannot overlap the ARM64 kernel."""
+    data = dtb_path.read_bytes()
+    if len(data) < FDT_HEADER_SIZE:
+        raise RuntimeError(f"QEMU generated a truncated DTB: {dtb_path}")
+
+    magic = int.from_bytes(data[0:4], byteorder="big")
+    total_size = int.from_bytes(data[4:8], byteorder="big")
+    if magic != FDT_MAGIC or total_size < FDT_HEADER_SIZE or total_size > len(data):
+        raise RuntimeError(f"QEMU generated an invalid DTB: {dtb_path}")
+
+    struct_offset = int.from_bytes(data[8:12], byteorder="big")
+    strings_offset = int.from_bytes(data[12:16], byteorder="big")
+    reserve_offset = int.from_bytes(data[16:20], byteorder="big")
+    strings_size = int.from_bytes(data[32:36], byteorder="big")
+    struct_size = int.from_bytes(data[36:40], byteorder="big")
+
+    reserve_end = reserve_offset
+    while reserve_end + 16 <= total_size:
+        address = int.from_bytes(data[reserve_end:reserve_end + 8], "big")
+        size = int.from_bytes(data[reserve_end + 8:reserve_end + 16], "big")
+        reserve_end += 16
+        if address == 0 and size == 0:
+            break
+    else:
+        raise RuntimeError(f"QEMU generated an invalid DTB reserve map: {dtb_path}")
+
+    compact_size = max(FDT_HEADER_SIZE, reserve_end,
+                       struct_offset + struct_size,
+                       strings_offset + strings_size)
+    if compact_size > total_size:
+        raise RuntimeError(f"QEMU generated an invalid DTB layout: {dtb_path}")
+
+    compact = bytearray(data[:compact_size])
+    compact[4:8] = compact_size.to_bytes(4, byteorder="big")
+    dtb_path.write_bytes(compact)
+
+
 def make_package_plan(target: ResolvedTarget, build_outputs: BuildOutputs, repo_root: Path) -> PackagePlan:
     packaged_dir = get_packaged_dir(target, repo_root)
     manifest_dir = get_manifest_dir(target, repo_root)
@@ -76,7 +118,15 @@ def execute_package(plan: PackagePlan, repo_root: Path) -> PackageOutputs:
 
     if plan.target.boot.dtb.required and plan.target.boot.dtb.mode == "qemu_generated":
         dtb_path = plan.manifest_dir / "hw.dtb"
-        dtb_cmd = ["qemu-system-" + ("aarch64" if plan.target.arch == "arm64" else plan.target.arch)]
+        qemu_bin_map = {
+            "x86_64": "qemu-system-x86_64",
+            "arm64": "qemu-system-aarch64",
+            "riscv64": "qemu-system-riscv64",
+            "arm32": "qemu-system-arm",
+            "riscv32": "qemu-system-riscv32",
+        }
+        qemu_exe = qemu_bin_map.get(plan.target.arch, f"qemu-system-{plan.target.arch}")
+        dtb_cmd = [qemu_exe]
         if plan.target.run and plan.target.run.machine:
             dtb_cmd.extend(["-machine", plan.target.run.machine + ",dumpdtb=" + str(dtb_path)])
 
@@ -85,8 +135,13 @@ def execute_package(plan: PackagePlan, repo_root: Path) -> PackageOutputs:
 
         print(f"[Package] Generating QEMU DTB: {' '.join(dtb_cmd)}")
         import subprocess
-        subprocess.run(dtb_cmd, capture_output=True)
+        subprocess.run(dtb_cmd, capture_output=True, check=True)
         if dtb_path.exists():
+            # QEMU pads dumpdtb output (commonly to 1 MiB).  On ARM virt the
+            # blob is handed off at RAM base while the kernel starts only
+            # 512 KiB later, so retaining that padding creates an overlapping
+            # boot artifact.  Keep only the FDT header's declared total size.
+            _compact_qemu_dtb(dtb_path)
             packaged_artifacts.append(
                 ArtifactRecord(kind="dtb", path=dtb_path, producer="qemu_dumpdtb")
             )
