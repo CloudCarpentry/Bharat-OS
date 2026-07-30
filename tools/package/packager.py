@@ -133,6 +133,9 @@ def execute_package(plan: PackagePlan, repo_root: Path) -> PackageOutputs:
         if plan.target.run and plan.target.run.cpu:
             dtb_cmd.extend(["-cpu", plan.target.run.cpu])
 
+        if plan.target.run and plan.target.run.smp:
+            dtb_cmd.extend(["-smp", str(plan.target.run.smp)])
+
         print(f"[Package] Generating QEMU DTB: {' '.join(dtb_cmd)}")
         import subprocess
         subprocess.run(dtb_cmd, capture_output=True, check=True)

@@ -71,6 +71,9 @@ class RunConfig:
     machine: Optional[str] = None
     cpu: Optional[str] = None
     memory: Optional[str] = None
+    smp: Optional[int] = None
+    required_online_cpus: Optional[int] = None
+    ap_boot_timeout_ms: Optional[int] = None
     boot_artifact: Optional[str] = None
     serial: List[str] = field(default_factory=list)
     display: Optional[str] = None

@@ -197,6 +197,9 @@ typedef struct {
 
     boot_video_handoff_t boot_video;
     bool fdt_parsed;
+
+    uint32_t psci_method;  // 1 = SMC, 2 = HVC
+    uint32_t psci_version; // Standard PSCI version
 } system_discovery_t;
 
 // TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.

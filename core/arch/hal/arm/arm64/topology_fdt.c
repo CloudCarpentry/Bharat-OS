@@ -3,7 +3,7 @@
 #include "hal/fdt_parser.h"
 
 // Global boot info specific to ARM64
-static bharat_boot_info_t g_arm64_boot_info;
+bharat_boot_info_t g_arm64_boot_info;
 
 bharat_boot_info_t* hal_boot_get_info(void) {
     return &g_arm64_boot_info;

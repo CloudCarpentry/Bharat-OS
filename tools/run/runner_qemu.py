@@ -156,6 +156,14 @@ def run_qemu(manifest_path: Path, mode_override: str = None, display_override: s
     cmd.append("-no-reboot")
 
     smp = run_config.get("smp", 1)
+    required_online = run_config.get("required_online_cpus")
+    if required_online is None:
+        required_online = smp
+
+    print(f"QEMU SMP requested: {smp}")
+    print(f"Required online CPUs: {required_online}")
+    print(f"QEMU argument: -smp {smp}")
+
     if smp:
         cmd.extend(["-smp", str(smp)])
 

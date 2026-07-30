@@ -102,17 +102,26 @@ void hal_irq_init_boot(void) {
 }
 
 void hal_irq_init_cpu_local(uint32_t cpu_id) {
-    (void)cpu_id;
+    // Calculate the per-CPU GICR base (128 KB frame size per CPU in GICv3)
+    void *cpu_gicr = (void *)((uintptr_t)g_gicr_base + (uint64_t)cpu_id * 0x20000ULL);
+
+    volatile uint32_t *waker_ptr = (volatile uint32_t *)((uintptr_t)cpu_gicr + GICR_WAKER);
+    volatile uint32_t *groupr_ptr = (volatile uint32_t *)((uintptr_t)cpu_gicr + GICR_IGROUPR0);
+
     // Wake up the redistributor
-    uint32_t waker = gicr_read(GICR_WAKER);
+    uint32_t waker = *waker_ptr;
     waker &= ~2; // Clear ProcessorSleep bit
-    gicr_write(GICR_WAKER, waker);
+    *waker_ptr = waker;
+
     // Wait for ChildrenAsleep to clear
-    while (gicr_read(GICR_WAKER) & 4);
+    while ((*waker_ptr) & 4);
 
     // Group 1 routing for SGIs/PPIs
-    gicr_write(GICR_IGROUPR0, 0xFFFFFFFF);
+    *groupr_ptr = 0xFFFFFFFF;
+}
 
+void hal_ipi_init_cpu_local(uint32_t cpu_id) {
+    (void)cpu_id;
 }
 
 int hal_irq_enable(uint32_t vector) {

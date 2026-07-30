@@ -43,6 +43,30 @@ targets:
     forbidden: *common_forbidden
     timeout_seconds: 30
 
+  arm64_desktop_smp_headless:
+    description: "ARM64 SMP headless boot test"
+    required:
+      - "BOOT: kernel_main reached"
+      - "BOOT: pmm initialized"
+      - "BOOT: vmm initialized"
+      - "[BOOT] Memory subsystem initialization complete"
+      - "[BOOT] Platform services initialization complete"
+      - "[BOOT] Runtime initialization complete"
+      - "SMP: CPU1 ONLINE"
+      - "SMP: CPU2 ONLINE"
+      - "SMP: CPU3 ONLINE"
+      - "SMP: ALL 4 CORES ONLINE"
+      - "SMP-VM: MAP PASS"
+      - "SMP-VM: PROTECT PASS"
+      - "SMP-VM: UNMAP PASS"
+      - "SMP-TLB: ACK MASK COMPLETE"
+      - "SMP-PMM: REMOTE FREE PASS"
+      - "SMP-SCHED: REMOTE COMMAND PASS"
+      - "SMP: RUNTIME INVARIANTS PASS"
+      - "[BOOT] Spawning first system service (sysmgr)..."
+    forbidden: *common_forbidden
+    timeout_seconds: 30
+
   riscv64_desktop_headless:
     description: "RISC-V 64 baseline headless boot"
     required:
