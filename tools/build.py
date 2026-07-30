@@ -45,6 +45,12 @@ def main() -> int:
     else:
         target = resolve_legacy_target(target_input.source_ref, repo_root)
 
+    # CLI CPU count override
+    if getattr(args, "cpus", None) is not None and target.run:
+        # Reconstruct RunConfig to allow mutation if frozen
+        from dataclasses import replace
+        target.run = replace(target.run, smp=args.cpus)
+
     validate_resolved_target(target, repo_root)
 
     build_outputs = None

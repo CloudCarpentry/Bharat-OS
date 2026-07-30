@@ -222,7 +222,7 @@ elseif(ARCH STREQUAL "riscv32")
     set(ARCH_EXT_STATE_SRC ${BHARAT_ARCH_ROOT}/riscv/riscv32/ext_state.c)
 elseif(ARCH STREQUAL "arm64")
     set(BOOT_SRC ${BHARAT_ARCH_ROOT}/arm/arm64/boot/boot.S)
-    set(ARCH_HAL ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/hal_cpu.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/hal_discovery.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/hal_mm.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/trap_entry.S ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/hal_pt_arm64.c ${BHARAT_HAL_ROOT}/common/hal_pt.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/smmu.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/hal_irq.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/hal_timer.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/dma.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/hal_secure_boot.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/cpu_relax.c ${BHARAT_HAL_ROOT}/common/iommu/null/null_iommu.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/iommu/arm_smmu/arm_smmu_stub.c)
+    set(ARCH_HAL ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/hal_cpu.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/hal_discovery.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/hal_mm.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/trap_entry.S ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/hal_pt_arm64.c ${BHARAT_HAL_ROOT}/common/hal_pt.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/smmu.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/hal_irq.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/hal_timer.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/dma.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/hal_secure_boot.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/cpu_relax.c ${BHARAT_HAL_ROOT}/common/iommu/null/null_iommu.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/iommu/arm_smmu/arm_smmu_stub.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/boot_psci.c)
     set(ARCH_CONTEXT_SWITCH ${BHARAT_ARCH_ROOT}/arm/arm64/context_switch.c ${BHARAT_ARCH_ROOT}/arm/arm64/context_switch.S)
     set(ARCH_HAL_EXTRA ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/topology_fdt.c)
     set(ARCH_CPU_CAPS_SRC ${BHARAT_ARCH_ROOT}/arm/arm64/cpu_caps.c)
@@ -407,6 +407,7 @@ set(KERNEL_SRCS
     src/mm/user_range.c
     src/mm/exception_table.c
     ${BHARAT_BOOT_ROOT}/common/boot_ui_select.c
+    ${BHARAT_BOOT_ROOT}/discovery/smp_boot.c
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/boot_video.c>
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/display_handoff.c>
     $<$<BOOL:${BHARAT_BOOT_GUI}>:src/display/display_fallback.c>

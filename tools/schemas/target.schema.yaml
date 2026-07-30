@@ -105,6 +105,12 @@ properties:
         type: string
       memory:
         type: string
+      smp:
+        type: integer
+      required_online_cpus:
+        type: integer
+      ap_boot_timeout_ms:
+        type: integer
       boot_artifact:
         type: string
       serial:

@@ -1,4 +1,5 @@
 #include "boot/boot_args.h"
+#include "hal/hal_boot.h"
 #include "hal/hal_irq.h"
 #include "hal/hal_timer.h"
 #include "sched/ai_sched.h"
@@ -251,14 +252,17 @@ void boot_common_platform_services(const boot_info_t *boot) {
       kernel_panic("numa topology discovery failed");
     }
 
-    KPRINT("  [SMP] Booting secondary cores\n");
-    if (mk_boot_secondary_cores(boot_policy->smp_target_cores) != 0) {
-      kernel_panic("secondary core boot failed");
-    }
+    // Initialize BSP SMP boot context and CPU records
+    bh_smp_boot_primary_init(boot);
 
     KPRINT("  [SMP] Initializing per-core URPC channels\n");
     if (mk_init_per_core_channels(boot_policy->smp_target_cores, 32U) != 0) {
       kernel_panic("per-core urpc channel init failed");
+    }
+
+    KPRINT("  [SMP] Booting secondary cores\n");
+    if (bh_smp_start_secondary_cpus(boot_policy->smp_target_cores) != 0) {
+      kernel_panic("secondary core boot failed");
     }
 
     KPRINT("  [IRQ] Initializing interrupt controller\n");
