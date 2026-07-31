@@ -21,7 +21,7 @@ add_executable(init
 target_link_libraries(init PRIVATE bharat_user_buildopts bharat_freestanding bharat_syscall)
 
 # Link against the foundational Phase 1 user-space libraries
-target_link_libraries(init PUBLIC runtime ipc cap)
+target_link_libraries(init PUBLIC runtime ipc cap bharat_libnamesvc)
 
 # Configure compiler flags based on init options
 if(BHARAT_INIT_ENABLE_HANDOFF)

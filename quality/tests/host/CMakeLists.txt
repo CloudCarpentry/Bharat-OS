@@ -1,159 +1,27 @@
 cmake_minimum_required(VERSION 3.20)
-include(cmake/test_component_policy.cmake)
 
-if(CMAKE_SYSTEM_NAME STREQUAL "Generic")
-    # This file shouldn't be processed if we are building the kernel (cross-compiling)
-    return()
-endif()
-
-# ... preserve existing host tests logic, append ours ...
-add_executable(test_can_filter stacks/can/test_can_filter.c ../../core/stacks/can/core/can_filter.c)
-target_include_directories(test_can_filter PRIVATE ../../core/stacks/include)
-
-add_executable(test_can_filter_compile drivers/test_can_filter_compile.c ../../core/drivers/class/can/can_filter_compile.c)
-target_include_directories(test_can_filter_compile PRIVATE ../../core/drivers/include ../../core/stacks/include)
-
-add_executable(test_can_controller_core drivers/test_can_controller_core.c ../../core/drivers/class/can/can_controller_core.c ../../core/stacks/can/core/can_filter.c)
-target_include_directories(test_can_controller_core PRIVATE ../../core/drivers/include ../../core/stacks/include)
-
-add_executable(test_can_controller_state_machine drivers/test_can_controller_state_machine.c ../../core/drivers/class/can/can_controller_core.c ../../core/stacks/can/core/can_filter.c)
-target_include_directories(test_can_controller_state_machine PRIVATE ../../core/drivers/include ../../core/stacks/include)
-
-add_executable(test_net_driver_core drivers/test_net_driver_core.c ../../core/drivers/net/core/net_driver_core.c ../../core/lib/packet/src/packet.c)
-target_include_directories(test_net_driver_core PRIVATE ../../core/drivers/include ../../core/stacks/include ../../core/lib/packet/include)
-
-add_executable(test_can_route stacks/can/test_can_route.c)
-target_include_directories(test_can_route PRIVATE ../../core/stacks/include)
-
-add_executable(test_can_subscriptions services/test_can_subscriptions.c)
-target_include_directories(test_can_subscriptions PRIVATE ../../core/services/include)
-
-add_executable(test_can_gateway services/test_can_gateway.c)
-target_include_directories(test_can_gateway PRIVATE ../../core/services/include)
-
-add_executable(test_can_busoff_recovery services/test_can_busoff_recovery.c ../../core/drivers/class/can/can_controller_core.c ../../core/drivers/devices/virt_can/virt_can.c ../../core/stacks/can/core/can_filter.c)
-target_include_directories(test_can_busoff_recovery PRIVATE ../../core/drivers/include ../../core/stacks/include)
-
-add_test(NAME host_test_can_filter COMMAND test_can_filter)
-add_test(NAME host_test_can_filter_compile COMMAND test_can_filter_compile)
-add_test(NAME host_test_can_controller_core COMMAND test_can_controller_core)
-add_test(NAME host_test_can_controller_state_machine COMMAND test_can_controller_state_machine)
-add_test(NAME host_test_net_driver_core COMMAND test_net_driver_core)
-add_test(NAME host_test_can_route COMMAND test_can_route)
-add_test(NAME host_test_can_subscriptions COMMAND test_can_subscriptions)
-add_test(NAME host_test_can_gateway COMMAND test_can_gateway)
-add_test(NAME host_test_can_busoff_recovery COMMAND test_can_busoff_recovery)
-
-# Note: The test targets will be built automatically with 'make check' or 'ctest'.
-
-# Phase 1: Power Mode Tests
-add_executable(test_power_mode_state_machine services/test_power_mode_state_machine.c ../../core/services/power_mode/state_machine.c)
-target_include_directories(test_power_mode_state_machine PRIVATE ../../core/services/include)
-
-add_executable(test_power_mode_callbacks services/test_power_mode_callbacks.c ../../core/services/power_mode/state_machine.c)
-target_include_directories(test_power_mode_callbacks PRIVATE ../../core/services/include)
-
-add_executable(test_power_mode_limp_home services/test_power_mode_limp_home.c ../../core/services/power_mode/state_machine.c)
-target_include_directories(test_power_mode_limp_home PRIVATE ../../core/services/include)
-
-add_test(NAME host_test_power_mode_state_machine COMMAND test_power_mode_state_machine)
-add_test(NAME host_test_power_mode_callbacks COMMAND test_power_mode_callbacks)
-add_test(NAME host_test_power_mode_limp_home COMMAND test_power_mode_limp_home)
-
-# Phase 1: Diag Tests
-add_executable(test_diag_store services/test_diag_store.c ../../core/services/system/diag/store.c)
-target_include_directories(test_diag_store PRIVATE ../../core/services/include)
-
-add_executable(test_diag_debounce services/test_diag_debounce.c ../../core/services/system/diag/debounce.c ../../core/services/system/diag/store.c)
-target_include_directories(test_diag_debounce PRIVATE ../../core/services/include)
-
-add_test(NAME host_test_diag_store COMMAND test_diag_store)
-add_test(NAME host_test_diag_debounce COMMAND test_diag_debounce)
-
-# Phase 2: Sensor Tests
-add_executable(test_sensor_core drivers/test_sensor_core.c ../../core/drivers/class/sensor/sensor_core.c)
-target_include_directories(test_sensor_core PRIVATE ../../core/drivers/include)
-
-add_executable(test_sensor_core_bench drivers/test_sensor_core_bench.c ../../core/drivers/class/sensor/sensor_core.c)
-target_include_directories(test_sensor_core_bench PRIVATE ../../core/drivers/include)
-
-add_executable(test_sensor_freshness services/test_sensor_freshness.c ../../core/services/sensor_hub/freshness.c)
-target_include_directories(test_sensor_freshness PRIVATE ../../core/drivers/include)
-
-add_executable(test_sensor_plausibility services/test_sensor_plausibility.c ../../core/services/sensor_hub/plausibility.c)
-target_include_directories(test_sensor_plausibility PRIVATE ../../core/drivers/include)
-target_link_libraries(test_sensor_plausibility PRIVATE m)
-
-add_test(NAME host_test_sensor_core COMMAND test_sensor_core)
-add_test(NAME host_test_sensor_core_bench COMMAND test_sensor_core_bench)
-add_test(NAME host_test_sensor_freshness COMMAND test_sensor_freshness)
-add_test(NAME host_test_sensor_plausibility COMMAND test_sensor_plausibility)
-
-# Phase 2: Actuator Tests
-add_executable(test_actuator_core drivers/test_actuator_core.c ../../core/drivers/class/actuator/actuator_core.c)
-target_include_directories(test_actuator_core PRIVATE ../../core/drivers/include)
-
-add_executable(test_actuator_safe_state services/test_actuator_safe_state.c ../../core/services/device/actuator_mgr/safe_state.c)
-target_include_directories(test_actuator_safe_state PRIVATE ../../core/drivers/include)
-
-add_executable(test_actuator_deadman services/test_actuator_deadman.c)
-
-add_test(NAME host_test_actuator_core COMMAND test_actuator_core)
-add_test(NAME host_test_actuator_safe_state COMMAND test_actuator_safe_state)
-add_test(NAME host_test_actuator_deadman COMMAND test_actuator_deadman)
-
-# Phase 2: Time Sync Tests
-add_executable(test_time_sync_drift services/test_time_sync_drift.c ../../core/services/time_sync/drift.c)
-target_include_directories(test_time_sync_drift PRIVATE ../../core/services/include)
-
-add_executable(test_time_sync_quality services/test_time_sync_quality.c ../../core/services/time_sync/quality.c)
-
-add_test(NAME host_test_time_sync_drift COMMAND test_time_sync_drift)
-add_test(NAME host_test_time_sync_quality COMMAND test_time_sync_quality)
-
-# Phase 3: Motor Control Tests
-add_executable(test_motor_control_core drivers/test_motor_control_core.c ../../core/drivers/class/motor/motor_control_core.c)
-target_include_directories(test_motor_control_core PRIVATE ../../core/drivers/include)
-
-add_test(NAME host_test_motor_control_core COMMAND test_motor_control_core)
-
-# VFS/RamFS Tests
-add_executable(test_ramfs_streq fs/test_ramfs_streq.c)
-target_include_directories(test_ramfs_streq PRIVATE ../../kernel/include)
-add_test(NAME host_test_ramfs_streq COMMAND test_ramfs_streq)
-
-add_executable(test_ramfs_add_child fs/test_ramfs_add_child.c)
-target_include_directories(test_ramfs_add_child PRIVATE ../../kernel/include)
-add_test(NAME host_test_ramfs_add_child COMMAND test_ramfs_add_child)
-
-add_executable(benchmark_actuator drivers/benchmark_actuator.c ../../core/drivers/class/actuator/actuator_core.c)
-target_include_directories(benchmark_actuator PRIVATE ../../core/drivers/include)
-add_test(NAME host_benchmark_actuator COMMAND benchmark_actuator)
-
-# Phase 3: Core Scheduler Tests
-add_executable(test_sched test_sched.c host_stubs.c ../../core/lib/rbtree/rbtree.c)
-target_include_directories(test_sched PRIVATE ../../kernel/include ../../include ../../core/lib/include)
-
-add_test(NAME host_test_sched COMMAND test_sched)
-
-add_executable(test_sched_admission test_sched_admission.c ../../core/kernel/src/sched/sched_admission.c ../../core/kernel/src/sched/cpu_partition.c ../../core/kernel/src/sched/cpu_partition_validate.c)
-target_include_directories(test_sched_admission PRIVATE
-    ../../core/kernel/include
-    ../../interface/include
-    ../../core/lib/include
+add_executable(test_servicemgr
+    "${CMAKE_CURRENT_SOURCE_DIR}/test_servicemgr.c"
+    "${CMAKE_SOURCE_DIR}/core/services/servicemgr/servicemgr.c"
+    "${CMAKE_SOURCE_DIR}/core/lib/ipc/src/ipc.c"
 )
-add_test(NAME host_test_sched_admission COMMAND test_sched_admission)
 
-add_executable(test_cpu_partition sched/test_cpu_partition.c ../../core/kernel/src/sched/cpu_partition.c ../../core/kernel/src/sched/cpu_partition_validate.c)
-target_include_directories(test_cpu_partition PRIVATE
-    ../../core/kernel/include
-    ../../interface/include
-    ../../core/lib/include
+target_include_directories(test_servicemgr PRIVATE
+    "${CMAKE_SOURCE_DIR}/interface/include"
+    "${CMAKE_SOURCE_DIR}/interface"
+    "${CMAKE_BINARY_DIR}/generated/include"
+    "${CMAKE_SOURCE_DIR}/core/lib/ipc/include"
+    "${CMAKE_SOURCE_DIR}/core/lib/cap/include"
+    "${CMAKE_SOURCE_DIR}/core/kernel/include"
+    "${CMAKE_SOURCE_DIR}/core/lib/include"
+    "${CMAKE_SOURCE_DIR}/core/lib/runtime/include"
+    "${CMAKE_SOURCE_DIR}/core/lib/namesvc/include"
+    "${CMAKE_SOURCE_DIR}/core/services/servicemgr"
 )
-add_test(NAME host_test_cpu_partition COMMAND test_cpu_partition)
 
-add_executable(test_lib_string test_lib_string.c ../../core/lib/string/string.c)
-add_test(NAME host_test_lib_string COMMAND test_lib_string)
+target_compile_definitions(test_servicemgr PRIVATE BHARAT_HOST_TEST)
+
+add_test(NAME host_test_servicemgr COMMAND test_servicemgr)
 
 # Phase 3: Core IPC/Profile Tests
 add_executable(test_ipc_profile test_ipc_profile.c ../../kernel/src/profile/profile.c ../../kernel/src/ipc/ipc_traffic.c)

@@ -52,6 +52,7 @@ add_subdirectory(syscall)
 add_subdirectory(cap)
 add_subdirectory(ipc)
 add_subdirectory(runtime)
+add_subdirectory(namesvc)
 
 if(BHARAT_BUILD_NETWORK_STUBS)
     add_subdirectory(net)
