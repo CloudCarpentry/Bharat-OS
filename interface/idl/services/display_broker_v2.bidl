@@ -1,0 +1,213 @@
+service bharat.display_broker_v2 = 23 {
+    rpc EnumerateDisplays(EnumerateDisplaysReq) -> EnumerateDisplaysResp
+    rpc QueryDisplayMode(QueryDisplayModeReq) -> QueryDisplayModeResp
+    rpc QueryPlaneCapabilities(QueryPlaneCapabilitiesReq) -> QueryPlaneCapabilitiesResp
+    rpc RequestDisplayLease(RequestDisplayLeaseReq) -> RequestDisplayLeaseResp
+    rpc AcknowledgeLeaseRevocation(AcknowledgeLeaseRevocationReq) -> AcknowledgeLeaseRevocationResp
+    rpc ReleaseDisplayLease(ReleaseDisplayLeaseReq) -> ReleaseDisplayLeaseResp
+    rpc CreateSurface(CreateSurfaceReq) -> CreateSurfaceResp
+    rpc DestroySurface(DestroySurfaceReq) -> DestroySurfaceResp
+    rpc RegisterBuffer(RegisterBufferReq) -> RegisterBufferResp
+    rpc ReleaseBuffer(ReleaseBufferReq) -> ReleaseBufferResp
+    rpc AttachBuffer(AttachBufferReq) -> AttachBufferResp
+    rpc PresentSurface(PresentSurfaceReq) -> PresentSurfaceResp
+    rpc RetirePresentation(RetirePresentationReq) -> RetirePresentationResp
+    rpc QueryPresentationStatus(QueryPresentationStatusReq) -> QueryPresentationStatusResp
+}
+
+message EnumerateDisplaysReq {
+    u32 dummy;
+}
+
+message EnumerateDisplaysResp {
+    u32 result;
+    u32 display_count;
+    u64 display_handle_0;
+    u64 display_handle_1;
+    u64 display_handle_2;
+    u64 display_handle_3;
+}
+
+message QueryDisplayModeReq {
+    u64 display_handle;
+}
+
+message QueryDisplayModeResp {
+    u32 result;
+    u32 width;
+    u32 height;
+    u32 refresh_hz;
+    u32 pixel_format;
+    u32 flags;
+}
+
+message QueryPlaneCapabilitiesReq {
+    u64 display_handle;
+    u32 plane_id;
+    u32 reserved;
+}
+
+message QueryPlaneCapabilitiesResp {
+    u32 result;
+    u32 supported_formats_mask;
+    u32 min_width;
+    u32 min_height;
+    u32 max_width;
+    u32 max_height;
+    u32 scaling_support;
+    u32 rotation_support;
+    u32 secure_overlay_support;
+    u32 cursor_plane_support;
+    u32 direct_scanout_support;
+    u32 z_order_min;
+    u32 z_order_max;
+}
+
+message RequestDisplayLeaseReq {
+    u64 display_handle;
+    u32 requested_rights;
+    u32 reserved;
+}
+
+message RequestDisplayLeaseResp {
+    u32 result;
+    u32 granted_rights;
+    u64 lease_handle;
+}
+
+message AcknowledgeLeaseRevocationReq {
+    u64 lease_handle;
+}
+
+message AcknowledgeLeaseRevocationResp {
+    u32 result;
+    u32 reserved;
+}
+
+message ReleaseDisplayLeaseReq {
+    u64 lease_handle;
+}
+
+message ReleaseDisplayLeaseResp {
+    u32 result;
+    u32 reserved;
+}
+
+message CreateSurfaceReq {
+    u64 lease_handle;
+    u32 width;
+    u32 height;
+    u32 z_order;
+    u32 reserved;
+}
+
+message CreateSurfaceResp {
+    u32 result;
+    u32 reserved;
+    u64 surface_handle;
+}
+
+message DestroySurfaceReq {
+    u64 lease_handle;
+    u64 surface_handle;
+}
+
+message DestroySurfaceResp {
+    u32 result;
+    u32 reserved;
+}
+
+message RegisterBufferReq {
+    u64 lease_handle;
+    u32 width;
+    u32 height;
+    u32 pixel_format;
+    u32 usage_flags;
+    u32 memory_domain;
+    u32 plane_count;
+    u64 total_size_bytes;
+    u64 modifier;
+
+    u64 plane0_offset_bytes;
+    u64 plane0_size_bytes;
+    u32 plane0_stride_bytes;
+    u32 plane0_reserved;
+
+    u64 plane1_offset_bytes;
+    u64 plane1_size_bytes;
+    u32 plane1_stride_bytes;
+    u32 plane1_reserved;
+
+    u64 plane2_offset_bytes;
+    u64 plane2_size_bytes;
+    u32 plane2_stride_bytes;
+    u32 plane2_reserved;
+
+    u64 plane3_offset_bytes;
+    u64 plane3_size_bytes;
+    u32 plane3_stride_bytes;
+    u32 plane3_reserved;
+}
+
+message RegisterBufferResp {
+    u32 result;
+    u32 reserved;
+    u64 buffer_handle;
+}
+
+message ReleaseBufferReq {
+    u64 lease_handle;
+    u64 buffer_handle;
+}
+
+message ReleaseBufferResp {
+    u32 result;
+    u32 reserved;
+}
+
+message AttachBufferReq {
+    u64 lease_handle;
+    u64 surface_handle;
+    u64 buffer_handle;
+}
+
+message AttachBufferResp {
+    u32 result;
+    u32 reserved;
+}
+
+message PresentSurfaceReq {
+    u64 lease_handle;
+    u64 surface_handle;
+    u64 buffer_handle;
+    u64 acquire_fence_handle;
+    u64 deadline_ns;
+}
+
+message PresentSurfaceResp {
+    u32 result;
+    u32 direct_scanout_reason;
+    u64 release_fence_handle;
+}
+
+message RetirePresentationReq {
+    u64 lease_handle;
+    u64 surface_handle;
+}
+
+message RetirePresentationResp {
+    u32 result;
+    u32 reserved;
+}
+
+message QueryPresentationStatusReq {
+    u64 lease_handle;
+    u64 surface_handle;
+}
+
+message QueryPresentationStatusResp {
+    u32 result;
+    u32 presentation_state;
+    u64 active_buffer_handle;
+    u64 frame_counter;
+}
