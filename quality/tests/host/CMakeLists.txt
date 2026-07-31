@@ -384,3 +384,5 @@ target_include_directories(test_accel_dispatch PRIVATE
     ../../
 )
 add_test(NAME host_test_accel_dispatch COMMAND test_accel_dispatch)
+
+add_subdirectory(ipc)

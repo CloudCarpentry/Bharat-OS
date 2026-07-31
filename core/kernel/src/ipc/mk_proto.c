@@ -3,95 +3,69 @@
 #include <hal/hal.h>
 #include <bharat/cpu_local.h>
 
-#define MK_PROTO_MAX_TXNS 256
-
-typedef struct {
-    mk_proto_txn_entry_t entries[MK_PROTO_MAX_TXNS];
-} mk_proto_txn_table_t;
-
-// Per-core transaction table
-static mk_proto_txn_table_t g_txn_tables[32]; // Fixed size, assume up to 32 cores
+#include "fabric/mk_mpsc_ring.c"
+#include "fabric/mk_endpoint.c"
+#include "fabric/mk_transaction.c"
+#include "fabric/mk_replay.c"
+#include "fabric/mk_fabric.c"
 
 int mk_proto_txn_table_init(void) {
-    uint32_t core_id = hal_cpu_get_id();
-    if (core_id >= 32) return -1;
-
-    mk_proto_txn_table_t *table = &g_txn_tables[core_id];
-    for (int i = 0; i < MK_PROTO_MAX_TXNS; i++) {
-        table->entries[i].in_use = 0;
-        table->entries[i].state = MK_TXN_STATE_FREE;
-    }
+    bh_mk_fabric_init(BHARAT_MAX_CPUS);
     return 0;
 }
 
 int mk_proto_txn_begin(uint64_t txn_id, uint32_t remote_core, uint32_t msg_type, uint64_t deadline_ticks) {
+    bh_mk_tx_handle_t handle;
+    kstatus_t status = bh_mk_tx_alloc(remote_core, (remote_core << 24) | BH_MK_ENDPOINT_LEGACY, 0, msg_type, deadline_ticks, &handle);
+    if (status != K_OK) {
+        return -1;
+    }
+
     uint32_t core_id = hal_cpu_get_id();
-    if (core_id >= 32) return -1;
-
-    mk_proto_txn_table_t *table = &g_txn_tables[core_id];
-
-    // Check for duplicate live txn
-    for (int i = 0; i < MK_PROTO_MAX_TXNS; i++) {
-        if (table->entries[i].in_use && table->entries[i].txn_id == txn_id) {
-            return -1; // Duplicate live txn
-        }
+    bh_mk_core_fabric_t *f = bh_mk_get_core_fabric(core_id);
+    if (f) {
+        f->txns.entries[handle.slot].legacy_txn_id = txn_id;
+        f->txns.entries[handle.slot].state = BH_MK_TXN_SENT;
     }
-
-    // Find free slot
-    for (int i = 0; i < MK_PROTO_MAX_TXNS; i++) {
-        if (!table->entries[i].in_use) {
-            table->entries[i].txn_id = txn_id;
-            table->entries[i].remote_core = remote_core;
-            table->entries[i].msg_type = msg_type;
-            table->entries[i].state = MK_TXN_STATE_SENT;
-            table->entries[i].deadline_ticks = deadline_ticks;
-            table->entries[i].retry_count = 0;
-            table->entries[i].completion_status = 0;
-            table->entries[i].in_use = 1;
-            return 0;
-        }
-    }
-
-    return -1; // Table full
+    return 0;
 }
 
 int mk_proto_txn_complete(uint64_t txn_id, int result) {
     uint32_t core_id = hal_cpu_get_id();
-    if (core_id >= 32) return -1;
+    bh_mk_core_fabric_t *f = bh_mk_get_core_fabric(core_id);
+    if (!f) return -1;
 
-    mk_proto_txn_table_t *table = &g_txn_tables[core_id];
-
-    for (int i = 0; i < MK_PROTO_MAX_TXNS; i++) {
-        if (table->entries[i].in_use && table->entries[i].txn_id == txn_id) {
-            table->entries[i].state = MK_TXN_STATE_ACKED;
-            table->entries[i].completion_status = result;
-            // Depending on design, we could clear in_use here or wait for caller to reap
-            table->entries[i].in_use = 0;
+    for (uint32_t i = 0; i < BH_MK_TX_TABLE_SIZE; i++) {
+        bh_mk_tx_entry_t *entry = &f->txns.entries[i];
+        if (atomic_load_explicit(&entry->in_use, memory_order_relaxed) && entry->legacy_txn_id == txn_id) {
+            bh_mk_tx_handle_t handle = { .slot = i, .generation = entry->generation };
+            bh_mk_tx_complete(handle, entry->dst_core, (entry->dst_core << 24) | BH_MK_ENDPOINT_LEGACY, result == 0 ? K_OK : K_ERR_CANCELLED);
+            kstatus_t dummy;
+            bh_mk_tx_reap(handle, &dummy);
             return 0;
         }
     }
-
-    return -1; // Not found
+    return -1;
 }
 
 int mk_proto_txn_poll_timeouts(uint64_t now_ticks) {
     uint32_t core_id = hal_cpu_get_id();
-    if (core_id >= 32) return -1;
+    bh_mk_core_fabric_t *f = bh_mk_get_core_fabric(core_id);
+    if (!f) return -1;
 
-    mk_proto_txn_table_t *table = &g_txn_tables[core_id];
     int timed_out_count = 0;
-
-    for (int i = 0; i < MK_PROTO_MAX_TXNS; i++) {
-        if (table->entries[i].in_use && table->entries[i].state == MK_TXN_STATE_SENT) {
-            if (now_ticks >= table->entries[i].deadline_ticks) {
-                table->entries[i].state = MK_TXN_STATE_TIMED_OUT;
-                table->entries[i].completion_status = MK_REASON_TIMEOUT;
-                table->entries[i].in_use = 0;
+    for (uint32_t i = 0; i < BH_MK_TX_TABLE_SIZE; i++) {
+        bh_mk_tx_entry_t *entry = &f->txns.entries[i];
+        if (atomic_load_explicit(&entry->in_use, memory_order_relaxed) && entry->state == BH_MK_TXN_SENT) {
+            if (now_ticks >= entry->deadline_ticks) {
+                entry->state = BH_MK_TXN_TIMED_OUT;
+                entry->result = K_ERR_TIMEOUT;
+                atomic_store_explicit(&entry->in_use, 0, memory_order_release);
+                entry->generation++;
                 timed_out_count++;
             }
         }
     }
-
     return timed_out_count;
 }
 
@@ -99,17 +73,29 @@ int mk_proto_txn_lookup(uint64_t txn_id, mk_proto_txn_entry_t *out_entry) {
     if (!out_entry) return -1;
 
     uint32_t core_id = hal_cpu_get_id();
-    if (core_id >= 32) return -1;
+    bh_mk_core_fabric_t *f = bh_mk_get_core_fabric(core_id);
+    if (!f) return -1;
 
-    mk_proto_txn_table_t *table = &g_txn_tables[core_id];
-
-    for (int i = 0; i < MK_PROTO_MAX_TXNS; i++) {
-        if (table->entries[i].in_use && table->entries[i].txn_id == txn_id) {
-            *out_entry = table->entries[i];
+    for (uint32_t i = 0; i < BH_MK_TX_TABLE_SIZE; i++) {
+        bh_mk_tx_entry_t *entry = &f->txns.entries[i];
+        if (atomic_load_explicit(&entry->in_use, memory_order_relaxed) && entry->legacy_txn_id == txn_id) {
+            out_entry->txn_id = txn_id;
+            out_entry->remote_core = entry->dst_core;
+            out_entry->msg_type = entry->opcode;
+            if (entry->state == BH_MK_TXN_ACKED) {
+                out_entry->state = MK_TXN_STATE_ACKED;
+            } else if (entry->state == BH_MK_TXN_TIMED_OUT) {
+                out_entry->state = MK_TXN_STATE_TIMED_OUT;
+            } else {
+                out_entry->state = MK_TXN_STATE_SENT;
+            }
+            out_entry->deadline_ticks = entry->deadline_ticks;
+            out_entry->retry_count = 0;
+            out_entry->completion_status = entry->result == K_OK ? 0 : -1;
+            out_entry->in_use = 1;
             return 0;
         }
     }
-
     return -1;
 }
 
@@ -118,7 +104,6 @@ int mk_proto_send_tracked(mk_channel_t *channel, uint32_t msg_type,
                           uint64_t txn_id, uint64_t deadline_ticks) {
     if (!channel) return -1;
 
-    // Determine if ACK is required (basic heuristic for now)
     int ack_required = 1;
     if (msg_type == MK_MSG_TYPE_ACK || msg_type == MK_MSG_TYPE_NACK ||
         msg_type == MK_MSG_THREAD_HANDOFF_ACK || msg_type == MK_MSG_THREAD_HANDOFF_NACK ||
@@ -128,27 +113,21 @@ int mk_proto_send_tracked(mk_channel_t *channel, uint32_t msg_type,
 
     if (ack_required) {
         if (mk_proto_txn_begin(txn_id, channel->dst_core, msg_type, deadline_ticks) != 0) {
-            return -1; // Failed to begin tracked txn
+            return -1;
         }
     }
 
     int ret = mk_send_message(channel, msg_type, payload, size);
 
     if (ret != 0 && ack_required) {
-        // Rollback txn on immediate send failure
-        mk_proto_txn_complete(txn_id, MK_REASON_BAD_AUTH); // Arbitrary failure code for rollback
+        mk_proto_txn_complete(txn_id, -1);
     }
 
     return ret;
 }
 
-// Minimal, non-invasive L1 policy helpers. These do not change runtime
-// behavior yet; they provide a single place to encode retry/idempotency
-// rules and map outcomes to transaction states.
-
 static uint32_t mk_proto_policy_flags_for(uint32_t msg_type) {
     switch (msg_type) {
-        // Read-only / lookup style operations → idempotent + retryable
         case MK_MSG_THREAD_LOOKUP_REQ:
         case MK_MSG_PROCESS_LOOKUP_REQ:
         case MK_MSG_CAP_LOOKUP_REQ:
@@ -156,7 +135,6 @@ static uint32_t mk_proto_policy_flags_for(uint32_t msg_type) {
                    MK_PROTO_POLICY_IDEMPOTENT |
                    MK_PROTO_POLICY_RETRYABLE;
 
-        // State-changing operations → no automatic retry
         case MK_MSG_THREAD_HANDOFF_REQ:
         case MK_MSG_FRAME_ALLOC_REQ:
         case MK_MSG_FRAME_FREE_REQ:
@@ -168,7 +146,6 @@ static uint32_t mk_proto_policy_flags_for(uint32_t msg_type) {
                    MK_PROTO_POLICY_STATE_MUTATION;
 
         default:
-            // Conservative default
             return MK_PROTO_POLICY_ACK_REQUIRED;
     }
 }
@@ -196,7 +173,6 @@ int mk_proto_should_retry(uint32_t msg_type, mk_proto_result_t result,
     }
 
     if (result == MK_PROTO_RESULT_TIMEOUT || result == MK_PROTO_RESULT_DUPLICATE) {
-        // Retry bounded times only
         if (retry_count < 2U) {
             return 1;
         }
