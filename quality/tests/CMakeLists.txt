@@ -186,6 +186,16 @@ target_include_directories(test_headless_compositor PRIVATE ../include ../)
 target_link_libraries(test_headless_compositor PRIVATE bharat_headless_compositor)
 add_test(NAME test_headless_compositor COMMAND test_headless_compositor)
 
+add_executable(test_ui_lifecycle_unit host/ui/test_ui_lifecycle_unit.c ../../core/stacks/media/compositor/compositor_core.c)
+target_include_directories(test_ui_lifecycle_unit PRIVATE ../include ../ ../../core/stacks/media/compositor/ ../../interface/include)
+add_test(NAME test_ui_lifecycle_unit COMMAND test_ui_lifecycle_unit)
+set_tests_properties(test_ui_lifecycle_unit PROPERTIES LABELS "ui;compositor")
+
+add_executable(test_ui_surface_buffer_stress host/test_ui_surface_buffer_stress.c ../../core/stacks/media/compositor/compositor_core.c)
+target_include_directories(test_ui_surface_buffer_stress PRIVATE ../include ../ ../../core/stacks/media/compositor/ ../../interface/include)
+add_test(NAME test_ui_surface_buffer_stress COMMAND test_ui_surface_buffer_stress)
+set_tests_properties(test_ui_surface_buffer_stress PROPERTIES LABELS "ui;compositor;stress")
+
 add_executable(test_tiny_ui_stack
     test_tiny_ui_stack.c
     ../core/stacks/ui/lcd/tiny_ui.c
