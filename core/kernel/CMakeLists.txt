@@ -193,7 +193,7 @@ set(ARCH_TLB_ACCEL_SRC ${BHARAT_ARCH_ROOT}/common/arch_tlb_accel_stub.c)
 # ── Boot and HAL sources (arch-specific) ────────────────────────────────────
 if(ARCH STREQUAL "x86_64")
     set(BOOT_SRC ${BHARAT_ARCH_ROOT}/x86/x86_64/boot/boot.S)
-    set(ARCH_HAL ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/hal_cpu.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/hal_discovery.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/hal_mm.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/trap_entry.S ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/hal_pt_x86_64.c ${BHARAT_HAL_ROOT}/common/hal_pt.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/vtd_iommu.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/hal_irq.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/hal_timer.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/dma.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/hal_secure_boot.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/cpu_relax.c ${BHARAT_HAL_ROOT}/common/iommu/null/null_iommu.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/iommu/intel_vtd/intel_vtd_stub.c)
+    set(ARCH_HAL ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/hal_cpu.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/hal_discovery.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/hal_mm.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/trap_entry.S ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/hal_pt_x86_64.c ${BHARAT_HAL_ROOT}/common/hal_pt.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/vtd_iommu.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/hal_irq.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/hal_timer.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/dma.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/hal_secure_boot.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/cpu_relax.c ${BHARAT_HAL_ROOT}/common/iommu/null/null_iommu.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/iommu/intel_vtd/intel_vtd_stub.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/boot_ap.c)
     set(ARCH_CONTEXT_SWITCH ${BHARAT_ARCH_ROOT}/x86/x86_64/context_switch.c ${BHARAT_ARCH_ROOT}/x86/x86_64/context_switch.S ${BHARAT_ARCH_ROOT}/x86/x86_64/syscall_entry.S)
     set(ARCH_CPU_CAPS_SRC ${BHARAT_ARCH_ROOT}/x86/x86_64/cpu_caps.c)
     set(ARCH_EXT_STATE_SRC ${BHARAT_ARCH_ROOT}/x86/x86_64/ext_state.c)
@@ -481,6 +481,9 @@ set(KERNEL_SRCS
     ${BHARAT_HAL_ROOT}/common/iommu_adapter.c
     ${BHARAT_HAL_ROOT}/common/hal_dma_coherency.c
     ${BHARAT_HAL_ROOT}/common/hal_interrupt_common.c
+    src/irq/irq_core.c
+    src/irq/irq_deferred.c
+    src/irq/irq_vector.c
     ${BHARAT_HAL_ROOT}/common/hal_timer_common.c
     ${BHARAT_HAL_ROOT}/common/hal_mmu_caps.c
     src/atomic64_fallback.c
