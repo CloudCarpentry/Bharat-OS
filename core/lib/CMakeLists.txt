@@ -189,4 +189,31 @@ function(_bharat_assert_no_kernel_links DIRPATH)
     endforeach()
 endfunction()
 
+# ---------------------------------------------------------
+# Next-Generation Isolated BharatLibC Subproject Integration
+# ---------------------------------------------------------
+option(
+    BHARAT_ENABLE_BHARATLIBC_NEXT
+    "Build the isolated next-generation BharatLibC project"
+    OFF
+)
+
+if(BHARAT_ENABLE_BHARATLIBC_NEXT)
+    set(
+        BHARATLIBC_UAPI_ROOT
+        "${CMAKE_SOURCE_DIR}/interface/include"
+        CACHE PATH
+        "Installed Bharat UAPI include root"
+    )
+
+    set(
+        BHARATLIBC_GENERATED_UAPI_ROOT
+        "${CMAKE_BINARY_DIR}/generated/include"
+        CACHE PATH
+        "Generated Bharat UAPI include root"
+    )
+
+    add_subdirectory(bharatlibc)
+endif()
+
 _bharat_assert_no_kernel_links("${CMAKE_CURRENT_SOURCE_DIR}")

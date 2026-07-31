@@ -1,0 +1,3 @@
+# BharatLibCConfig.cmake
+
+include("${CMAKE_CURRENT_LIST_DIR}/BharatLibCTargets.cmake")

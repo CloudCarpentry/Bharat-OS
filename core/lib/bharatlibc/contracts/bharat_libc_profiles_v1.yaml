@@ -1,0 +1,9 @@
+profiles:
+  - name: nano_mpu
+    memory_model: MPU
+  - name: embedded_mmulite
+    memory_model: MMU_LITE
+  - name: general_mmu
+    memory_model: MMU_FULL
+  - name: host_test
+    memory_model: HOST
