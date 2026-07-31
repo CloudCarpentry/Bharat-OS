@@ -21,6 +21,20 @@ BACKTICK_RE = re.compile(r'`([^`]+)`')
 def is_web_url(url):
     return url.startswith("http://") or url.startswith("https://") or url.startswith("mailto:")
 
+PATH_SUFFIXES = (
+    ".md",
+    ".json",
+    ".yaml",
+    ".c",
+    ".h",
+    ".S",
+    ".py",
+    ".sh",
+    ".ld",
+    ".png",
+    ".jpg",
+)
+
 # Check if a string looks like a path reference (contains slashes or file extensions)
 def looks_like_path(s):
     # If it contains standard path chars
@@ -33,7 +47,7 @@ def looks_like_path(s):
             return False
         return True
     # If it ends with typical documentation or source file extensions
-    if any(s.endswith(ext) for ext in [".md", ".json", ".yaml", ".c", ".h", ".S", ".py", ".sh", ".ld", ".png", ".jpg"]):
+    if s.endswith(PATH_SUFFIXES):
         return True
     return False
 
