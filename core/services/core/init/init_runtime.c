@@ -227,7 +227,7 @@ finish:
 
     // Handoff
     rt.phase = INIT_PHASE_HANDOFF_PREPARED;
-    int handoff_res = init_handoff_to_supervisor(ctx);
+    int handoff_res = init_handoff_to_supervisor(ctx, &rt);
     if (handoff_res == 0) {
         rt.phase = INIT_PHASE_HANDOFF_COMPLETE;
     } else {
