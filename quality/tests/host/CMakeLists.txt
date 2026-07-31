@@ -329,8 +329,24 @@ if(BHARAT_BUILD_HOST_TESTS)
     add_test(NAME host_test_i2c_hid_failures COMMAND test_i2c_hid_failures)
 
     # VirtIO Input Host Tests
-    add_executable(test_virtio_input ${CMAKE_SOURCE_DIR}/core/tests/host/drivers/test_virtio_input.c ${CMAKE_SOURCE_DIR}/core/drivers/input/virtio_input/virtio_input.c)
-    target_include_directories(test_virtio_input PRIVATE ${CMAKE_SOURCE_DIR}/core/drivers/input/virtio_input ${CMAKE_SOURCE_DIR}/core/drivers/input/include ${CMAKE_SOURCE_DIR}/interface/uapi)
+    add_executable(test_virtio_input
+        ${CMAKE_SOURCE_DIR}/core/tests/host/drivers/test_virtio_input.c
+        ${CMAKE_SOURCE_DIR}/core/drivers/input/virtio_input/virtio_input.c
+        ${CMAKE_SOURCE_DIR}/core/drivers/virtio/core/virtqueue.c
+        ${CMAKE_SOURCE_DIR}/core/drivers/virtio/pci/virtio_pci.c
+        ../../core/services/device/inputmgr/inputmgr.c
+        ../../experience/user/ui/fbui/input/fbui_input_bridge.c
+    )
+    target_include_directories(test_virtio_input PRIVATE
+        ${CMAKE_SOURCE_DIR}/core/drivers/input/virtio_input
+        ${CMAKE_SOURCE_DIR}/core/drivers/input/include
+        ${CMAKE_SOURCE_DIR}/interface/uapi
+        ${CMAKE_SOURCE_DIR}/interface/include
+        ${CMAKE_SOURCE_DIR}/core/drivers/virtio/core
+        ${CMAKE_SOURCE_DIR}/core/drivers/virtio/pci
+        ${CMAKE_SOURCE_DIR}/core/kernel/include
+        ${CMAKE_SOURCE_DIR}/core/services/device/inputmgr/include
+    )
     add_test(NAME host_test_virtio_input COMMAND test_virtio_input)
 
     # Memory Model AI-adjacent Primitives Host Test

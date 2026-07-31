@@ -26,4 +26,15 @@ typedef struct {
     uint32_t device_id;
 } bharat_input_event_t;
 
+typedef struct {
+    uint64_t timestamp_ticks;
+    uint32_t device_id;
+    uint16_t type;
+    uint16_t code;
+    int32_t value;
+    uint32_t sequence;
+} bh_input_event_t;
+
+_Static_assert(sizeof(bh_input_event_t) == 24, "input ABI size");
+
 #endif /* BHARAT_UAPI_INPUT_EVENT_H */

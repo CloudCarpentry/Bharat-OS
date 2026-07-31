@@ -1,7 +1,5 @@
 #include "virtio_input.h"
 
-#include <string.h>
-
 #ifndef REL_X
 #define REL_X 0x00
 #endif
@@ -26,10 +24,24 @@
 #define VIRTIO_INPUT_EV_REL 0x02
 #define VIRTIO_INPUT_EV_ABS 0x03
 
+#define VIRTIO_INPUT_CFG_ID_NAME  0x01
+#define VIRTIO_INPUT_CFG_EV_BITS  0x11
+
 #define VIRTIO_INPUT_OK 0
 #define VIRTIO_INPUT_EINVAL -1
 #define VIRTIO_INPUT_ESTATE -2
 #define VIRTIO_INPUT_ENOSPC -3
+
+struct virtio_input_config {
+    uint8_t select;
+    uint8_t subsel;
+    uint8_t size;
+    uint8_t reserved[5];
+    union {
+        char string[128];
+        uint8_t bitmap[128];
+    } u;
+};
 
 __attribute__((weak)) int bharat_input_register(bharat_input_device_t *dev) {
     (void)dev;
@@ -79,7 +91,7 @@ int virtio_input_init(virtio_input_device_t *dev,
         return VIRTIO_INPUT_EINVAL;
     }
 
-    memset(dev, 0, sizeof(*dev));
+    __builtin_memset(dev, 0, sizeof(*dev));
     dev->queue = queue_buf;
     dev->queue_depth = queue_depth;
 
@@ -93,6 +105,46 @@ int virtio_input_probe(virtio_input_device_t *dev, void *device_handle) {
     if (!dev || !device_handle) {
         return VIRTIO_INPUT_EINVAL;
     }
+
+    pci_device_t *pci = (pci_device_t *)device_handle;
+    if (pci && pci->vendor_id == 0x1AF4 && (pci->device_id == 0x1052 || pci->device_id == 0x1012)) {
+        // Probe real modern PCI device
+        int rc = bh_virtio_pci_probe(&dev->vpci, pci);
+        if (rc != 0) {
+            return rc;
+        }
+
+        dev->is_real_pci = true;
+
+        // Query capabilities from config space
+        volatile struct virtio_input_config *cfg = (volatile struct virtio_input_config *)dev->vpci.device_cfg;
+        if (cfg) {
+            // Check EV_REL (0x02) supports relative axis
+            cfg->select = VIRTIO_INPUT_CFG_EV_BITS;
+            cfg->subsel = VIRTIO_INPUT_EV_REL;
+            __asm__ volatile("" ::: "memory");
+            if (cfg->size > 0) {
+                dev->supports_rel = true;
+                dev->supports_buttons = true;
+                dev->supports_wheel = true;
+                dev->input_dev.name = "VirtIO Mouse Device";
+            } else {
+                // Otherwise it's a keyboard
+                dev->supports_keys = true;
+                dev->input_dev.name = "VirtIO Keyboard Device";
+            }
+        }
+
+        // Register device
+        dev->input_dev.priv_data = dev;
+        rc = bharat_input_register(&dev->input_dev);
+        if (rc != 0) {
+            return rc;
+        }
+
+        return VIRTIO_INPUT_OK;
+    }
+
     return VIRTIO_INPUT_OK;
 }
 
@@ -100,6 +152,10 @@ int virtio_input_bind(virtio_input_device_t *dev, const virtio_input_caps_t *cap
     int rc;
     if (!dev || !caps) {
         return VIRTIO_INPUT_EINVAL;
+    }
+
+    if (dev->is_real_pci) {
+        return VIRTIO_INPUT_OK; // Real device binding done in probe
     }
 
     dev->supports_keys = caps->supports_keys;
@@ -120,6 +176,31 @@ int virtio_input_start(virtio_input_device_t *dev) {
     if (!dev) {
         return VIRTIO_INPUT_EINVAL;
     }
+
+    if (dev->is_real_pci) {
+        // Setup Event Queue (Queue 0)
+        int rc = bh_virtio_pci_setup_queue(&dev->vpci, 0, &dev->real_vq, dev->desc_table, dev->avail_ring, dev->used_ring);
+        if (rc != 0) {
+            return rc;
+        }
+
+        // Post all rx event buffers
+        for (int i = 0; i < INPUT_QUEUE_SIZE; i++) {
+            uint16_t desc_idx = 0;
+            bh_virtqueue_add_rx_buffer(&dev->real_vq, &dev->buffers[i], sizeof(virtio_input_raw_event_t), &desc_idx);
+            dev->desc_to_buf[desc_idx] = (uint16_t)i;
+        }
+
+        // Notify device of posted buffers
+        bh_virtio_pci_notify_queue(&dev->vpci, 0, &dev->real_vq);
+
+        // Start device status lifecycle
+        rc = bh_virtio_pci_start_device(&dev->vpci);
+        if (rc != 0) {
+            return rc;
+        }
+    }
+
     dev->started = true;
     return VIRTIO_INPUT_OK;
 }
@@ -127,6 +208,10 @@ int virtio_input_start(virtio_input_device_t *dev) {
 int virtio_input_stop(virtio_input_device_t *dev) {
     if (!dev) {
         return VIRTIO_INPUT_EINVAL;
+    }
+
+    if (dev->is_real_pci) {
+        bh_virtio_pci_reset_device(&dev->vpci);
     }
 
     dev->started = false;
@@ -205,13 +290,45 @@ static int virtio_input_process_one(virtio_input_device_t *dev) {
 }
 
 int virtio_input_poll(virtio_input_device_t *dev, size_t budget) {
-    size_t processed = 0;
-    int rc;
-
     if (!dev || budget == 0u) {
         return VIRTIO_INPUT_EINVAL;
     }
 
+    if (dev->is_real_pci) {
+        size_t processed = 0;
+        uint16_t desc_idx;
+        uint32_t len;
+        while (processed < budget && bh_virtqueue_poll_used(&dev->real_vq, &desc_idx, &len)) {
+            uint16_t buf_idx = dev->desc_to_buf[desc_idx];
+            virtio_input_raw_event_t *ev = &dev->buffers[buf_idx];
+
+            if (virtio_input_supported_code(dev, ev->type, ev->code)) {
+                bharat_input_report_event(&dev->input_dev, ev->type, ev->code, ev->value);
+                if (ev->type != VIRTIO_INPUT_EV_SYN) {
+                    bharat_input_sync(&dev->input_dev);
+                }
+                dev->counters.events_rx++;
+            } else {
+                dev->counters.malformed_events++;
+                dev->counters.events_dropped++;
+            }
+
+            // Repost descriptor and buffer
+            bh_virtqueue_free_descriptor(&dev->real_vq, desc_idx);
+            bh_virtqueue_add_rx_buffer(&dev->real_vq, &dev->buffers[buf_idx], sizeof(virtio_input_raw_event_t), &desc_idx);
+            dev->desc_to_buf[desc_idx] = buf_idx;
+
+            processed++;
+        }
+        if (processed > 0) {
+            bh_virtio_pci_notify_queue(&dev->vpci, 0, &dev->real_vq);
+        }
+        return (int)processed;
+    }
+
+    // Software queue fallback
+    size_t processed = 0;
+    int rc;
     while (processed < budget) {
         rc = virtio_input_process_one(dev);
         if (rc <= 0) {
