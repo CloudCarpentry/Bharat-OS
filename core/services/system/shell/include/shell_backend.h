@@ -15,6 +15,7 @@ typedef struct {
     int (*dev_list)(char* out, size_t out_len);
     int (*mem_stat)(char* out, size_t out_len);
     int (*reboot)(void);
+    int (*diag_run)(char* out, size_t out_len);
     void (*audit_event)(const char* event, const char* command, shell_status_code_t status);
 } shell_backend_api_t;
 

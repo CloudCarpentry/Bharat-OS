@@ -62,6 +62,11 @@ static int backend_reboot(void) {
     return BHARAT_STATUS_ERR_UNSUPPORTED;
 }
 
+static int backend_diag_run(char* out, size_t out_len) {
+    (void)out; (void)out_len;
+    return BHARAT_STATUS_ERR_UNSUPPORTED;
+}
+
 static void backend_audit(const char* event, const char* command, shell_status_code_t status) {
     (void)event; (void)command; (void)status;
 }
@@ -78,6 +83,7 @@ const shell_backend_api_t* shell_runtime_backend(void) {
         .dev_list = backend_dev_list,
         .mem_stat = backend_mem_stat,
         .reboot = backend_reboot,
+        .diag_run = backend_diag_run,
         .audit_event = backend_audit,
     };
     return &api;

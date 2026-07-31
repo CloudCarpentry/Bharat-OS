@@ -19,7 +19,8 @@ typedef enum {
     SHELL_URPC_OP_HEALTH_SUMMARY = 7,
     SHELL_URPC_OP_DEV_LIST = 8,
     SHELL_URPC_OP_MEM_STAT = 9,
-    SHELL_URPC_OP_REBOOT = 10
+    SHELL_URPC_OP_REBOOT = 10,
+    SHELL_URPC_OP_DIAG_RUN = 11
 } shell_urpc_op_t;
 
 typedef struct {
@@ -88,6 +89,9 @@ static int make_service_response(const urpc_msg_t* req, urpc_msg_t* resp) {
             break;
         case SHELL_URPC_OP_REBOOT:
             fixed = "accepted";
+            break;
+        case SHELL_URPC_OP_DIAG_RUN:
+            fixed = "diagnostics=ok-urpc cpu_temp=40C";
             break;
         case SHELL_URPC_OP_SVC_STATUS:
             name = (const char*)req->payload;
@@ -232,6 +236,10 @@ static int backend_reboot(void) {
     return (shell_strcmp(ack, "accepted") == 0) ? 0 : -1;
 }
 
+static int backend_diag_run(char* out, size_t out_len) {
+    return exchange(SHELL_URPC_OP_DIAG_RUN, NULL, out, out_len, NULL);
+}
+
 static void backend_audit(const char* event, const char* command, shell_status_code_t status) {
     (void)event;
     (void)command;
@@ -250,6 +258,7 @@ const shell_backend_api_t* shell_default_backend(void) {
         .dev_list = backend_dev_list,
         .mem_stat = backend_mem_stat,
         .reboot = backend_reboot,
+        .diag_run = backend_diag_run,
         .audit_event = backend_audit,
     };
     return &api;
