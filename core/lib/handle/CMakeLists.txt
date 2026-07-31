@@ -1,0 +1,3 @@
+add_library(bharat_libhandle STATIC handle_table.c)
+target_include_directories(bharat_libhandle PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(bharat_libhandle PUBLIC bharat_freestanding)
