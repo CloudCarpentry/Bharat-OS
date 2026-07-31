@@ -121,8 +121,11 @@ typedef struct {
     uint32_t digest_algorithm;
     uint8_t payload_digest[32];
     char name[32];
-    uint8_t padding[28];
+    uint8_t padding[20];
 } __attribute__((packed)) bh_boot_module_header_local_t;
+
+_Static_assert(sizeof(bh_boot_module_header_local_t) == 128,
+               "boot module header must match its versioned header_size");
 
 int boot_info_finalize(boot_info_t *bi) {
     if (!bi || bi->magic != BHARAT_BOOT_INFO_MAGIC) {

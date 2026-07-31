@@ -73,7 +73,7 @@ typedef struct {
 } __attribute__((aligned(64))) bh_arm64_ap_boot_context_t;
 
 // SMP Primary Core Handlers
-int bh_smp_boot_primary_init(const bharat_boot_info_t *boot);
+int bh_smp_boot_primary_init(void);
 int bh_smp_start_secondary_cpus(uint32_t requested_cpus);
 uint32_t bh_smp_get_online_core_count(void);
 

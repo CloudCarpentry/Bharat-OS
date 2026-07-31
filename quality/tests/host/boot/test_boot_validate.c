@@ -77,8 +77,11 @@ typedef struct {
     uint32_t digest_algorithm;
     uint8_t payload_digest[32];
     char name[32];
-    uint8_t padding[28];
+    uint8_t padding[20];
 } __attribute__((packed)) bh_boot_module_header_test_t;
+
+_Static_assert(sizeof(bh_boot_module_header_test_t) == 128,
+               "test boot module header must match the wire contract");
 
 void test_boot_module_invalid_magic() {
     boot_info_t bi;

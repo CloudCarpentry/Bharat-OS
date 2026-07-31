@@ -2,6 +2,7 @@
 #include "init_runtime.h"
 #include <bharat/runtime/runtime.h>
 #include <bharat/cap/cap.h>
+#include <bharat/syscalls.h>
 
 #include <bharat/uapi/init/bootstrap.h>
 

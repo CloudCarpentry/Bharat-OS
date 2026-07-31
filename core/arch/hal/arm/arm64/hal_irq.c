@@ -1,5 +1,6 @@
 #include <stddef.h>
 #include "hal/hal_irq.h"
+#include "hal/hal.h"
 #include "hal/hal_boot.h"
 #include "hal/hal_discovery.h"
 #include "device/irq_domain.h"

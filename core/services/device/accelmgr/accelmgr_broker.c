@@ -19,10 +19,6 @@
 #include <bharat/ipc/ipc.h>
 
 #include "accelmgr_broker.h"
-#include "../../../drivers/accel/virt/virt_accel_test_hooks.h"
-
-// Diagnostic mock device getters (from drivers)
-extern bharat_accel_device_t* get_virt_accel_mock_device(void);
 
 broker_object_t g_objects[MAX_BROKER_OBJECTS];
 static uint32_t g_object_generation_counters[MAX_BROKER_OBJECTS];
@@ -434,42 +430,11 @@ int handle_SubmitJob(const bharat_device_accelmgr_v2_SubmitJobReq_t *req, bharat
         // Safe mode prevents hardware dispatch
         exec_status = -301; // Blocked / safe-mode reject
     } else {
-        // Resolve host pointers securely on the server-side from registered buffer objects
-        uint8_t *in_ptr = (uint8_t *)in_buf->u.buffer.memory_cap_handle + req->input_offset;
-        uint8_t *out_ptr = (uint8_t *)out_buf->u.buffer.memory_cap_handle + req->output_offset;
-
-        if (dev_obj->u.device.capabilities & BHARAT_ACCEL_CAP_NPU) {
-            // NPU dispatch
-            g_telemetry.hw_backend_selected++;
-            bharat_accel_device_t *npu_dev = get_virt_accel_mock_device();
-            if (npu_dev && npu_dev->ops && npu_dev->ops->submit_npu_job) {
-                virt_accel_job_t npu_job;
-                npu_job.opcode = req->opcode;
-                npu_job.input = (const float *)in_ptr;
-                npu_job.input_elements = req->element_count;
-                npu_job.output = (float *)out_ptr;
-                npu_job.output_elements = req->element_count;
-
-                exec_status = npu_dev->ops->submit_npu_job(npu_dev, &npu_job);
-            } else {
-                exec_status = -19; // Internal driver error
-            }
-        } else if (dev_obj->u.device.capabilities & BHARAT_ACCEL_CAP_GPU) {
-            // GPU dispatch
-            g_telemetry.hw_backend_selected++;
-            bharat_accel_device_t *gpu_dev = get_virt_gpu_mock_device();
-            if (gpu_dev && gpu_dev->ops && gpu_dev->ops->submit_gpu_job) {
-                virt_gpu_job_t gpu_job;
-                gpu_job.opcode = req->opcode;
-                gpu_job.input = (const void *)in_ptr;
-                gpu_job.input_elements = req->element_count;
-                gpu_job.output = (void *)out_ptr;
-                gpu_job.output_elements = req->element_count;
-
-                exec_status = gpu_dev->ops->submit_gpu_job(gpu_dev, &gpu_job);
-            } else {
-                exec_status = -19;
-            }
+        if (dev_obj->u.device.capabilities &
+            (BHARAT_ACCEL_CAP_NPU | BHARAT_ACCEL_CAP_GPU)) {
+            /* Driver access is capability-mediated IPC; no driver endpoint is
+             * bound in this bootstrap service yet, so fail closed. */
+            exec_status = -19;
         } else {
             exec_status = -3; // Unknown capabilities
         }

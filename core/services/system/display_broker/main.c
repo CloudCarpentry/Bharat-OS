@@ -494,46 +494,46 @@ bharat_status_t bh_service_handle_msg(bh_service_ctx_t *ctx, const bh_msg_t *msg
 
     if (is_v2) {
         switch (msg->header.opcode) {
-            case OP_ENUMERATEDISPLAYS:
+            case BH_DISPLAY_BROKER_V2_OP_ENUMERATE_DISPLAYS:
                 handle_enumerate_displays_v2(&msg->header, msg->payload);
                 break;
-            case OP_QUERYDISPLAYMODE:
+            case BH_DISPLAY_BROKER_V2_OP_QUERY_DISPLAY_MODE:
                 handle_query_display_mode_v2(&msg->header, msg->payload);
                 break;
-            case OP_QUERYPLANECAPABILITIES:
+            case BH_DISPLAY_BROKER_V2_OP_QUERY_PLANE_CAPABILITIES:
                 handle_query_plane_capabilities_v2(&msg->header, msg->payload);
                 break;
-            case OP_REQUESTDISPLAYLEASE:
+            case BH_DISPLAY_BROKER_V2_OP_REQUEST_DISPLAY_LEASE:
                 handle_request_display_lease_v2(&msg->header, msg->payload);
                 break;
-            case OP_ACKNOWLEDGELEASEREVOCATION:
+            case BH_DISPLAY_BROKER_V2_OP_ACKNOWLEDGE_LEASE_REVOCATION:
                 handle_acknowledge_lease_revocation_v2(&msg->header, msg->payload);
                 break;
-            case OP_RELEASEDISPLAYLEASE:
+            case BH_DISPLAY_BROKER_V2_OP_RELEASE_DISPLAY_LEASE:
                 handle_release_display_lease_v2(&msg->header, msg->payload);
                 break;
-            case OP_CREATESURFACE:
+            case BH_DISPLAY_BROKER_V2_OP_CREATE_SURFACE:
                 handle_create_surface_v2(&msg->header, msg->payload);
                 break;
-            case OP_DESTROYSURFACE:
+            case BH_DISPLAY_BROKER_V2_OP_DESTROY_SURFACE:
                 handle_destroy_surface_v2(&msg->header, msg->payload);
                 break;
-            case OP_REGISTERBUFFER:
+            case BH_DISPLAY_BROKER_V2_OP_REGISTER_BUFFER:
                 handle_register_buffer_v2(&msg->header, msg->payload);
                 break;
-            case OP_RELEASEBUFFER:
+            case BH_DISPLAY_BROKER_V2_OP_RELEASE_BUFFER:
                 handle_release_buffer_v2(&msg->header, msg->payload);
                 break;
-            case OP_ATTACHBUFFER:
+            case BH_DISPLAY_BROKER_V2_OP_ATTACH_BUFFER:
                 handle_attach_buffer_v2(&msg->header, msg->payload);
                 break;
-            case OP_PRESENTSURFACE:
+            case BH_DISPLAY_BROKER_V2_OP_PRESENT_SURFACE:
                 handle_present_surface_v2(&msg->header, msg->payload);
                 break;
-            case OP_RETIREPRESENTATION:
+            case BH_DISPLAY_BROKER_V2_OP_RETIRE_PRESENTATION:
                 handle_retire_presentation_v2(&msg->header, msg->payload);
                 break;
-            case OP_QUERYPRESENTATIONSTATUS:
+            case BH_DISPLAY_BROKER_V2_OP_QUERY_PRESENTATION_STATUS:
                 handle_query_presentation_status_v2(&msg->header, msg->payload);
                 break;
             default:

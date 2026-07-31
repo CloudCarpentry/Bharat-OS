@@ -11,10 +11,10 @@ int hal_boot_start_cpu(uint32_t cpu_id, uint64_t entry_point) {
     return -1;
 }
 
-static bharat_boot_info_t g_riscv32_boot_info;
+static bharat_boot_info_t g_arm32_boot_info;
 
 bharat_boot_info_t *hal_boot_get_info(void) {
-    return &g_riscv32_boot_info;
+    return &g_arm32_boot_info;
 }
 
 void _secondary_trampoline(void) {

@@ -1,6 +1,7 @@
 #include <bharat/uapi/init/rt_startup.h>
 #include <bharat/uapi/syscall_nr.h>
 #include <bharat/uapi/syscall/bh_syscall.h>
+#include <stddef.h>
 
 static size_t rt_strlen(const char *s) {
     size_t len = 0;
@@ -39,6 +40,6 @@ void _start(const bh_rt_startup_t *startup) {
 
     // Keep running in unprivileged unmapped environment (yielding)
     while (1) {
-        bharat_syscall(SYSCALL_THREAD_YIELD, 0, 0, 0, 0, 0, 0);
+        bharat_syscall(SYSCALL_SCHED_YIELD, 0, 0, 0, 0, 0, 0);
     }
 }

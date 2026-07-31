@@ -41,6 +41,11 @@ _start:
     wfi
     j .halt_loop
 
+.global _secondary_trampoline
+_secondary_trampoline:
+    /* SBI HSM enters with the opaque boot context in a0. */
+    tail bh_secondary_cpu_entry
+
 .section .bss, "aw", @nobits
 .align 16
 stack_bottom:
