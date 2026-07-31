@@ -21,9 +21,8 @@ target_include_directories(test_servicemgr PRIVATE
 
 target_compile_definitions(test_servicemgr PRIVATE BHARAT_HOST_TEST)
 
-<<<<<<< HEAD
 add_test(NAME host_test_servicemgr COMMAND test_servicemgr)
-=======
+
 # Phase 3: Core IPC/Profile Tests
 add_executable(test_ipc_profile test_ipc_profile.c ../../kernel/src/profile/profile.c ../../kernel/src/ipc/ipc_traffic.c)
 target_include_directories(test_ipc_profile PRIVATE ../../kernel/include ../../include ../../core/lib/include)
@@ -455,4 +454,3 @@ target_compile_definitions(test_accel_broker_e2e PRIVATE ACCELMGR_NO_MAIN=1)
 add_test(NAME host_test_accel_broker_e2e COMMAND test_accel_broker_e2e)
 
 add_subdirectory(ipc)
->>>>>>> origin/developer
