@@ -1,0 +1,6 @@
+posix_subset:
+  version: 1
+  functions:
+    - write
+    - read
+    - close

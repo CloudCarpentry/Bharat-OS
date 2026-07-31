@@ -1,0 +1,12 @@
+profile: hosted_desktop
+memory_model: MMU_FULL
+execution_profile: GP
+device_profile: DESKTOP/DATACENTER
+personality: POSIX
+features:
+  fixed_allocator: ON
+  bounded_freelist: ON
+  dynamic_allocation: ON
+  posix_io: ON
+  pthread: ON
+  float_printf: ON

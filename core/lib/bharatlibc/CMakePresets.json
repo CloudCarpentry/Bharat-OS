@@ -1,0 +1,28 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "host-test",
+      "displayName": "Host Testing Profile",
+      "description": "Configures BharatLibC with HOST backend and all features enabled for testing",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/host-test",
+      "cacheVariables": {
+        "BHARATLIBC_PROFILE": "host_test",
+        "BHARATLIBC_BUILD_TESTS": "ON",
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "nano-mpu",
+      "displayName": "Nano MPU Profile",
+      "description": "Configures BharatLibC with MPU/RT safety profile",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/nano-mpu",
+      "cacheVariables": {
+        "BHARATLIBC_PROFILE": "nano_mpu",
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    }
+  ]
+}

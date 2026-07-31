@@ -1,0 +1,7 @@
+abi_version: 1
+standard: C11
+definitions:
+  - name: memcpy
+    return: void*
+  - name: memset
+    return: void*

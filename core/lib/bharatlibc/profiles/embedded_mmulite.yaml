@@ -1,0 +1,12 @@
+profile: embedded_mmulite
+memory_model: MMU_LITE
+execution_profile: MIX
+device_profile: SMALL/EDGE
+personality: NATIVE
+features:
+  fixed_allocator: ON
+  bounded_freelist: ON
+  dynamic_allocation: ON
+  posix_io: ON
+  pthread: OFF
+  float_printf: OFF
