@@ -199,7 +199,7 @@ The ABI command is mandatory for syscall/ABI changes and optional otherwise.
 
 ### Mandatory five-target build policy
 
-Before declaring a kernel, HAL, architecture, memory, scheduler, capability, IPC/uRPC, driver, build-system, or configuration task complete, run:
+All agents must run and verify all five target commands prior to declaring a task complete or submitting a PR:
 
 ```bash
 ./build.sh all --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml --smoke
