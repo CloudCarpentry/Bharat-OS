@@ -46,6 +46,7 @@ bharat_configure_userspace_library(bharat_libgfx)
 # ---------------------------------------------------------
 # Subdirectories that define specific libs
 # ---------------------------------------------------------
+add_subdirectory(handle)
 add_subdirectory(elf)
 add_subdirectory(syscall)
 add_subdirectory(cap)
