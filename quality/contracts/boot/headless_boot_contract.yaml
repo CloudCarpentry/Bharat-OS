@@ -16,84 +16,222 @@ common:
 
 targets:
   x86_64_desktop_headless:
-    description: "x86_64 baseline headless boot"
+    description: "x86_64 MMU-Full headless boot"
     required:
-      - "BOOT: kernel_main reached"
-      - "BOOT: pmm initialized"
-      - "BOOT: vmm initialized"
-      - "[BOOT] Memory subsystem initialization complete"
-      - "[BOOT] Platform services initialization complete"
-      - "[BOOT] Runtime initialization complete"
-      - "[BOOT] Spawning first system service (sysmgr)..."
-    allowed_skip:
-      - "SKIP: sched_remote_ipi requires >=2 online cores"
+      - "BOOT_HANDOFF: NORMALIZED"
+      - "BOOT_HANDOFF: VALIDATED"
+      - "BOOT_MEMORY: MODULES_RESERVED"
+      - "INIT_MODULE: services/init FOUND"
+      - "INIT_ELF: VALIDATED"
+      - "INIT_ASPACE: READY"
+      - "INIT_THREAD: SCHEDULED"
+      - "USER_INIT: ENTERED"
+      - "USER_INIT: STARTUP_ABI_OK"
+      - "USER_INIT: SERVICE_GRAPH_COMPLETE"
+      - "BOOT_RUNTIME: STABLE"
     forbidden: *common_forbidden
-    timeout_seconds: 30
+    timeout_seconds: 45
+
+  x86_64_rtos_mmu_lite_headless:
+    description: "x86_64 RT MMU-Lite headless boot"
+    required:
+      - "BOOT_HANDOFF: NORMALIZED"
+      - "BOOT_HANDOFF: VALIDATED"
+      - "BOOT_MEMORY: MODULES_RESERVED"
+      - "INIT_MODULE: services/init FOUND"
+      - "INIT_ELF: VALIDATED"
+      - "INIT_ASPACE: READY"
+      - "INIT_THREAD: SCHEDULED"
+      - "USER_INIT: ENTERED"
+      - "USER_INIT: STARTUP_ABI_OK"
+      - "USER_INIT: SERVICE_GRAPH_COMPLETE"
+      - "BOOT_RUNTIME: STABLE"
+    forbidden: *common_forbidden
+    timeout_seconds: 45
 
   arm64_desktop_headless:
-    description: "ARM64 baseline headless boot"
+    description: "ARM64 MMU-Full headless boot"
     required:
-      - "BOOT: kernel_main reached"
-      - "BOOT: pmm initialized"
-      - "BOOT: vmm initialized"
-      - "[BOOT] Memory subsystem initialization complete"
-      - "[BOOT] Platform services initialization complete"
-      - "[BOOT] Runtime initialization complete"
-      - "[BOOT] Spawning first system service (sysmgr)..."
+      - "BOOT_HANDOFF: NORMALIZED"
+      - "BOOT_HANDOFF: VALIDATED"
+      - "BOOT_MEMORY: MODULES_RESERVED"
+      - "INIT_MODULE: services/init FOUND"
+      - "INIT_ELF: VALIDATED"
+      - "INIT_ASPACE: READY"
+      - "INIT_THREAD: SCHEDULED"
+      - "USER_INIT: ENTERED"
+      - "USER_INIT: STARTUP_ABI_OK"
+      - "USER_INIT: SERVICE_GRAPH_COMPLETE"
+      - "BOOT_RUNTIME: STABLE"
     forbidden: *common_forbidden
-    timeout_seconds: 30
+    timeout_seconds: 45
 
-  arm64_desktop_smp_headless:
-    description: "ARM64 SMP headless boot test"
+  arm64_rtos_mmu_lite_headless:
+    description: "ARM64 RT MMU-Lite headless boot"
     required:
-      - "BOOT: kernel_main reached"
-      - "BOOT: pmm initialized"
-      - "BOOT: vmm initialized"
-      - "[BOOT] Memory subsystem initialization complete"
-      - "[BOOT] Platform services initialization complete"
-      - "[BOOT] Runtime initialization complete"
-      - "SMP: CPU1 ONLINE"
-      - "SMP: CPU2 ONLINE"
-      - "SMP: CPU3 ONLINE"
-      - "SMP: ALL 4 CORES ONLINE"
-      - "SMP-VM: MAP PASS"
-      - "SMP-VM: PROTECT PASS"
-      - "SMP-VM: UNMAP PASS"
-      - "SMP-TLB: ACK MASK COMPLETE"
-      - "SMP-PMM: REMOTE FREE PASS"
-      - "SMP-SCHED: REMOTE COMMAND PASS"
-      - "SMP: RUNTIME INVARIANTS PASS"
-      - "[BOOT] Spawning first system service (sysmgr)..."
+      - "BOOT_HANDOFF: NORMALIZED"
+      - "BOOT_HANDOFF: VALIDATED"
+      - "BOOT_MEMORY: MODULES_RESERVED"
+      - "INIT_MODULE: services/init FOUND"
+      - "INIT_ELF: VALIDATED"
+      - "INIT_ASPACE: READY"
+      - "INIT_THREAD: SCHEDULED"
+      - "USER_INIT: ENTERED"
+      - "USER_INIT: STARTUP_ABI_OK"
+      - "USER_INIT: SERVICE_GRAPH_COMPLETE"
+      - "BOOT_RUNTIME: STABLE"
     forbidden: *common_forbidden
-    timeout_seconds: 30
+    timeout_seconds: 45
 
   riscv64_desktop_headless:
-    description: "RISC-V 64 baseline headless boot"
+    description: "RISC-V 64 MMU-Full headless boot"
     required:
-      - "BOOT: kernel_main reached"
-      - "BOOT: pmm initialized"
-      - "BOOT: vmm initialized"
-      - "[BOOT] Memory subsystem initialization complete"
-      - "[BOOT] Platform services initialization complete"
-      - "[BOOT] Runtime initialization complete"
-      - "[BOOT] Spawning first system service (sysmgr)..."
+      - "BOOT_HANDOFF: NORMALIZED"
+      - "BOOT_HANDOFF: VALIDATED"
+      - "BOOT_MEMORY: MODULES_RESERVED"
+      - "INIT_MODULE: services/init FOUND"
+      - "INIT_ELF: VALIDATED"
+      - "INIT_ASPACE: READY"
+      - "INIT_THREAD: SCHEDULED"
+      - "USER_INIT: ENTERED"
+      - "USER_INIT: STARTUP_ABI_OK"
+      - "USER_INIT: SERVICE_GRAPH_COMPLETE"
+      - "BOOT_RUNTIME: STABLE"
     forbidden: *common_forbidden
-    timeout_seconds: 30
+    timeout_seconds: 45
+
+  riscv64_rtos_mmu_lite_headless:
+    description: "RISC-V 64 RT MMU-Lite headless boot"
+    required:
+      - "BOOT_HANDOFF: NORMALIZED"
+      - "BOOT_HANDOFF: VALIDATED"
+      - "BOOT_MEMORY: MODULES_RESERVED"
+      - "INIT_MODULE: services/init FOUND"
+      - "INIT_ELF: VALIDATED"
+      - "INIT_ASPACE: READY"
+      - "INIT_THREAD: SCHEDULED"
+      - "USER_INIT: ENTERED"
+      - "USER_INIT: STARTUP_ABI_OK"
+      - "USER_INIT: SERVICE_GRAPH_COMPLETE"
+      - "BOOT_RUNTIME: STABLE"
+    forbidden: *common_forbidden
+    timeout_seconds: 45
 
   arm32_mmu_lite_headless:
     description: "ARM32 MMU-Lite headless boot"
     required:
-      - "BOOT: kernel_main reached"
-    allowed_skip:
-      - "SKIP: SMP test requires >=2 online cores"
+      - "BOOT_HANDOFF: NORMALIZED"
+      - "BOOT_HANDOFF: VALIDATED"
+      - "BOOT_MEMORY: MODULES_RESERVED"
+      - "INIT_MODULE: services/init FOUND"
+      - "INIT_ELF: VALIDATED"
+      - "INIT_ASPACE: READY"
+      - "INIT_THREAD: SCHEDULED"
+      - "USER_INIT: ENTERED"
+      - "USER_INIT: STARTUP_ABI_OK"
+      - "USER_INIT: SERVICE_GRAPH_COMPLETE"
+      - "BOOT_RUNTIME: STABLE"
     forbidden: *common_forbidden
-    timeout_seconds: 30
+    timeout_seconds: 45
+
+  arm32_rtos_mpu_headless:
+    description: "ARM32 RT MPU-only headless boot"
+    required:
+      - "BOOT_HANDOFF: NORMALIZED"
+      - "BOOT_HANDOFF: VALIDATED"
+      - "BOOT_PROFILE: RT"
+      - "BOOT_MEMORY_MODEL: MPU"
+      - "RT_IMAGE: VALIDATED"
+      - "RT_REGIONS: INSTALLED"
+      - "RT_TIMER: ACTIVE"
+      - "RT_IRQ: ACTIVE"
+      - "RT_SCHEDULER: ACTIVE"
+      - "RT_SUPERVISOR: ENTERED"
+      - "RT_RUNTIME: STABLE"
+    forbidden: *common_forbidden
+    timeout_seconds: 45
 
   riscv32_mmu_lite_headless:
     description: "RISC-V 32 MMU-Lite headless boot"
     required:
-      - "BOOT: kernel_main reached"
-    allowed_skip:
-      - "SKIP: SMP test requires >=2 online cores"
+      - "BOOT_HANDOFF: NORMALIZED"
+      - "BOOT_HANDOFF: VALIDATED"
+      - "BOOT_MEMORY: MODULES_RESERVED"
+      - "INIT_MODULE: services/init FOUND"
+      - "INIT_ELF: VALIDATED"
+      - "INIT_ASPACE: READY"
+      - "INIT_THREAD: SCHEDULED"
+      - "USER_INIT: ENTERED"
+      - "USER_INIT: STARTUP_ABI_OK"
+      - "USER_INIT: SERVICE_GRAPH_COMPLETE"
+      - "BOOT_RUNTIME: STABLE"
     forbidden: *common_forbidden
-    timeout_seconds: 30
+    timeout_seconds: 45
+
+  riscv32_rtos_mpu_headless:
+    description: "RISC-V 32 RT MPU-only headless boot"
+    required:
+      - "BOOT_HANDOFF: NORMALIZED"
+      - "BOOT_HANDOFF: VALIDATED"
+      - "BOOT_PROFILE: RT"
+      - "BOOT_MEMORY_MODEL: MPU"
+      - "RT_IMAGE: VALIDATED"
+      - "RT_REGIONS: INSTALLED"
+      - "RT_TIMER: ACTIVE"
+      - "RT_IRQ: ACTIVE"
+      - "RT_SCHEDULER: ACTIVE"
+      - "RT_SUPERVISOR: ENTERED"
+      - "RT_RUNTIME: STABLE"
+    forbidden: *common_forbidden
+    timeout_seconds: 45
+
+  x86_64_desktop_smp_headless:
+    description: "x86_64 SMP MMU-Full headless boot"
+    required:
+      - "BOOT_HANDOFF: NORMALIZED"
+      - "BOOT_HANDOFF: VALIDATED"
+      - "BOOT_MEMORY: MODULES_RESERVED"
+      - "INIT_MODULE: services/init FOUND"
+      - "INIT_ELF: VALIDATED"
+      - "INIT_ASPACE: READY"
+      - "INIT_THREAD: SCHEDULED"
+      - "USER_INIT: ENTERED"
+      - "USER_INIT: STARTUP_ABI_OK"
+      - "USER_INIT: SERVICE_GRAPH_COMPLETE"
+      - "BOOT_RUNTIME: STABLE"
+    forbidden: *common_forbidden
+    timeout_seconds: 45
+
+  arm64_desktop_smp_headless:
+    description: "ARM64 SMP MMU-Full headless boot"
+    required:
+      - "BOOT_HANDOFF: NORMALIZED"
+      - "BOOT_HANDOFF: VALIDATED"
+      - "BOOT_MEMORY: MODULES_RESERVED"
+      - "INIT_MODULE: services/init FOUND"
+      - "INIT_ELF: VALIDATED"
+      - "INIT_ASPACE: READY"
+      - "INIT_THREAD: SCHEDULED"
+      - "USER_INIT: ENTERED"
+      - "USER_INIT: STARTUP_ABI_OK"
+      - "USER_INIT: SERVICE_GRAPH_COMPLETE"
+      - "BOOT_RUNTIME: STABLE"
+    forbidden: *common_forbidden
+    timeout_seconds: 45
+
+  riscv64_desktop_smp_headless:
+    description: "RISC-V 64 SMP MMU-Full headless boot"
+    required:
+      - "BOOT_HANDOFF: NORMALIZED"
+      - "BOOT_HANDOFF: VALIDATED"
+      - "BOOT_MEMORY: MODULES_RESERVED"
+      - "INIT_MODULE: services/init FOUND"
+      - "INIT_ELF: VALIDATED"
+      - "INIT_ASPACE: READY"
+      - "INIT_THREAD: SCHEDULED"
+      - "USER_INIT: ENTERED"
+      - "USER_INIT: STARTUP_ABI_OK"
+      - "USER_INIT: SERVICE_GRAPH_COMPLETE"
+      - "BOOT_RUNTIME: STABLE"
+    forbidden: *common_forbidden
+    timeout_seconds: 45

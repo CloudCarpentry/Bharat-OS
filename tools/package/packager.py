@@ -108,6 +108,72 @@ def execute_package(plan: PackagePlan, repo_root: Path) -> PackageOutputs:
             ArtifactRecord(kind="run_boot_artifact", path=boot_artifact_path, producer="packager_fallback")
         )
 
+    # -------------------------------------------------------------
+    # Packaging of init_module (services/init or services/rt-supervisor)
+    # -------------------------------------------------------------
+    import shutil
+    import struct
+
+    is_rt_mpu = (plan.target.execution_profile == "rt" and
+                 plan.target.build.cmake_defs.get("BHARAT_PROFILE_MPU_ONLY") == "ON")
+
+    binary_name = "rt-supervisor" if is_rt_mpu else "init"
+    possible_paths = [
+        plan.build_outputs.build_dir / "core" / "services" / "core" / binary_name / binary_name,
+        plan.build_outputs.build_dir / "services" / "core" / binary_name / binary_name,
+        plan.build_outputs.build_dir / "core" / "services" / binary_name / binary_name,
+        plan.build_outputs.build_dir / "services" / binary_name / binary_name,
+    ]
+
+    src_binary = None
+    for p in possible_paths:
+        if p.exists():
+            src_binary = p
+            break
+        p_exe = p.with_suffix(".exe")
+        if p_exe.exists():
+            src_binary = p_exe
+            break
+
+    init_module_path = plan.packaged_dir / "init_module.bin"
+
+    if src_binary and src_binary.exists():
+        payload_bytes = src_binary.read_bytes()
+        print(f"[Package] Found compiled payload for '{binary_name}' at {src_binary} ({len(payload_bytes)} bytes)")
+    else:
+        print(f"[Package] WARNING: Compiled payload '{binary_name}' not found. Generating simulated mock payload...")
+        payload_bytes = b"MOCK_PAYLOAD_" + binary_name.encode()
+
+    # Create the versioned Bharat boot-module container header:
+    magic = 0xB4A2D1A5
+    abi_version = 0x0100
+    header_size = 128
+    module_kind = 2 if is_rt_mpu else 1
+    payload_offset = 128
+    payload_size = len(payload_bytes)
+    target_arch = 0
+    elf_class = 0
+    flags = 0
+    name = f"services/{binary_name}"
+    name_len = len(name)
+    digest_algo = 0
+    digest = b"\x00" * 32
+    name_bytes = name.encode("utf-8")[:32].ljust(32, b"\x00")
+    padding = b"\x00" * 28
+
+    header = struct.pack(
+        "<IIIIIIIIII32s32s28s",
+        magic, abi_version, header_size, module_kind, payload_offset, payload_size,
+        target_arch, elf_class, flags, name_len, digest_algo, digest, name_bytes, padding
+    )
+
+    init_module_path.write_bytes(header + payload_bytes)
+    print(f"[Package] Packaged and wrote Bharat boot-module container to {init_module_path}")
+
+    packaged_artifacts.append(
+        ArtifactRecord(kind="init_module", path=init_module_path, producer="packager_boot_module")
+    )
+
     manifest_paths = {}
 
     outputs = PackageOutputs(

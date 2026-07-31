@@ -1,28 +1,28 @@
-name: arm32_mmu_lite_headless
+name: arm32_rtos_mpu_headless
 kind: qemu_target
 
 arch: arm32
 board: qemu-virt-arm32
-device_profile: edge
+device_profile: rtos
 personality_profile: native
-execution_profile: mix
+execution_profile: rt
 
 build:
   cmake_preset: arm32-qemu-mmu-lite-headless
   cmake_defs:
     BHARAT_ARCH_FAMILY: ARM32
-    BHARAT_DEVICE_PROFILE: EDGE
+    BHARAT_DEVICE_PROFILE: RTOS
     BHARAT_PERSONALITY_PROFILE: NATIVE
     BHARAT_TARGET_BOARD: virt
     BHARAT_BOOT_GUI: OFF
     BHARAT_PROFILE_MMU_FULL: OFF
-    BHARAT_PROFILE_MMU_LITE: ON
-    BHARAT_PROFILE_MPU_ONLY: OFF
-    BHARAT_ENABLE_MMU: ON
-    BHARAT_ENABLE_MPU: OFF
-    BHARAT_ENABLE_ADVANCED_VM: ON
+    BHARAT_PROFILE_MMU_LITE: OFF
+    BHARAT_PROFILE_MPU_ONLY: ON
+    BHARAT_ENABLE_MMU: OFF
+    BHARAT_ENABLE_MPU: ON
+    BHARAT_ENABLE_ADVANCED_VM: OFF
     BHARAT_ENABLE_IOMMU: OFF
-    BHARAT_ENABLE_DMA_MAP: ON
+    BHARAT_ENABLE_DMA_MAP: OFF
     BHARAT_ENABLE_COW: OFF
     BHARAT_ENABLE_DEMAND_PAGING: OFF
     BHARAT_ENABLE_SHARED_MEMORY: OFF
@@ -51,7 +51,7 @@ run:
   backend: qemu
   machine: virt
   cpu: cortex-a15
-  memory: 512M
+  memory: 256M
   nographic: true
   serial:
     - stdio

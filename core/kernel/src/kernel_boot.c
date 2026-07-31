@@ -62,7 +62,8 @@ static void print_hw_caps_summary(const hal_hw_caps_t *caps) {
 static void print_boot_diagnostics(const boot_info_t *boot) {
     if (!boot) return;
 
-    KPRINT("  [BOOT] Normalized handoff contract established\n");
+    boot_info_finalize((boot_info_t*)boot);
+    KPRINT("[BOOT] BOOT_HANDOFF: NORMALIZED\n");
 
     boot_validation_report_t report;
     int vret = boot_validate_all((boot_info_t*)boot, &report);
@@ -73,6 +74,8 @@ static void print_boot_diagnostics(const boot_info_t *boot) {
         if (report.is_fatal) {
             kernel_panic("Fatal boot handoff validation error");
         }
+    } else {
+        KPRINT("[BOOT] BOOT_HANDOFF: VALIDATED\n");
     }
 
     if (boot->is_degraded) {
@@ -200,6 +203,7 @@ void boot_common_memory(const boot_info_t *boot) {
       kernel_panic("PMM initialization failed");
     }
     KPRINT("BOOT: pmm initialized\n");
+    KPRINT("[BOOT] BOOT_MEMORY: MODULES_RESERVED\n");
 
     // Ensure hal_pt is initialized BEFORE VMM tries to map things / create address space
     hal_pt_init();
