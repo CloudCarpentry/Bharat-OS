@@ -15,6 +15,7 @@
 #include "mm.h"
 #include "mm/physmap.h"
 #include "arch/arch_caps.h"
+#include "arch/cpu_relax.h"
 #include "profile/profile.h"
 #include "panic.h"
 #include "bharat/cpu_local.h"
@@ -68,8 +69,7 @@ uint32_t bh_smp_get_online_core_count(void) {
     return count == 0 ? 1 : count; // fallback to 1 if none online (e.g. non-SMP)
 }
 
-int bh_smp_boot_primary_init(const bharat_boot_info_t *boot) {
-    (void)boot;
+int bh_smp_boot_primary_init(void) {
     for (uint32_t i = 0; i < BHARAT_MAX_CPUS; i++) {
         atomic_init(&g_cpu_boot_records[i].state, BH_CPU_BOOT_OFFLINE);
         g_cpu_boot_records[i].logical_cpu_id = i;
@@ -229,14 +229,7 @@ int bh_smp_start_secondary_cpus(uint32_t requested_cpus) {
         if (all_online) {
             break;
         }
-        // Small delay
-#if defined(__aarch64__)
-        __asm__ volatile("yield");
-#elif defined(__riscv)
-        __asm__ volatile("pause");
-#else
-        __asm__ volatile("rep; nop");
-#endif
+        arch_cpu_relax();
     }
 
     if (all_online) {

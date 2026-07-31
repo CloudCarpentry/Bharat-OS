@@ -257,7 +257,7 @@ void boot_common_platform_services(const boot_info_t *boot) {
     }
 
     // Initialize BSP SMP boot context and CPU records
-    bh_smp_boot_primary_init(boot);
+    bh_smp_boot_primary_init();
 
     KPRINT("  [SMP] Initializing per-core URPC channels\n");
     if (mk_init_per_core_channels(boot_policy->smp_target_cores, 32U) != 0) {

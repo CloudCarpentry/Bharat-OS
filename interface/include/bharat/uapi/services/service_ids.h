@@ -16,5 +16,6 @@ typedef uint32_t bharat_service_id_t;
 #define BHARAT_SERVICE_VM_MANAGER       4u
 #define BHARAT_SERVICE_NETMGR           10u
 #define BHARAT_SERVICE_NETSTACK         11u
+#define BHARAT_SERVICE_ACCELMGR_V2      30u
 
 #endif // BHARAT_UAPI_SERVICES_SERVICE_IDS_H

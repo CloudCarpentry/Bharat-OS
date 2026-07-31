@@ -3,7 +3,6 @@
 #include <stddef.h>
 #include <kernel/status.h>
 #include <string.h>
-#include <stdio.h>
 #include <stdlib.h>
 
 #include <bharat/uapi/services/service_ids.h>
@@ -17,6 +16,7 @@
 
 #include <bharat/service/service_runtime.h>
 #include <bharat/ipc/ipc.h>
+#include <bharat/runtime/runtime.h>
 
 #include "accelmgr_broker.h"
 
@@ -155,7 +155,7 @@ bharat_status_t bh_service_handle_msg(bh_service_ctx_t *ctx, const bh_msg_t *msg
 int main(int argc, char **argv) {
     (void)argc; (void)argv;
     init_accelmgr();
-    printf("accelmgr: Initializing hardware accelerator abstraction service V2...\n");
+    bharat_runtime_log("accelmgr: Initializing hardware accelerator abstraction service V2...\n");
 
     // Real service start and registration loop!
     bh_service_start_info_t info = {

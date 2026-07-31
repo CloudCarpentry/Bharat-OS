@@ -159,10 +159,10 @@ def execute_package(plan: PackagePlan, repo_root: Path) -> PackageOutputs:
     digest_algo = 0
     digest = b"\x00" * 32
     name_bytes = name.encode("utf-8")[:32].ljust(32, b"\x00")
-    padding = b"\x00" * 28
+    padding = b"\x00" * 20
 
     header = struct.pack(
-        "<IIIIIIIIII32s32s28s",
+        "<IIIIIIIIIII32s32s20s",
         magic, abi_version, header_size, module_kind, payload_offset, payload_size,
         target_arch, elf_class, flags, name_len, digest_algo, digest, name_bytes, padding
     )

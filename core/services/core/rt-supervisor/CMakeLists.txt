@@ -6,4 +6,4 @@ add_executable(rt-supervisor
     rt_supervisor.c
 )
 target_link_libraries(rt-supervisor PRIVATE bharat_user_buildopts bharat_freestanding bharat_syscall)
-target_link_options(rt-supervisor PRIVATE -nostdlib -nostartfiles)
+target_link_options(rt-supervisor PRIVATE -nostdlib -nostartfiles "LINKER:-no-pie")

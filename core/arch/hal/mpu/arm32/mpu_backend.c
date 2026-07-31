@@ -22,14 +22,18 @@ typedef struct {
 // TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include <slab.h>
 
-static prot_domain_t* arm32_mpu_create(void) {
+static prot_domain_ops_t mpu_only_ops_arm32;
+
+static int arm32_mpu_create(prot_domain_t** out_domain) {
+    if (!out_domain) return K_ERR_INVALID_ARG;
+
     prot_domain_t* domain = (prot_domain_t*)kmalloc(sizeof(prot_domain_t)); // Using basic alloc for demo
-    if (!domain) return NULL;
+    if (!domain) return K_ERR_NO_MEMORY;
 
     mpu_backend_state_t* state = (mpu_backend_state_t*)kmalloc(sizeof(mpu_backend_state_t));
     if (!state) {
         kfree(domain);
-        return NULL;
+        return K_ERR_NO_MEMORY;
     }
 
     for (int i = 0; i < MAX_MPU_REGIONS; i++) {
@@ -38,8 +42,10 @@ static prot_domain_t* arm32_mpu_create(void) {
     state->region_count = 0;
 
     domain->mode = PROT_MODE_MPU_ONLY;
+    domain->ops = &mpu_only_ops_arm32;
     domain->backend_state = state;
-    return domain;
+    *out_domain = domain;
+    return K_OK;
 }
 
 static void arm32_mpu_destroy(prot_domain_t* domain) {
@@ -147,7 +153,7 @@ static int arm32_mpu_query_region(prot_domain_t* domain, uintptr_t vaddr, uintpt
     return -1;
 }
 
-prot_domain_ops_t mpu_only_ops_arm32 = {
+static prot_domain_ops_t mpu_only_ops_arm32 = {
     .create = arm32_mpu_create,
     .destroy = arm32_mpu_destroy,
     .activate = arm32_mpu_activate,

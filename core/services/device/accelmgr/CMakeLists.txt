@@ -17,6 +17,7 @@ target_include_directories(accelmgr PRIVATE
 # Link against common runtime library and IPC library
 target_link_libraries(accelmgr PRIVATE
     bharat_libruntime
+    bharat_service_runtime
 )
 
 bharat_configure_userspace_binary(accelmgr)

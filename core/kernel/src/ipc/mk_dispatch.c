@@ -285,3 +285,12 @@ int mk_dispatch_message(mk_channel_t *channel, urpc_msg_t *msg) {
 
     return 0;
 }
+
+int mk_dispatch_legacy_adapter(const bh_mk_wire_message_t *wire) {
+    if (!wire) {
+        return K_ERR_INVALID_ARG;
+    }
+    /* The v1 fabric authentication descriptor cannot be losslessly mapped to
+     * the legacy token field. Reject instead of weakening authorization. */
+    return K_ERR_UNSUPPORTED;
+}
