@@ -13,8 +13,9 @@ option(BHARAT_BUILD_EXPERIMENTAL_SERVICES "Build experimental and scaffold-only 
 
 # Phase 1: Native Service Skeletons
 option(BHARAT_BUILD_USER_SERVICES_STUBS "Build foundational user-space service stubs" OFF)
+add_subdirectory(core/init)
+add_subdirectory(core/rt-supervisor)
 if(BHARAT_BUILD_USER_SERVICES_STUBS AND BHARAT_BUILD_EXPERIMENTAL_SERVICES)
-    add_subdirectory(core/init)
     add_subdirectory(namesvc)
     add_subdirectory(servicemgr)
 endif()

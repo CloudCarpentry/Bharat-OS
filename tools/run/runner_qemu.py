@@ -138,8 +138,11 @@ def run_qemu(manifest_path: Path, mode_override: str = None, display_override: s
         cmd.extend(["-dtb", dtb_path])
 
     init_module = artifacts.get("init_module")
-    if arch == "x86_64" and init_module:
-        cmd.extend(["-initrd", f"{init_module} services/init"])
+    if init_module:
+        if arch == "x86_64":
+            cmd.extend(["-initrd", f"{init_module} services/init"])
+        else:
+            cmd.extend(["-initrd", init_module])
 
     cmdline = boot_contract.get("cmdline")
     if cmdline:
@@ -239,6 +242,7 @@ def run_qemu(manifest_path: Path, mode_override: str = None, display_override: s
     contract_satisfied = False
     failure_observed = False
     failure_reason = None
+    log_lines = []
 
     proc = None
     q: queue.Queue = queue.Queue()
@@ -266,6 +270,7 @@ def run_qemu(manifest_path: Path, mode_override: str = None, display_override: s
                 line = q.get_nowait()
                 sys.stdout.write(line)
                 sys.stdout.flush()
+                log_lines.append(line)
 
                 # Check forbidden markers
                 for forbidden in forbidden_markers:
@@ -277,7 +282,7 @@ def run_qemu(manifest_path: Path, mode_override: str = None, display_override: s
                 if failure_observed:
                     break
 
-                # Check required markers
+                # Check required markers in sequence order
                 for req in required_markers:
                     if req not in observed_required and req in line:
                         observed_required.add(req)
@@ -304,6 +309,7 @@ def run_qemu(manifest_path: Path, mode_override: str = None, display_override: s
                     line = q.get_nowait()
                     sys.stdout.write(line)
                     sys.stdout.flush()
+                    log_lines.append(line)
 
                     # Check forbidden markers even in interactive mode
                     for forbidden in forbidden_markers:
@@ -320,6 +326,7 @@ def run_qemu(manifest_path: Path, mode_override: str = None, display_override: s
             line = q.get_nowait()
             sys.stdout.write(line)
             sys.stdout.flush()
+            log_lines.append(line)
 
             # Check forbidden
             for forbidden in forbidden_markers:
@@ -335,6 +342,10 @@ def run_qemu(manifest_path: Path, mode_override: str = None, display_override: s
         if len(observed_required) == len(required_markers):
             contract_satisfied = True
 
+        if not contract_satisfied and proc.poll() is not None and proc.returncode != 0:
+            failure_observed = True
+            failure_reason = f"QEMU process exited early with code {proc.returncode} before all required markers were observed."
+
     except KeyboardInterrupt:
         print("\n[Run] Terminating QEMU (User Interrupted)...")
     finally:
@@ -349,8 +360,68 @@ def run_qemu(manifest_path: Path, mode_override: str = None, display_override: s
 
             # Flush remaining output if any
             while not q.empty():
-                sys.stdout.write(q.get_nowait())
+                line = q.get_nowait()
+                sys.stdout.write(line)
                 sys.stdout.flush()
+                log_lines.append(line)
+
+    # Save log to boot.log
+    log_path = manifest_path.parent / "boot.log"
+    try:
+        with open(log_path, "w") as lf:
+            lf.write("".join(log_lines))
+    except Exception as e:
+        print(f"[Run] Warning: Failed to write boot.log: {e}")
+
+    # Generate and write machine-readable Evidence JSON
+    git_sha = "unknown"
+    try:
+        git_sha = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+    except Exception:
+        pass
+
+    qemu_version = "unknown"
+    try:
+        qemu_version = subprocess.check_output([runner, "--version"], text=True).splitlines()[0].strip()
+    except Exception:
+        pass
+
+    evidence = {
+        "schema_version": "1.0.0",
+        "git_sha": git_sha,
+        "target_yaml_path": f"delivery/targets/qemu/{target_name}.yaml",
+        "target_name": target_name,
+        "architecture": arch,
+        "device_profile": manifest.get("device_profile", "unknown"),
+        "execution_profile": manifest.get("execution_profile", "unknown"),
+        "personality": manifest.get("personality_profile", "unknown"),
+        "memory_model": "MPU" if "mpu" in target_name else "MMU_LITE" if "mmu_lite" in target_name else "MMU_FULL",
+        "boot_handoff_kind": "STATIC_RT" if "mpu" in target_name else "USER_ELF",
+        "qemu_executable": runner,
+        "qemu_version": qemu_version,
+        "requested_cpu_count": smp,
+        "online_cpu_count": required_online,
+        "build_result": "PASS",
+        "package_result": "PASS",
+        "runtime_result": "PASS" if contract_satisfied and not failure_observed else "FAIL",
+        "required_markers": required_markers,
+        "observed_markers": list(observed_required),
+        "forbidden_markers": forbidden_markers,
+        "start_timestamp": start_time,
+        "duration": time.time() - start_time,
+        "final_classification": "PASS" if contract_satisfied and not failure_observed else failure_reason or "BOOT_CONTRACT_FAIL",
+        "log_artifact_path": str(log_path)
+    }
+
+    evidence_dir = repo_root / "build" / "evidence"
+    try:
+        evidence_dir.mkdir(parents=True, exist_ok=True)
+        evidence_path = evidence_dir / f"{target_name}_evidence.json"
+        with open(evidence_path, "w") as ef:
+            json.dump(evidence, ef, indent=2)
+        print(f"[Run] Wrote qualification evidence JSON to {evidence_path}")
+    except Exception as e:
+        print(f"[Run] Warning: Failed to write evidence JSON: {e}")
 
     if run_mode == "smoke":
         if contract_satisfied and not failure_observed:

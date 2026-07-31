@@ -8,9 +8,11 @@
 
 
 static bharat_handle_t g_bootstrap_cap = BHARAT_INVALID_HANDLE;
+static const bharat_user_startup_t *g_startup_ptr = NULL;
 
 void bharat_runtime_init(const void *startup_ptr) {
     // Initialize memory, TLS, thread structs
+    g_startup_ptr = (const bharat_user_startup_t *)startup_ptr;
     const bharat_user_startup_t *startup = (const bharat_user_startup_t *)startup_ptr;
     if (startup) {
         g_bootstrap_cap = startup->bootstrap.bootstrap_cap;
@@ -23,6 +25,10 @@ void bharat_runtime_shutdown(void) {
 
 bharat_handle_t bharat_runtime_get_bootstrap_cap(void) {
     return g_bootstrap_cap;
+}
+
+const bharat_user_startup_t *bharat_runtime_get_startup(void) {
+    return g_startup_ptr;
 }
 
 static size_t runtime_strlen(const char *s) {

@@ -9,10 +9,18 @@ PYTHON_BIN="${PYTHON_BIN:-python3}"
 
 TARGETS=(
   "delivery/targets/qemu/x86_64_desktop_headless.yaml|required"
+  "delivery/targets/qemu/x86_64_rtos_mmu_lite_headless.yaml|required"
   "delivery/targets/qemu/arm64_desktop_headless.yaml|required"
+  "delivery/targets/qemu/arm64_rtos_mmu_lite_headless.yaml|required"
   "delivery/targets/qemu/riscv64_desktop_headless.yaml|required"
+  "delivery/targets/qemu/riscv64_rtos_mmu_lite_headless.yaml|required"
   "delivery/targets/qemu/arm32_mmu_lite_headless.yaml|required"
-  "delivery/targets/qemu/riscv32_mmu_lite_headless.yaml|experimental"
+  "delivery/targets/qemu/arm32_rtos_mpu_headless.yaml|required"
+  "delivery/targets/qemu/riscv32_mmu_lite_headless.yaml|required"
+  "delivery/targets/qemu/riscv32_rtos_mpu_headless.yaml|required"
+  "delivery/targets/qemu/x86_64_desktop_smp_headless.yaml|required"
+  "delivery/targets/qemu/arm64_desktop_smp_headless.yaml|required"
+  "delivery/targets/qemu/riscv64_desktop_smp_headless.yaml|required"
 )
 
 pass=0
@@ -22,7 +30,7 @@ fail=0
 run_target() {
   local yaml="$1"
   local lane="$2"
-  local cmd=("$PYTHON_BIN" tools/build.py all --target-yaml "$yaml")
+  local cmd=("$PYTHON_BIN" tools/build.py all --target-yaml "$yaml" --smoke)
 
   echo "[qemu-matrix] lane=$lane target=$yaml"
 
@@ -31,7 +39,8 @@ run_target() {
   local rc=$?
   set -e
 
-  if [[ "$rc" -eq 0 || "$rc" -eq 124 ]]; then
+  # Strict exit code handling: only 0 is accepted as success.
+  if [[ "$rc" -eq 0 ]]; then
     echo "[qemu-matrix] PASS target=$yaml rc=$rc"
     ((pass+=1))
     return 0
