@@ -510,4 +510,79 @@ target_include_directories(test_accel_dispatch PRIVATE
 )
 add_test(NAME host_test_accel_dispatch COMMAND test_accel_dispatch)
 
+add_executable(test_accel_handle_security
+    accel/test_accel_handle_security.c
+    ../../core/services/device/accelmgr/accelmgr_broker.c
+    ../../core/drivers/accel/virt_accel.c
+    ../../core/drivers/accel/virt/virt_gpu.c
+    ../../core/lib/cap/src/cap_validate.c
+    accel/fake_accelmgr_ipc.c
+)
+target_include_directories(test_accel_handle_security PRIVATE
+    ../../core/kernel/include
+    ../../interface/include
+    ../../interface
+    ../../core/lib/include
+    ../../core/lib/cap/include
+    ../../core/drivers/accel
+    ../../core/drivers/accel/virt
+    ../../core/services/device/accelmgr
+    ../../core/services/common/runtime/include
+    ../../core/lib/ipc/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/accel
+    ../../
+)
+target_compile_definitions(test_accel_handle_security PRIVATE ACCELMGR_NO_MAIN=1)
+add_test(NAME host_test_accel_handle_security COMMAND test_accel_handle_security)
+
+add_executable(test_accelmgr_broker
+    accel/test_accelmgr_broker.c
+    ../../core/services/device/accelmgr/accelmgr_broker.c
+    ../../core/drivers/accel/virt_accel.c
+    ../../core/drivers/accel/virt/virt_gpu.c
+    ../../core/lib/cap/src/cap_validate.c
+    accel/fake_accelmgr_ipc.c
+)
+target_include_directories(test_accelmgr_broker PRIVATE
+    ../../core/kernel/include
+    ../../interface/include
+    ../../interface
+    ../../core/lib/include
+    ../../core/lib/cap/include
+    ../../core/drivers/accel
+    ../../core/drivers/accel/virt
+    ../../core/services/device/accelmgr
+    ../../core/services/common/runtime/include
+    ../../core/lib/ipc/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/accel
+    ../../
+)
+target_compile_definitions(test_accelmgr_broker PRIVATE ACCELMGR_NO_MAIN=1)
+add_test(NAME host_test_accelmgr_broker COMMAND test_accelmgr_broker)
+
+add_executable(test_accel_broker_e2e
+    accel/test_accel_broker_e2e.c
+    ../../core/services/device/accelmgr/accelmgr_broker.c
+    ../../core/drivers/accel/virt_accel.c
+    ../../core/drivers/accel/virt/virt_gpu.c
+    ../../core/lib/cap/src/cap_validate.c
+    accel/fake_accelmgr_ipc.c
+)
+target_include_directories(test_accel_broker_e2e PRIVATE
+    ../../core/kernel/include
+    ../../interface/include
+    ../../interface
+    ../../core/lib/include
+    ../../core/lib/cap/include
+    ../../core/drivers/accel
+    ../../core/drivers/accel/virt
+    ../../core/services/device/accelmgr
+    ../../core/services/common/runtime/include
+    ../../core/lib/ipc/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/accel
+    ../../
+)
+target_compile_definitions(test_accel_broker_e2e PRIVATE ACCELMGR_NO_MAIN=1)
+add_test(NAME host_test_accel_broker_e2e COMMAND test_accel_broker_e2e)
+
 add_subdirectory(ipc)
