@@ -202,11 +202,11 @@ The ABI command is mandatory for syscall/ABI changes and optional otherwise.
 Before declaring a kernel, HAL, architecture, memory, scheduler, capability, IPC/uRPC, driver, build-system, or configuration task complete, run:
 
 ```bash
-./build.sh all --target x86_64_desktop_headless
-./build.sh all --target arm64_desktop_headless
-./build.sh all --target riscv64_desktop_headless
-./build.sh all --target arm32_embedded_headless
-./build.sh all --target powerpc_server_headless
+./build.sh all --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml --smoke
+./build.sh all --target-yaml delivery/targets/qemu/arm64_desktop_headless.yaml --smoke
+./build.sh all --target-yaml delivery/targets/qemu/riscv64_desktop_headless.yaml --smoke
+./build.sh all --target-yaml delivery/targets/qemu/arm32_mmu_lite_headless.yaml --smoke
+./build.sh all --target-yaml delivery/targets/qemu/riscv32_mmu_lite_headless.yaml --smoke
 ```
 
 Do not silently replace a required target with a different target. If a required target is not implemented in the current branch, record the gate as `BLOCKED: target unavailable` and do not claim full-matrix completion.
