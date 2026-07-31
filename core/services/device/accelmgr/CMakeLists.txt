@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.20)
 project(accelmgr C ASM)
 
 # Add source files
-set(SOURCES main.c)
+set(SOURCES main.c accelmgr_broker.c)
 
 # Create executable
 add_executable(accelmgr ${SOURCES})

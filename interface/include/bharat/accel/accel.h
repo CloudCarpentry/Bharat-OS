@@ -21,6 +21,7 @@ typedef enum {
     BHARAT_ACCEL_CAP_SIMD_NEON = 1 << 7, // ARM NEON SIMD optimizations
     BHARAT_ACCEL_CAP_SIMD_AVX  = 1 << 8, // x86_64 AVX optimizations
     BHARAT_ACCEL_CAP_SIMD_RVV  = 1 << 9, // RISC-V Vector Extensions (RVV)
+    BHARAT_ACCEL_CAP_GPU       = 1 << 10, // Virtual/Real GPU capability
 } bharat_accel_capability_t;
 
 /**
@@ -45,6 +46,9 @@ struct bharat_accel_device;
  */
 typedef enum {
     VIRT_ACCEL_OP_RELU_F32 = 1,
+    VIRT_ACCEL_OP_RELU_INT8 = 2,
+    VIRT_ACCEL_OP_GPU_ADD_ONE_F32 = 3,
+    VIRT_ACCEL_OP_GPU_ADD_ONE_INT8 = 4,
 } virt_accel_opcode_t;
 
 typedef struct {
@@ -56,6 +60,14 @@ typedef struct {
     float *output;
     size_t output_elements;
 } virt_accel_job_t;
+
+typedef struct {
+    uint32_t opcode;
+    const void *input;
+    size_t input_elements;
+    void *output;
+    size_t output_elements;
+} virt_gpu_job_t;
 
 /**
  * Accelerator Operations
@@ -73,6 +85,7 @@ typedef struct {
 
     // Advanced compute
     int (*submit_npu_job)(struct bharat_accel_device *dev, void *job_descriptor);
+    int (*submit_gpu_job)(struct bharat_accel_device *dev, void *job_descriptor);
 } bharat_accel_device_ops_t;
 
 /**
