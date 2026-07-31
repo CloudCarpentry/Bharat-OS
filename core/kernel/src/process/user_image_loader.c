@@ -1,5 +1,6 @@
 #include "process/user_image_loader.h"
 #include "bharat/elf/elf_parser.h"
+#include "bharat/elf/elf_load_plan.h"
 #include "mm.h"
 #include "mm/physmap.h"
 #include "mm/vm_mapping.h"
@@ -45,56 +46,24 @@ kstatus_t bh_user_image_load(
         return K_ERR_INVALID_ARG;
     }
 
-    elf_summary_t summary;
-    elf_parse_status_t p_status = elf_parse_image((const uint8_t *)image->bytes, image->size, &summary);
-    if (p_status != ELF_PARSE_OK) {
-        console_write_raw("[LOADER] ELF parse failed\n", 26);
+    bh_user_image_plan_v1_t plan;
+    int plan_res = bh_elf_generate_load_plan((const uint8_t *)image->bytes, image->size, aspace->user_base, aspace->user_limit, &plan);
+    if (plan_res != BH_ELF_PLAN_SUCCESS) {
+        console_write_raw("[LOADER] ELF generate load plan failed\n", 39);
         return K_ERR_INVALID_ARG;
     }
 
-    console_write_raw("[BOOTSTRAP] ELF validated\n", 26);
+    console_write_raw("[BOOTSTRAP] ELF validated via load plan\n", 40);
 
-    size_t load_count = 0;
-    p_status = elf_get_load_segment_count((const uint8_t *)image->bytes, image->size, &load_count);
-    if (p_status != ELF_PARSE_OK || load_count == 0) {
-        return K_ERR_INVALID_ARG;
-    }
+    for (uint32_t i = 0; i < plan.segment_count; ++i) {
+        bh_elf_load_segment_v1_t *seg = &plan.segments[i];
 
-    // Allocate an array for segments
-    elf_segment_t segments[16];
-    if (load_count > 16) {
-        return K_ERR_NO_MEMORY;
-    }
-
-    size_t extracted = 0;
-    p_status = elf_extract_load_segments((const uint8_t *)image->bytes, image->size, segments, 16, &extracted);
-    if (p_status != ELF_PARSE_OK || extracted != load_count) {
-        return K_ERR_INVALID_ARG;
-    }
-
-    for (size_t i = 0; i < extracted; ++i) {
-        elf_segment_t *seg = &segments[i];
-
-        uint32_t prot = VM_PROT_USER;
-        if (seg->flags & 4) prot |= VM_PROT_READ; // PF_R
-        if (seg->flags & 2) prot |= VM_PROT_WRITE; // PF_W
-        if (seg->flags & 1) prot |= VM_PROT_EXEC; // PF_X
-
-        // W^X Enforcement
-        if ((prot & VM_PROT_WRITE) && (prot & VM_PROT_EXEC)) {
-            console_write_raw("[LOADER] Rejecting W^X segment\n", 31);
-            return K_ERR_DENIED;
-        }
-
+        uint32_t prot = seg->prot;
         uint64_t start_addr = seg->virtual_address;
         uint64_t aligned_start = start_addr & ~(PAGE_SIZE - 1);
         uint64_t end_addr = start_addr + seg->memory_size;
         uint64_t aligned_end = (end_addr + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
         uint64_t map_size = aligned_end - aligned_start;
-
-        if (aligned_start < aspace->user_base || aligned_end > aspace->user_limit) {
-            return K_ERR_INVALID_ARG;
-        }
 
         uint32_t map_flags = VM_MAP_FIXED;
         if (prot & VM_PROT_EXEC) {
@@ -106,20 +75,14 @@ kstatus_t bh_user_image_load(
         if (kst != K_OK) return kst;
 
         // Allocate anonymous physical memory and map it (using naive individual page mapping for now)
-        // Alternatively, we could create an anonymous vm_object, attach it, and let page faults handle it.
-        // For early bootstrap, eager mapping is often safer.
         for (uint64_t off = 0; off < map_size; off += PAGE_SIZE) {
             void *page_ptr = pmm_alloc_page_ex(MEM_NORMAL, PMM_ALLOC_ZERO);
             if (!page_ptr) return K_ERR_NO_MEMORY;
 
-            // Map into address space (bypassing full object layer for this raw bootstrap load)
-            // Note: A more complete implementation should use aspace_map_region or prot_domain map.
-            // But we can just use the prot_domain directly.
             prot_domain_map_region(aspace->prot_domain, aligned_start + off, (phys_addr_t)(uintptr_t)page_ptr, PAGE_SIZE, prot);
         }
 
         // Copy file data
-        // We must map it or use physmap.
         for (uint64_t off = 0; off < map_size; off += PAGE_SIZE) {
              uintptr_t paddr = 0;
              uint32_t out_prot = 0;
@@ -142,7 +105,6 @@ kstatus_t bh_user_image_load(
              }
         }
 
-        // BSS is already zeroed by PMM_ALLOC_ZERO
         console_write_raw("[BOOTSTRAP] PT_LOAD mapped\n", 27);
     }
 
@@ -199,7 +161,7 @@ kstatus_t bh_user_image_load(
     prot_domain_map_region(aspace->prot_domain, startup_va, (phys_addr_t)(uintptr_t)startup_phys, PAGE_SIZE, VM_PROT_READ | VM_PROT_USER);
     console_write_raw("[BOOTSTRAP] bootstrap capabilities installed\n", 45);
 
-    out->entry_point = summary.entry_point;
+    out->entry_point = plan.entry_point;
     out->user_stack_top = stack_top;
     out->startup_va = startup_va;
     out->aspace = aspace;

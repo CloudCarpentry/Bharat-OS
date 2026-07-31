@@ -274,6 +274,131 @@ add_executable(test_vm_manager test_vm_manager.c ../../core/services/vm_manager/
 target_include_directories(test_vm_manager PRIVATE ../../include ../../core/lib/ipc/include ../../core/lib/cap/include ../../kernel/include)
 add_test(NAME host_test_vm_manager COMMAND test_vm_manager)
 
+# Modern PROCVM-P0-001 Vertical Slice Tests
+add_executable(test_elf_load_plan
+    process_vm/test_elf_load_plan.c
+    ../../core/lib/elf/elf_load_plan.c
+    ../../core/lib/elf/elf_parser.c
+)
+target_include_directories(test_elf_load_plan PRIVATE
+    ../../include
+    ../../interface/include
+)
+target_link_libraries(test_elf_load_plan PRIVATE bharat_freestanding)
+add_test(NAME host_test_elf_load_plan COMMAND test_elf_load_plan)
+
+add_executable(test_pm_handle_lifecycle
+    process_vm/test_pm_handle_lifecycle.c
+    ../../core/lib/handle/handle_table.c
+)
+target_include_directories(test_pm_handle_lifecycle PRIVATE
+    ../../include
+    ../../interface/include
+    ../../core/lib/handle
+)
+target_link_libraries(test_pm_handle_lifecycle PRIVATE bharat_freestanding)
+add_test(NAME host_test_pm_handle_lifecycle COMMAND test_pm_handle_lifecycle)
+
+add_executable(test_vm_handle_lifecycle
+    process_vm/test_vm_handle_lifecycle.c
+    ../../core/lib/handle/handle_table.c
+)
+target_include_directories(test_vm_handle_lifecycle PRIVATE
+    ../../include
+    ../../interface/include
+    ../../core/lib/handle
+)
+target_link_libraries(test_vm_handle_lifecycle PRIVATE bharat_freestanding)
+add_test(NAME host_test_vm_handle_lifecycle COMMAND test_vm_handle_lifecycle)
+
+add_executable(test_pm_contract_v1
+    process_vm/test_pm_contract_v1.c
+)
+target_include_directories(test_pm_contract_v1 PRIVATE
+    ../../include
+    ../../interface/include
+)
+target_link_libraries(test_pm_contract_v1 PRIVATE bharat_freestanding)
+add_test(NAME host_test_pm_contract_v1 COMMAND test_pm_contract_v1)
+
+add_executable(test_pm_spawn_transaction
+    process_vm/test_pm_spawn_transaction.c
+    ../../core/services/process_manager/process_manager.c
+    ../../core/lib/handle/handle_table.c
+    ../../core/lib/elf/elf_load_plan.c
+    ../../core/lib/elf/elf_parser.c
+)
+target_include_directories(test_pm_spawn_transaction PRIVATE
+    ../../include
+    ../../interface/include
+    ../../kernel/include
+    ../../lib/handle
+)
+target_link_libraries(test_pm_spawn_transaction PRIVATE bharat_freestanding)
+add_test(NAME host_test_pm_spawn_transaction COMMAND test_pm_spawn_transaction)
+
+add_executable(test_pm_wait_reap
+    process_vm/test_pm_wait_reap.c
+    ../../core/services/process_manager/process_manager.c
+    ../../core/lib/handle/handle_table.c
+    ../../core/lib/elf/elf_load_plan.c
+    ../../core/lib/elf/elf_parser.c
+)
+target_include_directories(test_pm_wait_reap PRIVATE
+    ../../include
+    ../../interface/include
+    ../../kernel/include
+    ../../lib/handle
+)
+target_link_libraries(test_pm_wait_reap PRIVATE bharat_freestanding)
+add_test(NAME host_test_pm_wait_reap COMMAND test_pm_wait_reap)
+
+add_executable(test_vm_authority_integration
+    process_vm/test_vm_authority_integration.c
+    ../../core/services/vm_manager/vm_manager.c
+    ../../core/lib/handle/handle_table.c
+)
+target_include_directories(test_vm_authority_integration PRIVATE
+    ../../include
+    ../../interface/include
+    ../../kernel/include
+    ../../lib/handle
+)
+target_link_libraries(test_vm_authority_integration PRIVATE bharat_freestanding)
+add_test(NAME host_test_vm_authority_integration COMMAND test_vm_authority_integration)
+
+add_executable(test_procvm_e2e
+    process_vm/test_procvm_e2e.c
+    ../../core/services/process_manager/process_manager.c
+    ../../core/lib/handle/handle_table.c
+    ../../core/lib/elf/elf_load_plan.c
+    ../../core/lib/elf/elf_parser.c
+)
+target_include_directories(test_procvm_e2e PRIVATE
+    ../../include
+    ../../interface/include
+    ../../kernel/include
+    ../../lib/handle
+)
+target_link_libraries(test_procvm_e2e PRIVATE bharat_freestanding)
+add_test(NAME host_test_procvm_e2e COMMAND test_procvm_e2e)
+
+add_executable(test_procvm_stress
+    process_vm/test_procvm_stress.c
+    ../../core/services/process_manager/process_manager.c
+    ../../core/lib/handle/handle_table.c
+    ../../core/lib/elf/elf_load_plan.c
+    ../../core/lib/elf/elf_parser.c
+)
+target_include_directories(test_procvm_stress PRIVATE
+    ../../include
+    ../../interface/include
+    ../../kernel/include
+    ../../lib/handle
+)
+target_link_libraries(test_procvm_stress PRIVATE bharat_freestanding)
+add_test(NAME host_test_procvm_stress COMMAND test_procvm_stress)
+
 add_executable(test_servicemgr test_servicemgr.c ../../core/services/servicemgr/servicemgr.c ../../core/lib/ipc/src/ipc.c)
 target_include_directories(test_servicemgr PRIVATE ../../include ../../core/lib/ipc/include ../../core/lib/cap/include ../../kernel/include)
 add_test(NAME host_test_servicemgr COMMAND test_servicemgr)
