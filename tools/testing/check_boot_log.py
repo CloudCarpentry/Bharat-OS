@@ -7,17 +7,17 @@ import yaml
 from pathlib import Path
 
 # Default suspicious patterns for --strict mode
-STRICT_SUSPICIOUS_PATTERNS = [
-    r"\bPANIC\b",
-    r"\bASSERT\b",
-    r"\bFAULT\b",
-    r"General Protection Fault",
-    r"page fault",
-    r"triple fault",
-    r"Unhandled exception",
-    r"kernel oops",
-    r"segmentation fault",
-]
+STRICT_SUSPICIOUS_PATTERNS = (
+    re.compile(r"\bPANIC\b"),
+    re.compile(r"\bASSERT\b"),
+    re.compile(r"\bFAULT\b"),
+    re.compile(r"General Protection Fault"),
+    re.compile(r"page fault"),
+    re.compile(r"triple fault"),
+    re.compile(r"Unhandled exception"),
+    re.compile(r"kernel oops"),
+    re.compile(r"segmentation fault"),
+)
 
 class BootLogParser:
     def __init__(self, contract, target_name, strict=False):
@@ -164,7 +164,7 @@ class BootLogParser:
                 is_allowed_skip = any(self._matches(line, m) for m in self.allowed_skip_markers)
                 if not is_allowed_skip:
                     for pattern in STRICT_SUSPICIOUS_PATTERNS:
-                        if re.search(pattern, line):
+                        if pattern.search(line):
                             # Ensure it's not one of the explicitly forbidden ones we already caught
                             if not any(self._matches(line, m) for m in self.forbidden_markers):
                                 results["suspicious_found"].append(line)

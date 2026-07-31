@@ -1,0 +1,7 @@
+BOOT: kernel_main reached
+BOOT: pmm initialized
+BOOT: vmm initialized
+[BOOT] Memory subsystem initialization complete
+[BOOT] Platform services initialization complete
+[BOOT] Runtime initialization complete
+[BOOT] Spawning first system service (sysmgr)...
