@@ -1,433 +1,124 @@
 #include "hal/hal_irq.h"
-#include "hal/hal.h"
+#include "irq/bh_irq.h"
+#include "device/irq_domain.h"
 #include "kernel_safety.h"
 #include "spinlock.h"
-#include "device/irq_domain.h"
-#if __has_include("bharat_config.h")
-#include "bharat_config.h"
-#endif
 
-#include <stddef.h>
-#include <stdint.h>
-#include <stdbool.h>
+static irq_controller_ops_t* g_hal_ops[256];
+static bh_irq_controller_ops_t g_adapted_ops[256];
 
-#define HAL_MAX_IRQS 256U
-#define HAL_MAX_SHARED_HANDLERS 4U
+static void adapt_mask(uint32_t irq) {
+    if (irq < 256 && g_hal_ops[irq] && g_hal_ops[irq]->mask) {
+        g_hal_ops[irq]->mask(irq);
+    }
+}
 
-// --- IRQ Handler Descriptor ---
-typedef struct irq_action {
-    hal_irq_handler_t handler;
-    void* ctx;
-    void* dev_id;
-    const char* name;
-    uint32_t flags;
-    uint64_t dispatch_count;
-    bool in_use;
-} irq_action_t;
+static void adapt_unmask(uint32_t irq) {
+    if (irq < 256 && g_hal_ops[irq] && g_hal_ops[irq]->unmask) {
+        g_hal_ops[irq]->unmask(irq);
+    }
+}
 
-// --- IRQ Descriptor ---
-typedef struct irq_desc {
-    uint32_t irq;
-    uint32_t flags;        // Cumulative flags for the descriptor (e.g., IRQF_SHARED)
-    uint64_t dispatch_count;
-    uint64_t handled_count;
-    uint64_t spurious_count;
+static void adapt_ack(uint32_t irq) {
+    if (irq < 256 && g_hal_ops[irq] && g_hal_ops[irq]->ack) {
+        g_hal_ops[irq]->ack(irq);
+    }
+}
 
-    // Affinity/Routing metadata
-    irq_affinity_mask_t affinity;
-    uint32_t last_handled_cpu;
-    irq_controller_ops_t* controller_ops;
+static void adapt_eoi(uint32_t irq) {
+    if (irq < 256 && g_hal_ops[irq] && g_hal_ops[irq]->eoi) {
+        g_hal_ops[irq]->eoi(irq);
+    }
+}
 
-    // Fixed array of handlers for simplicity; could use linked list if needed
-    irq_action_t actions[HAL_MAX_SHARED_HANDLERS];
-    uint32_t action_count;
+static int adapt_set_affinity(uint32_t irq, bh_irq_affinity_t affinity) {
+    if (irq < 256 && g_hal_ops[irq] && g_hal_ops[irq]->set_affinity) {
+        irq_affinity_mask_t mask = { .mask = affinity.mask };
+        return g_hal_ops[irq]->set_affinity(irq, mask);
+    }
+    return -1;
+}
 
-    // Add lock (using atomic variable for simple lock-free sync if spinlocks are complex, but let's assume spinlock_t exists)
-    spinlock_t lock;
-} irq_desc_t;
-
-static irq_desc_t g_irq_descriptors[HAL_MAX_IRQS];
+static int adapt_compose_msi(uint32_t irq, uint64_t* address, uint32_t* data) {
+    if (irq < 256 && g_hal_ops[irq] && g_hal_ops[irq]->compose_msi_message) {
+        return g_hal_ops[irq]->compose_msi_message(irq, address, data);
+    }
+    return -1;
+}
 
 void hal_irq_generic_init_boot(void) {
-    for (uint32_t i = 0; i < HAL_MAX_IRQS; i++) {
-        g_irq_descriptors[i].irq = i;
-        g_irq_descriptors[i].flags = 0;
-        g_irq_descriptors[i].dispatch_count = 0;
-        g_irq_descriptors[i].handled_count = 0;
-        g_irq_descriptors[i].spurious_count = 0;
-        g_irq_descriptors[i].action_count = 0;
-        g_irq_descriptors[i].affinity.mask = ~0ULL; // Default to all online CPUs
-        g_irq_descriptors[i].last_handled_cpu = (uint32_t)-1;
-        g_irq_descriptors[i].controller_ops = NULL;
-
-        spin_lock_init(&g_irq_descriptors[i].lock);
-
-        for (uint32_t j = 0; j < HAL_MAX_SHARED_HANDLERS; j++) {
-            g_irq_descriptors[i].actions[j].in_use = false;
-        }
+    bh_irq_init_boot();
+    for (uint32_t i = 0; i < 256; i++) {
+        g_hal_ops[i] = NULL;
     }
 }
 
 int hal_interrupt_register(uint32_t irq, hal_irq_handler_t handler, void* ctx, uint32_t flags, const char* name, void* dev_id) {
-    if (irq >= HAL_MAX_IRQS || !handler || !dev_id) {
-        return -1;
-    }
-
-    irq_desc_t* desc = &g_irq_descriptors[irq];
-
-    spin_lock(&desc->lock);
-
-    // If IRQ already has handlers, check sharing rules
-    if (desc->action_count > 0) {
-        // Can only share if BOTH the existing line is shared AND the new request is shared
-        if (!(desc->flags & IRQF_SHARED) || !(flags & IRQF_SHARED)) {
-            spin_unlock(&desc->lock);
-            return -1; // Registration rejected
-        }
-    }
-
-    // Check for duplicate dev_id
-    for (uint32_t i = 0; i < HAL_MAX_SHARED_HANDLERS; i++) {
-        if (desc->actions[i].in_use && desc->actions[i].dev_id == dev_id) {
-            spin_unlock(&desc->lock);
-            return -1; // Duplicate dev_id
-        }
-    }
-
-    // Find an empty slot
-    int slot = -1;
-    for (uint32_t i = 0; i < HAL_MAX_SHARED_HANDLERS; i++) {
-        if (!desc->actions[i].in_use) {
-            slot = i;
-            break;
-        }
-    }
-
-    if (slot == -1) {
-        spin_unlock(&desc->lock);
-        return -1; // No more slots
-    }
-
-    desc->actions[slot].handler = handler;
-    desc->actions[slot].ctx = ctx;
-    desc->actions[slot].dev_id = dev_id;
-    desc->actions[slot].name = name;
-    desc->actions[slot].flags = flags;
-    desc->actions[slot].dispatch_count = 0;
-    desc->actions[slot].in_use = true;
-
-    desc->action_count++;
-    if (desc->action_count == 1) {
-        desc->flags = flags; // First handler sets the baseline flags
-    } else {
-        desc->flags |= flags;
-    }
-
-    spin_unlock(&desc->lock);
-    return 0;
+    bh_irq_handle_t h;
+    kstatus_t status = bh_irq_register(irq, (bh_irq_handler_t)handler, ctx, flags, name, dev_id, &h);
+    return (status == K_OK) ? 0 : -1;
 }
 
 int hal_interrupt_unregister(uint32_t irq, void* dev_id) {
-    if (irq >= HAL_MAX_IRQS || !dev_id) {
-        return -1;
-    }
-
-    irq_desc_t* desc = &g_irq_descriptors[irq];
-    int status = -1;
-
-    spin_lock(&desc->lock);
-
-    for (uint32_t i = 0; i < HAL_MAX_SHARED_HANDLERS; i++) {
-        if (desc->actions[i].in_use && desc->actions[i].dev_id == dev_id) {
-            desc->actions[i].in_use = false;
-            desc->actions[i].handler = NULL;
-            desc->actions[i].ctx = NULL;
-            desc->actions[i].dev_id = NULL;
-            desc->actions[i].name = NULL;
-            desc->actions[i].flags = 0;
-
-            desc->action_count--;
-            if (desc->action_count == 0) {
-                desc->flags = 0;
-            }
-
-            status = 0;
-            break;
-        }
-    }
-
-    spin_unlock(&desc->lock);
-    return status;
+    bh_irq_desc_t* desc = bh_irq_get_descriptor(irq);
+    if (!desc) return -1;
+    bh_irq_handle_t h = bh_irq_make_handle(irq, desc->generation, 0, 1);
+    kstatus_t status = bh_irq_unregister(h, dev_id);
+    return (status == K_OK) ? 0 : -1;
 }
 
 void hal_interrupt_dispatch(uint32_t irq) {
-    if (irq >= HAL_MAX_IRQS) {
-        return;
-    }
-
-    irq_desc_t* desc = &g_irq_descriptors[irq];
-
-    // In a real dispatch, you wouldn't typically lock if the IRQ context is non-preemptible,
-    // but for shared lists that can be modified, a brief lock or RCU-like protection is needed.
-    // For simplicity, we use spin_lock.
-    spin_lock(&desc->lock);
-
-    desc->dispatch_count++;
-
-    bool handled = false;
-    for (uint32_t i = 0; i < HAL_MAX_SHARED_HANDLERS; i++) {
-        if (desc->actions[i].in_use && desc->actions[i].handler) {
-            irq_return_t ret = desc->actions[i].handler(desc->actions[i].ctx);
-            desc->actions[i].dispatch_count++;
-            if (ret == IRQ_HANDLED || ret == IRQ_WAKE_DEFERRED) {
-                handled = true;
-            }
-        }
-    }
-
-    if (handled) {
-        desc->handled_count++;
-    } else {
-        desc->spurious_count++;
-    }
-
-    spin_unlock(&desc->lock);
+    bh_irq_dispatch(irq);
 }
 
 uint64_t hal_interrupt_get_dispatch_count(uint32_t irq) {
-    if (irq >= HAL_MAX_IRQS) {
-        return 0U;
-    }
-
-    uint64_t count = 0;
-    irq_desc_t* desc = &g_irq_descriptors[irq];
-
-    spin_lock(&desc->lock);
-    count = desc->dispatch_count;
-    spin_unlock(&desc->lock);
-
-    return count;
+    bh_irq_desc_t* desc = bh_irq_get_descriptor(irq);
+    return desc ? desc->dispatch_count : 0;
 }
 
 int hal_interrupt_is_registered(uint32_t irq) {
-    if (irq >= HAL_MAX_IRQS) {
-        return 0;
-    }
-
-    int is_reg = 0;
-    irq_desc_t* desc = &g_irq_descriptors[irq];
-
-    spin_lock(&desc->lock);
-    is_reg = (desc->action_count > 0) ? 1 : 0;
-    spin_unlock(&desc->lock);
-
-    return is_reg;
+    return bh_irq_is_registered(irq) ? 1 : 0;
 }
 
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "arch/arch_caps.h"
-
-// --- Affinity Mask API ---
 int hal_irq_set_affinity(uint32_t irq, irq_affinity_mask_t mask) {
-    if (!arch_has_cap(ARCH_CAP_ADV_IRQ_ROUTING)) {
-        return -1;
-    }
-
-    if (irq >= HAL_MAX_IRQS || mask.mask == 0) {
-        return -1;
-    }
-
-    irq_desc_t* desc = &g_irq_descriptors[irq];
-    irq_controller_ops_t* controller_ops = NULL;
-
-    spin_lock(&desc->lock);
-    controller_ops = desc->controller_ops;
-    desc->affinity = mask;
-    spin_unlock(&desc->lock);
-
-    // Apply routing in hardware if the backend supports it.
-    // Non-breaking behavior: affinity metadata is always recorded even when
-    // hardware programming is unavailable.
-    if (controller_ops && controller_ops->set_affinity) {
-        if (controller_ops->set_affinity(irq, mask) != 0) {
-            return -1;
-        }
-    }
-    return 0;
+    bh_irq_desc_t* desc = bh_irq_get_descriptor(irq);
+    if (!desc) return -1;
+    bh_irq_handle_t h = bh_irq_make_handle(irq, desc->generation, 0, 1);
+    bh_irq_affinity_t aff = { .mask = mask.mask };
+    kstatus_t status = bh_irq_set_affinity(h, aff);
+    return (status == K_OK) ? 0 : -1;
 }
 
 int hal_irq_get_affinity(uint32_t irq, irq_affinity_mask_t* mask) {
-    if (irq >= HAL_MAX_IRQS || !mask) {
-        return -1;
+    if (!mask) return -1;
+    bh_irq_desc_t* desc = bh_irq_get_descriptor(irq);
+    if (!desc) return -1;
+    bh_irq_handle_t h = bh_irq_make_handle(irq, desc->generation, 0, 1);
+    bh_irq_affinity_t aff;
+    kstatus_t status = bh_irq_get_affinity(h, &aff);
+    if (status == K_OK) {
+        mask->mask = aff.mask;
+        return 0;
     }
-
-    irq_desc_t* desc = &g_irq_descriptors[irq];
-
-    spin_lock(&desc->lock);
-    *mask = desc->affinity;
-    spin_unlock(&desc->lock);
-
-    return 0;
+    return -1;
 }
 
 uint32_t hal_irq_pick_target_cpu(uint32_t irq) {
-    if (irq >= HAL_MAX_IRQS) {
-        return 0;
-    }
-
-    irq_desc_t* desc = &g_irq_descriptors[irq];
-    uint32_t target_cpu = 0;
-
-    spin_lock(&desc->lock);
-
-    // Pick the first CPU in the mask as a simple policy
-    uint64_t mask = desc->affinity.mask;
-    if (mask != 0) {
-        for (uint32_t i = 0; i < 64; i++) {
-            if (mask & (1ULL << i)) {
-                target_cpu = i;
-                break;
-            }
-        }
-    }
-
-    spin_unlock(&desc->lock);
-
-    return target_cpu;
+    return bh_irq_pick_target_cpu(irq);
 }
 
-// --- Deferred Work (Bottom-Half) ---
-#define MAX_CORES 64
-
-typedef struct {
-    irq_deferred_work_t* head;
-    irq_deferred_work_t* tail;
-    spinlock_t lock;
-    bool pending;
-} irq_deferred_queue_t;
-
-static irq_deferred_queue_t g_deferred_queues[MAX_CORES];
-
-void hal_irq_deferred_init_cpu_local(uint32_t cpu_id) {
-    if (cpu_id < MAX_CORES) {
-        g_deferred_queues[cpu_id].head = NULL;
-        g_deferred_queues[cpu_id].tail = NULL;
-        spin_lock_init(&g_deferred_queues[cpu_id].lock);
-        g_deferred_queues[cpu_id].pending = false;
-    }
-}
-
-// In a real implementation we would fetch the logical CPU ID.
-// For now, we stub cpu_id as 0.
-static inline uint32_t get_current_cpu_id(void) {
-    // Stub implementation
-    return 0;
-}
-
-int hal_irq_defer(irq_deferred_work_t* work) {
-    if (!work || !work->callback) {
-        return -1;
-    }
-
-    uint32_t cpu_id = get_current_cpu_id();
-    if (cpu_id >= MAX_CORES) {
-        return -1;
-    }
-
-    irq_deferred_queue_t* q = &g_deferred_queues[cpu_id];
-
-    spin_lock(&q->lock);
-
-    work->next = NULL;
-    if (q->tail == NULL) {
-        q->head = work;
-        q->tail = work;
-    } else {
-        q->tail->next = work;
-        q->tail = work;
-    }
-
-    q->pending = true;
-
-    spin_unlock(&q->lock);
-    return 0;
-}
-
-void hal_irq_process_deferred(void) {
-    uint32_t cpu_id = get_current_cpu_id();
-    if (cpu_id >= MAX_CORES) {
-        return;
-    }
-
-    irq_deferred_queue_t* q = &g_deferred_queues[cpu_id];
-
-    // Quick check without lock
-    if (!q->pending) {
-        return;
-    }
-
-    spin_lock(&q->lock);
-
-    irq_deferred_work_t* head = q->head;
-
-    // Reset queue
-    q->head = NULL;
-    q->tail = NULL;
-    q->pending = false;
-
-    spin_unlock(&q->lock);
-
-    // Process all pending items
-    // Bound this batch if needed in a real RTOS environment
-    uint32_t processed_count = 0;
-    while (head != NULL && processed_count < 64) {
-        irq_deferred_work_t* work = head;
-        head = head->next;
-
-        // Execute callback
-        work->callback(work->ctx);
-        processed_count++;
-    }
-
-    // If we hit the batch limit and there are remaining items, put them back
-    if (head != NULL) {
-        spin_lock(&q->lock);
-
-        if (q->head == NULL) {
-            q->head = head;
-        } else {
-            // Find end of our uncompleted list
-            irq_deferred_work_t* tail = head;
-            while (tail->next != NULL) {
-                tail = tail->next;
-            }
-            tail->next = q->head;
-            q->head = head;
-        }
-
-        q->pending = true;
-        spin_unlock(&q->lock);
-    }
-}
-
-// --- Controller Ops Support ---
 int hal_irq_set_controller(uint32_t irq, irq_controller_ops_t* ops) {
-    if (irq >= HAL_MAX_IRQS || !ops) {
-        return -1;
-    }
+    if (irq >= 256 || !ops) return -1;
+    g_hal_ops[irq] = ops;
+    g_adapted_ops[irq].mask = adapt_mask;
+    g_adapted_ops[irq].unmask = adapt_unmask;
+    g_adapted_ops[irq].ack = adapt_ack;
+    g_adapted_ops[irq].eoi = adapt_eoi;
+    g_adapted_ops[irq].set_affinity = adapt_set_affinity;
+    g_adapted_ops[irq].compose_msi_message = adapt_compose_msi;
 
-    // Minimum non-breaking contract:
-    // controller ops must at least provide mask/unmask/eoi hooks.
-    if (!ops->mask || !ops->unmask || !ops->eoi) {
-        return -1;
-    }
-
-    irq_desc_t* desc = &g_irq_descriptors[irq];
-    spin_lock(&desc->lock);
-    desc->controller_ops = ops;
-    spin_unlock(&desc->lock);
-
-    return 0;
+    kstatus_t status = bh_irq_set_controller(irq, &g_adapted_ops[irq]);
+    return (status == K_OK) ? 0 : -1;
 }
 
 void hal_interrupt_handle_trap_irq(uint64_t hw_cause,
@@ -439,41 +130,33 @@ void hal_interrupt_handle_trap_irq(uint64_t hw_cause,
     // Timer vector is often handled outside generic routing, check raw hwirq first
     if (hwirq == hal_irq_timer_vector() && timer_handler) {
         timer_handler();
-        hal_interrupt_end_of_interrupt(hwirq);
+        hal_irq_eoi(hwirq);
         return;
     }
 
     uint32_t virq = 0;
     irq_domain_t* root_domain = irq_domain_get_default();
 
-    // Domain translation is mandatory. Do not fallback to raw hwirq dispatch.
     if (!root_domain || irq_domain_translate(root_domain, hwirq, &virq) != 0) {
-        // Unmapped or no domain initialized yet, fail safely without dispatching.
-        hal_interrupt_end_of_interrupt(hwirq);
+        hal_irq_eoi(hwirq);
         return;
     }
 
-#if defined(BHARAT_IRQ_DISPATCH_RT)
-    if (hal_interrupt_is_registered(virq)) {
-        hal_interrupt_dispatch(virq);
-    } else if (dispatch_fn) {
-        dispatch_fn(virq, dispatch_ctx);
-    }
-#elif defined(BHARAT_IRQ_DISPATCH_MIXED)
-    if (hal_interrupt_is_registered(virq)) {
-        hal_interrupt_dispatch(virq);
-    } else if (dispatch_fn) {
-        dispatch_fn(virq, dispatch_ctx);
-    } else {
-        hal_interrupt_dispatch(virq);
-    }
-#else
-    if (dispatch_fn) {
-        dispatch_fn(virq, dispatch_ctx);
-    } else {
-        hal_interrupt_dispatch(virq);
-    }
-#endif
+    bh_irq_dispatch(virq);
+}
 
-    hal_interrupt_end_of_interrupt(hwirq);
+// --- Forwarding Bottom-Half APIs ---
+int hal_irq_defer(irq_deferred_work_t* work) {
+    if (!work || !work->callback) return -1;
+    bh_irq_handle_t handle = bh_irq_make_handle(work->source_irq, 1, 0, 1);
+    kstatus_t status = bh_irq_defer_submit((bh_irq_deferred_cb_t)work->callback, work->ctx, handle);
+    return (status == K_OK) ? 0 : -1;
+}
+
+void hal_irq_process_deferred(void) {
+    bh_irq_process_deferred();
+}
+
+void hal_irq_deferred_init_cpu_local(uint32_t cpu_id) {
+    bh_irq_deferred_init_cpu_local(cpu_id);
 }

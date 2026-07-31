@@ -7,6 +7,7 @@
 #include "hal/hal.h"
 #include "mm/physmap.h"
 #include "mm/prot_domain.h"
+#include "mm/vm_mapping.h"
 
 #include <bharat/uapi/init/rt_startup.h>
 
