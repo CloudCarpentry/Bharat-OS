@@ -15,6 +15,19 @@ build:
     BHARAT_PERSONALITY_PROFILE: NATIVE
     BHARAT_TARGET_BOARD: virt
     BHARAT_BOOT_GUI: OFF
+    BHARAT_PROFILE_MMU_FULL: OFF
+    BHARAT_PROFILE_MMU_LITE: ON
+    BHARAT_PROFILE_MPU_ONLY: OFF
+    BHARAT_ENABLE_MMU: ON
+    BHARAT_ENABLE_MPU: OFF
+    BHARAT_ENABLE_ADVANCED_VM: ON
+    BHARAT_ENABLE_IOMMU: OFF
+    BHARAT_ENABLE_DMA_MAP: ON
+    BHARAT_ENABLE_COW: OFF
+    BHARAT_ENABLE_DEMAND_PAGING: OFF
+    BHARAT_ENABLE_SHARED_MEMORY: OFF
+    BHARAT_ENABLE_NUMA: OFF
+    BHARAT_ENABLE_MEMORY_STATS: OFF
 
 kernel:
   canonical_artifacts:
@@ -38,7 +51,9 @@ run:
   serial:
     - stdio
   boot_artifact: kernel/kernel.elf
-  extra_args: []
+  extra_args:
+    - "-bios"
+    - "/usr/lib/riscv32-linux-gnu/opensbi/generic/fw_dynamic.bin"
 
 debug:
   backend: gdb_remote

@@ -1,6 +1,7 @@
 #include "hal/hal.h"
 #include "hal/hal_irq.h"
 #include "device/irq_domain.h"
+#include "secure_boot.h"
 #include <stdint.h>
 
 void hal_cpu_init(void) {}
@@ -79,7 +80,12 @@ void hal_cpu_dump_trap_frame(const void *trap_frame) { (void)trap_frame; }
 bool active_mem_protect = false;
 void hal_timer_isr(void) {}
 void hal_cpu_dump_state(void) {}
-bool hal_secure_boot_arch_check(void) { return true; }
+int hal_secure_boot_arch_check(const bharat_boot_policy_t *policy) {
+    if (!policy) {
+        return -1;
+    }
+    return 0;
+}
 
 void hal_core_notify(uint32_t target_core, uint64_t payload_or_reason) { (void)target_core; (void)payload_or_reason; }
 uint32_t hal_get_cpu_id(void) { return 0; }
