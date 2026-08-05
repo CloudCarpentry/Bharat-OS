@@ -64,44 +64,40 @@ int bh_elf_generate_load_plan_for_machine(const uint8_t *bytes, size_t size, uin
     }
 
     if (size < sizeof(local_elf64_ehdr_t)) {
-        return BH_ELF_PLAN_ERR_MALFORMED;
+        return BH_ELF_PLAN_ERR_HEADER_SIZE;
     }
 
     const local_elf64_ehdr_t *ehdr = (const local_elf64_ehdr_t *)bytes;
 
     // Check basic headers
     if (ehdr->e_ident[0] != 0x7f || ehdr->e_ident[1] != 'E' || ehdr->e_ident[2] != 'L' || ehdr->e_ident[3] != 'F') {
-        return BH_ELF_PLAN_ERR_MALFORMED;
+        return BH_ELF_PLAN_ERR_MAGIC;
     }
 
     if (ehdr->e_ident[EI_CLASS] != ELFCLASS64 || ehdr->e_ident[EI_DATA] != ELFDATA2LSB) {
-        return BH_ELF_PLAN_ERR_MALFORMED;
+        return BH_ELF_PLAN_ERR_CLASS;
     }
 
     if (!machine_matches(ehdr->e_machine, expected_machine)) {
         return BH_ELF_PLAN_ERR_UNSUPPORTED;
     }
 
-    // ET_DYN policy (shared/PIE reject)
-    if (ehdr->e_type == ET_DYN) {
-        return BH_ELF_PLAN_ERR_UNSUPPORTED;
-    }
-
-    if (ehdr->e_type != ET_EXEC) {
-        return BH_ELF_PLAN_ERR_MALFORMED;
+    // ET_DYN / ET_EXEC policy (support ET_EXEC and PIE ET_DYN)
+    if (ehdr->e_type != ET_EXEC && ehdr->e_type != ET_DYN) {
+        return BH_ELF_PLAN_ERR_TYPE;
     }
 
     // Parse image summary
     elf_summary_t summary;
     elf_parse_status_t p_status = elf_parse_image(bytes, size, &summary);
     if (p_status != ELF_PARSE_OK) {
-        return BH_ELF_PLAN_ERR_MALFORMED;
+        return BH_ELF_PLAN_ERR_PARSE_SUMMARY;
     }
 
     size_t seg_count = 0;
     p_status = elf_get_load_segment_count(bytes, size, &seg_count);
     if (p_status != ELF_PARSE_OK || seg_count == 0) {
-        return BH_ELF_PLAN_ERR_MALFORMED;
+        return BH_ELF_PLAN_ERR_SEGMENT_COUNT;
     }
 
     if (seg_count > 16) {
@@ -112,7 +108,7 @@ int bh_elf_generate_load_plan_for_machine(const uint8_t *bytes, size_t size, uin
     size_t extracted = 0;
     p_status = elf_extract_load_segments(bytes, size, raw_segments, 16, &extracted);
     if (p_status != ELF_PARSE_OK || extracted != seg_count) {
-        return BH_ELF_PLAN_ERR_MALFORMED;
+        return BH_ELF_PLAN_ERR_EXTRACT_SEGMENTS;
     }
 
     out_plan->entry_point = summary.entry_point;
@@ -128,7 +124,7 @@ int bh_elf_generate_load_plan_for_machine(const uint8_t *bytes, size_t size, uin
 
         // Validate basic sizing
         if (seg->file_size > seg->memory_size) {
-            return BH_ELF_PLAN_ERR_MALFORMED;
+            return BH_ELF_PLAN_ERR_FILE_MEM_SIZE;
         }
 
         // Check for bounds overflow
@@ -162,7 +158,7 @@ int bh_elf_generate_load_plan_for_machine(const uint8_t *bytes, size_t size, uin
         }
 
         if (seg->alignment > 1 && (seg->virtual_address % seg->alignment) != (seg->file_offset % seg->alignment)) {
-            return BH_ELF_PLAN_ERR_MALFORMED;
+            return BH_ELF_PLAN_ERR_ALIGNMENT;
         }
 
         uint32_t prot = BH_ELF_PROT_USER;

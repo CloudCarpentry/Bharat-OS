@@ -2,6 +2,7 @@
 #include "bharat/elf/elf_parser.h"
 #include "bharat/elf/elf_load_plan.h"
 #include "mm.h"
+#include "slab.h"
 #include "mm/physmap.h"
 #include "mm/vm_mapping.h"
 #include "lib/base/string.h"
@@ -119,21 +120,56 @@ kstatus_t bh_user_image_load(
         return K_ERR_UNSUPPORTED;
     }
 
+    console_write_raw("[LOADER] image->bytes hex: ", 27);
+    const uint8_t *b = (const uint8_t *)image->bytes;
+    static const char hex_chars[] = "0123456789ABCDEF";
+    for (size_t k = 0; k < 16 && k < image->size; k++) {
+        char buf[3];
+        buf[0] = hex_chars[(b[k] >> 4) & 0xF];
+        buf[1] = hex_chars[b[k] & 0xF];
+        buf[2] = ' ';
+        console_write_raw(buf, 3);
+    }
+    console_write_raw("\n", 1);
+
     bh_user_image_plan_v1_t plan;
     int plan_res = bh_elf_generate_load_plan_for_machine((const uint8_t *)image->bytes, image->size, aspace->user_base, aspace->user_limit, expected_machine, &plan);
     if (plan_res != BH_ELF_PLAN_SUCCESS) {
+        static const char hex[] = "0123456789ABCDEF";
+        char pbuf[30] = "[LOADER] plan_res_val: 00\n";
+        pbuf[23] = hex[(plan_res >> 4) & 0xF];
+        pbuf[24] = hex[plan_res & 0xF];
+        console_write_raw(pbuf, 26);
+        if (plan_res == BH_ELF_PLAN_ERR_HEADER_SIZE) console_write_raw("[LOADER] plan_err: HEADER_SIZE\n", 31);
+        else if (plan_res == BH_ELF_PLAN_ERR_MAGIC) console_write_raw("[LOADER] plan_err: MAGIC\n", 25);
+        else if (plan_res == BH_ELF_PLAN_ERR_CLASS) console_write_raw("[LOADER] plan_err: CLASS\n", 25);
+        else if (plan_res == BH_ELF_PLAN_ERR_TYPE) console_write_raw("[LOADER] plan_err: TYPE\n", 24);
+        else if (plan_res == BH_ELF_PLAN_ERR_PARSE_SUMMARY) console_write_raw("[LOADER] plan_err: PARSE_SUMMARY\n", 33);
+        else if (plan_res == BH_ELF_PLAN_ERR_SEGMENT_COUNT) console_write_raw("[LOADER] plan_err: SEGMENT_COUNT\n", 33);
+        else if (plan_res == BH_ELF_PLAN_ERR_EXTRACT_SEGMENTS) console_write_raw("[LOADER] plan_err: EXTRACT_SEGMENTS\n", 36);
+        else if (plan_res == BH_ELF_PLAN_ERR_FILE_MEM_SIZE) console_write_raw("[LOADER] plan_err: FILE_MEM_SIZE\n", 33);
+        else if (plan_res == BH_ELF_PLAN_ERR_ALIGNMENT) console_write_raw("[LOADER] plan_err: ALIGNMENT\n", 29);
+        else if (plan_res == BH_ELF_PLAN_ERR_BOUNDS) console_write_raw("[LOADER] plan_err: BOUNDS\n", 26);
+        else if (plan_res == BH_ELF_PLAN_ERR_OVERLAP) console_write_raw("[LOADER] plan_err: OVERLAP\n", 27);
+        else if (plan_res == BH_ELF_PLAN_ERR_WX) console_write_raw("[LOADER] plan_err: WX\n", 22);
+        else if (plan_res == BH_ELF_PLAN_ERR_ENTRY) console_write_raw("[LOADER] plan_err: ENTRY\n", 25);
+        else if (plan_res == BH_ELF_PLAN_ERR_UNSUPPORTED) console_write_raw("[LOADER] plan_err: UNSUPPORTED\n", 31);
+        else if (plan_res == BH_ELF_PLAN_ERR_LIMIT) console_write_raw("[LOADER] plan_err: LIMIT\n", 25);
         console_write_raw("[LOADER] ELF generate load plan failed\n", 39);
         return plan_res == BH_ELF_PLAN_ERR_UNSUPPORTED ? K_ERR_UNSUPPORTED : K_ERR_INVALID_ARG;
     }
 
-    loader_txn_t txn = {.aspace = aspace};
+    loader_txn_t *txn = (loader_txn_t *)kmalloc(sizeof(loader_txn_t));
+    if (!txn) return K_ERR_NO_MEMORY;
+    memset(txn, 0, sizeof(*txn));
+    txn->aspace = aspace;
     kstatus_t status = K_OK;
 
     for (uint32_t i = 0; i < plan.segment_count; ++i) {
         bh_elf_load_segment_v1_t *seg = &plan.segments[i];
         uint32_t prot = 0;
         status = elf_plan_prot_to_vm(seg->prot, &prot);
-        if (status != K_OK) goto fail;
+        if (status != K_OK) { goto fail; }
 
         uint64_t start_addr = seg->virtual_address;
         uint64_t aligned_start = start_addr & ~(PAGE_SIZE - 1ULL);
@@ -146,16 +182,16 @@ kstatus_t bh_user_image_load(
 
         vm_region_t *region;
         status = aspace_region_reserve(aspace, aligned_start, map_size, prot, map_flags, VM_INHERIT_NONE, &region);
-        if (status != K_OK) goto fail;
-        txn.regions[txn.region_count++] = (uintptr_t)aligned_start;
+        if (status != K_OK) { goto fail; }
+        txn->regions[txn->region_count++] = (uintptr_t)aligned_start;
 
         for (uint64_t off = 0; off < map_size; off += PAGE_SIZE) {
-            if (txn.page_count >= BH_LOADER_MAX_PAGES) { status = K_ERR_NO_RESOURCES; goto fail; }
+            if (txn->page_count >= BH_LOADER_MAX_PAGES) { status = K_ERR_NO_RESOURCES; goto fail; }
             void *page_ptr = pmm_alloc_page_ex(MEM_NORMAL, PMM_ALLOC_ZERO);
             if (!page_ptr) { status = K_ERR_NO_MEMORY; goto fail; }
             status = prot_domain_map_region(aspace->prot_domain, aligned_start + off, (phys_addr_t)(uintptr_t)page_ptr, PAGE_SIZE, prot);
             if (status != K_OK) { pmm_free_page(page_ptr); goto fail; }
-            txn.pages[txn.page_count++] = (loader_page_t){.va = (uintptr_t)(aligned_start + off), .page = page_ptr};
+            txn->pages[txn->page_count++] = (loader_page_t){.va = (uintptr_t)(aligned_start + off), .page = page_ptr};
         }
 
         for (uint64_t off = 0; off < map_size; off += PAGE_SIZE) {
@@ -182,22 +218,22 @@ kstatus_t bh_user_image_load(
     uintptr_t guard_base = stack_base - PAGE_SIZE;
     vm_region_t *stack_region;
     status = aspace_region_reserve(aspace, stack_base, BH_USER_STACK_DEFAULT_SIZE, VM_PROT_READ | VM_PROT_WRITE | VM_PROT_USER, VM_MAP_FIXED, VM_INHERIT_NONE, &stack_region);
-    if (status != K_OK) goto fail;
-    txn.regions[txn.region_count++] = stack_base;
+    if (status != K_OK) { goto fail; }
+    txn->regions[txn->region_count++] = stack_base;
     for (uint64_t off = 0; off < BH_USER_STACK_DEFAULT_SIZE; off += PAGE_SIZE) {
-        if (txn.page_count >= BH_LOADER_MAX_PAGES) { status = K_ERR_NO_RESOURCES; goto fail; }
+        if (txn->page_count >= BH_LOADER_MAX_PAGES) { status = K_ERR_NO_RESOURCES; goto fail; }
         void *page_ptr = pmm_alloc_page_ex(MEM_NORMAL, PMM_ALLOC_ZERO);
         if (!page_ptr) { status = K_ERR_NO_MEMORY; goto fail; }
         status = prot_domain_map_region(aspace->prot_domain, stack_base + off, (phys_addr_t)(uintptr_t)page_ptr, PAGE_SIZE, VM_PROT_READ | VM_PROT_WRITE | VM_PROT_USER);
         if (status != K_OK) { pmm_free_page(page_ptr); goto fail; }
-        txn.pages[txn.page_count++] = (loader_page_t){.va = stack_base + off, .page = page_ptr};
+        txn->pages[txn->page_count++] = (loader_page_t){.va = stack_base + off, .page = page_ptr};
     }
 
     uintptr_t startup_va = guard_base - PAGE_SIZE;
     vm_region_t *startup_region;
     status = aspace_region_reserve(aspace, startup_va, PAGE_SIZE, VM_PROT_READ | VM_PROT_USER, VM_MAP_FIXED, VM_INHERIT_NONE, &startup_region);
-    if (status != K_OK) goto fail;
-    txn.regions[txn.region_count++] = startup_va;
+    if (status != K_OK) { goto fail; }
+    txn->regions[txn->region_count++] = startup_va;
     void *startup_phys = pmm_alloc_page_ex(MEM_NORMAL, PMM_ALLOC_ZERO);
     if (!startup_phys) { status = K_ERR_NO_MEMORY; goto fail; }
     void *startup_kvirt = physmap_phys_to_virt((phys_addr_t)(uintptr_t)startup_phys);
@@ -220,16 +256,18 @@ kstatus_t bh_user_image_load(
     startup->bootstrap.bootstrap_cap = 0;
     status = prot_domain_map_region(aspace->prot_domain, startup_va, (phys_addr_t)(uintptr_t)startup_phys, PAGE_SIZE, VM_PROT_READ | VM_PROT_USER);
     if (status != K_OK) { pmm_free_page(startup_phys); goto fail; }
-    txn.pages[txn.page_count++] = (loader_page_t){.va = startup_va, .page = startup_phys};
+    txn->pages[txn->page_count++] = (loader_page_t){.va = startup_va, .page = startup_phys};
 
     out->entry_point = plan.entry_point;
     out->user_stack_top = stack_top;
     out->startup_va = startup_va;
     out->aspace = aspace;
+    kfree(txn);
     return K_OK;
 
 fail:
-    loader_txn_rollback(&txn);
+    loader_txn_rollback(txn);
+    kfree(txn);
     *out = (bh_user_image_result_t){0};
     return status;
 }

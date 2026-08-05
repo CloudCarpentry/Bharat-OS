@@ -1,9 +1,17 @@
 #include "sched/sched.h"
 #include "sched_internal.h"
+#include "hal/hal.h"
+#include "hal/hal_timer.h"
 
 void sched_edf_enqueue(sched_rq_t *rq, bh_thread_t *thread) {
+    if (!thread) return;
+    if (thread->absolute_deadline_ms == 0 && thread->rt_attr.deadline_ms > 0) {
+        thread->absolute_deadline_ms = hal_timer_monotonic_ticks() + thread->rt_attr.deadline_ms;
+    }
     sched_entity_t *entity = sched_find_entity_by_thread(thread);
     if (!entity) return;
+
+    entity->absolute_deadline = thread->absolute_deadline_ms;
 
     struct rb_node **link = &rq->edf_runqueue.rb_node;
     struct rb_node *parent = NULL;

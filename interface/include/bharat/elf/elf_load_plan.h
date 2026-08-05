@@ -4,14 +4,27 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#define BH_ELF_PLAN_SUCCESS 0
-#define BH_ELF_PLAN_ERR_MALFORMED -1
-#define BH_ELF_PLAN_ERR_BOUNDS -2
-#define BH_ELF_PLAN_ERR_OVERLAP -3
-#define BH_ELF_PLAN_ERR_WX -4
-#define BH_ELF_PLAN_ERR_ENTRY -5
-#define BH_ELF_PLAN_ERR_UNSUPPORTED -6
-#define BH_ELF_PLAN_ERR_LIMIT -7
+typedef enum {
+    BH_ELF_PLAN_SUCCESS = 0,
+    BH_ELF_PLAN_ERR_MALFORMED = -1,
+    BH_ELF_PLAN_ERR_BOUNDS = -2,
+    BH_ELF_PLAN_ERR_OVERLAP = -3,
+    BH_ELF_PLAN_ERR_WX = -4,
+    BH_ELF_PLAN_ERR_ENTRY = -5,
+    BH_ELF_PLAN_ERR_UNSUPPORTED = -6,
+    BH_ELF_PLAN_ERR_LIMIT = -7,
+
+    /* Granular malformed sub-check error codes */
+    BH_ELF_PLAN_ERR_HEADER_SIZE = -101,
+    BH_ELF_PLAN_ERR_MAGIC = -102,
+    BH_ELF_PLAN_ERR_CLASS = -103,
+    BH_ELF_PLAN_ERR_TYPE = -104,
+    BH_ELF_PLAN_ERR_PARSE_SUMMARY = -105,
+    BH_ELF_PLAN_ERR_SEGMENT_COUNT = -106,
+    BH_ELF_PLAN_ERR_EXTRACT_SEGMENTS = -107,
+    BH_ELF_PLAN_ERR_FILE_MEM_SIZE = -108,
+    BH_ELF_PLAN_ERR_ALIGNMENT = -109,
+} bh_elf_plan_error_t;
 
 #define BH_ELF_PROT_READ  (1U << 0)
 #define BH_ELF_PROT_WRITE (1U << 1)

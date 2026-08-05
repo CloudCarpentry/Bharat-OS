@@ -45,8 +45,8 @@ static void pmm_boot_reservations_init(const boot_info_t *boot) {
 
     if (boot->kernel_phys_start < boot->kernel_phys_end) {
         if (boot_reservation_count < MAX_PMM_BOOT_RESERVATIONS) {
-            boot_reservations[boot_reservation_count].start = boot->kernel_phys_start;
-            boot_reservations[boot_reservation_count].end = boot->kernel_phys_end;
+            boot_reservations[boot_reservation_count].start = boot->kernel_phys_start & ~0xFFFULL;
+            boot_reservations[boot_reservation_count].end = (boot->kernel_phys_end + 0xFFFULL) & ~0xFFFULL;
             boot_reservations[boot_reservation_count].type = PMM_REGION_TYPE_RESERVED;
             boot_reservations[boot_reservation_count].releasable = false;
             boot_reservation_count++;
@@ -55,11 +55,29 @@ static void pmm_boot_reservations_init(const boot_info_t *boot) {
 
     for (uint32_t i = 0; i < boot->module_count; ++i) {
         if (boot_reservation_count < MAX_PMM_BOOT_RESERVATIONS) {
-            boot_reservations[boot_reservation_count].start = boot->modules[i].phys_start;
-            boot_reservations[boot_reservation_count].end = boot->modules[i].phys_start + boot->modules[i].size;
+            phys_addr_t m_start = boot->modules[i].phys_start & ~0xFFFULL;
+            phys_addr_t m_end = (boot->modules[i].phys_start + boot->modules[i].size + 0xFFFULL) & ~0xFFFULL;
+            boot_reservations[boot_reservation_count].start = m_start;
+            boot_reservations[boot_reservation_count].end = m_end;
             boot_reservations[boot_reservation_count].type = PMM_REGION_TYPE_MODULES;
-            boot_reservations[boot_reservation_count].releasable = true;
+            boot_reservations[boot_reservation_count].releasable = false;
             boot_reservation_count++;
+
+            KPRINT("PMM_RES: MOD start=");
+            for (int k = 7; k >= 0; k--) {
+                uint32_t nib = (m_start >> (k * 4)) & 0xF;
+                char c = (nib < 10) ? ('0' + nib) : ('A' + nib - 10);
+                char buf[2] = {c, '\0'};
+                KPRINT(buf);
+            }
+            KPRINT(" end=");
+            for (int k = 7; k >= 0; k--) {
+                uint32_t nib = (m_end >> (k * 4)) & 0xF;
+                char c = (nib < 10) ? ('0' + nib) : ('A' + nib - 10);
+                char buf[2] = {c, '\0'};
+                KPRINT(buf);
+            }
+            KPRINT("\n");
         }
     }
 }
@@ -71,6 +89,15 @@ static bool pmm_boot_page_is_reserved(phys_addr_t paddr) {
         }
     }
     return false;
+}
+
+phys_addr_t pmm_boot_reservation_end(phys_addr_t paddr) {
+    for (uint32_t i = 0; i < boot_reservation_count; ++i) {
+        if (paddr >= boot_reservations[i].start && paddr < boot_reservations[i].end) {
+            return boot_reservations[i].end;
+        }
+    }
+    return 0;
 }
 #define MAX_NUMA_NODES 4
 #define PMM_RECLAIM_BATCH 32U

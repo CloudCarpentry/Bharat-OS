@@ -81,7 +81,7 @@ def build_qemu_command(manifest: dict, mode_override: str = None, display_overri
 
     if display_mode == "headless":
         if is_windows:
-            cmd.extend(['-display', 'none'])
+            cmd.extend(['-display', 'none', '-serial', 'stdio'])
         else:
             cmd.append('-nographic')
     else:

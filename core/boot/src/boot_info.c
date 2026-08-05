@@ -195,6 +195,16 @@ int boot_info_finalize(boot_info_t *bi) {
 
         // Check if the module starts with the Bharat boot-module container magic (0xB4A2D1A5)
         const bh_boot_module_header_local_t *hdr = (const bh_boot_module_header_local_t *)virt_ptr;
+        extern void hal_serial_write(const char *s);
+        hal_serial_write("[BOOT_INFO] Module magic=");
+        for (int k = 7; k >= 0; k--) {
+            uint32_t nib = (hdr->magic >> (k * 4)) & 0xF;
+            char c = (nib < 10) ? ('0' + nib) : ('A' + nib - 10);
+            char buf[2] = {c, '\0'};
+            hal_serial_write(buf);
+        }
+        hal_serial_write("\n");
+
         if (hdr->magic == 0xB4A2D1A5) {
             // Found a valid container! Parse and normalize it.
             if (hdr->header_size != 128 || hdr->payload_offset != 128 ||

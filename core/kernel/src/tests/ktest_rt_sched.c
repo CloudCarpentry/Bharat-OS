@@ -1,6 +1,7 @@
 #include "sched/sched.h"
 #include "sched/sched_test_support.h"
 #include "tests/ktest.h"
+#include "console/console_core.h"
 #include <bharat/cpu_local.h>
 
 #if defined(TESTING) || defined(BHARAT_KERNEL_TESTS)
@@ -98,6 +99,9 @@ static bool test_edf_admission_and_queue(void) {
 
     // Pick next ready should return T2 because its deadline (50) is smaller than T1 (100)
     bh_thread_t *picked1 = sched_pick_next_ready_l0(0);
+    if (picked1 != t2) {
+        console_write_raw("EDF FAIL: picked1 != t2\n", 24);
+    }
     KTEST_ASSERT(picked1 == t2, "EDF should pick T2 because it has earliest deadline");
 
     // Second pick should return T1

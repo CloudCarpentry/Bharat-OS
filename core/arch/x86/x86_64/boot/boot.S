@@ -24,7 +24,11 @@
 
 /* ── Multiboot 1 constants ──────────────────────────────────────────────── */
 #define MB1_MAGIC    0x1BADB002
+#if defined(BHARAT_BOOT_GUI) && BHARAT_BOOT_GUI
 #define MB1_FLAGS    0x00000007  /* ALIGN + MEMINFO + VIDEO_MODE */
+#else
+#define MB1_FLAGS    0x00000003  /* ALIGN + MEMINFO */
+#endif
 
 /* Boot Headers (Multiboot 1 & 2 + PVH ELF Note) */
 .section .multiboot, "a"

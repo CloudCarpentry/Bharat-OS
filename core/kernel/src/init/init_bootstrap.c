@@ -137,6 +137,63 @@ static int bh_rt_supervisor_start(const boot_module_t *mod) {
 
 // ── Canonical Handoff Router ──
 
+static uintptr_t s_init_entry = 0;
+static uintptr_t s_init_stack = 0;
+static uintptr_t s_init_startup = 0;
+
+static void user_init_trampoline(void) {
+#if defined(__x86_64__)
+    __asm__ volatile (
+        "cli\n\t"
+        "movq %0, %%rdi\n\t"
+        "movq $0x1B, %%rax\n\t"
+        "movq %%rax, %%ds\n\t"
+        "movq %%rax, %%es\n\t"
+        "pushq $0x1B\n\t"
+        "pushq %1\n\t"
+        "pushq $0x202\n\t"
+        "pushq $0x23\n\t"
+        "pushq %2\n\t"
+        "iretq\n\t"
+        :
+        : "r"(s_init_startup), "r"(s_init_stack), "r"(s_init_entry)
+        : "rax", "rdi", "memory"
+    );
+#elif defined(__aarch64__)
+    __asm__ volatile (
+        "mov x0, %0\n\t"
+        "msr elr_el1, %1\n\t"
+        "msr sp_el0, %2\n\t"
+        "mov x3, #0\n\t"
+        "msr spsr_el1, x3\n\t"
+        "eret\n\t"
+        :
+        : "r"(s_init_startup), "r"(s_init_entry), "r"(s_init_stack)
+        : "x0", "x3", "memory"
+    );
+#elif defined(__riscv)
+    __asm__ volatile (
+        "mv a0, %0\n\t"
+        "csrw sepc, %1\n\t"
+        "mv sp, %2\n\t"
+        "sret\n\t"
+        :
+        : "r"(s_init_startup), "r"(s_init_entry), "r"(s_init_stack)
+        : "a0", "sp", "memory"
+    );
+#elif defined(__arm__)
+    __asm__ volatile (
+        "mov r0, %0\n\t"
+        "mov sp, %2\n\t"
+        "bx %1\n\t"
+        :
+        : "r"(s_init_startup), "r"(s_init_entry), "r"(s_init_stack)
+        : "r0", "sp", "memory"
+    );
+#endif
+    while (1) {}
+}
+
 static int bootstrap_launch_first_service(void) {
     if (!g_boot_info) {
         console_write_raw("  [BOOTSTRAP] No boot info found\n", 33);
@@ -218,18 +275,21 @@ static int bootstrap_launch_first_service(void) {
         return -1;
     }
 
-    console_write_raw("[BOOTSTRAP] INIT_ELF: VALIDATED\n", 31);
+    console_write_raw("[BOOTSTRAP] INIT_ELF: VALIDATED\n", 32);
 
-    bh_thread_t *thread = thread_create_detached(proc, (void (*)(void))result.entry_point);
+    s_init_entry = result.entry_point;
+    s_init_stack = result.user_stack_top;
+    s_init_startup = result.startup_va;
+
+    bh_thread_t *thread = thread_create_detached(proc, user_init_trampoline);
     if (!thread) return -1;
 
     proc->main_thread = thread;
     thread->priority = 1;
 
-    arch_prepare_initial_context((cpu_context_t*)thread->cpu_context, (void (*)(void))result.entry_point, result.user_stack_top);
     set_thread_arg0(thread, result.startup_va);
 
-    console_write_raw("[BOOTSTRAP] INIT_THREAD: SCHEDULED\n", 34);
+    console_write_raw("[BOOTSTRAP] INIT_THREAD: SCHEDULED\n", 35);
 
     sched_enqueue(thread, hal_cpu_get_id());
     return 0;

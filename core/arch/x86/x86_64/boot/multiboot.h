@@ -46,9 +46,11 @@ typedef struct {
     uint8_t framebuffer_green_mask_size;
     uint8_t framebuffer_blue_field_position;
     uint8_t framebuffer_blue_mask_size;
-} multiboot1_info_t;
+} __attribute__((packed)) multiboot1_info_t;
 
 #define MULTIBOOT1_FLAG_FRAMEBUFFER 0x00001000
+#define MULTIBOOT1_FLAG_MMAP        0x00000040
+#define MULTIBOOT1_FLAG_MODS        0x00000008
 
 typedef struct {
     uint32_t size;
@@ -57,6 +59,11 @@ typedef struct {
     uint32_t type;
 } __attribute__((packed)) multiboot1_mmap_entry_t;
 
-#define MULTIBOOT1_FLAG_MMAP 0x00000040
+typedef struct {
+    uint32_t mod_start;
+    uint32_t mod_end;
+    uint32_t string;
+    uint32_t reserved;
+} __attribute__((packed)) multiboot1_module_t;
 
 #endif // BHARAT_MULTIBOOT_H
