@@ -197,9 +197,9 @@ python3 tools/abi/syscall_abi.py --check
 
 The ABI command is mandatory for syscall/ABI changes and optional otherwise.
 
-### Mandatory five-target build policy
+### Mandatory five-target build & QEMU installation policy
 
-All agents must run and verify all five target commands prior to declaring a task complete or submitting a PR:
+All agents (including Google Jules, Antigravity, Codex, Copilot, and Gemini) must ensure the required QEMU emulators (`qemu-system-x86_64`, `qemu-system-aarch64`, `qemu-system-riscv64`, `qemu-system-arm`, `qemu-system-riscv32`) are installed for all target hardware, and must run and verify all five target commands prior to declaring a task complete or submitting a PR:
 
 ```bash
 ./tools/build.sh all --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml --smoke
@@ -209,7 +209,7 @@ All agents must run and verify all five target commands prior to declaring a tas
 ./tools/build.sh all --target-yaml delivery/targets/qemu/riscv32_mmu_lite_headless.yaml --smoke
 ```
 
-Do not silently replace a required target with a different target. If a required target is not implemented in the current branch, record the gate as `BLOCKED: target unavailable` and do not claim full-matrix completion.
+Do not silently replace a required target with a different target. If a required target is not implemented in the current branch or an emulator is missing, record the gate as `BLOCKED: target/emulator unavailable` and install missing dependencies before claiming full-matrix completion.
 
 ### Mandatory QEMU matrix policy
 

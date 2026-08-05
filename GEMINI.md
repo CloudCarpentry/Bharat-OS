@@ -13,7 +13,8 @@ Key requirements:
 - Support MMU, MMU-Lite, and MPU paths; fail closed when unsupported.
 - Never edit or commit generated `bharat_config.h`; modify `core/kernel/include/bharat_config.h.in`.
 - Do not modify `ext/` or `external/` unless explicitly requested.
-- Follow the mandatory five-target build and QEMU matrix rules in `AGENTS.md`.
+- Follow the mandatory five-target build and QEMU matrix rules in `AGENTS.md` and platform guidelines in `docs/ai-agents/platforms/google-jules.md`.
+- Ensure QEMU system emulators (`x86_64`, `aarch64`, `riscv64`, `arm`, `riscv32`) are installed for all target hardware.
 - Report unavailable targets or unsupported runner flags as BLOCKED, never as PASS.
 
 Do not duplicate or reinterpret the full rules here. `AGENTS.md` remains authoritative.
