@@ -36,6 +36,7 @@ static volatile uint64_t g_next_process_id = 1U;
 
 
 uint8_t g_sched_initialized = 0U;
+uint8_t g_sched_runtime_protected = 0U;
 uint32_t g_active_core_count = 1U;
 
 #if defined(BHARAT_ENABLE_KERNEL_SELFTESTS)
@@ -538,12 +539,7 @@ static bh_thread_t *sched_create_bootstrap_thread(bh_process_t *parent,
 
 void sched_init(void) {
   if (g_sched_initialized != 0U) {
-#if defined(BHARAT_ENABLE_KERNEL_SELFTESTS)
-    extern void sched_test_reset(void);
-    sched_test_reset();
-#else
     return;
-#endif
   }
 
   g_active_core_count = sched_configured_core_count();
@@ -569,6 +565,50 @@ void sched_init(void) {
 #endif
   }
   g_sched_initialized = 1U;
+}
+
+int sched_global_init(uint32_t core_count) {
+  /*
+   * Ownership: global scheduler bootstrap is BSP-owned.  This call reserves
+   * and initializes every bounded per-core runqueue before AP launch; later
+   * sched_cpu_online() calls may only publish the caller's own runqueue.
+   */
+  if (core_count == 0U) {
+    return -1;
+  }
+  sched_init();
+  return (g_sched_initialized != 0U) ? 0 : -1;
+}
+
+int sched_cpu_prepare(uint32_t cpu_id) {
+  if (g_sched_initialized == 0U || cpu_id >= g_active_core_count) {
+    return -1;
+  }
+  return 0;
+}
+
+int sched_cpu_online(uint32_t cpu_id) {
+  /*
+   * Per-core online is core-local: do not reset or allocate foreign runqueues
+   * from an AP.  Global runqueue storage was reserved by sched_global_init().
+   */
+  if (sched_cpu_prepare(cpu_id) != 0) {
+    return -1;
+  }
+  return 0;
+}
+
+int sched_system_enable(void) {
+  if (g_sched_initialized == 0U) {
+    return -1;
+  }
+  /*
+   * After boot publishes the scheduler, destructive selftest resets are
+   * forbidden: runtime tests may exercise scheduler APIs, but cannot clear
+   * live idle/init threads or process address spaces.
+   */
+  g_sched_runtime_protected = 1U;
+  return 0;
 }
 
 bh_process_t *process_create(const char *name) {

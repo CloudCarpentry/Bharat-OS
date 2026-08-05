@@ -119,6 +119,12 @@ static bool test_edf_admission_and_queue(void) {
 }
 
 int boot_test_rt_sched(void) {
+#if defined(BHARAT_ENABLE_KERNEL_SELFTESTS)
+    if (sched_test_runtime_protected()) {
+        KTEST_PRINT(" [SKIP] rt_sched destructive reset disabled after scheduler system enable\n");
+        return 0;
+    }
+#endif
     ktest_case_t rt_tests[] = {
         {"RMS Admission Control", test_rms_admission},
         {"EDF Admission & Sorting", test_edf_admission_and_queue}

@@ -146,13 +146,13 @@ static void user_init_trampoline(void) {
     __asm__ volatile (
         "cli\n\t"
         "movq %0, %%rdi\n\t"
-        "movq $0x1B, %%rax\n\t"
+        "movq $0x23, %%rax\n\t"
         "movq %%rax, %%ds\n\t"
         "movq %%rax, %%es\n\t"
-        "pushq $0x1B\n\t"
+        "pushq $0x23\n\t"
         "pushq %1\n\t"
         "pushq $0x202\n\t"
-        "pushq $0x23\n\t"
+        "pushq $0x1B\n\t"
         "pushq %2\n\t"
         "iretq\n\t"
         :

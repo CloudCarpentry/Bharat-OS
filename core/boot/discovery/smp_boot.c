@@ -84,6 +84,47 @@ int bh_smp_boot_primary_init(void) {
     return 0;
 }
 
+static void print_hex64(uint64_t value) {
+    char buf[17];
+    static const char hex[] = "0123456789ABCDEF";
+    for (uint32_t i = 0; i < 16U; ++i) {
+        uint32_t shift = (15U - i) * 4U;
+        buf[i] = hex[(value >> shift) & 0xFU];
+    }
+    buf[16] = '\0';
+    console_write_raw(buf, 16);
+}
+
+static uint64_t cpu_mask_for_count(uint32_t count) {
+    if (count >= 64U) {
+        return UINT64_MAX;
+    }
+    return (count == 0U) ? 0U : ((1ULL << count) - 1ULL);
+}
+
+static uint64_t smp_online_mask(uint32_t requested_cpus) {
+    uint64_t mask = 0U;
+    uint32_t limit = requested_cpus < 64U ? requested_cpus : 64U;
+    for (uint32_t cpu_id = 0; cpu_id < limit; ++cpu_id) {
+        if (bh_smp_get_cpu_state(cpu_id) == BH_CPU_BOOT_ONLINE) {
+            mask |= (1ULL << cpu_id);
+        }
+    }
+    return mask;
+}
+
+static void smp_print_masks(uint32_t requested_cpus) {
+    uint64_t requested_mask = cpu_mask_for_count(requested_cpus);
+    uint64_t online_mask = smp_online_mask(requested_cpus);
+    KPRINT("SMP_REQUESTED_MASK: ");
+    print_hex64(requested_mask);
+    KPRINT("\nSMP_ONLINE_MASK:    ");
+    print_hex64(online_mask);
+    KPRINT("\nSMP_FAILED_MASK:    ");
+    print_hex64(requested_mask & ~online_mask);
+    KPRINT("\nSMP_BOOT_EPOCH:     1\n");
+}
+
 // Bounded monotonic timer ticks to ms conversion helpers
 static uint64_t ms_to_ticks(uint64_t ms) {
     uint64_t freq = hal_timer_read_freq();
@@ -236,7 +277,7 @@ int bh_smp_start_secondary_cpus(uint32_t requested_cpus) {
 
     if (all_online) {
         KPRINT("  [SMP] All requested harts are ONLINE!\n");
-        KPRINT("SMP: ALL 4 CORES ONLINE\n");
+        smp_print_masks(requested_cpus);
         return 0;
     }
 
@@ -254,6 +295,8 @@ int bh_smp_start_secondary_cpus(uint32_t requested_cpus) {
             KPRINT("\n");
         }
     }
+
+    smp_print_masks(requested_cpus);
 
     // Failure policy enforcement: Fail closed for diagnostic/hardened/SMP required profiles, quarantine for GP.
     KernelExecutionProfile exec_profile = get_kernel_execution_profile();
@@ -297,10 +340,8 @@ void bh_secondary_cpu_entry(uint64_t context_phys) {
     hal_timer_init_cpu_local(core_id);
     bh_smp_set_cpu_state(core_id, BH_CPU_BOOT_TIMER_READY);
 
-    // Step 7: Per-core PMM/VMM/TLB initialization
-    hal_pt_init();
-    hal_tlb_init();
-    if (vmm_init() != 0) {
+    // Step 7: Per-core MM/TLB publication; global VMM state is BSP-owned.
+    if (mm_cpu_online(core_id) != 0) {
         bh_smp_set_cpu_state(core_id, BH_CPU_BOOT_FAILED);
         goto halt_loop;
     }
@@ -322,8 +363,11 @@ void bh_secondary_cpu_entry(uint64_t context_phys) {
         }
     }
 
-    // Step 9: Local scheduler initialization
-    sched_init();
+    // Step 9: Publish this CPU's scheduler readiness without resetting foreign runqueues.
+    if (sched_cpu_online(core_id) != 0) {
+        bh_smp_set_cpu_state(core_id, BH_CPU_BOOT_FAILED);
+        goto halt_loop;
+    }
     bh_smp_set_cpu_state(core_id, BH_CPU_BOOT_SCHED_READY);
 
     // Step 10: Atomic publication of ONLINE
