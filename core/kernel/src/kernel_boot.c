@@ -207,23 +207,13 @@ void boot_common_memory(const boot_info_t *boot) {
 
 #if (defined(__arm__) && !defined(__aarch64__)) || (defined(__riscv) && (__riscv_xlen == 32))
     /*
-     * ARM32 MMU-Lite QEMU smoke currently validates the boot lifecycle up to
-     * PMM readiness while the full VMM path is still being hardened for the
-     * 32-bit backend.  Emit the stable headless evidence contract here so the
-     * runner can prove the target reaches the supported P0 readiness point
-     * without depending on slow or unsupported VMM work.
+     * ARM32/RISC-V32 MMU-Lite still stops before the full VMM/init-loader
+     * path.  Do not synthesize userspace success from the kernel; report the
+     * missing canonical init handoff as a hard boot failure until Gate 2 wires
+     * the live module parser for these paths.
      */
-    KPRINT("[BOOTSTRAP] INIT_MODULE: services/init FOUND\n");
-    KPRINT("[BOOTSTRAP] INIT_ASPACE: READY\n");
-    KPRINT("[BOOTSTRAP] INIT_ELF: VALIDATED\n");
-    KPRINT("[BOOTSTRAP] INIT_THREAD: SCHEDULED\n");
-    KPRINT("USER_INIT: ENTERED\n");
-    KPRINT("USER_INIT: STARTUP_ABI_OK\n");
-    KPRINT("USER_INIT: SERVICE_GRAPH_COMPLETE\n");
-    KPRINT("BOOT_RUNTIME: STABLE\n");
-    while (1) {
-        hal_cpu_halt();
-    }
+    KPRINT("BOOT_FAIL: INIT_MODULE_MISSING\n");
+    kernel_panic("bootstrap: init module missing before userspace launch");
 #endif
 
     // Ensure hal_pt is initialized BEFORE VMM tries to map things / create address space

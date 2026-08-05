@@ -186,20 +186,13 @@ static int bootstrap_launch_first_service(void) {
 
     if (!init_mod) {
         /*
-         * QEMU smoke packaging can supply the init payload through a runner
-         * path that is not yet reflected in the normalized boot module table.
-         * Keep the lifecycle deterministic: emit the same minimal boot evidence
-         * markers and leave real user scheduling to targets with module handoff.
+         * Userspace init markers are userspace-originated proof and must never be
+         * synthesized by the kernel.  An empty canonical module table means
+         * the trusted boot handoff did not provide services/init, so fail
+         * closed instead of fabricating lifecycle success.
          */
-        console_write_raw("[BOOTSTRAP] INIT_MODULE: services/init FOUND\n", 45);
-        console_write_raw("[BOOTSTRAP] INIT_ASPACE: READY\n", 31);
-        console_write_raw("[BOOTSTRAP] INIT_ELF: VALIDATED\n", 31);
-        console_write_raw("[BOOTSTRAP] INIT_THREAD: SCHEDULED\n", 34);
-        console_write_raw("USER_INIT: ENTERED\n", 19);
-        console_write_raw("USER_INIT: STARTUP_ABI_OK\n", 27);
-        console_write_raw("USER_INIT: SERVICE_GRAPH_COMPLETE\n", 34);
-        console_write_raw("BOOT_RUNTIME: STABLE\n", 21);
-        return 0;
+        console_write_raw("BOOT_FAIL: INIT_MODULE_MISSING\n", 31);
+        return -1;
     }
 
     console_write_raw("[BOOTSTRAP] INIT_MODULE: services/init FOUND\n", 45);

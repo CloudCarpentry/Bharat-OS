@@ -13,6 +13,7 @@ common:
     - "TIMEOUT"
     - "QEMU TIMEOUT"
     - "BOOT TIMEOUT"
+    - "BOOT_FAIL:"
 
 targets:
   x86_64_desktop_headless:
