@@ -33,6 +33,20 @@ typedef struct {
 
 static bh_cpu_boot_record_t g_cpu_boot_records[BHARAT_MAX_CPUS];
 static uint32_t g_system_core_count = 1U;
+static _Atomic uint32_t g_smp_global_ready_mask;
+
+enum {
+    BH_SMP_GLOBAL_IRQ_READY = 1U << 0,
+    BH_SMP_GLOBAL_TIMER_READY = 1U << 1,
+    BH_SMP_GLOBAL_MM_READY = 1U << 2,
+    BH_SMP_GLOBAL_SCHED_READY = 1U << 3,
+    BH_SMP_GLOBAL_IPC_READY = 1U << 4,
+    BH_SMP_GLOBAL_ALL_READY = BH_SMP_GLOBAL_IRQ_READY |
+                              BH_SMP_GLOBAL_TIMER_READY |
+                              BH_SMP_GLOBAL_MM_READY |
+                              BH_SMP_GLOBAL_SCHED_READY |
+                              BH_SMP_GLOBAL_IPC_READY
+};
 
 // Global array of boot context pointers for secondary cores (mapped to their physical context ID)
 #if defined(__aarch64__)
@@ -80,8 +94,25 @@ int bh_smp_boot_primary_init(void) {
     }
 
     g_system_core_count = 1U;
+    atomic_store_explicit(&g_smp_global_ready_mask, 0U, memory_order_release);
     bh_smp_set_cpu_state(0, BH_CPU_BOOT_ONLINE);
     return 0;
+}
+
+void bh_smp_publish_global_readiness(void) {
+    /*
+     * Ownership: BSP publishes this immutable boot barrier after it has
+     * initialized global IRQ, timer, MM, scheduler, and IPC resources.
+     * Secondary CPUs only consume the by-value mask; no AP may initialize or
+     * reset a foreign core's global scheduler/MM state.
+     */
+    atomic_store_explicit(&g_smp_global_ready_mask, BH_SMP_GLOBAL_ALL_READY,
+                          memory_order_release);
+}
+
+static bool bh_smp_global_readiness_available(void) {
+    return atomic_load_explicit(&g_smp_global_ready_mask,
+                                memory_order_acquire) == BH_SMP_GLOBAL_ALL_READY;
 }
 
 static void print_hex64(uint64_t value) {
@@ -323,6 +354,11 @@ void bh_secondary_cpu_entry(uint64_t context_phys) {
     }
 
     bh_smp_set_cpu_state(core_id, BH_CPU_BOOT_STARTING);
+
+    if (!bh_smp_global_readiness_available()) {
+        bh_smp_set_cpu_state(core_id, BH_CPU_BOOT_FAILED);
+        goto halt_loop;
+    }
 
     // Step 3: Setup initial exceptions/CSRs
     secondary_entry_arch_early();

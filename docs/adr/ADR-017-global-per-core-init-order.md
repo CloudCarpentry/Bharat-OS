@@ -13,8 +13,8 @@ SMP boot previously allowed secondary CPUs to run local IRQ, timer, VMM, uRPC, a
 Bharat-OS separates BSP-owned global initialization from AP-owned per-core publication:
 
 ```text
-BSP: PMM -> MM global -> IRQ global -> timer global -> scheduler global -> AP launch
-AP:  arch local -> cpu-local -> IRQ local -> timer local -> MM cpu online -> uRPC -> scheduler cpu online -> ONLINE
+BSP: PMM -> MM global -> IRQ global -> timer global -> scheduler global -> IPC global -> publish global-ready barrier -> AP launch
+AP:  verify global-ready barrier -> arch local -> cpu-local -> IRQ local -> timer local -> MM cpu online -> uRPC -> scheduler cpu online -> ONLINE
 ```
 
 The scheduler contract is split into:
@@ -34,12 +34,14 @@ mm_cpu_prepare(cpu_id);
 mm_cpu_online(cpu_id);
 ```
 
-The current implementation is a compatibility step: global scheduler bootstrap still reserves all bounded per-core runqueues from the BSP, and AP scheduler publication validates that the global scheduler authority already exists instead of resetting or allocating foreign runqueues.  Global VMM bootstrap remains BSP-owned, while AP memory publication initializes only local page-table/TLB glue and validates that the BSP-published kernel address-space authority is ready.
+The current implementation is a compatibility step: global scheduler bootstrap still reserves all bounded per-core runqueues from the BSP for the explicitly requested boot topology, and AP scheduler publication validates that the global scheduler authority already exists instead of resetting or allocating foreign runqueues.  Global VMM bootstrap remains BSP-owned, while AP memory publication initializes only local page-table/TLB glue and validates that the BSP-published kernel address-space authority is ready.  A BSP-published atomic global-ready mask gates AP execution before local IRQ/timer/MM/uRPC/scheduler publication, so an accidentally early AP fails closed instead of creating its own global authority.
 
 ## Invariants
 
 - The BSP is the only core allowed to run global scheduler or global VMM initialization during boot.
+- `sched_global_init(core_count)` must honor the caller's bounded topology and must not silently replace it with independently rediscovered CPU count.
 - APs must not reset or allocate another core's runqueue during online publication.
+- APs must observe the BSP-published global-ready barrier before local IRQ, timer, MM, uRPC, or scheduler publication.
 - APs initialize local IRQ and timer state only after the BSP has reported global IRQ and timer readiness.
 - SMP timeout accounting uses the global timer after `hal_timer_init()` has completed.
 - Runtime evidence reports requested, online, and failed CPU masks rather than a hard-coded core count.

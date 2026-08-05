@@ -538,33 +538,7 @@ static bh_thread_t *sched_create_bootstrap_thread(bh_process_t *parent,
 }
 
 void sched_init(void) {
-  if (g_sched_initialized != 0U) {
-    return;
-  }
-
-  g_active_core_count = sched_configured_core_count();
-
-  g_next_thread_id = 1U;
-  g_next_process_id = 1U;
-
-
-
-
-
-  sched_reset_core_runqueues();
-
-  bh_process_t *idle_process = process_create("idle_process");
-  for (uint32_t core = 0; core < g_active_core_count; ++core) {
-    bh_thread_t *idle = sched_create_bootstrap_thread(
-        idle_process, core, SCHED_BOOTSTRAP_IDLE, sched_idle_task, 0U, 0U);
-    g_cpu_locals[core].runqueue.idle_thread = idle;
-    g_cpu_locals[core].runqueue.current_thread = idle;
-#if !defined(TESTING)
-    (void)sched_create_bootstrap_thread(idle_process, core, SCHED_BOOTSTRAP_MONITOR,
-                                        sched_monitor_task, SCHED_MAX_PRIORITY, 1U);
-#endif
-  }
-  g_sched_initialized = 1U;
+  (void)sched_global_init(sched_configured_core_count());
 }
 
 int sched_global_init(uint32_t core_count) {
@@ -573,10 +547,43 @@ int sched_global_init(uint32_t core_count) {
    * and initializes every bounded per-core runqueue before AP launch; later
    * sched_cpu_online() calls may only publish the caller's own runqueue.
    */
+  if (g_sched_initialized != 0U) {
+    return (core_count <= g_active_core_count) ? 0 : -1;
+  }
   if (core_count == 0U) {
     return -1;
   }
-  sched_init();
+  if (core_count > MAX_SUPPORTED_CORES) {
+    core_count = MAX_SUPPORTED_CORES;
+  }
+
+  g_active_core_count = core_count;
+
+  g_next_thread_id = 1U;
+  g_next_process_id = 1U;
+
+  sched_reset_core_runqueues();
+
+  bh_process_t *idle_process = process_create("idle_process");
+  if (!idle_process) {
+    return -1;
+  }
+  for (uint32_t core = 0; core < g_active_core_count; ++core) {
+    bh_thread_t *idle = sched_create_bootstrap_thread(
+        idle_process, core, SCHED_BOOTSTRAP_IDLE, sched_idle_task, 0U, 0U);
+    if (!idle) {
+      return -1;
+    }
+    g_cpu_locals[core].runqueue.idle_thread = idle;
+    g_cpu_locals[core].runqueue.current_thread = idle;
+#if !defined(TESTING)
+    if (!sched_create_bootstrap_thread(idle_process, core, SCHED_BOOTSTRAP_MONITOR,
+                                       sched_monitor_task, SCHED_MAX_PRIORITY, 1U)) {
+      return -1;
+    }
+#endif
+  }
+  g_sched_initialized = 1U;
   return (g_sched_initialized != 0U) ? 0 : -1;
 }
 
@@ -1313,4 +1320,3 @@ bool sched_find_txn(sched_rq_t *rq, sched_cmd_handle_t handle, uint16_t *out_out
   }
   return false;
 }
-

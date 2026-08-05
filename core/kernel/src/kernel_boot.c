@@ -294,6 +294,7 @@ void boot_common_platform_services(const boot_info_t *boot) {
     if (mk_init_per_core_channels(boot_policy->smp_target_cores, 32U) != 0) {
       kernel_panic("per-core urpc channel init failed");
     }
+    bh_smp_publish_global_readiness();
 
     KPRINT("  [SMP] Booting secondary cores\n");
     if (bh_smp_start_secondary_cpus(boot_policy->smp_target_cores) != 0) {

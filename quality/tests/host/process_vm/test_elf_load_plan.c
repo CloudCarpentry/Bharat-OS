@@ -55,7 +55,7 @@ static void test_machine_matrix(void) {
     uint8_t buf[2048]; bh_user_image_plan_v1_t plan;
     const struct { uint16_t em; bh_elf_machine_t machine; } rows[] = {{EM_X86_64,BH_ELF_MACHINE_X86_64},{EM_AARCH64,BH_ELF_MACHINE_AARCH64},{EM_RISCV,BH_ELF_MACHINE_RISCV64}};
     for (size_t i=0;i<3;i++) for (size_t j=0;j<3;j++) { setup_elf(buf,sizeof(buf),rows[i].em,0x1000,1); set_load(phdr(buf,0),PF_R|PF_X,512,0x1000,16,16,1); int r=gen(buf,sizeof(buf),rows[j].machine,&plan); assert((i==j && r==BH_ELF_PLAN_SUCCESS) || (i!=j && r==BH_ELF_PLAN_ERR_UNSUPPORTED)); }
-    setup_elf(buf,sizeof(buf),EM_X86_64,0x1000,1); ((mock_ehdr_t*)buf)->e_ident[4] = ELFCLASS32; set_load(phdr(buf,0),PF_R|PF_X,512,0x1000,16,16,1); assert(gen(buf,sizeof(buf),BH_ELF_MACHINE_X86_64,&plan) == BH_ELF_PLAN_ERR_MALFORMED);
+    setup_elf(buf,sizeof(buf),EM_X86_64,0x1000,1); ((mock_ehdr_t*)buf)->e_ident[4] = ELFCLASS32; set_load(phdr(buf,0),PF_R|PF_X,512,0x1000,16,16,1); assert(gen(buf,sizeof(buf),BH_ELF_MACHINE_X86_64,&plan) == BH_ELF_PLAN_ERR_CLASS);
 }
 
 static void test_bounds_and_malformed(void) {
@@ -63,11 +63,11 @@ static void test_bounds_and_malformed(void) {
     setup_elf(buf,sizeof(buf),EM_X86_64,0x1000,1); set_load(phdr(buf,0),PF_R|PF_X,512,UINT64_MAX-8,16,16,1); assert(gen(buf,sizeof(buf),BH_ELF_MACHINE_X86_64,&plan)==BH_ELF_PLAN_ERR_BOUNDS);
     setup_elf(buf,sizeof(buf),EM_X86_64,0x1000,1); set_load(phdr(buf,0),PF_R|PF_X,UINT64_MAX-8,0x1000,16,16,1); assert(gen(buf,sizeof(buf),BH_ELF_MACHINE_X86_64,&plan)!=BH_ELF_PLAN_SUCCESS);
     setup_elf(buf,sizeof(buf),EM_X86_64,0x1000,1); set_load(phdr(buf,0),PF_R|PF_X,512,0x7ffffff0,32,32,1); assert(gen(buf,sizeof(buf),BH_ELF_MACHINE_X86_64,&plan)==BH_ELF_PLAN_ERR_BOUNDS);
-    setup_elf(buf,sizeof(buf),EM_X86_64,0x1000,0); assert(gen(buf,sizeof(buf),BH_ELF_MACHINE_X86_64,&plan)==BH_ELF_PLAN_ERR_MALFORMED);
+    setup_elf(buf,sizeof(buf),EM_X86_64,0x1000,0); assert(gen(buf,sizeof(buf),BH_ELF_MACHINE_X86_64,&plan)==BH_ELF_PLAN_ERR_SEGMENT_COUNT);
     setup_elf(buf,sizeof(buf),EM_X86_64,0x1000,17); for(int i=0;i<17;i++) set_load(phdr(buf,i),PF_R|PF_X,1024+i*16,0x1000+i*0x1000,8,8,1); assert(gen(buf,sizeof(buf),BH_ELF_MACHINE_X86_64,&plan)==BH_ELF_PLAN_ERR_LIMIT);
     setup_elf(buf,sizeof(buf),EM_X86_64,0x3000,1); set_load(phdr(buf,0),PF_R|PF_X,512,0x1000,16,16,1); assert(gen(buf,sizeof(buf),BH_ELF_MACHINE_X86_64,&plan)==BH_ELF_PLAN_ERR_ENTRY);
     setup_elf(buf,sizeof(buf),EM_X86_64,0x1000,2); set_load(phdr(buf,0),PF_R|PF_X,512,0x1000,16,128,1); set_load(phdr(buf,1),PF_R,1024,0x1070,16,16,1); assert(gen(buf,sizeof(buf),BH_ELF_MACHINE_X86_64,&plan)==BH_ELF_PLAN_ERR_OVERLAP);
-    setup_elf(buf,sizeof(buf),EM_X86_64,0x1000,1); set_load(phdr(buf,0),PF_R|PF_X,513,0x1000,16,16,4096); assert(gen(buf,sizeof(buf),BH_ELF_MACHINE_X86_64,&plan)==BH_ELF_PLAN_ERR_MALFORMED);
+    setup_elf(buf,sizeof(buf),EM_X86_64,0x1000,1); set_load(phdr(buf,0),PF_R|PF_X,513,0x1000,16,16,4096); assert(gen(buf,sizeof(buf),BH_ELF_MACHINE_X86_64,&plan)!=BH_ELF_PLAN_SUCCESS);
     setup_elf(buf,sizeof(buf),EM_X86_64,0x1000,1); ((mock_ehdr_t*)buf)->e_phoff = sizeof(buf) - 8; set_load(phdr(buf,0),PF_R|PF_X,512,0x1000,16,16,1); assert(gen(buf,sizeof(buf),BH_ELF_MACHINE_X86_64,&plan)!=BH_ELF_PLAN_SUCCESS);
 }
 

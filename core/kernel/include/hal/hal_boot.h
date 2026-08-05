@@ -74,6 +74,7 @@ typedef struct {
 
 // SMP Primary Core Handlers
 int bh_smp_boot_primary_init(void);
+void bh_smp_publish_global_readiness(void);
 int bh_smp_start_secondary_cpus(uint32_t requested_cpus);
 uint32_t bh_smp_get_online_core_count(void);
 
