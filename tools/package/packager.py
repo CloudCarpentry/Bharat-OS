@@ -61,6 +61,30 @@ def make_package_plan(target: ResolvedTarget, build_outputs: BuildOutputs, repo_
     )
 
 
+def _candidate_service_binary_paths(build_dir: Path, binary_name: str) -> list[Path]:
+    return [
+        build_dir / "core" / "services" / "core" / binary_name / binary_name,
+        build_dir / "services" / "core" / binary_name / binary_name,
+        build_dir / "core" / "services" / binary_name / binary_name,
+        build_dir / "services" / binary_name / binary_name,
+    ]
+
+
+def _find_required_service_binary(build_dir: Path, binary_name: str) -> Path:
+    for path in _candidate_service_binary_paths(build_dir, binary_name):
+        if path.is_file():
+            return path
+        exe_path = path.with_suffix(".exe")
+        if exe_path.is_file():
+            return exe_path
+
+    candidates = ", ".join(str(path) for path in _candidate_service_binary_paths(build_dir, binary_name))
+    raise RuntimeError(
+        f"Required compiled payload 'services/{binary_name}' was not produced; "
+        f"refusing to package a synthetic boot module. Checked: {candidates}"
+    )
+
+
 def execute_package(plan: PackagePlan, repo_root: Path) -> PackageOutputs:
     print(f"\n[Package] Starting packaging for {plan.target.name}")
 
@@ -111,38 +135,18 @@ def execute_package(plan: PackagePlan, repo_root: Path) -> PackageOutputs:
     # -------------------------------------------------------------
     # Packaging of init_module (services/init or services/rt-supervisor)
     # -------------------------------------------------------------
-    import shutil
     import struct
 
     is_rt_mpu = (plan.target.execution_profile == "rt" and
                  plan.target.build.cmake_defs.get("BHARAT_PROFILE_MPU_ONLY") == "ON")
 
     binary_name = "rt-supervisor" if is_rt_mpu else "init"
-    possible_paths = [
-        plan.build_outputs.build_dir / "core" / "services" / "core" / binary_name / binary_name,
-        plan.build_outputs.build_dir / "services" / "core" / binary_name / binary_name,
-        plan.build_outputs.build_dir / "core" / "services" / binary_name / binary_name,
-        plan.build_outputs.build_dir / "services" / binary_name / binary_name,
-    ]
-
-    src_binary = None
-    for p in possible_paths:
-        if p.exists():
-            src_binary = p
-            break
-        p_exe = p.with_suffix(".exe")
-        if p_exe.exists():
-            src_binary = p_exe
-            break
+    src_binary = _find_required_service_binary(plan.build_outputs.build_dir, binary_name)
 
     init_module_path = plan.packaged_dir / "init_module.bin"
 
-    if src_binary and src_binary.exists():
-        payload_bytes = src_binary.read_bytes()
-        print(f"[Package] Found compiled payload for '{binary_name}' at {src_binary} ({len(payload_bytes)} bytes)")
-    else:
-        print(f"[Package] WARNING: Compiled payload '{binary_name}' not found. Generating simulated mock payload...")
-        payload_bytes = b"MOCK_PAYLOAD_" + binary_name.encode()
+    payload_bytes = src_binary.read_bytes()
+    print(f"[Package] Found compiled payload for 'services/{binary_name}' at {src_binary} ({len(payload_bytes)} bytes)")
 
     # Create the versioned Bharat boot-module container header:
     magic = 0xB4A2D1A5
