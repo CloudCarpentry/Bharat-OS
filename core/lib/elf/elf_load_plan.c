@@ -17,6 +17,13 @@
 #define EM_AARCH64      183
 #define EM_RISCV        243
 
+static void plan_zero(void *ptr, size_t size) {
+    uint8_t *p = (uint8_t *)ptr;
+    for (size_t i = 0; i < size; ++i) {
+        p[i] = 0;
+    }
+}
+
 typedef struct {
     uint8_t   e_ident[EI_NIDENT];
     uint16_t  e_type;
@@ -34,7 +41,24 @@ typedef struct {
     uint16_t  e_shstrndx;
 } local_elf64_ehdr_t;
 
-int bh_elf_generate_load_plan(const uint8_t *bytes, size_t size, uint64_t user_base, uint64_t user_limit, bh_user_image_plan_v1_t *out_plan) {
+static bool machine_matches(uint16_t elf_machine, bh_elf_machine_t expected_machine) {
+    switch (expected_machine) {
+    case BH_ELF_MACHINE_X86_64:
+        return elf_machine == EM_X86_64;
+    case BH_ELF_MACHINE_AARCH64:
+        return elf_machine == EM_AARCH64;
+    case BH_ELF_MACHINE_RISCV64:
+        return elf_machine == EM_RISCV;
+    default:
+        return false;
+    }
+}
+
+int bh_elf_generate_load_plan_for_machine(const uint8_t *bytes, size_t size, uint64_t user_base, uint64_t user_limit, bh_elf_machine_t expected_machine, bh_user_image_plan_v1_t *out_plan) {
+    if (out_plan) {
+        plan_zero(out_plan, sizeof(*out_plan));
+    }
+
     if (!bytes || !out_plan) {
         return BH_ELF_PLAN_ERR_MALFORMED;
     }
@@ -54,8 +78,7 @@ int bh_elf_generate_load_plan(const uint8_t *bytes, size_t size, uint64_t user_b
         return BH_ELF_PLAN_ERR_MALFORMED;
     }
 
-    // Supported architectures: x86_64, ARM64, RISC-V
-    if (ehdr->e_machine != EM_X86_64 && ehdr->e_machine != EM_AARCH64 && ehdr->e_machine != EM_RISCV) {
+    if (!machine_matches(ehdr->e_machine, expected_machine)) {
         return BH_ELF_PLAN_ERR_UNSUPPORTED;
     }
 
@@ -117,7 +140,7 @@ int bh_elf_generate_load_plan(const uint8_t *bytes, size_t size, uint64_t user_b
         uint64_t v_start = seg->virtual_address;
         uint64_t v_end = v_start + seg->memory_size;
         if (v_end < v_start) {
-            return BH_ELF_PLAN_ERR_MALFORMED; // overflow
+            return BH_ELF_PLAN_ERR_BOUNDS;
         }
 
         if (v_start < user_base || v_end > user_limit) {
@@ -138,11 +161,14 @@ int bh_elf_generate_load_plan(const uint8_t *bytes, size_t size, uint64_t user_b
             }
         }
 
-        // Alignments
-        uint32_t prot = 4; // VM_PROT_USER
-        if (seg->flags & 4) prot |= 1; // VM_PROT_READ
-        if (seg->flags & 2) prot |= 2; // VM_PROT_WRITE
-        if (seg->flags & 1) prot |= 4; // VM_PROT_EXEC
+        if (seg->alignment > 1 && (seg->virtual_address % seg->alignment) != (seg->file_offset % seg->alignment)) {
+            return BH_ELF_PLAN_ERR_MALFORMED;
+        }
+
+        uint32_t prot = BH_ELF_PROT_USER;
+        if ((seg->flags & 4U) != 0U) prot |= BH_ELF_PROT_READ;
+        if ((seg->flags & 2U) != 0U) prot |= BH_ELF_PROT_WRITE;
+        if ((seg->flags & 1U) != 0U) prot |= BH_ELF_PROT_EXEC;
 
         out_plan->segments[i].virtual_address = seg->virtual_address;
         out_plan->segments[i].physical_address = seg->physical_address;
@@ -174,4 +200,8 @@ int bh_elf_generate_load_plan(const uint8_t *bytes, size_t size, uint64_t user_b
     }
 
     return BH_ELF_PLAN_SUCCESS;
+}
+
+int bh_elf_generate_load_plan(const uint8_t *bytes, size_t size, uint64_t user_base, uint64_t user_limit, bh_user_image_plan_v1_t *out_plan) {
+    return bh_elf_generate_load_plan_for_machine(bytes, size, user_base, user_limit, BH_ELF_MACHINE_X86_64, out_plan);
 }
