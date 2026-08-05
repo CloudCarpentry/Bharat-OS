@@ -9,9 +9,11 @@ void secondary_entry_arch_late(void) {
 }
 
 int hal_boot_start_cpu(uint32_t cpu_id, uint64_t entry_point) {
-    // Send INIT IPI
-    // Send STARTUP IPI
-    return 0;
+    (void)cpu_id;
+    (void)entry_point;
+    /* INIT/SIPI is not implemented yet; fail closed instead of reporting a
+     * successful AP launch that can never reach the common secondary entry. */
+    return -1;
 }
 
 // Global boot info specific to x86_64
