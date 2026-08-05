@@ -48,6 +48,9 @@ run:
   machine: virt
   memory: 512M
   nographic: true
+  extra_args:
+    - "-bios"
+    - "/usr/lib/riscv32-linux-gnu/opensbi/generic/fw_dynamic.bin"
   serial:
     - stdio
   boot_artifact: kernel/kernel.elf

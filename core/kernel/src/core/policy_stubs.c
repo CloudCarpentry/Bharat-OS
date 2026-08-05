@@ -47,11 +47,20 @@ __attribute__((weak)) int device_lookup_mmio_window_l1(uint32_t class_id, uint32
 }
 
 __attribute__((weak)) int device_framework_init(void) {
-    return -5; // -K_ERR_UNSUPPORTED
+    /*
+     * Headless boot targets may link the kernel before a concrete board/device
+     * registry is available.  Treat the weak fallback as an empty, initialized
+     * core-local registry so boot can continue without optional devices.
+     */
+    return 0;
 }
 
 __attribute__((weak)) int device_register_builtin_drivers(void) {
-    return -5; // -K_ERR_UNSUPPORTED
+    /*
+     * No built-in drivers are required for the minimal boot lifecycle.  Real
+     * platform driver registration overrides this weak fallback.
+     */
+    return 0;
 }
 
 int ptp_init(void) {

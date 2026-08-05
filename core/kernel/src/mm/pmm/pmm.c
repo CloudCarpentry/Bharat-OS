@@ -722,9 +722,6 @@ static void pmm_add_region(phys_addr_t base, size_t size, uint32_t type,
   numa_nodes[node_id].allocator_metadata = &numa_zones[node_id];
 
   size_t page_array_size = page_count * sizeof(page_t);
-  hal_serial_write("Calling early_alloc with page_array_size ");
-  hal_serial_write_hex(page_array_size);
-  hal_serial_write("\n");
   void *page_array = early_alloc(page_array_size, PAGE_SIZE);
   global_pages_ptrs[node_id] = (page_t *)page_array;
 
