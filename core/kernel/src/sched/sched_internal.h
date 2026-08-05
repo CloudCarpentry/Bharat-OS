@@ -57,6 +57,7 @@ typedef struct process_slot {
 } process_slot_t;
 
 extern uint8_t g_sched_initialized;
+extern uint8_t g_sched_runtime_protected;
 extern sched_policy_t g_policy;
 extern uint32_t g_active_core_count;
 

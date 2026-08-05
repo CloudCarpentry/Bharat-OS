@@ -67,11 +67,10 @@ int hal_boot_start_cpu(uint32_t cpu_id, uint64_t entry_point) {
         return -1;
     }
 
-    // Default to SMC if not discovered
     uint32_t method = disc->psci_method;
     if (method == 0) {
-        KPRINT("  [PSCI] Warning: PSCI method not found in FDT. Defaulting to SMC.\n");
-        method = 1; // Default to SMC
+        KPRINT("  [PSCI] Error: PSCI method not discovered; refusing guessed SMC/HVC.\n");
+        return PSCI_NOT_PRESENT;
     }
 
     // Probe PSCI version once

@@ -11,6 +11,7 @@
  * self-contained test to guarantee clean state.
  */
 void sched_test_reset(void);
+int sched_test_runtime_protected(void);
 
 /*
  * Overrides the active core count for scheduler testing

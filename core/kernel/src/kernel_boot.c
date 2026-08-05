@@ -221,7 +221,7 @@ void boot_common_memory(const boot_info_t *boot) {
     hal_tlb_init();
 
     KPRINT("  [VMM] Initializing VMM...\n");
-    if (vmm_init() != 0) {
+    if (mm_global_init() != 0) {
       kernel_panic("VMM initialization failed");
     }
     KPRINT("BOOT: vmm initialized\n");
@@ -267,7 +267,27 @@ void boot_common_platform_services(const boot_info_t *boot) {
       kernel_panic("numa topology discovery failed");
     }
 
-    // Initialize BSP SMP boot context and CPU records
+    KPRINT("  [IRQ] Initializing global interrupt controller\n");
+    hal_irq_init_boot();
+    KPRINT("IRQ_GLOBAL_READY\n");
+
+    KPRINT("  [TMR] Initializing global timer source\n");
+    hal_timer_init();
+    KPRINT("TIMER_GLOBAL_READY\n");
+
+    arch_cpu_caps_init();
+    arch_cpu_caps_system_finalize();
+    hal_discovery_publish_cpu_caps();
+    arch_ext_state_boot_init();
+
+    KPRINT("  [SCHED] Initializing global scheduler\n");
+    if (sched_global_init(boot_policy->smp_target_cores) != 0 ||
+        sched_system_enable() != 0) {
+      kernel_panic("scheduler global initialization failed");
+    }
+    KPRINT("SCHED_GLOBAL_READY\n");
+
+    // Initialize BSP SMP boot context and CPU records after global IRQ/timer/scheduler readiness.
     bh_smp_boot_primary_init();
 
     KPRINT("  [SMP] Initializing per-core URPC channels\n");
@@ -280,12 +300,6 @@ void boot_common_platform_services(const boot_info_t *boot) {
       kernel_panic("secondary core boot failed");
     }
 
-    KPRINT("  [IRQ] Initializing interrupt controller\n");
-    hal_irq_init_boot();
-
-    KPRINT("  [TMR] Initializing timer source\n");
-    hal_timer_init();
-
     KPRINT("  [DEV] Initializing device framework\n");
     if (device_framework_init() != 0 ||
         device_register_builtin_drivers() != 0) {
@@ -296,12 +310,6 @@ void boot_common_platform_services(const boot_info_t *boot) {
     extern void test_device_dma_dump(void);
     test_device_dma_dump();
 
-    arch_cpu_caps_init();
-    arch_cpu_caps_system_finalize();
-    hal_discovery_publish_cpu_caps();
-    arch_ext_state_boot_init();
-
-    sched_init();
     KPRINT("  [SCHED] Scheduler initialized.\n");
 
     KPRINT("  [AI] Calibrating hardware silicon metrics...\n");

@@ -125,6 +125,23 @@ int vmm_init(void) {
     return kernel_space_ready ? 0 : -1;
 }
 
+int mm_global_init(void) {
+    /* BSP-owned global VMM bootstrap; APs must not recreate kernel_space. */
+    return vmm_init();
+}
+
+int mm_cpu_prepare(uint32_t cpu_id) {
+    (void)cpu_id;
+    return kernel_space_ready ? 0 : -1;
+}
+
+int mm_cpu_online(uint32_t cpu_id) {
+    /* CPU-local MM readiness uses the BSP-published kernel_space authority. */
+    hal_pt_init();
+    hal_tlb_init();
+    return mm_cpu_prepare(cpu_id);
+}
+
 phys_addr_t vmm_get_kernel_root(void) {
     // Multi-kernel architecture: Always use bootstrap root as authoritative kernel root
     // Bootstrap page tables have complete low identity + high canonical mappings

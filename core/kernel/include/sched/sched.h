@@ -577,6 +577,10 @@ struct bh_process {
 
 // Scheduler Core
 void sched_init(void);
+int sched_global_init(uint32_t core_count);
+int sched_cpu_prepare(uint32_t cpu_id);
+int sched_cpu_online(uint32_t cpu_id);
+int sched_system_enable(void);
 
 // Create process and main thread
 bh_process_t* process_create(const char* name);
