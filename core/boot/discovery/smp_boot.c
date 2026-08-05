@@ -35,7 +35,9 @@ static bh_cpu_boot_record_t g_cpu_boot_records[BHARAT_MAX_CPUS];
 static uint32_t g_system_core_count = 1U;
 
 // Global array of boot context pointers for secondary cores (mapped to their physical context ID)
+#if defined(__aarch64__)
 static bh_arm64_ap_boot_context_t g_arm64_ap_contexts[BHARAT_MAX_CPUS];
+#endif
 
 // Declare multikernel channels without including multikernel.h
 typedef struct {

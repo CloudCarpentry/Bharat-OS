@@ -30,22 +30,26 @@ int mk_proto_txn_begin(uint64_t txn_id, uint32_t remote_core, uint32_t msg_type,
     return 0;
 }
 
-int mk_proto_txn_complete(uint64_t txn_id, int result) {
+kstatus_t bh_mk_legacy_tx_complete_by_id(uint64_t legacy_txn_id, kstatus_t result) {
     uint32_t core_id = hal_cpu_get_id();
     bh_mk_core_fabric_t *f = bh_mk_get_core_fabric(core_id);
-    if (!f) return -1;
+    if (!f) return K_ERR_NOT_FOUND;
 
     for (uint32_t i = 0; i < BH_MK_TX_TABLE_SIZE; i++) {
         bh_mk_tx_entry_t *entry = &f->txns.entries[i];
-        if (atomic_load_explicit(&entry->in_use, memory_order_relaxed) && entry->legacy_txn_id == txn_id) {
+        if (atomic_load_explicit(&entry->in_use, memory_order_relaxed) && entry->legacy_txn_id == legacy_txn_id) {
             bh_mk_tx_handle_t handle = { .slot = i, .generation = entry->generation };
-            bh_mk_tx_complete(handle, entry->dst_core, (entry->dst_core << 24) | BH_MK_ENDPOINT_LEGACY, result == 0 ? K_OK : K_ERR_CANCELLED);
+            bh_mk_tx_complete(handle, entry->dst_core, entry->dst_endpoint, result);
             kstatus_t dummy;
             bh_mk_tx_reap(handle, &dummy);
-            return 0;
+            return K_OK;
         }
     }
-    return -1;
+    return K_ERR_NOT_FOUND;
+}
+
+int mk_proto_txn_complete(uint64_t txn_id, int result) {
+    return bh_mk_legacy_tx_complete_by_id(txn_id, result == 0 ? K_OK : K_ERR_CANCELLED) == K_OK ? 0 : -1;
 }
 
 int mk_proto_txn_poll_timeouts(uint64_t now_ticks) {
