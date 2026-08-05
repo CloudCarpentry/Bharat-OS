@@ -142,7 +142,11 @@ void hal_interrupt_handle_trap_irq(uint64_t hw_cause,
         return;
     }
 
-    bh_irq_dispatch(virq);
+    if (dispatch_fn) {
+        dispatch_fn(virq, dispatch_ctx);
+    } else {
+        bh_irq_dispatch(virq);
+    }
 }
 
 // --- Forwarding Bottom-Half APIs ---

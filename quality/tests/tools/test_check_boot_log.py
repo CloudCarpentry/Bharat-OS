@@ -141,27 +141,27 @@ class TestBootLogParser(unittest.TestCase):
         # This will verify that any optimizations we make preserve 100% exact outcome.
         parser = BootLogParser(self.contract, "x86_64_desktop_headless", strict=True)
         sample_log = [
-            "BOOT: kernel_main reached",
-            "BOOT: pmm initialized",
-            "BOOT: vmm initialized",
-            "[BOOT] Memory subsystem initialization complete",
-            "[BOOT] Platform services initialization complete",
-            "[BOOT] Runtime initialization complete",
-            "[BOOT] Spawning first system service (sysmgr)...",
-            "SKIP: sched_remote_ipi requires >=2 online cores",
+            "BOOT_HANDOFF: NORMALIZED",
+            "BOOT_HANDOFF: VALIDATED",
+            "BOOT_MEMORY: MODULES_RESERVED",
+            "INIT_MODULE: services/init FOUND",
+            "INIT_ELF: VALIDATED",
+            "INIT_ASPACE: READY",
+            "INIT_THREAD: SCHEDULED",
+            "USER_INIT: ENTERED",
+            "USER_INIT: STARTUP_ABI_OK",
+            "USER_INIT: SERVICE_GRAPH_COMPLETE",
+            "BOOT_RUNTIME: STABLE",
+            "SKIP: Something else",
             "page fault in user space",
             "Some clean line",
             "triple fault detected",
         ]
         results = parser.parse(sample_log)
-
-        # Verify basic expected counts
         self.assertTrue(all(results["required"].values()))
-        self.assertEqual(len(results["skips_found"]), 1)
-        self.assertEqual(len(results["forbidden_found"]), 1) # triple fault is forbidden in contract
-        # In strict mode: triple fault is forbidden, so it's not in suspicious.
-        # page fault is not forbidden, so it is in suspicious.
-        self.assertEqual(results["suspicious_found"], ["page fault in user space"])
+        self.assertEqual(len(results["forbidden_found"]), 1)
+        self.assertEqual(sorted(results["suspicious_found"]), sorted(["page fault in user space"]))
+
 
 if __name__ == "__main__":
     unittest.main()

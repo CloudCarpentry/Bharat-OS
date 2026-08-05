@@ -1,67 +1,14 @@
-import re
 import sys
 import os
+from parser import parse_bidl
 
 TYPE_MAP = {
     "u32": "uint32_t",
     "u64": "uint64_t",
+    "bool": "bool",
 }
 
-def parse_bidl(path):
-    with open(path) as f:
-        lines = f.readlines()
-
-    service = {"name": "", "id": 0, "rpcs": [], "messages": {}}
-
-    current_msg = None
-
-    for line in lines:
-        line = line.strip()
-
-        if not line or line.startswith("//"):
-            continue
-
-        # service
-        m = re.match(r"service\s+([\w\.]+)\s*=\s*(\d+)\s*\{", line)
-        if m:
-            service["name"] = m.group(1)
-            service["id"] = int(m.group(2))
-            continue
-
-        # rpc
-        m = re.match(r"rpc\s+(\w+)\((\w+)\)\s*->\s*(\w+)", line)
-        if m:
-            service["rpcs"].append({
-                "name": m.group(1),
-                "req": m.group(2),
-                "resp": m.group(3)
-            })
-            continue
-
-        # message start
-        m = re.match(r"message\s+(\w+)\s*\{", line)
-        if m:
-            current_msg = m.group(1)
-            service["messages"][current_msg] = []
-            continue
-
-        # message end
-        if line == "}":
-            current_msg = None
-            continue
-
-        # fields
-        if current_msg:
-            m = re.match(r"([\w<>]+)\s+(\w+);", line)
-            if m:
-                service["messages"][current_msg].append(
-                    (m.group(1), m.group(2))
-                )
-
-    return service
-
-
-def c_type(t):
+def c_type(t, service):
     if t in TYPE_MAP:
         return TYPE_MAP[t]
 
@@ -76,6 +23,12 @@ def c_type(t):
     if t == "cap_descriptor":
         return "bharat_cap_wire_t"
 
+    if t in service["enums"]:
+        return "uint32_t"
+
+    if t in service["messages"]:
+        return f"struct {t}"
+
     raise Exception(f"Unknown type: {t}")
 
 
@@ -85,24 +38,44 @@ def gen_types(service, outdir):
 
     # Check if we need bharat_cap_wire_t
     needs_cap_wire = False
+    needs_bool = False
     for msg, fields in service["messages"].items():
-        for t, name in fields:
+        for field in fields:
+            t = field["type"]
             if t == "cap_descriptor":
                 needs_cap_wire = True
-                break
+            if t == "bool":
+                needs_bool = True
 
     with open(path, "w") as f:
         f.write("#pragma once\n")
-        f.write("#include <stdint.h>\n\n")
+        f.write("#include <stdint.h>\n")
+        if needs_bool:
+            f.write("#include <stdbool.h>\n")
+        f.write("\n")
 
         if needs_cap_wire:
             f.write("#include \"bharat/msg/wire_types.h\"\n\n")
 
+        for enum_name, enum_vals in service["enums"].items():
+            f.write(f"typedef enum {{\n")
+            for val in enum_vals:
+                f.write(f"    {val['name']} = {val['value']},\n")
+            f.write(f"}} {enum_name};\n\n")
+
+        # forward declarations for structs
+        for msg in service["messages"]:
+            f.write(f"struct {msg};\n")
+        f.write("\n")
+
         for msg, fields in service["messages"].items():
-            f.write(f"typedef struct {{\n")
-            for t, name in fields:
-                f.write(f"    {c_type(t)} {name};\n")
-            f.write(f"}} {service['name'].replace('.', '_')}_{msg}_t;\n\n")
+            f.write(f"struct {msg} {{\n")
+            for field in fields:
+                t = field["type"]
+                name = field["name"]
+                f.write(f"    {c_type(t, service)} {name};\n")
+            f.write(f"}};\n")
+            f.write(f"typedef struct {msg} {service['name'].replace('.', '_')}_{msg}_t;\n\n")
 
 
 def gen_dispatch(service, outdir):
@@ -137,13 +110,14 @@ def main():
 
     os.makedirs(outdir, exist_ok=True)
 
+    if not service["name"]:
+        print("[CodeGen] Warning: Skipping unnamed service definition in", sys.argv[1])
+        return
+
     gen_types(service, outdir)
     gen_dispatch(service, outdir)
 
-    if service["name"]:
-        print("Generated for service:", service["name"])
-    else:
-        print("[CodeGen] Warning: Skipping unnamed service definition in", sys.argv[1])
+    print("Generated for service:", service["name"])
 
 
 if __name__ == "__main__":
