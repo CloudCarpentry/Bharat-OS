@@ -8,6 +8,7 @@
 #include "mm/physmap.h"
 #include "mm/prot_domain.h"
 #include "mm/vm_mapping.h"
+#include "lib/base/string.h"
 
 #include <bharat/uapi/init/rt_startup.h>
 
@@ -29,6 +30,54 @@ static void set_thread_arg0(bh_thread_t *thread, uintptr_t arg0) {
 #elif defined(__riscv)
     ((cpu_context_t*)thread->cpu_context)->regs[10] = arg0; // A0
 #endif
+}
+
+static void init_boot_write(const char *s) {
+    console_write_raw(s, string_length(s));
+}
+
+static const char *init_boot_arch_name(void) {
+#if defined(__x86_64__)
+    return "x86_64";
+#elif defined(__aarch64__)
+    return "arm64";
+#elif defined(__riscv) && (__riscv_xlen == 64)
+    return "riscv64";
+#elif defined(__arm__)
+    return "arm32";
+#elif defined(__riscv) && (__riscv_xlen == 32)
+    return "riscv32";
+#else
+    return "unknown";
+#endif
+}
+
+static const char *init_boot_kstatus_name(kstatus_t status) {
+    if (status == K_OK) return "K_OK";
+    if (status == K_ERR_INVALID_ARG) return "K_ERR_INVALID_ARG";
+    if (status == K_ERR_NOT_FOUND) return "K_ERR_NOT_FOUND";
+    if (status == K_ERR_UNSUPPORTED) return "K_ERR_UNSUPPORTED";
+    if (status == K_ERR_NO_MEMORY) return "K_ERR_NO_MEMORY";
+    if (status == K_ERR_NO_RESOURCES) return "K_ERR_NO_RESOURCES";
+    if (status == K_ERR_VM_UNMAPPED) return "K_ERR_VM_UNMAPPED";
+    if (status == K_ERR_DENIED) return "K_ERR_DENIED";
+    return "K_ERR_OTHER";
+}
+
+static void init_boot_fail(const char *stage, kstatus_t status) {
+    init_boot_write("BOOT_FAIL: component=INIT stage=");
+    init_boot_write(stage);
+    init_boot_write(" status=");
+    init_boot_write(init_boot_kstatus_name(status));
+    init_boot_write(" arch=");
+    init_boot_write(init_boot_arch_name());
+    init_boot_write("\n");
+}
+
+static void init_boot_stage(const char *stage) {
+    init_boot_write("INIT_STAGE: ");
+    init_boot_write(stage);
+    init_boot_write("\n");
 }
 
 // ── Static RT / MPU Realizer (BOOT-P0-001) ──
@@ -142,17 +191,18 @@ static uintptr_t s_init_stack = 0;
 static uintptr_t s_init_startup = 0;
 
 static void user_init_trampoline(void) {
+    init_boot_stage("USER_ENTRY");
 #if defined(__x86_64__)
     __asm__ volatile (
         "cli\n\t"
         "movq %0, %%rdi\n\t"
-        "movq $0x23, %%rax\n\t"
+        "movq $0x1B, %%rax\n\t"
         "movq %%rax, %%ds\n\t"
         "movq %%rax, %%es\n\t"
-        "pushq $0x23\n\t"
+        "pushq $0x1B\n\t"
         "pushq %1\n\t"
         "pushq $0x202\n\t"
-        "pushq $0x1B\n\t"
+        "pushq $0x23\n\t"
         "pushq %2\n\t"
         "iretq\n\t"
         :
@@ -249,29 +299,50 @@ static int bootstrap_launch_first_service(void) {
          * closed instead of fabricating lifecycle success.
          */
         console_write_raw("BOOT_FAIL: INIT_MODULE_MISSING\n", 31);
+        init_boot_fail("MODULE_DISCOVERED", K_ERR_NOT_FOUND);
         return -1;
     }
 
     console_write_raw("[BOOTSTRAP] INIT_MODULE: services/init FOUND\n", 45);
+    init_boot_stage("MODULE_DISCOVERED");
+    init_boot_stage("MODULE_RESERVED");
 
     bh_process_t *proc = process_create("init");
-    if (!proc) return -1;
+    if (!proc) {
+        init_boot_fail("ASPACE_READY", K_ERR_NO_MEMORY);
+        return -1;
+    }
 
-    address_space_t *aspace = NULL;
-    if (aspace_create(&aspace, 0) != K_OK) return -1;
-    proc->addr_space = aspace;
+    /*
+     * process_create() owns exactly one address space for the process. Reuse
+     * that authority here instead of allocating a second space and overwriting
+     * proc->addr_space.
+     */
+    address_space_t *aspace = proc->addr_space;
+    if (!aspace) {
+        init_boot_fail("ASPACE_READY", K_ERR_VM_UNMAPPED);
+        return -1;
+    }
     aspace->owner = proc;
 
     console_write_raw("[BOOTSTRAP] INIT_ASPACE: READY\n", 31);
+    init_boot_stage("ASPACE_READY");
 
     bh_user_image_t image;
     image.bytes = physmap_phys_to_virt(init_mod->phys_start);
     image.size = init_mod->size;
     image.image_id = 1;
     image.flags = 0;
+    if (!image.bytes) {
+        init_boot_fail("MODULE_MAPPED", K_ERR_VM_UNMAPPED);
+        return -1;
+    }
+    init_boot_stage("MODULE_MAPPED");
 
     bh_user_image_result_t result;
-    if (bh_user_image_load(proc, aspace, &image, &result) != K_OK) {
+    kstatus_t load_status = bh_user_image_load(proc, aspace, &image, &result);
+    if (load_status != K_OK) {
+        init_boot_fail("ELF_PLAN", load_status);
         return -1;
     }
 
@@ -282,7 +353,11 @@ static int bootstrap_launch_first_service(void) {
     s_init_startup = result.startup_va;
 
     bh_thread_t *thread = thread_create_detached(proc, user_init_trampoline);
-    if (!thread) return -1;
+    if (!thread) {
+        init_boot_fail("THREAD_CREATED", K_ERR_NO_MEMORY);
+        return -1;
+    }
+    init_boot_stage("THREAD_CREATED");
 
     proc->main_thread = thread;
     thread->priority = 1;
@@ -290,6 +365,7 @@ static int bootstrap_launch_first_service(void) {
     set_thread_arg0(thread, result.startup_va);
 
     console_write_raw("[BOOTSTRAP] INIT_THREAD: SCHEDULED\n", 35);
+    init_boot_stage("THREAD_ENQUEUED");
 
     sched_enqueue(thread, hal_cpu_get_id());
     return 0;
