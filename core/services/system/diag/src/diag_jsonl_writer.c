@@ -1,0 +1,4 @@
+/* SPDX-License-Identifier: MIT */
+#include "bharat/diag/diag_jsonl_writer.h"
+#include <stdio.h>
+bh_status_t bh_diag_jsonl_write(void *context,const bh_diag_record_t *r) { bh_diag_jsonl_sink_t *s=context; if(!s||!s->write||!r)return BH_ERR_INVALID_ARGUMENT; char out[384]; int n=snprintf(out,sizeof(out),"{\"abi_version\":%u,\"event_type\":%u,\"severity\":%u,\"source_kind\":%u,\"payload_size\":%u,\"sequence\":%llu,\"timestamp_ns\":%llu,\"source_id\":%u,\"cpu_id\":%u,\"subsystem_id\":%u}\n",r->header.abi_version,r->header.event_type,r->header.severity,r->header.source_kind,r->header.payload_size,(unsigned long long)r->header.sequence,(unsigned long long)r->header.timestamp_ns,r->header.source_id,r->header.cpu_id,r->header.subsystem_id); if(n<0||(size_t)n>=sizeof(out))return BH_ERR_OVERFLOW; return s->write(s->context,out,(uint32_t)n); }

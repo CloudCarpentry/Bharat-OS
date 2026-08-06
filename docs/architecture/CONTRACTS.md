@@ -31,6 +31,7 @@ When implementation differs from an authority, treat it as a defect or an explic
 | VM authority and backend semantics | Add exact architecture/ADR references | MMU, MMU-Lite, MPU backends | VM lifecycle and backend tests | Memory maintainers |
 | Scheduler/per-core ownership | Add exact architecture/ADR references | Scheduler and cross-core commands | SMP ownership/migration tests | Scheduler maintainers |
 | Service lifecycle | Add exact service contract/ADR references | Service manager and services | Event-loop/restart/watchdog tests | Service runtime maintainers |
+| Diagnostic event and evidence ABI | `interface/uapi/diag/` and `contracts/evidence/` | Per-core rings, diagnostic collector, host evidence tooling | Host ABI/ring/parser/schema tests | Observability maintainers |
 
 ## Required entry contents
 

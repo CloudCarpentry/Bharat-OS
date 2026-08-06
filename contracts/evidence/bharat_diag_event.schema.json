@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "license": "SPDX-License-Identifier: MIT",
+  "type": "object",
+  "additionalProperties": false,
+  "title": "Bharat diagnostic event v1",
+  "required": [
+    "abi_version",
+    "event_type",
+    "severity",
+    "source_kind",
+    "payload_size",
+    "sequence",
+    "timestamp_ns",
+    "source_id",
+    "cpu_id",
+    "subsystem_id"
+  ],
+  "properties": {
+    "abi_version": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "event_type": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "severity": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "source_kind": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "payload_size": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "timestamp_ns": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "source_id": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "cpu_id": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "subsystem_id": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}
