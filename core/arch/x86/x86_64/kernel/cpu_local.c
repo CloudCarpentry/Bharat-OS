@@ -10,6 +10,7 @@
 #define EFER_SCE         0x00000001
 
 extern void x86_64_syscall_entry(void);
+void x86_64_init_syscall(void);
 
 void arch_cpu_local_set(cpu_local_t *cl) {
     if (!cl) return;
@@ -22,6 +23,9 @@ void arch_cpu_local_set(cpu_local_t *cl) {
 
     __asm__ volatile("wrmsr" : : "a"(low), "d"(high), "c"(MSR_GS_BASE));
     __asm__ volatile("wrmsr" : : "a"(low), "d"(high), "c"(MSR_KERNEL_GS_BASE));
+
+    /* SYSCALL MSRs are core-local and must follow each core's GS setup. */
+    x86_64_init_syscall();
 }
 
 void x86_64_init_syscall(void) {

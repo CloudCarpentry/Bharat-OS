@@ -961,6 +961,9 @@ void sched_switch_to(bh_thread_t *next, uint32_t core_id) {
   rq->context_switches++;
   g_cpu_locals[core_id].runqueue.context_switches++;
   g_cpu_locals[core_id].runqueue.current_thread = next;
+  /* Owner-core state: privilege-entry assembly consumes this stack top. */
+  g_cpu_locals[core_id].kernel_stack =
+      (uintptr_t)next->kernel_stack + 16384U;
 
   cpu_context_t *prev_ctx = current ? (cpu_context_t*)current->cpu_context : NULL;
   cpu_context_t *next_ctx = (cpu_context_t*)next->cpu_context;
