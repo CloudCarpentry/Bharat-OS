@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "license": "SPDX-License-Identifier: MIT",
+  "type": "object",
+  "additionalProperties": false,
+  "title": "Bharat boot evidence v1",
+  "required": [
+    "schema_version",
+    "architecture",
+    "profile",
+    "result",
+    "failure_category",
+    "failure_evidence",
+    "raw_evidence_lines",
+    "stages",
+    "warnings"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "architecture": {
+      "type": "string"
+    },
+    "profile": {
+      "type": "string"
+    },
+    "result": {
+      "enum": [
+        "succeeded",
+        "failed",
+        "incomplete",
+        "malformed"
+      ]
+    },
+    "last_successful_stage": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "first_failed_stage": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "failure_category": {
+      "enum": [
+        "NONE",
+        "BUILD_FAILURE",
+        "IMAGE_FAILURE",
+        "EMULATOR_START_FAILURE",
+        "BOOT_TIMEOUT",
+        "MODULE_NOT_FOUND",
+        "ELF_INVALID",
+        "SEGMENT_MAP_FAILURE",
+        "STACK_PREPARATION_FAILURE",
+        "THREAD_CREATION_FAILURE",
+        "ADDRESS_SPACE_FAILURE",
+        "USER_ENTRY_FAILURE",
+        "CPU_TRAP",
+        "PAGE_FAULT",
+        "GENERAL_PROTECTION_FAULT",
+        "ILLEGAL_INSTRUCTION",
+        "SERVICE_START_FAILURE",
+        "ASSERTION_FAILURE",
+        "PANIC",
+        "EVIDENCE_INCOMPLETE",
+        "UNKNOWN"
+      ]
+    },
+    "failure_evidence": {
+      "enum": [
+        "positive",
+        "suggestive",
+        "missing"
+      ]
+    },
+    "raw_evidence_lines": {
+      "type": "array",
+      "maxItems": 128,
+      "items": {
+        "type": "object"
+      }
+    },
+    "stages": {
+      "type": "array",
+      "minItems": 15,
+      "maxItems": 15,
+      "items": {
+        "type": "object",
+        "required": [
+          "stage",
+          "result"
+        ],
+        "properties": {
+          "stage": {
+            "type": "string"
+          },
+          "result": {
+            "enum": [
+              "NOT_OBSERVED",
+              "STARTED",
+              "SUCCEEDED",
+              "FAILED",
+              "SKIPPED"
+            ]
+          }
+        }
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

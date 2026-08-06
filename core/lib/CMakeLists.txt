@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 cmake_minimum_required(VERSION 3.20)
 project(BharatOS_Lib C ASM)
 
@@ -60,6 +61,7 @@ endif()
 add_subdirectory(packet)
 add_subdirectory(rbtree)
 add_subdirectory(string)
+add_subdirectory(diag)
 
 # ---------------------------------------------------------
 # bharat_libmsg (Wire/Validation/Encoding)
