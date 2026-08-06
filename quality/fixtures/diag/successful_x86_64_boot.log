@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: MIT
+[BH-DIAG] BOOT_STAGE stage=BOOT_KERNEL_ENTRY status=SUCCEEDED timestamp_ns=1
+[BH-DIAG] BOOT_STAGE stage=BOOT_PLATFORM_READY status=SUCCEEDED timestamp_ns=2
+[BH-DIAG] BOOT_STAGE stage=BOOT_COMPLETE status=SUCCEEDED timestamp_ns=15

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 cmake_minimum_required(VERSION 3.20)
 
 add_executable(test_servicemgr
@@ -454,3 +455,15 @@ target_compile_definitions(test_accel_broker_e2e PRIVATE ACCELMGR_NO_MAIN=1)
 add_test(NAME host_test_accel_broker_e2e COMMAND test_accel_broker_e2e)
 
 add_subdirectory(ipc)
+
+# SPDX-License-Identifier: MIT
+add_executable(host_test_diag_ring test_diag_ring.c ../../core/lib/diag/src/diag_ring.c ../../core/lib/diag/src/diag_emit.c)
+target_include_directories(host_test_diag_ring PRIVATE ../../core/lib/diag/include ../../interface/uapi ../../interface/include)
+target_compile_definitions(host_test_diag_ring PRIVATE BHARAT_DIAG_ENABLED=1 BHARAT_DIAG_MAX_PAYLOAD=256)
+add_test(NAME host_test_diag_ring COMMAND host_test_diag_ring)
+add_executable(host_test_diag_contract test_diag_contract.c)
+target_include_directories(host_test_diag_contract PRIVATE ../../interface/uapi)
+add_test(NAME host_test_diag_contract COMMAND host_test_diag_contract)
+add_executable(host_test_diag_collector test_diag_collector.c ../../core/lib/diag/src/diag_ring.c ../../core/services/system/diag/src/diag_collector.c)
+target_include_directories(host_test_diag_collector PRIVATE ../../core/lib/diag/include ../../core/services/system/diag/include ../../interface/uapi ../../interface/include)
+add_test(NAME host_test_diag_collector COMMAND host_test_diag_collector)
