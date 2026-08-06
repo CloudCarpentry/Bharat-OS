@@ -96,3 +96,18 @@ arch_context_switch:
 
     popq %rax
     jmp *%rax
+
+
+
+.global x86_64_thread_entry_stub
+.type x86_64_thread_entry_stub, @function
+
+x86_64_thread_entry_stub:
+    cli
+    movq 0(%rsp), %rdi
+    movq 8(%rsp), %rax
+    addq $16, %rsp
+    sti
+    jmp *%rax
+
+.size x86_64_thread_entry_stub, .-x86_64_thread_entry_stub

@@ -186,63 +186,58 @@ static int bh_rt_supervisor_start(const boot_module_t *mod) {
 
 // ── Canonical Handoff Router ──
 
-static uintptr_t s_init_entry = 0;
-static uintptr_t s_init_stack = 0;
-static uintptr_t s_init_startup = 0;
 
-static void user_init_trampoline(void) {
-    init_boot_stage("USER_ENTRY");
-#if defined(__x86_64__)
-    __asm__ volatile (
-        "cli\n\t"
-        "movq %0, %%rdi\n\t"
-        "movq $0x1B, %%rax\n\t"
-        "movq %%rax, %%ds\n\t"
-        "movq %%rax, %%es\n\t"
-        "pushq $0x1B\n\t"
-        "pushq %1\n\t"
-        "pushq $0x202\n\t"
-        "pushq $0x23\n\t"
-        "pushq %2\n\t"
-        "iretq\n\t"
-        :
-        : "r"(s_init_startup), "r"(s_init_stack), "r"(s_init_entry)
-        : "rax", "rdi", "memory"
-    );
-#elif defined(__aarch64__)
-    __asm__ volatile (
-        "mov x0, %0\n\t"
-        "msr elr_el1, %1\n\t"
-        "msr sp_el0, %2\n\t"
-        "mov x3, #0\n\t"
-        "msr spsr_el1, x3\n\t"
-        "eret\n\t"
-        :
-        : "r"(s_init_startup), "r"(s_init_entry), "r"(s_init_stack)
-        : "x0", "x3", "memory"
-    );
-#elif defined(__riscv)
-    __asm__ volatile (
-        "mv a0, %0\n\t"
-        "csrw sepc, %1\n\t"
-        "mv sp, %2\n\t"
-        "sret\n\t"
-        :
-        : "r"(s_init_startup), "r"(s_init_entry), "r"(s_init_stack)
-        : "a0", "sp", "memory"
-    );
-#elif defined(__arm__)
-    __asm__ volatile (
-        "mov r0, %0\n\t"
-        "mov sp, %2\n\t"
-        "bx %1\n\t"
-        :
-        : "r"(s_init_startup), "r"(s_init_entry), "r"(s_init_stack)
-        : "r0", "sp", "memory"
-    );
-#endif
-    while (1) {}
+#include "arch/user_entry.h"
+#include "slab.h"
+
+static void loader_print_hex64(uint64_t val) {
+    char buf[17];
+    for (int i = 15; i >= 0; --i) {
+        int nibble = (val >> (i * 4)) & 0xF;
+        buf[15 - i] = nibble < 10 ? '0' + nibble : 'a' + (nibble - 10);
+    }
+    buf[16] = '\0';
+    console_write_raw(buf, 16);
 }
+
+
+
+#define ARCH_USER_ENTRY_MAGIC 0x42554855454E5452ULL
+
+
+static __attribute__((noreturn)) void generic_user_init_trampoline(void *arg) {
+    init_boot_stage("USER_ENTRY");
+
+    bh_thread_t *self = sched_current_thread();
+    arch_user_entry_t *expected = &self->first_user_entry;
+    arch_user_entry_t *entry = (arch_user_entry_t *)arg;
+
+    console_write_raw("ENTRY_TRAMPOLINE: received=", 27);
+    loader_print_hex64((uint64_t)(uintptr_t)entry);
+    console_write_raw(" expected=", 10);
+    loader_print_hex64((uint64_t)(uintptr_t)expected);
+    console_write_raw(" received_magic=", 16);
+    loader_print_hex64(entry ? entry->flags : 0);
+    console_write_raw(" expected_magic=", 16);
+    loader_print_hex64(expected->flags);
+    console_write_raw("\n", 1);
+
+    if (entry != expected) {
+        init_boot_fail("USER_ENTRY_ARG_POINTER_MISMATCH", -1);
+        kernel_panic("USER_ENTRY_ARG_POINTER mismatch");
+    }
+
+    if (!entry || entry->flags != ARCH_USER_ENTRY_MAGIC) {
+        init_boot_fail("USER_ENTRY_MAGIC_MISMATCH", -1);
+        kernel_panic("USER_ENTRY_MAGIC mismatch in generic_user_init_trampoline");
+    }
+
+    arch_enter_user(entry);
+
+    init_boot_fail("USER_ENTRY_RETURNED", -1);
+    kernel_panic("arch_enter_user unexpectedly returned");
+}
+
 
 static int bootstrap_launch_first_service(void) {
     if (!g_boot_info) {
@@ -348,21 +343,42 @@ static int bootstrap_launch_first_service(void) {
 
     console_write_raw("[BOOTSTRAP] INIT_ELF: VALIDATED\n", 32);
 
-    s_init_entry = result.entry_point;
-    s_init_stack = result.user_stack_top;
-    s_init_startup = result.startup_va;
 
-    bh_thread_t *thread = thread_create_detached(proc, user_init_trampoline);
+    // Allocate entry struct on heap (immortal for init, or freed if panic)
+
+
+    arch_user_entry_t local_entry;
+    local_entry.flags = ARCH_USER_ENTRY_MAGIC;
+    kstatus_t prep_status = arch_user_entry_prepare(&local_entry, aspace, result.entry_point, result.user_stack_top, result.startup_va);
+    if (prep_status != K_OK) {
+        init_boot_fail("USER_ENTRY_PREPARE", prep_status);
+        return -1;
+    }
+
+    bh_thread_t *thread = thread_create_detached_arg(proc, generic_user_init_trampoline, &local_entry);
+
     if (!thread) {
-        init_boot_fail("THREAD_CREATED", K_ERR_NO_MEMORY);
+        init_boot_fail("THREAD_CREATED", -1);
         return -1;
     }
     init_boot_stage("THREAD_CREATED");
 
+    uint64_t *frame = (uint64_t *)(uintptr_t)((cpu_context_t*)thread->cpu_context)->sp;
+    console_write_raw("ENTRY_PREP: expected_arg=", 25);
+    loader_print_hex64((uint64_t)(uintptr_t)&thread->first_user_entry);
+    console_write_raw(" sp=", 4);
+    loader_print_hex64((uint64_t)(uintptr_t)frame);
+    console_write_raw(" word0=", 7);
+    loader_print_hex64(frame ? frame[0] : 0);
+    console_write_raw(" word1=", 7);
+    loader_print_hex64(frame ? frame[1] : 0);
+    console_write_raw(" word2=", 7);
+    loader_print_hex64(frame ? frame[2] : 0);
+    console_write_raw("\n", 1);
+
     proc->main_thread = thread;
     thread->priority = 1;
 
-    set_thread_arg0(thread, result.startup_va);
 
     console_write_raw("[BOOTSTRAP] INIT_THREAD: SCHEDULED\n", 35);
     init_boot_stage("THREAD_ENQUEUED");

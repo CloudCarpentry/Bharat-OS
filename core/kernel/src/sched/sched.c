@@ -1320,3 +1320,17 @@ bool sched_find_txn(sched_rq_t *rq, sched_cmd_handle_t handle, uint16_t *out_out
   }
   return false;
 }
+
+
+
+bh_thread_t *thread_create_detached_arg(bh_process_t *parent, void (*entry_point)(void *), const arch_user_entry_t *arg_data) {
+  bh_thread_t *thread = thread_create_detached(parent, (void (*)(void))entry_point);
+  if (thread && arg_data) {
+    thread->first_user_entry = *arg_data;
+    thread->first_user_entry_valid = 1;
+    uintptr_t stack_top = (uintptr_t)thread->kernel_stack + 16384;
+    arch_prepare_initial_context_arg(
+        (cpu_context_t *)thread->cpu_context, (arch_thread_entry_arg_t)entry_point, &thread->first_user_entry, stack_top);
+  }
+  return thread;
+}

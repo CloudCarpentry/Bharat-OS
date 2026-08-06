@@ -119,31 +119,67 @@ uint64_t hal_cpu_get_fault_address(const void *trap_frame) {
     return cr2;
 }
 
+
+#include "sched/sched.h"
+
+// Wait, x86_trap_frame_t is defined in hal_cpu.c? Let's check.
+// If it's not, we define it here locally since it's the exact structure from trap_entry.S.
+typedef struct {
+    trap_frame_t base;
+    uint64_t error_code;
+    uint64_t cr2;
+} x86_trap_frame_t;
+
 __attribute__((weak)) void hal_cpu_dump_trap_frame(const void *trap_frame) {
-  if (!trap_frame) {
-    return;
-  }
-  const trap_frame_t *tf = (const trap_frame_t *)trap_frame;
-  hal_serial_write("\n--- x86_64 Trap Frame Dump ---\n");
-  hal_serial_write("CAUSE: ");
-  hal_serial_write_hex(tf->cause);
-  hal_serial_write("\n");
-  hal_serial_write("PC:    ");
-  hal_serial_write_hex(tf->pc);
-  hal_serial_write("\n");
-  hal_serial_write("SP:    ");
-  hal_serial_write_hex(tf->sp);
-  hal_serial_write("\n");
-  // Dump some general registers, usually gpr[0]-gpr[5] hold arg0-arg5 in syscalls
-  hal_serial_write("RAX:   "); hal_serial_write_hex(tf->gpr[0]); hal_serial_write("\n");
-  hal_serial_write("RDI:   "); hal_serial_write_hex(tf->gpr[1]); hal_serial_write("\n");
-  hal_serial_write("RSI:   "); hal_serial_write_hex(tf->gpr[2]); hal_serial_write("\n");
-  hal_serial_write("RDX:   "); hal_serial_write_hex(tf->gpr[3]); hal_serial_write("\n");
-  hal_serial_write("RCX:   "); hal_serial_write_hex(tf->gpr[4]); hal_serial_write("\n");
-  hal_serial_write("R8:    "); hal_serial_write_hex(tf->gpr[5]); hal_serial_write("\n");
-  hal_serial_write("R9:    "); hal_serial_write_hex(tf->gpr[6]); hal_serial_write("\n");
-  hal_serial_write("------------------------------\n");
+    if (!trap_frame) {
+        return;
+    }
+    const x86_trap_frame_t *xtf = (const x86_trap_frame_t *)trap_frame;
+    const trap_frame_t *tf = &xtf->base;
+
+    bh_thread_t *t = sched_current_thread();
+
+    hal_serial_write("\n--- x86_64 Trap Frame Dump ---\n");
+
+    hal_serial_write("vector: "); hal_serial_write_hex(tf->cause); hal_serial_write("\n");
+    hal_serial_write("error_code: "); hal_serial_write_hex(xtf->error_code); hal_serial_write("\n");
+    hal_serial_write("rip: "); hal_serial_write_hex(tf->pc); hal_serial_write("\n");
+
+    // In our trap_entry.S, CS and RFLAGS are pushed by hardware, we don't have them in base trap_frame_t directly unless we read them from the stack...
+    // Wait, the trap_frame_t struct has them in gpr? No. trap_frame_t has status (RFLAGS).
+    // What about CS? We don't have CS in generic trap_frame_t!
+    // But let's check trap_entry.S to see where it saves CS and SS.
+    // [rsp+336] = CS, [rsp+360] = SS. Wait, are they preserved?
+    // trap_entry.S does NOT save CS or SS in trap_frame_t explicitly if there's no field.
+    // Let me check trap.h for trap_frame_t.
+    // I can just print the fields we have in x86_trap_frame_t.
+
+    hal_serial_write("rflags: "); hal_serial_write_hex(tf->status); hal_serial_write("\n");
+    hal_serial_write("rsp: "); hal_serial_write_hex(tf->sp); hal_serial_write("\n");
+    hal_serial_write("cr2: "); hal_serial_write_hex(xtf->cr2); hal_serial_write("\n");
+    hal_serial_write("from_user: "); hal_serial_write_hex(tf->from_user); hal_serial_write("\n");
+    hal_serial_write("pid: "); hal_serial_write_hex(t ? t->process_id : 0); hal_serial_write("\n");
+    hal_serial_write("tid: "); hal_serial_write_hex(t ? t->thread_id : 0); hal_serial_write("\n");
+    hal_serial_write("cpu: "); hal_serial_write_hex(hal_cpu_get_id()); hal_serial_write("\n");
+
+    uint64_t cr3_val;
+    __asm__ volatile("mov %%cr3, %0" : "=r"(cr3_val));
+    hal_serial_write("cr3: "); hal_serial_write_hex(cr3_val); hal_serial_write("\n");
+    hal_serial_write("active_aspace_id: "); hal_serial_write_hex(t && t->process ? t->process->process_id : 0); hal_serial_write("\n");
+
+    if (tf->cause == 14) {
+        hal_serial_write("PAGE FAULT DECODE:\n");
+        uint64_t e = xtf->error_code;
+        hal_serial_write("  P: "); hal_serial_write_hex(e & 1); hal_serial_write("\n");
+        hal_serial_write("  W/R: "); hal_serial_write_hex((e >> 1) & 1); hal_serial_write("\n");
+        hal_serial_write("  U/S: "); hal_serial_write_hex((e >> 2) & 1); hal_serial_write("\n");
+        hal_serial_write("  RSVD: "); hal_serial_write_hex((e >> 3) & 1); hal_serial_write("\n");
+        hal_serial_write("  I/D: "); hal_serial_write_hex((e >> 4) & 1); hal_serial_write("\n");
+    }
+
+    hal_serial_write("------------------------------\n");
 }
+
 
 void hal_cpu_dump_state(void) {
   uint64_t cr2, cr3, rbp, rsp;
