@@ -357,6 +357,23 @@ static inline void ioapic_write(uint8_t offset, uint32_t val) {
 }
 
 // --- GDT Definitions (TSS requires it) ---
+#define X86_GDT_KERNEL_CODE_INDEX 1
+#define X86_GDT_KERNEL_DATA_INDEX 2
+#define X86_GDT_USER_DATA_INDEX 3
+#define X86_GDT_USER_CODE_INDEX 4
+#define X86_GDT_TSS_INDEX 5
+
+#define X86_GDT_ACCESS_KERNEL_CODE 0x9AU
+#define X86_GDT_ACCESS_KERNEL_DATA 0x92U
+#define X86_GDT_ACCESS_USER_DATA 0xF2U
+#define X86_GDT_ACCESS_USER_CODE 0xFAU
+#define X86_GDT_ACCESS_TSS_AVAILABLE 0x89U
+
+#define X86_GDT_GRANULARITY_CODE64 0xAU
+#define X86_GDT_GRANULARITY_DATA 0xCU
+
+#define X86_GDT_TSS_SELECTOR (X86_GDT_TSS_INDEX << 3)
+
 static uint64_t g_gdt[8];
 static struct {
   uint16_t limit;
@@ -364,8 +381,7 @@ static struct {
 } __attribute__((packed)) g_gdtr;
 
 static void gdt_set_descriptor(int index, uint64_t base, uint32_t limit,
-                               uint8_t access, uint8_t gran)
-    __attribute__((unused));
+                               uint8_t access, uint8_t gran);
 static void gdt_set_descriptor(int index, uint64_t base, uint32_t limit,
                                uint8_t access, uint8_t gran) {
   if (index < 0 || index >= 8)
@@ -403,10 +419,15 @@ void hal_init(void) {
     core_id = 0; // Safeguard
 
   g_gdt[0] = 0;
-  g_gdt[1] = 0x00af9a000000ffff; // KCode (0x08)
-  g_gdt[2] = 0x00af92000000ffff; // KData (0x10)
-  g_gdt[3] = 0x00aff2000000ffff; // UData (0x18)
-  g_gdt[4] = 0x00affa000000ffff; // UCode (0x20)
+  gdt_set_descriptor(X86_GDT_KERNEL_CODE_INDEX, 0, 0xFFFFFU,
+                     X86_GDT_ACCESS_KERNEL_CODE,
+                     X86_GDT_GRANULARITY_CODE64);
+  gdt_set_descriptor(X86_GDT_KERNEL_DATA_INDEX, 0, 0xFFFFFU,
+                     X86_GDT_ACCESS_KERNEL_DATA, X86_GDT_GRANULARITY_DATA);
+  gdt_set_descriptor(X86_GDT_USER_DATA_INDEX, 0, 0xFFFFFU,
+                     X86_GDT_ACCESS_USER_DATA, X86_GDT_GRANULARITY_DATA);
+  gdt_set_descriptor(X86_GDT_USER_CODE_INDEX, 0, 0xFFFFFU,
+                     X86_GDT_ACCESS_USER_CODE, X86_GDT_GRANULARITY_CODE64);
 
   tss_entry_t *tss = &g_tss[core_id];
   tss->rsp0 = (uint64_t)g_per_core_stacks[core_id] + 16384;
@@ -414,7 +435,9 @@ void hal_init(void) {
   tss->iopb_offset = sizeof(tss_entry_t);
 
   uint64_t tss_base = (uint64_t)tss;
-  gdt_set_system_descriptor(5, tss_base, sizeof(tss_entry_t) - 1, 0x89);
+  gdt_set_system_descriptor(X86_GDT_TSS_INDEX, tss_base,
+                            sizeof(tss_entry_t) - 1,
+                            X86_GDT_ACCESS_TSS_AVAILABLE);
 
   g_gdtr.base = (uint64_t)&g_gdt[0];
   g_gdtr.limit = sizeof(g_gdt) - 1;
@@ -423,7 +446,7 @@ void hal_init(void) {
   __asm__ volatile("lgdt %0" : : "m"(g_gdtr));
 
   console_write_raw("H2\n", 3);
-  __asm__ volatile("ltr %w0" : : "r"(0x28));
+  __asm__ volatile("ltr %w0" : : "r"(X86_GDT_TSS_SELECTOR));
 
   console_write_raw("H3\n", 3);
 

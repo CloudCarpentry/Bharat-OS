@@ -5,6 +5,12 @@
 #include "sched/sched.h"
 #include "mm/physmap.h"
 
+#define X86_USER_DATA_SELECTOR 0x1B
+#define X86_USER_CODE_SELECTOR 0x23
+
+#define X86_STRINGIFY_INNER(value) #value
+#define X86_STRINGIFY(value) X86_STRINGIFY_INNER(value)
+
 kstatus_t arch_user_entry_prepare(
     arch_user_entry_t *out,
     address_space_t *aspace,
@@ -22,8 +28,14 @@ kstatus_t arch_user_entry_prepare(
         return K_ERR_INVALID_ARG;
     }
 
+    /* A directly entered SysV function observes RSP == 8 (mod 16), as if
+     * reached by CALL. Keep the synthetic return slot inside the mapped stack.
+     */
+    uintptr_t aligned_sp = user_sp & ~(uintptr_t)0xFU;
+    if (aligned_sp < sizeof(uintptr_t)) return K_ERR_INVALID_ARG;
+
     out->entry_pc = entry_pc;
-    out->user_sp = user_sp;
+    out->user_sp = aligned_sp - sizeof(uintptr_t);
     out->arg0 = arg0;
     out->aspace = aspace;
     // out->flags preserved
@@ -65,7 +77,9 @@ void arch_enter_user(const arch_user_entry_t *entry) {
     console_write_raw("  cr3_actual=", 13);
     print_hex(cr3_val);
     console_write_raw("\n  cr3_expected=", 16);
-    print_hex(0);
+    print_hex(entry->aspace && entry->aspace->prot_domain
+                  ? (uint64_t)(uintptr_t)entry->aspace->prot_domain->backend_state
+                  : 0);
     console_write_raw("\n  pid=", 7);
     print_hex(thread ? thread->process_id : 0);
     console_write_raw("\n  tid=", 7);
@@ -77,13 +91,13 @@ void arch_enter_user(const arch_user_entry_t *entry) {
     __asm__ volatile (
         "cli\n\t"
         "movq %0, %%rdi\n\t"
-        "movq $0x1B, %%rax\n\t"
-        "movq %%rax, %%ds\n\t"
-        "movq %%rax, %%es\n\t"
-        "pushq $0x1B\n\t"
+        "movw $" X86_STRINGIFY(X86_USER_DATA_SELECTOR) ", %%ax\n\t"
+        "movw %%ax, %%ds\n\t"
+        "movw %%ax, %%es\n\t"
+        "pushq $" X86_STRINGIFY(X86_USER_DATA_SELECTOR) "\n\t"
         "pushq %1\n\t"
         "pushq $0x202\n\t"
-        "pushq $0x23\n\t"
+        "pushq $" X86_STRINGIFY(X86_USER_CODE_SELECTOR) "\n\t"
         "pushq %2\n\t"
         "iretq\n\t"
         :

@@ -18,6 +18,7 @@
 #define CR0_PG       (1 << 31)
 #define EFER_MSR     0xC0000080
 #define EFER_LME     (1 << 8)
+#define EFER_NXE     (1 << 11)
 #define PAGE_P       1
 #define PAGE_RW      2
 #define PAGE_PS      (1 << 7)   /* large (2 MiB) page */
@@ -171,10 +172,10 @@ _start:
     orl  $(CR4_PAE | (1 << 9) | (1 << 10)), %eax
     movl %eax,  %cr4
 
-    /* Set EFER.LME */
+    /* Enable long mode and NX before installing any NX-marked mappings. */
     movl $EFER_MSR, %ecx
     rdmsr
-    orl  $EFER_LME, %eax
+    orl  $(EFER_LME | EFER_NXE), %eax
     wrmsr
 
     /* Enable paging → activates long mode */
