@@ -75,3 +75,4 @@ test_procvm_e2e
 test_procvm_stress
 test_vm_authority_integration
 test_vm_handle_lifecycle
+build/generated/

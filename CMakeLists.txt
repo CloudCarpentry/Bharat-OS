@@ -498,3 +498,6 @@ bharat_add_host_test_compat_target(
 
 # Image generation
 include(BharatImage)
+add_subdirectory(core/stacks/ui/adapters/lvgl)
+add_subdirectory(tools/ui_simulator)
+add_subdirectory(quality/tests/ui)
