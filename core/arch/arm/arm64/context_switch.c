@@ -31,3 +31,12 @@ void arch_prepare_initial_context(cpu_context_t* ctx, void (*entry)(void), uint6
 
   // Do not preload FP state here. Lazy path will trap on first use.
 }
+
+void arch_prepare_initial_context_arg(
+    cpu_context_t *ctx,
+    arch_thread_entry_arg_t entry,
+    void *arg0,
+    uintptr_t stack_top)
+{
+    // Stub
+}

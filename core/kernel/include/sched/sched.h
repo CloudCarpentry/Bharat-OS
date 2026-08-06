@@ -1,3 +1,4 @@
+#include "arch/user_entry.h"
 #ifndef BHARAT_SCHED_H
 #define BHARAT_SCHED_H
 
@@ -481,11 +482,16 @@ struct bh_thread {
     uint32_t home_core_id;
     uint32_t generation;
 
+
     // CPU Architectural Context (Registers)
     void* cpu_context;
 
     // Kernel Stack
     virt_addr_t kernel_stack;
+
+    arch_user_entry_t first_user_entry;
+    uint8_t first_user_entry_valid;
+
 
     thread_state_t state;
     uint32_t priority;
@@ -587,6 +593,8 @@ bh_process_t* process_create(const char* name);
 int process_destroy(bh_process_t* process);
 bh_thread_t* thread_create(bh_process_t* parent, void (*entry_point)(void));
 bh_thread_t* thread_create_detached(bh_process_t* parent, void (*entry_point)(void));
+bh_thread_t *thread_create_detached_arg(bh_process_t *parent, void (*entry_point)(void *), const arch_user_entry_t *arg_data);
+
 int thread_destroy(bh_thread_t* thread);
 
 // Current Context Helpers

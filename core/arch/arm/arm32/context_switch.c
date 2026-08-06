@@ -10,3 +10,12 @@ void arch_ext_state_thread_init(void *thread) { (void)thread; }
 void arch_ext_state_thread_destroy(void *thread) { (void)thread; }
 void arch_ext_state_save(void *thread) { (void)thread; }
 void arch_ext_state_restore(void *thread) { (void)thread; }
+
+void arch_prepare_initial_context_arg(
+    cpu_context_t *ctx,
+    arch_thread_entry_arg_t entry,
+    void *arg0,
+    uintptr_t stack_top)
+{
+    // Stub
+}
