@@ -38,5 +38,23 @@ void arch_prepare_initial_context_arg(
     void *arg0,
     uintptr_t stack_top)
 {
-    // Stub
+    if (!ctx) {
+        return;
+    }
+    for (size_t i = 0; i < 16; ++i) {
+        ctx->regs[i] = 0U;
+    }
+
+    // Align stack to 16 bytes
+    stack_top &= ~0xFULL;
+
+    // x19 (regs[0]) will hold the real entry point
+    ctx->regs[0] = (uint64_t)(uintptr_t)entry;
+
+    // x0 will be arg0 for the entry function
+    ctx->regs[1] = (uint64_t)(uintptr_t)arg0;
+
+    // Initial resume point is the bootstrap trampoline
+    ctx->pc = (uint64_t)(uintptr_t)arch_bh_thread_start_trampoline;
+    ctx->sp = stack_top;
 }
