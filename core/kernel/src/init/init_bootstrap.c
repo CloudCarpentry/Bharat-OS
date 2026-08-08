@@ -21,36 +21,12 @@ static int fdt_str_eq_local(const char *a, const char *b) {
     return (*a == *b);
 }
 
-static void set_thread_arg0(bh_thread_t *thread, uintptr_t arg0) {
-#if defined(__x86_64__)
-    ((cpu_context_t*)thread->cpu_context)->regs[7] = arg0; // RDI
-#elif defined(__aarch64__)
-    ((cpu_context_t*)thread->cpu_context)->regs[0] = arg0; // X0
-#elif defined(__arm__)
-    ((cpu_context_t*)thread->cpu_context)->regs[0] = arg0; // R0
-#elif defined(__riscv)
-    ((cpu_context_t*)thread->cpu_context)->regs[10] = arg0; // A0
-#endif
-}
-
 static void init_boot_write(const char *s) {
     console_write_raw(s, string_length(s));
 }
 
 static const char *init_boot_arch_name(void) {
-#if defined(__x86_64__)
-    return "x86_64";
-#elif defined(__aarch64__)
-    return "arm64";
-#elif defined(__riscv) && (__riscv_xlen == 64)
-    return "riscv64";
-#elif defined(__arm__)
-    return "arm32";
-#elif defined(__riscv) && (__riscv_xlen == 32)
-    return "riscv32";
-#else
-    return "unknown";
-#endif
+    return BHARAT_ARCH_NAME;
 }
 
 static const char *init_boot_kstatus_name(kstatus_t status) {
@@ -164,10 +140,6 @@ static int bh_rt_supervisor_start(const boot_module_t *mod) {
     proc->main_thread = thread;
     thread->priority = 1;
 
-    // Allocate stack top
-    uintptr_t stack_top = mod->phys_start + mod->size + 4096 + 16384;
-    arch_prepare_initial_context((cpu_context_t*)thread->cpu_context, (void (*)(void))entry_point, stack_top);
-
     // 7. Prepare startup structure and pass its pointer to argument 0
     uint64_t startup_phys = mod->phys_start + mod->size + 4096 + 16384 + 4096;
     bh_rt_startup_t *startup = (bh_rt_startup_t *)physmap_phys_to_virt(startup_phys);
@@ -186,7 +158,9 @@ static int bh_rt_supervisor_start(const boot_module_t *mod) {
         }
     }
 
-    set_thread_arg0(thread, startup_phys);
+    // Allocate stack top
+    uintptr_t stack_top = mod->phys_start + mod->size + 4096 + 16384;
+    arch_prepare_initial_context_arg((cpu_context_t*)thread->cpu_context, (arch_thread_entry_arg_t)entry_point, (void *)startup_phys, stack_top);
 
     sched_enqueue(thread, hal_cpu_get_id());
     return 0;
@@ -371,22 +345,12 @@ static int bootstrap_launch_first_service(void) {
     }
     init_boot_stage("THREAD_CREATED");
 
-    uint64_t *frame = (uint64_t *)(uintptr_t)((cpu_context_t*)thread->cpu_context)->sp;
     console_write_raw("ENTRY_PREP: expected_arg=", 25);
     loader_print_hex64((uint64_t)(uintptr_t)&thread->first_user_entry);
-    console_write_raw(" sp=", 4);
-    loader_print_hex64((uint64_t)(uintptr_t)frame);
-    console_write_raw(" word0=", 7);
-    loader_print_hex64(frame ? frame[0] : 0);
-    console_write_raw(" word1=", 7);
-    loader_print_hex64(frame ? frame[1] : 0);
-    console_write_raw(" word2=", 7);
-    loader_print_hex64(frame ? frame[2] : 0);
     console_write_raw("\n", 1);
 
     proc->main_thread = thread;
     thread->priority = 1;
-
 
     console_write_raw("[BOOTSTRAP] INIT_THREAD: SCHEDULED\n", 35);
     init_boot_stage("THREAD_ENQUEUED");

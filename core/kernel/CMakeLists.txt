@@ -215,8 +215,6 @@ elseif(ARCH STREQUAL "riscv64")
     set(ARCH_EXT_STATE_SRC ${BHARAT_ARCH_ROOT}/riscv/riscv64/ext_state.c)
 elseif(ARCH STREQUAL "riscv32")
     set(BHARAT_ARCH_PRIVATE_INCLUDE_DIR ${BHARAT_ARCH_ROOT}/riscv/riscv32/include)
-    message(WARNING "riscv32 trap path is currently unsupported/stubbed; target is not production runtime capable.")
-    add_compile_definitions(BHARAT_ARCH_TRAP_UNSUPPORTED=1)
     set(BOOT_SRC ${BHARAT_ARCH_ROOT}/riscv/riscv32/boot/boot.S)
     set(ARCH_HAL ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv32/hal_cpu.c ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv32/trap_entry.S ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv32/hal_pt_riscv32.c ${BHARAT_HAL_ROOT}/common/hal_pt.c ${BHARAT_HAL_ROOT}/common/hal_secure_boot_unsupported.c ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv32/cpu_relax.c ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv32/boot_stub.c ${BHARAT_HAL_ROOT}/common/iommu/null/null_iommu.c ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv32/hal_discovery.c ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv32/hal_mm.c ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv32/hal_irq.c ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv32/hal_timer.c ${BHARAT_ARCH_ROOT}/riscv/riscv32/boot/entry.c)
     set(ARCH_HAL_EXTRA ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv32/shakti_bsp_stub.c)
@@ -233,8 +231,6 @@ elseif(ARCH STREQUAL "arm64")
     set(ARCH_EXT_STATE_SRC ${BHARAT_ARCH_ROOT}/arm/arm64/ext_state.c)
 elseif(ARCH STREQUAL "arm32")
     set(BHARAT_ARCH_PRIVATE_INCLUDE_DIR ${BHARAT_ARCH_ROOT}/arm/arm32/include)
-    message(WARNING "arm32 trap path is currently unsupported/stubbed; target is not production runtime capable.")
-    add_compile_definitions(BHARAT_ARCH_TRAP_UNSUPPORTED=1)
     set(BOOT_SRC ${BHARAT_ARCH_ROOT}/arm/arm32/boot/boot.S)
     set(ARCH_HAL ${BHARAT_ARCH_HAL_ROOT}/arm/arm32/hal_cpu.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm32/trap_entry.S ${BHARAT_ARCH_HAL_ROOT}/arm/arm32/hal_pt_arm32.c ${BHARAT_HAL_ROOT}/common/hal_pt.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm32/hal_discovery.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm32/hal_timer.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm32/hal_irq.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm32/boot_stub.c ${BHARAT_ARCH_HAL_ROOT}/mpu/arm32/mpu_backend.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm32/dma.c ${BHARAT_HAL_ROOT}/common/hal_secure_boot_unsupported.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm32/cpu_relax.c ${BHARAT_HAL_ROOT}/common/iommu/null/null_iommu.c)
     set(ARCH_CONTEXT_SWITCH ${BHARAT_ARCH_ROOT}/arm/arm32/user_entry.c ${BHARAT_ARCH_ROOT}/arm/arm32/context_switch.c ${BHARAT_ARCH_ROOT}/arm/arm32/context_switch.S)
@@ -550,6 +546,33 @@ list(APPEND KERNEL_SRCS
     src/device/device_mmio.c
 )
 
+# ── Generate ASM Offsets ───────────────────────────────────────────────────
+set(ASM_OFFSETS_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated/asm")
+file(MAKE_DIRECTORY "${ASM_OFFSETS_DIR}")
+set(ASM_OFFSETS_H "${ASM_OFFSETS_DIR}/trap_offsets.inc")
+
+# Use a separate list for flags to avoid passing spaces incorrectly to Clang
+separate_arguments(CMAKE_C_FLAGS_LIST NATIVE_COMMAND "${CMAKE_C_FLAGS}")
+
+# Compile gen_asm_offsets.c to assembly using the target compiler
+add_custom_command(
+    OUTPUT "${ASM_OFFSETS_DIR}/gen_asm_offsets.s"
+    COMMAND ${CMAKE_C_COMPILER} ${CMAKE_C_FLAGS_LIST} -S -I${CMAKE_SOURCE_DIR}/core/kernel/include -I${CMAKE_SOURCE_DIR}/interface/include -I${CMAKE_SOURCE_DIR}/tools/abi -I${CMAKE_BINARY_DIR}/generated/include -I${CMAKE_BINARY_DIR}/interface/generated ${CMAKE_SOURCE_DIR}/tools/abi/gen_asm_offsets.c -o "${ASM_OFFSETS_DIR}/gen_asm_offsets.s"
+    DEPENDS "${CMAKE_SOURCE_DIR}/tools/abi/gen_asm_offsets.c" "${CMAKE_SOURCE_DIR}/tools/abi/asm_offsets_macros.h" "${CMAKE_SOURCE_DIR}/core/kernel/include/trap.h"
+    COMMENT "Compiling gen_asm_offsets.c to assembly"
+)
+
+# Extract offsets using the python script
+add_custom_command(
+    OUTPUT "${ASM_OFFSETS_H}"
+    COMMAND python3 ${CMAKE_SOURCE_DIR}/tools/abi/asm_offsets.py "${ASM_OFFSETS_DIR}/gen_asm_offsets.s" "${ASM_OFFSETS_H}"
+    DEPENDS "${ASM_OFFSETS_DIR}/gen_asm_offsets.s" "${CMAKE_SOURCE_DIR}/tools/abi/asm_offsets.py"
+    COMMENT "Generating ${ASM_OFFSETS_H}"
+)
+
+add_custom_target(generate_asm_offsets DEPENDS "${ASM_OFFSETS_H}")
+set_source_files_properties(${KERNEL_SRCS} PROPERTIES OBJECT_DEPENDS "${ASM_OFFSETS_H}")
+
 # ── Kernel ELF ──────────────────────────────────────────────────────────────
 add_executable(kernel.elf
     ${KERNEL_SRCS}
@@ -597,6 +620,9 @@ if(BHARAT_ENABLE_ADVANCED_VM)
         $<TARGET_OBJECTS:bharat_mm_vmm>
     )
 endif()
+add_dependencies(kernel.elf generate_asm_offsets)
+target_include_directories(kernel.elf PRIVATE "${ASM_OFFSETS_DIR}")
+
 # Architecture-specific code model and PIE flags are set below
 target_link_libraries(kernel.elf subsys_manager bharat_libmsg bharat_kernel_buildopts bharatos_drivers serial_drivers bharat_kernel_includes bharat_arch_private_includes board_fabric bharat_platform_headers elf_parser)
 if(BHARAT_ENABLE_FBUI)
