@@ -17,5 +17,5 @@ add_library(k_test_support OBJECT
     ktest_crc.c
 )
 
-target_include_directories(k_test_support PRIVATE ../../include ${BHARAT_GENERATED_INCLUDE_DIR} ${CMAKE_SOURCE_DIR}/core/personalities/runtime/include ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/lib/include ${BHARAT_BOOT_INCLUDE_DIR})
+target_include_directories(k_test_support PRIVATE ../../include ${BHARAT_GENERATED_INCLUDE_DIR} ${CMAKE_SOURCE_DIR}/core/personalities/runtime/include ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/lib/include ${CMAKE_SOURCE_DIR}/core/lib/runtime/include ${BHARAT_BOOT_INCLUDE_DIR})
 target_link_libraries(k_test_support PRIVATE bharat_freestanding bharat_kernel_buildopts)
