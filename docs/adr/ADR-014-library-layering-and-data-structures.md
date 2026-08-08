@@ -1,6 +1,7 @@
 ---
 title: "ADR-014: Library Layering and Kernel-Private Data Structures"
-status: accepted
+status: Deprecated
+notes: `core/kernel/src/lib/string.c` is removed. Kernel string operations now use generalized or separated standard library mechanisms.
 owner: Divyang Panchasara
 last_updated: 2026-04-25
 tags:

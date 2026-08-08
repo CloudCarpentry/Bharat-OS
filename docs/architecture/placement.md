@@ -11,6 +11,8 @@ see_also:
 ---
 # Architecture Placement Contract
 
+> **Note:** The referenced files `core/kernel/src/fs_policy.c`, `core/kernel/src/qemu_hacks.c`, and `core/services/netmgr/intel_e1000.c` have been removed to enforce strict architectural placement.
+
 Bharat-OS enforces strict architectural boundaries to keep the system modular, portable, and secure. Contributors must adhere to these placement rules.
 
 ## 1. Directory Roles

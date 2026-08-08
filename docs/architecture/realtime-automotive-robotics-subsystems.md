@@ -11,6 +11,8 @@ see_also:
 ---
 # Real-time / Automotive / Robotics Specific Subsystems
 
+> **Note:** `core/kernel/include/sched.h`, `core/kernel/src/sched.c`, and `core/personalities/automotive/automotive.c` references are obsolete.
+
 This document defines subsystem contracts for EV, drone, robotics, and industrial Bharat-OS deployments.
 
 ## 1) Deterministic IPC Mode
