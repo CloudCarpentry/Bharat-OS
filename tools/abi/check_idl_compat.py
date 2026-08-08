@@ -10,13 +10,12 @@ if str(REPO_ROOT) not in sys.path:
 
 import tools.abi.common as common
 from tools.build.path_aliases import resolve_idl_alias
-from tools.bidl.parser import parse_bidl
+from tools.bidl.parser import parse_bidl, BidlParseError, SkipDialectError
 
 IDL_DIR_CANDIDATES = (
     "interface/idl",
     "idl",
 )
-
 
 def resolve_idl_dir():
     for path in IDL_DIR_CANDIDATES:
@@ -32,14 +31,26 @@ def generate_idl_manifest():
     idl_dir = resolve_idl_dir()
 
     for root, dirs, files in os.walk(idl_dir):
-        for file in files:
+        # Sort to ensure deterministic iteration
+        for file in sorted(files):
             if not file.endswith('.bidl'):
                 continue
 
             filepath = os.path.join(root, file)
-            service = parse_bidl(filepath)
-            if service["name"]:
-                manifest[service["name"]] = service
+            try:
+                service = parse_bidl(filepath)
+                if service["name"]:
+                    manifest[service["name"]] = service
+                else:
+                    common.report_error(f"File {filepath} parsed successfully but contains no unnamed service.")
+                    sys.exit(1)
+            except SkipDialectError as e:
+                # Intentionally non-service IDL dialect -> explicitly skipped
+                print(e.msg)
+            except BidlParseError as e:
+                # Malformed expected-BIDL-v1 input -> ERROR
+                common.report_error(f"Failed to parse {filepath}: {e}")
+                sys.exit(1)
 
     return manifest
 
