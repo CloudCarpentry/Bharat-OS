@@ -1,10 +1,29 @@
 #include "trap/syscall_regs.h"
 #include "trap/syscall_context.h"
-#include "hal/hal.h"
-#include "sched/sched.h"
+#include "arch/x86_syscall_return.h"
+#include <stddef.h>
 
 #define X86_RFLAGS_RESERVED_1 (1ULL << 1)
 #define X86_RFLAGS_IOPL_MASK  (3ULL << 12)
+
+_Static_assert(offsetof(bh_syscall_return_context_t, pc) == X86_SYSCALL_RET_PC_OFFSET,
+               "x86 syscall return pc layout drift");
+_Static_assert(offsetof(bh_syscall_return_context_t, sp) == X86_SYSCALL_RET_SP_OFFSET,
+               "x86 syscall return sp layout drift");
+_Static_assert(offsetof(bh_syscall_return_context_t, status) == X86_SYSCALL_RET_STATUS_OFFSET,
+               "x86 syscall return status layout drift");
+_Static_assert(offsetof(bh_syscall_return_context_t, result) == X86_SYSCALL_RET_RESULT_OFFSET,
+               "x86 syscall return result layout drift");
+_Static_assert(offsetof(bh_syscall_return_context_t, origin) == X86_SYSCALL_RET_ORIGIN_OFFSET,
+               "x86 syscall return origin layout drift");
+_Static_assert(offsetof(bh_syscall_return_context_t, flags) == X86_SYSCALL_RET_FLAGS_OFFSET,
+               "x86 syscall return flags layout drift");
+_Static_assert(offsetof(bh_syscall_return_context_t, disposition) == X86_SYSCALL_RET_DISPOSITION_OFFSET,
+               "x86 syscall return disposition layout drift");
+_Static_assert(sizeof(bh_syscall_return_context_t) == X86_SYSCALL_RET_CONTEXT_SIZE,
+               "x86 syscall return context size drift");
+_Static_assert(BH_SYSCALL_RETURN_USER == X86_SYSCALL_RETURN_USER_VALUE,
+               "x86 syscall USER disposition encoding drift");
 
 static bool is_canonical(uintptr_t addr) {
     uintptr_t sign_bit = (addr >> 47) & 1;
@@ -47,28 +66,6 @@ void x86_syscall_validate_return(bh_syscall_return_context_t *ret) {
 
     if (!valid) {
         ret->disposition = BH_SYSCALL_RETURN_FAULT;
-        bh_thread_t *thread = sched_current_thread();
-        if (thread) {
-            thread_raise_fault(thread, THREAD_FAULT_SEGV);
-            // If the thread faults, we must not return via SYSRET/IRET to invalid context.
-            // The thread_raise_fault will put the thread into a fault state.
-            // When we return to assembly, it will proceed to SYSRET, but the thread
-            // shouldn't actually execute user code anymore if the scheduler handles faults immediately,
-            // or we might need to block. However, thread_raise_fault marks it faulted.
-            // In Bharat-OS, thread_raise_fault likely calls sched_reschedule internally
-            // or at trap exit. We must make sure not to SYSRET to bad RIP.
-            // By resetting pc and sp to a safe loop or letting the scheduler pick another thread,
-            // we avoid the GPF. Since this is an unrecoverable syscall return context,
-            // we will loop here and call schedule.
-
-            // For now, raising fault is the requirement.
-            // To be absolutely safe from IRET/SYSRET #GP, zero out the context.
-            ret->pc = 0;
-            ret->sp = 0;
-            ret->status = X86_RFLAGS_RESERVED_1;
-
-            sched_reschedule();
-        }
     }
 }
 

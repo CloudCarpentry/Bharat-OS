@@ -31,6 +31,9 @@ supervisors are fatal handoff failures.
 
 - Architecture entry assembly never supplies partially initialized common trap
   metadata.
+- Architecture return assembly restores userspace state only for a validated
+  `BH_SYSCALL_RETURN_USER` disposition. Rejected contexts remain at CPL0 with
+  kernel architecture state active and enter a non-returning fault handoff.
 - User pointers are not dereferenced before the existing fault-safe usercopy.
 - A rejected or timed-out handoff is never converted to success.
 - Only an absent supervisor may be deferred, and only for a non-strict profile.
@@ -42,3 +45,8 @@ supervisors are fatal handoff failures.
 Five-architecture builds share the same metadata-driven gate and profile policy.
 Packaging a real servicemgr remains the production path; strict profiles cannot
 use the development fallback.
+
+The x86_64 return context has an assembly-visible, compile-time-checked layout.
+Validation records disposition without replacing malformed instruction or stack
+pointers with synthetic addresses; neither fault nor terminate dispositions can
+reach `SYSRETQ`.

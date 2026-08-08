@@ -1,8 +1,9 @@
 #include "arch/x86_segments.h"
+#include "arch/x86_syscall_return.h"
 
 .extern bh_syscall_entry_dispatch
 .extern x86_syscall_validate_return
-.extern sched_current_thread
+.extern bh_syscall_rejected_return_handoff
 
 .section .text
 .global x86_64_syscall_entry
@@ -75,11 +76,11 @@ x86_64_syscall_entry:
 
     /* Allocate bh_syscall_return_context_t on stack (48 bytes: 4x8 + 4 + 4 + 4 + padding)
        Let's align and allocate 48 bytes. */
-    sub $48, %rsp
+    sub $X86_SYSCALL_RET_CONTEXT_SIZE, %rsp
 
     /* Call the fixed-signature C bridge with trap_frame_t * in RDI and return context in RSI. */
     /* RDI = trap_frame_t * */
-    lea 48(%rsp), %rdi
+    lea X86_SYSCALL_RET_CONTEXT_SIZE(%rsp), %rdi
     /* RSI = bh_syscall_return_context_t * */
     mov %rsp, %rsi
     call bh_syscall_entry_dispatch
@@ -88,24 +89,23 @@ x86_64_syscall_entry:
     mov %rsp, %rdi
     call x86_syscall_validate_return
 
-    /* At this point, the kernel remains in CPL0 and we have not swapped GS back.
-       If the validation returned an error, x86_syscall_validate_return handles
-       thread_raise_fault and might not return here if the thread is terminated.
-       If it does return, it means the return context is safe. */
+    /* Only validated USER contexts may restore state and reach SYSRETQ. */
+    cmpl $X86_SYSCALL_RETURN_USER_VALUE, X86_SYSCALL_RET_DISPOSITION_OFFSET(%rsp)
+    jne .L_syscall_return_rejected
 
     /* Restore registers from trap_frame_t (which is at +48 from %rsp) */
-    mov 48+8(%rsp), %rdi
-    mov 48+16(%rsp), %rsi
-    mov 48+24(%rsp), %rdx
-    mov 48+32(%rsp), %r10
-    mov 48+40(%rsp), %r8
-    mov 48+48(%rsp), %r9
-    mov 48+72(%rsp), %rbx
-    mov 48+80(%rsp), %rbp
-    mov 48+88(%rsp), %r12
-    mov 48+96(%rsp), %r13
-    mov 48+104(%rsp), %r14
-    mov 48+112(%rsp), %r15
+    mov X86_SYSCALL_RET_CONTEXT_SIZE+8(%rsp), %rdi
+    mov X86_SYSCALL_RET_CONTEXT_SIZE+16(%rsp), %rsi
+    mov X86_SYSCALL_RET_CONTEXT_SIZE+24(%rsp), %rdx
+    mov X86_SYSCALL_RET_CONTEXT_SIZE+32(%rsp), %r10
+    mov X86_SYSCALL_RET_CONTEXT_SIZE+40(%rsp), %r8
+    mov X86_SYSCALL_RET_CONTEXT_SIZE+48(%rsp), %r9
+    mov X86_SYSCALL_RET_CONTEXT_SIZE+72(%rsp), %rbx
+    mov X86_SYSCALL_RET_CONTEXT_SIZE+80(%rsp), %rbp
+    mov X86_SYSCALL_RET_CONTEXT_SIZE+88(%rsp), %r12
+    mov X86_SYSCALL_RET_CONTEXT_SIZE+96(%rsp), %r13
+    mov X86_SYSCALL_RET_CONTEXT_SIZE+104(%rsp), %r14
+    mov X86_SYSCALL_RET_CONTEXT_SIZE+112(%rsp), %r15
 
     /* Use authoritative values from bh_syscall_return_context_t for return.
        Offsets in bh_syscall_return_context_t:
@@ -117,16 +117,16 @@ x86_64_syscall_entry:
        36: flags (4 bytes)
        40: disposition (4 bytes)
     */
-    mov 24(%rsp), %rax    # Result
-    mov 0(%rsp), %rcx     # User RIP
-    mov 16(%rsp), %r11    # User RFLAGS
-    mov 8(%rsp), %rdx     # User SP
+    mov X86_SYSCALL_RET_RESULT_OFFSET(%rsp), %rax
+    mov X86_SYSCALL_RET_PC_OFFSET(%rsp), %rcx
+    mov X86_SYSCALL_RET_STATUS_OFFSET(%rsp), %r11
+    mov X86_SYSCALL_RET_SP_OFFSET(%rsp), %rdx
 
     /* Save user SP to cpu_local for next entry */
     mov %rdx, %gs:USER_SP_OFFSET
 
     /* Pop return context and trap frame */
-    add $(288+48), %rsp
+    add $(288+X86_SYSCALL_RET_CONTEXT_SIZE), %rsp
 
     /* Restore user SP */
     mov %gs:USER_SP_OFFSET, %rsp
@@ -141,3 +141,9 @@ x86_64_syscall_entry:
      * CS/SS from STAR MSR
      */
     sysretq
+
+.L_syscall_return_rejected:
+    /* Still CPL0 with kernel GS active; this call is deliberately noreturn. */
+    mov X86_SYSCALL_RET_DISPOSITION_OFFSET(%rsp), %edi
+    call bh_syscall_rejected_return_handoff
+    ud2

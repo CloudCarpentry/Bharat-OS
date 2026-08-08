@@ -19,8 +19,6 @@ long bh_syscall_gate(trap_frame_t *frame, const trap_info_t *info);
 
 bool arch_trap_status_interrupt_enabled(const trap_frame_t *frame);
 
-#include "trap/syscall_test.h"
-
 /*
  * Architecture entry stubs do not own policy and must not manufacture a
  * partially initialized trap description in assembly.  They enter through
@@ -34,6 +32,8 @@ kstatus_t bh_syscall_entry_dispatch(trap_frame_t *frame, bh_syscall_return_conte
     ret->sp = frame->sp;
     ret->status = frame->status;
     ret->origin = TRAP_ORIGIN_USER;
+    ret->flags = 0;
+    ret->disposition = BH_SYSCALL_RETURN_FAULT;
 
     const trap_info_t info = {
         .trap_class = TRAP_CLASS_SYSCALL,
@@ -58,7 +58,7 @@ kstatus_t bh_syscall_entry_dispatch(trap_frame_t *frame, bh_syscall_return_conte
     if (thread && thread->process && thread->process->personality.kind != BH_PERSONALITY_NATIVE) {
         if (!ops || !ops->normalize_syscall_return) {
             ret->disposition = BH_SYSCALL_RETURN_FAULT;
-            return K_ERR_NOT_SUPPORTED;
+            return K_ERR_UNSUPPORTED;
         }
     }
 
@@ -69,6 +69,24 @@ kstatus_t bh_syscall_entry_dispatch(trap_frame_t *frame, bh_syscall_return_conte
 #endif
 
     return K_OK;
+}
+
+__attribute__((noreturn)) void
+bh_syscall_rejected_return_handoff(bh_syscall_return_disposition_t disposition) {
+    (void)disposition;
+    bh_thread_t *thread = sched_current_thread();
+
+    if (thread) {
+        /* Both dispositions reject the corrupted userspace continuation.  The
+         * scheduler's existing terminated-thread fault path owns teardown. */
+        thread_raise_fault(thread, THREAD_FAULT_SEGV);
+    }
+
+    /* A rejected context has no legal userspace return.  Keep kernel GS/CPL0
+     * state and continue yielding even if a scheduler backend returns here. */
+    for (;;) {
+        sched_reschedule();
+    }
 }
 
 kstatus_t bh_syscall_policy_check(bh_syscall_ctx_t *ctx, const bh_syscall_meta_t *desc) {
