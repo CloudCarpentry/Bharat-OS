@@ -102,6 +102,17 @@ add_test(NAME host_test_vmm_fault COMMAND host_test_vmm_fault)
 
 add_executable(test_uapi_abi test_uapi_abi.c)
 target_include_directories(test_uapi_abi PRIVATE ${CMAKE_SOURCE_DIR}/interface/include)
+
+add_executable(host_test_syscall_return_x86_64
+    syscall/test_syscall_extract_x86_64.c
+    ${CMAKE_SOURCE_DIR}/core/arch/x86/x86_64/syscall_extract.c)
+target_include_directories(host_test_syscall_return_x86_64 PRIVATE
+    ${CMAKE_SOURCE_DIR}/core/kernel/include
+    ${CMAKE_SOURCE_DIR}/core/arch/x86/x86_64/include
+    ${CMAKE_SOURCE_DIR}/core/personalities/runtime/include
+    ${CMAKE_BINARY_DIR}/generated/include
+    ${CMAKE_SOURCE_DIR}/interface/include)
+add_test(NAME host_test_syscall_return_x86_64 COMMAND host_test_syscall_return_x86_64)
 add_test(NAME host_test_uapi_abi COMMAND test_uapi_abi)
 
 add_executable(host_test_framebuffer gfx/test_framebuffer.c ../../core/lib/gfx/framebuffer.c)
