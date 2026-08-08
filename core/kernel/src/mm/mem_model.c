@@ -11,7 +11,8 @@ mem_model_t mem_model_get_current(void) {
 #elif defined(BHARAT_PROFILE_MMU_FULL)
     return MEM_MODEL_MMU_FULL;
 #else
-    return MEM_MODEL_MMU_FULL;
+    /* An omitted model is a configuration error, never an MMU grant. */
+    return MEM_MODEL_NONE;
 #endif
 }
 
@@ -32,7 +33,8 @@ kstatus_t mem_runtime_caps_from_hal(const struct hal_mem_caps *hal_caps, mem_run
     out_caps->supports_region_protection = (hal_caps->model >= HAL_MEMORY_MODEL_MPU);
     out_caps->supports_shared_memory = (hal_caps->model >= HAL_MEMORY_MODEL_MMU_LITE);
 
-    out_caps->supports_dma_map = true; // Baseline assumption for M0
+    /* DMA translation is optional platform truth, not implied by CPU VM. */
+    out_caps->supports_dma_map = hal_caps->supports_iommu;
     out_caps->supports_iommu = hal_caps->supports_iommu;
     out_caps->supports_numa = false; // Not yet reported by HAL
     out_caps->supports_hugepage = hal_caps->supports_hugepages;
@@ -85,10 +87,10 @@ uint64_t mem_model_get_caps(void) {
         case MEM_MODEL_MMU_FULL:
             return MEM_CAP_VIRT_ADDRSPACE | MEM_CAP_PAGE_MAP | MEM_CAP_PAGE_PROTECT |
                    MEM_CAP_DEMAND_FAULT | MEM_CAP_SHARED_ASPACE | MEM_CAP_TLB_INVALIDATE |
-                   MEM_CAP_DMA_MAP | MEM_CAP_IOMMU | MEM_CAP_PER_CORE_PMM_CACHE;
+                   MEM_CAP_PER_CORE_PMM_CACHE;
         case MEM_MODEL_MMU_LITE:
             return MEM_CAP_VIRT_ADDRSPACE | MEM_CAP_PAGE_MAP | MEM_CAP_PAGE_PROTECT |
-                   MEM_CAP_TLB_INVALIDATE | MEM_CAP_DMA_MAP;
+                   MEM_CAP_TLB_INVALIDATE;
         case MEM_MODEL_MPU:
             return MEM_CAP_REGION_PROTECT;
         default:
@@ -113,7 +115,7 @@ kstatus_t mem_model_validate_hal_caps(mem_model_t model, const hal_memory_caps_t
             if (!hal_caps->supports_mpu_only && !hal_caps->supports_mmu_full) return K_ERR_UNSUPPORTED;
             break;
         default:
-            break;
+            return K_ERR_UNSUPPORTED;
     }
 
     return K_OK;

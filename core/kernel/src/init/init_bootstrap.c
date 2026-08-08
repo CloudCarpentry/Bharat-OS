@@ -5,6 +5,7 @@
 #include "process/user_image_loader.h"
 #include "arch/context_switch.h"
 #include "hal/hal.h"
+#include "hal/hal_timer.h"
 #include "mm/physmap.h"
 #include "mm/prot_domain.h"
 #include "mm/vm_mapping.h"
@@ -128,17 +129,25 @@ static int bh_rt_supervisor_start(const boot_module_t *mod) {
         return -1;
     }
 
-    // 2. Create MPU Domain
-    prot_domain_t *domain = NULL;
-    if (prot_domain_create(&domain) != K_OK || !domain) {
-        // Fallback if MPU backend is not registered (e.g. mock/stub)
-        console_write_raw("[BOOTSTRAP] WARNING: MPU backend not registered. Simulated map.\n", 64);
-        domain = (prot_domain_t *)pmm_alloc_page_ex(MEM_NORMAL, PMM_ALLOC_ZERO); // Dummy page as mock domain
+    /*
+     * The process address space is the sole memory authority for every
+     * protection model.  For MPU it owns a REGION_ONLY protection domain;
+     * never fabricate a domain or replace the address-space pointer.
+     */
+    bh_process_t *proc = process_create("rt-supervisor");
+    if (!proc || !proc->addr_space || !proc->addr_space->prot_domain) {
+        init_boot_fail("RT_ASPACE_READY", K_ERR_UNSUPPORTED);
+        return -1;
     }
+    address_space_t *aspace = proc->addr_space;
+    prot_domain_t *domain = aspace->prot_domain;
 
     // 3. Plan & Install regions
     uintptr_t entry_point = 0;
-    bh_rt_region_plan_create_and_install(domain, mod, &entry_point);
+    if (bh_rt_region_plan_create_and_install(domain, mod, &entry_point) != 0) {
+        init_boot_fail("RT_REGIONS", K_ERR_VM_UNMAPPED);
+        return -1;
+    }
 
     // 4. Activate MPU domain
     prot_domain_activate(domain);
@@ -149,11 +158,6 @@ static int bh_rt_supervisor_start(const boot_module_t *mod) {
     console_write_raw("[BOOTSTRAP] RT_SCHEDULER: ACTIVE\n", 33);
 
     // 6. Spawn Thread
-    bh_process_t *proc = process_create("rt-supervisor");
-    if (!proc) return -1;
-    proc->addr_space = (address_space_t *)domain; // Cast for MPU mapping
-
-    // Setup detached unprivileged thread pointing to RT-supervisor entry point
     bh_thread_t *thread = thread_create_detached(proc, (void (*)(void))entry_point);
     if (!thread) return -1;
 
@@ -175,7 +179,11 @@ static int bh_rt_supervisor_start(const boot_module_t *mod) {
         startup->execution_profile = g_boot_info->execution_profile;
         startup->memory_model = (uint32_t)g_boot_info->memory_model;
         startup->cpu_id = (uint32_t)hal_cpu_get_id();
-        startup->timer_frequency = 1000000; // Simulated 1MHz
+        startup->timer_frequency = hal_timer_read_freq();
+        if (startup->timer_frequency == 0U) {
+            init_boot_fail("RT_TIMER_FREQUENCY", K_ERR_UNSUPPORTED);
+            return -1;
+        }
     }
 
     set_thread_arg0(thread, startup_phys);

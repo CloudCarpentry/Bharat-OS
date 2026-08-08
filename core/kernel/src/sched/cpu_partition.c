@@ -151,8 +151,9 @@ bool cpu_partition_allows_class(uint32_t cpu_id, bharat_sched_class_mask_t class
 
 bool cpu_partition_allows_any_class(uint32_t cpu_id, bharat_sched_class_mask_t class_mask) {
     const bharat_cpu_partition_desc_t *desc = cpu_partition_get(cpu_id);
-    if (!desc || desc->allowed_sched_classes == 0) {
-        return true;
+    if (!desc || desc->allowed_sched_classes == BHARAT_SCHED_CLASS_NONE ||
+        class_mask == BHARAT_SCHED_CLASS_NONE) {
+        return false;
     }
     return (desc->allowed_sched_classes & class_mask) != 0;
 }

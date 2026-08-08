@@ -18,8 +18,15 @@ def test_kernel_does_not_synthesize_userspace_success_markers():
     assert offenders == []
 
 
-def test_missing_init_module_is_hard_failure_marker():
+def test_missing_init_module_is_reported_by_loader_not_isa_gate():
     bootstrap = (REPO_ROOT / "core/kernel/src/init/init_bootstrap.c").read_text()
     kernel_boot = (REPO_ROOT / "core/kernel/src/kernel_boot.c").read_text()
     assert "BOOT_FAIL: INIT_MODULE_MISSING" in bootstrap
-    assert "BOOT_FAIL: INIT_MODULE_MISSING" in kernel_boot
+    assert "BOOT_FAIL: INIT_MODULE_MISSING" not in kernel_boot
+
+
+def test_kernel_readiness_is_not_boot_completion():
+    kernel_boot = (REPO_ROOT / "core/kernel/src/kernel_boot.c").read_text()
+    assert "KERNEL_RUNTIME_READY" in kernel_boot
+    assert "USERSPACE_LAUNCH_BEGIN" in kernel_boot
+    assert "Kernel loading successful - boot complete" not in kernel_boot
