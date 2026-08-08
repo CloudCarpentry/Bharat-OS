@@ -3,6 +3,12 @@
 #include "ipc/mk_proto.h"
 #include "fake_hal.h"
 
+enum {
+    TEST_INITIAL_TIMESTAMP = 1000,
+    TEST_DUPLICATE_TIMESTAMP = 1010,
+    TEST_NEXT_SEQUENCE_TIMESTAMP = 1020,
+};
+
 int main(void) {
     printf("Running test_mk_replay...\n");
 
@@ -12,15 +18,18 @@ int main(void) {
     fake_hal_set_cpu_id(0);
 
     // 1. First time receiving sequence 100 from core 1/endpoint 10 should be OK
-    st = bh_mk_replay_check_and_add(1, 10, 1, 0, 0, 1, 1, 100, 1000);
+    st = bh_mk_replay_check_and_add(1, 10, 1, 0, 0, 1, 1, 100,
+                                    TEST_INITIAL_TIMESTAMP);
     assert(st == K_OK);
 
     // 2. Duplicate receive should be rejected with ALREADY_EXISTS
-    st = bh_mk_replay_check_and_add(1, 10, 1, 0, 0, 1, 1, 100, 1001);
+    st = bh_mk_replay_check_and_add(1, 10, 1, 0, 0, 1, 1, 100,
+                                    TEST_DUPLICATE_TIMESTAMP);
     assert(st == K_ERR_ALREADY_EXISTS);
 
     // 3. Different sequence should be OK
-    st = bh_mk_replay_check_and_add(1, 10, 1, 0, 0, 1, 1, 101, 1002);
+    st = bh_mk_replay_check_and_add(1, 10, 1, 0, 0, 1, 1, 101,
+                                    TEST_NEXT_SEQUENCE_TIMESTAMP);
     assert(st == K_OK);
 
     // 4. Fill replay cache to test circular overwrite
