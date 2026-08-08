@@ -1,6 +1,7 @@
 ---
 title: "ADR-008: AI Scheduler Contract Across Profiles and Architectures"
-status: Accepted
+status: Obsolete
+notes: The AI scheduler plugin contract is deprecated. ML orchestration is handled in userspace.
 owner: Documentation Working Group
 last_updated: 2026-04-25
 tags:

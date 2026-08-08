@@ -11,6 +11,8 @@ see_also:
 ---
 # Architecture Documentation Index
 
+> **Note:** Several directories and READMEs mentioned below (such as `core/README.md`, `core/kernel/ipc/README.md`, `core/kernel/scheduler/README.md`, `core/kernel/tasks-threads/README.md`, `core/kernel/urpc/README.md`) have been removed during restructuring.
+
 This index maps Bharat-OS architecture documentation to the current repository structure.
 
 ## Recommended reading order

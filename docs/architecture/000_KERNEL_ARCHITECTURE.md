@@ -23,6 +23,8 @@ Below are production-ready versions of those files.
 
 # `KERNEL_ARCHITECTURE.md`
 
+> **Note:** The reference to `core/process-scheduler-architecture.md` is obsolete and has been removed.
+
 # Bharat-OS Kernel Architecture
 
 ## Overview

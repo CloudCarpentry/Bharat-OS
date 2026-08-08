@@ -11,6 +11,8 @@ see_also:
 ---
 # Bharat-OS IDL (BIDL) v1 Grammar (Current Implementation Profile)
 
+> **Note:** `tools/binterface/idl/bidlc.py` has been removed.
+
 ## 1. Purpose and Scope
 
 This document defines the **currently implemented BIDL v1 profile** used by the in-repo tooling (`tools/binterface/idl/bidlc.py` and `tools/abi/check_idl_compat.py`).
