@@ -2,6 +2,7 @@
 #include "init_handoff.h"
 #include "init_contract.h"
 #include "init_graph.h"
+#include "init_profile.h"
 #include <bharat/runtime/runtime.h>
 #include <errno.h>
 #include <stdio.h>
@@ -230,6 +231,17 @@ finish:
     int handoff_res = init_handoff_to_supervisor(ctx, &rt);
     if (handoff_res == 0) {
         rt.phase = INIT_PHASE_HANDOFF_COMPLETE;
+    } else if (handoff_res == -ENOENT &&
+               !init_profile_get_policy(ctx->profile)->strict_core_deadlines) {
+        /*
+         * Development and small-device profiles may intentionally package no
+         * separate servicemgr image.  The service graph is already stable, so
+         * quiesce as a degraded bootstrap authority rather than spinning in a
+         * false timeout.  Strict RT/safety profiles continue to fail closed.
+         */
+        bharat_runtime_log("services/init: HANDOFF_DEFERRED (supervisor unavailable).\n");
+        rt.phase = INIT_PHASE_QUIESCENT;
+        rt.outcome = INIT_BOOT_OUTCOME_DEGRADED;
     } else {
         rt.outcome = INIT_BOOT_OUTCOME_HANDOFF_FAILED;
     }

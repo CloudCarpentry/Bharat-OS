@@ -16,6 +16,7 @@
 #include "slab.h"
 #include "ipc_async.h"
 #include "mm/mm_aspace_switch.h"
+#include "personality/personality_hooks.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -633,6 +634,11 @@ bh_process_t *process_create(const char *name) {
   slot->process.addr_space = mm_create_address_space();
   slot->process.main_thread = NULL;
   slot->process.security_sandbox_ctx = NULL;
+  slot->process.personality.kind = BH_PERSONALITY_NATIVE;
+  slot->process.personality.error_domain = BH_ERROR_DOMAIN_NATIVE;
+  slot->process.personality.handle_space = BH_HANDLE_SPACE_NATIVE;
+  slot->process.personality.abi_flags = 0U;
+  slot->process.personality_ops = personality_get_current_ops();
 
   // Explicit multikernel ownership metadata
   slot->process.owner_core_id = hal_cpu_get_id();

@@ -11,6 +11,28 @@
 #include "profile/profile_policy.h"
 #include "bh_personality_registry.h"
 #include "syscall/syscall_capability.h"
+#include "trap_types.h"
+
+long bh_syscall_gate(trap_frame_t *frame, const trap_info_t *info);
+
+/*
+ * Architecture entry stubs do not own policy and must not manufacture a
+ * partially initialized trap description in assembly.  They enter through
+ * this fixed-signature bridge, which supplies the normalized syscall origin
+ * metadata expected by the common gate.
+ */
+long bh_syscall_entry_dispatch(trap_frame_t *frame) {
+    const trap_info_t info = {
+        .trap_class = TRAP_CLASS_SYSCALL,
+        .origin = TRAP_ORIGIN_USER,
+        .ip = frame ? frame->pc : 0U,
+        .sp = frame ? frame->sp : 0U,
+        .arch_code = frame ? frame->cause : 0U,
+        .interrupt_enabled = frame ? ((frame->status & (1UL << 9)) != 0U) : false,
+    };
+
+    return bh_syscall_gate(frame, &info);
+}
 
 kstatus_t bh_syscall_policy_check(bh_syscall_ctx_t *ctx, const bh_syscall_meta_t *desc) {
     if (!ctx || !desc) return K_ERR_INVALID_ARG;

@@ -56,7 +56,6 @@ int fdt_adapter_parse(const void *fdt_blob, boot_info_t *out_bi) {
     uint32_t off_dt_struct = fdt_u32_swap(fdt->off_dt_struct);
     uint32_t size_dt_struct = fdt_u32_swap(fdt->size_dt_struct);
     uint32_t off_dt_strings = fdt_u32_swap(fdt->off_dt_strings);
-    uint32_t size_dt_strings = fdt_u32_swap(fdt->size_dt_strings);
 
     const uint32_t *p = (const uint32_t *)((uintptr_t)fdt_blob + off_dt_struct);
     const uint32_t *end = (const uint32_t *)((uintptr_t)p + size_dt_struct);
