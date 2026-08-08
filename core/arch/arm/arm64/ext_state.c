@@ -56,7 +56,9 @@ static inline void arm64_fp_access_enable(void) {
 
 const arch_ext_state_desc_t *arch_ext_state_desc(void) { return &g_desc; }
 bool arch_ext_state_enabled(void) { return true; }
-void arch_ext_state_boot_init(void) { arm64_fp_trap_enable(); }
+void arch_ext_state_boot_init(void) {
+    arm64_fp_trap_enable();
+}
 
 int arch_ext_state_thread_init(struct bh_thread *t) {
     if (!t || !t->cpu_context) return -1;
@@ -181,4 +183,14 @@ void arch_kernel_fpu_begin(void) {
 
 void arch_kernel_fpu_end(void) {
     // Stub: Handle kernel FPU end
+}
+
+#include "lib/msg/crc.h"
+#include "arch/arch_cpu_caps.h"
+extern uint32_t bharat_msg_crc32_aarch64(const uint8_t *data, size_t len);
+
+void arm64_register_crc_backend(void) {
+    if (arch_cpu_has_system_all(ARCH_CPU_FEAT_ARM64_CRC32)) {
+        bharat_msg_crc_register_backend(bharat_msg_crc32_aarch64);
+    }
 }

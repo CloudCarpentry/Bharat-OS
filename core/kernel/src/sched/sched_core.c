@@ -758,7 +758,7 @@ kstatus_t sched_migration_transition(bh_thread_t *thread, sched_migration_state_
   uint32_t state = __atomic_load_n(&thread->migration_state, __ATOMIC_ACQUIRE);
   if (state != (uint32_t)expected) {
 #if !defined(NDEBUG)
-    kernel_panic("sched_migration_transition failed: expected %d, got %d", expected, state);
+    kernel_panic("sched_migration_transition failed");
 #else
     // Production safety fallback: reject transition, quarantine if ambiguous
     if (expected == SCHED_MIGRATION_ROLLBACK_SENT || next == SCHED_MIGRATION_FAILED) {

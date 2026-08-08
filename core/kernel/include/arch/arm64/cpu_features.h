@@ -12,6 +12,7 @@ typedef enum {
     ARCH_CPU_FEAT_ARM64_SHA1,
     ARCH_CPU_FEAT_ARM64_SHA2,
     ARCH_CPU_FEAT_ARM64_AES,
+    ARCH_CPU_FEAT_ARM64_CRC32,
 
     ARCH_CPU_FEAT_TARGET__COUNT
 } arch_arm64_cpu_feature_t;

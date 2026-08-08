@@ -85,4 +85,7 @@ void arch_cpu_caps_and(arch_cpu_caps_t *dst, const arch_cpu_caps_t *src);
 void arch_cpu_caps_zero(arch_cpu_caps_t *caps);
 void arch_cpu_caps_fill(arch_cpu_caps_t *caps);
 
+// Export architecture specific capabilities to the HAL feature set format
+void arch_cpu_caps_export_hal_features(const arch_cpu_caps_record_t *arch, void *out);
+
 #endif // BHARAT_ARCH_CPU_CAPS_H

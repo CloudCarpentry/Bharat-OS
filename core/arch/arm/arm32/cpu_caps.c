@@ -42,3 +42,8 @@ void arch_cpu_caps_init_ap(void) {
     arm32_probe_caps(&ap_caps);
     cpu_caps_state_set_ap(hal_cpu_get_id(), &ap_caps);
 }
+
+void arch_cpu_caps_export_hal_features(const arch_cpu_caps_record_t *arch, void *out_ptr) {
+    (void)arch;
+    (void)out_ptr;
+}

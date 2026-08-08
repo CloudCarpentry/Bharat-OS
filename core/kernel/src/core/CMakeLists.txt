@@ -31,6 +31,7 @@ add_library(k_core OBJECT
     hw_caps_registry.c
     primitive_registry.c
     policy_stubs.c
+    ${BHARAT_KERNEL_SRC_ROOT}/algorithms.c
 )
 
 target_include_directories(k_core PRIVATE

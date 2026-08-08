@@ -15,6 +15,12 @@ static void arm64_probe_caps(arch_cpu_caps_record_t *caps) {
     uint64_t pfr0  = READ_SYSREG(id_aa64pfr0_el1);
 
     // ID_AA64ISAR0_EL1
+    uint64_t crc32 = (isar0 >> 16) & 0xf;
+    if (crc32 >= 1) {
+        arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_ARM64_CRC32);
+        arch_cpu_caps_set(&caps->usable, ARCH_CPU_FEAT_ARM64_CRC32);
+    }
+
     uint64_t aes = (isar0 >> 4) & 0xf;
     if (aes >= 1) {
         arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_ARM64_AES);
@@ -79,4 +85,16 @@ void arch_cpu_caps_init_ap(void) {
     arch_cpu_caps_record_t ap_caps;
     arm64_probe_caps(&ap_caps);
     cpu_caps_state_set_ap(hal_cpu_get_id(), &ap_caps);
+}
+
+#include "hal/hal_cpu_features.h"
+void arch_cpu_caps_export_hal_features(const arch_cpu_caps_record_t *arch, void *out_ptr) {
+    hal_cpu_feature_set_t *out = (hal_cpu_feature_set_t *)out_ptr;
+
+    if (arch_cpu_caps_test(&arch->raw, ARCH_CPU_FEAT_ARM64_SVE)) {
+        out->raw_bits[HAL_CPU_FEATURE_SCALABLE_VECTOR / 64u] |= (1ULL << (HAL_CPU_FEATURE_SCALABLE_VECTOR % 64u));
+    }
+    if (arch_cpu_caps_test(&arch->usable, ARCH_CPU_FEAT_ARM64_SVE)) {
+        out->usable_bits[HAL_CPU_FEATURE_SCALABLE_VECTOR / 64u] |= (1ULL << (HAL_CPU_FEATURE_SCALABLE_VECTOR % 64u));
+    }
 }

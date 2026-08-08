@@ -51,3 +51,10 @@ void x86_64_init_syscall(void) {
     uint32_t fmask = 0x44700;
     __asm__ volatile("wrmsr" : : "a"(fmask), "d"(0), "c"(MSR_FMASK));
 }
+
+cpu_local_t *arch_cpu_local_ptr(void) {
+    cpu_local_t *cl;
+    // Assume we've written the address into GSBASE
+    __asm__ volatile ("movq %%gs:0, %0" : "=r"(cl));
+    return cl;
+}
