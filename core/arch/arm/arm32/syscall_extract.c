@@ -9,6 +9,12 @@
  * - return: r0
  */
 
+bool arch_trap_status_interrupt_enabled(const trap_frame_t *frame) {
+    if (!frame) return false;
+    // ARM32: I (IRQ) bit is bit 7 in CPSR. It is masked when set to 1.
+    return (frame->status & (1ULL << 7)) == 0;
+}
+
 bool arch_trap_is_syscall(const trap_frame_t *frame) {
     if (!frame) return false;
     // On ARM32, SVC exception (Software Interrupt) has cause code 2

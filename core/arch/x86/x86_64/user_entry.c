@@ -4,9 +4,7 @@
 #include "panic.h"
 #include "sched/sched.h"
 #include "mm/physmap.h"
-
-#define X86_USER_DATA_SELECTOR 0x1B
-#define X86_USER_CODE_SELECTOR 0x23
+#include "arch/x86_segments.h"
 
 #define X86_STRINGIFY_INNER(value) #value
 #define X86_STRINGIFY(value) X86_STRINGIFY_INNER(value)
@@ -72,7 +70,7 @@ void arch_enter_user(const arch_user_entry_t *entry) {
     print_hex(entry->user_sp);
     console_write_raw("\n  arg0=", 8);
     print_hex(entry->arg0);
-    console_write_raw("\n  cs=0x23\n  ss=0x1b\n  rflags=0x202\n", 36);
+    console_write_raw("\n  cs=" X86_STRINGIFY(X86_USER_CS) "\n  ss=" X86_STRINGIFY(X86_USER_DS) "\n  rflags=0x202\n", 36);
 
     console_write_raw("  cr3_actual=", 13);
     print_hex(cr3_val);
@@ -91,13 +89,13 @@ void arch_enter_user(const arch_user_entry_t *entry) {
     __asm__ volatile (
         "cli\n\t"
         "movq %0, %%rdi\n\t"
-        "movw $" X86_STRINGIFY(X86_USER_DATA_SELECTOR) ", %%ax\n\t"
+        "movw $" X86_STRINGIFY(X86_USER_DS) ", %%ax\n\t"
         "movw %%ax, %%ds\n\t"
         "movw %%ax, %%es\n\t"
-        "pushq $" X86_STRINGIFY(X86_USER_DATA_SELECTOR) "\n\t"
+        "pushq $" X86_STRINGIFY(X86_USER_DS) "\n\t"
         "pushq %1\n\t"
         "pushq $0x202\n\t"
-        "pushq $" X86_STRINGIFY(X86_USER_CODE_SELECTOR) "\n\t"
+        "pushq $" X86_STRINGIFY(X86_USER_CS) "\n\t"
         "pushq %2\n\t"
         "iretq\n\t"
         :

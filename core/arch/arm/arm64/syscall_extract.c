@@ -4,6 +4,12 @@
 #define ARM64_ESR_EC(esr) (((esr) >> 26) & 0x3f)
 #define ARM64_EC_SVC64    0x15
 
+bool arch_trap_status_interrupt_enabled(const trap_frame_t *frame) {
+    if (!frame) return false;
+    // ARM64: I (IRQ) bit is bit 7 in SPSR_EL1. It is masked when set to 1.
+    return (frame->status & (1ULL << 7)) == 0;
+}
+
 bool arch_trap_is_syscall(const trap_frame_t *frame) {
     if (!frame) return false;
     // ARM64: SVC instruction from EL0.
