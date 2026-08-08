@@ -1,6 +1,5 @@
 #include "hal/hal_hw_caps.h"
 #include "hal/hal_internal.h"
-#include <string.h>
 
 void arch_discover_hw_caps(void) {
     hal_hw_caps_t caps = {0};

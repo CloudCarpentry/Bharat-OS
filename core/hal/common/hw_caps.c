@@ -1,6 +1,5 @@
 #include "hal/hal_hw_caps.h"
 #include "hal/hal_internal.h"
-#include <string.h>
 
 static hal_hw_caps_t g_internal_hw_caps;
 static bool g_caps_initialized = false;

@@ -13,7 +13,6 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <string.h>
 
 /* -----------------------------------------------------------------------
  * Inline interrupt control (no header deps)
@@ -37,7 +36,7 @@ uint64_t __atomic_load_8(const volatile void *ptr, int model) {
     (void)model;
     uint32_t s = irq_save();
     uint64_t val;
-    memcpy(&val, (const void *)ptr, 8);
+    val = *(const volatile uint64_t *)ptr;
     irq_restore(s);
     return val;
 }
@@ -48,7 +47,7 @@ uint64_t __atomic_load_8(const volatile void *ptr, int model) {
 void __atomic_store_8(volatile void *ptr, uint64_t val, int model) {
     (void)model;
     uint32_t s = irq_save();
-    memcpy((void *)ptr, &val, 8);
+    *(volatile uint64_t *)ptr = val;
     irq_restore(s);
 }
 
@@ -59,8 +58,8 @@ uint64_t __atomic_exchange_8(volatile void *ptr, uint64_t newval, int model) {
     (void)model;
     uint32_t s = irq_save();
     uint64_t old;
-    memcpy(&old, (const void *)ptr, 8);
-    memcpy((void *)ptr, &newval, 8);
+    old = *(const volatile uint64_t *)ptr;
+    *(volatile uint64_t *)ptr = newval;
     irq_restore(s);
     return old;
 }
@@ -80,16 +79,16 @@ bool __atomic_compare_exchange_8(volatile void *ptr,
 
     uint32_t s = irq_save();
     uint64_t cur;
-    memcpy(&cur, (const void *)ptr, 8);
+    cur = *(const volatile uint64_t *)ptr;
 
     uint64_t exp;
-    memcpy(&exp, expected, 8);
+    exp = *(const uint64_t *)expected;
 
     bool ok = (cur == exp);
     if (ok) {
-        memcpy((void *)ptr, &desired, 8);
+        *(volatile uint64_t *)ptr = desired;
     } else {
-        memcpy(expected, &cur, 8);
+        *(uint64_t *)expected = cur;
     }
     irq_restore(s);
     return ok;
@@ -102,9 +101,9 @@ uint64_t __atomic_fetch_or_8(volatile void *ptr, uint64_t val, int model) {
     (void)model;
     uint32_t s = irq_save();
     uint64_t old;
-    memcpy(&old, (const void *)ptr, 8);
+    old = *(const volatile uint64_t *)ptr;
     uint64_t newv = old | val;
-    memcpy((void *)ptr, &newv, 8);
+    *(volatile uint64_t *)ptr = newv;
     irq_restore(s);
     return old;
 }
@@ -116,9 +115,9 @@ uint64_t __atomic_fetch_add_8(volatile void *ptr, uint64_t val, int model) {
     (void)model;
     uint32_t s = irq_save();
     uint64_t old;
-    memcpy(&old, (const void *)ptr, 8);
+    old = *(const volatile uint64_t *)ptr;
     uint64_t newv = old + val;
-    memcpy((void *)ptr, &newv, 8);
+    *(volatile uint64_t *)ptr = newv;
     irq_restore(s);
     return old;
 }
