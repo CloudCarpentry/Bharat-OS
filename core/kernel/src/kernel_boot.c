@@ -26,6 +26,7 @@
 #include "security/credentials.h"
 #include "security/isolation.h"
 #include "profile/subsystem_profile.h"
+#include "profile/execution_mode.h"
 #include "trap.h"
 #include "boot/boot_args.h"
 #include "boot/boot_info.h"
@@ -205,17 +206,6 @@ void boot_common_memory(const boot_info_t *boot) {
     KPRINT("BOOT: pmm initialized\n");
     KPRINT("[BOOT] BOOT_MEMORY: MODULES_RESERVED\n");
 
-#if (defined(__arm__) && !defined(__aarch64__)) || (defined(__riscv) && (__riscv_xlen == 32))
-    /*
-     * ARM32/RISC-V32 MMU-Lite still stops before the full VMM/init-loader
-     * path.  Do not synthesize userspace success from the kernel; report the
-     * missing canonical init handoff as a hard boot failure until Gate 2 wires
-     * the live module parser for these paths.
-     */
-    KPRINT("BOOT_FAIL: INIT_MODULE_MISSING\n");
-    kernel_panic("bootstrap: init module missing before userspace launch");
-#endif
-
     // Ensure hal_pt is initialized BEFORE VMM tries to map things / create address space
     hal_pt_init();
     hal_tlb_init();
@@ -282,6 +272,12 @@ void boot_common_platform_services(const boot_info_t *boot) {
 
     extern void bharat_algorithm_backends_init(void);
     bharat_algorithm_backends_init();
+
+    KPRINT("  [PROFILE] Resolving execution mode and CPU partitions\n");
+    if (bharat_execution_mode_init() != K_OK) {
+      kernel_panic("execution mode/CPU partition initialization failed");
+    }
+    bharat_execution_mode_print_summary();
 
     KPRINT("  [SCHED] Initializing global scheduler\n");
     if (sched_global_init(boot_policy->smp_target_cores) != 0 ||
@@ -563,7 +559,8 @@ void boot_common_runtime(const boot_info_t *boot) {
     KPRINT("  [BOOT] Runtime mode: ");
     KPRINT(bharat_boot_mode_name(mode));
     KPRINT("\n");
-    KPRINT("  [BOOT] Kernel loading successful - boot complete\n");
+    KPRINT("  [BOOT] KERNEL_RUNTIME_READY\n");
+    KPRINT("  [BOOT] USERSPACE_LAUNCH_BEGIN\n");
 
     switch (mode) {
         case BHARAT_BOOT_MODE_AUTOMOTIVE:

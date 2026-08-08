@@ -136,6 +136,12 @@ void test_class_allowance(void) {
 
     // Alias
     assert(cpu_partition_allows_class(0, BHARAT_SCHED_CLASS_SYSTEM | BHARAT_SCHED_CLASS_FIFO_RT) == true);
+
+    /* Missing, spare, and empty requests are all denied after configuration. */
+    assert(cpu_partition_allows_any_class(1, BHARAT_SCHED_CLASS_SYSTEM) == false);
+    g_test_config.cpu_partitions[0].allowed_sched_classes = BHARAT_SCHED_CLASS_NONE;
+    assert(cpu_partition_allows_any_class(0, BHARAT_SCHED_CLASS_SYSTEM) == false);
+    assert(cpu_partition_allows_any_class(0, BHARAT_SCHED_CLASS_NONE) == false);
 }
 
 int main(void) {
