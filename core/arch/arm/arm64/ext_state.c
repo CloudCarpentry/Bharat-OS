@@ -184,13 +184,3 @@ void arch_kernel_fpu_begin(void) {
 void arch_kernel_fpu_end(void) {
     // Stub: Handle kernel FPU end
 }
-
-#include "lib/msg/crc.h"
-#include "arch/arch_cpu_caps.h"
-extern uint32_t bharat_msg_crc32_aarch64(const uint8_t *data, size_t len);
-
-void arm64_register_crc_backend(void) {
-    if (arch_cpu_has_system_all(ARCH_CPU_FEAT_ARM64_CRC32)) {
-        bharat_msg_crc_register_backend(bharat_msg_crc32_aarch64);
-    }
-}
