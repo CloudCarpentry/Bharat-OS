@@ -2,11 +2,10 @@
 #include "hal/hal_capabilities.h"
 #include "hal/hal_mmu.h"
 #include "hal/hal_mm.h"
-#include <string.h>
 
 int hal_mem_get_caps(hal_mem_caps_t *caps) {
     if (!caps) return -1;
-    memset(caps, 0, sizeof(hal_mem_caps_t));
+    *caps = (hal_mem_caps_t){0};
 
     /* Renesas RX typical configuration (MPU based) */
     caps->model = HAL_MEMORY_MODEL_MPU;
