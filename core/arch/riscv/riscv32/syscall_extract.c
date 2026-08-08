@@ -9,6 +9,13 @@
  * - return: a0 (x10)
  */
 
+bool arch_trap_status_interrupt_enabled(const trap_frame_t *frame) {
+    if (!frame) return false;
+    // RISC-V: MPIE / SPIE / UPIE bit is saved in sstatus.
+    // Assuming U-mode, we check SPIE (Supervisor Previous Interrupt Enable, bit 5).
+    return (frame->status & (1ULL << 5)) != 0;
+}
+
 bool arch_trap_is_syscall(const trap_frame_t *frame) {
     if (!frame) return false;
     // On RISC-V, syscall is an ECALL instruction which usually has a specific cause

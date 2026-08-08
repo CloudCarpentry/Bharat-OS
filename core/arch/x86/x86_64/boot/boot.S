@@ -23,6 +23,8 @@
 #define PAGE_RW      2
 #define PAGE_PS      (1 << 7)   /* large (2 MiB) page */
 
+#include "arch/x86_segments.h"
+
 /* ── Multiboot 1 constants ──────────────────────────────────────────────── */
 #define MB1_MAGIC    0x1BADB002
 #if defined(BHARAT_BOOT_GUI) && BHARAT_BOOT_GUI
@@ -185,7 +187,7 @@ _start:
 
     /* Load a minimal GDT and far-jump into 64-bit code */
     lgdtl (gdt_ptr)
-    ljmpl $0x08, $(_start64)
+    ljmpl $X86_KERNEL_CS, $(_start64)
 
 /* ── Minimal GDT (null + 64-bit code + 64-bit data) ─────────────────────*/
 .section .rodata
@@ -202,7 +204,7 @@ gdt_ptr:
 .section .text
 .code64
 _start64:
-    movw $0x10, %ax
+    movw $X86_KERNEL_DS, %ax
     movw %ax, %ds
     movw %ax, %es
     movw %ax, %ss

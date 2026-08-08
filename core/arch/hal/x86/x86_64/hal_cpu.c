@@ -3,6 +3,7 @@
 #include "hal/hal.h"
 #include "console/console_core.h"
 #include "secure_boot.h"
+#include "arch/x86_segments.h"
 
 #include <stdint.h>
 #if __has_include("bharat_config.h")
@@ -281,7 +282,7 @@ static struct idtr idtr;
 static void idt_set_descriptor(uint8_t vector, void *isr, uint8_t flags) {
   struct idt_entry *descriptor = &idt[vector];
   descriptor->isr_low = (uint64_t)isr & 0xFFFF;
-  descriptor->kernel_cs = 0x08; // Assuming 0x08 is kernel code segment
+  descriptor->kernel_cs = X86_KERNEL_CS; // Assuming X86_KERNEL_CS is kernel code segment
   descriptor->ist = 0;
   descriptor->attributes = flags;
   descriptor->isr_mid = ((uint64_t)isr >> 16) & 0xFFFF;

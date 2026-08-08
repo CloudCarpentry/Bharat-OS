@@ -1,4 +1,7 @@
+#include "arch/x86_segments.h"
+
 .extern bh_syscall_entry_dispatch
+.extern x86_syscall_validate_return
 .extern sched_current_thread
 
 .section .text
@@ -70,84 +73,60 @@ x86_64_syscall_entry:
     /* from_user (1) */
     movl $1, 284(%rsp)
 
-    /* Call the fixed-signature C bridge with trap_frame_t * in RDI. */
-    mov %rsp, %rdi
+    /* Allocate bh_syscall_return_context_t on stack (48 bytes: 4x8 + 4 + 4 + 4 + padding)
+       Let's align and allocate 48 bytes. */
+    sub $48, %rsp
+
+    /* Call the fixed-signature C bridge with trap_frame_t * in RDI and return context in RSI. */
+    /* RDI = trap_frame_t * */
+    lea 48(%rsp), %rdi
+    /* RSI = bh_syscall_return_context_t * */
+    mov %rsp, %rsi
     call bh_syscall_entry_dispatch
 
-    /* Check if we need to return via sysret or iret */
-    /* For production we validate RCX (RIP) and R11 (RFLAGS) */
-    mov 256(%rsp), %rcx    /* User RIP */
+    /* Call validation routine with return context in RDI */
+    mov %rsp, %rdi
+    call x86_syscall_validate_return
 
-    /* Simple canonical check: bits 48 to 63 must match bit 47 */
-    mov %rcx, %rax
-    sar $47, %rax
-    inc %rax
-    cmp $2, %rax
-    jb .L_sysret_safe
+    /* At this point, the kernel remains in CPL0 and we have not swapped GS back.
+       If the validation returned an error, x86_syscall_validate_return handles
+       thread_raise_fault and might not return here if the thread is terminated.
+       If it does return, it means the return context is safe. */
 
-    /* Fallback to iretq for non-canonical RIP */
-    /* We need to build an iret frame: SS, RSP, RFLAGS, CS, RIP */
-    /* Since we've already built a trap_frame_t, we can reuse values */
+    /* Restore registers from trap_frame_t (which is at +48 from %rsp) */
+    mov 48+8(%rsp), %rdi
+    mov 48+16(%rsp), %rsi
+    mov 48+24(%rsp), %rdx
+    mov 48+32(%rsp), %r10
+    mov 48+40(%rsp), %r8
+    mov 48+48(%rsp), %r9
+    mov 48+72(%rsp), %rbx
+    mov 48+80(%rsp), %rbp
+    mov 48+88(%rsp), %r12
+    mov 48+96(%rsp), %r13
+    mov 48+104(%rsp), %r14
+    mov 48+112(%rsp), %r15
 
-    /* Restore GPRs first */
-    mov 0(%rsp), %rax     # Result
-    mov 8(%rsp), %rdi
-    mov 16(%rsp), %rsi
-    mov 24(%rsp), %rdx
-    mov 32(%rsp), %r10
-    mov 40(%rsp), %r8
-    mov 48(%rsp), %r9
-    mov 64(%rsp), %r11    # User RFLAGS
-    mov 72(%rsp), %rbx
-    mov 80(%rsp), %rbp
-    mov 88(%rsp), %r12
-    mov 96(%rsp), %r13
-    mov 104(%rsp), %r14
-    mov 112(%rsp), %r15
+    /* Use authoritative values from bh_syscall_return_context_t for return.
+       Offsets in bh_syscall_return_context_t:
+       0:  pc
+       8:  sp
+       16: status
+       24: result
+       32: origin (4 bytes)
+       36: flags (4 bytes)
+       40: disposition (4 bytes)
+    */
+    mov 24(%rsp), %rax    # Result
+    mov 0(%rsp), %rcx     # User RIP
+    mov 16(%rsp), %r11    # User RFLAGS
+    mov 8(%rsp), %rdx     # User SP
 
-    /* Build IRET frame on top of current stack */
-    /* trap_frame_t was 288 bytes */
-    mov 248(%rsp), %rcx    /* User RSP */
-    mov 272(%rsp), %r11    /* User RFLAGS */
-    mov 256(%rsp), %rdx    /* User RIP */
-
-    add $288, %rsp
-
-    /* SS is usually 0x1B in Bharat-OS userspace (GDT index 3 | 3) */
-    /* CS is usually 0x23 in Bharat-OS userspace (GDT index 4 | 3) */
-    pushq $0x1B            /* SS */
-    pushq %rcx             /* RSP */
-    pushq %r11             /* RFLAGS */
-    pushq $0x23            /* CS */
-    pushq %rdx             /* RIP */
-
-    swapgs
-    iretq
-
-.L_sysret_safe:
-    /* Restore registers */
-    mov 0(%rsp), %rax     # Result
-    mov 8(%rsp), %rdi
-    mov 16(%rsp), %rsi
-    mov 24(%rsp), %rdx
-    mov 32(%rsp), %r10
-    mov 40(%rsp), %r8
-    mov 48(%rsp), %r9
-    mov 56(%rsp), %rcx    # User RIP (if unchanged)
-    mov 64(%rsp), %r11    # User RFLAGS (if unchanged)
-    mov 72(%rsp), %rbx
-    mov 80(%rsp), %rbp
-    mov 88(%rsp), %r12
-    mov 96(%rsp), %r13
-    mov 104(%rsp), %r14
-    mov 112(%rsp), %r15
-
-    /* Load user SP back from frame in case it was changed */
-    mov 248(%rsp), %rdx
+    /* Save user SP to cpu_local for next entry */
     mov %rdx, %gs:USER_SP_OFFSET
 
-    /* Pop frame */
-    add $288, %rsp
+    /* Pop return context and trap frame */
+    add $(288+48), %rsp
 
     /* Restore user SP */
     mov %gs:USER_SP_OFFSET, %rsp
