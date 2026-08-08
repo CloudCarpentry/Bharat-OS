@@ -115,6 +115,14 @@ target_include_directories(host_test_syscall_return_x86_64 PRIVATE
 add_test(NAME host_test_syscall_return_x86_64 COMMAND host_test_syscall_return_x86_64)
 add_test(NAME host_test_uapi_abi COMMAND test_uapi_abi)
 
+add_executable(host_test_libmsg_crc
+    test_libmsg_crc.c
+    ${CMAKE_SOURCE_DIR}/core/lib/msg/crc.c
+    ${CMAKE_SOURCE_DIR}/core/lib/msg/crc_generic.c)
+target_include_directories(host_test_libmsg_crc PRIVATE
+    ${CMAKE_SOURCE_DIR}/core/lib/msg)
+add_test(NAME host_test_libmsg_crc COMMAND host_test_libmsg_crc)
+
 add_executable(host_test_framebuffer gfx/test_framebuffer.c ../../core/lib/gfx/framebuffer.c)
 target_include_directories(host_test_framebuffer PRIVATE ../../core/lib/gfx ../../)
 add_test(NAME host_test_framebuffer COMMAND host_test_framebuffer)

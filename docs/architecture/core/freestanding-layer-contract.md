@@ -62,6 +62,9 @@ The purpose of this contract is to stop architecture drift by making layer bound
 ### Lint
 
 `tools/lint/check_layer_references.py` is the contract linter for include-layer boundaries and freestanding header checks.
+Quoted relative includes are resolved from the including source file before the
+target layer is classified. A `../` spelling therefore cannot bypass a forbidden
+kernel-to-library or kernel-to-SDK dependency.
 
 Examples:
 
