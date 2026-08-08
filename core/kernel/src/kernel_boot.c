@@ -280,6 +280,9 @@ void boot_common_platform_services(const boot_info_t *boot) {
     hal_discovery_publish_cpu_caps();
     arch_ext_state_boot_init();
 
+    extern void bharat_algorithm_backends_init(void);
+    bharat_algorithm_backends_init();
+
     KPRINT("  [SCHED] Initializing global scheduler\n");
     if (sched_global_init(boot_policy->smp_target_cores) != 0 ||
         sched_system_enable() != 0) {

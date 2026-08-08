@@ -208,7 +208,7 @@ void sched_validate_rq(sched_rq_t *rq) {
         // Validate min_vruntime is sensible
         struct rb_node *first = rb_first(&rq->cfs_runqueue);
         if (first) {
-            bh_thread_t *next = (bh_thread_t *)(void *)((char *)first - offsetof(bh_thread_t, cfs_node));
+            sched_entity_t *next = (sched_entity_t *)(void *)((char *)first - offsetof(sched_entity_t, cfs_node));
             if (next->vruntime < rq->min_vruntime && rq->min_vruntime - next->vruntime > 1000) {
                 // Minor drift is okay due to rounding, but major divergence is a bug
                 kernel_panic("Runqueue min_vruntime divergence");

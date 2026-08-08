@@ -54,6 +54,12 @@ typedef struct __attribute__((aligned(64))) cpu_local {
 
     // CPU online state
     bool              is_online;
+
+    // Per-core trace ring
+    // To avoid circular dependency with trace/trace.h, we use void*
+    // This is owner-local storage for this CPU's trace ring.
+    // It is assigned once during CPU initialization and never re-bound.
+    void* trace_ring;
 } cpu_local_t;
 
 #define KERNEL_AS_ID 0
@@ -69,7 +75,7 @@ void cpu_local_init(uint32_t cpu_id);
 
 /* Architecture specific `this_cpu()` implementation */
 static inline cpu_local_t *this_cpu(void) {
-    return hal_cpu_local_ptr();
+    return (cpu_local_t *)arch_cpu_local_ptr();
 }
 
 static inline kernel_core_t *this_kernel_core(void) {

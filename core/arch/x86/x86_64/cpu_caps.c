@@ -145,3 +145,8 @@ void arch_cpu_caps_init_ap(void) {
     x86_64_init_syscall();
 #endif
 }
+
+void arch_cpu_caps_export_hal_features(const arch_cpu_caps_record_t *arch, void *out_ptr) {
+    (void)arch;
+    (void)out_ptr;
+}

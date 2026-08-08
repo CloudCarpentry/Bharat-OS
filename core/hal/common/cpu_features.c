@@ -52,23 +52,8 @@ static void map_arch_to_hal(const arch_cpu_caps_record_t *arch, hal_cpu_feature_
     feature_set_bit(out->usable_bits, HAL_CPU_FEATURE_FAST_TLB_CTX,
                     arch_cpu_caps_test(&arch->usable, ARCH_CPU_FEAT_COMMON_FAST_TLB_CTX));
 
-#if defined(__aarch64__)
-    feature_set_bit(out->raw_bits, HAL_CPU_FEATURE_SCALABLE_VECTOR,
-                    arch_cpu_caps_test(&arch->raw, ARCH_CPU_FEAT_ARM64_SVE));
-    feature_set_bit(out->usable_bits, HAL_CPU_FEATURE_SCALABLE_VECTOR,
-                    arch_cpu_caps_test(&arch->usable, ARCH_CPU_FEAT_ARM64_SVE));
-#elif defined(__riscv)
-    bool has_any_bitmanip = arch_cpu_caps_test(&arch->raw, ARCH_CPU_FEAT_RISCV_ZBA) ||
-                            arch_cpu_caps_test(&arch->raw, ARCH_CPU_FEAT_RISCV_ZBB) ||
-                            arch_cpu_caps_test(&arch->raw, ARCH_CPU_FEAT_RISCV_ZBC) ||
-                            arch_cpu_caps_test(&arch->raw, ARCH_CPU_FEAT_RISCV_ZBS);
-    bool has_any_bitmanip_usable = arch_cpu_caps_test(&arch->usable, ARCH_CPU_FEAT_RISCV_ZBA) ||
-                                   arch_cpu_caps_test(&arch->usable, ARCH_CPU_FEAT_RISCV_ZBB) ||
-                                   arch_cpu_caps_test(&arch->usable, ARCH_CPU_FEAT_RISCV_ZBC) ||
-                                   arch_cpu_caps_test(&arch->usable, ARCH_CPU_FEAT_RISCV_ZBS);
-    feature_set_bit(out->raw_bits, HAL_CPU_FEATURE_BITMANIP, has_any_bitmanip);
-    feature_set_bit(out->usable_bits, HAL_CPU_FEATURE_BITMANIP, has_any_bitmanip_usable);
-#endif
+    // Export any architecture specific features
+    arch_cpu_caps_export_hal_features(arch, out);
 }
 
 bool hal_cpu_feature_set_for_cpu(size_t cpu_id, hal_cpu_feature_set_t *out) {
