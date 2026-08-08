@@ -1,4 +1,4 @@
-.extern bh_syscall_gate
+.extern bh_syscall_entry_dispatch
 .extern sched_current_thread
 
 .section .text
@@ -70,9 +70,9 @@ x86_64_syscall_entry:
     /* from_user (1) */
     movl $1, 284(%rsp)
 
-    /* Call bh_syscall_gate(trap_frame_t *frame) */
+    /* Call the fixed-signature C bridge with trap_frame_t * in RDI. */
     mov %rsp, %rdi
-    call bh_syscall_gate
+    call bh_syscall_entry_dispatch
 
     /* Check if we need to return via sysret or iret */
     /* For production we validate RCX (RIP) and R11 (RFLAGS) */

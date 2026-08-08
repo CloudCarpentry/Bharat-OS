@@ -583,11 +583,10 @@
       ],
       "capability": {
         "source": {
-          "kind": "register",
-          "argument": "fd"
+          "kind": "implicit_current_process"
         },
         "validation_phase": "before_handler",
-        "object_type": "CAP_TYPE_NONE",
+        "object_type": "CAP_TYPE_PROCESS",
         "rights": ["BH_CAP_RIGHT_WRITE"],
         "scope": "current_process"
       },

@@ -22,7 +22,7 @@ When implementation differs from an authority, treat it as a defect or an explic
 
 | Area | Authority | Generated outputs / consumers | Required validation | Owner |
 |---|---|---|---|---|
-| Native syscall ABI | `interface/contracts/abi/native_syscalls.json` | Build-generated syscall numbers/table metadata | `python3 tools/abi/syscall_abi.py --check` | Kernel ABI maintainers |
+| Native syscall ABI | `interface/contracts/abi/native_syscalls.json` and ADR-018 | Build-generated syscall numbers/table metadata; native `write` bootstrap authority is the implicit current process | `python3 tools/abi/syscall_abi.py --check` | Kernel ABI maintainers |
 | Syscall compatibility lock | `interface/contracts/abi/native_syscalls.lock.json` | ABI compatibility checker | ABI check and explicit migration review | Kernel ABI maintainers |
 | Kernel configuration | `core/kernel/include/bharat_config.h.in` plus authoritative CMake/profile definitions | `build/<target>/generated/include/bharat_config.h` | Required target builds | Build + kernel maintainers |
 | Target and machine contracts | `delivery/targets/` and target matrix | Build/run manifests and emulator commands | Target build + smoke run | Platform maintainers |
