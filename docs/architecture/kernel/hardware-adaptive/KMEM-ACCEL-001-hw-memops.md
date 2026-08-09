@@ -2,7 +2,7 @@
 title: KMEM-ACCEL-001 - Hardware-Assisted Secure Memops
 status: Draft
 owner: Architecture Working Group
-last_updated: 2026-05-15
+last_updated: 2026-08-09
 tags:
   - docs
   - architecture
@@ -45,6 +45,20 @@ flowchart TD
     D -->|Yes| E[Optimized Architecture Implementation]
     D -->|No| F[Freestanding Scalar Fallback]
 ```
+
+### Tier-0 fallback contract
+
+`core/hal/common/memops/mem_scalar.c` is the single architecture-neutral
+Tier-0 authority. It uses only requested byte loads and stores: no prefetch,
+word-sized access, SIMD/vector state, DMA, cache/topology assumptions, or calls
+to another memory primitive. Architecture directories own the dispatched
+`hal_memcpy()`, `hal_memset()`, and `hal_memmove()` entry points.
+
+IRQ-safe and early-boot dispatch must select Tier 0. RV32 remains scalar-only
+until an XLEN-neutral GPR implementation is independently qualified; RV64
+memops objects are not valid RV32 providers. Tier 0 `memmove` determines copy
+direction using overflow-safe `uintptr_t` address differences and never forms
+an unchecked end pointer.
 
 ## Execution Plan
 1. **Define Neutral API**: Create the standard functions for zeroing and cache maintenance.

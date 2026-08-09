@@ -22,6 +22,23 @@ void test_memcpy() {
     assert(dst[5] == '\0');
 }
 
+void test_memmove() {
+    unsigned char actual[600];
+    unsigned char expected[600];
+
+    for (size_t n = 0; n <= 256; n++) {
+        for (size_t shift = 0; shift <= n + 1; shift++) {
+            for (size_t i = 0; i < sizeof(actual); i++) {
+                actual[i] = (unsigned char)i;
+                expected[i] = actual[i];
+            }
+            for (size_t i = n; i > 0; i--) expected[32 + shift + i - 1] = expected[32 + i - 1];
+            assert(memmove(actual + 32 + shift, actual + 32, n) == actual + 32 + shift);
+            for (size_t i = 0; i < sizeof(actual); i++) assert(actual[i] == expected[i]);
+        }
+    }
+}
+
 void test_memcmp() {
     char a[] = "test";
     char b[] = "test";
@@ -59,6 +76,7 @@ int main() {
     printf("Running freestanding string tests...\n");
     test_memset();
     test_memcpy();
+    test_memmove();
     test_memcmp();
     test_strlen();
     test_strncpy();
