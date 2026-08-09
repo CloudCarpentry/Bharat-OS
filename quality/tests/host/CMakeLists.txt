@@ -486,3 +486,16 @@ add_test(NAME host_test_diag_contract COMMAND host_test_diag_contract)
 add_executable(host_test_diag_collector test_diag_collector.c ../../core/lib/diag/src/diag_ring.c ../../core/services/system/diag/src/diag_collector.c)
 target_include_directories(host_test_diag_collector PRIVATE ../../core/lib/diag/include ../../core/services/system/diag/include ../../interface/uapi ../../interface/include)
 add_test(NAME host_test_diag_collector COMMAND host_test_diag_collector)
+
+# Seqlock Concurrency Test
+add_executable(test_bh_seqlock_concurrency
+    test_bh_seqlock_concurrency.c
+    ../../../core/kernel/src/ds/bh_seqlock.c
+    ../../../core/arch/hal/x86/x86_64/cpu_relax.c
+)
+target_include_directories(test_bh_seqlock_concurrency PRIVATE
+    ../../../core/kernel/include
+    ../../../interface/include
+)
+target_link_libraries(test_bh_seqlock_concurrency PRIVATE pthread)
+add_test(NAME host_test_bh_seqlock_concurrency COMMAND test_bh_seqlock_concurrency)
