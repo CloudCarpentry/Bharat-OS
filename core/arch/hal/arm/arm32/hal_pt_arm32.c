@@ -123,8 +123,8 @@ static uint32_t arm32_to_flags(uint32_t pte_flags) {
 static translate_backend_kind_t arm32_backend_type(void) { return TRANSLATE_BACKEND_MMU; }
 static translate_exec_class_t arm32_exec_class(void) { return TRANSLATE_EXEC_MMU_LITE; }
 
-static void* arm32_phys_to_virt(phys_addr_t phys) { (void)phys; return NULL; /* Needs dynamic kmap for non-linear */ }
-static phys_addr_t arm32_virt_to_phys(const void* virt) { (void)virt; return 0; }
+static void* arm32_phys_to_virt(phys_addr_t phys) { return (void*)(uintptr_t)phys; }
+static phys_addr_t arm32_virt_to_phys(const void* virt) { return (phys_addr_t)(uintptr_t)virt; }
 static bool arm32_has_linear_physmap(void) { return false; }
 static phys_addr_t arm32_linear_physmap_base(void) { return 0; }
 static phys_addr_t arm32_linear_physmap_limit(void) { return 0; }

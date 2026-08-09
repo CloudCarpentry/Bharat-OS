@@ -146,7 +146,7 @@ int aspace_create(address_space_t **out_aspace, uint32_t flags) {
 
     if (arch_has_cap(ARCH_CAP_USERSPACE_HIGHHALF) && arch_has_cap(ARCH_CAP_64BIT_VA)) {
         as->user_base = 0x1000;
-        as->user_limit = 0x00007FFFFFFFFFFF;
+        as->user_limit = 0x0000003FFFFFFFFFULL;
     } else {
         // Compact 32-bit layout
         as->user_base = 0x1000;

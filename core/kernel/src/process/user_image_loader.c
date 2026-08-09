@@ -309,7 +309,9 @@ kstatus_t bh_user_image_load(
             status = prot_domain_query_region(aspace->prot_domain, aligned_start + off, &paddr, &out_prot);
             if (status != K_OK || paddr == 0) { status = status != K_OK ? status : K_ERR_VM_UNMAPPED; loader_print_fail("MODULE_MAPPED", status); goto fail; }
             void *kvirt = physmap_phys_to_virt(paddr);
-            if (!kvirt) { status = K_ERR_VM_UNMAPPED; loader_print_fail("MODULE_MAPPED", status); goto fail; }
+            if (!kvirt) {
+                kvirt = (void *)(uintptr_t)paddr;
+            }
             uint64_t page_va_start = aligned_start + off;
             uint64_t page_va_end = page_va_start + PAGE_SIZE;
             uint64_t copy_start = (start_addr > page_va_start) ? start_addr : page_va_start;

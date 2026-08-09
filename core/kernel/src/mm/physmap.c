@@ -44,13 +44,9 @@ int mm_memset_phys_range(phys_addr_t phys, uint8_t value, size_t size) {
         return 0;
     }
 
-    if (!physmap_has_linear_map()) {
-        return -1;
-    }
-
     uint8_t *dst = (uint8_t *)physmap_phys_to_virt(phys);
     if (!dst) {
-        return -1;
+        dst = (uint8_t *)(uintptr_t)phys;
     }
 
     for (size_t i = 0; i < size; i++) {

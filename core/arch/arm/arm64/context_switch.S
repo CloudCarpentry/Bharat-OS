@@ -66,9 +66,9 @@ arch_context_switch:
 .global arch_bh_thread_start_trampoline
 .type arch_bh_thread_start_trampoline, @function
 arch_bh_thread_start_trampoline:
-    // x19 holds the true entry point, setup by arch_prepare_initial_context
-    mov x0, x19
-    blr x0
+    // x19 holds the true entry point, x20 holds arg0
+    mov x0, x20
+    blr x19
     // After returning from the entry point, jump to the exit trampoline
     b sched_thread_exit_trampoline
 

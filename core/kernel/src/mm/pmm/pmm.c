@@ -884,6 +884,20 @@ int mm_pmm_init(uint32_t magic, const boot_info_t *boot) {
     }
   }
 
+  if (map.region_count == 0 && boot && boot->mem_region_count > 0) {
+    for (uint32_t i = 0; i < boot->mem_region_count; i++) {
+      if (boot->mem_regions[i].type == BOOT_MEM_USABLE) {
+        if (map.region_count < MAX_PMM_REGIONS) {
+          map.regions[map.region_count].base_addr = boot->mem_regions[i].phys_start;
+          map.regions[map.region_count].length = boot->mem_regions[i].size;
+          map.regions[map.region_count].type = PMM_REGION_TYPE_USABLE;
+          map.regions[map.region_count].numa_node = 0;
+          map.region_count++;
+        }
+      }
+    }
+  }
+
   pmm_ingest_memory_map(&map);
   
   // Ensure page-table cache is available before VMM/hal_pt code consumes it.

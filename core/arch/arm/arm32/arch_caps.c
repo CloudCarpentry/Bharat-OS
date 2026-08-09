@@ -6,7 +6,8 @@ arch_caps_t arch_get_caps(void) {
     arch_caps_t caps = {0};
 
     // EDGE32 Tier 2 - minimal profile
-    if (get_memory_model() == MEM_MODEL_MMU) {
+    mem_model_t model = get_memory_model();
+    if (model == MEM_MODEL_MMU || model == MEM_MODEL_MMU_LITE || model == MEM_MODEL_MMU_FULL) {
         arch_caps_set(&caps, ARCH_CAP_MMU_LITE);
     } else {
         arch_caps_set(&caps, ARCH_CAP_MPU_ONLY);

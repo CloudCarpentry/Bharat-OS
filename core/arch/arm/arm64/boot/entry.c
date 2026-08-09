@@ -18,7 +18,14 @@ void kernel_main(uintptr_t fdt_ptr) {
      * could trap immediately after this marker on QEMU's ARM virt machine. */
     hal_serial_write("BOOT: kernel_main reached\n");
 
-    if (fdt_ptr == 0) fdt_ptr = 0x40000000;
+    if (!fdt_is_valid((const void *)fdt_ptr)) {
+        for (uintptr_t addr = 0x40000000; addr < 0x80000000; addr += 0x10000) {
+            if (fdt_is_valid((const void *)addr)) {
+                fdt_ptr = addr;
+                break;
+            }
+        }
+    }
 
     static boot_info_t boot;
     boot_info_init(&boot);

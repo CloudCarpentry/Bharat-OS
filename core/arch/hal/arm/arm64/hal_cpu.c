@@ -205,7 +205,7 @@ extern void vector_table_el1(void); // Defined in trap_entry.S
 
 void hal_init(void) {
   // Set Vector Base Address Register (VBAR_EL1)
-  __asm__ volatile("msr vbar_el1, %0" : : "r"((uint64_t)&vector_table_el1));
+  __asm__ volatile("msr vbar_el1, %0\n\tisb" : : "r"((uint64_t)&vector_table_el1) : "memory");
 
   // Configure MMU (TCR_EL1, MAIR_EL1)
   hal_serial_init();

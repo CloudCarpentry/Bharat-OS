@@ -109,17 +109,11 @@ int vmm_init(void) {
         // RISC-V bare mode can start with SATP=0 and an empty newly created root.
         // Keep the previous behavior there; other architectures (e.g. arm64)
         // should activate the prepared root so MMU and control registers are set.
-#if defined(__riscv)
         if (current_root == 0U && bootstrap_root_pt == 0U) {
-            // Skip set_root in bare mode without bootstrap on RISC-V
+            // Bare mode boot (MMU off): skip set_root until kernel mappings are configured
         } else if (current_root == 0U || current_root == kernel_space.root_pt) {
             active_mem_protect->cpu_ops.set_root(kernel_space.root_pt);
         }
-#else
-        if (current_root == 0U || current_root == kernel_space.root_pt) {
-            active_mem_protect->cpu_ops.set_root(kernel_space.root_pt);
-        }
-#endif
     }
 
     return kernel_space_ready ? 0 : -1;

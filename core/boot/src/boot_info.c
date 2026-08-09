@@ -186,7 +186,8 @@ int boot_info_finalize(boot_info_t *bi) {
         extern void *physmap_phys_to_virt(uint64_t phys) __attribute__((weak));
         if (physmap_phys_to_virt) {
             virt_ptr = physmap_phys_to_virt(phys);
-        } else {
+        }
+        if (!virt_ptr) {
             virt_ptr = (void *)(uintptr_t)phys;
         }
 #endif
@@ -227,8 +228,10 @@ int boot_info_finalize(boot_info_t *bi) {
                 bi->init_payload_size = bi->modules[i].size;
                 if (fdt_str_eq_local(hdr->name, "services/rt-supervisor")) {
                     bi->init_payload_kind = BH_BOOT_HANDOFF_STATIC_RT;
+                    bi->modules[i].name = "services/rt-supervisor";
                 } else {
                     bi->init_payload_kind = BH_BOOT_HANDOFF_USER_ELF;
+                    bi->modules[i].name = "services/init";
                 }
             }
         } else {

@@ -64,7 +64,8 @@ void* kcache_alloc(kcache_t* cache) {
             if ((cache->free_bitmap[p][word] & (1U << bit)) == 0) {
                 cache->free_bitmap[p][word] |= (1U << bit);
                 phys_addr_t paddr = cache->pages[p] + (i * cache->object_size);
-                return physmap_phys_to_virt(paddr);
+                void *vptr = physmap_phys_to_virt(paddr);
+                return vptr ? vptr : (void *)(uintptr_t)paddr;
             }
         }
     }
@@ -82,12 +83,14 @@ void* kcache_alloc(kcache_t* cache) {
     }
 
     cache->free_bitmap[p][0] = (1U << 0); // Allocate first object
-    return physmap_phys_to_virt(page);
+    void *vptr = physmap_phys_to_virt(page);
+    return vptr ? vptr : (void *)(uintptr_t)page;
 }
 
 void kcache_free(kcache_t* cache, void* obj) {
     if (!cache || !obj) return;
     phys_addr_t paddr = physmap_virt_to_phys(obj);
+    if (!paddr) paddr = (phys_addr_t)(uintptr_t)obj;
 
     for (uint32_t p = 0; p < cache->num_pages; p++) {
         if (paddr >= cache->pages[p] && paddr < cache->pages[p] + PAGE_SIZE) {
@@ -115,7 +118,8 @@ void* kmalloc(size_t size) {
         }
         phys_addr_t p = mm_alloc_pages_order(order, NUMA_NODE_ANY, PAGE_FLAG_KERNEL);
         if (!p) return NULL;
-        return physmap_phys_to_virt(p);
+        void *vptr = physmap_phys_to_virt(p);
+        return vptr ? vptr : (void *)(uintptr_t)p;
     }
 
     for (int i = 0; i < NUM_SLAB_SIZES; i++) {
