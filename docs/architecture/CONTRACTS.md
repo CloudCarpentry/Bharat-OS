@@ -22,6 +22,7 @@ When implementation differs from an authority, treat it as a defect or an explic
 
 | Area | Authority | Generated outputs / consumers | Required validation | Owner |
 |---|---|---|---|---|
+| Processor trap-entry ABI | `docs/adr/ADR-020-mechanically-verified-trap-entry-abi.md` and `core/kernel/include/trap.h` | Build-generated `trap_offsets.inc`; five architecture entry stubs; normalized trap decoder | `python3 tools/abi/test_trap_frame_abi.py <generated>/trap_offsets.inc <five assembly files>` plus target smoke builds | Kernel architecture maintainers |
 | Native syscall ABI | `interface/contracts/abi/native_syscalls.json` and ADR-018 | Build-generated syscall numbers/table metadata; native `write` bootstrap authority is the implicit current process | `python3 tools/abi/syscall_abi.py --check` | Kernel ABI maintainers |
 | Syscall compatibility lock | `interface/contracts/abi/native_syscalls.lock.json` | ABI compatibility checker | ABI check and explicit migration review | Kernel ABI maintainers |
 | Kernel configuration | `core/kernel/include/bharat_config.h.in` plus authoritative CMake/profile definitions | `build/<target>/generated/include/bharat_config.h` | Required target builds | Build + kernel maintainers |

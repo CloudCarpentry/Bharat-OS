@@ -114,28 +114,19 @@ uint64_t hal_irq_timer_vector(void) {
 }
 
 uint64_t hal_cpu_get_fault_address(const void *trap_frame) {
-    (void)trap_frame;
-    uint64_t cr2;
-    __asm__ volatile("mov %%cr2, %0" : "=r"(cr2));
-    return cr2;
+    if (!trap_frame) return 0;
+    return ((const bh_x86_64_raw_trap_frame_t *)trap_frame)->fault_addr;
 }
 
 
 #include "sched/sched.h"
 
-// Wait, x86_trap_frame_t is defined in hal_cpu.c? Let's check.
-// If it's not, we define it here locally since it's the exact structure from trap_entry.S.
-typedef struct {
-    trap_frame_t base;
-    uint64_t error_code;
-    uint64_t cr2;
-} x86_trap_frame_t;
-
 __attribute__((weak)) void hal_cpu_dump_trap_frame(const void *trap_frame) {
     if (!trap_frame) {
         return;
     }
-    const x86_trap_frame_t *xtf = (const x86_trap_frame_t *)trap_frame;
+    const bh_x86_64_raw_trap_frame_t *xtf =
+        (const bh_x86_64_raw_trap_frame_t *)trap_frame;
     const trap_frame_t *tf = &xtf->base;
 
     bh_thread_t *t = sched_current_thread();
@@ -157,7 +148,7 @@ __attribute__((weak)) void hal_cpu_dump_trap_frame(const void *trap_frame) {
 
     hal_serial_write("rflags: "); hal_serial_write_hex(tf->status); hal_serial_write("\n");
     hal_serial_write("rsp: "); hal_serial_write_hex(tf->sp); hal_serial_write("\n");
-    hal_serial_write("cr2: "); hal_serial_write_hex(xtf->cr2); hal_serial_write("\n");
+    hal_serial_write("cr2: "); hal_serial_write_hex(xtf->fault_addr); hal_serial_write("\n");
     hal_serial_write("from_user: "); hal_serial_write_hex(tf->from_user); hal_serial_write("\n");
     hal_serial_write("pid: "); hal_serial_write_hex(t ? t->process_id : 0); hal_serial_write("\n");
     hal_serial_write("tid: "); hal_serial_write_hex(t ? t->thread_id : 0); hal_serial_write("\n");
