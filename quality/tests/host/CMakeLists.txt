@@ -54,6 +54,14 @@ target_include_directories(test_secure_mem PRIVATE ../../kernel/include)
 
 add_test(NAME host_test_secure_mem COMMAND test_secure_mem)
 
+add_executable(test_memops_conformance
+    test_memops_conformance.c
+    ../../hal/common/memops/mem_scalar.c)
+target_include_directories(test_memops_conformance PRIVATE ../../hal/include)
+target_compile_options(test_memops_conformance PRIVATE
+    -fno-builtin-memcpy -fno-builtin-memset -fno-builtin-memmove)
+add_test(NAME host_test_memops_conformance COMMAND test_memops_conformance)
+
 add_executable(test_crypto_protocol_dispatch services/test_crypto_protocol_dispatch.c ../../core/services/security/crypto/protocol.c ../../core/services/security/crypto/dispatch.c)
 target_include_directories(test_crypto_protocol_dispatch PRIVATE ../../core/services/security/crypto ../../kernel/include)
 add_test(NAME host_test_crypto_protocol_dispatch COMMAND test_crypto_protocol_dispatch)
@@ -95,7 +103,7 @@ add_test(NAME host_test_mon_vm COMMAND host_test_mon_vm)
 # VMM / ASpace / VM base-object conformance currently remains in top-level tests
 # (`test_vmm_aspace`) due additional prot-domain and arch-cap dependencies.
 
-add_executable(host_test_vmm_fault ../test_vmm_fault.c host_stubs.c ../../kernel/src/mm/vm/fault/fault.c ../../kernel/src/mm/vm/objects/vm_object.c ../../kernel/src/mm/vm/objects/vm_object_refcount.c ../../kernel/src/mm/vm/aspace/vm_space.c ../../kernel/src/mm/vm/aspace/aspace.c ../../kernel/src/mm/pmm/early_alloc.c ../../kernel/src/mm/pmm/pmm.c ../../kernel/src/mm/pmm/pt_pool.c ../../kernel/src/mm/tlb/tlb_shootdown.c ../../kernel/src/capability.c ../../kernel/src/cap/cap_policy.c ../benchmark_stubs.c ../../kernel/src/lib/base/string.c ../../arch/common/memops_scalar.c mock_panic.c)
+add_executable(host_test_vmm_fault ../test_vmm_fault.c host_stubs.c ../../kernel/src/mm/vm/fault/fault.c ../../kernel/src/mm/vm/objects/vm_object.c ../../kernel/src/mm/vm/objects/vm_object_refcount.c ../../kernel/src/mm/vm/aspace/vm_space.c ../../kernel/src/mm/vm/aspace/aspace.c ../../kernel/src/mm/pmm/early_alloc.c ../../kernel/src/mm/pmm/pmm.c ../../kernel/src/mm/pmm/pt_pool.c ../../kernel/src/mm/tlb/tlb_shootdown.c ../../kernel/src/capability.c ../../kernel/src/cap/cap_policy.c ../benchmark_stubs.c ../../kernel/src/lib/base/string.c ../../hal/common/memops/mem_scalar.c mock_panic.c)
 target_include_directories(host_test_vmm_fault PRIVATE ${CMAKE_SOURCE_DIR}/core/kernel/include ${CMAKE_SOURCE_DIR}/core/kernel/src ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/boot/include ${CMAKE_SOURCE_DIR}/core/lib/include ${CMAKE_BINARY_DIR}/generated/include)
 target_compile_definitions(host_test_vmm_fault PRIVATE TESTING=1)
 add_test(NAME host_test_vmm_fault COMMAND host_test_vmm_fault)
@@ -486,3 +494,16 @@ add_test(NAME host_test_diag_contract COMMAND host_test_diag_contract)
 add_executable(host_test_diag_collector test_diag_collector.c ../../core/lib/diag/src/diag_ring.c ../../core/services/system/diag/src/diag_collector.c)
 target_include_directories(host_test_diag_collector PRIVATE ../../core/lib/diag/include ../../core/services/system/diag/include ../../interface/uapi ../../interface/include)
 add_test(NAME host_test_diag_collector COMMAND host_test_diag_collector)
+
+# Seqlock Concurrency Test
+add_executable(test_bh_seqlock_concurrency
+    test_bh_seqlock_concurrency.c
+    ../../../core/kernel/src/ds/bh_seqlock.c
+    ../../../core/arch/hal/x86/x86_64/cpu_relax.c
+)
+target_include_directories(test_bh_seqlock_concurrency PRIVATE
+    ../../../core/kernel/include
+    ../../../interface/include
+)
+target_link_libraries(test_bh_seqlock_concurrency PRIVATE pthread)
+add_test(NAME host_test_bh_seqlock_concurrency COMMAND test_bh_seqlock_concurrency)

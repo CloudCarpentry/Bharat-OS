@@ -1,4 +1,5 @@
 #include <bharat/runtime/freestanding_string.h>
+#include <stdint.h>
 
 void *memset(void *s, int c, size_t n) {
     unsigned char *p = s;
@@ -17,11 +18,14 @@ void *memmove(void *dest, const void *src, size_t n) {
     unsigned char *d = (unsigned char *)dest;
     const unsigned char *s = (const unsigned char *)src;
 
-    if (d == s || n == 0) {
+    const uintptr_t da = (uintptr_t)dest;
+    const uintptr_t sa = (uintptr_t)src;
+
+    if (da == sa || n == 0) {
         return dest;
     }
 
-    if (d < s || d >= (s + n)) {
+    if (da < sa || da - sa >= n) {
         while (n--) {
             *d++ = *s++;
         }
@@ -80,4 +84,3 @@ void __aeabi_memclr8(void *dest, size_t n) { memset(dest, 0, n); }
 void __aeabi_memset(void *dest, size_t n, int c) { memset(dest, c, n); }
 void __aeabi_memset4(void *dest, size_t n, int c) { memset(dest, c, n); }
 void __aeabi_memset8(void *dest, size_t n, int c) { memset(dest, c, n); }
-
