@@ -18,7 +18,7 @@ void *hal_memcpy(void *dst, const void *src, size_t n, uint32_t flags);
 void *hal_memset(void *dst, int c, size_t n, uint32_t flags);
 void *hal_memmove(void *dst, const void *src, size_t n, uint32_t flags);
 
-/* Common safe scalar fallbacks (implemented in common/memops_scalar.c) */
+/* Canonical byte-only Tier-0 fallbacks (implemented by HAL common). */
 void *hal_memcpy_scalar(void *dst, const void *src, size_t n);
 void *hal_memset_scalar(void *dst, int c, size_t n);
 void *hal_memmove_scalar(void *dst, const void *src, size_t n);

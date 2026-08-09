@@ -58,6 +58,8 @@ void secure_memzero(void *ptr, size_t len) {
   while (len--) {
     *p++ = 0;
   }
+  /* Preserve the wipe across optimization and link-time analysis. */
+  __asm__ volatile("" ::: "memory");
 }
 
 size_t strlen(const char *s) {
@@ -87,4 +89,3 @@ int strncmp(const char *s1, const char *s2, size_t n) {
   }
   return 0;
 }
-
