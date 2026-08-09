@@ -28,9 +28,11 @@
  * 4. Consumer calls bh_mpsc_queue_pop(&q, &value);
  */
 
+#define BH_MPSC_MAX_CAPACITY (1U << 30)
+
 typedef struct {
     /** @brief Slot sequence number for synchronization. */
-    volatile uint64_t seq;
+    atomic32_t seq;
     /** @brief Pointer to the payload. */
     void *value;
 } bh_mpsc_slot_t;
@@ -42,10 +44,10 @@ typedef struct {
     uint32_t capacity;
     /** @brief Mask for index wrap-around (capacity - 1). */
     uint32_t mask;
-    /** @brief Producer head index (shared/atomic). */
-    volatile uint64_t head;
+    /** @brief Shared producer reservation cursor. */
+    atomic32_t head;
     /** @brief Consumer tail index (owned by single consumer). */
-    uint64_t tail;
+    uint32_t tail;
 } bh_mpsc_queue_t;
 
 /**
@@ -75,6 +77,13 @@ kstatus_t bh_mpsc_queue_pop(bh_mpsc_queue_t *q, void **out_value);
 
 /**
  * @brief Check if the queue is empty.
+ *
+ * Snapshot only.
+ *
+ * false means producer reservations may exist; it does not guarantee
+ * that the next reserved slot has completed RELEASE publication.
+ * Callers must use bh_mpsc_queue_pop() as the authoritative availability
+ * check.
  */
 bool bh_mpsc_queue_empty(const bh_mpsc_queue_t *q);
 
