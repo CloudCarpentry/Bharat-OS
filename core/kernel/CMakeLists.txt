@@ -574,6 +574,18 @@ add_custom_command(
 )
 
 add_custom_target(generate_asm_offsets DEPENDS "${ASM_OFFSETS_H}")
+add_custom_target(check_trap_frame_abi
+    COMMAND python3 ${CMAKE_SOURCE_DIR}/tools/abi/test_trap_frame_abi.py
+            "${ASM_OFFSETS_H}"
+            ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/trap_entry.S
+            ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/trap_entry.S
+            ${BHARAT_ARCH_HAL_ROOT}/arm/arm32/trap_entry.S
+            ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv64/trap_entry.S
+            ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv32/trap_entry.S
+    DEPENDS generate_asm_offsets
+            ${CMAKE_SOURCE_DIR}/tools/abi/test_trap_frame_abi.py
+    COMMENT "Checking five-architecture trap frame ABI"
+)
 set_source_files_properties(${KERNEL_SRCS} PROPERTIES OBJECT_DEPENDS "${ASM_OFFSETS_H}")
 
 # ── Kernel ELF ──────────────────────────────────────────────────────────────
@@ -624,6 +636,7 @@ if(BHARAT_ENABLE_ADVANCED_VM)
     )
 endif()
 add_dependencies(kernel.elf generate_asm_offsets)
+add_dependencies(kernel.elf check_trap_frame_abi)
 target_include_directories(kernel.elf PRIVATE "${ASM_OFFSETS_DIR}")
 
 # Architecture-specific code model and PIE flags are set below
