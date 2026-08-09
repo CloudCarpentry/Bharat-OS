@@ -1,5 +1,12 @@
 import sys
 import os
+from pathlib import Path
+
+# Add repo root to sys.path so we can import from tools.*
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
 from tools.bidl.parser import parse_bidl, BidlParseError, SkipDialectError
 
 TYPE_MAP = {

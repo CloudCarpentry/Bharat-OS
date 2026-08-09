@@ -4,6 +4,12 @@ import argparse
 import os
 import subprocess
 from pathlib import Path
+
+# Add repo root to sys.path so we can import from tools.*
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
 from check_struct_layouts import check_struct_layouts, generate_struct_manifest
 from check_idl_compat import check_idl_compat, generate_idl_manifest
 from check_sdk_symbols import check_sdk_symbols, generate_sdk_manifest
