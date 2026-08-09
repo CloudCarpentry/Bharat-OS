@@ -389,6 +389,7 @@ if(NOT EXISTS "${BHARAT_KERNEL_SRC_ROOT}/core/CMakeLists.txt" OR NOT EXISTS "${B
 endif()
 
 add_subdirectory("${BHARAT_KERNEL_SRC_ROOT}/core" "${CMAKE_CURRENT_BINARY_DIR}/src_core")
+add_subdirectory(src/time)
 add_subdirectory(src/sched)
 add_subdirectory(src/ipc)
 add_subdirectory(src/cap)
@@ -597,6 +598,7 @@ add_executable(kernel.elf
     $<TARGET_OBJECTS:bharat_mm_pmm>
     $<TARGET_OBJECTS:bharat_librbtree_obj>
     $<TARGET_OBJECTS:k_ds>
+    $<TARGET_OBJECTS:k_time>
     $<TARGET_OBJECTS:k_core>
     $<TARGET_OBJECTS:k_sched>
     $<TARGET_OBJECTS:k_ipc>

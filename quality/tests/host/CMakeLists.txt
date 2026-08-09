@@ -303,6 +303,13 @@ add_executable(test_init test_init.c ../../core/services/core/init/init_runtime.
 target_include_directories(test_init PRIVATE ../../include ../../kernel/include ../../core/lib/runtime/include ../../core/lib/cap/include ../../core/lib/ipc/include)
 add_test(NAME host_test_init COMMAND test_init)
 
+add_executable(test_ktime time/test_ktime.c ../../core/kernel/src/time/ktime.c ../../core/hal/common/hal_timer_common.c ../../core/kernel/src/core/cpu_local.c)
+
+target_include_directories(test_ktime PRIVATE ../../core/kernel/include ../../interface/include ../../core/hal/include ../../core/boot/include)
+
+add_test(NAME host_test_ktime COMMAND test_ktime)
+
+
 add_executable(test_e2e_service_runtime test_e2e_service_runtime.c ../../core/services/process_manager/process_manager.c ../../core/services/vm_manager/vm_manager.c ../../core/services/servicemgr/servicemgr.c ../../core/lib/ipc/src/ipc.c)
 target_include_directories(test_e2e_service_runtime PRIVATE ../../include ../../core/lib/ipc/include ../../core/lib/cap/include ../../kernel/include)
 add_test(NAME host_test_e2e_service_runtime COMMAND test_e2e_service_runtime)

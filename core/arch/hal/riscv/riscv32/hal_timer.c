@@ -6,7 +6,10 @@ static uint32_t g_timer_timebase_freq_lo = 10000000UL;
 
 // hal_timer_init: called once at boot to configure timer parameters
 void hal_timer_init(void) {
-    // QEMU virt RISC-V 32 has 10 MHz timebase (same as riscv64)
+    // The fallback timebase frequency is suitable only for explicitly
+    // known target profiles. Generic production capability must remain
+    // degraded until platform/FDT discovery supplies the actual timebase.
+    // Follow-up: Platform-Discovered RISC-V Timebase.
     g_timer_timebase_freq_lo = 10000000UL;
 }
 
@@ -43,7 +46,12 @@ void hal_timer_program_periodic(uint64_t ns) {
 }
 
 void hal_timer_program_oneshot(uint64_t ns) {
-    hal_timer_program_periodic(ns);
+    uint32_t current_time;
+    __asm__ volatile("rdtime %0" : "=r"(current_time));
+    uint64_t ticks;
+    if (hal_timer_ns_to_ticks_ceil(ns, (uint64_t)g_timer_timebase_freq_lo, &ticks)) {
+        sbi_set_timer((uint64_t)current_time + ticks);
+    }
 }
 
 uint64_t hal_timer_read_counter(void) {
@@ -86,4 +94,12 @@ void hal_ipi_broadcast(uint64_t mask, hal_ipi_reason_t reason) {
     (void)reason;
     unsigned long hart_mask = (unsigned long)mask;
     sbi_send_ipi(hart_mask, 0);
+}
+
+void hal_timer_arch_get_caps(hal_timer_caps_t *caps) {
+    caps->has_counter = true;
+    caps->has_monotonic_ns = false; // Degraded: currently uses 10MHz generic guess. Follow-up: Platform-Discovered RISC-V Timebase.
+    caps->has_precise_oneshot = false; // Degraded: untested precision due to missing calibration.
+    caps->has_native_absolute_deadline = false;
+    caps->is_per_cpu = true;
 }
