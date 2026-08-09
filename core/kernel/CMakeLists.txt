@@ -491,6 +491,7 @@ set(KERNEL_SRCS
     $<$<STREQUAL:${ARCH},riscv32>:${BHARAT_ARCH_HAL_ROOT}/riscv/riscv32/hal_mm.c>
     ${ARCH_EXT_STATE_SRC}
     ${BHARAT_HAL_ROOT}/common/hal_mem_backend.c
+    ${BHARAT_HAL_ROOT}/common/cpu_features.c
     ${BHARAT_HAL_ROOT}/common/iommu_adapter.c
     ${BHARAT_HAL_ROOT}/common/hal_dma_coherency.c
     ${BHARAT_HAL_ROOT}/common/hal_interrupt_common.c

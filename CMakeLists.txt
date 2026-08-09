@@ -84,7 +84,7 @@ endif()
 
 # Generate monitor service IDL
 execute_process(
-    COMMAND "${Python3_EXECUTABLE}" "${BHARAT_IDL_GEN_SCRIPT}"
+    COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_SOURCE_DIR} "${Python3_EXECUTABLE}" "${BHARAT_IDL_GEN_SCRIPT}"
             "${BHARAT_IDL_ROOT}/monitor_v1.bidl"
             "${BHARAT_GEN_INCLUDE_DIR}"
     WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
@@ -96,7 +96,7 @@ endif()
 
 # Generate cap service IDL
 execute_process(
-    COMMAND "${Python3_EXECUTABLE}" "${BHARAT_IDL_GEN_SCRIPT}"
+    COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_SOURCE_DIR} "${Python3_EXECUTABLE}" "${BHARAT_IDL_GEN_SCRIPT}"
             "${BHARAT_IDL_ROOT}/cap_v1.bidl"
             "${BHARAT_GEN_INCLUDE_DIR}"
     WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
