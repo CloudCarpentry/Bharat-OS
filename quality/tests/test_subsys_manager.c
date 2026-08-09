@@ -20,7 +20,7 @@ void kernel_panic(const char* msg) {
     while (1) {}
 }
 
-void* arch_memcpy(void* dest, const void* src, size_t n, uint32_t flags) {
+void* hal_memcpy(void* dest, const void* src, size_t n, uint32_t flags) {
     (void)flags;
     uint8_t* d = dest;
     const uint8_t* s = src;
@@ -28,14 +28,14 @@ void* arch_memcpy(void* dest, const void* src, size_t n, uint32_t flags) {
     return dest;
 }
 
-void* arch_memset(void* s, int c, size_t n, uint32_t flags) {
+void* hal_memset(void* s, int c, size_t n, uint32_t flags) {
     (void)flags;
     uint8_t* p = s;
     while (n--) *p++ = (uint8_t)c;
     return s;
 }
 
-void* arch_memmove(void* dest, const void* src, size_t n, uint32_t flags) {
+void* hal_memmove(void* dest, const void* src, size_t n, uint32_t flags) {
     (void)flags;
     uint8_t* d = dest;
     const uint8_t* s = src;

@@ -66,8 +66,22 @@ add_subdirectory(diag)
 # ---------------------------------------------------------
 # bharat_libmsg (Wire/Validation/Encoding)
 # ---------------------------------------------------------
-set(BHARAT_LIBMSG_SOURCES
+
+add_library(bharat_msg_wire_codec STATIC
     msg/wire.c
+)
+
+target_include_directories(bharat_msg_wire_codec PUBLIC
+    ${CMAKE_SOURCE_DIR}/core/services/core/subsysmgr/include
+    ${CMAKE_SOURCE_DIR}/interface/include
+    runtime/include
+)
+
+target_link_libraries(bharat_msg_wire_codec PUBLIC
+    bharat_freestanding
+)
+
+set(BHARAT_LIBMSG_SOURCES
     msg/validate.c
     msg/crc.c
     msg/crc_generic.c
@@ -92,7 +106,7 @@ target_include_directories(bharat_libmsg PUBLIC
     ${CMAKE_SOURCE_DIR}/interface/include
     runtime/include
 )
-target_link_libraries(bharat_libmsg PUBLIC bharat_freestanding)
+target_link_libraries(bharat_libmsg PUBLIC bharat_msg_wire_codec bharat_freestanding)
 bharat_configure_userspace_library(bharat_libmsg)
 
 # Alias old 'msg' for compatibility during migration

@@ -116,12 +116,12 @@ size_t arch_console_discover(console_device_desc_t *devs, size_t max_devs) {
     return 0; // Return 0 devices found for tests
 }
 
-void *arch_memset(void *dst, int c, size_t n, uint32_t flags) {
+void *hal_memset(void *dst, int c, size_t n, uint32_t flags) {
     (void)flags;
     return memset(dst, c, n);
 }
 
-void *arch_memmove(void *dst, const void *src, size_t n, uint32_t flags) {
+void *hal_memmove(void *dst, const void *src, size_t n, uint32_t flags) {
     (void)flags;
     return memmove(dst, src, n);
 }

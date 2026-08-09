@@ -1,6 +1,6 @@
 #include "console/console_render.h"
 #include <stddef.h>
-#include "arch/memops.h"
+#include "hal/hal_memops.h"
 
 /* Extremely basic fixed-width rendering mechanics. */
 #define FONT_WIDTH  8
@@ -55,7 +55,7 @@ void console_render_fb_clear(framebuffer_console_state_t *state) {
     uint32_t total_bytes = state->stride_bytes * state->height_px;
 
     if (state->bg_color == 0) {
-        arch_memset((void*)state->fb_base, 0, total_bytes, ARCH_MEMOP_F_DEFAULT);
+        hal_memset((void*)state->fb_base, 0, total_bytes, BH_MEMCTX_F_DEFAULT);
     } else {
         // We only implement bulk clear for black background efficiently here.
         // For other colors, we fallback to char by char.
@@ -78,7 +78,7 @@ void console_render_fb_scroll(framebuffer_console_state_t *state) {
     uint32_t row_bytes = state->stride_bytes * FONT_HEIGHT;
     uint32_t scroll_bytes = state->stride_bytes * (state->height_px - FONT_HEIGHT);
 
-    arch_memmove((void*)state->fb_base, (const void*)(state->fb_base + row_bytes), scroll_bytes, ARCH_MEMOP_F_DEFAULT);
+    hal_memmove((void*)state->fb_base, (const void*)(state->fb_base + row_bytes), scroll_bytes, BH_MEMCTX_F_DEFAULT);
 
     // Clear last row
     uint32_t last_row_start_y = state->height_px - FONT_HEIGHT;
@@ -86,7 +86,7 @@ void console_render_fb_scroll(framebuffer_console_state_t *state) {
     uint32_t last_row_bytes = state->stride_bytes * FONT_HEIGHT;
 
     if (state->bg_color == 0) {
-        arch_memset((void*)last_row_ptr, 0, last_row_bytes, ARCH_MEMOP_F_DEFAULT);
+        hal_memset((void*)last_row_ptr, 0, last_row_bytes, BH_MEMCTX_F_DEFAULT);
     } else {
         for (uint32_t y = last_row_start_y; y < state->height_px; y++) {
             for (uint32_t x = 0; x < state->width_px; x++) {

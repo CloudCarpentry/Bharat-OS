@@ -4,7 +4,7 @@
 #include "../../kernel/include/mm.h"
 #include "../../kernel/include/numa.h"
 #include "../../kernel/include/mm/physmap.h"
-#include "../../kernel/include/arch/memops.h"
+#include "hal/hal_memops.h"
 #include <stdbool.h>
 
 // Direct-Map Subsystem Configuration
@@ -73,7 +73,7 @@ typedef struct {
 } pt_t;
 
 static inline void arm64_pt_zero_table(void *tbl, size_t sz) {
-    arch_memset(tbl, 0, sz, ARCH_MEMOP_F_DEFAULT);
+    hal_memset(tbl, 0, sz, BH_MEMCTX_F_DEFAULT);
 }
 
 static virt_addr_t align_down(virt_addr_t value) {

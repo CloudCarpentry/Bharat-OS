@@ -8,7 +8,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include "arch/memops.h"
+#include "hal/hal_memops.h"
 #include "bharat/compiler_safety.h"
 
 BHARAT_NOINLINE BHARAT_USED
@@ -52,29 +52,29 @@ void *bharat_memmove_scalar(void *dst, const void *src, size_t n) {
     return dst;
 }
 
-void *arch_memcpy(void *dest, const void *src, size_t n, uint32_t flags) {
+void *hal_memcpy(void *dest, const void *src, size_t n, uint32_t flags) {
     (void)flags; /* unused in portable fallback */
     return bharat_memcpy_scalar(dest, src, n);
 }
 
-void *arch_memset(void *dest, int c, size_t n, uint32_t flags) {
+void *hal_memset(void *dest, int c, size_t n, uint32_t flags) {
     (void)flags; /* unused in portable fallback */
     return bharat_memset_scalar(dest, c, n);
 }
 
-void *arch_memmove(void *dest, const void *src, size_t n, uint32_t flags) {
+void *hal_memmove(void *dest, const void *src, size_t n, uint32_t flags) {
     (void)flags; /* unused in portable fallback */
     return bharat_memmove_scalar(dest, src, n);
 }
 
-void *arch_memcpy_scalar(void *dst, const void *src, size_t n) {
+void *hal_memcpy_scalar(void *dst, const void *src, size_t n) {
     return bharat_memcpy_scalar(dst, src, n);
 }
 
-void *arch_memset_scalar(void *dst, int c, size_t n) {
+void *hal_memset_scalar(void *dst, int c, size_t n) {
     return bharat_memset_scalar(dst, c, n);
 }
 
-void *arch_memmove_scalar(void *dst, const void *src, size_t n) {
+void *hal_memmove_scalar(void *dst, const void *src, size_t n) {
     return bharat_memmove_scalar(dst, src, n);
 }
