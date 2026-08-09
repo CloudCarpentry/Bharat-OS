@@ -10,7 +10,7 @@
  * recurse back into libc strings.
  */
 
-#include "arch/memops.h"
+#include "hal/hal_memops.h"
 
 #define WORD_SIZE sizeof(uintptr_t)
 #define PREFETCH_THRESHOLD 256
@@ -21,7 +21,7 @@
  * transforming this loop back into a memset() call, which
  * would cause infinite recursion in host tests/early boot.
  */
-void arch_memset_raw(void *dst, int val, size_t len) {
+void hal_memset_raw(void *dst, int val, size_t len) {
 #if defined(TESTING) || defined(__HOST__)
     volatile unsigned char *d = (volatile unsigned char *)dst;
     unsigned char v = (unsigned char)val;
@@ -37,7 +37,7 @@ void arch_memset_raw(void *dst, int val, size_t len) {
 #endif
 }
 
-void *arch_memcpy_scalar(void *dst, const void *src, size_t n) {
+void *hal_memcpy_scalar(void *dst, const void *src, size_t n) {
   unsigned char *d = (unsigned char *)dst;
   const unsigned char *s = (const unsigned char *)src;
 
@@ -97,12 +97,12 @@ void *arch_memcpy_scalar(void *dst, const void *src, size_t n) {
   return dst;
 }
 
-void *arch_memset_scalar(void *dst, int c, size_t n) {
-  arch_memset_raw(dst, c, n);
+void *hal_memset_scalar(void *dst, int c, size_t n) {
+  hal_memset_raw(dst, c, n);
   return dst;
 }
 
-void *arch_memmove_scalar(void *dst, const void *src, size_t n) {
+void *hal_memmove_scalar(void *dst, const void *src, size_t n) {
   unsigned char *d = (unsigned char *)dst;
   const unsigned char *s = (const unsigned char *)src;
 

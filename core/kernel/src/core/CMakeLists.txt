@@ -34,14 +34,8 @@ add_library(k_core OBJECT
     ${BHARAT_KERNEL_SRC_ROOT}/algorithms.c
 )
 
-target_include_directories(k_core PRIVATE
-    ${BHARAT_KERNEL_INCLUDE_DIR}
-    ${BHARAT_GENERATED_INCLUDE_DIR}
-    ${CMAKE_SOURCE_DIR}/core/personalities/runtime/include
-    ${CMAKE_SOURCE_DIR}/interface/include
-    ${BHARAT_LIB_ROOT}/include
-    ${BHARAT_BOOT_INCLUDE_DIR}
-    ${BHARAT_HAL_ROOT}/include
+target_link_libraries(k_core PRIVATE
+    bharat_kernel_includes
+    bharat_kernel_buildopts
 )
-target_link_libraries(k_core PRIVATE bharat_freestanding bharat_kernel_buildopts)
 target_sources(k_core PRIVATE fault_domain.c)

@@ -1,6 +1,6 @@
 #include "mm/mem_profile_validation.h"
 #include "bharat_config.h"
-#include <string.h>
+#include "lib/base/string.h"
 
 static const mem_profile_requirements_t profile_requirements[] = {
 #if defined(BHARAT_PROFILE_DESKTOP) || defined(BHARAT_PROFILE_LAPTOP)

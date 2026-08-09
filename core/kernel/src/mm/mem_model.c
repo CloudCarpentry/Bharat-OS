@@ -1,6 +1,6 @@
 #include "mm/mem_model.h"
 #include "hal/hal_mmu.h"
-#include <string.h>
+#include "lib/base/string.h"
 
 // For now we map the current memory model based on build configuration.
 mem_model_t mem_model_get_current(void) {

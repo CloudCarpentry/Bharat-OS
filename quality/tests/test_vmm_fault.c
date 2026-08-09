@@ -8,7 +8,7 @@
 #include "../../kernel/include/mm/tlb.h"
 #include "../../kernel/include/hal/mmu_ops.h"
 #include "../../kernel/include/hal/hal_tlb.h"
-#include "../../kernel/include/arch/memops.h"
+#include "hal/hal_memops.h"
 #include "../../kernel/include/capability.h"
 
 __attribute__((weak)) int kcache_create(const char *name, size_t obj_size, size_t align) {
@@ -40,7 +40,7 @@ static phys_addr_t fake_alloc_page(int node) {
 
 static void fake_zero_page(phys_addr_t paddr, size_t size) {
     // Utilize proper Tier-0 memops primitive that prevents infinite memset recursion
-    arch_memset_raw((void *)(uintptr_t)paddr, 0, size);
+    hal_memset_raw((void *)(uintptr_t)paddr, 0, size);
 }
 
 __attribute__((weak)) uint16_t numa_get_current_node(void) { return 0; }
