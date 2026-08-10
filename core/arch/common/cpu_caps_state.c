@@ -16,6 +16,7 @@ static arch_cpu_caps_record_t g_system_caps_any;
 static arch_cpu_caps_record_t g_per_cpu_caps[MAX_CPUS];
 static bool g_cpu_caps_present[MAX_CPUS];
 static size_t g_cpu_caps_present_count;
+static bool g_system_caps_finalized;
 
 static void cpu_caps_record_copy(arch_cpu_caps_record_t *dst,
                                  const arch_cpu_caps_record_t *src) {
@@ -83,11 +84,11 @@ const arch_cpu_caps_record_t *arch_cpu_caps_for_cpu(size_t cpu_index) {
 }
 
 const arch_cpu_caps_record_t *arch_cpu_caps_system_all(void) {
-    return &g_system_caps_all;
+    return g_system_caps_finalized ? &g_system_caps_all : NULL;
 }
 
 const arch_cpu_caps_record_t *arch_cpu_caps_system_any(void) {
-    return &g_system_caps_any;
+    return g_system_caps_finalized ? &g_system_caps_any : NULL;
 }
 
 bool arch_cpu_has(int feat) {
@@ -95,7 +96,7 @@ bool arch_cpu_has(int feat) {
 }
 
 bool arch_cpu_has_system_all(int feat) {
-    return arch_cpu_caps_test(&g_system_caps_all.usable, feat);
+    return g_system_caps_finalized && arch_cpu_caps_test(&g_system_caps_all.usable, feat);
 }
 
 bool arch_cpu_has_on(size_t cpu_index, int feat) {
@@ -103,14 +104,14 @@ bool arch_cpu_has_on(size_t cpu_index, int feat) {
 }
 
 bool arch_cpu_has_cpu(size_t cpu_index, int feat) {
-    if (cpu_index < MAX_CPUS) {
+    if (cpu_index < MAX_CPUS && g_cpu_caps_present[cpu_index]) {
         return arch_cpu_caps_test(&g_per_cpu_caps[cpu_index].usable, feat);
     }
     return false;
 }
 
 bool arch_cpu_has_system_any(int feat) {
-    return arch_cpu_caps_test(&g_system_caps_any.usable, feat);
+    return g_system_caps_finalized && arch_cpu_caps_test(&g_system_caps_any.usable, feat);
 }
 
 bool arch_cpu_has_current(int feat) {
@@ -121,6 +122,7 @@ bool arch_cpu_has_current(int feat) {
 void cpu_caps_state_set_boot(const arch_cpu_caps_record_t *caps) {
     memset(g_cpu_caps_present, 0, sizeof(g_cpu_caps_present));
     g_cpu_caps_present_count = 0;
+    g_system_caps_finalized = false;
 
     cpu_caps_record_copy(&g_boot_cpu_caps, caps);
     cpu_caps_record_copy(&g_per_cpu_caps[0], caps);
@@ -142,7 +144,13 @@ void cpu_caps_state_set_ap(unsigned int cpu_id, const arch_cpu_caps_record_t *ca
     }
 }
 
-void arch_cpu_caps_system_finalize(void) {
+kstatus_t arch_cpu_caps_system_finalize(void) {
+    if (g_system_caps_finalized) {
+        return K_ERR_BAD_STATE;
+    }
+    if (g_cpu_caps_present_count == 0U) {
+        return K_ERR_IN_PROGRESS;
+    }
     bool initialized = false;
     arch_cpu_caps_zero(&g_system_caps_all.raw);
     arch_cpu_caps_zero(&g_system_caps_all.usable);
@@ -167,9 +175,10 @@ void arch_cpu_caps_system_finalize(void) {
     }
 
     if (!initialized) {
-        cpu_caps_record_copy(&g_system_caps_all, &g_boot_cpu_caps);
-        cpu_caps_record_copy(&g_system_caps_any, &g_boot_cpu_caps);
+        return K_ERR_IN_PROGRESS;
     }
+    g_system_caps_finalized = true;
+    return K_OK;
 }
 
 size_t cpu_caps_state_online_count(void) {

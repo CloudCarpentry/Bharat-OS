@@ -10,7 +10,6 @@ arch_caps_t arch_get_caps(void) {
     arch_caps_set(&caps, ARCH_CAP_SMP);
     arch_caps_set(&caps, ARCH_CAP_CACHE_MAINTENANCE);
     arch_caps_set(&caps, ARCH_CAP_DEVICE_MEMORY_ATTRS);
-    arch_caps_set(&caps, ARCH_CAP_DMA_COHERENT);
 
     return caps;
 }

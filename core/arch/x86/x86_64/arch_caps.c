@@ -10,7 +10,6 @@ arch_caps_t arch_get_caps(void) {
     arch_caps_set(&caps, ARCH_CAP_ASID); // PCID
     arch_caps_set(&caps, ARCH_CAP_GLOBAL_TLB_INVALIDATE);
     arch_caps_set(&caps, ARCH_CAP_FINE_GRAIN_PROTECT);
-    arch_caps_set(&caps, ARCH_CAP_DMA_COHERENT);
     arch_caps_set(&caps, ARCH_CAP_CACHE_MAINTENANCE); // CLFLUSH, PAT
     arch_caps_set(&caps, ARCH_CAP_DEVICE_MEMORY_ATTRS);
     arch_caps_set(&caps, ARCH_CAP_ADV_IRQ_ROUTING);
@@ -29,7 +28,6 @@ const arch_cap_profile_t *arch_get_cap_profile(void) {
             ARCH_CAP_BIT(ARCH_CAP_64BIT_VA) |
             ARCH_CAP_BIT(ARCH_CAP_SMP) |
             ARCH_CAP_BIT(ARCH_CAP_MMU_FULL) |
-            ARCH_CAP_BIT(ARCH_CAP_DMA_COHERENT) |
             ARCH_CAP_BIT(ARCH_CAP_ADV_IRQ_ROUTING) |
             ARCH_CAP_BIT(ARCH_CAP_USERSPACE_HIGHHALF)
         },
