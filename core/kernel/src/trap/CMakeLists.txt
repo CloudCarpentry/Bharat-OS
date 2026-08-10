@@ -9,6 +9,7 @@ add_library(k_trap OBJECT
     ../../src/trap/usercopy.c
     ../../src/trap/syscall_stats.c
     ../../src/trap/trap_fault.c
+    ../../src/trap/syscall_test.c
     ../../src/fault_diag.c
     $<$<STREQUAL:${ARCH},x86_64>:${CMAKE_SOURCE_DIR}/core/arch/x86/x86_64/syscall_extract.c>
     $<$<STREQUAL:${ARCH},arm64>:${CMAKE_SOURCE_DIR}/core/arch/arm/arm64/syscall_extract.c>

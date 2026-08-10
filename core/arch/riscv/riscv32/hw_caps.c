@@ -1,12 +1,11 @@
 #include "hal/hal_hw_caps.h"
 #include "hal/hal_internal.h"
-#include <string.h>
 
 void arch_discover_hw_caps(void) {
     hal_hw_caps_t caps = {0};
 
     // RISC-V 32 typical capabilities
-    caps.has_mmu = true;
+    caps.has_mmu = false; // Effective MPU/MMU-Lite profile, not backend Sv32 ability
     caps.has_mpu = true; // PMP
     caps.has_iommu = false;
     caps.has_dma_coherent = false;
@@ -17,7 +16,7 @@ void arch_discover_hw_caps(void) {
     caps.has_vector = false;
     caps.has_crypto_accel = false;
     caps.has_accel_device = false;
-    caps.max_cpus = 4;
+    caps.max_cpus = 0; // Published from platform topology
     caps.page_granule = 4096;
     caps.cache_line_size = 32;
 

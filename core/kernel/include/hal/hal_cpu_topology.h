@@ -10,6 +10,7 @@ extern "C" {
 
 typedef struct {
     uint32_t discovered_cpu_count;
+    /* Legacy service-placement masks cover CPUs 0..31 only. */
     uint32_t valid_cpu_mask;
     uint32_t performance_cluster_mask;
     uint32_t efficiency_cluster_mask;

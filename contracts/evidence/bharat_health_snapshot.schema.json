@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "license": "SPDX-License-Identifier: MIT",
+  "type": "object",
+  "additionalProperties": false,
+  "title": "Bharat health snapshot v1",
+  "required": [
+    "schema_version",
+    "state",
+    "source_id",
+    "timestamp_ns",
+    "uptime_ns",
+    "dropped_events"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "state": {
+      "enum": [
+        "UNKNOWN",
+        "STARTING",
+        "HEALTHY",
+        "DEGRADED",
+        "FAILED",
+        "STOPPING"
+      ]
+    },
+    "source_id": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "timestamp_ns": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "uptime_ns": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "dropped_events": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

@@ -31,3 +31,36 @@ void arch_prepare_initial_context(cpu_context_t* ctx, void (*entry)(void), uint6
 
   // Do not preload FP state here. Lazy path will trap on first use.
 }
+
+void arch_prepare_initial_context_arg(
+    cpu_context_t *ctx,
+    arch_thread_entry_arg_t entry,
+    void *arg0,
+    uintptr_t stack_top)
+{
+    if (!ctx) {
+        return;
+    }
+    for (size_t i = 0; i < 16; ++i) {
+        ctx->regs[i] = 0U;
+    }
+
+    // Align stack to 16 bytes
+    stack_top &= ~0xFULL;
+
+    // x19 (regs[0]) will hold the real entry point
+    ctx->regs[0] = (uint64_t)(uintptr_t)entry;
+
+    // x20 (regs[1]) will hold arg0
+    ctx->regs[1] = (uint64_t)(uintptr_t)arg0;
+
+    // Preserve DAIF state in regs[12] (offset 96)
+    uint64_t daif_val;
+    __asm__ volatile("mrs %0, daif" : "=r"(daif_val));
+    ctx->regs[12] = daif_val;
+
+    // Initial resume point is the bootstrap trampoline
+    ctx->pc = (uint64_t)(uintptr_t)arch_bh_thread_start_trampoline;
+    ctx->sp = stack_top;
+}
+

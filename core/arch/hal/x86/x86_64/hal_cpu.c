@@ -3,6 +3,7 @@
 #include "hal/hal.h"
 #include "console/console_core.h"
 #include "secure_boot.h"
+#include "arch/x86_segments.h"
 
 #include <stdint.h>
 #if __has_include("bharat_config.h")
@@ -113,37 +114,64 @@ uint64_t hal_irq_timer_vector(void) {
 }
 
 uint64_t hal_cpu_get_fault_address(const void *trap_frame) {
-    (void)trap_frame;
-    uint64_t cr2;
-    __asm__ volatile("mov %%cr2, %0" : "=r"(cr2));
-    return cr2;
+    if (!trap_frame) return 0;
+    return ((const bh_x86_64_raw_trap_frame_t *)trap_frame)->fault_addr;
 }
 
+
+#include "sched/sched.h"
+
 __attribute__((weak)) void hal_cpu_dump_trap_frame(const void *trap_frame) {
-  if (!trap_frame) {
-    return;
-  }
-  const trap_frame_t *tf = (const trap_frame_t *)trap_frame;
-  hal_serial_write("\n--- x86_64 Trap Frame Dump ---\n");
-  hal_serial_write("CAUSE: ");
-  hal_serial_write_hex(tf->cause);
-  hal_serial_write("\n");
-  hal_serial_write("PC:    ");
-  hal_serial_write_hex(tf->pc);
-  hal_serial_write("\n");
-  hal_serial_write("SP:    ");
-  hal_serial_write_hex(tf->sp);
-  hal_serial_write("\n");
-  // Dump some general registers, usually gpr[0]-gpr[5] hold arg0-arg5 in syscalls
-  hal_serial_write("RAX:   "); hal_serial_write_hex(tf->gpr[0]); hal_serial_write("\n");
-  hal_serial_write("RDI:   "); hal_serial_write_hex(tf->gpr[1]); hal_serial_write("\n");
-  hal_serial_write("RSI:   "); hal_serial_write_hex(tf->gpr[2]); hal_serial_write("\n");
-  hal_serial_write("RDX:   "); hal_serial_write_hex(tf->gpr[3]); hal_serial_write("\n");
-  hal_serial_write("RCX:   "); hal_serial_write_hex(tf->gpr[4]); hal_serial_write("\n");
-  hal_serial_write("R8:    "); hal_serial_write_hex(tf->gpr[5]); hal_serial_write("\n");
-  hal_serial_write("R9:    "); hal_serial_write_hex(tf->gpr[6]); hal_serial_write("\n");
-  hal_serial_write("------------------------------\n");
+    if (!trap_frame) {
+        return;
+    }
+    const bh_x86_64_raw_trap_frame_t *xtf =
+        (const bh_x86_64_raw_trap_frame_t *)trap_frame;
+    const trap_frame_t *tf = &xtf->base;
+
+    bh_thread_t *t = sched_current_thread();
+
+    hal_serial_write("\n--- x86_64 Trap Frame Dump ---\n");
+
+    hal_serial_write("vector: "); hal_serial_write_hex(tf->cause); hal_serial_write("\n");
+    hal_serial_write("error_code: "); hal_serial_write_hex(xtf->error_code); hal_serial_write("\n");
+    hal_serial_write("rip: "); hal_serial_write_hex(tf->pc); hal_serial_write("\n");
+
+    // In our trap_entry.S, CS and RFLAGS are pushed by hardware, we don't have them in base trap_frame_t directly unless we read them from the stack...
+    // Wait, the trap_frame_t struct has them in gpr? No. trap_frame_t has status (RFLAGS).
+    // What about CS? We don't have CS in generic trap_frame_t!
+    // But let's check trap_entry.S to see where it saves CS and SS.
+    // [rsp+336] = CS, [rsp+360] = SS. Wait, are they preserved?
+    // trap_entry.S does NOT save CS or SS in trap_frame_t explicitly if there's no field.
+    // Let me check trap.h for trap_frame_t.
+    // I can just print the fields we have in x86_trap_frame_t.
+
+    hal_serial_write("rflags: "); hal_serial_write_hex(tf->status); hal_serial_write("\n");
+    hal_serial_write("rsp: "); hal_serial_write_hex(tf->sp); hal_serial_write("\n");
+    hal_serial_write("cr2: "); hal_serial_write_hex(xtf->fault_addr); hal_serial_write("\n");
+    hal_serial_write("from_user: "); hal_serial_write_hex(tf->from_user); hal_serial_write("\n");
+    hal_serial_write("pid: "); hal_serial_write_hex(t ? t->process_id : 0); hal_serial_write("\n");
+    hal_serial_write("tid: "); hal_serial_write_hex(t ? t->thread_id : 0); hal_serial_write("\n");
+    hal_serial_write("cpu: "); hal_serial_write_hex(hal_cpu_get_id()); hal_serial_write("\n");
+
+    uint64_t cr3_val;
+    __asm__ volatile("mov %%cr3, %0" : "=r"(cr3_val));
+    hal_serial_write("cr3: "); hal_serial_write_hex(cr3_val); hal_serial_write("\n");
+    hal_serial_write("active_aspace_id: "); hal_serial_write_hex(t && t->process ? t->process->process_id : 0); hal_serial_write("\n");
+
+    if (tf->cause == 14) {
+        hal_serial_write("PAGE FAULT DECODE:\n");
+        uint64_t e = xtf->error_code;
+        hal_serial_write("  P: "); hal_serial_write_hex(e & 1); hal_serial_write("\n");
+        hal_serial_write("  W/R: "); hal_serial_write_hex((e >> 1) & 1); hal_serial_write("\n");
+        hal_serial_write("  U/S: "); hal_serial_write_hex((e >> 2) & 1); hal_serial_write("\n");
+        hal_serial_write("  RSVD: "); hal_serial_write_hex((e >> 3) & 1); hal_serial_write("\n");
+        hal_serial_write("  I/D: "); hal_serial_write_hex((e >> 4) & 1); hal_serial_write("\n");
+    }
+
+    hal_serial_write("------------------------------\n");
 }
+
 
 void hal_cpu_dump_state(void) {
   uint64_t cr2, cr3, rbp, rsp;
@@ -245,7 +273,7 @@ static struct idtr idtr;
 static void idt_set_descriptor(uint8_t vector, void *isr, uint8_t flags) {
   struct idt_entry *descriptor = &idt[vector];
   descriptor->isr_low = (uint64_t)isr & 0xFFFF;
-  descriptor->kernel_cs = 0x08; // Assuming 0x08 is kernel code segment
+  descriptor->kernel_cs = X86_KERNEL_CS; // Assuming X86_KERNEL_CS is kernel code segment
   descriptor->ist = 0;
   descriptor->attributes = flags;
   descriptor->isr_mid = ((uint64_t)isr >> 16) & 0xFFFF;
@@ -321,6 +349,23 @@ static inline void ioapic_write(uint8_t offset, uint32_t val) {
 }
 
 // --- GDT Definitions (TSS requires it) ---
+#define X86_GDT_KERNEL_CODE_INDEX 1
+#define X86_GDT_KERNEL_DATA_INDEX 2
+#define X86_GDT_USER_DATA_INDEX 3
+#define X86_GDT_USER_CODE_INDEX 4
+#define X86_GDT_TSS_INDEX 5
+
+#define X86_GDT_ACCESS_KERNEL_CODE 0x9AU
+#define X86_GDT_ACCESS_KERNEL_DATA 0x92U
+#define X86_GDT_ACCESS_USER_DATA 0xF2U
+#define X86_GDT_ACCESS_USER_CODE 0xFAU
+#define X86_GDT_ACCESS_TSS_AVAILABLE 0x89U
+
+#define X86_GDT_GRANULARITY_CODE64 0xAU
+#define X86_GDT_GRANULARITY_DATA 0xCU
+
+#define X86_GDT_TSS_SELECTOR (X86_GDT_TSS_INDEX << 3)
+
 static uint64_t g_gdt[8];
 static struct {
   uint16_t limit;
@@ -328,8 +373,7 @@ static struct {
 } __attribute__((packed)) g_gdtr;
 
 static void gdt_set_descriptor(int index, uint64_t base, uint32_t limit,
-                               uint8_t access, uint8_t gran)
-    __attribute__((unused));
+                               uint8_t access, uint8_t gran);
 static void gdt_set_descriptor(int index, uint64_t base, uint32_t limit,
                                uint8_t access, uint8_t gran) {
   if (index < 0 || index >= 8)
@@ -367,10 +411,15 @@ void hal_init(void) {
     core_id = 0; // Safeguard
 
   g_gdt[0] = 0;
-  g_gdt[1] = 0x00af9a000000ffff; // KCode (0x08)
-  g_gdt[2] = 0x00af92000000ffff; // KData (0x10)
-  g_gdt[3] = 0x00aff2000000ffff; // UData (0x18)
-  g_gdt[4] = 0x00affa000000ffff; // UCode (0x20)
+  gdt_set_descriptor(X86_GDT_KERNEL_CODE_INDEX, 0, 0xFFFFFU,
+                     X86_GDT_ACCESS_KERNEL_CODE,
+                     X86_GDT_GRANULARITY_CODE64);
+  gdt_set_descriptor(X86_GDT_KERNEL_DATA_INDEX, 0, 0xFFFFFU,
+                     X86_GDT_ACCESS_KERNEL_DATA, X86_GDT_GRANULARITY_DATA);
+  gdt_set_descriptor(X86_GDT_USER_DATA_INDEX, 0, 0xFFFFFU,
+                     X86_GDT_ACCESS_USER_DATA, X86_GDT_GRANULARITY_DATA);
+  gdt_set_descriptor(X86_GDT_USER_CODE_INDEX, 0, 0xFFFFFU,
+                     X86_GDT_ACCESS_USER_CODE, X86_GDT_GRANULARITY_CODE64);
 
   tss_entry_t *tss = &g_tss[core_id];
   tss->rsp0 = (uint64_t)g_per_core_stacks[core_id] + 16384;
@@ -378,7 +427,9 @@ void hal_init(void) {
   tss->iopb_offset = sizeof(tss_entry_t);
 
   uint64_t tss_base = (uint64_t)tss;
-  gdt_set_system_descriptor(5, tss_base, sizeof(tss_entry_t) - 1, 0x89);
+  gdt_set_system_descriptor(X86_GDT_TSS_INDEX, tss_base,
+                            sizeof(tss_entry_t) - 1,
+                            X86_GDT_ACCESS_TSS_AVAILABLE);
 
   g_gdtr.base = (uint64_t)&g_gdt[0];
   g_gdtr.limit = sizeof(g_gdt) - 1;
@@ -387,7 +438,7 @@ void hal_init(void) {
   __asm__ volatile("lgdt %0" : : "m"(g_gdtr));
 
   console_write_raw("H2\n", 3);
-  __asm__ volatile("ltr %w0" : : "r"(0x28));
+  __asm__ volatile("ltr %w0" : : "r"(X86_GDT_TSS_SELECTOR));
 
   console_write_raw("H3\n", 3);
 

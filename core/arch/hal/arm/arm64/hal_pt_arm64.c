@@ -4,7 +4,7 @@
 #include "../../kernel/include/mm.h"
 #include "../../kernel/include/numa.h"
 #include "../../kernel/include/mm/physmap.h"
-#include "../../kernel/include/arch/memops.h"
+#include "hal/hal_memops.h"
 #include <stdbool.h>
 
 // Direct-Map Subsystem Configuration
@@ -64,6 +64,7 @@ static arm64_kernel_map_state_t g_arm64_kernel_map = {
 #define ARM64_PT_AF          (1ULL << 10)
 
 #define ARM64_PAGE_MASK      (0x0000FFFFFFFFF000ULL)
+#define ARM64_PMD_BLOCK_SIZE (1ULL << 21)
 
 // Arch-private raw descriptor
 typedef uint64_t pte_raw_t;
@@ -73,7 +74,29 @@ typedef struct {
 } pt_t;
 
 static inline void arm64_pt_zero_table(void *tbl, size_t sz) {
-    arch_memset(tbl, 0, sz, ARCH_MEMOP_F_DEFAULT);
+    hal_memset(tbl, 0, sz, BH_MEMCTX_F_DEFAULT);
+}
+
+static phys_addr_t arm64_pt_split_block(uint64_t block, uint64_t child_size,
+                                        bool child_is_page) {
+    phys_addr_t child_pa = mm_alloc_page(NUMA_NODE_ANY);
+    if (child_pa == 0U) {
+        return 0U;
+    }
+
+    pt_t *child = (pt_t *)physmap_phys_to_virt(child_pa);
+    uint64_t block_size = child_size * 512U;
+    uint64_t base = (block & ARM64_PAGE_MASK) & ~(block_size - 1U);
+    uint64_t attributes = block & ~ARM64_PAGE_MASK;
+
+    arm64_pt_zero_table(child, sizeof(*child));
+    for (uint64_t i = 0; i < 512U; ++i) {
+        child->entries[i] = (base + (i * child_size)) | attributes;
+        if (child_is_page) {
+            child->entries[i] |= ARM64_PT_PAGE;
+        }
+    }
+    return child_pa;
 }
 
 static virt_addr_t align_down(virt_addr_t value) {
@@ -178,12 +201,36 @@ static phys_addr_t arm64_pt_create_address_space(phys_addr_t kernel_root_table) 
     // entry 0. This allows them to create their own fine-grained mappings in the
     // 0-512GB range without conflicting with kernel's 1GB blocks.
     if (kernel_root_table != 0U) {
-        extern int vmm_is_kernel_space_ready(void);
         pt_t* kernel_pgd = (pt_t*)physmap_phys_to_virt(kernel_root_table);
         
-        // Copy entry 0 ONLY for kernel space creation (before kernel_space_ready)
-        if (!vmm_is_kernel_space_ready()) {
-            pgd->entries[0] = kernel_pgd->entries[0];
+        // User roots retain the kernel's privileged low-half mappings because
+        // the kernel currently executes there after TTBR0 switches.  Split the
+        // first inherited 1 GiB block into 2 MiB blocks so user mappings can be
+        // refined without dropping unrelated privileged MMIO (notably the
+        // runtime console).  EL0 cannot access the inherited AP_EL1 mappings.
+        phys_addr_t user_pud_pa = mm_alloc_page(NUMA_NODE_ANY);
+        if (user_pud_pa) {
+            pt_t* user_pud = (pt_t*)physmap_phys_to_virt(user_pud_pa);
+            arm64_pt_zero_table(user_pud, sizeof(*user_pud));
+            
+            if (kernel_pgd->entries[0] & ARM64_PT_VALID) {
+                pt_t* kernel_pud = (pt_t*)physmap_phys_to_virt(kernel_pgd->entries[0] & ARM64_PAGE_MASK);
+                user_pud->entries[0] = kernel_pud->entries[0];
+                if ((user_pud->entries[0] & ARM64_PT_TABLE) == 0U) {
+                    phys_addr_t user_pmd_pa = arm64_pt_split_block(
+                        user_pud->entries[0], ARM64_PMD_BLOCK_SIZE, false);
+                    if (user_pmd_pa == 0U) {
+                        mm_free_page(user_pud_pa);
+                        mm_free_page(root);
+                        return 0U;
+                    }
+                    user_pud->entries[0] = user_pmd_pa | ARM64_PT_VALID | ARM64_PT_TABLE;
+                }
+                for (int i = 1; i < 512; i++) {
+                    user_pud->entries[i] = kernel_pud->entries[i];
+                }
+            }
+            pgd->entries[0] = user_pud_pa | ARM64_PT_VALID | ARM64_PT_TABLE;
         }
         
         // Always copy kernel half (256-511) for high canonical kernel mappings
@@ -291,6 +338,11 @@ static int arm64_pt_map_4k(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t p
         pt_t* pmd_ptr = (pt_t*)physmap_phys_to_virt(new_pmd);
         arm64_pt_zero_table(pmd_ptr, sizeof(*pmd_ptr));
         pud->entries[pud_idx] = new_pmd | table_flags;
+    } else if ((pud->entries[pud_idx] & ARM64_PT_TABLE) == 0U) {
+        phys_addr_t new_pmd = arm64_pt_split_block(
+            pud->entries[pud_idx], ARM64_PMD_BLOCK_SIZE, false);
+        if (new_pmd == 0U) return -2;
+        pud->entries[pud_idx] = new_pmd | table_flags;
     }
 
     pt_t* pmd = (pt_t*)physmap_phys_to_virt(pud->entries[pud_idx] & ARM64_PAGE_MASK);
@@ -299,6 +351,11 @@ static int arm64_pt_map_4k(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t p
         if (!new_pte) return -2;
         pt_t* pte_ptr = (pt_t*)physmap_phys_to_virt(new_pte);
         arm64_pt_zero_table(pte_ptr, sizeof(*pte_ptr));
+        pmd->entries[pmd_idx] = new_pte | table_flags;
+    } else if ((pmd->entries[pmd_idx] & ARM64_PT_TABLE) == 0U) {
+        phys_addr_t new_pte = arm64_pt_split_block(
+            pmd->entries[pmd_idx], 4096U, true);
+        if (new_pte == 0U) return -2;
         pmd->entries[pmd_idx] = new_pte | table_flags;
     }
 
@@ -762,18 +819,28 @@ static void arm64_mpa_set_root(phys_addr_t root) {
     // MAIR_EL1: Attr0=Normal, Attr1=Device-nGnRE, Attr2=Device-nGnRnE
     uint64_t mair = (0xFFLL << 0) | (0x04LL << 8) | (0x00LL << 16);
 
+    extern phys_addr_t vmm_get_kernel_root(void);
+    phys_addr_t kroot = vmm_get_kernel_root();
+    if (kroot == 0) {
+        kroot = root;
+    }
+
     asm volatile(
         "msr mair_el1, %1\n"
         "msr tcr_el1, %2\n"
         "msr ttbr0_el1, %0\n"
-        "msr ttbr1_el1, %0\n"
+        "msr ttbr1_el1, %3\n"
+        "isb\n"
+        "tlbi vmalle1\n"
+        "dsb sy\n"
         "isb\n"
         "mrs x0, sctlr_el1\n"
         "bic x0, x0, #2\n"   /* Clear A (alignment check trap) for kernel EL1 */
         "orr x0, x0, #1\n"
         "msr sctlr_el1, x0\n"
         "isb\n"
-        :: "r"((uintptr_t)root), "r"(mair), "r"(tcr)
+        :
+        : "r"(root), "r"(mair), "r"(tcr), "r"(kroot)
         : "x0", "memory"
     );
 }
@@ -790,7 +857,7 @@ static void arm64_mpa_flush_tlb_local(virt_addr_t vaddr, uint16_t asid) {
 
 static phys_addr_t arm64_mpa_get_root(void) {
     uint64_t sctlr;
-    phys_addr_t ttbr1;
+    phys_addr_t ttbr;
 
     /*
      * When MMU is disabled (SCTLR_EL1.M == 0), TTBR values are not an
@@ -801,8 +868,14 @@ static phys_addr_t arm64_mpa_get_root(void) {
         return 0U;
     }
 
-    __asm__ volatile("mrs %0, ttbr1_el1" : "=r"(ttbr1));
-    return ttbr1 & ~(0xFFFULL);
+    __asm__ volatile("mrs %0, ttbr1_el1" : "=r"(ttbr));
+    ttbr &= ~(0xFFFULL);
+    if (ttbr != 0U) {
+        return ttbr;
+    }
+
+    __asm__ volatile("mrs %0, ttbr0_el1" : "=r"(ttbr));
+    return ttbr & ~(0xFFFULL);
 }
 
 mem_protect_ops_t arm64_mem_protect_ops = {

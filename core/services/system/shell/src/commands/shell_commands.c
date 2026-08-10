@@ -163,10 +163,12 @@ static shell_response_t cmd_mem_stat(const shell_session_t* s, const shell_backe
 
 
 static shell_response_t cmd_diag_run(const shell_session_t* s, const shell_backend_api_t* b, const shell_argv_t* a) {
-    volatile unsigned long i;
-    (void)s; (void)b; (void)a;
-    for (i = 0; i < 1000000ul; ++i) { }
-    return mk(SHELL_RC_OK, "diag run", "complete");
+    static char payload[SHELL_MAX_OUTPUT_LEN];
+    (void)s; (void)a;
+    if (!b || !b->diag_run || b->diag_run(payload, sizeof(payload)) != 0) {
+        return mk(SHELL_RC_BACKEND_UNAVAILABLE, "diagnostics unavailable", NULL);
+    }
+    return mk(SHELL_RC_OK, "diag run", payload);
 }
 
 static shell_response_t cmd_reboot(const shell_session_t* s, const shell_backend_api_t* b, const shell_argv_t* a) {

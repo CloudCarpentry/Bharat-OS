@@ -21,36 +21,45 @@ bool bh_profile_allows_blocking_syscall(void) {
     return true;
 }
 
-int device_dispatch_irq(uint32_t irq) {
+__attribute__((weak)) int device_dispatch_irq(uint32_t irq) {
     (void)irq;
-    return -1;
+    return -5; // -K_ERR_UNSUPPORTED
 }
 
-int device_register_driver(const device_driver_t *driver) {
+__attribute__((weak)) int device_register_driver(const device_driver_t *driver) {
     (void)driver;
-    return 0;
+    return -5; // -K_ERR_UNSUPPORTED
 }
 
-int device_register_mmio_window(const device_mmio_window_t *window) {
+__attribute__((weak)) int device_register_mmio_window(const device_mmio_window_t *window) {
     (void)window;
+    return -5; // -K_ERR_UNSUPPORTED
+}
+
+__attribute__((weak)) int device_lookup_mmio_window_l0(uint32_t class_id, uint32_t device_id, uint32_t window_id, void* out_window) {
+    (void)class_id; (void)device_id; (void)window_id; (void)out_window;
+    return -5; // -K_ERR_UNSUPPORTED
+}
+
+__attribute__((weak)) int device_lookup_mmio_window_l1(uint32_t class_id, uint32_t device_id, uint32_t window_id, void* out_window) {
+    (void)class_id; (void)device_id; (void)window_id; (void)out_window;
+    return -5; // -K_ERR_UNSUPPORTED
+}
+
+__attribute__((weak)) int device_framework_init(void) {
+    /*
+     * Headless boot targets may link the kernel before a concrete board/device
+     * registry is available.  Treat the weak fallback as an empty, initialized
+     * core-local registry so boot can continue without optional devices.
+     */
     return 0;
 }
 
-int device_lookup_mmio_window_l0(uint32_t class_id, uint32_t device_id, uint32_t window_id, void* out_window) {
-    (void)class_id; (void)device_id; (void)window_id; (void)out_window;
-    return -1;
-}
-
-int device_lookup_mmio_window_l1(uint32_t class_id, uint32_t device_id, uint32_t window_id, void* out_window) {
-    (void)class_id; (void)device_id; (void)window_id; (void)out_window;
-    return -1;
-}
-
-int device_framework_init(void) {
-    return 0;
-}
-
-int device_register_builtin_drivers(void) {
+__attribute__((weak)) int device_register_builtin_drivers(void) {
+    /*
+     * No built-in drivers are required for the minimal boot lifecycle.  Real
+     * platform driver registration overrides this weak fallback.
+     */
     return 0;
 }
 

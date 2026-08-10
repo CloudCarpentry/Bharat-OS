@@ -1,4 +1,5 @@
 #include "boot/boot_args.h"
+#include "hal/hal_boot.h"
 #include "hal/hal_irq.h"
 #include "hal/hal_timer.h"
 #include "sched/ai_sched.h"
@@ -25,6 +26,7 @@
 #include "security/credentials.h"
 #include "security/isolation.h"
 #include "profile/subsystem_profile.h"
+#include "profile/execution_mode.h"
 #include "trap.h"
 #include "boot/boot_args.h"
 #include "boot/boot_info.h"
@@ -61,7 +63,8 @@ static void print_hw_caps_summary(const hal_hw_caps_t *caps) {
 static void print_boot_diagnostics(const boot_info_t *boot) {
     if (!boot) return;
 
-    KPRINT("  [BOOT] Normalized handoff contract established\n");
+    boot_info_finalize((boot_info_t*)boot);
+    KPRINT("[BOOT] BOOT_HANDOFF: NORMALIZED\n");
 
     boot_validation_report_t report;
     int vret = boot_validate_all((boot_info_t*)boot, &report);
@@ -72,6 +75,8 @@ static void print_boot_diagnostics(const boot_info_t *boot) {
         if (report.is_fatal) {
             kernel_panic("Fatal boot handoff validation error");
         }
+    } else {
+        KPRINT("[BOOT] BOOT_HANDOFF: VALIDATED\n");
     }
 
     if (boot->is_degraded) {
@@ -124,12 +129,8 @@ void boot_common_early(const boot_info_t *boot) {
 
     KPRINT("  [HAL] Initialising hardware on BSP...\n");
     hal_discovery_init(boot);
-    const hal_hw_caps_t *internal_caps = hal_get_internal_hw_caps();
-    print_hw_caps_summary(internal_caps);
+    print_hw_caps_summary(hal_get_internal_hw_caps());
     KPRINT("  [HAL] Ready.\n");
-
-    KPRINT("  [CORE] Initializing primitive registry...\n");
-    bh_kernel_primitive_registry_init(internal_caps);
 
     KPRINT("  [PROFILE] Applying hardware profile hooks...\n");
     profile_init();
@@ -199,13 +200,14 @@ void boot_common_memory(const boot_info_t *boot) {
       kernel_panic("PMM initialization failed");
     }
     KPRINT("BOOT: pmm initialized\n");
+    KPRINT("[BOOT] BOOT_MEMORY: MODULES_RESERVED\n");
 
     // Ensure hal_pt is initialized BEFORE VMM tries to map things / create address space
     hal_pt_init();
     hal_tlb_init();
 
     KPRINT("  [VMM] Initializing VMM...\n");
-    if (vmm_init() != 0) {
+    if (mm_global_init() != 0) {
       kernel_panic("VMM initialization failed");
     }
     KPRINT("BOOT: vmm initialized\n");
@@ -251,21 +253,57 @@ void boot_common_platform_services(const boot_info_t *boot) {
       kernel_panic("numa topology discovery failed");
     }
 
-    KPRINT("  [SMP] Booting secondary cores\n");
-    if (mk_boot_secondary_cores(boot_policy->smp_target_cores) != 0) {
-      kernel_panic("secondary core boot failed");
+    KPRINT("  [IRQ] Initializing global interrupt controller\n");
+    hal_irq_init_boot();
+    KPRINT("IRQ_GLOBAL_READY\n");
+
+    KPRINT("  [TMR] Initializing global timer source\n");
+    hal_timer_init();
+    KPRINT("TIMER_GLOBAL_READY\n");
+
+    arch_cpu_caps_init();
+    if (arch_cpu_caps_system_finalize() != K_OK) {
+      kernel_panic("CPU capability aggregation failed");
     }
+    hal_discovery_publish_cpu_caps();
+    if (hal_hw_caps_publish_cpu() != K_OK || hal_hw_caps_finalize() != K_OK) {
+      kernel_panic("hardware capability freeze failed");
+    }
+    KPRINT("  [CORE] Initializing primitive registry...\n");
+    if (bh_kernel_primitive_registry_init(hal_get_internal_hw_caps()) != K_OK) {
+      kernel_panic("primitive registry initialization failed");
+    }
+    arch_ext_state_boot_init();
+
+    extern void bharat_algorithm_backends_init(void);
+    bharat_algorithm_backends_init();
+
+    KPRINT("  [PROFILE] Resolving execution mode and CPU partitions\n");
+    if (bharat_execution_mode_init() != K_OK) {
+      kernel_panic("execution mode/CPU partition initialization failed");
+    }
+    bharat_execution_mode_print_summary();
+
+    KPRINT("  [SCHED] Initializing global scheduler\n");
+    if (sched_global_init(boot_policy->smp_target_cores) != 0 ||
+        sched_system_enable() != 0) {
+      kernel_panic("scheduler global initialization failed");
+    }
+    KPRINT("SCHED_GLOBAL_READY\n");
+
+    // Initialize BSP SMP boot context and CPU records after global IRQ/timer/scheduler readiness.
+    bh_smp_boot_primary_init();
 
     KPRINT("  [SMP] Initializing per-core URPC channels\n");
     if (mk_init_per_core_channels(boot_policy->smp_target_cores, 32U) != 0) {
       kernel_panic("per-core urpc channel init failed");
     }
+    bh_smp_publish_global_readiness();
 
-    KPRINT("  [IRQ] Initializing interrupt controller\n");
-    hal_irq_init_boot();
-
-    KPRINT("  [TMR] Initializing timer source\n");
-    hal_timer_init();
+    KPRINT("  [SMP] Booting secondary cores\n");
+    if (bh_smp_start_secondary_cpus(boot_policy->smp_target_cores) != 0) {
+      kernel_panic("secondary core boot failed");
+    }
 
     KPRINT("  [DEV] Initializing device framework\n");
     if (device_framework_init() != 0 ||
@@ -277,12 +315,6 @@ void boot_common_platform_services(const boot_info_t *boot) {
     extern void test_device_dma_dump(void);
     test_device_dma_dump();
 
-    arch_cpu_caps_init();
-    arch_cpu_caps_system_finalize();
-    hal_discovery_publish_cpu_caps();
-    arch_ext_state_boot_init();
-
-    sched_init();
     KPRINT("  [SCHED] Scheduler initialized.\n");
 
     KPRINT("  [AI] Calibrating hardware silicon metrics...\n");
@@ -418,6 +450,8 @@ static void runtime_enter_normal(const boot_info_t *boot) {
     // Force first reschedule to start sysmgr immediately
     bh_thread_yield();
 
+
+
     // Controlled idle
     while (1) {
         hal_cpu_halt();
@@ -532,7 +566,8 @@ void boot_common_runtime(const boot_info_t *boot) {
     KPRINT("  [BOOT] Runtime mode: ");
     KPRINT(bharat_boot_mode_name(mode));
     KPRINT("\n");
-    KPRINT("  [BOOT] Kernel loading successful - boot complete\n");
+    KPRINT("  [BOOT] KERNEL_RUNTIME_READY\n");
+    KPRINT("  [BOOT] USERSPACE_LAUNCH_BEGIN\n");
 
     switch (mode) {
         case BHARAT_BOOT_MODE_AUTOMOTIVE:

@@ -37,10 +37,17 @@ void hal_serial_write(const char *s) {
 void hal_serial_write_hex(uint64_t val) {
     char buf[17];
     buf[16] = '\0';
-    for (int i = 15; i >= 0; i--) {
-        uint8_t nibble = val & 0xF;
-        buf[i] = nibble < 10 ? '0' + nibble : 'a' + (nibble - 10);
-        val >>= 4;
+    uint32_t hi = (uint32_t)(val >> 32);
+    uint32_t lo = (uint32_t)(val & UINT32_C(0xffffffff));
+    for (int i = 15; i >= 8; i--) {
+        uint8_t nibble = (uint8_t)(lo & UINT32_C(0xf));
+        buf[i] = nibble < 10 ? (char)('0' + nibble) : (char)('a' + (nibble - 10));
+        lo >>= 4;
+    }
+    for (int i = 7; i >= 0; i--) {
+        uint8_t nibble = (uint8_t)(hi & UINT32_C(0xf));
+        buf[i] = nibble < 10 ? (char)('0' + nibble) : (char)('a' + (nibble - 10));
+        hi >>= 4;
     }
     hal_serial_write("0x");
     hal_serial_write(buf);

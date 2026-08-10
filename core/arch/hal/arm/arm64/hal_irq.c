@@ -1,5 +1,6 @@
 #include <stddef.h>
 #include "hal/hal_irq.h"
+#include "hal/hal.h"
 #include "hal/hal_boot.h"
 #include "hal/hal_discovery.h"
 #include "device/irq_domain.h"
@@ -36,23 +37,16 @@ static inline uint32_t gicr_read(uint32_t offset) {
 static int its_alloc_msi(msi_domain_t* domain, void* device, int count, msi_desc_t* desc_array) {
     (void)domain;
     (void)device;
-    if (!g_its_base) return -1;
-
-    // Simplistic stub allocating LPIs
-    for (int i = 0; i < count; i++) {
-        desc_array[i].irq = 8192 + i; // LPI base is 8192
-        desc_array[i].msg.address = (uint64_t)(uintptr_t)g_its_base + 0x0040; // GITS_TRANSLATER
-        desc_array[i].msg.data = desc_array[i].irq; // The EventID
-    }
-
-    return 0;
+    (void)count;
+    (void)desc_array;
+    // GIC ITS is genuinely not supported in this phase - return K_ERR_UNSUPPORTED
+    return -5;
 }
 
 static void its_free_msi(msi_domain_t* domain, msi_desc_t* desc_array, int count) {
     (void)domain;
     (void)desc_array;
     (void)count;
-    // Release LPIs
 }
 
 static msi_domain_t its_msi_domain = {
@@ -84,7 +78,9 @@ void hal_irq_init_boot(void) {
                 g_gicr_base = (void*)(uintptr_t)disc->irq_ctrls[i].aux_base;
             } else if (disc->irq_ctrls[i].type == IRQ_CTRL_GIC_ITS) {
                 g_its_base = (void*)(uintptr_t)disc->irq_ctrls[i].base;
-                msi_domain_register(&its_msi_domain);
+                // Emit ITS unsupported markers & fallbacks to console
+                hal_serial_write("BHARAT_IRQ:ITS=UNSUPPORTED\n");
+                hal_serial_write("BHARAT_IRQ:MSI_FALLBACK=SPI\n");
             }
         }
     }
@@ -99,38 +95,63 @@ void hal_irq_init_boot(void) {
     // Enable Group 1 interrupts
     gicd_write(GICD_CTLR, 2);
 
+    hal_serial_write("BHARAT_IRQ:ROOT_DOMAIN=READY arch=arm64\n");
 }
 
 void hal_irq_init_cpu_local(uint32_t cpu_id) {
-    (void)cpu_id;
+    // Calculate the per-CPU GICR base (128 KB frame size per CPU in GICv3)
+    void *cpu_gicr = (void *)((uintptr_t)g_gicr_base + (uint64_t)cpu_id * 0x20000ULL);
+
+    volatile uint32_t *waker_ptr = (volatile uint32_t *)((uintptr_t)cpu_gicr + GICR_WAKER);
+    volatile uint32_t *groupr_ptr = (volatile uint32_t *)((uintptr_t)cpu_gicr + GICR_IGROUPR0);
+
     // Wake up the redistributor
-    uint32_t waker = gicr_read(GICR_WAKER);
+    uint32_t waker = *waker_ptr;
     waker &= ~2; // Clear ProcessorSleep bit
-    gicr_write(GICR_WAKER, waker);
+    *waker_ptr = waker;
+
     // Wait for ChildrenAsleep to clear
-    while (gicr_read(GICR_WAKER) & 4);
+    while ((*waker_ptr) & 4);
 
     // Group 1 routing for SGIs/PPIs
-    gicr_write(GICR_IGROUPR0, 0xFFFFFFFF);
+    *groupr_ptr = 0xFFFFFFFF;
+}
 
+void hal_ipi_init_cpu_local(uint32_t cpu_id) {
+    (void)cpu_id;
 }
 
 int hal_irq_enable(uint32_t vector) {
-    (void)vector;
-    // Unmask logic
+    if (vector >= 1024) return -1;
+    if (vector >= 32) {
+        uint32_t offset = 0x0100 + (vector / 32) * 4;
+        gicd_write(offset, 1U << (vector % 32));
+    } else {
+        uint32_t cpu_id = hal_cpu_get_id();
+        void *cpu_gicr = (void *)((uintptr_t)g_gicr_base + (uint64_t)cpu_id * 0x20000ULL);
+        volatile uint32_t *isenabler0 = (volatile uint32_t *)((uintptr_t)cpu_gicr + 0x10100);
+        *isenabler0 = 1U << vector;
+    }
     return 0;
 }
 
 int hal_irq_disable(uint32_t vector) {
-    (void)vector;
-    // Mask logic
+    if (vector >= 1024) return -1;
+    if (vector >= 32) {
+        uint32_t offset = 0x0180 + (vector / 32) * 4;
+        gicd_write(offset, 1U << (vector % 32));
+    } else {
+        uint32_t cpu_id = hal_cpu_get_id();
+        void *cpu_gicr = (void *)((uintptr_t)g_gicr_base + (uint64_t)cpu_id * 0x20000ULL);
+        volatile uint32_t *icenabler0 = (volatile uint32_t *)((uintptr_t)cpu_gicr + 0x10180);
+        *icenabler0 = 1U << vector;
+    }
     return 0;
 }
 
 int hal_ipi_send(uint32_t cpu_id, uint32_t reason_vector) {
-    // Send SGI via system register
     uint64_t aff1 = (cpu_id >> 8) & 0xFF;
-    uint64_t aff0 = cpu_id & 0x0F; // Target list is only 16 bits in SGI1R, bounded to 0-15
+    uint64_t aff0 = cpu_id & 0x0F;
     uint64_t sgi_val = (aff1 << 16) | reason_vector << 24 | (1 << aff0);
     write_icc_sgi1r_el1(sgi_val);
     __asm__ volatile("isb; dsb sy");

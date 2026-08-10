@@ -246,7 +246,7 @@ __attribute__((weak)) bool arch_cpu_has(int feature) {
 }
 
 // Ensure these functions don't recurse through lib/base/string.c
-__attribute__((weak)) void arch_memset_raw(void *dst, int val, size_t len) {
+__attribute__((weak)) void hal_memset_raw(void *dst, int val, size_t len) {
     volatile unsigned char *d = (volatile unsigned char *)dst;
     unsigned char v = (unsigned char)val;
     for (size_t i = 0; i < len; i++) {
@@ -254,9 +254,9 @@ __attribute__((weak)) void arch_memset_raw(void *dst, int val, size_t len) {
     }
 }
 
-__attribute__((weak)) void* arch_memcpy(void* dest, const void* src, size_t n, uint32_t flags) { (void)flags; return __builtin_memcpy(dest, src, n); }
-__attribute__((weak)) void* arch_memset(void* s, int c, size_t n, uint32_t flags) { (void)flags; arch_memset_raw(s, c, n); return s; }
-__attribute__((weak)) void* arch_memmove(void* dest, const void* src, size_t n, uint32_t flags) { (void)flags; return __builtin_memmove(dest, src, n); }
+__attribute__((weak)) void* hal_memcpy(void* dest, const void* src, size_t n, uint32_t flags) { (void)flags; return __builtin_memcpy(dest, src, n); }
+__attribute__((weak)) void* hal_memset(void* s, int c, size_t n, uint32_t flags) { (void)flags; hal_memset_raw(s, c, n); return s; }
+__attribute__((weak)) void* hal_memmove(void* dest, const void* src, size_t n, uint32_t flags) { (void)flags; return __builtin_memmove(dest, src, n); }
 
 
 __attribute__((weak)) int console_current_phase(void) { return 1; }
@@ -310,7 +310,7 @@ __attribute__((weak)) arch_caps_t arch_get_caps(void) {
     return stub_caps;
 }
 
-#include "../kernel/include/arch/memops.h"
+#include "hal/hal_memops.h"
 #include "../kernel/include/mm/prot_domain.h"
 #include "../kernel/include/hal/hal_mm.h"
 __attribute__((weak)) void hal_mm_backend_caps(hal_mm_backend_caps_t *out) {

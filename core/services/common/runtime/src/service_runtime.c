@@ -5,8 +5,23 @@
 #include <stddef.h>
 #include <string.h>
 
-// Well-known endpoint for service manager in this profile
-#define SYSTEM_SERVICEMGR_ENDPOINT 0x3000
+#include <bharat/namesvc/client.h>
+
+static bharat_ipc_endpoint_t cached_servicemgr_ep = BHARAT_CAP_INVALID_HANDLE;
+
+static bharat_ipc_endpoint_t get_servicemgr_endpoint(void) {
+    if (cached_servicemgr_ep != BHARAT_CAP_INVALID_HANDLE) {
+        return cached_servicemgr_ep;
+    }
+    bharat_service_id_t svc_id;
+    bharat_ipc_endpoint_t ep = BHARAT_CAP_INVALID_HANDLE;
+    uint32_t version;
+    int ret = namesvc_lookup("bharat.servicemgr", &svc_id, &ep, &version);
+    if (ret == NAMESVC_STATUS_OK && ep != BHARAT_CAP_INVALID_HANDLE) {
+        cached_servicemgr_ep = ep;
+    }
+    return cached_servicemgr_ep;
+}
 
 int bh_service_main(const bh_service_start_info_t *info) {
     if (!info) return BHARAT_STATUS_ERR_INTERNAL;
@@ -70,7 +85,10 @@ bharat_status_t bh_service_signal_ready(bh_service_ctx_t *ctx) {
         .payload_size = sizeof(sm_req_heartbeat_t)
     };
 
-    bharat_ipc_send(SYSTEM_SERVICEMGR_ENDPOINT, &header, &req);
+    bharat_ipc_endpoint_t ep = get_servicemgr_endpoint();
+    if (ep != BHARAT_CAP_INVALID_HANDLE) {
+        bharat_ipc_send(ep, &header, &req);
+    }
     return BHARAT_STATUS_OK;
 }
 
@@ -88,7 +106,10 @@ bharat_status_t bh_service_send_heartbeat(bh_service_ctx_t *ctx, uint32_t health
         .payload_size = sizeof(sm_req_heartbeat_t)
     };
 
-    bharat_ipc_send(SYSTEM_SERVICEMGR_ENDPOINT, &header, &req);
+    bharat_ipc_endpoint_t ep = get_servicemgr_endpoint();
+    if (ep != BHARAT_CAP_INVALID_HANDLE) {
+        bharat_ipc_send(ep, &header, &req);
+    }
     return BHARAT_STATUS_OK;
 }
 

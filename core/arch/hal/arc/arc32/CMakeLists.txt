@@ -1,5 +1,6 @@
 add_library(hal_arc32_cpu OBJECT
     hal_cpu.c hal_discovery.c hal_irq.c hal_timer.c
+    ../../../arch/arc/arc32/user_entry.c
     ../../../arch/arc/arc32/context_switch.c
     ../../../arch/arc/arc32/boot_stub.S
 )

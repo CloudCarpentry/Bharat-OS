@@ -56,7 +56,9 @@ static inline void arm64_fp_access_enable(void) {
 
 const arch_ext_state_desc_t *arch_ext_state_desc(void) { return &g_desc; }
 bool arch_ext_state_enabled(void) { return true; }
-void arch_ext_state_boot_init(void) { arm64_fp_trap_enable(); }
+void arch_ext_state_boot_init(void) {
+    arm64_fp_trap_enable();
+}
 
 int arch_ext_state_thread_init(struct bh_thread *t) {
     if (!t || !t->cpu_context) return -1;

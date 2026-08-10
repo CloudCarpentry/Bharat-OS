@@ -1,3 +1,4 @@
+#include "trap_offsets.inc"
 .code64
 .section .text
 
@@ -15,18 +16,18 @@ arch_context_switch:
     test %rdi, %rdi
     jz .L_restore
 
-    movq %rbx, 0(%rdi)
-    movq %rbp, 8(%rdi)
-    movq %r12, 16(%rdi)
-    movq %r13, 24(%rdi)
-    movq %r14, 32(%rdi)
-    movq %r15, 40(%rdi)
+    movq %rbx, BH_CTX_REG0_OFF(%rdi)
+    movq %rbp, BH_CTX_REG1_OFF(%rdi)
+    movq %r12, BH_CTX_REG2_OFF(%rdi)
+    movq %r13, BH_CTX_REG3_OFF(%rdi)
+    movq %r14, BH_CTX_REG4_OFF(%rdi)
+    movq %r15, BH_CTX_REG5_OFF(%rdi)
 
     pushfq
     popq %rax
-    movq %rax, 48(%rdi)
+    movq %rax, BH_CTX_REG6_OFF(%rdi)
 
-    movq 400(%rdi), %rax
+    movq BH_CTX_EXT_OFF(%rdi), %rax
     test %rax, %rax
     jz .L_skip_save_fp
 
@@ -45,22 +46,22 @@ arch_context_switch:
 .L_skip_save_fp:
 
     movq (%rsp), %rax
-    movq %rax, 128(%rdi)
+    movq %rax, BH_CTX_PC_OFF(%rdi)
 
     leaq 8(%rsp), %rax
-    movq %rax, 136(%rdi)
+    movq %rax, BH_CTX_SP_OFF(%rdi)
 
 .L_restore:
-    movq 136(%rsi), %rsp
+    movq BH_CTX_SP_OFF(%rsi), %rsp
 
-    movq 128(%rsi), %rax
+    movq BH_CTX_PC_OFF(%rsi), %rax
     pushq %rax
 
-    movq 48(%rsi), %rax
+    movq BH_CTX_REG6_OFF(%rsi), %rax
     pushq %rax
     popfq
 
-    movq 400(%rsi), %rax
+    movq BH_CTX_EXT_OFF(%rsi), %rax
     test %rax, %rax
     jz .L_skip_restore_fp
 
@@ -78,12 +79,12 @@ arch_context_switch:
     fxrstor (%rax)
 .L_skip_restore_fp:
 
-    movq 0(%rsi), %rbx
-    movq 8(%rsi), %rbp
-    movq 16(%rsi), %r12
-    movq 24(%rsi), %r13
-    movq 32(%rsi), %r14
-    movq 40(%rsi), %r15
+    movq BH_CTX_REG0_OFF(%rsi), %rbx
+    movq BH_CTX_REG1_OFF(%rsi), %rbp
+    movq BH_CTX_REG2_OFF(%rsi), %r12
+    movq BH_CTX_REG3_OFF(%rsi), %r13
+    movq BH_CTX_REG4_OFF(%rsi), %r14
+    movq BH_CTX_REG5_OFF(%rsi), %r15
 
     pushq %rsi
     pushq %rbx
@@ -96,3 +97,18 @@ arch_context_switch:
 
     popq %rax
     jmp *%rax
+
+
+
+.global x86_64_thread_entry_stub
+.type x86_64_thread_entry_stub, @function
+
+x86_64_thread_entry_stub:
+    cli
+    movq 0(%rsp), %rdi
+    movq 8(%rsp), %rax
+    addq $16, %rsp
+    sti
+    jmp *%rax
+
+.size x86_64_thread_entry_stub, .-x86_64_thread_entry_stub

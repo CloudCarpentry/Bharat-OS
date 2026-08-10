@@ -68,6 +68,9 @@ int sched_enqueue(bh_thread_t *thread, uint32_t core_id) {
     entity->vruntime = thread->vruntime;
     entity->absolute_deadline = thread->absolute_deadline_ms;
     entity->rt_attr = thread->rt_attr;
+    if (thread->cpu_context && thread->cpu_context != &entity->context) {
+      entity->context = *(cpu_context_t *)thread->cpu_context;
+    }
     thread->cpu_context = &entity->context;
   }
 
@@ -94,6 +97,9 @@ int sched_enqueue(bh_thread_t *thread, uint32_t core_id) {
   entity->runnable = true;
 
   sched_invariant_on_enqueue(thread, core_id);
+
+  entity->absolute_deadline = thread->absolute_deadline_ms;
+  entity->rt_attr = thread->rt_attr;
 
   if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
     sched_cfs_enqueue(rq, thread);
@@ -202,7 +208,7 @@ void sched_validate_rq(sched_rq_t *rq) {
         // Validate min_vruntime is sensible
         struct rb_node *first = rb_first(&rq->cfs_runqueue);
         if (first) {
-            bh_thread_t *next = (bh_thread_t *)(void *)((char *)first - offsetof(bh_thread_t, cfs_node));
+            sched_entity_t *next = (sched_entity_t *)(void *)((char *)first - offsetof(sched_entity_t, cfs_node));
             if (next->vruntime < rq->min_vruntime && rq->min_vruntime - next->vruntime > 1000) {
                 // Minor drift is okay due to rounding, but major divergence is a bug
                 kernel_panic("Runqueue min_vruntime divergence");

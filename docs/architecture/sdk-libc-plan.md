@@ -11,6 +11,8 @@ see_also:
 ---
 # Bharat-OS SDK and Libc Implementation Plan
 
+> **Note:** The reference to `docs/architecture/personality-model.md` is obsolete.
+
 This document outlines the phased implementation plan for the Bharat-OS SDK and libc layer, transforming the kernel into a testable OS platform.
 
 ## Phase 0 — Define ABI and Profiles

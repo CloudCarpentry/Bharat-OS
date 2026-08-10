@@ -121,17 +121,23 @@ static bool test_mmu_sparse_mapping(void) {
     KTEST_ASSERT(pd_err == K_OK && domain != NULL, "Domain create failed");
 
     // Test 1: Map low VA
-    uintptr_t low_vaddr = 0x0000000040000000ULL; // 1 GiB
+    uintptr_t low_vaddr = 0x40000000U; // 1 GiB
     int ret = prot_domain_map_region(domain, low_vaddr, 0x10000000, 4096, HAL_PT_FLAG_READ);
     KTEST_ASSERT(ret == 0, "Low VA mapping failed");
 
-    // Test 2: Map sparse high lower-half VA (512 GiB)
+#if __SIZEOF_POINTER__ == 4
+    uintptr_t high_vaddr = 0x60000000U;
+    uintptr_t very_high_vaddr = 0x70000000U;
+#else
     uintptr_t high_vaddr = 0x0000002000000000ULL;
+    uintptr_t very_high_vaddr = 0x0000003F00000000ULL;
+#endif
+
+    // Test 2: Map sparse high lower-half VA
     ret = prot_domain_map_region(domain, high_vaddr, 0x80000000, 4096, HAL_PT_FLAG_READ);
     KTEST_ASSERT(ret == 0, "Sparse high VA mapping failed");
 
     // Test 3: Map two sparse VAs far apart
-    uintptr_t very_high_vaddr = 0x0000003F00000000ULL;
     ret = prot_domain_map_region(domain, very_high_vaddr, 0x90000000, 4096, HAL_PT_FLAG_READ);
     KTEST_ASSERT(ret == 0, "Very high sparse VA mapping failed");
 
@@ -166,13 +172,17 @@ static bool test_mmu_sparse_mapping(void) {
     KTEST_ASSERT(ret == 0, "Query after remap failed");
     KTEST_ASSERT(paddr == 0xA0000000, "Remap address mismatch");
 
-    // Test 7: Reject non-canonical VA
+    // Test 7: Reject non-canonical / kernel boundary VA
+#if __SIZEOF_POINTER__ == 4
+    uintptr_t non_canonical = 0xF0000000U;
+#else
     uintptr_t non_canonical = 0x0000800000000000ULL;
+#endif
     ret = prot_domain_map_region(domain, non_canonical, 0x10000000, 4096, HAL_PT_FLAG_READ);
     KTEST_ASSERT(ret != 0, "Non-canonical mapping should be rejected");
 
     // Test 8: Reject unmapped unprotect/unmap
-    ret = prot_domain_unmap_region(domain, 0x0000001234567000ULL, 4096);
+    ret = prot_domain_unmap_region(domain, (uintptr_t)0x0000001234567000ULL, 4096);
     KTEST_ASSERT(ret != 0, "Unmap of unmapped region should fail");
 
     prot_domain_destroy(domain);

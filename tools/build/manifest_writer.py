@@ -42,6 +42,7 @@ def write_run_manifest(target: ResolvedTarget, package_outputs: PackageOutputs, 
             artifacts["dtb_path"] = str(a.path)
         elif a.kind == "init_module":
             artifacts["init_module"] = str(a.path)
+            artifacts["root_module_name"] = a.metadata.get("module_name", "")
 
     if not "boot_artifact" in artifacts:
         # Fallback to kernel elf if no transform produced a specific boot artifact
@@ -57,7 +58,9 @@ def write_run_manifest(target: ResolvedTarget, package_outputs: PackageOutputs, 
             "machine": run_cfg.machine,
             "cpu": run_cfg.cpu,
             "memory": run_cfg.memory,
-            "smp": 1, # Defaulting for now
+            "smp": run_cfg.smp if run_cfg.smp is not None else 1,
+            "required_online_cpus": run_cfg.required_online_cpus,
+            "ap_boot_timeout_ms": run_cfg.ap_boot_timeout_ms,
             "serial": run_cfg.serial,
             "display": run_cfg.display,
             "nographic": run_cfg.nographic,

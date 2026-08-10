@@ -20,6 +20,10 @@ void sched_set_test_core_count(uint32_t core_count) {
 }
 
 void sched_test_reset(void) {
+  if (g_sched_runtime_protected != 0U) {
+    return;
+  }
+
   // Use a simple spin lock or just disable interrupts for test reset
   // Since this is a test environment reset, we can afford to be heavy-handed.
 
@@ -65,8 +69,13 @@ void sched_test_reset(void) {
   g_sched_initialized = 0U;
 }
 
+int sched_test_runtime_protected(void) {
+  return (g_sched_runtime_protected != 0U) ? 1 : 0;
+}
+
 #endif /* BHARAT_ENABLE_KERNEL_SELFTESTS */
 
 #if !defined(BHARAT_ENABLE_KERNEL_SELFTESTS)
 void sched_test_reset(void) {}
+int sched_test_runtime_protected(void) { return 0; }
 #endif

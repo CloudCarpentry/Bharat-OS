@@ -18,6 +18,15 @@ typedef struct {
     uint64_t arg3;
 } trace_event_t;
 
+#define TRACE_BUFFER_SIZE 1024
+
+typedef struct {
+    trace_event_t buffer[TRACE_BUFFER_SIZE];
+    uint32_t head;
+    uint32_t tail;
+    uint32_t dropped;
+} trace_ring_t;
+
 // Initialize tracing subsystem
 void trace_init(void);
 

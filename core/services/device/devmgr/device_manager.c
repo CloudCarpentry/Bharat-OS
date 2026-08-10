@@ -212,6 +212,17 @@ int device_bind_drivers(void) {
                     g_bindings[b].driver_index = (uint8_t)d;
                     g_bindings[b].device_index = (uint8_t)dev;
                     g_drivers[d].ctx = bound_ctx;
+
+                    // Automatically register driver handler with the core IRQ descriptor table
+                    extern int hal_interrupt_register(uint32_t irq, void* handler, void* ctx, uint32_t flags, const char* name, void* dev_id);
+                    if (g_bus_devices[dev].irq != 0 && g_drivers[d].irq_handler != NULL) {
+                        hal_interrupt_register(g_bus_devices[dev].irq,
+                                               (void*)g_drivers[d].irq_handler,
+                                               bound_ctx,
+                                               1U, // BH_IRQF_SHARED
+                                               g_drivers[d].name,
+                                               &g_bus_devices[dev]);
+                    }
                     break;
                 }
             }
@@ -242,6 +253,13 @@ int device_hotplug_remove(device_bus_t bus, uint32_t device_id) {
                     if (drv->remove_device) {
                         (void)drv->remove_device(drv->ctx);
                     }
+
+                    // Automatically unregister driver handler from the core IRQ descriptor table
+                    extern int hal_interrupt_unregister(uint32_t irq, void* dev_id);
+                    if (g_bus_devices[dev].irq != 0 && drv->irq_handler != NULL) {
+                        hal_interrupt_unregister(g_bus_devices[dev].irq, &g_bus_devices[dev]);
+                    }
+
                     g_bindings[b].in_use = 0U;
                 }
             }
@@ -375,20 +393,15 @@ int device_lookup_mmio_window(device_class_t class_id,
 }
 
 int device_dispatch_irq(uint32_t irq) {
-    for (size_t b = 0; b < BHARAT_ARRAY_SIZE(g_bindings); ++b) {
-        if (g_bindings[b].in_use == 0U) {
-            continue;
-        }
+    extern bool bh_irq_is_registered(uint32_t virq);
+    extern int bh_irq_dispatch(uint32_t virq);
 
-        device_driver_t* drv = &g_drivers[g_bindings[b].driver_index];
-        device_desc_t* dev = &g_bus_devices[g_bindings[b].device_index];
-
-        if (drv->irq_handler && dev->irq == irq) {
-            drv->irq_handler(irq, drv->ctx);
-        }
+    if (!bh_irq_is_registered(irq)) {
+        return -2; // -K_ERR_NOT_FOUND
     }
 
-    return 0;
+    int rc = bh_irq_dispatch(irq);
+    return (rc == 0) ? 0 : -1;
 }
 
 int device_driver_registered(device_class_t class_id, uint32_t device_id) {

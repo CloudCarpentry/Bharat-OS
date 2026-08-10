@@ -1,6 +1,7 @@
 ---
 title: "ADR-005: ML Heuristics Kept Out of Ring-0"
-status: Accepted
+status: Obsolete
+notes: The ML/AI scheduler plugin architecture `core/kernel/src/sched/ai_sched.c` was removed as part of kernel minimization. ML orchestration is now managed strictly in userspace.
 owner: Documentation Working Group
 last_updated: 2026-04-25
 tags:

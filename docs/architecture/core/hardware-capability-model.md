@@ -53,8 +53,7 @@ Capabilities are not merely binary. Their state is captured as:
 - `REQUIRED`: System cannot boot or function properly without it.
 - `DEGRADED`: Hardware is present but failing, thermally throttled, or partially isolated.
 
-## Flow
-1. **Boot/Discovery:** `core/platform/` code queries the hardware/device tree.
-2. **Translation:** `core/platform/` maps raw discoveries into `bharat_hw_caps_t`.
-3. **Registration:** The populated capability structure is registered with the Kernel Capability Registry.
-4. **Consumption:** `core/services/` and `lib/runtime` query the registry to make dispatch and policy decisions.
+## Implemented authority and flow
+Architecture backend support, CPU runtime facts, and platform runtime facts are intentionally different authorities. CPU facts are aggregated as local, system-wide intersection (`SYSTEM_ALL`), and system-wide union (`SYSTEM_ANY`). Platform facts such as IOMMU presence and DMA coherency require platform evidence and are false when unknown.
+
+The effective `hal_hw_caps_t` snapshot progresses monotonically through raw discovery, CPU finalization, and freeze. The primitive registry may normalize only the frozen snapshot. See [ADR-021](../../adr/ADR-021-hardware-capability-freeze-authority.md) for the lifecycle, failure behavior, and current boot order.

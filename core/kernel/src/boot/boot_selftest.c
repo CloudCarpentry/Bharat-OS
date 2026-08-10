@@ -63,13 +63,16 @@ bool boot_selftest_is_test_allowed(const boot_test_meta_t *meta) {
 
     arch_caps_t arch_caps = arch_get_caps();
 
-    // Check architectural capabilities against meta->required_caps
-    // The required caps is just a uint64_t from ARCH_CAP_* defines.
-    // Ensure all required caps are present.
-    if ((meta->required_caps & ARCH_CAP_MMU_FULL) && !arch_caps_test(arch_caps, ARCH_CAP_MMU_FULL)) return false;
-    if ((meta->required_caps & ARCH_CAP_MMU_LITE) && !arch_caps_test(arch_caps, ARCH_CAP_MMU_LITE)) return false;
-    if ((meta->required_caps & ARCH_CAP_MPU_ONLY) && !arch_caps_test(arch_caps, ARCH_CAP_MPU_ONLY)) return false;
-    if ((meta->required_caps & ARCH_CAP_SMP) && !arch_caps_test(arch_caps, ARCH_CAP_SMP)) return false;
+    // Check architectural capabilities against meta->required_caps.
+    // To support both direct enums and bitwise masks without collision,
+    // we evaluate either bit set or strict value match.
+    uint64_t caps = meta->required_caps;
+    if (caps == 0) return true;
+
+    if (((caps & ARCH_CAP_BIT(ARCH_CAP_MMU_FULL)) || (caps == (uint64_t)ARCH_CAP_MMU_FULL)) && !arch_caps_test(arch_caps, ARCH_CAP_MMU_FULL)) return false;
+    if (((caps & ARCH_CAP_BIT(ARCH_CAP_MMU_LITE)) || (caps == (uint64_t)ARCH_CAP_MMU_LITE)) && !arch_caps_test(arch_caps, ARCH_CAP_MMU_LITE)) return false;
+    if (((caps & ARCH_CAP_BIT(ARCH_CAP_MPU_ONLY)) || (caps == (uint64_t)ARCH_CAP_MPU_ONLY)) && !arch_caps_test(arch_caps, ARCH_CAP_MPU_ONLY)) return false;
+    if (((caps & ARCH_CAP_BIT(ARCH_CAP_SMP)) || (caps == (uint64_t)ARCH_CAP_SMP)) && !arch_caps_test(arch_caps, ARCH_CAP_SMP)) return false;
 
     return true;
 }

@@ -1,0 +1,61 @@
+#include "arch/user_entry.h"
+#include "kernel/status.h"
+#include "mm/prot_domain.h"
+#include "panic.h"
+#include "bharat/cpu_local.h"
+
+
+#define SSTATUS_SPP (1ULL << 8)
+#define SSTATUS_SPIE (1ULL << 5)
+#define SSTATUS_SUM (1ULL << 18)
+
+kstatus_t arch_user_entry_prepare(
+    arch_user_entry_t *out,
+    address_space_t *aspace,
+    uintptr_t entry_pc,
+    uintptr_t user_sp,
+    uintptr_t arg0)
+{
+    if (!out || !aspace) return K_ERR_INVALID_ARG;
+    if (entry_pc == 0 || user_sp == 0) return K_ERR_INVALID_ARG;
+    if ((user_sp & 0xF) != 0) return K_ERR_INVALID_ARG; // RISC-V ABI requires 16-byte aligned stack
+
+    out->entry_pc = entry_pc;
+    out->user_sp = user_sp;
+    out->arg0 = arg0;
+    out->aspace = aspace;
+    return K_OK;
+}
+
+__attribute__((noreturn))
+void arch_enter_user(const arch_user_entry_t *entry) {
+    if (!entry || !entry->aspace || !entry->aspace->prot_domain) {
+        kernel_panic("arch_enter_user: invalid entry or aspace");
+    }
+
+    uint64_t sstatus;
+    __asm__ volatile("csrr %0, sstatus" : "=r"(sstatus));
+
+    // Clear SPP (User mode), set SPIE (interrupts enabled in user mode), clear SUM
+    sstatus &= ~(SSTATUS_SPP | SSTATUS_SUM);
+    sstatus |= SSTATUS_SPIE;
+
+    extern uint32_t hal_cpu_get_id(void);
+    uint32_t core = hal_cpu_get_id();
+    uint64_t kstack = g_cpu_locals[core].kernel_stack;
+    __asm__ volatile("csrw sscratch, %0" :: "r"(kstack));
+
+
+    __asm__ volatile (
+        "csrw sstatus, %0\n\t"
+        "csrw sepc, %1\n\t"
+        "mv sp, %2\n\t"
+        "mv a0, %3\n\t"
+        "sret\n\t"
+        :
+        : "r"(sstatus), "r"(entry->entry_pc), "r"(entry->user_sp), "r"(entry->arg0)
+        : "memory"
+    );
+    __builtin_unreachable();
+}
+

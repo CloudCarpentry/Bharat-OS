@@ -35,9 +35,13 @@ void hal_timer_program_periodic(uint64_t ns) {
 void hal_timer_program_oneshot(uint64_t ns) {
     uint64_t frq;
     __asm__ volatile("mrs %0, cntfrq_el0" : "=r" (frq));
-    // Calculate ticks from ns delay
-    uint32_t ticks = (uint32_t)((frq * ns) / 1000000000ULL);
-    write_cntp_tval(ticks);
+    uint64_t ticks;
+    if (hal_timer_ns_to_ticks_ceil(ns, frq, &ticks)) {
+        if (ticks > UINT32_MAX) {
+            ticks = UINT32_MAX;
+        }
+        write_cntp_tval((uint32_t)ticks);
+    }
 }
 
 uint64_t hal_timer_read_counter(void) {
@@ -56,4 +60,12 @@ uint64_t hal_timer_monotonic_ticks_arch(void) {
 
 bool hal_timer_is_per_cpu(void) {
     return true; // ARM Generic Timer is per-core
+}
+
+void hal_timer_arch_get_caps(hal_timer_caps_t *caps) {
+    caps->has_counter = true;
+    caps->has_monotonic_ns = true; // Read natively from architectural counter / CNTFRQ_EL0
+    caps->has_precise_oneshot = true;
+    caps->has_native_absolute_deadline = false; // We use relative fallback
+    caps->is_per_cpu = true;
 }

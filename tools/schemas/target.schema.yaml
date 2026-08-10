@@ -2,6 +2,7 @@ $schema: "http://json-schema.org/draft-07/schema#"
 title: "Target Specification"
 description: "Declarative target specification for Bharat-OS."
 type: object
+additionalProperties: false
 required:
   - name
   - kind
@@ -30,6 +31,13 @@ properties:
     type: string
   footprint_profile:
     type: string
+  userspace:
+    type: object
+    additionalProperties: false
+    properties:
+      runtime_model:
+        type: string
+        enum: [direct, static, light, full]
   build:
     type: object
     required: [cmake_preset]
@@ -60,7 +68,7 @@ properties:
     properties:
       protocol:
         type: string
-        enum: [linux_arm64, multiboot2, opensbi_payload, raw_entry, uefi, elf_direct]
+        enum: [linux_arm64, linux_arm32, multiboot2, opensbi_payload, raw_entry, uefi, elf_direct]
       artifact_format:
         type: string
       cmdline:
@@ -105,6 +113,12 @@ properties:
         type: string
       memory:
         type: string
+      smp:
+        type: integer
+      required_online_cpus:
+        type: integer
+      ap_boot_timeout_ms:
+        type: integer
       boot_artifact:
         type: string
       serial:

@@ -15,7 +15,7 @@ extern "C" {
  *
  * For architecture-specific hardware-accelerated memory operations
  * or strictly scalar fallbacks (e.g., early boot, TLB, IRQ contexts),
- * you MUST use <arch/memops.h> (arch_memset, arch_memset_scalar, etc.).
+ * you MUST use <hal/hal_memops.h> (hal_memset, hal_memset_scalar, etc.).
  */
 
 void *memset(void *dest, int c, size_t n);

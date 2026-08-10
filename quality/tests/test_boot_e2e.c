@@ -29,20 +29,20 @@ void profile_init(void) {}
 void bharat_subsystems_init(const char *profile) {}
 
 // String stubs for arch independent tests
-void* arch_memcpy(void* dest, const void* src, size_t n, uint32_t flags) {
+void* hal_memcpy(void* dest, const void* src, size_t n, uint32_t flags) {
     (void)flags;
     char* d = (char*)dest;
     const char* s = (const char*)src;
     while(n--) *d++ = *s++;
     return dest;
 }
-void* arch_memset(void* s, int c, size_t n, uint32_t flags) {
+void* hal_memset(void* s, int c, size_t n, uint32_t flags) {
     (void)flags;
     char* p = (char*)s;
     while(n--) *p++ = (char)c;
     return s;
 }
-void* arch_memmove(void* dest, const void* src, size_t n, uint32_t flags) {
+void* hal_memmove(void* dest, const void* src, size_t n, uint32_t flags) {
     (void)flags;
     char* d = (char*)dest;
     const char* s = (const char*)src;
@@ -113,7 +113,7 @@ void hal_irq_init_boot(void) {}
 void hal_timer_init(void) {}
 int device_register_builtin_drivers(void) { return 0; }
 void arch_cpu_caps_init(void) {}
-void arch_cpu_caps_system_finalize(void) {}
+kstatus_t arch_cpu_caps_system_finalize(void) { return K_OK; }
 void hal_discovery_publish_cpu_caps(void) {}
 void arch_ext_state_boot_init(void) {}
 void ipc_async_init(void) {}

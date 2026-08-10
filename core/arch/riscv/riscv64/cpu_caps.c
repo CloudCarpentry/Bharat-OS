@@ -50,3 +50,24 @@ void arch_cpu_caps_init_ap(void) {
     riscv64_probe_caps(&ap_caps);
     cpu_caps_state_set_ap(hal_cpu_get_id(), &ap_caps);
 }
+
+#include "hal/hal_cpu_features.h"
+void arch_cpu_caps_export_hal_features(const arch_cpu_caps_record_t *arch, void *out_ptr) {
+    hal_cpu_feature_set_t *out = (hal_cpu_feature_set_t *)out_ptr;
+
+    bool has_any_bitmanip = arch_cpu_caps_test(&arch->raw, ARCH_CPU_FEAT_RISCV_ZBA) ||
+                            arch_cpu_caps_test(&arch->raw, ARCH_CPU_FEAT_RISCV_ZBB) ||
+                            arch_cpu_caps_test(&arch->raw, ARCH_CPU_FEAT_RISCV_ZBC) ||
+                            arch_cpu_caps_test(&arch->raw, ARCH_CPU_FEAT_RISCV_ZBS);
+    bool has_any_bitmanip_usable = arch_cpu_caps_test(&arch->usable, ARCH_CPU_FEAT_RISCV_ZBA) ||
+                                   arch_cpu_caps_test(&arch->usable, ARCH_CPU_FEAT_RISCV_ZBB) ||
+                                   arch_cpu_caps_test(&arch->usable, ARCH_CPU_FEAT_RISCV_ZBC) ||
+                                   arch_cpu_caps_test(&arch->usable, ARCH_CPU_FEAT_RISCV_ZBS);
+
+    if (has_any_bitmanip) {
+        out->raw_bits[HAL_CPU_FEATURE_BITMANIP / 64u] |= (1ULL << (HAL_CPU_FEATURE_BITMANIP % 64u));
+    }
+    if (has_any_bitmanip_usable) {
+        out->usable_bits[HAL_CPU_FEATURE_BITMANIP / 64u] |= (1ULL << (HAL_CPU_FEATURE_BITMANIP % 64u));
+    }
+}

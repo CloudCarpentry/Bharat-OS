@@ -24,11 +24,14 @@ bool hal_cpu_topology_query(hal_cpu_topology_info_t *out) {
     if (discovery && discovery->topology.cpu_count > 0U) {
         discovered = discovery->topology.cpu_count;
     }
-    if (discovered > 32U) {
-        discovered = 32U;
+    if (discovered > BHARAT_MAX_CPUS) {
+        discovered = BHARAT_MAX_CPUS;
     }
 
-    uint32_t valid_cpu_mask = (discovered == 32U) ? UINT32_MAX : ((1U << discovered) - 1U);
+    /* These masks are a legacy 32-CPU consumer boundary; the authoritative
+     * topology count is not truncated to fit them. */
+    uint32_t mask_cpus = discovered > 32U ? 32U : discovered;
+    uint32_t valid_cpu_mask = (mask_cpus == 32U) ? UINT32_MAX : ((1U << mask_cpus) - 1U);
 
     out->discovered_cpu_count = discovered;
     out->valid_cpu_mask = valid_cpu_mask;

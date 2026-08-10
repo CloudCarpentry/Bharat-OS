@@ -14,9 +14,19 @@ from tools.build.models import (
     ResolvedTarget,
     RunConfig,
     TargetInput,
+    UserspaceConfig,
 )
 
 SCHEMA_PATH = Path(__file__).parent.parent / "schemas" / "target.schema.yaml"
+
+RUNTIME_ROOT_COMPONENTS = {
+    "direct": "user_smoke",
+    "static": "rt-supervisor",
+    "light": "init-lite",
+    "full": "init",
+}
+
+RUNTIME_MODEL_IDS = {name: index for index, name in enumerate(RUNTIME_ROOT_COMPONENTS)}
 
 def _require_yaml_deps():
     try:
@@ -95,10 +105,24 @@ def resolve_yaml_target(path: Path) -> ResolvedTarget:
     validate_yaml_target(raw)
 
     # Map raw -> ResolvedTarget
+    userspace_raw = raw.get("userspace", {})
+    runtime_model = userspace_raw.get("runtime_model", "full")
+    userspace_cfg = UserspaceConfig(
+        runtime_model=runtime_model,
+        root_component=RUNTIME_ROOT_COMPONENTS[runtime_model],
+    )
+
     build_raw = raw.get("build", {})
+    cmake_defs = dict(build_raw.get("cmake_defs", {}))
+    cmake_defs["BHARAT_USERSPACE_RUNTIME_MODEL"] = runtime_model.upper()
+    cmake_defs["BHARAT_USERSPACE_RUNTIME_MODEL_ID"] = RUNTIME_MODEL_IDS[runtime_model]
+    
+    execution_profile = raw.get("execution_profile")
+    if execution_profile:
+        cmake_defs["BHARAT_SYSTEM_PROFILE"] = execution_profile.upper()
     build_cfg = BuildConfig(
         cmake_preset=build_raw.get("cmake_preset", "unknown"),
-        cmake_defs=build_raw.get("cmake_defs", {})
+        cmake_defs=cmake_defs
     )
 
     kernel_raw = raw.get("kernel", {})
@@ -145,6 +169,9 @@ def resolve_yaml_target(path: Path) -> ResolvedTarget:
             machine=run_raw.get("machine"),
             cpu=run_raw.get("cpu"),
             memory=run_raw.get("memory"),
+            smp=run_raw.get("smp"),
+            required_online_cpus=run_raw.get("required_online_cpus"),
+            ap_boot_timeout_ms=run_raw.get("ap_boot_timeout_ms"),
             boot_artifact=run_raw.get("boot_artifact"),
             serial=run_raw.get("serial", []),
             display=run_raw.get("display"),
@@ -191,6 +218,7 @@ def resolve_yaml_target(path: Path) -> ResolvedTarget:
         device_profile=raw.get("device_profile", "unknown"),
         personality_profile=raw.get("personality_profile", "unknown"),
         execution_profile=raw.get("execution_profile"),
+        userspace=userspace_cfg,
         build=build_cfg,
         kernel=kernel_cfg,
         boot=boot_cfg,

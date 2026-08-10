@@ -186,6 +186,9 @@ static int x86_pt_walk(phys_addr_t root_pt, virt_addr_t vaddr, bool create, uint
         pt_t* pdp_ptr = (pt_t*)x86_phys_to_virt(new_pdp);
         for(int i=0; i<512; i++) pdp_ptr->entries[i] = 0;
         pml4->entries[pml4_idx] = new_pdp | dir_flags;
+    } else if (create && (alloc_flags & HAL_PT_FLAG_USER)) {
+        /* User access requires U/S at every level, including shared roots. */
+        pml4->entries[pml4_idx] |= X86_PT_USER;
     }
 
     phys_addr_t pdp_pa = pml4->entries[pml4_idx] & X86_PAGE_MASK;
@@ -202,6 +205,9 @@ static int x86_pt_walk(phys_addr_t root_pt, virt_addr_t vaddr, bool create, uint
         pt_t* pd_ptr = (pt_t*)x86_phys_to_virt(new_pd);
         for(int i=0; i<512; i++) pd_ptr->entries[i] = 0;
         pdp->entries[pdp_idx] = new_pd | dir_flags;
+    } else if (create && (alloc_flags & HAL_PT_FLAG_USER) &&
+               !(pdp->entries[pdp_idx] & X86_PT_HUGE)) {
+        pdp->entries[pdp_idx] |= X86_PT_USER;
     } else if (pdp->entries[pdp_idx] & X86_PT_HUGE) {
         // 1GB huge page (not fully supported by map_4k, just report)
         out_result->present = true;
@@ -229,6 +235,9 @@ static int x86_pt_walk(phys_addr_t root_pt, virt_addr_t vaddr, bool create, uint
         pt_t* pt_ptr = (pt_t*)x86_phys_to_virt(new_pt);
         for(int i=0; i<512; i++) pt_ptr->entries[i] = 0;
         pd->entries[pd_idx] = new_pt | dir_flags;
+    } else if (create && (alloc_flags & HAL_PT_FLAG_USER) &&
+               !(pd->entries[pd_idx] & X86_PT_HUGE)) {
+        pd->entries[pd_idx] |= X86_PT_USER;
     } else if (pd->entries[pd_idx] & X86_PT_HUGE) {
         // 2MB huge page
         if (create && !(alloc_flags & HAL_PT_FLAG_LARGE_2M)) {

@@ -7,9 +7,7 @@ add_library(bharat_kernel_lib_ds STATIC
     ds/urpc_ring.c
     sync/mcs_lock.c
 )
-target_include_directories(bharat_kernel_lib_ds PRIVATE
-    ${BHARAT_KERNEL_INCLUDE_DIR}
-    ${CMAKE_SOURCE_DIR}/interface/include
-    ${BHARAT_LIB_ROOT}/include
+target_link_libraries(bharat_kernel_lib_ds PRIVATE
+    bharat_kernel_includes
+    bharat_kernel_buildopts
 )
-target_link_libraries(bharat_kernel_lib_ds PRIVATE bharat_freestanding bharat_kernel_buildopts)

@@ -18,13 +18,20 @@
 #define CR0_PG       (1 << 31)
 #define EFER_MSR     0xC0000080
 #define EFER_LME     (1 << 8)
+#define EFER_NXE     (1 << 11)
 #define PAGE_P       1
 #define PAGE_RW      2
 #define PAGE_PS      (1 << 7)   /* large (2 MiB) page */
 
+#include "arch/x86_segments.h"
+
 /* ── Multiboot 1 constants ──────────────────────────────────────────────── */
 #define MB1_MAGIC    0x1BADB002
+#if defined(BHARAT_BOOT_GUI) && BHARAT_BOOT_GUI
 #define MB1_FLAGS    0x00000007  /* ALIGN + MEMINFO + VIDEO_MODE */
+#else
+#define MB1_FLAGS    0x00000003  /* ALIGN + MEMINFO */
+#endif
 
 /* Boot Headers (Multiboot 1 & 2 + PVH ELF Note) */
 .section .multiboot, "a"
@@ -167,10 +174,10 @@ _start:
     orl  $(CR4_PAE | (1 << 9) | (1 << 10)), %eax
     movl %eax,  %cr4
 
-    /* Set EFER.LME */
+    /* Enable long mode and NX before installing any NX-marked mappings. */
     movl $EFER_MSR, %ecx
     rdmsr
-    orl  $EFER_LME, %eax
+    orl  $(EFER_LME | EFER_NXE), %eax
     wrmsr
 
     /* Enable paging → activates long mode */
@@ -180,7 +187,7 @@ _start:
 
     /* Load a minimal GDT and far-jump into 64-bit code */
     lgdtl (gdt_ptr)
-    ljmpl $0x08, $(_start64)
+    ljmpl $X86_KERNEL_CS, $(_start64)
 
 /* ── Minimal GDT (null + 64-bit code + 64-bit data) ─────────────────────*/
 .section .rodata
@@ -197,7 +204,7 @@ gdt_ptr:
 .section .text
 .code64
 _start64:
-    movw $0x10, %ax
+    movw $X86_KERNEL_DS, %ax
     movw %ax, %ds
     movw %ax, %es
     movw %ax, %ss

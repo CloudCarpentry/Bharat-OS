@@ -198,30 +198,54 @@ int trap_dispatch(trap_frame_t *frame, const trap_info_t *info) {
 
 #include "trap/syscall_regs.h"
 
+kstatus_t bh_trap_decode(const trap_frame_t *frame, bh_trap_context_t *out) {
+  if (!frame || !out) {
+    return K_ERR_INVALID_ARG;
+  }
+
+  *out = (bh_trap_context_t){
+      .class_id = TRAP_CLASS_GENERAL_FAULT,
+      .origin = frame->from_user ? TRAP_ORIGIN_USER : TRAP_ORIGIN_KERNEL,
+      .pc = frame->pc,
+      .sp = frame->sp,
+      .status = frame->status,
+      .arch_cause = (uint64_t)frame->cause,
+      .access = BH_FAULT_ACCESS_UNKNOWN,
+      .reason = BH_FAULT_REASON_UNKNOWN,
+      .interrupt_enabled = arch_trap_status_interrupt_enabled(frame),
+  };
+
+  if (frame->type == TRAP_TYPE_IRQ || frame->type == TRAP_TYPE_FIQ) {
+    out->class_id = TRAP_CLASS_INTERRUPT;
+  } else if (arch_trap_is_syscall(frame)) {
+    out->class_id = TRAP_CLASS_SYSCALL;
+  } else if (hal_cpu_is_page_fault(frame)) {
+    out->class_id = TRAP_CLASS_PAGE_FAULT;
+    out->fault_addr = (uintptr_t)hal_cpu_get_fault_address(frame);
+  } else if (hal_cpu_is_access_fault(frame)) {
+    out->class_id = TRAP_CLASS_ACCESS_FAULT;
+    out->fault_addr = (uintptr_t)hal_cpu_get_fault_address(frame);
+  }
+
+  return K_OK;
+}
+
 long trap_handle(trap_frame_t *frame) {
   if (!frame) return TRAP_ERR_INVAL;
 
-  trap_info_t info = {0};
-  info.origin = frame->from_user ? TRAP_ORIGIN_USER : TRAP_ORIGIN_KERNEL;
-  info.ip = (virt_addr_t)frame->pc;
-  info.sp = (virt_addr_t)frame->sp;
-  info.arch_code = (uint32_t)frame->cause;
-
-  if (frame->type == TRAP_TYPE_IRQ) {
-    info.trap_class = TRAP_CLASS_INTERRUPT;
-  } else {
-    if (arch_trap_is_syscall(frame)) {
-      info.trap_class = TRAP_CLASS_SYSCALL;
-    } else if (hal_cpu_is_page_fault(frame)) {
-      info.trap_class = TRAP_CLASS_PAGE_FAULT;
-      info.fault_addr = (virt_addr_t)hal_cpu_get_fault_address(frame);
-    } else if (hal_cpu_is_access_fault(frame)) {
-      info.trap_class = TRAP_CLASS_ACCESS_FAULT;
-      info.fault_addr = (virt_addr_t)hal_cpu_get_fault_address(frame);
-    } else {
-      info.trap_class = TRAP_CLASS_GENERAL_FAULT;
-    }
+  bh_trap_context_t context;
+  if (bh_trap_decode(frame, &context) != K_OK) {
+    return TRAP_ERR_INVAL;
   }
+
+  trap_info_t info = {0};
+  info.trap_class = context.class_id;
+  info.origin = context.origin;
+  info.ip = (virt_addr_t)context.pc;
+  info.sp = (virt_addr_t)context.sp;
+  info.fault_addr = (virt_addr_t)context.fault_addr;
+  info.arch_code = context.arch_cause;
+  info.interrupt_enabled = context.interrupt_enabled;
 
   return (long)trap_dispatch(frame, &info);
 }

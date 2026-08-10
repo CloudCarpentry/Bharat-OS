@@ -18,6 +18,11 @@
 #define RISCV32_PT_D (1UL << 7) // Dirty
 
 #define RISCV32_PAGE_MASK (~0xFFFUL)
+#define RISCV32_MEGAPAGE_SIZE (1UL << 22)
+#define RISCV32_BOOT_MMIO_START 0x00000000UL
+#define RISCV32_BOOT_MMIO_END   0x40000000UL
+#define RISCV32_BOOT_RAM_START 0x80000000UL
+#define RISCV32_BOOT_RAM_END   0xA0000000UL
 
 typedef uint32_t pte_raw_t;
 
@@ -70,8 +75,8 @@ static translate_backend_kind_t riscv32_backend_type(void) { return TRANSLATE_BA
 static translate_exec_class_t riscv32_exec_class(void) { return TRANSLATE_EXEC_MMU_LITE; }
 
 // We don't have a direct map on RV32 typically, assuming a specific kernel layout or no linear map
-static void* riscv32_phys_to_virt(phys_addr_t phys) { (void)phys; return NULL; /* Needs dynamic kmap for non-linear */ }
-static phys_addr_t riscv32_virt_to_phys(const void* virt) { (void)virt; return 0; }
+static void* riscv32_phys_to_virt(phys_addr_t phys) { return (void *)(uintptr_t)phys; }
+static phys_addr_t riscv32_virt_to_phys(const void* virt) { return (phys_addr_t)(uintptr_t)virt; }
 static bool riscv32_has_linear_physmap(void) { return false; }
 static phys_addr_t riscv32_linear_physmap_base(void) { return 0; }
 static phys_addr_t riscv32_linear_physmap_limit(void) { return 0; }
@@ -102,6 +107,27 @@ static phys_addr_t riscv32_create_address_space(phys_addr_t kernel_root_table) {
         for(int i = 512; i < 1024; i++) {
             l1_table->entries[i] = kernel_l1->entries[i];
         }
+    }
+
+    /*
+     * OpenSBI starts RV32 with SATP in bare mode and QEMU virt RAM begins at
+     * 0x80000000.  Give each address space private supervisor-only Sv32 leaf
+     * mappings for that bootstrap window.  User mappings never inherit U and
+     * may split a leaf without mutating another address space.
+     */
+    const uint32_t supervisor_flags = RISCV32_PT_V | RISCV32_PT_R |
+                                      RISCV32_PT_W | RISCV32_PT_X |
+                                      RISCV32_PT_G | RISCV32_PT_A |
+                                      RISCV32_PT_D;
+    for (uint32_t base = RISCV32_BOOT_MMIO_START; base < RISCV32_BOOT_MMIO_END;
+         base += RISCV32_MEGAPAGE_SIZE) {
+        uint32_t vpn1 = base >> 22;
+        l1_table->entries[vpn1] = ((base >> 12) << 10) | supervisor_flags;
+    }
+    for (uint32_t base = RISCV32_BOOT_RAM_START; base < RISCV32_BOOT_RAM_END;
+         base += RISCV32_MEGAPAGE_SIZE) {
+        uint32_t vpn1 = base >> 22;
+        l1_table->entries[vpn1] = ((base >> 12) << 10) | supervisor_flags;
     }
 
     return root;
@@ -148,6 +174,19 @@ static int riscv32_map_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t 
         if (!new_l0) return -2;
         pt_t* l0_ptr = (pt_t*)(uintptr_t)new_l0;
         for(int i=0; i<1024; i++) l0_ptr->entries[i] = 0;
+        l1_table->entries[vpn1] = ((new_l0 >> 12) << 10) | table_flags;
+    } else if ((l1_table->entries[vpn1] &
+                (RISCV32_PT_R | RISCV32_PT_W | RISCV32_PT_X)) != 0U) {
+        uint32_t leaf = l1_table->entries[vpn1];
+        phys_addr_t mega_base = (phys_addr_t)((leaf >> 10) << 12);
+        phys_addr_t new_l0 = mm_alloc_page(NUMA_NODE_ANY);
+        if (!new_l0) return -2;
+        pt_t *l0_ptr = (pt_t *)(uintptr_t)new_l0;
+        uint32_t leaf_flags = leaf & 0x3FFU;
+        for (uint32_t i = 0; i < 1024U; ++i) {
+            phys_addr_t page_base = mega_base + (i << 12);
+            l0_ptr->entries[i] = ((page_base >> 12) << 10) | leaf_flags;
+        }
         l1_table->entries[vpn1] = ((new_l0 >> 12) << 10) | table_flags;
     }
 

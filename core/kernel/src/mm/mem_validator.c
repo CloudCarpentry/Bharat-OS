@@ -3,8 +3,7 @@
 #include "hal/hal_mmu.h"
 #include "console/console_core.h"
 #include "kernel/status.h"
-#include <string.h>
-#include <stdio.h>
+#include "lib/base/string.h"
 
 static mem_model_t validated_model = MEM_MODEL_NONE;
 static bool validation_complete = false;

@@ -35,6 +35,9 @@ void test_mem_model_validation(void) {
     // Case 5: MPU requested, HAL lacks it
     caps.supports_mpu_only = false;
     assert(mem_model_validate_hal_caps(MEM_MODEL_MPU, &caps) == K_ERR_UNSUPPORTED);
+
+    // Case 6: an unselected model must never inherit optimistic MMU behavior
+    assert(mem_model_validate_hal_caps(MEM_MODEL_NONE, &caps) == K_ERR_UNSUPPORTED);
 }
 
 int main(void) {

@@ -37,8 +37,8 @@ typedef struct {
     uint64_t missing_mask;
     uint64_t dispatch_failure_mask;
     uint32_t retry_count;
-    uint64_t start_tick;
-    uint64_t elapsed_ticks;
+    uint64_t start_ns;
+    uint64_t elapsed_ns;
     int final_status;
     bool valid;
 } tlb_failure_snapshot_t;

@@ -39,6 +39,33 @@ static void parse_multiboot1(multiboot1_info_t *mb, boot_info_t *boot_info) {
         mmap = (multiboot1_mmap_entry_t *)((uint8_t *)mmap + mmap->size + sizeof(mmap->size));
     }
 
+    if (mb->flags & MULTIBOOT1_FLAG_MODS) {
+        multiboot1_module_t *mods = (multiboot1_module_t *)(uint64_t)mb->mods_addr;
+        for (uint32_t i = 0; i < mb->mods_count && boot_info->module_count < BHARAT_BOOT_MAX_MODULES; i++) {
+            boot_module_t *bm = &boot_info->modules[boot_info->module_count];
+            bm->phys_start = mods[i].mod_start;
+            bm->size = mods[i].mod_end - mods[i].mod_start;
+            bm->name = (const char *)(uint64_t)mods[i].string;
+            boot_info->module_count++;
+
+            KPRINT("MB1 MOD: start=");
+            for (int k = 7; k >= 0; k--) {
+                uint32_t nib = (mods[i].mod_start >> (k * 4)) & 0xF;
+                char c = (nib < 10) ? ('0' + nib) : ('A' + nib - 10);
+                char buf[2] = {c, '\0'};
+                KPRINT(buf);
+            }
+            KPRINT(" size=");
+            for (int k = 7; k >= 0; k--) {
+                uint32_t nib = (bm->size >> (k * 4)) & 0xF;
+                char c = (nib < 10) ? ('0' + nib) : ('A' + nib - 10);
+                char buf[2] = {c, '\0'};
+                KPRINT(buf);
+            }
+            KPRINT("\n");
+        }
+    }
+
     if (mb->flags & 0x01) { // mem_lower/upper valid
         // Optional: use lower/upper if mmap is missing, but mmap is better.
     }

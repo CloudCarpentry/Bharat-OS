@@ -1,0 +1,13 @@
+#ifndef BHARAT_UAPI_BOOTSTRAP_RUNTIME_MODEL_H
+#define BHARAT_UAPI_BOOTSTRAP_RUNTIME_MODEL_H
+
+#include <stdint.h>
+
+typedef enum bh_userspace_runtime_model {
+    BH_USERSPACE_RUNTIME_DIRECT = 0,
+    BH_USERSPACE_RUNTIME_STATIC = 1,
+    BH_USERSPACE_RUNTIME_LIGHT = 2,
+    BH_USERSPACE_RUNTIME_FULL = 3,
+} bh_userspace_runtime_model_t;
+
+#endif /* BHARAT_UAPI_BOOTSTRAP_RUNTIME_MODEL_H */

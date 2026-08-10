@@ -11,9 +11,11 @@ see_also:
 ---
 # Bharat-OS IDL (BIDL) v1 Grammar (Current Implementation Profile)
 
+> **Note:** The old path `tools/binterface/idl/bidlc.py` has been removed and replaced by `tools/bidl/bidlc.py`.
+
 ## 1. Purpose and Scope
 
-This document defines the **currently implemented BIDL v1 profile** used by the in-repo tooling (`tools/binterface/idl/bidlc.py` and `tools/abi/check_idl_compat.py`).
+This document defines the **currently implemented BIDL v1 profile** used by the in-repo tooling (`tools/bidl/bidlc.py` and `tools/abi/check_idl_compat.py`).
 
 It is intentionally narrower than the broader architectural language drafts in `docs/architecture/contracts/`.
 
@@ -27,7 +29,7 @@ Bharat-OS currently has multiple IDL-style syntaxes in `interface/idl/` (e.g., `
 
 Only the `service ... rpc ... message/struct ...` family is handled by the active Python tooling used for codegen/compat checks.
 
-- `tools/binterface/idl/bidlc.py` parses:
+- `tools/bidl/bidlc.py` parses:
   - `service <qualified_name> = <service_id> { ... }`
   - `rpc <Method>(<Req>) -> <Resp>`
   - `message <Name> { ... }`
@@ -129,7 +131,16 @@ auth = required;
 criticality = rt_ctl;
 ```
 
-This metadata is currently useful as declarative documentation and policy intent, and is parsed permissively as part of the surrounding syntax. However, current `bidlc.py` codegen does **not** convert these keys into generated enforcement logic.
+This metadata is currently useful as declarative documentation and policy intent, and is now explicitly parsed and retained in the AST. The parser strictly enforces the grammar of these metadata fields but current `bidlc.py` codegen does **not** yet convert these keys into generated enforcement logic.
+
+The strict metadata grammar currently supports exactly these properties:
+- `qos = <identifier>;`
+- `timeout_ms = <integer>;`
+- `idempotent = true|false;`
+- `auth = <identifier>;`
+- `criticality = <identifier>;`
+
+Unknown metadata fields will cause a parser error.
 
 ---
 

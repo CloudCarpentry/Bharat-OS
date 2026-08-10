@@ -6,11 +6,11 @@
  * without touching SIMD or NEON registers.
  */
 
-#include "arch/memops.h"
+#include "hal/hal_memops.h"
 #include <stdint.h>
 #include <stddef.h>
 
-void *arch_memcpy_gpr_bulk(void *dst, const void *src, size_t n) {
+void *hal_memcpy_gpr_bulk(void *dst, const void *src, size_t n) {
     uint8_t *d = dst;
     const uint8_t *s = src;
 
@@ -29,7 +29,7 @@ void *arch_memcpy_gpr_bulk(void *dst, const void *src, size_t n) {
      * become simultaneously aligned, so fall back to scalar-safe copy.
      */
     if ((((uintptr_t)d ^ (uintptr_t)s) & 0xF) != 0U) {
-        return arch_memcpy_scalar(dst, src, n);
+        return hal_memcpy_scalar(dst, src, n);
     }
 
     // Align both pointers to 16-byte boundary before using ldp/stp.
@@ -83,7 +83,7 @@ void *arch_memcpy_gpr_bulk(void *dst, const void *src, size_t n) {
     return dst;
 }
 
-void *arch_memset_gpr_bulk(void *dst, int c, size_t n) {
+void *hal_memset_gpr_bulk(void *dst, int c, size_t n) {
     uint8_t *d = dst;
     uint8_t v = (uint8_t)c;
 

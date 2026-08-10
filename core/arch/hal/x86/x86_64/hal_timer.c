@@ -46,6 +46,10 @@ uint64_t hal_timer_read_counter(void) {
 }
 
 uint64_t hal_timer_read_freq(void) {
+    // RDTSC is available as a counter, but its frequency is not yet
+    // calibrated by this backend. The historical 1 GHz value is a
+    // compatibility estimate and MUST NOT be used to advertise
+    // precise monotonic-ns capability.
     return 1000000000ULL; // Return ~1GHz assuming generic TSC
 }
 
@@ -59,4 +63,12 @@ bool hal_timer_is_per_cpu(void) {
 
 uint64_t hal_timer_monotonic_ticks_arch(void) {
     return rdtsc();
+}
+
+void hal_timer_arch_get_caps(hal_timer_caps_t *caps) {
+    caps->has_counter = true;
+    caps->has_monotonic_ns = false; // Degraded: RDTSC freq is an uncalibrated 1GHz guess. Follow-up: Calibrated x86 TSC/LAPIC Timer Backend.
+    caps->has_precise_oneshot = false; // Degraded: LAPIC frequency is uncalibrated. Follow-up: Calibrated x86 TSC/LAPIC Timer Backend.
+    caps->has_native_absolute_deadline = false;
+    caps->is_per_cpu = true;
 }

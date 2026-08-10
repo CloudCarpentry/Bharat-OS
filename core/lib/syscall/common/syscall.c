@@ -19,3 +19,10 @@
 long bh_syscall(long sysno, long arg1, long arg2, long arg3, long arg4, long arg5, long arg6) {
     return bharat_syscall_arch(sysno, arg1, arg2, arg3, arg4, arg5, arg6);
 }
+
+#include <bharat/syscalls.h>
+#include <bharat/uapi/syscall/bh_syscall_numbers.h>
+
+int bharat_sched_yield(void) {
+    return (int)bh_syscall(BH_SYS_SCHED_YIELD, 0, 0, 0, 0, 0, 0);
+}

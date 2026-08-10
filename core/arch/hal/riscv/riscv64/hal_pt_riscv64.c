@@ -29,6 +29,10 @@ const size_t g_kernel_physmap_size = 0x4000000000ULL; // 256GB
 #define RISCV_PT_PBMT_IO (2ULL << 61) // Memory-mapped I/O
 
 #define RISCV_PAGE_MASK (~0xFFFULL)
+#define RISCV64_BOOT_MMIO_BASE 0x00000000ULL
+#define RISCV64_BOOT_RAM_BASE 0x80000000ULL
+#define RISCV64_GIGAPAGE_SIZE (1ULL << 30)
+#define RISCV64_MEGAPAGE_SIZE (1ULL << 21)
 
 // Arch-private raw descriptor
 typedef uint64_t pte_raw_t;
@@ -36,6 +40,29 @@ typedef uint64_t pte_raw_t;
 typedef struct {
     pte_raw_t entries[512];
 } pt_t;
+
+static bool riscv64_install_bootstrap_gigapage(pt_t *root, phys_addr_t base,
+                                               uint64_t flags) {
+    phys_addr_t l1_phys = mm_alloc_page(NUMA_NODE_ANY);
+    if (l1_phys == 0U) {
+        return false;
+    }
+
+    pt_t *l1 = (pt_t *)physmap_phys_to_virt(l1_phys);
+    if (!l1) {
+        mm_free_page(l1_phys);
+        return false;
+    }
+
+    for (uint64_t i = 0; i < 512U; ++i) {
+        phys_addr_t page_base = base + (i * RISCV64_MEGAPAGE_SIZE);
+        l1->entries[i] = ((page_base >> 12) << 10) | flags;
+    }
+
+    uint64_t vpn2 = (base / RISCV64_GIGAPAGE_SIZE) & 0x1FFU;
+    root->entries[vpn2] = ((l1_phys >> 12) << 10) | RISCV_PT_V;
+    return true;
+}
 
 static virt_addr_t align_down(virt_addr_t value) {
     return value & RISCV_PAGE_MASK;
@@ -57,6 +84,8 @@ static bool table_empty(pt_t* table) {
     }
     return true;
 }
+
+static void riscv64_pt_destroy_recursive(phys_addr_t table, int level);
 
 static uint64_t flags_to_riscv(uint32_t flags) {
     uint64_t pte_flags = RISCV_PT_V | RISCV_PT_A | RISCV_PT_D; // Pre-set A/D bits for simplicity
@@ -99,6 +128,26 @@ static phys_addr_t riscv64_pt_create_address_space(phys_addr_t kernel_root_table
         for(int i = 256; i < 512; i++) {
             l2_table->entries[i] = kernel_l2->entries[i];
         }
+    }
+
+    /*
+     * QEMU/OpenSBI enters Bharat-OS with SATP in bare mode.  Until the kernel
+     * adopts a high-half root, code, stacks, the direct physical window, and
+     * the boot module all live in the first RAM gigapage; the UART, interrupt
+     * controller, and timer occupy the low MMIO gigapage.  Install private
+     * supervisor-only bootstrap tables in every derived address space so a
+     * user mapping can split a leaf without mutating a shared kernel table.
+     * RISCV_PT_U is deliberately absent from all bootstrap leaves.
+     */
+    const uint64_t supervisor_flags = RISCV_PT_V | RISCV_PT_R | RISCV_PT_W |
+                                      RISCV_PT_X | RISCV_PT_G | RISCV_PT_A |
+                                      RISCV_PT_D;
+    if (!riscv64_install_bootstrap_gigapage(l2_table, RISCV64_BOOT_MMIO_BASE,
+                                            supervisor_flags) ||
+        !riscv64_install_bootstrap_gigapage(l2_table, RISCV64_BOOT_RAM_BASE,
+                                            supervisor_flags)) {
+        riscv64_pt_destroy_recursive(root, 2);
+        return 0;
     }
 
     return root;

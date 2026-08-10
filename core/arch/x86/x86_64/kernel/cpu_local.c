@@ -1,4 +1,5 @@
 #include <bharat/cpu_local.h>
+#include "arch/x86_segments.h"
 
 #define MSR_EFER         0xc0000080
 #define MSR_STAR         0xc0000081
@@ -10,6 +11,7 @@
 #define EFER_SCE         0x00000001
 
 extern void x86_64_syscall_entry(void);
+void x86_64_init_syscall(void);
 
 void arch_cpu_local_set(cpu_local_t *cl) {
     if (!cl) return;
@@ -22,6 +24,9 @@ void arch_cpu_local_set(cpu_local_t *cl) {
 
     __asm__ volatile("wrmsr" : : "a"(low), "d"(high), "c"(MSR_GS_BASE));
     __asm__ volatile("wrmsr" : : "a"(low), "d"(high), "c"(MSR_KERNEL_GS_BASE));
+
+    /* SYSCALL MSRs are core-local and must follow each core's GS setup. */
+    x86_64_init_syscall();
 }
 
 void x86_64_init_syscall(void) {
@@ -33,10 +38,15 @@ void x86_64_init_syscall(void) {
     __asm__ volatile("wrmsr" : : "a"(eax), "d"(edx), "c"(MSR_EFER));
 
     // Configure STAR:
-    // Bits 47:32 - Kernel CS (loads 0x08, SS=0x10)
+    // Bits 47:32 - Kernel CS
     // Bits 63:48 - User CS base (loads CS=0x23, SS=0x1B)
     uint32_t star_low = 0;
-    uint32_t star_high = (0x0008U << 0) | (0x0013U << 16); // 0x08 for Kernel, 0x13 for User (index 2 | 3)
+    // STAR high needs the segment *bases*.
+    // SYSRET loads CS = STAR[63:48] + 16 (0x23), SS = STAR[63:48] + 8 (0x1B).
+    // So the base for User is 0x1B - 8 = 0x13.
+    // SYSCALL loads CS = STAR[47:32] (0x08), SS = STAR[47:32] + 8 (0x10).
+    // So the base for Kernel is 0x08.
+    uint32_t star_high = (X86_KERNEL_CS << 0) | ((X86_USER_CS - 16) << 16);
     __asm__ volatile("wrmsr" : : "a"(star_low), "d"(star_high), "c"(MSR_STAR));
 
     // Configure LSTAR
@@ -46,4 +56,11 @@ void x86_64_init_syscall(void) {
     // Configure FMASK: mask IF (9), TF (8), DF (10), AC (18), NT (14)
     uint32_t fmask = 0x44700;
     __asm__ volatile("wrmsr" : : "a"(fmask), "d"(0), "c"(MSR_FMASK));
+}
+
+cpu_local_t *arch_cpu_local_ptr(void) {
+    cpu_local_t *cl;
+    // Assume we've written the address into GSBASE
+    __asm__ volatile ("movq %%gs:0, %0" : "=r"(cl));
+    return cl;
 }

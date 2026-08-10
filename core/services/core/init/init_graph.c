@@ -1,4 +1,5 @@
 #include "init_graph.h"
+#include "init_contract.h"
 #include <bharat/runtime/runtime.h>
 #include <stdbool.h>
 

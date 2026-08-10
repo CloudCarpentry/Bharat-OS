@@ -334,6 +334,7 @@ typedef struct {
     int is_gic;
     int is_fb;
     int is_pci;
+    int is_psci;
     const void *reg_data;
     uint32_t reg_len;
     const void *ranges_data;
@@ -403,6 +404,8 @@ int fdt_parse_discovery(const void *fdt_ptr, system_discovery_t *discovery) {
           stack[depth].is_cpu = 1;
       if (str_starts_with(node_name, "framebuffer@") || str_eq(node_name, "framebuffer"))
           stack[depth].is_fb = 1;
+      if (str_eq(node_name, "psci"))
+          stack[depth].is_psci = 1;
 
     } else if (tag == FDT_END_NODE) {
       fdt_node_state_t *s = &stack[depth];
@@ -435,7 +438,11 @@ int fdt_parse_discovery(const void *fdt_ptr, system_discovery_t *discovery) {
           discovery->topology.mem_regions[discovery->topology.mem_region_count].type = 1;
           discovery->topology.mem_region_count++;
         } else if (s->is_cpu && discovery->topology.cpu_count < BHARAT_MAX_CPUS) {
-          discovery->topology.cpus[discovery->topology.cpu_count].hw_id = base;
+          uint32_t cid = discovery->topology.cpu_count;
+          discovery->topology.cpus[cid].cpu_id = cid;
+          discovery->topology.cpus[cid].hw_id = base;
+          discovery->topology.cpus[cid].node_id = 0;
+          discovery->topology.cpus[cid].is_bsp = (cid == 0);
           discovery->topology.cpu_count++;
         } else if (s->is_gic && discovery->irq_ctrl_count < BHARAT_MAX_IRQ_CONTROLLERS) {
           discovery->irq_ctrls[discovery->irq_ctrl_count].type = IRQ_CTRL_GICV3;
@@ -564,6 +571,12 @@ int fdt_parse_discovery(const void *fdt_ptr, system_discovery_t *discovery) {
       } else if (str_eq(prop_name, "ranges")) {
         stack[depth].ranges_data = prop_data;
         stack[depth].ranges_len = len;
+      } else if (str_eq(prop_name, "method")) {
+        if (str_eq((const char *)prop_data, "smc")) {
+            discovery->psci_method = 1;
+        } else if (str_eq((const char *)prop_data, "hvc")) {
+            discovery->psci_method = 2;
+        }
       } else if (str_eq(prop_name, "#address-cells")) {
         stack[depth].ac = fdt32_to_cpu(*(const uint32_t *)prop_data);
       } else if (str_eq(prop_name, "#size-cells")) {
@@ -598,6 +611,9 @@ int fdt_parse_discovery(const void *fdt_ptr, system_discovery_t *discovery) {
             stack[depth].is_fb = 1;
           } else if (str_eq(comp + c_len, "pci-host-ecam-generic") || str_eq(comp + c_len, "pci-host-cam-generic")) {
             stack[depth].is_pci = 1;
+          } else if (str_eq(comp + c_len, "arm,psci") || str_eq(comp + c_len, "arm,psci-0.2") ||
+                     str_eq(comp + c_len, "arm,psci-1.0")) {
+            stack[depth].is_psci = 1;
           }
           c_len += str_len + 1;
         }

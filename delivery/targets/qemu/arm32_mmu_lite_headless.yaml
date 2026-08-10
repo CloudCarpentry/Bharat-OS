@@ -35,7 +35,7 @@ kernel:
     map: kernel/kernel.map
 
 boot:
-  protocol: linux_arm64
+  protocol: linux_arm32
   artifact_format: raw_bin
   dtb:
     mode: qemu_generated

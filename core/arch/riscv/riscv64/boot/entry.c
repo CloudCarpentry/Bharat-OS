@@ -1,4 +1,5 @@
 #include "boot/boot_info.h"
+#include "boot/adapters/opensbi_adapter.h"
 #include "kernel.h"
 #include "hal/fdt_parser.h"
 #include "hal/hal.h"
@@ -33,8 +34,9 @@ void kernel_main(uint64_t hart_id, uintptr_t fdt_ptr) {
     riscv64_early_puts("BOOT: kernel_main reached\n");
 
     boot_info_t boot;
-    boot_info_init(&boot);
-    boot.boot_cpu_id = hart_id;
+    if (opensbi_adapter_parse(hart_id, (const void *)fdt_ptr, &boot) != 0) {
+        kernel_panic("OpenSBI/FDT handoff parse failed");
+    }
 
     hal_serial_init();
     hal_serial_write("RISCV64 Boot Started\n");
@@ -50,6 +52,8 @@ void kernel_main(uint64_t hart_id, uintptr_t fdt_ptr) {
 
     extern void riscv_fdt_parse_common(boot_info_t *boot, const void *fdt_ptr);
     riscv_fdt_parse_common(&boot, (const void*)fdt_ptr);
+    boot.boot_cpu_id = hart_id;
+    boot.arch = BOOT_ARCH_RISCV64;
 
     kernel_main_common(&boot);
 }

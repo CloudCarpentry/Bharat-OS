@@ -1,7 +1,9 @@
 #ifndef BHARAT_SDK_STDIO_H
 #define BHARAT_SDK_STDIO_H
 
-#ifndef BHARAT_HOST_TEST
+#ifdef BHARAT_HOST_TEST
+#include_next <stdio.h>
+#else
 #include <stddef.h>
 #include <stdarg.h>
 

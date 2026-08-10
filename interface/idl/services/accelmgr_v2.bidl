@@ -1,0 +1,205 @@
+service bharat.device.accelmgr_v2 = 30 {
+    rpc GetBrokerInfo(GetBrokerInfoReq) -> GetBrokerInfoResp
+    rpc GetDeviceCount(GetDeviceCountReq) -> GetDeviceCountResp
+    rpc GetDeviceInfo(GetDeviceInfoReq) -> GetDeviceInfoResp
+    rpc RequestAdmission(RequestAdmissionReq) -> RequestAdmissionResp
+    rpc ReleaseContext(ReleaseContextReq) -> ReleaseContextResp
+    rpc CreateQueue(CreateQueueReq) -> CreateQueueResp
+    rpc DestroyQueue(DestroyQueueReq) -> DestroyQueueResp
+    rpc RegisterBuffer(RegisterBufferReq) -> RegisterBufferResp
+    rpc UnregisterBuffer(UnregisterBufferReq) -> UnregisterBufferResp
+    rpc SubmitJob(SubmitJobReq) -> SubmitJobResp
+    rpc CancelJob(CancelJobReq) -> CancelJobResp
+    rpc QueryJob(QueryJobReq) -> QueryJobResp
+    rpc QueryFence(QueryFenceReq) -> QueryFenceResp
+    rpc QueryHealth(QueryHealthReq) -> QueryHealthResp
+    rpc SetThermalConstraint(SetThermalConstraintReq) -> SetThermalConstraintResp
+    rpc SetSafeMode(SetSafeModeReq) -> SetSafeModeResp
+    rpc GetTelemetrySnapshot(GetTelemetrySnapshotReq) -> GetTelemetrySnapshotResp
+}
+
+message GetBrokerInfoReq {
+    u32 dummy;
+}
+
+message GetBrokerInfoResp {
+    u32 status;
+    u32 version;
+}
+
+message GetDeviceCountReq {
+    u32 dummy;
+}
+
+message GetDeviceCountResp {
+    u32 status;
+    u32 count;
+}
+
+message GetDeviceInfoReq {
+    u32 index;
+}
+
+message GetDeviceInfoResp {
+    u32 status;
+    u32 device_id;
+    u32 capabilities;
+    u32 state;
+    string<32> name;
+}
+
+message RequestAdmissionReq {
+    u32 feature_class;
+    u32 requested_qos;
+}
+
+message RequestAdmissionResp {
+    u32 status;
+    u32 granted_qos;
+    u64 context_handle;
+}
+
+message ReleaseContextReq {
+    u64 context_handle;
+}
+
+message ReleaseContextResp {
+    u32 status;
+}
+
+message CreateQueueReq {
+    u64 context_handle;
+    u64 device_handle;
+    u32 depth;
+    u32 priority;
+}
+
+message CreateQueueResp {
+    u32 status;
+    u64 queue_handle;
+}
+
+message DestroyQueueReq {
+    u64 queue_handle;
+}
+
+message DestroyQueueResp {
+    u32 status;
+}
+
+message RegisterBufferReq {
+    u64 memory_cap_handle;
+    u64 size;
+    u32 flags;
+}
+
+message RegisterBufferResp {
+    u32 status;
+    u64 buffer_handle;
+}
+
+message UnregisterBufferReq {
+    u64 buffer_handle;
+}
+
+message UnregisterBufferResp {
+    u32 status;
+}
+
+message SubmitJobReq {
+    u64 queue_handle;
+    u64 input_buffer_handle;
+    u64 input_offset;
+    u64 input_length;
+    u64 output_buffer_handle;
+    u64 output_offset;
+    u64 output_length;
+    u32 opcode;
+    u32 data_type;
+    u32 element_count;
+    u64 dependency_fence_handle;
+    u32 flags;
+}
+
+message SubmitJobResp {
+    u32 status;
+    u64 job_handle;
+    u64 fence_handle;
+}
+
+message CancelJobReq {
+    u64 job_handle;
+}
+
+message CancelJobResp {
+    u32 status;
+}
+
+message QueryJobReq {
+    u64 job_handle;
+}
+
+message QueryJobResp {
+    u32 status;
+    u32 state;
+    u32 error_code;
+}
+
+message QueryFenceReq {
+    u64 fence_handle;
+}
+
+message QueryFenceResp {
+    u32 status;
+    u32 state;
+    u32 error_code;
+}
+
+message QueryHealthReq {
+    u64 device_handle;
+}
+
+message QueryHealthResp {
+    u32 status;
+    u32 state;
+    u32 temperature_c;
+    u32 utilization_pct;
+}
+
+message SetThermalConstraintReq {
+    u64 device_handle;
+    u32 max_power_mw;
+}
+
+message SetThermalConstraintResp {
+    u32 status;
+}
+
+message SetSafeModeReq {
+    u32 enable_safe_mode;
+}
+
+message SetSafeModeResp {
+    u32 status;
+}
+
+message GetTelemetrySnapshotReq {
+    u32 dummy;
+}
+
+message GetTelemetrySnapshotResp {
+    u32 status;
+    u64 jobs_submitted;
+    u64 jobs_completed;
+    u64 jobs_failed;
+    u64 jobs_cancelled;
+    u64 queue_depth;
+    u64 execution_latency_us;
+    u64 hw_backend_selected;
+    u64 sw_backend_selected;
+    u64 cpu_fallback_count;
+    u64 capability_denials;
+    u64 buffer_reg_failures;
+    u64 device_resets;
+    u64 device_quarantines;
+}

@@ -1,6 +1,8 @@
+#include "arch/user_entry.h"
 #ifndef BHARAT_SCHED_H
 #define BHARAT_SCHED_H
 
+#include <stddef.h>
 #include <stdint.h>
 #include "mm.h"
 #include "sched/ai_sched.h"
@@ -13,6 +15,7 @@
 #include <bharat/constraints.h>
 #include "bh_process_personality.h"
 #include "bharat/kernel/ds/bh_mpsc_queue.h"
+#include "sched/cpu_context.h"
 
 #define BH_TID_SLOT_BITS       16U
 #define BH_TID_CORE_BITS       16U
@@ -71,16 +74,6 @@ typedef enum {
     SCHED_REMOTE_MIGRATE_RETIRE,
     SCHED_REMOTE_QUERY_STATE
 } sched_remote_cmd_type_t;
-
-typedef struct arch_ext_state arch_ext_state_t;
-
-typedef struct {
-    uint64_t regs[16];     // Offset 0
-    uint64_t pc;           // Offset 128
-    uint64_t sp;           // Offset 136
-    uint64_t fpu_regs[32]; // Offset 144 (for inline FPU regs e.g. arm64 d8-d15, riscv fs0-fs11)
-    arch_ext_state_t *ext; // Offset 400
-} cpu_context_t;
 
 typedef struct {
     uint64_t deadline_ms;
@@ -481,11 +474,16 @@ struct bh_thread {
     uint32_t home_core_id;
     uint32_t generation;
 
+
     // CPU Architectural Context (Registers)
     void* cpu_context;
 
     // Kernel Stack
     virt_addr_t kernel_stack;
+
+    arch_user_entry_t first_user_entry;
+    uint8_t first_user_entry_valid;
+
 
     thread_state_t state;
     uint32_t priority;
@@ -577,12 +575,18 @@ struct bh_process {
 
 // Scheduler Core
 void sched_init(void);
+int sched_global_init(uint32_t core_count);
+int sched_cpu_prepare(uint32_t cpu_id);
+int sched_cpu_online(uint32_t cpu_id);
+int sched_system_enable(void);
 
 // Create process and main thread
 bh_process_t* process_create(const char* name);
 int process_destroy(bh_process_t* process);
 bh_thread_t* thread_create(bh_process_t* parent, void (*entry_point)(void));
 bh_thread_t* thread_create_detached(bh_process_t* parent, void (*entry_point)(void));
+bh_thread_t *thread_create_detached_arg(bh_process_t *parent, void (*entry_point)(void *), const arch_user_entry_t *arg_data);
+
 int thread_destroy(bh_thread_t* thread);
 
 // Current Context Helpers

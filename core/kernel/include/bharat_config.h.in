@@ -33,6 +33,9 @@
 #cmakedefine BHARAT_KERNEL_PROFILE_GP 1
 #cmakedefine BHARAT_KERNEL_PROFILE_MIX 1
 
+/* Orthogonal userspace lifecycle model (BH_USERSPACE_RUNTIME_* numeric value). */
+#define BHARAT_USERSPACE_RUNTIME_MODEL @BHARAT_USERSPACE_RUNTIME_MODEL_ID@
+
 /* IRQ Dispatch Mode */
 #cmakedefine BHARAT_IRQ_DISPATCH_GENERIC 1
 #cmakedefine BHARAT_IRQ_DISPATCH_MIXED 1

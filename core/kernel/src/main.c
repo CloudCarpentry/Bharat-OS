@@ -1,4 +1,5 @@
 #include "hal/hal.h"
+#include "hal/hal_boot.h"
 #include "console/console_core.h"
 #include "boot/boot_info.h"
 #include "boot/boot_validate.h"
@@ -31,12 +32,7 @@ void kernel_main_common(const boot_info_t *boot) {
 
       boot_common_runtime(boot);
   } else {
-      // AP boot path
-      extern void smp_init(void);
-      smp_init(); // Set up CPU-local data structures
-
-      while (1) {
-          hal_cpu_halt();
-      }
+      // AP boot path: route cleanly through canonical bh_secondary_cpu_entry
+      bh_secondary_cpu_entry(0);
   }
 }

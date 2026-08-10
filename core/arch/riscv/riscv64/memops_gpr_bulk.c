@@ -6,11 +6,11 @@
  * instructions completely to ensure kernel safety.
  */
 
-#include "arch/memops.h"
+#include "hal/hal_memops.h"
 #include <stdint.h>
 #include <stddef.h>
 
-void *arch_memcpy_gpr_bulk(void *dst, const void *src, size_t n) {
+void *hal_memcpy_gpr_bulk(void *dst, const void *src, size_t n) {
     uint8_t *d = dst;
     const uint8_t *s = src;
 
@@ -64,7 +64,7 @@ void *arch_memcpy_gpr_bulk(void *dst, const void *src, size_t n) {
     return dst;
 }
 
-void *arch_memset_gpr_bulk(void *dst, int c, size_t n) {
+void *hal_memset_gpr_bulk(void *dst, int c, size_t n) {
     uint8_t *d = dst;
     uint8_t v = (uint8_t)c;
 

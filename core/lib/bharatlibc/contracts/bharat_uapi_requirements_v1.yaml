@@ -1,0 +1,4 @@
+requirements:
+  uapi_version: 1
+  headers:
+    - bharat/uapi/sys_errno.h

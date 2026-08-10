@@ -1,9 +1,6 @@
 #ifndef BHARAT_UAPI_ARCH_ARM32_SYSCALL_H
 #define BHARAT_UAPI_ARCH_ARM32_SYSCALL_H
 
-#ifndef BHARAT_ARCH_ARM32_SYSCALL_RUNTIME_READY
-#warning "arm32 syscall runtime is not enabled yet"
-#endif
 
 #include <stdint.h>
 

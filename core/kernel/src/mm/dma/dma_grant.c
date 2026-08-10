@@ -2,7 +2,7 @@
 #include "kernel/primitive.h"
 #include "hal/hal_hw_caps.h"
 #include "mm/iommu.h"
-#include <string.h>
+#include "lib/base/string.h"
 
 #define MAX_DMA_GRANTS 256
 

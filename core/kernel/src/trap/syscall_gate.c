@@ -11,6 +11,83 @@
 #include "profile/profile_policy.h"
 #include "bh_personality_registry.h"
 #include "syscall/syscall_capability.h"
+#include "trap_types.h"
+
+long bh_syscall_gate(trap_frame_t *frame, const trap_info_t *info);
+
+#include "trap/syscall_test.h"
+
+bool arch_trap_status_interrupt_enabled(const trap_frame_t *frame);
+
+/*
+ * Architecture entry stubs do not own policy and must not manufacture a
+ * partially initialized trap description in assembly.  They enter through
+ * this fixed-signature bridge, which supplies the normalized syscall origin
+ * metadata expected by the common gate.
+ */
+kstatus_t bh_syscall_entry_dispatch(trap_frame_t *frame, bh_syscall_return_context_t *ret) {
+    if (!frame || !ret) return K_ERR_INVALID_ARG;
+
+    ret->pc = frame->pc;
+    ret->sp = frame->sp;
+    ret->status = frame->status;
+    ret->origin = TRAP_ORIGIN_USER;
+    ret->flags = 0;
+    ret->disposition = BH_SYSCALL_RETURN_FAULT;
+
+    const trap_info_t info = {
+        .trap_class = TRAP_CLASS_SYSCALL,
+        .origin = ret->origin,
+        .ip = ret->pc,
+        .sp = ret->sp,
+        .arch_code = frame->cause,
+        .interrupt_enabled = arch_trap_status_interrupt_enabled(frame),
+    };
+
+    long result = bh_syscall_gate(frame, &info);
+
+    ret->result = result;
+
+    bh_thread_t *thread = sched_current_thread();
+    const personality_ops_t *ops = NULL;
+    if (thread && thread->process) {
+        ops = bh_personality_registry_get_ops((bh_personality_id_t)thread->process->personality.kind);
+    }
+
+    // Fail closed if compatibility personality has no normalization hook
+    if (thread && thread->process && thread->process->personality.kind != BH_PERSONALITY_NATIVE) {
+        if (!ops || !ops->normalize_syscall_return) {
+            ret->disposition = BH_SYSCALL_RETURN_FAULT;
+            return K_ERR_UNSUPPORTED;
+        }
+    }
+
+    ret->disposition = BH_SYSCALL_RETURN_USER;
+
+#if defined(BHARAT_ENABLE_TEST_HOOKS)
+    bh_syscall_test_apply_return_fault(ret);
+#endif
+
+    return K_OK;
+}
+
+__attribute__((noreturn)) void
+bh_syscall_rejected_return_handoff(bh_syscall_return_disposition_t disposition) {
+    (void)disposition;
+    bh_thread_t *thread = sched_current_thread();
+
+    if (thread) {
+        /* Both dispositions reject the corrupted userspace continuation.  The
+         * scheduler's existing terminated-thread fault path owns teardown. */
+        thread_raise_fault(thread, THREAD_FAULT_SEGV);
+    }
+
+    /* A rejected context has no legal userspace return.  Keep kernel GS/CPL0
+     * state and continue yielding even if a scheduler backend returns here. */
+    for (;;) {
+        sched_reschedule();
+    }
+}
 
 kstatus_t bh_syscall_policy_check(bh_syscall_ctx_t *ctx, const bh_syscall_meta_t *desc) {
     if (!ctx || !desc) return K_ERR_INVALID_ARG;
@@ -73,9 +150,6 @@ kstatus_t bh_syscall_policy_check(bh_syscall_ctx_t *ctx, const bh_syscall_meta_t
         }
     }
 
-    if (status != K_OK) {
-        bh_syscall_stats_inc_denied(hal_cpu_get_id());
-    }
     return status;
 }
 

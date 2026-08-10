@@ -9,6 +9,7 @@ void secure_memzero_explicit(void *s, size_t n) {
     while (n--) {
         *p++ = 0;
     }
+    __asm__ volatile("" ::: "memory");
 }
 
 /* Secure page allocation */

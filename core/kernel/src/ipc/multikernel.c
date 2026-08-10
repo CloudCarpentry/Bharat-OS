@@ -4,6 +4,7 @@
 #include "../../include/kernel_safety.h"
 #include "../../include/multicore.h"
 #include "../../include/ipc/mk_dispatch.h"
+#include "ipc/mk_proto.h"
 
 // @cite The Multikernel: A New OS Architecture for Scalable Multicore Systems
 // (Baumann et al., 2009) Barrelfish-inspired URPC messaging and state
@@ -56,22 +57,16 @@ int urpc_send(urpc_ring_t *ring, const urpc_msg_t *msg) {
     return URPC_ERR_INVAL;
   }
 
-  // Producer uniquely owns head, so relaxed load is safe locally.
   uint32_t head = atomic_load_explicit(&ring->head, memory_order_relaxed);
   uint32_t next_head = (head + 1U) % ring->capacity;
 
-  // Must acquire the tail to ensure previous consumer reads are visible before
-  // we overwrite the slot.
   uint32_t tail = atomic_load_explicit(&ring->tail, memory_order_acquire);
   if (next_head == tail) {
     return URPC_ERR_FULL;
   }
 
-  ring->buffer[head] =
-      *msg; // Normal store; payload is not published to consumer yet.
+  ring->buffer[head] = *msg;
 
-  // Publish head with release semantics. This ensures the payload store is
-  // visible to the consumer when they acquire this new head value.
   atomic_store_explicit(&ring->head, next_head, memory_order_release);
 
   if (head == tail) {
@@ -86,23 +81,17 @@ int urpc_receive(urpc_ring_t *ring, urpc_msg_t *out_msg) {
     return URPC_ERR_INVAL;
   }
 
-  // Consumer uniquely owns tail, relaxed load is safe locally.
   uint32_t tail = atomic_load_explicit(&ring->tail, memory_order_relaxed);
 
-  // Must acquire head to ensure the producer's payload writes are visible to
-  // us.
   uint32_t head = atomic_load_explicit(&ring->head, memory_order_acquire);
 
   if (tail == head) {
     return URPC_ERR_EMPTY;
   }
 
-  *out_msg = ring->buffer[tail]; // Normal read; safely visible due to the
-                                 // acquire above.
+  *out_msg = ring->buffer[tail];
   uint32_t next_tail = (tail + 1U) % ring->capacity;
 
-  // Publish tail with release semantics. This ensures our payload read is
-  // complete before the producer can see this new tail and overwrite the slot.
   atomic_store_explicit(&ring->tail, next_tail, memory_order_release);
 
   return URPC_SUCCESS;
@@ -210,68 +199,33 @@ int mk_establish_channel(uint32_t target_core, mk_channel_t *out_channel) {
 
 int mk_send_message(mk_channel_t *channel, uint32_t msg_type, void *payload,
                     uint32_t size) {
-  if (!channel || !channel->urpc_ring) {
+  if (!channel) {
     return URPC_ERR_INVALID;
   }
 
-  if (size > 0U && !payload) {
+  bh_mk_lane_t lane = BH_MK_LANE_NORMAL;
+  if (msg_type == MK_MSG_TYPE_ACK || msg_type == MK_MSG_TYPE_NACK ||
+      msg_type == MK_MSG_THREAD_HANDOFF_ACK || msg_type == MK_MSG_THREAD_HANDOFF_NACK ||
+      msg_type == MK_MSG_THREAD_LOOKUP_RESP) {
+    lane = BH_MK_LANE_CONTROL;
+  }
+
+  bh_mk_endpoint_handle_t dest = ((uint64_t)channel->dst_core << 24) | BH_MK_ENDPOINT_LEGACY;
+
+  kstatus_t status = bh_mk_send(BH_MK_ENDPOINT_LEGACY, dest, 0, msg_type, lane, payload, size, NULL);
+  if (status == K_OK) {
+    return URPC_SUCCESS;
+  } else if (status == K_ERR_WOULD_BLOCK) {
+    return URPC_ERR_FULL;
+  } else {
     return URPC_ERR_INVALID;
   }
-
-  urpc_msg_t msg = {0};
-  msg.type = msg_type;
-  msg.payload_size = size;
-  msg.src_core = channel->src_core;
-  msg.dst_core = channel->dst_core;
-
-  uint32_t words = size / sizeof(uint64_t);
-  if ((size % sizeof(uint64_t)) != 0U) {
-    words++;
-  }
-  if (words > MK_MAX_PAYLOAD_WORDS) {
-    words = MK_MAX_PAYLOAD_WORDS;
-    msg.payload_size = MK_MAX_PAYLOAD_WORDS * sizeof(uint64_t);
-  }
-
-  if (words > 0U) {
-    uint64_t *src = (uint64_t *)payload;
-    for (uint32_t i = 0; i < words; ++i) {
-      msg.payload_data[i] = src[i];
-    }
-  }
-
-  int status = urpc_send(channel->urpc_ring, &msg);
-  if (status == URPC_SUCCESS_WOKE) {
-    hal_core_notify(channel->dst_core, msg_type);
-    status = URPC_SUCCESS; // Normalize return code
-  }
-  return status;
-}
-
-// Drains the incoming message queue, hands messages to IPC/dispatch path,
-// and triggers scheduler wakeups if a waiter exists.
-// This is the intended delivery mechanism for Phase 2/3, designed to be called
-// from an interrupt-driven (IPI) context rather than relying purely on polling.
-static int mk_ipc_deliver_from_channel(mk_channel_t *channel) {
-  if (!channel || !channel->urpc_ring) {
-    return URPC_ERR_INVALID;
-  }
-
-  int processed = 0;
-  urpc_msg_t msg;
-
-  while (urpc_receive(channel->urpc_ring, &msg) == URPC_SUCCESS) {
-    if (mk_dispatch_message(channel, &msg) == 0) {
-      ++processed;
-    }
-  }
-
-  return processed;
 }
 
 int mk_poll_messages(mk_channel_t *channel) {
-  // Polling fallback path for environments without robust IPI receiver hooks.
-  return mk_ipc_deliver_from_channel(channel);
+  (void)channel;
+  bh_mk_drain_local(64);
+  return 0;
 }
 
 int mk_msg_pool_init(mk_msg_pool_t *pool, mk_message_slot_t *slots,

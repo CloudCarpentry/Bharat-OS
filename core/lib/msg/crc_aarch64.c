@@ -8,7 +8,6 @@
 // Since our wire protocol expects IEEE 802.3 (Polynomial 0xEDB88320),
 // we strictly use the __crc32w variants.
 
-#if defined(__aarch64__)
 #include <arm_acle.h>
 
 uint32_t bharat_msg_crc32_aarch64(const uint8_t *data, size_t len) {
@@ -42,5 +41,3 @@ uint32_t bharat_msg_crc32_aarch64(const uint8_t *data, size_t len) {
 
     return crc ^ 0xFFFFFFFF;
 }
-
-#endif // __aarch64__

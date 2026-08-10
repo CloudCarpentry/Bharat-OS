@@ -20,6 +20,16 @@ option(BHARAT_ENABLE_DMA_MAP "Enable DMA map APIs" ON)
 include(BharatIOPolicy)
 include(${BHARAT_CMAKE_ROOT}/BharatConstraints.cmake)
 
+set(BHARAT_USERSPACE_RUNTIME_MODEL "FULL" CACHE STRING
+    "Root userspace lifecycle model (DIRECT, STATIC, LIGHT, FULL)")
+set_property(CACHE BHARAT_USERSPACE_RUNTIME_MODEL PROPERTY STRINGS DIRECT STATIC LIGHT FULL)
+string(TOUPPER "${BHARAT_USERSPACE_RUNTIME_MODEL}" BHARAT_USERSPACE_RUNTIME_MODEL)
+if(NOT BHARAT_USERSPACE_RUNTIME_MODEL MATCHES "^(DIRECT|STATIC|LIGHT|FULL)$")
+    message(FATAL_ERROR "Invalid BHARAT_USERSPACE_RUNTIME_MODEL='${BHARAT_USERSPACE_RUNTIME_MODEL}'")
+endif()
+set(_BHARAT_RUNTIME_MODELS DIRECT STATIC LIGHT FULL)
+list(FIND _BHARAT_RUNTIME_MODELS "${BHARAT_USERSPACE_RUNTIME_MODEL}" BHARAT_USERSPACE_RUNTIME_MODEL_ID)
+
 # Versioning Identity System: Generate and load from manifest
 set(BHARAT_MANIFEST_CANDIDATES
     "${CMAKE_SOURCE_DIR}/delivery/release/manifest/os-release.json"
@@ -84,7 +94,7 @@ endif()
 
 # Generate monitor service IDL
 execute_process(
-    COMMAND "${Python3_EXECUTABLE}" "${BHARAT_IDL_GEN_SCRIPT}"
+    COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_SOURCE_DIR} "${Python3_EXECUTABLE}" "${BHARAT_IDL_GEN_SCRIPT}"
             "${BHARAT_IDL_ROOT}/monitor_v1.bidl"
             "${BHARAT_GEN_INCLUDE_DIR}"
     WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
@@ -96,7 +106,7 @@ endif()
 
 # Generate cap service IDL
 execute_process(
-    COMMAND "${Python3_EXECUTABLE}" "${BHARAT_IDL_GEN_SCRIPT}"
+    COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_SOURCE_DIR} "${Python3_EXECUTABLE}" "${BHARAT_IDL_GEN_SCRIPT}"
             "${BHARAT_IDL_ROOT}/cap_v1.bidl"
             "${BHARAT_GEN_INCLUDE_DIR}"
     WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
@@ -498,3 +508,6 @@ bharat_add_host_test_compat_target(
 
 # Image generation
 include(BharatImage)
+add_subdirectory(core/stacks/ui/adapters/lvgl)
+add_subdirectory(tools/ui_simulator)
+add_subdirectory(quality/tests/ui)

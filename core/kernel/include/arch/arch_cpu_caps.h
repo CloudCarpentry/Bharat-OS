@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include "kernel/status.h"
 
 typedef enum {
     /* Common semantic features: portable meaning across ISAs */
@@ -56,7 +57,7 @@ typedef struct {
 
 void arch_cpu_caps_init(void);
 void arch_cpu_caps_init_ap(void); // For APs
-void arch_cpu_caps_system_finalize(void); // To calculate system_all and system_any
+kstatus_t arch_cpu_caps_system_finalize(void); // To calculate system_all and system_any
 
 const arch_cpu_caps_record_t *arch_cpu_caps_boot(void);
 const arch_cpu_caps_record_t *arch_cpu_caps_current(void);
@@ -84,5 +85,8 @@ void arch_cpu_caps_or(arch_cpu_caps_t *dst, const arch_cpu_caps_t *src);
 void arch_cpu_caps_and(arch_cpu_caps_t *dst, const arch_cpu_caps_t *src);
 void arch_cpu_caps_zero(arch_cpu_caps_t *caps);
 void arch_cpu_caps_fill(arch_cpu_caps_t *caps);
+
+// Export architecture specific capabilities to the HAL feature set format
+void arch_cpu_caps_export_hal_features(const arch_cpu_caps_record_t *arch, void *out);
 
 #endif // BHARAT_ARCH_CPU_CAPS_H

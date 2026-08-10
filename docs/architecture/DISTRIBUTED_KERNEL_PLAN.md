@@ -11,6 +11,8 @@ see_also:
 ---
 # Distributed Kernel Ownership Plan
 
+> **Note:** Several components mentioned in this plan (e.g., `core/kernel/src/multicore/kernel/raft_lite.c`, `core/kernel/src/ipc/mk_txn.c`, `core/kernel/src/mm/pmm_dist.c`, `core/kernel/src/sched.c`) represent target architectures or have been migrated out of the `core/kernel` directory.
+
 ## Objective
 
 This document outlines the concrete refactoring plan to transition Bharat-OS from a shared-state SMP (Symmetric Multiprocessing) architecture with multikernel plumbing toward a true **distributed-kernel** architecture. The goal is evolution, not demolition, keeping the current kernel usable while systematically replacing global shared state with explicit ownership and messaging.

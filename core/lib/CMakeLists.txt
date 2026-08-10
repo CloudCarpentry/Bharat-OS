@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 cmake_minimum_required(VERSION 3.20)
 project(BharatOS_Lib C ASM)
 
@@ -46,11 +47,13 @@ bharat_configure_userspace_library(bharat_libgfx)
 # ---------------------------------------------------------
 # Subdirectories that define specific libs
 # ---------------------------------------------------------
+add_subdirectory(handle)
 add_subdirectory(elf)
 add_subdirectory(syscall)
 add_subdirectory(cap)
 add_subdirectory(ipc)
 add_subdirectory(runtime)
+add_subdirectory(namesvc)
 
 if(BHARAT_BUILD_NETWORK_STUBS)
     add_subdirectory(net)
@@ -58,12 +61,27 @@ endif()
 add_subdirectory(packet)
 add_subdirectory(rbtree)
 add_subdirectory(string)
+add_subdirectory(diag)
 
 # ---------------------------------------------------------
 # bharat_libmsg (Wire/Validation/Encoding)
 # ---------------------------------------------------------
-set(BHARAT_LIBMSG_SOURCES
+
+add_library(bharat_msg_wire_codec STATIC
     msg/wire.c
+)
+
+target_include_directories(bharat_msg_wire_codec PUBLIC
+    ${CMAKE_SOURCE_DIR}/core/services/core/subsysmgr/include
+    ${CMAKE_SOURCE_DIR}/interface/include
+    runtime/include
+)
+
+target_link_libraries(bharat_msg_wire_codec PUBLIC
+    bharat_freestanding
+)
+
+set(BHARAT_LIBMSG_SOURCES
     msg/validate.c
     msg/crc.c
     msg/crc_generic.c
@@ -88,7 +106,7 @@ target_include_directories(bharat_libmsg PUBLIC
     ${CMAKE_SOURCE_DIR}/interface/include
     runtime/include
 )
-target_link_libraries(bharat_libmsg PUBLIC bharat_freestanding)
+target_link_libraries(bharat_libmsg PUBLIC bharat_msg_wire_codec bharat_freestanding)
 bharat_configure_userspace_library(bharat_libmsg)
 
 # Alias old 'msg' for compatibility during migration
@@ -188,5 +206,32 @@ function(_bharat_assert_no_kernel_links DIRPATH)
         _bharat_assert_no_kernel_links("${_subdir}")
     endforeach()
 endfunction()
+
+# ---------------------------------------------------------
+# Next-Generation Isolated BharatLibC Subproject Integration
+# ---------------------------------------------------------
+option(
+    BHARAT_ENABLE_BHARATLIBC_NEXT
+    "Build the isolated next-generation BharatLibC project"
+    OFF
+)
+
+if(BHARAT_ENABLE_BHARATLIBC_NEXT)
+    set(
+        BHARATLIBC_UAPI_ROOT
+        "${CMAKE_SOURCE_DIR}/interface/include"
+        CACHE PATH
+        "Installed Bharat UAPI include root"
+    )
+
+    set(
+        BHARATLIBC_GENERATED_UAPI_ROOT
+        "${CMAKE_BINARY_DIR}/generated/include"
+        CACHE PATH
+        "Generated Bharat UAPI include root"
+    )
+
+    add_subdirectory(bharatlibc)
+endif()
 
 _bharat_assert_no_kernel_links("${CMAKE_CURRENT_SOURCE_DIR}")

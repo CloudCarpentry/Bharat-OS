@@ -5,6 +5,10 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <bharat/input/input_driver.h>
+#include "virtqueue.h"
+#include "virtio_pci.h"
+
+#define INPUT_QUEUE_SIZE 32
 
 typedef struct {
     uint16_t type;
@@ -46,6 +50,16 @@ typedef struct {
 
     bharat_input_device_t input_dev;
     virtio_input_counters_t counters;
+
+    // Real VirtIO PCI extensions
+    bool is_real_pci;
+    bh_virtio_pci_device_t vpci;
+    bh_virtqueue_t real_vq;
+    bh_virtq_desc_t desc_table[INPUT_QUEUE_SIZE] __attribute__((aligned(16)));
+    bh_virtq_avail_t avail_ring[INPUT_QUEUE_SIZE] __attribute__((aligned(2)));
+    bh_virtq_used_t used_ring[INPUT_QUEUE_SIZE] __attribute__((aligned(4)));
+    virtio_input_raw_event_t buffers[INPUT_QUEUE_SIZE];
+    uint16_t desc_to_buf[INPUT_QUEUE_SIZE];
 } virtio_input_device_t;
 
 int virtio_input_init(virtio_input_device_t *dev,

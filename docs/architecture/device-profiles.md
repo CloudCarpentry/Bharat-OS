@@ -11,6 +11,8 @@ see_also:
 ---
 # Device Profiles and Subsystem Matrix
 
+> **Note:** Some kernel includes mentioned here (such as `core/kernel/include/core/kernel/kernel_safety.h`, `core/kernel/include/ipc/ipc_endpoint.h`) are historical or have been relocated.
+
 This document summarizes how Bharat-OS maps a common microkernel core to different device categories and deployment profiles.
 
 ## The Scaling Philosophy

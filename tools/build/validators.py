@@ -26,8 +26,8 @@ def validate_boot_contract(target: ResolvedTarget) -> None:
     kernel = target.kernel
 
     # Protocol-specific semantic validation
-    if boot.protocol == "linux_arm64":
-        # We now ensure the arm64 boot.S provides a valid Linux Image header.
+    if boot.protocol in ["linux_arm64", "linux_arm32"]:
+        # We now ensure the arm64/arm32 boot.S provides a valid Linux Image header.
         # elf_to_bin is appropriate as long as the ELF was built with the header at the start.
         pass
 

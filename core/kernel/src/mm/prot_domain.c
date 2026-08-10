@@ -4,6 +4,7 @@
 #include "../../include/hal/hal_mpu.h"
 #include "../../include/arch/arch_caps.h"
 #include "hal/hal_mm.h"
+#include "hal/hal_mpa.h"
 #include "console/console_core.h"
 #include "kernel/status.h"
 #include <stddef.h>
@@ -58,7 +59,12 @@ static void mmu_full_destroy(prot_domain_t* domain) {
 }
 
 static void mmu_full_activate(prot_domain_t* domain) {
-    (void)domain;
+    if (!domain || !domain->backend_state) {
+        return;
+    }
+    if (active_mem_protect && active_mem_protect->cpu_ops.set_root) {
+        active_mem_protect->cpu_ops.set_root((phys_addr_t)(uintptr_t)domain->backend_state);
+    }
 }
 
 static int mmu_full_map_region(prot_domain_t* domain, uintptr_t vaddr, uintptr_t paddr, size_t size, uint32_t flags) {
@@ -136,7 +142,12 @@ static void mmu_lite_destroy(prot_domain_t* domain) {
 }
 
 static void mmu_lite_activate(prot_domain_t* domain) {
-    (void)domain;
+    if (!domain || !domain->backend_state) {
+        return;
+    }
+    if (active_mem_protect && active_mem_protect->cpu_ops.set_root) {
+        active_mem_protect->cpu_ops.set_root((phys_addr_t)(uintptr_t)domain->backend_state);
+    }
 }
 
 static int mmu_lite_map_region(prot_domain_t* domain, uintptr_t vaddr, uintptr_t paddr, size_t size, uint32_t flags) {

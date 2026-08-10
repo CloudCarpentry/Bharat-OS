@@ -2,7 +2,7 @@
 build*/
 out/
 bin/
-# Note: core/kernel/include/generated/ contains a committed fail-fast shim
+core/kernel/include/generated/bharat_config.h
 
 # Object files and libraries
 *.o
@@ -24,7 +24,7 @@ bin/
 # CMake generated
 CMakeCache.txt
 CMakeFiles/
-Testing/
+/Testing/
 Makefile
 *.cmake
 !cmake/*.cmake
@@ -55,6 +55,7 @@ __pycache__/
 
 # Logs
 *.log
+!quality/fixtures/diag/*.log
 out.log
 out.txt
 test_vm_space
@@ -65,3 +66,14 @@ build/
 test_sched_hardening
 test_tlb_hardening
 test_mon_vm
+# Test binary artifacts (root-level build outputs)
+test_elf_load_plan
+test_pm_contract_v1
+test_pm_handle_lifecycle
+test_pm_spawn_transaction
+test_pm_wait_reap
+test_procvm_e2e
+test_procvm_stress
+test_vm_authority_integration
+test_vm_handle_lifecycle
+build/generated/

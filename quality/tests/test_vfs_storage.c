@@ -13,20 +13,20 @@ int __attribute__((weak)) vfs_mount(const char* path, vfs_node_t* root) { (void)
 int __attribute__((weak)) vfs_open(const char* path, int flags) { (void)path; (void)flags; return -1; }
 int __attribute__((weak)) vfs_read(int fd, void* buf, size_t count) { (void)fd; (void)buf; (void)count; return -1; }
 
-void* arch_memcpy(void* dest, const void* src, size_t n, uint32_t flags) {
+void* hal_memcpy(void* dest, const void* src, size_t n, uint32_t flags) {
     (void)flags;
     char* d = (char*)dest;
     const char* s = (const char*)src;
     while(n--) *d++ = *s++;
     return dest;
 }
-void* arch_memset(void* s, int c, size_t n, uint32_t flags) {
+void* hal_memset(void* s, int c, size_t n, uint32_t flags) {
     (void)flags;
     char* p = (char*)s;
     while(n--) *p++ = (char)c;
     return s;
 }
-void* arch_memmove(void* dest, const void* src, size_t n, uint32_t flags) {
+void* hal_memmove(void* dest, const void* src, size_t n, uint32_t flags) {
     (void)flags;
     char* d = (char*)dest;
     const char* s = (const char*)src;

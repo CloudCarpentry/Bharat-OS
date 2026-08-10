@@ -61,6 +61,36 @@ def make_package_plan(target: ResolvedTarget, build_outputs: BuildOutputs, repo_
     )
 
 
+def _candidate_root_binary_paths(build_dir: Path, binary_name: str) -> list[Path]:
+    paths = [
+        build_dir / "core" / "services" / "core" / binary_name / binary_name,
+        build_dir / "services" / "core" / binary_name / binary_name,
+        build_dir / "core" / "services" / binary_name / binary_name,
+        build_dir / "services" / binary_name / binary_name,
+    ]
+    if binary_name == "user_smoke":
+        paths = [
+            build_dir / "bharat_user" / "apps" / "user_smoke" / binary_name,
+            build_dir / "experience" / "user" / "apps" / "user_smoke" / binary_name,
+        ] + paths
+    return paths
+
+
+def _find_required_root_binary(build_dir: Path, binary_name: str) -> Path:
+    for path in _candidate_root_binary_paths(build_dir, binary_name):
+        if path.is_file():
+            return path
+        exe_path = path.with_suffix(".exe")
+        if exe_path.is_file():
+            return exe_path
+
+    candidates = ", ".join(str(path) for path in _candidate_root_binary_paths(build_dir, binary_name))
+    raise RuntimeError(
+        f"Required compiled root payload '{binary_name}' was not produced; "
+        f"refusing to package a synthetic boot module. Checked: {candidates}"
+    )
+
+
 def execute_package(plan: PackagePlan, repo_root: Path) -> PackageOutputs:
     print(f"\n[Package] Starting packaging for {plan.target.name}")
 
@@ -108,6 +138,54 @@ def execute_package(plan: PackagePlan, repo_root: Path) -> PackageOutputs:
             ArtifactRecord(kind="run_boot_artifact", path=boot_artifact_path, producer="packager_fallback")
         )
 
+    # -------------------------------------------------------------
+    # Package the single root selected by the orthogonal userspace model.
+    # -------------------------------------------------------------
+    import struct
+
+    binary_name = plan.target.userspace.root_component
+    src_binary = _find_required_root_binary(plan.build_outputs.build_dir, binary_name)
+
+    init_module_path = plan.packaged_dir / "init_module.bin"
+
+    payload_bytes = src_binary.read_bytes()
+    print(f"[Package] Found compiled root payload '{binary_name}' for runtime model "
+          f"'{plan.target.userspace.runtime_model}' at {src_binary} ({len(payload_bytes)} bytes)")
+
+    # Create the versioned Bharat boot-module container header:
+    magic = 0xB4A2D1A5
+    abi_version = 0x0100
+    header_size = 128
+    module_kind = 1
+    payload_offset = 128
+    payload_size = len(payload_bytes)
+    target_arch = 0
+    elf_class = 0
+    flags = 0
+    name = (f"apps/{binary_name}" if binary_name == "user_smoke"
+            else f"services/{binary_name}")
+    name_len = len(name)
+    digest_algo = 0
+    digest = b"\x00" * 32
+    name_bytes = name.encode("utf-8")[:32].ljust(32, b"\x00")
+    padding = b"\x00" * 20
+
+    header = struct.pack(
+        "<IIIIIIIIIII32s32s20s",
+        magic, abi_version, header_size, module_kind, payload_offset, payload_size,
+        target_arch, elf_class, flags, name_len, digest_algo, digest, name_bytes, padding
+    )
+
+    init_module_path.write_bytes(header + payload_bytes)
+    print(f"[Package] Packaged and wrote Bharat boot-module container to {init_module_path}")
+
+    packaged_artifacts.append(
+        ArtifactRecord(kind="init_module", path=init_module_path,
+                       producer="packager_boot_module",
+                       metadata={"module_name": name,
+                                 "runtime_model": plan.target.userspace.runtime_model})
+    )
+
     manifest_paths = {}
 
     outputs = PackageOutputs(
@@ -132,6 +210,9 @@ def execute_package(plan: PackagePlan, repo_root: Path) -> PackageOutputs:
 
         if plan.target.run and plan.target.run.cpu:
             dtb_cmd.extend(["-cpu", plan.target.run.cpu])
+
+        if plan.target.run and plan.target.run.smp:
+            dtb_cmd.extend(["-smp", str(plan.target.run.smp)])
 
         print(f"[Package] Generating QEMU DTB: {' '.join(dtb_cmd)}")
         import subprocess

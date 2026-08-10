@@ -39,6 +39,9 @@ def parse_args():
             subparser.add_argument(
                 "--smoke", action="store_true", help="Override: Exit QEMU automatically after boot marker or timeout."
             )
+            subparser.add_argument(
+                "--cpus", type=int, help="Override: SMP CPU count."
+            )
 
     # peek at the first argument to see if it's a valid command
     valid_commands = ["configure", "build", "package", "run", "flash", "debug", "all"]

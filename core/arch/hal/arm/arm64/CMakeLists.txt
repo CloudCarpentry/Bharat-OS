@@ -1,7 +1,9 @@
 add_library(hal_arm64_cpu OBJECT
     hal_cpu.c
     trap_entry.S
+    boot_psci.c
     ../../mmu/arm64/vmm.c
+    ../../../../arch/arm/arm64/user_entry.c
     ../../../../arch/arm/arm64/context_switch.c
     ../../../../arch/arm/arm64/context_switch.S
     ../../../../arch/arm/arm64/cpu_caps.c

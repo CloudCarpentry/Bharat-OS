@@ -13,7 +13,10 @@ add_library(k_test_support OBJECT
     ktest_rt_sched.c
     ktest_irq_domain.c
     ktest_sched_ipi.c
+    ktest_smp_runtime.c
 )
 
-target_include_directories(k_test_support PRIVATE ../../include ${BHARAT_GENERATED_INCLUDE_DIR} ${CMAKE_SOURCE_DIR}/core/personalities/runtime/include ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/lib/include ${BHARAT_BOOT_INCLUDE_DIR})
-target_link_libraries(k_test_support PRIVATE bharat_freestanding bharat_kernel_buildopts)
+target_link_libraries(k_test_support PRIVATE
+    bharat_kernel_includes
+    bharat_kernel_buildopts
+)

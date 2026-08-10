@@ -84,10 +84,10 @@ uint64_t hal_irq_timer_vector(void) {
 }
 
 uint64_t hal_cpu_get_fault_address(const void *trap_frame) {
-    (void)trap_frame;
-    uint64_t far;
-    __asm__ volatile("mrs %0, far_el1" : "=r"(far));
-    return far;
+    if (!trap_frame) return 0;
+    const bh_arm64_raw_trap_frame_t *raw =
+        (const bh_arm64_raw_trap_frame_t *)trap_frame;
+    return (uint64_t)raw->fault_addr;
 }
 
 __attribute__((weak)) void hal_cpu_dump_trap_frame(const void *trap_frame) {
@@ -205,7 +205,7 @@ extern void vector_table_el1(void); // Defined in trap_entry.S
 
 void hal_init(void) {
   // Set Vector Base Address Register (VBAR_EL1)
-  __asm__ volatile("msr vbar_el1, %0" : : "r"((uint64_t)&vector_table_el1));
+  __asm__ volatile("msr vbar_el1, %0\n\tisb" : : "r"((uint64_t)&vector_table_el1) : "memory");
 
   // Configure MMU (TCR_EL1, MAIR_EL1)
   hal_serial_init();

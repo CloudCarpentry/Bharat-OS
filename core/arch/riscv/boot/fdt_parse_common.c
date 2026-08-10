@@ -1,4 +1,6 @@
 #include "boot/boot_info.h"
+#include "boot/adapters/fdt_adapter.h"
+#include "boot/boot_errno.h"
 #include "hal/fdt_parser.h"
 #include "hal/hal.h"
 #include "kernel.h"
@@ -10,6 +12,9 @@ void riscv_fdt_parse_common(boot_info_t *boot, const void *fdt_ptr) {
     if (fdt_is_valid(fdt_ptr)) {
         system_discovery_t* discovery = hal_get_system_discovery();
         fdt_parse_discovery(fdt_ptr, discovery);
+        if (fdt_adapter_parse(fdt_ptr, boot) != BOOT_OK) {
+            return;
+        }
         boot->source = BOOT_SOURCE_OPENSBI_FDT;
         boot->firmware.fdt_ptr = (void*)fdt_ptr;
 

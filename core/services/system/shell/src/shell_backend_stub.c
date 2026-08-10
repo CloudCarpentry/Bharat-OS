@@ -79,6 +79,10 @@ static int backend_reboot(void) {
     return 0;
 }
 
+static int backend_diag_run(char* out, size_t out_len) {
+    return write_text(out, out_len, "diagnostics=ok cpu_temp=42C");
+}
+
 static void backend_audit(const char* event, const char* command, shell_status_code_t status) {
     (void)event;
     (void)command;
@@ -97,6 +101,7 @@ const shell_backend_api_t* shell_default_backend(void) {
         .dev_list = backend_dev_list,
         .mem_stat = backend_mem_stat,
         .reboot = backend_reboot,
+        .diag_run = backend_diag_run,
         .audit_event = backend_audit,
     };
     return &api;

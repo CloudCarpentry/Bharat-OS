@@ -10,6 +10,20 @@
 extern "C" {
 #endif
 
+typedef enum {
+    BH_BOOT_HANDOFF_USER_ELF = 0,
+    BH_BOOT_HANDOFF_RESTRICTED_USER = 1,
+    BH_BOOT_HANDOFF_STATIC_RT = 2,
+    BH_BOOT_HANDOFF_RECOVERY = 3,
+} bh_boot_handoff_kind_t;
+
+typedef enum {
+    BH_MEM_MODEL_MMU_FULL = 0,
+    BH_MEM_MODEL_MMU_LITE = 1,
+    BH_MEM_MODEL_MPU = 2,
+    BH_MEM_MODEL_UNSUPPORTED = 3,
+} bh_memory_model_t;
+
 // The canonical boot info contract
 typedef struct boot_info {
     uint32_t magic;
@@ -51,6 +65,16 @@ typedef struct boot_info {
 
     // Validation Status
     bool is_validated;
+
+    // ── Extended Normalized Handoff ABI (BOOT-P0-001) ──
+    uint32_t pointer_width;         // 32 or 64
+    bh_memory_model_t memory_model; // MMU-Full, MMU-Lite, MPU
+    uint32_t device_profile;        // Matches build profile enums
+    uint32_t execution_profile;     // Matches gp, mix, rt profiles
+    uint32_t cpu_count;             // Topology CPU count
+    bh_boot_handoff_kind_t init_payload_kind; // USER_ELF, RESTRICTED_USER, STATIC_RT, RECOVERY
+    uint64_t init_payload_phys;     // Physical address of raw payload binary (unwrapped)
+    uint64_t init_payload_size;     // Size of raw payload binary (unwrapped)
 
 } boot_info_t;
 

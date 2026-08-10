@@ -14,6 +14,8 @@ version: 1.0
 ---
 # Architecture-to-Code Mapping
 
+> **Note:** `docs/architecture/interface/uapi/native_abi.md` and `docs/architecture/status-code-contract.md` are obsolete or moved.
+
 This document connects architecture documentation to the current code layout, so design docs can be validated quickly against implementation paths.
 
 ## Repository roots and responsibilities

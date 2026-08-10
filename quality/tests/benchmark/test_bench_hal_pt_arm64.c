@@ -2,7 +2,7 @@
 #include <string.h>
 #include <stdint.h>
 #include "benchmark/benchmark.h"
-#include "../../kernel/include/arch/memops.h"
+#include "hal/hal_memops.h"
 
 #define ARM64_PAGE_MASK (~0xFFFULL)
 
@@ -13,8 +13,8 @@ typedef struct {
     pte_raw_t entries[512];
 } pt_t;
 
-// Simulated arch_memset for baseline testing (as it would be provided by the actual architecture)
-void *mock_arch_memset(void *dst, int c, size_t n, uint32_t flags) {
+// Simulated hal_memset for baseline testing (as it would be provided by the actual architecture)
+void *mock_hal_memset(void *dst, int c, size_t n, uint32_t flags) {
     (void)flags;
     return memset(dst, c, n);
 }
@@ -47,10 +47,10 @@ void benchmark_pt_zero_memset() {
     pt_t* ptr = &table;
 
     benchmark_ctx_t ctx;
-    benchmark_start(&ctx, "arm64 page-table zero init (arch_memset)", BENCHMARK_LEVEL_0_REF, ITERATIONS);
+    benchmark_start(&ctx, "arm64 page-table zero init (hal_memset)", BENCHMARK_LEVEL_0_REF, ITERATIONS);
 
     for (int iter = 0; iter < ITERATIONS; iter++) {
-        mock_arch_memset(ptr, 0, sizeof(*ptr), ARCH_MEMOP_F_DEFAULT);
+        mock_hal_memset(ptr, 0, sizeof(*ptr), BH_MEMCTX_F_DEFAULT);
 
         // Prevent compiler from optimizing away the memset completely.
         asm volatile("" : : "r"(ptr->entries[0]) : "memory");
@@ -70,7 +70,7 @@ int main() {
     pt_t table;
     for(int i=0; i<1000; i++) {
         for(int j=0; j<512; j++) table.entries[j] = 0;
-        mock_arch_memset(&table, 0, sizeof(table), ARCH_MEMOP_F_DEFAULT);
+        mock_hal_memset(&table, 0, sizeof(table), BH_MEMCTX_F_DEFAULT);
     }
 
     benchmark_pt_zero_manual();

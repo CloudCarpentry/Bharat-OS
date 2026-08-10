@@ -3,6 +3,7 @@ add_library(hal_x86_64_cpu OBJECT
     boot_ap.c
     hal_discovery.c
     trap_entry.S
+    ../../../../arch/x86/x86_64/user_entry.c
     ../../../../arch/x86/x86_64/context_switch.c
     ../../../../arch/x86/x86_64/context_switch.S
     ../../../../arch/x86/x86_64/cpu_caps.c

@@ -11,6 +11,7 @@
 #include "arch/arch_caps.h"
 #include "arch/cpu_relax.h"
 #include "tlb_pending.h"
+#include "time/ktime.h"
 #include "panic.h"
 #include "bharat/console.h"
 #include "urpc/urpc_bootstrap.h"
@@ -216,20 +217,6 @@ static void tlb_send_via_mailbox_legacy(uint32_t core, uint32_t current_core, ui
     hal_ipi_send(core, HAL_IPI_TLB_SHOOTDOWN);
 }
 
-static inline uint64_t tlb_get_timeout_ticks(void) {
-    uint64_t freq = hal_timer_read_freq();
-    if (freq == 0) {
-#ifdef BHARAT_HOST_TEST
-        return 10000; // Provide an explicit fake monotonic clock timeout in host tests
-#else
-        kernel_panic("TLB: Monotonic timer is completely unavailable!");
-        return 0; // unreachable
-#endif
-    }
-    // 10 ms per attempt
-    return freq / 100;
-}
-
 static void tlb_handle_failure(tlb_failure_policy_t policy, uint64_t aspace_id, uint32_t reqid) {
     uint32_t core = hal_cpu_get_id();
     console_log(CONSOLE_LEVEL_PANIC,
@@ -297,8 +284,7 @@ kstatus_t vmm_send_tlb_invalidate_ex(vm_aspace_t *aspace,
     uint64_t active_target_mask = target_mask;
     uint32_t retry_count = 0;
     kstatus_t status = K_OK;
-    uint64_t timeout_ticks = tlb_get_timeout_ticks();
-    uint64_t start_tick = hal_timer_monotonic_ticks();
+    bh_ktime_t start_ns = bh_ktime_now();
 
     #define BHARAT_TLB_MAX_RETRIES 3
 
@@ -337,11 +323,10 @@ kstatus_t vmm_send_tlb_invalidate_ex(vm_aspace_t *aspace,
             return K_ERR_NOT_FOUND;
         }
 
-        uint64_t attempt_start = hal_timer_monotonic_ticks();
-        uint64_t deadline = attempt_start + timeout_ticks;
+        bh_kdeadline_t deadline = bh_deadline_after_ns(10 * BH_KTIME_NS_PER_MS);
         bool complete = false;
 
-        while (hal_timer_monotonic_ticks() < deadline) {
+        while (!bh_deadline_expired(deadline)) {
             if (tlb_pending_is_complete(current_core, slot)) {
                 complete = true;
                 break;
@@ -356,7 +341,7 @@ kstatus_t vmm_send_tlb_invalidate_ex(vm_aspace_t *aspace,
         }
 
         // Timeout or partial completion on this attempt
-        uint64_t elapsed_ticks = hal_timer_monotonic_ticks() - start_tick;
+        uint64_t elapsed_ns = bh_ktime_now() - start_ns;
         uint64_t missing_mask = tlb_pending_get_missing_mask(current_core, slot);
 
         tlb_failure_snapshot_t diag = {0};
@@ -368,8 +353,8 @@ kstatus_t vmm_send_tlb_invalidate_ex(vm_aspace_t *aspace,
         diag.missing_mask = missing_mask;
         diag.dispatch_failure_mask = dispatch_failure_mask;
         diag.retry_count = retry_count;
-        diag.start_tick = start_tick;
-        diag.elapsed_ticks = elapsed_ticks;
+        diag.start_ns = start_ns;
+        diag.elapsed_ns = elapsed_ns;
         diag.final_status = (int)K_ERR_TIMEOUT;
         diag.valid = true;
 

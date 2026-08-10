@@ -2,12 +2,11 @@
 #include "hal/hal_capabilities.h"
 #include "hal/hal_mmu.h"
 #include "hal/hal_mm.h"
-#include <string.h>
 
 int hal_mem_get_caps(hal_mem_caps_t *caps) {
     if (!caps) return -1;
 
-    memset(caps, 0, sizeof(hal_mem_caps_t));
+    *caps = (hal_mem_caps_t){0};
 
     caps->model = HAL_MEMORY_MODEL_MMU_LITE;
     caps->va_bits = 32;
@@ -36,6 +35,30 @@ int hal_mem_get_caps(hal_mem_caps_t *caps) {
 
     return 0;
 }
+
+// Required by pmm.c (pmm_register_region)
+void hal_mm_get_zone_limits(hal_mm_zone_limits_t *out) {
+    if (!out) return;
+    out->dma_low_start = 0;
+    out->dma_low_end   = 0;
+    out->dma32_start   = 0x40000000UL;
+    out->dma32_end     = 0xFFFFFFFFUL;
+    out->normal_start  = 0x40000000UL;
+    out->normal_end    = 0xFFFFFFFFUL;
+    out->flags = 0;
+}
+
+// Required by prot_domain.c (prot_domain_init)
+void hal_mm_backend_caps(hal_mm_backend_caps_t *out) {
+    if (!out) return;
+    out->kind           = HAL_MM_BACKEND_MMU_LITE;
+    out->map_granule    = 4096;
+    out->protect_granule= 4096;
+    out->alloc_granule  = 4096;
+    out->max_regions    = 0;
+    out->flags          = 1;
+}
+
 
 static const hal_arch_capabilities_t g_arm32_caps = {
     .arch_name = "arm32",

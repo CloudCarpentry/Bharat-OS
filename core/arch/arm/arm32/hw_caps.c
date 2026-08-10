@@ -1,23 +1,22 @@
 #include "hal/hal_hw_caps.h"
 #include "hal/hal_internal.h"
-#include <string.h>
 
 void arch_discover_hw_caps(void) {
     hal_hw_caps_t caps = {0};
 
     // ARM32 typical capabilities
     caps.has_mmu = true;
-    caps.has_mpu = true;
+    caps.has_mpu = false; // Effective target selects MMU-Lite
     caps.has_iommu = false;
     caps.has_dma_coherent = false;
     caps.has_cache_maintenance = true;
     caps.has_local_apic_or_gic_or_plic = true;
     caps.has_high_res_timer = true;
     caps.has_atomic_64 = false; // May need LPAE
-    caps.has_vector = true;
+    caps.has_vector = false; // Published from SYSTEM_ALL CPU facts
     caps.has_crypto_accel = false;
     caps.has_accel_device = false;
-    caps.max_cpus = 4;
+    caps.max_cpus = 0; // Published from platform topology
     caps.page_granule = 4096;
     caps.cache_line_size = 32;
 

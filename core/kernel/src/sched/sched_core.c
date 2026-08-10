@@ -478,6 +478,8 @@ void sched_reschedule(void) {
   sched_switch_to(next, core);
 }
 
+
+
 void sched_on_timer_tick(void) {
   sched_remote_cmd_poll_timeouts();
   g_cpu_locals[sched_clamp_core(hal_cpu_get_id())].runqueue.total_ticks++;
@@ -758,7 +760,7 @@ kstatus_t sched_migration_transition(bh_thread_t *thread, sched_migration_state_
   uint32_t state = __atomic_load_n(&thread->migration_state, __ATOMIC_ACQUIRE);
   if (state != (uint32_t)expected) {
 #if !defined(NDEBUG)
-    kernel_panic("sched_migration_transition failed: expected %d, got %d", expected, state);
+    kernel_panic("sched_migration_transition failed");
 #else
     // Production safety fallback: reject transition, quarantine if ambiguous
     if (expected == SCHED_MIGRATION_ROLLBACK_SENT || next == SCHED_MIGRATION_FAILED) {

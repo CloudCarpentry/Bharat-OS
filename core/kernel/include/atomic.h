@@ -4,6 +4,7 @@
 #include "bharat/arch/types.h"
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
 
 /*
  * Bharat-OS Universal Atomic API
@@ -11,12 +12,18 @@
  * a unified lock-free API across different architectures.
  */
 
-// Memory barrier to enforce ordering
+// Canonical Memory Barriers
+#define smp_rmb() __atomic_thread_fence(__ATOMIC_ACQUIRE)
+#define smp_wmb() __atomic_thread_fence(__ATOMIC_RELEASE)
 #define smp_mb() __atomic_thread_fence(__ATOMIC_SEQ_CST)
 
 typedef struct {
     volatile int value;
 } atomic_t;
+
+typedef struct {
+    volatile uint32_t value;
+} atomic32_t;
 
 typedef struct {
     volatile uint64_t value;
@@ -166,5 +173,138 @@ static inline uint32_t atomic32_fetch_and_add(volatile uint32_t *ptr, uint32_t v
 static inline uint32_t atomic32_fetch_and_sub(volatile uint32_t *ptr, uint32_t val) {
     return __atomic_fetch_sub(ptr, val, __ATOMIC_SEQ_CST);
 }
+
+
+/* --- Explicit Memory Ordering Operations --- */
+
+// atomic_t ordering operations
+static inline void atomic_store_relaxed(atomic_t *v, int i) {
+    __atomic_store_n(&v->value, i, __ATOMIC_RELAXED);
+}
+static inline void atomic_store_release(atomic_t *v, int i) {
+    __atomic_store_n(&v->value, i, __ATOMIC_RELEASE);
+}
+static inline int atomic_load_relaxed(const atomic_t *v) {
+    return __atomic_load_n(&v->value, __ATOMIC_RELAXED);
+}
+static inline int atomic_load_acquire(const atomic_t *v) {
+    return __atomic_load_n(&v->value, __ATOMIC_ACQUIRE);
+}
+static inline bool atomic_compare_exchange_relaxed(atomic_t *v, int *expected, int desired) {
+    return __atomic_compare_exchange_n(&v->value, expected, desired, false, __ATOMIC_RELAXED, __ATOMIC_RELAXED);
+}
+static inline bool atomic_compare_exchange_acquire(atomic_t *v, int *expected, int desired) {
+    return __atomic_compare_exchange_n(&v->value, expected, desired, false, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED);
+}
+static inline bool atomic_compare_exchange_release(atomic_t *v, int *expected, int desired) {
+    return __atomic_compare_exchange_n(&v->value, expected, desired, false, __ATOMIC_RELEASE, __ATOMIC_RELAXED);
+}
+static inline bool atomic_compare_exchange_acq_rel(atomic_t *v, int *expected, int desired) {
+    return __atomic_compare_exchange_n(&v->value, expected, desired, false, __ATOMIC_ACQ_REL, __ATOMIC_RELAXED);
+}
+static inline int atomic_fetch_add_relaxed(atomic_t *v, int i) {
+    return __atomic_fetch_add(&v->value, i, __ATOMIC_RELAXED);
+}
+static inline int atomic_fetch_add_acq_rel(atomic_t *v, int i) {
+    return __atomic_fetch_add(&v->value, i, __ATOMIC_ACQ_REL);
+}
+
+// atomic32_t operations
+static inline void atomic32_set(atomic32_t *v, uint32_t i) {
+    __atomic_store_n(&v->value, i, __ATOMIC_RELEASE);
+}
+static inline uint32_t atomic32_get(const atomic32_t *v) {
+    return __atomic_load_n(&v->value, __ATOMIC_ACQUIRE);
+}
+static inline void atomic32_add(atomic32_t *v, uint32_t i) {
+    __atomic_fetch_add(&v->value, i, __ATOMIC_SEQ_CST);
+}
+static inline void atomic32_sub(atomic32_t *v, uint32_t i) {
+    __atomic_fetch_sub(&v->value, i, __ATOMIC_SEQ_CST);
+}
+static inline void atomic32_store_relaxed(atomic32_t *v, uint32_t i) {
+    __atomic_store_n(&v->value, i, __ATOMIC_RELAXED);
+}
+static inline void atomic32_store_release(atomic32_t *v, uint32_t i) {
+    __atomic_store_n(&v->value, i, __ATOMIC_RELEASE);
+}
+static inline uint32_t atomic32_load_relaxed(const atomic32_t *v) {
+    return __atomic_load_n(&v->value, __ATOMIC_RELAXED);
+}
+static inline uint32_t atomic32_load_acquire(const atomic32_t *v) {
+    return __atomic_load_n(&v->value, __ATOMIC_ACQUIRE);
+}
+static inline bool atomic32_compare_exchange_relaxed(atomic32_t *v, uint32_t *expected, uint32_t desired) {
+    return __atomic_compare_exchange_n(&v->value, expected, desired, false, __ATOMIC_RELAXED, __ATOMIC_RELAXED);
+}
+static inline bool atomic32_compare_exchange_acquire(atomic32_t *v, uint32_t *expected, uint32_t desired) {
+    return __atomic_compare_exchange_n(&v->value, expected, desired, false, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED);
+}
+static inline bool atomic32_compare_exchange_release(atomic32_t *v, uint32_t *expected, uint32_t desired) {
+    return __atomic_compare_exchange_n(&v->value, expected, desired, false, __ATOMIC_RELEASE, __ATOMIC_RELAXED);
+}
+static inline bool atomic32_compare_exchange_acq_rel(atomic32_t *v, uint32_t *expected, uint32_t desired) {
+    return __atomic_compare_exchange_n(&v->value, expected, desired, false, __ATOMIC_ACQ_REL, __ATOMIC_RELAXED);
+}
+static inline uint32_t atomic32_fetch_add_relaxed(atomic32_t *v, uint32_t i) {
+    return __atomic_fetch_add(&v->value, i, __ATOMIC_RELAXED);
+}
+static inline uint32_t atomic32_fetch_add_acq_rel(atomic32_t *v, uint32_t i) {
+    return __atomic_fetch_add(&v->value, i, __ATOMIC_ACQ_REL);
+}
+
+// atomic64_t ordering operations
+#if ARCH_WORD_BITS == 64
+static inline uint64_t atomic64_load_relaxed(const atomic64_t *v) {
+    return __atomic_load_n(&v->value, __ATOMIC_RELAXED);
+}
+static inline uint64_t atomic64_load_acquire(const atomic64_t *v) {
+    return __atomic_load_n(&v->value, __ATOMIC_ACQUIRE);
+}
+static inline void atomic64_store_relaxed(atomic64_t *v, uint64_t i) {
+    __atomic_store_n(&v->value, i, __ATOMIC_RELAXED);
+}
+static inline void atomic64_store_release(atomic64_t *v, uint64_t i) {
+    __atomic_store_n(&v->value, i, __ATOMIC_RELEASE);
+}
+static inline bool atomic64_compare_exchange_relaxed(atomic64_t *v, uint64_t *expected, uint64_t desired) {
+    return __atomic_compare_exchange_n(&v->value, expected, desired, false, __ATOMIC_RELAXED, __ATOMIC_RELAXED);
+}
+static inline bool atomic64_compare_exchange_acquire(atomic64_t *v, uint64_t *expected, uint64_t desired) {
+    return __atomic_compare_exchange_n(&v->value, expected, desired, false, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED);
+}
+static inline bool atomic64_compare_exchange_release(atomic64_t *v, uint64_t *expected, uint64_t desired) {
+    return __atomic_compare_exchange_n(&v->value, expected, desired, false, __ATOMIC_RELEASE, __ATOMIC_RELAXED);
+}
+static inline bool atomic64_compare_exchange_acq_rel(atomic64_t *v, uint64_t *expected, uint64_t desired) {
+    return __atomic_compare_exchange_n(&v->value, expected, desired, false, __ATOMIC_ACQ_REL, __ATOMIC_RELAXED);
+}
+static inline uint64_t atomic64_fetch_add_relaxed(atomic64_t *v, uint64_t i) {
+    return __atomic_fetch_add(&v->value, i, __ATOMIC_RELAXED);
+}
+static inline uint64_t atomic64_fetch_add_acq_rel(atomic64_t *v, uint64_t i) {
+    return __atomic_fetch_add(&v->value, i, __ATOMIC_ACQ_REL);
+}
+#else
+static inline uint64_t atomic64_load_relaxed(const atomic64_t *v) { return atomic64_get(v); }
+static inline uint64_t atomic64_load_acquire(const atomic64_t *v) { return atomic64_get(v); }
+static inline void atomic64_store_relaxed(atomic64_t *v, uint64_t i) { atomic64_set(v, i); }
+static inline void atomic64_store_release(atomic64_t *v, uint64_t i) { atomic64_set(v, i); }
+static inline bool atomic64_compare_exchange_relaxed(atomic64_t *v, uint64_t *expected, uint64_t desired) {
+    arch_atomic64_lock();
+    uint64_t cur = v->value; uint64_t exp = *expected; bool ok = (cur == exp);
+    if (ok) v->value = desired; else *expected = cur;
+    arch_atomic64_unlock();
+    return ok;
+}
+static inline bool atomic64_compare_exchange_acquire(atomic64_t *v, uint64_t *expected, uint64_t desired) { return atomic64_compare_exchange_relaxed(v, expected, desired); }
+static inline bool atomic64_compare_exchange_release(atomic64_t *v, uint64_t *expected, uint64_t desired) { return atomic64_compare_exchange_relaxed(v, expected, desired); }
+static inline bool atomic64_compare_exchange_acq_rel(atomic64_t *v, uint64_t *expected, uint64_t desired) { return atomic64_compare_exchange_relaxed(v, expected, desired); }
+static inline uint64_t atomic64_fetch_add_relaxed(atomic64_t *v, uint64_t i) {
+    arch_atomic64_lock(); uint64_t old = v->value; v->value += i; arch_atomic64_unlock(); return old;
+}
+static inline uint64_t atomic64_fetch_add_acq_rel(atomic64_t *v, uint64_t i) { return atomic64_fetch_add_relaxed(v, i); }
+#endif
+
 
 #endif // BHARAT_ATOMIC_H

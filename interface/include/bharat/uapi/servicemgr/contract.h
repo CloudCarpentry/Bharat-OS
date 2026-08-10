@@ -17,7 +17,10 @@ typedef enum {
     SM_OP_STOP      = 3,
     SM_OP_QUERY     = 4,
     SM_OP_HEARTBEAT = 5,
-    SM_OP_SIGNAL_READY = 6
+    SM_OP_SIGNAL_READY = 6,
+    SM_OP_HANDOFF_BEGIN = 10,
+    SM_OP_HANDOFF_SERVICE = 11,
+    SM_OP_HANDOFF_COMMIT = 12
 } sm_opcode_t;
 
 typedef enum {

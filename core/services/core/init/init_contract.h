@@ -9,7 +9,7 @@
 
 #define INIT_SERVICE_ID_MAX 64
 
-typedef struct {
+typedef struct init_runtime_s {
     init_boot_context_t boot_ctx;
 
     // Abstracting manifest info instead of full copy to avoid big stack/heap alloc

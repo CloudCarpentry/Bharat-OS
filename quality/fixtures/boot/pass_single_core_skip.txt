@@ -1,0 +1,2 @@
+BOOT: kernel_main reached
+SKIP: SMP test requires >=2 online cores

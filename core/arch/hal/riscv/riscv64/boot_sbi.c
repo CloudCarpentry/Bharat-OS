@@ -9,8 +9,11 @@ void secondary_entry_arch_late(void) {
 }
 
 int hal_boot_start_cpu(uint32_t cpu_id, uint64_t entry_point) {
-    // Use SBI HSM (Hart State Management) ext to start hart
-    return 0;
+    (void)cpu_id;
+    (void)entry_point;
+    /* SBI HSM start is not wired yet; fail closed instead of falsely
+     * claiming that the hart was launched. */
+    return -1;
 }
 
 // Global boot info specific to RISC-V

@@ -49,4 +49,6 @@ int pci_enable_device(pci_device_t* dev);
 int pci_enable_msi(pci_device_t* dev, int vectors, void* desc_array);
 void pci_disable_msi(pci_device_t* dev);
 
+pci_device_t* pci_get_device_list(void);
+
 #endif // BHARAT_DEVICE_PCI_H

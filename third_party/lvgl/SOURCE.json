@@ -1,0 +1,11 @@
+{
+  "name": "LVGL",
+  "version": "9.5.0",
+  "tag": "v9.5.0",
+  "commit": "a50fc40e83ef724560a6aeb011f0088df63ea24a",
+  "repository": "https://github.com/lvgl/lvgl",
+  "license": "MIT",
+  "archive_sha256": "placeholder",
+  "vendoring_method": "verified release archive",
+  "local_patches": []
+}

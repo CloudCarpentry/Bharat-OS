@@ -22,6 +22,7 @@ The build-to-run pipeline enforces rigid boundaries between systems:
 
 - **Build (`tools/build/build_executor.py`)**: Responsible only for invoking CMake and producing canonical artifacts (like `kernel.elf`). It has no knowledge of how to format binaries for specific emulators or flashers.
 - **Package (`tools/package/packager.py`)**: Derives target-specific artifacts (like `raw_bin` or `flash_image`) from canonical build outputs through registered transforms. It creates deterministic execution plans.
+  The package step is fail-closed for the first boot service module: it must find a compiled `core/services/init` payload for general-purpose targets or `core/services/rt-supervisor` for RT MPU-only targets before emitting `init_module.bin`; it exits non-zero instead of fabricating a mock module when that produced artifact is missing.
 - **Run (`tools/run/`)**: Consumes a resolved, packaged run manifest. It does not parse original YAML targets or read from the build directory. It expects fully formed paths to packaged run artifacts.
 - **Flash/Debug (`tools/flash/`, `tools/debug/`)**: Consumes resolved, packaged manifests to communicate with external hardware or debugger stubs.
 

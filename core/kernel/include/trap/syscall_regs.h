@@ -23,6 +23,7 @@ typedef struct bh_syscall_ctx {
 } bh_syscall_ctx_t;
 
 bool arch_trap_is_syscall(const trap_frame_t *frame);
+bool arch_trap_status_interrupt_enabled(const trap_frame_t *frame);
 kstatus_t arch_trap_extract_syscall(const trap_frame_t *frame, bh_syscall_regs_t *out);
 void arch_trap_set_syscall_return(trap_frame_t *frame, uintptr_t value);
 

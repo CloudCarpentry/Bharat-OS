@@ -101,9 +101,14 @@ Install:
 - `ninja-build`
 - `clang`, `lld`, `llvm` (for `llvm-objcopy`)
 - `qemu-system-x86`, `qemu-system-arm`, `qemu-system-misc`
-- (optional) `opensbi` for RISC-V environments
+- OpenSBI firmware for the RISC-V QEMU runners
 - (optional) `openocd` for board flashing
 - (optional) `gdb-multiarch`
+
+The RV32 runner expects QEMU's standard
+`opensbi-riscv32-generic-fw_dynamic.bin` firmware. Some distributions package
+only the RV64 image; install the upstream OpenSBI ILP32 generic firmware into
+QEMU's firmware search directory before running the RV32 smoke targets.
 
 ```bash
 sudo apt update
@@ -224,6 +229,13 @@ Runtime command includes serial-first bring-up (`-nographic -monitor none -seria
 .\tools\build.ps1 run --target-yaml delivery/targets/qemu/riscv64_desktop_gui.yaml --interactive
 .\tools\build.ps1 all --target-yaml delivery/targets/qemu/arm32_mmu_lite_headless.yaml --smoke
 .\tools\build.ps1 all --target-yaml delivery/targets/qemu/riscv32_mmu_lite_headless.yaml --smoke
+# MPU-Only Headless (RTOS Profile)
+.\tools\build.ps1 all --target-yaml delivery/targets/qemu/arm32_rtos_mpu_headless.yaml --smoke
+.\tools\build.ps1 all --target-yaml delivery/targets/qemu/riscv32_rtos_mpu_headless.yaml --smoke
+# 64-bit MMU-Lite RTOS Headless
+.\tools\build.ps1 all --target-yaml delivery/targets/qemu/arm64_rtos_mmu_lite_headless.yaml --smoke
+.\tools\build.ps1 all --target-yaml delivery/targets/qemu/riscv64_rtos_mmu_lite_headless.yaml --smoke
+.\tools\build.ps1 all --target-yaml delivery/targets/qemu/x86_64_rtos_mmu_lite_headless.yaml --smoke
 ```
 
 ```bash
@@ -236,31 +248,52 @@ Runtime command includes serial-first bring-up (`-nographic -monitor none -seria
 ./tools/build.sh run --target-yaml delivery/targets/qemu/riscv64_desktop_gui.yaml --interactive
 ./tools/build.sh all --target-yaml delivery/targets/qemu/arm32_mmu_lite_headless.yaml --smoke
 ./tools/build.sh all --target-yaml delivery/targets/qemu/riscv32_mmu_lite_headless.yaml --smoke
+# MPU-Only Headless (RTOS Profile)
+./tools/build.sh all --target-yaml delivery/targets/qemu/arm32_rtos_mpu_headless.yaml --smoke
+./tools/build.sh all --target-yaml delivery/targets/qemu/riscv32_rtos_mpu_headless.yaml --smoke
+# 64-bit MMU-Lite RTOS Headless
+./tools/build.sh all --target-yaml delivery/targets/qemu/arm64_rtos_mmu_lite_headless.yaml --smoke
+./tools/build.sh all --target-yaml delivery/targets/qemu/riscv64_rtos_mmu_lite_headless.yaml --smoke
+./tools/build.sh all --target-yaml delivery/targets/qemu/x86_64_rtos_mmu_lite_headless.yaml --smoke
 ```
 
 ## 5.1 Canonical headless smoke-test commands (all 5 architectures)
 
 All commands verified with `[Run] PASS` on QEMU. Build + package + run in one shot.
 
-| Architecture | Profile       | Target YAML                      |
-| ------------ | ------------- | -------------------------------- |
-| x86_64       | Desktop GP    | `x86_64_desktop_headless.yaml`   |
-| arm64        | Desktop GP    | `arm64_desktop_headless.yaml`    |
-| riscv64      | Desktop GP    | `riscv64_desktop_headless.yaml`  |
-| arm32        | Edge MMU-Lite | `arm32_mmu_lite_headless.yaml`   |
-| riscv32      | Edge MMU-Lite | `riscv32_mmu_lite_headless.yaml` |
+| Architecture | Profile       | Memory Model | Target YAML                       |
+| ------------ | ------------- | ------------ | --------------------------------- |
+| x86_64       | Desktop GP    | MMU-Full     | `x86_64_desktop_headless.yaml`    |
+| arm64        | Desktop GP    | MMU-Full     | `arm64_desktop_headless.yaml`     |
+| riscv64      | Desktop GP    | MMU-Full     | `riscv64_desktop_headless.yaml`   |
+| arm32        | Edge MMU-Lite | MMU-Lite     | `arm32_mmu_lite_headless.yaml`    |
+| riscv32      | Edge MMU-Lite | MMU-Lite     | `riscv32_mmu_lite_headless.yaml`  |
+| arm32        | RTOS MPU      | MPU-Only     | `arm32_rtos_mpu_headless.yaml`    |
+| riscv32      | RTOS MPU      | MPU-Only     | `riscv32_rtos_mpu_headless.yaml`  |
+| arm64        | RTOS MMU-Lite | MMU-Lite     | `arm64_rtos_mmu_lite_headless.yaml` |
+| riscv64      | RTOS MMU-Lite | MMU-Lite     | `riscv64_rtos_mmu_lite_headless.yaml` |
+| x86_64       | RTOS MMU-Lite | MMU-Lite     | `x86_64_rtos_mmu_lite_headless.yaml` |
 
 ```powershell
 # PowerShell (Windows)
 
-# 64-bit desktop-class targets
+# 64-bit desktop-class targets (MMU-Full)
 .\tools\build.ps1 all --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml --smoke
 .\tools\build.ps1 all --target-yaml delivery/targets/qemu/arm64_desktop_headless.yaml --smoke
 .\tools\build.ps1 all --target-yaml delivery/targets/qemu/riscv64_desktop_headless.yaml --smoke
 
-# 32-bit edge/embedded targets (MMU-Lite, single core, EDGE device profile)
+# 32-bit edge/embedded targets (MMU-Lite)
 .\tools\build.ps1 all --target-yaml delivery/targets/qemu/arm32_mmu_lite_headless.yaml --smoke
 .\tools\build.ps1 all --target-yaml delivery/targets/qemu/riscv32_mmu_lite_headless.yaml --smoke
+
+# MPU-Only targets
+.\tools\build.ps1 all --target-yaml delivery/targets/qemu/arm32_rtos_mpu_headless.yaml --smoke
+.\tools\build.ps1 all --target-yaml delivery/targets/qemu/riscv32_rtos_mpu_headless.yaml --smoke
+
+# 64-bit MMU-Lite targets
+.\tools\build.ps1 all --target-yaml delivery/targets/qemu/arm64_rtos_mmu_lite_headless.yaml --smoke
+.\tools\build.ps1 all --target-yaml delivery/targets/qemu/riscv64_rtos_mmu_lite_headless.yaml --smoke
+.\tools\build.ps1 all --target-yaml delivery/targets/qemu/x86_64_rtos_mmu_lite_headless.yaml --smoke
 ```
 
 ## 5.2 Canonical headless run commands (WSL/Linux/macOS)
@@ -377,3 +410,11 @@ python3 tools/check_profiles.py
 - Root wrappers (`/build.sh`, `/build.ps1`) are the stable commands users should run.
 - `tools/build.sh` and `tools/build.ps1` are compatibility shims.
 - New build/run feature behavior must be implemented in `tools/build.py`.
+# Userspace runtime model
+
+YAML targets may select an independent root userspace policy with
+`userspace.runtime_model`: `direct`, `static`, `light`, or `full`. The target
+resolver defaults omitted values to `full` during migration. It passes the
+resolved `BHARAT_USERSPACE_RUNTIME_MODEL` to CMake and packages exactly one root:
+`user_smoke`, `rt-supervisor`, `init-lite`, or `init`, respectively. Unknown
+values and the unsupported top-level `runtime_model` spelling fail validation.

@@ -221,10 +221,10 @@ int mk_dispatch_message(mk_channel_t *channel, urpc_msg_t *msg) {
     // 6. Action / routing
     switch (msg->type) {
         case MK_MSG_TYPE_ACK:
-            mk_proto_txn_complete(msg->msg_id, MK_REASON_SUCCESS);
+            bh_mk_legacy_tx_complete_by_id(msg->msg_id, K_OK);
             break;
         case MK_MSG_TYPE_NACK:
-            mk_proto_txn_complete(msg->msg_id, MK_REASON_UNSUPPORTED);
+            bh_mk_legacy_tx_complete_by_id(msg->msg_id, K_ERR_UNSUPPORTED);
             break;
 
         case MK_MSG_FRAME_ALLOC_REQ:
@@ -272,10 +272,10 @@ int mk_dispatch_message(mk_channel_t *channel, urpc_msg_t *msg) {
             break;
 
         case MK_MSG_THREAD_HANDOFF_ACK:
-            mk_proto_txn_complete(msg->msg_id, MK_REASON_SUCCESS);
+            bh_mk_legacy_tx_complete_by_id(msg->msg_id, K_OK);
             break;
         case MK_MSG_THREAD_HANDOFF_NACK:
-            mk_proto_txn_complete(msg->msg_id, MK_REASON_UNSUPPORTED);
+            bh_mk_legacy_tx_complete_by_id(msg->msg_id, K_ERR_UNSUPPORTED);
             break;
 
         default:
@@ -284,4 +284,13 @@ int mk_dispatch_message(mk_channel_t *channel, urpc_msg_t *msg) {
     }
 
     return 0;
+}
+
+int mk_dispatch_legacy_adapter(const bh_mk_wire_message_t *wire) {
+    if (!wire) {
+        return K_ERR_INVALID_ARG;
+    }
+    /* The v1 fabric authentication descriptor cannot be losslessly mapped to
+     * the legacy token field. Reject instead of weakening authorization. */
+    return K_ERR_UNSUPPORTED;
 }

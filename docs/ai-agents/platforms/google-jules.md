@@ -1,29 +1,60 @@
 ---
 title: Google/Jules-Style Agent Notes
-status: Draft
+status: Active
 owner: Documentation Working Group
-last_updated: 2026-04-25
+last_updated: 2026-08-05
 tags:
   - docs
   - ai-agents
   - platforms
 see_also:
   - README.md
+  - AGENTS.md
 ---
-# Google/Jules-Style Agent Notes
+# Google/Jules-Style Agent Policy & Verification Guide
 
-## Recommended Inputs
+## Primary Directives for Google Jules
 
-- Scoped task definition (one feature/fix per request)
-- Repository-level standards and guardrails
-- Build/test commands for touched components
+1. **Mandatory QEMU Installation**:
+   Prior to executing builds or tests, ensure all target hardware QEMU emulators are installed:
+   - `qemu-system-x86_64` (x86_64)
+   - `qemu-system-aarch64` (arm64)
+   - `qemu-system-riscv64` (riscv64)
+   - `qemu-system-arm` (arm32)
+   - `qemu-system-riscv32` (riscv32)
 
-## Best Practices
+   *Package setup command (Debian/Ubuntu):*
+   ```bash
+   sudo apt-get update && sudo apt-get install -y qemu-system-x86 qemu-system-arm qemu-system-misc
+   ```
 
-- Keep prompts deterministic and acceptance-test oriented.
-- Separate "analysis" from "code generation" steps.
-- Require output to include changed files and validations.
+2. **Mandatory Build & Execution Matrix**:
+   Google Jules must compile, build, and execute all target configurations (headless smoke and interactive GUI runs) to verify boot success across all 5 supported architectures:
 
-## Workflow Suggestion
+   ```bash
+   # WSL / Linux / macOS
+   ./tools/build.sh all --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml --smoke
+   ./tools/build.sh all --target-yaml delivery/targets/qemu/x86_64_desktop_gui.yaml --interactive
+   ./tools/build.sh all --target-yaml delivery/targets/qemu/arm64_desktop_headless.yaml --smoke
+   ./tools/build.sh all --target-yaml delivery/targets/qemu/arm64_desktop_gui.yaml --interactive
+   ./tools/build.sh all --target-yaml delivery/targets/qemu/riscv64_desktop_headless.yaml --smoke
+   ./tools/build.sh run --target-yaml delivery/targets/qemu/riscv64_desktop_gui.yaml --interactive
+   ./tools/build.sh all --target-yaml delivery/targets/qemu/arm32_mmu_lite_headless.yaml --smoke
+   ./tools/build.sh all --target-yaml delivery/targets/qemu/riscv32_mmu_lite_headless.yaml --smoke
+   ```
 
-Adopt a task card format: objective, constraints, files in scope, checks, and definition of done.
+   ```powershell
+   # Windows PowerShell
+   .\tools\build.ps1 all --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml --smoke
+   .\tools\build.ps1 all --target-yaml delivery/targets/qemu/x86_64_desktop_gui.yaml --interactive
+   .\tools\build.ps1 all --target-yaml delivery/targets/qemu/arm64_desktop_headless.yaml --smoke
+   .\tools\build.ps1 all --target-yaml delivery/targets/qemu/arm64_desktop_gui.yaml --interactive
+   .\tools\build.ps1 all --target-yaml delivery/targets/qemu/riscv64_desktop_headless.yaml --smoke
+   .\tools\build.ps1 run --target-yaml delivery/targets/qemu/riscv64_desktop_gui.yaml --interactive
+   .\tools\build.ps1 all --target-yaml delivery/targets/qemu/arm32_mmu_lite_headless.yaml --smoke
+   .\tools\build.ps1 all --target-yaml delivery/targets/qemu/riscv32_mmu_lite_headless.yaml --smoke
+   ```
+
+3. **No Unverified Completion**:
+   Never mark a task `PASS` without empirical runtime evidence (`[Run] PASS`). If any emulator or toolchain is missing, mark as `BLOCKED` until installed.
+

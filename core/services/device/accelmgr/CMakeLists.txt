@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.20)
 project(accelmgr C ASM)
 
 # Add source files
-set(SOURCES main.c)
+set(SOURCES main.c accelmgr_broker.c)
 
 # Create executable
 add_executable(accelmgr ${SOURCES})
@@ -17,6 +17,7 @@ target_include_directories(accelmgr PRIVATE
 # Link against common runtime library and IPC library
 target_link_libraries(accelmgr PRIVATE
     bharat_libruntime
+    bharat_service_runtime
 )
 
 bharat_configure_userspace_binary(accelmgr)

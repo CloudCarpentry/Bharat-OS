@@ -28,7 +28,7 @@ void init_status_report(const init_service_runtime_t *runtimes, size_t count) {
         bharat_runtime_log(": ");
         bharat_runtime_log(state_to_str(rt->state));
 
-        if (rt->state == INIT_SERVICE_FAILED) {
+        if (rt->state == INIT_SERVICE_STATE_FAILED) {
              bharat_runtime_log(" (Failed)");
         }
     }

@@ -107,10 +107,10 @@ uint64_t hal_irq_timer_vector(void) {
 }
 
 uint64_t hal_cpu_get_fault_address(const void *trap_frame) {
-    (void)trap_frame;
-    uint32_t stval;
-    __asm__ volatile("csrr %0, stval" : "=r"(stval));
-    return stval;
+    if (!trap_frame) return 0;
+    const bh_riscv_raw_trap_frame_t *raw =
+        (const bh_riscv_raw_trap_frame_t *)trap_frame;
+    return (uint64_t)raw->fault_addr;
 }
 
 __attribute__((weak)) void hal_cpu_dump_trap_frame(const void *trap_frame) {
@@ -137,11 +137,11 @@ void hal_cpu_dump_state(void) {
 }
 
 void hal_cpu_enable_interrupts(void) {
-  __asm__ volatile("csrci sstatus, 2");
+  __asm__ volatile("csrsi sstatus, 2" ::: "memory");
 }
 
 void hal_cpu_disable_interrupts(void) {
-  __asm__ volatile("csrci sstatus, 2");
+  __asm__ volatile("csrci sstatus, 2" ::: "memory");
 }
 
 extern void trap_entry(void);

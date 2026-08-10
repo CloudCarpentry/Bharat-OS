@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: MIT
+[BH-DIAG] BOOT_STAGE stage=BOOT_KERNEL_ENTRY status=SUCCEEDED
+[BH-DIAG] BOOT_STAGE stage=BOOT_USER_ENTRY_PREPARED status=SUCCEEDED
+[BH-DIAG] BOOT_STAGE stage=BOOT_USER_ENTRY_ATTEMPTED status=FAILED
+general protection fault at user entry

@@ -13,6 +13,9 @@ typedef enum {
 
 #include "init_status.h"
 #include <bharat/uapi/init/init_boot_context.h>
+#ifdef BHARAT_PERSONALITY_NATIVE
+#undef BHARAT_PERSONALITY_NATIVE
+#endif
 #include <bharat/uapi/personality/personality.h>
 
 #include <bharat/uapi/init/init_capability.h>
@@ -22,18 +25,42 @@ typedef uint64_t bharat_init_board_mask_t;
 typedef uint64_t bharat_init_personality_mask_t;
 
 // Profile mask flags (mapped to shared uapi profile enum values)
+#ifndef BHARAT_INIT_PROFILE_TINY
 #define BHARAT_INIT_PROFILE_TINY            ((bharat_init_profile_mask_t)INIT_PROFILE_TINY)
+#endif
+#ifndef BHARAT_INIT_PROFILE_SMALL
 #define BHARAT_INIT_PROFILE_SMALL           ((bharat_init_profile_mask_t)INIT_PROFILE_SMALL)
+#endif
+#ifndef BHARAT_INIT_PROFILE_EMBEDDED_RICH
 #define BHARAT_INIT_PROFILE_EMBEDDED_RICH   ((bharat_init_profile_mask_t)INIT_PROFILE_EMBEDDED_RICH)
+#endif
+#ifndef BHARAT_INIT_PROFILE_RT
 #define BHARAT_INIT_PROFILE_RT              ((bharat_init_profile_mask_t)INIT_PROFILE_RT)
+#endif
+#ifndef BHARAT_INIT_PROFILE_MOBILE
 #define BHARAT_INIT_PROFILE_MOBILE          ((bharat_init_profile_mask_t)INIT_PROFILE_MOBILE)
+#endif
+#ifndef BHARAT_INIT_PROFILE_DESKTOP
 #define BHARAT_INIT_PROFILE_DESKTOP         ((bharat_init_profile_mask_t)INIT_PROFILE_DESKTOP)
+#endif
+#ifndef BHARAT_INIT_PROFILE_DRONE
 #define BHARAT_INIT_PROFILE_DRONE           ((bharat_init_profile_mask_t)INIT_PROFILE_DRONE)
+#endif
+#ifndef BHARAT_INIT_PROFILE_CLOUD
 #define BHARAT_INIT_PROFILE_CLOUD           ((bharat_init_profile_mask_t)INIT_PROFILE_CLOUD)
+#endif
+#ifndef BHARAT_INIT_PROFILE_AUTOMOTIVE
 #define BHARAT_INIT_PROFILE_AUTOMOTIVE      ((bharat_init_profile_mask_t)INIT_PROFILE_AUTOMOTIVE)
+#endif
+#ifndef BHARAT_INIT_PROFILE_TV
 #define BHARAT_INIT_PROFILE_TV              ((bharat_init_profile_mask_t)INIT_PROFILE_TV)
+#endif
+#ifndef BHARAT_INIT_PROFILE_APPLIANCE
 #define BHARAT_INIT_PROFILE_APPLIANCE       ((bharat_init_profile_mask_t)INIT_PROFILE_APPLIANCE)
+#endif
+#ifndef BHARAT_INIT_PROFILE_WATCH
 #define BHARAT_INIT_PROFILE_WATCH           ((bharat_init_profile_mask_t)INIT_PROFILE_WATCH)
+#endif
 
 // Personality mask flags
 #define BHARAT_INIT_PERSONALITY_NATIVE      (1 << BHARAT_PERSONALITY_NATIVE)

@@ -106,6 +106,9 @@ typedef struct vm_address_space address_space_t;
 #include "mm/aspace.h"
 
 int vmm_init(void);
+int mm_global_init(void);
+int mm_cpu_prepare(uint32_t cpu_id);
+int mm_cpu_online(uint32_t cpu_id);
 int vmm_map_page(virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags);
 int vmm_unmap_page(virt_addr_t vaddr);
 phys_addr_t vmm_get_kernel_root(void);

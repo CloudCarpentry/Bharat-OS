@@ -1,3 +1,4 @@
+#include "trap_offsets.inc"
 #if __riscv_xlen == 64
 #define LREG ld
 #define SREG sd
@@ -18,24 +19,24 @@
 arch_context_switch:
     beqz a0, .L_restore
 
-    SREG s0,  0*REGBYTES(a0)
-    SREG s1,  1*REGBYTES(a0)
-    SREG s2,  2*REGBYTES(a0)
-    SREG s3,  3*REGBYTES(a0)
-    SREG s4,  4*REGBYTES(a0)
-    SREG s5,  5*REGBYTES(a0)
-    SREG s6,  6*REGBYTES(a0)
-    SREG s7,  7*REGBYTES(a0)
-    SREG s8,  8*REGBYTES(a0)
-    SREG s9,  9*REGBYTES(a0)
-    SREG s10, 10*REGBYTES(a0)
-    SREG s11, 11*REGBYTES(a0)
+    SREG s0,  BH_CTX_REG0_OFF(a0)
+    SREG s1,  BH_CTX_REG1_OFF(a0)
+    SREG s2,  BH_CTX_REG2_OFF(a0)
+    SREG s3,  BH_CTX_REG3_OFF(a0)
+    SREG s4,  BH_CTX_REG4_OFF(a0)
+    SREG s5,  BH_CTX_REG5_OFF(a0)
+    SREG s6,  BH_CTX_REG6_OFF(a0)
+    SREG s7,  BH_CTX_REG7_OFF(a0)
+    SREG s8,  BH_CTX_REG8_OFF(a0)
+    SREG s9,  BH_CTX_REG9_OFF(a0)
+    SREG s10, BH_CTX_REG10_OFF(a0)
+    SREG s11, BH_CTX_REG11_OFF(a0)
 
     csrr t0, sstatus
-    SREG t0, 12*REGBYTES(a0)
+    SREG t0, BH_CTX_REG12_OFF(a0)
 
-    SREG ra, 16*REGBYTES(a0)
-    SREG sp, 17*REGBYTES(a0)
+    SREG ra, BH_CTX_PC_OFF(a0)
+    SREG sp, BH_CTX_SP_OFF(a0)
 
     addi sp, sp, -(2*REGBYTES)
     SREG a0, 0*REGBYTES(sp)
@@ -55,24 +56,24 @@ arch_context_switch:
     LREG a0, 0*REGBYTES(sp)
     addi sp, sp, (2*REGBYTES)
 
-    LREG sp, 17*REGBYTES(a1)
-    LREG ra, 16*REGBYTES(a1)
+    LREG sp, BH_CTX_SP_OFF(a1)
+    LREG ra, BH_CTX_PC_OFF(a1)
 
-    LREG t0, 12*REGBYTES(a1)
+    LREG t0, BH_CTX_REG12_OFF(a1)
     csrw sstatus, t0
 
-    LREG s0,  0*REGBYTES(a1)
-    LREG s1,  1*REGBYTES(a1)
-    LREG s2,  2*REGBYTES(a1)
-    LREG s3,  3*REGBYTES(a1)
-    LREG s4,  4*REGBYTES(a1)
-    LREG s5,  5*REGBYTES(a1)
-    LREG s6,  6*REGBYTES(a1)
-    LREG s7,  7*REGBYTES(a1)
-    LREG s8,  8*REGBYTES(a1)
-    LREG s9,  9*REGBYTES(a1)
-    LREG s10, 10*REGBYTES(a1)
-    LREG s11, 11*REGBYTES(a1)
+    LREG s0,  BH_CTX_REG0_OFF(a1)
+    LREG s1,  BH_CTX_REG1_OFF(a1)
+    LREG s2,  BH_CTX_REG2_OFF(a1)
+    LREG s3,  BH_CTX_REG3_OFF(a1)
+    LREG s4,  BH_CTX_REG4_OFF(a1)
+    LREG s5,  BH_CTX_REG5_OFF(a1)
+    LREG s6,  BH_CTX_REG6_OFF(a1)
+    LREG s7,  BH_CTX_REG7_OFF(a1)
+    LREG s8,  BH_CTX_REG8_OFF(a1)
+    LREG s9,  BH_CTX_REG9_OFF(a1)
+    LREG s10, BH_CTX_REG10_OFF(a1)
+    LREG s11, BH_CTX_REG11_OFF(a1)
 
     addi sp, sp, -(4*REGBYTES)
     SREG a0, 0*REGBYTES(sp)
@@ -85,6 +86,15 @@ arch_context_switch:
     addi sp, sp, (4*REGBYTES)
 
     ret
+
+.global riscv_thread_entry_stub
+.type riscv_thread_entry_stub, @function
+riscv_thread_entry_stub:
+    mv a0, s0
+    jalr s1
+    j sched_thread_exit_trampoline
+
+
 
 .global riscv_fp_state_save
 .type riscv_fp_state_save, @function

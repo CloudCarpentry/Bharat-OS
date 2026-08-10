@@ -6,14 +6,14 @@
  * sensitive kernel contexts (e.g. IRQs or early boot).
  */
 
-#include "arch/memops.h"
+#include "hal/hal_memops.h"
 #include <stddef.h>
 #include <stdint.h>
 
-void *arch_memcpy_gpr_bulk(void *dst, const void *src, size_t n);
-void *arch_memset_gpr_bulk(void *dst, int c, size_t n);
+void *hal_memcpy_gpr_bulk(void *dst, const void *src, size_t n);
+void *hal_memset_gpr_bulk(void *dst, int c, size_t n);
 
-void *arch_memcpy(void *dst, const void *src, size_t n, uint32_t flags) {
+void *hal_memcpy(void *dst, const void *src, size_t n, uint32_t flags) {
     (void)flags;
     /*
      * Keep ARM64 memcpy on the scalar implementation for now.
@@ -22,15 +22,15 @@ void *arch_memcpy(void *dst, const void *src, size_t n, uint32_t flags) {
      * targets. Until all bulk-copy callers and assembly fast paths are proven
      * alignment-safe under those settings, prefer correctness over throughput.
      */
-    return arch_memcpy_scalar(dst, src, n);
+    return hal_memcpy_scalar(dst, src, n);
 }
 
-void *arch_memset(void *dst, int c, size_t n, uint32_t flags) {
+void *hal_memset(void *dst, int c, size_t n, uint32_t flags) {
     (void)flags;
-    return arch_memset_scalar(dst, c, n);
+    return hal_memset_scalar(dst, c, n);
 }
 
-void *arch_memmove(void *dst, const void *src, size_t n, uint32_t flags) {
+void *hal_memmove(void *dst, const void *src, size_t n, uint32_t flags) {
     // For now, memmove defers to scalar conservative overlap handling.
-    return arch_memmove_scalar(dst, src, n);
+    return hal_memmove_scalar(dst, src, n);
 }

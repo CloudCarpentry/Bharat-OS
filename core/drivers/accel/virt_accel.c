@@ -1,3 +1,4 @@
+#include <hal/hal_memops.h>
 #include <bharat/accel/accel.h>
 #include <kernel/status.h>
 
@@ -57,7 +58,15 @@ static int virt_accel_submit_job(struct bharat_accel_device *dev, void *job_desc
 
     // Perform actual FP32 ReLU element-by-element
     for (size_t i = 0; i < job->input_elements; i++) {
-        job->output[i] = job->input[i] > 0.0f ? job->input[i] : 0.0f;
+        // use an integer comparison instead of float comparison
+        uint32_t val;
+        hal_memcpy(&val, &job->input[i], 4, BH_MEMCTX_F_DEFAULT);
+        if ((val & 0x80000000) == 0) {
+            job->output[i] = job->input[i];
+        } else {
+            uint32_t zero = 0;
+            hal_memcpy(&job->output[i], &zero, 4, BH_MEMCTX_F_DEFAULT);
+        }
     }
 
     return K_OK;

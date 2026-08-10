@@ -1,0 +1,58 @@
+name: riscv32_rtos_mpu_headless
+kind: qemu_target
+
+arch: riscv32
+board: virt
+device_profile: rtos
+personality_profile: native
+execution_profile: rt
+
+build:
+  cmake_preset: riscv32-qemu-mmu-lite-headless
+  cmake_defs:
+    BHARAT_ARCH_FAMILY: RISCV32
+    BHARAT_DEVICE_PROFILE: RTOS
+    BHARAT_PERSONALITY_PROFILE: NATIVE
+    BHARAT_TARGET_BOARD: virt
+    BHARAT_BOOT_GUI: OFF
+    BHARAT_PROFILE_MMU_FULL: OFF
+    BHARAT_PROFILE_MMU_LITE: OFF
+    BHARAT_PROFILE_MPU_ONLY: ON
+    BHARAT_ENABLE_MMU: OFF
+    BHARAT_ENABLE_MPU: ON
+    BHARAT_ENABLE_ADVANCED_VM: OFF
+    BHARAT_ENABLE_IOMMU: OFF
+    BHARAT_ENABLE_DMA_MAP: OFF
+    BHARAT_ENABLE_COW: OFF
+    BHARAT_ENABLE_DEMAND_PAGING: OFF
+    BHARAT_ENABLE_SHARED_MEMORY: OFF
+    BHARAT_ENABLE_NUMA: OFF
+    BHARAT_ENABLE_MEMORY_STATS: OFF
+
+kernel:
+  canonical_artifacts:
+    elf: kernel/kernel.elf
+    map: kernel/kernel.map
+
+boot:
+  protocol: opensbi_payload
+  artifact_format: elf
+  dtb:
+    mode: qemu_generated
+
+package:
+  transforms: []
+
+run:
+  backend: qemu
+  machine: virt
+  memory: 256M
+  nographic: true
+  serial:
+    - stdio
+  boot_artifact: kernel/kernel.elf
+
+debug:
+  backend: gdb_remote
+  stop_on_entry: false
+  gdb_port: 1234

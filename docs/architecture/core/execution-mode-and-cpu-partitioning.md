@@ -69,3 +69,12 @@ This framework scaffolds the mechanism for CPU partitioning. Future work will in
 - Implementing the Service Supervisor and runtime policy managers.
 - Advanced capabilities-based runtime thread reassignment.
 - EDF (Earliest Deadline First) scheduler class integration.
+
+## Boot publication and admission invariant
+
+The BSP resolves the execution mode and validates the complete CPU-partition
+descriptor before `sched_global_init()` or `sched_system_enable()` publishes
+the scheduler.  The published descriptor is read-only after initialization.
+Missing partition descriptors, spare partitions with `NONE` classes, and empty
+class requests deny admission; bootstrap code must use an explicit bootstrap
+path rather than relying on a fail-open production admission API.

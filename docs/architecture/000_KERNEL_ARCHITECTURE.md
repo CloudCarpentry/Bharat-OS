@@ -23,6 +23,8 @@ Below are production-ready versions of those files.
 
 # `KERNEL_ARCHITECTURE.md`
 
+> **Note:** The reference to `core/process-scheduler-architecture.md` is obsolete and has been removed.
+
 # Bharat-OS Kernel Architecture
 
 ## Overview
@@ -204,11 +206,14 @@ Features include:
 
 The scheduler manages CPU time across tasks.
 
-### Sovereign Owner-Local Execution Model
+### Sovereign Owner-Local Execution Model and Real-Time (RT) Context
 In accordance with Bharat-OS's distributed ownership model, the scheduler implements a **Sovereign Owner-Local Execution Model**. This architecture physically decouples stable thread identity (`bh_thread_t`) on the home core (the identity authority) from core-local mutable scheduling state (`sched_entity_t`).
+
+For Real-Time (RT) compliance, this model inherently eliminates cross-core lock contention and cache bouncing on scheduling hot paths. RT priority queues, deadline monitoring, and context switching operate entirely on core-local, strictly-bounded structures, satisfying the bounded latency requirement of hard RT and mixed-critical systems.
 
 *   **Stable Thread Identity (`bh_thread_t`)**: Associated permanently with the TID's home CPU and stable forever.
 *   **Owner-Local Execution Entity (`sched_entity_t`)**: Stored strictly within the active CPU's sovereign scheduling pool. All queue operations, CFS tree insertions, deadlines, priority updates, and context switches manipulate this local entity.
+*   **Per-CPU Structures for RT Isolation**: Runqueues (`sched_rq_t`), capability namespaces (`capability_table_t`), and object pools are instantiated strictly per-core. In an RT mode (e.g., `PROFILE_KERNEL_RT`), CPU partitions ensure strict isolation where specific cores may act entirely tickless while processing purely local, RT-bound tasks, without perturbation from generic-purpose workloads.
 *   **Five-Phase Transactional Migration**: Migration is executed using a five-phase transaction protocol (`RESERVE → FREEZE → STAGE → OWNER_COMMIT → ACTIVATE → RETIRE`) with CAS-like verification on the home CPU and reliable, slot-designated completion cells.
 
 For detailed design decisions, state transitions, and idempotency guarantees, see [ADR-016: Owner-Local Scheduler Entities and Five-Phase Transactional Migration](../adr/ADR-016-owner-local-scheduler-entities.md).

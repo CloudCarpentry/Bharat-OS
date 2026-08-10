@@ -1,6 +1,7 @@
 #include "sched/sched.h"
 #include <bharat/cpu_local.h>
 #include "sched/sched_deg.h"
+#include "console/console_core.h"
 
 #include "sched/algo_matrix.h"
 #include "../../staging/formal/formal_verif.h"
@@ -16,6 +17,7 @@
 #include "slab.h"
 #include "ipc_async.h"
 #include "mm/mm_aspace_switch.h"
+#include "personality/personality_hooks.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -36,6 +38,7 @@ static volatile uint64_t g_next_process_id = 1U;
 
 
 uint8_t g_sched_initialized = 0U;
+uint8_t g_sched_runtime_protected = 0U;
 uint32_t g_active_core_count = 1U;
 
 #if defined(BHARAT_ENABLE_KERNEL_SELFTESTS)
@@ -537,38 +540,84 @@ static bh_thread_t *sched_create_bootstrap_thread(bh_process_t *parent,
 }
 
 void sched_init(void) {
+  (void)sched_global_init(sched_configured_core_count());
+}
+
+int sched_global_init(uint32_t core_count) {
+  /*
+   * Ownership: global scheduler bootstrap is BSP-owned.  This call reserves
+   * and initializes every bounded per-core runqueue before AP launch; later
+   * sched_cpu_online() calls may only publish the caller's own runqueue.
+   */
   if (g_sched_initialized != 0U) {
-#if defined(BHARAT_ENABLE_KERNEL_SELFTESTS)
-    extern void sched_test_reset(void);
-    sched_test_reset();
-#else
-    return;
-#endif
+    return (core_count <= g_active_core_count) ? 0 : -1;
+  }
+  if (core_count == 0U) {
+    return -1;
+  }
+  if (core_count > MAX_SUPPORTED_CORES) {
+    core_count = MAX_SUPPORTED_CORES;
   }
 
-  g_active_core_count = sched_configured_core_count();
+  g_active_core_count = core_count;
 
   g_next_thread_id = 1U;
   g_next_process_id = 1U;
 
-
-
-
-
   sched_reset_core_runqueues();
 
   bh_process_t *idle_process = process_create("idle_process");
+  if (!idle_process) {
+    return -1;
+  }
   for (uint32_t core = 0; core < g_active_core_count; ++core) {
     bh_thread_t *idle = sched_create_bootstrap_thread(
         idle_process, core, SCHED_BOOTSTRAP_IDLE, sched_idle_task, 0U, 0U);
+    if (!idle) {
+      return -1;
+    }
     g_cpu_locals[core].runqueue.idle_thread = idle;
     g_cpu_locals[core].runqueue.current_thread = idle;
 #if !defined(TESTING)
-    (void)sched_create_bootstrap_thread(idle_process, core, SCHED_BOOTSTRAP_MONITOR,
-                                        sched_monitor_task, SCHED_MAX_PRIORITY, 1U);
+    if (!sched_create_bootstrap_thread(idle_process, core, SCHED_BOOTSTRAP_MONITOR,
+                                       sched_monitor_task, 2U, 1U)) {
+      return -1;
+    }
 #endif
   }
   g_sched_initialized = 1U;
+  return (g_sched_initialized != 0U) ? 0 : -1;
+}
+
+int sched_cpu_prepare(uint32_t cpu_id) {
+  if (g_sched_initialized == 0U || cpu_id >= g_active_core_count) {
+    return -1;
+  }
+  return 0;
+}
+
+int sched_cpu_online(uint32_t cpu_id) {
+  /*
+   * Per-core online is core-local: do not reset or allocate foreign runqueues
+   * from an AP.  Global runqueue storage was reserved by sched_global_init().
+   */
+  if (sched_cpu_prepare(cpu_id) != 0) {
+    return -1;
+  }
+  return 0;
+}
+
+int sched_system_enable(void) {
+  if (g_sched_initialized == 0U) {
+    return -1;
+  }
+  /*
+   * After boot publishes the scheduler, destructive selftest resets are
+   * forbidden: runtime tests may exercise scheduler APIs, but cannot clear
+   * live idle/init threads or process address spaces.
+   */
+  g_sched_runtime_protected = 1U;
+  return 0;
 }
 
 bh_process_t *process_create(const char *name) {
@@ -586,6 +635,11 @@ bh_process_t *process_create(const char *name) {
   slot->process.addr_space = mm_create_address_space();
   slot->process.main_thread = NULL;
   slot->process.security_sandbox_ctx = NULL;
+  slot->process.personality.kind = BH_PERSONALITY_NATIVE;
+  slot->process.personality.error_domain = BH_ERROR_DOMAIN_NATIVE;
+  slot->process.personality.handle_space = BH_HANDLE_SPACE_NATIVE;
+  slot->process.personality.abi_flags = 0U;
+  slot->process.personality_ops = personality_get_current_ops();
 
   // Explicit multikernel ownership metadata
   slot->process.owner_core_id = hal_cpu_get_id();
@@ -829,6 +883,10 @@ bh_thread_t *sched_pick_next_ready(uint32_t core_id) {
   if (!next) {
       return rq->idle_thread;
   }
+  if (next != rq->idle_thread) {
+      console_write_raw("[PICK_NON_IDLE]\n", 17);
+  }
+  return next;
 
   // Fallback: If not admissible on this core (e.g. from dynamic constraint update while queued),
   // try to find a valid core, else fallback to idle.
@@ -907,6 +965,7 @@ void sched_switch_to(bh_thread_t *next, uint32_t core_id) {
     }
   }
 
+  console_write_raw("[STEP_A]\n", 9);
   sched_invariant_on_switch(current, next, core_id);
 
   next->state = THREAD_STATE_RUNNING;
@@ -914,16 +973,21 @@ void sched_switch_to(bh_thread_t *next, uint32_t core_id) {
   rq->context_switches++;
   g_cpu_locals[core_id].runqueue.context_switches++;
   g_cpu_locals[core_id].runqueue.current_thread = next;
+  /* Owner-core state: privilege-entry assembly consumes this stack top. */
+  g_cpu_locals[core_id].kernel_stack =
+      (uintptr_t)next->kernel_stack + 16384U;
 
   cpu_context_t *prev_ctx = current ? (cpu_context_t*)current->cpu_context : NULL;
   cpu_context_t *next_ctx = (cpu_context_t*)next->cpu_context;
 
   if (current) {
+    console_write_raw("[STEP_B]\n", 9);
     arch_ext_state_save(current);
   }
 
   address_space_t *prev_as = current && current->process ? current->process->addr_space : NULL;
   address_space_t *next_as = next->process ? next->process->addr_space : NULL;
+  console_write_raw("[STEP_C]\n", 9);
   mm_switch_active_aspace(core_id, prev_as, next_as);
 
   #ifndef NDEBUG
@@ -932,15 +996,14 @@ void sched_switch_to(bh_thread_t *next, uint32_t core_id) {
 
     // Process incoming URPC messages before doing the switch
     extern void vmm_process_local_urpc_messages(uint32_t core_id);
+    console_write_raw("[STEP_D]\n", 9);
     vmm_process_local_urpc_messages(core_id);
 
   if (fv_secure_context_switch) {
     fv_secure_context_switch(next_ctx);
   } else {
-        // local IRQs were disabled by hal_cpu_disable_interrupts() in sched_reschedule().
-        // They will be explicitly re-enabled by arch_post_switch() which is
-        // called from the assembly arch_context_switch once we are on the
-        // next thread's stack.
+    console_write_raw("[STEP_E]\n", 9);
+    console_write_raw("[BEFORE_ARCH_CONTEXT_SWITCH]\n", 29);
     arch_context_switch(prev_ctx, next_ctx);
   }
 
@@ -1274,3 +1337,16 @@ bool sched_find_txn(sched_rq_t *rq, sched_cmd_handle_t handle, uint16_t *out_out
   return false;
 }
 
+
+
+bh_thread_t *thread_create_detached_arg(bh_process_t *parent, void (*entry_point)(void *), const arch_user_entry_t *arg_data) {
+  bh_thread_t *thread = thread_create_detached(parent, (void (*)(void))entry_point);
+  if (thread && arg_data) {
+    thread->first_user_entry = *arg_data;
+    thread->first_user_entry_valid = 1;
+    uintptr_t stack_top = (uintptr_t)thread->kernel_stack + 16384;
+    arch_prepare_initial_context_arg(
+        (cpu_context_t *)thread->cpu_context, (arch_thread_entry_arg_t)entry_point, &thread->first_user_entry, stack_top);
+  }
+  return thread;
+}

@@ -6,9 +6,9 @@
  * (ERMS) on modern Intel/AMD processors.
  */
 
-#include "arch/memops.h"
+#include "hal/hal_memops.h"
 
-void *arch_memcpy_fast_string(void *dst, const void *src, size_t n) {
+void *hal_memcpy_fast_string(void *dst, const void *src, size_t n) {
     void *ret = dst;
     __asm__ __volatile__(
         "rep movsb"
@@ -19,7 +19,7 @@ void *arch_memcpy_fast_string(void *dst, const void *src, size_t n) {
     return ret;
 }
 
-void *arch_memset_fast_string(void *dst, int c, size_t n) {
+void *hal_memset_fast_string(void *dst, int c, size_t n) {
     void *ret = dst;
     __asm__ __volatile__(
         "rep stosb"

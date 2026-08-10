@@ -1,0 +1,12 @@
+profile: nano_mpu
+memory_model: MPU
+execution_profile: RT
+device_profile: MICRO/RTOS
+personality: NATIVE
+features:
+  fixed_allocator: ON
+  bounded_freelist: OFF
+  dynamic_allocation: OFF
+  posix_io: OFF
+  pthread: OFF
+  float_printf: OFF

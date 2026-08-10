@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <bharat/uapi/ipc/contract.h>
+#include <bharat/uapi/process_manager/contract_v1.h>
 
 #ifdef __cplusplus
 extern "C" {

@@ -14,7 +14,7 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 
-INCLUDE_RE = re.compile(r'^\s*#\s*include\s*[<\"]([^>\"]+)[>\"]')
+INCLUDE_RE = re.compile(r'^\s*#\s*include\s*([<\"])([^>\"]+)[>\"]')
 SYMBOL_LEAKAGE_RE = re.compile(r'\b(fsd_|netmgr_|devmgr_)[a-zA-Z0-9_]+')
 
 LAYER_PREFIXES = {
@@ -85,7 +85,25 @@ def detect_layer(path: str) -> str:
     return "other"
 
 
-def include_target_layer(repo_root: Path, source_layer: str, include_target: str) -> str | None:
+def include_target_layer(
+    repo_root: Path,
+    source_path: Path,
+    source_layer: str,
+    include_target: str,
+    quoted: bool,
+) -> str | None:
+    resolved_relative = False
+    if quoted and include_target.startswith("."):
+        resolved = (source_path.parent / include_target).resolve()
+        try:
+            include_target = resolved.relative_to(repo_root).as_posix()
+            resolved_relative = True
+        except ValueError:
+            return "other"
+
+    if resolved_relative:
+        return detect_layer(include_target)
+
     top = include_target.split("/", 1)[0]
     # Check direct match with layer prefix first
     for layer, prefixes in LAYER_PREFIXES.items():
@@ -141,7 +159,8 @@ def scan(repo_root: Path) -> tuple[list[Violation], int]:
                     if not m:
                         continue
 
-                    include_target = m.group(1)
+                    quoted = m.group(1) == '"'
+                    include_target = m.group(2)
                     if src_layer in FREESTANDING_LAYERS and include_target in FORBIDDEN_HOSTED_HEADERS:
                         violations.append(
                             Violation(
@@ -154,7 +173,9 @@ def scan(repo_root: Path) -> tuple[list[Violation], int]:
                             )
                         )
                     else:
-                        target = include_target_layer(repo_root, src_layer, include_target)
+                        target = include_target_layer(
+                            repo_root, abspath, src_layer, include_target, quoted
+                        )
                         if target is not None and target not in ALLOWED_REFS.get(src_layer, set()):
                             violations.append(
                                 Violation(relpath, ln, include_target, src_layer, target)

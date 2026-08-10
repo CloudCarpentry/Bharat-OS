@@ -17,7 +17,7 @@ void arch_discover_hw_caps(void);
  * Internal HAL-only API to set the discovered capabilities.
  * Implemented in core/hal/common/hw_caps.c
  */
-void hal_set_internal_hw_caps(const hal_hw_caps_t *caps);
+kstatus_t hal_set_internal_hw_caps(const hal_hw_caps_t *caps);
 
 #ifdef __cplusplus
 }

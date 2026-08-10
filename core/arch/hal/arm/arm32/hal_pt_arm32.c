@@ -1,6 +1,7 @@
 #include "../../kernel/include/hal/hal_pt.h"
 #include "../../kernel/include/hal/hal_pt_walk.h"
 #include "../../kernel/include/hal/hal_tlb.h"
+#include "../../kernel/include/hal/hal_mpa.h"
 #include "../../kernel/include/mm.h"
 #include "../../kernel/include/numa.h"
 #include "../../kernel/include/mm/physmap.h"
@@ -14,6 +15,7 @@
 #define ARM32_PT_L2_TYPE_FAULT 0x0
 #define ARM32_PT_L2_TYPE_LARGE 0x1
 #define ARM32_PT_L2_TYPE_SMALL 0x2
+#define ARM32_PT_L2_TYPE_MASK  0x2
 
 #define ARM32_PT_L2_XN (1U << 0) // Execute-Never
 #define ARM32_PT_L2_B  (1U << 2) // Bufferable
@@ -25,6 +27,15 @@
 #define ARM32_PT_L2_nG  (1U << 11) // Not Global
 
 #define ARM32_PAGE_MASK (~0xFFFU)
+#define ARM32_SECTION_SIZE (1U << 20)
+#define ARM32_BOOT_MMIO_START 0x08000000U
+#define ARM32_BOOT_MMIO_END   0x10000000U
+#define ARM32_BOOT_RAM_START  0x40000000U
+#define ARM32_BOOT_RAM_END    0x60000000U
+
+#define ARM32_PT_L1_SECT_B   (1U << 2)
+#define ARM32_PT_L1_SECT_C   (1U << 3)
+#define ARM32_PT_L1_SECT_AP0 (1U << 10)
 
 typedef uint32_t pte_raw_t;
 
@@ -47,6 +58,16 @@ static bool table_empty(pt_l2_t* table) {
         }
     }
     return true;
+}
+
+static bool arm32_l2_is_small_page(pte_raw_t entry) {
+    /*
+     * In the ARMv7 short-descriptor format bit 0 is XN for a small page, so
+     * executable and execute-never pages encode as 0b10 and 0b11.  Bit 1 is
+     * the stable discriminator; comparing both low bits incorrectly treats
+     * every non-executable mapping as unmapped.
+     */
+    return (entry & ARM32_PT_L2_TYPE_MASK) == ARM32_PT_L2_TYPE_SMALL;
 }
 
 static uint32_t flags_to_arm32(uint32_t flags) {
@@ -123,8 +144,8 @@ static uint32_t arm32_to_flags(uint32_t pte_flags) {
 static translate_backend_kind_t arm32_backend_type(void) { return TRANSLATE_BACKEND_MMU; }
 static translate_exec_class_t arm32_exec_class(void) { return TRANSLATE_EXEC_MMU_LITE; }
 
-static void* arm32_phys_to_virt(phys_addr_t phys) { (void)phys; return NULL; /* Needs dynamic kmap for non-linear */ }
-static phys_addr_t arm32_virt_to_phys(const void* virt) { (void)virt; return 0; }
+static void* arm32_phys_to_virt(phys_addr_t phys) { return (void*)(uintptr_t)phys; }
+static phys_addr_t arm32_virt_to_phys(const void* virt) { return (phys_addr_t)(uintptr_t)virt; }
 static bool arm32_has_linear_physmap(void) { return false; }
 static phys_addr_t arm32_linear_physmap_base(void) { return 0; }
 static phys_addr_t arm32_linear_physmap_limit(void) { return 0; }
@@ -156,6 +177,26 @@ static phys_addr_t arm32_create_address_space(phys_addr_t kernel_root_table) {
         for(int i = 2048; i < 4096; i++) {
             l1_table->entries[i] = kernel_l1->entries[i];
         }
+    }
+
+    /*
+     * QEMU enters with the MMU disabled and executes the kernel from the
+     * 0x40000000 RAM window.  Each address space owns its bootstrap section
+     * descriptors; user mappings may replace a low section with an L2 table
+     * without mutating another address space.  AP=001 denies user access.
+     */
+    const uint32_t section_flags = ARM32_PT_L1_TYPE_SECT |
+                                   ARM32_PT_L1_SECT_B |
+                                   ARM32_PT_L1_SECT_C |
+                                   ARM32_PT_L1_SECT_AP0;
+    for (uint32_t base = ARM32_BOOT_MMIO_START; base < ARM32_BOOT_MMIO_END;
+         base += ARM32_SECTION_SIZE) {
+        l1_table->entries[base >> 20] = base | ARM32_PT_L1_TYPE_SECT |
+                                        ARM32_PT_L1_SECT_AP0;
+    }
+    for (uint32_t base = ARM32_BOOT_RAM_START; base < ARM32_BOOT_RAM_END;
+         base += ARM32_SECTION_SIZE) {
+        l1_table->entries[base >> 20] = base | section_flags;
     }
 
     return root;
@@ -217,7 +258,7 @@ static int arm32_unmap_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t 
 
     pt_l2_t* l2_table = (pt_l2_t*)(uintptr_t)(l1_table->entries[l1_idx] & 0xFFFFFC00);
 
-    if ((l2_table->entries[l2_idx] & 0x3) != ARM32_PT_L2_TYPE_SMALL) return -2;
+    if (!arm32_l2_is_small_page(l2_table->entries[l2_idx])) return -2;
 
     if (unmapped_paddr) {
         *unmapped_paddr = l2_table->entries[l2_idx] & 0xFFFFF000;
@@ -246,7 +287,7 @@ static int arm32_protect_page(phys_addr_t root_pt, virt_addr_t vaddr, uint32_t n
 
     pt_l2_t* l2_table = (pt_l2_t*)(uintptr_t)(l1_table->entries[l1_idx] & 0xFFFFFC00);
 
-    if ((l2_table->entries[l2_idx] & 0x3) != ARM32_PT_L2_TYPE_SMALL) return -2;
+    if (!arm32_l2_is_small_page(l2_table->entries[l2_idx])) return -2;
 
     uint32_t paddr = l2_table->entries[l2_idx] & 0xFFFFF000;
     uint32_t pte_flags = flags_to_arm32(new_flags);
@@ -269,7 +310,7 @@ static int arm32_query_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t 
 
     pt_l2_t* l2_table = (pt_l2_t*)(uintptr_t)(l1_table->entries[l1_idx] & 0xFFFFFC00);
 
-    if ((l2_table->entries[l2_idx] & 0x3) != ARM32_PT_L2_TYPE_SMALL) return -2;
+    if (!arm32_l2_is_small_page(l2_table->entries[l2_idx])) return -2;
 
     if (paddr) *paddr = l2_table->entries[l2_idx] & 0xFFFFF000;
     if (flags) *flags = arm32_to_flags(l2_table->entries[l2_idx] & ~0xFFFFF000);
@@ -371,3 +412,71 @@ const hal_translate_ops_t* hal_translate_ops(void) {
     return &arm32_translate_ops;
 }
 #endif
+
+static phys_addr_t arm32_mpa_make_table(uint32_t level) {
+    (void)level;
+    return arm32_create_address_space(0U);
+}
+
+static int arm32_mpa_map_page(phys_addr_t root, virt_addr_t vaddr,
+                              phys_addr_t paddr, uint32_t flags) {
+    uint32_t hal_flags = HAL_PT_FLAG_READ;
+    if ((flags & MPA_CAP_EXEC_PERM) != 0U) hal_flags |= HAL_PT_FLAG_EXEC;
+    if ((flags & MPA_CAP_WRITE) != 0U) hal_flags |= HAL_PT_FLAG_WRITE;
+    if ((flags & MPA_CAP_USER) != 0U) hal_flags |= HAL_PT_FLAG_USER;
+    if ((flags & MPA_CAP_GLOBAL) != 0U) hal_flags |= HAL_PT_FLAG_GLOBAL;
+    if ((flags & MPA_CAP_DEVICE) != 0U) hal_flags |= HAL_PT_FLAG_DEVICE;
+    return arm32_map_page(root, vaddr, paddr, hal_flags);
+}
+
+static void arm32_mpa_set_root(phys_addr_t root) {
+    uint32_t ttbr0 = (uint32_t)root;
+    uint32_t ttbcr = 0U;
+    uint32_t dacr = 1U; /* Domain 0 client: enforce AP permissions. */
+    uint32_t sctlr;
+
+    __asm__ volatile(
+        "dsb\n"
+        "mcr p15, 0, %1, c2, c0, 2\n"
+        "mcr p15, 0, %0, c2, c0, 0\n"
+        "mcr p15, 0, %2, c3, c0, 0\n"
+        "mcr p15, 0, %3, c8, c7, 0\n"
+        "isb\n"
+        "mrc p15, 0, %3, c1, c0, 0\n"
+        "orr %3, %3, #1\n"
+        "mcr p15, 0, %3, c1, c0, 0\n"
+        "isb\n"
+        : "+r"(ttbr0), "+r"(ttbcr), "+r"(dacr), "=&r"(sctlr)
+        :
+        : "memory");
+}
+
+static phys_addr_t arm32_mpa_get_root(void) {
+    uint32_t sctlr;
+    uint32_t ttbr0;
+    __asm__ volatile("mrc p15, 0, %0, c1, c0, 0" : "=r"(sctlr));
+    if ((sctlr & 1U) == 0U) return 0U;
+    __asm__ volatile("mrc p15, 0, %0, c2, c0, 0" : "=r"(ttbr0));
+    return (phys_addr_t)(ttbr0 & 0xFFFFC000U);
+}
+
+static void arm32_mpa_flush_tlb_local(virt_addr_t vaddr, uint16_t asid) {
+    (void)asid;
+    arm32_tlb_flush_page_local(vaddr);
+}
+
+static mem_protect_ops_t arm32_mem_protect_ops = {
+    .supported_caps = MPA_CAP_VIRT | MPA_CAP_GLOBAL | MPA_CAP_EXEC_PERM |
+                      MPA_CAP_WRITE | MPA_CAP_USER | MPA_CAP_DEVICE,
+    .cpu_ops = {
+        .make_table = arm32_mpa_make_table,
+        .map_page = arm32_mpa_map_page,
+        .unmap_page = arm32_unmap_page,
+        .set_root = arm32_mpa_set_root,
+        .flush_tlb_local = arm32_mpa_flush_tlb_local,
+        .get_root = arm32_mpa_get_root,
+    },
+    .iommu_ops = {.probe = NULL},
+};
+
+mem_protect_ops_t *active_mem_protect = &arm32_mem_protect_ops;

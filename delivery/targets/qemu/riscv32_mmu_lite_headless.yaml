@@ -52,6 +52,7 @@ run:
     - stdio
   boot_artifact: kernel/kernel.elf
 
+
 debug:
   backend: gdb_remote
   stop_on_entry: false

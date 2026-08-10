@@ -1,5 +1,9 @@
-.extern bh_syscall_gate
-.extern sched_current_thread
+#include "arch/x86_segments.h"
+#include "arch/x86_syscall_return.h"
+
+.extern bh_syscall_entry_dispatch
+.extern x86_syscall_validate_return
+.extern bh_syscall_rejected_return_handoff
 
 .section .text
 .global x86_64_syscall_entry
@@ -70,84 +74,59 @@ x86_64_syscall_entry:
     /* from_user (1) */
     movl $1, 284(%rsp)
 
-    /* Call bh_syscall_gate(trap_frame_t *frame) */
+    /* Allocate bh_syscall_return_context_t on stack (48 bytes: 4x8 + 4 + 4 + 4 + padding)
+       Let's align and allocate 48 bytes. */
+    sub $X86_SYSCALL_RET_CONTEXT_SIZE, %rsp
+
+    /* Call the fixed-signature C bridge with trap_frame_t * in RDI and return context in RSI. */
+    /* RDI = trap_frame_t * */
+    lea X86_SYSCALL_RET_CONTEXT_SIZE(%rsp), %rdi
+    /* RSI = bh_syscall_return_context_t * */
+    mov %rsp, %rsi
+    call bh_syscall_entry_dispatch
+
+    /* Call validation routine with return context in RDI */
     mov %rsp, %rdi
-    call bh_syscall_gate
+    call x86_syscall_validate_return
 
-    /* Check if we need to return via sysret or iret */
-    /* For production we validate RCX (RIP) and R11 (RFLAGS) */
-    mov 256(%rsp), %rcx    /* User RIP */
+    /* Only validated USER contexts may restore state and reach SYSRETQ. */
+    cmpl $X86_SYSCALL_RETURN_USER_VALUE, X86_SYSCALL_RET_DISPOSITION_OFFSET(%rsp)
+    jne .L_syscall_return_rejected
 
-    /* Simple canonical check: bits 48 to 63 must match bit 47 */
-    mov %rcx, %rax
-    sar $47, %rax
-    inc %rax
-    cmp $2, %rax
-    jb .L_sysret_safe
+    /* Restore registers from trap_frame_t (which is at +48 from %rsp) */
+    mov X86_SYSCALL_RET_CONTEXT_SIZE+8(%rsp), %rdi
+    mov X86_SYSCALL_RET_CONTEXT_SIZE+16(%rsp), %rsi
+    mov X86_SYSCALL_RET_CONTEXT_SIZE+24(%rsp), %rdx
+    mov X86_SYSCALL_RET_CONTEXT_SIZE+32(%rsp), %r10
+    mov X86_SYSCALL_RET_CONTEXT_SIZE+40(%rsp), %r8
+    mov X86_SYSCALL_RET_CONTEXT_SIZE+48(%rsp), %r9
+    mov X86_SYSCALL_RET_CONTEXT_SIZE+72(%rsp), %rbx
+    mov X86_SYSCALL_RET_CONTEXT_SIZE+80(%rsp), %rbp
+    mov X86_SYSCALL_RET_CONTEXT_SIZE+88(%rsp), %r12
+    mov X86_SYSCALL_RET_CONTEXT_SIZE+96(%rsp), %r13
+    mov X86_SYSCALL_RET_CONTEXT_SIZE+104(%rsp), %r14
+    mov X86_SYSCALL_RET_CONTEXT_SIZE+112(%rsp), %r15
 
-    /* Fallback to iretq for non-canonical RIP */
-    /* We need to build an iret frame: SS, RSP, RFLAGS, CS, RIP */
-    /* Since we've already built a trap_frame_t, we can reuse values */
+    /* Use authoritative values from bh_syscall_return_context_t for return.
+       Offsets in bh_syscall_return_context_t:
+       0:  pc
+       8:  sp
+       16: status
+       24: result
+       32: origin (4 bytes)
+       36: flags (4 bytes)
+       40: disposition (4 bytes)
+    */
+    mov X86_SYSCALL_RET_RESULT_OFFSET(%rsp), %rax
+    mov X86_SYSCALL_RET_PC_OFFSET(%rsp), %rcx
+    mov X86_SYSCALL_RET_STATUS_OFFSET(%rsp), %r11
+    mov X86_SYSCALL_RET_SP_OFFSET(%rsp), %rdx
 
-    /* Restore GPRs first */
-    mov 0(%rsp), %rax     # Result
-    mov 8(%rsp), %rdi
-    mov 16(%rsp), %rsi
-    mov 24(%rsp), %rdx
-    mov 32(%rsp), %r10
-    mov 40(%rsp), %r8
-    mov 48(%rsp), %r9
-    mov 64(%rsp), %r11    # User RFLAGS
-    mov 72(%rsp), %rbx
-    mov 80(%rsp), %rbp
-    mov 88(%rsp), %r12
-    mov 96(%rsp), %r13
-    mov 104(%rsp), %r14
-    mov 112(%rsp), %r15
-
-    /* Build IRET frame on top of current stack */
-    /* trap_frame_t was 288 bytes */
-    mov 248(%rsp), %rcx    /* User RSP */
-    mov 272(%rsp), %r11    /* User RFLAGS */
-    mov 256(%rsp), %rdx    /* User RIP */
-
-    add $288, %rsp
-
-    /* SS is usually 0x1B in Bharat-OS userspace (GDT index 3 | 3) */
-    /* CS is usually 0x23 in Bharat-OS userspace (GDT index 4 | 3) */
-    pushq $0x1B            /* SS */
-    pushq %rcx             /* RSP */
-    pushq %r11             /* RFLAGS */
-    pushq $0x23            /* CS */
-    pushq %rdx             /* RIP */
-
-    swapgs
-    iretq
-
-.L_sysret_safe:
-    /* Restore registers */
-    mov 0(%rsp), %rax     # Result
-    mov 8(%rsp), %rdi
-    mov 16(%rsp), %rsi
-    mov 24(%rsp), %rdx
-    mov 32(%rsp), %r10
-    mov 40(%rsp), %r8
-    mov 48(%rsp), %r9
-    mov 56(%rsp), %rcx    # User RIP (if unchanged)
-    mov 64(%rsp), %r11    # User RFLAGS (if unchanged)
-    mov 72(%rsp), %rbx
-    mov 80(%rsp), %rbp
-    mov 88(%rsp), %r12
-    mov 96(%rsp), %r13
-    mov 104(%rsp), %r14
-    mov 112(%rsp), %r15
-
-    /* Load user SP back from frame in case it was changed */
-    mov 248(%rsp), %rdx
+    /* Save user SP to cpu_local for next entry */
     mov %rdx, %gs:USER_SP_OFFSET
 
-    /* Pop frame */
-    add $288, %rsp
+    /* Pop return context and trap frame */
+    add $(288+X86_SYSCALL_RET_CONTEXT_SIZE), %rsp
 
     /* Restore user SP */
     mov %gs:USER_SP_OFFSET, %rsp
@@ -162,3 +141,9 @@ x86_64_syscall_entry:
      * CS/SS from STAR MSR
      */
     sysretq
+
+.L_syscall_return_rejected:
+    /* Still CPL0 with kernel GS active; this call is deliberately noreturn. */
+    mov X86_SYSCALL_RET_DISPOSITION_OFFSET(%rsp), %edi
+    call bh_syscall_rejected_return_handoff
+    ud2

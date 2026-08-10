@@ -8,12 +8,23 @@
 
 
 static bharat_handle_t g_bootstrap_cap = BHARAT_INVALID_HANDLE;
+static const bharat_user_startup_t *g_startup_ptr = NULL;
 
 void bharat_runtime_init(const void *startup_ptr) {
+    /* The startup block is an ABI structure, so reject obviously malformed
+     * pointers before reading capability-bearing fields from it. */
+    uintptr_t startup_addr = (uintptr_t)startup_ptr;
+    if (startup_addr < 4096U ||
+        (startup_addr % _Alignof(bharat_user_startup_t)) != 0U) {
+        startup_ptr = NULL;
+    }
     // Initialize memory, TLS, thread structs
+    g_startup_ptr = (const bharat_user_startup_t *)startup_ptr;
     const bharat_user_startup_t *startup = (const bharat_user_startup_t *)startup_ptr;
     if (startup) {
         g_bootstrap_cap = startup->bootstrap.bootstrap_cap;
+    } else {
+        g_bootstrap_cap = BHARAT_INVALID_HANDLE;
     }
 }
 
@@ -23,6 +34,10 @@ void bharat_runtime_shutdown(void) {
 
 bharat_handle_t bharat_runtime_get_bootstrap_cap(void) {
     return g_bootstrap_cap;
+}
+
+const bharat_user_startup_t *bharat_runtime_get_startup(void) {
+    return g_startup_ptr;
 }
 
 static size_t runtime_strlen(const char *s) {
@@ -85,6 +100,15 @@ uint64_t __udivdi3(uint64_t n, uint64_t d) {
         if (r >= d) { r -= d; q |= (1ULL << i); }
     }
     return q;
+}
+uint64_t __umoddi3(uint64_t n, uint64_t d) {
+    if (d == 0) return 0;
+    uint64_t r = 0;
+    for (int i = 63; i >= 0; i--) {
+        r <<= 1; r |= (n >> i) & 1;
+        if (r >= d) r -= d;
+    }
+    return r;
 }
 uint64_t __aeabi_uldivmod(uint64_t n, uint64_t d) { return __udivdi3(n, d); }
 

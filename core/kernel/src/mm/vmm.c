@@ -109,20 +109,31 @@ int vmm_init(void) {
         // RISC-V bare mode can start with SATP=0 and an empty newly created root.
         // Keep the previous behavior there; other architectures (e.g. arm64)
         // should activate the prepared root so MMU and control registers are set.
-#if defined(__riscv)
         if (current_root == 0U && bootstrap_root_pt == 0U) {
-            // Skip set_root in bare mode without bootstrap on RISC-V
+            // Bare mode boot (MMU off): skip set_root until kernel mappings are configured
         } else if (current_root == 0U || current_root == kernel_space.root_pt) {
             active_mem_protect->cpu_ops.set_root(kernel_space.root_pt);
         }
-#else
-        if (current_root == 0U || current_root == kernel_space.root_pt) {
-            active_mem_protect->cpu_ops.set_root(kernel_space.root_pt);
-        }
-#endif
     }
 
     return kernel_space_ready ? 0 : -1;
+}
+
+int mm_global_init(void) {
+    /* BSP-owned global VMM bootstrap; APs must not recreate kernel_space. */
+    return vmm_init();
+}
+
+int mm_cpu_prepare(uint32_t cpu_id) {
+    (void)cpu_id;
+    return kernel_space_ready ? 0 : -1;
+}
+
+int mm_cpu_online(uint32_t cpu_id) {
+    /* CPU-local MM readiness uses the BSP-published kernel_space authority. */
+    hal_pt_init();
+    hal_tlb_init();
+    return mm_cpu_prepare(cpu_id);
 }
 
 phys_addr_t vmm_get_kernel_root(void) {

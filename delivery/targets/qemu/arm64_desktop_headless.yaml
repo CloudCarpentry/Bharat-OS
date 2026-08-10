@@ -15,6 +15,7 @@ build:
     BHARAT_PERSONALITY_PROFILE: NATIVE
     BHARAT_TARGET_BOARD: virt
     BHARAT_BOOT_GUI: OFF
+    BHARAT_ENABLE_ADVANCED_VM: ON
 
 kernel:
   canonical_artifacts:
@@ -23,24 +24,27 @@ kernel:
 
 boot:
   protocol: linux_arm64
-  artifact_format: elf
+  artifact_format: raw_bin
   dtb:
     mode: qemu_generated
     required: true
     handoff_register: x0
 
 package:
-  transforms: []
+  transforms:
+    - type: elf_to_bin
+      input: kernel/kernel.elf
+      output: kernel/kernel.bin
 
 run:
   backend: qemu
-  machine: "virt,gic-version=3"
+  machine: "virt,gic-version=2"
   cpu: cortex-a72
   memory: 1024M
   nographic: true
   serial:
     - stdio
-  boot_artifact: kernel/kernel.elf
+  boot_artifact: kernel/kernel.bin
   extra_args:
     - "-d"
     - "guest_errors,unimp"

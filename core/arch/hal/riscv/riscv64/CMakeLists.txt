@@ -3,6 +3,7 @@ add_library(hal_riscv64_cpu OBJECT
     ../boot/feature_probe.c
     ../trap_entry.S
     ../../mmu/riscv64/vmm.c
+    ../../../../arch/riscv/riscv64/user_entry.c
     ../../../../arch/riscv/riscv64/context_switch.c
     ../../../../arch/riscv/riscv64/context_switch.S
     ../../../../arch/riscv/riscv64/cpu_caps.c

@@ -17,6 +17,25 @@ void* early_alloc(size_t size, size_t alignment) {
         early_alloc_init(0);
     }
 
+    extern phys_addr_t pmm_boot_reservation_end(phys_addr_t paddr) __attribute__((weak));
+
+    while (pmm_boot_reservation_end != NULL) {
+        phys_addr_t r_end = pmm_boot_reservation_end(early_bump_ptr);
+        if (r_end == 0 && size > 0) {
+            r_end = pmm_boot_reservation_end(early_bump_ptr + size - 1);
+        }
+        if (r_end == 0) {
+            break;
+        }
+        early_bump_ptr = r_end;
+        if (alignment > 0) {
+            phys_addr_t rem = early_bump_ptr % alignment;
+            if (rem != 0) {
+                early_bump_ptr += (alignment - rem);
+            }
+        }
+    }
+
     if (alignment > 0) {
         // Align bump pointer
         phys_addr_t remainder = early_bump_ptr % alignment;

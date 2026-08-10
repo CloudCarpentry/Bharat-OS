@@ -3,9 +3,12 @@
 #include <stddef.h>
 #include <bharat/cpu_local.h>
 
+extern sched_policy_t g_policy;
+
 #define CFS_NICE_0_WEIGHT 1024U
 
 bool test_sched_rq_basic(void) {
+    sched_policy_t old_policy = g_policy;
     sched_set_policy(SCHED_POLICY_CLOUD_FAIR);
 
     bh_process_t *p = process_create("test_proc");
@@ -81,6 +84,7 @@ bool test_sched_rq_basic(void) {
         t2->state = THREAD_STATE_TERMINATED;
         thread_destroy(t1);
         thread_destroy(t2);
+        sched_set_policy(old_policy);
         return true;
     }
 
@@ -97,6 +101,7 @@ bool test_sched_rq_basic(void) {
     thread_destroy(t1);
     thread_destroy(t2);
 
+    sched_set_policy(old_policy);
     return true;
 }
 
@@ -127,7 +132,7 @@ extern void hal_cpu_enable_interrupts(void);
 
 
 bool test_sched_remote_enqueue(void) {
-    // Save original policy
+    sched_policy_t old_policy = g_policy;
     sched_set_policy(SCHED_POLICY_CLOUD_FAIR);
 
     bh_process_t *p = process_create("test_proc3");
@@ -150,6 +155,7 @@ bool test_sched_remote_enqueue(void) {
     // ^ Assuming sched_reschedule accesses local core. If hal_cpu_get_id() is mocked to 0,
     // this won't flush core 1's inbox. But the test proves the inbox separation works.
 
+    sched_set_policy(old_policy);
     return true;
 }
 
@@ -168,6 +174,7 @@ uint64_t benchmark_get_cycles(void) {
 }
 
 bool test_sched_benchmark(void) {
+    sched_policy_t old_policy = g_policy;
     sched_set_policy(SCHED_POLICY_CLOUD_FAIR);
 
     bh_process_t *p = process_create("bench_proc");
@@ -206,6 +213,7 @@ bool test_sched_benchmark(void) {
          KTEST_ASSERT(avg_ctx_sw_cycles < 100000, "Context switch latency too high");
     }
 
+    sched_set_policy(old_policy);
     return true;
 }
 

@@ -231,6 +231,26 @@ void sched_init(void) {
     }
 }
 
+int sched_global_init(uint32_t core_count) {
+    (void)core_count;
+    sched_init();
+    return 0;
+}
+
+int sched_cpu_prepare(uint32_t cpu_id) {
+    (void)cpu_id;
+    return 0;
+}
+
+int sched_cpu_online(uint32_t cpu_id) {
+    (void)cpu_id;
+    return 0;
+}
+
+int sched_system_enable(void) {
+    return 0;
+}
+
 void sched_wait_queue_init(wait_queue_t* queue) {
     if (queue) {
         queue->head = NULL;
