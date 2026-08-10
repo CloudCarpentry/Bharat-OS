@@ -129,12 +129,8 @@ void boot_common_early(const boot_info_t *boot) {
 
     KPRINT("  [HAL] Initialising hardware on BSP...\n");
     hal_discovery_init(boot);
-    const hal_hw_caps_t *internal_caps = hal_get_internal_hw_caps();
-    print_hw_caps_summary(internal_caps);
+    print_hw_caps_summary(hal_get_internal_hw_caps());
     KPRINT("  [HAL] Ready.\n");
-
-    KPRINT("  [CORE] Initializing primitive registry...\n");
-    bh_kernel_primitive_registry_init(internal_caps);
 
     KPRINT("  [PROFILE] Applying hardware profile hooks...\n");
     profile_init();
@@ -266,8 +262,17 @@ void boot_common_platform_services(const boot_info_t *boot) {
     KPRINT("TIMER_GLOBAL_READY\n");
 
     arch_cpu_caps_init();
-    arch_cpu_caps_system_finalize();
+    if (arch_cpu_caps_system_finalize() != K_OK) {
+      kernel_panic("CPU capability aggregation failed");
+    }
     hal_discovery_publish_cpu_caps();
+    if (hal_hw_caps_publish_cpu() != K_OK || hal_hw_caps_finalize() != K_OK) {
+      kernel_panic("hardware capability freeze failed");
+    }
+    KPRINT("  [CORE] Initializing primitive registry...\n");
+    if (bh_kernel_primitive_registry_init(hal_get_internal_hw_caps()) != K_OK) {
+      kernel_panic("primitive registry initialization failed");
+    }
     arch_ext_state_boot_init();
 
     extern void bharat_algorithm_backends_init(void);

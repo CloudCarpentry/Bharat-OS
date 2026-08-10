@@ -159,6 +159,20 @@ target_include_directories(test_hal_cpu_features PRIVATE
     ${CMAKE_SOURCE_DIR})
 add_test(NAME host_test_hal_cpu_features COMMAND test_hal_cpu_features)
 
+add_executable(test_hal_capability_lifecycle
+    test_hal_capability_lifecycle.c
+    ../../arch/common/cpu_caps_state.c
+    ../../hal/common/cpu_features.c
+    ../../hal/common/hw_caps.c
+    ../../kernel/src/core/primitive_registry.c)
+target_include_directories(test_hal_capability_lifecycle PRIVATE
+    ${CMAKE_SOURCE_DIR}/core/kernel/include
+    ${CMAKE_SOURCE_DIR}/core/hal/include
+    ${CMAKE_SOURCE_DIR}/interface/include
+    ${CMAKE_SOURCE_DIR}/core/lib/include
+    ${CMAKE_SOURCE_DIR})
+add_test(NAME host_test_hal_capability_lifecycle COMMAND test_hal_capability_lifecycle)
+
 # ---------------------------------------------------------
 # Phase 2: Runtime completeness Tests
 # ---------------------------------------------------------

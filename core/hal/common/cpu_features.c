@@ -76,6 +76,10 @@ bool hal_cpu_feature_set_system(hal_cpu_feature_scope_t scope, hal_cpu_feature_s
     const arch_cpu_caps_record_t *arch = (scope == HAL_CPU_FEATURE_SCOPE_ANY)
                                              ? arch_cpu_caps_system_any()
                                              : arch_cpu_caps_system_all();
+    if (arch == NULL) {
+        memset(out, 0, sizeof(*out));
+        return false;
+    }
     map_arch_to_hal(arch, out);
     return true;
 }

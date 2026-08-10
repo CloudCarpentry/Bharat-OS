@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include "kernel/status.h"
 
 typedef enum {
     /* Common semantic features: portable meaning across ISAs */
@@ -56,7 +57,7 @@ typedef struct {
 
 void arch_cpu_caps_init(void);
 void arch_cpu_caps_init_ap(void); // For APs
-void arch_cpu_caps_system_finalize(void); // To calculate system_all and system_any
+kstatus_t arch_cpu_caps_system_finalize(void); // To calculate system_all and system_any
 
 const arch_cpu_caps_record_t *arch_cpu_caps_boot(void);
 const arch_cpu_caps_record_t *arch_cpu_caps_current(void);
