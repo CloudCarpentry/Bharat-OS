@@ -26,18 +26,19 @@ bool arch_trap_is_syscall(const trap_frame_t *frame) {
 kstatus_t arch_trap_extract_syscall(const trap_frame_t *frame, bh_syscall_regs_t *out) {
     if (!frame || !out) return K_ERR_INVALID_ARG;
 
-    out->nr = frame->gpr[17];
-    out->arg[0] = frame->gpr[10];
-    out->arg[1] = frame->gpr[11];
-    out->arg[2] = frame->gpr[12];
-    out->arg[3] = frame->gpr[13];
-    out->arg[4] = frame->gpr[14];
-    out->arg[5] = frame->gpr[15];
+    /* trap_entry.S stores x1 at gpr[0], so architectural xN is gpr[N-1]. */
+    out->nr = frame->gpr[16];
+    out->arg[0] = frame->gpr[9];
+    out->arg[1] = frame->gpr[10];
+    out->arg[2] = frame->gpr[11];
+    out->arg[3] = frame->gpr[12];
+    out->arg[4] = frame->gpr[13];
+    out->arg[5] = frame->gpr[14];
 
     return K_OK;
 }
 
 void arch_trap_set_syscall_return(trap_frame_t *frame, uintptr_t value) {
     if (!frame) return;
-    frame->gpr[10] = value;
+    frame->gpr[9] = value;
 }

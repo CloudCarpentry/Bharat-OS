@@ -101,9 +101,14 @@ Install:
 - `ninja-build`
 - `clang`, `lld`, `llvm` (for `llvm-objcopy`)
 - `qemu-system-x86`, `qemu-system-arm`, `qemu-system-misc`
-- (optional) `opensbi` for RISC-V environments
+- OpenSBI firmware for the RISC-V QEMU runners
 - (optional) `openocd` for board flashing
 - (optional) `gdb-multiarch`
+
+The RV32 runner expects QEMU's standard
+`opensbi-riscv32-generic-fw_dynamic.bin` firmware. Some distributions package
+only the RV64 image; install the upstream OpenSBI ILP32 generic firmware into
+QEMU's firmware search directory before running the RV32 smoke targets.
 
 ```bash
 sudo apt update

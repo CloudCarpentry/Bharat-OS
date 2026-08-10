@@ -246,5 +246,9 @@ finish:
         rt.outcome = INIT_BOOT_OUTCOME_HANDOFF_FAILED;
     }
 
-    return (rt.outcome == INIT_BOOT_OUTCOME_SUCCESS || rt.outcome == INIT_BOOT_OUTCOME_DEGRADED) ? 0 : -EFAULT;
+    if (rt.phase == INIT_PHASE_QUIESCENT) {
+        return INIT_RUNTIME_QUIESCENT;
+    }
+    return (rt.outcome == INIT_BOOT_OUTCOME_SUCCESS) ?
+        INIT_RUNTIME_HANDOFF_COMPLETE : -EFAULT;
 }

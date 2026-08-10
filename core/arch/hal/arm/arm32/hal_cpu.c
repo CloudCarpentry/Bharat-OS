@@ -4,7 +4,14 @@
 #include "secure_boot.h"
 #include <stdint.h>
 
-void hal_cpu_init(void) {}
+void hal_cpu_init(void) {
+    extern uint8_t vector_table_arm32[];
+    uintptr_t vector_base = (uintptr_t)vector_table_arm32;
+    __asm__ volatile(
+        "mcr p15, 0, %0, c12, c0, 0\n"
+        "isb\n"
+        :: "r"(vector_base) : "memory");
+}
 
 bool hal_cpu_is_syscall(const void *trap_frame) {
     (void)trap_frame;
@@ -47,6 +54,7 @@ uint64_t hal_cpu_get_fault_address(const void *trap_frame) {
 
 #include "hal/hal_internal.h"
 void hal_init(void) {
+    hal_cpu_init();
     arch_discover_hw_caps();
 }
 void hal_send_ipi_payload(uint32_t cpu, uint64_t payload) { (void)cpu; (void)payload; }
@@ -76,7 +84,6 @@ void hal_ipi_send(uint32_t target_cpu, uint32_t vector) { (void)target_cpu; (voi
 uint32_t hal_cpu_get_id(void) { return 0; }
 void hal_core_poll_event(void) {}
 void hal_cpu_dump_trap_frame(const void *trap_frame) { (void)trap_frame; }
-bool active_mem_protect = false;
 void hal_timer_isr(void) {}
 void hal_cpu_dump_state(void) {}
 int hal_secure_boot_arch_check(const bharat_boot_policy_t *policy) {

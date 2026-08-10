@@ -563,11 +563,15 @@ set(ASM_OFFSETS_H "${ASM_OFFSETS_DIR}/trap_offsets.inc")
 
 # Use a separate list for flags to avoid passing spaces incorrectly to Clang
 separate_arguments(CMAKE_C_FLAGS_LIST NATIVE_COMMAND "${CMAKE_C_FLAGS}")
+set(ASM_OFFSETS_TARGET_FLAG)
+if(CMAKE_C_COMPILER_TARGET)
+    list(APPEND ASM_OFFSETS_TARGET_FLAG "--target=${CMAKE_C_COMPILER_TARGET}")
+endif()
 
 # Compile gen_asm_offsets.c to assembly using the target compiler
 add_custom_command(
     OUTPUT "${ASM_OFFSETS_DIR}/gen_asm_offsets.s"
-    COMMAND ${CMAKE_C_COMPILER} ${CMAKE_C_FLAGS_LIST} -S -I${CMAKE_SOURCE_DIR}/core/kernel/include -I${CMAKE_SOURCE_DIR}/interface/include -I${CMAKE_SOURCE_DIR}/tools/abi -I${CMAKE_BINARY_DIR}/generated/include -I${CMAKE_BINARY_DIR}/interface/generated ${CMAKE_SOURCE_DIR}/tools/abi/gen_asm_offsets.c -o "${ASM_OFFSETS_DIR}/gen_asm_offsets.s"
+    COMMAND ${CMAKE_C_COMPILER} ${ASM_OFFSETS_TARGET_FLAG} ${CMAKE_C_FLAGS_LIST} -S -I${CMAKE_SOURCE_DIR}/core/kernel/include -I${CMAKE_SOURCE_DIR}/interface/include -I${CMAKE_SOURCE_DIR}/tools/abi -I${CMAKE_BINARY_DIR}/generated/include -I${CMAKE_BINARY_DIR}/interface/generated ${CMAKE_SOURCE_DIR}/tools/abi/gen_asm_offsets.c -o "${ASM_OFFSETS_DIR}/gen_asm_offsets.s"
     DEPENDS "${CMAKE_SOURCE_DIR}/tools/abi/gen_asm_offsets.c" "${CMAKE_SOURCE_DIR}/tools/abi/asm_offsets_macros.h" "${CMAKE_SOURCE_DIR}/core/kernel/include/trap.h" "${CMAKE_SOURCE_DIR}/core/kernel/include/sched/cpu_context.h"
     COMMENT "Compiling gen_asm_offsets.c to assembly"
 )

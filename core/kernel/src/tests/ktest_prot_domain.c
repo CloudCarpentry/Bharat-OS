@@ -182,7 +182,7 @@ static bool test_mmu_sparse_mapping(void) {
     KTEST_ASSERT(ret != 0, "Non-canonical mapping should be rejected");
 
     // Test 8: Reject unmapped unprotect/unmap
-    ret = prot_domain_unmap_region(domain, 0x0000001234567000ULL, 4096);
+    ret = prot_domain_unmap_region(domain, (uintptr_t)0x0000001234567000ULL, 4096);
     KTEST_ASSERT(ret != 0, "Unmap of unmapped region should fail");
 
     prot_domain_destroy(domain);
