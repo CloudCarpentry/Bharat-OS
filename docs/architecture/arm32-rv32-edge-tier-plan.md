@@ -138,4 +138,15 @@ Do not attempt broad architecture claims at initial merge.
 
 The repository already documents full HAL paths for `x86_64`, `arm64`, and `riscv64`, and identifies EDGE targets (wearables, robotics, drones) as explicit product profiles. This plan extends that trajectory while containing complexity growth.
 
+The QEMU ARM32 and RV32 reference targets now use MMU-Lite as their declared
+memory model and remain UP-first. Their first address-space activation installs
+private, supervisor-only identity mappings for the kernel RAM and required MMIO
+windows before enabling TTBR0/SATP. User mappings may split those bootstrap
+leaves only in their owning address space; they never receive user permission
+on the kernel or device bootstrap windows.
+
+Generated trap and CPU-context offsets are compiled with the target compiler
+triple. This is required on EDGE32 so assembly consumes 32-bit `uintptr_t`
+offsets rather than host-width offsets.
+
 The plan also aligns with the existing statement that runtime maturity differs by architecture target, by making maturity and capability deltas explicit and testable.
