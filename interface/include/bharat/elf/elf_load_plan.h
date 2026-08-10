@@ -34,8 +34,11 @@ typedef enum {
 typedef enum {
     BH_ELF_MACHINE_X86_64 = 0,
     BH_ELF_MACHINE_AARCH64 = 1,
-    BH_ELF_MACHINE_RISCV64 = 2
+    BH_ELF_MACHINE_RISCV64 = 2,
+    BH_ELF_MACHINE_ARM32 = 3,
+    BH_ELF_MACHINE_RISCV32 = 4
 } bh_elf_machine_t;
+
 
 typedef struct {
     uint64_t virtual_address;

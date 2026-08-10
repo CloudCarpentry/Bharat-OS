@@ -475,22 +475,28 @@ set(KERNEL_SRCS
     $<$<STREQUAL:${ARCH},x86_64>:${BHARAT_ARCH_ROOT}/x86/x86_64/arch_caps.c>
     $<$<STREQUAL:${ARCH},x86_64>:${BHARAT_ARCH_ROOT}/x86/x86_64/arch_console.c>
     $<$<STREQUAL:${ARCH},x86_64>:${BHARAT_ARCH_ROOT}/x86/x86_64/hw_caps.c>
+    $<$<STREQUAL:${ARCH},x86_64>:${BHARAT_ARCH_ROOT}/x86/x86_64/arch_elf.c>
     $<$<STREQUAL:${ARCH},x86_64>:${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/hal_mm.c>
     $<$<STREQUAL:${ARCH},arm32>:${BHARAT_ARCH_ROOT}/arm/arm32/arch_console.c>
     $<$<STREQUAL:${ARCH},arm64>:${BHARAT_ARCH_ROOT}/arm/arm64/arch_caps.c>
     $<$<STREQUAL:${ARCH},arm64>:${BHARAT_ARCH_ROOT}/arm/arm64/arch_console.c>
     $<$<STREQUAL:${ARCH},arm64>:${BHARAT_ARCH_ROOT}/arm/arm64/hw_caps.c>
+    $<$<STREQUAL:${ARCH},arm64>:${BHARAT_ARCH_ROOT}/arm/arm64/arch_elf.c>
     $<$<STREQUAL:${ARCH},arm64>:${BHARAT_ARCH_HAL_ROOT}/arm/arm64/hal_mm.c>
     $<$<STREQUAL:${ARCH},riscv64>:${BHARAT_ARCH_ROOT}/riscv/riscv64/arch_caps.c>
     $<$<STREQUAL:${ARCH},riscv64>:${BHARAT_ARCH_ROOT}/riscv/riscv64/arch_console.c>
     $<$<STREQUAL:${ARCH},riscv64>:${BHARAT_ARCH_ROOT}/riscv/riscv64/hw_caps.c>
+    $<$<STREQUAL:${ARCH},riscv64>:${BHARAT_ARCH_ROOT}/riscv/riscv64/arch_elf.c>
     $<$<STREQUAL:${ARCH},riscv64>:${BHARAT_ARCH_HAL_ROOT}/riscv/riscv64/hal_mm.c>
     $<$<STREQUAL:${ARCH},arm32>:${BHARAT_ARCH_ROOT}/arm/arm32/arch_caps.c>
     $<$<STREQUAL:${ARCH},arm32>:${BHARAT_ARCH_ROOT}/arm/arm32/hw_caps.c>
+    $<$<STREQUAL:${ARCH},arm32>:${BHARAT_ARCH_ROOT}/arm/arm32/arch_elf.c>
     $<$<STREQUAL:${ARCH},arm32>:${BHARAT_ARCH_HAL_ROOT}/arm/arm32/hal_mm.c>
     $<$<STREQUAL:${ARCH},riscv32>:${BHARAT_ARCH_ROOT}/riscv/riscv32/arch_caps.c>
     $<$<STREQUAL:${ARCH},riscv32>:${BHARAT_ARCH_ROOT}/riscv/riscv32/hw_caps.c>
+    $<$<STREQUAL:${ARCH},riscv32>:${BHARAT_ARCH_ROOT}/riscv/riscv32/arch_elf.c>
     $<$<STREQUAL:${ARCH},riscv32>:${BHARAT_ARCH_HAL_ROOT}/riscv/riscv32/hal_mm.c>
+
     ${ARCH_EXT_STATE_SRC}
     ${BHARAT_HAL_ROOT}/common/hal_mem_backend.c
     ${BHARAT_HAL_ROOT}/common/cpu_features.c

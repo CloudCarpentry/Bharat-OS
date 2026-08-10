@@ -35,6 +35,23 @@ typedef struct {
     uint16_t  e_type;
     uint16_t  e_machine;
     uint32_t  e_version;
+    uint32_t  e_entry;
+    uint32_t  e_phoff;
+    uint32_t  e_shoff;
+    uint32_t  e_flags;
+    uint16_t  e_ehsize;
+    uint16_t  e_phentsize;
+    uint16_t  e_phnum;
+    uint16_t  e_shentsize;
+    uint16_t  e_shnum;
+    uint16_t  e_shstrndx;
+} elf32_ehdr_t;
+
+typedef struct {
+    uint8_t   e_ident[EI_NIDENT];
+    uint16_t  e_type;
+    uint16_t  e_machine;
+    uint32_t  e_version;
     uint64_t  e_entry;
     uint64_t  e_phoff;
     uint64_t  e_shoff;
@@ -46,6 +63,17 @@ typedef struct {
     uint16_t  e_shnum;
     uint16_t  e_shstrndx;
 } elf64_ehdr_t;
+
+typedef struct {
+    uint32_t  p_type;
+    uint32_t  p_offset;
+    uint32_t  p_vaddr;
+    uint32_t  p_paddr;
+    uint32_t  p_filesz;
+    uint32_t  p_memsz;
+    uint32_t  p_flags;
+    uint32_t  p_align;
+} elf32_phdr_t;
 
 typedef struct {
     uint32_t  p_type;
@@ -61,50 +89,63 @@ typedef struct {
 elf_parse_status_t elf_parse_image(const uint8_t* bytes, size_t size, elf_summary_t* summary) {
     if (!bytes || !summary) return ELF_PARSE_ERR_MALFORMED;
 
-    if (size < sizeof(elf64_ehdr_t)) {
+    if (size < EI_NIDENT) {
         return ELF_PARSE_ERR_BUFFER_TOO_SMALL;
     }
 
-    const elf64_ehdr_t* ehdr = (const elf64_ehdr_t*)bytes;
-
-    if (ehdr->e_ident[EI_MAG0] != ELFMAG0 ||
-        ehdr->e_ident[EI_MAG1] != ELFMAG1 ||
-        ehdr->e_ident[EI_MAG2] != ELFMAG2 ||
-        ehdr->e_ident[EI_MAG3] != ELFMAG3) {
+    if (bytes[EI_MAG0] != ELFMAG0 ||
+        bytes[EI_MAG1] != ELFMAG1 ||
+        bytes[EI_MAG2] != ELFMAG2 ||
+        bytes[EI_MAG3] != ELFMAG3) {
         return ELF_PARSE_ERR_INVALID_MAGIC;
     }
 
-    if (ehdr->e_ident[EI_CLASS] != ELFCLASS64) {
+    uint8_t elf_class = bytes[EI_CLASS];
+    if (elf_class != ELFCLASS32 && elf_class != ELFCLASS64) {
         return ELF_PARSE_ERR_UNSUPPORTED_CLASS;
     }
 
-    if (ehdr->e_ident[EI_DATA] != ELFDATA2LSB) {
+    if (bytes[EI_DATA] != ELFDATA2LSB) {
         return ELF_PARSE_ERR_UNSUPPORTED_ENDIANNESS;
     }
 
-    if (ehdr->e_ident[EI_VERSION] != EV_CURRENT || ehdr->e_version != EV_CURRENT) {
+    if (bytes[EI_VERSION] != EV_CURRENT) {
         return ELF_PARSE_ERR_INVALID_VERSION;
     }
 
-    if (ehdr->e_type != ET_EXEC && ehdr->e_type != ET_DYN) {
-        /* Rejecting object files or cores. */
-        return ELF_PARSE_ERR_MALFORMED;
-    }
+    if (elf_class == ELFCLASS32) {
+        if (size < sizeof(elf32_ehdr_t)) return ELF_PARSE_ERR_BUFFER_TOO_SMALL;
+        const elf32_ehdr_t *ehdr = (const elf32_ehdr_t *)bytes;
+        if (ehdr->e_version != EV_CURRENT) return ELF_PARSE_ERR_INVALID_VERSION;
+        if (ehdr->e_type != ET_EXEC && ehdr->e_type != ET_DYN) return ELF_PARSE_ERR_MALFORMED;
+        if (ehdr->e_phentsize < sizeof(elf32_phdr_t)) return ELF_PARSE_ERR_MALFORMED;
 
-    if (ehdr->e_phentsize < sizeof(elf64_phdr_t)) {
-        return ELF_PARSE_ERR_MALFORMED;
-    }
+        uint64_t ph_table_size = (uint64_t)ehdr->e_phentsize * ehdr->e_phnum;
+        if (ehdr->e_phoff > size || ph_table_size > size - ehdr->e_phoff) {
+            return ELF_PARSE_ERR_MALFORMED;
+        }
 
-    /* Check for overflow in program header parsing */
-    uint64_t ph_table_size = (uint64_t)ehdr->e_phentsize * ehdr->e_phnum;
-    if (ehdr->e_phoff > size || ph_table_size > size - ehdr->e_phoff) {
-        return ELF_PARSE_ERR_MALFORMED;
-    }
+        summary->entry_point = ehdr->e_entry;
+        summary->program_header_count = ehdr->e_phnum;
+        summary->program_header_offset = ehdr->e_phoff;
+        summary->program_header_entry_size = ehdr->e_phentsize;
+    } else {
+        if (size < sizeof(elf64_ehdr_t)) return ELF_PARSE_ERR_BUFFER_TOO_SMALL;
+        const elf64_ehdr_t *ehdr = (const elf64_ehdr_t *)bytes;
+        if (ehdr->e_version != EV_CURRENT) return ELF_PARSE_ERR_INVALID_VERSION;
+        if (ehdr->e_type != ET_EXEC && ehdr->e_type != ET_DYN) return ELF_PARSE_ERR_MALFORMED;
+        if (ehdr->e_phentsize < sizeof(elf64_phdr_t)) return ELF_PARSE_ERR_MALFORMED;
 
-    summary->entry_point = ehdr->e_entry;
-    summary->program_header_count = ehdr->e_phnum;
-    summary->program_header_offset = ehdr->e_phoff;
-    summary->program_header_entry_size = ehdr->e_phentsize;
+        uint64_t ph_table_size = (uint64_t)ehdr->e_phentsize * ehdr->e_phnum;
+        if (ehdr->e_phoff > size || ph_table_size > size - ehdr->e_phoff) {
+            return ELF_PARSE_ERR_MALFORMED;
+        }
+
+        summary->entry_point = ehdr->e_entry;
+        summary->program_header_count = ehdr->e_phnum;
+        summary->program_header_offset = ehdr->e_phoff;
+        summary->program_header_entry_size = ehdr->e_phentsize;
+    }
 
     return ELF_PARSE_OK;
 }
@@ -118,12 +159,20 @@ elf_parse_status_t elf_get_load_segment_count(const uint8_t* bytes, size_t size,
         return status;
     }
 
+    uint8_t elf_class = bytes[EI_CLASS];
     size_t load_count = 0;
     for (uint16_t i = 0; i < summary.program_header_count; ++i) {
         uint64_t offset = summary.program_header_offset + (i * summary.program_header_entry_size);
-        const elf64_phdr_t* phdr = (const elf64_phdr_t*)(bytes + offset);
+        uint32_t p_type = 0;
+        if (elf_class == ELFCLASS32) {
+            const elf32_phdr_t *phdr = (const elf32_phdr_t *)(bytes + offset);
+            p_type = phdr->p_type;
+        } else {
+            const elf64_phdr_t *phdr = (const elf64_phdr_t *)(bytes + offset);
+            p_type = phdr->p_type;
+        }
 
-        if (phdr->p_type == PT_LOAD) {
+        if (p_type == PT_LOAD) {
             load_count++;
         }
     }
@@ -142,6 +191,7 @@ elf_parse_status_t elf_extract_load_segments(const uint8_t* bytes, size_t size, 
         return status;
     }
 
+    uint8_t elf_class = bytes[EI_CLASS];
     size_t load_count = 0;
     for (uint16_t i = 0; i < summary.program_header_count; ++i) {
         if (load_count >= capacity) {
@@ -149,34 +199,54 @@ elf_parse_status_t elf_extract_load_segments(const uint8_t* bytes, size_t size, 
         }
 
         uint64_t offset = summary.program_header_offset + (i * summary.program_header_entry_size);
-        const elf64_phdr_t* phdr = (const elf64_phdr_t*)(bytes + offset);
+        uint32_t p_type = 0;
+        uint64_t p_vaddr = 0, p_paddr = 0, p_offset = 0, p_filesz = 0, p_memsz = 0, p_align = 0;
+        uint32_t p_flags = 0;
 
-        if (phdr->p_type == PT_LOAD) {
-            // Validate segment bounds against file
-            if (phdr->p_offset > size || phdr->p_filesz > size - phdr->p_offset) {
+        if (elf_class == ELFCLASS32) {
+            const elf32_phdr_t *phdr = (const elf32_phdr_t *)(bytes + offset);
+            p_type = phdr->p_type;
+            p_offset = phdr->p_offset;
+            p_vaddr = phdr->p_vaddr;
+            p_paddr = phdr->p_paddr;
+            p_filesz = phdr->p_filesz;
+            p_memsz = phdr->p_memsz;
+            p_flags = phdr->p_flags;
+            p_align = phdr->p_align;
+        } else {
+            const elf64_phdr_t *phdr = (const elf64_phdr_t *)(bytes + offset);
+            p_type = phdr->p_type;
+            p_offset = phdr->p_offset;
+            p_vaddr = phdr->p_vaddr;
+            p_paddr = phdr->p_paddr;
+            p_filesz = phdr->p_filesz;
+            p_memsz = phdr->p_memsz;
+            p_flags = phdr->p_flags;
+            p_align = phdr->p_align;
+        }
+
+        if (p_type == PT_LOAD) {
+            if (p_offset > size || p_filesz > size - p_offset) {
                 return ELF_PARSE_ERR_MALFORMED;
             }
 
-            // A valid PT_LOAD segment must have memory size >= file size
-            if (phdr->p_memsz < phdr->p_filesz) {
+            if (p_memsz < p_filesz) {
                 return ELF_PARSE_ERR_MALFORMED;
             }
 
-            segments[load_count].virtual_address = phdr->p_vaddr;
-            segments[load_count].physical_address = phdr->p_paddr;
-            segments[load_count].file_offset = phdr->p_offset;
-            segments[load_count].file_size = phdr->p_filesz;
-            segments[load_count].memory_size = phdr->p_memsz;
-            segments[load_count].flags = phdr->p_flags;
-            segments[load_count].alignment = phdr->p_align;
+            segments[load_count].virtual_address = p_vaddr;
+            segments[load_count].physical_address = p_paddr;
+            segments[load_count].file_offset = p_offset;
+            segments[load_count].file_size = p_filesz;
+            segments[load_count].memory_size = p_memsz;
+            segments[load_count].flags = p_flags;
+            segments[load_count].alignment = (uint32_t)p_align;
 
-            // basic check alignment
-            if (phdr->p_align != 0 && phdr->p_align != 1) {
-                // Must be a power of two
-                if ((phdr->p_align & (phdr->p_align - 1)) != 0) {
+            if (p_align != 0 && p_align != 1) {
+                if ((p_align & (p_align - 1)) != 0) {
                     return ELF_PARSE_ERR_MALFORMED;
                 }
-                if ((phdr->p_vaddr % phdr->p_align) != (phdr->p_offset % phdr->p_align)) {
+                if ((p_vaddr % p_align) != (p_offset % p_align)) {
                     return ELF_PARSE_ERR_MALFORMED;
                 }
             }
@@ -188,3 +258,4 @@ elf_parse_status_t elf_extract_load_segments(const uint8_t* bytes, size_t size, 
     *written = load_count;
     return ELF_PARSE_OK;
 }
+

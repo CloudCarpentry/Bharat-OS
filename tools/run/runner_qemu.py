@@ -62,7 +62,8 @@ def build_qemu_command(manifest: dict, mode_override: str = None, display_overri
     init_artifact = artifacts.get("init_module", "")
     if init_artifact:
         if arch == "x86_64":
-            cmd.extend(["-initrd", f"{init_artifact} services/init"])
+            module_name = artifacts.get("root_module_name", "")
+            cmd.extend(["-initrd", f"{init_artifact} {module_name}".rstrip()])
         else:
             cmd.extend(["-initrd", init_artifact])
 

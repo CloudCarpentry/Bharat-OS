@@ -113,7 +113,7 @@ void hal_irq_init_boot(void) {}
 void hal_timer_init(void) {}
 int device_register_builtin_drivers(void) { return 0; }
 void arch_cpu_caps_init(void) {}
-void arch_cpu_caps_system_finalize(void) {}
+kstatus_t arch_cpu_caps_system_finalize(void) { return K_OK; }
 void hal_discovery_publish_cpu_caps(void) {}
 void arch_ext_state_boot_init(void) {}
 void ipc_async_init(void) {}

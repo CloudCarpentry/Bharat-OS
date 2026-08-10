@@ -152,7 +152,7 @@ void test_boot_module_rt_supervisor() {
     int ret = boot_info_finalize(&bi);
     assert(ret == 0);
     assert(strcmp(bi.modules[0].name, "services/rt-supervisor") == 0);
-    assert(bi.init_payload_kind == BH_BOOT_HANDOFF_STATIC_RT);
+    assert(bi.init_payload_kind == BH_BOOT_HANDOFF_USER_ELF);
 
     printf("Passed test_boot_module_rt_supervisor\n");
 }

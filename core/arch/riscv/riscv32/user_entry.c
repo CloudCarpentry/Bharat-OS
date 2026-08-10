@@ -2,6 +2,8 @@
 #include "kernel/status.h"
 #include "mm/prot_domain.h"
 #include "panic.h"
+#include "bharat/cpu_local.h"
+
 
 #define SSTATUS_SPP (1 << 8)
 #define SSTATUS_SPIE (1 << 5)
@@ -41,6 +43,12 @@ void arch_enter_user(const arch_user_entry_t *entry) {
     sstatus &= ~(SSTATUS_SPP | SSTATUS_SUM);
     sstatus |= SSTATUS_SPIE;
 
+    extern uint32_t hal_cpu_get_id(void);
+    uint32_t core = hal_cpu_get_id();
+    uint32_t kstack = (uint32_t)g_cpu_locals[core].kernel_stack;
+    asm volatile("csrw sscratch, %0" :: "r"(kstack));
+
+
     asm volatile(
         "csrw sstatus, %0\n\t"
         "csrw sepc, %1\n\t"
@@ -54,3 +62,4 @@ void arch_enter_user(const arch_user_entry_t *entry) {
 
     __builtin_unreachable();
 }
+

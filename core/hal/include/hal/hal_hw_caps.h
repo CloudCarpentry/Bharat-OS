@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "kernel/status.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -29,12 +30,25 @@ typedef struct hal_hw_caps {
     uint32_t cache_line_size;
 } hal_hw_caps_t;
 
+typedef enum {
+    HAL_CAPS_UNINITIALIZED = 0,
+    HAL_CAPS_RAW_DISCOVERED,
+    HAL_CAPS_CPU_FINALIZED,
+    HAL_CAPS_FROZEN
+} hal_caps_state_t;
+
 /**
  * Get the internal hardware capabilities.
  *
  * @return A pointer to the global hardware capabilities structure.
  */
 const hal_hw_caps_t *hal_get_internal_hw_caps(void);
+
+hal_caps_state_t hal_hw_caps_state(void);
+bool hal_hw_caps_is_frozen(void);
+kstatus_t hal_hw_caps_publish_raw(const hal_hw_caps_t *caps);
+kstatus_t hal_hw_caps_publish_cpu(void);
+kstatus_t hal_hw_caps_finalize(void);
 
 #ifdef __cplusplus
 }

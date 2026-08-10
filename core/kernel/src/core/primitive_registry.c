@@ -45,6 +45,10 @@ kstatus_t bh_kernel_primitive_registry_init(const hal_hw_caps_t *caps) {
         return K_ERR_INVALID_ARG;
     }
 
+    if (!hal_hw_caps_is_frozen() || caps != hal_get_internal_hw_caps()) {
+        return K_ERR_IN_PROGRESS;
+    }
+
     if (g_registry.state == KPRIM_STATE_FINALIZED) {
         return K_ERR_BAD_STATE; // Already finalized
     }
@@ -89,8 +93,8 @@ kstatus_t bh_kernel_primitive_registry_init(const hal_hw_caps_t *caps) {
         (((SET_PTR)->usable_bits[(FEAT) / 64] & (1ULL << ((FEAT) % 64))) != 0)
 
     // ATOMIC_64
-    bool atomic64_all = HAS_CPU_FEATURE(&g_registry.cpu_caps_all, HAL_CPU_FEATURE_STRONG_ATOMICS) || g_registry.hw_caps.has_atomic_64;
-    bool atomic64_any = HAS_CPU_FEATURE(&g_registry.cpu_caps_any, HAL_CPU_FEATURE_STRONG_ATOMICS) || g_registry.hw_caps.has_atomic_64;
+    bool atomic64_all = HAS_CPU_FEATURE(&g_registry.cpu_caps_all, HAL_CPU_FEATURE_STRONG_ATOMICS);
+    bool atomic64_any = HAS_CPU_FEATURE(&g_registry.cpu_caps_any, HAL_CPU_FEATURE_STRONG_ATOMICS);
     NORMALIZE_CAP(BH_KPRIM_CAP_ATOMIC_64, atomic64_all, atomic64_any,
                   atomic64_any ? BH_PRIMITIVE_HARDWARE_ASSISTED : BH_PRIMITIVE_UNSUPPORTED);
 
@@ -215,7 +219,7 @@ bool bh_kprim_has_local(bh_kprim_capability_t cap) {
     }
 
     if (cap == BH_KPRIM_CAP_ATOMIC_64) {
-        return hal_cpu_has_feature_current(HAL_CPU_FEATURE_STRONG_ATOMICS) || g_registry.hw_caps.has_atomic_64;
+        return hal_cpu_has_feature_current(HAL_CPU_FEATURE_STRONG_ATOMICS);
     }
 
     return get_bit(g_registry.system_any_bits, cap);

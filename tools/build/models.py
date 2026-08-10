@@ -65,6 +65,12 @@ class PackageConfig:
     transforms: List[PackageTransformConfig] = field(default_factory=list)
 
 
+@dataclass(frozen=True)
+class UserspaceConfig:
+    runtime_model: str = "full"
+    root_component: str = "init"
+
+
 @dataclass
 class RunConfig:
     backend: str              # qemu | renode | none
@@ -110,6 +116,7 @@ class ResolvedTarget:
     device_profile: str
     personality_profile: str
     execution_profile: Optional[str]
+    userspace: UserspaceConfig
 
     build: BuildConfig
     kernel: KernelConfig

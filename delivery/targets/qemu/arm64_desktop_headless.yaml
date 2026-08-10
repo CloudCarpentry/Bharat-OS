@@ -38,7 +38,7 @@ package:
 
 run:
   backend: qemu
-  machine: "virt,gic-version=3"
+  machine: "virt,gic-version=2"
   cpu: cortex-a72
   memory: 1024M
   nographic: true

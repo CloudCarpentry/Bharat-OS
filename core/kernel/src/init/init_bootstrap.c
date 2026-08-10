@@ -190,6 +190,8 @@ static void loader_print_hex64(uint64_t val) {
 static __attribute__((noreturn)) void generic_user_init_trampoline(void *arg) {
     init_boot_stage("USER_ENTRY");
 
+
+
     bh_thread_t *self = sched_current_thread();
     arch_user_entry_t *expected = &self->first_user_entry;
     arch_user_entry_t *entry = (arch_user_entry_t *)arg;
@@ -227,32 +229,11 @@ static int bootstrap_launch_first_service(void) {
         return -1;
     }
 
-    // 1. RT / MPU Branching
-    if (g_boot_info->init_payload_kind == BH_BOOT_HANDOFF_STATIC_RT) {
-        console_write_raw("[BOOTSTRAP] BOOT_PROFILE: RT\n", 29);
-        console_write_raw("[BOOTSTRAP] BOOT_MEMORY_MODEL: MPU\n", 35);
-
-        // Find services/rt-supervisor module exactly
-        const boot_module_t *rt_mod = NULL;
-        for (uint32_t i = 0; i < g_boot_info->module_count; ++i) {
-            if (fdt_str_eq_local(g_boot_info->modules[i].name, "services/rt-supervisor")) {
-                rt_mod = &g_boot_info->modules[i];
-                break;
-            }
-        }
-
-        if (!rt_mod) {
-            console_write_raw("  [BOOTSTRAP] services/rt-supervisor module not found\n", 54);
-            return -1;
-        }
-
-        return bh_rt_supervisor_start(rt_mod);
-    }
-
-    // 2. Normal / MMU Branching (services/init)
+    /* The package contains one authoritative root, independent of ISA/profile. */
     const boot_module_t *init_mod = NULL;
     for (uint32_t i = 0; i < g_boot_info->module_count; ++i) {
-        if (fdt_str_eq_local(g_boot_info->modules[i].name, "services/init")) {
+        if (g_boot_info->modules[i].phys_start == g_boot_info->init_payload_phys &&
+            g_boot_info->modules[i].size == g_boot_info->init_payload_size) {
             init_mod = &g_boot_info->modules[i];
             break;
         }
@@ -280,11 +261,13 @@ static int bootstrap_launch_first_service(void) {
         return -1;
     }
 
+    console_write_raw("[BOOTSTRAP] ROOT_MODULE_FOUND\n", 30);
+    /* Transitional evidence marker retained while boot contracts migrate. */
     console_write_raw("[BOOTSTRAP] INIT_MODULE: services/init FOUND\n", 45);
     init_boot_stage("MODULE_DISCOVERED");
     init_boot_stage("MODULE_RESERVED");
 
-    bh_process_t *proc = process_create("init");
+    bh_process_t *proc = process_create("root");
     if (!proc) {
         init_boot_fail("ASPACE_READY", K_ERR_NO_MEMORY);
         return -1;

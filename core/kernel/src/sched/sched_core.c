@@ -478,6 +478,8 @@ void sched_reschedule(void) {
   sched_switch_to(next, core);
 }
 
+
+
 void sched_on_timer_tick(void) {
   sched_remote_cmd_poll_timeouts();
   g_cpu_locals[sched_clamp_core(hal_cpu_get_id())].runqueue.total_ticks++;

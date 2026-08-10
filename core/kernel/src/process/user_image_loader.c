@@ -1,13 +1,16 @@
 #include "process/user_image_loader.h"
 #include "bharat/elf/elf_parser.h"
 #include "bharat/elf/elf_load_plan.h"
+#include "arch/arch_elf.h"
 #include "mm.h"
+
 #include "slab.h"
 #include "mm/physmap.h"
 #include "mm/vm_mapping.h"
 #include "lib/base/string.h"
 #include "console/console_core.h"
 #include "hal/hal.h"
+#include "bharat_config.h"
 
 // Temporarily undefine __KERNEL__ so we can include the UAPI header
 // The build system adds both __KERNEL__ and __USER__ when compiling this object for some reason (or just __KERNEL__)
@@ -22,6 +25,7 @@
 #endif
 
 #include <bharat/uapi/init/bootstrap.h>
+#include <bharat/uapi/bootstrap/root_launch.h>
 
 #ifdef __KERNEL_WAS_DEFINED__
 #define __KERNEL__ 1
@@ -61,18 +65,10 @@ static kstatus_t elf_plan_prot_to_vm(uint32_t plan_prot, uint32_t *out_vm_prot) 
 }
 
 static bh_elf_machine_t loader_expected_machine(bool *supported) {
-    *supported = true;
-#if defined(__x86_64__)
-    return BH_ELF_MACHINE_X86_64;
-#elif defined(__aarch64__)
-    return BH_ELF_MACHINE_AARCH64;
-#elif defined(__riscv) && (__riscv_xlen == 64)
-    return BH_ELF_MACHINE_RISCV64;
-#else
-    *supported = false;
-    return BH_ELF_MACHINE_X86_64;
-#endif
+    return arch_elf_get_expected_machine(supported);
 }
+
+
 
 static void loader_txn_rollback(loader_txn_t *txn) {
     bool cleanup_failed = false;
@@ -157,10 +153,15 @@ static const char *loader_machine_name(bh_elf_machine_t machine) {
         return "AARCH64";
     case BH_ELF_MACHINE_RISCV64:
         return "RISCV64";
+    case BH_ELF_MACHINE_ARM32:
+        return "ARM32";
+    case BH_ELF_MACHINE_RISCV32:
+        return "RISCV32";
     default:
         return "UNKNOWN";
     }
 }
+
 
 static const char *loader_plan_status_name(int plan_res) {
     switch (plan_res) {
@@ -355,7 +356,7 @@ kstatus_t bh_user_image_load(
     startup->abi_version = 1;
     startup->struct_size = sizeof(bharat_user_startup_t);
     startup->argc = 0;
-    startup->flags = 0;
+    startup->flags = BH_USER_STARTUP_FLAG_ROOT_LAUNCH_EXTENSION;
     startup->argv = 0;
     startup->envp = 0;
     startup->bootstrap.abi_version = 1;
@@ -367,6 +368,17 @@ kstatus_t bh_user_image_load(
     startup->bootstrap.online_core_mask = (1ULL << hal_cpu_get_id());
     startup->bootstrap.self_process_cap = 0;
     startup->bootstrap.bootstrap_cap = 0;
+    bh_root_launch_info_t *root_launch =
+        (bh_root_launch_info_t *)((uint8_t *)startup + sizeof(*startup));
+    root_launch->version = BH_ROOT_LAUNCH_ABI_VERSION;
+    root_launch->size = sizeof(*root_launch);
+    root_launch->runtime_model =
+        (bh_userspace_runtime_model_t)BHARAT_USERSPACE_RUNTIME_MODEL;
+    root_launch->flags = 0;
+    root_launch->root_module_kind = 1;
+    root_launch->root_module_id = 0;
+    root_launch->boot_session_id = startup->bootstrap.boot_session_id;
+    root_launch->bundle_manifest_id = 0;
     status = prot_domain_map_region(aspace->prot_domain, startup_va, (phys_addr_t)(uintptr_t)startup_phys, PAGE_SIZE, VM_PROT_READ | VM_PROT_USER);
     if (status != K_OK) { pmm_free_page(startup_phys); loader_print_fail("STARTUP_READY", status); goto fail; }
     txn->pages[txn->page_count++] = (loader_page_t){.va = startup_va, .page = startup_phys};
