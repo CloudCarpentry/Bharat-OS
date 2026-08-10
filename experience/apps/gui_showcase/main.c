@@ -2,13 +2,12 @@
 #include "lvgl.h"
 #include "bharat/uapi/display/display_v2.h"
 #include "bharat/uapi/display/bharat_display_broker_v2_types.h"
+#include "bharat_lvgl.h"
 #include "ui_screens.h"
 #include <stdio.h>
-#include <unistd.h>
 #include <stdlib.h>
 
 // Forward declarations for adapters
-extern void bharat_lvgl_tick_init(void);
 extern lv_display_t * bharat_lvgl_display_create(bh_display_lease_handle_t lease, uint32_t width, uint32_t height);
 extern lv_indev_t * bharat_lvgl_pointer_create(void);
 extern lv_indev_t * bharat_lvgl_keyboard_create(void);
@@ -97,7 +96,7 @@ int main(int argc, char** argv) {
     int frame_count = 0;
     while(frame_count < 10) { // Limit iterations for demo test run
         uint32_t delay = lv_timer_handler();
-        usleep(delay * 1000);
+        bharat_lvgl_wait_ms(delay);
         frame_count++;
     }
 

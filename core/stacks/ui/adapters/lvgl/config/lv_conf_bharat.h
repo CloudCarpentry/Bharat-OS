@@ -13,7 +13,7 @@
 #define LV_STDINT_INCLUDE <stdint.h>
 #define LV_STDDEF_INCLUDE <stddef.h>
 #define LV_STDBOOL_INCLUDE <stdbool.h>
-#define LV_INTTYPES_INCLUDE <stdint.h>
+#define LV_INTTYPES_INCLUDE "lv_bharat_inttypes.h"
 #define LV_LIMITS_INCLUDE <limits.h>
 #define LV_STDARG_INCLUDE <stdarg.h>
 

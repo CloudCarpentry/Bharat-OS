@@ -41,7 +41,7 @@ if(BHARAT_UI_LVGL)
     target_compile_definitions(bharat_ui_lvgl_core PUBLIC BHARAT_UI_LVGL)
     target_compile_definitions(bharat_ui_lvgl_core PUBLIC "LV_CONF_PATH=\"${CMAKE_SOURCE_DIR}/core/stacks/ui/adapters/lvgl/config/lv_conf_bharat.h\"")
 
-    target_link_libraries(bharat_ui_lvgl_core PUBLIC bharat_user_buildopts bharat_libcmin bharat_libruntime bharat_freestanding)
+    target_link_libraries(bharat_ui_lvgl_core PUBLIC bharat_user_buildopts bharat_libcmin bharat_libruntime bharatc bharat_freestanding)
     if(COMMAND bharat_configure_userspace_library)
         bharat_configure_userspace_library(bharat_ui_lvgl_core)
     endif()
