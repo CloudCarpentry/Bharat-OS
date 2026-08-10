@@ -86,6 +86,15 @@ arch_context_switch:
 
     ret
 
+.global riscv_thread_entry_stub
+.type riscv_thread_entry_stub, @function
+riscv_thread_entry_stub:
+    mv a0, s0
+    jalr s1
+    j sched_thread_exit_trampoline
+
+
+
 .global riscv_fp_state_save
 .type riscv_fp_state_save, @function
 # a0 = arch_ext_state_t*

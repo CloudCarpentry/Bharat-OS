@@ -7,12 +7,14 @@
 #define EI_DATA         5
 #define EI_VERSION      6
 
+#define ELFCLASS32      1
 #define ELFCLASS64      2
 #define ELFDATA2LSB     1
 #define EV_CURRENT      1
 #define ET_EXEC         2
 #define ET_DYN          3
 
+#define EM_ARM          40
 #define EM_X86_64       62
 #define EM_AARCH64      183
 #define EM_RISCV        243
@@ -48,7 +50,10 @@ static bool machine_matches(uint16_t elf_machine, bh_elf_machine_t expected_mach
     case BH_ELF_MACHINE_AARCH64:
         return elf_machine == EM_AARCH64;
     case BH_ELF_MACHINE_RISCV64:
+    case BH_ELF_MACHINE_RISCV32:
         return elf_machine == EM_RISCV;
+    case BH_ELF_MACHINE_ARM32:
+        return elf_machine == EM_ARM;
     default:
         return false;
     }
@@ -74,9 +79,10 @@ int bh_elf_generate_load_plan_for_machine(const uint8_t *bytes, size_t size, uin
         return BH_ELF_PLAN_ERR_MAGIC;
     }
 
-    if (ehdr->e_ident[EI_CLASS] != ELFCLASS64 || ehdr->e_ident[EI_DATA] != ELFDATA2LSB) {
+    if ((ehdr->e_ident[EI_CLASS] != ELFCLASS32 && ehdr->e_ident[EI_CLASS] != ELFCLASS64) || ehdr->e_ident[EI_DATA] != ELFDATA2LSB) {
         return BH_ELF_PLAN_ERR_CLASS;
     }
+
 
     if (!machine_matches(ehdr->e_machine, expected_machine)) {
         return BH_ELF_PLAN_ERR_UNSUPPORTED;

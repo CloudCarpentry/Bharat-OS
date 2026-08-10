@@ -190,6 +190,8 @@ static void loader_print_hex64(uint64_t val) {
 static __attribute__((noreturn)) void generic_user_init_trampoline(void *arg) {
     init_boot_stage("USER_ENTRY");
 
+
+
     bh_thread_t *self = sched_current_thread();
     arch_user_entry_t *expected = &self->first_user_entry;
     arch_user_entry_t *entry = (arch_user_entry_t *)arg;

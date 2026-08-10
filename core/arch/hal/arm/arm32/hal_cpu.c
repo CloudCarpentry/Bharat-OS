@@ -49,7 +49,6 @@ uint64_t hal_cpu_get_fault_address(const void *trap_frame) {
 void hal_init(void) {
     arch_discover_hw_caps();
 }
-uint32_t hal_mm_backend_caps(void) { return 0; }
 void hal_send_ipi_payload(uint32_t cpu, uint64_t payload) { (void)cpu; (void)payload; }
 
 static irq_domain_t* g_arm32_root_domain = NULL;
@@ -89,12 +88,8 @@ int hal_secure_boot_arch_check(const bharat_boot_policy_t *policy) {
 
 void hal_core_notify(uint32_t target_core, uint64_t payload_or_reason) { (void)target_core; (void)payload_or_reason; }
 uint32_t hal_get_cpu_id(void) { return 0; }
-void hal_mm_get_zone_limits(uint32_t zone, uintptr_t *start, uintptr_t *end) {
-    (void)zone; 
-    if (start) *start = 0;
-    if (end) *end = 0;
-}
-
 void *__aeabi_read_tp(void) {
+
+
     return 0;
 }

@@ -450,6 +450,8 @@ static void runtime_enter_normal(const boot_info_t *boot) {
     // Force first reschedule to start sysmgr immediately
     bh_thread_yield();
 
+
+
     // Controlled idle
     while (1) {
         hal_cpu_halt();

@@ -51,10 +51,16 @@ void arch_prepare_initial_context_arg(
     // x19 (regs[0]) will hold the real entry point
     ctx->regs[0] = (uint64_t)(uintptr_t)entry;
 
-    // x0 will be arg0 for the entry function
+    // x20 (regs[1]) will hold arg0
     ctx->regs[1] = (uint64_t)(uintptr_t)arg0;
+
+    // Preserve DAIF state in regs[12] (offset 96)
+    uint64_t daif_val;
+    __asm__ volatile("mrs %0, daif" : "=r"(daif_val));
+    ctx->regs[12] = daif_val;
 
     // Initial resume point is the bootstrap trampoline
     ctx->pc = (uint64_t)(uintptr_t)arch_bh_thread_start_trampoline;
     ctx->sp = stack_top;
 }
+

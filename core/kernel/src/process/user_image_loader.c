@@ -1,7 +1,9 @@
 #include "process/user_image_loader.h"
 #include "bharat/elf/elf_parser.h"
 #include "bharat/elf/elf_load_plan.h"
+#include "arch/arch_elf.h"
 #include "mm.h"
+
 #include "slab.h"
 #include "mm/physmap.h"
 #include "mm/vm_mapping.h"
@@ -63,18 +65,10 @@ static kstatus_t elf_plan_prot_to_vm(uint32_t plan_prot, uint32_t *out_vm_prot) 
 }
 
 static bh_elf_machine_t loader_expected_machine(bool *supported) {
-    *supported = true;
-#if defined(__x86_64__)
-    return BH_ELF_MACHINE_X86_64;
-#elif defined(__aarch64__)
-    return BH_ELF_MACHINE_AARCH64;
-#elif defined(__riscv) && (__riscv_xlen == 64)
-    return BH_ELF_MACHINE_RISCV64;
-#else
-    *supported = false;
-    return BH_ELF_MACHINE_X86_64;
-#endif
+    return arch_elf_get_expected_machine(supported);
 }
+
+
 
 static void loader_txn_rollback(loader_txn_t *txn) {
     bool cleanup_failed = false;
@@ -159,10 +153,15 @@ static const char *loader_machine_name(bh_elf_machine_t machine) {
         return "AARCH64";
     case BH_ELF_MACHINE_RISCV64:
         return "RISCV64";
+    case BH_ELF_MACHINE_ARM32:
+        return "ARM32";
+    case BH_ELF_MACHINE_RISCV32:
+        return "RISCV32";
     default:
         return "UNKNOWN";
     }
 }
+
 
 static const char *loader_plan_status_name(int plan_res) {
     switch (plan_res) {

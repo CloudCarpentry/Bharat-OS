@@ -58,6 +58,7 @@ run:
     - "-bios"
     - "none"
 
+
 debug:
   backend: gdb_remote
   stop_on_entry: false
