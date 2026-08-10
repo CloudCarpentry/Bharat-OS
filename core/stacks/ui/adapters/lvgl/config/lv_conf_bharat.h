@@ -2,7 +2,20 @@
 #ifndef LV_CONF_BHARAT_H
 #define LV_CONF_BHARAT_H
 
+#ifndef LV_CONF_H
+#define LV_CONF_H 1
+#endif
+
 #include <stdint.h>
+#include <stddef.h>
+#include <stdbool.h>
+
+#define LV_STDINT_INCLUDE <stdint.h>
+#define LV_STDDEF_INCLUDE <stddef.h>
+#define LV_STDBOOL_INCLUDE <stdbool.h>
+#define LV_INTTYPES_INCLUDE <stdint.h>
+#define LV_LIMITS_INCLUDE <limits.h>
+#define LV_STDARG_INCLUDE <stdarg.h>
 
 #define LV_USE_OS   0
 #define LV_USE_LOG  0

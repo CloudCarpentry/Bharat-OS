@@ -20,9 +20,14 @@ if(BHARAT_UI_LVGL)
         ${CMAKE_SOURCE_DIR}/core/apps/ui_demo/screens/diagnostics_screen.c
         ${CMAKE_SOURCE_DIR}/core/apps/ui_demo/screens/recovery_screen.c
         ${CMAKE_SOURCE_DIR}/core/apps/ui_demo/screens/settings_screen.c
-        ${CMAKE_SOURCE_DIR}/build/generated/ui/theme/theme_tokens.c
         ${LVGL_SOURCES}
     )
+
+    if(EXISTS "${CMAKE_BINARY_DIR}/generated/ui/theme/theme_tokens.c")
+        target_sources(bharat_ui_lvgl_core PRIVATE "${CMAKE_BINARY_DIR}/generated/ui/theme/theme_tokens.c")
+    elseif(EXISTS "${CMAKE_SOURCE_DIR}/build/generated/ui/theme/theme_tokens.c")
+        target_sources(bharat_ui_lvgl_core PRIVATE "${CMAKE_SOURCE_DIR}/build/generated/ui/theme/theme_tokens.c")
+    endif()
 
     target_include_directories(bharat_ui_lvgl_core
         PUBLIC include PUBLIC ${CMAKE_SOURCE_DIR}/interface/include
@@ -34,5 +39,10 @@ if(BHARAT_UI_LVGL)
 
     target_compile_definitions(bharat_ui_lvgl_core PUBLIC LV_CONF_INCLUDE_SIMPLE=1)
     target_compile_definitions(bharat_ui_lvgl_core PUBLIC BHARAT_UI_LVGL)
-    target_compile_definitions(bharat_ui_lvgl_core PRIVATE "LV_CONF_PATH=\"${CMAKE_SOURCE_DIR}/core/stacks/ui/adapters/lvgl/config/lv_conf_bharat.h\"")
+    target_compile_definitions(bharat_ui_lvgl_core PUBLIC "LV_CONF_PATH=\"${CMAKE_SOURCE_DIR}/core/stacks/ui/adapters/lvgl/config/lv_conf_bharat.h\"")
+
+    target_link_libraries(bharat_ui_lvgl_core PUBLIC bharat_user_buildopts bharat_libcmin bharat_libruntime bharat_freestanding)
+    if(COMMAND bharat_configure_userspace_library)
+        bharat_configure_userspace_library(bharat_ui_lvgl_core)
+    endif()
 endif()
