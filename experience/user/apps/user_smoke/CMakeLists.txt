@@ -1,0 +1,4 @@
+add_executable(user_smoke main.c)
+target_link_libraries(user_smoke PRIVATE bharat_user_buildopts bharat_freestanding
+    bharat_libcmin bharat_libruntime bharat_syscall)
+bharat_configure_userspace_binary(user_smoke)

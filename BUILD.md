@@ -405,3 +405,11 @@ python3 tools/check_profiles.py
 - Root wrappers (`/build.sh`, `/build.ps1`) are the stable commands users should run.
 - `tools/build.sh` and `tools/build.ps1` are compatibility shims.
 - New build/run feature behavior must be implemented in `tools/build.py`.
+# Userspace runtime model
+
+YAML targets may select an independent root userspace policy with
+`userspace.runtime_model`: `direct`, `static`, `light`, or `full`. The target
+resolver defaults omitted values to `full` during migration. It passes the
+resolved `BHARAT_USERSPACE_RUNTIME_MODEL` to CMake and packages exactly one root:
+`user_smoke`, `rt-supervisor`, `init-lite`, or `init`, respectively. Unknown
+values and the unsupported top-level `runtime_model` spelling fail validation.

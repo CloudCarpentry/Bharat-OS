@@ -61,26 +61,32 @@ def make_package_plan(target: ResolvedTarget, build_outputs: BuildOutputs, repo_
     )
 
 
-def _candidate_service_binary_paths(build_dir: Path, binary_name: str) -> list[Path]:
-    return [
+def _candidate_root_binary_paths(build_dir: Path, binary_name: str) -> list[Path]:
+    paths = [
         build_dir / "core" / "services" / "core" / binary_name / binary_name,
         build_dir / "services" / "core" / binary_name / binary_name,
         build_dir / "core" / "services" / binary_name / binary_name,
         build_dir / "services" / binary_name / binary_name,
     ]
+    if binary_name == "user_smoke":
+        paths = [
+            build_dir / "bharat_user" / "apps" / "user_smoke" / binary_name,
+            build_dir / "experience" / "user" / "apps" / "user_smoke" / binary_name,
+        ] + paths
+    return paths
 
 
-def _find_required_service_binary(build_dir: Path, binary_name: str) -> Path:
-    for path in _candidate_service_binary_paths(build_dir, binary_name):
+def _find_required_root_binary(build_dir: Path, binary_name: str) -> Path:
+    for path in _candidate_root_binary_paths(build_dir, binary_name):
         if path.is_file():
             return path
         exe_path = path.with_suffix(".exe")
         if exe_path.is_file():
             return exe_path
 
-    candidates = ", ".join(str(path) for path in _candidate_service_binary_paths(build_dir, binary_name))
+    candidates = ", ".join(str(path) for path in _candidate_root_binary_paths(build_dir, binary_name))
     raise RuntimeError(
-        f"Required compiled payload 'services/{binary_name}' was not produced; "
+        f"Required compiled root payload '{binary_name}' was not produced; "
         f"refusing to package a synthetic boot module. Checked: {candidates}"
     )
 
@@ -133,32 +139,31 @@ def execute_package(plan: PackagePlan, repo_root: Path) -> PackageOutputs:
         )
 
     # -------------------------------------------------------------
-    # Packaging of init_module (services/init or services/rt-supervisor)
+    # Package the single root selected by the orthogonal userspace model.
     # -------------------------------------------------------------
     import struct
 
-    is_rt_mpu = (plan.target.execution_profile == "rt" and
-                 plan.target.build.cmake_defs.get("BHARAT_PROFILE_MPU_ONLY") == "ON")
-
-    binary_name = "rt-supervisor" if is_rt_mpu else "init"
-    src_binary = _find_required_service_binary(plan.build_outputs.build_dir, binary_name)
+    binary_name = plan.target.userspace.root_component
+    src_binary = _find_required_root_binary(plan.build_outputs.build_dir, binary_name)
 
     init_module_path = plan.packaged_dir / "init_module.bin"
 
     payload_bytes = src_binary.read_bytes()
-    print(f"[Package] Found compiled payload for 'services/{binary_name}' at {src_binary} ({len(payload_bytes)} bytes)")
+    print(f"[Package] Found compiled root payload '{binary_name}' for runtime model "
+          f"'{plan.target.userspace.runtime_model}' at {src_binary} ({len(payload_bytes)} bytes)")
 
     # Create the versioned Bharat boot-module container header:
     magic = 0xB4A2D1A5
     abi_version = 0x0100
     header_size = 128
-    module_kind = 2 if is_rt_mpu else 1
+    module_kind = 1
     payload_offset = 128
     payload_size = len(payload_bytes)
     target_arch = 0
     elf_class = 0
     flags = 0
-    name = f"services/{binary_name}"
+    name = (f"apps/{binary_name}" if binary_name == "user_smoke"
+            else f"services/{binary_name}")
     name_len = len(name)
     digest_algo = 0
     digest = b"\x00" * 32
@@ -175,7 +180,10 @@ def execute_package(plan: PackagePlan, repo_root: Path) -> PackageOutputs:
     print(f"[Package] Packaged and wrote Bharat boot-module container to {init_module_path}")
 
     packaged_artifacts.append(
-        ArtifactRecord(kind="init_module", path=init_module_path, producer="packager_boot_module")
+        ArtifactRecord(kind="init_module", path=init_module_path,
+                       producer="packager_boot_module",
+                       metadata={"module_name": name,
+                                 "runtime_model": plan.target.userspace.runtime_model})
     )
 
     manifest_paths = {}

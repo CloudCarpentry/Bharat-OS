@@ -2,6 +2,7 @@ $schema: "http://json-schema.org/draft-07/schema#"
 title: "Target Specification"
 description: "Declarative target specification for Bharat-OS."
 type: object
+additionalProperties: false
 required:
   - name
   - kind
@@ -30,6 +31,13 @@ properties:
     type: string
   footprint_profile:
     type: string
+  userspace:
+    type: object
+    additionalProperties: false
+    properties:
+      runtime_model:
+        type: string
+        enum: [direct, static, light, full]
   build:
     type: object
     required: [cmake_preset]
