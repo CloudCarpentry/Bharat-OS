@@ -116,6 +116,10 @@ def resolve_yaml_target(path: Path) -> ResolvedTarget:
     cmake_defs = dict(build_raw.get("cmake_defs", {}))
     cmake_defs["BHARAT_USERSPACE_RUNTIME_MODEL"] = runtime_model.upper()
     cmake_defs["BHARAT_USERSPACE_RUNTIME_MODEL_ID"] = RUNTIME_MODEL_IDS[runtime_model]
+    
+    execution_profile = raw.get("execution_profile")
+    if execution_profile:
+        cmake_defs["BHARAT_SYSTEM_PROFILE"] = execution_profile.upper()
     build_cfg = BuildConfig(
         cmake_preset=build_raw.get("cmake_preset", "unknown"),
         cmake_defs=cmake_defs

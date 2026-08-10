@@ -36,15 +36,12 @@ kernel:
 
 boot:
   protocol: opensbi_payload
-  artifact_format: raw_bin
+  artifact_format: elf
   dtb:
     mode: qemu_generated
 
 package:
-  transforms:
-    - type: elf_to_bin
-      input: kernel/kernel.elf
-      output: kernel/kernel.bin
+  transforms: []
 
 run:
   backend: qemu
@@ -54,9 +51,6 @@ run:
   serial:
     - stdio
   boot_artifact: kernel/kernel.elf
-  extra_args:
-    - "-bios"
-    - "none"
 
 
 debug:

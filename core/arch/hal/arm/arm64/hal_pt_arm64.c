@@ -181,12 +181,10 @@ static phys_addr_t arm64_pt_create_address_space(phys_addr_t kernel_root_table) 
         extern int vmm_is_kernel_space_ready(void);
         pt_t* kernel_pgd = (pt_t*)physmap_phys_to_virt(kernel_root_table);
         
-        // Copy entry 0 ONLY for kernel space creation (before kernel_space_ready)
-        if (!vmm_is_kernel_space_ready()) {
-            pgd->entries[0] = kernel_pgd->entries[0];
-        }
+        // Always copy entry 0 (low kernel mapping at 0x40000000)
+        // and entries 256-511 (high canonical kernel mappings)
+        pgd->entries[0] = kernel_pgd->entries[0];
         
-        // Always copy kernel half (256-511) for high canonical kernel mappings
         for(int i = 256; i < 512; i++) {
             pgd->entries[i] = kernel_pgd->entries[i];
         }
@@ -762,18 +760,28 @@ static void arm64_mpa_set_root(phys_addr_t root) {
     // MAIR_EL1: Attr0=Normal, Attr1=Device-nGnRE, Attr2=Device-nGnRnE
     uint64_t mair = (0xFFLL << 0) | (0x04LL << 8) | (0x00LL << 16);
 
+    extern phys_addr_t vmm_get_kernel_root(void);
+    phys_addr_t kroot = vmm_get_kernel_root();
+    if (kroot == 0) {
+        kroot = root;
+    }
+
     asm volatile(
         "msr mair_el1, %1\n"
         "msr tcr_el1, %2\n"
         "msr ttbr0_el1, %0\n"
-        "msr ttbr1_el1, %0\n"
+        "msr ttbr1_el1, %3\n"
+        "isb\n"
+        "tlbi vmalle1\n"
+        "dsb sy\n"
         "isb\n"
         "mrs x0, sctlr_el1\n"
         "bic x0, x0, #2\n"   /* Clear A (alignment check trap) for kernel EL1 */
         "orr x0, x0, #1\n"
         "msr sctlr_el1, x0\n"
         "isb\n"
-        :: "r"((uintptr_t)root), "r"(mair), "r"(tcr)
+        :
+        : "r"(root), "r"(mair), "r"(tcr), "r"(kroot)
         : "x0", "memory"
     );
 }

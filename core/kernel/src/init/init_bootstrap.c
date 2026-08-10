@@ -333,12 +333,17 @@ static int bootstrap_launch_first_service(void) {
     console_write_raw("\n", 1);
 
     proc->main_thread = thread;
-    thread->priority = 1;
+    thread->priority = 24;
+
+    int status = sched_enqueue(thread, hal_cpu_get_id());
+    if (status != 0) {
+        init_boot_fail("THREAD_ENQUEUED", status);
+        console_write_raw("[BOOTSTRAP] Error: sched_enqueue failed for init thread\n", 56);
+        return -1;
+    }
 
     console_write_raw("[BOOTSTRAP] INIT_THREAD: SCHEDULED\n", 35);
     init_boot_stage("THREAD_ENQUEUED");
-
-    sched_enqueue(thread, hal_cpu_get_id());
     return 0;
 }
 

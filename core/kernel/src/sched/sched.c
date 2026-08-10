@@ -579,7 +579,7 @@ int sched_global_init(uint32_t core_count) {
     g_cpu_locals[core].runqueue.current_thread = idle;
 #if !defined(TESTING)
     if (!sched_create_bootstrap_thread(idle_process, core, SCHED_BOOTSTRAP_MONITOR,
-                                       sched_monitor_task, SCHED_MAX_PRIORITY, 1U)) {
+                                       sched_monitor_task, 2U, 1U)) {
       return -1;
     }
 #endif

@@ -28,8 +28,6 @@ void arch_enter_user(const arch_user_entry_t *entry) {
         kernel_panic("arch_enter_user: invalid entry or aspace");
     }
 
-    prot_domain_activate(entry->aspace->prot_domain);
-
     // SPSR_EL1 configuration for EL0t:
     // M[4:0] = 0b00000 (EL0t)
     // DAIF = 0b0000 (interrupts enabled)
