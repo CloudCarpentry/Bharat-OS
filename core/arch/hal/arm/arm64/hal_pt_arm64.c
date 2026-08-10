@@ -64,6 +64,7 @@ static arm64_kernel_map_state_t g_arm64_kernel_map = {
 #define ARM64_PT_AF          (1ULL << 10)
 
 #define ARM64_PAGE_MASK      (0x0000FFFFFFFFF000ULL)
+#define ARM64_PMD_BLOCK_SIZE (1ULL << 21)
 
 // Arch-private raw descriptor
 typedef uint64_t pte_raw_t;
@@ -74,6 +75,28 @@ typedef struct {
 
 static inline void arm64_pt_zero_table(void *tbl, size_t sz) {
     hal_memset(tbl, 0, sz, BH_MEMCTX_F_DEFAULT);
+}
+
+static phys_addr_t arm64_pt_split_block(uint64_t block, uint64_t child_size,
+                                        bool child_is_page) {
+    phys_addr_t child_pa = mm_alloc_page(NUMA_NODE_ANY);
+    if (child_pa == 0U) {
+        return 0U;
+    }
+
+    pt_t *child = (pt_t *)physmap_phys_to_virt(child_pa);
+    uint64_t block_size = child_size * 512U;
+    uint64_t base = (block & ARM64_PAGE_MASK) & ~(block_size - 1U);
+    uint64_t attributes = block & ~ARM64_PAGE_MASK;
+
+    arm64_pt_zero_table(child, sizeof(*child));
+    for (uint64_t i = 0; i < 512U; ++i) {
+        child->entries[i] = (base + (i * child_size)) | attributes;
+        if (child_is_page) {
+            child->entries[i] |= ARM64_PT_PAGE;
+        }
+    }
+    return child_pa;
 }
 
 static virt_addr_t align_down(virt_addr_t value) {
@@ -180,10 +203,11 @@ static phys_addr_t arm64_pt_create_address_space(phys_addr_t kernel_root_table) 
     if (kernel_root_table != 0U) {
         pt_t* kernel_pgd = (pt_t*)physmap_phys_to_virt(kernel_root_table);
         
-        // For user process spaces, allocate a separate PUD table for pgd->entries[0]
-        // so user space can map 0x00000000..0x3FFFFFFF with fine-grained 4KB PMD/PTE tables,
-        // while preserving kernel RAM block mappings at user_pud->entries[1..3] (0x40000000+)
-        // so kernel execution at 0x40080000 remains active in TTBR0_EL1.
+        // User roots retain the kernel's privileged low-half mappings because
+        // the kernel currently executes there after TTBR0 switches.  Split the
+        // first inherited 1 GiB block into 2 MiB blocks so user mappings can be
+        // refined without dropping unrelated privileged MMIO (notably the
+        // runtime console).  EL0 cannot access the inherited AP_EL1 mappings.
         phys_addr_t user_pud_pa = mm_alloc_page(NUMA_NODE_ANY);
         if (user_pud_pa) {
             pt_t* user_pud = (pt_t*)physmap_phys_to_virt(user_pud_pa);
@@ -191,6 +215,17 @@ static phys_addr_t arm64_pt_create_address_space(phys_addr_t kernel_root_table) 
             
             if (kernel_pgd->entries[0] & ARM64_PT_VALID) {
                 pt_t* kernel_pud = (pt_t*)physmap_phys_to_virt(kernel_pgd->entries[0] & ARM64_PAGE_MASK);
+                user_pud->entries[0] = kernel_pud->entries[0];
+                if ((user_pud->entries[0] & ARM64_PT_TABLE) == 0U) {
+                    phys_addr_t user_pmd_pa = arm64_pt_split_block(
+                        user_pud->entries[0], ARM64_PMD_BLOCK_SIZE, false);
+                    if (user_pmd_pa == 0U) {
+                        mm_free_page(user_pud_pa);
+                        mm_free_page(root);
+                        return 0U;
+                    }
+                    user_pud->entries[0] = user_pmd_pa | ARM64_PT_VALID | ARM64_PT_TABLE;
+                }
                 for (int i = 1; i < 512; i++) {
                     user_pud->entries[i] = kernel_pud->entries[i];
                 }
@@ -303,6 +338,11 @@ static int arm64_pt_map_4k(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t p
         pt_t* pmd_ptr = (pt_t*)physmap_phys_to_virt(new_pmd);
         arm64_pt_zero_table(pmd_ptr, sizeof(*pmd_ptr));
         pud->entries[pud_idx] = new_pmd | table_flags;
+    } else if ((pud->entries[pud_idx] & ARM64_PT_TABLE) == 0U) {
+        phys_addr_t new_pmd = arm64_pt_split_block(
+            pud->entries[pud_idx], ARM64_PMD_BLOCK_SIZE, false);
+        if (new_pmd == 0U) return -2;
+        pud->entries[pud_idx] = new_pmd | table_flags;
     }
 
     pt_t* pmd = (pt_t*)physmap_phys_to_virt(pud->entries[pud_idx] & ARM64_PAGE_MASK);
@@ -311,6 +351,11 @@ static int arm64_pt_map_4k(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t p
         if (!new_pte) return -2;
         pt_t* pte_ptr = (pt_t*)physmap_phys_to_virt(new_pte);
         arm64_pt_zero_table(pte_ptr, sizeof(*pte_ptr));
+        pmd->entries[pmd_idx] = new_pte | table_flags;
+    } else if ((pmd->entries[pmd_idx] & ARM64_PT_TABLE) == 0U) {
+        phys_addr_t new_pte = arm64_pt_split_block(
+            pmd->entries[pmd_idx], 4096U, true);
+        if (new_pte == 0U) return -2;
         pmd->entries[pmd_idx] = new_pte | table_flags;
     }
 

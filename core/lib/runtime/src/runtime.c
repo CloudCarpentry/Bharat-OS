@@ -11,11 +11,20 @@ static bharat_handle_t g_bootstrap_cap = BHARAT_INVALID_HANDLE;
 static const bharat_user_startup_t *g_startup_ptr = NULL;
 
 void bharat_runtime_init(const void *startup_ptr) {
+    /* The startup block is an ABI structure, so reject obviously malformed
+     * pointers before reading capability-bearing fields from it. */
+    uintptr_t startup_addr = (uintptr_t)startup_ptr;
+    if (startup_addr < 4096U ||
+        (startup_addr % _Alignof(bharat_user_startup_t)) != 0U) {
+        startup_ptr = NULL;
+    }
     // Initialize memory, TLS, thread structs
     g_startup_ptr = (const bharat_user_startup_t *)startup_ptr;
     const bharat_user_startup_t *startup = (const bharat_user_startup_t *)startup_ptr;
     if (startup) {
         g_bootstrap_cap = startup->bootstrap.bootstrap_cap;
+    } else {
+        g_bootstrap_cap = BHARAT_INVALID_HANDLE;
     }
 }
 
