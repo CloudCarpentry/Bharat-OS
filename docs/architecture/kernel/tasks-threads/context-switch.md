@@ -41,6 +41,10 @@ This document defines the current in-kernel context switch mechanism and syscall
 ## Register Save/Restore & FPU State
 
 During a context switch, the kernel securely isolates task states:
+- `cpu_context_t` stores architecture-local scalar state at native register
+  width. Its layout is authoritative in C; every supported context-switch
+  assembly implementation consumes build-generated `BH_CTX_*` offsets. This
+  prevents 32-bit assembly from interpreting a 64-bit-slot C layout.
 - General purpose registers are saved onto the thread's kernel stack within `trap_frame_t`.
 - FPU and SIMD state saving is lazy; only swapped if the thread has used them.
 - Address Space IDs (ASIDs) are switched, flushing only non-global TLB entries where ASIDs aren't supported.
@@ -72,3 +76,9 @@ sequenceDiagram
 - Assembly entry stubs per architecture (x86_64 IDT/syscall entry, RISC-V `stvec`).
 - Fine-grained capability policy enforcement in `cap_invoke` path.
 - Full trap delegation verification and interrupt controller integration.
+
+The generated CPU-context ABI closes only the structural C/assembly handoff.
+Address-space activation must separately guarantee that kernel text, the
+active kernel stack, exception vectors, and per-CPU state remain mapped until
+the architecture transition commits; higher-half ARM and RISC-V mapping work
+remains required before those targets are runtime-qualified.

@@ -2,6 +2,7 @@
 #ifndef BHARAT_SCHED_H
 #define BHARAT_SCHED_H
 
+#include <stddef.h>
 #include <stdint.h>
 #include "mm.h"
 #include "sched/ai_sched.h"
@@ -14,6 +15,7 @@
 #include <bharat/constraints.h>
 #include "bh_process_personality.h"
 #include "bharat/kernel/ds/bh_mpsc_queue.h"
+#include "sched/cpu_context.h"
 
 #define BH_TID_SLOT_BITS       16U
 #define BH_TID_CORE_BITS       16U
@@ -72,16 +74,6 @@ typedef enum {
     SCHED_REMOTE_MIGRATE_RETIRE,
     SCHED_REMOTE_QUERY_STATE
 } sched_remote_cmd_type_t;
-
-typedef struct arch_ext_state arch_ext_state_t;
-
-typedef struct {
-    uint64_t regs[16];     // Offset 0
-    uint64_t pc;           // Offset 128
-    uint64_t sp;           // Offset 136
-    uint64_t fpu_regs[32]; // Offset 144 (for inline FPU regs e.g. arm64 d8-d15, riscv fs0-fs11)
-    arch_ext_state_t *ext; // Offset 400
-} cpu_context_t;
 
 typedef struct {
     uint64_t deadline_ms;

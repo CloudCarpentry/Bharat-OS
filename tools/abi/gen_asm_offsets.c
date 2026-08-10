@@ -1,5 +1,6 @@
 #include <stddef.h>
 #include "trap.h"
+#include "sched/cpu_context.h"
 #include "asm_offsets_macros.h"
 
 void asm_offsets(void) {
@@ -51,4 +52,21 @@ void asm_offsets(void) {
     DEFINE(BH_RISCV_TF_FAULT_ADDR_OFF, offsetof(bh_riscv_raw_trap_frame_t, fault_addr));
     DEFINE(BH_RISCV_TF_SIZE, sizeof(bh_riscv_raw_trap_frame_t));
     DEFINE(BH_RISCV_TF_STACK_SIZE, (sizeof(bh_riscv_raw_trap_frame_t) + 15U) & ~15U);
+    DEFINE(BH_CTX_REG0_OFF, offsetof(cpu_context_t, regs[0]));
+    DEFINE(BH_CTX_REG1_OFF, offsetof(cpu_context_t, regs[1]));
+    DEFINE(BH_CTX_REG2_OFF, offsetof(cpu_context_t, regs[2]));
+    DEFINE(BH_CTX_REG3_OFF, offsetof(cpu_context_t, regs[3]));
+    DEFINE(BH_CTX_REG4_OFF, offsetof(cpu_context_t, regs[4]));
+    DEFINE(BH_CTX_REG5_OFF, offsetof(cpu_context_t, regs[5]));
+    DEFINE(BH_CTX_REG6_OFF, offsetof(cpu_context_t, regs[6]));
+    DEFINE(BH_CTX_REG7_OFF, offsetof(cpu_context_t, regs[7]));
+    DEFINE(BH_CTX_REG8_OFF, offsetof(cpu_context_t, regs[8]));
+    DEFINE(BH_CTX_REG9_OFF, offsetof(cpu_context_t, regs[9]));
+    DEFINE(BH_CTX_REG10_OFF, offsetof(cpu_context_t, regs[10]));
+    DEFINE(BH_CTX_REG11_OFF, offsetof(cpu_context_t, regs[11]));
+    DEFINE(BH_CTX_REG12_OFF, offsetof(cpu_context_t, regs[12]));
+    DEFINE(BH_CTX_PC_OFF, offsetof(cpu_context_t, pc));
+    DEFINE(BH_CTX_SP_OFF, offsetof(cpu_context_t, sp));
+    DEFINE(BH_CTX_EXT_OFF, offsetof(cpu_context_t, ext));
+    DEFINE(BH_CTX_SIZE, sizeof(cpu_context_t));
 }

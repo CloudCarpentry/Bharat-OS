@@ -137,11 +137,11 @@ void hal_cpu_dump_state(void) {
 }
 
 void hal_cpu_enable_interrupts(void) {
-  __asm__ volatile("csrci sstatus, 2");
+  __asm__ volatile("csrsi sstatus, 2" ::: "memory");
 }
 
 void hal_cpu_disable_interrupts(void) {
-  __asm__ volatile("csrci sstatus, 2");
+  __asm__ volatile("csrci sstatus, 2" ::: "memory");
 }
 
 extern void trap_entry(void);
