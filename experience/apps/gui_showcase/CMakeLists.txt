@@ -18,6 +18,7 @@ target_link_libraries(gui_showcase PRIVATE
     bharat_user_buildopts
     bharat_libcmin
     bharat_libruntime
+    bharatc
     bharat_freestanding
 )
 
