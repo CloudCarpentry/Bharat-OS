@@ -25,14 +25,14 @@ if(BHARAT_UI_LVGL)
     )
 
     target_include_directories(bharat_ui_lvgl_core
-        PUBLIC include
+        PUBLIC include PUBLIC ${CMAKE_SOURCE_DIR}/interface/include
         PUBLIC ${CMAKE_SOURCE_DIR}/core/apps/ui_demo/screens
         PUBLIC ${CMAKE_SOURCE_DIR}/build/generated/ui/theme
         PRIVATE config
-        PUBLIC ${CMAKE_SOURCE_DIR}/third_party/lvgl/upstream
+        PUBLIC ${CMAKE_SOURCE_DIR}/third_party/lvgl/upstream PUBLIC ${CMAKE_SOURCE_DIR}/third_party/lvgl/upstream/src
     )
 
     target_compile_definitions(bharat_ui_lvgl_core PUBLIC LV_CONF_INCLUDE_SIMPLE=1)
     target_compile_definitions(bharat_ui_lvgl_core PUBLIC BHARAT_UI_LVGL)
-    target_compile_definitions(bharat_ui_lvgl_core PRIVATE "LV_CONF_PATH=${CMAKE_SOURCE_DIR}/core/stacks/ui/adapters/lvgl/config/lv_conf_bharat.h")
+    target_compile_definitions(bharat_ui_lvgl_core PRIVATE "LV_CONF_PATH=\"${CMAKE_SOURCE_DIR}/core/stacks/ui/adapters/lvgl/config/lv_conf_bharat.h\"")
 endif()

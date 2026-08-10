@@ -5,10 +5,10 @@
 #include <stdint.h>
 
 #define LV_USE_OS   0
-#define LV_USE_LOG  1
-#define LV_USE_ASSERT_NULL      1
-#define LV_USE_ASSERT_MALLOC    1
-#define LV_USE_ASSERT_STYLE     1
+#define LV_USE_LOG  0
+#define LV_USE_ASSERT_NULL      0
+#define LV_USE_ASSERT_MALLOC    0
+#define LV_USE_ASSERT_STYLE     0
 #define LV_USE_DRAW_SW          1
 
 #define LV_USE_LABEL            1
@@ -32,5 +32,25 @@
 
 /* Theme configuration */
 #define LV_USE_THEME_DEFAULT    0
+
+/* Enable empty stubs to make compiling simpler vs hacking headers */
+#define LV_USE_FREETYPE         0
+#define LV_USE_OPENGLES         0
+#define LV_USE_SDL              0
+#define LV_USE_X11              0
+#define LV_USE_WAYLAND          0
+
+// Ensure version skips
+#define LV_CONF_SKIP            1
+
+#define LV_USE_NUTTX 0
+#define LV_USE_WINDOWS 0
+#define LV_USE_LINUX_DRM 0
+#define LV_USE_LINUX_FBDEV 0
+
+#define LV_USE_TINY_TTF 0
+#define LV_USE_FFMPEG 0
+#define LV_USE_BIN_DECODER 0
+#define LV_USE_RLOTTIE 0
 
 #endif /*LV_CONF_BHARAT_H*/
