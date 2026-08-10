@@ -328,6 +328,16 @@ add_executable(test_e2e_service_runtime test_e2e_service_runtime.c ../../core/se
 target_include_directories(test_e2e_service_runtime PRIVATE ../../include ../../core/lib/ipc/include ../../core/lib/cap/include ../../kernel/include)
 add_test(NAME host_test_e2e_service_runtime COMMAND test_e2e_service_runtime)
 
+add_executable(test_runtime_startup
+    test_runtime_startup.c
+    ../../core/lib/runtime/src/runtime.c
+)
+target_include_directories(test_runtime_startup PRIVATE
+    ../../interface/include
+    ../../core/lib/runtime/include
+)
+add_test(NAME host_test_runtime_startup COMMAND test_runtime_startup)
+
 if(BHARAT_BUILD_HOST_TESTS)
     # I2C Core Host Tests
     add_executable(test_i2c_registry ${CMAKE_SOURCE_DIR}/core/tests/host/drivers/test_i2c_registry.c ${CMAKE_SOURCE_DIR}/core/drivers/bus/i2c/i2c_core.c ${CMAKE_SOURCE_DIR}/core/drivers/bus/i2c/i2c_registry.c)
