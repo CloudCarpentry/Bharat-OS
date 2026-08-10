@@ -222,17 +222,11 @@ int boot_info_finalize(boot_info_t *bi) {
             bi->modules[i].phys_start = phys + 128;
             bi->modules[i].size = hdr->payload_size;
 
-            // Set direct payload metadata fields
-            if (fdt_str_eq_local(hdr->name, "services/init") || fdt_str_eq_local(hdr->name, "services/rt-supervisor")) {
+            /* The versioned container identifies the authoritative root. */
+            if (hdr->module_kind == 1 || hdr->module_kind == 2) {
                 bi->init_payload_phys = bi->modules[i].phys_start;
                 bi->init_payload_size = bi->modules[i].size;
-                if (fdt_str_eq_local(hdr->name, "services/rt-supervisor")) {
-                    bi->init_payload_kind = BH_BOOT_HANDOFF_STATIC_RT;
-                    bi->modules[i].name = "services/rt-supervisor";
-                } else {
-                    bi->init_payload_kind = BH_BOOT_HANDOFF_USER_ELF;
-                    bi->modules[i].name = "services/init";
-                }
+                bi->init_payload_kind = BH_BOOT_HANDOFF_USER_ELF;
             }
         } else {
             // Backwards-compatible raw module handling
