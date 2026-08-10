@@ -2,6 +2,7 @@
 #include "kernel/status.h"
 #include "mm/prot_domain.h"
 #include "panic.h"
+#include "console/console_core.h"
 
 kstatus_t arch_user_entry_prepare(
     arch_user_entry_t *out,
@@ -33,6 +34,8 @@ void arch_enter_user(const arch_user_entry_t *entry) {
     // DAIF = 0b0000 (interrupts enabled)
     // NZCV = 0 (flags cleared)
     uint64_t spsr = 0x0;
+
+    console_write_raw("[ARCH_ENTER_USER_ARM64]\n", 25);
 
     __asm__ volatile (
         "msr elr_el1, %1\n\t"

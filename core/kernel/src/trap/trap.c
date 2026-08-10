@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stddef.h>
+#include "console/console_core.h"
 
 int sched_sys_intent_set(uint64_t tid, const void* intent);
 int sched_sys_intent_get(uint64_t tid, void* intent);
@@ -232,6 +233,10 @@ kstatus_t bh_trap_decode(const trap_frame_t *frame, bh_trap_context_t *out) {
 
 long trap_handle(trap_frame_t *frame) {
   if (!frame) return TRAP_ERR_INVAL;
+
+  if (frame->from_user) {
+    console_write_raw("[USER_TRAP]\n", 13);
+  }
 
   bh_trap_context_t context;
   if (bh_trap_decode(frame, &context) != K_OK) {

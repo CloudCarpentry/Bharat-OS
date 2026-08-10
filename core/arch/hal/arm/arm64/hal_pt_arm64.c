@@ -178,13 +178,27 @@ static phys_addr_t arm64_pt_create_address_space(phys_addr_t kernel_root_table) 
     // entry 0. This allows them to create their own fine-grained mappings in the
     // 0-512GB range without conflicting with kernel's 1GB blocks.
     if (kernel_root_table != 0U) {
-        extern int vmm_is_kernel_space_ready(void);
         pt_t* kernel_pgd = (pt_t*)physmap_phys_to_virt(kernel_root_table);
         
-        // Always copy entry 0 (low kernel mapping at 0x40000000)
-        // and entries 256-511 (high canonical kernel mappings)
-        pgd->entries[0] = kernel_pgd->entries[0];
+        // For user process spaces, allocate a separate PUD table for pgd->entries[0]
+        // so user space can map 0x00000000..0x3FFFFFFF with fine-grained 4KB PMD/PTE tables,
+        // while preserving kernel RAM block mappings at user_pud->entries[1..3] (0x40000000+)
+        // so kernel execution at 0x40080000 remains active in TTBR0_EL1.
+        phys_addr_t user_pud_pa = mm_alloc_page(NUMA_NODE_ANY);
+        if (user_pud_pa) {
+            pt_t* user_pud = (pt_t*)physmap_phys_to_virt(user_pud_pa);
+            arm64_pt_zero_table(user_pud, sizeof(*user_pud));
+            
+            if (kernel_pgd->entries[0] & ARM64_PT_VALID) {
+                pt_t* kernel_pud = (pt_t*)physmap_phys_to_virt(kernel_pgd->entries[0] & ARM64_PAGE_MASK);
+                for (int i = 1; i < 512; i++) {
+                    user_pud->entries[i] = kernel_pud->entries[i];
+                }
+            }
+            pgd->entries[0] = user_pud_pa | ARM64_PT_VALID | ARM64_PT_TABLE;
+        }
         
+        // Always copy kernel half (256-511) for high canonical kernel mappings
         for(int i = 256; i < 512; i++) {
             pgd->entries[i] = kernel_pgd->entries[i];
         }
@@ -798,7 +812,7 @@ static void arm64_mpa_flush_tlb_local(virt_addr_t vaddr, uint16_t asid) {
 
 static phys_addr_t arm64_mpa_get_root(void) {
     uint64_t sctlr;
-    phys_addr_t ttbr1;
+    phys_addr_t ttbr;
 
     /*
      * When MMU is disabled (SCTLR_EL1.M == 0), TTBR values are not an
@@ -809,8 +823,14 @@ static phys_addr_t arm64_mpa_get_root(void) {
         return 0U;
     }
 
-    __asm__ volatile("mrs %0, ttbr1_el1" : "=r"(ttbr1));
-    return ttbr1 & ~(0xFFFULL);
+    __asm__ volatile("mrs %0, ttbr1_el1" : "=r"(ttbr));
+    ttbr &= ~(0xFFFULL);
+    if (ttbr != 0U) {
+        return ttbr;
+    }
+
+    __asm__ volatile("mrs %0, ttbr0_el1" : "=r"(ttbr));
+    return ttbr & ~(0xFFFULL);
 }
 
 mem_protect_ops_t arm64_mem_protect_ops = {

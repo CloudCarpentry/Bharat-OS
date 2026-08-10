@@ -187,7 +187,8 @@ static void loader_print_hex64(uint64_t val) {
 #define ARCH_USER_ENTRY_MAGIC 0x42554855454E5452ULL
 
 
-static __attribute__((noreturn)) void generic_user_init_trampoline(void *arg) {
+void generic_user_init_trampoline(void *arg) {
+    console_write_raw("[TRAMPOLINE_REACHED]\n", 21);
     init_boot_stage("USER_ENTRY");
 
 
@@ -356,6 +357,7 @@ static void bootstrap_thread_entry(void) {
         kernel_panic("bootstrap: first service launch failed");
     }
 
+    console_write_raw("[LAUNCH_FIRST_SERVICE_RETURNED]\n", 32);
     thread_destroy(sched_current_thread());
     bh_thread_yield();
 }

@@ -1,6 +1,7 @@
 #include "sched/sched.h"
 #include <bharat/cpu_local.h>
 #include "sched/sched_deg.h"
+#include "console/console_core.h"
 
 #include "sched/algo_matrix.h"
 #include "../../staging/formal/formal_verif.h"
@@ -882,6 +883,10 @@ bh_thread_t *sched_pick_next_ready(uint32_t core_id) {
   if (!next) {
       return rq->idle_thread;
   }
+  if (next != rq->idle_thread) {
+      console_write_raw("[PICK_NON_IDLE]\n", 17);
+  }
+  return next;
 
   // Fallback: If not admissible on this core (e.g. from dynamic constraint update while queued),
   // try to find a valid core, else fallback to idle.
@@ -960,6 +965,7 @@ void sched_switch_to(bh_thread_t *next, uint32_t core_id) {
     }
   }
 
+  console_write_raw("[STEP_A]\n", 9);
   sched_invariant_on_switch(current, next, core_id);
 
   next->state = THREAD_STATE_RUNNING;
@@ -975,11 +981,13 @@ void sched_switch_to(bh_thread_t *next, uint32_t core_id) {
   cpu_context_t *next_ctx = (cpu_context_t*)next->cpu_context;
 
   if (current) {
+    console_write_raw("[STEP_B]\n", 9);
     arch_ext_state_save(current);
   }
 
   address_space_t *prev_as = current && current->process ? current->process->addr_space : NULL;
   address_space_t *next_as = next->process ? next->process->addr_space : NULL;
+  console_write_raw("[STEP_C]\n", 9);
   mm_switch_active_aspace(core_id, prev_as, next_as);
 
   #ifndef NDEBUG
@@ -988,15 +996,14 @@ void sched_switch_to(bh_thread_t *next, uint32_t core_id) {
 
     // Process incoming URPC messages before doing the switch
     extern void vmm_process_local_urpc_messages(uint32_t core_id);
+    console_write_raw("[STEP_D]\n", 9);
     vmm_process_local_urpc_messages(core_id);
 
   if (fv_secure_context_switch) {
     fv_secure_context_switch(next_ctx);
   } else {
-        // local IRQs were disabled by hal_cpu_disable_interrupts() in sched_reschedule().
-        // They will be explicitly re-enabled by arch_post_switch() which is
-        // called from the assembly arch_context_switch once we are on the
-        // next thread's stack.
+    console_write_raw("[STEP_E]\n", 9);
+    console_write_raw("[BEFORE_ARCH_CONTEXT_SWITCH]\n", 29);
     arch_context_switch(prev_ctx, next_ctx);
   }
 

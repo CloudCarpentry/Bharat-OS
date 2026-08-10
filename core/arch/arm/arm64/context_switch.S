@@ -67,11 +67,20 @@ arch_context_switch:
 .global arch_bh_thread_start_trampoline
 .type arch_bh_thread_start_trampoline, @function
 arch_bh_thread_start_trampoline:
+    stp x19, x20, [sp, #-16]!
+    adr x0, msg_tramp
+    mov x1, #17
+    bl console_write_raw
+    ldp x19, x20, [sp], #16
+
     // x19 holds the true entry point, x20 holds arg0
     mov x0, x20
     blr x19
     // After returning from the entry point, jump to the exit trampoline
     b sched_thread_exit_trampoline
+
+msg_tramp:
+    .asciz "[ASM_TRAMPOLINE]\n"
 
 .global arm64_fp_state_save
 .type arm64_fp_state_save, @function

@@ -8,8 +8,9 @@
 void mm_switch_active_aspace(uint32_t core_id, address_space_t *prev_as, address_space_t *next_as) {
     if (core_id >= MAX_CPUS) return;
 
+    console_write_raw("[ASPACE_SWITCH_BEGIN]\n", 22);
+
     if (prev_as == next_as) {
-        // Just in case, ensure it's still current
         if (next_as) {
             g_cpu_locals[core_id].current_as = next_as;
             g_cpu_locals[core_id].current_as_id = next_as->object_id;
@@ -23,6 +24,7 @@ void mm_switch_active_aspace(uint32_t core_id, address_space_t *prev_as, address
     }
 
     if (prev_as) {
+        console_write_raw("[ASPACE_DEACTIVATE]\n", 20);
         aspace_deactivate_on_cpu(prev_as, core_id);
     }
 
@@ -30,6 +32,7 @@ void mm_switch_active_aspace(uint32_t core_id, address_space_t *prev_as, address
         g_cpu_locals[core_id].current_as = next_as;
         g_cpu_locals[core_id].current_as_id = next_as->object_id;
         g_tlb_cpu_state[core_id].active_aspace = next_as;
+        console_write_raw("[ASPACE_ACTIVATE_CPU]\n", 22);
         aspace_activate_on_cpu(next_as, core_id);
     } else {
         g_cpu_locals[core_id].current_as = NULL;
@@ -37,12 +40,12 @@ void mm_switch_active_aspace(uint32_t core_id, address_space_t *prev_as, address
         g_tlb_cpu_state[core_id].active_aspace = NULL;
     }
 
-    // A full barrier to ensure software state is visible before any HW TLB/PT operations occur
     __asm__ volatile("" ::: "memory");
 
-    // Now trigger the new protection domain activate routine
     if (next_as && next_as->prot_domain) {
+        console_write_raw("[PROT_DOMAIN_ACTIVATE_CALL]\n", 28);
         prot_domain_activate(next_as->prot_domain);
+        console_write_raw("[PROT_DOMAIN_ACTIVATE_DONE]\n", 28);
     }
 }
 
