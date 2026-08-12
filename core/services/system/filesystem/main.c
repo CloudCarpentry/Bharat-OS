@@ -8,6 +8,7 @@
 #include "fs_arch_profile.h"
 #include <bharat/io_config.h>
 #include <stdlib.h>
+#include "ramfs/ramfs.h"
 
 extern void block_stacks_init(void);
 
@@ -71,6 +72,9 @@ void handle_fs_urpc_request(void* msg) {
 int main(void) {
     // 1. Initialize storage stack and drivers
     block_stacks_init();
+
+    // Initialize ramfs
+    ramfs_init();
 
     // 2. Discover default system storage device
     if (block_device_find_by_role(IO_DEVICE_ROLE_SYSTEM, &g_system_device_id) != IO_STATUS_OK) {

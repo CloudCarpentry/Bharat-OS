@@ -116,3 +116,11 @@ void vfs_test_reset_state(void);
 #endif
 
 #endif // BHARAT_VFS_H
+
+int vfs_lseek(int fd, uint64_t offset, int whence);
+int vfs_fstat(int fd, void* stat_buf);
+int vfs_mkdir(const char* path, int mode);
+int vfs_unlink(const char* path);
+struct dirent* vfs_readdir(int fd, uint32_t index);
+int vfs_dup(int oldfd);
+int vfs_pipe(int pipefd[2]);
