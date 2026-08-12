@@ -333,11 +333,11 @@ static void draw_splash(void) {
     boot_gui_draw_rect_outline(content_x, cur_y, box_w, box_h, COLOR_CARD_HDR);
 
 #if defined(__x86_64__)
-    const char *arch_str = "x86_64 (Generic PC / QEMU virt)";
+    const char *arch_str = "x86_64 (Generic PC)";
 #elif defined(__aarch64__)
-    const char *arch_str = "ARM64 (Cortex-A72 / QEMU virt)";
+    const char *arch_str = "ARM64 (Generic Platform)";
 #elif defined(__riscv)
-    const char *arch_str = "RISC-V 64 (RV64GC / QEMU virt)";
+    const char *arch_str = "RISC-V 64 (RV64GC Platform)";
 #else
     const char *arch_str = "Generic Architecture";
 #endif

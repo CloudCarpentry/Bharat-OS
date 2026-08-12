@@ -13,8 +13,8 @@ class TestCheckPlacement(unittest.TestCase):
         self.temp_dir = tempfile.mkdtemp()
 
         # Create minimal directory structure mocking the repo
-        self.kernel_dir = os.path.join(self.temp_dir, "kernel")
-        self.services_dir = os.path.join(self.temp_dir, "services")
+        self.kernel_dir = os.path.join(self.temp_dir, "core", "kernel")
+        self.services_dir = os.path.join(self.temp_dir, "core", "services")
         self.tools_dir = os.path.join(self.temp_dir, "tools")
         self.my_tools_dir = os.path.join(self.temp_dir, "my_tools_component")
 

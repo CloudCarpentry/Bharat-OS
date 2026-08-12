@@ -2,7 +2,7 @@
 title: Architecture Placement Contract
 status: Proposed
 owner: Documentation Working Group
-last_updated: 2026-04-25
+last_updated: 2026-08-12
 tags:
   - docs
   - architecture
@@ -52,3 +52,8 @@ The codebase includes an automated lint script to catch obvious boundary violati
 ```bash
 python3 tools/lint/check_placement.py
 ```
+
+The linter evaluates the canonical `core/kernel/` and `core/services/` trees.
+Moving a source file to a legacy repository-root `kernel/` or `services/` path does
+not make that path a supported layer; the canonical `core/` layout is the only
+placement authority.

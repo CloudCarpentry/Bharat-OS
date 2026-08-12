@@ -3,8 +3,8 @@
 Bharat-OS Architecture Placement Linter
 
 This script enforces basic architectural boundaries:
-1. No emulator/runner logic inside `kernel/` (e.g. qemu, renode).
-2. No hardware drivers inside `services/`.
+1. No emulator/runner logic inside `core/kernel/` (e.g. qemu, renode).
+2. No hardware drivers inside `core/services/`.
 3. No arch-specific code hidden under generic `hal/` (except inside designated subdirs).
 """
 
@@ -48,8 +48,8 @@ def main():
     memops_excluded = {"tools", "docs", "build", ".git"}
 
     # Pre-calculate kernel and services paths for fast prefix checking
-    kernel_dir = os.path.join(REPO_ROOT, "kernel")
-    services_dir = os.path.join(REPO_ROOT, "services")
+    kernel_dir = os.path.join(REPO_ROOT, "core", "kernel")
+    services_dir = os.path.join(REPO_ROOT, "core", "services")
 
     for root, _, files in os.walk(REPO_ROOT):
         parts = set(root.split(os.sep))
