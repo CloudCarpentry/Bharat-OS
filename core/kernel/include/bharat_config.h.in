@@ -71,6 +71,7 @@
 #cmakedefine BHARAT_ENABLE_NUMA 1
 #cmakedefine BHARAT_ENABLE_ALLOC_CLASSES 1
 #cmakedefine BHARAT_ENABLE_MEMORY_STATS 1
+#cmakedefine BHARAT_ENABLE_BENCHMARKS 1
 
 /* Exactly one kernel heap backend is resolved by CMake. */
 #cmakedefine BHARAT_KMEM_ALLOCATOR_SLAB 1

@@ -176,6 +176,7 @@ option(BHARAT_ENABLE_LEGACY_CAP_TESTS
 
 # Staging / Experimental Components
 option(BHARAT_BUILD_STAGING "Build staging/ experimental modules" OFF)
+option(BHARAT_ENABLE_BENCHMARKS "Enable deterministic benchmark telemetry" OFF)
 
 # Default Init Profile
 set(BHARAT_DEFAULT_INIT_PROFILE "DESKTOP" CACHE STRING "Target default init profile (TINY, SMALL, EMBEDDED_RICH, MOBILE, DESKTOP, DRONE)")

@@ -34,6 +34,7 @@
 #include "boot/boot_security.h"
 #include "display/boot_gui_init.h"
 #include "tests/ktest.h"
+#include "bharat_config.h"
 #include <bharat/cpu_local.h>
 #include "arch/arch_ext_state.h"
 #include "arch/arch_cpu_caps.h"
@@ -448,6 +449,15 @@ static void runtime_maybe_boot_gui(bool video_mapped) {
 extern void kernel_start_init_service(void);
 
 static void runtime_enter_normal(const boot_info_t *boot) {
+#ifdef BHARAT_ENABLE_BENCHMARKS
+    /* Benchmark-only profiles run before userspace; some firmware paths do not
+     * preserve a kernel command line, so compile-time opt-in is authoritative. */
+    extern void bh_hmem_benchmark_run(void);
+    bh_hmem_benchmark_run();
+    while (1) {
+        hal_cpu_halt();
+    }
+#endif
     bool video_mapped = runtime_try_boot_video(boot);
     runtime_maybe_boot_gui(video_mapped);
 
@@ -527,6 +537,13 @@ static void runtime_enter_benchmark(const boot_info_t *boot) {
     boot_selftest_report_t report;
     boot_selftest_run_stage(BOOT_TEST_STAGE_RUNTIME, &report);
     KPRINT("  [BOOT] Benchmark mode initialization complete\n");
+
+#ifdef BHARAT_ENABLE_BENCHMARKS
+    extern void bh_hmem_benchmark_run(void);
+    bh_hmem_benchmark_run();
+#else
+    KPRINT("BH_BENCH:RESULT=BLOCKED\nBH_BENCH:REASON=BENCHMARKS_DISABLED\n");
+#endif
 
     while (1) {
         hal_cpu_halt();

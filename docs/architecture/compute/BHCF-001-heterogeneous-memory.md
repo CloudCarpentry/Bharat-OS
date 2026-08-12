@@ -64,3 +64,12 @@ BHCF-P2-003   heterogeneous memory migration
 BHCF-P3-001   KV-cache service
 BHCF-P3-002   deadline/energy-aware accelerator QoS
 ```
+
+## Benchmark evidence boundary
+
+`BHCF-BENCH-001` measures deterministic allocation, mapping, tensor-view, copy,
+and copied-byte counts plus non-gating elapsed time. QEMU evidence can establish
+that HMEM/view handoffs avoid software copies and repeated allocation; it cannot
+establish real GPU/NPU/DMA acceleration or hardware cache performance. Current
+release-style benchmark profiles cover x86_64, ARM64, and RISC-V 64. They use
+virtual CPUs and RAM and intentionally make no physical accelerator claim.

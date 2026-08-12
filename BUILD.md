@@ -530,3 +530,18 @@ python3 tools/lint/check_cmake_dependencies.py --strict
 
 Use `--no-baseline` for an explicit audit of all known debt. A custom baseline
 can still be selected with `--baseline <path>`.
+# HMEM/Tensor QEMU benchmarks
+
+The release-style HMEM benchmark profiles enable benchmark telemetry while
+keeping it disabled in normal builds. Run one certified 64-bit QEMU target or
+the three-target matrix with:
+
+```bash
+python3 tools/bench/run_hmem_bench.py --target delivery/targets/qemu/x86_64_hmem_bench_release.yaml
+python3 tools/bench/run_hmem_bench.py --matrix
+```
+
+Results are written as JSON and CSV below `build/bench-results`. Deterministic
+copy/allocation/checksum metrics are validation gates. QEMU elapsed time is only
+a software-overhead indicator, not real GPU/NPU/DMA performance evidence. See
+`quality/benchmarks/README.md` for the evidence and claim boundary.
