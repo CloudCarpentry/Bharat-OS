@@ -1,1 +1,2 @@
-tools/nirmaan/cli.py
+#!/usr/bin/env bash
+exec python3 "$(dirname "$0")/tools/nirmaan/cli.py" "$@"

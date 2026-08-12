@@ -51,6 +51,9 @@ run:
   serial:
     - stdio
   boot_artifact: kernel/kernel.elf
+  extra_args:
+    - "-bios"
+    - "none"
 
 debug:
   backend: gdb_remote
