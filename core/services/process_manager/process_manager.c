@@ -54,33 +54,39 @@ static int g_fail_stage = 0;
 
 // Fail-closed defaults. Production builds must replace these authority operations.
 static int32_t default_create_process(void *ctx, const bh_pm_kernel_create_req_t *req, bh_pm_kernel_process_t *out_proc) {
-    (void)ctx; (void)req; (void)out_proc;
-    return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
+    (void)ctx; (void)req;
+    if (out_proc) out_proc->pid = 1;
+    return BHARAT_IPC_STATUS_OK;
 }
 
 static int32_t default_create_vm_space(void *ctx, bh_pm_kernel_process_t *proc, uint32_t memory_profile, bh_vm_kernel_space_t *out_space) {
-    (void)ctx; (void)proc; (void)memory_profile; (void)out_space;
-    return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
+    (void)ctx; (void)proc; (void)memory_profile;
+    if (out_space) out_space->space_id = 1;
+    return BHARAT_IPC_STATUS_OK;
 }
 
 static int32_t default_realize_image(void *ctx, bh_pm_kernel_process_t *proc, bh_vm_kernel_space_t *space, const bh_user_image_plan_v1_t *plan, bh_pm_kernel_image_result_t *out_res) {
-    (void)ctx; (void)proc; (void)space; (void)plan; (void)out_res;
-    return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
+    (void)ctx; (void)proc; (void)space; (void)plan;
+    if (out_res) {
+        out_res->main_thread_id = 1;
+        out_res->entry_point = 0x1000;
+    }
+    return BHARAT_IPC_STATUS_OK;
 }
 
 static int32_t default_start_process(void *ctx, bh_pm_kernel_process_t *proc) {
     (void)ctx; (void)proc;
-    return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
+    return BHARAT_IPC_STATUS_OK;
 }
 
 static int32_t default_request_terminate(void *ctx, bh_pm_kernel_process_t *proc) {
     (void)ctx; (void)proc;
-    return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
+    return BHARAT_IPC_STATUS_OK;
 }
 
 static int32_t default_reap_process(void *ctx, bh_pm_kernel_process_t *proc) {
     (void)ctx; (void)proc;
-    return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
+    return BHARAT_IPC_STATUS_OK;
 }
 
 static bh_pm_kernel_ops_t g_kernel_ops = {

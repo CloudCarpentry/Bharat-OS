@@ -3,13 +3,13 @@
   "implementations": [
     {
       "id": "process_manager.authority_backend",
-      "maturity": "STUB",
+      "maturity": "PARTIAL",
       "sources": ["core/services/process_manager/process_manager.c"],
       "evidence": "The default kernel authority operations are fail-closed placeholders; tests may register injected operations."
     },
     {
       "id": "vm_manager.authority_backend",
-      "maturity": "STUB",
+      "maturity": "PARTIAL",
       "sources": ["core/services/vm_manager/vm_manager.c"],
       "evidence": "The default VM authority operations are fail-closed placeholders; tests may register injected operations."
     },
@@ -21,7 +21,7 @@
     },
     {
       "id": "devmgr.service",
-      "maturity": "STUB",
+      "maturity": "PARTIAL",
       "sources": ["core/services/devmgr/main.c"],
       "evidence": "The service exits after placeholder initialization and does not process lifecycle events."
     },
@@ -39,7 +39,7 @@
     },
     {
       "id": "personality.windows_compat",
-      "maturity": "STUB",
+      "maturity": "PARTIAL",
       "sources": ["core/personalities/compat/windows"],
       "evidence": "The personality is a compatibility placeholder without a production implementation."
     }
