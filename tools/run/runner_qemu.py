@@ -87,8 +87,10 @@ def build_qemu_command(manifest: dict, mode_override: str = None, display_overri
             cmd.append('-nographic')
     else:
         cmd.extend(['-display', 'gtk'])
-        # Add virtio-gpu by default for GUI
-        cmd.extend(["-device", "virtio-gpu-pci"])
+        extra_args_list = run_config.get("extra_args", [])
+        has_display_dev = any("bochs-display" in str(arg) or "virtio-gpu" in str(arg) or "ramfb" in str(arg) for arg in extra_args_list)
+        if not has_display_dev:
+            cmd.extend(["-device", "virtio-gpu-pci"])
         # In GUI mode, keep serial output on stdout for the runner to parse
         # or use vc if preferred, but for headless parsing we need it on stdio
         cmd.extend(["-serial", "stdio"])
