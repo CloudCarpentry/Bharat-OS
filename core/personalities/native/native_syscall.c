@@ -4,30 +4,30 @@
 #include "capability.h"
 
 
-extern long bh_sys_nop(bh_syscall_ctx_t *ctx);
-extern long bh_sys_thread_create(bh_syscall_ctx_t *ctx);
-extern long bh_sys_thread_destroy(bh_syscall_ctx_t *ctx);
-extern long bh_sys_sched_yield(bh_syscall_ctx_t *ctx);
-extern long bh_sys_sched_sleep(bh_syscall_ctx_t *ctx);
-extern long bh_sys_sched_set_priority(bh_syscall_ctx_t *ctx);
-extern long bh_sys_sched_set_affinity(bh_syscall_ctx_t *ctx);
-extern long bh_sys_vmm_map_page(bh_syscall_ctx_t *ctx);
-extern long bh_sys_vmm_unmap_page(bh_syscall_ctx_t *ctx);
-extern long bh_sys_cap_invoke(bh_syscall_ctx_t *ctx);
-extern long bh_sys_endpoint_create(bh_syscall_ctx_t *ctx);
-extern long bh_sys_endpoint_send(bh_syscall_ctx_t *ctx);
-extern long bh_sys_endpoint_receive(bh_syscall_ctx_t *ctx);
-extern long bh_sys_cap_delegate(bh_syscall_ctx_t *ctx);
-extern long bh_sys_intent_set(bh_syscall_ctx_t *ctx);
-extern long bh_sys_intent_get(bh_syscall_ctx_t *ctx);
-extern long bh_sys_mem_alloc_class(bh_syscall_ctx_t *ctx);
-extern long bh_sys_fault_domain_create(bh_syscall_ctx_t *ctx);
-extern long bh_sys_fault_domain_destroy(bh_syscall_ctx_t *ctx);
-extern long bh_sys_fault_domain_attach(bh_syscall_ctx_t *ctx);
-extern long bh_sys_read(bh_syscall_ctx_t *ctx);
-extern long bh_sys_write(bh_syscall_ctx_t *ctx);
-extern long bh_sys_get_subsystem_caps(bh_syscall_ctx_t *ctx);
-extern long bh_sys_thread_exit(bh_syscall_ctx_t *ctx);
+extern bh_operation_result_t bh_sys_nop(bh_syscall_ctx_t *ctx);
+extern bh_operation_result_t bh_sys_thread_create(bh_syscall_ctx_t *ctx);
+extern bh_operation_result_t bh_sys_thread_destroy(bh_syscall_ctx_t *ctx);
+extern bh_operation_result_t bh_sys_sched_yield(bh_syscall_ctx_t *ctx);
+extern bh_operation_result_t bh_sys_sched_sleep(bh_syscall_ctx_t *ctx);
+extern bh_operation_result_t bh_sys_sched_set_priority(bh_syscall_ctx_t *ctx);
+extern bh_operation_result_t bh_sys_sched_set_affinity(bh_syscall_ctx_t *ctx);
+extern bh_operation_result_t bh_sys_vmm_map_page(bh_syscall_ctx_t *ctx);
+extern bh_operation_result_t bh_sys_vmm_unmap_page(bh_syscall_ctx_t *ctx);
+extern bh_operation_result_t bh_sys_cap_invoke(bh_syscall_ctx_t *ctx);
+extern bh_operation_result_t bh_sys_endpoint_create(bh_syscall_ctx_t *ctx);
+extern bh_operation_result_t bh_sys_endpoint_send(bh_syscall_ctx_t *ctx);
+extern bh_operation_result_t bh_sys_endpoint_receive(bh_syscall_ctx_t *ctx);
+extern bh_operation_result_t bh_sys_cap_delegate(bh_syscall_ctx_t *ctx);
+extern bh_operation_result_t bh_sys_intent_set(bh_syscall_ctx_t *ctx);
+extern bh_operation_result_t bh_sys_intent_get(bh_syscall_ctx_t *ctx);
+extern bh_operation_result_t bh_sys_mem_alloc_class(bh_syscall_ctx_t *ctx);
+extern bh_operation_result_t bh_sys_fault_domain_create(bh_syscall_ctx_t *ctx);
+extern bh_operation_result_t bh_sys_fault_domain_destroy(bh_syscall_ctx_t *ctx);
+extern bh_operation_result_t bh_sys_fault_domain_attach(bh_syscall_ctx_t *ctx);
+extern bh_operation_result_t bh_sys_read(bh_syscall_ctx_t *ctx);
+extern bh_operation_result_t bh_sys_write(bh_syscall_ctx_t *ctx);
+extern bh_operation_result_t bh_sys_get_subsystem_caps(bh_syscall_ctx_t *ctx);
+extern bh_operation_result_t bh_sys_thread_exit(bh_syscall_ctx_t *ctx);
 
 static const bh_syscall_meta_t native_syscall_table[] = {
 #include <kernel/syscall/native_syscall_table.inc>
