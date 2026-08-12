@@ -41,7 +41,7 @@ With a real SDK:
 
 ## The 3-Layer Design
 
-This architecture is designed as **3 layers**, not one giant "POSIX support" blob. Do **not** hardcode POSIX semantics into the kernel. Keep the kernel capability-oriented and message-driven. Let libc/personality adapt POSIX semantics onto Bharat-OS primitives.
+This architecture is designed as **3 layers**, not one giant "POSIX support" blob. Do **not** hardcode POSIX semantics into the kernel. Keep the kernel capability-oriented and message-driven. Let libc/libposix adapt POSIX source APIs and semantics onto Bharat-OS primitives; reserve personalities for foreign binary ABIs such as Linux.
 
 ### 1. Core SDK libc/runtime
 * C runtime (`crt0`)
@@ -59,10 +59,15 @@ This architecture is designed as **3 layers**, not one giant "POSIX support" blo
 * Sockets shim (later)
 * Termios minimal or stubbed at first
 
+This is a portability library, not a POSIX kernel personality. Its calls flow
+through the Bharat native API to native syscalls or capability-scoped service
+IPC; it does not allocate a POSIX raw syscall-number namespace.
+
 ### 3. Personality compatibility
 * Linux personality first
 * Optional embedded/RT personality
-* "Micro-POSIX" profile for drones/edge
+* POSIX library profiles may be selected for drones/edge without changing the
+  native kernel ABI personality
 * Subsystem personalities aligned with the multikernel direction
 
 ---
