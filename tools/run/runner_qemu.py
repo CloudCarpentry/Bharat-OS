@@ -71,6 +71,14 @@ def build_qemu_command(manifest: dict, mode_override: str = None, display_overri
     if dtb_artifact:
         cmd.extend(["-dtb", dtb_artifact])
 
+    if arch == "riscv32":
+        extra_args_list = run_config.get("extra_args", [])
+        has_bios_arg = any("-bios" in str(arg) for arg in extra_args_list)
+        if not has_bios_arg:
+            rv32_bios_path = Path("/usr/lib/riscv32-linux-gnu/opensbi/generic/fw_dynamic.bin")
+            if rv32_bios_path.exists():
+                cmd.extend(["-bios", str(rv32_bios_path)])
+
     # Handle Display Mode
     nographic_manifest = run_config.get("nographic", False)
     display_mode = "headless" if nographic_manifest else "gui"
