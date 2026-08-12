@@ -460,6 +460,19 @@ resolver defaults omitted values to `full` during migration. It passes the
 resolved `BHARAT_USERSPACE_RUNTIME_MODEL` to CMake and packages exactly one root:
 `user_smoke`, `rt-supervisor`, `init-lite`, or `init`, respectively. Unknown
 values and the unsupported top-level `runtime_model` spelling fail validation.
+# Native syscall ABI reproducibility
+
+Verify the Native manifest, compatibility lock, and deterministic generated
+numbers/table artifacts without writing into the source tree:
+
+```bash
+python3 tools/abi/syscall_abi.py --check
+python3 -m unittest tools.abi.test_syscall_abi
+```
+
+Intentional, reviewed Native syscall additions require an explicit
+`python3 tools/abi/syscall_abi.py --update-lock`; see
+`docs/dev/native-syscall-abi-change.md` for the full procedure.
 # Runtime implementation maturity gate
 
 Every configure/build action checks `interface/contracts/implementation_maturity.json` before the

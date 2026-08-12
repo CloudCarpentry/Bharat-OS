@@ -26,8 +26,9 @@ jobs:
 
       - name: Verify ABI Manifests
         run: |
+          python3 tools/abi/syscall_abi.py --check
+          python3 -m unittest tools.abi.test_syscall_abi
           python3 tools/abi/generate_abi_manifests.py --check
-          python3 tools/abi/check_syscalls.py --check
 
       - name: Reject raw syscall numbers
         run: |
