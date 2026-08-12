@@ -14,6 +14,7 @@ add_executable(init
     init_runtime.c
     init_status.c
     init_handoff.c
+    init_rollback.c
     init_boot_context_utils.c
     init_graph.c
     init_events.c

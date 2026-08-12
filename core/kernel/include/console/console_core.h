@@ -23,6 +23,7 @@ void console_enter_panic(void);
 
 bool console_register_backend(console_backend_t *backend);
 bool console_activate_backend(console_backend_t *backend);
+void console_quiesce_framebuffer_sinks(void);
 
 void console_log(console_log_level_t level, const char *fmt, ...);
 void console_vlog(console_log_level_t level, const char *fmt, va_list ap);

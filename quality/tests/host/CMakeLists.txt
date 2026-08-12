@@ -393,9 +393,13 @@ add_executable(test_servicemgr_dup test_servicemgr.c ../../core/services/service
 target_include_directories(test_servicemgr_dup PRIVATE ../../include ../../core/lib/ipc/include ../../core/lib/cap/include ../../kernel/include)
 add_test(NAME host_test_servicemgr_dup COMMAND test_servicemgr_dup)
 
-add_executable(test_init test_init.c ../../core/services/core/init/init_runtime.c ../../core/services/core/init/init_status.c ../../core/services/core/init/init_handoff.c)
+add_executable(test_init test_init.c ../../core/services/core/init/init_runtime.c ../../core/services/core/init/init_status.c ../../core/services/core/init/init_handoff.c ../../core/services/core/init/init_rollback.c)
 target_include_directories(test_init PRIVATE ../../include ../../kernel/include ../../core/lib/runtime/include ../../core/lib/cap/include ../../core/lib/ipc/include)
 add_test(NAME host_test_init COMMAND test_init)
+
+add_executable(test_init_rollback test_init_rollback.c ../../core/services/core/init/init_rollback.c)
+target_include_directories(test_init_rollback PRIVATE ../../interface/include ../../core/services/core/init)
+add_test(NAME host_test_init_rollback COMMAND test_init_rollback)
 
 add_executable(test_ktime time/test_ktime.c ../../core/kernel/src/time/ktime.c ../../core/hal/common/hal_timer_common.c ../../core/kernel/src/core/cpu_local.c)
 

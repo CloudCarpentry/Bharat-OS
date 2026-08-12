@@ -44,6 +44,21 @@ capability contract requires a separate security review.
 - Missing compiled root payloads fail packaging; no synthetic image is emitted.
 - DIRECT has no service-graph completion requirement. STATIC, LIGHT, and FULL
   retain distinct lifecycle evidence.
+- The FULL root attempts supervisor handoff only when the resolved declarative
+  service graph contains `servicemgr`. Manager-less graphs remain valid with
+  `init` as the quiescent lifecycle authority; hardware and execution profiles
+  never select a different kernel root path.
+- A required userspace bootstrap failure unwinds successfully activated
+  services in reverse order through explicit compensating callbacks. Optional
+  failures retain activated dependencies and produce a degraded outcome.
+- Supervisor handoff retains the versioned `BEGIN` / `SERVICE` / `COMMIT`
+  transaction, uses bounded profile-policy timeouts/retries, and relies on
+  receiver idempotency when an ambiguous timeout causes replay.
+- Early framebuffer ownership uses capability-authorized begin/commit/abort.
+  Commit alone quiesces framebuffer console sinks; abort and every failed
+  transfer preserve kernel display output, while serial and emergency sinks
+  are never disabled. The framebuffer capability is granted into the receiving
+  process cspace and is not returned from a destroyed temporary table.
 
 ## Consequences
 

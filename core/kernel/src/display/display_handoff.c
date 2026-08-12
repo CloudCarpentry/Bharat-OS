@@ -1,71 +1,67 @@
-#include "boot/boot_info.h"
+#include "display/display_handoff.h"
+#include "console/console_core.h"
 #include "bharat/display/display_caps.h"
-#include "bharat/display/display_caps.h"
-#include "capability.h"
 #include "kernel.h"
-#include "mm.h"
-#include <stddef.h>
-#include <stdint.h>
 
 /*
- * kernel_publish_boot_framebuffer()
- *
- * Validates the boot framebuffer handoff, establishes a virtual-address
- * mapping (identity-mapped at early boot — safe before VMM teardown), and
- * publishes a kernel capability so userspace display servers can claim it.
- *
- * Mapping strategy (early boot, before full VMM):
- *   UEFI, GRUB-Multiboot, and OpenSBI all establish a 1:1 physical→virtual
- *   map before calling kernel_main.  We therefore use phys_addr directly as
- *   the virtual address.  Once the VMM is initialised the display server
- *   must re-map the framebuffer via the capability with proper WC attributes.
- *
- * Returns:
- *   0    — success, *out_cap is set
- *  -1    — bad arguments
- *  -2    — handoff validation failed (bad geometry)
- *  -3    — capability table allocation failed
- *  -4    — capability grant failed
+ * Boot-core-owned state. Calls occur before SMP lifecycle delegation; the
+ * console lock serializes sink mutation at commit. A later cross-core display
+ * protocol must replace this ownership rather than remotely mutating it.
  */
-int kernel_publish_boot_framebuffer(const boot_video_handoff_t *in,
-                                    uint32_t                   *out_cap) {
-    if (!in || !in->valid || !out_cap) {
+static bh_display_handoff_state_t g_handoff_state = BH_DISPLAY_HANDOFF_HEADLESS;
+static uint64_t g_framebuffer_phys;
+
+static int validate_authority(const capability_table_t *caller, uint32_t cap) {
+    bh_memory_object_t memory = {0};
+    kstatus_t status = cap_lookup_memory(caller, cap, CAP_RIGHT_MEMORY_MAP, &memory);
+    if (status != K_OK || (uint64_t)memory.base != g_framebuffer_phys) {
         return -1;
     }
+    return 0;
+}
 
-    if (boot_video_validate(in) != 0) {
-        return -2;
-    }
+int bh_display_publish_boot_framebuffer(const boot_video_handoff_t *framebuffer,
+                                        capability_table_t *recipient,
+                                        uint32_t *out_cap) {
+    if (!framebuffer || !framebuffer->valid || !recipient || !out_cap) return -1;
+    if (boot_video_validate(framebuffer) != 0) return -2;
 
-    /*
-     * Early-boot virtual address: identity-mapped physical address.
-     *
-     * A complete implementation would call:
-     *   mm_map_physical_range(in->phys_addr, in->size,
-     *                         MM_PROT_READ | MM_PROT_WRITE | MM_MEMATTR_WC,
-     *                         &vaddr);
-     *
-     * For now we use the identity mapping that the bootloader established.
-     * This is correct because:
-     *   1. UEFI leaves all RAM in the 1:1 map it set up.
-     *   2. GRUB Multiboot/Multiboot2 maps everything with 1:1 paging.
-     *   3. We call this function before vmm_init() changes the page tables.
-     */
-    uintptr_t vaddr = (uintptr_t)in->phys_addr;
-    (void)vaddr;  /* used by capability grant below */
+    int rc = cap_table_grant(recipient, CAP_TYPE_MEMORY, framebuffer->phys_addr,
+                             CAP_RIGHT_MEMORY_MAP, out_cap);
+    if (rc != 0) return -3;
 
-    /* Publish a kernel capability for the framebuffer memory region.
-     * The display server (boot_displayd) will claim this cap at init. */
-    capability_table_t *table = cap_table_create();
-    if (!table) return -3;
+    g_framebuffer_phys = framebuffer->phys_addr;
+    g_handoff_state = BH_DISPLAY_HANDOFF_KERNEL_OWNED;
+    return 0;
+}
 
-    int ret = cap_table_grant(table, CAP_TYPE_MEMORY,
-                              in->phys_addr,
-                              CAP_RIGHT_MEMORY_MAP, out_cap);
+int bh_display_handoff_begin(const capability_table_t *caller, uint32_t cap) {
+    if (g_handoff_state == BH_DISPLAY_HANDOFF_HEADLESS) return -2;
+    if (validate_authority(caller, cap) != 0) return -1;
+    if (g_handoff_state == BH_DISPLAY_HANDOFF_PENDING) return 0;
+    if (g_handoff_state != BH_DISPLAY_HANDOFF_KERNEL_OWNED) return -3;
+    g_handoff_state = BH_DISPLAY_HANDOFF_PENDING;
+    return 0;
+}
 
-    /* The table is temporary here (will be attached to the first process
-     * in a full implementation).  Clean up the allocation. */
-    cap_table_destroy(table);
+int bh_display_handoff_commit(const capability_table_t *caller, uint32_t cap) {
+    if (validate_authority(caller, cap) != 0) return -1;
+    if (g_handoff_state == BH_DISPLAY_HANDOFF_QUIESCED) return 0;
+    if (g_handoff_state != BH_DISPLAY_HANDOFF_PENDING) return -3;
 
-    return ret;
+    console_quiesce_framebuffer_sinks();
+    g_handoff_state = BH_DISPLAY_HANDOFF_QUIESCED;
+    return 0;
+}
+
+int bh_display_handoff_abort(const capability_table_t *caller, uint32_t cap) {
+    if (validate_authority(caller, cap) != 0) return -1;
+    if (g_handoff_state == BH_DISPLAY_HANDOFF_KERNEL_OWNED) return 0;
+    if (g_handoff_state != BH_DISPLAY_HANDOFF_PENDING) return -3;
+    g_handoff_state = BH_DISPLAY_HANDOFF_KERNEL_OWNED;
+    return 0;
+}
+
+bh_display_handoff_state_t bh_display_handoff_state(void) {
+    return g_handoff_state;
 }

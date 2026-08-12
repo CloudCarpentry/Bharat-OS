@@ -9,6 +9,8 @@ typedef struct {
     bool strict_core_deadlines;
     bool quiesce_after_handoff;
     bool allow_optional_failure;
+    uint8_t handoff_retry_count;
+    uint32_t handoff_timeout_ms;
 } init_profile_policy_t;
 
 void init_profile_get_context(init_boot_context_t *ctx);

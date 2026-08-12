@@ -5,6 +5,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#define INIT_SERVICE_ID_MAX 64
+
 typedef enum {
     INIT_SERVICE_DISABLED = 0,
     INIT_SERVICE_OPTIONAL,
@@ -105,6 +107,8 @@ typedef struct init_service_desc_s {
     int (*start_fn)(void *ctx);      // legacy direct start
     bool (*probe_fn)(const init_boot_context_t *ctx); // updated
     int (*bootstrap_hint_fn)(const init_boot_context_t *ctx, init_launch_result_t *out);
+    /* Compensates a successful start if a later required boot step fails. */
+    int (*rollback_fn)(void *ctx);
     const init_service_id_t *deps;
     uint8_t dep_count;
     uint8_t retry_limit;
