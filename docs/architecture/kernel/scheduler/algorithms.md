@@ -2,7 +2,7 @@
 title: Scheduler Algorithms
 status: Proposed
 owner: Documentation Working Group
-last_updated: 2026-04-25
+last_updated: 2026-08-12
 tags:
   - docs
   - architecture
@@ -12,15 +12,26 @@ see_also:
 ---
 # Scheduler Algorithms
 
-## Active policy selector
+## Per-core policy selector
 
-The scheduler exposes `sched_set_policy(...)` with these policies:
+Each owner-local runqueue stores its own active policy. `sched_set_policy(...)`
+changes only the calling core's policy, and `sched_get_policy()` reads only the
+calling core's policy. There is no authoritative system-wide scheduler-policy
+variable. This permits mixed compositions such as EDF on an RT partition and
+cloud-fair scheduling on GP cores without a cross-core mutable policy lookup in
+the dispatch hot path.
+
+The available per-core policies are:
 
 - `SCHED_POLICY_ROUND_ROBIN`
 - `SCHED_POLICY_CLOUD_FAIR`
 - `SCHED_POLICY_PRIORITY`
 - `SCHED_POLICY_EDF`
 - `SCHED_POLICY_RMS`
+
+Policy state follows runqueue ownership: a core may mutate its own selector,
+while remote placement and migration must use the bounded scheduler command
+protocol and pass the destination core's partition/class admission checks.
 
 ## Priority/RR path
 

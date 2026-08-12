@@ -384,6 +384,8 @@ typedef enum {
 } thread_fault_t;
 
 typedef struct sched_rq {
+    /* Owner-core policy: only this runqueue's CPU may change this field. */
+    sched_policy_t policy;
     bh_thread_t* current_thread;
     bh_thread_t* idle_thread;
 
@@ -611,6 +613,7 @@ void sched_on_timer_tick(void);
 bh_thread_t* sched_current_thread(void);
 uint64_t sched_get_ticks(void);
 void sched_set_policy(sched_policy_t policy);
+sched_policy_t sched_get_policy(void);
 void sched_reschedule(void);
 bh_thread_t* sched_current(void);
 int sched_enqueue(bh_thread_t* thread, uint32_t core_id);

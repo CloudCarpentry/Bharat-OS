@@ -3,15 +3,15 @@
 #include <hal/hal.h>
 #include "sched_internal.h"
 
-static bharat_sched_class_mask_t sched_class_mask_from_thread(const bh_thread_t *thread) {
+static bharat_sched_class_mask_t sched_class_mask_from_thread(
+    const bh_thread_t *thread, uint32_t core_id) {
     if (!thread) return BHARAT_SCHED_CLASS_NONE;
 
     if (thread->flags & BH_THREAD_FLAG_IDLE) {
         return BHARAT_SCHED_CLASS_IDLE;
     }
 
-    extern sched_policy_t g_policy;
-    switch (g_policy) {
+    switch (sched_policy_for_core(core_id)) {
         case SCHED_POLICY_EDF:
         case SCHED_POLICY_RMS:
             return BHARAT_SCHED_CLASS_DEADLINE_RT;
@@ -37,7 +37,8 @@ bool sched_is_core_admissible(bh_thread_t *t, int cpu_id)
     }
 
     // Harden: verify class placement against CPU partition rules
-    bharat_sched_class_mask_t class_mask = sched_class_mask_from_thread(t);
+    bharat_sched_class_mask_t class_mask =
+        sched_class_mask_from_thread(t, (uint32_t)cpu_id);
     if (!cpu_partition_allows_class(cpu_id, class_mask)) {
         return false;
     }

@@ -59,7 +59,6 @@ typedef struct process_slot {
 
 extern uint8_t g_sched_initialized;
 extern uint8_t g_sched_runtime_protected;
-extern sched_policy_t g_policy;
 extern uint32_t g_active_core_count;
 
 #if defined(BHARAT_ENABLE_KERNEL_SELFTESTS)
@@ -71,6 +70,7 @@ thread_slot_t *sched_find_thread_slot_by_tid_local(sched_rq_t *rq, uint64_t tid)
 thread_slot_t *sched_find_thread_slot_by_tid(uint64_t tid);
 sched_remote_cmd_t *sched_allocate_outbound_cmd(void);
 uint32_t sched_clamp_core(uint32_t core_id);
+sched_policy_t sched_policy_for_core(uint32_t core_id);
 bh_thread_t *sched_find_steal_candidate(uint32_t core_id, uint32_t target_cpu);
 
 sched_entity_t *sched_allocate_entity(uint32_t core);

@@ -157,7 +157,7 @@ static kstatus_t sched_handle_migrate_activate(uint32_t current_cpu, sched_rq_t 
             bh_thread_t *thread = sched_find_thread_by_id(env->thread_id);
             if (thread) {
                 sched_invariant_on_enqueue(thread, current_cpu);
-                if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
+                if (rq->policy == SCHED_POLICY_CLOUD_FAIR) {
                     sched_cfs_enqueue(rq, thread);
                 } else {
                     list_add(&entity->run_node, &rq->ready_queue[entity->priority]);
@@ -235,7 +235,7 @@ static kstatus_t sched_handle_remote_wake(uint32_t current_cpu, sched_rq_t *rq, 
         }
 
         sched_invariant_on_enqueue(thread, current_cpu);
-        if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
+        if (rq->policy == SCHED_POLICY_CLOUD_FAIR) {
             sched_cfs_enqueue(rq, thread);
         } else {
             list_add(&entity->run_node, &rq->ready_queue[entity->priority]);
@@ -264,9 +264,9 @@ static kstatus_t sched_handle_set_priority(uint32_t current_cpu, sched_rq_t *rq,
     if (entity) {
         if (entity->is_on_runqueue != 0U) {
             sched_invariant_on_dequeue(thread);
-            if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
+            if (rq->policy == SCHED_POLICY_CLOUD_FAIR) {
                 sched_cfs_dequeue(rq, thread);
-            } else if (g_policy == SCHED_POLICY_EDF) {
+            } else if (rq->policy == SCHED_POLICY_EDF) {
                 sched_edf_dequeue(rq, thread);
             } else {
                 list_del(&entity->run_node);
@@ -281,9 +281,9 @@ static kstatus_t sched_handle_set_priority(uint32_t current_cpu, sched_rq_t *rq,
         entity->priority = env->priority;
         if (entity->state == THREAD_STATE_READY) {
             sched_invariant_on_enqueue(thread, current_cpu);
-            if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
+            if (rq->policy == SCHED_POLICY_CLOUD_FAIR) {
                 sched_cfs_enqueue(rq, thread);
-            } else if (g_policy == SCHED_POLICY_EDF) {
+            } else if (rq->policy == SCHED_POLICY_EDF) {
                 sched_edf_enqueue(rq, thread);
             } else {
                 list_add(&entity->run_node, &rq->ready_queue[entity->priority]);
@@ -440,7 +440,7 @@ void sched_reschedule(void) {
                   sched_entity_t *v_entity = sched_find_entity_by_thread(victim);
                   if (v_entity && v_entity->is_on_runqueue != 0U) {
                       sched_invariant_on_dequeue(victim);
-                      if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
+                      if (rq->policy == SCHED_POLICY_CLOUD_FAIR) {
                           sched_cfs_dequeue(rq, victim);
                       } else {
                           list_del(&v_entity->run_node);
@@ -534,13 +534,13 @@ void sched_on_timer_tick(void) {
 
   current->cpu_time_consumed++;
 
-  if (g_policy == SCHED_POLICY_CLOUD_FAIR && current != rq->idle_thread) {
+  if (rq->policy == SCHED_POLICY_CLOUD_FAIR && current != rq->idle_thread) {
     sched_cfs_update_vruntime(rq, current, 1);
   }
 
   sched_update_telemetry(current);
 
-  if (g_policy == SCHED_POLICY_EDF && current != rq->idle_thread) {
+  if (rq->policy == SCHED_POLICY_EDF && current != rq->idle_thread) {
       if (current->cpu_time_consumed >= current->rt_attr.wcet_ms) {
           // Task exhausted budget for this period, wait for next period
           current->absolute_deadline_ms += current->rt_attr.period_ms;
@@ -570,7 +570,7 @@ void sched_on_timer_tick(void) {
         return;
       }
 
-      if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
+      if (rq->policy == SCHED_POLICY_CLOUD_FAIR) {
           bh_thread_t *next = sched_cfs_pick_next(rq);
           if (next && next->vruntime < current->vruntime) {
               sched_reschedule();

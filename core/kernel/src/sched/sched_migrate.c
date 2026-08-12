@@ -248,7 +248,7 @@ int sched_quarantine_thread(bh_thread_t *thread, uint32_t reason) {
       thread_slot_t *slot = sched_find_thread_slot_by_tid_local(rq, thread->thread_id);
       if (slot && slot->is_on_runqueue) {
           hal_cpu_disable_interrupts();
-          if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
+          if (rq->policy == SCHED_POLICY_CLOUD_FAIR) {
             sched_cfs_dequeue(rq, thread);
           } else {
             list_del(&slot->run_node);
@@ -342,7 +342,7 @@ int sched_request_handoff_tid(uint64_t tid, uint32_t target_cpu, uint32_t auth_t
   sched_rq_t *rq = sched_local_rq();
 
   if (slot->is_on_runqueue != 0U) {
-    if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
+    if (rq->policy == SCHED_POLICY_CLOUD_FAIR) {
       sched_cfs_dequeue(rq, thread);
     } else {
       list_del(&slot->run_node);
@@ -363,7 +363,7 @@ int sched_request_handoff_tid(uint64_t tid, uint32_t target_cpu, uint32_t auth_t
   if (mk_get_channel(current_core, target_cpu, &channel) != 0) {
     hal_cpu_disable_interrupts();
     thread->state = THREAD_STATE_READY;
-    if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
+    if (rq->policy == SCHED_POLICY_CLOUD_FAIR) {
       sched_cfs_enqueue(rq, thread);
     } else {
       list_add(&slot->run_node, &rq->ready_queue[thread->priority]);
@@ -396,7 +396,7 @@ int sched_request_handoff_tid(uint64_t tid, uint32_t target_cpu, uint32_t auth_t
   if (ret != 0) {
       hal_cpu_disable_interrupts();
       thread->state = THREAD_STATE_READY;
-      if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
+      if (rq->policy == SCHED_POLICY_CLOUD_FAIR) {
         sched_cfs_enqueue(rq, thread);
       } else {
         list_add(&slot->run_node, &rq->ready_queue[thread->priority]);

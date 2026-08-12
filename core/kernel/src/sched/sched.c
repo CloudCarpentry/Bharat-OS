@@ -29,7 +29,6 @@
 // Removed core_runqueue_t definition from here as it's now in sched.h as sched_rq_t
 // Removed static core_runqueue_t g_runqueues
 
-sched_policy_t g_policy = SCHED_POLICY_PRIORITY;
 static volatile uint64_t g_next_thread_id = 1U;
 static volatile uint64_t g_next_process_id = 1U;
 
@@ -73,6 +72,10 @@ uint32_t sched_clamp_core(uint32_t core_id) {
     return 0U;
   }
   return core_id;
+}
+
+sched_policy_t sched_policy_for_core(uint32_t core_id) {
+  return g_cpu_locals[sched_clamp_core(core_id)].runqueue.policy;
 }
 
 #include "hal/hal_discovery.h"
@@ -211,9 +214,9 @@ void sched_detach_thread_from_queues(thread_slot_t *slot) {
   hal_cpu_disable_interrupts();
 
   if (slot->is_on_runqueue != 0U) {
-    if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
+    if (rq->policy == SCHED_POLICY_CLOUD_FAIR) {
       sched_cfs_dequeue(rq, thread);
-    } else if (g_policy == SCHED_POLICY_EDF) {
+    } else if (rq->policy == SCHED_POLICY_EDF) {
       sched_edf_dequeue(rq, thread);
     } else {
       list_del(&slot->run_node);
@@ -380,6 +383,7 @@ void sched_thread_exit_trampoline(void) {
 void sched_reset_core_runqueues(void) {
   for (uint32_t core = 0; core < g_active_core_count; ++core) {
     sched_rq_t *rq = &g_cpu_locals[core].runqueue;
+    rq->policy = SCHED_POLICY_PRIORITY;
     rq->current_thread = NULL;
     rq->idle_thread = NULL;
     g_cpu_locals[core].runqueue.total_ticks = 0U;
@@ -846,20 +850,20 @@ bh_thread_t *sched_pick_next_ready(uint32_t core_id) {
 
   bh_thread_t *next = NULL;
 
-  if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
+  if (rq->policy == SCHED_POLICY_CLOUD_FAIR) {
       next = sched_cfs_pick_next(rq);
       if (next) {
           sched_invariant_on_dequeue(next);
           sched_cfs_dequeue(rq, next);
       }
-  } else if (g_policy == SCHED_POLICY_EDF) {
+  } else if (rq->policy == SCHED_POLICY_EDF) {
       next = sched_edf_pick_next(rq);
       if (next) {
           sched_invariant_on_dequeue(next);
           sched_edf_dequeue(rq, next);
       }
   } else {
-      int pick_highest = (g_policy == SCHED_POLICY_ROUND_ROBIN) ? 0 : 1;
+      int pick_highest = (rq->policy == SCHED_POLICY_ROUND_ROBIN) ? 0 : 1;
       int prio = sched_pick_priority_from_bitmap(rq, pick_highest);
       if (prio >= 0) {
           list_head_t *head = &rq->ready_queue[prio];
@@ -926,9 +930,9 @@ void sched_switch_to(bh_thread_t *next, uint32_t core_id) {
         current->state = THREAD_STATE_READY;
         curr_entity->state = THREAD_STATE_READY;
         sched_invariant_on_enqueue(current, core_id);
-        if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
+        if (rq->policy == SCHED_POLICY_CLOUD_FAIR) {
             sched_cfs_enqueue(rq, current);
-        } else if (g_policy == SCHED_POLICY_EDF) {
+        } else if (rq->policy == SCHED_POLICY_EDF) {
             sched_edf_enqueue(rq, current);
         } else {
             list_add(&curr_entity->run_node, &rq->ready_queue[current->priority]);

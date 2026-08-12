@@ -2,7 +2,7 @@
 title: Scheduler and Threading Baseline
 status: Proposed
 owner: Documentation Working Group
-last_updated: 2026-04-25
+last_updated: 2026-08-12
 tags:
   - docs
   - architecture
@@ -20,6 +20,7 @@ This document reflects the scheduler/threading baseline from current kernel code
 
 - Thread state machine (`THREAD_STATE_*`) with ready/running/blocked/sleeping/terminated plus distributed handoff states.
 - Per-core runqueue with:
+  - owner-local policy selection (no authoritative global algorithm selector),
   - priority queues + bitmap,
   - CFS rb-tree,
   - EDF rb-tree,
