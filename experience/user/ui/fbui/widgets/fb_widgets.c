@@ -219,12 +219,12 @@ static bool button_handle_event(fbui_widget_t *w, const fbui_event_t *ev) {
     if (ev->type == FBUI_EVENT_TOUCH_DOWN && fbui_widget_hit_test(w, ev->x, ev->y)) {
         w->focused = true;
         return true; // Event consumed
-    } else if (ev->type == FBUI_EVENT_TOUCH_UP) {
-        if (w->focused && fbui_widget_hit_test(w, ev->x, ev->y)) {
+    } else if (ev->type == FBUI_EVENT_TOUCH_UP && w->focused) {
+        if (fbui_widget_hit_test(w, ev->x, ev->y)) {
             // Click callback placeholder logic
         }
         w->focused = false;
-        return true; // Consume if it was our button being released
+        return true;
     }
     return false;
 }
@@ -413,8 +413,8 @@ static bool checkbox_handle_event(fbui_widget_t *w, const fbui_event_t *ev) {
     if (ev->type == FBUI_EVENT_TOUCH_DOWN && fbui_widget_hit_test(w, ev->x, ev->y)) {
         w->focused = true;
         return true;
-    } else if (ev->type == FBUI_EVENT_TOUCH_UP) {
-        if (w->focused && fbui_widget_hit_test(w, ev->x, ev->y)) {
+    } else if (ev->type == FBUI_EVENT_TOUCH_UP && w->focused) {
+        if (fbui_widget_hit_test(w, ev->x, ev->y)) {
             cdata->checked = !cdata->checked; // Toggle
         }
         w->focused = false;

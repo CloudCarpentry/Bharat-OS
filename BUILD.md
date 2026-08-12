@@ -323,6 +323,15 @@ Runtime command includes serial-first bring-up (`-nographic -monitor none -seria
 ./tools/build.sh all --target-yaml delivery/targets/qemu/x86_64_rtos_mmu_lite_headless.yaml --smoke
 ```
 
+The showcase target also supports a CI-friendly end-to-end check without a
+window server. It still creates the emulated display and requires the real
+framebuffer, splash/dashboard render, synthetic app interaction, and stable
+userspace boot markers before passing:
+
+```bash
+./tools/build.sh all --target-yaml delivery/targets/qemu/x86_64_showcase_gui.yaml --headless --smoke
+```
+
 ## 5.1 Canonical headless smoke-test commands (all 5 architectures)
 
 All commands verified with `[Run] PASS` on QEMU. Build + package + run in one shot.
