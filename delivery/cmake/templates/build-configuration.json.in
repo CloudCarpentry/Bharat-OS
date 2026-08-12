@@ -10,6 +10,7 @@
     "memory_mpu": "@BHARAT_ENABLE_MPU@",
     "memory_advanced_vm": "@BHARAT_ENABLE_ADVANCED_VM@",
     "scheduler_profile": "@BHARAT_KERNEL_PROFILE_RESOLVED@",
+    "kmem_allocator": "@BHARAT_KMEM_ALLOCATOR_RESOLVED@",
     "personality": "@BHARAT_PERSONALITY_PROFILE@",
     "userspace_runtime_model": "@BHARAT_USERSPACE_RUNTIME_MODEL@",
     "service_network": "@BHARAT_ENABLE_SERVICE_NETWORK@",

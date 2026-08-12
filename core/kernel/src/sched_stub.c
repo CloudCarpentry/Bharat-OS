@@ -359,7 +359,9 @@ bh_thread_t* thread_create(bh_process_t* parent, void (*entry_point)(void)) {
     slot->thread.base_priority = 1U;
     slot->thread.cpu_time_consumed = 0U;
     slot->thread.time_slice_ms = SCHED_DEFAULT_SLICE_MS;
-    slot->thread.preferred_numa_node = 0U;
+    slot->thread.numa_affinity.policy = NUMA_POLICY_LOCAL_PREFERRED;
+    slot->thread.numa_affinity.target_node = NUMA_NODE_LOCAL;
+    slot->thread.numa_affinity.interleave_mask = 0U;
     slot->thread.affinity_mask = 0xFFFFFFFFU;
 
     slot->context.pc = (uint64_t)(uintptr_t)entry_point;
@@ -616,7 +618,7 @@ int sched_migrate_task(bh_thread_t* thread, uint32_t new_node) {
         return -2;
     }
 
-    thread->preferred_numa_node = (uint8_t)new_node;
+    thread->numa_affinity.target_node = (memory_node_id_t)new_node;
     return 0;
 }
 

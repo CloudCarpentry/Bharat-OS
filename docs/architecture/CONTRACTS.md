@@ -32,7 +32,7 @@ When implementation differs from an authority, treat it as a defect or an explic
 | Runtime implementation maturity | `interface/contracts/implementation_maturity.json` and ADR-022 | Build-time production maturity gate | `python3 tools/check_implementation_maturity.py --profile RELEASE` plus focused checker tests | Build + subsystem maintainers |
 | Capability model | Add exact authority/ADR reference | Kernel and service IPC entry points | Positive/negative capability tests | Security maintainers |
 | IPC/uRPC wire contracts | Add exact IDL/header/ADR references | Kernel, monitor, services | Layout assertions, retry/replay/timeout tests | Kernel IPC maintainers |
-| VM authority and backend semantics | Add exact architecture/ADR references | MMU, MMU-Lite, MPU backends | VM lifecycle and backend tests | Memory maintainers |
+| Kernel heap and NUMA fault policy | `docs/adr/ADR-023-kernel-heap-and-numa-fault-policy.md`, `core/kernel/include/bharat_config.h.in`, and `core/kernel/include/numa.h` | PMM, scheduler, VM object faults, MMU/MMU-Lite/MPU profiles | Configuration rejection, focused NUMA/VM tests, five-target builds and smoke runs | Memory maintainers |
 | Scheduler/per-core ownership | Add exact architecture/ADR references | Scheduler and cross-core commands | SMP ownership/migration tests | Scheduler maintainers |
 | Service lifecycle | Add exact service contract/ADR references | Service manager and services | Event-loop/restart/watchdog tests | Service runtime maintainers |
 | Diagnostic event and evidence ABI | `interface/uapi/diag/` and `contracts/evidence/` | Per-core rings, diagnostic collector, host evidence tooling | Host ABI/ring/parser/schema tests | Observability maintainers |

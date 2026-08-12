@@ -82,7 +82,7 @@ int main(void) {
     sched_on_timer_tick();
     bh_thread_t* migrated = sched_find_thread_by_id(t->thread_id);
     assert(migrated != NULL);
-    assert(migrated->preferred_numa_node == 1U);
+    assert(migrated->numa_affinity.target_node == 1U);
 
     capability_table_t* caps = (capability_table_t*)proc.security_sandbox_ctx;
     assert(caps != NULL);

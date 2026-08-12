@@ -125,7 +125,7 @@ int sched_migrate_task(bh_thread_t *thread, uint32_t new_node) {
       sched_migration_transition(thread, SCHED_MIG_NONE, SCHED_MIG_RESERVE_SENT);
       entity->migration_state = SCHED_MIG_RESERVE_SENT;
       entity->migration_epoch = epoch;
-      thread->preferred_numa_node = (uint8_t)new_node;
+      thread->numa_affinity.target_node = (memory_node_id_t)new_node;
 
       kstatus_t status = sched_remote_submit(new_node, cmd);
       if (status != K_OK) {
@@ -151,7 +151,7 @@ int sched_migrate_task(bh_thread_t *thread, uint32_t new_node) {
       cmd->state = SCHED_REMOTE_CMD_PENDING;
 
       sched_migration_transition(thread, SCHED_MIG_NONE, SCHED_MIG_RESERVE_SENT);
-      thread->preferred_numa_node = (uint8_t)new_node;
+      thread->numa_affinity.target_node = (memory_node_id_t)new_node;
 
       kstatus_t status = sched_remote_submit(owner, cmd);
       if (status != K_OK) {
@@ -410,4 +410,3 @@ int sched_request_handoff_tid(uint64_t tid, uint32_t target_cpu, uint32_t auth_t
 
   return 0;
 }
-

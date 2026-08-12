@@ -72,6 +72,19 @@
 #cmakedefine BHARAT_ENABLE_ALLOC_CLASSES 1
 #cmakedefine BHARAT_ENABLE_MEMORY_STATS 1
 
+/* Exactly one kernel heap backend is resolved by CMake. */
+#cmakedefine BHARAT_KMEM_ALLOCATOR_SLAB 1
+#cmakedefine BHARAT_KMEM_ALLOCATOR_SLUB 1
+#cmakedefine BHARAT_KMEM_ALLOCATOR_SLOB 1
+#cmakedefine BHARAT_KMEM_ALLOCATOR_RT_POOL 1
+
+#if (defined(BHARAT_KMEM_ALLOCATOR_SLAB) + \
+     defined(BHARAT_KMEM_ALLOCATOR_SLUB) + \
+     defined(BHARAT_KMEM_ALLOCATOR_SLOB) + \
+     defined(BHARAT_KMEM_ALLOCATOR_RT_POOL)) != 1
+#error "Exactly one BHARAT_KMEM_ALLOCATOR_* backend must be selected"
+#endif
+
 #define MAX_SUPPORTED_CORES @BHARAT_MAX_CORES@
 #define BHARAT_CONFIG_CAP_REVOKE_MAX @BHARAT_CAP_REVOKE_MAX@
 
