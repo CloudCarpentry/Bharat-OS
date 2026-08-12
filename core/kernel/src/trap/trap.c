@@ -1,8 +1,7 @@
 #include <stdint.h>
 #include <stddef.h>
+#include "sched/sched.h"
 
-int sched_sys_intent_set(uint64_t tid, const void* intent);
-int sched_sys_intent_get(uint64_t tid, void* intent);
 int sys_mem_alloc_class(size_t size, uint32_t mem_class, uint32_t flags, uint64_t* out_addr);
 int sys_fault_domain_create(const void* attr, uint64_t* out_domain);
 int sys_fault_domain_destroy(uint64_t domain);

@@ -218,8 +218,6 @@ bh_operation_result_t bh_sys_cap_delegate(bh_syscall_ctx_t *ctx) {
     return bh_op_result_kstatus(res);
 }
 
-int sched_sys_intent_set(uint64_t tid, const void* intent);
-int sched_sys_intent_get(uint64_t tid, void* intent);
 #include <bharat/uapi/system/intent.h>
 
 bh_operation_result_t bh_sys_intent_set(bh_syscall_ctx_t *ctx) {
