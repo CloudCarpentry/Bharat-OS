@@ -2,7 +2,7 @@
 title: Device Profiles and Use-cases
 status: Proposed
 owner: Documentation Working Group
-last_updated: 2026-04-25
+last_updated: 2026-08-12
 tags:
   - docs
   - architecture
@@ -18,6 +18,12 @@ This document maps Bharat-OS architectural features to practical deployment clas
 ## Profile Composition Model
 
 Bharat-OS uses profile-oriented tuning to keep a shared kernel spine while changing policy and scale assumptions. The architecture specifically scales down through formal profiles rather than a messy half-port.
+
+Product/domain compositions such as drone, automotive, TV, POS, and router are
+not separate Bharat-OS versions. They are [hardware capability packs](hardware-capability-packs.md)
+that select drivers, services, stacks, applications, and least-privilege grants
+on top of these orthogonal profiles. Runtime platform/HAL discovery, rather than
+the pack name, remains authoritative for hardware availability.
 
 The three primary delivery tiers are:
 
