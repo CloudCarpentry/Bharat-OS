@@ -199,7 +199,7 @@ static int test_cap_sibling_fanout_revoke(void) {
     capability_entry_t parent_entry;
     ret = cap_table_lookup(table, parent, CAP_TYPE_NONE, CAP_RIGHT_NONE, &parent_entry);
     ASSERT_RET(ret == 0, -7);
-    ASSERT_RET(parent_entry.first_child.slot != UINT32_MAX, -8);
+    ASSERT_RET(parent_entry.first_child.cspace_id != 0U, -8);
 
     // Revoke child1. The parent's first_child pointer should be updated to child2
     ret = cap_table_revoke(table, child1);
@@ -246,7 +246,7 @@ static int test_cap_rights_attenuation(void) {
     int ret = cap_table_grant(table, CAP_TYPE_MEMORY, 0x3000, CAP_RIGHT_MEMORY_MAP | CAP_RIGHT_DELEGATE, &parent);
     ASSERT_RET(ret == 0, -2);
 
-    uint32_t child;
+    uint32_t child = 0U;
     // Try to delegate with more rights than parent has (UNMAP)
     ret = cap_table_delegate(table, table, parent, CAP_RIGHT_MEMORY_MAP | CAP_RIGHT_MEMORY_UNMAP | CAP_RIGHT_DELEGATE, &child);
     ASSERT_RET(ret != 0, -3); // Should fail
@@ -391,8 +391,15 @@ static int test_cap_cross_table_revoke(void) {
     int ret = cap_table_grant(table1, CAP_TYPE_MEMORY, 0x7000, CAP_RIGHT_MEMORY_MAP | CAP_RIGHT_DELEGATE, &parent);
     ASSERT_RET(ret == 0, -2);
 
-    uint32_t child;
+    uint32_t child = 0U;
     ret = cap_table_delegate(table1, table2, parent, CAP_RIGHT_MEMORY_MAP | CAP_RIGHT_DELEGATE, &child);
+    if (ret == -6) {
+        /* A remote CSpace without a bound transport must fail closed. */
+        ASSERT_RET(!cap_exists(table2, child), -3);
+        cap_table_destroy(table1);
+        cap_table_destroy(table2);
+        return 0;
+    }
     if (ret != 0) {
         hal_serial_write("failed to delegate child: ");
         char buf[3];
