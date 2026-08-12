@@ -243,12 +243,16 @@ void bharat_demo_app(void) {
 
     fbui_widget_t *btn_info = fbui_create_button(20, btn_y, btn_w, 35, "System Info");
     fbui_widget_t *btn_run  = fbui_create_button(20 + btn_w + btn_gap, btn_y, btn_w, 35, "Run Demo");
+    if (btn_run) {
+        g_run_button_ops = button_ops;
+        g_run_button_ops.handle_event = run_button_handle_event;
+        btn_run->ops = &g_run_button_ops;
+    }
     fbui_widget_t *btn_diag = fbui_create_button(20 + (btn_w + btn_gap) * 2, btn_y, btn_w, 35, "Diagnostics");
 
     // Configure Run Button custom ops for synthetic click event
     if (btn_run) {
         g_run_button_ops.draw = button_ops.draw;
-        g_run_button_ops.handle_event = run_button_handle_event;
         btn_run->ops = &g_run_button_ops;
         btn_run->border_color = BH_UI_SAFFRON;
         btn_run->fg_color = BH_UI_WHITE;
