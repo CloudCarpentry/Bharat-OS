@@ -197,6 +197,11 @@ void test_level1_validation(void) {
     assert(ret == 0);
     assert(entry.object_ref == 0x100000);
 
+    // Production mode rejects the same slot when its generation is omitted.
+    uint32_t raw_cap = bh_cap_index(cap_id);
+    ret = cap_table_lookup(table, raw_cap, CAP_TYPE_MEMORY, CAP_RIGHT_MEMORY_MAP, &entry);
+    assert(ret == -6);
+
     // 2. Generation / ABA checking
     uint32_t stale_cap = cap_id + (1U << 16); // Old generation handle
     ret = cap_table_lookup(table, stale_cap, CAP_TYPE_MEMORY, CAP_RIGHT_MEMORY_MAP, &entry);
@@ -249,6 +254,12 @@ void test_level2_service_authorization(void) {
         fflush(NULL);
     }
     assert(status == BHARAT_IPC_STATUS_OK);
+
+    // Service authorization uses the canonical validator and rejects raw handles.
+    status = bharat_service_dispatch_authorize(
+        0x00010001, VM_OP_MAP, vm_manager_authz_descs, 1, bh_cap_index(vm_cap), 42
+    );
+    assert(status == BHARAT_IPC_STATUS_ERR_PERM);
 
     status = bharat_service_dispatch_authorize(
         0x00010001, VM_OP_MAP, vm_manager_authz_descs, 1, BHARAT_CAP_INVALID_HANDLE, 42

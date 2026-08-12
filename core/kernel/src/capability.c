@@ -1,4 +1,5 @@
 #include "capability.h"
+#include "bharat_config.h"
 #include "cap_policy.h"
 #include <bharat/cpu_local.h>
 #include "kernel_safety.h"
@@ -227,9 +228,6 @@ int cap_table_lookup(const capability_table_t* table,
     uint32_t id_only = cap_id & 0xFFFF;
     uint32_t generation = cap_id >> 16;
 
-    // If generation is 0, we treat it as un-versioned for backwards compatibility
-    // if tests use raw IDs, else we strictly enforce.
-
     capability_entry_t found_entry = {0};
     int ret = -4;
 
@@ -246,7 +244,7 @@ int cap_table_lookup(const capability_table_t* table,
     for (size_t i = 0; i < BHARAT_ARRAY_SIZE(table->entries); ++i) {
         const capability_entry_t* e = &table->entries[i];
         if (e->in_use != 0U && e->id == id_only) {
-            if (generation != 0 && e->generation != generation) {
+            if (!bh_cap_generation_matches(e->generation, generation)) {
                 ret = -6; // Stale handle
                 break;
             }
@@ -294,7 +292,7 @@ static int cap_table_delegate_local(capability_table_t* src,
 
     for (size_t i = 0; i < BHARAT_ARRAY_SIZE(src->entries); ++i) {
         if (src->entries[i].in_use != 0U && src->entries[i].id == id_only) {
-            if (generation != 0 && src->entries[i].generation != generation) {
+            if (!bh_cap_generation_matches(src->entries[i].generation, generation)) {
                 break; // Stale handle
             }
             if (src->entries[i].state != CAP_STATE_LIVE) {
@@ -435,7 +433,7 @@ int cap_table_delegate(capability_table_t* src,
 
     for (size_t i = 0; i < BHARAT_ARRAY_SIZE(src->entries); ++i) {
         if (src->entries[i].in_use != 0U && src->entries[i].id == id_only) {
-            if (generation != 0 && src->entries[i].generation != generation) {
+            if (!bh_cap_generation_matches(src->entries[i].generation, generation)) {
                 break; // Stale handle
             }
             if (src->entries[i].state != CAP_STATE_LIVE) {
@@ -782,7 +780,7 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
     uint32_t root_slot = UINT32_MAX;
     for (size_t i = 0; i < BHARAT_ARRAY_SIZE(table->entries); ++i) {
         if (table->entries[i].in_use != 0U && table->entries[i].id == id_only) {
-            if (generation != 0 && table->entries[i].generation != generation) {
+            if (!bh_cap_generation_matches(table->entries[i].generation, generation)) {
                 break; // Stale handle
             }
             if (table->entries[i].state == CAP_STATE_FREE) {
@@ -1069,7 +1067,7 @@ kstatus_t cap_validate_ex(capability_table_t *table,
         capability_entry_t *e = &table->entries[i];
         if (e->in_use != 0U && e->id == id_only) {
             // 1. Generation check (handle vs entry)
-            if (handle_gen != 0 && e->generation != handle_gen) {
+            if (!bh_cap_generation_matches(e->generation, handle_gen)) {
                 status = K_ERR_CAP_STALE;
                 break;
             }
