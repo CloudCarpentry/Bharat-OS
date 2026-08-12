@@ -41,6 +41,13 @@
       "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
     },
     {
+      "name": "x86_64-hmem-bench-release",
+      "inherits": "x86_64-qemu-desktop-release",
+      "displayName": "x86_64 HMEM Benchmark (Release)",
+      "binaryDir": "${sourceDir}/build/x86_64-hmem-bench-release",
+      "cacheVariables": { "BHARAT_ENABLE_BENCHMARKS": "ON" }
+    },
+    {
       "name": "host-test",
       "displayName": "Host Tests (Debug)",
       "description": "Host build for tests on Linux using Clang",
@@ -236,6 +243,13 @@
       }
     },
     {
+      "name": "arm64-hmem-bench-release",
+      "inherits": "arm64-edge",
+      "displayName": "ARM64 HMEM Benchmark (Release)",
+      "binaryDir": "${sourceDir}/build/arm64-hmem-bench-release",
+      "cacheVariables": { "BHARAT_ENABLE_BENCHMARKS": "ON" }
+    },
+    {
       "name": "host-test-valgrind",
       "displayName": "Host Environment for Valgrind",
       "description": "Build host tests configured optimally for Valgrind analysis",
@@ -275,6 +289,13 @@
         "BHARAT_DEVICE_PROFILE": "EDGE",
         "BHARAT_TARGET_BOARD": "virt"
       }
+    },
+    {
+      "name": "riscv64-hmem-bench-release",
+      "inherits": "riscv64-edge",
+      "displayName": "RISC-V 64 HMEM Benchmark (Release)",
+      "binaryDir": "${sourceDir}/build/riscv64-hmem-bench-release",
+      "cacheVariables": { "BHARAT_ENABLE_BENCHMARKS": "ON" }
     },
     {
       "name": "arm32-edge",
@@ -916,6 +937,10 @@
       "configurePreset": "x86_64-qemu-desktop-release"
     },
     {
+      "name": "x86_64-hmem-bench-release",
+      "configurePreset": "x86_64-hmem-bench-release"
+    },
+    {
       "name": "host-test",
       "configurePreset": "host-test"
     },
@@ -964,8 +989,16 @@
       "configurePreset": "arm64-edge"
     },
     {
+      "name": "arm64-hmem-bench-release",
+      "configurePreset": "arm64-hmem-bench-release"
+    },
+    {
       "name": "riscv64-edge",
       "configurePreset": "riscv64-edge"
+    },
+    {
+      "name": "riscv64-hmem-bench-release",
+      "configurePreset": "riscv64-hmem-bench-release"
     },
     {
       "name": "arm32-edge",

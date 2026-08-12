@@ -4,6 +4,7 @@ project(BharatSDK VERSION 0.1.0 LANGUAGES C)
 include(GNUInstallDirs)
 option(BHARAT_SDK_BUILD_EXAMPLES "Build Bharat SDK examples" ON)
 option(BHARAT_SDK_BUILD_TESTS "Build Bharat SDK host tests" ON)
+option(BHARAT_SDK_BUILD_BENCHMARKS "Build HMEM/Tensor SDK benchmarks" OFF)
 
 add_library(bharat_core STATIC lib/runtime/core.c lib/runtime/host_backend.c)
 add_library(Bharat::core ALIAS bharat_core)
@@ -57,6 +58,10 @@ endif()
 if(BHARAT_SDK_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
+endif()
+if(BHARAT_SDK_BUILD_BENCHMARKS)
+    add_subdirectory(../../experience/apps/bench_hmem_tensor
+                     ${CMAKE_CURRENT_BINARY_DIR}/bench_hmem_tensor)
 endif()
 
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})

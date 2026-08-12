@@ -532,6 +532,10 @@ set(KERNEL_SRCS
     src/tests/ktest_basic_sanity.c
 )
 
+if(BHARAT_ENABLE_BENCHMARKS)
+    list(APPEND KERNEL_SRCS ${CMAKE_SOURCE_DIR}/quality/benchmarks/kernel/hmem_bench.c)
+endif()
+
 # ── Platform / Machine layer ────────────────────────────────────────────────
 if(ARCH STREQUAL "x86_64")
     list(APPEND KERNEL_SRCS ${BHARAT_ARCH_ROOT}/x86/x86_64/platform/q35/boot/early_console.c)
