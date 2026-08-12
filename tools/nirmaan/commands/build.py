@@ -1,0 +1,40 @@
+import argparse
+import subprocess
+import sys
+
+def map_target(target):
+    # we expect desktop-x86_64 but the filename is x86_64_desktop_headless.yaml
+    if target == "desktop-x86_64":
+        return "delivery/targets/qemu/x86_64_desktop_headless.yaml"
+    if target == "desktop-arm64":
+        return "delivery/targets/qemu/arm64_desktop_headless.yaml"
+    if target == "desktop-riscv64":
+        return "delivery/targets/qemu/riscv64_desktop_headless.yaml"
+    if target == "controller-arm32":
+        return "delivery/targets/qemu/arm32_mmu_lite_headless.yaml"
+
+    target = target.replace("-", "_")
+    if not target.endswith(".yaml") and not target.endswith("_headless") and not target.endswith("_gui"):
+         return f"delivery/targets/qemu/{target}_headless.yaml"
+    return target
+
+def run(args):
+    parser = argparse.ArgumentParser(description="Build a target")
+    parser.add_argument("target", help="The target to build")
+    parser.add_argument("--mode", choices=["development", "demo", "release"], help="Build mode")
+
+    parsed_args, unknown = parser.parse_known_args(args)
+
+    cmd = [sys.executable, "tools/build.py", "build"]
+
+    target_yaml = map_target(parsed_args.target)
+
+    cmd.extend(["--target-yaml", target_yaml])
+
+    if parsed_args.mode:
+        cmd.extend(["--mode", parsed_args.mode])
+
+    cmd.extend(unknown)
+
+    result = subprocess.run(cmd)
+    return result.returncode

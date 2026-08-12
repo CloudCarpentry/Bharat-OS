@@ -21,6 +21,11 @@ def parse_args():
             "--target", type=str, help="Name of the legacy target configuration."
         )
 
+        if cmd in ("build", "all", "configure"):
+            subparser.add_argument(
+                "--mode", type=str, choices=["development", "demo", "release"], help="Build mode: development, demo, release."
+            )
+
         if cmd == "flash":
             subparser.add_argument(
                 "--dry-run", action="store_true", help="Perform a dry run for flashing."

@@ -17,7 +17,30 @@ It covers:
 
 ---
 
-## 1) Tool entrypoints and command model
+## Nirmaan CLI
+
+We provide the `nirmaan` Developer CLI as the primary, high-productivity interface for managing builds and environment configurations.
+
+```bash
+# Check the environment
+./nirmaan doctor
+
+# List available shortcut targets
+./nirmaan targets
+
+# Build the desktop-x86_64 target with specific modes
+./nirmaan build desktop-x86_64 --mode development
+./nirmaan build desktop-x86_64 --mode release
+
+# Run the target
+./nirmaan run desktop-x86_64
+
+# For Windows users:
+nirmaan.bat doctor
+.\nirmaan.ps1 doctor
+```
+
+## 1) Legacy tool entrypoints and command model
 
 Bharat-OS provides two user-facing wrappers:
 

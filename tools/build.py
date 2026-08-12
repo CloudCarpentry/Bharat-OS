@@ -79,7 +79,8 @@ def main() -> int:
 
     build_outputs = None
     if args.command in ("configure", "build", "all"):
-        build_plan = make_build_plan(target, repo_root)
+        build_mode = getattr(args, "mode", None)
+        build_plan = make_build_plan(target, repo_root, build_mode=build_mode)
         build_outputs = execute_build(build_plan, repo_root)
     else:
         build_outputs = load_existing_build_outputs(target, repo_root)
