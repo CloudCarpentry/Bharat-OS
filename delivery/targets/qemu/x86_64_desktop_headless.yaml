@@ -15,6 +15,7 @@ build:
     BHARAT_PERSONALITY_PROFILE: NATIVE
     BHARAT_TARGET_BOARD: qemu-virt
     BHARAT_BOOT_GUI: OFF
+    BHARAT_ENABLE_ADVANCED_VM: ON
 
 kernel:
   canonical_artifacts:

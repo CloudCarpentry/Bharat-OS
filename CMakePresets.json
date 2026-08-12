@@ -169,7 +169,8 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "BHARAT_DEVICE_PROFILE": "DESKTOP",
-        "BHARAT_TARGET_BOARD": "qemu-virt"
+        "BHARAT_TARGET_BOARD": "qemu-virt",
+        "BHARAT_ENABLE_ADVANCED_VM": "ON"
       }
     },
     {
@@ -183,7 +184,8 @@
         "CMAKE_BUILD_TYPE": "Debug",
         "BHARAT_DEVICE_PROFILE": "DESKTOP",
         "BHARAT_TARGET_BOARD": "host",
-        "BHARAT_BUILD_HOST_TESTS": "ON"
+        "BHARAT_BUILD_HOST_TESTS": "ON",
+        "BHARAT_ENABLE_ADVANCED_VM": "ON"
       }
     },
     {

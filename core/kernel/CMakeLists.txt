@@ -381,6 +381,12 @@ if(BHARAT_ENABLE_ADVANCED_VM)
     )
     target_link_libraries(bharat_mm_vmm PRIVATE bharat_kernel_includes bharat_kernel_buildopts)
     target_compile_options(bharat_mm_vmm PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
+else()
+    add_library(bharat_mm_vmm OBJECT
+        src/mm/vmm_stub.c
+    )
+    target_link_libraries(bharat_mm_vmm PRIVATE bharat_kernel_includes bharat_kernel_buildopts)
+    target_compile_options(bharat_mm_vmm PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
 endif()
 # ── Core kernel sources ──────────────────────────────────────────────────────
 set(BHARAT_KERNEL_SRC_ROOT "${CMAKE_SOURCE_DIR}/core/kernel/src")
@@ -655,6 +661,10 @@ if(BHARAT_ENABLE_ADVANCED_VM)
         $<TARGET_OBJECTS:bharat_mm_fault>
         $<TARGET_OBJECTS:bharat_mm_pt>
         $<TARGET_OBJECTS:bharat_mm_tlb>
+        $<TARGET_OBJECTS:bharat_mm_vmm>
+    )
+else()
+    target_sources(kernel.elf PRIVATE
         $<TARGET_OBJECTS:bharat_mm_vmm>
     )
 endif()
