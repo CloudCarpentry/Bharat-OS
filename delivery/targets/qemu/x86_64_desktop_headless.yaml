@@ -7,6 +7,9 @@ device_profile: desktop
 personality_profile: native
 execution_profile: gp
 
+implementation_maturity:
+  profile: RELEASE
+
 build:
   cmake_preset: x86_64-qemu-desktop-release
   cmake_defs:

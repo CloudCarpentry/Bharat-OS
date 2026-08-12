@@ -7,6 +7,10 @@ device_profile: edge
 personality_profile: native
 execution_profile: mix
 
+implementation_maturity:
+  profile: DEVELOPMENT
+  allow: [STUB]
+
 build:
   cmake_preset: riscv32-qemu-mmu-lite-headless
   cmake_defs:

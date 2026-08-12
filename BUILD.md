@@ -473,3 +473,14 @@ python3 -m unittest tools.abi.test_syscall_abi
 Intentional, reviewed Native syscall additions require an explicit
 `python3 tools/abi/syscall_abi.py --update-lock`; see
 `docs/dev/native-syscall-abi-change.md` for the full procedure.
+# Runtime implementation maturity gate
+
+Every configure/build action checks `interface/contracts/implementation_maturity.json` before the
+linker runs. Targets declare `implementation_maturity.profile`; release and hardened profiles reject
+`STUB` and `TEST_ONLY` implementations. A development
+target may explicitly opt in with `implementation_maturity.allow: [STUB]` (and/or `TEST_ONLY`) in its
+target YAML. The focused standalone check is:
+
+```bash
+python3 tools/check_implementation_maturity.py --profile RELEASE
+```

@@ -28,6 +28,12 @@ class BuildConfig:
     configure_only: bool = False
 
 
+@dataclass(frozen=True)
+class ImplementationMaturityPolicy:
+    profile: str
+    allow: List[str] = field(default_factory=list)
+
+
 @dataclass
 class KernelConfig:
     canonical_elf: str
@@ -126,6 +132,7 @@ class ResolvedTarget:
     flash: Optional[FlashConfig] = None
     debug: Optional[DebugConfig] = None
     footprint_profile: Optional[str] = None
+    implementation_maturity: Optional[ImplementationMaturityPolicy] = None
 
     output_root: Optional[Path] = None
     source_metadata: Dict[str, Any] = field(default_factory=dict)
