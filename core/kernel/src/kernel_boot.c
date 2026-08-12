@@ -45,6 +45,9 @@
 
 #define KPRINT(s) console_write_raw(s, string_length(s))
 
+static bool runtime_try_boot_video(const boot_info_t *boot_in);
+static void runtime_maybe_boot_gui(bool video_mapped);
+
 static void print_hw_caps_summary(const hal_hw_caps_t *caps) {
     if (!caps) return;
 
@@ -168,6 +171,10 @@ void boot_common_early(const boot_info_t *boot) {
     boot_selftest_report_t report;
     boot_selftest_run_stage(BOOT_TEST_STAGE_EARLY, &report);
     KPRINT("  [BOOT] Early initialization complete\n");
+
+    bool video_mapped = runtime_try_boot_video(boot);
+    runtime_maybe_boot_gui(video_mapped);
+    boot_gui_update_progress(10, "HAL HARDWARE DISCOVERY");
 }
 
 void boot_common_security(const boot_info_t *boot) {
@@ -190,6 +197,7 @@ void boot_common_security(const boot_info_t *boot) {
     boot_selftest_report_t report;
     boot_selftest_run_stage(BOOT_TEST_STAGE_SECURITY, &report);
     KPRINT("  [BOOT] Security initialization complete\n");
+    boot_gui_update_progress(25, "SECURITY & CAPABILITIES");
 }
 
 void boot_common_memory(const boot_info_t *boot) {
@@ -201,6 +209,7 @@ void boot_common_memory(const boot_info_t *boot) {
     }
     KPRINT("BOOT: pmm initialized\n");
     KPRINT("[BOOT] BOOT_MEMORY: MODULES_RESERVED\n");
+    boot_gui_update_progress(35, "PMM INITIALIZED");
 
     // Ensure hal_pt is initialized BEFORE VMM tries to map things / create address space
     hal_pt_init();
@@ -214,6 +223,7 @@ void boot_common_memory(const boot_info_t *boot) {
 
     // The rest of the setup is handled through the hal_pt interface
     KPRINT("  [VMM] Architecture MMU mappings configured.\n");
+    boot_gui_update_progress(45, "VMM SUBSYSTEMS READY");
 
     const bharat_boot_policy_t *boot_policy = bharat_boot_active_policy();
     if (boot_policy->enable_zswap != 0U) {
@@ -316,6 +326,7 @@ void boot_common_platform_services(const boot_info_t *boot) {
     test_device_dma_dump();
 
     KPRINT("  [SCHED] Scheduler initialized.\n");
+    boot_gui_update_progress(75, "SCHEDULER & DEVICES READY");
 
     KPRINT("  [AI] Calibrating hardware silicon metrics...\n");
     ai_sched_calibrate_silicon();
@@ -443,6 +454,13 @@ static void runtime_enter_normal(const boot_info_t *boot) {
     boot_selftest_report_t report;
     boot_selftest_run_stage(BOOT_TEST_STAGE_RUNTIME, &report);
     KPRINT("  [BOOT] Runtime initialization complete\n");
+    boot_gui_update_progress(100, "LAUNCHING USERSPACE");
+
+#if defined(BHARAT_BOOT_GUI) && BHARAT_BOOT_GUI
+    extern void bharat_demo_app(void);
+    KPRINT("  [BOOT] Transitioning to Graphical System Dashboard...\n");
+    bharat_demo_app();
+#endif
 
     KPRINT("  [BOOT] Spawning first system service (sysmgr)...\n");
     kernel_start_init_service();

@@ -51,6 +51,8 @@ typedef struct {
 static boot_gui_state_t g_gui = {0};
 static boot_video_handoff_t g_gui_handoff = {0};
 
+static void draw_splash_progress(uint32_t percent, const char *status_msg);
+
 /* ─── 8 × 16 bitmap font (printable ASCII 0x20–0x7E) ─────────────────── */
 /*
  * Each character is stored as 16 bytes (one byte per row, MSB = leftmost pixel).
@@ -358,16 +360,7 @@ static void draw_splash(void) {
     cur_y += box_h + 20U;
 
     /* 7. Loading Progress Bar */
-    boot_gui_draw_str(content_x, cur_y,
-                      "System Boot Status: 100% [READY]", COLOR_TEXT_PRI, COLOR_CARD_BG);
-    cur_y += 18U;
-
-    uint32_t bar_w = box_w;
-    uint32_t bar_h = 10U;
-    boot_gui_fill_rect(content_x, cur_y, bar_w, bar_h, COLOR_BG);
-    boot_gui_draw_rect_outline(content_x, cur_y, bar_w, bar_h, COLOR_CARD_HDR);
-    /* Filled progress bar with green accent */
-    boot_gui_fill_rect(content_x + 1U, cur_y + 1U, bar_w - 2U, bar_h - 2U, COLOR_GREEN);
+    draw_splash_progress(0U, "INITIALIZING");
 
     /* 8. Modern Footer at screen bottom */
     boot_gui_draw_str(16U, H - 24U,
@@ -376,6 +369,70 @@ static void draw_splash(void) {
 
     /* Bottom Saffron accent bar */
     boot_gui_fill_rect(0, H - 3U, W, 3U, COLOR_SAFFRON);
+}
+
+static void draw_splash_progress(uint32_t percent, const char *status_msg) {
+    if (!g_gui.active) return;
+    if (percent > 100U) percent = 100U;
+
+    uint32_t W = g_gui.width;
+    uint32_t H = g_gui.height;
+    uint32_t card_w = (W > 540U) ? 540U : (W - 32U);
+    uint32_t card_h = 320U;
+    uint32_t card_x = (W - card_w) / 2U;
+    uint32_t card_y = (H > card_h) ? ((H - card_h) / 2U) - 10U : 20U;
+    uint32_t content_x = card_x + 32U;
+    uint32_t box_h = 76U;
+    uint32_t box_w = card_w - 64U;
+    uint32_t cur_y = card_y + 24U + 28U + 38U + 30U + 20U + box_h + 20U;
+
+    /* Re-clear progress line background */
+    boot_gui_fill_rect(content_x, cur_y, card_w - 64U, 18U, COLOR_CARD_BG);
+
+    /* Construct text: e.g., "System Boot Status: 25% [PMM INITIALIZED]" */
+    char line[128] = "System Boot Status: ";
+    size_t idx = 20;
+
+    uint32_t p = percent;
+    if (p == 100) {
+        line[idx++] = '1'; line[idx++] = '0'; line[idx++] = '0';
+    } else if (p >= 10) {
+        line[idx++] = (char)('0' + (p / 10));
+        line[idx++] = (char)('0' + (p % 10));
+    } else {
+        line[idx++] = (char)('0' + p);
+    }
+    line[idx++] = '%'; line[idx++] = ' '; line[idx++] = '[';
+    if (status_msg) {
+        while (*status_msg && idx < sizeof(line) - 3) {
+            line[idx++] = *status_msg++;
+        }
+    }
+    line[idx++] = ']';
+    line[idx] = '\0';
+
+    boot_gui_draw_str(content_x, cur_y, line, COLOR_TEXT_PRI, COLOR_CARD_BG);
+    cur_y += 18U;
+
+    uint32_t bar_w = box_w;
+    uint32_t bar_h = 10U;
+    boot_gui_fill_rect(content_x, cur_y, bar_w, bar_h, COLOR_BG);
+    boot_gui_draw_rect_outline(content_x, cur_y, bar_w, bar_h, COLOR_CARD_HDR);
+
+    uint32_t fill_w = (bar_w - 2U) * percent / 100U;
+    if (fill_w > 0) {
+        boot_gui_fill_rect(content_x + 1U, cur_y + 1U, fill_w, bar_h - 2U, COLOR_GREEN);
+    }
+}
+
+void boot_gui_update_progress(uint32_t percent, const char *status_msg) {
+#if BHARAT_BOOT_GUI
+    if (g_gui.active) {
+        draw_splash_progress(percent, status_msg);
+    }
+#else
+    (void)percent; (void)status_msg;
+#endif
 }
 
 /* ─── boot_gui_run() — main entry point ─────────────────────────────── */
