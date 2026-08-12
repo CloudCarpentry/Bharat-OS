@@ -1,7 +1,6 @@
 #include "ramfs.h"
 #include <stdlib.h>
 #include <string.h>
-#include "kernel/status.h"
 #include "fs/file.h"
 
 // Define a simple ramfs node structure

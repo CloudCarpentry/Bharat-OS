@@ -2,6 +2,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include "kernel/status.h"
+#include "mm.h"
 #include "mm/aspace.h"
 #include "mm/vm_space.h"
 #include "mm/pt_cache.h"
@@ -57,7 +58,7 @@ address_space_t *mm_create_address_space(void) {
     return &kernel_space;
 }
 
-int mm_vmm_map_page(address_space_t *aspace, uintptr_t vaddr, phys_addr_t paddr, uint32_t flags) {
+int mm_vmm_map_page(address_space_t *aspace, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
     (void)aspace;
     (void)vaddr;
     (void)paddr;
@@ -65,20 +66,20 @@ int mm_vmm_map_page(address_space_t *aspace, uintptr_t vaddr, phys_addr_t paddr,
     return K_OK;
 }
 
-int mm_vmm_unmap_page(address_space_t *aspace, uintptr_t vaddr) {
+int mm_vmm_unmap_page(address_space_t *aspace, virt_addr_t vaddr) {
     (void)aspace;
     (void)vaddr;
     return K_OK;
 }
 
-int vmm_map_page(uintptr_t vaddr, phys_addr_t paddr, uint32_t flags) {
+int vmm_map_page(virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
     (void)vaddr;
     (void)paddr;
     (void)flags;
     return K_OK;
 }
 
-int vmm_unmap_page(uintptr_t vaddr) {
+int vmm_unmap_page(virt_addr_t vaddr) {
     (void)vaddr;
     return K_OK;
 }

@@ -39,7 +39,7 @@ layer-reference|core/hal/include/hal/hal_hw_caps.h|6|hal|kernel|kernel/status.h
 layer-reference|core/hal/mmu_lite/common/mmu_lite_backend.c|3|hal|kernel|kernel/status.h
 layer-reference|core/hal/prot/none/prot_none_backend.c|3|hal|kernel|kernel/status.h
 layer-reference|core/kernel/include/debug/early_console.h|5|kernel|drivers|drivers/serial/uart_driver.h
-layer-reference|core/kernel/include/sched/sched.h|10|kernel|lib|lib/rbtree/rbtree.h
+layer-reference|core/kernel/include/sched/sched.h|11|kernel|lib|lib/rbtree/rbtree.h
 layer-reference|core/kernel/src/boot/boot_selftest.c|3|kernel|tests|tests/ktest.h
 layer-reference|core/kernel/src/console/drivers/uart_simple_mmio.c|1|kernel|drivers|drivers/serial/uart_driver.h
 layer-reference|core/kernel/src/console/serial_console.c|2|kernel|drivers|drivers/serial/uart_driver.h
@@ -80,8 +80,10 @@ layer-reference|core/services/core/subsysmgr/subsys_test_runner.c|2|services|boo
 layer-reference|core/services/core/subsysmgr/subsys_test_runner.c|3|services|hal|hal/hal.h
 layer-reference|core/services/device/accelmgr/accelmgr_broker.c|4|services|kernel|kernel/status.h
 layer-reference|core/services/device/accelmgr/main.c|4|services|kernel|kernel/status.h
+layer-reference|core/services/device/actuator_mgr/actuator_mgr.h|6|services|drivers|../../../drivers/actuator/virtual/virtual_motors.h
 layer-reference|core/services/device/actuator_mgr/safe_state.c|1|services|drivers|drivers/actuator/actuator_device.h
 layer-reference|core/services/device/devmgr/device_manager.c|3|services|hal|hal/hal_pt.h
+layer-reference|core/services/device/sensormgr/sensormgr.h|6|services|drivers|../../../drivers/sensor/virtual/virtual_sensors.h
 layer-reference|core/services/include/services/actuator_mgr/actuator_mgr_protocol.h|2|services|drivers|drivers/actuator/actuator_device.h
 layer-reference|core/services/include/services/can/can_service_protocol.h|6|services|drivers|drivers/can/can_controller.h
 layer-reference|core/services/include/services/sensor_hub/sensor_hub_protocol.h|2|services|drivers|drivers/sensor/sensor_sample.h
@@ -98,6 +100,7 @@ layer-reference|core/services/system/monitord/mon_vm_service.c|4|services|hal|ha
 layer-reference|core/services/system/monitord/mon_vm_service.c|5|services|hal|hal/hal_timer.h
 layer-reference|core/services/system/powerd/power_thermal_perf.c|3|services|hal|hal/hal_cpu_topology.h
 layer-reference|core/stacks/network/skb.c|2|stacks|hal|hal/hal.h
+layer-reference|core/stacks/robotics/robotics_demo.h|5|stacks|platform|../../platform/qemu/robot/robot_platform.h
 layer-reference|core/stacks/storage/fs/blob/blob_backend.c|3|stacks|kernel|kernel/status.h
 layer-reference|experience/user/apps/demo/bharat_demo.c|20|user|hal|hal/hal.h
 layer-reference|experience/user/apps/demo/hello_world.c|1|user|hal|hal/hal.h
