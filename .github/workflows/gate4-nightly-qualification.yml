@@ -1,0 +1,161 @@
+name: Gate 4 / Nightly Qualification
+
+on:
+  schedule:
+    - cron: "30 18 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prepare-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      targets: ${{ steps.set-matrix.outputs.targets }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y python3-yaml jq
+      - name: Generate matrix
+        id: set-matrix
+        run: |
+          TARGETS=$(python3 -c 'import yaml, json; print(json.dumps(yaml.safe_load(open("quality/ci/nightly-qualification-targets.yaml"))["targets"]))')
+          echo "targets=$TARGETS" >> $GITHUB_OUTPUT
+
+  qualification-qemu:
+    runs-on: ubuntu-latest
+    needs: prepare-matrix
+    strategy:
+      fail-fast: false
+      matrix:
+        target_yaml: ${{ fromJson(needs.prepare-matrix.outputs.targets) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build clang lld qemu-system-x86 qemu-system-arm qemu-system-misc python3
+      - name: Build and Run Tests
+        run: |
+          python3 tools/build.py all --target-yaml ${{ matrix.target_yaml }} --run-tests
+        timeout-minutes: 20
+      - name: Upload QEMU Logs on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate4-qualification-qemu-logs-${{ strategy.job-index }}
+          path: |
+            build/
+            !build/**/*.o
+            !build/**/*.a
+            !build/**/*.d
+
+  reproducibility-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build clang lld python3 diffoscope
+      - name: Build A
+        run: |
+          python3 tools/build.py all --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml
+          mv build build_A
+      - name: Build B
+        run: |
+          python3 tools/build.py all --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml
+          mv build build_B
+      - name: Compare Artifacts
+        run: |
+          diffoscope build_A/kernel/kernel.elf build_B/kernel/kernel.elf || /bin/false
+      - name: Upload Logs on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate4-reproducibility-logs
+          path: |
+            build_A/
+            build_B/
+            !**/*.o
+            !**/*.a
+            !**/*.d
+
+  performance-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build clang lld python3
+      - name: Run Performance Benchmarks
+        run: |
+          # Placeholder for performance benchmarking logic
+          echo "Running performance benchmarks..."
+          # In the future, record latency, throughput, alloc/free, etc., and compare to baseline.
+          # For now, this is a stub that represents the capability.
+
+  host-sanitizers-and-valgrind:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build clang valgrind
+      - name: Configure CMake (Sanitizers)
+        run: cmake --preset host-test-asan
+      - name: Build Host Tests (Sanitizers)
+        run: cmake --build --preset host-test-asan
+      - name: Run Host Tests (Sanitizers)
+        run: ctest --preset host-test-asan --output-on-failure
+      - name: Configure CMake (Valgrind)
+        run: cmake --preset host-test-valgrind
+      - name: Build Host Tests (Valgrind)
+        run: cmake --build --preset host-test-valgrind
+      - name: Run Host Tests (Valgrind)
+        run: ctest --preset host-test-valgrind -T memcheck --output-on-failure
+      - name: Upload Test Results on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate4-sanitizer-valgrind-results
+          path: |
+            build/host-test-asan/Testing/
+            build/host-test-valgrind/Testing/
+
+  windows-host-test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup LLVM/Clang
+        run: |
+          choco install -y llvm ninja
+      - name: Configure Host Tools (Debug)
+        run: cmake --preset windows-hosttools-debug
+      - name: Build Host Tools
+        run: cmake --build --preset windows-hosttools-debug
+      - name: Run Host Tests
+        run: ctest --preset windows-hosttools-debug --output-on-failure
+      - name: Upload Test Results on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate4-windows-host-test-results
+          path: build/windows-hosttools-debug/Testing/
+
+  gate4-summary:
+    name: Gate 4 / Nightly Qualification Summary
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [qualification-qemu, reproducibility-check, performance-gate, host-sanitizers-and-valgrind, windows-host-test]
+    steps:
+      - name: Check Status
+        run: |
+          if [ "${{ needs.qualification-qemu.result }}" != "success" ] || \
+             [ "${{ needs.reproducibility-check.result }}" != "success" ] || \
+             [ "${{ needs.performance-gate.result }}" != "success" ] || \
+             [ "${{ needs.host-sanitizers-and-valgrind.result }}" != "success" ] || \
+             [ "${{ needs.windows-host-test.result }}" != "success" ]; then
+            /bin/false
+          fi
