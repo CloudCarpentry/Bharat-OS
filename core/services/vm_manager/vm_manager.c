@@ -36,41 +36,35 @@ static const region_entry_t *vm_manager_find_region(uint32_t region_id) {
     return NULL;
 }
 
-// Default authority ops
+// Fail-closed defaults. Production builds must replace these authority operations.
 static int32_t default_space_create(void *ctx, const bh_vm_create_space_request_v1_t *req, bh_vm_kernel_space_ref_t *out_ref) {
-    (void)ctx; (void)req;
-    out_ref->space_id = 9911;
-    return 0;
+    (void)ctx; (void)req; (void)out_ref;
+    return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
 }
 
 static int32_t default_space_destroy(void *ctx, bh_vm_kernel_space_ref_t ref) {
     (void)ctx; (void)ref;
-    return 0;
+    return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
 }
 
 static int32_t default_map(void *ctx, bh_vm_kernel_space_ref_t ref, const bh_vm_map_request_v1_t *req) {
     (void)ctx; (void)ref; (void)req;
-    return 0;
+    return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
 }
 
 static int32_t default_unmap(void *ctx, bh_vm_kernel_space_ref_t ref, uint64_t vaddr, uint64_t length) {
     (void)ctx; (void)ref; (void)vaddr; (void)length;
-    return 0;
+    return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
 }
 
 static int32_t default_protect(void *ctx, bh_vm_kernel_space_ref_t ref, uint64_t vaddr, uint64_t length, uint64_t protection, uint64_t memory_type) {
     (void)ctx; (void)ref; (void)vaddr; (void)length; (void)protection; (void)memory_type;
-    return 0;
+    return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
 }
 
 static int32_t default_query(void *ctx, bh_vm_kernel_space_ref_t ref, uint64_t vaddr, bh_vm_kernel_query_result_t *out_res) {
-    (void)ctx; (void)ref; (void)vaddr;
-    out_res->state = 2; // mapped
-    out_res->vaddr = vaddr;
-    out_res->size = 4096;
-    out_res->protection = 3;
-    out_res->memory_type = 0;
-    return 0;
+    (void)ctx; (void)ref; (void)vaddr; (void)out_res;
+    return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
 }
 
 static bh_vm_authority_ops_t g_authority_ops = {

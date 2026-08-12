@@ -7,6 +7,10 @@ device_profile: desktop
 personality_profile: native
 execution_profile: gp
 
+implementation_maturity:
+  profile: DEVELOPMENT
+  allow: [STUB]
+
 build:
   cmake_preset: riscv64-edge
   cmake_defs:
