@@ -636,6 +636,7 @@ add_executable(kernel.elf
     $<TARGET_OBJECTS:bharatos_personality_runtime>
     $<$<BOOL:${BHARAT_ENABLE_COMPAT_LINUX}>:$<TARGET_OBJECTS:bharatos_personality_linux>>
     $<$<BOOL:${BHARAT_ENABLE_COMPAT_LINUX}>:$<TARGET_OBJECTS:bharatos_personality_abi_linux>>
+    $<$<BOOL:${BHARAT_ENABLE_COMPAT_POSIX}>:$<TARGET_OBJECTS:bharatos_personality_posix>>
     $<$<BOOL:${BHARAT_ENABLE_COMPAT_ANDROID}>:$<TARGET_OBJECTS:bharatos_personality_android>>
     $<$<BOOL:${BHARAT_ENABLE_SUBSYS_WINDOWS}>:$<TARGET_OBJECTS:bharatos_personality_windows>>
     $<$<BOOL:${BHARAT_ENABLE_SUBSYS_AUTOMOTIVE}>:$<TARGET_OBJECTS:bharatos_personality_automotive>

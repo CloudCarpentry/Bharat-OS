@@ -5,8 +5,12 @@ add_subdirectory(runtime)
 add_subdirectory(abi/linux)
 add_subdirectory(native)
 
-if(BHARAT_ENABLE_SUBSYS_LINUX)
+if(BHARAT_ENABLE_COMPAT_LINUX)
     add_subdirectory(compat/linux)
+endif()
+
+if(BHARAT_ENABLE_COMPAT_POSIX)
+    add_subdirectory(compat/posix)
 endif()
 
 if(BHARAT_ENABLE_SUBSYS_WINDOWS)
@@ -30,11 +34,15 @@ if(BHARAT_ENABLE_PERSONALITIES)
     )
 endif()
 
-if(BHARAT_ENABLE_SUBSYS_LINUX)
+if(BHARAT_ENABLE_COMPAT_LINUX)
     target_link_libraries(bharatos_personalities INTERFACE bharatos_personality_linux bharatos_personality_abi_linux)
 endif()
 
-if(BHARAT_ENABLE_SUBSYS_ANDROID)
+if(BHARAT_ENABLE_COMPAT_POSIX)
+    target_link_libraries(bharatos_personalities INTERFACE bharatos_personality_posix)
+endif()
+
+if(BHARAT_ENABLE_COMPAT_ANDROID)
     target_link_libraries(bharatos_personalities INTERFACE bharatos_personality_android)
 endif()
 

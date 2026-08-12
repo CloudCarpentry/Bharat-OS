@@ -20,6 +20,21 @@ static long linux_sys_futex(bh_syscall_ctx_t *ctx) {
     return -LINUX_ENOSYS;
 }
 
+static long linux_sys_open(bh_syscall_ctx_t *ctx) {
+    (void)ctx;
+    return -LINUX_ENOSYS; // stub for simple minimum execution
+}
+
+static long linux_sys_close(bh_syscall_ctx_t *ctx) {
+    (void)ctx;
+    return -LINUX_ENOSYS; // stub for simple minimum execution
+}
+
+static long linux_sys_mmap(bh_syscall_ctx_t *ctx) {
+    (void)ctx;
+    return -LINUX_ENOSYS; // stub for simple minimum execution
+}
+
 extern long bh_sys_read(bh_syscall_ctx_t *ctx);
 extern long bh_sys_write(bh_syscall_ctx_t *ctx);
 extern long bh_sys_thread_exit(bh_syscall_ctx_t *ctx);
@@ -30,6 +45,9 @@ static const bh_syscall_meta_t linux_syscall_table_x86_64[] = {
     [LINUX_X86_64_SYS_GETPID]     = { .nr = LINUX_X86_64_SYS_GETPID, .name = "getpid", .class_id = BH_SYS_CLASS_PROCESS, .arg_count = 0, .flags = BH_SYSCALL_F_FAST, .handler = linux_sys_getpid },
     [LINUX_X86_64_SYS_EXIT]       = { .nr = LINUX_X86_64_SYS_EXIT, .name = "exit", .class_id = BH_SYS_CLASS_PROCESS, .arg_count = 1, .handler = bh_sys_thread_exit },
     [LINUX_X86_64_SYS_EXIT_GROUP] = { .nr = LINUX_X86_64_SYS_EXIT_GROUP, .name = "exit_group", .class_id = BH_SYS_CLASS_PROCESS, .arg_count = 1, .handler = bh_sys_thread_exit },
+    [LINUX_X86_64_SYS_OPEN]       = { .nr = LINUX_X86_64_SYS_OPEN, .name = "open", .class_id = BH_SYS_CLASS_IO, .arg_count = 3, .handler = linux_sys_open },
+    [LINUX_X86_64_SYS_CLOSE]      = { .nr = LINUX_X86_64_SYS_CLOSE, .name = "close", .class_id = BH_SYS_CLASS_IO, .arg_count = 1, .handler = linux_sys_close },
+    [LINUX_X86_64_SYS_MMAP]       = { .nr = LINUX_X86_64_SYS_MMAP, .name = "mmap", .class_id = BH_SYS_CLASS_MEMORY, .arg_count = 6, .handler = linux_sys_mmap },
 };
 
 const bh_personality_syscall_table_t bh_linux_syscall_table = {
