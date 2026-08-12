@@ -8,7 +8,7 @@ personality_profile: native
 execution_profile: gp
 
 implementation_maturity:
-  profile: DEVELOPMENT
+  profile: RELEASE
   allow: [STUB]
 
 build:
