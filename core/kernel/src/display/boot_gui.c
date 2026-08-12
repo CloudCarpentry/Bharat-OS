@@ -213,7 +213,7 @@ static void boot_gui_draw_char_scaled(uint32_t x, uint32_t y, char c,
     for (uint32_t row = 0; row < 16U; row++) {
         uint8_t bits = glyph[row];
         for (uint32_t col = 0; col < 8U; col++) {
-            uint32_t colour = (bits & (1U << col)) ? fg : bg;
+            uint32_t colour = (bits & (0x80U >> col)) ? fg : bg;
             if (scale == 1) {
                 write_px(x + col, y + row, colour);
             } else {
