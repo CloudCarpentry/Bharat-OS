@@ -1,6 +1,71 @@
 posix_subset:
   version: 1
-  functions:
+  kind: source_api_portability_layer
+  raw_kernel_syscall_namespace: false
+  translation_path:
+    - BharatLibC/libposix
+    - Bharat native API
+    - native syscall or service IPC
+  implemented:
     - write
     - read
     - close
+  functions:
+    - read
+    - write
+    - close
+    - open
+    - openat
+    - lseek
+    - fstat
+    - isatty
+    - clock_gettime
+    - nanosleep
+    - getpid
+    - mmap
+    - munmap
+    - mprotect
+    - brk
+    - sbrk
+    - _exit
+    - pthread_create
+    - pthread_join
+    - pthread_mutex
+    - pthread_cond
+    - TLS
+  stages:
+    - stage: 1
+      name: libc_foundation
+      functions:
+        - read
+        - write
+        - close
+        - open
+        - openat
+        - lseek
+        - fstat
+        - isatty
+        - clock_gettime
+        - nanosleep
+        - getpid
+    - stage: 2
+      name: memory_process
+      functions:
+        - mmap
+        - munmap
+        - mprotect
+        - brk
+        - sbrk
+        - _exit
+    - stage: 3
+      name: threading
+      functions:
+        - pthread_create
+        - pthread_join
+        - pthread_mutex
+        - pthread_cond
+        - TLS
+    - stage: 4
+      name: sockets
+      prerequisite: stable_network_service_abi
+      functions: []

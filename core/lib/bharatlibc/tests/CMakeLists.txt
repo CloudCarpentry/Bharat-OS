@@ -23,6 +23,15 @@ if(BHARATLIBC_ENABLE_META_TESTS)
         )
 
         add_test(
+            NAME test_posix_subset_contract
+            COMMAND ${Python3_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/contracts/test_posix_subset_contract.py"
+        )
+        set_tests_properties(test_posix_subset_contract PROPERTIES
+            TIMEOUT 30
+            LABELS "architecture;contract;static"
+        )
+
+        add_test(
             NAME test_standalone_relocation
             COMMAND ${Python3_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/relocation/test_standalone_relocation.py"
         )
