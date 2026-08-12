@@ -1,0 +1,5 @@
+set(BHARAT_SDK_EXAMPLES hello threads ipc_pingpong timer device_enum gui_hello sensor_reader accelerator_relu)
+foreach(example IN LISTS BHARAT_SDK_EXAMPLES)
+    add_executable(bharat_example_${example} ${example}/main.c)
+    target_link_libraries(bharat_example_${example} PRIVATE Bharat::sdk)
+endforeach()
