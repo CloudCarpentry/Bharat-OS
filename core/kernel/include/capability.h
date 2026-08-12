@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 #define BH_CAP_SLOT_MASK        0xFFFFU
 #define BH_CAP_GEN_SHIFT        16U
@@ -23,7 +24,7 @@ static inline bool bh_cap_is_valid_encoding(uint32_t cap_id) {
 /* Generation-zero acceptance is isolated to explicitly compiled compatibility tests. */
 static inline bool bh_cap_generation_matches(uint32_t entry_generation,
                                              uint32_t handle_generation) {
-#if defined(BHARAT_ENABLE_LEGACY_CAP_HANDLES) && BHARAT_ENABLE_LEGACY_CAP_HANDLES
+#if defined(BHARAT_ENABLE_LEGACY_CAP_TESTS) && BHARAT_ENABLE_LEGACY_CAP_TESTS
     return handle_generation == 0U || handle_generation == entry_generation;
 #else
     return handle_generation != 0U && handle_generation == entry_generation;
@@ -165,11 +166,28 @@ typedef struct capability_entry {
 
 } capability_entry_old_t;
 
-typedef struct __attribute__((aligned(16))) {
-    struct capability_table* table;
-    uint32_t slot;
+/*
+ * Stable, pointer-free identity for a capability instance in a CSpace.
+ * This structure is copied into cross-core transactions, so its layout is a
+ * fixed-width wire contract rather than an in-kernel address.
+ */
+typedef struct bh_cap_locator {
+    uint32_t cspace_id;
+    uint16_t owner_core;
+    uint16_t slot;
     uint32_t generation;
-} cap_handle_t;
+    uint32_t revocation_epoch;
+} bh_cap_locator_t;
+
+_Static_assert(sizeof(bh_cap_locator_t) == 16U, "capability locator wire size");
+_Static_assert(offsetof(bh_cap_locator_t, cspace_id) == 0U, "capability locator cspace offset");
+_Static_assert(offsetof(bh_cap_locator_t, owner_core) == 4U, "capability locator owner offset");
+_Static_assert(offsetof(bh_cap_locator_t, slot) == 6U, "capability locator slot offset");
+_Static_assert(offsetof(bh_cap_locator_t, generation) == 8U, "capability locator generation offset");
+_Static_assert(offsetof(bh_cap_locator_t, revocation_epoch) == 12U, "capability locator epoch offset");
+
+/* Transitional source compatibility: this handle is now pointer-free. */
+typedef bh_cap_locator_t cap_handle_t;
 
 typedef struct cap_instance_id {
     uint32_t origin_core;       // The core that authoritatively owns the object
@@ -188,9 +206,9 @@ typedef struct __attribute__((aligned(16))) capability_entry_new {
     uint32_t flags;
     uint64_t object_ref;
 
-    cap_handle_t parent;       // Who delegated this to me?
-    cap_handle_t first_child;  // Who did I delegate this to?
-    cap_handle_t next_sibling; // Other capabilities delegated from the same parent
+    bh_cap_locator_t parent;       // Who delegated this to me?
+    bh_cap_locator_t first_child;  // Who did I delegate this to?
+    bh_cap_locator_t next_sibling; // Other capabilities delegated from the same parent
 
     uint32_t generation;
 
@@ -219,6 +237,10 @@ typedef struct __attribute__((aligned(64))) capability_table {
     bh_id_allocator_t id_allocator;
     uint8_t id_bitmap[8]; // 64 bits for 64 entries
     spinlock_t lock;
+    /* Immutable identity after initialization; mutable entries are owner-core local. */
+    uint32_t cspace_id;
+    uint16_t owner_core;
+    uint16_t reserved;
     uint32_t owner_pid;
     uint32_t numa_node;
 } capability_table_t;

@@ -35,13 +35,21 @@ Validates that the requester has the authority to use the capability. In Phase K
 ### 4. Generation & Stale Handle Validation
 Prevents "use-after-revocation" or "use-after-reallocation" by checking generation numbers.
 - Production handles must contain a non-zero generation that exactly matches the entry.
-- Generation-zero/raw handles fail closed. `BHARAT_ENABLE_LEGACY_CAP_HANDLES` may restore
+- Generation-zero/raw handles fail closed. `BHARAT_ENABLE_LEGACY_CAP_TESTS` may restore
   raw-handle lookup only in explicitly identified compatibility test builds; it is OFF by
   default and must not be enabled in production target profiles.
 - Explicitly requested `expected_generation` is strictly enforced.
 
 ### 5. Revocation State
 Ensures that the capability is in the `CAP_STATE_LIVE` state.
+
+### 6. Distributed CSpace Identity
+Capability derivation links and cross-core delegation transactions use the fixed-width,
+pointer-free `bh_cap_locator_t` identity: CSpace ID, owner core, slot, generation, and
+revocation epoch. A receiver resolves a locator through its registered local CSpace and
+rejects an unknown CSpace ID, wrong owner, stale slot generation, or older revocation
+epoch. A capability naming a remote object authorizes only a request to its owner core;
+it never authorizes direct mutation of the remote CSpace.
 
 ## API Specification
 
@@ -74,8 +82,7 @@ kstatus_t cap_validate_ex(capability_table_t *table,
 - **Revocation**: Distributed revocation semantics are still being matured.
 - **CSpace ownership**: Capability tables remain transitional core-local tables. A later,
   separately reviewed refactor must introduce process-owned CSpaces without changing the
-  generation requirement here; delegation and revocation wire-format migration is also
-  intentionally outside this compatibility-removal change.
+  generation or pointer-free locator requirements here.
 
 ## Future Evolution
 - Integration into all syscall dispatch paths.

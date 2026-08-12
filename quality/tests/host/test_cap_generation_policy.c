@@ -8,7 +8,7 @@ int main(void) {
 
     assert(bh_cap_generation_matches(current_generation, current_generation));
     assert(!bh_cap_generation_matches(current_generation, current_generation - 1U));
-#if defined(BHARAT_ENABLE_LEGACY_CAP_HANDLES) && BHARAT_ENABLE_LEGACY_CAP_HANDLES
+#if defined(BHARAT_ENABLE_LEGACY_CAP_TESTS) && BHARAT_ENABLE_LEGACY_CAP_TESTS
     assert(bh_cap_generation_matches(current_generation, 0U));
 #else
     assert(!bh_cap_generation_matches(current_generation, 0U));

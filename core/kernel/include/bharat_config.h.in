@@ -79,7 +79,7 @@
 #define BHARAT_SCHED_DIAG_COMPILE_LEVEL @BHARAT_SCHED_DIAG_COMPILE_LEVEL@
 
 /* Security compatibility: production handles always carry a generation. */
-#cmakedefine BHARAT_ENABLE_LEGACY_CAP_HANDLES 1
+#cmakedefine BHARAT_ENABLE_LEGACY_CAP_TESTS 1
 
 /* Platform Firmware */
 #cmakedefine BHARAT_PLATFORM_ACPI 1

@@ -10,7 +10,7 @@ add_executable(host_test_cap_generation_legacy test_cap_generation_policy.c)
 target_include_directories(host_test_cap_generation_legacy PRIVATE
     "${CMAKE_SOURCE_DIR}/core/kernel/include")
 target_compile_definitions(host_test_cap_generation_legacy PRIVATE
-    BHARAT_ENABLE_LEGACY_CAP_HANDLES=1)
+    BHARAT_ENABLE_LEGACY_CAP_TESTS=1)
 add_test(NAME host_test_cap_generation_legacy COMMAND host_test_cap_generation_legacy)
 
 add_executable(test_servicemgr
