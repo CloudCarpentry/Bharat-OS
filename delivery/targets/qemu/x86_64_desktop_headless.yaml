@@ -8,7 +8,7 @@ personality_profile: native
 execution_profile: gp
 
 build:
-  cmake_preset: x86_64-dev
+  cmake_preset: x86_64-qemu-desktop-release
   cmake_defs:
     BHARAT_ARCH_FAMILY: X86_64
     BHARAT_DEVICE_PROFILE: DESKTOP

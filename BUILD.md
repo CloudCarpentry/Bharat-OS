@@ -179,6 +179,48 @@ Output layout uses CMake preset name:
 - `build/<preset>/manifests/flash-manifest.json`
 - `build/<preset>/manifests/debug-manifest.json`
 
+### Build instrumentation versus product configuration
+
+`CMAKE_BUILD_TYPE` selects one of three instrumentation values and does not
+select an OS target or profile:
+
+| CMake build type | Instrumentation value | Symbols | Optimization | Assertions/invariant checks |
+|---|---|---|---|---|
+| `Debug` | `DEBUG` | on | unoptimized | on |
+| `RelWithDebInfo` | `RELWITHDEBINFO` | on | optimized | off |
+| `Release` | `RELEASE` | off | optimized | off |
+
+The canonical x86_64 QEMU desktop target is factored through the hidden
+`x86_64-qemu-desktop-base` preset. Its Debug, RelWithDebInfo, and Release
+presets inherit exactly the same x86_64 / QEMU / DESKTOP / MMU_FULL / GP /
+NATIVE product selection. Each configure writes
+`build/<preset>/generated/build-configuration.json`; CI compares variants with:
+
+```bash
+python3 tools/check_build_variant_equivalence.py \
+  build/x86_64-qemu-desktop-debug/generated/build-configuration.json \
+  build/x86_64-qemu-desktop-release/generated/build-configuration.json
+```
+
+The checker fails on any functional difference. Differences are permitted only
+inside the explicit instrumentation object (`variant`, assertions, symbols,
+optimization, tracing, test hooks, poisoning, and invariant checking).
+
+Audit findings retained outside this P0 canonical-target change:
+
+- The older `x86_64-debug` preset selects board `host` and host tests while
+  `x86_64-dev` selects QEMU; they are distinct products and must not be treated
+  as a Debug/Release pair.
+- `tiny-mpu-debug` enables allocation classes while `tiny-mpu-release` disables
+  them. A follow-up must factor that target through a shared product preset.
+- No build-type condition in target YAML resolution changes architecture,
+  memory model, scheduler profile, personality, runtime model, or services.
+  YAML supplies a preset plus explicit CMake definitions independent of build
+  type.
+- `HARDENED_RELEASE` is not defined: hardening flags and their supported
+  toolchain/backend matrix need a separate contract rather than scope expansion
+  in this task.
+
 ---
 
 ## 4) QEMU usage (desktop/headless/emulator targets)
