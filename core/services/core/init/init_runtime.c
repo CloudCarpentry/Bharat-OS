@@ -274,13 +274,12 @@ finish:
     }
     if (handoff_res == 0) {
         rt.phase = INIT_PHASE_HANDOFF_COMPLETE;
-    } else if (handoff_res == -ENOENT &&
-               !init_profile_get_policy(ctx->profile)->strict_core_deadlines) {
+    } else if (handoff_res == -ENOENT) {
         /*
-         * Development and small-device profiles may intentionally package no
-         * separate servicemgr image.  The service graph is already stable, so
+         * Development and standalone target profiles may intentionally package no
+         * separate servicemgr image. The service graph is already stable, so
          * quiesce as a degraded bootstrap authority rather than spinning in a
-         * false timeout.  Strict RT/safety profiles continue to fail closed.
+         * false timeout.
          */
         bharat_runtime_log("services/init: HANDOFF_DEFERRED (supervisor unavailable).\n");
         rt.phase = INIT_PHASE_QUIESCENT;
