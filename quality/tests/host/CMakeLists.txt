@@ -389,9 +389,9 @@ target_link_libraries(test_procvm_stress PRIVATE bharat_freestanding)
 add_test(NAME host_test_procvm_stress COMMAND test_procvm_stress)
 set_tests_properties(host_test_procvm_stress PROPERTIES LABELS "vm")
 
-add_executable(test_servicemgr test_servicemgr.c ../../core/services/servicemgr/servicemgr.c ../../core/lib/ipc/src/ipc.c)
-target_include_directories(test_servicemgr PRIVATE ../../include ../../core/lib/ipc/include ../../core/lib/cap/include ../../kernel/include)
-add_test(NAME host_test_servicemgr COMMAND test_servicemgr)
+add_executable(test_servicemgr_dup test_servicemgr.c ../../core/services/servicemgr/servicemgr.c ../../core/lib/ipc/src/ipc.c)
+target_include_directories(test_servicemgr_dup PRIVATE ../../include ../../core/lib/ipc/include ../../core/lib/cap/include ../../kernel/include)
+add_test(NAME host_test_servicemgr_dup COMMAND test_servicemgr_dup)
 
 add_executable(test_init test_init.c ../../core/services/core/init/init_runtime.c ../../core/services/core/init/init_status.c ../../core/services/core/init/init_handoff.c)
 target_include_directories(test_init PRIVATE ../../include ../../kernel/include ../../core/lib/runtime/include ../../core/lib/cap/include ../../core/lib/ipc/include)
