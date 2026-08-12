@@ -305,6 +305,13 @@ endif()
 option(BHARAT_ENABLE_CLANG_TIDY "Enable clang-tidy static analysis for C targets" OFF)
 option(BHARAT_BUILD_HOST_TESTS "Build host-side unit tests" OFF)
 
+set(BHARAT_SCHED_DIAG_COMPILE_LEVEL "0" CACHE STRING
+    "Scheduler diagnostics compiled in: 0=none, 1=counters, 2=trace")
+set_property(CACHE BHARAT_SCHED_DIAG_COMPILE_LEVEL PROPERTY STRINGS 0 1 2)
+if(NOT BHARAT_SCHED_DIAG_COMPILE_LEVEL MATCHES "^[012]$")
+    message(FATAL_ERROR "BHARAT_SCHED_DIAG_COMPILE_LEVEL must be 0, 1, or 2")
+endif()
+
 # Deterministic, machine-readable evidence for variant-equivalence checks. This
 # is generated in the build tree and is never a source-controlled artifact.
 configure_file(

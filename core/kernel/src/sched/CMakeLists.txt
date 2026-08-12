@@ -1,5 +1,6 @@
 add_library(k_sched OBJECT
     sched.c
+    sched_diag.c
     sched_core.c
     sched_runqueue.c
     sched_thread.c

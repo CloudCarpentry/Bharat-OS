@@ -121,3 +121,14 @@ There is no global lock required to reap a thread.
 The scheduler logic remains personality-blind. It only understands kernel-native policies (REALTIME, INTERACTIVE, BATCH), which are translated by the Personality Runtime (e.g., Linux CFS maps to BATCH).
 
 Because scheduling is local, policy enforcement is local. System-wide AI Governors or load balancers observe core telemetry and send uRPC hints to request thread migrations when specific cores become saturated.
+
+### 5.1 Scheduler diagnostics
+
+Scheduler pick and context-switch paths never write to a console. Optional
+hot-path evidence uses `BH_DIAG_COUNTER` and `BH_TRACE_SCHED`, backed by bounded
+per-core state. `BHARAT_SCHED_DIAG_COMPILE_LEVEL` selects compile-time inclusion
+(`0` removes every call, `1` retains counters, and `2` retains trace markers),
+while `bh_sched_diag_set_level()` lets each owner core reduce its runtime level.
+Remote readers may take an atomic snapshot; they cannot mutate another core's
+diagnostic state. Diagnostics do not participate in scheduling decisions and
+overflow, collection, or disabled instrumentation cannot affect correctness.

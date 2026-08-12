@@ -30,3 +30,11 @@ The following synthetic-success implementations were found during PROD-P0-FAST-0
 
 Compatibility/personality placeholders are registered in the manifest. No compatibility service was
 implemented by this change.
+
+The `x86_64_desktop_gui` and `x86_64_desktop_headless` targets are explicitly
+`DEVELOPMENT` targets and allow registered `STUB` implementations so that x86
+integration can be exercised in QEMU consistently with the Arm64 and RISC-V64
+development targets. This allowance does not change implementation truth and
+cannot satisfy a `RELEASE` or `HARDENED` gate; those profiles remain fail-closed
+until the registered authority and service implementations are replaced and
+reclassified with evidence.
