@@ -11,6 +11,12 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 def main():
+    if hasattr(sys.stdout, "reconfigure"):
+        try:
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
     parser = argparse.ArgumentParser(
         description="Nirmaan - Bharat-OS Developer CLI",
         formatter_class=argparse.RawTextHelpFormatter,
