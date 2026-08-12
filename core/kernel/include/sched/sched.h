@@ -9,6 +9,7 @@
 #include "list.h"
 #include <lib/rbtree/rbtree.h>
 #include "kernel_safety.h"
+#include "kernel/status.h"
 #include "spinlock.h"
 #include "personality_ops.h"
 #include <stdbool.h>
@@ -548,7 +549,7 @@ struct bh_thread {
     uint32_t migration_epoch;
 };
 
-int thread_raise_fault(bh_thread_t *thread, thread_fault_t fault);
+kstatus_t thread_raise_fault(bh_thread_t *thread, thread_fault_t fault);
 int sched_mark_thread_terminated(bh_thread_t *thread);
 int sched_quarantine_thread(bh_thread_t *thread, uint32_t reason);
 
@@ -584,12 +585,12 @@ int sched_system_enable(void);
 
 // Create process and main thread
 bh_process_t* process_create(const char* name);
-int process_destroy(bh_process_t* process);
+kstatus_t process_destroy(bh_process_t* process);
 bh_thread_t* thread_create(bh_process_t* parent, void (*entry_point)(void));
 bh_thread_t* thread_create_detached(bh_process_t* parent, void (*entry_point)(void));
 bh_thread_t *thread_create_detached_arg(bh_process_t *parent, void (*entry_point)(void *), const arch_user_entry_t *arg_data);
 
-int thread_destroy(bh_thread_t* thread);
+kstatus_t thread_destroy(bh_thread_t* thread);
 
 // Current Context Helpers
 bh_process_t* sched_current_process(void);
@@ -633,7 +634,7 @@ int sched_migrate_task(bh_thread_t *thread, uint32_t new_node);
 int sched_migrate_tid(uint64_t tid, uint32_t target_cpu);
 int sched_set_priority(uint64_t tid, uint32_t priority);
 int sched_set_affinity(uint64_t tid, uint32_t mask);
-int sched_terminate_tid(uint64_t tid);
+kstatus_t sched_terminate_tid(uint64_t tid);
 int sched_quarantine_tid(uint64_t tid, uint32_t reason);
 int sched_throttle_core(uint32_t core_id);
 
@@ -650,13 +651,13 @@ int sched_get_constraints(uint64_t tid, bh_exec_constraints_k_t *c);
 bool sched_thread_exists(uint64_t tid);
 
 // System-call style entry points used by trap/syscall layer
-int sched_sys_thread_create(bh_process_t* parent, void (*entry_point)(void), uint64_t* out_tid);
-int sched_sys_thread_destroy(uint64_t tid);
+kstatus_t sched_sys_thread_create(bh_process_t* parent, void (*entry_point)(void), uint64_t* out_tid);
+kstatus_t sched_sys_thread_destroy(uint64_t tid);
 int sched_sys_sleep(uint64_t millis);
 int sched_sys_set_priority(uint64_t tid, uint32_t new_priority);
 int sched_sys_set_affinity(uint64_t tid, uint32_t affinity_mask);
-int sched_sys_intent_set(uint64_t tid, const void* intent);
-int sched_sys_intent_get(uint64_t tid, void* intent);
+kstatus_t sched_sys_intent_set(uint64_t tid, const void* intent);
+kstatus_t sched_sys_intent_get(uint64_t tid, void* intent);
 
 // Priority Inheritance support
 void sched_inherit_priority(bh_thread_t* thread, uint32_t new_priority);

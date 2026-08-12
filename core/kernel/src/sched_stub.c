@@ -336,11 +336,11 @@ int sched_unregister_process(bh_process_t* process) {
     return -1;
 }
 
-int process_destroy(bh_process_t* process) {
+kstatus_t process_destroy(bh_process_t* process) {
     if (!process) {
-        return -1;
+        return K_ERR_INVALID_ARG;
     }
-    return sched_unregister_process(process);
+    return sched_unregister_process(process) == 0 ? K_OK : K_ERR_NOT_FOUND;
 }
 
 bh_thread_t* thread_create(bh_process_t* parent, void (*entry_point)(void)) {
@@ -374,14 +374,13 @@ bh_thread_t* thread_create(bh_process_t* parent, void (*entry_point)(void)) {
     return &slot->thread;
 }
 
-int thread_destroy(bh_thread_t* thread) {
-    if (!thread) return -1;
+kstatus_t thread_destroy(bh_thread_t* thread) {
+    if (!thread) return K_ERR_INVALID_ARG;
     thread_slot_t* slot = sched_find_thread_slot_by_tid(thread->thread_id);
-    if (slot) {
-        slot->in_use = 0;
-    }
+    if (!slot) return K_ERR_BAD_THREAD;
+    slot->in_use = 0;
     // __builtin_free(thread); // Dummy for stub
-    return 0;
+    return K_OK;
 }
 
 void bh_thread_yield(void) {
@@ -514,11 +513,11 @@ address_space_t* sched_current_aspace(void) {
     return p ? p->addr_space : NULL;
 }
 
-int thread_raise_fault(bh_thread_t *thread, thread_fault_t fault) {
+kstatus_t thread_raise_fault(bh_thread_t *thread, thread_fault_t fault) {
     (void)thread;
     g_stub_thread_raise_fault_called++;
     g_stub_last_fault_code = fault;
-    return 0;
+    return K_OK;
 }
 
 int sched_sys_sleep(uint64_t millis) {
@@ -539,22 +538,22 @@ sched_policy_t sched_get_policy(void) {
     return g_cores[0].policy;
 }
 
-int sched_sys_thread_create(bh_process_t* parent, void (*entry_point)(void), uint64_t* out_tid) {
+kstatus_t sched_sys_thread_create(bh_process_t* parent, void (*entry_point)(void), uint64_t* out_tid) {
     bh_thread_t* t = thread_create(parent, entry_point);
     if (!t) {
-        return -1;
+        return K_ERR_NO_RESOURCES;
     }
 
     if (out_tid) {
         *out_tid = t->thread_id;
     }
-    return 0;
+    return K_OK;
 }
 
-int sched_sys_thread_destroy(uint64_t tid) {
+kstatus_t sched_sys_thread_destroy(uint64_t tid) {
     thread_slot_t* slot = sched_find_thread_slot_by_tid(tid);
     if (!slot) {
-        return -1;
+        return K_ERR_BAD_THREAD;
     }
 
     return thread_destroy(&slot->thread);
