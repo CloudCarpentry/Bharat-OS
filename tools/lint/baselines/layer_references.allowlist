@@ -35,10 +35,11 @@ layer-reference|core/hal/common/hal_pt_mpu.c|2|hal|kernel|../../kernel/include/h
 layer-reference|core/hal/common/hal_pt_mpu.c|3|hal|kernel|../../kernel/include/hal/hal_tlb.h
 layer-reference|core/hal/common/hal_unsupported.c|2|hal|kernel|kernel/status.h
 layer-reference|core/hal/include/hal/hal_caps.h|5|hal|other|../../../uapi/capability/hw_caps.h
+layer-reference|core/hal/include/hal/hal_hw_caps.h|6|hal|kernel|kernel/status.h
 layer-reference|core/hal/mmu_lite/common/mmu_lite_backend.c|3|hal|kernel|kernel/status.h
 layer-reference|core/hal/prot/none/prot_none_backend.c|3|hal|kernel|kernel/status.h
 layer-reference|core/kernel/include/debug/early_console.h|5|kernel|drivers|drivers/serial/uart_driver.h
-layer-reference|core/kernel/include/sched/sched.h|9|kernel|lib|lib/rbtree/rbtree.h
+layer-reference|core/kernel/include/sched/sched.h|10|kernel|lib|lib/rbtree/rbtree.h
 layer-reference|core/kernel/src/boot/boot_selftest.c|3|kernel|tests|tests/ktest.h
 layer-reference|core/kernel/src/console/drivers/uart_simple_mmio.c|1|kernel|drivers|drivers/serial/uart_driver.h
 layer-reference|core/kernel/src/console/serial_console.c|2|kernel|drivers|drivers/serial/uart_driver.h
