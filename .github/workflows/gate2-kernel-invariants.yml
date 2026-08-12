@@ -1,0 +1,47 @@
+name: Gate 2 / Kernel Invariants
+
+on:
+  pull_request:
+    branches: [developer]
+  push:
+    branches: [developer]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  host-invariant-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build clang
+      - name: Configure CMake
+        run: cmake --preset host-test
+      - name: Build
+        run: cmake --build --preset host-test
+      - name: Run Invariant Tests
+        run: ctest --preset host-test -L "invariant|stress|scheduler|pmm|tlb|capability|ipc|vm" --output-on-failure
+      - name: Upload Test Results on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate2-host-invariant-tests-results
+          path: build/host-test/Testing/
+
+  gate2-summary:
+    name: Gate 2 / Kernel Invariants Summary
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [host-invariant-tests]
+    steps:
+      - name: Check Status
+        run: |
+          if [ "${{ needs.host-invariant-tests.result }}" != "success" ]; then
+            /bin/false
+          fi
