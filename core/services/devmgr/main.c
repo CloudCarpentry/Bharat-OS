@@ -1,6 +1,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <bharat/syscalls.h>
 
 /**
  * @file main.c
@@ -23,7 +24,7 @@ int main(int argc, char **argv) {
     // Main event loop
     while (true) {
         // TODO: Wait for hotplug events, device reset requests, or driver bind requests
-        break; // break for stub to avoid infinite loop
+        bharat_sched_yield();
     }
 
     //printf("devmgr: Exiting.\n");
