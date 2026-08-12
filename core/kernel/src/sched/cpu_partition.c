@@ -19,6 +19,12 @@ kstatus_t cpu_partition_init(bharat_execution_config_t *config) {
         return K_ERR_INVALID_ARG;
     }
 
+    if (config->execution_mode != BHARAT_EXEC_MODE_GENERAL_PURPOSE &&
+        config->execution_mode != BHARAT_EXEC_MODE_REALTIME &&
+        config->execution_mode != BHARAT_EXEC_MODE_MIXED_CRITICAL) {
+        return K_ERR_BAD_STATE;
+    }
+
     // Step 1: Strategy Resolution
     if (config->active_cpu_count <= 1) {
         config->partition_strategy = BHARAT_PARTITION_STRATEGY_TEMPORAL;
@@ -123,12 +129,6 @@ kstatus_t cpu_partition_init(bharat_execution_config_t *config) {
             for (uint32_t i = 1; i < config->active_cpu_count; i++) {
                 config->cpu_partitions[i].role = BHARAT_CPU_PARTITION_REALTIME;
                 config->cpu_partitions[i].allowed_sched_classes = BHARAT_SCHED_CLASS_FIFO_RT | BHARAT_SCHED_CLASS_DEADLINE_RT;
-            }
-        } else {
-            // Default fallback for unknown mode with >= 4 CPUs
-            for (uint32_t i = 0; i < config->active_cpu_count; i++) {
-                config->cpu_partitions[i].role = BHARAT_CPU_PARTITION_SYSTEM;
-                config->cpu_partitions[i].allowed_sched_classes = BHARAT_SCHED_CLASS_SYSTEM | BHARAT_SCHED_CLASS_FAIR;
             }
         }
     }

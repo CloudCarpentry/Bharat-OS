@@ -20,6 +20,14 @@ void test_cpu_partition_bounds(void) {
     // active_cpu_count > BHARAT_MAX_CPU_PARTITIONS
     config.active_cpu_count = BHARAT_MAX_CPU_PARTITIONS + 1;
     assert(cpu_partition_init(&config) == K_ERR_INVALID_ARG);
+
+    /* Unknown and out-of-range modes must not inherit the GP mapping. */
+    memset(&config, 0, sizeof(config));
+    config.active_cpu_count = 4;
+    config.execution_mode = BHARAT_EXEC_MODE_UNKNOWN;
+    assert(cpu_partition_init(&config) == K_ERR_BAD_STATE);
+    config.execution_mode = (bharat_execution_mode_t)UINT32_MAX;
+    assert(cpu_partition_init(&config) == K_ERR_BAD_STATE);
 }
 
 void test_cpu_partition_single_core(void) {
