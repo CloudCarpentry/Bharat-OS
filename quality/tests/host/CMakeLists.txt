@@ -385,6 +385,17 @@ target_include_directories(test_runtime_startup PRIVATE
 add_test(NAME host_test_runtime_startup COMMAND test_runtime_startup)
 
 if(BHARAT_BUILD_HOST_TESTS)
+    # VirtIO transport mechanism tests use a synthetic register window. They
+    # exercise no QEMU policy or service-layer device selection.
+    add_executable(test_virtio_mmio
+        drivers/test_virtio_mmio.c
+        ${CMAKE_SOURCE_DIR}/core/drivers/virtio/mmio/virtio_mmio.c
+    )
+    target_include_directories(test_virtio_mmio PRIVATE
+        ${CMAKE_SOURCE_DIR}/core/drivers/virtio/mmio
+    )
+    add_test(NAME host_test_virtio_mmio COMMAND test_virtio_mmio)
+
     # I2C Core Host Tests
     add_executable(test_i2c_registry ${CMAKE_SOURCE_DIR}/core/tests/host/drivers/test_i2c_registry.c ${CMAKE_SOURCE_DIR}/core/drivers/bus/i2c/i2c_core.c ${CMAKE_SOURCE_DIR}/core/drivers/bus/i2c/i2c_registry.c)
     target_include_directories(test_i2c_registry PRIVATE ${CMAKE_SOURCE_DIR}/core/drivers/bus/i2c)
