@@ -46,12 +46,24 @@ def classify_dialect(lines):
     return IdlDialect.UNKNOWN
 
 SUPPORTED_METADATA = {
-    "qos": r"^[a-zA-Z_][a-zA-Z0-9_]*$",
-    "timeout_ms": r"^\d+$",
-    "idempotent": r"^(true|false)$",
-    "auth": r"^[a-zA-Z_][a-zA-Z0-9_]*$",
-    "criticality": r"^[a-zA-Z_][a-zA-Z0-9_]*$"
+    "qos": re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$"),
+    "timeout_ms": re.compile(r"^\d+$"),
+    "idempotent": re.compile(r"^(true|false)$"),
+    "auth": re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$"),
+    "criticality": re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
 }
+
+_SERVICE_WITH_ID_RE = re.compile(r"^service\s+([\w\.]+)\s*=\s*(\d+)\s*\{$")
+_SERVICE_RE = re.compile(r"^service\s+([\w\.]+)\s*\{$")
+_STRUCT_RE = re.compile(r"^(?:struct|message)\s+(\w+)\s*\{$")
+_INLINE_STRUCT_RE = re.compile(r"^(?:struct|message)\s+(\w+)\s*\{\s*([\w<>\.]+)\s+(\w+);\s*\}$")
+_ENUM_RE = re.compile(r"^enum\s+(\w+)\s*\{$")
+_PACKAGE_RE = re.compile(r"^package\s+([\w\.]+);$")
+_IMPORT_RE = re.compile(r"^import\s+\"[^\"]+\";$")
+_RPC_RE = re.compile(r"^rpc\s+(\w+)\s*\(\s*([\w\.]+)\s*\)\s*->\s*([\w\.]+)\s*(;)?\s*(\{)?$")
+_METADATA_RE = re.compile(r"^([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*([^;]+);$")
+_FIELD_RE = re.compile(r"^([\w<>\.]+)\s+(\w+);$")
+_ENUM_VALUE_RE = re.compile(r"^(\w+)\s*=\s*(-?\d+);$")
 
 def parse_bidl(path):
     with open(path, 'r') as f:
@@ -83,8 +95,8 @@ def parse_bidl(path):
             continue
 
         if current_block is None:
-            m_service_id = re.match(r"^service\s+([\w\.]+)\s*=\s*(\d+)\s*\{$", line)
-            m_service = re.match(r"^service\s+([\w\.]+)\s*\{$", line)
+            m_service_id = _SERVICE_WITH_ID_RE.match(line)
+            m_service = _SERVICE_RE.match(line)
 
             if m_service_id or m_service:
                 name = m_service_id.group(1) if m_service_id else m_service.group(1)
@@ -96,10 +108,10 @@ def parse_bidl(path):
                 current_block_name = name
                 continue
 
-            m_struct = re.match(r"^(?:struct|message)\s+(\w+)\s*\{$", line)
+            m_struct = _STRUCT_RE.match(line)
 
             # The test puts struct contents on one line sometimes like `struct Req1 { u32 v; }`
-            m_struct_inline = re.match(r"^(?:struct|message)\s+(\w+)\s*\{\s*([\w<>\.]+)\s+(\w+);\s*\}$", line)
+            m_struct_inline = _INLINE_STRUCT_RE.match(line)
 
             if m_struct or m_struct_inline:
                 name = m_struct.group(1) if m_struct else m_struct_inline.group(1)
@@ -113,7 +125,7 @@ def parse_bidl(path):
                     current_block_name = name
                 continue
 
-            m_enum = re.match(r"^enum\s+(\w+)\s*\{$", line)
+            m_enum = _ENUM_RE.match(line)
             if m_enum:
                 name = m_enum.group(1)
                 if name in service["enums"]:
@@ -123,11 +135,11 @@ def parse_bidl(path):
                 current_block_name = name
                 continue
 
-            m_package = re.match(r"^package\s+([\w\.]+);$", line)
+            m_package = _PACKAGE_RE.match(line)
             if m_package:
                 continue
 
-            m_import = re.match(r"^import\s+\"[^\"]+\";$", line)
+            m_import = _IMPORT_RE.match(line)
             if m_import:
                 continue
 
@@ -139,7 +151,7 @@ def parse_bidl(path):
                 current_block_name = None
                 continue
 
-            m_rpc = re.match(r"^rpc\s+(\w+)\s*\(\s*([\w\.]+)\s*\)\s*->\s*([\w\.]+)\s*(;)?\s*(\{)?$", line)
+            m_rpc = _RPC_RE.match(line)
             if m_rpc:
                 name = m_rpc.group(1)
                 for rpc in service["rpcs"]:
@@ -174,13 +186,13 @@ def parse_bidl(path):
                 current_rpc = None
                 continue
 
-            m_meta = re.match(r"^([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*([^;]+);$", line)
+            m_meta = _METADATA_RE.match(line)
             if m_meta:
                 k = m_meta.group(1)
                 v = m_meta.group(2).strip()
                 if k not in SUPPORTED_METADATA:
                     raise BidlParseError(path, line_num, f"Unknown metadata key '{k}'")
-                if not re.match(SUPPORTED_METADATA[k], v):
+                if not SUPPORTED_METADATA[k].match(v):
                     raise BidlParseError(path, line_num, f"Malformed metadata value for '{k}': '{v}'")
                 current_rpc["metadata"][k] = v
                 continue
@@ -193,7 +205,7 @@ def parse_bidl(path):
                 current_block_name = None
                 continue
 
-            m_field = re.match(r"^([\w<>\.]+)\s+(\w+);$", line)
+            m_field = _FIELD_RE.match(line)
             if m_field:
                 ftype = m_field.group(1)
                 fname = m_field.group(2)
@@ -211,7 +223,7 @@ def parse_bidl(path):
                 current_block_name = None
                 continue
 
-            m_eval = re.match(r"^(\w+)\s*=\s*(-?\d+);$", line)
+            m_eval = _ENUM_VALUE_RE.match(line)
             if m_eval:
                 ename = m_eval.group(1)
                 evalue = int(m_eval.group(2))
