@@ -3,6 +3,7 @@ add_library(hal_common OBJECT
     ../common/discovery.c
     ../common/cpu_features.c
     ../common/hal_unsupported.c
+    hmem.c
     ../interrupt_common.c
     ../timer_common.c
     iommu_adapter.c

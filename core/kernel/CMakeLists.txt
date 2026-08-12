@@ -42,6 +42,7 @@ target_include_directories(bharat_kernel_includes INTERFACE
     ${CMAKE_SOURCE_DIR}/core/personalities/runtime/include
     ${BHARAT_HAL_ROOT}/include
     ${CMAKE_SOURCE_DIR}/interface/include
+    ${CMAKE_SOURCE_DIR}/interface/uapi
     ${BHARAT_LIB_ROOT}/include
     ${BHARAT_BOOT_INCLUDE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/src
@@ -323,6 +324,7 @@ target_compile_options(bharat_mm_iommu PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreesta
 
 # Accelerator Memory Support
 add_library(bharat_mm_accel OBJECT
+    src/mm/hmem.c
     src/mm/accel/accel_mem.c
     src/mm/accel/accel_sg.c
     src/mm/accel/accel_iova.c
@@ -509,6 +511,7 @@ set(KERNEL_SRCS
 
     ${ARCH_EXT_STATE_SRC}
     ${BHARAT_HAL_ROOT}/common/hal_mem_backend.c
+    ${BHARAT_HAL_ROOT}/common/hmem.c
     ${BHARAT_HAL_ROOT}/common/cpu_features.c
     ${BHARAT_HAL_ROOT}/common/iommu_adapter.c
     ${BHARAT_HAL_ROOT}/common/hal_dma_coherency.c

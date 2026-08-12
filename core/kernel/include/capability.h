@@ -61,6 +61,7 @@ typedef enum {
     CAP_TYPE_DMA_DOMAIN = 19,
     CAP_TYPE_DMA_GRANT = 20,
     CAP_TYPE_THREAD = 21,
+    CAP_TYPE_HMEM = 22,
 } cap_type_t;
 
 typedef uint64_t cap_rights_mask_t;

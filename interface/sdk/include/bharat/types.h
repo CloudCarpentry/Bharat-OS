@@ -20,6 +20,9 @@ enum {
     BH_ERR_ACCESS_DENIED = -4,
     BH_ERR_BUSY = -5,
     BH_ERR_IO = -6
+    ,BH_ERR_NO_MEMORY = -7
+    ,BH_ERR_OVERFLOW = -8
+    ,BH_ERR_BAD_STATE = -9
 };
 
 #endif
