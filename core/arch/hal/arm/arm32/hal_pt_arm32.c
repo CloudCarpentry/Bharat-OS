@@ -407,7 +407,7 @@ hal_tlb_ops_t arm32_hal_tlb_ops = {
 };
 
 // Override symbol to avoid redefinition if built alongside others
-#if defined(__arm__) && !defined(__aarch64__)
+#if defined(__arm__) && !defined(__aarch64__) && !defined(BHARAT_PROFILE_MPU_ONLY) && !defined(PROFILE_MPU_ONLY)
 const hal_translate_ops_t* hal_translate_ops(void) {
     return &arm32_translate_ops;
 }

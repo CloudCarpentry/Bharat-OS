@@ -537,9 +537,11 @@ static const hal_translate_ops_t x86_translate_ops = {
     .linear_physmap_limit = x86_linear_physmap_limit,
 };
 
+#if !defined(BHARAT_PROFILE_MPU_ONLY) && !defined(PROFILE_MPU_ONLY)
 const hal_translate_ops_t* hal_translate_ops(void) {
     return &x86_translate_ops;
 }
+#endif
 
 static hal_pt_caps_t x86_pt_caps = {
     .backend_kind = TRANSLATE_BACKEND_MMU,
