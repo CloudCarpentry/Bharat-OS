@@ -114,6 +114,10 @@ bh_thread_t *sched_find_thread_by_id(uint64_t tid);
 void sched_balance_once(void);
 void sched_detach_thread_from_queues(thread_slot_t *slot);
 bool sched_is_core_admissible(bh_thread_t *t, int cpu_id);
+bh_thread_t *sched_validate_picked_candidate(bh_thread_t *candidate,
+                                             bh_thread_t *idle,
+                                             uint32_t core_id);
+void sched_account_context_switch(sched_rq_t *rq, bh_thread_t *next);
 void sched_switch_to(bh_thread_t *next, uint32_t core_id);
 void sched_update_telemetry(bh_thread_t *thread);
 void sched_validate_rq(sched_rq_t *rq);

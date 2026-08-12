@@ -24,6 +24,30 @@ target_compile_definitions(test_servicemgr PRIVATE BHARAT_HOST_TEST)
 
 add_test(NAME host_test_servicemgr COMMAND test_servicemgr)
 
+add_executable(host_test_sched_selection
+    sched/test_sched_selection.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/sched/constraint_apply.c)
+target_include_directories(host_test_sched_selection PRIVATE
+    ${CMAKE_SOURCE_DIR}/core/kernel/include
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/sched
+    ${CMAKE_SOURCE_DIR}/core/hal/include
+    ${CMAKE_SOURCE_DIR}/core/lib/include
+    ${CMAKE_SOURCE_DIR}/core/boot/include
+    ${CMAKE_SOURCE_DIR}/core/personalities/runtime/include
+    ${CMAKE_SOURCE_DIR}/interface/include
+    ${CMAKE_BINARY_DIR}/generated/include)
+target_compile_definitions(host_test_sched_selection PRIVATE TESTING=1)
+add_test(NAME host_test_sched_selection COMMAND host_test_sched_selection)
+
+add_executable(host_test_cpu_partition
+    sched/test_cpu_partition.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/sched/cpu_partition.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/sched/cpu_partition_validate.c)
+target_include_directories(host_test_cpu_partition PRIVATE
+    ${CMAKE_SOURCE_DIR}/core/kernel/include
+    ${CMAKE_SOURCE_DIR}/interface/include)
+add_test(NAME host_test_cpu_partition COMMAND host_test_cpu_partition)
+
 # Phase 3: Core IPC/Profile Tests
 add_executable(test_ipc_profile test_ipc_profile.c ../../kernel/src/profile/profile.c ../../kernel/src/ipc/ipc_traffic.c)
 target_include_directories(test_ipc_profile PRIVATE ../../kernel/include ../../include ../../core/lib/include)

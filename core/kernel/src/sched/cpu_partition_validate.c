@@ -10,6 +10,12 @@ kstatus_t cpu_partition_validate(const bharat_execution_config_t *config) {
         return K_ERR_INVALID_ARG;
     }
 
+    if (config->execution_mode != BHARAT_EXEC_MODE_GENERAL_PURPOSE &&
+        config->execution_mode != BHARAT_EXEC_MODE_REALTIME &&
+        config->execution_mode != BHARAT_EXEC_MODE_MIXED_CRITICAL) {
+        return K_ERR_BAD_STATE;
+    }
+
     bool has_system_role = false;
     bool has_rt_role = false;
     bool has_best_effort_role = false;
