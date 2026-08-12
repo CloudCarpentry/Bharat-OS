@@ -6,6 +6,10 @@ if(BHARAT_INPUT_SHOWCASE_GUI)
     add_compile_definitions(BHARAT_INPUT_SHOWCASE_GUI=1)
 endif()
 
+if(BHARAT_SHOWCASE_GUI)
+    add_compile_definitions(BHARAT_SHOWCASE_GUI=1)
+endif()
+
 add_library(fbui STATIC
     core/fb_render.c
     core/fb_events.c
