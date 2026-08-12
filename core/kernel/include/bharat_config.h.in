@@ -75,6 +75,9 @@
 #define MAX_SUPPORTED_CORES @BHARAT_MAX_CORES@
 #define BHARAT_CONFIG_CAP_REVOKE_MAX @BHARAT_CAP_REVOKE_MAX@
 
+/* Security compatibility: production handles always carry a generation. */
+#cmakedefine BHARAT_ENABLE_LEGACY_CAP_HANDLES 1
+
 /* Platform Firmware */
 #cmakedefine BHARAT_PLATFORM_ACPI 1
 #cmakedefine BHARAT_PLATFORM_FDT 1

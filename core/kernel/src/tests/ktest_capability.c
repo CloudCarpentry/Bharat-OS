@@ -209,7 +209,10 @@ static int test_cap_sibling_fanout_revoke(void) {
     ASSERT_RET(ret == 0, -10);
 
     capability_entry_t new_first_child_entry;
-    ret = cap_table_lookup(table, table->entries[parent_entry.first_child.slot].id, CAP_TYPE_NONE, CAP_RIGHT_NONE, &new_first_child_entry);
+    capability_entry_t *new_first_child = &table->entries[parent_entry.first_child.slot];
+    uint32_t new_first_child_cap = new_first_child->id |
+                                   (new_first_child->generation << BH_CAP_GEN_SHIFT);
+    ret = cap_table_lookup(table, new_first_child_cap, CAP_TYPE_NONE, CAP_RIGHT_NONE, &new_first_child_entry);
     ASSERT_RET(ret == 0, -11);
     // Due to stack processing order on DFS, the remaining children might not strictly
     // stay in child2 then child3 order if multiple are revoked. Wait, child1 is root of revoke,

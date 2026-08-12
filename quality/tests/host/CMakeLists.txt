@@ -1,6 +1,18 @@
 # SPDX-License-Identifier: MIT
 cmake_minimum_required(VERSION 3.20)
 
+add_executable(host_test_cap_generation_production test_cap_generation_policy.c)
+target_include_directories(host_test_cap_generation_production PRIVATE
+    "${CMAKE_SOURCE_DIR}/core/kernel/include")
+add_test(NAME host_test_cap_generation_production COMMAND host_test_cap_generation_production)
+
+add_executable(host_test_cap_generation_legacy test_cap_generation_policy.c)
+target_include_directories(host_test_cap_generation_legacy PRIVATE
+    "${CMAKE_SOURCE_DIR}/core/kernel/include")
+target_compile_definitions(host_test_cap_generation_legacy PRIVATE
+    BHARAT_ENABLE_LEGACY_CAP_HANDLES=1)
+add_test(NAME host_test_cap_generation_legacy COMMAND host_test_cap_generation_legacy)
+
 add_executable(test_servicemgr
     "${CMAKE_CURRENT_SOURCE_DIR}/test_servicemgr.c"
     "${CMAKE_SOURCE_DIR}/core/services/servicemgr/servicemgr.c"

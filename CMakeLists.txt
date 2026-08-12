@@ -171,6 +171,8 @@ set_property(CACHE BHARAT_PERSONALITY_PROFILE PROPERTY STRINGS NATIVE LINUX ANDR
 option(BHARAT_ENABLE_PERSONALITIES "Enable personality framework" ON)
 option(BHARAT_ENABLE_COMPAT_LINUX "Enable Linux compatibility personality" OFF)
 option(BHARAT_ENABLE_COMPAT_ANDROID "Enable Android compatibility personality" OFF)
+option(BHARAT_ENABLE_LEGACY_CAP_HANDLES
+    "Allow generation-zero capability handles (compatibility tests only)" OFF)
 
 # Staging / Experimental Components
 option(BHARAT_BUILD_STAGING "Build staging/ experimental modules" OFF)

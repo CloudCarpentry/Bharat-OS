@@ -20,6 +20,16 @@ static inline bool bh_cap_is_valid_encoding(uint32_t cap_id) {
     return cap_id != 0 && bh_cap_generation(cap_id) != 0;
 }
 
+/* Generation-zero acceptance is isolated to explicitly compiled compatibility tests. */
+static inline bool bh_cap_generation_matches(uint32_t entry_generation,
+                                             uint32_t handle_generation) {
+#if defined(BHARAT_ENABLE_LEGACY_CAP_HANDLES) && BHARAT_ENABLE_LEGACY_CAP_HANDLES
+    return handle_generation == 0U || handle_generation == entry_generation;
+#else
+    return handle_generation != 0U && handle_generation == entry_generation;
+#endif
+}
+
 #include "sched/sched.h"
 #include "spinlock.h"
 #include "kernel/status.h"

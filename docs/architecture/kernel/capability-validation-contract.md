@@ -2,7 +2,7 @@
 title: Capability Validation Framework Contract
 status: Draft
 owner: Documentation Working Group
-last_updated: 2026-04-25
+last_updated: 2026-08-12
 tags:
   - docs
   - architecture
@@ -34,7 +34,10 @@ Validates that the requester has the authority to use the capability. In Phase K
 
 ### 4. Generation & Stale Handle Validation
 Prevents "use-after-revocation" or "use-after-reallocation" by checking generation numbers.
-- Handles containing a non-zero generation are checked against the entry.
+- Production handles must contain a non-zero generation that exactly matches the entry.
+- Generation-zero/raw handles fail closed. `BHARAT_ENABLE_LEGACY_CAP_HANDLES` may restore
+  raw-handle lookup only in explicitly identified compatibility test builds; it is OFF by
+  default and must not be enabled in production target profiles.
 - Explicitly requested `expected_generation` is strictly enforced.
 
 ### 5. Revocation State
@@ -69,6 +72,10 @@ kstatus_t cap_validate_ex(capability_table_t *table,
 - **Rollout**: Not yet wired into every syscall boundary.
 - **Scope Model**: Minimal security-domain model (PID-based only).
 - **Revocation**: Distributed revocation semantics are still being matured.
+- **CSpace ownership**: Capability tables remain transitional core-local tables. A later,
+  separately reviewed refactor must introduce process-owned CSpaces without changing the
+  generation requirement here; delegation and revocation wire-format migration is also
+  intentionally outside this compatibility-removal change.
 
 ## Future Evolution
 - Integration into all syscall dispatch paths.
