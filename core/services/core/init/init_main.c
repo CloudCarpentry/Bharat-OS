@@ -67,7 +67,9 @@ int services_init_main(void) {
     if (result == INIT_RUNTIME_QUIESCENT || policy->quiesce_after_handoff) {
         bharat_runtime_log("services/init: Entering quiescent mode.");
         /* Remain the bootstrap authority until a supervisor accepts handoff. */
-        while (1) {}
+        while (1) {
+            bharat_sched_yield();
+        }
     }
 
     bharat_runtime_log("services/init: Exiting after handoff.\n");

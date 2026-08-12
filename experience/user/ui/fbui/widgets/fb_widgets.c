@@ -107,7 +107,7 @@ static void fbui_draw_char(fbui_render_context_t *ctx, int x, int y, char c, uin
     for (int row = 0; row < 16; row++) {
         uint8_t bits = glyph[row];
         for (int col = 0; col < 8; col++) {
-            if (bits & (0x80 >> col)) {
+            if (bits & (1U << col)) {
                 fbui_render_fill_rect(ctx, x + col, y + row, 1, 1, fg);
             }
         }

@@ -119,13 +119,47 @@ void bharat_demo_app(void) {
     fbui_render_init(&ctx, dev);
     ctx.background_color = BH_UI_NAVY;
 
-    // Clear the screen with deep navy blue
+    // 4. Render Branded Splash Screen first
+    hal_serial_write("  [APP] Displaying Bharat-OS Splash Screen...\n");
     fbui_render_fill_rect(&ctx, 0, 0, W, H, BH_UI_NAVY);
+    fbui_render_fill_rect(&ctx, 0, 0, W / 3, 6, BH_UI_SAFFRON);
+    fbui_render_fill_rect(&ctx, W / 3, 0, W / 3, 6, BH_UI_WHITE);
+    fbui_render_fill_rect(&ctx, (W / 3) * 2, 0, W - ((W / 3) * 2), 6, BH_UI_GREEN);
 
-    // Draw saffron accent top bar
+    // Splash container card
+    uint32_t card_w = (W > 540) ? 540 : (W - 32);
+    uint32_t card_h = 280;
+    uint32_t card_x = (W - card_w) / 2;
+    uint32_t card_y = (H > card_h) ? (H - card_h) / 2 : 20;
+
+    fbui_render_fill_rect(&ctx, card_x, card_y, card_w, card_h, BH_UI_CARD_BG);
+
+    // Title inside card
+    fbui_widget_t *splash_title = fbui_create_label(card_x + 30, card_y + 30, card_w - 60, 30, "BHARAT-OS");
+    if (splash_title) splash_title->fg_color = BH_UI_SAFFRON;
+
+    fbui_widget_t *splash_sub = fbui_create_label(card_x + 30, card_y + 65, card_w - 60, 20, "High-Assurance Microkernel Platform");
+    if (splash_sub) splash_sub->fg_color = BH_UI_LIGHT_GRAY;
+
+    fbui_widget_t *splash_prog = fbui_create_progress(card_x + 30, card_y + 180, card_w - 60, 16, 1.0f);
+    fbui_widget_t *splash_status = fbui_create_label(card_x + 30, card_y + 155, card_w - 60, 20, "System Boot Status: 100% [READY]");
+
+    if (splash_title && splash_title->ops->draw) splash_title->ops->draw(splash_title, &ctx);
+    if (splash_sub && splash_sub->ops->draw) splash_sub->ops->draw(splash_sub, &ctx);
+    if (splash_status && splash_status->ops->draw) splash_status->ops->draw(splash_status, &ctx);
+    if (splash_prog && splash_prog->ops->draw) splash_prog->ops->draw(splash_prog, &ctx);
+
+    hal_serial_write("  [APP] Holding Splash Screen...\n");
+    for (volatile uint32_t delay_i = 0; delay_i < 30000000U; delay_i++) {
+        __asm__ volatile("nop");
+    }
+
+    // 5. Transition to Dashboard Menu
+    hal_serial_write("  [APP] Transitioning to Live System Dashboard...\n");
+    fbui_render_fill_rect(&ctx, 0, 0, W, H, BH_UI_NAVY);
     fbui_render_fill_rect(&ctx, 0, 0, W, 4, BH_UI_SAFFRON);
 
-    // 4. Build the UI Tree using proportional layout
+    // 6. Build the UI Tree using proportional layout
     hal_serial_write("  [APP] Constructing Dashboard widgets...\n");
 
     // Title & Header (Row 1)
