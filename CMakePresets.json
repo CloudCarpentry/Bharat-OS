@@ -7,6 +7,40 @@
   },
   "configurePresets": [
     {
+      "name": "x86_64-qemu-desktop-base",
+      "hidden": true,
+      "generator": "Ninja",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/x86_64-elf-clang.cmake",
+      "cacheVariables": {
+        "BHARAT_DEVICE_PROFILE": "DESKTOP",
+        "BHARAT_PERSONALITY_PROFILE": "NATIVE",
+        "BHARAT_TARGET_BOARD": "qemu-virt",
+        "BHARAT_USERSPACE_RUNTIME_MODEL": "FULL",
+        "BHARAT_ENABLE_ADVANCED_VM": "ON"
+      }
+    },
+    {
+      "name": "x86_64-qemu-desktop-debug",
+      "inherits": "x86_64-qemu-desktop-base",
+      "displayName": "x86_64 QEMU Desktop (Debug)",
+      "binaryDir": "${sourceDir}/build/x86_64-qemu-desktop-debug",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
+    },
+    {
+      "name": "x86_64-qemu-desktop-relwithdebinfo",
+      "inherits": "x86_64-qemu-desktop-base",
+      "displayName": "x86_64 QEMU Desktop (RelWithDebInfo)",
+      "binaryDir": "${sourceDir}/build/x86_64-qemu-desktop-relwithdebinfo",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "RelWithDebInfo" }
+    },
+    {
+      "name": "x86_64-qemu-desktop-release",
+      "inherits": "x86_64-qemu-desktop-base",
+      "displayName": "x86_64 QEMU Desktop (Release)",
+      "binaryDir": "${sourceDir}/build/x86_64-qemu-desktop-release",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+    },
+    {
       "name": "host-test",
       "displayName": "Host Tests (Debug)",
       "description": "Host build for tests on Linux using Clang",
@@ -869,6 +903,18 @@
     }
   ],
   "buildPresets": [
+    {
+      "name": "x86_64-qemu-desktop-debug",
+      "configurePreset": "x86_64-qemu-desktop-debug"
+    },
+    {
+      "name": "x86_64-qemu-desktop-relwithdebinfo",
+      "configurePreset": "x86_64-qemu-desktop-relwithdebinfo"
+    },
+    {
+      "name": "x86_64-qemu-desktop-release",
+      "configurePreset": "x86_64-qemu-desktop-release"
+    },
     {
       "name": "host-test",
       "configurePreset": "host-test"

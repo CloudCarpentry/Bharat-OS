@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "functional": {
+    "architecture_family": "@BHARAT_ARCH_FAMILY@",
+    "architecture_bits": "@BHARAT_ARCH_BITS@",
+    "architecture_variant": "@BHARAT_ARCH_VARIANT@",
+    "board": "@BHARAT_TARGET_BOARD@",
+    "device_profile": "@BHARAT_DEVICE_PROFILE@",
+    "memory_mmu": "@BHARAT_ENABLE_MMU@",
+    "memory_mpu": "@BHARAT_ENABLE_MPU@",
+    "memory_advanced_vm": "@BHARAT_ENABLE_ADVANCED_VM@",
+    "scheduler_profile": "@BHARAT_KERNEL_PROFILE_RESOLVED@",
+    "personality": "@BHARAT_PERSONALITY_PROFILE@",
+    "userspace_runtime_model": "@BHARAT_USERSPACE_RUNTIME_MODEL@",
+    "service_network": "@BHARAT_ENABLE_SERVICE_NETWORK@",
+    "service_boot_display": "@BHARAT_ENABLE_SERVICE_BOOT_DISPLAYD@",
+    "service_can": "@BHARAT_ENABLE_SERVICE_CAN@"
+  },
+  "instrumentation": {
+    "variant": "@BHARAT_BUILD_INSTRUMENTATION@",
+    "assertions": "@BHARAT_BUILD_ASSERTIONS@",
+    "symbols": "@BHARAT_BUILD_SYMBOLS@",
+    "optimization": "@BHARAT_BUILD_OPTIMIZATION@",
+    "tracing": "OFF",
+    "test_hooks": "@BHARAT_BUILD_HOST_TESTS@",
+    "poisoning": "OFF",
+    "invariant_checking": "@BHARAT_BUILD_ASSERTIONS@"
+  }
+}

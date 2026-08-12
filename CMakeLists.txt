@@ -1,6 +1,26 @@
 cmake_minimum_required(VERSION 3.20)
 project(BharatOS VERSION 0.8.0 LANGUAGES C ASM)
 
+# Build type selects compiler instrumentation only. Product behavior is selected
+# independently by the target/profile cache variables recorded below.
+string(TOUPPER "${CMAKE_BUILD_TYPE}" BHARAT_BUILD_INSTRUMENTATION)
+if(BHARAT_BUILD_INSTRUMENTATION STREQUAL "RELWITHDEBINFO")
+    set(BHARAT_BUILD_SYMBOLS ON)
+    set(BHARAT_BUILD_OPTIMIZATION "OPTIMIZED")
+    set(BHARAT_BUILD_ASSERTIONS OFF)
+elseif(BHARAT_BUILD_INSTRUMENTATION STREQUAL "RELEASE")
+    set(BHARAT_BUILD_SYMBOLS OFF)
+    set(BHARAT_BUILD_OPTIMIZATION "OPTIMIZED")
+    set(BHARAT_BUILD_ASSERTIONS OFF)
+elseif(BHARAT_BUILD_INSTRUMENTATION STREQUAL "DEBUG")
+    set(BHARAT_BUILD_SYMBOLS ON)
+    set(BHARAT_BUILD_OPTIMIZATION "UNOPTIMIZED")
+    set(BHARAT_BUILD_ASSERTIONS ON)
+else()
+    message(FATAL_ERROR
+        "CMAKE_BUILD_TYPE must select DEBUG, RELWITHDEBINFO, or RELEASE instrumentation")
+endif()
+
 enable_testing()
 
 set(BHARAT_CMAKE_ROOT "${CMAKE_SOURCE_DIR}/delivery/cmake")
@@ -282,6 +302,14 @@ endif()
 
 option(BHARAT_ENABLE_CLANG_TIDY "Enable clang-tidy static analysis for C targets" OFF)
 option(BHARAT_BUILD_HOST_TESTS "Build host-side unit tests" OFF)
+
+# Deterministic, machine-readable evidence for variant-equivalence checks. This
+# is generated in the build tree and is never a source-controlled artifact.
+configure_file(
+    "${CMAKE_SOURCE_DIR}/delivery/cmake/templates/build-configuration.json.in"
+    "${CMAKE_BINARY_DIR}/generated/build-configuration.json"
+    @ONLY
+)
 
 if(BHARAT_ENABLE_CLANG_TIDY)
     find_program(BHARAT_CLANG_TIDY NAMES clang-tidy)
