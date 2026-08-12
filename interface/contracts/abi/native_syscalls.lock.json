@@ -1,5 +1,11 @@
 {
   "version": 1,
+  "syscall_count": 24,
+  "generated_sha256": {
+    "numbers": "3db3273c289f367fa27ada9b7faf58e52aa53460794cc8e56bd84586986ea6b2",
+    "table_def": "fd389f4836bd745db2c4d327f76031d66380179f940378cef84979eab0b749e7",
+    "metadata_table": "e24f30ca78dd2c80e18c707826a5833d6427f61333434f2b3244b3c26e467da3"
+  },
   "syscalls": [
     {
       "number": 0,

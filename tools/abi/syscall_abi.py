@@ -4,6 +4,8 @@ import sys
 import json
 import re
 import argparse
+import hashlib
+import tempfile
 
 # Traits translation to C flags
 TRAIT_FLAGS = {
@@ -36,6 +38,12 @@ VAL_PHASE_MAPPING = {
     "after_usercopy": "BH_SYS_CAP_VAL_AFTER_USERCOPY",
 }
 
+GENERATED_OUTPUT_KEYS = {
+    "numbers": "numbers.h",
+    "table_def": "table.def",
+    "metadata_table": "native_syscall_table.inc",
+}
+
 def load_json(path):
     if not os.path.exists(path):
         return None
@@ -49,12 +57,18 @@ def save_json(path, data):
         f.write('\n')
 
 def validate_schema(manifest):
-    if "version" not in manifest or "syscalls" not in manifest:
+    if not isinstance(manifest, dict) or "version" not in manifest or "syscalls" not in manifest:
         print("Schema Error: Missing top-level fields 'version' or 'syscalls'")
+        return False
+    if not isinstance(manifest["version"], int) or not isinstance(manifest["syscalls"], list):
+        print("Schema Error: 'version' must be an integer and 'syscalls' must be a list")
         return False
 
     for sc in manifest["syscalls"]:
-        required_keys = ["number", "symbol", "name", "status", "class", "handler", "arguments", "traits"]
+        if not isinstance(sc, dict):
+            print("Schema Error: Every syscall entry must be an object")
+            return False
+        required_keys = ["number", "symbol", "name", "status", "class", "handler", "arguments", "capability", "traits"]
         for key in required_keys:
             if key not in sc:
                 print(f"Schema Error: Syscall {sc.get('symbol', 'unknown')} missing required key '{key}'")
@@ -193,19 +207,28 @@ def compare_lock(manifest, lock_data):
         print("Lock Check Error: Lock file data is missing.")
         return False
 
-    lock_syscalls = {sc["number"]: sc for sc in lock_data.get("syscalls", [])}
-    manifest_syscalls = {sc["number"]: sc for sc in manifest["syscalls"]}
+    lock_entries = lock_data.get("syscalls", [])
+    if lock_data.get("syscall_count") != len(lock_entries):
+        print("ABI Lock Error: Locked syscall metadata count disagrees with its syscall table.")
+        return False
+    if len(lock_entries) != len(manifest["syscalls"]):
+        print("ABI Lock Error: Manifest syscall count differs from the lock; "
+              "intentional additions require --update-lock.")
+        return False
 
-    for num, l_sc in lock_syscalls.items():
-        if num not in manifest_syscalls:
-            print(f"ABI Breakage Error: Syscall {l_sc['symbol']} ({num}) was removed from the manifest. Syscall deletions are forbidden.")
+    lock_syscalls = {sc["symbol"]: sc for sc in lock_entries}
+    manifest_syscalls = {sc["symbol"]: sc for sc in manifest["syscalls"]}
+
+    for symbol, l_sc in lock_syscalls.items():
+        if symbol not in manifest_syscalls:
+            print(f"ABI Breakage Error: Syscall {symbol} ({l_sc['number']}) was removed or renamed. Syscall deletions and renames are forbidden.")
             return False
 
-        m_sc = manifest_syscalls[num]
+        m_sc = manifest_syscalls[symbol]
 
         # Check basic properties
-        if m_sc["symbol"] != l_sc["symbol"]:
-            print(f"ABI Breakage Error: Syscall number {num} changed its symbol from {l_sc['symbol']} to {m_sc['symbol']}. Renaming or renumbering is forbidden.")
+        if m_sc["number"] != l_sc["number"]:
+            print(f"ABI Breakage Error: Syscall {symbol} changed number from {l_sc['number']} to {m_sc['number']}. Renumbering is forbidden.")
             return False
 
         # Validate arguments list
@@ -249,6 +272,48 @@ def compare_lock(manifest, lock_data):
             return False
 
     return True
+
+def sha256_file(path):
+    digest = hashlib.sha256()
+    with open(path, "rb") as generated_file:
+        for chunk in iter(lambda: generated_file.read(65536), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+def generate_to_directory(manifest, output_dir):
+    paths = {
+        key: os.path.join(output_dir, filename)
+        for key, filename in GENERATED_OUTPUT_KEYS.items()
+    }
+    generate_headers(manifest, paths["metadata_table"], paths["table_def"], paths["numbers"])
+    return paths
+
+def generated_hashes(manifest):
+    with tempfile.TemporaryDirectory(prefix="bharat-syscall-abi-") as output_dir:
+        first_paths = generate_to_directory(manifest, os.path.join(output_dir, "first"))
+        second_paths = generate_to_directory(manifest, os.path.join(output_dir, "second"))
+        first = {key: sha256_file(path) for key, path in first_paths.items()}
+        second = {key: sha256_file(path) for key, path in second_paths.items()}
+        if first != second:
+            print("Generation Error: syscall outputs are not reproducible.")
+            return None
+        return first
+
+def verify_generated(manifest, lock_data):
+    expected = lock_data.get("generated_sha256")
+    if not isinstance(expected, dict) or set(expected) != set(GENERATED_OUTPUT_KEYS):
+        print("ABI Lock Error: generated output hashes are missing or incomplete; run --update-lock intentionally.")
+        return False
+
+    actual = generated_hashes(manifest)
+    if actual is None:
+        return False
+    success = True
+    for key in GENERATED_OUTPUT_KEYS:
+        if actual[key] != expected[key]:
+            print(f"Generated Output Drift Error: {GENERATED_OUTPUT_KEYS[key]} differs from the locked authority.")
+            success = False
+    return success
 
 def generate_headers(manifest, output_inc, output_def, output_numbers):
     os.makedirs(os.path.dirname(output_inc), exist_ok=True)
@@ -349,9 +414,10 @@ def main():
     parser = argparse.ArgumentParser(description="Canonical Syscall ABI Tool")
     parser.add_argument("--manifest", default="interface/contracts/abi/native_syscalls.json")
     parser.add_argument("--lock", default="interface/contracts/abi/native_syscalls.lock.json")
-    parser.add_argument("--generate", action="store_true")
-    parser.add_argument("--check", action="store_true")
-    parser.add_argument("--update-lock", action="store_true")
+    actions = parser.add_mutually_exclusive_group(required=True)
+    actions.add_argument("--generate", action="store_true", help="generate build-tree outputs")
+    actions.add_argument("--check", action="store_true", help="validate the manifest, lock, and reproducible generated-output hashes")
+    actions.add_argument("--update-lock", action="store_true", help="intentionally replace the compatibility lock and generated-output hashes")
     parser.add_argument("--output-inc", default="build/generated/kernel/syscall/native_syscall_table.inc")
     parser.add_argument("--output-def", default="build/generated/include/bharat/uapi/syscall/generated/table.def")
     parser.add_argument("--output-numbers", default="build/generated/include/bharat/uapi/syscall/generated/numbers.h")
@@ -384,6 +450,9 @@ def main():
         if not compare_lock(manifest, lock_data):
             sys.exit(1)
 
+        if not verify_generated(manifest, lock_data):
+            sys.exit(1)
+
         if not check_raw_numbers_in_source():
             sys.exit(1)
 
@@ -401,7 +470,15 @@ def main():
             }
             for sc in manifest["syscalls"]
         ]
-        save_json(args.lock, {"version": manifest["version"], "syscalls": lock_syscalls})
+        hashes = generated_hashes(manifest)
+        if hashes is None:
+            sys.exit(1)
+        save_json(args.lock, {
+            "version": manifest["version"],
+            "syscall_count": len(lock_syscalls),
+            "generated_sha256": hashes,
+            "syscalls": lock_syscalls,
+        })
         print(f"Updated lock file: {args.lock}")
         sys.exit(0)
 
