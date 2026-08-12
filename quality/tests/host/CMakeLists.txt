@@ -51,6 +51,16 @@ target_include_directories(host_test_sched_selection PRIVATE
 target_compile_definitions(host_test_sched_selection PRIVATE TESTING=1)
 add_test(NAME host_test_sched_selection COMMAND host_test_sched_selection)
 
+add_executable(host_test_sched_diag
+    sched/test_sched_diag.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/sched/sched_diag.c)
+target_include_directories(host_test_sched_diag PRIVATE
+    ${CMAKE_SOURCE_DIR}/core/kernel/include
+    ${CMAKE_SOURCE_DIR}/core/hal/include
+    ${CMAKE_SOURCE_DIR}/interface/include
+    ${CMAKE_BINARY_DIR}/generated/include)
+add_test(NAME host_test_sched_diag COMMAND host_test_sched_diag)
+
 add_executable(host_test_cpu_partition
     sched/test_cpu_partition.c
     ${CMAKE_SOURCE_DIR}/core/kernel/src/sched/cpu_partition.c

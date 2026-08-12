@@ -8,7 +8,8 @@ personality_profile: native
 execution_profile: gp
 
 implementation_maturity:
-  profile: RELEASE
+  profile: DEVELOPMENT
+  allow: [STUB]
 
 build:
   cmake_preset: x86_64-qemu-desktop-release

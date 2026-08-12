@@ -3,6 +3,7 @@
 
 #include "sched/sched.h"
 #include "sched/sched_invariants.h"
+#include "sched/sched_diag.h"
 #include <bharat/cpu_local.h>
 #include "list.h"
 #include "bharat_config.h"

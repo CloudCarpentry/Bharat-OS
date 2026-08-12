@@ -563,6 +563,7 @@ int sched_global_init(uint32_t core_count) {
   g_next_thread_id = 1U;
   g_next_process_id = 1U;
 
+  bh_sched_diag_init();
   sched_reset_core_runqueues();
 
   bh_process_t *idle_process = process_create("idle_process");
@@ -883,6 +884,7 @@ bh_thread_t *sched_pick_next_ready(uint32_t core_id) {
       return rq->idle_thread;
   }
 
+  BH_DIAG_COUNTER(core_id, BH_SCHED_DIAG_PICK_NON_IDLE);
   return sched_validate_picked_candidate(next, rq->idle_thread, core_id);
 }
 
@@ -938,6 +940,7 @@ void sched_switch_to(bh_thread_t *next, uint32_t core_id) {
     }
   }
 
+  BH_TRACE_SCHED(core_id, BH_SCHED_DIAG_SWITCH_BEGIN);
   sched_invariant_on_switch(current, next, core_id);
 
   next->state = THREAD_STATE_RUNNING;
@@ -951,11 +954,13 @@ void sched_switch_to(bh_thread_t *next, uint32_t core_id) {
   cpu_context_t *next_ctx = (cpu_context_t*)next->cpu_context;
 
   if (current) {
+    BH_TRACE_SCHED(core_id, BH_SCHED_DIAG_EXT_STATE_SAVE);
     arch_ext_state_save(current);
   }
 
   address_space_t *prev_as = current && current->process ? current->process->addr_space : NULL;
   address_space_t *next_as = next->process ? next->process->addr_space : NULL;
+  BH_TRACE_SCHED(core_id, BH_SCHED_DIAG_ASPACE_SWITCH);
   mm_switch_active_aspace(core_id, prev_as, next_as);
 
   #ifndef NDEBUG
@@ -964,11 +969,13 @@ void sched_switch_to(bh_thread_t *next, uint32_t core_id) {
 
     // Process incoming URPC messages before doing the switch
     extern void vmm_process_local_urpc_messages(uint32_t core_id);
+    BH_TRACE_SCHED(core_id, BH_SCHED_DIAG_URPC_DRAIN);
     vmm_process_local_urpc_messages(core_id);
 
   if (fv_secure_context_switch) {
     fv_secure_context_switch(next_ctx);
   } else {
+    BH_TRACE_SCHED(core_id, BH_SCHED_DIAG_CONTEXT_SWITCH);
     arch_context_switch(prev_ctx, next_ctx);
   }
 

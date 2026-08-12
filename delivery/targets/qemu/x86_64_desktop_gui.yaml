@@ -7,6 +7,10 @@ device_profile: desktop
 personality_profile: native
 execution_profile: gp
 
+implementation_maturity:
+  profile: DEVELOPMENT
+  allow: [STUB]
+
 build:
   cmake_preset: x86_64-dev
   cmake_defs:
@@ -18,6 +22,7 @@ build:
     BHARAT_ENABLE_FBUI: ON
     BHARAT_SHOWCASE_GUI: ON
     BHARAT_ENABLE_ADVANCED_VM: ON
+    BHARAT_SCHED_DIAG_COMPILE_LEVEL: 2
 
 kernel:
   canonical_artifacts:
