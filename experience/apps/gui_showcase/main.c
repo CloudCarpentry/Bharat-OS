@@ -3,7 +3,7 @@
 #include "bharat/uapi/display/display_v2.h"
 #include "bharat/uapi/display/bharat_display_broker_v2_types.h"
 #include "bharat_lvgl.h"
-#include "ui_screens.h"
+#include "bharat_shell.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -11,7 +11,10 @@
 extern lv_display_t * bharat_lvgl_display_create(bh_display_lease_handle_t lease, uint32_t width, uint32_t height);
 extern lv_indev_t * bharat_lvgl_pointer_create(void);
 extern lv_indev_t * bharat_lvgl_keyboard_create(void);
-extern void bharat_ui_app_start(void);
+static void demo_snapshot(bh_shell_system_info_t *info, void *context) {
+    (void)context;
+    info->uptime_seconds = bharat_lvgl_now_ms() / 1000U;
+}
 
 // Simulated IPC stubs for display broker logic so it builds/links smoothly
 bh_display_result_t bh_client_create_surface(bh_display_lease_handle_t lease, uint32_t w, uint32_t h, uint32_t z, bh_gui_surface_handle_t *out_surf) {
@@ -78,7 +81,8 @@ int main(int argc, char** argv) {
     }
 
     /* Transition to branded splash screen */
-    bharat_ui_app_start();
+    bh_shell_set_snapshot_provider(demo_snapshot, NULL);
+    bh_shell_start();
 
     /* Ensure the screen is actually rendered */
     lv_timer_handler();
@@ -87,8 +91,10 @@ int main(int argc, char** argv) {
     /* In a real environment, wait briefly, then transition to HOME.
        For this showcase we manually advance. */
     // Note: bharat_ui_app_start initializes with Splash.
-    extern int bharat_ui_navigate(int target);
-    bharat_ui_navigate(1 /* BHARAT_SCREEN_HOME */);
+    bh_shell_navigate(BH_SHELL_SCREEN_LAUNCHER);
+    if (keyboard != NULL) {
+        lv_indev_set_group(keyboard, bh_shell_navigation_group());
+    }
     lv_timer_handler();
     printf("UI_NATIVE: HOME_VISIBLE\n");
 

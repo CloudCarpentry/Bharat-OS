@@ -14,12 +14,8 @@ if(BHARAT_UI_LVGL)
         src/lvgl_tick_adapter.c
         src/lvgl_memory_adapter.c
         src/lvgl_theme_bharat.c
-        ${CMAKE_SOURCE_DIR}/core/apps/ui_demo/app.c
-        ${CMAKE_SOURCE_DIR}/core/apps/ui_demo/screens/splash_screen.c
-        ${CMAKE_SOURCE_DIR}/core/apps/ui_demo/screens/home_screen.c
-        ${CMAKE_SOURCE_DIR}/core/apps/ui_demo/screens/diagnostics_screen.c
-        ${CMAKE_SOURCE_DIR}/core/apps/ui_demo/screens/recovery_screen.c
-        ${CMAKE_SOURCE_DIR}/core/apps/ui_demo/screens/settings_screen.c
+        ${CMAKE_SOURCE_DIR}/experience/shell/shell_model.c
+        ${CMAKE_SOURCE_DIR}/experience/shell/shell_ui.c
         ${LVGL_SOURCES}
     )
 
@@ -31,7 +27,7 @@ if(BHARAT_UI_LVGL)
 
     target_include_directories(bharat_ui_lvgl_core
         PUBLIC include PUBLIC ${CMAKE_SOURCE_DIR}/interface/include
-        PUBLIC ${CMAKE_SOURCE_DIR}/core/apps/ui_demo/screens
+        PUBLIC ${CMAKE_SOURCE_DIR}/experience/shell
         PUBLIC ${CMAKE_SOURCE_DIR}/build/generated/ui/theme
         PRIVATE config
         PUBLIC ${CMAKE_SOURCE_DIR}/third_party/lvgl/upstream PUBLIC ${CMAKE_SOURCE_DIR}/third_party/lvgl/upstream/src

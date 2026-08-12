@@ -7,7 +7,7 @@ add_executable(gui_showcase
 target_include_directories(gui_showcase PRIVATE
     ${CMAKE_SOURCE_DIR}/interface/include
     ${CMAKE_SOURCE_DIR}/core/stacks/ui/adapters/lvgl/include
-    ${CMAKE_SOURCE_DIR}/core/apps/ui_demo/screens
+    ${CMAKE_SOURCE_DIR}/experience/shell
     ${CMAKE_SOURCE_DIR}/core/lib/include
     ${CMAKE_SOURCE_DIR}/third_party/lvgl/upstream
     ${CMAKE_SOURCE_DIR}/third_party/lvgl/upstream/src
