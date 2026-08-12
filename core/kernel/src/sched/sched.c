@@ -696,7 +696,9 @@ bh_thread_t *thread_create_detached(bh_process_t *parent, void (*entry_point)(vo
   slot->thread.base_priority = 1U;
   slot->thread.cpu_time_consumed = 0U;
   slot->thread.time_slice_ms = SCHED_DEFAULT_SLICE_MS;
-  slot->thread.preferred_numa_node = 0U;
+  slot->thread.numa_affinity.policy = NUMA_POLICY_LOCAL_PREFERRED;
+  slot->thread.numa_affinity.target_node = NUMA_NODE_LOCAL;
+  slot->thread.numa_affinity.interleave_mask = 0U;
   slot->thread.bound_core_id = sched_clamp_core(hal_cpu_get_id());
   slot->thread.affinity_mask = SCHED_AFFINITY_ANY;
 

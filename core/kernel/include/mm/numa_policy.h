@@ -11,6 +11,8 @@ extern "C" {
 
 // Allocate a page according to the given NUMA policy
 phys_addr_t mm_alloc_page_policy(const numa_affinity_t *policy);
+phys_addr_t mm_alloc_page_policy_at(const numa_affinity_t *policy,
+                                    virt_addr_t fault_vaddr);
 
 // Helper for the scheduler or VMM to determine the next interleaving node
 memory_node_id_t numa_policy_next_interleave_node(const numa_affinity_t *policy, uint64_t vaddr);

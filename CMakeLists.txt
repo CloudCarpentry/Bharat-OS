@@ -212,6 +212,28 @@ option(BHARAT_ENABLE_NUMA "Enable NUMA support" OFF)
 option(BHARAT_ENABLE_ALLOC_CLASSES "Enable memory allocation classes" ON)
 option(BHARAT_ENABLE_MEMORY_STATS "Enable memory statistics" ON)
 
+# Kernel heap backend is an explicit memory capability.  AUTO is only a
+# profile resolver; kernel code consumes exactly one generated selector.
+set(BHARAT_KMEM_ALLOCATOR "AUTO" CACHE STRING
+    "Kernel heap allocator (AUTO, SLAB, SLUB, SLOB, RT_POOL)")
+set_property(CACHE BHARAT_KMEM_ALLOCATOR PROPERTY STRINGS AUTO SLAB SLUB SLOB RT_POOL)
+string(TOUPPER "${BHARAT_KMEM_ALLOCATOR}" BHARAT_KMEM_ALLOCATOR)
+if(BHARAT_KMEM_ALLOCATOR STREQUAL "AUTO")
+    # Until each advanced backend passes its qualification contract, preserve
+    # the existing SLAB implementation for every profile.  In particular, RT
+    # must never silently resolve to the latency-unbounded SLOB backend.
+    set(BHARAT_KMEM_ALLOCATOR_RESOLVED "SLAB")
+elseif(BHARAT_KMEM_ALLOCATOR MATCHES "^(SLAB|SLUB|SLOB|RT_POOL)$")
+    set(BHARAT_KMEM_ALLOCATOR_RESOLVED "${BHARAT_KMEM_ALLOCATOR}")
+else()
+    message(FATAL_ERROR "Invalid BHARAT_KMEM_ALLOCATOR='${BHARAT_KMEM_ALLOCATOR}'")
+endif()
+if(NOT BHARAT_KMEM_ALLOCATOR_RESOLVED STREQUAL "SLAB")
+    message(FATAL_ERROR
+        "BHARAT_KMEM_ALLOCATOR=${BHARAT_KMEM_ALLOCATOR_RESOLVED} is not yet qualified; use SLAB")
+endif()
+message(STATUS "Kernel heap allocator: ${BHARAT_KMEM_ALLOCATOR_RESOLVED}")
+
 # Platform Firmware
 set(BHARAT_PLATFORM_FIRMWARE "" CACHE STRING "Target platform firmware (e.g., ACPI, FDT)")
 
@@ -378,6 +400,12 @@ bharat_set_profile_flag(BHARAT_PROFILE_AUTOMOTIVE_INFOTAINMENT "AUTOMOTIVE_INFOT
 bharat_set_profile_flag(BHARAT_KERNEL_PROFILE_RT "RT" "${BHARAT_KERNEL_PROFILE_RESOLVED}")
 bharat_set_profile_flag(BHARAT_KERNEL_PROFILE_GP "GP" "${BHARAT_KERNEL_PROFILE_RESOLVED}")
 bharat_set_profile_flag(BHARAT_KERNEL_PROFILE_MIX "MIX" "${BHARAT_KERNEL_PROFILE_RESOLVED}")
+
+# Orthogonal kernel heap backend selection.
+bharat_set_profile_flag(BHARAT_KMEM_ALLOCATOR_SLAB "SLAB" "${BHARAT_KMEM_ALLOCATOR_RESOLVED}")
+bharat_set_profile_flag(BHARAT_KMEM_ALLOCATOR_SLUB "SLUB" "${BHARAT_KMEM_ALLOCATOR_RESOLVED}")
+bharat_set_profile_flag(BHARAT_KMEM_ALLOCATOR_SLOB "SLOB" "${BHARAT_KMEM_ALLOCATOR_RESOLVED}")
+bharat_set_profile_flag(BHARAT_KMEM_ALLOCATOR_RT_POOL "RT_POOL" "${BHARAT_KMEM_ALLOCATOR_RESOLVED}")
 
 # IRQ dispatch mode (profile-aware default with explicit override)
 if(BHARAT_IRQ_DISPATCH_MODE STREQUAL "AUTO")

@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "mm.h"
+#include "numa.h"
 #include "sched/ai_sched.h"
 #include "list.h"
 #include <lib/rbtree/rbtree.h>
@@ -511,7 +512,8 @@ struct bh_thread {
     // EDF Scheduler metadata
     uint64_t absolute_deadline_ms;
 
-    uint8_t preferred_numa_node;
+    /* Owner-local scheduling state; copied only by the migration protocol. */
+    numa_affinity_t numa_affinity;
     ai_sched_context_t* ai_sched_ctx;
     uint64_t context_switch_count;
     bh_thread_attr_t rt_attr;
@@ -548,6 +550,16 @@ struct bh_thread {
     sched_migration_state_t migration_state;
     uint32_t migration_epoch;
 };
+
+#if defined(__cplusplus)
+static_assert(sizeof(((bh_thread_t *)0)->numa_affinity.target_node) ==
+                  sizeof(memory_node_id_t),
+              "thread NUMA node storage must not truncate memory_node_id_t");
+#else
+_Static_assert(sizeof(((bh_thread_t *)0)->numa_affinity.target_node) ==
+                   sizeof(memory_node_id_t),
+               "thread NUMA node storage must not truncate memory_node_id_t");
+#endif
 
 kstatus_t thread_raise_fault(bh_thread_t *thread, thread_fault_t fault);
 int sched_mark_thread_terminated(bh_thread_t *thread);
