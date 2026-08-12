@@ -121,8 +121,12 @@ trap_entry:
     bnez t0, .L_restore_smode
     addi t0, sp, BH_RISCV_TF_STACK_SIZE
     csrw sscratch, t0
+    j .L_restore_regs
 
 .L_restore_smode:
+    csrw sscratch, zero
+
+.L_restore_regs:
     LREG x1, BH_TF_GPR0_OFF(sp)
     LREG x3, BH_TF_GPR2_OFF(sp)
     LREG x4, BH_TF_GPR3_OFF(sp)

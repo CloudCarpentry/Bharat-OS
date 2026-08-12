@@ -148,7 +148,7 @@ static bool all_ready_in_class(const init_runtime_t *rt, init_boot_class_t cls) 
 }
 
 int init_runtime_run(init_boot_context_t *ctx) {
-    init_runtime_t rt;
+    static init_runtime_t rt;
     __builtin_memset(&rt, 0, sizeof(rt));
     rt.boot_ctx = *ctx;
 

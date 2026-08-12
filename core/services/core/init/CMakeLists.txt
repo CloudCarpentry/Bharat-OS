@@ -37,8 +37,7 @@ endif()
 
 if(DEFINED BHARAT_DEFAULT_INIT_PROFILE AND NOT BHARAT_DEFAULT_INIT_PROFILE STREQUAL "")
     target_compile_definitions(init PRIVATE BHARAT_DEFAULT_INIT_PROFILE="${BHARAT_DEFAULT_INIT_PROFILE}")
-    # Also define the specific enum flag for the fallback
-    target_compile_definitions(init PRIVATE BHARAT_INIT_PROFILE_${BHARAT_DEFAULT_INIT_PROFILE})
+    target_compile_definitions(init PRIVATE BHARAT_INIT_PROFILE_SELECT_${BHARAT_DEFAULT_INIT_PROFILE})
 endif()
 
 # Keep the build freestanding and warning-clean

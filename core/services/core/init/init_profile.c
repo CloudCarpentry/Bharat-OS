@@ -95,30 +95,29 @@ void init_profile_get_context(init_boot_context_t *ctx) {
     ctx->kernel_health.failed_selftest_mask = 0;
     ctx->kernel_health.degraded_feature_mask = 0;
 
-#if defined(BHARAT_INIT_PROFILE_TINY)
+#if defined(BHARAT_INIT_PROFILE_SELECT_TINY)
     ctx->profile = INIT_PROFILE_TINY;
-#elif defined(BHARAT_INIT_PROFILE_SMALL)
+#elif defined(BHARAT_INIT_PROFILE_SELECT_SMALL)
     ctx->profile = INIT_PROFILE_SMALL;
-#elif defined(BHARAT_INIT_PROFILE_EMBEDDED_RICH)
+#elif defined(BHARAT_INIT_PROFILE_SELECT_EMBEDDED_RICH)
     ctx->profile = INIT_PROFILE_EMBEDDED_RICH;
-#elif defined(BHARAT_INIT_PROFILE_MOBILE)
+#elif defined(BHARAT_INIT_PROFILE_SELECT_MOBILE)
     ctx->profile = INIT_PROFILE_MOBILE;
-#elif defined(BHARAT_INIT_PROFILE_DESKTOP)
+#elif defined(BHARAT_INIT_PROFILE_SELECT_DESKTOP)
     ctx->profile = INIT_PROFILE_DESKTOP;
-#elif defined(BHARAT_INIT_PROFILE_DRONE)
+#elif defined(BHARAT_INIT_PROFILE_SELECT_DRONE)
     ctx->profile = INIT_PROFILE_DRONE;
-#elif defined(BHARAT_INIT_PROFILE_CLOUD)
+#elif defined(BHARAT_INIT_PROFILE_SELECT_CLOUD)
     ctx->profile = INIT_PROFILE_CLOUD;
-#elif defined(BHARAT_INIT_PROFILE_AUTOMOTIVE)
+#elif defined(BHARAT_INIT_PROFILE_SELECT_AUTOMOTIVE)
     ctx->profile = INIT_PROFILE_AUTOMOTIVE;
-#elif defined(BHARAT_INIT_PROFILE_TV)
+#elif defined(BHARAT_INIT_PROFILE_SELECT_TV)
     ctx->profile = INIT_PROFILE_TV;
-#elif defined(BHARAT_INIT_PROFILE_APPLIANCE)
+#elif defined(BHARAT_INIT_PROFILE_SELECT_APPLIANCE)
     ctx->profile = INIT_PROFILE_APPLIANCE;
-#elif defined(BHARAT_INIT_PROFILE_WATCH)
+#elif defined(BHARAT_INIT_PROFILE_SELECT_WATCH)
     ctx->profile = INIT_PROFILE_WATCH;
-#elif defined(BHARAT_DEFAULT_INIT_PROFILE)
-    // Fallback if built with BHARAT_DEFAULT_INIT_PROFILE string definition
+#else
     ctx->profile = INIT_PROFILE_DESKTOP;
 #endif
 
