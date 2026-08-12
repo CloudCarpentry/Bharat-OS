@@ -11,6 +11,7 @@ import json
 import glob
 import argparse
 import subprocess
+from pathlib import Path
 
 FORBIDDEN_RULES = [
     # (source_layer, target_layer, error_msg)
@@ -19,6 +20,8 @@ FORBIDDEN_RULES = [
     ("hal_arch", "services", "HAL/Arch/Platform must never depend on services"),
     ("interface", "kernel", "Interface/UAPI contracts must never depend on kernel implementation"),
 ]
+DEFAULT_BASELINE = "tools/lint/baselines/cmake_dependencies.json"
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 def register_query(build_dir):
     query_dir = os.path.join(build_dir, ".cmake", "api", "v1", "query", "client-linter")
@@ -138,7 +141,17 @@ def main():
     parser = argparse.ArgumentParser(description="CMake Target-Dependency Linter")
     parser.add_argument("--preset", default="x86_64-dev", help="CMake configure preset to analyze")
     parser.add_argument("--build-dir", default="build/x86_64-dev", help="Path to build directory")
-    parser.add_argument("--baseline", help="JSON file with allowed baseline exceptions")
+    baseline_group = parser.add_mutually_exclusive_group()
+    baseline_group.add_argument(
+        "--baseline",
+        default=DEFAULT_BASELINE,
+        help=f"JSON file with known dependency debt (default: {DEFAULT_BASELINE})",
+    )
+    baseline_group.add_argument(
+        "--no-baseline",
+        action="store_true",
+        help="Audit all dependency findings without applying the checked-in baseline",
+    )
     parser.add_argument("--report", help="Output markdown report path")
     parser.add_argument("--strict", action="store_true", help="Fail with non-zero on violations")
 
@@ -153,8 +166,9 @@ def main():
 
     # Load baseline
     baseline_set = set()
-    if args.baseline and os.path.exists(args.baseline):
-        with open(args.baseline, "r") as f:
+    baseline_path = REPO_ROOT / args.baseline if args.baseline else None
+    if not args.no_baseline and baseline_path and baseline_path.exists():
+        with baseline_path.open("r", encoding="utf-8") as f:
             baseline_set = set(json.load(f))
 
     # Analyze

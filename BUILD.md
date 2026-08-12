@@ -507,3 +507,16 @@ target YAML. The focused standalone check is:
 ```bash
 python3 tools/check_implementation_maturity.py --profile RELEASE
 ```
+## Architecture dependency linting
+
+The layer-reference and CMake target-dependency gates apply the repository's
+checked-in technical-debt baselines by default, so the standard commands fail
+only for new architecture-boundary regressions:
+
+```bash
+python3 tools/lint/check_layer_references.py --strict
+python3 tools/lint/check_cmake_dependencies.py --strict
+```
+
+Use `--no-baseline` for an explicit audit of all known debt. A custom baseline
+can still be selected with `--baseline <path>`.
