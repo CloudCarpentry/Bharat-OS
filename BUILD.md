@@ -460,3 +460,14 @@ resolver defaults omitted values to `full` during migration. It passes the
 resolved `BHARAT_USERSPACE_RUNTIME_MODEL` to CMake and packages exactly one root:
 `user_smoke`, `rt-supervisor`, `init-lite`, or `init`, respectively. Unknown
 values and the unsupported top-level `runtime_model` spelling fail validation.
+# Runtime implementation maturity gate
+
+Every configure/build action checks `interface/contracts/implementation_maturity.json` before the
+linker runs. Targets declare `implementation_maturity.profile`; release and hardened profiles reject
+`STUB` and `TEST_ONLY` implementations. A development
+target may explicitly opt in with `implementation_maturity.allow: [STUB]` (and/or `TEST_ONLY`) in its
+target YAML. The focused standalone check is:
+
+```bash
+python3 tools/check_implementation_maturity.py --profile RELEASE
+```
