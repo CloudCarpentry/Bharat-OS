@@ -74,6 +74,18 @@ static void test_owner_mismatch_fails_closed(void)
     assert(sched_validate_picked_candidate(&candidate, &idle, 0U) == &idle);
 }
 
+static void test_out_of_range_core_fails_closed(void)
+{
+    bh_thread_t candidate;
+    bh_thread_t idle;
+    init_candidate(&candidate, 32U);
+    init_candidate(&idle, 0U);
+    g_partition_allows = true;
+
+    /* Affinity and constraint masks are 32-bit, so core 32 is never valid. */
+    assert(sched_validate_picked_candidate(&candidate, &idle, 32U) == &idle);
+}
+
 static void test_context_switch_is_counted_once(void)
 {
     sched_rq_t rq;
@@ -85,6 +97,20 @@ static void test_context_switch_is_counted_once(void)
 
     assert(rq.context_switches == 1U);
     assert(next.context_switch_count == 1U);
+}
+
+static void test_invalid_context_switch_is_not_counted(void)
+{
+    sched_rq_t rq;
+    bh_thread_t next;
+    memset(&rq, 0, sizeof(rq));
+    memset(&next, 0, sizeof(next));
+
+    sched_account_context_switch(NULL, &next);
+    sched_account_context_switch(&rq, NULL);
+
+    assert(rq.context_switches == 0U);
+    assert(next.context_switch_count == 0U);
 }
 
 static void test_idle_remains_selectable_without_candidate(void)
@@ -102,7 +128,9 @@ int main(void)
     test_affinity_mismatch_fails_closed();
     test_partition_mismatch_fails_closed();
     test_owner_mismatch_fails_closed();
+    test_out_of_range_core_fails_closed();
     test_context_switch_is_counted_once();
+    test_invalid_context_switch_is_not_counted();
     test_idle_remains_selectable_without_candidate();
     puts("All scheduler selection host tests passed.");
     return 0;

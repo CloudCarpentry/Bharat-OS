@@ -29,6 +29,28 @@ The scheduler's job is purely localized:
 
 Load balancing and cross-core thread migration happen entirely through asynchronous **uRPC messages**.
 
+### 1.1 Dispatch correctness invariants
+
+The local dispatch path applies these rules on every architecture and memory
+protection backend:
+
+* A candidate is removed from its owner-local runqueue before it can be
+  dispatched, then must pass owner, CPU-partition class, affinity, and dynamic
+  CPU-mask checks. A failed check selects the local idle thread; it must never
+  execute the inadmissible candidate or mutate a remote runqueue directly.
+* A real switch updates the incoming thread counter and the owner-local
+  runqueue counter exactly once. A null target or a switch to the already
+  running thread is a no-op and is not counted.
+* The dispatch and context-switch hot path does not write unconditional console
+  diagnostics. Diagnostics must use an explicitly enabled, bounded tracing
+  mechanism outside the timing-critical path.
+* CPU partition initialization accepts only `GENERAL_PURPOSE`, `REALTIME`, or
+  `MIXED_CRITICAL`. `UNKNOWN` and values outside the execution-mode enum fail
+  closed before any partition mapping is published.
+
+These are backend-neutral scheduler mechanisms. They do not depend on an ISA,
+MMU, MMU-Lite, or MPU implementation.
+
 ---
 
 ## 2. Per-Core State Only
