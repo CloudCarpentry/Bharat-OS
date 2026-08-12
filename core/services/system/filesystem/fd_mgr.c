@@ -91,6 +91,7 @@ int fsd_open_file(const char* path, int flags, capability_t* caller_cap, int* ou
     g_open_files[i].flags = flags;
     g_open_files[i].offset = 0;
     g_open_files[i].node = node;
+    g_open_files[i].private_data = NULL; // initialize to prevent random free
 
     if (node->ops && node->ops->open) {
         if (node->ops->open(node, &g_open_files[i], flags) != 0) {
@@ -179,7 +180,173 @@ void vfs_file_test_reset_state(void) {
     for (int i = 0; i < VFS_MAX_OPEN_FILES; i++) {
         g_open_files[i].in_use = 0;
         g_open_files[i].node = NULL;
+        g_open_files[i].private_data = NULL;
     }
     g_open_files_lock = 0;
 }
 #endif
+
+int fsd_lseek_file(int fd, uint64_t offset, int whence, capability_t* caller_cap) {
+    if (fd < 0 || fd >= VFS_MAX_OPEN_FILES || !caller_cap) return -1;
+    vfs_file_t *entry = &g_open_files[fd];
+    if (!entry->in_use || !entry->node) return -2;
+    // Allow read or write rights for seek
+    if (!vfs_cap_allows_file(entry, caller_cap, 1) && !vfs_cap_allows_file(entry, caller_cap, 2)) return -4;
+
+    if (whence == 0) { // SEEK_SET
+        __atomic_store_n(&entry->offset, offset, __ATOMIC_RELAXED);
+    } else if (whence == 1) { // SEEK_CUR
+        __atomic_add_fetch(&entry->offset, offset, __ATOMIC_RELAXED);
+    } else if (whence == 2) { // SEEK_END
+        __atomic_store_n(&entry->offset, entry->node->size + offset, __ATOMIC_RELAXED);
+    } else {
+        return -5;
+    }
+    return 0;
+}
+
+int vfs_lseek(int fd, uint64_t offset, int whence) {
+    capability_t dummy_cap = {0};
+    if (fd >= 0 && fd < VFS_MAX_OPEN_FILES) dummy_cap = g_open_files[fd].handle_cap;
+    return fsd_lseek_file(fd, offset, whence, &dummy_cap);
+}
+
+int fsd_fstat_file(int fd, void* stat_buf, capability_t* caller_cap) {
+    if (fd < 0 || fd >= VFS_MAX_OPEN_FILES || !caller_cap) return -1;
+    vfs_file_t *entry = &g_open_files[fd];
+    if (!entry->in_use || !entry->node) return -2;
+    if (!vfs_cap_allows_file(entry, caller_cap, 1)) return -4;
+
+    if (entry->node->ops && entry->node->ops->getattr) {
+        return entry->node->ops->getattr(entry->node, stat_buf);
+    }
+    return -5;
+}
+
+int vfs_fstat(int fd, void* stat_buf) {
+    capability_t dummy_cap = {0};
+    if (fd >= 0 && fd < VFS_MAX_OPEN_FILES) dummy_cap = g_open_files[fd].handle_cap;
+    return fsd_fstat_file(fd, stat_buf, &dummy_cap);
+}
+
+void split_path(const char* full_path, char* parent_path, char* leaf_name, size_t max_len);
+
+int vfs_mkdir(const char* path, int mode) {
+    (void)mode;
+    char parent_path[256];
+    char leaf_name[256];
+
+    split_path(path, parent_path, leaf_name, sizeof(parent_path));
+
+    capability_t dummy_cap = {0};
+    dummy_cap.rights_mask = 3; // Need write right
+    vfs_node_t *dir = vfs_resolve_mount_path(parent_path, &dummy_cap);
+    if (!dir || !dir->ops || !dir->ops->create) return -1;
+
+    return dir->ops->create(dir, leaf_name, 0x10); // 0x10 for dir as used in ramfs
+}
+
+int vfs_unlink(const char* path) {
+    char parent_path[256];
+    char leaf_name[256];
+
+    split_path(path, parent_path, leaf_name, sizeof(parent_path));
+
+    capability_t dummy_cap = {0};
+    dummy_cap.rights_mask = 3;
+    vfs_node_t *dir = vfs_resolve_mount_path(parent_path, &dummy_cap);
+    if (!dir || !dir->ops || !dir->ops->remove) return -1;
+    return dir->ops->remove(dir, leaf_name);
+}
+
+struct dirent* vfs_readdir(int fd, uint32_t index) {
+    if (fd < 0 || fd >= VFS_MAX_OPEN_FILES) return NULL;
+    vfs_file_t *entry = &g_open_files[fd];
+    if (!entry->in_use || !entry->node) return NULL;
+
+    if (entry->node->ops && entry->node->ops->readdir) {
+        return entry->node->ops->readdir(entry, index);
+    }
+    return NULL;
+}
+
+int vfs_dup(int oldfd) {
+    if (oldfd < 0 || oldfd >= VFS_MAX_OPEN_FILES) return -1;
+    vfs_file_t *old_entry = &g_open_files[oldfd];
+    if (!old_entry->in_use) return -2;
+
+    int new_slot = -1;
+    while (__atomic_test_and_set(&g_open_files_lock, __ATOMIC_ACQUIRE)) {}
+    for (size_t i = 0; i < VFS_MAX_OPEN_FILES; ++i) {
+        if (!g_open_files[i].in_use) {
+            g_open_files[i].in_use = 1;
+            new_slot = (int)i;
+            break;
+        }
+    }
+    __atomic_clear(&g_open_files_lock, __ATOMIC_RELEASE);
+
+    if (new_slot == -1) return -4;
+
+    g_open_files[new_slot] = *old_entry;
+    // We shouldn't share private_data between duplicated descriptors since it contains the dirent.
+    // Or we should manage reference counting for node and private_data.
+    // For now, don't copy private data or set it to NULL.
+    g_open_files[new_slot].private_data = NULL;
+
+    return new_slot;
+}
+
+#include "pipe.h"
+
+int vfs_pipe(int pipefd[2]) {
+    if (!pipefd) return -1;
+
+    vfs_node_t *rnode, *wnode;
+    if (fs_pipe_create(&rnode, &wnode) != 0) return -1;
+
+    int rfd = -1, wfd = -1;
+    while (__atomic_test_and_set(&g_open_files_lock, __ATOMIC_ACQUIRE)) {}
+
+    for (size_t i = 0; i < VFS_MAX_OPEN_FILES; ++i) {
+        if (!g_open_files[i].in_use) {
+            g_open_files[i].in_use = 1;
+            rfd = (int)i;
+            break;
+        }
+    }
+
+    if (rfd != -1) {
+        for (size_t i = 0; i < VFS_MAX_OPEN_FILES; ++i) {
+            if (!g_open_files[i].in_use) {
+                g_open_files[i].in_use = 1;
+                wfd = (int)i;
+                break;
+            }
+        }
+    }
+
+    if (rfd == -1 || wfd == -1) {
+        if (rfd != -1) g_open_files[rfd].in_use = 0;
+        if (wfd != -1) g_open_files[wfd].in_use = 0;
+        __atomic_clear(&g_open_files_lock, __ATOMIC_RELEASE);
+        return -4; // EMFILE
+    }
+
+    g_open_files[rfd].flags = VFS_OPEN_READ;
+    g_open_files[rfd].offset = 0;
+    g_open_files[rfd].node = rnode;
+    g_open_files[rfd].private_data = NULL;
+
+    g_open_files[wfd].flags = VFS_OPEN_WRITE;
+    g_open_files[wfd].offset = 0;
+    g_open_files[wfd].node = wnode;
+    g_open_files[wfd].private_data = NULL;
+
+    __atomic_clear(&g_open_files_lock, __ATOMIC_RELEASE);
+
+    pipefd[0] = rfd;
+    pipefd[1] = wfd;
+
+    return 0;
+}
