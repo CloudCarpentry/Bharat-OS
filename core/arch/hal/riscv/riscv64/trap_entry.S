@@ -77,6 +77,9 @@ trap_entry:
     SREG t0, BH_TF_GPR1_OFF(sp)      # Save to gpr[1] (x2/sp)
     SREG t0, BH_TF_SP_OFF(sp)    # Save to frame->sp (offset 31)
 
+    # Clear sscratch to zero while kernel executes in S-mode
+    csrw sscratch, zero
+
     # Read CSRs
     csrr t0, sepc
     csrr t1, sstatus
