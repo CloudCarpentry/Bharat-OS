@@ -19,6 +19,7 @@ set(FABRIC_SRCS
 add_executable(host_test_mk_wire fabric/test_mk_wire.c ${FABRIC_SRCS})
 target_include_directories(host_test_mk_wire PRIVATE ${FABRIC_TEST_INCLUDES})
 add_test(NAME host_test_mk_wire COMMAND host_test_mk_wire)
+set_tests_properties(host_test_mk_wire PROPERTIES LABELS "ipc")
 
 add_executable(host_test_test_mk_mpsc_ring fabric/test_mk_mpsc_ring.c ${FABRIC_SRCS})
 target_include_directories(host_test_test_mk_mpsc_ring PRIVATE ${FABRIC_TEST_INCLUDES})
@@ -52,3 +53,4 @@ add_executable(host_test_test_mk_fabric_stress fabric/test_mk_fabric_stress.c ${
 target_include_directories(host_test_test_mk_fabric_stress PRIVATE ${FABRIC_TEST_INCLUDES})
 target_link_libraries(host_test_test_mk_fabric_stress PRIVATE pthread)
 add_test(NAME host_test_test_mk_fabric_stress COMMAND host_test_test_mk_fabric_stress)
+set_tests_properties(host_test_test_mk_fabric_stress PROPERTIES LABELS "ipc stress")
