@@ -3,12 +3,10 @@
 #include <stddef.h>
 #include <bharat/cpu_local.h>
 
-extern sched_policy_t g_policy;
-
 #define CFS_NICE_0_WEIGHT 1024U
 
 bool test_sched_rq_basic(void) {
-    sched_policy_t old_policy = g_policy;
+    sched_policy_t old_policy = sched_get_policy();
     sched_set_policy(SCHED_POLICY_CLOUD_FAIR);
 
     bh_process_t *p = process_create("test_proc");
@@ -132,7 +130,7 @@ extern void hal_cpu_enable_interrupts(void);
 
 
 bool test_sched_remote_enqueue(void) {
-    sched_policy_t old_policy = g_policy;
+    sched_policy_t old_policy = sched_get_policy();
     sched_set_policy(SCHED_POLICY_CLOUD_FAIR);
 
     bh_process_t *p = process_create("test_proc3");
@@ -174,7 +172,7 @@ uint64_t benchmark_get_cycles(void) {
 }
 
 bool test_sched_benchmark(void) {
-    sched_policy_t old_policy = g_policy;
+    sched_policy_t old_policy = sched_get_policy();
     sched_set_policy(SCHED_POLICY_CLOUD_FAIR);
 
     bh_process_t *p = process_create("bench_proc");

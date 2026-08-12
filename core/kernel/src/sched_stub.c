@@ -39,7 +39,6 @@ static thread_slot_t g_threads[SCHED_MAX_CORES][SCHED_MAX_THREADS];
 static process_slot_t g_processes[SCHED_MAX_CORES][SCHED_MAX_PROCESSES];
 
 static bh_thread_t* g_current;
-static sched_policy_t g_policy = SCHED_POLICY_PRIORITY;
 static uint64_t g_next_thread_id = 1U;
 static uint64_t g_next_process_id = 1U;
 static uint64_t g_sched_ticks = 0U;
@@ -154,11 +153,11 @@ static bh_thread_t* sched_pick_next_ready(void) {
             continue;
         }
 
-        if (g_policy == SCHED_POLICY_ROUND_ROBIN) {
+        if (g_cores[0].policy == SCHED_POLICY_ROUND_ROBIN) {
             return &((thread_slot_t*)g_cores[0].threads)[idx].thread;
         }
 
-        if (g_policy == SCHED_POLICY_EDF && ((thread_slot_t*)g_cores[0].threads)[idx].thread.rt_attr.deadline_ms > 0U) {
+        if (g_cores[0].policy == SCHED_POLICY_EDF && ((thread_slot_t*)g_cores[0].threads)[idx].thread.rt_attr.deadline_ms > 0U) {
             if (!best || ((thread_slot_t*)g_cores[0].threads)[idx].thread.rt_attr.deadline_ms < best->rt_attr.deadline_ms) {
                 best = &((thread_slot_t*)g_cores[0].threads)[idx].thread;
             }
@@ -216,7 +215,7 @@ void sched_init(void) {
     g_current = NULL;
     g_next_thread_id = 1U;
     g_next_process_id = 1U;
-    g_policy = SCHED_POLICY_PRIORITY;
+    g_cores[0].policy = SCHED_POLICY_PRIORITY;
     g_sched_ticks = 0U;
     g_sched_context_switches = 0U;
     g_pending_suggestions.head = 0U;
@@ -533,7 +532,11 @@ void sched_wakeup_with_priority(bh_thread_t* thread, uint32_t wakeup_priority) {
 }
 
 void sched_set_policy(sched_policy_t policy) {
-    g_policy = policy;
+    g_cores[0].policy = policy;
+}
+
+sched_policy_t sched_get_policy(void) {
+    return g_cores[0].policy;
 }
 
 int sched_sys_thread_create(bh_process_t* parent, void (*entry_point)(void), uint64_t* out_tid) {

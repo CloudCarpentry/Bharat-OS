@@ -11,8 +11,6 @@ sched_rq_t g_mock_rqs[2];
 
 uint32_t g_active_core_count = 2;
 uint8_t g_sched_initialized = 1;
-sched_policy_t g_policy = SCHED_POLICY_PRIORITY;
-
 // Stub for hal_cpu_get_id
 uint32_t hal_cpu_get_id(void) {
     return 0; // Coordinator CPU 0

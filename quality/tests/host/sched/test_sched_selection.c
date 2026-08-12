@@ -8,15 +8,25 @@
 #include <sched/cpu_partition.h>
 #include "sched_internal.h"
 
-sched_policy_t g_policy = SCHED_POLICY_CLOUD_FAIR;
+static sched_policy_t g_core_policy[2] = {
+    SCHED_POLICY_CLOUD_FAIR,
+    SCHED_POLICY_EDF,
+};
+
+sched_policy_t sched_policy_for_core(uint32_t core_id)
+{
+    return core_id < 2U ? g_core_policy[core_id] : SCHED_POLICY_PRIORITY;
+}
 
 static bool g_partition_allows;
+static bharat_sched_class_mask_t g_last_class[2];
 
 bool cpu_partition_allows_class(uint32_t cpu_id,
                                 bharat_sched_class_mask_t class_mask)
 {
-    (void)cpu_id;
-    (void)class_mask;
+    if (cpu_id < 2U) {
+        g_last_class[cpu_id] = class_mask;
+    }
     return g_partition_allows;
 }
 
@@ -61,6 +71,23 @@ static void test_partition_mismatch_fails_closed(void)
     g_partition_allows = false;
 
     assert(sched_validate_picked_candidate(&candidate, &idle, 0U) == &idle);
+}
+
+static void test_policy_is_selected_per_core(void)
+{
+    bh_thread_t candidate;
+    init_candidate(&candidate, 1U);
+    candidate.affinity_mask = 1U << 1U;
+    candidate.constraints.cpu_mask = 1U << 1U;
+    g_partition_allows = true;
+
+    assert(sched_is_core_admissible(&candidate, 1) == true);
+    candidate.owner_cpu = 0U;
+    candidate.affinity_mask = 1U;
+    candidate.constraints.cpu_mask = 1U;
+    assert(sched_is_core_admissible(&candidate, 0) == true);
+    assert(g_last_class[0] == BHARAT_SCHED_CLASS_FAIR);
+    assert(g_last_class[1] == BHARAT_SCHED_CLASS_DEADLINE_RT);
 }
 
 static void test_owner_mismatch_fails_closed(void)
@@ -127,6 +154,7 @@ int main(void)
     test_inadmissible_task_is_never_selected();
     test_affinity_mismatch_fails_closed();
     test_partition_mismatch_fails_closed();
+    test_policy_is_selected_per_core();
     test_owner_mismatch_fails_closed();
     test_out_of_range_core_fails_closed();
     test_context_switch_is_counted_once();

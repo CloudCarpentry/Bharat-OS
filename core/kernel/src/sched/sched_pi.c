@@ -68,7 +68,7 @@ int sched_adjust_priority_local(bh_thread_t *thread, uint32_t new_priority) {
   if (slot && slot->is_on_runqueue != 0U) {
     hal_cpu_disable_interrupts();
 
-    if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
+    if (rq->policy == SCHED_POLICY_CLOUD_FAIR) {
       sched_cfs_dequeue(rq, thread);
     } else {
       list_del(&slot->run_node);

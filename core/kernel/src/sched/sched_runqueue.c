@@ -76,9 +76,9 @@ int sched_enqueue(bh_thread_t *thread, uint32_t core_id) {
 
   if (entity->is_on_runqueue != 0U) {
     sched_invariant_on_dequeue(thread);
-    if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
+    if (rq->policy == SCHED_POLICY_CLOUD_FAIR) {
       sched_cfs_dequeue(rq, thread);
-    } else if (g_policy == SCHED_POLICY_EDF) {
+    } else if (rq->policy == SCHED_POLICY_EDF) {
       sched_edf_dequeue(rq, thread);
     } else {
       list_del(&entity->run_node);
@@ -101,9 +101,9 @@ int sched_enqueue(bh_thread_t *thread, uint32_t core_id) {
   entity->absolute_deadline = thread->absolute_deadline_ms;
   entity->rt_attr = thread->rt_attr;
 
-  if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
+  if (rq->policy == SCHED_POLICY_CLOUD_FAIR) {
     sched_cfs_enqueue(rq, thread);
-  } else if (g_policy == SCHED_POLICY_EDF) {
+  } else if (rq->policy == SCHED_POLICY_EDF) {
     if (thread->rt_attr.period_ms > 0 && thread->rt_attr.deadline_ms > 0) {
         if (thread->absolute_deadline_ms == 0) {
             thread->absolute_deadline_ms = rq->total_ticks + thread->rt_attr.deadline_ms;
@@ -168,7 +168,7 @@ static void sched_dequeue_task_l0(bh_thread_t *thread, uint32_t core_id) {
   sched_entity_t *entity = sched_find_entity_by_thread(thread);
   if (entity && entity->is_on_runqueue != 0U) {
     sched_invariant_on_dequeue(thread);
-    if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
+    if (rq->policy == SCHED_POLICY_CLOUD_FAIR) {
       sched_cfs_dequeue(rq, thread);
     } else {
       list_del(&entity->run_node);
@@ -204,7 +204,7 @@ void sched_validate_rq(sched_rq_t *rq) {
         kernel_panic("Runqueue count invalid/underflow");
     }
 
-    if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
+    if (rq->policy == SCHED_POLICY_CLOUD_FAIR) {
         // Validate min_vruntime is sensible
         struct rb_node *first = rb_first(&rq->cfs_runqueue);
         if (first) {
