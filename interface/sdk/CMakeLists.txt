@@ -11,6 +11,7 @@ set_target_properties(bharat_core PROPERTIES EXPORT_NAME core)
 target_compile_features(bharat_core PUBLIC c_std_11)
 target_include_directories(bharat_core PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../uapi>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 target_include_directories(bharat_core PRIVATE lib/internal)
 
@@ -35,11 +36,20 @@ foreach(component process ipc device cap)
     target_link_libraries(bharat_${component} PUBLIC bharat_core)
 endforeach()
 
+add_library(bharat_compute STATIC lib/memory/hmem.c lib/compute/tensor.c)
+add_library(Bharat::compute ALIAS bharat_compute)
+set_target_properties(bharat_compute PROPERTIES EXPORT_NAME compute)
+target_compile_features(bharat_compute PUBLIC c_std_11)
+target_include_directories(bharat_compute PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../uapi>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+
 add_library(bharat_sdk INTERFACE)
 add_library(Bharat::sdk ALIAS bharat_sdk)
 set_target_properties(bharat_sdk PROPERTIES EXPORT_NAME sdk)
 target_link_libraries(bharat_sdk INTERFACE
-    bharat_core bharat_process bharat_ipc bharat_device bharat_cap)
+    bharat_core bharat_process bharat_ipc bharat_device bharat_cap bharat_compute)
 
 if(BHARAT_SDK_BUILD_EXAMPLES)
     add_subdirectory(examples)
@@ -50,7 +60,8 @@ if(BHARAT_SDK_BUILD_TESTS)
 endif()
 
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-install(TARGETS bharat_core bharat_process bharat_ipc bharat_device bharat_cap bharat_sdk
+install(FILES ../uapi/bharat/memory/hmem.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/bharat/memory)
+install(TARGETS bharat_core bharat_process bharat_ipc bharat_device bharat_cap bharat_compute bharat_sdk
     EXPORT BharatSDKTargets ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(EXPORT BharatSDKTargets NAMESPACE Bharat:: DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/BharatSDK)
 include(CMakePackageConfigHelpers)

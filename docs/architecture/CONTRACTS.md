@@ -55,3 +55,10 @@ Every contract entry should identify:
 ## Update rule
 
 Any PR changing an external interface, wire layout, public kernel API, ownership protocol, capability requirement, memory backend behavior, target definition, or required validation gate must update this index and the underlying authority/ADR in the same change.
+
+## BHCF heterogeneous memory and tensor contracts
+
+- Native HMEM ABI authority: `interface/uapi/bharat/memory/hmem.h`.
+- Kernel/HAL lifecycle and coherency contract: `docs/architecture/compute/BHCF-001-heterogeneous-memory.md`.
+- Tensor SDK semantic contract: `docs/architecture/compute/BHCF-002-tensor-sdk.md`.
+- Boundary decision: `docs/adr/ADR-024-hmem-tensor-boundary.md`.
