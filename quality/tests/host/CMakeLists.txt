@@ -169,6 +169,19 @@ target_include_directories(host_test_syscall_return_x86_64 PRIVATE
 add_test(NAME host_test_syscall_return_x86_64 COMMAND host_test_syscall_return_x86_64)
 add_test(NAME host_test_uapi_abi COMMAND test_uapi_abi)
 
+add_executable(host_test_robotics_demo
+    robotics/test_robotics_demo.c
+    ${CMAKE_SOURCE_DIR}/core/drivers/sensor/virtual/virtual_sensors.c
+    ${CMAKE_SOURCE_DIR}/core/drivers/actuator/virtual/virtual_motors.c
+    ${CMAKE_SOURCE_DIR}/core/services/device/sensormgr/sensormgr.c
+    ${CMAKE_SOURCE_DIR}/core/services/device/actuator_mgr/actuator_mgr.c
+    ${CMAKE_SOURCE_DIR}/core/platform/qemu/robot/robot_platform.c
+    ${CMAKE_SOURCE_DIR}/core/stacks/robotics/robotics_demo.c)
+target_include_directories(host_test_robotics_demo PRIVATE
+    ${CMAKE_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/interface/include)
+add_test(NAME host_test_robotics_demo COMMAND host_test_robotics_demo)
+
 add_executable(host_test_libmsg_crc
     test_libmsg_crc.c
     ${CMAKE_SOURCE_DIR}/core/lib/msg/crc.c
