@@ -1,6 +1,6 @@
 ---
 title: Bharat-OS Process & Thread Management Architecture
-status: Proposed
+status: Active
 owner: Documentation Working Group
 last_updated: 2026-04-25
 tags:
@@ -12,9 +12,12 @@ see_also:
 ---
 # Bharat-OS Process & Thread Management Architecture
 
-**Version:** v2.0 (Proposed - True Multikernel)
 **Scope:** Kernel + Personality + Services
-**Status:** Draft → Implementation Ready
+**Status:** Active
+
+## Implementation References
+- `core/kernel/include/sched/sched.h`
+- `core/kernel/src/sched/sched.c`
 
 ---
 
@@ -92,7 +95,7 @@ struct core_local_state {
 
 ---
 
-## 5. Process Model
+## 5. Process Model (IMPLEMENTED)
 
 ### 5.1 Ownership Model
 
@@ -102,53 +105,67 @@ graph TD
     Thread -->|runs on| Core
 ```
 
-👉 Each process has a **home core**. It does not exist in a global list.
+👉 Each process has a **home core**.
 
-### 5.2 Updated Process Structure
+### 5.2 Process Structure
 
 ```c
 struct bh_process {
-    pid_t pid;
+    uint64_t process_id;
+    address_space_t* addr_space;
+    bh_thread_t* main_thread;
 
-    core_id_t home_core; // Ownership tracking
+    // Ownership and lookup metadata
+    uint32_t home_core_id;
+    uint32_t generation;
 
-    address_space_t* aspace;
-    cap_table_t* cspace;
+    // Personality tagging for subsystems (e.g., Linux, Android, Windows)
+    bh_process_personality_t personality;
 
-    struct bh_thread* main_thread;
+    // Ops mapping syscalls/faults to personality specific behavior
+    const struct personality_ops* personality_ops;
 
-    personality_t personality;
+    // Capability-based security context would be linked here
+    void* security_sandbox_ctx;
 
-    proc_state_t state;
-
-    // NO global list or lookup
-    list_t local_children;
-
-    urpc_endpoint_t proc_channel; // Cross-core signaling
+    // Ownership tracking
+    uint32_t owner_core_id;
+    uint64_t object_id;
 };
 ```
 
 ---
 
-## 6. Thread Model
+## 6. Thread Model (IMPLEMENTED)
 
 ```c
 struct bh_thread {
-    tid_t tid;
+    uint64_t thread_id;
+    uint64_t process_id;
+    bh_process_t* process;
 
-    struct bh_process* process;
+    bh_exec_constraints_k_t constraints;
 
-    core_id_t current_core;
+    // Ownership and lookup metadata
+    uint32_t home_core_id;
+    uint32_t generation;
+
+    // CPU Architectural Context (Registers)
+    void* cpu_context;
+
+    // Kernel Stack
+    virt_addr_t kernel_stack;
 
     thread_state_t state;
+    uint32_t priority;
 
-    cpu_context_t context;
+    // Personality tagging for subsystems (e.g., Linux, Android, Windows)
+    personality_type_t personality;
 
-    int priority;
+    // Capability and accounting metadata
+    void* capability_list;
 
-    cpu_affinity_t affinity;
-
-    urpc_endpoint_t control_channel; // For async suspension/migration
+    // ...
 };
 ```
 
@@ -158,19 +175,19 @@ struct bh_thread {
 
 ### 7.1 Per-Core Only
 
-Schedulers do not lock global structures. They pick from their local `runqueue`. Cross-core load balancing is achieved exclusively by sending `MIGRATE_THREAD` uRPC messages to peer cores.
+Schedulers do not lock global structures. They pick from their local `sched_rq_t`. Cross-core load balancing is achieved exclusively by pushing commands to the target core's remote command ring.
 
 ```mermaid
 graph LR
     A[Core0 Scheduler] --> A1[Runqueue]
     B[Core1 Scheduler] --> B1[Runqueue]
 
-    A <-- uRPC --> B
+    A <-- Remote Command Ring --> B
 ```
 
 ---
 
-## 8. Thread Migration (Critical)
+## 8. Thread Migration (Critical) (IMPLEMENTED)
 
 ### 8.1 Flow
 
@@ -181,9 +198,9 @@ sequenceDiagram
     participant CoreA
     participant CoreB
 
-    CoreA->>CoreB: MIGRATE_THREAD(req)
-    CoreB->>CoreB: validate & enqueue thread
-    CoreB->>CoreA: ACK (ownership transferred)
+    CoreA->>CoreB: Publish SCHED_CMD_MIGRATE to Ring
+    CoreB->>CoreB: Drain ring, validate & mutate local state
+    CoreB->>CoreA: Publish ACK
 ```
 
 ---

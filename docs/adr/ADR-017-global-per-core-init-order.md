@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted / Active (Implementation Ongoing)
 
 ## Context
 
@@ -49,3 +49,5 @@ The current implementation is a compatibility step: global scheduler bootstrap s
 ## Consequences
 
 This does not complete real SMP startup on x86_64 or RISC-V64, nor does it make the ARM64 TTBR handoff fully production-grade.  It removes the cross-core ownership inversion in the common boot sequence and creates the API boundary needed for later per-core scheduler, memory-cache, TLB-inbox, and AP failure/retry work.
+
+*IMPLEMENTED STATUS*: The compatibility step is implemented as designed. The APIs enforce BSP vs AP boundaries and prevent accidental global authority allocation by APs.
