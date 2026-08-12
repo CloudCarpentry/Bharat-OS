@@ -253,18 +253,21 @@ long bh_syscall_gate(trap_frame_t *frame, const trap_info_t *info) {
     }
 
     /* Personality-specific translation */
-    long result = desc->handler(&ctx);
+    bh_operation_result_t op_res = desc->handler(&ctx);
 
     const personality_ops_t *ops = bh_personality_registry_get_ops(ctx.personality);
     if (ops && ops->normalize_syscall_return) {
-        return ops->normalize_syscall_return(result);
+        return ops->normalize_syscall_return(op_res);
     }
 
     if (ctx.personality == BH_PERSONALITY_NATIVE) {
-        return result;
+        return op_res.value;
     } else {
         /* Compatibility personality: result should be translated to personality-specific errno */
         /* If no explicit normalization hook, use native fallback but this might be wrong for Linux */
-        return kstatus_to_native_sysret((kstatus_t)result);
+        if (op_res.domain == BH_STATUS_DOMAIN_KSTATUS) {
+            return kstatus_to_native_sysret((kstatus_t)op_res.value);
+        }
+        return op_res.value;
     }
 }

@@ -5,6 +5,7 @@ typedef struct bh_thread bh_thread_t;
 
 // TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "trap_types.h"
+#include "kernel/status.h"
 
 // Forward declaration of trap_frame_t without typedef redefinition issues.
 struct trap_frame;
@@ -21,5 +22,5 @@ typedef struct personality_ops {
 
     int (*map_fault_to_signal)(const trap_info_t *info);
 
-    long (*normalize_syscall_return)(long result);
+    long (*normalize_syscall_return)(bh_operation_result_t result);
 } personality_ops_t;

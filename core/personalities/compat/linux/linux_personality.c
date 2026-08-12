@@ -26,13 +26,11 @@ static int linux_map_fault_to_signal(const trap_info_t *info) {
     return 11; // SIGSEGV
 }
 
-static long linux_normalize_syscall_return(long result) {
-    // If result is in the range of kernel status codes (negative),
-    // translate it to negative linux errno.
-    if (result < 0 && result > -1000) { // Assuming kstatus codes are in this range
-        return -linux_errno_from_bh_status((kstatus_t)result);
+static long linux_normalize_syscall_return(bh_operation_result_t result) {
+    if (result.domain == BH_STATUS_DOMAIN_KSTATUS) {
+        return -linux_errno_from_bh_status((kstatus_t)result.value);
     }
-    return result;
+    return result.value;
 }
 
 static const personality_ops_t linux_personality_ops = {

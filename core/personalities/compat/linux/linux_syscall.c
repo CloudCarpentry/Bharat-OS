@@ -5,24 +5,24 @@
 #include "kernel/status.h"
 #include "sched/sched.h"
 
-static long linux_sys_getpid(bh_syscall_ctx_t *ctx) {
-    if (!ctx || !ctx->process) return -LINUX_EINVAL;
-    return (long)ctx->process->process_id;
+static bh_operation_result_t linux_sys_getpid(bh_syscall_ctx_t *ctx) {
+    if (!ctx || !ctx->process) return bh_op_result_kstatus(K_ERR_INVALID_ARG);
+    return bh_op_result_value((long)ctx->process->process_id);
 }
 
-static long linux_sys_gettid(bh_syscall_ctx_t *ctx) {
-    if (!ctx || !ctx->thread) return -LINUX_EINVAL;
-    return (long)ctx->thread->thread_id;
+static bh_operation_result_t linux_sys_gettid(bh_syscall_ctx_t *ctx) {
+    if (!ctx || !ctx->thread) return bh_op_result_kstatus(K_ERR_INVALID_ARG);
+    return bh_op_result_value((long)ctx->thread->thread_id);
 }
 
-static long linux_sys_futex(bh_syscall_ctx_t *ctx) {
+static bh_operation_result_t linux_sys_futex(bh_syscall_ctx_t *ctx) {
     (void)ctx;
-    return -LINUX_ENOSYS;
+    return bh_op_result_kstatus(K_ERR_UNSUPPORTED);
 }
 
-extern long bh_sys_read(bh_syscall_ctx_t *ctx);
-extern long bh_sys_write(bh_syscall_ctx_t *ctx);
-extern long bh_sys_thread_exit(bh_syscall_ctx_t *ctx);
+extern bh_operation_result_t bh_sys_read(bh_syscall_ctx_t *ctx);
+extern bh_operation_result_t bh_sys_write(bh_syscall_ctx_t *ctx);
+extern bh_operation_result_t bh_sys_thread_exit(bh_syscall_ctx_t *ctx);
 
 static const bh_syscall_meta_t linux_syscall_table_x86_64[] = {
     [LINUX_X86_64_SYS_READ]       = { .nr = LINUX_X86_64_SYS_READ, .name = "read", .class_id = BH_SYS_CLASS_IO, .arg_count = 3, .flags = BH_SYSCALL_F_BLOCKING | BH_SYSCALL_F_USER_WRITE, .handler = bh_sys_read },
