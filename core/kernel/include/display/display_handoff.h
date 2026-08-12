@@ -1,7 +1,7 @@
 #ifndef BHARAT_DISPLAY_HANDOFF_H
 #define BHARAT_DISPLAY_HANDOFF_H
 
-#include "boot/boot_info.h"
+#include "bharat/display/boot_video.h"
 #include "capability.h"
 #include <stdint.h>
 
