@@ -1,3 +1,13 @@
+---
+title: 'ADR-017: Split BSP Global Initialization from AP Per-Core Publication'
+status: Draft
+owner: Team
+last_updated: '2024-01-01'
+tags:
+- doc
+see_also:
+- none
+---
 # ADR-017: Split BSP Global Initialization from AP Per-Core Publication
 
 ## Status

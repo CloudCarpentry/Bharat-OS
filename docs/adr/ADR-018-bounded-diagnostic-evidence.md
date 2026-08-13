@@ -1,3 +1,13 @@
+---
+title: Adr 018 Bounded Diagnostic Evidence
+status: Draft
+owner: Team
+last_updated: '2024-01-01'
+tags:
+- doc
+see_also:
+- none
+---
 <!-- SPDX-License-Identifier: MIT -->
 # ADR-018: Bounded diagnostic evidence
 

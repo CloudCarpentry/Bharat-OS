@@ -1,3 +1,13 @@
+---
+title: Boot_Evidence_Contract
+status: Draft
+owner: Team
+last_updated: '2024-01-01'
+tags:
+- doc
+see_also:
+- none
+---
 <!-- SPDX-License-Identifier: MIT -->
 # Boot evidence contract v1
 

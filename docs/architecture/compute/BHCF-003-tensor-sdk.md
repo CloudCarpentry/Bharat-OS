@@ -3,6 +3,10 @@ title: BHCF-003 Tensor SDK
 status: Experimental P0
 owner: SDK and Compute Runtime Teams
 last_updated: 2026-08-12
+tags:
+- doc
+see_also:
+- none
 ---
 # BHCF-003: Tensor SDK Architecture
 

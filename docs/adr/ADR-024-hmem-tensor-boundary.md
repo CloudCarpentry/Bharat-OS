@@ -1,3 +1,13 @@
+---
+title: 'ADR-024: HMEM kernel mechanism and tensor SDK boundary'
+status: Draft
+owner: Team
+last_updated: '2024-01-01'
+tags:
+- doc
+see_also:
+- none
+---
 # ADR-024: HMEM kernel mechanism and tensor SDK boundary
 
 - Status: Accepted

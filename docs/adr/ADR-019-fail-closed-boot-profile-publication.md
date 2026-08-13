@@ -1,3 +1,13 @@
+---
+title: 'ADR-019: Fail-closed boot profile publication'
+status: Draft
+owner: Team
+last_updated: '2024-01-01'
+tags:
+- doc
+see_also:
+- none
+---
 # ADR-019: Fail-closed boot profile publication
 
 ## Status

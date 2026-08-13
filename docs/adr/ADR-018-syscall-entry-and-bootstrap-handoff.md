@@ -1,3 +1,13 @@
+---
+title: 'ADR-018: Normalize syscall entry and bound bootstrap handoff failure'
+status: Draft
+owner: Team
+last_updated: '2024-01-01'
+tags:
+- doc
+see_also:
+- none
+---
 # ADR-018: Normalize syscall entry and bound bootstrap handoff failure
 
 ## Status

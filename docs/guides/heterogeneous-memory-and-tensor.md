@@ -1,3 +1,13 @@
+---
+title: Heterogeneous memory and tensor quick start
+status: Draft
+owner: Team
+last_updated: '2024-01-01'
+tags:
+- doc
+see_also:
+- none
+---
 # Heterogeneous memory and tensor quick start
 
 Link `Bharat::compute` (or `Bharat::sdk`) and include the public SDK headers:

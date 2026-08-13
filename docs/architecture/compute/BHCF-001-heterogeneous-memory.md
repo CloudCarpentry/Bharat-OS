@@ -3,6 +3,10 @@ title: BHCF-001 Heterogeneous Memory
 status: Experimental P0
 owner: Kernel Memory and Compute Teams
 last_updated: 2026-08-12
+tags:
+- doc
+see_also:
+- none
 ---
 # BHCF-001: Heterogeneous Memory
 

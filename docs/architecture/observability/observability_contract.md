@@ -1,3 +1,13 @@
+---
+title: Observability_Contract
+status: Draft
+owner: Team
+last_updated: '2024-01-01'
+tags:
+- doc
+see_also:
+- none
+---
 <!-- SPDX-License-Identifier: MIT -->
 # Observability contract v1
 
