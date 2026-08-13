@@ -2,7 +2,7 @@
 title: Cryptographic Hardware Backends
 status: Proposed
 owner: Divyang Panchasara
-last_updated: 2024-05-15
+last_updated: 2026-08-13
 tags:
   - security
   - crypto
@@ -15,6 +15,14 @@ version: 1.0
 # Cryptographic Hardware Backends
 
 Bharat-OS must support a diverse range of hardware security features across different architectures (x86_64, ARM64, RISC-V). To handle this complexity, the kernel defines three abstract backend classes that hardware drivers must implement. This ensures a stable internal API regardless of the underlying hardware.
+
+CPU instruction backends are implementations of an operation, not standalone
+algorithm APIs. The user-space runtime/service selects them through the
+portable-first dispatch contract in
+[`ADR-025`](../../../adr/ADR-025-portable-crypto-dispatch-boundary.md). A backend
+is eligible only when the exact operation's usable capability is present; the
+generic portable implementation remains the required fallback. Direct ISA
+feature tests in TLS, storage, OTA, or application consumers are prohibited.
 
 ## Backend Classes
 
@@ -47,3 +55,18 @@ The following outlines the specific hardware features and extensions that Bharat
 *   **SBI-Mediated Entropy / Security Hooks:** (`RNG_PROVIDER`, `SECURE_ELEMENT_OR_TPM` via SBI) Utilizing the Supervisor Binary Interface (SBI) to request entropy or perform security operations provided by the execution environment (e.g., firmware or a hypervisor).
 *   **External Secure Element / TPM Integration Path:** (`SECURE_ELEMENT_OR_TPM`) Support for standard discrete TPMs or secure elements attached via SPI/I2C.
 *   **Future Profile for DICE-like Measured Boot Flows:** Architectural support for Device Identifier Composition Engine (DICE) concepts, establishing a hardware root of trust and measured boot sequence specifically tailored for the RISC-V ecosystem.
+
+## Dispatch and validation requirements
+
+- Select independently for secure entropy, SHA-256/SHA-384, AES, and
+  polynomial multiply; never infer one from a generic crypto bit.
+- Use only capabilities marked usable after architecture detection and platform
+  policy. System-wide dispatch must use the all-core capability set unless
+  execution is pinned to a core with an equivalent owner-local guarantee.
+- Keep architecture instruction bodies in `core/arch/`. HAL and runtime expose
+  normalized contracts and selection; consumers remain architecture-neutral.
+- Require known-answer tests and byte-for-byte differential tests against the
+  portable implementation for every accelerated operation.
+- On backend rejection or failure, return an explicit error or restart the
+  complete operation with the portable backend before any output is published.
+  Never mix partial outputs from different backends.

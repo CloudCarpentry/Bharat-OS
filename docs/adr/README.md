@@ -69,6 +69,7 @@ Use this minimum structure for all new ADRs:
 | ADR-013 | Multikernel Memory Protection Architecture | [`ADR-013-multikernel-memory-protection-architecture.md`](ADR-013-multikernel-memory-protection-architecture.md) |
 | ADR-014 | Library Layering and Data Structures | [`ADR-014-library-layering-and-data-structures.md`](ADR-014-library-layering-and-data-structures.md) |
 | ADR-015 | Documentation Information Architecture | [`ADR-015-documentation-information-architecture.md`](ADR-015-documentation-information-architecture.md) |
+| ADR-025 | Portable-First Crypto Dispatch and Kernel Boundary | [`ADR-025-portable-crypto-dispatch-boundary.md`](ADR-025-portable-crypto-dispatch-boundary.md) |
 
 ### Functional ADR Extensions
 
