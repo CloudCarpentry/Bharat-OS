@@ -400,6 +400,26 @@ userspace boot markers before passing:
 ./tools/build.sh all --target-yaml delivery/targets/qemu/x86_64_showcase_gui.yaml --headless --smoke
 ```
 
+For pixel-level evidence, use the GUI visual smoke harness. Unlike the serial
+smoke command, this command builds and packages from the target YAML, starts a
+windowless QEMU display with private serial and QMP channels, waits for the
+display and first-present markers, and validates a QMP `screendump` against the
+mode reported by the guest:
+
+```bash
+python3 tools/test/qemu_gui_smoke.py \
+  --target delivery/targets/qemu/x86_64_showcase_gui.yaml
+```
+
+The test rejects malformed captures, dimension mismatches, fewer than eight
+distinct RGB colors, or a frame where less than one percent of pixels differ
+from the dominant color. These thresholds may be made stricter with
+`--minimum-colors` and `--minimum-non-dominant-ratio`; lowering them is intended
+only for focused diagnosis, not for CI. The default evidence directory is
+`build/<preset>/artifacts/gui-smoke/` and contains `first-frame.ppm`,
+`serial.log`, and `qemu.log`. These are generated evidence and must not be
+committed.
+
 ## 5.1 Canonical headless smoke-test commands (all 5 architectures)
 
 All commands verified with `[Run] PASS` on QEMU. Build + package + run in one shot.
