@@ -15,21 +15,27 @@ uint32_t bharat_msg_crc32_aarch64(const uint8_t *data, size_t len) {
 
     // Process 8 bytes at a time
     while (len >= 8) {
-        crc = __crc32d(crc, *(const uint64_t *)data);
+        uint64_t val;
+        __builtin_memcpy(&val, data, sizeof(val));
+        crc = __crc32d(crc, val);
         data += 8;
         len -= 8;
     }
 
     // Process 4 bytes
     if (len >= 4) {
-        crc = __crc32w(crc, *(const uint32_t *)data);
+        uint32_t val;
+        __builtin_memcpy(&val, data, sizeof(val));
+        crc = __crc32w(crc, val);
         data += 4;
         len -= 4;
     }
 
     // Process 2 bytes
     if (len >= 2) {
-        crc = __crc32h(crc, *(const uint16_t *)data);
+        uint16_t val;
+        __builtin_memcpy(&val, data, sizeof(val));
+        crc = __crc32h(crc, val);
         data += 2;
         len -= 2;
     }
