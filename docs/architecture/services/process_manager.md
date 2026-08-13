@@ -1,8 +1,8 @@
 ---
 title: Process Manager Service Architecture
-status: Proposed
+status: Transitional
 owner: Documentation Working Group
-last_updated: 2026-04-25
+last_updated: 2026-08-13
 tags:
   - docs
   - architecture
@@ -12,9 +12,9 @@ see_also:
 ---
 # Process Manager Service Architecture
 
-**Version:** v1.0 (Proposed)
+**Version:** v1.0 (Transitional)
 **Scope:** Services
-**Status:** Draft → Implementation Ready
+**Status:** Transitional; not production-ready
 
 ---
 
@@ -87,6 +87,58 @@ When a process terminates, the orchestration ensures clean teardown:
 
 ---
 
-## 6. Implementation Notes
+## 6. Current implementation contract
 
-Currently, `core/services/process_manager/main.c` is a TODO shell. The next step is to formalize this orchestrator contract using BIDL (Bharat Interface Definition Language) so other services and runtimes can depend on its interfaces for spawn, exec, kill, wait, and reap operations.
+The v1 implementation is a bounded, single-owner service-local process table. The
+service loop is the only supported mutator; the asynchronous exit notifier must be
+serialized onto that same execution context. The kernel adapter is installed only
+during single-threaded startup and defaults to fail closed. Spawn publishes a handle
+only after process, address-space, image, and initial-thread creation have succeeded.
+Failures revoke the provisional handle and request kernel reaping.
+
+Every v1 operation validates its exact ABI version and structure size. Spawn also
+requires zeroed reserved fields, non-zero executable authority, and non-zero object
+identifiers returned by the kernel adapter. Query, terminate, wait, and reap reject
+stale handles through generation-checked handle lookup. Termination is idempotent and
+reaping is legal only for `EXITED` or explicitly `FAILED` objects. Blocking waits fail
+closed as unsupported; the service does not pretend that storing waiter metadata is a
+working wait implementation.
+
+## 7. Primitive maturity and production blockers
+
+The following mechanisms are required before this service can be described as
+production-ready:
+
+1. **Capability-authenticated v1 dispatch.** The legacy interface authorizes every
+   operation, but the v1 dispatcher does not yet bind caller capabilities, parent
+   scope, executable rights, or per-operation process rights to each request.
+2. **Real kernel authority adapter.** Production delivery must bind capability-based
+   process, address-space, loader, thread, start, terminate, and reap operations. The
+   default adapter intentionally returns `ERR_UNSUPPORTED`.
+3. **Serialized exit delivery.** Kernel exit events need a bounded IPC queue with
+   generation/incarnation identity, replay protection, backpressure, and ordering
+   relative to terminate and reap. Direct concurrent calls to the notifier are not
+   safe.
+4. **Deadline-aware wait continuations.** Blocking wait needs retained reply
+   continuations, monotonic HAL deadlines, cancellation on caller death, bounded
+   waiter storage, and wakeup race tests. Until then only non-blocking polling is
+   supported.
+5. **Rollback quarantine.** Adapter cleanup currently has no durable transaction
+   journal. A failed reap during spawn rollback requires a quarantined lifecycle
+   record and supervised retry rather than an unreachable leaked kernel object.
+6. **Executable ownership.** Registered image bytes are borrowed pointers. A loader
+   service must validate an executable capability and pin or copy immutable image
+   data for the whole transaction; registration must also support revocation.
+7. **Restart recovery and durable identity.** The in-memory table, incarnation value,
+   request IDs, and PID allocation do not survive service restart. Exactly-once spawn
+   replay and reconciliation with kernel-owned processes remain unimplemented.
+8. **Policy orchestration.** Namespace setup, capability seeding, personality binding,
+   parent/child relationships, quotas, audit records, and crash policy remain service
+   work rather than kernel mechanisms.
+9. **Backend evidence.** The authority adapter needs lifecycle and rollback coverage
+   on MMU, MMU-Lite, and MPU targets, including exhaustion, stale generation, timeout,
+   duplicate event, and partial-failure cases.
+
+These blockers are deliberately explicit: input hardening and deterministic local
+state transitions improve the current boundary, but they do not make missing kernel,
+IPC, timer, loader, or recovery primitives appear implemented.

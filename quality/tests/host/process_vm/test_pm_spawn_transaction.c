@@ -120,6 +120,9 @@ void test_spawn_rollback_failures(void) {
     setup_test_elf(elf_buf, sizeof(elf_buf));
     int reg_res = bh_pm_register_executable(990011, elf_buf, sizeof(elf_buf));
     assert(reg_res == 0);
+    assert(bh_pm_register_executable(990011, elf_buf, sizeof(elf_buf)) == -1);
+    assert(bh_pm_register_executable(0, elf_buf, sizeof(elf_buf)) == -1);
+    assert(bh_pm_register_executable(990012, NULL, sizeof(elf_buf)) == -1);
 
     bh_pm_spawn_request_v1_t req;
     memset(&req, 0, sizeof(req));
@@ -128,9 +131,16 @@ void test_spawn_rollback_failures(void) {
     req.executable_handle = 990011;
     strcpy(req.process_name, "test_prog");
 
+    bh_pm_spawn_response_v1_t invalid_resp;
+    req.reserved = 1;
+    int status = bh_pm_handle_spawn_v1(&req, &invalid_resp);
+    assert(status == BHARAT_IPC_STATUS_ERR_INVALID);
+    assert(bh_pm_get_active_count() == 0);
+    req.reserved = 0;
+
     /* An uninstalled adapter must not manufacture process identifiers. */
     bh_pm_spawn_response_v1_t unsupported_resp;
-    int status = bh_pm_handle_spawn_v1(&req, &unsupported_resp);
+    status = bh_pm_handle_spawn_v1(&req, &unsupported_resp);
     assert(status == BHARAT_IPC_STATUS_ERR_UNSUPPORTED);
     assert(unsupported_resp.status == BHARAT_IPC_STATUS_ERR_UNSUPPORTED);
     assert(unsupported_resp.kernel_process_id == 0);
@@ -173,6 +183,29 @@ void test_spawn_rollback_failures(void) {
     assert(resp.status == BHARAT_IPC_STATUS_OK);
     assert(resp.process_handle != 0);
     assert(bh_pm_get_active_count() == 1);
+
+    bh_pm_query_request_v1_t bad_query = {
+        .abi_version = BH_PM_INTERFACE_VERSION_V1 + 1,
+        .struct_size = sizeof(bad_query),
+        .process_handle = resp.process_handle,
+    };
+    bh_pm_query_response_v1_t query_resp;
+    assert(bh_pm_handle_query_v1(&bad_query, &query_resp) ==
+           BHARAT_IPC_STATUS_ERR_INVALID);
+
+    bh_pm_wait_request_v1_t bad_wait = {
+        .abi_version = BH_PM_INTERFACE_VERSION_V1,
+        .struct_size = sizeof(bad_wait),
+        .process_handle = resp.process_handle,
+        .wait_flags = UINT32_MAX,
+    };
+    bh_pm_wait_response_v1_t wait_resp;
+    assert(bh_pm_handle_wait_v1(&bad_wait, &wait_resp) ==
+           BHARAT_IPC_STATUS_ERR_INVALID);
+
+    bad_wait.wait_flags = 0;
+    assert(bh_pm_handle_wait_v1(&bad_wait, &wait_resp) ==
+           BHARAT_IPC_STATUS_ERR_UNSUPPORTED);
 
     printf("test_spawn_rollback_failures passed!\n");
 }

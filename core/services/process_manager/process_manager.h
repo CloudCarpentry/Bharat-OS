@@ -79,10 +79,6 @@ typedef struct {
     uint32_t affinity_mask;
     uint32_t memory_profile;
 
-    // Waiter tracking for WAIT
-    bool has_waiter;
-    uint32_t waiter_flags;
-    uint32_t waiter_timeout_ms;
 } bh_pm_process_v1_t;
 
 // Executable image registration
