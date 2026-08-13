@@ -2,11 +2,10 @@
 title: Orthogonal userspace runtime model and canonical root selection
 status: Accepted
 owner: Userspace Architecture Team
-last_updated: '2024-01-01'
+last_updated: "2026-08-08"
 tags:
-- doc
-see_also:
-- none
+  - docs
+see_also: []
 ---
 
 # ADR-021: Orthogonal userspace runtime model and canonical root selection

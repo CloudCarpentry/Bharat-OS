@@ -2,11 +2,10 @@
 title: Userspace Runtime Models and Root Bootstrap
 status: Draft
 owner: Userspace Architecture Team
-last_updated: '2024-01-01'
+last_updated: "2026-08-08"
 tags:
-- doc
-see_also:
-- none
+  - docs
+see_also: []
 ---
 
 # Userspace runtime models
@@ -22,12 +21,12 @@ The first three dimensions prove mechanisms and constraints. The fourth selects
 userspace lifecycle policy. It is never inferred from architecture, device class,
 scheduler profile, MMU/MMU-Lite/MPU selection, personality, or discovered hardware.
 
-| Model | Authoritative root | Lifecycle owner | Direct acceptance evidence |
-|---|---|---|---|
-| `direct` | `experience/user/apps/user_smoke` | application | `USER_SMOKE_ENTERED`, `STARTUP_ABI_OK`, `SYSCALL_OK`, `USER_SMOKE_COMPLETE` |
-| `static` | `core/services/core/rt-supervisor` | deterministic static supervisor | `RT_SUPERVISOR: ENTERED`, `RT_RUNTIME: STABLE` |
-| `light` | `core/services/core/init-lite` | bounded lightweight supervisor | `INIT_LITE: ENTERED`, `LIGHT_RUNTIME: STABLE` |
-| `full` | existing `core/services/core/init` | normal managed service environment | existing init/handoff/service-graph evidence |
+| Model    | Authoritative root                 | Lifecycle owner                    | Direct acceptance evidence                                                  |
+| -------- | ---------------------------------- | ---------------------------------- | --------------------------------------------------------------------------- |
+| `direct` | `experience/user/apps/user_smoke`  | application                        | `USER_SMOKE_ENTERED`, `STARTUP_ABI_OK`, `SYSCALL_OK`, `USER_SMOKE_COMPLETE` |
+| `static` | `core/services/core/rt-supervisor` | deterministic static supervisor    | `RT_SUPERVISOR: ENTERED`, `RT_RUNTIME: STABLE`                              |
+| `light`  | `core/services/core/init-lite`     | bounded lightweight supervisor     | `INIT_LITE: ENTERED`, `LIGHT_RUNTIME: STABLE`                               |
+| `full`   | existing `core/services/core/init` | normal managed service environment | existing init/handoff/service-graph evidence                                |
 
 ## Configuration and packaging flow
 

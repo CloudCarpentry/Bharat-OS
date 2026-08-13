@@ -1,14 +1,15 @@
 ---
 title: Boot_Evidence_Contract
 status: Draft
-owner: Team
-last_updated: '2024-01-01'
+owner: Docs Team
+last_updated: "2026-08-08"
 tags:
-- doc
-see_also:
-- none
+  - docs
+see_also: []
 ---
+
 <!-- SPDX-License-Identifier: MIT -->
+
 # Boot evidence contract v1
 
 The ordered stages are `BOOT_KERNEL_ENTRY`, `BOOT_PLATFORM_READY`, `BOOT_MEMORY_READY`, `BOOT_SCHEDULER_READY`, `BOOT_INIT_MODULE_FOUND`, `BOOT_INIT_ELF_VALIDATED`, `BOOT_INIT_SEGMENTS_MAPPED`, `BOOT_INIT_STACK_READY`, `BOOT_INIT_THREAD_CREATED`, `BOOT_INIT_THREAD_ENQUEUED`, `BOOT_USER_ENTRY_PREPARED`, `BOOT_USER_ENTRY_ATTEMPTED`, `BOOT_USERSPACE_REACHED`, `BOOT_SERVICE_HANDOFF`, and `BOOT_COMPLETE`. Results are `NOT_OBSERVED`, `STARTED`, `SUCCEEDED`, `FAILED`, and `SKIPPED`.

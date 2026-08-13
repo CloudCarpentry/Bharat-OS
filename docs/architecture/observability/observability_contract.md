@@ -1,14 +1,15 @@
 ---
 title: Observability_Contract
 status: Draft
-owner: Team
-last_updated: '2024-01-01'
+owner: Docs Team
+last_updated: "2026-08-08"
 tags:
-- doc
-see_also:
-- none
+  - docs
+see_also: []
 ---
+
 <!-- SPDX-License-Identifier: MIT -->
+
 # Observability contract v1
 
 Diagnostics are optional mechanisms, never a correctness dependency. The pointer-free UAPI header is 40 bytes and carries explicit ABI/header/payload sizes, severity, source kind, source/CPU/subsystem identifiers, sequence, and monotonic nanoseconds. Unknown event types are retained by compatible readers; unknown ABI versions fail closed.

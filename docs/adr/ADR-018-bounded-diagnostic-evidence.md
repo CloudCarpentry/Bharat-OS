@@ -1,14 +1,15 @@
 ---
 title: Adr 018 Bounded Diagnostic Evidence
 status: Draft
-owner: Team
-last_updated: '2024-01-01'
+owner: Docs Team
+last_updated: "2026-08-08"
 tags:
-- doc
-see_also:
-- none
+  - docs
+see_also: []
 ---
+
 <!-- SPDX-License-Identifier: MIT -->
+
 # ADR-018: Bounded diagnostic evidence
 
 - Status: Accepted
