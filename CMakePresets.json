@@ -48,6 +48,13 @@
       "cacheVariables": { "BHARAT_ENABLE_BENCHMARKS": "ON" }
     },
     {
+      "name": "x86_64-hmem-demo",
+      "inherits": "x86_64-qemu-desktop-release",
+      "displayName": "x86_64 HMEM Demo (Release)",
+      "binaryDir": "${sourceDir}/build/x86_64-hmem-demo",
+      "cacheVariables": { "BHARAT_ENABLE_BENCHMARKS": "OFF" }
+    },
+    {
       "name": "host-test",
       "displayName": "Host Tests (Debug)",
       "description": "Host build for tests on Linux using Clang",
@@ -250,6 +257,13 @@
       "cacheVariables": { "BHARAT_ENABLE_BENCHMARKS": "ON" }
     },
     {
+      "name": "arm64-hmem-demo",
+      "inherits": "arm64-edge",
+      "displayName": "ARM64 HMEM Demo (Release)",
+      "binaryDir": "${sourceDir}/build/arm64-hmem-demo",
+      "cacheVariables": { "BHARAT_ENABLE_BENCHMARKS": "OFF" }
+    },
+    {
       "name": "host-test-valgrind",
       "displayName": "Host Environment for Valgrind",
       "description": "Build host tests configured optimally for Valgrind analysis",
@@ -296,6 +310,13 @@
       "displayName": "RISC-V 64 HMEM Benchmark (Release)",
       "binaryDir": "${sourceDir}/build/riscv64-hmem-bench-release",
       "cacheVariables": { "BHARAT_ENABLE_BENCHMARKS": "ON" }
+    },
+    {
+      "name": "riscv64-hmem-demo",
+      "inherits": "riscv64-edge",
+      "displayName": "RISC-V 64 HMEM Demo (Release)",
+      "binaryDir": "${sourceDir}/build/riscv64-hmem-demo",
+      "cacheVariables": { "BHARAT_ENABLE_BENCHMARKS": "OFF" }
     },
     {
       "name": "arm32-edge",
@@ -939,6 +960,18 @@
     {
       "name": "x86_64-hmem-bench-release",
       "configurePreset": "x86_64-hmem-bench-release"
+    },
+    {
+      "name": "x86_64-hmem-demo",
+      "configurePreset": "x86_64-hmem-demo"
+    },
+    {
+      "name": "arm64-hmem-demo",
+      "configurePreset": "arm64-hmem-demo"
+    },
+    {
+      "name": "riscv64-hmem-demo",
+      "configurePreset": "riscv64-hmem-demo"
     },
     {
       "name": "host-test",

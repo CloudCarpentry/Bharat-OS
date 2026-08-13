@@ -45,21 +45,21 @@ nirmaan.bat doctor
 
 ```powershell
 # Windows PowerShell
-.\nirmaan.ps1 all --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml --smoke
-.\nirmaan.ps1 all --target-yaml delivery/targets/qemu/x86_64_desktop_gui.yaml --interactive
-.\nirmaan.ps1 all --target-yaml delivery/targets/qemu/arm64_desktop_headless.yaml --smoke
-.\nirmaan.ps1 all --target-yaml delivery/targets/qemu/arm64_desktop_gui.yaml --interactive
-.\nirmaan.ps1 all --target-yaml delivery/targets/qemu/riscv64_desktop_headless.yaml --smoke
+.\nirmaan.ps1 build --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml --smoke
+.\nirmaan.ps1 build --target-yaml delivery/targets/qemu/x86_64_desktop_gui.yaml
+.\nirmaan.ps1 build --target-yaml delivery/targets/qemu/arm64_desktop_headless.yaml --smoke
+.\nirmaan.ps1 build --target-yaml delivery/targets/qemu/arm64_desktop_gui.yaml
+.\nirmaan.ps1 build --target-yaml delivery/targets/qemu/riscv64_desktop_headless.yaml --smoke
 .\nirmaan.ps1 run --target-yaml delivery/targets/qemu/riscv64_desktop_gui.yaml --interactive
-.\nirmaan.ps1 all --target-yaml delivery/targets/qemu/arm32_mmu_lite_headless.yaml --smoke
-.\nirmaan.ps1 all --target-yaml delivery/targets/qemu/riscv32_mmu_lite_headless.yaml --smoke
+.\nirmaan.ps1 build --target-yaml delivery/targets/qemu/arm32_mmu_lite_headless.yaml --smoke
+.\nirmaan.ps1 build --target-yaml delivery/targets/qemu/riscv32_mmu_lite_headless.yaml --smoke
 # MPU-Only Headless (RTOS Profile)
-.\nirmaan.ps1 all --target-yaml delivery/targets/qemu/arm32_rtos_mpu_headless.yaml --smoke
-.\nirmaan.ps1 all --target-yaml delivery/targets/qemu/riscv32_rtos_mpu_headless.yaml --smoke
+.\nirmaan.ps1 build --target-yaml delivery/targets/qemu/arm32_rtos_mpu_headless.yaml --smoke
+.\nirmaan.ps1 build --target-yaml delivery/targets/qemu/riscv32_rtos_mpu_headless.yaml --smoke
 # 64-bit MMU-Lite RTOS Headless
-.\nirmaan.ps1 all --target-yaml delivery/targets/qemu/arm64_rtos_mmu_lite_headless.yaml --smoke
-.\nirmaan.ps1 all --target-yaml delivery/targets/qemu/riscv64_rtos_mmu_lite_headless.yaml --smoke
-.\nirmaan.ps1 all --target-yaml delivery/targets/qemu/x86_64_rtos_mmu_lite_headless.yaml --smoke
+.\nirmaan.ps1 build --target-yaml delivery/targets/qemu/arm64_rtos_mmu_lite_headless.yaml --smoke
+.\nirmaan.ps1 build --target-yaml delivery/targets/qemu/riscv64_rtos_mmu_lite_headless.yaml --smoke
+.\nirmaan.ps1 build --target-yaml delivery/targets/qemu/x86_64_rtos_mmu_lite_headless.yaml --smoke
 ```
 
 ### One-shot run commands
@@ -71,7 +71,42 @@ nirmaan.bat doctor
 ```
 
 > [!NOTE] The `nirmaan` CLI mirrors the functionality of the legacy `build` wrappers; it forwards to `tools/build.py` internally.
+
+> **Tip:** `--interactive` is a flag for the `run` subcommand only. When using `build`, omit `--interactive`.
+
+### Running the HMEM demo
+
+After building the demo image, you can launch it interactively for a specific architecture:
+
+```powershell
+# x86_64
+.\\nirmaan.ps1 run --target-yaml delivery/targets/qemu/x86_64_hmem_demo.yaml --interactive
+# arm64
+.\\nirmaan.ps1 run --target-yaml delivery/targets/qemu/arm64_hmem_demo.yaml --interactive
+# riscv64
+.\\nirmaan.ps1 run --target-yaml delivery/targets/qemu/riscv64_hmem_demo.yaml --interactive
 ```
+
+Use `--headless` instead of `--interactive` for a non‑GUI execution.
+
+
+### HMEM base demo
+
+The HMEM demo showcases heterogeneous memory support in QEMU. It builds a minimal kernel+userspace image and runs a benchmark that allocates memory from both DRAM and simulated HBM.
+
+```powershell
+# Build the demo image for each architecture
+.\nirmaan.ps1 build --target-yaml delivery/targets/qemu/x86_64_hmem_demo.yaml --smoke
+.\nirmaan.ps1 build --target-yaml delivery/targets/qemu/arm64_hmem_demo.yaml --smoke
+.\nirmaan.ps1 build --target-yaml delivery/targets/qemu/riscv64_hmem_demo.yaml --smoke
+
+# Run the demo (interactive QEMU window) for each architecture
+.\nirmaan.ps1 run --target-yaml delivery/targets/qemu/x86_64_hmem_demo.yaml --interactive
+.\nirmaan.ps1 run --target-yaml delivery/targets/qemu/arm64_hmem_demo.yaml --interactive
+.\nirmaan.ps1 run --target-yaml delivery/targets/qemu/riscv64_hmem_demo.yaml --interactive
+```
+
+> **Note:** The demo requires QEMU version ≥ 8.0 with `-machine memdev` support and the `hmem` device enabled. Ensure the `examples/hmem_demo/` directory is present in the repository (added by this change).
 
 ## 1) Legacy tool entrypoints and command model
 

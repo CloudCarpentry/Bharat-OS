@@ -596,14 +596,14 @@ add_custom_command(
 # Extract offsets using the python script
 add_custom_command(
     OUTPUT "${ASM_OFFSETS_H}"
-    COMMAND python3 ${CMAKE_SOURCE_DIR}/tools/abi/asm_offsets.py "${ASM_OFFSETS_DIR}/gen_asm_offsets.s" "${ASM_OFFSETS_H}"
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/abi/asm_offsets.py "${ASM_OFFSETS_DIR}/gen_asm_offsets.s" "${ASM_OFFSETS_H}"
     DEPENDS "${ASM_OFFSETS_DIR}/gen_asm_offsets.s" "${CMAKE_SOURCE_DIR}/tools/abi/asm_offsets.py"
     COMMENT "Generating ${ASM_OFFSETS_H}"
 )
 
 add_custom_target(generate_asm_offsets DEPENDS "${ASM_OFFSETS_H}")
 add_custom_target(check_trap_frame_abi
-    COMMAND python3 ${CMAKE_SOURCE_DIR}/tools/abi/test_trap_frame_abi.py
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/abi/test_trap_frame_abi.py
             "${ASM_OFFSETS_H}"
             ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/trap_entry.S
             ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/trap_entry.S
@@ -615,7 +615,7 @@ add_custom_target(check_trap_frame_abi
     COMMENT "Checking five-architecture trap frame ABI"
 )
 add_custom_target(check_context_frame_abi
-    COMMAND python3 ${CMAKE_SOURCE_DIR}/tools/abi/test_context_frame_abi.py
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/abi/test_context_frame_abi.py
             "${ASM_OFFSETS_H}"
             ${BHARAT_ARCH_ROOT}/x86/x86_64/context_switch.S
             ${BHARAT_ARCH_ROOT}/arm/arm64/context_switch.S
