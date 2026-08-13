@@ -53,13 +53,26 @@ Build, package, and run the dedicated 512 MiB x86_64 graphical target:
 python3 tools/build.py run --target-yaml delivery/targets/qemu/x86_64_showcase_gui.yaml
 ```
 
-Expected serial milestones include `UI_NATIVE: SPLASH_VISIBLE` followed by
-`UI_NATIVE: HOME_VISIBLE`. The latter means the desktop launcher is visible.
+Expected serial milestones include `[gui] display-ready width=<w> height=<h>`
+and `[gui] first-frame-presented`. To prove pixels rather than only control-flow
+progress, run the visual gate:
+
+```bash
+python3 tools/test/qemu_gui_smoke.py \
+  --target delivery/targets/qemu/x86_64_showcase_gui.yaml
+```
+
+The harness retains the QMP screenshot and serial/QEMU logs under
+`build/x86_64-dev/artifacts/gui-smoke/`. It fails when the captured dimensions
+disagree with the broker-queried mode or when scanout is blank/uniform.
 
 ## Boundaries and limitations
 
-- The native showcase still uses simulated display-broker IPC and an off-screen
-  buffer; this target does not yet prove virtio-gpu scanout.
+- The native showcase now exercises display-broker v2 session, lease, surface,
+  buffer, and present operations. Its client mapping is still process-local
+  until kernel-mediated shared-buffer mapping and the x86_64 scanout backend are
+  complete; consequently the visual smoke gate is expected to expose, rather
+  than conceal, a uniform or stale QEMU scanout.
 - Input-manager event draining is wired, but the showcase stub returns no physical
   events until it is replaced by the QEMU input service connection.
 - Runtime data is intentionally injected through a provider. The UI never reads

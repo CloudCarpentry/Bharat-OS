@@ -38,10 +38,12 @@ proof that QEMU received pixels. GUI-002 must therefore reject a uniform
 screenshot even when the marker is present. The architecture must not be bypassed
 with a raw framebuffer pointer.
 
-## GUI-002 — QEMU visual smoke harness (next P0)
+## GUI-002 — QEMU visual smoke harness (implemented; visual gate pending)
 
-Add `tools/test/qemu_gui_smoke.py` with the canonical target
-`delivery/targets/qemu/x86_64_showcase_gui.yaml` as its default.
+`tools/test/qemu_gui_smoke.py` uses the canonical target
+`delivery/targets/qemu/x86_64_showcase_gui.yaml` as its default. The host unit
+suite covers command construction, marker timeout and parsing, malformed PPM,
+dimension mismatch, uniform and successful frames, and forced termination.
 
 1. Validate and build exclusively from the target YAML.
 2. Start QEMU with a serial log and a private QMP socket.
