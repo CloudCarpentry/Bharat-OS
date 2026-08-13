@@ -10,8 +10,17 @@
 
 static vfs_node_t* walk_path_relative(vfs_node_t* start_node, const char* path);
 
-static vfs_file_t g_open_files[VFS_MAX_OPEN_FILES];
-static uint32_t g_open_files_lock = 0;
+#define MAX_PROCESSES 128
+typedef struct {
+    vfs_file_t files[VFS_MAX_OPEN_FILES];
+    uint32_t lock;
+} process_fd_table_t;
+static process_fd_table_t g_proc_fd_tables[MAX_PROCESSES];
+static process_fd_table_t* get_proc_fd_table(capability_t* cap) {
+    if (!cap) return &g_proc_fd_tables[0];
+    uint32_t pid = cap->capability_id % MAX_PROCESSES;
+    return &g_proc_fd_tables[pid];
+}
 
 static int vfs_cap_allows_file(vfs_file_t* entry, capability_t* caller_cap, uint32_t required_rights) {
     if (!entry || !entry->node || !caller_cap) return 0;
@@ -98,33 +107,34 @@ static int do_open_node(vfs_node_t *node, int flags, capability_t* caller_cap, i
         return -6; // EROFS
     }
 
-    while (__atomic_test_and_set(&g_open_files_lock, __ATOMIC_ACQUIRE)) {}
+    process_fd_table_t* table = get_proc_fd_table(caller_cap);
+    while (__atomic_test_and_set(&table->lock, __ATOMIC_ACQUIRE)) {}
     for (size_t i = 0; i < VFS_MAX_OPEN_FILES; ++i) {
-        if (!g_open_files[i].in_use) {
-            g_open_files[i].in_use = 1;
+        if (!table->files[i].in_use) {
+            table->files[i].in_use = 1;
             found_slot = (int)i;
             break;
         }
     }
-    __atomic_clear(&g_open_files_lock, __ATOMIC_RELEASE);
+    __atomic_clear(&table->lock, __ATOMIC_RELEASE);
 
     if (found_slot == -1) return -4;
 
     size_t i = found_slot;
-    g_open_files[i].flags = flags;
-    g_open_files[i].offset = 0;
-    g_open_files[i].node = node;
-    g_open_files[i].private_data = NULL; // initialize to prevent random free
+    table->files[i].flags = flags;
+    table->files[i].offset = 0;
+    table->files[i].node = node;
+    table->files[i].private_data = NULL; // initialize to prevent random free
 
     if (node->ops && node->ops->open) {
-        if (node->ops->open(node, &g_open_files[i], flags) != 0) {
-            g_open_files[i].node = NULL;
-            __atomic_store_n(&g_open_files[i].in_use, 0, __ATOMIC_RELEASE);
+        if (node->ops->open(node, &table->files[i], flags) != 0) {
+            table->files[i].node = NULL;
+            __atomic_store_n(&table->files[i].in_use, 0, __ATOMIC_RELEASE);
             return -5;
         }
     }
 
-    g_open_files[i].handle_cap = *caller_cap;
+    table->files[i].handle_cap = *caller_cap;
     *out_fd = (int)i;
     return 0;
 }
@@ -145,7 +155,8 @@ int fsd_openat_file(int dirfd, const char* path, int flags, capability_t* caller
         if (!dir_node) return -2;
     } else {
         if (dirfd < 0 || dirfd >= VFS_MAX_OPEN_FILES) return -1;
-        vfs_file_t *dir_entry = &g_open_files[dirfd];
+        process_fd_table_t* table = get_proc_fd_table(caller_cap);
+        vfs_file_t *dir_entry = &table->files[dirfd];
         if (!dir_entry->in_use || !dir_entry->node) return -2;
         dir_node = dir_entry->node;
     }
@@ -195,7 +206,8 @@ int vfs_open(const char* path, int flags) {
 
 int fsd_read_file(int fd, void* buffer, size_t size, capability_t* caller_cap) {
     if (fd < 0 || fd >= VFS_MAX_OPEN_FILES || !caller_cap) return -1;
-    vfs_file_t *entry = &g_open_files[fd];
+    process_fd_table_t* table = get_proc_fd_table(caller_cap);
+    vfs_file_t *entry = &table->files[fd];
     if (!entry->in_use || !entry->node || !entry->node->ops || !entry->node->ops->read) return -2;
     if ((entry->flags & VFS_OPEN_READ) == 0) return -3;
     if (!vfs_cap_allows_file(entry, caller_cap, 1)) return -4;
@@ -207,13 +219,14 @@ int fsd_read_file(int fd, void* buffer, size_t size, capability_t* caller_cap) {
 
 int vfs_read(int fd, void* buffer, size_t size) {
     capability_t dummy_cap = {0};
-    if (fd >= 0 && fd < VFS_MAX_OPEN_FILES) dummy_cap = g_open_files[fd].handle_cap;
+    if (fd >= 0 && fd < VFS_MAX_OPEN_FILES) dummy_cap = get_proc_fd_table(NULL)->files[fd].handle_cap;
     return fsd_read_file(fd, buffer, size, &dummy_cap);
 }
 
 int fsd_write_file(int fd, const void* buffer, size_t size, capability_t* caller_cap) {
     if (fd < 0 || fd >= VFS_MAX_OPEN_FILES || !caller_cap) return -1;
-    vfs_file_t *entry = &g_open_files[fd];
+    process_fd_table_t* table = get_proc_fd_table(caller_cap);
+    vfs_file_t *entry = &table->files[fd];
     if (!entry->in_use || !entry->node || !entry->node->ops || !entry->node->ops->write) return -2;
     if ((entry->flags & VFS_OPEN_WRITE) == 0) return -3;
     if (!vfs_cap_allows_file(entry, caller_cap, 2)) return -4;
@@ -225,13 +238,14 @@ int fsd_write_file(int fd, const void* buffer, size_t size, capability_t* caller
 
 int vfs_write(int fd, const void* buffer, size_t size) {
     capability_t dummy_cap = {0};
-    if (fd >= 0 && fd < VFS_MAX_OPEN_FILES) dummy_cap = g_open_files[fd].handle_cap;
+    if (fd >= 0 && fd < VFS_MAX_OPEN_FILES) dummy_cap = get_proc_fd_table(NULL)->files[fd].handle_cap;
     return fsd_write_file(fd, buffer, size, &dummy_cap);
 }
 
 int fsd_close_file(int fd, capability_t* caller_cap) {
     if (fd < 0 || fd >= VFS_MAX_OPEN_FILES || !caller_cap) return -1;
-    vfs_file_t *entry = &g_open_files[fd];
+    process_fd_table_t* table = get_proc_fd_table(caller_cap);
+    vfs_file_t *entry = &table->files[fd];
     if (!entry->in_use) return -2;
     if (!vfs_cap_allows_file(entry, caller_cap, 0)) return -4;
 
@@ -247,49 +261,56 @@ int fsd_close_file(int fd, capability_t* caller_cap) {
 
 int vfs_close(int fd) {
     capability_t dummy_cap = {0};
-    if (fd >= 0 && fd < VFS_MAX_OPEN_FILES) dummy_cap = g_open_files[fd].handle_cap;
+    if (fd >= 0 && fd < VFS_MAX_OPEN_FILES) dummy_cap = get_proc_fd_table(NULL)->files[fd].handle_cap;
     return fsd_close_file(fd, &dummy_cap);
 }
 
 #ifdef TESTING
 void vfs_file_test_reset_state(void) {
     for (int i = 0; i < VFS_MAX_OPEN_FILES; i++) {
-        g_open_files[i].in_use = 0;
-        g_open_files[i].node = NULL;
-        g_open_files[i].private_data = NULL;
+        get_proc_fd_table(NULL)->files[i].in_use = 0;
+        get_proc_fd_table(NULL)->files[i].node = NULL;
+        get_proc_fd_table(NULL)->files[i].private_data = NULL;
     }
-    g_open_files_lock = 0;
+    get_proc_fd_table(NULL)->lock = 0;
 }
 #endif
 
-int fsd_lseek_file(int fd, uint64_t offset, int whence, capability_t* caller_cap) {
+int64_t fsd_lseek_file(int fd, int64_t offset, int whence, capability_t* caller_cap) {
     if (fd < 0 || fd >= VFS_MAX_OPEN_FILES || !caller_cap) return -1;
-    vfs_file_t *entry = &g_open_files[fd];
+    process_fd_table_t* table = get_proc_fd_table(caller_cap);
+    vfs_file_t *entry = &table->files[fd];
     if (!entry->in_use || !entry->node) return -2;
     // Allow read or write rights for seek
     if (!vfs_cap_allows_file(entry, caller_cap, 1) && !vfs_cap_allows_file(entry, caller_cap, 2)) return -4;
 
+    int64_t new_offset = 0;
     if (whence == 0) { // SEEK_SET
-        __atomic_store_n(&entry->offset, offset, __ATOMIC_RELAXED);
+        new_offset = offset;
     } else if (whence == 1) { // SEEK_CUR
-        __atomic_add_fetch(&entry->offset, offset, __ATOMIC_RELAXED);
+        new_offset = (int64_t)__atomic_load_n(&entry->offset, __ATOMIC_RELAXED) + offset;
     } else if (whence == 2) { // SEEK_END
-        __atomic_store_n(&entry->offset, entry->node->size + offset, __ATOMIC_RELAXED);
+        new_offset = (int64_t)entry->node->size + offset;
     } else {
         return -5;
     }
-    return 0;
+
+    if (new_offset < 0) return -6; // EINVAL
+
+    __atomic_store_n(&entry->offset, (uint64_t)new_offset, __ATOMIC_RELAXED);
+    return new_offset;
 }
 
-int vfs_lseek(int fd, uint64_t offset, int whence) {
+int64_t vfs_lseek(int fd, int64_t offset, int whence) {
     capability_t dummy_cap = {0};
-    if (fd >= 0 && fd < VFS_MAX_OPEN_FILES) dummy_cap = g_open_files[fd].handle_cap;
+    if (fd >= 0 && fd < VFS_MAX_OPEN_FILES) dummy_cap = get_proc_fd_table(NULL)->files[fd].handle_cap;
     return fsd_lseek_file(fd, offset, whence, &dummy_cap);
 }
 
 int fsd_fstat_file(int fd, void* stat_buf, capability_t* caller_cap) {
     if (fd < 0 || fd >= VFS_MAX_OPEN_FILES || !caller_cap) return -1;
-    vfs_file_t *entry = &g_open_files[fd];
+    process_fd_table_t* table = get_proc_fd_table(caller_cap);
+    vfs_file_t *entry = &table->files[fd];
     if (!entry->in_use || !entry->node) return -2;
     if (!vfs_cap_allows_file(entry, caller_cap, 1)) return -4;
 
@@ -301,40 +322,39 @@ int fsd_fstat_file(int fd, void* stat_buf, capability_t* caller_cap) {
 
 int vfs_fstat(int fd, void* stat_buf) {
     capability_t dummy_cap = {0};
-    if (fd >= 0 && fd < VFS_MAX_OPEN_FILES) dummy_cap = g_open_files[fd].handle_cap;
+    if (fd >= 0 && fd < VFS_MAX_OPEN_FILES) dummy_cap = get_proc_fd_table(NULL)->files[fd].handle_cap;
     return fsd_fstat_file(fd, stat_buf, &dummy_cap);
 }
 
 void split_path(const char* full_path, char* parent_path, char* leaf_name, size_t max_len);
 
-int vfs_mkdir(const char* path, int mode) {
+int vfs_mkdir(const char* path, int mode, capability_t* caller_cap) {
     (void)mode;
     char parent_path[256];
     char leaf_name[256];
 
     split_path(path, parent_path, leaf_name, sizeof(parent_path));
 
-    capability_t dummy_cap = {0};
-    dummy_cap.rights_mask = 3; // Need write right
-    vfs_node_t *mount_root = vfs_resolve_mount_path(parent_path, &dummy_cap);
+    vfs_node_t *mount_root = vfs_resolve_mount_path(parent_path, caller_cap);
     if (!mount_root) return -1;
 
     // Walk relative to mount root
     vfs_node_t *dir = walk_path_relative(mount_root, parent_path);
     if (!dir || !dir->ops || !dir->ops->create) return -1;
 
+    // Basic authorization check - ideally through capabilities hook
+    // We assume dir has adequate rights if the mount path resolved.
+
     return dir->ops->create(dir, leaf_name, 0x10); // 0x10 for dir as used in ramfs
 }
 
-int vfs_unlink(const char* path) {
+int vfs_unlink(const char* path, capability_t* caller_cap) {
     char parent_path[256];
     char leaf_name[256];
 
     split_path(path, parent_path, leaf_name, sizeof(parent_path));
 
-    capability_t dummy_cap = {0};
-    dummy_cap.rights_mask = 3;
-    vfs_node_t *mount_root = vfs_resolve_mount_path(parent_path, &dummy_cap);
+    vfs_node_t *mount_root = vfs_resolve_mount_path(parent_path, caller_cap);
     if (!mount_root) return -1;
 
     // Walk relative to mount root
@@ -344,10 +364,12 @@ int vfs_unlink(const char* path) {
     return dir->ops->remove(dir, leaf_name);
 }
 
-struct dirent* vfs_readdir(int fd, uint32_t index) {
+struct dirent* vfs_readdir(int fd, uint32_t index, capability_t* caller_cap) {
     if (fd < 0 || fd >= VFS_MAX_OPEN_FILES) return NULL;
-    vfs_file_t *entry = &g_open_files[fd];
+    process_fd_table_t* table = get_proc_fd_table(caller_cap);
+    vfs_file_t *entry = &table->files[fd];
     if (!entry->in_use || !entry->node) return NULL;
+    if (!vfs_cap_allows_file(entry, caller_cap, 1)) return NULL;
 
     if (entry->node->ops && entry->node->ops->readdir) {
         return entry->node->ops->readdir(entry, index);
@@ -357,27 +379,28 @@ struct dirent* vfs_readdir(int fd, uint32_t index) {
 
 int vfs_dup(int oldfd) {
     if (oldfd < 0 || oldfd >= VFS_MAX_OPEN_FILES) return -1;
-    vfs_file_t *old_entry = &g_open_files[oldfd];
+    process_fd_table_t* table = get_proc_fd_table(NULL);
+    vfs_file_t *old_entry = &table->files[oldfd];
     if (!old_entry->in_use) return -2;
 
     int new_slot = -1;
-    while (__atomic_test_and_set(&g_open_files_lock, __ATOMIC_ACQUIRE)) {}
+    while (__atomic_test_and_set(&table->lock, __ATOMIC_ACQUIRE)) {}
     for (size_t i = 0; i < VFS_MAX_OPEN_FILES; ++i) {
-        if (!g_open_files[i].in_use) {
-            g_open_files[i].in_use = 1;
+        if (!table->files[i].in_use) {
+            table->files[i].in_use = 1;
             new_slot = (int)i;
             break;
         }
     }
-    __atomic_clear(&g_open_files_lock, __ATOMIC_RELEASE);
+    __atomic_clear(&table->lock, __ATOMIC_RELEASE);
 
     if (new_slot == -1) return -4;
 
-    g_open_files[new_slot] = *old_entry;
+    table->files[new_slot] = *old_entry;
     // We shouldn't share private_data between duplicated descriptors since it contains the dirent.
     // Or we should manage reference counting for node and private_data.
     // For now, don't copy private data or set it to NULL.
-    g_open_files[new_slot].private_data = NULL;
+    table->files[new_slot].private_data = NULL;
 
     return new_slot;
 }
@@ -391,11 +414,12 @@ int vfs_pipe(int pipefd[2]) {
     if (fs_pipe_create(&rnode, &wnode) != 0) return -1;
 
     int rfd = -1, wfd = -1;
-    while (__atomic_test_and_set(&g_open_files_lock, __ATOMIC_ACQUIRE)) {}
+    process_fd_table_t* table = get_proc_fd_table(NULL);
+    while (__atomic_test_and_set(&table->lock, __ATOMIC_ACQUIRE)) {}
 
     for (size_t i = 0; i < VFS_MAX_OPEN_FILES; ++i) {
-        if (!g_open_files[i].in_use) {
-            g_open_files[i].in_use = 1;
+        if (!table->files[i].in_use) {
+            table->files[i].in_use = 1;
             rfd = (int)i;
             break;
         }
@@ -403,8 +427,8 @@ int vfs_pipe(int pipefd[2]) {
 
     if (rfd != -1) {
         for (size_t i = 0; i < VFS_MAX_OPEN_FILES; ++i) {
-            if (!g_open_files[i].in_use) {
-                g_open_files[i].in_use = 1;
+            if (!table->files[i].in_use) {
+                table->files[i].in_use = 1;
                 wfd = (int)i;
                 break;
             }
@@ -412,23 +436,23 @@ int vfs_pipe(int pipefd[2]) {
     }
 
     if (rfd == -1 || wfd == -1) {
-        if (rfd != -1) g_open_files[rfd].in_use = 0;
-        if (wfd != -1) g_open_files[wfd].in_use = 0;
-        __atomic_clear(&g_open_files_lock, __ATOMIC_RELEASE);
+        if (rfd != -1) table->files[rfd].in_use = 0;
+        if (wfd != -1) table->files[wfd].in_use = 0;
+        __atomic_clear(&table->lock, __ATOMIC_RELEASE);
         return -4; // EMFILE
     }
 
-    g_open_files[rfd].flags = VFS_OPEN_READ;
-    g_open_files[rfd].offset = 0;
-    g_open_files[rfd].node = rnode;
-    g_open_files[rfd].private_data = NULL;
+    table->files[rfd].flags = VFS_OPEN_READ;
+    table->files[rfd].offset = 0;
+    table->files[rfd].node = rnode;
+    table->files[rfd].private_data = NULL;
 
-    g_open_files[wfd].flags = VFS_OPEN_WRITE;
-    g_open_files[wfd].offset = 0;
-    g_open_files[wfd].node = wnode;
-    g_open_files[wfd].private_data = NULL;
+    table->files[wfd].flags = VFS_OPEN_WRITE;
+    table->files[wfd].offset = 0;
+    table->files[wfd].node = wnode;
+    table->files[wfd].private_data = NULL;
 
-    __atomic_clear(&g_open_files_lock, __ATOMIC_RELEASE);
+    __atomic_clear(&table->lock, __ATOMIC_RELEASE);
 
     pipefd[0] = rfd;
     pipefd[1] = wfd;

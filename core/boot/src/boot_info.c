@@ -164,6 +164,8 @@ int boot_info_finalize(boot_info_t *bi) {
     bi->device_profile = 2; // RTOS
 #elif defined(BHARAT_PROFILE_EDGE)
     bi->device_profile = 3; // EDGE
+#elif defined(BHARAT_PROFILE_CLOUD_VM_BASE) || defined(BHARAT_PROFILE_CLOUD_AWS_NITRO) || defined(BHARAT_PROFILE_CLOUD_AZURE_HYPERV) || defined(BHARAT_PROFILE_CLOUD_GCP_KVM)
+    bi->device_profile = 4; // CLOUD_VM
 #else
     bi->device_profile = 0;
 #endif
