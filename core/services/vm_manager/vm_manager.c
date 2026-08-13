@@ -81,19 +81,27 @@ static const bh_vm_authority_ops_t g_default_authority_ops = {
 
 /* Service-local adapter selection; configured during single-threaded startup. */
 static bh_vm_authority_ops_t g_authority_ops;
+static bool g_authority_ops_installed;
 
 int32_t bh_vm_set_authority_ops(const bh_vm_authority_ops_t *ops) {
     if (!ops) {
         g_authority_ops = g_default_authority_ops;
-        return BHARAT_IPC_STATUS_OK;
+        g_authority_ops_installed = false;
+        return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
     }
     if (!ops->space_create || !ops->space_destroy || !ops->map ||
         !ops->unmap || !ops->protect || !ops->query) {
         g_authority_ops = g_default_authority_ops;
+        g_authority_ops_installed = false;
         return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
     }
     g_authority_ops = *ops;
+    g_authority_ops_installed = true;
     return BHARAT_IPC_STATUS_OK;
+}
+
+bool bh_vm_authority_ops_installed(void) {
+    return g_authority_ops_installed;
 }
 
 int bh_vm_get_active_spaces_count(void) {
@@ -205,6 +213,7 @@ void vm_manager_init(void) {
     bh_user_handle_table_init(&g_vm_space_handle_table, g_vm_space_slots, MAX_SPACES);
     bh_user_handle_table_init(&g_vm_region_handle_table, g_vm_region_slots, MAX_REGIONS);
     g_authority_ops = g_default_authority_ops;
+    g_authority_ops_installed = false;
 }
 
 int32_t vm_manager_handle_map(const vm_req_map_t *req, vm_resp_map_t *resp) {

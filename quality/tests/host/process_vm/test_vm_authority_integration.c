@@ -49,6 +49,8 @@ static int32_t auth_query(void *ctx, bh_vm_kernel_space_ref_t ref, uint64_t vadd
 
 void test_vm_authority_integration_v1(void) {
     vm_manager_init();
+    assert(!bh_vm_authority_ops_installed());
+    assert(bh_vm_set_authority_ops(NULL) == BHARAT_IPC_STATUS_ERR_UNSUPPORTED);
 
     bh_vm_create_space_request_v1_t unsupported_req;
     memset(&unsupported_req, 0, sizeof(unsupported_req));
@@ -71,6 +73,7 @@ void test_vm_authority_integration_v1(void) {
         .query = auth_query
     };
     assert(bh_vm_set_authority_ops(&ops) == BHARAT_IPC_STATUS_OK);
+    assert(bh_vm_authority_ops_installed());
 
     g_mapped_count = 0;
     g_unmapped_count = 0;

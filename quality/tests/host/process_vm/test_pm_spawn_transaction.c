@@ -115,6 +115,8 @@ static int32_t track_reap_process(void *ctx, bh_pm_kernel_process_t *proc) {
 
 void test_spawn_rollback_failures(void) {
     process_manager_init();
+    assert(!bh_pm_kernel_ops_installed());
+    assert(bh_pm_set_kernel_ops(NULL) == BHARAT_IPC_STATUS_ERR_UNSUPPORTED);
 
     uint8_t elf_buf[1024];
     setup_test_elf(elf_buf, sizeof(elf_buf));
@@ -156,6 +158,7 @@ void test_spawn_rollback_failures(void) {
         .reap_process = track_reap_process
     };
     assert(bh_pm_set_kernel_ops(&ops) == BHARAT_IPC_STATUS_OK);
+    assert(bh_pm_kernel_ops_installed());
 
     // Test failure injection at each stage
     for (int fail_stage = 1; fail_stage <= 5; fail_stage++) {

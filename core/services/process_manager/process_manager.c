@@ -82,19 +82,27 @@ static const bh_pm_kernel_ops_t g_default_kernel_ops = {
 
 /* Service-local adapter selection; configured during single-threaded startup. */
 static bh_pm_kernel_ops_t g_kernel_ops;
+static bool g_kernel_ops_installed;
 
 int32_t bh_pm_set_kernel_ops(const bh_pm_kernel_ops_t *ops) {
     if (!ops) {
         g_kernel_ops = g_default_kernel_ops;
-        return BHARAT_IPC_STATUS_OK;
+        g_kernel_ops_installed = false;
+        return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
     }
     if (!ops->create_process || !ops->create_vm_space || !ops->realize_image ||
         !ops->start_process || !ops->request_terminate || !ops->reap_process) {
         g_kernel_ops = g_default_kernel_ops;
+        g_kernel_ops_installed = false;
         return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
     }
     g_kernel_ops = *ops;
+    g_kernel_ops_installed = true;
     return BHARAT_IPC_STATUS_OK;
+}
+
+bool bh_pm_kernel_ops_installed(void) {
+    return g_kernel_ops_installed;
 }
 
 void bh_pm_set_failure_injection(int fail_stage) {
@@ -202,6 +210,7 @@ void process_manager_init(void) {
 
     bh_user_handle_table_init(&g_pm_handle_table, g_pm_handle_slots, MAX_PROCESSES);
     g_kernel_ops = g_default_kernel_ops;
+    g_kernel_ops_installed = false;
     g_fail_stage = 0;
 }
 
