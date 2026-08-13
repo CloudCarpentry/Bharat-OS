@@ -21,7 +21,7 @@ It covers:
 
 We provide the `nirmaan` Developer CLI as the primary, high-productivity interface for managing builds and environment configurations.
 
-```bash
+````bash
 # Check the environment
 ./nirmaan doctor
 
@@ -60,7 +60,7 @@ nirmaan.bat doctor
 .\nirmaan.ps1 build --target-yaml delivery/targets/qemu/arm64_rtos_mmu_lite_headless.yaml --smoke
 .\nirmaan.ps1 build --target-yaml delivery/targets/qemu/riscv64_rtos_mmu_lite_headless.yaml --smoke
 .\nirmaan.ps1 build --target-yaml delivery/targets/qemu/x86_64_rtos_mmu_lite_headless.yaml --smoke
-```
+````
 
 ### One-shot run commands
 
@@ -88,7 +88,6 @@ After building the demo image, you can launch it interactively for a specific ar
 ```
 
 Use `--headless` instead of `--interactive` for a non‑GUI execution.
-
 
 ### HMEM base demo
 
@@ -356,6 +355,7 @@ Runtime command includes serial-first bring-up (`-nographic -monitor none -seria
 # PowerShell
 .\tools\build.ps1 all --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml --smoke
 .\tools\build.ps1 all --target-yaml delivery/targets/qemu/x86_64_desktop_gui.yaml --interactive
+.\tools\build.ps1 all --target-yaml delivery/targets/qemu/x86_64_showcase_gui.yaml --interactive
 .\tools\build.ps1 all --target-yaml delivery/targets/qemu/arm64_desktop_headless.yaml --smoke
 .\tools\build.ps1 all --target-yaml delivery/targets/qemu/arm64_desktop_gui.yaml --interactive
 .\tools\build.ps1 all --target-yaml delivery/targets/qemu/riscv64_desktop_headless.yaml --smoke
