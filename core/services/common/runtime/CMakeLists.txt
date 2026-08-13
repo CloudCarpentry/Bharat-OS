@@ -15,7 +15,7 @@ target_include_directories(bharat_service_runtime
 )
 
 target_link_libraries(bharat_service_runtime
-    PUBLIC
+    PRIVATE
     ipc
     bharat_libnamesvc
     bharat_freestanding

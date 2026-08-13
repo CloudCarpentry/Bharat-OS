@@ -111,12 +111,12 @@ void bh_pm_set_failure_injection(int fail_stage) {
 
 int bh_pm_register_executable(uint64_t handle, const uint8_t *bytes, size_t size) {
     if (handle == 0 || !bytes || size == 0) {
-        return -1;
+        return BHARAT_STATUS_ERR_NOT_FOUND;
     }
 
     for (int i = 0; i < MAX_EXECUTABLES; i++) {
         if (g_executables[i].in_use && g_executables[i].handle == handle) {
-            return -1;
+            return BHARAT_STATUS_ERR_INTERNAL;
         }
     }
 
@@ -129,7 +129,7 @@ int bh_pm_register_executable(uint64_t handle, const uint8_t *bytes, size_t size
             return 0;
         }
     }
-    return -1;
+    return BHARAT_STATUS_ERR_INTERNAL;
 }
 
 int bh_pm_get_active_count(void) {
