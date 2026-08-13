@@ -31,6 +31,21 @@ typedef struct {
     uint64_t usable_bits[(HAL_CPU_FEATURE__COUNT + 63u) / 64u];
 } hal_cpu_feature_set_t;
 
+/*
+ * Architecture code owns CPU probing and the storage behind this provider.
+ * The provider is installed once during serial boot and remains immutable.
+ * HAL consumes only normalized feature sets; it never includes or interprets
+ * architecture-private capability records.
+ */
+typedef struct {
+    bool (*for_cpu)(size_t cpu_id, hal_cpu_feature_set_t *out);
+    bool (*for_current_cpu)(hal_cpu_feature_set_t *out);
+    bool (*for_system)(hal_cpu_feature_scope_t scope,
+                       hal_cpu_feature_set_t *out);
+} hal_cpu_feature_provider_t;
+
+bool hal_cpu_features_register_provider(const hal_cpu_feature_provider_t *provider);
+
 bool hal_cpu_has_feature(size_t cpu_id, hal_cpu_feature_t feature);
 bool hal_cpu_has_system_feature(hal_cpu_feature_t feature, hal_cpu_feature_scope_t scope);
 bool hal_cpu_feature_set_for_cpu(size_t cpu_id, hal_cpu_feature_set_t *out);

@@ -16,6 +16,7 @@
 #include "console/console_core.h"
 #include "mm.h"
 #include "arch/arch_cpu_caps.h"
+#include "arch/common/accel_caps_publish.h"
 #include "mm_zswap.h"
 #include "multicore.h"
 #include "numa.h"
@@ -277,6 +278,9 @@ void boot_common_platform_services(const boot_info_t *boot) {
       kernel_panic("CPU capability aggregation failed");
     }
     hal_discovery_publish_cpu_caps();
+    arch_accel_caps_publish_target(&hal_get_system_discovery()->accel,
+                                   arch_cpu_caps_system_all(),
+                                   arch_cpu_caps_system_any());
     if (hal_hw_caps_publish_cpu() != K_OK || hal_hw_caps_finalize() != K_OK) {
       kernel_panic("hardware capability freeze failed");
     }
