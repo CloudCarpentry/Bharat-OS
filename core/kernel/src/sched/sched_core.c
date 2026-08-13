@@ -159,6 +159,8 @@ static kstatus_t sched_handle_migrate_activate(uint32_t current_cpu, sched_rq_t 
                 sched_invariant_on_enqueue(thread, current_cpu);
                 if (rq->policy == SCHED_POLICY_CLOUD_FAIR) {
                     sched_cfs_enqueue(rq, thread);
+                } else if (rq->policy == SCHED_POLICY_EDF) {
+                    sched_edf_enqueue(rq, thread);
                 } else {
                     list_add(&entity->run_node, &rq->ready_queue[entity->priority]);
                     sched_ready_bitmap_set(rq, entity->priority);
@@ -237,6 +239,8 @@ static kstatus_t sched_handle_remote_wake(uint32_t current_cpu, sched_rq_t *rq, 
         sched_invariant_on_enqueue(thread, current_cpu);
         if (rq->policy == SCHED_POLICY_CLOUD_FAIR) {
             sched_cfs_enqueue(rq, thread);
+        } else if (rq->policy == SCHED_POLICY_EDF) {
+            sched_edf_enqueue(rq, thread);
         } else {
             list_add(&entity->run_node, &rq->ready_queue[entity->priority]);
             sched_ready_bitmap_set(rq, entity->priority);
@@ -376,7 +380,7 @@ void sched_reschedule(void) {
   sched_reap_terminated_threads();
   sched_process_pending_ai_suggestions();
 
-  hal_cpu_disable_interrupts(); // Fast path local lockless
+  hal_irq_state_t irq_state = hal_irq_save_disable(); // Fast path local lockless
 
   sched_rq_t *rq = &g_cpu_locals[core].runqueue;
 
@@ -442,6 +446,8 @@ void sched_reschedule(void) {
                       sched_invariant_on_dequeue(victim);
                       if (rq->policy == SCHED_POLICY_CLOUD_FAIR) {
                           sched_cfs_dequeue(rq, victim);
+                      } else if (rq->policy == SCHED_POLICY_EDF) {
+                          sched_edf_dequeue(rq, victim);
                       } else {
                           list_del(&v_entity->run_node);
                           list_init(&v_entity->run_node);
@@ -469,13 +475,13 @@ void sched_reschedule(void) {
 
   if (g_cpu_locals[core].runqueue.throttled != 0U && g_cpu_locals[core].runqueue.idle_thread) {
     sched_publish_load(rq);
-    sched_switch_to(g_cpu_locals[core].runqueue.idle_thread, core);
+    sched_switch_to(g_cpu_locals[core].runqueue.idle_thread, core, irq_state);
     return;
   }
 
   bh_thread_t *next = sched_pick_next_ready(core);
   sched_publish_load(rq);
-  sched_switch_to(next, core);
+  sched_switch_to(next, core, irq_state);
 }
 
 

@@ -211,7 +211,7 @@ void sched_detach_thread_from_queues(thread_slot_t *slot) {
   sched_rq_t *rq = sched_local_rq();
   sched_assert_local_rq(rq);
 
-  hal_cpu_disable_interrupts();
+  hal_irq_state_t irq_state = hal_irq_save_disable();
 
   if (slot->is_on_runqueue != 0U) {
     if (rq->policy == SCHED_POLICY_CLOUD_FAIR) {
@@ -236,7 +236,7 @@ void sched_detach_thread_from_queues(thread_slot_t *slot) {
     sched_block_dequeue(slot);
   }
 
-  hal_cpu_enable_interrupts();
+  hal_irq_restore(irq_state);
 }
 
 int sched_enqueue_reap(thread_slot_t *slot) {
@@ -910,15 +910,15 @@ bh_thread_t *sched_pick_next_ready_l1(uint32_t core_id) {
   return sched_pick_next_ready(core_id);
 }
 
-void sched_switch_to(bh_thread_t *next, uint32_t core_id) {
+void sched_switch_to(bh_thread_t *next, uint32_t core_id, hal_irq_state_t irq_state) {
   if (!next) {
-    hal_cpu_enable_interrupts();
+    hal_irq_restore(irq_state);
     return;
   }
 
   bh_thread_t *current = g_cpu_locals[core_id].runqueue.current_thread;
   if (current == next) {
-    hal_cpu_enable_interrupts();
+    hal_irq_restore(irq_state);
     return;
   }
 
@@ -986,6 +986,7 @@ void sched_switch_to(bh_thread_t *next, uint32_t core_id) {
   }
 
   arch_ext_state_restore(next);
+  hal_irq_restore(irq_state);
 }
 
 

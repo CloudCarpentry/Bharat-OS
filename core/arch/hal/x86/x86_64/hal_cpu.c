@@ -224,6 +224,16 @@ void hal_cpu_enable_interrupts(void) { __asm__ volatile("sti"); }
 
 void hal_cpu_disable_interrupts(void) { __asm__ volatile("cli"); }
 
+hal_irq_state_t hal_irq_save_disable(void) {
+  hal_irq_state_t state;
+  __asm__ volatile("pushfq; popq %0; cli" : "=r"(state) :: "memory");
+  return state;
+}
+void hal_irq_restore(hal_irq_state_t state) {
+  if ((state & (1UL << 9)) != 0U) __asm__ volatile("sti" ::: "memory");
+  else __asm__ volatile("cli" ::: "memory");
+}
+
 // --- IDT / TSS Definitions ---
 
 struct tss_entry_struct {

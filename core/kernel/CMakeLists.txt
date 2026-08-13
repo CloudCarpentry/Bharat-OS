@@ -30,6 +30,9 @@ set(BHARAT_KERNEL_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/core/kernel/include")
 if(NOT EXISTS "${BHARAT_KERNEL_INCLUDE_DIR}/bharat_config.h.in")
     message(FATAL_ERROR "Missing canonical kernel include root: ${BHARAT_KERNEL_INCLUDE_DIR}")
 endif()
+target_include_directories(bharat_kernel_buildopts INTERFACE
+    ${CMAKE_SOURCE_DIR}/core/hal/include
+)
 
 # Define and create the generated include directory in the build tree
 set(BHARAT_GENERATED_INCLUDE_DIR "${CMAKE_BINARY_DIR}/generated/include")
@@ -41,6 +44,7 @@ target_include_directories(bharat_kernel_includes INTERFACE
     ${CMAKE_BINARY_DIR}/generated
     ${CMAKE_SOURCE_DIR}/core/personalities/runtime/include
     ${BHARAT_HAL_ROOT}/include
+    ${CMAKE_SOURCE_DIR}/core/hal/include
     ${CMAKE_SOURCE_DIR}/interface/include
     ${CMAKE_SOURCE_DIR}/interface/uapi
     ${BHARAT_LIB_ROOT}/include

@@ -2,6 +2,7 @@
 #define BHARAT_HAL_H
 
 #include <stdint.h>
+#include "hal/hal_cpu.h"
 
 
 /* Hardware Abstraction Layer Base Definitions */

@@ -45,13 +45,13 @@ int sched_enqueue(bh_thread_t *thread, uint32_t core_id) {
 
   sched_rq_t *rq = sched_local_rq();
 
-  hal_cpu_disable_interrupts();
+  hal_irq_state_t irq_state = hal_irq_save_disable();
 
   sched_entity_t *entity = sched_find_entity_by_thread(thread);
   if (!entity) {
     entity = sched_allocate_entity(current_core);
     if (!entity) {
-      hal_cpu_enable_interrupts();
+      hal_irq_restore(irq_state);
       return -1;
     }
     entity->tid = thread->thread_id;
@@ -121,7 +121,7 @@ int sched_enqueue(bh_thread_t *thread, uint32_t core_id) {
 
   sched_validate_rq(rq);
 
-  hal_cpu_enable_interrupts();
+  hal_irq_restore(irq_state);
   return 0;
 }
 
@@ -170,6 +170,8 @@ static void sched_dequeue_task_l0(bh_thread_t *thread, uint32_t core_id) {
     sched_invariant_on_dequeue(thread);
     if (rq->policy == SCHED_POLICY_CLOUD_FAIR) {
       sched_cfs_dequeue(rq, thread);
+    } else if (rq->policy == SCHED_POLICY_EDF) {
+      sched_edf_dequeue(rq, thread);
     } else {
       list_del(&entity->run_node);
       list_init(&entity->run_node);

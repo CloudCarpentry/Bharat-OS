@@ -66,7 +66,7 @@ int sched_adjust_priority_local(bh_thread_t *thread, uint32_t new_priority) {
   thread_slot_t *slot = sched_find_thread_slot_by_tid(thread->thread_id);
 
   if (slot && slot->is_on_runqueue != 0U) {
-    hal_cpu_disable_interrupts();
+    hal_irq_state_t irq_state = hal_irq_save_disable();
 
     if (rq->policy == SCHED_POLICY_CLOUD_FAIR) {
       sched_cfs_dequeue(rq, thread);
@@ -81,7 +81,7 @@ int sched_adjust_priority_local(bh_thread_t *thread, uint32_t new_priority) {
       rq->runnable_count--;
     }
 
-    hal_cpu_enable_interrupts();
+    hal_irq_restore(irq_state);
   }
 
   thread->priority = new_priority;

@@ -119,7 +119,7 @@ bh_thread_t *sched_validate_picked_candidate(bh_thread_t *candidate,
                                              bh_thread_t *idle,
                                              uint32_t core_id);
 void sched_account_context_switch(sched_rq_t *rq, bh_thread_t *next);
-void sched_switch_to(bh_thread_t *next, uint32_t core_id);
+void sched_switch_to(bh_thread_t *next, uint32_t core_id, hal_irq_state_t irq_state);
 void sched_update_telemetry(bh_thread_t *thread);
 void sched_validate_rq(sched_rq_t *rq);
 

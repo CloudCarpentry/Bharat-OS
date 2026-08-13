@@ -132,6 +132,10 @@ add_executable(test_pmm_pcache test_pmm_pcache.c ../../kernel/src/mm/pmm/pmm.c .
 target_include_directories(test_pmm_pcache PRIVATE ${CMAKE_SOURCE_DIR}/core/kernel/include ${CMAKE_SOURCE_DIR}/core/kernel/src ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/lib/include ${CMAKE_SOURCE_DIR}/core/boot/include)
 add_test(NAME host_test_pmm_pcache COMMAND test_pmm_pcache)
 set_tests_properties(host_test_pmm_pcache PROPERTIES LABELS "pmm")
+
+add_executable(test_irq_state test_irq_state.c)
+target_include_directories(test_irq_state PRIVATE ${CMAKE_SOURCE_DIR}/core/kernel/include ${CMAKE_SOURCE_DIR}/core/hal/include)
+add_test(NAME host_test_irq_state COMMAND test_irq_state)
 add_executable(test_netmgr_interface_table services/test_netmgr_interface_table.c ../../core/services/netmgr/src/interface_table.c ../../core/lib/runtime/src/freestanding_string.c)
 target_include_directories(test_netmgr_interface_table PRIVATE ../../core/services/netmgr/src ../../core/services/netmgr/include ../../core/services/core/subsysmgr/include ../../core/lib/net/include ../../core/lib/runtime/include)
 add_test(NAME host_test_netmgr_interface_table COMMAND test_netmgr_interface_table)

@@ -191,6 +191,15 @@ void hal_cpu_disable_interrupts(void) {
   __asm__ volatile("msr daifset, #3");
 }
 
+hal_irq_state_t hal_irq_save_disable(void) {
+  hal_irq_state_t state;
+  __asm__ volatile("mrs %0, daif\n\tmsr daifset, #3" : "=r"(state) :: "memory");
+  return state;
+}
+void hal_irq_restore(hal_irq_state_t state) {
+  __asm__ volatile("msr daif, %0" :: "r"(state) : "memory");
+}
+
 void hal_send_ipi_payload(uint32_t target_core, uint64_t payload) {
   (void)target_core;
   (void)payload;
