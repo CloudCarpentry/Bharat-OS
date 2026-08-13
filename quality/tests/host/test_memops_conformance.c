@@ -24,6 +24,10 @@ static void *marked_move(void *d, const void *s, size_t n) {
     ++backend_calls;
     return hal_memmove_scalar(d, s, n);
 }
+static int marked_compare(const void *a, const void *b, size_t n) {
+    ++backend_calls;
+    return hal_memcmp_scalar(a, b, n);
+}
 
 static void model_move(uint8_t *dst, const uint8_t *src, size_t n) {
     const uintptr_t da = (uintptr_t)dst;
@@ -88,7 +92,14 @@ static int check_overlap(size_t n) {
 }
 
 int main(void) {
-    const hal_memops_backend_t backend = {marked_copy, marked_set, marked_move};
+    const hal_memops_backend_t backend = {
+        .copy = marked_copy,
+        .set = marked_set,
+        .move = marked_move,
+        .compare = marked_compare,
+        .context_flags = BH_MEMCTX_F_DEFAULT | BH_MEMCTX_F_NO_SIMD,
+        .implementation_flags = HAL_MEMOPS_IMPL_F_GPR_ONLY,
+    };
     uint8_t probe[8] = {0};
     if (!hal_memops_begin(current_cpu) || !hal_memops_register(1u, &backend)) return 10;
     fake_cpu = 1u;
@@ -97,12 +108,14 @@ int main(void) {
     if (!hal_memops_freeze() || hal_memops_register(0u, &backend)) return 12;
     (void)hal_memset(probe, 2, sizeof(probe), BH_MEMCTX_F_DEFAULT);
     if (backend_calls != 1u) return 13;
+    if (hal_memcmp(probe, probe, sizeof(probe), BH_MEMCTX_F_DEFAULT) != 0 ||
+        backend_calls != 2u) return 16;
     (void)hal_memset(probe, 3, sizeof(probe), BH_MEMCTX_F_IRQ_SAFE);
     (void)hal_memcpy(probe, probe, 0u, BH_MEMCTX_F_EARLY_BOOT);
-    if (backend_calls != 1u) return 14; /* emergency contexts are always scalar */
+    if (backend_calls != 2u) return 14; /* emergency contexts are always scalar */
     fake_cpu = 0u;
     (void)hal_memmove(probe, probe, 0u, BH_MEMCTX_F_DEFAULT);
-    if (backend_calls != 1u) return 15; /* unregistered core is scalar */
+    if (backend_calls != 2u) return 15; /* unregistered core is scalar */
     static const size_t edges[] = {511u, 512u, 513u, 1023u, 1024u, 1025u, 4095u, 4096u, 4097u};
     for (size_t n = 0; n <= 256u; ++n) {
         int rc = check_length(n);

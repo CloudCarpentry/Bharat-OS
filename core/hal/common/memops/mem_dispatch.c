@@ -16,7 +16,12 @@ bool hal_memops_begin(hal_memops_current_cpu_fn_t current_cpu) {
 
 bool hal_memops_register(size_t cpu_id, const hal_memops_backend_t *backend) {
     if (g_frozen || backend == NULL || cpu_id >= HAL_MEMOPS_MAX_CPUS ||
-        backend->copy == NULL || backend->set == NULL || backend->move == NULL) return false;
+        backend->copy == NULL || backend->set == NULL || backend->move == NULL ||
+        backend->compare == NULL ||
+        (backend->context_flags & (BH_MEMCTX_F_EARLY_BOOT | BH_MEMCTX_F_IRQ_SAFE)) != 0u ||
+        (backend->context_flags & ~BH_MEMCTX_F_ALL) != 0u ||
+        (backend->implementation_flags & ~HAL_MEMOPS_IMPL_F_ALL) != 0u)
+        return false;
     g_backends[cpu_id] = *backend;
     g_present[cpu_id] = true;
     return true;
@@ -34,7 +39,15 @@ static const hal_memops_backend_t *selected(uint32_t flags) {
     if ((flags & (BH_MEMCTX_F_EARLY_BOOT | BH_MEMCTX_F_IRQ_SAFE)) != 0u ||
         !hal_memops_is_frozen() || g_current_cpu == NULL) return NULL;
     const size_t cpu = g_current_cpu();
-    return cpu < HAL_MEMOPS_MAX_CPUS && g_present[cpu] ? &g_backends[cpu] : NULL;
+    if (cpu >= HAL_MEMOPS_MAX_CPUS || !g_present[cpu]) return NULL;
+    const hal_memops_backend_t *backend = &g_backends[cpu];
+    return (flags & ~backend->context_flags) == 0u ? backend : NULL;
+}
+
+int hal_memcmp(const void *lhs, const void *rhs, size_t n, uint32_t flags) {
+    const hal_memops_backend_t *backend = selected(flags);
+    return backend == NULL ? hal_memcmp_scalar(lhs, rhs, n)
+                           : backend->compare(lhs, rhs, n);
 }
 
 void *hal_memcpy(void *dst, const void *src, size_t n, uint32_t flags) {

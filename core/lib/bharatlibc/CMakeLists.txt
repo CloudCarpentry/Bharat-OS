@@ -137,6 +137,7 @@ endif()
 # 1. bharatlibc_core
 add_library(bharatlibc_core STATIC
     src/core/memory/memory.c
+    src/arch/memory.c
     src/core/string/string.c
     src/core/errno/errno.c
     src/core/assert/assert.c
