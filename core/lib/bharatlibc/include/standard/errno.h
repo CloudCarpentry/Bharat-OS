@@ -29,6 +29,7 @@ extern int *__bh_libc_errno_location(void);
 #define ENOSPC          28
 #define EROFS           30
 #define EPIPE           32
+#define EOVERFLOW       75
 #define ENOSYS          38
 #define EADDRNOTAVAIL   99
 #define ENETDOWN        100

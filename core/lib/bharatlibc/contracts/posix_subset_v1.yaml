@@ -7,17 +7,36 @@ posix_subset:
     - Bharat native API
     - native syscall or service IPC
   implemented:
-    - write
     - read
+    - write
     - close
+    - clock_gettime
+    - nanosleep
+    - getpid
+    - isatty
+    - malloc
+    - free
+    - memcpy
+    - memset
+    - memmove
   functions:
     - read
     - write
     - close
+    - malloc
+    - free
+    - memcpy
+    - memset
+    - memmove
     - open
     - openat
     - lseek
     - fstat
+    - readdir
+    - mkdir
+    - unlink
+    - dup
+    - pipe
     - isatty
     - clock_gettime
     - nanosleep
@@ -26,7 +45,6 @@ posix_subset:
     - munmap
     - mprotect
     - brk
-    - sbrk
     - _exit
     - pthread_create
     - pthread_join
@@ -35,31 +53,40 @@ posix_subset:
     - TLS
   stages:
     - stage: 1
-      name: libc_foundation
+      name: hmem_demo
       functions:
         - read
         - write
         - close
-        - open
-        - openat
-        - lseek
-        - fstat
         - isatty
         - clock_gettime
         - nanosleep
         - getpid
+        - malloc
+        - free
+        - memcpy
+        - memset
+        - memmove
     - stage: 2
-      name: memory_process
+      name: after_ramfs
+      functions:
+        - open
+        - openat
+        - lseek
+        - fstat
+        - readdir
+        - mkdir
+        - unlink
+        - dup
+        - pipe
+    - stage: 3
+      name: process_thread_workloads
       functions:
         - mmap
         - munmap
         - mprotect
         - brk
-        - sbrk
         - _exit
-    - stage: 3
-      name: threading
-      functions:
         - pthread_create
         - pthread_join
         - pthread_mutex

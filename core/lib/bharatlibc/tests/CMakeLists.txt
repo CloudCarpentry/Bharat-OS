@@ -68,3 +68,8 @@ add_bh_test(test_bsys_unsupported host/test_bsys_unsupported.c)
 add_bh_test(test_runtime_capability_match host/test_runtime_capability_match.c)
 add_bh_test(test_runtime_capability_rejection host/test_runtime_capability_rejection.c)
 add_bh_test(test_build_info host/test_build_info.c)
+
+add_executable(test_posix_phase_a host/test_posix_phase_a.c)
+target_link_libraries(test_posix_phase_a PRIVATE BharatLibC::PosixPhaseA)
+add_test(NAME test_posix_phase_a COMMAND test_posix_phase_a)
+set_tests_properties(test_posix_phase_a PROPERTIES TIMEOUT 10 LABELS "unit;fast;posix")

@@ -2,7 +2,7 @@
 title: POSIX Compatibility Matrix
 status: Proposed
 owner: Documentation Working Group
-last_updated: 2026-04-25
+last_updated: 2026-08-13
 tags:
   - docs
   - architecture
@@ -10,6 +10,34 @@ see_also:
   - README.md
 ---
 # POSIX Compatibility Matrix
+
+## HMEM-driven delivery phases
+
+Near-term POSIX maturity is driven by runnable demonstrations rather than a
+broad compliance claim. The source-compatibility path remains:
+
+```text
+BharatLibC/libposix
+       ↓
+Bharat native API
+       ↓
+native syscall or service IPC
+```
+
+There is no second raw kernel syscall namespace. Phase A now provides the
+HMEM/tensor benchmark foundation: `read`, `write`, `close`, `clock_gettime`,
+`nanosleep`, `getpid`, and `isatty`, plus `malloc`/`free` and the
+`memcpy`/`memset`/`memmove` memory primitives. The APIs dispatch through the
+selected `libbsys` backend. A backend that has no native binding must return
+`ENOSYS`; wrapper availability does not imply that every target backend has
+implemented the mechanism.
+
+Phase B starts only after RAMFS is usable and adds `open`, `openat`, `lseek`,
+`fstat`, `readdir`, `mkdir`, `unlink`, `dup`, and `pipe`. Phase C adds the VM,
+process-exit, pthread, condition-variable, and TLS surface needed for process
+and thread workloads. A small BharatLibC-linked command interpreter is the
+first shell portability target; Bash and static Linux/musl binaries remain
+later compatibility milestones.
 
 POSIX compatibility is a profile, not an all-or-nothing guarantee. In Bharat-OS, POSIX is implemented via a multi-tiered compatibility strategy aimed at fast bring-up, deterministic edge deployment, and minimal monolithic assumptions in the core kernel.
 
