@@ -33,6 +33,36 @@ KIND_MAPPING = {
     "implicit_current_thread": "BH_SYS_CAP_SOURCE_IMPLICIT_THREAD",
 }
 
+ALLOWED_TOP_LEVEL_KEYS = {"version", "syscalls"}
+ALLOWED_SYSCALL_KEYS = {
+    "number", "symbol", "name", "status", "class", "handler",
+    "arguments", "capability", "traits",
+}
+ALLOWED_ARGUMENT_KEYS = {"name", "kind", "type", "direction", "size_source"}
+ALLOWED_ARGUMENT_KINDS = {"scalar", "pointer", "user_struct"}
+ALLOWED_DIRECTIONS = {"in", "out", "in_out"}
+ALLOWED_STATUSES = {"stable", "experimental", "deprecated"}
+ALLOWED_CAPABILITY_KEYS = {
+    "source", "validation_phase", "object_type", "rights", "scope",
+}
+ALLOWED_CAPABILITY_SOURCE_KEYS = {"kind", "argument", "field"}
+ALLOWED_CAPABILITY_SCOPES = {"current_process", "current_thread", "system"}
+IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+TYPE_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_ ]*(?:\s*\*)?$")
+SIZEOF_RE = re.compile(r"^sizeof\([A-Za-z_][A-Za-z0-9_]*\)$")
+
+
+def schema_error(message):
+    print(f"Schema Error: {message}")
+    return False
+
+
+def exact_keys(value, allowed, context):
+    unknown = set(value) - allowed
+    if unknown:
+        return schema_error(f"{context} has unknown key(s): {', '.join(sorted(unknown))}")
+    return True
+
 VAL_PHASE_MAPPING = {
     "before_handler": "BH_SYS_CAP_VAL_BEFORE_HANDLER",
     "after_usercopy": "BH_SYS_CAP_VAL_AFTER_USERCOPY",
@@ -58,7 +88,8 @@ def save_json(path, data):
 
 def validate_schema(manifest):
     if not isinstance(manifest, dict) or "version" not in manifest or "syscalls" not in manifest:
-        print("Schema Error: Missing top-level fields 'version' or 'syscalls'")
+        return schema_error("Missing top-level fields 'version' or 'syscalls'")
+    if not exact_keys(manifest, ALLOWED_TOP_LEVEL_KEYS, "Manifest"):
         return False
     if not isinstance(manifest["version"], int) or not isinstance(manifest["syscalls"], list):
         print("Schema Error: 'version' must be an integer and 'syscalls' must be a list")
@@ -73,41 +104,83 @@ def validate_schema(manifest):
             if key not in sc:
                 print(f"Schema Error: Syscall {sc.get('symbol', 'unknown')} missing required key '{key}'")
                 return False
+        if not exact_keys(sc, ALLOWED_SYSCALL_KEYS, f"Syscall {sc['symbol']}"):
+            return False
+        if not isinstance(sc["arguments"], list) or not isinstance(sc["traits"], list):
+            return schema_error(f"Syscall {sc['symbol']} arguments and traits must be lists")
 
         # Validate arguments schema
         for arg in sc["arguments"]:
+            if not isinstance(arg, dict):
+                return schema_error(f"Argument in {sc['symbol']} must be an object")
             arg_keys = ["name", "kind", "type", "direction"]
             for ak in arg_keys:
                 if ak not in arg:
                     print(f"Schema Error: Argument in {sc['symbol']} missing key '{ak}'")
                     return False
+            if not exact_keys(arg, ALLOWED_ARGUMENT_KEYS,
+                              f"Argument '{arg['name']}' in {sc['symbol']}"):
+                return False
+            if arg["kind"] not in ALLOWED_ARGUMENT_KINDS:
+                return schema_error(
+                    f"Argument '{arg['name']}' in {sc['symbol']} has invalid kind '{arg['kind']}'")
+            if arg["direction"] not in ALLOWED_DIRECTIONS:
+                return schema_error(
+                    f"Argument '{arg['name']}' in {sc['symbol']} has invalid direction '{arg['direction']}'")
+            if not isinstance(arg["name"], str) or not IDENTIFIER_RE.fullmatch(arg["name"]):
+                return schema_error(f"Argument name in {sc['symbol']} is not a C identifier")
+            if not isinstance(arg["type"], str) or not TYPE_RE.fullmatch(arg["type"]):
+                return schema_error(f"Argument '{arg['name']}' in {sc['symbol']} has an invalid type")
             if arg["kind"] == "pointer":
                 if "size_source" not in arg:
                     print(f"Schema Error: Pointer argument '{arg['name']}' in {sc['symbol']} must define 'size_source'")
                     return False
+                if not isinstance(arg["size_source"], str) or not arg["size_source"]:
+                    return schema_error(
+                        f"Pointer argument '{arg['name']}' in {sc['symbol']} has an invalid size_source")
+            elif "size_source" in arg:
+                return schema_error(
+                    f"Non-pointer argument '{arg['name']}' in {sc['symbol']} cannot define size_source")
 
         # Validate traits and capability
         if sc["capability"] is not None:
             cap = sc["capability"]
-            cap_keys = ["source", "object_type", "rights", "scope"]
+            if not isinstance(cap, dict):
+                return schema_error(f"Capability for {sc['symbol']} must be an object or null")
+            cap_keys = ["source", "validation_phase", "object_type", "rights", "scope"]
             for ck in cap_keys:
                 if ck not in cap:
                     print(f"Schema Error: Capability for {sc['symbol']} missing key '{ck}'")
                     return False
+            if not exact_keys(cap, ALLOWED_CAPABILITY_KEYS, f"Capability for {sc['symbol']}"):
+                return False
 
             source = cap["source"]
-            if isinstance(source, dict):
-                if "kind" not in source:
-                    print(f"Schema Error: Capability source object in {sc['symbol']} must have 'kind'")
-                    return False
-                if source["kind"] in ["register", "struct_field"]:
-                    if "argument" not in source:
-                        print(f"Schema Error: Capability source object {source['kind']} in {sc['symbol']} must have 'argument'")
-                        return False
-                if source["kind"] == "struct_field":
-                    if "field" not in source:
-                        print(f"Schema Error: Capability source object struct_field in {sc['symbol']} must have 'field'")
-                        return False
+            if not isinstance(source, dict):
+                return schema_error(f"Capability source in {sc['symbol']} must be an object")
+            if "kind" not in source:
+                return schema_error(f"Capability source object in {sc['symbol']} must have 'kind'")
+            if not exact_keys(source, ALLOWED_CAPABILITY_SOURCE_KEYS,
+                              f"Capability source for {sc['symbol']}"):
+                return False
+            kind = source["kind"]
+            if kind not in KIND_MAPPING:
+                return schema_error(f"Capability source in {sc['symbol']} has invalid kind '{kind}'")
+            required_source_keys = {"kind"}
+            if kind in ["register", "struct_field"]:
+                required_source_keys.add("argument")
+            if kind == "struct_field":
+                required_source_keys.add("field")
+            if set(source) != required_source_keys:
+                return schema_error(
+                    f"Capability source {kind} in {sc['symbol']} must contain exactly "
+                    f"{', '.join(sorted(required_source_keys))}")
+            if cap["validation_phase"] not in VAL_PHASE_MAPPING:
+                return schema_error(f"Capability for {sc['symbol']} has invalid validation_phase")
+            if cap["scope"] not in ALLOWED_CAPABILITY_SCOPES:
+                return schema_error(f"Capability for {sc['symbol']} has invalid scope")
+            if not isinstance(cap["rights"], list) or not cap["rights"]:
+                return schema_error(f"Capability for {sc['symbol']} must require at least one right")
 
     return True
 
@@ -121,6 +194,16 @@ def validate_semantics(manifest):
         num = sc["number"]
         sym = sc["symbol"]
         name = sc["name"]
+
+        if not IDENTIFIER_RE.fullmatch(sym) or not IDENTIFIER_RE.fullmatch(name):
+            print(f"Semantic Error: Syscall {sym} symbol and name must be C identifiers")
+            return False
+        if sc["status"] not in ALLOWED_STATUSES or sc["class"] not in CLASS_MAPPING:
+            print(f"Semantic Error: Syscall {sym} has an unsupported status or class")
+            return False
+        if not IDENTIFIER_RE.fullmatch(sc["handler"]):
+            print(f"Semantic Error: Syscall {sym} handler must be a C identifier")
+            return False
 
         if num in numbers:
             print(f"Semantic Error: Duplicate syscall number {num}")
@@ -144,9 +227,29 @@ def validate_semantics(manifest):
 
         # Trait compatibility
         traits = sc["traits"]
+        if len(traits) != len(set(traits)) or any(t not in TRAIT_FLAGS for t in traits):
+            print(f"Semantic Error: Syscall {sym} has duplicate or unknown traits")
+            return False
         if "fast" in traits and "blocking" in traits:
             print(f"Semantic Error: Syscall {sym} cannot be both 'fast' and 'blocking'")
             return False
+
+        arg_names = [a["name"] for a in sc["arguments"]]
+        if len(arg_names) != len(set(arg_names)):
+            print(f"Semantic Error: Syscall {sym} has duplicate argument names")
+            return False
+        for arg in sc["arguments"]:
+            if arg["kind"] != "pointer":
+                continue
+            size_source = arg["size_source"]
+            if size_source not in arg_names and not SIZEOF_RE.fullmatch(size_source):
+                print(f"Semantic Error: Pointer {arg['name']} in {sym} has unresolved size_source '{size_source}'")
+                return False
+            if size_source in arg_names:
+                size_arg = sc["arguments"][arg_names.index(size_source)]
+                if size_arg["kind"] != "scalar" or size_arg["direction"] != "in":
+                    print(f"Semantic Error: Pointer {arg['name']} in {sym} size_source must be an input scalar")
+                    return False
         if "fast" in traits and ("user_read" in traits or "user_write" in traits):
             print(f"Semantic Error: Syscall {sym} cannot be 'fast' and use usercopy (user_read/user_write)")
             return False
@@ -165,10 +268,27 @@ def validate_semantics(manifest):
                 arg_name = source
 
             if arg_name is not None:
-                arg_names = [a["name"] for a in sc["arguments"]]
                 if arg_name not in arg_names:
                     print(f"Semantic Error: Syscall {sym} capability source '{arg_name}' not in arguments list")
                     return False
+                source_arg = sc["arguments"][arg_names.index(arg_name)]
+                if kind == "register" and source_arg["kind"] != "scalar":
+                    print(f"Semantic Error: Register capability source in {sym} must reference a scalar")
+                    return False
+                if kind == "struct_field" and source_arg["kind"] != "user_struct":
+                    print(f"Semantic Error: Struct-field capability source in {sym} must reference a user_struct")
+                    return False
+            phase = sc["capability"]["validation_phase"]
+            if kind == "struct_field" and phase != "after_usercopy":
+                print(f"Semantic Error: Struct-field capability source in {sym} must validate after_usercopy")
+                return False
+            if kind != "struct_field" and phase != "before_handler":
+                print(f"Semantic Error: Capability source in {sym} must validate before_handler")
+                return False
+            rights = sc["capability"]["rights"]
+            if len(rights) != len(set(rights)) or any(not IDENTIFIER_RE.fullmatch(r) for r in rights):
+                print(f"Semantic Error: Capability rights in {sym} must be unique C identifiers")
+                return False
 
     return True
 
