@@ -112,7 +112,8 @@ add_test(NAME host_test_secure_mem COMMAND test_secure_mem)
 
 add_executable(test_memops_conformance
     test_memops_conformance.c
-    ../../hal/common/memops/mem_scalar.c)
+    ../../hal/common/memops/mem_scalar.c
+    ../../hal/common/memops/mem_dispatch.c)
 target_include_directories(test_memops_conformance PRIVATE ../../hal/include)
 target_compile_options(test_memops_conformance PRIVATE
     -fno-builtin-memcpy -fno-builtin-memset -fno-builtin-memmove)
@@ -224,7 +225,9 @@ add_test(NAME host_test_input_layout COMMAND host_test_input_layout)
 add_executable(test_hal_cpu_features
     test_hal_cpu_features.c
     ../../arch/common/cpu_caps_state.c
-    ../../hal/common/cpu_features.c)
+    ../../hal/common/cpu_features.c
+    ../../hal/common/memops/mem_scalar.c
+    ../../hal/common/memops/mem_dispatch.c)
 target_include_directories(test_hal_cpu_features PRIVATE
     ${CMAKE_SOURCE_DIR}/core/kernel/include
     ${CMAKE_SOURCE_DIR}/core/hal/include
@@ -237,6 +240,8 @@ add_executable(test_hal_capability_lifecycle
     test_hal_capability_lifecycle.c
     ../../arch/common/cpu_caps_state.c
     ../../hal/common/cpu_features.c
+    ../../hal/common/memops/mem_scalar.c
+    ../../hal/common/memops/mem_dispatch.c
     ../../hal/common/hw_caps.c
     ../../kernel/src/core/primitive_registry.c)
 target_include_directories(test_hal_capability_lifecycle PRIVATE

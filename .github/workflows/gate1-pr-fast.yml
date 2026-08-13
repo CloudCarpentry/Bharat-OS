@@ -37,6 +37,8 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y python3 cmake ninja-build clang lld
       - name: Lint freestanding layer contract
         run: python3 tools/lint/check_layer_references.py --strict --baseline tools/lint/baselines/layer_references.allowlist
+      - name: Enforce HAL dependency direction
+        run: python3 tools/lint/check_hal_dependency_direction.py
       - name: Migration legacy reference guard (strict mode)
         run: python3 tools/ci/check_migration_refs.py --strict
       - name: Configure clang-tidy check

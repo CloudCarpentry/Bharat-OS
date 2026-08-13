@@ -15,6 +15,7 @@ add_library(k_core OBJECT
     ${BHARAT_KERNEL_SRC_ROOT}/security/crypto_caps.c
     ${BHARAT_KERNEL_SRC_ROOT}/lib/base/string.c
     ${CMAKE_SOURCE_DIR}/core/hal/common/memops/mem_scalar.c
+    ${CMAKE_SOURCE_DIR}/core/hal/common/memops/mem_dispatch.c
     $<$<STREQUAL:${ARCH},x86_64>:${BHARAT_ARCH_ROOT}/x86/x86_64/memops.c>
     $<$<STREQUAL:${ARCH},x86_64>:${BHARAT_ARCH_ROOT}/x86/x86_64/memops_fast_string.c>
     $<$<STREQUAL:${ARCH},arm32>:${BHARAT_ARCH_ROOT}/arm/arm32/memops.c>

@@ -4,6 +4,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define HAL_CPU_FEATURE_MAX_CPUS 256u
+
 typedef enum {
     HAL_CPU_FEATURE_VECTOR = 0,
     HAL_CPU_FEATURE_SCALABLE_VECTOR,
@@ -18,6 +20,7 @@ typedef enum {
     HAL_CPU_FEATURE_MEMORY_TAGGING,
     HAL_CPU_FEATURE_CACHE_BLOCK_OPS,
     HAL_CPU_FEATURE_BITMANIP,
+    HAL_CPU_FEATURE_FAST_STRING,
     HAL_CPU_FEATURE__COUNT
 } hal_cpu_feature_t;
 
@@ -31,27 +34,18 @@ typedef struct {
     uint64_t usable_bits[(HAL_CPU_FEATURE__COUNT + 63u) / 64u];
 } hal_cpu_feature_set_t;
 
-/*
- * Architecture code owns CPU probing and the storage behind this provider.
- * The provider is installed once during serial boot and remains immutable.
- * HAL consumes only normalized feature sets; it never includes or interprets
- * architecture-private capability records.
- */
-typedef struct {
-    bool (*for_cpu)(size_t cpu_id, hal_cpu_feature_set_t *out);
-    bool (*for_current_cpu)(hal_cpu_feature_set_t *out);
-    bool (*for_system)(hal_cpu_feature_scope_t scope,
-                       hal_cpu_feature_set_t *out);
-} hal_cpu_feature_provider_t;
+typedef size_t (*hal_cpu_current_id_fn_t)(void);
 
-bool hal_cpu_features_register_provider(const hal_cpu_feature_provider_t *provider);
+/* Serial-boot publication API. Mutation is rejected after freeze. */
+bool hal_cpu_features_begin(hal_cpu_current_id_fn_t current_id);
+bool hal_cpu_features_publish(size_t cpu_id, const hal_cpu_feature_set_t *features);
+bool hal_cpu_features_freeze(void);
+bool hal_cpu_features_is_frozen(void);
 
 bool hal_cpu_has_feature(size_t cpu_id, hal_cpu_feature_t feature);
 bool hal_cpu_has_system_feature(hal_cpu_feature_t feature, hal_cpu_feature_scope_t scope);
 bool hal_cpu_feature_set_for_cpu(size_t cpu_id, hal_cpu_feature_set_t *out);
 bool hal_cpu_feature_set_system(hal_cpu_feature_scope_t scope, hal_cpu_feature_set_t *out);
-
-/* Explicit scope helpers for callsites that want readability and safety-by-default. */
 bool hal_cpu_has_feature_current(hal_cpu_feature_t feature);
 bool hal_cpu_has_system_feature_all(hal_cpu_feature_t feature);
 bool hal_cpu_has_system_feature_any(hal_cpu_feature_t feature);

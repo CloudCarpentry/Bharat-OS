@@ -26,18 +26,11 @@ void arch_cpu_caps_export_hal_features(const arch_cpu_caps_record_t *caps, void 
 int main(void) {
     hal_cpu_feature_set_t features = {0};
     hal_hw_caps_t raw = {.has_mmu = false, .has_mpu = true, .has_dma_coherent = false};
-    arch_cpu_caps_record_t empty = {0};
     arch_cpu_caps_record_t cpu0 = {0};
     arch_cpu_caps_record_t cpu1 = {0};
 
     assert(!hal_cpu_feature_set_system(HAL_CPU_FEATURE_SCOPE_ALL, &features));
     assert(arch_cpu_caps_system_finalize() == K_ERR_IN_PROGRESS);
-
-    cpu_caps_state_set_boot(&empty);
-    assert(arch_cpu_caps_system_finalize() == K_OK);
-    memset(&features, 0xff, sizeof(features));
-    assert(hal_cpu_feature_set_system(HAL_CPU_FEATURE_SCOPE_ALL, &features));
-    assert(features.usable_bits[0] == 0U);
 
     arch_cpu_caps_set(&cpu0.raw, ARCH_CPU_FEAT_COMMON_VECTOR);
     arch_cpu_caps_set(&cpu0.usable, ARCH_CPU_FEAT_COMMON_VECTOR);

@@ -51,14 +51,19 @@ flowchart TD
 `core/hal/common/memops/mem_scalar.c` is the single architecture-neutral
 Tier-0 authority. It uses only requested byte loads and stores: no prefetch,
 word-sized access, SIMD/vector state, DMA, cache/topology assumptions, or calls
-to another memory primitive. Architecture directories own the dispatched
-`hal_memcpy()`, `hal_memset()`, and `hal_memmove()` entry points.
+to another memory primitive. HAL common owns the dispatched `hal_memcpy()`,
+`hal_memset()`, and `hal_memmove()` entry points. Architecture directories may
+only publish immutable per-core GPR backends during serial boot.
 
 IRQ-safe and early-boot dispatch must select Tier 0. RV32 remains scalar-only
 until an XLEN-neutral GPR implementation is independently qualified; RV64
 memops objects are not valid RV32 providers. Tier 0 `memmove` determines copy
 direction using overflow-safe `uintptr_t` address differences and never forms
 an unchecked end pointer.
+
+The backend table and normalized CPU feature records have a one-way lifecycle:
+serial publication followed by freeze. Before freeze, for an unregistered core,
+or for early-boot/IRQ-safe calls, dispatch selects Tier 0.
 
 ## Execution Plan
 1. **Define Neutral API**: Create the standard functions for zeroing and cache maintenance.

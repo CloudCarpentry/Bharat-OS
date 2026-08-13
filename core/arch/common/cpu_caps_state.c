@@ -2,6 +2,7 @@
 #include "arch/common/cpu_caps_state.h"
 #include "bharat/cpu_local.h"
 #include "hal/hal_cpu_features.h"
+#include "hal/hal_memops.h"
 #include <stddef.h>
 #include <stdint.h>
 
@@ -10,6 +11,12 @@ void *memset(void *dest, int c, size_t n);
 
 // Forward declaration (defined arch-specifically in HAL)
 extern uint32_t hal_cpu_get_id(void);
+
+__attribute__((weak)) void arch_cpu_caps_export_hal_features(
+    const arch_cpu_caps_record_t *caps, void *out) {
+    (void)caps;
+    (void)out;
+}
 
 static arch_cpu_caps_record_t g_boot_cpu_caps;
 static arch_cpu_caps_record_t g_system_caps_all;
@@ -53,27 +60,20 @@ static bool cpu_caps_export_record(const arch_cpu_caps_record_t *caps,
     return true;
 }
 
-static bool cpu_caps_export_for_cpu(size_t cpu_id, hal_cpu_feature_set_t *out) {
-    return cpu_caps_export_record(arch_cpu_caps_for_cpu(cpu_id), out);
+static size_t cpu_caps_current_id(void) { return (size_t)hal_cpu_get_id(); }
+__attribute__((weak)) void arch_memops_register(size_t cpu_id,
+                                                const arch_cpu_caps_record_t *caps) {
+    (void)cpu_id;
+    (void)caps;
 }
 
-static bool cpu_caps_export_current(hal_cpu_feature_set_t *out) {
-    return cpu_caps_export_record(arch_cpu_caps_current(), out);
+static void cpu_caps_publish_normalized(size_t cpu_id,
+                                        const arch_cpu_caps_record_t *caps) {
+    hal_cpu_feature_set_t normalized;
+    if (cpu_caps_export_record(caps, &normalized)) {
+        (void)hal_cpu_features_publish(cpu_id, &normalized);
+    }
 }
-
-static bool cpu_caps_export_system(hal_cpu_feature_scope_t scope,
-                                   hal_cpu_feature_set_t *out) {
-    return cpu_caps_export_record(scope == HAL_CPU_FEATURE_SCOPE_ANY
-                                      ? arch_cpu_caps_system_any()
-                                      : arch_cpu_caps_system_all(),
-                                  out);
-}
-
-static const hal_cpu_feature_provider_t g_cpu_feature_provider = {
-    .for_cpu = cpu_caps_export_for_cpu,
-    .for_current_cpu = cpu_caps_export_current,
-    .for_system = cpu_caps_export_system,
-};
 
 static void cpu_caps_record_copy(arch_cpu_caps_record_t *dst,
                                  const arch_cpu_caps_record_t *src) {
@@ -177,11 +177,8 @@ bool arch_cpu_has_current(int feat) {
 }
 
 void cpu_caps_state_set_boot(const arch_cpu_caps_record_t *caps) {
-    static bool provider_registered;
-    if (!provider_registered) {
-        provider_registered =
-            hal_cpu_features_register_provider(&g_cpu_feature_provider);
-    }
+    (void)hal_cpu_features_begin(cpu_caps_current_id);
+    (void)hal_memops_begin(cpu_caps_current_id);
     memset(g_cpu_caps_present, 0, sizeof(g_cpu_caps_present));
     g_cpu_caps_present_count = 0;
     g_system_caps_finalized = false;
@@ -190,6 +187,8 @@ void cpu_caps_state_set_boot(const arch_cpu_caps_record_t *caps) {
     cpu_caps_record_copy(&g_per_cpu_caps[0], caps);
     g_cpu_caps_present[0] = true;
     g_cpu_caps_present_count = 1;
+    cpu_caps_publish_normalized(0u, caps);
+    arch_memops_register(0u, caps);
 
     // Initialize system caps to boot caps for now
     cpu_caps_record_copy(&g_system_caps_all, caps);
@@ -203,6 +202,8 @@ void cpu_caps_state_set_ap(unsigned int cpu_id, const arch_cpu_caps_record_t *ca
             g_cpu_caps_present[cpu_id] = true;
             g_cpu_caps_present_count++;
         }
+        cpu_caps_publish_normalized(cpu_id, caps);
+        arch_memops_register(cpu_id, caps);
     }
 }
 
@@ -240,6 +241,11 @@ kstatus_t arch_cpu_caps_system_finalize(void) {
         return K_ERR_IN_PROGRESS;
     }
     g_system_caps_finalized = true;
+    if (!hal_cpu_features_freeze()) {
+        g_system_caps_finalized = false;
+        return K_ERR_BAD_STATE;
+    }
+    if (!hal_memops_freeze()) return K_ERR_BAD_STATE;
     return K_OK;
 }
 
