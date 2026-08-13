@@ -90,7 +90,8 @@ int32_t vm_manager_handle_fault(const vm_req_fault_t *req, vm_resp_fault_t *resp
 int32_t vm_manager_authorize(uint32_t opcode, const void *req, bharat_cap_handle_t caller_cap);
 
 // v1 global interfaces
-void bh_vm_set_authority_ops(const bh_vm_authority_ops_t *ops);
+/* Installs one complete authority adapter. NULL restores the fail-closed adapter. */
+int32_t bh_vm_set_authority_ops(const bh_vm_authority_ops_t *ops);
 int bh_vm_get_active_spaces_count(void);
 int bh_vm_get_active_regions_count(void);
 
