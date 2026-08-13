@@ -238,10 +238,10 @@ typedef struct __attribute__((aligned(64))) capability_table {
     bh_id_allocator_t id_allocator;
     uint8_t id_bitmap[8]; // 64 bits for 64 entries
     spinlock_t lock;
-    /* Immutable identity after initialization; mutable entries are owner-core local. */
+    /* Process-owned CSpace. Mutable entries are changed only by owner_core. */
     uint32_t cspace_id;
     uint16_t owner_core;
-    uint16_t reserved;
+    uint16_t registry_slot;
     uint32_t owner_pid;
     uint32_t numa_node;
 } capability_table_t;

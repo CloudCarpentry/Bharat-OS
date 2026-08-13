@@ -6,6 +6,7 @@
 #include "bharat/urpc.h"
 #include "hal/hal.h"
 #include "hal/hal_timer.h"
+#include "lib/base/string.h"
 #include "slab.h"
 
 extern void kernel_panic(const char *message);
@@ -14,11 +15,36 @@ extern void kernel_panic(const char *message);
 // seL4 capability model and verification-oriented discipline
 #include <stddef.h>
 
-#define MAX_CAP_TABLES ((size_t)MAX_CPUS)
+/*
+ * CSpaces are process objects allocated independently of CPUs. Each owner core
+ * has a bounded, owner-local registry used to resolve pointer-free locators.
+ * Remote cores request mutations through uRPC and never mutate this registry.
+ */
+#define BH_CAP_CSPACES_PER_CORE 64U
+#define BH_CAP_CSPACE_SLOT_BITS 6U
+#define BH_CAP_CSPACE_OWNER_BITS 5U
+#define BH_CAP_CSPACE_SLOT_MASK ((UINT32_C(1) << BH_CAP_CSPACE_SLOT_BITS) - 1U)
+#define BH_CAP_CSPACE_OWNER_SHIFT BH_CAP_CSPACE_SLOT_BITS
+#define BH_CAP_CSPACE_GENERATION_SHIFT \
+    (BH_CAP_CSPACE_SLOT_BITS + BH_CAP_CSPACE_OWNER_BITS)
 
-/* Each index is mutated only by its owner core during CSpace lifecycle changes. */
-static uint8_t g_cap_tables_used[MAX_CAP_TABLES];
-static uint32_t g_cap_cspace_generations[MAX_CAP_TABLES];
+typedef struct {
+    capability_table_t *table;
+    uint32_t generation;
+    bool uses_bootstrap_storage;
+} bh_cap_cspace_registry_entry_t;
+
+static bh_cap_cspace_registry_entry_t
+    g_cap_cspace_registry[MAX_CPUS][BH_CAP_CSPACES_PER_CORE];
+/* One owner-local CSpace permits capability self-tests before the heap starts. */
+static capability_table_t g_cap_bootstrap_cspaces[MAX_CPUS];
+static bool g_cap_bootstrap_cspaces_used[MAX_CPUS];
+
+_Static_assert(MAX_CPUS <= (UINT32_C(1) << BH_CAP_CSPACE_OWNER_BITS),
+               "CSpace identity must encode every owner core");
+_Static_assert(BH_CAP_CSPACES_PER_CORE <=
+                   (UINT32_C(1) << BH_CAP_CSPACE_SLOT_BITS),
+               "CSpace identity must encode every registry slot");
 
 #define BH_CAP_LOCATOR_NULL_CORE UINT16_MAX
 #define BH_CAP_LOCATOR_NULL_SLOT UINT16_MAX
@@ -35,6 +61,12 @@ static bh_cap_locator_t cap_locator_null(void) {
 
 static bool cap_locator_is_null(const bh_cap_locator_t *locator) {
     return locator->cspace_id == 0U;
+}
+
+static uint32_t cap_cspace_id_make(uint32_t owner_core, uint32_t slot,
+                                   uint32_t generation) {
+    return (generation << BH_CAP_CSPACE_GENERATION_SHIFT) |
+           (owner_core << BH_CAP_CSPACE_OWNER_SHIFT) | (slot + 1U);
 }
 
 static bh_cap_locator_t cap_locator_make(const capability_table_t *table,
@@ -62,10 +94,19 @@ static capability_table_t *cap_locator_resolve_table(const bh_cap_locator_t *loc
         return NULL;
     }
 
-    capability_table_t *table = &g_cpu_locals[locator->owner_core].cap_table;
-    if (g_cap_tables_used[locator->owner_core] == 0U ||
+    uint32_t encoded_slot = locator->cspace_id & BH_CAP_CSPACE_SLOT_MASK;
+    if (encoded_slot == 0U || encoded_slot > BH_CAP_CSPACES_PER_CORE) {
+        return NULL;
+    }
+
+    uint32_t slot = encoded_slot - 1U;
+    bh_cap_cspace_registry_entry_t *registered =
+        &g_cap_cspace_registry[locator->owner_core][slot];
+    capability_table_t *table = registered->table;
+    if (table == NULL ||
         table->cspace_id != locator->cspace_id ||
-        table->owner_core != locator->owner_core) {
+        table->owner_core != locator->owner_core ||
+        table->registry_slot != slot) {
         return NULL;
     }
     return table;
@@ -141,26 +182,38 @@ extern bharat_cap_status_t kernel_cap_authority_resolver(
     bharat_cap_validation_result_t *out_result);
 
 capability_table_t* cap_table_create(void) {
-    /*@
-      loop invariant 0 <= i <= BHARAT_ARRAY_SIZE(g_cpu_locals);
-      loop assigns i, g_cap_tables_used[0..MAX_CAP_TABLES-1], g_cpu_locals[0..MAX_CAP_TABLES-1].cap_table;
-      loop variant BHARAT_ARRAY_SIZE(g_cpu_locals) - i;
-    */
-    for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_cpu_locals); ++i) {
-        if (g_cap_tables_used[i] == 0U) {
-            g_cap_tables_used[i] = 1U;
-            g_cap_cspace_generations[i]++;
-            if (g_cap_cspace_generations[i] == 0U) {
-                g_cap_cspace_generations[i] = 1U;
+    uint32_t owner_core = hal_cpu_get_id();
+    if (owner_core >= MAX_CPUS) {
+        return NULL;
+    }
+
+    for (size_t i = 0; i < BH_CAP_CSPACES_PER_CORE; ++i) {
+        bh_cap_cspace_registry_entry_t *registered =
+            &g_cap_cspace_registry[owner_core][i];
+        if (registered->table == NULL) {
+            capability_table_t *t = kmalloc(sizeof(*t));
+            if (t == NULL) {
+                if (g_cap_bootstrap_cspaces_used[owner_core]) {
+                    return NULL;
+                }
+                t = &g_cap_bootstrap_cspaces[owner_core];
+                g_cap_bootstrap_cspaces_used[owner_core] = true;
+                registered->uses_bootstrap_storage = true;
+            } else {
+                registered->uses_bootstrap_storage = false;
             }
-            capability_table_t* t = &g_cpu_locals[i].cap_table;
+            memset(t, 0, sizeof(*t));
+            registered->generation++;
+            if (registered->generation == 0U) {
+                registered->generation = 1U;
+            }
             spin_lock_init(&t->lock);
             bh_id_allocator_init(&t->id_allocator, t->id_bitmap, BHARAT_ARRAY_SIZE(t->entries));
             t->numa_node = 0U; // Placeholder, would be set to actual node in full implementation
-            t->cspace_id = (g_cap_cspace_generations[i] << BH_CAP_GEN_SHIFT) |
-                           ((uint32_t)i + 1U);
-            t->owner_core = (uint16_t)i;
-            t->reserved = 0U;
+            t->cspace_id = cap_cspace_id_make(owner_core, (uint32_t)i,
+                                               registered->generation);
+            t->owner_core = (uint16_t)owner_core;
+            t->registry_slot = (uint16_t)i;
             t->owner_pid = 0U;
             /*@
               loop invariant 0 <= j <= BHARAT_ARRAY_SIZE(t->entries);
@@ -173,6 +226,8 @@ capability_table_t* cap_table_create(void) {
                 t->entries[j].first_child = cap_locator_null();
                 t->entries[j].next_sibling = cap_locator_null();
             }
+            /* Publish only after the complete CSpace has been initialized. */
+            registered->table = t;
             bharat_cap_register_authority_resolver(kernel_cap_authority_resolver);
             return t;
         }
@@ -197,11 +252,21 @@ int cap_table_init_for_process(bh_process_t* proc) {
 
 void cap_table_destroy(capability_table_t* table) {
     if (!table) return;
-    for (size_t i = 0; i < BHARAT_ARRAY_SIZE(g_cpu_locals); ++i) {
-        if (&g_cpu_locals[i].cap_table == table) {
-            g_cap_tables_used[i] = 0U;
-            break;
-        }
+    uint32_t owner_core = table->owner_core;
+    uint32_t slot = table->registry_slot;
+    if (owner_core >= MAX_CPUS || slot >= BH_CAP_CSPACES_PER_CORE ||
+        g_cap_cspace_registry[owner_core][slot].table != table) {
+        return;
+    }
+    /* Owner-local unpublish makes all old locators fail before storage release. */
+    bh_cap_cspace_registry_entry_t *registered =
+        &g_cap_cspace_registry[owner_core][slot];
+    registered->table = NULL;
+    if (registered->uses_bootstrap_storage) {
+        g_cap_bootstrap_cspaces_used[owner_core] = false;
+        registered->uses_bootstrap_storage = false;
+    } else {
+        kfree(table);
     }
 }
 
@@ -451,9 +516,11 @@ int cap_table_delegate(capability_table_t* src,
 
     uint32_t current_core = hal_cpu_get_id();
     uint32_t target_core = dst->owner_core;
-    bool destination_is_registered = target_core < MAX_CPUS &&
-                                     g_cap_tables_used[target_core] != 0U &&
-                                     g_cpu_locals[target_core].cap_table.cspace_id == dst->cspace_id;
+    bool destination_is_registered =
+        target_core < MAX_CPUS &&
+        dst->registry_slot < BH_CAP_CSPACES_PER_CORE &&
+        g_cap_cspace_registry[target_core][dst->registry_slot].table == dst &&
+        dst->cspace_id != 0U;
     if (!destination_is_registered) {
         return -6;
     }
@@ -680,35 +747,42 @@ void cap_handle_revoke_req(uint64_t payload, uint32_t source_core) {
     uint32_t req_core = (uint32_t)(payload & 0xFF);
 
     uint32_t current_core = hal_cpu_get_id();
-    capability_table_t* table = &g_cpu_locals[current_core].cap_table;
-
-    // Scan our local capability table for descendants of the specified parent lineage
-    spin_lock(&table->lock);
-    for (size_t i = 0; i < BHARAT_ARRAY_SIZE(table->entries); ++i) {
-        capability_entry_t *entry = &table->entries[i];
-        if (entry->in_use != 0U && entry->state == CAP_STATE_LIVE) {
-            bool is_descendant = entry->parent.owner_core == origin_cpu &&
-                                 entry->parent.slot == src_slot &&
-                                 entry->parent.generation == src_generation &&
-                                 revocation_epoch >= entry->parent.revocation_epoch;
-
-            if (is_descendant) {
-                entry->rights = 0U;
-                entry->flags = 0U;
-                entry->object_ref = 0U;
-
-                entry->parent = cap_locator_null();
-                entry->first_child = cap_locator_null();
-                entry->next_sibling = cap_locator_null();
-
-                entry->generation++;
-                entry->state = CAP_STATE_FREE;
-                entry->in_use = 0U;
-                bh_id_allocator_free(&table->id_allocator, (uint32_t)i);
+    if (current_core < MAX_CPUS) {
+        /* Scan every process CSpace currently owned by this core. */
+        for (size_t cspace = 0; cspace < BH_CAP_CSPACES_PER_CORE; ++cspace) {
+            capability_table_t *table =
+                g_cap_cspace_registry[current_core][cspace].table;
+            if (table == NULL) {
+                continue;
             }
+
+            spin_lock(&table->lock);
+            for (size_t i = 0; i < BHARAT_ARRAY_SIZE(table->entries); ++i) {
+                capability_entry_t *entry = &table->entries[i];
+                if (entry->in_use != 0U && entry->state == CAP_STATE_LIVE) {
+                    bool is_descendant =
+                        entry->parent.owner_core == origin_cpu &&
+                        entry->parent.slot == src_slot &&
+                        entry->parent.generation == src_generation &&
+                        revocation_epoch >= entry->parent.revocation_epoch;
+
+                    if (is_descendant) {
+                        entry->rights = 0U;
+                        entry->flags = 0U;
+                        entry->object_ref = 0U;
+                        entry->parent = cap_locator_null();
+                        entry->first_child = cap_locator_null();
+                        entry->next_sibling = cap_locator_null();
+                        entry->generation++;
+                        entry->state = CAP_STATE_FREE;
+                        entry->in_use = 0U;
+                        bh_id_allocator_free(&table->id_allocator, (uint32_t)i);
+                    }
+                }
+            }
+            spin_unlock(&table->lock);
         }
     }
-    spin_unlock(&table->lock);
 
     urpc_bootstrap_send(source_core, urpc_pack_msg(URPC_CAP_REVOKE_ACK, req_core));
 }
