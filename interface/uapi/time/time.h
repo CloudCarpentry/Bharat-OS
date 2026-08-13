@@ -1,17 +1,8 @@
-#ifndef BHARAT_UAPI_TIME_H
-#define BHARAT_UAPI_TIME_H
+#ifndef BHARAT_LEGACY_UAPI_TIME_FORWARD_H
+#define BHARAT_LEGACY_UAPI_TIME_FORWARD_H
 
-#include <stdint.h>
+/* Legacy include-root compatibility; the installed authority lives below
+ * interface/include/bharat/uapi. */
+#include <bharat/uapi/time/time.h>
 
-/**
- * @brief User-space time type representing monotonic nanoseconds.
- */
-typedef uint64_t bh_time_t;
-typedef uint64_t bh_deadline_t;
-
-#define BH_CLOCK_REALTIME   0
-#define BH_CLOCK_MONOTONIC  1
-
-#define BH_NS_PER_MS UINT64_C(1000000)
-
-#endif /* BHARAT_UAPI_TIME_H */
+#endif

@@ -1,5 +1,10 @@
 #include <bharat/bsys/backend.h>
+#include <bharat/uapi/syscall/bh_syscall_numbers.h>
+#include <bharat/uapi/time/time.h>
 #include <standard/stddef.h>
+
+extern long bh_syscall(long sysno, long arg1, long arg2, long arg3, long arg4,
+                       long arg5, long arg6);
 
 /* The Bharat skeleton backend is compiled unconditionally so it can be
  * registered and tested on host, or utilized as a default target skeleton.
@@ -30,9 +35,18 @@ static int32_t bharat_close(uint32_t handle) {
 
 static int32_t bharat_clock_gettime(uint32_t clock_id,
                                     bh_bsys_timespec_t *out_time) {
-  (void)clock_id;
-  (void)out_time;
-  return -38; /* -SYS_ENOSYS */
+  uint64_t now_ns = 0;
+  long status;
+
+  if (clock_id != BH_CLOCK_MONOTONIC || !out_time)
+    return -22; /* -SYS_EINVAL */
+  status = bh_syscall(BH_SYS_TIME_GET, (long)clock_id, (long)&now_ns, 0, 0, 0,
+                      0);
+  if (status != 0)
+    return (int32_t)status;
+  out_time->tv_sec = now_ns / BH_NS_PER_SEC;
+  out_time->tv_nsec = now_ns % BH_NS_PER_SEC;
+  return 0;
 }
 
 static int32_t bharat_nanosleep(const bh_bsys_timespec_t *request,

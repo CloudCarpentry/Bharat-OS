@@ -12,11 +12,25 @@
 #include "bharat/cpu_local.h"
 #include <bharat/uapi/syscall_args.h>
 #include <bharat/uapi/capability/rights.h>
+#include <bharat/uapi/time/time.h>
+#include "time/ktime.h"
 
 #define TRAP_SUCCESS 0L
 
 bh_operation_result_t bh_sys_nop(bh_syscall_ctx_t *ctx) {
     return bh_op_result_kstatus(K_OK);
+}
+
+bh_operation_result_t bh_sys_time_get(bh_syscall_ctx_t *ctx) {
+    uint64_t now_ns;
+    bh_status_t st;
+
+    if ((uint32_t)ctx->regs.arg[0] != BH_CLOCK_MONOTONIC) {
+        return bh_op_result_kstatus(K_ERR_UNSUPPORTED);
+    }
+    now_ns = bh_ktime_now();
+    st = bh_copy_to_user((void *)ctx->regs.arg[1], &now_ns, sizeof(now_ns));
+    return bh_op_result_kstatus(bh_status_to_kstatus(st));
 }
 
 bh_operation_result_t bh_sys_thread_create(bh_syscall_ctx_t *ctx) {
