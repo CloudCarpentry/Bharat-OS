@@ -690,9 +690,9 @@ add_dependencies(kernel.elf check_trap_frame_abi check_context_frame_abi)
 target_include_directories(kernel.elf PRIVATE "${ASM_OFFSETS_DIR}")
 
 # Architecture-specific code model and PIE flags are set below
-target_link_libraries(kernel.elf subsys_manager bharat_kernel_buildopts bharatos_drivers serial_drivers bharat_kernel_includes bharat_arch_private_includes board_fabric bharat_platform_headers elf_parser bharat_msg_wire_codec)
+target_link_libraries(kernel.elf PRIVATE subsys_manager bharat_kernel_buildopts bharatos_drivers serial_drivers bharat_kernel_includes bharat_arch_private_includes board_fabric bharat_platform_headers elf_parser bharat_msg_wire_codec)
 if(BHARAT_ENABLE_FBUI)
-    target_link_libraries(kernel.elf fbui)
+    target_link_libraries(kernel.elf PRIVATE fbui)
 endif()
 set_target_properties(kernel.elf PROPERTIES
     OUTPUT_NAME "kernel.elf"
