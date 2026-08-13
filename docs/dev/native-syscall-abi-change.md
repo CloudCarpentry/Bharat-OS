@@ -1,3 +1,13 @@
+---
+title: Native syscall ABI verification and intentional changes
+status: Draft
+owner: Team
+last_updated: '2024-01-01'
+tags:
+- doc
+see_also:
+- none
+---
 # Native syscall ABI verification and intentional changes
 
 `interface/contracts/abi/native_syscalls.json` is the sole Native syscall ABI

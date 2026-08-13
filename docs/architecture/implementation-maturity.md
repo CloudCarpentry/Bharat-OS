@@ -1,3 +1,13 @@
+---
+title: Runtime implementation maturity contract
+status: Draft
+owner: Team
+last_updated: '2024-01-01'
+tags:
+- doc
+see_also:
+- none
+---
 # Runtime implementation maturity contract
 
 `interface/contracts/implementation_maturity.json` is the build authority for whether linked

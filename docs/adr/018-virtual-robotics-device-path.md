@@ -1,3 +1,13 @@
+---
+title: 'ADR 018: Generic Virtual Robotics Device Path'
+status: Draft
+owner: Team
+last_updated: '2024-01-01'
+tags:
+- doc
+see_also:
+- none
+---
 # ADR 018: Generic Virtual Robotics Device Path
 
 - **Status:** Accepted

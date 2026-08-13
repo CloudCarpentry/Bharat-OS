@@ -1,3 +1,13 @@
+---
+title: Using Python3_EXECUTABLE in CMake
+status: Draft
+owner: Team
+last_updated: '2024-01-01'
+tags:
+- doc
+see_also:
+- none
+---
 # Using Python3_EXECUTABLE in CMake
 
 Bharat‑OS relies on Python 3 scripts for various build‑time checks (e.g. generating ABI offsets, testing trap‑frame ABI). To keep the build portable across Windows and Linux we use the `Python3_EXECUTABLE` variable provided by CMake's `FindPython3` module.

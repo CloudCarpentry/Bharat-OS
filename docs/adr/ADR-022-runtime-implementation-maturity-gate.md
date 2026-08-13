@@ -1,6 +1,12 @@
 ---
-title: "ADR-022: Runtime implementation maturity gate"
+title: 'ADR-022: Runtime implementation maturity gate'
 status: Accepted
+owner: Team
+last_updated: '2024-01-01'
+tags:
+- doc
+see_also:
+- none
 ---
 
 # ADR-022: Runtime implementation maturity gate

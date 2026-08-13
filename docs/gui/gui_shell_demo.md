@@ -1,3 +1,13 @@
+---
+title: "DEMO-P0-001 \u2014 Bharat GUI Shell User Guide & Architecture"
+status: Draft
+owner: Team
+last_updated: '2024-01-01'
+tags:
+- doc
+see_also:
+- none
+---
 # DEMO-P0-001 — Bharat GUI Shell User Guide & Architecture
 
 ## Overview

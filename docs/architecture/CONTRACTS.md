@@ -3,6 +3,11 @@ title: Bharat-OS Architecture and Interface Contract Index
 status: Draft
 owner: Architecture Team
 reviewers: Core Maintainers
+last_updated: '2024-01-01'
+tags:
+- doc
+see_also:
+- none
 ---
 
 # Bharat-OS Architecture and Interface Contract Index

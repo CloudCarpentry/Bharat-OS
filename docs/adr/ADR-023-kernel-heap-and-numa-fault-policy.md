@@ -1,8 +1,12 @@
 ---
-title: "ADR-023: Explicit Kernel Heap and NUMA Fault Policy"
+title: 'ADR-023: Explicit Kernel Heap and NUMA Fault Policy'
 status: Accepted
 owner: Memory Working Group
 last_updated: 2026-08-12
+tags:
+- doc
+see_also:
+- none
 ---
 # ADR-023: Explicit Kernel Heap and NUMA Fault Policy
 

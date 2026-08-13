@@ -1,3 +1,13 @@
+---
+title: 'ADR-020: Mechanically verified trap-entry ABI'
+status: Draft
+owner: Team
+last_updated: '2024-01-01'
+tags:
+- doc
+see_also:
+- none
+---
 # ADR-020: Mechanically verified trap-entry ABI
 
 ## Status
