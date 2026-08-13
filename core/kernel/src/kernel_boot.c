@@ -385,7 +385,9 @@ extern void kernel_run_boot_tests(void);
 extern void hello_world_app(void);
 extern void kernel_tester_app(void);
 extern void bharat_demo_app_legacy(void);
+#if BHARAT_ENABLE_FBUI
 extern void bharat_demo_app(void);
+#endif
 
 extern int boot_video_map(const boot_info_t *boot);
 
@@ -466,8 +468,7 @@ static void runtime_enter_normal(const boot_info_t *boot) {
     KPRINT("  [BOOT] Runtime initialization complete\n");
     boot_gui_update_progress(100, "LAUNCHING USERSPACE");
 
-#if defined(BHARAT_BOOT_GUI) && BHARAT_BOOT_GUI
-    extern void bharat_demo_app(void);
+#if BHARAT_BOOT_GUI && BHARAT_ENABLE_FBUI
     KPRINT("  [BOOT] Transitioning to Graphical System Dashboard...\n");
     bharat_demo_app();
 #endif
@@ -587,7 +588,9 @@ static void runtime_enter_legacy_bringup(const boot_info_t *boot) {
     hello_world_app();
     kernel_tester_app();
     bharat_demo_app_legacy();
+#if BHARAT_ENABLE_FBUI
     bharat_demo_app();
+#endif
 
     while (1) {
       // Background AI

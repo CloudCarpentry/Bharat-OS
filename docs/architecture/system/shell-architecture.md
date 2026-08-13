@@ -31,6 +31,9 @@ This document defines the canonical Bharat-OS system shell architecture and alig
 - Deferred POSIX compatibility shell: `core/personalities/compat/`
 
 Shell handlers must use service contracts/backend APIs and must not access kernel internals directly.
+The diagnostic request contract is `interface/include/bharat/uapi/shell/diagnostic.h`:
+providers own discovery and state, while the shell only validates, dispatches, and
+formats bounded responses.
 
 ## Shell classes
 
@@ -48,6 +51,11 @@ Shell handlers must use service contracts/backend APIs and must not access kerne
 - Deny path + auth lockout behavior.
 - Text and `kv` output modes.
 - Host tests covering parser, registry, denials, malformed input, timeout/backend failure, integration session.
+- Console-first administration catalog (`cpuinfo`, `hwcap`, `ps`, service, memory,
+  heterogeneous-memory, tensor, timer, capability, device, I/O, network, and
+  diagnostic commands) routed through the versioned diagnostic-provider boundary.
+- Runtime `status` and `sys info` no longer fabricate static state; an unbound
+  diagnostic/service endpoint fails closed.
 
 ### Missing / partial
 
