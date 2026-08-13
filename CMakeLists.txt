@@ -37,6 +37,7 @@ include(BharatProfiles)
 include(BharatPersonality)
 include(BharatComponentPolicy)
 option(BHARAT_ENABLE_DMA_MAP "Enable DMA map APIs" ON)
+option(BHARAT_BOOT_GUI "Enable boot-time GUI handoff metadata" ON)
 include(BharatIOPolicy)
 include(${BHARAT_CMAKE_ROOT}/BharatConstraints.cmake)
 

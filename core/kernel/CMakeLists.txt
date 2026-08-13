@@ -164,7 +164,6 @@ configure_file(
     "${BHARAT_GENERATED_INCLUDE_DIR}/bharat_config.h"
     @ONLY
 )
-option(BHARAT_BOOT_GUI "Enable boot-time GUI handoff metadata" ON)
 if(NOT DEFINED BHARAT_BOOT_HW_PROFILE OR "${BHARAT_BOOT_HW_PROFILE}" STREQUAL "")
     message(FATAL_ERROR "BHARAT_BOOT_HW_PROFILE must not be empty")
 endif()
@@ -655,6 +654,9 @@ add_executable(kernel.elf
     $<TARGET_OBJECTS:k_init>
     $<TARGET_OBJECTS:k_fs>
     $<TARGET_OBJECTS:k_monitor>
+)
+target_compile_definitions(kernel.elf PRIVATE
+    BHARAT_ENABLE_FBUI=$<BOOL:${BHARAT_ENABLE_FBUI}>
 )
 
 # Always enable kernel selftests for test builds
