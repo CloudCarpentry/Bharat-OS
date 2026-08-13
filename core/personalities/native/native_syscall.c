@@ -28,6 +28,7 @@ extern bh_operation_result_t bh_sys_read(bh_syscall_ctx_t *ctx);
 extern bh_operation_result_t bh_sys_write(bh_syscall_ctx_t *ctx);
 extern bh_operation_result_t bh_sys_get_subsystem_caps(bh_syscall_ctx_t *ctx);
 extern bh_operation_result_t bh_sys_thread_exit(bh_syscall_ctx_t *ctx);
+extern bh_operation_result_t bh_sys_time_get(bh_syscall_ctx_t *ctx);
 
 static const bh_syscall_meta_t native_syscall_table[] = {
 #include <kernel/syscall/native_syscall_table.inc>
@@ -42,5 +43,5 @@ const bh_personality_syscall_table_t native_personality = {
 
 _Static_assert(BH_SYSCALL_COUNT == (sizeof(native_syscall_table) / sizeof(native_syscall_table[0])),
                "syscall table and generated ABI count differ");
-_Static_assert(BH_SYS_THREAD_EXIT < 256,
+_Static_assert(BH_SYS_TIME_GET < 256,
                "highest syscall exceeds reserved core range (256)");

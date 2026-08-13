@@ -69,6 +69,11 @@ add_bh_test(test_runtime_capability_match host/test_runtime_capability_match.c)
 add_bh_test(test_runtime_capability_rejection host/test_runtime_capability_rejection.c)
 add_bh_test(test_build_info host/test_build_info.c)
 
+add_executable(test_bharat_time_backend host/test_bharat_time_backend.c)
+target_link_libraries(test_bharat_time_backend PRIVATE BharatLibC::BSys)
+add_test(NAME test_bharat_time_backend COMMAND test_bharat_time_backend)
+set_tests_properties(test_bharat_time_backend PROPERTIES TIMEOUT 10 LABELS "unit;fast;time")
+
 add_executable(test_posix_phase_a host/test_posix_phase_a.c)
 target_link_libraries(test_posix_phase_a PRIVATE BharatLibC::PosixPhaseA)
 add_test(NAME test_posix_phase_a COMMAND test_posix_phase_a)

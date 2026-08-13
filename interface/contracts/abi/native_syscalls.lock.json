@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "syscall_count": 24,
+  "syscall_count": 25,
   "generated_sha256": {
-    "numbers": "3db3273c289f367fa27ada9b7faf58e52aa53460794cc8e56bd84586986ea6b2",
-    "table_def": "fd389f4836bd745db2c4d327f76031d66380179f940378cef84979eab0b749e7",
-    "metadata_table": "e24f30ca78dd2c80e18c707826a5833d6427f61333434f2b3244b3c26e467da3"
+    "numbers": "68c571c85e96256f0f7a7a10d4a2facfedeadab8c2746fbc3a032fbc15be6d2e",
+    "table_def": "bda26a2a241c681bc1d5388284084096d63bdf9ea02018e52461972fa2dde1ea",
+    "metadata_table": "d4b5d65b722a0131c26044817c1eb5300888d18d190e3d33150a7e7db22405f8"
   },
   "syscalls": [
     {
@@ -647,6 +647,29 @@
       "capability": null,
       "traits": [
         "fast"
+      ]
+    },
+    {
+      "number": 24,
+      "symbol": "BH_SYS_TIME_GET",
+      "arguments": [
+        {
+          "name": "clock_id",
+          "kind": "scalar",
+          "type": "uint32_t",
+          "direction": "in"
+        },
+        {
+          "name": "out_time_ns",
+          "kind": "pointer",
+          "type": "uint64_t",
+          "direction": "out",
+          "size_source": "sizeof(uint64_t)"
+        }
+      ],
+      "capability": null,
+      "traits": [
+        "user_write"
       ]
     }
   ]

@@ -11,6 +11,7 @@
 #define LINUX_X86_64_SYS_BRK           12
 #define LINUX_X86_64_SYS_GETPID        39
 #define LINUX_X86_64_SYS_EXIT          60
+#define LINUX_X86_64_SYS_CLOCK_GETTIME 228
 #define LINUX_X86_64_SYS_EXIT_GROUP    231
 #define LINUX_X86_64_SYS_OPENAT        257
 

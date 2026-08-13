@@ -55,7 +55,7 @@ static shell_response_t cmd_help(const shell_session_t* session,
     (void)session; (void)backend; (void)argv;
     return mk(SHELL_RC_OK,
               "commands",
-              "help version uptime cpuinfo hwcap ps service list service status meminfo vmstat hmem info hmem topology hmem stats hmem alloc hmem bench tensor info tensor bench timer info capstat device list io stat net status diag");
+              "help version uptime cpuinfo hwcap ps service list service status meminfo vmstat hmem info hmem topology hmem stats hmem alloc hmem bench tensor info tensor bench timer info timer test capstat device list io stat net status diag");
 }
 
 static shell_response_t cmd_version(const shell_session_t* s, const shell_backend_api_t* b, const shell_argv_t* a) {
@@ -222,6 +222,7 @@ DIAG_HANDLER(cmd_hmem_bench, BH_SHELL_DIAG_HMEM_BENCH, "hmem bench", 2u)
 DIAG_HANDLER(cmd_tensor_info, BH_SHELL_DIAG_TENSOR_INFO, "tensor info", 2u)
 DIAG_HANDLER(cmd_tensor_bench, BH_SHELL_DIAG_TENSOR_BENCH, "tensor bench", 2u)
 DIAG_HANDLER(cmd_timer_info, BH_SHELL_DIAG_TIMER_INFO, "timer info", 2u)
+DIAG_HANDLER(cmd_timer_test, BH_SHELL_DIAG_TIMER_TEST, "timer test", 2u)
 DIAG_HANDLER(cmd_capstat, BH_SHELL_DIAG_CAP_STAT, "capstat", 1u)
 DIAG_HANDLER(cmd_device_list, BH_SHELL_DIAG_DEVICE_LIST, "device list", 2u)
 DIAG_HANDLER(cmd_io_stat, BH_SHELL_DIAG_IO_STAT, "io stat", 2u)
@@ -259,6 +260,7 @@ const shell_command_entry_t* shell_registry_get(size_t* count) {
         {.command = "tensor info", .required_caps = SHELL_CAP_NONE, .allowed_in_prod = true, .timeout_ms = 100, .handler = cmd_tensor_info},
         {.command = "tensor bench", .required_caps = SHELL_CAP_DIAG, .allowed_in_prod = false, .timeout_ms = 1000, .handler = cmd_tensor_bench},
         {.command = "timer info", .required_caps = SHELL_CAP_NONE, .allowed_in_prod = true, .timeout_ms = 100, .handler = cmd_timer_info},
+        {.command = "timer test", .required_caps = SHELL_CAP_DIAG, .allowed_in_prod = false, .timeout_ms = 2000, .handler = cmd_timer_test},
         {.command = "capstat", .required_caps = SHELL_CAP_NONE, .allowed_in_prod = true, .timeout_ms = 100, .handler = cmd_capstat},
         {.command = "device list", .required_caps = SHELL_CAP_NONE, .allowed_in_prod = true, .timeout_ms = 100, .handler = cmd_device_list},
         {.command = "io stat", .required_caps = SHELL_CAP_NONE, .allowed_in_prod = true, .timeout_ms = 100, .handler = cmd_io_stat},

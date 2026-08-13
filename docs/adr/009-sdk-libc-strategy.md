@@ -42,6 +42,10 @@ process/thread phase. This ordering is part of the decision: implemented API
 inventory must be evidence-driven and must not be expanded merely to improve a
 POSIX-compliance score.
 
+On Bharat targets, `clock_gettime(CLOCK_MONOTONIC)` is backed by the native
+`BH_SYS_TIME_GET` syscall and the kernel's canonical nanosecond clock. The host
+backend is test-only and is not a valid source for target benchmark evidence.
+
 ### Source Strategy: Hybrid Two-Step Approach
 
 Instead of writing a libc from scratch, we will implement a two-step adoption plan:
