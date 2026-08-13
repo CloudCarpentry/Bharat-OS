@@ -595,7 +595,7 @@ add_custom_command(
 # Extract offsets using the python script
 add_custom_command(
     OUTPUT "${ASM_OFFSETS_H}"
-    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/abi/asm_offsets.py "${ASM_OFFSETS_DIR}/gen_asm_offsets.s" "${ASM_OFFSETS_H}"
+    COMMAND python ${CMAKE_SOURCE_DIR}/tools/abi/asm_offsets.py "${ASM_OFFSETS_DIR}/gen_asm_offsets.s" "${ASM_OFFSETS_H}"
     DEPENDS "${ASM_OFFSETS_DIR}/gen_asm_offsets.s" "${CMAKE_SOURCE_DIR}/tools/abi/asm_offsets.py"
     COMMENT "Generating ${ASM_OFFSETS_H}"
 )
