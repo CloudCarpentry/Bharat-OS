@@ -40,6 +40,15 @@ typedef struct {
 
     void (*process_exit)(
         int32_t status);
+
+    /* Append-only ABI v1 extensions. Keep the original fields above stable. */
+    int32_t (*nanosleep)(
+        const bh_bsys_timespec_t *request,
+        bh_bsys_timespec_t *remaining);
+
+    int32_t (*process_id)(uint32_t *out_process_id);
+
+    int32_t (*isatty)(uint32_t handle, uint32_t *out_is_tty);
 } bh_bsys_backend_ops_t;
 
 /* Backend registration and query */

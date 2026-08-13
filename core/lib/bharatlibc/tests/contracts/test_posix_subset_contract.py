@@ -9,14 +9,20 @@ import yaml
 CONTRACT = Path(__file__).parents[2] / "contracts" / "posix_subset_v1.yaml"
 PROJECT_ROOT = CONTRACT.parent.parent
 
-EXPECTED_IMPLEMENTED = {"read", "write", "close"}
+EXPECTED_IMPLEMENTED = {
+    "read", "write", "close", "clock_gettime", "nanosleep", "getpid",
+    "isatty", "malloc", "free", "memcpy", "memset", "memmove",
+}
 EXPECTED_STAGES = {
     1: {
-        "read", "write", "close", "open", "openat", "lseek", "fstat",
-        "isatty", "clock_gettime", "nanosleep", "getpid",
+        "read", "write", "close", "isatty", "clock_gettime", "nanosleep",
+        "getpid", "malloc", "free", "memcpy", "memset", "memmove",
     },
-    2: {"mmap", "munmap", "mprotect", "brk", "sbrk", "_exit"},
-    3: {
+    2: {
+        "open", "openat", "lseek", "fstat", "readdir", "mkdir", "unlink",
+        "dup", "pipe",
+    },
+    3: {"mmap", "munmap", "mprotect", "brk", "_exit",
         "pthread_create", "pthread_join", "pthread_mutex", "pthread_cond", "TLS",
     },
     4: set(),
@@ -35,6 +41,9 @@ def main() -> None:
     assert stages == EXPECTED_STAGES
     assert set(contract["functions"]) == set().union(*EXPECTED_STAGES.values())
     assert EXPECTED_IMPLEMENTED <= stages[1]
+    assert [entry["name"] for entry in contract["stages"][:3]] == [
+        "hmem_demo", "after_ramfs", "process_thread_workloads",
+    ]
 
     socket_stage = next(entry for entry in contract["stages"] if entry["stage"] == 4)
     assert socket_stage["prerequisite"] == "stable_network_service_abi"
