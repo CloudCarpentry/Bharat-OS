@@ -96,6 +96,15 @@ during single-threaded startup and defaults to fail closed. Spawn publishes a ha
 only after process, address-space, image, and initial-thread creation have succeeded.
 Failures revoke the provisional handle and request kernel reaping.
 
+The standalone service refuses to enter its IPC loop unless a complete kernel
+authority adapter was installed during startup. Restoring the default adapter,
+including by passing `NULL`, returns `ERR_UNSUPPORTED`; it is not a successful
+configuration operation. Current delivery images therefore cannot claim that
+`bench_hmem_tensor` was spawned through `process_manager`: the native ABI does not
+yet provide the capability-mediated process/address-space/image authority transport
+needed to install that adapter. The SDK benchmark remains host-side evidence and the
+QEMU HMEM benchmark remains kernel-side evidence until that transport exists.
+
 Every v1 operation validates its exact ABI version and structure size. Spawn also
 requires zeroed reserved fields, non-zero executable authority, and non-zero object
 identifiers returned by the kernel adapter. Query, terminate, wait, and reap reject
