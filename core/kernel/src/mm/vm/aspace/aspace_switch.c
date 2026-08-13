@@ -47,7 +47,7 @@ void vm_debug_validate_active_tracking(void) {
     for (uint32_t i = 0; i < MAX_CPUS; i++) {
         address_space_t *as = g_cpu_locals[i].current_as;
         if (as) {
-            uint64_t mask = __atomic_load_n(&as->active_mask, __ATOMIC_ACQUIRE);
+            uint64_t mask = aspace_get_active_mask(as);
             if (!(mask & (1ULL << i))) {
                 kernel_panic("vm_debug_validate_active_tracking: active_mask out of sync\n");
             }

@@ -1009,7 +1009,8 @@ void sched_remote_cmd_poll_timeouts(void) {
 }
 
 kstatus_t sched_cmd_ring_init(sched_cmd_ring_t *q, sched_cmd_slot_t *slots, uint32_t capacity) {
-    if (!q || !slots || capacity < 2 || (capacity & (capacity - 1)) != 0) {
+    if (!q || !slots || capacity < 2 || capacity >= (1U << 31) ||
+        (capacity & (capacity - 1U)) != 0U) {
         return K_ERR_INVALID_ARG;
     }
     q->slots = slots;
@@ -1028,12 +1029,12 @@ kstatus_t sched_cmd_ring_init(sched_cmd_ring_t *q, sched_cmd_slot_t *slots, uint
 kstatus_t sched_cmd_ring_push(sched_cmd_ring_t *q, const sched_remote_cmd_envelope_t *value) {
     if (!q || !value) return K_ERR_INVALID_ARG;
     sched_cmd_slot_t *slot;
-    uint64_t pos = q->head;
+    uint32_t pos = q->head;
 
     while (true) {
         slot = &q->slots[pos & q->mask];
-        uint64_t seq = __atomic_load_n(&slot->seq, __ATOMIC_ACQUIRE);
-        int64_t diff = (int64_t)seq - (int64_t)pos;
+        uint32_t seq = __atomic_load_n(&slot->seq, __ATOMIC_ACQUIRE);
+        int32_t diff = (int32_t)(seq - pos);
 
         if (diff == 0) {
             if (__atomic_compare_exchange_n(&q->head, &pos, pos + 1, false, __ATOMIC_RELAXED, __ATOMIC_RELAXED)) {
@@ -1054,11 +1055,11 @@ kstatus_t sched_cmd_ring_push(sched_cmd_ring_t *q, const sched_remote_cmd_envelo
 kstatus_t sched_cmd_ring_pop(sched_cmd_ring_t *q, sched_remote_cmd_envelope_t *out_value) {
     if (!q) return K_ERR_INVALID_ARG;
     sched_cmd_slot_t *slot;
-    uint64_t pos = q->tail;
+    uint32_t pos = q->tail;
 
     slot = &q->slots[pos & q->mask];
-    uint64_t seq = __atomic_load_n(&slot->seq, __ATOMIC_ACQUIRE);
-    int64_t diff = (int64_t)seq - (int64_t)(pos + 1);
+    uint32_t seq = __atomic_load_n(&slot->seq, __ATOMIC_ACQUIRE);
+    int32_t diff = (int32_t)(seq - (pos + 1U));
 
     if (diff == 0) {
         q->tail = pos + 1;
@@ -1073,12 +1074,13 @@ kstatus_t sched_cmd_ring_pop(sched_cmd_ring_t *q, sched_remote_cmd_envelope_t *o
 
 bool sched_cmd_ring_empty(const sched_cmd_ring_t *q) {
     if (!q) return true;
-    uint64_t head = __atomic_load_n(&q->head, __ATOMIC_RELAXED);
+    uint32_t head = __atomic_load_n(&q->head, __ATOMIC_RELAXED);
     return q->tail == head;
 }
 
 kstatus_t sched_completion_ring_init(sched_completion_ring_t *q, sched_completion_slot_t *slots, uint32_t capacity) {
-    if (!q || !slots || capacity < 2 || (capacity & (capacity - 1)) != 0) {
+    if (!q || !slots || capacity < 2 || capacity >= (1U << 31) ||
+        (capacity & (capacity - 1U)) != 0U) {
         return K_ERR_INVALID_ARG;
     }
     q->slots = slots;
@@ -1097,12 +1099,12 @@ kstatus_t sched_completion_ring_init(sched_completion_ring_t *q, sched_completio
 kstatus_t sched_completion_ring_push(sched_completion_ring_t *q, const sched_remote_completion_t *value) {
     if (!q || !value) return K_ERR_INVALID_ARG;
     sched_completion_slot_t *slot;
-    uint64_t pos = q->head;
+    uint32_t pos = q->head;
 
     while (true) {
         slot = &q->slots[pos & q->mask];
-        uint64_t seq = __atomic_load_n(&slot->seq, __ATOMIC_ACQUIRE);
-        int64_t diff = (int64_t)seq - (int64_t)pos;
+        uint32_t seq = __atomic_load_n(&slot->seq, __ATOMIC_ACQUIRE);
+        int32_t diff = (int32_t)(seq - pos);
 
         if (diff == 0) {
             if (__atomic_compare_exchange_n(&q->head, &pos, pos + 1, false, __ATOMIC_RELAXED, __ATOMIC_RELAXED)) {
@@ -1123,11 +1125,11 @@ kstatus_t sched_completion_ring_push(sched_completion_ring_t *q, const sched_rem
 kstatus_t sched_completion_ring_pop(sched_completion_ring_t *q, sched_remote_completion_t *out_value) {
     if (!q) return K_ERR_INVALID_ARG;
     sched_completion_slot_t *slot;
-    uint64_t pos = q->tail;
+    uint32_t pos = q->tail;
 
     slot = &q->slots[pos & q->mask];
-    uint64_t seq = __atomic_load_n(&slot->seq, __ATOMIC_ACQUIRE);
-    int64_t diff = (int64_t)seq - (int64_t)(pos + 1);
+    uint32_t seq = __atomic_load_n(&slot->seq, __ATOMIC_ACQUIRE);
+    int32_t diff = (int32_t)(seq - (pos + 1U));
 
     if (diff == 0) {
         q->tail = pos + 1;
@@ -1142,6 +1144,6 @@ kstatus_t sched_completion_ring_pop(sched_completion_ring_t *q, sched_remote_com
 
 bool sched_completion_ring_empty(const sched_completion_ring_t *q) {
     if (!q) return true;
-    uint64_t head = __atomic_load_n(&q->head, __ATOMIC_RELAXED);
+    uint32_t head = __atomic_load_n(&q->head, __ATOMIC_RELAXED);
     return q->tail == head;
 }
