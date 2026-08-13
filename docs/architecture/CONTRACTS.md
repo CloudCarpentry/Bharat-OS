@@ -37,7 +37,7 @@ When implementation differs from an authority, treat it as a defect or an explic
 | Developer SDK v0.1 source boundary | `interface/sdk/include/bharat/`, `interface/sdk/README.md`, and ADR-009 | Hosted SDK libraries and future native UAPI/service bindings | Standalone header check, SDK host test, examples, and SDK install/consumer check | SDK and userspace runtime maintainers |
 | Target and machine contracts | `delivery/targets/` and target matrix | Build/run manifests and emulator commands | Target build + smoke run | Platform maintainers |
 | Runtime implementation maturity | `interface/contracts/implementation_maturity.json` and ADR-022 | Build-time production maturity gate | `python3 tools/check_implementation_maturity.py --profile RELEASE` plus focused checker tests | Build + subsystem maintainers |
-| Capability model | Add exact authority/ADR reference | Kernel and service IPC entry points | Positive/negative capability tests | Security maintainers |
+| Capability model | `core/kernel/include/capability.h`, `core/kernel/src/cap/cap_policy.c`, and ADR-002 | Process-owned CSpaces, kernel and service IPC entry points | Positive/negative capability, attenuation, revocation, and ownership tests | Security maintainers |
 | IPC/uRPC wire contracts | Add exact IDL/header/ADR references | Kernel, monitor, services | Layout assertions, retry/replay/timeout tests | Kernel IPC maintainers |
 | Kernel heap and NUMA fault policy | `docs/adr/ADR-023-kernel-heap-and-numa-fault-policy.md`, `core/kernel/include/bharat_config.h.in`, and `core/kernel/include/numa.h` | PMM, scheduler, VM object faults, MMU/MMU-Lite/MPU profiles | Configuration rejection, focused NUMA/VM tests, five-target builds and smoke runs | Memory maintainers |
 | Scheduler/per-core ownership | Add exact architecture/ADR references | Scheduler and cross-core commands | SMP ownership/migration tests | Scheduler maintainers |
@@ -70,3 +70,7 @@ Any PR changing an external interface, wire layout, public kernel API, ownership
 - Kernel/HAL lifecycle and coherency contract: `docs/architecture/compute/BHCF-001-heterogeneous-memory.md`.
 - Tensor SDK semantic contract: `docs/architecture/compute/BHCF-002-tensor-sdk.md`.
 - Boundary decision: `docs/adr/ADR-024-hmem-tensor-boundary.md`.
+- Domain values 0-4 remain ABI-compatible; new targets must fail closed for any
+  domain they do not advertise through runtime discovery.
+- HMEM capabilities are process-CSpace authorities. Owner-core registries do
+  not equate CPUs with CSpaces.

@@ -76,7 +76,7 @@ static kstatus_t validate_desc(const bharat_hmem_desc_v1_t *desc) {
     return K_ERR_OVERFLOW;
   if ((desc->usage_flags & ~BH_HMEM_USAGE_ALL) != 0U ||
       (desc->property_flags & ~BH_HMEM_PROP_ALL) != 0U ||
-      desc->preferred_domain > BH_HMEM_DOMAIN_SECURE || desc->reserved0 != 0U)
+      desc->preferred_domain > BH_HMEM_DOMAIN_MAX || desc->reserved0 != 0U)
     return K_ERR_INVALID_ARG;
   for (i = 0U; i < 4U; ++i)
     if (desc->reserved[i] != 0U)
