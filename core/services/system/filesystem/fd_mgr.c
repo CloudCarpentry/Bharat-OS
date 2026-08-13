@@ -8,6 +8,8 @@
 
 #define VFS_MAX_OPEN_FILES 64
 
+static vfs_node_t* walk_path_relative(vfs_node_t* start_node, const char* path);
+
 static vfs_file_t g_open_files[VFS_MAX_OPEN_FILES];
 static uint32_t g_open_files_lock = 0;
 
@@ -38,27 +40,48 @@ static int vfs_cap_allows_file(vfs_file_t* entry, capability_t* caller_cap, uint
     return 1;
 }
 
-int fsd_open_file(const char* path, int flags, capability_t* caller_cap, int* out_fd);
+void split_path(const char* full_path, char* parent_path, char* leaf_name, size_t max_len);
 
-int fsd_openat_file(int dirfd, const char* path, int flags, capability_t* caller_cap, int* out_fd) {
-    // Stub implementation for Phase B.2
-    // Full path resolution relative to dirfd will be added later.
-    // For now, if dirfd is a valid special value (e.g. AT_FDCWD), fallback to fsd_open_file.
-    // Otherwise, return error to establish the contract without implementing full relative path walking.
-    if (dirfd == -100) { // Assuming -100 as AT_FDCWD equivalent for now
-        return fsd_open_file(path, flags, caller_cap, out_fd);
+static vfs_node_t* walk_path_relative(vfs_node_t* start_node, const char* path) {
+    if (!start_node || !path) return NULL;
+
+    // Fast path for empty or current dir
+    if (path[0] == '\0') return start_node;
+    if (path[0] == '.' && path[1] == '\0') return start_node;
+
+    char component[256];
+    size_t i = 0, j = 0;
+    vfs_node_t* current = start_node;
+
+    while (path[i] == '/') i++; // Skip leading slashes
+
+    while (path[i] != '\0') {
+        j = 0;
+        while (path[i] != '/' && path[i] != '\0' && j < sizeof(component) - 1) {
+            component[j++] = path[i++];
+        }
+        component[j] = '\0';
+
+        if (j > 0) {
+            if (current->ops && current->ops->lookup) {
+                current = current->ops->lookup(current, component);
+                if (!current) return NULL;
+            } else {
+                return NULL;
+            }
+        }
+
+        while (path[i] == '/') i++;
     }
-    return -1; // Unimplemented path resolution
+
+    return current;
 }
 
-int fsd_open_file(const char* path, int flags, capability_t* caller_cap, int* out_fd) {
-    vfs_node_t *node;
+static int do_open_node(vfs_node_t *node, int flags, capability_t* caller_cap, int* out_fd) {
     uint32_t requested_rights = 0;
     int found_slot = -1;
 
-    if (!path || !caller_cap || !out_fd) return -1;
-    node = vfs_resolve_mount_path(path, caller_cap);
-    if (!node) return -2;
+    if (!node || !caller_cap || !out_fd) return -1;
 
     if (flags & VFS_OPEN_READ) requested_rights |= 1;
     if (flags & VFS_OPEN_WRITE) requested_rights |= 2;
@@ -104,6 +127,59 @@ int fsd_open_file(const char* path, int flags, capability_t* caller_cap, int* ou
     g_open_files[i].handle_cap = *caller_cap;
     *out_fd = (int)i;
     return 0;
+}
+
+int fsd_openat_file(int dirfd, const char* path, int flags, capability_t* caller_cap, int* out_fd) {
+    if (!path || !caller_cap || !out_fd) return -1;
+
+    vfs_node_t *dir_node = NULL;
+
+    if (path[0] == '/') {
+        dir_node = vfs_resolve_mount_path(path, caller_cap);
+        if (!dir_node) return -2;
+        // Skip leading slashes for path walking since dir_node is already the mount root
+        while (*path == '/') path++;
+    } else if (dirfd == -100) { // AT_FDCWD
+        // Use vfs_root or resolve root
+        dir_node = vfs_resolve_mount_path("/", caller_cap);
+        if (!dir_node) return -2;
+    } else {
+        if (dirfd < 0 || dirfd >= VFS_MAX_OPEN_FILES) return -1;
+        vfs_file_t *dir_entry = &g_open_files[dirfd];
+        if (!dir_entry->in_use || !dir_entry->node) return -2;
+        dir_node = dir_entry->node;
+    }
+
+    vfs_node_t *node = walk_path_relative(dir_node, path);
+
+    if (!node) {
+        if (flags & VFS_OPEN_CREAT) {
+            char parent_path[256];
+            char leaf_name[256];
+            split_path(path, parent_path, leaf_name, sizeof(parent_path));
+
+            vfs_node_t *parent_node = walk_path_relative(dir_node, parent_path);
+            if (!parent_node) return -2;
+
+            if (parent_node->ops && parent_node->ops->create) {
+                if (parent_node->ops->create(parent_node, leaf_name, flags) != 0) {
+                    return -5;
+                }
+                node = parent_node->ops->lookup(parent_node, leaf_name);
+                if (!node) return -5;
+            } else {
+                return -5;
+            }
+        } else {
+            return -2; // ENOENT
+        }
+    }
+
+    return do_open_node(node, flags, caller_cap, out_fd);
+}
+
+int fsd_open_file(const char* path, int flags, capability_t* caller_cap, int* out_fd) {
+    return fsd_openat_file(-100, path, flags, caller_cap, out_fd);
 }
 
 int vfs_open(const char* path, int flags) {
@@ -240,7 +316,11 @@ int vfs_mkdir(const char* path, int mode) {
 
     capability_t dummy_cap = {0};
     dummy_cap.rights_mask = 3; // Need write right
-    vfs_node_t *dir = vfs_resolve_mount_path(parent_path, &dummy_cap);
+    vfs_node_t *mount_root = vfs_resolve_mount_path(parent_path, &dummy_cap);
+    if (!mount_root) return -1;
+
+    // Walk relative to mount root
+    vfs_node_t *dir = walk_path_relative(mount_root, parent_path);
     if (!dir || !dir->ops || !dir->ops->create) return -1;
 
     return dir->ops->create(dir, leaf_name, 0x10); // 0x10 for dir as used in ramfs
@@ -254,8 +334,13 @@ int vfs_unlink(const char* path) {
 
     capability_t dummy_cap = {0};
     dummy_cap.rights_mask = 3;
-    vfs_node_t *dir = vfs_resolve_mount_path(parent_path, &dummy_cap);
+    vfs_node_t *mount_root = vfs_resolve_mount_path(parent_path, &dummy_cap);
+    if (!mount_root) return -1;
+
+    // Walk relative to mount root
+    vfs_node_t *dir = walk_path_relative(mount_root, parent_path);
     if (!dir || !dir->ops || !dir->ops->remove) return -1;
+
     return dir->ops->remove(dir, leaf_name);
 }
 

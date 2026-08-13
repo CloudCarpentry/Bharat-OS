@@ -21,6 +21,7 @@
 #define VFS_OPEN_READ  0x1
 #define VFS_OPEN_WRITE 0x2
 #define VFS_OPEN_RDWR  (VFS_OPEN_READ | VFS_OPEN_WRITE)
+#define VFS_OPEN_CREAT 0x4
 
 // Backing storage class for a node/mount
 typedef enum {
