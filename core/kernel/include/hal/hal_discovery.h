@@ -172,6 +172,7 @@ typedef struct {
 } accel_discovery_t;
 
 #include "bharat/display/boot_video.h"
+#include "boot/boot_info.h"
 
 // --- Global System Discovery State ---
 
@@ -202,8 +203,6 @@ typedef struct {
     uint32_t psci_version; // Standard PSCI version
 } system_discovery_t;
 
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "boot/boot_info.h"
 
 // Retrieve the global discovery structure
 system_discovery_t* hal_get_system_discovery(void);

@@ -38,6 +38,7 @@ typedef struct {
 #define BHARAT_SANDBOX_FLAG_NO_KERNEL_SYMBOLS  (1u << 7)
 #define BHARAT_SANDBOX_FLAG_SIGNED_DRIVER_ONLY (1u << 8)
 #define BHARAT_SANDBOX_FLAG_USERSPACE_DRIVER   (1u << 9)
+#include <stddef.h>
 
 typedef enum {
     BHARAT_DRIVER_TRUST_CORE = 0,
@@ -86,8 +87,6 @@ int bharat_iommu_group_attach(bharat_iommu_group_t* group,
                               bharat_iommu_domain_t* domain);
 int bharat_iommu_group_detach(bharat_iommu_group_t* group);
 
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include <stddef.h>
 int bharat_iommu_map(bharat_iommu_domain_t* domain,
                      uint64_t iova,
                      uint64_t phys,

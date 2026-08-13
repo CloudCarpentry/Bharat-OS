@@ -16,10 +16,9 @@
         } \
     } while(0)
 
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "tests/ktest.h"
 
 #include "cap_policy.h"
+#include "tests/ktest.h"
 
 // Helper to check if a capability exists
 static bool cap_exists(capability_table_t* table, uint32_t cap_id) {

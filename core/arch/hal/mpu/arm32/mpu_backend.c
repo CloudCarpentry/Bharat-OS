@@ -6,6 +6,7 @@
 
 #define MAX_MPU_REGIONS 16
 #define ERR_NOT_SUPPORTED -1
+#include <slab.h>
 
 typedef struct {
     uintptr_t base;
@@ -19,8 +20,6 @@ typedef struct {
     int region_count;
 } mpu_backend_state_t;
 
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include <slab.h>
 
 static prot_domain_ops_t mpu_only_ops_arm32;
 

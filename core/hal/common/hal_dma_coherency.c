@@ -1,4 +1,5 @@
 #include "hal/hal_dma.h"
+#include "arch/arch_caps.h"
 
 static const hal_dma_ops_t *g_hal_dma_ops;
 
@@ -59,8 +60,6 @@ void hal_dma_sync_for_cpu(hal_dma_buffer_t *buf) {
     }
 }
 
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "arch/arch_caps.h"
 
 int hal_dma_is_coherent(void) {
     if (arch_has_cap(ARCH_CAP_DMA_COHERENT)) {

@@ -4,6 +4,9 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#include "capability.h"
+#include "sched/sched.h"
+
 /* Forward declarations */
 struct sched_rq;
 struct capability_table;
@@ -19,10 +22,6 @@ struct bh_thread;
 
 // We will use existing structs but forward declare or include them here.
 // In Bharat-OS sched.c uses core_runqueue_t as the per core queue
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "capability.h"
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "sched/sched.h"
 // #include <bharat/pmm.h>
 // #include <bharat/urpc.h>
 

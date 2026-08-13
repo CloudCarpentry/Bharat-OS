@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #include "mm.h"
+#include "hal/hal_iommu.h"
 
 typedef enum {
   DEVICE_CLASS_UART = 0,
@@ -155,8 +156,6 @@ int pci_discover_nic(device_mmio_window_t *rx_window,
 
 
 // --- DMA and IOMMU Device Capability Registration ---
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "hal/hal_iommu.h"
 
 // Forward declare safely
 struct dma_caps;

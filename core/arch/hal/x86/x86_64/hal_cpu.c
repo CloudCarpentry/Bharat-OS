@@ -1,3 +1,4 @@
+#include "trap.h"
 #include "hal/hal_timer.h"
 #include "sched/ai_sched.h"
 #include "hal/hal.h"
@@ -73,8 +74,6 @@ void hal_cpu_reboot(void) {
   }
 }
 
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "trap.h"
 
 bool hal_cpu_is_syscall(const void *trap_frame) {
     if (!trap_frame) return false;
@@ -604,6 +603,7 @@ uint32_t hal_cpu_get_id(void) {
 #define MSR_IA32_PERFEVTSEL1 0x187
 #define MSR_IA32_PERF_GLOBAL_CTRL 0x38F
 #define ARCH_EVENT_INST_RETIRED 0xC0
+
 
 static void hal_cpu_pmc_init(void) {
   uint32_t eax, ebx, ecx, edx;
