@@ -137,7 +137,7 @@ int aspace_create(address_space_t **out_aspace, uint32_t flags) {
         }
     }
 
-    as->object_id = __atomic_fetch_add(&next_as_id, 1, __ATOMIC_SEQ_CST);
+    as->object_id = atomic64_fetch_and_add_ptr(&next_as_id, 1);
     spin_lock_init(&as->lock);
     as->tlb_gen = 1;
     as->active_mask = 0;
@@ -513,7 +513,7 @@ kstatus_t aspace_activate_on_cpu(address_space_t *aspace, uint32_t cpu_id) {
     }
 
     aspace->state = ASPACE_STATE_ACTIVE;
-    __atomic_or_fetch(&aspace->active_mask, (1ULL << cpu_id), __ATOMIC_SEQ_CST);
+    atomic64_fetch_and_or(&aspace->active_mask, (1ULL << cpu_id));
     spin_unlock(&aspace->lock);
     return K_OK;
 }
@@ -524,7 +524,7 @@ kstatus_t aspace_deactivate_on_cpu(address_space_t *aspace, uint32_t cpu_id) {
 
     // We don't necessarily lock here if we want it to be fast during switch,
     // but the requirement said to use named APIs.
-    __atomic_and_fetch(&aspace->active_mask, ~(1ULL << cpu_id), __ATOMIC_SEQ_CST);
+    atomic64_fetch_and_and(&aspace->active_mask, ~(1ULL << cpu_id));
 
     // If mask is empty and state was active, we could potentially move it back to created,
     // but typically it stays ACTIVE once it has been used.
@@ -541,12 +541,12 @@ void aspace_mark_poisoned(address_space_t *aspace) {
 
 uint64_t aspace_get_active_mask(address_space_t *aspace) {
     if (!aspace) return 0;
-    return __atomic_load_n(&aspace->active_mask, __ATOMIC_ACQUIRE);
+    return atomic64_load_ptr(&aspace->active_mask);
 }
 
 uint64_t aspace_next_tlb_generation(address_space_t *aspace) {
     if (!aspace) return 0;
-    return __atomic_add_fetch(&aspace->tlb_gen, 1, __ATOMIC_SEQ_CST);
+    return atomic64_fetch_and_add_ptr(&aspace->tlb_gen, 1) + 1U;
 }
 
 bool aspace_is_valid_for_tlb(address_space_t *aspace) {

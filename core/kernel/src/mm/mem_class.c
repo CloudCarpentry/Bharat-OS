@@ -47,7 +47,7 @@ int sys_mem_alloc_class(size_t size, uint32_t mem_class, uint32_t flags, uint64_
     }
 
     if (mem_class < MEM_CLASS_MAX) {
-        __atomic_fetch_add(&class_allocations[mem_class], size, __ATOMIC_RELAXED);
+        atomic64_fetch_and_add_ptr(&class_allocations[mem_class], size);
     } else {
         return K_ERR_INVALID_ARG;
     }

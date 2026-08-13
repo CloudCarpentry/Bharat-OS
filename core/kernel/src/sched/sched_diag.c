@@ -6,7 +6,7 @@
 typedef struct sched_diag_core_state {
   uint32_t runtime_level;
   uint32_t last_event;
-  uint64_t event_count[BH_SCHED_DIAG_EVENT_COUNT];
+  uint32_t event_count[BH_SCHED_DIAG_EVENT_COUNT];
 } sched_diag_core_state_t;
 
 /* Owner-local mutable state: slot N is written only by CPU N. */

@@ -110,16 +110,18 @@ typedef struct {
 } sched_remote_cmd_envelope_t;
 
 typedef struct {
-    volatile uint64_t seq;
+    volatile uint32_t seq;
     sched_remote_cmd_envelope_t value;
 } sched_cmd_slot_t;
 
+/* Native-width MPSC synchronization counters.  Ring capacity is bounded well
+ * below 2^31 so modulo subtraction remains ordered across uint32_t rollover. */
 typedef struct {
     sched_cmd_slot_t *slots;
     uint32_t capacity;
     uint32_t mask;
-    volatile uint64_t head;
-    uint64_t tail;
+    volatile uint32_t head;
+    uint32_t tail;
 } sched_cmd_ring_t;
 
 typedef enum {
@@ -136,7 +138,7 @@ typedef struct {
 } sched_remote_completion_t;
 
 typedef struct {
-    volatile uint64_t seq;
+    volatile uint32_t seq;
     sched_remote_completion_t value;
 } sched_completion_slot_t;
 
@@ -144,8 +146,8 @@ typedef struct {
     sched_completion_slot_t *slots;
     uint32_t capacity;
     uint32_t mask;
-    volatile uint64_t head;
-    uint64_t tail;
+    volatile uint32_t head;
+    uint32_t tail;
 } sched_completion_ring_t;
 
 typedef struct {
@@ -157,11 +159,11 @@ typedef struct {
 
     volatile uint32_t resched_pending;
 
-    uint64_t submitted;
-    uint64_t consumed;
-    uint64_t full;
-    uint64_t ipi_sent;
-    uint64_t ipi_coalesced;
+    uint32_t submitted;
+    uint32_t consumed;
+    uint32_t full;
+    uint32_t ipi_sent;
+    uint32_t ipi_coalesced;
 } sched_remote_inbox_t;
 
 /*

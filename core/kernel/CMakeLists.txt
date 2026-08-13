@@ -694,6 +694,12 @@ set_target_properties(kernel.elf PROPERTIES
     OUTPUT_NAME "kernel.elf"
     SUFFIX ""
 )
+# Atomic width is an architecture contract for every kernel object library,
+# not only the final kernel.elf sources.
+target_compile_options(bharat_kernel_buildopts INTERFACE
+    $<$<COMPILE_LANGUAGE:C>:-Werror=atomic-alignment>
+)
+
 # Extra warnings for C sources only
 target_compile_options(kernel.elf PRIVATE
     $<$<COMPILE_LANGUAGE:C>:-ffreestanding>
