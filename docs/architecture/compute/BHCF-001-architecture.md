@@ -243,5 +243,12 @@ P3
 ```
 
 *   **CURRENT**: HMEM, Tensor SDK.
+
+The production-shaped userspace demonstration is tracked by
+[`HMEM-DEMO-P0-001`](HMEM-DEMO-P0-001.md). Its completion contract requires an
+ordered QEMU guest path through service supervision, process/VM authority,
+process-owned CSpace and thread creation, architecture user entry, Native HMEM
+operations, and exit/reap; host and kernel-only benchmarks remain supporting
+evidence rather than substitutes for that path.
 *   **NEXT**: ENGINE, FENCE, QUEUE (P1).
 *   **FUTURE**: DMA engine, Virtual NPU, GPU/NPU providers, accelmgr (P2). Graph runtime, placement, QoS, KV-cache service (P3).
