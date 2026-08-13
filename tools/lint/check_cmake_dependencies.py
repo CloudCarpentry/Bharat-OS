@@ -23,6 +23,19 @@ FORBIDDEN_RULES = [
 DEFAULT_BASELINE = "tools/lint/baselines/cmake_dependencies.json"
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
+
+def validate_hal_common_definition():
+    """Keep the standalone generic HAL target independent of kernel internals."""
+    cmake_path = REPO_ROOT / "core/hal/common/CMakeLists.txt"
+    text = cmake_path.read_text(encoding="utf-8")
+    forbidden = (
+        "core/kernel/src",
+        "core/kernel/include",
+        "core/kernel/include/generated",
+        "bharat_kernel_buildopts",
+    )
+    return [token for token in forbidden if token in text]
+
 def register_query(build_dir):
     query_dir = os.path.join(build_dir, ".cmake", "api", "v1", "query", "client-linter")
     os.makedirs(query_dir, exist_ok=True)
@@ -156,6 +169,12 @@ def main():
     parser.add_argument("--strict", action="store_true", help="Fail with non-zero on violations")
 
     args = parser.parse_args()
+
+    hal_common_violations = validate_hal_common_definition()
+    if hal_common_violations:
+        for token in hal_common_violations:
+            print(f"[VIOLATION] hal_common references kernel-private input: {token}")
+        sys.exit(1)
 
     # Register the File API query
     register_query(args.build_dir)

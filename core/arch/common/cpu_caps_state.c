@@ -1,6 +1,7 @@
 #include "arch/arch_cpu_caps.h"
 #include "arch/common/cpu_caps_state.h"
 #include "bharat/cpu_local.h"
+#include "hal/hal_cpu_features.h"
 #include <stddef.h>
 #include <stdint.h>
 
@@ -17,6 +18,62 @@ static arch_cpu_caps_record_t g_per_cpu_caps[MAX_CPUS];
 static bool g_cpu_caps_present[MAX_CPUS];
 static size_t g_cpu_caps_present_count;
 static bool g_system_caps_finalized;
+
+static void hal_feature_set_bit(uint64_t *bits, hal_cpu_feature_t feature,
+                                bool enabled) {
+    if (enabled && feature < HAL_CPU_FEATURE__COUNT) {
+        bits[(size_t)feature / 64u] |= 1ULL << ((size_t)feature % 64u);
+    }
+}
+
+static bool cpu_caps_export_record(const arch_cpu_caps_record_t *caps,
+                                   hal_cpu_feature_set_t *out) {
+    if (caps == NULL || out == NULL) {
+        return false;
+    }
+    for (size_t i = 0; i < sizeof(*out) / sizeof(uint64_t); ++i) {
+        ((uint64_t *)out)[i] = 0U;
+    }
+#define EXPORT_COMMON(hal_feature, arch_feature)                                  \
+    do {                                                                           \
+        hal_feature_set_bit(out->raw_bits, hal_feature,                            \
+                            arch_cpu_caps_test(&caps->raw, arch_feature));          \
+        hal_feature_set_bit(out->usable_bits, hal_feature,                         \
+                            arch_cpu_caps_test(&caps->usable, arch_feature));       \
+    } while (0)
+    EXPORT_COMMON(HAL_CPU_FEATURE_VECTOR, ARCH_CPU_FEAT_COMMON_VECTOR);
+    EXPORT_COMMON(HAL_CPU_FEATURE_AES, ARCH_CPU_FEAT_COMMON_AES);
+    EXPORT_COMMON(HAL_CPU_FEATURE_SHA, ARCH_CPU_FEAT_COMMON_SHA);
+    EXPORT_COMMON(HAL_CPU_FEATURE_PMULL, ARCH_CPU_FEAT_COMMON_PMULL);
+    EXPORT_COMMON(HAL_CPU_FEATURE_CRYPTO, ARCH_CPU_FEAT_COMMON_CRYPTO);
+    EXPORT_COMMON(HAL_CPU_FEATURE_STRONG_ATOMICS, ARCH_CPU_FEAT_COMMON_STRONG_ATOMICS);
+    EXPORT_COMMON(HAL_CPU_FEATURE_FAST_TLB_CTX, ARCH_CPU_FEAT_COMMON_FAST_TLB_CTX);
+#undef EXPORT_COMMON
+    arch_cpu_caps_export_hal_features(caps, out);
+    return true;
+}
+
+static bool cpu_caps_export_for_cpu(size_t cpu_id, hal_cpu_feature_set_t *out) {
+    return cpu_caps_export_record(arch_cpu_caps_for_cpu(cpu_id), out);
+}
+
+static bool cpu_caps_export_current(hal_cpu_feature_set_t *out) {
+    return cpu_caps_export_record(arch_cpu_caps_current(), out);
+}
+
+static bool cpu_caps_export_system(hal_cpu_feature_scope_t scope,
+                                   hal_cpu_feature_set_t *out) {
+    return cpu_caps_export_record(scope == HAL_CPU_FEATURE_SCOPE_ANY
+                                      ? arch_cpu_caps_system_any()
+                                      : arch_cpu_caps_system_all(),
+                                  out);
+}
+
+static const hal_cpu_feature_provider_t g_cpu_feature_provider = {
+    .for_cpu = cpu_caps_export_for_cpu,
+    .for_current_cpu = cpu_caps_export_current,
+    .for_system = cpu_caps_export_system,
+};
 
 static void cpu_caps_record_copy(arch_cpu_caps_record_t *dst,
                                  const arch_cpu_caps_record_t *src) {
@@ -120,6 +177,11 @@ bool arch_cpu_has_current(int feat) {
 }
 
 void cpu_caps_state_set_boot(const arch_cpu_caps_record_t *caps) {
+    static bool provider_registered;
+    if (!provider_registered) {
+        provider_registered =
+            hal_cpu_features_register_provider(&g_cpu_feature_provider);
+    }
     memset(g_cpu_caps_present, 0, sizeof(g_cpu_caps_present));
     g_cpu_caps_present_count = 0;
     g_system_caps_finalized = false;
