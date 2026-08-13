@@ -31,6 +31,16 @@ in temporary directories, and compares their SHA-256 values with the committed
 lock. It therefore fails for a renumber, an unlocked addition, stale generated
 expectations, metadata count drift, or nondeterministic generation.
 
+Metadata validation is closed-world and fail-closed: unknown fields, argument
+kinds, directions, traits, classes, statuses, capability source kinds,
+validation phases, and scopes are rejected. Pointer `size_source` values must
+name an input scalar argument or use `sizeof(type_name)`. Register capability
+sources must name scalar arguments; structure-field sources must name a
+`user_struct` argument and use the `after_usercopy` phase. Other capability
+sources must use `before_handler`. These checks keep malformed metadata from
+silently degrading to generator defaults or moving capability inspection ahead
+of the fault-safe usercopy boundary.
+
 ## Intentional ABI-change procedure
 
 1. Obtain ABI compatibility review before editing the manifest. Existing Native

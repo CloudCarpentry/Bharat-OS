@@ -34,9 +34,49 @@ class SyscallAbiTest(unittest.TestCase):
         del manifest["syscalls"][0]["handler"]
         self.assertFalse(syscall_abi.validate_schema(manifest))
 
+    def test_schema_rejects_unknown_argument_metadata(self):
+        manifest = copy.deepcopy(self.manifest)
+        manifest["syscalls"][1]["arguments"][0]["unchecked"] = True
+        self.assertFalse(syscall_abi.validate_schema(manifest))
+
+    def test_schema_rejects_unknown_capability_source_kind(self):
+        manifest = copy.deepcopy(self.manifest)
+        manifest["syscalls"][2]["capability"]["source"]["kind"] = "ambient"
+        self.assertFalse(syscall_abi.validate_schema(manifest))
+
+    def test_schema_requires_explicit_capability_validation_phase(self):
+        manifest = copy.deepcopy(self.manifest)
+        del manifest["syscalls"][2]["capability"]["validation_phase"]
+        self.assertFalse(syscall_abi.validate_schema(manifest))
+
     def test_duplicate_number_is_rejected(self):
         manifest = copy.deepcopy(self.manifest)
         manifest["syscalls"][1]["number"] = manifest["syscalls"][0]["number"]
+        self.assertFalse(syscall_abi.validate_semantics(manifest))
+
+    def test_pointer_size_source_must_resolve(self):
+        manifest = copy.deepcopy(self.manifest)
+        manifest["syscalls"][20]["arguments"][1]["size_source"] = "missing_length"
+        self.assertFalse(syscall_abi.validate_semantics(manifest))
+
+    def test_pointer_size_source_must_be_input_scalar(self):
+        manifest = copy.deepcopy(self.manifest)
+        manifest["syscalls"][20]["arguments"][2]["direction"] = "out"
+        self.assertFalse(syscall_abi.validate_semantics(manifest))
+
+    def test_register_capability_source_must_be_scalar(self):
+        manifest = copy.deepcopy(self.manifest)
+        manifest["syscalls"][2]["arguments"][0]["kind"] = "user_struct"
+        self.assertFalse(syscall_abi.validate_semantics(manifest))
+
+    def test_struct_capability_source_must_validate_after_usercopy(self):
+        manifest = copy.deepcopy(self.manifest)
+        manifest["syscalls"][1]["capability"]["validation_phase"] = "before_handler"
+        self.assertFalse(syscall_abi.validate_semantics(manifest))
+
+    def test_unknown_trait_is_rejected(self):
+        manifest = copy.deepcopy(self.manifest)
+        manifest["syscalls"][0]["traits"].append("restartable")
         self.assertFalse(syscall_abi.validate_semantics(manifest))
 
     def test_locked_number_change_is_rejected(self):
