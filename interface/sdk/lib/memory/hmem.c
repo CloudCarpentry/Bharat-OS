@@ -2,6 +2,7 @@
 #include <bharat/hmem.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 
 #define HOST_HMEM_SLOTS 64U
 typedef struct {
