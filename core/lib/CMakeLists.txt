@@ -90,16 +90,13 @@ set(BHARAT_LIBMSG_SOURCES
 )
 
 # Optional arch-specific CRC backend based on detected or target architecture
-if (CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|ARM64")
-    # Only enable ARM CRC32 backend if the compiler natively supports it
-    # We compile the backend anyway and conditionally link it, or we could add feature test.
-    # For now, we will add the source and gate the #include/instructions in the file.
-    list(APPEND BHARAT_LIBMSG_SOURCES msg/crc_aarch64.c)
+if(BHARAT_ARCH_FAMILY STREQUAL "ARM64")
+    list(APPEND BHARAT_LIBMSG_SOURCES msg/arch/arm64/crc_ieee.c)
 endif()
 
 add_library(bharat_libmsg STATIC ${BHARAT_LIBMSG_SOURCES})
-if (CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|ARM64")
-    set_source_files_properties(msg/crc_aarch64.c PROPERTIES COMPILE_FLAGS "-march=armv8-a+crc")
+if(BHARAT_ARCH_FAMILY STREQUAL "ARM64")
+    set_source_files_properties(msg/arch/arm64/crc_ieee.c PROPERTIES COMPILE_OPTIONS "-march=armv8-a+crc")
 endif()
 target_include_directories(bharat_libmsg PUBLIC
     ${CMAKE_SOURCE_DIR}/core/services/core/subsysmgr/include
