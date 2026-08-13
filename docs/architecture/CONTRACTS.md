@@ -42,6 +42,7 @@ When implementation differs from an authority, treat it as a defect or an explic
 | Scheduler/per-core ownership | Add exact architecture/ADR references | Scheduler and cross-core commands | SMP ownership/migration tests | Scheduler maintainers |
 | Service lifecycle | Add exact service contract/ADR references | Service manager and services | Event-loop/restart/watchdog tests | Service runtime maintainers |
 | Diagnostic event and evidence ABI | `interface/uapi/diag/` and `contracts/evidence/` | Per-core rings, diagnostic collector, host evidence tooling | Host ABI/ring/parser/schema tests | Observability maintainers |
+| Userspace CPU feature descriptor | `interface/uapi/runtime/cpu_features.h` | CRT publication and library-local ISA resolvers; system intersection unless affinity constrains execution | Header layout assertions and BharatLibC resolver tests | Runtime and architecture maintainers |
 
 ## Required entry contents
 

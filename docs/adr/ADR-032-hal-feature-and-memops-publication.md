@@ -23,18 +23,28 @@ early boot, or IRQ-safe execution selects the scalar fallback. There is no
 unfreeze operation; frozen records and function tables are immutable and read
 lock-free.
 
-x86 registers REP only when CPUID reports ERMS usable on that CPU. Arm64 and
-RV64 register alignment-safe GPR implementations. Arm32 and RV32 remain scalar.
-SIMD/vector state is outside this contract.
+x86 registers REP only when CPUID reports ERMS usable on that CPU. Arm64,
+Arm32, RV64, and RV32 register integer-only implementations. Every backend
+provides copy, move, set, and compare; incomplete tables are rejected. Backend
+context flags are checked by HAL, while implementation flags are descriptive
+and contain no ISA-specific vocabulary. SIMD/vector state is outside this
+contract.
+
+BharatLibC does not call HAL. Its independent resolver starts on a byte-safe
+fallback, accepts the versioned `bharat_cpu_features_v1_t` system-intersection
+descriptor once, validates its size/version, and then publishes a lib-local
+ISA implementation. A scheduler may expose a larger descriptor only when it
+also constrains execution to CPUs that guarantee every exposed feature.
 
 ## Dependency and failure boundary
 
 `hal_common` builds against HAL contracts and public interface/base types only.
 `core/hal/common` must not import `arch/*` or `kernel/src/*`; libraries must not
 import HAL internals or kernel-private sources. CI enforces this direction.
-Invalid or late publication is rejected, feature queries fail closed until
+Invalid, incomplete, or late publication is rejected, feature queries fail closed until
 freeze, and unknown DMA coherency is treated as non-coherent. No userspace
-capability or trust boundary changes in this vertical slice.
+authority is conveyed by the CPU feature descriptor: the word "feature" is
+deliberately used instead of the security meaning of capability.
 
 ## Consequences
 

@@ -9,6 +9,16 @@ BharatLibC is a next-generation, profile-driven, isolated standard library desig
 3. **Backend Abstraction**: Platform-specific system calls and environment operations are accessed via a well-defined backend dispatch layer (`bh_bsys_backend_ops_t`).
 4. **No Hidden State**: Avoids lazy global state, unsafe fallbacks, and non-deterministic locks, making it suitable for RT/MPU and safety-critical profiles.
 
+## Memory operation selection
+
+The standard copy, move, set, and compare functions start on a byte-only local
+implementation. During CRT startup, `bh_libc_memops_init()` may publish exactly
+one validated CPU-feature descriptor containing the feature intersection for
+every CPU on which the process can run. The resolver then freezes a lib-local
+GPR or x86 ERMS table. It never calls HAL and performs no feature test in the
+steady-state implementations. Invalid and repeated initialization leaves the
+previous safe selection unchanged.
+
 ## POSIX Is a Portability Layer
 
 POSIX support is a source-level API and semantics layer in BharatLibC/libposix. It
