@@ -30,12 +30,13 @@ int main(int argc, char **argv) {
     // Create our endpoint
     bharat_ipc_endpoint_t my_endpoint = service_runtime_create_endpoint(BHARAT_SERVICE_NAMESVC, 0);
     if (!bharat_cap_is_valid(my_endpoint)) {
-        return -1;
+        return BHARAT_STATUS_ERR_INTERNAL;
     }
 
     // Bind to the well-known bootstrap handle
-    if (service_runtime_bind_namesvc_bootstrap(my_endpoint) != BHARAT_STATUS_OK) {
-        return -1;
+    bharat_status_t bind_status = service_runtime_bind_namesvc_bootstrap(my_endpoint);
+    if (bind_status != BHARAT_STATUS_OK) {
+        return bind_status;
     }
 
     namesvc_registry_init();
