@@ -116,17 +116,6 @@ static int32_t track_reap_process(void *ctx, bh_pm_kernel_process_t *proc) {
 void test_spawn_rollback_failures(void) {
     process_manager_init();
 
-    bh_pm_kernel_ops_t ops = {
-        .ctx = NULL,
-        .create_process = track_create_process,
-        .create_vm_space = track_create_vm_space,
-        .realize_image = track_realize_image,
-        .start_process = track_start_process,
-        .request_terminate = track_request_terminate,
-        .reap_process = track_reap_process
-    };
-    bh_pm_set_kernel_ops(&ops);
-
     uint8_t elf_buf[1024];
     setup_test_elf(elf_buf, sizeof(elf_buf));
     int reg_res = bh_pm_register_executable(990011, elf_buf, sizeof(elf_buf));
@@ -139,12 +128,31 @@ void test_spawn_rollback_failures(void) {
     req.executable_handle = 990011;
     strcpy(req.process_name, "test_prog");
 
+    /* An uninstalled adapter must not manufacture process identifiers. */
+    bh_pm_spawn_response_v1_t unsupported_resp;
+    int status = bh_pm_handle_spawn_v1(&req, &unsupported_resp);
+    assert(status == BHARAT_IPC_STATUS_ERR_UNSUPPORTED);
+    assert(unsupported_resp.status == BHARAT_IPC_STATUS_ERR_UNSUPPORTED);
+    assert(unsupported_resp.kernel_process_id == 0);
+    assert(bh_pm_get_active_count() == 0);
+
+    bh_pm_kernel_ops_t ops = {
+        .ctx = NULL,
+        .create_process = track_create_process,
+        .create_vm_space = track_create_vm_space,
+        .realize_image = track_realize_image,
+        .start_process = track_start_process,
+        .request_terminate = track_request_terminate,
+        .reap_process = track_reap_process
+    };
+    assert(bh_pm_set_kernel_ops(&ops) == BHARAT_IPC_STATUS_OK);
+
     // Test failure injection at each stage
     for (int fail_stage = 1; fail_stage <= 5; fail_stage++) {
         bh_pm_set_failure_injection(fail_stage);
 
         bh_pm_spawn_response_v1_t resp;
-        int status = bh_pm_handle_spawn_v1(&req, &resp);
+        status = bh_pm_handle_spawn_v1(&req, &resp);
         assert(status != BHARAT_IPC_STATUS_OK);
         assert(resp.status != BHARAT_IPC_STATUS_OK);
 
@@ -158,7 +166,7 @@ void test_spawn_rollback_failures(void) {
     // Now test a successful spawn
     bh_pm_set_failure_injection(0);
     bh_pm_spawn_response_v1_t resp;
-    int status = bh_pm_handle_spawn_v1(&req, &resp);
+    status = bh_pm_handle_spawn_v1(&req, &resp);
     printf("Debug status: %d, resp.status: %d\n", status, resp.status);
     fflush(stdout);
     assert(status == BHARAT_IPC_STATUS_OK);

@@ -54,42 +54,38 @@ static int g_fail_stage = 0;
 
 // Fail-closed defaults. Production builds must replace these authority operations.
 static int32_t default_create_process(void *ctx, const bh_pm_kernel_create_req_t *req, bh_pm_kernel_process_t *out_proc) {
-    (void)ctx; (void)req;
-    if (out_proc) out_proc->pid = 1;
-    return BHARAT_IPC_STATUS_OK;
+    (void)ctx; (void)req; (void)out_proc;
+    return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
 }
 
 static int32_t default_create_vm_space(void *ctx, bh_pm_kernel_process_t *proc, uint32_t memory_profile, bh_vm_kernel_space_t *out_space) {
     (void)ctx; (void)proc; (void)memory_profile;
-    if (out_space) out_space->space_id = 1;
-    return BHARAT_IPC_STATUS_OK;
+    (void)out_space;
+    return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
 }
 
 static int32_t default_realize_image(void *ctx, bh_pm_kernel_process_t *proc, bh_vm_kernel_space_t *space, const bh_user_image_plan_v1_t *plan, bh_pm_kernel_image_result_t *out_res) {
     (void)ctx; (void)proc; (void)space; (void)plan;
-    if (out_res) {
-        out_res->main_thread_id = 1;
-        out_res->entry_point = 0x1000;
-    }
-    return BHARAT_IPC_STATUS_OK;
+    (void)out_res;
+    return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
 }
 
 static int32_t default_start_process(void *ctx, bh_pm_kernel_process_t *proc) {
     (void)ctx; (void)proc;
-    return BHARAT_IPC_STATUS_OK;
+    return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
 }
 
 static int32_t default_request_terminate(void *ctx, bh_pm_kernel_process_t *proc) {
     (void)ctx; (void)proc;
-    return BHARAT_IPC_STATUS_OK;
+    return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
 }
 
 static int32_t default_reap_process(void *ctx, bh_pm_kernel_process_t *proc) {
     (void)ctx; (void)proc;
-    return BHARAT_IPC_STATUS_OK;
+    return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
 }
 
-static bh_pm_kernel_ops_t g_kernel_ops = {
+static const bh_pm_kernel_ops_t g_default_kernel_ops = {
     .ctx = NULL,
     .create_process = default_create_process,
     .create_vm_space = default_create_vm_space,
@@ -99,10 +95,21 @@ static bh_pm_kernel_ops_t g_kernel_ops = {
     .reap_process = default_reap_process
 };
 
-void bh_pm_set_kernel_ops(const bh_pm_kernel_ops_t *ops) {
-    if (ops) {
-        g_kernel_ops = *ops;
+/* Service-local adapter selection; configured during single-threaded startup. */
+static bh_pm_kernel_ops_t g_kernel_ops;
+
+int32_t bh_pm_set_kernel_ops(const bh_pm_kernel_ops_t *ops) {
+    if (!ops) {
+        g_kernel_ops = g_default_kernel_ops;
+        return BHARAT_IPC_STATUS_OK;
     }
+    if (!ops->create_process || !ops->create_vm_space || !ops->realize_image ||
+        !ops->start_process || !ops->request_terminate || !ops->reap_process) {
+        g_kernel_ops = g_default_kernel_ops;
+        return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
+    }
+    g_kernel_ops = *ops;
+    return BHARAT_IPC_STATUS_OK;
 }
 
 void bh_pm_set_failure_injection(int fail_stage) {
@@ -199,6 +206,7 @@ void process_manager_init(void) {
     local_memset(g_executables, 0, sizeof(g_executables));
 
     bh_user_handle_table_init(&g_pm_handle_table, g_pm_handle_slots, MAX_PROCESSES);
+    g_kernel_ops = g_default_kernel_ops;
     g_fail_stage = 0;
 }
 
@@ -376,8 +384,8 @@ int32_t bh_pm_handle_spawn_v1(const bh_pm_spawn_request_v1_t *req, bh_pm_spawn_r
         // Rollback
         bh_user_handle_revoke(&g_pm_handle_table, proc_handle);
         local_memset(proc, 0, sizeof(bh_pm_process_v1_t));
-        resp->status = BHARAT_IPC_STATUS_ERR_INTERNAL;
-        return BHARAT_IPC_STATUS_ERR_INTERNAL;
+        resp->status = k_res;
+        return k_res;
     }
 
     proc->kernel_process_id = k_proc.pid;
@@ -400,8 +408,8 @@ int32_t bh_pm_handle_spawn_v1(const bh_pm_spawn_request_v1_t *req, bh_pm_spawn_r
         g_kernel_ops.reap_process(g_kernel_ops.ctx, &k_proc);
         bh_user_handle_revoke(&g_pm_handle_table, proc_handle);
         local_memset(proc, 0, sizeof(bh_pm_process_v1_t));
-        resp->status = BHARAT_IPC_STATUS_ERR_INTERNAL;
-        return BHARAT_IPC_STATUS_ERR_INTERNAL;
+        resp->status = k_res;
+        return k_res;
     }
 
     proc->vm_space_handle = k_space.space_id;
@@ -424,8 +432,8 @@ int32_t bh_pm_handle_spawn_v1(const bh_pm_spawn_request_v1_t *req, bh_pm_spawn_r
         g_kernel_ops.reap_process(g_kernel_ops.ctx, &k_proc);
         bh_user_handle_revoke(&g_pm_handle_table, proc_handle);
         local_memset(proc, 0, sizeof(bh_pm_process_v1_t));
-        resp->status = BHARAT_IPC_STATUS_ERR_INTERNAL;
-        return BHARAT_IPC_STATUS_ERR_INTERNAL;
+        resp->status = k_res;
+        return k_res;
     }
 
     proc->main_thread_id = k_img_res.main_thread_id;
@@ -447,8 +455,8 @@ int32_t bh_pm_handle_spawn_v1(const bh_pm_spawn_request_v1_t *req, bh_pm_spawn_r
         g_kernel_ops.reap_process(g_kernel_ops.ctx, &k_proc);
         bh_user_handle_revoke(&g_pm_handle_table, proc_handle);
         local_memset(proc, 0, sizeof(bh_pm_process_v1_t));
-        resp->status = BHARAT_IPC_STATUS_ERR_INTERNAL;
-        return BHARAT_IPC_STATUS_ERR_INTERNAL;
+        resp->status = k_res;
+        return k_res;
     }
 
     proc->state = BH_PM_STATE_RUNNING_V1;
@@ -513,9 +521,13 @@ int32_t bh_pm_handle_terminate_v1(const bh_pm_terminate_request_v1_t *req, bh_pm
         return BHARAT_IPC_STATUS_OK;
     }
 
-    proc->state = BH_PM_STATE_TERMINATE_REQUESTED_V1;
     bh_pm_kernel_process_t k_proc = { .pid = proc->kernel_process_id };
-    g_kernel_ops.request_terminate(g_kernel_ops.ctx, &k_proc);
+    int32_t status = g_kernel_ops.request_terminate(g_kernel_ops.ctx, &k_proc);
+    if (status != BHARAT_IPC_STATUS_OK) {
+        resp->status = status;
+        return status;
+    }
+    proc->state = BH_PM_STATE_TERMINATE_REQUESTED_V1;
 
     resp->status = BHARAT_IPC_STATUS_OK;
     return BHARAT_IPC_STATUS_OK;
@@ -581,7 +593,11 @@ int32_t bh_pm_handle_reap_v1(const bh_pm_reap_request_v1_t *req, bh_pm_reap_resp
     }
 
     bh_pm_kernel_process_t k_proc = { .pid = proc->kernel_process_id };
-    g_kernel_ops.reap_process(g_kernel_ops.ctx, &k_proc);
+    int32_t status = g_kernel_ops.reap_process(g_kernel_ops.ctx, &k_proc);
+    if (status != BHARAT_IPC_STATUS_OK) {
+        resp->status = status;
+        return status;
+    }
 
     proc->state = BH_PM_STATE_REAPED_V1;
 

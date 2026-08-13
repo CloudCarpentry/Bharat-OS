@@ -103,7 +103,8 @@ int32_t process_manager_handle_query(const pm_req_query_t *req, pm_resp_query_t 
 int32_t process_manager_authorize(uint32_t opcode, const void *req, bharat_cap_handle_t caller_cap);
 
 // v1 Process Manager Interfaces
-void bh_pm_set_kernel_ops(const bh_pm_kernel_ops_t *ops);
+/* Installs one complete authority adapter. NULL restores the fail-closed adapter. */
+int32_t bh_pm_set_kernel_ops(const bh_pm_kernel_ops_t *ops);
 void bh_pm_set_failure_injection(int fail_stage); // 0 = none, 1-5 represent spawn phases
 int bh_pm_register_executable(uint64_t handle, const uint8_t *bytes, size_t size);
 int bh_pm_get_active_count(void);
