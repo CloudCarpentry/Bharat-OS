@@ -42,7 +42,7 @@ bh_status_t bh_hmem_create(const bharat_hmem_desc_v1_t *d,
     return BH_ERR_INVALID_ARGUMENT;
   if ((d->usage_flags & ~BH_HMEM_USAGE_ALL) ||
       (d->property_flags & ~BH_HMEM_PROP_ALL) ||
-      d->preferred_domain > BH_HMEM_DOMAIN_SECURE)
+      d->preferred_domain > BH_HMEM_DOMAIN_MAX)
     return BH_ERR_INVALID_ARGUMENT;
   if (d->preferred_domain != BH_HMEM_DOMAIN_SYSTEM &&
       d->preferred_domain != BH_HMEM_DOMAIN_SHARED)

@@ -61,6 +61,27 @@ static int test_cap_policy_semantics(void) {
     ASSERT_RET(!cap_can_transfer(CAP_TYPE_PROCESS, CAP_RIGHT_READ, CAP_RIGHT_READ), -12);
     ASSERT_RET(!cap_transfer_rights_valid(CAP_TYPE_NONE, CAP_RIGHT_READ), -13);
 
+    // 6. HMEM, submission, and DMA rights are bound to their object types.
+    ASSERT_RET(cap_transfer_rights_valid(
+                   CAP_TYPE_HMEM,
+                   CAP_RIGHT_HMEM_MAP_CPU | CAP_RIGHT_HMEM_QUERY |
+                       CAP_RIGHT_DELEGATE),
+               -14);
+    ASSERT_RET(!cap_transfer_rights_valid(CAP_TYPE_HMEM,
+                                          CAP_RIGHT_ACCEL_SUBMIT),
+               -15);
+    ASSERT_RET(cap_transfer_rights_valid(CAP_TYPE_ACCEL_QUEUE,
+                                         CAP_RIGHT_ACCEL_SUBMIT),
+               -16);
+    ASSERT_RET(cap_transfer_rights_valid(CAP_TYPE_DMA_GRANT,
+                                         CAP_RIGHT_DEVICE_DMA),
+               -17);
+    ASSERT_RET(!cap_can_transfer(
+                   CAP_TYPE_HMEM,
+                   CAP_RIGHT_HMEM_MAP_CPU | CAP_RIGHT_HMEM_QUERY,
+                   CAP_RIGHT_HMEM_MAP_CPU | CAP_RIGHT_HMEM_DESTROY),
+               -18);
+
     return 0;
 }
 

@@ -50,6 +50,10 @@ static void hmem_negative(void) {
   d.reserved[2] = 0;
   d.preferred_domain = BH_HMEM_DOMAIN_DEVICE_LOCAL;
   assert(bh_hmem_create(&d, &h) == BH_ERR_UNSUPPORTED);
+  d.preferred_domain = BH_HMEM_DOMAIN_HBM;
+  assert(bh_hmem_create(&d, &h) == BH_ERR_UNSUPPORTED);
+  d.preferred_domain = BH_HMEM_DOMAIN_MAX + 1U;
+  assert(bh_hmem_create(&d, &h) == BH_ERR_INVALID_ARGUMENT);
 }
 static void tensors(void) {
   bh_tensor_desc_t d = {.dtype = BH_DTYPE_F32,
