@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 /* Execution context and hardware capability flags for memory operations */
 #define BH_MEMCTX_F_DEFAULT        0u
@@ -13,7 +14,27 @@
 #define BH_MEMCTX_F_NO_DMA         (1u << 4)
 #define BH_MEMCTX_F_NO_FAULT       (1u << 5)
 
-/* Architecture-specific dispatched memory operations */
+typedef void *(*hal_memcpy_backend_fn_t)(void *, const void *, size_t);
+typedef void *(*hal_memset_backend_fn_t)(void *, int, size_t);
+typedef void *(*hal_memmove_backend_fn_t)(void *, const void *, size_t);
+
+typedef struct {
+    hal_memcpy_backend_fn_t copy;
+    hal_memset_backend_fn_t set;
+    hal_memmove_backend_fn_t move;
+} hal_memops_backend_t;
+
+typedef size_t (*hal_memops_current_cpu_fn_t)(void);
+
+#define HAL_MEMOPS_MAX_CPUS 256u
+
+/* Serial-boot registration. Missing entries always resolve to Tier-0 scalar. */
+bool hal_memops_begin(hal_memops_current_cpu_fn_t current_cpu);
+bool hal_memops_register(size_t cpu_id, const hal_memops_backend_t *backend);
+bool hal_memops_freeze(void);
+bool hal_memops_is_frozen(void);
+
+/* Architecture-neutral dispatched memory operations. */
 void *hal_memcpy(void *dst, const void *src, size_t n, uint32_t flags);
 void *hal_memset(void *dst, int c, size_t n, uint32_t flags);
 void *hal_memmove(void *dst, const void *src, size_t n, uint32_t flags);

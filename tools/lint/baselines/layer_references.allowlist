@@ -47,9 +47,9 @@ layer-reference|core/kernel/src/core/hw_caps_registry.c|3|kernel|tests|tests/kte
 layer-reference|core/kernel/src/debug/hal_serial_compat.c|3|kernel|drivers|drivers/serial/uart_driver.h
 layer-reference|core/kernel/src/debug/hal_serial_compat.c|5|kernel|drivers|drivers/serial/serial_provider.h
 layer-reference|core/kernel/src/demo/kernel_tester.c|6|kernel|tests|tests/ktest.h
-layer-reference|core/kernel/src/kernel_boot.c|36|kernel|tests|tests/ktest.h
+layer-reference|core/kernel/src/kernel_boot.c|37|kernel|tests|tests/ktest.h
 layer-reference|core/kernel/src/tests/ktest_basic_sanity.c|1|kernel|tests|tests/ktest.h
-layer-reference|core/kernel/src/tests/ktest_capability.c|20|kernel|tests|tests/ktest.h
+layer-reference|core/kernel/src/tests/ktest_capability.c|21|kernel|tests|tests/ktest.h
 layer-reference|core/kernel/src/tests/ktest_irq_domain.c|1|kernel|tests|tests/ktest.h
 layer-reference|core/kernel/src/tests/ktest_kprim_caps.c|4|kernel|tests|tests/ktest.h
 layer-reference|core/kernel/src/tests/ktest_memops.c|2|kernel|tests|tests/ktest.h

@@ -2,6 +2,7 @@ add_library(hal_common OBJECT
     ../common/cpu_features.c
     hmem.c
     ../common/memops/mem_scalar.c
+    ../common/memops/mem_dispatch.c
 )
 
 target_include_directories(hal_common PRIVATE
