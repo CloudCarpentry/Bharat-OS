@@ -1,15 +1,17 @@
 ---
-title: "Kernel production-readiness audit: five architectures, per-core kernel, profiles, and boot trust"
+title: 'Kernel production-readiness audit: five architectures, per-core kernel, profiles,
+  and boot trust'
 status: Audited
 owner: Kernel Working Group
 last_updated: 2026-08-08
 tags:
-  - architecture
-  - audit
-  - boot
-  - memory
-  - production-readiness
-  - scheduler
+- architecture
+- audit
+- boot
+- memory
+- production-readiness
+- scheduler
+see_also: []
 ---
 
 # Kernel production-readiness audit (2026-08)

@@ -1,3 +1,12 @@
+---
+title: Adr 017 Global Per Core Init Order
+status: Draft
+owner: Docs Team
+last_updated: '2026-08-08'
+tags:
+- docs
+see_also: []
+---
 # ADR-017: Split BSP Global Initialization from AP Per-Core Publication
 
 ## Status

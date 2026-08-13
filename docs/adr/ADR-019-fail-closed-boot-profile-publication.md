@@ -1,3 +1,12 @@
+---
+title: Adr 019 Fail Closed Boot Profile Publication
+status: Draft
+owner: Docs Team
+last_updated: '2026-08-08'
+tags:
+- docs
+see_also: []
+---
 # ADR-019: Fail-closed boot profile publication
 
 ## Status
