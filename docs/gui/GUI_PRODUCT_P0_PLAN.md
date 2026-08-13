@@ -61,7 +61,7 @@ dimension mismatch, uniform and successful frames, and forced termination.
 **Gate:** one command builds, boots, captures a non-uniform real scanout frame,
 and exits successfully. A serial-only pass is forbidden.
 
-## GUI-003 — input round trip (P0/P1)
+## GUI-003 — input round trip (P0/P1, client and harness implemented)
 
 Replace the zero-event showcase provider with the input-service client. Preserve
 the driver -> input service -> LVGL adapter -> shell boundary; the application
@@ -72,6 +72,20 @@ and no-change tests.
 
 **Gate:** boot -> frame -> injected input -> visibly changed frame, with before
 and after artifacts.
+
+The showcase now resolves the versioned `inputmgr` endpoint through nameservice
+and drains a bounded, fixed-width event response over IPC; lookup, transport,
+version, status, size, and count failures produce no events. The LVGL adapter
+accepts only supported relative axes, the primary pointer button, and navigation
+keys, and emits `[gui] input-observed` on the first accepted event. The QMP smoke
+harness sends a Tab press/release, waits for that guest marker, retains before and
+after PPM files, and requires a configurable bounded pixel delta.
+
+The end-to-end gate remains pending until the independently tracked input service
+runtime owns and publishes the `inputmgr` endpoint and the x86_64 VirtIO input
+driver routes its queue into that service. The application deliberately does not
+fall back to direct device access or an in-process input queue when discovery
+fails.
 
 ## GUI-004 — readiness-driven splash state machine (P1)
 

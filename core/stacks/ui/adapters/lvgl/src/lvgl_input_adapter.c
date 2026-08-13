@@ -6,11 +6,20 @@
 // The actual showcase application will populate events into these buffers or pump them directly.
 extern int bh_inputmgr_drain(bh_input_event_t *out_events, int max_events);
 
+__attribute__((weak)) void bh_lvgl_input_observed(void) {}
+
 static int32_t cursor_x = 0;
 static int32_t cursor_y = 0;
 static bool left_button_down = false;
 static uint32_t last_key = 0;
 static lv_indev_state_t last_key_state = LV_INDEV_STATE_RELEASED;
+
+static int32_t add_relative_axis(int32_t current, int32_t delta) {
+    int64_t value = (int64_t)current + delta;
+    if (value > INT32_MAX) return INT32_MAX;
+    if (value < INT32_MIN) return INT32_MIN;
+    return (int32_t)value;
+}
 
 static uint32_t translate_key(uint16_t code) {
     switch (code) {
@@ -28,22 +37,32 @@ static uint32_t translate_key(uint16_t code) {
 static void drain_input_events(void) {
     bh_input_event_t events[16];
     int count = bh_inputmgr_drain(events, 16);
+    bool observed = false;
+    if (count < 0 || count > 16) return;
     for (int i = 0; i < count; i++) {
         if (events[i].type == 2) {
-            if (events[i].code == 0) cursor_x += events[i].value;
-            else if (events[i].code == 1) cursor_y += events[i].value;
+            if (events[i].code == 0) {
+                cursor_x = add_relative_axis(cursor_x, events[i].value);
+                observed = true;
+            } else if (events[i].code == 1) {
+                cursor_y = add_relative_axis(cursor_y, events[i].value);
+                observed = true;
+            }
         } else if (events[i].type == 1) {
             if (events[i].code == 272) {
                 left_button_down = (events[i].value != 0);
+                observed = true;
             } else {
                 uint32_t key = translate_key(events[i].code);
                 if (key != 0) {
                     last_key = key;
                     last_key_state = events[i].value != 0 ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
+                    observed = true;
                 }
             }
         }
     }
+    if (observed) bh_lvgl_input_observed();
 }
 
 // Read callback for LVGL Pointer (Mouse/Touch)

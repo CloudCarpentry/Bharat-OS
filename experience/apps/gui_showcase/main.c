@@ -13,15 +13,18 @@ extern lv_display_t *bharat_lvgl_display_create(bh_display_lease_handle_t lease,
                                                 uint32_t height);
 extern lv_indev_t *bharat_lvgl_pointer_create(void);
 extern lv_indev_t *bharat_lvgl_keyboard_create(void);
+static int g_input_marker_emitted;
+
+void bh_lvgl_input_observed(void) {
+  if (!g_input_marker_emitted) {
+    g_input_marker_emitted = 1;
+    printf("[gui] input-observed\n");
+  }
+}
+
 static void demo_snapshot(bh_shell_system_info_t *info, void *context) {
   (void)context;
   info->uptime_seconds = bharat_lvgl_now_ms() / 1000U;
-}
-
-int bh_inputmgr_drain(void *out_events, int max_events) {
-  (void)out_events;
-  (void)max_events;
-  return 0; // Return 0 events normally
 }
 
 int main(int argc, char **argv) {
@@ -90,12 +93,8 @@ int main(int argc, char **argv) {
   printf("UI_NATIVE: HOME_VISIBLE\n");
 
   /* Main UI Pump loop */
-  int frame_count = 0;
-  while (frame_count < 10) { // Limit iterations for demo test run
+  for (;;) {
     uint32_t delay = lv_timer_handler();
     bharat_lvgl_wait_ms(delay);
-    frame_count++;
   }
-
-  return 0;
 }
