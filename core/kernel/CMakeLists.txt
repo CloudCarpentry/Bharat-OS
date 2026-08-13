@@ -78,7 +78,7 @@ if(NOT COMMAND bharat_register_component)
     set(BHARAT_GEN_DIR "${CMAKE_BINARY_DIR}/generated")
 
     if(EXISTS "${BHARAT_MANIFEST_JSON}" AND EXISTS "${BHARAT_GEN_SCRIPT}")
-        find_package(Python3 QUIET COMPONENTS Interpreter)
+        find_package(Python3 REQUIRED COMPONENTS Interpreter)
         if(Python3_Interpreter_FOUND)
             file(MAKE_DIRECTORY "${BHARAT_GEN_DIR}")
             execute_process(
@@ -595,7 +595,7 @@ add_custom_command(
 # Extract offsets using the python script
 add_custom_command(
     OUTPUT "${ASM_OFFSETS_H}"
-    COMMAND python ${CMAKE_SOURCE_DIR}/tools/abi/asm_offsets.py "${ASM_OFFSETS_DIR}/gen_asm_offsets.s" "${ASM_OFFSETS_H}"
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/abi/asm_offsets.py "${ASM_OFFSETS_DIR}/gen_asm_offsets.s" "${ASM_OFFSETS_H}"
     DEPENDS "${ASM_OFFSETS_DIR}/gen_asm_offsets.s" "${CMAKE_SOURCE_DIR}/tools/abi/asm_offsets.py"
     COMMENT "Generating ${ASM_OFFSETS_H}"
 )
