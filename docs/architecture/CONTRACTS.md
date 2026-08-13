@@ -22,6 +22,7 @@ When implementation differs from an authority, treat it as a defect or an explic
 
 | Area | Authority | Generated outputs / consumers | Required validation | Owner |
 |---|---|---|---|---|
+| Shell diagnostic control plane | `interface/include/bharat/uapi/shell/diagnostic.h` and ADR-023 | Native shell and capability-backed diagnostic providers | Shell diagnostic control-plane host test plus target smoke builds | System services maintainers |
 | Processor trap-entry ABI | `docs/adr/ADR-020-mechanically-verified-trap-entry-abi.md` and `core/kernel/include/trap.h` | Build-generated `trap_offsets.inc`; five architecture entry stubs; normalized trap decoder | `python3 tools/abi/test_trap_frame_abi.py <generated>/trap_offsets.inc <five assembly files>` plus target smoke builds | Kernel architecture maintainers |
 | Native syscall ABI | `interface/contracts/abi/native_syscalls.json` and ADR-018 | Build-generated syscall numbers/table metadata; native `write` bootstrap authority is the implicit current process | `python3 tools/abi/syscall_abi.py --check` regenerates twice in temporary directories and verifies the locked output hashes | Kernel ABI maintainers |
 | Syscall compatibility lock | `interface/contracts/abi/native_syscalls.lock.json` | Locked syscall count, numbers, metadata, and generated-output SHA-256 values | ABI check and the intentional procedure in `docs/dev/native-syscall-abi-change.md` | Kernel ABI maintainers |
