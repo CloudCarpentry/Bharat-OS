@@ -1,20 +1,15 @@
 #include "../../include/tests/test_framework.h"
 #include "../../include/mm/vm_space.h"
 #include <stdlib.h>
+#include "../../include/mm/vm_mapping.h"
+#include "../../include/mm/arch_vm.h"
+#include <stddef.h>
+#include <stdint.h>
+#include <stdbool.h>
 
 uint32_t hal_get_core_id_mock(void) {
     return 0;
 }
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "../../include/mm/vm_mapping.h"
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "../../include/mm/arch_vm.h"
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include <stddef.h>
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include <stdint.h>
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include <stdbool.h>
 
 // Mock monitor operations
 int mon_vm_send_map(vm_space_t *space, const vm_map_req_t *req, bool strict) { return 0; }

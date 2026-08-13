@@ -15,12 +15,14 @@
 typedef uint64_t phys_addr_t;
 typedef uint64_t virt_addr_t;
 
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "list.h"
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "mm_coloring.h"
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "mm/pmm.h"
+#include "spinlock.h"
+#include "mm/aspace.h"
+#include "../staging/formal/formal_verif.h"
+#include "mm/address_token.h"
+
 #include "bharat/kernel/ds/bh_refcount.h"
 
 // Page metadata structure for Buddy Allocator
@@ -98,12 +100,8 @@ int mm_zero_phys_range(phys_addr_t phys, size_t size);
 void mm_inc_page_ref(phys_addr_t page);
 
 // Virtual Memory Management (Architecture agnostic paging)
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "spinlock.h"
 
 typedef struct vm_address_space address_space_t;
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "mm/aspace.h"
 
 int vmm_init(void);
 int mm_global_init(void);
@@ -121,13 +119,9 @@ int mm_vmm_unmap_page(address_space_t *as, virt_addr_t vaddr);
 // Forward declaration for capability_token_t is not straightforward because
 // it's a typedef of an anonymous struct in formal_verif.h. So we include it
 // directly.
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "../staging/formal/formal_verif.h"
 int vmm_map_device_mmio(virt_addr_t vaddr, phys_addr_t paddr, capability_t *cap,
                         int is_npu);
 
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "mm/address_token.h"
 int vmm_map_device_mmio_token(virt_addr_t vaddr, phys_addr_t paddr,
                               uint64_t size, const bharat_addr_token_t *token,
                               int is_npu);
@@ -137,7 +131,7 @@ address_space_t *mm_create_address_space(void);
 
 void vmm_process_local_urpc_messages(uint32_t core_id);
 
-#endif // BHARAT_MM_H
-
 void tlb_shootdown(address_space_t *as, virt_addr_t vaddr);
 #define PAGE_EXEC 0x400
+
+#endif // BHARAT_MM_H

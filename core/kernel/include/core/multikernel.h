@@ -7,6 +7,7 @@
 
 #include "sched/sched.h"
 #include <stdint.h>
+#include <stdatomic.h>
 
 // Fallback alignment macro if not defined by config system
 #ifndef BHARAT_ALIGNED_CACHE
@@ -44,8 +45,6 @@ typedef enum {
   URPC_ERR_INVAL = -5, // To match the review suggestion
 } urpc_status_t;
 
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include <stdatomic.h>
 
 // Single-Producer / Single-Consumer (SPSC) lockless ring buffer.
 // Queue ownership rules:

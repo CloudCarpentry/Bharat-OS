@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include "../../include/mm.h"
 #include "mm_local.h"
+#include "../../include/spinlock.h"
 
 // Operations that cross core boundaries via URPC (may be async)
 
@@ -24,8 +25,6 @@ typedef struct {
     uint64_t seq; // Request sequence
 } mm_urpc_tlb_msg_t;
 
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "../../include/spinlock.h"
 
 typedef struct {
     spinlock_t lock;

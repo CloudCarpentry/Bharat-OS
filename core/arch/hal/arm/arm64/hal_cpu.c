@@ -1,3 +1,4 @@
+#include "trap.h"
 #include "hal/hal.h"
 #include "hal/hal_timer.h"
 #include "secure_boot.h"
@@ -34,8 +35,6 @@ void hal_cpu_reboot(void) {
   }
 }
 
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "trap.h"
 
 bool hal_cpu_is_syscall(const void *trap_frame) {
     if (!trap_frame) return false;

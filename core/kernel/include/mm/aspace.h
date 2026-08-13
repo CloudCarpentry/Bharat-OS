@@ -16,6 +16,7 @@ extern "C" {
 
 #define VM_REGION_FLAG_STACK (1 << 0)
 #define VM_REGION_FLAG_COW   (1 << 1)
+#include "prot_domain.h"
 
 typedef enum {
     ASPACE_STATE_CREATED = 0,
@@ -49,8 +50,6 @@ typedef struct vm_region {
     struct vm_region *prev;
 } vm_region_t;
 
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "prot_domain.h"
 
 typedef struct vm_address_space {
     uint64_t object_id;      // Unique ID compatible with legacy object_id tracking

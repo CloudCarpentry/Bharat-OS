@@ -4,6 +4,7 @@
 #include "hal/hal.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include "boot/boot_selftest.h"
 
 
 #define KTEST_PRINT(s) hal_serial_write(s)
@@ -13,8 +14,6 @@ typedef struct {
   bool (*test_fn)(void);
 } ktest_case_t;
 
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "boot/boot_selftest.h"
 
 typedef struct {
   const char *name;

@@ -1,6 +1,8 @@
 #ifndef BHARAT_PROFILE_H
 #define BHARAT_PROFILE_H
 
+#include <stdbool.h>
+
 /*
  * Bharat-OS profile selection and lightweight feature switches.
  *
@@ -39,8 +41,6 @@ void profile_init(void);
 #define FEATURE_QOS_HOOKS 1
 #endif
 
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include <stdbool.h>
 // Include the new canonical memory model contract
 #include "mm/mem_model.h"
 
