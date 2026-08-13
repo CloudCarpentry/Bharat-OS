@@ -1,3 +1,12 @@
+---
+title: Ai_Agent_Workflow
+status: Draft
+owner: Docs Team
+last_updated: '2026-08-08'
+tags:
+- docs
+see_also: []
+---
 # Bharat-OS AI Agent Workflow
 
 ## Purpose

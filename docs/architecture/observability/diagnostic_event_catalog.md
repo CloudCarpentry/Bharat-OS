@@ -1,3 +1,12 @@
+---
+title: Diagnostic_Event_Catalog
+status: Draft
+owner: Docs Team
+last_updated: '2026-08-08'
+tags:
+- docs
+see_also: []
+---
 <!-- SPDX-License-Identifier: MIT -->
 # Diagnostic event catalog v1
 

@@ -2,6 +2,10 @@
 title: Userspace Runtime Models and Root Bootstrap
 status: Draft
 owner: Userspace Architecture Team
+last_updated: '2026-08-08'
+tags:
+- docs
+see_also: []
 ---
 
 # Userspace runtime models
