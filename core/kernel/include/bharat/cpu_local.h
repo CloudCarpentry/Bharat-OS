@@ -42,7 +42,6 @@ typedef struct __attribute__((aligned(64))) cpu_local {
     uint32_t          cpu_id;         // Offset 24
     // We will place a pointer for now, or the struct itself if we can refactor sched.h.
     sched_rq_t        runqueue;       // per-core, no lock needed
-    capability_table_t cap_table;     // per-core capability namespace
     void             *pmm;            // struct pmm_shard *
     void             *urpc_ports[MAX_CPUS]; // struct urpc_port *
     struct bh_thread   *current;        // currently running thread

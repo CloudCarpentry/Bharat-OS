@@ -2,7 +2,7 @@
 title: Capability Validation Framework Contract
 status: Draft
 owner: Documentation Working Group
-last_updated: 2026-08-12
+last_updated: 2026-08-13
 tags:
   - docs
   - architecture
@@ -51,6 +51,24 @@ rejects an unknown CSpace ID, wrong owner, stale slot generation, or older revoc
 epoch. A capability naming a remote object authorizes only a request to its owner core;
 it never authorizes direct mutation of the remote CSpace.
 
+### 7. Process CSpace Ownership
+
+A CSpace is a process-owned kernel object, not a CPU-local object. Its table is
+allocated independently of the CPU count and the process retains the CSpace
+when it is scheduled on another core. Exactly one core owns mutation authority
+at a time. Each core maintains a bounded owner-local registry of the CSpaces it
+currently owns so that pointer-free locators can be resolved without a global
+mutable table. Creation publishes a fully initialized table; destruction first
+unpublishes it, causing stale locators to fail closed, and then releases storage.
+Before the heap is available, each core has one owner-local bootstrap CSpace;
+normal process CSpaces use dynamically allocated storage after memory startup.
+
+Cross-core delegation and revocation carry CSpace identity by value and execute
+against the destination owner's registry. A remote core does not dereference or
+mutate a CSpace table directly. Ownership transfer/sharding is a separate
+transactional protocol and must publish a new generation only after the new
+owner acknowledges receipt; it is not yet implemented.
+
 ## API Specification
 
 ```c
@@ -80,9 +98,9 @@ kstatus_t cap_validate_ex(capability_table_t *table,
 - **Rollout**: Not yet wired into every syscall boundary.
 - **Scope Model**: Minimal security-domain model (PID-based only).
 - **Revocation**: Distributed revocation semantics are still being matured.
-- **CSpace ownership**: Capability tables remain transitional core-local tables. A later,
-  separately reviewed refactor must introduce process-owned CSpaces without changing the
-  generation or pointer-free locator requirements here.
+- **CSpace transfer**: Process-owned CSpaces currently remain assigned to their
+  creation core. Migration of scheduling does not itself transfer mutation
+  authority; explicit CSpace ownership transfer/sharding remains future work.
 
 ## Future Evolution
 - Integration into all syscall dispatch paths.

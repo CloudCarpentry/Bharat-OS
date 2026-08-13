@@ -3,6 +3,7 @@
 #include <stdbool.h>
 
 #include "capability.h"
+#include "bharat/cpu_local.h"
 #include "hal/hal.h"
 #include "kernel.h"
 #include "sched/sched.h"
@@ -494,6 +495,29 @@ static int ktest_cap_run_runtime(void) {
         hal_serial_write(buf);
         return -1;
     }
+    hal_serial_write("PASSED\n");
+
+    hal_serial_write("  [TEST] test_process_cspaces_exceed_cpu_count... ");
+    capability_table_t *tables[MAX_CPUS + 1U] = {0};
+    for (size_t i = 0; i < BHARAT_ARRAY_SIZE(tables); ++i) {
+        tables[i] = cap_table_create();
+        if (tables[i] == NULL) {
+            for (size_t j = 0; j < i; ++j) {
+                cap_table_destroy(tables[j]);
+            }
+            return -1;
+        }
+    }
+    uint32_t stale_cspace_id = tables[0]->cspace_id;
+    for (size_t i = 0; i < BHARAT_ARRAY_SIZE(tables); ++i) {
+        cap_table_destroy(tables[i]);
+    }
+    tables[0] = cap_table_create();
+    if (tables[0] == NULL || tables[0]->cspace_id == stale_cspace_id) {
+        cap_table_destroy(tables[0]);
+        return -1;
+    }
+    cap_table_destroy(tables[0]);
     hal_serial_write("PASSED\n");
 
     return 0;
