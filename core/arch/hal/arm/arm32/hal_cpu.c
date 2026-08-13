@@ -80,6 +80,14 @@ void hal_cpu_halt(void) { while(1); }
 void hal_interrupt_end_of_interrupt(uint32_t irq) { (void)irq; }
 void hal_cpu_enable_interrupts(void) {}
 void hal_cpu_disable_interrupts(void) {}
+hal_irq_state_t hal_irq_save_disable(void) {
+    hal_irq_state_t state;
+    __asm__ volatile("mrs %0, cpsr\n\tcpsid if" : "=r"(state) :: "memory");
+    return state;
+}
+void hal_irq_restore(hal_irq_state_t state) {
+    __asm__ volatile("msr cpsr_c, %0" :: "r"(state) : "memory");
+}
 void hal_ipi_send(uint32_t target_cpu, uint32_t vector) { (void)target_cpu; (void)vector; }
 uint32_t hal_cpu_get_id(void) { return 0; }
 void hal_core_poll_event(void) {}

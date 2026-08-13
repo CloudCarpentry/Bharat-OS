@@ -247,9 +247,11 @@ int sched_quarantine_thread(bh_thread_t *thread, uint32_t reason) {
       sched_rq_t *rq = sched_local_rq();
       thread_slot_t *slot = sched_find_thread_slot_by_tid_local(rq, thread->thread_id);
       if (slot && slot->is_on_runqueue) {
-          hal_cpu_disable_interrupts();
+          hal_irq_state_t irq_state = hal_irq_save_disable();
           if (rq->policy == SCHED_POLICY_CLOUD_FAIR) {
             sched_cfs_dequeue(rq, thread);
+          } else if (rq->policy == SCHED_POLICY_EDF) {
+            sched_edf_dequeue(rq, thread);
           } else {
             list_del(&slot->run_node);
             list_init(&slot->run_node);
@@ -259,7 +261,7 @@ int sched_quarantine_thread(bh_thread_t *thread, uint32_t reason) {
           if (rq->runnable_count > 0U) {
             rq->runnable_count--;
           }
-          hal_cpu_enable_interrupts();
+          hal_irq_restore(irq_state);
       }
   }
 
@@ -332,10 +334,10 @@ int sched_request_handoff_tid(uint64_t tid, uint32_t target_cpu, uint32_t auth_t
     return -1;
   }
 
-  hal_cpu_disable_interrupts();
+  hal_irq_state_t irq_state = hal_irq_save_disable();
 
   if (thread->state != THREAD_STATE_READY) {
-    hal_cpu_enable_interrupts();
+    hal_irq_restore(irq_state);
     return -2;
   }
 
@@ -344,6 +346,8 @@ int sched_request_handoff_tid(uint64_t tid, uint32_t target_cpu, uint32_t auth_t
   if (slot->is_on_runqueue != 0U) {
     if (rq->policy == SCHED_POLICY_CLOUD_FAIR) {
       sched_cfs_dequeue(rq, thread);
+    } else if (rq->policy == SCHED_POLICY_EDF) {
+      sched_edf_dequeue(rq, thread);
     } else {
       list_del(&slot->run_node);
       list_init(&slot->run_node);
@@ -357,21 +361,23 @@ int sched_request_handoff_tid(uint64_t tid, uint32_t target_cpu, uint32_t auth_t
 
   thread->state = THREAD_STATE_REMOTE_HANDOFF_PENDING;
 
-  hal_cpu_enable_interrupts();
+  hal_irq_restore(irq_state);
 
   mk_channel_t channel;
   if (mk_get_channel(current_core, target_cpu, &channel) != 0) {
-    hal_cpu_disable_interrupts();
+    hal_irq_state_t irq_state = hal_irq_save_disable();
     thread->state = THREAD_STATE_READY;
     if (rq->policy == SCHED_POLICY_CLOUD_FAIR) {
       sched_cfs_enqueue(rq, thread);
+    } else if (rq->policy == SCHED_POLICY_EDF) {
+      sched_edf_enqueue(rq, thread);
     } else {
       list_add(&slot->run_node, &rq->ready_queue[thread->priority]);
       sched_ready_bitmap_set(rq, thread->priority);
     }
     slot->is_on_runqueue = 1U;
     rq->runnable_count++;
-    hal_cpu_enable_interrupts();
+    hal_irq_restore(irq_state);
     return -3;
   }
 
@@ -394,17 +400,19 @@ int sched_request_handoff_tid(uint64_t tid, uint32_t target_cpu, uint32_t auth_t
 
   int ret = mk_send_message(&channel, msg.type, msg.payload_data, msg.payload_size);
   if (ret != 0) {
-      hal_cpu_disable_interrupts();
+      hal_irq_state_t irq_state = hal_irq_save_disable();
       thread->state = THREAD_STATE_READY;
       if (rq->policy == SCHED_POLICY_CLOUD_FAIR) {
         sched_cfs_enqueue(rq, thread);
+      } else if (rq->policy == SCHED_POLICY_EDF) {
+        sched_edf_enqueue(rq, thread);
       } else {
         list_add(&slot->run_node, &rq->ready_queue[thread->priority]);
         sched_ready_bitmap_set(rq, thread->priority);
       }
       slot->is_on_runqueue = 1U;
       rq->runnable_count++;
-      hal_cpu_enable_interrupts();
+      hal_irq_restore(irq_state);
       return -4;
   }
 

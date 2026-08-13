@@ -187,12 +187,12 @@ static void *pmm_alloc_pages_order_colored(int order, uint32_t numa_node,
   }
 
   if (order == 0 && core_state && core_state->active && numa_node < 4) {
-      hal_cpu_disable_interrupts();
+      hal_irq_state_t irq_state = hal_irq_save_disable();
       pmm_pcache_t *pcache = &core_state->node_caches[numa_node];
       if (pcache->count > 0) {
           phys_addr_t phys = pcache->pages[--pcache->count];
           pcache->alloc_hits++;
-          hal_cpu_enable_interrupts();
+          hal_irq_restore(irq_state);
 
           page_t *page = phys_to_page(phys);
           if (page) {
@@ -205,18 +205,18 @@ static void *pmm_alloc_pages_order_colored(int order, uint32_t numa_node,
           return (void *)(uintptr_t)phys;
       } else {
           pcache->alloc_misses++;
-          hal_cpu_enable_interrupts();
+          hal_irq_restore(irq_state);
       }
   }
 
   pmm_drain_remote_frees(current_core);  // Retry cache after potentially draining inbox
   if (order == 0 && core_state && core_state->active && numa_node < 4) {
-      hal_cpu_disable_interrupts();
+      hal_irq_state_t irq_state = hal_irq_save_disable();
       pmm_pcache_t *pcache = &core_state->node_caches[numa_node];
       if (pcache->count > 0) {
           phys_addr_t phys = pcache->pages[--pcache->count];
           pcache->alloc_hits++;
-          hal_cpu_enable_interrupts();
+          hal_irq_restore(irq_state);
 
           page_t *page = phys_to_page(phys);
           if (page) {
@@ -228,7 +228,7 @@ static void *pmm_alloc_pages_order_colored(int order, uint32_t numa_node,
           }
           return (void *)(uintptr_t)phys;
       }
-      hal_cpu_enable_interrupts();
+      hal_irq_restore(irq_state);
   }
 
   zone_t *zone = &numa_zones[numa_node];
@@ -237,7 +237,7 @@ static void *pmm_alloc_pages_order_colored(int order, uint32_t numa_node,
 
   // If we missed in cache, attempt to refill a batch for order-0
   if (order == 0 && core_state && core_state->active && numa_node < 4) {
-      hal_cpu_disable_interrupts();
+      hal_irq_state_t irq_state = hal_irq_save_disable();
       pmm_pcache_t *pcache = &core_state->node_caches[numa_node];
       uint32_t refilled = 0;
       int start_color = 0;
@@ -265,7 +265,7 @@ static void *pmm_alloc_pages_order_colored(int order, uint32_t numa_node,
           atomic64_fetch_and_sub_ptr(&numa_nodes[numa_node].free_pages, refilled);
 
           phys_addr_t phys = pcache->pages[--pcache->count];
-          hal_cpu_enable_interrupts();
+          hal_irq_restore(irq_state);
 
           page_t *page = phys_to_page(phys);
           if (page) {
@@ -278,7 +278,7 @@ static void *pmm_alloc_pages_order_colored(int order, uint32_t numa_node,
           spin_unlock(&zone->lock);
           return (void *)(uintptr_t)phys;
       }
-      hal_cpu_enable_interrupts();
+      hal_irq_restore(irq_state);
   }
 
   int start_color = 0;
@@ -1052,7 +1052,7 @@ void mm_free_page(phys_addr_t page_addr) {
   // Local Magazine fast path for order-0 pages
   if (order == 0 && core_state && core_state->active && pmm_numa_node_valid(node_id) && pmm_page_can_enter_pcache(page)) {
       if (pmm_page_owned_by_core(page, current_core)) {
-          hal_cpu_disable_interrupts();
+          hal_irq_state_t irq_state = hal_irq_save_disable();
           pmm_pcache_t *pcache = &core_state->node_caches[node_id];
 
           if (pcache->count < PMM_PCACHE_HIGH) {
@@ -1063,7 +1063,7 @@ void mm_free_page(phys_addr_t page_addr) {
               page->flags = 0;
               page->pin_count = 0;
               page->order = 0;
-              hal_cpu_enable_interrupts();
+              hal_irq_restore(irq_state);
               return;
           } else {
               // Drain batch to zone slow path
@@ -1088,7 +1088,7 @@ void mm_free_page(phys_addr_t page_addr) {
               page->flags = 0;
               page->pin_count = 0;
               page->order = 0;
-              hal_cpu_enable_interrupts();
+              hal_irq_restore(irq_state);
               return;
           }
       } else if (pmm_core_id_valid(page->owner_core_id) && g_pmm_cores[page->owner_core_id].active) {

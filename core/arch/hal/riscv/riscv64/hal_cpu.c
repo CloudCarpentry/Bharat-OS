@@ -231,6 +231,24 @@ void hal_cpu_disable_interrupts(void) {
   __asm__ volatile("csrci sstatus, 2");
 #endif
 }
+hal_irq_state_t hal_irq_save_disable(void) {
+  hal_irq_state_t state;
+#ifdef CONFIG_RISCV_M_MODE
+  __asm__ volatile("csrrc %0, mstatus, %1" : "=r"(state) : "r"((hal_irq_state_t)8) : "memory");
+#else
+  __asm__ volatile("csrrc %0, sstatus, %1" : "=r"(state) : "r"((hal_irq_state_t)2) : "memory");
+#endif
+  return state;
+}
+void hal_irq_restore(hal_irq_state_t state) {
+#ifdef CONFIG_RISCV_M_MODE
+  if ((state & 8U) != 0U) __asm__ volatile("csrsi mstatus, 8" ::: "memory");
+  else __asm__ volatile("csrci mstatus, 8" ::: "memory");
+#else
+  if ((state & 2U) != 0U) __asm__ volatile("csrsi sstatus, 2" ::: "memory");
+  else __asm__ volatile("csrci sstatus, 2" ::: "memory");
+#endif
+}
 
 // --- Trap / Interrupt Handling ---
 

@@ -65,14 +65,14 @@ kstatus_t thread_destroy(bh_thread_t *thread) {
   }
 
   // Prevent race with background reaper or other cores
-  hal_cpu_disable_interrupts();
+  hal_irq_state_t irq_state = hal_irq_save_disable();
   
   spin_lock(&rq->lock);
   
   if (slot->reap_pending != 0U) {
       // Thread is already being reaped, let the reaper finish it
       spin_unlock(&rq->lock);
-      hal_cpu_enable_interrupts();
+      hal_irq_restore(irq_state);
       return K_OK;
   }
   
@@ -112,7 +112,7 @@ kstatus_t thread_destroy(bh_thread_t *thread) {
   }
   spin_unlock(&rq->lock);
 
-  hal_cpu_enable_interrupts();
+  hal_irq_restore(irq_state);
   return K_OK;
 }
 
