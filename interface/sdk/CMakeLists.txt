@@ -32,6 +32,8 @@ foreach(component process ipc device cap)
     target_compile_features(bharat_${component} PUBLIC c_std_11)
     target_include_directories(bharat_${component} PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../uapi>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
     target_include_directories(bharat_${component} PRIVATE lib/internal)
     target_link_libraries(bharat_${component} PUBLIC bharat_core)
