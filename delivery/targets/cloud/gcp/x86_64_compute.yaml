@@ -1,0 +1,47 @@
+name: x86_64_gcp_compute
+kind: qemu_target
+arch: x86_64
+board: qemu-virt-x86_64
+device_profile: cloud_vm_base
+personality_profile: native
+execution_profile: gp
+implementation_maturity:
+  profile: RELEASE
+  allow: [STUB]
+build:
+  cmake_preset: gp-fullvm-release
+  cmake_defs:
+    BHARAT_ARCH_FAMILY: X86
+    BHARAT_DEVICE_PROFILE: CLOUD_GCP_KVM
+    BHARAT_PERSONALITY_PROFILE: NATIVE
+    BHARAT_TARGET_BOARD: qemu-virt
+    BHARAT_BOOT_GUI: false
+    BHARAT_ENABLE_ADVANCED_VM: true
+    BHARAT_ENABLE_BENCHMARKS: false
+kernel:
+  canonical_artifacts:
+    elf: kernel/kernel.elf
+boot:
+  protocol: multiboot2
+  artifact_format: elf
+  cmdline: "boot_mode=demo ktest=0"
+  dtb:
+    mode: qemu_generated
+package:
+  transforms:
+    - type: multiboot_elf_fix
+      input: kernel/kernel.elf
+      output: kernel/kernel.elf32
+run:
+  backend: qemu
+  machine: q35,accel=kvm:tcg
+  cpu: max
+  memory: 2048M
+  smp: 4
+  nographic: true
+  serial: [stdio]
+  boot_artifact: kernel/kernel.elf32
+debug:
+  backend: gdb_remote
+  stop_on_entry: false
+  gdb_port: 1234

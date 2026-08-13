@@ -93,3 +93,16 @@ static bharat_accel_device_t virt_accel_dev = {
 bharat_accel_device_t* get_virt_accel_mock_device(void) {
     return &virt_accel_dev;
 }
+
+#include "../core/device_registry.h"
+
+// Provide a virtual device provider for devmgr
+static device_desc_t virt_accel_core_dev = {
+    .name = "virt_accel_0",
+    .dev_class = CLASS_UNKNOWN, // Or appropriate class
+    .capability_flags = 0x1, // e.g. DMA capable
+};
+
+int virt_accel_register_device(void) {
+    return device_register(&virt_accel_core_dev);
+}
