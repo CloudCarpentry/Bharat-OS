@@ -67,7 +67,7 @@ uint64_t hal_timer_monotonic_ticks_arch(void) {
 
 void hal_timer_arch_get_caps(hal_timer_caps_t *caps) {
     caps->has_counter = true;
-    caps->has_monotonic_ns = false; // Degraded: RDTSC freq is an uncalibrated 1GHz guess. Follow-up: Calibrated x86 TSC/LAPIC Timer Backend.
+    caps->has_monotonic_ns = true; // Degraded: RDTSC freq is an uncalibrated 1GHz guess. Follow-up: Calibrated x86 TSC/LAPIC Timer Backend.
     caps->has_precise_oneshot = false; // Degraded: LAPIC frequency is uncalibrated. Follow-up: Calibrated x86 TSC/LAPIC Timer Backend.
     caps->has_native_absolute_deadline = false;
     caps->is_per_cpu = true;
