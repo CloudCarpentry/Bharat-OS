@@ -130,7 +130,7 @@ int sched_terminate_tid(uint64_t tid) {
   bh_thread_t *thread = sched_find_thread_by_id(tid);
   if (!thread) return -1;
 
-  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t current_core = sched_current_core_or_panic();
   uint32_t owner = __atomic_load_n(&thread->owner_cpu, __ATOMIC_ACQUIRE);
 
   if (owner != current_core) {

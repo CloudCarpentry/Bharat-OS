@@ -69,7 +69,8 @@ void sched_reset_core_runqueues(void);
 thread_slot_t *sched_find_thread_slot_by_tid_local(sched_rq_t *rq, uint64_t tid);
 thread_slot_t *sched_find_thread_slot_by_tid(uint64_t tid);
 sched_remote_cmd_t *sched_allocate_outbound_cmd(void);
-uint32_t sched_clamp_core(uint32_t core_id);
+bool sched_core_id_valid(uint32_t core_id);
+uint32_t sched_current_core_or_panic(void);
 bh_thread_t *sched_find_steal_candidate(uint32_t core_id, uint32_t target_cpu);
 
 sched_entity_t *sched_allocate_entity(uint32_t core);

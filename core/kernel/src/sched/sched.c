@@ -69,12 +69,18 @@ bh_thread_t *sched_edf_pick_next(sched_rq_t *rq);
 
 void sched_validate_rq(sched_rq_t *rq);
 
-uint32_t sched_clamp_core(uint32_t core_id) {
+bool sched_core_id_valid(uint32_t core_id) {
+  return core_id < g_active_core_count;
+}
+
+uint32_t sched_current_core_or_panic(void) {
+  uint32_t core_id = hal_cpu_get_id();
   if (core_id >= g_active_core_count) {
-    return 0U;
+    kernel_panic("sched_current_core_or_panic: invalid CPU ID");
   }
   return core_id;
 }
+
 
 #include "hal/hal_discovery.h"
 
@@ -134,7 +140,7 @@ thread_slot_t *sched_find_thread_slot_by_tid(uint64_t tid) {
 }
 
 static thread_slot_t *sched_find_free_thread_slot(void) {
-  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t current_core = sched_current_core_or_panic();
   sched_rq_t *rq = &g_cpu_locals[current_core].runqueue;
 
   if (rq->free_thread_head == UINT32_MAX) {
@@ -147,7 +153,7 @@ static thread_slot_t *sched_find_free_thread_slot(void) {
 }
 
 static process_slot_t *sched_find_free_process_slot(void) {
-  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t current_core = sched_current_core_or_panic();
   sched_rq_t *rq = &g_cpu_locals[current_core].runqueue;
 
   if (rq->free_process_head == UINT32_MAX) {
@@ -161,6 +167,9 @@ static process_slot_t *sched_find_free_process_slot(void) {
 
 void sched_sleep_enqueue(thread_slot_t *slot, uint32_t core_id) {
   if (!slot || slot->is_sleeping != 0U || slot->is_blocked != 0U) {
+    return;
+  }
+  if (!sched_core_id_valid(core_id) || slot->thread.home_core_id != core_id) {
     return;
   }
   list_add(&slot->wait_node, &g_cpu_locals[core_id].runqueue.sleeping_list);
@@ -178,6 +187,9 @@ void sched_sleep_dequeue(thread_slot_t *slot) {
 
 void sched_block_enqueue(thread_slot_t *slot, uint32_t core_id) {
   if (!slot || slot->is_sleeping != 0U || slot->is_blocked != 0U) {
+    return;
+  }
+  if (!sched_core_id_valid(core_id) || slot->thread.home_core_id != core_id) {
     return;
   }
   list_add(&slot->wait_node, &g_cpu_locals[core_id].runqueue.blocked_list);
@@ -198,7 +210,7 @@ void sched_detach_thread_from_queues(thread_slot_t *slot) {
     return;
   }
   bh_thread_t *thread = &slot->thread;
-  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t current_core = sched_current_core_or_panic();
 
   // Assert local ownership and local runqueue
   if (thread->owner_cpu != current_core &&
@@ -242,8 +254,12 @@ int sched_enqueue_reap(thread_slot_t *slot) {
     return -1;
   }
 
-  uint32_t core_id = sched_clamp_core(slot->creation_core_id);
-  sched_rq_t *rq = &g_cpu_locals[core_id].runqueue;
+
+  uint32_t home_core = slot->thread.home_core_id;
+  if (!sched_core_id_valid(home_core)) {
+    return -1;
+  }
+  sched_rq_t *rq = &g_cpu_locals[home_core].runqueue;
 
   spin_lock(&rq->lock);
   if (slot->reap_pending != 0U) {
@@ -251,7 +267,7 @@ int sched_enqueue_reap(thread_slot_t *slot) {
     return 0;
   }
 
-  uint32_t idx = (uint32_t)(slot - (thread_slot_t*)rq->threads);
+  uint32_t idx = (uint32_t)(slot - rq->threads);
   slot->reap_pending = 1U;
   slot->reap_next = UINT32_MAX;
   if (rq->reap_tail == UINT32_MAX) {
@@ -269,7 +285,7 @@ int sched_mark_thread_terminated(bh_thread_t *thread) {
   if (!thread) {
     return -1;
   }
-  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t current_core = sched_current_core_or_panic();
   if (__atomic_load_n(&thread->owner_cpu, __ATOMIC_ACQUIRE) != current_core) {
       kernel_panic("sched_mark_thread_terminated: executing on non-owner CPU");
   }
@@ -313,7 +329,7 @@ int sched_mark_thread_terminated(bh_thread_t *thread) {
 }
 
 void sched_reap_terminated_threads(void) {
-  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t current_core = sched_current_core_or_panic();
   sched_rq_t *rq = &g_cpu_locals[current_core].runqueue;
 
   while (1) {
@@ -368,7 +384,7 @@ static void sched_monitor_task(void) {
 void sched_thread_exit_trampoline(void) {
   bh_thread_t *current = sched_current_thread();
   if (current) {
-    uint32_t core = sched_clamp_core(hal_cpu_get_id());
+    uint32_t core = sched_current_core_or_panic();
     (void)sched_mark_thread_terminated(current);
     g_cpu_locals[core].runqueue.current_thread = NULL;
     sched_reschedule();
@@ -627,7 +643,7 @@ bh_process_t *process_create(const char *name) {
     return NULL;
   }
 
-  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t current_core = sched_current_core_or_panic();
   sched_rq_t *rq = &g_cpu_locals[current_core].runqueue;
 
   slot->in_use = 1U;
@@ -664,7 +680,7 @@ bh_thread_t *thread_create_detached(bh_process_t *parent, void (*entry_point)(vo
     return NULL;
   }
 
-  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t current_core = sched_current_core_or_panic();
   sched_rq_t *rq = &g_cpu_locals[current_core].runqueue;
 
   uint32_t slot_idx = (uint32_t)(slot - (thread_slot_t*)rq->threads);
@@ -693,7 +709,7 @@ bh_thread_t *thread_create_detached(bh_process_t *parent, void (*entry_point)(vo
   slot->thread.cpu_time_consumed = 0U;
   slot->thread.time_slice_ms = SCHED_DEFAULT_SLICE_MS;
   slot->thread.preferred_numa_node = 0U;
-  slot->thread.bound_core_id = sched_clamp_core(hal_cpu_get_id());
+  slot->thread.bound_core_id = sched_current_core_or_panic();
   slot->thread.affinity_mask = SCHED_AFFINITY_ANY;
 
   // Initialize constraints with sane defaults
@@ -713,13 +729,13 @@ bh_thread_t *thread_create_detached(bh_process_t *parent, void (*entry_point)(vo
 
   slot->thread.wake_deadline_ms = 0U;
   slot->thread.context_switch_count = 0U;
-  slot->creation_core_id = sched_clamp_core(hal_cpu_get_id());
+  slot->creation_core_id = sched_current_core_or_panic();
 
   #define KERNEL_STACK_SIZE 16384U
   void *stack = kmalloc(KERNEL_STACK_SIZE);
   if (!stack) {
     slot->in_use = 0U;
-    uint32_t idx = (uint32_t)(slot - (thread_slot_t*)rq->threads);
+    uint32_t idx = (uint32_t)(slot - rq->threads);
     slot->next_free = rq->free_thread_head;
     rq->free_thread_head = idx;
     return NULL;
@@ -735,7 +751,7 @@ bh_thread_t *thread_create_detached(bh_process_t *parent, void (*entry_point)(vo
   if (arch_ext_state_thread_init(&slot->thread) != 0) {
     kfree(stack);
     slot->in_use = 0U;
-    uint32_t idx = (uint32_t)(slot - (thread_slot_t*)rq->threads);
+    uint32_t idx = (uint32_t)(slot - rq->threads);
     slot->next_free = rq->free_thread_head;
     rq->free_thread_head = idx;
     return NULL;
@@ -769,7 +785,7 @@ bh_thread_t *sched_find_mutex_owner(void *mutex) {
   if (!mutex) {
     return NULL;
   }
-  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t current_core = sched_current_core_or_panic();
   sched_rq_t *rq = &g_cpu_locals[current_core].runqueue;
   mutex_owner_entry_t *owners = (mutex_owner_entry_t *)rq->mutex_owners;
 
@@ -786,7 +802,7 @@ void sched_register_mutex_owner(void *mutex, bh_thread_t *owner) {
   if (!mutex) {
     return;
   }
-  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t current_core = sched_current_core_or_panic();
   sched_rq_t *rq = &g_cpu_locals[current_core].runqueue;
   mutex_owner_entry_t *owners = (mutex_owner_entry_t *)rq->mutex_owners;
 
@@ -803,7 +819,7 @@ void sched_unregister_mutex_owner(void *mutex, bh_thread_t *owner) {
   if (!mutex) {
     return;
   }
-  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t current_core = sched_current_core_or_panic();
   sched_rq_t *rq = &g_cpu_locals[current_core].runqueue;
   mutex_owner_entry_t *owners = (mutex_owner_entry_t *)rq->mutex_owners;
 
@@ -833,7 +849,7 @@ void sched_update_telemetry(bh_thread_t *thread) {
   if (!thread || !thread->ai_sched_ctx) {
     return;
   }
-  uint32_t core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t core = sched_current_core_or_panic();
   ai_sched_collect_sample(thread->ai_sched_ctx, thread->time_slice_ms,
                           thread->cpu_time_consumed,
                           sched_run_queue_depth(core),
@@ -841,7 +857,7 @@ void sched_update_telemetry(bh_thread_t *thread) {
 }
 
 bh_thread_t *sched_pick_next_ready(uint32_t core_id) {
-  core_id = sched_clamp_core(core_id);
+  if (!sched_core_id_valid(core_id)) return NULL;
   sched_rq_t *rq = &g_cpu_locals[core_id].runqueue;
 
   bh_thread_t *next = NULL;
@@ -1051,7 +1067,7 @@ void bh_thread_yield(void) { sched_reschedule(); }
 
 
 bh_thread_t *sched_current_thread(void) {
-  return g_cpu_locals[sched_clamp_core(hal_cpu_get_id())].runqueue.current_thread;
+  return g_cpu_locals[sched_current_core_or_panic()].runqueue.current_thread;
 }
 
 bh_thread_t *sched_current(void) { return sched_current_thread(); }
@@ -1071,7 +1087,7 @@ struct capability_table *sched_current_cap_table(void) {
   return p ? (struct capability_table *)p->security_sandbox_ctx : NULL;
 }
 
-uint64_t sched_get_ticks(void) { return g_cpu_locals[sched_clamp_core(hal_cpu_get_id())].runqueue.total_ticks; }
+uint64_t sched_get_ticks(void) { return g_cpu_locals[sched_current_core_or_panic()].runqueue.total_ticks; }
 
 
 
@@ -1161,7 +1177,7 @@ int sched_set_constraints(uint64_t tid, const bh_exec_constraints_k_t *c) {
   bh_thread_t *thread = sched_find_thread_by_id(tid);
   if (!thread) return -1;
 
-  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t current_core = sched_current_core_or_panic();
   uint32_t owner = __atomic_load_n(&thread->owner_cpu, __ATOMIC_ACQUIRE);
 
   if (owner != current_core) {
@@ -1261,7 +1277,7 @@ sched_entity_t *sched_find_entity_by_thread(const bh_thread_t *thread) {
 }
 
 kstatus_t sched_remote_respond_cell(uint16_t origin_cpu, uint16_t slot, uint32_t generation, uint8_t kind, int32_t result) {
-  uint16_t current_cpu = (uint16_t)sched_clamp_core(hal_cpu_get_id());
+  uint16_t current_cpu = (uint16_t)sched_current_core_or_panic();
   return sched_completion_publish(origin_cpu, slot, generation, current_cpu, kind, result, 0, NULL, 0);
 }
 

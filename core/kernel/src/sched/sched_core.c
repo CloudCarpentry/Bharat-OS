@@ -3,7 +3,7 @@
 #include "panic.h"
 
 void arch_post_switch(void) {
-  uint32_t core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t core = sched_current_core_or_panic();
   hal_cpu_enable_interrupts();
 }
 
@@ -371,7 +371,7 @@ static kstatus_t sched_handle_reap(uint32_t current_cpu, sched_rq_t *rq, const s
 }
 
 void sched_reschedule(void) {
-  uint32_t core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t core = sched_current_core_or_panic();
   sched_remote_cmd_poll_timeouts();
   sched_reap_terminated_threads();
   sched_process_pending_ai_suggestions();
@@ -482,10 +482,10 @@ void sched_reschedule(void) {
 
 void sched_on_timer_tick(void) {
   sched_remote_cmd_poll_timeouts();
-  g_cpu_locals[sched_clamp_core(hal_cpu_get_id())].runqueue.total_ticks++;
+  g_cpu_locals[sched_current_core_or_panic()].runqueue.total_ticks++;
 
 
-  uint32_t core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t core = sched_current_core_or_panic();
   sched_publish_load(&g_cpu_locals[core].runqueue);
 
   ipc_async_check_timeouts(g_cpu_locals[core].runqueue.total_ticks);
@@ -589,19 +589,19 @@ void sched_on_timer_tick(void) {
 }
 
 sched_rq_t *sched_local_rq(void) {
-  uint32_t core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t core = sched_current_core_or_panic();
   return &g_cpu_locals[core].runqueue;
 }
 
 void sched_assert_local_rq(sched_rq_t *rq) {
-  uint32_t core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t core = sched_current_core_or_panic();
   if (rq != &g_cpu_locals[core].runqueue) {
     kernel_panic("sched_assert_local_rq failed: mutation of remote runqueue");
   }
 }
 
 sched_remote_cmd_t *sched_allocate_outbound_cmd(void) {
-  uint32_t core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t core = sched_current_core_or_panic();
   sched_rq_t *rq = &g_cpu_locals[core].runqueue;
   uint32_t slot_idx = 0xFFFF;
 
@@ -680,7 +680,7 @@ kstatus_t sched_remote_submit(uint32_t target_cpu, const sched_remote_cmd_t *cmd
   if (target_cpu >= g_active_core_count) {
     return K_ERR_INVALID_ARG;
   }
-  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t current_core = sched_current_core_or_panic();
   if (target_cpu == current_core) {
     return K_ERR_INVALID_ARG;
   }
@@ -774,7 +774,7 @@ kstatus_t sched_migration_transition(bh_thread_t *thread, sched_migration_state_
 }
 
 void sched_remote_cmd_poll_timeouts(void) {
-  uint32_t core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t core = sched_current_core_or_panic();
   sched_rq_t *rq = &g_cpu_locals[core].runqueue;
   uint64_t current_ticks = rq->total_ticks;
 

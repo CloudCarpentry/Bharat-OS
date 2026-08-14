@@ -60,7 +60,7 @@ int sched_adjust_priority_local(bh_thread_t *thread, uint32_t new_priority) {
     new_priority = SCHED_MAX_PRIORITY;
   }
 
-  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t current_core = sched_current_core_or_panic();
   sched_rq_t *rq = sched_local_rq();
 
   thread_slot_t *slot = sched_find_thread_slot_by_tid(thread->thread_id);
@@ -99,7 +99,7 @@ int sched_set_priority(uint64_t tid, uint32_t priority) {
     priority = SCHED_MAX_PRIORITY;
   }
 
-  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t current_core = sched_current_core_or_panic();
   uint32_t owner = __atomic_load_n(&thread->owner_cpu, __ATOMIC_ACQUIRE);
 
   if (owner != current_core) {

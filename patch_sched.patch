@@ -1,0 +1,15 @@
+--- core/kernel/src/sched/sched.c
++++ core/kernel/src/sched/sched.c
+@@ -71,2 +71,11 @@
+
++bool sched_core_id_valid(uint32_t core_id) {
++  return core_id < g_active_core_count;
++}
++
++uint32_t sched_current_core_or_panic(void) {
++  uint32_t core_id = hal_cpu_get_id();
++  if (core_id >= g_active_core_count) {
++    kernel_panic("sched_current_core_or_panic: invalid CPU ID");
++  }
++  return core_id;
++}
