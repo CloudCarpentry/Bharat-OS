@@ -38,34 +38,34 @@ static bh_pm_executable_image_t g_executables[MAX_EXECUTABLES];
 static int g_fail_stage = 0;
 
 // Fail-closed defaults. Production builds must replace these authority operations.
-static int32_t default_create_process(void *ctx, const bh_pm_kernel_create_req_t *req, bh_pm_kernel_process_t *out_proc) {
+static bharat_status_t default_create_process(void *ctx, const bh_pm_kernel_create_req_t *req, bh_pm_kernel_process_t *out_proc) {
     (void)ctx; (void)req; (void)out_proc;
     return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
 }
 
-static int32_t default_create_vm_space(void *ctx, bh_pm_kernel_process_t *proc, uint32_t memory_profile, bh_vm_kernel_space_t *out_space) {
+static bharat_status_t default_create_vm_space(void *ctx, bh_pm_kernel_process_t *proc, uint32_t memory_profile, bh_vm_kernel_space_t *out_space) {
     (void)ctx; (void)proc; (void)memory_profile;
     (void)out_space;
     return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
 }
 
-static int32_t default_realize_image(void *ctx, bh_pm_kernel_process_t *proc, bh_vm_kernel_space_t *space, const bh_user_image_plan_v1_t *plan, bh_pm_kernel_image_result_t *out_res) {
+static bharat_status_t default_realize_image(void *ctx, bh_pm_kernel_process_t *proc, bh_vm_kernel_space_t *space, const bh_user_image_plan_v1_t *plan, bh_pm_kernel_image_result_t *out_res) {
     (void)ctx; (void)proc; (void)space; (void)plan;
     (void)out_res;
     return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
 }
 
-static int32_t default_start_process(void *ctx, bh_pm_kernel_process_t *proc) {
+static bharat_status_t default_start_process(void *ctx, bh_pm_kernel_process_t *proc) {
     (void)ctx; (void)proc;
     return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
 }
 
-static int32_t default_request_terminate(void *ctx, bh_pm_kernel_process_t *proc) {
+static bharat_status_t default_request_terminate(void *ctx, bh_pm_kernel_process_t *proc) {
     (void)ctx; (void)proc;
     return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
 }
 
-static int32_t default_reap_process(void *ctx, bh_pm_kernel_process_t *proc) {
+static bharat_status_t default_reap_process(void *ctx, bh_pm_kernel_process_t *proc) {
     (void)ctx; (void)proc;
     return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
 }
@@ -84,7 +84,7 @@ static const bh_pm_kernel_ops_t g_default_kernel_ops = {
 static bh_pm_kernel_ops_t g_kernel_ops;
 static bool g_kernel_ops_installed;
 
-int32_t bh_pm_set_kernel_ops(const bh_pm_kernel_ops_t *ops) {
+bharat_status_t bh_pm_set_kernel_ops(const bh_pm_kernel_ops_t *ops) {
     if (!ops) {
         g_kernel_ops = g_default_kernel_ops;
         g_kernel_ops_installed = false;
@@ -109,14 +109,14 @@ void bh_pm_set_failure_injection(int fail_stage) {
     g_fail_stage = fail_stage;
 }
 
-int bh_pm_register_executable(uint64_t handle, const uint8_t *bytes, size_t size) {
+bharat_status_t bh_pm_register_executable(uint64_t handle, const uint8_t *bytes, size_t size) {
     if (handle == 0 || !bytes || size == 0) {
-        return -1;
+        return BHARAT_STATUS_ERR_INVALID_ARG;
     }
 
     for (int i = 0; i < MAX_EXECUTABLES; i++) {
         if (g_executables[i].in_use && g_executables[i].handle == handle) {
-            return -1;
+            return BHARAT_STATUS_ERR_ALREADY_EXISTS;
         }
     }
 
@@ -126,10 +126,10 @@ int bh_pm_register_executable(uint64_t handle, const uint8_t *bytes, size_t size
             g_executables[i].handle = handle;
             g_executables[i].bytes = bytes;
             g_executables[i].size = size;
-            return 0;
+            return BHARAT_STATUS_OK;
         }
     }
-    return -1;
+    return BHARAT_STATUS_ERR_NO_MEMORY;
 }
 
 int bh_pm_get_active_count(void) {
@@ -162,7 +162,7 @@ static const bharat_service_authz_desc_t process_manager_authz_descs[] = {
     }
 };
 
-int32_t process_manager_authorize(
+bharat_status_t process_manager_authorize(
     uint32_t opcode,
     const void *req,
     bharat_cap_handle_t caller_cap)
@@ -214,7 +214,7 @@ void process_manager_init(void) {
     g_fail_stage = 0;
 }
 
-int32_t process_manager_handle_create(const pm_req_create_t *req, pm_resp_create_t *resp) {
+bharat_status_t process_manager_handle_create(const pm_req_create_t *req, pm_resp_create_t *resp) {
     if (!req || !resp) {
         return BHARAT_IPC_STATUS_ERR_INVALID;
     }
@@ -235,7 +235,7 @@ int32_t process_manager_handle_create(const pm_req_create_t *req, pm_resp_create
     return BHARAT_IPC_STATUS_ERR_INTERNAL;
 }
 
-int32_t process_manager_handle_start(const pm_req_start_t *req, pm_resp_start_t *resp) {
+bharat_status_t process_manager_handle_start(const pm_req_start_t *req, pm_resp_start_t *resp) {
     if (!req || !resp) {
         return BHARAT_IPC_STATUS_ERR_INVALID;
     }
@@ -255,7 +255,7 @@ int32_t process_manager_handle_start(const pm_req_start_t *req, pm_resp_start_t 
     return BHARAT_IPC_STATUS_ERR_NOT_FOUND;
 }
 
-int32_t process_manager_handle_stop(const pm_req_stop_t *req, pm_resp_stop_t *resp) {
+bharat_status_t process_manager_handle_stop(const pm_req_stop_t *req, pm_resp_stop_t *resp) {
     if (!req || !resp) {
         return BHARAT_IPC_STATUS_ERR_INVALID;
     }
@@ -275,7 +275,7 @@ int32_t process_manager_handle_stop(const pm_req_stop_t *req, pm_resp_stop_t *re
     return BHARAT_IPC_STATUS_ERR_NOT_FOUND;
 }
 
-int32_t process_manager_handle_query(const pm_req_query_t *req, pm_resp_query_t *resp) {
+bharat_status_t process_manager_handle_query(const pm_req_query_t *req, pm_resp_query_t *resp) {
     if (!req || !resp) {
         return BHARAT_IPC_STATUS_ERR_INVALID;
     }
@@ -301,7 +301,7 @@ static bool valid_v1_request(uint32_t abi_version, uint32_t struct_size,
            struct_size == expected_size;
 }
 
-int32_t bh_pm_handle_spawn_v1(const bh_pm_spawn_request_v1_t *req, bh_pm_spawn_response_v1_t *resp) {
+bharat_status_t bh_pm_handle_spawn_v1(const bh_pm_spawn_request_v1_t *req, bh_pm_spawn_response_v1_t *resp) {
     if (!req || !resp) {
         return BHARAT_IPC_STATUS_ERR_INVALID;
     }
@@ -495,7 +495,7 @@ int32_t bh_pm_handle_spawn_v1(const bh_pm_spawn_request_v1_t *req, bh_pm_spawn_r
     return BHARAT_IPC_STATUS_OK;
 }
 
-int32_t bh_pm_handle_query_v1(const bh_pm_query_request_v1_t *req, bh_pm_query_response_v1_t *resp) {
+bharat_status_t bh_pm_handle_query_v1(const bh_pm_query_request_v1_t *req, bh_pm_query_response_v1_t *resp) {
     if (!req || !resp) {
         return BHARAT_IPC_STATUS_ERR_INVALID;
     }
@@ -526,7 +526,7 @@ int32_t bh_pm_handle_query_v1(const bh_pm_query_request_v1_t *req, bh_pm_query_r
     return BHARAT_IPC_STATUS_OK;
 }
 
-int32_t bh_pm_handle_terminate_v1(const bh_pm_terminate_request_v1_t *req, bh_pm_terminate_response_v1_t *resp) {
+bharat_status_t bh_pm_handle_terminate_v1(const bh_pm_terminate_request_v1_t *req, bh_pm_terminate_response_v1_t *resp) {
     if (!req || !resp) {
         return BHARAT_IPC_STATUS_ERR_INVALID;
     }
@@ -570,7 +570,7 @@ int32_t bh_pm_handle_terminate_v1(const bh_pm_terminate_request_v1_t *req, bh_pm
     return BHARAT_IPC_STATUS_OK;
 }
 
-int32_t bh_pm_handle_wait_v1(const bh_pm_wait_request_v1_t *req, bh_pm_wait_response_v1_t *resp) {
+bharat_status_t bh_pm_handle_wait_v1(const bh_pm_wait_request_v1_t *req, bh_pm_wait_response_v1_t *resp) {
     if (!req || !resp) {
         return BHARAT_IPC_STATUS_ERR_INVALID;
     }
@@ -611,7 +611,7 @@ int32_t bh_pm_handle_wait_v1(const bh_pm_wait_request_v1_t *req, bh_pm_wait_resp
     return resp->status;
 }
 
-int32_t bh_pm_handle_reap_v1(const bh_pm_reap_request_v1_t *req, bh_pm_reap_response_v1_t *resp) {
+bharat_status_t bh_pm_handle_reap_v1(const bh_pm_reap_request_v1_t *req, bh_pm_reap_response_v1_t *resp) {
     if (!req || !resp) {
         return BHARAT_IPC_STATUS_ERR_INVALID;
     }

@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "hal/hal_boot.h"
+#include "kernel/status.h"
 
 #define URPC_RING_SIZE 256
 
@@ -22,10 +23,10 @@ typedef struct {
 } urpc_channel_t;
 
 // Boot core initializes the global URPC pool
-int urpc_init_global(void);
+kstatus_t urpc_init_global(void);
 
 // Secondary core binds to its channel
-int urpc_bootstrap_core(uint32_t core_id);
+kstatus_t urpc_bootstrap_core(uint32_t core_id);
 
 // Mark channel as ready for traffic
 void urpc_mark_ready(uint32_t core_id);
@@ -33,11 +34,11 @@ void urpc_mark_ready(uint32_t core_id);
 // Check if a core's channel is ready
 int urpc_is_ready(uint32_t core_id);
 
-// Send a basic message (non-blocking, returns -1 if full)
-int urpc_bootstrap_send(uint32_t target_core, uint64_t msg);
+// Send a basic message (non-blocking, returns K_ERR_BUSY if full)
+kstatus_t urpc_bootstrap_send(uint32_t target_core, uint64_t msg);
 
-// Receive a basic message (non-blocking, returns -1 if empty)
-int urpc_bootstrap_recv(uint32_t source_core, uint64_t* out_msg);
+// Receive a basic message (non-blocking, returns K_ERR_NOT_FOUND if empty)
+kstatus_t urpc_bootstrap_recv(uint32_t source_core, uint64_t* out_msg);
 
 
 #endif // BHARAT_URPC_BOOTSTRAP_H

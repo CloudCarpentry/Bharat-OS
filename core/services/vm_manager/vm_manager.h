@@ -6,6 +6,7 @@
 #include <bharat/uapi/vm_manager/contract.h>
 #include <bharat/ipc/ipc.h>
 #include <handle_table.h>
+#include <bharat/uapi/service_status.h>
 
 #define MAX_REGIONS 256
 #define MAX_SPACES 64
@@ -37,22 +38,22 @@ typedef struct {
 typedef struct {
     void *ctx;
 
-    int32_t (*space_create)(void *ctx, const bh_vm_create_space_request_v1_t *req,
+    bharat_status_t (*space_create)(void *ctx, const bh_vm_create_space_request_v1_t *req,
                             bh_vm_kernel_space_ref_t *out_ref);
 
-    int32_t (*space_destroy)(void *ctx, bh_vm_kernel_space_ref_t space_ref);
+    bharat_status_t (*space_destroy)(void *ctx, bh_vm_kernel_space_ref_t space_ref);
 
-    int32_t (*map)(void *ctx, bh_vm_kernel_space_ref_t space_ref,
+    bharat_status_t (*map)(void *ctx, bh_vm_kernel_space_ref_t space_ref,
                    const bh_vm_map_request_v1_t *req);
 
-    int32_t (*unmap)(void *ctx, bh_vm_kernel_space_ref_t space_ref,
+    bharat_status_t (*unmap)(void *ctx, bh_vm_kernel_space_ref_t space_ref,
                      uint64_t vaddr, uint64_t length);
 
-    int32_t (*protect)(void *ctx, bh_vm_kernel_space_ref_t space_ref,
+    bharat_status_t (*protect)(void *ctx, bh_vm_kernel_space_ref_t space_ref,
                        uint64_t vaddr, uint64_t length,
                        uint64_t protection, uint64_t memory_type);
 
-    int32_t (*query)(void *ctx, bh_vm_kernel_space_ref_t space_ref,
+    bharat_status_t (*query)(void *ctx, bh_vm_kernel_space_ref_t space_ref,
                      uint64_t vaddr, bh_vm_kernel_query_result_t *out_res);
 } bh_vm_authority_ops_t;
 
@@ -82,26 +83,26 @@ typedef struct {
 // Global interfaces
 void vm_manager_init(void);
 void vm_manager_loop(bharat_ipc_endpoint_t endpoint);
-int32_t vm_manager_handle_map(const vm_req_map_t *req, vm_resp_map_t *resp);
-int32_t vm_manager_handle_unmap(const vm_req_unmap_t *req, vm_resp_unmap_t *resp);
-int32_t vm_manager_handle_protect(const vm_req_protect_t *req, vm_resp_protect_t *resp);
-int32_t vm_manager_handle_query(const vm_req_query_t *req, vm_resp_query_t *resp);
-int32_t vm_manager_handle_fault(const vm_req_fault_t *req, vm_resp_fault_t *resp);
-int32_t vm_manager_authorize(uint32_t opcode, const void *req, bharat_cap_handle_t caller_cap);
+bharat_status_t vm_manager_handle_map(const vm_req_map_t *req, vm_resp_map_t *resp);
+bharat_status_t vm_manager_handle_unmap(const vm_req_unmap_t *req, vm_resp_unmap_t *resp);
+bharat_status_t vm_manager_handle_protect(const vm_req_protect_t *req, vm_resp_protect_t *resp);
+bharat_status_t vm_manager_handle_query(const vm_req_query_t *req, vm_resp_query_t *resp);
+bharat_status_t vm_manager_handle_fault(const vm_req_fault_t *req, vm_resp_fault_t *resp);
+bharat_status_t vm_manager_authorize(uint32_t opcode, const void *req, bharat_cap_handle_t caller_cap);
 
 // v1 global interfaces
 /* Installs one complete adapter. NULL restores fail-closed and returns unsupported. */
-int32_t bh_vm_set_authority_ops(const bh_vm_authority_ops_t *ops);
+bharat_status_t bh_vm_set_authority_ops(const bh_vm_authority_ops_t *ops);
 bool bh_vm_authority_ops_installed(void);
 int bh_vm_get_active_spaces_count(void);
 int bh_vm_get_active_regions_count(void);
 
 // Handlers for v1
-int32_t bh_vm_handle_create_space_v1(const bh_vm_create_space_request_v1_t *req, bh_vm_create_space_response_v1_t *resp);
-int32_t bh_vm_handle_destroy_space_v1(const bh_vm_destroy_space_request_v1_t *req, bh_vm_destroy_space_response_v1_t *resp);
-int32_t bh_vm_handle_map_v1(const bh_vm_map_request_v1_t *req, bh_vm_map_response_v1_t *resp);
-int32_t bh_vm_handle_unmap_v1(const bh_vm_unmap_request_v1_t *req, bh_vm_unmap_response_v1_t *resp);
-int32_t bh_vm_handle_protect_v1(const bh_vm_protect_request_v1_t *req, bh_vm_protect_response_v1_t *resp);
-int32_t bh_vm_handle_query_v1(const bh_vm_query_request_v1_t *req, bh_vm_query_response_v1_t *resp);
+bharat_status_t bh_vm_handle_create_space_v1(const bh_vm_create_space_request_v1_t *req, bh_vm_create_space_response_v1_t *resp);
+bharat_status_t bh_vm_handle_destroy_space_v1(const bh_vm_destroy_space_request_v1_t *req, bh_vm_destroy_space_response_v1_t *resp);
+bharat_status_t bh_vm_handle_map_v1(const bh_vm_map_request_v1_t *req, bh_vm_map_response_v1_t *resp);
+bharat_status_t bh_vm_handle_unmap_v1(const bh_vm_unmap_request_v1_t *req, bh_vm_unmap_response_v1_t *resp);
+bharat_status_t bh_vm_handle_protect_v1(const bh_vm_protect_request_v1_t *req, bh_vm_protect_response_v1_t *resp);
+bharat_status_t bh_vm_handle_query_v1(const bh_vm_query_request_v1_t *req, bh_vm_query_response_v1_t *resp);
 
 #endif // VM_MANAGER_H

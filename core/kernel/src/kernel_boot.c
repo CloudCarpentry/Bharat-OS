@@ -366,7 +366,7 @@ void boot_common_platform_services(const boot_info_t *boot) {
 
     personality_register_ops(personality_native_get_ops());
 
-    if (trap_init() != 0) {
+    if (trap_init() != K_OK) {
       kernel_panic("trap gate initialization failed");
     }
     KPRINT("  [TRAP] Ready.\n");

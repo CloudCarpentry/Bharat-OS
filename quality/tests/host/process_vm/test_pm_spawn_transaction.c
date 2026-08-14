@@ -72,45 +72,45 @@ static int g_active_processes = 0;
 static int g_active_spaces = 0;
 static int g_active_threads = 0;
 
-static int32_t track_create_process(void *ctx, const bh_pm_kernel_create_req_t *req, bh_pm_kernel_process_t *out_proc) {
+static bharat_status_t track_create_process(void *ctx, const bh_pm_kernel_create_req_t *req, bh_pm_kernel_process_t *out_proc) {
     (void)ctx; (void)req;
     g_active_processes++;
     out_proc->pid = 5555;
-    return 0;
+    return BHARAT_STATUS_OK;
 }
 
-static int32_t track_create_vm_space(void *ctx, bh_pm_kernel_process_t *proc, uint32_t memory_profile, bh_vm_kernel_space_t *out_space) {
+static bharat_status_t track_create_vm_space(void *ctx, bh_pm_kernel_process_t *proc, uint32_t memory_profile, bh_vm_kernel_space_t *out_space) {
     (void)ctx; (void)proc; (void)memory_profile;
     g_active_spaces++;
     out_space->space_id = 7777;
-    return 0;
+    return BHARAT_STATUS_OK;
 }
 
-static int32_t track_realize_image(void *ctx, bh_pm_kernel_process_t *proc, bh_vm_kernel_space_t *space, const bh_user_image_plan_v1_t *plan, bh_pm_kernel_image_result_t *out_res) {
+static bharat_status_t track_realize_image(void *ctx, bh_pm_kernel_process_t *proc, bh_vm_kernel_space_t *space, const bh_user_image_plan_v1_t *plan, bh_pm_kernel_image_result_t *out_res) {
     (void)ctx; (void)proc; (void)space;
     g_active_threads++;
     out_res->main_thread_id = 8888;
     out_res->entry_point = plan->entry_point;
-    return 0;
+    return BHARAT_STATUS_OK;
 }
 
-static int32_t track_start_process(void *ctx, bh_pm_kernel_process_t *proc) {
+static bharat_status_t track_start_process(void *ctx, bh_pm_kernel_process_t *proc) {
     (void)ctx; (void)proc;
-    return 0;
+    return BHARAT_STATUS_OK;
 }
 
-static int32_t track_request_terminate(void *ctx, bh_pm_kernel_process_t *proc) {
+static bharat_status_t track_request_terminate(void *ctx, bh_pm_kernel_process_t *proc) {
     (void)ctx; (void)proc;
-    return 0;
+    return BHARAT_STATUS_OK;
 }
 
-static int32_t track_reap_process(void *ctx, bh_pm_kernel_process_t *proc) {
+static bharat_status_t track_reap_process(void *ctx, bh_pm_kernel_process_t *proc) {
     (void)ctx; (void)proc;
     // On failure rollback, reap is called to clean up process/thread/space
     g_active_processes = 0;
     g_active_spaces = 0;
     g_active_threads = 0;
-    return 0;
+    return BHARAT_STATUS_OK;
 }
 
 void test_spawn_rollback_failures(void) {
@@ -120,11 +120,11 @@ void test_spawn_rollback_failures(void) {
 
     uint8_t elf_buf[1024];
     setup_test_elf(elf_buf, sizeof(elf_buf));
-    int reg_res = bh_pm_register_executable(990011, elf_buf, sizeof(elf_buf));
-    assert(reg_res == 0);
-    assert(bh_pm_register_executable(990011, elf_buf, sizeof(elf_buf)) == -1);
-    assert(bh_pm_register_executable(0, elf_buf, sizeof(elf_buf)) == -1);
-    assert(bh_pm_register_executable(990012, NULL, sizeof(elf_buf)) == -1);
+    bharat_status_t reg_res = bh_pm_register_executable(990011, elf_buf, sizeof(elf_buf));
+    assert(reg_res == BHARAT_STATUS_OK);
+    assert(bh_pm_register_executable(990011, elf_buf, sizeof(elf_buf)) == BHARAT_STATUS_ERR_ALREADY_EXISTS);
+    assert(bh_pm_register_executable(0, elf_buf, sizeof(elf_buf)) == BHARAT_STATUS_ERR_INVALID_ARG);
+    assert(bh_pm_register_executable(990012, NULL, sizeof(elf_buf)) == BHARAT_STATUS_ERR_INVALID_ARG);
 
     bh_pm_spawn_request_v1_t req;
     memset(&req, 0, sizeof(req));

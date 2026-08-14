@@ -20,5 +20,10 @@ typedef int32_t bharat_status_t;
 #define BHARAT_STATUS_ERR_TRUNCATED      ((bharat_status_t)-8)
 #define BHARAT_STATUS_ERR_LENGTH         ((bharat_status_t)-9)
 #define BHARAT_STATUS_ERR_FLAGS          ((bharat_status_t)-10)
+#define BHARAT_STATUS_ERR_NO_MEMORY      ((bharat_status_t)-11)
+#define BHARAT_STATUS_ERR_BUSY           ((bharat_status_t)-12)
+#define BHARAT_STATUS_ERR_ALREADY_EXISTS ((bharat_status_t)-13)
+#define BHARAT_STATUS_ERR_BAD_STATE      ((bharat_status_t)-14)
+#define BHARAT_STATUS_ERR_INVALID_ARG    ((bharat_status_t)-15)
 
 #endif /* BHARAT_UAPI_SERVICE_STATUS_H */

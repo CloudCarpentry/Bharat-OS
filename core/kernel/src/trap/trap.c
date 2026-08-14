@@ -92,12 +92,12 @@ int cap_invoke(uintptr_t cap_id, uintptr_t opcode, uintptr_t arg0, uintptr_t arg
   (void)opcode;
   (void)arg0;
   (void)arg1;
-  return -1;
+  return K_ERR_UNSUPPORTED;
 }
 
 #include "personality/personality_hooks.h"
 
-int trap_init(void) {
+kstatus_t trap_init(void) {
   g_syscall_proc.process_id = 0U;
   g_syscall_proc.addr_space = mm_create_address_space();
   g_syscall_proc.main_thread = NULL;
@@ -106,14 +106,14 @@ int trap_init(void) {
   g_syscall_proc.personality_ops = personality_get_current_ops();
 
   if (!g_syscall_proc.addr_space) {
-    return -1;
+    return K_ERR_BAD_STATE;
   }
 
   if (cap_table_init_for_process(&g_syscall_proc) != 0) {
-    return -1;
+    return K_ERR_BAD_STATE;
   }
 
-  return 0;
+  return K_OK;
 }
 
 
@@ -178,7 +178,7 @@ int trap_dispatch(trap_frame_t *frame, const trap_info_t *info) {
       }
     }
 
-    return trap_handle_fault(frame, info);
+    return (int)kstatus_to_sysret(trap_handle_fault(frame, info));
   }
   case TRAP_CLASS_ILLEGAL_INSTR:
   case TRAP_CLASS_ALIGNMENT:
@@ -191,7 +191,7 @@ int trap_dispatch(trap_frame_t *frame, const trap_info_t *info) {
         return 0; // retry
       }
     }
-    return trap_handle_fault(frame, info);
+    return (int)kstatus_to_sysret(trap_handle_fault(frame, info));
   }
 }
 
