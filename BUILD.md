@@ -19,9 +19,11 @@ It covers:
 
 ## Nirmaan CLI
 
-We provide the `nirmaan` Developer CLI as the primary, high-productivity interface for managing builds and environment configurations.
+We provide the `nirmaan` Developer CLI as the primary, high-productivity interface for managing builds, environment configurations, and target verification.
 
-````bash
+### Basic commands
+
+```bash
 # Check the environment
 ./nirmaan doctor
 
@@ -34,10 +36,108 @@ We provide the `nirmaan` Developer CLI as the primary, high-productivity interfa
 
 # Run the target
 ./nirmaan run desktop-x86_64
+```
 
+```powershell
 # For Windows users:
 nirmaan.bat doctor
 .\nirmaan.ps1 doctor
+```
+
+## Comprehensive Verification & Test Suite
+
+Run these 4 verification steps to ensure environment readiness, headless targets, layer contracts, and host unit tests all pass:
+
+### 1) Environment Doctor Check
+Verifies compiler toolchains, emulators (`qemu-system-*`), and SDK components:
+
+```powershell
+# Windows PowerShell
+.\nirmaan.ps1 doctor
+
+# Linux / WSL / macOS
+./nirmaan doctor
+```
+
+### 2) Verify All Headless Targets (Full Matrix)
+Smoke-test all 5 core architecture targets:
+
+```powershell
+# One-shot runner for all 5 architecture targets (Headless Smoke)
+python tools/run_qemu_matrix.py --headless --smoke --all-arch
+
+# Or test individually with Nirmaan:
+.\nirmaan.ps1 test desktop-x86_64
+.\nirmaan.ps1 test desktop-arm64
+.\nirmaan.ps1 test desktop-riscv64
+.\nirmaan.ps1 test controller-arm32
+.\nirmaan.ps1 build --target-yaml delivery/targets/qemu/riscv32_mmu_lite_headless.yaml --smoke
+```
+
+### 3) Layer Boundaries, Architecture & ABI Contract Checks
+Validates structural integrity, HAL isolation, ownership, CMake dependencies, profile consistency, and syscall ABI consistency:
+
+```bash
+# Architectural layer boundary check
+python tools/lint/check_layer_references.py
+
+# CMake dependency direction check
+python tools/lint/check_cmake_dependencies.py
+
+# HAL dependency isolation
+python tools/lint/check_hal_dependency_direction.py
+
+# Placement and VM authority rules
+python tools/lint/check_placement.py
+python tools/lint/check_vm_authority.py
+
+# Architecture leakage and scheduler ownership checks
+python tools/lint/check_arch_leakage.py
+python tools/lint/check_scheduler_ownership.py
+
+# Documentation profile consistency check
+python tools/check_profiles.py
+
+# Runtime implementation maturity profile gate
+python tools/check_implementation_maturity.py --profile RELEASE
+
+# Syscall ABI contract reproducibility check
+python tools/abi/syscall_abi.py --check
+```
+
+#### Updating & Regenerating Contracts & Baselines
+When intentional contract changes or ABI migrations occur:
+
+```bash
+# Regenerate build-tree syscall dispatch tables and numbers
+python tools/abi/syscall_abi.py --generate
+
+# Update the syscall ABI compatibility lock & hashes
+python tools/abi/syscall_abi.py --update-lock
+
+# Update layer reference tech-debt baseline
+python tools/lint/check_layer_references.py --write-baseline tools/lint/baselines/layer_references.allowlist
+
+# Audit strict layer/dependency compliance without baselines
+python tools/lint/check_layer_references.py --no-baseline
+python tools/lint/check_cmake_dependencies.py --no-baseline
+```
+
+### 4) Host Unit Tests
+Configures and runs unit test suites on the host platform:
+
+```powershell
+# Configure host tests preset
+cmake --preset host-test
+
+# Build host tests
+cmake --build --preset host-test
+
+# Run host tests
+ctest --preset host-test --output-on-failure
+```
+
+---
 
 ## Nirmaan command cookbook
 
@@ -60,7 +160,7 @@ nirmaan.bat doctor
 .\nirmaan.ps1 build --target-yaml delivery/targets/qemu/arm64_rtos_mmu_lite_headless.yaml --smoke
 .\nirmaan.ps1 build --target-yaml delivery/targets/qemu/riscv64_rtos_mmu_lite_headless.yaml --smoke
 .\nirmaan.ps1 build --target-yaml delivery/targets/qemu/x86_64_rtos_mmu_lite_headless.yaml --smoke
-````
+```
 
 ### One-shot run commands
 
