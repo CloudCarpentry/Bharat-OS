@@ -1,4 +1,4 @@
-#include "../../include/arch/arch_ext_state.h"
+#include <arch/arch_ext_state.h>
 #include <stdbool.h>
 #include <stddef.h>
 

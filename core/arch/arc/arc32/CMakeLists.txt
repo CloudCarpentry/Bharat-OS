@@ -9,8 +9,8 @@ add_library(hal_arc32_mmu OBJECT
     hal_mm.c
 )
 
-target_include_directories(hal_arc32_cpu PRIVATE ../../../kernel/include ../../../include)
-target_include_directories(hal_arc32_mmu PRIVATE ../../../kernel/include ../../../include)
+target_include_directories(hal_arc32_cpu PRIVATE ../../../include ../../../include)
+target_include_directories(hal_arc32_mmu PRIVATE ../../../include ../../../include)
 
 target_link_libraries(hal_arc32_cpu PRIVATE bharat_freestanding bharat_kernel_buildopts)
 target_link_libraries(hal_arc32_mmu PRIVATE bharat_freestanding bharat_kernel_buildopts)

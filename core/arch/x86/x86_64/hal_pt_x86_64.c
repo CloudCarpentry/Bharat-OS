@@ -1,13 +1,13 @@
-#include "../../kernel/include/hal/hal_mpa.h"
-#include "../../kernel/include/hal/hal_pt.h"
-#include "../../kernel/include/hal/hal_pt_walk.h"
-#include "../../kernel/include/hal/hal_tlb.h"
-#include "../../kernel/include/mm.h"
-#include "../../kernel/include/numa.h"
-#include "../../kernel/include/mm/physmap.h"
-#include "../../kernel/include/mm/pt_cache.h"
-#include "../../kernel/include/arch/arch_cpu_caps.h"
-#include "../../kernel/include/arch/arch_tlb_accel.h"
+#include <hal/hal_mpa.h>
+#include <hal/hal_pt.h>
+#include <hal/hal_pt_walk.h>
+#include <hal/hal_tlb.h>
+#include <mm.h>
+#include <numa.h>
+#include <mm/physmap.h>
+#include <mm/pt_cache.h>
+#include <arch/arch_cpu_caps.h>
+#include <arch/arch_tlb_accel.h>
 #include <stdbool.h>
 static bool g_x86_pcid_supported = false;
 
