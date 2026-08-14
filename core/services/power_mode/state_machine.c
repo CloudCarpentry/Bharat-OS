@@ -16,7 +16,7 @@ static int g_num_clients = 0;
 static power_mode_state_t g_current_mode = POWER_MODE_OFF;
 static power_mode_thermal_state_t g_thermal_state = {0};
 
-int power_mode_register_client(power_mode_prepare_cb prepare, power_mode_commit_cb commit, power_mode_wake_cb wake) {
+bharat_status_t power_mode_register_client(power_mode_prepare_cb prepare, power_mode_commit_cb commit, power_mode_wake_cb wake) {
     if (g_num_clients >= MAX_PM_CLIENTS) {
         return BHARAT_STATUS_ERR_INTERNAL;
     }
@@ -24,7 +24,7 @@ int power_mode_register_client(power_mode_prepare_cb prepare, power_mode_commit_
     g_clients[g_num_clients].commit = commit;
     g_clients[g_num_clients].wake = wake;
     g_num_clients++;
-    return 0;
+    return BHARAT_STATUS_OK;
 }
 
 static bool is_valid_transition(power_mode_state_t current, power_mode_state_t target) {
@@ -52,7 +52,7 @@ static bool is_valid_transition(power_mode_state_t current, power_mode_state_t t
     }
 }
 
-int power_mode_request_transition(power_mode_state_t target, power_mode_reason_t reason) {
+bharat_status_t power_mode_request_transition(power_mode_state_t target, power_mode_reason_t reason) {
     if (!is_valid_transition(g_current_mode, target)) {
         return BHARAT_STATUS_ERR_NOT_FOUND;
     }
@@ -65,8 +65,8 @@ int power_mode_request_transition(power_mode_state_t target, power_mode_reason_t
         // Prepare phase
         for (int i = 0; i < g_num_clients; i++) {
             if (g_clients[i].prepare) {
-                if (g_clients[i].prepare(target) != 0) {
-                    return BHARAT_STATUS_ERR_INTERNAL; // Client rejected sleep prep
+                if (g_clients[i].prepare(target) != BHARAT_STATUS_OK) {
+                    return BHARAT_STATUS_ERR_INTERNAL; // Client rejected sleep prep; // Client rejected sleep prep
                 }
             }
         }
@@ -88,10 +88,10 @@ int power_mode_request_transition(power_mode_state_t target, power_mode_reason_t
     }
 
     g_current_mode = target;
-    return 0;
+    return BHARAT_STATUS_OK;
 }
 
-int power_mode_force_limp_home(power_mode_reason_t reason) {
+bharat_status_t power_mode_force_limp_home(power_mode_reason_t reason) {
     return power_mode_request_transition(POWER_MODE_LIMP_HOME, reason);
 }
 
@@ -99,7 +99,7 @@ power_mode_state_t power_mode_get_current(void) {
     return g_current_mode;
 }
 
-int power_mode_set_thermal_state(const power_mode_thermal_state_t* thermal_state) {
+bharat_status_t power_mode_set_thermal_state(const power_mode_thermal_state_t* thermal_state) {
     if (!thermal_state) {
         return BHARAT_STATUS_ERR_INTERNAL;
     }
@@ -110,7 +110,7 @@ int power_mode_set_thermal_state(const power_mode_thermal_state_t* thermal_state
         (void)power_mode_force_limp_home(POWER_REASON_THERMAL_CRITICAL);
     }
 
-    return 0;
+    return BHARAT_STATUS_OK;
 }
 
 power_mode_thermal_state_t power_mode_get_thermal_state(void) {

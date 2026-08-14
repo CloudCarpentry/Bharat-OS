@@ -76,4 +76,4 @@ static ktest_case_t slab_tests[] = {
     {"kmalloc Multiple", test_kmalloc_multiple_same_size},
 };
 
-void ktest_slab_run(void) { ktest_run_suite("Slab Unit Tests", slab_tests, 3); }
+void ktest_heap_run(void) { ktest_run_suite("Kernel Heap Allocator Tests", slab_tests, 3); }

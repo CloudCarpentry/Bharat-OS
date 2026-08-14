@@ -293,12 +293,20 @@ endif()
 # ── Memory Subsystem Targets ──────────────────────────────────────────────
 
 # Minimal Core: PMM and basic allocation (Always Included)
+if(BHARAT_KMEM_ALLOCATOR_RESOLVED STREQUAL "SLUB")
+    list(APPEND PMM_ALLOCATOR_SRC src/mm/pmm/slub.c)
+elseif(BHARAT_KMEM_ALLOCATOR_RESOLVED STREQUAL "SLOB")
+    list(APPEND PMM_ALLOCATOR_SRC src/mm/pmm/slob.c)
+else()
+    list(APPEND PMM_ALLOCATOR_SRC src/mm/pmm/slab.c)
+endif()
+
 add_library(bharat_mm_pmm OBJECT
     src/mm/pmm/pmm.c
     src/mm/pmm/pmm_pcache.c
     src/mm/pmm/pmm_debug.c
     src/mm/pmm/early_alloc.c
-    src/mm/pmm/slab.c
+    ${PMM_ALLOCATOR_SRC}
     src/mm/pmm/kmem_aligned.c
     src/mm/pmm/numa.c
     src/mm/mem_class.c
