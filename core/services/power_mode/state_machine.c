@@ -1,6 +1,7 @@
 #include "services/power_mode/power_mode.h"
 
 #include <stddef.h>
+#include <bharat/uapi/service_status.h>
 
 #define MAX_PM_CLIENTS 16
 

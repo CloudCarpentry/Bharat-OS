@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stddef.h>
 #include <lib/base/string.h>
 
 #include <bharat/uapi/sys_errno.h>
@@ -10,10 +11,6 @@
 /* Simple memory allocator stubs to avoid dragging in complex kernel mm */
 extern void *kmalloc(size_t size);
 extern void kfree(void *ptr);
-
-#ifndef NULL
-#define NULL ((void*)0)
-#endif
 
 /*
  * Note: A real kernel would use a spinlock here.

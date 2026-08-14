@@ -1,0 +1,12 @@
+profile: cloud_vm_base
+memory_model: MMU_FULL
+execution_profile: GP
+device_profile: CLOUD_VM_BASE
+personality: NATIVE
+features:
+  fixed_allocator: ON
+  bounded_freelist: ON
+  dynamic_allocation: ON
+  posix_io: ON
+  pthread: ON
+  float_printf: ON

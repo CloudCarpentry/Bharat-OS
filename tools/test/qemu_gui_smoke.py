@@ -25,6 +25,7 @@ from tools.run.runner_qemu import build_qemu_command, load_run_manifest
 DEFAULT_TARGET = REPO_ROOT / "delivery/targets/qemu/x86_64_showcase_gui.yaml"
 DISPLAY_MARKER = "[gui] display-ready"
 FRAME_MARKER = "[gui] first-frame-presented"
+INPUT_MARKER = "[gui] input-observed"
 MODE_PATTERN = re.compile(r"\[gui\] display-ready width=(\d+) height=(\d+)")
 FORBIDDEN_MARKERS = ("PANIC", "ASSERT", "FAULT", "Unhandled exception")
 
@@ -117,6 +118,34 @@ def validate_frame(
             f"required colors>={minimum_colors} ratio>={minimum_non_dominant_ratio:.6f}"
         )
     return len(counts), non_dominant_ratio
+
+
+def validate_frame_change(
+    before: PpmImage,
+    after: PpmImage,
+    *,
+    minimum_changed_ratio: float = 0.0001,
+    maximum_changed_ratio: float = 0.50,
+) -> float:
+    """Require a bounded visual response rather than an unchanged or reset frame."""
+    if (before.width, before.height) != (after.width, after.height):
+        raise GuiSmokeError("interaction screenshots have different dimensions")
+    changed = sum(
+        before.pixels[offset : offset + 3] != after.pixels[offset : offset + 3]
+        for offset in range(0, len(before.pixels), 3)
+    )
+    ratio = changed / (before.width * before.height)
+    if ratio < minimum_changed_ratio:
+        raise GuiSmokeError(
+            f"input produced no visible change: changed_ratio={ratio:.6f}; "
+            f"required>={minimum_changed_ratio:.6f}"
+        )
+    if ratio > maximum_changed_ratio:
+        raise GuiSmokeError(
+            f"input changed too much of the frame: changed_ratio={ratio:.6f}; "
+            f"required<={maximum_changed_ratio:.6f}"
+        )
+    return ratio
 
 
 def make_qemu_command(manifest: dict, serial_log: Path, qmp_socket: Path) -> list[str]:
@@ -233,6 +262,21 @@ def wait_for_markers(serial_log: Path, process: subprocess.Popen, deadline: floa
     raise GuiSmokeError(f"timed out waiting for serial markers: {', '.join(missing)}")
 
 
+def wait_for_input_marker(serial_log: Path, process: subprocess.Popen, deadline: float) -> None:
+    while time.monotonic() < deadline:
+        content = serial_log.read_text(encoding="utf-8", errors="replace") if serial_log.exists() else ""
+        for forbidden in FORBIDDEN_MARKERS:
+            if forbidden in content:
+                raise GuiSmokeError(f"forbidden serial marker observed: {forbidden}")
+        if INPUT_MARKER in content:
+            return
+        return_code = process.poll()
+        if return_code is not None:
+            raise GuiSmokeError(f"QEMU exited with status {return_code} before input was observed")
+        time.sleep(0.05)
+    raise GuiSmokeError(f"timed out waiting for serial marker: {INPUT_MARKER}")
+
+
 def stop_qemu(process: subprocess.Popen, qmp: QmpClient | None) -> bool:
     """Request a clean QMP shutdown, falling back to bounded termination."""
     forced = False
@@ -280,9 +324,10 @@ def run_smoke(args: argparse.Namespace) -> None:
     artifact_dir.mkdir(parents=True, exist_ok=True)
     serial_log = artifact_dir / "serial.log"
     qemu_log = artifact_dir / "qemu.log"
-    screenshot = artifact_dir / "first-frame.ppm"
+    screenshot = artifact_dir / "before-input.ppm"
+    after_screenshot = artifact_dir / "after-input.ppm"
     qmp_socket = artifact_dir / "qmp.sock"
-    for path in (serial_log, qemu_log, screenshot, qmp_socket):
+    for path in (serial_log, qemu_log, screenshot, after_screenshot, qmp_socket):
         path.unlink(missing_ok=True)
 
     command = make_qemu_command(manifest, serial_log, qmp_socket)
@@ -312,10 +357,32 @@ def run_smoke(args: argparse.Namespace) -> None:
                 minimum_colors=args.minimum_colors,
                 minimum_non_dominant_ratio=args.minimum_non_dominant_ratio,
             )
+            for down in (True, False):
+                qmp.execute(
+                    "input-send-event",
+                    {"events": [{"type": "key", "data": {"down": down, "key": {"type": "qcode", "data": "tab"}}}]},
+                )
+            wait_for_input_marker(serial_log, process, deadline)
+            qmp.execute("screendump", {"filename": str(after_screenshot), "format": "ppm"})
+            after_image = read_ppm(after_screenshot)
+            validate_frame(
+                after_image,
+                width,
+                height,
+                minimum_colors=args.minimum_colors,
+                minimum_non_dominant_ratio=args.minimum_non_dominant_ratio,
+            )
+            changed_ratio = validate_frame_change(
+                image,
+                after_image,
+                minimum_changed_ratio=args.minimum_changed_ratio,
+                maximum_changed_ratio=args.maximum_changed_ratio,
+            )
             print(
                 f"[gui-smoke] PASS target={target.name} mode={width}x{height} "
                 f"colors={color_count} non_dominant_ratio={ratio:.6f} "
-                f"screenshot={screenshot} serial={serial_log}"
+                f"changed_ratio={changed_ratio:.6f} before={screenshot} "
+                f"after={after_screenshot} serial={serial_log}"
             )
     finally:
         if process is not None:
@@ -336,9 +403,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--timeout", type=float, default=60.0, help="bounded boot/QMP timeout in seconds (default: 60)")
     parser.add_argument("--minimum-colors", type=int, default=8, help="minimum distinct RGB colors (default: 8)")
     parser.add_argument("--minimum-non-dominant-ratio", type=float, default=0.01, help="minimum pixels differing from the dominant color (default: 0.01)")
+    parser.add_argument("--minimum-changed-ratio", type=float, default=0.0001, help="minimum changed pixel fraction after input (default: 0.0001)")
+    parser.add_argument("--maximum-changed-ratio", type=float, default=0.50, help="maximum changed pixel fraction after input (default: 0.50)")
     args = parser.parse_args(argv)
-    if args.timeout <= 0 or args.minimum_colors < 2 or not 0 < args.minimum_non_dominant_ratio <= 1:
-        parser.error("timeout must be positive, colors >= 2, and ratio in (0, 1]")
+    if (args.timeout <= 0 or args.minimum_colors < 2 or
+            not 0 < args.minimum_non_dominant_ratio <= 1 or
+            not 0 < args.minimum_changed_ratio <= args.maximum_changed_ratio <= 1):
+        parser.error("timeout must be positive, colors >= 2, and ratios must be ordered in (0, 1]")
     return args
 
 

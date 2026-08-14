@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <bharat/uapi/service_status.h>
+
 #include "services/telemetrymgr/thermal_policy.h"
 
 typedef enum {

@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 add_executable(gui_showcase
     display_client.c
+    input_client.c
     main.c
 )
 

@@ -293,12 +293,20 @@ endif()
 # ── Memory Subsystem Targets ──────────────────────────────────────────────
 
 # Minimal Core: PMM and basic allocation (Always Included)
+if(BHARAT_KMEM_ALLOCATOR_RESOLVED STREQUAL "SLUB")
+    list(APPEND PMM_ALLOCATOR_SRC src/mm/pmm/slub.c)
+elseif(BHARAT_KMEM_ALLOCATOR_RESOLVED STREQUAL "SLOB")
+    list(APPEND PMM_ALLOCATOR_SRC src/mm/pmm/slob.c)
+else()
+    list(APPEND PMM_ALLOCATOR_SRC src/mm/pmm/slab.c)
+endif()
+
 add_library(bharat_mm_pmm OBJECT
     src/mm/pmm/pmm.c
     src/mm/pmm/pmm_pcache.c
     src/mm/pmm/pmm_debug.c
     src/mm/pmm/early_alloc.c
-    src/mm/pmm/slab.c
+    ${PMM_ALLOCATOR_SRC}
     src/mm/pmm/kmem_aligned.c
     src/mm/pmm/numa.c
     src/mm/mem_class.c
@@ -690,9 +698,9 @@ add_dependencies(kernel.elf check_trap_frame_abi check_context_frame_abi)
 target_include_directories(kernel.elf PRIVATE "${ASM_OFFSETS_DIR}")
 
 # Architecture-specific code model and PIE flags are set below
-target_link_libraries(kernel.elf subsys_manager bharat_kernel_buildopts bharatos_drivers serial_drivers bharat_kernel_includes bharat_arch_private_includes board_fabric bharat_platform_headers elf_parser bharat_msg_wire_codec)
+target_link_libraries(kernel.elf PRIVATE subsys_manager bharat_kernel_buildopts bharatos_drivers serial_drivers bharat_kernel_includes bharat_arch_private_includes board_fabric bharat_platform_headers elf_parser bharat_msg_wire_codec)
 if(BHARAT_ENABLE_FBUI)
-    target_link_libraries(kernel.elf fbui)
+    target_link_libraries(kernel.elf PRIVATE fbui)
 endif()
 set_target_properties(kernel.elf PROPERTIES
     OUTPUT_NAME "kernel.elf"

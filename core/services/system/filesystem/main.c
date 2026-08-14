@@ -21,7 +21,7 @@ void kfree(void* ptr) {
     free(ptr);
 }
 
-static io_device_id_t g_system_device_id = 42; // default fallback
+static io_device_id_t g_system_device_id = 0; // default to 0 / undefined
 
 static storage_app_profile_t fs_select_profile(void) {
 #if defined(BHARAT_PROFILE_AUTOMOTIVE_ECU) || defined(BHARAT_PROFILE_DRONE) || defined(BHARAT_PROFILE_RTOS)
@@ -78,7 +78,7 @@ int main(void) {
 
     // 2. Discover default system storage device
     if (block_device_find_by_role(IO_DEVICE_ROLE_SYSTEM, &g_system_device_id) != IO_STATUS_OK) {
-        g_system_device_id = 42; // default fallback (memblk0)
+        return -1; // Fail early rather than fallback to 42
     }
 
     // 3. Initialize cache and storage policy based on profile/device/arch.

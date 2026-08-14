@@ -62,6 +62,12 @@ python3 tools/test/qemu_gui_smoke.py \
   --target delivery/targets/qemu/x86_64_showcase_gui.yaml
 ```
 
+After validating the initial scanout, the harness injects a QMP Tab key event,
+waits for `[gui] input-observed`, captures `before-input.ppm` and
+`after-input.ppm`, and rejects both an unchanged image and an implausible
+whole-frame transition. Input service discovery fails closed; there is no direct
+QEMU-device fallback in the showcase.
+
 The harness retains the QMP screenshot and serial/QEMU logs under
 `build/x86_64-dev/artifacts/gui-smoke/`. It fails when the captured dimensions
 disagree with the broker-queried mode or when scanout is blank/uniform.
@@ -73,8 +79,9 @@ disagree with the broker-queried mode or when scanout is blank/uniform.
   until kernel-mediated shared-buffer mapping and the x86_64 scanout backend are
   complete; consequently the visual smoke gate is expected to expose, rather
   than conceal, a uniform or stale QEMU scanout.
-- Input-manager event draining is wired, but the showcase stub returns no physical
-  events until it is replaced by the QEMU input service connection.
+- The showcase has a fail-closed input-service client, but physical events remain
+  unavailable until the service runtime publishes `inputmgr` and owns the
+  VirtIO-input routing path.
 - Runtime data is intentionally injected through a provider. The UI never reads
   kernel globals or driver internals.
 - Process, network, hardware, and sensor views are placeholders for later

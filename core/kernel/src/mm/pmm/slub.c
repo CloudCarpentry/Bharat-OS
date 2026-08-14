@@ -1,4 +1,4 @@
-/** @file slab.c \brief SLAB memory allocator implementation. */
+/** @file slub.c \brief SLUB memory allocator implementation. */
 
 #include "../../include/slab.h"
 #include "../../include/mm.h"
@@ -7,32 +7,33 @@
 #include <stddef.h>
 #include "lib/base/string.h"
 
-#define NUM_SLAB_SIZES 7
+// Basic SLUB implementation
+// SLUB tracks objects directly within pages without extra queue overhead.
 
-static size_t slab_sizes[NUM_SLAB_SIZES] = { 32, 64, 128, 256, 512, 1024, 2048 };
-static kcache_t slab_caches[NUM_SLAB_SIZES];
-static int slab_initialized = 0;
+#define NUM_SLUB_SIZES 7
 
-static void init_slab() {
-    if (slab_initialized) return;
-    for (int i = 0; i < NUM_SLAB_SIZES; i++) {
-        slab_caches[i].name = "kmalloc_slab";
-        slab_caches[i].object_size = slab_sizes[i];
-        slab_caches[i].num_pages = 0;
-        slab_caches[i].objs_per_page = PAGE_SIZE / slab_caches[i].object_size;
-        slab_caches[i].bitmap_words_per_page = (slab_caches[i].objs_per_page + 31u) / 32u;
+static size_t slub_sizes[NUM_SLUB_SIZES] = { 32, 64, 128, 256, 512, 1024, 2048 };
+static kcache_t slub_caches[NUM_SLUB_SIZES];
+static int slub_initialized = 0;
+
+static void init_slub() {
+    if (slub_initialized) return;
+    for (int i = 0; i < NUM_SLUB_SIZES; i++) {
+        slub_caches[i].name = "kmalloc_slub";
+        slub_caches[i].object_size = slub_sizes[i];
+        slub_caches[i].num_pages = 0;
+        slub_caches[i].objs_per_page = PAGE_SIZE / slub_caches[i].object_size;
+        slub_caches[i].bitmap_words_per_page = (slub_caches[i].objs_per_page + 31u) / 32u;
         for (int j = 0; j < KCACHE_MAX_PAGES; j++) {
             for (int w = 0; w < KCACHE_BITMAP_WORDS_PER_PAGE; w++) {
-                slab_caches[i].free_bitmap[j][w] = 0;
+                slub_caches[i].free_bitmap[j][w] = 0;
             }
         }
     }
-    slab_initialized = 1;
+    slub_initialized = 1;
 }
 
-// Custom kcache implementation
 kcache_t* kcache_create(const char* name, size_t size) {
-    // Force minimum 16-byte alignment
     if (size < SLAB_MIN_OBJECT_SIZE) {
         size = SLAB_MIN_OBJECT_SIZE;
     } else {
@@ -58,7 +59,7 @@ void* kcache_alloc(kcache_t* cache) {
     if (!cache || cache->object_size == 0) return NULL;
     uint32_t objs_per_page = cache->objs_per_page;
 
-    // Find free object
+    // SLUB unqueued allocation: simple linear search through active pages
     for (uint32_t p = 0; p < cache->num_pages; p++) {
         for (uint32_t i = 0; i < objs_per_page; i++) {
             uint32_t word = i / 32u;
@@ -72,8 +73,8 @@ void* kcache_alloc(kcache_t* cache) {
         }
     }
 
-    // Allocate new page
-    if (cache->num_pages >= KCACHE_MAX_PAGES) return NULL; // simple limitation
+    // Allocate new page block for SLUB
+    if (cache->num_pages >= KCACHE_MAX_PAGES) return NULL;
     phys_addr_t page = mm_alloc_page(NUMA_NODE_ANY);
     if (!page) return NULL;
 
@@ -84,7 +85,7 @@ void* kcache_alloc(kcache_t* cache) {
         cache->free_bitmap[p][w] = 0;
     }
 
-    cache->free_bitmap[p][0] = (1U << 0); // Allocate first object
+    cache->free_bitmap[p][0] = (1U << 0);
     void *vptr = physmap_phys_to_virt(page);
     return vptr ? vptr : (void *)(uintptr_t)page;
 }
@@ -108,10 +109,9 @@ void kcache_free(kcache_t* cache, void* obj) {
 }
 
 void* kmalloc(size_t size) {
-    if (!slab_initialized) init_slab();
+    if (!slub_initialized) init_slub();
 
     if (size > 2048) {
-        // Fallback to page allocation
         int order = 0;
         size_t s = PAGE_SIZE;
         while (s < size) {
@@ -124,9 +124,9 @@ void* kmalloc(size_t size) {
         return vptr ? vptr : (void *)(uintptr_t)p;
     }
 
-    for (int i = 0; i < NUM_SLAB_SIZES; i++) {
-        if (size <= slab_sizes[i]) {
-            return kcache_alloc(&slab_caches[i]);
+    for (int i = 0; i < NUM_SLUB_SIZES; i++) {
+        if (size <= slub_sizes[i]) {
+            return kcache_alloc(&slub_caches[i]);
         }
     }
     return NULL;
@@ -135,7 +135,6 @@ void* kmalloc(size_t size) {
 void* kzalloc(size_t size) {
     void* ptr = kmalloc(size);
     if (ptr) {
-        // memset expects a virtual address
         memset(ptr, 0, size);
     }
     return ptr;
@@ -144,27 +143,25 @@ void* kzalloc(size_t size) {
 void kfree(void* ptr) {
     if (!ptr) return;
     phys_addr_t paddr = physmap_virt_to_phys(ptr);
+    if (!paddr) paddr = (phys_addr_t)(uintptr_t)ptr;
 
-    // Check if it's in slab
-    for (int i = 0; i < NUM_SLAB_SIZES; i++) {
-        for (uint32_t p = 0; p < slab_caches[i].num_pages; p++) {
-            if (paddr >= slab_caches[i].pages[p] && paddr < slab_caches[i].pages[p] + PAGE_SIZE) {
-                kcache_free(&slab_caches[i], ptr);
+    for (int i = 0; i < NUM_SLUB_SIZES; i++) {
+        for (uint32_t p = 0; p < slub_caches[i].num_pages; p++) {
+            if (paddr >= slub_caches[i].pages[p] && paddr < slub_caches[i].pages[p] + PAGE_SIZE) {
+                kcache_free(&slub_caches[i], ptr);
                 return;
             }
         }
     }
 
-    // Otherwise it's a direct page allocation
     page_t *page = phys_to_page(paddr);
     if (page) {
-        bh_refcount_init(&page->ref_count, 1); // Prepare for mm_free_page
+        bh_refcount_init(&page->ref_count, 1);
         mm_free_page(paddr);
     }
 }
 
 // Virtual Allocator (kvmalloc/kvfree)
-
 typedef struct kvmalloc_node {
     virt_addr_t start;
     uint32_t pages;

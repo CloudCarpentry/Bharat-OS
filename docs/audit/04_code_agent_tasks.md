@@ -47,10 +47,9 @@ This document translates the critical code quality and architectural issues into
 ## Task 4: Remove Rogue NULL Redefinitions
 **Context**: `NULL` is manually redefined in C files instead of using standard headers.
 **Target Files**:
-- `core/services/security/crypto/crypto_registry.c`
+- None found (audit originally cited `core/services/security/crypto/crypto_registry.c` but it was verified to be clean).
 **Instructions**:
-1. Remove `#define NULL ((void*)0)` from the target file.
-2. Ensure `<stddef.h>` or `bharatlibc/include/standard/stddef.h` is included instead.
+1. No action needed, verified clean.
 **Acceptance Criteria**:
 - `grep -rn "#define NULL" core/` only shows results inside header files (like `stddef.h`).
 - The project compiles without missing `NULL` definition errors.
