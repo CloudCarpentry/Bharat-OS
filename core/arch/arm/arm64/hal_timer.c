@@ -63,9 +63,10 @@ bool hal_timer_is_per_cpu(void) {
 }
 
 void hal_timer_arch_get_caps(hal_timer_caps_t *caps) {
-    caps->has_counter = true;
-    caps->has_monotonic_ns = true; // Read natively from architectural counter / CNTFRQ_EL0
-    caps->has_precise_oneshot = true;
+    uint64_t frq = hal_timer_read_freq();
+    caps->has_counter = (frq > 0);
+    caps->has_monotonic_ns = (frq > 0); // Read natively from architectural counter / CNTFRQ_EL0
+    caps->has_precise_oneshot = (frq > 0);
     caps->has_native_absolute_deadline = false; // We use relative fallback
     caps->is_per_cpu = true;
 }
