@@ -46,6 +46,108 @@ static bh_operation_result_t linux_sys_clock_gettime(bh_syscall_ctx_t *ctx) {
     return bh_op_result_kstatus(bh_status_to_kstatus(status));
 }
 
+
+#include "mm/aspace.h"
+
+#define LINUX_MAP_SHARED    0x01
+#define LINUX_MAP_PRIVATE   0x02
+#define LINUX_MAP_FIXED     0x10
+#define LINUX_MAP_ANONYMOUS 0x20
+
+#define LINUX_PROT_READ     0x1
+#define LINUX_PROT_WRITE    0x2
+#define LINUX_PROT_EXEC     0x4
+
+static uint32_t linux_prot_to_bh_prot(uint32_t l_prot) {
+    uint32_t prot = 0;
+    if (l_prot & LINUX_PROT_READ) prot |= VM_PROT_READ;
+    if (l_prot & LINUX_PROT_WRITE) prot |= VM_PROT_WRITE;
+    if (l_prot & LINUX_PROT_EXEC) prot |= VM_PROT_EXEC;
+    prot |= VM_PROT_USER; // All Linux mappings are user mappings
+    return prot;
+}
+
+static bh_status_t linux_translate_mmap_request(bh_syscall_ctx_t *ctx, vm_map_request_t *req) {
+    uintptr_t addr = ctx->regs.arg[0];
+    size_t length = ctx->regs.arg[1];
+    uint32_t prot = ctx->regs.arg[2];
+    uint32_t flags = ctx->regs.arg[3];
+
+    req->hint = addr;
+    req->length = length;
+    req->prot = linux_prot_to_bh_prot(prot);
+    req->flags = 0;
+
+    if (flags & LINUX_MAP_FIXED) {
+        req->flags |= VM_MAP_FIXED;
+    }
+
+    if (flags & LINUX_MAP_ANONYMOUS) {
+        req->type = VM_MAP_TYPE_ANON;
+        req->object = NULL;
+        req->object_offset = 0;
+    } else {
+        // file-backed mappings not yet supported in this stub
+        return BH_ERR_UNSUPPORTED;
+    }
+
+    return BH_OK;
+}
+
+static bh_operation_result_t linux_sys_mmap(bh_syscall_ctx_t *ctx) {
+    vm_map_request_t req = {0};
+
+    bh_status_t st = linux_translate_mmap_request(ctx, &req);
+    if (st != BH_OK) return bh_op_result_value(-linux_errno_from_bh_status((kstatus_t)st));
+
+    uintptr_t result;
+    if (!ctx->process || !ctx->process->aspace) {
+        return bh_op_result_value(-LINUX_EINVAL);
+    }
+
+    kstatus_t kst = vm_map_region(ctx->process->aspace, &req, &result);
+
+    if (kst != K_OK) return bh_op_result_value(-linux_errno_from_bh_status((kstatus_t)kst));
+
+    return bh_op_result_value((long)result);
+}
+
+static bh_operation_result_t linux_sys_munmap(bh_syscall_ctx_t *ctx) {
+    uintptr_t addr = ctx->regs.arg[0];
+    size_t length = ctx->regs.arg[1];
+
+    if (!ctx->process || !ctx->process->aspace) {
+        return bh_op_result_value(-LINUX_EINVAL);
+    }
+
+    kstatus_t kst = vm_unmap_region(ctx->process->aspace, addr, length);
+    if (kst != K_OK) return bh_op_result_value(-linux_errno_from_bh_status((kstatus_t)kst));
+
+    return bh_op_result_value(0);
+}
+
+static bh_operation_result_t linux_sys_mprotect(bh_syscall_ctx_t *ctx) {
+    uintptr_t addr = ctx->regs.arg[0];
+    size_t length = ctx->regs.arg[1];
+    uint32_t prot = ctx->regs.arg[2];
+
+    if (!ctx->process || !ctx->process->aspace) {
+        return bh_op_result_value(-LINUX_EINVAL);
+    }
+
+    kstatus_t kst = vm_protect_region(ctx->process->aspace, addr, length, linux_prot_to_bh_prot(prot));
+    if (kst != K_OK) return bh_op_result_value(-linux_errno_from_bh_status((kstatus_t)kst));
+
+    return bh_op_result_value(0);
+}
+
+static bh_operation_result_t linux_sys_brk(bh_syscall_ctx_t *ctx) {
+    // TODO: Full implementation requires tracking brk boundary in the process struct.
+    // Stub returning -ENOMEM to fail gracefully for now.
+    (void)ctx;
+    return bh_op_result_value(-LINUX_ENOMEM);
+}
+
 extern bh_operation_result_t bh_sys_read(bh_syscall_ctx_t *ctx);
 extern bh_operation_result_t bh_sys_write(bh_syscall_ctx_t *ctx);
 extern bh_operation_result_t bh_sys_thread_exit(bh_syscall_ctx_t *ctx);
@@ -53,6 +155,11 @@ extern bh_operation_result_t bh_sys_thread_exit(bh_syscall_ctx_t *ctx);
 static const bh_syscall_meta_t linux_syscall_table_x86_64[] = {
     [LINUX_X86_64_SYS_READ]       = { .nr = LINUX_X86_64_SYS_READ, .name = "read", .class_id = BH_SYS_CLASS_IO, .arg_count = 3, .flags = BH_SYSCALL_F_BLOCKING | BH_SYSCALL_F_USER_WRITE, .handler = bh_sys_read },
     [LINUX_X86_64_SYS_WRITE]      = { .nr = LINUX_X86_64_SYS_WRITE, .name = "write", .class_id = BH_SYS_CLASS_IO, .arg_count = 3, .flags = BH_SYSCALL_F_BLOCKING | BH_SYSCALL_F_USER_READ, .handler = bh_sys_write },
+
+    [LINUX_X86_64_SYS_MMAP]       = { .nr = LINUX_X86_64_SYS_MMAP, .name = "mmap", .class_id = BH_SYS_CLASS_MEMORY, .arg_count = 6, .handler = linux_sys_mmap },
+    [LINUX_X86_64_SYS_MUNMAP]     = { .nr = LINUX_X86_64_SYS_MUNMAP, .name = "munmap", .class_id = BH_SYS_CLASS_MEMORY, .arg_count = 2, .handler = linux_sys_munmap },
+    [LINUX_X86_64_SYS_MPROTECT]   = { .nr = LINUX_X86_64_SYS_MPROTECT, .name = "mprotect", .class_id = BH_SYS_CLASS_MEMORY, .arg_count = 3, .handler = linux_sys_mprotect },
+    [LINUX_X86_64_SYS_BRK]        = { .nr = LINUX_X86_64_SYS_BRK, .name = "brk", .class_id = BH_SYS_CLASS_MEMORY, .arg_count = 1, .handler = linux_sys_brk },
     [LINUX_X86_64_SYS_GETPID]     = { .nr = LINUX_X86_64_SYS_GETPID, .name = "getpid", .class_id = BH_SYS_CLASS_PROCESS, .arg_count = 0, .flags = BH_SYSCALL_F_FAST, .handler = linux_sys_getpid },
     [LINUX_X86_64_SYS_EXIT]       = { .nr = LINUX_X86_64_SYS_EXIT, .name = "exit", .class_id = BH_SYS_CLASS_PROCESS, .arg_count = 1, .handler = bh_sys_thread_exit },
     [LINUX_X86_64_SYS_EXIT_GROUP] = { .nr = LINUX_X86_64_SYS_EXIT_GROUP, .name = "exit_group", .class_id = BH_SYS_CLASS_PROCESS, .arg_count = 1, .handler = bh_sys_thread_exit },
