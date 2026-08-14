@@ -1,6 +1,6 @@
-#include "../../include/arch/arch_ext_state.h"
+#include <arch/arch_ext_state.h>
 #include "sched/sched.h"
-#include "../../include/slab.h"
+#include <slab.h>
 
 static arch_ext_state_desc_t g_arch_ext_desc = {
     .size = 0,

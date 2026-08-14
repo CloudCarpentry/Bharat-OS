@@ -3,7 +3,7 @@
 
 #include "atomic.h"
 #include "arch/cpu_relax.h"
-#include "hal/hal_cpu.h"
+#include <hal/hal_cpu.h>
 
 typedef struct {
     atomic_t locked;

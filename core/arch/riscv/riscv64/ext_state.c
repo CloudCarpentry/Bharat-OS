@@ -1,6 +1,6 @@
-#include "../../include/arch/arch_ext_state.h"
+#include <arch/arch_ext_state.h>
 #include "sched/sched.h"
-#include "../../include/slab.h"
+#include <slab.h>
 #include <stdint.h>
 #include <stdbool.h>
 

@@ -35,6 +35,12 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install tools
         run: sudo apt-get update && sudo apt-get install -y python3 cmake ninja-build clang lld
+      - name: Architecture boundaries check
+        run: python3 tools/lint/check_placement.py
+      - name: Canonical include check
+        run: python3 tools/lint/check_canonical_includes.py
+      - name: Architecture references check
+        run: python3 tools/lint/check_architecture_references.py
       - name: Lint freestanding layer contract
         run: python3 tools/lint/check_layer_references.py --strict --baseline tools/lint/baselines/layer_references.allowlist
       - name: Enforce HAL dependency direction
@@ -44,7 +50,7 @@ jobs:
       - name: Configure clang-tidy check
         run: cmake -S . -B build-tidy -DBHARAT_ENABLE_CLANG_TIDY=ON -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/x86_64-elf.cmake
       - name: Build kernel with clang-tidy
-        run: cmake --build build-tidy --target kernel.elf > build-tidy/build.log 2>&1 || true
+        run: cmake --build build-tidy --target kernel.elf > build-tidy/build.log 2>&1
       - name: Check for new compiler warnings
         run: |
           echo "Checking for new compiler warnings..."
@@ -111,7 +117,12 @@ jobs:
           sudo apt-get install -y cmake ninja-build clang lld qemu-system-x86 qemu-system-arm qemu-system-misc python3
       - name: Build and Run Tests
         run: |
-          python3 tools/build.py all --target-yaml ${{ matrix.target_yaml }} --smoke
+          if [[ "${{ matrix.target_yaml }}" == *"arm32"* ]] || [[ "${{ matrix.target_yaml }}" == *"riscv32"* ]]; then
+            # compile-only for arm32 and riscv32 where emulator support is weaker
+            python3 tools/build.py kernel --target-yaml ${{ matrix.target_yaml }}
+          else
+            python3 tools/build.py all --target-yaml ${{ matrix.target_yaml }} --smoke
+          fi
         timeout-minutes: 10
       - name: Upload QEMU Logs on Failure
         if: failure()

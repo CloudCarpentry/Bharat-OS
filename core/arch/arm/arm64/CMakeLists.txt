@@ -33,10 +33,10 @@ add_library(hal_arm64_timer OBJECT
     hal_timer.c
 )
 
-target_include_directories(hal_arm64_cpu PRIVATE ../../../kernel/include ../../../kernel/include/generated ../../../include)
-target_include_directories(hal_arm64_mmu PRIVATE ../../../kernel/include ../../../kernel/include/generated ../../../include)
-target_include_directories(hal_arm64_irq PRIVATE ../../../kernel/include ../../../kernel/include/generated ../../../include)
-target_include_directories(hal_arm64_timer PRIVATE ../../../kernel/include ../../../kernel/include/generated ../../../include)
+target_include_directories(hal_arm64_cpu PRIVATE ../../../include ../../../include/generated ../../../include)
+target_include_directories(hal_arm64_mmu PRIVATE ../../../include ../../../include/generated ../../../include)
+target_include_directories(hal_arm64_irq PRIVATE ../../../include ../../../include/generated ../../../include)
+target_include_directories(hal_arm64_timer PRIVATE ../../../include ../../../include/generated ../../../include)
 
 target_link_libraries(hal_arm64_cpu PRIVATE bharat_freestanding bharat_kernel_buildopts)
 target_link_libraries(hal_arm64_mmu PRIVATE bharat_freestanding bharat_kernel_buildopts)
