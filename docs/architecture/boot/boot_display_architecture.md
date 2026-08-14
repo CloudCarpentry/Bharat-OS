@@ -9,12 +9,13 @@ tags:
   - boot
 see_also:
   - README.md
+  - docs/adr/ADR-035-tiered-display-and-kernel-zero-bloat-policy.md
 ---
 # Boot Display Architecture
 
 **Bharat-OS boot graphics is a user-space, capability-mediated, machine-discovered subsystem that selects the best available display path at boot, while preserving text/serial fallback and keeping GUI policy out of the kernel.**
 
-## 1. Design Goal
+## 1. Design Goal & Tiered Scalability Model
 
 The system should answer one question at boot:
 **"What is the best display path this machine supports right now?"**
@@ -22,9 +23,19 @@ The system should answer one question at boot:
 Boot UI is a discovered capability, not a kernel feature and not just an architecture feature.
 - **Architecture layer** provides CPU/MMU/cache/IRQ primitives.
 - **Machine/board layer** describes available display hardware and firmware handoff.
-- **Kernel** exposes resources and capabilities.
+- **Kernel** exposes resources and capabilities (no pixel rendering, no font tables).
 - **Boot display service** in user space renders the early UI.
 - **Later display stack** takes over for embedded UI or desktop compositor.
+
+### 4-Tier Display Capability Matrix
+
+| Tier | Category | Example Target Profile | Kernel Overhead | Display / Rendering Mechanism |
+| :--- | :--- | :--- | :--- | :--- |
+| **Tier 0** | **Headless / Zero Display** | `AUTOMOTIVE_ECU`, `RTOS`, `DATACENTER`, `CLOUD_VM` | **0 bytes** (Compiled out) | Serial UART / Telemetry ring buffer only. |
+| **Tier 1** | **Tiny UI (Constrained / MPU / MMU-Lite)** | `EDGE`, `APPLIANCE`, `RTOS_MPU` | Grants FB Capability | Userspace `boot_displayd` + `tiny_ui` (< 16 KB RAM, 0 dynamic allocations). |
+| **Tier 2** | **Embedded Rich UI** | `AUTOMOTIVE_INFOTAINMENT`, `MOBILE` | Grants FB + Input Caps | Userspace `displayd` + LVGL v9 adapter. Single/double buffered. |
+| **Tier 3** | **Advanced Composited Desktop** | `DESKTOP`, `PERSONALITY_LINUX`, `ANDROID` | Memory Caps & IPC | Userspace `compositord` + `displayd` + DRM/GPU drivers with multi-surface composition. |
+
 
 ---
 

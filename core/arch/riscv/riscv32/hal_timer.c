@@ -65,6 +65,9 @@ uint64_t hal_timer_read_counter(void) {
 }
 
 uint64_t hal_timer_read_freq(void) {
+    if (g_timer_timebase_freq_lo == 0) {
+        return 10000000ULL; /* 10 MHz standard fallback */
+    }
     return (uint64_t)g_timer_timebase_freq_lo;
 }
 

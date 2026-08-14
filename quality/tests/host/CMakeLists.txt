@@ -642,3 +642,15 @@ target_include_directories(test_bh_seqlock_concurrency PRIVATE
 )
 target_link_libraries(test_bh_seqlock_concurrency PRIVATE pthread)
 add_test(NAME host_test_bh_seqlock_concurrency COMMAND test_bh_seqlock_concurrency)
+
+# Tiny UI Userspace Stack Test
+add_executable(host_test_tiny_ui_stack
+    ../test_tiny_ui_stack.c
+    ../../../core/stacks/ui/lcd/tiny_ui.c
+)
+target_include_directories(host_test_tiny_ui_stack PRIVATE
+    ../../../interface/include
+)
+add_test(NAME host_test_tiny_ui_stack COMMAND host_test_tiny_ui_stack)
+set_tests_properties(host_test_tiny_ui_stack PROPERTIES LABELS "ui")
+

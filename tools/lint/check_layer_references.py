@@ -57,6 +57,7 @@ ALLOWED_REFS = {
 
 FREESTANDING_LAYERS = {"kernel", "hal", "arch", "boot", "platform"}
 FORBIDDEN_HOSTED_HEADERS = {"stdio.h", "stdlib.h", "string.h"}
+FORBIDDEN_KERNEL_UI_HEADERS = {"lvgl.h", "tiny_ui.h", "bharat/ui/tiny_ui.h"}
 
 EXCLUDED_DIRS = {".git", "build", "out"}
 CODE_SUFFIXES = (".c", ".h", ".cc", ".cpp", ".hpp", ".S")
@@ -171,6 +172,17 @@ def scan(repo_root: Path) -> tuple[list[Violation], int]:
                                 src_layer,
                                 "hosted-header",
                                 rule="freestanding-header",
+                            )
+                        )
+                    elif src_layer in FREESTANDING_LAYERS and (include_target in FORBIDDEN_KERNEL_UI_HEADERS or include_target.startswith("bharat/ui/")):
+                        violations.append(
+                            Violation(
+                                relpath,
+                                ln,
+                                include_target,
+                                src_layer,
+                                "ui-header",
+                                rule="kernel-ui-leakage",
                             )
                         )
                     else:

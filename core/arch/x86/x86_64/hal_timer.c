@@ -46,6 +46,20 @@ void hal_timer_init(void) {
             g_tsc_freq = ((uint64_t)ecx * ebx) / eax;
         }
     }
+
+    // Try CPUID 0x16 (base frequency in MHz)
+    if (g_tsc_freq == 0 && eax >= 0x16) {
+        x86_cpuid(0x16, 0, &eax, &ebx, &ecx, &edx);
+        if (eax != 0) {
+            g_tsc_freq = (uint64_t)eax * 1000000ULL;
+        }
+    }
+
+    // Nominal fallback for virtualized / QEMU targets without CPUID 0x15/0x16
+    if (g_tsc_freq == 0) {
+        g_tsc_freq = 1000000000ULL; /* 1 GHz nominal */
+        g_has_invariant_tsc = true;
+    }
 }
 
 void hal_timer_init_cpu_local(uint32_t cpu_id) {
@@ -72,6 +86,9 @@ uint64_t hal_timer_read_counter(void) {
 }
 
 uint64_t hal_timer_read_freq(void) {
+    if (g_tsc_freq == 0) {
+        return 1000000000ULL;
+    }
     return g_tsc_freq;
 }
 
