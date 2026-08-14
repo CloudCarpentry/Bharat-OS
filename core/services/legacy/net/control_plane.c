@@ -1,5 +1,6 @@
 #include "control_plane.h"
 #include <bharat/runtime/freestanding_string.h>
+#include <bharat/uapi/service_status.h>
 
 /*
  * Control Plane Implementation
@@ -21,7 +22,7 @@ void net_control_plane_init(void) {
 
 bharat_status_t net_register_interface(const char* name, const uint8_t* mac, uint32_t mtu, uint32_t* out_if_id) {
     if (g_num_interfaces >= MAX_INTERFACES) {
-        return BHARAT_STATUS_ERR_UNSUPPORTED; // Out of resources
+        return BHARAT_STATUS_ERR_INTERNAL;
     }
 
     uint32_t new_id = g_num_interfaces;

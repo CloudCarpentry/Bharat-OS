@@ -5,7 +5,7 @@
 #include <bharat/uapi/ipc/status.h>
 
 int32_t bharat_ipc_send(bharat_ipc_endpoint_t endpoint, const bharat_ipc_msg_header_t *header, const void *payload) { (void)endpoint; (void)header; (void)payload; return 0; }
-int32_t bharat_ipc_recv(bharat_ipc_endpoint_t endpoint, bharat_ipc_msg_header_t *header, void *payload_buf, uint32_t max_size) { (void)endpoint; (void)header; (void)payload_buf; (void)max_size; return BHARAT_IPC_STATUS_ERR_INTERNAL; }
+int32_t bharat_ipc_recv(bharat_ipc_endpoint_t endpoint, bharat_ipc_msg_header_t *header, void *payload_buf, uint32_t max_size) { (void)endpoint; (void)header; (void)payload_buf; (void)max_size; return BHARAT_IPC_STATUS_ERR_NOT_FOUND; }
 
 static bharat_cap_status_t fake_backend(
     bharat_cap_handle_t handle,

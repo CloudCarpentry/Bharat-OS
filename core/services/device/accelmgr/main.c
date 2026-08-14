@@ -54,6 +54,11 @@ bharat_status_t bh_service_handle_msg(bh_service_ctx_t *ctx, const bh_msg_t *msg
     uint8_t resp_buf[1024];
     memset(resp_buf, 0, sizeof(resp_buf));
 
+    if (msg->header.payload_size > sizeof(resp_buf)) {
+        send_reply(msg->header.reply_endpoint, &msg->header, BHARAT_IPC_STATUS_ERR_LENGTH, NULL, 0);
+        return BHARAT_STATUS_OK;
+    }
+
     // Dynamic IDL RPC Dispatch
     switch (opcode) {
         case 1: { // GetBrokerInfo
