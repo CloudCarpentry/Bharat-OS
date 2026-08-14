@@ -307,11 +307,19 @@ int pmm_free_pages(const pmm_block_t *block) {
   phys_addr_t phys = block->phys_addr;
 
   if (block->page_count > 0 && block->page_count != (1ULL << block->order)) {
+    // Phase 1: validate entire range
     for (uint32_t i = 0; i < block->page_count; i++) {
       phys_addr_t p = phys + i * PAGE_SIZE;
       page_t *page = phys_to_page(p);
       if (page) {
           if (page->pin_count > 0) return -1;
+      }
+    }
+    // Phase 2: mutate/free entire range
+    for (uint32_t i = 0; i < block->page_count; i++) {
+      phys_addr_t p = phys + i * PAGE_SIZE;
+      page_t *page = phys_to_page(p);
+      if (page) {
           page->order = 0;
           bh_refcount_init(&page->ref_count, 1);
       }
@@ -322,6 +330,8 @@ int pmm_free_pages(const pmm_block_t *block) {
       page_t *page = phys_to_page(phys);
       if (page) {
           if (page->pin_count > 0) return -1;
+      }
+      if (page) {
           page->order = (int8_t)block->order;
           bh_refcount_init(&page->ref_count, 1);
       }
@@ -483,14 +493,7 @@ static phys_addr_t pmm_alloc_pages_colored_in_zone(int order, uint32_t preferred
     }
   }
 
-  bh_thread_t *current = sched_current_thread();
-  if (current) {
-    ai_suggestion_t suggestion;
-    suggestion.action = AI_ACTION_KILL_TASK;
-    suggestion.target_id = current->thread_id;
-    suggestion.value = 0;
-    sched_ai_apply_suggestion(&suggestion);
-  }
+
 
   return 0;
 }
@@ -592,7 +595,7 @@ int mm_free_dma_pages(phys_addr_t phys, void *kernel_virt, size_t size) {
   return pmm_free_pages(&block);
 }
 
-void mm_free_page(phys_addr_t page_addr) {
+static void __mm_free_page(phys_addr_t page_addr, bool bypass_pcache) {
   page_t *page = phys_to_page(page_addr);
   if (!page) {
     return;
@@ -605,16 +608,6 @@ void mm_free_page(phys_addr_t page_addr) {
     hal_serial_write_hex((uintptr_t)__builtin_return_address(0));
     hal_serial_write("\n");
     kernel_panic("PMM: Double free detected!\n");
-  }
-
-  if (physmap_has_linear_map()) {
-      void *va = physmap_phys_to_virt(page_addr);
-      if (va) {
-          uint8_t *ptr = (uint8_t *)va;
-          for (size_t i = 0; i < PAGE_SIZE; i++) {
-              ptr[i] = 0xAA;
-          }
-      }
   }
 
   uint32_t observed = bh_refcount_read(&page->ref_count);
@@ -631,9 +624,21 @@ void mm_free_page(phys_addr_t page_addr) {
     }
   }
 
+  if (physmap_has_linear_map()) {
+      void *va = physmap_phys_to_virt(page_addr);
+      if (va) {
+          uint8_t *ptr = (uint8_t *)va;
+          for (size_t i = 0; i < PAGE_SIZE; i++) {
+              ptr[i] = 0xAA;
+          }
+      }
+  }
+
   uint32_t node_id = page->numa_node;
-  int order = page->order;
+  int original_order = page->order;
+  int order = original_order;
   if (order < 0) {
+    original_order = 0;
     order = 0;
   }
 
@@ -644,7 +649,7 @@ void mm_free_page(phys_addr_t page_addr) {
       core_state = &g_pmm_cores[current_core];
   }
 
-  if (order == 0 && core_state && core_state->active && pmm_numa_node_valid(node_id) && pmm_page_can_enter_pcache(page)) {
+  if (order == 0 && !bypass_pcache && core_state && core_state->active && pmm_numa_node_valid(node_id) && pmm_page_can_enter_pcache(page)) {
       if (pmm_page_owned_by_core(page, current_core)) {
           hal_irq_state_t irq_state = hal_irq_save_disable();
           pmm_pcache_t *pcache = &core_state->node_caches[node_id];
@@ -658,6 +663,7 @@ void mm_free_page(phys_addr_t page_addr) {
               page->pin_count = 0;
               page->order = 0;
               hal_irq_restore(irq_state);
+              atomic64_fetch_and_add_ptr(&numa_nodes[node_id].free_pages, 1ULL);
               return;
           } else {
               pcache->drain_to_zone_count++;
@@ -669,7 +675,8 @@ void mm_free_page(phys_addr_t page_addr) {
                   if (drain_page) {
                       bh_refcount_init(&drain_page->ref_count, 1);
                       drain_page->state = PMM_PAGE_STATE_ALLOCATED;
-                      mm_free_page(drain_phys);
+                      atomic64_fetch_and_sub_ptr(&numa_nodes[drain_page->numa_node].free_pages, 1ULL);
+                      __mm_free_page(drain_phys, true);
                   }
               }
 
@@ -681,6 +688,7 @@ void mm_free_page(phys_addr_t page_addr) {
               page->pin_count = 0;
               page->order = 0;
               hal_irq_restore(irq_state);
+              atomic64_fetch_and_add_ptr(&numa_nodes[node_id].free_pages, 1ULL);
               return;
           }
       } else if (pmm_core_id_valid(page->owner_core_id) && g_pmm_cores[page->owner_core_id].active) {
@@ -761,7 +769,11 @@ void mm_free_page(phys_addr_t page_addr) {
   zone->free_count[order][page_color]++;
   spin_unlock(&zone->lock);
 
-  atomic64_fetch_and_add_ptr(&numa_nodes[node_id].free_pages, (1ULL << order));
+  atomic64_fetch_and_add_ptr(&numa_nodes[node_id].free_pages, (1ULL << original_order));
+}
+
+void mm_free_page(phys_addr_t page_addr) {
+    __mm_free_page(page_addr, false);
 }
 
 #ifndef Profile_RTOS
