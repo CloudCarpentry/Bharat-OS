@@ -36,11 +36,11 @@ add_custom_command(
 add_custom_target(check_trap_frame_abi
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/abi/test_trap_frame_abi.py
             "${ASM_OFFSETS_H}"
-            ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/trap_entry.S
-            ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/trap_entry.S
-            ${BHARAT_ARCH_HAL_ROOT}/arm/arm32/trap_entry.S
-            ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv64/trap_entry.S
-            ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv32/trap_entry.S
+            ${BHARAT_ARCH_ROOT}/x86/x86_64/trap_entry.S
+            ${BHARAT_ARCH_ROOT}/arm/arm64/trap_entry.S
+            ${BHARAT_ARCH_ROOT}/arm/arm32/trap_entry.S
+            ${BHARAT_ARCH_ROOT}/riscv/riscv64/trap_entry.S
+            ${BHARAT_ARCH_ROOT}/riscv/riscv32/trap_entry.S
     DEPENDS generate_asm_offsets
     COMMENT "Checking five‑architecture trap frame ABI"
 )

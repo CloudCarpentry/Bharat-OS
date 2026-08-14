@@ -9,6 +9,9 @@ INCLUDE = re.compile(r'^\s*#\s*include\s*[<"]([^>"]+)[>"]', re.MULTILINE)
 
 def violations(root: Path) -> list[str]:
     found: list[str] = []
+    arch_hal = root / "core/arch/hal"
+    if arch_hal.exists():
+        found.append(f"{arch_hal.relative_to(root)}: forbidden core/arch/hal hierarchy (HAL should not be a second architecture tree)")
     groups = ((root / "core/hal/common", ("arch/", "kernel/src/", "core/arch/", "core/kernel/src/")),
               (root / "core/lib", ("hal/hal_internal.h", "core/hal/common/", "kernel/src/", "core/kernel/src/")))
     for base, forbidden in groups:

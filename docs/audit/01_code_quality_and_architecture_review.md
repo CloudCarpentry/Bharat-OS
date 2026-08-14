@@ -8,7 +8,7 @@ Several core kernel and service components have grown extremely large (1,000+ li
 *   **`core/kernel/src/capability.c` (1380 lines)**: Centralized capability handling needs splitting into `cap_dispatch.c`, `cap_cspace.c`, `cap_revoke.c`.
 *   **`core/kernel/src/sched/sched.c` (1331 lines)** and **`core/kernel/src/sched/sched_core.c` (1155 lines)**: Scheduler monolithic. Needs decoupling of scheduling queues vs scheduling policies.
 *   **`core/kernel/src/mm/pmm/pmm.c` (1235 lines)**: Physical memory manager is too large. Split initialization, buddy allocation, and page fault handling.
-*   **`core/arch/hal/.../hal_pt_*.c` (600-900 lines)**: Page table manipulation logic is highly duplicated across architectures.
+*   **`core/arch/.../hal_pt_*.c` (600-900 lines)**: Page table manipulation logic is highly duplicated across architectures.
 
 ## 2. Weak Error Handling
 Multiple services and kernel subsystems use generic `-1` error returns instead of defined, expressive status codes (e.g., `BH_ERR_NOT_FOUND`, `BH_ERR_NO_MEMORY`).

@@ -26,9 +26,11 @@ hardware_include = re.compile(r"#include\s+[\"<]hw/")
 internal_memops_pattern = re.compile(r"internal_mem(set|cpy|move)")
 
 def check_kernel_content(filepath, lines, root):
+    norm_path = filepath.replace('\\', '/')
+    norm_root = root.replace('\\', '/')
     for idx, line in enumerate(lines):
         # To be strict for new files but allow existing tree
-        if emulator_pattern.search(line) and "TODO" not in line and "lint-disable" not in line and "legacy" not in root and "board/" not in filepath and "virtio" not in filepath and "hal/" not in filepath and "demo/" not in filepath and "tests/" not in filepath:
+        if emulator_pattern.search(line) and "TODO" not in line and "lint-disable" not in line and "legacy" not in norm_root and "board/" not in norm_path and "virtio" not in norm_path and "hal/" not in norm_path and "demo/" not in norm_path and "tests/" not in norm_path:
             report_violation(filepath, "Emulator logic inside kernel source", f"Line {idx+1}")
 
 def check_services_content(filepath, lines):
@@ -50,6 +52,13 @@ def main():
     # Pre-calculate kernel and services paths for fast prefix checking
     kernel_dir = os.path.join(REPO_ROOT, "core", "kernel")
     services_dir = os.path.join(REPO_ROOT, "core", "services")
+
+    arch_hal_dir = os.path.join(REPO_ROOT, "core", "arch", "hal")
+    if os.path.exists(arch_hal_dir):
+        for hal_root, _, files in os.walk(arch_hal_dir):
+            for file in files:
+                filepath = os.path.join(hal_root, file)
+                report_violation(filepath, "Forbidden core/arch/hal hierarchy (HAL should not be a second architecture tree)", "File exists in core/arch/hal")
 
     for root, _, files in os.walk(REPO_ROOT):
         parts = set(root.split(os.sep))
@@ -89,12 +98,12 @@ def main():
                     pass
 
     if VIOLATIONS:
-        print("\n❌ Architecture placement violations found:")
+        print("\n[ERROR] Architecture placement violations found:")
         for v in VIOLATIONS:
             print(f"  - {v}")
         sys.exit(1)
     else:
-        print("\n✅ All architecture boundaries respected.")
+        print("\n[OK] All architecture boundaries respected.")
         sys.exit(0)
 
 if __name__ == "__main__":

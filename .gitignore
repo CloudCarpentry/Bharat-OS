@@ -3,7 +3,7 @@ build*/
 out/
 bin/
 core/kernel/include/generated/bharat_config.h
-
+temp_share/
 # Object files and libraries
 *.o
 *.a
