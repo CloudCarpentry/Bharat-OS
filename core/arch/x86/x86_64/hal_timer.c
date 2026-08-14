@@ -8,6 +8,9 @@
 
 extern uint32_t* g_lapic_base; // from apic.c
 
+static uint64_t g_tsc_freq = 0;
+static bool g_has_invariant_tsc = false;
+
 static inline void lapic_write(uint32_t offset, uint32_t value) {
     *(volatile uint32_t*)((uint64_t)g_lapic_base + offset) = value;
 }
@@ -18,8 +21,31 @@ static inline uint64_t rdtsc(void) {
     return ((uint64_t)hi << 32) | lo;
 }
 
+static inline void x86_cpuid(uint32_t leaf, uint32_t subleaf, uint32_t *eax, uint32_t *ebx, uint32_t *ecx, uint32_t *edx) {
+    __asm__ volatile("cpuid"
+        : "=a"(*eax), "=b"(*ebx), "=c"(*ecx), "=d"(*edx)
+        : "a"(leaf), "c"(subleaf)
+    );
+}
+
 void hal_timer_init(void) {
-    // Determine frequency, etc.
+    uint32_t eax, ebx, ecx, edx;
+
+    // Check for invariant TSC (CPUID 0x80000007 EDX bit 8)
+    x86_cpuid(0x80000000, 0, &eax, &ebx, &ecx, &edx);
+    if (eax >= 0x80000007) {
+        x86_cpuid(0x80000007, 0, &eax, &ebx, &ecx, &edx);
+        g_has_invariant_tsc = (edx & (1u << 8)) != 0;
+    }
+
+    // Try to get TSC frequency from CPUID 0x15
+    x86_cpuid(0, 0, &eax, &ebx, &ecx, &edx);
+    if (eax >= 0x15) {
+        x86_cpuid(0x15, 0, &eax, &ebx, &ecx, &edx);
+        if (eax != 0 && ebx != 0 && ecx != 0) {
+            g_tsc_freq = ((uint64_t)ecx * ebx) / eax;
+        }
+    }
 }
 
 void hal_timer_init_cpu_local(uint32_t cpu_id) {
@@ -46,16 +72,8 @@ uint64_t hal_timer_read_counter(void) {
 }
 
 uint64_t hal_timer_read_freq(void) {
-    // RDTSC is available as a counter, but its frequency is not yet
-    // calibrated by this backend. The historical 1 GHz value is a
-    // compatibility estimate and MUST NOT be used to advertise
-    // precise monotonic-ns capability.
-    return 1000000000ULL; // Return ~1GHz assuming generic TSC
+    return g_tsc_freq;
 }
-
-// uint64_t hal_timer_monotonic_ticks(void) {
-//     return rdtsc();
-// }
 
 bool hal_timer_is_per_cpu(void) {
     return true; // LAPIC timer is per CPU
@@ -67,8 +85,8 @@ uint64_t hal_timer_monotonic_ticks_arch(void) {
 
 void hal_timer_arch_get_caps(hal_timer_caps_t *caps) {
     caps->has_counter = true;
-    caps->has_monotonic_ns = true; // Degraded: RDTSC freq is an uncalibrated 1GHz guess. Follow-up: Calibrated x86 TSC/LAPIC Timer Backend.
-    caps->has_precise_oneshot = false; // Degraded: LAPIC frequency is uncalibrated. Follow-up: Calibrated x86 TSC/LAPIC Timer Backend.
+    caps->has_monotonic_ns = (g_tsc_freq > 0) && g_has_invariant_tsc;
+    caps->has_precise_oneshot = false; // Degraded: LAPIC frequency is uncalibrated.
     caps->has_native_absolute_deadline = false;
     caps->is_per_cpu = true;
 }

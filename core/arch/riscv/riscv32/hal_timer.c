@@ -2,15 +2,15 @@
 #include "hal/hal_ipi.h"
 #include "../../arch/riscv/boot/sbi.h"
 
-static uint32_t g_timer_timebase_freq_lo = 10000000UL;
+static uint32_t g_timer_timebase_freq_lo = 0;
 
 // hal_timer_init: called once at boot to configure timer parameters
+#include "hal/hal_discovery.h"
 void hal_timer_init(void) {
-    // The fallback timebase frequency is suitable only for explicitly
-    // known target profiles. Generic production capability must remain
-    // degraded until platform/FDT discovery supplies the actual timebase.
-    // Follow-up: Platform-Discovered RISC-V Timebase.
-    g_timer_timebase_freq_lo = 10000000UL;
+    system_discovery_t* discovery = hal_get_system_discovery();
+    if (discovery && discovery->timers[0].frequency > 0) {
+        g_timer_timebase_freq_lo = discovery->timers[0].frequency;
+    }
 }
 
 void hal_timer_init_cpu_local(uint32_t cpu_id) {
@@ -98,7 +98,7 @@ void hal_ipi_broadcast(uint64_t mask, hal_ipi_reason_t reason) {
 
 void hal_timer_arch_get_caps(hal_timer_caps_t *caps) {
     caps->has_counter = true;
-    caps->has_monotonic_ns = true; // Degraded: currently uses 10MHz generic guess. Follow-up: Platform-Discovered RISC-V Timebase.
+    caps->has_monotonic_ns = (g_timer_timebase_freq_lo > 0); // Degraded: currently uses 10MHz generic guess unless FDT parses it. Follow-up: Platform-Discovered RISC-V Timebase. // Degraded: currently uses 10MHz generic guess. Follow-up: Platform-Discovered RISC-V Timebase.
     caps->has_precise_oneshot = false; // Degraded: untested precision due to missing calibration.
     caps->has_native_absolute_deadline = false;
     caps->is_per_cpu = true;

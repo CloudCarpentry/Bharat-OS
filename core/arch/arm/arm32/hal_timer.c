@@ -1,10 +1,15 @@
 #include "hal/hal_timer.h"
+#include "hal/hal_discovery.h"
 
-/* UP-only fallback clock: the boot core is the sole reader/writer. */
-static uint64_t g_arm32_timer_ticks;
+// Currently no generic platform-independent ARM32 timer is implemented.
+// We defer to system discovery if an SP804 or similar is found later.
+static uint32_t g_arm32_timer_freq = 0;
 
 void hal_timer_init(void) {
-    g_arm32_timer_ticks = 0;
+    system_discovery_t* discovery = hal_get_system_discovery();
+    if (discovery && discovery->timers[0].frequency > 0) {
+        g_arm32_timer_freq = discovery->timers[0].frequency;
+    }
 }
 
 void hal_timer_init_cpu_local(uint32_t cpu_id) {
@@ -20,11 +25,12 @@ void hal_timer_program_oneshot(uint64_t ns) {
 }
 
 uint64_t hal_timer_read_counter(void) {
-    return ++g_arm32_timer_ticks;
+    // Cannot return a software loop counter. If we don't have hardware, return 0.
+    return 0;
 }
 
 uint64_t hal_timer_read_freq(void) {
-    return 1000000ULL;
+    return g_arm32_timer_freq;
 }
 
 uint64_t hal_timer_monotonic_ticks_arch(void) {
@@ -36,9 +42,9 @@ bool hal_timer_is_per_cpu(void) {
 }
 
 void hal_timer_arch_get_caps(hal_timer_caps_t *caps) {
-    caps->has_counter = true;
-    caps->has_monotonic_ns = true; // Degraded: Uses software counter increment. Follow-up: Platform-Discovered ARM32 Timebase.
-    caps->has_precise_oneshot = false; // Degraded: Untested precision.
+    caps->has_counter = (g_arm32_timer_freq > 0);
+    caps->has_monotonic_ns = (g_arm32_timer_freq > 0);
+    caps->has_precise_oneshot = false;
     caps->has_native_absolute_deadline = false;
     caps->is_per_cpu = false;
 }
