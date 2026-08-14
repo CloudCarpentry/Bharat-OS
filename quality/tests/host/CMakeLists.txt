@@ -15,6 +15,33 @@ target_compile_definitions(host_test_cap_generation_legacy PRIVATE
 add_test(NAME host_test_cap_generation_legacy COMMAND host_test_cap_generation_legacy)
 set_tests_properties(host_test_cap_generation_legacy PROPERTIES LABELS "capability")
 
+add_executable(test_capability_ownership
+    test_capability_ownership.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/cap/cap_cspace.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/cap/cap_dispatch.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/cap/cap_revoke.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/cap/cap_policy.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/ds/bh_id_allocator.c
+    ${CMAKE_SOURCE_DIR}/core/lib/cap/src/cap_validate.c
+    ${CMAKE_SOURCE_DIR}/core/lib/cap/src/cap_authz.c
+    ${CMAKE_SOURCE_DIR}/core/lib/base/src/string.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/time/ktime.c
+)
+
+target_include_directories(test_capability_ownership PRIVATE
+    ${CMAKE_SOURCE_DIR}/core/kernel/include
+    ${CMAKE_SOURCE_DIR}/core/hal/include
+    ${CMAKE_SOURCE_DIR}/core/lib/include
+    ${CMAKE_SOURCE_DIR}/core/lib/cap/include
+    ${CMAKE_SOURCE_DIR}/interface/include
+    ${CMAKE_SOURCE_DIR}/interface
+    ${CMAKE_BINARY_DIR}/generated/include
+)
+
+target_compile_definitions(test_capability_ownership PRIVATE BHARAT_HOST_TEST=1)
+add_test(NAME host_test_capability_ownership COMMAND test_capability_ownership)
+set_tests_properties(host_test_capability_ownership PROPERTIES LABELS "capability")
+
 add_executable(test_servicemgr
     "${CMAKE_CURRENT_SOURCE_DIR}/test_servicemgr.c"
     "${CMAKE_SOURCE_DIR}/core/services/servicemgr/servicemgr.c"

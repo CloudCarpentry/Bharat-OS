@@ -38,39 +38,85 @@ extern bh_cap_cspace_registry_entry_t g_cap_cspace_registry[MAX_CPUS][BH_CAP_CSP
 extern capability_table_t g_cap_bootstrap_cspaces[MAX_CPUS];
 extern bool g_cap_bootstrap_cspaces_used[MAX_CPUS];
 
-// Delegation request mailbox structure
+#define BH_CAP_TX_PER_CORE 16U
+
+typedef enum {
+    BH_CAP_TX_FREE = 0,
+    BH_CAP_TX_PREPARED = 1,
+    BH_CAP_TX_PUBLISHED = 2,
+    BH_CAP_TX_COMMITTED = 3,
+    BH_CAP_TX_ABORTED = 4,
+} bh_cap_tx_state_t;
+
+typedef enum {
+    BH_CAP_TX_OP_NONE = 0,
+    BH_CAP_TX_OP_DELEGATE = 1,
+    BH_CAP_TX_OP_REVOKE = 2,
+    BH_CAP_TX_OP_ROLLBACK = 3,
+} bh_cap_tx_op_t;
+
 typedef struct {
-    bh_cap_locator_t src;
-    bh_cap_locator_t dst;
-    uint32_t type;
-    uint64_t rights;
+    atomic_t state;                  // bh_cap_tx_state_t
+    uint32_t generation;             // monotonically increasing per slot
+    uint32_t op;                     // bh_cap_tx_op_t
+    bh_cap_locator_t src;            // source capability locator
+    bh_cap_locator_t dst;            // destination capability locator
+    bh_cap_locator_t target;         // target locator for revoke
+    uint64_t revocation_epoch;
+    uint32_t type;                   // cap_type_t
+    cap_rights_mask_t requested_rights;
     uint64_t object_ref;
     uint32_t flags;
     uint32_t owner_core;
     cap_instance_id_t instance_id;
-    uint64_t revocation_epoch;
     bh_cap_locator_t src_first_child;
-    volatile int32_t status;
-    volatile uint32_t new_cap_id;
-    volatile uint32_t dst_slot;
-    volatile uint32_t dst_generation;
-    volatile bool ack_received;
-} cap_delegate_req_t;
+    uint32_t target_mask;            // bitmask of cores expected to acknowledge
+    uint32_t ack_mask;               // bitmask of cores that acknowledged
+    int32_t result;                  // transaction result / error code
 
-// Revoke request mailbox structure
-typedef struct {
-    uint32_t slot;
-    uint32_t generation;
-    uint32_t origin_core;
-    bh_cap_locator_t target;
-    uint32_t request_epoch;
-    volatile int32_t state;
-    volatile int32_t result;
-} cap_revoke_tx_t;
+    // Remote allocation results populated by destination core:
+    uint32_t remote_cap_id;
+    uint32_t remote_dst_slot;
+    uint32_t remote_dst_gen;
+} bh_cap_tx_entry_t;
 
-extern cap_delegate_req_t g_cap_delegations[MAX_CPUS];
-extern cap_revoke_tx_t g_cap_revokes[MAX_CPUS];
-extern atomic_t g_revoke_acks_needed[MAX_CPUS];
+extern bh_cap_tx_entry_t g_cap_tx_table[MAX_CPUS][BH_CAP_TX_PER_CORE];
+extern spinlock_t g_cap_tx_lock[MAX_CPUS];
+
+static inline uint64_t cap_tx_pack_req(uint8_t origin_core, uint8_t slot, uint32_t generation, uint8_t op) {
+    return ((uint64_t)origin_core << 48) |
+           ((uint64_t)slot << 40) |
+           (((uint64_t)generation & 0xFFFFFFFFULL) << 8) |
+           ((uint64_t)op & 0xFFULL);
+}
+
+static inline void cap_tx_unpack_req(uint64_t payload, uint8_t *origin_core, uint8_t *slot, uint32_t *generation, uint8_t *op) {
+    if (origin_core) *origin_core = (uint8_t)((payload >> 48) & 0xFF);
+    if (slot) *slot = (uint8_t)((payload >> 40) & 0xFF);
+    if (generation) *generation = (uint32_t)((payload >> 8) & 0xFFFFFFFFULL);
+    if (op) *op = (uint8_t)(payload & 0xFF);
+}
+
+static inline uint64_t cap_tx_pack_ack(uint8_t origin_core, uint8_t slot, uint32_t generation, uint8_t responder_core, int8_t status) {
+    return ((uint64_t)origin_core << 48) |
+           ((uint64_t)slot << 40) |
+           (((uint64_t)generation & 0xFFFFFFULL) << 16) |
+           ((uint64_t)responder_core << 8) |
+           ((uint64_t)(uint8_t)status);
+}
+
+static inline void cap_tx_unpack_ack(uint64_t payload, uint8_t *origin_core, uint8_t *slot, uint32_t *generation, uint8_t *responder_core, int8_t *status) {
+    if (origin_core) *origin_core = (uint8_t)((payload >> 48) & 0xFF);
+    if (slot) *slot = (uint8_t)((payload >> 40) & 0xFF);
+    if (generation) *generation = (uint32_t)((payload >> 16) & 0xFFFFFFULL);
+    if (responder_core) *responder_core = (uint8_t)((payload >> 8) & 0xFF);
+    if (status) *status = (int8_t)(payload & 0xFF);
+}
+
+bh_cap_tx_entry_t *cap_tx_alloc(uint32_t origin_core, uint32_t op, uint8_t *out_slot);
+void cap_tx_release(uint32_t origin_core, uint8_t slot);
+void cap_handle_tx_req(uint64_t payload, uint32_t source_core);
+void cap_handle_tx_ack(uint64_t payload);
 
 static inline bh_cap_locator_t cap_locator_null(void) {
     return (bh_cap_locator_t){

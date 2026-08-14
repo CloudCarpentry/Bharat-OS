@@ -1,21 +1,76 @@
 #include "cap_internal.h"
+#include "time/ktime.h"
 
 bh_cap_cspace_registry_entry_t
     g_cap_cspace_registry[MAX_CPUS][BH_CAP_CSPACES_PER_CORE];
 capability_table_t g_cap_bootstrap_cspaces[MAX_CPUS];
 bool g_cap_bootstrap_cspaces_used[MAX_CPUS];
 
-cap_delegate_req_t g_cap_delegations[MAX_CPUS];
+bh_cap_tx_entry_t g_cap_tx_table[MAX_CPUS][BH_CAP_TX_PER_CORE];
+spinlock_t g_cap_tx_lock[MAX_CPUS];
 
 _Static_assert(MAX_CPUS <= (UINT32_C(1) << BH_CAP_CSPACE_OWNER_BITS),
                "CSpace identity must encode every owner core");
 _Static_assert(BH_CAP_CSPACES_PER_CORE <=
                    (UINT32_C(1) << BH_CAP_CSPACE_SLOT_BITS),
                "CSpace identity must encode every registry slot");
-_Static_assert(sizeof(((cap_delegate_req_t *)0)->src) == sizeof(bh_cap_locator_t),
-               "delegation source must be a locator");
-_Static_assert(sizeof(((cap_delegate_req_t *)0)->dst) == sizeof(bh_cap_locator_t),
-               "delegation destination must be a locator");
+_Static_assert(sizeof(((bh_cap_tx_entry_t *)0)->src) == sizeof(bh_cap_locator_t),
+               "transaction source must be a locator");
+_Static_assert(sizeof(((bh_cap_tx_entry_t *)0)->dst) == sizeof(bh_cap_locator_t),
+               "transaction destination must be a locator");
+
+bh_cap_tx_entry_t *cap_tx_alloc(uint32_t origin_core, uint32_t op, uint8_t *out_slot) {
+    if (origin_core >= MAX_CPUS || !out_slot) {
+        return NULL;
+    }
+
+    spin_lock(&g_cap_tx_lock[origin_core]);
+
+    for (uint32_t i = 0; i < BH_CAP_TX_PER_CORE; i++) {
+        bh_cap_tx_entry_t *tx = &g_cap_tx_table[origin_core][i];
+        int st = atomic_get(&tx->state);
+        if (st == BH_CAP_TX_FREE || st == BH_CAP_TX_COMMITTED || st == BH_CAP_TX_ABORTED) {
+            tx->generation++;
+            if (tx->generation == 0) {
+                tx->generation = 1;
+            }
+            tx->op = op;
+            tx->src = cap_locator_null();
+            tx->dst = cap_locator_null();
+            tx->target = cap_locator_null();
+            tx->revocation_epoch = 0;
+            tx->type = 0;
+            tx->requested_rights = 0;
+            tx->object_ref = 0;
+            tx->flags = 0;
+            tx->owner_core = origin_core;
+            memset(&tx->instance_id, 0, sizeof(tx->instance_id));
+            tx->src_first_child = cap_locator_null();
+            tx->target_mask = 0;
+            tx->ack_mask = 0;
+            tx->result = 0;
+            tx->remote_cap_id = 0;
+            tx->remote_dst_slot = UINT32_MAX;
+            tx->remote_dst_gen = 0;
+
+            atomic_set(&tx->state, BH_CAP_TX_PREPARED);
+            *out_slot = (uint8_t)i;
+            spin_unlock(&g_cap_tx_lock[origin_core]);
+            return tx;
+        }
+    }
+
+    spin_unlock(&g_cap_tx_lock[origin_core]);
+    return NULL;
+}
+
+void cap_tx_release(uint32_t origin_core, uint8_t slot) {
+    if (origin_core >= MAX_CPUS || slot >= BH_CAP_TX_PER_CORE) {
+        return;
+    }
+    bh_cap_tx_entry_t *tx = &g_cap_tx_table[origin_core][slot];
+    atomic_set(&tx->state, BH_CAP_TX_FREE);
+}
 
 /*@
   requires table != \null;
@@ -361,7 +416,7 @@ int cap_table_delegate(capability_table_t* src,
         return -6;
     }
 
-    // --- CROSS-CORE DELEGATION via uRPC ---
+    // --- CROSS-CORE DELEGATION via Unified Transaction Engine ---
 
     spin_lock(&src->lock);
 
@@ -396,88 +451,104 @@ int cap_table_delegate(capability_table_t* src,
         return -5;
     }
 
-    cap_delegate_req_t* req = &g_cap_delegations[current_core];
-    req->src = cap_locator_make(src, src_slot_idx, src_entry->generation,
-                                (uint32_t)src_entry->revocation_epoch);
-    req->dst = cap_locator_make(dst, 0U, 0U, 0U);
-    req->type = (uint32_t)src_entry->type;
-    req->rights = delegated_rights;
-    req->object_ref = src_entry->object_ref;
-    req->flags = src_entry->flags;
-    req->owner_core = src_entry->owner_core;
-    req->instance_id = src_entry->instance_id;
-    req->instance_id.rights_digest = delegated_rights;
-    req->revocation_epoch = src_entry->revocation_epoch;
-    req->src_first_child = src_entry->first_child;
-    req->status = -1;
-    req->new_cap_id = 0;
-    req->dst_slot = UINT32_MAX;
-    req->dst_generation = 0;
-    req->ack_received = false;
-
-    spin_unlock(&src->lock);
-
-    uint64_t payload = current_core;
-
-    if (urpc_channel_get_state(target_core) != URPC_CHANNEL_BOUND) {
+    uint8_t tx_slot = 0;
+    bh_cap_tx_entry_t* tx = cap_tx_alloc(current_core, BH_CAP_TX_OP_DELEGATE, &tx_slot);
+    if (!tx) {
+        spin_unlock(&src->lock);
         return -6;
     }
 
-    urpc_bootstrap_send(target_core, urpc_pack_msg(URPC_CAP_DELEGATE_REQ, payload));
+    tx->src = cap_locator_make(src, src_slot_idx, src_entry->generation,
+                               (uint32_t)src_entry->revocation_epoch);
+    tx->dst = cap_locator_make(dst, 0U, 0U, 0U);
+    tx->type = (uint32_t)src_entry->type;
+    tx->requested_rights = delegated_rights;
+    tx->object_ref = src_entry->object_ref;
+    tx->flags = src_entry->flags;
+    tx->owner_core = src_entry->owner_core;
+    tx->instance_id = src_entry->instance_id;
+    tx->instance_id.rights_digest = delegated_rights;
+    tx->revocation_epoch = src_entry->revocation_epoch;
+    tx->src_first_child = src_entry->first_child;
+    tx->target_mask = (1U << target_core);
+    tx->ack_mask = 0U;
+    tx->result = 0;
+    tx->remote_cap_id = 0;
+    tx->remote_dst_slot = UINT32_MAX;
+    tx->remote_dst_gen = 0;
 
-    // Bounded transactional wait
-    uint64_t start_ticks = hal_timer_monotonic_ticks();
-    uint64_t timeout_ticks = 10;
+    spin_unlock(&src->lock);
+
+    // Publish transaction
+    __asm__ volatile("" : : : "memory");
+    atomic_set(&tx->state, BH_CAP_TX_PUBLISHED);
+
+    uint64_t req_payload = cap_tx_pack_req((uint8_t)current_core, tx_slot, tx->generation, (uint8_t)BH_CAP_TX_OP_DELEGATE);
+    if (urpc_bootstrap_send(target_core, urpc_pack_msg(URPC_CAP_DELEGATE_REQ, req_payload)) != 0) {
+        atomic_set(&tx->state, BH_CAP_TX_ABORTED);
+        cap_tx_release(current_core, tx_slot);
+        return -6;
+    }
+
+    // Bounded transactional wait using monotonic deadline
+    bh_kdeadline_t deadline = bh_deadline_after_ns(10 * BH_KTIME_NS_PER_MS);
     bool timed_out = false;
 
-    while (!req->ack_received) {
-        if (hal_timer_monotonic_ticks() - start_ticks > timeout_ticks) {
+    while ((tx->ack_mask & tx->target_mask) != tx->target_mask) {
+        if (bh_deadline_expired(deadline)) {
             timed_out = true;
             break;
         }
         extern void arch_cpu_relax(void);
         arch_cpu_relax();
-        extern void vmm_process_urpc_messages(void);
-        vmm_process_urpc_messages();
     }
 
     if (timed_out) {
+        atomic_set(&tx->state, BH_CAP_TX_ABORTED);
+        // Rollback remote capability if destination created it
+        uint64_t rollback_payload = cap_tx_pack_req((uint8_t)current_core, tx_slot, tx->generation, (uint8_t)BH_CAP_TX_OP_ROLLBACK);
+        urpc_bootstrap_send(target_core, urpc_pack_msg(URPC_CAP_REVOKE, rollback_payload));
+        cap_tx_release(current_core, tx_slot);
         return K_ERR_TIMEOUT;
     }
 
-    if (req->status != 0) {
-        return req->status;
+    if (tx->result != 0) {
+        int32_t res = tx->result;
+        atomic_set(&tx->state, BH_CAP_TX_ABORTED);
+        cap_tx_release(current_core, tx_slot);
+        return res;
     }
 
+    // Source-side validation / commit
     spin_lock(&src->lock);
 
     src_entry = &src->entries[src_slot_idx];
     if (src_entry->in_use != 0U && src_entry->id == id_only &&
-        src_entry->generation == req->src.generation &&
+        src_entry->generation == tx->src.generation &&
         src_entry->state == CAP_STATE_LIVE) {
-        src_entry->first_child = cap_locator_make(dst, req->dst_slot,
-                                                  req->dst_generation,
-                                                  (uint32_t)req->revocation_epoch);
+        src_entry->first_child = cap_locator_make(dst, tx->remote_dst_slot,
+                                                  tx->remote_dst_gen,
+                                                  (uint32_t)tx->revocation_epoch);
 
         if (out_new_cap_id) {
-            *out_new_cap_id = req->new_cap_id | (req->dst_generation << 16);
+            *out_new_cap_id = tx->remote_cap_id | (tx->remote_dst_gen << 16);
         }
+        atomic_set(&tx->state, BH_CAP_TX_COMMITTED);
         ret = 0;
     } else {
-        // Transactional rollback
+        // Source validation failed -> Transactional rollback
+        atomic_set(&tx->state, BH_CAP_TX_ABORTED);
         ret = -7;
     }
 
     spin_unlock(&src->lock);
 
-    if (ret != 0 && req->status == 0) {
-        // Rollback target capability with the matching lineage-aware payload
-        uint64_t rollback_payload = ((uint64_t)current_core << 48) |
-                                   ((uint64_t)req->src.slot << 40) |
-                                   ((uint64_t)req->src.generation << 24) |
-                                   current_core;
+    if (ret != 0) {
+        // Rollback target capability with the unified matching transaction payload
+        uint64_t rollback_payload = cap_tx_pack_req((uint8_t)current_core, tx_slot, tx->generation, (uint8_t)BH_CAP_TX_OP_ROLLBACK);
         urpc_bootstrap_send(target_core, urpc_pack_msg(URPC_CAP_REVOKE, rollback_payload));
     }
 
+    cap_tx_release(current_core, tx_slot);
     return ret;
 }

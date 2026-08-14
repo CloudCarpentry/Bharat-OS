@@ -1,90 +1,203 @@
 #include "cap_internal.h"
 
-void cap_handle_delegate_req(uint64_t payload, uint32_t source_core) {
-    uint32_t req_core = (uint32_t)payload;
-    if (req_core >= MAX_CPUS) return;
+void cap_handle_tx_req(uint64_t payload, uint32_t source_core) {
+    uint8_t origin_core = 0;
+    uint8_t slot = 0;
+    uint32_t generation = 0;
+    uint8_t op = 0;
 
-    cap_delegate_req_t req_clone = g_cap_delegations[req_core];
+    cap_tx_unpack_req(payload, &origin_core, &slot, &generation, &op);
 
-    capability_table_t* dst = cap_locator_resolve_table(&req_clone.dst);
-    if (!dst) {
-        uint64_t ack_payload = ((uint64_t)-1 << 32) | req_core;
-        urpc_bootstrap_send(source_core, urpc_pack_msg(URPC_CAP_DELEGATE_ACK, ack_payload));
+    if (origin_core >= MAX_CPUS || slot >= BH_CAP_TX_PER_CORE) {
+        return;
+    }
+
+    bh_cap_tx_entry_t *tx = &g_cap_tx_table[origin_core][slot];
+    if (tx->generation != generation) {
+        return;
+    }
+
+    int state = atomic_get(&tx->state);
+    if (state != BH_CAP_TX_PUBLISHED && state != BH_CAP_TX_ABORTED) {
         return;
     }
 
     uint32_t current_core = hal_cpu_get_id();
-    if (req_clone.dst.owner_core != current_core || dst->owner_core != current_core) {
-        uint64_t ack_payload = ((uint64_t)-2 << 32) | req_core;
+
+    if (op == BH_CAP_TX_OP_DELEGATE) {
+        bh_cap_locator_t dst_loc = tx->dst;
+        capability_table_t* dst = cap_locator_resolve_table(&dst_loc);
+        if (!dst) {
+            uint64_t ack_payload = cap_tx_pack_ack(origin_core, slot, generation, (uint8_t)current_core, -1);
+            urpc_bootstrap_send(source_core, urpc_pack_msg(URPC_CAP_DELEGATE_ACK, ack_payload));
+            return;
+        }
+
+        if (dst_loc.owner_core != current_core || dst->owner_core != current_core) {
+            uint64_t ack_payload = cap_tx_pack_ack(origin_core, slot, generation, (uint8_t)current_core, -2);
+            urpc_bootstrap_send(source_core, urpc_pack_msg(URPC_CAP_DELEGATE_ACK, ack_payload));
+            return;
+        }
+
+        spin_lock(&dst->lock);
+
+        int ret = -2;
+        uint32_t found_id = 0;
+        uint32_t dst_slot = UINT32_MAX;
+        uint32_t dst_generation = 0;
+
+        uint32_t dst_slot_idx;
+        if (bh_id_allocator_alloc(&dst->id_allocator, &dst_slot_idx) == K_OK) {
+            capability_entry_t* dst_entry = &dst->entries[dst_slot_idx];
+            dst_entry->id = dst_slot_idx + 1;
+            dst_entry->state = CAP_STATE_LIVE;
+            dst_entry->type = (cap_type_t)tx->type;
+            dst_entry->rights = tx->requested_rights;
+            dst_entry->object_ref = tx->object_ref;
+            dst_entry->flags = tx->flags;
+            dst_entry->owner_core = tx->owner_core;
+
+            dst_entry->instance_id = tx->instance_id;
+            dst_entry->revocation_epoch = tx->revocation_epoch;
+
+            dst_entry->parent = tx->src;
+            dst_entry->first_child = cap_locator_null();
+            dst_entry->next_sibling = tx->src_first_child;
+
+            dst_entry->generation++;
+            dst_entry->instance_id.slot_gen = dst_entry->generation;
+            dst_entry->in_use = 1U;
+
+            found_id = dst_entry->id;
+            dst_slot = dst_slot_idx;
+            dst_generation = dst_entry->generation;
+            ret = 0;
+
+            tx->remote_cap_id = found_id;
+            tx->remote_dst_slot = dst_slot;
+            tx->remote_dst_gen = dst_generation;
+        }
+
+        spin_unlock(&dst->lock);
+
+        __asm__ volatile("" : : : "memory");
+        uint64_t ack_payload = cap_tx_pack_ack(origin_core, slot, generation, (uint8_t)current_core, (int8_t)ret);
         urpc_bootstrap_send(source_core, urpc_pack_msg(URPC_CAP_DELEGATE_ACK, ack_payload));
+    } else if (op == BH_CAP_TX_OP_ROLLBACK) {
+        // Rollback remote capability
+        if (tx->remote_dst_slot != UINT32_MAX) {
+            capability_table_t* dst = cap_locator_resolve_table(&tx->dst);
+            if (dst && tx->remote_dst_slot < BHARAT_ARRAY_SIZE(dst->entries)) {
+                spin_lock(&dst->lock);
+                capability_entry_t *e = &dst->entries[tx->remote_dst_slot];
+                if (e->in_use != 0U && e->generation == tx->remote_dst_gen) {
+                    e->rights = 0U;
+                    e->flags = 0U;
+                    e->object_ref = 0U;
+                    e->parent = cap_locator_null();
+                    e->first_child = cap_locator_null();
+                    e->next_sibling = cap_locator_null();
+                    e->generation++;
+                    e->state = CAP_STATE_FREE;
+                    e->in_use = 0U;
+                    bh_id_allocator_free(&dst->id_allocator, tx->remote_dst_slot);
+                }
+                spin_unlock(&dst->lock);
+            }
+        }
+        uint64_t ack_payload = cap_tx_pack_ack(origin_core, slot, generation, (uint8_t)current_core, 0);
+        urpc_bootstrap_send(source_core, urpc_pack_msg(URPC_CAP_REVOKE_ACK, ack_payload));
+    } else if (op == BH_CAP_TX_OP_REVOKE) {
+        uint32_t revocation_epoch = (uint32_t)tx->revocation_epoch;
+        uint32_t src_slot = tx->target.slot;
+        uint32_t src_generation = tx->target.generation;
+
+        for (size_t cspace = 0; cspace < BH_CAP_CSPACES_PER_CORE; ++cspace) {
+            capability_table_t *table = g_cap_cspace_registry[current_core][cspace].table;
+            if (table == NULL) continue;
+
+            spin_lock(&table->lock);
+            for (size_t i = 0; i < BHARAT_ARRAY_SIZE(table->entries); ++i) {
+                capability_entry_t *entry = &table->entries[i];
+                if (entry->in_use != 0U && entry->state == CAP_STATE_LIVE) {
+                    bool is_descendant =
+                        entry->parent.owner_core == origin_core &&
+                        entry->parent.slot == src_slot &&
+                        entry->parent.generation == src_generation &&
+                        revocation_epoch >= entry->parent.revocation_epoch;
+
+                    if (is_descendant) {
+                        entry->rights = 0U;
+                        entry->flags = 0U;
+                        entry->object_ref = 0U;
+                        entry->parent = cap_locator_null();
+                        entry->first_child = cap_locator_null();
+                        entry->next_sibling = cap_locator_null();
+                        entry->generation++;
+                        entry->state = CAP_STATE_FREE;
+                        entry->in_use = 0U;
+                        bh_id_allocator_free(&table->id_allocator, (uint32_t)i);
+                    }
+                }
+            }
+            spin_unlock(&table->lock);
+        }
+
+        uint64_t ack_payload = cap_tx_pack_ack(origin_core, slot, generation, (uint8_t)current_core, 0);
+        urpc_bootstrap_send(source_core, urpc_pack_msg(URPC_CAP_REVOKE_ACK, ack_payload));
+    }
+}
+
+void cap_handle_tx_ack(uint64_t payload) {
+    uint8_t origin_core = 0;
+    uint8_t slot = 0;
+    uint32_t generation = 0;
+    uint8_t responder_core = 0;
+    int8_t status = 0;
+
+    cap_tx_unpack_ack(payload, &origin_core, &slot, &generation, &responder_core, &status);
+
+    if (origin_core >= MAX_CPUS || origin_core != hal_cpu_get_id() ||
+        slot >= BH_CAP_TX_PER_CORE || responder_core >= MAX_CPUS) {
         return;
     }
 
-    spin_lock(&dst->lock);
+    bh_cap_tx_entry_t *tx = &g_cap_tx_table[origin_core][slot];
 
-    int ret = -2;
-    uint32_t found_id = 0;
-    uint32_t dst_slot = UINT32_MAX;
-    uint32_t dst_generation = 0;
-
-    uint32_t dst_slot_idx;
-    if (bh_id_allocator_alloc(&dst->id_allocator, &dst_slot_idx) == K_OK) {
-        capability_entry_t* dst_entry = &dst->entries[dst_slot_idx];
-        dst_entry->id = dst_slot_idx + 1;
-        dst_entry->state = CAP_STATE_LIVE;
-        dst_entry->type = (cap_type_t)req_clone.type;
-        dst_entry->rights = req_clone.rights;
-        dst_entry->object_ref = req_clone.object_ref;
-        dst_entry->flags = req_clone.flags;
-        dst_entry->owner_core = req_clone.owner_core;
-
-        dst_entry->instance_id = req_clone.instance_id;
-        dst_entry->revocation_epoch = req_clone.revocation_epoch;
-
-        dst_entry->parent = req_clone.src;
-
-        dst_entry->first_child = cap_locator_null();
-
-        dst_entry->next_sibling = req_clone.src_first_child;
-
-        dst_entry->generation++;
-        dst_entry->instance_id.slot_gen = dst_entry->generation;
-        dst_entry->in_use = 1U;
-
-        found_id = dst_entry->id;
-        dst_slot = dst_slot_idx;
-        dst_generation = dst_entry->generation;
-        ret = 0;
+    // Stale ACK validation (generation check)
+    if ((tx->generation & 0xFFFFFF) != (generation & 0xFFFFFF)) {
+        return;
     }
 
-    spin_unlock(&dst->lock);
+    int state = atomic_get(&tx->state);
+    if (state != BH_CAP_TX_PUBLISHED && state != BH_CAP_TX_ABORTED) {
+        return;
+    }
 
-    uint64_t ack_payload = ((uint64_t)(uint32_t)ret << 32) |
-                           ((uint64_t)dst_slot << 24) |
-                           ((uint64_t)dst_generation << 8) |
-                           ((uint64_t)found_id << 40) |
-                           req_core;
+    // Check if responder was part of target_mask
+    if ((tx->target_mask & (1U << responder_core)) == 0) {
+        return;
+    }
 
-    urpc_bootstrap_send(source_core, urpc_pack_msg(URPC_CAP_DELEGATE_ACK, ack_payload));
+    // Duplicate ACK check (idempotency)
+    if ((tx->ack_mask & (1U << responder_core)) != 0) {
+        return;
+    }
+
+    tx->ack_mask |= (1U << responder_core);
+    if (status != 0 && tx->result == 0) {
+        tx->result = (int32_t)status;
+    }
+
+    __asm__ volatile("" : : : "memory");
+}
+
+void cap_handle_delegate_req(uint64_t payload, uint32_t source_core) {
+    cap_handle_tx_req(payload, source_core);
 }
 
 void cap_handle_delegate_ack(uint64_t payload) {
-    uint32_t req_core = (uint32_t)(payload & 0xFF);
-    if (req_core >= MAX_CPUS) return;
-
-    int32_t status = (int32_t)(int8_t)((payload >> 32) & 0xFF);
-    uint32_t dst_slot = (uint32_t)((payload >> 24) & 0xFF);
-    uint32_t dst_generation = (uint32_t)((payload >> 8) & 0xFFFF);
-    uint32_t new_cap_id = (uint32_t)((payload >> 40) & 0xFFFF);
-
-    cap_delegate_req_t* req = &g_cap_delegations[req_core];
-    req->status = status;
-    if (status == 0) {
-        req->dst_slot = dst_slot;
-        req->dst_generation = dst_generation;
-        req->new_cap_id = new_cap_id;
-    }
-    req->ack_received = true;
+    cap_handle_tx_ack(payload);
 }
 
 static kstatus_t cap_validate_rights_internal(cap_rights_mask_t entry_rights, cap_rights_mask_t required_rights) {

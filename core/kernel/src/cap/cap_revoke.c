@@ -2,65 +2,12 @@
 #include "panic.h"
 #include "time/ktime.h"
 
-cap_revoke_tx_t g_cap_revokes[MAX_CPUS];
-atomic_t g_revoke_acks_needed[MAX_CPUS];
-
 void cap_handle_revoke_req(uint64_t payload, uint32_t source_core) {
-    uint32_t origin_cpu = (uint32_t)(payload >> 48);
-    uint32_t src_slot = (uint32_t)((payload >> 32) & 0xFFFF);
-    uint32_t src_generation = (uint32_t)(payload & 0xFFFFFFFF);
-    uint32_t req_core = origin_cpu;
-
-    if (req_core >= MAX_CPUS) return;
-
-    uint32_t revocation_epoch = g_cap_revokes[req_core].request_epoch;
-
-    uint32_t current_core = hal_cpu_get_id();
-    if (current_core < MAX_CPUS) {
-        /* Scan every process CSpace currently owned by this core. */
-        for (size_t cspace = 0; cspace < BH_CAP_CSPACES_PER_CORE; ++cspace) {
-            capability_table_t *table =
-                g_cap_cspace_registry[current_core][cspace].table;
-            if (table == NULL) {
-                continue;
-            }
-
-            spin_lock(&table->lock);
-            for (size_t i = 0; i < BHARAT_ARRAY_SIZE(table->entries); ++i) {
-                capability_entry_t *entry = &table->entries[i];
-                if (entry->in_use != 0U && entry->state == CAP_STATE_LIVE) {
-                    bool is_descendant =
-                        entry->parent.owner_core == origin_cpu &&
-                        entry->parent.slot == src_slot &&
-                        entry->parent.generation == src_generation &&
-                        revocation_epoch >= entry->parent.revocation_epoch;
-
-                    if (is_descendant) {
-                        entry->rights = 0U;
-                        entry->flags = 0U;
-                        entry->object_ref = 0U;
-                        entry->parent = cap_locator_null();
-                        entry->first_child = cap_locator_null();
-                        entry->next_sibling = cap_locator_null();
-                        entry->generation++;
-                        entry->state = CAP_STATE_FREE;
-                        entry->in_use = 0U;
-                        bh_id_allocator_free(&table->id_allocator, (uint32_t)i);
-                    }
-                }
-            }
-            spin_unlock(&table->lock);
-        }
-    }
-
-    urpc_bootstrap_send(source_core, urpc_pack_msg(URPC_CAP_REVOKE_ACK, req_core));
+    cap_handle_tx_req(payload, source_core);
 }
 
 void cap_handle_revoke_ack(uint64_t payload) {
-    uint32_t req_core = (uint32_t)payload;
-    if (req_core < MAX_CPUS) {
-        atomic_sub(&g_revoke_acks_needed[req_core], 1);
-    }
+    cap_handle_tx_ack(payload);
 }
 
 // Helper to lock multiple tables in total order to prevent ABBA deadlocks.
@@ -225,38 +172,51 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
     bool pmm_is_initialized = &g_pmm_initialized ? g_pmm_initialized : true;
 
     if (current_core < MAX_CPUS && pmm_is_initialized) {
-        atomic_set(&g_revoke_acks_needed[current_core], 0);
+        uint8_t tx_slot = 0;
+        bh_cap_tx_entry_t *tx = cap_tx_alloc(current_core, BH_CAP_TX_OP_REVOKE, &tx_slot);
+        if (tx) {
+            tx->target = cap_locator_make(table, root_slot, root_gen, (uint32_t)epoch);
+            tx->revocation_epoch = epoch;
+            tx->target_mask = 0;
+            tx->ack_mask = 0;
+            tx->result = 0;
 
-        g_cap_revokes[current_core].slot = root_slot;
-        g_cap_revokes[current_core].generation = root_gen;
-        g_cap_revokes[current_core].origin_core = current_core;
-        g_cap_revokes[current_core].target = cap_locator_make(table, root_slot, root_gen, (uint32_t)epoch);
-        g_cap_revokes[current_core].request_epoch = (uint32_t)epoch;
-
-        for (uint32_t c = 0; c < MAX_CPUS; c++) {
-            if (c != current_core && urpc_channel_get_state(c) == URPC_CHANNEL_BOUND) {
-                uint64_t payload = ((uint64_t)current_core << 48) |
-                                   ((uint64_t)root_slot << 32) |
-                                   (uint64_t)root_gen;
-                urpc_bootstrap_send(c, urpc_pack_msg(URPC_CAP_REVOKE, payload));
-                atomic_add(&g_revoke_acks_needed[current_core], 1);
+            for (uint32_t c = 0; c < MAX_CPUS; c++) {
+                if (c != current_core && urpc_channel_get_state(c) == URPC_CHANNEL_BOUND) {
+                    tx->target_mask |= (1U << c);
+                }
             }
-        }
 
-        bh_kdeadline_t deadline = bh_deadline_after_ns(10 * BH_KTIME_NS_PER_MS);
-        bool timed_out = false;
+            __asm__ volatile("" : : : "memory");
+            atomic_set(&tx->state, BH_CAP_TX_PUBLISHED);
 
-        while (atomic_get(&g_revoke_acks_needed[current_core]) > 0) {
-            if (bh_deadline_expired(deadline)) {
-                timed_out = true;
-                break;
+            for (uint32_t c = 0; c < MAX_CPUS; c++) {
+                if ((tx->target_mask & (1U << c)) != 0) {
+                    uint64_t req_payload = cap_tx_pack_req((uint8_t)current_core, tx_slot, tx->generation, (uint8_t)BH_CAP_TX_OP_REVOKE);
+                    urpc_bootstrap_send(c, urpc_pack_msg(URPC_CAP_REVOKE, req_payload));
+                }
             }
-            extern void arch_cpu_relax(void);
-            arch_cpu_relax();
-        }
 
-        if (timed_out) {
-            kernel_panic("Capability Revocation Timeout: Bounded synchronization failed! Halted to prevent security breach.");
+            bh_kdeadline_t deadline = bh_deadline_after_ns(10 * BH_KTIME_NS_PER_MS);
+            bool timed_out = false;
+
+            while ((tx->ack_mask & tx->target_mask) != tx->target_mask) {
+                if (bh_deadline_expired(deadline)) {
+                    timed_out = true;
+                    break;
+                }
+                extern void arch_cpu_relax(void);
+                arch_cpu_relax();
+            }
+
+            if (timed_out) {
+                atomic_set(&tx->state, BH_CAP_TX_ABORTED);
+                cap_tx_release(current_core, tx_slot);
+                kernel_panic("Capability Revocation Timeout: Bounded synchronization failed! Halted to prevent security breach.");
+            }
+
+            atomic_set(&tx->state, BH_CAP_TX_COMMITTED);
+            cap_tx_release(current_core, tx_slot);
         }
     }
 

@@ -395,5 +395,7 @@ void cap_handle_delegate_req(uint64_t payload, uint32_t source_core);
 void cap_handle_delegate_ack(uint64_t payload);
 void cap_handle_revoke_req(uint64_t payload, uint32_t source_core);
 void cap_handle_revoke_ack(uint64_t payload);
+void cap_handle_tx_req(uint64_t payload, uint32_t source_core);
+void cap_handle_tx_ack(uint64_t payload);
 
 #endif // BHARAT_CAPABILITY_H
