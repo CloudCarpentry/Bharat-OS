@@ -302,7 +302,9 @@ else()
 endif()
 
 add_library(bharat_mm_pmm OBJECT
-    src/mm/pmm/pmm.c
+    src/mm/pmm/pmm_init.c
+    src/mm/pmm/pmm_buddy.c
+    src/mm/pmm/pmm_fault.c
     src/mm/pmm/pmm_pcache.c
     src/mm/pmm/pmm_debug.c
     src/mm/pmm/early_alloc.c

@@ -433,40 +433,16 @@ static int x86_pt_map_range(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t 
     return 0;
 }
 
-static int x86_pt_unmap_range(phys_addr_t root_pt, virt_addr_t vaddr, size_t size) {
-    size_t done = 0;
-    while (done < size) {
-        int rc = x86_pt_unmap_4k(root_pt, vaddr + done, NULL);
-        if (rc != 0) return rc;
-        done += PAGE_SIZE;
-    }
-    return 0;
-}
-
-static int x86_pt_protect_range(phys_addr_t root_pt, virt_addr_t vaddr, size_t size, uint32_t new_flags) {
-    size_t done = 0;
-    while (done < size) {
-        int rc = x86_pt_protect_4k(root_pt, vaddr + done, new_flags);
-        if (rc != 0) return rc;
-        done += PAGE_SIZE;
-    }
-    return 0;
-}
-
 static int x86_pt_map_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
-    return x86_pt_map_range(root_pt, vaddr, paddr, PAGE_SIZE, flags & ~HAL_PT_FLAG_LARGE_2M);
+    return x86_pt_map_4k(root_pt, vaddr, paddr, flags & ~HAL_PT_FLAG_LARGE_2M);
 }
 
 static int x86_pt_unmap_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *unmapped_paddr) {
-    if (unmapped_paddr) {
-        (void)x86_pt_query_page(root_pt, vaddr, unmapped_paddr, NULL);
-    }
-    int rc = x86_pt_unmap_range(root_pt, vaddr, PAGE_SIZE);
-    return rc;
+    return x86_pt_unmap_4k(root_pt, vaddr, unmapped_paddr);
 }
 
 static int x86_pt_protect_page(phys_addr_t root_pt, virt_addr_t vaddr, uint32_t new_flags) {
-    return x86_pt_protect_range(root_pt, vaddr, PAGE_SIZE, new_flags);
+    return x86_pt_protect_4k(root_pt, vaddr, new_flags);
 }
 
 static int x86_pt_query_mapping(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *paddr, size_t *mapped_size, uint32_t *flags) {
@@ -579,8 +555,8 @@ hal_pt_ops_t x86_hal_pt_ops = {
     .protect_page          = x86_pt_protect_page,
     .query_page            = x86_pt_query_page,
     .map_range             = x86_pt_map_range,
-    .unmap_range           = x86_pt_unmap_range,
-    .protect_range         = x86_pt_protect_range,
+    .unmap_range           = NULL,
+    .protect_range         = NULL,
     .query_mapping         = x86_pt_query_mapping,
 };
 

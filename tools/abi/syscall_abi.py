@@ -441,7 +441,7 @@ def generate_headers(manifest, output_inc, output_def, output_numbers):
     os.makedirs(os.path.dirname(output_numbers), exist_ok=True)
 
     # 1. Generate numbers.h
-    with open(output_numbers, 'w') as f:
+    with open(output_numbers, 'w', newline='\n') as f:
         f.write("/* Generated - do not edit. Handled by tools/abi/syscall_abi.py */\n")
         f.write("#ifndef BHARAT_UAPI_SYSCALL_GENERATED_NUMBERS_H\n")
         f.write("#define BHARAT_UAPI_SYSCALL_GENERATED_NUMBERS_H\n\n")
@@ -454,13 +454,13 @@ def generate_headers(manifest, output_inc, output_def, output_numbers):
         f.write("#endif /* BHARAT_UAPI_SYSCALL_GENERATED_NUMBERS_H */\n")
 
     # 2. Generate table.def
-    with open(output_def, 'w') as f:
+    with open(output_def, 'w', newline='\n') as f:
         f.write("/* Generated - do not edit. Handled by tools/abi/syscall_abi.py */\n")
         for sc in manifest["syscalls"]:
             f.write(f"SYSCALL_DEF({sc['symbol']}, {sc['number']})\n")
 
     # 3. Generate native_syscall_table.inc
-    with open(output_inc, 'w') as f:
+    with open(output_inc, 'w', newline='\n') as f:
         f.write("/* Generated - do not edit. Handled by tools/abi/syscall_abi.py */\n")
         for sc in manifest["syscalls"]:
             sym = sc["symbol"]

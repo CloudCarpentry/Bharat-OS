@@ -468,49 +468,16 @@ static int arm64_pt_query_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr
     return 0;
 }
 
-static int arm64_pt_map_range(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t paddr, size_t size, uint32_t flags) {
-    size_t done = 0;
-    while (done < size) {
-        int rc = arm64_pt_map_4k(root_pt, vaddr + done, paddr + done, flags);
-        if (rc != 0) return rc;
-        done += PAGE_SIZE;
-    }
-    return 0;
-}
-
-static int arm64_pt_unmap_range(phys_addr_t root_pt, virt_addr_t vaddr, size_t size) {
-    size_t done = 0;
-    while (done < size) {
-        int rc = arm64_pt_unmap_4k(root_pt, vaddr + done, NULL);
-        if (rc != 0) return rc;
-        done += PAGE_SIZE;
-    }
-    return 0;
-}
-
-static int arm64_pt_protect_range(phys_addr_t root_pt, virt_addr_t vaddr, size_t size, uint32_t new_flags) {
-    size_t done = 0;
-    while (done < size) {
-        int rc = arm64_pt_protect_4k(root_pt, vaddr + done, new_flags);
-        if (rc != 0) return rc;
-        done += PAGE_SIZE;
-    }
-    return 0;
-}
-
 static int arm64_pt_map_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t paddr, uint32_t flags) {
-    return arm64_pt_map_range(root_pt, vaddr, paddr, PAGE_SIZE, flags);
+    return arm64_pt_map_4k(root_pt, vaddr, paddr, flags);
 }
 
 static int arm64_pt_unmap_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *unmapped_paddr) {
-    if (unmapped_paddr) {
-        (void)arm64_pt_query_page(root_pt, vaddr, unmapped_paddr, NULL);
-    }
-    return arm64_pt_unmap_range(root_pt, vaddr, PAGE_SIZE);
+    return arm64_pt_unmap_4k(root_pt, vaddr, unmapped_paddr);
 }
 
 static int arm64_pt_protect_page(phys_addr_t root_pt, virt_addr_t vaddr, uint32_t new_flags) {
-    return arm64_pt_protect_range(root_pt, vaddr, PAGE_SIZE, new_flags);
+    return arm64_pt_protect_4k(root_pt, vaddr, new_flags);
 }
 
 static int arm64_pt_query_mapping(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *paddr, size_t *mapped_size, uint32_t *flags) {
@@ -694,9 +661,9 @@ hal_pt_ops_t arm64_hal_pt_ops = {
     .unmap_page            = arm64_pt_unmap_page,
     .protect_page          = arm64_pt_protect_page,
     .query_page            = arm64_pt_query_page,
-    .map_range             = arm64_pt_map_range,
-    .unmap_range           = arm64_pt_unmap_range,
-    .protect_range         = arm64_pt_protect_range,
+    .map_range             = NULL,
+    .unmap_range           = NULL,
+    .protect_range         = NULL,
     .query_mapping         = arm64_pt_query_mapping,
 };
 

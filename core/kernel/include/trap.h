@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include "kernel/status.h"
 #include <bharat/uapi/syscall_nr.h>
 
 typedef enum {

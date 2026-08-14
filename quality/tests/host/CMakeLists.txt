@@ -128,7 +128,7 @@ add_executable(test_netmgr_address_table services/test_netmgr_address_table.c ..
 target_include_directories(test_netmgr_address_table PRIVATE ../../core/services/netmgr/src ../../core/services/netmgr/include ../../core/services/core/subsysmgr/include ../../core/lib/net/include ../../core/lib/runtime/include)
 add_test(NAME host_test_netmgr_address_table COMMAND test_netmgr_address_table)
 
-add_executable(test_pmm_pcache test_pmm_pcache.c ../../kernel/src/mm/pmm/pmm.c ../../kernel/src/mm/pmm/pmm_pcache.c ../../kernel/src/mm/pmm/numa.c)
+add_executable(test_pmm_pcache test_pmm_pcache.c ../../kernel/src/mm/pmm/pmm_init.c ../../kernel/src/mm/pmm/pmm_buddy.c ../../kernel/src/mm/pmm/pmm_fault.c ../../kernel/src/mm/pmm/pmm_pcache.c ../../kernel/src/mm/pmm/numa.c)
 target_include_directories(test_pmm_pcache PRIVATE ${CMAKE_SOURCE_DIR}/core/kernel/include ${CMAKE_SOURCE_DIR}/core/kernel/src ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/lib/include ${CMAKE_SOURCE_DIR}/core/boot/include)
 add_test(NAME host_test_pmm_pcache COMMAND test_pmm_pcache)
 set_tests_properties(host_test_pmm_pcache PROPERTIES LABELS "pmm")
@@ -168,7 +168,7 @@ set_tests_properties(host_test_mon_vm PROPERTIES LABELS "vm")
 # VMM / ASpace / VM base-object conformance currently remains in top-level tests
 # (`test_vmm_aspace`) due additional prot-domain and arch-cap dependencies.
 
-add_executable(host_test_vmm_fault ../test_vmm_fault.c host_stubs.c ../../kernel/src/mm/vm/fault/fault.c ../../kernel/src/mm/vm/objects/vm_object.c ../../kernel/src/mm/vm/objects/vm_object_refcount.c ../../kernel/src/mm/vm/aspace/vm_space.c ../../kernel/src/mm/vm/aspace/aspace.c ../../kernel/src/mm/pmm/early_alloc.c ../../kernel/src/mm/pmm/pmm.c ../../kernel/src/mm/pmm/pt_pool.c ../../kernel/src/mm/tlb/tlb_shootdown.c ../../kernel/src/capability.c ../../kernel/src/cap/cap_policy.c ../benchmark_stubs.c ../../kernel/src/lib/base/string.c ../../hal/common/memops/mem_scalar.c mock_panic.c)
+add_executable(host_test_vmm_fault ../test_vmm_fault.c host_stubs.c ../../kernel/src/mm/vm/fault/fault.c ../../kernel/src/mm/vm/objects/vm_object.c ../../kernel/src/mm/vm/objects/vm_object_refcount.c ../../kernel/src/mm/vm/aspace/vm_space.c ../../kernel/src/mm/vm/aspace/aspace.c ../../kernel/src/mm/pmm/early_alloc.c ../../kernel/src/mm/pmm/pmm_init.c ../../kernel/src/mm/pmm/pmm_buddy.c ../../kernel/src/mm/pmm/pmm_fault.c ../../kernel/src/mm/pmm/pt_pool.c ../../kernel/src/mm/tlb/tlb_shootdown.c ../../kernel/src/cap/cap_cspace.c ../../kernel/src/cap/cap_dispatch.c ../../kernel/src/cap/cap_revoke.c ../../kernel/src/cap/cap_policy.c ../benchmark_stubs.c ../../kernel/src/lib/base/string.c ../../hal/common/memops/mem_scalar.c mock_panic.c)
 target_include_directories(host_test_vmm_fault PRIVATE ${CMAKE_SOURCE_DIR}/core/kernel/include ${CMAKE_SOURCE_DIR}/core/kernel/src ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/boot/include ${CMAKE_SOURCE_DIR}/core/lib/include ${CMAKE_BINARY_DIR}/generated/include)
 target_compile_definitions(host_test_vmm_fault PRIVATE TESTING=1)
 add_test(NAME host_test_vmm_fault COMMAND host_test_vmm_fault)

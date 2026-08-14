@@ -68,6 +68,8 @@ extern uint32_t g_sched_test_core_count;
 void sched_reset_core_runqueues(void);
 thread_slot_t *sched_find_thread_slot_by_tid_local(sched_rq_t *rq, uint64_t tid);
 thread_slot_t *sched_find_thread_slot_by_tid(uint64_t tid);
+thread_slot_t *sched_find_free_thread_slot(void);
+process_slot_t *sched_find_free_process_slot(void);
 sched_remote_cmd_t *sched_allocate_outbound_cmd(void);
 uint32_t sched_clamp_core(uint32_t core_id);
 sched_policy_t sched_policy_for_core(uint32_t core_id);
