@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <stdbool.h>
+#include <bharat/uapi/service_status.h>
 #include "services/power_mode/power_mode.h"
 
 // Expose internal reset for tests
@@ -24,7 +25,7 @@ void test_limp_home_from_run() {
     assert(power_mode_get_current() == POWER_MODE_LIMP_HOME);
 
     // Cannot transition to anything but OFF
-    assert(power_mode_request_transition(POWER_MODE_RUN, POWER_REASON_NONE) == BHARAT_STATUS_ERR_PERMISSION);
+    assert(power_mode_request_transition(POWER_MODE_RUN, POWER_REASON_NONE) == BHARAT_STATUS_ERR_BAD_STATE);
     assert(power_mode_request_transition(POWER_MODE_OFF, POWER_REASON_NONE) == BHARAT_STATUS_OK);
     assert(power_mode_get_current() == POWER_MODE_OFF);
 }

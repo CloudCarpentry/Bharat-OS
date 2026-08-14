@@ -18,7 +18,7 @@ static power_mode_thermal_state_t g_thermal_state = {0};
 
 bharat_status_t power_mode_register_client(power_mode_prepare_cb prepare, power_mode_commit_cb commit, power_mode_wake_cb wake) {
     if (g_num_clients >= MAX_PM_CLIENTS) {
-        return BHARAT_STATUS_ERR_INTERNAL;
+        return BHARAT_STATUS_ERR_NO_MEMORY;
     }
     g_clients[g_num_clients].prepare = prepare;
     g_clients[g_num_clients].commit = commit;
@@ -54,19 +54,20 @@ static bool is_valid_transition(power_mode_state_t current, power_mode_state_t t
 
 bharat_status_t power_mode_request_transition(power_mode_state_t target, power_mode_reason_t reason) {
     if (!is_valid_transition(g_current_mode, target)) {
-        return BHARAT_STATUS_ERR_NOT_FOUND;
+        return BHARAT_STATUS_ERR_BAD_STATE;
     }
 
     if (g_thermal_state.critical && (target == POWER_MODE_RUN || target == POWER_MODE_CRANK)) {
-        return BHARAT_STATUS_ERR_INTERNAL;
+        return BHARAT_STATUS_ERR_PERMISSION;
     }
 
     if (target == POWER_MODE_SLEEP || target == POWER_MODE_SLEEP_PREP) {
         // Prepare phase
         for (int i = 0; i < g_num_clients; i++) {
             if (g_clients[i].prepare) {
-                if (g_clients[i].prepare(target) != BHARAT_STATUS_OK) {
-                    return BHARAT_STATUS_ERR_INTERNAL; // Client rejected sleep prep; // Client rejected sleep prep
+                bharat_status_t st = g_clients[i].prepare(target);
+                if (st != BHARAT_STATUS_OK) {
+                    return st; // Client rejected sleep prep
                 }
             }
         }
@@ -101,7 +102,7 @@ power_mode_state_t power_mode_get_current(void) {
 
 bharat_status_t power_mode_set_thermal_state(const power_mode_thermal_state_t* thermal_state) {
     if (!thermal_state) {
-        return BHARAT_STATUS_ERR_INTERNAL;
+        return BHARAT_STATUS_ERR_INVALID_ARG;
     }
 
     g_thermal_state = *thermal_state;

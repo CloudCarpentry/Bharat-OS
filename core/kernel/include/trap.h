@@ -50,7 +50,7 @@ _Static_assert(__builtin_offsetof(trap_frame_t, from_user) == 35 * sizeof(uintpt
 _Static_assert(__builtin_offsetof(bh_x86_64_raw_trap_frame_t, error_code) >= sizeof(trap_frame_t),
                "x86 error-code overlaps common frame");
 
-int trap_init(void);
+kstatus_t trap_init(void);
 long syscall_dispatch(syscall_id_t id, uintptr_t arg0, uintptr_t arg1,
                       uintptr_t arg2, uintptr_t arg3, uintptr_t arg4,
                       uintptr_t arg5);

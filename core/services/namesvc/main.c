@@ -20,23 +20,20 @@ BHARAT_REGISTER_COMPONENT(
     BHARAT_BUILD_TIME_UTC
 );
 
-int main(int argc, char **argv) {
-    (void)argc;
-    (void)argv;
-
+static bharat_status_t namesvc_run(void) {
     // namesvc uses a minimal bootstrap instead of full bharat_runtime_init()
     // to avoid circular dependencies with services it provides.
 
     // Create our endpoint
     bharat_ipc_endpoint_t my_endpoint = service_runtime_create_endpoint(BHARAT_SERVICE_NAMESVC, 0);
     if (!bharat_cap_is_valid(my_endpoint)) {
-        return BHARAT_STATUS_ERR_INTERNAL;
+        return BHARAT_STATUS_ERR_NOT_FOUND;
     }
 
     // Bind to the well-known bootstrap handle
-    bharat_status_t bind_status = service_runtime_bind_namesvc_bootstrap(my_endpoint);
-    if (bind_status != BHARAT_STATUS_OK) {
-        return bind_status;
+    bharat_status_t status = service_runtime_bind_namesvc_bootstrap(my_endpoint);
+    if (status != BHARAT_STATUS_OK) {
+        return status;
     }
 
     namesvc_registry_init();
@@ -77,6 +74,19 @@ int main(int argc, char **argv) {
              // For Phase A, we yield if no message
              bharat_sched_yield();
         }
+    }
+
+    return BHARAT_STATUS_OK;
+}
+
+int main(int argc, char **argv) {
+    (void)argc;
+    (void)argv;
+
+    bharat_status_t run_status = namesvc_run();
+    if (run_status != BHARAT_STATUS_OK) {
+        // Map service status failure to non-zero exit code
+        return 1;
     }
 
     return 0;
