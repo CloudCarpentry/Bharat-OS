@@ -4,15 +4,14 @@
 #include "panic.h"
 
 int sched_enqueue(bh_thread_t *thread, uint32_t core_id) {
-  if (!thread || thread->priority >= MAX_PRIORITY_LEVELS) {
+  if (!thread || thread->priority >= MAX_PRIORITY_LEVELS || !sched_core_id_valid(core_id)) {
     return -1;
   }
 
-  core_id = sched_clamp_core(core_id);
   if (!sched_is_core_admissible(thread, core_id)) {
     return -1; // SCHED_REJECT
   }
-  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t current_core = sched_current_core_or_panic();
   bool is_local = (core_id == current_core);
 
   if (!is_local) {

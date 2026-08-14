@@ -14,6 +14,7 @@
 #include "ipc_async.h"
 #include "lib/base/string.h"
 #include "arch/arch_ext_state.h"
+#include "panic.h"
 
 #define SCHED_MAX_THREADS 128U
 #define SCHED_MAX_PROCESSES 32U
@@ -71,7 +72,18 @@ thread_slot_t *sched_find_thread_slot_by_tid(uint64_t tid);
 thread_slot_t *sched_find_free_thread_slot(void);
 process_slot_t *sched_find_free_process_slot(void);
 sched_remote_cmd_t *sched_allocate_outbound_cmd(void);
-uint32_t sched_clamp_core(uint32_t core_id);
+static inline bool sched_core_id_valid(uint32_t core_id) {
+  return core_id < g_active_core_count;
+}
+
+static inline uint32_t sched_current_core_or_panic(void) {
+  uint32_t core = hal_cpu_get_id();
+  if (core >= g_active_core_count) {
+    kernel_panic("sched_current_core_or_panic: invalid hardware CPU ID");
+  }
+  return core;
+}
+
 sched_policy_t sched_policy_for_core(uint32_t core_id);
 bh_thread_t *sched_find_steal_candidate(uint32_t core_id, uint32_t target_cpu);
 

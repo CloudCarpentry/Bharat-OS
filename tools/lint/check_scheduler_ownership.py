@@ -17,7 +17,7 @@ SCHED_DIR = Path("core/kernel/src/sched")
 # Local CPU identifiers that are approved for full local runqueue access
 LOCAL_CPU_VARS = {
     "core", "current_core", "current_cpu", "core_id", "current_core_id",
-    "hal_cpu_get_id()", "sched_clamp_core(hal_cpu_get_id())",
+    "hal_cpu_get_id()", "sched_current_core_or_panic()",
     "saved_cpu", "creation_core_id"
 }
 

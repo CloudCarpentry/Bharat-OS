@@ -20,10 +20,6 @@ sched_rq_t *sched_local_rq(void) {
     return &g_mock_rqs[0];
 }
 
-uint32_t sched_clamp_core(uint32_t core_id) {
-    return core_id % 2;
-}
-
 bh_thread_t *sched_find_thread_by_id(uint64_t tid) {
     static bh_thread_t mock_thread;
     mock_thread.thread_id = tid;

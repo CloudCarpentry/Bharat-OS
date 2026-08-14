@@ -6,7 +6,7 @@
 thread_slot_t *sched_find_thread_slot_by_tid_local(sched_rq_t *rq, uint64_t tid) {
   uint16_t home_core = bh_tid_home_core(tid);
   uint16_t slot_idx = bh_tid_slot(tid);
-  if (home_core >= g_active_core_count || !rq || rq != &g_cpu_locals[home_core].runqueue) {
+  if (!sched_core_id_valid(home_core) || !rq || rq != &g_cpu_locals[home_core].runqueue) {
     return NULL;
   }
   if (slot_idx < SCHED_MAX_THREADS) {
@@ -26,7 +26,7 @@ thread_slot_t *sched_find_thread_slot_by_tid_local(sched_rq_t *rq, uint64_t tid)
 
 thread_slot_t *sched_find_thread_slot_by_tid(uint64_t tid) {
   uint16_t home_core = bh_tid_home_core(tid);
-  if (home_core >= g_active_core_count) {
+  if (!sched_core_id_valid(home_core)) {
     return NULL;
   }
   sched_rq_t *rq = &g_cpu_locals[home_core].runqueue;
@@ -34,7 +34,7 @@ thread_slot_t *sched_find_thread_slot_by_tid(uint64_t tid) {
 }
 
 thread_slot_t *sched_find_free_thread_slot(void) {
-  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t current_core = sched_current_core_or_panic();
   sched_rq_t *rq = &g_cpu_locals[current_core].runqueue;
 
   if (rq->free_thread_head == UINT32_MAX) {
@@ -47,7 +47,7 @@ thread_slot_t *sched_find_free_thread_slot(void) {
 }
 
 process_slot_t *sched_find_free_process_slot(void) {
-  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t current_core = sched_current_core_or_panic();
   sched_rq_t *rq = &g_cpu_locals[current_core].runqueue;
 
   if (rq->free_process_head == UINT32_MAX) {
@@ -60,8 +60,12 @@ process_slot_t *sched_find_free_process_slot(void) {
 }
 
 void sched_sleep_enqueue(thread_slot_t *slot, uint32_t core_id) {
-  if (!slot || slot->is_sleeping != 0U || slot->is_blocked != 0U) {
+  if (!slot || !sched_core_id_valid(core_id) || slot->is_sleeping != 0U || slot->is_blocked != 0U) {
     return;
+  }
+  uint32_t current_core = sched_current_core_or_panic();
+  if (core_id != current_core || slot->thread.owner_cpu != current_core) {
+    kernel_panic("sched_sleep_enqueue: core ownership violation");
   }
   list_add(&slot->wait_node, &g_cpu_locals[core_id].runqueue.sleeping_list);
   slot->is_sleeping = 1U;
@@ -77,8 +81,12 @@ void sched_sleep_dequeue(thread_slot_t *slot) {
 }
 
 void sched_block_enqueue(thread_slot_t *slot, uint32_t core_id) {
-  if (!slot || slot->is_sleeping != 0U || slot->is_blocked != 0U) {
+  if (!slot || !sched_core_id_valid(core_id) || slot->is_sleeping != 0U || slot->is_blocked != 0U) {
     return;
+  }
+  uint32_t current_core = sched_current_core_or_panic();
+  if (core_id != current_core || slot->thread.owner_cpu != current_core) {
+    kernel_panic("sched_block_enqueue: core ownership violation");
   }
   list_add(&slot->wait_node, &g_cpu_locals[core_id].runqueue.blocked_list);
   slot->is_blocked = 1U;
@@ -98,7 +106,7 @@ void sched_detach_thread_from_queues(thread_slot_t *slot) {
     return;
   }
   bh_thread_t *thread = &slot->thread;
-  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t current_core = sched_current_core_or_panic();
 
   // Assert local ownership and local runqueue
   if (thread->owner_cpu != current_core &&
@@ -142,20 +150,28 @@ int sched_enqueue_reap(thread_slot_t *slot) {
     return -1;
   }
 
-  uint32_t core_id = sched_clamp_core(slot->creation_core_id);
-  sched_rq_t *rq = &g_cpu_locals[core_id].runqueue;
+  uint16_t home_core = bh_tid_home_core(slot->thread.thread_id);
+  uint16_t slot_idx = bh_tid_slot(slot->thread.thread_id);
+  if (!sched_core_id_valid(home_core) || slot_idx >= SCHED_MAX_THREADS) {
+    return -1;
+  }
+
+  sched_rq_t *rq = &g_cpu_locals[home_core].runqueue;
+  thread_slot_t *slots = (thread_slot_t *)rq->threads;
+  if (!slots || &slots[slot_idx] != slot) {
+    return -1;
+  }
 
   spin_lock(&rq->lock);
   if (slot->reap_pending == 0U) {
     slot->reap_pending = 1U;
     slot->reap_next = UINT32_MAX;
-    uint32_t idx = (uint32_t)(slot - (thread_slot_t*)rq->threads);
     if (rq->reap_tail == UINT32_MAX) {
-      rq->reap_head = idx;
-      rq->reap_tail = idx;
+      rq->reap_head = slot_idx;
+      rq->reap_tail = slot_idx;
     } else {
-      ((thread_slot_t*)rq->threads)[rq->reap_tail].reap_next = idx;
-      rq->reap_tail = idx;
+      slots[rq->reap_tail].reap_next = slot_idx;
+      rq->reap_tail = slot_idx;
     }
   }
   spin_unlock(&rq->lock);
@@ -163,7 +179,7 @@ int sched_enqueue_reap(thread_slot_t *slot) {
 }
 
 void sched_reap_terminated_threads(void) {
-  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t current_core = sched_current_core_or_panic();
   sched_rq_t *rq = &g_cpu_locals[current_core].runqueue;
 
   while (1) {

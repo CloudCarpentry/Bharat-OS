@@ -5,10 +5,14 @@
 #include "panic.h"
 
 sched_policy_t sched_policy_for_core(uint32_t core_id) {
-  return g_cpu_locals[sched_clamp_core(core_id)].runqueue.policy;
+  if (!sched_core_id_valid(core_id)) {
+    return SCHED_POLICY_ROUND_ROBIN;
+  }
+  return g_cpu_locals[core_id].runqueue.policy;
 }
 
 bh_thread_t *sched_edf_pick_next(sched_rq_t *rq) {
+    if (!rq) return NULL;
     struct rb_node *left = rb_first(&rq->edf_runqueue);
     if (!left) {
         return NULL;
@@ -18,6 +22,7 @@ bh_thread_t *sched_edf_pick_next(sched_rq_t *rq) {
 }
 
 bh_thread_t *sched_cfs_pick_next(sched_rq_t *rq) {
+    if (!rq) return NULL;
     struct rb_node *left = rb_first(&rq->cfs_runqueue);
     if (!left) {
         return NULL;
@@ -27,7 +32,9 @@ bh_thread_t *sched_cfs_pick_next(sched_rq_t *rq) {
 }
 
 bh_thread_t *sched_pick_next_ready(uint32_t core_id) {
-  core_id = sched_clamp_core(core_id);
+  if (!sched_core_id_valid(core_id)) {
+    return NULL;
+  }
   sched_rq_t *rq = &g_cpu_locals[core_id].runqueue;
 
   bh_thread_t *next = NULL;

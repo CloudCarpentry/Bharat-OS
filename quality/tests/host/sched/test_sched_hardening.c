@@ -102,7 +102,6 @@ void test_core_isolation(void) {
 }
 
 uint32_t hal_cpu_get_id(void) { return 0; }
-uint32_t sched_clamp_core(uint32_t core_id) { return core_id; }
 
 int main(void) {
     test_quarantine();

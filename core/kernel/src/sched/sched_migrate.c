@@ -70,7 +70,7 @@ void sched_balance_once(void) {
 }
 
 int sched_migrate_task(bh_thread_t *thread, uint32_t new_node) {
-  if (!thread || new_node >= g_active_core_count) {
+  if (!thread || !sched_core_id_valid(new_node)) {
     return -1;
   }
   if ((thread->affinity_mask & (1U << new_node)) == 0U) {
@@ -85,7 +85,7 @@ int sched_migrate_task(bh_thread_t *thread, uint32_t new_node) {
       return K_ERR_IN_PROGRESS;
   }
 
-  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t current_core = sched_current_core_or_panic();
   uint32_t owner = __atomic_load_n(&thread->owner_cpu, __ATOMIC_ACQUIRE);
 
   if (owner == new_node) {
@@ -179,7 +179,7 @@ int sched_set_affinity(uint64_t tid, uint32_t mask) {
     return -1;
   }
 
-  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t current_core = sched_current_core_or_panic();
   uint32_t owner = __atomic_load_n(&thread->owner_cpu, __ATOMIC_ACQUIRE);
 
   if (owner != current_core) {
@@ -233,7 +233,7 @@ kstatus_t sched_wait_remote_cmd_ack(sched_remote_cmd_t *cmd, uint32_t timeout_lo
 int sched_quarantine_thread(bh_thread_t *thread, uint32_t reason) {
   if (!thread) return -1;
 
-  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t current_core = sched_current_core_or_panic();
   if (__atomic_load_n(&thread->owner_cpu, __ATOMIC_ACQUIRE) != current_core) {
       kernel_panic("sched_quarantine_thread: executing on non-owner CPU");
   }
@@ -272,7 +272,7 @@ int sched_quarantine_tid(uint64_t tid, uint32_t reason) {
   bh_thread_t *thread = sched_find_thread_by_id(tid);
   if (!thread) return -1;
 
-  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t current_core = sched_current_core_or_panic();
   uint32_t owner = __atomic_load_n(&thread->owner_cpu, __ATOMIC_ACQUIRE);
 
   if (owner != current_core) {
@@ -299,11 +299,11 @@ int sched_quarantine_tid(uint64_t tid, uint32_t reason) {
 
 int sched_request_handoff_tid(uint64_t tid, uint32_t target_cpu, uint32_t auth_token) {
   bh_thread_t *thread = sched_find_thread_by_id(tid);
-  if (!thread || target_cpu >= g_active_core_count) {
+  if (!thread || !sched_core_id_valid(target_cpu)) {
     return -1;
   }
 
-  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t current_core = sched_current_core_or_panic();
   uint32_t owner = __atomic_load_n(&thread->owner_cpu, __ATOMIC_ACQUIRE);
 
   if (owner != current_core) {

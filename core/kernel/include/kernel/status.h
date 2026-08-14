@@ -59,6 +59,7 @@ typedef int32_t kstatus_t;
 #define K_ERR_WRONG_AFFINITY    ((kstatus_t)-516)
 #define K_ERR_DEADLINE_MISS     ((kstatus_t)-517)
 #define K_ERR_QUOTA_EXCEEDED    ((kstatus_t)-518)
+#define K_ERR_INVALID_CPU       ((kstatus_t)-520)
 
 /* ── Capability / Security ────── -768 .. -1023 */
 #define K_ERR_CAP_INVALID       ((kstatus_t)-768)
