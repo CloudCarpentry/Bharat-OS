@@ -580,6 +580,7 @@ target_include_directories(bharat_kernel_includes INTERFACE ${BHARAT_PLATFORM_RO
 list(APPEND KERNEL_SRCS
     src/display/boot_video_map.c
     ${BHARAT_KERNEL_SRC_ROOT}/boot/boot_mode.c
+    ${BHARAT_KERNEL_SRC_ROOT}/boot/boot_events.c
     ${BHARAT_KERNEL_SRC_ROOT}/boot/boot_selftest.c
     src/process/user_image_loader.c
     src/device/device_mmio.c
