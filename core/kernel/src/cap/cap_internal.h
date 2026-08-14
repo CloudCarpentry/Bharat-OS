@@ -10,6 +10,7 @@
 #include "hal/hal.h"
 #include "hal/hal_timer.h"
 #include "lib/base/string.h"
+#include "atomic.h"
 #include "slab.h"
 #include <stddef.h>
 #include <stdbool.h>
@@ -56,8 +57,20 @@ typedef struct {
     volatile bool ack_received;
 } cap_delegate_req_t;
 
+// Revoke request mailbox structure
+typedef struct {
+    uint32_t slot;
+    uint32_t generation;
+    uint32_t origin_core;
+    bh_cap_locator_t target;
+    uint32_t request_epoch;
+    volatile int32_t state;
+    volatile int32_t result;
+} cap_revoke_tx_t;
+
 extern cap_delegate_req_t g_cap_delegations[MAX_CPUS];
-extern volatile int g_revoke_acks_needed[MAX_CPUS];
+extern cap_revoke_tx_t g_cap_revokes[MAX_CPUS];
+extern atomic_t g_revoke_acks_needed[MAX_CPUS];
 
 static inline bh_cap_locator_t cap_locator_null(void) {
     return (bh_cap_locator_t){

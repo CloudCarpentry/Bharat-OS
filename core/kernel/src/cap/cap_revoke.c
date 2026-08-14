@@ -1,14 +1,19 @@
 #include "cap_internal.h"
 #include "panic.h"
+#include "time/ktime.h"
 
-volatile int g_revoke_acks_needed[MAX_CPUS];
+cap_revoke_tx_t g_cap_revokes[MAX_CPUS];
+atomic_t g_revoke_acks_needed[MAX_CPUS];
 
 void cap_handle_revoke_req(uint64_t payload, uint32_t source_core) {
-    uint32_t origin_cpu = (uint32_t)((payload >> 48) & 0xFF);
-    uint32_t src_slot = (uint32_t)((payload >> 40) & 0xFF);
-    uint32_t src_generation = (uint32_t)((payload >> 24) & 0xFFFF);
-    uint32_t revocation_epoch = (uint32_t)((payload >> 8) & 0xFFFF);
-    uint32_t req_core = (uint32_t)(payload & 0xFF);
+    uint32_t origin_cpu = (uint32_t)(payload >> 48);
+    uint32_t src_slot = (uint32_t)((payload >> 32) & 0xFFFF);
+    uint32_t src_generation = (uint32_t)(payload & 0xFFFFFFFF);
+    uint32_t req_core = origin_cpu;
+
+    if (req_core >= MAX_CPUS) return;
+
+    uint32_t revocation_epoch = g_cap_revokes[req_core].request_epoch;
 
     uint32_t current_core = hal_cpu_get_id();
     if (current_core < MAX_CPUS) {
@@ -54,18 +59,19 @@ void cap_handle_revoke_req(uint64_t payload, uint32_t source_core) {
 void cap_handle_revoke_ack(uint64_t payload) {
     uint32_t req_core = (uint32_t)payload;
     if (req_core < MAX_CPUS) {
-        g_revoke_acks_needed[req_core]--;
+        atomic_sub(&g_revoke_acks_needed[req_core], 1);
     }
 }
 
 // Helper to lock multiple tables in total order to prevent ABBA deadlocks.
 void cap_lock_tables_sorted(capability_table_t** tables, size_t count) {
-    // Simple insertion sort by NUMA then memory address
+    // Simple insertion sort by owner_core, cspace_id, registry_slot
     for (size_t i = 1; i < count; i++) {
         capability_table_t* key = tables[i];
         int j = i - 1;
-        while (j >= 0 && ((tables[j]->numa_node > key->numa_node) ||
-                          (tables[j]->numa_node == key->numa_node && tables[j] > key))) {
+        while (j >= 0 && ((tables[j]->owner_core > key->owner_core) ||
+                          (tables[j]->owner_core == key->owner_core && tables[j]->cspace_id > key->cspace_id) ||
+                          (tables[j]->owner_core == key->owner_core && tables[j]->cspace_id == key->cspace_id && tables[j]->registry_slot > key->registry_slot))) {
             tables[j + 1] = tables[j];
             j = j - 1;
         }
@@ -219,32 +225,34 @@ int cap_table_revoke(capability_table_t* table, uint32_t cap_id) {
     bool pmm_is_initialized = &g_pmm_initialized ? g_pmm_initialized : true;
 
     if (current_core < MAX_CPUS && pmm_is_initialized) {
-        g_revoke_acks_needed[current_core] = 0;
+        atomic_set(&g_revoke_acks_needed[current_core], 0);
+
+        g_cap_revokes[current_core].slot = root_slot;
+        g_cap_revokes[current_core].generation = root_gen;
+        g_cap_revokes[current_core].origin_core = current_core;
+        g_cap_revokes[current_core].target = cap_locator_make(table, root_slot, root_gen, (uint32_t)epoch);
+        g_cap_revokes[current_core].request_epoch = (uint32_t)epoch;
+
         for (uint32_t c = 0; c < MAX_CPUS; c++) {
             if (c != current_core && urpc_channel_get_state(c) == URPC_CHANNEL_BOUND) {
                 uint64_t payload = ((uint64_t)current_core << 48) |
-                                   ((uint64_t)root_slot << 40) |
-                                   ((uint64_t)root_gen << 24) |
-                                   ((uint64_t)(epoch & 0xFFFF) << 8) |
-                                   current_core;
+                                   ((uint64_t)root_slot << 32) |
+                                   (uint64_t)root_gen;
                 urpc_bootstrap_send(c, urpc_pack_msg(URPC_CAP_REVOKE, payload));
-                g_revoke_acks_needed[current_core]++;
+                atomic_add(&g_revoke_acks_needed[current_core], 1);
             }
         }
 
-        uint64_t start_ticks = hal_timer_monotonic_ticks();
-        uint64_t timeout_ticks = 10; // 10ms
+        bh_kdeadline_t deadline = bh_deadline_after_ns(10 * BH_KTIME_NS_PER_MS);
         bool timed_out = false;
 
-        while (g_revoke_acks_needed[current_core] > 0) {
-            if (hal_timer_monotonic_ticks() - start_ticks > timeout_ticks) {
+        while (atomic_get(&g_revoke_acks_needed[current_core]) > 0) {
+            if (bh_deadline_expired(deadline)) {
                 timed_out = true;
                 break;
             }
             extern void arch_cpu_relax(void);
             arch_cpu_relax();
-            extern void vmm_process_urpc_messages(void);
-            vmm_process_urpc_messages();
         }
 
         if (timed_out) {

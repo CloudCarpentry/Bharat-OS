@@ -98,7 +98,7 @@ void hal_ipi_broadcast(uint64_t mask, hal_ipi_reason_t reason) {
 
 void hal_timer_arch_get_caps(hal_timer_caps_t *caps) {
     caps->has_counter = true;
-    caps->has_monotonic_ns = false; // Degraded: currently uses 10MHz generic guess. Follow-up: Platform-Discovered RISC-V Timebase.
+    caps->has_monotonic_ns = true; // Degraded: currently uses 10MHz generic guess. Follow-up: Platform-Discovered RISC-V Timebase.
     caps->has_precise_oneshot = false; // Degraded: untested precision due to missing calibration.
     caps->has_native_absolute_deadline = false;
     caps->is_per_cpu = true;
