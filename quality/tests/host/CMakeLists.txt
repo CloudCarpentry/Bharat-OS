@@ -634,7 +634,7 @@ add_test(NAME host_test_diag_collector COMMAND host_test_diag_collector)
 add_executable(test_bh_seqlock_concurrency
     test_bh_seqlock_concurrency.c
     ../../../core/kernel/src/ds/bh_seqlock.c
-    ../../../core/arch/hal/x86/x86_64/cpu_relax.c
+    ../../../core/arch/x86/x86_64/cpu_relax.c
 )
 target_include_directories(test_bh_seqlock_concurrency PRIVATE
     ../../../core/kernel/include

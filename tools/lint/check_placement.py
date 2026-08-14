@@ -51,6 +51,13 @@ def main():
     kernel_dir = os.path.join(REPO_ROOT, "core", "kernel")
     services_dir = os.path.join(REPO_ROOT, "core", "services")
 
+    arch_hal_dir = os.path.join(REPO_ROOT, "core", "arch", "hal")
+    if os.path.exists(arch_hal_dir):
+        for hal_root, _, files in os.walk(arch_hal_dir):
+            for file in files:
+                filepath = os.path.join(hal_root, file)
+                report_violation(filepath, "Forbidden core/arch/hal hierarchy (HAL should not be a second architecture tree)", "File exists in core/arch/hal")
+
     for root, _, files in os.walk(REPO_ROOT):
         parts = set(root.split(os.sep))
 

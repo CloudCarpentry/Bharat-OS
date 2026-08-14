@@ -3,24 +3,24 @@ add_library(hal_arm64_cpu OBJECT
     trap_entry.S
     boot_psci.c
     ../../mmu/arm64/vmm.c
-    ../../../../arch/arm/arm64/user_entry.c
-    ../../../../arch/arm/arm64/context_switch.c
-    ../../../../arch/arm/arm64/context_switch.S
-    ../../../../arch/arm/arm64/cpu_caps.c
-    ../../../../arch/arm/arm64/ext_state.c
+    user_entry.c
+    context_switch.c
+    context_switch.S
+    cpu_caps.c
+    ext_state.c
     topology_fdt.c
     hash/hash_arm64.c
 )
 # Ensure Clang knows to treat .S as arm64 assembly, avoiding errors when host is x86
 set_source_files_properties(
     trap_entry.S
-    ../../../../arch/arm/arm64/context_switch.S
+    context_switch.S
     PROPERTIES COMPILE_OPTIONS "-target;aarch64-unknown-none-elf"
 )
 
 add_library(hal_arm64_mmu OBJECT
     hal_pt_arm64.c
-    ../../../common/hal_pt.c
+    ../../../hal/common/hal_pt.c
     smmu.c
     hal_mm.c
 )

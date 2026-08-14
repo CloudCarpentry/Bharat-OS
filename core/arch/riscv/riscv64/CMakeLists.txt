@@ -3,11 +3,11 @@ add_library(hal_riscv64_cpu OBJECT
     ../boot/feature_probe.c
     ../trap_entry.S
     ../../mmu/riscv64/vmm.c
-    ../../../../arch/riscv/riscv64/user_entry.c
-    ../../../../arch/riscv/riscv64/context_switch.c
-    ../../../../arch/riscv/riscv64/context_switch.S
-    ../../../../arch/riscv/riscv64/cpu_caps.c
-    ../../../../arch/riscv/riscv64/ext_state.c
+    user_entry.c
+    context_switch.c
+    context_switch.S
+    cpu_caps.c
+    ext_state.c
     ../shakti_bsp.c
     hash/hash_riscv64.c
     cpu_relax.c
@@ -17,7 +17,7 @@ add_library(hal_riscv64_cpu OBJECT
 
 add_library(hal_riscv64_mmu OBJECT
     hal_pt_riscv64.c
-    ../../../common/hal_pt.c
+    ../../../hal/common/hal_pt.c
     ../iopmp.c
     hal_mm.c
 )
