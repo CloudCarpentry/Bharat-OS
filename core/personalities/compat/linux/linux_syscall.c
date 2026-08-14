@@ -48,6 +48,7 @@ static bh_operation_result_t linux_sys_clock_gettime(bh_syscall_ctx_t *ctx) {
 
 
 #include "mm/aspace.h"
+#include "mm/vm_mapping.h"
 
 #define LINUX_MAP_SHARED    0x01
 #define LINUX_MAP_PRIVATE   0x02
@@ -88,7 +89,7 @@ static bh_status_t linux_translate_mmap_request(bh_syscall_ctx_t *ctx, vm_map_re
         req->object_offset = 0;
     } else {
         // file-backed mappings not yet supported in this stub
-        return BH_ERR_UNSUPPORTED;
+        return BH_ERR_NOT_SUPPORTED;
     }
 
     return BH_OK;
@@ -101,11 +102,11 @@ static bh_operation_result_t linux_sys_mmap(bh_syscall_ctx_t *ctx) {
     if (st != BH_OK) return bh_op_result_value(-linux_errno_from_bh_status((kstatus_t)st));
 
     uintptr_t result;
-    if (!ctx->process || !ctx->process->aspace) {
+    if (!ctx->process || !ctx->process->addr_space) {
         return bh_op_result_value(-LINUX_EINVAL);
     }
 
-    kstatus_t kst = vm_map_region(ctx->process->aspace, &req, &result);
+    kstatus_t kst = vm_map_region(ctx->process->addr_space, &req, &result);
 
     if (kst != K_OK) return bh_op_result_value(-linux_errno_from_bh_status((kstatus_t)kst));
 
@@ -116,11 +117,11 @@ static bh_operation_result_t linux_sys_munmap(bh_syscall_ctx_t *ctx) {
     uintptr_t addr = ctx->regs.arg[0];
     size_t length = ctx->regs.arg[1];
 
-    if (!ctx->process || !ctx->process->aspace) {
+    if (!ctx->process || !ctx->process->addr_space) {
         return bh_op_result_value(-LINUX_EINVAL);
     }
 
-    kstatus_t kst = vm_unmap_region(ctx->process->aspace, addr, length);
+    kstatus_t kst = vm_unmap_region(ctx->process->addr_space, addr, length);
     if (kst != K_OK) return bh_op_result_value(-linux_errno_from_bh_status((kstatus_t)kst));
 
     return bh_op_result_value(0);
@@ -131,11 +132,11 @@ static bh_operation_result_t linux_sys_mprotect(bh_syscall_ctx_t *ctx) {
     size_t length = ctx->regs.arg[1];
     uint32_t prot = ctx->regs.arg[2];
 
-    if (!ctx->process || !ctx->process->aspace) {
+    if (!ctx->process || !ctx->process->addr_space) {
         return bh_op_result_value(-LINUX_EINVAL);
     }
 
-    kstatus_t kst = vm_protect_region(ctx->process->aspace, addr, length, linux_prot_to_bh_prot(prot));
+    kstatus_t kst = vm_protect_region(ctx->process->addr_space, addr, length, linux_prot_to_bh_prot(prot));
     if (kst != K_OK) return bh_op_result_value(-linux_errno_from_bh_status((kstatus_t)kst));
 
     return bh_op_result_value(0);

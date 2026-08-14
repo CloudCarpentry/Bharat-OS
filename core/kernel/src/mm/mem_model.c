@@ -42,6 +42,61 @@ kstatus_t mem_runtime_caps_from_hal(const struct hal_mem_caps *hal_caps, mem_run
     return K_OK;
 }
 
+void bh_vm_get_capabilities(bh_vm_caps_t *out_caps) {
+    if (!out_caps) return;
+
+    memset(out_caps, 0, sizeof(bh_vm_caps_t));
+
+    mem_model_t model = mem_model_get_current();
+    if (model == MEM_MODEL_MMU_FULL) {
+        out_caps->address_translation = true;
+        out_caps->per_process_aspace = true;
+        out_caps->user_kernel_isolation = true;
+        out_caps->page_permissions = true;
+        out_caps->execute_protection = true;
+        out_caps->demand_faults = true;
+        out_caps->demand_zero = true;
+        out_caps->cow = true;
+        out_caps->file_mapping = true;
+        out_caps->shared_mapping = true;
+        out_caps->fixed_mapping = true;
+    } else if (model == MEM_MODEL_MMU_LITE) {
+        out_caps->address_translation = true;
+        out_caps->per_process_aspace = true;
+        out_caps->user_kernel_isolation = true;
+        out_caps->page_permissions = true;
+        out_caps->execute_protection = true;
+        // Depending on HAL caps or specific sub-profiles, some MMU_LITE might support more.
+        // For baseline MMU_LITE, we leave COW and demand faults as false unless explicitly known.
+    } else if (model == MEM_MODEL_MPU) {
+        out_caps->mpu_regions = true;
+        out_caps->user_kernel_isolation = true;
+        out_caps->page_permissions = true; // Region-based
+        out_caps->execute_protection = true;
+    }
+}
+
+bool bh_vm_satisfies(const bh_vm_caps_t *req) {
+    if (!req) return false;
+    bh_vm_caps_t caps;
+    bh_vm_get_capabilities(&caps);
+
+    if (req->address_translation && !caps.address_translation) return false;
+    if (req->per_process_aspace && !caps.per_process_aspace) return false;
+    if (req->user_kernel_isolation && !caps.user_kernel_isolation) return false;
+    if (req->page_permissions && !caps.page_permissions) return false;
+    if (req->execute_protection && !caps.execute_protection) return false;
+    if (req->demand_faults && !caps.demand_faults) return false;
+    if (req->demand_zero && !caps.demand_zero) return false;
+    if (req->cow && !caps.cow) return false;
+    if (req->file_mapping && !caps.file_mapping) return false;
+    if (req->shared_mapping && !caps.shared_mapping) return false;
+    if (req->fixed_mapping && !caps.fixed_mapping) return false;
+    if (req->mpu_regions && !caps.mpu_regions) return false;
+
+    return true;
+}
+
 kstatus_t mem_profile_contract_from_build(mem_profile_contract_t *out_contract) {
     if (!out_contract) return K_ERR_INVALID_ARG;
 
