@@ -1,6 +1,7 @@
 #ifndef BHARAT_TRAP_H
 #define BHARAT_TRAP_H
 
+#include <kernel/status.h>
 #include <stdint.h>
 #include <stddef.h>
 #include <bharat/uapi/syscall_nr.h>
