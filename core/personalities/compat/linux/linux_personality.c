@@ -2,6 +2,7 @@
 #include "bh_personality_registry.h"
 #include "bh_personality.h"
 #include "linux_errno.h"
+#include "mm/mem_model.h"
 #include <stddef.h>
 
 extern const bh_personality_syscall_table_t bh_linux_syscall_table;
@@ -44,6 +45,23 @@ const personality_ops_t *personality_linux_get_ops(void) {
     return &linux_personality_ops;
 }
 
+static const bh_vm_caps_t linux_full_requirements = {
+    .address_translation = true,
+    .per_process_aspace  = true,
+    .page_permissions    = true,
+    .execute_protection  = true,
+    .file_mapping        = true,
+    .cow                 = true,
+};
+
+static const bh_vm_caps_t linux_nommu_requirements = {
+    .page_permissions    = true,
+    .execute_protection  = true,
+    .mpu_regions         = true,
+};
+
 void linux_personality_init(void) {
-    bh_personality_registry_register(BH_PERSONALITY_LINUX, &linux_personality_ops);
+    if (bh_vm_satisfies(&linux_full_requirements) || bh_vm_satisfies(&linux_nommu_requirements)) {
+        bh_personality_registry_register(BH_PERSONALITY_LINUX, &linux_personality_ops);
+    }
 }

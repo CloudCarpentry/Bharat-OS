@@ -59,6 +59,28 @@ typedef struct mem_runtime_caps {
     bool supports_hugepage;
 } mem_runtime_caps_t;
 
+typedef struct bh_vm_caps {
+    bool address_translation;
+    bool per_process_aspace;
+    bool user_kernel_isolation;
+
+    bool page_permissions;
+    bool execute_protection;
+
+    bool demand_faults;
+    bool demand_zero;
+
+    bool cow;
+    bool file_mapping;
+    bool shared_mapping;
+
+    bool fixed_mapping;
+    bool mpu_regions;
+} bh_vm_caps_t;
+
+void bh_vm_get_capabilities(bh_vm_caps_t *out_caps);
+bool bh_vm_satisfies(const bh_vm_caps_t *req);
+
 /**
  * Memory Profile Contract
  */
