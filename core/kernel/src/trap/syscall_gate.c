@@ -191,6 +191,7 @@ const bh_personality_syscall_table_t *personality_get_syscall_table(bh_personali
         default:
             return NULL;
     }
+    return 0;
 }
 
 long bh_syscall_gate(trap_frame_t *frame, const trap_info_t *info) {
@@ -270,4 +271,5 @@ long bh_syscall_gate(trap_frame_t *frame, const trap_info_t *info) {
         }
         return op_res.value;
     }
+    return 0;
 }
