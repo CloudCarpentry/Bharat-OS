@@ -40,6 +40,7 @@ sys_errno_t kstatus_to_sys_errno(kstatus_t st) {
         case K_ERR_WRONG_AFFINITY:    return SYS_EINVAL;
         case K_ERR_DEADLINE_MISS:     return SYS_EIO;
         case K_ERR_QUOTA_EXCEEDED:    return SYS_EPERM;
+        case K_ERR_INVALID_CPU:       return SYS_EINVAL;
 
         /* Capability / Security */
         case K_ERR_CAP_INVALID:       return SYS_EBADF;

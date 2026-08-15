@@ -51,14 +51,26 @@ flowchart TD
 `core/hal/common/memops/mem_scalar.c` is the single architecture-neutral
 Tier-0 authority. It uses only requested byte loads and stores: no prefetch,
 word-sized access, SIMD/vector state, DMA, cache/topology assumptions, or calls
-to another memory primitive. Architecture directories own the dispatched
-`hal_memcpy()`, `hal_memset()`, and `hal_memmove()` entry points.
+to another memory primitive. HAL common owns the dispatched `hal_memcpy()`,
+`hal_memset()`, and `hal_memmove()` entry points. Architecture directories may
+only publish immutable per-core GPR backends during serial boot.
 
-IRQ-safe and early-boot dispatch must select Tier 0. RV32 remains scalar-only
-until an XLEN-neutral GPR implementation is independently qualified; RV64
-memops objects are not valid RV32 providers. Tier 0 `memmove` determines copy
+IRQ-safe and early-boot dispatch must select Tier 0. Arm32 and RV32 use their
+own integer-only providers; 64-bit objects are never reused as 32-bit
+providers. Tier 0 `memmove` determines copy
 direction using overflow-safe `uintptr_t` address differences and never forms
 an unchecked end pointer.
+
+The backend table and normalized CPU feature records have a one-way lifecycle:
+serial publication followed by freeze. Before freeze, for an unregistered core,
+or for early-boot/IRQ-safe calls, dispatch selects Tier 0.
+
+All providers implement the complete copy/move/set/compare table. HAL validates
+the table and context mask at serial registration and contains no ERMS, SIMD,
+NEON, SVE, or RVV selection logic. The architecture probe alone chooses a
+provider. BharatLibC has a parallel resolver and never imports HAL or kernel
+headers; it consumes only the versioned, safe-on-all-schedulable-CPUs feature
+descriptor from `interface/uapi/runtime/cpu_features.h`.
 
 ## Execution Plan
 1. **Define Neutral API**: Create the standard functions for zeroing and cache maintenance.

@@ -1,6 +1,6 @@
 ---
 title: Per-Core Kernel Ownership Contract
-status: Draft
+status: Active
 owner: Documentation Working Group
 last_updated: 2026-04-25
 tags:
@@ -13,7 +13,12 @@ see_also:
 # Per-Core Kernel Ownership Contract
 
 ## Status
-Phase K0 baseline
+Active
+
+## Implementation References
+- `core/kernel/src/sched/sched_core.c`
+- `core/kernel/include/sched/sched_invariants.h`
+- `core/kernel/src/sched/sched_invariants.c`
 
 ## Goal
 Define what each CPU owns and how remote CPUs interact safely.
@@ -25,25 +30,25 @@ No core directly mutates another core's scheduler, PMM, timer, or local IPC stat
 - **Scheduler Runqueue**: Each core owns its `sched_rq_t` structure.
 - **Current Thread**: The currently executing thread on a core.
 - **Idle Thread**: A dedicated idle thread per core.
-- **Local PMM Cache**: (Planned for K2) Per-core page magazines.
-- **Pending Scheduler Command Queue**: A typed inbox for remote operations.
+- **Local PMM Cache**: (PLANNED) Per-core page magazines.
+- **Pending Scheduler Command Queue**: A typed command ring for remote operations (`remote_cmd_ring`).
 - **Current Address-Space Tracking**: The active `address_space_t` on the CPU.
 - **Per-Core Counters**: Performance and debug counters (e.g., context switches, IPIs).
 
 ## Remote Operation Rule
-Remote actions must go through typed command queues and generation validation. Direct mutation of remote runqueues is prohibited.
+Remote actions must go through typed command rings and generation validation. Direct mutation of remote runqueues is prohibited.
 
-### Protocol
-1. **Source Core**: Enqueues a `sched_remote_cmd_t` into the target core's `pending_inbox`.
-2. **Source Core**: Sends an IPI to the target core if no reschedule is already pending.
-3. **Target Core**: Drains the inbox during `sched_reschedule`.
-4. **Target Core**: Validates the thread generation ID to prevent stale operations.
-5. **Target Core**: Updates its own local state (e.g., enqueues thread to local runqueue).
+### Protocol (IMPLEMENTED)
+1. **Source Core**: Enqueues a `sched_cmd_t` into the target core's `remote_cmd_ring`.
+2. **Source Core**: Sends an IPI (Core Notification) to the target core if no reschedule is already pending.
+3. **Target Core**: Drains the ring.
+4. **Target Core**: Validates the `thread_id` and generation to prevent stale operations.
+5. **Target Core**: Updates its own local state (e.g., enqueues thread to local runqueue) and publishes a completion (ACK/NACK).
 
-## Scheduler Invariants
-1. **Single Runnable Owner**: A thread has exactly one runnable owner at any time.
-2. **Explicit Enqueued State**: The `enqueued` flag must match actual queue membership.
-3. **Owner State Consistency**: `owner_state` must correctly reflect whether a thread is running, enqueued, or blocked.
+## Scheduler Invariants (IMPLEMENTED)
+1. **Single Runnable Owner**: A thread has exactly one runnable owner at any time. Verified by `sched_invariant_check_runqueue_exclusive`.
+2. **Explicit Enqueued State**: The `is_on_runqueue` flag must match actual queue membership.
+3. **Owner State Consistency**: The thread state must correctly reflect whether a thread is running, enqueued, or blocked.
 
 ## Test Requirements
 - Host-side stress tests for enqueue/dequeue cycles.

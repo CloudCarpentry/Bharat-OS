@@ -10,44 +10,44 @@ static int g_processes = 0;
 static int g_spaces = 0;
 static int g_threads = 0;
 
-static int32_t stress_create_process(void *ctx, const bh_pm_kernel_create_req_t *req, bh_pm_kernel_process_t *out_proc) {
+static bharat_status_t stress_create_process(void *ctx, const bh_pm_kernel_create_req_t *req, bh_pm_kernel_process_t *out_proc) {
     (void)ctx; (void)req;
     g_processes++;
     out_proc->pid = 12000 + g_processes;
-    return 0;
+    return BHARAT_STATUS_OK;
 }
 
-static int32_t stress_create_vm_space(void *ctx, bh_pm_kernel_process_t *proc, uint32_t memory_profile, bh_vm_kernel_space_t *out_space) {
+static bharat_status_t stress_create_vm_space(void *ctx, bh_pm_kernel_process_t *proc, uint32_t memory_profile, bh_vm_kernel_space_t *out_space) {
     (void)ctx; (void)proc; (void)memory_profile;
     g_spaces++;
     out_space->space_id = 14000 + g_spaces;
-    return 0;
+    return BHARAT_STATUS_OK;
 }
 
-static int32_t stress_realize_image(void *ctx, bh_pm_kernel_process_t *proc, bh_vm_kernel_space_t *space, const bh_user_image_plan_v1_t *plan, bh_pm_kernel_image_result_t *out_res) {
+static bharat_status_t stress_realize_image(void *ctx, bh_pm_kernel_process_t *proc, bh_vm_kernel_space_t *space, const bh_user_image_plan_v1_t *plan, bh_pm_kernel_image_result_t *out_res) {
     (void)ctx; (void)proc; (void)space;
     g_threads++;
     out_res->main_thread_id = 16000 + g_threads;
     out_res->entry_point = plan->entry_point;
-    return 0;
+    return BHARAT_STATUS_OK;
 }
 
-static int32_t stress_start_process(void *ctx, bh_pm_kernel_process_t *proc) {
+static bharat_status_t stress_start_process(void *ctx, bh_pm_kernel_process_t *proc) {
     (void)ctx; (void)proc;
-    return 0;
+    return BHARAT_STATUS_OK;
 }
 
-static int32_t stress_request_terminate(void *ctx, bh_pm_kernel_process_t *proc) {
+static bharat_status_t stress_request_terminate(void *ctx, bh_pm_kernel_process_t *proc) {
     (void)ctx; (void)proc;
-    return 0;
+    return BHARAT_STATUS_OK;
 }
 
-static int32_t stress_reap_process(void *ctx, bh_pm_kernel_process_t *proc) {
+static bharat_status_t stress_reap_process(void *ctx, bh_pm_kernel_process_t *proc) {
     (void)ctx; (void)proc;
     g_processes--;
     g_spaces--;
     g_threads--;
-    return 0;
+    return BHARAT_STATUS_OK;
 }
 
 void test_procvm_1000_cycles_stress(void) {

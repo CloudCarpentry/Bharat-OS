@@ -13,7 +13,12 @@ extern int fsd_openat_file(int dirfd, const char* path, int flags, capability_t*
 extern int fsd_read_file(int fd, void* buffer, size_t size, capability_t* caller_cap);
 extern int fsd_write_file(int fd, const void* buffer, size_t size, capability_t* caller_cap);
 extern int fsd_close_file(int fd, capability_t* caller_cap);
+extern int64_t fsd_lseek_file(int fd, int64_t offset, int whence, capability_t* caller_cap);
+extern int fsd_fstat_file(int fd, void* stat_buf, capability_t* caller_cap);
 extern int vfs_mount_fs(const char* target_path, vfs_node_t* fs_root, capability_t* caller_cap);
+extern int vfs_mkdir(const char* path, int mode, capability_t* caller_cap);
+extern struct dirent* vfs_readdir(int fd, uint32_t index, capability_t* caller_cap);
+extern int vfs_unlink(const char* path, capability_t* caller_cap);
 
 
 int fs_open(const char* path, int flags, capability_t* caller_cap, int* out_fd) {
@@ -38,4 +43,24 @@ int fs_close(int fd, capability_t* caller_cap) {
 
 int fs_mount(const char* target_path, vfs_node_t* fs_root, capability_t* caller_cap) {
     return vfs_mount_fs(target_path, fs_root, caller_cap);
+}
+
+int64_t fs_lseek(int fd, int64_t offset, int whence, capability_t* caller_cap) {
+    return fsd_lseek_file(fd, offset, whence, caller_cap);
+}
+
+int fs_fstat(int fd, void* stat_buf, capability_t* caller_cap) {
+    return fsd_fstat_file(fd, stat_buf, caller_cap);
+}
+
+int fs_mkdir(const char* path, int mode, capability_t* caller_cap) {
+    return vfs_mkdir(path, mode, caller_cap);
+}
+
+struct dirent* fs_readdir(int fd, uint32_t index, capability_t* caller_cap) {
+    return vfs_readdir(fd, index, caller_cap);
+}
+
+int fs_unlink(const char* path, capability_t* caller_cap) {
+    return vfs_unlink(path, caller_cap);
 }

@@ -2,7 +2,7 @@
 title: Kernel Scheduler Documentation
 status: Proposed
 owner: Documentation Working Group
-last_updated: 2026-04-25
+last_updated: 2026-08-13
 tags:
   - docs
   - architecture
@@ -33,6 +33,21 @@ The scheduler implementation lives primarily in:
 - RT admissions (`sched_admission_edf`, `sched_admission_rms`) with utilization budgets.
 - AI suggestion ingestion and bounded application path (`sched_enqueue_ai_suggestion`, `sched_process_pending_ai_suggestions`).
 - Cross-core migration and balancing primitives (`sched_migrate_task`, periodic `sched_balance_once`).
+
+## Policy lifecycle symmetry
+
+Every runnable transition uses the owner core policy's backing runqueue. RR,
+priority, and RMS use priority lists; cloud-fair uses the CFS tree; EDF uses the
+EDF tree. This applies to enqueue/dequeue, block/wake, termination, quarantine,
+migration/rollback, priority changes, PI, and work stealing. EDF removal must
+call `sched_edf_dequeue()` and never apply `list_del()` to its priority-list node.
+
+| Transition | RR | Priority | CFS | EDF | RMS |
+| --- | --- | --- | --- | --- | --- |
+| enqueue / wake | list | list | CFS tree | EDF tree | list |
+| dequeue / block / terminate | list | list | CFS tree | EDF tree | list |
+| migration / rollback | list | list | CFS tree | EDF tree | list |
+| priority / PI | list | list | CFS tree | EDF tree | list |
 
 ## Documents in this folder
 

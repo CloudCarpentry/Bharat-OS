@@ -9,6 +9,34 @@ extern "C" {
 #endif
 
 typedef enum {
+    BH_ACCEL_DEVICE_CPU = 0,
+    BH_ACCEL_DEVICE_GPU,
+    BH_ACCEL_DEVICE_NPU,
+    BH_ACCEL_DEVICE_TPU,
+    BH_ACCEL_DEVICE_DSP
+} bh_accel_device_class_t;
+
+typedef enum {
+    BH_ACCEL_RUNTIME_CPU_ISA = 0,
+    BH_ACCEL_RUNTIME_CUDA,
+    BH_ACCEL_RUNTIME_ROCM,
+    BH_ACCEL_RUNTIME_NEURON,
+    BH_ACCEL_RUNTIME_PJRT,
+    BH_ACCEL_RUNTIME_VIRTIO_ACCEL,
+    BH_ACCEL_RUNTIME_REMOTE_PROXY
+} bh_accel_runtime_provider_t;
+
+typedef enum {
+    BH_ACCEL_MEM_SYSTEM = 0,
+    BH_ACCEL_MEM_NUMA,
+    BH_ACCEL_MEM_PINNED,
+    BH_ACCEL_MEM_GPU_DEVICE,
+    BH_ACCEL_MEM_GPU_SHARED,
+    BH_ACCEL_MEM_NPU_DEVICE,
+    BH_ACCEL_MEM_NPU_SHARED
+} bh_accel_memory_domain_t;
+
+typedef enum {
     TENSOR_OP_MATMUL,
     TENSOR_OP_CONV2D,
     TENSOR_OP_RELU
@@ -39,6 +67,9 @@ typedef struct {
 typedef struct {
     const char *backend_name;
     backend_type_t backend_type;
+    bh_accel_device_class_t device_class;
+    bh_accel_runtime_provider_t runtime_provider;
+    bh_accel_memory_domain_t memory_domain;
     int execution_status;
 } tensor_dispatch_result_t;
 

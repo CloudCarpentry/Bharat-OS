@@ -55,6 +55,18 @@ void *hal_memmove_scalar(void *dst, const void *src, size_t n) {
     return dst;
 }
 
+int hal_memcmp_scalar(const void *lhs, const void *rhs, size_t n) {
+    const volatile unsigned char *a = (const volatile unsigned char *)lhs;
+    const volatile unsigned char *b = (const volatile unsigned char *)rhs;
+
+    while (n-- != 0u) {
+        const unsigned char av = *a++;
+        const unsigned char bv = *b++;
+        if (av != bv) return (int)av - (int)bv;
+    }
+    return 0;
+}
+
 void hal_memset_raw(void *dst, int val, size_t len) {
     volatile unsigned char *d = (volatile unsigned char *)dst;
 

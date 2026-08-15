@@ -53,7 +53,7 @@ bh_thread_t* sched_wait_queue_dequeue(wait_queue_t* queue) {
 }
 
 void sched_block(void) {
-  uint32_t core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t core = sched_current_core_or_panic();
   sched_rq_t *rq = sched_local_rq();
   bh_thread_t *current = rq->current_thread;
   if (current) {
@@ -74,7 +74,7 @@ void sched_block(void) {
 }
 
 void sched_sleep(uint64_t millis) {
-  uint32_t core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t core = sched_current_core_or_panic();
   sched_rq_t *rq = sched_local_rq();
   bh_thread_t *current = rq->current_thread;
   if (!current || current == rq->idle_thread) {
@@ -97,7 +97,7 @@ int sched_wake_tid_with_priority(uint64_t tid, uint32_t priority) {
   bh_thread_t *thread = sched_find_thread_by_id(tid);
   if (!thread) return -1;
 
-  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t current_core = sched_current_core_or_panic();
   uint32_t owner = __atomic_load_n(&thread->owner_cpu, __ATOMIC_ACQUIRE);
 
   if (owner != current_core) {

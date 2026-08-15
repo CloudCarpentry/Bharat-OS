@@ -1,76 +1,85 @@
 #include "init_profile.h"
 #include "init_runtime.h"
-#include <bharat/runtime/runtime.h>
 #include <bharat/cap/cap.h>
+#include <bharat/runtime/runtime.h>
 #include <bharat/syscalls.h>
 
+
 #include <bharat/uapi/init/bootstrap.h>
+#include <bharat/uapi/syscall/bh_syscall_numbers.h>
+#include <bharat/uapi/syscall/bh_syscall.h>
 
 extern const bharat_user_startup_t *bharat_runtime_get_startup(void);
 
 int services_init_main(void);
 
 int main(int argc, char **argv) {
-    (void)argc;
-    (void)argv;
-    return services_init_main();
+  (void)argc;
+  (void)argv;
+  return services_init_main();
 }
 
 int services_init_main(void) {
-    // Emit ENTERED marker first
-    bharat_runtime_log("USER_INIT: ENTERED\n");
+  // Emit ENTERED marker first
+  bharat_runtime_log("USER_INIT: ENTERED\n");
 
-    const bharat_user_startup_t *startup = bharat_runtime_get_startup();
-    if (startup) {
-        if (startup->abi_version == 1 && startup->struct_size == sizeof(bharat_user_startup_t)) {
-            bharat_runtime_log("USER_INIT: STARTUP_ABI_OK\n");
-        } else {
-            bharat_runtime_log("USER_INIT: STARTUP_ABI_OK\n"); // Fallback for minor mismatch
-        }
-
-        // Validate bootstrap capability exists and is correct
-        bharat_handle_t root_cap = bharat_runtime_get_bootstrap_cap();
-        (void)root_cap;
-        bharat_runtime_log("USER_INIT: BOOTSTRAP_CAPS_OK\n");
+  const bharat_user_startup_t *startup = bharat_runtime_get_startup();
+  if (startup) {
+    if (startup->abi_version == 1 &&
+        startup->struct_size == sizeof(bharat_user_startup_t)) {
+      bharat_runtime_log("USER_INIT: STARTUP_ABI_OK\n");
     } else {
-        // Fallback for environment setup or testing
-        bharat_runtime_log("USER_INIT: STARTUP_ABI_OK\n");
-        bharat_runtime_log("USER_INIT: BOOTSTRAP_CAPS_OK\n");
+      bharat_runtime_log(
+          "USER_INIT: STARTUP_ABI_OK\n"); // Fallback for minor mismatch
     }
 
-    bharat_runtime_log("services/init: Starting user-space bootstrap (manifest-driven).");
+    // Validate bootstrap capability exists and is correct
+    bharat_handle_t root_cap = bharat_runtime_get_bootstrap_cap();
+    (void)root_cap;
+    bharat_runtime_log("USER_INIT: BOOTSTRAP_CAPS_OK\n");
+  } else {
+    // Fallback for environment setup or testing
+    bharat_runtime_log("USER_INIT: STARTUP_ABI_OK\n");
+    bharat_runtime_log("USER_INIT: BOOTSTRAP_CAPS_OK\n");
+  }
 
-    // Prepare context
-    init_boot_context_t ctx;
-    init_profile_get_context(&ctx);
-    const init_profile_policy_t *policy = init_profile_get_policy(ctx.profile);
+  bharat_runtime_log(
+      "services/init: Starting user-space bootstrap (manifest-driven).\n");
 
-    if (ctx.profile == INIT_PROFILE_TINY) {
-        bharat_runtime_log("services/init: Running in TINY profile mode.");
-    } else if (ctx.safe_mode_requested) {
-         bharat_runtime_log("services/init: Booting in SAFE_MODE.");
+  // Prepare context
+  init_boot_context_t ctx;
+  init_profile_get_context(&ctx);
+  const init_profile_policy_t *policy = init_profile_get_policy(ctx.profile);
+
+  if (ctx.profile == INIT_PROFILE_TINY) {
+    bharat_runtime_log("services/init: Running in TINY profile mode.\n");
+  } else if (ctx.safe_mode_requested) {
+    bharat_runtime_log("services/init: Booting in SAFE_MODE.\n");
+  }
+
+  // Run the startup sequence
+  int result = init_runtime_run(&ctx);
+  if (result < 0) {
+    bharat_runtime_log(
+        "services/init: Bootstrap failed (safe mode / halted).\n");
+    // Hang
+    while (1) {
+      bharat_syscall(BH_SYS_SCHED_SLEEP, 1000, 0, 0, 0, 0, 0);
     }
+  }
 
-    // Run the startup sequence
-    int result = init_runtime_run(&ctx);
-    if (result < 0) {
-        bharat_runtime_log("services/init: Bootstrap failed (safe mode / halted).");
-        // Hang
-        while (1) {
-            bharat_sched_yield();
-        }
+  bharat_runtime_log("USER_INIT: SERVICE_GRAPH_COMPLETE\n");
+  bharat_runtime_log("BOOT_RUNTIME: STABLE\n");
+
+  if (result == INIT_RUNTIME_QUIESCENT || policy->quiesce_after_handoff) {
+    bharat_runtime_log("services/init: Entering quiescent mode.\n");
+    /* Remain the bootstrap authority until a supervisor accepts handoff. */
+    while (1) {
+      bharat_syscall(BH_SYS_SCHED_SLEEP, 1000, 0, 0, 0, 0, 0);
     }
+  }
 
-    bharat_runtime_log("USER_INIT: SERVICE_GRAPH_COMPLETE\n");
-    bharat_runtime_log("BOOT_RUNTIME: STABLE\n");
-
-    if (result == INIT_RUNTIME_QUIESCENT || policy->quiesce_after_handoff) {
-        bharat_runtime_log("services/init: Entering quiescent mode.");
-        /* Remain the bootstrap authority until a supervisor accepts handoff. */
-        while (1) {}
-    }
-
-    bharat_runtime_log("services/init: Exiting after handoff.\n");
-    bharat_runtime_shutdown();
-    return 0;
+  bharat_runtime_log("services/init: Exiting after handoff.\n");
+  bharat_runtime_shutdown();
+  return 0;
 }

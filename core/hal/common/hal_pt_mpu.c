@@ -13,7 +13,7 @@ static bool mpu_has_linear_physmap(void) { return true; }
 static phys_addr_t mpu_linear_physmap_base(void) { return 0; }
 static phys_addr_t mpu_linear_physmap_limit(void) { return ~0ULL; }
 
-static const hal_translate_ops_t mpu_translate_ops = {
+static const hal_translate_ops_t mpu_translate_ops __attribute__((unused)) = {
     .backend_type = mpu_backend_type,
     .exec_class = mpu_exec_class,
     .phys_to_virt = mpu_phys_to_virt,

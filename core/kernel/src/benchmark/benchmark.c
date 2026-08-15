@@ -1,21 +1,10 @@
 #include "benchmark/benchmark.h"
 #include "arch/capabilities.h"
+#include "time/ktime.h"
 #include <stdio.h>
 
-#if defined(__unix__) || defined(__linux__) || defined(__APPLE__)
-#include <time.h>
-#endif
-
-// Fallback implementations for host-level testing
 uint64_t benchmark_get_time_ns(void) {
-#if defined(__unix__) || defined(__linux__) || defined(__APPLE__)
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (uint64_t)ts.tv_sec * 1000000000ULL + ts.tv_nsec;
-#else
-    // Dummy fallback
-    return 0;
-#endif
+    return bh_ktime_now();
 }
 
 uint64_t benchmark_get_cycles(void) {

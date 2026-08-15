@@ -1,0 +1,175 @@
+name: Gate 1 / PR Fast
+
+on:
+  pull_request:
+    branches: [developer]
+  push:
+    branches: [developer]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  prepare-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      targets: ${{ steps.set-matrix.outputs.targets }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y python3-yaml jq
+      - name: Generate matrix
+        id: set-matrix
+        run: |
+          TARGETS=$(python3 -c 'import yaml, json; print(json.dumps(yaml.safe_load(open("quality/ci/pr-fast-targets.yaml"))["targets"]))')
+          echo "targets=$TARGETS" >> $GITHUB_OUTPUT
+
+  repository-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tools
+        run: sudo apt-get update && sudo apt-get install -y python3 cmake ninja-build clang lld
+      - name: Architecture boundaries check
+        run: python3 tools/lint/check_placement.py
+      - name: Canonical include check
+        run: python3 tools/lint/check_canonical_includes.py
+      - name: Architecture references check
+        run: python3 tools/lint/check_architecture_references.py
+      - name: Lint freestanding layer contract
+        run: python3 tools/lint/check_layer_references.py --strict --baseline tools/lint/baselines/layer_references.allowlist
+      - name: Enforce HAL dependency direction
+        run: python3 tools/lint/check_hal_dependency_direction.py
+      - name: Migration legacy reference guard (strict mode)
+        run: python3 tools/ci/check_migration_refs.py --strict
+      - name: Configure clang-tidy check
+        run: cmake -S . -B build-tidy -DBHARAT_ENABLE_CLANG_TIDY=ON -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/x86_64-elf.cmake
+      - name: Build kernel with clang-tidy
+        run: cmake --build build-tidy --target kernel.elf > build-tidy/build.log 2>&1
+      - name: Check for new compiler warnings
+        run: |
+          echo "Checking for new compiler warnings..."
+          if grep -i "warning:" build-tidy/build.log; then
+             echo "New compiler warnings detected!"
+             /bin/false
+          fi
+      - name: Upload Logs on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate1-contracts-logs
+          path: build-tidy/
+
+  abi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: pip install pycparser
+      - name: Verify ABI Manifests
+        run: |
+          python3 tools/abi/syscall_abi.py --check
+          python3 -m unittest tools.abi.test_syscall_abi
+          python3 tools/abi/generate_abi_manifests.py --check
+      - name: Reject raw syscall numbers
+        run: |
+          ! grep -R "bharat_syscall([[:space:]]*[0-9]" experience interface core quality boot delivery
+      - name: Reject removed dummy syscall
+        run: |
+          ! grep -R "SYSCALL_DEF(.*, 1001)" interface/include/bharat/uapi/syscall/table.def
+
+  host-unit-debug:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build clang
+      - name: Configure CMake
+        run: cmake --preset host-test
+      - name: Build
+        run: cmake --build --preset host-test
+      - name: Run unit tests
+        run: ctest --preset host-test --output-on-failure
+      - name: Upload Test Results on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate1-host-unit-debug-results
+          path: build/host-test/Testing/
+
+  smoke-qemu:
+    runs-on: ubuntu-latest
+    needs: prepare-matrix
+    strategy:
+      fail-fast: false
+      matrix:
+        target_yaml: ${{ fromJson(needs.prepare-matrix.outputs.targets) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build clang lld qemu-system-x86 qemu-system-arm qemu-system-misc python3
+      - name: Build and Run Tests
+        run: |
+          if [[ "${{ matrix.target_yaml }}" == *"arm32"* ]] || [[ "${{ matrix.target_yaml }}" == *"riscv32"* ]]; then
+            # compile-only for arm32 and riscv32 where emulator support is weaker
+            python3 tools/build.py kernel --target-yaml ${{ matrix.target_yaml }}
+          else
+            python3 tools/build.py all --target-yaml ${{ matrix.target_yaml }} --smoke
+          fi
+        timeout-minutes: 10
+      - name: Upload QEMU Logs on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate1-smoke-qemu-logs-${{ strategy.job-index }}
+          path: |
+            build/
+            !build/**/*.o
+            !build/**/*.a
+            !build/**/*.d
+
+  smoke-qemu-x86-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build clang lld qemu-system-x86 python3
+      - name: Build and Run Tests
+        run: |
+          python3 tools/build.py all --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml --mode release --smoke
+        timeout-minutes: 10
+      - name: Upload QEMU Logs on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate1-smoke-qemu-x86-release-logs
+          path: |
+            build/
+            !build/**/*.o
+            !build/**/*.a
+            !build/**/*.d
+
+  gate1-summary:
+    name: Gate 1 / PR Fast Summary
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [repository-contracts, abi, host-unit-debug, smoke-qemu, smoke-qemu-x86-release]
+    steps:
+      - name: Check Status
+        run: |
+          if [ "${{ needs.repository-contracts.result }}" != "success" ] || \
+             [ "${{ needs.abi.result }}" != "success" ] || \
+             [ "${{ needs.host-unit-debug.result }}" != "success" ] || \
+             [ "${{ needs.smoke-qemu.result }}" != "success" ] || \
+             [ "${{ needs.smoke-qemu-x86-release.result }}" != "success" ]; then
+            /bin/false
+          fi

@@ -643,6 +643,20 @@
       ],
       "capability": null,
       "traits": ["fast"]
+    },
+    {
+      "number": 24,
+      "symbol": "BH_SYS_TIME_GET",
+      "name": "time_get",
+      "status": "stable",
+      "class": "system",
+      "handler": "bh_sys_time_get",
+      "arguments": [
+        {"name": "clock_id", "kind": "scalar", "type": "uint32_t", "direction": "in"},
+        {"name": "out_time_ns", "kind": "pointer", "type": "uint64_t", "direction": "out", "size_source": "sizeof(uint64_t)"}
+      ],
+      "capability": null,
+      "traits": ["user_write"]
     }
   ]
 }

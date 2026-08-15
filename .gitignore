@@ -1,11 +1,12 @@
 # Build directories
 build*/
-out/
-bin/
+/out/
+/bin/
 core/kernel/include/generated/bharat_config.h
-
+temp_share/
 # Object files and libraries
 *.o
+*.obj
 *.a
 *.so
 *.dylib
@@ -13,6 +14,7 @@ core/kernel/include/generated/bharat_config.h
 
 # Executables and OS Images
 *.elf
+!quality/tests/assets/**
 *.bin
 *.img
 *.iso
@@ -26,15 +28,10 @@ CMakeCache.txt
 CMakeFiles/
 /Testing/
 Makefile
-*.cmake
-!cmake/*.cmake
-!cmake/toolchains/*.cmake
-!cmake/modules/*.cmake
-!delivery/cmake/*.cmake
-!delivery/cmake/toolchains/*.cmake
-!delivery/cmake/modules/*.cmake
-!tests/host/cmake/*.cmake
 cmake_install.cmake
+CTestTestfile.cmake
+CPackConfig.cmake
+CPackSourceConfig.cmake
 compile_commands.json
 .cache/
 

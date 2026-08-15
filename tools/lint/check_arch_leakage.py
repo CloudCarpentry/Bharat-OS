@@ -72,13 +72,14 @@ def main():
                     continue
 
                 filepath = os.path.join(root, file)
+                norm_path = filepath.replace('\\', '/')
 
                 # Check exclusions
-                if filepath in EXCLUDED_FILES or filepath in allowlist:
+                if norm_path in EXCLUDED_FILES or norm_path in allowlist:
                     continue
 
                 # Check for syscall entry exclusions
-                if 'syscall/entry' in filepath:
+                if 'syscall/entry' in norm_path:
                     continue
 
                 violations = check_file(filepath)

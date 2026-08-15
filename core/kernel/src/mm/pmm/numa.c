@@ -221,7 +221,7 @@ void numa_select_migration_candidates(void* thread_ptr) {
     ensure_cache_init();
     bh_thread_t* thread = (bh_thread_t*)thread_ptr;
     if (!thread || !thread->process || !thread->process->addr_space) return;
-    if (thread->preferred_numa_node >= NUMA_MAX_NODES) return;
+    if (thread->numa_affinity.target_node >= NUMA_MAX_NODES) return;
 
     uint64_t now_ticks = sched_get_ticks();
     uintptr_t as_key = (uintptr_t)thread->process->addr_space;
@@ -231,7 +231,9 @@ void numa_select_migration_candidates(void* thread_ptr) {
             if (record->address_space_key == as_key &&
                 record->remote_accesses >= NUMA_MIGRATE_THRESHOLD &&
                 (now_ticks - record->last_migrated_tick) >= NUMA_MIGRATE_COOLDOWN_TICKS) {
-                if (numa_migrate_page(record->vaddr, thread->preferred_numa_node, thread->process->addr_space) == 0) {
+                if (numa_migrate_page(record->vaddr,
+                                      thread->numa_affinity.target_node,
+                                      thread->process->addr_space) == 0) {
                     record->last_migrated_tick = now_ticks;
                     record->remote_accesses = 0U;
                 }

@@ -133,6 +133,17 @@ bool console_activate_backend(console_backend_t* backend) {
     return true;
 }
 
+void console_quiesce_framebuffer_sinks(void) {
+    spin_lock(&console_lock);
+    for (console_index_t i = 0; i < g_console_state.backend_count; ++i) {
+        console_backend_t *backend = g_console_state.backends[i];
+        if (backend && backend->type == CONSOLE_BACKEND_FRAMEBUFFER) {
+            backend->enabled = false;
+        }
+    }
+    spin_unlock(&console_lock);
+}
+
 void console_vlog(console_log_level_t level, const char *fmt, va_list ap) {
     if (level == CONSOLE_LEVEL_PANIC) {
         console_enter_panic();

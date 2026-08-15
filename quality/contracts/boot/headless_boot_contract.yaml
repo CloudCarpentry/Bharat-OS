@@ -16,6 +16,18 @@ common:
     - "BOOT_FAIL:"
 
 targets:
+  x86_64_showcase_gui:
+    description: "x86_64 graphical splash and FBUI interaction flow"
+    required:
+      - "BHARAT_GUI_DEMO:START"
+      - "BHARAT_GUI_DEMO:DISPLAY=REAL"
+      - "BHARAT_GUI_DEMO:RENDER=PASS"
+      - "BHARAT_GUI_DEMO:EVENT=PASS"
+      - "BHARAT_GUI_DEMO:COMPLETE"
+      - "BOOT_RUNTIME: STABLE"
+    forbidden: *common_forbidden
+    timeout_seconds: 45
+
   x86_64_desktop_headless:
     description: "x86_64 MMU-Full headless boot"
     required:

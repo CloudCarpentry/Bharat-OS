@@ -2,7 +2,7 @@
 #include "sched_internal.h"
 
 int sched_suggestion_dequeue(ai_suggestion_t *out) {
-  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t current_core = sched_current_core_or_panic();
   sched_rq_t *rq = &g_cpu_locals[current_core].runqueue;
   suggestion_queue_t *sq = (suggestion_queue_t *)rq->pending_suggestions;
 
@@ -25,7 +25,7 @@ int sched_enqueue_ai_suggestion(const ai_suggestion_t *suggestion) {
   if (!suggestion) {
     return -1;
   }
-  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t current_core = sched_current_core_or_panic();
   sched_rq_t *rq = &g_cpu_locals[current_core].runqueue;
   suggestion_queue_t *sq = (suggestion_queue_t *)rq->pending_suggestions;
 

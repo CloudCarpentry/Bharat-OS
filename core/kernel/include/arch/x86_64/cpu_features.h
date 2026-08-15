@@ -13,6 +13,7 @@ typedef enum {
     ARCH_CPU_FEAT_X86_PCLMUL,
     ARCH_CPU_FEAT_X86_SHA,
     ARCH_CPU_FEAT_X86_AES,
+    ARCH_CPU_FEAT_X86_ERMS,
 
     ARCH_CPU_FEAT_TARGET__COUNT
 } arch_x86_cpu_feature_t;

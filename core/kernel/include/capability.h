@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 #define BH_CAP_SLOT_MASK        0xFFFFU
 #define BH_CAP_GEN_SHIFT        16U
@@ -18,6 +19,16 @@ static inline uint32_t bh_cap_generation(uint32_t cap_id) {
 
 static inline bool bh_cap_is_valid_encoding(uint32_t cap_id) {
     return cap_id != 0 && bh_cap_generation(cap_id) != 0;
+}
+
+/* Generation-zero acceptance is isolated to explicitly compiled compatibility tests. */
+static inline bool bh_cap_generation_matches(uint32_t entry_generation,
+                                             uint32_t handle_generation) {
+#if defined(BHARAT_ENABLE_LEGACY_CAP_TESTS) && BHARAT_ENABLE_LEGACY_CAP_TESTS
+    return handle_generation == 0U || handle_generation == entry_generation;
+#else
+    return handle_generation != 0U && handle_generation == entry_generation;
+#endif
 }
 
 #include "sched/sched.h"
@@ -50,6 +61,7 @@ typedef enum {
     CAP_TYPE_DMA_DOMAIN = 19,
     CAP_TYPE_DMA_GRANT = 20,
     CAP_TYPE_THREAD = 21,
+    CAP_TYPE_HMEM = 22,
 } cap_type_t;
 
 typedef uint64_t cap_rights_mask_t;
@@ -98,6 +110,16 @@ typedef enum {
     CAP_RIGHT_BIT_FAULT_DOMAIN_MANAGE  = 35,
     CAP_RIGHT_BIT_PROCESS_MANAGE       = 36,
     CAP_RIGHT_BIT_RESOURCE_ALLOC       = 37,
+    CAP_RIGHT_BIT_HMEM_CREATE          = 38,
+    CAP_RIGHT_BIT_HMEM_MAP_CPU         = 39,
+    CAP_RIGHT_BIT_HMEM_MAP_DEVICE      = 40,
+    CAP_RIGHT_BIT_HMEM_PIN             = 41,
+    CAP_RIGHT_BIT_HMEM_SHARE           = 42,
+    CAP_RIGHT_BIT_HMEM_MIGRATE         = 43,
+    CAP_RIGHT_BIT_HMEM_QUERY           = 44,
+    CAP_RIGHT_BIT_HMEM_DESTROY         = 45,
+    CAP_RIGHT_BIT_ACCEL_SUBMIT         = 46,
+    CAP_RIGHT_BIT_DEVICE_DMA           = 47,
 } cap_rights_t;
 
 // Standardize capability right mask macros on uint64_t
@@ -142,6 +164,16 @@ typedef enum {
 #define CAP_RIGHT_FAULT_DOMAIN_MANAGE  (UINT64_C(1) << CAP_RIGHT_BIT_FAULT_DOMAIN_MANAGE)
 #define CAP_RIGHT_PROCESS_MANAGE       (UINT64_C(1) << CAP_RIGHT_BIT_PROCESS_MANAGE)
 #define CAP_RIGHT_RESOURCE_ALLOC       (UINT64_C(1) << CAP_RIGHT_BIT_RESOURCE_ALLOC)
+#define CAP_RIGHT_HMEM_CREATE          (UINT64_C(1) << CAP_RIGHT_BIT_HMEM_CREATE)
+#define CAP_RIGHT_HMEM_MAP_CPU         (UINT64_C(1) << CAP_RIGHT_BIT_HMEM_MAP_CPU)
+#define CAP_RIGHT_HMEM_MAP_DEVICE      (UINT64_C(1) << CAP_RIGHT_BIT_HMEM_MAP_DEVICE)
+#define CAP_RIGHT_HMEM_PIN             (UINT64_C(1) << CAP_RIGHT_BIT_HMEM_PIN)
+#define CAP_RIGHT_HMEM_SHARE           (UINT64_C(1) << CAP_RIGHT_BIT_HMEM_SHARE)
+#define CAP_RIGHT_HMEM_MIGRATE         (UINT64_C(1) << CAP_RIGHT_BIT_HMEM_MIGRATE)
+#define CAP_RIGHT_HMEM_QUERY           (UINT64_C(1) << CAP_RIGHT_BIT_HMEM_QUERY)
+#define CAP_RIGHT_HMEM_DESTROY         (UINT64_C(1) << CAP_RIGHT_BIT_HMEM_DESTROY)
+#define CAP_RIGHT_ACCEL_SUBMIT         (UINT64_C(1) << CAP_RIGHT_BIT_ACCEL_SUBMIT)
+#define CAP_RIGHT_DEVICE_DMA           (UINT64_C(1) << CAP_RIGHT_BIT_DEVICE_DMA)
 
 #define CAP_RIGHT_ALL                  (~UINT64_C(0))
 
@@ -155,11 +187,28 @@ typedef struct capability_entry {
 
 } capability_entry_old_t;
 
-typedef struct __attribute__((aligned(16))) {
-    struct capability_table* table;
-    uint32_t slot;
+/*
+ * Stable, pointer-free identity for a capability instance in a CSpace.
+ * This structure is copied into cross-core transactions, so its layout is a
+ * fixed-width wire contract rather than an in-kernel address.
+ */
+typedef struct bh_cap_locator {
+    uint32_t cspace_id;
+    uint16_t owner_core;
+    uint16_t slot;
     uint32_t generation;
-} cap_handle_t;
+    uint32_t revocation_epoch;
+} bh_cap_locator_t;
+
+_Static_assert(sizeof(bh_cap_locator_t) == 16U, "capability locator wire size");
+_Static_assert(offsetof(bh_cap_locator_t, cspace_id) == 0U, "capability locator cspace offset");
+_Static_assert(offsetof(bh_cap_locator_t, owner_core) == 4U, "capability locator owner offset");
+_Static_assert(offsetof(bh_cap_locator_t, slot) == 6U, "capability locator slot offset");
+_Static_assert(offsetof(bh_cap_locator_t, generation) == 8U, "capability locator generation offset");
+_Static_assert(offsetof(bh_cap_locator_t, revocation_epoch) == 12U, "capability locator epoch offset");
+
+/* Transitional source compatibility: this handle is now pointer-free. */
+typedef bh_cap_locator_t cap_handle_t;
 
 typedef struct cap_instance_id {
     uint32_t origin_core;       // The core that authoritatively owns the object
@@ -178,9 +227,9 @@ typedef struct __attribute__((aligned(16))) capability_entry_new {
     uint32_t flags;
     uint64_t object_ref;
 
-    cap_handle_t parent;       // Who delegated this to me?
-    cap_handle_t first_child;  // Who did I delegate this to?
-    cap_handle_t next_sibling; // Other capabilities delegated from the same parent
+    bh_cap_locator_t parent;       // Who delegated this to me?
+    bh_cap_locator_t first_child;  // Who did I delegate this to?
+    bh_cap_locator_t next_sibling; // Other capabilities delegated from the same parent
 
     uint32_t generation;
 
@@ -209,6 +258,10 @@ typedef struct __attribute__((aligned(64))) capability_table {
     bh_id_allocator_t id_allocator;
     uint8_t id_bitmap[8]; // 64 bits for 64 entries
     spinlock_t lock;
+    /* Process-owned CSpace. Mutable entries are changed only by owner_core. */
+    uint32_t cspace_id;
+    uint16_t owner_core;
+    uint16_t registry_slot;
     uint32_t owner_pid;
     uint32_t numa_node;
 } capability_table_t;
@@ -342,5 +395,7 @@ void cap_handle_delegate_req(uint64_t payload, uint32_t source_core);
 void cap_handle_delegate_ack(uint64_t payload);
 void cap_handle_revoke_req(uint64_t payload, uint32_t source_core);
 void cap_handle_revoke_ack(uint64_t payload);
+void cap_handle_tx_req(uint64_t payload, uint32_t source_core);
+void cap_handle_tx_ack(uint64_t payload);
 
 #endif // BHARAT_CAPABILITY_H

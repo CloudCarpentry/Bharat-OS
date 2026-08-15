@@ -7,14 +7,19 @@ device_profile: desktop
 personality_profile: native
 execution_profile: gp
 
+implementation_maturity:
+  profile: RELEASE
+  allow: [STUB]
+
 build:
-  cmake_preset: x86_64-dev
+  cmake_preset: x86_64-qemu-desktop-release
   cmake_defs:
     BHARAT_ARCH_FAMILY: X86_64
     BHARAT_DEVICE_PROFILE: DESKTOP
     BHARAT_PERSONALITY_PROFILE: NATIVE
     BHARAT_TARGET_BOARD: qemu-virt
     BHARAT_BOOT_GUI: OFF
+    BHARAT_ENABLE_ADVANCED_VM: ON
 
 kernel:
   canonical_artifacts:

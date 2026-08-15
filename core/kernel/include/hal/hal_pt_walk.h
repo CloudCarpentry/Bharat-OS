@@ -5,7 +5,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include "hal_pt.h"
-#include "../../include/mm.h"
+#include <mm.h>
 
 #ifdef __cplusplus
 extern "C" {

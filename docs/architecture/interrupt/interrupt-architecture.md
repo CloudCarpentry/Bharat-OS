@@ -16,6 +16,10 @@ see_also:
 
 Bharat-OS employs a **three-layer interrupt architecture** to provide a robust, hardware-agnostic, and feature-rich interrupt handling system. This design decouples the generic OS-level interrupt handling from the specific hardware controller details, allowing for extensibility, clean porting, and support for advanced features like MSI/MSI-X, virtualization, and accelerator profiles.
 
+Local critical sections use the state-preserving HAL contract described by
+ADR-033. Temporary interrupt masking restores the entry state. Saved state is
+CPU-local and cannot cross migration or wire boundaries.
+
 The architecture strictly separates intent and routing from the hardware mechanisms.
 
 ## Three-Layer Architecture

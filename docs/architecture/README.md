@@ -2,7 +2,7 @@
 title: Architecture Documentation Index
 status: Proposed
 owner: Documentation Working Group
-last_updated: 2026-04-25
+last_updated: 2026-08-12
 tags:
   - docs
   - architecture
@@ -31,6 +31,8 @@ This index maps Bharat-OS architecture documentation to the current repository s
 7. [`storage/README.md`](storage/README.md)
 8. [`security/crypto/overview.md`](security/crypto/overview.md)
 9. [`contracts/`](contracts/) and ADRs in [`../adr/`](../adr/)
+10. [`hardware-capability-packs.md`](hardware-capability-packs.md) – composable
+    drone/robotics, automotive, TV, POS, and router delivery roadmaps.
 
 ## Current architecture areas
 
@@ -42,6 +44,7 @@ This index maps Bharat-OS architecture documentation to the current repository s
 - **Security & crypto:** `security/`
 - **Network:** `network/`
 - **Personalities & compat layers:** `core/personalities/`
+- **Hardware capability packs:** [`hardware-capability-packs.md`](hardware-capability-packs.md)
 - **Formal contracts/specs:** `contracts/`
 
 ## Documentation cleanup status

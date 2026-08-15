@@ -32,6 +32,32 @@ This document captures the current HAL and driver-framework baseline in kernel s
 - Zero-copy NIC integration now resolves MMIO windows through device framework lookups instead of local hardcoded tables.
 - Bus-aware driver/device baseline now supports explicit driver match metadata, bind lifecycle, hotplug add/remove hooks, and per-device power-state transitions.
 - Built-in network defaults now include canonical scaffold entries for PCI Ethernet, USB CDC-ECM Ethernet, CAN, and virtio-net with baseline security/performance/hardware-feature flags and queue limits.
+- The VirtIO common driver family now includes a modern (version 2) MMIO
+  transport mechanism alongside the split-ring and PCI foundations. The MMIO
+  transport validates identity/version, negotiates only the driver's supported
+  feature intersection, fails closed when required features are absent, and
+  configures queues from explicit DMA addresses rather than deriving physical
+  addresses from pointers.
+
+## VirtIO reference-driver boundary
+
+VirtIO is a driver-family reference implementation, not kernel policy:
+
+- `core/drivers/virtio/` owns transport registers, feature negotiation,
+  virtqueue mechanics, queue notification, and device reset.
+- `core/drivers/{display,input,net,block}/virtio_*` owns device-class hardware
+  protocols and translates them to Bharat driver-class contracts.
+- `core/services/` owns device selection, retry/fallback, lifecycle
+  orchestration, routing, and user-visible policy.
+- `core/kernel/` supplies only capability-mediated mapping, interrupt, DMA, and
+  IPC mechanisms; it must not select VirtIO features or device policy.
+
+Each transport instance is owned and serialized by one driver domain. Queue
+memory is shared only with its device and must be supplied as explicit DMA
+addresses after the caller has established the appropriate mapping. Transport
+objects and raw pointers are not wire formats and must not cross IPC boundaries.
+Unsupported transports, missing required features, busy queues, and invalid DMA
+addresses fail closed without publishing a started device.
 
 ## Deferred for production
 
@@ -39,6 +65,9 @@ This document captures the current HAL and driver-framework baseline in kernel s
 - Real periodic timer programming and interrupt ack paths.
 - Driver-domain isolation and user-space driver process boundaries.
 - Runtime hardware discovery from ACPI/FDT instead of static built-in tables.
+- End-to-end QEMU proof for the VirtIO GPU, input, net, and block acceptance
+  path. The MMIO transport is a tested mechanism foundation; this document does
+  not claim that GUI, network, or storage service integration is complete.
 
 ## Hardware/platform subsystems still required
 

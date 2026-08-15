@@ -1,5 +1,5 @@
 #include "nvme_core.h"
-#include <string.h>
+#include "../../../lib/runtime/include/bharat/runtime/freestanding_string.h"
 
 int nvme_admin_identify(nvme_controller_t *ctrl, void *buffer, size_t len) {
     if (!ctrl || ctrl->state != 1 || !buffer || len < 4096) return -1;

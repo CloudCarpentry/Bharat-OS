@@ -77,6 +77,7 @@ add_subdirectory(devices)
 add_subdirectory(serial)
 add_subdirectory(registry)
 add_subdirectory(accel)
+add_subdirectory(virtio)
 add_subdirectory(net)
 add_subdirectory(display)
 add_subdirectory(storage)
@@ -105,6 +106,7 @@ target_link_libraries(bharatos_drivers INTERFACE
   bharatos_driver_class
   bharatos_driver_devices
   bharatos_driver_registry
+  bharatos_driver_virtio
   bharatos_driver_net
   bharatos_driver_display
   bharatos_driver_storage

@@ -1,4 +1,5 @@
 #include "arch/arch_cpu_caps.h"
+#include "hal/hal_cpu_features.h"
 #include "../../common/cpu_caps_state.h"
 #include <stdint.h>
 
@@ -93,6 +94,10 @@ static void x86_probe_caps(arch_cpu_caps_record_t *caps) {
             avx2_hw = true;
             arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_X86_AVX2);
         }
+        if (ebx & (1u << 9)) {
+            arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_X86_ERMS);
+            arch_cpu_caps_set(&caps->usable, ARCH_CPU_FEAT_X86_ERMS);
+        }
     }
 
     // Vector usable == HW detected + XSAVE plumbing + kernel context policy.
@@ -147,6 +152,11 @@ void arch_cpu_caps_init_ap(void) {
 }
 
 void arch_cpu_caps_export_hal_features(const arch_cpu_caps_record_t *arch, void *out_ptr) {
-    (void)arch;
-    (void)out_ptr;
+    hal_cpu_feature_set_t *out = out_ptr;
+    if (arch_cpu_caps_test(&arch->raw, ARCH_CPU_FEAT_X86_ERMS))
+        out->raw_bits[HAL_CPU_FEATURE_FAST_STRING / 64u] |=
+            1ULL << (HAL_CPU_FEATURE_FAST_STRING % 64u);
+    if (arch_cpu_caps_test(&arch->usable, ARCH_CPU_FEAT_X86_ERMS))
+        out->usable_bits[HAL_CPU_FEATURE_FAST_STRING / 64u] |=
+            1ULL << (HAL_CPU_FEATURE_FAST_STRING % 64u);
 }

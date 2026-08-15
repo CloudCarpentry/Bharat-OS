@@ -5,3 +5,9 @@ definitions:
     return: void*
   - name: memset
     return: void*
+  - name: memmove
+    return: void*
+  - name: malloc
+    return: void*
+  - name: free
+    return: void

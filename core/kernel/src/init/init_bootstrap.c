@@ -3,15 +3,9 @@
 #include "sched/sched.h"
 #include "boot/boot_info.h"
 #include "process/user_image_loader.h"
-#include "arch/context_switch.h"
 #include "hal/hal.h"
-#include "hal/hal_timer.h"
 #include "mm/physmap.h"
-#include "mm/prot_domain.h"
-#include "mm/vm_mapping.h"
 #include "lib/base/string.h"
-
-#include <bharat/uapi/init/rt_startup.h>
 
 extern boot_info_t* g_boot_info;
 
@@ -57,114 +51,8 @@ static void init_boot_stage(const char *stage) {
     init_boot_write("\n");
 }
 
-// ── Static RT / MPU Realizer (BOOT-P0-001) ──
-
-static int bh_rt_image_validate(const boot_module_t *mod) {
-    if (!mod || mod->size < 64) return -1;
-
-    const uint8_t *elf_bytes = (const uint8_t *)physmap_phys_to_virt(mod->phys_start);
-    if (!elf_bytes) return -1;
-
-    // Check ELF magic
-    if (elf_bytes[0] != 0x7f || elf_bytes[1] != 'E' || elf_bytes[2] != 'L' || elf_bytes[3] != 'F') {
-        return -1;
-    }
-
-    console_write_raw("[BOOTSTRAP] RT_IMAGE: VALIDATED\n", 31);
-    return 0;
-}
-
-static int bh_rt_region_plan_create_and_install(prot_domain_t *domain, const boot_module_t *mod, uintptr_t *out_entry) {
-    // Statically create memory regions for the RT image on the MPU domain
-    // Code region (R+E)
-    prot_domain_map_region(domain, mod->phys_start, mod->phys_start, mod->size, VM_PROT_READ | VM_PROT_EXEC | VM_PROT_USER);
-
-    // Stack region (R+W)
-    uint64_t stack_phys = mod->phys_start + mod->size + 4096; // Offset for stack
-    prot_domain_map_region(domain, stack_phys, stack_phys, 16384, VM_PROT_READ | VM_PROT_WRITE | VM_PROT_USER);
-
-    // Startup struct region (R)
-    uint64_t startup_phys = stack_phys + 16384 + 4096;
-    prot_domain_map_region(domain, startup_phys, startup_phys, 4096, VM_PROT_READ | VM_PROT_USER);
-
-    // Parse ELF entry point
-    const uint32_t *elf_hdr = (const uint32_t *)physmap_phys_to_virt(mod->phys_start);
-    // Entry point offset is at offset 24 for 32-bit ELF, offset 24 for 64-bit ELF (64-bit is 8-byte entry point)
-    // For simplicity, we fallback to mod->phys_start + 0x1000 or parse the real field.
-    // In our freestanding rt-supervisor, the entry is at mod->phys_start (the beginning of binary/ELF).
-    *out_entry = mod->phys_start;
-
-    console_write_raw("[BOOTSTRAP] RT_REGIONS: INSTALLED\n", 33);
-    return 0;
-}
-
-static int bh_rt_supervisor_start(const boot_module_t *mod) {
-    // 1. Validate image
-    if (bh_rt_image_validate(mod) != 0) {
-        console_write_raw("[BOOTSTRAP] RT image validation failed\n", 38);
-        return -1;
-    }
-
-    /*
-     * The process address space is the sole memory authority for every
-     * protection model.  For MPU it owns a REGION_ONLY protection domain;
-     * never fabricate a domain or replace the address-space pointer.
-     */
-    bh_process_t *proc = process_create("rt-supervisor");
-    if (!proc || !proc->addr_space || !proc->addr_space->prot_domain) {
-        init_boot_fail("RT_ASPACE_READY", K_ERR_UNSUPPORTED);
-        return -1;
-    }
-    address_space_t *aspace = proc->addr_space;
-    prot_domain_t *domain = aspace->prot_domain;
-
-    // 3. Plan & Install regions
-    uintptr_t entry_point = 0;
-    if (bh_rt_region_plan_create_and_install(domain, mod, &entry_point) != 0) {
-        init_boot_fail("RT_REGIONS", K_ERR_VM_UNMAPPED);
-        return -1;
-    }
-
-    // 4. Activate MPU domain
-    prot_domain_activate(domain);
-
-    // 5. Activate Core Services
-    console_write_raw("[BOOTSTRAP] RT_TIMER: ACTIVE\n", 29);
-    console_write_raw("[BOOTSTRAP] RT_IRQ: ACTIVE\n", 27);
-    console_write_raw("[BOOTSTRAP] RT_SCHEDULER: ACTIVE\n", 33);
-
-    // 6. Spawn Thread
-    bh_thread_t *thread = thread_create_detached(proc, (void (*)(void))entry_point);
-    if (!thread) return -1;
-
-    proc->main_thread = thread;
-    thread->priority = 1;
-
-    // 7. Prepare startup structure and pass its pointer to argument 0
-    uint64_t startup_phys = mod->phys_start + mod->size + 4096 + 16384 + 4096;
-    bh_rt_startup_t *startup = (bh_rt_startup_t *)physmap_phys_to_virt(startup_phys);
-    if (startup) {
-        startup->abi_version = 0x0100;
-        startup->struct_size = sizeof(bh_rt_startup_t);
-        startup->arch_id = (uint32_t)g_boot_info->arch;
-        startup->device_profile = g_boot_info->device_profile;
-        startup->execution_profile = g_boot_info->execution_profile;
-        startup->memory_model = (uint32_t)g_boot_info->memory_model;
-        startup->cpu_id = (uint32_t)hal_cpu_get_id();
-        startup->timer_frequency = hal_timer_read_freq();
-        if (startup->timer_frequency == 0U) {
-            init_boot_fail("RT_TIMER_FREQUENCY", K_ERR_UNSUPPORTED);
-            return -1;
-        }
-    }
-
-    // Allocate stack top
-    uintptr_t stack_top = mod->phys_start + mod->size + 4096 + 16384;
-    arch_prepare_initial_context_arg((cpu_context_t*)thread->cpu_context, (arch_thread_entry_arg_t)entry_point, (void *)startup_phys, stack_top);
-
-    sched_enqueue(thread, hal_cpu_get_id());
-    return 0;
-}
+/* The packaged root is always launched by the canonical loader below.  Lifecycle
+ * model selection is tooling policy (ADR-021), never an ISA/MMU branch here. */
 
 // ── Canonical Handoff Router ──
 

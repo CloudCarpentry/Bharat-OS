@@ -223,5 +223,34 @@ class TestBidlTooling(unittest.TestCase):
                        check=True)
         subprocess.run([os.path.join(self.out_dir, "test_bin2")], check=True)
 
+    def test_metadata_parsing(self):
+        content = """
+        service meta = 1 {
+            rpc Call(Req) -> Resp {
+                qos = reliable;
+                timeout_ms = 1000;
+            }
+        }
+        """
+        path = self.write_bidl(content)
+        service = parse_bidl(path)
+        rpc = service["rpcs"][0]
+        self.assertEqual(rpc["metadata"]["qos"], "reliable")
+        self.assertEqual(rpc["metadata"]["timeout_ms"], "1000")
+
+    def test_invalid_metadata_value_fails(self):
+        content = """
+        service meta = 1 {
+            rpc Call(Req) -> Resp {
+                timeout_ms = not_a_number;
+            }
+        }
+        """
+        path = self.write_bidl(content)
+        with self.assertRaises(BidlParseError) as context:
+            parse_bidl(path)
+        self.assertIn("Malformed metadata value", str(context.exception))
+
 if __name__ == '__main__':
+
     unittest.main()

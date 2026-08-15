@@ -1,5 +1,6 @@
 #include <standard/string.h>
 #include <standard/assert.h>
+#include <bharat/libc/memops.h>
 
 int main(void) {
     char buf1[32];
@@ -26,6 +27,17 @@ int main(void) {
     char move_buf[16] = "abcdefgh";
     memmove(move_buf + 2, move_buf, 5); /* abcde -> offset 2, overlaps */
     assert(memcmp(move_buf, "ababcdeh", 8) == 0);
+
+    /* The safe-on-all-CPUs descriptor is validated and published once. */
+    bharat_cpu_features_v1_t features = {
+        .abi_version = BHARAT_CPU_FEATURES_ABI_V1,
+        .size = sizeof(features),
+    };
+    assert(bh_libc_memops_init(&features));
+    assert(!bh_libc_memops_init(&features));
+    memset(buf1, 0x5a, sizeof(buf1));
+    memcpy(buf2, buf1, sizeof(buf1));
+    assert(memcmp(buf1, buf2, sizeof(buf1)) == 0);
 
     /* Test strlen */
     assert(strlen("hello") == 5);

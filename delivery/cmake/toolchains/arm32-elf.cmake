@@ -9,7 +9,6 @@ set(CMAKE_LINKER ld)
 set(CMAKE_EXE_LINKER_FLAGS_INIT "-fuse-ld=bfd -nostdlib -fno-pie -Wl,-no-pie ")
 
 set(CMAKE_C_COMPILER_TARGET arm-none-eabi)
-set(CMAKE_ASM_COMPILER_TARGET arm-none-eabi)
 set(CMAKE_ASM_COMPILER_TARGET armv7a-unknown-none-eabi)
 
 set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)

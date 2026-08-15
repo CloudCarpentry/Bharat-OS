@@ -26,7 +26,7 @@ This review covered:
    - Resolved by keeping the macro constants as the single source in that header.
 
 2. **x86_64 HAL duplicate symbol definition (hard compiler break).**
-   - `core/arch/hal/x86/x86_64/hal_pt_x86_64.c` had duplicate file-scope definitions of `g_x86_pcid_supported`.
+   - `core/arch/x86/x86_64/hal_pt_x86_64.c` had duplicate file-scope definitions of `g_x86_pcid_supported`.
    - Removed duplicate to restore one-definition correctness.
 
 3. **Runtime include-path mismatch between old/new UAPI header layouts.**

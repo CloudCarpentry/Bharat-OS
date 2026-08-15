@@ -38,6 +38,10 @@ int main(void) {
     cpu_caps_state_set_ap(1, &ap1);
     arch_cpu_caps_system_finalize();
 
+    hal_cpu_feature_set_t late = {0};
+    if (expect_true(hal_cpu_features_is_frozen(), "HAL features must freeze after aggregation")) return 1;
+    if (expect_true(!hal_cpu_features_publish(2, &late), "late feature publication must fail")) return 1;
+
     if (expect_true(!arch_cpu_caps_test(&arch_cpu_caps_system_all()->usable, ARCH_CPU_FEAT_COMMON_AES),
                     "system_all must clear features missing on AP")) return 1;
     if (expect_true(arch_cpu_caps_test(&arch_cpu_caps_system_any()->usable, ARCH_CPU_FEAT_COMMON_AES),

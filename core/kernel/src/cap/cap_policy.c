@@ -7,14 +7,19 @@ static const cap_rights_mask_t k_cap_valid_rights_crypto_key = (CAP_RIGHT_CRYPT_
 static const cap_rights_mask_t k_cap_valid_rights_crypto_simple = (CAP_RIGHT_CRYPT_USE | CAP_RIGHT_DELEGATE);
 static const cap_rights_mask_t k_cap_valid_rights_netdev = (CAP_RIGHT_DELEGATE);
 static const cap_rights_mask_t k_cap_valid_rights_accel_device = (CAP_RIGHT_DELEGATE);
-static const cap_rights_mask_t k_cap_valid_rights_accel_queue = (CAP_RIGHT_ENQUEUE | CAP_RIGHT_CANCEL | CAP_RIGHT_QUERY | CAP_RIGHT_DELEGATE);
+static const cap_rights_mask_t k_cap_valid_rights_accel_queue = (CAP_RIGHT_ENQUEUE | CAP_RIGHT_CANCEL | CAP_RIGHT_QUERY | CAP_RIGHT_ACCEL_SUBMIT | CAP_RIGHT_DELEGATE);
 static const cap_rights_mask_t k_cap_valid_rights_accel_buffer = (CAP_RIGHT_MEMORY_MAP | CAP_RIGHT_BIND | CAP_RIGHT_MEMORY_SHARE | CAP_RIGHT_SYNC_CPU | CAP_RIGHT_SYNC_DEV | CAP_RIGHT_DELEGATE);
 static const cap_rights_mask_t k_cap_valid_rights_accel_telemetry = (CAP_RIGHT_READ_STATS | CAP_RIGHT_READ_FAULTS | CAP_RIGHT_DELEGATE);
 static const cap_rights_mask_t k_cap_valid_rights_accel_admin = (CAP_RIGHT_RESET | CAP_RIGHT_PARTITION | CAP_RIGHT_FW_LOAD | CAP_RIGHT_DELEGATE);
-static const cap_rights_mask_t k_cap_valid_rights_dma_grant = (CAP_RIGHT_DMA_MAP | CAP_RIGHT_MEMORY_UNMAP | CAP_RIGHT_DELEGATE);
+static const cap_rights_mask_t k_cap_valid_rights_dma_grant = (CAP_RIGHT_DMA_MAP | CAP_RIGHT_DEVICE_DMA | CAP_RIGHT_MEMORY_UNMAP | CAP_RIGHT_DELEGATE);
 static const cap_rights_mask_t k_cap_valid_rights_dma_domain = (CAP_RIGHT_DELEGATE);
 static const cap_rights_mask_t k_cap_valid_rights_process = (CAP_RIGHT_PROCESS_MANAGE | CAP_RIGHT_DELEGATE | CAP_RIGHT_RESOURCE_ALLOC);
 static const cap_rights_mask_t k_cap_valid_rights_thread = (CAP_RIGHT_SCHEDULE | CAP_RIGHT_DELEGATE);
+static const cap_rights_mask_t k_cap_valid_rights_hmem =
+    (CAP_RIGHT_HMEM_CREATE | CAP_RIGHT_HMEM_MAP_CPU |
+     CAP_RIGHT_HMEM_MAP_DEVICE | CAP_RIGHT_HMEM_PIN |
+     CAP_RIGHT_HMEM_SHARE | CAP_RIGHT_HMEM_MIGRATE |
+     CAP_RIGHT_HMEM_QUERY | CAP_RIGHT_HMEM_DESTROY | CAP_RIGHT_DELEGATE);
 
 // Internal helper: Returns valid mask for capability type, or 0 if type not transferrable
 static cap_rights_mask_t cap_valid_rights_for_type(cap_type_t type) {
@@ -55,6 +60,8 @@ static cap_rights_mask_t cap_valid_rights_for_type(cap_type_t type) {
         return k_cap_valid_rights_thread;
     case CAP_TYPE_PROCESS:
         return k_cap_valid_rights_process;
+    case CAP_TYPE_HMEM:
+        return k_cap_valid_rights_hmem;
     case CAP_TYPE_NONE:
     case CAP_TYPE_IMPORTED_PROXY:
     default:

@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include "numa.h"
 
 /*
  * Bharat-OS Memory Management Subsystem
@@ -70,6 +71,9 @@ int mm_pmm_init(uint32_t magic, const struct boot_info *boot);
 
 // Base Page Allocation (NUMA aware)
 phys_addr_t mm_alloc_page(uint32_t preferred_numa_node);
+/* Explicit policy entry point. STRICT_NODE never falls back to another node. */
+phys_addr_t mm_alloc_page_policy_at(const numa_affinity_t *policy,
+                                    virt_addr_t fault_vaddr);
 phys_addr_t mm_alloc_pages_order(int order, uint32_t preferred_numa_node,
                                  uint32_t flags);
 phys_addr_t pmm_alloc_pages_colored(int order, uint32_t preferred_numa_node,

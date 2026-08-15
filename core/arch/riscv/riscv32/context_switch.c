@@ -9,9 +9,9 @@ void arch_prepare_initial_context(cpu_context_t* ctx, void (*entry)(void), uint6
     if (!ctx) return;
     for (size_t i = 0; i < 16; ++i) ctx->regs[i] = 0U;
     stack_top &= ~0xFULL;
-    ctx->regs[0] = (uintptr_t)sched_thread_exit_trampoline;
-    ctx->regs[1] = 0U;
-    ctx->regs[2] = (uintptr_t)entry;
+    ctx->regs[0] = 0U;                                       // s0 = arg0 (NULL)
+    ctx->regs[1] = (uintptr_t)entry;                          // s1 = entry function
+    ctx->regs[2] = (uintptr_t)sched_thread_exit_trampoline;   // s2 = return trampoline
     uint32_t sstatus_val;
     __asm__ volatile("csrr %0, sstatus" : "=r"(sstatus_val));
     ctx->regs[12] = sstatus_val;

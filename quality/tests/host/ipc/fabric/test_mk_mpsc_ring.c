@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <stdio.h>
+#include <stdint.h>
 #include "ipc/mk_proto.h"
 #include "fake_hal.h"
 
@@ -52,6 +53,27 @@ int main(void) {
     bh_mk_wire_message_t empty_msg;
     st = bh_mk_mpsc_ring_dequeue(&ring, &empty_msg);
     assert(st == K_ERR_AGAIN);
+
+    // Seed an empty ring immediately before uint32_t rollover.  Each slot's
+    // free sequence must match its next producer ticket modulo 2^32.
+    const uint32_t near_wrap = UINT32_MAX - 2U;
+    atomic_store(&ring.producer_head, near_wrap);
+    ring.consumer_tail = near_wrap;
+    atomic_store(&ring.available_credits, ring.capacity);
+    for (uint32_t i = 0; i < ring.capacity; ++i) {
+        uint32_t ticket = near_wrap + i;
+        atomic_store(&slots[ticket & ring.mask].sequence, ticket);
+    }
+    for (uint32_t i = 0; i < 5U; ++i) {
+        bh_mk_wire_message_t msg = {0};
+        msg.header.sequence = 200U + i;
+        assert(bh_mk_mpsc_ring_enqueue(&ring, &msg) == K_OK);
+        bh_mk_wire_message_t out_msg;
+        assert(bh_mk_mpsc_ring_dequeue(&ring, &out_msg) == K_OK);
+        assert(out_msg.header.sequence == 200U + i);
+    }
+    assert(atomic_load(&ring.producer_head) == 2U);
+    assert(ring.consumer_tail == 2U);
 
     printf("test_mk_mpsc_ring PASSED\n");
     return 0;

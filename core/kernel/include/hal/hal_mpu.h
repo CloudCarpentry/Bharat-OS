@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
-#include "../mm.h"
+#include <mm.h>
 
 // Hardware specific MPU constraints and limits
 typedef struct hal_mpu_caps {

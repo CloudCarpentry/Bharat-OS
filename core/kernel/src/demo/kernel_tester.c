@@ -9,7 +9,7 @@
 #define KPRINT(s) console_write_raw(s, string_length(s))
 
 extern void ktest_pmm_run(void);
-extern void ktest_slab_run(void);
+extern void ktest_heap_run(void);
 extern void ktest_sched_run(void);
 
 static void test_sched_yield_smoke(void) {
@@ -63,7 +63,7 @@ void kernel_tester_app(void) {
 
   // 1. Run Unit Test Suites
   ktest_pmm_run();
-  ktest_slab_run();
+  ktest_heap_run();
   ktest_sched_run();
 
   // 2. Functional/Dynamic Tests

@@ -39,8 +39,8 @@ see_also:
 | x86_64_desktop_headless | PASS | PASS | `Bharat-OS` | Verified hardened boot flow. |
 | arm64_desktop_headless | PASS | PASS | `Bharat-OS` | Verified hardened boot flow. |
 | riscv64_desktop_headless | PASS | PASS | `Bharat-OS` | Verified hardened boot flow. |
-| arm32_mmu_lite_headless | PASS | FAIL | N/A | Build successful, but QEMU fails to produce output (Partial status). |
-| riscv32_mmu_lite_headless | PASS | FAIL | N/A | Build successful, but QEMU fails due to missing OpenSBI binary. |
+| arm32_mmu_lite_headless | PASS | PASS | `Bharat-OS` | Verified hardened boot flow. |
+| riscv32_mmu_lite_headless | PASS | PASS | `Bharat-OS` | Verified hardened boot flow. |
 
 ## Next Recommended Refactor Slice
 - Unify Trap/Exception handling registration across architectures (similar to PT ops).

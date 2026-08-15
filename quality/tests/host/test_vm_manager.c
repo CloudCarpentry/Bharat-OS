@@ -10,7 +10,7 @@ void test_vm_lifecycle(void) {
 
     vm_req_map_t req_map = { .aspace_id = 10, .vaddr = 0x1000, .size = 0x1000, .flags = 0x3 };
     vm_resp_map_t resp_map;
-    int32_t status = vm_manager_handle_map(&req_map, &resp_map);
+    bharat_status_t status = vm_manager_handle_map(&req_map, &resp_map);
     assert(status == BHARAT_IPC_STATUS_OK);
     assert(resp_map.region_id == 1);
 

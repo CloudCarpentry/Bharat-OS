@@ -2,7 +2,7 @@
 title: Cryptography & Security Roadmap
 status: Proposed
 owner: Divyang Panchasara
-last_updated: 2024-05-15
+last_updated: 2026-08-13
 tags:
   - security
   - crypto
@@ -14,6 +14,33 @@ version: 1.0
 # Cryptography & Security Roadmap
 
 This roadmap outlines the phased implementation plan for the Bharat-OS Cryptography and Security subsystem. It is designed to establish a solid foundation in the kernel first (mechanisms), followed by the user-space services (policies and algorithms), and finally integration with the rest of the operating system.
+
+## Delivery priority
+
+Work proceeds in security dependency order:
+
+1. **Secure random generation** — health-checked entropy providers and a
+   portable DRBG/conditioning path before key-generating consumers.
+2. **SHA-256 / SHA-384** — portable implementations first, followed by x86 SHA
+   and ARM SHA dispatch with known-answer and differential tests.
+3. **AES-GCM** — treat AES and polynomial multiply as independent eligibility
+   requirements; provide portable authenticated encryption when either is
+   unavailable.
+4. **HMAC / HKDF** — build on the validated hash contract without duplicating
+   ISA dispatch in the constructions.
+5. **Boot/image signature verification** — keep only the minimal pre-userspace
+   verification path in the trusted boot/kernel boundary; service-side image
+   policy remains in user space.
+6. **TLS cryptography** — integrate the audited user-space library/service; do
+   not introduce a kernel TLS crypto stack.
+7. **Disk/OTA integrity** — integrate through storage and update services after
+   the primitive and signature contracts are validated.
+
+Each stage must ship a portable implementation before optional ISA backends.
+An accelerated path is incomplete until forced-fallback, unsupported-feature,
+known-answer, and portable-versus-accelerated differential tests pass on its
+target architecture. See
+[`ADR-025`](../../../adr/ADR-025-portable-crypto-dispatch-boundary.md).
 
 ## Implementation snapshot (as of 2026-04-21)
 
@@ -50,7 +77,7 @@ This phase implements the core, low-level mechanisms within the kernel, strictly
 
 This phase implements the drivers for the three abstract hardware backend classes defined in the architecture.
 
-*   [ ] **CPU Accelerator Abstraction:** Implement detection and routing for CPU-level instruction extensions (e.g., AES-NI, ARMv8 Crypto Extensions, RISC-V Scalar Crypto).
+*   [ ] **CPU Accelerator Abstraction:** Implement operation-specific detection and portable-first routing for x86 AES-NI/PCLMUL/SHA, ARM AES/PMULL/SHA, and future RISC-V crypto extensions.
 *   [ ] **TPM / Secure Element Abstraction:** Implement the low-level communication drivers (e.g., over SPI or LPC) for discrete security chips, focusing on exposing the device endpoint to user-space rather than implementing the full TPM 2.0 command set.
 *   [ ] **Sealing Backend Abstraction:** Implement the specific mechanisms for tying cryptographic operations to the platform's trusted state (e.g., using TPM PCRs or TrustZone variables).
 

@@ -3,6 +3,7 @@
 #include <sched/cpu_partition.h>
 #include <console/console_core.h>
 #include <stddef.h>
+#include "bharat_config.h"
 
 static bharat_execution_config_t g_exec_config = {0};
 static bool g_exec_config_initialized = false;
@@ -13,7 +14,15 @@ static bool g_exec_config_initialized = false;
 #endif
 
 #ifndef BHARAT_CONFIG_EXECUTION_MODE
+#if defined(BHARAT_KERNEL_PROFILE_RT)
+#define BHARAT_CONFIG_EXECUTION_MODE BHARAT_EXEC_MODE_REALTIME
+#elif defined(BHARAT_KERNEL_PROFILE_GP)
+#define BHARAT_CONFIG_EXECUTION_MODE BHARAT_EXEC_MODE_GENERAL_PURPOSE
+#elif defined(BHARAT_KERNEL_PROFILE_MIX)
+#define BHARAT_CONFIG_EXECUTION_MODE BHARAT_EXEC_MODE_MIXED_CRITICAL
+#else
 #define BHARAT_CONFIG_EXECUTION_MODE BHARAT_EXEC_MODE_UNKNOWN
+#endif
 #endif
 
 #ifndef BHARAT_CONFIG_LOGICAL_CPU_COUNT

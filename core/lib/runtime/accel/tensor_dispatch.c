@@ -6,7 +6,7 @@
 extern bharat_accel_device_t* get_virt_accel_mock_device(void);
 
 static tensor_dispatch_stats_t g_stats = {0};
-static tensor_dispatch_result_t g_last_result = {NULL, (backend_type_t)0, 0};
+static tensor_dispatch_result_t g_last_result = {NULL, (backend_type_t)0, (bh_accel_device_class_t)0, (bh_accel_runtime_provider_t)0, (bh_accel_memory_domain_t)0, 0};
 
 // Software fallback implementation
 static int sw_process_tensor(tensor_op_t *op) {
@@ -151,6 +151,16 @@ int tensor_process(
     // Populate routing outcomes & last result metadata
     g_last_result.backend_name = provider->name;
     g_last_result.backend_type = provider->type;
+    if (provider->type == BACKEND_TYPE_SOFTWARE_FALLBACK) {
+        g_last_result.device_class = BH_ACCEL_DEVICE_CPU;
+        g_last_result.runtime_provider = BH_ACCEL_RUNTIME_CPU_ISA;
+        g_last_result.memory_domain = BH_ACCEL_MEM_SYSTEM;
+    } else {
+        // Generic hardware mapping
+        g_last_result.device_class = BH_ACCEL_DEVICE_NPU;
+        g_last_result.runtime_provider = BH_ACCEL_RUNTIME_VIRTIO_ACCEL;
+        g_last_result.memory_domain = BH_ACCEL_MEM_NPU_DEVICE;
+    }
 
     if (provider->type == BACKEND_TYPE_SOFTWARE_FALLBACK) {
         g_stats.backend_sw_fallback++;

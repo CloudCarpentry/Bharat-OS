@@ -3,8 +3,8 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include "../mm.h"
-#include "../mm/mem_model.h"
+#include <mm.h>
+#include <mm/mem_model.h>
 
 // Compatibility typedef and macros for the old HAL memory model enum
 typedef mem_model_t hal_mem_model_t;

@@ -8,6 +8,7 @@ from tools.build.models import (
     DebugConfig,
     DtbConfig,
     FlashConfig,
+    ImplementationMaturityPolicy,
     KernelConfig,
     PackageConfig,
     PackageTransformConfig,
@@ -227,6 +228,10 @@ def resolve_yaml_target(path: Path) -> ResolvedTarget:
         flash=flash_cfg,
         debug=debug_cfg,
         footprint_profile=raw.get("footprint_profile"),
+        implementation_maturity=ImplementationMaturityPolicy(
+            profile=raw.get("implementation_maturity", {}).get("profile", ""),
+            allow=raw.get("implementation_maturity", {}).get("allow", [])
+        ),
         source_metadata={"source_kind": "yaml", "source_path": str(resolved_path)}
     )
 

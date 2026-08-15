@@ -89,6 +89,7 @@ kstatus_t bh_mk_fabric_init(uint32_t discovered_core_count) {
         }
 
         atomic_store_explicit(&f->generation, 1, memory_order_relaxed);
+        atomic_store_explicit(&f->tx_sequence, 1U, memory_order_relaxed);
         atomic_store_explicit(&f->ready, 1, memory_order_release);
     }
 
@@ -239,8 +240,9 @@ kstatus_t bh_mk_send(
         wire_msg.header.txn_generation = 0xFFFFFFFFU;
     }
 
-    static _Atomic uint64_t g_sequence_counter = 1;
-    wire_msg.header.sequence = atomic_fetch_add_explicit(&g_sequence_counter, 1, memory_order_relaxed);
+    uint32_t local_sequence = atomic_fetch_add_explicit(
+        &src_fab->tx_sequence, 1U, memory_order_relaxed);
+    wire_msg.header.sequence = ((uint64_t)src_core << 32) | local_sequence;
     wire_msg.header.deadline_ticks = hal_timer_monotonic_ticks() + 1000;
     wire_msg.header.payload_size = payload_size;
 

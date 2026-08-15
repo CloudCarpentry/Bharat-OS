@@ -14,28 +14,28 @@ static inline void init_ring(urpc_ring_t* ring) {
     }
 }
 
-int urpc_init_global(void) {
+kstatus_t urpc_init_global(void) {
     // Boot CPU initializes the structures
     for (uint32_t i = 0; i < BHARAT_MAX_CPUS; i++) {
         init_ring(&g_urpc_channels[i].tx_ring);
         init_ring(&g_urpc_channels[i].rx_ring);
         g_urpc_channels[i].is_bound = false;
     }
-    return 0;
+    return K_OK;
 }
 
-int urpc_bootstrap_core(uint32_t core_id) {
-    if (core_id == 0) return 0; // Boot CPU doesn't bind to itself
+kstatus_t urpc_bootstrap_core(uint32_t core_id) {
+    if (core_id == 0) return K_OK; // Boot CPU doesn't bind to itself
 
     if (core_id < BHARAT_MAX_CPUS) {
         // "Bind" endpoints by verifying memory access and state
         if (g_urpc_channels[core_id].tx_ring.head == 0 &&
             g_urpc_channels[core_id].rx_ring.head == 0) {
             g_urpc_channels[core_id].is_bound = true;
-            return 0;
+            return K_OK;
         }
     }
-    return -1;
+    return K_ERR_BAD_STATE;
 }
 
 void urpc_mark_ready(uint32_t core_id) {
@@ -53,15 +53,15 @@ int urpc_is_ready(uint32_t core_id) {
 }
 
 // Minimal Lockless Queue (SPMC/MPSC depends on usage, currently Single Producer Single Consumer per ring)
-int urpc_bootstrap_send(uint32_t target_core, uint64_t msg) {
-    if (target_core >= BHARAT_MAX_CPUS || !g_urpc_channels[target_core].is_bound) return -1;
+kstatus_t urpc_bootstrap_send(uint32_t target_core, uint64_t msg) {
+    if (target_core >= BHARAT_MAX_CPUS || !g_urpc_channels[target_core].is_bound) return K_ERR_NOT_FOUND;
 
     urpc_ring_t* ring = &g_urpc_channels[target_core].tx_ring;
     uint32_t next_head = (ring->head + 1) % URPC_RING_SIZE;
 
     // Check if full
     if (next_head == ring->tail) {
-        return -1;
+        return K_ERR_BUSY;
     }
 
     ring->buffer[ring->head] = msg;
@@ -69,18 +69,18 @@ int urpc_bootstrap_send(uint32_t target_core, uint64_t msg) {
     __asm__ volatile("" : : : "memory");
     ring->head = next_head;
 
-    return 0;
+    return K_OK;
 }
 
-int urpc_bootstrap_recv(uint32_t source_core, uint64_t* out_msg) {
-    if (source_core >= BHARAT_MAX_CPUS || !g_urpc_channels[source_core].is_bound) return -1;
-    if (out_msg == NULL) return -1;
+kstatus_t urpc_bootstrap_recv(uint32_t source_core, uint64_t* out_msg) {
+    if (source_core >= BHARAT_MAX_CPUS || !g_urpc_channels[source_core].is_bound) return K_ERR_NOT_FOUND;
+    if (out_msg == NULL) return K_ERR_INVALID_ARG;
 
     urpc_ring_t* ring = &g_urpc_channels[source_core].rx_ring;
 
     // Check if empty
     if (ring->head == ring->tail) {
-        return -1;
+        return K_ERR_NOT_FOUND;
     }
 
     *out_msg = ring->buffer[ring->tail];
@@ -88,5 +88,5 @@ int urpc_bootstrap_recv(uint32_t source_core, uint64_t* out_msg) {
     __asm__ volatile("" : : : "memory");
     ring->tail = (ring->tail + 1) % URPC_RING_SIZE;
 
-    return 0;
+    return K_OK;
 }

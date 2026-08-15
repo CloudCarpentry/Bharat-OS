@@ -6,18 +6,18 @@
 
 int (*g_test_fault_hook)(trap_frame_t *frame, const trap_info_t *info) = NULL;
 
-int trap_handle_fault(trap_frame_t *frame, const trap_info_t *info) {
+kstatus_t trap_handle_fault(trap_frame_t *frame, const trap_info_t *info) {
     bh_thread_t *t = sched_current_thread();
 
     if (g_test_fault_hook) {
         int ret = g_test_fault_hook(frame, info);
-        if (ret == 0) return 0;
+        if (ret == 0) return K_OK;
     }
 
     if (info->origin == TRAP_ORIGIN_KERNEL) {
         // Attempt exception table recovery before panicking on kernel exceptions
         if (trap_try_exception_fixup(frame, info->fault_addr, info->arch_code)) {
-            return 0; // Recovered successfully
+            return K_OK; // Recovered successfully
         }
 
         panic_context_t pctx = {
@@ -29,7 +29,7 @@ int trap_handle_fault(trap_frame_t *frame, const trap_info_t *info) {
             .trap_frame = frame
         };
         kernel_panic_ex(&pctx);
-        return -1; // -EFAULT
+        return K_ERR_FAULT; // -EFAULT
     }
 
     if (t && t->process && t->process->personality_ops &&
@@ -43,5 +43,5 @@ int trap_handle_fault(trap_frame_t *frame, const trap_info_t *info) {
         bh_thread_yield();
     }
 
-    return -1;
+    return K_ERR_FAULT;
 }

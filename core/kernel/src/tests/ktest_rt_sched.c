@@ -9,6 +9,7 @@ extern void sched_test_reset(void);
 extern void sched_set_test_core_count(uint32_t core_count);
 #endif
 extern bh_thread_t *sched_pick_next_ready_l0(uint32_t core_id);
+extern void sched_dequeue_task_l1(bh_thread_t *thread, uint32_t core_id);
 
 static void dummy_thread_entry(void) {
     while (1) {
@@ -94,6 +95,14 @@ static bool test_edf_admission_and_queue(void) {
     t2->absolute_deadline_ms = 50;
 
     // Enqueue T1 and T2
+    sched_enqueue(t1, 0);
+    sched_enqueue(t2, 0);
+
+    /* Generic lifecycle dequeue must erase the EDF tree node. */
+    sched_dequeue_task_l1(t2, 0);
+    bh_thread_t *after_dequeue = sched_pick_next_ready_l0(0);
+    KTEST_ASSERT(after_dequeue == t1,
+                 "EDF lifecycle dequeue must remove the earliest deadline task");
     sched_enqueue(t1, 0);
     sched_enqueue(t2, 0);
 

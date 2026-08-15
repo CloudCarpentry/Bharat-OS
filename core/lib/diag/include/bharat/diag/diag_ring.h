@@ -12,7 +12,7 @@
 #endif
 
 typedef struct bh_diag_record { bh_diag_event_header_t header; uint8_t payload[BHARAT_DIAG_MAX_PAYLOAD]; } bh_diag_record_t;
-typedef struct bh_diag_ring_slot { _Atomic uint64_t committed_sequence; bh_diag_record_t record; } bh_diag_ring_slot_t;
+typedef struct bh_diag_ring_slot { _Atomic uint32_t committed_sequence; bh_diag_record_t record; } bh_diag_ring_slot_t;
 typedef struct bh_diag_ring_stats { uint64_t accepted, consumed, dropped, corrupt, high_watermark; } bh_diag_ring_stats_t;
 
 /* Single writer and single reader own their respective indices.  The writer
@@ -22,9 +22,9 @@ typedef struct bh_diag_ring {
     bh_diag_ring_slot_t *slots;
     uint32_t capacity;
     uint32_t max_payload;
-    _Atomic uint64_t write_position;
-    _Atomic uint64_t read_position;
-    _Atomic uint64_t accepted, consumed, dropped, corrupt, high_watermark;
+    _Atomic uint32_t write_position;
+    _Atomic uint32_t read_position;
+    _Atomic uint32_t accepted, consumed, dropped, corrupt, high_watermark;
 } bh_diag_ring_t;
 
 bh_status_t bh_diag_ring_init(bh_diag_ring_t *ring, bh_diag_ring_slot_t *slots, uint32_t capacity, uint32_t max_payload);

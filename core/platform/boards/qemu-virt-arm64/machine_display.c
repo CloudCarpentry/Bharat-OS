@@ -110,7 +110,7 @@ static void virt_scan_pci_ecam_for_vga(system_discovery_t *discovery) {
     hal_serial_write("\n");
 
     uintptr_t virt_ecam = 0;
-    if (qemu_display_map_mmio(phys_ecam, scan_ecam_size, &virt_ecam) != 0) {
+    if (bh_display_map_mmio(phys_ecam, scan_ecam_size, &virt_ecam) != 0) {
         hal_serial_write("BHARAT_DISPLAY:FAIL=ECAM_MAP\n");
         return;
     }
@@ -223,7 +223,7 @@ static void virt_scan_pci_ecam_for_vga(system_discovery_t *discovery) {
 
                     // Map control BAR
                     uintptr_t virt_mmio = 0;
-                    if (qemu_display_map_mmio(mmio_phys, size2, &virt_mmio) != 0) {
+                    if (bh_display_map_mmio(mmio_phys, size2, &virt_mmio) != 0) {
                         hal_serial_write("BHARAT_DISPLAY:FAIL=CTRL_MAP\n");
                         return;
                     }
@@ -241,7 +241,7 @@ static void virt_scan_pci_ecam_for_vga(system_discovery_t *discovery) {
 
                     // Map Framebuffer BAR
                     uintptr_t virt_fb = 0;
-                    if (qemu_display_map_mmio(fb_phys, size0, &virt_fb) != 0) {
+                    if (bh_display_map_mmio(fb_phys, size0, &virt_fb) != 0) {
                         hal_serial_write("BHARAT_DISPLAY:FAIL=FB_MAP\n");
                         return;
                     }

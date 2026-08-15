@@ -31,6 +31,20 @@ properties:
     type: string
   footprint_profile:
     type: string
+  implementation_maturity:
+    type: object
+    additionalProperties: false
+    required: [profile]
+    properties:
+      profile:
+        type: string
+        enum: [RELEASE, HARDENED, DEVELOPMENT, DEBUG]
+      allow:
+        type: array
+        uniqueItems: true
+        items:
+          type: string
+          enum: [STUB, TEST_ONLY]
   userspace:
     type: object
     additionalProperties: false

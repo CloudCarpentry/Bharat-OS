@@ -28,6 +28,11 @@
 #define SCHEDULER_DEFAULT_POLICY "Throughput"
 #define POWER_POLICY "Max_Performance"
 
+#elif defined(BHARAT_PROFILE_CLOUD_VM_BASE) || defined(BHARAT_PROFILE_CLOUD_AWS_NITRO) || defined(BHARAT_PROFILE_CLOUD_AZURE_HYPERV) || defined(BHARAT_PROFILE_CLOUD_GCP_KVM)
+#define DEVICE_PROFILE_NAME "Cloud VM"
+#define SCHEDULER_DEFAULT_POLICY "Throughput"
+#define POWER_POLICY "Max_Performance"
+
 #elif defined(BHARAT_PROFILE_NETWORK_APPLIANCE)
 #define DEVICE_PROFILE_NAME "Network Appliance"
 #define SCHEDULER_DEFAULT_POLICY "Realtime"

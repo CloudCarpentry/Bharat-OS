@@ -15,4 +15,9 @@ bh_status_t kstatus_to_bh_status(kstatus_t st);
  */
 long kstatus_to_native_sysret(kstatus_t st);
 
+/**
+ * Maps a bh_status_t back to an internal kstatus_t.
+ */
+kstatus_t bh_status_to_kstatus(bh_status_t st);
+
 #endif /* BHARAT_KERNEL_SYSCALL_STATUS_H */

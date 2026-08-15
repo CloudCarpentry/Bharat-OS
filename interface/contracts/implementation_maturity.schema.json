@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Bharat-OS implementation maturity manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "implementations"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "implementations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "maturity", "sources", "evidence"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z][a-z0-9_.-]+$" },
+          "maturity": {
+            "enum": ["REAL", "PARTIAL", "TEST_ONLY", "STUB", "UNSUPPORTED"]
+          },
+          "sources": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string" }
+          },
+          "evidence": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

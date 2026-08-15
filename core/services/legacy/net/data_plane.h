@@ -3,6 +3,7 @@
 
 #include "net_types.h"
 #include <net/netdev.h>
+#include <bharat/uapi/service_status.h>
 
 /*
  * Data Plane API
@@ -14,9 +15,9 @@
 void net_data_plane_init(void);
 
 /* Submit a packet into the RX path */
-int net_dp_rx_submit(uint32_t if_id, netbuf_t* buf);
+bharat_status_t net_dp_rx_submit(uint32_t if_id, netbuf_t* buf);
 
 /* Submit a packet into the TX path */
-int net_dp_tx_submit(uint32_t if_id, netbuf_t* buf);
+bharat_status_t net_dp_tx_submit(uint32_t if_id, netbuf_t* buf);
 
 #endif /* SERVICES_NET_DATA_PLANE_H */

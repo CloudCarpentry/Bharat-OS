@@ -152,7 +152,6 @@ static uint32_t mock_cpu_id = 0;
 
 /* Mocks */
 uint32_t hal_cpu_get_id(void) { return mock_cpu_id; }
-uint32_t sched_clamp_core(uint32_t core_id) { return core_id; }
 void hal_cpu_disable_interrupts(void) {}
 void hal_cpu_enable_interrupts(void) {}
 void hal_send_ipi_payload(uint32_t mask, uint64_t payload) {}

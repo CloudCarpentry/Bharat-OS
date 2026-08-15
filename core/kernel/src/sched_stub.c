@@ -39,7 +39,6 @@ static thread_slot_t g_threads[SCHED_MAX_CORES][SCHED_MAX_THREADS];
 static process_slot_t g_processes[SCHED_MAX_CORES][SCHED_MAX_PROCESSES];
 
 static bh_thread_t* g_current;
-static sched_policy_t g_policy = SCHED_POLICY_PRIORITY;
 static uint64_t g_next_thread_id = 1U;
 static uint64_t g_next_process_id = 1U;
 static uint64_t g_sched_ticks = 0U;
@@ -154,11 +153,11 @@ static bh_thread_t* sched_pick_next_ready(void) {
             continue;
         }
 
-        if (g_policy == SCHED_POLICY_ROUND_ROBIN) {
+        if (g_cores[0].policy == SCHED_POLICY_ROUND_ROBIN) {
             return &((thread_slot_t*)g_cores[0].threads)[idx].thread;
         }
 
-        if (g_policy == SCHED_POLICY_EDF && ((thread_slot_t*)g_cores[0].threads)[idx].thread.rt_attr.deadline_ms > 0U) {
+        if (g_cores[0].policy == SCHED_POLICY_EDF && ((thread_slot_t*)g_cores[0].threads)[idx].thread.rt_attr.deadline_ms > 0U) {
             if (!best || ((thread_slot_t*)g_cores[0].threads)[idx].thread.rt_attr.deadline_ms < best->rt_attr.deadline_ms) {
                 best = &((thread_slot_t*)g_cores[0].threads)[idx].thread;
             }
@@ -216,7 +215,7 @@ void sched_init(void) {
     g_current = NULL;
     g_next_thread_id = 1U;
     g_next_process_id = 1U;
-    g_policy = SCHED_POLICY_PRIORITY;
+    g_cores[0].policy = SCHED_POLICY_PRIORITY;
     g_sched_ticks = 0U;
     g_sched_context_switches = 0U;
     g_pending_suggestions.head = 0U;
@@ -337,11 +336,11 @@ int sched_unregister_process(bh_process_t* process) {
     return -1;
 }
 
-int process_destroy(bh_process_t* process) {
+kstatus_t process_destroy(bh_process_t* process) {
     if (!process) {
-        return -1;
+        return K_ERR_INVALID_ARG;
     }
-    return sched_unregister_process(process);
+    return sched_unregister_process(process) == 0 ? K_OK : K_ERR_NOT_FOUND;
 }
 
 bh_thread_t* thread_create(bh_process_t* parent, void (*entry_point)(void)) {
@@ -360,7 +359,9 @@ bh_thread_t* thread_create(bh_process_t* parent, void (*entry_point)(void)) {
     slot->thread.base_priority = 1U;
     slot->thread.cpu_time_consumed = 0U;
     slot->thread.time_slice_ms = SCHED_DEFAULT_SLICE_MS;
-    slot->thread.preferred_numa_node = 0U;
+    slot->thread.numa_affinity.policy = NUMA_POLICY_LOCAL_PREFERRED;
+    slot->thread.numa_affinity.target_node = NUMA_NODE_LOCAL;
+    slot->thread.numa_affinity.interleave_mask = 0U;
     slot->thread.affinity_mask = 0xFFFFFFFFU;
 
     slot->context.pc = (uint64_t)(uintptr_t)entry_point;
@@ -375,14 +376,13 @@ bh_thread_t* thread_create(bh_process_t* parent, void (*entry_point)(void)) {
     return &slot->thread;
 }
 
-int thread_destroy(bh_thread_t* thread) {
-    if (!thread) return -1;
+kstatus_t thread_destroy(bh_thread_t* thread) {
+    if (!thread) return K_ERR_INVALID_ARG;
     thread_slot_t* slot = sched_find_thread_slot_by_tid(thread->thread_id);
-    if (slot) {
-        slot->in_use = 0;
-    }
+    if (!slot) return K_ERR_BAD_THREAD;
+    slot->in_use = 0;
     // __builtin_free(thread); // Dummy for stub
-    return 0;
+    return K_OK;
 }
 
 void bh_thread_yield(void) {
@@ -515,11 +515,11 @@ address_space_t* sched_current_aspace(void) {
     return p ? p->addr_space : NULL;
 }
 
-int thread_raise_fault(bh_thread_t *thread, thread_fault_t fault) {
+kstatus_t thread_raise_fault(bh_thread_t *thread, thread_fault_t fault) {
     (void)thread;
     g_stub_thread_raise_fault_called++;
     g_stub_last_fault_code = fault;
-    return 0;
+    return K_OK;
 }
 
 int sched_sys_sleep(uint64_t millis) {
@@ -533,25 +533,29 @@ void sched_wakeup_with_priority(bh_thread_t* thread, uint32_t wakeup_priority) {
 }
 
 void sched_set_policy(sched_policy_t policy) {
-    g_policy = policy;
+    g_cores[0].policy = policy;
 }
 
-int sched_sys_thread_create(bh_process_t* parent, void (*entry_point)(void), uint64_t* out_tid) {
+sched_policy_t sched_get_policy(void) {
+    return g_cores[0].policy;
+}
+
+kstatus_t sched_sys_thread_create(bh_process_t* parent, void (*entry_point)(void), uint64_t* out_tid) {
     bh_thread_t* t = thread_create(parent, entry_point);
     if (!t) {
-        return -1;
+        return K_ERR_NO_RESOURCES;
     }
 
     if (out_tid) {
         *out_tid = t->thread_id;
     }
-    return 0;
+    return K_OK;
 }
 
-int sched_sys_thread_destroy(uint64_t tid) {
+kstatus_t sched_sys_thread_destroy(uint64_t tid) {
     thread_slot_t* slot = sched_find_thread_slot_by_tid(tid);
     if (!slot) {
-        return -1;
+        return K_ERR_BAD_THREAD;
     }
 
     return thread_destroy(&slot->thread);
@@ -614,7 +618,7 @@ int sched_migrate_task(bh_thread_t* thread, uint32_t new_node) {
         return -2;
     }
 
-    thread->preferred_numa_node = (uint8_t)new_node;
+    thread->numa_affinity.target_node = (memory_node_id_t)new_node;
     return 0;
 }
 

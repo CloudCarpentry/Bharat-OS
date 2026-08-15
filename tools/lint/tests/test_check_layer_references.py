@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import importlib.util
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -53,6 +54,33 @@ class RelativeIncludeResolutionTests(unittest.TestCase):
             )
 
             self.assertEqual(layer, "kernel")
+
+
+class CommandLineBaselineTests(unittest.TestCase):
+    def test_checked_in_baseline_is_applied_by_default(self) -> None:
+        result = subprocess.run(
+            [sys.executable, str(LINTER_PATH), "--strict"],
+            cwd=LINTER_PATH.parents[2],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("Violations found: 0", result.stdout)
+        self.assertRegex(result.stdout, r"Known baseline debt: [1-9][0-9]*")
+
+    def test_no_baseline_exposes_known_debt(self) -> None:
+        result = subprocess.run(
+            [sys.executable, str(LINTER_PATH), "--strict", "--no-baseline"],
+            cwd=LINTER_PATH.parents[2],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertRegex(result.stdout, r"Violations found: [1-9][0-9]*")
 
 
 if __name__ == "__main__":

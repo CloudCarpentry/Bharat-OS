@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <stdbool.h>
+#include <bharat/uapi/service_status.h>
 #include "services/power_mode/power_mode.h"
 
 // Expose internal reset for tests
@@ -9,23 +10,23 @@ void power_mode_reset(void);
 static bool g_commit_called = false;
 static power_mode_state_t g_last_commit_target = POWER_MODE_OFF;
 
-static int mock_commit_cb(power_mode_state_t target) {
+static bharat_status_t mock_commit_cb(power_mode_state_t target) {
     g_commit_called = true;
     g_last_commit_target = target;
-    return 0;
+    return BHARAT_STATUS_OK;
 }
 
 void test_limp_home_from_run() {
     power_mode_reset();
-    assert(power_mode_request_transition(POWER_MODE_RUN, POWER_REASON_IGNITION) == 0);
+    assert(power_mode_request_transition(POWER_MODE_RUN, POWER_REASON_IGNITION) == BHARAT_STATUS_OK);
 
     // Force limp home due to critical fault
-    assert(power_mode_force_limp_home(POWER_REASON_FAULT_FORCED_LIMP) == 0);
+    assert(power_mode_force_limp_home(POWER_REASON_FAULT_FORCED_LIMP) == BHARAT_STATUS_OK);
     assert(power_mode_get_current() == POWER_MODE_LIMP_HOME);
 
     // Cannot transition to anything but OFF
-    assert(power_mode_request_transition(POWER_MODE_RUN, POWER_REASON_NONE) == -1);
-    assert(power_mode_request_transition(POWER_MODE_OFF, POWER_REASON_NONE) == 0);
+    assert(power_mode_request_transition(POWER_MODE_RUN, POWER_REASON_NONE) == BHARAT_STATUS_ERR_BAD_STATE);
+    assert(power_mode_request_transition(POWER_MODE_OFF, POWER_REASON_NONE) == BHARAT_STATUS_OK);
     assert(power_mode_get_current() == POWER_MODE_OFF);
 }
 
@@ -50,32 +51,32 @@ void test_limp_home_from_all_states() {
 
         // For states like SLEEP, we need to get there first.
         if (states[i] == POWER_MODE_ACCESSORY) {
-            assert(power_mode_request_transition(POWER_MODE_ACCESSORY, POWER_REASON_IGNITION) == 0);
+            assert(power_mode_request_transition(POWER_MODE_ACCESSORY, POWER_REASON_IGNITION) == BHARAT_STATUS_OK);
         } else if (states[i] == POWER_MODE_RUN) {
-            assert(power_mode_request_transition(POWER_MODE_RUN, POWER_REASON_IGNITION) == 0);
+            assert(power_mode_request_transition(POWER_MODE_RUN, POWER_REASON_IGNITION) == BHARAT_STATUS_OK);
         } else if (states[i] == POWER_MODE_CRANK) {
-            assert(power_mode_request_transition(POWER_MODE_RUN, POWER_REASON_IGNITION) == 0);
-            assert(power_mode_request_transition(POWER_MODE_CRANK, POWER_REASON_IGNITION) == 0);
+            assert(power_mode_request_transition(POWER_MODE_RUN, POWER_REASON_IGNITION) == BHARAT_STATUS_OK);
+            assert(power_mode_request_transition(POWER_MODE_CRANK, POWER_REASON_IGNITION) == BHARAT_STATUS_OK);
         } else if (states[i] == POWER_MODE_SLEEP_PREP) {
-            assert(power_mode_request_transition(POWER_MODE_RUN, POWER_REASON_IGNITION) == 0);
-            assert(power_mode_request_transition(POWER_MODE_SLEEP_PREP, POWER_REASON_NONE) == 0);
+            assert(power_mode_request_transition(POWER_MODE_RUN, POWER_REASON_IGNITION) == BHARAT_STATUS_OK);
+            assert(power_mode_request_transition(POWER_MODE_SLEEP_PREP, POWER_REASON_NONE) == BHARAT_STATUS_OK);
         } else if (states[i] == POWER_MODE_SLEEP) {
-            assert(power_mode_request_transition(POWER_MODE_RUN, POWER_REASON_IGNITION) == 0);
-            assert(power_mode_request_transition(POWER_MODE_SLEEP_PREP, POWER_REASON_NONE) == 0);
-            assert(power_mode_request_transition(POWER_MODE_SLEEP, POWER_REASON_NONE) == 0);
+            assert(power_mode_request_transition(POWER_MODE_RUN, POWER_REASON_IGNITION) == BHARAT_STATUS_OK);
+            assert(power_mode_request_transition(POWER_MODE_SLEEP_PREP, POWER_REASON_NONE) == BHARAT_STATUS_OK);
+            assert(power_mode_request_transition(POWER_MODE_SLEEP, POWER_REASON_NONE) == BHARAT_STATUS_OK);
         } else if (states[i] == POWER_MODE_WAKE) {
-            assert(power_mode_request_transition(POWER_MODE_RUN, POWER_REASON_IGNITION) == 0);
-            assert(power_mode_request_transition(POWER_MODE_SLEEP_PREP, POWER_REASON_NONE) == 0);
-            assert(power_mode_request_transition(POWER_MODE_SLEEP, POWER_REASON_NONE) == 0);
-            assert(power_mode_request_transition(POWER_MODE_WAKE, POWER_REASON_CAN_WAKE) == 0);
+            assert(power_mode_request_transition(POWER_MODE_RUN, POWER_REASON_IGNITION) == BHARAT_STATUS_OK);
+            assert(power_mode_request_transition(POWER_MODE_SLEEP_PREP, POWER_REASON_NONE) == BHARAT_STATUS_OK);
+            assert(power_mode_request_transition(POWER_MODE_SLEEP, POWER_REASON_NONE) == BHARAT_STATUS_OK);
+            assert(power_mode_request_transition(POWER_MODE_WAKE, POWER_REASON_CAN_WAKE) == BHARAT_STATUS_OK);
         } else if (states[i] == POWER_MODE_LIMP_HOME) {
-            assert(power_mode_force_limp_home(POWER_REASON_FAULT_FORCED_LIMP) == 0);
+            assert(power_mode_force_limp_home(POWER_REASON_FAULT_FORCED_LIMP) == BHARAT_STATUS_OK);
         }
 
         assert(power_mode_get_current() == states[i]);
 
         // Now force limp home
-        assert(power_mode_force_limp_home(POWER_REASON_FAULT_FORCED_LIMP) == 0);
+        assert(power_mode_force_limp_home(POWER_REASON_FAULT_FORCED_LIMP) == BHARAT_STATUS_OK);
         assert(power_mode_get_current() == POWER_MODE_LIMP_HOME);
     }
 }
@@ -85,17 +86,17 @@ void test_limp_home_callbacks() {
     g_commit_called = false;
     power_mode_register_client(NULL, mock_commit_cb, NULL);
 
-    assert(power_mode_request_transition(POWER_MODE_RUN, POWER_REASON_IGNITION) == 0);
+    assert(power_mode_request_transition(POWER_MODE_RUN, POWER_REASON_IGNITION) == BHARAT_STATUS_OK);
     g_commit_called = false; // Reset for the next transition
 
-    assert(power_mode_force_limp_home(POWER_REASON_FAULT_FORCED_LIMP) == 0);
+    assert(power_mode_force_limp_home(POWER_REASON_FAULT_FORCED_LIMP) == BHARAT_STATUS_OK);
     assert(g_commit_called == true);
     assert(g_last_commit_target == POWER_MODE_LIMP_HOME);
 }
 
 void test_thermal_critical_triggers_limp_home() {
     power_mode_reset();
-    assert(power_mode_request_transition(POWER_MODE_RUN, POWER_REASON_IGNITION) == 0);
+    assert(power_mode_request_transition(POWER_MODE_RUN, POWER_REASON_IGNITION) == BHARAT_STATUS_OK);
 
     power_mode_thermal_state_t thermal = {
         .max_temp_mc = 105000,
@@ -103,7 +104,7 @@ void test_thermal_critical_triggers_limp_home() {
         .critical = true
     };
 
-    assert(power_mode_set_thermal_state(&thermal) == 0);
+    assert(power_mode_set_thermal_state(&thermal) == BHARAT_STATUS_OK);
     assert(power_mode_get_current() == POWER_MODE_LIMP_HOME);
 }
 

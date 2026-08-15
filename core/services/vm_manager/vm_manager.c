@@ -36,44 +36,40 @@ static const region_entry_t *vm_manager_find_region(uint32_t region_id) {
     return NULL;
 }
 
-// Default authority ops
-static int32_t default_space_create(void *ctx, const bh_vm_create_space_request_v1_t *req, bh_vm_kernel_space_ref_t *out_ref) {
+// Fail-closed defaults. Production builds must replace these authority operations.
+static bharat_status_t default_space_create(void *ctx, const bh_vm_create_space_request_v1_t *req, bh_vm_kernel_space_ref_t *out_ref) {
     (void)ctx; (void)req;
-    out_ref->space_id = 9911;
-    return 0;
+    (void)out_ref;
+    return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
 }
 
-static int32_t default_space_destroy(void *ctx, bh_vm_kernel_space_ref_t ref) {
+static bharat_status_t default_space_destroy(void *ctx, bh_vm_kernel_space_ref_t ref) {
     (void)ctx; (void)ref;
-    return 0;
+    return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
 }
 
-static int32_t default_map(void *ctx, bh_vm_kernel_space_ref_t ref, const bh_vm_map_request_v1_t *req) {
+static bharat_status_t default_map(void *ctx, bh_vm_kernel_space_ref_t ref, const bh_vm_map_request_v1_t *req) {
     (void)ctx; (void)ref; (void)req;
-    return 0;
+    return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
 }
 
-static int32_t default_unmap(void *ctx, bh_vm_kernel_space_ref_t ref, uint64_t vaddr, uint64_t length) {
+static bharat_status_t default_unmap(void *ctx, bh_vm_kernel_space_ref_t ref, uint64_t vaddr, uint64_t length) {
     (void)ctx; (void)ref; (void)vaddr; (void)length;
-    return 0;
+    return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
 }
 
-static int32_t default_protect(void *ctx, bh_vm_kernel_space_ref_t ref, uint64_t vaddr, uint64_t length, uint64_t protection, uint64_t memory_type) {
+static bharat_status_t default_protect(void *ctx, bh_vm_kernel_space_ref_t ref, uint64_t vaddr, uint64_t length, uint64_t protection, uint64_t memory_type) {
     (void)ctx; (void)ref; (void)vaddr; (void)length; (void)protection; (void)memory_type;
-    return 0;
+    return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
 }
 
-static int32_t default_query(void *ctx, bh_vm_kernel_space_ref_t ref, uint64_t vaddr, bh_vm_kernel_query_result_t *out_res) {
+static bharat_status_t default_query(void *ctx, bh_vm_kernel_space_ref_t ref, uint64_t vaddr, bh_vm_kernel_query_result_t *out_res) {
     (void)ctx; (void)ref; (void)vaddr;
-    out_res->state = 2; // mapped
-    out_res->vaddr = vaddr;
-    out_res->size = 4096;
-    out_res->protection = 3;
-    out_res->memory_type = 0;
-    return 0;
+    (void)out_res;
+    return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
 }
 
-static bh_vm_authority_ops_t g_authority_ops = {
+static const bh_vm_authority_ops_t g_default_authority_ops = {
     .ctx = NULL,
     .space_create = default_space_create,
     .space_destroy = default_space_destroy,
@@ -83,10 +79,29 @@ static bh_vm_authority_ops_t g_authority_ops = {
     .query = default_query
 };
 
-void bh_vm_set_authority_ops(const bh_vm_authority_ops_t *ops) {
-    if (ops) {
-        g_authority_ops = *ops;
+/* Service-local adapter selection; configured during single-threaded startup. */
+static bh_vm_authority_ops_t g_authority_ops;
+static bool g_authority_ops_installed;
+
+bharat_status_t bh_vm_set_authority_ops(const bh_vm_authority_ops_t *ops) {
+    if (!ops) {
+        g_authority_ops = g_default_authority_ops;
+        g_authority_ops_installed = false;
+        return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
     }
+    if (!ops->space_create || !ops->space_destroy || !ops->map ||
+        !ops->unmap || !ops->protect || !ops->query) {
+        g_authority_ops = g_default_authority_ops;
+        g_authority_ops_installed = false;
+        return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
+    }
+    g_authority_ops = *ops;
+    g_authority_ops_installed = true;
+    return BHARAT_IPC_STATUS_OK;
+}
+
+bool bh_vm_authority_ops_installed(void) {
+    return g_authority_ops_installed;
 }
 
 int bh_vm_get_active_spaces_count(void) {
@@ -132,7 +147,7 @@ static const bharat_service_authz_desc_t vm_manager_authz_descs[] = {
     }
 };
 
-int32_t vm_manager_authorize(
+bharat_status_t vm_manager_authorize(
     uint32_t opcode,
     const void *req,
     bharat_cap_handle_t caller_cap)
@@ -197,9 +212,11 @@ void vm_manager_init(void) {
 
     bh_user_handle_table_init(&g_vm_space_handle_table, g_vm_space_slots, MAX_SPACES);
     bh_user_handle_table_init(&g_vm_region_handle_table, g_vm_region_slots, MAX_REGIONS);
+    g_authority_ops = g_default_authority_ops;
+    g_authority_ops_installed = false;
 }
 
-int32_t vm_manager_handle_map(const vm_req_map_t *req, vm_resp_map_t *resp) {
+bharat_status_t vm_manager_handle_map(const vm_req_map_t *req, vm_resp_map_t *resp) {
     for (int i = 0; i < MAX_REGIONS; i++) {
         if (!region_table[i].in_use) {
             region_table[i].in_use = true;
@@ -219,7 +236,7 @@ int32_t vm_manager_handle_map(const vm_req_map_t *req, vm_resp_map_t *resp) {
     return BHARAT_IPC_STATUS_ERR_INTERNAL;
 }
 
-int32_t vm_manager_handle_unmap(const vm_req_unmap_t *req, vm_resp_unmap_t *resp) {
+bharat_status_t vm_manager_handle_unmap(const vm_req_unmap_t *req, vm_resp_unmap_t *resp) {
     for (int i = 0; i < MAX_REGIONS; i++) {
         if (region_table[i].in_use && region_table[i].region_id == req->region_id) {
             region_table[i].in_use = false;
@@ -232,7 +249,7 @@ int32_t vm_manager_handle_unmap(const vm_req_unmap_t *req, vm_resp_unmap_t *resp
     return BHARAT_IPC_STATUS_ERR_NOT_FOUND;
 }
 
-int32_t vm_manager_handle_protect(const vm_req_protect_t *req, vm_resp_protect_t *resp) {
+bharat_status_t vm_manager_handle_protect(const vm_req_protect_t *req, vm_resp_protect_t *resp) {
     for (int i = 0; i < MAX_REGIONS; i++) {
         if (region_table[i].in_use && region_table[i].region_id == req->region_id) {
             region_table[i].flags = req->new_flags;
@@ -245,7 +262,7 @@ int32_t vm_manager_handle_protect(const vm_req_protect_t *req, vm_resp_protect_t
     return BHARAT_IPC_STATUS_ERR_NOT_FOUND;
 }
 
-int32_t vm_manager_handle_query(const vm_req_query_t *req, vm_resp_query_t *resp) {
+bharat_status_t vm_manager_handle_query(const vm_req_query_t *req, vm_resp_query_t *resp) {
     for (int i = 0; i < MAX_REGIONS; i++) {
         if (region_table[i].region_id == req->region_id) {
             resp->region_id = region_table[i].region_id;
@@ -260,7 +277,7 @@ int32_t vm_manager_handle_query(const vm_req_query_t *req, vm_resp_query_t *resp
     return BHARAT_IPC_STATUS_ERR_NOT_FOUND;
 }
 
-int32_t vm_manager_handle_fault(const vm_req_fault_t *req, vm_resp_fault_t *resp) {
+bharat_status_t vm_manager_handle_fault(const vm_req_fault_t *req, vm_resp_fault_t *resp) {
     // For v0, fallback to metadata checks
     for (int i = 0; i < MAX_REGIONS; i++) {
         if (region_table[i].in_use && region_table[i].aspace_id == req->aspace_id) {
@@ -279,7 +296,7 @@ int32_t vm_manager_handle_fault(const vm_req_fault_t *req, vm_resp_fault_t *resp
 // v1 Interfaces Implementation
 // -----------------------------------------------------------------------------
 
-int32_t bh_vm_handle_create_space_v1(const bh_vm_create_space_request_v1_t *req, bh_vm_create_space_response_v1_t *resp) {
+bharat_status_t bh_vm_handle_create_space_v1(const bh_vm_create_space_request_v1_t *req, bh_vm_create_space_response_v1_t *resp) {
     if (!req || !resp) {
         return BHARAT_IPC_STATUS_ERR_INVALID;
     }
@@ -310,8 +327,8 @@ int32_t bh_vm_handle_create_space_v1(const bh_vm_create_space_request_v1_t *req,
     bh_vm_kernel_space_ref_t k_ref;
     int k_res = g_authority_ops.space_create(g_authority_ops.ctx, req, &k_ref);
     if (k_res != 0) {
-        resp->status = BHARAT_IPC_STATUS_ERR_INTERNAL;
-        return BHARAT_IPC_STATUS_ERR_INTERNAL;
+        resp->status = k_res;
+        return k_res;
     }
 
     space->in_use = true;
@@ -335,7 +352,7 @@ int32_t bh_vm_handle_create_space_v1(const bh_vm_create_space_request_v1_t *req,
     return BHARAT_IPC_STATUS_OK;
 }
 
-int32_t bh_vm_handle_destroy_space_v1(const bh_vm_destroy_space_request_v1_t *req, bh_vm_destroy_space_response_v1_t *resp) {
+bharat_status_t bh_vm_handle_destroy_space_v1(const bh_vm_destroy_space_request_v1_t *req, bh_vm_destroy_space_response_v1_t *resp) {
     if (!req || !resp) {
         return BHARAT_IPC_STATUS_ERR_INVALID;
     }
@@ -355,14 +372,22 @@ int32_t bh_vm_handle_destroy_space_v1(const bh_vm_destroy_space_request_v1_t *re
     for (int i = 0; i < MAX_REGIONS; i++) {
         if (g_vm_regions[i].in_use && g_vm_regions[i].parent_space == req->vm_space_handle) {
             bh_vm_kernel_space_ref_t k_space = { .space_id = space->kernel_space_id };
-            g_authority_ops.unmap(g_authority_ops.ctx, k_space, g_vm_regions[i].vaddr, g_vm_regions[i].length);
+            int32_t status = g_authority_ops.unmap(g_authority_ops.ctx, k_space, g_vm_regions[i].vaddr, g_vm_regions[i].length);
+            if (status != BHARAT_IPC_STATUS_OK) {
+                resp->status = status;
+                return status;
+            }
             bh_user_handle_revoke(&g_vm_region_handle_table, g_vm_regions[i].public_handle);
             local_memset(&g_vm_regions[i], 0, sizeof(bh_vm_region_v1_t));
         }
     }
 
     bh_vm_kernel_space_ref_t k_space = { .space_id = space->kernel_space_id };
-    g_authority_ops.space_destroy(g_authority_ops.ctx, k_space);
+    int32_t status = g_authority_ops.space_destroy(g_authority_ops.ctx, k_space);
+    if (status != BHARAT_IPC_STATUS_OK) {
+        resp->status = status;
+        return status;
+    }
 
     bh_user_handle_revoke(&g_vm_space_handle_table, req->vm_space_handle);
     local_memset(space, 0, sizeof(bh_vm_space_v1_t));
@@ -371,7 +396,7 @@ int32_t bh_vm_handle_destroy_space_v1(const bh_vm_destroy_space_request_v1_t *re
     return BHARAT_IPC_STATUS_OK;
 }
 
-int32_t bh_vm_handle_map_v1(const bh_vm_map_request_v1_t *req, bh_vm_map_response_v1_t *resp) {
+bharat_status_t bh_vm_handle_map_v1(const bh_vm_map_request_v1_t *req, bh_vm_map_response_v1_t *resp) {
     if (!req || !resp) {
         return BHARAT_IPC_STATUS_ERR_INVALID;
     }
@@ -463,8 +488,8 @@ int32_t bh_vm_handle_map_v1(const bh_vm_map_request_v1_t *req, bh_vm_map_respons
     bh_vm_kernel_space_ref_t k_space = { .space_id = space->kernel_space_id };
     int k_res = g_authority_ops.map(g_authority_ops.ctx, k_space, req);
     if (k_res != 0) {
-        resp->status = BHARAT_IPC_STATUS_ERR_INTERNAL;
-        return BHARAT_IPC_STATUS_ERR_INTERNAL;
+        resp->status = k_res;
+        return k_res;
     }
 
     region->in_use = true;
@@ -492,7 +517,7 @@ int32_t bh_vm_handle_map_v1(const bh_vm_map_request_v1_t *req, bh_vm_map_respons
     return BHARAT_IPC_STATUS_OK;
 }
 
-int32_t bh_vm_handle_unmap_v1(const bh_vm_unmap_request_v1_t *req, bh_vm_unmap_response_v1_t *resp) {
+bharat_status_t bh_vm_handle_unmap_v1(const bh_vm_unmap_request_v1_t *req, bh_vm_unmap_response_v1_t *resp) {
     if (!req || !resp) {
         return BHARAT_IPC_STATUS_ERR_INVALID;
     }
@@ -524,8 +549,8 @@ int32_t bh_vm_handle_unmap_v1(const bh_vm_unmap_request_v1_t *req, bh_vm_unmap_r
     bh_vm_kernel_space_ref_t k_space = { .space_id = space->kernel_space_id };
     int k_res = g_authority_ops.unmap(g_authority_ops.ctx, k_space, region->vaddr, region->length);
     if (k_res != 0) {
-        resp->status = BHARAT_IPC_STATUS_ERR_INTERNAL;
-        return BHARAT_IPC_STATUS_ERR_INTERNAL;
+        resp->status = k_res;
+        return k_res;
     }
 
     region->state = BH_VM_REGION_STATE_REVOKED_V1;
@@ -537,7 +562,7 @@ int32_t bh_vm_handle_unmap_v1(const bh_vm_unmap_request_v1_t *req, bh_vm_unmap_r
     return BHARAT_IPC_STATUS_OK;
 }
 
-int32_t bh_vm_handle_protect_v1(const bh_vm_protect_request_v1_t *req, bh_vm_protect_response_v1_t *resp) {
+bharat_status_t bh_vm_handle_protect_v1(const bh_vm_protect_request_v1_t *req, bh_vm_protect_response_v1_t *resp) {
     if (!req || !resp) {
         return BHARAT_IPC_STATUS_ERR_INVALID;
     }
@@ -575,8 +600,8 @@ int32_t bh_vm_handle_protect_v1(const bh_vm_protect_request_v1_t *req, bh_vm_pro
     bh_vm_kernel_space_ref_t k_space = { .space_id = space->kernel_space_id };
     int k_res = g_authority_ops.protect(g_authority_ops.ctx, k_space, region->vaddr, region->length, req->new_protection, region->memory_type);
     if (k_res != 0) {
-        resp->status = BHARAT_IPC_STATUS_ERR_INTERNAL;
-        return BHARAT_IPC_STATUS_ERR_INTERNAL;
+        resp->status = k_res;
+        return k_res;
     }
 
     // Updatecached protection only after success
@@ -586,7 +611,7 @@ int32_t bh_vm_handle_protect_v1(const bh_vm_protect_request_v1_t *req, bh_vm_pro
     return BHARAT_IPC_STATUS_OK;
 }
 
-int32_t bh_vm_handle_query_v1(const bh_vm_query_request_v1_t *req, bh_vm_query_response_v1_t *resp) {
+bharat_status_t bh_vm_handle_query_v1(const bh_vm_query_request_v1_t *req, bh_vm_query_response_v1_t *resp) {
     if (!req || !resp) {
         return BHARAT_IPC_STATUS_ERR_INVALID;
     }
@@ -614,12 +639,22 @@ int32_t bh_vm_handle_query_v1(const bh_vm_query_request_v1_t *req, bh_vm_query_r
         return BHARAT_IPC_STATUS_ERR_INVALID;
     }
 
+    bh_vm_kernel_space_ref_t k_space = { .space_id = space->kernel_space_id };
+    bh_vm_kernel_query_result_t result;
+    local_memset(&result, 0, sizeof(result));
+    int32_t status = g_authority_ops.query(g_authority_ops.ctx, k_space,
+                                           region->vaddr, &result);
+    if (status != BHARAT_IPC_STATUS_OK) {
+        resp->status = status;
+        return status;
+    }
+
     resp->status = BHARAT_IPC_STATUS_OK;
-    resp->state = region->state;
-    resp->vaddr = region->vaddr;
-    resp->size = region->length;
-    resp->protection = region->protection;
-    resp->memory_type = region->memory_type;
+    resp->state = result.state;
+    resp->vaddr = result.vaddr;
+    resp->size = result.size;
+    resp->protection = result.protection;
+    resp->memory_type = result.memory_type;
 
     return BHARAT_IPC_STATUS_OK;
 }

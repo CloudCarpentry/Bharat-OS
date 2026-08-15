@@ -87,6 +87,10 @@ static inline uint64_t atomic64_fetch_and_add_ptr(volatile uint64_t *ptr, uint64
 static inline uint64_t atomic64_fetch_and_sub_ptr(volatile uint64_t *ptr, uint64_t val) {
     return __atomic_fetch_sub(ptr, val, __ATOMIC_SEQ_CST);
 }
+
+static inline uint64_t atomic64_load_ptr(const volatile uint64_t *ptr) {
+    return __atomic_load_n(ptr, __ATOMIC_ACQUIRE);
+}
 #else
 // 32-bit fallback for 64-bit atomics.
 // On 32-bit platforms, 64-bit atomic operations might not be lock-free and
@@ -153,6 +157,13 @@ static inline uint64_t atomic64_fetch_and_sub_ptr(volatile uint64_t *ptr, uint64
     *ptr -= val;
     arch_atomic64_unlock();
     return old;
+}
+
+static inline uint64_t atomic64_load_ptr(const volatile uint64_t *ptr) {
+    arch_atomic64_lock();
+    uint64_t value = *ptr;
+    arch_atomic64_unlock();
+    return value;
 }
 #endif
 

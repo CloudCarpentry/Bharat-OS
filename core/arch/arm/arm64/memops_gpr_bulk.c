@@ -137,3 +137,26 @@ void *hal_memset_gpr_bulk(void *dst, int c, size_t n) {
 
     return dst;
 }
+
+void *hal_memmove_gpr_bulk(void *dst, const void *src, size_t n) {
+    const uintptr_t da = (uintptr_t)dst;
+    const uintptr_t sa = (uintptr_t)src;
+    if (n == 0u || da == sa) return dst;
+    if (da < sa || da - sa >= n) return hal_memcpy_gpr_bulk(dst, src, n);
+
+    uint8_t *d = (uint8_t *)dst + n;
+    const uint8_t *s = (const uint8_t *)src + n;
+    while (n-- != 0u) *--d = *--s;
+    return dst;
+}
+
+int hal_memcmp_gpr_bulk(const void *lhs, const void *rhs, size_t n) {
+    const uint8_t *a = lhs;
+    const uint8_t *b = rhs;
+    while (n-- != 0u) {
+        const unsigned av = *a++;
+        const unsigned bv = *b++;
+        if (av != bv) return (int)av - (int)bv;
+    }
+    return 0;
+}

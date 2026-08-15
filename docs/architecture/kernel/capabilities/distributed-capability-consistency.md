@@ -11,7 +11,7 @@ tags:
   - consistency
 see_also:
   - README.md
-version: 0.1
+version: 0.2
 ---
 # Distributed Capability Consistency
 
@@ -45,6 +45,23 @@ typedef struct cap_instance_id {
     uint32_t rights_digest;     // Hash or bitmask of the granted rights
 } cap_instance_id_t;
 ```
+
+Derivation edges and transaction destinations MUST use the pointer-free locator below;
+kernel addresses and capability-table pointers are never valid cross-core identity:
+
+```c
+typedef struct bh_cap_locator {
+    uint32_t cspace_id;
+    uint16_t owner_core;
+    uint16_t slot;
+    uint32_t generation;
+    uint32_t revocation_epoch;
+} bh_cap_locator_t;
+```
+
+The owner resolves the CSpace ID locally and validates the slot generation and revocation
+epoch before acting. Remote capabilities permit sending an owner-validated operation; they
+do not permit direct mutation of another core's CSpace.
 
 This ensures that:
 - Stale capability slots reused for new objects will have a new `slot_gen`.

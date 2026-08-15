@@ -1,104 +1,100 @@
 /* SPDX-License-Identifier: MIT */
-#include "lvgl.h"
-#include "bharat/uapi/display/display_v2.h"
 #include "bharat/uapi/display/bharat_display_broker_v2_types.h"
+#include "bharat/uapi/display/display_v2.h"
 #include "bharat_lvgl.h"
-#include "ui_screens.h"
+#include "bharat_shell.h"
+#include "display_client.h"
+#include "lvgl.h"
 #include <stdio.h>
-#include <stdlib.h>
 
 // Forward declarations for adapters
-extern lv_display_t * bharat_lvgl_display_create(bh_display_lease_handle_t lease, uint32_t width, uint32_t height);
-extern lv_indev_t * bharat_lvgl_pointer_create(void);
-extern lv_indev_t * bharat_lvgl_keyboard_create(void);
-extern void bharat_ui_app_start(void);
+extern lv_display_t *bharat_lvgl_display_create(bh_display_lease_handle_t lease,
+                                                uint32_t width,
+                                                uint32_t height);
+extern lv_indev_t *bharat_lvgl_pointer_create(void);
+extern lv_indev_t *bharat_lvgl_keyboard_create(void);
+static int g_input_marker_emitted;
 
-// Simulated IPC stubs for display broker logic so it builds/links smoothly
-bh_display_result_t bh_client_create_surface(bh_display_lease_handle_t lease, uint32_t w, uint32_t h, uint32_t z, bh_gui_surface_handle_t *out_surf) {
-    (void)lease; (void)w; (void)h; (void)z;
-    *out_surf = 42; // Dummy handle
-    return BH_DISPLAY_RESULT_OK;
-}
-bh_display_result_t bh_client_register_buffer(bh_display_lease_handle_t lease, bh_display_buffer_desc_t *desc, bh_gui_buffer_handle_t *out_buf, void **out_mapped) {
-    (void)lease;
-    *out_buf = 43; // Dummy handle
-    *out_mapped = malloc(desc->planes[0].size_bytes);
-    return BH_DISPLAY_RESULT_OK;
-}
-bh_display_result_t bh_client_attach_buffer(bh_display_lease_handle_t lease, bh_gui_surface_handle_t surf, bh_gui_buffer_handle_t buf) {
-    (void)lease; (void)surf; (void)buf;
-    return BH_DISPLAY_RESULT_OK;
-}
-bh_display_result_t bh_client_present_surface(bh_display_lease_handle_t lease, bh_gui_surface_handle_t surf, bh_gui_buffer_handle_t buf, bh_gui_fence_handle_t *out_release_fence) {
-    (void)lease; (void)surf; (void)buf;
-    *out_release_fence = BH_GUI_HANDLE_INVALID;
-    return BH_DISPLAY_RESULT_OK;
-}
-bh_display_result_t bh_client_wait_fence(bh_gui_fence_handle_t fence, bh_monotonic_deadline_ns_t deadline) {
-    (void)fence; (void)deadline;
-    return BH_DISPLAY_RESULT_OK;
-}
-int bh_inputmgr_drain(void *out_events, int max_events) {
-    (void)out_events; (void)max_events;
-    return 0; // Return 0 events normally
+void bh_lvgl_input_observed(void) {
+  if (!g_input_marker_emitted) {
+    g_input_marker_emitted = 1;
+    printf("[gui] input-observed\n");
+  }
 }
 
-int main(int argc, char** argv) {
-    printf("UI_NATIVE: START\n");
+static void demo_snapshot(bh_shell_system_info_t *info, void *context) {
+  (void)context;
+  info->uptime_seconds = bharat_lvgl_now_ms() / 1000U;
+}
 
-    /* Initialize LVGL */
-    lv_init();
-    bharat_lvgl_tick_init();
-    printf("UI_NATIVE: LVGL_READY\n");
+int main(int argc, char **argv) {
+  bh_showcase_display_session_t display_session;
+  bh_display_result_t display_result;
 
-    /* Mock leasing a display (ID 0) from the display broker */
-    bh_display_lease_handle_t default_lease = 1;
+  (void)argc;
+  (void)argv;
+  printf("UI_NATIVE: START\n");
 
-    /* Create a native LVGL display adapter wrapping the broker buffers */
-    lv_display_t * disp = bharat_lvgl_display_create(default_lease, 1024, 768);
-    if (!disp) {
-        printf("UI_NATIVE: DISPLAY_UNAVAILABLE\n");
-        return -1;
-    }
-    printf("UI_NATIVE: DISPLAY_CONNECTED\n");
+  /* Initialize LVGL */
+  lv_init();
+  bharat_lvgl_tick_init();
+  printf("UI_NATIVE: LVGL_READY\n");
 
-    /* Create input devices mapped to our input manager */
-    lv_indev_t * pointer = bharat_lvgl_pointer_create();
-    if(pointer) {
-        printf("UI_NATIVE: POINTER_READY\n");
-    } else {
-        printf("UI_NATIVE: INPUT_DEGRADED\n");
-    }
+  display_result = bh_showcase_display_open(&display_session);
+  if (display_result != BH_DISPLAY_RESULT_OK) {
+    printf("UI_NATIVE: DISPLAY_UNAVAILABLE result=%u\n",
+           (unsigned)display_result);
+    return -1;
+  }
+  printf("[gui] display-ready width=%u height=%u refresh=%u\n",
+         display_session.width, display_session.height,
+         display_session.refresh_hz);
 
-    lv_indev_t * keyboard = bharat_lvgl_keyboard_create();
-    if(keyboard) {
-        printf("UI_NATIVE: KEYBOARD_READY\n");
-    } else {
-        printf("UI_NATIVE: INPUT_DEGRADED\n");
-    }
+  /* Create a native LVGL display adapter wrapping the broker buffers */
+  lv_display_t *disp = bharat_lvgl_display_create(
+      display_session.lease, display_session.width, display_session.height);
+  if (!disp) {
+    printf("UI_NATIVE: DISPLAY_UNAVAILABLE\n");
+    return -1;
+  }
+  printf("UI_NATIVE: DISPLAY_CONNECTED\n");
 
-    /* Transition to branded splash screen */
-    bharat_ui_app_start();
+  /* Create input devices mapped to our input manager */
+  lv_indev_t *pointer = bharat_lvgl_pointer_create();
+  if (pointer) {
+    printf("UI_NATIVE: POINTER_READY\n");
+  } else {
+    printf("UI_NATIVE: INPUT_DEGRADED\n");
+  }
 
-    /* Ensure the screen is actually rendered */
-    lv_timer_handler();
-    printf("UI_NATIVE: SPLASH_VISIBLE\n");
+  lv_indev_t *keyboard = bharat_lvgl_keyboard_create();
+  if (keyboard) {
+    printf("UI_NATIVE: KEYBOARD_READY\n");
+  } else {
+    printf("UI_NATIVE: INPUT_DEGRADED\n");
+  }
 
-    /* In a real environment, wait briefly, then transition to HOME.
-       For this showcase we manually advance. */
-    // Note: bharat_ui_app_start initializes with Splash.
-    extern int bharat_ui_navigate(int target);
-    bharat_ui_navigate(1 /* BHARAT_SCREEN_HOME */);
-    lv_timer_handler();
-    printf("UI_NATIVE: HOME_VISIBLE\n");
+  /* Transition to branded splash screen */
+  bh_shell_set_snapshot_provider(demo_snapshot, NULL);
+  bh_shell_start();
 
-    /* Main UI Pump loop */
-    int frame_count = 0;
-    while(frame_count < 10) { // Limit iterations for demo test run
-        uint32_t delay = lv_timer_handler();
-        bharat_lvgl_wait_ms(delay);
-        frame_count++;
-    }
+  /* Ensure the screen is actually rendered */
+  lv_timer_handler();
+  printf("UI_NATIVE: SPLASH_VISIBLE\n");
 
-    return 0;
+  /* In a real environment, wait briefly, then transition to HOME.
+     For this showcase we manually advance. */
+  // Note: bharat_ui_app_start initializes with Splash.
+  bh_shell_navigate(BH_SHELL_SCREEN_LAUNCHER);
+  if (keyboard != NULL) {
+    lv_indev_set_group(keyboard, bh_shell_navigation_group());
+  }
+  lv_timer_handler();
+  printf("UI_NATIVE: HOME_VISIBLE\n");
+
+  /* Main UI Pump loop */
+  for (;;) {
+    uint32_t delay = lv_timer_handler();
+    bharat_lvgl_wait_ms(delay);
+  }
 }

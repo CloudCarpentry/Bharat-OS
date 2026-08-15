@@ -1,6 +1,7 @@
 #include "tlb_pending.h"
 #include "../../../include/hal/hal.h"
 #include "../../../include/bharat/cpu_local.h"
+#include "../../../include/atomic.h"
 
 extern uint32_t g_active_core_count;
 
@@ -86,7 +87,7 @@ void tlb_pending_ack(uint32_t reqid, uint32_t acking_core) {
         __atomic_load_n(&entry->request_id, __ATOMIC_ACQUIRE) == reqid) {
 
         uint64_t mask = (1ULL << acking_core);
-        uint64_t prev = __atomic_fetch_or(&entry->ack_mask, mask, __ATOMIC_RELEASE);
+        uint64_t prev = atomic64_fetch_and_or(&entry->ack_mask, mask);
         if (!(prev & mask)) {
             __atomic_add_fetch(&g_tlb_stats[core_id].acks_received, 1, __ATOMIC_RELAXED);
         } else {
@@ -99,7 +100,7 @@ void tlb_pending_ack(uint32_t reqid, uint32_t acking_core) {
 
 bool tlb_pending_is_complete(uint32_t current_core, int slot) {
     tlb_pending_entry_t* entry = &g_tlb_pending[current_core][slot];
-    uint64_t ack = __atomic_load_n(&entry->ack_mask, __ATOMIC_ACQUIRE);
+    uint64_t ack = atomic64_load_ptr(&entry->ack_mask);
     return (ack & entry->target_mask) == entry->target_mask;
 }
 
@@ -117,6 +118,6 @@ uint64_t tlb_pending_get_missing_mask(uint32_t core_id, int slot) {
     if (core_id >= g_active_core_count || slot >= BHARAT_TLB_MAX_PENDING_PER_CORE) return 0;
     tlb_pending_entry_t* entry = &g_tlb_pending[core_id][slot];
     if (!__atomic_load_n(&entry->in_use, __ATOMIC_ACQUIRE)) return 0;
-    uint64_t ack = __atomic_load_n(&entry->ack_mask, __ATOMIC_ACQUIRE);
+    uint64_t ack = atomic64_load_ptr(&entry->ack_mask);
     return entry->target_mask & ~ack;
 }

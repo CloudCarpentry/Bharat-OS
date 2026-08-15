@@ -1,6 +1,7 @@
 #pragma once
 #include <stdbool.h>
 #include <stdint.h>
+#include <bharat/uapi/service_status.h>
 
 #include "services/telemetrymgr/thermal_policy.h"
 
@@ -37,20 +38,20 @@ typedef struct {
     bool critical;
 } power_mode_thermal_state_t;
 
-typedef int (*power_mode_prepare_cb)(power_mode_state_t target);
-typedef int (*power_mode_commit_cb)(power_mode_state_t target);
-typedef int (*power_mode_wake_cb)(power_mode_reason_t reason);
+typedef bharat_status_t (*power_mode_prepare_cb)(power_mode_state_t target);
+typedef bharat_status_t (*power_mode_commit_cb)(power_mode_state_t target);
+typedef bharat_status_t (*power_mode_wake_cb)(power_mode_reason_t reason);
 
-int power_mode_register_client(power_mode_prepare_cb prepare, power_mode_commit_cb commit, power_mode_wake_cb wake);
-int power_mode_request_transition(power_mode_state_t target, power_mode_reason_t reason);
-int power_mode_force_limp_home(power_mode_reason_t reason);
+bharat_status_t power_mode_register_client(power_mode_prepare_cb prepare, power_mode_commit_cb commit, power_mode_wake_cb wake);
+bharat_status_t power_mode_request_transition(power_mode_state_t target, power_mode_reason_t reason);
+bharat_status_t power_mode_force_limp_home(power_mode_reason_t reason);
 power_mode_state_t power_mode_get_current(void);
 
-int power_mode_set_thermal_state(const power_mode_thermal_state_t* thermal_state);
+bharat_status_t power_mode_set_thermal_state(const power_mode_thermal_state_t* thermal_state);
 power_mode_thermal_state_t power_mode_get_thermal_state(void);
 
-int power_mode_register_default_clients(void);
-int power_mode_apply_thermal_policy(const thermal_policy_state_t* state);
+bharat_status_t power_mode_register_default_clients(void);
+bharat_status_t power_mode_apply_thermal_policy(const thermal_policy_state_t* state);
 
 // Internal function to reset state for testing
 void power_mode_reset(void);

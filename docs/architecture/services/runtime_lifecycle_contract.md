@@ -56,6 +56,16 @@ The `process_manager` handles high-level process lifecycle orchestration, polici
 - **State Tracking:** Maintains the active state of processes.
 - **Reaping and Teardown:** Cleans up processes that have terminated or failed.
 
+### Authority adapter invariant
+
+The v1 process lifecycle transaction publishes service metadata only after the
+corresponding kernel authority operation succeeds.  The adapter is installed as
+one complete operation table during single-threaded service startup; a missing
+or partial adapter selects an immutable fail-closed table whose operations
+return `BHARAT_STATUS_ERR_UNSUPPORTED` and never manufacture process, VM-space,
+or thread identifiers.  Termination and reaping likewise retain the prior
+service state when the kernel authority rejects the operation.
+
 ### State Machine
 `UNKNOWN -> CREATED -> READY -> RUNNING -> STOPPING -> EXITED -> FAILED`
 
@@ -76,6 +86,16 @@ The `vm_manager` manages address space lifecycles, virtual regions, and memory m
 - **Region Management:** Creates and tracks virtual memory regions for address spaces.
 - **Page Fault Handling:** Responds to kernel page fault notifications (`VM_OP_FAULT`).
 - **Memory Protection:** Manages memory protection flags (Read/Write/Execute).
+
+### VM authority adapter invariant
+
+The v1 VM service caches mapping metadata only after the canonical VM authority
+acknowledges create, map, unmap, protect, query, or destroy.  Adapter installation
+is all-or-nothing during single-threaded startup.  Missing and partial adapters
+return `BHARAT_STATUS_ERR_UNSUPPORTED`; they do not create synthetic spaces or
+mappings.  Destruction stops at the first failed unmap/destroy operation and
+keeps the affected service records live, so later recovery can retry without
+claiming that kernel state was removed.
 
 ### State Machine
 `UNKNOWN -> DECLARED -> VALIDATED -> PROGRAMMED -> ACTIVE -> REVOKED`

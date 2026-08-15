@@ -47,6 +47,11 @@ void bharat_tiny_ui_init(bharat_tiny_ui_state_t *state, bool safe_mode);
 void bharat_tiny_ui_apply_input(bharat_tiny_ui_state_t *state, bharat_ui_input_action_t action);
 void bharat_tiny_ui_render(const bharat_tiny_fb_t *fb, const bharat_tiny_ui_state_t *state);
 
+void bharat_tiny_ui_draw_rect(const bharat_tiny_fb_t *fb, uint32_t x, uint32_t y, uint32_t width, uint32_t height, uint32_t color);
+void bharat_tiny_ui_draw_rect_outline(const bharat_tiny_fb_t *fb, uint32_t x, uint32_t y, uint32_t width, uint32_t height, uint32_t color);
+void bharat_tiny_ui_draw_char_scaled(const bharat_tiny_fb_t *fb, uint32_t x, uint32_t y, char c, uint32_t fg, uint32_t bg, uint32_t scale);
+void bharat_tiny_ui_draw_text(const bharat_tiny_fb_t *fb, uint32_t x, uint32_t y, const char *str, uint32_t fg, uint32_t bg, uint32_t scale);
+
 #ifdef __cplusplus
 }
 #endif

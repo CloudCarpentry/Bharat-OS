@@ -139,7 +139,8 @@ void ai_sched_collect_sample(ai_sched_context_t* ctx,
         // inst_delta = cycles_delta * (active_ipc_x100 / 100)
         // To avoid dropping the fraction, multiply first then divide.
         // We use safe scaling if cycles_delta is massive to avoid 64-bit overflow.
-        if (cycles_delta > (184467440737095516ULL)) {
+        // active_ipc_x100 is guaranteed > 0 by the earlier fallback guard.
+        if (cycles_delta > (18446744073709551615ULL / active_ipc_x100)) {
             inst_delta = ( (cycles_delta >> 10) * active_ipc_x100 ) / 100U;
             inst_delta <<= 10;
         } else {

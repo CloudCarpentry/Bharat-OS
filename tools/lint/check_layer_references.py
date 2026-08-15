@@ -57,9 +57,11 @@ ALLOWED_REFS = {
 
 FREESTANDING_LAYERS = {"kernel", "hal", "arch", "boot", "platform"}
 FORBIDDEN_HOSTED_HEADERS = {"stdio.h", "stdlib.h", "string.h"}
+FORBIDDEN_KERNEL_UI_HEADERS = {"lvgl.h", "tiny_ui.h", "bharat/ui/tiny_ui.h"}
 
 EXCLUDED_DIRS = {".git", "build", "out"}
 CODE_SUFFIXES = (".c", ".h", ".cc", ".cpp", ".hpp", ".S")
+DEFAULT_BASELINE = "tools/lint/baselines/layer_references.allowlist"
 
 
 @dataclass(frozen=True)
@@ -172,6 +174,17 @@ def scan(repo_root: Path) -> tuple[list[Violation], int]:
                                 rule="freestanding-header",
                             )
                         )
+                    elif src_layer in FREESTANDING_LAYERS and (include_target in FORBIDDEN_KERNEL_UI_HEADERS or include_target.startswith("bharat/ui/")):
+                        violations.append(
+                            Violation(
+                                relpath,
+                                ln,
+                                include_target,
+                                src_layer,
+                                "ui-header",
+                                rule="kernel-ui-leakage",
+                            )
+                        )
                     else:
                         target = include_target_layer(
                             repo_root, abspath, src_layer, include_target, quoted
@@ -251,21 +264,32 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Check include-layer architecture references")
     parser.add_argument("--report", type=str, help="Optional path to write markdown report")
     parser.add_argument("--strict", action="store_true", help="Return non-zero when non-baselined violations are present")
-    parser.add_argument("--baseline", type=str, help="Optional baseline file containing waived violations")
+    baseline_group = parser.add_mutually_exclusive_group()
+    baseline_group.add_argument(
+        "--baseline",
+        type=str,
+        default=DEFAULT_BASELINE,
+        help=f"Baseline file containing known debt (default: {DEFAULT_BASELINE})",
+    )
+    baseline_group.add_argument(
+        "--no-baseline",
+        action="store_true",
+        help="Audit all findings without applying the checked-in baseline",
+    )
     parser.add_argument("--write-baseline", type=str, help="Write baseline entries for current violations to this path")
     args = parser.parse_args()
 
     repo_root = Path(__file__).resolve().parents[2]
     violations, files_scanned = scan(repo_root)
 
-    baseline_entries = parse_baseline((repo_root / args.baseline).resolve() if args.baseline else None)
+    baseline_path = None if args.no_baseline else (repo_root / args.baseline).resolve()
+    baseline_entries = parse_baseline(baseline_path)
     new_violations = [v for v in violations if v.key() not in baseline_entries]
 
     print(f"Scanned {files_scanned} code/header files")
-    print(f"Found {len(violations)} total layer-reference violations")
+    print(f"Violations found: {len(new_violations)}")
     if baseline_entries:
-        print(f"Baselined violations: {len(violations) - len(new_violations)}")
-        print(f"New violations: {len(new_violations)}")
+        print(f"Known baseline debt: {len(violations) - len(new_violations)}")
 
     if args.report:
         report_path = (repo_root / args.report).resolve()

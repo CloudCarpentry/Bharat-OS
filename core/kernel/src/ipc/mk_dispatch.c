@@ -148,10 +148,10 @@ static void mk_handle_thread_handoff_req(mk_channel_t *channel, urpc_msg_t *msg)
     }
 
     // Spinlock/IRQ disable to protect thread state mutation
-    hal_cpu_disable_interrupts();
+    hal_irq_state_t irq_state = hal_irq_save_disable();
 
     if (thread->state != THREAD_STATE_REMOTE_HANDOFF_PENDING) {
-        hal_cpu_enable_interrupts();
+        hal_irq_restore(irq_state);
         urpc_msg_t nack = {
             .type = MK_MSG_THREAD_HANDOFF_NACK,
             .payload_size = 0,
@@ -173,7 +173,7 @@ static void mk_handle_thread_handoff_req(mk_channel_t *channel, urpc_msg_t *msg)
     // and hold no rq locks yet, we can just call sched_enqueue.
     sched_enqueue(thread, local_core);
 
-    hal_cpu_enable_interrupts();
+    hal_irq_restore(irq_state);
 
     // Send ACK
     urpc_msg_t ack = {

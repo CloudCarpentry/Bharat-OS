@@ -600,7 +600,7 @@ void vmm_process_urpc_messages(void) {
         if (c == (int)current_core) continue;
         uint64_t raw_msg;
         int limit = 10;
-        while (limit-- > 0 && urpc_bootstrap_recv(c, &raw_msg) == 0) {
+        while (limit-- > 0 && urpc_bootstrap_recv(c, &raw_msg) == K_OK) {
             urpc_msg_type_t type;
             uint64_t payload;
             urpc_unpack_msg(raw_msg, &type, &payload);

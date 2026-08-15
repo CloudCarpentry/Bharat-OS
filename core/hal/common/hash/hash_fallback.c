@@ -6,7 +6,8 @@
  * do not provide their own hardware-accelerated CRC32 paths.
  */
 
-#include "arch/hash.h"
+#include <stddef.h>
+#include <stdint.h>
 
 size_t arch_hash_func(uint64_t key, int seed, size_t size) {
     if (seed == 0) {

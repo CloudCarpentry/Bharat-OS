@@ -3,6 +3,7 @@
 #include <stdbool.h>
 
 #include "capability.h"
+#include "bharat/cpu_local.h"
 #include "hal/hal.h"
 #include "kernel.h"
 #include "sched/sched.h"
@@ -59,6 +60,27 @@ static int test_cap_policy_semantics(void) {
     ASSERT_RET(!cap_transfer_rights_valid(CAP_TYPE_PROCESS, CAP_RIGHT_READ), -11);
     ASSERT_RET(!cap_can_transfer(CAP_TYPE_PROCESS, CAP_RIGHT_READ, CAP_RIGHT_READ), -12);
     ASSERT_RET(!cap_transfer_rights_valid(CAP_TYPE_NONE, CAP_RIGHT_READ), -13);
+
+    // 6. HMEM, submission, and DMA rights are bound to their object types.
+    ASSERT_RET(cap_transfer_rights_valid(
+                   CAP_TYPE_HMEM,
+                   CAP_RIGHT_HMEM_MAP_CPU | CAP_RIGHT_HMEM_QUERY |
+                       CAP_RIGHT_DELEGATE),
+               -14);
+    ASSERT_RET(!cap_transfer_rights_valid(CAP_TYPE_HMEM,
+                                          CAP_RIGHT_ACCEL_SUBMIT),
+               -15);
+    ASSERT_RET(cap_transfer_rights_valid(CAP_TYPE_ACCEL_QUEUE,
+                                         CAP_RIGHT_ACCEL_SUBMIT),
+               -16);
+    ASSERT_RET(cap_transfer_rights_valid(CAP_TYPE_DMA_GRANT,
+                                         CAP_RIGHT_DEVICE_DMA),
+               -17);
+    ASSERT_RET(!cap_can_transfer(
+                   CAP_TYPE_HMEM,
+                   CAP_RIGHT_HMEM_MAP_CPU | CAP_RIGHT_HMEM_QUERY,
+                   CAP_RIGHT_HMEM_MAP_CPU | CAP_RIGHT_HMEM_DESTROY),
+               -18);
 
     return 0;
 }
@@ -199,7 +221,7 @@ static int test_cap_sibling_fanout_revoke(void) {
     capability_entry_t parent_entry;
     ret = cap_table_lookup(table, parent, CAP_TYPE_NONE, CAP_RIGHT_NONE, &parent_entry);
     ASSERT_RET(ret == 0, -7);
-    ASSERT_RET(parent_entry.first_child.slot != UINT32_MAX, -8);
+    ASSERT_RET(parent_entry.first_child.cspace_id != 0U, -8);
 
     // Revoke child1. The parent's first_child pointer should be updated to child2
     ret = cap_table_revoke(table, child1);
@@ -209,7 +231,10 @@ static int test_cap_sibling_fanout_revoke(void) {
     ASSERT_RET(ret == 0, -10);
 
     capability_entry_t new_first_child_entry;
-    ret = cap_table_lookup(table, table->entries[parent_entry.first_child.slot].id, CAP_TYPE_NONE, CAP_RIGHT_NONE, &new_first_child_entry);
+    capability_entry_t *new_first_child = &table->entries[parent_entry.first_child.slot];
+    uint32_t new_first_child_cap = new_first_child->id |
+                                   (new_first_child->generation << BH_CAP_GEN_SHIFT);
+    ret = cap_table_lookup(table, new_first_child_cap, CAP_TYPE_NONE, CAP_RIGHT_NONE, &new_first_child_entry);
     ASSERT_RET(ret == 0, -11);
     // Due to stack processing order on DFS, the remaining children might not strictly
     // stay in child2 then child3 order if multiple are revoked. Wait, child1 is root of revoke,
@@ -243,7 +268,7 @@ static int test_cap_rights_attenuation(void) {
     int ret = cap_table_grant(table, CAP_TYPE_MEMORY, 0x3000, CAP_RIGHT_MEMORY_MAP | CAP_RIGHT_DELEGATE, &parent);
     ASSERT_RET(ret == 0, -2);
 
-    uint32_t child;
+    uint32_t child = 0U;
     // Try to delegate with more rights than parent has (UNMAP)
     ret = cap_table_delegate(table, table, parent, CAP_RIGHT_MEMORY_MAP | CAP_RIGHT_MEMORY_UNMAP | CAP_RIGHT_DELEGATE, &child);
     ASSERT_RET(ret != 0, -3); // Should fail
@@ -388,8 +413,15 @@ static int test_cap_cross_table_revoke(void) {
     int ret = cap_table_grant(table1, CAP_TYPE_MEMORY, 0x7000, CAP_RIGHT_MEMORY_MAP | CAP_RIGHT_DELEGATE, &parent);
     ASSERT_RET(ret == 0, -2);
 
-    uint32_t child;
+    uint32_t child = 0U;
     ret = cap_table_delegate(table1, table2, parent, CAP_RIGHT_MEMORY_MAP | CAP_RIGHT_DELEGATE, &child);
+    if (ret == -6) {
+        /* A remote CSpace without a bound transport must fail closed. */
+        ASSERT_RET(!cap_exists(table2, child), -3);
+        cap_table_destroy(table1);
+        cap_table_destroy(table2);
+        return 0;
+    }
     if (ret != 0) {
         hal_serial_write("failed to delegate child: ");
         char buf[3];
@@ -484,6 +516,29 @@ static int ktest_cap_run_runtime(void) {
         hal_serial_write(buf);
         return -1;
     }
+    hal_serial_write("PASSED\n");
+
+    hal_serial_write("  [TEST] test_process_cspaces_exceed_cpu_count... ");
+    capability_table_t *tables[MAX_CPUS + 1U] = {0};
+    for (size_t i = 0; i < BHARAT_ARRAY_SIZE(tables); ++i) {
+        tables[i] = cap_table_create();
+        if (tables[i] == NULL) {
+            for (size_t j = 0; j < i; ++j) {
+                cap_table_destroy(tables[j]);
+            }
+            return -1;
+        }
+    }
+    uint32_t stale_cspace_id = tables[0]->cspace_id;
+    for (size_t i = 0; i < BHARAT_ARRAY_SIZE(tables); ++i) {
+        cap_table_destroy(tables[i]);
+    }
+    tables[0] = cap_table_create();
+    if (tables[0] == NULL || tables[0]->cspace_id == stale_cspace_id) {
+        cap_table_destroy(tables[0]);
+        return -1;
+    }
+    cap_table_destroy(tables[0]);
     hal_serial_write("PASSED\n");
 
     return 0;

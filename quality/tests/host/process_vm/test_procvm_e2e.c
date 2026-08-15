@@ -28,8 +28,8 @@ void test_procvm_e2e_lifecycle(void) {
     dummy_elf[96] = 100; // p_filesz
     dummy_elf[104] = 100; // p_memsz
 
-    int reg_res = bh_pm_register_executable(0xABCD, dummy_elf, sizeof(dummy_elf));
-    assert(reg_res == 0);
+    bharat_status_t reg_res = bh_pm_register_executable(0xABCD, dummy_elf, sizeof(dummy_elf));
+    assert(reg_res == BHARAT_STATUS_OK);
 
     // Spawn Request
     bh_pm_spawn_request_v1_t spawn_req;

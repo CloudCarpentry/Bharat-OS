@@ -67,7 +67,7 @@ int vm_space_create(vm_space_t **out, mem_profile_t profile, vm_timing_class_t t
 
     space->owner_cap.generation = 0;
     space->owner_cap.slot = 0;
-    space->owner_cap.table = NULL;
+    space->owner_cap = (cap_handle_t){0};
 
     space->regions.root = NULL;
     space->mappings.head = NULL;

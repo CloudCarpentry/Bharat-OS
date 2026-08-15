@@ -2,6 +2,7 @@
 #include "trap_frame_ops.h"
 #include "trap/syscall_regs.h"
 #include "trap/syscall_context.h"
+#include "trap/syscall_status.h"
 #include "bh_personality_registry.h"
 #include "bh_personality.h"
 
@@ -31,10 +32,11 @@ static int default_map_fault_to_signal(const trap_info_t *info) {
     return 11; // SIGSEGV
 }
 
-static long native_normalize_syscall_return(long result) {
-    // Native already returns kstatus_to_native_sysret internally in handlers
-    // or through the gate.
-    return result;
+static long native_normalize_syscall_return(bh_operation_result_t result) {
+    if (result.domain == BH_STATUS_DOMAIN_KSTATUS) {
+        return kstatus_to_native_sysret((kstatus_t)result.value);
+    }
+    return result.value;
 }
 
 const personality_ops_t default_personality_ops = {

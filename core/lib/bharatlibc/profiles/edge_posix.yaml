@@ -2,7 +2,7 @@ profile: edge_posix
 memory_model: MMU_LITE
 execution_profile: MIX
 device_profile: EDGE/NETWORK_APPLIANCE
-personality: POSIX
+personality: NATIVE
 features:
   fixed_allocator: ON
   bounded_freelist: ON

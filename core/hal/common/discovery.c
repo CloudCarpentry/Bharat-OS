@@ -1,7 +1,6 @@
 #include "hal/hal_discovery.h"
 #include <hal/hal_cpu_topology.h>
-#include "arch/arch_cpu_caps.h"
-#include "arch/common/accel_caps_publish.h"
+#include "hal/hal_cpu_features.h"
 #include "boot/boot_info.h"
 #include <stddef.h>
 #include <stdbool.h>
@@ -56,10 +55,11 @@ static inline void accel_set(uint64_t *mask, hal_accel_feature_t feat, bool enab
 
 void hal_discovery_publish_cpu_caps(void) {
     system_discovery_t *sys = hal_get_system_discovery();
-    const arch_cpu_caps_record_t *caps_all = arch_cpu_caps_system_all();
-    const arch_cpu_caps_record_t *caps_any = arch_cpu_caps_system_any();
+    hal_cpu_feature_set_t caps_all;
+    hal_cpu_feature_set_t caps_any;
 
-    if (caps_all == NULL || caps_any == NULL) {
+    if (!hal_cpu_feature_set_system(HAL_CPU_FEATURE_SCOPE_ALL, &caps_all) ||
+        !hal_cpu_feature_set_system(HAL_CPU_FEATURE_SCOPE_ANY, &caps_any)) {
         sys->accel.raw_all_mask = 0;
         sys->accel.raw_any_mask = 0;
         sys->accel.usable_all_mask = 0;
@@ -72,50 +72,23 @@ void hal_discovery_publish_cpu_caps(void) {
     sys->accel.usable_all_mask = 0;
     sys->accel.usable_any_mask = 0;
 
-    accel_set(&sys->accel.raw_all_mask, HAL_ACCEL_FEAT_VECTOR,
-              arch_cpu_caps_test(&caps_all->raw, ARCH_CPU_FEAT_COMMON_VECTOR));
-    accel_set(&sys->accel.raw_any_mask, HAL_ACCEL_FEAT_VECTOR,
-              arch_cpu_caps_test(&caps_any->raw, ARCH_CPU_FEAT_COMMON_VECTOR));
-    accel_set(&sys->accel.usable_all_mask, HAL_ACCEL_FEAT_VECTOR,
-              arch_cpu_caps_test(&caps_all->usable, ARCH_CPU_FEAT_COMMON_VECTOR));
-    accel_set(&sys->accel.usable_any_mask, HAL_ACCEL_FEAT_VECTOR,
-              arch_cpu_caps_test(&caps_any->usable, ARCH_CPU_FEAT_COMMON_VECTOR));
-
-    accel_set(&sys->accel.raw_all_mask, HAL_ACCEL_FEAT_AES,
-              arch_cpu_caps_test(&caps_all->raw, ARCH_CPU_FEAT_COMMON_AES));
-    accel_set(&sys->accel.raw_any_mask, HAL_ACCEL_FEAT_AES,
-              arch_cpu_caps_test(&caps_any->raw, ARCH_CPU_FEAT_COMMON_AES));
-    accel_set(&sys->accel.usable_all_mask, HAL_ACCEL_FEAT_AES,
-              arch_cpu_caps_test(&caps_all->usable, ARCH_CPU_FEAT_COMMON_AES));
-    accel_set(&sys->accel.usable_any_mask, HAL_ACCEL_FEAT_AES,
-              arch_cpu_caps_test(&caps_any->usable, ARCH_CPU_FEAT_COMMON_AES));
-
-    accel_set(&sys->accel.raw_all_mask, HAL_ACCEL_FEAT_SHA,
-              arch_cpu_caps_test(&caps_all->raw, ARCH_CPU_FEAT_COMMON_SHA));
-    accel_set(&sys->accel.raw_any_mask, HAL_ACCEL_FEAT_SHA,
-              arch_cpu_caps_test(&caps_any->raw, ARCH_CPU_FEAT_COMMON_SHA));
-    accel_set(&sys->accel.usable_all_mask, HAL_ACCEL_FEAT_SHA,
-              arch_cpu_caps_test(&caps_all->usable, ARCH_CPU_FEAT_COMMON_SHA));
-    accel_set(&sys->accel.usable_any_mask, HAL_ACCEL_FEAT_SHA,
-              arch_cpu_caps_test(&caps_any->usable, ARCH_CPU_FEAT_COMMON_SHA));
-
-    accel_set(&sys->accel.raw_all_mask, HAL_ACCEL_FEAT_PMULL,
-              arch_cpu_caps_test(&caps_all->raw, ARCH_CPU_FEAT_COMMON_PMULL));
-    accel_set(&sys->accel.raw_any_mask, HAL_ACCEL_FEAT_PMULL,
-              arch_cpu_caps_test(&caps_any->raw, ARCH_CPU_FEAT_COMMON_PMULL));
-    accel_set(&sys->accel.usable_all_mask, HAL_ACCEL_FEAT_PMULL,
-              arch_cpu_caps_test(&caps_all->usable, ARCH_CPU_FEAT_COMMON_PMULL));
-    accel_set(&sys->accel.usable_any_mask, HAL_ACCEL_FEAT_PMULL,
-              arch_cpu_caps_test(&caps_any->usable, ARCH_CPU_FEAT_COMMON_PMULL));
-
-    accel_set(&sys->accel.raw_all_mask, HAL_ACCEL_FEAT_STRONG_ATOMICS,
-              arch_cpu_caps_test(&caps_all->raw, ARCH_CPU_FEAT_COMMON_STRONG_ATOMICS));
-    accel_set(&sys->accel.raw_any_mask, HAL_ACCEL_FEAT_STRONG_ATOMICS,
-              arch_cpu_caps_test(&caps_any->raw, ARCH_CPU_FEAT_COMMON_STRONG_ATOMICS));
-    accel_set(&sys->accel.usable_all_mask, HAL_ACCEL_FEAT_STRONG_ATOMICS,
-              arch_cpu_caps_test(&caps_all->usable, ARCH_CPU_FEAT_COMMON_STRONG_ATOMICS));
-    accel_set(&sys->accel.usable_any_mask, HAL_ACCEL_FEAT_STRONG_ATOMICS,
-              arch_cpu_caps_test(&caps_any->usable, ARCH_CPU_FEAT_COMMON_STRONG_ATOMICS));
-
-    arch_accel_caps_publish_target(&sys->accel, caps_all, caps_any);
+#define EXPORT_ACCEL(accel_feature, cpu_feature)                                  \
+    do {                                                                           \
+        const uint64_t bit = 1ULL << ((size_t)(cpu_feature) % 64u);                \
+        const size_t word = (size_t)(cpu_feature) / 64u;                           \
+        accel_set(&sys->accel.raw_all_mask, accel_feature,                         \
+                  (caps_all.raw_bits[word] & bit) != 0U);                          \
+        accel_set(&sys->accel.raw_any_mask, accel_feature,                         \
+                  (caps_any.raw_bits[word] & bit) != 0U);                          \
+        accel_set(&sys->accel.usable_all_mask, accel_feature,                      \
+                  (caps_all.usable_bits[word] & bit) != 0U);                       \
+        accel_set(&sys->accel.usable_any_mask, accel_feature,                      \
+                  (caps_any.usable_bits[word] & bit) != 0U);                       \
+    } while (0)
+    EXPORT_ACCEL(HAL_ACCEL_FEAT_VECTOR, HAL_CPU_FEATURE_VECTOR);
+    EXPORT_ACCEL(HAL_ACCEL_FEAT_AES, HAL_CPU_FEATURE_AES);
+    EXPORT_ACCEL(HAL_ACCEL_FEAT_SHA, HAL_CPU_FEATURE_SHA);
+    EXPORT_ACCEL(HAL_ACCEL_FEAT_PMULL, HAL_CPU_FEATURE_PMULL);
+    EXPORT_ACCEL(HAL_ACCEL_FEAT_STRONG_ATOMICS, HAL_CPU_FEATURE_STRONG_ATOMICS);
+#undef EXPORT_ACCEL
 }

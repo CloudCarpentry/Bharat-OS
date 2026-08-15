@@ -4,6 +4,8 @@ import sys
 import json
 import re
 import argparse
+import hashlib
+import tempfile
 
 # Traits translation to C flags
 TRAIT_FLAGS = {
@@ -31,9 +33,45 @@ KIND_MAPPING = {
     "implicit_current_thread": "BH_SYS_CAP_SOURCE_IMPLICIT_THREAD",
 }
 
+ALLOWED_TOP_LEVEL_KEYS = {"version", "syscalls"}
+ALLOWED_SYSCALL_KEYS = {
+    "number", "symbol", "name", "status", "class", "handler",
+    "arguments", "capability", "traits",
+}
+ALLOWED_ARGUMENT_KEYS = {"name", "kind", "type", "direction", "size_source"}
+ALLOWED_ARGUMENT_KINDS = {"scalar", "pointer", "user_struct"}
+ALLOWED_DIRECTIONS = {"in", "out", "in_out"}
+ALLOWED_STATUSES = {"stable", "experimental", "deprecated"}
+ALLOWED_CAPABILITY_KEYS = {
+    "source", "validation_phase", "object_type", "rights", "scope",
+}
+ALLOWED_CAPABILITY_SOURCE_KEYS = {"kind", "argument", "field"}
+ALLOWED_CAPABILITY_SCOPES = {"current_process", "current_thread", "system"}
+IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+TYPE_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_ ]*(?:\s*\*)?$")
+SIZEOF_RE = re.compile(r"^sizeof\([A-Za-z_][A-Za-z0-9_]*\)$")
+
+
+def schema_error(message):
+    print(f"Schema Error: {message}")
+    return False
+
+
+def exact_keys(value, allowed, context):
+    unknown = set(value) - allowed
+    if unknown:
+        return schema_error(f"{context} has unknown key(s): {', '.join(sorted(unknown))}")
+    return True
+
 VAL_PHASE_MAPPING = {
     "before_handler": "BH_SYS_CAP_VAL_BEFORE_HANDLER",
     "after_usercopy": "BH_SYS_CAP_VAL_AFTER_USERCOPY",
+}
+
+GENERATED_OUTPUT_KEYS = {
+    "numbers": "numbers.h",
+    "table_def": "table.def",
+    "metadata_table": "native_syscall_table.inc",
 }
 
 def load_json(path):
@@ -49,51 +87,100 @@ def save_json(path, data):
         f.write('\n')
 
 def validate_schema(manifest):
-    if "version" not in manifest or "syscalls" not in manifest:
-        print("Schema Error: Missing top-level fields 'version' or 'syscalls'")
+    if not isinstance(manifest, dict) or "version" not in manifest or "syscalls" not in manifest:
+        return schema_error("Missing top-level fields 'version' or 'syscalls'")
+    if not exact_keys(manifest, ALLOWED_TOP_LEVEL_KEYS, "Manifest"):
+        return False
+    if not isinstance(manifest["version"], int) or not isinstance(manifest["syscalls"], list):
+        print("Schema Error: 'version' must be an integer and 'syscalls' must be a list")
         return False
 
     for sc in manifest["syscalls"]:
-        required_keys = ["number", "symbol", "name", "status", "class", "handler", "arguments", "traits"]
+        if not isinstance(sc, dict):
+            print("Schema Error: Every syscall entry must be an object")
+            return False
+        required_keys = ["number", "symbol", "name", "status", "class", "handler", "arguments", "capability", "traits"]
         for key in required_keys:
             if key not in sc:
                 print(f"Schema Error: Syscall {sc.get('symbol', 'unknown')} missing required key '{key}'")
                 return False
+        if not exact_keys(sc, ALLOWED_SYSCALL_KEYS, f"Syscall {sc['symbol']}"):
+            return False
+        if not isinstance(sc["arguments"], list) or not isinstance(sc["traits"], list):
+            return schema_error(f"Syscall {sc['symbol']} arguments and traits must be lists")
 
         # Validate arguments schema
         for arg in sc["arguments"]:
+            if not isinstance(arg, dict):
+                return schema_error(f"Argument in {sc['symbol']} must be an object")
             arg_keys = ["name", "kind", "type", "direction"]
             for ak in arg_keys:
                 if ak not in arg:
                     print(f"Schema Error: Argument in {sc['symbol']} missing key '{ak}'")
                     return False
+            if not exact_keys(arg, ALLOWED_ARGUMENT_KEYS,
+                              f"Argument '{arg['name']}' in {sc['symbol']}"):
+                return False
+            if arg["kind"] not in ALLOWED_ARGUMENT_KINDS:
+                return schema_error(
+                    f"Argument '{arg['name']}' in {sc['symbol']} has invalid kind '{arg['kind']}'")
+            if arg["direction"] not in ALLOWED_DIRECTIONS:
+                return schema_error(
+                    f"Argument '{arg['name']}' in {sc['symbol']} has invalid direction '{arg['direction']}'")
+            if not isinstance(arg["name"], str) or not IDENTIFIER_RE.fullmatch(arg["name"]):
+                return schema_error(f"Argument name in {sc['symbol']} is not a C identifier")
+            if not isinstance(arg["type"], str) or not TYPE_RE.fullmatch(arg["type"]):
+                return schema_error(f"Argument '{arg['name']}' in {sc['symbol']} has an invalid type")
             if arg["kind"] == "pointer":
                 if "size_source" not in arg:
                     print(f"Schema Error: Pointer argument '{arg['name']}' in {sc['symbol']} must define 'size_source'")
                     return False
+                if not isinstance(arg["size_source"], str) or not arg["size_source"]:
+                    return schema_error(
+                        f"Pointer argument '{arg['name']}' in {sc['symbol']} has an invalid size_source")
+            elif "size_source" in arg:
+                return schema_error(
+                    f"Non-pointer argument '{arg['name']}' in {sc['symbol']} cannot define size_source")
 
         # Validate traits and capability
         if sc["capability"] is not None:
             cap = sc["capability"]
-            cap_keys = ["source", "object_type", "rights", "scope"]
+            if not isinstance(cap, dict):
+                return schema_error(f"Capability for {sc['symbol']} must be an object or null")
+            cap_keys = ["source", "validation_phase", "object_type", "rights", "scope"]
             for ck in cap_keys:
                 if ck not in cap:
                     print(f"Schema Error: Capability for {sc['symbol']} missing key '{ck}'")
                     return False
+            if not exact_keys(cap, ALLOWED_CAPABILITY_KEYS, f"Capability for {sc['symbol']}"):
+                return False
 
             source = cap["source"]
-            if isinstance(source, dict):
-                if "kind" not in source:
-                    print(f"Schema Error: Capability source object in {sc['symbol']} must have 'kind'")
-                    return False
-                if source["kind"] in ["register", "struct_field"]:
-                    if "argument" not in source:
-                        print(f"Schema Error: Capability source object {source['kind']} in {sc['symbol']} must have 'argument'")
-                        return False
-                if source["kind"] == "struct_field":
-                    if "field" not in source:
-                        print(f"Schema Error: Capability source object struct_field in {sc['symbol']} must have 'field'")
-                        return False
+            if not isinstance(source, dict):
+                return schema_error(f"Capability source in {sc['symbol']} must be an object")
+            if "kind" not in source:
+                return schema_error(f"Capability source object in {sc['symbol']} must have 'kind'")
+            if not exact_keys(source, ALLOWED_CAPABILITY_SOURCE_KEYS,
+                              f"Capability source for {sc['symbol']}"):
+                return False
+            kind = source["kind"]
+            if kind not in KIND_MAPPING:
+                return schema_error(f"Capability source in {sc['symbol']} has invalid kind '{kind}'")
+            required_source_keys = {"kind"}
+            if kind in ["register", "struct_field"]:
+                required_source_keys.add("argument")
+            if kind == "struct_field":
+                required_source_keys.add("field")
+            if set(source) != required_source_keys:
+                return schema_error(
+                    f"Capability source {kind} in {sc['symbol']} must contain exactly "
+                    f"{', '.join(sorted(required_source_keys))}")
+            if cap["validation_phase"] not in VAL_PHASE_MAPPING:
+                return schema_error(f"Capability for {sc['symbol']} has invalid validation_phase")
+            if cap["scope"] not in ALLOWED_CAPABILITY_SCOPES:
+                return schema_error(f"Capability for {sc['symbol']} has invalid scope")
+            if not isinstance(cap["rights"], list) or not cap["rights"]:
+                return schema_error(f"Capability for {sc['symbol']} must require at least one right")
 
     return True
 
@@ -107,6 +194,16 @@ def validate_semantics(manifest):
         num = sc["number"]
         sym = sc["symbol"]
         name = sc["name"]
+
+        if not IDENTIFIER_RE.fullmatch(sym) or not IDENTIFIER_RE.fullmatch(name):
+            print(f"Semantic Error: Syscall {sym} symbol and name must be C identifiers")
+            return False
+        if sc["status"] not in ALLOWED_STATUSES or sc["class"] not in CLASS_MAPPING:
+            print(f"Semantic Error: Syscall {sym} has an unsupported status or class")
+            return False
+        if not IDENTIFIER_RE.fullmatch(sc["handler"]):
+            print(f"Semantic Error: Syscall {sym} handler must be a C identifier")
+            return False
 
         if num in numbers:
             print(f"Semantic Error: Duplicate syscall number {num}")
@@ -130,9 +227,29 @@ def validate_semantics(manifest):
 
         # Trait compatibility
         traits = sc["traits"]
+        if len(traits) != len(set(traits)) or any(t not in TRAIT_FLAGS for t in traits):
+            print(f"Semantic Error: Syscall {sym} has duplicate or unknown traits")
+            return False
         if "fast" in traits and "blocking" in traits:
             print(f"Semantic Error: Syscall {sym} cannot be both 'fast' and 'blocking'")
             return False
+
+        arg_names = [a["name"] for a in sc["arguments"]]
+        if len(arg_names) != len(set(arg_names)):
+            print(f"Semantic Error: Syscall {sym} has duplicate argument names")
+            return False
+        for arg in sc["arguments"]:
+            if arg["kind"] != "pointer":
+                continue
+            size_source = arg["size_source"]
+            if size_source not in arg_names and not SIZEOF_RE.fullmatch(size_source):
+                print(f"Semantic Error: Pointer {arg['name']} in {sym} has unresolved size_source '{size_source}'")
+                return False
+            if size_source in arg_names:
+                size_arg = sc["arguments"][arg_names.index(size_source)]
+                if size_arg["kind"] != "scalar" or size_arg["direction"] != "in":
+                    print(f"Semantic Error: Pointer {arg['name']} in {sym} size_source must be an input scalar")
+                    return False
         if "fast" in traits and ("user_read" in traits or "user_write" in traits):
             print(f"Semantic Error: Syscall {sym} cannot be 'fast' and use usercopy (user_read/user_write)")
             return False
@@ -151,10 +268,27 @@ def validate_semantics(manifest):
                 arg_name = source
 
             if arg_name is not None:
-                arg_names = [a["name"] for a in sc["arguments"]]
                 if arg_name not in arg_names:
                     print(f"Semantic Error: Syscall {sym} capability source '{arg_name}' not in arguments list")
                     return False
+                source_arg = sc["arguments"][arg_names.index(arg_name)]
+                if kind == "register" and source_arg["kind"] != "scalar":
+                    print(f"Semantic Error: Register capability source in {sym} must reference a scalar")
+                    return False
+                if kind == "struct_field" and source_arg["kind"] != "user_struct":
+                    print(f"Semantic Error: Struct-field capability source in {sym} must reference a user_struct")
+                    return False
+            phase = sc["capability"]["validation_phase"]
+            if kind == "struct_field" and phase != "after_usercopy":
+                print(f"Semantic Error: Struct-field capability source in {sym} must validate after_usercopy")
+                return False
+            if kind != "struct_field" and phase != "before_handler":
+                print(f"Semantic Error: Capability source in {sym} must validate before_handler")
+                return False
+            rights = sc["capability"]["rights"]
+            if len(rights) != len(set(rights)) or any(not IDENTIFIER_RE.fullmatch(r) for r in rights):
+                print(f"Semantic Error: Capability rights in {sym} must be unique C identifiers")
+                return False
 
     return True
 
@@ -193,19 +327,28 @@ def compare_lock(manifest, lock_data):
         print("Lock Check Error: Lock file data is missing.")
         return False
 
-    lock_syscalls = {sc["number"]: sc for sc in lock_data.get("syscalls", [])}
-    manifest_syscalls = {sc["number"]: sc for sc in manifest["syscalls"]}
+    lock_entries = lock_data.get("syscalls", [])
+    if lock_data.get("syscall_count") != len(lock_entries):
+        print("ABI Lock Error: Locked syscall metadata count disagrees with its syscall table.")
+        return False
+    if len(lock_entries) != len(manifest["syscalls"]):
+        print("ABI Lock Error: Manifest syscall count differs from the lock; "
+              "intentional additions require --update-lock.")
+        return False
 
-    for num, l_sc in lock_syscalls.items():
-        if num not in manifest_syscalls:
-            print(f"ABI Breakage Error: Syscall {l_sc['symbol']} ({num}) was removed from the manifest. Syscall deletions are forbidden.")
+    lock_syscalls = {sc["symbol"]: sc for sc in lock_entries}
+    manifest_syscalls = {sc["symbol"]: sc for sc in manifest["syscalls"]}
+
+    for symbol, l_sc in lock_syscalls.items():
+        if symbol not in manifest_syscalls:
+            print(f"ABI Breakage Error: Syscall {symbol} ({l_sc['number']}) was removed or renamed. Syscall deletions and renames are forbidden.")
             return False
 
-        m_sc = manifest_syscalls[num]
+        m_sc = manifest_syscalls[symbol]
 
         # Check basic properties
-        if m_sc["symbol"] != l_sc["symbol"]:
-            print(f"ABI Breakage Error: Syscall number {num} changed its symbol from {l_sc['symbol']} to {m_sc['symbol']}. Renaming or renumbering is forbidden.")
+        if m_sc["number"] != l_sc["number"]:
+            print(f"ABI Breakage Error: Syscall {symbol} changed number from {l_sc['number']} to {m_sc['number']}. Renumbering is forbidden.")
             return False
 
         # Validate arguments list
@@ -250,13 +393,55 @@ def compare_lock(manifest, lock_data):
 
     return True
 
+def sha256_file(path):
+    digest = hashlib.sha256()
+    with open(path, "rb") as generated_file:
+        for chunk in iter(lambda: generated_file.read(65536), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+def generate_to_directory(manifest, output_dir):
+    paths = {
+        key: os.path.join(output_dir, filename)
+        for key, filename in GENERATED_OUTPUT_KEYS.items()
+    }
+    generate_headers(manifest, paths["metadata_table"], paths["table_def"], paths["numbers"])
+    return paths
+
+def generated_hashes(manifest):
+    with tempfile.TemporaryDirectory(prefix="bharat-syscall-abi-") as output_dir:
+        first_paths = generate_to_directory(manifest, os.path.join(output_dir, "first"))
+        second_paths = generate_to_directory(manifest, os.path.join(output_dir, "second"))
+        first = {key: sha256_file(path) for key, path in first_paths.items()}
+        second = {key: sha256_file(path) for key, path in second_paths.items()}
+        if first != second:
+            print("Generation Error: syscall outputs are not reproducible.")
+            return None
+        return first
+
+def verify_generated(manifest, lock_data):
+    expected = lock_data.get("generated_sha256")
+    if not isinstance(expected, dict) or set(expected) != set(GENERATED_OUTPUT_KEYS):
+        print("ABI Lock Error: generated output hashes are missing or incomplete; run --update-lock intentionally.")
+        return False
+
+    actual = generated_hashes(manifest)
+    if actual is None:
+        return False
+    success = True
+    for key in GENERATED_OUTPUT_KEYS:
+        if actual[key] != expected[key]:
+            print(f"Generated Output Drift Error: {GENERATED_OUTPUT_KEYS[key]} differs from the locked authority.")
+            success = False
+    return success
+
 def generate_headers(manifest, output_inc, output_def, output_numbers):
     os.makedirs(os.path.dirname(output_inc), exist_ok=True)
     os.makedirs(os.path.dirname(output_def), exist_ok=True)
     os.makedirs(os.path.dirname(output_numbers), exist_ok=True)
 
     # 1. Generate numbers.h
-    with open(output_numbers, 'w') as f:
+    with open(output_numbers, 'w', newline='\n') as f:
         f.write("/* Generated - do not edit. Handled by tools/abi/syscall_abi.py */\n")
         f.write("#ifndef BHARAT_UAPI_SYSCALL_GENERATED_NUMBERS_H\n")
         f.write("#define BHARAT_UAPI_SYSCALL_GENERATED_NUMBERS_H\n\n")
@@ -269,13 +454,13 @@ def generate_headers(manifest, output_inc, output_def, output_numbers):
         f.write("#endif /* BHARAT_UAPI_SYSCALL_GENERATED_NUMBERS_H */\n")
 
     # 2. Generate table.def
-    with open(output_def, 'w') as f:
+    with open(output_def, 'w', newline='\n') as f:
         f.write("/* Generated - do not edit. Handled by tools/abi/syscall_abi.py */\n")
         for sc in manifest["syscalls"]:
             f.write(f"SYSCALL_DEF({sc['symbol']}, {sc['number']})\n")
 
     # 3. Generate native_syscall_table.inc
-    with open(output_inc, 'w') as f:
+    with open(output_inc, 'w', newline='\n') as f:
         f.write("/* Generated - do not edit. Handled by tools/abi/syscall_abi.py */\n")
         for sc in manifest["syscalls"]:
             sym = sc["symbol"]
@@ -349,9 +534,10 @@ def main():
     parser = argparse.ArgumentParser(description="Canonical Syscall ABI Tool")
     parser.add_argument("--manifest", default="interface/contracts/abi/native_syscalls.json")
     parser.add_argument("--lock", default="interface/contracts/abi/native_syscalls.lock.json")
-    parser.add_argument("--generate", action="store_true")
-    parser.add_argument("--check", action="store_true")
-    parser.add_argument("--update-lock", action="store_true")
+    actions = parser.add_mutually_exclusive_group(required=True)
+    actions.add_argument("--generate", action="store_true", help="generate build-tree outputs")
+    actions.add_argument("--check", action="store_true", help="validate the manifest, lock, and reproducible generated-output hashes")
+    actions.add_argument("--update-lock", action="store_true", help="intentionally replace the compatibility lock and generated-output hashes")
     parser.add_argument("--output-inc", default="build/generated/kernel/syscall/native_syscall_table.inc")
     parser.add_argument("--output-def", default="build/generated/include/bharat/uapi/syscall/generated/table.def")
     parser.add_argument("--output-numbers", default="build/generated/include/bharat/uapi/syscall/generated/numbers.h")
@@ -384,6 +570,9 @@ def main():
         if not compare_lock(manifest, lock_data):
             sys.exit(1)
 
+        if not verify_generated(manifest, lock_data):
+            sys.exit(1)
+
         if not check_raw_numbers_in_source():
             sys.exit(1)
 
@@ -401,7 +590,15 @@ def main():
             }
             for sc in manifest["syscalls"]
         ]
-        save_json(args.lock, {"version": manifest["version"], "syscalls": lock_syscalls})
+        hashes = generated_hashes(manifest)
+        if hashes is None:
+            sys.exit(1)
+        save_json(args.lock, {
+            "version": manifest["version"],
+            "syscall_count": len(lock_syscalls),
+            "generated_sha256": hashes,
+            "syscalls": lock_syscalls,
+        })
         print(f"Updated lock file: {args.lock}")
         sys.exit(0)
 

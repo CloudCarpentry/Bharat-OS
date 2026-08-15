@@ -5,10 +5,12 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "mm.h"
+#include "numa.h"
 #include "sched/ai_sched.h"
 #include "list.h"
 #include <lib/rbtree/rbtree.h>
 #include "kernel_safety.h"
+#include "kernel/status.h"
 #include "spinlock.h"
 #include "personality_ops.h"
 #include <stdbool.h>
@@ -108,16 +110,18 @@ typedef struct {
 } sched_remote_cmd_envelope_t;
 
 typedef struct {
-    volatile uint64_t seq;
+    volatile uint32_t seq;
     sched_remote_cmd_envelope_t value;
 } sched_cmd_slot_t;
 
+/* Native-width MPSC synchronization counters.  Ring capacity is bounded well
+ * below 2^31 so modulo subtraction remains ordered across uint32_t rollover. */
 typedef struct {
     sched_cmd_slot_t *slots;
     uint32_t capacity;
     uint32_t mask;
-    volatile uint64_t head;
-    uint64_t tail;
+    volatile uint32_t head;
+    uint32_t tail;
 } sched_cmd_ring_t;
 
 typedef enum {
@@ -134,7 +138,7 @@ typedef struct {
 } sched_remote_completion_t;
 
 typedef struct {
-    volatile uint64_t seq;
+    volatile uint32_t seq;
     sched_remote_completion_t value;
 } sched_completion_slot_t;
 
@@ -142,8 +146,8 @@ typedef struct {
     sched_completion_slot_t *slots;
     uint32_t capacity;
     uint32_t mask;
-    volatile uint64_t head;
-    uint64_t tail;
+    volatile uint32_t head;
+    uint32_t tail;
 } sched_completion_ring_t;
 
 typedef struct {
@@ -155,11 +159,11 @@ typedef struct {
 
     volatile uint32_t resched_pending;
 
-    uint64_t submitted;
-    uint64_t consumed;
-    uint64_t full;
-    uint64_t ipi_sent;
-    uint64_t ipi_coalesced;
+    uint32_t submitted;
+    uint32_t consumed;
+    uint32_t full;
+    uint32_t ipi_sent;
+    uint32_t ipi_coalesced;
 } sched_remote_inbox_t;
 
 /*
@@ -384,6 +388,8 @@ typedef enum {
 } thread_fault_t;
 
 typedef struct sched_rq {
+    /* Owner-core policy: only this runqueue's CPU may change this field. */
+    sched_policy_t policy;
     bh_thread_t* current_thread;
     bh_thread_t* idle_thread;
 
@@ -508,7 +514,8 @@ struct bh_thread {
     // EDF Scheduler metadata
     uint64_t absolute_deadline_ms;
 
-    uint8_t preferred_numa_node;
+    /* Owner-local scheduling state; copied only by the migration protocol. */
+    numa_affinity_t numa_affinity;
     ai_sched_context_t* ai_sched_ctx;
     uint64_t context_switch_count;
     bh_thread_attr_t rt_attr;
@@ -546,7 +553,17 @@ struct bh_thread {
     uint32_t migration_epoch;
 };
 
-int thread_raise_fault(bh_thread_t *thread, thread_fault_t fault);
+#if defined(__cplusplus)
+static_assert(sizeof(((bh_thread_t *)0)->numa_affinity.target_node) ==
+                  sizeof(memory_node_id_t),
+              "thread NUMA node storage must not truncate memory_node_id_t");
+#else
+_Static_assert(sizeof(((bh_thread_t *)0)->numa_affinity.target_node) ==
+                   sizeof(memory_node_id_t),
+               "thread NUMA node storage must not truncate memory_node_id_t");
+#endif
+
+kstatus_t thread_raise_fault(bh_thread_t *thread, thread_fault_t fault);
 int sched_mark_thread_terminated(bh_thread_t *thread);
 int sched_quarantine_thread(bh_thread_t *thread, uint32_t reason);
 
@@ -582,12 +599,12 @@ int sched_system_enable(void);
 
 // Create process and main thread
 bh_process_t* process_create(const char* name);
-int process_destroy(bh_process_t* process);
+kstatus_t process_destroy(bh_process_t* process);
 bh_thread_t* thread_create(bh_process_t* parent, void (*entry_point)(void));
 bh_thread_t* thread_create_detached(bh_process_t* parent, void (*entry_point)(void));
 bh_thread_t *thread_create_detached_arg(bh_process_t *parent, void (*entry_point)(void *), const arch_user_entry_t *arg_data);
 
-int thread_destroy(bh_thread_t* thread);
+kstatus_t thread_destroy(bh_thread_t* thread);
 
 // Current Context Helpers
 bh_process_t* sched_current_process(void);
@@ -611,6 +628,7 @@ void sched_on_timer_tick(void);
 bh_thread_t* sched_current_thread(void);
 uint64_t sched_get_ticks(void);
 void sched_set_policy(sched_policy_t policy);
+sched_policy_t sched_get_policy(void);
 void sched_reschedule(void);
 bh_thread_t* sched_current(void);
 int sched_enqueue(bh_thread_t* thread, uint32_t core_id);
@@ -630,7 +648,7 @@ int sched_migrate_task(bh_thread_t *thread, uint32_t new_node);
 int sched_migrate_tid(uint64_t tid, uint32_t target_cpu);
 int sched_set_priority(uint64_t tid, uint32_t priority);
 int sched_set_affinity(uint64_t tid, uint32_t mask);
-int sched_terminate_tid(uint64_t tid);
+kstatus_t sched_terminate_tid(uint64_t tid);
 int sched_quarantine_tid(uint64_t tid, uint32_t reason);
 int sched_throttle_core(uint32_t core_id);
 
@@ -647,13 +665,13 @@ int sched_get_constraints(uint64_t tid, bh_exec_constraints_k_t *c);
 bool sched_thread_exists(uint64_t tid);
 
 // System-call style entry points used by trap/syscall layer
-int sched_sys_thread_create(bh_process_t* parent, void (*entry_point)(void), uint64_t* out_tid);
-int sched_sys_thread_destroy(uint64_t tid);
+kstatus_t sched_sys_thread_create(bh_process_t* parent, void (*entry_point)(void), uint64_t* out_tid);
+kstatus_t sched_sys_thread_destroy(uint64_t tid);
 int sched_sys_sleep(uint64_t millis);
 int sched_sys_set_priority(uint64_t tid, uint32_t new_priority);
 int sched_sys_set_affinity(uint64_t tid, uint32_t affinity_mask);
-int sched_sys_intent_set(uint64_t tid, const void* intent);
-int sched_sys_intent_get(uint64_t tid, void* intent);
+kstatus_t sched_sys_intent_set(uint64_t tid, const void* intent);
+kstatus_t sched_sys_intent_get(uint64_t tid, void* intent);
 
 // Priority Inheritance support
 void sched_inherit_priority(bh_thread_t* thread, uint32_t new_priority);

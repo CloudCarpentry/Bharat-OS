@@ -1,5 +1,6 @@
 #include "control_plane.h"
 #include <bharat/runtime/freestanding_string.h>
+#include <bharat/uapi/service_status.h>
 
 /*
  * Control Plane Implementation
@@ -19,9 +20,9 @@ void net_control_plane_init(void) {
     }
 }
 
-int net_register_interface(const char* name, const uint8_t* mac, uint32_t mtu, uint32_t* out_if_id) {
+bharat_status_t net_register_interface(const char* name, const uint8_t* mac, uint32_t mtu, uint32_t* out_if_id) {
     if (g_num_interfaces >= MAX_INTERFACES) {
-        return -1;
+        return BHARAT_STATUS_ERR_INTERNAL;
     }
 
     uint32_t new_id = g_num_interfaces;
@@ -59,25 +60,25 @@ int net_register_interface(const char* name, const uint8_t* mac, uint32_t mtu, u
         *out_if_id = new_id;
     }
 
-    return 0;
+    return BHARAT_STATUS_OK;
 }
 
-int net_set_link_state(uint32_t if_id, net_link_state_t state) {
+bharat_status_t net_set_link_state(uint32_t if_id, net_link_state_t state) {
     if (if_id >= g_num_interfaces) {
-        return -1; /* Not found */
+        return BHARAT_STATUS_ERR_NOT_FOUND; /* Not found */
     }
 
     g_interfaces[if_id].link_state = state;
-    return 0;
+    return BHARAT_STATUS_OK;
 }
 
-int net_get_stats(uint32_t if_id, netdev_stats_t* out_stats) {
+bharat_status_t net_get_stats(uint32_t if_id, netdev_stats_t* out_stats) {
     if (if_id >= g_num_interfaces || !out_stats) {
-        return -1; /* Not found */
+        return BHARAT_STATUS_ERR_NOT_FOUND; /* Not found */
     }
 
     *out_stats = g_interfaces[if_id].stats;
-    return 0;
+    return BHARAT_STATUS_OK;
 }
 
 net_if_t* net_get_iface(uint32_t if_id) {

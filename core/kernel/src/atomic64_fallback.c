@@ -3,14 +3,12 @@
 #include <stdbool.h>
 
 #if ARCH_WORD_BITS == 32
-static spinlock_t g_atomic64_lock;
-static bool g_atomic64_lock_init = false;
+/* Temporary shared compatibility backend for genuinely required atomic64
+ * operations on 32-bit SMP targets.  Static zero initialization is valid for
+ * spinlock_t and makes the lock usable before secondary CPUs start. */
+static spinlock_t g_atomic64_lock = { .locked = { .value = 0 } };
 
 void arch_atomic64_lock(void) {
-    if (!g_atomic64_lock_init) {
-        spin_lock_init(&g_atomic64_lock);
-        g_atomic64_lock_init = true;
-    }
     spin_lock(&g_atomic64_lock);
 }
 
@@ -121,4 +119,3 @@ uint64_t __atomic_add_fetch_8(volatile void *ptr, uint64_t val, int memorder) {
     return newval;
 }
 #endif
-

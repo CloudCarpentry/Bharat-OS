@@ -1,0 +1,47 @@
+name: arm64_hmem_demo
+kind: qemu_target
+arch: arm64
+board: qemu-virt-arm64
+device_profile: desktop
+personality_profile: native
+execution_profile: gp
+implementation_maturity:
+  profile: RELEASE
+  allow: [STUB]
+build:
+  cmake_preset: arm64-hmem-demo
+  cmake_defs:
+    BHARAT_ARCH_FAMILY: ARM64
+    BHARAT_DEVICE_PROFILE: DESKTOP
+    BHARAT_PERSONALITY_PROFILE: NATIVE
+    BHARAT_TARGET_BOARD: qemu-virt
+    BHARAT_BOOT_GUI: false
+    BHARAT_ENABLE_ADVANCED_VM: true
+    BHARAT_ENABLE_BENCHMARKS: false
+kernel:
+  canonical_artifacts:
+    elf: kernel/kernel.elf
+boot:
+  protocol: multiboot2
+  artifact_format: elf
+  cmdline: "boot_mode=demo ktest=0"
+  dtb:
+    mode: qemu_generated
+package:
+  transforms:
+    - type: multiboot_elf_fix
+      input: kernel/kernel.elf
+      output: kernel/kernel.elf32
+run:
+  backend: qemu
+  machine: virt
+  cpu: max
+  memory: 1024M
+  smp: 4
+  nographic: true
+  serial: [stdio]
+  boot_artifact: kernel/kernel.elf32
+debug:
+  backend: gdb_remote
+  stop_on_entry: false
+  gdb_port: 1234

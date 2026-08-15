@@ -15,13 +15,16 @@ def run_command(cmd: list[str], cwd: Path | None = None) -> None:
         sys.exit(result.returncode)
 
 
-def make_build_plan(target: ResolvedTarget, repo_root: Path) -> BuildPlan:
+def make_build_plan(target: ResolvedTarget, repo_root: Path, build_mode: str = None) -> BuildPlan:
     build_dir = get_output_root(target, repo_root)
     manifest_dir = get_manifest_dir(target, repo_root)
     manifest_path = manifest_dir / "build-manifest.json"
 
     preset = target.build.cmake_preset
-    defs = target.build.cmake_defs
+    defs = target.build.cmake_defs.copy()
+
+    if build_mode:
+        defs["BH_BUILD_MODE"] = build_mode.upper()
 
     config_cmd = ["cmake", f"--preset={preset}"]
     for k, v in defs.items():

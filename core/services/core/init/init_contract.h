@@ -6,8 +6,7 @@
 #include "init_manifest.h"
 #include "init_events.h"
 #include "init_handoff.h"
-
-#define INIT_SERVICE_ID_MAX 64
+#include "init_rollback.h"
 
 typedef struct init_runtime_s {
     init_boot_context_t boot_ctx;
@@ -23,6 +22,8 @@ typedef struct init_runtime_s {
     init_event_queue_t event_queue;
     init_service_runtime_t services[INIT_SERVICE_ID_MAX];
     bool handoff_ack_received;
+    /* Owned exclusively by the init event loop; unwind executes in reverse. */
+    init_rollback_stack_t rollback;
 } init_runtime_t;
 
 int init_runtime_bootstrap(init_runtime_t *rt);

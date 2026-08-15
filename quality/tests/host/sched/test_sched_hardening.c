@@ -48,8 +48,6 @@ void hal_send_ipi_payload(uint32_t mask, uint32_t payload) {
     (void)mask; (void)payload;
 }
 
-sched_policy_t g_policy = SCHED_POLICY_ROUND_ROBIN;
-
 // Simplified manual implementation of the logic we want to test to avoid massive linking
 int mock_sched_quarantine_thread(bh_thread_t *thread, uint32_t reason) {
   if (!thread) return -1;
@@ -104,7 +102,6 @@ void test_core_isolation(void) {
 }
 
 uint32_t hal_cpu_get_id(void) { return 0; }
-uint32_t sched_clamp_core(uint32_t core_id) { return core_id; }
 
 int main(void) {
     test_quarantine();

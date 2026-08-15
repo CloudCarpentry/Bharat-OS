@@ -2,11 +2,11 @@
 
 #include "services/telemetrymgr/thermal_policy.h"
 
-int power_mode_apply_thermal_policy(const thermal_policy_state_t* state) {
+bharat_status_t power_mode_apply_thermal_policy(const thermal_policy_state_t* state) {
     power_mode_thermal_state_t thermal;
 
     if (!state) {
-        return -1;
+        return BHARAT_STATUS_ERR_INVALID_ARG;
     }
 
     thermal.max_temp_mc = 0;

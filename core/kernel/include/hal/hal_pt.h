@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include "../../include/mm.h"
+#include <mm.h>
 
 // Translation Backend Kind
 typedef enum {
@@ -120,7 +120,7 @@ typedef struct hal_pt_ops {
     int         (*query_mapping)(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t *paddr, size_t *mapped_size, uint32_t *flags);
 } hal_pt_ops_t;
 
-#include "../../include/hal/hal_tlb.h"
+#include <hal/hal_tlb.h>
 
 extern hal_pt_ops_t *active_hal_pt;
 

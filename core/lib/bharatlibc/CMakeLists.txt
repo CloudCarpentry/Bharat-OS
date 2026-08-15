@@ -35,10 +35,13 @@ elseif(BHARATLIBC_PROFILE STREQUAL "rt_safe")
     set(DEFAULT_PERSONALITY "RT_EMBEDDED")
 elseif(BHARATLIBC_PROFILE STREQUAL "edge_posix")
     set(DEFAULT_DEVICE_PROFILE "EDGE/NETWORK_APPLIANCE")
-    set(DEFAULT_PERSONALITY "POSIX")
+    set(DEFAULT_PERSONALITY "NATIVE")
 elseif(BHARATLIBC_PROFILE STREQUAL "hosted_desktop")
     set(DEFAULT_DEVICE_PROFILE "DESKTOP/DATACENTER")
-    set(DEFAULT_PERSONALITY "POSIX")
+    set(DEFAULT_PERSONALITY "NATIVE")
+elseif(BHARATLIBC_PROFILE STREQUAL "cloud_vm_base")
+    set(DEFAULT_DEVICE_PROFILE "CLOUD_VM_BASE")
+    set(DEFAULT_PERSONALITY "NATIVE")
 else()
     set(DEFAULT_DEVICE_PROFILE "HOST_ENV")
     set(DEFAULT_PERSONALITY "HOST_TEST")
@@ -137,6 +140,7 @@ endif()
 # 1. bharatlibc_core
 add_library(bharatlibc_core STATIC
     src/core/memory/memory.c
+    src/arch/memory.c
     src/core/string/string.c
     src/core/errno/errno.c
     src/core/assert/assert.c
@@ -185,7 +189,7 @@ add_library(bharatlibc_alloc STATIC
     src/alloc/bounded_freelist.c
 )
 target_include_directories(bharatlibc_alloc PUBLIC ${BUILD_INCLUDES})
-target_link_libraries(bharatlibc_alloc PUBLIC bharatlibc_core)
+target_link_libraries(bharatlibc_alloc PUBLIC bharatlibc_core bharatlibc_bsys)
 set_target_properties(bharatlibc_alloc PROPERTIES EXPORT_NAME Alloc)
 
 # 4. bharatlibc_stdio_min
@@ -196,7 +200,14 @@ target_include_directories(bharatlibc_stdio_min PUBLIC ${BUILD_INCLUDES})
 target_link_libraries(bharatlibc_stdio_min PUBLIC bharatlibc_core bharatlibc_bsys)
 set_target_properties(bharatlibc_stdio_min PROPERTIES EXPORT_NAME StdioMin)
 
-# 5. bharatlibc_crt (freestanding CRT initialization stub)
+# 5. bharatlibc_posix_phase_a: the HMEM-demo portability surface. It adapts
+# POSIX source APIs to libbsys and does not define a raw syscall namespace.
+add_library(bharatlibc_posix_phase_a STATIC src/posix/phase_a.c)
+target_include_directories(bharatlibc_posix_phase_a PUBLIC ${BUILD_INCLUDES})
+target_link_libraries(bharatlibc_posix_phase_a PUBLIC bharatlibc_bsys bharatlibc_alloc)
+set_target_properties(bharatlibc_posix_phase_a PROPERTIES EXPORT_NAME PosixPhaseA)
+
+# 6. bharatlibc_crt (freestanding CRT initialization stub)
 add_library(bharatlibc_crt STATIC src/crt/common/crt_stub.c)
 target_include_directories(bharatlibc_crt PUBLIC ${BUILD_INCLUDES})
 set_target_properties(bharatlibc_crt PROPERTIES EXPORT_NAME CRT)
@@ -211,6 +222,7 @@ add_library(BharatLibC::Core ALIAS bharatlibc_core)
 add_library(BharatLibC::BSys ALIAS bharatlibc_bsys)
 add_library(BharatLibC::Alloc ALIAS bharatlibc_alloc)
 add_library(BharatLibC::StdioMin ALIAS bharatlibc_stdio_min)
+add_library(BharatLibC::PosixPhaseA ALIAS bharatlibc_posix_phase_a)
 add_library(BharatLibC::CRT ALIAS bharatlibc_crt)
 
 # ---------------------------------------------------------

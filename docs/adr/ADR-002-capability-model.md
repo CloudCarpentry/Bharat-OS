@@ -2,7 +2,7 @@
 title: "ADR-002: The Capability Security Model"
 status: Accepted
 owner: Documentation Working Group
-last_updated: 2026-04-25
+last_updated: 2026-08-13
 tags:
   - docs
   - adr
@@ -47,6 +47,21 @@ flowchart TD
 If a thread does not possess a capability (in its Capability Space, or CSpace) pointing to an object, that object does not functionally exist to the thread.
 
 ## Consequences
+
+### Process-owned CSpaces and core ownership
+
+The process owns its CSpace object. A CPU is only the temporary mutation owner;
+CPU identity is not CSpace identity and does not determine CSpace capacity.
+Kernel storage is allocated per process and registered in a bounded owner-core
+registry. Fixed-width locators name the CSpace, owner core, slot generation, and
+revocation epoch without carrying a table pointer.
+
+The registry is owner-local mutable state. Cross-core mutation uses bounded uRPC
+requests, and destruction unpublishes the registry entry before freeing the
+table so delayed locators fail closed. The current implementation does not yet
+transfer CSpace mutation ownership between cores; such a transfer requires an
+acknowledged, generation-changing transaction with rollback rather than direct
+remote mutation.
 
 ### Positive
 

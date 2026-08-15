@@ -33,6 +33,18 @@ typedef struct {
     uint16_t interleave_mask;        // Bitmask of nodes for INTERLEAVE
 } numa_affinity_t;
 
+#if defined(__cplusplus)
+static_assert(sizeof(memory_node_id_t) == 2U,
+              "NUMA node identifiers are a stable 16-bit contract");
+static_assert((memory_node_id_t)NUMA_NODE_ANY == UINT16_MAX,
+              "NUMA_NODE_ANY must not be truncated");
+#else
+_Static_assert(sizeof(memory_node_id_t) == 2U,
+               "NUMA node identifiers are a stable 16-bit contract");
+_Static_assert((memory_node_id_t)NUMA_NODE_ANY == UINT16_MAX,
+               "NUMA_NODE_ANY must not be truncated");
+#endif
+
 typedef struct {
     memory_node_id_t node_id;
     uint64_t start_addr;

@@ -1,0 +1,51 @@
+name: arm64_hmem_bench_release
+kind: qemu_target
+arch: arm64
+board: qemu-virt-arm64
+device_profile: desktop
+personality_profile: native
+execution_profile: gp
+implementation_maturity:
+  profile: DEVELOPMENT
+  allow: [STUB]
+build:
+  cmake_preset: arm64-hmem-bench-release
+  cmake_defs:
+    CMAKE_BUILD_TYPE: Release
+    BHARAT_ARCH_FAMILY: ARM64
+    BHARAT_DEVICE_PROFILE: DESKTOP
+    BHARAT_PERSONALITY_PROFILE: NATIVE
+    BHARAT_TARGET_BOARD: virt
+    BHARAT_BOOT_GUI: false
+    BHARAT_ENABLE_ADVANCED_VM: true
+    BHARAT_ENABLE_BENCHMARKS: true
+kernel:
+  canonical_artifacts:
+    elf: kernel/kernel.elf
+    map: kernel/kernel.map
+boot:
+  protocol: linux_arm64
+  artifact_format: raw_bin
+  cmdline: "boot_mode=benchmark ktest=0"
+  dtb:
+    mode: qemu_generated
+    required: true
+    handoff_register: x0
+package:
+  transforms:
+    - type: elf_to_bin
+      input: kernel/kernel.elf
+      output: kernel/kernel.bin
+run:
+  backend: qemu
+  machine: "virt,gic-version=2"
+  cpu: cortex-a72
+  memory: 1024M
+  smp: 4
+  nographic: true
+  serial: [stdio]
+  boot_artifact: kernel/kernel.bin
+debug:
+  backend: gdb_remote
+  stop_on_entry: false
+  gdb_port: 1234

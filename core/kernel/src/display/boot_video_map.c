@@ -122,7 +122,7 @@ int boot_video_map(const boot_info_t *boot) {
     return 0;
 }
 
-int qemu_display_map_mmio(uint64_t phys, size_t size, uintptr_t *out_virt) {
+int bh_display_map_mmio(uint64_t phys, size_t size, uintptr_t *out_virt) {
     if (phys == 0 || size == 0 || !out_virt) {
         return -1;
     }

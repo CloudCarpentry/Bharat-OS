@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <bharat/uapi/system/intent.h>
 
 #include "../kernel/include/sched/sched.h"
 #include "../kernel/include/ipc_async.h"
@@ -68,6 +69,17 @@ int main(void) {
 
   assert(sched_sys_thread_destroy(t2->thread_id) == 0);
   assert(sched_find_thread_by_id(t2->thread_id) != NULL);
+
+  /* A one-element reap queue has reap_next == UINT32_MAX. Direct destruction
+   * must still defer to the reaper while reap_pending is set. */
+  assert(thread_destroy(t2) == K_OK);
+  assert(sched_find_thread_by_id(t2->thread_id) == t2);
+
+  bharat_intent_t intent = {.version = BHARAT_INTENT_V1};
+  assert(sched_sys_intent_set(t2->thread_id, &intent) == K_ERR_UNSUPPORTED);
+  assert(sched_sys_intent_get(t2->thread_id, &intent) == K_ERR_UNSUPPORTED);
+  assert(sched_sys_intent_get(t2->thread_id, NULL) == K_ERR_INVALID_ARG);
+
   sched_on_timer_tick();
   assert(sched_find_thread_by_id(t2->thread_id) == NULL);
   assert(process_destroy(p2) == 0);

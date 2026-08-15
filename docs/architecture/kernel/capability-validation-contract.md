@@ -2,7 +2,7 @@
 title: Capability Validation Framework Contract
 status: Draft
 owner: Documentation Working Group
-last_updated: 2026-04-25
+last_updated: 2026-08-13
 tags:
   - docs
   - architecture
@@ -34,11 +34,40 @@ Validates that the requester has the authority to use the capability. In Phase K
 
 ### 4. Generation & Stale Handle Validation
 Prevents "use-after-revocation" or "use-after-reallocation" by checking generation numbers.
-- Handles containing a non-zero generation are checked against the entry.
+- Production handles must contain a non-zero generation that exactly matches the entry.
+- Generation-zero/raw handles fail closed. `BHARAT_ENABLE_LEGACY_CAP_TESTS` may restore
+  raw-handle lookup only in explicitly identified compatibility test builds; it is OFF by
+  default and must not be enabled in production target profiles.
 - Explicitly requested `expected_generation` is strictly enforced.
 
 ### 5. Revocation State
 Ensures that the capability is in the `CAP_STATE_LIVE` state.
+
+### 6. Distributed CSpace Identity
+Capability derivation links and cross-core delegation transactions use the fixed-width,
+pointer-free `bh_cap_locator_t` identity: CSpace ID, owner core, slot, generation, and
+revocation epoch. A receiver resolves a locator through its registered local CSpace and
+rejects an unknown CSpace ID, wrong owner, stale slot generation, or older revocation
+epoch. A capability naming a remote object authorizes only a request to its owner core;
+it never authorizes direct mutation of the remote CSpace.
+
+### 7. Process CSpace Ownership
+
+A CSpace is a process-owned kernel object, not a CPU-local object. Its table is
+allocated independently of the CPU count and the process retains the CSpace
+when it is scheduled on another core. Exactly one core owns mutation authority
+at a time. Each core maintains a bounded owner-local registry of the CSpaces it
+currently owns so that pointer-free locators can be resolved without a global
+mutable table. Creation publishes a fully initialized table; destruction first
+unpublishes it, causing stale locators to fail closed, and then releases storage.
+Before the heap is available, each core has one owner-local bootstrap CSpace;
+normal process CSpaces use dynamically allocated storage after memory startup.
+
+Cross-core delegation and revocation carry CSpace identity by value and execute
+against the destination owner's registry. A remote core does not dereference or
+mutate a CSpace table directly. Ownership transfer/sharding is a separate
+transactional protocol and must publish a new generation only after the new
+owner acknowledges receipt; it is not yet implemented.
 
 ## API Specification
 
@@ -69,6 +98,9 @@ kstatus_t cap_validate_ex(capability_table_t *table,
 - **Rollout**: Not yet wired into every syscall boundary.
 - **Scope Model**: Minimal security-domain model (PID-based only).
 - **Revocation**: Distributed revocation semantics are still being matured.
+- **CSpace transfer**: Process-owned CSpaces currently remain assigned to their
+  creation core. Migration of scheduling does not itself transfer mutation
+  authority; explicit CSpace ownership transfer/sharding remains future work.
 
 ## Future Evolution
 - Integration into all syscall dispatch paths.

@@ -1,6 +1,26 @@
 cmake_minimum_required(VERSION 3.20)
 project(BharatOS VERSION 0.8.0 LANGUAGES C ASM)
 
+# Build type selects compiler instrumentation only. Product behavior is selected
+# independently by the target/profile cache variables recorded below.
+string(TOUPPER "${CMAKE_BUILD_TYPE}" BHARAT_BUILD_INSTRUMENTATION)
+if(BHARAT_BUILD_INSTRUMENTATION STREQUAL "RELWITHDEBINFO")
+    set(BHARAT_BUILD_SYMBOLS ON)
+    set(BHARAT_BUILD_OPTIMIZATION "OPTIMIZED")
+    set(BHARAT_BUILD_ASSERTIONS OFF)
+elseif(BHARAT_BUILD_INSTRUMENTATION STREQUAL "RELEASE")
+    set(BHARAT_BUILD_SYMBOLS OFF)
+    set(BHARAT_BUILD_OPTIMIZATION "OPTIMIZED")
+    set(BHARAT_BUILD_ASSERTIONS OFF)
+elseif(BHARAT_BUILD_INSTRUMENTATION STREQUAL "DEBUG")
+    set(BHARAT_BUILD_SYMBOLS ON)
+    set(BHARAT_BUILD_OPTIMIZATION "UNOPTIMIZED")
+    set(BHARAT_BUILD_ASSERTIONS ON)
+else()
+    message(FATAL_ERROR
+        "CMAKE_BUILD_TYPE must select DEBUG, RELWITHDEBINFO, or RELEASE instrumentation")
+endif()
+
 enable_testing()
 
 set(BHARAT_CMAKE_ROOT "${CMAKE_SOURCE_DIR}/delivery/cmake")
@@ -17,6 +37,7 @@ include(BharatProfiles)
 include(BharatPersonality)
 include(BharatComponentPolicy)
 option(BHARAT_ENABLE_DMA_MAP "Enable DMA map APIs" ON)
+option(BHARAT_BOOT_GUI "Enable boot-time GUI handoff metadata" ON)
 include(BharatIOPolicy)
 include(${BHARAT_CMAKE_ROOT}/BharatConstraints.cmake)
 
@@ -151,9 +172,12 @@ set_property(CACHE BHARAT_PERSONALITY_PROFILE PROPERTY STRINGS NATIVE LINUX ANDR
 option(BHARAT_ENABLE_PERSONALITIES "Enable personality framework" ON)
 option(BHARAT_ENABLE_COMPAT_LINUX "Enable Linux compatibility personality" OFF)
 option(BHARAT_ENABLE_COMPAT_ANDROID "Enable Android compatibility personality" OFF)
+option(BHARAT_ENABLE_LEGACY_CAP_TESTS
+    "Allow generation-zero capability handles (compatibility tests only)" OFF)
 
 # Staging / Experimental Components
 option(BHARAT_BUILD_STAGING "Build staging/ experimental modules" OFF)
+option(BHARAT_ENABLE_BENCHMARKS "Enable deterministic benchmark telemetry" OFF)
 
 # Default Init Profile
 set(BHARAT_DEFAULT_INIT_PROFILE "DESKTOP" CACHE STRING "Target default init profile (TINY, SMALL, EMBEDDED_RICH, MOBILE, DESKTOP, DRONE)")
@@ -189,6 +213,24 @@ option(BHARAT_ENABLE_SHARED_MEMORY "Enable shared memory" ON)
 option(BHARAT_ENABLE_NUMA "Enable NUMA support" OFF)
 option(BHARAT_ENABLE_ALLOC_CLASSES "Enable memory allocation classes" ON)
 option(BHARAT_ENABLE_MEMORY_STATS "Enable memory statistics" ON)
+
+# Kernel heap backend is an explicit memory capability.  AUTO is only a
+# profile resolver; kernel code consumes exactly one generated selector.
+set(BHARAT_KMEM_ALLOCATOR "AUTO" CACHE STRING
+    "Kernel heap allocator (AUTO, SLAB, SLUB, SLOB, RT_POOL)")
+set_property(CACHE BHARAT_KMEM_ALLOCATOR PROPERTY STRINGS AUTO SLAB SLUB SLOB RT_POOL)
+string(TOUPPER "${BHARAT_KMEM_ALLOCATOR}" BHARAT_KMEM_ALLOCATOR)
+if(BHARAT_KMEM_ALLOCATOR STREQUAL "AUTO")
+    # Until each advanced backend passes its qualification contract, preserve
+    # the existing SLAB implementation for every profile.  In particular, RT
+    # must never silently resolve to the latency-unbounded SLOB backend.
+    set(BHARAT_KMEM_ALLOCATOR_RESOLVED "SLAB")
+elseif(BHARAT_KMEM_ALLOCATOR MATCHES "^(SLAB|SLUB|SLOB|RT_POOL)$")
+    set(BHARAT_KMEM_ALLOCATOR_RESOLVED "${BHARAT_KMEM_ALLOCATOR}")
+else()
+    message(FATAL_ERROR "Invalid BHARAT_KMEM_ALLOCATOR='${BHARAT_KMEM_ALLOCATOR}'")
+endif()
+message(STATUS "Kernel heap allocator: ${BHARAT_KMEM_ALLOCATOR_RESOLVED}")
 
 # Platform Firmware
 set(BHARAT_PLATFORM_FIRMWARE "" CACHE STRING "Target platform firmware (e.g., ACPI, FDT)")
@@ -239,8 +281,10 @@ if(BHARAT_DEVICE_PROFILE STREQUAL "RTOS" OR BHARAT_DEVICE_PROFILE STREQUAL "DRON
 elseif(BHARAT_DEVICE_PROFILE STREQUAL "DATACENTER" OR BHARAT_DEVICE_PROFILE STREQUAL "CLOUD" OR BHARAT_DEVICE_PROFILE STREQUAL "SERVER")
     set(BHARAT_ENABLE_NUMA ON CACHE BOOL "Enable NUMA support" FORCE)
     set(BHARAT_ENABLE_IOMMU ON CACHE BOOL "Enable IOMMU support" FORCE)
+    set(BHARAT_ENABLE_ADVANCED_VM ON CACHE BOOL "Enable advanced virtual memory" FORCE)
 elseif(BHARAT_DEVICE_PROFILE STREQUAL "DESKTOP" OR BHARAT_DEVICE_PROFILE STREQUAL "LAPTOP" OR BHARAT_DEVICE_PROFILE STREQUAL "AUTOMOTIVE_INFOTAINMENT")
     set(BHARAT_ENABLE_IOMMU ON CACHE BOOL "Enable IOMMU support" FORCE)
+    set(BHARAT_ENABLE_ADVANCED_VM ON CACHE BOOL "Enable advanced virtual memory" FORCE)
 endif()
 
 # Determine Kernel Execution Profile (RT, GP, MIX) based on Device Profile
@@ -280,6 +324,21 @@ endif()
 
 option(BHARAT_ENABLE_CLANG_TIDY "Enable clang-tidy static analysis for C targets" OFF)
 option(BHARAT_BUILD_HOST_TESTS "Build host-side unit tests" OFF)
+
+set(BHARAT_SCHED_DIAG_COMPILE_LEVEL "0" CACHE STRING
+    "Scheduler diagnostics compiled in: 0=none, 1=counters, 2=trace")
+set_property(CACHE BHARAT_SCHED_DIAG_COMPILE_LEVEL PROPERTY STRINGS 0 1 2)
+if(NOT BHARAT_SCHED_DIAG_COMPILE_LEVEL MATCHES "^[012]$")
+    message(FATAL_ERROR "BHARAT_SCHED_DIAG_COMPILE_LEVEL must be 0, 1, or 2")
+endif()
+
+# Deterministic, machine-readable evidence for variant-equivalence checks. This
+# is generated in the build tree and is never a source-controlled artifact.
+configure_file(
+    "${CMAKE_SOURCE_DIR}/delivery/cmake/templates/build-configuration.json.in"
+    "${CMAKE_BINARY_DIR}/generated/build-configuration.json"
+    @ONLY
+)
 
 if(BHARAT_ENABLE_CLANG_TIDY)
     find_program(BHARAT_CLANG_TIDY NAMES clang-tidy)
@@ -339,6 +398,12 @@ bharat_set_profile_flag(BHARAT_PROFILE_AUTOMOTIVE_INFOTAINMENT "AUTOMOTIVE_INFOT
 bharat_set_profile_flag(BHARAT_KERNEL_PROFILE_RT "RT" "${BHARAT_KERNEL_PROFILE_RESOLVED}")
 bharat_set_profile_flag(BHARAT_KERNEL_PROFILE_GP "GP" "${BHARAT_KERNEL_PROFILE_RESOLVED}")
 bharat_set_profile_flag(BHARAT_KERNEL_PROFILE_MIX "MIX" "${BHARAT_KERNEL_PROFILE_RESOLVED}")
+
+# Orthogonal kernel heap backend selection.
+bharat_set_profile_flag(BHARAT_KMEM_ALLOCATOR_SLAB "SLAB" "${BHARAT_KMEM_ALLOCATOR_RESOLVED}")
+bharat_set_profile_flag(BHARAT_KMEM_ALLOCATOR_SLUB "SLUB" "${BHARAT_KMEM_ALLOCATOR_RESOLVED}")
+bharat_set_profile_flag(BHARAT_KMEM_ALLOCATOR_SLOB "SLOB" "${BHARAT_KMEM_ALLOCATOR_RESOLVED}")
+bharat_set_profile_flag(BHARAT_KMEM_ALLOCATOR_RT_POOL "RT_POOL" "${BHARAT_KMEM_ALLOCATOR_RESOLVED}")
 
 # IRQ dispatch mode (profile-aware default with explicit override)
 if(BHARAT_IRQ_DISPATCH_MODE STREQUAL "AUTO")

@@ -71,6 +71,14 @@ def build_qemu_command(manifest: dict, mode_override: str = None, display_overri
     if dtb_artifact:
         cmd.extend(["-dtb", dtb_artifact])
 
+    if arch == "riscv32":
+        extra_args_list = run_config.get("extra_args", [])
+        has_bios_arg = any("-bios" in str(arg) for arg in extra_args_list)
+        if not has_bios_arg:
+            rv32_bios_path = Path("/usr/lib/riscv32-linux-gnu/opensbi/generic/fw_dynamic.bin")
+            if rv32_bios_path.exists():
+                cmd.extend(["-bios", str(rv32_bios_path)])
+
     # Handle Display Mode
     nographic_manifest = run_config.get("nographic", False)
     display_mode = "headless" if nographic_manifest else "gui"
@@ -80,6 +88,15 @@ def build_qemu_command(manifest: dict, mode_override: str = None, display_overri
 
     is_windows = sys.platform.startswith('win')
 
+    extra_args_list = run_config.get("extra_args", [])
+    has_display_dev = any("bochs-display" in str(arg) or "virtio-gpu" in str(arg) or "ramfb" in str(arg) for arg in extra_args_list)
+
+    # A GUI target forced headless for CI still needs its emulated display
+    # device.  Only the host window is suppressed; the guest framebuffer must
+    # remain available so graphical boot contracts cannot pass offscreen.
+    if not nographic_manifest and not has_display_dev:
+        cmd.extend(["-device", "virtio-gpu-pci"])
+
     if display_mode == "headless":
         if is_windows:
             cmd.extend(['-display', 'none', '-serial', 'stdio'])
@@ -87,8 +104,11 @@ def build_qemu_command(manifest: dict, mode_override: str = None, display_overri
             cmd.append('-nographic')
     else:
         cmd.extend(['-display', 'gtk'])
-        # Add virtio-gpu by default for GUI
-        cmd.extend(["-device", "virtio-gpu-pci"])
+        extra_args_list = run_config.get("extra_args", [])
+        has_display_dev = any("bochs-display" in str(arg) or "virtio-gpu" in str(arg) or "ramfb" in str(arg) for arg in extra_args_list)
+        if not has_display_dev:
+            cmd.extend(["-device", "virtio-gpu-pci"])
+        cmd.extend(["-device", "virtio-tablet-pci"])
         # In GUI mode, keep serial output on stdout for the runner to parse
         # or use vc if preferred, but for headless parsing we need it on stdio
         cmd.extend(["-serial", "stdio"])

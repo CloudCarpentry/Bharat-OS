@@ -4,15 +4,14 @@
 #include "panic.h"
 
 int sched_enqueue(bh_thread_t *thread, uint32_t core_id) {
-  if (!thread || thread->priority >= MAX_PRIORITY_LEVELS) {
+  if (!thread || thread->priority >= MAX_PRIORITY_LEVELS || !sched_core_id_valid(core_id)) {
     return -1;
   }
 
-  core_id = sched_clamp_core(core_id);
   if (!sched_is_core_admissible(thread, core_id)) {
     return -1; // SCHED_REJECT
   }
-  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t current_core = sched_current_core_or_panic();
   bool is_local = (core_id == current_core);
 
   if (!is_local) {
@@ -45,13 +44,13 @@ int sched_enqueue(bh_thread_t *thread, uint32_t core_id) {
 
   sched_rq_t *rq = sched_local_rq();
 
-  hal_cpu_disable_interrupts();
+  hal_irq_state_t irq_state = hal_irq_save_disable();
 
   sched_entity_t *entity = sched_find_entity_by_thread(thread);
   if (!entity) {
     entity = sched_allocate_entity(current_core);
     if (!entity) {
-      hal_cpu_enable_interrupts();
+      hal_irq_restore(irq_state);
       return -1;
     }
     entity->tid = thread->thread_id;
@@ -76,9 +75,9 @@ int sched_enqueue(bh_thread_t *thread, uint32_t core_id) {
 
   if (entity->is_on_runqueue != 0U) {
     sched_invariant_on_dequeue(thread);
-    if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
+    if (rq->policy == SCHED_POLICY_CLOUD_FAIR) {
       sched_cfs_dequeue(rq, thread);
-    } else if (g_policy == SCHED_POLICY_EDF) {
+    } else if (rq->policy == SCHED_POLICY_EDF) {
       sched_edf_dequeue(rq, thread);
     } else {
       list_del(&entity->run_node);
@@ -101,9 +100,9 @@ int sched_enqueue(bh_thread_t *thread, uint32_t core_id) {
   entity->absolute_deadline = thread->absolute_deadline_ms;
   entity->rt_attr = thread->rt_attr;
 
-  if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
+  if (rq->policy == SCHED_POLICY_CLOUD_FAIR) {
     sched_cfs_enqueue(rq, thread);
-  } else if (g_policy == SCHED_POLICY_EDF) {
+  } else if (rq->policy == SCHED_POLICY_EDF) {
     if (thread->rt_attr.period_ms > 0 && thread->rt_attr.deadline_ms > 0) {
         if (thread->absolute_deadline_ms == 0) {
             thread->absolute_deadline_ms = rq->total_ticks + thread->rt_attr.deadline_ms;
@@ -121,7 +120,7 @@ int sched_enqueue(bh_thread_t *thread, uint32_t core_id) {
 
   sched_validate_rq(rq);
 
-  hal_cpu_enable_interrupts();
+  hal_irq_restore(irq_state);
   return 0;
 }
 
@@ -168,8 +167,10 @@ static void sched_dequeue_task_l0(bh_thread_t *thread, uint32_t core_id) {
   sched_entity_t *entity = sched_find_entity_by_thread(thread);
   if (entity && entity->is_on_runqueue != 0U) {
     sched_invariant_on_dequeue(thread);
-    if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
+    if (rq->policy == SCHED_POLICY_CLOUD_FAIR) {
       sched_cfs_dequeue(rq, thread);
+    } else if (rq->policy == SCHED_POLICY_EDF) {
+      sched_edf_dequeue(rq, thread);
     } else {
       list_del(&entity->run_node);
       list_init(&entity->run_node);
@@ -204,7 +205,7 @@ void sched_validate_rq(sched_rq_t *rq) {
         kernel_panic("Runqueue count invalid/underflow");
     }
 
-    if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
+    if (rq->policy == SCHED_POLICY_CLOUD_FAIR) {
         // Validate min_vruntime is sensible
         struct rb_node *first = rb_first(&rq->cfs_runqueue);
         if (first) {

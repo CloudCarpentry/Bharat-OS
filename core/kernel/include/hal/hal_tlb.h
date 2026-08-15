@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "../../include/mm.h"
+#include <mm.h>
 
 // TLB Invalidation Scopes
 typedef enum {

@@ -3,6 +3,7 @@
 
 #include "sched/sched.h"
 #include "sched/sched_invariants.h"
+#include "sched/sched_diag.h"
 #include <bharat/cpu_local.h>
 #include "list.h"
 #include "bharat_config.h"
@@ -13,6 +14,7 @@
 #include "ipc_async.h"
 #include "lib/base/string.h"
 #include "arch/arch_ext_state.h"
+#include "panic.h"
 
 #define SCHED_MAX_THREADS 128U
 #define SCHED_MAX_PROCESSES 32U
@@ -58,7 +60,6 @@ typedef struct process_slot {
 
 extern uint8_t g_sched_initialized;
 extern uint8_t g_sched_runtime_protected;
-extern sched_policy_t g_policy;
 extern uint32_t g_active_core_count;
 
 #if defined(BHARAT_ENABLE_KERNEL_SELFTESTS)
@@ -68,8 +69,22 @@ extern uint32_t g_sched_test_core_count;
 void sched_reset_core_runqueues(void);
 thread_slot_t *sched_find_thread_slot_by_tid_local(sched_rq_t *rq, uint64_t tid);
 thread_slot_t *sched_find_thread_slot_by_tid(uint64_t tid);
+thread_slot_t *sched_find_free_thread_slot(void);
+process_slot_t *sched_find_free_process_slot(void);
 sched_remote_cmd_t *sched_allocate_outbound_cmd(void);
-uint32_t sched_clamp_core(uint32_t core_id);
+static inline bool sched_core_id_valid(uint32_t core_id) {
+  return core_id < g_active_core_count;
+}
+
+static inline uint32_t sched_current_core_or_panic(void) {
+  uint32_t core = hal_cpu_get_id();
+  if (core >= g_active_core_count) {
+    kernel_panic("sched_current_core_or_panic: invalid hardware CPU ID");
+  }
+  return core;
+}
+
+sched_policy_t sched_policy_for_core(uint32_t core_id);
 bh_thread_t *sched_find_steal_candidate(uint32_t core_id, uint32_t target_cpu);
 
 sched_entity_t *sched_allocate_entity(uint32_t core);
@@ -114,7 +129,11 @@ bh_thread_t *sched_find_thread_by_id(uint64_t tid);
 void sched_balance_once(void);
 void sched_detach_thread_from_queues(thread_slot_t *slot);
 bool sched_is_core_admissible(bh_thread_t *t, int cpu_id);
-void sched_switch_to(bh_thread_t *next, uint32_t core_id);
+bh_thread_t *sched_validate_picked_candidate(bh_thread_t *candidate,
+                                             bh_thread_t *idle,
+                                             uint32_t core_id);
+void sched_account_context_switch(sched_rq_t *rq, bh_thread_t *next);
+void sched_switch_to(bh_thread_t *next, uint32_t core_id, hal_irq_state_t irq_state);
 void sched_update_telemetry(bh_thread_t *thread);
 void sched_validate_rq(sched_rq_t *rq);
 
