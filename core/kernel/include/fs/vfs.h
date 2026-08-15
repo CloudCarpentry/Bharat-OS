@@ -21,6 +21,7 @@
 #define VFS_OPEN_READ  0x1
 #define VFS_OPEN_WRITE 0x2
 #define VFS_OPEN_RDWR  (VFS_OPEN_READ | VFS_OPEN_WRITE)
+#define VFS_OPEN_CREAT 0x4
 
 // Backing storage class for a node/mount
 typedef enum {
@@ -116,3 +117,11 @@ void vfs_test_reset_state(void);
 #endif
 
 #endif // BHARAT_VFS_H
+
+int64_t vfs_lseek(int fd, int64_t offset, int whence);
+int vfs_fstat(int fd, void* stat_buf);
+int vfs_mkdir(const char* path, int mode, capability_t* caller_cap);
+int vfs_unlink(const char* path, capability_t* caller_cap);
+struct dirent* vfs_readdir(int fd, uint32_t index, capability_t* caller_cap);
+int vfs_dup(int oldfd);
+int vfs_pipe(int pipefd[2]);

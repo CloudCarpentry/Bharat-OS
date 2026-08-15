@@ -29,7 +29,9 @@ typedef struct bh_syscall_return_context {
 __attribute__((noreturn)) void
 bh_syscall_rejected_return_handoff(bh_syscall_return_disposition_t disposition);
 
-typedef long (*bh_syscall_handler_t)(bh_syscall_ctx_t *ctx);
+#include "kernel/status.h"
+
+typedef bh_operation_result_t (*bh_syscall_handler_t)(bh_syscall_ctx_t *ctx);
 
 /**
  * Syscall classification for auditing and policy enforcement.
@@ -83,7 +85,6 @@ typedef struct bh_personality_syscall_table {
     const bh_syscall_meta_t *table;
 } bh_personality_syscall_table_t;
 
-#include "kernel/status.h"
 kstatus_t bh_syscall_table_validate(const bh_personality_syscall_table_t *table);
 
 // Flags

@@ -364,11 +364,20 @@ sudo apt update && sudo apt install -y \
 ```
 
 ### Daily Build Recipes (WSL/Linux/macOS)
-```bash
-# Configure, build, package, and launch x86_64 in headless QEMU (smoke test)
-./build.sh all --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml --smoke
+We provide the `nirmaan` Developer CLI for everyday tasks.
 
-# Run the complete RISC-V 64-bit platform
+```bash
+# Check environment dependencies
+./nirmaan doctor
+
+# List available shortcut targets
+./nirmaan targets
+
+# Build and Run x86_64 in headless QEMU
+./nirmaan build desktop-x86_64 --mode development
+./nirmaan run desktop-x86_64
+
+# Run the complete RISC-V 64-bit platform via legacy tool
 ./build.sh all --target-yaml delivery/targets/qemu/riscv64_desktop_headless.yaml --smoke
 
 # Run the complete platform test suite

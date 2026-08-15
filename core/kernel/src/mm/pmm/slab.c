@@ -1,3 +1,5 @@
+/** @file slab.c \brief SLAB memory allocator implementation. */
+
 #include "../../include/slab.h"
 #include "../../include/mm.h"
 #include "../../include/numa.h"

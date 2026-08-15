@@ -2,6 +2,7 @@
 #include "bh_personality_registry.h"
 #include "bh_personality.h"
 #include "linux_errno.h"
+#include "mm/mem_model.h"
 #include <stddef.h>
 
 extern const bh_personality_syscall_table_t bh_linux_syscall_table;
@@ -26,13 +27,11 @@ static int linux_map_fault_to_signal(const trap_info_t *info) {
     return 11; // SIGSEGV
 }
 
-static long linux_normalize_syscall_return(long result) {
-    // If result is in the range of kernel status codes (negative),
-    // translate it to negative linux errno.
-    if (result < 0 && result > -1000) { // Assuming kstatus codes are in this range
-        return -linux_errno_from_bh_status((kstatus_t)result);
+static long linux_normalize_syscall_return(bh_operation_result_t result) {
+    if (result.domain == BH_STATUS_DOMAIN_KSTATUS) {
+        return -linux_errno_from_bh_status((kstatus_t)result.value);
     }
-    return result;
+    return result.value;
 }
 
 static const personality_ops_t linux_personality_ops = {
@@ -46,6 +45,23 @@ const personality_ops_t *personality_linux_get_ops(void) {
     return &linux_personality_ops;
 }
 
+static const bh_vm_caps_t linux_full_requirements = {
+    .address_translation = true,
+    .per_process_aspace  = true,
+    .page_permissions    = true,
+    .execute_protection  = true,
+    .file_mapping        = true,
+    .cow                 = true,
+};
+
+static const bh_vm_caps_t linux_nommu_requirements = {
+    .page_permissions    = true,
+    .execute_protection  = true,
+    .mpu_regions         = true,
+};
+
 void linux_personality_init(void) {
-    bh_personality_registry_register(BH_PERSONALITY_LINUX, &linux_personality_ops);
+    if (bh_vm_satisfies(&linux_full_requirements) || bh_vm_satisfies(&linux_nommu_requirements)) {
+        bh_personality_registry_register(BH_PERSONALITY_LINUX, &linux_personality_ops);
+    }
 }

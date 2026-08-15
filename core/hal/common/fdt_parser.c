@@ -314,9 +314,15 @@ int fdt_parse(const void *fdt_ptr, void *boot_info_ptr,
       } else if (str_eq(prop_name, "reg")) {
         reg_data = prop_data;
         reg_len = len;
+
       } else if (str_eq(prop_name, "clock-frequency") && is_cpu) {
         // Ignore for now
+      } else if (str_eq(prop_name, "timebase-frequency")) {
+        if (len == 4) {
+            out_devices->clock_freq = fdt32_to_cpu(*(const uint32_t *)prop_data);
+        }
       }
+
     } else if (tag == FDT_NOP) {
       continue;
     } else if (tag == FDT_END) {
@@ -593,6 +599,14 @@ int fdt_parse_discovery(const void *fdt_ptr, system_discovery_t *discovery) {
       } else if (str_eq(prop_name, "format")) {
         /* e.g. "a8r8g8b8" — we just accept any, default to XRGB8888 */
         (void)prop_data;
+      } else if (str_eq(prop_name, "timebase-frequency")) {
+        if (len == 4) {
+            discovery->timers[0].type = TIMER_RISCV_SBI;
+            discovery->timers[0].frequency = fdt32_to_cpu(*(const uint32_t *)prop_data);
+            if (discovery->timer_count == 0) {
+                discovery->timer_count = 1;
+            }
+        }
       } else if (str_eq(prop_name, "compatible")) {
         const char *comp = (const char *)prop_data;
         size_t c_len = 0;

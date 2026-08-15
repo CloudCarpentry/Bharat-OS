@@ -99,6 +99,12 @@ static void try_launch_services(init_runtime_t *rt, init_boot_class_t target_cla
         if (err == 0) {
             sr->state = INIT_SERVICE_STATE_READY;
             sr->observed_ready = true;
+            if (sr->desc->rollback_fn &&
+                init_rollback_record(&rt->rollback, id,
+                                     sr->desc->rollback_fn, sr) != 0) {
+                sr->state = INIT_SERVICE_STATE_FAILED;
+                sr->last_error = -ENOSPC;
+            }
         } else {
             sr->state = INIT_SERVICE_STATE_FAILED;
         }
@@ -118,6 +124,16 @@ static bool any_failed_in_class(const init_runtime_t *rt, init_boot_class_t cls)
     return false;
 }
 
+static bool any_service_failed_in_class(const init_runtime_t *rt,
+                                        init_boot_class_t cls) {
+    for (size_t i = 0; i < rt->manifest_count; ++i) {
+        const init_service_runtime_t *sr = &rt->services[rt->service_order[i]];
+        if (sr->desc && sr->desc->boot_class == cls &&
+            sr->state == INIT_SERVICE_STATE_FAILED) return true;
+    }
+    return false;
+}
+
 static bool all_ready_in_class(const init_runtime_t *rt, init_boot_class_t cls) {
     for (size_t i = 0; i < rt->manifest_count; i++) {
         init_service_id_t id = rt->service_order[i];
@@ -132,7 +148,7 @@ static bool all_ready_in_class(const init_runtime_t *rt, init_boot_class_t cls) 
 }
 
 int init_runtime_run(init_boot_context_t *ctx) {
-    init_runtime_t rt;
+    static init_runtime_t rt;
     __builtin_memset(&rt, 0, sizeof(rt));
     rt.boot_ctx = *ctx;
 
@@ -195,11 +211,14 @@ int init_runtime_run(init_boot_context_t *ctx) {
         rt.failure_class = INIT_FAIL_LAUNCH;
         rt.outcome = INIT_BOOT_OUTCOME_SAFE_MODE;
         ctx->safe_mode_requested = true;
+        (void)init_rollback_run(&rt.rollback, rt.services);
         goto finish;
     }
     if (!all_ready_in_class(&rt, BOOT_CLASS_CORE)) {
         rt.failure_class = INIT_FAIL_TIMEOUT;
         rt.outcome = INIT_BOOT_OUTCOME_SAFE_MODE;
+        ctx->safe_mode_requested = true;
+        (void)init_rollback_run(&rt.rollback, rt.services);
         goto finish;
     }
     rt.phase = INIT_PHASE_CORE_READY;
@@ -208,6 +227,13 @@ int init_runtime_run(init_boot_context_t *ctx) {
     rt.phase = INIT_PHASE_INFRA_STARTING;
     try_launch_services(&rt, BOOT_CLASS_INFRA);
     if (any_failed_in_class(&rt, BOOT_CLASS_INFRA)) {
+        rt.failure_class = INIT_FAIL_LAUNCH;
+        rt.outcome = INIT_BOOT_OUTCOME_SAFE_MODE;
+        ctx->safe_mode_requested = true;
+        (void)init_rollback_run(&rt.rollback, rt.services);
+        goto finish;
+    }
+    if (any_service_failed_in_class(&rt, BOOT_CLASS_INFRA)) {
         rt.outcome = INIT_BOOT_OUTCOME_DEGRADED;
     }
     rt.phase = INIT_PHASE_INFRA_READY;
@@ -216,6 +242,10 @@ int init_runtime_run(init_boot_context_t *ctx) {
     rt.phase = INIT_PHASE_OPTIONAL_STARTING;
     try_launch_services(&rt, BOOT_CLASS_OPTIONAL);
     try_launch_services(&rt, BOOT_CLASS_LATE);
+    if (any_service_failed_in_class(&rt, BOOT_CLASS_OPTIONAL) ||
+        any_service_failed_in_class(&rt, BOOT_CLASS_LATE)) {
+        rt.outcome = INIT_BOOT_OUTCOME_DEGRADED;
+    }
     if (ctx->diagnostics_requested || ctx->safe_mode_requested) {
         try_launch_services(&rt, BOOT_CLASS_DIAGNOSTIC);
     }
@@ -226,18 +256,30 @@ finish:
     // Status Report
     init_status_report(rt.services, INIT_SERVICE_ID_MAX);
 
-    // Handoff
+    // Handoff is a property of the resolved service graph, not the hardware profile.
+    init_service_runtime_t *supervisor = &rt.services[INIT_SVC_SERVICEMGR];
+    if (supervisor->desc == NULL || supervisor->state == INIT_SERVICE_STATE_SKIPPED) {
+        if (rt.outcome == INIT_BOOT_OUTCOME_SAFE_MODE) return -EFAULT;
+        bharat_runtime_log("services/init: no supervisor selected; retaining lifecycle authority.\n");
+        rt.phase = INIT_PHASE_QUIESCENT;
+        return INIT_RUNTIME_QUIESCENT;
+    }
+
     rt.phase = INIT_PHASE_HANDOFF_PREPARED;
-    int handoff_res = init_handoff_to_supervisor(ctx, &rt);
+    const init_profile_policy_t *policy = init_profile_get_policy(ctx->profile);
+    int handoff_res = -EIO;
+    for (uint8_t attempt = 0; attempt <= policy->handoff_retry_count; ++attempt) {
+        handoff_res = init_handoff_to_supervisor(ctx, &rt);
+        if (handoff_res == 0 || handoff_res == -EPERM) break;
+    }
     if (handoff_res == 0) {
         rt.phase = INIT_PHASE_HANDOFF_COMPLETE;
-    } else if (handoff_res == -ENOENT &&
-               !init_profile_get_policy(ctx->profile)->strict_core_deadlines) {
+    } else if (handoff_res == -ENOENT) {
         /*
-         * Development and small-device profiles may intentionally package no
-         * separate servicemgr image.  The service graph is already stable, so
+         * Development and standalone target profiles may intentionally package no
+         * separate servicemgr image. The service graph is already stable, so
          * quiesce as a degraded bootstrap authority rather than spinning in a
-         * false timeout.  Strict RT/safety profiles continue to fail closed.
+         * false timeout.
          */
         bharat_runtime_log("services/init: HANDOFF_DEFERRED (supervisor unavailable).\n");
         rt.phase = INIT_PHASE_QUIESCENT;

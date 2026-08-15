@@ -8,42 +8,60 @@ static int g_mapped_count = 0;
 static int g_unmapped_count = 0;
 static int g_protected_count = 0;
 
-static int32_t auth_space_create(void *ctx, const bh_vm_create_space_request_v1_t *req, bh_vm_kernel_space_ref_t *out_ref) {
+static bharat_status_t auth_space_create(void *ctx, const bh_vm_create_space_request_v1_t *req, bh_vm_kernel_space_ref_t *out_ref) {
     (void)ctx; (void)req;
     out_ref->space_id = 9988;
-    return 0;
+    return BHARAT_STATUS_OK;
 }
 
-static int32_t auth_space_destroy(void *ctx, bh_vm_kernel_space_ref_t ref) {
+static bharat_status_t auth_space_destroy(void *ctx, bh_vm_kernel_space_ref_t ref) {
     (void)ctx; (void)ref;
-    return 0;
+    return BHARAT_STATUS_OK;
 }
 
-static int32_t auth_map(void *ctx, bh_vm_kernel_space_ref_t ref, const bh_vm_map_request_v1_t *req) {
+static bharat_status_t auth_map(void *ctx, bh_vm_kernel_space_ref_t ref, const bh_vm_map_request_v1_t *req) {
     (void)ctx; (void)ref; (void)req;
     g_mapped_count++;
-    return 0;
+    return BHARAT_STATUS_OK;
 }
 
-static int32_t auth_unmap(void *ctx, bh_vm_kernel_space_ref_t ref, uint64_t vaddr, uint64_t length) {
+static bharat_status_t auth_unmap(void *ctx, bh_vm_kernel_space_ref_t ref, uint64_t vaddr, uint64_t length) {
     (void)ctx; (void)ref; (void)vaddr; (void)length;
     g_unmapped_count++;
-    return 0;
+    return BHARAT_STATUS_OK;
 }
 
-static int32_t auth_protect(void *ctx, bh_vm_kernel_space_ref_t ref, uint64_t vaddr, uint64_t length, uint64_t protection, uint64_t memory_type) {
+static bharat_status_t auth_protect(void *ctx, bh_vm_kernel_space_ref_t ref, uint64_t vaddr, uint64_t length, uint64_t protection, uint64_t memory_type) {
     (void)ctx; (void)ref; (void)vaddr; (void)length; (void)protection; (void)memory_type;
     g_protected_count++;
-    return 0;
+    return BHARAT_STATUS_OK;
 }
 
-static int32_t auth_query(void *ctx, bh_vm_kernel_space_ref_t ref, uint64_t vaddr, bh_vm_kernel_query_result_t *out_res) {
-    (void)ctx; (void)ref; (void)vaddr;
-    return 0;
+static bharat_status_t auth_query(void *ctx, bh_vm_kernel_space_ref_t ref, uint64_t vaddr, bh_vm_kernel_query_result_t *out_res) {
+    (void)ctx; (void)ref;
+    out_res->state = BH_VM_REGION_STATE_MAPPED_V1;
+    out_res->vaddr = vaddr;
+    out_res->size = 0x2000;
+    out_res->protection = 1;
+    out_res->memory_type = 0;
+    return BHARAT_STATUS_OK;
 }
 
 void test_vm_authority_integration_v1(void) {
     vm_manager_init();
+    assert(!bh_vm_authority_ops_installed());
+    assert(bh_vm_set_authority_ops(NULL) == BHARAT_IPC_STATUS_ERR_UNSUPPORTED);
+
+    bh_vm_create_space_request_v1_t unsupported_req;
+    memset(&unsupported_req, 0, sizeof(unsupported_req));
+    unsupported_req.abi_version = BH_VM_INTERFACE_VERSION_V1;
+    unsupported_req.struct_size = sizeof(unsupported_req);
+    bh_vm_create_space_response_v1_t unsupported_resp;
+    int status = bh_vm_handle_create_space_v1(&unsupported_req, &unsupported_resp);
+    assert(status == BHARAT_IPC_STATUS_ERR_UNSUPPORTED);
+    assert(unsupported_resp.status == BHARAT_IPC_STATUS_ERR_UNSUPPORTED);
+    assert(unsupported_resp.vm_space_handle == 0);
+    assert(bh_vm_get_active_spaces_count() == 0);
 
     bh_vm_authority_ops_t ops = {
         .ctx = NULL,
@@ -54,7 +72,8 @@ void test_vm_authority_integration_v1(void) {
         .protect = auth_protect,
         .query = auth_query
     };
-    bh_vm_set_authority_ops(&ops);
+    assert(bh_vm_set_authority_ops(&ops) == BHARAT_IPC_STATUS_OK);
+    assert(bh_vm_authority_ops_installed());
 
     g_mapped_count = 0;
     g_unmapped_count = 0;
@@ -69,7 +88,7 @@ void test_vm_authority_integration_v1(void) {
     c_req.timing_class = 2; // Soft RT
 
     bh_vm_create_space_response_v1_t c_resp;
-    int status = bh_vm_handle_create_space_v1(&c_req, &c_resp);
+    status = bh_vm_handle_create_space_v1(&c_req, &c_resp);
     assert(status == BHARAT_IPC_STATUS_OK);
     assert(c_resp.vm_space_handle != 0);
 

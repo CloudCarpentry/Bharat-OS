@@ -1,4 +1,15 @@
+---
+title: Diagnostic_Event_Catalog
+status: Draft
+owner: Docs Team
+last_updated: "2026-08-08"
+tags:
+  - docs
+see_also: []
+---
+
 <!-- SPDX-License-Identifier: MIT -->
+
 # Diagnostic event catalog v1
 
 Source kinds are `KERNEL`, `SERVICE`, `DRIVER`, `STACK`, `RUNTIME`, `BUILD_TOOL`, and `TEST_HARNESS`. Severities are `TRACE`, `INFO`, `NOTICE`, `WARNING`, `RECOVERABLE`, `CRITICAL`, and descriptive-only `FATAL`. Subsystems are boot, scheduler, memory, IPC, capability, process, service, driver, network, display, security, power, watchdog, and unknown.

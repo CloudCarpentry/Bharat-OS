@@ -39,3 +39,30 @@ long kstatus_to_native_sysret(kstatus_t st) {
     if (st >= 0) return (long)st;
     return (long)kstatus_to_bh_status(st);
 }
+
+kstatus_t bh_status_to_kstatus(bh_status_t st) {
+    if (st >= 0) return K_OK;
+
+    switch (st) {
+        case BH_ERR_INVALID_ARGUMENT:    return K_ERR_INVALID_ARG;
+        case BH_ERR_INVALID_SYSCALL:     return K_ERR_INVALID_SYSCALL;
+        case BH_ERR_BAD_STATE:           return K_ERR_BAD_STATE;
+        case BH_ERR_NOT_FOUND:           return K_ERR_NOT_FOUND;
+        case BH_ERR_NOT_SUPPORTED:       return K_ERR_UNSUPPORTED;
+        case BH_ERR_TIMEOUT:             return K_ERR_TIMEOUT;
+        case BH_ERR_TRY_AGAIN:           return K_ERR_AGAIN;
+        case BH_ERR_INTERRUPTED:         return K_ERR_INTERRUPTED;
+        case BH_ERR_FAULT:               return K_ERR_FAULT;
+        case BH_ERR_ACCESS_DENIED:       return K_ERR_DENIED;
+        case BH_ERR_OVERFLOW:            return K_ERR_OVERFLOW;
+        case BH_ERR_NO_MEMORY:           return K_ERR_NO_MEMORY;
+        case BH_ERR_BAD_CAPABILITY:      return K_ERR_CAP_INVALID;
+        case BH_ERR_WRONG_TYPE:          return K_ERR_CAP_WRONG_TYPE;
+        case BH_ERR_INSUFFICIENT_RIGHTS: return K_ERR_CAP_DENIED;
+        case BH_ERR_STALE_CAPABILITY:    return K_ERR_CAP_STALE;
+        case BH_ERR_CHANNEL_CLOSED:      return K_ERR_IPC_CLOSED;
+        case BH_ERR_BUFFER_FULL:         return K_ERR_IPC_QUEUE_FULL;
+        case BH_ERR_RESOURCE_EXHAUSTED:  return K_ERR_PMM_EXHAUSTED;
+        default:                         return K_ERR_INTERNAL_BUG;
+    }
+}

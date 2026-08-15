@@ -43,8 +43,8 @@ bharat_status_t urpc_channel_bind(uint32_t target_core) {
     g_urpc_states[target_core] = URPC_CHANNEL_BINDING;
 
     // Use bootstrap send to transmit the request
-    int ret = urpc_bootstrap_send(target_core, msg);
-    if (ret != 0) {
+    kstatus_t ret = urpc_bootstrap_send(target_core, msg);
+    if (ret != K_OK) {
         g_urpc_states[target_core] = URPC_CHANNEL_ERROR;
         return BHARAT_IPC_STATUS_ERR_INTERNAL;
     }
@@ -69,8 +69,8 @@ bharat_status_t urpc_channel_accept(uint32_t source_core) {
     g_urpc_states[source_core] = URPC_CHANNEL_BOUND;
     urpc_mark_ready(source_core); // Signal bootstrap layer that channel is ready
 
-    int ret = urpc_bootstrap_send(source_core, msg);
-    if (ret != 0) {
+    kstatus_t ret = urpc_bootstrap_send(source_core, msg);
+    if (ret != K_OK) {
         g_urpc_states[source_core] = URPC_CHANNEL_ERROR;
         return BHARAT_IPC_STATUS_ERR_INTERNAL;
     }
@@ -92,8 +92,8 @@ bharat_status_t urpc_channel_close(uint32_t target_core) {
 
     g_urpc_states[target_core] = URPC_CHANNEL_CLOSED;
 
-    int ret = urpc_bootstrap_send(target_core, msg);
-    if (ret != 0) {
+    kstatus_t ret = urpc_bootstrap_send(target_core, msg);
+    if (ret != K_OK) {
          // Even if send fails, we are logically closed locally
          return BHARAT_IPC_STATUS_ERR_INTERNAL;
     }

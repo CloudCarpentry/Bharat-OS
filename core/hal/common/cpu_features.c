@@ -1,122 +1,103 @@
 #include "hal/hal_cpu_features.h"
 
-#include "arch/arch_cpu_caps.h"
-#include "hal/hal.h"
-#include <string.h>
+/*
+ * Serial boot owns mutation.  Once frozen, every field is immutable and may
+ * be read lock-free by any core.  There is deliberately no unfreeze path.
+ */
+static hal_cpu_feature_set_t g_per_cpu[HAL_CPU_FEATURE_MAX_CPUS];
+static bool g_present[HAL_CPU_FEATURE_MAX_CPUS];
+static hal_cpu_feature_set_t g_all;
+static hal_cpu_feature_set_t g_any;
+static hal_cpu_current_id_fn_t g_current_id;
+static bool g_frozen;
 
-static inline void feature_set_bit(uint64_t *bits, hal_cpu_feature_t feature, bool enabled) {
-    if (!enabled || feature >= HAL_CPU_FEATURE__COUNT) {
-        return;
-    }
-    bits[(size_t)feature / 64u] |= (1ULL << ((size_t)feature % 64u));
+static void bytes_zero(void *ptr, size_t size) {
+    uint8_t *bytes = ptr;
+    while (size-- != 0u) *bytes++ = 0u;
 }
 
-static void map_arch_to_hal(const arch_cpu_caps_record_t *arch, hal_cpu_feature_set_t *out) {
-    memset(out, 0, sizeof(*out));
-    if (arch == NULL) {
-        return;
+static void set_copy(hal_cpu_feature_set_t *dst, const hal_cpu_feature_set_t *src) {
+    for (size_t i = 0; i < sizeof(*dst) / sizeof(uint64_t); ++i)
+        ((uint64_t *)dst)[i] = ((const uint64_t *)src)[i];
+}
+
+bool hal_cpu_features_begin(hal_cpu_current_id_fn_t current_id) {
+    if (g_frozen || current_id == NULL) return false;
+    bytes_zero(g_per_cpu, sizeof(g_per_cpu));
+    bytes_zero(g_present, sizeof(g_present));
+    bytes_zero(&g_all, sizeof(g_all));
+    bytes_zero(&g_any, sizeof(g_any));
+    g_current_id = current_id;
+    return true;
+}
+
+bool hal_cpu_features_publish(size_t cpu_id, const hal_cpu_feature_set_t *features) {
+    if (g_frozen || features == NULL || cpu_id >= HAL_CPU_FEATURE_MAX_CPUS) return false;
+    set_copy(&g_per_cpu[cpu_id], features);
+    g_present[cpu_id] = true;
+    return true;
+}
+
+bool hal_cpu_features_freeze(void) {
+    bool first = true;
+    if (g_frozen) return false;
+    for (size_t cpu = 0; cpu < HAL_CPU_FEATURE_MAX_CPUS; ++cpu) {
+        if (!g_present[cpu]) continue;
+        if (first) {
+            set_copy(&g_all, &g_per_cpu[cpu]);
+            set_copy(&g_any, &g_per_cpu[cpu]);
+            first = false;
+            continue;
+        }
+        for (size_t i = 0; i < sizeof(g_all) / sizeof(uint64_t); ++i) {
+            ((uint64_t *)&g_all)[i] &= ((const uint64_t *)&g_per_cpu[cpu])[i];
+            ((uint64_t *)&g_any)[i] |= ((const uint64_t *)&g_per_cpu[cpu])[i];
+        }
     }
+    if (first) return false;
+    __atomic_store_n(&g_frozen, true, __ATOMIC_RELEASE);
+    return true;
+}
 
-    feature_set_bit(out->raw_bits, HAL_CPU_FEATURE_VECTOR,
-                    arch_cpu_caps_test(&arch->raw, ARCH_CPU_FEAT_COMMON_VECTOR));
-    feature_set_bit(out->usable_bits, HAL_CPU_FEATURE_VECTOR,
-                    arch_cpu_caps_test(&arch->usable, ARCH_CPU_FEAT_COMMON_VECTOR));
-
-    feature_set_bit(out->raw_bits, HAL_CPU_FEATURE_AES,
-                    arch_cpu_caps_test(&arch->raw, ARCH_CPU_FEAT_COMMON_AES));
-    feature_set_bit(out->usable_bits, HAL_CPU_FEATURE_AES,
-                    arch_cpu_caps_test(&arch->usable, ARCH_CPU_FEAT_COMMON_AES));
-
-    feature_set_bit(out->raw_bits, HAL_CPU_FEATURE_SHA,
-                    arch_cpu_caps_test(&arch->raw, ARCH_CPU_FEAT_COMMON_SHA));
-    feature_set_bit(out->usable_bits, HAL_CPU_FEATURE_SHA,
-                    arch_cpu_caps_test(&arch->usable, ARCH_CPU_FEAT_COMMON_SHA));
-
-    feature_set_bit(out->raw_bits, HAL_CPU_FEATURE_PMULL,
-                    arch_cpu_caps_test(&arch->raw, ARCH_CPU_FEAT_COMMON_PMULL));
-    feature_set_bit(out->usable_bits, HAL_CPU_FEATURE_PMULL,
-                    arch_cpu_caps_test(&arch->usable, ARCH_CPU_FEAT_COMMON_PMULL));
-
-    feature_set_bit(out->raw_bits, HAL_CPU_FEATURE_CRYPTO,
-                    arch_cpu_caps_test(&arch->raw, ARCH_CPU_FEAT_COMMON_CRYPTO));
-    feature_set_bit(out->usable_bits, HAL_CPU_FEATURE_CRYPTO,
-                    arch_cpu_caps_test(&arch->usable, ARCH_CPU_FEAT_COMMON_CRYPTO));
-
-    feature_set_bit(out->raw_bits, HAL_CPU_FEATURE_STRONG_ATOMICS,
-                    arch_cpu_caps_test(&arch->raw, ARCH_CPU_FEAT_COMMON_STRONG_ATOMICS));
-    feature_set_bit(out->usable_bits, HAL_CPU_FEATURE_STRONG_ATOMICS,
-                    arch_cpu_caps_test(&arch->usable, ARCH_CPU_FEAT_COMMON_STRONG_ATOMICS));
-
-    feature_set_bit(out->raw_bits, HAL_CPU_FEATURE_FAST_TLB_CTX,
-                    arch_cpu_caps_test(&arch->raw, ARCH_CPU_FEAT_COMMON_FAST_TLB_CTX));
-    feature_set_bit(out->usable_bits, HAL_CPU_FEATURE_FAST_TLB_CTX,
-                    arch_cpu_caps_test(&arch->usable, ARCH_CPU_FEAT_COMMON_FAST_TLB_CTX));
-
-    // Export any architecture specific features
-    arch_cpu_caps_export_hal_features(arch, out);
+bool hal_cpu_features_is_frozen(void) {
+    return __atomic_load_n(&g_frozen, __ATOMIC_ACQUIRE);
 }
 
 bool hal_cpu_feature_set_for_cpu(size_t cpu_id, hal_cpu_feature_set_t *out) {
-    if (out == NULL) {
-        return false;
-    }
-    const arch_cpu_caps_record_t *arch = arch_cpu_caps_for_cpu(cpu_id);
-    if (arch == NULL) {
-        memset(out, 0, sizeof(*out));
-        return false;
-    }
-    map_arch_to_hal(arch, out);
+    if (out == NULL || cpu_id >= HAL_CPU_FEATURE_MAX_CPUS || !g_present[cpu_id]) return false;
+    set_copy(out, &g_per_cpu[cpu_id]);
     return true;
 }
 
 bool hal_cpu_feature_set_system(hal_cpu_feature_scope_t scope, hal_cpu_feature_set_t *out) {
-    if (out == NULL) {
-        return false;
-    }
-    const arch_cpu_caps_record_t *arch = (scope == HAL_CPU_FEATURE_SCOPE_ANY)
-                                             ? arch_cpu_caps_system_any()
-                                             : arch_cpu_caps_system_all();
-    if (arch == NULL) {
-        memset(out, 0, sizeof(*out));
-        return false;
-    }
-    map_arch_to_hal(arch, out);
+    if (out == NULL || !hal_cpu_features_is_frozen() || scope > HAL_CPU_FEATURE_SCOPE_ALL) return false;
+    set_copy(out, scope == HAL_CPU_FEATURE_SCOPE_ANY ? &g_any : &g_all);
     return true;
+}
+
+static bool set_has(const hal_cpu_feature_set_t *set, hal_cpu_feature_t feature) {
+    return feature < HAL_CPU_FEATURE__COUNT &&
+           (set->usable_bits[(size_t)feature / 64u] & (1ULL << ((size_t)feature % 64u))) != 0u;
 }
 
 bool hal_cpu_has_feature(size_t cpu_id, hal_cpu_feature_t feature) {
     hal_cpu_feature_set_t set;
-    if (!hal_cpu_feature_set_for_cpu(cpu_id, &set) || feature >= HAL_CPU_FEATURE__COUNT) {
-        return false;
-    }
-    return (set.usable_bits[(size_t)feature / 64u] & (1ULL << ((size_t)feature % 64u))) != 0;
+    return hal_cpu_feature_set_for_cpu(cpu_id, &set) && set_has(&set, feature);
 }
 
 bool hal_cpu_has_system_feature(hal_cpu_feature_t feature, hal_cpu_feature_scope_t scope) {
-    if (scope == HAL_CPU_FEATURE_SCOPE_ANY) {
-        return hal_cpu_has_system_feature_any(feature);
-    }
-    return hal_cpu_has_system_feature_all(feature);
+    hal_cpu_feature_set_t set;
+    return hal_cpu_feature_set_system(scope, &set) && set_has(&set, feature);
 }
 
 bool hal_cpu_has_feature_current(hal_cpu_feature_t feature) {
-    return hal_cpu_has_feature((size_t)hal_cpu_get_id(), feature);
+    return g_current_id != NULL && hal_cpu_has_feature(g_current_id(), feature);
 }
 
 bool hal_cpu_has_system_feature_all(hal_cpu_feature_t feature) {
-    hal_cpu_feature_set_t set;
-    if (!hal_cpu_feature_set_system(HAL_CPU_FEATURE_SCOPE_ALL, &set) ||
-        feature >= HAL_CPU_FEATURE__COUNT) {
-        return false;
-    }
-    return (set.usable_bits[(size_t)feature / 64u] & (1ULL << ((size_t)feature % 64u))) != 0;
+    return hal_cpu_has_system_feature(feature, HAL_CPU_FEATURE_SCOPE_ALL);
 }
 
 bool hal_cpu_has_system_feature_any(hal_cpu_feature_t feature) {
-    hal_cpu_feature_set_t set;
-    if (!hal_cpu_feature_set_system(HAL_CPU_FEATURE_SCOPE_ANY, &set) ||
-        feature >= HAL_CPU_FEATURE__COUNT) {
-        return false;
-    }
-    return (set.usable_bits[(size_t)feature / 64u] & (1ULL << ((size_t)feature % 64u))) != 0;
+    return hal_cpu_has_system_feature(feature, HAL_CPU_FEATURE_SCOPE_ANY);
 }

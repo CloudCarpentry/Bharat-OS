@@ -41,7 +41,7 @@ This document lists kernel modules and their classification regarding the "Minim
 | `core/kernel/src/power/` | MOVE_SERVICE_SYSTEM | `core/services/system/powerd/` | Move policy, keep primitive hooks in kernel. |
 | `core/kernel/src/device/irq_domain.c` | KEEP_KERNEL_MECHANISM | - | Interrupt routing mechanism. |
 | `core/kernel/src/device/device_dma.c` | KEEP_KERNEL_MECHANISM | - | DMA isolation mechanism. |
-| `core/kernel/src/device/pci.c` | MOVE_DRIVER | `drivers/bus/pci/` | PCI enumeration/config. |
+| `core/kernel/src/device/pci.c` | MOVE_DRIVER | `core/drivers/bus/pci/` | PCI enumeration/config. |
 | `core/kernel/src/device/device_manager.c` | MOVE_SERVICE_DEVICE | `core/services/device/devmgr/` | |
 | `core/kernel/src/display/` | KEEP_KERNEL_MECHANISM | - | Early boot/panic display only. |
 | `core/kernel/src/console/early_console.c` | KEEP_KERNEL_MECHANISM | - | |

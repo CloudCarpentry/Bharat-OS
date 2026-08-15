@@ -44,3 +44,16 @@ This document summarizes the current status of pointer-width inference and porta
 - **Status**: Needs Refactor
 - **Details**: DMA coherent checks and caching instructions are highly specific to ARM64 and X86_64. Tier 2 devices might lack hardware-coherent DMA, meaning cache maintenance must be explicitly handled. Replace hardware DMA assumptions with checks for `ARCH_CAP_DMA_COHERENT`.
 - **Action**: Must fix before arm32 bring-up.
+
+## Native-width atomic synchronization
+- **Status**: Implemented for bounded IPC, scheduler, and diagnostic rings
+- **Details**: Ring tickets, slot publication sequences, positions, and hot-path
+  telemetry use 32-bit atomics on every ISA. Capacities are bounded below
+  `2^31`, and comparisons use defined `uint32_t` modulo subtraction so rollover
+  does not require 64-bit atomic instructions. The multikernel wire sequence
+  remains 64-bit, but is composed from the source core and an owner-local
+  32-bit allocator. Genuine 64-bit masks and generations use Bharat-OS's
+  explicit atomic64 compatibility backend on 32-bit targets.
+- **Validation**: Kernel targets compile with `-Werror=atomic-alignment`;
+  warning suppression and a freestanding `libatomic` dependency are
+  intentionally prohibited.

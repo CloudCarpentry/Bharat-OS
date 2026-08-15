@@ -23,7 +23,7 @@ void mm_remote_tlb_flush(uint32_t target_core, uint64_t as_id, virt_addr_t va) {
     // Check if the system is fully booted and urpc is ready before sending
     // Declare explicit binding since urpc_bootstrap.h might use different names.
     extern int urpc_is_ready(uint32_t);
-    extern int urpc_bootstrap_send(uint32_t, uint64_t);
+    extern kstatus_t urpc_bootstrap_send(uint32_t, uint64_t);
 
     uint32_t current_core = hal_cpu_get_id();
 

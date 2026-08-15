@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include "../../include/mm.h"
+#include <mm.h>
 
 // Memory Protection Architecture (MPA) Capability Bits
 #define MPA_CAP_VIRT        (1U << 0)

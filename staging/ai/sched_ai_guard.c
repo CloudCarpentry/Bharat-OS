@@ -26,7 +26,7 @@ int sched_ai_apply_suggestion(const ai_suggestion_t *suggestion) {
       return -1;
     }
     if (thread == sched_current_thread()) {
-      uint32_t core = sched_clamp_core(hal_cpu_get_id());
+      uint32_t core = sched_current_core_or_panic();
       g_cpu_locals[core].runqueue.current_thread = NULL;
       sched_reschedule();
     }

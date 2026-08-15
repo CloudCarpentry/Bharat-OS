@@ -1,6 +1,47 @@
 # SPDX-License-Identifier: MIT
 cmake_minimum_required(VERSION 3.20)
 
+add_executable(host_test_cap_generation_production test_cap_generation_policy.c)
+target_include_directories(host_test_cap_generation_production PRIVATE
+    "${CMAKE_SOURCE_DIR}/core/kernel/include")
+add_test(NAME host_test_cap_generation_production COMMAND host_test_cap_generation_production)
+set_tests_properties(host_test_cap_generation_production PROPERTIES LABELS "capability")
+
+add_executable(host_test_cap_generation_legacy test_cap_generation_policy.c)
+target_include_directories(host_test_cap_generation_legacy PRIVATE
+    "${CMAKE_SOURCE_DIR}/core/kernel/include")
+target_compile_definitions(host_test_cap_generation_legacy PRIVATE
+    BHARAT_ENABLE_LEGACY_CAP_TESTS=1)
+add_test(NAME host_test_cap_generation_legacy COMMAND host_test_cap_generation_legacy)
+set_tests_properties(host_test_cap_generation_legacy PROPERTIES LABELS "capability")
+
+add_executable(test_capability_ownership
+    test_capability_ownership.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/cap/cap_cspace.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/cap/cap_dispatch.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/cap/cap_revoke.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/cap/cap_policy.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/ds/bh_id_allocator.c
+    ${CMAKE_SOURCE_DIR}/core/lib/cap/src/cap_validate.c
+    ${CMAKE_SOURCE_DIR}/core/lib/cap/src/cap_authz.c
+    ${CMAKE_SOURCE_DIR}/core/lib/base/src/string.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/time/ktime.c
+)
+
+target_include_directories(test_capability_ownership PRIVATE
+    ${CMAKE_SOURCE_DIR}/core/kernel/include
+    ${CMAKE_SOURCE_DIR}/core/hal/include
+    ${CMAKE_SOURCE_DIR}/core/lib/include
+    ${CMAKE_SOURCE_DIR}/core/lib/cap/include
+    ${CMAKE_SOURCE_DIR}/interface/include
+    ${CMAKE_SOURCE_DIR}/interface
+    ${CMAKE_BINARY_DIR}/generated/include
+)
+
+target_compile_definitions(test_capability_ownership PRIVATE BHARAT_HOST_TEST=1)
+add_test(NAME host_test_capability_ownership COMMAND test_capability_ownership)
+set_tests_properties(host_test_capability_ownership PROPERTIES LABELS "capability")
+
 add_executable(test_servicemgr
     "${CMAKE_CURRENT_SOURCE_DIR}/test_servicemgr.c"
     "${CMAKE_SOURCE_DIR}/core/services/servicemgr/servicemgr.c"
@@ -24,29 +65,71 @@ target_compile_definitions(test_servicemgr PRIVATE BHARAT_HOST_TEST)
 
 add_test(NAME host_test_servicemgr COMMAND test_servicemgr)
 
+add_executable(host_test_sched_selection
+    sched/test_sched_selection.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/sched/constraint_apply.c)
+target_include_directories(host_test_sched_selection PRIVATE
+    ${CMAKE_SOURCE_DIR}/core/kernel/include
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/sched
+    ${CMAKE_SOURCE_DIR}/core/hal/include
+    ${CMAKE_SOURCE_DIR}/core/lib/include
+    ${CMAKE_SOURCE_DIR}/core/boot/include
+    ${CMAKE_SOURCE_DIR}/core/personalities/runtime/include
+    ${CMAKE_SOURCE_DIR}/interface/include
+    ${CMAKE_BINARY_DIR}/generated/include)
+target_compile_definitions(host_test_sched_selection PRIVATE TESTING=1)
+add_test(NAME host_test_sched_selection COMMAND host_test_sched_selection)
+set_tests_properties(host_test_sched_selection PROPERTIES LABELS "scheduler")
+
+add_executable(host_test_sched_diag
+    sched/test_sched_diag.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/sched/sched_diag.c)
+target_include_directories(host_test_sched_diag PRIVATE
+    ${CMAKE_SOURCE_DIR}/core/kernel/include
+    ${CMAKE_SOURCE_DIR}/core/hal/include
+    ${CMAKE_SOURCE_DIR}/interface/include
+    ${CMAKE_BINARY_DIR}/generated/include)
+add_test(NAME host_test_sched_diag COMMAND host_test_sched_diag)
+set_tests_properties(host_test_sched_diag PROPERTIES LABELS "scheduler")
+
+add_executable(host_test_cpu_partition
+    sched/test_cpu_partition.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/sched/cpu_partition.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/sched/cpu_partition_validate.c)
+target_include_directories(host_test_cpu_partition PRIVATE
+    ${CMAKE_SOURCE_DIR}/core/kernel/include
+    ${CMAKE_SOURCE_DIR}/interface/include)
+add_test(NAME host_test_cpu_partition COMMAND host_test_cpu_partition)
+set_tests_properties(host_test_cpu_partition PROPERTIES LABELS "scheduler")
+
 # Phase 3: Core IPC/Profile Tests
 add_executable(test_ipc_profile test_ipc_profile.c ../../kernel/src/profile/profile.c ../../kernel/src/ipc/ipc_traffic.c)
 target_include_directories(test_ipc_profile PRIVATE ../../kernel/include ../../include ../../core/lib/include)
 add_test(NAME host_test_ipc_profile COMMAND test_ipc_profile)
+set_tests_properties(host_test_ipc_profile PROPERTIES LABELS "ipc")
 
 add_executable(test_ipc_urpc_reliability test_ipc_urpc_reliability.c ../../kernel/src/ipc/contract_validate.c ../../kernel/src/ipc/ipc_status.c ../../kernel/src/ipc/ipc_traffic.c ../../kernel/src/urpc/urpc_channel.c ../../kernel/src/ipc/ipc_profile_policy.c ../../kernel/src/mm/mem_model.c ../../kernel/src/profile/profile.c)
 target_include_directories(test_ipc_urpc_reliability PRIVATE ../../kernel/include ../../include ../../core/lib/include)
 add_test(NAME host_test_ipc_urpc_reliability COMMAND test_ipc_urpc_reliability)
+set_tests_properties(host_test_ipc_urpc_reliability PROPERTIES LABELS "ipc")
 
 add_executable(test_ipc_urpc_policy_rt_mpu test_ipc_urpc_policy_matrix.c ../../kernel/src/ipc/ipc_profile_policy.c ../../kernel/src/mm/mem_model.c ../../kernel/src/profile/profile.c)
 target_include_directories(test_ipc_urpc_policy_rt_mpu PRIVATE ../../kernel/include ../../include ../../core/lib/include)
 target_compile_definitions(test_ipc_urpc_policy_rt_mpu PRIVATE CONFIG_PROFILE_AUTOMOBILE=1 CONFIG_MEM_MODEL_MPU=1 BHARAT_KERNEL_PROFILE_RT=1 EXPECT_PREFER_URPC=1 EXPECT_ALLOW_BULK_IPC=0 EXPECT_URPC_MAX=32 EXPECT_CONTROL_TRANSPORT=IPC_TRANSPORT_URPC EXPECT_BULK_TRANSPORT=IPC_TRANSPORT_URPC)
 add_test(NAME host_test_ipc_urpc_policy_rt_mpu COMMAND test_ipc_urpc_policy_rt_mpu)
+set_tests_properties(host_test_ipc_urpc_policy_rt_mpu PROPERTIES LABELS "ipc")
 
 add_executable(test_ipc_urpc_policy_gp_mmu_lite test_ipc_urpc_policy_matrix.c ../../kernel/src/ipc/ipc_profile_policy.c ../../kernel/src/mm/mem_model.c ../../kernel/src/profile/profile.c)
 target_include_directories(test_ipc_urpc_policy_gp_mmu_lite PRIVATE ../../kernel/include ../../include ../../core/lib/include)
 target_compile_definitions(test_ipc_urpc_policy_gp_mmu_lite PRIVATE CONFIG_MEM_MODEL_MMU_LITE=1 EXPECT_PREFER_URPC=0 EXPECT_ALLOW_BULK_IPC=1 EXPECT_URPC_MAX=64 EXPECT_CONTROL_TRANSPORT=IPC_TRANSPORT_ENDPOINT EXPECT_BULK_TRANSPORT=IPC_TRANSPORT_ENDPOINT)
 add_test(NAME host_test_ipc_urpc_policy_gp_mmu_lite COMMAND test_ipc_urpc_policy_gp_mmu_lite)
+set_tests_properties(host_test_ipc_urpc_policy_gp_mmu_lite PROPERTIES LABELS "ipc")
 
 add_executable(test_ipc_urpc_policy_mix_mmu_full test_ipc_urpc_policy_matrix.c ../../kernel/src/ipc/ipc_profile_policy.c ../../kernel/src/mm/mem_model.c ../../kernel/src/profile/profile.c)
 target_include_directories(test_ipc_urpc_policy_mix_mmu_full PRIVATE ../../kernel/include ../../include ../../core/lib/include)
 target_compile_definitions(test_ipc_urpc_policy_mix_mmu_full PRIVATE BHARAT_KERNEL_PROFILE_MIX=1 EXPECT_PREFER_URPC=1 EXPECT_ALLOW_BULK_IPC=1 EXPECT_URPC_MAX=256 EXPECT_CONTROL_TRANSPORT=IPC_TRANSPORT_URPC EXPECT_BULK_TRANSPORT=IPC_TRANSPORT_ENDPOINT)
 add_test(NAME host_test_ipc_urpc_policy_mix_mmu_full COMMAND test_ipc_urpc_policy_mix_mmu_full)
+set_tests_properties(host_test_ipc_urpc_policy_mix_mmu_full PROPERTIES LABELS "ipc")
 
 # Phase 3: Crypto Tests
 add_executable(test_secure_mem test_secure_mem.c)
@@ -56,7 +139,8 @@ add_test(NAME host_test_secure_mem COMMAND test_secure_mem)
 
 add_executable(test_memops_conformance
     test_memops_conformance.c
-    ../../hal/common/memops/mem_scalar.c)
+    ../../hal/common/memops/mem_scalar.c
+    ../../hal/common/memops/mem_dispatch.c)
 target_include_directories(test_memops_conformance PRIVATE ../../hal/include)
 target_compile_options(test_memops_conformance PRIVATE
     -fno-builtin-memcpy -fno-builtin-memset -fno-builtin-memmove)
@@ -71,9 +155,14 @@ add_executable(test_netmgr_address_table services/test_netmgr_address_table.c ..
 target_include_directories(test_netmgr_address_table PRIVATE ../../core/services/netmgr/src ../../core/services/netmgr/include ../../core/services/core/subsysmgr/include ../../core/lib/net/include ../../core/lib/runtime/include)
 add_test(NAME host_test_netmgr_address_table COMMAND test_netmgr_address_table)
 
-add_executable(test_pmm_pcache test_pmm_pcache.c ../../kernel/src/mm/pmm/pmm.c ../../kernel/src/mm/pmm/pmm_pcache.c ../../kernel/src/mm/pmm/numa.c)
+add_executable(test_pmm_pcache test_pmm_pcache.c ../../kernel/src/mm/pmm/pmm_init.c ../../kernel/src/mm/pmm/pmm_buddy.c ../../kernel/src/mm/pmm/pmm_fault.c ../../kernel/src/mm/pmm/pmm_pcache.c ../../kernel/src/mm/pmm/numa.c)
 target_include_directories(test_pmm_pcache PRIVATE ${CMAKE_SOURCE_DIR}/core/kernel/include ${CMAKE_SOURCE_DIR}/core/kernel/src ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/lib/include ${CMAKE_SOURCE_DIR}/core/boot/include)
 add_test(NAME host_test_pmm_pcache COMMAND test_pmm_pcache)
+set_tests_properties(host_test_pmm_pcache PROPERTIES LABELS "pmm")
+
+add_executable(test_irq_state test_irq_state.c)
+target_include_directories(test_irq_state PRIVATE ${CMAKE_SOURCE_DIR}/core/kernel/include ${CMAKE_SOURCE_DIR}/core/hal/include)
+add_test(NAME host_test_irq_state COMMAND test_irq_state)
 add_executable(test_netmgr_interface_table services/test_netmgr_interface_table.c ../../core/services/netmgr/src/interface_table.c ../../core/lib/runtime/src/freestanding_string.c)
 target_include_directories(test_netmgr_interface_table PRIVATE ../../core/services/netmgr/src ../../core/services/netmgr/include ../../core/services/core/subsysmgr/include ../../core/lib/net/include ../../core/lib/runtime/include)
 add_test(NAME host_test_netmgr_interface_table COMMAND test_netmgr_interface_table)
@@ -87,10 +176,12 @@ add_test(NAME host_test_smp_tlb_active_cores COMMAND test_smp_tlb_active_cores)
 add_executable(host_test_hal_pt_common ../../tests/mm/pt_common_tests.c ../../hal/hal_pt.c)
 target_include_directories(host_test_hal_pt_common PRIVATE ${CMAKE_SOURCE_DIR}/core/kernel/include ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/boot/include)
 add_test(NAME host_test_hal_pt_common COMMAND host_test_hal_pt_common)
+set_tests_properties(host_test_hal_pt_common PROPERTIES LABELS "vm")
 
 add_executable(host_test_hal_pt_fallbacks ../../tests/test_hal_pt_fallbacks.c ../../hal/hal_pt.c)
 target_include_directories(host_test_hal_pt_fallbacks PRIVATE ${CMAKE_SOURCE_DIR}/core/kernel/include ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/boot/include)
 add_test(NAME host_test_hal_pt_fallbacks COMMAND host_test_hal_pt_fallbacks)
+set_tests_properties(host_test_hal_pt_fallbacks PROPERTIES LABELS "vm")
 
 add_executable(host_test_hal_caps_consistency ../../tests/test_hal_caps_consistency.c ../../hal/hal_pt.c)
 target_include_directories(host_test_hal_caps_consistency PRIVATE ${CMAKE_SOURCE_DIR}/core/kernel/include ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/boot/include)
@@ -99,14 +190,16 @@ add_test(NAME host_test_hal_caps_consistency COMMAND host_test_hal_caps_consiste
 add_executable(host_test_mon_vm test_mon_vm.c host_stubs.c ../../kernel/src/monitor/mon_vm_dispatch.c ../../kernel/src/monitor/mon_vm_service.c ../../kernel/src/monitor/mon_vm_state.c)
 target_include_directories(host_test_mon_vm PRIVATE ${CMAKE_SOURCE_DIR}/core/kernel/include ${CMAKE_SOURCE_DIR}/core/kernel/src ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/lib/include)
 add_test(NAME host_test_mon_vm COMMAND host_test_mon_vm)
+set_tests_properties(host_test_mon_vm PROPERTIES LABELS "vm")
 
 # VMM / ASpace / VM base-object conformance currently remains in top-level tests
 # (`test_vmm_aspace`) due additional prot-domain and arch-cap dependencies.
 
-add_executable(host_test_vmm_fault ../test_vmm_fault.c host_stubs.c ../../kernel/src/mm/vm/fault/fault.c ../../kernel/src/mm/vm/objects/vm_object.c ../../kernel/src/mm/vm/objects/vm_object_refcount.c ../../kernel/src/mm/vm/aspace/vm_space.c ../../kernel/src/mm/vm/aspace/aspace.c ../../kernel/src/mm/pmm/early_alloc.c ../../kernel/src/mm/pmm/pmm.c ../../kernel/src/mm/pmm/pt_pool.c ../../kernel/src/mm/tlb/tlb_shootdown.c ../../kernel/src/capability.c ../../kernel/src/cap/cap_policy.c ../benchmark_stubs.c ../../kernel/src/lib/base/string.c ../../hal/common/memops/mem_scalar.c mock_panic.c)
+add_executable(host_test_vmm_fault ../test_vmm_fault.c host_stubs.c ../../kernel/src/mm/vm/fault/fault.c ../../kernel/src/mm/vm/objects/vm_object.c ../../kernel/src/mm/vm/objects/vm_object_refcount.c ../../kernel/src/mm/vm/aspace/vm_space.c ../../kernel/src/mm/vm/aspace/aspace.c ../../kernel/src/mm/pmm/early_alloc.c ../../kernel/src/mm/pmm/pmm_init.c ../../kernel/src/mm/pmm/pmm_buddy.c ../../kernel/src/mm/pmm/pmm_fault.c ../../kernel/src/mm/pmm/pt_pool.c ../../kernel/src/mm/tlb/tlb_shootdown.c ../../kernel/src/cap/cap_cspace.c ../../kernel/src/cap/cap_dispatch.c ../../kernel/src/cap/cap_revoke.c ../../kernel/src/cap/cap_policy.c ../benchmark_stubs.c ../../kernel/src/lib/base/string.c ../../hal/common/memops/mem_scalar.c mock_panic.c)
 target_include_directories(host_test_vmm_fault PRIVATE ${CMAKE_SOURCE_DIR}/core/kernel/include ${CMAKE_SOURCE_DIR}/core/kernel/src ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/boot/include ${CMAKE_SOURCE_DIR}/core/lib/include ${CMAKE_BINARY_DIR}/generated/include)
 target_compile_definitions(host_test_vmm_fault PRIVATE TESTING=1)
 add_test(NAME host_test_vmm_fault COMMAND host_test_vmm_fault)
+set_tests_properties(host_test_vmm_fault PROPERTIES LABELS "vm")
 
 add_executable(test_uapi_abi test_uapi_abi.c)
 target_include_directories(test_uapi_abi PRIVATE ${CMAKE_SOURCE_DIR}/interface/include)
@@ -122,6 +215,19 @@ target_include_directories(host_test_syscall_return_x86_64 PRIVATE
     ${CMAKE_SOURCE_DIR}/interface/include)
 add_test(NAME host_test_syscall_return_x86_64 COMMAND host_test_syscall_return_x86_64)
 add_test(NAME host_test_uapi_abi COMMAND test_uapi_abi)
+
+add_executable(host_test_robotics_demo
+    robotics/test_robotics_demo.c
+    ${CMAKE_SOURCE_DIR}/core/drivers/sensor/virtual/virtual_sensors.c
+    ${CMAKE_SOURCE_DIR}/core/drivers/actuator/virtual/virtual_motors.c
+    ${CMAKE_SOURCE_DIR}/core/services/device/sensormgr/sensormgr.c
+    ${CMAKE_SOURCE_DIR}/core/services/device/actuator_mgr/actuator_mgr.c
+    ${CMAKE_SOURCE_DIR}/core/platform/qemu/robot/robot_platform.c
+    ${CMAKE_SOURCE_DIR}/core/stacks/robotics/robotics_demo.c)
+target_include_directories(host_test_robotics_demo PRIVATE
+    ${CMAKE_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/interface/include)
+add_test(NAME host_test_robotics_demo COMMAND host_test_robotics_demo)
 
 add_executable(host_test_libmsg_crc
     test_libmsg_crc.c
@@ -150,7 +256,9 @@ add_test(NAME host_test_input_layout COMMAND host_test_input_layout)
 add_executable(test_hal_cpu_features
     test_hal_cpu_features.c
     ../../arch/common/cpu_caps_state.c
-    ../../hal/common/cpu_features.c)
+    ../../hal/common/cpu_features.c
+    ../../hal/common/memops/mem_scalar.c
+    ../../hal/common/memops/mem_dispatch.c)
 target_include_directories(test_hal_cpu_features PRIVATE
     ${CMAKE_SOURCE_DIR}/core/kernel/include
     ${CMAKE_SOURCE_DIR}/core/hal/include
@@ -163,6 +271,8 @@ add_executable(test_hal_capability_lifecycle
     test_hal_capability_lifecycle.c
     ../../arch/common/cpu_caps_state.c
     ../../hal/common/cpu_features.c
+    ../../hal/common/memops/mem_scalar.c
+    ../../hal/common/memops/mem_dispatch.c
     ../../hal/common/hw_caps.c
     ../../kernel/src/core/primitive_registry.c)
 target_include_directories(test_hal_capability_lifecycle PRIVATE
@@ -172,6 +282,7 @@ target_include_directories(test_hal_capability_lifecycle PRIVATE
     ${CMAKE_SOURCE_DIR}/core/lib/include
     ${CMAKE_SOURCE_DIR})
 add_test(NAME host_test_hal_capability_lifecycle COMMAND test_hal_capability_lifecycle)
+set_tests_properties(host_test_hal_capability_lifecycle PROPERTIES LABELS "capability")
 
 # ---------------------------------------------------------
 # Phase 2: Runtime completeness Tests
@@ -183,6 +294,7 @@ add_test(NAME host_test_process_manager COMMAND test_process_manager)
 add_executable(test_vm_manager test_vm_manager.c ../../core/services/vm_manager/vm_manager.c ../../core/lib/ipc/src/ipc.c)
 target_include_directories(test_vm_manager PRIVATE ../../include ../../core/lib/ipc/include ../../core/lib/cap/include ../../kernel/include)
 add_test(NAME host_test_vm_manager COMMAND test_vm_manager)
+set_tests_properties(host_test_vm_manager PROPERTIES LABELS "vm")
 
 # Modern PROCVM-P0-001 Vertical Slice Tests
 add_executable(test_elf_load_plan
@@ -220,6 +332,7 @@ target_include_directories(test_vm_handle_lifecycle PRIVATE
 )
 target_link_libraries(test_vm_handle_lifecycle PRIVATE bharat_freestanding)
 add_test(NAME host_test_vm_handle_lifecycle COMMAND test_vm_handle_lifecycle)
+set_tests_properties(host_test_vm_handle_lifecycle PROPERTIES LABELS "vm")
 
 add_executable(test_pm_contract_v1
     process_vm/test_pm_contract_v1.c
@@ -276,6 +389,7 @@ target_include_directories(test_vm_authority_integration PRIVATE
 )
 target_link_libraries(test_vm_authority_integration PRIVATE bharat_freestanding)
 add_test(NAME host_test_vm_authority_integration COMMAND test_vm_authority_integration)
+set_tests_properties(host_test_vm_authority_integration PROPERTIES LABELS "vm")
 
 add_executable(test_procvm_e2e
     process_vm/test_procvm_e2e.c
@@ -292,6 +406,7 @@ target_include_directories(test_procvm_e2e PRIVATE
 )
 target_link_libraries(test_procvm_e2e PRIVATE bharat_freestanding)
 add_test(NAME host_test_procvm_e2e COMMAND test_procvm_e2e)
+set_tests_properties(host_test_procvm_e2e PROPERTIES LABELS "vm")
 
 add_executable(test_procvm_stress
     process_vm/test_procvm_stress.c
@@ -308,14 +423,19 @@ target_include_directories(test_procvm_stress PRIVATE
 )
 target_link_libraries(test_procvm_stress PRIVATE bharat_freestanding)
 add_test(NAME host_test_procvm_stress COMMAND test_procvm_stress)
+set_tests_properties(host_test_procvm_stress PROPERTIES LABELS "vm")
 
-add_executable(test_servicemgr test_servicemgr.c ../../core/services/servicemgr/servicemgr.c ../../core/lib/ipc/src/ipc.c)
-target_include_directories(test_servicemgr PRIVATE ../../include ../../core/lib/ipc/include ../../core/lib/cap/include ../../kernel/include)
-add_test(NAME host_test_servicemgr COMMAND test_servicemgr)
+add_executable(test_servicemgr_dup test_servicemgr.c ../../core/services/servicemgr/servicemgr.c ../../core/lib/ipc/src/ipc.c)
+target_include_directories(test_servicemgr_dup PRIVATE ../../include ../../core/lib/ipc/include ../../core/lib/cap/include ../../kernel/include)
+add_test(NAME host_test_servicemgr_dup COMMAND test_servicemgr_dup)
 
-add_executable(test_init test_init.c ../../core/services/core/init/init_runtime.c ../../core/services/core/init/init_status.c ../../core/services/core/init/init_handoff.c)
+add_executable(test_init test_init.c ../../core/services/core/init/init_runtime.c ../../core/services/core/init/init_status.c ../../core/services/core/init/init_handoff.c ../../core/services/core/init/init_rollback.c)
 target_include_directories(test_init PRIVATE ../../include ../../kernel/include ../../core/lib/runtime/include ../../core/lib/cap/include ../../core/lib/ipc/include)
 add_test(NAME host_test_init COMMAND test_init)
+
+add_executable(test_init_rollback test_init_rollback.c ../../core/services/core/init/init_rollback.c)
+target_include_directories(test_init_rollback PRIVATE ../../interface/include ../../core/services/core/init)
+add_test(NAME host_test_init_rollback COMMAND test_init_rollback)
 
 add_executable(test_ktime time/test_ktime.c ../../core/kernel/src/time/ktime.c ../../core/hal/common/hal_timer_common.c ../../core/kernel/src/core/cpu_local.c)
 
@@ -339,6 +459,17 @@ target_include_directories(test_runtime_startup PRIVATE
 add_test(NAME host_test_runtime_startup COMMAND test_runtime_startup)
 
 if(BHARAT_BUILD_HOST_TESTS)
+    # VirtIO transport mechanism tests use a synthetic register window. They
+    # exercise no QEMU policy or service-layer device selection.
+    add_executable(test_virtio_mmio
+        drivers/test_virtio_mmio.c
+        ${CMAKE_SOURCE_DIR}/core/drivers/virtio/mmio/virtio_mmio.c
+    )
+    target_include_directories(test_virtio_mmio PRIVATE
+        ${CMAKE_SOURCE_DIR}/core/drivers/virtio/mmio
+    )
+    add_test(NAME host_test_virtio_mmio COMMAND test_virtio_mmio)
+
     # I2C Core Host Tests
     add_executable(test_i2c_registry ${CMAKE_SOURCE_DIR}/core/tests/host/drivers/test_i2c_registry.c ${CMAKE_SOURCE_DIR}/core/drivers/bus/i2c/i2c_core.c ${CMAKE_SOURCE_DIR}/core/drivers/bus/i2c/i2c_registry.c)
     target_include_directories(test_i2c_registry PRIVATE ${CMAKE_SOURCE_DIR}/core/drivers/bus/i2c)
@@ -530,7 +661,7 @@ add_test(NAME host_test_diag_collector COMMAND host_test_diag_collector)
 add_executable(test_bh_seqlock_concurrency
     test_bh_seqlock_concurrency.c
     ../../../core/kernel/src/ds/bh_seqlock.c
-    ../../../core/arch/hal/x86/x86_64/cpu_relax.c
+    ../../../core/arch/x86/x86_64/cpu_relax.c
 )
 target_include_directories(test_bh_seqlock_concurrency PRIVATE
     ../../../core/kernel/include
@@ -538,3 +669,15 @@ target_include_directories(test_bh_seqlock_concurrency PRIVATE
 )
 target_link_libraries(test_bh_seqlock_concurrency PRIVATE pthread)
 add_test(NAME host_test_bh_seqlock_concurrency COMMAND test_bh_seqlock_concurrency)
+
+# Tiny UI Userspace Stack Test
+add_executable(host_test_tiny_ui_stack
+    ../test_tiny_ui_stack.c
+    ../../../core/stacks/ui/lcd/tiny_ui.c
+)
+target_include_directories(host_test_tiny_ui_stack PRIVATE
+    ../../../interface/include
+)
+add_test(NAME host_test_tiny_ui_stack COMMAND host_test_tiny_ui_stack)
+set_tests_properties(host_test_tiny_ui_stack PROPERTIES LABELS "ui")
+

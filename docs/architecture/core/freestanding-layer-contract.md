@@ -33,7 +33,7 @@ The purpose of this contract is to stop architecture drift by making layer bound
 | Layer | Freestanding | Allowed direct dependencies |
 |---|---|---|
 | `core/arch/` | ✅ Yes | `core/arch/` internals only, plus shared include/UAPI contracts |
-| `corecore/hal/` | ✅ Yes | `corecore/hal/`, `core/arch/`, shared include/UAPI contracts |
+| `core/hal/common/` | ✅ Yes | `core/hal/include/`, base/compiler freestanding contracts, shared UAPI contracts |
 | `core/kernel/` | ✅ Yes | `core/kernel/`, `corecore/hal/`, `core/arch/`, core/platform/boot glue, shared include/UAPI contracts |
 | `lib/` | ❌ No (hosted) | `interface/uapi/`, runtime/services abstractions |
 | `core/services/` | ❌ No (hosted) | `lib/`, `interface/uapi/` |
@@ -51,6 +51,11 @@ The purpose of this contract is to stop architecture drift by making layer bound
   - `<stdio.h>`
   - `<stdlib.h>`
   - `<string.h>`
+
+Generic HAL common code must not include architecture or kernel-private headers,
+compile kernel sources, or inherit kernel-private/generated include directories.
+Architectures publish normalized facts and implementations through HAL contracts;
+HAL common never pulls architecture-private state.
 
 ### Hosted layers (`lib/`, `core/services/`, `core/stacks/`, `user/`)
 

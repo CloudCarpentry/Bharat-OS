@@ -1,5 +1,7 @@
 ---
-title: "Kernel production-readiness audit: five architectures, per-core kernel, profiles, and boot trust"
+title:
+  "Kernel production-readiness audit: five architectures, per-core kernel, profiles,
+  and boot trust"
 status: Audited
 owner: Kernel Working Group
 last_updated: 2026-08-08
@@ -10,6 +12,7 @@ tags:
   - memory
   - production-readiness
   - scheduler
+see_also: []
 ---
 
 # Kernel production-readiness audit (2026-08)
@@ -43,16 +46,16 @@ returning success from a placeholder is not implementation evidence.
 A release candidate must satisfy all of the following. Failure of any P0 item
 blocks production claims.
 
-| Area | Required release evidence |
-|---|---|
-| Architecture | Boot, traps, interrupts, timer, context switch, user entry/return, fault-safe usercopy, syscalls, memory protection, SMP where supported, reboot, and crash capture execute on the named target. |
-| Per-core ownership | No remote mutable pointer access; bounded versioned messages; owner/generation validation; idempotent replay; monotonic deadlines; targeted retry; rollback or quarantine; no remote wait under object locks. |
-| Memory | Profile selection is singular and deterministic; runtime hardware validation rejects mismatches; map/protect/unmap and fault paths are real for the selected backend; MPU never pretends to provide paging; TLB completion is proven before reuse. |
-| Scheduling | GP fairness and starvation bounds, RT admission/budget enforcement and bounded latency, and MIX partition/channel isolation are selected from the authoritative profile and tested under overload. |
-| Boot | Every untrusted length, address, count, alignment, overlap, and arithmetic operation is validated before use; W^X and least privilege are established before runtime; loader and handoff ABIs are versioned and tested. |
-| Trust | The complete boot chain is authenticated with real platform keys and anti-rollback; normal and recovery policy fail closed; debug/provisioning require explicit authorization; measurements are genuine and attestable. |
-| Reboot | Capability-authorized userspace request, service quiesce, storage flush, secondary-core rendezvous, watchdog fallback, reason persistence, and cold/warm/emergency paths work on every target. |
-| Assurance | Five required target smoke gates, all-architecture QEMU, host/unit tests, SMP stress, sanitizers/static analysis, fuzzing, fault injection, reproducible builds, signed artifacts, SBOM, and release provenance pass from a clean tree. |
+| Area               | Required release evidence                                                                                                                                                                                                                          |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Architecture       | Boot, traps, interrupts, timer, context switch, user entry/return, fault-safe usercopy, syscalls, memory protection, SMP where supported, reboot, and crash capture execute on the named target.                                                   |
+| Per-core ownership | No remote mutable pointer access; bounded versioned messages; owner/generation validation; idempotent replay; monotonic deadlines; targeted retry; rollback or quarantine; no remote wait under object locks.                                      |
+| Memory             | Profile selection is singular and deterministic; runtime hardware validation rejects mismatches; map/protect/unmap and fault paths are real for the selected backend; MPU never pretends to provide paging; TLB completion is proven before reuse. |
+| Scheduling         | GP fairness and starvation bounds, RT admission/budget enforcement and bounded latency, and MIX partition/channel isolation are selected from the authoritative profile and tested under overload.                                                 |
+| Boot               | Every untrusted length, address, count, alignment, overlap, and arithmetic operation is validated before use; W^X and least privilege are established before runtime; loader and handoff ABIs are versioned and tested.                            |
+| Trust              | The complete boot chain is authenticated with real platform keys and anti-rollback; normal and recovery policy fail closed; debug/provisioning require explicit authorization; measurements are genuine and attestable.                            |
+| Reboot             | Capability-authorized userspace request, service quiesce, storage flush, secondary-core rendezvous, watchdog fallback, reason persistence, and cold/warm/emergency paths work on every target.                                                     |
+| Assurance          | Five required target smoke gates, all-architecture QEMU, host/unit tests, SMP stress, sanitizers/static analysis, fuzzing, fault injection, reproducible builds, signed artifacts, SBOM, and release provenance pass from a clean tree.            |
 
 ## 3. Critical findings
 
@@ -211,21 +214,21 @@ and recovery selection.
 
 ## 4. Capability matrix: evidence versus required state
 
-| Target | Current evidence | Principal blockers | Production exit |
-|---|---|---|---|
-| x86_64 | Baseline boot/trap/syscall/MMU/SMP is declared; Multiboot2/Q35 target exists. | Secure boot is placeholder-grade; reset is minimal; SMP ownership, loader hardening, IOMMU, negative boot tests, and hardware qualification are incomplete. | Full GP/MMU/SMP suite, real UEFI/TPM or platform trust path, AP fault injection, VT-d where claimed, controlled reboot, and two representative hardware platforms. |
-| arm64 | Baseline boot/trap/syscall/MMU and partial SMP are declared; Linux/FDT handoff exists. | Partial SMP; placeholder EL3/TrustZone verification and isolation; incomplete SMMU; boot handoff and PSCI reset need end-to-end qualification. | GIC/PSCI SMP stress, real verified-boot integration, SMMU isolation, GP/RT/MIX tests, reboot/panic, and two SoCs/boards. |
-| riscv64 | Baseline boot/MMU and partial syscall/SMP are declared; OpenSBI target exists. | Syscall and SMP partial; fixed fake measurement accepted; PMP/IOPMP secure operations are placeholders; SBI version/extension variance is not qualified. | Generated syscall ABI, SBI capability gating, SMP/shootdown stress, real root-of-trust/PMP enforcement, reboot, and QEMU plus hardware. |
-| arm32 | Partial boot, stub trap, unsupported syscall, scaffold MMU, no SMP; MMU-lite and MPU YAML exist. | Fundamental privilege, fault, isolation, reset, and user ABI paths incomplete. | Complete uniprocessor MMU-lite and MPU ports first; execute all negative memory/trap/syscall/reboot tests; add SMP only as a separate board capability. |
-| riscv32 | Partial boot, stub trap, unsupported syscall, scaffold MMU, no SMP; MMU-lite and MPU YAML exist. | Fundamental privilege, fault, isolation, user ABI, PMP, and reset qualification incomplete. | Complete RV32 privilege/trap/syscall, Sv32 MMU-lite, PMP MPU, timer/PLIC, reset, and QEMU/hardware validation. |
+| Target  | Current evidence                                                                                 | Principal blockers                                                                                                                                          | Production exit                                                                                                                                                    |
+| ------- | ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| x86_64  | Baseline boot/trap/syscall/MMU/SMP is declared; Multiboot2/Q35 target exists.                    | Secure boot is placeholder-grade; reset is minimal; SMP ownership, loader hardening, IOMMU, negative boot tests, and hardware qualification are incomplete. | Full GP/MMU/SMP suite, real UEFI/TPM or platform trust path, AP fault injection, VT-d where claimed, controlled reboot, and two representative hardware platforms. |
+| arm64   | Baseline boot/trap/syscall/MMU and partial SMP are declared; Linux/FDT handoff exists.           | Partial SMP; placeholder EL3/TrustZone verification and isolation; incomplete SMMU; boot handoff and PSCI reset need end-to-end qualification.              | GIC/PSCI SMP stress, real verified-boot integration, SMMU isolation, GP/RT/MIX tests, reboot/panic, and two SoCs/boards.                                           |
+| riscv64 | Baseline boot/MMU and partial syscall/SMP are declared; OpenSBI target exists.                   | Syscall and SMP partial; fixed fake measurement accepted; PMP/IOPMP secure operations are placeholders; SBI version/extension variance is not qualified.    | Generated syscall ABI, SBI capability gating, SMP/shootdown stress, real root-of-trust/PMP enforcement, reboot, and QEMU plus hardware.                            |
+| arm32   | Partial boot, stub trap, unsupported syscall, scaffold MMU, no SMP; MMU-lite and MPU YAML exist. | Fundamental privilege, fault, isolation, reset, and user ABI paths incomplete.                                                                              | Complete uniprocessor MMU-lite and MPU ports first; execute all negative memory/trap/syscall/reboot tests; add SMP only as a separate board capability.            |
+| riscv32 | Partial boot, stub trap, unsupported syscall, scaffold MMU, no SMP; MMU-lite and MPU YAML exist. | Fundamental privilege, fault, isolation, user ABI, PMP, and reset qualification incomplete.                                                                 | Complete RV32 privilege/trap/syscall, Sv32 MMU-lite, PMP MPU, timer/PLIC, reset, and QEMU/hardware validation.                                                     |
 
 ## 5. Memory-profile findings
 
-| Model | Present baseline | Production gap and fail-closed rule |
-|---|---|---|
-| MMU-full | Backend-neutral page-table and VM contracts exist for the 64-bit tier. | Prove map/protect/unmap atomicity, ASID/PCID lifecycle, W^X, user/kernel separation, TLB ACK-before-reuse, OOM rollback, huge-page alignment, COW/demand-fault races, and IOMMU independence. Never advertise IOMMU when the programming backend is a stub. |
-| MMU-lite | Targets disable demand paging/COW/shared memory but currently set `BHARAT_ENABLE_ADVANCED_VM: ON`, an ambiguity that should be eliminated by generated capability rules. | Define the exact supported operation set; reject rich VM requests with `K_ERR_UNSUPPORTED`; prove Sv32/ARM short-descriptor permission and cache/TLB behavior, bounded metadata, no allocation in RT fault paths, and 32-bit overflow safety. |
-| MPU | arm32/riscv32 RT targets exist and select region-only intent. | Prove actual region programming, default-deny background region, executable/write separation, priority/overlap semantics, context-switch reprogramming bounds, region exhaustion, alignment/rounding, stack guards, and rollback. No page API may return success on MPU. |
+| Model    | Present baseline                                                                                                                                                         | Production gap and fail-closed rule                                                                                                                                                                                                                                      |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| MMU-full | Backend-neutral page-table and VM contracts exist for the 64-bit tier.                                                                                                   | Prove map/protect/unmap atomicity, ASID/PCID lifecycle, W^X, user/kernel separation, TLB ACK-before-reuse, OOM rollback, huge-page alignment, COW/demand-fault races, and IOMMU independence. Never advertise IOMMU when the programming backend is a stub.              |
+| MMU-lite | Targets disable demand paging/COW/shared memory but currently set `BHARAT_ENABLE_ADVANCED_VM: ON`, an ambiguity that should be eliminated by generated capability rules. | Define the exact supported operation set; reject rich VM requests with `K_ERR_UNSUPPORTED`; prove Sv32/ARM short-descriptor permission and cache/TLB behavior, bounded metadata, no allocation in RT fault paths, and 32-bit overflow safety.                            |
+| MPU      | arm32/riscv32 RT targets exist and select region-only intent.                                                                                                            | Prove actual region programming, default-deny background region, executable/write separation, priority/overlap semantics, context-switch reprogramming bounds, region exhaustion, alignment/rounding, stack guards, and rollback. No page API may return success on MPU. |
 
 Required cross-product qualification is not every theoretical combination. It is
 the set emitted by the authoritative target matrix, with at least: MMU-full + GP
@@ -333,14 +336,14 @@ reviewed, immutable, and tied to the exact source/toolchain/artifacts.
 
 The minimum continuous matrix is:
 
-| Axis | Required values |
-|---|---|
-| ISA | x86_64, arm64, arm32, riscv64, riscv32 |
-| Protection | MMU-full (64-bit), MMU-lite (32-bit and declared 64-bit variants), MPU (arm32/riscv32) |
-| Scheduler | GP, RT, MIX where the target descriptor allows it; rejection for forbidden combinations |
-| CPU | UP for all; SMP for x86_64/arm64/riscv64 and any explicitly SMP-capable 32-bit board |
-| Boot | normal, recovery, update, corrupted image, rollback, missing firmware data, malformed handoff |
-| Reset | clean warm/cold, emergency/panic, watchdog, lost secondary core, repeated boot failure |
+| Axis       | Required values                                                                               |
+| ---------- | --------------------------------------------------------------------------------------------- |
+| ISA        | x86_64, arm64, arm32, riscv64, riscv32                                                        |
+| Protection | MMU-full (64-bit), MMU-lite (32-bit and declared 64-bit variants), MPU (arm32/riscv32)        |
+| Scheduler  | GP, RT, MIX where the target descriptor allows it; rejection for forbidden combinations       |
+| CPU        | UP for all; SMP for x86_64/arm64/riscv64 and any explicitly SMP-capable 32-bit board          |
+| Boot       | normal, recovery, update, corrupted image, rollback, missing firmware data, malformed handoff |
+| Reset      | clean warm/cold, emergency/panic, watchdog, lost secondary core, repeated boot failure        |
 
 Every run must emit machine-readable evidence containing source revision, dirty
 state, target descriptor digest, compiler/linker/emulator or board firmware
@@ -349,23 +352,23 @@ decision, test IDs, duration, and result. A skipped row is BLOCKED, not PASS.
 
 ## 8. Architecture and security invariants for implementation
 
-* Mutable state has one owner core; ownership transfer is generation-checked and
+- Mutable state has one owner core; ownership transfer is generation-checked and
   commits exactly once.
-* Cross-core structures are fixed-width, versioned, bounded, pointer-free, and
+- Cross-core structures are fixed-width, versioned, bounded, pointer-free, and
   compile-time layout asserted.
-* No runqueue, address-space, capability-table, PMM, or object lock is held while
+- No runqueue, address-space, capability-table, PMM, or object lock is held while
   waiting for another core.
-* Timeouts use monotonic HAL time; retry is bounded and targets only missing
+- Timeouts use monotonic HAL time; retry is bounded and targets only missing
   participants; replay is idempotent.
-* Destruction enters `DYING`; new mutations are rejected; irreconcilable partial
+- Destruction enters `DYING`; new mutations are rejected; irreconcilable partial
   failure quarantines the object.
-* Hardware truth comes from HAL/platform discovery and is checked against, not
+- Hardware truth comes from HAL/platform discovery and is checked against, not
   invented by, the compile-time profile.
-* Unsupported protection, trust, scheduler, loader, or reset operations fail
+- Unsupported protection, trust, scheduler, loader, or reset operations fail
   closed with a canonical status.
-* Capability validation covers object type, rights, scope, owner, generation,
+- Capability validation covers object type, rights, scope, owner, generation,
   liveness, and post-usercopy embedded handles.
-* No executable content runs before authentication and policy acceptance; no
+- No executable content runs before authentication and policy acceptance; no
   writable mapping remains executable after relocation.
 
 ## 9. Documentation impact and audit limitations

@@ -8,20 +8,22 @@ static const init_profile_policy_t g_default_policy = {
     .strict_core_deadlines = false,
     .quiesce_after_handoff = false,
     .allow_optional_failure = true,
+    .handoff_retry_count = 1,
+    .handoff_timeout_ms = 2000,
 };
 
-static const init_profile_policy_t g_policy_tiny = { .name = "tiny", .strict_core_deadlines = false, .quiesce_after_handoff = false, .allow_optional_failure = true };
-static const init_profile_policy_t g_policy_small = { .name = "small", .strict_core_deadlines = false, .quiesce_after_handoff = false, .allow_optional_failure = true };
-static const init_profile_policy_t g_policy_embedded_rich = { .name = "embedded_rich", .strict_core_deadlines = true, .quiesce_after_handoff = true, .allow_optional_failure = true };
-static const init_profile_policy_t g_policy_rt = { .name = "rt", .strict_core_deadlines = true, .quiesce_after_handoff = false, .allow_optional_failure = true };
-static const init_profile_policy_t g_policy_mobile = { .name = "mobile", .strict_core_deadlines = true, .quiesce_after_handoff = true, .allow_optional_failure = true };
-static const init_profile_policy_t g_policy_desktop = { .name = "desktop", .strict_core_deadlines = false, .quiesce_after_handoff = false, .allow_optional_failure = true };
-static const init_profile_policy_t g_policy_drone = { .name = "drone", .strict_core_deadlines = true, .quiesce_after_handoff = true, .allow_optional_failure = false };
-static const init_profile_policy_t g_policy_cloud = { .name = "cloud", .strict_core_deadlines = true, .quiesce_after_handoff = true, .allow_optional_failure = true };
-static const init_profile_policy_t g_policy_automotive = { .name = "automotive", .strict_core_deadlines = true, .quiesce_after_handoff = true, .allow_optional_failure = true };
-static const init_profile_policy_t g_policy_tv = { .name = "tv", .strict_core_deadlines = false, .quiesce_after_handoff = true, .allow_optional_failure = true };
-static const init_profile_policy_t g_policy_appliance = { .name = "appliance", .strict_core_deadlines = true, .quiesce_after_handoff = true, .allow_optional_failure = false };
-static const init_profile_policy_t g_policy_watch = { .name = "watch", .strict_core_deadlines = true, .quiesce_after_handoff = true, .allow_optional_failure = true };
+static const init_profile_policy_t g_policy_tiny = { .name = "tiny", .strict_core_deadlines = false, .quiesce_after_handoff = false, .allow_optional_failure = true, .handoff_retry_count = 2, .handoff_timeout_ms = 2000 };
+static const init_profile_policy_t g_policy_small = { .name = "small", .strict_core_deadlines = false, .quiesce_after_handoff = false, .allow_optional_failure = true, .handoff_retry_count = 2, .handoff_timeout_ms = 2000 };
+static const init_profile_policy_t g_policy_embedded_rich = { .name = "embedded_rich", .strict_core_deadlines = true, .quiesce_after_handoff = true, .allow_optional_failure = true, .handoff_retry_count = 2, .handoff_timeout_ms = 2000 };
+static const init_profile_policy_t g_policy_rt = { .name = "rt", .strict_core_deadlines = true, .quiesce_after_handoff = false, .allow_optional_failure = true, .handoff_retry_count = 2, .handoff_timeout_ms = 2000 };
+static const init_profile_policy_t g_policy_mobile = { .name = "mobile", .strict_core_deadlines = true, .quiesce_after_handoff = true, .allow_optional_failure = true, .handoff_retry_count = 2, .handoff_timeout_ms = 2000 };
+static const init_profile_policy_t g_policy_desktop = { .name = "desktop", .strict_core_deadlines = false, .quiesce_after_handoff = false, .allow_optional_failure = true, .handoff_retry_count = 2, .handoff_timeout_ms = 2000 };
+static const init_profile_policy_t g_policy_drone = { .name = "drone", .strict_core_deadlines = true, .quiesce_after_handoff = true, .allow_optional_failure = false, .handoff_retry_count = 3, .handoff_timeout_ms = 2000 };
+static const init_profile_policy_t g_policy_cloud = { .name = "cloud", .strict_core_deadlines = true, .quiesce_after_handoff = true, .allow_optional_failure = true, .handoff_retry_count = 2, .handoff_timeout_ms = 2000 };
+static const init_profile_policy_t g_policy_automotive = { .name = "automotive", .strict_core_deadlines = true, .quiesce_after_handoff = true, .allow_optional_failure = true, .handoff_retry_count = 2, .handoff_timeout_ms = 2000 };
+static const init_profile_policy_t g_policy_tv = { .name = "tv", .strict_core_deadlines = false, .quiesce_after_handoff = true, .allow_optional_failure = true, .handoff_retry_count = 2, .handoff_timeout_ms = 2000 };
+static const init_profile_policy_t g_policy_appliance = { .name = "appliance", .strict_core_deadlines = true, .quiesce_after_handoff = true, .allow_optional_failure = false, .handoff_retry_count = 3, .handoff_timeout_ms = 2000 };
+static const init_profile_policy_t g_policy_watch = { .name = "watch", .strict_core_deadlines = true, .quiesce_after_handoff = true, .allow_optional_failure = true, .handoff_retry_count = 2, .handoff_timeout_ms = 2000 };
 
 const init_profile_policy_t *init_profile_get_policy(init_profile_t profile) {
     switch (profile) {
@@ -93,30 +95,29 @@ void init_profile_get_context(init_boot_context_t *ctx) {
     ctx->kernel_health.failed_selftest_mask = 0;
     ctx->kernel_health.degraded_feature_mask = 0;
 
-#if defined(BHARAT_INIT_PROFILE_TINY)
+#if defined(BHARAT_INIT_PROFILE_SELECT_TINY)
     ctx->profile = INIT_PROFILE_TINY;
-#elif defined(BHARAT_INIT_PROFILE_SMALL)
+#elif defined(BHARAT_INIT_PROFILE_SELECT_SMALL)
     ctx->profile = INIT_PROFILE_SMALL;
-#elif defined(BHARAT_INIT_PROFILE_EMBEDDED_RICH)
+#elif defined(BHARAT_INIT_PROFILE_SELECT_EMBEDDED_RICH)
     ctx->profile = INIT_PROFILE_EMBEDDED_RICH;
-#elif defined(BHARAT_INIT_PROFILE_MOBILE)
+#elif defined(BHARAT_INIT_PROFILE_SELECT_MOBILE)
     ctx->profile = INIT_PROFILE_MOBILE;
-#elif defined(BHARAT_INIT_PROFILE_DESKTOP)
+#elif defined(BHARAT_INIT_PROFILE_SELECT_DESKTOP)
     ctx->profile = INIT_PROFILE_DESKTOP;
-#elif defined(BHARAT_INIT_PROFILE_DRONE)
+#elif defined(BHARAT_INIT_PROFILE_SELECT_DRONE)
     ctx->profile = INIT_PROFILE_DRONE;
-#elif defined(BHARAT_INIT_PROFILE_CLOUD)
+#elif defined(BHARAT_INIT_PROFILE_SELECT_CLOUD)
     ctx->profile = INIT_PROFILE_CLOUD;
-#elif defined(BHARAT_INIT_PROFILE_AUTOMOTIVE)
+#elif defined(BHARAT_INIT_PROFILE_SELECT_AUTOMOTIVE)
     ctx->profile = INIT_PROFILE_AUTOMOTIVE;
-#elif defined(BHARAT_INIT_PROFILE_TV)
+#elif defined(BHARAT_INIT_PROFILE_SELECT_TV)
     ctx->profile = INIT_PROFILE_TV;
-#elif defined(BHARAT_INIT_PROFILE_APPLIANCE)
+#elif defined(BHARAT_INIT_PROFILE_SELECT_APPLIANCE)
     ctx->profile = INIT_PROFILE_APPLIANCE;
-#elif defined(BHARAT_INIT_PROFILE_WATCH)
+#elif defined(BHARAT_INIT_PROFILE_SELECT_WATCH)
     ctx->profile = INIT_PROFILE_WATCH;
-#elif defined(BHARAT_DEFAULT_INIT_PROFILE)
-    // Fallback if built with BHARAT_DEFAULT_INIT_PROFILE string definition
+#else
     ctx->profile = INIT_PROFILE_DESKTOP;
 #endif
 

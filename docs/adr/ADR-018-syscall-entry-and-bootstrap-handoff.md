@@ -1,3 +1,13 @@
+---
+title: Adr 018 Syscall Entry And Bootstrap Handoff
+status: Draft
+owner: Docs Team
+last_updated: "2026-08-08"
+tags:
+  - docs
+see_also: []
+---
+
 # ADR-018: Normalize syscall entry and bound bootstrap handoff failure
 
 ## Status
@@ -7,23 +17,23 @@ Accepted
 ## Context
 
 The x86_64 `SYSCALL` stub called the two-argument common syscall gate with only
-the trap-frame argument.  The uninitialized trap metadata caused native calls
+the trap-frame argument. The uninitialized trap metadata caused native calls
 to fail before dispatch, so `services/init` entered user mode but could not
-publish boot evidence.  In addition, headless and small-device packages do not
+publish boot evidence. In addition, headless and small-device packages do not
 currently contain a separately launchable `servicemgr`; treating its absence as
 an unbounded init failure made an otherwise healthy GP boot time out.
 
 ## Decision
 
 Architecture syscall stubs enter the common gate through a fixed-signature C
-bridge which creates complete, user-origin syscall metadata.  Native `write`
+bridge which creates complete, user-origin syscall metadata. Native `write`
 uses the implicit current-process authority for the bootstrap console path;
 pointer data remains bounded and fault-safe copied by the handler.
 
 The manifest-driven init service still attempts the versioned servicemgr
-handoff.  If discovery reports that no supervisor is packaged, profiles without
+handoff. If discovery reports that no supervisor is packaged, profiles without
 strict core deadlines publish `HANDOFF_DEFERRED`, retain a degraded quiescent
-bootstrap authority, and may report a stable service graph.  RT and safety
+bootstrap authority, and may report a stable service graph. RT and safety
 profiles remain fail-closed: rejection, timeout, malformed replies, and missing
 supervisors are fatal handoff failures.
 

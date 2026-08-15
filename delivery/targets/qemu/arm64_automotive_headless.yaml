@@ -37,7 +37,7 @@ package:
 
 run:
   backend: qemu
-  machine: virt
+  machine: "virt,gic-version=3"
   cpu: cortex-a57
   memory: 512M
   nographic: true
@@ -45,8 +45,6 @@ run:
     - stdio
   boot_artifact: kernel/kernel.elf
   extra_args:
-    - "-machine"
-    - "virt,gic-version=3"
     - "-d"
     - "guest_errors,unimp"
 

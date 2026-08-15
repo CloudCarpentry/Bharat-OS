@@ -1,3 +1,13 @@
+---
+title: Ai_Agent_Workflow
+status: Draft
+owner: Docs Team
+last_updated: "2026-08-08"
+tags:
+  - docs
+see_also: []
+---
+
 # Bharat-OS AI Agent Workflow
 
 ## Purpose
@@ -6,13 +16,13 @@ This guide explains how repository instructions are mapped across coding agents 
 
 ## Canonical and adapter files
 
-| Tool | File(s) | Role |
-|---|---|---|
-| Google Jules | `/AGENTS.md` | Jules automatically loads the root repository guidance. |
-| OpenAI Codex | `/AGENTS.md` plus scoped `AGENTS.md` | Codex layers instructions from root toward the working directory. |
-| Gemini CLI / Gemini Code Assist | `/GEMINI.md` | Thin pointer to the canonical rules plus Gemini-specific context. |
-| Google Antigravity | `/.agents/AGENTS.md`, `/.agents/agents.md`, `/.agents/skills/`, `/.agents/workflows/` | Persistent rules, roles, on-demand skills, and slash workflows. |
-| GitHub Copilot | `/.github/copilot-instructions.md`, `/.github/instructions/*.instructions.md` | Repository-wide and path-specific guidance. |
+| Tool                            | File(s)                                                                               | Role                                                              |
+| ------------------------------- | ------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Google Jules                    | `/AGENTS.md`                                                                          | Jules automatically loads the root repository guidance.           |
+| OpenAI Codex                    | `/AGENTS.md` plus scoped `AGENTS.md`                                                  | Codex layers instructions from root toward the working directory. |
+| Gemini CLI / Gemini Code Assist | `/GEMINI.md`                                                                          | Thin pointer to the canonical rules plus Gemini-specific context. |
+| Google Antigravity              | `/.agents/AGENTS.md`, `/.agents/agents.md`, `/.agents/skills/`, `/.agents/workflows/` | Persistent rules, roles, on-demand skills, and slash workflows.   |
+| GitHub Copilot                  | `/.github/copilot-instructions.md`, `/.github/instructions/*.instructions.md`         | Repository-wide and path-specific guidance.                       |
 
 The root `AGENTS.md` is the constitution. Tool adapters should summarize and link to it rather than copy the entire document.
 

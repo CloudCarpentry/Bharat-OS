@@ -15,18 +15,18 @@ typedef struct {
 } tlb_pending_entry_t;
 
 typedef struct {
-    uint64_t requests_issued;
-    uint64_t targets_total;
-    uint64_t acks_received;
-    uint64_t stale_acks;
-    uint64_t allocation_failures;
-    uint64_t fallback_count;
-    uint64_t duplicate_acks;
-    uint64_t retries;
-    uint64_t timeouts;
-    uint64_t send_failures;
-    uint64_t partial_completions;
-    uint64_t legacy_fallback_usage;
+    uint32_t requests_issued;
+    uint32_t targets_total;
+    uint32_t acks_received;
+    uint32_t stale_acks;
+    uint32_t allocation_failures;
+    uint32_t fallback_count;
+    uint32_t duplicate_acks;
+    uint32_t retries;
+    uint32_t timeouts;
+    uint32_t send_failures;
+    uint32_t partial_completions;
+    uint32_t legacy_fallback_usage;
 } tlb_pending_stats_t;
 
 // Encodes request ID from component pieces.

@@ -29,8 +29,8 @@ typedef bharat_status_t bharat_ipc_contract_status_t;
 
 /* IPC-facing aliases for transport and endpoint failures. */
 #define BHARAT_IPC_STATUS_ERR_TIMEOUT      BHARAT_STATUS_ERR_INTERNAL
-#define BHARAT_IPC_STATUS_ERR_BUSY         BHARAT_STATUS_ERR_UNSUPPORTED
-#define BHARAT_IPC_STATUS_ERR_INVALID      BHARAT_STATUS_ERR_DECODE
+#define BHARAT_IPC_STATUS_ERR_BUSY         BHARAT_STATUS_ERR_BUSY
+#define BHARAT_IPC_STATUS_ERR_INVALID      BHARAT_STATUS_ERR_INVALID_ARG
 #define BHARAT_IPC_STATUS_ERR_ENDPOINT     BHARAT_STATUS_ERR_NOT_FOUND
 
 #ifdef __cplusplus

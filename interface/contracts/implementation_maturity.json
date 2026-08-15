@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "implementations": [
+    {
+      "id": "process_manager.authority_backend",
+      "maturity": "PARTIAL",
+      "sources": ["core/services/process_manager/process_manager.c"],
+      "evidence": "The default kernel authority operations return ERR_UNSUPPORTED without publishing synthetic identifiers; complete test adapters may be registered during startup. A production kernel adapter is not installed yet."
+    },
+    {
+      "id": "vm_manager.authority_backend",
+      "maturity": "PARTIAL",
+      "sources": ["core/services/vm_manager/vm_manager.c"],
+      "evidence": "The default VM authority operations return ERR_UNSUPPORTED without publishing synthetic spaces or mappings; complete test adapters may be registered during startup. A production VM authority adapter is not installed yet."
+    },
+    {
+      "id": "filesystem.service",
+      "maturity": "PARTIAL",
+      "sources": ["core/services/system/filesystem"],
+      "evidence": "In-memory VFS mechanisms exist, but the service request loop and persistent backend integration are incomplete."
+    },
+    {
+      "id": "devmgr.service",
+      "maturity": "PARTIAL",
+      "sources": ["core/services/devmgr/main.c"],
+      "evidence": "The service exits after placeholder initialization and does not process lifecycle events."
+    },
+    {
+      "id": "personality.linux_compat",
+      "maturity": "PARTIAL",
+      "sources": ["core/personalities/compat/linux"],
+      "evidence": "A guarded translation subset exists; the compatibility surface is incomplete."
+    },
+    {
+      "id": "personality.android_compat",
+      "maturity": "PARTIAL",
+      "sources": ["core/personalities/compat/android"],
+      "evidence": "A guarded compatibility subset exists; Binder and syscall coverage remain incomplete."
+    },
+    {
+      "id": "personality.windows_compat",
+      "maturity": "PARTIAL",
+      "sources": ["core/personalities/compat/windows"],
+      "evidence": "The personality is a compatibility placeholder without a production implementation."
+    }
+  ]
+}

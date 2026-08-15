@@ -15,6 +15,23 @@ from tools.build.validators import validate_resolved_target
 from tools.build.build_executor import make_build_plan, execute_build
 from tools.package.packager import make_package_plan, execute_package
 from tools.run.runner_qemu import run_qemu
+from tools.check_implementation_maturity import check_manifest, load_manifest
+
+
+def validate_implementation_maturity(target, repo_root):
+    """Gate every build plan before the linker can consume placeholder code."""
+    preset = target.build.cmake_preset.upper()
+    inferred_profile = "HARDENED" if "HARDENED" in preset else "RELEASE" if "RELEASE" in preset else "DEVELOPMENT"
+    allowed = set()
+    policy = getattr(target, "implementation_maturity", None)
+    profile = policy.profile if policy and policy.profile else inferred_profile
+    if policy:
+        allowed.update(policy.allow)
+    manifest_path = repo_root / "interface/contracts/implementation_maturity.json"
+    errors = check_manifest(load_manifest(manifest_path), profile, allowed, repo_root)
+    if errors:
+        details = "\n".join(f"  - {error}" for error in errors)
+        raise ValueError(f"implementation maturity gate rejected {target.name} ({profile}):\n{details}")
 
 def load_existing_build_outputs(target, repo_root):
     from tools.build.models import BuildOutputs, ArtifactRecord
@@ -53,9 +70,17 @@ def main() -> int:
 
     validate_resolved_target(target, repo_root)
 
+    if args.command in ("configure", "build", "all"):
+        try:
+            validate_implementation_maturity(target, repo_root)
+        except ValueError as exc:
+            print(f"ERROR: {exc}")
+            return 1
+
     build_outputs = None
     if args.command in ("configure", "build", "all"):
-        build_plan = make_build_plan(target, repo_root)
+        build_mode = getattr(args, "mode", None)
+        build_plan = make_build_plan(target, repo_root, build_mode=build_mode)
         build_outputs = execute_build(build_plan, repo_root)
     else:
         build_outputs = load_existing_build_outputs(target, repo_root)

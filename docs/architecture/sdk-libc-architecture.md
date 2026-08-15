@@ -11,6 +11,26 @@ see_also:
 ---
 # Bharat-OS SDK and Libc Architecture
 
+## SDK v0.1 developer lane
+
+The independently buildable SDK lives at `interface/sdk/`. Its public C surface
+is `interface/sdk/include/bharat`, while implementations remain in the SDK's
+private `lib/` tree. This placement keeps developer experience work above the
+native UAPI and service contracts and prevents kernel implementation details
+from becoming application dependencies.
+
+Version 0.1 deliberately separates **source availability** from **native target
+availability**. The hosted backend implements console/logging, monotonic time,
+sleep, exit, and system information. Process/thread, endpoint IPC, devices,
+sensors, accelerators, and capability management return the canonical SDK
+`BH_ERR_UNSUPPORTED` status until a stable native binding is integrated. This
+fail-closed rule prevents examples from making unsupported runtime claims.
+
+All SDK handles and capabilities are fixed-width opaque values. The SDK does not
+own kernel objects or maintain a shared mutable object registry. Native backends
+must use generated syscall identifiers or versioned service contracts, preserve
+capability authority checks, and may not include kernel-private headers.
+
 For edge devices, drones, gateways, robotics nodes, and appliance-class systems, the winning move is not "full desktop POSIX first". The winning move is:
 
 1. **Small, deterministic libc first**
@@ -41,7 +61,7 @@ With a real SDK:
 
 ## The 3-Layer Design
 
-This architecture is designed as **3 layers**, not one giant "POSIX support" blob. Do **not** hardcode POSIX semantics into the kernel. Keep the kernel capability-oriented and message-driven. Let libc/personality adapt POSIX semantics onto Bharat-OS primitives.
+This architecture is designed as **3 layers**, not one giant "POSIX support" blob. Do **not** hardcode POSIX semantics into the kernel. Keep the kernel capability-oriented and message-driven. Let libc/libposix adapt POSIX source APIs and semantics onto Bharat-OS primitives; reserve personalities for foreign binary ABIs such as Linux.
 
 ### 1. Core SDK libc/runtime
 * C runtime (`crt0`)
@@ -59,10 +79,15 @@ This architecture is designed as **3 layers**, not one giant "POSIX support" blo
 * Sockets shim (later)
 * Termios minimal or stubbed at first
 
+This is a portability library, not a POSIX kernel personality. Its calls flow
+through the Bharat native API to native syscalls or capability-scoped service
+IPC; it does not allocate a POSIX raw syscall-number namespace.
+
 ### 3. Personality compatibility
 * Linux personality first
 * Optional embedded/RT personality
-* "Micro-POSIX" profile for drones/edge
+* POSIX library profiles may be selected for drones/edge without changing the
+  native kernel ABI personality
 * Subsystem personalities aligned with the multikernel direction
 
 ---

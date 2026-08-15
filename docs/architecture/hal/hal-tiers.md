@@ -28,21 +28,21 @@ To ensure build truthfulness and prevent the "illusion of completeness," Bharat-
 
 | Architecture | Tier | Notes |
 | :--- | :--- | :--- |
-| x86_64 | Tier 3 | Active development target. |
-| arm64 | Tier 3 | Active development target. |
-| riscv64 | Tier 3 | Active development target. |
-| arm32 | Tier 2 | Reaches early boot. |
-| riscv32 | Tier 2 | Reaches early boot. |
-| ARC32 | Tier 1 | Build-supported scaffold. |
-| TriCore | Tier 0 | Roadmap scaffold. |
-| Renesas RX | Tier 0 | Roadmap scaffold. |
+| x86_64 | Tier 3 | Active development target (`BHARAT_ARCH_HAS_COMPLETE_USERSPACE`). |
+| arm64 | Tier 3 | Active development target (`BHARAT_ARCH_HAS_COMPLETE_USERSPACE`). |
+| riscv64 | Tier 3 | Active development target (`BHARAT_ARCH_HAS_COMPLETE_USERSPACE`). |
+| arm32 | Tier 2 | Reaches early boot, userspace supported but hardware constraints apply. |
+| riscv32 | Tier 2 | Reaches early boot, userspace supported but hardware constraints apply. |
+| ARC32 | Tier 1 | Build-supported scaffold (`core/arch/arc/`). |
+| TriCore | Tier 1 | Scaffold available (`core/arch/tricore/`). |
+| Renesas RX | Tier 1 | Scaffold available (`core/arch/rx/`). |
+| SHAKTI | Tier 1 | Scaffold available (`core/arch/shakti/`). |
 
-## Implementation Rules
+## Implementation Rules (IMPLEMENTED)
 
 1.  **Fail Closed**: Unsupported HAL operations must return `K_ERR_UNSUPPORTED` (or `BH_ERR_UNSUPPORTED`), never success.
 2.  **Honest Reporting**: `hal_get_arch_capabilities()` must report the true Tier and available features.
 3.  **Separation**:
     -   `core/arch/<isa>/`: ISA-specific mechanics (registers, context switch).
-    -   `core/arch/hal/<isa>/`: Architecture-specific implementation of HAL contracts.
-    -   `core/hal/`: Architecture-neutral contracts and common helpers.
+    -   `core/hal/`: Architecture-neutral contracts and common helpers (`core/hal/include/hal/`, `core/hal/mmu/`, `core/hal/mmu_lite/`, `core/hal/prot/`).
     -   `core/platform/`: Board and SoC-specific wiring.

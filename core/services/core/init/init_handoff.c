@@ -1,5 +1,6 @@
 #include "init_handoff.h"
 #include "init_contract.h"
+#include "init_profile.h"
 #include <bharat/namesvc/client.h>
 #include <bharat/uapi/servicemgr/contract.h>
 #include <bharat/uapi/servicemgr/handoff.h>
@@ -25,10 +26,10 @@ int init_handoff_to_supervisor(const init_boot_context_t *ctx, struct init_runti
 
     // Prepare bootstrap capability for transfer
     bharat_handle_t bootstrap_cap = bharat_runtime_get_bootstrap_cap();
-    if (!bharat_cap_is_valid(bootstrap_cap)) {
-        // Fallback for host/unit tests
-        bootstrap_cap = 0x40u;
-    }
+    if (!bharat_cap_is_valid(bootstrap_cap)) return -EPERM;
+
+    const init_profile_policy_t *policy = init_profile_get_policy(ctx->profile);
+    const uint32_t timeout_ms = policy->handoff_timeout_ms;
 
     // 2. Send SM_OP_HANDOFF_BEGIN
     bharat_ipc_msg_header_t req_hdr = {
@@ -71,7 +72,8 @@ int init_handoff_to_supervisor(const init_boot_context_t *ctx, struct init_runti
     sm_handoff_resp_t resp = {0};
 
     bharat_runtime_log("services/init: Sending HANDOFF_BEGIN...");
-    int32_t call_status = bharat_ipc_call_ex(sm_ep, &req_hdr, &begin, &rep_hdr, &resp, sizeof(resp), 2000);
+    int32_t call_status = bharat_ipc_call_ex(sm_ep, &req_hdr, &begin, &rep_hdr,
+                                             &resp, sizeof(resp), timeout_ms);
     if (call_status != BHARAT_IPC_STATUS_OK || resp.status != BHARAT_IPC_STATUS_OK) {
         bharat_runtime_log("services/init: HANDOFF_BEGIN rejected or failed.");
         return -EIO;
@@ -114,7 +116,8 @@ int init_handoff_to_supervisor(const init_boot_context_t *ctx, struct init_runti
             srec.process_id = (uint32_t)sr->desc->id; // Assign non-zero process ID for adoption
         }
 
-        call_status = bharat_ipc_call_ex(sm_ep, &req_hdr, &srec, &rep_hdr, &resp, sizeof(resp), 2000);
+        call_status = bharat_ipc_call_ex(sm_ep, &req_hdr, &srec, &rep_hdr,
+                                         &resp, sizeof(resp), timeout_ms);
         if (call_status != BHARAT_IPC_STATUS_OK || resp.status != BHARAT_IPC_STATUS_OK) {
             bharat_runtime_log("services/init: HANDOFF_SERVICE record rejected.");
             return -EIO;
@@ -135,7 +138,8 @@ int init_handoff_to_supervisor(const init_boot_context_t *ctx, struct init_runti
         .records_hash = 0
     };
 
-    call_status = bharat_ipc_call_ex(sm_ep, &req_hdr, &commit, &rep_hdr, &resp, sizeof(resp), 2000);
+    call_status = bharat_ipc_call_ex(sm_ep, &req_hdr, &commit, &rep_hdr,
+                                     &resp, sizeof(resp), timeout_ms);
     if (call_status != BHARAT_IPC_STATUS_OK || resp.status != BHARAT_IPC_STATUS_OK) {
         bharat_runtime_log("services/init: HANDOFF_COMMIT rejected or timed out.");
         return -EIO;

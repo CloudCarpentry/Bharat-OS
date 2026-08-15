@@ -29,19 +29,20 @@ extern "C" {
  * This is idempotent: calling it more than once is safe (second call is
  * a no-op returning the same result as the first).
  */
+#if defined(BHARAT_BOOT_GUI) && BHARAT_BOOT_GUI
 int boot_gui_run(void);
-
-/*
- * boot_gui_is_active() — Query whether the boot GUI is currently active.
- * Safe to call from any context after boot_gui_run().
- */
 bool boot_gui_is_active(void);
-
-/*
- * boot_gui_get_handoff() — Retrieve the validated framebuffer descriptor.
- * Returns NULL if boot_gui_run() was not called or no framebuffer is active.
- */
 const boot_video_handoff_t *boot_gui_get_handoff(void);
+void boot_gui_update_progress(uint32_t percent, const char *status_msg);
+#else
+static inline int boot_gui_run(void) { return -1; }
+static inline bool boot_gui_is_active(void) { return false; }
+static inline const boot_video_handoff_t *boot_gui_get_handoff(void) { return NULL; }
+static inline void boot_gui_update_progress(uint32_t percent, const char *status_msg) {
+    (void)percent;
+    (void)status_msg;
+}
+#endif
 
 #ifdef __cplusplus
 }

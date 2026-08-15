@@ -7,6 +7,54 @@
   },
   "configurePresets": [
     {
+      "name": "x86_64-qemu-desktop-base",
+      "hidden": true,
+      "generator": "Ninja",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/x86_64-elf-clang.cmake",
+      "cacheVariables": {
+        "BHARAT_DEVICE_PROFILE": "DESKTOP",
+        "BHARAT_PERSONALITY_PROFILE": "NATIVE",
+        "BHARAT_TARGET_BOARD": "qemu-virt",
+        "BHARAT_USERSPACE_RUNTIME_MODEL": "FULL",
+        "BHARAT_ENABLE_ADVANCED_VM": "ON"
+      }
+    },
+    {
+      "name": "x86_64-qemu-desktop-debug",
+      "inherits": "x86_64-qemu-desktop-base",
+      "displayName": "x86_64 QEMU Desktop (Debug)",
+      "binaryDir": "${sourceDir}/build/x86_64-qemu-desktop-debug",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
+    },
+    {
+      "name": "x86_64-qemu-desktop-relwithdebinfo",
+      "inherits": "x86_64-qemu-desktop-base",
+      "displayName": "x86_64 QEMU Desktop (RelWithDebInfo)",
+      "binaryDir": "${sourceDir}/build/x86_64-qemu-desktop-relwithdebinfo",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "RelWithDebInfo" }
+    },
+    {
+      "name": "x86_64-qemu-desktop-release",
+      "inherits": "x86_64-qemu-desktop-base",
+      "displayName": "x86_64 QEMU Desktop (Release)",
+      "binaryDir": "${sourceDir}/build/x86_64-qemu-desktop-release",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+    },
+    {
+      "name": "x86_64-hmem-bench-release",
+      "inherits": "x86_64-qemu-desktop-release",
+      "displayName": "x86_64 HMEM Benchmark (Release)",
+      "binaryDir": "${sourceDir}/build/x86_64-hmem-bench-release",
+      "cacheVariables": { "BHARAT_ENABLE_BENCHMARKS": "ON" }
+    },
+    {
+      "name": "x86_64-hmem-demo",
+      "inherits": "x86_64-qemu-desktop-release",
+      "displayName": "x86_64 HMEM Demo (Release)",
+      "binaryDir": "${sourceDir}/build/x86_64-hmem-demo",
+      "cacheVariables": { "BHARAT_ENABLE_BENCHMARKS": "OFF" }
+    },
+    {
       "name": "host-test",
       "displayName": "Host Tests (Debug)",
       "description": "Host build for tests on Linux using Clang",
@@ -169,7 +217,8 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "BHARAT_DEVICE_PROFILE": "DESKTOP",
-        "BHARAT_TARGET_BOARD": "qemu-virt"
+        "BHARAT_TARGET_BOARD": "qemu-virt",
+        "BHARAT_ENABLE_ADVANCED_VM": "ON"
       }
     },
     {
@@ -183,7 +232,8 @@
         "CMAKE_BUILD_TYPE": "Debug",
         "BHARAT_DEVICE_PROFILE": "DESKTOP",
         "BHARAT_TARGET_BOARD": "host",
-        "BHARAT_BUILD_HOST_TESTS": "ON"
+        "BHARAT_BUILD_HOST_TESTS": "ON",
+        "BHARAT_ENABLE_ADVANCED_VM": "ON"
       }
     },
     {
@@ -198,6 +248,20 @@
         "BHARAT_DEVICE_PROFILE": "EDGE",
         "BHARAT_TARGET_BOARD": "virt"
       }
+    },
+    {
+      "name": "arm64-hmem-bench-release",
+      "inherits": "arm64-edge",
+      "displayName": "ARM64 HMEM Benchmark (Release)",
+      "binaryDir": "${sourceDir}/build/arm64-hmem-bench-release",
+      "cacheVariables": { "BHARAT_ENABLE_BENCHMARKS": "ON" }
+    },
+    {
+      "name": "arm64-hmem-demo",
+      "inherits": "arm64-edge",
+      "displayName": "ARM64 HMEM Demo (Release)",
+      "binaryDir": "${sourceDir}/build/arm64-hmem-demo",
+      "cacheVariables": { "BHARAT_ENABLE_BENCHMARKS": "OFF" }
     },
     {
       "name": "host-test-valgrind",
@@ -239,6 +303,20 @@
         "BHARAT_DEVICE_PROFILE": "EDGE",
         "BHARAT_TARGET_BOARD": "virt"
       }
+    },
+    {
+      "name": "riscv64-hmem-bench-release",
+      "inherits": "riscv64-edge",
+      "displayName": "RISC-V 64 HMEM Benchmark (Release)",
+      "binaryDir": "${sourceDir}/build/riscv64-hmem-bench-release",
+      "cacheVariables": { "BHARAT_ENABLE_BENCHMARKS": "ON" }
+    },
+    {
+      "name": "riscv64-hmem-demo",
+      "inherits": "riscv64-edge",
+      "displayName": "RISC-V 64 HMEM Demo (Release)",
+      "binaryDir": "${sourceDir}/build/riscv64-hmem-demo",
+      "cacheVariables": { "BHARAT_ENABLE_BENCHMARKS": "OFF" }
     },
     {
       "name": "arm32-edge",
@@ -868,6 +946,34 @@
   ],
   "buildPresets": [
     {
+      "name": "x86_64-qemu-desktop-debug",
+      "configurePreset": "x86_64-qemu-desktop-debug"
+    },
+    {
+      "name": "x86_64-qemu-desktop-relwithdebinfo",
+      "configurePreset": "x86_64-qemu-desktop-relwithdebinfo"
+    },
+    {
+      "name": "x86_64-qemu-desktop-release",
+      "configurePreset": "x86_64-qemu-desktop-release"
+    },
+    {
+      "name": "x86_64-hmem-bench-release",
+      "configurePreset": "x86_64-hmem-bench-release"
+    },
+    {
+      "name": "x86_64-hmem-demo",
+      "configurePreset": "x86_64-hmem-demo"
+    },
+    {
+      "name": "arm64-hmem-demo",
+      "configurePreset": "arm64-hmem-demo"
+    },
+    {
+      "name": "riscv64-hmem-demo",
+      "configurePreset": "riscv64-hmem-demo"
+    },
+    {
       "name": "host-test",
       "configurePreset": "host-test"
     },
@@ -916,8 +1022,16 @@
       "configurePreset": "arm64-edge"
     },
     {
+      "name": "arm64-hmem-bench-release",
+      "configurePreset": "arm64-hmem-bench-release"
+    },
+    {
       "name": "riscv64-edge",
       "configurePreset": "riscv64-edge"
+    },
+    {
+      "name": "riscv64-hmem-bench-release",
+      "configurePreset": "riscv64-hmem-bench-release"
     },
     {
       "name": "arm32-edge",

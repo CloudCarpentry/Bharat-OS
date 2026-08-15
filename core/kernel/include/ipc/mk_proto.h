@@ -126,13 +126,16 @@ typedef struct {
 } bh_mk_wire_message_t;
 
 typedef struct __attribute__((aligned(64))) {
-    _Atomic uint64_t sequence;
+    _Atomic uint32_t sequence;
     bh_mk_wire_message_t message;
 } bh_mk_ring_slot_t;
 
+/* Producers share the native-width head and slot sequences.  The sole
+ * consumer owns consumer_tail.  Capacities remain below half the uint32_t
+ * sequence space so signed modulo comparisons are unambiguous at rollover. */
 typedef struct {
-    _Atomic uint64_t producer_head;
-    uint64_t consumer_tail;
+    _Atomic uint32_t producer_head;
+    uint32_t consumer_tail;
 
     _Atomic uint32_t available_credits;
     uint32_t capacity;
@@ -243,6 +246,9 @@ typedef struct {
     bh_mk_endpoint_table_t endpoints;
     bh_mk_diag_t diagnostics;
 
+    /* Owner-core sequence allocator.  It is atomic because send can be
+     * entered by multiple local execution contexts; it is never remote-mutated. */
+    _Atomic uint32_t tx_sequence;
     _Atomic uint32_t ready;
     _Atomic uint32_t generation;
 } bh_mk_core_fabric_t;

@@ -59,6 +59,7 @@ typedef int32_t kstatus_t;
 #define K_ERR_WRONG_AFFINITY    ((kstatus_t)-516)
 #define K_ERR_DEADLINE_MISS     ((kstatus_t)-517)
 #define K_ERR_QUOTA_EXCEEDED    ((kstatus_t)-518)
+#define K_ERR_INVALID_CPU       ((kstatus_t)-520)
 
 /* ── Capability / Security ────── -768 .. -1023 */
 #define K_ERR_CAP_INVALID       ((kstatus_t)-768)
@@ -118,6 +119,26 @@ typedef int32_t kstatus_t;
 #define K_ERR_FEATURE_DISABLED  ((kstatus_t)-2306)
 #define K_ERR_AI_DEFERRED       ((kstatus_t)-2307)
 #define K_ERR_AI_THROTTLED      ((kstatus_t)-2308)
+
+typedef enum bh_status_domain {
+    BH_STATUS_DOMAIN_KSTATUS = 0,
+    BH_STATUS_DOMAIN_VALUE = 1,
+} bh_status_domain_t;
+
+typedef struct {
+    bh_status_domain_t domain;
+    int64_t value;
+} bh_operation_result_t;
+
+static inline bh_operation_result_t bh_op_result_kstatus(kstatus_t status) {
+    bh_operation_result_t res = { .domain = BH_STATUS_DOMAIN_KSTATUS, .value = status };
+    return res;
+}
+
+static inline bh_operation_result_t bh_op_result_value(int64_t value) {
+    bh_operation_result_t res = { .domain = BH_STATUS_DOMAIN_VALUE, .value = value };
+    return res;
+}
 
 /*
  * Canonical kernel-internal -> syscall boundary status translation.

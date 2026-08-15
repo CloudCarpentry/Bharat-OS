@@ -1,4 +1,4 @@
-#include "../../arch_crypto.h"
+#include <arch/arch_crypto.h>
 #include "arch/arch_cpu_caps.h"
 
 bool arch_crypto_has_aes(void) {

@@ -1,5 +1,7 @@
 add_library(k_cap OBJECT
-    ../../src/capability.c
+    cap_cspace.c
+    cap_dispatch.c
+    cap_revoke.c
     cap_policy.c
 )
 

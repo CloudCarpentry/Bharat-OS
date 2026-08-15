@@ -2,7 +2,7 @@
 title: Cryptography & Security Subsystem Overview
 status: Proposed
 owner: Divyang Panchasara
-last_updated: 2024-05-15
+last_updated: 2026-08-13
 tags:
   - security
   - crypto
@@ -16,6 +16,33 @@ version: 1.0
 Bharat-OS enforces a strict boundary between the kernel's **trust-enforcing mechanisms** and the user-space **policy/algorithm services**.
 
 The guiding rule is: **keep cryptography mechanisms in the kernel only where the kernel must enforce trust, isolation, boot integrity, or hardware binding; push algorithms, protocols, policy, and most key lifecycle work into core/services/stacks.** This aligns with the Bharat-OS direction of a small stable core kernel with profile-driven core/services/stacks layered on top.
+
+## Portable-first dispatch model
+
+The audited user-space crypto library/service presents one algorithm contract
+and selects an implementation by usable runtime capability:
+
+```text
+Portable implementation
+        |
+        +-- x86 AES-NI / PCLMUL / SHA
+        +-- ARM AES / PMULL / SHA
+        `-- future RISC-V crypto extensions
+```
+
+The portable implementation is mandatory. Dispatch is per operation rather
+than a single `has_crypto` decision: AES does not imply polynomial multiply,
+SHA, or a secure entropy source. ISA probing remains in `core/arch/`, normalized
+capability reporting remains behind HAL/runtime contracts, and consumers call
+the backend-neutral crypto API. Missing, disabled, or insufficient hardware
+support selects the portable implementation. If no validated implementation is
+available, the operation fails closed without producing output.
+
+Kernel-resident crypto is reserved for security-critical mechanisms that must
+run before or independently of trusted user space. TLS and other high-volume
+data cryptography belong in an audited user-space library or service using this
+same dispatch model. The binding decision is recorded in
+[`ADR-025`](../../../adr/ADR-025-portable-crypto-dispatch-boundary.md).
 
 ## 4-Layer Security Architecture
 

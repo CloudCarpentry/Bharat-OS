@@ -2,7 +2,7 @@
 title: "ADR 009: SDK & Libc Strategy for Bharat-OS"
 status: Accepted
 owner: Documentation Working Group
-last_updated: 2026-04-25
+last_updated: 2026-08-13
 tags:
   - docs
   - adr
@@ -32,6 +32,19 @@ We will adopt a **tiered, mechanism-first SDK/libc approach**, rather than a mon
 3. **Personality layers third.** Behavioral compatibilities (e.g., Linux, RT/Embedded, Appliance, Drone) will live above the kernel and libc, mapping API behaviors, `errno` values, and subsystem expectations as independent runtime profiles.
 
 Architecturally, the kernel will remain focused on capabilities, address spaces, endpoint IPC, and threads. The libc will communicate with the kernel strictly via a stable **Bharat UAPI** (e.g., a `libbsys` layer), ensuring that POSIX remains a translation/adaptation layer.
+
+The first selective-POSIX increment is explicitly bounded by the HMEM/tensor
+demo. It consists of console I/O (`read`, `write`, `close`, `isatty`), time
+(`clock_gettime`, `nanosleep`), process identity (`getpid`), allocation
+(`malloc`, `free`), and memory primitives (`memcpy`, `memset`, `memmove`). File
+and directory APIs wait for RAMFS; VM and pthread APIs wait for the later
+process/thread phase. This ordering is part of the decision: implemented API
+inventory must be evidence-driven and must not be expanded merely to improve a
+POSIX-compliance score.
+
+On Bharat targets, `clock_gettime(CLOCK_MONOTONIC)` is backed by the native
+`BH_SYS_TIME_GET` syscall and the kernel's canonical nanosecond clock. The host
+backend is test-only and is not a valid source for target benchmark evidence.
 
 ### Source Strategy: Hybrid Two-Step Approach
 

@@ -17,6 +17,8 @@ build:
     BHARAT_BOOT_GUI: ON
     BHARAT_ENABLE_FBUI: ON
     BHARAT_SHOWCASE_GUI: ON
+    BHARAT_ENABLE_DRIVER_VIRTIO_INPUT: ON
+    BHARAT_ENABLE_DRIVER_PCIE_HOST: ON
 
 kernel:
   canonical_artifacts:
@@ -42,6 +44,11 @@ run:
   nographic: false
   serial:
     - stdio
+  extra_args:
+    - "-device"
+    - "virtio-keyboard-pci"
+    - "-device"
+    - "virtio-mouse-pci"
   boot_artifact: kernel/kernel.elf32
 
 debug:

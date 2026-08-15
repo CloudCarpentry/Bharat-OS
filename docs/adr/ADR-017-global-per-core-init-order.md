@@ -1,12 +1,22 @@
+---
+title: Adr 017 Global Per Core Init Order
+status: Draft
+owner: Docs Team
+last_updated: "2026-08-08"
+tags:
+  - docs
+see_also: []
+---
+
 # ADR-017: Split BSP Global Initialization from AP Per-Core Publication
 
 ## Status
 
-Accepted
+Accepted / Active (Implementation Ongoing)
 
 ## Context
 
-SMP boot previously allowed secondary CPUs to run local IRQ, timer, VMM, uRPC, and scheduler initialization before the BSP had initialized the global interrupt controller, global timer source, or scheduler state.  In particular, the legacy `sched_init()` routine resets all runqueues and allocates all bootstrap scheduler objects, so an AP calling it could become the accidental authority for scheduler state belonging to other cores.
+SMP boot previously allowed secondary CPUs to run local IRQ, timer, VMM, uRPC, and scheduler initialization before the BSP had initialized the global interrupt controller, global timer source, or scheduler state. In particular, the legacy `sched_init()` routine resets all runqueues and allocates all bootstrap scheduler objects, so an AP calling it could become the accidental authority for scheduler state belonging to other cores.
 
 ## Decision
 
@@ -34,7 +44,7 @@ mm_cpu_prepare(cpu_id);
 mm_cpu_online(cpu_id);
 ```
 
-The current implementation is a compatibility step: global scheduler bootstrap still reserves all bounded per-core runqueues from the BSP for the explicitly requested boot topology, and AP scheduler publication validates that the global scheduler authority already exists instead of resetting or allocating foreign runqueues.  Global VMM bootstrap remains BSP-owned, while AP memory publication initializes only local page-table/TLB glue and validates that the BSP-published kernel address-space authority is ready.  A BSP-published atomic global-ready mask gates AP execution before local IRQ/timer/MM/uRPC/scheduler publication, so an accidentally early AP fails closed instead of creating its own global authority.
+The current implementation is a compatibility step: global scheduler bootstrap still reserves all bounded per-core runqueues from the BSP for the explicitly requested boot topology, and AP scheduler publication validates that the global scheduler authority already exists instead of resetting or allocating foreign runqueues. Global VMM bootstrap remains BSP-owned, while AP memory publication initializes only local page-table/TLB glue and validates that the BSP-published kernel address-space authority is ready. A BSP-published atomic global-ready mask gates AP execution before local IRQ/timer/MM/uRPC/scheduler publication, so an accidentally early AP fails closed instead of creating its own global authority.
 
 ## Invariants
 
@@ -48,4 +58,6 @@ The current implementation is a compatibility step: global scheduler bootstrap s
 
 ## Consequences
 
-This does not complete real SMP startup on x86_64 or RISC-V64, nor does it make the ARM64 TTBR handoff fully production-grade.  It removes the cross-core ownership inversion in the common boot sequence and creates the API boundary needed for later per-core scheduler, memory-cache, TLB-inbox, and AP failure/retry work.
+This does not complete real SMP startup on x86_64 or RISC-V64, nor does it make the ARM64 TTBR handoff fully production-grade. It removes the cross-core ownership inversion in the common boot sequence and creates the API boundary needed for later per-core scheduler, memory-cache, TLB-inbox, and AP failure/retry work.
+
+_IMPLEMENTED STATUS_: The compatibility step is implemented as designed. The APIs enforce BSP vs AP boundaries and prevent accidental global authority allocation by APs.

@@ -17,7 +17,197 @@ It covers:
 
 ---
 
-## 1) Tool entrypoints and command model
+## Nirmaan CLI
+
+We provide the `nirmaan` Developer CLI as the primary, high-productivity interface for managing builds, environment configurations, and target verification.
+
+### Basic commands
+
+```bash
+# Check the environment
+./nirmaan doctor
+
+# List available shortcut targets
+./nirmaan targets
+
+# Build the desktop-x86_64 target with specific modes
+./nirmaan build desktop-x86_64 --mode development
+./nirmaan build desktop-x86_64 --mode release
+
+# Run the target
+./nirmaan run desktop-x86_64
+```
+
+```powershell
+# For Windows users:
+nirmaan.bat doctor
+.\nirmaan.ps1 doctor
+```
+
+## Comprehensive Verification & Test Suite
+
+Run these 4 verification steps to ensure environment readiness, headless targets, layer contracts, and host unit tests all pass:
+
+### 1) Environment Doctor Check
+Verifies compiler toolchains, emulators (`qemu-system-*`), and SDK components:
+
+```powershell
+# Windows PowerShell
+.\nirmaan.ps1 doctor
+
+# Linux / WSL / macOS
+./nirmaan doctor
+```
+
+### 2) Verify All Headless Targets (Full Matrix)
+Smoke-test all 5 core architecture targets:
+
+```powershell
+# One-shot runner for all 5 architecture targets (Headless Smoke)
+python tools/run_qemu_matrix.py --headless --smoke --all-arch
+
+# Or test individually with Nirmaan:
+.\nirmaan.ps1 test desktop-x86_64
+.\nirmaan.ps1 test desktop-arm64
+.\nirmaan.ps1 test desktop-riscv64
+.\nirmaan.ps1 test controller-arm32
+.\nirmaan.ps1 build --target-yaml delivery/targets/qemu/riscv32_mmu_lite_headless.yaml --smoke
+```
+
+### 3) Layer Boundaries, Architecture & ABI Contract Checks
+Validates structural integrity, HAL isolation, ownership, CMake dependencies, profile consistency, and syscall ABI consistency:
+
+```bash
+# Architectural layer boundary check
+python tools/lint/check_layer_references.py
+
+# CMake dependency direction check
+python tools/lint/check_cmake_dependencies.py
+
+# HAL dependency isolation
+python tools/lint/check_hal_dependency_direction.py
+
+# Placement and VM authority rules
+python tools/lint/check_placement.py
+python tools/lint/check_vm_authority.py
+
+# Architecture leakage and scheduler ownership checks
+python tools/lint/check_arch_leakage.py
+python tools/lint/check_scheduler_ownership.py
+
+# Documentation profile consistency check
+python tools/check_profiles.py
+
+# Runtime implementation maturity profile gate
+python tools/check_implementation_maturity.py --profile RELEASE
+
+# Syscall ABI contract reproducibility check
+python tools/abi/syscall_abi.py --check
+```
+
+#### Updating & Regenerating Contracts & Baselines
+When intentional contract changes or ABI migrations occur:
+
+```bash
+# Regenerate build-tree syscall dispatch tables and numbers
+python tools/abi/syscall_abi.py --generate
+
+# Update the syscall ABI compatibility lock & hashes
+python tools/abi/syscall_abi.py --update-lock
+
+# Update layer reference tech-debt baseline
+python tools/lint/check_layer_references.py --write-baseline tools/lint/baselines/layer_references.allowlist
+
+# Audit strict layer/dependency compliance without baselines
+python tools/lint/check_layer_references.py --no-baseline
+python tools/lint/check_cmake_dependencies.py --no-baseline
+```
+
+### 4) Host Unit Tests
+Configures and runs unit test suites on the host platform:
+
+```powershell
+# Configure host tests preset
+cmake --preset host-test
+
+# Build host tests
+cmake --build --preset host-test
+
+# Run host tests
+ctest --preset host-test --output-on-failure
+```
+
+---
+
+## Nirmaan command cookbook
+
+### Daily commands
+
+```powershell
+# Windows PowerShell
+.\nirmaan.ps1 build --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml --smoke
+.\nirmaan.ps1 build --target-yaml delivery/targets/qemu/x86_64_desktop_gui.yaml
+.\nirmaan.ps1 build --target-yaml delivery/targets/qemu/arm64_desktop_headless.yaml --smoke
+.\nirmaan.ps1 build --target-yaml delivery/targets/qemu/arm64_desktop_gui.yaml
+.\nirmaan.ps1 build --target-yaml delivery/targets/qemu/riscv64_desktop_headless.yaml --smoke
+.\nirmaan.ps1 run --target-yaml delivery/targets/qemu/riscv64_desktop_gui.yaml --interactive
+.\nirmaan.ps1 build --target-yaml delivery/targets/qemu/arm32_mmu_lite_headless.yaml --smoke
+.\nirmaan.ps1 build --target-yaml delivery/targets/qemu/riscv32_mmu_lite_headless.yaml --smoke
+# MPU-Only Headless (RTOS Profile)
+.\nirmaan.ps1 build --target-yaml delivery/targets/qemu/arm32_rtos_mpu_headless.yaml --smoke
+.\nirmaan.ps1 build --target-yaml delivery/targets/qemu/riscv32_rtos_mpu_headless.yaml --smoke
+# 64-bit MMU-Lite RTOS Headless
+.\nirmaan.ps1 build --target-yaml delivery/targets/qemu/arm64_rtos_mmu_lite_headless.yaml --smoke
+.\nirmaan.ps1 build --target-yaml delivery/targets/qemu/riscv64_rtos_mmu_lite_headless.yaml --smoke
+.\nirmaan.ps1 build --target-yaml delivery/targets/qemu/x86_64_rtos_mmu_lite_headless.yaml --smoke
+```
+
+### One-shot run commands
+
+```bash
+# Linux/macOS/WSL
+./nirmaan run --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml --smoke
+./nirmaan run --target-yaml delivery/targets/qemu/arm64_desktop_headless.yaml --smoke
+```
+
+> [!NOTE] The `nirmaan` CLI mirrors the functionality of the legacy `build` wrappers; it forwards to `tools/build.py` internally.
+
+> **Tip:** `--interactive` is a flag for the `run` subcommand only. When using `build`, omit `--interactive`.
+
+### Running the HMEM demo
+
+After building the demo image, you can launch it interactively for a specific architecture:
+
+```powershell
+# x86_64
+.\\nirmaan.ps1 run --target-yaml delivery/targets/qemu/x86_64_hmem_demo.yaml --interactive
+# arm64
+.\\nirmaan.ps1 run --target-yaml delivery/targets/qemu/arm64_hmem_demo.yaml --interactive
+# riscv64
+.\\nirmaan.ps1 run --target-yaml delivery/targets/qemu/riscv64_hmem_demo.yaml --interactive
+```
+
+Use `--headless` instead of `--interactive` for a non‑GUI execution.
+
+### HMEM base demo
+
+The HMEM demo showcases heterogeneous memory support in QEMU. It builds a minimal kernel+userspace image and runs a benchmark that allocates memory from both DRAM and simulated HBM.
+
+```powershell
+# Build the demo image for each architecture
+.\nirmaan.ps1 build --target-yaml delivery/targets/qemu/x86_64_hmem_demo.yaml --smoke
+.\nirmaan.ps1 build --target-yaml delivery/targets/qemu/arm64_hmem_demo.yaml --smoke
+.\nirmaan.ps1 build --target-yaml delivery/targets/qemu/riscv64_hmem_demo.yaml --smoke
+
+# Run the demo (interactive QEMU window) for each architecture
+.\nirmaan.ps1 run --target-yaml delivery/targets/qemu/x86_64_hmem_demo.yaml --interactive
+.\nirmaan.ps1 run --target-yaml delivery/targets/qemu/arm64_hmem_demo.yaml --interactive
+.\nirmaan.ps1 run --target-yaml delivery/targets/qemu/riscv64_hmem_demo.yaml --interactive
+```
+
+> **Note:** The demo requires QEMU version ≥ 8.0 with `-machine memdev` support and the `hmem` device enabled. Ensure the `examples/hmem_demo/` directory is present in the repository (added by this change).
+
+## 1) Legacy tool entrypoints and command model
 
 Bharat-OS provides two user-facing wrappers:
 
@@ -179,6 +369,48 @@ Output layout uses CMake preset name:
 - `build/<preset>/manifests/flash-manifest.json`
 - `build/<preset>/manifests/debug-manifest.json`
 
+### Build instrumentation versus product configuration
+
+`CMAKE_BUILD_TYPE` selects one of three instrumentation values and does not
+select an OS target or profile:
+
+| CMake build type | Instrumentation value | Symbols | Optimization | Assertions/invariant checks |
+| ---------------- | --------------------- | ------- | ------------ | --------------------------- |
+| `Debug`          | `DEBUG`               | on      | unoptimized  | on                          |
+| `RelWithDebInfo` | `RELWITHDEBINFO`      | on      | optimized    | off                         |
+| `Release`        | `RELEASE`             | off     | optimized    | off                         |
+
+The canonical x86_64 QEMU desktop target is factored through the hidden
+`x86_64-qemu-desktop-base` preset. Its Debug, RelWithDebInfo, and Release
+presets inherit exactly the same x86_64 / QEMU / DESKTOP / MMU_FULL / GP /
+NATIVE product selection. Each configure writes
+`build/<preset>/generated/build-configuration.json`; CI compares variants with:
+
+```bash
+python3 tools/check_build_variant_equivalence.py \
+  build/x86_64-qemu-desktop-debug/generated/build-configuration.json \
+  build/x86_64-qemu-desktop-release/generated/build-configuration.json
+```
+
+The checker fails on any functional difference. Differences are permitted only
+inside the explicit instrumentation object (`variant`, assertions, symbols,
+optimization, tracing, test hooks, poisoning, and invariant checking).
+
+Audit findings retained outside this P0 canonical-target change:
+
+- The older `x86_64-debug` preset selects board `host` and host tests while
+  `x86_64-dev` selects QEMU; they are distinct products and must not be treated
+  as a Debug/Release pair.
+- `tiny-mpu-debug` enables allocation classes while `tiny-mpu-release` disables
+  them. A follow-up must factor that target through a shared product preset.
+- No build-type condition in target YAML resolution changes architecture,
+  memory model, scheduler profile, personality, runtime model, or services.
+  YAML supplies a preset plus explicit CMake definitions independent of build
+  type.
+- `HARDENED_RELEASE` is not defined: hardening flags and their supported
+  toolchain/backend matrix need a separate contract rather than scope expansion
+  in this task.
+
 ---
 
 ## 4) QEMU usage (desktop/headless/emulator targets)
@@ -223,6 +455,7 @@ Runtime command includes serial-first bring-up (`-nographic -monitor none -seria
 # PowerShell
 .\tools\build.ps1 all --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml --smoke
 .\tools\build.ps1 all --target-yaml delivery/targets/qemu/x86_64_desktop_gui.yaml --interactive
+.\tools\build.ps1 all --target-yaml delivery/targets/qemu/x86_64_showcase_gui.yaml --interactive
 .\tools\build.ps1 all --target-yaml delivery/targets/qemu/arm64_desktop_headless.yaml --smoke
 .\tools\build.ps1 all --target-yaml delivery/targets/qemu/arm64_desktop_gui.yaml --interactive
 .\tools\build.ps1 all --target-yaml delivery/targets/qemu/riscv64_desktop_headless.yaml --smoke
@@ -242,6 +475,7 @@ Runtime command includes serial-first bring-up (`-nographic -monitor none -seria
 # WSL/Linux/macOS
 ./tools/build.sh all --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml --smoke
 ./tools/build.sh all --target-yaml delivery/targets/qemu/x86_64_desktop_gui.yaml --interactive
+./tools/build.sh run --target-yaml delivery/targets/qemu/x86_64_showcase_gui.yaml --interactive
 ./tools/build.sh all --target-yaml delivery/targets/qemu/arm64_desktop_headless.yaml --smoke
 ./tools/build.sh all --target-yaml delivery/targets/qemu/arm64_desktop_gui.yaml --interactive
 ./tools/build.sh all --target-yaml delivery/targets/qemu/riscv64_desktop_headless.yaml --smoke
@@ -257,22 +491,52 @@ Runtime command includes serial-first bring-up (`-nographic -monitor none -seria
 ./tools/build.sh all --target-yaml delivery/targets/qemu/x86_64_rtos_mmu_lite_headless.yaml --smoke
 ```
 
+The showcase target also supports a CI-friendly end-to-end check without a
+window server. It still creates the emulated display and requires the real
+framebuffer, splash/dashboard render, synthetic app interaction, and stable
+userspace boot markers before passing:
+
+```bash
+./tools/build.sh all --target-yaml delivery/targets/qemu/x86_64_showcase_gui.yaml --headless --smoke
+```
+
+For pixel-level evidence, use the GUI visual smoke harness. Unlike the serial
+smoke command, this command builds and packages from the target YAML, starts a
+windowless QEMU display with private serial and QMP channels, waits for the
+display and first-present markers, validates a QMP `screendump` against the mode
+reported by the guest, injects a Tab key through QMP, waits for guest input
+evidence, and validates a bounded before/after pixel change:
+
+```bash
+python3 tools/test/qemu_gui_smoke.py \
+  --target delivery/targets/qemu/x86_64_showcase_gui.yaml
+```
+
+The test rejects malformed captures, dimension mismatches, fewer than eight
+distinct RGB colors, or a frame where less than one percent of pixels differ
+from the dominant color. These thresholds may be made stricter with
+`--minimum-colors` and `--minimum-non-dominant-ratio`; lowering them is intended
+only for focused diagnosis, not for CI. The default evidence directory is
+`build/<preset>/artifacts/gui-smoke/` and contains `before-input.ppm`,
+`after-input.ppm`, `serial.log`, and `qemu.log`. These are generated evidence and must not be
+committed.
+
 ## 5.1 Canonical headless smoke-test commands (all 5 architectures)
 
 All commands verified with `[Run] PASS` on QEMU. Build + package + run in one shot.
 
-| Architecture | Profile       | Memory Model | Target YAML                       |
-| ------------ | ------------- | ------------ | --------------------------------- |
-| x86_64       | Desktop GP    | MMU-Full     | `x86_64_desktop_headless.yaml`    |
-| arm64        | Desktop GP    | MMU-Full     | `arm64_desktop_headless.yaml`     |
-| riscv64      | Desktop GP    | MMU-Full     | `riscv64_desktop_headless.yaml`   |
-| arm32        | Edge MMU-Lite | MMU-Lite     | `arm32_mmu_lite_headless.yaml`    |
-| riscv32      | Edge MMU-Lite | MMU-Lite     | `riscv32_mmu_lite_headless.yaml`  |
-| arm32        | RTOS MPU      | MPU-Only     | `arm32_rtos_mpu_headless.yaml`    |
-| riscv32      | RTOS MPU      | MPU-Only     | `riscv32_rtos_mpu_headless.yaml`  |
-| arm64        | RTOS MMU-Lite | MMU-Lite     | `arm64_rtos_mmu_lite_headless.yaml` |
+| Architecture | Profile       | Memory Model | Target YAML                           |
+| ------------ | ------------- | ------------ | ------------------------------------- |
+| x86_64       | Desktop GP    | MMU-Full     | `x86_64_desktop_headless.yaml`        |
+| arm64        | Desktop GP    | MMU-Full     | `arm64_desktop_headless.yaml`         |
+| riscv64      | Desktop GP    | MMU-Full     | `riscv64_desktop_headless.yaml`       |
+| arm32        | Edge MMU-Lite | MMU-Lite     | `arm32_mmu_lite_headless.yaml`        |
+| riscv32      | Edge MMU-Lite | MMU-Lite     | `riscv32_mmu_lite_headless.yaml`      |
+| arm32        | RTOS MPU      | MPU-Only     | `arm32_rtos_mpu_headless.yaml`        |
+| riscv32      | RTOS MPU      | MPU-Only     | `riscv32_rtos_mpu_headless.yaml`      |
+| arm64        | RTOS MMU-Lite | MMU-Lite     | `arm64_rtos_mmu_lite_headless.yaml`   |
 | riscv64      | RTOS MMU-Lite | MMU-Lite     | `riscv64_rtos_mmu_lite_headless.yaml` |
-| x86_64       | RTOS MMU-Lite | MMU-Lite     | `x86_64_rtos_mmu_lite_headless.yaml` |
+| x86_64       | RTOS MMU-Lite | MMU-Lite     | `x86_64_rtos_mmu_lite_headless.yaml`  |
 
 ```powershell
 # PowerShell (Windows)
@@ -303,36 +567,36 @@ All commands verified with `[Run] PASS` on QEMU. Build + package + run in one sh
 You can explicitly build the desktop GP profile with a specific personality:
 
 ```bash
-./build.sh all --target x86_64_desktop_headless_linux
-./build.sh all --target x86_64_desktop_headless_android
+./tools/build.sh all --target x86_64_desktop_headless_linux
+./tools/build.sh all --target x86_64_desktop_headless_android
 ```
 
 These test targets assert that the ABI boundaries and dispatch tables do not cause build breakage or kernel panics during early boot.
 
 ```bash
-./build.sh all --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml --smoke
-./build.sh all --target-yaml delivery/targets/qemu/arm64_desktop_headless.yaml --smoke
-./build.sh all --target-yaml delivery/targets/qemu/arm32_desktop_headless.yaml --smoke
-./build.sh all --target-yaml delivery/targets/qemu/riscv64_desktop_headless.yaml --smoke
-./build.sh all --target-yaml delivery/targets/qemu/riscv32_desktop_headless.yaml --smoke
+./tools/build.sh all --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml --smoke
+./tools/build.sh all --target-yaml delivery/targets/qemu/arm64_desktop_headless.yaml --smoke
+./tools/build.sh all --target-yaml delivery/targets/qemu/arm32_desktop_headless.yaml --smoke
+./tools/build.sh all --target-yaml delivery/targets/qemu/riscv64_desktop_headless.yaml --smoke
+./tools/build.sh all --target-yaml delivery/targets/qemu/riscv32_desktop_headless.yaml --smoke
 ```
 
 ## 5.3 GUI presets (examples)
 
 ```powershell
-.\build.ps1 all --target-yaml delivery/targets/qemu/x86_64_desktop_gui.yaml --interactive
-.\build.ps1 all --target-yaml delivery/targets/qemu/arm64_desktop_gui.yaml --interactive
-.\build.ps1 all --target-yaml delivery/targets/qemu/arm32_desktop_gui.yaml --interactive
-.\build.ps1 all --target-yaml delivery/targets/qemu/riscv64_desktop_gui.yaml --interactive
-.\build.ps1 all --target-yaml delivery/targets/qemu/riscv32_desktop_gui.yaml --interactive
+.\tools\build.ps1 all --target-yaml delivery/targets/qemu/x86_64_desktop_gui.yaml --interactive
+.\tools\build.ps1 all --target-yaml delivery/targets/qemu/arm64_desktop_gui.yaml --interactive
+.\tools\build.ps1 all --target-yaml delivery/targets/qemu/arm32_desktop_gui.yaml --interactive
+.\tools\build.ps1 all --target-yaml delivery/targets/qemu/riscv64_desktop_gui.yaml --interactive
+.\tools\build.ps1 all --target-yaml delivery/targets/qemu/riscv32_desktop_gui.yaml --interactive
 ```
 
 ```bash
-./build.sh all --target-yaml delivery/targets/qemu/x86_64_desktop_gui.yaml --interactive
-./build.sh all --target-yaml delivery/targets/qemu/arm64_desktop_gui.yaml --interactive
-./build.sh all --target-yaml delivery/targets/qemu/arm32_desktop_gui.yaml --interactive
-./build.sh all --target-yaml delivery/targets/qemu/riscv64_desktop_gui.yaml --interactive
-./build.sh all --target-yaml delivery/targets/qemu/riscv32_desktop_gui.yaml --interactive
+./tools/build.sh all --target-yaml delivery/targets/qemu/x86_64_desktop_gui.yaml --interactive
+./tools/build.sh all --target-yaml delivery/targets/qemu/arm64_desktop_gui.yaml --interactive
+./tools/build.sh all --target-yaml delivery/targets/qemu/arm32_desktop_gui.yaml --interactive
+./tools/build.sh all --target-yaml delivery/targets/qemu/riscv64_desktop_gui.yaml --interactive
+./tools/build.sh all --target-yaml delivery/targets/qemu/riscv32_desktop_gui.yaml --interactive
 ```
 
 ## 5.4 Legacy positional example requested by users
@@ -358,9 +622,9 @@ Equivalent modern command:
 ```
 
 ```bash
-./build.sh build --target x86_64_desktop_headless
-./build.sh package --target x86_64_desktop_headless
-./build.sh run --target x86_64_desktop_headless
+./tools/build.sh build --target x86_64_desktop_headless
+./tools/build.sh package --target x86_64_desktop_headless
+./tools/build.sh run --target x86_64_desktop_headless
 ```
 
 YAML target path equivalent:
@@ -410,6 +674,7 @@ python3 tools/check_profiles.py
 - Root wrappers (`/build.sh`, `/build.ps1`) are the stable commands users should run.
 - `tools/build.sh` and `tools/build.ps1` are compatibility shims.
 - New build/run feature behavior must be implemented in `tools/build.py`.
+
 # Userspace runtime model
 
 YAML targets may select an independent root userspace policy with
@@ -418,3 +683,59 @@ resolver defaults omitted values to `full` during migration. It passes the
 resolved `BHARAT_USERSPACE_RUNTIME_MODEL` to CMake and packages exactly one root:
 `user_smoke`, `rt-supervisor`, `init-lite`, or `init`, respectively. Unknown
 values and the unsupported top-level `runtime_model` spelling fail validation.
+
+# Native syscall ABI reproducibility
+
+Verify the Native manifest, compatibility lock, and deterministic generated
+numbers/table artifacts without writing into the source tree:
+
+```bash
+python3 tools/abi/syscall_abi.py --check
+python3 -m unittest tools.abi.test_syscall_abi
+```
+
+Intentional, reviewed Native syscall additions require an explicit
+`python3 tools/abi/syscall_abi.py --update-lock`; see
+`docs/dev/native-syscall-abi-change.md` for the full procedure.
+
+# Runtime implementation maturity gate
+
+Every configure/build action checks `interface/contracts/implementation_maturity.json` before the
+linker runs. Targets declare `implementation_maturity.profile`; release and hardened profiles reject
+`STUB` and `TEST_ONLY` implementations. A development
+target may explicitly opt in with `implementation_maturity.allow: [STUB]` (and/or `TEST_ONLY`) in its
+target YAML. The focused standalone check is:
+
+```bash
+python3 tools/check_implementation_maturity.py --profile RELEASE
+```
+
+## Architecture dependency linting
+
+The layer-reference and CMake target-dependency gates apply the repository's
+checked-in technical-debt baselines by default, so the standard commands fail
+only for new architecture-boundary regressions:
+
+```bash
+python3 tools/lint/check_layer_references.py --strict
+python3 tools/lint/check_cmake_dependencies.py --strict
+```
+
+Use `--no-baseline` for an explicit audit of all known debt. A custom baseline
+can still be selected with `--baseline <path>`.
+
+# HMEM/Tensor QEMU benchmarks
+
+The release-style HMEM benchmark profiles enable benchmark telemetry while
+keeping it disabled in normal builds. Run one certified 64-bit QEMU target or
+the three-target matrix with:
+
+```bash
+python3 tools/bench/run_hmem_bench.py --target delivery/targets/qemu/x86_64_hmem_bench_release.yaml
+python3 tools/bench/run_hmem_bench.py --matrix
+```
+
+Results are written as JSON and CSV below `build/bench-results`. Deterministic
+copy/allocation/checksum metrics are validation gates. QEMU elapsed time is only
+a software-overhead indicator, not real GPU/NPU/DMA performance evidence. See
+`quality/benchmarks/README.md` for the evidence and claim boundary.

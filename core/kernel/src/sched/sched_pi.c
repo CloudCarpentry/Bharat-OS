@@ -60,15 +60,15 @@ int sched_adjust_priority_local(bh_thread_t *thread, uint32_t new_priority) {
     new_priority = SCHED_MAX_PRIORITY;
   }
 
-  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t current_core = sched_current_core_or_panic();
   sched_rq_t *rq = sched_local_rq();
 
   thread_slot_t *slot = sched_find_thread_slot_by_tid(thread->thread_id);
 
   if (slot && slot->is_on_runqueue != 0U) {
-    hal_cpu_disable_interrupts();
+    hal_irq_state_t irq_state = hal_irq_save_disable();
 
-    if (g_policy == SCHED_POLICY_CLOUD_FAIR) {
+    if (rq->policy == SCHED_POLICY_CLOUD_FAIR) {
       sched_cfs_dequeue(rq, thread);
     } else {
       list_del(&slot->run_node);
@@ -81,7 +81,7 @@ int sched_adjust_priority_local(bh_thread_t *thread, uint32_t new_priority) {
       rq->runnable_count--;
     }
 
-    hal_cpu_enable_interrupts();
+    hal_irq_restore(irq_state);
   }
 
   thread->priority = new_priority;
@@ -99,7 +99,7 @@ int sched_set_priority(uint64_t tid, uint32_t priority) {
     priority = SCHED_MAX_PRIORITY;
   }
 
-  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t current_core = sched_current_core_or_panic();
   uint32_t owner = __atomic_load_n(&thread->owner_cpu, __ATOMIC_ACQUIRE);
 
   if (owner != current_core) {

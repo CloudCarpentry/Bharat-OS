@@ -74,7 +74,7 @@ def check_abi(manifest_path, header_path):
     return True
 
 if __name__ == "__main__":
-    manifest = "contracts/abi/syscall_manifest.json"
+    manifest = "interface/contracts/abi/syscall_manifest.json"
     header = "interface/include/bharat/uapi/syscall/bh_syscall_numbers.h"
 
     if not os.path.exists(manifest) or not os.path.exists(header):

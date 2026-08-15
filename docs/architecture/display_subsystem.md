@@ -78,6 +78,12 @@ It is critical to distinguish between the core trusted system console and higher
 
 The framebuffer console (`fb_console`) is a minimal system console path suitable for boot logs, early panics, and simple text output. It is **not** a general-purpose GUI or service. It operates inside the core/kernel/trusted core to ensure reliability during critical failures (like `panic()` paths). Service-level UIs, on the other hand, are run as independent processes and communicate via IPC.
 
+The experimental Bharat shell follows this boundary. Its navigation state, labels,
+device presentation, and refresh timers live under `experience/shell/`. Runtime
+facts enter through a replaceable snapshot-provider boundary; a production provider
+must obtain them from capability-authorized services rather than reading kernel or
+driver mutable state directly.
+
 ### 3. Folder Ownership Matrix
 
 To prevent subsystem entanglement, adhere to the following directory responsibilities:

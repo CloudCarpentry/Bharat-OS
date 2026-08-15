@@ -25,6 +25,24 @@ typedef enum {
     ASPACE_STATE_DESTROYED
 } aspace_state_t;
 
+
+typedef enum {
+    VM_MAP_TYPE_ANON = 0,
+    VM_MAP_TYPE_FILE,
+    VM_MAP_TYPE_SHARED,
+    VM_MAP_TYPE_DEVICE
+} vm_map_type_t;
+
+typedef struct {
+    uintptr_t hint;
+    size_t length;
+    uint32_t prot;
+    vm_map_type_t type;
+    uint32_t flags;
+    struct vm_object *object;
+    uint64_t object_offset;
+} vm_map_request_t;
+
 typedef struct vm_region {
     uintptr_t base;
     size_t length;
@@ -107,6 +125,11 @@ int aspace_region_attach(address_space_t *aspace,
 int aspace_region_detach(address_space_t *aspace, uintptr_t base);
 
 // Unmap and protect (Legacy placeholders for now)
+
+kstatus_t vm_map_region(address_space_t *aspace, const vm_map_request_t *request, uintptr_t *result);
+kstatus_t vm_unmap_region(address_space_t *aspace, uintptr_t address, size_t length);
+kstatus_t vm_protect_region(address_space_t *aspace, uintptr_t address, size_t length, uint32_t protection);
+
 int aspace_map_region(vm_address_space_t *aspace, uint64_t vaddr_hint, uint64_t length, uint32_t prot, uint32_t map_flags, vm_object_t *object, uint64_t object_offset, uint64_t *out_vaddr);
 int aspace_unmap_region(vm_address_space_t *aspace, uint64_t base, uint64_t length);
 int aspace_protect_region(vm_address_space_t *aspace, uint64_t base, uint64_t length, uint32_t new_prot);

@@ -1,10 +1,11 @@
 #include <bharat/uapi/system/intent.h>
+#include "lib/base/string.h"
 #include "sched/sched.h"
 #include "sched_internal.h"
 
-int process_destroy(bh_process_t *process) {
+kstatus_t process_destroy(bh_process_t *process) {
   if (!process) {
-    return -1;
+    return K_ERR_INVALID_ARG;
   }
 
   sched_rq_t *rq = sched_local_rq();
@@ -19,13 +20,13 @@ int process_destroy(bh_process_t *process) {
   }
 
   if (!slot) {
-    return -1;
+    return K_ERR_NOT_FOUND;
   }
 
   for (size_t i = 0; i < SCHED_MAX_THREADS; ++i) {
     thread_slot_t *ts = &((thread_slot_t*)rq->threads)[i];
     if (ts->in_use != 0U && ts->thread.process_id == slot->process.process_id) {
-      return -1;
+      return K_ERR_BUSY;
     }
   }
 
@@ -43,36 +44,36 @@ int process_destroy(bh_process_t *process) {
   uint32_t idx = (uint32_t)(slot - (process_slot_t*)rq->processes);
   slot->next_free = rq->free_process_head;
   rq->free_process_head = idx;
-  return 0;
+  return K_OK;
 }
 
-int thread_destroy(bh_thread_t *thread) {
+kstatus_t thread_destroy(bh_thread_t *thread) {
   // Reaper-only contract:
   // - call only from deferred reap context, never inline on the running thread.
   // - never destroy while executing on the victim thread's stack.
   if (!thread) {
-    return -1;
+    return K_ERR_INVALID_ARG;
   }
   if (thread == sched_current_thread()) {
-    return -1;
+    return K_ERR_BAD_STATE;
   }
 
   sched_rq_t *rq = sched_local_rq();
   thread_slot_t *slot = sched_find_thread_slot_by_tid_local(rq, thread->thread_id);
   if (!slot) {
-    return -1;
+    return K_ERR_BAD_THREAD;
   }
 
   // Prevent race with background reaper or other cores
-  hal_cpu_disable_interrupts();
+  hal_irq_state_t irq_state = hal_irq_save_disable();
   
   spin_lock(&rq->lock);
   
-  if (slot->reap_pending && slot->reap_next != UINT32_MAX) {
+  if (slot->reap_pending != 0U) {
       // Thread is already being reaped, let the reaper finish it
       spin_unlock(&rq->lock);
-      hal_cpu_enable_interrupts();
-      return 0;
+      hal_irq_restore(irq_state);
+      return K_OK;
   }
   
   slot->reap_pending = 1U; // Mark as pending so reaper doesn't touch it
@@ -111,26 +112,26 @@ int thread_destroy(bh_thread_t *thread) {
   }
   spin_unlock(&rq->lock);
 
-  hal_cpu_enable_interrupts();
-  return 0;
+  hal_irq_restore(irq_state);
+  return K_OK;
 }
 
-int sched_sys_thread_create(bh_process_t *parent, void (*entry_point)(void), uint64_t *out_tid) {
+kstatus_t sched_sys_thread_create(bh_process_t *parent, void (*entry_point)(void), uint64_t *out_tid) {
   bh_thread_t *t = thread_create(parent, entry_point);
   if (!t) {
-    return -1;
+    return K_ERR_NO_RESOURCES;
   }
   if (out_tid) {
     *out_tid = t->thread_id;
   }
-  return 0;
+  return K_OK;
 }
 
-int sched_terminate_tid(uint64_t tid) {
+kstatus_t sched_terminate_tid(uint64_t tid) {
   bh_thread_t *thread = sched_find_thread_by_id(tid);
-  if (!thread) return -1;
+  if (!thread) return K_ERR_BAD_THREAD;
 
-  uint32_t current_core = sched_clamp_core(hal_cpu_get_id());
+  uint32_t current_core = sched_current_core_or_panic();
   uint32_t owner = __atomic_load_n(&thread->owner_cpu, __ATOMIC_ACQUIRE);
 
   if (owner != current_core) {
@@ -148,18 +149,18 @@ int sched_terminate_tid(uint64_t tid) {
           sched_remote_cmd_release(cmd);
           return status;
       }
-      return 0;
+      return K_OK;
   }
 
   return sched_mark_thread_terminated(thread);
 }
 
-int sched_sys_thread_destroy(uint64_t tid) {
+kstatus_t sched_sys_thread_destroy(uint64_t tid) {
   return sched_terminate_tid(tid);
 }
 
-int thread_raise_fault(bh_thread_t *thread, thread_fault_t fault) {
-    if (!thread) return -1; // -EINVAL mapped
+kstatus_t thread_raise_fault(bh_thread_t *thread, thread_fault_t fault) {
+    if (!thread) return K_ERR_INVALID_ARG;
 
     thread->pending_fault = fault;
     thread->fault_pending = true;
@@ -168,32 +169,28 @@ int thread_raise_fault(bh_thread_t *thread, thread_fault_t fault) {
     /* TODO(personality/linux): translate THREAD_FAULT_SEGV / STACK_OVERFLOW to SIGSEGV */
 
     sched_reschedule();
-    return 0;
+    return K_OK;
 }
 
-
-
-void *memcpy(void *dest, const void *src, size_t n);
-
-int sched_sys_intent_set(uint64_t tid, const void* intent) {
-    if (!intent) return -1;
+kstatus_t sched_sys_intent_set(uint64_t tid, const void* intent) {
+    if (!intent) return K_ERR_INVALID_ARG;
     bh_thread_t *thread = sched_find_thread_by_id(tid);
-    if (!thread) return -1;
+    if (!thread) return K_ERR_BAD_THREAD;
     // Basic validation and copy
     bharat_intent_t local_intent;
     memcpy(&local_intent, intent, sizeof(bharat_intent_t));
-    if (local_intent.version != BHARAT_INTENT_V1) return -1;
+    if (local_intent.version != BHARAT_INTENT_V1) return K_ERR_UNSUPPORTED;
 
-    // TODO: store intent somewhere
+    // Intent storage is not implemented; fail closed rather than report a no-op success.
     (void)thread;
-    return 0;
+    return K_ERR_UNSUPPORTED;
 }
 
-int sched_sys_intent_get(uint64_t tid, void* intent) {
-    if (!intent) return -1;
+kstatus_t sched_sys_intent_get(uint64_t tid, void* intent) {
+    if (!intent) return K_ERR_INVALID_ARG;
     bh_thread_t *thread = sched_find_thread_by_id(tid);
-    if (!thread) return -1;
-    // TODO: retrieve intent from somewhere
+    if (!thread) return K_ERR_BAD_THREAD;
+    // Never report success until the entire output can be initialized from stored state.
     (void)thread;
-    return 0;
+    return K_ERR_UNSUPPORTED;
 }

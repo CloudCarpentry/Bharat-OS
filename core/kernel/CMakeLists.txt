@@ -22,7 +22,6 @@ endfunction()
 
 bharat_require_root(BHARAT_ARCH_ROOT "${CMAKE_SOURCE_DIR}/core/arch" "x86/x86_64/boot/boot.S" "arch")
 bharat_require_root(BHARAT_HAL_ROOT "${CMAKE_SOURCE_DIR}/core/hal" "common/discovery.c" "hal")
-set(BHARAT_ARCH_HAL_ROOT "${BHARAT_ARCH_ROOT}/hal")
 bharat_require_root(BHARAT_PLATFORM_ROOT "${CMAKE_SOURCE_DIR}/core/platform" "boards/qemu-virt-x86_64/board.c" "platform")
 bharat_require_root(BHARAT_LIB_ROOT "${CMAKE_SOURCE_DIR}/core/lib" "include/ipc_user.h" "lib")
 bharat_require_root(BHARAT_KERNEL_STAGING_ROOT "${CMAKE_SOURCE_DIR}/core/kernel/staging" "ai/ai_kernel_bridge.c" "kernel staging")
@@ -30,6 +29,9 @@ set(BHARAT_KERNEL_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/core/kernel/include")
 if(NOT EXISTS "${BHARAT_KERNEL_INCLUDE_DIR}/bharat_config.h.in")
     message(FATAL_ERROR "Missing canonical kernel include root: ${BHARAT_KERNEL_INCLUDE_DIR}")
 endif()
+target_include_directories(bharat_kernel_buildopts INTERFACE
+    ${CMAKE_SOURCE_DIR}/core/hal/include
+)
 
 # Define and create the generated include directory in the build tree
 set(BHARAT_GENERATED_INCLUDE_DIR "${CMAKE_BINARY_DIR}/generated/include")
@@ -41,7 +43,9 @@ target_include_directories(bharat_kernel_includes INTERFACE
     ${CMAKE_BINARY_DIR}/generated
     ${CMAKE_SOURCE_DIR}/core/personalities/runtime/include
     ${BHARAT_HAL_ROOT}/include
+    ${CMAKE_SOURCE_DIR}/core/hal/include
     ${CMAKE_SOURCE_DIR}/interface/include
+    ${CMAKE_SOURCE_DIR}/interface/uapi
     ${BHARAT_LIB_ROOT}/include
     ${BHARAT_BOOT_INCLUDE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/src
@@ -77,7 +81,7 @@ if(NOT COMMAND bharat_register_component)
     set(BHARAT_GEN_DIR "${CMAKE_BINARY_DIR}/generated")
 
     if(EXISTS "${BHARAT_MANIFEST_JSON}" AND EXISTS "${BHARAT_GEN_SCRIPT}")
-        find_package(Python3 QUIET COMPONENTS Interpreter)
+        find_package(Python3 REQUIRED COMPONENTS Interpreter)
         if(Python3_Interpreter_FOUND)
             file(MAKE_DIRECTORY "${BHARAT_GEN_DIR}")
             execute_process(
@@ -121,6 +125,12 @@ endif()
 if(NOT DEFINED BHARAT_PROFILE_DESKTOP)
     set(BHARAT_PROFILE_DESKTOP 1)
 endif()
+if(NOT DEFINED BHARAT_KMEM_ALLOCATOR_SLAB AND
+   NOT DEFINED BHARAT_KMEM_ALLOCATOR_SLUB AND
+   NOT DEFINED BHARAT_KMEM_ALLOCATOR_SLOB AND
+   NOT DEFINED BHARAT_KMEM_ALLOCATOR_RT_POOL)
+    set(BHARAT_KMEM_ALLOCATOR_SLAB 1)
+endif()
 if(NOT DEFINED BHARAT_IRQ_DISPATCH_GENERIC)
     set(BHARAT_IRQ_DISPATCH_GENERIC 1)
 endif()
@@ -157,7 +167,6 @@ configure_file(
     "${BHARAT_GENERATED_INCLUDE_DIR}/bharat_config.h"
     @ONLY
 )
-option(BHARAT_BOOT_GUI "Enable boot-time GUI handoff metadata" ON)
 if(NOT DEFINED BHARAT_BOOT_HW_PROFILE OR "${BHARAT_BOOT_HW_PROFILE}" STREQUAL "")
     message(FATAL_ERROR "BHARAT_BOOT_HW_PROFILE must not be empty")
 endif()
@@ -186,15 +195,13 @@ if(NOT DEFINED ARCH)
         set(ARCH "x86_64")
     endif()
 endif()
-string(TOLOWER "${ARCH}" ARCH)
-
 set(ARCH_CRYPTO_SRC ${BHARAT_ARCH_ROOT}/common/arch_crypto_stub.c)
 set(ARCH_TLB_ACCEL_SRC ${BHARAT_ARCH_ROOT}/common/arch_tlb_accel_stub.c)
 # ── Boot and HAL sources (arch-specific) ────────────────────────────────────
 if(ARCH STREQUAL "x86_64")
     set(BHARAT_ARCH_PRIVATE_INCLUDE_DIR ${BHARAT_ARCH_ROOT}/x86/x86_64/include)
     set(BOOT_SRC ${BHARAT_ARCH_ROOT}/x86/x86_64/boot/boot.S)
-    set(ARCH_HAL ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/hal_cpu.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/hal_discovery.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/hal_mm.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/trap_entry.S ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/hal_pt_x86_64.c ${BHARAT_HAL_ROOT}/common/hal_pt.c  ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/vtd_iommu.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/hal_irq.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/hal_timer.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/dma.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/hal_secure_boot.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/cpu_relax.c ${BHARAT_HAL_ROOT}/common/iommu/null/null_iommu.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/iommu/intel_vtd/intel_vtd_stub.c ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/boot_ap.c)
+    set(ARCH_HAL ${BHARAT_ARCH_ROOT}/x86/x86_64/hal_cpu.c ${BHARAT_ARCH_ROOT}/x86/x86_64/hal_discovery.c ${BHARAT_ARCH_ROOT}/x86/x86_64/hal_mm.c ${BHARAT_ARCH_ROOT}/x86/x86_64/trap_entry.S ${BHARAT_ARCH_ROOT}/x86/x86_64/hal_pt_x86_64.c ${BHARAT_HAL_ROOT}/common/hal_pt.c ${BHARAT_HAL_ROOT}/common/hal_pt_mpu.c ${BHARAT_ARCH_ROOT}/x86/x86_64/vtd_iommu.c ${BHARAT_ARCH_ROOT}/x86/x86_64/hal_irq.c ${BHARAT_ARCH_ROOT}/x86/x86_64/hal_timer.c ${BHARAT_ARCH_ROOT}/x86/x86_64/dma.c ${BHARAT_ARCH_ROOT}/x86/x86_64/hal_secure_boot.c ${BHARAT_ARCH_ROOT}/x86/x86_64/cpu_relax.c ${BHARAT_HAL_ROOT}/common/iommu/null/null_iommu.c ${BHARAT_ARCH_ROOT}/x86/x86_64/iommu/intel_vtd/intel_vtd_stub.c ${BHARAT_ARCH_ROOT}/x86/x86_64/boot_ap.c)
     set(ARCH_CONTEXT_SWITCH ${BHARAT_ARCH_ROOT}/x86/x86_64/user_entry.c ${BHARAT_ARCH_ROOT}/x86/x86_64/context_switch.c ${BHARAT_ARCH_ROOT}/x86/x86_64/context_switch.S ${BHARAT_ARCH_ROOT}/x86/x86_64/syscall_entry.S)
     set(ARCH_CPU_CAPS_SRC ${BHARAT_ARCH_ROOT}/x86/x86_64/cpu_caps.c)
     set(ARCH_EXT_STATE_SRC ${BHARAT_ARCH_ROOT}/x86/x86_64/ext_state.c)
@@ -203,11 +210,11 @@ if(ARCH STREQUAL "x86_64")
 elseif(ARCH STREQUAL "riscv64")
     set(BHARAT_ARCH_PRIVATE_INCLUDE_DIR ${BHARAT_ARCH_ROOT}/riscv/riscv64/include)
     set(BOOT_SRC ${BHARAT_ARCH_ROOT}/riscv/riscv64/boot/boot.S)
-    set(ARCH_HAL ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv64/hal_cpu.c ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv64/hal_discovery.c ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv64/hal_mm.c ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv64/boot/feature_probe.c ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv64/trap_entry.S ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv64/hal_pt_riscv64.c ${BHARAT_HAL_ROOT}/common/hal_pt.c  ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv64/iopmp.c ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv64/hal_irq.c ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv64/hal_timer.c ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv64/dma.c ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv64/hal_secure_boot.c ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv64/cpu_relax.c ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv64/boot_sbi.c ${BHARAT_HAL_ROOT}/common/iommu/null/null_iommu.c ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv64/iommu/riscv_iommu/riscv_iommu_stub.c)
-    set(ARCH_HAL_EXTRA ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv64/shakti_bsp.c)
+    set(ARCH_HAL ${BHARAT_ARCH_ROOT}/riscv/riscv64/hal_cpu.c ${BHARAT_ARCH_ROOT}/riscv/riscv64/hal_discovery.c ${BHARAT_ARCH_ROOT}/riscv/riscv64/hal_mm.c ${BHARAT_ARCH_ROOT}/riscv/riscv64/boot/feature_probe.c ${BHARAT_ARCH_ROOT}/riscv/riscv64/trap_entry.S ${BHARAT_ARCH_ROOT}/riscv/riscv64/hal_pt_riscv64.c ${BHARAT_HAL_ROOT}/common/hal_pt.c ${BHARAT_HAL_ROOT}/common/hal_pt_mpu.c ${BHARAT_ARCH_ROOT}/riscv/riscv64/iopmp.c ${BHARAT_ARCH_ROOT}/riscv/riscv64/hal_irq.c ${BHARAT_ARCH_ROOT}/riscv/riscv64/hal_timer.c ${BHARAT_ARCH_ROOT}/riscv/riscv64/dma.c ${BHARAT_ARCH_ROOT}/riscv/riscv64/hal_secure_boot.c ${BHARAT_ARCH_ROOT}/riscv/riscv64/cpu_relax.c ${BHARAT_ARCH_ROOT}/riscv/riscv64/boot_sbi.c ${BHARAT_HAL_ROOT}/common/iommu/null/null_iommu.c ${BHARAT_ARCH_ROOT}/riscv/riscv64/iommu/riscv_iommu/riscv_iommu_stub.c)
+    set(ARCH_HAL_EXTRA ${BHARAT_ARCH_ROOT}/riscv/riscv64/shakti_bsp.c)
     # VirtIO GPU display driver: only for qemu-virt + GUI enabled
     if(BHARAT_BOOT_GUI AND "${BHARAT_RISCV_SOC_PROFILE}" STREQUAL "qemu-virt")
-        #list(APPEND ARCH_HAL ${BHARAT_ARCH_HAL_ROOT}/riscv/virtio_gpu.c)
+        #list(APPEND ARCH_HAL ${BHARAT_ARCH_ROOT}/riscv/virtio_gpu.c)
         add_compile_definitions(BHARAT_VIRTIO_GPU=1)
     endif()
     set(ARCH_CONTEXT_SWITCH ${BHARAT_ARCH_ROOT}/riscv/riscv64/user_entry.c ${BHARAT_ARCH_ROOT}/riscv/riscv64/context_switch.c ${BHARAT_ARCH_ROOT}/riscv/common/context_switch.S)
@@ -216,8 +223,8 @@ elseif(ARCH STREQUAL "riscv64")
 elseif(ARCH STREQUAL "riscv32")
     set(BHARAT_ARCH_PRIVATE_INCLUDE_DIR ${BHARAT_ARCH_ROOT}/riscv/riscv32/include)
     set(BOOT_SRC ${BHARAT_ARCH_ROOT}/riscv/riscv32/boot/boot.S)
-    set(ARCH_HAL ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv32/hal_cpu.c ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv32/trap_entry.S ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv32/hal_pt_riscv32.c ${BHARAT_HAL_ROOT}/common/hal_pt.c  ${BHARAT_HAL_ROOT}/common/hal_secure_boot_unsupported.c ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv32/cpu_relax.c ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv32/boot_stub.c ${BHARAT_HAL_ROOT}/common/iommu/null/null_iommu.c ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv32/hal_discovery.c ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv32/hal_mm.c ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv32/hal_irq.c ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv32/hal_timer.c ${BHARAT_ARCH_ROOT}/riscv/riscv32/boot/entry.c)
-    set(ARCH_HAL_EXTRA ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv32/shakti_bsp_stub.c)
+    set(ARCH_HAL ${BHARAT_ARCH_ROOT}/riscv/riscv32/hal_cpu.c ${BHARAT_ARCH_ROOT}/riscv/riscv32/trap_entry.S ${BHARAT_ARCH_ROOT}/riscv/riscv32/hal_pt_riscv32.c ${BHARAT_HAL_ROOT}/common/hal_pt.c ${BHARAT_HAL_ROOT}/common/hal_pt_mpu.c ${BHARAT_HAL_ROOT}/common/hal_secure_boot_unsupported.c ${BHARAT_ARCH_ROOT}/riscv/riscv32/cpu_relax.c ${BHARAT_ARCH_ROOT}/riscv/riscv32/boot_stub.c ${BHARAT_HAL_ROOT}/common/iommu/null/null_iommu.c ${BHARAT_ARCH_ROOT}/riscv/riscv32/hal_discovery.c ${BHARAT_ARCH_ROOT}/riscv/riscv32/hal_mm.c ${BHARAT_ARCH_ROOT}/riscv/riscv32/hal_irq.c ${BHARAT_ARCH_ROOT}/riscv/riscv32/hal_timer.c ${BHARAT_ARCH_ROOT}/riscv/riscv32/boot/entry.c)
+    set(ARCH_HAL_EXTRA ${BHARAT_ARCH_ROOT}/riscv/riscv32/shakti_bsp_stub.c)
     set(ARCH_CONTEXT_SWITCH ${BHARAT_ARCH_ROOT}/riscv/riscv32/user_entry.c ${BHARAT_ARCH_ROOT}/riscv/riscv32/context_switch.c ${BHARAT_ARCH_ROOT}/riscv/common/context_switch.S)
     set(ARCH_CPU_CAPS_SRC ${BHARAT_ARCH_ROOT}/riscv/riscv32/cpu_caps.c)
     set(ARCH_EXT_STATE_SRC ${BHARAT_ARCH_ROOT}/riscv/riscv32/ext_state.c
@@ -225,15 +232,15 @@ elseif(ARCH STREQUAL "riscv32")
 elseif(ARCH STREQUAL "arm64")
     set(BHARAT_ARCH_PRIVATE_INCLUDE_DIR ${BHARAT_ARCH_ROOT}/arm/arm64/include)
     set(BOOT_SRC ${BHARAT_ARCH_ROOT}/arm/arm64/boot/boot.S)
-    set(ARCH_HAL ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/hal_cpu.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/hal_discovery.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/hal_mm.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/trap_entry.S ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/hal_pt_arm64.c ${BHARAT_HAL_ROOT}/common/hal_pt.c  ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/smmu.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/hal_irq.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/hal_timer.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/dma.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/hal_secure_boot.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/cpu_relax.c ${BHARAT_HAL_ROOT}/common/iommu/null/null_iommu.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/iommu/arm_smmu/arm_smmu_stub.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/boot_psci.c)
+    set(ARCH_HAL ${BHARAT_ARCH_ROOT}/arm/arm64/hal_cpu.c ${BHARAT_ARCH_ROOT}/arm/arm64/hal_discovery.c ${BHARAT_ARCH_ROOT}/arm/arm64/hal_mm.c ${BHARAT_ARCH_ROOT}/arm/arm64/trap_entry.S ${BHARAT_ARCH_ROOT}/arm/arm64/hal_pt_arm64.c ${BHARAT_HAL_ROOT}/common/hal_pt.c ${BHARAT_HAL_ROOT}/common/hal_pt_mpu.c ${BHARAT_ARCH_ROOT}/arm/arm64/smmu.c ${BHARAT_ARCH_ROOT}/arm/arm64/hal_irq.c ${BHARAT_ARCH_ROOT}/arm/arm64/hal_timer.c ${BHARAT_ARCH_ROOT}/arm/arm64/dma.c ${BHARAT_ARCH_ROOT}/arm/arm64/hal_secure_boot.c ${BHARAT_ARCH_ROOT}/arm/arm64/cpu_relax.c ${BHARAT_HAL_ROOT}/common/iommu/null/null_iommu.c ${BHARAT_ARCH_ROOT}/arm/arm64/iommu/arm_smmu/arm_smmu_stub.c ${BHARAT_ARCH_ROOT}/arm/arm64/boot_psci.c)
     set(ARCH_CONTEXT_SWITCH ${BHARAT_ARCH_ROOT}/arm/arm64/user_entry.c ${BHARAT_ARCH_ROOT}/arm/arm64/context_switch.c ${BHARAT_ARCH_ROOT}/arm/arm64/context_switch.S)
-    set(ARCH_HAL_EXTRA ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/topology_fdt.c)
+    set(ARCH_HAL_EXTRA ${BHARAT_ARCH_ROOT}/arm/arm64/topology_fdt.c)
     set(ARCH_CPU_CAPS_SRC ${BHARAT_ARCH_ROOT}/arm/arm64/cpu_caps.c)
     set(ARCH_EXT_STATE_SRC ${BHARAT_ARCH_ROOT}/arm/arm64/ext_state.c)
 elseif(ARCH STREQUAL "arm32")
     set(BHARAT_ARCH_PRIVATE_INCLUDE_DIR ${BHARAT_ARCH_ROOT}/arm/arm32/include)
     set(BOOT_SRC ${BHARAT_ARCH_ROOT}/arm/arm32/boot/boot.S)
-    set(ARCH_HAL ${BHARAT_ARCH_HAL_ROOT}/arm/arm32/hal_cpu.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm32/trap_entry.S ${BHARAT_ARCH_HAL_ROOT}/arm/arm32/hal_pt_arm32.c ${BHARAT_HAL_ROOT}/common/hal_pt.c  ${BHARAT_ARCH_HAL_ROOT}/arm/arm32/hal_discovery.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm32/hal_timer.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm32/hal_irq.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm32/boot_stub.c ${BHARAT_ARCH_HAL_ROOT}/mpu/arm32/mpu_backend.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm32/dma.c ${BHARAT_HAL_ROOT}/common/hal_secure_boot_unsupported.c ${BHARAT_ARCH_HAL_ROOT}/arm/arm32/cpu_relax.c ${BHARAT_HAL_ROOT}/common/iommu/null/null_iommu.c)
+    set(ARCH_HAL ${BHARAT_ARCH_ROOT}/arm/arm32/hal_cpu.c ${BHARAT_ARCH_ROOT}/arm/arm32/trap_entry.S ${BHARAT_ARCH_ROOT}/arm/arm32/hal_pt_arm32.c ${BHARAT_HAL_ROOT}/common/hal_pt.c ${BHARAT_HAL_ROOT}/common/hal_pt_mpu.c ${BHARAT_ARCH_ROOT}/arm/arm32/hal_discovery.c ${BHARAT_ARCH_ROOT}/arm/arm32/hal_timer.c ${BHARAT_ARCH_ROOT}/arm/arm32/hal_irq.c ${BHARAT_ARCH_ROOT}/arm/arm32/boot_stub.c ${BHARAT_ARCH_ROOT}/mpu/arm32/mpu_backend.c ${BHARAT_ARCH_ROOT}/arm/arm32/dma.c ${BHARAT_HAL_ROOT}/common/hal_secure_boot_unsupported.c ${BHARAT_ARCH_ROOT}/arm/arm32/cpu_relax.c ${BHARAT_HAL_ROOT}/common/iommu/null/null_iommu.c)
     set(ARCH_CONTEXT_SWITCH ${BHARAT_ARCH_ROOT}/arm/arm32/user_entry.c ${BHARAT_ARCH_ROOT}/arm/arm32/context_switch.c ${BHARAT_ARCH_ROOT}/arm/arm32/context_switch.S)
     set(ARCH_CPU_CAPS_SRC ${BHARAT_ARCH_ROOT}/arm/arm32/cpu_caps.c)
     set(ARCH_EXT_STATE_SRC ${BHARAT_ARCH_ROOT}/arm/arm32/ext_state.c
@@ -285,12 +292,22 @@ endif()
 # ── Memory Subsystem Targets ──────────────────────────────────────────────
 
 # Minimal Core: PMM and basic allocation (Always Included)
+if(BHARAT_KMEM_ALLOCATOR_RESOLVED STREQUAL "SLUB")
+    list(APPEND PMM_ALLOCATOR_SRC src/mm/pmm/slub.c)
+elseif(BHARAT_KMEM_ALLOCATOR_RESOLVED STREQUAL "SLOB")
+    list(APPEND PMM_ALLOCATOR_SRC src/mm/pmm/slob.c)
+else()
+    list(APPEND PMM_ALLOCATOR_SRC src/mm/pmm/slab.c)
+endif()
+
 add_library(bharat_mm_pmm OBJECT
-    src/mm/pmm/pmm.c
+    src/mm/pmm/pmm_init.c
+    src/mm/pmm/pmm_buddy.c
+    src/mm/pmm/pmm_fault.c
     src/mm/pmm/pmm_pcache.c
     src/mm/pmm/pmm_debug.c
     src/mm/pmm/early_alloc.c
-    src/mm/pmm/slab.c
+    ${PMM_ALLOCATOR_SRC}
     src/mm/pmm/kmem_aligned.c
     src/mm/pmm/numa.c
     src/mm/mem_class.c
@@ -319,6 +336,7 @@ target_compile_options(bharat_mm_iommu PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreesta
 
 # Accelerator Memory Support
 add_library(bharat_mm_accel OBJECT
+    src/mm/hmem.c
     src/mm/accel/accel_mem.c
     src/mm/accel/accel_sg.c
     src/mm/accel/accel_iova.c
@@ -378,6 +396,12 @@ if(BHARAT_ENABLE_ADVANCED_VM)
         src/mm/vm/distributed/vm_compat_vmm.c
         src/mm/vm/distributed/mm_local.c
         src/mm/vm/distributed/mm_remote.c
+    )
+    target_link_libraries(bharat_mm_vmm PRIVATE bharat_kernel_includes bharat_kernel_buildopts)
+    target_compile_options(bharat_mm_vmm PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
+else()
+    add_library(bharat_mm_vmm OBJECT
+        src/mm/vmm_stub.c
     )
     target_link_libraries(bharat_mm_vmm PRIVATE bharat_kernel_includes bharat_kernel_buildopts)
     target_compile_options(bharat_mm_vmm PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
@@ -476,29 +500,30 @@ set(KERNEL_SRCS
     $<$<STREQUAL:${ARCH},x86_64>:${BHARAT_ARCH_ROOT}/x86/x86_64/arch_console.c>
     $<$<STREQUAL:${ARCH},x86_64>:${BHARAT_ARCH_ROOT}/x86/x86_64/hw_caps.c>
     $<$<STREQUAL:${ARCH},x86_64>:${BHARAT_ARCH_ROOT}/x86/x86_64/arch_elf.c>
-    $<$<STREQUAL:${ARCH},x86_64>:${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/hal_mm.c>
+    $<$<STREQUAL:${ARCH},x86_64>:${BHARAT_ARCH_ROOT}/x86/x86_64/hal_mm.c>
     $<$<STREQUAL:${ARCH},arm32>:${BHARAT_ARCH_ROOT}/arm/arm32/arch_console.c>
     $<$<STREQUAL:${ARCH},arm64>:${BHARAT_ARCH_ROOT}/arm/arm64/arch_caps.c>
     $<$<STREQUAL:${ARCH},arm64>:${BHARAT_ARCH_ROOT}/arm/arm64/arch_console.c>
     $<$<STREQUAL:${ARCH},arm64>:${BHARAT_ARCH_ROOT}/arm/arm64/hw_caps.c>
     $<$<STREQUAL:${ARCH},arm64>:${BHARAT_ARCH_ROOT}/arm/arm64/arch_elf.c>
-    $<$<STREQUAL:${ARCH},arm64>:${BHARAT_ARCH_HAL_ROOT}/arm/arm64/hal_mm.c>
+    $<$<STREQUAL:${ARCH},arm64>:${BHARAT_ARCH_ROOT}/arm/arm64/hal_mm.c>
     $<$<STREQUAL:${ARCH},riscv64>:${BHARAT_ARCH_ROOT}/riscv/riscv64/arch_caps.c>
     $<$<STREQUAL:${ARCH},riscv64>:${BHARAT_ARCH_ROOT}/riscv/riscv64/arch_console.c>
     $<$<STREQUAL:${ARCH},riscv64>:${BHARAT_ARCH_ROOT}/riscv/riscv64/hw_caps.c>
     $<$<STREQUAL:${ARCH},riscv64>:${BHARAT_ARCH_ROOT}/riscv/riscv64/arch_elf.c>
-    $<$<STREQUAL:${ARCH},riscv64>:${BHARAT_ARCH_HAL_ROOT}/riscv/riscv64/hal_mm.c>
+    $<$<STREQUAL:${ARCH},riscv64>:${BHARAT_ARCH_ROOT}/riscv/riscv64/hal_mm.c>
     $<$<STREQUAL:${ARCH},arm32>:${BHARAT_ARCH_ROOT}/arm/arm32/arch_caps.c>
     $<$<STREQUAL:${ARCH},arm32>:${BHARAT_ARCH_ROOT}/arm/arm32/hw_caps.c>
     $<$<STREQUAL:${ARCH},arm32>:${BHARAT_ARCH_ROOT}/arm/arm32/arch_elf.c>
-    $<$<STREQUAL:${ARCH},arm32>:${BHARAT_ARCH_HAL_ROOT}/arm/arm32/hal_mm.c>
+    $<$<STREQUAL:${ARCH},arm32>:${BHARAT_ARCH_ROOT}/arm/arm32/hal_mm.c>
     $<$<STREQUAL:${ARCH},riscv32>:${BHARAT_ARCH_ROOT}/riscv/riscv32/arch_caps.c>
     $<$<STREQUAL:${ARCH},riscv32>:${BHARAT_ARCH_ROOT}/riscv/riscv32/hw_caps.c>
     $<$<STREQUAL:${ARCH},riscv32>:${BHARAT_ARCH_ROOT}/riscv/riscv32/arch_elf.c>
-    $<$<STREQUAL:${ARCH},riscv32>:${BHARAT_ARCH_HAL_ROOT}/riscv/riscv32/hal_mm.c>
+    $<$<STREQUAL:${ARCH},riscv32>:${BHARAT_ARCH_ROOT}/riscv/riscv32/hal_mm.c>
 
     ${ARCH_EXT_STATE_SRC}
     ${BHARAT_HAL_ROOT}/common/hal_mem_backend.c
+    ${BHARAT_HAL_ROOT}/common/hmem.c
     ${BHARAT_HAL_ROOT}/common/cpu_features.c
     ${BHARAT_HAL_ROOT}/common/iommu_adapter.c
     ${BHARAT_HAL_ROOT}/common/hal_dma_coherency.c
@@ -518,6 +543,10 @@ set(KERNEL_SRCS
     src/tests/ktest_prot_domain.c
     src/tests/ktest_basic_sanity.c
 )
+
+if(BHARAT_ENABLE_BENCHMARKS)
+    list(APPEND KERNEL_SRCS ${CMAKE_SOURCE_DIR}/quality/benchmarks/kernel/hmem_bench.c)
+endif()
 
 # ── Platform / Machine layer ────────────────────────────────────────────────
 if(ARCH STREQUAL "x86_64")
@@ -551,6 +580,7 @@ target_include_directories(bharat_kernel_includes INTERFACE ${BHARAT_PLATFORM_RO
 list(APPEND KERNEL_SRCS
     src/display/boot_video_map.c
     ${BHARAT_KERNEL_SRC_ROOT}/boot/boot_mode.c
+    ${BHARAT_KERNEL_SRC_ROOT}/boot/boot_events.c
     ${BHARAT_KERNEL_SRC_ROOT}/boot/boot_selftest.c
     src/process/user_image_loader.c
     src/device/device_mmio.c
@@ -579,26 +609,26 @@ add_custom_command(
 # Extract offsets using the python script
 add_custom_command(
     OUTPUT "${ASM_OFFSETS_H}"
-    COMMAND python3 ${CMAKE_SOURCE_DIR}/tools/abi/asm_offsets.py "${ASM_OFFSETS_DIR}/gen_asm_offsets.s" "${ASM_OFFSETS_H}"
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/abi/asm_offsets.py "${ASM_OFFSETS_DIR}/gen_asm_offsets.s" "${ASM_OFFSETS_H}"
     DEPENDS "${ASM_OFFSETS_DIR}/gen_asm_offsets.s" "${CMAKE_SOURCE_DIR}/tools/abi/asm_offsets.py"
     COMMENT "Generating ${ASM_OFFSETS_H}"
 )
 
 add_custom_target(generate_asm_offsets DEPENDS "${ASM_OFFSETS_H}")
 add_custom_target(check_trap_frame_abi
-    COMMAND python3 ${CMAKE_SOURCE_DIR}/tools/abi/test_trap_frame_abi.py
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/abi/test_trap_frame_abi.py
             "${ASM_OFFSETS_H}"
-            ${BHARAT_ARCH_HAL_ROOT}/x86/x86_64/trap_entry.S
-            ${BHARAT_ARCH_HAL_ROOT}/arm/arm64/trap_entry.S
-            ${BHARAT_ARCH_HAL_ROOT}/arm/arm32/trap_entry.S
-            ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv64/trap_entry.S
-            ${BHARAT_ARCH_HAL_ROOT}/riscv/riscv32/trap_entry.S
+            ${BHARAT_ARCH_ROOT}/x86/x86_64/trap_entry.S
+            ${BHARAT_ARCH_ROOT}/arm/arm64/trap_entry.S
+            ${BHARAT_ARCH_ROOT}/arm/arm32/trap_entry.S
+            ${BHARAT_ARCH_ROOT}/riscv/riscv64/trap_entry.S
+            ${BHARAT_ARCH_ROOT}/riscv/riscv32/trap_entry.S
     DEPENDS generate_asm_offsets
             ${CMAKE_SOURCE_DIR}/tools/abi/test_trap_frame_abi.py
     COMMENT "Checking five-architecture trap frame ABI"
 )
 add_custom_target(check_context_frame_abi
-    COMMAND python3 ${CMAKE_SOURCE_DIR}/tools/abi/test_context_frame_abi.py
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/abi/test_context_frame_abi.py
             "${ASM_OFFSETS_H}"
             ${BHARAT_ARCH_ROOT}/x86/x86_64/context_switch.S
             ${BHARAT_ARCH_ROOT}/arm/arm64/context_switch.S
@@ -639,6 +669,9 @@ add_executable(kernel.elf
     $<TARGET_OBJECTS:k_fs>
     $<TARGET_OBJECTS:k_monitor>
 )
+target_compile_definitions(kernel.elf PRIVATE
+    BHARAT_ENABLE_FBUI=$<BOOL:${BHARAT_ENABLE_FBUI}>
+)
 
 # Always enable kernel selftests for test builds
 set(BHARAT_ENABLE_KERNEL_SELFTESTS ON CACHE BOOL "Enable kernel self-tests")
@@ -657,20 +690,30 @@ if(BHARAT_ENABLE_ADVANCED_VM)
         $<TARGET_OBJECTS:bharat_mm_tlb>
         $<TARGET_OBJECTS:bharat_mm_vmm>
     )
+else()
+    target_sources(kernel.elf PRIVATE
+        $<TARGET_OBJECTS:bharat_mm_vmm>
+    )
 endif()
 add_dependencies(kernel.elf generate_asm_offsets)
 add_dependencies(kernel.elf check_trap_frame_abi check_context_frame_abi)
 target_include_directories(kernel.elf PRIVATE "${ASM_OFFSETS_DIR}")
 
 # Architecture-specific code model and PIE flags are set below
-target_link_libraries(kernel.elf subsys_manager bharat_kernel_buildopts bharatos_drivers serial_drivers bharat_kernel_includes bharat_arch_private_includes board_fabric bharat_platform_headers elf_parser bharat_msg_wire_codec)
+target_link_libraries(kernel.elf PRIVATE subsys_manager bharat_kernel_buildopts bharatos_drivers serial_drivers bharat_kernel_includes bharat_arch_private_includes board_fabric bharat_platform_headers elf_parser bharat_msg_wire_codec)
 if(BHARAT_ENABLE_FBUI)
-    target_link_libraries(kernel.elf fbui)
+    target_link_libraries(kernel.elf PRIVATE fbui)
 endif()
 set_target_properties(kernel.elf PROPERTIES
     OUTPUT_NAME "kernel.elf"
     SUFFIX ""
 )
+# Atomic width is an architecture contract for every kernel object library,
+# not only the final kernel.elf sources.
+target_compile_options(bharat_kernel_buildopts INTERFACE
+    $<$<COMPILE_LANGUAGE:C>:-Werror=atomic-alignment>
+)
+
 # Extra warnings for C sources only
 target_compile_options(kernel.elf PRIVATE
     $<$<COMPILE_LANGUAGE:C>:-ffreestanding>

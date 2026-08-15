@@ -1,3 +1,4 @@
+#include "boot/boot_events.h"
 #include "boot/boot_args.h"
 #include "hal/hal_boot.h"
 #include "hal/hal_irq.h"
@@ -16,6 +17,7 @@
 #include "console/console_core.h"
 #include "mm.h"
 #include "arch/arch_cpu_caps.h"
+#include "arch/common/accel_caps_publish.h"
 #include "mm_zswap.h"
 #include "multicore.h"
 #include "numa.h"
@@ -34,6 +36,7 @@
 #include "boot/boot_security.h"
 #include "display/boot_gui_init.h"
 #include "tests/ktest.h"
+#include "bharat_config.h"
 #include <bharat/cpu_local.h>
 #include "arch/arch_ext_state.h"
 #include "arch/arch_cpu_caps.h"
@@ -44,6 +47,9 @@
 #include "kernel/primitive.h"
 
 #define KPRINT(s) console_write_raw(s, string_length(s))
+
+static bool runtime_try_boot_video(const boot_info_t *boot_in);
+static void runtime_maybe_boot_gui(bool video_mapped);
 
 static void print_hw_caps_summary(const hal_hw_caps_t *caps) {
     if (!caps) return;
@@ -168,6 +174,10 @@ void boot_common_early(const boot_info_t *boot) {
     boot_selftest_report_t report;
     boot_selftest_run_stage(BOOT_TEST_STAGE_EARLY, &report);
     KPRINT("  [BOOT] Early initialization complete\n");
+
+    bool video_mapped = runtime_try_boot_video(boot);
+    runtime_maybe_boot_gui(video_mapped);
+    boot_events_publish(BH_BOOT_STAGE_HAL, 10, BHARAT_STATUS_OK, "HAL HARDWARE DISCOVERY");
 }
 
 void boot_common_security(const boot_info_t *boot) {
@@ -190,6 +200,7 @@ void boot_common_security(const boot_info_t *boot) {
     boot_selftest_report_t report;
     boot_selftest_run_stage(BOOT_TEST_STAGE_SECURITY, &report);
     KPRINT("  [BOOT] Security initialization complete\n");
+    boot_events_publish(BH_BOOT_STAGE_SECURITY, 25, BHARAT_STATUS_OK, "SECURITY & CAPABILITIES");
 }
 
 void boot_common_memory(const boot_info_t *boot) {
@@ -201,6 +212,7 @@ void boot_common_memory(const boot_info_t *boot) {
     }
     KPRINT("BOOT: pmm initialized\n");
     KPRINT("[BOOT] BOOT_MEMORY: MODULES_RESERVED\n");
+    boot_events_publish(BH_BOOT_STAGE_MEMORY, 35, BHARAT_STATUS_OK, "PMM INITIALIZED");
 
     // Ensure hal_pt is initialized BEFORE VMM tries to map things / create address space
     hal_pt_init();
@@ -214,6 +226,7 @@ void boot_common_memory(const boot_info_t *boot) {
 
     // The rest of the setup is handled through the hal_pt interface
     KPRINT("  [VMM] Architecture MMU mappings configured.\n");
+    boot_events_publish(BH_BOOT_STAGE_MEMORY, 45, BHARAT_STATUS_OK, "VMM SUBSYSTEMS READY");
 
     const bharat_boot_policy_t *boot_policy = bharat_boot_active_policy();
     if (boot_policy->enable_zswap != 0U) {
@@ -266,6 +279,9 @@ void boot_common_platform_services(const boot_info_t *boot) {
       kernel_panic("CPU capability aggregation failed");
     }
     hal_discovery_publish_cpu_caps();
+    arch_accel_caps_publish_target(&hal_get_system_discovery()->accel,
+                                   arch_cpu_caps_system_all(),
+                                   arch_cpu_caps_system_any());
     if (hal_hw_caps_publish_cpu() != K_OK || hal_hw_caps_finalize() != K_OK) {
       kernel_panic("hardware capability freeze failed");
     }
@@ -316,6 +332,7 @@ void boot_common_platform_services(const boot_info_t *boot) {
     test_device_dma_dump();
 
     KPRINT("  [SCHED] Scheduler initialized.\n");
+    boot_events_publish(BH_BOOT_STAGE_SCHEDULER, 75, BHARAT_STATUS_OK, "SCHEDULER & DEVICES READY");
 
     KPRINT("  [AI] Calibrating hardware silicon metrics...\n");
     ai_sched_calibrate_silicon();
@@ -350,7 +367,7 @@ void boot_common_platform_services(const boot_info_t *boot) {
 
     personality_register_ops(personality_native_get_ops());
 
-    if (trap_init() != 0) {
+    if (trap_init() != K_OK) {
       kernel_panic("trap gate initialization failed");
     }
     KPRINT("  [TRAP] Ready.\n");
@@ -373,7 +390,9 @@ extern void kernel_run_boot_tests(void);
 extern void hello_world_app(void);
 extern void kernel_tester_app(void);
 extern void bharat_demo_app_legacy(void);
+#if BHARAT_ENABLE_FBUI
 extern void bharat_demo_app(void);
+#endif
 
 extern int boot_video_map(const boot_info_t *boot);
 
@@ -437,12 +456,27 @@ static void runtime_maybe_boot_gui(bool video_mapped) {
 extern void kernel_start_init_service(void);
 
 static void runtime_enter_normal(const boot_info_t *boot) {
+#ifdef BHARAT_ENABLE_BENCHMARKS
+    /* Benchmark-only profiles run before userspace; some firmware paths do not
+     * preserve a kernel command line, so compile-time opt-in is authoritative. */
+    extern void bh_hmem_benchmark_run(void);
+    bh_hmem_benchmark_run();
+    while (1) {
+        hal_cpu_halt();
+    }
+#endif
     bool video_mapped = runtime_try_boot_video(boot);
     runtime_maybe_boot_gui(video_mapped);
 
     boot_selftest_report_t report;
     boot_selftest_run_stage(BOOT_TEST_STAGE_RUNTIME, &report);
     KPRINT("  [BOOT] Runtime initialization complete\n");
+    boot_events_publish(BH_BOOT_STAGE_USERSPACE, 100, BHARAT_STATUS_OK, "LAUNCHING USERSPACE");
+
+#if BHARAT_BOOT_GUI && BHARAT_ENABLE_FBUI
+    KPRINT("  [BOOT] Transitioning to Graphical System Dashboard...\n");
+    bharat_demo_app();
+#endif
 
     KPRINT("  [BOOT] Spawning first system service (sysmgr)...\n");
     kernel_start_init_service();
@@ -510,6 +544,13 @@ static void runtime_enter_benchmark(const boot_info_t *boot) {
     boot_selftest_run_stage(BOOT_TEST_STAGE_RUNTIME, &report);
     KPRINT("  [BOOT] Benchmark mode initialization complete\n");
 
+#ifdef BHARAT_ENABLE_BENCHMARKS
+    extern void bh_hmem_benchmark_run(void);
+    bh_hmem_benchmark_run();
+#else
+    KPRINT("BH_BENCH:RESULT=BLOCKED\nBH_BENCH:REASON=BENCHMARKS_DISABLED\n");
+#endif
+
     while (1) {
         hal_cpu_halt();
     }
@@ -552,7 +593,9 @@ static void runtime_enter_legacy_bringup(const boot_info_t *boot) {
     hello_world_app();
     kernel_tester_app();
     bharat_demo_app_legacy();
+#if BHARAT_ENABLE_FBUI
     bharat_demo_app();
+#endif
 
     while (1) {
       // Background AI
