@@ -154,13 +154,27 @@ static void create_demos(void) {
 static void create_splash(void) {
     root = lv_obj_create(lv_screen_active());
     apply_screen_style(root);
+
+    /* Animated spinner/arc */
+    lv_obj_t *spinner = lv_spinner_create(root);
+    lv_obj_set_size(spinner, 100, 100);
+    lv_obj_align(spinner, LV_ALIGN_CENTER, 0, -40);
+    lv_obj_set_style_arc_color(spinner, lv_color_hex(0xff9933), LV_PART_INDICATOR);
+
     lv_obj_t *title = lv_label_create(root);
     lv_label_set_text(title, "BHARAT-OS");
     lv_obj_set_style_text_color(title, lv_color_hex(0xff9933), 0);
-    lv_obj_align(title, LV_ALIGN_CENTER, 0, -24);
+    lv_obj_align(title, LV_ALIGN_CENTER, 0, 40);
+
     lv_obj_t *subtitle = lv_label_create(root);
-    lv_label_set_text(subtitle, "Capability microkernel  /  Ready");
-    lv_obj_align(subtitle, LV_ALIGN_CENTER, 0, 20);
+    lv_label_set_text(subtitle, "Booting kernel modules...");
+    lv_obj_align(subtitle, LV_ALIGN_CENTER, 0, 65);
+
+    /* Kernel progress log area */
+    lv_obj_t *log_label = lv_label_create(root);
+    lv_label_set_text(log_label, "[LOG] Starting display service...\n[LOG] Initializing IPC...\n[LOG] Calibrating hardware...");
+    lv_obj_set_style_text_color(log_label, lv_color_hex(0xa0a0a0), 0);
+    lv_obj_align(log_label, LV_ALIGN_BOTTOM_LEFT, 20, -20);
 }
 
 static void load_screen(bh_shell_screen_id_t target) {
