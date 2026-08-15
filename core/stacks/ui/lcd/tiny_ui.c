@@ -317,6 +317,8 @@ void bharat_tiny_ui_render(const bharat_tiny_fb_t *fb, const bharat_tiny_ui_stat
         cy += 36u;
         bharat_tiny_ui_draw_text(fb, cx, cy, "High-Assurance Capability Microkernel", color_text_sec, color_card, 1u);
         cy += 24u;
+        bharat_tiny_ui_draw_text(fb, cx, cy, "[LOG] Booting kernel subsystems...", color_text_sec, color_card, 1u);
+        cy += 24u;
     } else if (state->page == BHARAT_UI_PAGE_DIAGNOSTICS) {
         bharat_tiny_ui_draw_text(fb, cx, cy, "SYSTEM DIAGNOSTICS", color_cyan, color_card, 1u);
         cy += 24u;
