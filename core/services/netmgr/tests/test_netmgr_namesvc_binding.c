@@ -6,6 +6,8 @@
 #include <bharat/network/netmgr_ipc.h>
 #include <assert.h>
 #include <stdio.h>
+#include <bharat/uapi/init/bootstrap.h>
+extern const bharat_user_startup_t *bharat_runtime_get_startup(void);
 #include <string.h>
 
 // Mock IPC transport for host testing
@@ -20,7 +22,12 @@ int32_t bharat_ipc_call(bharat_ipc_endpoint_t endpoint, const bharat_ipc_msg_hea
     last_send_endpoint = endpoint;
     namesvc_call_count++;
 
-    if (endpoint == BHARAT_BOOTSTRAP_NAMESVC_ENDPOINT) {
+    const bharat_user_startup_t *startup = bharat_runtime_get_startup();
+    bharat_ipc_endpoint_t tgt_ep = BHARAT_BOOTSTRAP_NAMESVC_ENDPOINT;
+    if (startup && startup->bootstrap.namesvc_endpoint) {
+        tgt_ep = startup->bootstrap.namesvc_endpoint;
+    }
+    if (endpoint == tgt_ep) {
         memcpy(&last_namesvc_req, req_payload, sizeof(namesvc_ipc_req_t));
         memcpy(rep_payload_buf, &next_namesvc_res, sizeof(namesvc_ipc_res_t));
         *rep_header = next_res_hdr;
@@ -68,7 +75,14 @@ int main(void) {
 
     int ret = namesvc_register("netmgr", BHARAT_SERVICE_NETMGR, 0x101, 1, 0);
     assert(ret == NAMESVC_STATUS_OK);
-    assert(last_send_endpoint == BHARAT_BOOTSTRAP_NAMESVC_ENDPOINT);
+    {
+        const bharat_user_startup_t *startup = bharat_runtime_get_startup();
+        bharat_ipc_endpoint_t tgt_ep = BHARAT_BOOTSTRAP_NAMESVC_ENDPOINT;
+        if (startup && startup->bootstrap.namesvc_endpoint) {
+            tgt_ep = startup->bootstrap.namesvc_endpoint;
+        }
+        assert(last_send_endpoint == tgt_ep);
+    }
     assert(last_namesvc_req.opcode == BHARAT_NAMESVC_OP_REGISTER);
     assert(strcmp(last_namesvc_req.u.reg.service_name, "netmgr") == 0);
     assert(last_namesvc_req.u.reg.service_id == BHARAT_SERVICE_NETMGR);
