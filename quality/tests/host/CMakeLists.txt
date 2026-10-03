@@ -709,7 +709,6 @@ set_tests_properties(host_test_tiny_ui_stack PROPERTIES LABELS "ui")
 
 add_executable(host_test_ai_sched_fallback
     sched/test_ai_sched_fallback.c
-    ../../../../staging/ai/ai_sched.c
 )
 target_include_directories(host_test_ai_sched_fallback PRIVATE
     ${CMAKE_SOURCE_DIR}/core/kernel/include
