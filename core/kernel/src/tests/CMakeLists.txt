@@ -14,6 +14,7 @@ add_library(k_test_support OBJECT
     ktest_irq_domain.c
     ktest_sched_ipi.c
     ktest_smp_runtime.c
+    ktest_bootauth.c
 )
 
 target_link_libraries(k_test_support PRIVATE

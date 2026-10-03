@@ -503,8 +503,8 @@ bh_thread_t *thread_create_detached(bh_process_t *parent, void (*entry_point)(vo
   // Initialize constraints with sane defaults
   slot->thread.constraints.cpu_mask = SCHED_AFFINITY_ANY;
   slot->thread.constraints.flags = 0;
-  slot->thread.constraints.latency_class = 0;
-  slot->thread.constraints.energy_class = 0;
+  slot->thread.constraints.latency_target_us = 0;
+  slot->thread.constraints.energy_budget_uw = 0;
 
   slot->thread.priority = 1U; // Default priority
   slot->thread.base_priority = 1U;

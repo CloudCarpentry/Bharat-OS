@@ -10,6 +10,8 @@
 #include "lib/base/string.h"
 #include "console/console_core.h"
 #include "hal/hal.h"
+#include "capability.h"
+#include "ipc_endpoint.h"
 #include "bharat_config.h"
 
 // Temporarily undefine __KERNEL__ so we can include the UAPI header
@@ -366,8 +368,32 @@ kstatus_t bh_user_image_load(
     startup->bootstrap.home_core_id = hal_cpu_get_id();
     startup->bootstrap.available_kernel_mask = (1ULL << 0);
     startup->bootstrap.online_core_mask = (1ULL << hal_cpu_get_id());
-    startup->bootstrap.self_process_cap = 0;
-    startup->bootstrap.bootstrap_cap = 0;
+    uint32_t root_self_cap = 0;
+    if (process->security_sandbox_ctx && cap_table_grant(process->security_sandbox_ctx, CAP_TYPE_PROCESS, (uint64_t)(uintptr_t)process, CAP_RIGHT_PROCESS_MANAGE | CAP_RIGHT_RESOURCE_ALLOC | (1ULL << 7) /* CAP_RIGHT_DELEGATE */, &root_self_cap) != 0) {
+        status = K_ERR_NO_RESOURCES; loader_print_fail("STARTUP_READY", status); goto fail;
+    }
+    startup->bootstrap.self_process_cap = root_self_cap;
+    uint32_t root_bootstrap_cap = 0;
+    if (process->security_sandbox_ctx && cap_table_grant(process->security_sandbox_ctx, CAP_TYPE_BOOTSTRAP, 0, CAP_RIGHT_BOOTSTRAP_LAUNCH | CAP_RIGHT_BOOTSTRAP_BIND | (1ULL << 7) /* CAP_RIGHT_DELEGATE */, &root_bootstrap_cap) != 0) {
+        if (root_self_cap) cap_table_revoke(process->security_sandbox_ctx, root_self_cap);
+        status = K_ERR_NO_RESOURCES; loader_print_fail("STARTUP_READY", status); goto fail;
+    }
+    startup->bootstrap.bootstrap_cap = root_bootstrap_cap;
+
+    uint32_t namesvc_send_cap = 0;
+    uint32_t namesvc_recv_cap = 0;
+    if (process->security_sandbox_ctx && ipc_endpoint_create(process->security_sandbox_ctx, &namesvc_send_cap, &namesvc_recv_cap) != 0) {
+        if (root_bootstrap_cap) cap_table_revoke(process->security_sandbox_ctx, root_bootstrap_cap);
+        if (root_self_cap) cap_table_revoke(process->security_sandbox_ctx, root_self_cap);
+        status = K_ERR_NO_RESOURCES; loader_print_fail("STARTUP_READY", status); goto fail;
+    }
+    if (namesvc_recv_cap) {
+        cap_table_revoke(process->security_sandbox_ctx, namesvc_recv_cap);
+    }
+    startup->bootstrap.local_kernel_endpoint = 0;
+    startup->bootstrap.system_control_endpoint = 0;
+    startup->bootstrap.namesvc_endpoint = namesvc_send_cap;
+    startup->bootstrap.service_receive_endpoint = 0;
     bh_root_launch_info_t *root_launch =
         (bh_root_launch_info_t *)((uint8_t *)startup + sizeof(*startup));
     root_launch->version = BH_ROOT_LAUNCH_ABI_VERSION;

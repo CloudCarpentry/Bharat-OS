@@ -62,6 +62,7 @@ typedef enum {
     CAP_TYPE_DMA_GRANT = 20,
     CAP_TYPE_THREAD = 21,
     CAP_TYPE_HMEM = 22,
+    CAP_TYPE_BOOTSTRAP = 23,
 } cap_type_t;
 
 typedef uint64_t cap_rights_mask_t;
@@ -120,6 +121,8 @@ typedef enum {
     CAP_RIGHT_BIT_HMEM_DESTROY         = 45,
     CAP_RIGHT_BIT_ACCEL_SUBMIT         = 46,
     CAP_RIGHT_BIT_DEVICE_DMA           = 47,
+    CAP_RIGHT_BIT_BOOTSTRAP_LAUNCH     = 48,
+    CAP_RIGHT_BIT_BOOTSTRAP_BIND       = 49,
 } cap_rights_t;
 
 // Standardize capability right mask macros on uint64_t
@@ -174,6 +177,8 @@ typedef enum {
 #define CAP_RIGHT_HMEM_DESTROY         (UINT64_C(1) << CAP_RIGHT_BIT_HMEM_DESTROY)
 #define CAP_RIGHT_ACCEL_SUBMIT         (UINT64_C(1) << CAP_RIGHT_BIT_ACCEL_SUBMIT)
 #define CAP_RIGHT_DEVICE_DMA           (UINT64_C(1) << CAP_RIGHT_BIT_DEVICE_DMA)
+#define CAP_RIGHT_BOOTSTRAP_LAUNCH     (UINT64_C(1) << CAP_RIGHT_BIT_BOOTSTRAP_LAUNCH)
+#define CAP_RIGHT_BOOTSTRAP_BIND       (UINT64_C(1) << CAP_RIGHT_BIT_BOOTSTRAP_BIND)
 
 #define CAP_RIGHT_ALL                  (~UINT64_C(0))
 
@@ -262,7 +267,7 @@ typedef struct __attribute__((aligned(64))) capability_table {
     uint32_t cspace_id;
     uint16_t owner_core;
     uint16_t registry_slot;
-    uint32_t owner_pid;
+    uint64_t owner_pid;
     uint32_t numa_node;
 } capability_table_t;
 
@@ -351,7 +356,7 @@ typedef struct cap_validation_request {
     uint32_t cap_id;
     cap_type_t expected_object_type;
     cap_rights_mask_t required_rights;
-    uint32_t requester_pid;
+    uint64_t requester_pid;
     uint64_t expected_generation;
 } cap_validation_request_t;
 

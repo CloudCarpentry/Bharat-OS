@@ -227,7 +227,9 @@ static void test_scenario_normal(void) {
     backend_dispatch_context_t ctx = {
         .power_level = 100,
         .safe_mode = false, // normal mode
-        .qos_level = 1
+        .qos_level = 1,
+        .preferred_backend = 1, // BACKEND_NPU
+        .fallback_allowed = true
     };
 
     float input[] = {-4.0f, -1.0f, 0.0f, 3.0f, 8.0f};
@@ -292,7 +294,9 @@ static void test_scenario_safe_mode(void) {
     backend_dispatch_context_t ctx = {
         .power_level = 100,
         .safe_mode = true, // policy rejects hardware!
-        .qos_level = 1
+        .qos_level = 1,
+        .preferred_backend = 1, // BACKEND_NPU
+        .fallback_allowed = true
     };
 
     float input[] = {-4.0f, -1.0f, 0.0f, 3.0f, 8.0f};
@@ -359,7 +363,9 @@ static void test_scenario_npu_absent(void) {
     backend_dispatch_context_t ctx = {
         .power_level = 100,
         .safe_mode = false,
-        .qos_level = 1
+        .qos_level = 1,
+        .preferred_backend = 1, // BACKEND_NPU
+        .fallback_allowed = true
     };
 
     float input[] = {-4.0f, -1.0f, 0.0f, 3.0f, 8.0f};
@@ -428,7 +434,9 @@ static void test_hardware_execution_failure(void) {
     backend_dispatch_context_t ctx = {
         .power_level = 100,
         .safe_mode = false,
-        .qos_level = 1
+        .qos_level = 1,
+        .preferred_backend = 1, // BACKEND_NPU
+        .fallback_allowed = true
     };
 
     float input[] = {-4.0f, -1.0f, 0.0f, 3.0f, 8.0f};

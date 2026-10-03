@@ -21,6 +21,8 @@ static const cap_rights_mask_t k_cap_valid_rights_hmem =
      CAP_RIGHT_HMEM_SHARE | CAP_RIGHT_HMEM_MIGRATE |
      CAP_RIGHT_HMEM_QUERY | CAP_RIGHT_HMEM_DESTROY | CAP_RIGHT_DELEGATE);
 
+static const cap_rights_mask_t k_cap_valid_rights_bootstrap = CAP_RIGHT_BOOTSTRAP_LAUNCH | CAP_RIGHT_BOOTSTRAP_BIND | CAP_RIGHT_DELEGATE;
+
 // Internal helper: Returns valid mask for capability type, or 0 if type not transferrable
 static cap_rights_mask_t cap_valid_rights_for_type(cap_type_t type) {
     switch (type) {
@@ -58,6 +60,8 @@ static cap_rights_mask_t cap_valid_rights_for_type(cap_type_t type) {
         return k_cap_valid_rights_thread;
     case CAP_TYPE_THREAD:
         return k_cap_valid_rights_thread;
+    case CAP_TYPE_BOOTSTRAP:
+        return k_cap_valid_rights_bootstrap;
     case CAP_TYPE_PROCESS:
         return k_cap_valid_rights_process;
     case CAP_TYPE_HMEM:

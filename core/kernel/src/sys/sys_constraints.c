@@ -9,8 +9,8 @@ static void bh_copy_exec_constraints_uapi_to_kern(
     const bh_exec_constraints_t *src) {
     dst->flags = src->flags;
     dst->cpu_mask = src->cpu_mask_hint;
-    dst->latency_class = (uint16_t)src->latency_target_us;
-    dst->energy_class = (uint16_t)src->energy_budget_uw;
+    dst->latency_target_us = src->latency_target_us;
+    dst->energy_budget_uw = src->energy_budget_uw;
 }
 
 static void bh_copy_exec_constraints_kern_to_uapi(
@@ -18,8 +18,8 @@ static void bh_copy_exec_constraints_kern_to_uapi(
     const bh_exec_constraints_k_t *src) {
     dst->flags = src->flags;
     dst->priority_class = 0;
-    dst->latency_target_us = src->latency_class;
-    dst->energy_budget_uw = src->energy_class;
+    dst->latency_target_us = src->latency_target_us;
+    dst->energy_budget_uw = src->energy_budget_uw;
     dst->memory_budget_kb = 0;
     dst->isolation_domain = 0;
     dst->cpu_mask_hint = src->cpu_mask;

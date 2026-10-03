@@ -41,6 +41,7 @@ static void run_command(const char* cmd) {
         console_print("  run pmm     - Run PMM tests\n");
         console_print("  run vmm     - Run VMM tests\n");
         console_print("  stats       - Show system statistics\n");
+        console_print("  execplan    - Display execution plan telemetry\n");
     } else if (my_strcmp(cmd, "run all") == 0) {
         console_print("[SHELL] Starting app_test...\n");
         // In a real shell with execve:
@@ -49,6 +50,12 @@ static void run_command(const char* cmd) {
         console_print("To run tests, execute 'app_test' via init process or test harness.\n");
     } else if (my_strcmp(cmd, "stats") == 0) {
          console_print("System Stats: Uptime=Unknown Memory=Unknown\n");
+    } else if (my_strcmp(cmd, "execplan") == 0 || my_strcmp(cmd, "execplan stats") == 0) {
+        console_print("--- Execution Plan Telemetry ---\n");
+        console_print("Jobs Submitted: (Querying...)\n");
+        // We will do a full execve in the future, for now this is just a stub shell integrated print.
+        // The real command is in experience/user/shell/execplan.c
+        console_print("See 'execplan' binary for details.\n");
     } else if (string_length(cmd) > 0) {
         console_print("Unknown command: ");
         console_print(cmd);

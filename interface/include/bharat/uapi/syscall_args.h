@@ -53,7 +53,7 @@ typedef struct bharat_sys_endpoint_receive_args {
 
 typedef struct bharat_sys_cap_delegate_args {
     uint32_t src_cap;
-    uint32_t requested_rights;
+    uint64_t requested_rights;
     uint64_t out_cap_ptr;
 } bharat_sys_cap_delegate_args_t;
 

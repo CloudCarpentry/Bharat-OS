@@ -71,6 +71,7 @@ int ipc_endpoint_create(capability_table_t* table, uint32_t* out_send_cap, uint3
             }
 
             if (cap_table_grant(table, CAP_TYPE_ENDPOINT, obj_ref, CAP_RIGHT_ENDPOINT_RECEIVE | CAP_RIGHT_DELEGATE, out_recv_cap) != 0) {
+                cap_table_revoke(table, *out_send_cap);
                 g_endpoints[i].in_use = 0U;
                 g_endpoints[i].state = IPC_ENDPOINT_STATE_FREE;
                 return IPC_ERR_NO_SPACE;

@@ -22,6 +22,8 @@ typedef struct {
     uint32_t power_level;   // E.g., 0=battery saver, 100=max performance
     bool     safe_mode;     // True if system is in degraded/safe mode
     uint32_t qos_level;     // Target QoS required by the caller
+    uint32_t preferred_backend; // Preferred backend class (from exec plan)
+    bool fallback_allowed;      // Allow software fallback
 } backend_dispatch_context_t;
 
 /**

@@ -214,7 +214,7 @@ static kstatus_t cap_validate_object_type_internal(cap_type_t entry_type, cap_ty
     return K_OK;
 }
 
-static kstatus_t cap_validate_scope_internal(const capability_table_t *table, uint32_t requester_pid) {
+static kstatus_t cap_validate_scope_internal(const capability_table_t *table, uint64_t requester_pid) {
     if (requester_pid == 0) {
         return K_OK;
     }
