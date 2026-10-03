@@ -12,6 +12,7 @@ import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
+import typing
 from typing import BinaryIO
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -32,6 +33,31 @@ FORBIDDEN_MARKERS = ("PANIC", "ASSERT", "FAULT", "Unhandled exception")
 
 class GuiSmokeError(RuntimeError):
     """A stable, user-facing visual smoke failure."""
+
+
+class IncrementalLogReader:
+    def __init__(self, path: Path):
+        self.path = path
+        self.file: typing.TextIO | None = None
+        self.tail = ""
+
+    def read_new_content(self, overlap: int = 256) -> str:
+        if self.file is None:
+            if not self.path.exists():
+                return ""
+            self.file = self.path.open("r", encoding="utf-8", errors="replace")
+        new_data = self.file.read()
+        if not new_data:
+            return self.tail
+
+        content = self.tail + new_data
+        self.tail = content[-overlap:] if len(content) > overlap else content
+        return content
+
+    def close(self) -> None:
+        if self.file:
+            self.file.close()
+            self.file = None
 
 
 @dataclass(frozen=True)
@@ -227,7 +253,9 @@ class QmpClient:
             self._socket.close()
 
 
-def wait_for_markers(serial_log: Path, process: subprocess.Popen, deadline: float) -> tuple[int, int]:
+def wait_for_markers(
+    serial_log: Path, process: subprocess.Popen, deadline: float
+) -> tuple[int, int]:
     observed_display = False
     observed_frame = False
     width = 0
@@ -360,14 +388,22 @@ def run_smoke(args: argparse.Namespace) -> None:
     target_path = args.target.resolve()
     target = resolve_yaml_target(target_path)
     if target.arch != "x86_64" or target.run is None or target.run.nographic:
-        raise GuiSmokeError("GUI-002 currently requires an x86_64 graphical QEMU target")
+        raise GuiSmokeError(
+            "GUI-002 currently requires an x86_64 graphical QEMU target"
+        )
 
-    run_checked([sys.executable, "tools/build.py", "build", "--target-yaml", str(target_path)])
-    run_checked([sys.executable, "tools/build.py", "package", "--target-yaml", str(target_path)])
+    run_checked(
+        [sys.executable, "tools/build.py", "build", "--target-yaml", str(target_path)]
+    )
+    run_checked(
+        [sys.executable, "tools/build.py", "package", "--target-yaml", str(target_path)]
+    )
 
     manifest_path = get_manifest_dir(target, REPO_ROOT) / "run-manifest.json"
     manifest = load_run_manifest(manifest_path)
-    artifact_dir = args.artifact_dir or get_output_root(target, REPO_ROOT) / "artifacts/gui-smoke"
+    artifact_dir = (
+        args.artifact_dir or get_output_root(target, REPO_ROOT) / "artifacts/gui-smoke"
+    )
     artifact_dir.mkdir(parents=True, exist_ok=True)
     serial_log = artifact_dir / "serial.log"
     qemu_log = artifact_dir / "qemu.log"
@@ -407,10 +443,22 @@ def run_smoke(args: argparse.Namespace) -> None:
             for down in (True, False):
                 qmp.execute(
                     "input-send-event",
-                    {"events": [{"type": "key", "data": {"down": down, "key": {"type": "qcode", "data": "tab"}}}]},
+                    {
+                        "events": [
+                            {
+                                "type": "key",
+                                "data": {
+                                    "down": down,
+                                    "key": {"type": "qcode", "data": "tab"},
+                                },
+                            }
+                        ]
+                    },
                 )
             wait_for_input_marker(serial_log, process, deadline)
-            qmp.execute("screendump", {"filename": str(after_screenshot), "format": "ppm"})
+            qmp.execute(
+                "screendump", {"filename": str(after_screenshot), "format": "ppm"}
+            )
             after_image = read_ppm(after_screenshot)
             validate_frame(
                 after_image,
@@ -438,25 +486,66 @@ def run_smoke(args: argparse.Namespace) -> None:
             qmp.close()
         qmp_socket.unlink(missing_ok=True)
         if forced:
-            print("[gui-smoke] warning: QEMU required forced termination", file=sys.stderr)
+            print(
+                "[gui-smoke] warning: QEMU required forced termination", file=sys.stderr
+            )
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Build a GUI target, capture QEMU scanout through QMP, and reject uniform frames."
     )
-    parser.add_argument("--target", type=Path, default=DEFAULT_TARGET, help=f"target YAML (default: {DEFAULT_TARGET.relative_to(REPO_ROOT)})")
-    parser.add_argument("--artifact-dir", type=Path, help="artifact output directory (default: target build directory)")
-    parser.add_argument("--timeout", type=float, default=60.0, help="bounded boot/QMP timeout in seconds (default: 60)")
-    parser.add_argument("--minimum-colors", type=int, default=8, help="minimum distinct RGB colors (default: 8)")
-    parser.add_argument("--minimum-non-dominant-ratio", type=float, default=0.01, help="minimum pixels differing from the dominant color (default: 0.01)")
-    parser.add_argument("--minimum-changed-ratio", type=float, default=0.0001, help="minimum changed pixel fraction after input (default: 0.0001)")
-    parser.add_argument("--maximum-changed-ratio", type=float, default=0.50, help="maximum changed pixel fraction after input (default: 0.50)")
+    parser.add_argument(
+        "--target",
+        type=Path,
+        default=DEFAULT_TARGET,
+        help=f"target YAML (default: {DEFAULT_TARGET.relative_to(REPO_ROOT)})",
+    )
+    parser.add_argument(
+        "--artifact-dir",
+        type=Path,
+        help="artifact output directory (default: target build directory)",
+    )
+    parser.add_argument(
+        "--timeout",
+        type=float,
+        default=60.0,
+        help="bounded boot/QMP timeout in seconds (default: 60)",
+    )
+    parser.add_argument(
+        "--minimum-colors",
+        type=int,
+        default=8,
+        help="minimum distinct RGB colors (default: 8)",
+    )
+    parser.add_argument(
+        "--minimum-non-dominant-ratio",
+        type=float,
+        default=0.01,
+        help="minimum pixels differing from the dominant color (default: 0.01)",
+    )
+    parser.add_argument(
+        "--minimum-changed-ratio",
+        type=float,
+        default=0.0001,
+        help="minimum changed pixel fraction after input (default: 0.0001)",
+    )
+    parser.add_argument(
+        "--maximum-changed-ratio",
+        type=float,
+        default=0.50,
+        help="maximum changed pixel fraction after input (default: 0.50)",
+    )
     args = parser.parse_args(argv)
-    if (args.timeout <= 0 or args.minimum_colors < 2 or
-            not 0 < args.minimum_non_dominant_ratio <= 1 or
-            not 0 < args.minimum_changed_ratio <= args.maximum_changed_ratio <= 1):
-        parser.error("timeout must be positive, colors >= 2, and ratios must be ordered in (0, 1]")
+    if (
+        args.timeout <= 0
+        or args.minimum_colors < 2
+        or not 0 < args.minimum_non_dominant_ratio <= 1
+        or not 0 < args.minimum_changed_ratio <= args.maximum_changed_ratio <= 1
+    ):
+        parser.error(
+            "timeout must be positive, colors >= 2, and ratios must be ordered in (0, 1]"
+        )
     return args
 
 
