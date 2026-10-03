@@ -15,6 +15,10 @@ def test_parse_memory_to_kb():
     assert _parse_memory_to_kb("2048k") == 2048
     assert _parse_memory_to_kb("1048576") == 1024
 
+    # Unrecognized formats
+    assert _parse_memory_to_kb("invalid") is None
+    assert _parse_memory_to_kb("10X") is None
+
 def create_mock_target(arch="arm64", memory="512M", footprint_profile="test_profile"):
     return ResolvedTarget(
         name="test_target",
@@ -43,6 +47,7 @@ def test_validate_footprint_contract(tmp_path):
         f.write("profile_id,arch,boot_min_ram_kb\n")
         f.write("test_profile,arm64,262144\n") # 256M
         f.write("small_profile,arm64,65536\n") # 64M
+        f.write("missing_boot_profile,arm64,\n")
 
     # Happy path
     target = create_mock_target(arch="arm64", memory="512M", footprint_profile="test_profile")
@@ -75,3 +80,7 @@ def test_validate_footprint_contract(tmp_path):
     target_no_run.run = None
     # No exception should be raised as run_memory_kb will be None
     validate_footprint_contract(target_no_run, repo_root)
+
+    # Missing boot_min_ram_kb in matrix (defaults to 0)
+    target_missing_boot = create_mock_target(footprint_profile="missing_boot_profile")
+    validate_footprint_contract(target_missing_boot, repo_root)
