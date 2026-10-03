@@ -717,3 +717,13 @@ target_include_directories(host_test_ai_sched_fallback PRIVATE
 target_compile_definitions(host_test_ai_sched_fallback PRIVATE TESTING=1 BHARAT_HOST_TEST)
 add_test(NAME host_test_ai_sched_fallback COMMAND host_test_ai_sched_fallback)
 set_tests_properties(host_test_ai_sched_fallback PROPERTIES LABELS "scheduler")
+
+add_executable(host_test_robot_platform
+    platform/qemu/robot/test_robot_platform.c
+    ${CMAKE_SOURCE_DIR}/core/platform/qemu/robot/robot_platform.c
+    ${CMAKE_SOURCE_DIR}/core/drivers/sensor/virtual/virtual_sensors.c
+    ${CMAKE_SOURCE_DIR}/core/drivers/actuator/virtual/virtual_motors.c)
+target_include_directories(host_test_robot_platform PRIVATE
+    ${CMAKE_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/interface/include)
+add_test(NAME host_test_robot_platform COMMAND host_test_robot_platform)
