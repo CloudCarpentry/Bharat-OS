@@ -24,12 +24,22 @@ void netmgr_config_init(void) {
     printf("[netmgr_config] Loading base network configuration\n");
 
     // Mock default for edge-net-min profile
-    strncpy(current_config.hostname, "edge-node-01", sizeof(current_config.hostname) - 1);
-    current_config.hostname[sizeof(current_config.hostname) - 1] = '\0';
+    strncpy(current_config.hostname,
+            "edge-node-01",
+            sizeof(current_config.hostname) - 1U);
+
+    current_config.hostname[
+        sizeof(current_config.hostname) - 1U
+    ] = '\0';
     current_config.dns_server = 0x08080808; // 8.8.8.8
 
-    strncpy(current_config.ifaces[0].name, "eth0", sizeof(current_config.ifaces[0].name) - 1);
-    current_config.ifaces[0].name[sizeof(current_config.ifaces[0].name) - 1] = '\0';
+    strncpy(current_config.ifaces[0].name,
+            "eth0",
+            sizeof(current_config.ifaces[0].name) - 1U);
+
+    current_config.ifaces[0].name[
+        sizeof(current_config.ifaces[0].name) - 1U
+    ] = '\0';
     current_config.ifaces[0].use_dhcp = true; // Default to DHCP
 }
 
