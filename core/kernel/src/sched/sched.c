@@ -437,6 +437,8 @@ bh_process_t *process_create(const char *name) {
   slot->process.addr_space = mm_create_address_space();
   slot->process.main_thread = NULL;
   slot->process.security_sandbox_ctx = NULL;
+  slot->process.brk_start = 0;
+  slot->process.brk_current = 0;
   slot->process.personality.kind = BH_PERSONALITY_NATIVE;
   slot->process.personality.error_domain = BH_ERROR_DOMAIN_NATIVE;
   slot->process.personality.handle_space = BH_HANDLE_SPACE_NATIVE;

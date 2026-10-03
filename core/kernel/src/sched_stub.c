@@ -311,6 +311,8 @@ bh_process_t* process_create(const char* name) {
     slot->process.addr_space = NULL; // Dummy for stub
     slot->process.main_thread = NULL;
     slot->process.security_sandbox_ctx = NULL;
+    slot->process.brk_start = 0;
+    slot->process.brk_current = 0;
 
     // Explicit multikernel ownership metadata
     // In stub environments hal_cpu_get_id may be tricky, just set to 0.
