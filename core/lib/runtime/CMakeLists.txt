@@ -41,8 +41,6 @@ bharat_configure_userspace_library(bharat_runtime_tensor)
 
 # Set the public include directory
 target_include_directories(bharat_libruntime PUBLIC
-    ${CMAKE_SOURCE_DIR}/core/lib/namesvc/include
-    ${CMAKE_SOURCE_DIR}/core/lib/bharatlibc/include
     include
     ${CMAKE_SOURCE_DIR}/interface
     ${CMAKE_SOURCE_DIR}/interface/include
@@ -52,8 +50,7 @@ target_include_directories(bharat_libruntime PUBLIC
 target_link_libraries(bharat_libruntime PRIVATE bharat_runtime_backend_dispatch bharat_runtime_crypto bharat_runtime_tensor)
 
 # Runtime depends on cap and ipc headers
-target_link_libraries(bharat_libruntime PUBLIC cap ipc bharat_syscall bharat_freestanding bharat_libtransport bharat_libnamesvc)
-target_link_libraries(bharat_libruntime PRIVATE bharatc)
+target_link_libraries(bharat_libruntime PUBLIC cap ipc bharat_syscall bharat_freestanding)
 bharat_configure_userspace_library(bharat_libruntime)
 
 # Alias for compatibility
