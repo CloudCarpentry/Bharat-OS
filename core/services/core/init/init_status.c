@@ -5,10 +5,11 @@
 static const char* state_to_str(init_service_state_t state) {
     switch (state) {
         case INIT_SERVICE_STATE_DISABLED: return "DISABLED";
-        case INIT_SERVICE_STATE_PENDING: return "PENDING";
+        case INIT_SERVICE_STATE_DECLARED: return "DECLARED";
         case INIT_SERVICE_STATE_WAITING_DEPS: return "WAITING_DEPS";
-        case INIT_SERVICE_STATE_LAUNCH_REQUESTED: return "STARTING";
-        case INIT_SERVICE_STATE_REGISTERED: return "REGISTERED";
+        case INIT_SERVICE_STATE_SPAWN_REQUESTED: return "SPAWN_REQUESTED";
+        case INIT_SERVICE_STATE_SPAWNED: return "SPAWNED";
+        case INIT_SERVICE_STATE_ENDPOINT_BOUND: return "ENDPOINT_BOUND";
         case INIT_SERVICE_STATE_READY: return "READY";
         case INIT_SERVICE_STATE_FAILED: return "FAILED";
         case INIT_SERVICE_STATE_SKIPPED: return "SKIPPED";

@@ -437,6 +437,17 @@ add_executable(test_init_rollback test_init_rollback.c ../../core/services/core/
 target_include_directories(test_init_rollback PRIVATE ../../interface/include ../../core/services/core/init)
 add_test(NAME host_test_init_rollback COMMAND test_init_rollback)
 
+add_executable(test_runtime_host
+    runtime/test_runtime_host.c
+    ../../core/lib/runtime/host/runtime_host.c
+)
+target_include_directories(test_runtime_host PRIVATE
+    "${CMAKE_SOURCE_DIR}/core/kernel/include"
+    "${CMAKE_SOURCE_DIR}/interface/uapi/runtime"
+    "${CMAKE_SOURCE_DIR}"
+)
+add_test(NAME host_test_runtime_host COMMAND test_runtime_host)
+
 add_executable(test_ktime time/test_ktime.c ../../core/kernel/src/time/ktime.c ../../core/hal/common/hal_timer_common.c ../../core/kernel/src/core/cpu_local.c)
 
 target_include_directories(test_ktime PRIVATE ../../core/kernel/include ../../interface/include ../../core/hal/include ../../core/boot/include)
@@ -691,3 +702,27 @@ target_include_directories(host_test_tiny_ui_stack PRIVATE
 add_test(NAME host_test_tiny_ui_stack COMMAND host_test_tiny_ui_stack)
 set_tests_properties(host_test_tiny_ui_stack PROPERTIES LABELS "ui")
 
+
+add_executable(host_test_ai_sched_fallback
+    sched/test_ai_sched_fallback.c
+)
+target_include_directories(host_test_ai_sched_fallback PRIVATE
+    ${CMAKE_SOURCE_DIR}/core/kernel/include
+    ${CMAKE_SOURCE_DIR}/core/hal/include
+    ${CMAKE_SOURCE_DIR}/core/lib/include
+    ${CMAKE_SOURCE_DIR}/interface/include
+    ${CMAKE_BINARY_DIR}/generated/include
+    ${CMAKE_SOURCE_DIR}/staging/ai)
+target_compile_definitions(host_test_ai_sched_fallback PRIVATE TESTING=1 BHARAT_HOST_TEST)
+add_test(NAME host_test_ai_sched_fallback COMMAND host_test_ai_sched_fallback)
+set_tests_properties(host_test_ai_sched_fallback PROPERTIES LABELS "scheduler")
+
+add_executable(host_test_robot_platform
+    platform/qemu/robot/test_robot_platform.c
+    ${CMAKE_SOURCE_DIR}/core/platform/qemu/robot/robot_platform.c
+    ${CMAKE_SOURCE_DIR}/core/drivers/sensor/virtual/virtual_sensors.c
+    ${CMAKE_SOURCE_DIR}/core/drivers/actuator/virtual/virtual_motors.c)
+target_include_directories(host_test_robot_platform PRIVATE
+    ${CMAKE_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/interface/include)
+add_test(NAME host_test_robot_platform COMMAND host_test_robot_platform)

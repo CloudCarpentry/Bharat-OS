@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import collections
 import json
 import re
 import socket
@@ -12,6 +13,7 @@ import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
+import typing
 from typing import BinaryIO
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -32,6 +34,31 @@ FORBIDDEN_MARKERS = ("PANIC", "ASSERT", "FAULT", "Unhandled exception")
 
 class GuiSmokeError(RuntimeError):
     """A stable, user-facing visual smoke failure."""
+
+
+class IncrementalLogReader:
+    def __init__(self, path: Path):
+        self.path = path
+        self.file: typing.TextIO | None = None
+        self.tail = ""
+
+    def read_new_content(self, overlap: int = 256) -> str:
+        if self.file is None:
+            if not self.path.exists():
+                return ""
+            self.file = self.path.open("r", encoding="utf-8", errors="replace")
+        new_data = self.file.read()
+        if not new_data:
+            return self.tail
+
+        content = self.tail + new_data
+        self.tail = content[-overlap:] if len(content) > overlap else content
+        return content
+
+    def close(self) -> None:
+        if self.file:
+            self.file.close()
+            self.file = None
 
 
 @dataclass(frozen=True)
@@ -104,10 +131,8 @@ def validate_frame(
             f"{image.width}x{image.height} do not match guest mode "
             f"{expected_width}x{expected_height}"
         )
-    counts: dict[bytes, int] = {}
-    for offset in range(0, len(image.pixels), 3):
-        pixel = image.pixels[offset : offset + 3]
-        counts[pixel] = counts.get(pixel, 0) + 1
+    it = iter(image.pixels)
+    counts = collections.Counter(zip(it, it, it))
     pixel_count = image.width * image.height
     dominant = max(counts.values())
     non_dominant_ratio = (pixel_count - dominant) / pixel_count
@@ -130,9 +155,11 @@ def validate_frame_change(
     """Require a bounded visual response rather than an unchanged or reset frame."""
     if (before.width, before.height) != (after.width, after.height):
         raise GuiSmokeError("interaction screenshots have different dimensions")
+    it1 = iter(before.pixels)
+    it2 = iter(after.pixels)
     changed = sum(
-        before.pixels[offset : offset + 3] != after.pixels[offset : offset + 3]
-        for offset in range(0, len(before.pixels), 3)
+        p1 != p2
+        for p1, p2 in zip(zip(it1, it1, it1), zip(it2, it2, it2))
     )
     ratio = changed / (before.width * before.height)
     if ratio < minimum_changed_ratio:
@@ -227,54 +254,75 @@ class QmpClient:
             self._socket.close()
 
 
-def wait_for_markers(serial_log: Path, process: subprocess.Popen, deadline: float) -> tuple[int, int]:
+def wait_for_markers(
+    serial_log: Path, process: subprocess.Popen, deadline: float
+) -> tuple[int, int]:
     observed_display = False
     observed_frame = False
     width = 0
     height = 0
-    consumed = 0
-    while time.monotonic() < deadline:
-        if serial_log.exists():
-            content = serial_log.read_text(encoding="utf-8", errors="replace")
-            new_content = content[consumed:]
-            consumed = len(content)
-            for forbidden in FORBIDDEN_MARKERS:
-                if forbidden in new_content:
-                    raise GuiSmokeError(f"forbidden serial marker observed: {forbidden}")
-            match = MODE_PATTERN.search(content)
-            if match:
-                width, height = int(match.group(1)), int(match.group(2))
-                observed_display = True
-            observed_frame = FRAME_MARKER in content
-            if observed_display and observed_frame:
-                return width, height
-        return_code = process.poll()
-        if return_code is not None:
-            raise GuiSmokeError(
-                f"QEMU exited with status {return_code} before the first-frame markers"
-            )
-        time.sleep(0.05)
-    missing = []
-    if not observed_display:
-        missing.append(DISPLAY_MARKER)
-    if not observed_frame:
-        missing.append(FRAME_MARKER)
-    raise GuiSmokeError(f"timed out waiting for serial markers: {', '.join(missing)}")
+    reader = IncrementalLogReader(serial_log)
+    try:
+        while time.monotonic() < deadline:
+            content = reader.read_new_content()
+            if content:
+                for forbidden in FORBIDDEN_MARKERS:
+                    if forbidden in content:
+                        raise GuiSmokeError(
+                            f"forbidden serial marker observed: {forbidden}"
+                        )
+                if not observed_display:
+                    match = MODE_PATTERN.search(content)
+                    if match:
+                        width, height = int(match.group(1)), int(match.group(2))
+                        observed_display = True
+                if not observed_frame:
+                    if FRAME_MARKER in content:
+                        observed_frame = True
+                if observed_display and observed_frame:
+                    return width, height
+            return_code = process.poll()
+            if return_code is not None:
+                raise GuiSmokeError(
+                    f"QEMU exited with status {return_code} before the first-frame markers"
+                )
+            time.sleep(0.05)
+        missing = []
+        if not observed_display:
+            missing.append(DISPLAY_MARKER)
+        if not observed_frame:
+            missing.append(FRAME_MARKER)
+        raise GuiSmokeError(
+            f"timed out waiting for serial markers: {', '.join(missing)}"
+        )
+    finally:
+        reader.close()
 
 
-def wait_for_input_marker(serial_log: Path, process: subprocess.Popen, deadline: float) -> None:
-    while time.monotonic() < deadline:
-        content = serial_log.read_text(encoding="utf-8", errors="replace") if serial_log.exists() else ""
-        for forbidden in FORBIDDEN_MARKERS:
-            if forbidden in content:
-                raise GuiSmokeError(f"forbidden serial marker observed: {forbidden}")
-        if INPUT_MARKER in content:
-            return
-        return_code = process.poll()
-        if return_code is not None:
-            raise GuiSmokeError(f"QEMU exited with status {return_code} before input was observed")
-        time.sleep(0.05)
-    raise GuiSmokeError(f"timed out waiting for serial marker: {INPUT_MARKER}")
+def wait_for_input_marker(
+    serial_log: Path, process: subprocess.Popen, deadline: float
+) -> None:
+    reader = IncrementalLogReader(serial_log)
+    try:
+        while time.monotonic() < deadline:
+            content = reader.read_new_content()
+            if content:
+                for forbidden in FORBIDDEN_MARKERS:
+                    if forbidden in content:
+                        raise GuiSmokeError(
+                            f"forbidden serial marker observed: {forbidden}"
+                        )
+                if INPUT_MARKER in content:
+                    return
+            return_code = process.poll()
+            if return_code is not None:
+                raise GuiSmokeError(
+                    f"QEMU exited with status {return_code} before input was observed"
+                )
+            time.sleep(0.05)
+        raise GuiSmokeError(f"timed out waiting for serial marker: {INPUT_MARKER}")
+    finally:
+        reader.close()
 
 
 def stop_qemu(process: subprocess.Popen, qmp: QmpClient | None) -> bool:
@@ -313,14 +361,22 @@ def run_smoke(args: argparse.Namespace) -> None:
     target_path = args.target.resolve()
     target = resolve_yaml_target(target_path)
     if target.arch != "x86_64" or target.run is None or target.run.nographic:
-        raise GuiSmokeError("GUI-002 currently requires an x86_64 graphical QEMU target")
+        raise GuiSmokeError(
+            "GUI-002 currently requires an x86_64 graphical QEMU target"
+        )
 
-    run_checked([sys.executable, "tools/build.py", "build", "--target-yaml", str(target_path)])
-    run_checked([sys.executable, "tools/build.py", "package", "--target-yaml", str(target_path)])
+    run_checked(
+        [sys.executable, "tools/build.py", "build", "--target-yaml", str(target_path)]
+    )
+    run_checked(
+        [sys.executable, "tools/build.py", "package", "--target-yaml", str(target_path)]
+    )
 
     manifest_path = get_manifest_dir(target, REPO_ROOT) / "run-manifest.json"
     manifest = load_run_manifest(manifest_path)
-    artifact_dir = args.artifact_dir or get_output_root(target, REPO_ROOT) / "artifacts/gui-smoke"
+    artifact_dir = (
+        args.artifact_dir or get_output_root(target, REPO_ROOT) / "artifacts/gui-smoke"
+    )
     artifact_dir.mkdir(parents=True, exist_ok=True)
     serial_log = artifact_dir / "serial.log"
     qemu_log = artifact_dir / "qemu.log"
@@ -360,10 +416,22 @@ def run_smoke(args: argparse.Namespace) -> None:
             for down in (True, False):
                 qmp.execute(
                     "input-send-event",
-                    {"events": [{"type": "key", "data": {"down": down, "key": {"type": "qcode", "data": "tab"}}}]},
+                    {
+                        "events": [
+                            {
+                                "type": "key",
+                                "data": {
+                                    "down": down,
+                                    "key": {"type": "qcode", "data": "tab"},
+                                },
+                            }
+                        ]
+                    },
                 )
             wait_for_input_marker(serial_log, process, deadline)
-            qmp.execute("screendump", {"filename": str(after_screenshot), "format": "ppm"})
+            qmp.execute(
+                "screendump", {"filename": str(after_screenshot), "format": "ppm"}
+            )
             after_image = read_ppm(after_screenshot)
             validate_frame(
                 after_image,
@@ -391,25 +459,66 @@ def run_smoke(args: argparse.Namespace) -> None:
             qmp.close()
         qmp_socket.unlink(missing_ok=True)
         if forced:
-            print("[gui-smoke] warning: QEMU required forced termination", file=sys.stderr)
+            print(
+                "[gui-smoke] warning: QEMU required forced termination", file=sys.stderr
+            )
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Build a GUI target, capture QEMU scanout through QMP, and reject uniform frames."
     )
-    parser.add_argument("--target", type=Path, default=DEFAULT_TARGET, help=f"target YAML (default: {DEFAULT_TARGET.relative_to(REPO_ROOT)})")
-    parser.add_argument("--artifact-dir", type=Path, help="artifact output directory (default: target build directory)")
-    parser.add_argument("--timeout", type=float, default=60.0, help="bounded boot/QMP timeout in seconds (default: 60)")
-    parser.add_argument("--minimum-colors", type=int, default=8, help="minimum distinct RGB colors (default: 8)")
-    parser.add_argument("--minimum-non-dominant-ratio", type=float, default=0.01, help="minimum pixels differing from the dominant color (default: 0.01)")
-    parser.add_argument("--minimum-changed-ratio", type=float, default=0.0001, help="minimum changed pixel fraction after input (default: 0.0001)")
-    parser.add_argument("--maximum-changed-ratio", type=float, default=0.50, help="maximum changed pixel fraction after input (default: 0.50)")
+    parser.add_argument(
+        "--target",
+        type=Path,
+        default=DEFAULT_TARGET,
+        help=f"target YAML (default: {DEFAULT_TARGET.relative_to(REPO_ROOT)})",
+    )
+    parser.add_argument(
+        "--artifact-dir",
+        type=Path,
+        help="artifact output directory (default: target build directory)",
+    )
+    parser.add_argument(
+        "--timeout",
+        type=float,
+        default=60.0,
+        help="bounded boot/QMP timeout in seconds (default: 60)",
+    )
+    parser.add_argument(
+        "--minimum-colors",
+        type=int,
+        default=8,
+        help="minimum distinct RGB colors (default: 8)",
+    )
+    parser.add_argument(
+        "--minimum-non-dominant-ratio",
+        type=float,
+        default=0.01,
+        help="minimum pixels differing from the dominant color (default: 0.01)",
+    )
+    parser.add_argument(
+        "--minimum-changed-ratio",
+        type=float,
+        default=0.0001,
+        help="minimum changed pixel fraction after input (default: 0.0001)",
+    )
+    parser.add_argument(
+        "--maximum-changed-ratio",
+        type=float,
+        default=0.50,
+        help="maximum changed pixel fraction after input (default: 0.50)",
+    )
     args = parser.parse_args(argv)
-    if (args.timeout <= 0 or args.minimum_colors < 2 or
-            not 0 < args.minimum_non_dominant_ratio <= 1 or
-            not 0 < args.minimum_changed_ratio <= args.maximum_changed_ratio <= 1):
-        parser.error("timeout must be positive, colors >= 2, and ratios must be ordered in (0, 1]")
+    if (
+        args.timeout <= 0
+        or args.minimum_colors < 2
+        or not 0 < args.minimum_non_dominant_ratio <= 1
+        or not 0 < args.minimum_changed_ratio <= args.maximum_changed_ratio <= 1
+    ):
+        parser.error(
+            "timeout must be positive, colors >= 2, and ratios must be ordered in (0, 1]"
+        )
     return args
 
 

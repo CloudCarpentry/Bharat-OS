@@ -30,8 +30,38 @@ class BootLogParser:
         self.forbidden_markers = self._parse_markers(self.target_config.get("forbidden", []))
         self.summary_config = self.target_config.get("summary", {"required": False})
 
+        self.req_regex = self._combine(self.required_markers)
+        self.forb_regex = self._combine(self.forbidden_markers)
+        self.skip_regex = self._combine(self.allowed_skip_markers)
+
+        pass_patterns_raw = [self._parse_markers([p])[0] for p in self.summary_config.get("pass_patterns", [])]
+        fail_patterns_raw = [self._parse_markers([p])[0] for p in self.summary_config.get("fail_patterns", [])]
+        self.pass_regex = self._combine(pass_patterns_raw)
+        self.fail_regex = self._combine(fail_patterns_raw)
+
+        if self.strict:
+            self.strict_regex = re.compile("|".join(p.pattern for p in STRICT_SUSPICIOUS_PATTERNS))
+        else:
+            self.strict_regex = None
+
         if self.strict:
             self._validate_strict()
+
+    def _combine(self, markers):
+        if not markers:
+            return None
+        patterns = []
+        for m in markers:
+            if m["type"] == "regex":
+                patterns.append(m["pattern"])
+            else:
+                match_type = m["match"]
+                marker = m["marker"]
+                if match_type == "substring":
+                    patterns.append(re.escape(marker))
+                elif match_type == "exact":
+                    patterns.append("^" + re.escape(marker) + "$")
+        return re.compile("|".join(f"(?:{p})" for p in patterns))
 
     def _get_target_config(self):
         targets = self.contract.get("targets", {})
@@ -135,38 +165,49 @@ class BootLogParser:
                 continue
 
             # Check required
-            for idx, m in enumerate(self.required_markers):
-                if not results["required"][idx] and self._matches(line, m):
-                    results["required"][idx] = True
+            if self.req_regex and self.req_regex.search(line):
+                for idx, m in enumerate(self.required_markers):
+                    if not results["required"][idx] and self._matches(line, m):
+                        results["required"][idx] = True
 
             # Check forbidden
-            for m in self.forbidden_markers:
-                if self._matches(line, m):
-                    results["forbidden_found"].append({"line": line, "marker": m})
+            if self.forb_regex and self.forb_regex.search(line):
+                for m in self.forbidden_markers:
+                    if self._matches(line, m):
+                        results["forbidden_found"].append({"line": line, "marker": m})
 
             # Check allowed skip
-            for m in self.allowed_skip_markers:
-                if self._matches(line, m):
-                    results["skips_found"].append({"line": line, "marker": m})
+            if self.skip_regex and self.skip_regex.search(line):
+                for m in self.allowed_skip_markers:
+                    if self._matches(line, m):
+                        results["skips_found"].append({"line": line, "marker": m})
 
             # Check summary
-            for p in pass_patterns:
-                if self._matches(line, p):
-                    results["summary_found"] = True
-                    results["summary_pass"] = True
-            for p in fail_patterns:
-                if self._matches(line, p):
-                    results["summary_found"] = True
-                    results["summary_pass"] = False
+            if self.pass_regex and self.pass_regex.search(line):
+                for p in pass_patterns:
+                    if self._matches(line, p):
+                        results["summary_found"] = True
+                        results["summary_pass"] = True
+            if self.fail_regex and self.fail_regex.search(line):
+                for p in fail_patterns:
+                    if self._matches(line, p):
+                        results["summary_found"] = True
+                        results["summary_pass"] = False
 
             # Strict: suspicious lines
-            if self.strict:
-                is_allowed_skip = any(self._matches(line, m) for m in self.allowed_skip_markers)
+            if self.strict and self.strict_regex and self.strict_regex.search(line):
+                is_allowed_skip = False
+                if self.skip_regex and self.skip_regex.search(line):
+                    is_allowed_skip = any(self._matches(line, m) for m in self.allowed_skip_markers)
+
                 if not is_allowed_skip:
                     for pattern in STRICT_SUSPICIOUS_PATTERNS:
                         if pattern.search(line):
                             # Ensure it's not one of the explicitly forbidden ones we already caught
-                            if not any(self._matches(line, m) for m in self.forbidden_markers):
+                            is_forbidden = False
+                            if self.forb_regex and self.forb_regex.search(line):
+                                is_forbidden = any(self._matches(line, m) for m in self.forbidden_markers)
+                            if not is_forbidden:
                                 results["suspicious_found"].append(line)
 
         return results

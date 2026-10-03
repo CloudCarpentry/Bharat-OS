@@ -67,7 +67,7 @@ def validate_front_matter(file_path):
         val = data[key]
         if val is None or str(val).strip() == "":
             violations.append(f"Metadata key '{key}' is empty.")
-        elif key in ["tags", "see_also"] and not isinstance(val, list):
+        elif key in {"tags", "see_also"} and not isinstance(val, list):
             violations.append(f"Metadata key '{key}' must be a list (got {type(val).__name__}).")
 
     return violations
@@ -80,11 +80,7 @@ def main():
         print(f"Error: docs folder '{docs_root}' not found.")
         sys.exit(1)
 
-    md_files = []
-    for root, dirs, files in os.walk(docs_root):
-        for file in files:
-            if file.endswith(".md"):
-                md_files.append(Path(root) / file)
+    md_files = list(docs_root.rglob("*.md"))
 
     all_violations = {}
     for file_path in md_files:

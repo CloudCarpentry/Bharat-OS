@@ -86,12 +86,55 @@ void test_regression_boundary() {
     assert(strchr(good, 'z') == NULL);
 }
 
+void test_utf8_encode() {
+    printf("Testing UTF-8 encoding...\n");
+    char out[4];
+    size_t len;
+
+    // 1-byte encoding (ASCII)
+    len = bh_utf8_encode('A', out);
+    assert(len == 1);
+    assert((uint8_t)out[0] == 'A');
+
+    // 2-byte encoding (e.g., U+00E9 LATIN SMALL LETTER E WITH ACUTE)
+    len = bh_utf8_encode(0x00E9, out);
+    assert(len == 2);
+    assert((uint8_t)out[0] == 0xC3);
+    assert((uint8_t)out[1] == 0xA9);
+
+    // 3-byte encoding (e.g., U+092D DEVANAGARI LETTER BHA)
+    len = bh_utf8_encode(0x092D, out);
+    assert(len == 3);
+    assert((uint8_t)out[0] == 0xE0);
+    assert((uint8_t)out[1] == 0xA4);
+    assert((uint8_t)out[2] == 0xAD);
+
+    // 4-byte encoding (e.g., U+1F600 GRINNING FACE)
+    len = bh_utf8_encode(0x1F600, out);
+    assert(len == 4);
+    assert((uint8_t)out[0] == 0xF0);
+    assert((uint8_t)out[1] == 0x9F);
+    assert((uint8_t)out[2] == 0x98);
+    assert((uint8_t)out[3] == 0x80);
+
+    // Invalid encoding (Surrogates)
+    len = bh_utf8_encode(0xD800, out);
+    assert(len == 0);
+    len = bh_utf8_encode(0xDFFF, out);
+    assert(len == 0);
+
+    // Invalid encoding (Out of range)
+    len = bh_utf8_encode(0x110000, out);
+    assert(len == 0);
+}
+
 int main() {
     test_valid_utf8();
     test_invalid_utf8();
     test_cell_width();
     test_sanitize();
     test_regression_boundary();
+    test_utf8_encode();
     printf("All tests passed!\n");
     return 0;
 }
