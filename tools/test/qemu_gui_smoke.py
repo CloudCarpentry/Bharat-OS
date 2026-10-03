@@ -260,68 +260,96 @@ def wait_for_markers(
     observed_frame = False
     width = 0
     height = 0
-    reader = IncrementalLogReader(serial_log)
+
+    max_marker_length = max(
+        len(FRAME_MARKER),
+        len(DISPLAY_MARKER) + 30, # for width/height text
+        max(len(m) for m in FORBIDDEN_MARKERS)
+    )
+    overlap = ""
+    f = None
+
     try:
         while time.monotonic() < deadline:
-            content = reader.read_new_content()
-            if content:
-                for forbidden in FORBIDDEN_MARKERS:
-                    if forbidden in content:
-                        raise GuiSmokeError(
-                            f"forbidden serial marker observed: {forbidden}"
-                        )
-                if not observed_display:
-                    match = MODE_PATTERN.search(content)
-                    if match:
-                        width, height = int(match.group(1)), int(match.group(2))
-                        observed_display = True
-                if not observed_frame:
-                    if FRAME_MARKER in content:
-                        observed_frame = True
-                if observed_display and observed_frame:
-                    return width, height
+            if f is None and serial_log.exists():
+                f = serial_log.open("r", encoding="utf-8", errors="replace")
+
+            if f is not None:
+                new_content = f.read()
+                if new_content:
+                    search_text = overlap + new_content
+                    for forbidden in FORBIDDEN_MARKERS:
+                        if forbidden in search_text:
+                            raise GuiSmokeError(f"forbidden serial marker observed: {forbidden}")
+
+                    if not observed_display:
+                        match = MODE_PATTERN.search(search_text)
+                        if match:
+                            width, height = int(match.group(1)), int(match.group(2))
+                            observed_display = True
+
+                    if not observed_frame:
+                        observed_frame = FRAME_MARKER in search_text
+
+                    if observed_display and observed_frame:
+                        return width, height
+
+                    if len(search_text) < max_marker_length - 1:
+                        overlap = search_text
+                    else:
+                        overlap = search_text[-(max_marker_length - 1):]
+
             return_code = process.poll()
             if return_code is not None:
                 raise GuiSmokeError(
                     f"QEMU exited with status {return_code} before the first-frame markers"
                 )
             time.sleep(0.05)
+
         missing = []
         if not observed_display:
             missing.append(DISPLAY_MARKER)
         if not observed_frame:
             missing.append(FRAME_MARKER)
-        raise GuiSmokeError(
-            f"timed out waiting for serial markers: {', '.join(missing)}"
-        )
+        raise GuiSmokeError(f"timed out waiting for serial markers: {', '.join(missing)}")
     finally:
-        reader.close()
+        if f is not None:
+            f.close()
 
 
-def wait_for_input_marker(
-    serial_log: Path, process: subprocess.Popen, deadline: float
-) -> None:
-    reader = IncrementalLogReader(serial_log)
+def wait_for_input_marker(serial_log: Path, process: subprocess.Popen, deadline: float) -> None:
+    max_marker_length = max(len(INPUT_MARKER), max(len(m) for m in FORBIDDEN_MARKERS))
+    overlap = ""
+    f = None
+
     try:
         while time.monotonic() < deadline:
-            content = reader.read_new_content()
-            if content:
-                for forbidden in FORBIDDEN_MARKERS:
-                    if forbidden in content:
-                        raise GuiSmokeError(
-                            f"forbidden serial marker observed: {forbidden}"
-                        )
-                if INPUT_MARKER in content:
-                    return
+            if f is None and serial_log.exists():
+                f = serial_log.open("r", encoding="utf-8", errors="replace")
+
+            if f is not None:
+                new_content = f.read()
+                if new_content:
+                    search_text = overlap + new_content
+                    for forbidden in FORBIDDEN_MARKERS:
+                        if forbidden in search_text:
+                            raise GuiSmokeError(f"forbidden serial marker observed: {forbidden}")
+                    if INPUT_MARKER in search_text:
+                        return
+
+                    if len(search_text) < max_marker_length - 1:
+                        overlap = search_text
+                    else:
+                        overlap = search_text[-(max_marker_length - 1):]
+
             return_code = process.poll()
             if return_code is not None:
-                raise GuiSmokeError(
-                    f"QEMU exited with status {return_code} before input was observed"
-                )
+                raise GuiSmokeError(f"QEMU exited with status {return_code} before input was observed")
             time.sleep(0.05)
         raise GuiSmokeError(f"timed out waiting for serial marker: {INPUT_MARKER}")
     finally:
-        reader.close()
+        if f is not None:
+            f.close()
 
 
 def stop_qemu(process: subprocess.Popen, qmp: QmpClient | None) -> bool:
