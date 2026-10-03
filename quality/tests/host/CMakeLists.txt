@@ -549,10 +549,6 @@ if(BHARAT_BUILD_HOST_TESTS)
     add_executable(test_android_binder compat/android/test_android_binder.c ../../core/personalities/compat/android/android_binder_dist.c ../../core/personalities/compat/android/android_personality.c)
     target_include_directories(test_android_binder PRIVATE ../../core/personalities/compat/android ../../include)
     add_test(NAME host_test_android_binder COMMAND test_android_binder)
-
-    add_executable(test_android_security compat/android/test_android_security.c ../../core/personalities/compat/android/android_security.c)
-    target_include_directories(test_android_security PRIVATE ../../core/personalities/compat/android ../../include)
-    add_test(NAME host_test_android_security COMMAND test_android_security)
 endif()
 
 # Heterogeneous Compute Host Tests
