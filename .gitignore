@@ -74,3 +74,10 @@ test_procvm_stress
 test_vm_authority_integration
 test_vm_handle_lifecycle
 build/generated/
+
+# Python caching & artifacts
+.pytest_cache/
+__pycache__/
+*.pyc
+.coverage
+htmlcov/
