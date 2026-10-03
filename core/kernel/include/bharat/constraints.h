@@ -4,8 +4,8 @@
 
 typedef struct {
     uint32_t flags;
-    uint16_t latency_class;
-    uint16_t energy_class;
+    uint32_t latency_target_us;
+    uint32_t energy_budget_uw;
     uint32_t cpu_mask;
 } bh_exec_constraints_k_t;
 

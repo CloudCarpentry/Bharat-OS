@@ -162,6 +162,7 @@ int cap_table_init_for_process(bh_process_t* proc) {
         return -2;
     }
 
+    t->owner_pid = proc->process_id;
     proc->security_sandbox_ctx = t;
     return 0;
 }
@@ -332,11 +333,17 @@ static int cap_table_delegate_local(capability_table_t* src,
         }
     }
 
-    if (src_entry &&
-        ((src_entry->rights & CAP_RIGHT_DELEGATE) != 0U) &&
-        ((src_entry->rights & delegated_rights) == delegated_rights) &&
-        cap_rights_valid(src_entry->type, delegated_rights) &&
-        (delegated_rights != CAP_RIGHT_NONE)) {
+    if (!src_entry) {
+        ret = -51;
+    } else if ((src_entry->rights & CAP_RIGHT_DELEGATE) == 0U) {
+        ret = -52;
+    } else if ((src_entry->rights & delegated_rights) != delegated_rights) {
+        ret = -53;
+    } else if (!cap_rights_valid(src_entry->type, delegated_rights)) {
+        ret = -54;
+    } else if (delegated_rights == CAP_RIGHT_NONE) {
+        ret = -55;
+    } else {
 
         uint32_t found_id = 0;
         ret = -2;
@@ -381,8 +388,6 @@ static int cap_table_delegate_local(capability_table_t* src,
         if (ret == 0 && out_new_cap_id) {
             *out_new_cap_id = found_id;
         }
-    } else {
-        ret = -5;
     }
 
     cap_unlock_two_tables(src, dst);

@@ -643,6 +643,16 @@ target_include_directories(test_accel_broker_e2e PRIVATE
 target_compile_definitions(test_accel_broker_e2e PRIVATE ACCELMGR_NO_MAIN=1)
 add_test(NAME host_test_accel_broker_e2e COMMAND test_accel_broker_e2e)
 
+add_executable(test_execution_planner
+    accel/test_execution_planner.c
+    ../../core/services/device/accelmgr/execution_planner.c
+)
+target_include_directories(test_execution_planner PRIVATE
+    ../../interface/include
+    ../../core/services/device/accelmgr
+)
+add_test(NAME host_test_execution_planner COMMAND test_execution_planner)
+
 add_subdirectory(ipc)
 
 # SPDX-License-Identifier: MIT

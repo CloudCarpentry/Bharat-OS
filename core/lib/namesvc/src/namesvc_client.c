@@ -1,6 +1,16 @@
 #include <bharat/namesvc/client.h>
 #include <bharat/uapi/services/bootstrap.h>
 #include <bharat/runtime/freestanding_string.h>
+#include <bharat/uapi/init/bootstrap.h>
+extern const bharat_user_startup_t *bharat_runtime_get_startup(void);
+
+static bharat_ipc_endpoint_t get_namesvc_ep(void) {
+    const bharat_user_startup_t *startup = bharat_runtime_get_startup();
+    if (startup && startup->bootstrap.namesvc_endpoint) {
+        return startup->bootstrap.namesvc_endpoint;
+    }
+    return BHARAT_BOOTSTRAP_NAMESVC_ENDPOINT;
+}
 
 int namesvc_register(const char *name,
                      bharat_service_id_t service_id,
@@ -27,7 +37,7 @@ int namesvc_register(const char *name,
     bharat_ipc_msg_header_t res_hdr = {0};
     namesvc_ipc_res_t res = {0};
 
-    int ret = bharat_ipc_call(BHARAT_BOOTSTRAP_NAMESVC_ENDPOINT, &req_hdr, &req, &res_hdr, &res, sizeof(res));
+    int ret = bharat_ipc_call(get_namesvc_ep(), &req_hdr, &req, &res_hdr, &res, sizeof(res));
     if (ret != BHARAT_IPC_STATUS_OK) return ret;
 
     return res.status;
@@ -53,7 +63,7 @@ int namesvc_lookup(const char *name,
     bharat_ipc_msg_header_t res_hdr = {0};
     namesvc_ipc_res_t res = {0};
 
-    int ret = bharat_ipc_call(BHARAT_BOOTSTRAP_NAMESVC_ENDPOINT, &req_hdr, &req, &res_hdr, &res, sizeof(res));
+    int ret = bharat_ipc_call(get_namesvc_ep(), &req_hdr, &req, &res_hdr, &res, sizeof(res));
     if (ret != BHARAT_IPC_STATUS_OK) return ret;
 
     if (res.status == NAMESVC_STATUS_OK) {

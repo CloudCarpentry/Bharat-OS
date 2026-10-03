@@ -3,6 +3,8 @@
 #include <bharat/uapi/services/bootstrap.h>
 #include <ipc_user.h>
 #include <stddef.h>
+#include <bharat/uapi/init/bootstrap.h>
+extern const bharat_user_startup_t *bharat_runtime_get_startup(void);
 #include <string.h>
 
 #include <bharat/namesvc/client.h>
@@ -128,6 +130,13 @@ bharat_ipc_endpoint_t service_runtime_create_endpoint(bharat_service_id_t servic
 }
 
 bharat_status_t service_runtime_bind_namesvc_bootstrap(bharat_ipc_endpoint_t endpoint) {
+    const bharat_user_startup_t *startup = bharat_runtime_get_startup();
+    if (startup && startup->bootstrap.service_receive_endpoint) {
+        if (endpoint == startup->bootstrap.service_receive_endpoint) {
+            return BHARAT_STATUS_OK;
+        }
+        return BHARAT_STATUS_ERR_NOT_FOUND;
+    }
     // Phase A Transitional: In a real kernel, this might be a privileged syscall
     // or set up by the loader. For now, we assume the environment respects
     // BHARAT_BOOTSTRAP_NAMESVC_ENDPOINT.
@@ -140,6 +149,7 @@ bharat_status_t service_runtime_bind_namesvc_bootstrap(bharat_ipc_endpoint_t end
         return BHARAT_STATUS_OK;
     }
 
+    return BHARAT_STATUS_ERR_NOT_FOUND;
     // TODO(SERVICE-RUNTIME): Implement handle aliasing/rebinding if needed.
     return BHARAT_STATUS_OK;
 }

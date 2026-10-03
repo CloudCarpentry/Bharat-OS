@@ -8,6 +8,7 @@
 #include <bharat/uapi/init/bootstrap.h>
 #include <bharat/uapi/syscall/bh_syscall_numbers.h>
 #include <bharat/uapi/syscall/bh_syscall.h>
+#include <bharat/uapi/syscall_args.h>
 
 extern const bharat_user_startup_t *bharat_runtime_get_startup(void);
 
@@ -26,11 +27,65 @@ int services_init_main(void) {
   const bharat_user_startup_t *startup = bharat_runtime_get_startup();
   if (startup) {
     if (startup->abi_version == 1 &&
-        startup->struct_size == sizeof(bharat_user_startup_t)) {
+        startup->struct_size >= sizeof(bharat_user_startup_t)) {
       bharat_runtime_log("USER_INIT: STARTUP_ABI_OK\n");
+      bharat_runtime_log("BOOTAUTH:STARTUP_ABI_OK\n");
     } else {
-      bharat_runtime_log(
-          "USER_INIT: STARTUP_ABI_OK\n"); // Fallback for minor mismatch
+      bharat_runtime_log("USER_INIT: STARTUP_ABI_MISMATCH\n");
+    }
+
+    if (startup->bootstrap.self_process_cap != 0) {
+      bharat_sys_cap_delegate_args_t args = {
+          .src_cap = startup->bootstrap.self_process_cap,
+          .requested_rights = 0x1000000000ULL,
+          .out_cap_ptr = 0
+      };
+      uint32_t out_cap = 0;
+      args.out_cap_ptr = (uint64_t)(uintptr_t)&out_cap;
+      long st = bharat_syscall(BH_SYS_CAPABILITY_DELEGATE, (long)&args, 0, 0, 0, 0, 0);
+      if (st == 0) {
+        bharat_runtime_log("BOOTAUTH:SELF_PROCESS_CAP_OK\n");
+      } else if (st == -51) {
+        bharat_runtime_log("WARN: SELF_PROCESS st == -51\n");
+      } else if (st == -52) {
+        bharat_runtime_log("WARN: SELF_PROCESS st == -52\n");
+      } else if (st == -53) {
+        bharat_runtime_log("WARN: SELF_PROCESS st == -53\n");
+      } else if (st == -54) {
+        bharat_runtime_log("WARN: SELF_PROCESS st == -54\n");
+      } else if (st == -55) {
+        bharat_runtime_log("WARN: SELF_PROCESS st == -55\n");
+      } else {
+        bharat_runtime_log("WARN: SELF_PROCESS FAILED\n");
+      }
+    }
+
+    if (startup->bootstrap.bootstrap_cap != 0) {
+      bharat_sys_cap_delegate_args_t args = {
+          .src_cap = startup->bootstrap.bootstrap_cap,
+          .requested_rights = 0x0002000000000000ULL, // BOOTSTRAP_BIND
+          .out_cap_ptr = 0
+      };
+      uint32_t out_cap = 0;
+      args.out_cap_ptr = (uint64_t)(uintptr_t)&out_cap;
+      long st = bharat_syscall(BH_SYS_CAPABILITY_DELEGATE, (long)&args, 0, 0, 0, 0, 0);
+      if (st == 0) {
+        bharat_runtime_log("BOOTAUTH:BOOTSTRAP_CAP_OK\n");
+      }
+    }
+
+    if (startup->bootstrap.namesvc_endpoint != 0) {
+      bharat_sys_cap_delegate_args_t args = {
+          .src_cap = startup->bootstrap.namesvc_endpoint,
+          .requested_rights = 1ULL, // CAP_RIGHT_ENDPOINT_SEND
+          .out_cap_ptr = 0
+      };
+      uint32_t out_cap = 0;
+      args.out_cap_ptr = (uint64_t)(uintptr_t)&out_cap;
+      long st = bharat_syscall(BH_SYS_CAPABILITY_DELEGATE, (long)&args, 0, 0, 0, 0, 0);
+      if (st == 0) {
+        bharat_runtime_log("BOOTAUTH:NAMESVC_CAP_OK\n");
+      }
     }
 
     // Validate bootstrap capability exists and is correct

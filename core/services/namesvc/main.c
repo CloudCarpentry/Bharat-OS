@@ -3,6 +3,8 @@
 #include <bharat/ipc/ipc.h>
 #include <bharat/uapi/services/bootstrap.h>
 #include "src/registry.h"
+#include <bharat/uapi/init/bootstrap.h>
+extern const bharat_user_startup_t *bharat_runtime_get_startup(void);
 #include "include/ipc_dispatch.h"
 #include "bharat/component_version.h"
 #include "bharat/buildinfo.h"
@@ -25,13 +27,24 @@ static bharat_status_t namesvc_run(void) {
     // to avoid circular dependencies with services it provides.
 
     // Create our endpoint
-    bharat_ipc_endpoint_t my_endpoint = service_runtime_create_endpoint(BHARAT_SERVICE_NAMESVC, 0);
+    const bharat_user_startup_t *startup = bharat_runtime_get_startup();
+    bharat_ipc_endpoint_t my_endpoint = BHARAT_CAP_INVALID_HANDLE;
+    if (startup && startup->bootstrap.service_receive_endpoint) {
+        my_endpoint = startup->bootstrap.service_receive_endpoint;
+    } else {
+        my_endpoint = service_runtime_create_endpoint(BHARAT_SERVICE_NAMESVC, 0);
+    }
     if (!bharat_cap_is_valid(my_endpoint)) {
         return BHARAT_STATUS_ERR_NOT_FOUND;
     }
 
     // Bind to the well-known bootstrap handle
     bharat_status_t status = service_runtime_bind_namesvc_bootstrap(my_endpoint);
+    if (status == BHARAT_STATUS_OK) {
+        bharat_runtime_log("BOOTAUTH:NAMESVC_BINDING_OK\n");
+        // However, namesvc does not have access to bharat_runtime_log yet unless included
+        // Let us just ignore printing here or use an existing logger if available.
+    }
     if (status != BHARAT_STATUS_OK) {
         return status;
     }

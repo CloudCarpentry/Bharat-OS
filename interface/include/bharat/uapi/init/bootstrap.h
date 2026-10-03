@@ -32,6 +32,13 @@ typedef struct bharat_bootstrap_info {
     bharat_handle_t system_control_endpoint;
     bharat_handle_t local_kernel_endpoint;
 
+    /* Bootstrap discovery authority available to this process. */
+    bharat_handle_t namesvc_endpoint;
+
+    /* Optional service receive endpoint seeded specifically for
+       a service process; invalid for ordinary processes. */
+    bharat_handle_t service_receive_endpoint;
+
     uint32_t boot_mode;
     uint32_t security_state;
 

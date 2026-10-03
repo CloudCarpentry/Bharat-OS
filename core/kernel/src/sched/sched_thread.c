@@ -181,7 +181,10 @@ kstatus_t sched_sys_intent_set(uint64_t tid, const void* intent) {
     memcpy(&local_intent, intent, sizeof(bharat_intent_t));
     if (local_intent.version != BHARAT_INTENT_V1) return K_ERR_UNSUPPORTED;
 
-    // Intent storage is not implemented; fail closed rather than report a no-op success.
+    // High-level Intent is NOT evaluated in the kernel.
+    // Intent is evaluated by the user-space Accelmgr execution planner.
+    // The planner translates Intent -> Execution Plan -> CPU constraints.
+    // Those constraints are then submitted via sys_thread_set_constraints().
     (void)thread;
     return K_ERR_UNSUPPORTED;
 }
