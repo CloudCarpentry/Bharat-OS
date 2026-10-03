@@ -70,11 +70,50 @@ static void test_android_binder_translation_counters(void) {
     printf("[PASS] test_android_binder_translation_counters\n");
 }
 
+static void test_extra_copy_edge_cases(void) {
+    bh_translation_counters_reset();
+
+    // Snapshotting with NULL should not crash
+    bh_translation_counters_snapshot(NULL);
+
+    // Initial snapshot
+    bh_translation_counters_t counters;
+    bh_translation_counters_snapshot(&counters);
+    assert(counters.extra_copy_events == 0);
+    assert(counters.extra_copy_bytes == 0);
+
+    // Record 0 bytes
+    bh_translation_record_extra_copy(0);
+    bh_translation_counters_snapshot(&counters);
+    assert(counters.extra_copy_events == 1);
+    assert(counters.extra_copy_bytes == 0);
+
+    // Record multiple times
+    bh_translation_record_extra_copy(100);
+    bh_translation_counters_snapshot(&counters);
+    assert(counters.extra_copy_events == 2);
+    assert(counters.extra_copy_bytes == 100);
+
+    bh_translation_record_extra_copy(256);
+    bh_translation_counters_snapshot(&counters);
+    assert(counters.extra_copy_events == 3);
+    assert(counters.extra_copy_bytes == 356);
+
+    // Verify reset
+    bh_translation_counters_reset();
+    bh_translation_counters_snapshot(&counters);
+    assert(counters.extra_copy_events == 0);
+    assert(counters.extra_copy_bytes == 0);
+
+    printf("[PASS] test_extra_copy_edge_cases\n");
+}
+
 int main(void) {
     printf("Running personality translation guard tests...\n");
 
     test_linux_translation_counters();
     test_android_binder_translation_counters();
+    test_extra_copy_edge_cases();
 
     printf("Personality translation guard tests passed successfully.\n");
     return 0;
