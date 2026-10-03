@@ -48,7 +48,8 @@ def validate_footprint_contract(target: ResolvedTarget, repo_root: Path) -> None
         )
 
     run_memory_kb = _parse_memory_to_kb(target.run.memory if target.run else None)
-    required_boot_kb = int(selected.get("boot_min_ram_kb", "0"))
+    boot_min_ram_kb_str = selected.get("boot_min_ram_kb")
+    required_boot_kb = int(boot_min_ram_kb_str) if boot_min_ram_kb_str else 0
     if run_memory_kb is not None and run_memory_kb < required_boot_kb:
         raise ValueError(
             f"Target '{target.name}' memory ({run_memory_kb} KB) is below boot minimum "

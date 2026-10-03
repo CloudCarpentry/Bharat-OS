@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import collections
 import json
 import re
 import socket
@@ -130,10 +131,8 @@ def validate_frame(
             f"{image.width}x{image.height} do not match guest mode "
             f"{expected_width}x{expected_height}"
         )
-    counts: dict[bytes, int] = {}
-    for offset in range(0, len(image.pixels), 3):
-        pixel = image.pixels[offset : offset + 3]
-        counts[pixel] = counts.get(pixel, 0) + 1
+    it = iter(image.pixels)
+    counts = collections.Counter(zip(it, it, it))
     pixel_count = image.width * image.height
     dominant = max(counts.values())
     non_dominant_ratio = (pixel_count - dominant) / pixel_count
@@ -156,9 +155,11 @@ def validate_frame_change(
     """Require a bounded visual response rather than an unchanged or reset frame."""
     if (before.width, before.height) != (after.width, after.height):
         raise GuiSmokeError("interaction screenshots have different dimensions")
+    it1 = iter(before.pixels)
+    it2 = iter(after.pixels)
     changed = sum(
-        before.pixels[offset : offset + 3] != after.pixels[offset : offset + 3]
-        for offset in range(0, len(before.pixels), 3)
+        p1 != p2
+        for p1, p2 in zip(zip(it1, it1, it1), zip(it2, it2, it2))
     )
     ratio = changed / (before.width * before.height)
     if ratio < minimum_changed_ratio:
