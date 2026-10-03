@@ -257,6 +257,13 @@ Examples:
 
 ## 2) Host prerequisites by platform
 
+### Toolchain Requirements
+
+- **CMake**: 3.20 or newer is required to support the modern preset architecture.
+- **Compiler**: LLVM/Clang + LLD is required. Minimum supported version is 14.
+- **QEMU**: Version 7.0 or newer is required to ensure consistent emulator behavior.
+
+
 ### Windows host (PowerShell)
 
 Install:

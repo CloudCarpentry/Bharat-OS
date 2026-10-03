@@ -7,3 +7,8 @@ targets:
   - delivery/targets/qemu/riscv64_desktop_headless.yaml
   - delivery/targets/qemu/riscv64_desktop_smp_headless.yaml
   - delivery/targets/qemu/riscv32_desktop_headless.yaml
+  - delivery/targets/qemu/x86_64_rtos_mmu_lite_headless.yaml
+  - delivery/targets/qemu/arm64_rtos_mmu_lite_headless.yaml
+  - delivery/targets/qemu/riscv64_rtos_mmu_lite_headless.yaml
+  - delivery/targets/qemu/arm32_rtos_mpu_headless.yaml
+  - delivery/targets/qemu/riscv32_rtos_mpu_headless.yaml
