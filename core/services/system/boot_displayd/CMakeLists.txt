@@ -32,3 +32,18 @@ target_sources(boot_displayd PRIVATE display_client.c)
 target_include_directories(boot_displayd PRIVATE ${CMAKE_SOURCE_DIR}/core/lib/namesvc/include)
 
 bharat_configure_userspace_binary(boot_displayd)
+
+# Tests
+add_executable(test_boot_displayd
+    tests/test_boot_displayd.c
+    main.c
+)
+
+target_compile_definitions(test_boot_displayd PRIVATE BHARAT_TESTING)
+target_include_directories(test_boot_displayd PRIVATE
+    ${CMAKE_SOURCE_DIR}/interface/include
+    ${CMAKE_SOURCE_DIR}/core/kernel/include
+    ${CMAKE_SOURCE_DIR}/core/lib/ipc/include
+    ${CMAKE_SOURCE_DIR}/core/lib/cap/include
+    ${CMAKE_SOURCE_DIR}/core/lib/runtime/include
+)
