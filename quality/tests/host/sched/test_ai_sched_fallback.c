@@ -128,6 +128,41 @@ void test_no_fabricated_instructions() {
     assert(ctx.current_cpi == 0);
 }
 
+void test_telemetry_cpi_overflow() {
+    ai_sched_context_t ctx;
+    ai_sched_init_context(&ctx);
+
+    // Large numbers that could overflow simple arithmetic
+    // whole_cpi = UINT64_MAX / 2, multiplied by 100 would wrap around a uint64_t
+    ai_sched_update_telemetry(&ctx, UINT64_MAX, 2);
+
+    assert(ctx.current_cpi == 0xFFFFFFFFU);
+    assert(ctx.metrics.cycles == UINT64_MAX);
+    assert(ctx.metrics.instructions == 2);
+}
+
+void test_collect_sample_cpu_util_overflow() {
+    ai_sched_context_t ctx;
+    ai_sched_init_context(&ctx);
+
+    // Provide maximum cpu time consumed, which without safe math would overflow when * 100
+    ai_sched_collect_sample(&ctx, 1000, UINT64_MAX, 0, 0);
+
+    assert(ctx.metrics.approx_cpu_util_pct == 0xFFFFFFFFU);
+}
+
+void test_collect_sample_time_slice_overflow() {
+    ai_sched_context_t ctx;
+    ai_sched_init_context(&ctx);
+
+    // A time slice that, when multiplied by 1000000 (Profile_DESKTOP), wraps around
+    uint64_t time_slice_ms = UINT64_MAX / 2;
+    ai_sched_collect_sample(&ctx, time_slice_ms, 0, 0, 0);
+
+    // We expect the internal saturation logic to limit cycles_delta to UINT64_MAX,
+    // which then drives total_cycles to UINT64_MAX.
+    assert(ctx.total_cycles == UINT64_MAX);
+}
 
 int main() {
     test_fallback_uncalibrated();
@@ -139,6 +174,9 @@ int main() {
     test_saturation_wrapper();
     test_cumulative_saturation();
     test_no_fabricated_instructions();
+    test_telemetry_cpi_overflow();
+    test_collect_sample_cpu_util_overflow();
+    test_collect_sample_time_slice_overflow();
     printf("All focused tests passed!\n");
     return 0;
 }

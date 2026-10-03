@@ -75,7 +75,23 @@ void ai_sched_update_telemetry(ai_sched_context_t* ctx, uint64_t cycles_delta, u
         uint64_t whole_cpi = cycles_delta / inst_delta;
         uint64_t remainder = cycles_delta % inst_delta;
 
-        uint64_t cpi_times_100 = (whole_cpi * 100U) + ((remainder * 100U) / inst_delta);
+        uint64_t cpi_times_100;
+        if (whole_cpi > UINT64_MAX / 100U) {
+            cpi_times_100 = UINT64_MAX;
+        } else {
+            uint64_t part1 = whole_cpi * 100U;
+            uint64_t part2;
+            if (remainder > UINT64_MAX / 100U) {
+                part2 = remainder / (inst_delta / 100U);
+            } else {
+                part2 = (remainder * 100U) / inst_delta;
+            }
+            if (UINT64_MAX - part1 < part2) {
+                cpi_times_100 = UINT64_MAX;
+            } else {
+                cpi_times_100 = part1 + part2;
+            }
+        }
 
         // Saturation to prevent 32-bit overflow
         if (cpi_times_100 > 0xFFFFFFFFU) {
@@ -132,12 +148,18 @@ void ai_sched_collect_sample(ai_sched_context_t* ctx,
         inst_delta = sample.instructions_delta;
     } else {
 #if defined(Profile_RTOS)
-        cycles_delta = time_slice_ms * 100000U;
+        uint64_t multiplier = 100000U;
 #elif defined(Profile_EDGE)
-        cycles_delta = time_slice_ms * 500000U;
+        uint64_t multiplier = 500000U;
 #else
-        cycles_delta = time_slice_ms * 1000000U;
+        uint64_t multiplier = 1000000U;
 #endif
+        if (time_slice_ms > UINT64_MAX / multiplier) {
+            cycles_delta = UINT64_MAX;
+        } else {
+            cycles_delta = time_slice_ms * multiplier;
+        }
+
         // Apply Blended IPC heuristic using the AI's predicted complexity.
         // g_silicon_* metrics represent (IPC * 100).
         // e.g. 200 = 2.0 instructions per cycle, 10 = 0.1 instructions per cycle.
@@ -189,7 +211,23 @@ void ai_sched_collect_sample(ai_sched_context_t* ctx,
     uint64_t whole_cpu = cpu_time_consumed / divisor;
     uint64_t rem_cpu = cpu_time_consumed % divisor;
 
-    uint64_t util = (whole_cpu * 100U) + ((rem_cpu * 100U) / divisor);
+    uint64_t util;
+    if (whole_cpu > UINT64_MAX / 100U) {
+        util = UINT64_MAX;
+    } else {
+        uint64_t part1 = whole_cpu * 100U;
+        uint64_t part2;
+        if (rem_cpu > UINT64_MAX / 100U) {
+            part2 = rem_cpu / (divisor / 100U);
+        } else {
+            part2 = (rem_cpu * 100U) / divisor;
+        }
+        if (UINT64_MAX - part1 < part2) {
+            util = UINT64_MAX;
+        } else {
+            util = part1 + part2;
+        }
+    }
 
     if (util > 0xFFFFFFFFU) {
         ctx->metrics.approx_cpu_util_pct = 0xFFFFFFFFU;
