@@ -706,3 +706,18 @@ target_include_directories(host_test_tiny_ui_stack PRIVATE
 add_test(NAME host_test_tiny_ui_stack COMMAND host_test_tiny_ui_stack)
 set_tests_properties(host_test_tiny_ui_stack PROPERTIES LABELS "ui")
 
+
+add_executable(host_test_ai_sched_fallback
+    sched/test_ai_sched_fallback.c
+    ../../../../staging/ai/ai_sched.c
+)
+target_include_directories(host_test_ai_sched_fallback PRIVATE
+    ${CMAKE_SOURCE_DIR}/core/kernel/include
+    ${CMAKE_SOURCE_DIR}/core/hal/include
+    ${CMAKE_SOURCE_DIR}/core/lib/include
+    ${CMAKE_SOURCE_DIR}/interface/include
+    ${CMAKE_BINARY_DIR}/generated/include
+    ${CMAKE_SOURCE_DIR}/staging/ai)
+target_compile_definitions(host_test_ai_sched_fallback PRIVATE TESTING=1 BHARAT_HOST_TEST)
+add_test(NAME host_test_ai_sched_fallback COMMAND host_test_ai_sched_fallback)
+set_tests_properties(host_test_ai_sched_fallback PROPERTIES LABELS "scheduler")
