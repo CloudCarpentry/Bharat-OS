@@ -437,6 +437,17 @@ add_executable(test_init_rollback test_init_rollback.c ../../core/services/core/
 target_include_directories(test_init_rollback PRIVATE ../../interface/include ../../core/services/core/init)
 add_test(NAME host_test_init_rollback COMMAND test_init_rollback)
 
+add_executable(test_runtime_host
+    runtime/test_runtime_host.c
+    ../../core/lib/runtime/host/runtime_host.c
+)
+target_include_directories(test_runtime_host PRIVATE
+    "${CMAKE_SOURCE_DIR}/core/kernel/include"
+    "${CMAKE_SOURCE_DIR}/interface/uapi/runtime"
+    "${CMAKE_SOURCE_DIR}"
+)
+add_test(NAME host_test_runtime_host COMMAND test_runtime_host)
+
 add_executable(test_ktime time/test_ktime.c ../../core/kernel/src/time/ktime.c ../../core/hal/common/hal_timer_common.c ../../core/kernel/src/core/cpu_local.c)
 
 target_include_directories(test_ktime PRIVATE ../../core/kernel/include ../../interface/include ../../core/hal/include ../../core/boot/include)
