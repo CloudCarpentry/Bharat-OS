@@ -80,11 +80,7 @@ def main():
         print(f"Error: docs folder '{docs_root}' not found.")
         sys.exit(1)
 
-    md_files = []
-    for root, dirs, files in os.walk(docs_root):
-        for file in files:
-            if file.endswith(".md"):
-                md_files.append(Path(root) / file)
+    md_files = list(docs_root.rglob("*.md"))
 
     all_violations = {}
     for file_path in md_files:
