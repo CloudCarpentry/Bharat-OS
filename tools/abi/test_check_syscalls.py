@@ -10,6 +10,12 @@ import check_syscalls
 
 class TestValidateDuplicates(unittest.TestCase):
     @patch('common.report_error')
+    def test_empty_entries(self, mock_report):
+        entries = []
+        self.assertTrue(check_syscalls.validate_duplicates(entries))
+        mock_report.assert_not_called()
+
+    @patch('common.report_error')
     def test_no_duplicates(self, mock_report):
         entries = [("SYS_read", 1), ("SYS_write", 2)]
         self.assertTrue(check_syscalls.validate_duplicates(entries))
@@ -64,6 +70,28 @@ class TestCheckSyscalls(unittest.TestCase):
 
         self.assertFalse(check_syscalls.check_syscalls(baseline, current))
         mock_report.assert_called_with("Syscall 1 was changed from SYS_read to SYS_write. Renumbering/Renaming is forbidden.")
+
+    @patch('check_syscalls.get_all_entries')
+    @patch('common.report_error')
+    def test_check_syscalls_with_duplicates(self, mock_report, mock_get_entries):
+        baseline = {"1": "SYS_read", "2": "SYS_write"}
+        current = {"1": "SYS_read", "2": "SYS_write", "3": "SYS_open", "4": "SYS_close"}
+        # Return duplicate number
+        mock_get_entries.return_value = [("SYS_read", 1), ("SYS_write", 2), ("SYS_open", 3), ("SYS_close", 3)]
+
+        self.assertFalse(check_syscalls.check_syscalls(baseline, current))
+        mock_report.assert_called_with("Duplicate syscall number 3 used by SYS_open and SYS_close.")
+
+    @patch('check_syscalls.get_all_entries')
+    @patch('common.report_error')
+    def test_check_syscalls_unsorted(self, mock_report, mock_get_entries):
+        baseline = {"1": "SYS_read", "2": "SYS_write"}
+        current = {"1": "SYS_read", "2": "SYS_write", "3": "SYS_open"}
+        # Unsorted order of entries
+        mock_get_entries.return_value = [("SYS_write", 2), ("SYS_read", 1), ("SYS_open", 3)]
+
+        self.assertTrue(check_syscalls.check_syscalls(baseline, current))
+        mock_report.assert_not_called()
 
 if __name__ == '__main__':
     unittest.main()
