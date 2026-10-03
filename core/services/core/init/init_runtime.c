@@ -66,7 +66,7 @@ static void try_launch_services(init_runtime_t *rt, init_boot_class_t target_cla
         if (sr->desc == NULL) continue;
         if (sr->desc->boot_class != target_class) continue;
 
-        if (sr->state != INIT_SERVICE_STATE_PENDING && sr->state != INIT_SERVICE_STATE_WAITING_DEPS) {
+        if (sr->state != INIT_SERVICE_STATE_DECLARED && sr->state != INIT_SERVICE_STATE_WAITING_DEPS) {
             continue;
         }
 
@@ -75,7 +75,7 @@ static void try_launch_services(init_runtime_t *rt, init_boot_class_t target_cla
             continue;
         }
 
-        sr->state = INIT_SERVICE_STATE_LAUNCH_REQUESTED;
+        sr->state = INIT_SERVICE_STATE_SPAWN_REQUESTED;
 
         int err = -1;
         if (sr->desc->probe_fn) {
@@ -89,7 +89,7 @@ static void try_launch_services(init_runtime_t *rt, init_boot_class_t target_cla
             init_launch_result_t res = {0};
             err = sr->desc->bootstrap_hint_fn(&rt->boot_ctx, &res);
         } else if (sr->desc->start_fn) {
-            err = sr->desc->start_fn(NULL);
+            err = sr->desc->start_fn((void*)sr);
         } else {
             err = 0;
         }
@@ -97,8 +97,12 @@ static void try_launch_services(init_runtime_t *rt, init_boot_class_t target_cla
         sr->last_error = err;
 
         if (err == 0) {
-            sr->state = INIT_SERVICE_STATE_READY;
-            sr->observed_ready = true;
+            if (sr->state == INIT_SERVICE_STATE_SPAWN_REQUESTED) {
+                 sr->state = INIT_SERVICE_STATE_SPAWNED;
+            }
+            if (sr->observed_ready) {
+                sr->state = INIT_SERVICE_STATE_READY;
+            }
             if (sr->desc->rollback_fn &&
                 init_rollback_record(&rt->rollback, id,
                                      sr->desc->rollback_fn, sr) != 0) {
@@ -182,7 +186,7 @@ int init_runtime_run(init_boot_context_t *ctx) {
             init_service_id_t id = g_init_manifest[i].id;
             rt.service_order[rt.manifest_count] = id;
             rt.services[id].desc = &g_init_manifest[i];
-            rt.services[id].state = INIT_SERVICE_STATE_PENDING;
+            rt.services[id].state = INIT_SERVICE_STATE_DECLARED;
             rt.services[id].attempts = 0;
             rt.services[id].last_error = 0;
 
@@ -250,7 +254,7 @@ int init_runtime_run(init_boot_context_t *ctx) {
         try_launch_services(&rt, BOOT_CLASS_DIAGNOSTIC);
     }
 
-    rt.outcome = (rt.outcome == INIT_BOOT_OUTCOME_DEGRADED) ? INIT_BOOT_OUTCOME_DEGRADED : INIT_BOOT_OUTCOME_SUCCESS;
+    rt.outcome = (rt.outcome == INIT_BOOT_OUTCOME_DEGRADED) ? INIT_BOOT_OUTCOME_DEGRADED : INIT_BOOT_OUTCOME_STABLE;
 
 finish:
     // Status Report
@@ -291,6 +295,6 @@ finish:
     if (rt.phase == INIT_PHASE_QUIESCENT) {
         return INIT_RUNTIME_QUIESCENT;
     }
-    return (rt.outcome == INIT_BOOT_OUTCOME_SUCCESS) ?
+    return (rt.outcome == INIT_BOOT_OUTCOME_STABLE) ?
         INIT_RUNTIME_HANDOFF_COMPLETE : -EFAULT;
 }

@@ -1,11 +1,64 @@
 #include "init_manifest.h"
 #include <stddef.h>
 
-// Stubs for start functions
-static int stub_start(void *ctx) {
-    (void)ctx;
-    return 0; // Success
+
+#include <bharat/uapi/process_manager/contract_v1.h>
+#include <bharat/ipc/ipc.h>
+#include <bharat/namesvc/client.h>
+
+static int spawn_service(void *ctx) {
+    init_service_runtime_t *sr = (init_service_runtime_t *)ctx;
+    if (!sr || !sr->desc) return -1;
+
+    if (sr->desc->id == INIT_SVC_NAMESVC || sr->desc->id == INIT_SVC_PROCESS_MANAGER) {
+        return 0;
+    }
+
+    bharat_service_id_t pm_svc_id = 0;
+    bharat_ipc_endpoint_t pm_ep = BHARAT_CAP_INVALID_HANDLE;
+    uint32_t pm_version = 0;
+
+    int lookup_ret = namesvc_lookup("bharat.process_manager", &pm_svc_id, &pm_ep, &pm_version);
+    if (lookup_ret != NAMESVC_STATUS_OK || pm_ep == BHARAT_CAP_INVALID_HANDLE) {
+        return -1;
+    }
+
+    bh_pm_spawn_request_v1_t req = {
+        .abi_version = 1,
+        .struct_size = sizeof(bh_pm_spawn_request_v1_t),
+        .request_id = sr->desc->id,
+        .executable_handle = 0,
+        .parent_process = 0,
+        .priority = 10,
+        .affinity_mask = 0xFFFFFFFF,
+        .memory_profile = 0,
+        .personality = 0,
+        .flags = 0,
+        .stack_size = 0x4000
+    };
+    __builtin_strncpy(req.process_name, sr->desc->name, sizeof(req.process_name) - 1);
+
+    bh_pm_spawn_response_v1_t resp = {0};
+
+    bharat_ipc_msg_header_t req_hdr = {
+        .header_version = BHARAT_IPC_HEADER_VERSION_V1,
+        .service_id = 2,
+        .interface_version = BH_PM_INTERFACE_VERSION_V1,
+        .opcode = BH_PM_OP_SPAWN_V1,
+        .payload_size = sizeof(bh_pm_spawn_request_v1_t),
+    };
+
+    bharat_ipc_msg_header_t rep_hdr = {0};
+
+    int32_t call_status = bharat_ipc_call_ex(pm_ep, &req_hdr, &req, &rep_hdr, &resp, sizeof(resp), 5000);
+
+    if (call_status != BHARAT_IPC_STATUS_OK || resp.status != 0) {
+        return -1;
+    }
+
+    return 0;
 }
+
 
 static int stub_rollback(void *ctx) {
     (void)ctx;
@@ -30,7 +83,7 @@ const init_service_desc_t g_init_manifest[] = {
         .boot_class = BOOT_CLASS_CORE,
         .start_deadline_ms = 1000,
         .ready_deadline_ms = 5000,
-        .start_fn = stub_start,
+        .start_fn = spawn_service,
         .probe_fn = NULL,
         .bootstrap_hint_fn = NULL,
         .rollback_fn = stub_rollback,
@@ -53,7 +106,7 @@ const init_service_desc_t g_init_manifest[] = {
         .boot_class = BOOT_CLASS_CORE,
         .start_deadline_ms = 1000,
         .ready_deadline_ms = 5000,
-        .start_fn = stub_start,
+        .start_fn = spawn_service,
         .probe_fn = NULL,
         .bootstrap_hint_fn = NULL,
         .rollback_fn = stub_rollback,
@@ -74,7 +127,7 @@ const init_service_desc_t g_init_manifest[] = {
         .boot_class = BOOT_CLASS_CORE,
         .start_deadline_ms = 1000,
         .ready_deadline_ms = 5000,
-        .start_fn = stub_start,
+        .start_fn = spawn_service,
         .probe_fn = NULL,
         .bootstrap_hint_fn = NULL,
         .rollback_fn = stub_rollback,
@@ -94,7 +147,7 @@ const init_service_desc_t g_init_manifest[] = {
         .boot_class = BOOT_CLASS_INFRA,
         .start_deadline_ms = 1000,
         .ready_deadline_ms = 5000,
-        .start_fn = stub_start,
+        .start_fn = spawn_service,
         .probe_fn = NULL,
         .bootstrap_hint_fn = NULL,
         .rollback_fn = stub_rollback,
@@ -117,7 +170,7 @@ const init_service_desc_t g_init_manifest[] = {
         .boot_class = BOOT_CLASS_INFRA,
         .start_deadline_ms = 1000,
         .ready_deadline_ms = 5000,
-        .start_fn = stub_start,
+        .start_fn = spawn_service,
         .probe_fn = NULL,
         .bootstrap_hint_fn = NULL,
         .rollback_fn = stub_rollback,
@@ -140,7 +193,7 @@ const init_service_desc_t g_init_manifest[] = {
         .boot_class = BOOT_CLASS_INFRA,
         .start_deadline_ms = 1000,
         .ready_deadline_ms = 5000,
-        .start_fn = stub_start,
+        .start_fn = spawn_service,
         .probe_fn = NULL,
         .bootstrap_hint_fn = NULL,
         .rollback_fn = stub_rollback,
@@ -161,7 +214,7 @@ const init_service_desc_t g_init_manifest[] = {
         .boot_class = BOOT_CLASS_LATE,
         .start_deadline_ms = 1000,
         .ready_deadline_ms = 5000,
-        .start_fn = stub_start,
+        .start_fn = spawn_service,
         .probe_fn = NULL,
         .bootstrap_hint_fn = NULL,
         .rollback_fn = stub_rollback,
@@ -181,7 +234,7 @@ const init_service_desc_t g_init_manifest[] = {
         .boot_class = BOOT_CLASS_OPTIONAL,
         .start_deadline_ms = 1000,
         .ready_deadline_ms = 5000,
-        .start_fn = stub_start,
+        .start_fn = spawn_service,
         .probe_fn = NULL,
         .bootstrap_hint_fn = NULL,
         .rollback_fn = stub_rollback,
@@ -202,7 +255,7 @@ const init_service_desc_t g_init_manifest[] = {
         .boot_class = BOOT_CLASS_INFRA,
         .start_deadline_ms = 1200,
         .ready_deadline_ms = 5000,
-        .start_fn = stub_start,
+        .start_fn = spawn_service,
         .probe_fn = NULL,
         .bootstrap_hint_fn = NULL,
         .rollback_fn = stub_rollback,
@@ -223,7 +276,7 @@ const init_service_desc_t g_init_manifest[] = {
         .boot_class = BOOT_CLASS_LATE,
         .start_deadline_ms = 800,
         .ready_deadline_ms = 4000,
-        .start_fn = stub_start,
+        .start_fn = spawn_service,
         .probe_fn = NULL,
         .bootstrap_hint_fn = NULL,
         .rollback_fn = stub_rollback,
@@ -243,7 +296,7 @@ const init_service_desc_t g_init_manifest[] = {
         .boot_class = BOOT_CLASS_LATE,
         .start_deadline_ms = 1000,
         .ready_deadline_ms = 5000,
-        .start_fn = stub_start,
+        .start_fn = spawn_service,
         .probe_fn = NULL,
         .bootstrap_hint_fn = NULL,
         .rollback_fn = stub_rollback,
