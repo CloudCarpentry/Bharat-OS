@@ -126,6 +126,71 @@ void test_utf8_encode() {
     // Invalid encoding (Out of range)
     len = bh_utf8_encode(0x110000, out);
     assert(len == 0);
+
+    // Boundary: Max 1-byte
+    len = bh_utf8_encode(0x7F, out);
+    assert(len == 1);
+    assert((uint8_t)out[0] == 0x7F);
+
+    // Boundary: Min 2-byte
+    len = bh_utf8_encode(0x80, out);
+    assert(len == 2);
+    assert((uint8_t)out[0] == 0xC2);
+    assert((uint8_t)out[1] == 0x80);
+
+    // Boundary: Max 2-byte
+    len = bh_utf8_encode(0x7FF, out);
+    assert(len == 2);
+    assert((uint8_t)out[0] == 0xDF);
+    assert((uint8_t)out[1] == 0xBF);
+
+    // Boundary: Min 3-byte
+    len = bh_utf8_encode(0x800, out);
+    assert(len == 3);
+    assert((uint8_t)out[0] == 0xE0);
+    assert((uint8_t)out[1] == 0xA0);
+    assert((uint8_t)out[2] == 0x80);
+
+    // Boundary: Just before surrogate
+    len = bh_utf8_encode(0xD7FF, out);
+    assert(len == 3);
+    assert((uint8_t)out[0] == 0xED);
+    assert((uint8_t)out[1] == 0x9F);
+    assert((uint8_t)out[2] == 0xBF);
+
+    // Boundary: Just after surrogate
+    len = bh_utf8_encode(0xE000, out);
+    assert(len == 3);
+    assert((uint8_t)out[0] == 0xEE);
+    assert((uint8_t)out[1] == 0x80);
+    assert((uint8_t)out[2] == 0x80);
+
+    // Boundary: Max 3-byte
+    len = bh_utf8_encode(0xFFFF, out);
+    assert(len == 3);
+    assert((uint8_t)out[0] == 0xEF);
+    assert((uint8_t)out[1] == 0xBF);
+    assert((uint8_t)out[2] == 0xBF);
+
+    // Boundary: Min 4-byte
+    len = bh_utf8_encode(0x10000, out);
+    assert(len == 4);
+    assert((uint8_t)out[0] == 0xF0);
+    assert((uint8_t)out[1] == 0x90);
+    assert((uint8_t)out[2] == 0x80);
+    assert((uint8_t)out[3] == 0x80);
+
+    // Boundary: Max 4-byte
+    len = bh_utf8_encode(0x10FFFF, out);
+    assert(len == 4);
+    assert((uint8_t)out[0] == 0xF4);
+    assert((uint8_t)out[1] == 0x8F);
+    assert((uint8_t)out[2] == 0xBF);
+    assert((uint8_t)out[3] == 0xBF);
+
+    // Invalid encoding (Far out of range)
+    len = bh_utf8_encode(0xFFFFFFFF, out);
+    assert(len == 0);
 }
 
 int main() {
