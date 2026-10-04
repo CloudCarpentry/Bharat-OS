@@ -24,6 +24,7 @@ add_executable(system_shell ${SHELL_SOURCES})
 target_link_libraries(system_shell PRIVATE
     bharat_user_buildopts
     bharat_freestanding
+    bharatc
     bharat_libruntime
     bharat_libipc
     bharat_libcap
