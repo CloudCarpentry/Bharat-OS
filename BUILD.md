@@ -707,6 +707,12 @@ Intentional, reviewed Native syscall additions require an explicit
 
 # Runtime implementation maturity gate
 
+The `x86_64_desktop_headless` smoke contract requires real bootstrap service
+evidence (`NAMESVC_USER_ENTRY`, `NAMESVC_MAIN_ENTER`, `NAMESVC_READY`,
+`PROCESS_MANAGER_LAUNCH`, `PROCESS_MANAGER_READY`, `BOOT_CLASS_CORE_READY`).
+Init entry, packaging, and `SERVICE_GRAPH_COMPLETE` alone cannot qualify boot.
+Validate the parser with `bash tools/testing/test_check_boot_log.sh`.
+
 Every configure/build action checks `interface/contracts/implementation_maturity.json` before the
 linker runs. Targets declare `implementation_maturity.profile`; release and hardened profiles reject
 `STUB` and `TEST_ONLY` implementations. A development

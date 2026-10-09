@@ -40,6 +40,12 @@ targets:
       - "INIT_THREAD: SCHEDULED"
       - "USER_INIT: ENTERED"
       - "USER_INIT: STARTUP_ABI_OK"
+      - "NAMESVC_USER_ENTRY"
+      - "NAMESVC_MAIN_ENTER"
+      - "NAMESVC_READY"
+      - "PROCESS_MANAGER_LAUNCH"
+      - "PROCESS_MANAGER_READY"
+      - "BOOT_CLASS_CORE_READY"
       - "USER_INIT: SERVICE_GRAPH_COMPLETE"
       - "BOOT_RUNTIME: STABLE"
     forbidden: *common_forbidden

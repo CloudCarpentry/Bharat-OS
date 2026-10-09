@@ -61,6 +61,10 @@ run_test "Strict mode: suspicious marker" "x86_64_desktop_headless" "$FIXTURE_DI
 # 8. Strict mode: pass with allowed skip
 run_test "Strict mode: allow skip" "arm32_mmu_lite_headless" "$FIXTURE_DIR/pass_single_core_skip.txt" 0 "--strict"
 
+# Successful packaging/init markers cannot replace service readiness evidence.
+run_test "No bootstrap services" "x86_64_desktop_headless" "$FIXTURE_DIR/fail_bootstrap_no_services.txt" 1
+run_test "Required bootstrap failure" "x86_64_desktop_headless" "$FIXTURE_DIR/fail_bootstrap_required_service.txt" 1
+
 echo "=================================="
 echo "Summary: PASS=$PASS_COUNT FAIL=$FAIL_COUNT"
 echo "=================================="

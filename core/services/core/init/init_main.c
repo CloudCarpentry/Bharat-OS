@@ -117,6 +117,7 @@ int services_init_main(void) {
   // Run the startup sequence
   int result = init_runtime_run(&ctx);
   if (result < 0) {
+    bharat_runtime_log("BOOT_FAIL: INIT_BOOTSTRAP\n");
     bharat_runtime_log(
         "services/init: Bootstrap failed (safe mode / halted).\n");
     // Hang

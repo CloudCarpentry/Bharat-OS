@@ -1,4 +1,5 @@
 #include "init_manifest.h"
+#include <errno.h>
 #include <stddef.h>
 
 
@@ -11,7 +12,9 @@ static int spawn_service(void *ctx) {
     if (!sr || !sr->desc) return -1;
 
     if (sr->desc->id == INIT_SVC_NAMESVC || sr->desc->id == INIT_SVC_PROCESS_MANAGER) {
-        return 0;
+        /* No bootstrap launcher is installed in this baseline. An accepted
+         * start must describe a real process, never a no-op placeholder. */
+        return -ENOSYS;
     }
 
     bharat_service_id_t pm_svc_id = 0;

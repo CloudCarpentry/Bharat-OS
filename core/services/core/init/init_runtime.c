@@ -260,10 +260,15 @@ finish:
     // Status Report
     init_status_report(rt.services, INIT_SERVICE_ID_MAX);
 
+    /* A failed required graph cannot become healthy through supervisor handoff.
+     * Preserve the failure even when the supervisor accepts or is absent. */
+    if (rt.outcome == INIT_BOOT_OUTCOME_SAFE_MODE) {
+        return -EFAULT;
+    }
+
     // Handoff is a property of the resolved service graph, not the hardware profile.
     init_service_runtime_t *supervisor = &rt.services[INIT_SVC_SERVICEMGR];
     if (supervisor->desc == NULL || supervisor->state == INIT_SERVICE_STATE_SKIPPED) {
-        if (rt.outcome == INIT_BOOT_OUTCOME_SAFE_MODE) return -EFAULT;
         bharat_runtime_log("services/init: no supervisor selected; retaining lifecycle authority.\n");
         rt.phase = INIT_PHASE_QUIESCENT;
         return INIT_RUNTIME_QUIESCENT;

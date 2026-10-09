@@ -185,6 +185,11 @@ void test_optional_service_fails(void) {
 }
 
 int main(void) {
+    /* Bootstrap placeholders cannot claim they launched a real child. */
+    for (size_t i = 0; i < 2; ++i) {
+        init_service_runtime_t service = {.desc = &g_init_manifest[i]};
+        assert(service.desc->start_fn(&service) == -ENOSYS);
+    }
     test_init_service_declared_not_ready();
     test_pm_unavailable();
     test_spawn_request_accepted();
