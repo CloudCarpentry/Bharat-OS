@@ -19,6 +19,15 @@ def test_parse_memory_to_kb():
     assert _parse_memory_to_kb("invalid") is None
     assert _parse_memory_to_kb("10X") is None
 
+    # Edge cases
+    assert _parse_memory_to_kb("-10G") == -10485760
+    assert _parse_memory_to_kb("-512M") == -524288
+
+    with pytest.raises(ValueError):
+        _parse_memory_to_kb("1.5G")
+
+    assert _parse_memory_to_kb("1.5") is None
+
 def create_mock_target(arch="arm64", memory="512M", footprint_profile="test_profile"):
     return ResolvedTarget(
         name="test_target",
@@ -84,3 +93,10 @@ def test_validate_footprint_contract(tmp_path):
     # Missing boot_min_ram_kb in matrix (defaults to 0)
     target_missing_boot = create_mock_target(footprint_profile="missing_boot_profile")
     validate_footprint_contract(target_missing_boot, repo_root)
+
+    # Non-numeric boot_min_ram_kb raises ValueError
+    with open(matrix_path, "a") as f:
+        f.write("invalid_boot_profile,arm64,invalid_value\n")
+    target_invalid_boot = create_mock_target(footprint_profile="invalid_boot_profile")
+    with pytest.raises(ValueError):
+        validate_footprint_contract(target_invalid_boot, repo_root)

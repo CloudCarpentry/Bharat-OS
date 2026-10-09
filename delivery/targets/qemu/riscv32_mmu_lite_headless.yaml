@@ -14,6 +14,7 @@ implementation_maturity:
 build:
   cmake_preset: riscv32-qemu-mmu-lite-headless
   cmake_defs:
+    BHARAT_INIT_CORE_BOOTSTRAP_ONLY: ON
     BHARAT_ARCH_FAMILY: RISCV32
     BHARAT_DEVICE_PROFILE: EDGE
     BHARAT_PERSONALITY_PROFILE: NATIVE

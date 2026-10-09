@@ -67,7 +67,7 @@ def validate_front_matter(file_path):
         val = data[key]
         if val is None or str(val).strip() == "":
             violations.append(f"Metadata key '{key}' is empty.")
-        elif key in ["tags", "see_also"] and not isinstance(val, list):
+        elif key in {"tags", "see_also"} and not isinstance(val, list):
             violations.append(f"Metadata key '{key}' must be a list (got {type(val).__name__}).")
 
     return violations

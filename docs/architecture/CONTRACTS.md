@@ -47,6 +47,15 @@ When implementation differs from an authority, treat it as a defect or an explic
 
 ## Required entry contents
 
+The CORE bootstrap object/event contract is
+`interface/include/bharat/uapi/bootstrap/service_launch.h`, with the capability,
+ownership, container-format and failure rules in
+`docs/adr/ADR-036-bootstrap-service-readiness.md`. Producers are the existing
+CAPABILITY_INVOKE backend and launched services; init consumes child-specific
+BOUND/READY events. Kernel ABI and service runtime maintainers own this boundary.
+Validate with `bash tools/testing/test_bootstrap_recovery.sh`, the native ABI
+checker, and the five-target QEMU matrix. This qualifies the explicit P0 graph.
+
 Every contract entry should identify:
 
 - authority path,

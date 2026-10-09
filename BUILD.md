@@ -257,6 +257,13 @@ Examples:
 
 ## 2) Host prerequisites by platform
 
+### Toolchain Requirements
+
+- **CMake**: 3.20 or newer is required to support the modern preset architecture.
+- **Compiler**: LLVM/Clang + LLD is required. Minimum supported version is 14.
+- **QEMU**: Version 7.0 or newer is required to ensure consistent emulator behavior.
+
+
 ### Windows host (PowerShell)
 
 Install:
@@ -699,6 +706,34 @@ Intentional, reviewed Native syscall additions require an explicit
 `docs/dev/native-syscall-abi-change.md` for the full procedure.
 
 # Runtime implementation maturity gate
+
+The five canonical headless smoke contracts require real bootstrap service
+evidence (`NAMESVC_USER_ENTRY`, `NAMESVC_MAIN_ENTER`, `NAMESVC_READY`,
+`PROCESS_MANAGER_LAUNCH`, `PROCESS_MANAGER_READY`, `BOOT_CLASS_CORE_READY`).
+Init entry, packaging, and `SERVICE_GRAPH_COMPLETE` alone cannot qualify boot.
+Validate the parser with `bash tools/testing/test_check_boot_log.sh`.
+
+These development targets select `BHARAT_INIT_CORE_BOOTSTRAP_ONLY`, packaging
+the real init/namesvc/process_manager ELFs and resolving that explicit P0 graph.
+It does not qualify the full production graph, service RPC, or graphical boot.
+Headless EDGE and DESKTOP profiles select no graphical boot daemon when
+`BHARAT_BOOT_GUI=OFF`.
+
+```bash
+./tools/build.sh all --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml --smoke
+./tools/build.sh all --target-yaml delivery/targets/qemu/arm64_desktop_headless.yaml --smoke
+./tools/build.sh all --target-yaml delivery/targets/qemu/riscv64_desktop_headless.yaml --smoke
+./tools/build.sh all --target-yaml delivery/targets/qemu/arm32_mmu_lite_headless.yaml --smoke
+./tools/build.sh all --target-yaml delivery/targets/qemu/riscv32_mmu_lite_headless.yaml --smoke
+python3 tools/run_qemu_matrix.py --headless --smoke --all-arch
+CC=clang bash tools/testing/test_bootstrap_recovery.sh
+```
+
+The focused runner uses the x86_64 generated configuration and compiles nine
+host test executables plus component-policy and boot-log checks. It is separate
+from the broad `host-test` preset, which currently has unrelated stale source
+paths. See `docs/reviews/boot-flow-p0-001-recovery.md` for recorded results and
+`docs/adr/ADR-036-bootstrap-service-readiness.md` for ownership/lifecycle limits.
 
 Every configure/build action checks `interface/contracts/implementation_maturity.json` before the
 linker runs. Targets declare `implementation_maturity.profile`; release and hardened profiles reject

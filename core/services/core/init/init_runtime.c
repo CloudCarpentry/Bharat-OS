@@ -6,12 +6,19 @@
 #include <bharat/runtime/runtime.h>
 #include <errno.h>
 #include <stdio.h>
+#include <bharat/syscalls.h>
+#include <bharat/uapi/syscall/bh_syscall_status.h>
 
 static bool is_required_boot_class(init_boot_class_t cls) {
     return (cls == BOOT_CLASS_CORE || cls == BOOT_CLASS_INFRA);
 }
 
 static bool filter_service(const init_service_desc_t *desc, const init_boot_context_t *ctx) {
+#ifdef BHARAT_INIT_CORE_BOOTSTRAP_ONLY
+    /* The target declares the P0 package/graph: both real bootstrap services.
+     * This is an explicit target policy, not a runtime skip of required nodes. */
+    if (desc->id != INIT_SVC_NAMESVC && desc->id != INIT_SVC_PROCESS_MANAGER) return false;
+#endif
     if (!(desc->profile_mask & (uint64_t)ctx->profile)) {
         return false;
     }
@@ -66,7 +73,7 @@ static void try_launch_services(init_runtime_t *rt, init_boot_class_t target_cla
         if (sr->desc == NULL) continue;
         if (sr->desc->boot_class != target_class) continue;
 
-        if (sr->state != INIT_SERVICE_STATE_PENDING && sr->state != INIT_SERVICE_STATE_WAITING_DEPS) {
+        if (sr->state != INIT_SERVICE_STATE_DECLARED && sr->state != INIT_SERVICE_STATE_WAITING_DEPS) {
             continue;
         }
 
@@ -75,7 +82,9 @@ static void try_launch_services(init_runtime_t *rt, init_boot_class_t target_cla
             continue;
         }
 
-        sr->state = INIT_SERVICE_STATE_LAUNCH_REQUESTED;
+        sr->state = INIT_SERVICE_STATE_SPAWN_REQUESTED;
+        sr->namesvc_cap = sr->desc->id == INIT_SVC_NAMESVC ? 0 :
+            rt->services[INIT_SVC_NAMESVC].launch.service_send_cap;
 
         int err = -1;
         if (sr->desc->probe_fn) {
@@ -89,7 +98,7 @@ static void try_launch_services(init_runtime_t *rt, init_boot_class_t target_cla
             init_launch_result_t res = {0};
             err = sr->desc->bootstrap_hint_fn(&rt->boot_ctx, &res);
         } else if (sr->desc->start_fn) {
-            err = sr->desc->start_fn(NULL);
+            err = sr->desc->start_fn((void*)sr);
         } else {
             err = 0;
         }
@@ -97,8 +106,22 @@ static void try_launch_services(init_runtime_t *rt, init_boot_class_t target_cla
         sr->last_error = err;
 
         if (err == 0) {
-            sr->state = INIT_SERVICE_STATE_READY;
-            sr->observed_ready = true;
+            if (sr->state == INIT_SERVICE_STATE_SPAWN_REQUESTED) {
+                 sr->state = INIT_SERVICE_STATE_SPAWNED;
+            }
+            if (sr->launch.event_receive_cap) {
+                uint64_t now;
+                if (bharat_runtime_now_ns(&now) != 0) {
+                    bharat_runtime_log("BOOT_FAIL: READINESS_CLOCK\n");
+                    sr->state = INIT_SERVICE_STATE_FAILED;
+                    sr->last_error = -EIO;
+                } else {
+                    sr->ready_deadline_ns = now + (uint64_t)sr->desc->ready_deadline_ms * 1000000ULL;
+                }
+            }
+            if (sr->observed_ready) {
+                sr->state = INIT_SERVICE_STATE_READY;
+            }
             if (sr->desc->rollback_fn &&
                 init_rollback_record(&rt->rollback, id,
                                      sr->desc->rollback_fn, sr) != 0) {
@@ -147,6 +170,72 @@ static bool all_ready_in_class(const init_runtime_t *rt, init_boot_class_t cls) 
     return true;
 }
 
+int init_service_apply_event(init_service_runtime_t *sr, const bh_bootstrap_service_event_t *event) {
+    if (!sr || !sr->desc || !event || event->version != BH_BOOTSTRAP_SERVICE_ABI ||
+        event->service_id != (uint32_t)sr->desc->id ||
+        (sr->state != INIT_SERVICE_STATE_SPAWNED && sr->state != INIT_SERVICE_STATE_ENDPOINT_BOUND))
+        return -EINVAL;
+    if (event->type == BH_BOOTSTRAP_EVENT_FAILED || event->status != 0) {
+        sr->state = INIT_SERVICE_STATE_FAILED;
+        sr->last_error = event->status ? event->status : -EIO;
+        return 0;
+    }
+    if (event->type == BH_BOOTSTRAP_EVENT_BOUND && sr->state == INIT_SERVICE_STATE_SPAWNED) {
+        sr->state = INIT_SERVICE_STATE_ENDPOINT_BOUND;
+        sr->observed_registered = true;
+        return 0;
+    }
+    if (event->type == BH_BOOTSTRAP_EVENT_READY && sr->state == INIT_SERVICE_STATE_ENDPOINT_BOUND) {
+        sr->state = INIT_SERVICE_STATE_READY;
+        sr->observed_ready = true;
+        return 0;
+    }
+    return -EINVAL;
+}
+
+static void converge_class(init_runtime_t *rt, init_boot_class_t cls) {
+    for (;;) {
+        try_launch_services(rt, cls);
+        if (any_failed_in_class(rt, cls) || all_ready_in_class(rt, cls)) return;
+        bool pending = false;
+        for (size_t i = 0; i < rt->manifest_count; ++i) {
+            init_service_runtime_t *sr = &rt->services[rt->service_order[i]];
+            if (!sr->desc || sr->desc->boot_class != cls ||
+                (sr->state != INIT_SERVICE_STATE_SPAWNED && sr->state != INIT_SERVICE_STATE_ENDPOINT_BOUND)) continue;
+            if (!sr->launch.event_receive_cap) {
+                sr->state = INIT_SERVICE_STATE_FAILED;
+                sr->last_error = -ENOSYS;
+                return;
+            }
+            pending = true;
+            bh_bootstrap_service_event_t event = {0};
+            int err = bharat_bootstrap_poll(sr->launch.event_receive_cap, &event);
+            if (err == 0) {
+                if (init_service_apply_event(sr, &event) != 0) {
+                    bharat_runtime_log("BOOT_FAIL: INVALID_SERVICE_EVENT\n");
+                    sr->state = INIT_SERVICE_STATE_FAILED;
+                    sr->last_error = -EINVAL;
+                }
+                /* Reevaluate dependencies after each validated event. */
+                try_launch_services(rt, cls);
+            } else if (err != BH_ERR_TRY_AGAIN) {
+                bharat_runtime_log("BOOT_FAIL: READINESS_TRANSPORT\n");
+                sr->state = INIT_SERVICE_STATE_FAILED;
+                sr->last_error = err;
+            }
+            uint64_t now;
+            if (sr->state != INIT_SERVICE_STATE_READY &&
+                (bharat_runtime_now_ns(&now) != 0 || now >= sr->ready_deadline_ns)) {
+                sr->state = INIT_SERVICE_STATE_FAILED;
+                sr->last_error = BH_ERR_TIMEOUT;
+                bharat_runtime_log("BOOT_FAIL: SERVICE_READY_TIMEOUT\n");
+            }
+        }
+        if (!pending) return; /* unresolved dependencies cannot make progress */
+        bharat_sched_yield();
+    }
+}
+
 int init_runtime_run(init_boot_context_t *ctx) {
     static init_runtime_t rt;
     __builtin_memset(&rt, 0, sizeof(rt));
@@ -182,7 +271,7 @@ int init_runtime_run(init_boot_context_t *ctx) {
             init_service_id_t id = g_init_manifest[i].id;
             rt.service_order[rt.manifest_count] = id;
             rt.services[id].desc = &g_init_manifest[i];
-            rt.services[id].state = INIT_SERVICE_STATE_PENDING;
+            rt.services[id].state = INIT_SERVICE_STATE_DECLARED;
             rt.services[id].attempts = 0;
             rt.services[id].last_error = 0;
 
@@ -206,7 +295,7 @@ int init_runtime_run(init_boot_context_t *ctx) {
 
     // 2. CORE Class
     rt.phase = INIT_PHASE_CORE_STARTING;
-    try_launch_services(&rt, BOOT_CLASS_CORE);
+    converge_class(&rt, BOOT_CLASS_CORE);
     if (any_failed_in_class(&rt, BOOT_CLASS_CORE)) {
         rt.failure_class = INIT_FAIL_LAUNCH;
         rt.outcome = INIT_BOOT_OUTCOME_SAFE_MODE;
@@ -222,6 +311,7 @@ int init_runtime_run(init_boot_context_t *ctx) {
         goto finish;
     }
     rt.phase = INIT_PHASE_CORE_READY;
+    bharat_runtime_log("BOOT_CLASS_CORE_READY\n");
 
     // 3. INFRA Class
     rt.phase = INIT_PHASE_INFRA_STARTING;
@@ -250,19 +340,24 @@ int init_runtime_run(init_boot_context_t *ctx) {
         try_launch_services(&rt, BOOT_CLASS_DIAGNOSTIC);
     }
 
-    rt.outcome = (rt.outcome == INIT_BOOT_OUTCOME_DEGRADED) ? INIT_BOOT_OUTCOME_DEGRADED : INIT_BOOT_OUTCOME_SUCCESS;
+    rt.outcome = (rt.outcome == INIT_BOOT_OUTCOME_DEGRADED) ? INIT_BOOT_OUTCOME_DEGRADED : INIT_BOOT_OUTCOME_STABLE;
 
 finish:
     // Status Report
     init_status_report(rt.services, INIT_SERVICE_ID_MAX);
 
+    /* A failed required graph cannot become healthy through supervisor handoff.
+     * Preserve the failure even when the supervisor accepts or is absent. */
+    if (rt.outcome == INIT_BOOT_OUTCOME_SAFE_MODE) {
+        return -EFAULT;
+    }
+
     // Handoff is a property of the resolved service graph, not the hardware profile.
     init_service_runtime_t *supervisor = &rt.services[INIT_SVC_SERVICEMGR];
     if (supervisor->desc == NULL || supervisor->state == INIT_SERVICE_STATE_SKIPPED) {
-        if (rt.outcome == INIT_BOOT_OUTCOME_SAFE_MODE) return -EFAULT;
         bharat_runtime_log("services/init: no supervisor selected; retaining lifecycle authority.\n");
         rt.phase = INIT_PHASE_QUIESCENT;
-        return INIT_RUNTIME_QUIESCENT;
+        return rt.outcome == INIT_BOOT_OUTCOME_STABLE ? INIT_RUNTIME_RETAINED : INIT_RUNTIME_QUIESCENT;
     }
 
     rt.phase = INIT_PHASE_HANDOFF_PREPARED;
@@ -291,6 +386,6 @@ finish:
     if (rt.phase == INIT_PHASE_QUIESCENT) {
         return INIT_RUNTIME_QUIESCENT;
     }
-    return (rt.outcome == INIT_BOOT_OUTCOME_SUCCESS) ?
+    return (rt.outcome == INIT_BOOT_OUTCOME_STABLE) ?
         INIT_RUNTIME_HANDOFF_COMPLETE : -EFAULT;
 }

@@ -75,7 +75,7 @@ static void console_write_fb(const char *buf, size_t len) {
 
 static void console_init_fb(void) {
     struct { uint32_t display_id; uint32_t requested_rights; } req;
-    struct { uint32_t status; uint32_t lease_id; uint32_t granted_rights; uint64_t fb_ptr; } resp;
+    struct { uint32_t status; uint32_t lease_id; uint32_t granted_rights; uint64_t fb_ptr; uint32_t width; uint32_t height; } resp;
 
     req.display_id = 1;
     req.requested_rights = BHARAT_DISPLAY_RIGHT_LEASE | BHARAT_DISPLAY_RIGHT_WRITE | BHARAT_DISPLAY_RIGHT_PRESENT;
@@ -83,17 +83,23 @@ static void console_init_fb(void) {
     bharat_ipc_msg_header_t req_hdr = { .opcode = 1, .payload_size = sizeof(req) };
     bharat_ipc_msg_header_t resp_hdr;
 
+    g_fb_backend.active = false;
+
     if (bharat_ipc_call(DISPLAY_BROKER_ENDPOINT, &req_hdr, &req, &resp_hdr, &resp, sizeof(resp)) == 0 && resp.status == BHARAT_STATUS_OK) {
+        if (resp.fb_ptr == 0 || resp.width == 0 || resp.height == 0 || !(resp.granted_rights & BHARAT_DISPLAY_RIGHT_WRITE)) {
+            bharat_runtime_log("Console FB backend unavailable: invalid fb_ptr, bounds, or missing write authority");
+            return;
+        }
+
         g_fb_backend.lease_id = resp.lease_id;
-        g_fb_backend.width = 800;
-        g_fb_backend.height = 480;
+        g_fb_backend.width = resp.width;
+        g_fb_backend.height = resp.height;
         g_fb_backend.fb_pixels = (void*)resp.fb_ptr;
         g_fb_backend.cursor_x = 0;
         g_fb_backend.cursor_y = 0;
         g_fb_backend.active = true;
         bharat_runtime_log("Console FB backend initialized");
     } else {
-        g_fb_backend.active = false;
         bharat_runtime_log("Console FB backend unavailable, falling back to UART only");
     }
 }
@@ -116,9 +122,15 @@ int main(int argc, char** argv) {
     bharat_ipc_msg_header_t hdr;
     uint8_t payload[4096];
 
+
+    // In a real system, the console service would get its receiving endpoint from the bootstrap environment.
+    // For this task, we assume endpoint 2 is the registered console endpoint.
+    bharat_cap_handle_t my_endpoint = 2;
+
     while (true) {
-        int32_t ret = bharat_ipc_recv(BHARAT_CAP_INVALID_HANDLE, &hdr, payload, sizeof(payload));
+        int32_t ret = bharat_ipc_recv(my_endpoint, &hdr, payload, sizeof(payload));
         if (ret == 0) {
+
             switch (hdr.opcode) {
                 case 2: // WriteStream
                     // Multiplexed output

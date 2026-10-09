@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <bharat/uapi/bootstrap/service_launch.h>
 
 // Pre-declaration to break dependency loop with init_manifest.h
 struct init_service_desc_s;
@@ -20,7 +21,7 @@ typedef enum {
 } init_failure_class_t;
 
 typedef enum {
-    INIT_BOOT_OUTCOME_SUCCESS = 0,
+    INIT_BOOT_OUTCOME_STABLE = 0,
     INIT_BOOT_OUTCOME_DEGRADED = 1,
     INIT_BOOT_OUTCOME_SAFE_MODE = 2,
     INIT_BOOT_OUTCOME_HANDOFF_FAILED = 3,
@@ -55,16 +56,17 @@ typedef enum {
 
 typedef enum {
     INIT_SERVICE_STATE_DISABLED = 0,
-    INIT_SERVICE_STATE_PENDING,
+    INIT_SERVICE_STATE_DECLARED,
     INIT_SERVICE_STATE_WAITING_DEPS,
-    INIT_SERVICE_STATE_LAUNCH_REQUESTED,
-    INIT_SERVICE_STATE_REGISTERED,
+    INIT_SERVICE_STATE_SPAWN_REQUESTED,
+    INIT_SERVICE_STATE_SPAWNED,
+    INIT_SERVICE_STATE_ENDPOINT_BOUND,
     INIT_SERVICE_STATE_READY,
     INIT_SERVICE_STATE_FAILED,
     INIT_SERVICE_STATE_SKIPPED,
     // Aliases to avoid breaking older code right away:
-    INIT_SERVICE_STOPPED = INIT_SERVICE_STATE_PENDING,
-    INIT_SERVICE_STARTING = INIT_SERVICE_STATE_LAUNCH_REQUESTED,
+    INIT_SERVICE_STOPPED = INIT_SERVICE_STATE_DECLARED,
+    INIT_SERVICE_STARTING = INIT_SERVICE_STATE_SPAWN_REQUESTED,
     INIT_SERVICE_RUNNING = INIT_SERVICE_STATE_READY,
 } init_service_state_t;
 
@@ -77,6 +79,9 @@ typedef struct {
     bool required_for_boot;
     bool observed_registered;
     bool observed_ready;
+    bh_bootstrap_launch_result_t launch;
+    uint64_t ready_deadline_ns;
+    uint32_t namesvc_cap;
 } init_service_runtime_t;
 
 void init_status_report(const init_service_runtime_t *runtimes, size_t count);

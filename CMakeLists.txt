@@ -304,6 +304,11 @@ message(STATUS "Configuring for Kernel Execution Profile: ${BHARAT_KERNEL_PROFIL
 message(STATUS "Configuring for Device Profile: ${BHARAT_DEVICE_PROFILE}")
 message(STATUS "Configuring for Personality Profile: ${BHARAT_PERSONALITY_PROFILE}")
 message(STATUS "Architecture: ${BHARAT_ARCH_FAMILY}-${BHARAT_ARCH_BITS} (${BHARAT_ARCH_VARIANT})")
+if(BHARAT_ARCH_FAMILY STREQUAL "X86")
+    set(BHARAT_USER_IMAGE_BASE 0x40000000)
+else()
+    set(BHARAT_USER_IMAGE_BASE 0x1000)
+endif()
 
 # Normalize user-provided profile/personality selectors
 string(TOUPPER "${BHARAT_DEVICE_PROFILE}" BHARAT_DEVICE_PROFILE)
@@ -376,6 +381,11 @@ else()
     set(BHARAT_ARCH_NAME "unknown")
 endif()
 add_compile_definitions(BHARAT_ARCH_NAME="${BHARAT_ARCH_NAME}")
+if(BHARAT_ARCH_NAME MATCHES "^arm(32|64)$" AND CMAKE_CROSSCOMPILING)
+    # Shared ELF/boot libraries also execute before the MMU gives RAM Normal
+    # attributes. Keep compiler-generated accesses aligned in that phase.
+    add_compile_options(-mstrict-align)
+endif()
 
 # Architecture Variant
 bharat_set_profile_flag(BHARAT_ARCH_VARIANT_GENERIC "GENERIC" "${BHARAT_ARCH_VARIANT}")

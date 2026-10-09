@@ -1,6 +1,32 @@
 # SPDX-License-Identifier: MIT
 cmake_minimum_required(VERSION 3.20)
 
+add_executable(test_init_failure_handoff
+    ../init/test_init_failure_handoff.c
+    ${CMAKE_SOURCE_DIR}/core/services/core/init/init_runtime.c
+    ${CMAKE_SOURCE_DIR}/core/services/core/init/init_graph.c
+    ${CMAKE_SOURCE_DIR}/core/services/core/init/init_events.c
+    ${CMAKE_SOURCE_DIR}/core/services/core/init/init_rollback.c
+    ${CMAKE_SOURCE_DIR}/core/services/core/init/init_status.c
+    ${CMAKE_SOURCE_DIR}/core/services/core/init/init_profile.c)
+target_include_directories(test_init_failure_handoff PRIVATE
+    ${CMAKE_SOURCE_DIR}/interface/include
+    ${CMAKE_SOURCE_DIR}/core/lib/runtime/include)
+add_test(NAME host_test_init_failure_handoff COMMAND test_init_failure_handoff)
+
+add_executable(test_init_readiness
+    ../init/test_init_readiness.c
+    ${CMAKE_SOURCE_DIR}/core/services/core/init/init_runtime.c
+    ${CMAKE_SOURCE_DIR}/core/services/core/init/init_graph.c
+    ${CMAKE_SOURCE_DIR}/core/services/core/init/init_events.c
+    ${CMAKE_SOURCE_DIR}/core/services/core/init/init_rollback.c
+    ${CMAKE_SOURCE_DIR}/core/services/core/init/init_status.c
+    ${CMAKE_SOURCE_DIR}/core/services/core/init/init_profile.c)
+target_include_directories(test_init_readiness PRIVATE
+    ${CMAKE_SOURCE_DIR}/interface/include
+    ${CMAKE_SOURCE_DIR}/core/lib/runtime/include)
+add_test(NAME host_test_init_readiness COMMAND test_init_readiness)
+
 add_executable(host_test_cap_generation_production test_cap_generation_policy.c)
 target_include_directories(host_test_cap_generation_production PRIVATE
     "${CMAKE_SOURCE_DIR}/core/kernel/include")
@@ -716,3 +742,13 @@ target_include_directories(host_test_ai_sched_fallback PRIVATE
 target_compile_definitions(host_test_ai_sched_fallback PRIVATE TESTING=1 BHARAT_HOST_TEST)
 add_test(NAME host_test_ai_sched_fallback COMMAND host_test_ai_sched_fallback)
 set_tests_properties(host_test_ai_sched_fallback PROPERTIES LABELS "scheduler")
+
+add_executable(host_test_robot_platform
+    platform/qemu/robot/test_robot_platform.c
+    ${CMAKE_SOURCE_DIR}/core/platform/qemu/robot/robot_platform.c
+    ${CMAKE_SOURCE_DIR}/core/drivers/sensor/virtual/virtual_sensors.c
+    ${CMAKE_SOURCE_DIR}/core/drivers/actuator/virtual/virtual_motors.c)
+target_include_directories(host_test_robot_platform PRIVATE
+    ${CMAKE_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/interface/include)
+add_test(NAME host_test_robot_platform COMMAND host_test_robot_platform)
