@@ -14,6 +14,19 @@ target_include_directories(test_init_failure_handoff PRIVATE
     ${CMAKE_SOURCE_DIR}/core/lib/runtime/include)
 add_test(NAME host_test_init_failure_handoff COMMAND test_init_failure_handoff)
 
+add_executable(test_init_readiness
+    ../init/test_init_readiness.c
+    ${CMAKE_SOURCE_DIR}/core/services/core/init/init_runtime.c
+    ${CMAKE_SOURCE_DIR}/core/services/core/init/init_graph.c
+    ${CMAKE_SOURCE_DIR}/core/services/core/init/init_events.c
+    ${CMAKE_SOURCE_DIR}/core/services/core/init/init_rollback.c
+    ${CMAKE_SOURCE_DIR}/core/services/core/init/init_status.c
+    ${CMAKE_SOURCE_DIR}/core/services/core/init/init_profile.c)
+target_include_directories(test_init_readiness PRIVATE
+    ${CMAKE_SOURCE_DIR}/interface/include
+    ${CMAKE_SOURCE_DIR}/core/lib/runtime/include)
+add_test(NAME host_test_init_readiness COMMAND test_init_readiness)
+
 add_executable(host_test_cap_generation_production test_cap_generation_policy.c)
 target_include_directories(host_test_cap_generation_production PRIVATE
     "${CMAKE_SOURCE_DIR}/core/kernel/include")

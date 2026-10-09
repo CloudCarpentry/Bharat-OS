@@ -42,3 +42,18 @@ launch and accepted-but-not-ready cases with successful, unavailable, and failed
 supervisor responses. The x86_64 headless contract separately requires namesvc
 entry/main/readiness, process_manager launch/readiness, and CORE readiness.
 Boot-log fixtures are parser inputs, not evidence that real services executed.
+
+## Real CORE bootstrap
+
+The canonical five headless targets select `BHARAT_INIT_CORE_BOOTSTRAP_ONLY`:
+init, namesvc and process_manager are packaged as real ELFs. Init launches through
+the existing capability-invocation boundary, consumes each child's dedicated
+BOUND/READY events, and starts process_manager after namesvc is READY. A monotonic
+deadline bounds readiness waiting. With no supervisor in this resolved graph,
+init retains lifecycle authority and reports stable CORE bootstrap.
+
+Failed rollback reports quarantine; blocked endpoint waits cannot currently be
+cancelled. This P0 graph does not qualify the full production graph or general
+service RPC. See ADR-036 and `docs/reviews/boot-flow-p0-001-recovery.md` for the
+tested boundary. Run `bash tools/testing/test_bootstrap_recovery.sh` after the
+canonical x86_64 build for the focused regressions.

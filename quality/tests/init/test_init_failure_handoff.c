@@ -27,6 +27,11 @@ const init_service_desc_t g_init_manifest[] = {
 const size_t g_init_manifest_count = sizeof(g_init_manifest) / sizeof(g_init_manifest[0]);
 
 void bharat_runtime_log(const char *msg) { (void)msg; }
+int bharat_runtime_now_ns(uint64_t *out) { *out = 0; return 0; }
+int bharat_bootstrap_poll(uint32_t cap, bh_bootstrap_service_event_t *event) {
+    (void)cap; (void)event; return -1;
+}
+int bharat_sched_yield(void) { return 0; }
 
 int init_handoff_to_supervisor(const init_boot_context_t *ctx, struct init_runtime_s *rt) {
     (void)ctx;

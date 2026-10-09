@@ -1,131 +1,150 @@
 ---
-title: BOOT-FLOW-P0-001 baseline and failure preservation
-status: Blocked
+title: BOOT-FLOW-P0-001 real userspace bootstrap recovery
+status: Implemented
 owner: Kernel and Services Working Group
-last_updated: 2026-10-10
-tags:
-  - boot
-  - validation
+last_updated: 2026-10-09
+tags: [boot, validation]
 ---
 
 # BOOT-FLOW-P0-001 recovery evidence
 
-This is a partial recovery, not completion of the real-userspace bootstrap gate.
-The baseline is `developer` commit
-`79b8441ccfc2202e0041de30f5c3ba1703405372`, on working branch
-`fix/boot-flow-p0-001-userspace-entry`.
+Base: `developer` SHA `79b8441ccfc2202e0041de30f5c3ba1703405372`.
+Working branch: `fix/boot-flow-p0-001-userspace-entry`. Inspection of available
+remote history/branches found no Jules launch/readiness implementation to reuse.
+The authorized recovery therefore connects existing capability invocation, ELF
+loading, scheduling, endpoint IPC and monotonic time mechanisms. No native
+syscall number, framework, generated ABI file or third-party source was added.
 
-## Reproduced behavior and root cause
+## Root cause and execution evidence
 
-The baseline x86_64 target builds and packages. QEMU reaches init's `_start`,
-runtime initialization, and `main`; diagnostic syscalls return. The ELF entry
-is `0x202680`, in an executable PT_LOAD. Runtime evidence shows
-`rsp=0x3fffffeff8`, `arg0=0x3ffffed000`, and matching actual/expected CR3.
-There is no observed first user-entry exception in this trace. This evidence
-does not establish namesvc entry: the package includes only init.
+The baseline packages only init. Its manifest returns success for namesvc and
+process_manager without creating either process. CORE is evaluated before any
+readiness receiver can populate state. Required failure can then be overwritten
+by degraded supervisor handoff, producing misleading graph-completion output.
+The first baseline x86 run reached init's `_start` and `main` with diagnostic
+syscalls returning; it did not execute namesvc. Initial ELF entry was
+`0x202680`, startup pointer `0x3ffffed000`, and stack `0x3fffffeff8`.
 
-`core/services/core/init/init_manifest.c:13` returned success for namesvc and
-process_manager without launching either. `init_runtime.c:213` tries CORE once;
-no readiness receiver populates `observed_ready`. Missing readiness sets safe
-mode and rolls back namesvc, explaining its DISABLED status. At `finish`, init
-nevertheless attempted supervisor handoff. A missing supervisor changed safe
-mode to degraded/quiescent. Init then incorrectly printed graph completion:
+After real launch was restored, GDB captured an x86 instruction-fetch page fault
+(error `0x15`, CR2/PC `0x204405`). Init and namesvc reused the same low virtual
+image addresses and shared the lower page-table hierarchy; loading the child
+replaced init's executable mapping with an NX page. The stack allocation was
+not the root cause. Private process tables and a user image base outside kernel
+identity text remove both collisions.
+
+The final source boundaries are:
+
+- `core/services/core/init/init_manifest.c:11`: real bootstrap launch calls.
+- `core/kernel/src/init/bootstrap_launch.c:42`: typed owner-local invocation,
+  real ELF/thread creation and CSpace delegation; launch does not imply READY.
+- `core/arch/x86/x86_64/hal_pt_x86_64.c:98`: private lower-half hierarchy,
+  supervisor inheritance, allocation rollback and cleanup.
+- `delivery/cmake/modules/BharatCommon.cmake`: x86 user image base `0x40000000`.
+- `core/kernel/CMakeLists.txt:40`: generated configuration include precedence.
+- `core/kernel/src/sched/sched_wait.c:53`: blocked IPC actually reschedules while
+  preserving the outgoing thread context.
+- `core/kernel/src/trap/syscall_gate.c:264`: canonical native status translation
+  even when optional compatibility-personality registration is disabled.
+- `core/kernel/src/personality/native/native_syscall_handlers.c`: endpoint
+  payloads use bounded kernel buffers and fault-safe usercopy. Direct kernel
+  access to user buffers had faulted on RISC-V with supervisor access disabled.
+- `core/services/core/init/init_runtime.c`: validated BOUND/READY event loop,
+  monotonic deadlines, dependency reevaluation and failure-preserving handoff.
+- `core/services/namesvc/main.c`, `core/services/process_manager/main.c`:
+  readiness comes from executing services with child-local receive endpoints.
+
+ARM64 GDB captured early alignment faults in compiler-generated accesses before
+RAM had Normal attributes; strict-alignment compilation fixes this boundary.
+ARM64 SVC hardware already advances ELR; adding four again skipped the runtime
+syscall stub's return. RISC-V64's initial page tables lacked the high supervisor
+aliases assumed by its physmap backend. ARM32 first faulted on an unaligned
+console halfword; after that fix GDB captured a branch to zero following syscall
+scheduling. Its trap return had not restored banked user SP/LR. The ARM32 return
+now restores that pair and its context-switch C call keeps AAPCS alignment.
+
+Both real services now execute on all five architectures. A representative
+QEMU trace is:
 
 ```text
-USER_INIT: ENTERED
-USER_INIT: STARTUP_ABI_OK
-BOOTAUTH:SELF_PROCESS_CAP_OK
-BOOTAUTH:BOOTSTRAP_CAP_OK
-BOOTAUTH:NAMESVC_CAP_OK
-namesvc: DISABLED
-process_manager: WAITING_DEPS
-services/init: HANDOFF_DEFERRED (supervisor unavailable).
+NAMESVC_USER_ENTRY
+NAMESVC_MAIN_ENTER
+BOOTAUTH:NAMESVC_BINDING_OK
+NAMESVC_READY
+PROCESS_MANAGER_LAUNCH
+PROCESS_MANAGER_READY
+BOOT_CLASS_CORE_READY
+namesvc: READY
+process_manager: READY
 USER_INIT: SERVICE_GRAPH_COMPLETE
-BOOT_RUNTIME: DEGRADED
+BOOT_RUNTIME: STABLE
 ```
 
-## Changes
+Init starts process_manager after consuming namesvc's actual READY event on its
+dedicated receiver. All five contracts require these six service/core markers
+and reject fatal errors, including `BOOT_FAIL:`. Parser fixtures are synthetic
+negative inputs; the passing evidence above comes from QEMU, not fixtures.
 
-Required-service safe mode now returns an error before handoff. Init emits
-`BOOT_FAIL: INIT_BOOTSTRAP` on failure and cannot emit graph completion on that
-path. Bootstrap launch placeholders return `-ENOSYS` rather than falsely claim
-success. The x86_64 smoke contract requires all six service evidence markers
-specified in the task. Regression fixtures are synthetic parser inputs only.
+## Validation results
 
-The final x86_64 run reports `namesvc: FAILED`, keeps process_manager in
-`WAITING_DEPS`, emits `BOOT_FAIL: INIT_BOOTSTRAP`, and exits the smoke runner
-with failure on that forbidden marker. It emits neither graph completion nor
-stable boot. This proves failure visibility, not recovery of service execution.
+Work in `/workspace/Bharat-OS` after `source /workspace/tooling/activate.sh`.
+The workspace has CMake 3.31, LLVM/Clang 19, GDB multiarch, DT tooling and all five
+QEMU 10 emulators, extracted from signature/checksum-validated Debian packages.
+No root installation or verification bypass was needed.
 
-The changes keep lifecycle policy in init and preserve the capability and
-syscall ABI boundaries. No kernel READY state, fake endpoint, or capability
-copy was added. No generated, toolchain, third-party, or runtime-log artifacts
-are included in the change.
+| Command | Result |
+| --- | --- |
+| `./tools/build.sh all --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml --smoke` | PASS |
+| `./tools/build.sh all --target-yaml delivery/targets/qemu/arm64_desktop_headless.yaml --smoke` | PASS |
+| `./tools/build.sh all --target-yaml delivery/targets/qemu/riscv64_desktop_headless.yaml --smoke` | PASS |
+| `./tools/build.sh all --target-yaml delivery/targets/qemu/arm32_mmu_lite_headless.yaml --smoke` | PASS |
+| `./tools/build.sh all --target-yaml delivery/targets/qemu/riscv32_mmu_lite_headless.yaml --smoke` | PASS |
+| `python3 tools/run_qemu_matrix.py --headless --smoke --all-arch` | PASS, five lanes |
+| `CC=clang bash tools/testing/test_bootstrap_recovery.sh` | PASS, nine executables, component-policy cases and 18 parser tests |
+| `python3 tools/lint/check_layer_references.py` | PASS with recorded baseline debt (19 findings, baseline 109) |
+| `python3 tools/lint/check_cmake_dependencies.py` | PASS, zero violations |
+| `python3 tools/abi/syscall_abi.py --check` | PASS, unchanged compatibility lock |
+| `cmake --preset host-test` | FAIL: pre-existing stale source paths; broad CTest suite BLOCKED |
 
-## Validation
+Focused tests exercise required failure/handoff (six cases), real event/dependency
+progression, timeout and malformed events, native error codes, endpoint copy
+faults and transferred-cap cleanup, x86 isolation and allocation rollback,
+malformed boot bundles, process-manager transaction compensation and 1,000
+spawn/terminate/reap cycles with zero tracked resource leaks. Headless component
+selection preserves graphical/infotainment requirements. Kernel runtime
+selftests report `run=7 pass=7 fail=0` in the passing QEMU trace.
 
-Activate workspace tools with `source /workspace/tooling/activate.sh` and work
-in `/workspace/Bharat-OS`. The tools were installed from signed Debian package
-metadata with normal package checksum validation; no root installation or
-verification bypass was used.
+Regression evidence against pre-fix code is negative: the required-failure test
+previously asserted on handoff; the native-status test asserts on unnormalized
+AGAIN; the x86 isolation test asserts on shared-table/rollback behavior; the
+endpoint test asserts when IPC receives the user pointer directly. Current
+implementations pass. Expected baseline assertion failures are not current test
+failures.
 
-PASS: the new six-case failure-preservation regression. Its baseline fails the
-assertion that handoff is never called after required-service failure.
+Local detailed run evidence remains under `/workspace/tooling/`; qualification
+JSONs are under `build/evidence/`. Build products/logs are intentionally excluded
+from Git. The broad host preset fails on unrelated paths such as
+`core/lib/base/src/string.c` and `../../kernel/src/profile/profile.c`; no passing
+CTest or complete repository-suite result is claimed.
 
-```bash
-gcc -std=c11 -Iinterface/include -Icore/lib/runtime/include \
-  quality/tests/init/test_init_failure_handoff.c \
-  core/services/core/init/{init_runtime,init_graph,init_events,init_rollback,init_status,init_profile}.c \
-  -o /workspace/tooling/test_init_failure_handoff
-/workspace/tooling/test_init_failure_handoff
-```
+## Architecture, scope and remaining limitations
 
-PASS: existing init tests plus two bootstrap-placeholder checks. The original
-manifest fails the new assertion rejecting a successful no-op launch.
+The explicit `BHARAT_INIT_CORE_BOOTSTRAP_ONLY` policy selects and packages the
+P0 graph of init, namesvc and process_manager. CORE readiness is truthful for
+that graph; it does not qualify all production services, general service RPC,
+restart/supervisor policy, graphical targets, SMP launch, MPU-only targets, or
+non-QEMU boards. Existing larger service RPCs can exceed endpoint payload limits.
+The native manager backend is installed and capability-probed before READY.
 
-```bash
-gcc -std=c11 -Iinterface -Iinterface/include \
-  -Icore/lib/runtime/include -Icore/lib/cap/include \
-  -Icore/lib/ipc/include -Icore/lib/namesvc/include \
-  quality/tests/host/test_init.c \
-  core/services/core/init/{init_manifest,init_runtime,init_graph,init_events,init_rollback,init_status,init_profile}.c \
-  -o /workspace/tooling/test_init
-/workspace/tooling/test_init
-```
+Capabilities are typed, generation-checked, owner-local and delegated between
+CSpaces with attenuated rights. Self-process roots are revoked before process
+slot reuse. Rollback attempts real termination/reap and visibly quarantines
+failure. The existing endpoint backend cannot cancel blocked waiters or reclaim
+all failed-launch endpoints; blocked termination returns unsupported and bounded
+resources may remain quarantined. No false cleanup is reported. General endpoint
+lifecycle work is a follow-up, not a claim of this P0 gate.
 
-PASS: `bash tools/testing/test_check_boot_log.sh` (10 parser tests).
-
-PASS: `python3 tools/lint/check_layer_references.py` (existing baseline debt,
-exit 0), `python3 tools/lint/check_cmake_dependencies.py` (zero violations),
-`python3 tools/abi/syscall_abi.py --check`, and `git diff --check`.
-
-BLOCKED: `cmake --preset host-test` fails on existing stale source paths,
-including `core/lib/base/src/string.c` and `../../kernel/src/profile/profile.c`.
-The regression is registered as `host_test_init_failure_handoff`, but no CTest
-execution is claimed; the direct test commands above executed successfully.
-
-FAIL: `python3 tools/run_qemu_matrix.py --headless --smoke --all-arch`.
-All five architecture emulators are installed. The x86_64 and ARM64 lanes
-timeout before satisfying their boot contracts; RISC-V64 reports a required
-bootstrap failure. ARM32 and RISC-V32 fail compiling
-`core/services/system/boot_displayd/tests/test_boot_displayd.c` because the
-bare-metal build cannot find host `assert.h`. These are repository failures,
-not missing emulators. The canonical five `tools/build.sh all --target-yaml
-delivery/targets/qemu/<target>.yaml --smoke` commands were also run separately.
-
-## Remaining recovery prerequisites
-
-The repository has no bootstrap launch syscall, capability invocation backend,
-or service readiness transport corresponding to the referenced Jules work.
-The native syscall manifest has no bootstrap launch operation; the weak
-`cap_invoke` in `core/kernel/src/trap/trap.c:90` returns unsupported.
-`tools/package/packager.py:142` packages one root, not the required service
-executables. `core/services/process_manager/main.c:11` exits without installed
-kernel operations; it also retains a fake endpoint at line 15. Namesvc has no
-explicit READY reporting. These components must be recovered from existing
-work or implemented under a separately resolved mechanism/ABI scope before
-the real-process acceptance gate can pass. This patch does not implement them.
-
-The environment draft stores tested installation and activation/startup
-instructions. Saving that draft does not publish the snapshot or establish
-fresh-task restoration. No PR is submitted while the mandatory gate is failing.
+ADR-036, the contract index, init README and BUILD.md document this boundary.
+Generated configuration/syscall headers, build outputs, toolchain files, logs,
+third-party files and unrelated refactors are excluded from the delivered diff.
+The environment draft saves installation and startup instructions; saving does
+not publish or verify restoration in a new cloud task.

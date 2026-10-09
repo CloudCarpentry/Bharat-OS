@@ -175,12 +175,15 @@ bh_operation_result_t bh_sys_endpoint_send(bh_syscall_ctx_t *ctx) {
     kstatus_t kst = bh_syscall_cap_lookup_endpoint(ctx, args.send_cap, CAP_RIGHT_ENDPOINT_SEND, &ep);
     if (kst != K_OK) return bh_op_result_kstatus(kst);
 
-    st = bh_user_range_validate((const void *)args.payload_ptr, args.payload_len, BH_USER_ACCESS_READ);
+    uint8_t payload[BHARAT_IPC_ENDPOINT_PAYLOAD_MAX];
+    if (!args.payload_len || args.payload_len > sizeof(payload))
+        return bh_op_result_kstatus(K_ERR_INVALID_ARG);
+    st = bh_copy_from_user(payload, (const void *)(uintptr_t)args.payload_ptr, args.payload_len);
     if (st != BH_OK) return bh_op_result_kstatus(bh_status_to_kstatus(st));
 
     capability_table_t *table = (capability_table_t *)ctx->process->security_sandbox_ctx;
     return bh_op_result_kstatus(
-        ipc_status_to_kstatus(ipc_endpoint_send(table, args.send_cap, (const void *)(uintptr_t)args.payload_ptr,
+        ipc_status_to_kstatus(ipc_endpoint_send(table, args.send_cap, payload,
                           args.payload_len, args.timeout_ticks, args.cap_to_send, args.cap_send_rights)));
 }
 
@@ -195,21 +198,39 @@ bh_operation_result_t bh_sys_endpoint_receive(bh_syscall_ctx_t *ctx) {
 
     st = bh_user_range_validate((void *)args.out_payload_ptr, args.out_payload_capacity, BH_USER_ACCESS_WRITE);
     if (st != BH_OK) return bh_op_result_kstatus(bh_status_to_kstatus(st));
+    st = bh_user_range_validate((void *)(uintptr_t)args.out_len_ptr, sizeof(uint32_t), BH_USER_ACCESS_WRITE);
+    if (st != BH_OK) return bh_op_result_kstatus(bh_status_to_kstatus(st));
+    if (args.out_received_cap_ptr) {
+        st = bh_user_range_validate((void *)(uintptr_t)args.out_received_cap_ptr, sizeof(uint32_t), BH_USER_ACCESS_WRITE);
+        if (st != BH_OK) return bh_op_result_kstatus(bh_status_to_kstatus(st));
+    }
 
     capability_table_t *table = (capability_table_t *)ctx->process->security_sandbox_ctx;
+    uint8_t payload[BHARAT_IPC_ENDPOINT_PAYLOAD_MAX];
+    uint32_t capacity = args.out_payload_capacity < sizeof(payload) ? args.out_payload_capacity : sizeof(payload);
     uint32_t len_received, cap_received;
-    kstatus_t res = ipc_status_to_kstatus(ipc_endpoint_receive(table, args.recv_cap, (void *)(uintptr_t)args.out_payload_ptr,
-                             args.out_payload_capacity, &len_received, args.timeout_ticks, &cap_received));
+    kstatus_t res = ipc_status_to_kstatus(ipc_endpoint_receive(table, args.recv_cap, payload,
+                             capacity, &len_received, args.timeout_ticks, &cap_received));
 
     if (res == K_OK) {
+        st = bh_copy_to_user((void *)(uintptr_t)args.out_payload_ptr, payload, len_received);
+        if (st != BH_OK) goto receive_copy_failed;
         st = bh_copy_to_user((void *)args.out_len_ptr, &len_received, sizeof(len_received));
-        if (st != BH_OK) return bh_op_result_kstatus(bh_status_to_kstatus(st));
+        if (st != BH_OK) goto receive_copy_failed;
         if (args.out_received_cap_ptr) {
             st = bh_copy_to_user((void *)args.out_received_cap_ptr, &cap_received, sizeof(cap_received));
-            if (st != BH_OK) return bh_op_result_kstatus(bh_status_to_kstatus(st));
+            if (st != BH_OK) goto receive_copy_failed;
+        } else if (cap_received && cap_table_revoke(table, cap_received) != 0) {
+            return bh_op_result_kstatus(K_ERR_BAD_STATE);
         }
     }
     return bh_op_result_kstatus(res);
+receive_copy_failed:
+    /* A transferred handle is never retained silently after failed copyout.
+     * Failed revocation leaves the object quarantined in the calling CSpace. */
+    if (cap_received && cap_table_revoke(table, cap_received) != 0)
+        return bh_op_result_kstatus(K_ERR_BAD_STATE);
+    return bh_op_result_kstatus(bh_status_to_kstatus(st));
 }
 
 bh_operation_result_t bh_sys_cap_delegate(bh_syscall_ctx_t *ctx) {

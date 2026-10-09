@@ -173,6 +173,11 @@ function(bharat_configure_userspace_binary TARGET_NAME)
         set_target_properties(${TARGET_NAME} PROPERTIES POSITION_INDEPENDENT_CODE OFF)
         target_compile_options(${TARGET_NAME} PRIVATE -fno-pie -fno-PIC)
         target_link_options(${TARGET_NAME} PRIVATE -nostdlib "LINKER:-no-pie")
+        if(BHARAT_ARCH_FAMILY STREQUAL "X86")
+            # The low identity range contains the kernel and boot modules.
+            # User ELF segments must not replace those supervisor mappings.
+            target_link_options(${TARGET_NAME} PRIVATE "LINKER:--image-base=0x40000000")
+        endif()
     endif()
 endfunction()
 

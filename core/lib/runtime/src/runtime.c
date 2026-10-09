@@ -5,6 +5,9 @@
 #include <bharat/uapi/init/bootstrap.h>
 #include <bharat/uapi/syscall_nr.h>
 #include <bharat/uapi/syscall/bh_syscall.h>
+#include <bharat/uapi/syscall_args.h>
+#include <bharat/uapi/time/time.h>
+#include <bharat/syscalls.h>
 
 
 static bharat_handle_t g_bootstrap_cap = BHARAT_INVALID_HANDLE;
@@ -38,6 +41,64 @@ bharat_handle_t bharat_runtime_get_bootstrap_cap(void) {
 
 const bharat_user_startup_t *bharat_runtime_get_startup(void) {
     return g_startup_ptr;
+}
+
+int bharat_bootstrap_probe(void) {
+    bharat_sys_cap_invoke_args_t args = {.cap_id = g_bootstrap_cap,
+        .opcode = BH_BOOTSTRAP_OP_PROBE};
+    return bharat_syscall(BH_SYS_CAPABILITY_INVOKE, (uintptr_t)&args, 0, 0, 0, 0, 0);
+}
+
+int bharat_bootstrap_stop(uint32_t process_cap) {
+    bharat_sys_cap_invoke_args_t args = {.cap_id = process_cap,
+        .opcode = BH_PROCESS_OP_TERMINATE};
+    int status = bharat_syscall(BH_SYS_CAPABILITY_INVOKE, (uintptr_t)&args, 0, 0, 0, 0, 0);
+    if (status != 0) return status;
+    /* Give the scheduler's deferred reaper an opportunity. Failed compensation
+     * is reported to init, which retains authority and quarantines the child. */
+    status = bharat_sched_yield();
+    if (status != 0) return status;
+    args.opcode = BH_PROCESS_OP_REAP;
+    return bharat_syscall(BH_SYS_CAPABILITY_INVOKE, (uintptr_t)&args, 0, 0, 0, 0, 0);
+}
+
+int bharat_bootstrap_launch(const char *name, uint32_t service_id,
+                           uint32_t namesvc_cap, uint32_t delegate_launch,
+                           bh_bootstrap_launch_result_t *out) {
+    bh_bootstrap_launch_request_t req = {.version = BH_BOOTSTRAP_SERVICE_ABI,
+        .service_id = service_id, .namesvc_cap = namesvc_cap, .delegate_launch = delegate_launch};
+    if (!name || !out) return -1;
+    size_t i;
+    for (i = 0; i < sizeof(req.module_name) - 1 && name[i]; ++i) req.module_name[i] = name[i];
+    if (name[i]) return -1;
+    bharat_sys_cap_invoke_args_t args = {.cap_id = g_bootstrap_cap,
+        .opcode = BH_BOOTSTRAP_OP_LAUNCH, .arg0 = (uintptr_t)&req, .arg1 = (uintptr_t)out};
+    return bharat_syscall(BH_SYS_CAPABILITY_INVOKE, (uintptr_t)&args, 0, 0, 0, 0, 0);
+}
+
+int bharat_bootstrap_report(uint32_t type, int32_t status) {
+    if (!g_startup_ptr || !g_startup_ptr->bootstrap.system_control_endpoint) return -1;
+    bh_bootstrap_service_event_t event = {.version = BH_BOOTSTRAP_SERVICE_ABI,
+        .type = type, .service_id = (uint32_t)g_startup_ptr->bootstrap.flags, .status = status};
+    bharat_sys_endpoint_send_args_t args = {
+        .send_cap = g_startup_ptr->bootstrap.system_control_endpoint,
+        .payload_len = sizeof(event), .payload_ptr = (uintptr_t)&event,
+        .timeout_ticks = UINT64_MAX};
+    return bharat_syscall(BH_SYS_ENDPOINT_SEND, (uintptr_t)&args, 0, 0, 0, 0, 0);
+}
+
+int bharat_bootstrap_poll(uint32_t receive_cap, bh_bootstrap_service_event_t *event) {
+    uint32_t length = 0;
+    bharat_sys_endpoint_receive_args_t args = {.recv_cap = receive_cap,
+        .out_payload_capacity = sizeof(*event), .out_payload_ptr = (uintptr_t)event,
+        .out_len_ptr = (uintptr_t)&length, .timeout_ticks = 0};
+    int result = bharat_syscall(BH_SYS_ENDPOINT_RECEIVE, (uintptr_t)&args, 0, 0, 0, 0, 0);
+    if (result == 0 && length != sizeof(*event)) return -1;
+    return result;
+}
+
+int bharat_runtime_now_ns(uint64_t *out) {
+    return bharat_syscall(BH_SYS_TIME_GET, BH_CLOCK_MONOTONIC, (uintptr_t)out, 0, 0, 0, 0);
 }
 
 static size_t runtime_strlen(const char *s) {

@@ -6,15 +6,17 @@
 #include <bharat/uapi/process_manager/contract_v1.h>
 #include <bharat/ipc/ipc.h>
 #include <bharat/namesvc/client.h>
+#include <bharat/runtime/runtime.h>
 
 static int spawn_service(void *ctx) {
     init_service_runtime_t *sr = (init_service_runtime_t *)ctx;
     if (!sr || !sr->desc) return -1;
 
     if (sr->desc->id == INIT_SVC_NAMESVC || sr->desc->id == INIT_SVC_PROCESS_MANAGER) {
-        /* No bootstrap launcher is installed in this baseline. An accepted
-         * start must describe a real process, never a no-op placeholder. */
-        return -ENOSYS;
+        const char *name = sr->desc->id == INIT_SVC_NAMESVC
+            ? "services/namesvc" : "services/process_manager";
+        return bharat_bootstrap_launch(name, sr->desc->id, sr->namesvc_cap,
+                                      sr->desc->id == INIT_SVC_PROCESS_MANAGER, &sr->launch);
     }
 
     bharat_service_id_t pm_svc_id = 0;
@@ -68,6 +70,14 @@ static int stub_rollback(void *ctx) {
     return 0;
 }
 
+static int bootstrap_rollback(void *ctx) {
+    init_service_runtime_t *sr = ctx;
+    if (!sr || !sr->launch.process_cap) return -EINVAL;
+    int status = bharat_bootstrap_stop(sr->launch.process_cap);
+    if (status != 0) bharat_runtime_log("BOOT_FAIL: ROLLBACK_QUARANTINED\n");
+    return status;
+}
+
 static const init_service_id_t deps_namesvc[] = { INIT_SVC_NONE };
 static const init_service_id_t deps_devmgr[] = { INIT_SVC_NAMESVC };
 static const init_service_id_t deps_process_manager[] = { INIT_SVC_NAMESVC };
@@ -89,7 +99,7 @@ const init_service_desc_t g_init_manifest[] = {
         .start_fn = spawn_service,
         .probe_fn = NULL,
         .bootstrap_hint_fn = NULL,
-        .rollback_fn = stub_rollback,
+        .rollback_fn = bootstrap_rollback,
         .deps = deps_namesvc,
         .dep_count = 0,
         .retry_limit = 3,
@@ -112,7 +122,7 @@ const init_service_desc_t g_init_manifest[] = {
         .start_fn = spawn_service,
         .probe_fn = NULL,
         .bootstrap_hint_fn = NULL,
-        .rollback_fn = stub_rollback,
+        .rollback_fn = bootstrap_rollback,
         .deps = deps_process_manager,
         .dep_count = 1,
         .retry_limit = 3,

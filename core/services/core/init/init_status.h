@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <bharat/uapi/bootstrap/service_launch.h>
 
 // Pre-declaration to break dependency loop with init_manifest.h
 struct init_service_desc_s;
@@ -78,6 +79,9 @@ typedef struct {
     bool required_for_boot;
     bool observed_registered;
     bool observed_ready;
+    bh_bootstrap_launch_result_t launch;
+    uint64_t ready_deadline_ns;
+    uint32_t namesvc_cap;
 } init_service_runtime_t;
 
 void init_status_report(const init_service_runtime_t *runtimes, size_t count);

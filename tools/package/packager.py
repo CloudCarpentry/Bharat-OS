@@ -176,7 +176,22 @@ def execute_package(plan: PackagePlan, repo_root: Path) -> PackageOutputs:
         target_arch, elf_class, flags, name_len, digest_algo, digest, name_bytes, padding
     )
 
-    init_module_path.write_bytes(header + payload_bytes)
+    bundle = bytearray(header + payload_bytes)
+    if plan.target.build.cmake_defs.get("BHARAT_INIT_CORE_BOOTSTRAP_ONLY"):
+        if binary_name != "init":
+            raise RuntimeError("CORE bootstrap services require the full init root")
+        for service in ("namesvc", "process_manager"):
+            service_path = _find_required_root_binary(plan.build_outputs.build_dir, service)
+            service_bytes = service_path.read_bytes()
+            service_name = f"services/{service}".encode("utf-8")
+            service_header = struct.pack(
+                "<IIIIIIIIIII32s32s20s", magic, abi_version, header_size, 3,
+                payload_offset, len(service_bytes), target_arch, elf_class, flags,
+                len(service_name), digest_algo, digest, service_name.ljust(32, b"\x00"), padding)
+            bundle.extend(service_header)
+            bundle.extend(service_bytes)
+            print(f"[Package] Added real bootstrap executable {service}: {len(service_bytes)} bytes")
+    init_module_path.write_bytes(bundle)
     print(f"[Package] Packaged and wrote Bharat boot-module container to {init_module_path}")
 
     packaged_artifacts.append(
