@@ -117,6 +117,7 @@ int services_init_main(void) {
   // Run the startup sequence
   int result = init_runtime_run(&ctx);
   if (result < 0) {
+    bharat_runtime_log("BOOT_FAIL: INIT_BOOTSTRAP\n");
     bharat_runtime_log(
         "services/init: Bootstrap failed (safe mode / halted).\n");
     // Hang
@@ -126,9 +127,9 @@ int services_init_main(void) {
   }
 
   bharat_runtime_log("USER_INIT: SERVICE_GRAPH_COMPLETE\n");
-  if (result == INIT_RUNTIME_HANDOFF_COMPLETE) { bharat_runtime_log("BOOT_RUNTIME: STABLE\n"); } else { bharat_runtime_log("BOOT_RUNTIME: DEGRADED\n"); }
+  if (result == INIT_RUNTIME_HANDOFF_COMPLETE || result == INIT_RUNTIME_RETAINED) { bharat_runtime_log("BOOT_RUNTIME: STABLE\n"); } else { bharat_runtime_log("BOOT_RUNTIME: DEGRADED\n"); }
 
-  if (result == INIT_RUNTIME_QUIESCENT || policy->quiesce_after_handoff) {
+  if (result == INIT_RUNTIME_QUIESCENT || result == INIT_RUNTIME_RETAINED || policy->quiesce_after_handoff) {
     bharat_runtime_log("services/init: Entering quiescent mode.\n");
     /* Remain the bootstrap authority until a supervisor accepts handoff. */
     while (1) {

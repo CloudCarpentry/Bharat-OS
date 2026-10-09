@@ -5,6 +5,7 @@
 
 #include <bharat/uapi/init/bootstrap.h>
 #include <bharat/runtime/runtime.h>
+#include <bharat/uapi/services/service_ids.h>
 
 extern int main(int argc, char* argv[]);
 
@@ -18,6 +19,9 @@ void _start(const bharat_user_startup_t *startup) {
     init_tls();
 
     bharat_runtime_init(startup);
+    if (startup && startup->bootstrap.flags == BHARAT_SERVICE_NAMESVC) {
+        bharat_runtime_log("NAMESVC_USER_ENTRY\n");
+    }
 
     int ret = main(
         startup ? (int)startup->argc : 0,

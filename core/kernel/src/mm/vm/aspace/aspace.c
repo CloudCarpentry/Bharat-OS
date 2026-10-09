@@ -12,6 +12,7 @@
 #include "../../../../include/mm/vm_mapping.h"
 #include "vm_region_index.h"
 #include "hal/hal_boot.h"
+#include "bharat_config.h"
 
 static uint64_t next_as_id = 1;
 
@@ -150,11 +151,11 @@ int aspace_create(address_space_t **out_aspace, uint32_t flags) {
     as->timing_class = 0; // default VM_TIMING_BEST_EFFORT
 
     if (arch_has_cap(ARCH_CAP_USERSPACE_HIGHHALF) && arch_has_cap(ARCH_CAP_64BIT_VA)) {
-        as->user_base = 0x1000;
+        as->user_base = BHARAT_USER_IMAGE_BASE;
         as->user_limit = 0x0000003FFFFFFFFFULL;
     } else {
         // Compact 32-bit layout
-        as->user_base = 0x1000;
+        as->user_base = BHARAT_USER_IMAGE_BASE;
         as->user_limit = 0x7FFFFFFF;
     }
 

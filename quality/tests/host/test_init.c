@@ -7,14 +7,27 @@
 void bharat_runtime_log(const char *msg) {
     printf("[LOG] %s\n", msg);
 }
-void bharat_sched_yield(void) {}
+int bharat_sched_yield(void) { return 0; }
 void bharat_runtime_shutdown(void) {}
 
-#include "../../core/services/core/init/init_manifest.h"
-#include "../../core/services/core/init/init_profile.h"
-#include "../../core/services/core/init/init_status.h"
-#include "../../core/services/core/init/init_runtime.h"
-#include "../../core/services/core/init/init_handoff.h"
+#include "../../../core/services/core/init/init_manifest.h"
+#include "../../../core/services/core/init/init_profile.h"
+#include "../../../core/services/core/init/init_status.h"
+#include "../../../core/services/core/init/init_runtime.h"
+#include "../../../core/services/core/init/init_handoff.h"
+
+int bharat_runtime_now_ns(uint64_t *out) { *out = 0; return 0; }
+int bharat_bootstrap_poll(uint32_t cap, bh_bootstrap_service_event_t *event) {
+    (void)cap; (void)event; return -1;
+}
+static unsigned bootstrap_calls;
+int bharat_bootstrap_stop(uint32_t cap) { (void)cap; return -ENOSYS; }
+int bharat_bootstrap_launch(const char *name, uint32_t id, uint32_t discovery,
+    uint32_t delegate, bh_bootstrap_launch_result_t *out) {
+    (void)name; (void)id; (void)discovery; (void)delegate; (void)out;
+    ++bootstrap_calls;
+    return -ENOSYS;
+}
 
 
 // We simulate namesvc and IPC
@@ -185,6 +198,12 @@ void test_optional_service_fails(void) {
 }
 
 int main(void) {
+    /* Kernel launch errors must propagate instead of claiming a successful child. */
+    for (size_t i = 0; i < 2; ++i) {
+        init_service_runtime_t service = {.desc = &g_init_manifest[i]};
+        assert(service.desc->start_fn(&service) == -ENOSYS);
+    }
+    assert(bootstrap_calls == 2);
     test_init_service_declared_not_ready();
     test_pm_unavailable();
     test_spawn_request_accepted();

@@ -38,6 +38,7 @@ set(BHARAT_GENERATED_INCLUDE_DIR "${CMAKE_BINARY_DIR}/generated/include")
 file(MAKE_DIRECTORY "${BHARAT_GENERATED_INCLUDE_DIR}")
 
 target_include_directories(bharat_kernel_includes INTERFACE
+    ${BHARAT_GENERATED_INCLUDE_DIR}
     ${BHARAT_KERNEL_INCLUDE_DIR}
     ${BHARAT_KERNEL_INCLUDE_DIR}/generated
     ${CMAKE_BINARY_DIR}/generated
@@ -431,6 +432,11 @@ target_link_libraries(k_core PRIVATE bharat_arch_private_includes)
 target_link_libraries(k_trap PRIVATE bharat_arch_private_includes)
 
 set(BHARAT_BOOT_ROOT "${CMAKE_SOURCE_DIR}/core/boot")
+if(ARCH STREQUAL "arm64")
+    # Before MMU setup, RAM has Device attributes and unaligned accesses fault.
+    # This also protects early console helpers whose byte arrays are unaligned.
+    target_compile_options(bharat_kernel_buildopts INTERFACE -mstrict-align)
+endif()
 if(NOT EXISTS "${BHARAT_BOOT_ROOT}/src")
     message(FATAL_ERROR "Missing canonical boot source root: ${BHARAT_BOOT_ROOT}")
 endif()

@@ -19,7 +19,7 @@ static const char* state_to_str(init_service_state_t state) {
 
 void init_status_report(const init_service_runtime_t *runtimes, size_t count) {
 #ifdef BHARAT_INIT_ENABLE_STATUS_QUERY
-    bharat_runtime_log("--- Init Boot Status Report ---");
+    bharat_runtime_log("--- Init Boot Status Report ---\n");
     for (size_t i = 0; i < count; i++) {
         const init_service_runtime_t *rt = &runtimes[i];
         if (!rt->desc) continue;
@@ -28,12 +28,23 @@ void init_status_report(const init_service_runtime_t *runtimes, size_t count) {
         bharat_runtime_log(rt->desc->name);
         bharat_runtime_log(": ");
         bharat_runtime_log(state_to_str(rt->state));
+        if (rt->last_error) {
+            char error[] = " error=0x00000000\n";
+            uint32_t value = (uint32_t)rt->last_error;
+            for (unsigned j = 0; j < 8; ++j) {
+                unsigned digit = (value >> ((7 - j) * 4)) & 15;
+                error[9 + j] = "0123456789abcdef"[digit];
+            }
+            bharat_runtime_log(error);
+        } else {
+            bharat_runtime_log("\n");
+        }
 
         if (rt->state == INIT_SERVICE_STATE_FAILED) {
-             bharat_runtime_log(" (Failed)");
+             bharat_runtime_log(" (Failed)\n");
         }
     }
-    bharat_runtime_log("-------------------------------");
+    bharat_runtime_log("-------------------------------\n");
 #else
     (void)runtimes;
     (void)count;

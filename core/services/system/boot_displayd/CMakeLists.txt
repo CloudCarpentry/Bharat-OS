@@ -33,6 +33,8 @@ target_include_directories(boot_displayd PRIVATE ${CMAKE_SOURCE_DIR}/core/lib/na
 
 bharat_configure_userspace_binary(boot_displayd)
 
+# Host tests must use the host C library, not a bare-metal cross toolchain.
+if(NOT CMAKE_CROSSCOMPILING)
 # Tests
 add_executable(test_boot_displayd
     tests/test_boot_displayd.c
@@ -47,3 +49,4 @@ target_include_directories(test_boot_displayd PRIVATE
     ${CMAKE_SOURCE_DIR}/core/lib/cap/include
     ${CMAKE_SOURCE_DIR}/core/lib/runtime/include
 )
+endif()
