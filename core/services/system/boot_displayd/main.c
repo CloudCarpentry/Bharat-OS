@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: MIT */
 #include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
@@ -9,9 +10,13 @@
 #include "bharat/uapi/display/boot_display.h"
 #include "bharat/uapi/display/display_v2.h"
 #include "bharat/uapi/display/lease.h"
+#include "bharat/uapi/boot/boot_events.h"
 #include "bharat/runtime/runtime.h"
 #include <bharat/ipc/ipc.h>
 #include <bharat/cap/cap.h>
+#include <bharat/syscalls.h>
+#include <bharat/uapi/syscall/bh_syscall_numbers.h>
+#include <bharat/uapi/syscall/bh_syscall.h>
 
 #include "display_client.h"
 
@@ -39,16 +44,6 @@ typedef enum {
     BOOT_STATE_FAILED
 } boot_display_state_t;
 
-typedef enum {
-    BH_BOOT_EVENT_KERNEL_READY,
-    BH_BOOT_EVENT_INIT_STARTED,
-    BH_BOOT_EVENT_SERVICE_SPAWNED,
-    BH_BOOT_EVENT_SERVICE_READY,
-    BH_BOOT_EVENT_SERVICE_FAILED,
-    BH_BOOT_EVENT_DISPLAY_READY,
-    BH_BOOT_EVENT_HANDOFF_COMPLETE
-} bh_boot_event_t;
-
 typedef struct {
     boot_display_state_t state;
     bh_showcase_display_session_t session;
@@ -62,7 +57,7 @@ typedef struct {
 
 static boot_display_ctx_t g_ctx = { .state = BOOT_STATE_UNAVAILABLE };
 
-// Exposed for testing
+/* Exposed for testing */
 boot_display_state_t boot_displayd_get_state(void) {
     return g_ctx.state;
 }
@@ -72,34 +67,48 @@ void boot_displayd_set_state_for_test(boot_display_state_t state) {
 }
 
 static void release_resources(boot_display_ctx_t *ctx) {
-    // We would use the release/destroy RPCs from V2 client here in a real implementation
-    // For now, we update our local state tracking
+    if (!ctx) return;
+
+    if (ctx->session.lease != BH_GUI_HANDLE_INVALID) {
+        if (ctx->buffer != BH_GUI_HANDLE_INVALID) {
+            bh_client_release_buffer(ctx->session.lease, ctx->buffer);
+            ctx->buffer = BH_GUI_HANDLE_INVALID;
+        }
+        if (ctx->surface != BH_GUI_HANDLE_INVALID) {
+            bh_client_destroy_surface(ctx->session.lease, ctx->surface);
+            ctx->surface = BH_GUI_HANDLE_INVALID;
+        }
+        bh_client_release_lease(ctx->session.lease);
+        ctx->session.lease = BH_GUI_HANDLE_INVALID;
+    }
+
     if (ctx->mapped_pixels) {
         free(ctx->mapped_pixels);
         ctx->mapped_pixels = NULL;
     }
-
-    }
+    ctx->fb.pixels = NULL;
+}
 
 int boot_display_init(boot_display_ctx_t *ctx) {
+    if (!ctx) return -1;
     ctx->state = BOOT_STATE_INITIALIZING;
 
     bh_display_result_t res = bh_showcase_display_open(&ctx->session);
     if (res != BH_DISPLAY_RESULT_OK) {
-        bharat_runtime_log("boot_displayd: display unavailable or lease denied");
+        bharat_runtime_log("boot_displayd: display unavailable or lease denied\n");
         ctx->state = BOOT_STATE_UNAVAILABLE;
         return -1;
     }
 
     if (ctx->session.pixel_format != BH_DISPLAY_FORMAT_XRGB8888) {
-        bharat_runtime_log("boot_displayd: unsupported pixel format");
+        bharat_runtime_log("boot_displayd: unsupported pixel format\n");
         ctx->state = BOOT_STATE_FAILED;
         return -1;
     }
 
     res = bh_client_create_surface(ctx->session.lease, ctx->session.width, ctx->session.height, 0, &ctx->surface);
     if (res != BH_DISPLAY_RESULT_OK) {
-        bharat_runtime_log("boot_displayd: failed to create surface");
+        bharat_runtime_log("boot_displayd: failed to create surface\n");
         ctx->state = BOOT_STATE_FAILED;
         return -1;
     }
@@ -119,14 +128,14 @@ int boot_display_init(boot_display_ctx_t *ctx) {
 
     res = bh_client_register_buffer(ctx->session.lease, &desc, &ctx->buffer, &ctx->mapped_pixels);
     if (res != BH_DISPLAY_RESULT_OK) {
-        bharat_runtime_log("boot_displayd: failed to register buffer");
+        bharat_runtime_log("boot_displayd: failed to register buffer\n");
         ctx->state = BOOT_STATE_FAILED;
         return -1;
     }
 
     res = bh_client_attach_buffer(ctx->session.lease, ctx->surface, ctx->buffer);
     if (res != BH_DISPLAY_RESULT_OK) {
-        bharat_runtime_log("boot_displayd: failed to attach buffer");
+        bharat_runtime_log("boot_displayd: failed to attach buffer\n");
         ctx->state = BOOT_STATE_FAILED;
         return -1;
     }
@@ -136,76 +145,133 @@ int boot_display_init(boot_display_ctx_t *ctx) {
     ctx->fb.stride_bytes = desc.planes[0].stride_bytes;
     ctx->fb.pixel_format = BHARAT_UI_PIXEL_FMT_XRGB8888;
     ctx->fb.pixels = ctx->mapped_pixels;
+    ctx->progress_percent = 0;
 
     ctx->state = BOOT_STATE_SPLASH_ACTIVE;
     return 0;
 }
 
-void boot_display_handle_event(boot_display_ctx_t *ctx, bh_boot_event_t event) {
-    if (ctx->state != BOOT_STATE_SPLASH_ACTIVE && ctx->state != BOOT_STATE_RECOVERY && ctx->state != BOOT_STATE_HANDOFF_PENDING) {
+uint8_t boot_display_stage_to_progress(bh_boot_stage_t stage) {
+    switch (stage) {
+        case BH_BOOT_STAGE_EARLY: return 10;
+        case BH_BOOT_STAGE_HAL: return 20;
+        case BH_BOOT_STAGE_SECURITY: return 30;
+        case BH_BOOT_STAGE_MEMORY: return 45;
+        case BH_BOOT_STAGE_SCHEDULER: return 60;
+        case BH_BOOT_STAGE_DRIVERS: return 75;
+        case BH_BOOT_STAGE_SERVICES: return 85;
+        case BH_BOOT_STAGE_USERSPACE: return 95;
+        case BH_BOOT_STAGE_READY: return 100;
+        default: return 0;
+    }
+}
+
+static void boot_display_render_frame(boot_display_ctx_t *ctx) {
+    if (!ctx || !ctx->fb.pixels) return;
+
+    if (!ctx->is_lvgl) {
+        bharat_tiny_ui_state_t ui_state;
+        bharat_tiny_ui_init(&ui_state, ctx->state == BOOT_STATE_RECOVERY);
+        ui_state.progress_percent = ctx->progress_percent;
+        bharat_tiny_ui_render(&ctx->fb, &ui_state);
+
+        bh_gui_fence_handle_t fence = BH_GUI_HANDLE_INVALID;
+        bh_client_present_surface(ctx->session.lease, ctx->surface, ctx->buffer, &fence);
+    } else {
+#ifdef BHARAT_UI_LVGL
+        uint32_t delay = lv_timer_handler();
+        (void)delay;
+        bh_gui_fence_handle_t fence = BH_GUI_HANDLE_INVALID;
+        bh_client_present_surface(ctx->session.lease, ctx->surface, ctx->buffer, &fence);
+#endif
+    }
+}
+
+void boot_display_handle_record(boot_display_ctx_t *ctx, const bh_boot_event_record_t *rec) {
+    if (!ctx || !rec) return;
+    if (ctx->state != BOOT_STATE_SPLASH_ACTIVE &&
+        ctx->state != BOOT_STATE_RECOVERY &&
+        ctx->state != BOOT_STATE_HANDOFF_PENDING) {
         return;
     }
 
-    switch (event) {
-        case BH_BOOT_EVENT_KERNEL_READY:
-            ctx->progress_percent = 10;
-            break;
-        case BH_BOOT_EVENT_INIT_STARTED:
-            ctx->progress_percent = 20;
-            break;
-        case BH_BOOT_EVENT_SERVICE_SPAWNED:
-            if (ctx->progress_percent < 80) ctx->progress_percent += 10;
-            break;
-        case BH_BOOT_EVENT_SERVICE_READY:
-            if (ctx->progress_percent < 90) ctx->progress_percent += 10;
-            break;
-        case BH_BOOT_EVENT_DISPLAY_READY:
-            ctx->progress_percent = 100;
-            ctx->state = BOOT_STATE_HANDOFF_PENDING;
-            break;
-        case BH_BOOT_EVENT_HANDOFF_COMPLETE:
-            ctx->state = BOOT_STATE_RELEASED;
-            release_resources(ctx);
-            break;
-        case BH_BOOT_EVENT_SERVICE_FAILED:
-            ctx->state = BOOT_STATE_RECOVERY;
-            break;
-        default:
-            break;
+    if (rec->status == BH_BOOT_STATUS_ERROR || rec->stage == BH_BOOT_STAGE_FAILURE) {
+        ctx->state = BOOT_STATE_RECOVERY;
+    } else if (rec->stage == BH_BOOT_STAGE_READY && rec->status == BH_BOOT_STATUS_OK) {
+        ctx->progress_percent = 100;
+        ctx->state = BOOT_STATE_HANDOFF_PENDING;
+    } else {
+        uint8_t stage_pct = boot_display_stage_to_progress(rec->stage);
+        if (stage_pct > ctx->progress_percent) {
+            ctx->progress_percent = stage_pct;
+        }
     }
 
     if (ctx->state == BOOT_STATE_SPLASH_ACTIVE || ctx->state == BOOT_STATE_RECOVERY) {
-        if (!ctx->is_lvgl) {
-            bharat_tiny_ui_state_t ui_state;
-            bharat_tiny_ui_init(&ui_state, ctx->state == BOOT_STATE_RECOVERY);
-            ui_state.progress_percent = ctx->progress_percent;
-            bharat_tiny_ui_render(&ctx->fb, &ui_state);
+        boot_display_render_frame(ctx);
+    }
+}
 
-            bh_gui_fence_handle_t fence = BH_GUI_HANDLE_INVALID;
-            bh_client_present_surface(ctx->session.lease, ctx->surface, ctx->buffer, &fence);
-        } else {
-#ifdef BHARAT_UI_LVGL
-            uint32_t delay = lv_timer_handler();
-            bharat_lvgl_wait_ms(delay > 0 ? delay : 10);
+void boot_display_update_from_snapshot(boot_display_ctx_t *ctx, const bh_boot_event_snapshot_t *snapshot) {
+    if (!ctx || !snapshot) return;
+    if (ctx->state != BOOT_STATE_SPLASH_ACTIVE &&
+        ctx->state != BOOT_STATE_RECOVERY &&
+        ctx->state != BOOT_STATE_HANDOFF_PENDING) {
+        return;
+    }
 
-            bh_gui_fence_handle_t fence = BH_GUI_HANDLE_INVALID;
-            bh_client_present_surface(ctx->session.lease, ctx->surface, ctx->buffer, &fence);
-#endif
+    bh_boot_stage_t max_stage = BH_BOOT_STAGE_EARLY;
+    bool has_events = (snapshot->count > 0);
+    bool has_error = false;
+    bool is_ready = false;
+
+    for (uint32_t i = 0; i < snapshot->count; ++i) {
+        const bh_boot_event_record_t *ev = &snapshot->events[i];
+        if (ev->status == BH_BOOT_STATUS_ERROR || ev->stage == BH_BOOT_STAGE_FAILURE) {
+            has_error = true;
+        }
+        if (ev->stage > max_stage && ev->stage < BH_BOOT_STAGE_COUNT) {
+            max_stage = ev->stage;
+        }
+        if (ev->stage == BH_BOOT_STAGE_READY && ev->status == BH_BOOT_STATUS_OK) {
+            is_ready = true;
         }
     }
+
+    if (has_error) {
+        ctx->state = BOOT_STATE_RECOVERY;
+    } else if (is_ready) {
+        ctx->progress_percent = 100;
+        ctx->state = BOOT_STATE_HANDOFF_PENDING;
+    } else if (has_events) {
+        uint8_t stage_pct = boot_display_stage_to_progress(max_stage);
+        if (stage_pct > ctx->progress_percent) {
+            ctx->progress_percent = stage_pct;
+        }
+    }
+
+    if (ctx->state == BOOT_STATE_SPLASH_ACTIVE || ctx->state == BOOT_STATE_RECOVERY) {
+        boot_display_render_frame(ctx);
+    }
+}
+
+void boot_display_handoff(boot_display_ctx_t *ctx) {
+    if (!ctx) return;
+    ctx->state = BOOT_STATE_RELEASED;
+    release_resources(ctx);
 }
 
 #ifndef BHARAT_TESTING
 int main(void) {
-    bharat_runtime_log("boot_displayd starting");
+    bharat_runtime_log("boot_displayd: starting\n");
 
     if (boot_display_init(&g_ctx) != 0) {
-        bharat_runtime_log("boot_displayd running in headless/failed mode");
-        return g_ctx.state == BOOT_STATE_FAILED ? 1 : 0;
+        bharat_runtime_log("boot_displayd: display broker unavailable; exiting in headless mode.\n");
+        return 0; /* Preserves headless boot success */
     }
 
 #ifdef BHARAT_UI_LVGL
-    bharat_runtime_log("boot_displayd: attempting LVGL rich animated GUI");
+    bharat_runtime_log("boot_displayd: attempting LVGL rich GUI\n");
     lv_init();
     bharat_lvgl_tick_init();
 
@@ -215,31 +281,35 @@ int main(void) {
         bh_shell_set_snapshot_provider(demo_snapshot, NULL);
         bh_shell_start();
     } else {
-        bharat_runtime_log("failed to create LVGL display, falling back to tiny_ui");
+        bharat_runtime_log("boot_displayd: failed to create LVGL display, falling back to tiny_ui\n");
         g_ctx.is_lvgl = false;
     }
 #else
     g_ctx.is_lvgl = false;
 #endif
 
-    // Mock progress for now to simulate the boot sequence until Agent 1 provides real IPC events
-    bh_boot_event_t mock_events[] = {
-        BH_BOOT_EVENT_KERNEL_READY,
-        BH_BOOT_EVENT_INIT_STARTED,
-        BH_BOOT_EVENT_SERVICE_SPAWNED,
-        BH_BOOT_EVENT_SERVICE_READY,
-        BH_BOOT_EVENT_DISPLAY_READY,
-        BH_BOOT_EVENT_HANDOFF_COMPLETE
-    };
+    /* Render initial baseline frame */
+    boot_display_render_frame(&g_ctx);
 
-    for (size_t i = 0; i < sizeof(mock_events) / sizeof(mock_events[0]); i++) {
-        boot_display_handle_event(&g_ctx, mock_events[i]);
-        if (g_ctx.state == BOOT_STATE_RELEASED) {
+    /* Bounded event loop querying truthful boot event snapshots */
+    const unsigned max_iterations = 100; /* up to 2 seconds of splash before handoff */
+    for (unsigned iter = 0; iter < max_iterations; ++iter) {
+        bh_boot_event_snapshot_t snapshot;
+        memset(&snapshot, 0, sizeof(snapshot));
+        bh_boot_events_get_snapshot(&snapshot);
+
+        boot_display_update_from_snapshot(&g_ctx, &snapshot);
+
+        if (g_ctx.state == BOOT_STATE_HANDOFF_PENDING || g_ctx.state == BOOT_STATE_RELEASED) {
             break;
         }
+
+        /* Non-busy sleep: 20ms per frame */
+        bharat_syscall(BH_SYS_SCHED_SLEEP, 20, 0, 0, 0, 0, 0);
     }
 
-    bharat_runtime_log("boot_displayd handoff complete");
+    boot_display_handoff(&g_ctx);
+    bharat_runtime_log("boot_displayd: handoff complete\n");
     return 0;
 }
 #endif

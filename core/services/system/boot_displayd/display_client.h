@@ -22,10 +22,13 @@ bh_showcase_display_confirm_presented(bh_display_lease_handle_t lease,
                                       bh_gui_surface_handle_t surface,
                                       bh_gui_buffer_handle_t expected_buffer);
 
-#endif
-
 bh_display_result_t bh_client_create_surface(bh_display_lease_handle_t lease, uint32_t width, uint32_t height, uint32_t z_order, bh_gui_surface_handle_t *out_surface);
+bh_display_result_t bh_client_destroy_surface(bh_display_lease_handle_t lease, bh_gui_surface_handle_t surface);
 bh_display_result_t bh_client_register_buffer(bh_display_lease_handle_t lease, bh_display_buffer_desc_t *desc, bh_gui_buffer_handle_t *out_buffer, void **out_mapped);
+bh_display_result_t bh_client_release_buffer(bh_display_lease_handle_t lease, bh_gui_buffer_handle_t buffer);
 bh_display_result_t bh_client_attach_buffer(bh_display_lease_handle_t lease, bh_gui_surface_handle_t surface, bh_gui_buffer_handle_t buffer);
 bh_display_result_t bh_client_present_surface(bh_display_lease_handle_t lease, bh_gui_surface_handle_t surface, bh_gui_buffer_handle_t buffer, bh_gui_fence_handle_t *out_release_fence);
+bh_display_result_t bh_client_release_lease(bh_display_lease_handle_t lease);
 bh_display_result_t bh_client_wait_fence(bh_gui_fence_handle_t fence, bh_monotonic_deadline_ns_t deadline);
+
+#endif /* BH_GUI_SHOWCASE_DISPLAY_CLIENT_H */
