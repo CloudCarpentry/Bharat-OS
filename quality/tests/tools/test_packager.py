@@ -97,3 +97,49 @@ def test_execute_package_fails_closed_without_required_service_payload(tmp_path:
         execute_package(plan, tmp_path)
 
     assert not (plan.packaged_dir / "init_module.bin").exists()
+
+
+def test_packager_delivers_bootstrap_modules_for_core_bootstrap_target(tmp_path: Path) -> None:
+    plan = _minimal_package_plan(tmp_path)
+    plan.target.build.cmake_defs["BHARAT_INIT_CORE_BOOTSTRAP_ONLY"] = "ON"
+    build_dir = plan.build_outputs.build_dir
+    build_dir.mkdir(parents=True)
+
+    # Create fake compiled binaries for init, namesvc, process_manager
+    init_bin = build_dir / "core" / "services" / "core" / "init" / "init"
+    init_bin.parent.mkdir(parents=True, exist_ok=True)
+    init_bin.write_bytes(b"ELF_INIT_DATA")
+
+    namesvc_bin = build_dir / "core" / "services" / "namesvc" / "namesvc"
+    namesvc_bin.parent.mkdir(parents=True, exist_ok=True)
+    namesvc_bin.write_bytes(b"ELF_NAMESVC_DATA")
+
+    pm_bin = build_dir / "core" / "services" / "process_manager" / "process_manager"
+    pm_bin.parent.mkdir(parents=True, exist_ok=True)
+    pm_bin.write_bytes(b"ELF_PM_DATA")
+
+    outputs = execute_package(plan, tmp_path)
+    init_mod = plan.packaged_dir / "init_module.bin"
+    assert init_mod.exists()
+
+    bundle_bytes = init_mod.read_bytes()
+    # Verify module names are present with their expected prefixes
+    assert b"services/init\x00" in bundle_bytes
+    assert b"services/namesvc\x00" in bundle_bytes
+    assert b"services/process_manager\x00" in bundle_bytes
+
+
+def test_hmem_demo_target_configuration_includes_core_bootstrap() -> None:
+    import yaml
+    repo_root = Path(__file__).resolve().parents[3]
+    hmem_target_path = repo_root / "delivery" / "targets" / "qemu" / "x86_64_hmem_demo.yaml"
+    assert hmem_target_path.exists()
+
+    with open(hmem_target_path, "r") as f:
+        data = yaml.safe_load(f)
+
+    cmake_defs = data.get("build", {}).get("cmake_defs", {})
+    assert cmake_defs.get("BHARAT_INIT_CORE_BOOTSTRAP_ONLY") in ("ON", True), (
+        "x86_64_hmem_demo must include BHARAT_INIT_CORE_BOOTSTRAP_ONLY so required bootstrap modules are packaged"
+    )
+
