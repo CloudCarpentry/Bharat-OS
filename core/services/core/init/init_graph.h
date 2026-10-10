@@ -13,6 +13,7 @@ typedef enum {
     INIT_GRAPH_ERR_CYCLE,
     INIT_GRAPH_ERR_NO_CORE_SERVICE,
     INIT_GRAPH_ERR_REQUIRED_CAP_MISSING,
+    INIT_GRAPH_ERR_MALFORMED,
 } init_graph_result_t;
 
 /**
