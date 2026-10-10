@@ -203,3 +203,19 @@ uint64_t __atomic_fetch_add_8(volatile void *ptr, uint64_t val, int memorder) {
 }
 
 #endif
+int64_t __divdi3(int64_t n, int64_t d) {
+    int neg = 0;
+    if (n < 0) {
+        n = -n;
+        neg = !neg;
+    }
+    if (d < 0) {
+        d = -d;
+        neg = !neg;
+    }
+    uint64_t q = __udivdi3((uint64_t)n, (uint64_t)d);
+    if (neg) {
+        return -(int64_t)q;
+    }
+    return (int64_t)q;
+}

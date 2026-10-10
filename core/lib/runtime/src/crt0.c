@@ -101,3 +101,19 @@ __attribute__((weak)) uint64_t __udivdi3(uint64_t numerator, uint64_t denominato
     return bharat_udiv64_generic(numerator, denominator);
 }
 #endif
+__attribute__((weak)) int64_t __divdi3(int64_t n, int64_t d) {
+    int neg = 0;
+    if (n < 0) {
+        n = -n;
+        neg = !neg;
+    }
+    if (d < 0) {
+        d = -d;
+        neg = !neg;
+    }
+    uint64_t q = __udivdi3((uint64_t)n, (uint64_t)d);
+    if (neg) {
+        return -(int64_t)q;
+    }
+    return (int64_t)q;
+}
