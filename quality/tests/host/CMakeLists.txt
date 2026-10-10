@@ -795,3 +795,29 @@ target_include_directories(host_test_robot_platform PRIVATE
     ${CMAKE_SOURCE_DIR}
     ${CMAKE_SOURCE_DIR}/interface/include)
 add_test(NAME host_test_robot_platform COMMAND host_test_robot_platform)
+
+add_executable(test_netstack_boundary
+    ../test_netstack_boundary.c
+    ../../../core/services/netstack/src/arp.c
+    ../../../core/services/netstack/src/checksum.c
+    ../../../core/services/netstack/src/driver_virtio_adapter.c
+    ../../../core/services/netstack/src/ethernet.c
+    ../../../core/services/netstack/src/icmp.c
+    ../../../core/services/netstack/src/ipv4.c
+    ../../../core/services/netstack/src/loopback.c
+    ../../../core/services/netstack/src/netbuf.c
+    ../../../core/services/netstack/src/netstack_stubs.c
+    ../../../core/services/netstack/src/socket_table.c
+    ../../../core/services/netstack/src/tcp.c
+    ../../../core/services/netstack/src/udp.c
+    ../../../core/lib/packet/src/packet.c
+)
+target_include_directories(test_netstack_boundary PRIVATE
+    ../../../core/services/netstack/src
+    ../../../core/lib/runtime/include
+    ../../../interface/include
+    ../../../interface/uapi
+    ../../../core/lib/packet/include
+)
+target_compile_definitions(test_netstack_boundary PRIVATE BHARAT_HOST_TEST=1)
+add_test(NAME host_test_netstack_boundary COMMAND test_netstack_boundary)
