@@ -32,11 +32,16 @@ def make_build_plan(target: ResolvedTarget, repo_root: Path, build_mode: str = N
 
     build_cmd = ["cmake", "--build", f"--preset={preset}"]
 
+    # YAML targets can share a preset but omit options set by the previous
+    # target. Restore preset/project defaults instead of inheriting that cache.
+    # Keep compiled outputs, and support the repository's CMake 3.20 minimum.
+    reset_cache_cmd = ["cmake", "-E", "rm", "-f", str(build_dir / "CMakeCache.txt")]
+
     return BuildPlan(
         target=target,
         build_dir=build_dir,
         manifest_path=manifest_path,
-        command_summary=[config_cmd, build_cmd]
+        command_summary=[reset_cache_cmd, config_cmd, build_cmd]
     )
 
 

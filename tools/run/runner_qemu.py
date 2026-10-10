@@ -185,6 +185,11 @@ def run_qemu(manifest_path: Path, mode_override: str = None, display_override: s
         required_markers = [BOOT_MARKER]
         forbidden_markers = ["PANIC", "ASSERT", "FAULT", "Unhandled exception"]
 
+    # A userspace/bootstrap failure remains fatal even for a target without a
+    # named boot contract or one that omits the marker from its own list.
+    if "BOOT_FAIL:" not in forbidden_markers:
+        forbidden_markers.append("BOOT_FAIL:")
+
     reboot_policy = run_config.get("reboot_policy", "stop")
     if reboot_policy == "expect":
         required_markers.append("BOOT: Generation 2")
@@ -253,7 +258,7 @@ def run_qemu(manifest_path: Path, mode_override: str = None, display_override: s
 
             time.sleep(0.1)
 
-        if run_mode == "interactive":
+        if run_mode == "interactive" and not failure_observed:
             while proc.poll() is None:
                 try:
                     line = q.get_nowait()
@@ -266,6 +271,8 @@ def run_qemu(manifest_path: Path, mode_override: str = None, display_override: s
                             failure_observed = True
                             failure_reason = f"Forbidden marker '{forbidden}' found in log: {line.strip()}"
                             break
+                    if failure_observed:
+                        break
                 except queue.Empty:
                     time.sleep(0.1)
 
@@ -303,11 +310,22 @@ def run_qemu(manifest_path: Path, mode_override: str = None, display_override: s
                 except subprocess.TimeoutExpired:
                     proc.kill()
 
+            t.join(timeout=1.0)
+
             while not q.empty():
                 line = q.get_nowait()
                 sys.stdout.write(line)
                 sys.stdout.flush()
                 log_lines.append(line)
+
+    # Include output drained during shutdown in the decision. Reaching an
+    # early marker must not hide a later bootstrap failure in the same run.
+    for line in log_lines:
+        for forbidden in forbidden_markers:
+            if forbidden in line:
+                failure_observed = True
+                if failure_reason is None:
+                    failure_reason = f"Forbidden marker '{forbidden}' found in log: {line.strip()}"
 
     log_path = manifest_path.parent / "boot.log"
     try:

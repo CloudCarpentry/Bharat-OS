@@ -38,6 +38,12 @@ build_run test_native_status_boundary "${kernel_includes[@]}" -DBHARAT_PERSONALI
 build_run test_endpoint_usercopy "${kernel_includes[@]}" quality/tests/init/test_endpoint_usercopy.c \
     core/kernel/src/personality/native/native_syscall_handlers.c core/kernel/src/trap/syscall_status.c
 build_run test_x86_process_isolation "${kernel_includes[@]}" quality/tests/arch/test_x86_process_isolation.c
+build_run test_boot_cpu_inventory "${kernel_includes[@]}" -Icore/boot/include -DBHARAT_KERNEL_PROFILE_RT=1 \
+    quality/tests/init/test_boot_cpu_inventory.c core/boot/discovery/smp_boot.c core/hal/common/discovery.c
+build_run test_boot_reservation_overlap "${kernel_includes[@]}" -Icore/boot/include -DBHARAT_HOST_TEST \
+    quality/tests/init/test_boot_reservation_overlap.c core/kernel/src/mm/pmm/early_alloc.c core/kernel/src/mm/pmm/pmm_init.c
+build_run test_boot_progress -Iinterface/include quality/tests/ui/test_boot_progress.c \
+    experience/user/ui/fbui/widgets/fb_widgets.c
 for name in test_pm_spawn_transaction test_procvm_stress; do
     build_run "$name" "${pm_includes[@]}" "quality/tests/host/process_vm/$name.c" "${pm_sources[@]}"
 done
