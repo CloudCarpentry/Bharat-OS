@@ -111,5 +111,40 @@ class TestCheckPlacement(unittest.TestCase):
         returncode, stdout = self.run_linter()
         self.assertEqual(returncode, 0)
 
+    def test_unreadable_file_eligible(self):
+        # An unreadable file in an eligible directory should cause a failure
+        unreadable_path = os.path.join(self.kernel_dir, "unreadable.c")
+        with open(unreadable_path, "w") as f:
+            f.write("int x = 0;\n")
+
+        # Make the file unreadable
+        os.chmod(unreadable_path, 0o000)
+
+        try:
+            returncode, stdout = self.run_linter()
+            self.assertEqual(returncode, 1)
+            self.assertIn("Cannot read file", stdout)
+            self.assertIn(unreadable_path, stdout)
+        finally:
+            # Restore permissions so tearDown can delete the file
+            os.chmod(unreadable_path, 0o644)
+
+    def test_unreadable_file_excluded(self):
+        # An unreadable file in an excluded directory (e.g. tools) should be skipped
+        unreadable_path = os.path.join(self.tools_dir, "unreadable.c")
+        with open(unreadable_path, "w") as f:
+            f.write("int x = 0;\n")
+
+        # Make the file unreadable
+        os.chmod(unreadable_path, 0o000)
+
+        try:
+            returncode, stdout = self.run_linter()
+            self.assertEqual(returncode, 0)
+            self.assertNotIn("Cannot read file", stdout)
+        finally:
+            # Restore permissions so tearDown can delete the file
+            os.chmod(unreadable_path, 0o644)
+
 if __name__ == "__main__":
     unittest.main()
