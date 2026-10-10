@@ -1,5 +1,6 @@
 #include "../../include/mm/physmap.h"
 #include "../../include/kernel.h"
+#include "kernel/status.h"
 #include <stddef.h>
 
 void physmap_init(void) {
@@ -41,19 +42,52 @@ translate_exec_class_t physmap_exec_class(void) {
 
 int mm_memset_phys_range(phys_addr_t phys, uint8_t value, size_t size) {
     if (size == 0U) {
-        return 0;
+        return K_OK;
     }
 
-    uint8_t *dst = (uint8_t *)physmap_phys_to_virt(phys);
-    if (!dst) {
-        dst = (uint8_t *)(uintptr_t)phys;
+    if (phys + size < phys) {
+        return K_ERR_INVALID_ARG;
     }
 
-    for (size_t i = 0; i < size; i++) {
-        dst[i] = value;
+    /* Validate that the entire range is mapped by checking page by page.
+     * This avoids partial modification if a subsequent page is unmapped. */
+    phys_addr_t current_phys = phys;
+    size_t remaining = size;
+    while (remaining > 0) {
+        size_t page_offset = current_phys & (PAGE_SIZE - 1);
+        size_t chunk = PAGE_SIZE - page_offset;
+        if (chunk > remaining) {
+            chunk = remaining;
+        }
+
+        if (!physmap_phys_to_virt(current_phys)) {
+            return K_ERR_VM_UNMAPPED;
+        }
+
+        current_phys += chunk;
+        remaining -= chunk;
     }
 
-    return 0;
+    /* Range is fully valid. Now perform the actual write. */
+    current_phys = phys;
+    remaining = size;
+    while (remaining > 0) {
+        size_t page_offset = current_phys & (PAGE_SIZE - 1);
+        size_t chunk = PAGE_SIZE - page_offset;
+        if (chunk > remaining) {
+            chunk = remaining;
+        }
+
+        uint8_t *dst = (uint8_t *)physmap_phys_to_virt(current_phys);
+        for (size_t i = 0; i < chunk; i++) {
+            dst[i] = value;
+        }
+
+        current_phys += chunk;
+        remaining -= chunk;
+    }
+
+    return K_OK;
 }
 
 int mm_zero_phys_range(phys_addr_t phys, size_t size) {
