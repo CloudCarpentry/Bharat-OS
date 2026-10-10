@@ -10,6 +10,8 @@ add_library(k_test_support OBJECT
     ktest_urpc_handoff.c
     ktest_string.c
     ktest_memops.c
+    ktest_hw_caps.c
+    ktest_hal_memops.c
     ktest_rt_sched.c
     ktest_irq_domain.c
     ktest_sched_ipi.c
