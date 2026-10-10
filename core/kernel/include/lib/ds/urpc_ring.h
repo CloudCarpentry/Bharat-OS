@@ -5,11 +5,11 @@
 
 /**
  * @file urpc_ring.h
- * @brief Lock-free Multi-Producer Multi-Consumer (MPMC) Ring Buffer.
+ * @brief Lock-free Single-Producer Single-Consumer (SPSC) Ring Buffer.
  *
  * This implementation is designed for per-core queues, such as uRPC or
- * task migration queues. It leverages compiler atomics as a fallback for
- * hardware-specific CAS or LL/SC operations.
+ * task migration queues. It leverages C11 atomics to ensure proper
+ * memory ordering across weak memory architectures (ARM64/RISC-V).
  *
  * Note: Hardware optimizations like prefetching and SIMD batching should
  * be integrated at the architecture-specific HAL layer.
@@ -20,11 +20,11 @@
 
 /**
  * @struct urpc_ring_t
- * @brief Cache-aligned MPMC ring buffer structure.
+ * @brief Cache-aligned SPSC ring buffer structure.
  */
 typedef struct {
-    uint32_t head __attribute__((aligned(64))); /**< Cache-line aligned head */
-    uint32_t tail __attribute__((aligned(64))); /**< Cache-line aligned tail */
+    _Atomic uint32_t head __attribute__((aligned(64))); /**< Cache-line aligned head (Producer owned) */
+    _Atomic uint32_t tail __attribute__((aligned(64))); /**< Cache-line aligned tail (Consumer owned) */
     char buffer[URPC_RING_SIZE * URPC_MSG_SIZE] __attribute__((aligned(64)));
 } urpc_ring_t;
 

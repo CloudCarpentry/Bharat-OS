@@ -717,6 +717,17 @@ target_include_directories(test_bh_seqlock_concurrency PRIVATE
 target_link_libraries(test_bh_seqlock_concurrency PRIVATE pthread)
 add_test(NAME host_test_bh_seqlock_concurrency COMMAND test_bh_seqlock_concurrency)
 
+# URPC SPSC Concurrency Test
+add_executable(host_test_urpc_concurrency
+    test_urpc_concurrency.c
+    ../../../core/kernel/src/lib/ds/urpc_ring.c
+)
+target_include_directories(host_test_urpc_concurrency PRIVATE
+    ../../../core/kernel/include
+)
+target_link_libraries(host_test_urpc_concurrency PRIVATE pthread)
+add_test(NAME host_test_urpc_concurrency COMMAND host_test_urpc_concurrency)
+
 # Tiny UI Userspace Stack Test
 add_executable(host_test_tiny_ui_stack
     ../test_tiny_ui_stack.c
