@@ -65,10 +65,34 @@ def validate_front_matter(file_path):
 
         # Check types and content
         val = data[key]
-        if val is None or str(val).strip() == "":
+        # Treat empty list as not purely "empty" for empty check
+        if val is None or (isinstance(val, str) and val.strip() == "") or (not isinstance(val, list) and str(val).strip() == ""):
             violations.append(f"Metadata key '{key}' is empty.")
-        elif key in {"tags", "see_also"} and not isinstance(val, list):
-            violations.append(f"Metadata key '{key}' must be a list (got {type(val).__name__}).")
+            continue
+
+        if key == "last_updated":
+            if not re.match(r"^\d{4}-\d{2}-\d{2}$", str(val).strip()):
+                violations.append(f"Metadata key '{key}' must be in YYYY-MM-DD format (got '{val}').")
+        elif key == "tags":
+            if not isinstance(val, list):
+                violations.append(f"Metadata key '{key}' must be a list (got {type(val).__name__}).")
+            elif len(val) == 0:
+                violations.append(f"Metadata key '{key}' cannot be an empty list.")
+            else:
+                for idx, item in enumerate(val):
+                    if not isinstance(item, str):
+                        violations.append(f"Metadata key '{key}' elements must be strings (element {idx} is {type(item).__name__}).")
+                    elif str(item).strip() == "":
+                        violations.append(f"Metadata key '{key}' elements cannot be blank strings (element {idx} is blank).")
+        elif key == "see_also":
+            if not isinstance(val, list):
+                violations.append(f"Metadata key '{key}' must be a list (got {type(val).__name__}).")
+            else:
+                for idx, item in enumerate(val):
+                    if not isinstance(item, str):
+                        violations.append(f"Metadata key '{key}' elements must be strings (element {idx} is {type(item).__name__}).")
+                    elif str(item).strip() == "":
+                        violations.append(f"Metadata key '{key}' elements cannot be blank strings (element {idx} is blank).")
 
     return violations
 
