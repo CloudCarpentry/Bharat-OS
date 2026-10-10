@@ -1,5 +1,9 @@
+import json
+import socket
 import subprocess
 import tempfile
+import threading
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -8,6 +12,7 @@ from tools.test.qemu_gui_smoke import (
     GuiSmokeError,
     IncrementalLogReader,
     PpmImage,
+    QmpClient,
     make_qemu_command,
     read_ppm,
     stop_qemu,
@@ -128,6 +133,140 @@ class PpmTests(unittest.TestCase):
         with self.assertRaisesRegex(GuiSmokeError, "too much"):
             validate_frame_change(before, after)
 
+
+class QmpClientTests(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.sock_path = Path(self.temp_dir.name) / "qmp.sock"
+        self.server_thread = None
+        self.server_socket = None
+
+    def tearDown(self):
+        if self.server_socket:
+            self.server_socket.close()
+        if self.server_thread:
+            self.server_thread.join(timeout=2.0)
+        self.temp_dir.cleanup()
+
+    def _run_server(self, handler):
+        self.server_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self.server_socket.bind(str(self.sock_path))
+        self.server_socket.listen(1)
+        self.server_socket.settimeout(2.0)
+
+        def serve():
+            try:
+                conn, _ = self.server_socket.accept()
+                with conn, conn.makefile("rwb", buffering=0) as stream:
+                    handler(stream)
+            except Exception:
+                pass
+
+        self.server_thread = threading.Thread(target=serve)
+        self.server_thread.start()
+
+    def test_valid_greeting_and_capability_negotiation(self):
+        def handler(stream):
+            stream.write(b'{"QMP": {"version": {"qemu": {"micro": 0, "minor": 0, "major": 6}, "package": ""}, "capabilities": []}}\r\n')
+            req = json.loads(stream.readline())
+            if req.get("execute") == "qmp_capabilities":
+                stream.write(b'{"return": {}}\r\n')
+
+        self._run_server(handler)
+        qmp = QmpClient(self.sock_path, time.monotonic() + 1.0)
+        qmp.close()
+
+    def test_missing_greeting(self):
+        def handler(stream):
+            stream.write(b'{"return": {}}\r\n')
+
+        self._run_server(handler)
+        with self.assertRaisesRegex(GuiSmokeError, "greeting was missing"):
+            QmpClient(self.sock_path, time.monotonic() + 1.0)
+
+    def test_malformed_json(self):
+        def handler(stream):
+            stream.write(b'{"QMP": ... invalid json ... \r\n')
+
+        self._run_server(handler)
+        with self.assertRaisesRegex(GuiSmokeError, "malformed JSON"):
+            QmpClient(self.sock_path, time.monotonic() + 1.0)
+
+    def test_asynchronous_event_before_command_response(self):
+        def handler(stream):
+            stream.write(b'{"QMP": {}}\r\n')
+            req = json.loads(stream.readline())
+            if req.get("execute") == "qmp_capabilities":
+                stream.write(b'{"event": "SOME_EVENT"}\r\n')
+                stream.write(b'{"return": {}}\r\n')
+            req2 = json.loads(stream.readline())
+            if req2.get("execute") == "test_cmd":
+                stream.write(b'{"event": "ANOTHER_EVENT"}\r\n')
+                stream.write(b'{"return": {"success": true}}\r\n')
+
+        self._run_server(handler)
+        qmp = QmpClient(self.sock_path, time.monotonic() + 1.0)
+        res = qmp.execute("test_cmd")
+        self.assertEqual(res, {"return": {"success": True}})
+        qmp.close()
+
+    def test_command_level_error_response(self):
+        def handler(stream):
+            stream.write(b'{"QMP": {}}\r\n')
+            req = json.loads(stream.readline())
+            if req.get("execute") == "qmp_capabilities":
+                stream.write(b'{"return": {}}\r\n')
+            req2 = json.loads(stream.readline())
+            if req2.get("execute") == "bad_cmd":
+                stream.write(b'{"error": {"class": "GenericError", "desc": "command not found"}}\r\n')
+
+        self._run_server(handler)
+        qmp = QmpClient(self.sock_path, time.monotonic() + 1.0)
+        with self.assertRaisesRegex(GuiSmokeError, "QMP bad_cmd failed: command not found"):
+            qmp.execute("bad_cmd")
+        qmp.close()
+
+    def test_connection_closed_during_request(self):
+        def handler(stream):
+            stream.write(b'{"QMP": {}}\r\n')
+            req = json.loads(stream.readline())
+            if req.get("execute") == "qmp_capabilities":
+                stream.write(b'{"return": {}}\r\n')
+            # The client issues next request, server closes stream
+            req2 = json.loads(stream.readline())
+            # implicitly close when handler ends
+
+        self._run_server(handler)
+        qmp = QmpClient(self.sock_path, time.monotonic() + 1.0)
+        with self.assertRaisesRegex(GuiSmokeError, "closed unexpectedly"):
+            qmp.execute("some_cmd")
+        qmp.close()
+
+    def test_connection_timeout(self):
+        with self.assertRaisesRegex(GuiSmokeError, "timed out connecting to QMP"):
+            QmpClient(self.sock_path, time.monotonic() + 0.1)
+
+    def test_correct_socket_and_stream_cleanup(self):
+        def handler(stream):
+            stream.write(b'{"wrong": "greeting"}\r\n')
+
+        self._run_server(handler)
+
+        # Test that raising missing greeting cleans up sockets
+        original_socket = socket.socket
+        created_socket = None
+
+        def mock_socket(*args, **kwargs):
+            nonlocal created_socket
+            created_socket = original_socket(*args, **kwargs)
+            return created_socket
+
+        with mock.patch("socket.socket", side_effect=mock_socket):
+            with self.assertRaisesRegex(GuiSmokeError, "greeting was missing"):
+                QmpClient(self.sock_path, time.monotonic() + 1.0)
+
+        # If QmpClient cleans up correctly, the socket should be closed
+        self.assertTrue(created_socket.fileno() == -1)
 
 class HarnessTests(unittest.TestCase):
     @mock.patch("tools.test.qemu_gui_smoke.build_qemu_command")
