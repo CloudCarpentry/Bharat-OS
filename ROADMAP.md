@@ -55,6 +55,9 @@ G0: every new sensitive operation documented with owner, principal and capabilit
 
 | Item | Current maturity | Notes |
 | --- | --- | --- |
+| 5-Architecture Boot & Emulation Matrix | **Baseline** | Automated QEMU boot matrix verified across `x86_64`, `arm64`, `riscv64`, `arm32`, and `riscv32` (`python3 tools/run_qemu_matrix.py --headless --smoke --all-arch`). |
+| 32-Bit Memory Protection (`MMU_LITE` / `MPU_ONLY`) | **Baseline** | Static/eager paging and MPU flat isolation implemented for ARM32 and RISC-V 32; compile-time and runtime fail-closed guard against unsupported `MMU_FULL`. |
+| Nirmaan Developer CLI & Qualification Evidence | **Baseline** | Unified CLI (`./nirmaan doctor`, `build`, `run`, `test`, `demo`, `package`) with structured qualification evidence logging under `build/evidence/`. |
 | Per-CPU state management (runqueues/cap tables/memory shards) | **Baseline** | Core direction is active; hardening remains profile-dependent. |
 | Multicore bootstrap + monitor processes | **Partial** | Control-plane and lifecycle behavior still being hardened. |
 | Dynamic lockless URPC channels | **Baseline** | Primitive exists; reliability/backpressure hardening remains. |

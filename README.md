@@ -7,9 +7,10 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Architecture-RISC--V%20%7C%20ARM64%20%7C%20x86__64-blueviolet" alt="Architectures">
+  <img src="https://img.shields.io/badge/Architecture-RISC--V%20%2864%2F32%29%20%7C%20ARM%20%2864%2F32%29%20%7C%20x86__64-blueviolet" alt="Architectures">
   <img src="https://img.shields.io/badge/License-MIT-blue" alt="License">
   <img src="https://img.shields.io/badge/Maturity-Active%20Development-orange" alt="Maturity">
+  <img src="https://img.shields.io/badge/QEMU%20Matrix-5%2F5%20Arch%20Passing-brightgreen" alt="QEMU Matrix">
 </p>
 
 <p align="center">
@@ -97,17 +98,21 @@ The architecture separates heterogeneous compute across four layers:
 **Current implementation status:** Bharat-OS already contains accelerator-specific capability types, neutral job/fence contracts, backend-dispatch infrastructure, accelerator-memory primitives, virtual accelerator scaffolding, and `accelmgr`/telemetry service contracts. End-to-end hardware accelerator execution and policy orchestration remain under active implementation and validation.
 
 ### A — Architecture Independent
-Stable, unified HAL and trap boundaries separate common operating mechanisms from ISA-specific and SoC-specific implementations.
+Stable, unified HAL and trap boundaries separate common operating mechanisms from ISA-specific and SoC-specific implementations across 64-bit and 32-bit platforms:
 
 ```text
-                 Bharat-OS
-                     │
-                    HAL
-              ┌──────┼───────┐
-              │      │       │
-           RISC-V   ARM64   x86-64
-              │      │       │
-              └──── Platform / SoC
+                                Bharat-OS Core
+                                      │
+                                  Unified HAL
+                  ┌───────────────┬───┴───┬───────────────┐
+                  │               │       │               │
+               RISC-V            ARM    x86-64          Memory
+             (64 / 32)        (64 / 32)                Models
+                  │               │       │          ┌────┴────┐
+                  │               │       │      MMU-Full   MMU-Lite / MPU
+                  └───────────────┼───────┘     (64-bit)       (32-bit)
+                                  │
+                          Platform / Board BSP
 ```
 
 ### R — Resource Ownership
@@ -198,6 +203,8 @@ We enforce strict, evidence-based governance to ensure that code, build graphs, 
 | Metadata-Driven ABI Lock | 🟢 **BASELINE** | `tools/abi/syscall_abi.py` | None |
 | Architecture Layer Linter | 🟢 **BASELINE** | `tools/lint/check_layer_references.py` | None |
 | CMake Target-Dependency Linter | 🟢 **BASELINE** | `tools/lint/check_cmake_dependencies.py` | None |
+| 5-Architecture Boot & QEMU Matrix | 🟢 **BASELINE** | `tools/run_qemu_matrix.py --headless --smoke --all-arch` | x86_64, arm64, riscv64, arm32, riscv32 verified |
+| 32-Bit Memory Models (MMU-Lite / MPU) | 🟢 **BASELINE** | `CMakeLists.txt, core/kernel/CMakeLists.txt, docs/profiles/device_profiles.md` | Fail-closed MMU_FULL rejection on 32-bit |
 | Network Manager (netmgr) | 🟡 **PARTIAL** | `core/services/netmgr` | Production blocking receive |
 | Process Manager (process_mgr) | ⚪ **SCAFFOLD** | `core/services/process_manager` | Real ELF execution loading |
 | Virtual Memory Manager (vm_mgr) | ⚪ **SCAFFOLD** | `core/services/vm_manager` | On-demand page-pool orchestration |
@@ -367,7 +374,7 @@ sudo apt update && sudo apt install -y \
 We provide the `nirmaan` Developer CLI for everyday tasks.
 
 ```bash
-# Check environment dependencies
+# Check environment dependencies and toolchains
 ./nirmaan doctor
 
 # List available shortcut targets
@@ -377,11 +384,12 @@ We provide the `nirmaan` Developer CLI for everyday tasks.
 ./nirmaan build desktop-x86_64 --mode development
 ./nirmaan run desktop-x86_64
 
-# Run the complete RISC-V 64-bit platform via legacy tool
-./build.sh all --target-yaml delivery/targets/qemu/riscv64_desktop_headless.yaml --smoke
+# Run a self-validating demo with qualification evidence
+./nirmaan demo x86_64_hmem_demo
+./nirmaan demo arm32_mmu_lite_headless
 
-# Run the complete platform test suite
-python3 tools/run_qemu_matrix.py --headless --smoke
+# Run the complete 5-architecture platform test matrix (x86_64, arm64, riscv64, arm32, riscv32)
+python3 tools/run_qemu_matrix.py --headless --smoke --all-arch
 ```
 
 ---
