@@ -1,9 +1,12 @@
 /* SPDX-License-Identifier: MIT */
 #include "boot/boot_events.h"
 #include "display/boot_gui_init.h"
-#include "hal/hal_timer.h"
 #include <stdbool.h>
 #include <stddef.h>
+
+#if defined(BHARAT_KERNEL) || defined(BHARAT_HOST_TEST)
+#include "hal/hal_timer.h"
+#endif
 
 static bh_boot_event_record_t g_boot_ring[BH_BOOT_EVENT_RING_CAPACITY];
 static uint32_t g_total_events = 0;
@@ -40,9 +43,11 @@ void boot_events_record(bh_boot_stage_t stage,
                         const char *message,
                         int32_t error_code) {
     uint64_t ts = 0;
+#if defined(BHARAT_KERNEL) || defined(BHARAT_HOST_TEST)
     if (!hal_timer_monotonic_ns(&ts)) {
         ts = hal_timer_read_ns();
     }
+#endif
 
     uint32_t slot = g_head_idx % BH_BOOT_EVENT_RING_CAPACITY;
     bh_boot_event_record_t *rec = &g_boot_ring[slot];
@@ -61,7 +66,11 @@ void boot_events_record(bh_boot_stage_t stage,
 void boot_events_publish(bh_boot_stage_t stage, uint8_t percent, bharat_status_t status, const char *label) {
     bh_boot_status_t st = (status == BHARAT_STATUS_OK) ? BH_BOOT_STATUS_OK : BH_BOOT_STATUS_ERROR;
     boot_events_record(stage, st, "KERNEL", label, (int32_t)status);
+#if defined(BHARAT_KERNEL)
     boot_gui_update_progress(percent, label);
+#else
+    (void)percent;
+#endif
 }
 
 void bh_boot_events_get_snapshot(bh_boot_event_snapshot_t *snapshot) {

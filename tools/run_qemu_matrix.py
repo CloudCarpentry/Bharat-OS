@@ -99,8 +99,11 @@ def main():
     args = parser.parse_args()
 
     if not args.headless and not args.gui and not args.all_arch and not args.demo:
-        print("Please specify --headless, --gui, --demo, and/or --all-arch.")
-        sys.exit(1)
+        if args.arch:
+            args.headless = True
+        else:
+            print("Please specify --headless, --gui, --demo, and/or --all-arch.")
+            sys.exit(1)
 
     if args.arch:
         archs = [args.arch]
