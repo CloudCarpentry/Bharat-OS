@@ -33,6 +33,65 @@ class PpmTests(unittest.TestCase):
             with self.assertRaisesRegex(GuiSmokeError, "expected P6"):
                 read_ppm(path)
 
+    def test_rejects_zero_or_negative_dimensions(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "frame.ppm"
+            path.write_bytes(b"P6\n-1 1\n255\n" + bytes((0, 1, 2)))
+            with self.assertRaisesRegex(GuiSmokeError, "zero or negative"):
+                read_ppm(path)
+            path.write_bytes(b"P6\n1 0\n255\n" + bytes((0, 1, 2)))
+            with self.assertRaisesRegex(GuiSmokeError, "zero or negative"):
+                read_ppm(path)
+
+    def test_rejects_excessively_large_dimensions(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "frame.ppm"
+            path.write_bytes(b"P6\n16385 1\n255\n" + bytes((0, 1, 2)))
+            with self.assertRaisesRegex(GuiSmokeError, "dimensions exceed"):
+                read_ppm(path)
+
+    def test_rejects_incorrect_max_color_value(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "frame.ppm"
+            path.write_bytes(b"P6\n1 1\n254\n" + bytes((0, 1, 2)))
+            with self.assertRaisesRegex(GuiSmokeError, "invalid max value"):
+                read_ppm(path)
+
+    def test_rejects_truncated_pixel_data(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "frame.ppm"
+            path.write_bytes(b"P6\n1 1\n255\n" + bytes((0, 1)))
+            with self.assertRaisesRegex(GuiSmokeError, "truncated pixel data"):
+                read_ppm(path)
+
+    def test_rejects_extra_pixel_data(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "frame.ppm"
+            path.write_bytes(b"P6\n1 1\n255\n" + bytes((0, 1, 2, 3)))
+            with self.assertRaisesRegex(GuiSmokeError, "extra pixel data"):
+                read_ppm(path)
+
+    def test_rejects_malformed_header_unexpected_eof(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "frame.ppm"
+            path.write_bytes(b"P6\n1 1")
+            with self.assertRaisesRegex(GuiSmokeError, "unexpected end of header"):
+                read_ppm(path)
+
+    def test_rejects_header_token_too_long(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "frame.ppm"
+            path.write_bytes(b"P6\n" + b"1" * 129 + b"\n1\n255\n" + bytes((0, 1, 2)))
+            with self.assertRaisesRegex(GuiSmokeError, "header token too long"):
+                read_ppm(path)
+
+    def test_rejects_header_comment_too_long(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "frame.ppm"
+            path.write_bytes(b"P6\n#" + b"a" * 1024 + b"\n1 1\n255\n" + bytes((0, 1, 2)))
+            with self.assertRaisesRegex(GuiSmokeError, "comment too long"):
+                read_ppm(path)
+
     def test_rejects_wrong_dimensions(self):
         image = PpmImage(2, 2, bytes(12))
         with self.assertRaisesRegex(GuiSmokeError, "do not match guest mode"):

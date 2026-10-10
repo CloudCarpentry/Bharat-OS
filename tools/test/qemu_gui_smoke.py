@@ -61,6 +61,9 @@ class IncrementalLogReader:
             self.file = None
 
 
+MAX_IMAGE_DIMENSION = 16384
+
+
 @dataclass(frozen=True)
 class PpmImage:
     width: int
@@ -75,7 +78,9 @@ def _ppm_token(stream: BinaryIO) -> bytes:
         if not byte:
             raise GuiSmokeError("malformed PPM: unexpected end of header")
         if byte == b"#":
-            stream.readline()
+            comment = stream.readline(1024)
+            if len(comment) == 1024 and not comment.endswith(b"\n"):
+                raise GuiSmokeError("malformed PPM: comment too long")
             continue
         if not byte.isspace():
             token.extend(byte)
@@ -85,6 +90,8 @@ def _ppm_token(stream: BinaryIO) -> bytes:
         if not byte or byte.isspace():
             return bytes(token)
         token.extend(byte)
+        if len(token) > 128:
+            raise GuiSmokeError("malformed PPM: header token too long")
 
 
 def read_ppm(path: Path) -> PpmImage:
@@ -103,16 +110,20 @@ def read_ppm(path: Path) -> PpmImage:
                 max_value = int(max_value_raw)
             except ValueError as exc:
                 raise GuiSmokeError("malformed PPM: non-numeric dimensions") from exc
-            if width <= 0 or height <= 0 or max_value != 255:
-                raise GuiSmokeError("malformed PPM: invalid dimensions or max value")
+            if width <= 0 or height <= 0:
+                raise GuiSmokeError(f"malformed PPM: zero or negative dimensions")
+            if width > MAX_IMAGE_DIMENSION or height > MAX_IMAGE_DIMENSION:
+                raise GuiSmokeError(f"malformed PPM: dimensions exceed {MAX_IMAGE_DIMENSION}")
+            if max_value != 255:
+                raise GuiSmokeError(f"malformed PPM: invalid max value {max_value}")
             expected_size = width * height * 3
-            pixels = stream.read()
+            pixels = stream.read(expected_size + 1)
     except OSError as exc:
         raise GuiSmokeError(f"cannot read screenshot: {exc}") from exc
-    if len(pixels) != expected_size:
-        raise GuiSmokeError(
-            f"malformed PPM: expected {expected_size} pixel bytes, got {len(pixels)}"
-        )
+    if len(pixels) < expected_size:
+        raise GuiSmokeError(f"malformed PPM: truncated pixel data, expected {expected_size} but got {len(pixels)}")
+    if len(pixels) > expected_size:
+        raise GuiSmokeError(f"malformed PPM: extra pixel data beyond expected {expected_size} bytes")
     return PpmImage(width, height, pixels)
 
 
