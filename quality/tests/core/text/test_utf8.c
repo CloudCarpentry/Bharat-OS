@@ -30,6 +30,24 @@ void test_valid_utf8() {
 void test_invalid_utf8() {
     printf("Testing invalid UTF-8...\n");
 
+    // Null and empty strings
+    assert(bh_utf8_validate(NULL, 1) == BH_UTF8_ERR_INVALID);
+    assert(bh_utf8_validate(NULL, 0) == BH_UTF8_ERR_INVALID);
+    assert(bh_utf8_validate("", 0) == BH_UTF8_OK);
+
+    // Invalid leading and continuation bytes
+    assert(bh_utf8_validate("\x80", 1) == BH_UTF8_ERR_INVALID);
+    assert(bh_utf8_validate("\xC2\x7F", 2) == BH_UTF8_ERR_INVALID);
+
+    // Offset behavior after decoding failure
+    size_t off = 0;
+    uint32_t cp = 0;
+    assert(bh_utf8_next(NULL, 1, &off, &cp) == BH_UTF8_ERR_INVALID);
+    assert(bh_utf8_next("a", 1, NULL, &cp) == BH_UTF8_ERR_INVALID);
+    assert(bh_utf8_next("a", 1, &off, NULL) == BH_UTF8_ERR_INVALID);
+    assert(bh_utf8_next("\xC2\x7F", 2, &off, &cp) == BH_UTF8_ERR_INVALID);
+    assert(off == 0); // Offset should not advance on failure
+
     // Overlong encoding for 'A' (0x41)
     const char *overlong = "\xc1\x81";
     assert(bh_utf8_validate(overlong, 2) == BH_UTF8_ERR_OVERLONG);
@@ -41,6 +59,10 @@ void test_invalid_utf8() {
     // Out of range
     const char *out_of_range = "\xf4\x90\x80\x80"; // U+110000
     assert(bh_utf8_validate(out_of_range, 4) == BH_UTF8_ERR_OUT_OF_RANGE);
+
+    // Unicode Maximum U+10FFFF
+    const char *unicode_max = "\xf4\x8f\xbf\xbf"; // U+10FFFF
+    assert(bh_utf8_validate(unicode_max, 4) == BH_UTF8_OK);
 
     // Truncated
     const char *truncated = "\xe0\xa4";
