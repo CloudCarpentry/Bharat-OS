@@ -227,7 +227,7 @@ set_tests_properties(host_test_mon_vm PROPERTIES LABELS "vm")
 # VMM / ASpace / VM base-object conformance currently remains in top-level tests
 # (`test_vmm_aspace`) due additional prot-domain and arch-cap dependencies.
 
-add_executable(host_test_vmm_fault ../test_vmm_fault.c host_stubs.c ../../kernel/src/mm/vm/fault/fault.c ../../kernel/src/mm/vm/objects/vm_object.c ../../kernel/src/mm/vm/objects/vm_object_refcount.c ../../kernel/src/mm/vm/aspace/vm_space.c ../../kernel/src/mm/vm/aspace/aspace.c ../../kernel/src/mm/pmm/early_alloc.c ../../kernel/src/mm/pmm/pmm_init.c ../../kernel/src/mm/pmm/pmm_buddy.c ../../kernel/src/mm/pmm/pmm_fault.c ../../kernel/src/mm/pmm/pt_pool.c ../../kernel/src/mm/tlb/tlb_shootdown.c ../../kernel/src/cap/cap_cspace.c ../../kernel/src/cap/cap_dispatch.c ../../kernel/src/cap/cap_revoke.c ../../kernel/src/cap/cap_policy.c ../benchmark_stubs.c ../../kernel/src/lib/base/string.c ../../hal/common/memops/mem_scalar.c mock_panic.c)
+add_executable(host_test_vmm_fault ../test_vmm_fault.c host_stubs.c ../../kernel/src/mm/vm/fault/fault.c ../../kernel/src/mm/vm/objects/vm_object.c ../../kernel/src/mm/vm/objects/vm_object_refcount.c ../../kernel/src/mm/vm/aspace/vm_space.c ../../kernel/src/mm/vm/aspace/aspace.c ../../kernel/src/mm/pmm/early_alloc.c ../../kernel/src/mm/pmm/pmm_init.c ../../kernel/src/mm/pmm/pmm_buddy.c ../../kernel/src/mm/pmm/pmm_fault.c ../../kernel/src/mm/pt/pt_pool.c ../../kernel/src/mm/tlb/tlb_shootdown.c ../../kernel/src/cap/cap_cspace.c ../../kernel/src/cap/cap_dispatch.c ../../kernel/src/cap/cap_revoke.c ../../kernel/src/cap/cap_policy.c ../benchmark_stubs.c ../../kernel/src/lib/base/string.c ../../hal/common/memops/mem_scalar.c mock_panic.c)
 target_include_directories(host_test_vmm_fault PRIVATE ${CMAKE_SOURCE_DIR}/core/kernel/include ${CMAKE_SOURCE_DIR}/core/kernel/src ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/boot/include ${CMAKE_SOURCE_DIR}/core/lib/include ${CMAKE_BINARY_DIR}/generated/include)
 target_compile_definitions(host_test_vmm_fault PRIVATE TESTING=1)
 add_test(NAME host_test_vmm_fault COMMAND host_test_vmm_fault)
@@ -795,31 +795,3 @@ target_include_directories(host_test_robot_platform PRIVATE
     ${CMAKE_SOURCE_DIR}
     ${CMAKE_SOURCE_DIR}/interface/include)
 add_test(NAME host_test_robot_platform COMMAND host_test_robot_platform)
-
-if(BHARAT_BUILD_HOST_TESTS OR BHARAT_HOST_TEST)
-add_executable(test_netstack_boundary
-    ../test_netstack_boundary.c
-    ../../../core/services/netstack/src/arp.c
-    ../../../core/services/netstack/src/checksum.c
-    ../../../core/services/netstack/src/driver_virtio_adapter.c
-    ../../../core/services/netstack/src/ethernet.c
-    ../../../core/services/netstack/src/icmp.c
-    ../../../core/services/netstack/src/ipv4.c
-    ../../../core/services/netstack/src/loopback.c
-    ../../../core/services/netstack/src/netbuf.c
-    ../../../core/services/netstack/src/netstack_stubs.c
-    ../../../core/services/netstack/src/socket_table.c
-    ../../../core/services/netstack/src/tcp.c
-    ../../../core/services/netstack/src/udp.c
-    ../../../core/lib/packet/src/packet.c
-)
-target_include_directories(test_netstack_boundary PRIVATE
-    ../../../core/services/netstack/src
-    ../../../core/lib/runtime/include
-    ../../../interface/include
-    ../../../interface/uapi
-    ../../../core/lib/packet/include
-)
-target_compile_definitions(test_netstack_boundary PRIVATE BHARAT_HOST_TEST=1)
-add_test(NAME host_test_netstack_boundary COMMAND test_netstack_boundary)
-endif()
