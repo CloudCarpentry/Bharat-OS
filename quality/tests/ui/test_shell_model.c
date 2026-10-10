@@ -16,7 +16,7 @@ int main(void) {
     const bh_shell_device_t *devices;
 
     bh_shell_snapshot(&info);
-    assert(strcmp(info.architecture, "x86_64") == 0);
+    assert(info.architecture != NULL && strlen(info.architecture) > 0);
     assert(info.cpu_cores == 4);
     assert((info.capability_mask & BH_SHELL_CAP_DISPLAY) != 0);
 

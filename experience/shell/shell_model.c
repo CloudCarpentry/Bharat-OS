@@ -26,7 +26,19 @@ void bh_shell_snapshot(bh_shell_system_info_t *info) {
     }
 
     memset(info, 0, sizeof(*info));
+#if defined(__x86_64__)
     info->architecture = "x86_64";
+#elif defined(__aarch64__)
+    info->architecture = "aarch64";
+#elif defined(__riscv) && (__riscv_xlen == 64)
+    info->architecture = "riscv64";
+#elif defined(__riscv) && (__riscv_xlen == 32)
+    info->architecture = "riscv32";
+#elif defined(__arm__)
+    info->architecture = "arm32";
+#else
+    info->architecture = "generic";
+#endif
     info->cpu_cores = 4;
     info->memory_total_mb = 512;
     info->profile = "DESKTOP";

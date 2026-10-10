@@ -837,3 +837,32 @@ target_compile_definitions(host_test_boot_diagnostics PRIVATE BHARAT_HOST_TEST=1
 add_test(NAME host_test_boot_diagnostics COMMAND host_test_boot_diagnostics)
 set_tests_properties(host_test_boot_diagnostics PROPERTIES LABELS "ui")
 
+# Shell Model Host Test
+add_executable(host_test_shell_model
+    ../ui/test_shell_model.c
+    ${CMAKE_SOURCE_DIR}/experience/shell/shell_model.c
+)
+target_include_directories(host_test_shell_model PRIVATE
+    ${CMAKE_SOURCE_DIR}/interface/include
+    ${CMAKE_SOURCE_DIR}/experience/shell
+)
+target_compile_definitions(host_test_shell_model PRIVATE BHARAT_HOST_TEST=1)
+add_test(NAME host_test_shell_model COMMAND host_test_shell_model)
+set_tests_properties(host_test_shell_model PROPERTIES LABELS "ui")
+
+# Shell Navigation & Interaction Host Test
+add_executable(host_test_shell_navigation
+    ../ui/test_shell_navigation.c
+    ${CMAKE_SOURCE_DIR}/experience/shell/shell_model.c
+)
+target_include_directories(host_test_shell_navigation PRIVATE
+    ${CMAKE_SOURCE_DIR}/interface/include
+    ${CMAKE_SOURCE_DIR}/core/kernel/include
+    ${CMAKE_SOURCE_DIR}/experience/shell
+    ${CMAKE_SOURCE_DIR}/quality/tests/ui/stubs
+)
+target_compile_definitions(host_test_shell_navigation PRIVATE BHARAT_HOST_TEST=1)
+add_test(NAME host_test_shell_navigation COMMAND host_test_shell_navigation)
+set_tests_properties(host_test_shell_navigation PROPERTIES LABELS "ui")
+
+
