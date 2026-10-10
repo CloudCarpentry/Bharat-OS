@@ -14,7 +14,6 @@ static phys_addr_t g_pt_pool[PT_POOL_SIZE];
 static int g_pt_pool_count = 0;
 static spinlock_t g_pt_pool_lock = {0};
 
-static kcache_t* g_pt_cache = NULL;
 
 phys_addr_t mm_alloc_pt_page(void) {
     spin_lock(&g_pt_pool_lock);
@@ -39,9 +38,7 @@ void mm_free_pt_page(phys_addr_t paddr) {
 }
 
 void pt_cache_init(void) {
-    // For now, use the dedicated mm_alloc_pt_page block pool
-    // A true SLAB/kcache approach for page tables is tricky because they MUST be page-aligned.
-    g_pt_cache = kcache_create("pt_cache", PAGE_SIZE);
+    // Intentionally empty: after ARM32 page-table init fixes, we no longer use a generic slab cache for page tables
 }
 
 phys_addr_t pt_cache_alloc(void) {
