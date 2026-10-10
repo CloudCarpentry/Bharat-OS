@@ -60,6 +60,7 @@ typedef struct {
 } bh_boot_event_t;
 
 /* Public snapshot and status query interface */
+bharat_status_t bh_boot_events_fetch_snapshot(uint32_t diag_cap, bh_boot_event_snapshot_t *snapshot);
 void bh_boot_events_get_snapshot(bh_boot_event_snapshot_t *snapshot);
 const char *bh_boot_stage_name(bh_boot_stage_t stage);
 const char *bh_boot_status_name(bh_boot_status_t status);

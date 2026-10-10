@@ -8,6 +8,9 @@
 #include "hal/hal_timer.h"
 #endif
 
+#include "spinlock.h"
+
+static spinlock_t g_boot_ring_lock;
 static bh_boot_event_record_t g_boot_ring[BH_BOOT_EVENT_RING_CAPACITY];
 static uint32_t g_total_events = 0;
 static uint32_t g_head_idx = 0;
@@ -25,6 +28,7 @@ static void safe_str_copy(char *dest, const char *src, size_t max_len) {
 }
 
 void boot_events_init(void) {
+    spin_lock_init(&g_boot_ring_lock);
     g_total_events = 0;
     g_head_idx = 0;
     for (size_t i = 0; i < BH_BOOT_EVENT_RING_CAPACITY; ++i) {
@@ -49,6 +53,9 @@ void boot_events_record(bh_boot_stage_t stage,
     }
 #endif
 
+    hal_irq_state_t irq_state;
+    spin_lock_irqsave(&g_boot_ring_lock, &irq_state);
+
     uint32_t slot = g_head_idx % BH_BOOT_EVENT_RING_CAPACITY;
     bh_boot_event_record_t *rec = &g_boot_ring[slot];
 
@@ -61,6 +68,8 @@ void boot_events_record(bh_boot_stage_t stage,
 
     g_head_idx = (g_head_idx + 1) % BH_BOOT_EVENT_RING_CAPACITY;
     g_total_events++;
+
+    spin_unlock_irqrestore(&g_boot_ring_lock, irq_state);
 }
 
 void boot_events_publish(bh_boot_stage_t stage, uint8_t percent, bharat_status_t status, const char *label) {
@@ -73,8 +82,11 @@ void boot_events_publish(bh_boot_stage_t stage, uint8_t percent, bharat_status_t
 #endif
 }
 
-void bh_boot_events_get_snapshot(bh_boot_event_snapshot_t *snapshot) {
+void kernel_boot_events_get_snapshot(bh_boot_event_snapshot_t *snapshot) {
     if (!snapshot) return;
+
+    hal_irq_state_t irq_state;
+    spin_lock_irqsave(&g_boot_ring_lock, &irq_state);
 
     snapshot->total_events = g_total_events;
     if (g_total_events > BH_BOOT_EVENT_RING_CAPACITY) {
@@ -94,6 +106,12 @@ void bh_boot_events_get_snapshot(bh_boot_event_snapshot_t *snapshot) {
         uint32_t slot = (start_idx + i) % BH_BOOT_EVENT_RING_CAPACITY;
         snapshot->events[i] = g_boot_ring[slot];
     }
+
+    spin_unlock_irqrestore(&g_boot_ring_lock, irq_state);
+}
+
+void bh_boot_events_get_snapshot(bh_boot_event_snapshot_t *snapshot) {
+    kernel_boot_events_get_snapshot(snapshot);
 }
 
 const char *bh_boot_stage_name(bh_boot_stage_t stage) {

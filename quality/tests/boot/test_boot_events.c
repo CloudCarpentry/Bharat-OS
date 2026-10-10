@@ -123,12 +123,33 @@ static void test_enum_name_helpers(void) {
     printf("test_enum_name_helpers PASSED\n");
 }
 
+static void test_kernel_snapshot_direct(void) {
+    boot_events_init();
+    boot_events_record(BH_BOOT_STAGE_HAL, BH_BOOT_STATUS_OK, "HAL_TIMER", "Timer init ok", 0);
+    boot_events_record(BH_BOOT_STAGE_MEMORY, BH_BOOT_STATUS_OK, "PMM", "4096 pages ready", 0);
+
+    /* Null pointer safety check */
+    kernel_boot_events_get_snapshot(NULL);
+    bh_boot_events_get_snapshot(NULL);
+
+    bh_boot_event_snapshot_t snap;
+    memset(&snap, 0, sizeof(snap));
+    kernel_boot_events_get_snapshot(&snap);
+
+    assert(snap.total_events == 2);
+    assert(snap.count == 2);
+    assert(strcmp(snap.events[0].component, "HAL_TIMER") == 0);
+    assert(strcmp(snap.events[1].component, "PMM") == 0);
+    printf("test_kernel_snapshot_direct PASSED\n");
+}
+
 int main(void) {
     test_initial_state();
     test_single_and_multiple_events();
     test_ring_overflow_behavior();
     test_legacy_publish_adapter();
     test_enum_name_helpers();
+    test_kernel_snapshot_direct();
 
     printf("All boot event pipeline tests PASSED!\n");
     return 0;

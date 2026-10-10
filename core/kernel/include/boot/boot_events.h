@@ -22,6 +22,8 @@ void boot_events_publish(bh_boot_stage_t stage,
                          bharat_status_t status,
                          const char *label);
 
+void kernel_boot_events_get_snapshot(bh_boot_event_snapshot_t *snapshot);
+
 #ifdef __cplusplus
 }
 #endif
