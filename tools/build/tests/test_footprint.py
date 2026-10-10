@@ -15,18 +15,31 @@ def test_parse_memory_to_kb():
     assert _parse_memory_to_kb("2048k") == 2048
     assert _parse_memory_to_kb("1048576") == 1024
 
-    # Unrecognized formats
-    assert _parse_memory_to_kb("invalid") is None
-    assert _parse_memory_to_kb("10X") is None
-
-    # Edge cases
-    assert _parse_memory_to_kb("-10G") == -10485760
-    assert _parse_memory_to_kb("-512M") == -524288
-
-    with pytest.raises(ValueError):
+    # Unrecognized formats and malformed
+    with pytest.raises(ValueError, match="Malformed memory value or unsupported unit"):
+        _parse_memory_to_kb("invalid")
+    with pytest.raises(ValueError, match="Malformed memory value or unsupported unit"):
+        _parse_memory_to_kb("10X")
+    with pytest.raises(ValueError, match="Malformed memory value or unsupported unit"):
         _parse_memory_to_kb("1.5G")
+    with pytest.raises(ValueError, match="Malformed memory value or unsupported unit"):
+        _parse_memory_to_kb("1.5")
 
-    assert _parse_memory_to_kb("1.5") is None
+    # Negative values
+    with pytest.raises(ValueError, match="Memory allocation must be positive"):
+        _parse_memory_to_kb("-10G")
+    with pytest.raises(ValueError, match="Memory allocation must be positive"):
+        _parse_memory_to_kb("-512M")
+
+    # Zero values
+    with pytest.raises(ValueError, match="Memory allocation must be positive"):
+        _parse_memory_to_kb("0")
+    with pytest.raises(ValueError, match="Memory allocation must be positive"):
+        _parse_memory_to_kb("0G")
+
+    # Less than 1 KB
+    with pytest.raises(ValueError, match="Memory allocation must be at least 1 KB"):
+        _parse_memory_to_kb("512")
 
 def create_mock_target(arch="arm64", memory="512M", footprint_profile="test_profile"):
     return ResolvedTarget(
