@@ -823,3 +823,17 @@ target_include_directories(test_netstack_boundary PRIVATE
 target_compile_definitions(test_netstack_boundary PRIVATE BHARAT_HOST_TEST=1)
 add_test(NAME host_test_netstack_boundary COMMAND test_netstack_boundary)
 endif()
+
+# Unified Boot Event Pipeline Host Test
+add_executable(host_test_boot_events
+    ../boot/test_boot_events.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/boot/boot_events.c
+)
+target_include_directories(host_test_boot_events PRIVATE
+    ${CMAKE_SOURCE_DIR}/interface/include
+    ${CMAKE_SOURCE_DIR}/core/kernel/include
+    ${CMAKE_SOURCE_DIR}/core/hal/include
+)
+target_compile_definitions(host_test_boot_events PRIVATE BHARAT_HOST_TEST=1)
+add_test(NAME host_test_boot_events COMMAND host_test_boot_events)
+set_tests_properties(host_test_boot_events PROPERTIES LABELS "boot")
