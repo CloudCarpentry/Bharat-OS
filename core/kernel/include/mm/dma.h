@@ -26,6 +26,7 @@ typedef enum {
 #include "../../include/spinlock.h"
 // TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "mm/iommu.h"
+#include "mm/pmm.h"
 
 // Forward declaration of IOMMU backend ops
 typedef struct iommu_ops iommu_ops_t;
@@ -61,6 +62,9 @@ typedef struct dma_buffer {
     bool owned_by_device;
 
     struct dma_buffer *next;
+
+    // Physical allocation
+    pmm_block_t allocation;
 } dma_buffer_t;
 
 // Pin Budgets
