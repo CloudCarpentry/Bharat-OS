@@ -69,7 +69,14 @@ typedef enum {
 /* Process incoming TCP segment */
 int tcp_rx(netbuf_t *nb, uint32_t src_ip, uint32_t dst_ip);
 
-/* Serialize and transmit a TCP segment */
+/* Serialize and transmit a TCP segment
+ * Contract:
+ * - SYN: Transmits a SYN packet for connection establishment.
+ * - ACK: Transmits an ACK packet to acknowledge received data or state changes.
+ * - Payload: Transmits data segments, requiring sequencing and window management.
+ * - FIN: Transmits a FIN packet for connection termination.
+ * Implementation must handle sequence numbering, window size, and state updates based on these segment types.
+ */
 int tcp_tx(int sock_id, uint32_t dst_ip, uint16_t dst_port, const uint8_t *data, uint16_t len);
 
 #endif // NETSTACK_TCP_H

@@ -14,6 +14,10 @@ int tcp_rx(netbuf_t *nb, uint32_t src_ip, uint32_t dst_ip) {
     }
 
     tcphdr_t *tcph = (tcphdr_t *)netbuf_data(nb);
+    if (tcph->doff < 5) {
+        return -1; // Invalid data offset (header smaller than 20 bytes)
+    }
+
     uint16_t header_len = tcph->doff * 4;
 
     if (netbuf_len(nb) < header_len) {
