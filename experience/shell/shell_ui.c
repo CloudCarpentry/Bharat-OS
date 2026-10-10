@@ -16,6 +16,7 @@ static lv_timer_t *live_timer;
 static lv_group_t *navigation_group;
 
 static void apply_screen_style(lv_obj_t *screen) {
+    if (screen == NULL) return;
     const bh_ui_theme_t *theme = bh_theme_get_active();
     uint32_t bg = theme ? theme->bg_color_rgb : 0x081426;
     uint32_t fg = theme ? theme->text_color_rgb : 0xF5F7FA;
@@ -346,6 +347,9 @@ static void load_screen(bh_shell_screen_id_t target) {
     }
     if (navigation_group != NULL) {
         lv_group_remove_all_objs(navigation_group);
+    }
+    if (lv_screen_active() == NULL) {
+        return;
     }
     current_screen = target;
     switch (target) {
