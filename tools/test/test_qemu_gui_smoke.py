@@ -6,6 +6,7 @@ from unittest import mock
 
 from tools.test.qemu_gui_smoke import (
     GuiSmokeError,
+    IncrementalLogReader,
     PpmImage,
     make_qemu_command,
     read_ppm,
@@ -189,6 +190,85 @@ class HarnessTests(unittest.TestCase):
         qmp.execute.side_effect = GuiSmokeError("closed")
         self.assertTrue(stop_qemu(process, qmp))
         process.terminate.assert_called_once()
+
+
+class IncrementalLogReaderTests(unittest.TestCase):
+    def test_log_file_initially_absent(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "serial.log"
+            reader = IncrementalLogReader(path)
+            self.assertEqual(reader.read_new_content(), "")
+            reader.close()
+
+    def test_file_created_after_initialization(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "serial.log"
+            reader = IncrementalLogReader(path)
+            self.assertEqual(reader.read_new_content(), "")
+
+            path.write_text("hello world")
+            self.assertEqual(reader.read_new_content(), "hello world")
+            reader.close()
+
+    def test_incremental_appends(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "serial.log"
+            path.write_text("first\n")
+            reader = IncrementalLogReader(path)
+            self.assertEqual(reader.read_new_content(), "first\n")
+
+            with path.open("a") as f:
+                f.write("second\n")
+            self.assertEqual(reader.read_new_content(), "first\nsecond\n")
+            reader.close()
+
+    def test_marker_split_across_two_writes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "serial.log"
+            path.write_text("first part of ")
+            reader = IncrementalLogReader(path)
+            self.assertEqual(reader.read_new_content(), "first part of ")
+
+            with path.open("a") as f:
+                f.write("a marker")
+            self.assertEqual(reader.read_new_content(), "first part of a marker")
+            reader.close()
+
+    def test_repeated_reads_with_no_new_data(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "serial.log"
+            path.write_text("data\n")
+            reader = IncrementalLogReader(path)
+            self.assertEqual(reader.read_new_content(), "data\n")
+            self.assertEqual(reader.read_new_content(), "data\n")
+            reader.close()
+
+    def test_overlap_buffer_behavior(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "serial.log"
+            path.write_text("a" * 300)
+            reader = IncrementalLogReader(path)
+
+            content = reader.read_new_content(overlap=10)
+            self.assertEqual(content, "a" * 300)
+
+            with path.open("a") as f:
+                f.write("b" * 5)
+            self.assertEqual(reader.read_new_content(overlap=10), "a" * 10 + "b" * 5)
+            reader.close()
+
+    def test_proper_file_closure(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "serial.log"
+            path.write_text("data")
+            reader = IncrementalLogReader(path)
+            reader.read_new_content()
+            self.assertIsNotNone(reader.file)
+            self.assertFalse(reader.file.closed)
+            file_obj = reader.file
+            reader.close()
+            self.assertIsNone(reader.file)
+            self.assertTrue(file_obj.closed)
 
 
 if __name__ == "__main__":
