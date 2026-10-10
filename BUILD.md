@@ -376,6 +376,26 @@ Output layout uses CMake preset name:
 - `build/<preset>/manifests/flash-manifest.json`
 - `build/<preset>/manifests/debug-manifest.json`
 
+The build pipeline clears `CMakeCache.txt` before configuring a target. Targets
+that share a preset therefore use the selected preset, target definitions and
+project defaults, without inheriting options from the previous target. Compiled
+outputs are retained and rebuilt when their inputs or compile options change.
+Use `all` when compilation is required; `run` packages existing build outputs
+and launches QEMU without compiling them.
+
+Every QEMU run rejects `BOOT_FAIL:` output, including targets without a named
+boot contract and output received while stopping the emulator. A kernel-entry
+marker alone does not override a reported userspace bootstrap failure.
+The desktop GUI smoke targets use the same userspace readiness requirements as
+their headless counterparts; framebuffer rendering alone does not qualify boot.
+Interactive runs retain a healthy emulator until it is closed, and stop with a
+failure status when a forbidden marker appears.
+
+The framebuffer boot dashboard uses integer percentages for progress bars.
+It can render before a thread owns floating-point state, including on RISC-V
+with the supervisor FS field disabled. The existing floating-point widget API
+remains available to userspace callers.
+
 ### Build instrumentation versus product configuration
 
 `CMAKE_BUILD_TYPE` selects one of three instrumentation values and does not
@@ -774,3 +794,29 @@ Results are written as JSON and CSV below `build/bench-results`. Deterministic
 copy/allocation/checksum metrics are validation gates. QEMU elapsed time is only
 a software-overhead indicator, not real GPU/NPU/DMA performance evidence. See
 `quality/benchmarks/README.md` for the evidence and claim boundary.
+
+The desktop GUI targets select the same explicit CORE bootstrap graph as the
+headless desktop targets: real `namesvc` and `process_manager` readiness is
+required while the boot dashboard renders. This does not qualify the wider
+production service graph. RTOS targets explicitly select the STATIC runtime
+(`rt-supervisor`); their contract requires the supervisor to validate its launch
+ABI and enter userspace. The MPU targets retain their protection requirements;
+a hardware/backend capability failure is a failed run.
+
+MMU-Lite builds include the real eager address-space and protection-domain
+implementation even when `BHARAT_ENABLE_ADVANCED_VM` is disabled. Demand paging,
+COW and other optional VM features remain disabled by the RTOS profile. The flat
+VMM stub cannot load a protected userspace supervisor. ARM64 Linux boot uses a
+raw kernel image (`elf_to_bin` packaging), so QEMU supplies the DTB and initrd;
+the kernel ELF remains the debugging artifact.
+
+SMP bootstrap uses the normalized HAL CPU inventory used by scheduler
+partitioning. When firmware provides no CPU inventory, only the BSP is confirmed;
+bootstrap does not invent APs from the board policy's maximum. A known AP that
+fails to come online still causes strict RT boot failure. This does not implement
+x86 INIT/SIPI or qualify x86 multi-CPU boot.
+
+Early metadata allocations preserve the full span of every reserved boot module,
+including reservations between the allocation endpoints and those reached after
+alignment. Overflow fails the allocation. The STATIC root uses the canonical
+userspace ELF layout with its own entry (`NO_CRT0`) and static linking.

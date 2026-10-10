@@ -84,3 +84,15 @@ def test_runtime_model_is_orthogonal_to_architecture(tmp_path: Path, arch, model
     resolved = resolve_yaml_target(path)
     assert resolved.arch == arch
     assert resolved.userspace.runtime_model == model
+
+
+@pytest.mark.parametrize("target", [
+    "arm32_rtos_mpu_headless", "riscv32_rtos_mpu_headless",
+    "arm64_rtos_mmu_lite_headless", "riscv64_rtos_mmu_lite_headless",
+    "x86_64_rtos_mmu_lite_headless",
+])
+def test_rtos_targets_explicitly_launch_static_supervisor(target):
+    repo = Path(__file__).resolve().parents[3]
+    resolved = resolve_yaml_target(repo / "delivery/targets/qemu" / f"{target}.yaml")
+    assert resolved.userspace.runtime_model == "static"
+    assert resolved.userspace.root_component == "rt-supervisor"

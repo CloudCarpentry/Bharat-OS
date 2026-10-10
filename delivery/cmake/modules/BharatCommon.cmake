@@ -158,8 +158,10 @@ function(bharat_configure_userspace_library TARGET_NAME)
 endfunction()
 
 function(bharat_configure_userspace_binary TARGET_NAME)
+    # Canonical roots with their own startup ABI may supply _start directly.
+    cmake_parse_arguments(USER_BINARY "NO_CRT0" "" "" ${ARGN})
     # Inject the runtime crt0 object directly into the binary
-    if (TARGET bharat_crt0)
+    if (TARGET bharat_crt0 AND NOT USER_BINARY_NO_CRT0)
         target_sources(${TARGET_NAME} PRIVATE $<TARGET_OBJECTS:bharat_crt0>)
         # Make sure every binary implicitly links the syscalls needed by crt0 (bharat_exit)
         target_link_libraries(${TARGET_NAME} PRIVATE bharat_syscall)

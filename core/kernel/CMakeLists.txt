@@ -346,8 +346,9 @@ add_library(bharat_mm_accel OBJECT
 target_link_libraries(bharat_mm_accel PRIVATE bharat_kernel_includes bharat_kernel_buildopts)
 target_compile_options(bharat_mm_accel PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
 
-# Advanced VM Tier (Conditionally Included)
-if(BHARAT_ENABLE_ADVANCED_VM)
+# MMU-Lite still needs real eager mappings and protection domains for userspace.
+# Optional demand paging/COW stay governed by their separate feature flags.
+if(BHARAT_ENABLE_ADVANCED_VM OR BHARAT_PROFILE_MMU_LITE)
     add_library(bharat_mm_aspace OBJECT
         src/mm/vm/aspace/aspace.c
         src/mm/vm/aspace/vm_space.c
@@ -687,7 +688,7 @@ if(BHARAT_ENABLE_KERNEL_SELFTESTS)
     target_sources(kernel.elf PRIVATE $<TARGET_OBJECTS:k_test_support>)
 endif()
 
-if(BHARAT_ENABLE_ADVANCED_VM)
+if(BHARAT_ENABLE_ADVANCED_VM OR BHARAT_PROFILE_MMU_LITE)
     target_sources(kernel.elf PRIVATE
         $<TARGET_OBJECTS:bharat_mm_aspace>
         $<TARGET_OBJECTS:bharat_mm_objects>

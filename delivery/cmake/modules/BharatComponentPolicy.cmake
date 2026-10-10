@@ -128,8 +128,8 @@ function(bharat_apply_component_policy)
         set(BHARAT_ENABLE_FBUI OFF CACHE BOOL "Build Framebuffer UI" FORCE)
         set(BHARAT_UI_LVGL OFF CACHE BOOL "Enable LVGL adapter and core" FORCE)
         set(BHARAT_BOOT_GUI OFF CACHE BOOL "Enable boot-time GUI handoff metadata" FORCE)
-    elseif(_profile STREQUAL "EDGE" AND NOT BHARAT_BOOT_GUI)
-        # Headless EDGE targets have no graphical boot handoff, just as
+    elseif((_profile STREQUAL "EDGE" OR _profile STREQUAL "RTOS") AND NOT BHARAT_BOOT_GUI)
+        # Headless EDGE/RTOS targets have no graphical boot handoff, just as
         # headless DESKTOP targets do. Keep graphical components out of both.
         set(BHARAT_ENABLE_SERVICE_BOOT_DISPLAYD OFF CACHE BOOL "Build boot display daemon" FORCE)
         set(BHARAT_ENABLE_UI OFF CACHE BOOL "Build user-space UI" FORCE)
