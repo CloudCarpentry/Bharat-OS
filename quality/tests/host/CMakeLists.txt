@@ -696,6 +696,32 @@ target_include_directories(test_execution_planner PRIVATE
 )
 add_test(NAME host_test_execution_planner COMMAND test_execution_planner)
 
+add_executable(test_netstack_phase2
+    ../test_netstack_phase2.c
+    ../../../core/services/netstack/src/arp.c
+    ../../../core/services/netstack/src/checksum.c
+    ../../../core/services/netstack/src/driver_virtio_adapter.c
+    ../../../core/services/netstack/src/ethernet.c
+    ../../../core/services/netstack/src/icmp.c
+    ../../../core/services/netstack/src/ipv4.c
+    ../../../core/services/netstack/src/loopback.c
+    ../../../core/services/netstack/src/netbuf.c
+    ../../../core/services/netstack/src/netstack_stubs.c
+    ../../../core/services/netstack/src/socket_table.c
+    ../../../core/services/netstack/src/tcp.c
+    ../../../core/services/netstack/src/udp.c
+    ../../../core/lib/packet/src/packet.c
+)
+target_include_directories(test_netstack_phase2 PRIVATE
+    ../../../core/services/netstack/src
+    ../../../core/lib/runtime/include
+    ../../../interface/include
+    ../../../interface/uapi
+    ../../../core/lib/packet/include
+)
+target_compile_definitions(test_netstack_phase2 PRIVATE BHARAT_HOST_TEST=1)
+add_test(NAME host_test_netstack_phase2 COMMAND test_netstack_phase2)
+
 add_subdirectory(ipc)
 
 # SPDX-License-Identifier: MIT
