@@ -59,13 +59,45 @@ hundreds of device-specific patches
 
 Bharat-OS explores a different model: **make the operating platform itself reusable.**
 
-Instead of creating separate, unrelated device-specific forks, Bharat-OS separates core system mechanisms from unprivileged policies:
-- A small, mechanism-focused kernel provides scheduling, memory protection, capability validation, and IPC.
-- High-level platform orchestration and security decisions live in unprivileged services.
-- Domain-specific functionality is composed cleanly through reusable stacks and compatibility runtimes (personalities).
-- Hardware differences are isolated behind clean architecture layers, HAL contracts, and platform drivers.
+Instead of creating separate, unrelated device-specific forks, Bharat-OS aims to reduce integration complexity through a strict capability-based architecture.
 
-The goal is not to write a separate OS fork for every new device. **The goal is one stable architectural foundation from which many distinct products can be composed.**
+We distinguish between our **architectural design goals** and the **current implementation state** today:
+
+- **Architecture-specific code separated from HAL and common kernel logic**
+  - *Goal:* Clean boundaries for multi-arch portability.
+  - *Reality:* Strong alignment implemented today across x86_64, ARM64, and RISC-V 64/32 platforms in `core/arch/` and `core/hal/`.
+- **Hardware-adaptive capability discovery**
+  - *Goal:* Unified discovery of CPU features without hardcoded assumptions.
+  - *Reality:* Implemented and runtime-verified across architectures to populate feature matrices.
+- **Capability-based security**
+  - *Goal:* Complete, system-wide, fail-closed capability enforcement across all async IPC and system calls.
+  - *Reality:* The foundational capability model (c-nodes, capabilities, revocation) is implemented and test-verified, but strict end-to-end enforcement across all service boundaries remains in active hardening (currently partial).
+- **Per-core kernel architecture and cross-core communication**
+  - *Goal:* No cross-core mutable locks. State manipulated via lockless URPC channels.
+  - *Reality:* The primitive URPC messaging foundations and per-CPU state structures are implemented and baseline verified; reliability hardening is ongoing.
+- **Configurable GP, RT and MIX execution profiles**
+  - *Goal:* A single codebase adapting scheduler/mode policies per product profile.
+  - *Reality:* Foundation for profiles exists, but dynamic tuning/RT strictness is still in development.
+- **Native system calls and userspace service contracts**
+  - *Goal:* All system calls defined through generated metadata contracts.
+  - *Reality:* The unified metadata-driven syscall dispatch (`native_syscalls.json`) and cross-arch trap handlers are fully implemented and act as the baseline security perimeter.
+- **Device and accelerator abstraction**
+  - *Goal:* Unified capability-safe queues for PCIe devices, NPUs, and GPUs.
+  - *Reality:* The baseline control plane and `accelmgr` event loop exist, but physical end-to-end hardware acceleration pipelines are scaffolds awaiting production drivers.
+- **Manifest-driven service initialization**
+  - *Goal:* Declarative, unprivileged dependency startup without hardcoded init sequences.
+  - *Reality:* The foundational `init` process loading modules via declarative payloads is implemented; full supervisory and lifecycle recovery depths are partially implemented.
+- **Platform and device profiles**
+  - *Goal:* Explicit profiles determining boot-time capabilities.
+  - *Reality:* Baseline implemented; configurations dynamically choose isolation rules (e.g. MMU-FULL vs MMU-LITE).
+- **Multi-architecture build and delivery tooling**
+  - *Goal:* Simple one-command developer workflow.
+  - *Reality:* Implemented. The `nirmaan` build CLI successfully orchestrates 5-architecture builds and emulations today.
+- **Unified observability and diagnostics**
+  - *Goal:* Integrated telemetry without disjoint agents.
+  - *Reality:* Baseline shell and text-logging exists; comprehensive distributed tracing is partial.
+
+The goal is not to write a separate OS fork for every new device. **The goal is one stable architectural foundation from which many distinct products can be composed.** Note: Bharat-OS is in active development; it does not currently replace all vendor BSPs, GPU/NPU runtimes, Linux compatibility stacks, or OTA solutions unless explicitly verified in our evidence matrix.
 
 ---
 
@@ -137,6 +169,22 @@ Product trust extends far beyond secure boot. Continuous runtime health telemetr
 
 ---
 
+## 🏗️ How Bharat-OS Is Architecturally Different
+
+Unlike monolithic kernels that run massive driver and networking frameworks in supervisor mode, or basic RTOS models that lack rigid domain boundaries, Bharat-OS enforces a strict multi-layer separation between mechanism and policy:
+
+1. **Hardware / ISA (`core/arch/`):** Deep, architecture-specific logic handling traps, low-level bootstrapping, and exception routing (e.g., `x86_64`, `arm64`, `riscv64`).
+2. **Architecture-specific implementation:** Adapting the CPU features to internal Bharat-OS models.
+3. **Hardware Abstraction Layer (HAL):** Unified contracts ensuring the core kernel never deals with architecture-specific registers directly.
+4. **Core Kernel (`core/kernel/`):** An ultra-minimal mechanism substrate. Capability enforcement, IPC/uRPC messaging, scheduling primitives, and hardware capability discovery belong strictly here. It *enforces* rules but *avoids* making product policies.
+5. **Native Kernel Contracts (`interface/`):** Metadata-driven boundaries (like `native_syscalls.json`) mapping safe user-space requests to kernel dispatchers without manual marshaling logic.
+6. **Userspace Services and SDKs (`core/services/`, `core/stacks/`):** This is where policy lives. Network protocol stacks, service lifecycle orchestration (`namesvc`, `init`, `servicemgr`), device backends, and storage drivers operate cleanly isolated from the kernel.
+7. **Applications and Product Experiences (`experience/`):** Final workloads, GUIs, and diagnostic shells utilizing the SDK interfaces.
+
+*Note on Local Dispatch:* Not every functional call must trap down through the HAL. Architecture-independent libraries can, and often do, use appropriate local dispatch abstractions without incurring kernel or HAL overhead for logical operations.
+
+---
+
 ## 📦 One Core. Many Products.
 
 Bharat-OS is designed for efficient, profile-driven composition. Different unprivileged policies, protocol stacks, and services are composed over a stable, unified kernel mechanism foundation:
@@ -185,32 +233,31 @@ Bharat-OS defines a strict, layered architectural model where policies move upwa
 
 ## 🟢 Engineering Maturity — Evidence, Not Claims
 
-We enforce strict, evidence-based governance to ensure that code, build graphs, and documentation derive from the same single source of truth. Below is the dynamically generated component maturity status:
+We enforce strict, evidence-based governance to ensure that code, build graphs, and documentation derive from the same single source of truth. Below is the component maturity status mapped to verified source code:
 
 ### Maturity Legend
-* 🟢 **BASELINE:** Implemented, verified, and backed by automated baseline testing or formal design evidence.
-* 🟡 **PARTIAL:** Working functional path exists, but production-critical or blocking work remains.
-* 🟠 **TRANSITIONAL:** Temporary implementation or scaffolding used during active architecture migration.
-* ⚪ **SCAFFOLD:** Structural interface exists; runtime behavior remains incomplete.
-* 🔵 **TARGET:** Planned architectural destination; not yet available in current runtime execution.
+* **Implemented and runtime-verified:** Works end-to-end on target or in QEMU with observable runtime state.
+* **Implemented and test-verified:** Works in host unit tests or focused subsystem tests.
+* **Implemented but runtime-unverified:** Code exists and compiles into target, but full end-to-end validation across the system boundary isn't currently proven.
+* **Partial:** Functional pieces exist, but significant components or security gates are missing.
+* **Planned:** Architectural intent only.
 
 <!-- START MATURITY TABLE -->
+| Capability / Architectural Feature | Implementation Status | Primary Source Code Location | Test or Runtime Evidence | Known Limitations |
+|---|---|---|---|---|
+| **5-Architecture Boot Support** | Implemented and runtime-verified | `core/arch/`, `core/hal/` | `tools/run_qemu_matrix.py` | Full matrix verified (x86_64, arm64, riscv64, arm32, riscv32). |
+| **Unified 12-Byte Usercopy & Exception Table** | Implemented and test-verified | `core/arch/x86/x86_64/usercopy.c` | Host-based and unit tests. | ARM/RISC-V parity validation. |
+| **Metadata-Driven ABI Boundaries** | Implemented and test-verified | `tools/abi/syscall_abi.py`, `interface/contracts/` | Tested during CI; ABI lock enforced. | None. |
+| **32-Bit Memory Models (MMU-Lite / MPU)** | Implemented and runtime-verified | `core/kernel/` | Runtime boot validation. | Fail-closed MMU_FULL rejection on 32-bit. |
+| **Hardware-adaptive capability discovery** | Implemented and runtime-verified | `core/kernel/` | Feature matrices populate across archs. | Deep accelerator topology ongoing. |
+| **Capability-based security** | Partial | `core/kernel/include/capability.h` | `test_cap_*` runtime tests pass. | End-to-end IPC fail-closed validation partial. |
+| **Network Manager (`netmgr`)** | Partial | `core/services/netmgr` | Initialization logged. | Production blocking receive missing. |
+| **Process Manager (`process_mgr`)** | Implemented but runtime-unverified | `core/services/process_manager` | Bootstrap payload packaged. | Dynamic real ELF loading missing. |
+| **Virtual Memory Manager (`vm_mgr`)** | Implemented but runtime-unverified | `core/services/vm_manager` | Boot reservation works. | On-demand orchestration missing. |
+| **Accelerator Substrate & Compute Control Plane** | Partial | `core/services/device/accelmgr` | Service declared during boot. | End-to-end hardware backend pipelines missing. |
+| **Manifest-driven service initialization** | Partial | `core/services/core/init` | Discovers/reserves payloads (`namesvc`, etc.). | Subsequent daemon boot chain (e.g. `namesvc`) currently fails in some environments. |
 
-| Component Name | Maturity Level | Evidence / Verification Path | Key Blockers / Remarks |
-|---|---|---|---|
-| Native Syscall Boundary | 🟢 **BASELINE** | `quality/tests/test_trap_syscall.c` | None |
-| Unified 12-Byte Usercopy & Exception Table | 🟢 **BASELINE** | `core/arch/x86/x86_64/usercopy.c, docs/architecture/exception-table-contract.md` | None |
-| Metadata-Driven ABI Lock | 🟢 **BASELINE** | `tools/abi/syscall_abi.py` | None |
-| Architecture Layer Linter | 🟢 **BASELINE** | `tools/lint/check_layer_references.py` | None |
-| CMake Target-Dependency Linter | 🟢 **BASELINE** | `tools/lint/check_cmake_dependencies.py` | None |
-| 5-Architecture Boot & QEMU Matrix | 🟢 **BASELINE** | `tools/run_qemu_matrix.py --headless --smoke --all-arch` | x86_64, arm64, riscv64, arm32, riscv32 verified |
-| 32-Bit Memory Models (MMU-Lite / MPU) | 🟢 **BASELINE** | `CMakeLists.txt, core/kernel/CMakeLists.txt, docs/profiles/device_profiles.md` | Fail-closed MMU_FULL rejection on 32-bit |
-| Network Manager (netmgr) | 🟡 **PARTIAL** | `core/services/netmgr` | Production blocking receive |
-| Process Manager (process_mgr) | ⚪ **SCAFFOLD** | `core/services/process_manager` | Real ELF execution loading |
-| Virtual Memory Manager (vm_mgr) | ⚪ **SCAFFOLD** | `core/services/vm_manager` | On-demand page-pool orchestration |
-| Accelerator Capability & Dispatch Substrate | 🟡 **PARTIAL** | `core/kernel/include/capability.h, core/lib/runtime/backend_dispatch` | Production device queue realization, End-to-end accelerator service mediation |
-| Heterogeneous Compute Control Plane | ⚪ **SCAFFOLD** | `core/services/device/accelmgr, core/drivers/accel/virt_accel.c` | Real accelmgr event loop, Truthful hardware backend execution, Accelerator admission and telemetry integration |
-
+*See `docs/architecture/evidence-matrix.md` for extended details and capabilities.*
 <!-- END MATURITY TABLE -->
 
 ---
@@ -385,12 +432,26 @@ We provide the `nirmaan` Developer CLI for everyday tasks.
 ./nirmaan run desktop-x86_64
 
 # Run a self-validating demo with qualification evidence
-./nirmaan demo x86_64_hmem_demo
 ./nirmaan demo arm32_mmu_lite_headless
 
 # Run the complete 5-architecture platform test matrix (x86_64, arm64, riscv64, arm32, riscv32)
 python3 tools/run_qemu_matrix.py --headless --smoke --all-arch
 ```
+
+### Reproducible Architectural Demos
+You can run our verifiable test targets locally to inspect the runtime state:
+
+1. **High Memory Desktop Demo (`x86_64_hmem_demo`)**
+   ```bash
+   ./nirmaan demo x86_64_hmem_demo
+   ```
+   *Expectation:* You will observe the kernel boot, discover topology, run early self-tests, jump to user space, and unpack the root payload. Note: The demo currently reaches userspace bootstrap safely, but `namesvc` initialization stops during early user lifecycle as unprivileged services are under active hardening.
+
+2. **GUI Desktop Demo (`x86_64_desktop_gui`)**
+   ```bash
+   ./nirmaan demo x86_64_desktop_gui
+   ```
+   *Expectation:* Requires `pyyaml` and `jsonschema` (`pip install pyyaml jsonschema`). This target boots the QEMU visual frame buffer. While the GUI has been reported working locally during development, automated QA acceptance of observable GUI milestones is pending.
 
 ---
 
@@ -404,6 +465,11 @@ python3 tools/run_qemu_matrix.py --headless --smoke --all-arch
 
 ## 🤝 Contributing / License
 
-For information on how to contribute to the project, please refer to our [Contributing Guide](CONTRIBUTING.md).
+To get started quickly, check out the authoritative architectural guides that explain how our folder structures and abstractions operate:
+1. [**Folder Structure & Code Boundaries:**](docs/architecture/folder_structure.md) Where arch-specific code, HAL, common kernel, and userspace SDKs belong.
+2. [**Repository Code Map:**](docs/architecture/repository-code-map.md) Connecting architecture documents directly to source code logic.
+3. [**Hardware Abstraction Baseline:**](docs/architecture/hardware-abstraction-and-drivers-baseline.md) Learning how HAL and device abstractions map.
+
+Ensure you adhere to architectural boundaries before contributing. For information on how to contribute to the project, please refer to our [Contributing Guide](CONTRIBUTING.md).
 
 This project is licensed under the [MIT License](LICENSE). All brand and visual assets are licensed under [CC BY 4.0](delivery/assets/branding/brand-guide.md#asset-license).
