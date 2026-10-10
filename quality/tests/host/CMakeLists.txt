@@ -796,6 +796,7 @@ target_include_directories(host_test_robot_platform PRIVATE
     ${CMAKE_SOURCE_DIR}/interface/include)
 add_test(NAME host_test_robot_platform COMMAND host_test_robot_platform)
 
+if(BHARAT_BUILD_HOST_TESTS OR BHARAT_HOST_TEST)
 add_executable(test_netstack_boundary
     ../test_netstack_boundary.c
     ../../../core/services/netstack/src/arp.c
@@ -821,3 +822,4 @@ target_include_directories(test_netstack_boundary PRIVATE
 )
 target_compile_definitions(test_netstack_boundary PRIVATE BHARAT_HOST_TEST=1)
 add_test(NAME host_test_netstack_boundary COMMAND test_netstack_boundary)
+endif()
