@@ -103,4 +103,4 @@ static int test_hw_caps_sanity(void) {
     return 0;
 }
 
-REGISTER_BOOT_SELFTEST("hw_caps", "core", test_hw_caps_sanity, BOOT_TEST_STAGE_EARLY, BOOT_TEST_MANDATORY, 0, true)
+REGISTER_BOOT_SELFTEST("hw_caps", "core", test_hw_caps_sanity, BOOT_TEST_STAGE_RUNTIME, BOOT_TEST_MANDATORY, 0, true)
