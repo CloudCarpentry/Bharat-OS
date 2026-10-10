@@ -287,6 +287,20 @@ elseif(BHARAT_DEVICE_PROFILE STREQUAL "DESKTOP" OR BHARAT_DEVICE_PROFILE STREQUA
     set(BHARAT_ENABLE_ADVANCED_VM ON CACHE BOOL "Enable advanced virtual memory" FORCE)
 endif()
 
+# Enforce 32-bit architecture memory model guard:
+# arm32 and riscv32 only support MMU-Lite or MPU-Only. MMU-Full is not supported.
+if(ARCH STREQUAL "arm32" OR ARCH STREQUAL "riscv32")
+    if(BHARAT_PROFILE_MMU_FULL)
+        message(FATAL_ERROR "Architecture '${ARCH}' does not support BHARAT_PROFILE_MMU_FULL. Only MMU_LITE or MPU_ONLY is supported.")
+    endif()
+    set(BHARAT_PROFILE_MMU_FULL OFF CACHE BOOL "Full VM" FORCE)
+    if(NOT BHARAT_PROFILE_MPU_ONLY)
+        set(BHARAT_PROFILE_MMU_LITE ON CACHE BOOL "MMU Lite" FORCE)
+        set(BHARAT_ENABLE_MMU ON CACHE BOOL "Enable MMU support" FORCE)
+        set(BHARAT_ENABLE_MPU OFF CACHE BOOL "Enable MPU support" FORCE)
+    endif()
+endif()
+
 # Determine Kernel Execution Profile (RT, GP, MIX) based on Device Profile
 if(BHARAT_DEVICE_PROFILE STREQUAL "RTOS"
    OR BHARAT_DEVICE_PROFILE STREQUAL "DRONE"

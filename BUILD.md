@@ -603,9 +603,9 @@ These test targets assert that the ABI boundaries and dispatch tables do not cau
 ```bash
 ./tools/build.sh all --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml --smoke
 ./tools/build.sh all --target-yaml delivery/targets/qemu/arm64_desktop_headless.yaml --smoke
-./tools/build.sh all --target-yaml delivery/targets/qemu/arm32_desktop_headless.yaml --smoke
+./tools/build.sh all --target-yaml delivery/targets/qemu/arm32_mmu_lite_headless.yaml --smoke
 ./tools/build.sh all --target-yaml delivery/targets/qemu/riscv64_desktop_headless.yaml --smoke
-./tools/build.sh all --target-yaml delivery/targets/qemu/riscv32_desktop_headless.yaml --smoke
+./tools/build.sh all --target-yaml delivery/targets/qemu/riscv32_mmu_lite_headless.yaml --smoke
 ```
 
 ## 5.3 GUI presets (examples)
@@ -613,17 +613,17 @@ These test targets assert that the ABI boundaries and dispatch tables do not cau
 ```powershell
 .\tools\build.ps1 all --target-yaml delivery/targets/qemu/x86_64_desktop_gui.yaml --interactive
 .\tools\build.ps1 all --target-yaml delivery/targets/qemu/arm64_desktop_gui.yaml --interactive
-.\tools\build.ps1 all --target-yaml delivery/targets/qemu/arm32_desktop_gui.yaml --interactive
+.\tools\build.ps1 all --target-yaml delivery/targets/qemu/arm32_edge_gui.yaml --interactive
 .\tools\build.ps1 all --target-yaml delivery/targets/qemu/riscv64_desktop_gui.yaml --interactive
-.\tools\build.ps1 all --target-yaml delivery/targets/qemu/riscv32_desktop_gui.yaml --interactive
+.\tools\build.ps1 all --target-yaml delivery/targets/qemu/riscv32_edge_gui.yaml --interactive
 ```
 
 ```bash
 ./tools/build.sh all --target-yaml delivery/targets/qemu/x86_64_desktop_gui.yaml --interactive
 ./tools/build.sh all --target-yaml delivery/targets/qemu/arm64_desktop_gui.yaml --interactive
-./tools/build.sh all --target-yaml delivery/targets/qemu/arm32_desktop_gui.yaml --interactive
+./tools/build.sh all --target-yaml delivery/targets/qemu/arm32_edge_gui.yaml --interactive
 ./tools/build.sh all --target-yaml delivery/targets/qemu/riscv64_desktop_gui.yaml --interactive
-./tools/build.sh all --target-yaml delivery/targets/qemu/riscv32_desktop_gui.yaml --interactive
+./tools/build.sh all --target-yaml delivery/targets/qemu/riscv32_edge_gui.yaml --interactive
 ```
 
 ## 5.4 Legacy positional example requested by users

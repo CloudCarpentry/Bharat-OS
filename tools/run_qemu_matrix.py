@@ -65,23 +65,23 @@ def resolve_target_yaml(arch: str, kind: str) -> Path:
         yaml_path = TARGETS_DIR / filename
         if yaml_path.exists():
             return yaml_path
-        fallback_path = TARGETS_DIR / f"{arch}_desktop_headless.yaml"
+        fallback_path = TARGETS_DIR / f"{arch}_edge_headless.yaml"
         if fallback_path.exists():
             return fallback_path
-        return yaml_path
+        return TARGETS_DIR / f"{arch}_desktop_headless.yaml"
     elif kind == "gui":
         preferred_gui = {
             "x86_64": "x86_64_desktop_gui.yaml",
             "arm64": "arm64_desktop_gui.yaml",
             "riscv64": "riscv64_desktop_gui.yaml",
-            "arm32": "arm32_desktop_gui.yaml",
-            "riscv32": "riscv32_desktop_gui.yaml",
+            "arm32": "arm32_edge_gui.yaml",
+            "riscv32": "riscv32_edge_gui.yaml",
         }
         filename = preferred_gui.get(arch, f"{arch}_desktop_gui.yaml")
         yaml_path = TARGETS_DIR / filename
         if yaml_path.exists():
             return yaml_path
-        return TARGETS_DIR / f"{arch}_desktop_{kind}.yaml"
+        return TARGETS_DIR / f"{arch}_edge_gui.yaml"
     else:
         return TARGETS_DIR / f"{arch}_{kind}.yaml"
 
