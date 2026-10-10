@@ -101,14 +101,30 @@ int bharat_runtime_now_ns(uint64_t *out) {
     return bharat_syscall(BH_SYS_TIME_GET, BH_CLOCK_MONOTONIC, (uintptr_t)out, 0, 0, 0, 0);
 }
 
-static size_t runtime_strlen(const char *s) {
+#define BHARAT_MAX_LOG_LEN 4096
+
+static size_t runtime_strnlen(const char *s, size_t max_len) {
     size_t len = 0;
-    while (s && s[len]) len++;
+    while (s && len < max_len && s[len]) len++;
     return len;
 }
 
+/* Note: bharat_runtime_log requires a valid readable buffer up to the null terminator
+ * or BHARAT_MAX_LOG_LEN (4096 bytes). Over-limit messages are truncated. */
 void bharat_runtime_log(const char *msg) {
-    bharat_syscall(SYSCALL_WRITE, 1, (uintptr_t)msg, runtime_strlen(msg), 0, 0, 0);
+    if (!msg) return;
+
+    size_t len = runtime_strnlen(msg, BHARAT_MAX_LOG_LEN);
+    if (len == 0) return;
+
+    size_t written = 0;
+    while (written < len) {
+        int64_t res = bharat_syscall(SYSCALL_WRITE, 1, (uintptr_t)(msg + written), len - written, 0, 0, 0);
+        if (res <= 0 || (size_t)res > (len - written)) {
+            break;
+        }
+        written += (size_t)res;
+    }
 }
 
 void bharat_runtime_panic(const char *reason) {
@@ -120,7 +136,9 @@ void bharat_runtime_panic(const char *reason) {
 }
 
 int bharat_runtime_main_wrapper(int argc, char **argv, int (*main_fn)(int, char**)) {
-    bharat_runtime_init(NULL);
+    if (bharat_runtime_get_startup() == NULL) {
+        bharat_runtime_init(NULL);
+    }
 
     int result = -1;
     if (main_fn) {
