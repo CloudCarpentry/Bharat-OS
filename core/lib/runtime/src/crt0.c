@@ -100,7 +100,7 @@ static uint64_t bharat_udiv64_generic(uint64_t num, uint64_t den) {
 __attribute__((weak)) uint64_t __udivdi3(uint64_t numerator, uint64_t denominator) {
     return bharat_udiv64_generic(numerator, denominator);
 }
-#endif
+
 __attribute__((weak)) int64_t __divdi3(int64_t n, int64_t d) {
     int neg = 0;
     if (n < 0) {
@@ -117,3 +117,4 @@ __attribute__((weak)) int64_t __divdi3(int64_t n, int64_t d) {
     }
     return (int64_t)q;
 }
+#endif

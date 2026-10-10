@@ -153,7 +153,7 @@ int bharat_runtime_main_wrapper(int argc, char **argv, int (*main_fn)(int, char*
 // These are required when the compiler needs to perform 64-bit math or atomics
 // on a 32-bit target without native support.
 
-#if defined(BHARAT_ARCH_32BIT) || defined(__arm__) || (defined(__riscv) && __riscv_xlen == 32)
+#if defined(BHARAT_ARCH_32BIT) || (defined(__arm__) && !defined(__aarch64__)) || (defined(__riscv) && __riscv_xlen == 32) || (__SIZEOF_POINTER__ == 4)
 
 uint64_t __aeabi_uidivmod(unsigned int n, unsigned int d) {
     if (d == 0) return 0;
@@ -202,7 +202,6 @@ uint64_t __atomic_fetch_add_8(volatile void *ptr, uint64_t val, int memorder) {
     return old;
 }
 
-#endif
 int64_t __divdi3(int64_t n, int64_t d) {
     int neg = 0;
     if (n < 0) {
@@ -219,3 +218,5 @@ int64_t __divdi3(int64_t n, int64_t d) {
     }
     return (int64_t)q;
 }
+
+#endif
