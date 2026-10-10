@@ -27,6 +27,12 @@ target_include_directories(test_init_readiness PRIVATE
     ${CMAKE_SOURCE_DIR}/core/lib/runtime/include)
 add_test(NAME host_test_init_readiness COMMAND test_init_readiness)
 
+add_executable(host_test_cap_format ../../../core/lib/cap/tests/test_cap.c ../../../core/lib/cap/src/cap.c)
+target_include_directories(host_test_cap_format PRIVATE
+    "${CMAKE_SOURCE_DIR}/core/lib/cap/include"
+    "${CMAKE_SOURCE_DIR}/interface/include")
+add_test(NAME host_test_cap_format COMMAND host_test_cap_format)
+
 add_executable(host_test_cap_generation_production test_cap_generation_policy.c)
 target_include_directories(host_test_cap_generation_production PRIVATE
     "${CMAKE_SOURCE_DIR}/core/kernel/include")
