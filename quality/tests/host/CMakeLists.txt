@@ -764,12 +764,24 @@ add_test(NAME host_test_urpc_concurrency COMMAND host_test_urpc_concurrency)
 add_executable(host_test_tiny_ui_stack
     ../test_tiny_ui_stack.c
     ../../../core/stacks/ui/lcd/tiny_ui.c
+    ../../../core/stacks/ui/theme/default_theme.c
 )
 target_include_directories(host_test_tiny_ui_stack PRIVATE
     ../../../interface/include
 )
 add_test(NAME host_test_tiny_ui_stack COMMAND host_test_tiny_ui_stack)
 set_tests_properties(host_test_tiny_ui_stack PROPERTIES LABELS "ui")
+
+# UI Theme Host Test
+add_executable(host_test_theme
+    ../ui/test_theme.c
+    ../../../core/stacks/ui/theme/default_theme.c
+)
+target_include_directories(host_test_theme PRIVATE
+    ../../../interface/include
+)
+add_test(NAME host_test_theme COMMAND host_test_theme)
+set_tests_properties(host_test_theme PROPERTIES LABELS "ui")
 
 
 add_executable(host_test_ai_sched_fallback
@@ -837,3 +849,18 @@ target_include_directories(host_test_boot_events PRIVATE
 target_compile_definitions(host_test_boot_events PRIVATE BHARAT_HOST_TEST=1)
 add_test(NAME host_test_boot_events COMMAND host_test_boot_events)
 set_tests_properties(host_test_boot_events PROPERTIES LABELS "boot")
+
+# Graphical Boot Diagnostics Host Test
+add_executable(host_test_boot_diagnostics
+    ../ui/test_boot_diagnostics.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/boot/boot_events.c
+)
+target_include_directories(host_test_boot_diagnostics PRIVATE
+    ${CMAKE_SOURCE_DIR}/interface/include
+    ${CMAKE_SOURCE_DIR}/core/kernel/include
+    ${CMAKE_SOURCE_DIR}/core/hal/include
+    ${CMAKE_SOURCE_DIR}/experience/shell
+)
+target_compile_definitions(host_test_boot_diagnostics PRIVATE BHARAT_HOST_TEST=1)
+add_test(NAME host_test_boot_diagnostics COMMAND host_test_boot_diagnostics)
+set_tests_properties(host_test_boot_diagnostics PROPERTIES LABELS "ui")

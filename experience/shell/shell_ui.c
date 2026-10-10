@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 #include "bharat_shell.h"
+#include "bharat/ui/theme.h"
+#include "bharat/uapi/boot/boot_events.h"
 
 #include "lvgl.h"
 
@@ -14,16 +16,24 @@ static lv_timer_t *live_timer;
 static lv_group_t *navigation_group;
 
 static void apply_screen_style(lv_obj_t *screen) {
+    const bh_ui_theme_t *theme = bh_theme_get_active();
+    uint32_t bg = theme ? theme->bg_color_rgb : 0x081426;
+    uint32_t fg = theme ? theme->text_color_rgb : 0xF5F7FA;
+
     lv_obj_set_size(screen, LV_PCT(100), LV_PCT(100));
-    lv_obj_set_style_bg_color(screen, lv_color_hex(0x081426), 0);
-    lv_obj_set_style_text_color(screen, lv_color_hex(0xf5f7fa), 0);
+    lv_obj_set_style_bg_color(screen, lv_color_hex(bg), 0);
+    lv_obj_set_style_text_color(screen, lv_color_hex(fg), 0);
     lv_obj_remove_flag(screen, LV_OBJ_FLAG_SCROLLABLE);
 }
 
 static void add_header(lv_obj_t *parent, const char *title) {
+    const bh_ui_theme_t *theme = bh_theme_get_active();
+    const char *brand_name = (theme && theme->brand_name) ? theme->brand_name : "BHARAT-OS";
+    uint32_t primary = theme ? theme->primary_color_rgb : 0xFF9933;
+
     lv_obj_t *brand = lv_label_create(parent);
-    lv_label_set_text(brand, "BHARAT-OS");
-    lv_obj_set_style_text_color(brand, lv_color_hex(0xff9933), 0);
+    lv_label_set_text(brand, brand_name);
+    lv_obj_set_style_text_color(brand, lv_color_hex(primary), 0);
     lv_obj_align(brand, LV_ALIGN_TOP_LEFT, 28, 22);
 
     lv_obj_t *heading = lv_label_create(parent);
@@ -82,9 +92,9 @@ static void create_launcher(void) {
                           LV_FLEX_ALIGN_CENTER);
     add_launcher_button(grid, "System", BH_SHELL_SCREEN_SYSTEM);
     add_launcher_button(grid, "Devices", BH_SHELL_SCREEN_DEVICES);
+    add_launcher_button(grid, "Boot Diagnostics", BH_SHELL_SCREEN_DIAGNOSTICS);
     add_launcher_button(grid, "Processes", BH_SHELL_SCREEN_DEMOS);
     add_launcher_button(grid, "Network", BH_SHELL_SCREEN_DEMOS);
-    add_launcher_button(grid, "Hardware & Sensors", BH_SHELL_SCREEN_DEMOS);
     add_launcher_button(grid, "Demo Apps", BH_SHELL_SCREEN_DEMOS);
     lv_group_focus_next(navigation_group);
 }
@@ -141,6 +151,50 @@ static void create_devices(void) {
     add_back_button(root);
 }
 
+static void create_diagnostics(void) {
+    root = lv_obj_create(lv_screen_active());
+    apply_screen_style(root);
+    add_header(root, "Kernel & Service Diagnostics");
+
+    bh_boot_event_snapshot_t snap;
+    bh_boot_events_get_snapshot(&snap);
+
+    char log_text[1024];
+    size_t used = 0;
+
+    used += (size_t)lv_snprintf(log_text + used, sizeof(log_text) - used,
+                               "Total Boot Events: %u | Dropped: %u\n\n",
+                               snap.total_events, snap.dropped_events);
+
+    if (snap.count == 0) {
+        used += (size_t)lv_snprintf(log_text + used, sizeof(log_text) - used,
+                                   "No boot events recorded yet.\n");
+    } else {
+        for (uint32_t i = 0; i < snap.count && used + 64 < sizeof(log_text); ++i) {
+            const bh_boot_event_record_t *ev = &snap.events[i];
+            used += (size_t)lv_snprintf(log_text + used, sizeof(log_text) - used,
+                                       "[%-9s] %-10s : %-12s (%s)\n",
+                                       bh_boot_stage_name(ev->stage),
+                                       ev->component,
+                                       ev->message,
+                                       bh_boot_status_name(ev->status));
+        }
+    }
+
+    lv_obj_t *log_container = lv_obj_create(root);
+    lv_obj_set_size(log_container, 720, 360);
+    lv_obj_align(log_container, LV_ALIGN_CENTER, 0, 10);
+    lv_obj_set_style_bg_color(log_container, lv_color_hex(0x0F172A), 0);
+    lv_obj_set_style_border_color(log_container, lv_color_hex(0x334155), 0);
+
+    lv_obj_t *label = lv_label_create(log_container);
+    lv_label_set_text(label, log_text);
+    lv_obj_set_style_text_font(label, &lv_font_montserrat_14, 0);
+
+    add_back_button(root);
+    lv_group_focus_next(navigation_group);
+}
+
 static void create_demos(void) {
     root = lv_obj_create(lv_screen_active());
     apply_screen_style(root);
@@ -152,28 +206,50 @@ static void create_demos(void) {
 }
 
 static void create_splash(void) {
+    const bh_ui_theme_t *theme = bh_theme_get_active();
+    const char *brand_name = (theme && theme->brand_name) ? theme->brand_name : "BHARAT-OS";
+    const char *tagline = (theme && theme->tagline) ? theme->tagline : "Booting kernel modules...";
+    uint32_t primary = theme ? theme->primary_color_rgb : 0xFF9933;
+    bool show_spinner = theme ? theme->show_spinner : true;
+
     root = lv_obj_create(lv_screen_active());
     apply_screen_style(root);
 
     /* Animated spinner/arc */
-    lv_obj_t *spinner = lv_spinner_create(root);
-    lv_obj_set_size(spinner, 100, 100);
-    lv_obj_align(spinner, LV_ALIGN_CENTER, 0, -40);
-    lv_obj_set_style_arc_color(spinner, lv_color_hex(0xff9933), LV_PART_INDICATOR);
+    if (show_spinner) {
+        lv_obj_t *spinner = lv_spinner_create(root);
+        lv_obj_set_size(spinner, 100, 100);
+        lv_obj_align(spinner, LV_ALIGN_CENTER, 0, -40);
+        lv_obj_set_style_arc_color(spinner, lv_color_hex(primary), LV_PART_INDICATOR);
+    }
 
     lv_obj_t *title = lv_label_create(root);
-    lv_label_set_text(title, "BHARAT-OS");
-    lv_obj_set_style_text_color(title, lv_color_hex(0xff9933), 0);
+    lv_label_set_text(title, brand_name);
+    lv_obj_set_style_text_color(title, lv_color_hex(primary), 0);
     lv_obj_align(title, LV_ALIGN_CENTER, 0, 40);
 
     lv_obj_t *subtitle = lv_label_create(root);
-    lv_label_set_text(subtitle, "Booting kernel modules...");
+    lv_label_set_text(subtitle, tagline);
     lv_obj_align(subtitle, LV_ALIGN_CENTER, 0, 65);
 
-    /* Kernel progress log area */
+    /* Real kernel progress log from boot event snapshot */
+    bh_boot_event_snapshot_t snap;
+    bh_boot_events_get_snapshot(&snap);
+
+    char log_buf[256];
+    if (snap.count > 0) {
+        const bh_boot_event_record_t *last_ev = &snap.events[snap.count - 1];
+        (void)lv_snprintf(log_buf, sizeof(log_buf), "[%s] %s: %s",
+                          bh_boot_stage_name(last_ev->stage),
+                          last_ev->component,
+                          last_ev->message);
+    } else {
+        (void)lv_snprintf(log_buf, sizeof(log_buf), "[BOOT] Starting system services...");
+    }
+
     lv_obj_t *log_label = lv_label_create(root);
-    lv_label_set_text(log_label, "[LOG] Starting display service...\n[LOG] Initializing IPC...\n[LOG] Calibrating hardware...");
-    lv_obj_set_style_text_color(log_label, lv_color_hex(0xa0a0a0), 0);
+    lv_label_set_text(log_label, log_buf);
+    lv_obj_set_style_text_color(log_label, lv_color_hex(0xA0A0A0), 0);
     lv_obj_align(log_label, LV_ALIGN_BOTTOM_LEFT, 20, -20);
 }
 
@@ -194,6 +270,7 @@ static void load_screen(bh_shell_screen_id_t target) {
         case BH_SHELL_SCREEN_LAUNCHER: create_launcher(); break;
         case BH_SHELL_SCREEN_SYSTEM: create_system(); break;
         case BH_SHELL_SCREEN_DEVICES: create_devices(); break;
+        case BH_SHELL_SCREEN_DIAGNOSTICS: create_diagnostics(); break;
         case BH_SHELL_SCREEN_DEMOS: create_demos(); break;
         default: create_launcher(); current_screen = BH_SHELL_SCREEN_LAUNCHER; break;
     }
