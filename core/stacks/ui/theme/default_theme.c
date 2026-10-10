@@ -1,6 +1,5 @@
 /* SPDX-License-Identifier: MIT */
 #include "bharat/ui/theme.h"
-#include <string.h>
 
 static const bh_ui_theme_t g_default_bharat_theme = {
     .brand_name = "BHARAT-OS",
