@@ -263,12 +263,32 @@ int init_runtime_run(init_boot_context_t *ctx) {
     size_t filtered_count = 0;
 
     for (size_t i = 0; i < g_init_manifest_count; i++) {
-        if (filtered_count >= INIT_SERVICE_ID_MAX) break;
+        init_service_id_t id = g_init_manifest[i].id;
+
+        if (id <= 0 || id >= INIT_SERVICE_ID_MAX) {
+            rt.failure_class = INIT_FAIL_PROFILE;
+            rt.outcome = INIT_BOOT_OUTCOME_SAFE_MODE;
+            ctx->safe_mode_requested = true;
+            goto finish;
+        }
 
         if (filter_service(&g_init_manifest[i], ctx)) {
+            if (filtered_count >= INIT_SERVICE_ID_MAX) {
+                rt.failure_class = INIT_FAIL_PROFILE;
+                rt.outcome = INIT_BOOT_OUTCOME_SAFE_MODE;
+                ctx->safe_mode_requested = true;
+                goto finish;
+            }
+
+            if (rt.services[id].desc != NULL) {
+                rt.failure_class = INIT_FAIL_PROFILE;
+                rt.outcome = INIT_BOOT_OUTCOME_SAFE_MODE;
+                ctx->safe_mode_requested = true;
+                goto finish;
+            }
+
             filtered_manifest[filtered_count] = g_init_manifest[i];
 
-            init_service_id_t id = g_init_manifest[i].id;
             rt.service_order[rt.manifest_count] = id;
             rt.services[id].desc = &g_init_manifest[i];
             rt.services[id].state = INIT_SERVICE_STATE_DECLARED;
