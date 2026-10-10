@@ -76,6 +76,48 @@ void test_sanitize() {
     }
 }
 
+void test_sanitize_regression() {
+    printf("Testing sanitize regressions...\n");
+    char out[64];
+    size_t n;
+
+    // Empty input
+    n = bh_text_sanitize_console("", 0, out, sizeof(out));
+    assert(n == 0);
+
+    // Zero-capacity output
+    n = bh_text_sanitize_console("abc", 3, out, 0);
+    assert(n == 0);
+
+    // Output buffer exactly at capacity
+    memset(out, 0xAA, sizeof(out));
+    n = bh_text_sanitize_console("abcde", 5, out, 5);
+    assert(n == 5);
+    assert(strncmp(out, "abcde", 5) == 0);
+    assert((unsigned char)out[5] == 0xAA);
+
+    // Truncated output
+    memset(out, 0xAA, sizeof(out));
+    n = bh_text_sanitize_console("abcdefgh", 8, out, 5);
+    assert(n == 5);
+    assert(strncmp(out, "abcde", 5) == 0);
+    assert((unsigned char)out[5] == 0xAA);
+
+    // Control characters (ESC, BEL, CR)
+    memset(out, 0xAA, sizeof(out));
+    const char *ctrl = "A\x1b" "B\x07" "C\r" "D";
+    n = bh_text_sanitize_console(ctrl, strlen(ctrl), out, sizeof(out));
+    assert(n == 5);
+    assert(strncmp(out, "ABC\rD", 5) == 0);
+
+    // Valid multibyte UTF-8 input
+    memset(out, 0xAA, sizeof(out));
+    const char *mb = "Hello, \xe0\xa4\xad";
+    n = bh_text_sanitize_console(mb, strlen(mb), out, sizeof(out));
+    assert(n == 10);
+    assert(strncmp(out, "Hello, \xe0\xa4\xad", 10) == 0);
+}
+
 void test_regression_boundary() {
     printf("Testing C literal hex boundary regression...\n");
     const char *bad = "Red\x07Alert";
@@ -198,6 +240,7 @@ int main() {
     test_invalid_utf8();
     test_cell_width();
     test_sanitize();
+    test_sanitize_regression();
     test_regression_boundary();
     test_utf8_encode();
     printf("All tests passed!\n");
