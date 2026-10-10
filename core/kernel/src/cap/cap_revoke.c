@@ -15,14 +15,14 @@ void cap_lock_tables_sorted(capability_table_t** tables, size_t count) {
     // Simple insertion sort by owner_core, cspace_id, registry_slot
     for (size_t i = 1; i < count; i++) {
         capability_table_t* key = tables[i];
-        int j = i - 1;
-        while (j >= 0 && ((tables[j]->owner_core > key->owner_core) ||
-                          (tables[j]->owner_core == key->owner_core && tables[j]->cspace_id > key->cspace_id) ||
-                          (tables[j]->owner_core == key->owner_core && tables[j]->cspace_id == key->cspace_id && tables[j]->registry_slot > key->registry_slot))) {
-            tables[j + 1] = tables[j];
-            j = j - 1;
+        size_t j = i;
+        while (j > 0 && ((tables[j - 1]->owner_core > key->owner_core) ||
+                         (tables[j - 1]->owner_core == key->owner_core && tables[j - 1]->cspace_id > key->cspace_id) ||
+                         (tables[j - 1]->owner_core == key->owner_core && tables[j - 1]->cspace_id == key->cspace_id && tables[j - 1]->registry_slot > key->registry_slot))) {
+            tables[j] = tables[j - 1];
+            j--;
         }
-        tables[j + 1] = key;
+        tables[j] = key;
     }
 
     // Lock uniquely
@@ -38,10 +38,10 @@ void cap_lock_tables_sorted(capability_table_t** tables, size_t count) {
 void cap_unlock_tables_sorted(capability_table_t** tables, size_t count) {
     // Unlock uniquely in reverse order
     capability_table_t* last_unlocked = NULL;
-    for (int i = (int)count - 1; i >= 0; i--) {
-        if (tables[i] != last_unlocked) {
-            spin_unlock(&tables[i]->lock);
-            last_unlocked = tables[i];
+    for (size_t i = count; i > 0; i--) {
+        if (tables[i - 1] != last_unlocked) {
+            spin_unlock(&tables[i - 1]->lock);
+            last_unlocked = tables[i - 1];
         }
     }
 }

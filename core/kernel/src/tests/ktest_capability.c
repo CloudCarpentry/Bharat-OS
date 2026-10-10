@@ -404,6 +404,187 @@ static int test_cap_stale_handle(void) {
     return 0;
 }
 
+static int test_cap_repeated_revoke(void) {
+    capability_table_t* table = NULL;
+    int status = -1;
+    uint32_t cap = 0U;
+
+    table = cap_table_create();
+    if (!table) goto cleanup;
+
+    if (cap_table_grant(table, CAP_TYPE_MEMORY, 0x5678, CAP_RIGHT_MEMORY_MAP | CAP_RIGHT_DELEGATE, &cap) != 0) {
+        status = -2; goto cleanup;
+    }
+
+    if (cap_table_revoke(table, cap) != 0) {
+        status = -3; goto cleanup;
+    }
+
+    // Repeated revocation should safely fail and return an error (usually -2 for not found/invalid)
+    if (cap_table_revoke(table, cap) == 0) {
+        status = -4; goto cleanup;
+    }
+
+    status = 0;
+cleanup:
+    if (table) cap_table_destroy(table);
+    return status;
+}
+
+static int test_cap_parent_child_revoke(void) {
+    capability_table_t* table = NULL;
+    int status = -1;
+    uint32_t parent = 0U, child = 0U;
+
+    table = cap_table_create();
+    if (!table) goto cleanup;
+
+    if (cap_table_grant(table, CAP_TYPE_MEMORY, 0x1111, CAP_RIGHT_MEMORY_MAP | CAP_RIGHT_DELEGATE, &parent) != 0) {
+        status = -2; goto cleanup;
+    }
+
+    if (cap_table_delegate(table, table, parent, CAP_RIGHT_MEMORY_MAP, &child) != 0) {
+        status = -3; goto cleanup;
+    }
+
+    if (!cap_exists(table, parent)) { status = -4; goto cleanup; }
+    if (!cap_exists(table, child)) { status = -5; goto cleanup; }
+
+    if (cap_table_revoke(table, parent) != 0) {
+        status = -6; goto cleanup;
+    }
+
+    if (cap_exists(table, parent)) { status = -7; goto cleanup; }
+    if (cap_exists(table, child)) { status = -8; goto cleanup; }
+
+    status = 0;
+cleanup:
+    if (table) cap_table_destroy(table);
+    return status;
+}
+
+static int test_cap_cross_table_sibling_revoke(void) {
+    capability_table_t* tableA = NULL;
+    capability_table_t* tableB = NULL;
+    capability_table_t* tableC = NULL;
+    int status = -1;
+    uint32_t parent = 0U, child1 = 0U, child2 = 0U;
+
+    tableA = cap_table_create();
+    tableB = cap_table_create();
+    tableC = cap_table_create();
+    if (!tableA || !tableB || !tableC) goto cleanup;
+
+    if (cap_table_grant(tableA, CAP_TYPE_MEMORY, 0x1000, CAP_RIGHT_MEMORY_MAP | CAP_RIGHT_DELEGATE, &parent) != 0) {
+        status = -2; goto cleanup;
+    }
+
+    int ret = cap_table_delegate(tableA, tableB, parent, CAP_RIGHT_MEMORY_MAP, &child1);
+    if (ret == -6) {
+        // Failing closed due to lack of URPC bound channel is acceptable on non-SMP setups
+        status = 0; goto cleanup;
+    }
+    if (ret != 0) { status = -3; goto cleanup; }
+
+    if (cap_table_delegate(tableA, tableC, parent, CAP_RIGHT_MEMORY_MAP, &child2) != 0) {
+        status = -4; goto cleanup;
+    }
+
+    // Revoke child1 in B
+    // In current implementation, if the sibling chain crosses a 3rd table (C), it safely breaks.
+    if (cap_table_revoke(tableB, child1) != 0) {
+        status = -5; goto cleanup;
+    }
+
+    if (cap_exists(tableB, child1)) { status = -6; goto cleanup; }
+
+    // Revoke parent
+    if (cap_table_revoke(tableA, parent) != 0) {
+        status = -7; goto cleanup;
+    }
+
+    status = 0;
+cleanup:
+    if (tableA) cap_table_destroy(tableA);
+    if (tableB) cap_table_destroy(tableB);
+    if (tableC) cap_table_destroy(tableC);
+    return status;
+}
+
+static int test_cap_bounded_stack(void) {
+    capability_table_t* table1 = NULL;
+    capability_table_t* table2 = NULL;
+    int status = -1;
+    uint32_t caps[128];
+
+    table1 = cap_table_create();
+    table2 = cap_table_create();
+    if (!table1 || !table2) goto cleanup;
+
+    if (cap_table_grant(table1, CAP_TYPE_MEMORY, 0x1234, CAP_RIGHT_MEMORY_MAP | CAP_RIGHT_DELEGATE, &caps[0]) != 0) {
+        status = -2; goto cleanup;
+    }
+
+    for (int i = 0; i < 65; i++) {
+        // Delegate to create a deep chain to test depth and duplicate table pointers logic (since we bounce between table1 and table2).
+        capability_table_t* src = (i % 2 == 0) ? table1 : table2;
+        capability_table_t* dst = (i % 2 == 0) ? table2 : table1;
+        uint32_t sibling = 0U;
+        int ret = cap_table_delegate(src, src, caps[i], CAP_RIGHT_MEMORY_MAP | CAP_RIGHT_DELEGATE, &sibling);
+        if (ret == -6) break; // SMP boundaries might prevent some delegations
+
+        ret = cap_table_delegate(src, dst, caps[i], CAP_RIGHT_MEMORY_MAP | CAP_RIGHT_DELEGATE, &caps[i+1]);
+        if (ret == -6) break;
+    }
+
+    // Revoke root. Since bounded stack limit is 64, this might return -3 (overflow) or 0.
+    int rev_ret = cap_table_revoke(table1, caps[0]);
+    if (rev_ret != 0 && rev_ret != -3) {
+        status = -3; goto cleanup;
+    }
+
+    status = 0;
+cleanup:
+    if (table1) cap_table_destroy(table1);
+    if (table2) cap_table_destroy(table2);
+    return status;
+}
+
+static int test_cap_cspace_lifecycle(void) {
+    capability_table_t* t1 = NULL;
+    capability_table_t* t2 = NULL;
+    int status = -1;
+    uint32_t id1 = 0, gen1 = 0;
+
+    t1 = cap_table_create();
+    if (!t1) goto cleanup;
+    id1 = t1->cspace_id;
+    gen1 = (id1 >> 11);
+
+    cap_table_destroy(t1);
+    t1 = NULL; // Mark as destroyed
+
+    // Test slot reuse and generation bumping
+    t2 = cap_table_create();
+    if (!t2) { status = -2; goto cleanup; }
+
+    uint32_t id2 = t2->cspace_id;
+    uint32_t gen2 = (id2 >> 11);
+
+    if (id1 == id2) { status = -3; goto cleanup; } // Should not reuse exact same ID
+
+    // If it reused the same slot, gen2 should be strictly greater than gen1.
+    if ((id1 & 0x7FF) == (id2 & 0x7FF)) {
+        if (gen2 <= gen1) { status = -4; goto cleanup; }
+    }
+
+    status = 0;
+cleanup:
+    if (t1) cap_table_destroy(t1);
+    if (t2) cap_table_destroy(t2);
+    return status;
+}
+
 static int test_cap_cross_table_revoke(void) {
     capability_table_t* table1 = cap_table_create();
     capability_table_t* table2 = cap_table_create();
@@ -492,6 +673,18 @@ static int ktest_cap_run(void) {
     if (test_cap_stale_handle() != 0) return -1;
     hal_serial_write("PASSED\n");
 
+    hal_serial_write("  [TEST] test_cap_repeated_revoke... ");
+    if (test_cap_repeated_revoke() != 0) return -1;
+    hal_serial_write("PASSED\n");
+
+    hal_serial_write("  [TEST] test_cap_parent_child_revoke... ");
+    if (test_cap_parent_child_revoke() != 0) return -1;
+    hal_serial_write("PASSED\n");
+
+    hal_serial_write("  [TEST] test_cap_cspace_lifecycle... ");
+    if (test_cap_cspace_lifecycle() != 0) return -1;
+    hal_serial_write("PASSED\n");
+
     hal_serial_write("  [TEST] test_cap_validate_framework... ");
     if (test_cap_validate_framework() != 0) return -1;
     hal_serial_write("PASSED\n");
@@ -504,15 +697,36 @@ static int ktest_cap_run(void) {
 }
 
 static int ktest_cap_run_runtime(void) {
+    hal_serial_write("  [TEST] test_cap_cross_table_sibling_revoke... ");
+    int ret_sib = test_cap_cross_table_sibling_revoke();
+    if (ret_sib != 0) {
+        hal_serial_write("FAILED cross table sibling with ret=");
+        char buf[4]; buf[0] = '-'; buf[1] = '0' + (-ret_sib); buf[2] = '\n'; buf[3] = '\0';
+        hal_serial_write(buf);
+        return -1;
+    }
+    hal_serial_write("PASSED\n");
+
+    hal_serial_write("  [TEST] test_cap_bounded_stack... ");
+    int ret_bs = test_cap_bounded_stack();
+    if (ret_bs != 0) {
+        hal_serial_write("FAILED bounded stack with ret=");
+        char buf[4]; buf[0] = '-'; buf[1] = '0' + (-ret_bs); buf[2] = '\n'; buf[3] = '\0';
+        hal_serial_write(buf);
+        return -1;
+    }
+    hal_serial_write("PASSED\n");
+
     hal_serial_write("  [TEST] test_cap_cross_table_revoke... ");
     int ret = test_cap_cross_table_revoke();
     if (ret != 0) {
         hal_serial_write("FAILED cross table with ret=");
         // Simple hack to print number
-        char buf[3];
+        char buf[4];
         buf[0] = '-';
         buf[1] = '0' + (-ret);
         buf[2] = '\n';
+        buf[3] = '\0';
         hal_serial_write(buf);
         return -1;
     }
