@@ -44,7 +44,7 @@ build_run test_boot_reservation_overlap "${kernel_includes[@]}" -Icore/boot/incl
     quality/tests/init/test_boot_reservation_overlap.c core/kernel/src/mm/pmm/early_alloc.c core/kernel/src/mm/pmm/pmm_init.c
 build_run test_boot_progress -Iinterface/include quality/tests/ui/test_boot_progress.c \
     experience/user/ui/fbui/widgets/fb_widgets.c
-for name in test_pm_spawn_transaction test_procvm_stress; do
+for name in test_pm_spawn_transaction test_procvm_stress test_pm_lifecycle_failure; do
     build_run "$name" "${pm_includes[@]}" "quality/tests/host/process_vm/$name.c" "${pm_sources[@]}"
 done
 printf '%s\n' 'void hal_serial_write(const char *s) { (void)s; }' > "$out/serial_stub.c"
