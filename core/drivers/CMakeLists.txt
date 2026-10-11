@@ -25,7 +25,8 @@ if(COMMAND bharat_component_option)
     bharat_component_option(BHARAT_ENABLE_DRIVER_SDHOST OFF "Build SD/eMMC host driver")
     bharat_component_option(BHARAT_ENABLE_DRIVER_I2C_CORE OFF "Build I2C core driver")
     bharat_component_option(BHARAT_ENABLE_DRIVER_SPI_CORE OFF "Build SPI core driver")
-    bharat_component_option(BHARAT_ENABLE_DRIVER_PCIE_HOST OFF "Build PCIe host bridge baseline driver")
+    bharat_component_option(BHARAT_ENABLE_DRIVER_PCIE_HOST ON "Build PCIe host bridge baseline driver")
+    bharat_component_option(BHARAT_ENABLE_DRIVER_DMA ON "Build DMA drivers")
 
     # Input and Sensor Drivers
     bharat_component_option(BHARAT_ENABLE_DRIVER_VIRTIO_INPUT OFF "Build virtio input driver")
@@ -59,7 +60,8 @@ else()
     option(BHARAT_ENABLE_DRIVER_SDHOST "Build SD/eMMC host driver" OFF)
     option(BHARAT_ENABLE_DRIVER_I2C_CORE "Build I2C core driver" OFF)
     option(BHARAT_ENABLE_DRIVER_SPI_CORE "Build SPI core driver" OFF)
-    option(BHARAT_ENABLE_DRIVER_PCIE_HOST "Build PCIe host bridge baseline driver" OFF)
+    option(BHARAT_ENABLE_DRIVER_PCIE_HOST "Build PCIe host bridge baseline driver" ON)
+    option(BHARAT_ENABLE_DRIVER_DMA "Build DMA drivers" ON)
 
     # Input and Sensor Drivers
     option(BHARAT_ENABLE_DRIVER_VIRTIO_INPUT "Build virtio input driver" OFF)
@@ -82,6 +84,10 @@ add_subdirectory(net)
 add_subdirectory(display)
 add_subdirectory(storage)
 add_subdirectory(input)
+
+if(BHARAT_ENABLE_DRIVER_DMA)
+    add_subdirectory(dma)
+endif()
 
 if(BHARAT_ENABLE_DRIVER_VIRTIO_BLK)
     add_subdirectory(block/virtio_blk)
@@ -112,6 +118,10 @@ target_link_libraries(bharatos_drivers INTERFACE
   bharatos_driver_storage
   bharatos_driver_input
 )
+
+if(BHARAT_ENABLE_DRIVER_DMA)
+  target_link_libraries(bharatos_drivers INTERFACE bharatos_driver_dma)
+endif()
 
 if(BHARAT_ENABLE_DRIVER_VIRTIO_BLK)
   target_link_libraries(bharatos_drivers INTERFACE driver_virtio_blk)

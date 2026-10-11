@@ -340,8 +340,9 @@ int dma_buffer_map_device(uint64_t device_id, dma_buffer_t *buffer, dma_directio
         }
     } else {
         // Preserve explicitly authorized kernel-driver path.
-        // Userspace processes with a null cap table are unauthorized.
-        if (sched_current_process() != NULL) {
+        // Userspace processes with a security sandbox context are required to use capability lookup.
+        bh_process_t *curr_p = sched_current_process();
+        if (curr_p != NULL && curr_p->security_sandbox_ctx != NULL) {
             return -100; // Unauthorized userspace caller
         }
     }
@@ -400,7 +401,8 @@ int dma_buffer_unmap_device(uint64_t device_id, dma_buffer_t *buffer, dma_direct
             return -101; // Mismatch
         }
     } else {
-        if (sched_current_process() != NULL) {
+        bh_process_t *curr_p = sched_current_process();
+        if (curr_p != NULL && curr_p->security_sandbox_ctx != NULL) {
             return -100; // Unauthorized userspace caller
         }
     }

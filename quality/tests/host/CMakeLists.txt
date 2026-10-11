@@ -865,4 +865,19 @@ target_compile_definitions(host_test_shell_navigation PRIVATE BHARAT_HOST_TEST=1
 add_test(NAME host_test_shell_navigation COMMAND host_test_shell_navigation)
 set_tests_properties(host_test_shell_navigation PROPERTIES LABELS "ui")
 
+# EDU DMA Mock Host Test
+add_executable(host_test_edu_dma_mock
+    test_edu_dma_mock.c
+    ${CMAKE_SOURCE_DIR}/core/drivers/dma/edu_dma.c
+)
+target_include_directories(host_test_edu_dma_mock PRIVATE
+    ${CMAKE_SOURCE_DIR}/core/drivers/include
+    ${CMAKE_SOURCE_DIR}/core/kernel/include
+    ${CMAKE_SOURCE_DIR}/core/hal/include
+    ${CMAKE_SOURCE_DIR}/interface/include
+)
+target_compile_definitions(host_test_edu_dma_mock PRIVATE BHARAT_HOST_TEST=1)
+add_test(NAME host_test_edu_dma_mock COMMAND host_test_edu_dma_mock)
+set_tests_properties(host_test_edu_dma_mock PROPERTIES LABELS "dma")
+
 

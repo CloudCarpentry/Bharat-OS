@@ -45,6 +45,9 @@ run:
   nographic: true
   serial:
     - stdio
+  extra_args:
+    - "-device"
+    - "edu,dma_mask=0xffffffff"
   boot_artifact: kernel/kernel.elf32
 
 debug:
