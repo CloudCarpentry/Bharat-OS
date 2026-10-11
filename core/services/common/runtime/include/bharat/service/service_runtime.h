@@ -6,6 +6,7 @@
 #include <bharat/uapi/service_status.h>
 #include <bharat/uapi/ipc/contract.h>
 #include <bharat/uapi/servicemgr/contract.h>
+#include <bharat/uapi/servicemgr/health.h>
 #include <bharat/uapi/services/service_ids.h>
 #include <bharat/ipc/ipc.h>
 
@@ -55,14 +56,9 @@ bharat_status_t bh_service_handle_msg(bh_service_ctx_t *ctx, const bh_msg_t *msg
 bharat_status_t bh_service_request_shutdown(bh_service_ctx_t *ctx);
 
 /**
- * @brief Signal readiness to the service manager.
+ * @brief Send a health update to the service manager.
  */
-bharat_status_t bh_service_signal_ready(bh_service_ctx_t *ctx);
-
-/**
- * @brief Send a heartbeat to the service manager.
- */
-bharat_status_t bh_service_send_heartbeat(bh_service_ctx_t *ctx, uint32_t health_state);
+bharat_status_t bh_service_send_health_update(bh_service_ctx_t *ctx, sm_health_state_t state, int32_t status_code, uint64_t deadline_ticks);
 
 /**
  * @brief Create an IPC endpoint for a service.
