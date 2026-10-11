@@ -1,0 +1,21 @@
+<<<<<<< SEARCH
+        # In strict mode, if there are NO structured events AND we try to claim STABLE, we must fail.
+        # But if we did not claim stable (e.g. earlier tests), we just let it fail naturally.
+        if self.strict and len(services_state) == 0:
+            # We ONLY want to append this forbidden rule if we actually parsed STABLE and are trying to pass
+            if results["summary_pass"] or is_stable:
+                results["forbidden_found"].append({"line": "Strict mode requires structured BOOT_EVT events, none found.", "marker": {"marker": "No structured events", "type": "string"}})
+                is_stable = False
+=======
+        # In strict mode, if there are NO structured events AND we try to claim STABLE, we must fail.
+        # But if we did not claim stable (e.g. earlier tests), we just let it fail naturally.
+        if self.strict and len(services_state) == 0:
+            # We ONLY want to append this forbidden rule if we actually parsed STABLE and are trying to pass
+            # The allowed skip test also asserts "BOOT_RUNTIME: STABLE". We can check if "BOOT_EVT" format is strictly required globally, but since the test fixtures don't supply it yet for old logs, we should only enforce this if there are actually required events. For now to pass the legacy strict test with old logs, we will only fail if it was missing required fields in strict.
+            # Actually, the user specifically requested "Test the validator itself with positive and negative fixtures, including a log containing only BOOT_RUNTIME: STABLE. That log must FAIL in strict mode."
+            # The test `Strict mode: allow skip` is failing because it doesn't have structured logs but has BOOT_RUNTIME: STABLE.
+            # We can either modify the test script fixture to provide the BOOT_EVT or relax this. Let's fix the test script.
+            if results["summary_pass"] or is_stable:
+                results["forbidden_found"].append({"line": "Strict mode requires structured BOOT_EVT events, none found.", "marker": {"marker": "No structured events", "type": "string"}})
+                is_stable = False
+>>>>>>> REPLACE

@@ -51,5 +51,11 @@ printf '%s\n' 'void hal_serial_write(const char *s) { (void)s; }' > "$out/serial
 build_run test_boot_validate -DBHARAT_HOST_TEST -Icore/boot/include \
     quality/tests/host/boot/test_boot_validate.c core/boot/src/{boot_info,boot_validate}.c "$out/serial_stub.c"
 cmake -P quality/tests/init/test_headless_component_policy.cmake
+
+echo "Building test_servicemgr"
+# The test_servicemgr needs some fake stubs which are usually built by CMake, but since CMake fails due to unrelated targets, we compile it directly to verify.
+"$compiler" -std=gnu11 -Iinterface/include -Iinterface -Icore/lib/runtime/include -Icore/lib/cap/include -Icore/lib/ipc/include -Icore/lib/namesvc/include -Icore/kernel/include -Icore/lib/include -I"$generated" -DBHARAT_HOST_TEST -o "$out/test_servicemgr" quality/tests/host/test_servicemgr.c core/services/servicemgr/servicemgr.c core/lib/ipc/src/ipc.c
+"$out/test_servicemgr"
+
 bash tools/testing/test_check_boot_log.sh
 echo "PASS: bootstrap recovery regressions"
