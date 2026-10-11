@@ -1,9 +1,0 @@
-<<<<<<< SEARCH
-        if self.strict and len(services_state) == 0:
-            results["forbidden_found"].append({"line": "Strict mode requires structured BOOT_EVT events, none found.", "marker": {"marker": "No structured events", "type": "string"}})
-            is_stable = False
-=======
-        if self.strict and len(services_state) == 0 and results["summary_pass"]:
-            results["forbidden_found"].append({"line": "Strict mode requires structured BOOT_EVT events, none found.", "marker": {"marker": "No structured events", "type": "string"}})
-            is_stable = False
->>>>>>> REPLACE
