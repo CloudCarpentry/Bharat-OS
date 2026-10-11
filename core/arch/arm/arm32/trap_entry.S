@@ -48,6 +48,15 @@
     mov r0, sp
     bl trap_handle
 
+    /* Scheduling inside a syscall may run another user thread, replacing the
+     * banked user SP/LR. Restore this frame's pair before returning to it. */
+    ldr r2, [sp, #BH_TF_FROM_USER_OFF]
+    cmp r2, #0
+    beq 3f
+    add r2, sp, #BH_TF_GPR13_OFF
+    ldm r2, {sp, lr}^
+    nop
+3:
     ldr r2, [sp, #BH_TF_STATUS_OFF]
     msr spsr_cxsf, r2
     ldr lr, [sp, #BH_TF_PC_OFF]

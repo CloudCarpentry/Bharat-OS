@@ -64,8 +64,8 @@ def resolve_target_yaml_path(path: Path) -> Path:
 def validate_yaml_target(raw: dict) -> None:
     yaml, jsonschema = _require_yaml_deps()
     if not SCHEMA_PATH.exists():
-        print(f"[Warning] Target schema not found at {SCHEMA_PATH}, skipping schema validation.")
-        return
+        print(f"Error: Target schema not found at {SCHEMA_PATH}")
+        sys.exit(1)
 
     with open(SCHEMA_PATH, "r") as f:
         schema = yaml.safe_load(f)

@@ -576,6 +576,10 @@ struct bh_process {
     uint32_t home_core_id;
     uint32_t generation;
 
+    // brk boundary tracking
+    uintptr_t brk_start;
+    uintptr_t brk_current;
+
     // Personality tagging for subsystems (e.g., Linux, Android, Windows)
     bh_process_personality_t personality;
 

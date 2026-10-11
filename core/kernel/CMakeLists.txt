@@ -38,6 +38,7 @@ set(BHARAT_GENERATED_INCLUDE_DIR "${CMAKE_BINARY_DIR}/generated/include")
 file(MAKE_DIRECTORY "${BHARAT_GENERATED_INCLUDE_DIR}")
 
 target_include_directories(bharat_kernel_includes INTERFACE
+    ${BHARAT_GENERATED_INCLUDE_DIR}
     ${BHARAT_KERNEL_INCLUDE_DIR}
     ${BHARAT_KERNEL_INCLUDE_DIR}/generated
     ${CMAKE_BINARY_DIR}/generated
@@ -279,9 +280,18 @@ if(ARCH STREQUAL "riscv64")
     add_compile_definitions(BHARAT_RISCV_SOC_PROFILE_STR="${BHARAT_RISCV_SOC_PROFILE}")
 endif()
 # ── Memory Layer Options ──────────────────────────────────────────────────
-option(BHARAT_PROFILE_MMU_FULL "Full VM, demand paging, COW, shared memory" ON)
-option(BHARAT_PROFILE_MMU_LITE "Static/eager mappings only" OFF)
-option(BHARAT_PROFILE_MPU_ONLY "MPU regions only, no VM" OFF)
+if(ARCH STREQUAL "arm32" OR ARCH STREQUAL "riscv32")
+    option(BHARAT_PROFILE_MMU_FULL "Full VM, demand paging, COW, shared memory" OFF)
+    option(BHARAT_PROFILE_MMU_LITE "Static/eager mappings only" ON)
+    option(BHARAT_PROFILE_MPU_ONLY "MPU regions only, no VM" OFF)
+    if(BHARAT_PROFILE_MMU_FULL)
+        message(FATAL_ERROR "Architecture '${ARCH}' does not support BHARAT_PROFILE_MMU_FULL (MMU-Full). Only MMU_LITE or MPU_ONLY is supported.")
+    endif()
+else()
+    option(BHARAT_PROFILE_MMU_FULL "Full VM, demand paging, COW, shared memory" ON)
+    option(BHARAT_PROFILE_MMU_LITE "Static/eager mappings only" OFF)
+    option(BHARAT_PROFILE_MPU_ONLY "MPU regions only, no VM" OFF)
+endif()
 if(BHARAT_PROFILE_MMU_FULL)
     add_compile_definitions(BHARAT_PROFILE_MMU_FULL=1)
 elseif(BHARAT_PROFILE_MMU_LITE)
@@ -345,8 +355,9 @@ add_library(bharat_mm_accel OBJECT
 target_link_libraries(bharat_mm_accel PRIVATE bharat_kernel_includes bharat_kernel_buildopts)
 target_compile_options(bharat_mm_accel PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
 
-# Advanced VM Tier (Conditionally Included)
-if(BHARAT_ENABLE_ADVANCED_VM)
+# MMU-Lite still needs real eager mappings and protection domains for userspace.
+# Optional demand paging/COW stay governed by their separate feature flags.
+if(BHARAT_ENABLE_ADVANCED_VM OR BHARAT_PROFILE_MMU_LITE)
     add_library(bharat_mm_aspace OBJECT
         src/mm/vm/aspace/aspace.c
         src/mm/vm/aspace/vm_space.c
@@ -431,6 +442,11 @@ target_link_libraries(k_core PRIVATE bharat_arch_private_includes)
 target_link_libraries(k_trap PRIVATE bharat_arch_private_includes)
 
 set(BHARAT_BOOT_ROOT "${CMAKE_SOURCE_DIR}/core/boot")
+if(ARCH STREQUAL "arm64")
+    # Before MMU setup, RAM has Device attributes and unaligned accesses fault.
+    # This also protects early console helpers whose byte arrays are unaligned.
+    target_compile_options(bharat_kernel_buildopts INTERFACE -mstrict-align)
+endif()
 if(NOT EXISTS "${BHARAT_BOOT_ROOT}/src")
     message(FATAL_ERROR "Missing canonical boot source root: ${BHARAT_BOOT_ROOT}")
 endif()
@@ -681,7 +697,7 @@ if(BHARAT_ENABLE_KERNEL_SELFTESTS)
     target_sources(kernel.elf PRIVATE $<TARGET_OBJECTS:k_test_support>)
 endif()
 
-if(BHARAT_ENABLE_ADVANCED_VM)
+if(BHARAT_ENABLE_ADVANCED_VM OR BHARAT_PROFILE_MMU_LITE)
     target_sources(kernel.elf PRIVATE
         $<TARGET_OBJECTS:bharat_mm_aspace>
         $<TARGET_OBJECTS:bharat_mm_objects>

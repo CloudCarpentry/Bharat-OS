@@ -1,6 +1,38 @@
 # SPDX-License-Identifier: MIT
 cmake_minimum_required(VERSION 3.20)
 
+add_executable(test_init_failure_handoff
+    ../init/test_init_failure_handoff.c
+    ${CMAKE_SOURCE_DIR}/core/services/core/init/init_runtime.c
+    ${CMAKE_SOURCE_DIR}/core/services/core/init/init_graph.c
+    ${CMAKE_SOURCE_DIR}/core/services/core/init/init_events.c
+    ${CMAKE_SOURCE_DIR}/core/services/core/init/init_rollback.c
+    ${CMAKE_SOURCE_DIR}/core/services/core/init/init_status.c
+    ${CMAKE_SOURCE_DIR}/core/services/core/init/init_profile.c)
+target_include_directories(test_init_failure_handoff PRIVATE
+    ${CMAKE_SOURCE_DIR}/interface/include
+    ${CMAKE_SOURCE_DIR}/core/lib/runtime/include)
+add_test(NAME host_test_init_failure_handoff COMMAND test_init_failure_handoff)
+
+add_executable(test_init_readiness
+    ../init/test_init_readiness.c
+    ${CMAKE_SOURCE_DIR}/core/services/core/init/init_runtime.c
+    ${CMAKE_SOURCE_DIR}/core/services/core/init/init_graph.c
+    ${CMAKE_SOURCE_DIR}/core/services/core/init/init_events.c
+    ${CMAKE_SOURCE_DIR}/core/services/core/init/init_rollback.c
+    ${CMAKE_SOURCE_DIR}/core/services/core/init/init_status.c
+    ${CMAKE_SOURCE_DIR}/core/services/core/init/init_profile.c)
+target_include_directories(test_init_readiness PRIVATE
+    ${CMAKE_SOURCE_DIR}/interface/include
+    ${CMAKE_SOURCE_DIR}/core/lib/runtime/include)
+add_test(NAME host_test_init_readiness COMMAND test_init_readiness)
+
+add_executable(host_test_cap_format ../../../core/lib/cap/tests/test_cap.c ../../../core/lib/cap/src/cap.c)
+target_include_directories(host_test_cap_format PRIVATE
+    "${CMAKE_SOURCE_DIR}/core/lib/cap/include"
+    "${CMAKE_SOURCE_DIR}/interface/include")
+add_test(NAME host_test_cap_format COMMAND host_test_cap_format)
+
 add_executable(host_test_cap_generation_production test_cap_generation_policy.c)
 target_include_directories(host_test_cap_generation_production PRIVATE
     "${CMAKE_SOURCE_DIR}/core/kernel/include")
@@ -195,7 +227,7 @@ set_tests_properties(host_test_mon_vm PROPERTIES LABELS "vm")
 # VMM / ASpace / VM base-object conformance currently remains in top-level tests
 # (`test_vmm_aspace`) due additional prot-domain and arch-cap dependencies.
 
-add_executable(host_test_vmm_fault ../test_vmm_fault.c host_stubs.c ../../kernel/src/mm/vm/fault/fault.c ../../kernel/src/mm/vm/objects/vm_object.c ../../kernel/src/mm/vm/objects/vm_object_refcount.c ../../kernel/src/mm/vm/aspace/vm_space.c ../../kernel/src/mm/vm/aspace/aspace.c ../../kernel/src/mm/pmm/early_alloc.c ../../kernel/src/mm/pmm/pmm_init.c ../../kernel/src/mm/pmm/pmm_buddy.c ../../kernel/src/mm/pmm/pmm_fault.c ../../kernel/src/mm/pmm/pt_pool.c ../../kernel/src/mm/tlb/tlb_shootdown.c ../../kernel/src/cap/cap_cspace.c ../../kernel/src/cap/cap_dispatch.c ../../kernel/src/cap/cap_revoke.c ../../kernel/src/cap/cap_policy.c ../benchmark_stubs.c ../../kernel/src/lib/base/string.c ../../hal/common/memops/mem_scalar.c mock_panic.c)
+add_executable(host_test_vmm_fault ../test_vmm_fault.c host_stubs.c ../../kernel/src/mm/vm/fault/fault.c ../../kernel/src/mm/vm/objects/vm_object.c ../../kernel/src/mm/vm/objects/vm_object_refcount.c ../../kernel/src/mm/vm/aspace/vm_space.c ../../kernel/src/mm/vm/aspace/aspace.c ../../kernel/src/mm/pmm/early_alloc.c ../../kernel/src/mm/pmm/pmm_init.c ../../kernel/src/mm/pmm/pmm_buddy.c ../../kernel/src/mm/pmm/pmm_fault.c ../../kernel/src/mm/pt/pt_pool.c ../../kernel/src/mm/tlb/tlb_shootdown.c ../../kernel/src/cap/cap_cspace.c ../../kernel/src/cap/cap_dispatch.c ../../kernel/src/cap/cap_revoke.c ../../kernel/src/cap/cap_policy.c ../benchmark_stubs.c ../../kernel/src/lib/base/string.c ../../hal/common/memops/mem_scalar.c mock_panic.c)
 target_include_directories(host_test_vmm_fault PRIVATE ${CMAKE_SOURCE_DIR}/core/kernel/include ${CMAKE_SOURCE_DIR}/core/kernel/src ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/boot/include ${CMAKE_SOURCE_DIR}/core/lib/include ${CMAKE_BINARY_DIR}/generated/include)
 target_compile_definitions(host_test_vmm_fault PRIVATE TESTING=1)
 add_test(NAME host_test_vmm_fault COMMAND host_test_vmm_fault)
@@ -437,6 +469,17 @@ add_executable(test_init_rollback test_init_rollback.c ../../core/services/core/
 target_include_directories(test_init_rollback PRIVATE ../../interface/include ../../core/services/core/init)
 add_test(NAME host_test_init_rollback COMMAND test_init_rollback)
 
+add_executable(test_runtime_host
+    runtime/test_runtime_host.c
+    ../../core/lib/runtime/host/runtime_host.c
+)
+target_include_directories(test_runtime_host PRIVATE
+    "${CMAKE_SOURCE_DIR}/core/kernel/include"
+    "${CMAKE_SOURCE_DIR}/interface/uapi/runtime"
+    "${CMAKE_SOURCE_DIR}"
+)
+add_test(NAME host_test_runtime_host COMMAND test_runtime_host)
+
 add_executable(test_ktime time/test_ktime.c ../../core/kernel/src/time/ktime.c ../../core/hal/common/hal_timer_common.c ../../core/kernel/src/core/cpu_local.c)
 
 target_include_directories(test_ktime PRIVATE ../../core/kernel/include ../../interface/include ../../core/hal/include ../../core/boot/include)
@@ -653,6 +696,32 @@ target_include_directories(test_execution_planner PRIVATE
 )
 add_test(NAME host_test_execution_planner COMMAND test_execution_planner)
 
+add_executable(test_netstack_phase2
+    ../test_netstack_phase2.c
+    ../../../core/services/netstack/src/arp.c
+    ../../../core/services/netstack/src/checksum.c
+    ../../../core/services/netstack/src/driver_virtio_adapter.c
+    ../../../core/services/netstack/src/ethernet.c
+    ../../../core/services/netstack/src/icmp.c
+    ../../../core/services/netstack/src/ipv4.c
+    ../../../core/services/netstack/src/loopback.c
+    ../../../core/services/netstack/src/netbuf.c
+    ../../../core/services/netstack/src/netstack_stubs.c
+    ../../../core/services/netstack/src/socket_table.c
+    ../../../core/services/netstack/src/tcp.c
+    ../../../core/services/netstack/src/udp.c
+    ../../../core/lib/packet/src/packet.c
+)
+target_include_directories(test_netstack_phase2 PRIVATE
+    ../../../core/services/netstack/src
+    ../../../core/lib/runtime/include
+    ../../../interface/include
+    ../../../interface/uapi
+    ../../../core/lib/packet/include
+)
+target_compile_definitions(test_netstack_phase2 PRIVATE BHARAT_HOST_TEST=1)
+add_test(NAME host_test_netstack_phase2 COMMAND test_netstack_phase2)
+
 add_subdirectory(ipc)
 
 # SPDX-License-Identifier: MIT
@@ -680,14 +749,120 @@ target_include_directories(test_bh_seqlock_concurrency PRIVATE
 target_link_libraries(test_bh_seqlock_concurrency PRIVATE pthread)
 add_test(NAME host_test_bh_seqlock_concurrency COMMAND test_bh_seqlock_concurrency)
 
+# URPC SPSC Concurrency Test
+add_executable(host_test_urpc_concurrency
+    test_urpc_concurrency.c
+    ../../../core/kernel/src/lib/ds/urpc_ring.c
+)
+target_include_directories(host_test_urpc_concurrency PRIVATE
+    ../../../core/kernel/include
+)
+target_link_libraries(host_test_urpc_concurrency PRIVATE pthread)
+add_test(NAME host_test_urpc_concurrency COMMAND host_test_urpc_concurrency)
+
 # Tiny UI Userspace Stack Test
 add_executable(host_test_tiny_ui_stack
     ../test_tiny_ui_stack.c
     ../../../core/stacks/ui/lcd/tiny_ui.c
+    ../../../core/stacks/ui/theme/default_theme.c
 )
 target_include_directories(host_test_tiny_ui_stack PRIVATE
     ../../../interface/include
 )
 add_test(NAME host_test_tiny_ui_stack COMMAND host_test_tiny_ui_stack)
 set_tests_properties(host_test_tiny_ui_stack PROPERTIES LABELS "ui")
+
+# UI Theme Host Test
+add_executable(host_test_theme
+    ../ui/test_theme.c
+    ../../../core/stacks/ui/theme/default_theme.c
+)
+target_include_directories(host_test_theme PRIVATE
+    ../../../interface/include
+)
+add_test(NAME host_test_theme COMMAND host_test_theme)
+set_tests_properties(host_test_theme PROPERTIES LABELS "ui")
+
+
+add_executable(host_test_ai_sched_fallback
+    sched/test_ai_sched_fallback.c
+)
+target_include_directories(host_test_ai_sched_fallback PRIVATE
+    ${CMAKE_SOURCE_DIR}/core/kernel/include
+    ${CMAKE_SOURCE_DIR}/core/hal/include
+    ${CMAKE_SOURCE_DIR}/core/lib/include
+    ${CMAKE_SOURCE_DIR}/interface/include
+    ${CMAKE_BINARY_DIR}/generated/include
+    ${CMAKE_SOURCE_DIR}/staging/ai)
+target_compile_definitions(host_test_ai_sched_fallback PRIVATE TESTING=1 BHARAT_HOST_TEST)
+add_test(NAME host_test_ai_sched_fallback COMMAND host_test_ai_sched_fallback)
+set_tests_properties(host_test_ai_sched_fallback PROPERTIES LABELS "scheduler")
+
+add_executable(host_test_robot_platform
+    platform/qemu/robot/test_robot_platform.c
+    ${CMAKE_SOURCE_DIR}/core/platform/qemu/robot/robot_platform.c
+    ${CMAKE_SOURCE_DIR}/core/drivers/sensor/virtual/virtual_sensors.c
+    ${CMAKE_SOURCE_DIR}/core/drivers/actuator/virtual/virtual_motors.c)
+target_include_directories(host_test_robot_platform PRIVATE
+    ${CMAKE_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/interface/include)
+add_test(NAME host_test_robot_platform COMMAND host_test_robot_platform)
+
+# Unified Boot Event Pipeline Host Test
+add_executable(host_test_boot_events
+    ../boot/test_boot_events.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/boot/boot_events.c
+)
+target_include_directories(host_test_boot_events PRIVATE
+    ${CMAKE_SOURCE_DIR}/interface/include
+    ${CMAKE_SOURCE_DIR}/core/kernel/include
+    ${CMAKE_SOURCE_DIR}/core/hal/include
+)
+target_compile_definitions(host_test_boot_events PRIVATE BHARAT_HOST_TEST=1)
+add_test(NAME host_test_boot_events COMMAND host_test_boot_events)
+set_tests_properties(host_test_boot_events PROPERTIES LABELS "boot")
+
+# Graphical Boot Diagnostics Host Test
+add_executable(host_test_boot_diagnostics
+    ../ui/test_boot_diagnostics.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/boot/boot_events.c
+)
+target_include_directories(host_test_boot_diagnostics PRIVATE
+    ${CMAKE_SOURCE_DIR}/interface/include
+    ${CMAKE_SOURCE_DIR}/core/kernel/include
+    ${CMAKE_SOURCE_DIR}/core/hal/include
+    ${CMAKE_SOURCE_DIR}/experience/shell
+)
+target_compile_definitions(host_test_boot_diagnostics PRIVATE BHARAT_HOST_TEST=1)
+add_test(NAME host_test_boot_diagnostics COMMAND host_test_boot_diagnostics)
+set_tests_properties(host_test_boot_diagnostics PROPERTIES LABELS "ui")
+
+# Shell Model Host Test
+add_executable(host_test_shell_model
+    ../ui/test_shell_model.c
+    ${CMAKE_SOURCE_DIR}/experience/shell/shell_model.c
+)
+target_include_directories(host_test_shell_model PRIVATE
+    ${CMAKE_SOURCE_DIR}/interface/include
+    ${CMAKE_SOURCE_DIR}/experience/shell
+)
+target_compile_definitions(host_test_shell_model PRIVATE BHARAT_HOST_TEST=1)
+add_test(NAME host_test_shell_model COMMAND host_test_shell_model)
+set_tests_properties(host_test_shell_model PROPERTIES LABELS "ui")
+
+# Shell Navigation & Interaction Host Test
+add_executable(host_test_shell_navigation
+    ../ui/test_shell_navigation.c
+    ${CMAKE_SOURCE_DIR}/experience/shell/shell_model.c
+)
+target_include_directories(host_test_shell_navigation PRIVATE
+    ${CMAKE_SOURCE_DIR}/interface/include
+    ${CMAKE_SOURCE_DIR}/core/kernel/include
+    ${CMAKE_SOURCE_DIR}/experience/shell
+    ${CMAKE_SOURCE_DIR}/quality/tests/ui/stubs
+)
+target_compile_definitions(host_test_shell_navigation PRIVATE BHARAT_HOST_TEST=1)
+add_test(NAME host_test_shell_navigation COMMAND host_test_shell_navigation)
+set_tests_properties(host_test_shell_navigation PROPERTIES LABELS "ui")
+
 

@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stddef.h>
+#include <bharat/runtime/freestanding_string.h>
 #include "fs/vfs.h"
 #include "fs/mount.h"
 
@@ -10,22 +11,6 @@
 static vfs_mount_t g_mounts[VFS_MAX_MOUNTS];
 static size_t g_mount_count = 0;
 static uint32_t g_mount_lock = 0;
-
-static void vfs_strcpy(char *dst, const char *src, size_t dst_size) {
-    size_t i = 0;
-    if (!dst || dst_size == 0) {
-        return;
-    }
-    if (!src) {
-        dst[0] = '\0';
-        return;
-    }
-    while (i + 1 < dst_size && src[i] != '\0') {
-        dst[i] = src[i];
-        i++;
-    }
-    dst[i] = '\0';
-}
 
 int vfs_mount_fs(const char* target_path, vfs_node_t* fs_root, capability_t* caller_cap) {
     if (!target_path || !fs_root || !caller_cap) {
@@ -52,8 +37,9 @@ int vfs_mount_fs(const char* target_path, vfs_node_t* fs_root, capability_t* cal
         return -3; // No Memory
     }
 
-    vfs_strcpy(g_mounts[g_mount_count].target_path, target_path, sizeof(g_mounts[g_mount_count].target_path));
-    g_mounts[g_mount_count].target_path_len = vfs_strnlen(target_path, sizeof(g_mounts[g_mount_count].target_path));
+    strncpy(g_mounts[g_mount_count].target_path, target_path, sizeof(g_mounts[g_mount_count].target_path) - 1);
+    g_mounts[g_mount_count].target_path[sizeof(g_mounts[g_mount_count].target_path) - 1] = '\0';
+    g_mounts[g_mount_count].target_path_len = strlen(g_mounts[g_mount_count].target_path);
     g_mounts[g_mount_count].root_node = fs_root;
     g_mounts[g_mount_count].mount_cap = *caller_cap;
     g_mounts[g_mount_count].origin_id = caller_cap->capability_id; // Simple mapping for now

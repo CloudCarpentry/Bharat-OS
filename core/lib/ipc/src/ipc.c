@@ -111,7 +111,10 @@ int32_t bharat_ipc_recv_ex(bharat_ipc_endpoint_t endpoint,
     if (header_st != BHARAT_IPC_STATUS_OK) {
         return header_st;
     }
-    if ((sizeof(msg.header) + msg.header.payload_size) > recv_len || msg.header.payload_size > max_size) {
+    if ((sizeof(msg.header) + msg.header.payload_size) != recv_len) {
+        return BHARAT_IPC_STATUS_ERR_LENGTH;
+    }
+    if (msg.header.payload_size > max_size) {
         return BHARAT_IPC_STATUS_ERR_TRUNCATED;
     }
 

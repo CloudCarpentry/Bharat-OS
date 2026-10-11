@@ -14,6 +14,10 @@ int tcp_rx(netbuf_t *nb, uint32_t src_ip, uint32_t dst_ip) {
     }
 
     tcphdr_t *tcph = (tcphdr_t *)netbuf_data(nb);
+    if (tcph->doff < 5) {
+        return -1; // Invalid data offset (header smaller than 20 bytes)
+    }
+
     uint16_t header_len = tcph->doff * 4;
 
     if (netbuf_len(nb) < header_len) {
@@ -65,12 +69,60 @@ int tcp_tx(int sock_id, uint32_t dst_ip, uint16_t dst_port, const uint8_t *data,
     socket_t *sock = socket_get(sock_id);
     if (!sock) return -1;
 
-    // TCP transmission placeholder.
-    // This will involve sequence numbers, window sizes, and state machine updates.
-    (void)dst_ip;
-    (void)dst_port;
-    (void)data;
-    (void)len;
+    // Reject unsupported states
+    if (sock->tcp_state != TCP_STATE_ESTABLISHED) {
+        return -1;
+    }
 
-    return -1; // Not implemented yet
+    // Integer overflow protection for netbuf capacity
+    uint32_t total_len = sizeof(tcphdr_t) + (uint32_t)len;
+    if (total_len > NETBUF_MAX_SIZE || total_len > 0xFFFF) {
+        return -1;
+    }
+
+    netbuf_t nb;
+    netbuf_init(&nb);
+
+    // Append payload if any
+    if (len > 0) {
+        uint8_t *payload = netbuf_put(&nb, len);
+        if (!payload) return -1;
+        memcpy(payload, data, len);
+    }
+
+    tcphdr_t *tcph = (tcphdr_t *)netbuf_push(&nb, sizeof(tcphdr_t));
+    if (!tcph) return -1;
+
+    // Clear the header to zero out padding and bits we don't set explicitly
+    memset(tcph, 0, sizeof(tcphdr_t));
+
+    tcph->source = bnet_htons(sock->local_port);
+    tcph->dest = bnet_htons(dst_port);
+    tcph->seq = bnet_htonl(sock->tcp_seq);
+    tcph->ack_seq = bnet_htonl(sock->tcp_ack);
+    tcph->doff = 5; // 20 bytes minimum header size (5 words)
+    tcph->psh = (len > 0) ? 1 : 0;
+    tcph->ack = 1; // Basic phase 1 assumption: always ACK in established state
+    tcph->window = bnet_htons(sock->tcp_window);
+    tcph->check = 0;
+    tcph->urg_ptr = 0;
+
+    // Source IP resolution
+    uint32_t src_ip = sock->local_ip;
+    if (src_ip == SOCK_ANY_IP) {
+        src_ip = ipv4_get_source_ip(dst_ip);
+    }
+    if (src_ip == 0) {
+        return -1;
+    }
+
+    tcph->check = net_csum_tcp_ipv4(tcph, total_len, src_ip, dst_ip);
+
+    int res = ipv4_tx(&nb, dst_ip, IPPROTO_TCP);
+    if (res == 0) {
+        // Advance sequence number
+        sock->tcp_seq += len;
+    }
+
+    return res;
 }

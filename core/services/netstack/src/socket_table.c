@@ -8,6 +8,7 @@ void socket_table_init(void) {
         sockets[i].id = -1;
         sockets[i].state = SOCK_STATE_CLOSED;
         sockets[i].rx_callback = NULL;
+        sockets[i].tcp_state = TCP_STATE_CLOSED;
     }
 }
 
@@ -18,6 +19,10 @@ int socket_create(void) {
             sockets[i].state = SOCK_STATE_BOUND; // Simplified for Phase 2: Create = Bind
             sockets[i].local_ip = SOCK_ANY_IP;
             sockets[i].local_port = 0;
+            sockets[i].tcp_state = TCP_STATE_CLOSED;
+            sockets[i].tcp_seq = 0;
+            sockets[i].tcp_ack = 0;
+            sockets[i].tcp_window = 8192;
             return i;
         }
     }
@@ -48,6 +53,7 @@ int socket_close(int id) {
     sockets[id].state = SOCK_STATE_CLOSED;
     sockets[id].id = -1;
     sockets[id].rx_callback = NULL;
+    sockets[id].tcp_state = TCP_STATE_CLOSED;
     return 0;
 }
 

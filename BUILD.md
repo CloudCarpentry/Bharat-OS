@@ -257,6 +257,13 @@ Examples:
 
 ## 2) Host prerequisites by platform
 
+### Toolchain Requirements
+
+- **CMake**: 3.20 or newer is required to support the modern preset architecture.
+- **Compiler**: LLVM/Clang + LLD is required. Minimum supported version is 14.
+- **QEMU**: Version 7.0 or newer is required to ensure consistent emulator behavior.
+
+
 ### Windows host (PowerShell)
 
 Install:
@@ -368,6 +375,26 @@ Output layout uses CMake preset name:
 - `build/<preset>/manifests/run-manifest.json`
 - `build/<preset>/manifests/flash-manifest.json`
 - `build/<preset>/manifests/debug-manifest.json`
+
+The build pipeline clears `CMakeCache.txt` before configuring a target. Targets
+that share a preset therefore use the selected preset, target definitions and
+project defaults, without inheriting options from the previous target. Compiled
+outputs are retained and rebuilt when their inputs or compile options change.
+Use `all` when compilation is required; `run` packages existing build outputs
+and launches QEMU without compiling them.
+
+Every QEMU run rejects `BOOT_FAIL:` output, including targets without a named
+boot contract and output received while stopping the emulator. A kernel-entry
+marker alone does not override a reported userspace bootstrap failure.
+The desktop GUI smoke targets use the same userspace readiness requirements as
+their headless counterparts; framebuffer rendering alone does not qualify boot.
+Interactive runs retain a healthy emulator until it is closed, and stop with a
+failure status when a forbidden marker appears.
+
+The framebuffer boot dashboard uses integer percentages for progress bars.
+It can render before a thread owns floating-point state, including on RISC-V
+with the supervisor FS field disabled. The existing floating-point widget API
+remains available to userspace callers.
 
 ### Build instrumentation versus product configuration
 
@@ -576,9 +603,9 @@ These test targets assert that the ABI boundaries and dispatch tables do not cau
 ```bash
 ./tools/build.sh all --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml --smoke
 ./tools/build.sh all --target-yaml delivery/targets/qemu/arm64_desktop_headless.yaml --smoke
-./tools/build.sh all --target-yaml delivery/targets/qemu/arm32_desktop_headless.yaml --smoke
+./tools/build.sh all --target-yaml delivery/targets/qemu/arm32_mmu_lite_headless.yaml --smoke
 ./tools/build.sh all --target-yaml delivery/targets/qemu/riscv64_desktop_headless.yaml --smoke
-./tools/build.sh all --target-yaml delivery/targets/qemu/riscv32_desktop_headless.yaml --smoke
+./tools/build.sh all --target-yaml delivery/targets/qemu/riscv32_mmu_lite_headless.yaml --smoke
 ```
 
 ## 5.3 GUI presets (examples)
@@ -586,17 +613,17 @@ These test targets assert that the ABI boundaries and dispatch tables do not cau
 ```powershell
 .\tools\build.ps1 all --target-yaml delivery/targets/qemu/x86_64_desktop_gui.yaml --interactive
 .\tools\build.ps1 all --target-yaml delivery/targets/qemu/arm64_desktop_gui.yaml --interactive
-.\tools\build.ps1 all --target-yaml delivery/targets/qemu/arm32_desktop_gui.yaml --interactive
+.\tools\build.ps1 all --target-yaml delivery/targets/qemu/arm32_edge_gui.yaml --interactive
 .\tools\build.ps1 all --target-yaml delivery/targets/qemu/riscv64_desktop_gui.yaml --interactive
-.\tools\build.ps1 all --target-yaml delivery/targets/qemu/riscv32_desktop_gui.yaml --interactive
+.\tools\build.ps1 all --target-yaml delivery/targets/qemu/riscv32_edge_gui.yaml --interactive
 ```
 
 ```bash
 ./tools/build.sh all --target-yaml delivery/targets/qemu/x86_64_desktop_gui.yaml --interactive
 ./tools/build.sh all --target-yaml delivery/targets/qemu/arm64_desktop_gui.yaml --interactive
-./tools/build.sh all --target-yaml delivery/targets/qemu/arm32_desktop_gui.yaml --interactive
+./tools/build.sh all --target-yaml delivery/targets/qemu/arm32_edge_gui.yaml --interactive
 ./tools/build.sh all --target-yaml delivery/targets/qemu/riscv64_desktop_gui.yaml --interactive
-./tools/build.sh all --target-yaml delivery/targets/qemu/riscv32_desktop_gui.yaml --interactive
+./tools/build.sh all --target-yaml delivery/targets/qemu/riscv32_edge_gui.yaml --interactive
 ```
 
 ## 5.4 Legacy positional example requested by users
@@ -700,6 +727,34 @@ Intentional, reviewed Native syscall additions require an explicit
 
 # Runtime implementation maturity gate
 
+The five canonical headless smoke contracts require real bootstrap service
+evidence (`NAMESVC_USER_ENTRY`, `NAMESVC_MAIN_ENTER`, `NAMESVC_READY`,
+`PROCESS_MANAGER_LAUNCH`, `PROCESS_MANAGER_READY`, `BOOT_CLASS_CORE_READY`).
+Init entry, packaging, and `SERVICE_GRAPH_COMPLETE` alone cannot qualify boot.
+Validate the parser with `bash tools/testing/test_check_boot_log.sh`.
+
+These development targets select `BHARAT_INIT_CORE_BOOTSTRAP_ONLY`, packaging
+the real init/namesvc/process_manager ELFs and resolving that explicit P0 graph.
+It does not qualify the full production graph, service RPC, or graphical boot.
+Headless EDGE and DESKTOP profiles select no graphical boot daemon when
+`BHARAT_BOOT_GUI=OFF`.
+
+```bash
+./tools/build.sh all --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml --smoke
+./tools/build.sh all --target-yaml delivery/targets/qemu/arm64_desktop_headless.yaml --smoke
+./tools/build.sh all --target-yaml delivery/targets/qemu/riscv64_desktop_headless.yaml --smoke
+./tools/build.sh all --target-yaml delivery/targets/qemu/arm32_mmu_lite_headless.yaml --smoke
+./tools/build.sh all --target-yaml delivery/targets/qemu/riscv32_mmu_lite_headless.yaml --smoke
+python3 tools/run_qemu_matrix.py --headless --smoke --all-arch
+CC=clang bash tools/testing/test_bootstrap_recovery.sh
+```
+
+The focused runner uses the x86_64 generated configuration and compiles nine
+host test executables plus component-policy and boot-log checks. It is separate
+from the broad `host-test` preset, which currently has unrelated stale source
+paths. See `docs/reviews/boot-flow-p0-001-recovery.md` for recorded results and
+`docs/adr/ADR-036-bootstrap-service-readiness.md` for ownership/lifecycle limits.
+
 Every configure/build action checks `interface/contracts/implementation_maturity.json` before the
 linker runs. Targets declare `implementation_maturity.profile`; release and hardened profiles reject
 `STUB` and `TEST_ONLY` implementations. A development
@@ -739,3 +794,29 @@ Results are written as JSON and CSV below `build/bench-results`. Deterministic
 copy/allocation/checksum metrics are validation gates. QEMU elapsed time is only
 a software-overhead indicator, not real GPU/NPU/DMA performance evidence. See
 `quality/benchmarks/README.md` for the evidence and claim boundary.
+
+The desktop GUI targets select the same explicit CORE bootstrap graph as the
+headless desktop targets: real `namesvc` and `process_manager` readiness is
+required while the boot dashboard renders. This does not qualify the wider
+production service graph. RTOS targets explicitly select the STATIC runtime
+(`rt-supervisor`); their contract requires the supervisor to validate its launch
+ABI and enter userspace. The MPU targets retain their protection requirements;
+a hardware/backend capability failure is a failed run.
+
+MMU-Lite builds include the real eager address-space and protection-domain
+implementation even when `BHARAT_ENABLE_ADVANCED_VM` is disabled. Demand paging,
+COW and other optional VM features remain disabled by the RTOS profile. The flat
+VMM stub cannot load a protected userspace supervisor. ARM64 Linux boot uses a
+raw kernel image (`elf_to_bin` packaging), so QEMU supplies the DTB and initrd;
+the kernel ELF remains the debugging artifact.
+
+SMP bootstrap uses the normalized HAL CPU inventory used by scheduler
+partitioning. When firmware provides no CPU inventory, only the BSP is confirmed;
+bootstrap does not invent APs from the board policy's maximum. A known AP that
+fails to come online still causes strict RT boot failure. This does not implement
+x86 INIT/SIPI or qualify x86 multi-CPU boot.
+
+Early metadata allocations preserve the full span of every reserved boot module,
+including reservations between the allocation endpoints and those reached after
+alignment. Overflow fails the allocation. The STATIC root uses the canonical
+userspace ELF layout with its own entry (`NO_CRT0`) and static linking.

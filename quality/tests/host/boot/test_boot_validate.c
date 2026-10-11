@@ -119,6 +119,7 @@ void test_boot_module_valid_container() {
     good_hdr.payload_offset = 128;
     good_hdr.payload_size = 100;
     strcpy(good_hdr.name, "services/init");
+    good_hdr.name_length = strlen(good_hdr.name);
 
     boot_info_add_module(&bi, (uint64_t)&good_hdr, sizeof(good_hdr) + 100, "initrd");
 
@@ -146,6 +147,7 @@ void test_boot_module_rt_supervisor() {
     rt_hdr.payload_offset = 128;
     rt_hdr.payload_size = 200;
     strcpy(rt_hdr.name, "services/rt-supervisor");
+    rt_hdr.name_length = strlen(rt_hdr.name);
 
     boot_info_add_module(&bi, (uint64_t)&rt_hdr, sizeof(rt_hdr) + 200, "initrd");
 
@@ -155,6 +157,43 @@ void test_boot_module_rt_supervisor() {
     assert(bi.init_payload_kind == BH_BOOT_HANDOFF_USER_ELF);
 
     printf("Passed test_boot_module_rt_supervisor\n");
+}
+
+void test_boot_service_bundle(void) {
+    struct __attribute__((packed)) {
+        bh_boot_module_header_test_t root;
+        unsigned char root_payload[4];
+        bh_boot_module_header_test_t service;
+        unsigned char service_payload[4];
+    } bundle = {0};
+    bundle.root = (bh_boot_module_header_test_t){.magic = 0xB4A2D1A5,
+        .abi_version = 0x100, .header_size = 128, .payload_offset = 128,
+        .payload_size = 4, .module_kind = 1, .name_length = 13,
+        .name = "services/init"};
+    bundle.service = bundle.root;
+    bundle.service.module_kind = 3;
+    bundle.service.name_length = 16;
+    strcpy(bundle.service.name, "services/namesvc");
+    boot_info_t bi;
+    boot_info_init(&bi);
+    assert(boot_info_add_module(&bi, (uintptr_t)&bundle, sizeof(bundle), "initrd") == 0);
+    assert(boot_info_finalize(&bi) == 0);
+    assert(bi.module_count == 2);
+    assert(bi.init_payload_phys == (uintptr_t)bundle.root_payload);
+    assert(bi.modules[1].phys_start == (uintptr_t)bundle.service_payload);
+    assert(bi.modules[1].size == 4 && strcmp(bi.modules[1].name, "services/namesvc") == 0);
+    for (unsigned mode = 0; mode < 4; ++mode) {
+        boot_info_init(&bi);
+        bh_boot_module_header_test_t saved = bundle.service;
+        if (mode == 0) bundle.service.magic = 0;
+        if (mode == 1) bundle.service.payload_size = 5;
+        if (mode == 2) bundle.service.module_kind = 1;
+        if (mode == 3) bundle.service.name_length = 32;
+        assert(boot_info_add_module(&bi, (uintptr_t)&bundle, sizeof(bundle), "initrd") == 0);
+        assert(boot_info_finalize(&bi) != 0 && bi.is_degraded);
+        bundle.service = saved;
+    }
+    puts("Passed bounded service bundle and malformed suffix rejection");
 }
 
 void test_invalid_profile_model_combination() {
@@ -180,6 +219,7 @@ int main() {
     test_boot_module_invalid_magic();
     test_boot_module_valid_container();
     test_boot_module_rt_supervisor();
+    test_boot_service_bundle();
     test_invalid_profile_model_combination();
     printf("All host boot validation and negative tests passed.\n");
     return 0;

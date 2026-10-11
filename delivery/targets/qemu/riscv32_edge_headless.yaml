@@ -1,17 +1,22 @@
-name: riscv32_desktop_headless
+name: riscv32_edge_headless
 kind: qemu_target
 
 arch: riscv32
 board: qemu-virt-riscv32
-device_profile: desktop
+device_profile: edge
 personality_profile: native
-execution_profile: gp
+execution_profile: mix
+
+implementation_maturity:
+  profile: DEVELOPMENT
+  allow: [STUB]
 
 build:
   cmake_preset: riscv32-edge
   cmake_defs:
+    BHARAT_INIT_CORE_BOOTSTRAP_ONLY: ON
     BHARAT_ARCH_FAMILY: RISCV32
-    BHARAT_DEVICE_PROFILE: DESKTOP
+    BHARAT_DEVICE_PROFILE: EDGE
     BHARAT_PERSONALITY_PROFILE: NATIVE
     BHARAT_TARGET_BOARD: virt
     BHARAT_BOOT_GUI: OFF

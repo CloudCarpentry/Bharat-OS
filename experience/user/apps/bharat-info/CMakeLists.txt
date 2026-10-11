@@ -1,0 +1,3 @@
+add_executable(app_bharat_info main.c)
+target_link_libraries(app_bharat_info PRIVATE bharat_user_buildopts bharat_freestanding bharat_libcmin bharat_libruntime bharatc)
+bharat_configure_userspace_binary(app_bharat_info)

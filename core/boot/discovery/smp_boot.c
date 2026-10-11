@@ -4,6 +4,7 @@
 #include "hal/hal_irq.h"
 #include "hal/hal_timer.h"
 #include "hal/hal_topology.h"
+#include "hal/hal_cpu_topology.h"
 #include "hal/hal_pt.h"
 #include "hal/hal_tlb.h"
 #include "hal/hal.h"
@@ -191,11 +192,14 @@ int bh_smp_start_secondary_cpus(uint32_t requested_cpus) {
         return 0;
     }
 
-    system_discovery_t* disc = hal_get_system_discovery();
-    if (disc && disc->topology.cpu_count > 0) {
-        if (requested_cpus > disc->topology.cpu_count) {
-            requested_cpus = disc->topology.cpu_count;
-        }
+    /* Use the same normalized topology authority as scheduler partitioning.
+     * An empty firmware inventory confirms only the BSP, not phantom APs. */
+    hal_cpu_topology_info_t topology;
+    if (!hal_cpu_topology_query(&topology) || topology.discovered_cpu_count == 0U) {
+        return -1;
+    }
+    if (requested_cpus > topology.discovered_cpu_count) {
+        requested_cpus = topology.discovered_cpu_count;
     }
 
     if (requested_cpus > MAX_SUPPORTED_CORES) {

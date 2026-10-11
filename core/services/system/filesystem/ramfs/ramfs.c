@@ -30,13 +30,18 @@ static void ramfs_memset(void *s, int c, size_t n) {
 }
 
 static ramfs_internal_node_t* create_ramfs_node(const char* name, int is_dir) {
+    if (!name) return NULL;
     ramfs_internal_node_t* node = (ramfs_internal_node_t*)malloc(sizeof(ramfs_internal_node_t));
     if (!node) return NULL;
     ramfs_memset(node, 0, sizeof(ramfs_internal_node_t));
 
-    // safe string copy
+    // safe string copy with bounds validation
     size_t i = 0;
-    while(name[i] != '\0' && i < sizeof(node->vnode.name) - 1) {
+    while(name[i] != '\0') {
+        if (i >= sizeof(node->vnode.name) - 1) {
+            free(node);
+            return NULL; // Name too long, do not silently truncate
+        }
         node->vnode.name[i] = name[i];
         i++;
     }
@@ -81,7 +86,7 @@ static vfs_node_t* ramfs_lookup(vfs_node_t* dir, const char* name) {
 }
 
 static int ramfs_create(vfs_node_t* dir, const char* name, int flags) {
-    if (!dir || dir->flags != 2) return -1;
+    if (!dir || dir->flags != 2 || !name) return -1;
     ramfs_internal_node_t* pdir = (ramfs_internal_node_t*)dir->fs_data;
 
     // Check if exists
@@ -131,19 +136,34 @@ static int ramfs_write(vfs_file_t* file, uint64_t offset, const void* buffer, si
     if (!file || !file->node || !buffer) return -1;
     ramfs_internal_node_t* pnode = (ramfs_internal_node_t*)file->node->fs_data;
 
+    if (size == 0) return 0; // Trivial success for empty write
+
     // Check for integer overflow
     if (offset > ~(size_t)0 - size) return -1;
 
     size_t new_size = offset + size;
     if (new_size > pnode->allocated_size) {
+        // Allocate space
         char* new_data = (char*)realloc(pnode->data, new_size);
         if (!new_data) return -1;
         pnode->data = new_data;
-        // Zero out the gap between old size and new offset to prevent heap information leak
-        if (offset > pnode->vnode.size) {
-            ramfs_memset(pnode->data + pnode->vnode.size, 0, offset - pnode->vnode.size);
-        }
+
+        // Zero out the entire gap from old allocated_size to the new size if this is a fresh allocation
+        // But the gap we care about preventing leaks from is specifically between current EOF and the new offset.
+        // Wait, realloc doesn't initialize memory. The uninitialized space could be anywhere from old allocated_size to new_size.
+        size_t old_alloc = pnode->allocated_size;
         pnode->allocated_size = new_size;
+
+        if (new_size > old_alloc) {
+             ramfs_memset(pnode->data + old_alloc, 0, new_size - old_alloc);
+        }
+    }
+
+    // Explicitly zero out the gap between file size and offset for sparse writes, just in case
+    // previous operations didn't (though the above memset catches reallocs, we might have
+    // allocated_size > vnode.size and are doing a sparse write within allocated bounds).
+    if (offset > pnode->vnode.size) {
+        ramfs_memset(pnode->data + pnode->vnode.size, 0, offset - pnode->vnode.size);
     }
 
     ramfs_memcpy(pnode->data + offset, buffer, size);
@@ -222,10 +242,13 @@ static struct dirent* ramfs_readdir(vfs_file_t* file, uint32_t index) {
 }
 
 static int ramfs_getattr(vfs_node_t* node, void* stat_buf) {
-    if (!node || !stat_buf) return -1;
-    // We could fill up a proper stat struct here, for now it is a stub
-    // that returns success
-    return 0;
+    (void)node;
+    (void)stat_buf;
+    // We do not have a defined struct stat or VFS metadata contract available.
+    // Returning success with a zeroed buffer is a memory safety risk and hides
+    // an incomplete implementation.
+    // Return unsupported operation.
+    return -38; // -SYS_ENOSYS
 }
 
 static vfs_operations_t ramfs_ops = {

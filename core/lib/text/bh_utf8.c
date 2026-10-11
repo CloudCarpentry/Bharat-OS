@@ -58,6 +58,8 @@ bh_utf8_status_t bh_utf8_next(const char *s, size_t len, size_t *off, uint32_t *
 }
 
 bh_utf8_status_t bh_utf8_validate(const char *s, size_t len) {
+    if (!s) return BH_UTF8_ERR_INVALID;
+
     size_t off = 0;
     uint32_t cp;
     while (off < len) {

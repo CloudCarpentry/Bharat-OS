@@ -63,6 +63,19 @@ phys_addr_t pmm_boot_reservation_end(phys_addr_t paddr) {
     return 0;
 }
 
+/* Query the entire half-open allocation span, including interior reservations. */
+phys_addr_t pmm_boot_reservation_overlap_end(phys_addr_t start, phys_addr_t end) {
+    if (start >= end) return 0;
+    phys_addr_t overlap_end = 0;
+    for (uint32_t i = 0; i < boot_reservation_count; ++i) {
+        const pmm_boot_reserved_range_t *range = &boot_reservations[i];
+        if (start < range->end && end > range->start && range->end > overlap_end) {
+            overlap_end = range->end;
+        }
+    }
+    return overlap_end;
+}
+
 void pmm_add_region(phys_addr_t base, size_t size, uint32_t type,
                     uint32_t target_numa_node) {
   if (size < PAGE_SIZE)

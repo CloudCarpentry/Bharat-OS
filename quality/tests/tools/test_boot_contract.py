@@ -68,3 +68,18 @@ def test_contract_forbidden_found():
     passed, reason = check_log_against_contract(logs, required, forbidden)
     assert passed is False
     assert "Forbidden marker 'PANIC' found" in reason
+
+
+@pytest.mark.parametrize("arch", ["x86_64", "arm64", "riscv64"])
+def test_rtos_contract_requires_actual_static_root(arch):
+    import yaml
+    repo = Path(__file__).resolve().parents[3]
+    contract = yaml.safe_load((repo / "quality/contracts/boot/headless_boot_contract.yaml").read_text())
+    spec = contract["targets"][f"{arch}_rtos_mmu_lite_headless"]
+    assert "RT_SUPERVISOR: ENTERED" in spec["required"]
+    assert "RT_RUNTIME: STABLE" in spec["required"]
+    assert "RT_SUPERVISOR_ERROR:" in spec["forbidden"]
+    loader = [marker for marker in spec["required"] if not marker.startswith("RT_")]
+    full_root = loader + ["USER_INIT: ENTERED", "USER_INIT: SERVICE_GRAPH_COMPLETE", "BOOT_RUNTIME: STABLE"]
+    assert not check_log_against_contract(full_root, spec["required"], spec["forbidden"])[0]
+    assert check_log_against_contract(loader + ["RT_SUPERVISOR: ENTERED", "RT_RUNTIME: STABLE"], spec["required"], spec["forbidden"])[0]

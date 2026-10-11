@@ -287,6 +287,20 @@ elseif(BHARAT_DEVICE_PROFILE STREQUAL "DESKTOP" OR BHARAT_DEVICE_PROFILE STREQUA
     set(BHARAT_ENABLE_ADVANCED_VM ON CACHE BOOL "Enable advanced virtual memory" FORCE)
 endif()
 
+# Enforce 32-bit architecture memory model guard:
+# arm32 and riscv32 only support MMU-Lite or MPU-Only. MMU-Full is not supported.
+if(ARCH STREQUAL "arm32" OR ARCH STREQUAL "riscv32")
+    if(BHARAT_PROFILE_MMU_FULL)
+        message(FATAL_ERROR "Architecture '${ARCH}' does not support BHARAT_PROFILE_MMU_FULL. Only MMU_LITE or MPU_ONLY is supported.")
+    endif()
+    set(BHARAT_PROFILE_MMU_FULL OFF CACHE BOOL "Full VM" FORCE)
+    if(NOT BHARAT_PROFILE_MPU_ONLY)
+        set(BHARAT_PROFILE_MMU_LITE ON CACHE BOOL "MMU Lite" FORCE)
+        set(BHARAT_ENABLE_MMU ON CACHE BOOL "Enable MMU support" FORCE)
+        set(BHARAT_ENABLE_MPU OFF CACHE BOOL "Enable MPU support" FORCE)
+    endif()
+endif()
+
 # Determine Kernel Execution Profile (RT, GP, MIX) based on Device Profile
 if(BHARAT_DEVICE_PROFILE STREQUAL "RTOS"
    OR BHARAT_DEVICE_PROFILE STREQUAL "DRONE"
@@ -304,6 +318,11 @@ message(STATUS "Configuring for Kernel Execution Profile: ${BHARAT_KERNEL_PROFIL
 message(STATUS "Configuring for Device Profile: ${BHARAT_DEVICE_PROFILE}")
 message(STATUS "Configuring for Personality Profile: ${BHARAT_PERSONALITY_PROFILE}")
 message(STATUS "Architecture: ${BHARAT_ARCH_FAMILY}-${BHARAT_ARCH_BITS} (${BHARAT_ARCH_VARIANT})")
+if(BHARAT_ARCH_FAMILY STREQUAL "X86")
+    set(BHARAT_USER_IMAGE_BASE 0x40000000)
+else()
+    set(BHARAT_USER_IMAGE_BASE 0x1000)
+endif()
 
 # Normalize user-provided profile/personality selectors
 string(TOUPPER "${BHARAT_DEVICE_PROFILE}" BHARAT_DEVICE_PROFILE)
@@ -376,6 +395,11 @@ else()
     set(BHARAT_ARCH_NAME "unknown")
 endif()
 add_compile_definitions(BHARAT_ARCH_NAME="${BHARAT_ARCH_NAME}")
+if(BHARAT_ARCH_NAME MATCHES "^arm(32|64)$" AND CMAKE_CROSSCOMPILING)
+    # Shared ELF/boot libraries also execute before the MMU gives RAM Normal
+    # attributes. Keep compiler-generated accesses aligned in that phase.
+    add_compile_options(-mstrict-align)
+endif()
 
 # Architecture Variant
 bharat_set_profile_flag(BHARAT_ARCH_VARIANT_GENERIC "GENERIC" "${BHARAT_ARCH_VARIANT}")

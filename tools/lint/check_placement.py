@@ -60,7 +60,21 @@ def main():
                 filepath = os.path.join(hal_root, file)
                 report_violation(filepath, "Forbidden core/arch/hal hierarchy (HAL should not be a second architecture tree)", "File exists in core/arch/hal")
 
-    for root, _, files in os.walk(REPO_ROOT):
+    for root, dirs, files in os.walk(REPO_ROOT):
+        dirs_to_keep = []
+        for d in dirs:
+            d_path = os.path.join(root, d)
+            d_parts = set(d_path.split(os.sep))
+
+            d_is_kernel = d_path == kernel_dir or d_path.startswith(kernel_dir + os.sep)
+            d_is_services = (d_path == services_dir or d_path.startswith(services_dir + os.sep)) and "legacy" not in d_parts
+            d_is_memops_eligible = not memops_excluded.intersection(d_parts)
+            d_is_parent = kernel_dir.startswith(d_path + os.sep) or services_dir.startswith(d_path + os.sep)
+
+            if d_is_kernel or d_is_services or d_is_memops_eligible or d_is_parent:
+                dirs_to_keep.append(d)
+        dirs[:] = dirs_to_keep
+
         parts = set(root.split(os.sep))
 
         is_kernel = root == kernel_dir or root.startswith(kernel_dir + os.sep)
@@ -94,8 +108,8 @@ def main():
                         check_services_content(filepath, lines)
                     if needs_memops:
                         check_memops_content(filepath, lines)
-                except Exception:
-                    pass
+                except Exception as e:
+                    report_violation(filepath, "Cannot read file", str(e))
 
     if VIOLATIONS:
         print("\n[ERROR] Architecture placement violations found:")

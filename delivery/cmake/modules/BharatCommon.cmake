@@ -158,8 +158,10 @@ function(bharat_configure_userspace_library TARGET_NAME)
 endfunction()
 
 function(bharat_configure_userspace_binary TARGET_NAME)
+    # Canonical roots with their own startup ABI may supply _start directly.
+    cmake_parse_arguments(USER_BINARY "NO_CRT0" "" "" ${ARGN})
     # Inject the runtime crt0 object directly into the binary
-    if (TARGET bharat_crt0)
+    if (TARGET bharat_crt0 AND NOT USER_BINARY_NO_CRT0)
         target_sources(${TARGET_NAME} PRIVATE $<TARGET_OBJECTS:bharat_crt0>)
         # Make sure every binary implicitly links the syscalls needed by crt0 (bharat_exit)
         target_link_libraries(${TARGET_NAME} PRIVATE bharat_syscall)
@@ -173,6 +175,11 @@ function(bharat_configure_userspace_binary TARGET_NAME)
         set_target_properties(${TARGET_NAME} PROPERTIES POSITION_INDEPENDENT_CODE OFF)
         target_compile_options(${TARGET_NAME} PRIVATE -fno-pie -fno-PIC)
         target_link_options(${TARGET_NAME} PRIVATE -nostdlib "LINKER:-no-pie")
+        if(BHARAT_ARCH_FAMILY STREQUAL "X86")
+            # The low identity range contains the kernel and boot modules.
+            # User ELF segments must not replace those supervisor mappings.
+            target_link_options(${TARGET_NAME} PRIVATE "LINKER:--image-base=0x40000000")
+        endif()
     endif()
 endfunction()
 

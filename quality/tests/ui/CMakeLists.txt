@@ -14,6 +14,7 @@ endif()
 add_executable(bharat_tiny_ui_test
     ../test_tiny_ui_stack.c
     ${CMAKE_SOURCE_DIR}/core/stacks/ui/lcd/tiny_ui.c
+    ${CMAKE_SOURCE_DIR}/core/stacks/ui/theme/default_theme.c
 )
 target_include_directories(bharat_tiny_ui_test PRIVATE ${CMAKE_SOURCE_DIR}/interface/include)
 target_compile_options(bharat_tiny_ui_test PRIVATE -fPIC)

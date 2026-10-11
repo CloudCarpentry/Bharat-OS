@@ -7,6 +7,9 @@ device_profile: rtos
 personality_profile: native
 execution_profile: rt
 
+userspace:
+  runtime_model: static
+
 build:
   cmake_preset: x86_64-dev
   cmake_defs:

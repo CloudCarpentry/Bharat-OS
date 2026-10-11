@@ -398,6 +398,8 @@ bharat_status_t bh_pm_handle_spawn_v1(const bh_pm_spawn_request_v1_t *req, bh_pm
     bh_pm_kernel_create_req_t k_req = {0};
     local_strncpy(k_req.name, proc->name, 32);
     k_req.priority = proc->priority;
+    k_req.image_bytes = img_bytes;
+    k_req.image_size = img_size;
 
     bh_pm_kernel_process_t k_proc = {0};
     int k_res = g_kernel_ops.create_process(g_kernel_ops.ctx, &k_req, &k_proc);
@@ -410,6 +412,7 @@ bharat_status_t bh_pm_handle_spawn_v1(const bh_pm_spawn_request_v1_t *req, bh_pm
     }
 
     proc->kernel_process_id = k_proc.pid;
+    proc->kernel_process_cap = k_proc.cap;
     proc->state = BH_PM_STATE_SPACE_CREATED_V1;
 
     if (g_fail_stage == 3) {
@@ -558,7 +561,7 @@ bharat_status_t bh_pm_handle_terminate_v1(const bh_pm_terminate_request_v1_t *re
         return resp->status;
     }
 
-    bh_pm_kernel_process_t k_proc = { .pid = proc->kernel_process_id };
+    bh_pm_kernel_process_t k_proc = { .pid = proc->kernel_process_id, .cap = proc->kernel_process_cap };
     int32_t status = g_kernel_ops.request_terminate(g_kernel_ops.ctx, &k_proc);
     if (status != BHARAT_IPC_STATUS_OK) {
         resp->status = status;
@@ -638,7 +641,7 @@ bharat_status_t bh_pm_handle_reap_v1(const bh_pm_reap_request_v1_t *req, bh_pm_r
         return BHARAT_IPC_STATUS_ERR_PERM;
     }
 
-    bh_pm_kernel_process_t k_proc = { .pid = proc->kernel_process_id };
+    bh_pm_kernel_process_t k_proc = { .pid = proc->kernel_process_id, .cap = proc->kernel_process_cap };
     int32_t status = g_kernel_ops.reap_process(g_kernel_ops.ctx, &k_proc);
     if (status != BHARAT_IPC_STATUS_OK) {
         resp->status = status;

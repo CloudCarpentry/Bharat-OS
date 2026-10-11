@@ -262,6 +262,12 @@ long bh_syscall_gate(trap_frame_t *frame, const trap_info_t *info) {
     }
 
     if (ctx.personality == BH_PERSONALITY_NATIVE) {
+        /* Native remains available when optional compatibility personalities
+         * are disabled. Internal KSTATUS values must still cross the stable
+         * native status boundary (for example AGAIN -> BH_ERR_TRY_AGAIN). */
+        if (op_res.domain == BH_STATUS_DOMAIN_KSTATUS) {
+            return kstatus_to_native_sysret((kstatus_t)op_res.value);
+        }
         return op_res.value;
     } else {
         /* Compatibility personality: result should be translated to personality-specific errno */

@@ -69,7 +69,10 @@ void sched_block(void) {
       }
     }
 
-    rq->current_thread = NULL;
+    /* Preserve the outgoing context until sched_switch_to saves it. Returning
+     * here while still executing the blocked thread loses process identity and
+     * makes a second IPC operation fail instead of waiting for its receiver. */
+    sched_reschedule();
   }
 }
 

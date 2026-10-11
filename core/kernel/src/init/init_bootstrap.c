@@ -181,7 +181,7 @@ static int bootstrap_launch_first_service(void) {
     image.bytes = physmap_phys_to_virt(init_mod->phys_start);
     image.size = init_mod->size;
     image.image_id = 1;
-    image.flags = 0;
+    image.flags = BH_USER_IMAGE_BOOTSTRAP_AUTHORITY;
     if (!image.bytes) {
         init_boot_fail("MODULE_MAPPED", K_ERR_VM_UNMAPPED);
         return -1;

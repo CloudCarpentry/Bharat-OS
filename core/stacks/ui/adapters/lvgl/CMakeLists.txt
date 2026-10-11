@@ -14,6 +14,7 @@ if(BHARAT_UI_LVGL)
         src/lvgl_tick_adapter.c
         src/lvgl_memory_adapter.c
         src/lvgl_theme_bharat.c
+        ${CMAKE_SOURCE_DIR}/core/stacks/ui/theme/default_theme.c
         ${CMAKE_SOURCE_DIR}/experience/shell/shell_model.c
         ${CMAKE_SOURCE_DIR}/experience/shell/shell_ui.c
         ${LVGL_SOURCES}

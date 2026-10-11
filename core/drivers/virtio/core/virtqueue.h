@@ -62,6 +62,11 @@ void bh_virtqueue_init(bh_virtqueue_t *vq,
 int bh_virtqueue_add_rx_buffer(bh_virtqueue_t *vq, void *buf, uint32_t len, uint16_t *out_desc_idx);
 
 /**
+ * Adds a host-readable (transmit) buffer to the virtqueue.
+ */
+int bh_virtqueue_add_tx_buffer(bh_virtqueue_t *vq, void *buf, uint32_t len, uint16_t *out_desc_idx);
+
+/**
  * Polls the used ring for any newly completed descriptors.
  */
 bool bh_virtqueue_poll_used(bh_virtqueue_t *vq, uint16_t *out_desc_idx, uint32_t *out_len);

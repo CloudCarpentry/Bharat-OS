@@ -3,6 +3,8 @@
 #include "bharat/runtime/runtime.h"
 #include "bharat/uapi/shell/shell_rights.h"
 #include "bharat/uapi/ipc/status.h"
+#include "bharat/bh_native.h"
+#include "bharat/uapi/time/time.h"
 
 /**
  * Bharat-OS Shell Runtime Backend
@@ -11,8 +13,13 @@
  */
 
 static int backend_uptime(uint64_t* uptime_ms) {
-    // TODO: Call real time/diag service
-    return BHARAT_STATUS_ERR_UNSUPPORTED;
+    if (!uptime_ms) return BHARAT_STATUS_ERR_INVALID_ARG;
+    bh_time_t now_ns = 0;
+    int ret = bh_time_get(BH_CLOCK_MONOTONIC, &now_ns);
+    if (ret == 0) {
+        *uptime_ms = now_ns / BH_NS_PER_MS;
+    }
+    return ret;
 }
 
 static int backend_status(char* out, size_t out_len) {

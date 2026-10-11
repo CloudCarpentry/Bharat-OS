@@ -12,6 +12,7 @@
 #include "syscall/usercopy.h"
 #include "trap/syscall_status.h"
 #include "time/ktime.h"
+#include "mm.h"
 
 #define LINUX_CLOCK_MONOTONIC 1U
 #define LINUX_NSEC_PER_SEC UINT64_C(1000000000)
@@ -148,10 +149,47 @@ static bh_operation_result_t linux_sys_mprotect(bh_syscall_ctx_t *ctx) {
 }
 
 static bh_operation_result_t linux_sys_brk(bh_syscall_ctx_t *ctx) {
-    // TODO: Full implementation requires tracking brk boundary in the process struct.
-    // Stub returning -ENOMEM to fail gracefully for now.
-    (void)ctx;
-    return bh_op_result_value(-LINUX_ENOMEM);
+    if (!ctx || !ctx->process || !ctx->process->addr_space) {
+        return bh_op_result_value(-LINUX_EINVAL);
+    }
+
+    uintptr_t new_brk = (uintptr_t)ctx->regs.arg[0];
+    uintptr_t current_brk = ctx->process->brk_current;
+    uintptr_t start_brk = ctx->process->brk_start;
+
+    if (new_brk == 0 || new_brk < start_brk) {
+        return bh_op_result_value((long)current_brk);
+    }
+
+    uintptr_t aligned_current = (current_brk + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
+    uintptr_t aligned_new = (new_brk + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
+
+    if (aligned_new > aligned_current) {
+        // Expand
+        vm_map_request_t req = {0};
+        req.hint = aligned_current;
+        req.length = aligned_new - aligned_current;
+        req.prot = VM_PROT_READ | VM_PROT_WRITE | VM_PROT_USER;
+        req.flags = VM_MAP_FIXED;
+        req.type = VM_MAP_TYPE_ANON;
+        req.object = NULL;
+        req.object_offset = 0;
+
+        uintptr_t result;
+        kstatus_t kst = vm_map_region(ctx->process->addr_space, &req, &result);
+        if (kst != K_OK) {
+            return bh_op_result_value(-LINUX_ENOMEM);
+        }
+    } else if (aligned_new < aligned_current) {
+        // Shrink
+        kstatus_t kst = vm_unmap_region(ctx->process->addr_space, aligned_new, aligned_current - aligned_new);
+        if (kst != K_OK) {
+            return bh_op_result_value(-LINUX_ENOMEM);
+        }
+    }
+
+    ctx->process->brk_current = new_brk;
+    return bh_op_result_value((long)new_brk);
 }
 
 

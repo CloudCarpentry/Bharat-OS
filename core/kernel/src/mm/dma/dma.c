@@ -140,26 +140,41 @@ void iova_free(iova_domain_t *domain, uint64_t iova, size_t size) {
 // DMA Buffer Objects
 int dma_buffer_alloc(size_t size, uint32_t flags, dma_buffer_t **out) {
     if (!out || size == 0) return -1;
+    if (size > (1ULL << (11 + 12))) return -1;
 
     dma_buffer_t *buf = (dma_buffer_t *)kmalloc(sizeof(dma_buffer_t));
     if (!buf) return -2;
 
     // Allocate contiguous physical pages for simple DMA
     // (If using an IOMMU, pages don't need to be contiguous, but we keep it simple here)
-    uint32_t numa_node = (flags & DMA_ALLOC_DMA32) ? NUMA_NODE_LOCAL : NUMA_NODE_ANY;
     int order = 0; // Find correct order for size
-    while ((1ULL << (order + 12)) < size) order++;
+    while (order < 11 && (1ULL << (order + 12)) < size) order++;
 
-    phys_addr_t pa = mm_alloc_pages_order(order, numa_node, flags);
-    if (!pa) {
+    size_t alloc_size = 1ULL << (order + 12);
+    if (alloc_size < size) {
+        kfree(buf);
+        return -1;
+    }
+
+    pmm_zone_t zone = (flags & DMA_ALLOC_DMA32) ? PMM_ZONE_DMA32 : PMM_ZONE_ANY;
+    int ret = pmm_alloc_pages(order, zone, 0, &buf->allocation);
+    if (ret != 0) {
         kfree(buf);
         return -3;
     }
+    phys_addr_t pa = buf->allocation.phys_addr;
 
     buf->phys_addr = pa;
     buf->size = size;
     buf->flags = flags;
     buf->cpu_addr = physmap_phys_to_virt(pa);
+
+    if (!buf->cpu_addr && (flags & DMA_ALLOC_ZERO)) {
+        pmm_free_pages(&buf->allocation);
+        kfree(buf);
+        return -4;
+    }
+
     buf->iova = 0;
     buf->pin_count = 0;
     buf->owner_as_id = 0;
@@ -172,7 +187,7 @@ int dma_buffer_alloc(size_t size, uint32_t flags, dma_buffer_t **out) {
     // Zero memory if requested
     if (flags & DMA_ALLOC_ZERO) {
         uint8_t *ptr = (uint8_t *)buf->cpu_addr;
-        for (size_t i = 0; i < size; i++) ptr[i] = 0;
+        for (size_t i = 0; i < alloc_size; i++) ptr[i] = 0;
     }
 
     *out = buf;
@@ -184,22 +199,17 @@ int dma_buffer_free(dma_buffer_t *buffer) {
     if (buffer->mapped_to_device) return -2;
 
     if (buffer->pin_count > 0) {
-        // Force unpin
-        dma_account_unpin(buffer->owner_as_id, buffer->size);
+        return -3; // Reject freeing pinned pages
+    }
+    if (buffer->owned_by_device) {
+        return -4; // Reject freeing device-owned pages
     }
 
     if (buffer->domain && buffer->iova != 0) {
         iova_free(buffer->domain, buffer->iova, buffer->size);
     }
 
-    // Free the physical pages
-    int order = 0;
-    while ((1ULL << (order + 12)) < buffer->size) order++;
-    // Actual mm_free_pages_order required here, falling back to basic if unavialable
-    // For a multi-page allocation, we must free each page individually if we lack an order-based free
-    for (size_t i = 0; i < buffer->size; i += PAGE_SIZE) {
-        mm_free_page(buffer->phys_addr + i);
-    }
+    pmm_free_pages(&buffer->allocation);
 
     kfree(buffer);
     return 0;
@@ -207,11 +217,14 @@ int dma_buffer_free(dma_buffer_t *buffer) {
 
 int dma_buffer_pin(dma_buffer_t *buffer, uint64_t as_id) {
     if (!buffer) return -1;
+    if (buffer->pin_count == UINT64_MAX) return -4; // Overflow
 
     if (buffer->pin_count == 0) {
         int ret = dma_account_pin(as_id, buffer->size);
         if (ret != 0) return ret; // Exceeded pin budget
         buffer->owner_as_id = as_id;
+    } else if (buffer->owner_as_id != as_id) {
+        return -5; // Ownership mismatch
     }
 
     buffer->pin_count++;
@@ -325,6 +338,12 @@ int dma_buffer_map_device(uint64_t device_id, dma_buffer_t *buffer, dma_directio
         if (entry.object_ref != (uint64_t)buffer) {
             return -101; // Mismatch
         }
+    } else {
+        // Preserve explicitly authorized kernel-driver path.
+        // Userspace processes with a null cap table are unauthorized.
+        if (sched_current_process() != NULL) {
+            return -100; // Unauthorized userspace caller
+        }
     }
 
     if (buffer->pin_count == 0) return -2;
@@ -352,6 +371,9 @@ int dma_buffer_map_device(uint64_t device_id, dma_buffer_t *buffer, dma_directio
         if (buffer->domain && buffer->iova != 0 && buffer->domain->iommu_hw_state) {
             hal_iommu_domain_t *hw_dom = (hal_iommu_domain_t *)buffer->domain->iommu_hw_state;
             (void)hal_iommu_unmap(hw_dom, buffer->iova, buffer->size);
+            iova_free(buffer->domain, buffer->iova, buffer->size);
+            buffer->iova = 0;
+            buffer->domain = NULL;
         }
         return hal_ret;
     }
@@ -376,6 +398,10 @@ int dma_buffer_unmap_device(uint64_t device_id, dma_buffer_t *buffer, dma_direct
         }
         if (entry.object_ref != (uint64_t)buffer) {
             return -101; // Mismatch
+        }
+    } else {
+        if (sched_current_process() != NULL) {
+            return -100; // Unauthorized userspace caller
         }
     }
 

@@ -50,6 +50,21 @@ int main(void) {
     vm_req_unmap_t unmap_req = {.region_id = map_resp.region_id};
     assert(vm_manager_authorize(VM_OP_UNMAP, &unmap_req, 23) == BHARAT_IPC_STATUS_ERR_PERM);
 
+    // V1 adapter failure/fallback testing
+    assert(bh_vm_authority_ops_installed() == false);
+    assert(bh_vm_set_authority_ops(NULL) == BHARAT_IPC_STATUS_ERR_UNSUPPORTED);
+    assert(bh_vm_authority_ops_installed() == false);
+
+    bh_vm_create_space_request_v1_t create_req = {
+        .abi_version = BH_VM_INTERFACE_VERSION_V1,
+        .struct_size = sizeof(bh_vm_create_space_request_v1_t),
+        .memory_profile = 0,
+        .timing_class = 0
+    };
+    bh_vm_create_space_response_v1_t create_resp = {0};
+    // Should fail closed with unsupported when ops are not valid
+    assert(bh_vm_handle_create_space_v1(&create_req, &create_resp) == BHARAT_IPC_STATUS_ERR_UNSUPPORTED);
+
     puts("vm_manager capability negative tests passed");
     return 0;
 }
