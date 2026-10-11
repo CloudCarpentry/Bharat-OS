@@ -9,7 +9,8 @@ int32_t bharat_ipc_send(bharat_ipc_endpoint_t endpoint, const bharat_ipc_msg_hea
 int32_t bharat_ipc_recv(bharat_ipc_endpoint_t endpoint, bharat_ipc_msg_header_t *header, void *payload_buf, uint32_t max_size) { (void)endpoint; (void)header; (void)payload_buf; (void)max_size; return -1; }
 
 void test_lifecycle(void) {
-    servicemgr_init();
+    bh_servicemgr_dependencies_t deps_struct = {0};
+    servicemgr_init(&deps_struct);
 
     const char *deps[] = {"service1"};
     bh_service_manifest_entry_t manifest[] = {
@@ -93,7 +94,7 @@ void test_lifecycle(void) {
 }
 
 int main(void) {
-    setvbuf(stdout, NULL, _IONBF, 0);
+
     test_lifecycle();
     return 0;
 }

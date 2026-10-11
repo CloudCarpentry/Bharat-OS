@@ -1,0 +1,14 @@
+<<<<<<< SEARCH
+        if self.strict and len(services_state) == 0:
+            if results["summary_pass"] or (results["summary_found"] and is_stable) or is_stable:
+                results["forbidden_found"].append({"line": "Strict mode requires structured BOOT_EVT events, none found.", "marker": {"marker": "No structured events", "type": "string"}})
+            is_stable = False
+=======
+        # In strict mode, if there are NO structured events AND we try to claim STABLE, we must fail.
+        # But if we did not claim stable (e.g. earlier tests), we just let it fail naturally.
+        if self.strict and len(services_state) == 0:
+            # We ONLY want to append this forbidden rule if we actually parsed STABLE and are trying to pass
+            if results["summary_pass"] or is_stable:
+                results["forbidden_found"].append({"line": "Strict mode requires structured BOOT_EVT events, none found.", "marker": {"marker": "No structured events", "type": "string"}})
+                is_stable = False
+>>>>>>> REPLACE

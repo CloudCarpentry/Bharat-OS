@@ -327,12 +327,25 @@ def run_qemu(manifest_path: Path, mode_override: str = None, display_override: s
                 if failure_reason is None:
                     failure_reason = f"Forbidden marker '{forbidden}' found in log: {line.strip()}"
 
+
     log_path = manifest_path.parent / "boot.log"
     try:
         with open(log_path, "w") as lf:
             lf.write("".join(log_lines))
+
+        # Run check_boot_log.py to validate structured events and state transitions
+        if contract_path.exists() and run_mode == "smoke":
+            check_cmd = [sys.executable, str(repo_root / "tools" / "testing" / "check_boot_log.py"), "--target", target_name, "--log", str(log_path), "--contract", str(contract_path)]
+            if "desktop_headless" in target_name:
+                check_cmd.append("--strict")
+            check_result = subprocess.run(check_cmd, capture_output=True, text=True)
+            if check_result.returncode != 0:
+                failure_observed = True
+                failure_reason = "Structured boot log validation failed: " + check_result.stdout.strip().split("\n")[-1]
+                print(f"[Run] Warning: Structured validation failed:\n{check_result.stdout}")
     except Exception as e:
         print(f"[Run] Warning: Failed to write boot.log: {e}")
+
 
     git_sha = "unknown"
     try:

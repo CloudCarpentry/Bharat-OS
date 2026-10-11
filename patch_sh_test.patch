@@ -1,0 +1,7 @@
+<<<<<<< SEARCH
+# 8. Strict mode: pass with allowed skip
+run_test "Strict mode: allow skip" "arm32_mmu_lite_headless" "$FIXTURE_DIR/pass_single_core_skip.txt" 0 "--strict"
+=======
+# 8. Strict mode: pass with allowed skip
+run_test "Strict mode: allow skip" "arm32_mmu_lite_headless" "$FIXTURE_DIR/pass_single_core_skip.txt" 1 "--strict"
+>>>>>>> REPLACE

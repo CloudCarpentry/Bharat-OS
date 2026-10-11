@@ -58,8 +58,8 @@ run_test "Unknown target" "unknown_target_999" "$FIXTURE_DIR/pass_x86_64_headles
 # 7. Strict mode: suspicious marker fails
 run_test "Strict mode: suspicious marker" "x86_64_desktop_headless" "$FIXTURE_DIR/fail_unknown_error_strict.txt" 1 "--strict"
 
-# 8. Strict mode: pass with allowed skip
-run_test "Strict mode: allow skip" "arm32_mmu_lite_headless" "$FIXTURE_DIR/pass_single_core_skip.txt" 0 "--strict"
+# 8. Strict mode: pass with allowed skip (now fails in strict mode because it lacks BOOT_EVT)
+run_test "Strict mode: allow skip" "arm32_mmu_lite_headless" "$FIXTURE_DIR/pass_single_core_skip.txt" 1 "--strict"
 
 # Successful packaging/init markers cannot replace service readiness evidence.
 run_test "No bootstrap services" "x86_64_desktop_headless" "$FIXTURE_DIR/fail_bootstrap_no_services.txt" 1
@@ -69,6 +69,16 @@ for target in arm64_desktop_headless riscv64_desktop_headless arm32_mmu_lite_hea
     run_test "${target}: no bootstrap services" "$target" "$FIXTURE_DIR/fail_bootstrap_no_services.txt" 1
     run_test "${target}: required bootstrap failure" "$target" "$FIXTURE_DIR/fail_bootstrap_required_service.txt" 1
 done
+
+# Check structured events logic using python test script
+echo "=== Structured Events Parsing Test ==="
+python3 tools/testing/test_structured_events.py
+if [ $? -ne 0 ]; then
+    echo "Structured events test failed"
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+else
+    PASS_COUNT=$((PASS_COUNT + 1))
+fi
 
 echo "=================================="
 echo "Summary: PASS=$PASS_COUNT FAIL=$FAIL_COUNT"

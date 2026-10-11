@@ -10,7 +10,8 @@ int32_t bharat_ipc_recv(bharat_ipc_endpoint_t endpoint, bharat_ipc_msg_header_t 
 
 void test_backoff(void) {
     printf("--- test_backoff ---\n");
-    servicemgr_init();
+    bh_servicemgr_dependencies_t deps_struct = {0};
+    servicemgr_init(&deps_struct);
 
     bh_service_manifest_entry_t manifest[] = {
         {
@@ -75,7 +76,8 @@ void test_backoff(void) {
 
 void test_dependencies(void) {
     printf("--- test_dependencies ---\n");
-    servicemgr_init();
+    bh_servicemgr_dependencies_t deps_struct = {0};
+    servicemgr_init(&deps_struct);
 
     const char *deps1[] = {"nonexistent"};
     const char *deps2[] = {"service1"};
@@ -87,7 +89,7 @@ void test_dependencies(void) {
     servicemgr_load_manifest(manifest, 2);
     assert(servicemgr_validate_dependencies() == BHARAT_IPC_STATUS_ERR_NOT_FOUND);
 
-    servicemgr_init();
+    servicemgr_init(&deps_struct);
     bh_service_manifest_entry_t manifest2[] = {
         { .name = "service1", .service_id = 1 },
         { .name = "service2", .service_id = 2, .hard_deps = deps2, .hard_deps_count = 1 }
@@ -112,7 +114,7 @@ void test_dependencies(void) {
 }
 
 int main(void) {
-    setvbuf(stdout, NULL, _IONBF, 0);
+
     test_backoff();
     test_dependencies();
     return 0;
