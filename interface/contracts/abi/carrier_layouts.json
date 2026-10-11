@@ -55,6 +55,242 @@
       }
     ]
   },
+  "bh_actuator_command_t": {
+    "fields": [
+      {
+        "name": "abi_version",
+        "type": "uint32_t"
+      },
+      {
+        "name": "flags",
+        "type": "uint32_t"
+      },
+      {
+        "name": "request_id",
+        "type": "uint64_t"
+      },
+      {
+        "name": "value",
+        "type": "float"
+      },
+      {
+        "name": "reserved",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bh_boot_stage_evidence_t": {
+    "fields": [
+      {
+        "name": "schema_version",
+        "type": "uint16_t"
+      },
+      {
+        "name": "stage_id",
+        "type": "uint16_t"
+      },
+      {
+        "name": "result",
+        "type": "uint8_t"
+      },
+      {
+        "name": "confidence",
+        "type": "uint8_t"
+      },
+      {
+        "name": "reserved",
+        "type": "uint16_t"
+      },
+      {
+        "name": "timestamp_ns",
+        "type": "uint64_t"
+      },
+      {
+        "name": "event_sequence",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bh_bootstrap_launch_request_t": {
+    "fields": [
+      {
+        "name": "version",
+        "type": "uint32_t"
+      },
+      {
+        "name": "service_id",
+        "type": "uint32_t"
+      },
+      {
+        "name": "namesvc_cap",
+        "type": "uint32_t"
+      },
+      {
+        "name": "delegate_launch",
+        "type": "uint32_t"
+      },
+      {
+        "name": "module_name",
+        "type": "char[32]"
+      }
+    ]
+  },
+  "bh_bootstrap_launch_result_t": {
+    "fields": [
+      {
+        "name": "process_id",
+        "type": "uint64_t"
+      },
+      {
+        "name": "process_cap",
+        "type": "uint32_t"
+      },
+      {
+        "name": "event_receive_cap",
+        "type": "uint32_t"
+      },
+      {
+        "name": "service_send_cap",
+        "type": "uint32_t"
+      },
+      {
+        "name": "reserved",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bh_bootstrap_service_event_t": {
+    "fields": [
+      {
+        "name": "version",
+        "type": "uint32_t"
+      },
+      {
+        "name": "type",
+        "type": "uint32_t"
+      },
+      {
+        "name": "service_id",
+        "type": "uint32_t"
+      },
+      {
+        "name": "status",
+        "type": "int32_t"
+      }
+    ]
+  },
+  "bh_diag_counter_t": {
+    "fields": [
+      {
+        "name": "counter_id",
+        "type": "uint32_t"
+      },
+      {
+        "name": "flags",
+        "type": "uint32_t"
+      },
+      {
+        "name": "value",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bh_diag_event_header_t": {
+    "fields": [
+      {
+        "name": "abi_version",
+        "type": "uint16_t"
+      },
+      {
+        "name": "header_size",
+        "type": "uint16_t"
+      },
+      {
+        "name": "event_type",
+        "type": "uint16_t"
+      },
+      {
+        "name": "severity",
+        "type": "uint8_t"
+      },
+      {
+        "name": "source_kind",
+        "type": "uint8_t"
+      },
+      {
+        "name": "payload_size",
+        "type": "uint32_t"
+      },
+      {
+        "name": "flags",
+        "type": "uint32_t"
+      },
+      {
+        "name": "sequence",
+        "type": "uint64_t"
+      },
+      {
+        "name": "timestamp_ns",
+        "type": "uint64_t"
+      },
+      {
+        "name": "source_id",
+        "type": "uint32_t"
+      },
+      {
+        "name": "cpu_id",
+        "type": "uint16_t"
+      },
+      {
+        "name": "subsystem_id",
+        "type": "uint16_t"
+      }
+    ]
+  },
+  "bh_diag_health_snapshot_t": {
+    "fields": [
+      {
+        "name": "schema_version",
+        "type": "uint16_t"
+      },
+      {
+        "name": "state",
+        "type": "uint8_t"
+      },
+      {
+        "name": "reserved",
+        "type": "uint8_t"
+      },
+      {
+        "name": "source_id",
+        "type": "uint32_t"
+      },
+      {
+        "name": "timestamp_ns",
+        "type": "uint64_t"
+      },
+      {
+        "name": "uptime_ns",
+        "type": "uint64_t"
+      },
+      {
+        "name": "dropped_events",
+        "type": "uint64_t"
+      },
+      {
+        "name": "last_fault_sequence",
+        "type": "uint64_t"
+      },
+      {
+        "name": "restart_count",
+        "type": "uint32_t"
+      },
+      {
+        "name": "flags",
+        "type": "uint32_t"
+      }
+    ]
+  },
   "bh_exec_constraints_t": {
     "fields": [
       {
@@ -84,6 +320,278 @@
       {
         "name": "isolation_domain",
         "type": "uint32_t"
+      }
+    ]
+  },
+  "bh_hmem_create_args_t": {
+    "fields": [
+      {
+        "name": "struct_size",
+        "type": "uint32_t"
+      },
+      {
+        "name": "desc",
+        "type": "bharat_hmem_desc_v1_t"
+      },
+      {
+        "name": "rights",
+        "type": "uint64_t"
+      },
+      {
+        "name": "out_handle",
+        "type": "bharat_hmem_handle_t"
+      }
+    ]
+  },
+  "bh_hmem_map_cpu_args_t": {
+    "fields": [
+      {
+        "name": "struct_size",
+        "type": "uint32_t"
+      },
+      {
+        "name": "hmem_cap",
+        "type": "bharat_hmem_handle_t"
+      },
+      {
+        "name": "access",
+        "type": "uint32_t"
+      },
+      {
+        "name": "reserved",
+        "type": "uint32_t"
+      },
+      {
+        "name": "out_addr",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bh_hmem_query_args_t": {
+    "fields": [
+      {
+        "name": "struct_size",
+        "type": "uint32_t"
+      },
+      {
+        "name": "hmem_cap",
+        "type": "bharat_hmem_handle_t"
+      },
+      {
+        "name": "out_info",
+        "type": "bharat_hmem_info_v1_t"
+      }
+    ]
+  },
+  "bh_hmem_sync_args_t": {
+    "fields": [
+      {
+        "name": "struct_size",
+        "type": "uint32_t"
+      },
+      {
+        "name": "hmem_cap",
+        "type": "bharat_hmem_handle_t"
+      },
+      {
+        "name": "offset",
+        "type": "uint64_t"
+      },
+      {
+        "name": "length",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bh_hmem_unmap_cpu_args_t": {
+    "fields": [
+      {
+        "name": "struct_size",
+        "type": "uint32_t"
+      },
+      {
+        "name": "hmem_cap",
+        "type": "bharat_hmem_handle_t"
+      }
+    ]
+  },
+  "bh_input_event_t": {
+    "fields": [
+      {
+        "name": "timestamp_ticks",
+        "type": "uint64_t"
+      },
+      {
+        "name": "device_id",
+        "type": "uint32_t"
+      },
+      {
+        "name": "type",
+        "type": "uint16_t"
+      },
+      {
+        "name": "code",
+        "type": "uint16_t"
+      },
+      {
+        "name": "value",
+        "type": "int32_t"
+      },
+      {
+        "name": "sequence",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bh_process_image_request_t": {
+    "fields": [
+      {
+        "name": "image_address",
+        "type": "uint64_t"
+      },
+      {
+        "name": "image_size",
+        "type": "uint64_t"
+      },
+      {
+        "name": "version",
+        "type": "uint32_t"
+      },
+      {
+        "name": "priority",
+        "type": "uint32_t"
+      },
+      {
+        "name": "name",
+        "type": "char[32]"
+      }
+    ]
+  },
+  "bh_process_image_result_t": {
+    "fields": [
+      {
+        "name": "process_id",
+        "type": "uint64_t"
+      },
+      {
+        "name": "thread_id",
+        "type": "uint64_t"
+      },
+      {
+        "name": "entry_point",
+        "type": "uint64_t"
+      },
+      {
+        "name": "process_cap",
+        "type": "uint32_t"
+      },
+      {
+        "name": "reserved",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bh_sensor_sample_t": {
+    "fields": [
+      {
+        "name": "sensor",
+        "type": "bh_sensor_id_t"
+      },
+      {
+        "name": "type",
+        "type": "uint32_t"
+      },
+      {
+        "name": "timestamp_ns",
+        "type": "uint64_t"
+      },
+      {
+        "name": "flags",
+        "type": "uint32_t"
+      },
+      {
+        "name": "value_count",
+        "type": "uint32_t"
+      },
+      {
+        "name": "values",
+        "type": "float[?]"
+      }
+    ]
+  },
+  "bh_shell_diag_request_v1_t": {
+    "fields": [
+      {
+        "name": "abi_version",
+        "type": "uint16_t"
+      },
+      {
+        "name": "struct_size",
+        "type": "uint16_t"
+      },
+      {
+        "name": "query",
+        "type": "uint32_t"
+      },
+      {
+        "name": "argument_length",
+        "type": "uint32_t"
+      },
+      {
+        "name": "reserved",
+        "type": "uint32_t"
+      },
+      {
+        "name": "argument",
+        "type": "char[?]"
+      }
+    ]
+  },
+  "bh_shell_timer_report_v1_t": {
+    "fields": [
+      {
+        "name": "abi_version",
+        "type": "uint16_t"
+      },
+      {
+        "name": "struct_size",
+        "type": "uint16_t"
+      },
+      {
+        "name": "online_cores",
+        "type": "uint32_t"
+      },
+      {
+        "name": "resolution_ns",
+        "type": "uint64_t"
+      },
+      {
+        "name": "cross_core_skew_ns",
+        "type": "uint64_t"
+      },
+      {
+        "name": "deadline_error_ns",
+        "type": "uint64_t"
+      },
+      {
+        "name": "interrupt_jitter_ns",
+        "type": "uint64_t"
+      },
+      {
+        "name": "scheduler_wakeup_latency_ns",
+        "type": "uint64_t"
+      },
+      {
+        "name": "monotonicity_samples",
+        "type": "uint32_t"
+      },
+      {
+        "name": "monotonicity_failures",
+        "type": "uint32_t"
+      },
+      {
+        "name": "clock_source",
+        "type": "char[?]"
       }
     ]
   },
@@ -171,6 +679,1054 @@
       },
       {
         "name": "missed_count",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_cpu_features_v1_t": {
+    "fields": [
+      {
+        "name": "abi_version",
+        "type": "uint16_t"
+      },
+      {
+        "name": "size",
+        "type": "uint16_t"
+      },
+      {
+        "name": "reserved",
+        "type": "uint32_t"
+      },
+      {
+        "name": "feature_words",
+        "type": "uint64_t[?]"
+      },
+      {
+        "name": "cache_line_size",
+        "type": "uint32_t"
+      },
+      {
+        "name": "preferred_copy_alignment",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_device_accelmgr_v2_CancelJobReq_t": {
+    "fields": [
+      {
+        "name": "job_handle",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bharat_device_accelmgr_v2_CancelJobResp_t": {
+    "fields": [
+      {
+        "name": "status",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_device_accelmgr_v2_CreateQueueReq_t": {
+    "fields": [
+      {
+        "name": "context_handle",
+        "type": "uint64_t"
+      },
+      {
+        "name": "device_handle",
+        "type": "uint64_t"
+      },
+      {
+        "name": "depth",
+        "type": "uint32_t"
+      },
+      {
+        "name": "priority",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_device_accelmgr_v2_CreateQueueResp_t": {
+    "fields": [
+      {
+        "name": "status",
+        "type": "uint32_t"
+      },
+      {
+        "name": "queue_handle",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bharat_device_accelmgr_v2_DestroyQueueReq_t": {
+    "fields": [
+      {
+        "name": "queue_handle",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bharat_device_accelmgr_v2_DestroyQueueResp_t": {
+    "fields": [
+      {
+        "name": "status",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_device_accelmgr_v2_GetBrokerInfoReq_t": {
+    "fields": [
+      {
+        "name": "dummy",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_device_accelmgr_v2_GetBrokerInfoResp_t": {
+    "fields": [
+      {
+        "name": "status",
+        "type": "uint32_t"
+      },
+      {
+        "name": "version",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_device_accelmgr_v2_GetDeviceCountReq_t": {
+    "fields": [
+      {
+        "name": "dummy",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_device_accelmgr_v2_GetDeviceCountResp_t": {
+    "fields": [
+      {
+        "name": "status",
+        "type": "uint32_t"
+      },
+      {
+        "name": "count",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_device_accelmgr_v2_GetDeviceInfoReq_t": {
+    "fields": [
+      {
+        "name": "index",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_device_accelmgr_v2_GetDeviceInfoResp_t": {
+    "fields": [
+      {
+        "name": "status",
+        "type": "uint32_t"
+      },
+      {
+        "name": "device_id",
+        "type": "uint32_t"
+      },
+      {
+        "name": "capabilities",
+        "type": "uint32_t"
+      },
+      {
+        "name": "state",
+        "type": "uint32_t"
+      },
+      {
+        "name": "name",
+        "type": ""
+      }
+    ]
+  },
+  "bharat_device_accelmgr_v2_GetTelemetrySnapshotReq_t": {
+    "fields": [
+      {
+        "name": "dummy",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_device_accelmgr_v2_GetTelemetrySnapshotResp_t": {
+    "fields": [
+      {
+        "name": "status",
+        "type": "uint32_t"
+      },
+      {
+        "name": "jobs_submitted",
+        "type": "uint64_t"
+      },
+      {
+        "name": "jobs_completed",
+        "type": "uint64_t"
+      },
+      {
+        "name": "jobs_failed",
+        "type": "uint64_t"
+      },
+      {
+        "name": "jobs_cancelled",
+        "type": "uint64_t"
+      },
+      {
+        "name": "queue_depth",
+        "type": "uint64_t"
+      },
+      {
+        "name": "execution_latency_us",
+        "type": "uint64_t"
+      },
+      {
+        "name": "hw_backend_selected",
+        "type": "uint64_t"
+      },
+      {
+        "name": "sw_backend_selected",
+        "type": "uint64_t"
+      },
+      {
+        "name": "cpu_fallback_count",
+        "type": "uint64_t"
+      },
+      {
+        "name": "capability_denials",
+        "type": "uint64_t"
+      },
+      {
+        "name": "buffer_reg_failures",
+        "type": "uint64_t"
+      },
+      {
+        "name": "device_resets",
+        "type": "uint64_t"
+      },
+      {
+        "name": "device_quarantines",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bharat_device_accelmgr_v2_QueryFenceReq_t": {
+    "fields": [
+      {
+        "name": "fence_handle",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bharat_device_accelmgr_v2_QueryFenceResp_t": {
+    "fields": [
+      {
+        "name": "status",
+        "type": "uint32_t"
+      },
+      {
+        "name": "state",
+        "type": "uint32_t"
+      },
+      {
+        "name": "error_code",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_device_accelmgr_v2_QueryHealthReq_t": {
+    "fields": [
+      {
+        "name": "device_handle",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bharat_device_accelmgr_v2_QueryHealthResp_t": {
+    "fields": [
+      {
+        "name": "status",
+        "type": "uint32_t"
+      },
+      {
+        "name": "state",
+        "type": "uint32_t"
+      },
+      {
+        "name": "temperature_c",
+        "type": "uint32_t"
+      },
+      {
+        "name": "utilization_pct",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_device_accelmgr_v2_QueryJobReq_t": {
+    "fields": [
+      {
+        "name": "job_handle",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bharat_device_accelmgr_v2_QueryJobResp_t": {
+    "fields": [
+      {
+        "name": "status",
+        "type": "uint32_t"
+      },
+      {
+        "name": "state",
+        "type": "uint32_t"
+      },
+      {
+        "name": "error_code",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_device_accelmgr_v2_RegisterBufferReq_t": {
+    "fields": [
+      {
+        "name": "memory_cap_handle",
+        "type": "uint64_t"
+      },
+      {
+        "name": "size",
+        "type": "uint64_t"
+      },
+      {
+        "name": "flags",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_device_accelmgr_v2_RegisterBufferResp_t": {
+    "fields": [
+      {
+        "name": "status",
+        "type": "uint32_t"
+      },
+      {
+        "name": "buffer_handle",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bharat_device_accelmgr_v2_ReleaseContextReq_t": {
+    "fields": [
+      {
+        "name": "context_handle",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bharat_device_accelmgr_v2_ReleaseContextResp_t": {
+    "fields": [
+      {
+        "name": "status",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_device_accelmgr_v2_RequestAdmissionReq_t": {
+    "fields": [
+      {
+        "name": "feature_class",
+        "type": "uint32_t"
+      },
+      {
+        "name": "requested_qos",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_device_accelmgr_v2_RequestAdmissionResp_t": {
+    "fields": [
+      {
+        "name": "status",
+        "type": "uint32_t"
+      },
+      {
+        "name": "granted_qos",
+        "type": "uint32_t"
+      },
+      {
+        "name": "context_handle",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bharat_device_accelmgr_v2_SetSafeModeReq_t": {
+    "fields": [
+      {
+        "name": "enable_safe_mode",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_device_accelmgr_v2_SetSafeModeResp_t": {
+    "fields": [
+      {
+        "name": "status",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_device_accelmgr_v2_SetThermalConstraintReq_t": {
+    "fields": [
+      {
+        "name": "device_handle",
+        "type": "uint64_t"
+      },
+      {
+        "name": "max_power_mw",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_device_accelmgr_v2_SetThermalConstraintResp_t": {
+    "fields": [
+      {
+        "name": "status",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_device_accelmgr_v2_SubmitJobReq_t": {
+    "fields": [
+      {
+        "name": "queue_handle",
+        "type": "uint64_t"
+      },
+      {
+        "name": "input_buffer_handle",
+        "type": "uint64_t"
+      },
+      {
+        "name": "input_offset",
+        "type": "uint64_t"
+      },
+      {
+        "name": "input_length",
+        "type": "uint64_t"
+      },
+      {
+        "name": "output_buffer_handle",
+        "type": "uint64_t"
+      },
+      {
+        "name": "output_offset",
+        "type": "uint64_t"
+      },
+      {
+        "name": "output_length",
+        "type": "uint64_t"
+      },
+      {
+        "name": "opcode",
+        "type": "uint32_t"
+      },
+      {
+        "name": "data_type",
+        "type": "uint32_t"
+      },
+      {
+        "name": "element_count",
+        "type": "uint32_t"
+      },
+      {
+        "name": "dependency_fence_handle",
+        "type": "uint64_t"
+      },
+      {
+        "name": "flags",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_device_accelmgr_v2_SubmitJobResp_t": {
+    "fields": [
+      {
+        "name": "status",
+        "type": "uint32_t"
+      },
+      {
+        "name": "job_handle",
+        "type": "uint64_t"
+      },
+      {
+        "name": "fence_handle",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bharat_device_accelmgr_v2_UnregisterBufferReq_t": {
+    "fields": [
+      {
+        "name": "buffer_handle",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bharat_device_accelmgr_v2_UnregisterBufferResp_t": {
+    "fields": [
+      {
+        "name": "status",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_display_broker_v2_AcknowledgeLeaseRevocationReq_t": {
+    "fields": [
+      {
+        "name": "lease_handle",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bharat_display_broker_v2_AcknowledgeLeaseRevocationResp_t": {
+    "fields": [
+      {
+        "name": "result",
+        "type": "uint32_t"
+      },
+      {
+        "name": "reserved",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_display_broker_v2_AttachBufferReq_t": {
+    "fields": [
+      {
+        "name": "lease_handle",
+        "type": "uint64_t"
+      },
+      {
+        "name": "surface_handle",
+        "type": "uint64_t"
+      },
+      {
+        "name": "buffer_handle",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bharat_display_broker_v2_AttachBufferResp_t": {
+    "fields": [
+      {
+        "name": "result",
+        "type": "uint32_t"
+      },
+      {
+        "name": "reserved",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_display_broker_v2_CreateSurfaceReq_t": {
+    "fields": [
+      {
+        "name": "lease_handle",
+        "type": "uint64_t"
+      },
+      {
+        "name": "width",
+        "type": "uint32_t"
+      },
+      {
+        "name": "height",
+        "type": "uint32_t"
+      },
+      {
+        "name": "z_order",
+        "type": "uint32_t"
+      },
+      {
+        "name": "reserved",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_display_broker_v2_CreateSurfaceResp_t": {
+    "fields": [
+      {
+        "name": "result",
+        "type": "uint32_t"
+      },
+      {
+        "name": "reserved",
+        "type": "uint32_t"
+      },
+      {
+        "name": "surface_handle",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bharat_display_broker_v2_DestroySurfaceReq_t": {
+    "fields": [
+      {
+        "name": "lease_handle",
+        "type": "uint64_t"
+      },
+      {
+        "name": "surface_handle",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bharat_display_broker_v2_DestroySurfaceResp_t": {
+    "fields": [
+      {
+        "name": "result",
+        "type": "uint32_t"
+      },
+      {
+        "name": "reserved",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_display_broker_v2_EnumerateDisplaysReq_t": {
+    "fields": [
+      {
+        "name": "dummy",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_display_broker_v2_EnumerateDisplaysResp_t": {
+    "fields": [
+      {
+        "name": "result",
+        "type": "uint32_t"
+      },
+      {
+        "name": "display_count",
+        "type": "uint32_t"
+      },
+      {
+        "name": "display_handle_0",
+        "type": "uint64_t"
+      },
+      {
+        "name": "display_handle_1",
+        "type": "uint64_t"
+      },
+      {
+        "name": "display_handle_2",
+        "type": "uint64_t"
+      },
+      {
+        "name": "display_handle_3",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bharat_display_broker_v2_PresentSurfaceReq_t": {
+    "fields": [
+      {
+        "name": "lease_handle",
+        "type": "uint64_t"
+      },
+      {
+        "name": "surface_handle",
+        "type": "uint64_t"
+      },
+      {
+        "name": "buffer_handle",
+        "type": "uint64_t"
+      },
+      {
+        "name": "acquire_fence_handle",
+        "type": "uint64_t"
+      },
+      {
+        "name": "deadline_ns",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bharat_display_broker_v2_PresentSurfaceResp_t": {
+    "fields": [
+      {
+        "name": "result",
+        "type": "uint32_t"
+      },
+      {
+        "name": "direct_scanout_reason",
+        "type": "uint32_t"
+      },
+      {
+        "name": "release_fence_handle",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bharat_display_broker_v2_QueryDisplayModeReq_t": {
+    "fields": [
+      {
+        "name": "display_handle",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bharat_display_broker_v2_QueryDisplayModeResp_t": {
+    "fields": [
+      {
+        "name": "result",
+        "type": "uint32_t"
+      },
+      {
+        "name": "width",
+        "type": "uint32_t"
+      },
+      {
+        "name": "height",
+        "type": "uint32_t"
+      },
+      {
+        "name": "refresh_hz",
+        "type": "uint32_t"
+      },
+      {
+        "name": "pixel_format",
+        "type": "uint32_t"
+      },
+      {
+        "name": "flags",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_display_broker_v2_QueryPlaneCapabilitiesReq_t": {
+    "fields": [
+      {
+        "name": "display_handle",
+        "type": "uint64_t"
+      },
+      {
+        "name": "plane_id",
+        "type": "uint32_t"
+      },
+      {
+        "name": "reserved",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_display_broker_v2_QueryPlaneCapabilitiesResp_t": {
+    "fields": [
+      {
+        "name": "result",
+        "type": "uint32_t"
+      },
+      {
+        "name": "supported_formats_mask",
+        "type": "uint32_t"
+      },
+      {
+        "name": "min_width",
+        "type": "uint32_t"
+      },
+      {
+        "name": "min_height",
+        "type": "uint32_t"
+      },
+      {
+        "name": "max_width",
+        "type": "uint32_t"
+      },
+      {
+        "name": "max_height",
+        "type": "uint32_t"
+      },
+      {
+        "name": "scaling_support",
+        "type": "uint32_t"
+      },
+      {
+        "name": "rotation_support",
+        "type": "uint32_t"
+      },
+      {
+        "name": "secure_overlay_support",
+        "type": "uint32_t"
+      },
+      {
+        "name": "cursor_plane_support",
+        "type": "uint32_t"
+      },
+      {
+        "name": "direct_scanout_support",
+        "type": "uint32_t"
+      },
+      {
+        "name": "z_order_min",
+        "type": "uint32_t"
+      },
+      {
+        "name": "z_order_max",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_display_broker_v2_QueryPresentationStatusReq_t": {
+    "fields": [
+      {
+        "name": "lease_handle",
+        "type": "uint64_t"
+      },
+      {
+        "name": "surface_handle",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bharat_display_broker_v2_QueryPresentationStatusResp_t": {
+    "fields": [
+      {
+        "name": "result",
+        "type": "uint32_t"
+      },
+      {
+        "name": "presentation_state",
+        "type": "uint32_t"
+      },
+      {
+        "name": "active_buffer_handle",
+        "type": "uint64_t"
+      },
+      {
+        "name": "frame_counter",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bharat_display_broker_v2_RegisterBufferReq_t": {
+    "fields": [
+      {
+        "name": "lease_handle",
+        "type": "uint64_t"
+      },
+      {
+        "name": "width",
+        "type": "uint32_t"
+      },
+      {
+        "name": "height",
+        "type": "uint32_t"
+      },
+      {
+        "name": "pixel_format",
+        "type": "uint32_t"
+      },
+      {
+        "name": "usage_flags",
+        "type": "uint32_t"
+      },
+      {
+        "name": "memory_domain",
+        "type": "uint32_t"
+      },
+      {
+        "name": "plane_count",
+        "type": "uint32_t"
+      },
+      {
+        "name": "total_size_bytes",
+        "type": "uint64_t"
+      },
+      {
+        "name": "modifier",
+        "type": "uint64_t"
+      },
+      {
+        "name": "plane0_offset_bytes",
+        "type": "uint64_t"
+      },
+      {
+        "name": "plane0_size_bytes",
+        "type": "uint64_t"
+      },
+      {
+        "name": "plane0_stride_bytes",
+        "type": "uint32_t"
+      },
+      {
+        "name": "plane0_reserved",
+        "type": "uint32_t"
+      },
+      {
+        "name": "plane1_offset_bytes",
+        "type": "uint64_t"
+      },
+      {
+        "name": "plane1_size_bytes",
+        "type": "uint64_t"
+      },
+      {
+        "name": "plane1_stride_bytes",
+        "type": "uint32_t"
+      },
+      {
+        "name": "plane1_reserved",
+        "type": "uint32_t"
+      },
+      {
+        "name": "plane2_offset_bytes",
+        "type": "uint64_t"
+      },
+      {
+        "name": "plane2_size_bytes",
+        "type": "uint64_t"
+      },
+      {
+        "name": "plane2_stride_bytes",
+        "type": "uint32_t"
+      },
+      {
+        "name": "plane2_reserved",
+        "type": "uint32_t"
+      },
+      {
+        "name": "plane3_offset_bytes",
+        "type": "uint64_t"
+      },
+      {
+        "name": "plane3_size_bytes",
+        "type": "uint64_t"
+      },
+      {
+        "name": "plane3_stride_bytes",
+        "type": "uint32_t"
+      },
+      {
+        "name": "plane3_reserved",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_display_broker_v2_RegisterBufferResp_t": {
+    "fields": [
+      {
+        "name": "result",
+        "type": "uint32_t"
+      },
+      {
+        "name": "reserved",
+        "type": "uint32_t"
+      },
+      {
+        "name": "buffer_handle",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bharat_display_broker_v2_ReleaseBufferReq_t": {
+    "fields": [
+      {
+        "name": "lease_handle",
+        "type": "uint64_t"
+      },
+      {
+        "name": "buffer_handle",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bharat_display_broker_v2_ReleaseBufferResp_t": {
+    "fields": [
+      {
+        "name": "result",
+        "type": "uint32_t"
+      },
+      {
+        "name": "reserved",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_display_broker_v2_ReleaseDisplayLeaseReq_t": {
+    "fields": [
+      {
+        "name": "lease_handle",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bharat_display_broker_v2_ReleaseDisplayLeaseResp_t": {
+    "fields": [
+      {
+        "name": "result",
+        "type": "uint32_t"
+      },
+      {
+        "name": "reserved",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_display_broker_v2_RequestDisplayLeaseReq_t": {
+    "fields": [
+      {
+        "name": "display_handle",
+        "type": "uint64_t"
+      },
+      {
+        "name": "requested_rights",
+        "type": "uint32_t"
+      },
+      {
+        "name": "reserved",
+        "type": "uint32_t"
+      }
+    ]
+  },
+  "bharat_display_broker_v2_RequestDisplayLeaseResp_t": {
+    "fields": [
+      {
+        "name": "result",
+        "type": "uint32_t"
+      },
+      {
+        "name": "granted_rights",
+        "type": "uint32_t"
+      },
+      {
+        "name": "lease_handle",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bharat_display_broker_v2_RetirePresentationReq_t": {
+    "fields": [
+      {
+        "name": "lease_handle",
+        "type": "uint64_t"
+      },
+      {
+        "name": "surface_handle",
+        "type": "uint64_t"
+      }
+    ]
+  },
+  "bharat_display_broker_v2_RetirePresentationResp_t": {
+    "fields": [
+      {
+        "name": "result",
+        "type": "uint32_t"
+      },
+      {
+        "name": "reserved",
         "type": "uint32_t"
       }
     ]
@@ -271,6 +1827,90 @@
       }
     ]
   },
+  "bharat_hmem_desc_v1_t": {
+    "fields": [
+      {
+        "name": "version",
+        "type": "uint32_t"
+      },
+      {
+        "name": "struct_size",
+        "type": "uint32_t"
+      },
+      {
+        "name": "size",
+        "type": "uint64_t"
+      },
+      {
+        "name": "alignment",
+        "type": "uint64_t"
+      },
+      {
+        "name": "usage_flags",
+        "type": "uint64_t"
+      },
+      {
+        "name": "property_flags",
+        "type": "uint64_t"
+      },
+      {
+        "name": "preferred_domain",
+        "type": "uint32_t"
+      },
+      {
+        "name": "reserved0",
+        "type": "uint32_t"
+      },
+      {
+        "name": "reserved",
+        "type": "uint64_t[4]"
+      }
+    ]
+  },
+  "bharat_hmem_info_v1_t": {
+    "fields": [
+      {
+        "name": "version",
+        "type": "uint32_t"
+      },
+      {
+        "name": "struct_size",
+        "type": "uint32_t"
+      },
+      {
+        "name": "size",
+        "type": "uint64_t"
+      },
+      {
+        "name": "alignment",
+        "type": "uint64_t"
+      },
+      {
+        "name": "usage_flags",
+        "type": "uint64_t"
+      },
+      {
+        "name": "property_flags",
+        "type": "uint64_t"
+      },
+      {
+        "name": "content_generation",
+        "type": "uint64_t"
+      },
+      {
+        "name": "preferred_domain",
+        "type": "uint32_t"
+      },
+      {
+        "name": "cpu_map_count",
+        "type": "uint32_t"
+      },
+      {
+        "name": "reserved",
+        "type": "uint64_t[3]"
+      }
+    ]
+  },
   "bharat_input_event_t": {
     "fields": [
       {
@@ -326,7 +1966,7 @@
       },
       {
         "name": "requested_rights",
-        "type": "uint32_t"
+        "type": "uint64_t"
       },
       {
         "name": "out_cap_ptr",

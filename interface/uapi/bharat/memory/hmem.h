@@ -1,3 +1,6 @@
+#ifndef BHARAT_MEMORY_HMEM_H
+#define BHARAT_MEMORY_HMEM_H
+
 #ifndef BHARAT_UAPI_MEMORY_HMEM_H
 #define BHARAT_UAPI_MEMORY_HMEM_H
 
@@ -105,3 +108,39 @@ _Static_assert(offsetof(bharat_hmem_desc_v1_t, reserved) == 48U,
 _Static_assert(sizeof(bharat_hmem_info_v1_t) == 80U, "HMEM v1 info ABI");
 
 #endif
+
+typedef struct bh_hmem_create_args {
+  uint32_t struct_size;
+  bharat_hmem_desc_v1_t desc;
+  uint64_t rights;
+  bharat_hmem_handle_t out_handle;
+} bh_hmem_create_args_t;
+
+typedef struct bh_hmem_query_args {
+  uint32_t struct_size;
+  bharat_hmem_handle_t hmem_cap;
+  bharat_hmem_info_v1_t out_info;
+} bh_hmem_query_args_t;
+
+typedef struct bh_hmem_map_cpu_args {
+  uint32_t struct_size;
+  bharat_hmem_handle_t hmem_cap;
+  uint32_t access;
+  uint32_t reserved;
+  uint64_t out_addr;
+} bh_hmem_map_cpu_args_t;
+
+typedef struct bh_hmem_unmap_cpu_args {
+  uint32_t struct_size;
+  bharat_hmem_handle_t hmem_cap;
+} bh_hmem_unmap_cpu_args_t;
+
+typedef struct bh_hmem_sync_args {
+  uint32_t struct_size;
+  bharat_hmem_handle_t hmem_cap;
+  uint64_t offset;
+  uint64_t length;
+} bh_hmem_sync_args_t;
+
+
+#endif /* BHARAT_MEMORY_HMEM_H */

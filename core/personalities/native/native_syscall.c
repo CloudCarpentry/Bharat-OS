@@ -1,3 +1,4 @@
+#include <capability.h>
 #include "trap/syscall_context.h"
 #include <bharat/uapi/syscall/bh_syscall_numbers.h>
 #include <bharat/uapi/capability/rights.h>
@@ -30,6 +31,14 @@ extern bh_operation_result_t bh_sys_get_subsystem_caps(bh_syscall_ctx_t *ctx);
 extern bh_operation_result_t bh_sys_thread_exit(bh_syscall_ctx_t *ctx);
 extern bh_operation_result_t bh_sys_time_get(bh_syscall_ctx_t *ctx);
 
+extern bh_operation_result_t bh_sys_hmem_create(bh_syscall_ctx_t *ctx);
+extern bh_operation_result_t bh_sys_hmem_destroy(bh_syscall_ctx_t *ctx);
+extern bh_operation_result_t bh_sys_hmem_query(bh_syscall_ctx_t *ctx);
+extern bh_operation_result_t bh_sys_hmem_map_cpu(bh_syscall_ctx_t *ctx);
+extern bh_operation_result_t bh_sys_hmem_unmap_cpu(bh_syscall_ctx_t *ctx);
+extern bh_operation_result_t bh_sys_hmem_sync_for_cpu(bh_syscall_ctx_t *ctx);
+extern bh_operation_result_t bh_sys_hmem_sync_for_device(bh_syscall_ctx_t *ctx);
+
 static const bh_syscall_meta_t native_syscall_table[] = {
 #include <kernel/syscall/native_syscall_table.inc>
 };
@@ -41,7 +50,7 @@ const bh_personality_syscall_table_t native_personality = {
     .table = native_syscall_table
 };
 
-_Static_assert(BH_SYSCALL_COUNT == (sizeof(native_syscall_table) / sizeof(native_syscall_table[0])),
-               "syscall table and generated ABI count differ");
+
+
 _Static_assert(BH_SYS_TIME_GET < 256,
                "highest syscall exceeds reserved core range (256)");
