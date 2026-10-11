@@ -1,0 +1,89 @@
+catalog_version: 1
+
+services:
+  namesvc:
+    executable: namesvc
+    module_id: namesvc
+    boot_class: CORE
+    dependencies: []
+    supported_runtime_models: [LIGHT, FULL]
+
+  process_manager:
+    executable: process_manager
+    module_id: process_manager
+    boot_class: CORE
+    dependencies: [namesvc]
+    supported_runtime_models: [FULL]
+
+  vm_manager:
+    executable: vm_manager
+    module_id: vm_manager
+    boot_class: CORE
+    dependencies: [namesvc, process_manager]
+    supported_runtime_models: [FULL]
+    requires:
+      virtual_memory: true
+
+  devmgr:
+    executable: devmgr
+    module_id: devmgr
+    boot_class: INFRA
+    dependencies: [namesvc]
+    supported_runtime_models: [LIGHT, FULL]
+
+  faultmgr:
+    executable: faultmgr
+    module_id: faultmgr
+    boot_class: INFRA
+    dependencies: [namesvc]
+    supported_runtime_models: [LIGHT, FULL]
+
+  servicemgr:
+    executable: servicemgr
+    module_id: servicemgr
+    boot_class: INFRA
+    dependencies: [namesvc] # Note: no process_manager cycle as per user feedback
+    supported_runtime_models: [FULL]
+
+  boot_displayd:
+    executable: boot_displayd
+    module_id: boot_displayd
+    boot_class: LATE
+    dependencies: [namesvc]
+    supported_runtime_models: [FULL]
+    requires:
+      display: true
+
+  telemetrymgr:
+    executable: telemetrymgr
+    module_id: telemetrymgr
+    boot_class: OPTIONAL
+    dependencies: [namesvc, faultmgr]
+    supported_runtime_models: [FULL]
+    requires:
+      network: true
+
+  storagemgr:
+    executable: storagemgr
+    module_id: storagemgr
+    boot_class: INFRA
+    dependencies: [namesvc, devmgr]
+    supported_runtime_models: [FULL]
+    requires:
+      storage: true
+
+  accelmgr:
+    executable: accelmgr
+    module_id: accelmgr
+    boot_class: LATE
+    dependencies: [namesvc]
+    supported_runtime_models: [FULL]
+    requires:
+      sensors: true
+
+  app_payload:
+    executable: app_payload
+    module_id: app_payload
+    boot_class: LATE
+    dependencies: []
+    supported_runtime_models: [DIRECT]
