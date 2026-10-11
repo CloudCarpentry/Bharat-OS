@@ -88,3 +88,30 @@ void bh_virtqueue_free_descriptor(bh_virtqueue_t *vq, uint16_t desc_idx) {
     vq->free_head = desc_idx;
     vq->num_free++;
 }
+#include "virtqueue.h"
+
+int bh_virtqueue_add_tx_buffer(bh_virtqueue_t *vq, void *buf, uint32_t len, uint16_t *out_desc_idx) {
+    if (!vq || vq->num_free == 0) {
+        return -1;
+    }
+
+    uint16_t desc_idx = vq->free_head;
+    vq->free_head = vq->desc[desc_idx].next;
+    vq->num_free--;
+
+    vq->desc[desc_idx].addr = (uint64_t)(uintptr_t)buf;
+    vq->desc[desc_idx].len = len;
+    vq->desc[desc_idx].flags = 0; // Not writable by device (host reads it)
+    vq->desc[desc_idx].next = 0xFFFFU;
+
+    // Add to available ring
+    uint16_t avail_idx = vq->avail->idx;
+    vq->avail->ring[avail_idx % vq->queue_size] = desc_idx;
+    __atomic_store_n(&vq->avail->idx, (uint16_t)(avail_idx + 1), __ATOMIC_RELEASE);
+
+    if (out_desc_idx) {
+        *out_desc_idx = desc_idx;
+    }
+
+    return 0;
+}
