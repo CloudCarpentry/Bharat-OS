@@ -3,6 +3,7 @@
 
 #include <bharat/packet/packet.h>
 #include "drivers/net/net_driver.h"
+#include "../../virtio/pci/virtio_pci.h"
 
 #define VIRTIO_NET_F_CSUM        (1ULL << 0)
 #define VIRTIO_NET_F_GUEST_CSUM  (1ULL << 1)
@@ -16,6 +17,23 @@ typedef struct {
     uint16_t rx_count;
     uint64_t negotiated_features;
     bool started;
+
+    bh_virtio_pci_device_t vpci;
+    bool is_real_pci;
+
+    bh_virtqueue_t rx_vq;
+    bh_virtqueue_t tx_vq;
+
+    _Alignas(4096) bh_virtq_desc_t rx_desc[VIRTIO_RING_SIZE];
+    _Alignas(4096) bh_virtq_avail_t rx_avail;
+    _Alignas(4096) bh_virtq_used_t rx_used;
+
+    _Alignas(4096) bh_virtq_desc_t tx_desc[VIRTIO_RING_SIZE];
+    _Alignas(4096) bh_virtq_avail_t tx_avail;
+    _Alignas(4096) bh_virtq_used_t tx_used;
+
+    packet_buf_t *rx_buffers[VIRTIO_RING_SIZE];
+    packet_buf_t *tx_buffers[VIRTIO_RING_SIZE];
 } virtio_net_priv_t;
 
 static void (*netstack_rx_cb)(packet_buf_t* pkt);
@@ -23,7 +41,17 @@ static virtio_net_priv_t g_vnet_priv;
 static netdrv_device_t g_vnet_device;
 
 static int virtio_drv_probe(netdrv_device_t* dev, void* bus_device) {
+    virtio_net_priv_t* priv = (virtio_net_priv_t*)dev->priv;
     dev->bus_ctx = bus_device;
+
+    pci_device_t *pci = (pci_device_t *)bus_device;
+    if (pci) {
+        int rc = bh_virtio_pci_probe(&priv->vpci, pci);
+        if (rc == 0) {
+            priv->is_real_pci = true;
+        }
+    }
+
     dev->state = NETDRV_STATE_PROBED;
     return 0;
 }
@@ -37,12 +65,49 @@ static int virtio_drv_init(netdrv_device_t* dev) {
     priv->started = false;
     priv->negotiated_features = VIRTIO_NET_F_CSUM | VIRTIO_NET_F_GUEST_CSUM;
 
+    if (priv->is_real_pci) {
+        bh_virtio_pci_negotiate_features(&priv->vpci, priv->negotiated_features, &priv->negotiated_features);
+    }
+
     dev->state = NETDRV_STATE_INITIALIZED;
     return 0;
 }
 
 static int virtio_drv_start(netdrv_device_t* dev) {
     virtio_net_priv_t* priv = (virtio_net_priv_t*)dev->priv;
+
+    if (priv->is_real_pci) {
+        // Setup RX (Queue 0)
+        int rc = bh_virtio_pci_setup_queue(&priv->vpci, 0, &priv->rx_vq, priv->rx_desc, &priv->rx_avail, &priv->rx_used);
+        if (rc != 0) return rc;
+
+        // Setup TX (Queue 1)
+        rc = bh_virtio_pci_setup_queue(&priv->vpci, 1, &priv->tx_vq, priv->tx_desc, &priv->tx_avail, &priv->tx_used);
+        if (rc != 0) return rc;
+
+        for (int i = 0; i < VIRTIO_RING_SIZE; i++) {
+            priv->rx_buffers[i] = NULL;
+            priv->tx_buffers[i] = NULL;
+        }
+
+        // Fill RX ring
+        for (int i = 0; i < VIRTIO_RING_SIZE; i++) {
+            packet_buf_t *pkt = packet_alloc();
+            if (pkt) {
+                uint16_t desc_idx;
+                if (bh_virtqueue_add_rx_buffer(&priv->rx_vq, pkt->data, pkt->total_len, &desc_idx) == 0) {
+                    priv->rx_buffers[desc_idx] = pkt;
+                } else {
+                    packet_free(pkt);
+                }
+            }
+        }
+
+        bh_virtio_pci_notify_queue(&priv->vpci, 0, &priv->rx_vq);
+
+        rc = bh_virtio_pci_start_device(&priv->vpci);
+        if (rc != 0) return rc;
+    }
 
     priv->started = true;
     dev->state = NETDRV_STATE_STARTED;
@@ -72,17 +137,84 @@ static int virtio_drv_tx(netdrv_device_t* dev, packet_buf_t* pkt, uint8_t queue_
         return -1;
     }
 
-    packet_unref(pkt);
-    return 0;
+    if (priv->is_real_pci) {
+        uint16_t desc_idx;
+        // The virtqueue_add_tx_buffer handles passing the buffer address.
+        // It requires the virtqueue headers to be at the beginning of the buffer for virtio-net,
+        // but for a stub/first end-to-end path, let's just send the data directly.
+        // QEMU requires a virtio_net_hdr (10 bytes or 12 bytes).
+        // Since we didn't negotiate any special header lengths, we must prepend a 10-byte header.
+        // Let's use the headroom we have in packet_buf_t.
+        if (pkt->head_len >= 10) {
+            pkt->head_len -= 10;
+            pkt->data -= 10;
+            pkt->data_len += 10;
+            __builtin_memset(pkt->data, 0, 10); // Empty virtio_net_hdr
+        } else {
+            dev->stats.tx_errors++;
+            packet_unref(pkt);
+            return -1;
+        }
+
+        if (bh_virtqueue_add_tx_buffer(&priv->tx_vq, pkt->data, pkt->data_len, &desc_idx) == 0) {
+            priv->tx_buffers[desc_idx] = pkt;
+            bh_virtio_pci_notify_queue(&priv->vpci, 1, &priv->tx_vq);
+            return 0;
+        }
+        dev->stats.tx_drops++;
+        packet_unref(pkt);
+        return -1;
+    } else {
+        packet_unref(pkt);
+        return 0;
+    }
 }
 
 static int virtio_drv_rx(netdrv_device_t* dev, packet_buf_t** out_pkt, uint8_t queue_id) {
     virtio_net_priv_t* priv = (virtio_net_priv_t*)dev->priv;
-    packet_buf_t* pkt;
+    packet_buf_t* pkt = NULL;
 
     (void)dev;
     (void)queue_id;
-    if (!out_pkt || priv->rx_count == 0) {
+    if (!out_pkt) {
+        return -1;
+    }
+
+    if (priv->is_real_pci) {
+        uint16_t desc_idx;
+        uint32_t len;
+        if (bh_virtqueue_poll_used(&priv->rx_vq, &desc_idx, &len)) {
+            pkt = priv->rx_buffers[desc_idx];
+            priv->rx_buffers[desc_idx] = NULL;
+            bh_virtqueue_free_descriptor(&priv->rx_vq, desc_idx);
+
+            if (pkt && len >= 10) {
+                // Strip virtio_net_hdr
+                pkt->data += 10;
+                pkt->head_len += 10;
+                pkt->data_len = len - 10;
+                *out_pkt = pkt;
+
+                // Replenish rx ring immediately
+                packet_buf_t *new_pkt = packet_alloc();
+                if (new_pkt) {
+                    uint16_t new_desc;
+                    if (bh_virtqueue_add_rx_buffer(&priv->rx_vq, new_pkt->data, new_pkt->total_len, &new_desc) == 0) {
+                        priv->rx_buffers[new_desc] = new_pkt;
+                        bh_virtio_pci_notify_queue(&priv->vpci, 0, &priv->rx_vq);
+                    } else {
+                        packet_free(new_pkt);
+                    }
+                }
+                return 0;
+            } else if (pkt) {
+                packet_free(pkt);
+            }
+        }
+        return -1;
+    }
+
+    if (priv->rx_count == 0) {
         return -1;
     }
 
@@ -95,6 +227,7 @@ static int virtio_drv_rx(netdrv_device_t* dev, packet_buf_t** out_pkt, uint8_t q
 }
 
 static int virtio_drv_poll(netdrv_device_t* dev) {
+    virtio_net_priv_t* priv = (virtio_net_priv_t*)dev->priv;
     packet_buf_t* pkt = 0;
 
     if (!dev) {
@@ -102,6 +235,22 @@ static int virtio_drv_poll(netdrv_device_t* dev) {
     }
 
     dev->stats.poll_count++;
+
+    // Free completed TX packets
+    if (priv->is_real_pci) {
+        uint16_t desc_idx;
+        uint32_t len;
+        while (bh_virtqueue_poll_used(&priv->tx_vq, &desc_idx, &len)) {
+            packet_buf_t *tx_pkt = priv->tx_buffers[desc_idx];
+            priv->tx_buffers[desc_idx] = NULL;
+            bh_virtqueue_free_descriptor(&priv->tx_vq, desc_idx);
+            if (tx_pkt) {
+                packet_unref(tx_pkt);
+            }
+        }
+    }
+
+    // Process RX
     while (netdrv_poll_rx(dev, &pkt, 0) == 0) {
         if (netstack_rx_cb) {
             netstack_rx_cb(pkt);
