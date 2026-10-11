@@ -82,7 +82,7 @@ sequenceDiagram
     participant M as Memory Manager
 
     A->>S: bh_hmem_create(desc)
-    S->>U: native HMEM create
+    S->>U: native HMEM syscall (`bh_sys_hmem_create`)
     U->>K: validate request
 
     K->>K: validate size/alignment/flags
@@ -109,7 +109,7 @@ sequenceDiagram
     participant HAL as HAL
 
     A->>SDK: bh_hmem_map_cpu()
-    SDK->>K: map request
+    SDK->>K: map request via syscall (`bh_sys_hmem_map_cpu`)
 
     K->>K: capability check
     K->>K: access-right check
@@ -147,7 +147,7 @@ sequenceDiagram
     participant DEV as Accelerator
 
     APP->>SDK: bh_hmem_sync_for_device(HMEM)
-    SDK->>K: HMEM sync
+    SDK->>K: HMEM sync via syscall (`bh_sys_hmem_sync_for_device`)
 
     K->>K: validate range
 
