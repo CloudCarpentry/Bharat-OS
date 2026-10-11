@@ -74,3 +74,11 @@ test_procvm_stress
 test_vm_authority_integration
 test_vm_handle_lifecycle
 build/generated/
+temp_log.txt
+
+# Junk files
+*.patch
+*.patch2
+*.patch3
+*.c.orig
+*.c.rej

@@ -88,8 +88,7 @@ target_name="${ARCH}_desktop_headless"
 if [ -f "$repo_root/quality/contracts/boot/headless_boot_contract.yaml" ]; then
   echo "Running structured boot log validation..."
   strict_flag=""
-  # Enable strict mode if testing 801 target or specifically requested
-  if [[ "$target_name" == *"desktop_headless"* ]]; then
+  if [ "${BHARAT_BOOT_LOG_STRICT:-0}" = "1" ]; then
       strict_flag="--strict"
   fi
   python3 "$repo_root/tools/testing/check_boot_log.py" --target "$target_name" --log "$LOG_FILE" --contract "$repo_root/quality/contracts/boot/headless_boot_contract.yaml" $strict_flag

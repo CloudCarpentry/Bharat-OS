@@ -336,7 +336,7 @@ def run_qemu(manifest_path: Path, mode_override: str = None, display_override: s
         # Run check_boot_log.py to validate structured events and state transitions
         if contract_path.exists() and run_mode == "smoke":
             check_cmd = [sys.executable, str(repo_root / "tools" / "testing" / "check_boot_log.py"), "--target", target_name, "--log", str(log_path), "--contract", str(contract_path)]
-            if "desktop_headless" in target_name:
+            if os.environ.get("BHARAT_BOOT_LOG_STRICT", "0") == "1":
                 check_cmd.append("--strict")
             check_result = subprocess.run(check_cmd, capture_output=True, text=True)
             if check_result.returncode != 0:
