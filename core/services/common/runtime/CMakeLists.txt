@@ -20,3 +20,9 @@ target_link_libraries(bharat_service_runtime
     bharat_libnamesvc
     bharat_freestanding
 )
+
+if(BHARAT_BUILD_HOST_TESTS)
+    add_executable(test_health tests/test_health.c)
+    target_include_directories(test_health PRIVATE ${CMAKE_SOURCE_DIR}/interface/include)
+    add_test(NAME test_health COMMAND test_health)
+endif()
