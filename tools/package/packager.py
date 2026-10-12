@@ -177,22 +177,41 @@ def execute_package(plan: PackagePlan, repo_root: Path) -> PackageOutputs:
     )
 
     bundle = bytearray(header + payload_bytes)
-    if plan.target.build.cmake_defs.get("BHARAT_INIT_CORE_BOOTSTRAP_ONLY"):
-        if binary_name != "init":
-            raise RuntimeError("CORE bootstrap services require the full init root")
-        for service in ("namesvc", "process_manager"):
-            service_path = _find_required_root_binary(plan.build_outputs.build_dir, service)
-            service_bytes = service_path.read_bytes()
-            service_name = f"services/{service}".encode("utf-8")
-            service_header = struct.pack(
-                "<IIIIIIIIIII32s32s20s", magic, abi_version, header_size, 3,
-                payload_offset, len(service_bytes), target_arch, elf_class, flags,
-                len(service_name), digest_algo, digest, service_name.ljust(32, b"\x00"), padding)
-            bundle.extend(service_header)
-            bundle.extend(service_bytes)
-            print(f"[Package] Added real bootstrap executable {service}: {len(service_bytes)} bytes")
+
+    resolved_graph = plan.target.source_metadata.get("resolved_service_graph", {})
+
+    if binary_name in ("init", "init-lite"):
+        for service_name, svc_data in resolved_graph.items():
+            if service_name == "_metadata":
+                continue
+            if svc_data["info"].get("boot_class") == "CORE":
+                try:
+                    service_path = _find_required_root_binary(plan.build_outputs.build_dir, service_name)
+                    service_bytes = service_path.read_bytes()
+                    module_id = svc_data["info"].get("module_id", service_name)
+                    encoded_service_name = f"services/{module_id}".encode("utf-8")
+                    service_header = struct.pack(
+                        "<IIIIIIIIIII32s32s20s", magic, abi_version, header_size, 3,
+                        payload_offset, len(service_bytes), target_arch, elf_class, flags,
+                        len(encoded_service_name), digest_algo, digest, encoded_service_name.ljust(32, b"\x00"), padding)
+                    bundle.extend(service_header)
+                    bundle.extend(service_bytes)
+                    print(f"[Package] Added real bootstrap executable {service_name}: {len(service_bytes)} bytes")
+                except RuntimeError as e:
+                    if svc_data["state"] == "required":
+                         raise RuntimeError(f"Required bootstrap executable '{service_name}' is missing: {e}")
+                    print(f"[Package] Warning: Optional bootstrap executable {service_name} not found, skipping.")
+
     init_module_path.write_bytes(bundle)
     print(f"[Package] Packaged and wrote Bharat boot-module container to {init_module_path}")
+
+    service_manifest_path = plan.manifest_dir / "service-manifest.json"
+    with open(service_manifest_path, "w") as f:
+        import json
+        json.dump(resolved_graph, f, indent=2)
+    packaged_artifacts.append(
+        ArtifactRecord(kind="service_manifest", path=service_manifest_path, producer="packager_boot_module")
+    )
 
     packaged_artifacts.append(
         ArtifactRecord(kind="init_module", path=init_module_path,
