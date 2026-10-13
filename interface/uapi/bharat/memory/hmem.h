@@ -114,6 +114,7 @@ typedef struct bh_hmem_create_args {
   bharat_hmem_desc_v1_t desc;
   uint64_t rights;
   bharat_hmem_handle_t out_handle;
+  uint64_t resource_cap;
 } bh_hmem_create_args_t;
 
 typedef struct bh_hmem_query_args {
@@ -141,6 +142,30 @@ typedef struct bh_hmem_sync_args {
   uint64_t offset;
   uint64_t length;
 } bh_hmem_sync_args_t;
+
+_Static_assert(sizeof(bh_hmem_create_args_t) == 112U, "bh_hmem_create_args ABI size");
+_Static_assert(offsetof(bh_hmem_create_args_t, desc) == 8U, "bh_hmem_create_args desc offset");
+_Static_assert(offsetof(bh_hmem_create_args_t, rights) == 88U, "bh_hmem_create_args rights offset");
+_Static_assert(offsetof(bh_hmem_create_args_t, out_handle) == 96U, "bh_hmem_create_args out_handle offset");
+_Static_assert(offsetof(bh_hmem_create_args_t, resource_cap) == 104U, "bh_hmem_create_args resource_cap offset");
+
+_Static_assert(sizeof(bh_hmem_query_args_t) == 96U, "bh_hmem_query_args ABI size");
+_Static_assert(offsetof(bh_hmem_query_args_t, hmem_cap) == 8U, "bh_hmem_query_args hmem_cap offset");
+_Static_assert(offsetof(bh_hmem_query_args_t, out_info) == 16U, "bh_hmem_query_args out_info offset");
+
+_Static_assert(sizeof(bh_hmem_map_cpu_args_t) == 32U, "bh_hmem_map_cpu_args ABI size");
+_Static_assert(offsetof(bh_hmem_map_cpu_args_t, hmem_cap) == 8U, "bh_hmem_map_cpu_args hmem_cap offset");
+_Static_assert(offsetof(bh_hmem_map_cpu_args_t, access) == 16U, "bh_hmem_map_cpu_args access offset");
+_Static_assert(offsetof(bh_hmem_map_cpu_args_t, reserved) == 20U, "bh_hmem_map_cpu_args reserved offset");
+_Static_assert(offsetof(bh_hmem_map_cpu_args_t, out_addr) == 24U, "bh_hmem_map_cpu_args out_addr offset");
+
+_Static_assert(sizeof(bh_hmem_unmap_cpu_args_t) == 16U, "bh_hmem_unmap_cpu_args ABI size");
+_Static_assert(offsetof(bh_hmem_unmap_cpu_args_t, hmem_cap) == 8U, "bh_hmem_unmap_cpu_args hmem_cap offset");
+
+_Static_assert(sizeof(bh_hmem_sync_args_t) == 32U, "bh_hmem_sync_args ABI size");
+_Static_assert(offsetof(bh_hmem_sync_args_t, hmem_cap) == 8U, "bh_hmem_sync_args hmem_cap offset");
+_Static_assert(offsetof(bh_hmem_sync_args_t, offset) == 16U, "bh_hmem_sync_args offset offset");
+_Static_assert(offsetof(bh_hmem_sync_args_t, length) == 24U, "bh_hmem_sync_args length offset");
 
 
 #endif /* BHARAT_MEMORY_HMEM_H */

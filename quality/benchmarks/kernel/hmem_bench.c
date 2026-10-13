@@ -2,6 +2,7 @@
 #include "lib/base/string.h"
 #include "mm/hmem.h"
 #include "slab.h"
+#include "time/ktime.h"
 
 #include <stdint.h>
 
@@ -76,18 +77,41 @@ void bh_hmem_benchmark_run(void) {
     kmem_aligned_free(buffers[b]);
     buffers[b] = NULL;
   }
-  if (bh_hmem_create(&desc, rights, &handle) != K_OK ||
-      bh_hmem_map_cpu(handle, BH_HMEM_ACCESS_READ | BH_HMEM_ACCESS_WRITE,
+  uint64_t t0, t1;
+  uint64_t create_ns = 0U, map_ns = 0U, unmap_ns = 0U, destroy_ns = 0U;
+
+  t0 = bh_ktime_now();
+  if (bh_hmem_create(&desc, rights, &handle) != K_OK)
+    goto failed;
+  t1 = bh_ktime_now();
+  create_ns = (t1 >= t0) ? (t1 - t0) : 0U;
+
+  t0 = bh_ktime_now();
+  if (bh_hmem_map_cpu(handle, BH_HMEM_ACCESS_READ | BH_HMEM_ACCESS_WRITE,
                       &mapped) != K_OK)
     goto failed;
+  t1 = bh_ktime_now();
+  map_ns = (t1 >= t0) ? (t1 - t0) : 0U;
+
   for (uint32_t iteration = 0U; iteration < BENCH_ITERATIONS; ++iteration) {
     uint8_t *data = (uint8_t *)mapped;
     for (uint32_t i = 0U; i < BENCH_SIZE; ++i)
       data[i] = (uint8_t)(i + iteration);
     hmem_hash ^= checksum(data, BENCH_SIZE);
   }
-  if (bh_hmem_unmap_cpu(handle) != K_OK || bh_hmem_destroy(handle) != K_OK)
+
+  t0 = bh_ktime_now();
+  if (bh_hmem_unmap_cpu(handle) != K_OK)
     goto failed;
+  t1 = bh_ktime_now();
+  unmap_ns = (t1 >= t0) ? (t1 - t0) : 0U;
+
+  t0 = bh_ktime_now();
+  if (bh_hmem_destroy(handle) != K_OK)
+    goto failed;
+  t1 = bh_ktime_now();
+  destroy_ns = (t1 >= t0) ? (t1 - t0) : 0U;
+
   emit("BASELINE_COPIES", BENCH_ITERATIONS * BENCH_HANDOFFS);
   emit("HMEM_COPIES", 0U);
   emit("BASELINE_BYTES_COPIED",
@@ -97,6 +121,10 @@ void bh_hmem_benchmark_run(void) {
   emit("HMEM_OBJECTS", 1U);
   emit("HMEM_MAPS", 1U);
   emit("HMEM_UNMAPS", 1U);
+  emit("HMEM_CREATE_NS", create_ns);
+  emit("HMEM_MAP_NS", map_ns);
+  emit("HMEM_UNMAP_NS", unmap_ns);
+  emit("HMEM_DESTROY_NS", destroy_ns);
   emit("BASELINE_CHECKSUM", baseline_hash);
   emit("HMEM_CHECKSUM", hmem_hash);
   KPRINT(baseline_hash == hmem_hash ? "BH_BENCH:RESULT=PASS\n"

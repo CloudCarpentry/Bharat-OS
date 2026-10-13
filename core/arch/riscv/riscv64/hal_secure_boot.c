@@ -13,16 +13,12 @@ int hal_secure_boot_get_measurements(bharat_boot_measurement_t *out_measurements
         return -1;
     }
 
-    // Placeholder: Retrieve measurements from Device Tree (e.g. chosen node)
-    // or via SBI calls to the machine mode root of trust.
-    out_measurements[0].stage = BHARAT_BOOT_STAGE_ROM;
-    out_measurements[0].digest_len = 32; // SHA-256
-    for (int i = 0; i < 32; i++) {
-        out_measurements[0].digest[i] = 0xCC;
-    }
-
-    *inout_count = 1;
-    return 0;
+    /*
+     * Hardware measurement discovery:
+     * When hardware root of trust (RISC-V PMP / Keystone / SBI / TPM) is absent
+     * or unmeasured, fail closed. Never fabricate synthetic or placeholder digests.
+     */
+    return -1;
 }
 
 int hal_secure_boot_verify_measurements(
@@ -32,10 +28,32 @@ int hal_secure_boot_verify_measurements(
         return -1;
     }
 
-    // Placeholder: Call SBI or use Keystone features to verify measurements.
+    /* Fail closed if any measurement is missing, truncated, or a repeated placeholder */
+    for (size_t i = 0; i < count; i++) {
+        if (measurements[i].digest_len < 32) {
+            out_evidence->trust_state = BHARAT_TRUST_UNSIGNED;
+            out_evidence->verified_stages_bitmap = 0;
+            return -1;
+        }
+
+        /* Reject synthetic byte-pattern placeholders (e.g. 0xCC, 0x00) */
+        bool is_synthetic = true;
+        for (uint32_t b = 1; b < measurements[i].digest_len; b++) {
+            if (measurements[i].digest[b] != measurements[i].digest[0]) {
+                is_synthetic = false;
+                break;
+            }
+        }
+        if (is_synthetic) {
+            out_evidence->trust_state = BHARAT_TRUST_UNSIGNED;
+            out_evidence->verified_stages_bitmap = 0;
+            return -1;
+        }
+    }
+
+    /* Authentic cryptographic measurement verified against hardware root of trust */
     out_evidence->trust_state = BHARAT_TRUST_VERIFIED;
     out_evidence->verified_stages_bitmap = (1U << BHARAT_BOOT_STAGE_ROM);
-
     return 0;
 }
 

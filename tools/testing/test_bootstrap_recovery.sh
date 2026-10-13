@@ -15,7 +15,7 @@ service_includes=(-Iinterface -Iinterface/include -Icore/lib/runtime/include
     -Icore/lib/cap/include -Icore/lib/ipc/include -Icore/lib/namesvc/include
     -Icore/services/common/runtime/include -Icore/lib/handle)
 kernel_includes=(-I"$generated" -Icore/kernel/include -Icore/kernel/src
-    -Icore/lib/include -Icore/hal/include -Icore/personalities/runtime/include -Iinterface/include)
+    -Icore/lib/include -Icore/hal/include -Icore/personalities/runtime/include -Iinterface/include -Iinterface/uapi)
 pm_includes=(-Iinterface -Iinterface/include -Icore/lib/handle
     -Icore/services/common/runtime/include -Icore/lib/cap/include -Icore/lib/ipc/include)
 init_sources=(core/services/core/init/{init_runtime,init_graph,init_events,init_rollback,init_status,init_profile}.c)

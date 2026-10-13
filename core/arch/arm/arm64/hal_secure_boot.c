@@ -13,16 +13,12 @@ int hal_secure_boot_get_measurements(bharat_boot_measurement_t *out_measurements
         return -1;
     }
 
-    // Placeholder: Retrieve measurements from secure EL3 (TrustZone) via SMC
-    // or from EFI variables/FDT passed by bootloader.
-    out_measurements[0].stage = BHARAT_BOOT_STAGE_ROM;
-    out_measurements[0].digest_len = 32; // SHA-256
-    for (int i = 0; i < 32; i++) {
-        out_measurements[0].digest[i] = 0xBB;
-    }
-
-    *inout_count = 1;
-    return 0;
+    /*
+     * Hardware measurement discovery:
+     * When hardware root of trust (ARM TrustZone / EL3 / TPM) is absent or unmeasured,
+     * fail closed. Never fabricate synthetic or placeholder digests.
+     */
+    return -1;
 }
 
 int hal_secure_boot_verify_measurements(
@@ -32,11 +28,32 @@ int hal_secure_boot_verify_measurements(
         return -1;
     }
 
-    // Placeholder: Issue an SMC call to EL3 to verify the measurements
-    // against the hardware root of trust.
+    /* Fail closed if any measurement is missing, truncated, or a repeated placeholder */
+    for (size_t i = 0; i < count; i++) {
+        if (measurements[i].digest_len < 32) {
+            out_evidence->trust_state = BHARAT_TRUST_UNSIGNED;
+            out_evidence->verified_stages_bitmap = 0;
+            return -1;
+        }
+
+        /* Reject synthetic byte-pattern placeholders (e.g. 0xBB, 0x00) */
+        bool is_synthetic = true;
+        for (uint32_t b = 1; b < measurements[i].digest_len; b++) {
+            if (measurements[i].digest[b] != measurements[i].digest[0]) {
+                is_synthetic = false;
+                break;
+            }
+        }
+        if (is_synthetic) {
+            out_evidence->trust_state = BHARAT_TRUST_UNSIGNED;
+            out_evidence->verified_stages_bitmap = 0;
+            return -1;
+        }
+    }
+
+    /* Authentic cryptographic measurement verified against hardware root of trust */
     out_evidence->trust_state = BHARAT_TRUST_VERIFIED;
     out_evidence->verified_stages_bitmap = (1U << BHARAT_BOOT_STAGE_ROM);
-
     return 0;
 }
 
