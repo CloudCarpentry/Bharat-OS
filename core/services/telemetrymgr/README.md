@@ -17,9 +17,10 @@ System-wide metrics and monitoring service. Needed early to prevent multikernel 
 - **May depend on:** `lib/runtime`, `lib/ipc`, standard C library headers.
 - **Must not depend on:** `subsys/*`, `ui/*`, direct kernel-private headers.
 
-## Immediate TODOs
-- Aggregate metrics from the kernel dispatcher, `memmgr`, and `coremgr`.
-- Set up a simple shared-memory ring buffer for low-overhead logging.
+## Contract
+The service follows the `BHARAT_SERVICE_TELEMETRYMGR` IPC contract as defined in `interface/include/bharat/uapi/telemetrymgr/contract.h`.
+It supports registering metrics, updating gauges and counters, querying individual metrics, and retrieving paginated snapshots of all registered metrics.
+Categories are architecture-neutral and defined in `metrics.h`.
 
 ## Status
-Stub.
+Working, bounded, multikernel-aware metrics registry with thermal policy state preserved.
