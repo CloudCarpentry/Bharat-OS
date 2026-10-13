@@ -64,6 +64,16 @@ CODE_SUFFIXES = (".c", ".h", ".cc", ".cpp", ".hpp", ".S")
 DEFAULT_BASELINE = "tools/lint/baselines/layer_references.allowlist"
 
 
+def get_remediation(rule: str) -> str:
+    remediations = {
+        "symbol-leakage": "Use standard interfaces or opaque handles instead of direct service symbols.",
+        "layer-reference": "Refactor to use interfaces/HALs or move logic to a lower layer.",
+        "freestanding-header": "Use kernel/lib alternatives instead of hosted standard library headers.",
+        "kernel-ui-leakage": "Remove UI dependencies from the kernel.",
+    }
+    return remediations.get(rule, "Review architectural layer rules.")
+
+
 @dataclass(frozen=True)
 class Violation:
     file: str
@@ -95,21 +105,27 @@ def include_target_layer(
     quoted: bool,
 ) -> str | None:
     resolved_relative = False
-    if quoted and include_target.startswith("."):
+    if quoted:
+        # Check if it's explicitly relative (starts with .)
+        # or if it exists locally in the same directory as the source file
         resolved = (source_path.parent / include_target).resolve()
-        try:
-            include_target = resolved.relative_to(repo_root).as_posix()
-            resolved_relative = True
-        except ValueError:
-            return "other"
+
+        # We need to distinguish between standard library includes and actual local files.
+        # If it doesn't start with '.', check if the local file actually exists.
+        if include_target.startswith(".") or (resolved.exists() and resolved.is_file()):
+            try:
+                include_target = resolved.relative_to(repo_root).as_posix()
+                resolved_relative = True
+            except ValueError:
+                return "other"
 
     if resolved_relative:
         return detect_layer(include_target)
 
-    top = include_target.split("/", 1)[0]
-    # Check direct match with layer prefix first
+    # For full repo-relative paths (e.g. core/services/...) or virtual roots
+    # Check match with layer prefix first by iterating layers
     for layer, prefixes in LAYER_PREFIXES.items():
-        if any(top == prefix.rstrip("/") for prefix in prefixes):
+        if any(include_target.startswith(prefix) or include_target.split("/", 1)[0] == prefix.rstrip("/") for prefix in prefixes):
             # Treat kernel-private headers (kernel/include/lib/*) as kernel internals,
             # not top-level hosted /lib dependencies.
             if (
@@ -120,6 +136,67 @@ def include_target_layer(
                 return "kernel"
             return layer
     return None
+
+
+def strip_comments_and_strings(line: str, in_multiline_comment: bool, in_string: bool) -> tuple[str, bool, bool]:
+    """Lightweight single-pass comment and string literal stripper."""
+    result = []
+    i = 0
+    n = len(line)
+    in_char = False
+    escape = False
+
+    while i < n:
+        if in_multiline_comment:
+            if i + 1 < n and line[i] == '*' and line[i+1] == '/':
+                in_multiline_comment = False
+                i += 2
+                continue
+            i += 1
+            continue
+
+        if in_string:
+            if escape:
+                escape = False
+            elif line[i] == '\\':
+                escape = True
+            elif line[i] == '"':
+                in_string = False
+            i += 1
+            continue
+
+        if in_char:
+            if escape:
+                escape = False
+            elif line[i] == '\\':
+                escape = True
+            elif line[i] == "'":
+                in_char = False
+            i += 1
+            continue
+
+        if i + 1 < n and line[i] == '/' and line[i+1] == '/':
+            break
+
+        if i + 1 < n and line[i] == '/' and line[i+1] == '*':
+            in_multiline_comment = True
+            i += 2
+            continue
+
+        if line[i] == '"':
+            in_string = True
+            i += 1
+            continue
+
+        if line[i] == "'":
+            in_char = True
+            i += 1
+            continue
+
+        result.append(line[i])
+        i += 1
+
+    return "".join(result), in_multiline_comment, in_string
 
 
 def iter_code_files(repo_root: Path):
@@ -142,10 +219,14 @@ def scan(repo_root: Path) -> tuple[list[Violation], int]:
 
         try:
             with abspath.open("r", encoding="utf-8", errors="ignore") as f:
+                in_multiline_comment = False
+                in_string = False
                 for ln, line in enumerate(f, start=1):
+                    clean_line, in_multiline_comment, in_string = strip_comments_and_strings(line, in_multiline_comment, in_string)
+
                     # Symbol leakage check for lib/sdk
                     if src_layer in {"lib", "sdk"}:
-                        for match in SYMBOL_LEAKAGE_RE.finditer(line):
+                        for match in SYMBOL_LEAKAGE_RE.finditer(clean_line):
                             violations.append(
                                 Violation(
                                     relpath,
@@ -242,6 +323,8 @@ def write_report(path: Path, violations: list[Violation], files_scanned: int) ->
         for key, _count in by_pair.most_common():
             rule, src, dst = key
             lines.append(f"### `{rule}`: `{src}` -> `{dst}`")
+            lines.append(f"**Remediation:** {get_remediation(rule)}")
+            lines.append("")
             for v in examples[key]:
                 lines.append(f"- `{v.file}:{v.line}` includes `{v.include}`")
             lines.append("")
@@ -290,6 +373,14 @@ def main() -> int:
     print(f"Violations found: {len(new_violations)}")
     if baseline_entries:
         print(f"Known baseline debt: {len(violations) - len(new_violations)}")
+
+    if new_violations:
+        print("\n--- New Violations ---")
+        for v in sorted(new_violations, key=lambda x: (x.file, x.line)):
+            print(f"{v.file}:{v.line}: [{v.rule}] {v.source_layer} -> {v.target_layer}")
+            print(f"  Reference: {v.include}")
+            print(f"  Remediation: {get_remediation(v.rule)}")
+        print("----------------------\n")
 
     if args.report:
         report_path = (repo_root / args.report).resolve()
