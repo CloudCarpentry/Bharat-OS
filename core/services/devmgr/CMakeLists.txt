@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.20)
 project(devmgr C ASM)
 
 # Add source files
-set(SOURCES main.c)
+set(SOURCES main.c devmgr_core.c)
 
 # Create executable
 add_executable(devmgr ${SOURCES})
@@ -16,7 +16,13 @@ target_include_directories(devmgr PRIVATE
 
 # Link against common runtime library and IPC library
 target_link_libraries(devmgr PRIVATE
-    # TODO: Add runtime and ipc libraries when available
+    bharat_libruntime
+    bharat_libcmin
+    bharatc
 )
 
 bharat_configure_userspace_binary(devmgr)
+
+if(BHARAT_BUILD_HOST_TESTS)
+    add_subdirectory(tests)
+endif()

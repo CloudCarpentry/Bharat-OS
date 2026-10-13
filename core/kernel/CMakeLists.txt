@@ -405,7 +405,6 @@ if(BHARAT_ENABLE_ADVANCED_VM OR BHARAT_PROFILE_MMU_LITE)
         src/mm/vmm.c
         src/mm/vm/distributed/vm_mapping.c
         ${BHARAT_HAL_ROOT}/prot/none/prot_none_backend.c
-        ${BHARAT_HAL_ROOT}/mmu_lite/common/mmu_lite_backend.c
         src/mm/vm/distributed/vm_compat_vmm.c
         src/mm/vm/distributed/mm_local.c
         src/mm/vm/distributed/mm_remote.c
