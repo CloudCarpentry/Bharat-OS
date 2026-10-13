@@ -3,14 +3,15 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdalign.h>
 
 #define BHARAT_TLB_MAX_PENDING_PER_CORE 16
 
 typedef struct {
+    alignas(8) uint64_t target_mask;
+    alignas(8) uint64_t ack_mask;
+    alignas(8) uint64_t aspace_id;
     uint32_t request_id;    // Encoded (core, slot, generation)
-    uint64_t target_mask;
-    uint64_t ack_mask;
-    uint64_t aspace_id;
     int in_use;
 } tlb_pending_entry_t;
 

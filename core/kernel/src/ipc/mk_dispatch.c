@@ -3,6 +3,10 @@
 #include "../../include/hal/hal.h"
 #include "sched/sched.h"
 #include "../sched/sched_internal.h"
+#include "../../include/capability.h"
+extern struct capability_table g_cap_bootstrap_cspaces[];
+extern _Bool g_cap_bootstrap_cspaces_used[];
+
 
 #define MK_MSG_TYPE_AI_SUGGESTION 1U
 
@@ -15,21 +19,59 @@ static int mk_authorize_message(mk_channel_t *channel, urpc_msg_t *msg) {
     case MK_MSG_TYPE_NACK:
     case MK_MSG_THREAD_HANDOFF_ACK:
     case MK_MSG_THREAD_HANDOFF_NACK:
-    case MK_MSG_THREAD_LOOKUP_REQ:
     case MK_MSG_THREAD_LOOKUP_RESP:
-    case MK_MSG_THREAD_WAKE_REQ:
-    case MK_MSG_THREAD_ENQUEUE_REQ:
+    {
+        mk_proto_txn_entry_t entry;
+        if (mk_proto_txn_lookup(msg->msg_id, &entry) != 0) {
+            return -1;
+        }
+        if (entry.remote_core != msg->src_core) {
+            return -1;
+        }
+        return 0;
+    }
+
     case MK_MSG_TYPE_AI_SUGGESTION:
         return 0;
 
     case MK_MSG_THREAD_HANDOFF_REQ:
-        // Mock capability check: Ensure sender provided a valid schedule authority token
-        // In a real implementation, this would lookup the auth_token in the receiver's CNode
-        // to verify it grants CAP_SCHED_TARGET on this core.
-        if (msg->auth_token == 0) {
-            return -1; // Denied: Missing capability token
+    case MK_MSG_THREAD_WAKE_REQ:
+    case MK_MSG_THREAD_ENQUEUE_REQ:
+    case MK_MSG_THREAD_LOOKUP_REQ:
+    {
+        if (msg->src_core >= MAX_CPUS) return -1;
+        if (!g_cap_bootstrap_cspaces_used[msg->src_core]) return -1;
+        capability_table_t *src_table = &g_cap_bootstrap_cspaces[msg->src_core];
+        capability_entry_t entry;
+
+        cap_rights_mask_t req_rights = CAP_RIGHT_SCHEDULE;
+        if (msg->type == MK_MSG_THREAD_LOOKUP_REQ) req_rights = CAP_RIGHT_QUERY;
+
+        if (cap_table_lookup(src_table, msg->auth_token, CAP_TYPE_NONE, req_rights, &entry) != 0) {
+            return -1;
         }
+
+        uint64_t target_thread_id = 0;
+        if (msg->type == MK_MSG_THREAD_HANDOFF_REQ) {
+            if (msg->payload_size != sizeof(mk_msg_thread_handoff_t)) return -1;
+            mk_msg_thread_handoff_t payload;
+            __builtin_memcpy(&payload, msg->payload_data, sizeof(payload));
+            target_thread_id = payload.thread_id;
+        } else {
+            if (msg->payload_size != sizeof(mk_msg_remote_lookup_t)) return -1;
+            mk_msg_remote_lookup_t payload;
+            __builtin_memcpy(&payload, msg->payload_data, sizeof(payload));
+            target_thread_id = payload.id;
+        }
+
+        bh_thread_t *target_thread = sched_find_thread_by_id(target_thread_id);
+        if (!target_thread) return -1;
+        if (entry.object_ref != (uint64_t)target_thread && entry.object_ref != target_thread_id) {
+            return -1;
+        }
+
         return 0;
+    }
 
     default:
         // Default route: deny by default
@@ -231,32 +273,27 @@ int mk_dispatch_message(mk_channel_t *channel, urpc_msg_t *msg) {
         case MK_MSG_FRAME_FREE_REQ:
         case MK_MSG_FRAME_MAP_REQ:
         case MK_MSG_FRAME_UNMAP_REQ:
-            // Route to memory manager ownership RPC handlers
-            break;
+            return -1;
 
         case MK_MSG_PROC_CREATE_REQ:
         case MK_MSG_PROC_DESTROY_REQ:
         case MK_MSG_PROC_SIGNAL_REQ:
-            // Route to process manager ownership RPC handlers
-            break;
+            return -1;
 
         case MK_MSG_ASPACE_CREATE_REQ:
         case MK_MSG_ASPACE_MAP_REQ:
         case MK_MSG_ASPACE_PROTECT_REQ:
         case MK_MSG_ASPACE_UNMAP_REQ:
-            // Route to address space manager ownership RPC handlers
-            break;
+            return -1;
 
         case MK_MSG_CAP_GRANT_REQ:
         case MK_MSG_CAP_REVOKE_REQ:
         case MK_MSG_CAP_DERIVE_REQ:
         case MK_MSG_CAP_LOOKUP_REQ:
-            // Route to capability manager ownership RPC handlers
-            break;
+            return -1;
 
         case MK_MSG_TYPE_AI_SUGGESTION:
-            /* Scheduler control-plane hook placeholder. */
-            break;
+            return -1;
 
         case MK_MSG_THREAD_LOOKUP_REQ:
             mk_handle_thread_lookup_req(channel, msg);
@@ -279,10 +316,8 @@ int mk_dispatch_message(mk_channel_t *channel, urpc_msg_t *msg) {
             break;
 
         default:
-            sched_notify_ipc_ready(local_core, msg->type);
-            break;
+            return -1;
     }
-
     return 0;
 }
 

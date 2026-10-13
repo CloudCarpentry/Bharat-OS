@@ -5,13 +5,13 @@
 
 #define TESTING 1
 
-#include "../../kernel/include/hal/hal.h"
-#include "../../kernel/include/sched/sched.h"
-#include "../../kernel/include/bharat/cpu_local.h"
-#include "../../kernel/include/slab.h"
-#include "../../kernel/include/hal/hal_discovery.h"
-#include "../../kernel/include/mm/aspace.h"
-#include "../../kernel/include/mm/mm_remote.h"
+#include <hal/hal.h>
+#include <sched/sched.h>
+#include <bharat/cpu_local.h>
+#include <slab.h>
+#include <hal/hal_discovery.h>
+#include <mm/aspace.h>
+#include <mm/mm_remote.h>
 
 cpu_local_t g_cpu_locals[MAX_CPUS];
 system_discovery_t g_discovery;

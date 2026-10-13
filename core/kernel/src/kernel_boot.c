@@ -274,6 +274,13 @@ void boot_common_platform_services(const boot_info_t *boot) {
     hal_timer_init();
     KPRINT("TIMER_GLOBAL_READY\n");
 
+    KPRINT("  [DMA] Initializing HAL DMA backend\n");
+    extern void hal_dma_backend_init(void) __attribute__((weak));
+    if (hal_dma_backend_init) {
+      hal_dma_backend_init();
+    }
+    KPRINT("DMA_GLOBAL_READY\n");
+
     arch_cpu_caps_init();
     if (arch_cpu_caps_system_finalize() != K_OK) {
       kernel_panic("CPU capability aggregation failed");
@@ -330,6 +337,9 @@ void boot_common_platform_services(const boot_info_t *boot) {
     // Trigger test for DMA capability resolution dumping
     extern void test_device_dma_dump(void);
     test_device_dma_dump();
+
+    extern kstatus_t bh_edu_dma_self_test(void);
+    (void)bh_edu_dma_self_test();
 
     KPRINT("  [SCHED] Scheduler initialized.\n");
     boot_events_publish(BH_BOOT_STAGE_SCHEDULER, 75, BHARAT_STATUS_OK, "SCHEDULER & DEVICES READY");

@@ -4,17 +4,17 @@
 #include <string.h>
 #include <stdbool.h>
 
-#include "../../kernel/include/hal/hal_tlb.h"
-#include "../../kernel/include/mm/aspace.h"
-#include "../../kernel/include/mm/mm_remote.h"
-#include "../../kernel/include/bharat/cpu_local.h"
-#include "../../kernel/include/hal/hal.h"
-#include "../../kernel/include/hal/hal_timer.h"
-#include "../../kernel/include/mm/tlb.h"
-#include "../../kernel/src/mm/tlb/tlb_pending.h"
-#include "../../kernel/include/arch/arch_caps.h"
+#include <hal/hal_tlb.h>
+#include <mm/aspace.h>
+#include <mm/mm_remote.h>
+#include <bharat/cpu_local.h>
+#include <hal/hal.h>
+#include <hal/hal_timer.h>
+#include <mm/tlb.h>
+#include "tlb_pending.h"
+#include <arch/arch_caps.h>
 #include <bharat/uapi/subsys/msg_types.h>
-#include "../../kernel/include/mm/tlb_internal.h"
+#include <mm/tlb_internal.h>
 
 // --- Wire structure definitions matching shootdown.c mocks ---
 #define BHARAT_MSG_HEADER_MIN_LEN 44
@@ -122,6 +122,13 @@ uint64_t hal_timer_monotonic_ticks(void) {
 uint64_t hal_timer_read_freq(void) {
     return g_fake_freq;
 }
+
+bool hal_timer_monotonic_ns(uint64_t *out_ns) {
+    if (out_ns) *out_ns = g_fake_ticks * 1000000ULL;
+    return true;
+}
+
+mem_model_t mem_model_get_current(void) { return MEM_MODEL_MMU_FULL; }
 
 arch_caps_t arch_get_caps(void) {
     arch_caps_t c = { .bits = ARCH_CAP_BIT(ARCH_CAP_SMP) };
@@ -279,6 +286,33 @@ static int mock_transport_recv(struct bharat_transport* t, uint8_t* buf, size_t 
     *rx_len = m->len;
     inbox->head = (inbox->head + 1) % MAX_MESSAGES;
     return 0;
+}
+
+int bharat_monitor_v1_send_tlb_invalidate(bharat_transport_t* t, int dst, const bharat_monitor_v1_TlbInvalidateReq_t* req, uint64_t reqid, void* ctx) {
+    (void)ctx;
+    if (!t || !t->ops || !t->ops->send) return -1;
+    bharat_msg_header_t hdr = {0};
+    hdr.version_major = 1;
+    hdr.version_minor = 0;
+    hdr.header_len    = BHARAT_MSG_HEADER_MIN_LEN;
+    hdr.service_id    = 1;
+    hdr.opcode        = 3;
+    hdr.flags         = BHARAT_MSG_FLAG_REQUEST;
+    hdr.request_id    = reqid;
+    hdr.src_node      = hal_cpu_get_id();
+    hdr.dst_node      = dst;
+    hdr.total_len     = BHARAT_MSG_HEADER_MIN_LEN + sizeof(bharat_monitor_v1_TlbInvalidateReq_t);
+
+    uint8_t buf[256];
+    if (bharat_msg_header_encode(&hdr, buf, sizeof(buf)) != BHARAT_MSG_OK) return -1;
+    uint8_t* payload = buf + BHARAT_MSG_HEADER_MIN_LEN;
+    bharat_store_le64(payload + 0, req->aspace_id);
+    bharat_store_le64(payload + 8, req->va_start);
+    bharat_store_le64(payload + 16, req->length);
+    bharat_store_le32(payload + 24, req->type);
+    bharat_store_le32(payload + 28, req->generation);
+
+    return t->ops->send(t, buf, hdr.total_len);
 }
 
 bharat_transport_t* transport_for_core(int core) {

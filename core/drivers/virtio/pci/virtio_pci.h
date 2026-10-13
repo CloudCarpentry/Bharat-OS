@@ -2,7 +2,7 @@
 #define BHARAT_VIRTIO_PCI_H
 
 #include "device/pci.h"
-#include "virtqueue.h"
+#include "../core/virtqueue.h"
 #include <stdint.h>
 #include <stdbool.h>
 

@@ -25,6 +25,14 @@ The following capabilities are mapped via `mmu_ops_t` and `boards.json` to confi
   * `rtos_strict`: Forces the OS to disable demand paging and pre-allocate all memory to guarantee deterministic latency.
   * `no_mmu`: Indicates the device only has an MPU (e.g. Cortex-M).
 
+## 32-Bit Architecture Memory Model Boundaries (`ARM32` & `RISCV32`)
+
+For 32-bit architectures (`arm32` and `riscv32`), Bharat-OS strictly supports two hardware protection models:
+1. **`MMU_LITE`** (`BHARAT_PROFILE_MMU_LITE=ON`): Static/eager page mapping, user/kernel address space isolation, page permissions, and execute-disable (`XN`/`NX`). Used for 32-bit `EDGE` and `MIX` profiles (e.g., Cortex-A15, RV32-MMU virt).
+2. **`MPU_ONLY`** (`BHARAT_PROFILE_MPU_ONLY=ON`): Region-based protection (PMSAv7/PMSAv8 / RV32 PMP), flat physical memory, no page tables or virtual memory. Used for `RTOS`, `DRONE`, `ROBOT`, and `IOT` profiles (e.g., Cortex-M).
+
+`MMU_FULL` (requiring 64-bit demand paging, Copy-On-Write, swap/zswap, and dynamic 64-bit ASID translation) is **strictly disallowed on 32-bit architectures** and will fail-closed at build configuration and boot validation.
+
 ## Headless Edge Device (`HEADLESS_EDGE_DEVICE`)
 Typically applies to network routers, gateways, server-like appliances, and remote compute nodes.
 

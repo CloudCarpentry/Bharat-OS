@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <bharat/uapi/abi_types.h>
+#include <bharat/uapi/bootstrap/service_launch.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -35,6 +36,16 @@ bharat_handle_t bharat_runtime_get_bootstrap_cap(void);
  * @param msg The message string to log.
  */
 void bharat_runtime_log(const char *msg);
+
+const struct bharat_user_startup *bharat_runtime_get_startup(void);
+int bharat_bootstrap_launch(const char *name, uint32_t service_id,
+                           uint32_t namesvc_cap, uint32_t delegate_launch,
+                           bh_bootstrap_launch_result_t *out);
+int bharat_bootstrap_probe(void);
+int bharat_bootstrap_stop(uint32_t process_cap);
+int bharat_bootstrap_report(uint32_t type, int32_t status);
+int bharat_bootstrap_poll(uint32_t receive_cap, bh_bootstrap_service_event_t *event);
+int bharat_runtime_now_ns(uint64_t *out);
 
 /**
  * @brief Panic the runtime process.

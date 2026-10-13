@@ -16,8 +16,10 @@ option(BHARAT_BUILD_USER_SERVICES_STUBS "Build foundational user-space service s
 add_subdirectory(core/init)
 add_subdirectory(core/init-lite)
 add_subdirectory(core/rt-supervisor)
-if(BHARAT_BUILD_USER_SERVICES_STUBS AND BHARAT_BUILD_EXPERIMENTAL_SERVICES)
+if(BHARAT_INIT_CORE_BOOTSTRAP_ONLY OR (BHARAT_BUILD_USER_SERVICES_STUBS AND BHARAT_BUILD_EXPERIMENTAL_SERVICES))
     add_subdirectory(namesvc)
+endif()
+if(BHARAT_BUILD_USER_SERVICES_STUBS AND BHARAT_BUILD_EXPERIMENTAL_SERVICES)
     add_subdirectory(servicemgr)
 endif()
 

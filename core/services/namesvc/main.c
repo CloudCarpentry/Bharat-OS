@@ -1,4 +1,7 @@
-#include <bharat/service/service_runtime.h>
+#include <bharat/uapi/service_status.h>
+#include <bharat/uapi/services/service_ids.h>
+#include <bharat/runtime/runtime.h>
+#include <bharat/syscalls.h>
 #include <bharat/runtime/freestanding_string.h>
 #include <bharat/ipc/ipc.h>
 #include <bharat/uapi/services/bootstrap.h>
@@ -31,25 +34,20 @@ static bharat_status_t namesvc_run(void) {
     bharat_ipc_endpoint_t my_endpoint = BHARAT_CAP_INVALID_HANDLE;
     if (startup && startup->bootstrap.service_receive_endpoint) {
         my_endpoint = startup->bootstrap.service_receive_endpoint;
-    } else {
-        my_endpoint = service_runtime_create_endpoint(BHARAT_SERVICE_NAMESVC, 0);
     }
     if (!bharat_cap_is_valid(my_endpoint)) {
         return BHARAT_STATUS_ERR_NOT_FOUND;
     }
 
     // Bind to the well-known bootstrap handle
-    bharat_status_t status = service_runtime_bind_namesvc_bootstrap(my_endpoint);
-    if (status == BHARAT_STATUS_OK) {
-        bharat_runtime_log("BOOTAUTH:NAMESVC_BINDING_OK\n");
-        // However, namesvc does not have access to bharat_runtime_log yet unless included
-        // Let us just ignore printing here or use an existing logger if available.
-    }
-    if (status != BHARAT_STATUS_OK) {
-        return status;
-    }
+    /* The launcher supplies a child-local receive capability for this server.
+     * Never manufacture a well-known integer handle or alias a parent CSpace. */
+    bharat_runtime_log("BOOTAUTH:NAMESVC_BINDING_OK\n");
 
     namesvc_registry_init();
+    if (bharat_bootstrap_report(BH_BOOTSTRAP_EVENT_BOUND, 0) != 0 ||
+        bharat_bootstrap_report(BH_BOOTSTRAP_EVENT_READY, 0) != 0) return BHARAT_STATUS_ERR_NOT_FOUND;
+    bharat_runtime_log("NAMESVC_READY\n");
 
     // Use a simple log since we might not have a full logger yet
     // bharat_runtime_log("namesvc: ready");
@@ -93,11 +91,13 @@ static bharat_status_t namesvc_run(void) {
 }
 
 int main(int argc, char **argv) {
+    bharat_runtime_log("NAMESVC_MAIN_ENTER\n");
     (void)argc;
     (void)argv;
 
     bharat_status_t run_status = namesvc_run();
     if (run_status != BHARAT_STATUS_OK) {
+        (void)bharat_bootstrap_report(BH_BOOTSTRAP_EVENT_FAILED, run_status);
         // Map service status failure to non-zero exit code
         return 1;
     }

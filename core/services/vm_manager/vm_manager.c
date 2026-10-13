@@ -144,6 +144,42 @@ static const bharat_service_authz_desc_t vm_manager_authz_descs[] = {
         .object_type = BHARAT_CAP_OBJ_VM_SPACE,
         .required_rights = BHARAT_CAP_RIGHT_READ,
         .required_feature_cap = BHARAT_MEM_CAP_PAGE_MAP,
+    },
+    {
+        .opcode = BH_VM_OP_CREATE_SPACE_V1,
+        .object_type = BHARAT_CAP_OBJ_VM_SPACE,
+        .required_rights = BHARAT_CAP_RIGHT_WRITE,
+        .required_feature_cap = BHARAT_MEM_CAP_PAGE_MAP,
+    },
+    {
+        .opcode = BH_VM_OP_DESTROY_SPACE_V1,
+        .object_type = BHARAT_CAP_OBJ_VM_SPACE,
+        .required_rights = BHARAT_CAP_RIGHT_WRITE,
+        .required_feature_cap = BHARAT_MEM_CAP_PAGE_MAP,
+    },
+    {
+        .opcode = BH_VM_OP_MAP_V1,
+        .object_type = BHARAT_CAP_OBJ_VM_SPACE,
+        .required_rights = BHARAT_CAP_RIGHT_WRITE,
+        .required_feature_cap = BHARAT_MEM_CAP_PAGE_MAP,
+    },
+    {
+        .opcode = BH_VM_OP_UNMAP_V1,
+        .object_type = BHARAT_CAP_OBJ_VM_SPACE,
+        .required_rights = BHARAT_CAP_RIGHT_WRITE,
+        .required_feature_cap = BHARAT_MEM_CAP_PAGE_MAP,
+    },
+    {
+        .opcode = BH_VM_OP_PROTECT_V1,
+        .object_type = BHARAT_CAP_OBJ_VM_SPACE,
+        .required_rights = BHARAT_CAP_RIGHT_WRITE,
+        .required_feature_cap = BHARAT_MEM_CAP_PAGE_PROTECT,
+    },
+    {
+        .opcode = BH_VM_OP_QUERY_V1,
+        .object_type = BHARAT_CAP_OBJ_VM_SPACE,
+        .required_rights = BHARAT_CAP_RIGHT_READ,
+        .required_feature_cap = BHARAT_MEM_CAP_PAGE_MAP,
     }
 };
 
@@ -159,6 +195,35 @@ bharat_status_t vm_manager_authorize(
     uint64_t target_vm_space = 0;
 
     switch (opcode) {
+        case BH_VM_OP_CREATE_SPACE_V1: {
+            target_vm_space = 0;
+            break;
+        }
+        case BH_VM_OP_DESTROY_SPACE_V1: {
+            const bh_vm_destroy_space_request_v1_t *typed_req = (const bh_vm_destroy_space_request_v1_t *)req;
+            target_vm_space = typed_req->vm_space_handle;
+            break;
+        }
+        case BH_VM_OP_MAP_V1: {
+            const bh_vm_map_request_v1_t *typed_req = (const bh_vm_map_request_v1_t *)req;
+            target_vm_space = typed_req->vm_space_handle;
+            break;
+        }
+        case BH_VM_OP_UNMAP_V1: {
+            const bh_vm_unmap_request_v1_t *typed_req = (const bh_vm_unmap_request_v1_t *)req;
+            target_vm_space = typed_req->vm_space_handle;
+            break;
+        }
+        case BH_VM_OP_PROTECT_V1: {
+            const bh_vm_protect_request_v1_t *typed_req = (const bh_vm_protect_request_v1_t *)req;
+            target_vm_space = typed_req->vm_space_handle;
+            break;
+        }
+        case BH_VM_OP_QUERY_V1: {
+            const bh_vm_query_request_v1_t *typed_req = (const bh_vm_query_request_v1_t *)req;
+            target_vm_space = typed_req->vm_space_handle;
+            break;
+        }
         case VM_OP_MAP: {
             const vm_req_map_t *typed_req = (const vm_req_map_t *)req;
             target_vm_space = typed_req->aspace_id;
@@ -695,6 +760,13 @@ void vm_manager_loop(bharat_ipc_endpoint_t endpoint) {
                     if (req_header.payload_size >= sizeof(bh_vm_create_space_request_v1_t)) {
                         const bh_vm_create_space_request_v1_t *req = (const bh_vm_create_space_request_v1_t *)payload_buf;
                         bh_vm_create_space_response_v1_t *resp = (bh_vm_create_space_response_v1_t *)resp_payload_buf;
+                        int32_t auth_status = vm_manager_authorize(req_header.opcode, req, req_header.capability_transfer);
+                        if (auth_status != BHARAT_IPC_STATUS_OK) {
+                            resp->status = auth_status;
+                            dispatch_status = auth_status;
+                            resp_size = sizeof(bh_vm_create_space_response_v1_t);
+                            break;
+                        }
                         dispatch_status = bh_vm_handle_create_space_v1(req, resp);
                         resp_size = sizeof(bh_vm_create_space_response_v1_t);
                     } else {
@@ -706,6 +778,13 @@ void vm_manager_loop(bharat_ipc_endpoint_t endpoint) {
                     if (req_header.payload_size >= sizeof(bh_vm_destroy_space_request_v1_t)) {
                         const bh_vm_destroy_space_request_v1_t *req = (const bh_vm_destroy_space_request_v1_t *)payload_buf;
                         bh_vm_destroy_space_response_v1_t *resp = (bh_vm_destroy_space_response_v1_t *)resp_payload_buf;
+                        int32_t auth_status = vm_manager_authorize(req_header.opcode, req, req_header.capability_transfer);
+                        if (auth_status != BHARAT_IPC_STATUS_OK) {
+                            resp->status = auth_status;
+                            dispatch_status = auth_status;
+                            resp_size = sizeof(bh_vm_destroy_space_response_v1_t);
+                            break;
+                        }
                         dispatch_status = bh_vm_handle_destroy_space_v1(req, resp);
                         resp_size = sizeof(bh_vm_destroy_space_response_v1_t);
                     } else {
@@ -717,6 +796,13 @@ void vm_manager_loop(bharat_ipc_endpoint_t endpoint) {
                     if (req_header.payload_size >= sizeof(bh_vm_map_request_v1_t)) {
                         const bh_vm_map_request_v1_t *req = (const bh_vm_map_request_v1_t *)payload_buf;
                         bh_vm_map_response_v1_t *resp = (bh_vm_map_response_v1_t *)resp_payload_buf;
+                        int32_t auth_status = vm_manager_authorize(req_header.opcode, req, req_header.capability_transfer);
+                        if (auth_status != BHARAT_IPC_STATUS_OK) {
+                            resp->status = auth_status;
+                            dispatch_status = auth_status;
+                            resp_size = sizeof(bh_vm_map_response_v1_t);
+                            break;
+                        }
                         dispatch_status = bh_vm_handle_map_v1(req, resp);
                         resp_size = sizeof(bh_vm_map_response_v1_t);
                     } else {
@@ -728,6 +814,13 @@ void vm_manager_loop(bharat_ipc_endpoint_t endpoint) {
                     if (req_header.payload_size >= sizeof(bh_vm_unmap_request_v1_t)) {
                         const bh_vm_unmap_request_v1_t *req = (const bh_vm_unmap_request_v1_t *)payload_buf;
                         bh_vm_unmap_response_v1_t *resp = (bh_vm_unmap_response_v1_t *)resp_payload_buf;
+                        int32_t auth_status = vm_manager_authorize(req_header.opcode, req, req_header.capability_transfer);
+                        if (auth_status != BHARAT_IPC_STATUS_OK) {
+                            resp->status = auth_status;
+                            dispatch_status = auth_status;
+                            resp_size = sizeof(bh_vm_unmap_response_v1_t);
+                            break;
+                        }
                         dispatch_status = bh_vm_handle_unmap_v1(req, resp);
                         resp_size = sizeof(bh_vm_unmap_response_v1_t);
                     } else {
@@ -739,6 +832,13 @@ void vm_manager_loop(bharat_ipc_endpoint_t endpoint) {
                     if (req_header.payload_size >= sizeof(bh_vm_protect_request_v1_t)) {
                         const bh_vm_protect_request_v1_t *req = (const bh_vm_protect_request_v1_t *)payload_buf;
                         bh_vm_protect_response_v1_t *resp = (bh_vm_protect_response_v1_t *)resp_payload_buf;
+                        int32_t auth_status = vm_manager_authorize(req_header.opcode, req, req_header.capability_transfer);
+                        if (auth_status != BHARAT_IPC_STATUS_OK) {
+                            resp->status = auth_status;
+                            dispatch_status = auth_status;
+                            resp_size = sizeof(bh_vm_protect_response_v1_t);
+                            break;
+                        }
                         dispatch_status = bh_vm_handle_protect_v1(req, resp);
                         resp_size = sizeof(bh_vm_protect_response_v1_t);
                     } else {
@@ -750,6 +850,13 @@ void vm_manager_loop(bharat_ipc_endpoint_t endpoint) {
                     if (req_header.payload_size >= sizeof(bh_vm_query_request_v1_t)) {
                         const bh_vm_query_request_v1_t *req = (const bh_vm_query_request_v1_t *)payload_buf;
                         bh_vm_query_response_v1_t *resp = (bh_vm_query_response_v1_t *)resp_payload_buf;
+                        int32_t auth_status = vm_manager_authorize(req_header.opcode, req, req_header.capability_transfer);
+                        if (auth_status != BHARAT_IPC_STATUS_OK) {
+                            resp->status = auth_status;
+                            dispatch_status = auth_status;
+                            resp_size = sizeof(bh_vm_query_response_v1_t);
+                            break;
+                        }
                         dispatch_status = bh_vm_handle_query_v1(req, resp);
                         resp_size = sizeof(bh_vm_query_response_v1_t);
                     } else {

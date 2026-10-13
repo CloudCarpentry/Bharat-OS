@@ -13,6 +13,14 @@ static ai_heuristic_config_t g_ai_cfg = {
     .weight_cache_miss = 10U,
 };
 
+#define AI_SCHED_DEFAULT_IPC_X100 50U
+
+static uint32_t ai_sched_safe_ipc(uint32_t ipc_x100) {
+    return ipc_x100 != 0U
+        ? ipc_x100
+        : AI_SCHED_DEFAULT_IPC_X100;
+}
+
 // Hypothetical boot-time calibration
 static uint32_t g_silicon_alu_ipc = 0;
 static uint32_t g_silicon_mem_ipc = 0;
@@ -43,8 +51,18 @@ void ai_sched_update_telemetry(ai_sched_context_t* ctx, uint64_t cycles_delta, u
         return;
     }
 
-    ctx->total_cycles += cycles_delta;
-    ctx->total_instructions += inst_delta;
+    // Saturating addition for cumulative metrics
+    if (UINT64_MAX - ctx->total_cycles < cycles_delta) {
+        ctx->total_cycles = UINT64_MAX;
+    } else {
+        ctx->total_cycles += cycles_delta;
+    }
+
+    if (UINT64_MAX - ctx->total_instructions < inst_delta) {
+        ctx->total_instructions = UINT64_MAX;
+    } else {
+        ctx->total_instructions += inst_delta;
+    }
 
     if (inst_delta != 0U) {
         // Use integer arithmetic (CPI * 100) instead of floats for bare-metal portability
@@ -57,14 +75,34 @@ void ai_sched_update_telemetry(ai_sched_context_t* ctx, uint64_t cycles_delta, u
         uint64_t whole_cpi = cycles_delta / inst_delta;
         uint64_t remainder = cycles_delta % inst_delta;
 
-        uint64_t cpi_times_100 = (whole_cpi * 100U) + ((remainder * 100U) / inst_delta);
-        ctx->current_cpi = (uint32_t)cpi_times_100;
-    } else {
-        ctx->current_cpi = 0;
-    }
+        uint64_t cpi_times_100;
+        if (whole_cpi > UINT64_MAX / 100U) {
+            cpi_times_100 = UINT64_MAX;
+        } else {
+            uint64_t part1 = whole_cpi * 100U;
+            uint64_t part2;
+            if (remainder > UINT64_MAX / 100U) {
+                part2 = remainder / (inst_delta / 100U);
+            } else {
+                part2 = (remainder * 100U) / inst_delta;
+            }
+            if (UINT64_MAX - part1 < part2) {
+                cpi_times_100 = UINT64_MAX;
+            } else {
+                cpi_times_100 = part1 + part2;
+            }
+        }
 
-    ctx->historical_cpi_window[ctx->window_index % 10U] = ctx->current_cpi;
-    ctx->window_index = (ctx->window_index + 1U) % 10U;
+        // Saturation to prevent 32-bit overflow
+        if (cpi_times_100 > 0xFFFFFFFFU) {
+            ctx->current_cpi = 0xFFFFFFFFU;
+        } else {
+            ctx->current_cpi = (uint32_t)cpi_times_100;
+        }
+
+        ctx->historical_cpi_window[ctx->window_index % 10U] = ctx->current_cpi;
+        ctx->window_index = (ctx->window_index + 1U) % 10U;
+    }
 
     ctx->metrics.cycles = ctx->total_cycles;
     ctx->metrics.instructions = ctx->total_instructions;
@@ -75,7 +113,7 @@ void ai_sched_predict_and_scale(ai_sched_context_t* ctx) {
         return;
     }
 
-    uint32_t cpi_sum = 0;
+    uint64_t cpi_sum = 0;
     for (uint32_t i = 0; i < 10U; ++i) {
         cpi_sum += ctx->historical_cpi_window[i];
     }
@@ -110,45 +148,56 @@ void ai_sched_collect_sample(ai_sched_context_t* ctx,
         inst_delta = sample.instructions_delta;
     } else {
 #if defined(Profile_RTOS)
-        cycles_delta = time_slice_ms * 100000U;
+        uint64_t multiplier = 100000U;
 #elif defined(Profile_EDGE)
-        cycles_delta = time_slice_ms * 500000U;
+        uint64_t multiplier = 500000U;
 #else
-        cycles_delta = time_slice_ms * 1000000U;
+        uint64_t multiplier = 1000000U;
 #endif
+        if (time_slice_ms > UINT64_MAX / multiplier) {
+            cycles_delta = UINT64_MAX;
+        } else {
+            cycles_delta = time_slice_ms * multiplier;
+        }
+
         // Apply Blended IPC heuristic using the AI's predicted complexity.
         // g_silicon_* metrics represent (IPC * 100).
         // e.g. 200 = 2.0 instructions per cycle, 10 = 0.1 instructions per cycle.
 
+        uint32_t alu_ipc_x100 = ai_sched_safe_ipc(g_silicon_alu_ipc);
+        uint32_t mem_ipc_x100 = ai_sched_safe_ipc(g_silicon_mem_ipc);
+
         uint32_t active_ipc_x100;
 
         if (ctx->predicted_complexity == 2U) { // High complexity / memory-bound
-            active_ipc_x100 = g_silicon_mem_ipc;
+            active_ipc_x100 = mem_ipc_x100;
         } else if (ctx->predicted_complexity == 1U) { // Medium
-            active_ipc_x100 = (g_silicon_alu_ipc + g_silicon_mem_ipc) / 2U;
+            active_ipc_x100 = (alu_ipc_x100 + mem_ipc_x100) / 2U;
         } else { // Low complexity / compute-bound / ALU heavy
-            active_ipc_x100 = g_silicon_alu_ipc;
-        }
-
-        // Prevent div-by-zero or flatline bugs by ensuring a safe fallback if uncalibrated
-        if (active_ipc_x100 == 0U) {
-            active_ipc_x100 = 50U; // Fallback to 0.5 IPC
+            active_ipc_x100 = alu_ipc_x100;
         }
 
         // inst_delta = cycles_delta * IPC
         // inst_delta = cycles_delta * (active_ipc_x100 / 100)
         // To avoid dropping the fraction, multiply first then divide.
-        // We use safe scaling if cycles_delta is massive to avoid 64-bit overflow.
-        // active_ipc_x100 is guaranteed > 0 by the earlier fallback guard.
-        if (cycles_delta > (18446744073709551615ULL / active_ipc_x100)) {
-            inst_delta = ( (cycles_delta >> 10) * active_ipc_x100 ) / 100U;
-            inst_delta <<= 10;
-        } else {
-            inst_delta = (cycles_delta * active_ipc_x100) / 100U;
-        }
 
-        if (inst_delta == 0U) {
-            inst_delta = 1U;
+        // Overflow-safe quotient/remainder scaling
+        uint64_t whole_cycles = cycles_delta / 100U;
+        uint64_t rem_cycles = cycles_delta % 100U;
+
+        // Check for saturation on multiplication
+        if (whole_cycles > UINT64_MAX / active_ipc_x100) {
+            inst_delta = UINT64_MAX;
+        } else {
+            uint64_t part1 = whole_cycles * active_ipc_x100;
+            uint64_t part2 = (rem_cycles * active_ipc_x100) / 100U;
+
+            // Check for saturation on addition
+            if (UINT64_MAX - part1 < part2) {
+                inst_delta = UINT64_MAX;
+            } else {
+                inst_delta = part1 + part2;
+            }
         }
     }
 
@@ -156,8 +205,35 @@ void ai_sched_collect_sample(ai_sched_context_t* ctx,
 
     ctx->metrics.context_switches = context_switches;
     ctx->metrics.run_queue_depth = run_queue_depth;
-    ctx->metrics.approx_cpu_util_pct =
-        (uint32_t)((cpu_time_consumed * 100U) / ((time_slice_ms == 0U) ? 1U : time_slice_ms));
+
+    // Overflow-safe cpu util calculation
+    uint64_t divisor = (time_slice_ms == 0U) ? 1U : time_slice_ms;
+    uint64_t whole_cpu = cpu_time_consumed / divisor;
+    uint64_t rem_cpu = cpu_time_consumed % divisor;
+
+    uint64_t util;
+    if (whole_cpu > UINT64_MAX / 100U) {
+        util = UINT64_MAX;
+    } else {
+        uint64_t part1 = whole_cpu * 100U;
+        uint64_t part2;
+        if (rem_cpu > UINT64_MAX / 100U) {
+            part2 = rem_cpu / (divisor / 100U);
+        } else {
+            part2 = (rem_cpu * 100U) / divisor;
+        }
+        if (UINT64_MAX - part1 < part2) {
+            util = UINT64_MAX;
+        } else {
+            util = part1 + part2;
+        }
+    }
+
+    if (util > 0xFFFFFFFFU) {
+        ctx->metrics.approx_cpu_util_pct = 0xFFFFFFFFU;
+    } else {
+        ctx->metrics.approx_cpu_util_pct = (uint32_t)util;
+    }
 
     ai_sched_predict_and_scale(ctx);
 }
@@ -229,7 +305,7 @@ static uint32_t calculate_baseline_ipc(uint64_t ticks) {
     // Fewer ticks = higher IPC.
     // This is a simplified relative mapping for the baseline fallback.
     // Assuming 1 tick is roughly 1000 cycles for this example calculation:
-    if (ticks == 0) return 200U; // Very high IPC (2.0)
+    if (ticks == 0) return AI_SCHED_DEFAULT_IPC_X100; // Conservative fallback
 
     // Map ticks to an IPC multiplied by 100
     // E.g., if it took 10 ticks, IPC is 100 / 10 = 10 (0.1 IPC)
@@ -245,12 +321,9 @@ void ai_sched_calibrate_silicon(void) {
     uint64_t ticks;
 
     ticks = bench_alu_chain(100000U);
-    // ensure we don't divide by zero if timer resolution is too coarse
-    if (ticks == 0) ticks = 1;
     g_silicon_alu_ipc = calculate_baseline_ipc(ticks);
 
     ticks = bench_mem_latency(100000U);
-    if (ticks == 0) ticks = 1;
     g_silicon_mem_ipc = calculate_baseline_ipc(ticks);
 }
 

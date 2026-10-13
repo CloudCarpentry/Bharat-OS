@@ -28,7 +28,8 @@ static bool x86_vector_policy_allows(void) {
 
 static void x86_probe_caps(arch_cpu_caps_record_t *caps) {
     arch_cpu_caps_zero(&caps->raw);
-    arch_cpu_caps_zero(&caps->usable);
+    arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_COMMON_STRONG_ATOMICS);
+    arch_cpu_caps_set(&caps->usable, ARCH_CPU_FEAT_COMMON_STRONG_ATOMICS);
 
     uint32_t eax, ebx, ecx, edx;
     uint32_t max_leaf = 0;
@@ -47,7 +48,15 @@ static void x86_probe_caps(arch_cpu_caps_record_t *caps) {
 
     if (ecx & (1u << 1)) {
         arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_X86_PCLMUL);
+        arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_COMMON_PMULL);
         arch_cpu_caps_set(&caps->usable, ARCH_CPU_FEAT_X86_PCLMUL);
+        arch_cpu_caps_set(&caps->usable, ARCH_CPU_FEAT_COMMON_PMULL);
+    }
+    if (ecx & (1u << 20)) {
+        arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_X86_SSE4_2);
+        arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_COMMON_CRC32C);
+        arch_cpu_caps_set(&caps->usable, ARCH_CPU_FEAT_X86_SSE4_2);
+        arch_cpu_caps_set(&caps->usable, ARCH_CPU_FEAT_COMMON_CRC32C);
     }
     if (ecx & (1u << 25)) {
         arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_X86_AES);

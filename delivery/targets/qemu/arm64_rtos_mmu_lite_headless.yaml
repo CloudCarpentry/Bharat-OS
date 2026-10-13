@@ -7,6 +7,9 @@ device_profile: rtos
 personality_profile: native
 execution_profile: rt
 
+userspace:
+  runtime_model: static
+
 build:
   cmake_preset: arm64-edge
   cmake_defs:
@@ -36,14 +39,17 @@ kernel:
 
 boot:
   protocol: linux_arm64
-  artifact_format: elf
+  artifact_format: raw_bin
   dtb:
     mode: qemu_generated
     required: true
     handoff_register: x0
 
 package:
-  transforms: []
+  transforms:
+    - type: elf_to_bin
+      input: kernel/kernel.elf
+      output: kernel/kernel.bin
 
 run:
   backend: qemu
@@ -53,7 +59,7 @@ run:
   nographic: true
   serial:
     - stdio
-  boot_artifact: kernel/kernel.elf
+  boot_artifact: kernel/kernel.bin
   extra_args:
     - "-d"
     - "guest_errors,unimp"

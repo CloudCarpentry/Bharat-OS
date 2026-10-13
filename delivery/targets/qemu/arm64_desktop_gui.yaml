@@ -10,6 +10,7 @@ execution_profile: gp
 build:
   cmake_preset: arm64-edge
   cmake_defs:
+    BHARAT_INIT_CORE_BOOTSTRAP_ONLY: ON
     BHARAT_ARCH_FAMILY: ARM64
     BHARAT_DEVICE_PROFILE: DESKTOP
     BHARAT_PERSONALITY_PROFILE: NATIVE

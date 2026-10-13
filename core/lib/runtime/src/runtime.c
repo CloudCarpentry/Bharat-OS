@@ -5,6 +5,9 @@
 #include <bharat/uapi/init/bootstrap.h>
 #include <bharat/uapi/syscall_nr.h>
 #include <bharat/uapi/syscall/bh_syscall.h>
+#include <bharat/uapi/syscall_args.h>
+#include <bharat/uapi/time/time.h>
+#include <bharat/syscalls.h>
 
 
 static bharat_handle_t g_bootstrap_cap = BHARAT_INVALID_HANDLE;
@@ -40,14 +43,88 @@ const bharat_user_startup_t *bharat_runtime_get_startup(void) {
     return g_startup_ptr;
 }
 
-static size_t runtime_strlen(const char *s) {
+int bharat_bootstrap_probe(void) {
+    bharat_sys_cap_invoke_args_t args = {.cap_id = g_bootstrap_cap,
+        .opcode = BH_BOOTSTRAP_OP_PROBE};
+    return bharat_syscall(BH_SYS_CAPABILITY_INVOKE, (uintptr_t)&args, 0, 0, 0, 0, 0);
+}
+
+int bharat_bootstrap_stop(uint32_t process_cap) {
+    bharat_sys_cap_invoke_args_t args = {.cap_id = process_cap,
+        .opcode = BH_PROCESS_OP_TERMINATE};
+    int status = bharat_syscall(BH_SYS_CAPABILITY_INVOKE, (uintptr_t)&args, 0, 0, 0, 0, 0);
+    if (status != 0) return status;
+    /* Give the scheduler's deferred reaper an opportunity. Failed compensation
+     * is reported to init, which retains authority and quarantines the child. */
+    status = bharat_sched_yield();
+    if (status != 0) return status;
+    args.opcode = BH_PROCESS_OP_REAP;
+    return bharat_syscall(BH_SYS_CAPABILITY_INVOKE, (uintptr_t)&args, 0, 0, 0, 0, 0);
+}
+
+int bharat_bootstrap_launch(const char *name, uint32_t service_id,
+                           uint32_t namesvc_cap, uint32_t delegate_launch,
+                           bh_bootstrap_launch_result_t *out) {
+    bh_bootstrap_launch_request_t req = {.version = BH_BOOTSTRAP_SERVICE_ABI,
+        .service_id = service_id, .namesvc_cap = namesvc_cap, .delegate_launch = delegate_launch};
+    if (!name || !out) return -1;
+    size_t i;
+    for (i = 0; i < sizeof(req.module_name) - 1 && name[i]; ++i) req.module_name[i] = name[i];
+    if (name[i]) return -1;
+    bharat_sys_cap_invoke_args_t args = {.cap_id = g_bootstrap_cap,
+        .opcode = BH_BOOTSTRAP_OP_LAUNCH, .arg0 = (uintptr_t)&req, .arg1 = (uintptr_t)out};
+    return bharat_syscall(BH_SYS_CAPABILITY_INVOKE, (uintptr_t)&args, 0, 0, 0, 0, 0);
+}
+
+int bharat_bootstrap_report(uint32_t type, int32_t status) {
+    if (!g_startup_ptr || !g_startup_ptr->bootstrap.system_control_endpoint) return -1;
+    bh_bootstrap_service_event_t event = {.version = BH_BOOTSTRAP_SERVICE_ABI,
+        .type = type, .service_id = (uint32_t)g_startup_ptr->bootstrap.flags, .status = status};
+    bharat_sys_endpoint_send_args_t args = {
+        .send_cap = g_startup_ptr->bootstrap.system_control_endpoint,
+        .payload_len = sizeof(event), .payload_ptr = (uintptr_t)&event,
+        .timeout_ticks = UINT64_MAX};
+    return bharat_syscall(BH_SYS_ENDPOINT_SEND, (uintptr_t)&args, 0, 0, 0, 0, 0);
+}
+
+int bharat_bootstrap_poll(uint32_t receive_cap, bh_bootstrap_service_event_t *event) {
+    uint32_t length = 0;
+    bharat_sys_endpoint_receive_args_t args = {.recv_cap = receive_cap,
+        .out_payload_capacity = sizeof(*event), .out_payload_ptr = (uintptr_t)event,
+        .out_len_ptr = (uintptr_t)&length, .timeout_ticks = 0};
+    int result = bharat_syscall(BH_SYS_ENDPOINT_RECEIVE, (uintptr_t)&args, 0, 0, 0, 0, 0);
+    if (result == 0 && length != sizeof(*event)) return -1;
+    return result;
+}
+
+int bharat_runtime_now_ns(uint64_t *out) {
+    return bharat_syscall(BH_SYS_TIME_GET, BH_CLOCK_MONOTONIC, (uintptr_t)out, 0, 0, 0, 0);
+}
+
+#define BHARAT_MAX_LOG_LEN 4096
+
+static size_t runtime_strnlen(const char *s, size_t max_len) {
     size_t len = 0;
-    while (s && s[len]) len++;
+    while (s && len < max_len && s[len]) len++;
     return len;
 }
 
+/* Note: bharat_runtime_log requires a valid readable buffer up to the null terminator
+ * or BHARAT_MAX_LOG_LEN (4096 bytes). Over-limit messages are truncated. */
 void bharat_runtime_log(const char *msg) {
-    bharat_syscall(SYSCALL_WRITE, 1, (uintptr_t)msg, runtime_strlen(msg), 0, 0, 0);
+    if (!msg) return;
+
+    size_t len = runtime_strnlen(msg, BHARAT_MAX_LOG_LEN);
+    if (len == 0) return;
+
+    size_t written = 0;
+    while (written < len) {
+        int64_t res = bharat_syscall(SYSCALL_WRITE, 1, (uintptr_t)(msg + written), len - written, 0, 0, 0);
+        if (res <= 0 || (size_t)res > (len - written)) {
+            break;
+        }
+        written += (size_t)res;
+    }
 }
 
 void bharat_runtime_panic(const char *reason) {
@@ -59,7 +136,9 @@ void bharat_runtime_panic(const char *reason) {
 }
 
 int bharat_runtime_main_wrapper(int argc, char **argv, int (*main_fn)(int, char**)) {
-    bharat_runtime_init(NULL);
+    if (bharat_runtime_get_startup() == NULL) {
+        bharat_runtime_init(NULL);
+    }
 
     int result = -1;
     if (main_fn) {
@@ -74,7 +153,7 @@ int bharat_runtime_main_wrapper(int argc, char **argv, int (*main_fn)(int, char*
 // These are required when the compiler needs to perform 64-bit math or atomics
 // on a 32-bit target without native support.
 
-#if defined(BHARAT_ARCH_32BIT) || defined(__arm__) || (defined(__riscv) && __riscv_xlen == 32)
+#if defined(BHARAT_ARCH_32BIT) || (defined(__arm__) && !defined(__aarch64__)) || (defined(__riscv) && __riscv_xlen == 32) || (__SIZEOF_POINTER__ == 4)
 
 uint64_t __aeabi_uidivmod(unsigned int n, unsigned int d) {
     if (d == 0) return 0;
@@ -121,6 +200,23 @@ uint64_t __atomic_fetch_add_8(volatile void *ptr, uint64_t val, int memorder) {
     uint64_t old = *p;
     *p = old + val;
     return old;
+}
+
+int64_t __divdi3(int64_t n, int64_t d) {
+    int neg = 0;
+    if (n < 0) {
+        n = -n;
+        neg = !neg;
+    }
+    if (d < 0) {
+        d = -d;
+        neg = !neg;
+    }
+    uint64_t q = __udivdi3((uint64_t)n, (uint64_t)d);
+    if (neg) {
+        return -(int64_t)q;
+    }
+    return (int64_t)q;
 }
 
 #endif

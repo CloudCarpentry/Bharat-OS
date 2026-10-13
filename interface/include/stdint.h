@@ -47,13 +47,13 @@ typedef __UINT_FAST64_TYPE__ uint_fast64_t;
 #define INT64_MAX 9223372036854775807ll
 #define UINT64_MAX 18446744073709551615ull
 
-#define INTPTR_MIN ((intptr_t)(-__INTPTR_MAX__ - 1))
-#define INTPTR_MAX ((intptr_t)__INTPTR_MAX__)
-#define UINTPTR_MAX ((uintptr_t)__UINTPTR_MAX__)
+#define INTPTR_MIN (-__INTPTR_MAX__ - 1)
+#define INTPTR_MAX __INTPTR_MAX__
+#define UINTPTR_MAX __UINTPTR_MAX__
 
-#define INTMAX_MIN ((intmax_t)(-__INTMAX_MAX__ - 1))
-#define INTMAX_MAX ((intmax_t)__INTMAX_MAX__)
-#define UINTMAX_MAX ((uintmax_t)__UINTMAX_MAX__)
+#define INTMAX_MIN (-__INTMAX_MAX__ - 1)
+#define INTMAX_MAX __INTMAX_MAX__
+#define UINTMAX_MAX __UINTMAX_MAX__
 
 #define INT8_C(v) v
 #define UINT8_C(v) v##u

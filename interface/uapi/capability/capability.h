@@ -25,3 +25,12 @@ typedef uint64_t bh_cap_t;
 #define BH_CAP_RIGHT_TRANSFER   (1 << 4)
 
 #endif /* BHARAT_UAPI_CAPABILITY_H */
+
+#define BH_CAP_TYPE_HMEM 8
+
+#define BH_CAP_RIGHT_MAP_CPU    (1 << 5)
+#define BH_CAP_RIGHT_MAP_DEVICE (1 << 6)
+#define BH_CAP_RIGHT_SHARE      (1 << 7)
+#define BH_CAP_RIGHT_QUERY      (1 << 8)
+#define BH_CAP_RIGHT_DESTROY    (1 << 9)
+#define BH_CAP_RIGHT_RESOURCE_ALLOC (1 << 10)

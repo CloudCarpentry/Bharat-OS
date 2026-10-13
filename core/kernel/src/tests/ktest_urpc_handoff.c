@@ -197,6 +197,196 @@ bool test_urpc_thread_handoff_reject_bad_state(void) {
     return true;
 }
 
+bool test_urpc_thread_handoff_wrong_target(void) {
+    reset_test_state();
+
+    bh_process_t *p = process_create("test_proc_wrong");
+    bh_thread_t *t = thread_create(p, NULL);
+
+    bh_process_t *p2 = process_create("test_proc_wrong2");
+    bh_thread_t *t2 = thread_create(p2, NULL);
+
+    uint32_t sender_core = 0;
+    uint32_t target_core = 1;
+    uint32_t valid_auth_token;
+
+    // Grant capability for thread t
+    extern capability_table_t g_cap_bootstrap_cspaces[];
+    extern bool g_cap_bootstrap_cspaces_used[];
+    g_cap_bootstrap_cspaces_used[sender_core] = true;
+    capability_table_t *table = &g_cap_bootstrap_cspaces[sender_core];
+    __builtin_memset(table, 0, sizeof(*table));
+    spin_lock_init(&table->lock);
+    bh_id_allocator_init(&table->id_allocator, table->id_bitmap, BHARAT_ARRAY_SIZE(table->entries));
+    table->owner_core = sender_core;
+    cap_table_grant(table, CAP_TYPE_THREAD, (uint64_t)t, CAP_RIGHT_SCHEDULE | CAP_RIGHT_DELEGATE, &valid_auth_token);
+
+    urpc_msg_t rx_msg;
+    __builtin_memset(&rx_msg, 0, sizeof(rx_msg));
+    rx_msg.type = MK_MSG_THREAD_HANDOFF_REQ;
+    rx_msg.src_core = sender_core;
+    rx_msg.dst_core = target_core;
+    rx_msg.auth_token = valid_auth_token;
+    rx_msg.payload_size = sizeof(mk_msg_thread_handoff_t);
+
+    mk_msg_thread_handoff_t payload = {
+        .thread_id = t2->thread_id, // WRONG TARGET! Requesting handoff for t2 instead of t.
+        .source_core = sender_core,
+        .target_core = target_core
+    };
+    __builtin_memcpy(rx_msg.payload_data, &payload, sizeof(payload));
+
+    extern mk_channel_t g_mock_channel;
+    g_mock_channel.src_core = sender_core;
+    g_mock_channel.dst_core = target_core;
+
+    int ret = mk_dispatch_message(&g_mock_channel, &rx_msg);
+    KTEST_ASSERT(ret == -1, "Dispatch should fail due to capability object mismatch");
+
+    cap_table_revoke(table, valid_auth_token);
+    g_cap_bootstrap_cspaces_used[sender_core] = false;
+
+    return true;
+}
+
+bool test_urpc_thread_handoff_insufficient_rights(void) {
+    reset_test_state();
+
+    bh_process_t *p = process_create("test_proc_insuf");
+    bh_thread_t *t = thread_create(p, NULL);
+
+    uint32_t sender_core = 0;
+    uint32_t target_core = 1;
+    uint32_t valid_auth_token;
+
+    // Grant capability for thread t but with QUERY rights only
+    extern capability_table_t g_cap_bootstrap_cspaces[];
+    extern bool g_cap_bootstrap_cspaces_used[];
+    g_cap_bootstrap_cspaces_used[sender_core] = true;
+    capability_table_t *table = &g_cap_bootstrap_cspaces[sender_core];
+    __builtin_memset(table, 0, sizeof(*table));
+    spin_lock_init(&table->lock);
+    bh_id_allocator_init(&table->id_allocator, table->id_bitmap, BHARAT_ARRAY_SIZE(table->entries));
+    table->owner_core = sender_core;
+    cap_table_grant(table, CAP_TYPE_THREAD, (uint64_t)t, CAP_RIGHT_QUERY, &valid_auth_token);
+
+    urpc_msg_t rx_msg;
+    __builtin_memset(&rx_msg, 0, sizeof(rx_msg));
+    rx_msg.type = MK_MSG_THREAD_HANDOFF_REQ;
+    rx_msg.src_core = sender_core;
+    rx_msg.dst_core = target_core;
+    rx_msg.auth_token = valid_auth_token;
+    rx_msg.payload_size = sizeof(mk_msg_thread_handoff_t);
+
+    mk_msg_thread_handoff_t payload = {
+        .thread_id = t->thread_id,
+        .source_core = sender_core,
+        .target_core = target_core
+    };
+    __builtin_memcpy(rx_msg.payload_data, &payload, sizeof(payload));
+
+    extern mk_channel_t g_mock_channel;
+    g_mock_channel.src_core = sender_core;
+    g_mock_channel.dst_core = target_core;
+
+    int ret = mk_dispatch_message(&g_mock_channel, &rx_msg);
+    KTEST_ASSERT(ret == -1, "Dispatch should fail due to insufficient rights");
+
+    cap_table_revoke(table, valid_auth_token);
+    g_cap_bootstrap_cspaces_used[sender_core] = false;
+
+    return true;
+}
+
+bool test_urpc_thread_handoff_unknown_msg(void) {
+    reset_test_state();
+
+    urpc_msg_t rx_msg;
+    __builtin_memset(&rx_msg, 0, sizeof(rx_msg));
+    rx_msg.type = 0x9999; // Unknown message type
+    rx_msg.src_core = 1;
+    rx_msg.dst_core = 0;
+
+    extern mk_channel_t g_mock_channel;
+    g_mock_channel.src_core = 1;
+    g_mock_channel.dst_core = 0;
+
+    int ret = mk_dispatch_message(&g_mock_channel, &rx_msg);
+    KTEST_ASSERT(ret == -1, "Dispatch should fail closed for unknown message types");
+
+    return true;
+}
+
+bool test_urpc_thread_handoff_revoked(void) {
+    reset_test_state();
+
+    bh_process_t *p = process_create("test_proc_rev");
+    bh_thread_t *t = thread_create(p, NULL);
+
+    uint32_t sender_core = 0;
+    uint32_t target_core = 1;
+    uint32_t valid_auth_token;
+
+    // Grant capability
+    extern capability_table_t g_cap_bootstrap_cspaces[];
+    extern bool g_cap_bootstrap_cspaces_used[];
+    g_cap_bootstrap_cspaces_used[sender_core] = true;
+    capability_table_t *table = &g_cap_bootstrap_cspaces[sender_core];
+    __builtin_memset(table, 0, sizeof(*table));
+    spin_lock_init(&table->lock);
+    bh_id_allocator_init(&table->id_allocator, table->id_bitmap, BHARAT_ARRAY_SIZE(table->entries));
+    table->owner_core = sender_core;
+    cap_table_grant(table, CAP_TYPE_THREAD, (uint64_t)t, CAP_RIGHT_SCHEDULE, &valid_auth_token);
+
+    // Revoke capability
+    cap_table_revoke(table, valid_auth_token);
+
+    urpc_msg_t rx_msg;
+    __builtin_memset(&rx_msg, 0, sizeof(rx_msg));
+    rx_msg.type = MK_MSG_THREAD_HANDOFF_REQ;
+    rx_msg.src_core = sender_core;
+    rx_msg.dst_core = target_core;
+    rx_msg.auth_token = valid_auth_token;
+    rx_msg.payload_size = sizeof(mk_msg_thread_handoff_t);
+
+    mk_msg_thread_handoff_t payload = {
+        .thread_id = t->thread_id,
+        .source_core = sender_core,
+        .target_core = target_core
+    };
+    __builtin_memcpy(rx_msg.payload_data, &payload, sizeof(payload));
+
+    extern mk_channel_t g_mock_channel;
+    g_mock_channel.src_core = sender_core;
+    g_mock_channel.dst_core = target_core;
+
+    int ret = mk_dispatch_message(&g_mock_channel, &rx_msg);
+    KTEST_ASSERT(ret == -1, "Dispatch should fail due to revoked capability");
+
+    g_cap_bootstrap_cspaces_used[sender_core] = false;
+
+    return true;
+}
+
+bool test_urpc_thread_handoff_spoofed_ack(void) {
+    reset_test_state();
+
+    urpc_msg_t rx_msg;
+    __builtin_memset(&rx_msg, 0, sizeof(rx_msg));
+    rx_msg.type = MK_MSG_THREAD_HANDOFF_ACK;
+    rx_msg.src_core = 1;
+    rx_msg.dst_core = 0;
+    rx_msg.msg_id = 0x9999; // Random unknown transaction ID
+
+    extern mk_channel_t g_mock_channel;
+    g_mock_channel.src_core = 1;
+    g_mock_channel.dst_core = 0;
+
+    int ret = mk_dispatch_message(&g_mock_channel, &rx_msg);
+    KTEST_ASSERT(ret == -1, "Dispatch should fail due to spoofed ACK with unknown transaction ID");
+
+    return true;
+}
 bool test_urpc_thread_handoff_no_duplicate_enqueue(void) {
     // This is implicitly tested by the state check (THREAD_STATE_REMOTE_HANDOFF_PENDING -> READY).
     // If a second REQ comes in, the state is already READY, so it will hit the bad state reject path.
@@ -208,11 +398,16 @@ static ktest_case_t handoff_tests[] = {
     {"Handoff Denied No Capability", test_urpc_thread_handoff_denied_no_cap},
     {"Handoff Reject Bad Target Core", test_urpc_thread_handoff_reject_bad_core},
     {"Handoff Reject Bad State", test_urpc_thread_handoff_reject_bad_state},
-    {"Handoff No Duplicate Enqueue", test_urpc_thread_handoff_no_duplicate_enqueue}
+    {"Handoff No Duplicate Enqueue", test_urpc_thread_handoff_no_duplicate_enqueue},
+    {"Handoff Reject Wrong Target", test_urpc_thread_handoff_wrong_target},
+    {"Handoff Reject Insufficient Rights", test_urpc_thread_handoff_insufficient_rights},
+    {"Handoff Reject Unknown Message", test_urpc_thread_handoff_unknown_msg},
+    {"Handoff Reject Revoked Capability", test_urpc_thread_handoff_revoked},
+    {"Handoff Reject Spoofed ACK", test_urpc_thread_handoff_spoofed_ack}
 };
 
 static int run_handoff_suite(void) {
-    ktest_run_suite("uRPC Thread Handoff Tests", handoff_tests, 5);
+    ktest_run_suite("uRPC Thread Handoff Tests", handoff_tests, 10);
     return 0;
 }
 

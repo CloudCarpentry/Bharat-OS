@@ -16,8 +16,7 @@ typedef enum {
     SM_OP_START     = 2,
     SM_OP_STOP      = 3,
     SM_OP_QUERY     = 4,
-    SM_OP_HEARTBEAT = 5,
-    SM_OP_SIGNAL_READY = 6,
+    SM_OP_HEALTH_UPDATE = 7,
     SM_OP_HANDOFF_BEGIN = 10,
     SM_OP_HANDOFF_SERVICE = 11,
     SM_OP_HANDOFF_COMMIT = 12
@@ -90,19 +89,7 @@ typedef struct {
     int32_t status;
 } sm_resp_query_t;
 
-// SM_OP_HEARTBEAT Request
-typedef struct {
-    uint32_t service_id;
-    uint64_t incarnation_id;
-    uint32_t health_state;
-    uint64_t sequence;
-    uint64_t timestamp_ticks;
-} sm_req_heartbeat_t;
-
-// SM_OP_HEARTBEAT Response
-typedef struct {
-    int32_t status;
-} sm_resp_heartbeat_t;
+#include <bharat/uapi/servicemgr/health.h>
 
 #ifdef __cplusplus
 }

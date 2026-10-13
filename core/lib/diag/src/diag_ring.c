@@ -24,15 +24,32 @@ bh_status_t bh_diag_ring_init(bh_diag_ring_t *ring, bh_diag_ring_slot_t *slots, 
 bh_status_t bh_diag_ring_try_write(bh_diag_ring_t *ring, const bh_diag_event_header_t *header, const void *payload) {
     if (!ring_valid(ring) || !header || (header->payload_size && !payload)) return BH_ERR_INVALID_ARGUMENT;
     if (header->abi_version != BH_DIAG_ABI_VERSION || header->header_size != sizeof(*header) || header->payload_size > ring->max_payload || header->severity >= BH_DIAG_SEVERITY_COUNT || header->source_kind >= BH_DIAG_SOURCE_KIND_COUNT) return BH_ERR_INVALID_ARGUMENT;
-    uint32_t write = atomic_load_explicit(&ring->write_position, memory_order_relaxed);
-    uint32_t read = atomic_load_explicit(&ring->read_position, memory_order_acquire);
-    if (write - read >= ring->capacity) { atomic_fetch_add_explicit(&ring->dropped, 1, memory_order_relaxed); return BH_ERR_BUFFER_FULL; }
+
+    // Multi-producer safe claim-then-publish
+    uint32_t write;
+    uint32_t read;
+    do {
+        write = atomic_load_explicit(&ring->write_position, memory_order_relaxed);
+        read = atomic_load_explicit(&ring->read_position, memory_order_acquire);
+        if (write - read >= ring->capacity) {
+            atomic_fetch_add_explicit(&ring->dropped, 1, memory_order_relaxed);
+            return BH_ERR_BUFFER_FULL;
+        }
+    } while (!atomic_compare_exchange_weak_explicit(&ring->write_position, &write, write + 1, memory_order_acquire, memory_order_relaxed));
+
+    // 'write' now holds our exclusively claimed index.
     bh_diag_ring_slot_t *slot = &ring->slots[write % ring->capacity];
-    slot->record.header = *header; slot->record.header.sequence = write + 1;
-    if (header->payload_size) bytes_copy(slot->record.payload, payload, header->payload_size);
+    slot->record.header = *header;
+    slot->record.header.sequence = write + 1;
+    if (header->payload_size) {
+        bytes_copy(slot->record.payload, payload, header->payload_size);
+    }
+
+    // Commit the slot by storing its sequence number
     atomic_store_explicit(&slot->committed_sequence, write + 1, memory_order_release);
-    atomic_store_explicit(&ring->write_position, write + 1, memory_order_release);
-    atomic_fetch_add_explicit(&ring->accepted, 1, memory_order_relaxed); update_high_watermark(ring, write + 1 - read);
+
+    atomic_fetch_add_explicit(&ring->accepted, 1, memory_order_relaxed);
+    update_high_watermark(ring, write + 1 - read);
     return BH_OK;
 }
 static bh_status_t copy_next(bh_diag_ring_t *ring, bh_diag_record_t *record, int consume) {
@@ -42,9 +59,24 @@ static bh_status_t copy_next(bh_diag_ring_t *ring, bh_diag_record_t *record, int
     if (read == write) return BH_ERR_NOT_FOUND;
     bh_diag_ring_slot_t *slot = &ring->slots[read % ring->capacity];
     uint32_t expected = read + 1U;
-    if (atomic_load_explicit(&slot->committed_sequence, memory_order_acquire) != expected || slot->record.header.sequence != expected || slot->record.header.header_size != sizeof(bh_diag_event_header_t) || slot->record.header.payload_size > ring->max_payload) { atomic_fetch_add_explicit(&ring->corrupt, 1, memory_order_relaxed); return BH_ERR_FAULT; }
+
+    // In a multi-producer claim-then-publish model, write_position may have advanced
+    // but the slot might not be fully published yet. We just return not found if not committed yet.
+    if (atomic_load_explicit(&slot->committed_sequence, memory_order_acquire) != expected) {
+        return BH_ERR_NOT_FOUND; // Wait for the writer to commit
+    }
+
+    if (slot->record.header.sequence != expected || slot->record.header.header_size != sizeof(bh_diag_event_header_t) || slot->record.header.payload_size > ring->max_payload) {
+        atomic_fetch_add_explicit(&ring->corrupt, 1, memory_order_relaxed);
+        return BH_ERR_FAULT;
+    }
+
     *record = slot->record;
-    if (consume) { atomic_store_explicit(&slot->committed_sequence, 0, memory_order_release); atomic_store_explicit(&ring->read_position, read + 1, memory_order_release); atomic_fetch_add_explicit(&ring->consumed, 1, memory_order_relaxed); }
+    if (consume) {
+        atomic_store_explicit(&slot->committed_sequence, 0, memory_order_release);
+        atomic_store_explicit(&ring->read_position, read + 1, memory_order_release);
+        atomic_fetch_add_explicit(&ring->consumed, 1, memory_order_relaxed);
+    }
     return BH_OK;
 }
 bh_status_t bh_diag_ring_try_read(bh_diag_ring_t *ring, bh_diag_record_t *record) { return copy_next(ring, record, 1); }

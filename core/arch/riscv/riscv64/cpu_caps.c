@@ -37,6 +37,11 @@ static void riscv64_probe_caps(arch_cpu_caps_record_t *caps) {
     arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_RISCV_ZBS);
     arch_cpu_caps_set(&caps->usable, ARCH_CPU_FEAT_RISCV_ZBS);
 #endif
+#if defined(BHARAT_ISA_FEATURE_ZBA) || defined(BHARAT_ISA_FEATURE_ZBB) || \
+    defined(BHARAT_ISA_FEATURE_ZBC) || defined(BHARAT_ISA_FEATURE_ZBS)
+    arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_COMMON_BITMANIP);
+    arch_cpu_caps_set(&caps->usable, ARCH_CPU_FEAT_COMMON_BITMANIP);
+#endif
 }
 
 void arch_cpu_caps_init(void) {

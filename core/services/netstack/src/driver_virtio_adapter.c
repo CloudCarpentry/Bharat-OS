@@ -12,6 +12,8 @@ extern int virtio_net_bind(void *device);
 extern int virtio_net_start(void *device, void (*rx_callback)(packet_buf_t *));
 extern int virtio_net_tx(void *device, packet_buf_t *pkt);
 
+#include <device/pci.h>
+
 // For simplicity, we assume a single device instance bound in the mock
 static void *mock_virtio_device = NULL;
 
@@ -51,6 +53,16 @@ void virtio_adapter_rx(packet_buf_t *pkt) {
 int virtio_adapter_init(void) {
     // Make sure libpacket is initialized before driver
     libpacket_init();
+
+    pci_enumerate();
+    pci_device_t *pci = pci_get_device_list();
+    while (pci) {
+        if (pci->vendor_id == 0x1AF4 && (pci->device_id == 0x1000 || pci->device_id == 0x1041)) {
+            mock_virtio_device = pci;
+            break;
+        }
+        pci = pci->next;
+    }
 
     if (virtio_net_init() != 0) return -1;
     if (virtio_net_probe(mock_virtio_device) != 0) return -1;

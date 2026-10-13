@@ -1,4 +1,4 @@
-add_executable(process_manager main.c process_manager.c)
+add_executable(process_manager main.c process_manager.c kernel_adapter.c)
 target_link_libraries(process_manager PRIVATE bharat_user_buildopts bharat_freestanding bharat_libipc bharat_libhandle elf_parser)
 target_include_directories(process_manager PRIVATE ../../kernel/include ../../services/core/subsysmgr/include ../../lib/bharat_libtransport ../../include ../../lib/handle)
 

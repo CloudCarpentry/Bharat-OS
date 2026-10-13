@@ -252,6 +252,8 @@ fbui_widget_t* fbui_create_button(int x, int y, int w, int h, const char *text) 
  */
 typedef struct {
     float progress; // 0.0 to 1.0
+    uint32_t percent;
+    bool integer_progress;
 } fbui_progress_data_t;
 
 static void progress_draw(fbui_widget_t *w, fbui_render_context_t *ctx) {
@@ -266,7 +268,13 @@ static void progress_draw(fbui_widget_t *w, fbui_render_context_t *ctx) {
     fbui_render_fill_rect(ctx, w->x + 2, w->y + 2, w->width - 4, w->height - 4, w->bg_color);
 
     // Draw fill
-    int fill_width = (int)((w->width - 4) * pdata->progress);
+    int fill_width;
+    if (pdata->integer_progress) {
+        fill_width = w->width > 4
+            ? (int)((uint64_t)(w->width - 4) * pdata->percent / 100U) : 0;
+    } else {
+        fill_width = (int)((w->width - 4) * pdata->progress);
+    }
     if (fill_width > w->width - 4) fill_width = w->width - 4;
 
     if (fill_width > 0) {
@@ -283,16 +291,33 @@ static fbui_widget_t _dummy_prog_pool[5];
 static fbui_progress_data_t _dummy_prog_data_pool[5];
 static int _prog_cnt = 0;
 
-fbui_widget_t* fbui_create_progress(int x, int y, int w, int h, float value) {
+static fbui_widget_t* allocate_progress(int x, int y, int w, int h) {
     if (_prog_cnt >= 5) return NULL;
     fbui_widget_t *prog = &_dummy_prog_pool[_prog_cnt];
     fbui_progress_data_t *data = &_dummy_prog_data_pool[_prog_cnt++];
 
     fbui_widget_init(prog, FBUI_WIDGET_PROGRESS, x, y, w, h);
-    data->progress = value;
     prog->priv_data = data;
     prog->ops = &progress_ops;
     prog->bg_color = 0xFFEEEEEE;
+    return prog;
+}
+
+fbui_widget_t* fbui_create_progress(int x, int y, int w, int h, float value) {
+    fbui_widget_t *prog = allocate_progress(x, y, w, h);
+    if (!prog) return NULL;
+    fbui_progress_data_t *data = prog->priv_data;
+    data->progress = value;
+    data->integer_progress = false;
+    return prog;
+}
+
+fbui_widget_t* fbui_create_progress_percent(int x, int y, int w, int h, uint32_t percent) {
+    fbui_widget_t *prog = allocate_progress(x, y, w, h);
+    if (!prog) return NULL;
+    fbui_progress_data_t *data = prog->priv_data;
+    data->percent = percent > 100U ? 100U : percent;
+    data->integer_progress = true;
     return prog;
 }
 

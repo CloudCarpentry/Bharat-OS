@@ -20,6 +20,9 @@ add_executable(init
     init_events.c
 )
 target_link_libraries(init PRIVATE bharat_user_buildopts bharat_freestanding bharat_syscall)
+if(BHARAT_INIT_CORE_BOOTSTRAP_ONLY)
+    target_compile_definitions(init PRIVATE BHARAT_INIT_CORE_BOOTSTRAP_ONLY)
+endif()
 
 # Link against the foundational Phase 1 user-space libraries
 target_link_libraries(init PUBLIC runtime ipc cap bharat_libnamesvc)

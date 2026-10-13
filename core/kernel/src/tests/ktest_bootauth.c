@@ -23,7 +23,7 @@ static int test_bootauth_run(void) {
 
     // Test 3: bootstrap cap is valid and generation-safe
     uint32_t root_bootstrap_cap = 0;
-    res = cap_table_grant(proc->security_sandbox_ctx, CAP_TYPE_BOOTSTRAP, 0, CAP_RIGHT_BOOTSTRAP_LAUNCH | CAP_RIGHT_BOOTSTRAP_BIND, &root_bootstrap_cap);
+    res = cap_table_grant(proc->security_sandbox_ctx, CAP_TYPE_BOOTSTRAP, (uint64_t)(uintptr_t)proc, CAP_RIGHT_BOOTSTRAP_LAUNCH | CAP_RIGHT_BOOTSTRAP_BIND, &root_bootstrap_cap);
     if (res != 0 || root_bootstrap_cap == 0) return -1;
 
     // Test 4: bootstrap rights cannot be escalated
@@ -49,10 +49,10 @@ static int test_bootauth_run(void) {
     // Actually, we want to test if ipc_endpoint_create rolls back if granting receive cap fails.
     // But we can't easily fail the receive cap grant without modifying the cap table.
     // For now, let's just make sure both exist.
-    res = cap_table_lookup(proc->security_sandbox_ctx, send_cap, CAP_TYPE_ENDPOINT, CAP_RIGHT_IPC_SEND, &entry);
+    res = cap_table_lookup(proc->security_sandbox_ctx, send_cap, CAP_TYPE_ENDPOINT, CAP_RIGHT_ENDPOINT_SEND, &entry);
     if (res != 0) return -1;
 
-    res = cap_table_lookup(proc->security_sandbox_ctx, recv_cap, CAP_TYPE_ENDPOINT, CAP_RIGHT_IPC_RECEIVE, &entry);
+    res = cap_table_lookup(proc->security_sandbox_ctx, recv_cap, CAP_TYPE_ENDPOINT, CAP_RIGHT_ENDPOINT_RECEIVE, &entry);
     if (res != 0) return -1;
 
     console_write_raw("ktest_bootauth_run PASS\n", 24);

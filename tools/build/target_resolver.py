@@ -64,8 +64,8 @@ def resolve_target_yaml_path(path: Path) -> Path:
 def validate_yaml_target(raw: dict) -> None:
     yaml, jsonschema = _require_yaml_deps()
     if not SCHEMA_PATH.exists():
-        print(f"[Warning] Target schema not found at {SCHEMA_PATH}, skipping schema validation.")
-        return
+        print(f"Error: Target schema not found at {SCHEMA_PATH}")
+        sys.exit(1)
 
     with open(SCHEMA_PATH, "r") as f:
         schema = yaml.safe_load(f)
@@ -117,6 +117,21 @@ def resolve_yaml_target(path: Path) -> ResolvedTarget:
     cmake_defs = dict(build_raw.get("cmake_defs", {}))
     cmake_defs["BHARAT_USERSPACE_RUNTIME_MODEL"] = runtime_model.upper()
     cmake_defs["BHARAT_USERSPACE_RUNTIME_MODEL_ID"] = RUNTIME_MODEL_IDS[runtime_model]
+
+    from tools.build.service_graph import resolve_service_graph
+
+    # Target tmp to pass to resolve_service_graph
+    target_tmp = type('obj', (object,), {
+        'userspace': type('obj', (object,), {'runtime_model': runtime_model}),
+        'source_metadata': {"source_path": str(resolved_path)}
+    })
+    repo_root = Path(__file__).resolve().parent.parent.parent
+    resolved_graph = resolve_service_graph(target_tmp, repo_root)
+
+    for svc_name, svc_data in resolved_graph.items():
+        if svc_name != "_metadata":
+            cmake_defs[f"BHARAT_BUILD_SVC_{svc_name.upper()}"] = "ON"
+
     
     execution_profile = raw.get("execution_profile")
     if execution_profile:
@@ -211,7 +226,7 @@ def resolve_yaml_target(path: Path) -> ResolvedTarget:
             extra_args=debug_raw.get("extra_args", [])
         )
 
-    return ResolvedTarget(
+    target_out = ResolvedTarget(
         name=raw.get("name", "unknown"),
         kind=raw.get("kind", "unknown"),
         arch=raw.get("arch", "unknown"),
@@ -234,6 +249,8 @@ def resolve_yaml_target(path: Path) -> ResolvedTarget:
         ),
         source_metadata={"source_kind": "yaml", "source_path": str(resolved_path)}
     )
+    target_out.source_metadata["resolved_service_graph"] = resolved_graph
+    return target_out
 
 def resolve_target_input(target: str | None, target_yaml: str | None) -> TargetInput:
     if target_yaml:

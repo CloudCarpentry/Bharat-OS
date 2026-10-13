@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "syscall_count": 25,
+  "syscall_count": 32,
   "generated_sha256": {
-    "numbers": "68c571c85e96256f0f7a7a10d4a2facfedeadab8c2746fbc3a032fbc15be6d2e",
-    "table_def": "bda26a2a241c681bc1d5388284084096d63bdf9ea02018e52461972fa2dde1ea",
-    "metadata_table": "d4b5d65b722a0131c26044817c1eb5300888d18d190e3d33150a7e7db22405f8"
+    "numbers": "635432de692cc6c5895d33822f26130a10ef6bac69842288a4acd022870b5f9e",
+    "table_def": "d75d3cac63dad239b98338dacbfd3316dddc852c860ad6f781df5aaef2ff042f",
+    "metadata_table": "27ec0395030a6c6df2c2151f502fcf8346dff48363aa052189f549dbf31ec8cf"
   },
   "syscalls": [
     {
@@ -670,6 +670,202 @@
       "capability": null,
       "traits": [
         "user_write"
+      ]
+    },
+    {
+      "number": 70,
+      "symbol": "BH_SYS_HMEM_CREATE",
+      "arguments": [
+        {
+          "name": "args",
+          "kind": "user_struct",
+          "type": "bh_hmem_create_args_t",
+          "direction": "in_out"
+        }
+      ],
+      "capability": {
+        "source": {
+          "kind": "struct_field",
+          "argument": "args",
+          "field": "resource_cap"
+        },
+        "validation_phase": "after_usercopy",
+        "object_type": "CAP_TYPE_PROCESS",
+        "rights": [
+          "BH_CAP_RIGHT_RESOURCE_ALLOC"
+        ],
+        "scope": "current_process"
+      },
+      "traits": [
+        "user_read",
+        "user_write"
+      ]
+    },
+    {
+      "number": 71,
+      "symbol": "BH_SYS_HMEM_DESTROY",
+      "arguments": [
+        {
+          "name": "hmem_cap",
+          "kind": "scalar",
+          "type": "uint64_t",
+          "direction": "in"
+        }
+      ],
+      "capability": {
+        "source": {
+          "kind": "register",
+          "argument": "hmem_cap"
+        },
+        "validation_phase": "before_handler",
+        "object_type": "CAP_TYPE_HMEM",
+        "rights": [
+          "BH_CAP_RIGHT_DESTROY"
+        ],
+        "scope": "current_process"
+      },
+      "traits": []
+    },
+    {
+      "number": 72,
+      "symbol": "BH_SYS_HMEM_QUERY",
+      "arguments": [
+        {
+          "name": "args",
+          "kind": "user_struct",
+          "type": "bh_hmem_query_args_t",
+          "direction": "in_out"
+        }
+      ],
+      "capability": {
+        "source": {
+          "kind": "struct_field",
+          "argument": "args",
+          "field": "hmem_cap"
+        },
+        "validation_phase": "after_usercopy",
+        "object_type": "CAP_TYPE_HMEM",
+        "rights": [
+          "BH_CAP_RIGHT_QUERY"
+        ],
+        "scope": "current_process"
+      },
+      "traits": [
+        "user_read",
+        "user_write"
+      ]
+    },
+    {
+      "number": 73,
+      "symbol": "BH_SYS_HMEM_MAP_CPU",
+      "arguments": [
+        {
+          "name": "args",
+          "kind": "user_struct",
+          "type": "bh_hmem_map_cpu_args_t",
+          "direction": "in_out"
+        }
+      ],
+      "capability": {
+        "source": {
+          "kind": "struct_field",
+          "argument": "args",
+          "field": "hmem_cap"
+        },
+        "validation_phase": "after_usercopy",
+        "object_type": "CAP_TYPE_HMEM",
+        "rights": [
+          "BH_CAP_RIGHT_MAP"
+        ],
+        "scope": "current_process"
+      },
+      "traits": [
+        "user_read",
+        "user_write"
+      ]
+    },
+    {
+      "number": 74,
+      "symbol": "BH_SYS_HMEM_UNMAP_CPU",
+      "arguments": [
+        {
+          "name": "args",
+          "kind": "user_struct",
+          "type": "bh_hmem_unmap_cpu_args_t",
+          "direction": "in"
+        }
+      ],
+      "capability": {
+        "source": {
+          "kind": "struct_field",
+          "argument": "args",
+          "field": "hmem_cap"
+        },
+        "validation_phase": "after_usercopy",
+        "object_type": "CAP_TYPE_HMEM",
+        "rights": [
+          "BH_CAP_RIGHT_UNMAP"
+        ],
+        "scope": "current_process"
+      },
+      "traits": [
+        "user_read"
+      ]
+    },
+    {
+      "number": 75,
+      "symbol": "BH_SYS_HMEM_SYNC_FOR_CPU",
+      "arguments": [
+        {
+          "name": "args",
+          "kind": "user_struct",
+          "type": "bh_hmem_sync_args_t",
+          "direction": "in"
+        }
+      ],
+      "capability": {
+        "source": {
+          "kind": "struct_field",
+          "argument": "args",
+          "field": "hmem_cap"
+        },
+        "validation_phase": "after_usercopy",
+        "object_type": "CAP_TYPE_HMEM",
+        "rights": [
+          "BH_CAP_RIGHT_MEMORY_MAP"
+        ],
+        "scope": "current_process"
+      },
+      "traits": [
+        "user_read"
+      ]
+    },
+    {
+      "number": 76,
+      "symbol": "BH_SYS_HMEM_SYNC_FOR_DEVICE",
+      "arguments": [
+        {
+          "name": "args",
+          "kind": "user_struct",
+          "type": "bh_hmem_sync_args_t",
+          "direction": "in"
+        }
+      ],
+      "capability": {
+        "source": {
+          "kind": "struct_field",
+          "argument": "args",
+          "field": "hmem_cap"
+        },
+        "validation_phase": "after_usercopy",
+        "object_type": "CAP_TYPE_HMEM",
+        "rights": [
+          "BH_CAP_RIGHT_MEMORY_MAP"
+        ],
+        "scope": "current_process"
+      },
+      "traits": [
+        "user_read"
       ]
     }
   ]

@@ -256,6 +256,61 @@ bh_display_result_t bh_client_present_surface(
                                         : result;
 }
 
+bh_display_result_t
+bh_client_destroy_surface(bh_display_lease_handle_t lease,
+                          bh_gui_surface_handle_t surface) {
+  bharat_display_broker_v2_DestroySurfaceReq_t request = {
+      .lease_handle = lease,
+      .surface_handle = surface,
+  };
+  bharat_display_broker_v2_DestroySurfaceResp_t response = {0};
+  bh_display_result_t result;
+
+  if (surface == BH_GUI_HANDLE_INVALID) {
+    return BH_DISPLAY_RESULT_OK;
+  }
+  result = display_call(BH_DISPLAY_BROKER_V2_OP_DESTROY_SURFACE, &request,
+                        sizeof(request), &response, sizeof(response));
+  return result == BH_DISPLAY_RESULT_OK ? (bh_display_result_t)response.result
+                                        : result;
+}
+
+bh_display_result_t
+bh_client_release_buffer(bh_display_lease_handle_t lease,
+                         bh_gui_buffer_handle_t buffer) {
+  bharat_display_broker_v2_ReleaseBufferReq_t request = {
+      .lease_handle = lease,
+      .buffer_handle = buffer,
+  };
+  bharat_display_broker_v2_ReleaseBufferResp_t response = {0};
+  bh_display_result_t result;
+
+  if (buffer == BH_GUI_HANDLE_INVALID) {
+    return BH_DISPLAY_RESULT_OK;
+  }
+  result = display_call(BH_DISPLAY_BROKER_V2_OP_RELEASE_BUFFER, &request,
+                        sizeof(request), &response, sizeof(response));
+  return result == BH_DISPLAY_RESULT_OK ? (bh_display_result_t)response.result
+                                        : result;
+}
+
+bh_display_result_t
+bh_client_release_lease(bh_display_lease_handle_t lease) {
+  bharat_display_broker_v2_ReleaseDisplayLeaseReq_t request = {
+      .lease_handle = lease,
+  };
+  bharat_display_broker_v2_ReleaseDisplayLeaseResp_t response = {0};
+  bh_display_result_t result;
+
+  if (lease == BH_GUI_HANDLE_INVALID) {
+    return BH_DISPLAY_RESULT_OK;
+  }
+  result = display_call(BH_DISPLAY_BROKER_V2_OP_RELEASE_DISPLAY_LEASE, &request,
+                        sizeof(request), &response, sizeof(response));
+  return result == BH_DISPLAY_RESULT_OK ? (bh_display_result_t)response.result
+                                        : result;
+}
+
 bh_display_result_t bh_client_wait_fence(bh_gui_fence_handle_t fence,
                                          bh_monotonic_deadline_ns_t deadline) {
   (void)deadline;

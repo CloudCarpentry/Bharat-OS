@@ -50,6 +50,48 @@ int main(void) {
     vm_req_unmap_t unmap_req = {.region_id = map_resp.region_id};
     assert(vm_manager_authorize(VM_OP_UNMAP, &unmap_req, 23) == BHARAT_IPC_STATUS_ERR_PERM);
 
+    // V1 adapter failure/fallback testing
+    assert(bh_vm_authority_ops_installed() == false);
+    assert(bh_vm_set_authority_ops(NULL) == BHARAT_IPC_STATUS_ERR_UNSUPPORTED);
+    assert(bh_vm_authority_ops_installed() == false);
+
+    bh_vm_create_space_request_v1_t create_req = {
+        .abi_version = BH_VM_INTERFACE_VERSION_V1,
+        .struct_size = sizeof(bh_vm_create_space_request_v1_t),
+        .memory_profile = 0,
+        .timing_class = 0
+    };
+    assert(vm_manager_authorize(BH_VM_OP_CREATE_SPACE_V1, &create_req, BHARAT_CAP_INVALID_HANDLE) == BHARAT_IPC_STATUS_ERR_PERM);
+    assert(vm_manager_authorize(BH_VM_OP_CREATE_SPACE_V1, &create_req, 22) == BHARAT_IPC_STATUS_ERR_PERM);
+    // Note: CREATE_SPACE_V1 target object ID is 0, so it bypasses scope check in fake backend
+
+    bh_vm_map_request_v1_t map_req_v1 = {
+        .abi_version = BH_VM_INTERFACE_VERSION_V1,
+        .struct_size = sizeof(bh_vm_map_request_v1_t),
+        .vm_space_handle = 9,
+        .vaddr = 0x1000,
+        .size = 0x1000,
+        .protection = 0,
+        .memory_type = 0
+    };
+    assert(vm_manager_authorize(BH_VM_OP_MAP_V1, &map_req_v1, BHARAT_CAP_INVALID_HANDLE) == BHARAT_IPC_STATUS_ERR_PERM);
+    assert(vm_manager_authorize(BH_VM_OP_MAP_V1, &map_req_v1, 22) == BHARAT_IPC_STATUS_ERR_PERM);
+    assert(vm_manager_authorize(BH_VM_OP_MAP_V1, &map_req_v1, 21) == BHARAT_IPC_STATUS_OK);
+
+    bh_vm_unmap_request_v1_t unmap_req_v1 = {
+        .abi_version = BH_VM_INTERFACE_VERSION_V1,
+        .struct_size = sizeof(bh_vm_unmap_request_v1_t),
+        .vm_space_handle = 9,
+        .region_handle = 0
+    };
+    assert(vm_manager_authorize(BH_VM_OP_UNMAP_V1, &unmap_req_v1, BHARAT_CAP_INVALID_HANDLE) == BHARAT_IPC_STATUS_ERR_PERM);
+    assert(vm_manager_authorize(BH_VM_OP_UNMAP_V1, &unmap_req_v1, 22) == BHARAT_IPC_STATUS_ERR_PERM);
+    assert(vm_manager_authorize(BH_VM_OP_UNMAP_V1, &unmap_req_v1, 23) == BHARAT_IPC_STATUS_ERR_PERM);
+
+    bh_vm_create_space_response_v1_t create_resp = {0};
+    // Should fail closed with unsupported when ops are not valid
+    assert(bh_vm_handle_create_space_v1(&create_req, &create_resp) == BHARAT_IPC_STATUS_ERR_UNSUPPORTED);
+
     puts("vm_manager capability negative tests passed");
     return 0;
 }

@@ -35,6 +35,7 @@ def main():
         "package": "Package a target.",
         "doctor": "Check development environment.",
         "targets": "List available targets.",
+        "demo": "Run a demo target.",
     }
 
     for cmd, desc in commands.items():

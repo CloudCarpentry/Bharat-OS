@@ -84,6 +84,8 @@ bool fbui_widget_hit_test(const fbui_widget_t *w, int px, int py);
 fbui_widget_t* fbui_create_button(int x, int y, int w, int h, const char *text);
 fbui_widget_t* fbui_create_label(int x, int y, int w, int h, const char *text);
 fbui_widget_t* fbui_create_progress(int x, int y, int w, int h, float value);
+/* Integer-only boot UI path; percent is clamped to 0..100. */
+fbui_widget_t* fbui_create_progress_percent(int x, int y, int w, int h, uint32_t percent);
 fbui_widget_t* fbui_create_slider(int x, int y, int w, int h, float value);
 fbui_widget_t* fbui_create_checkbox(int x, int y, int w, int h, bool checked);
 
