@@ -20,11 +20,11 @@ The Android Compatibility Personality is designed to provide application ecosyst
 *   **Goal:** Enable running Android apps (APK/AAB) and reusing Android ecosystem components (like SurfaceFlinger equivalents or media stacks) with minimal modification.
 *   **Target Workloads:** GUI-heavy consumer apps, mobile middleware, and embedded Android use cases.
 
-## 2. ART and Runtime Expectations
+## 2. ART, Syscall ABI, and Runtime Expectations
 
-*   The personality hosts the Android Runtime (ART).
-*   It provides the required native memory mappings, threading behaviors (e.g., standard Bionic libc expectations), and JNI environments required by ART.
-*   This relies heavily on the shared **Runtime Hosting Layer** (`interface/uapi/runtime/`) for standard process and memory hooks.
+*   **Syscall Trap ABI:** Android Bionic libc invokes the standard Linux system call ABI for the corresponding CPU architecture (`svc #0` on ARM64/ARM32, `ecall` on RISC-V 64/32, `syscall` on x86_64). Full register mappings are documented in [`linux-android-syscall-arch.md`](./linux-android-syscall-arch.md).
+*   **Runtime Hosting:** The personality hosts the Android Runtime (ART) by providing required native memory mappings, threading behaviors (Bionic TLS, robust futexes, stack limits), and JNI environments required by ART.
+*   This relies heavily on the shared **Runtime Hosting Layer** (`interface/uapi/runtime/`) and Linux personality compatibility core for standard process and memory hooks.
 
 ## 3. Binder IPC Strategy
 
