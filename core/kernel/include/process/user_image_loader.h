@@ -18,11 +18,14 @@ typedef struct {
     uint64_t flags;
 } bh_user_image_t;
 
+#define BH_USER_IMAGE_BOOTSTRAP_AUTHORITY (1ULL << 0)
+
 typedef struct {
     uintptr_t entry_point;
     uintptr_t user_stack_top;
     uintptr_t startup_va;
     address_space_t *aspace;
+    uint32_t self_process_cap;
 } bh_user_image_result_t;
 
 /**

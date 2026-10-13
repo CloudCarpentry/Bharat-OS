@@ -10,6 +10,7 @@ execution_profile: gp
 build:
   cmake_preset: x86_64-dev
   cmake_defs:
+    BHARAT_INIT_CORE_BOOTSTRAP_ONLY: ON
     BHARAT_ARCH_FAMILY: X86_64
     BHARAT_DEVICE_PROFILE: DESKTOP
     BHARAT_PERSONALITY_PROFILE: NATIVE
@@ -29,7 +30,7 @@ boot:
   artifact_format: elf
   dtb:
     mode: qemu_generated
-  cmdline: "boot_mode=legacy ktest=0"
+  cmdline: "ktest=0"
 
 package:
   transforms:

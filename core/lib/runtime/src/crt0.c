@@ -5,6 +5,7 @@
 
 #include <bharat/uapi/init/bootstrap.h>
 #include <bharat/runtime/runtime.h>
+#include <bharat/uapi/services/service_ids.h>
 
 extern int main(int argc, char* argv[]);
 
@@ -18,6 +19,9 @@ void _start(const bharat_user_startup_t *startup) {
     init_tls();
 
     bharat_runtime_init(startup);
+    if (startup && startup->bootstrap.flags == BHARAT_SERVICE_NAMESVC) {
+        bharat_runtime_log("NAMESVC_USER_ENTRY\n");
+    }
 
     int ret = main(
         startup ? (int)startup->argc : 0,
@@ -95,5 +99,22 @@ static uint64_t bharat_udiv64_generic(uint64_t num, uint64_t den) {
 
 __attribute__((weak)) uint64_t __udivdi3(uint64_t numerator, uint64_t denominator) {
     return bharat_udiv64_generic(numerator, denominator);
+}
+
+__attribute__((weak)) int64_t __divdi3(int64_t n, int64_t d) {
+    int neg = 0;
+    if (n < 0) {
+        n = -n;
+        neg = !neg;
+    }
+    if (d < 0) {
+        d = -d;
+        neg = !neg;
+    }
+    uint64_t q = __udivdi3((uint64_t)n, (uint64_t)d);
+    if (neg) {
+        return -(int64_t)q;
+    }
+    return (int64_t)q;
 }
 #endif

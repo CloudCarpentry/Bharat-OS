@@ -326,26 +326,49 @@
     "name": "CapabilityService",
     "rpcs": [
       {
+        "metadata": {
+          "qos": "reliable",
+          "timeout_ms": "100"
+        },
         "name": "Validate",
         "req": "CapValidateReq",
         "resp": "CapValidateResp"
       },
       {
+        "metadata": {
+          "criticality": "rt_ctl",
+          "qos": "reliable",
+          "timeout_ms": "200"
+        },
         "name": "Create",
         "req": "CapCreateReq",
         "resp": "CapCreateResp"
       },
       {
+        "metadata": {
+          "criticality": "rt_ctl",
+          "qos": "reliable",
+          "timeout_ms": "200"
+        },
         "name": "Revoke",
         "req": "CapRevokeReq",
         "resp": "CapRevokeResp"
       },
       {
+        "metadata": {
+          "criticality": "rt_ctl",
+          "qos": "reliable",
+          "timeout_ms": "200"
+        },
         "name": "Transfer",
         "req": "CapTransferReq",
         "resp": "CapTransferResp"
       },
       {
+        "metadata": {
+          "qos": "reliable",
+          "timeout_ms": "100"
+        },
         "name": "Inspect",
         "req": "CapInspectReq",
         "resp": "CapInspectResp"
@@ -444,29 +467,1149 @@
     "name": "bharat.device.accelmgr.v1",
     "rpcs": [
       {
+        "metadata": {
+          "qos": "reliable",
+          "timeout_ms": "1000"
+        },
         "name": "RequestAdmission",
         "req": "AdmissionRequest",
         "resp": "AdmissionResponse"
       },
       {
+        "metadata": {
+          "qos": "reliable",
+          "timeout_ms": "500"
+        },
         "name": "ReleaseContext",
         "req": "ReleaseRequest",
         "resp": "StatusResponse"
       },
       {
+        "metadata": {
+          "qos": "reliable",
+          "timeout_ms": "500"
+        },
         "name": "QueryHealth",
         "req": "HealthQuery",
         "resp": "HealthResponse"
       },
       {
+        "metadata": {
+          "qos": "reliable",
+          "timeout_ms": "500"
+        },
         "name": "SetThermalConstraint",
         "req": "ThermalConstraint",
         "resp": "StatusResponse"
       },
       {
+        "metadata": {
+          "qos": "reliable",
+          "timeout_ms": "1000"
+        },
         "name": "SetSafeMode",
         "req": "SafeModeRequest",
         "resp": "StatusResponse"
+      }
+    ]
+  },
+  "bharat.device.accelmgr_v2": {
+    "enums": {},
+    "id": 30,
+    "messages": {
+      "CancelJobReq": [
+        {
+          "name": "job_handle",
+          "type": "u64"
+        }
+      ],
+      "CancelJobResp": [
+        {
+          "name": "status",
+          "type": "u32"
+        }
+      ],
+      "CreateQueueReq": [
+        {
+          "name": "context_handle",
+          "type": "u64"
+        },
+        {
+          "name": "device_handle",
+          "type": "u64"
+        },
+        {
+          "name": "depth",
+          "type": "u32"
+        },
+        {
+          "name": "priority",
+          "type": "u32"
+        }
+      ],
+      "CreateQueueResp": [
+        {
+          "name": "status",
+          "type": "u32"
+        },
+        {
+          "name": "queue_handle",
+          "type": "u64"
+        }
+      ],
+      "DestroyQueueReq": [
+        {
+          "name": "queue_handle",
+          "type": "u64"
+        }
+      ],
+      "DestroyQueueResp": [
+        {
+          "name": "status",
+          "type": "u32"
+        }
+      ],
+      "GetBrokerInfoReq": [
+        {
+          "name": "dummy",
+          "type": "u32"
+        }
+      ],
+      "GetBrokerInfoResp": [
+        {
+          "name": "status",
+          "type": "u32"
+        },
+        {
+          "name": "version",
+          "type": "u32"
+        }
+      ],
+      "GetDeviceCountReq": [
+        {
+          "name": "dummy",
+          "type": "u32"
+        }
+      ],
+      "GetDeviceCountResp": [
+        {
+          "name": "status",
+          "type": "u32"
+        },
+        {
+          "name": "count",
+          "type": "u32"
+        }
+      ],
+      "GetDeviceInfoReq": [
+        {
+          "name": "index",
+          "type": "u32"
+        }
+      ],
+      "GetDeviceInfoResp": [
+        {
+          "name": "status",
+          "type": "u32"
+        },
+        {
+          "name": "device_id",
+          "type": "u32"
+        },
+        {
+          "name": "capabilities",
+          "type": "u32"
+        },
+        {
+          "name": "state",
+          "type": "u32"
+        },
+        {
+          "name": "name",
+          "type": "string<32>"
+        }
+      ],
+      "GetTelemetrySnapshotReq": [
+        {
+          "name": "dummy",
+          "type": "u32"
+        }
+      ],
+      "GetTelemetrySnapshotResp": [
+        {
+          "name": "status",
+          "type": "u32"
+        },
+        {
+          "name": "jobs_submitted",
+          "type": "u64"
+        },
+        {
+          "name": "jobs_completed",
+          "type": "u64"
+        },
+        {
+          "name": "jobs_failed",
+          "type": "u64"
+        },
+        {
+          "name": "jobs_cancelled",
+          "type": "u64"
+        },
+        {
+          "name": "queue_depth",
+          "type": "u64"
+        },
+        {
+          "name": "execution_latency_us",
+          "type": "u64"
+        },
+        {
+          "name": "hw_backend_selected",
+          "type": "u64"
+        },
+        {
+          "name": "sw_backend_selected",
+          "type": "u64"
+        },
+        {
+          "name": "cpu_fallback_count",
+          "type": "u64"
+        },
+        {
+          "name": "capability_denials",
+          "type": "u64"
+        },
+        {
+          "name": "buffer_reg_failures",
+          "type": "u64"
+        },
+        {
+          "name": "device_resets",
+          "type": "u64"
+        },
+        {
+          "name": "device_quarantines",
+          "type": "u64"
+        }
+      ],
+      "QueryFenceReq": [
+        {
+          "name": "fence_handle",
+          "type": "u64"
+        }
+      ],
+      "QueryFenceResp": [
+        {
+          "name": "status",
+          "type": "u32"
+        },
+        {
+          "name": "state",
+          "type": "u32"
+        },
+        {
+          "name": "error_code",
+          "type": "u32"
+        }
+      ],
+      "QueryHealthReq": [
+        {
+          "name": "device_handle",
+          "type": "u64"
+        }
+      ],
+      "QueryHealthResp": [
+        {
+          "name": "status",
+          "type": "u32"
+        },
+        {
+          "name": "state",
+          "type": "u32"
+        },
+        {
+          "name": "temperature_c",
+          "type": "u32"
+        },
+        {
+          "name": "utilization_pct",
+          "type": "u32"
+        }
+      ],
+      "QueryJobReq": [
+        {
+          "name": "job_handle",
+          "type": "u64"
+        }
+      ],
+      "QueryJobResp": [
+        {
+          "name": "status",
+          "type": "u32"
+        },
+        {
+          "name": "state",
+          "type": "u32"
+        },
+        {
+          "name": "error_code",
+          "type": "u32"
+        }
+      ],
+      "RegisterBufferReq": [
+        {
+          "name": "memory_cap_handle",
+          "type": "u64"
+        },
+        {
+          "name": "size",
+          "type": "u64"
+        },
+        {
+          "name": "flags",
+          "type": "u32"
+        }
+      ],
+      "RegisterBufferResp": [
+        {
+          "name": "status",
+          "type": "u32"
+        },
+        {
+          "name": "buffer_handle",
+          "type": "u64"
+        }
+      ],
+      "ReleaseContextReq": [
+        {
+          "name": "context_handle",
+          "type": "u64"
+        }
+      ],
+      "ReleaseContextResp": [
+        {
+          "name": "status",
+          "type": "u32"
+        }
+      ],
+      "RequestAdmissionReq": [
+        {
+          "name": "feature_class",
+          "type": "u32"
+        },
+        {
+          "name": "requested_qos",
+          "type": "u32"
+        }
+      ],
+      "RequestAdmissionResp": [
+        {
+          "name": "status",
+          "type": "u32"
+        },
+        {
+          "name": "granted_qos",
+          "type": "u32"
+        },
+        {
+          "name": "context_handle",
+          "type": "u64"
+        }
+      ],
+      "SetSafeModeReq": [
+        {
+          "name": "enable_safe_mode",
+          "type": "u32"
+        }
+      ],
+      "SetSafeModeResp": [
+        {
+          "name": "status",
+          "type": "u32"
+        }
+      ],
+      "SetThermalConstraintReq": [
+        {
+          "name": "device_handle",
+          "type": "u64"
+        },
+        {
+          "name": "max_power_mw",
+          "type": "u32"
+        }
+      ],
+      "SetThermalConstraintResp": [
+        {
+          "name": "status",
+          "type": "u32"
+        }
+      ],
+      "SubmitJobReq": [
+        {
+          "name": "queue_handle",
+          "type": "u64"
+        },
+        {
+          "name": "input_buffer_handle",
+          "type": "u64"
+        },
+        {
+          "name": "input_offset",
+          "type": "u64"
+        },
+        {
+          "name": "input_length",
+          "type": "u64"
+        },
+        {
+          "name": "output_buffer_handle",
+          "type": "u64"
+        },
+        {
+          "name": "output_offset",
+          "type": "u64"
+        },
+        {
+          "name": "output_length",
+          "type": "u64"
+        },
+        {
+          "name": "opcode",
+          "type": "u32"
+        },
+        {
+          "name": "data_type",
+          "type": "u32"
+        },
+        {
+          "name": "element_count",
+          "type": "u32"
+        },
+        {
+          "name": "dependency_fence_handle",
+          "type": "u64"
+        },
+        {
+          "name": "flags",
+          "type": "u32"
+        }
+      ],
+      "SubmitJobResp": [
+        {
+          "name": "status",
+          "type": "u32"
+        },
+        {
+          "name": "job_handle",
+          "type": "u64"
+        },
+        {
+          "name": "fence_handle",
+          "type": "u64"
+        }
+      ],
+      "UnregisterBufferReq": [
+        {
+          "name": "buffer_handle",
+          "type": "u64"
+        }
+      ],
+      "UnregisterBufferResp": [
+        {
+          "name": "status",
+          "type": "u32"
+        }
+      ]
+    },
+    "name": "bharat.device.accelmgr_v2",
+    "rpcs": [
+      {
+        "metadata": {},
+        "name": "GetBrokerInfo",
+        "req": "GetBrokerInfoReq",
+        "resp": "GetBrokerInfoResp"
+      },
+      {
+        "metadata": {},
+        "name": "GetDeviceCount",
+        "req": "GetDeviceCountReq",
+        "resp": "GetDeviceCountResp"
+      },
+      {
+        "metadata": {},
+        "name": "GetDeviceInfo",
+        "req": "GetDeviceInfoReq",
+        "resp": "GetDeviceInfoResp"
+      },
+      {
+        "metadata": {},
+        "name": "RequestAdmission",
+        "req": "RequestAdmissionReq",
+        "resp": "RequestAdmissionResp"
+      },
+      {
+        "metadata": {},
+        "name": "ReleaseContext",
+        "req": "ReleaseContextReq",
+        "resp": "ReleaseContextResp"
+      },
+      {
+        "metadata": {},
+        "name": "CreateQueue",
+        "req": "CreateQueueReq",
+        "resp": "CreateQueueResp"
+      },
+      {
+        "metadata": {},
+        "name": "DestroyQueue",
+        "req": "DestroyQueueReq",
+        "resp": "DestroyQueueResp"
+      },
+      {
+        "metadata": {},
+        "name": "RegisterBuffer",
+        "req": "RegisterBufferReq",
+        "resp": "RegisterBufferResp"
+      },
+      {
+        "metadata": {},
+        "name": "UnregisterBuffer",
+        "req": "UnregisterBufferReq",
+        "resp": "UnregisterBufferResp"
+      },
+      {
+        "metadata": {},
+        "name": "SubmitJob",
+        "req": "SubmitJobReq",
+        "resp": "SubmitJobResp"
+      },
+      {
+        "metadata": {},
+        "name": "CancelJob",
+        "req": "CancelJobReq",
+        "resp": "CancelJobResp"
+      },
+      {
+        "metadata": {},
+        "name": "QueryJob",
+        "req": "QueryJobReq",
+        "resp": "QueryJobResp"
+      },
+      {
+        "metadata": {},
+        "name": "QueryFence",
+        "req": "QueryFenceReq",
+        "resp": "QueryFenceResp"
+      },
+      {
+        "metadata": {},
+        "name": "QueryHealth",
+        "req": "QueryHealthReq",
+        "resp": "QueryHealthResp"
+      },
+      {
+        "metadata": {},
+        "name": "SetThermalConstraint",
+        "req": "SetThermalConstraintReq",
+        "resp": "SetThermalConstraintResp"
+      },
+      {
+        "metadata": {},
+        "name": "SetSafeMode",
+        "req": "SetSafeModeReq",
+        "resp": "SetSafeModeResp"
+      },
+      {
+        "metadata": {},
+        "name": "GetTelemetrySnapshot",
+        "req": "GetTelemetrySnapshotReq",
+        "resp": "GetTelemetrySnapshotResp"
+      }
+    ]
+  },
+  "bharat.display_broker_v2": {
+    "enums": {},
+    "id": 23,
+    "messages": {
+      "AcknowledgeLeaseRevocationReq": [
+        {
+          "name": "lease_handle",
+          "type": "u64"
+        }
+      ],
+      "AcknowledgeLeaseRevocationResp": [
+        {
+          "name": "result",
+          "type": "u32"
+        },
+        {
+          "name": "reserved",
+          "type": "u32"
+        }
+      ],
+      "AttachBufferReq": [
+        {
+          "name": "lease_handle",
+          "type": "u64"
+        },
+        {
+          "name": "surface_handle",
+          "type": "u64"
+        },
+        {
+          "name": "buffer_handle",
+          "type": "u64"
+        }
+      ],
+      "AttachBufferResp": [
+        {
+          "name": "result",
+          "type": "u32"
+        },
+        {
+          "name": "reserved",
+          "type": "u32"
+        }
+      ],
+      "CreateSurfaceReq": [
+        {
+          "name": "lease_handle",
+          "type": "u64"
+        },
+        {
+          "name": "width",
+          "type": "u32"
+        },
+        {
+          "name": "height",
+          "type": "u32"
+        },
+        {
+          "name": "z_order",
+          "type": "u32"
+        },
+        {
+          "name": "reserved",
+          "type": "u32"
+        }
+      ],
+      "CreateSurfaceResp": [
+        {
+          "name": "result",
+          "type": "u32"
+        },
+        {
+          "name": "reserved",
+          "type": "u32"
+        },
+        {
+          "name": "surface_handle",
+          "type": "u64"
+        }
+      ],
+      "DestroySurfaceReq": [
+        {
+          "name": "lease_handle",
+          "type": "u64"
+        },
+        {
+          "name": "surface_handle",
+          "type": "u64"
+        }
+      ],
+      "DestroySurfaceResp": [
+        {
+          "name": "result",
+          "type": "u32"
+        },
+        {
+          "name": "reserved",
+          "type": "u32"
+        }
+      ],
+      "EnumerateDisplaysReq": [
+        {
+          "name": "dummy",
+          "type": "u32"
+        }
+      ],
+      "EnumerateDisplaysResp": [
+        {
+          "name": "result",
+          "type": "u32"
+        },
+        {
+          "name": "display_count",
+          "type": "u32"
+        },
+        {
+          "name": "display_handle_0",
+          "type": "u64"
+        },
+        {
+          "name": "display_handle_1",
+          "type": "u64"
+        },
+        {
+          "name": "display_handle_2",
+          "type": "u64"
+        },
+        {
+          "name": "display_handle_3",
+          "type": "u64"
+        }
+      ],
+      "PresentSurfaceReq": [
+        {
+          "name": "lease_handle",
+          "type": "u64"
+        },
+        {
+          "name": "surface_handle",
+          "type": "u64"
+        },
+        {
+          "name": "buffer_handle",
+          "type": "u64"
+        },
+        {
+          "name": "acquire_fence_handle",
+          "type": "u64"
+        },
+        {
+          "name": "deadline_ns",
+          "type": "u64"
+        }
+      ],
+      "PresentSurfaceResp": [
+        {
+          "name": "result",
+          "type": "u32"
+        },
+        {
+          "name": "direct_scanout_reason",
+          "type": "u32"
+        },
+        {
+          "name": "release_fence_handle",
+          "type": "u64"
+        }
+      ],
+      "QueryDisplayModeReq": [
+        {
+          "name": "display_handle",
+          "type": "u64"
+        }
+      ],
+      "QueryDisplayModeResp": [
+        {
+          "name": "result",
+          "type": "u32"
+        },
+        {
+          "name": "width",
+          "type": "u32"
+        },
+        {
+          "name": "height",
+          "type": "u32"
+        },
+        {
+          "name": "refresh_hz",
+          "type": "u32"
+        },
+        {
+          "name": "pixel_format",
+          "type": "u32"
+        },
+        {
+          "name": "flags",
+          "type": "u32"
+        }
+      ],
+      "QueryPlaneCapabilitiesReq": [
+        {
+          "name": "display_handle",
+          "type": "u64"
+        },
+        {
+          "name": "plane_id",
+          "type": "u32"
+        },
+        {
+          "name": "reserved",
+          "type": "u32"
+        }
+      ],
+      "QueryPlaneCapabilitiesResp": [
+        {
+          "name": "result",
+          "type": "u32"
+        },
+        {
+          "name": "supported_formats_mask",
+          "type": "u32"
+        },
+        {
+          "name": "min_width",
+          "type": "u32"
+        },
+        {
+          "name": "min_height",
+          "type": "u32"
+        },
+        {
+          "name": "max_width",
+          "type": "u32"
+        },
+        {
+          "name": "max_height",
+          "type": "u32"
+        },
+        {
+          "name": "scaling_support",
+          "type": "u32"
+        },
+        {
+          "name": "rotation_support",
+          "type": "u32"
+        },
+        {
+          "name": "secure_overlay_support",
+          "type": "u32"
+        },
+        {
+          "name": "cursor_plane_support",
+          "type": "u32"
+        },
+        {
+          "name": "direct_scanout_support",
+          "type": "u32"
+        },
+        {
+          "name": "z_order_min",
+          "type": "u32"
+        },
+        {
+          "name": "z_order_max",
+          "type": "u32"
+        }
+      ],
+      "QueryPresentationStatusReq": [
+        {
+          "name": "lease_handle",
+          "type": "u64"
+        },
+        {
+          "name": "surface_handle",
+          "type": "u64"
+        }
+      ],
+      "QueryPresentationStatusResp": [
+        {
+          "name": "result",
+          "type": "u32"
+        },
+        {
+          "name": "presentation_state",
+          "type": "u32"
+        },
+        {
+          "name": "active_buffer_handle",
+          "type": "u64"
+        },
+        {
+          "name": "frame_counter",
+          "type": "u64"
+        }
+      ],
+      "RegisterBufferReq": [
+        {
+          "name": "lease_handle",
+          "type": "u64"
+        },
+        {
+          "name": "width",
+          "type": "u32"
+        },
+        {
+          "name": "height",
+          "type": "u32"
+        },
+        {
+          "name": "pixel_format",
+          "type": "u32"
+        },
+        {
+          "name": "usage_flags",
+          "type": "u32"
+        },
+        {
+          "name": "memory_domain",
+          "type": "u32"
+        },
+        {
+          "name": "plane_count",
+          "type": "u32"
+        },
+        {
+          "name": "total_size_bytes",
+          "type": "u64"
+        },
+        {
+          "name": "modifier",
+          "type": "u64"
+        },
+        {
+          "name": "plane0_offset_bytes",
+          "type": "u64"
+        },
+        {
+          "name": "plane0_size_bytes",
+          "type": "u64"
+        },
+        {
+          "name": "plane0_stride_bytes",
+          "type": "u32"
+        },
+        {
+          "name": "plane0_reserved",
+          "type": "u32"
+        },
+        {
+          "name": "plane1_offset_bytes",
+          "type": "u64"
+        },
+        {
+          "name": "plane1_size_bytes",
+          "type": "u64"
+        },
+        {
+          "name": "plane1_stride_bytes",
+          "type": "u32"
+        },
+        {
+          "name": "plane1_reserved",
+          "type": "u32"
+        },
+        {
+          "name": "plane2_offset_bytes",
+          "type": "u64"
+        },
+        {
+          "name": "plane2_size_bytes",
+          "type": "u64"
+        },
+        {
+          "name": "plane2_stride_bytes",
+          "type": "u32"
+        },
+        {
+          "name": "plane2_reserved",
+          "type": "u32"
+        },
+        {
+          "name": "plane3_offset_bytes",
+          "type": "u64"
+        },
+        {
+          "name": "plane3_size_bytes",
+          "type": "u64"
+        },
+        {
+          "name": "plane3_stride_bytes",
+          "type": "u32"
+        },
+        {
+          "name": "plane3_reserved",
+          "type": "u32"
+        }
+      ],
+      "RegisterBufferResp": [
+        {
+          "name": "result",
+          "type": "u32"
+        },
+        {
+          "name": "reserved",
+          "type": "u32"
+        },
+        {
+          "name": "buffer_handle",
+          "type": "u64"
+        }
+      ],
+      "ReleaseBufferReq": [
+        {
+          "name": "lease_handle",
+          "type": "u64"
+        },
+        {
+          "name": "buffer_handle",
+          "type": "u64"
+        }
+      ],
+      "ReleaseBufferResp": [
+        {
+          "name": "result",
+          "type": "u32"
+        },
+        {
+          "name": "reserved",
+          "type": "u32"
+        }
+      ],
+      "ReleaseDisplayLeaseReq": [
+        {
+          "name": "lease_handle",
+          "type": "u64"
+        }
+      ],
+      "ReleaseDisplayLeaseResp": [
+        {
+          "name": "result",
+          "type": "u32"
+        },
+        {
+          "name": "reserved",
+          "type": "u32"
+        }
+      ],
+      "RequestDisplayLeaseReq": [
+        {
+          "name": "display_handle",
+          "type": "u64"
+        },
+        {
+          "name": "requested_rights",
+          "type": "u32"
+        },
+        {
+          "name": "reserved",
+          "type": "u32"
+        }
+      ],
+      "RequestDisplayLeaseResp": [
+        {
+          "name": "result",
+          "type": "u32"
+        },
+        {
+          "name": "granted_rights",
+          "type": "u32"
+        },
+        {
+          "name": "lease_handle",
+          "type": "u64"
+        }
+      ],
+      "RetirePresentationReq": [
+        {
+          "name": "lease_handle",
+          "type": "u64"
+        },
+        {
+          "name": "surface_handle",
+          "type": "u64"
+        }
+      ],
+      "RetirePresentationResp": [
+        {
+          "name": "result",
+          "type": "u32"
+        },
+        {
+          "name": "reserved",
+          "type": "u32"
+        }
+      ]
+    },
+    "name": "bharat.display_broker_v2",
+    "rpcs": [
+      {
+        "metadata": {},
+        "name": "EnumerateDisplays",
+        "req": "EnumerateDisplaysReq",
+        "resp": "EnumerateDisplaysResp"
+      },
+      {
+        "metadata": {},
+        "name": "QueryDisplayMode",
+        "req": "QueryDisplayModeReq",
+        "resp": "QueryDisplayModeResp"
+      },
+      {
+        "metadata": {},
+        "name": "QueryPlaneCapabilities",
+        "req": "QueryPlaneCapabilitiesReq",
+        "resp": "QueryPlaneCapabilitiesResp"
+      },
+      {
+        "metadata": {},
+        "name": "RequestDisplayLease",
+        "req": "RequestDisplayLeaseReq",
+        "resp": "RequestDisplayLeaseResp"
+      },
+      {
+        "metadata": {},
+        "name": "AcknowledgeLeaseRevocation",
+        "req": "AcknowledgeLeaseRevocationReq",
+        "resp": "AcknowledgeLeaseRevocationResp"
+      },
+      {
+        "metadata": {},
+        "name": "ReleaseDisplayLease",
+        "req": "ReleaseDisplayLeaseReq",
+        "resp": "ReleaseDisplayLeaseResp"
+      },
+      {
+        "metadata": {},
+        "name": "CreateSurface",
+        "req": "CreateSurfaceReq",
+        "resp": "CreateSurfaceResp"
+      },
+      {
+        "metadata": {},
+        "name": "DestroySurface",
+        "req": "DestroySurfaceReq",
+        "resp": "DestroySurfaceResp"
+      },
+      {
+        "metadata": {},
+        "name": "RegisterBuffer",
+        "req": "RegisterBufferReq",
+        "resp": "RegisterBufferResp"
+      },
+      {
+        "metadata": {},
+        "name": "ReleaseBuffer",
+        "req": "ReleaseBufferReq",
+        "resp": "ReleaseBufferResp"
+      },
+      {
+        "metadata": {},
+        "name": "AttachBuffer",
+        "req": "AttachBufferReq",
+        "resp": "AttachBufferResp"
+      },
+      {
+        "metadata": {},
+        "name": "PresentSurface",
+        "req": "PresentSurfaceReq",
+        "resp": "PresentSurfaceResp"
+      },
+      {
+        "metadata": {},
+        "name": "RetirePresentation",
+        "req": "RetirePresentationReq",
+        "resp": "RetirePresentationResp"
+      },
+      {
+        "metadata": {},
+        "name": "QueryPresentationStatus",
+        "req": "QueryPresentationStatusReq",
+        "resp": "QueryPresentationStatusResp"
       }
     ]
   },
@@ -546,11 +1689,19 @@
     "name": "bharat.monitor.accel_telemetry.v1",
     "rpcs": [
       {
+        "metadata": {
+          "qos": "best_effort",
+          "timeout_ms": "100"
+        },
         "name": "PushTelemetry",
         "req": "TelemetryUpdate",
         "resp": "StatusResponse"
       },
       {
+        "metadata": {
+          "qos": "reliable",
+          "timeout_ms": "500"
+        },
         "name": "QueryTelemetry",
         "req": "TelemetryQuery",
         "resp": "TelemetryReport"
@@ -645,16 +1796,34 @@
     "name": "bharat.monitor.v1",
     "rpcs": [
       {
+        "metadata": {
+          "criticality": "rt_ctl",
+          "idempotent": "true",
+          "qos": "reliable",
+          "timeout_ms": "100"
+        },
         "name": "Heartbeat",
         "req": "HeartbeatReq",
         "resp": "HeartbeatResp"
       },
       {
+        "metadata": {
+          "auth": "required",
+          "criticality": "rt_ctl",
+          "qos": "reliable",
+          "timeout_ms": "500"
+        },
         "name": "NodeJoin",
         "req": "NodeJoinReq",
         "resp": "NodeJoinResp"
       },
       {
+        "metadata": {
+          "criticality": "rt_ctl",
+          "idempotent": "true",
+          "qos": "reliable",
+          "timeout_ms": "200"
+        },
         "name": "TlbInvalidate",
         "req": "TlbInvalidateReq",
         "resp": "TlbInvalidateResp"
@@ -745,21 +1914,37 @@
     "name": "bharat.telemetry.v1",
     "rpcs": [
       {
+        "metadata": {
+          "qos": "reliable",
+          "timeout_ms": "500"
+        },
         "name": "Subscribe",
         "req": "SubscribeReq",
         "resp": "SubscribeResp"
       },
       {
+        "metadata": {
+          "qos": "reliable",
+          "timeout_ms": "500"
+        },
         "name": "Unsubscribe",
         "req": "UnsubscribeReq",
         "resp": "UnsubscribeResp"
       },
       {
+        "metadata": {
+          "qos": "reliable",
+          "timeout_ms": "500"
+        },
         "name": "ListCounters",
         "req": "ListCountersReq",
         "resp": "ListCountersResp"
       },
       {
+        "metadata": {
+          "qos": "reliable",
+          "timeout_ms": "200"
+        },
         "name": "ReadCounterSnapshot",
         "req": "ReadCounterSnapshotReq",
         "resp": "ReadCounterSnapshotResp"

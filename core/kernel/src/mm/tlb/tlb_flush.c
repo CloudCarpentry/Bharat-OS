@@ -1,9 +1,9 @@
 #include "mm/mem_model.h"
-#include "../../include/mm/tlb.h"
-#include "../../include/mm/tlb_internal.h"
-#include "../../include/hal/hal_tlb.h"
-#include "../../include/hal/hal.h"
-#include "../../include/bharat/cpu_local.h"
+#include "mm/tlb.h"
+#include "mm/tlb_internal.h"
+#include "hal/hal_tlb.h"
+#include "hal/hal.h"
+#include "bharat/cpu_local.h"
 
 int tlb_invalidate_local(vm_aspace_t *aspace, uintptr_t va, size_t len, tlb_inv_kind_t kind) {
     mem_model_t model = mem_model_get_current();

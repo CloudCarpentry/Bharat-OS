@@ -142,5 +142,54 @@ def check_idl_compat(baseline, current):
     return success
 
 if __name__ == "__main__":
-    curr = generate_idl_manifest()
-    print(json.dumps(curr, indent=2))
+    import argparse
+    import sys
+    from pathlib import Path
+    from tools.build.path_aliases import resolve_abi_manifest_alias
+
+    parser = argparse.ArgumentParser(description="IDL Compatibility Checker")
+    parser.add_argument('--check', action='store_true', help="Check current tree against baseline manifests")
+    parser.add_argument('--update', action='store_true', help="Update baseline manifests with current tree")
+
+    args = parser.parse_args()
+
+    if not args.check and not args.update:
+        print("Please specify either --check or --update")
+        sys.exit(1)
+
+    manifest_candidates = [
+        "interface/contracts/abi",
+        "contracts/abi",
+    ]
+
+    manifest_dir = manifest_candidates[0]
+    for p in manifest_candidates:
+        resolved_path, used_alias = resolve_abi_manifest_alias(Path(p))
+        if resolved_path.exists():
+            manifest_dir = str(resolved_path)
+            break
+
+    manifest_path = os.path.join(manifest_dir, "idl_compat.json")
+
+    if args.update:
+        print("Updating IDL compatibility manifest...")
+        curr = generate_idl_manifest()
+        common.save_manifest(manifest_path, curr)
+        print("Done.")
+        sys.exit(0)
+
+    if args.check:
+        print("Checking IDL compatibility...")
+        try:
+            baseline = common.load_manifest(manifest_path)
+        except Exception as e:
+            print(f"Failed to load baseline manifest: {e}")
+            sys.exit(1)
+
+        curr = generate_idl_manifest()
+        if not check_idl_compat(baseline, curr):
+            print("IDL compatibility check failed.")
+            sys.exit(1)
+
+        print("IDL compatibility check passed.")
+        sys.exit(0)

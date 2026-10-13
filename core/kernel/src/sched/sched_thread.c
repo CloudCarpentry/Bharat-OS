@@ -30,6 +30,21 @@ kstatus_t process_destroy(bh_process_t *process) {
     }
   }
 
+  /* Revoke the loader's self-process roots and every derived manager/export
+   * handle before the process slot can be reused. Revocation failure retains
+   * the stopped object and CSpace; all mutations here belong to this core. */
+  capability_table_t *table = slot->process.security_sandbox_ctx;
+  if (table) {
+    for (size_t i = 0; i < sizeof(table->entries) / sizeof(table->entries[0]); ++i) {
+      capability_entry_t *entry = &table->entries[i];
+      if (entry->in_use && entry->type == CAP_TYPE_PROCESS &&
+          entry->object_ref == (uint64_t)(uintptr_t)&slot->process) {
+        uint32_t handle = entry->id | (entry->generation << 16);
+        if (cap_table_revoke(table, handle) != 0) return K_ERR_BAD_STATE;
+      }
+    }
+  }
+
   if (slot->process.addr_space) {
     (void)aspace_destroy(slot->process.addr_space);
     slot->process.addr_space = NULL;

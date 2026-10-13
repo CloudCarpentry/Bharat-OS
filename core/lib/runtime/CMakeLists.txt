@@ -12,7 +12,7 @@ target_include_directories(bharat_crt0 PUBLIC
 target_link_libraries(bharat_crt0 PUBLIC bharat_freestanding bharat_syscall)
 
 # Add the lib/runtime static library
-add_library(bharat_libruntime STATIC src/runtime.c src/freestanding_string.c host/runtime_host.c)
+add_library(bharat_libruntime STATIC src/runtime.c src/boot_events_client.c src/freestanding_string.c host/runtime_host.c)
 
 # Common includes needed for userspace runtime and driver object layers
 set(BHARAT_RUNTIME_COMMON_INCLUDES

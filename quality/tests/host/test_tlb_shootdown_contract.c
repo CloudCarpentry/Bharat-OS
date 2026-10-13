@@ -33,6 +33,7 @@ typedef struct {
 } bharat_transport_t;
 
 // Mocks
+uint32_t g_active_core_count = 4;
 static bool g_panic_reached = false;
 uint32_t hal_cpu_get_id(void) { return 0; }
 static uint64_t g_fake_ticks = 0;
@@ -42,6 +43,17 @@ void kernel_panic(const char* m) {
     g_panic_reached = true;
 }
 hal_tlb_ops_t *active_hal_tlb = (hal_tlb_ops_t*)1;
+
+void tlb_reqid_decode(uint32_t reqid, uint32_t* core, uint32_t* slot, uint32_t* gen) {
+    if (core) *core = (reqid >> 24) & 0xFF;
+    if (slot) *slot = (reqid >> 16) & 0xFF;
+    if (gen) *gen = reqid & 0xFFFF;
+}
+
+bool hal_timer_monotonic_ns(uint64_t *out_ns) {
+    if (out_ns) *out_ns = g_fake_ticks * 1000000ULL;
+    return true;
+}
 
 arch_caps_t arch_get_caps(void) {
     arch_caps_t c = {ARCH_CAP_BIT(ARCH_CAP_SMP)};

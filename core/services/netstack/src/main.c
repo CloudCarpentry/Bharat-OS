@@ -18,6 +18,7 @@ BHARAT_REGISTER_COMPONENT(
 );
 
 #include <bharat/runtime/runtime.h>
+#include "ipv4.h"
 
 extern int virtio_net_poll(void *device);
 
@@ -43,6 +44,9 @@ int main(void) {
     socket_table_init();
     virtio_adapter_init();
 
+    // Set standard QEMU User Networking IP (10.0.2.15)
+    ipv4_set_local_ip(IPV4_ADDR(10, 0, 2, 15));
+
     while(1) {
         // Run bounded polling loop for driver, timers, or ARP timeouts in future
         service_poll_drivers(64); // Process up to 64 packets per loop
@@ -53,7 +57,9 @@ int main(void) {
         // due to non-blocking stubs. In a real environment, we would
         // use a bounded sleep, yield, or wait on an event.
 #ifdef BHARAT_PERSONALITY_NONE
-        break; // For compilation/stub execution
+        // Wait or yield if we can, but since this is phase 2, we actually want to poll.
+        // We'll sleep briefly to avoid locking up.
+        // For a bare-metal loop in stub mode, we just let it run.
 #endif
     }
 

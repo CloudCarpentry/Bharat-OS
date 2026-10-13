@@ -25,10 +25,13 @@ typedef struct {
 typedef struct {
     char name[32];
     uint32_t priority;
+    const uint8_t *image_bytes; /* Service-local adapter input, never an IPC field. */
+    size_t image_size;
 } bh_pm_kernel_create_req_t;
 
 typedef struct {
     uint64_t pid;
+    uint32_t cap;
 } bh_pm_kernel_process_t;
 
 typedef struct {
@@ -67,6 +70,7 @@ typedef struct {
     bh_pm_handle_t process_handle;
     bh_vm_space_handle_t vm_space_handle;
     uint64_t kernel_process_id;
+    uint32_t kernel_process_cap;
     uint64_t main_thread_id;
     uint64_t incarnation_id;
 
@@ -103,6 +107,7 @@ bharat_status_t process_manager_authorize(uint32_t opcode, const void *req, bhar
 /* Installs one complete adapter. NULL restores fail-closed and returns unsupported. */
 bharat_status_t bh_pm_set_kernel_ops(const bh_pm_kernel_ops_t *ops);
 bool bh_pm_kernel_ops_installed(void);
+bharat_status_t bh_pm_install_native_kernel_ops(void);
 void bh_pm_set_failure_injection(int fail_stage); // 0 = none, 1-5 represent spawn phases
 bharat_status_t bh_pm_register_executable(uint64_t handle, const uint8_t *bytes, size_t size);
 int bh_pm_get_active_count(void);

@@ -142,6 +142,16 @@ static phys_addr_t riscv64_pt_create_address_space(phys_addr_t kernel_root_table
     const uint64_t supervisor_flags = RISCV_PT_V | RISCV_PT_R | RISCV_PT_W |
                                       RISCV_PT_X | RISCV_PT_G | RISCV_PT_A |
                                       RISCV_PT_D;
+    /* phys_to_virt starts returning the high direct-map alias as soon as SATP
+     * is enabled. A root derived from Bare mode must install that alias too;
+     * otherwise the next kernel allocation returns an unmapped pointer. These
+     * immutable supervisor gigapage leaves require no shared mutable tables. */
+    uint64_t ram_alias = (g_kernel_virt_offset >> 30) & 0x1FFU;
+    uint64_t mmio_alias = ((g_kernel_virt_offset + RISCV64_BOOT_RAM_BASE) >> 30) & 0x1FFU;
+    if (!(l2_table->entries[ram_alias] & RISCV_PT_V))
+        l2_table->entries[ram_alias] = ((RISCV64_BOOT_RAM_BASE >> 12) << 10) | supervisor_flags;
+    if (!(l2_table->entries[mmio_alias] & RISCV_PT_V))
+        l2_table->entries[mmio_alias] = supervisor_flags;
     if (!riscv64_install_bootstrap_gigapage(l2_table, RISCV64_BOOT_MMIO_BASE,
                                             supervisor_flags) ||
         !riscv64_install_bootstrap_gigapage(l2_table, RISCV64_BOOT_RAM_BASE,

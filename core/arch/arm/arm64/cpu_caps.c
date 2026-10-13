@@ -18,15 +18,23 @@ static void arm64_probe_caps(arch_cpu_caps_record_t *caps) {
     uint64_t crc32 = (isar0 >> 16) & 0xf;
     if (crc32 >= 1) {
         arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_ARM64_CRC32);
+        arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_ARM64_CRC32C);
+        arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_COMMON_CRC32);
+        arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_COMMON_CRC32C);
         arch_cpu_caps_set(&caps->usable, ARCH_CPU_FEAT_ARM64_CRC32);
+        arch_cpu_caps_set(&caps->usable, ARCH_CPU_FEAT_ARM64_CRC32C);
+        arch_cpu_caps_set(&caps->usable, ARCH_CPU_FEAT_COMMON_CRC32);
+        arch_cpu_caps_set(&caps->usable, ARCH_CPU_FEAT_COMMON_CRC32C);
     }
 
     uint64_t aes = (isar0 >> 4) & 0xf;
     if (aes >= 1) {
         arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_ARM64_AES);
         arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_COMMON_AES);
+        arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_COMMON_CRYPTO);
         arch_cpu_caps_set(&caps->usable, ARCH_CPU_FEAT_ARM64_AES);
         arch_cpu_caps_set(&caps->usable, ARCH_CPU_FEAT_COMMON_AES);
+        arch_cpu_caps_set(&caps->usable, ARCH_CPU_FEAT_COMMON_CRYPTO);
     }
     if (aes >= 2) {
         arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_ARM64_PMULL);
@@ -56,6 +64,7 @@ static void arm64_probe_caps(arch_cpu_caps_record_t *caps) {
     uint64_t asimd = (pfr0 >> 20) & 0xf;
     if (asimd == 0 || asimd == 1) { // 0 or 1 means supported, 0xf means not implemented
         arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_ARM64_ASIMD);
+        arch_cpu_caps_set(&caps->raw, ARCH_CPU_FEAT_COMMON_VECTOR);
         arch_cpu_caps_set(&caps->usable, ARCH_CPU_FEAT_ARM64_ASIMD);
         arch_cpu_caps_set(&caps->usable, ARCH_CPU_FEAT_COMMON_VECTOR); // vector enabled via ASIMD
     }

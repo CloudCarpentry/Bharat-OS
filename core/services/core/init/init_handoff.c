@@ -101,7 +101,7 @@ int init_handoff_to_supervisor(const init_boot_context_t *ctx, struct init_runti
             .retry_limit = sr->desc->retry_limit,
             .critical = sr->required_for_boot ? 1 : 0,
             .observed_state = (uint32_t)sr->state,
-            .process_id = 0,
+            .process_id = 0, // Blocked on BOOT-P0-002: genuine process identity
             .incarnation_id = 1,
             .dependency_count = (uint32_t)sr->desc->dep_count
         };
@@ -113,7 +113,7 @@ int init_handoff_to_supervisor(const init_boot_context_t *ctx, struct init_runti
 
         // If service is already running (e.g. bootstrap roots), preserve process ID and incarnation ID
         if (sr->state == INIT_SERVICE_STATE_READY || sr->observed_ready) {
-            srec.process_id = (uint32_t)sr->desc->id; // Assign non-zero process ID for adoption
+            srec.process_id = 0; // Blocked on BOOT-P0-002: genuine process identity
         }
 
         call_status = bharat_ipc_call_ex(sm_ep, &req_hdr, &srec, &rep_hdr,

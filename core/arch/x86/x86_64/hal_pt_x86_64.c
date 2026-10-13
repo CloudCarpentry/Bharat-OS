@@ -91,6 +91,30 @@ static uint32_t x86_to_flags(uint64_t pte_flags) {
 }
 
 
+static void x86_pt_destroy_recursive(phys_addr_t table, int level);
+
+/* Lower-half directories are process-owned. Share only immutable supervisor
+ * leaf mappings, and never import another process's user mappings. */
+static phys_addr_t x86_pt_clone_supervisor(phys_addr_t source, int level) {
+    phys_addr_t copy = pt_cache_alloc();
+    if (!copy) return 0;
+    pt_t *dst = x86_phys_to_virt(copy);
+    pt_t *src = x86_phys_to_virt(source);
+    for (size_t i = 0; i < 512; ++i) dst->entries[i] = 0;
+    for (size_t i = 0; i < 512; ++i) {
+        uint64_t entry = src->entries[i];
+        if (!(entry & X86_PT_PRESENT)) continue;
+        if (level == 1 || (entry & X86_PT_HUGE)) {
+            if (!(entry & X86_PT_USER)) dst->entries[i] = entry;
+        } else {
+            phys_addr_t child = x86_pt_clone_supervisor(entry & X86_PAGE_MASK, level - 1);
+            if (!child) { x86_pt_destroy_recursive(copy, level); return 0; }
+            dst->entries[i] = child | ((entry & ~X86_PAGE_MASK) & ~X86_PT_USER);
+        }
+    }
+    return copy;
+}
+
 static phys_addr_t x86_pt_create_address_space(phys_addr_t kernel_root_table) {
     phys_addr_t root = pt_cache_alloc();
     if (root == 0U) {
@@ -100,7 +124,7 @@ static phys_addr_t x86_pt_create_address_space(phys_addr_t kernel_root_table) {
     // CRITICAL: Use identity mapping (just cast to pointer) to access page tables
     // instead of physmap_phys_to_virt(), which uses high canonical addresses.
     // High canonical mappings may be incomplete in newly created page tables.
-    pt_t* pml4 = (pt_t*)(uintptr_t)root;
+    pt_t* pml4 = x86_phys_to_virt(root);
     
     for (int i = 0; i < 512; i++) {
         pml4->entries[i] = 0;
@@ -110,8 +134,13 @@ static phys_addr_t x86_pt_create_address_space(phys_addr_t kernel_root_table) {
     if (kernel_root != 0U) {
         pt_t* kernel_pml4 = (pt_t*)physmap_phys_to_virt(kernel_root);
 
-        // Link identity mapping (used during boot tests and initial kernel load)
-        pml4->entries[0] = kernel_pml4->entries[0];
+        for (size_t i = 0; i < 256; ++i) {
+            uint64_t entry = kernel_pml4->entries[i];
+            if (!(entry & X86_PT_PRESENT)) continue;
+            phys_addr_t child = x86_pt_clone_supervisor(entry & X86_PAGE_MASK, 3);
+            if (!child) { x86_pt_destroy_recursive(root, 4); return 0; }
+            pml4->entries[i] = child | ((entry & ~X86_PAGE_MASK) & ~X86_PT_USER);
+        }
 
         // Link kernel space: Map the top half
         // A minimal implementation may just copy entry 511, or 256-511
@@ -128,12 +157,9 @@ static void x86_pt_destroy_recursive(phys_addr_t table, int level) {
 
     if (level > 1) {
         pt_t* pt = (pt_t*)physmap_phys_to_virt(table);
-        // User space is 0-255 in PML4, but skip 0 as it holds the identity map
+        // All lower-half directories, including identity mappings, are owned.
         int max_idx = (level == 4) ? 256 : 512;
         for (int i = 0; i < max_idx; i++) {
-            if (level == 4 && i == 0) {
-                continue; // Skip identity mapping
-            }
             if (pt->entries[i] & X86_PT_PRESENT) {
                 if ((level == 3 || level == 2) && (pt->entries[i] & X86_PT_HUGE)) {
                     continue; // Huge page, don't recurse down

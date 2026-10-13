@@ -14,26 +14,26 @@ static bool feature_usable(const hal_cpu_feature_set_t *set, hal_cpu_feature_t f
 }
 
 const hal_hw_caps_t *hal_get_internal_hw_caps(void) {
-    return g_caps_state == HAL_CAPS_UNINITIALIZED ? NULL : &g_internal_hw_caps;
+    return hal_hw_caps_is_frozen() ? &g_internal_hw_caps : NULL;
 }
 
 hal_caps_state_t hal_hw_caps_state(void) {
-    return g_caps_state;
+    return __atomic_load_n(&g_caps_state, __ATOMIC_ACQUIRE);
 }
 
 bool hal_hw_caps_is_frozen(void) {
-    return g_caps_state == HAL_CAPS_FROZEN;
+    return hal_hw_caps_state() == HAL_CAPS_FROZEN;
 }
 
 kstatus_t hal_hw_caps_publish_raw(const hal_hw_caps_t *caps) {
     if (caps == NULL) {
         return K_ERR_INVALID_ARG;
     }
-    if (g_caps_state != HAL_CAPS_UNINITIALIZED) {
+    if (hal_hw_caps_state() != HAL_CAPS_UNINITIALIZED) {
         return K_ERR_BAD_STATE;
     }
     g_internal_hw_caps = *caps;
-    g_caps_state = HAL_CAPS_RAW_DISCOVERED;
+    __atomic_store_n(&g_caps_state, HAL_CAPS_RAW_DISCOVERED, __ATOMIC_RELEASE);
     return K_OK;
 }
 
@@ -44,7 +44,7 @@ kstatus_t hal_set_internal_hw_caps(const hal_hw_caps_t *caps) {
 kstatus_t hal_hw_caps_publish_cpu(void) {
     hal_cpu_feature_set_t all;
     hal_cpu_feature_set_t any;
-    if (g_caps_state != HAL_CAPS_RAW_DISCOVERED) {
+    if (hal_hw_caps_state() != HAL_CAPS_RAW_DISCOVERED) {
         return K_ERR_BAD_STATE;
     }
     if (!hal_cpu_feature_set_system(HAL_CPU_FEATURE_SCOPE_ALL, &all) ||
@@ -60,12 +60,12 @@ kstatus_t hal_hw_caps_publish_cpu(void) {
         feature_usable(&all, HAL_CPU_FEATURE_CRYPTO) ||
         feature_usable(&all, HAL_CPU_FEATURE_AES) ||
         feature_usable(&all, HAL_CPU_FEATURE_SHA);
-    g_caps_state = HAL_CAPS_CPU_FINALIZED;
+    __atomic_store_n(&g_caps_state, HAL_CAPS_CPU_FINALIZED, __ATOMIC_RELEASE);
     return K_OK;
 }
 
 kstatus_t hal_hw_caps_finalize(void) {
-    if (g_caps_state != HAL_CAPS_CPU_FINALIZED) {
+    if (hal_hw_caps_state() != HAL_CAPS_CPU_FINALIZED) {
         return K_ERR_BAD_STATE;
     }
 
@@ -74,6 +74,6 @@ kstatus_t hal_hw_caps_finalize(void) {
     if (discovery != NULL && discovery->topology.cpu_count != 0U) {
         g_internal_hw_caps.max_cpus = discovery->topology.cpu_count;
     }
-    g_caps_state = HAL_CAPS_FROZEN;
+    __atomic_store_n(&g_caps_state, HAL_CAPS_FROZEN, __ATOMIC_RELEASE);
     return K_OK;
 }

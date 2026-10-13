@@ -1,5 +1,4 @@
 add_library(bharatos_kernel_personality OBJECT
-    native/native_syscall_handlers.c
     personality_registry_compat.c
 )
 

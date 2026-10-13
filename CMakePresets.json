@@ -327,8 +327,12 @@
       "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/arm32-elf.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
+        "ARCH": "arm32",
         "BHARAT_DEVICE_PROFILE": "EDGE",
-        "BHARAT_TARGET_BOARD": "avh-corstone310"
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_PROFILE_MMU_FULL": "OFF",
+        "BHARAT_PROFILE_MMU_LITE": "ON",
+        "BHARAT_PROFILE_MPU_ONLY": "OFF"
       }
     },
     {
@@ -368,8 +372,12 @@
       "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/riscv32-elf.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
+        "ARCH": "riscv32",
         "BHARAT_DEVICE_PROFILE": "EDGE",
-        "BHARAT_TARGET_BOARD": "virt"
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_PROFILE_MMU_FULL": "OFF",
+        "BHARAT_PROFILE_MMU_LITE": "ON",
+        "BHARAT_PROFILE_MPU_ONLY": "OFF"
       }
     },
     {

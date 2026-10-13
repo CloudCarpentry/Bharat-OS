@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "tcp.h"
 
 #define MAX_SOCKETS 32
 #define SOCK_ANY_IP 0x00000000
@@ -18,6 +19,12 @@ typedef struct {
     uint32_t local_ip;
     uint16_t local_port;
     uint32_t flags; // Placeholder for loopback/raw/internal use
+
+    // TCP specific state
+    tcp_state_t tcp_state;
+    uint32_t tcp_seq;
+    uint32_t tcp_ack;
+    uint16_t tcp_window;
 
     // Callback slot for incoming packets
     void (*rx_callback)(int id, uint32_t src_ip, uint16_t src_port, const uint8_t *data, uint16_t len);

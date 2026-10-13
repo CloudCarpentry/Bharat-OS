@@ -41,9 +41,10 @@ arch_context_switch:
     ldr r10, [r1, #BH_CTX_REG10_OFF]
     ldr r11, [r1, #BH_CTX_REG11_OFF]
 
-    push {r0, r1, lr}
+    /* Maintain the AAPCS eight-byte stack alignment across the C call. */
+    push {r0, r1, r2, lr}
     bl arch_post_switch
-    pop {r0, r1, lr}
+    pop {r0, r1, r2, lr}
 
     bx lr
 

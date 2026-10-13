@@ -9,6 +9,7 @@ init_failure_class_t init_graph_failure_to_init_failure(init_graph_result_t rc) 
         case INIT_GRAPH_ERR_FILTERED_DEP:
         case INIT_GRAPH_ERR_CYCLE:
         case INIT_GRAPH_ERR_DUPLICATE_SERVICE:
+        case INIT_GRAPH_ERR_MALFORMED:
             return INIT_FAIL_DEP;
 
         case INIT_GRAPH_ERR_NO_CORE_SERVICE:
@@ -72,11 +73,21 @@ static bool check_cycle_recursive(init_service_id_t id,
 init_graph_result_t init_graph_validate(const init_service_desc_t *manifest,
                                         size_t count,
                                         const init_boot_context_t *ctx) {
+    if (manifest == NULL || ctx == NULL) return INIT_GRAPH_ERR_MALFORMED;
+    if (count > INIT_SERVICE_ID_MAX) return INIT_GRAPH_ERR_MALFORMED;
     if (count == 0) return INIT_GRAPH_ERR_NO_CORE_SERVICE;
 
     bool has_core = false;
     for (size_t i = 0; i < count; i++) {
         const init_service_desc_t *svc = &manifest[i];
+
+        if (svc->id <= INIT_SVC_NONE || svc->id >= INIT_SERVICE_ID_MAX) {
+            return INIT_GRAPH_ERR_MALFORMED;
+        }
+
+        if (svc->dep_count > 0 && svc->deps == NULL) {
+            return INIT_GRAPH_ERR_MALFORMED;
+        }
 
         // 1. Check duplicate IDs
         for (size_t j = i + 1; j < count; j++) {
@@ -101,6 +112,9 @@ init_graph_result_t init_graph_validate(const init_service_desc_t *manifest,
         for (uint8_t d = 0; d < svc->dep_count; d++) {
             init_service_id_t dep_id = svc->deps[d];
             if (dep_id == INIT_SVC_NONE) continue;
+            if (dep_id < INIT_SVC_NONE || dep_id >= INIT_SERVICE_ID_MAX) {
+                return INIT_GRAPH_ERR_MALFORMED;
+            }
 
             const init_service_desc_t *dep = find_service_by_id(manifest, count, dep_id);
             if (!dep) {

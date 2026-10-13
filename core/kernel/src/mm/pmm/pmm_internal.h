@@ -69,6 +69,7 @@ static inline uint32_t get_page_color(phys_addr_t phys) {
 void pmm_boot_reservations_init(const boot_info_t *boot);
 bool pmm_boot_page_is_reserved(phys_addr_t paddr);
 phys_addr_t pmm_boot_reservation_end(phys_addr_t paddr);
+phys_addr_t pmm_boot_reservation_overlap_end(phys_addr_t start, phys_addr_t end);
 void pmm_add_region(phys_addr_t base, size_t size, uint32_t type, uint32_t target_numa_node);
 void mark_page_free(phys_addr_t phys);
 void pmm_reclaim_one_node(uint32_t node_id);

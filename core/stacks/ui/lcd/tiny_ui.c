@@ -1,4 +1,6 @@
+/* SPDX-License-Identifier: MIT */
 #include "bharat/ui/tiny_ui.h"
+#include "bharat/ui/theme.h"
 
 /* ─── 8 × 16 bitmap font (printable ASCII 0x20–0x7E) in userspace UI stack ─── */
 static const uint8_t g_tiny_font_8x16[96][16] = {
@@ -255,29 +257,33 @@ void bharat_tiny_ui_render(const bharat_tiny_fb_t *fb, const bharat_tiny_ui_stat
         return;
     }
 
+    const bh_ui_theme_t *theme = bh_theme_get_active();
+
     uint32_t W = fb->width_px;
     uint32_t H = fb->height_px;
 
-    /* Theme colors */
-    uint32_t color_saffron  = 0xFFFF9900u;
-    uint32_t color_white    = 0xFFFFFFFFu;
-    uint32_t color_green    = 0xFF128807u;
-    uint32_t color_bg       = state->safe_mode ? 0xFF2A1500u : 0xFF0F172Au;
+    /* Extract theme colors */
+    uint32_t color_primary  = theme ? theme->primary_color_rgb : 0xFF9933u;
+    uint32_t color_white    = theme ? theme->text_color_rgb : 0xFFFFFFu;
+    uint32_t color_accent   = theme ? theme->accent_color_rgb : 0x138808u;
+    uint32_t color_bg       = state->safe_mode ? 0xFF2A1500u : (theme ? theme->bg_color_rgb : 0x081426u);
     uint32_t color_card     = state->safe_mode ? 0xFF3D2205u : 0xFF1E293Bu;
     uint32_t color_border   = state->safe_mode ? 0xFF63380Bu : 0xFF334155u;
     uint32_t color_cyan     = 0xFF38BDF8u;
-    uint32_t color_text_pri = 0xFFF8FAFCu;
-    uint32_t color_text_sec = 0xFF94A3B8u;
+    uint32_t color_text_pri = theme ? theme->text_color_rgb : 0xFFF8FAFCu;
+    uint32_t color_text_sec = theme ? theme->text_dim_color_rgb : 0xFF94A3B8u;
+    const char *brand       = (theme && theme->brand_name) ? theme->brand_name : "BHARAT-OS";
+    const char *tagline     = (theme && theme->tagline) ? theme->tagline : "High-Assurance Capability Microkernel";
 
     /* 1. Canvas background */
     bharat_tiny_ui_draw_rect(fb, 0, 0, W, H, color_bg);
 
-    /* 2. Tricolor header stripe (Saffron, White, Green) */
+    /* 2. Brand header stripe (Primary, White, Accent) */
     if (W >= 24 && H >= 6) {
         uint32_t stripe_w = W / 3u;
-        bharat_tiny_ui_draw_rect(fb, 0, 0, stripe_w, 4u, color_saffron);
+        bharat_tiny_ui_draw_rect(fb, 0, 0, stripe_w, 4u, color_primary);
         bharat_tiny_ui_draw_rect(fb, stripe_w, 0, stripe_w, 4u, color_white);
-        bharat_tiny_ui_draw_rect(fb, stripe_w * 2u, 0, W - (stripe_w * 2u), 4u, color_green);
+        bharat_tiny_ui_draw_rect(fb, stripe_w * 2u, 0, W - (stripe_w * 2u), 4u, color_accent);
     }
 
     /* 3. Small-screen fallback vs Standard Card View */
@@ -295,7 +301,7 @@ void bharat_tiny_ui_render(const bharat_tiny_fb_t *fb, const bharat_tiny_ui_stat
         bharat_tiny_ui_draw_rect(fb, bar_margin, bar_y, bar_w, bar_h, 0xFF4D4D4Du);
 
         uint32_t fill_w = (uint32_t)(((uint64_t)bar_w * state->progress_percent) / 100u);
-        bharat_tiny_ui_draw_rect(fb, bar_margin, bar_y, fill_w, bar_h, color_saffron);
+        bharat_tiny_ui_draw_rect(fb, bar_margin, bar_y, fill_w, bar_h, color_primary);
         return;
     }
 
@@ -313,9 +319,9 @@ void bharat_tiny_ui_render(const bharat_tiny_fb_t *fb, const bharat_tiny_ui_stat
     uint32_t cy = card_y + 16u;
 
     if (state->page == BHARAT_UI_PAGE_SPLASH) {
-        bharat_tiny_ui_draw_text(fb, cx, cy, "BHARAT-OS", color_saffron, color_card, 2u);
+        bharat_tiny_ui_draw_text(fb, cx, cy, brand, color_primary, color_card, 2u);
         cy += 36u;
-        bharat_tiny_ui_draw_text(fb, cx, cy, "High-Assurance Capability Microkernel", color_text_sec, color_card, 1u);
+        bharat_tiny_ui_draw_text(fb, cx, cy, tagline, color_text_sec, color_card, 1u);
         cy += 24u;
         bharat_tiny_ui_draw_text(fb, cx, cy, "[LOG] Booting kernel subsystems...", color_text_sec, color_card, 1u);
         cy += 24u;

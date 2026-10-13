@@ -32,24 +32,65 @@ static volatile void* pci_ecam_addr(uint8_t bus, uint8_t slot, uint8_t func, uin
     return NULL;
 }
 
+#if defined(__x86_64__)
+static inline void x86_pci_outl(uint16_t port, uint32_t val) {
+    __asm__ volatile("outl %0, %1" : : "a"(val), "Nd"(port));
+}
+static inline uint32_t x86_pci_inl(uint16_t port) {
+    uint32_t val;
+    __asm__ volatile("inl %1, %0" : "=a"(val) : "Nd"(port));
+    return val;
+}
+static inline uint32_t x86_pci_read_cfg32(uint8_t bus, uint8_t slot, uint8_t func, uint16_t offset) {
+    uint32_t address = 0x80000000U | ((uint32_t)bus << 16) | ((uint32_t)slot << 11) | ((uint32_t)func << 8) | (offset & 0xFC);
+    x86_pci_outl(0xCF8, address);
+    return x86_pci_inl(0xCFC);
+}
+static inline void x86_pci_write_cfg32(uint8_t bus, uint8_t slot, uint8_t func, uint16_t offset, uint32_t val) {
+    uint32_t address = 0x80000000U | ((uint32_t)bus << 16) | ((uint32_t)slot << 11) | ((uint32_t)func << 8) | (offset & 0xFC);
+    x86_pci_outl(0xCF8, address);
+    x86_pci_outl(0xCFC, val);
+}
+#endif
+
 static uint32_t pci_bdf_read32(uint8_t bus, uint8_t slot, uint8_t func, uint16_t offset) {
     if ((offset & 3) != 0 || offset >= 4096) return 0xFFFFFFFFU;
     volatile uint32_t *addr = (volatile uint32_t *)pci_ecam_addr(bus, slot, func, offset);
-    if (!addr) return 0xFFFFFFFFU;
+    if (!addr) {
+#if defined(__x86_64__)
+        return x86_pci_read_cfg32(bus, slot, func, offset);
+#else
+        return 0xFFFFFFFFU;
+#endif
+    }
     return *addr;
 }
 
 static uint16_t pci_bdf_read16(uint8_t bus, uint8_t slot, uint8_t func, uint16_t offset) {
     if ((offset & 1) != 0 || offset >= 4096) return 0xFFFFU;
     volatile uint16_t *addr = (volatile uint16_t *)pci_ecam_addr(bus, slot, func, offset);
-    if (!addr) return 0xFFFFU;
+    if (!addr) {
+#if defined(__x86_64__)
+        uint32_t val32 = x86_pci_read_cfg32(bus, slot, func, offset);
+        return (uint16_t)((val32 >> ((offset & 2) * 8)) & 0xFFFFU);
+#else
+        return 0xFFFFU;
+#endif
+    }
     return *addr;
 }
 
 static uint8_t pci_bdf_read8(uint8_t bus, uint8_t slot, uint8_t func, uint16_t offset) {
     if (offset >= 4096) return 0xFFU;
     volatile uint8_t *addr = (volatile uint8_t *)pci_ecam_addr(bus, slot, func, offset);
-    if (!addr) return 0xFFU;
+    if (!addr) {
+#if defined(__x86_64__)
+        uint32_t val32 = x86_pci_read_cfg32(bus, slot, func, offset);
+        return (uint8_t)((val32 >> ((offset & 3) * 8)) & 0xFFU);
+#else
+        return 0xFFU;
+#endif
+    }
     return *addr;
 }
 
@@ -59,6 +100,11 @@ static void pci_bdf_write32(uint8_t bus, uint8_t slot, uint8_t func, uint16_t of
     if (addr) {
         *addr = val;
     }
+#if defined(__x86_64__)
+    else {
+        x86_pci_write_cfg32(bus, slot, func, offset, val);
+    }
+#endif
 }
 
 uint32_t pci_config_read32(pci_device_t* dev, uint16_t offset) {
@@ -90,6 +136,14 @@ void pci_config_write16(pci_device_t* dev, uint16_t offset, uint16_t val) {
     if (addr) {
         *addr = val;
     }
+#if defined(__x86_64__)
+    else {
+        uint32_t orig = x86_pci_read_cfg32((uint8_t)dev->bus, dev->slot, dev->func, offset);
+        uint32_t shift = (offset & 2) * 8;
+        uint32_t updated = (orig & ~(0xFFFFU << shift)) | ((uint32_t)val << shift);
+        x86_pci_write_cfg32((uint8_t)dev->bus, dev->slot, dev->func, offset, updated);
+    }
+#endif
 }
 
 void pci_config_write8(pci_device_t* dev, uint16_t offset, uint8_t val) {
@@ -98,6 +152,14 @@ void pci_config_write8(pci_device_t* dev, uint16_t offset, uint8_t val) {
     if (addr) {
         *addr = val;
     }
+#if defined(__x86_64__)
+    else {
+        uint32_t orig = x86_pci_read_cfg32((uint8_t)dev->bus, dev->slot, dev->func, offset);
+        uint32_t shift = (offset & 3) * 8;
+        uint32_t updated = (orig & ~(0xFFU << shift)) | ((uint32_t)val << shift);
+        x86_pci_write_cfg32((uint8_t)dev->bus, dev->slot, dev->func, offset, updated);
+    }
+#endif
 }
 
 int pci_enumerate(void) {
@@ -107,8 +169,36 @@ int pci_enumerate(void) {
     g_pci_device_count = 0;
     g_pci_device_list_head = NULL;
 
-    for (uint32_t i = 0; i < disc->pci_host_count; i++) {
-        pci_host_desc_t *host = &disc->pci_hosts[i];
+    uint32_t host_count = disc->pci_host_count;
+#if defined(__x86_64__)
+    pci_host_desc_t fallback_host = {
+        .segment = 0,
+        .bus_start = 0,
+        .bus_end = 0,
+        .ecam_base = 0,
+        .ecam_size = 0,
+        .mmio32_base = 0xE0000000ULL,
+        .mmio32_size = 0x10000000ULL
+    };
+    if (host_count == 0) {
+        host_count = 1;
+    }
+#endif
+
+    for (uint32_t i = 0; i < host_count; i++) {
+        pci_host_desc_t *host;
+        if (disc->pci_host_count > 0) {
+            host = &disc->pci_hosts[i];
+        }
+#if defined(__x86_64__)
+        else {
+            host = &fallback_host;
+        }
+#else
+        else {
+            break;
+        }
+#endif
         for (uint32_t bus = host->bus_start; bus <= host->bus_end; bus++) {
             for (uint8_t slot = 0; slot < 32; slot++) {
                 // Check vendor ID for func = 0

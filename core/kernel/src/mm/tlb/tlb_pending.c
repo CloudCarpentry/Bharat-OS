@@ -1,7 +1,7 @@
 #include "tlb_pending.h"
-#include "../../../include/hal/hal.h"
-#include "../../../include/bharat/cpu_local.h"
-#include "../../../include/atomic.h"
+#include "hal/hal.h"
+#include "bharat/cpu_local.h"
+#include "atomic.h"
 
 extern uint32_t g_active_core_count;
 
@@ -49,6 +49,9 @@ int tlb_pending_alloc(uint64_t aspace_id, uint64_t target_mask, uint32_t* out_re
             g_tlb_pending[core_id][s].ack_mask = 0;
 
             uint32_t gen = g_tlb_gen[core_id][s]++;
+            if ((g_tlb_gen[core_id][s] & REQID_GEN_MASK) == 0) {
+                g_tlb_gen[core_id][s] = 1;
+            }
             uint32_t reqid = tlb_reqid_encode(core_id, s, gen);
             g_tlb_pending[core_id][s].request_id = reqid;
             *out_reqid = reqid;
@@ -87,6 +90,10 @@ void tlb_pending_ack(uint32_t reqid, uint32_t acking_core) {
         __atomic_load_n(&entry->request_id, __ATOMIC_ACQUIRE) == reqid) {
 
         uint64_t mask = (1ULL << acking_core);
+        if (!(entry->target_mask & mask)) {
+            // Reject unexpected ACK from core not in target_mask
+            return;
+        }
         uint64_t prev = atomic64_fetch_and_or(&entry->ack_mask, mask);
         if (!(prev & mask)) {
             __atomic_add_fetch(&g_tlb_stats[core_id].acks_received, 1, __ATOMIC_RELAXED);

@@ -10,8 +10,8 @@
 
 // A minimal lockless ring buffer for cross-core messaging
 typedef struct {
-    volatile uint32_t head;
-    volatile uint32_t tail;
+    _Atomic uint32_t head;
+    _Atomic uint32_t tail;
     uint64_t buffer[URPC_RING_SIZE];
 } urpc_ring_t;
 

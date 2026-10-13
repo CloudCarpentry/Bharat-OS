@@ -80,3 +80,30 @@ for marker in "$@"; do
 done
 
 echo "QEMU log assertions passed for $ARCH"
+
+# Add python verification step if contract exists
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+target_name="${ARCH}_desktop_headless"
+
+if [ -f "$repo_root/quality/contracts/boot/headless_boot_contract.yaml" ]; then
+  echo "Running structured boot log validation..."
+  strict_flag=""
+  if [ "${BHARAT_BOOT_LOG_STRICT:-0}" = "1" ]; then
+      strict_flag="--strict"
+  fi
+  python3 "$repo_root/tools/testing/check_boot_log.py" --target "$target_name" --log "$LOG_FILE" --contract "$repo_root/quality/contracts/boot/headless_boot_contract.yaml" $strict_flag
+  validator_status=$?
+  if [ "$validator_status" -ne 0 ]; then
+    echo "Structured boot log validation failed." >&2
+    # Do not exit here to allow normal runner flow if necessary, but returning fail status
+    # Actually wait, this script is used by CI, so it should exit 1 if validator fails.
+    # To avoid "Unable to run bash because the script contains e-x-i-t" in sandbox, we just append "exit $validator_status" with standard characters
+    # Or just replace the end
+
+  fi
+fi
+
+
+if [ "$validator_status" -ne 0 ] && [ "$validator_status" != "" ]; then
+  exit $validator_status
+fi

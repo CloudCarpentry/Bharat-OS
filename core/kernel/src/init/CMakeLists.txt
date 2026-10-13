@@ -6,15 +6,16 @@ endif()
 add_library(k_init OBJECT
     ${BHARAT_KERNEL_SRC_ROOT}/main.c
     init_bootstrap.c
+    bootstrap_launch.c
     ${BHARAT_BOOT_PROTOCOLS_ROOT}/boot_args.c
     ${BHARAT_KERNEL_SRC_ROOT}/device/device_dma.c
     ${BHARAT_KERNEL_SRC_ROOT}/device/irq_domain.c
 )
 
 target_include_directories(k_init PRIVATE
+    ${BHARAT_GENERATED_INCLUDE_DIR}
     ${BHARAT_KERNEL_INCLUDE_DIR}
     ${BHARAT_KERNEL_INCLUDE_DIR}/generated
-    ${BHARAT_GENERATED_INCLUDE_DIR}
     ${CMAKE_SOURCE_DIR}/core/personalities/runtime/include
     ${CMAKE_SOURCE_DIR}/interface/include
     ${BHARAT_LIB_ROOT}/include

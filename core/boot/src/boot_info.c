@@ -210,11 +210,37 @@ int boot_info_finalize(boot_info_t *bi) {
 
         if (hdr->magic == 0xB4A2D1A5) {
             // Found a valid container! Parse and normalize it.
-            if (hdr->header_size != 128 || hdr->payload_offset != 128 ||
-                hdr->payload_offset + hdr->payload_size > size) {
+            if (hdr->abi_version != 0x100 || hdr->header_size != 128 || hdr->payload_offset != 128 ||
+                hdr->payload_size == 0 || hdr->payload_size > size - 128 ||
+                hdr->module_kind < 1 || hdr->module_kind > 3 ||
+                hdr->name_length == 0 || hdr->name_length >= sizeof(hdr->name) ||
+                hdr->name[hdr->name_length] != 0 || phys > UINT64_MAX - size) {
                 bi->is_degraded = true;
                 bi->degraded_reasons_mask |= 0x1000;
-                continue;
+                return -1;
+            }
+
+            /* A bundle concatenates the existing versioned containers. Expand
+             * descriptors while preserving payload bounds and the root kind.
+             * Each appended descriptor is validated by this same loop. */
+            uint64_t consumed = 128ULL + hdr->payload_size;
+            if (consumed < size) {
+                if (size - consumed < 128 || bi->module_count >= BHARAT_BOOT_MAX_MODULES) {
+                    bi->is_degraded = true;
+                    bi->degraded_reasons_mask |= 0x1000;
+                    return -1;
+                }
+                const bh_boot_module_header_local_t *suffix =
+                    (const void *)((const uint8_t *)virt_ptr + consumed);
+                if (suffix->magic != 0xB4A2D1A5 || suffix->module_kind != 3) {
+                    bi->is_degraded = true;
+                    bi->degraded_reasons_mask |= 0x1000;
+                    return -1;
+                }
+                boot_module_t *next = &bi->modules[bi->module_count++];
+                next->phys_start = phys + consumed;
+                next->size = size - consumed;
+                next->name = NULL;
             }
 
             // Assign name from stable name field inside the header

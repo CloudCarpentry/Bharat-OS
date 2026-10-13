@@ -141,7 +141,7 @@ void bharat_demo_app(void) {
     fbui_widget_t *splash_sub = fbui_create_label(card_x + 30, card_y + 65, card_w - 60, 20, "High-Assurance Microkernel Platform");
     if (splash_sub) splash_sub->fg_color = BH_UI_LIGHT_GRAY;
 
-    fbui_widget_t *splash_prog = fbui_create_progress(card_x + 30, card_y + 180, card_w - 60, 16, 1.0f);
+    fbui_widget_t *splash_prog = fbui_create_progress_percent(card_x + 30, card_y + 180, card_w - 60, 16, 100);
     fbui_widget_t *splash_status = fbui_create_label(card_x + 30, card_y + 155, card_w - 60, 20, "System Boot Status: 100% [READY]");
 
     if (splash_title && splash_title->ops->draw) splash_title->ops->draw(splash_title, &ctx);
@@ -233,7 +233,7 @@ void bharat_demo_app(void) {
     fbui_widget_t *lbl_prog_hdr = fbui_create_label(20, prog_y, (int)W - 40, 20, "BOOT PROGRESS");
     if (lbl_prog_hdr) lbl_prog_hdr->fg_color = BH_UI_SAFFRON;
 
-    fbui_widget_t *prog_bar = fbui_create_progress(20, prog_y + 20, (int)W - 100, 20, 1.0f);
+    fbui_widget_t *prog_bar = fbui_create_progress_percent(20, prog_y + 20, (int)W - 100, 20, 100);
     fbui_widget_t *lbl_prog_pct = fbui_create_label((int)W - 70, prog_y + 20, 50, 20, "100%");
 
     // Button Section (Row 4)

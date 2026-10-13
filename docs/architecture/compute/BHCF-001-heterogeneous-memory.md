@@ -44,16 +44,16 @@ P0 implements the CPU-backed subset (`CREATE`, implicit `PLACE`, `MAP_CPU`,
 explicit unsupported status until the responsible HAL/driver and service
 policy exist. A target advertises only domains backed by runtime discovery.
 
-The kernel validates descriptors, owns CPU backing storage, bounds ranges, enforces rights, tracks content generations and bounded mappings, and implements `LIVE → DYING → DEAD`. The current bounded registry is a documented lock-protected migration exception; handles carry slot generations and stale handles fail closed. Destruction rejects mapped objects, publishes `DYING` before releasing storage, and wipes storage when `ZERO_ON_FREE` is requested. There is no remote wait or cross-core message in P0.
+The kernel validates descriptors, owns CPU backing storage (using page/VM-object-backed memory), bounds ranges, enforces rights, tracks content generations and bounded mappings, and implements `LIVE → DYING → DEAD`. The per-core registry prevents cross-core lock contention; handles carry slot generations and stale handles fail closed. Destruction rejects mapped objects, publishes `DYING` before releasing storage, and wipes storage when `ZERO_ON_FREE` is requested. P0 relies on the canonical VM authority path without bypassing standard virtual memory handling.
 
 HAL accepts already-authorized semantic sync/map requests. It performs no capability checks. Boot discovery may install one immutable backend operations table; absent device mapping returns `K_ERR_UNSUPPORTED` and never invents an address. The common coherent sync path is an ordering barrier. ISA cache mechanics remain below HAL; P0 emits no unqualified ARM or RISC-V cache instruction and therefore remains safe on MMU, MMU-Lite, and MPU targets.
 
 ## Rights and mapping
 
 HMEM defines independent create, CPU-map, device-map, pin, share, migrate,
-query, and destroy capability rights. Accelerator submission and device DMA
+query, and destroy capability rights, tracked via `CAP_TYPE_HMEM` capabilities in the process CSpace. Accelerator submission and device DMA
 are separate authorities and are never implied by possession of an HMEM
-capability. Derivation must only attenuate rights. CPU mapping checks requested
+capability. Derivation must only attenuate rights (e.g., read-only capabilities cannot gain write or device-map rights). CPU mapping checks requested
 access and permits one mapping in P0; double map, double unmap, mapping after
 destruction, and destruction while mapped fail closed. A four-entry device
 mapping table is deliberately bounded. Each entry records device identity,
@@ -109,7 +109,7 @@ BHCF-P3-002   deadline/energy-aware accelerator QoS
 
 `BHCF-BENCH-001` measures deterministic allocation, mapping, tensor-view, copy,
 and copied-byte counts plus non-gating elapsed time. QEMU evidence can establish
-that HMEM/view handoffs avoid software copies and repeated allocation; it cannot
+that HMEM/view handoffs avoid software copies and repeated allocation, and that the process capability lifecycle (launch, execution, teardown) properly integrates with the kernel; it cannot
 establish real GPU/NPU/DMA acceleration or hardware cache performance. Current
 release-style benchmark profiles cover x86_64, ARM64, and RISC-V 64. They use
 virtual CPUs and RAM and intentionally make no physical accelerator claim.

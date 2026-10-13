@@ -17,49 +17,38 @@ static void urpc_memcpy(void *dst, const void *src, size_t n) {
 }
 
 void urpc_ring_init(urpc_ring_t *ring) {
-    atomic_init((_Atomic uint32_t*)&ring->head, 0);
-    atomic_init((_Atomic uint32_t*)&ring->tail, 0);
+    atomic_init(&ring->head, 0);
+    atomic_init(&ring->tail, 0);
 }
 
 int urpc_ring_send(urpc_ring_t *ring, const void *msg) {
-    uint32_t head, tail, next_tail;
+    uint32_t head = atomic_load_explicit(&ring->head, memory_order_relaxed);
+    uint32_t next_head = (head + 1) % URPC_RING_SIZE;
+    uint32_t tail = atomic_load_explicit(&ring->tail, memory_order_acquire);
 
-    do {
-        tail = atomic_load_explicit((_Atomic uint32_t*)&ring->tail, memory_order_acquire);
-        head = atomic_load_explicit((_Atomic uint32_t*)&ring->head, memory_order_acquire);
+    if (next_head == tail) {
+        return -1; /* Ring is full */
+    }
 
-        next_tail = (tail + 1) % (URPC_RING_SIZE * URPC_MSG_SIZE / URPC_MSG_SIZE);
+    urpc_memcpy(&ring->buffer[head * URPC_MSG_SIZE], msg, URPC_MSG_SIZE);
 
-        if (next_tail == head) {
-            return -1; /* Ring is full */
-        }
-    } while (!atomic_compare_exchange_weak_explicit(
-                (_Atomic uint32_t*)&ring->tail, &tail, next_tail,
-                memory_order_release, memory_order_relaxed));
-
-    urpc_memcpy(&ring->buffer[tail * URPC_MSG_SIZE], msg, URPC_MSG_SIZE);
+    atomic_store_explicit(&ring->head, next_head, memory_order_release);
 
     return 0;
 }
 
 int urpc_ring_recv(urpc_ring_t *ring, void *msg_out) {
-    uint32_t head, tail, next_head;
+    uint32_t tail = atomic_load_explicit(&ring->tail, memory_order_relaxed);
+    uint32_t head = atomic_load_explicit(&ring->head, memory_order_acquire);
 
-    do {
-        head = atomic_load_explicit((_Atomic uint32_t*)&ring->head, memory_order_acquire);
-        tail = atomic_load_explicit((_Atomic uint32_t*)&ring->tail, memory_order_acquire);
+    if (tail == head) {
+        return -1; /* Ring is empty */
+    }
 
-        if (head == tail) {
-            return -1; /* Ring is empty */
-        }
+    urpc_memcpy(msg_out, &ring->buffer[tail * URPC_MSG_SIZE], URPC_MSG_SIZE);
 
-        next_head = (head + 1) % (URPC_RING_SIZE * URPC_MSG_SIZE / URPC_MSG_SIZE);
-
-    } while (!atomic_compare_exchange_weak_explicit(
-                (_Atomic uint32_t*)&ring->head, &head, next_head,
-                memory_order_release, memory_order_relaxed));
-
-    urpc_memcpy(msg_out, &ring->buffer[head * URPC_MSG_SIZE], URPC_MSG_SIZE);
+    uint32_t next_tail = (tail + 1) % URPC_RING_SIZE;
+    atomic_store_explicit(&ring->tail, next_tail, memory_order_release);
 
     return 0;
 }
