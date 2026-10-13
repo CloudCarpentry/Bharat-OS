@@ -1,6 +1,7 @@
 #include "benchmark/benchmark.h"
 #include "arch/capabilities.h"
 #include <stdio.h>
+#include <stdarg.h>
 #include <assert.h>
 #include <string.h>
 
@@ -8,6 +9,28 @@ int g_mock_caps = 0;
 
 bool arch_cpu_has(int feature) {
     return (g_mock_caps & (1u << feature)) != 0;
+}
+
+bool arch_cpu_has_system_all(int feature) {
+    // Map feature to index for mock matching
+    int mock_feature = -1;
+#if defined(__x86_64__)
+    if (feature == ARCH_CPU_FEAT_X86_AVX2) mock_feature = 0;
+    else if (feature == ARCH_CPU_FEAT_X86_FMA) mock_feature = 1;
+#endif
+    if (feature == ARCH_CPU_FEAT_COMMON_AES) mock_feature = 2;
+    else if (feature == ARCH_CPU_FEAT_COMMON_VECTOR) mock_feature = 3;
+    else if (feature == ARCH_CPU_FEAT_COMMON_SHA || feature == ARCH_CPU_FEAT_COMMON_PMULL) mock_feature = 4;
+
+    if (mock_feature == -1) return false;
+    return (g_mock_caps & (1u << mock_feature)) != 0;
+}
+
+void console_log(int level, const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    vprintf(fmt, args);
+    va_end(args);
 }
 
 int main(void) {
