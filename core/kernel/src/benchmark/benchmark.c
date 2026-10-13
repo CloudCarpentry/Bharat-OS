@@ -1,7 +1,7 @@
 #include "benchmark/benchmark.h"
 #include "arch/capabilities.h"
 #include "time/ktime.h"
-#include <stdio.h>
+#include "console/console_core.h"
 
 uint64_t benchmark_get_time_ns(void) {
     return bh_ktime_now();
@@ -90,23 +90,23 @@ void benchmark_record(const benchmark_ctx_t* ctx, benchmark_result_t* out_result
 void benchmark_print(const benchmark_result_t* result, const char* name) {
     if (!result) return;
 
-    printf("--- Benchmark: %s ---\n", name ? name : "Unknown");
-    printf("Level     : %d\n", result->level);
-    printf("Latency   : %llu ns/op\n", (unsigned long long)result->latency_ns);
-    printf("Cycles    : %llu cycles/op\n", (unsigned long long)result->cycles);
-    printf("Throughput: %llu ops/sec\n", (unsigned long long)result->throughput);
-    printf("Mem Overhead: %llu bytes\n", (unsigned long long)result->memory_overhead);
-    printf("HW Caps   : 0x%08x", result->hw_caps);
+    console_log(CONSOLE_LEVEL_INFO, "--- Benchmark: %s ---\n", name ? name : "Unknown");
+    console_log(CONSOLE_LEVEL_INFO, "Level     : %d\n", result->level);
+    console_log(CONSOLE_LEVEL_INFO, "Latency   : %llu ns/op\n", (unsigned long long)result->latency_ns);
+    console_log(CONSOLE_LEVEL_INFO, "Cycles    : %llu cycles/op\n", (unsigned long long)result->cycles);
+    console_log(CONSOLE_LEVEL_INFO, "Throughput: %llu ops/sec\n", (unsigned long long)result->throughput);
+    console_log(CONSOLE_LEVEL_INFO, "Mem Overhead: %llu bytes\n", (unsigned long long)result->memory_overhead);
+    console_log(CONSOLE_LEVEL_INFO, "HW Caps   : 0x%08x", result->hw_caps);
     if (result->hw_caps) {
-        printf(" (");
+        console_log(CONSOLE_LEVEL_INFO, " (");
         int first = 1;
-        if (result->hw_caps & (1u << 0)) { printf("%sAVX2", first ? "" : ", "); first = 0; }
-        if (result->hw_caps & (1u << 1)) { printf("%sFMA", first ? "" : ", "); first = 0; }
-        if (result->hw_caps & (1u << 2)) { printf("%sAES", first ? "" : ", "); first = 0; }
-        if (result->hw_caps & (1u << 3)) { printf("%sVector", first ? "" : ", "); first = 0; }
-        if (result->hw_caps & (1u << 4)) { printf("%sCrypto", first ? "" : ", "); first = 0; }
-        printf(")");
+        if (result->hw_caps & (1u << 0)) { console_log(CONSOLE_LEVEL_INFO, "%sAVX2", first ? "" : ", "); first = 0; }
+        if (result->hw_caps & (1u << 1)) { console_log(CONSOLE_LEVEL_INFO, "%sFMA", first ? "" : ", "); first = 0; }
+        if (result->hw_caps & (1u << 2)) { console_log(CONSOLE_LEVEL_INFO, "%sAES", first ? "" : ", "); first = 0; }
+        if (result->hw_caps & (1u << 3)) { console_log(CONSOLE_LEVEL_INFO, "%sVector", first ? "" : ", "); first = 0; }
+        if (result->hw_caps & (1u << 4)) { console_log(CONSOLE_LEVEL_INFO, "%sCrypto", first ? "" : ", "); first = 0; }
+        console_log(CONSOLE_LEVEL_INFO, ")");
     }
-    printf("\n");
-    printf("---------------------------\n");
+    console_log(CONSOLE_LEVEL_INFO, "\n");
+    console_log(CONSOLE_LEVEL_INFO, "---------------------------\n");
 }
