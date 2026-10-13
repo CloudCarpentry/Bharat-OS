@@ -209,6 +209,7 @@ static void arm32_destroy_address_space(phys_addr_t root_pt) {
             if ((l1->entries[i] & 0x3) == ARM32_PT_L1_TYPE_PAGE) {
                 mm_free_page(l1->entries[i] & 0xFFFFFC00);
             }
+            l1->entries[i] = 0; // Prevent double-free logic from lingering pointers
         }
         pmm_block_t block;
         block.phys_addr = root_pt;
@@ -233,7 +234,45 @@ static int arm32_map_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t pa
         phys_addr_t new_l2 = mm_alloc_page(NUMA_NODE_ANY);
         if (!new_l2) return -2;
         pt_l2_t* l2_ptr = (pt_l2_t*)(uintptr_t)new_l2;
-        for(int i=0; i<256; i++) l2_ptr->entries[i] = 0;
+
+        if ((l1_table->entries[l1_idx] & 0x3) == ARM32_PT_L1_TYPE_SECT) {
+            uint32_t sect_base = l1_table->entries[l1_idx] & 0xFFF00000;
+            uint32_t sect_flags = l1_table->entries[l1_idx] & 0x000FFFFF;
+            uint32_t base_l2_flags = ARM32_PT_L2_TYPE_SMALL;
+
+            if (sect_flags & ARM32_PT_L1_SECT_B) base_l2_flags |= ARM32_PT_L2_B;
+            if (sect_flags & ARM32_PT_L1_SECT_C) base_l2_flags |= ARM32_PT_L2_C;
+
+            // Section AP bits -> Small Page AP bits
+            // Section AP[0] is bit 10, AP[1] is bit 11, AP[2] is bit 15
+            // L2 AP[0] is bit 4, AP[1] is bit 5, AP[2] is bit 9
+
+            // Check original bits 10 and 11
+            if (sect_flags & (1 << 10)) base_l2_flags |= ARM32_PT_L2_AP0;
+            if (sect_flags & (1 << 11)) base_l2_flags |= ARM32_PT_L2_AP1;
+            if (sect_flags & (1 << 15)) base_l2_flags |= ARM32_PT_L2_AP2;
+
+            // Fallback for safe bootstrapping if entirely missing
+            if (!(base_l2_flags & (ARM32_PT_L2_AP0 | ARM32_PT_L2_AP1 | ARM32_PT_L2_AP2))) {
+                base_l2_flags |= ARM32_PT_L2_AP0; // Default Priv R/W
+            }
+            if (sect_flags & (1 << 4)) {
+                base_l2_flags |= ARM32_PT_L2_XN; // XN bit
+            }
+            if (sect_flags & (1 << 17)) {
+                base_l2_flags |= ARM32_PT_L2_nG; // nG bit
+            }
+            if (sect_flags & (1 << 16)) {
+                base_l2_flags |= ARM32_PT_L2_S; // S bit
+            }
+
+            for(int i=0; i<256; i++) {
+                l2_ptr->entries[i] = (sect_base + (i << 12)) | base_l2_flags;
+            }
+        } else {
+            for(int i=0; i<256; i++) l2_ptr->entries[i] = 0;
+        }
+
         l1_table->entries[l1_idx] = (new_l2 & 0xFFFFFC00) | ARM32_PT_L1_TYPE_PAGE;
     }
 
@@ -254,7 +293,18 @@ static int arm32_unmap_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t 
     uint32_t l2_idx = (aligned_vaddr >> 12) & 0xFF;
 
     pt_l1_t* l1_table = (pt_l1_t*)(uintptr_t)root_pt;
-    if ((l1_table->entries[l1_idx] & 0x3) != ARM32_PT_L1_TYPE_PAGE) return -2;
+    uint32_t l1_type = l1_table->entries[l1_idx] & 0x3;
+
+    if (l1_type == ARM32_PT_L1_TYPE_FAULT) return -2;
+
+    if (l1_type == ARM32_PT_L1_TYPE_SECT) {
+        if (unmapped_paddr) {
+            *unmapped_paddr = (l1_table->entries[l1_idx] & 0xFFF00000) | (l2_idx << 12);
+        }
+        return -2;
+    }
+
+    if (l1_type != ARM32_PT_L1_TYPE_PAGE) return -2;
 
     pt_l2_t* l2_table = (pt_l2_t*)(uintptr_t)(l1_table->entries[l1_idx] & 0xFFFFFC00);
 
@@ -283,7 +333,15 @@ static int arm32_protect_page(phys_addr_t root_pt, virt_addr_t vaddr, uint32_t n
     uint32_t l2_idx = (aligned_vaddr >> 12) & 0xFF;
 
     pt_l1_t* l1_table = (pt_l1_t*)(uintptr_t)root_pt;
-    if ((l1_table->entries[l1_idx] & 0x3) != ARM32_PT_L1_TYPE_PAGE) return -2;
+    uint32_t l1_type = l1_table->entries[l1_idx] & 0x3;
+
+    if (l1_type == ARM32_PT_L1_TYPE_FAULT) return -2;
+
+    if (l1_type == ARM32_PT_L1_TYPE_SECT) {
+        return -2;
+    }
+
+    if (l1_type != ARM32_PT_L1_TYPE_PAGE) return -2;
 
     pt_l2_t* l2_table = (pt_l2_t*)(uintptr_t)(l1_table->entries[l1_idx] & 0xFFFFFC00);
 
@@ -306,7 +364,36 @@ static int arm32_query_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t 
     uint32_t l2_idx = (aligned_vaddr >> 12) & 0xFF;
 
     pt_l1_t* l1_table = (pt_l1_t*)(uintptr_t)root_pt;
-    if ((l1_table->entries[l1_idx] & 0x3) != ARM32_PT_L1_TYPE_PAGE) return -2;
+    uint32_t l1_type = l1_table->entries[l1_idx] & 0x3;
+
+    if (l1_type == ARM32_PT_L1_TYPE_FAULT) return -2;
+
+    if (l1_type == ARM32_PT_L1_TYPE_SECT) {
+        if (paddr) *paddr = (l1_table->entries[l1_idx] & 0xFFF00000) | (l2_idx << 12);
+        if (flags) {
+            uint32_t sect_flags = l1_table->entries[l1_idx] & 0x000FFFFF;
+            uint32_t hal_flags = HAL_PT_FLAG_READ;
+            if (sect_flags & ARM32_PT_L1_SECT_AP0) {
+                if ((sect_flags & ARM32_PT_L1_SECT_AP0) && !(sect_flags & (1<<15))) {
+                    hal_flags |= HAL_PT_FLAG_WRITE;
+                }
+            } else {
+                 hal_flags |= HAL_PT_FLAG_WRITE;
+            }
+            if (!(sect_flags & (ARM32_PT_L1_SECT_B | ARM32_PT_L1_SECT_C))) {
+                hal_flags |= HAL_PT_FLAG_DEVICE;
+            }
+            hal_flags |= HAL_PT_FLAG_EXEC;
+            if (sect_flags & (1 << 4)) {
+                hal_flags &= ~HAL_PT_FLAG_EXEC;
+            }
+            hal_flags |= HAL_PT_FLAG_GLOBAL;
+            *flags = hal_flags;
+        }
+        return 0;
+    }
+
+    if (l1_type != ARM32_PT_L1_TYPE_PAGE) return -2;
 
     pt_l2_t* l2_table = (pt_l2_t*)(uintptr_t)(l1_table->entries[l1_idx] & 0xFFFFFC00);
 
