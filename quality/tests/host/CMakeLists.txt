@@ -1,6 +1,102 @@
 # SPDX-License-Identifier: MIT
 cmake_minimum_required(VERSION 3.20)
 
+option(BHARAT_HOST_TESTS_TLB_ONLY "Build only focused TLB shootdown host tests" OFF)
+
+# ── Bounded TLB Shootdown Host Tests (Epic #796) ───────────────────────────
+find_package(Threads REQUIRED)
+
+set(TLB_HOST_INCLUDES
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/core/kernel/include
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/mm/tlb
+    ${CMAKE_SOURCE_DIR}/core/hal/include
+    ${CMAKE_SOURCE_DIR}/core/lib/include
+    ${CMAKE_SOURCE_DIR}/core/boot/include
+    ${CMAKE_SOURCE_DIR}/core/personalities/runtime/include
+    ${CMAKE_SOURCE_DIR}/interface/include
+    ${CMAKE_SOURCE_DIR}/interface
+    ${CMAKE_BINARY_DIR}/generated/include
+    ${CMAKE_SOURCE_DIR}/core/services/core/subsysmgr/include
+    ${CMAKE_SOURCE_DIR}/core/lib/runtime/include
+)
+
+add_executable(test_tlb_pending
+    test_tlb_pending.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/mm/tlb/tlb_pending.c
+)
+target_include_directories(test_tlb_pending PRIVATE ${TLB_HOST_INCLUDES})
+target_compile_definitions(test_tlb_pending PRIVATE BHARAT_HOST_TEST=1)
+add_test(NAME host_test_tlb_pending COMMAND test_tlb_pending)
+set_tests_properties(host_test_tlb_pending PROPERTIES LABELS "tlb;mm")
+
+add_executable(test_tlb_shootdown
+    test_tlb_shootdown.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/mm/tlb/tlb_shootdown.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/mm/tlb/tlb_pending.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/mm/tlb/tlb_flush.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/mm/tlb/tlb_stats.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/time/ktime.c
+    ${CMAKE_SOURCE_DIR}/core/lib/msg/wire.c
+)
+target_include_directories(test_tlb_shootdown PRIVATE ${TLB_HOST_INCLUDES})
+target_compile_definitions(test_tlb_shootdown PRIVATE BHARAT_HOST_TEST=1 BHARAT_TLB_LEGACY_MAILBOX_FALLBACK=1)
+add_test(NAME host_test_tlb_shootdown COMMAND test_tlb_shootdown)
+set_tests_properties(host_test_tlb_shootdown PROPERTIES LABELS "tlb;mm")
+
+add_executable(test_tlb_shootdown_contract
+    test_tlb_shootdown_contract.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/mm/tlb/tlb_shootdown.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/mm/tlb/tlb_stats.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/time/ktime.c
+    ${CMAKE_SOURCE_DIR}/core/lib/msg/wire.c
+)
+target_include_directories(test_tlb_shootdown_contract PRIVATE ${TLB_HOST_INCLUDES})
+target_compile_definitions(test_tlb_shootdown_contract PRIVATE BHARAT_HOST_TEST=1)
+add_test(NAME host_test_tlb_shootdown_contract COMMAND test_tlb_shootdown_contract)
+set_tests_properties(host_test_tlb_shootdown_contract PROPERTIES LABELS "tlb;mm")
+
+add_executable(test_tlb_stress
+    test_tlb_stress.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/mm/tlb/tlb_shootdown.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/mm/tlb/tlb_pending.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/mm/tlb/tlb_flush.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/mm/tlb/tlb_stats.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/time/ktime.c
+    ${CMAKE_SOURCE_DIR}/core/lib/msg/wire.c
+)
+target_include_directories(test_tlb_stress PRIVATE ${TLB_HOST_INCLUDES})
+target_compile_definitions(test_tlb_stress PRIVATE BHARAT_HOST_TEST=1 BHARAT_TLB_LEGACY_MAILBOX_FALLBACK=1)
+target_link_libraries(test_tlb_stress PRIVATE Threads::Threads)
+add_test(NAME host_test_tlb_stress COMMAND test_tlb_stress)
+set_tests_properties(host_test_tlb_stress PROPERTIES LABELS "tlb;mm;stress")
+
+add_executable(test_tlb_transport
+    test_tlb_transport.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/mm/tlb/tlb_shootdown.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/mm/tlb/tlb_pending.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/mm/tlb/tlb_stats.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/time/ktime.c
+    ${CMAKE_SOURCE_DIR}/core/lib/msg/wire.c
+)
+target_include_directories(test_tlb_transport PRIVATE ${TLB_HOST_INCLUDES})
+target_compile_definitions(test_tlb_transport PRIVATE BHARAT_HOST_TEST=1)
+add_test(NAME host_test_tlb_transport COMMAND test_tlb_transport)
+set_tests_properties(host_test_tlb_transport PROPERTIES LABELS "tlb;mm;transport")
+
+add_executable(test_tlb_hardening
+    mm/test_tlb_hardening.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/mm/tlb/tlb_pending.c
+)
+target_include_directories(test_tlb_hardening PRIVATE ${TLB_HOST_INCLUDES})
+target_compile_definitions(test_tlb_hardening PRIVATE BHARAT_HOST_TEST=1)
+add_test(NAME host_test_tlb_hardening COMMAND test_tlb_hardening)
+set_tests_properties(host_test_tlb_hardening PROPERTIES LABELS "tlb;mm")
+
+if(BHARAT_HOST_TESTS_TLB_ONLY)
+    return()
+endif()
+
 add_executable(test_init_failure_handoff
     ../init/test_init_failure_handoff.c
     ${CMAKE_SOURCE_DIR}/core/services/core/init/init_runtime.c

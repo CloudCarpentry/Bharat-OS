@@ -17,6 +17,7 @@
 #include "urpc/urpc_bootstrap.h"
 #include "bharat/urpc.h"
 #include "kernel.h"
+#include "atomic.h"
 
 // Central fallback policy configuration
 #ifndef BHARAT_TLB_LEGACY_MAILBOX_FALLBACK
@@ -255,9 +256,15 @@ kstatus_t vmm_send_tlb_invalidate_ex(vm_aspace_t *aspace,
 
     uint32_t current_core = hal_cpu_get_id();
     uint64_t target_mask = aspace_get_active_mask(aspace);
+    (void)aspace_next_tlb_generation(aspace);
 
     // Do not wait for self
     target_mask &= ~(1ULL << current_core);
+
+    extern uint32_t g_active_core_count;
+    if (g_active_core_count > 0 && g_active_core_count < 64) {
+        target_mask &= ((1ULL << g_active_core_count) - 1);
+    }
 
     if (target_mask == 0) {
         return K_OK;
@@ -278,8 +285,6 @@ kstatus_t vmm_send_tlb_invalidate_ex(vm_aspace_t *aspace,
     req.length    = len;
     req.type      = type;
     req.generation = aspace->tlb_gen; // Keep actual coherency generation
-
-    (void)aspace_next_tlb_generation(aspace);
 
     uint64_t active_target_mask = target_mask;
     uint32_t retry_count = 0;
@@ -318,6 +323,14 @@ kstatus_t vmm_send_tlb_invalidate_ex(vm_aspace_t *aspace,
             }
         }
 
+#if !BHARAT_TLB_LEGACY_MAILBOX_FALLBACK
+        if (dispatch_failure_mask != 0) {
+            // Fail closed immediately when primary transport is unavailable and fallback disabled
+            status = K_ERR_UNSUPPORTED;
+            break;
+        }
+#endif
+
         if (!any_sent && retry_count == 0) {
             tlb_pending_free(current_core, slot);
             return K_ERR_NOT_FOUND;
@@ -336,6 +349,7 @@ kstatus_t vmm_send_tlb_invalidate_ex(vm_aspace_t *aspace,
         }
 
         if (complete) {
+            smp_mb();
             status = K_OK;
             break;
         }
@@ -511,7 +525,7 @@ void vmm_process_urpc_messages(void) {
                         monitor_handle_tlb_invalidate(NULL, &req, &resp);
 
                         // Ensure operations complete before ACK
-                        __asm__ volatile("": : :"memory");
+                        smp_mb();
 
                         // Send response back
                         bharat_msg_header_t tx_hdr = {0};

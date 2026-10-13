@@ -221,6 +221,7 @@ elseif(ARCH STREQUAL "riscv64")
     set(ARCH_CONTEXT_SWITCH ${BHARAT_ARCH_ROOT}/riscv/riscv64/user_entry.c ${BHARAT_ARCH_ROOT}/riscv/riscv64/context_switch.c ${BHARAT_ARCH_ROOT}/riscv/common/context_switch.S)
     set(ARCH_CPU_CAPS_SRC ${BHARAT_ARCH_ROOT}/riscv/riscv64/cpu_caps.c)
     set(ARCH_EXT_STATE_SRC ${BHARAT_ARCH_ROOT}/riscv/riscv64/ext_state.c)
+    list(APPEND ARCH_TLB_ACCEL_SRC ${BHARAT_ARCH_ROOT}/riscv/riscv64/tlb_accel.c)
 elseif(ARCH STREQUAL "riscv32")
     set(BHARAT_ARCH_PRIVATE_INCLUDE_DIR ${BHARAT_ARCH_ROOT}/riscv/riscv32/include)
     set(BOOT_SRC ${BHARAT_ARCH_ROOT}/riscv/riscv32/boot/boot.S)
@@ -238,6 +239,7 @@ elseif(ARCH STREQUAL "arm64")
     set(ARCH_HAL_EXTRA ${BHARAT_ARCH_ROOT}/arm/arm64/topology_fdt.c)
     set(ARCH_CPU_CAPS_SRC ${BHARAT_ARCH_ROOT}/arm/arm64/cpu_caps.c)
     set(ARCH_EXT_STATE_SRC ${BHARAT_ARCH_ROOT}/arm/arm64/ext_state.c)
+    list(APPEND ARCH_TLB_ACCEL_SRC ${BHARAT_ARCH_ROOT}/arm/arm64/tlb_accel.c)
 elseif(ARCH STREQUAL "arm32")
     set(BHARAT_ARCH_PRIVATE_INCLUDE_DIR ${BHARAT_ARCH_ROOT}/arm/arm32/include)
     set(BOOT_SRC ${BHARAT_ARCH_ROOT}/arm/arm32/boot/boot.S)
@@ -727,7 +729,7 @@ set_target_properties(kernel.elf PROPERTIES
 # Atomic width is an architecture contract for every kernel object library,
 # not only the final kernel.elf sources.
 target_compile_options(bharat_kernel_buildopts INTERFACE
-    $<$<COMPILE_LANGUAGE:C>:-Werror=atomic-alignment>
+    $<$<AND:$<COMPILE_LANGUAGE:C>,$<C_COMPILER_ID:Clang>>:-Werror=atomic-alignment>
 )
 
 # Extra warnings for C sources only

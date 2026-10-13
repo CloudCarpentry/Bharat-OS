@@ -1,6 +1,6 @@
-#include "../../../include/mm/tlb_internal.h"
-#include "../../../include/mm/tlb.h"
-#include "console/console_core.h"
+#include <mm/tlb_internal.h>
+#include <mm/tlb.h>
+#include <console/console_core.h>
 
 static tlb_failure_snapshot_t s_tlb_last_failures[MAX_CPUS];
 

@@ -343,6 +343,7 @@ endif()
 
 option(BHARAT_ENABLE_CLANG_TIDY "Enable clang-tidy static analysis for C targets" OFF)
 option(BHARAT_BUILD_HOST_TESTS "Build host-side unit tests" OFF)
+option(BHARAT_HOST_TESTS_TLB_ONLY "Build only focused TLB shootdown host tests" OFF)
 
 set(BHARAT_SCHED_DIAG_COMPILE_LEVEL "0" CACHE STRING
     "Scheduler diagnostics compiled in: 0=none, 1=counters, 2=trace")

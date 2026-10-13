@@ -3,14 +3,25 @@
 #include <string.h>
 #include <pthread.h>
 
-#include "../../kernel/include/hal/hal_tlb.h"
-#include "../../kernel/include/mm/aspace.h"
-#include "../../kernel/include/mm/mm_remote.h"
-#include "../../kernel/include/bharat/cpu_local.h"
-#include "../../kernel/include/hal/hal.h"
-#include "../../kernel/include/urpc/urpc_bootstrap.h"
-#include "../../core/services/core/subsysmgr/include/bharat/msg/transport.h"
-#include "../../core/services/monitor/generated/bharat_monitor_v1_types.h"
+#include <hal/hal_tlb.h>
+#include <mm/aspace.h>
+#include <mm/mm_remote.h>
+#include <bharat/cpu_local.h>
+#include <hal/hal.h>
+#include <urpc/urpc_bootstrap.h>
+#include <arch/arch_caps.h>
+#include <mm/tlb_internal.h>
+#include <kernel/status.h>
+
+typedef struct {
+    uint64_t aspace_id;
+    uint64_t va_start;
+    uint64_t length;
+    uint32_t type;
+    uint32_t generation;
+} bharat_monitor_v1_TlbInvalidateReq_t;
+
+typedef void* bharat_transport_t;
 
 // --- Mocking ---
 
@@ -27,8 +38,10 @@ static void mock_flush_range_local(virt_addr_t start, size_t len) { (void)start;
 static void mock_flush_all_local(void) { g_local_all_flushes++; }
 static void mock_flush_asid_local(uint16_t asid) { (void)asid; g_local_asid_flushes++; }
 
+static uint32_t g_current_cpu_id = 0;
+
 uint32_t hal_cpu_get_id(void) {
-    return 0; // Simulate we are always core 0 for the initiator
+    return g_current_cpu_id;
 }
 
 void hal_core_poll_event(void) {
@@ -45,25 +58,80 @@ int urpc_bootstrap_send(uint32_t core, uint64_t msg) {
     return 0;
 }
 
-void hal_send_ipi_payload(uint32_t target_core, uint64_t payload) {
-    (void)target_core; (void)payload;
-    // Mock IPI: Auto-ACK for testing purposes by simulating remote core
-    mm_mailbox_slot_t* mailbox = &g_mm_mailboxes[target_core];
-    if (mailbox->valid) {
-        mailbox->ack_seq = mailbox->msg.seq;
-        mailbox->valid = 0;
+uint32_t g_active_core_count = 4;
+tlb_cpu_state_t g_tlb_cpu_state[32];
+cpu_local_t g_cpu_locals[32];
+
+mem_model_t mem_model_get_current(void) { return MEM_MODEL_MMU_FULL; }
+
+int bharat_monitor_v1_send_tlb_invalidate(bharat_transport_t* t, int dst, const bharat_monitor_v1_TlbInvalidateReq_t* req, uint64_t reqid, void* ctx) {
+    (void)t; (void)dst; (void)req; (void)reqid; (void)ctx;
+    return 0;
+}
+
+static uint64_t g_fake_ticks = 0;
+bool hal_timer_monotonic_ns(uint64_t *out_ns) {
+    if (out_ns) *out_ns = g_fake_ticks * 1000000ULL;
+    return true;
+}
+
+void arch_cpu_relax(void) {
+    g_fake_ticks++;
+}
+
+arch_caps_t arch_get_caps(void) {
+    arch_caps_t c = {ARCH_CAP_BIT(ARCH_CAP_SMP)};
+    return c;
+}
+
+const hal_tlb_caps_t *hal_tlb_caps(void) {
+    static hal_tlb_caps_t c = {
+        .supports_page_flush = 1,
+        .supports_range_flush = 1,
+        .supports_aspace_flush = 1,
+        .supports_all_flush = 1
+    };
+    return &c;
+}
+
+void console_log(int level, const char* fmt, ...) { (void)level; (void)fmt; }
+void console_write_raw(const char* s, size_t len) { (void)s; (void)len; }
+void kernel_panic(const char* m) { (void)m; }
+
+bool aspace_is_valid_for_tlb(address_space_t *aspace) { return aspace != NULL; }
+uint64_t aspace_get_active_mask(address_space_t *aspace) { return aspace ? aspace->active_mask : 0; }
+uint64_t aspace_next_tlb_generation(address_space_t *aspace) { return aspace ? ++aspace->tlb_gen : 0; }
+void aspace_mark_poisoned(address_space_t *aspace) { if (aspace) aspace->flags |= ASPACE_STATE_POISONED; }
+
+bharat_transport_t* transport_for_core(int core) { (void)core; return NULL; }
+
+void hal_ipi_send(uint32_t target_core, uint32_t ipi) {
+    (void)ipi;
+    if (target_core < 64) {
+        mm_mailbox_slot_t* mailbox = &g_mm_mailboxes[target_core];
+        if (mailbox->valid) {
+            mailbox->ack_seq = mailbox->req_seq;
+            mailbox->valid = 0;
+            extern void tlb_send_completion(uint32_t request_id, uint32_t origin_cpu, uint32_t status);
+            uint32_t saved_cpu = g_current_cpu_id;
+            g_current_cpu_id = target_core;
+            tlb_send_completion(mailbox->msg.seq, mailbox->msg.sender_core, 0);
+            g_current_cpu_id = saved_cpu;
+        }
     }
 }
 
-int bharat_monitor_v1_call_tlb_invalidate(
-    bharat_transport_t* t, int dst, const bharat_monitor_v1_TlbInvalidateReq_t* req, void* ctx) {
-    return 0;
-}
+void cap_handle_delegate_req(uint64_t p, uint32_t s) { (void)p; (void)s; }
+void cap_handle_delegate_ack(uint64_t p) { (void)p; }
+void cap_handle_revoke_req(uint64_t p, uint32_t s) { (void)p; (void)s; }
+void cap_handle_revoke_ack(uint64_t p) { (void)p; }
+kstatus_t urpc_bootstrap_recv(uint32_t c, uint64_t *m) { (void)c; (void)m; return -1; }
 
 // Ensure mailboxes are defined
 mm_mailbox_slot_t g_mm_mailboxes[64];
 
 static void setup_test() {
+    g_current_cpu_id = 0;
     active_hal_tlb = &mock_ops;
     mock_ops.flush_page_local = mock_flush_page_local;
     mock_ops.flush_range_local = mock_flush_range_local;
