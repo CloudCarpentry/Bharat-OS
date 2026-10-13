@@ -33,6 +33,21 @@ ctest --test-dir build/sdk --output-on-failure
 cmake --install build/sdk --prefix "$PWD/bharat-sdk"
 ```
 
+### Compiler Wrapper Toolchain Isolation
+
+The `bh-clang` compiler wrapper provides strict separation between HOST and NATIVE builds to prevent accidental mixing of binaries.
+By default, it uses the `HOST` backend.
+
+For `NATIVE` backend compilation, you must provide the `--bh-backend=NATIVE` and specify an architecture using `--bh-arch=<arch>` (e.g., `x86_64`, `arm64`, `riscv64`, `arm32`, `riscv32`).
+NATIVE libraries will not be built silently. You must pre-build the native SDK before linking.
+
+Example native compile:
+```sh
+export BHARAT_SDK_BACKEND=NATIVE
+export BHARAT_SDK_ARCH=x86_64
+interface/sdk/bin/bh-clang interface/sdk/examples/hello/main.c -o hello.bh
+```
+
 SDK v0.1 provides working hosted implementations of console output, logging,
 monotonic time, sleep, exit, and system information. Process/thread, IPC,
 device, sensor, accelerator, and capability APIs are the initial narrow source
