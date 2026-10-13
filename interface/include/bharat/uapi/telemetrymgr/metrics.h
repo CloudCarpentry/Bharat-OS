@@ -1,0 +1,23 @@
+#ifndef BHARAT_UAPI_TELEMETRYMGR_METRICS_H
+#define BHARAT_UAPI_TELEMETRYMGR_METRICS_H
+
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// Architecture-neutral metric categories
+#define TELEMETRYMGR_CATEGORY_CPU       1
+#define TELEMETRYMGR_CATEGORY_MEMORY    2
+#define TELEMETRYMGR_CATEGORY_SCHEDULER 3
+#define TELEMETRYMGR_CATEGORY_IPC       4
+#define TELEMETRYMGR_CATEGORY_SERVICE   5
+#define TELEMETRYMGR_CATEGORY_DEVICE    6
+#define TELEMETRYMGR_CATEGORY_THERMAL   7
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // BHARAT_UAPI_TELEMETRYMGR_METRICS_H
