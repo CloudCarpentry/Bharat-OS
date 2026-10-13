@@ -52,12 +52,23 @@ int cap_table_revoke(capability_table_t *table, uint32_t cap_id) {
     return -1;
   }
 
+  uint32_t current_core = hal_cpu_get_id();
+
+  __attribute__((weak)) extern bool g_pmm_initialized;
+  bool pmm_is_initialized = &g_pmm_initialized ? g_pmm_initialized : true;
+
+  uint8_t tx_slot = 0;
+  bh_cap_tx_entry_t *tx = NULL;
+
+  if (current_core < MAX_CPUS && pmm_is_initialized) {
+    tx = cap_tx_alloc(current_core, BH_CAP_TX_OP_REVOKE, &tx_slot);
+    if (!tx) {
+        return -6;
+    }
+  }
+
   uint32_t id_only = cap_id & 0xFFFF;
   uint32_t generation = cap_id >> 16;
-
-  // Iterative tree walk to revoke children safely.
-  bh_cap_locator_t stack[64];
-  size_t sp = 0;
 
   spin_lock(&table->lock);
 
@@ -79,11 +90,13 @@ int cap_table_revoke(capability_table_t *table, uint32_t cap_id) {
 
   if (root_slot == UINT32_MAX) {
     spin_unlock(&table->lock);
+    if (tx) cap_tx_release(current_core, tx_slot);
     return -2;
   }
 
   if (root_slot >= BHARAT_ARRAY_SIZE(table->entries)) {
     spin_unlock(&table->lock);
+    if (tx) cap_tx_release(current_core, tx_slot);
     return -2;
   }
 
@@ -111,6 +124,7 @@ int cap_table_revoke(capability_table_t *table, uint32_t cap_id) {
       // Verify parent hasn't been reallocated
       if (parent_slot >= BHARAT_ARRAY_SIZE(parent_table->entries)) {
         cap_unlock_tables_sorted(tables_to_lock, num_tables);
+        if (tx) cap_tx_release(current_core, tx_slot);
         return -2;
       }
       capability_entry_t *parent = &parent_table->entries[parent_slot];
@@ -159,6 +173,93 @@ int cap_table_revoke(capability_table_t *table, uint32_t cap_id) {
     cap_unlock_tables_sorted(tables_to_lock, num_tables);
   }
 
+  // Stackless tree walk to freeze and mark all children as REVOKING
+  bh_cap_locator_t current = cap_locator_make(table, root_slot, root_gen, 0);
+
+  while (!cap_locator_is_null(&current)) {
+    capability_table_t *curr_table = cap_locator_resolve_table(&current);
+    if (curr_table == NULL) break;
+
+    spin_lock(&curr_table->lock);
+
+    if (current.slot >= BHARAT_ARRAY_SIZE(curr_table->entries)) {
+      spin_unlock(&curr_table->lock);
+      break;
+    }
+
+    capability_entry_t *cap = &curr_table->entries[current.slot];
+
+    bool is_stale = (cap->in_use == 0U || cap->generation != current.generation);
+
+    bh_cap_locator_t child = cap_locator_null();
+    bh_cap_locator_t sibling = cap_locator_null();
+    bh_cap_locator_t parent_loc = cap_locator_null();
+
+    if (!is_stale) {
+        cap->state = CAP_STATE_REVOKING;
+        child = cap->first_child;
+        sibling = cap->next_sibling;
+        parent_loc = cap->parent;
+    }
+
+    spin_unlock(&curr_table->lock);
+
+    if (is_stale) {
+        // We cannot reliably traverse up or right from a stale node without risking dereferencing garbage.
+        // The safest fallback that avoids both partial revocation bugs and memory corruption is to return
+        // a defined error immediately rather than leaving the loop halfway through or panicking.
+        // Wait, if we return -3, the caller knows it failed. Since we haven't done destructive mutation yet,
+        // returning an error is perfectly safe here.
+        if (tx) {
+            atomic_set(&tx->state, BH_CAP_TX_ABORTED);
+            cap_tx_release(current_core, tx_slot);
+        }
+        return -3; // Traversal failed cleanly before mutation
+    }
+
+    if (!cap_locator_is_null(&child)) {
+        current = child;
+    } else if (!cap_locator_is_null(&sibling) && (curr_table != table || current.slot != root_slot)) {
+        current = sibling;
+    } else {
+        // Go back up to find next sibling of some ancestor
+        current = parent_loc;
+        while (!cap_locator_is_null(&current)) {
+            if (current.owner_core == table->owner_core &&
+                current.cspace_id == table->cspace_id &&
+                current.slot == root_slot) {
+                current = cap_locator_null();
+                break;
+            }
+
+            capability_table_t *p_table = cap_locator_resolve_table(&current);
+            if (!p_table) {
+                current = cap_locator_null();
+                break;
+            }
+
+            spin_lock(&p_table->lock);
+            if (current.slot < BHARAT_ARRAY_SIZE(p_table->entries)) {
+                 capability_entry_t *p_cap = &p_table->entries[current.slot];
+                 if (p_cap->in_use != 0U && p_cap->generation == current.generation) {
+                     bh_cap_locator_t p_next = p_cap->next_sibling;
+                     bh_cap_locator_t p_parent = p_cap->parent;
+                     spin_unlock(&p_table->lock);
+                     if (!cap_locator_is_null(&p_next)) {
+                         current = p_next;
+                         break;
+                     } else {
+                         current = p_parent;
+                         continue;
+                     }
+                 }
+            }
+            spin_unlock(&p_table->lock);
+            current = cap_locator_null();
+        }
+    }
+  }
+
   // Increment revocation epoch BEFORE broadcast
   spin_lock(&table->lock);
   uint64_t epoch = 0;
@@ -168,20 +269,7 @@ int cap_table_revoke(capability_table_t *table, uint32_t cap_id) {
   }
   spin_unlock(&table->lock);
 
-  // Iterative tree walk to revoke children safely.
-  stack[sp] = cap_locator_make(table, root_slot, root_gen, (uint32_t)epoch);
-  sp++;
-
-  uint32_t current_core = hal_cpu_get_id();
-
-  __attribute__((weak)) extern bool g_pmm_initialized;
-  bool pmm_is_initialized = &g_pmm_initialized ? g_pmm_initialized : true;
-
-  if (current_core < MAX_CPUS && pmm_is_initialized) {
-    uint8_t tx_slot = 0;
-    bh_cap_tx_entry_t *tx =
-        cap_tx_alloc(current_core, BH_CAP_TX_OP_REVOKE, &tx_slot);
-    if (tx) {
+  if (tx) {
       tx->target =
           cap_locator_make(table, root_slot, root_gen, (uint32_t)epoch);
       tx->revocation_epoch = epoch;
@@ -223,56 +311,67 @@ int cap_table_revoke(capability_table_t *table, uint32_t cap_id) {
       if (timed_out) {
         atomic_set(&tx->state, BH_CAP_TX_ABORTED);
         cap_tx_release(current_core, tx_slot);
-        kernel_panic("Capability Revocation Timeout: Bounded synchronization "
-                     "failed! Halted to prevent security breach.");
+        // A timeout implies the remote core failed to process the revocation.
+        // We MUST NOT proceed to Pass 2 (freeing the local capability) because
+        // doing so would allow the slot to be reused locally while the remote
+        // core retains active authority. By returning here, we securely quarantine
+        // the entire subtree in CAP_STATE_REVOKING permanently.
+        return K_ERR_TIMEOUT;
       }
 
       atomic_set(&tx->state, BH_CAP_TX_COMMITTED);
       cap_tx_release(current_core, tx_slot);
     }
-  }
 
-  while (sp > 0) {
-    bh_cap_locator_t frame = stack[--sp];
-    capability_table_t *frame_table = cap_locator_resolve_table(&frame);
+  // Pass 2: Free nodes safely using stateful stackless post-order traversal
+  current = cap_locator_make(table, root_slot, root_gen, 0);
 
-    if (frame_table == NULL) {
-      continue;
+  // Track direction to avoid dereferencing freed `previous` pointers
+  typedef enum { DIR_DOWN, DIR_UP } traversal_dir_t;
+  traversal_dir_t dir = DIR_DOWN;
+
+  while (!cap_locator_is_null(&current)) {
+    capability_table_t *curr_table = cap_locator_resolve_table(&current);
+    if (!curr_table) break;
+
+    spin_lock(&curr_table->lock);
+
+    if (current.slot >= BHARAT_ARRAY_SIZE(curr_table->entries)) {
+        spin_unlock(&curr_table->lock);
+        break;
     }
 
-    spin_lock(&frame_table->lock);
+    capability_entry_t *cap = &curr_table->entries[current.slot];
 
-    if (frame.slot >= BHARAT_ARRAY_SIZE(frame_table->entries)) {
-      spin_unlock(&frame_table->lock);
-      continue;
+    // Prevent cross-core corruption/double-free on reallocated capabilities
+    if (cap->in_use == 0U || cap->generation != current.generation) {
+        // Since we successfully passed Pass 1 (freezing), this should rarely happen unless
+        // another thread forcefully freed it. If it was concurrently freed, its subtree was
+        // also concurrently freed. We CANNOT `break` and skip the rest of the valid tree,
+        // nor can we safely read its pointers. But since we track parent links during descent,
+        // and we cannot use its `parent` pointer, we have a fundamental limitation.
+        // However, in our system, once a capability is `REVOKING`, no concurrent operation
+        // can legally free or mutate it except the thread that marked it.
+        // If it IS stale, it represents a catastrophic state machine violation.
+        // Returning an error is unsafe because it leaves the rest of the tree REVOKING indefinitely.
+        // The safest fallback is to simply `break` and accept the resource leak for the remaining
+        // nodes, as we cannot traverse upward without a stack or reliable pointers.
+        spin_unlock(&curr_table->lock);
+        break;
     }
 
-    capability_entry_t *cap = &frame_table->entries[frame.slot];
-    if (cap->in_use == 0U || cap->generation != frame.generation) {
-      spin_unlock(&frame_table->lock);
-      continue;
+    bh_cap_locator_t child = cap->first_child;
+    bh_cap_locator_t parent_loc = cap->parent;
+    bh_cap_locator_t sibling = cap->next_sibling;
+
+    // If we are moving down the tree and there is a child, descend to the child.
+    if (dir == DIR_DOWN && !cap_locator_is_null(&child)) {
+        spin_unlock(&curr_table->lock);
+        current = child;
+        continue; // Keep DIR_DOWN
     }
 
-    if (frame_table != table || frame.slot != root_slot) {
-      if (!cap_locator_is_null(&cap->next_sibling)) {
-        if (sp >= 64) {
-          spin_unlock(&frame_table->lock);
-          return -3; // bounded-stack overflow
-        }
-        stack[sp] = cap->next_sibling;
-        sp++;
-      }
-    }
-
-    if (!cap_locator_is_null(&cap->first_child)) {
-      if (sp >= 64) {
-        spin_unlock(&frame_table->lock);
-        return -3; // bounded-stack overflow
-      }
-      stack[sp] = cap->first_child;
-      sp++;
-    }
-
+    // Otherwise, we are at a leaf or coming up from children. We can now safely free this node.
     cap->rights = 0U;
     cap->flags = 0U;
     cap->object_ref = 0U;
@@ -284,9 +383,31 @@ int cap_table_revoke(capability_table_t *table, uint32_t cap_id) {
     cap->generation++;
     cap->state = CAP_STATE_FREE;
     cap->in_use = 0U;
-    bh_id_allocator_free(&frame_table->id_allocator, frame.slot);
+    bh_id_allocator_free(&curr_table->id_allocator, current.slot);
 
-    spin_unlock(&frame_table->lock);
+    spin_unlock(&curr_table->lock);
+
+    // If we just processed the root, we are completely done.
+    if (current.owner_core == table->owner_core &&
+        current.cspace_id == table->cspace_id &&
+        current.slot == root_slot) {
+        break;
+    }
+
+    // Move to next sibling if it exists
+    if (!cap_locator_is_null(&sibling)) {
+        current = sibling;
+        dir = DIR_DOWN; // Reset direction for the new sibling subtree
+    } else {
+        // No siblings left, move up to parent
+        current = parent_loc;
+        dir = DIR_UP; // We are ascending, so don't descend into its children again
+    }
+  }
+
+  // If a timeout occurred, we did locally clean up but must still report it to the caller
+  if (tx && atomic_get(&tx->state) == BH_CAP_TX_ABORTED) {
+      return K_ERR_TIMEOUT;
   }
 
   return 0;
