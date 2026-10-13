@@ -36,6 +36,8 @@ def main():
         "doctor": "Check development environment.",
         "targets": "List available targets.",
         "demo": "Run a demo target.",
+        "resolve": "Resolve composition for a target.",
+        "verify": "Verify composition for a target.",
     }
 
     for cmd, desc in commands.items():
