@@ -9,6 +9,8 @@ bh_status_t bh_hmem_create(const bharat_hmem_desc_v1_t *desc, bharat_hmem_handle
 
     bh_hmem_create_args_t args = {
         .struct_size = sizeof(bh_hmem_create_args_t),
+        .reserved0 = 0,
+        .resource_cap = 0,
         .desc = *desc,
         .rights = BH_HMEM_RIGHT_ALL,
         .out_handle = 0
@@ -22,11 +24,7 @@ bh_status_t bh_hmem_create(const bharat_hmem_desc_v1_t *desc, bharat_hmem_handle
 }
 
 bh_status_t bh_hmem_destroy(bharat_hmem_handle_t handle) {
-    bh_hmem_query_args_t args = {
-        .struct_size = sizeof(bh_hmem_query_args_t),
-        .hmem_cap = handle
-    };
-    int32_t syscall_res = bh_syscall1(BH_SYS_HMEM_DESTROY, (uintptr_t)&args);
+    int32_t syscall_res = bh_syscall1(BH_SYS_HMEM_DESTROY, (uintptr_t)handle);
     return syscall_res < 0 ? BH_ERR_PLATFORM : BH_OK;
 }
 

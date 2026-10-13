@@ -330,7 +330,7 @@ add_test(NAME host_test_vmm_fault COMMAND host_test_vmm_fault)
 set_tests_properties(host_test_vmm_fault PROPERTIES LABELS "vm")
 
 add_executable(test_uapi_abi test_uapi_abi.c)
-target_include_directories(test_uapi_abi PRIVATE ${CMAKE_SOURCE_DIR}/interface/include)
+target_include_directories(test_uapi_abi PRIVATE ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/interface/uapi)
 
 add_executable(host_test_syscall_return_x86_64
     syscall/test_syscall_extract_x86_64.c
@@ -343,6 +343,19 @@ target_include_directories(host_test_syscall_return_x86_64 PRIVATE
     ${CMAKE_SOURCE_DIR}/interface/include)
 add_test(NAME host_test_syscall_return_x86_64 COMMAND host_test_syscall_return_x86_64)
 add_test(NAME host_test_uapi_abi COMMAND test_uapi_abi)
+
+add_executable(host_test_hmem_lifecycle
+    mm/test_hmem_lifecycle.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/mm/hmem.c)
+target_include_directories(host_test_hmem_lifecycle PRIVATE
+    ${CMAKE_SOURCE_DIR}/core/kernel/include
+    ${CMAKE_SOURCE_DIR}/core/hal/include
+    ${CMAKE_SOURCE_DIR}/core/lib/include
+    ${CMAKE_SOURCE_DIR}/interface/include
+    ${CMAKE_SOURCE_DIR}/interface/uapi
+    ${CMAKE_BINARY_DIR}/generated/include)
+add_test(NAME host_test_hmem_lifecycle COMMAND host_test_hmem_lifecycle)
+set_tests_properties(host_test_hmem_lifecycle PROPERTIES LABELS "mm;hmem")
 
 add_executable(host_test_robotics_demo
     robotics/test_robotics_demo.c

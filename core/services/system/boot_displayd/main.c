@@ -18,6 +18,8 @@
 #include <bharat/uapi/syscall/bh_syscall_numbers.h>
 #include <bharat/uapi/syscall/bh_syscall.h>
 
+#include <bharat/memory/hmem.h>
+
 #include "display_client.h"
 
 #ifdef BHARAT_UI_LVGL
@@ -49,6 +51,7 @@ typedef struct {
     bh_showcase_display_session_t session;
     bh_gui_surface_handle_t surface;
     bh_gui_buffer_handle_t buffer;
+    uint64_t hmem_handle;
     void *mapped_pixels;
     bharat_tiny_fb_t fb;
     uint8_t progress_percent;
@@ -64,6 +67,15 @@ boot_display_state_t boot_displayd_get_state(void) {
 
 void boot_displayd_set_state_for_test(boot_display_state_t state) {
     g_ctx.state = state;
+}
+
+static inline int64_t bh_syscall_invoke(long nr, long a1, long a2, long a3) {
+#ifndef BHARAT_TESTING
+    return bharat_syscall(nr, a1, a2, a3, 0, 0, 0);
+#else
+    (void)nr; (void)a1; (void)a2; (void)a3;
+    return -1;
+#endif
 }
 
 static void release_resources(boot_display_ctx_t *ctx) {
@@ -82,7 +94,18 @@ static void release_resources(boot_display_ctx_t *ctx) {
         ctx->session.lease = BH_GUI_HANDLE_INVALID;
     }
 
-    if (ctx->mapped_pixels) {
+    if (ctx->hmem_handle != 0) {
+#if defined(BH_SYS_HMEM_UNMAP_CPU) && defined(BH_SYS_HMEM_DESTROY)
+        bh_hmem_unmap_cpu_args_t uargs = {
+            .struct_size = sizeof(uargs),
+            .hmem_cap = ctx->hmem_handle,
+        };
+        bh_syscall_invoke(BH_SYS_HMEM_UNMAP_CPU, (long)(uintptr_t)&uargs, 0, 0);
+        bh_syscall_invoke(BH_SYS_HMEM_DESTROY, (long)ctx->hmem_handle, 0, 0);
+#endif
+        ctx->hmem_handle = 0;
+        ctx->mapped_pixels = NULL;
+    } else if (ctx->mapped_pixels) {
         free(ctx->mapped_pixels);
         ctx->mapped_pixels = NULL;
     }
@@ -126,9 +149,59 @@ int boot_display_init(boot_display_ctx_t *ctx) {
     desc.planes[0].offset_bytes = 0;
     desc.total_size_bytes = desc.planes[0].size_bytes;
 
+    /* Attempt zero-copy HMEM scanout buffer allocation */
+    ctx->hmem_handle = 0;
+    ctx->mapped_pixels = NULL;
+#if defined(BH_SYS_HMEM_CREATE) && defined(BH_SYS_HMEM_MAP_CPU)
+    bh_hmem_create_args_t hargs = {
+        .struct_size = sizeof(hargs),
+        .desc = {
+            .version = BH_HMEM_DESC_VERSION_1,
+            .struct_size = sizeof(bharat_hmem_desc_v1_t),
+            .size = desc.total_size_bytes,
+            .alignment = 4096,
+            .usage_flags = BH_HMEM_USAGE_DMA | BH_HMEM_USAGE_CPU_WRITE,
+            .property_flags = BH_HMEM_PROP_ZERO_ON_ALLOC,
+            .preferred_domain = BH_HMEM_DOMAIN_SYSTEM,
+        },
+        .rights = BH_HMEM_RIGHT_ALL,
+        .out_handle = 0,
+        .resource_cap = 0,
+    };
+    if (bh_syscall_invoke(BH_SYS_HMEM_CREATE, (long)(uintptr_t)&hargs, 0, 0) == 0 && hargs.out_handle != 0) {
+        bh_hmem_map_cpu_args_t margs = {
+            .struct_size = sizeof(margs),
+            .hmem_cap = hargs.out_handle,
+            .access = BH_HMEM_ACCESS_WRITE,
+            .reserved = 0,
+            .out_addr = 0,
+        };
+        if (bh_syscall_invoke(BH_SYS_HMEM_MAP_CPU, (long)(uintptr_t)&margs, 0, 0) == 0 && margs.out_addr != 0) {
+            ctx->hmem_handle = hargs.out_handle;
+            ctx->mapped_pixels = (void *)(uintptr_t)margs.out_addr;
+        } else {
+#if defined(BH_SYS_HMEM_DESTROY)
+            bh_syscall_invoke(BH_SYS_HMEM_DESTROY, (long)hargs.out_handle, 0, 0);
+#endif
+        }
+    }
+#endif
+
     res = bh_client_register_buffer(ctx->session.lease, &desc, &ctx->buffer, &ctx->mapped_pixels);
     if (res != BH_DISPLAY_RESULT_OK) {
         bharat_runtime_log("boot_displayd: failed to register buffer\n");
+        if (ctx->hmem_handle != 0) {
+#if defined(BH_SYS_HMEM_UNMAP_CPU) && defined(BH_SYS_HMEM_DESTROY)
+            bh_hmem_unmap_cpu_args_t uargs = {
+                .struct_size = sizeof(uargs),
+                .hmem_cap = ctx->hmem_handle,
+            };
+            bh_syscall_invoke(BH_SYS_HMEM_UNMAP_CPU, (long)(uintptr_t)&uargs, 0, 0);
+            bh_syscall_invoke(BH_SYS_HMEM_DESTROY, (long)ctx->hmem_handle, 0, 0);
+#endif
+            ctx->hmem_handle = 0;
+            ctx->mapped_pixels = NULL;
+        }
         ctx->state = BOOT_STATE_FAILED;
         return -1;
     }

@@ -421,47 +421,333 @@ bh_operation_result_t bh_sys_get_subsystem_caps(bh_syscall_ctx_t *ctx) {
 
 #include <bharat/memory/hmem.h>
 #include <mm/hmem.h>
+#include <mm/prot_domain.h>
+#include <mm/tlb.h>
+#include <mm/aspace.h>
+#include <mm/vm_mapping.h>
+#include "lib/base/string.h"
+
+static inline cap_rights_mask_t hmem_rights_to_cap_rights(uint64_t hmem_rights) {
+    cap_rights_mask_t r = 0;
+    if (hmem_rights & BH_HMEM_RIGHT_READ) r |= (CAP_RIGHT_READ | BH_CAP_RIGHT_READ);
+    if (hmem_rights & BH_HMEM_RIGHT_WRITE) r |= (CAP_RIGHT_WRITE | BH_CAP_RIGHT_WRITE);
+    if (hmem_rights & BH_HMEM_RIGHT_MAP_CPU) r |= (CAP_RIGHT_HMEM_MAP_CPU | CAP_RIGHT_MEMORY_MAP | CAP_RIGHT_MEMORY_UNMAP | BH_CAP_RIGHT_MAP | BH_CAP_RIGHT_UNMAP);
+    if (hmem_rights & BH_HMEM_RIGHT_MAP_DEVICE) r |= (CAP_RIGHT_HMEM_MAP_DEVICE | CAP_RIGHT_DEVICE_DMA);
+    if (hmem_rights & BH_HMEM_RIGHT_SHARE) r |= (CAP_RIGHT_HMEM_SHARE | CAP_RIGHT_MEMORY_SHARE);
+    if (hmem_rights & BH_HMEM_RIGHT_QUERY) r |= (CAP_RIGHT_QUERY | CAP_RIGHT_HMEM_QUERY | BH_CAP_RIGHT_QUERY);
+    if (hmem_rights & BH_HMEM_RIGHT_DESTROY) r |= (CAP_RIGHT_HMEM_DESTROY | BH_CAP_RIGHT_DESTROY);
+    return r;
+}
+
+static inline kstatus_t bh_syscall_cap_lookup_hmem(bh_syscall_ctx_t *ctx,
+                                                   uintptr_t cap_id,
+                                                   uint64_t required_rights,
+                                                   bh_hmem_t **out_hmem) {
+    if (!ctx || !ctx->process || !ctx->process->security_sandbox_ctx) {
+        return K_ERR_DENIED;
+    }
+    if (!bh_cap_is_valid_encoding((uint32_t)cap_id)) {
+        return K_ERR_CAP_INVALID;
+    }
+    cap_validation_request_t req = {
+        .cap_id = (uint32_t)cap_id,
+        .expected_object_type = CAP_TYPE_HMEM,
+        .required_rights = required_rights,
+        .requester_pid = ctx->process->process_id,
+        .expected_generation = bh_cap_generation((uint32_t)cap_id)
+    };
+    capability_entry_t entry;
+    kstatus_t st = cap_validate_ex((capability_table_t *)ctx->process->security_sandbox_ctx,
+                                   &req, &entry);
+    if (st == K_OK) {
+        if (out_hmem) {
+            *out_hmem = (bh_hmem_t *)(uintptr_t)entry.object_ref;
+        }
+    }
+    return st;
+}
 
 bh_operation_result_t bh_sys_hmem_create(bh_syscall_ctx_t *ctx) {
     bh_hmem_create_args_t args;
     bh_status_t st = bh_copy_from_user(&args, (const void *)ctx->regs.arg[0], sizeof(args));
     if (st != BH_OK) return bh_op_result_kstatus(bh_status_to_kstatus(st));
 
-    /*
-     * Real production paths should create the object, then allocate
-     * a capability mapping it into the CSpace. If the capability system isn't
-     * fully ready for custom object derivations, P0 explicitly allows returning
-     * K_ERR_UNSUPPORTED rather than spoofing with hmem->object_id.
-     */
-    return bh_op_result_kstatus(K_ERR_UNSUPPORTED);
+    if (args.struct_size != sizeof(bh_hmem_create_args_t)) {
+        return bh_op_result_kstatus(K_ERR_INVALID_ARG);
+    }
+
+    if (args.resource_cap != 0) {
+        bh_process_object_t target;
+        kstatus_t kst = bh_syscall_cap_lookup_process(ctx, args.resource_cap, CAP_RIGHT_RESOURCE_ALLOC, &target);
+        if (kst != K_OK) return bh_op_result_kstatus(kst);
+    }
+
+    uint32_t core = hal_cpu_get_id();
+    bh_hmem_t *object = NULL;
+    kstatus_t kst = bh_hmem_create_object(&args.desc, args.rights, core, &object);
+    if (kst != K_OK) return bh_op_result_kstatus(kst);
+
+    capability_table_t *table = (capability_table_t *)ctx->process->security_sandbox_ctx;
+    if (!table) {
+        bh_hmem_destroy_object(object);
+        return bh_op_result_kstatus(K_ERR_DENIED);
+    }
+
+    cap_rights_mask_t cap_rights = hmem_rights_to_cap_rights(args.rights);
+    uint32_t cap_id = 0;
+    int grant_res = cap_table_grant(table, CAP_TYPE_HMEM, (uint64_t)(uintptr_t)object, cap_rights, &cap_id);
+    if (grant_res != 0) {
+        bh_hmem_destroy_object(object);
+        return bh_op_result_kstatus(K_ERR_NO_RESOURCES);
+    }
+
+    args.out_handle = (bharat_hmem_handle_t)cap_id;
+    st = bh_copy_to_user((void *)ctx->regs.arg[0], &args, sizeof(args));
+    if (st != BH_OK) {
+        cap_table_revoke(table, cap_id);
+        bh_hmem_destroy_object(object);
+        return bh_op_result_kstatus(bh_status_to_kstatus(st));
+    }
+
+    return bh_op_result_kstatus(K_OK);
 }
 
 bh_operation_result_t bh_sys_hmem_destroy(bh_syscall_ctx_t *ctx) {
-    return bh_op_result_kstatus(K_ERR_UNSUPPORTED);
+    uint32_t cap_id = (uint32_t)ctx->regs.arg[0];
+    if (cap_id == 0) return bh_op_result_kstatus(K_ERR_INVALID_ARG);
+
+    bh_hmem_t *object = NULL;
+    kstatus_t kst = bh_syscall_cap_lookup_hmem(ctx, cap_id, CAP_RIGHT_HMEM_DESTROY | BH_CAP_RIGHT_DESTROY, &object);
+    if (kst != K_OK) return bh_op_result_kstatus(kst);
+
+    capability_table_t *table = (capability_table_t *)ctx->process->security_sandbox_ctx;
+    if (table) {
+        cap_table_revoke(table, cap_id);
+    }
+
+    return bh_op_result_kstatus(bh_hmem_destroy_object(object));
 }
 
 bh_operation_result_t bh_sys_hmem_query(bh_syscall_ctx_t *ctx) {
-    return bh_op_result_kstatus(K_ERR_UNSUPPORTED);
+    bh_hmem_query_args_t args;
+    bh_status_t st = bh_copy_from_user(&args, (const void *)ctx->regs.arg[0], sizeof(args));
+    if (st != BH_OK) return bh_op_result_kstatus(bh_status_to_kstatus(st));
+
+    if (args.struct_size != sizeof(bh_hmem_query_args_t)) {
+        return bh_op_result_kstatus(K_ERR_INVALID_ARG);
+    }
+
+    bh_hmem_t *object = NULL;
+    kstatus_t kst = bh_syscall_cap_lookup_hmem(ctx, (uint32_t)args.hmem_cap, CAP_RIGHT_QUERY | BH_CAP_RIGHT_QUERY, &object);
+    if (kst != K_OK) return bh_op_result_kstatus(kst);
+
+    memset(&args.out_info, 0, sizeof(args.out_info));
+    args.out_info.version = 1U;
+    args.out_info.struct_size = sizeof(args.out_info);
+    args.out_info.size = object->size;
+    args.out_info.alignment = object->alignment;
+    args.out_info.usage_flags = object->usage_flags;
+    args.out_info.property_flags = object->property_flags;
+    args.out_info.content_generation = object->content_generation;
+    args.out_info.preferred_domain = object->preferred_domain;
+    args.out_info.cpu_map_count = object->cpu_map_count;
+
+    st = bh_copy_to_user((void *)ctx->regs.arg[0], &args, sizeof(args));
+    return bh_op_result_kstatus(bh_status_to_kstatus(st));
 }
 
 bh_operation_result_t bh_sys_hmem_map_cpu(bh_syscall_ctx_t *ctx) {
-    /*
-     * P0 Security Requirement: Never return `object->cpu_va` or any kernel/physical address to userspace.
-     * Since canonical per-process user VM mapping isn't implemented for HMEM yet,
-     * we must return K_ERR_UNSUPPORTED.
-     */
-    return bh_op_result_kstatus(K_ERR_UNSUPPORTED);
+    bh_hmem_map_cpu_args_t args;
+    bh_status_t st = bh_copy_from_user(&args, (const void *)ctx->regs.arg[0], sizeof(args));
+    if (st != BH_OK) return bh_op_result_kstatus(bh_status_to_kstatus(st));
+
+    if (args.struct_size != sizeof(bh_hmem_map_cpu_args_t)) {
+        return bh_op_result_kstatus(K_ERR_INVALID_ARG);
+    }
+
+    if (args.access == 0U ||
+        (args.access & ~(BH_HMEM_ACCESS_READ | BH_HMEM_ACCESS_WRITE | BH_HMEM_ACCESS_EXECUTE)) != 0U) {
+        return bh_op_result_kstatus(K_ERR_INVALID_ARG);
+    }
+
+    if ((args.access & BH_HMEM_ACCESS_WRITE) != 0U && (args.access & BH_HMEM_ACCESS_EXECUTE) != 0U) {
+        return bh_op_result_kstatus(K_ERR_DENIED);
+    }
+
+    cap_rights_mask_t req_rights = CAP_RIGHT_HMEM_MAP_CPU | BH_CAP_RIGHT_MAP;
+    if (args.access & BH_HMEM_ACCESS_READ) {
+        req_rights |= (CAP_RIGHT_READ | BH_CAP_RIGHT_READ);
+    }
+    if (args.access & BH_HMEM_ACCESS_WRITE) {
+        req_rights |= (CAP_RIGHT_WRITE | BH_CAP_RIGHT_WRITE);
+    }
+
+    bh_hmem_t *object = NULL;
+    kstatus_t kst = bh_syscall_cap_lookup_hmem(ctx, (uint32_t)args.hmem_cap, req_rights, &object);
+    if (kst != K_OK) return bh_op_result_kstatus(kst);
+
+    spin_lock(&object->lock);
+    if (object->cpu_map_count != 0U) {
+        spin_unlock(&object->lock);
+        return bh_op_result_kstatus(K_ERR_BUSY);
+    }
+
+    address_space_t *aspace = ctx->process ? ctx->process->addr_space : NULL;
+    if (!aspace || !aspace->prot_domain) {
+        spin_unlock(&object->lock);
+        return bh_op_result_kstatus(K_ERR_BAD_STATE);
+    }
+
+    size_t aligned_len = (size_t)((object->size + PAGE_SIZE - 1U) & ~(PAGE_SIZE - 1U));
+    uintptr_t cand_va = 0x40000000ULL;
+    if (cand_va < aspace->user_base) cand_va = aspace->user_base;
+
+    spin_lock(&aspace->lock);
+    vm_region_t *r = aspace->regions;
+    while (r != NULL) {
+        if (cand_va + aligned_len <= r->base) {
+            break;
+        }
+        if (cand_va < r->base + r->length) {
+            cand_va = (r->base + r->length + PAGE_SIZE - 1U) & ~(PAGE_SIZE - 1U);
+        }
+        r = r->next;
+    }
+    if (aspace->user_limit != 0 && cand_va + aligned_len > aspace->user_limit) {
+        spin_unlock(&aspace->lock);
+        spin_unlock(&object->lock);
+        return bh_op_result_kstatus(K_ERR_NO_MEMORY);
+    }
+    spin_unlock(&aspace->lock);
+
+    uint32_t prot_flags = VM_PROT_USER;
+    if (args.access & BH_HMEM_ACCESS_READ) prot_flags |= VM_PROT_READ;
+    if (args.access & BH_HMEM_ACCESS_WRITE) prot_flags |= VM_PROT_WRITE;
+    if (args.access & BH_HMEM_ACCESS_EXECUTE) prot_flags |= VM_PROT_EXEC;
+
+    int map_ret = prot_domain_map_region(aspace->prot_domain, cand_va, object->pmm_block.phys_addr, aligned_len, prot_flags);
+    if (map_ret != 0) {
+        spin_unlock(&object->lock);
+        return bh_op_result_kstatus(K_ERR_NO_MEMORY);
+    }
+
+    vm_region_t *out_region = NULL;
+    int attach_ret = aspace_region_attach(aspace, cand_va, aligned_len, prot_flags, 0, VM_INHERIT_COPY_META, object->vm_obj, 0, &out_region);
+    if (attach_ret != 0) {
+        prot_domain_unmap_region(aspace->prot_domain, cand_va, aligned_len);
+        spin_unlock(&object->lock);
+        return bh_op_result_kstatus((kstatus_t)attach_ret);
+    }
+
+    object->mapped_user_va = cand_va;
+    object->mapped_aspace = aspace;
+    object->cpu_map_count = 1U;
+    spin_unlock(&object->lock);
+
+    args.out_addr = (uint64_t)cand_va;
+    st = bh_copy_to_user((void *)ctx->regs.arg[0], &args, sizeof(args));
+    if (st != BH_OK) {
+        spin_lock(&object->lock);
+        aspace_region_detach(aspace, cand_va);
+        prot_domain_unmap_region(aspace->prot_domain, cand_va, aligned_len);
+        object->mapped_user_va = 0;
+        object->mapped_aspace = NULL;
+        object->cpu_map_count = 0;
+        spin_unlock(&object->lock);
+        return bh_op_result_kstatus(bh_status_to_kstatus(st));
+    }
+
+    return bh_op_result_kstatus(K_OK);
 }
 
 bh_operation_result_t bh_sys_hmem_unmap_cpu(bh_syscall_ctx_t *ctx) {
-    /* P0: Fails closed since mapping fails closed. */
-    return bh_op_result_kstatus(K_ERR_UNSUPPORTED);
+    bh_hmem_unmap_cpu_args_t args;
+    bh_status_t st = bh_copy_from_user(&args, (const void *)ctx->regs.arg[0], sizeof(args));
+    if (st != BH_OK) return bh_op_result_kstatus(bh_status_to_kstatus(st));
+
+    if (args.struct_size != sizeof(bh_hmem_unmap_cpu_args_t)) {
+        return bh_op_result_kstatus(K_ERR_INVALID_ARG);
+    }
+
+    bh_hmem_t *object = NULL;
+    kstatus_t kst = bh_syscall_cap_lookup_hmem(ctx, (uint32_t)args.hmem_cap, CAP_RIGHT_HMEM_MAP_CPU | BH_CAP_RIGHT_UNMAP, &object);
+    if (kst != K_OK) return bh_op_result_kstatus(kst);
+
+    spin_lock(&object->lock);
+    if (object->cpu_map_count == 0U || object->mapped_user_va == 0) {
+        spin_unlock(&object->lock);
+        return bh_op_result_kstatus(K_ERR_BAD_STATE);
+    }
+
+    address_space_t *aspace = object->mapped_aspace;
+    uintptr_t va = object->mapped_user_va;
+    size_t aligned_len = (size_t)((object->size + PAGE_SIZE - 1U) & ~(PAGE_SIZE - 1U));
+
+    if (aspace && aspace->prot_domain) {
+        prot_domain_unmap_region(aspace->prot_domain, va, aligned_len);
+        aspace_region_detach(aspace, va);
+        tlb_invalidate_all(aspace, va, aligned_len, TLB_INV_PAGE);
+    }
+
+    object->mapped_user_va = 0;
+    object->mapped_aspace = NULL;
+    object->cpu_map_count = 0;
+    object->content_generation++;
+    spin_unlock(&object->lock);
+
+    return bh_op_result_kstatus(K_OK);
 }
 
 bh_operation_result_t bh_sys_hmem_sync_for_cpu(bh_syscall_ctx_t *ctx) {
-    return bh_op_result_kstatus(K_ERR_UNSUPPORTED);
+    bh_hmem_sync_args_t args;
+    bh_status_t st = bh_copy_from_user(&args, (const void *)ctx->regs.arg[0], sizeof(args));
+    if (st != BH_OK) return bh_op_result_kstatus(bh_status_to_kstatus(st));
+
+    if (args.struct_size != sizeof(bh_hmem_sync_args_t)) {
+        return bh_op_result_kstatus(K_ERR_INVALID_ARG);
+    }
+
+    bh_hmem_t *object = NULL;
+    kstatus_t kst = bh_syscall_cap_lookup_hmem(ctx, (uint32_t)args.hmem_cap, CAP_RIGHT_READ | BH_CAP_RIGHT_READ, &object);
+    if (kst != K_OK) return bh_op_result_kstatus(kst);
+
+    if (args.length == 0U || args.offset > object->size || args.length > object->size - args.offset) {
+        return bh_op_result_kstatus(K_ERR_INVALID_ARG);
+    }
+
+    if ((object->property_flags & BH_HMEM_PROP_CPU_COHERENT) != 0U) {
+        __atomic_thread_fence(__ATOMIC_SEQ_CST);
+        return bh_op_result_kstatus(K_OK);
+    }
+
+    hal_hmem_status_t hst = hal_hmem_sync_range((uintptr_t)object->kernel_mapping + (uintptr_t)args.offset,
+                                                (size_t)args.length, HAL_HMEM_SYNC_TO_CPU);
+    return bh_op_result_kstatus(hst == HAL_HMEM_OK ? K_OK : K_ERR_BAD_STATE);
 }
 
 bh_operation_result_t bh_sys_hmem_sync_for_device(bh_syscall_ctx_t *ctx) {
-    return bh_op_result_kstatus(K_ERR_UNSUPPORTED);
+    bh_hmem_sync_args_t args;
+    bh_status_t st = bh_copy_from_user(&args, (const void *)ctx->regs.arg[0], sizeof(args));
+    if (st != BH_OK) return bh_op_result_kstatus(bh_status_to_kstatus(st));
+
+    if (args.struct_size != sizeof(bh_hmem_sync_args_t)) {
+        return bh_op_result_kstatus(K_ERR_INVALID_ARG);
+    }
+
+    bh_hmem_t *object = NULL;
+    kstatus_t kst = bh_syscall_cap_lookup_hmem(ctx, (uint32_t)args.hmem_cap, CAP_RIGHT_WRITE | BH_CAP_RIGHT_WRITE, &object);
+    if (kst != K_OK) return bh_op_result_kstatus(kst);
+
+    if (args.length == 0U || args.offset > object->size || args.length > object->size - args.offset) {
+        return bh_op_result_kstatus(K_ERR_INVALID_ARG);
+    }
+
+    if ((object->property_flags & BH_HMEM_PROP_CPU_COHERENT) != 0U) {
+        __atomic_thread_fence(__ATOMIC_SEQ_CST);
+        return bh_op_result_kstatus(K_OK);
+    }
+
+    hal_hmem_status_t hst = hal_hmem_sync_range((uintptr_t)object->kernel_mapping + (uintptr_t)args.offset,
+                                                (size_t)args.length, HAL_HMEM_SYNC_TO_DEVICE);
+    return bh_op_result_kstatus(hst == HAL_HMEM_OK ? K_OK : K_ERR_BAD_STATE);
 }

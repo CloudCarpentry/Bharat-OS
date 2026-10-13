@@ -9,10 +9,12 @@ target_link_libraries(boot_displayd PRIVATE bharat_user_buildopts bharat_freesta
 
 target_include_directories(boot_displayd PRIVATE
     ${CMAKE_SOURCE_DIR}/interface/include
+    ${CMAKE_SOURCE_DIR}/interface/uapi
     ${CMAKE_SOURCE_DIR}/core/kernel/include
     ${CMAKE_SOURCE_DIR}/core/lib/ipc/include
     ${CMAKE_SOURCE_DIR}/core/lib/cap/include
     ${CMAKE_SOURCE_DIR}/core/lib/runtime/include
+    ${CMAKE_BINARY_DIR}/generated/include
 )
 
 if(BHARAT_UI_LVGL)
@@ -43,10 +45,12 @@ if(NOT CMAKE_CROSSCOMPILING)
     target_compile_definitions(test_boot_displayd PRIVATE BHARAT_TESTING)
     target_include_directories(test_boot_displayd PRIVATE
         ${CMAKE_SOURCE_DIR}/interface/include
+        ${CMAKE_SOURCE_DIR}/interface/uapi
         ${CMAKE_SOURCE_DIR}/core/kernel/include
         ${CMAKE_SOURCE_DIR}/core/lib/ipc/include
         ${CMAKE_SOURCE_DIR}/core/lib/cap/include
         ${CMAKE_SOURCE_DIR}/core/lib/runtime/include
+        ${CMAKE_BINARY_DIR}/generated/include
     )
     add_test(NAME test_boot_displayd COMMAND test_boot_displayd)
 endif()

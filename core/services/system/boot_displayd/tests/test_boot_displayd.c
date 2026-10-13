@@ -31,6 +31,7 @@ typedef struct {
     bh_showcase_display_session_t session;
     bh_gui_surface_handle_t surface;
     bh_gui_buffer_handle_t buffer;
+    uint64_t hmem_handle;
     void *mapped_pixels;
     bharat_tiny_fb_t fb;
     uint8_t progress_percent;

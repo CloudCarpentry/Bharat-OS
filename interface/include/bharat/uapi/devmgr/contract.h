@@ -18,11 +18,11 @@ extern "C" {
 
 /* Opcodes */
 enum {
-    DEVMGR_OP_HOTPLUG_DEVICE    = 1001,
-    DEVMGR_OP_BIND_DRIVER       = 1002,
-    DEVMGR_OP_REMOVE_DEVICE     = 1003,
-    DEVMGR_OP_RESET_DEVICE      = 1004,
-    DEVMGR_OP_QUERY_DEVICE      = 1005,
+    DEVMGR_OP_HOTPLUG_DEVICE    = 1,
+    DEVMGR_OP_BIND_DRIVER       = 2,
+    DEVMGR_OP_REMOVE_DEVICE     = 3,
+    DEVMGR_OP_RESET_DEVICE      = 4,
+    DEVMGR_OP_QUERY_DEVICE      = 5,
 };
 
 /* Structs */

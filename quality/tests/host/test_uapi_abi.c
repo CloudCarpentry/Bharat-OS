@@ -8,6 +8,7 @@
 #include <bharat/uapi/syscall_args.h>
 #include <bharat/uapi/sys_errno.h>
 #include <bharat/uapi/service_status.h>
+#include <bharat/memory/hmem.h>
 
 #if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L)
 #define STATIC_ASSERT _Static_assert
@@ -41,12 +42,19 @@ STATIC_ASSERT(sizeof(bharat_sys_endpoint_create_args_t) == 16, "endpoint_create 
 STATIC_ASSERT(sizeof(bharat_sys_endpoint_send_args_t) == 40, "endpoint_send abi drift");
 STATIC_ASSERT(sizeof(bharat_sys_endpoint_receive_args_t) == 40, "endpoint_receive abi drift");
 STATIC_ASSERT(sizeof(bharat_sys_cap_invoke_args_t) == 32, "cap_invoke abi drift");
-STATIC_ASSERT(sizeof(bharat_sys_vmm_map_page_args_t) == 24, "vmm_map abi drift");
-STATIC_ASSERT(sizeof(bharat_sys_cap_delegate_args_t) == 16, "cap_delegate abi drift");
+STATIC_ASSERT(sizeof(bharat_sys_vmm_map_page_args_t) == 16, "vmm_map abi drift");
+STATIC_ASSERT(sizeof(bharat_sys_cap_delegate_args_t) == 24, "cap_delegate abi drift");
+
+STATIC_ASSERT(sizeof(bh_hmem_create_args_t) == 112, "hmem_create abi drift");
+STATIC_ASSERT(sizeof(bh_hmem_query_args_t) == 96, "hmem_query abi drift");
+STATIC_ASSERT(sizeof(bh_hmem_map_cpu_args_t) == 32, "hmem_map_cpu abi drift");
+STATIC_ASSERT(sizeof(bh_hmem_unmap_cpu_args_t) == 16, "hmem_unmap_cpu abi drift");
+STATIC_ASSERT(sizeof(bh_hmem_sync_args_t) == 32, "hmem_sync abi drift");
+STATIC_ASSERT(offsetof(bh_hmem_create_args_t, resource_cap) == 104, "hmem_create resource_cap offset drift");
 
 STATIC_ASSERT(offsetof(bharat_sys_endpoint_send_args_t, payload_ptr) == 8, "endpoint_send layout drift");
 STATIC_ASSERT(offsetof(bharat_sys_endpoint_receive_args_t, out_len_ptr) == 16, "endpoint_receive layout drift");
-STATIC_ASSERT(offsetof(bharat_sys_cap_delegate_args_t, out_cap_ptr) == 8, "cap_delegate layout drift");
+STATIC_ASSERT(offsetof(bharat_sys_cap_delegate_args_t, out_cap_ptr) == 16, "cap_delegate layout drift");
 
 STATIC_ASSERT(SYS_EINVAL == 22, "sys errno drift");
 STATIC_ASSERT(SYS_ENOSYS == 38, "sys errno drift");

@@ -27,11 +27,11 @@ The Linux Compatibility Personality provides a POSIX-like user space to accelera
 
 ## 3. POSIX and Syscall Coverage Scope
 
-*   **File I/O:** `open`, `read`, `write`, `close`, `seek`, `stat`.
-*   **Memory:** `mmap`, `munmap`, `mprotect` (translated to Bharat-OS VM abstractions).
-*   **Sockets:** Baseline IPv4/IPv6 TCP and UDP sockets.
-*   **Threading:** Standard `pthread` expectations (creation, mutexes, condition variables) mapped to Bharat-OS native threads.
-*   **Signals:** A restricted, mostly synchronous subset of signals (e.g., `SIGINT`, `SIGTERM`, `SIGSEGV`).
+*   **Hardware Trap & Syscall ABI:** Handled via unified architecture trap extraction across all 5 ISAs (`x86_64`, `arm64`, `arm32`, `riscv64`, `riscv32`). See [`linux-android-syscall-arch.md`](./linux-android-syscall-arch.md) for full instruction, cause vector, and register mappings.
+*   **File I/O:** `open`, `openat`, `read`, `write`, `close`, `seek`, `stat`, `getrandom`.
+*   **Process & Threading:** `getpid`, `gettid`, `clone` (with TLS, TID pointers), `futex` (wait/wake buckets), `arch_prctl`, `prlimit64`, `wait4`.
+*   **Memory:** `mmap`, `munmap`, `mprotect`, `brk` (translated to Bharat-OS VM abstractions).
+*   **Signals:** Synchronous signal framework (`rt_sigaction`, `rt_sigprocmask`, `rt_sigreturn`).
 
 ## 4. What is Explicitly NOT Supported
 

@@ -18,10 +18,15 @@ void bh_syscall_stats_inc_fast(uint32_t core_id) { (void)core_id; }
 void bh_syscall_stats_inc_slow(uint32_t core_id) { (void)core_id; }
 void bh_syscall_stats_inc_denied(uint32_t core_id) { (void)core_id; }
 void fault_diag_record_syscall(uintptr_t nr) { (void)nr; }
-long kstatus_to_sysret(kstatus_t st) {
-    if (st == K_ERR_UNSUPPORTED) return -38; // Mock -ENOSYS
+long kstatus_to_native_sysret(kstatus_t st) {
+    if (st == K_ERR_UNSUPPORTED || st == K_ERR_INVALID_SYSCALL) return -38;
     return (long)st;
 }
+bool arch_trap_status_interrupt_enabled(const trap_frame_t *frame) { (void)frame; return true; }
+const void* bh_personality_registry_get_ops(bh_personality_kind_t kind) { (void)kind; return NULL; }
+kstatus_t thread_raise_fault(bh_thread_t *thread, thread_fault_t fault) { (void)thread; (void)fault; return K_OK; }
+void sched_reschedule(void) {}
+kstatus_t bh_syscall_validate_capability(bh_syscall_ctx_t *ctx, const bh_syscall_meta_t *desc) { (void)ctx; (void)desc; return K_OK; }
 kstatus_t arch_trap_extract_syscall(const trap_frame_t *frame, bh_syscall_regs_t *out) {
     out->nr = 999; // Unsupported syscall NR
     return K_OK;
