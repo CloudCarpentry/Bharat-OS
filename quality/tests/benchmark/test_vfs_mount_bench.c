@@ -18,6 +18,9 @@ void benchmark_mount_resolution(void) {
     vfs_node_t mock_node = {0};
     capability_t mock_cap = {0};
 
+    extern void fs_adapter_direct_init(void);
+    fs_adapter_direct_init();
+
     // Reset state
     vfs_mount_test_reset_state();
 

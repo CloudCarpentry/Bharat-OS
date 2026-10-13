@@ -69,6 +69,9 @@ capability_table_t *g_mock_cap_table;
 extern bh_process_t* g_stub_current_process;
 
 int main(void) {
+    extern void fs_adapter_direct_init(void);
+    fs_adapter_direct_init();
+
     static bh_process_t proc;
     g_stub_current_process = &proc;
     proc.security_sandbox_ctx = g_mock_cap_table;
