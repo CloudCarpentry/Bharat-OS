@@ -589,6 +589,9 @@ struct bh_process {
     // Capability-based security context would be linked here
     void* security_sandbox_ctx;
 
+    // Personality-specific runtime context (e.g. Linux per-process FD table)
+    void* personality_data;
+
     // Ownership tracking
     uint32_t owner_core_id;
     uint64_t object_id;

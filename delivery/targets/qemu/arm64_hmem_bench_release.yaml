@@ -11,6 +11,7 @@ implementation_maturity:
 build:
   cmake_preset: arm64-hmem-bench-release
   cmake_defs:
+    BHARAT_INIT_CORE_BOOTSTRAP_ONLY: ON
     CMAKE_BUILD_TYPE: Release
     BHARAT_ARCH_FAMILY: ARM64
     BHARAT_DEVICE_PROFILE: DESKTOP
@@ -49,3 +50,4 @@ debug:
   backend: gdb_remote
   stop_on_entry: false
   gdb_port: 1234
+

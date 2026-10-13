@@ -173,16 +173,23 @@ bh_display_result_t bh_client_register_buffer(
   bh_display_result_t result;
   void *mapping;
 
+  int allocated_here = 0;
+
   if (desc == NULL || out_buffer == NULL || out_mapped == NULL ||
       desc->plane_count != 1 || desc->total_size_bytes == 0 ||
       desc->total_size_bytes > (uint64_t)(size_t)-1) {
     return BH_DISPLAY_RESULT_INVALID_ARGUMENT;
   }
-  mapping = malloc((size_t)desc->total_size_bytes);
-  if (mapping == NULL) {
-    return BH_DISPLAY_RESULT_NO_RESOURCES;
+  if (*out_mapped != NULL) {
+    mapping = *out_mapped;
+  } else {
+    mapping = malloc((size_t)desc->total_size_bytes);
+    if (mapping == NULL) {
+      return BH_DISPLAY_RESULT_NO_RESOURCES;
+    }
+    memset(mapping, 0, (size_t)desc->total_size_bytes);
+    allocated_here = 1;
   }
-  memset(mapping, 0, (size_t)desc->total_size_bytes);
 
   request.lease_handle = lease;
   request.width = desc->width;
@@ -202,7 +209,9 @@ bh_display_result_t bh_client_register_buffer(
   if (result != BH_DISPLAY_RESULT_OK ||
       response.result != BH_DISPLAY_RESULT_OK ||
       !bh_gui_handle_validate(response.buffer_handle, BH_GUI_RESOURCE_BUFFER)) {
-    free(mapping);
+    if (allocated_here) {
+      free(mapping);
+    }
     return result != BH_DISPLAY_RESULT_OK
                ? result
                : (response.result == BH_DISPLAY_RESULT_OK

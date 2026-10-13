@@ -77,7 +77,8 @@ int boot_mode_resolve(const struct boot_info *bi, bharat_boot_mode_t *out_mode) 
     char mode_str[32] = {0};
 
     // If canonical cmdline parsing works, prefer it
-    if (cmdline_has_kv(bi->cmdline, "boot_mode", mode_str, sizeof(mode_str))) {
+    if (cmdline_has_kv(bi->cmdline, "boot_mode", mode_str, sizeof(mode_str)) ||
+        cmdline_has_kv(bi->cmdline, "mode", mode_str, sizeof(mode_str))) {
         if (string_equals(mode_str, "normal")) { *out_mode = BOOT_MODE_NORMAL; return 0; }
         if (string_equals(mode_str, "debug") || string_equals(mode_str, "diagnostic")) { *out_mode = BOOT_MODE_DEBUG; return 0; }
         if (string_equals(mode_str, "selftest")) { *out_mode = BOOT_MODE_SELFTEST; return 0; }

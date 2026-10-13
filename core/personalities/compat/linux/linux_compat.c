@@ -1,5 +1,6 @@
 void linux_vfs_init(void);
 #include "linux_compat.h"
+#include "linux_errno.h"
 
 #include <stddef.h>
 
@@ -9,6 +10,8 @@ void linux_vfs_init(void);
 
 extern const bh_personality_syscall_table_t bh_linux_syscall_table;
 extern long bh_syscall_gate(trap_frame_t *frame, const trap_info_t *info);
+struct bh_process *sched_current_process(void);
+struct bh_thread *sched_current_thread(void);
 
 const bh_personality_syscall_table_t *personality_linux_get_table(void) {
     return &bh_linux_syscall_table;
@@ -74,6 +77,8 @@ long linux_syscall_handler(long sysno, long arg1, long arg2, long arg3, long arg
     ctx.regs.arg[3] = (uintptr_t)arg4;
     ctx.regs.arg[4] = (uintptr_t)arg5;
     ctx.regs.arg[5] = (uintptr_t)arg6;
+    ctx.thread = sched_current_thread();
+    ctx.process = sched_current_process();
 
     if (!g_linux_instance || !g_linux_instance->is_running) {
         return -38; // ENOSYS equivalent
@@ -88,8 +93,13 @@ long linux_syscall_handler(long sysno, long arg1, long arg2, long arg3, long arg
     if (!desc || !desc->handler) {
         return -38;
     }
+    ctx.desc = desc;
 
-    return desc->handler(&ctx);
+    bh_operation_result_t res = desc->handler(&ctx);
+    if (res.domain == BH_STATUS_DOMAIN_KSTATUS) {
+        return -linux_errno_from_bh_status((kstatus_t)res.value);
+    }
+    return (long)res.value;
 }
 
 static long linux_handle_syscall(bh_thread_t *thread, trap_frame_t *frame, const trap_info_t *info) {
@@ -107,37 +117,112 @@ static int linux_map_fault_to_signal(const trap_info_t *info) {
     return 11; // SIGSEGV
 }
 
+static long linux_normalize_syscall_return(bh_operation_result_t result) {
+    if (result.domain == BH_STATUS_DOMAIN_KSTATUS) {
+        return -linux_errno_from_bh_status((kstatus_t)result.value);
+    }
+    return (long)result.value;
+}
+
 static const personality_ops_t linux_personality_ops = {
     .handle_syscall = linux_handle_syscall,
     .handle_user_fault = linux_handle_user_fault,
     .map_fault_to_signal = linux_map_fault_to_signal,
+    .normalize_syscall_return = linux_normalize_syscall_return,
 };
 
 const personality_ops_t *personality_linux_get_ops(void) {
     return &linux_personality_ops;
 }
 
-// Rest of VFS and FD mapping...
-static linux_fd_map_t fd_table[LINUX_MAX_FDS];
-static int next_fd = 3;
+#include "lib/base/string.h"
+#include "sched/sched.h"
+
+#define MAX_LINUX_PROCS 64
+static linux_process_state_t g_linux_proc_states[MAX_LINUX_PROCS];
+static uint64_t g_linux_proc_pids[MAX_LINUX_PROCS];
+static int g_linux_proc_in_use[MAX_LINUX_PROCS];
+
+linux_process_state_t *linux_get_or_create_process_state(struct bh_process *proc) {
+    if (!proc) return NULL;
+    if (proc->personality_data != NULL) {
+        return (linux_process_state_t *)proc->personality_data;
+    }
+
+    /* Find existing entry by process_id or empty slot */
+    int empty_idx = -1;
+    for (int i = 0; i < MAX_LINUX_PROCS; i++) {
+        if (g_linux_proc_in_use[i] && g_linux_proc_pids[i] == proc->process_id) {
+            proc->personality_data = &g_linux_proc_states[i];
+            return &g_linux_proc_states[i];
+        }
+        if (!g_linux_proc_in_use[i] && empty_idx == -1) {
+            empty_idx = i;
+        }
+    }
+
+    if (empty_idx == -1) {
+        return NULL;
+    }
+
+    g_linux_proc_in_use[empty_idx] = 1;
+    g_linux_proc_pids[empty_idx] = proc->process_id;
+    linux_process_state_t *st = &g_linux_proc_states[empty_idx];
+    memset(st, 0, sizeof(*st));
+
+    for (int i = 0; i < LINUX_MAX_FDS; i++) {
+        st->fd_table[i].type = LINUX_FD_TYPE_NONE;
+        st->fd_table[i].ref_count = 0;
+    }
+
+    /* Standard stdio fds */
+    st->fd_table[0].type = LINUX_FD_TYPE_CONSOLE;
+    st->fd_table[0].linux_fd = 0;
+    st->fd_table[0].ref_count = 1;
+
+    st->fd_table[1].type = LINUX_FD_TYPE_CONSOLE;
+    st->fd_table[1].linux_fd = 1;
+    st->fd_table[1].ref_count = 1;
+
+    st->fd_table[2].type = LINUX_FD_TYPE_CONSOLE;
+    st->fd_table[2].linux_fd = 2;
+    st->fd_table[2].ref_count = 1;
+
+    st->next_fd = 3;
+    st->brk_start = proc->brk_start;
+    st->brk_current = proc->brk_current;
+
+    proc->personality_data = st;
+    return st;
+}
+
+void linux_destroy_process_state(struct bh_process *proc) {
+    if (!proc) return;
+    for (int i = 0; i < MAX_LINUX_PROCS; i++) {
+        if (g_linux_proc_in_use[i] && g_linux_proc_pids[i] == proc->process_id) {
+            g_linux_proc_in_use[i] = 0;
+            g_linux_proc_pids[i] = 0;
+            memset(&g_linux_proc_states[i], 0, sizeof(linux_process_state_t));
+            break;
+        }
+    }
+    proc->personality_data = NULL;
+}
 
 int linux_map_fd_to_capability(subsys_instance_t* env, int linux_fd, uint32_t cap, linux_fd_type_t type) {
-    if (!env || linux_fd < 0 || linux_fd >= LINUX_MAX_FDS) return -1;
-    fd_table[linux_fd].type = type;
-    fd_table[linux_fd].linux_fd = linux_fd;
-    fd_table[linux_fd].backing_capability = cap;
-    fd_table[linux_fd].open_flags = 0;
-    fd_table[linux_fd].file_offset = 0;
-    fd_table[linux_fd].ref_count = 1;
+    (void)env;
+    bh_process_t *curr = sched_current_process();
+    linux_process_state_t *st = linux_get_or_create_process_state(curr);
+    if (!st || linux_fd < 0 || linux_fd >= LINUX_MAX_FDS) return -1;
+    st->fd_table[linux_fd].type = type;
+    st->fd_table[linux_fd].linux_fd = linux_fd;
+    st->fd_table[linux_fd].backing_capability = cap;
+    st->fd_table[linux_fd].open_flags = 0;
+    st->fd_table[linux_fd].file_offset = 0;
+    st->fd_table[linux_fd].ref_count = 1;
     return 0;
 }
 
 void linux_vfs_init(void) {
-    for (int i = 0; i < LINUX_MAX_FDS; i++) {
-        fd_table[i].type = LINUX_FD_TYPE_NONE;
-        fd_table[i].ref_count = 0;
-    }
-    linux_map_fd_to_capability(g_linux_instance, 0, 0, LINUX_FD_TYPE_CONSOLE);
-    linux_map_fd_to_capability(g_linux_instance, 1, 0, LINUX_FD_TYPE_CONSOLE);
-    linux_map_fd_to_capability(g_linux_instance, 2, 0, LINUX_FD_TYPE_CONSOLE);
+    /* Per-process tables initialize on demand upon process creation / lookup */
 }

@@ -30,10 +30,10 @@ This folder provides a **portable documentation structure** for code agents and 
 
 The following files are the **canonical source of truth** for AI agents working in this repository:
 
-- **Antigravity**: [/.agent/agent.md](file:///c:/workspace/Crazy_idea/Bharat-OS/.agent/agent.md) (Workflows in `/.agent/workflows/`, Skills in `/.agent/skills/`)
-- **GitHub Copilot**: [/.github/copilot-instructions.md](file:///c:/workspace/Crazy_idea/Bharat-OS/.github/copilot-instructions.md)
-- **Cline / Claude Dev**: [/.clinerules](file:///c:/workspace/Crazy_idea/Bharat-OS/.clinerules)
-- **Cursor**: [/.cursorrules](file:///c:/workspace/Crazy_idea/Bharat-OS/.cursorrules)
+- **Antigravity**: [/.agent/agent.md](../../.agent/agent.md) (Workflows in `/.agent/workflows/`, Skills in `/.agent/skills/`)
+- **GitHub Copilot**: [/.github/copilot-instructions.md](../../.github/copilot-instructions.md)
+- **Cline / Claude Dev**: [/.clinerules](../../.clinerules)
+- **Cursor**: [/.cursorrules](../../.cursorrules)
 
 ## Folder Structure
 
@@ -66,7 +66,7 @@ docs/ai-agents/
 
 ## Recommended Rollout
 
-- Update [/.agent/agent.md](file:///c:/workspace/Crazy_idea/Bharat-OS/.agent/agent.md) for global behavior changes.
+- Update [/.agent/agent.md](../../.agent/agent.md) for global behavior changes.
 - Sync changes to tool-specific files (`.github/copilot-instructions.md`, `.clinerules`, `.cursorrules`).
 - Place nested `AGENTS.md` in subdirectories that need tighter rules if necessary.
 - Keep each skill documented in one `SKILL.md` near related scripts/tools, or in `/.agent/skills/`.

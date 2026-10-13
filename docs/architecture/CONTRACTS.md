@@ -83,3 +83,14 @@ Any PR changing an external interface, wire layout, public kernel API, ownership
   domain they do not advertise through runtime discovery.
 - HMEM capabilities are process-CSpace authorities. Owner-core registries do
   not equate CPUs with CSpaces.
+
+## Personality Syscall ABI and Trap Extraction Contracts
+
+- Multi-ISA trap register authority: `docs/architecture/syscall/arch-register-abi.md`.
+- Linux and Android ISA mapping architecture: `docs/architecture/personalities/linux-android-syscall-arch.md`.
+- Linux personality contract: `docs/architecture/personalities/linux-personality-contract.md`.
+- Android personality contract: `docs/architecture/personalities/android-compat-personality.md`.
+- Architecture trap extractors: `core/arch/<arch>/syscall_extract.c`.
+- Normalization context: `bh_syscall_regs_t` and `bh_syscall_ctx_t`.
+- Syscall dispatch gate: `bh_syscall_gate`.
+- Validation: 5-target QEMU matrix (`tools/run_qemu_matrix.py --headless --smoke --all-arch`) and `quality/tests/core/personality/test_linux_personality_core.c`.

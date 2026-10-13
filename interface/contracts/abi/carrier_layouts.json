@@ -340,6 +340,10 @@
       {
         "name": "out_handle",
         "type": "bharat_hmem_handle_t"
+      },
+      {
+        "name": "resource_cap",
+        "type": "uint64_t"
       }
     ]
   },
