@@ -138,12 +138,17 @@ static void riscv32_pt_destroy_recursive(phys_addr_t table, int level) {
 
     if (level > 0) {
         pt_t* pt = (pt_t*)(uintptr_t)table;
-        int max_idx = (level == 1) ? 512 : 1024; // Free only bottom half of L1
-        for (int i = 0; i < max_idx; i++) {
+        for (int i = 0; i < 1024; i++) {
             if (pt->entries[i] & RISCV32_PT_V) {
                 if ((pt->entries[i] & (RISCV32_PT_R | RISCV32_PT_W | RISCV32_PT_X)) == 0) {
+                    // It's a table pointer. Since bootstrap maps are all Megapages,
+                    // any L0 table here must have been locally allocated via splitting.
                     riscv32_pt_destroy_recursive((pt->entries[i] >> 10) << 12, level - 1);
                 }
+            }
+            // Clear only user mappings to avoid touching shared kernel mappings just in case
+            if (level != 1 || i < 512) {
+                pt->entries[i] = 0;
             }
         }
     }
@@ -193,6 +198,11 @@ static int riscv32_map_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_t 
     pt_t* l0_table = (pt_t*)(uintptr_t)((l1_table->entries[vpn1] >> 10) << 12);
 
     uint32_t pte_flags = flags_to_riscv(flags);
+    // W=1 R=0 is reserved and invalid in Sv32
+    if ((pte_flags & RISCV32_PT_W) && !(pte_flags & RISCV32_PT_R)) {
+        return -2;
+    }
+
     l0_table->entries[vpn0] = ((aligned_paddr >> 12) << 10) | pte_flags;
 
     return 0;
@@ -208,6 +218,14 @@ static int riscv32_unmap_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_
 
     pt_t* l1_table = (pt_t*)(uintptr_t)root_pt;
     if ((l1_table->entries[vpn1] & RISCV32_PT_V) == 0) return -2;
+
+    if ((l1_table->entries[vpn1] & (RISCV32_PT_R | RISCV32_PT_W | RISCV32_PT_X)) != 0) {
+        if (unmapped_paddr) {
+            *unmapped_paddr = ((l1_table->entries[vpn1] >> 10) << 12) | (vpn0 << 12);
+        }
+        return -2;
+    }
+
     pt_t* l0_table = (pt_t*)(uintptr_t)((l1_table->entries[vpn1] >> 10) << 12);
 
     if ((l0_table->entries[vpn0] & RISCV32_PT_V) == 0) return -2;
@@ -236,12 +254,21 @@ static int riscv32_protect_page(phys_addr_t root_pt, virt_addr_t vaddr, uint32_t
 
     pt_t* l1_table = (pt_t*)(uintptr_t)root_pt;
     if ((l1_table->entries[vpn1] & RISCV32_PT_V) == 0) return -2;
+
+    if ((l1_table->entries[vpn1] & (RISCV32_PT_R | RISCV32_PT_W | RISCV32_PT_X)) != 0) {
+        return -2;
+    }
+
     pt_t* l0_table = (pt_t*)(uintptr_t)((l1_table->entries[vpn1] >> 10) << 12);
 
     if ((l0_table->entries[vpn0] & RISCV32_PT_V) == 0) return -2;
 
     uint32_t paddr = (l0_table->entries[vpn0] >> 10) << 12;
     uint32_t pte_flags = flags_to_riscv(new_flags);
+
+    if ((pte_flags & RISCV32_PT_W) && !(pte_flags & RISCV32_PT_R)) {
+        return -2;
+    }
 
     l0_table->entries[vpn0] = ((paddr >> 12) << 10) | pte_flags;
 
@@ -258,6 +285,13 @@ static int riscv32_query_page(phys_addr_t root_pt, virt_addr_t vaddr, phys_addr_
 
     pt_t* l1_table = (pt_t*)(uintptr_t)root_pt;
     if ((l1_table->entries[vpn1] & RISCV32_PT_V) == 0) return -2;
+
+    if ((l1_table->entries[vpn1] & (RISCV32_PT_R | RISCV32_PT_W | RISCV32_PT_X)) != 0) {
+        if (paddr) *paddr = ((l1_table->entries[vpn1] >> 10) << 12) | (vpn0 << 12);
+        if (flags) *flags = riscv_to_flags(l1_table->entries[vpn1] & ~RISCV32_PAGE_MASK);
+        return 0;
+    }
+
     pt_t* l0_table = (pt_t*)(uintptr_t)((l1_table->entries[vpn1] >> 10) << 12);
 
     if ((l0_table->entries[vpn0] & RISCV32_PT_V) == 0) return -2;
