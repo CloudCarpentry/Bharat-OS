@@ -98,17 +98,18 @@ static inline void cap_tx_unpack_req(uint64_t payload, uint8_t *origin_core, uin
 }
 
 static inline uint64_t cap_tx_pack_ack(uint8_t origin_core, uint8_t slot, uint32_t generation, uint8_t responder_core, int8_t status) {
-    return ((uint64_t)origin_core << 48) |
-           ((uint64_t)slot << 40) |
-           (((uint64_t)generation & 0xFFFFFFULL) << 16) |
+    // Pack 32-bit generation to prevent truncation and wraparound matching bugs
+    return ((uint64_t)origin_core << 56) |
+           ((uint64_t)slot << 48) |
+           (((uint64_t)generation & 0xFFFFFFFFULL) << 16) |
            ((uint64_t)responder_core << 8) |
            ((uint64_t)(uint8_t)status);
 }
 
 static inline void cap_tx_unpack_ack(uint64_t payload, uint8_t *origin_core, uint8_t *slot, uint32_t *generation, uint8_t *responder_core, int8_t *status) {
-    if (origin_core) *origin_core = (uint8_t)((payload >> 48) & 0xFF);
-    if (slot) *slot = (uint8_t)((payload >> 40) & 0xFF);
-    if (generation) *generation = (uint32_t)((payload >> 16) & 0xFFFFFFULL);
+    if (origin_core) *origin_core = (uint8_t)((payload >> 56) & 0xFF);
+    if (slot) *slot = (uint8_t)((payload >> 48) & 0xFF);
+    if (generation) *generation = (uint32_t)((payload >> 16) & 0xFFFFFFFFULL);
     if (responder_core) *responder_core = (uint8_t)((payload >> 8) & 0xFF);
     if (status) *status = (int8_t)(payload & 0xFF);
 }
