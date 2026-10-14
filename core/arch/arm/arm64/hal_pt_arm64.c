@@ -192,11 +192,11 @@ static phys_addr_t arm64_pt_create_address_space(phys_addr_t kernel_root_table) 
 
     // On arm64, kernel executes at low addresses (0x40000000), covered by entry 0.
     // Entry 0 contains 1GB block mappings that cannot be subdivided.
-    // 
+
     // Strategy:
     // - Kernel space (first creation): Copy entry 0 + entries 256-511
     // - User domains: Copy ONLY entries 256-511, leave entry 0 empty for user mappings
-    // 
+
     // User domains don't execute kernel code at low addresses, so they don't need
     // entry 0. This allows them to create their own fine-grained mappings in the
     // 0-512GB range without conflicting with kernel's 1GB blocks.

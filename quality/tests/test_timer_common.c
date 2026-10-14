@@ -5,9 +5,9 @@
 #include "hal/timer.h"
 #include "sched.h"
 
-//
+
 // Mocks for Architecture-Specific / External Dependencies
-//
+
 
 static uint32_t mock_hal_timer_source_init_called_with_hz = 0;
 static int mock_hal_timer_source_init_return_val = 0;
@@ -28,9 +28,9 @@ static void reset_mocks(void) {
     mock_sched_on_timer_tick_called = 0;
 }
 
-//
+
 // Test Cases
-//
+
 
 static void test_hal_timer_init(void) {
     printf("  Testing hal_timer_init...\n");

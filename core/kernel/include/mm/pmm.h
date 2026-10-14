@@ -3,6 +3,8 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdbool.h>
+#include "bharat/mem_class.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -49,7 +51,7 @@ typedef enum {
     PMM_ALLOC_PINNED     = 1u << 2,
 } pmm_alloc_flags_t;
 
-#include "bharat/mem_class.h"
+
 
 typedef struct {
     uint64_t phys_addr;
@@ -99,8 +101,7 @@ int pmm_ref_put(uint64_t phys_addr);
 int pmm_pin(uint64_t phys_addr);
 int pmm_unpin(uint64_t phys_addr);
 
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include <stdbool.h>
+
 
 // Helper wrappers
 void *pmm_alloc_page_ex(alloc_class_t cls, uint32_t flags);

@@ -1,8 +1,8 @@
 ---
 title: PMM Per-Core Hardening Review
-status: Draft
+status: Completed / Archived
 owner: Documentation Working Group
-last_updated: 2026-04-25
+last_updated: 2026-10-14
 tags:
   - docs
   - reviews
@@ -10,6 +10,9 @@ see_also:
   - README.md
 ---
 # PMM Per-Core Hardening Review
+
+> **Status:** **COMPLETED / ARCHIVED** (October 14, 2026)  
+> **Resolution:** Implemented via `BHARAT_MAX_CPUS`, runtime active core validation, MPSC remote-free inbox, and per-core pcache magazines.
 
 ## Improvements
 - Replaced hardcoded CPU limits with `BHARAT_MAX_CPUS`.

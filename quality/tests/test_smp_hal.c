@@ -7,9 +7,9 @@
 #include "hal/hal_timer.h"
 #include "hal/hal_ipi.h"
 
-//
+
 // Mocks tracking state for the HAL contracts
-//
+
 
 #define MAX_MOCK_CORES 4
 

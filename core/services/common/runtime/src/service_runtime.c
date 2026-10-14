@@ -4,10 +4,10 @@
 #include <ipc_user.h>
 #include <stddef.h>
 #include <bharat/uapi/init/bootstrap.h>
-extern const bharat_user_startup_t *bharat_runtime_get_startup(void);
 #include <string.h>
-
 #include <bharat/namesvc/client.h>
+
+extern const bharat_user_startup_t *bharat_runtime_get_startup(void);
 
 static bharat_ipc_endpoint_t cached_servicemgr_ep = BHARAT_CAP_INVALID_HANDLE;
 

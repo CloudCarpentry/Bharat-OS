@@ -88,7 +88,6 @@ void bh_virtqueue_free_descriptor(bh_virtqueue_t *vq, uint16_t desc_idx) {
     vq->free_head = desc_idx;
     vq->num_free++;
 }
-#include "virtqueue.h"
 
 int bh_virtqueue_add_tx_buffer(bh_virtqueue_t *vq, void *buf, uint32_t len, uint16_t *out_desc_idx) {
     if (!vq || vq->num_free == 0) {

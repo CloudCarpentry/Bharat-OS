@@ -1,11 +1,10 @@
 #pragma once
 
-struct bh_thread;
-typedef struct bh_thread bh_thread_t;
-
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
 #include "trap_types.h"
 #include "kernel/status.h"
+
+struct bh_thread;
+typedef struct bh_thread bh_thread_t;
 
 // Forward declaration of trap_frame_t without typedef redefinition issues.
 struct trap_frame;

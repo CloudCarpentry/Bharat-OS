@@ -1,6 +1,7 @@
 #include "arch/arch_cpu_caps.h"
 #include "../../common/cpu_caps_state.h"
 #include <stdint.h>
+#include "hal/hal_cpu_features.h"
 
 extern uint32_t hal_cpu_get_id(void);
 
@@ -96,7 +97,6 @@ void arch_cpu_caps_init_ap(void) {
     cpu_caps_state_set_ap(hal_cpu_get_id(), &ap_caps);
 }
 
-#include "hal/hal_cpu_features.h"
 void arch_cpu_caps_export_hal_features(const arch_cpu_caps_record_t *arch, void *out_ptr) {
     hal_cpu_feature_set_t *out = (hal_cpu_feature_set_t *)out_ptr;
 

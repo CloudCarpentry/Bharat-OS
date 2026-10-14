@@ -6,6 +6,8 @@
 #include "../../include/spinlock.h"
 #include "../../include/capability.h"
 #include "vm_mapping.h"
+#include "aspace.h"
+#include "monitor/mon_vm_proto.h"
 
 // Hardware profiles for VM Spaces
 typedef enum {
@@ -43,8 +45,7 @@ typedef struct {
     void *root; // Tree root placeholder
 } vm_region_tree_t;
 
-#include "aspace.h"
-#include "monitor/mon_vm_proto.h"
+
 
 // Per-space Mutation Kind
 typedef enum {

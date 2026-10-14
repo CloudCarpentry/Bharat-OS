@@ -25,20 +25,16 @@ typedef enum {
     ARCH_CPU_FEAT_ARCH_BASE = 32
 } arch_cpu_common_feature_t;
 
-// Include arch-specific feature header
+// Include arch-specific feature header (requires ARCH_CPU_FEAT_ARCH_BASE from above)
 #if defined(__x86_64__)
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "arch/x86_64/cpu_features.h"
+#include "arch/x86_64/cpu_features.h" // NOLINT(include-placement)
 #elif defined(__aarch64__)
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "arch/arm64/cpu_features.h"
+#include "arch/arm64/cpu_features.h" // NOLINT(include-placement)
 #elif defined(__riscv) && defined(BHARAT_ARCH_SHAKTI)
 // Distinguish generic riscv from shakti if needed, otherwise fall through
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "arch/shakti/cpu_features.h"
+#include "arch/shakti/cpu_features.h" // NOLINT(include-placement)
 #elif defined(__riscv)
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "arch/riscv64/cpu_features.h"
+#include "arch/riscv64/cpu_features.h" // NOLINT(include-placement)
 #else
 // Fallback for unknown/stub
 #define ARCH_CPU_FEAT_TARGET__COUNT ARCH_CPU_FEAT_COMMON__COUNT

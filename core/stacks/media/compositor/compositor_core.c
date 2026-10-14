@@ -1,9 +1,9 @@
 #include "compositor_core.h"
-#ifndef BHARAT_HOST_TEST
 #include <stddef.h>
-void *memset(void *s, int c, size_t n);
-#else
+#ifdef BHARAT_HOST_TEST
 #include <string.h>
+#else
+void *memset(void *s, int c, size_t n);
 #endif
 
 /* Overflow-safe helpers */

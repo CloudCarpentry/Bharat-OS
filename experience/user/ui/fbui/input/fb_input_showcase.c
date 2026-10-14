@@ -466,34 +466,34 @@ void bharat_demo_app(void) {
 
             // Format cursor position
             {
-                char revX[16], revY[16];
-                int rposX = 0, rposY = 0;
-                int32_t valX = g_cursor.x;
-                int32_t valY = g_cursor.y;
-                if (valX == 0) {
-                    revX[rposX++] = '0';
+                char rev_x[16], rev_y[16];
+                int rpos_x = 0, rpos_y = 0;
+                int32_t val_x = g_cursor.x;
+                int32_t val_y = g_cursor.y;
+                if (val_x == 0) {
+                    rev_x[rpos_x++] = '0';
                 } else {
-                    while (valX > 0) {
-                        revX[rposX++] = (char)('0' + (valX % 10));
-                        valX /= 10;
+                    while (val_x > 0) {
+                        rev_x[rpos_x++] = (char)('0' + (val_x % 10));
+                        val_x /= 10;
                     }
                 }
-                if (valY == 0) {
-                    revY[rposY++] = '0';
+                if (val_y == 0) {
+                    rev_y[rpos_y++] = '0';
                 } else {
-                    while (valY > 0) {
-                        revY[rposY++] = (char)('0' + (valY % 10));
-                        valY /= 10;
+                    while (val_y > 0) {
+                        rev_y[rpos_y++] = (char)('0' + (val_y % 10));
+                        val_y /= 10;
                     }
                 }
                 int pos = 0;
-                while (rposX > 0) {
-                    cursor_buf[21 + pos++] = revX[--rposX];
+                while (rpos_x > 0) {
+                    cursor_buf[21 + pos++] = rev_x[--rpos_x];
                 }
                 cursor_buf[21 + pos++] = ',';
                 cursor_buf[21 + pos++] = ' ';
-                while (rposY > 0) {
-                    cursor_buf[21 + pos++] = revY[--rposY];
+                while (rpos_y > 0) {
+                    cursor_buf[21 + pos++] = rev_y[--rpos_y];
                 }
                 cursor_buf[21 + pos] = '\0';
             }

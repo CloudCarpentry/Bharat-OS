@@ -1,8 +1,8 @@
 ---
 title: TLB Shootdown Hardening Review
-status: Draft
+status: Completed / Archived
 owner: Documentation Working Group
-last_updated: 2026-04-25
+last_updated: 2026-10-14
 tags:
   - docs
   - reviews
@@ -11,8 +11,11 @@ see_also:
 ---
 # TLB Shootdown Hardening Review
 
+> **Status:** **COMPLETED / ARCHIVED** (October 14, 2026)  
+> **Resolution:** Implemented via bounded monotonic deadline protocol, core-local tracking, and layered transport separation.
+
 ## Status
-Refactored and hardened.
+Refactored and hardened in convergence baseline.
 
 ## Key Improvements
 - Layered architecture: transport and orchestration are separated.

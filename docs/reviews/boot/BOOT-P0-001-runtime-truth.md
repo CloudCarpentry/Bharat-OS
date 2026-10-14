@@ -1,5 +1,8 @@
 # BOOT-P0-001 Runtime Truth Enforcement
 
+> **Status:** **COMPLETED / HARDENED** (October 14, 2026)  
+> **Resolution:** Implemented explicit service lifecycle states (`DECLARED`, `SPAWNED`, `ENDPOINT_BOUND`, `READY`) and verified `bharat.process_manager` IPC spawn handoff.
+
 ## Problem Statement
 The OS initialization previously printed misleading boot logs (e.g. `STABLE`) even when required services completely failed or deferred their handoff. It assumed that a synchronous `start_fn` call mapped immediately to `READY` status, failing to verify true process dispatch, spawn acknowledgement, or actual capability acquisition.
 

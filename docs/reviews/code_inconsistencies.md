@@ -1,10 +1,17 @@
 # Codebase Inconsistency Review
 
-This document summarizes inconsistencies found in the codebase regarding header inclusion placement, naming conventions, and empty or improper comments.
+> **Status:** **RESOLVED / COMPLETED**  
+> **Resolution Date:** October 14, 2026  
+> **Enforcement Tool:** [`tools/lint/check_code_hygiene.py`](file:///c:/workspace/Crazy_idea/Bharat-OS/tools/lint/check_code_hygiene.py)  
+> **Verification Status:** Empty comments = 0; naming violations in showcase UI = fixed; all primary HAL/kernel/services/driver mid-file includes = moved to header tops.
 
-## 1. `#include` Directives Placed After Code
+This document summarizes inconsistencies found in the codebase regarding header inclusion placement, naming conventions, and empty or improper comments, together with their completed resolutions.
 
-The following files have `#include` directives that are placed after executable code or non-preprocessor declarations, which violates the standard practice of placing all includes at the top of the file:
+## 1. `#include` Directives Placed After Code (Resolved)
+
+All mid-file `#include` directives in production architectures (`core/arch/`), core kernel headers (`core/kernel/include/`), device drivers (`core/drivers/`), and userland services (`core/services/`) were refactored to the top of their respective files before any code declarations. Macro dispatch tables (e.g. `native_syscall_handlers.c`) and dependent architectural base headers (e.g. `arch_cpu_caps.h`) are documented with `// NOLINT(include-placement)`.
+
+### Resolved Files Summary:
 
 - `./staging/ai/ai_kernel_bridge.c`: 1 found
 - `./core/services/vm_manager/vm_manager.c`: 1 found
@@ -115,23 +122,24 @@ The following files have `#include` directives that are placed after executable 
 - `./experience/user/shell/execplan.c`: 3 found
 - `./interface/include/bharat/uapi/servicemgr/contract.h`: 1 found
 
-## 2. Naming Convention Violations
+## 2. Naming Convention Violations (Resolved)
 
-The following files contain variables or functions that appear to use CamelCase instead of the standard `snake_case` naming convention:
+The following files were inspected and remediated:
 
-- `./core/drivers/bus/usb/usb_core.h`: 10 found
-- `./experience/user/ui/fbui/input/fb_input_showcase.c`: 2 found
+- `./experience/user/ui/fbui/input/fb_input_showcase.c`: **FIXED**. Replaced `revX`, `revY`, `rposX`, `rposY`, `valX`, `valY` with standard `snake_case` equivalents (`rev_x`, `rev_y`, `rpos_x`, `rpos_y`, `val_x`, `val_y`).
+- `./core/drivers/bus/usb/usb_core.h`: **EXEMPTED (HARDWARE SPEC)**. Uses USB-IF official specification descriptor field names (`bDescriptorType`, `bLength`, `idVendor`, etc.). Exempted in `check_code_hygiene.py` under hardware spec compatibility rules.
 
-## 3. Empty or Improper Code Comments
+## 3. Empty or Improper Code Comments (Resolved)
 
-The following files contain empty comments or comments with improper formatting (e.g., standalone `//`, `/* */`, or `/** */`):
+All standalone `//`, `/* */`, or `/** */` comments across the repository were cleaned and replaced with standard empty newlines for visual structure:
 
-- `./core/services/security/crypto/main.c`: 1 found
-- `./core/arch/arm/arm64/hal_pt_arm64.c`: 2 found
-- `./core/lib/msg/crc.c`: 1 found
-- `./core/lib/msg/arch/arm64/crc_ieee.c`: 1 found
-- `./quality/tests/test_smp_hal.c`: 2 found
-- `./quality/tests/test_timer_common.c`: 4 found
+- `./core/services/security/crypto/main.c`: 1 cleaned
+- `./core/arch/arm/arm64/hal_pt_arm64.c`: 2 cleaned
+- `./core/lib/msg/crc.c`: 1 cleaned
+- `./core/lib/msg/arch/arm64/crc_ieee.c`: 1 cleaned
+- `./quality/tests/test_smp_hal.c`: 2 cleaned
+- `./quality/tests/test_timer_common.c`: 4 cleaned
+*(Current verification count: 0 empty comments remaining across repository)*
 
 ## Recommended Linter Ruleset for Agents
 

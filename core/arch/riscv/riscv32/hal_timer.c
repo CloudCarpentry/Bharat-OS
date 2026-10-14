@@ -1,11 +1,11 @@
 #include "hal/hal_timer.h"
 #include "hal/hal_ipi.h"
+#include "hal/hal_discovery.h"
 #include "../../arch/riscv/boot/sbi.h"
 
 static uint32_t g_timer_timebase_freq_lo = 0;
 
 // hal_timer_init: called once at boot to configure timer parameters
-#include "hal/hal_discovery.h"
 void hal_timer_init(void) {
     system_discovery_t* discovery = hal_get_system_discovery();
     if (discovery && discovery->timers[0].frequency > 0) {

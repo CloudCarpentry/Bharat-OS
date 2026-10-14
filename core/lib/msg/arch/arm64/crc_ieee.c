@@ -2,7 +2,7 @@
 #include <stddef.h>
 
 // ARM64 HW Accelerated Backend for IEEE 802.3 CRC32
-//
+
 // ARMv8 provides the `__crc32*` series of instructions.
 // Note carefully: ARM provides both __crc32w (IEEE) and __crc32cw (Castagnoli).
 // Since our wire protocol expects IEEE 802.3 (Polynomial 0xEDB88320),

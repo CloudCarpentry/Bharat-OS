@@ -7,10 +7,11 @@
 #include <bharat/uapi/services/bootstrap.h>
 #include "src/registry.h"
 #include <bharat/uapi/init/bootstrap.h>
-extern const bharat_user_startup_t *bharat_runtime_get_startup(void);
 #include "include/ipc_dispatch.h"
 #include "bharat/component_version.h"
 #include "bharat/buildinfo.h"
+
+extern const bharat_user_startup_t *bharat_runtime_get_startup(void);
 
 BHARAT_REGISTER_COMPONENT(
     BHARAT_COMPONENT_NAME,

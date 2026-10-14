@@ -3,6 +3,8 @@
 #include "secure_boot.h"
 
 #include <stdint.h>
+#include "trap.h"
+#include "hal/hal_internal.h"
 
 // ARM AArch64 Specific HAL Implementation
 
@@ -34,8 +36,7 @@ void hal_cpu_reboot(void) {
   }
 }
 
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "trap.h"
+
 
 bool hal_cpu_is_syscall(const void *trap_frame) {
     if (!trap_frame) return false;
@@ -208,7 +209,7 @@ void hal_send_ipi_payload(uint32_t target_core, uint64_t payload) {
 
 // --- Trap / Interrupt Handling ---
 
-#include "hal/hal_internal.h"
+
 
 extern void vector_table_el1(void); // Defined in trap_entry.S
 

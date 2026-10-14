@@ -18,6 +18,7 @@
 #include "bh_process_personality.h"
 #include "bharat/kernel/ds/bh_mpsc_queue.h"
 #include "sched/cpu_context.h"
+#include "trap/syscall_regs.h"
 
 #define BH_TID_SLOT_BITS       16U
 #define BH_TID_CORE_BITS       16U
@@ -199,7 +200,7 @@ typedef enum {
     SCHED_POLICY_RMS = 4
 } sched_policy_t;
 
-#include "trap/syscall_regs.h"
+
 typedef bh_personality_id_t personality_type_t;
 
 

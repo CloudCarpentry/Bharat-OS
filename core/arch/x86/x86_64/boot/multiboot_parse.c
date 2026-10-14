@@ -2,6 +2,7 @@
 #include "multiboot.h"
 #include "boot/platform_boot_info.h"
 #include "hal/hal_discovery.h"
+#include "bharat/display/boot_video.h"
 
 extern void hal_serial_write(const char *s);
 #define KPRINT(msg) hal_serial_write(msg)
@@ -9,7 +10,7 @@ extern void hal_serial_write(const char *s);
 // Forward declaration from arch code
 extern void x86_64_parse_multiboot_framebuffer(multiboot_information_t *mb_info);
 
-#include "bharat/display/boot_video.h"
+
 
 // Forward declarations from arch code
 extern void x86_64_parse_multiboot_framebuffer(multiboot_information_t *mb_info);

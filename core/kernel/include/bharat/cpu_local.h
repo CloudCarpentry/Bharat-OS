@@ -3,6 +3,9 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include "capability.h"
+#include "sched/sched.h"
+#include <hal/cpu_local.h>
 
 /* Forward declarations */
 struct sched_rq;
@@ -19,10 +22,7 @@ struct bh_thread;
 
 // We will use existing structs but forward declare or include them here.
 // In Bharat-OS sched.c uses core_runqueue_t as the per core queue
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "capability.h"
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "sched/sched.h"
+
 // #include <bharat/pmm.h>
 // #include <bharat/urpc.h>
 
@@ -70,7 +70,7 @@ typedef cpu_local_t kernel_core_t;
 
 void cpu_local_init(uint32_t cpu_id);
 
-#include <hal/cpu_local.h>
+
 
 /* Architecture specific `this_cpu()` implementation */
 static inline cpu_local_t *this_cpu(void) {

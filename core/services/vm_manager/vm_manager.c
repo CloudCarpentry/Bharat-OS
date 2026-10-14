@@ -1,6 +1,7 @@
 #include "vm_manager.h"
 #include <stddef.h>
 #include <bharat/cap/cap_validate.h>
+#include <bharat/cap/cap_authz.h>
 #include <bharat/uapi/ipc/status.h>
 
 // Handle library
@@ -111,8 +112,6 @@ int bh_vm_get_active_spaces_count(void) {
 int bh_vm_get_active_regions_count(void) {
     return (int)g_vm_region_handle_table.count;
 }
-
-#include <bharat/cap/cap_authz.h>
 
 static const bharat_service_authz_desc_t vm_manager_authz_descs[] = {
     {

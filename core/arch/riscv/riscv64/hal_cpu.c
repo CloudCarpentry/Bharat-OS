@@ -5,6 +5,8 @@
 #include "secure_boot.h"
 
 #include "../../arch/riscv/boot/sbi.h"
+#include "trap.h"
+#include "hal/hal_internal.h"
 
 // RISC-V Specific HAL Implementation (RV64 / Shakti)
 
@@ -69,8 +71,7 @@ void hal_cpu_reboot(void) {
   }
 }
 
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "trap.h"
+
 
 bool hal_cpu_is_syscall(const void *trap_frame) {
     if (!trap_frame) return false;
@@ -252,7 +253,7 @@ void hal_irq_restore(hal_irq_state_t state) {
 
 // --- Trap / Interrupt Handling ---
 
-#include "hal/hal_internal.h"
+
 
 extern void trap_entry(void);
 

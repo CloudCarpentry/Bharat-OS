@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include "hal/iommu.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -56,9 +57,7 @@ typedef struct hal_iommu_ops {
 void hal_iommu_set_ops(const hal_iommu_ops_t *ops);
 const hal_iommu_ops_t *hal_iommu_get_ops(void);
 
-// Include the old file for backward compat.
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "hal/iommu.h"
+
 
 #ifdef __cplusplus
 }
