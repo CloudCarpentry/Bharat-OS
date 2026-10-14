@@ -23,9 +23,10 @@ static void prot_none_destroy(prot_domain_t* domain) {
     kfree(domain);
 }
 
-static void prot_none_activate(prot_domain_t* domain) {
+static int prot_none_activate(prot_domain_t* domain) {
     (void)domain;
     // No-op for identity
+    return K_OK;
 }
 
 static int prot_none_map_region(prot_domain_t* domain, uintptr_t vaddr, uintptr_t paddr, size_t size, uint32_t flags) {

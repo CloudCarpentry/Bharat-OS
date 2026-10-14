@@ -467,6 +467,39 @@ static inline kstatus_t bh_syscall_cap_lookup_hmem(bh_syscall_ctx_t *ctx,
     return st;
 }
 
+#if defined(BHARAT_PROFILE_MPU_ONLY) || defined(PROFILE_MPU_ONLY)
+
+bh_operation_result_t bh_sys_hmem_create(bh_syscall_ctx_t *ctx) {
+    (void)ctx;
+    return bh_op_result_kstatus(K_ERR_UNSUPPORTED);
+}
+bh_operation_result_t bh_sys_hmem_destroy(bh_syscall_ctx_t *ctx) {
+    (void)ctx;
+    return bh_op_result_kstatus(K_ERR_UNSUPPORTED);
+}
+bh_operation_result_t bh_sys_hmem_query(bh_syscall_ctx_t *ctx) {
+    (void)ctx;
+    return bh_op_result_kstatus(K_ERR_UNSUPPORTED);
+}
+bh_operation_result_t bh_sys_hmem_map_cpu(bh_syscall_ctx_t *ctx) {
+    (void)ctx;
+    return bh_op_result_kstatus(K_ERR_UNSUPPORTED);
+}
+bh_operation_result_t bh_sys_hmem_unmap_cpu(bh_syscall_ctx_t *ctx) {
+    (void)ctx;
+    return bh_op_result_kstatus(K_ERR_UNSUPPORTED);
+}
+bh_operation_result_t bh_sys_hmem_sync_for_cpu(bh_syscall_ctx_t *ctx) {
+    (void)ctx;
+    return bh_op_result_kstatus(K_ERR_UNSUPPORTED);
+}
+bh_operation_result_t bh_sys_hmem_sync_for_device(bh_syscall_ctx_t *ctx) {
+    (void)ctx;
+    return bh_op_result_kstatus(K_ERR_UNSUPPORTED);
+}
+
+#else
+
 bh_operation_result_t bh_sys_hmem_create(bh_syscall_ctx_t *ctx) {
     bh_hmem_create_args_t args;
     bh_status_t st = bh_copy_from_user(&args, (const void *)ctx->regs.arg[0], sizeof(args));
@@ -751,3 +784,5 @@ bh_operation_result_t bh_sys_hmem_sync_for_device(bh_syscall_ctx_t *ctx) {
                                                 (size_t)args.length, HAL_HMEM_SYNC_TO_DEVICE);
     return bh_op_result_kstatus(hst == HAL_HMEM_OK ? K_OK : K_ERR_BAD_STATE);
 }
+
+#endif

@@ -34,8 +34,35 @@ void arch_enter_user(const arch_user_entry_t *entry) {
         kernel_panic("arch_enter_user: invalid entry or aspace");
     }
 
-    prot_domain_activate(entry->aspace->prot_domain);
+    if (prot_domain_activate(entry->aspace->prot_domain) != K_OK) {
+        kernel_panic("arch_enter_user: MPU/PMP protection activation failed");
+    }
 
+#if defined(BHARAT_RISCV_PRIV_MODE_M)
+    uint32_t mstatus;
+    asm volatile("csrr %0, mstatus" : "=r"(mstatus));
+
+    // Clear MPP (User mode), set MPIE (interrupts enabled in user mode)
+    // MPP is bits 11:12
+    mstatus &= ~(3 << 11);
+    mstatus |= (1 << 7); // MPIE
+
+    extern uint32_t hal_cpu_get_id(void);
+    uint32_t core = hal_cpu_get_id();
+    uint32_t kstack = (uint32_t)g_cpu_locals[core].kernel_stack;
+    asm volatile("csrw mscratch, %0" :: "r"(kstack));
+
+    asm volatile(
+        "csrw mstatus, %0\n\t"
+        "csrw mepc, %1\n\t"
+        "mv sp, %2\n\t"
+        "mv a0, %3\n\t"
+        "mret\n\t"
+        :
+        : "r"(mstatus), "r"(entry->entry_pc), "r"(entry->user_sp), "r"(entry->arg0)
+        : "memory"
+    );
+#else
     uint32_t sstatus;
     asm volatile("csrr %0, sstatus" : "=r"(sstatus));
 
@@ -59,6 +86,7 @@ void arch_enter_user(const arch_user_entry_t *entry) {
         : "r"(sstatus), "r"(entry->entry_pc), "r"(entry->user_sp), "r"(entry->arg0)
         : "memory"
     );
+#endif
 
     __builtin_unreachable();
 }

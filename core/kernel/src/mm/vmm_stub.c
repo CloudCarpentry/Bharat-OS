@@ -130,9 +130,10 @@ int aspace_clone(address_space_t *src, address_space_t **out_clone, uint32_t clo
     return K_OK;
 }
 
-int mm_switch_active_aspace(address_space_t *aspace) {
-    (void)aspace;
-    return K_OK;
+void mm_switch_active_aspace(uint32_t core_id, address_space_t *prev_as, address_space_t *next_as) {
+    (void)core_id;
+    (void)prev_as;
+    (void)next_as;
 }
 
 int aspace_region_reserve(address_space_t *aspace,
@@ -164,4 +165,31 @@ void aspace_mark_poisoned(address_space_t *aspace) {
     if (aspace) {
         aspace->state = ASPACE_STATE_POISONED;
     }
+}
+
+vm_object_t *vm_object_create_dma(phys_addr_t phys_base, size_t size, uint32_t dma_flags, uint32_t numa_node, uint32_t flags) {
+    (void)phys_base; (void)size; (void)dma_flags; (void)numa_node; (void)flags;
+    return NULL;
+}
+
+void vm_object_release(vm_object_t *obj) {
+    (void)obj;
+}
+
+int aspace_region_attach(address_space_t *aspace,
+                         uintptr_t base,
+                         size_t length,
+                         uint32_t prot,
+                         uint32_t map_flags,
+                         vm_inherit_t inherit,
+                         vm_object_t *object,
+                         uint64_t object_offset,
+                         vm_region_t **out_region) {
+    (void)aspace; (void)base; (void)length; (void)prot; (void)map_flags; (void)inherit; (void)object; (void)object_offset; (void)out_region;
+    return -1;
+}
+
+int tlb_invalidate_all(vm_aspace_t *as, uintptr_t va, size_t len, tlb_inv_kind_t kind) {
+    (void)as; (void)va; (void)len; (void)kind;
+    return K_OK;
 }

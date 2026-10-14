@@ -39,7 +39,9 @@ void mm_switch_active_aspace(uint32_t core_id, address_space_t *prev_as, address
     __asm__ volatile("" ::: "memory");
 
     if (next_as && next_as->prot_domain) {
-        prot_domain_activate(next_as->prot_domain);
+        if (prot_domain_activate(next_as->prot_domain) != K_OK) {
+            kernel_panic("mm_switch_active_aspace: MPU/PMP protection activation failed");
+        }
     }
 }
 
