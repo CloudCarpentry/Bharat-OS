@@ -1,5 +1,4 @@
 #include "i2c_hid.h"
-#include <string.h>
 
 int i2c_hid_parse_descriptor(i2c_hid_device_t *dev) {
     if (!dev || !dev->i2c) return -1;

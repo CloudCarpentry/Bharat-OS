@@ -16,6 +16,20 @@
  */
 typedef uint32_t android_sec_sid_t;
 
+#define ANDROID_SEC_SID_INVALID         0U
+#define ANDROID_SEC_SID_KERNEL          1U
+#define ANDROID_SEC_SID_INIT            2U
+#define ANDROID_SEC_SID_SERVICEMANAGER  3U
+#define ANDROID_SEC_SID_SYSTEM_SERVER   4U
+#define ANDROID_SEC_SID_ZYGOTE          5U
+#define ANDROID_SEC_SID_APP             6U
+#define ANDROID_SEC_SID_ISOLATED_APP    7U
+#define ANDROID_SEC_SID_MAX             8U
+
+#define ANDROID_BINDER_ACTION_CALL         1U
+#define ANDROID_BINDER_ACTION_TRANSFER     2U
+#define ANDROID_BINDER_ACTION_IMPERSONATE  3U
+
 /**
  * @brief Represents an SELinux security context string and its SID.
  */

@@ -4,6 +4,11 @@ add_library(bharatos_personality_linux STATIC
     linux_personality.c
     linux_syscall.c
     linux_futex.c
+    linux_pipe.c
+    linux_eventfd.c
+    linux_timerfd.c
+    linux_epoll.c
+    linux_procfs.c
 )
 
 target_include_directories(bharatos_personality_linux

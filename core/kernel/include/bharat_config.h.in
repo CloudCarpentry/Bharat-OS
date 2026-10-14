@@ -49,6 +49,7 @@
 /* Personality Profile */
 #cmakedefine BHARAT_PERSONALITY_NATIVE 1
 #cmakedefine BHARAT_PERSONALITY_LINUX 1
+#cmakedefine BHARAT_PERSONALITY_ANDROID 1
 #cmakedefine BHARAT_PERSONALITY_WINDOWS 1
 #cmakedefine BHARAT_PERSONALITY_MAC 1
 

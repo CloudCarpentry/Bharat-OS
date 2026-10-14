@@ -1,0 +1,67 @@
+/* SPDX-License-Identifier: MIT */
+#ifndef LINUX_SYSCALL_NUMBERS_GENERIC_H
+#define LINUX_SYSCALL_NUMBERS_GENERIC_H
+
+/*
+ * Standard Linux asm-generic syscall numbering used on modern 64-bit architectures
+ * including ARM64 (aarch64) and RISC-V 64 (riscv64).
+ */
+
+#define LINUX_GENERIC_SYS_EVENTFD2          19
+#define LINUX_GENERIC_SYS_EPOLL_CREATE1     20
+#define LINUX_GENERIC_SYS_EPOLL_CTL         21
+#define LINUX_GENERIC_SYS_EPOLL_PWAIT       22
+#define LINUX_GENERIC_SYS_DUP               23
+#define LINUX_GENERIC_SYS_DUP3              24
+#define LINUX_GENERIC_SYS_FCNTL             25
+#define LINUX_GENERIC_SYS_IOCTL             29
+#define LINUX_GENERIC_SYS_STATFS            43
+#define LINUX_GENERIC_SYS_FSTATFS           44
+#define LINUX_GENERIC_SYS_FACCESSAT         48
+#define LINUX_GENERIC_SYS_CHDIR             49
+#define LINUX_GENERIC_SYS_OPENAT            56
+#define LINUX_GENERIC_SYS_CLOSE             57
+#define LINUX_GENERIC_SYS_PIPE2             59
+#define LINUX_GENERIC_SYS_GETDENTS64        61
+#define LINUX_GENERIC_SYS_READ              63
+#define LINUX_GENERIC_SYS_WRITE             64
+#define LINUX_GENERIC_SYS_PPOLL             73
+#define LINUX_GENERIC_SYS_READLINKAT        78
+#define LINUX_GENERIC_SYS_NEWFSTATAT        79
+#define LINUX_GENERIC_SYS_FSTAT             80
+#define LINUX_GENERIC_SYS_TIMERFD_CREATE    85
+#define LINUX_GENERIC_SYS_TIMERFD_SETTIME   86
+#define LINUX_GENERIC_SYS_TIMERFD_GETTIME   87
+#define LINUX_GENERIC_SYS_EXIT              93
+#define LINUX_GENERIC_SYS_EXIT_GROUP        94
+#define LINUX_GENERIC_SYS_SET_TID_ADDRESS   96
+#define LINUX_GENERIC_SYS_FUTEX             98
+#define LINUX_GENERIC_SYS_NANOSLEEP         101
+#define LINUX_GENERIC_SYS_CLOCK_GETTIME     113
+#define LINUX_GENERIC_SYS_CLOCK_GETRES      114
+#define LINUX_GENERIC_SYS_SCHED_YIELD       124
+#define LINUX_GENERIC_SYS_KILL              129
+#define LINUX_GENERIC_SYS_RT_SIGACTION      134
+#define LINUX_GENERIC_SYS_RT_SIGPROCMASK    135
+#define LINUX_GENERIC_SYS_RT_SIGRETURN      139
+#define LINUX_GENERIC_SYS_UNAME             160
+#define LINUX_GENERIC_SYS_GETPID            172
+#define LINUX_GENERIC_SYS_GETPPID           173
+#define LINUX_GENERIC_SYS_GETUID            174
+#define LINUX_GENERIC_SYS_GETEUID           175
+#define LINUX_GENERIC_SYS_GETGID            176
+#define LINUX_GENERIC_SYS_GETEGID           177
+#define LINUX_GENERIC_SYS_GETTID            178
+#define LINUX_GENERIC_SYS_SOCKET            198
+#define LINUX_GENERIC_SYS_SOCKETPAIR        199
+#define LINUX_GENERIC_SYS_BRK               214
+#define LINUX_GENERIC_SYS_MUNMAP            215
+#define LINUX_GENERIC_SYS_CLONE             220
+#define LINUX_GENERIC_SYS_EXECVE            221
+#define LINUX_GENERIC_SYS_MMAP              222
+#define LINUX_GENERIC_SYS_MPROTECT          226
+#define LINUX_GENERIC_SYS_WAIT4             260
+#define LINUX_GENERIC_SYS_PRLIMIT64         261
+#define LINUX_GENERIC_SYS_GETRANDOM         278
+
+#endif /* LINUX_SYSCALL_NUMBERS_GENERIC_H */
