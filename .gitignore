@@ -82,3 +82,7 @@ temp_log.txt
 *.patch3
 *.c.orig
 *.c.rej
+third_party/tf-psa-crypto/upstream/tests/
+third_party/tf-psa-crypto/upstream/scripts/
+third_party/tf-psa-crypto/upstream/programs/
+third_party/tf-psa-crypto/upstream/framework/
