@@ -54,6 +54,7 @@ add_subdirectory(cap)
 add_subdirectory(ipc)
 add_subdirectory(runtime)
 add_subdirectory(namesvc)
+add_subdirectory(crypto)
 
 if(BHARAT_BUILD_NETWORK_STUBS)
     add_subdirectory(net)
