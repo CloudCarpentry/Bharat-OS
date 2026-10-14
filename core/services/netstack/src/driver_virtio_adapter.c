@@ -4,6 +4,7 @@
 #include <bharat/runtime/freestanding_string.h>
 
 #include <bharat/packet/packet.h>
+#include <device/pci.h>
 
 // Forward declare the driver entry points for Phase 2 integration
 extern int virtio_net_init(void);
@@ -12,7 +13,7 @@ extern int virtio_net_bind(void *device);
 extern int virtio_net_start(void *device, void (*rx_callback)(packet_buf_t *));
 extern int virtio_net_tx(void *device, packet_buf_t *pkt);
 
-#include <device/pci.h>
+
 
 // For simplicity, we assume a single device instance bound in the mock
 static void *mock_virtio_device = NULL;

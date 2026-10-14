@@ -3,6 +3,7 @@
 #include "bharat/display/boot_video.h"
 #include "hal/hal.h"
 #include "boot/multiboot2.h"
+#include "boot/multiboot.h"
 #include "kernel.h"
 #include <stddef.h>
 #include <stdint.h>
@@ -106,8 +107,7 @@ void x86_64_parse_multiboot_framebuffer(multiboot_information_t *mb_info) {
     }
 }
 
-// Parse Multiboot 1 fallback
-#include "boot/multiboot.h"
+
 
 void x86_64_parse_multiboot1_framebuffer(void *mb_info) {
     if (!mb_info) return;

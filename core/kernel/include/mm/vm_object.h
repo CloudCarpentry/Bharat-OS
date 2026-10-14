@@ -3,6 +3,8 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include "../../include/spinlock.h"
+#include "../../include/mm.h"
 
 // Forward declare phys_addr_t or include mm.h early
 #ifndef BHARAT_MM_H
@@ -60,10 +62,7 @@ typedef struct vm_object_ops {
     void (*release)(struct vm_object *obj);
 } vm_object_ops_t;
 
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "../../include/spinlock.h"
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "../../include/mm.h"
+
 struct vm_object {
     vm_object_kind_t kind;
     uint32_t flags;

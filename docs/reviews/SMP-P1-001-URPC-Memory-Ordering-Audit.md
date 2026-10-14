@@ -1,5 +1,8 @@
 # SMP-P1-001 — URPC Ring Memory Ordering Audit
 
+> **Status:** **COMPLETED / HARDENED** (October 14, 2026)  
+> **Resolution:** Implemented via C11 `<stdatomic.h>` with explicit `memory_order_release` publication and `memory_order_acquire` consumption on SPSC channels.
+
 ## 1. Ownership Model Identification
 A full review of the `urpc_ring` implementations across the Bharat-OS kernel indicates the intended and effectively utilized ownership model is **Single-Producer / Single-Consumer (SPSC)**.
 - **`multikernel.c` (URPC core transport):** Explicitly operates as SPSC per channel matrix with core-to-core mappings.

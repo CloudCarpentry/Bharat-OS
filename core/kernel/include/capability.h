@@ -4,6 +4,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include "sched/sched.h"
+#include "spinlock.h"
+#include "kernel/status.h"
+#include <bharat/kernel/ds/bh_id_allocator.h>
 
 #define BH_CAP_SLOT_MASK        0xFFFFU
 #define BH_CAP_GEN_SHIFT        16U
@@ -31,10 +35,7 @@ static inline bool bh_cap_generation_matches(uint32_t entry_generation,
 #endif
 }
 
-#include "sched/sched.h"
-#include "spinlock.h"
-#include "kernel/status.h"
-#include <bharat/kernel/ds/bh_id_allocator.h>
+
 
 typedef enum {
     CAP_TYPE_NONE = 0,

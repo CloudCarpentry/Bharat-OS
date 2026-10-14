@@ -1,6 +1,7 @@
 #include <hal/hal_memops.h>
 #include <bharat/accel/accel.h>
 #include <kernel/status.h>
+#include "../core/device_registry.h"
 
 // Real emulated device driver with test-support diagnostics.
 
@@ -94,7 +95,7 @@ bharat_accel_device_t* get_virt_accel_mock_device(void) {
     return &virt_accel_dev;
 }
 
-#include "../core/device_registry.h"
+
 
 // Provide a virtual device provider for devmgr
 static device_desc_t virt_accel_core_dev = {

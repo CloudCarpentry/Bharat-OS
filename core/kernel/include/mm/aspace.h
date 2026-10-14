@@ -9,6 +9,7 @@
 #include "../../include/numa.h"
 #include "../../include/mm.h"
 #include "kernel/status.h"
+#include "prot_domain.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -67,8 +68,7 @@ typedef struct vm_region {
     struct vm_region *prev;
 } vm_region_t;
 
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "prot_domain.h"
+
 
 typedef struct vm_address_space {
     uint64_t object_id;      // Unique ID compatible with legacy object_id tracking

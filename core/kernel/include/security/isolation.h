@@ -2,6 +2,7 @@
 #define BHARAT_ISOLATION_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 /*
  * Bharat-OS Isolation Classes
@@ -86,8 +87,7 @@ int bharat_iommu_group_attach(bharat_iommu_group_t* group,
                               bharat_iommu_domain_t* domain);
 int bharat_iommu_group_detach(bharat_iommu_group_t* group);
 
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include <stddef.h>
+
 int bharat_iommu_map(bharat_iommu_domain_t* domain,
                      uint64_t iova,
                      uint64_t phys,

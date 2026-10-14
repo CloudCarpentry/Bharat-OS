@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include "kernel/status.h"
+#include "hal/hal_hw_caps.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -53,7 +54,6 @@ bool bh_kernel_primitive_available(bh_kernel_primitive_class_t primitive);
  */
 bh_primitive_support_level_t bh_kernel_primitive_get_support_level(bh_kernel_primitive_class_t primitive);
 
-#include "hal/hal_hw_caps.h"
 
 /**
  * Initialize the kernel primitive registry.

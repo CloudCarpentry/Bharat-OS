@@ -1,8 +1,8 @@
 ---
 title: Syscall / Kernel / SDK / Lib Conflict Analysis (2026-04-26)
-status: Draft
+status: Completed / Archived
 owner: Documentation Working Group
-last_updated: 2026-04-25
+last_updated: 2026-10-14
 tags:
   - docs
   - reviews
@@ -10,6 +10,9 @@ see_also:
   - README.md
 ---
 # Syscall / Kernel / SDK / Lib Conflict Analysis (2026-04-26)
+
+> **Status:** **COMPLETED / ARCHIVED** (October 14, 2026)  
+> **Resolution:** Canonical syscall ABI unified in `native_syscalls.json`; linker/symbol conflicts resolved; 5-target QEMU boot passing.
 
 ## Scope
 

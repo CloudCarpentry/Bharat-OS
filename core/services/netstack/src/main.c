@@ -3,6 +3,8 @@
 #include "driver_virtio_adapter.h"
 #include "bharat/component_version.h"
 #include "bharat/buildinfo.h"
+#include <bharat/runtime/runtime.h>
+#include "ipv4.h"
 
 BHARAT_REGISTER_COMPONENT(
     BHARAT_COMPONENT_NAME,
@@ -17,8 +19,7 @@ BHARAT_REGISTER_COMPONENT(
     BHARAT_BUILD_TIME_UTC
 );
 
-#include <bharat/runtime/runtime.h>
-#include "ipv4.h"
+
 
 extern int virtio_net_poll(void *device);
 

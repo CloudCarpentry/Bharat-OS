@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <bharat/cap/cap_validate.h>
+#include <bharat/cap/cap_authz.h>
 #include <bharat/uapi/ipc/status.h>
 #include <bharat/uapi/process_manager/contract.h>
 #include <bharat/runtime/runtime.h>
@@ -416,8 +417,6 @@ void servicemgr_check_health(uint64_t current_ns) {
         }
     }
 }
-
-#include <bharat/cap/cap_authz.h>
 
 static const bharat_service_authz_desc_t servicemgr_authz_descs[] = {
     {

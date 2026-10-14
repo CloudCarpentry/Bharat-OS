@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include "trap/syscall_regs.h"
 #include "trap_types.h"
+#include "kernel/status.h"
 
 typedef enum bh_syscall_return_disposition {
     BH_SYSCALL_RETURN_USER = 0,
@@ -29,7 +30,6 @@ typedef struct bh_syscall_return_context {
 __attribute__((noreturn)) void
 bh_syscall_rejected_return_handoff(bh_syscall_return_disposition_t disposition);
 
-#include "kernel/status.h"
 
 typedef bh_operation_result_t (*bh_syscall_handler_t)(bh_syscall_ctx_t *ctx);
 

@@ -1,8 +1,8 @@
 ---
 title: Syscall Production Hardening Review
-status: Draft
+status: Completed / Archived
 owner: Documentation Working Group
-last_updated: 2026-04-25
+last_updated: 2026-10-14
 tags:
   - docs
   - reviews
@@ -10,6 +10,9 @@ see_also:
   - README.md
 ---
 # Syscall Production Hardening Review
+
+> **Status:** **COMPLETED / ARCHIVED** (October 14, 2026)  
+> **Resolution:** Implemented via `interface/contracts/abi/native_syscalls.json`, ABI lock, `bh_usercopy_from_user` validation, and metadata-driven dispatch.
 
 ## Status
 The Bharat-OS syscall layer has been converted from a scaffold/stub level into a production-grade foundation.

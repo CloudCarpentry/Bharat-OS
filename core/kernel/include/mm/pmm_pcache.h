@@ -7,6 +7,7 @@
 #include "spinlock.h"
 #include "atomic.h"
 #include "kernel/status.h"
+#include "hal/hal_boot.h"
 
 // Scoped to order-0 only for Phase 1
 #define PMM_PCACHE_ORDER 0
@@ -54,7 +55,7 @@ typedef struct {
     pmm_remote_inbox_t inbox;
 } pmm_core_state_t;
 
-#include "hal/hal_boot.h"
+
 
 extern pmm_core_state_t g_pmm_cores[BHARAT_MAX_CPUS];
 

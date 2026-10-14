@@ -12,6 +12,10 @@
 #include "bharat/display/display_caps.h"
 #include "bharat/display/boot_ui_types.h"
 #include "boot/boot_args.h"
+#include "hal/hal.h"         /* hal_serial_write */
+#include <stddef.h>
+#include <stdint.h>
+#include <stdbool.h>
 
 // Forward declaration from boot_ui_select.c
 extern boot_ui_mode_t boot_ui_resolve_mode(system_profile_t profile);
@@ -21,11 +25,7 @@ extern int boot_video_collect(boot_video_handoff_t *out);
 extern int boot_video_validate(const boot_video_handoff_t *in);
 extern int boot_display_register_from_handoff(const boot_video_handoff_t *handoff);
 
-#include "hal/hal.h"         /* hal_serial_write */
 
-#include <stddef.h>
-#include <stdint.h>
-#include <stdbool.h>
 
 /* ─── Internal state ──────────────────────────────────────────────────── */
 

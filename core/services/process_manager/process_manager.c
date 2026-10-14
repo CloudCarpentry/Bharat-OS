@@ -1,6 +1,7 @@
 #include "process_manager.h"
 #include <stddef.h>
 #include <bharat/cap/cap_validate.h>
+#include <bharat/cap/cap_authz.h>
 #include <bharat/uapi/ipc/status.h>
 
 // Handle library includes
@@ -135,9 +136,6 @@ bharat_status_t bh_pm_register_executable(uint64_t handle, const uint8_t *bytes,
 int bh_pm_get_active_count(void) {
     return (int)g_pm_handle_table.count;
 }
-
-// Authorization framework
-#include <bharat/cap/cap_authz.h>
 
 static const bharat_service_authz_desc_t process_manager_authz_descs[] = {
     {

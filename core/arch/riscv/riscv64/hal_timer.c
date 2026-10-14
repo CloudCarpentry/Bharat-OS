@@ -1,10 +1,10 @@
 #include "hal/hal_timer.h"
 #include "hal/hal_ipi.h"
+#include "hal/hal_discovery.h"
 #include "../../arch/riscv/boot/sbi.h"
 
 static uint64_t g_timer_timebase_freq = 0;
 
-#include "hal/hal_discovery.h"
 void hal_timer_init(void) {
     system_discovery_t* discovery = hal_get_system_discovery();
     if (discovery && discovery->timers[0].frequency > 0) {

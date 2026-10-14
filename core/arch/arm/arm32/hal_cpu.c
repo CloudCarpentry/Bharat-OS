@@ -3,6 +3,7 @@
 #include "device/irq_domain.h"
 #include "secure_boot.h"
 #include <stdint.h>
+#include "hal/hal_internal.h"
 
 void hal_cpu_init(void) {
     extern uint8_t vector_table_arm32[];
@@ -52,7 +53,6 @@ uint64_t hal_cpu_get_fault_address(const void *trap_frame) {
     return 0;
 }
 
-#include "hal/hal_internal.h"
 void hal_init(void) {
     hal_cpu_init();
     arch_discover_hw_caps();

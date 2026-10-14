@@ -1,6 +1,7 @@
 #include "ipc_auth.h"
 #include <bharat/uapi/ipc/status.h>
 #include <bharat/cap/cap_validate.h>
+#include <bharat/cap/cap_authz.h>
 
 #ifndef BHARAT_BUILD_HOST_TESTS
 #include <bharat/runtime/freestanding_string.h>
@@ -70,7 +71,7 @@ static void netmgr_audit_cap_failure(
 #endif
 }
 
-#include <bharat/cap/cap_authz.h>
+
 
 int netmgr_authorize(
     bharat_cap_handle_t caller_cap,

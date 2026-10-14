@@ -9,6 +9,9 @@
 #if __has_include("bharat_config.h")
 #include "bharat_config.h"
 #endif
+#include "trap.h"
+#include "sched/sched.h"
+#include "hal/hal_internal.h"
 
 #ifndef MAX_SUPPORTED_CORES
 #define MAX_SUPPORTED_CORES 8U
@@ -73,8 +76,7 @@ void hal_cpu_reboot(void) {
   }
 }
 
-// TODO: Needs refactor: #include directive placed mid-file for dependency/order compatibility.
-#include "trap.h"
+
 
 bool hal_cpu_is_syscall(const void *trap_frame) {
     if (!trap_frame) return false;
@@ -119,7 +121,6 @@ uint64_t hal_cpu_get_fault_address(const void *trap_frame) {
 }
 
 
-#include "sched/sched.h"
 
 __attribute__((weak)) void hal_cpu_dump_trap_frame(const void *trap_frame) {
     if (!trap_frame) {
@@ -405,7 +406,6 @@ static void gdt_set_system_descriptor(int index, uint64_t base, uint32_t limit,
   g_gdt[index + 1] = (base >> 32);
 }
 
-#include "hal/hal_internal.h"
 
 void hal_init(void) {
   hal_serial_init();

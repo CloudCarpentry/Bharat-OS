@@ -1,6 +1,7 @@
 #include "fs/vfs.h"
 #include "fs/file.h"
 #include "fs/mount.h"
+#include "pipe.h"
 #include "capability.h"
 #include "sched/sched.h"
 
@@ -405,7 +406,7 @@ int vfs_dup(int oldfd) {
     return new_slot;
 }
 
-#include "pipe.h"
+
 
 int vfs_pipe(int pipefd[2]) {
     if (!pipefd) return -1;

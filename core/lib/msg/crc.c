@@ -5,7 +5,7 @@
 
 // Public API for CRC32 validation
 // Standard IEEE 802.3 polynomial (Ethernet, gzip) = 0xEDB88320
-//
+
 // Dispatcher logic:
 // We use the hardware accelerated backend only if its instructions
 // match our exact IEEE 802.3 CRC variant.
