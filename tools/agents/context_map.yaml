@@ -1,0 +1,402 @@
+# Bharat-OS Subsystem Context Map
+# Authoritative machine-readable mapping for agents to query compact context packs.
+
+vm-manager:
+  name: "Virtual Memory Manager Service"
+  layer: service
+  policy: true
+  sources:
+    - core/services/vm_manager/
+  contracts:
+    - interface/include/bharat/uapi/
+  architecture:
+    - docs/architecture/CONTRACTS.md
+  skills:
+    - bharat-os-service-runtime
+    - bharat-os-memory-model
+    - bharat-os-capability-security
+  tests:
+    - test_vm_manager
+    - test_vm_authority_integration
+  runtime_markers:
+    - VM_MANAGER_BOUND
+    - VM_MANAGER_AUTHORITY_READY
+    - VM_MANAGER_READY
+  protection_models:
+    - MMU_FULL
+    - MMU_LITE
+    - MPU
+
+process-manager:
+  name: "Process Manager Service"
+  layer: service
+  policy: true
+  sources:
+    - core/services/process_manager/
+  contracts:
+    - interface/include/bharat/uapi/
+  architecture:
+    - docs/architecture/CONTRACTS.md
+  skills:
+    - bharat-os-service-runtime
+    - bharat-os-capability-security
+  tests:
+    - test_process_manager
+  runtime_markers:
+    - PROCESS_MANAGER_BOUND
+    - PROCESS_MANAGER_READY
+  protection_models:
+    - MMU_FULL
+    - MMU_LITE
+    - MPU
+
+servicemgr:
+  name: "System Service Manager & Supervisor"
+  layer: service
+  policy: true
+  sources:
+    - core/services/servicemgr/
+  contracts:
+    - interface/include/bharat/uapi/
+  architecture:
+    - docs/architecture/CONTRACTS.md
+  skills:
+    - bharat-os-service-runtime
+    - bharat-os-capability-security
+  tests:
+    - test_servicemgr
+  runtime_markers:
+    - SERVICEMGR_READY
+  protection_models:
+    - MMU_FULL
+    - MMU_LITE
+    - MPU
+
+scheduler:
+  name: "Kernel Per-Core Scheduler"
+  layer: kernel
+  policy: false
+  sources:
+    - core/kernel/src/sched/
+    - core/kernel/include/sched/
+  contracts:
+    - interface/contracts/abi/native_syscalls.json
+  architecture:
+    - docs/architecture/CONTRACTS.md
+  skills:
+    - bharat-os-kernel-architecture
+    - bharat-os-distributed-kernel
+  tests:
+    - test_sched_smp
+    - test_sched_migration
+  runtime_markers:
+    - KERNEL_SCHED_ONLINE
+  protection_models:
+    - ALL
+
+tlb:
+  name: "Kernel Distributed TLB Shootdown"
+  layer: kernel
+  policy: false
+  sources:
+    - core/kernel/src/mm/tlb/
+    - core/kernel/include/mm/
+  contracts:
+    - interface/contracts/abi/native_syscalls.json
+  architecture:
+    - docs/architecture/CONTRACTS.md
+  skills:
+    - bharat-os-distributed-kernel
+    - bharat-os-memory-model
+  tests:
+    - test_tlb_shootdown
+    - test_tlb_stress
+  runtime_markers:
+    - TLB_PROTOCOL_ONLINE
+  protection_models:
+    - MMU_FULL
+
+pmm:
+  name: "Kernel Physical Memory Manager (pcache)"
+  layer: kernel
+  policy: false
+  sources:
+    - core/kernel/src/mm/pmm/
+    - core/kernel/include/mm/
+  contracts:
+    - interface/contracts/abi/native_syscalls.json
+  architecture:
+    - docs/architecture/CONTRACTS.md
+  skills:
+    - bharat-os-kernel-architecture
+    - bharat-os-memory-model
+  tests:
+    - test_pmm_pcache
+    - test_pmm_remote_free
+  runtime_markers:
+    - PMM_READY
+  protection_models:
+    - ALL
+
+capability:
+  name: "Kernel Capability System & CSpace"
+  layer: kernel
+  policy: false
+  sources:
+    - core/kernel/src/cap/
+    - core/kernel/include/capability/
+  contracts:
+    - interface/contracts/abi/native_syscalls.json
+  architecture:
+    - docs/architecture/CONTRACTS.md
+  skills:
+    - bharat-os-capability-security
+    - bharat-os-kernel-architecture
+  tests:
+    - test_caps_revocation
+    - test_caps_cspace
+  runtime_markers:
+    - CAPS_ONLINE
+  protection_models:
+    - ALL
+
+gui-experience:
+  name: "GUI, Display Tiers & Input Stream"
+  layer: service
+  policy: true
+  sources:
+    - core/services/
+    - core/stacks/ui/
+    - core/kernel/src/display/
+  contracts:
+    - docs/adr/ADR-035-tiered-display-and-kernel-zero-bloat-policy.md
+    - docs/adr/ADR-034-capability-mediated-gui-input-stream.md
+  architecture:
+    - docs/architecture/CONTRACTS.md
+  skills:
+    - bharat-os-gui-experience
+    - bharat-os-service-runtime
+    - bharat-os-capability-security
+  tests:
+    - test_ui_surface_buffer_stress
+  runtime_markers:
+    - DISPLAY_CONTROLLER_BOUND
+    - SPLASH_VISIBLE
+    - INPUTMGR_READY
+    - GUI_INTERACTIVE
+  protection_models:
+    - MMU_FULL
+    - MMU_LITE
+    - MPU
+
+host-testing:
+  name: "Host Unit & Integration Testing"
+  layer: tooling
+  policy: false
+  sources:
+    - quality/tests/host/
+  contracts:
+    - docs/architecture/CONTRACTS.md
+  architecture:
+    - docs/architecture/CONTRACTS.md
+  skills:
+    - bharat-os-host-testing
+    - bharat-os-validation
+  tests:
+    - test_tlb_shootdown
+    - test_pmm_pcache
+    - test_capability_ownership
+  runtime_markers:
+    - CTEST_PASS
+  protection_models:
+    - ALL
+
+architecture-docs:
+  name: "Architecture Documentation & ADR Lifecycle"
+  layer: tooling
+  policy: false
+  sources:
+    - docs/architecture/
+    - docs/adr/
+    - interface/contracts/
+  contracts:
+    - docs/architecture/CONTRACTS.md
+  architecture:
+    - docs/architecture/CONTRACTS.md
+  skills:
+    - bharat-os-architecture-docs
+    - bharat-os-runtime-truth
+  tests:
+    - check_agent_config.py
+  runtime_markers:
+    - DOCS_SYNCHRONIZED
+  protection_models:
+    - ALL
+
+netmgr:
+  name: "Network Manager Service"
+  layer: service
+  policy: true
+  sources:
+    - core/services/netmgr/
+  contracts:
+    - interface/include/bharat/uapi/
+  architecture:
+    - docs/architecture/CONTRACTS.md
+  skills:
+    - bharat-os-service-runtime
+    - bharat-os-capability-security
+  tests:
+    - test_netmgr
+  runtime_markers:
+    - NETMGR_READY
+  protection_models:
+    - MMU_FULL
+    - MMU_LITE
+
+devmgr:
+  name: "Device Manager Service"
+  layer: service
+  policy: true
+  sources:
+    - core/services/devmgr/
+  contracts:
+    - interface/include/bharat/uapi/
+  architecture:
+    - docs/architecture/CONTRACTS.md
+  skills:
+    - bharat-os-service-runtime
+    - bharat-os-capability-security
+  tests:
+    - test_devmgr
+  runtime_markers:
+    - DEVMGR_READY
+  protection_models:
+    - ALL
+
+linux-compat:
+  name: "Linux Personality Compatibility Layer"
+  layer: personality
+  policy: false
+  sources:
+    - core/personalities/compat/linux/
+  contracts:
+    - interface/contracts/abi/native_syscalls.json
+  architecture:
+    - docs/architecture/CONTRACTS.md
+  skills:
+    - bharat-os-personality
+    - bharat-os-syscall-abi
+  tests:
+    - test_linux_compat
+  runtime_markers:
+    - LINUX_PERSONALITY_READY
+  protection_models:
+    - MMU_FULL
+
+android-compat:
+  name: "Android Personality Compatibility Layer"
+  layer: personality
+  policy: false
+  sources:
+    - core/personalities/compat/android/
+  contracts:
+    - interface/contracts/abi/native_syscalls.json
+  architecture:
+    - docs/architecture/CONTRACTS.md
+  skills:
+    - bharat-os-personality
+    - bharat-os-syscall-abi
+  tests:
+    - test_android_binder
+  runtime_markers:
+    - ANDROID_PERSONALITY_READY
+  protection_models:
+    - MMU_FULL
+
+arm32-mmu-lite:
+  name: "ARM32 MMU-Lite / MPU Protection"
+  layer: arch
+  policy: false
+  sources:
+    - core/arch/arm/
+    - core/hal/
+  contracts:
+    - delivery/targets/qemu/arm32_mmu_lite_headless.yaml
+  architecture:
+    - docs/architecture/CONTRACTS.md
+  skills:
+    - bharat-os-memory-model
+    - bharat-os-kernel-architecture
+  tests:
+    - test_arm32_mmu_lite
+  runtime_markers:
+    - ARM32_MMU_LITE_ACTIVE
+  protection_models:
+    - MMU_LITE
+    - MPU
+
+riscv32-mmu-lite:
+  name: "RISC-V 32 MMU-Lite / PMP Protection"
+  layer: arch
+  policy: false
+  sources:
+    - core/arch/riscv/
+    - core/hal/
+  contracts:
+    - delivery/targets/qemu/riscv32_mmu_lite_headless.yaml
+  architecture:
+    - docs/architecture/CONTRACTS.md
+  skills:
+    - bharat-os-memory-model
+    - bharat-os-kernel-architecture
+  tests:
+    - test_riscv32_mmu_lite
+  runtime_markers:
+    - RV32_MMU_LITE_ACTIVE
+  protection_models:
+    - MMU_LITE
+    - MPU
+
+automotive-profile:
+  name: "Automotive ECU & Infotainment Profile"
+  layer: platform
+  policy: false
+  sources:
+    - delivery/targets/qemu/arm64_automotive_headless.yaml
+  contracts:
+    - docs/adr/ADR-012-can-subsystem-architecture.md
+  architecture:
+    - docs/architecture/CONTRACTS.md
+  skills:
+    - bharat-os-kernel-architecture
+    - bharat-os-validation
+  tests:
+    - verify.py --profile-smoke automotive
+  runtime_markers:
+    - AUTOMOTIVE_ECU_ONLINE
+  protection_models:
+    - MMU_FULL
+
+drone-edge-profile:
+  name: "Drone / Robotics / RTOS Edge Profile"
+  layer: platform
+  policy: false
+  sources:
+    - delivery/targets/qemu/arm32_rtos_mpu_headless.yaml
+    - delivery/targets/qemu/riscv32_rtos_mpu_headless.yaml
+    - delivery/targets/qemu/arm32_edge_headless.yaml
+  contracts:
+    - docs/adr/018-virtual-robotics-device-path.md
+  architecture:
+    - docs/architecture/CONTRACTS.md
+  skills:
+    - bharat-os-memory-model
+    - bharat-os-validation
+  tests:
+    - verify.py --profile-smoke drone
+  runtime_markers:
+    - RTOS_CORE_ONLINE
+  protection_models:
+    - MPU
+    - MMU_LITE

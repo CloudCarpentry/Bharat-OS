@@ -455,6 +455,58 @@ You can run our verifiable test targets locally to inspect the runtime state:
 
 ---
 
+## 🤖 Autonomous AI Agent Framework
+
+Bharat-OS employs an authoritative, multi-platform coding agent constitution centered on **`.agents/skills/` as the single canonical source of truth**:
+
+- **Repository Constitution**: [AGENTS.md](AGENTS.md) (4 pillars: Architectural Constitution, Absolute Prohibitions, Skill Routing Table, Definition of Done).
+- **Supported Agent Runtimes**: Google Antigravity, Google Jules, GitHub Copilot, Claude (Code & Dev), Cursor, and Gemini.
+- **Subsystem Context Pack**: Agents run `python3 tools/agents/context_pack.py --area <area>` to retrieve 40-line targeted context instead of reading hundreds of source files.
+
+### 15 Canonical Domain Skills
+1. `bharat-os-task-router` (Task classification & context packing)
+2. `bharat-os-kernel-architecture` (Mechanisms vs policy, boundaries)
+3. `bharat-os-distributed-kernel` (Cross-core, monotonic deadlines, wire structs)
+4. `bharat-os-memory-model` (MMU_FULL, MMU_LITE, MPU/PMP, pcache)
+5. `bharat-os-capability-security` (Capability checks, anti-TOCTOU usercopy)
+6. `bharat-os-service-runtime` (Production authority adapters, runtime markers)
+7. `bharat-os-gui-experience` (Display tiers ADR-035, input stream ADR-034, GUI smoke)
+8. `bharat-os-host-testing` (Fast CTest test suites, mock HAL)
+9. `bharat-os-kernel-config` (`bharat_config.h.in` template authority)
+10. `bharat-os-syscall-abi` (Syscall manifest, ABI lock verification)
+11. `bharat-os-personality` (Linux & Android compatibility shims)
+12. `bharat-os-validation` (5-target QEMU matrix, empirical evidence)
+13. `bharat-os-runtime-truth` (`implementation_maturity.json` ground truth)
+14. `bharat-os-architecture-docs` (ADR lifecycle, CONTRACTS.md sync)
+15. `bharat-os-review` (Pre-merge PR audit checklist)
+
+---
+
+## 📱 Multi-Architecture & Device Profile Verification
+
+Bharat-OS targets diverse device profiles across 5 hardware architectures (x86_64, ARM64, RISC-V 64, ARM32, RISC-V 32). Run qualification gates via `tools/agents/verify.py`:
+
+```bash
+# 1. Static Linters & Contract Checks
+python3 tools/agents/verify.py --linters-only
+
+# 2. Host Unit & Integration Tests (Fast Feedback)
+python3 tools/agents/verify.py --host-tests
+
+# 3. Canonical 5-Target Headless QEMU Smoke Matrix
+python3 tools/agents/verify.py --matrix-only
+
+# 4. Multi-Architecture GUI Smoke Matrix (Desktop & Mobile)
+python3 tools/agents/verify.py --gui-smoke
+
+# 5. Device Profile Qualification Gates
+python3 tools/agents/verify.py --profile-smoke mobile      # ARM64 & RV64 Mobile Headless + Touch GUI
+python3 tools/agents/verify.py --profile-smoke automotive  # ARM64 Automotive ECU Headless
+python3 tools/agents/verify.py --profile-smoke drone       # ARM32 MPU & RV32 PMP RTOS / Edge
+```
+
+---
+
 ## 🛡️ Research & Verification References
 
 - **Formal Verification Foundations:** See [Verification Scope](docs/architecture/verification-scope.md) and [ADR on ML Isolation](docs/adr/ADR-005-ml-stays-out-of-ring-0.md).

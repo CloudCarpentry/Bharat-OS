@@ -1,30 +1,30 @@
 # Bharat-OS Kernel Development - Cursor Rules
 
-## General Context
-Bharat-OS is a multi-profile operating system (RTOS to Datacenter).
-Focus on micro-architectural efficiency and hardware-aware programming.
+## Constitutional Authority
+All Cursor agents must follow the repository constitution in [AGENTS.md](AGENTS.md).
+Canonical domain skills are located in `.agents/skills/`.
 
-## Strict Requirements
-- **Standard**: C23 (ISO/IEC 9899:2024).
-- **HAL**: Architecture-specific code ONLY in `kernel/hal/`.
-- **Modern C**: Use `nullptr`, `constexpr`, `_BitInt`, and `stdbit.h`.
-- **Memory**: No dynamic allocation in critical paths. Align to cache lines.
+## Context Pack First
+Query compact subsystem metadata and assigned skills before planning:
+```bash
+python3 tools/agents/context_pack.py --area <area-name> --format compact
+```
 
-## Build System
-- Don't bypass the CMake policy module: `cmake/modules/BharatComponentPolicy.cmake`.
-- Feature toggles must be `BHARAT_ENABLE_*`.
+## Strict Architectural Requirements
+- **Standard**: C23 (ISO/IEC 9899:2024). No standard library in kernel.
+- **Layering**: Kernel = mechanisms only (`core/kernel/`); Services = policy (`core/services/`); HAL = contracts (`core/hal/`); Arch = ISA (`core/arch/`).
+- **Capability-Mediated**: Every resource access requires a capability. Deny by default, fail closed.
+- **Ownership**: Mutable state is core-local. Never access remote runqueues directly.
+- **Wire Safety**: Fixed-width integers (`uint32_t`, `uint64_t`), compile-time assertions. No raw pointers across IPC/wire boundaries.
+- **Bounded Timing**: Monotonic deadlines via `bh_ktime_now()`. No spin-counter loops.
+- **Memory**: Support MMU_FULL, MMU_LITE, and MPU/PMP. Fail closed (`BH_STATUS_ERR_UNSUPPORTED`) on unsupported backends.
+- **Usercopy**: Never dereference user pointers directly. Use fault-safe usercopy before inspecting fields or capability handles.
 
-## Safety
-- `memset_explicit` for sensitive model weights/keys.
-- Validate pointers and alignment for DMA.
-
-## Strict Execution Directives
-- Do not ask broad clarification questions when the requested change can be inferred from repo context, architecture docs, and existing code. Make a best-effort implementation.
-- Respect Bharat-OS layering: kernel for mechanisms only, services for policy, stacks for composed subsystems, arch for ISA-specific code, hal for contracts/glue, platform for board/machine integration.
-- Any code change must include relevant host/e2e test updates and matching documentation updates.
-- Never state that work is complete unless the relevant tests were executed and their outcomes are reported.
-
-## Workflow Rules (Strict)
-1. **Research First**: Consult `/docs/architecture` and `/docs/adr` before coding.
-2. **Test Always**: Implement Host/Harness/E2E tests after code completion.
-3. **Doc-sync**: Update documentation in `/docs` to reflect changes.
+## Build & Validation
+- Template source for kernel config is `core/kernel/include/bharat_config.h.in`. Never commit generated `bharat_config.h`.
+- Verify changes with:
+  ```bash
+  python3 tools/agents/verify.py --changed-files <changed_files>
+  python3 tools/run_qemu_matrix.py --headless --smoke --all-arch
+  ```
+- Never report unexecuted checks as PASS.

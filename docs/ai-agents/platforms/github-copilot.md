@@ -1,29 +1,32 @@
 ---
 title: GitHub Copilot Runtime Notes
-status: Draft
+status: Active
 owner: Documentation Working Group
-last_updated: 2026-04-25
+last_updated: 2026-10-14
 tags:
   - docs
   - ai-agents
   - platforms
 see_also:
   - README.md
+  - AGENTS.md
+  - .github/copilot-instructions.md
 ---
 # GitHub Copilot Runtime Notes
 
-## Recommended Inputs
+GitHub Copilot is guided by `.github/copilot-instructions.md` and discovers project skills in `.github/skills/` (and `.agents/skills/`).
 
-- `CONTRIBUTING.md`
-- `docs/ai-agents/standards/*`
-- Inline task prompts with acceptance criteria
+## Setup & Skills Synchronization
 
-## Best Practices
+1. GitHub Copilot reads repository-wide instructions from `.github/copilot-instructions.md` and scoped files in `.github/instructions/`.
+2. Skills are mirrored from `.agents/skills/` into `.github/skills/` using:
+   ```bash
+   python3 tools/agents/sync_skills.py --sync
+   ```
 
-- Provide explicit file paths and expected diff shape in prompts.
-- Add guardrails in issue templates and PR templates.
-- Require quality/tests/checks in PR automation.
+## Workflow for GitHub Copilot
 
-## Workflow Suggestion
-
-Use Copilot for code drafting; use repository guardrails and CI gates for merge enforcement.
+1. Use `python3 tools/agents/context_pack.py --area <area-name>` to get compact subsystem boundaries and skill references.
+2. Read the referenced domain skill in `.github/skills/<skill>/SKILL.md`.
+3. Follow the 4-pillar constitution in root `AGENTS.md`.
+4. Validate changes using `python3 tools/agents/verify.py --changed-files <...>`.

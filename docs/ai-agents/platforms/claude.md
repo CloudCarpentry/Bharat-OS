@@ -1,29 +1,38 @@
 ---
 title: Claude Runtime Notes
-status: Draft
+status: Active
 owner: Documentation Working Group
-last_updated: 2026-04-25
+last_updated: 2026-10-14
 tags:
   - docs
   - ai-agents
   - platforms
 see_also:
   - README.md
+  - CLAUDE.md
+  - AGENTS.md
 ---
-# Claude Runtime Notes
+# Claude Runtime Notes (Claude Code & Claude Dev)
 
-## Recommended Inputs
+Claude natively loads skills on demand from `.claude/skills/<name>/SKILL.md` and reads `CLAUDE.md` at the repository root.
 
-- Clear objective with constraints and non-goals
-- Existing architecture docs for impacted subsystem
-- Agent standards + guardrails docs
+## Configuration & Synchronization
 
-## Best Practices
+1. Canonical skill source: `.agents/skills/`.
+2. Synchronize to `.claude/skills/`:
+   ```bash
+   python3 tools/agents/sync_skills.py --sync
+   ```
+3. Check synchronization:
+   ```bash
+   python3 tools/agents/sync_skills.py --check
+   ```
 
-- Ask for stepwise plan + implementation + verification in one response cycle.
-- Request explicit assumptions and unknowns.
-- Require changed-file summaries and command evidence.
+## Workflow for Claude Agents
 
-## Workflow Suggestion
-
-Use Claude for architecture-level reasoning and draft docs; validate with project-native tests before merge.
+1. **Context pack query**:
+   Run `python3 tools/agents/context_pack.py --area <subsystem>` to retrieve the compact 40-line summary.
+2. **Skill discovery**:
+   Claude loads the relevant canonical skill from `.claude/skills/` on demand.
+3. **Verification**:
+   Run `python3 tools/agents/verify.py --changed-files <...>` before submitting changes.

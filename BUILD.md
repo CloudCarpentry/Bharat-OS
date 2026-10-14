@@ -135,6 +135,30 @@ cmake --build --preset host-test
 
 # Run host tests
 ctest --preset host-test --output-on-failure
+
+# Or run via automated agent verifier:
+python tools/agents/verify.py --host-tests
+```
+
+### 5) Multi-Architecture GUI & Device Profile Smoke Gates
+Verify specialized device profiles (mobile, automotive ECU, drone/robotics RTOS) and GUI display tiers:
+
+```bash
+# 1. Multi-Architecture GUI Smoke Matrix (Desktop & Mobile)
+python tools/agents/verify.py --gui-smoke
+
+# 2. Automotive ECU Profile Smoke (ARM64 Headless)
+python tools/agents/verify.py --profile-smoke automotive
+
+# 3. Mobile Device Profile Smoke (ARM64 & RV64 Headless + Touch GUI)
+python tools/agents/verify.py --profile-smoke mobile
+
+# 4. Drone / Robotics / RTOS Profile Smoke (ARM32 MPU & RV32 PMP)
+python tools/agents/verify.py --profile-smoke drone
+python tools/agents/verify.py --profile-smoke rtos
+
+# 5. Full Qualification Gate (Linters, ABI, Headless Matrix, GUI Smoke)
+python tools/agents/verify.py --all
 ```
 
 ---

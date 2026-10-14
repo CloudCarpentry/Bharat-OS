@@ -5,24 +5,35 @@ description: Apply when changing Bharat-OS configuration templates, CMake variab
 
 # Bharat-OS Kernel Configuration Skill
 
-## Authority
+## Configuration Authority
 
-- Template: `core/kernel/include/bharat_config.h.in`
-- Generated output: `build/<target>/generated/include/bharat_config.h`
+- **Template Source**: `core/kernel/include/bharat_config.h.in`
+- **Authoritative CMake Definition**: Root `CMakeLists.txt` and `delivery/targets/`
+- **Generated Output**: `${CMAKE_BINARY_DIR}/generated/include/bharat_config.h`
 
-## Procedure
+## Invariant Rules
 
-1. Confirm the setting is truly compile-time. Prefer HAL/platform runtime discovery for dynamic hardware facts.
-2. Add or modify only the template and authoritative CMake/profile source.
-3. Use `@VAR@` or `#cmakedefine` consistently with existing configuration.
-4. Keep generation deterministic and build-directory-only.
-5. Include the header as `#include "bharat_config.h"`.
-6. Do not edit or commit generated headers.
-7. Evaluate MMU, MMU-Lite, and MPU implications.
-8. Add configuration validation tests or configure-time assertions.
-9. Run all mandatory builds and QEMU gates in root `AGENTS.md`.
-10. Update `BUILD.md` and target/profile documentation when user-visible configuration changes.
+1. **Never Commit Generated Config**:
+   - `bharat_config.h` is strictly a build artifact generated under `build/`.
+   - Never commit `bharat_config.h` or add manual headers into source trees that duplicate it.
+2. **Compile-Time vs. Runtime Discovery**:
+   - Only genuinely immutable build-time policy (such as target architecture, profile type, security hardening options) belongs in `bharat_config.h.in`.
+   - Dynamic hardware facts (e.g., number of available cores, RAM size, peripheral base addresses) must be discovered at runtime via HAL, device tree, or ACPI, never hardcoded in configuration macros.
+3. **Template Syntax Consistency**:
+   - Use CMake `@VAR@` or `#cmakedefine` syntax consistently in `bharat_config.h.in`.
+4. **Header Inclusion Pattern**:
+   - Always include the generated configuration as `#include "bharat_config.h"`.
+   - Never use relative paths to reach the generated header.
+5. **Memory Model and Profile Matrix**:
+   - Any configuration switch affecting memory layout must explicitly evaluate `MMU_FULL`, `MMU_LITE`, and `MPU/PMP` profiles.
+   - Unsupported combinations must fail configuration or compile time with an explicit `#error "Unsupported profile/feature combination"`.
 
-## Failure rule
+## Verification Procedure
 
-When a required backend/target combination is not supported, return/configure an explicit unsupported result and fail closed. Do not silently enable a weaker backend or hardcode a platform assumption.
+1. Modify `core/kernel/include/bharat_config.h.in` or `CMakeLists.txt`.
+2. Verify build succeeds across all 5 architectures:
+   ```bash
+   python3 tools/agents/verify.py --config
+   ```
+3. Run `python3 tools/lint/check_cmake_dependencies.py`.
+4. Ensure no generated files are staged in git status.
