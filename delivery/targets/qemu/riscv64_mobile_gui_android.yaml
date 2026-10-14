@@ -1,0 +1,60 @@
+name: riscv64_mobile_gui_android
+kind: qemu_target
+
+arch: riscv64
+board: virt
+device_profile: mobile
+personality_profile: android
+execution_profile: mix
+
+build:
+  cmake_preset: riscv64-mobile-android-release
+  cmake_defs:
+    BHARAT_ARCH_FAMILY: RISCV64
+    BHARAT_DEVICE_PROFILE: MOBILE
+    BHARAT_PERSONALITY_PROFILE: ANDROID
+    BHARAT_TARGET_BOARD: virt
+    BHARAT_BOOT_GUI: ON
+    BHARAT_ENABLE_FBUI: ON
+    BHARAT_SHOWCASE_GUI: ON
+    BHARAT_UI_LVGL: ON
+
+kernel:
+  canonical_artifacts:
+    elf: kernel/kernel.elf
+
+boot:
+  protocol: opensbi_payload
+  artifact_format: elf
+  dtb:
+    mode: qemu_generated
+
+package:
+  transforms: []
+
+run:
+  backend: qemu
+  machine: virt
+  memory: 512M
+  nographic: false
+  serial:
+    - stdio
+  boot_artifact: kernel/kernel.elf
+  extra_args:
+    - "-device"
+    - "virtio-gpu-device"
+    - "-device"
+    - "virtio-keyboard-device"
+    - "-device"
+    - "virtio-tablet-device"
+    - "-netdev"
+    - "user,id=net0"
+    - "-device"
+    - "virtio-net-device,netdev=net0"
+    - "-device"
+    - "qemu-xhci"
+
+debug:
+  backend: gdb_remote
+  stop_on_entry: false
+  gdb_port: 1234

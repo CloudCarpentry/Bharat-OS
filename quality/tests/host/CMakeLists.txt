@@ -753,9 +753,61 @@ if(BHARAT_BUILD_HOST_TESTS)
     add_test(NAME host_test_linux_ecosystem_phase4 COMMAND test_linux_ecosystem_phase4)
     set_tests_properties(host_test_linux_ecosystem_phase4 PROPERTIES LABELS "personality;linux")
 
-    add_executable(test_android_binder compat/android/test_android_binder.c ../../core/personalities/compat/android/android_binder_dist.c ../../core/personalities/compat/android/android_personality.c)
-    target_include_directories(test_android_binder PRIVATE ../../core/personalities/compat/android ../../include)
+    add_executable(test_android_binder
+        compat/android/test_android_binder.c
+        ${CMAKE_SOURCE_DIR}/core/personalities/compat/android/android_binder_dist.c
+        ${CMAKE_SOURCE_DIR}/core/personalities/compat/android/android_personality.c
+        ${CMAKE_SOURCE_DIR}/core/personalities/compat/android/android_security.c
+    )
+    target_include_directories(test_android_binder PRIVATE
+        ${CMAKE_SOURCE_DIR}/core/personalities/compat/android
+        ${CMAKE_SOURCE_DIR}/core/personalities/compat/android/include
+        ${CMAKE_SOURCE_DIR}/core/personalities/runtime/include
+        ${CMAKE_SOURCE_DIR}/core/kernel/include
+        ${CMAKE_SOURCE_DIR}/core/lib/include
+        ${CMAKE_SOURCE_DIR}/interface/include
+        ${CMAKE_BINARY_DIR}/generated/include
+    )
+    target_compile_definitions(test_android_binder PRIVATE BHARAT_HOST_TEST=1)
     add_test(NAME host_test_android_binder COMMAND test_android_binder)
+    set_tests_properties(host_test_android_binder PROPERTIES LABELS "personality;android")
+
+    add_executable(test_android_security
+        compat/android/test_android_security.c
+        ${CMAKE_SOURCE_DIR}/core/personalities/compat/android/android_security.c
+    )
+    target_include_directories(test_android_security PRIVATE
+        ${CMAKE_SOURCE_DIR}/core/personalities/compat/android
+        ${CMAKE_SOURCE_DIR}/core/personalities/compat/android/include
+        ${CMAKE_SOURCE_DIR}/core/kernel/include
+        ${CMAKE_SOURCE_DIR}/core/lib/include
+        ${CMAKE_SOURCE_DIR}/interface/include
+        ${CMAKE_BINARY_DIR}/generated/include
+    )
+    target_compile_definitions(test_android_security PRIVATE BHARAT_HOST_TEST=1)
+    add_test(NAME host_test_android_security COMMAND test_android_security)
+    set_tests_properties(host_test_android_security PROPERTIES LABELS "personality;android")
+
+    add_executable(test_android_process
+        compat/android/test_android_process.c
+        ${CMAKE_SOURCE_DIR}/core/personalities/compat/android/android_process.c
+        ${CMAKE_SOURCE_DIR}/core/personalities/compat/android/android_boot.c
+        ${CMAKE_SOURCE_DIR}/core/personalities/compat/android/android_personality.c
+        ${CMAKE_SOURCE_DIR}/core/personalities/compat/android/android_binder_dist.c
+        ${CMAKE_SOURCE_DIR}/core/personalities/compat/android/android_security.c
+    )
+    target_include_directories(test_android_process PRIVATE
+        ${CMAKE_SOURCE_DIR}/core/personalities/compat/android
+        ${CMAKE_SOURCE_DIR}/core/personalities/compat/android/include
+        ${CMAKE_SOURCE_DIR}/core/personalities/runtime/include
+        ${CMAKE_SOURCE_DIR}/core/kernel/include
+        ${CMAKE_SOURCE_DIR}/core/lib/include
+        ${CMAKE_SOURCE_DIR}/interface/include
+        ${CMAKE_BINARY_DIR}/generated/include
+    )
+    target_compile_definitions(test_android_process PRIVATE BHARAT_HOST_TEST=1)
+    add_test(NAME host_test_android_process COMMAND test_android_process)
+    set_tests_properties(host_test_android_process PROPERTIES LABELS "personality;android")
 endif()
 
 # Heterogeneous Compute Host Tests

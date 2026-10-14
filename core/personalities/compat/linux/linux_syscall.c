@@ -1,6 +1,7 @@
 #include "linux_personality.h"
 #include "linux_errno.h"
 #include "linux_syscall_numbers_x86_64.h"
+#include "linux_syscall_numbers_generic.h"
 #include "linux_compat.h"
 #include "linux_futex.h"
 #include "linux_pipe.h"
@@ -307,6 +308,11 @@ static bh_operation_result_t linux_do_open(bh_syscall_ctx_t *ctx, const char *pa
     } else if (strcmp(path_buf, "/dev/tty") == 0 || strcmp(path_buf, "/dev/console") == 0 ||
                strcmp(path_buf, "/dev/ptmx") == 0 || strncmp(path_buf, "/dev/pts/", 9) == 0) {
         st->fd_table[fd].type = LINUX_FD_TYPE_CONSOLE;
+    } else if (strcmp(path_buf, "/dev/binder") == 0 || strcmp(path_buf, "/dev/hwbinder") == 0 ||
+               strcmp(path_buf, "/dev/vndbinder") == 0) {
+        st->fd_table[fd].type = LINUX_FD_TYPE_DEV_BINDER;
+    } else if (strcmp(path_buf, "/dev/ashmem") == 0) {
+        st->fd_table[fd].type = LINUX_FD_TYPE_DEV_ASHMEM;
     } else if (strncmp(path_buf, "/proc/", 6) == 0) {
         linux_procfs_file_t *pf = linux_procfs_generate(path_buf, ctx->process);
         if (!pf) return bh_op_result_value(-LINUX_ENOENT);
@@ -371,11 +377,43 @@ static bh_operation_result_t linux_sys_close(bh_syscall_ctx_t *ctx) {
     return bh_op_result_value(0);
 }
 
+#define BINDER_WRITE_READ       0xc0306201UL
+#define BINDER_SET_MAX_THREADS  0x40046205UL
+#define BINDER_SET_CONTEXT_MGR  0x40046207UL
+#define BINDER_THREAD_EXIT      0x40046208UL
+#define BINDER_VERSION          0xc0046209UL
+
 static bh_operation_result_t linux_sys_ioctl(bh_syscall_ctx_t *ctx) {
     int fd = (int)ctx->regs.arg[0];
+    unsigned long cmd = (unsigned long)ctx->regs.arg[1];
+    uintptr_t arg = (uintptr_t)ctx->regs.arg[2];
+
     if (fd < 0 || fd >= LINUX_MAX_FDS) {
         return bh_op_result_value(-LINUX_EBADF);
     }
+
+    linux_process_state_t *st = linux_get_or_create_process_state(ctx->process);
+    if (!st || st->fd_table[fd].type == LINUX_FD_TYPE_NONE) {
+        return bh_op_result_value(-LINUX_EBADF);
+    }
+
+    if (st->fd_table[fd].type == LINUX_FD_TYPE_DEV_BINDER) {
+        if (cmd == BINDER_VERSION) {
+            int ver = 8;
+            if (arg && bh_copy_to_user((void *)arg, &ver, sizeof(ver)) == BH_OK) {
+                return bh_op_result_value(0);
+            }
+            return bh_op_result_value(-LINUX_EFAULT);
+        }
+        if (cmd == BINDER_SET_MAX_THREADS || cmd == BINDER_SET_CONTEXT_MGR || cmd == BINDER_THREAD_EXIT) {
+            return bh_op_result_value(0);
+        }
+        if (cmd == BINDER_WRITE_READ) {
+            return bh_op_result_value(0);
+        }
+        return bh_op_result_value(-LINUX_EINVAL);
+    }
+
     return bh_op_result_value(-LINUX_ENOTTY);
 }
 
@@ -1567,9 +1605,64 @@ static const bh_syscall_meta_t linux_syscall_table_x86_64[] = {
     [LINUX_X86_64_SYS_GETRANDOM]        = { .nr = LINUX_X86_64_SYS_GETRANDOM, .name = "getrandom", .class_id = BH_SYS_CLASS_SYSTEM, .arg_count = 3, .flags = BH_SYSCALL_F_USER_WRITE, .handler = linux_sys_getrandom },
 };
 
+static const bh_syscall_meta_t linux_syscall_table_generic[350] = {
+    [LINUX_GENERIC_SYS_EVENTFD2]        = { .nr = LINUX_GENERIC_SYS_EVENTFD2, .name = "eventfd2", .class_id = BH_SYS_CLASS_IO, .arg_count = 2, .flags = BH_SYSCALL_F_FAST, .handler = linux_sys_eventfd2 },
+    [LINUX_GENERIC_SYS_EPOLL_CREATE1]   = { .nr = LINUX_GENERIC_SYS_EPOLL_CREATE1, .name = "epoll_create1", .class_id = BH_SYS_CLASS_IO, .arg_count = 1, .flags = BH_SYSCALL_F_FAST, .handler = linux_sys_epoll_create1 },
+    [LINUX_GENERIC_SYS_EPOLL_CTL]       = { .nr = LINUX_GENERIC_SYS_EPOLL_CTL, .name = "epoll_ctl", .class_id = BH_SYS_CLASS_IO, .arg_count = 4, .flags = BH_SYSCALL_F_FAST | BH_SYSCALL_F_USER_READ, .handler = linux_sys_epoll_ctl },
+    [LINUX_GENERIC_SYS_EPOLL_PWAIT]     = { .nr = LINUX_GENERIC_SYS_EPOLL_PWAIT, .name = "epoll_pwait", .class_id = BH_SYS_CLASS_IO, .arg_count = 5, .flags = BH_SYSCALL_F_BLOCKING | BH_SYSCALL_F_USER_WRITE, .handler = linux_sys_epoll_pwait },
+    [LINUX_GENERIC_SYS_DUP]             = { .nr = LINUX_GENERIC_SYS_DUP, .name = "dup", .class_id = BH_SYS_CLASS_IO, .arg_count = 1, .flags = BH_SYSCALL_F_FAST, .handler = linux_sys_dup },
+    [LINUX_GENERIC_SYS_DUP3]            = { .nr = LINUX_GENERIC_SYS_DUP3, .name = "dup3", .class_id = BH_SYS_CLASS_IO, .arg_count = 3, .flags = BH_SYSCALL_F_FAST, .handler = linux_sys_dup3 },
+    [LINUX_GENERIC_SYS_FCNTL]           = { .nr = LINUX_GENERIC_SYS_FCNTL, .name = "fcntl", .class_id = BH_SYS_CLASS_IO, .arg_count = 3, .flags = BH_SYSCALL_F_FAST, .handler = linux_sys_fcntl },
+    [LINUX_GENERIC_SYS_IOCTL]           = { .nr = LINUX_GENERIC_SYS_IOCTL, .name = "ioctl", .class_id = BH_SYS_CLASS_IO, .arg_count = 3, .flags = BH_SYSCALL_F_BLOCKING, .handler = linux_sys_ioctl },
+    [LINUX_GENERIC_SYS_FACCESSAT]       = { .nr = LINUX_GENERIC_SYS_FACCESSAT, .name = "faccessat", .class_id = BH_SYS_CLASS_IO, .arg_count = 4, .flags = BH_SYSCALL_F_BLOCKING | BH_SYSCALL_F_USER_READ, .handler = linux_sys_faccessat },
+    [LINUX_GENERIC_SYS_CHDIR]           = { .nr = LINUX_GENERIC_SYS_CHDIR, .name = "chdir", .class_id = BH_SYS_CLASS_IO, .arg_count = 1, .flags = BH_SYSCALL_F_USER_READ, .handler = linux_sys_chdir },
+    [LINUX_GENERIC_SYS_OPENAT]          = { .nr = LINUX_GENERIC_SYS_OPENAT, .name = "openat", .class_id = BH_SYS_CLASS_IO, .arg_count = 4, .flags = BH_SYSCALL_F_BLOCKING | BH_SYSCALL_F_USER_READ, .handler = linux_sys_openat },
+    [LINUX_GENERIC_SYS_CLOSE]           = { .nr = LINUX_GENERIC_SYS_CLOSE, .name = "close", .class_id = BH_SYS_CLASS_IO, .arg_count = 1, .flags = BH_SYSCALL_F_BLOCKING, .handler = linux_sys_close },
+    [LINUX_GENERIC_SYS_PIPE2]           = { .nr = LINUX_GENERIC_SYS_PIPE2, .name = "pipe2", .class_id = BH_SYS_CLASS_IO, .arg_count = 2, .flags = BH_SYSCALL_F_BLOCKING | BH_SYSCALL_F_USER_WRITE, .handler = linux_sys_pipe2 },
+    [LINUX_GENERIC_SYS_READ]            = { .nr = LINUX_GENERIC_SYS_READ, .name = "read", .class_id = BH_SYS_CLASS_IO, .arg_count = 3, .flags = BH_SYSCALL_F_BLOCKING | BH_SYSCALL_F_USER_WRITE, .handler = linux_sys_read },
+    [LINUX_GENERIC_SYS_WRITE]           = { .nr = LINUX_GENERIC_SYS_WRITE, .name = "write", .class_id = BH_SYS_CLASS_IO, .arg_count = 3, .flags = BH_SYSCALL_F_BLOCKING | BH_SYSCALL_F_USER_READ, .handler = linux_sys_write },
+    [LINUX_GENERIC_SYS_PPOLL]           = { .nr = LINUX_GENERIC_SYS_PPOLL, .name = "ppoll", .class_id = BH_SYS_CLASS_IO, .arg_count = 5, .flags = BH_SYSCALL_F_BLOCKING, .handler = linux_sys_ppoll },
+    [LINUX_GENERIC_SYS_READLINKAT]      = { .nr = LINUX_GENERIC_SYS_READLINKAT, .name = "readlinkat", .class_id = BH_SYS_CLASS_IO, .arg_count = 4, .flags = BH_SYSCALL_F_USER_READ | BH_SYSCALL_F_USER_WRITE, .handler = linux_sys_readlinkat },
+    [LINUX_GENERIC_SYS_NEWFSTATAT]      = { .nr = LINUX_GENERIC_SYS_NEWFSTATAT, .name = "newfstatat", .class_id = BH_SYS_CLASS_IO, .arg_count = 4, .flags = BH_SYSCALL_F_BLOCKING | BH_SYSCALL_F_USER_READ | BH_SYSCALL_F_USER_WRITE, .handler = linux_sys_newfstatat },
+    [LINUX_GENERIC_SYS_FSTAT]           = { .nr = LINUX_GENERIC_SYS_FSTAT, .name = "fstat", .class_id = BH_SYS_CLASS_IO, .arg_count = 2, .flags = BH_SYSCALL_F_BLOCKING | BH_SYSCALL_F_USER_WRITE, .handler = linux_sys_fstat },
+    [LINUX_GENERIC_SYS_TIMERFD_CREATE]  = { .nr = LINUX_GENERIC_SYS_TIMERFD_CREATE, .name = "timerfd_create", .class_id = BH_SYS_CLASS_IO, .arg_count = 2, .flags = BH_SYSCALL_F_FAST, .handler = linux_sys_timerfd_create },
+    [LINUX_GENERIC_SYS_TIMERFD_SETTIME] = { .nr = LINUX_GENERIC_SYS_TIMERFD_SETTIME, .name = "timerfd_settime", .class_id = BH_SYS_CLASS_IO, .arg_count = 4, .flags = BH_SYSCALL_F_BLOCKING | BH_SYSCALL_F_USER_READ | BH_SYSCALL_F_USER_WRITE, .handler = linux_sys_timerfd_settime },
+    [LINUX_GENERIC_SYS_TIMERFD_GETTIME] = { .nr = LINUX_GENERIC_SYS_TIMERFD_GETTIME, .name = "timerfd_gettime", .class_id = BH_SYS_CLASS_IO, .arg_count = 2, .flags = BH_SYSCALL_F_FAST | BH_SYSCALL_F_USER_WRITE, .handler = linux_sys_timerfd_gettime },
+    [LINUX_GENERIC_SYS_EXIT]            = { .nr = LINUX_GENERIC_SYS_EXIT, .name = "exit", .class_id = BH_SYS_CLASS_PROCESS, .arg_count = 1, .handler = bh_sys_thread_exit },
+    [LINUX_GENERIC_SYS_EXIT_GROUP]      = { .nr = LINUX_GENERIC_SYS_EXIT_GROUP, .name = "exit_group", .class_id = BH_SYS_CLASS_PROCESS, .arg_count = 1, .handler = bh_sys_thread_exit },
+    [LINUX_GENERIC_SYS_SET_TID_ADDRESS] = { .nr = LINUX_GENERIC_SYS_SET_TID_ADDRESS, .name = "set_tid_address", .class_id = BH_SYS_CLASS_PROCESS, .arg_count = 1, .handler = linux_sys_set_tid_address },
+    [LINUX_GENERIC_SYS_FUTEX]           = { .nr = LINUX_GENERIC_SYS_FUTEX, .name = "futex", .class_id = BH_SYS_CLASS_PROCESS, .arg_count = 6, .flags = BH_SYSCALL_F_BLOCKING, .handler = linux_sys_futex },
+    [LINUX_GENERIC_SYS_CLOCK_GETTIME]   = { .nr = LINUX_GENERIC_SYS_CLOCK_GETTIME, .name = "clock_gettime", .class_id = BH_SYS_CLASS_SYSTEM, .arg_count = 2, .flags = BH_SYSCALL_F_USER_WRITE, .handler = linux_sys_clock_gettime },
+    [LINUX_GENERIC_SYS_RT_SIGACTION]    = { .nr = LINUX_GENERIC_SYS_RT_SIGACTION, .name = "rt_sigaction", .class_id = BH_SYS_CLASS_PROCESS, .arg_count = 4, .handler = linux_sys_rt_sigaction },
+    [LINUX_GENERIC_SYS_RT_SIGPROCMASK]  = { .nr = LINUX_GENERIC_SYS_RT_SIGPROCMASK, .name = "rt_sigprocmask", .class_id = BH_SYS_CLASS_PROCESS, .arg_count = 4, .handler = linux_sys_rt_sigprocmask },
+    [LINUX_GENERIC_SYS_RT_SIGRETURN]    = { .nr = LINUX_GENERIC_SYS_RT_SIGRETURN, .name = "rt_sigreturn", .class_id = BH_SYS_CLASS_PROCESS, .arg_count = 0, .handler = linux_sys_rt_sigreturn },
+    [LINUX_GENERIC_SYS_UNAME]           = { .nr = LINUX_GENERIC_SYS_UNAME, .name = "uname", .class_id = BH_SYS_CLASS_SYSTEM, .arg_count = 1, .handler = linux_sys_uname },
+    [LINUX_GENERIC_SYS_GETPID]          = { .nr = LINUX_GENERIC_SYS_GETPID, .name = "getpid", .class_id = BH_SYS_CLASS_PROCESS, .arg_count = 0, .flags = BH_SYSCALL_F_FAST, .handler = linux_sys_getpid },
+    [LINUX_GENERIC_SYS_GETTID]          = { .nr = LINUX_GENERIC_SYS_GETTID, .name = "gettid", .class_id = BH_SYS_CLASS_PROCESS, .arg_count = 0, .flags = BH_SYSCALL_F_FAST, .handler = linux_sys_gettid },
+    [LINUX_GENERIC_SYS_SOCKETPAIR]      = { .nr = LINUX_GENERIC_SYS_SOCKETPAIR, .name = "socketpair", .class_id = BH_SYS_CLASS_IO, .arg_count = 4, .flags = BH_SYSCALL_F_BLOCKING, .handler = linux_sys_socketpair },
+    [LINUX_GENERIC_SYS_BRK]             = { .nr = LINUX_GENERIC_SYS_BRK, .name = "brk", .class_id = BH_SYS_CLASS_MEMORY, .arg_count = 1, .handler = linux_sys_brk },
+    [LINUX_GENERIC_SYS_MUNMAP]          = { .nr = LINUX_GENERIC_SYS_MUNMAP, .name = "munmap", .class_id = BH_SYS_CLASS_MEMORY, .arg_count = 2, .handler = linux_sys_munmap },
+    [LINUX_GENERIC_SYS_CLONE]           = { .nr = LINUX_GENERIC_SYS_CLONE, .name = "clone", .class_id = BH_SYS_CLASS_PROCESS, .arg_count = 5, .flags = BH_SYSCALL_F_BLOCKING, .handler = linux_sys_clone },
+    [LINUX_GENERIC_SYS_EXECVE]          = { .nr = LINUX_GENERIC_SYS_EXECVE, .name = "execve", .class_id = BH_SYS_CLASS_PROCESS, .arg_count = 3, .flags = BH_SYSCALL_F_BLOCKING | BH_SYSCALL_F_USER_READ, .handler = linux_sys_execve },
+    [LINUX_GENERIC_SYS_MMAP]            = { .nr = LINUX_GENERIC_SYS_MMAP, .name = "mmap", .class_id = BH_SYS_CLASS_MEMORY, .arg_count = 6, .handler = linux_sys_mmap },
+    [LINUX_GENERIC_SYS_MPROTECT]        = { .nr = LINUX_GENERIC_SYS_MPROTECT, .name = "mprotect", .class_id = BH_SYS_CLASS_MEMORY, .arg_count = 3, .handler = linux_sys_mprotect },
+    [LINUX_GENERIC_SYS_WAIT4]           = { .nr = LINUX_GENERIC_SYS_WAIT4, .name = "wait4", .class_id = BH_SYS_CLASS_PROCESS, .arg_count = 4, .flags = BH_SYSCALL_F_BLOCKING, .handler = linux_sys_wait4 },
+    [LINUX_GENERIC_SYS_PRLIMIT64]       = { .nr = LINUX_GENERIC_SYS_PRLIMIT64, .name = "prlimit64", .class_id = BH_SYS_CLASS_PROCESS, .arg_count = 4, .handler = linux_sys_prlimit64 },
+    [LINUX_GENERIC_SYS_GETRANDOM]       = { .nr = LINUX_GENERIC_SYS_GETRANDOM, .name = "getrandom", .class_id = BH_SYS_CLASS_SYSTEM, .arg_count = 3, .flags = BH_SYSCALL_F_USER_WRITE, .handler = linux_sys_getrandom },
+};
+
+#if defined(BHARAT_ARCH_ARM) || defined(BHARAT_ARCH_RISCV) || defined(__aarch64__) || defined(__riscv)
 const bh_personality_syscall_table_t bh_linux_syscall_table = {
-    .name = "linux",
+    .name = "linux-generic",
+    .abi_version = 1,
+    .entry_count = sizeof(linux_syscall_table_generic) / sizeof(linux_syscall_table_generic[0]),
+    .table = linux_syscall_table_generic
+};
+#else
+const bh_personality_syscall_table_t bh_linux_syscall_table = {
+    .name = "linux-x86_64",
     .abi_version = 1,
     .entry_count = sizeof(linux_syscall_table_x86_64) / sizeof(linux_syscall_table_x86_64[0]),
     .table = linux_syscall_table_x86_64
 };
+#endif

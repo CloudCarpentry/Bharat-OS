@@ -29,6 +29,70 @@ targets:
     description: "RISC-V graphical desktop must also complete real userspace bootstrap"
     alias_of: riscv64_desktop_headless
 
+  arm64_mobile_headless_android:
+    description: "ARM64 Mobile Android personality headless boot"
+    alias_of: arm64_desktop_headless
+
+  arm64_mobile_gui_android:
+    description: "ARM64 Mobile GUI Android target boot"
+    alias_of: arm64_desktop_headless
+
+  arm64_mobile_headless:
+    description: "ARM64 Mobile native personality headless boot"
+    alias_of: arm64_desktop_headless
+
+  arm64_mobile_gui:
+    description: "ARM64 Mobile GUI target boot"
+    alias_of: arm64_desktop_headless
+
+  arm64_mobile_headless_linux:
+    description: "ARM64 Mobile Linux personality headless boot"
+    alias_of: arm64_desktop_headless
+
+  arm64_desktop_headless_android:
+    description: "ARM64 Desktop Android personality headless boot"
+    alias_of: arm64_desktop_headless
+
+  arm64_desktop_headless_linux:
+    description: "ARM64 Desktop Linux personality headless boot"
+    alias_of: arm64_desktop_headless
+
+  riscv64_mobile_headless_android:
+    description: "RISC-V 64 Mobile Android personality headless boot"
+    alias_of: riscv64_desktop_headless
+
+  riscv64_mobile_gui_android:
+    description: "RISC-V 64 Mobile GUI Android target boot"
+    alias_of: riscv64_desktop_headless
+
+  riscv64_mobile_headless:
+    description: "RISC-V 64 Mobile native personality headless boot"
+    alias_of: riscv64_desktop_headless
+
+  riscv64_mobile_gui:
+    description: "RISC-V 64 Mobile GUI target boot"
+    alias_of: riscv64_desktop_headless
+
+  riscv64_mobile_headless_linux:
+    description: "RISC-V 64 Mobile Linux personality headless boot"
+    alias_of: riscv64_desktop_headless
+
+  riscv64_desktop_headless_android:
+    description: "RISC-V 64 Desktop Android personality headless boot"
+    alias_of: riscv64_desktop_headless
+
+  riscv64_desktop_headless_linux:
+    description: "RISC-V 64 Desktop Linux personality headless boot"
+    alias_of: riscv64_desktop_headless
+
+  x86_64_desktop_headless_android:
+    description: "x86_64 Desktop Android personality headless boot"
+    alias_of: x86_64_desktop_headless
+
+  x86_64_desktop_headless_linux:
+    description: "x86_64 Desktop Linux personality headless boot"
+    alias_of: x86_64_desktop_headless
+
   x86_64_showcase_gui:
     description: "x86_64 graphical splash and FBUI interaction flow"
     required:

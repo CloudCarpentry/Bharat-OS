@@ -745,6 +745,127 @@
       }
     },
     {
+      "name": "arm64-mobile-android-debug",
+      "displayName": "Cross ARM64 Mobile Android (Debug)",
+      "description": "Cross-compile ARM64 Mobile Android profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/arm64-mobile-android-debug",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/aarch64-elf-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BHARAT_DEVICE_PROFILE": "MOBILE",
+        "BHARAT_PERSONALITY_PROFILE": "ANDROID",
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "ON"
+      }
+    },
+    {
+      "name": "arm64-mobile-android-release",
+      "displayName": "Cross ARM64 Mobile Android (Release)",
+      "description": "Cross-compile ARM64 Mobile Android profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/arm64-mobile-android-release",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/aarch64-elf-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BHARAT_DEVICE_PROFILE": "MOBILE",
+        "BHARAT_PERSONALITY_PROFILE": "ANDROID",
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "ON"
+      }
+    },
+    {
+      "name": "riscv64-mobile-android-debug",
+      "displayName": "Cross RISC-V64 Mobile Android (Debug)",
+      "description": "Cross-compile RISC-V64 Mobile Android profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/riscv64-mobile-android-debug",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/riscv64-elf-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BHARAT_DEVICE_PROFILE": "MOBILE",
+        "BHARAT_PERSONALITY_PROFILE": "ANDROID",
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "ON"
+      }
+    },
+    {
+      "name": "riscv64-mobile-android-release",
+      "displayName": "Cross RISC-V64 Mobile Android (Release)",
+      "description": "Cross-compile RISC-V64 Mobile Android profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/riscv64-mobile-android-release",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/riscv64-elf-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BHARAT_DEVICE_PROFILE": "MOBILE",
+        "BHARAT_PERSONALITY_PROFILE": "ANDROID",
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "ON"
+      }
+    },
+    {
+      "name": "arm64-mobile-linux-debug",
+      "displayName": "Cross ARM64 Mobile Linux (Debug)",
+      "description": "Cross-compile ARM64 Mobile Linux profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/arm64-mobile-linux-debug",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/aarch64-elf-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BHARAT_DEVICE_PROFILE": "MOBILE",
+        "BHARAT_PERSONALITY_PROFILE": "LINUX",
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "ON"
+      }
+    },
+    {
+      "name": "arm64-mobile-linux-release",
+      "displayName": "Cross ARM64 Mobile Linux (Release)",
+      "description": "Cross-compile ARM64 Mobile Linux profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/arm64-mobile-linux-release",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/aarch64-elf-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BHARAT_DEVICE_PROFILE": "MOBILE",
+        "BHARAT_PERSONALITY_PROFILE": "LINUX",
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "ON"
+      }
+    },
+    {
+      "name": "riscv64-mobile-linux-debug",
+      "displayName": "Cross RISC-V64 Mobile Linux (Debug)",
+      "description": "Cross-compile RISC-V64 Mobile Linux profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/riscv64-mobile-linux-debug",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/riscv64-elf-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BHARAT_DEVICE_PROFILE": "MOBILE",
+        "BHARAT_PERSONALITY_PROFILE": "LINUX",
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "ON"
+      }
+    },
+    {
+      "name": "riscv64-mobile-linux-release",
+      "displayName": "Cross RISC-V64 Mobile Linux (Release)",
+      "description": "Cross-compile RISC-V64 Mobile Linux profile on Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/riscv64-mobile-linux-release",
+      "toolchainFile": "${sourceDir}/delivery/cmake/toolchains/riscv64-elf-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BHARAT_DEVICE_PROFILE": "MOBILE",
+        "BHARAT_PERSONALITY_PROFILE": "LINUX",
+        "BHARAT_TARGET_BOARD": "virt",
+        "BHARAT_BOOT_GUI": "ON"
+      }
+    },
+
+    {
       "name": "arm32-iot-debug",
       "displayName": "Cross ARM32 IOT (Debug)",
       "description": "Cross-compile ARM32 IOT profile on Linux",
@@ -1154,6 +1275,38 @@
       "configurePreset": "riscv64-mobile-release"
     },
     {
+      "name": "arm64-mobile-android-debug",
+      "configurePreset": "arm64-mobile-android-debug"
+    },
+    {
+      "name": "arm64-mobile-android-release",
+      "configurePreset": "arm64-mobile-android-release"
+    },
+    {
+      "name": "riscv64-mobile-android-debug",
+      "configurePreset": "riscv64-mobile-android-debug"
+    },
+    {
+      "name": "riscv64-mobile-android-release",
+      "configurePreset": "riscv64-mobile-android-release"
+    },
+    {
+      "name": "arm64-mobile-linux-debug",
+      "configurePreset": "arm64-mobile-linux-debug"
+    },
+    {
+      "name": "arm64-mobile-linux-release",
+      "configurePreset": "arm64-mobile-linux-release"
+    },
+    {
+      "name": "riscv64-mobile-linux-debug",
+      "configurePreset": "riscv64-mobile-linux-debug"
+    },
+    {
+      "name": "riscv64-mobile-linux-release",
+      "configurePreset": "riscv64-mobile-linux-release"
+    },
+    {
       "name": "arm32-iot-debug",
       "configurePreset": "arm32-iot-debug"
     },
@@ -1460,6 +1613,54 @@
         "noTestsAction": "error",
         "stopOnFailure": true
       }
+    },
+    {
+      "name": "arm64-mobile-android-debug",
+      "configurePreset": "arm64-mobile-android-debug",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error", "stopOnFailure": true }
+    },
+    {
+      "name": "arm64-mobile-android-release",
+      "configurePreset": "arm64-mobile-android-release",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error", "stopOnFailure": true }
+    },
+    {
+      "name": "riscv64-mobile-android-debug",
+      "configurePreset": "riscv64-mobile-android-debug",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error", "stopOnFailure": true }
+    },
+    {
+      "name": "riscv64-mobile-android-release",
+      "configurePreset": "riscv64-mobile-android-release",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error", "stopOnFailure": true }
+    },
+    {
+      "name": "arm64-mobile-linux-debug",
+      "configurePreset": "arm64-mobile-linux-debug",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error", "stopOnFailure": true }
+    },
+    {
+      "name": "arm64-mobile-linux-release",
+      "configurePreset": "arm64-mobile-linux-release",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error", "stopOnFailure": true }
+    },
+    {
+      "name": "riscv64-mobile-linux-debug",
+      "configurePreset": "riscv64-mobile-linux-debug",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error", "stopOnFailure": true }
+    },
+    {
+      "name": "riscv64-mobile-linux-release",
+      "configurePreset": "riscv64-mobile-linux-release",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error", "stopOnFailure": true }
     },
     {
       "name": "arm32-iot-debug",

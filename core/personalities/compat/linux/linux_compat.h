@@ -21,7 +21,9 @@ typedef enum {
     LINUX_FD_TYPE_SOCKET,
     LINUX_FD_TYPE_DEV_NULL,
     LINUX_FD_TYPE_DEV_ZERO,
-    LINUX_FD_TYPE_DEV_URANDOM
+    LINUX_FD_TYPE_DEV_URANDOM,
+    LINUX_FD_TYPE_DEV_BINDER,
+    LINUX_FD_TYPE_DEV_ASHMEM
 } linux_fd_type_t;
 
 typedef struct {
