@@ -165,7 +165,7 @@ void cap_handle_tx_ack(uint64_t payload) {
     bh_cap_tx_entry_t *tx = &g_cap_tx_table[origin_core][slot];
 
     // Stale ACK validation (generation check)
-    if ((tx->generation & 0xFFFFFF) != (generation & 0xFFFFFF)) {
+    if (tx->generation != generation) {
         return;
     }
 

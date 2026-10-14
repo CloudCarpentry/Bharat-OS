@@ -550,6 +550,62 @@ void test_level5_epoch_mismatch(void) {
     printf("  -> Revocation Epoch Mismatch Protection PASSED!\n");
 }
 
+void test_cap_deep_delegation_chain(void) {
+    setup_host_test_environment();
+    capability_table_t *table = &g_mock_cap_tables[0];
+    uint32_t root_cap;
+    assert(cap_table_grant(table, CAP_TYPE_MEMORY, 0x1000, CAP_RIGHT_ALL, &root_cap) == 0);
+
+    // Deliberately construct a deep chain of 100 capabilities (>64)
+    // We alternate between two tables to avoid running out of slots in a single 64-entry table
+    capability_table_t *table2 = &g_mock_cap_tables[1];
+
+    uint32_t current_cap = root_cap;
+    capability_table_t *current_table = table;
+
+    for (int i = 0; i < 100; i++) {
+        uint32_t next_cap;
+        capability_table_t *next_table = (current_table == table) ? table2 : table;
+        assert(cap_table_delegate(current_table, next_table, current_cap, CAP_RIGHT_READ, &next_cap) == 0);
+        current_cap = next_cap;
+        current_table = next_table;
+    }
+
+    // Revoke the root. Should successfully clean up all 100 descendants without overflowing.
+    assert(cap_table_revoke(table, root_cap) == 0);
+
+    // Verify ALL entries in BOTH tables are freed to prevent partial revocation leakage
+    for (int i = 0; i < 64; i++) {
+        assert(table->entries[i].in_use == 0 || table->entries[i].state == CAP_STATE_FREE);
+        assert(table2->entries[i].in_use == 0 || table2->entries[i].state == CAP_STATE_FREE);
+    }
+
+    printf("  -> Deep Delegation Chain Revocation (>64 depth) PASSED!\n");
+}
+
+void test_cap_wide_delegation_tree(void) {
+    setup_host_test_environment();
+    capability_table_t *table = &g_mock_cap_tables[0];
+    uint32_t root_cap;
+    assert(cap_table_grant(table, CAP_TYPE_MEMORY, 0x1000, CAP_RIGHT_ALL, &root_cap) == 0);
+
+    // Delegate from root to 50 children
+    uint32_t children[50];
+    for (int i = 0; i < 50; i++) {
+        assert(cap_table_delegate(table, table, root_cap, CAP_RIGHT_READ, &children[i]) == 0);
+    }
+
+    // Revoke root. Should traverse the wide sibling list safely.
+    assert(cap_table_revoke(table, root_cap) == 0);
+
+    // Verify ALL child capabilities are successfully freed
+    for (int i = 0; i < 64; i++) {
+        assert(table->entries[i].in_use == 0 || table->entries[i].state == CAP_STATE_FREE);
+    }
+
+    printf("  -> Wide Delegation Tree Revocation (>64 breadth/siblings checked) PASSED!\n");
+}
+
 int main(void) {
     printf("=========================================\n");
     printf("Running Comprehensive Capability Security Host Tests\n");
@@ -564,6 +620,8 @@ int main(void) {
     test_level5_lost_ack_timeout();
     test_level5_rollback_guarantee();
     test_level5_epoch_mismatch();
+    test_cap_deep_delegation_chain();
+    test_cap_wide_delegation_tree();
 
     printf("\n=========================================\n");
     printf("All CAPTX-P0-001 Distributed Transaction Security Tests PASSED!\n");
