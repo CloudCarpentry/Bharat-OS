@@ -64,18 +64,11 @@ int main(int argc, char** argv) {
     /* Run smoke test for loopback path / mock registration */
     minimal_smoke_test();
 
-    // TODO: Acquire Capability for NIC Driver Rings via io_setup_zero_copy_nic_ring()
-    // TODO: Register the NIC driver as a `netdev_t` device
-    // TODO: Launch protocol processing thread (e.g. lwIP or native stack)
-
-    while(1) {
-        // Poll RX queues / URPC messages for sockets
-        // Dispatch to network protocol handlers
-
-        /* Stub main loop break to prevent infinite hang in some environments during tests,
-           or leave if standard daemon behavior */
-        break; /* Remove when full daemon run is expected */
-    }
-
+    /*
+     * This executable is retained only as a transitional smoke harness.
+     * NIC queue ownership, capability-mediated zero-copy setup, and protocol
+     * processing belong to netmgr/netstack. Do not add new runtime ownership
+     * to this deprecated path; migrate callers to the profile-driven services.
+     */
     return 0;
 }
