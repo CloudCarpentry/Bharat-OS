@@ -31,7 +31,9 @@ void arch_enter_user(const arch_user_entry_t *entry) {
         kernel_panic("arch_enter_user: invalid entry or aspace");
     }
 
-    prot_domain_activate(entry->aspace->prot_domain);
+    if (prot_domain_activate(entry->aspace->prot_domain) != K_OK) {
+        kernel_panic("arch_enter_user: MPU/PMP protection activation failed");
+    }
 
     uint32_t user_cpsr = 0x10; // USR mode (0b10000), IRQ and FIQ enabled (I=0, F=0)
 

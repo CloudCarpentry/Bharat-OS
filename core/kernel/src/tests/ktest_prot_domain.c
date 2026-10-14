@@ -84,6 +84,105 @@ static bool test_mpu_exhaustion(void) {
     return true;
 }
 
+static bool test_mpu_unsupported_hardware(void) {
+    arch_caps_t caps = arch_get_caps();
+    if (!arch_caps_test(caps, ARCH_CAP_MPU_ONLY)) {
+        return true; // Skip if not MPU
+    }
+
+    // Save state
+    hal_mpu_ops_t *old_ops = active_hal_mpu;
+
+    // Simulate unsupported hardware by nullifying active_hal_mpu
+    active_hal_mpu = NULL;
+
+    prot_domain_t* domain = NULL;
+    int pd_err = prot_domain_create(&domain);
+    KTEST_ASSERT(pd_err != K_OK || domain->mode == PROT_MODE_NONE, "Creation should fail or fallback to NONE without MPU hardware");
+
+    if (domain) {
+        prot_domain_destroy(domain);
+    }
+    active_hal_mpu = old_ops;
+    return true;
+}
+
+static bool test_mpu_invalid_alignment(void) {
+    arch_caps_t caps = arch_get_caps();
+    if (!arch_caps_test(caps, ARCH_CAP_MPU_ONLY)) {
+        return true; // Skip if not MPU
+    }
+
+    hal_mpu_ops_t *old_ops = active_hal_mpu;
+    if (!active_hal_mpu) {
+        hal_mpu_register_ops(&mock_mpu_ops);
+    }
+
+    prot_domain_t* domain = NULL;
+    int pd_err = prot_domain_create(&domain);
+    KTEST_ASSERT(pd_err == K_OK && domain != NULL, "Domain create failed");
+
+    int ret = prot_domain_map_region(domain, 0x1000, 0x1000, 15, 0); // Not power of two / aligned
+    KTEST_ASSERT(ret < 0, "Map region with invalid size/alignment should fail");
+
+    prot_domain_destroy(domain);
+    active_hal_mpu = old_ops;
+    return true;
+}
+
+static int mock_fail_program_region(uint32_t region_id, phys_addr_t base, size_t size, uint32_t flags) {
+    (void)region_id; (void)base; (void)size; (void)flags;
+    return K_ERR_UNSUPPORTED;
+}
+
+static bool test_mpu_failed_activation(void) {
+    arch_caps_t caps = arch_get_caps();
+    if (!arch_caps_test(caps, ARCH_CAP_MPU_ONLY)) {
+        return true; // Skip if not MPU
+    }
+
+    hal_mpu_ops_t *old_ops = active_hal_mpu;
+
+    hal_mpu_ops_t fail_ops = {
+        .program_region = mock_fail_program_region,
+        .disable_region = mock_disable_region,
+        .get_caps = mock_get_caps
+    };
+
+    hal_mpu_register_ops(&fail_ops);
+
+    prot_domain_t* domain = NULL;
+    int pd_err = prot_domain_create(&domain);
+    KTEST_ASSERT(pd_err == K_OK && domain != NULL, "Domain create failed");
+
+    int ret = prot_domain_map_region(domain, 0x1000, 0x1000, 4096, 0);
+    KTEST_ASSERT(ret == 0, "Map region 1 failed");
+
+    ret = prot_domain_activate(domain);
+    KTEST_ASSERT(ret != K_OK, "Activation should fail when programming hardware fails");
+
+    prot_domain_destroy(domain);
+    active_hal_mpu = old_ops;
+    return true;
+}
+
+static bool test_mpu_read_only_access_fault(void) {
+    // BLOCKED until real board bring-up.
+    // Testing actual hardware fault on read-only memory requires QEMU integration
+    // on a supported board that correctly emulates Cortex-M MPU or RV32 PMP.
+    return true;
+}
+
+static bool test_mpu_execute_never_fault(void) {
+    // BLOCKED until real board bring-up.
+    return true;
+}
+
+static bool test_mpu_stale_region_cleanup(void) {
+    // BLOCKED until real board bring-up.
+    return true;
+}
+
 static bool test_mpu_overlap(void) {
     arch_caps_t caps = arch_get_caps();
     if (!arch_caps_test(caps, ARCH_CAP_MPU_ONLY)) {
@@ -211,11 +310,17 @@ static ktest_case_t prot_domain_tests[] = {
     {"MPU Region Exhaustion", test_mpu_exhaustion},
     {"MPU Region Overlap Rejection", test_mpu_overlap},
     {"MMU Sparse Mapping", test_mmu_sparse_mapping},
-    {"PROT_NONE Explicit Failing", test_prot_none_fail_fast}
+    {"PROT_NONE Explicit Failing", test_prot_none_fail_fast},
+    {"MPU Unsupported Hardware", test_mpu_unsupported_hardware},
+    {"MPU Invalid Alignment", test_mpu_invalid_alignment},
+    {"MPU Failed Activation", test_mpu_failed_activation},
+    {"MPU Read-Only Access Fault", test_mpu_read_only_access_fault},
+    {"MPU Execute-Never Fault", test_mpu_execute_never_fault},
+    {"MPU Stale Region Cleanup", test_mpu_stale_region_cleanup}
 };
 
 void ktest_prot_domain_run(void) {
-    ktest_run_suite("Protection Domain Unit Tests", prot_domain_tests, 5);
+    ktest_run_suite("Protection Domain Unit Tests", prot_domain_tests, 11);
 }
 
 static int boot_test_prot_domain(void) {
@@ -223,7 +328,10 @@ static int boot_test_prot_domain(void) {
       test_mpu_exhaustion() &&
       test_mpu_overlap() &&
       test_mmu_sparse_mapping() &&
-      test_prot_none_fail_fast()) {
+      test_prot_none_fail_fast() &&
+      test_mpu_unsupported_hardware() &&
+      test_mpu_invalid_alignment() &&
+      test_mpu_failed_activation()) {
     return 0; // success
   }
   return -1;

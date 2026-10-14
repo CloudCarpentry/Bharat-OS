@@ -58,13 +58,14 @@ static void mmu_full_destroy(prot_domain_t* domain) {
     }
 }
 
-static void mmu_full_activate(prot_domain_t* domain) {
+static int mmu_full_activate(prot_domain_t* domain) {
     if (!domain || !domain->backend_state) {
-        return;
+        return K_ERR_BAD_STATE;
     }
     if (active_mem_protect && active_mem_protect->cpu_ops.set_root) {
         active_mem_protect->cpu_ops.set_root((phys_addr_t)(uintptr_t)domain->backend_state);
     }
+    return K_OK;
 }
 
 static int mmu_full_map_region(prot_domain_t* domain, uintptr_t vaddr, uintptr_t paddr, size_t size, uint32_t flags) {
@@ -141,13 +142,14 @@ static void mmu_lite_destroy(prot_domain_t* domain) {
     }
 }
 
-static void mmu_lite_activate(prot_domain_t* domain) {
+static int mmu_lite_activate(prot_domain_t* domain) {
     if (!domain || !domain->backend_state) {
-        return;
+        return K_ERR_BAD_STATE;
     }
     if (active_mem_protect && active_mem_protect->cpu_ops.set_root) {
         active_mem_protect->cpu_ops.set_root((phys_addr_t)(uintptr_t)domain->backend_state);
     }
+    return K_OK;
 }
 
 static int mmu_lite_map_region(prot_domain_t* domain, uintptr_t vaddr, uintptr_t paddr, size_t size, uint32_t flags) {
@@ -266,18 +268,21 @@ static void mpu_destroy(prot_domain_t* domain) {
     }
 }
 
-static void mpu_activate(prot_domain_t* domain) {
-    if (!domain || !domain->backend_state) return;
+static int mpu_activate(prot_domain_t* domain) {
+    if (!domain || !domain->backend_state) return K_ERR_BAD_STATE;
     if (active_hal_mpu && active_hal_mpu->program_region && active_hal_mpu->disable_region) {
         mpu_domain_state_t* state = (mpu_domain_state_t*)domain->backend_state;
         for (int i = 0; i < MAX_MPU_DOMAINS_REGIONS; i++) {
             if (state->regions[i].active) {
-                active_hal_mpu->program_region(state->regions[i].region_id, state->regions[i].paddr, state->regions[i].size, state->regions[i].flags);
+                int ret = active_hal_mpu->program_region(state->regions[i].region_id, state->regions[i].paddr, state->regions[i].size, state->regions[i].flags);
+                if (ret != K_OK) return ret;
             } else {
-                active_hal_mpu->disable_region(i);
+                int ret = active_hal_mpu->disable_region(i);
+                if (ret != K_OK) return ret;
             }
         }
     }
+    return K_OK;
 }
 
 static int mpu_map_region(prot_domain_t* domain, uintptr_t vaddr, uintptr_t paddr, size_t size, uint32_t flags) {
@@ -328,10 +333,6 @@ static int mpu_map_region(prot_domain_t* domain, uintptr_t vaddr, uintptr_t padd
     }
     if (slot == -1) return K_ERR_NO_RESOURCES;
 
-    // Call active MPU backend
-    int ret = active_hal_mpu->program_region(slot, paddr, size, flags);
-    if (ret != K_OK) return ret;
-
     state->regions[slot].vaddr = vaddr;
     state->regions[slot].paddr = paddr;
     state->regions[slot].size = size;
@@ -350,9 +351,6 @@ static int mpu_unmap_region(prot_domain_t* domain, uintptr_t vaddr, size_t size)
     mpu_domain_state_t* state = (mpu_domain_state_t*)domain->backend_state;
     for (int i = 0; i < MAX_MPU_DOMAINS_REGIONS; i++) {
         if (state->regions[i].active && state->regions[i].vaddr == vaddr && state->regions[i].size == size) {
-            int ret = active_hal_mpu->disable_region(state->regions[i].region_id);
-            if (ret != K_OK) return ret;
-
             state->regions[i].active = false;
             state->count--;
             return K_OK;
@@ -368,9 +366,6 @@ static int mpu_protect_region(prot_domain_t* domain, uintptr_t vaddr, size_t siz
     mpu_domain_state_t* state = (mpu_domain_state_t*)domain->backend_state;
     for (int i = 0; i < MAX_MPU_DOMAINS_REGIONS; i++) {
         if (state->regions[i].active && state->regions[i].vaddr == vaddr && state->regions[i].size == size) {
-            int ret = active_hal_mpu->program_region(state->regions[i].region_id, state->regions[i].paddr, state->regions[i].size, flags);
-            if (ret != K_OK) return ret;
-
             state->regions[i].flags = flags;
             return K_OK;
         }
@@ -460,10 +455,11 @@ void prot_domain_destroy(prot_domain_t* domain) {
     }
 }
 
-void prot_domain_activate(prot_domain_t* domain) {
+int prot_domain_activate(prot_domain_t* domain) {
     if (domain && domain->ops && domain->ops->activate) {
-        domain->ops->activate(domain);
+        return domain->ops->activate(domain);
     }
+    return K_OK;
 }
 
 int prot_domain_map_region(prot_domain_t* domain, uintptr_t vaddr, uintptr_t paddr, size_t size, uint32_t flags) {
