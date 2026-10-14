@@ -1,291 +1,120 @@
 # Bharat-OS Repository Agent Constitution
 
-This file is the repository-wide source of truth for autonomous and interactive coding agents working on Bharat-OS, including Google Jules, OpenAI Codex, Google Antigravity, Gemini Code Assist/CLI, and GitHub Copilot.
+This file is the authoritative, repository-wide constitution for autonomous and interactive coding agents working on Bharat-OS (including Google Jules, Google Antigravity, GitHub Copilot, Claude, and Gemini Code Assist).
 
-The rules are mandatory unless a task explicitly changes an approved architecture contract. Tool-specific files may add narrower guidance, but they must not weaken this file.
+All agents must strictly obey the four sections of this constitution. Procedural details, checklists, and domain procedures reside in the canonical skills under `.agents/skills/`.
 
-## 1. Instruction precedence
+---
 
-Use this order when instructions conflict:
-
-1. The explicit user/task requirement.
-2. Security, safety, ABI, and architecture contracts in `interface/contracts/`, `docs/architecture/`, and accepted ADRs in `docs/adr/`.
-3. The closest scoped `AGENTS.override.md`, `AGENTS.md`, Copilot path instruction, or Antigravity skill.
-4. This root `AGENTS.md`.
-5. General repository documentation and existing local conventions.
-
-Do not guess when two authoritative contracts conflict. Record the conflict, preserve the safer existing behavior, and mark the task blocked unless the task explicitly resolves it.
-
-## 2. Mission and architecture evolution
+## 1. Architectural Constitution
 
 Bharat-OS is a verification-oriented, capability-based microkernel evolving through three compatible phases:
+1. **Core Microkernel**: A minimal trusted computing base containing deterministic mechanisms only.
+2. **Per-Core Kernel**: Core-local ownership, local scheduling, and explicit cross-core message coordination.
+3. **Distributed Kernel**: Message-based distributed object lifecycle and ownership across cores and nodes.
 
-1. **Core microkernel:** a small trusted computing base containing mechanisms only.
-2. **Per-core kernel:** core-local ownership, local scheduling, and explicit cross-core coordination.
-3. **Distributed kernel:** message-based distributed object lifecycle and ownership across cores and, later, nodes.
+### Non-Negotiable Architectural Principles
+- **Mechanisms vs. Policy**: The kernel owns deterministic mechanisms only; userland services own policy, resource allocation, and orchestration.
+- **Capability-Mediated**: Every resource access is mediated by an unforgeable capability token. Deny by default, fail closed.
+- **Strict Ownership**: Every mutable kernel object has a single documented owner core. No shared mutable cross-core state without an explicit message-based ownership protocol.
+- **Backend Neutrality**: Support MMU_FULL, MMU_LITE, and MPU/PMP profiles through backend-neutral abstractions (`aspace -> region -> vm_object`). Fail closed (`BH_STATUS_ERR_UNSUPPORTED`) if a target lacks required hardware.
+- **Discovery**: Dynamic hardware facts (RAM size, core count, peripherals) are discovered via HAL/device-tree at runtime, never hardcoded in compile-time configuration.
+- **Layer & Folder Boundaries**:
+  - `core/kernel/`: Scheduling primitives, memory mapping mechanisms, capability translation, trap entry, IPC/uRPC delivery only.
+  - `core/arch/`: ISA-specific assembly and CPU register control.
+  - `core/hal/`: Architecture-neutral hardware contracts and timer/interrupt glue.
+  - `platform/`: Machine, SoC, topology, and board wiring.
+  - `core/drivers/`: Hardware control and device mechanisms (no kernel policy).
+  - `core/services/`: Userland system services (vm_manager, process_manager, servicemgr, netmgr, devmgr).
+  - `core/personalities/`: Foreign compatibility translation shims (Linux, Android, POSIX) strictly outside the kernel.
+  - `interface/`: Stable external contracts, UAPI, IDL, and syscall ABI authorities.
+  - `quality/`: Tests, stress suites, benchmarks, and verification evidence.
+  - `delivery/`: Target YAML definitions, profiles, and packaging.
+  - `tools/`: Build automation, linters, generators, and agent verification tools.
+- **Naming Conventions**:
+  - Public kernel functions: `bh_<subsystem>_<operation>()`
+  - Public types: `bh_<name>_t`
+  - Constants, macros, and enums: `BH_<SUBSYSTEM>_<NAME>`
 
-Code may be transitional, but new work must move toward the target architecture and must not re-centralize state merely because a centralized shortcut is easier.
+---
 
-### Non-negotiable architectural principles
+## 2. Absolute Prohibitions
 
-- Keep the kernel minimal and verification-friendly.
-- Kernel owns mechanisms; services own policy and orchestration.
-- Every resource access is capability-mediated.
-- Deny by default and fail closed.
-- No shared mutable cross-core state without an explicit, documented ownership protocol.
-- Cross-core actions use bounded message-based protocols, not remote direct mutation.
-- Support MMU, MMU-Lite, and MPU configurations through backend-neutral contracts.
-- Use HAL/runtime discovery for dynamic hardware facts; do not hardcode them in kernel configuration.
-- Maintain strict `arch/`, `hal/`, and `platform/` separation.
-- Build/runtime/documentation claims must match actual evidence.
+The following actions are strictly prohibited in all contributions:
+1. **No Global Mutable Shortcuts**: Never introduce global mutable variables or reach into remote runqueues to avoid designing proper ownership.
+2. **No Direct Remote Core Mutation**: Cross-core actions must use bounded, message-based protocols.
+3. **No Pointer Crossing Across Wire Boundaries**: Never pass raw pointers, stack addresses, allocator addresses, function pointers, or architecture-dependent `long`/`size_t` across IPC, uRPC, or wire structures. Wire structs must be fixed-width with compile-time `static_assert` on size and alignment.
+4. **No Spin-Count Waits**: Prohibit spin loops with iteration counters (e.g., `for (int i=0; i<timeout_loops; i++) arch_cpu_relax();`). All remote waits and deadlines must use monotonic HAL time (`bh_ktime_now()`).
+5. **No Holding Locks Across Remote Waits**: Never hold an address-space, scheduler, capability-table, or object lock while waiting for remote completion.
+6. **No Capability Bypasses**: Never bypass `interface/contracts/abi/native_syscalls.json` or capability validation with synthetic or raw numerical handles.
+7. **No Direct User Pointer Dereference**: Never dereference user pointers before fault-safe usercopy (`bh_usercopy_from_user()`). Capability handles embedded in user structures must only be validated in the kernel copy (TOCTOU prevention).
+8. **No Committing Generated Files**: Never commit generated build artifacts or configuration headers (`bharat_config.h`, generated syscall tables). Modify `core/kernel/include/bharat_config.h.in` for configuration changes.
+9. **No Third-Party Alterations**: Never touch `ext/` or `external/` unless the task explicitly commands a reviewed update.
+10. **No Falsified Evidence**: Never report unexecuted, missing, or skipped tests as PASS. If a dependency, toolchain, or emulator is unavailable, mark as BLOCKED.
 
-## 3. Layer and folder boundaries
+---
 
-Before adding a file, identify its correct layer.
+## 3. Skill Routing Table
 
-- `core/kernel/`: scheduling, memory mechanisms, syscall/trap mechanisms, capabilities, IPC/uRPC primitives, faults, and minimal coordination only.
-- `core/arch/`: ISA/CPU-specific implementation.
-- `core/hal/`: architecture-neutral contracts and common glue.
-- `platform/` or the repository's current platform zone: board, machine, SoC, topology, and interconnect wiring.
-- `core/drivers/`: hardware control and driver mechanisms.
-- `core/services/`: policy, managers, lifecycle, routing, and orchestration.
-- `core/stacks/`: composed protocol/domain stacks.
-- `core/lib/`: reusable implementation logic that is not kernel policy.
-- `interface/`: stable external contracts, SDK/UAPI, IDL, and ABI authorities.
-- `quality/`: tests, stress suites, benchmarks, and verification evidence.
-- `delivery/`: targets, profiles, packaging, release and execution descriptions.
-- `tools/`: generators, linters, build orchestration, and validators.
+Do NOT load or scan the entire repository context. Use `tools/agents/context_pack.py` and route directly to the canonical skill in `.agents/skills/`:
 
-Do not move policy into `core/kernel/`, ISA implementation into `core/hal/`, or real drivers into services.
+| Task Subsystems / Keywords | Canonical Skill | Trigger & Scope |
+|---|---|---|
+| **Any non-trivial task entry** | [`bharat-os-task-router`](file:///.agents/skills/bharat-os-task-router/SKILL.md) | Task classification, context packing, and minimal skill selection |
+| **Kernel mechanisms, HAL, drivers** | [`bharat-os-kernel-architecture`](file:///.agents/skills/bharat-os-kernel-architecture/SKILL.md) | Layer placement, mechanism-vs-policy, ownership |
+| **Scheduler, cross-core, TLB, uRPC** | [`bharat-os-distributed-kernel`](file:///.agents/skills/bharat-os-distributed-kernel/SKILL.md) | Core-local state, monotonic deadlines, wire structs, replay |
+| **VM, PMM, MMU, MPU, PMP, DMA** | [`bharat-os-memory-model`](file:///.agents/skills/bharat-os-memory-model/SKILL.md) | Tri-model memory, pcache magazines, no recursive memops |
+| **Capabilities, CSpace, security** | [`bharat-os-capability-security`](file:///.agents/skills/bharat-os-capability-security/SKILL.md) | Rights/type/generation checks, revocation, usercopy phase |
+| **Services, init, vm/process managers** | [`bharat-os-service-runtime`](file:///.agents/skills/bharat-os-service-runtime/SKILL.md) | Production authority adapters, real endpoints, runtime markers |
+| **Display, GUI, touch, input stream** | [`bharat-os-gui-experience`](file:///.agents/skills/bharat-os-gui-experience/SKILL.md) | ADR-035 display tiers, ADR-034 input streams, visual smoke tests |
+| **Host unit/integration testing** | [`bharat-os-host-testing`](file:///.agents/skills/bharat-os-host-testing/SKILL.md) | Fast CTest test suites, mock HAL, synthetic core concurrency |
+| **CMake, profiles, target switches** | [`bharat-os-kernel-config`](file:///.agents/skills/bharat-os-kernel-config/SKILL.md) | Template authority (`bharat_config.h.in`), deterministic builds |
+| **Syscalls, UAPI, native ABI** | [`bharat-os-syscall-abi`](file:///.agents/skills/bharat-os-syscall-abi/SKILL.md) | ABI manifest & lock, `syscall_abi.py --check` |
+| **Linux, Android, POSIX shims** | [`bharat-os-personality`](file:///.agents/skills/bharat-os-personality/SKILL.md) | Compatibility shims strictly isolated from kernel core |
+| **Verification, gates, smoke test** | [`bharat-os-validation`](file:///.agents/skills/bharat-os-validation/SKILL.md) | Five-target QEMU matrix, `verify.py`, evidence reporting |
+| **Status, roadmap, gap analysis** | [`bharat-os-runtime-truth`](file:///.agents/skills/bharat-os-runtime-truth/SKILL.md) | `implementation_maturity.json` machine-readable ground truth |
+| **Architecture docs, ADRs, contracts**| [`bharat-os-architecture-docs`](file:///.agents/skills/bharat-os-architecture-docs/SKILL.md) | ADR lifecycle, documentation hierarchy, CONTRACTS.md sync |
+| **PR review, architectural audit** | [`bharat-os-review`](file:///.agents/skills/bharat-os-review/SKILL.md) | Pre-merge security, boundary, and diff-hygiene audit |
 
-## 4. Kernel ownership and distributed-operation rules
-
-For scheduler, VM, PMM, capabilities, IPC/uRPC, monitor, and other cross-core work:
-
-- Identify the owner core for every mutable object.
-- Prefer core-local registries, queues, transaction tables, caches, and counters.
-- Never pass raw pointers, stack addresses, allocator addresses, function pointers, or architecture-sized `long` fields across IPC/uRPC/wire boundaries.
-- Use fixed-width, versioned, by-value wire structures.
-- Add compile-time size and offset assertions for wire-visible structures.
-- Use explicit request IDs and generations to prevent stale-handle/ABA confusion.
-- Use bounded queues and explicit backpressure or `BUSY`/retry behavior.
-- Use monotonic HAL time for deadlines. Do not use spin-count timing.
-- Bound retries and retry only missing/unacknowledged participants.
-- Make receivers idempotent and replay-safe when requests may be retried.
-- Do not hold an address-space, scheduler, capability-table, or object lock while waiting for remote completion.
-- Publish local state only after required remote acknowledgement.
-- Define rollback/compensation for partial failure.
-- If safe rollback is impossible, poison or quarantine the affected object and fail closed.
-- Destruction must have an explicit lifecycle state such as `DYING`; reject new mutations after destruction begins.
-
-Every new mutable kernel structure must document whether it is:
-
-- core-local,
-- immutable/read-only shared,
-- lock-protected shared as a temporary migration exception, or
-- distributed with an explicit ownership and message protocol.
-
-## 5. Capability and syscall trust boundary
-
-`interface/contracts/abi/native_syscalls.json` is the authority for the native syscall boundary.
-
-- Never bypass the contract with raw syscall numbers or parallel hand-written tables.
-- Do not hand-edit generated syscall headers/tables.
-- Validate capability object type, rights, scope, generation/liveness, and ownership as required by the contract.
-- Capability-bearing data embedded in user structures must be validated only after fault-safe usercopy.
-- Do not dereference user pointers before the approved usercopy boundary.
-- Preserve stable ABI numbers and semantics unless an explicitly approved ABI migration says otherwise.
-- Update the lock only when the task intentionally changes the contract and the compatibility review is complete.
-
-Required ABI check after syscall-related work:
-
+### Quick Context Pack Command
 ```bash
+python3 tools/agents/context_pack.py --area <subsystem-name> --format compact
+```
+
+---
+
+## 4. Definition of Done & Required Validation Gates
+
+A task is ONLY complete when all relevant static linters, focused regression tests, and mandatory architecture gates are executed and observed with concrete evidence.
+
+### Mandatory Five-Target Build & QEMU Matrix
+All agents must verify changes against the five canonical hardware targets:
+
+| Architecture | Canonical Target Profile YAML | Protection Model |
+|---|---|---|
+| **x86_64** | `delivery/targets/qemu/x86_64_desktop_headless.yaml` | MMU_FULL |
+| **ARM64** | `delivery/targets/qemu/arm64_desktop_headless.yaml` | MMU_FULL |
+| **RISC-V 64** | `delivery/targets/qemu/riscv64_desktop_headless.yaml` | MMU_FULL |
+| **ARM32** | `delivery/targets/qemu/arm32_mmu_lite_headless.yaml` | MMU_LITE |
+| **RISC-V 32** | `delivery/targets/qemu/riscv32_mmu_lite_headless.yaml` | MMU_LITE |
+
+### Required Verification Commands
+```bash
+# 1. Agent configuration and layer reference linters
+python3 tools/agents/verify.py --changed-files <changed_files>
+
+# 2. Syscall ABI compatibility (mandatory if syscalls/ABI touched)
 python3 tools/abi/syscall_abi.py --check
-```
 
-## 6. Kernel configuration system
-
-The kernel configuration is generated from a template.
-
-- Source template: `core/kernel/include/bharat_config.h.in`
-- Generated header: `build/<target>/generated/include/bharat_config.h`
-
-Rules:
-
-- Never commit generated `bharat_config.h` files.
-- Modify `core/kernel/include/bharat_config.h.in` for new compile-time configuration.
-- Use CMake `@VAR@` or `#cmakedefine` syntax as appropriate.
-- Keep all generated artifacts under `${CMAKE_BINARY_DIR}`.
-- Include the configuration as `#include "bharat_config.h"`.
-- Keep the fail-fast source-tree shim unchanged unless the task specifically changes shim behavior.
-- Configuration must be deterministic.
-- Dynamic hardware capabilities must be discovered through HAL/platform mechanisms.
-- A configuration change must consider MMU, MMU-Lite, and MPU profiles. Unsupported combinations return an explicit unsupported status and fail closed.
-
-## 7. Naming and C coding conventions
-
-Apply these rules to new kernel code and to public APIs touched by a task. Do not perform unrelated mass renames.
-
-### Bharat-OS naming
-
-- Public kernel functions: `bh_<subsystem>_<operation>()`.
-- Public types: `bh_<name>_t`.
-- Public struct/enum tags: `bh_<name>` where tags are exposed.
-- Constants, macros, enum values, rights, status values, and compile-time feature names: `BH_<SUBSYSTEM>_<NAME>`.
-- New public kernel headers: prefer `bh_<subsystem>.h` or an existing canonical subsystem header.
-- Internal file-local helpers: descriptive `snake_case`; prefix with the subsystem when ambiguity is likely.
-- Existing stable ABI names are not renamed without an approved migration.
-
-### C and low-level safety
-
-- Follow the repository's established C style and `.clang-format`; do not invent a competing style.
-- Use fixed-width integer types for ABI/wire/hardware layouts.
-- Check integer overflow, truncation, alignment, range, and multiplication before allocation or copy.
-- Avoid undefined behavior, unaligned access assumptions, and strict-aliasing violations.
-- Do not use magic numbers for register offsets, rights, wire fields, page flags, or protocol states.
-- Check all fallible return values.
-- Use the repository status type and canonical error codes; do not invent ad hoc negative integers.
-- Initialize structures explicitly, including reserved fields that cross trust boundaries.
-- Keep critical sections bounded. Never sleep or wait for remote completion while holding a spinlock.
-- Add comments for invariants, ownership, memory ordering, lock ordering, and non-obvious safety—not for obvious syntax.
-- TODOs must name a concrete missing behavior or issue; never leave a vague “fix later.”
-
-### Concurrency and atomics
-
-- State the synchronization and ownership model in code comments near the data definition.
-- Use the weakest correct atomic ordering only when justified; otherwise follow the established subsystem pattern.
-- Do not mix atomic and non-atomic access to the same mutable field.
-- Add race, replay, timeout, and saturation tests for concurrent protocols.
-
-## 8. Mandatory task workflow
-
-### Before editing
-
-1. Read the root `AGENTS.md` and any closer scoped instructions.
-2. Read the relevant architecture contract and ADRs.
-3. Inspect the existing implementation and tests before proposing a design.
-4. Identify affected architectures, memory-protection backends, capabilities, generated artifacts, and documentation.
-5. Write a concise plan with invariants, failure behavior, tests, and documentation impact.
-
-### While editing
-
-- Make the smallest coherent change that closes the task.
-- Preserve unrelated behavior and avoid opportunistic refactors.
-- Add or update tests in the same change.
-- Keep generated files out of source control unless the repository explicitly tracks that generated artifact.
-- Update architecture/contract documentation when behavior, ownership, lifecycle, ABI, configuration, build, or validation changes.
-
-### Before completion
-
-- Inspect the final diff for scope creep, generated files, pointer-crossing, direct remote mutation, raw syscall numbers, and stale docs.
-- Run applicable focused tests first, then the mandatory repository gates.
-- Report every command with PASS, FAIL, SKIPPED, or BLOCKED.
-- Never claim a test passed unless it was actually executed and evidence was observed.
-- A missing toolchain, target, YAML, emulator, flag, or test is `BLOCKED`, not `PASS`.
-
-## 9. Required validation gates
-
-### Static and contract checks
-
-Run applicable repository linters and contract checks:
-
-```bash
-python3 tools/lint/check_layer_references.py
-python3 tools/lint/check_cmake_dependencies.py
-python3 tools/abi/syscall_abi.py --check
-```
-
-The ABI command is mandatory for syscall/ABI changes and optional otherwise.
-
-### Mandatory five-target build & QEMU installation policy
-
-All agents (including Google Jules, Antigravity, Codex, Copilot, and Gemini) must ensure the required QEMU emulators (`qemu-system-x86_64`, `qemu-system-aarch64`, `qemu-system-riscv64`, `qemu-system-arm`, `qemu-system-riscv32`) are installed for all target hardware, and must run and verify all five target commands prior to declaring a task complete or submitting a PR:
-
-```bash
-./tools/build.sh all --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml --smoke
-./tools/build.sh all --target-yaml delivery/targets/qemu/arm64_desktop_headless.yaml --smoke
-./tools/build.sh all --target-yaml delivery/targets/qemu/riscv64_desktop_headless.yaml --smoke
-./tools/build.sh all --target-yaml delivery/targets/qemu/arm32_mmu_lite_headless.yaml --smoke
-./tools/build.sh all --target-yaml delivery/targets/qemu/riscv32_mmu_lite_headless.yaml --smoke
-```
-
-Do not silently replace a required target with a different target. If a required target is not implemented in the current branch or an emulator is missing, record the gate as `BLOCKED: target/emulator unavailable` and install missing dependencies before claiming full-matrix completion.
-
-### Mandatory QEMU matrix policy
-
-Preferred command:
-
-```bash
+# 3. Canonical 5-Target QEMU Smoke Matrix Gate
 python3 tools/run_qemu_matrix.py --headless --smoke --all-arch
 ```
 
-Before running, inspect `--help`. If the current runner does not support `--all-arch`, run the currently supported partial command for additional evidence:
-
-```bash
-python3 tools/run_qemu_matrix.py --headless --smoke
-```
-
-Then report the mandatory gate as blocked until `--all-arch` and every required target are supported. A runner that silently skips missing target YAML files does not constitute full-matrix success.
-
-### Focused test expectations
-
-- Bug fixes require a regression test that fails before the fix and passes after it.
-- Cross-core changes require SMP, timeout, retry, replay, queue-full, stale-generation, and partial-failure coverage where applicable.
-- Memory changes require leak, double-free, map/protect/unmap lifecycle, rollback, and backend coverage.
-- Capability changes require positive and negative rights/type/scope/stale/revoked tests.
-- ABI changes require manifest, lock, generator, generated-output, and raw-number checks.
-- Architecture changes require at least one focused target build/run for each affected ISA before the full matrix.
-
-## 10. Documentation obligations
-
-Update documentation in the same change when implementation truth changes.
-
-Consult and update as applicable:
-
-- `interface/contracts/` — machine-readable authority.
-- `docs/architecture/CONTRACTS.md` — human lookup map for contracts and owners.
-- `docs/architecture/` — architecture and invariants.
-- `docs/adr/` — decisions, rationale, alternatives, and migration consequences.
-- `BUILD.md` — build, target, emulator, and validation commands.
-- `CONTRIBUTING.md` — coding and contribution workflow.
-- `delivery/targets/` — target truth.
-- README maturity/status tables — only when backed by evidence.
-
-Create or update an ADR when a change introduces or alters:
-
-- ownership or cross-core protocol,
-- public ABI/UAPI,
-- capability lifecycle or trust boundary,
-- memory authority path or backend semantics,
-- kernel/service/driver placement,
-- persistent format,
-- compatibility policy,
-- required build or release gate.
-
-## 11. Do-not-touch and prohibited shortcuts
-
-- Do not modify `ext/` or `external/` unless the task explicitly requires a reviewed third-party update.
-- Do not commit build directories, generated configuration headers, local logs, emulator dumps, caches, or toolchain artifacts.
-- Do not bypass `native_syscalls.json` or capability validation.
-- Do not introduce direct architecture-backend calls where a domain/HAL operations table is authoritative.
-- Do not add kernel policy that belongs in a service.
-- Do not use global mutable state to avoid designing ownership.
-- Do not disable tests, weaken assertions, increase timeouts, or suppress warnings merely to obtain a green result.
-- Do not claim unsupported components are complete in docs or maturity tables.
-- Do not change unrelated code, formatting, or generated output.
-- Do not commit, push, merge, or open a PR unless the task explicitly requests it.
-
-## 12. Required completion report
-
-Every completed agent task must report:
-
-1. **Scope:** files/subsystems changed.
-2. **Architecture:** invariants preserved or introduced.
-3. **Security:** capability/trust-boundary impact.
-4. **Tests:** exact commands and PASS/FAIL/SKIPPED/BLOCKED status.
-5. **Matrix:** status of all five required targets and the QEMU all-architecture gate.
-6. **Documentation:** files updated or reason no update was required.
-7. **Risks:** known limitations, follow-up issues, or unverified assumptions.
-8. **Diff hygiene:** confirmation that generated/third-party/unrelated files were not included.
-
-A task is not complete when required validation is failed or blocked. It may be delivered as a transparent partial result, but must not be represented as done.
+### Required Completion Report Format
+Every completed agent response must conclude with:
+1. **Scope**: Exact list of files and subsystems modified.
+2. **Architecture**: Invariants preserved or introduced (ownership, layer boundaries).
+3. **Security**: Capability mediation, usercopy validation, and trust boundary impact.
+4. **Verification Evidence**: Table reporting every gate with exact command and status (`PASS`, `FAIL`, `SKIPPED`, or `BLOCKED`).
+5. **Documentation**: Contracts or docs updated (or explicit justification why not needed).
+6. **Diff Hygiene**: Confirmation that zero generated files, third-party files, or unrelated modifications exist.

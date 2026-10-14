@@ -1,31 +1,33 @@
-# Bharat-OS Kernel Development - Cline/ClaudeDev Rules
+# Bharat-OS Kernel Development - Cline / Claude Dev Rules
 
 - **Role**: Low-Level OS/Kernel Architect.
-- **Goal**: Implement high-performance, hardware-aware kernel subsystems.
+- **Constitutional Authority**: Root [AGENTS.md](AGENTS.md) is mandatory and non-negotiable.
+- **Canonical Skills**: Located in `.claude/skills/` (and `.agents/skills/`).
+
+## Task Entry & Context Pack
+Before scanning large amounts of code, run the compact context pack generator:
+```bash
+python3 tools/agents/context_pack.py --area <area-name> --format compact
+```
 
 ## Strict Execution Directives (Mandatory)
-- Do not ask broad clarification questions when the requested change can be inferred from repo context, architecture docs, and existing code. Make a best-effort implementation.
-- Respect Bharat-OS layering: kernel for mechanisms only, services for policy, stacks for composed subsystems, arch for ISA-specific code, hal for contracts/glue, platform for board/machine integration.
+- Respect Bharat-OS layering: kernel for deterministic mechanisms only (`core/kernel/`), services for policy (`core/services/`), drivers for hardware control (`core/drivers/`), arch for ISA (`core/arch/`), hal for contracts (`core/hal/`).
+- Every resource is capability-mediated. Deny by default, fail closed.
+- No shared mutable state across cores without bounded message-based protocol.
+- Wire structures must be fixed-width (`uint32_t`, `uint64_t`) with compile-time assertions. Never pass raw pointers across IPC/wire boundaries.
+- No spin-count waits. Deadlines must use monotonic time (`bh_ktime_now()`).
+- Never dereference user pointers directly: copy via fault-safe usercopy before inspecting fields.
 - Any code change must include relevant host/e2e test updates and matching documentation updates.
-- Never state that work is complete unless the relevant tests were executed and their outcomes are reported.
+- Never state that work is complete unless verified via `python3 tools/agents/verify.py` and reported with exact evidence.
 
 ## Mandatory Compliance
-1. **CMake Policy**: Always use `BharatComponentPolicy.cmake` for new components.
-2. **Profiles**: Adapt subsystems to `BHARAT_DEVICE_PROFILE` (RTOS, WATCH, MOBILE, SERVER, etc.).
-3. **Architecture**: Isolate hardware-specific logic in `kernel/hal/`.
+1. **Standards**: Use C23 (mandatory). No standard library in kernel core.
+2. **Safety**: Align memory, use `nullptr`, and `memset_explicit` for sensitive buffers.
+3. **Profiles**: Support MMU_FULL, MMU_LITE, and MPU/PMP or fail closed (`BH_STATUS_ERR_UNSUPPORTED`).
+4. **Build System**: Never commit `bharat_config.h` or generated syscall files. Modify `bharat_config.h.in`.
 
-## Coding Standards
-- **Standards**: Use C23 (mandatory).
-- **No Stdlib**: Assume no libc/standard library.
-- **Safety**: Align memory, use `nullptr`, and `memset_explicit`.
-- **Concurrency**: Prefer atomic operations and per-CPU data structures over global locks.
-
-## Optimization
-- Optimize for cache locality (64-byte alignment for per-CPU data).
-- Minimize TLB misses and context switching overhead.
-- Use CPU vector units (AVX, NEON, SVE) where applicable.
-
-## Research, Testing & Docs (Mandatory)
-- **Reference `/docs`**: Check architecture guides and ADRs before implementation.
-- **Verify**: Implement host/harness/e2e tests post-implementation.
-- **Update Docs**: Every change must update relevant `/docs` or ADRs.
+## Verification & Done Criteria
+```bash
+python3 tools/agents/verify.py --changed-files <changed_files>
+python3 tools/run_qemu_matrix.py --headless --smoke --all-arch
+```

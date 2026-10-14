@@ -1,45 +1,77 @@
-# Root Cause Report for BH-CRYPTO-LIB-P1-001
+# Bharat-OS Convergence & Hardening Roadmap
 
-## 1. Exact Failing Source/Object
-- **ARM64 (`desktop-arm64`)**: Compilation failed inside `third_party/tf-psa-crypto/upstream/core/tf_psa_crypto_common.h` during `#error "Unrecognised pointer size for aarch64"`.
-- **ARM32 (`controller-arm32`)**: Linker failed while generating `crypto_tests` executable and `libtfpsacrypto.a`, reporting missing symbols `__udivti3`, `__aeabi_uidiv`, and `__aeabi_uidivmod` in `hmac_drbg.c` and other modules.
+**Repository Baseline**: Commit `3041933a` (October 14, 2026)  
+**Constitutional Authority**: [AGENTS.md](AGENTS.md)  
+**Machine-Readable Maturity**: [interface/contracts/implementation_maturity.json](interface/contracts/implementation_maturity.json)
 
-## 2. Underlying ABI or Runtime Problem
-- **ARM64**: The upstream preprocessor logic uses `#if UINTPTR_MAX == 0xfffffffffffffffful` to decide the pointer constraint for inline assembly. However, `UINTPTR_MAX` expands to the compiler's `__UINTPTR_MAX__` (like `18446744073709551615UL`). The check `0 == 0xfffffffffffffffful` evaluates to false because `UINTPTR_MAX` evaluates to 0 without `<stdint.h>` correctly resolving in the exact preprocessor state where the macro logic evaluates, triggering the fallback `#error`. The root issue relies on `<stdint.h>` presence before `tf_psa_crypto_common.h` assembly checks, which can be avoided by disabling assembly in a portable library.
-- **ARM32**: Cryptographic algorithms triggered 64-bit/128-bit integer division that was expanded into `__aeabi_uidiv`, `__aeabi_uidivmod`, and `__udivti3` compiler-rt calls. Since Bharat-OS is freestanding, the kernel libgcc runtime isn't fully supplying these userspace symbols for the exact configurations chosen, causing missing symbol errors.
+---
 
-## 3. Corrected Build Configuration
-- Added `#undef MBEDTLS_HAVE_ASM` to `bharat_crypto_config.h` to disable platform-specific inline assembly.
-- Implemented `__aeabi_uidiv` and `__aeabi_uidivmod` for ARM32 within `test_stubs.c` utilizing built-in 32-bit arithmetic so tests successfully link. Removed the fake `__int128` dummy for 32-bit platforms, limiting its scope to 64-bit architectures using `#if defined(__aarch64__) || defined(__x86_64__) || defined(__riscv) && __riscv_xlen == 64`.
-- Maintained strict isolation by compiling test-only stubs explicitly as part of `crypto_tests.c`, avoiding injection into `libtfpsacrypto.a`.
+## 1. Architectural Strategy & Ground Rules
 
-## 4. Why the Correction is Portable
-- Disabling assembly via `MBEDTLS_HAVE_ASM` falls back to standard C implementations of all cryptographic primitives. This ensures the codebase will compile successfully on any standard C compiler (GCC, Clang) without requiring architecture-specific headers, inline assembly quirks, or complex pointer width macro evaluation.
-- Restricting `__udivti3` strictly to 64-bit targets ensures 32-bit cross compilers do not encounter invalid `__int128` types, while proper ABI stubs satisfy necessary linkage strictly on platforms requiring it for tests without polluting core libraries.
+Bharat-OS has progressed substantially beyond early scaffolding. ARM32 MPU/RV32 PMP, MMU-Lite hardening, HMEM, capability revocation, Linux compatibility shims, Android/Binder personality, devmgr, TLB shootdown protocols, and PMM per-core caches (`pmm_pcache`) now exist in the tree.
 
-## 5. Five-Architecture Build and Execution Evidence
-The matrix was successfully compiled using `nirmaan build <target>` with no errors across:
-1. `desktop-x86_64` (x86_64 GP / Native)
-2. `desktop-arm64` (ARM64 GP / Native)
-3. `desktop-riscv64` (RISC-V64 GP / Native)
-4. `controller-arm32` (ARM32 MMU-Lite / RTOS)
-5. `riscv32_mmu_lite_headless` (RISCV32 MMU-Lite)
+**Strategic Principle**:
+> **Stop treating obsolete "missing feature" roadmaps as authoritative. Focus entirely on runtime proof, hardening, failure semantics, and removing architectural drift.**
 
-Additionally, the suite `crypto_tests` passed natively on the host:
-- test_sha256: PASSED
-- test_hmac_sha256: PASSED
-- test_aes_gcm: PASSED
-- test_missing_entropy: PASSED
-Summary: 5/5 passed.
+Milestones require the **Three-Part Truth Standard** defined in [`bharat-os-runtime-truth`](.agents/skills/bharat-os-runtime-truth/SKILL.md):
+1. **Source Truth**: Mechanism in correct layer (`core/kernel/`), policy in services (`core/services/`).
+2. **Build Truth**: Fully wired into CMake and active target configurations.
+3. **Execution Truth**: Production authority adapters installed, automated regression tests pass, and canonical QEMU runtime markers are observed.
 
-## 6. Remaining Unsupported Functionality
-- **Persistent Storage**: `#undef MBEDTLS_PSA_CRYPTO_STORAGE_C` intentionally disabled.
-- **Asymmetric Cryptography (RSA/ECC)**: RSA, ECDSA, FFDH disabled explicitly.
-- **Full TLS / Sockets / HTTPS**: Not configured for this PR.
-- **Hardware Acceleration**: No vendor-specific driver optimizations enabled yet.
+---
 
-## 7. Performance/Footprint Report
-- **Static Library Size (x86_64)**: ~1.4 MB (unstripped, unoptimized debug object archive)
-- **Code/Flash Footprint**: Significantly reduced due to exclusion of standard file I/O, asymmetric operations, and self-tests.
-- **RAM Use**: Memory allocations have been bridged directly to standard standard `malloc` (with `memset` fallback). Peak RAM is bounded to standard context initialization limits.
-- **Throughput**: Execution relies on generic standard C equivalents (`MBEDTLS_HAVE_ASM` disabled), establishing a baseline for standard CPU arithmetic operations. Future platform integrations will selectively enable assembly backends based on proven compiler capabilities per architecture.
+## 2. Active Engineering Backlog
+
+### P0 Wave: Runtime Blockers & Architectural Invariants
+
+| Ticket ID | Priority | Subsystem | Description & Acceptance Criteria | Status |
+|---|---|---|---|---|
+| **`BH-AGENT-P0-005`** | P0 | Tooling / Agents | Consolidate agent skills into canonical `.agents/skills/`, mirror to `.claude/skills` & `.github/skills`, streamline `AGENTS.md` into 4 pillars. | **DONE** |
+| **`BH-TRUTH-P0-006`** | P0 | Tooling / Truth | Build `tools/agents/context_pack.py`, `context_map.yaml`, `verify.py`, and `check_agent_config.py`. | **DONE** |
+| **`BH-VM-P0-001`** | P0 | `vm_manager` | **Native VM Authority Adapter**: Implement `core/services/vm_manager/kernel_adapter.c`. Bind `vm_manager` to canonical kernel VM mechanisms (`aspace -> region -> vm_object`). Must emit `VM_MANAGER_AUTHORITY_READY` in QEMU. | **IN PROGRESS** |
+| **`BH-RUNTIME-P0-002`** | P0 | Service Runtime | **Boot Lifecycle Gate**: Init -> namesvc -> processmgr -> vmmgr -> servicemgr E2E boot proof emitting all readiness markers. | QUEUED |
+| **`BH-SCHED-P0-003`** | P0 | Scheduler / Time | **Monotonic Bounded Waits**: Replace iteration-counter loop `sched_wait_remote_cmd_ack(..., timeout_loops)` with monotonic HAL time (`bh_ktime_now()`). | QUEUED |
+| **`BH-CAP-P0-004`** | P0 | Capabilities | **IPC Authorization Coverage**: Implement static/runtime coverage linter verifying every IPC dispatch operation enforces capability authority. | QUEUED |
+
+---
+
+### P1 Wave: Concurrency Hardening & Profile Proof
+
+| Ticket ID | Priority | Subsystem | Description & Acceptance Criteria | Status |
+|---|---|---|---|---|
+| **`BH-TLB-P1-001`** | P1 | TLB / MM | Decouple TLB shootdown from scheduler `g_active_core_count` to ensure strict layer boundary. | PLANNED |
+| **`BH-PROC-P1-002`** | P1 | `process_manager` | Real ELF filesystem -> process -> VM -> scheduler E2E verification under QEMU. | PLANNED |
+| **`BH-CAP-P1-003`** | P1 | Capabilities | Deep/wide revocation, generation rollover, retry, and replay saturation stress matrix. | PLANNED |
+| **`BH-PMM-P1-004`** | P1 | PMM | Per-core magazine (`pmm_pcache`) and remote-free queue saturation & failure testing under heavy multi-core load. | PLANNED |
+| **`BH-NET-P1-005`** | P1 | `netmgr` | Replace remaining polling scaffolding with genuinely event-driven receive dispatch. | PLANNED |
+| **`BH-LINUX-P1-006`** | P1 | Personalities | Linux compatibility test suite verifying epoll, eventfd, timerfd, futex, and pipe shims. | PLANNED |
+| **`BH-ANDROID-P1-007`** | P1 | Personalities | Android personality & Binder IPC end-to-end verification. | PLANNED |
+| **`BH-EDGE32-P1-008`** | P1 | Arch (32-bit) | ARM32 MPU and RISC-V 32 PMP fault isolation, privilege boundary, and negative test matrix. | PLANNED |
+| **`BH-GUI-P1-009`** | P1 | UI / Experience | ADR-035 display tier conformance (Tier 0 Headless to Tier 3 Composited Desktop) and input stream validation across Desktop, Mobile, and Automotive profiles. | PLANNED |
+
+---
+
+### P2 Wave: Scaffold Elimination & Cleanliness
+
+| Ticket ID | Priority | Subsystem | Description & Acceptance Criteria | Status |
+|---|---|---|---|---|
+| **`BH-SVC-P2-001`** | P2 | `coremgr` | Replace dummy endpoint handle with runtime-created capability endpoint. | BACKLOG |
+| **`BH-SVC-P2-002`** | P2 | `faultmgr` | Connect stub fault manager to supervisor and coremgr. | BACKLOG |
+| **`BH-SVC-P2-003`** | P2 | `memmgr` | Implement fault queue and COW memory policy in userland after VM authority stabilizes. | BACKLOG |
+| **`BH-LINT-P2-004`** | P2 | Lint / Quality | Establish baseline linter for mid-file includes, naming conventions, and stale TODO tracking. | BACKLOG |
+
+---
+
+## 3. Mandatory Qualification Matrix
+
+Every ticket moving from PLANNED to DONE must pass:
+```bash
+# 1. Agent configuration and layer reference linters
+python3 tools/agents/verify.py --changed-files <files>
+
+# 2. Syscall ABI lock check (if ABI touched)
+python3 tools/abi/syscall_abi.py --check
+
+# 3. Canonical 5-Target QEMU Smoke Matrix Gate
+python3 tools/run_qemu_matrix.py --headless --smoke --all-arch
+```
