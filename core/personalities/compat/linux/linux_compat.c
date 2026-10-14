@@ -1,6 +1,11 @@
 void linux_vfs_init(void);
 #include "linux_compat.h"
 #include "linux_errno.h"
+#include "linux_pipe.h"
+#include "linux_eventfd.h"
+#include "linux_timerfd.h"
+#include "linux_epoll.h"
+#include "linux_procfs.h"
 
 #include <stddef.h>
 
@@ -191,6 +196,7 @@ linux_process_state_t *linux_get_or_create_process_state(struct bh_process *proc
     st->next_fd = 3;
     st->brk_start = proc->brk_start;
     st->brk_current = proc->brk_current;
+    strncpy(st->cwd, "/", sizeof(st->cwd) - 1);
 
     proc->personality_data = st;
     return st;
@@ -200,6 +206,22 @@ void linux_destroy_process_state(struct bh_process *proc) {
     if (!proc) return;
     for (int i = 0; i < MAX_LINUX_PROCS; i++) {
         if (g_linux_proc_in_use[i] && g_linux_proc_pids[i] == proc->process_id) {
+            linux_process_state_t *st = &g_linux_proc_states[i];
+            for (int fd = 0; fd < LINUX_MAX_FDS; fd++) {
+                if (st->fd_table[fd].type == LINUX_FD_TYPE_PIPE_READ) {
+                    linux_pipe_close_read((linux_pipe_t *)st->fd_table[fd].priv_data);
+                } else if (st->fd_table[fd].type == LINUX_FD_TYPE_PIPE_WRITE) {
+                    linux_pipe_close_write((linux_pipe_t *)st->fd_table[fd].priv_data);
+                } else if (st->fd_table[fd].type == LINUX_FD_TYPE_EVENTFD) {
+                    linux_eventfd_unref((linux_eventfd_t *)st->fd_table[fd].priv_data);
+                } else if (st->fd_table[fd].type == LINUX_FD_TYPE_TIMERFD) {
+                    linux_timerfd_unref((linux_timerfd_t *)st->fd_table[fd].priv_data);
+                } else if (st->fd_table[fd].type == LINUX_FD_TYPE_EPOLL) {
+                    linux_epoll_unref((linux_epoll_t *)st->fd_table[fd].priv_data);
+                } else if (st->fd_table[fd].type == LINUX_FD_TYPE_PROC) {
+                    linux_procfs_file_unref((linux_procfs_file_t *)st->fd_table[fd].priv_data);
+                }
+            }
             g_linux_proc_in_use[i] = 0;
             g_linux_proc_pids[i] = 0;
             memset(&g_linux_proc_states[i], 0, sizeof(linux_process_state_t));

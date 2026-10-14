@@ -52,4 +52,14 @@ int android_personality_register(android_personality_t* p);
  */
 int android_obj_lookup(android_obj_id_t id, android_logical_obj_t* out_obj);
 
+/**
+ * @brief Register an Android logical object with home core authority.
+ */
+int android_obj_register(const android_logical_obj_t* obj);
+
+/**
+ * @brief Unregister an Android logical object.
+ */
+int android_obj_unregister(android_obj_id_t id);
+
 #endif // BHARAT_ANDROID_PERSONALITY_H

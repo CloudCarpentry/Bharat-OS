@@ -155,13 +155,11 @@ kstatus_t bh_syscall_policy_check(bh_syscall_ctx_t *ctx, const bh_syscall_meta_t
 
 const bh_personality_syscall_table_t *personality_get_syscall_table(bh_personality_id_t id) {
     switch (id) {
-#if defined(BHARAT_PERSONALITY_NATIVE)
         case BH_PERSONALITY_NATIVE: {
             extern const bh_personality_syscall_table_t native_personality;
             return &native_personality;
         }
-#endif
-#if defined(BHARAT_PERSONALITY_LINUX)
+#if defined(BHARAT_PERSONALITY_LINUX) || defined(BHARAT_PERSONALITY_ANDROID)
         case BH_PERSONALITY_LINUX: {
 #if BHARAT_ENABLE_SUBSYS_LINUX
             extern const bh_personality_syscall_table_t bh_linux_syscall_table;

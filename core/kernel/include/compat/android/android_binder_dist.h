@@ -91,4 +91,14 @@ int android_binder_reply(android_binder_transaction_t* reply_txn);
  */
 int android_binder_link_to_death(android_binder_handle_t handle, void* cookie);
 
+/**
+ * @brief Register a Binder service node on the local home core.
+ */
+int android_binder_node_register(uint32_t service_id, uint32_t home_core, uint32_t owner_pid, uint32_t owner_sid, android_binder_handle_t* out_handle);
+
+/**
+ * @brief Destroy a Binder service node, triggering death notifications.
+ */
+int android_binder_node_destroy(uint32_t service_id);
+
 #endif // BHARAT_ANDROID_BINDER_DIST_H
