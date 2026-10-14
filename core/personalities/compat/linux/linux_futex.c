@@ -27,10 +27,7 @@ static uint32_t futex_hash(uintptr_t uaddr, uint64_t pid) {
     return (uint32_t)(v % FUTEX_BUCKETS);
 }
 
-typedef struct {
-    int64_t tv_sec;
-    int64_t tv_nsec;
-} linux_timespec_t;
+#include "linux_types.h"
 
 bh_operation_result_t linux_futex_dispatch(bh_syscall_ctx_t *ctx) {
     if (!ctx) return bh_op_result_value(-LINUX_EINVAL);

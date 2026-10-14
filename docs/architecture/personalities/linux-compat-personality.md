@@ -28,18 +28,19 @@ The Linux Compatibility Personality provides a POSIX-like user space to accelera
 ## 3. POSIX and Syscall Coverage Scope
 
 *   **Hardware Trap & Syscall ABI:** Handled via unified architecture trap extraction across all 5 ISAs (`x86_64`, `arm64`, `arm32`, `riscv64`, `riscv32`). See [`linux-android-syscall-arch.md`](./linux-android-syscall-arch.md) for full instruction, cause vector, and register mappings.
-*   **File I/O:** `open`, `openat`, `read`, `write`, `close`, `seek`, `stat`, `getrandom`.
-*   **Process & Threading:** `getpid`, `gettid`, `clone` (with TLS, TID pointers), `futex` (wait/wake buckets), `arch_prctl`, `prlimit64`, `wait4`.
+*   **File & Directory I/O:** `open`, `openat`, `read`, `write`, `close`, `seek`, `stat`, `fstat`, `lstat`, `newfstatat`, `access`, `faccessat`, `getcwd`, `chdir`, `dup`, `dup2`, `dup3`, `fcntl`, `getrandom`, `readlink`, `readlinkat`.
+*   **IPC & Multiplexing:** `pipe`, `pipe2` (bounded ring buffer, EOF on writer close, EPIPE on reader close), `eventfd`, `eventfd2` (counter, `EFD_SEMAPHORE`), `timerfd_create`, `timerfd_settime`, `timerfd_gettime` (monotonic tick accumulation), `epoll_create`, `epoll_create1`, `epoll_ctl`, `epoll_wait`, `epoll_pwait`, `poll`, `ppoll`, `socketpair`.
+*   **Virtual Procfs & Device Nodes:** In-memory `/proc` synthetic filesystem (`/proc/self/status`, `/proc/self/cmdline`, `/proc/self/maps`, `/proc/cpuinfo`, `/proc/meminfo`, `/proc/version`, `/proc/mounts`) and pseudoterminal stubs (`/dev/ptmx`, `/dev/pts/*`, `/dev/null`, `/dev/zero`, `/dev/urandom`).
+*   **Process & Threading:** `getpid`, `gettid`, `clone` (with TLS, TID pointers), `fork`, `vfork`, `execve`, `futex` (wait/wake buckets), `arch_prctl`, `prlimit64`, `wait4`.
 *   **Memory:** `mmap`, `munmap`, `mprotect`, `brk` (translated to Bharat-OS VM abstractions).
 *   **Signals:** Synchronous signal framework (`rt_sigaction`, `rt_sigprocmask`, `rt_sigreturn`).
 
 ## 4. What is Explicitly NOT Supported
 
-This personality does **not** aim for 100% bug-for-bug Linux compatibility.
-*   **No full `fork()`:** Applications relying on complex `fork()`+`exec()` states with deep copy-on-write assumptions may fail or require porting to `posix_spawn()`.
+This personality does **not** aim for 100% bug-for-bug Linux kernel internal emulation.
 *   **No `ptrace` or deep kernel tracing:** Linux specific debug APIs are not supported. Debugging goes through the Bharat-OS diagnostic SDK.
 *   **No `cgroups` or `namespaces`:** Linux container models are not emulated. Isolation is handled natively via Bharat-OS capabilities.
-*   **No raw device nodes:** `/dev/sda` or raw `ioctl` pass-through to hardware is forbidden.
+*   **No raw device nodes:** `/dev/sda` or raw `ioctl` pass-through to hardware is forbidden. Device access is capability-mediated.
 
 ## 5. libc Strategy
 
