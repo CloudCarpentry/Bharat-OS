@@ -299,7 +299,60 @@ static bool valid_v1_request(uint32_t abi_version, uint32_t struct_size,
            struct_size == expected_size;
 }
 
-bharat_status_t bh_pm_handle_spawn_v1(const bh_pm_spawn_request_v1_t *req, bh_pm_spawn_response_v1_t *resp) {
+bharat_status_t bh_pm_handle_register_executable_v1(
+    const bh_pm_register_executable_request_v1_t *req,
+    bh_pm_register_executable_response_v1_t *resp) {
+    if (!req || !resp) {
+        return BHARAT_IPC_STATUS_ERR_INVALID;
+    }
+
+    local_memset(resp, 0, sizeof(*resp));
+    resp->abi_version = BH_PM_INTERFACE_VERSION_V1;
+    resp->struct_size = sizeof(*resp);
+    resp->executable_handle = req->executable_handle;
+
+    if (!valid_v1_request(req->abi_version, req->struct_size, sizeof(*req)) ||
+        req->executable_handle == 0 ||
+        req->module_name[0] == '\0' ||
+        req->module_name[sizeof(req->module_name) - 1] != '\0') {
+        resp->status = BHARAT_IPC_STATUS_ERR_INVALID;
+        return BHARAT_IPC_STATUS_ERR_INVALID;
+    }
+
+    // Check if already registered
+    for (int i = 0; i < MAX_EXECUTABLES; i++) {
+        if (g_executables[i].in_use && g_executables[i].handle == req->executable_handle) {
+            resp->status = BHARAT_IPC_STATUS_OK;
+            resp->image_size = g_executables[i].size;
+            return BHARAT_IPC_STATUS_OK;
+        }
+    }
+
+    if (!g_kernel_ops.acquire_boot_module) {
+        resp->status = BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
+        return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
+    }
+
+    const uint8_t *bytes = NULL;
+    size_t size = 0;
+    bharat_status_t status = g_kernel_ops.acquire_boot_module(g_kernel_ops.ctx, req->module_name, &bytes, &size);
+    if (status != BHARAT_IPC_STATUS_OK || !bytes || size == 0) {
+        resp->status = (status != BHARAT_IPC_STATUS_OK) ? status : BHARAT_IPC_STATUS_ERR_NOT_FOUND;
+        return resp->status;
+    }
+
+    status = bh_pm_register_executable(req->executable_handle, bytes, size);
+    if (status != BHARAT_STATUS_OK) {
+        resp->status = (status == BHARAT_STATUS_ERR_ALREADY_EXISTS) ? BHARAT_IPC_STATUS_OK : BHARAT_STATUS_ERR_NO_MEMORY;
+        return resp->status;
+    }
+
+    resp->status = BHARAT_IPC_STATUS_OK;
+    resp->image_size = size;
+    return BHARAT_IPC_STATUS_OK;
+}
+
+bharat_status_t bh_pm_handle_spawn_with_cap_v1(const bh_pm_spawn_request_v1_t *req, bh_pm_spawn_response_v1_t *resp, uint32_t capability_transfer) {
     if (!req || !resp) {
         return BHARAT_IPC_STATUS_ERR_INVALID;
     }
@@ -309,7 +362,7 @@ bharat_status_t bh_pm_handle_spawn_v1(const bh_pm_spawn_request_v1_t *req, bh_pm
     resp->struct_size = sizeof(bh_pm_spawn_response_v1_t);
 
     if (!valid_v1_request(req->abi_version, req->struct_size, sizeof(*req)) ||
-        req->reserved != 0 || req->executable_handle == 0) {
+        req->executable_handle == 0) {
         resp->status = BHARAT_IPC_STATUS_ERR_INVALID;
         return BHARAT_IPC_STATUS_ERR_INVALID;
     }
@@ -353,11 +406,14 @@ bharat_status_t bh_pm_handle_spawn_v1(const bh_pm_spawn_request_v1_t *req, bh_pm
 
     proc->process_handle = proc_handle;
     proc->state = BH_PM_STATE_RESERVED_V1;
-    local_strncpy(proc->name, req->process_name, 32);
+    local_strncpy(proc->name, req->process_name, sizeof(proc->name) - 1);
+    proc->name[sizeof(proc->name) - 1] = '\0';
     proc->executable_handle = req->executable_handle;
     proc->priority = req->priority;
     proc->affinity_mask = req->affinity_mask;
     proc->memory_profile = req->memory_profile;
+    proc->event_send_cap = capability_transfer;
+    proc->service_id = req->reserved;
     proc->incarnation_id = 1;
 
     if (g_fail_stage == 1) {
@@ -398,6 +454,8 @@ bharat_status_t bh_pm_handle_spawn_v1(const bh_pm_spawn_request_v1_t *req, bh_pm
     k_req.priority = proc->priority;
     k_req.image_bytes = img_bytes;
     k_req.image_size = img_size;
+    k_req.event_send_cap = proc->event_send_cap;
+    k_req.service_id = proc->service_id;
 
     bh_pm_kernel_process_t k_proc = {0};
     int k_res = g_kernel_ops.create_process(g_kernel_ops.ctx, &k_req, &k_proc);
@@ -408,6 +466,8 @@ bharat_status_t bh_pm_handle_spawn_v1(const bh_pm_spawn_request_v1_t *req, bh_pm
         resp->status = k_res != BHARAT_IPC_STATUS_OK ? k_res : BHARAT_IPC_STATUS_ERR_INTERNAL;
         return resp->status;
     }
+    k_proc.event_send_cap = proc->event_send_cap;
+    k_proc.service_id = proc->service_id;
 
     proc->kernel_process_id = k_proc.pid;
     proc->kernel_process_cap = k_proc.cap;
@@ -494,6 +554,10 @@ bharat_status_t bh_pm_handle_spawn_v1(const bh_pm_spawn_request_v1_t *req, bh_pm
     resp->incarnation_id = proc->incarnation_id;
 
     return BHARAT_IPC_STATUS_OK;
+}
+
+bharat_status_t bh_pm_handle_spawn_v1(const bh_pm_spawn_request_v1_t *req, bh_pm_spawn_response_v1_t *resp) {
+    return bh_pm_handle_spawn_with_cap_v1(req, resp, 0);
 }
 
 bharat_status_t bh_pm_handle_query_v1(const bh_pm_query_request_v1_t *req, bh_pm_query_response_v1_t *resp) {
@@ -714,7 +778,7 @@ void process_manager_loop(bharat_ipc_endpoint_t endpoint) {
                     if (req_header.payload_size == sizeof(bh_pm_spawn_request_v1_t)) {
                         const bh_pm_spawn_request_v1_t *req = (const bh_pm_spawn_request_v1_t *)payload_buf;
                         bh_pm_spawn_response_v1_t *resp = (bh_pm_spawn_response_v1_t *)resp_payload_buf;
-                        dispatch_status = bh_pm_handle_spawn_v1(req, resp);
+                        dispatch_status = bh_pm_handle_spawn_with_cap_v1(req, resp, req_header.capability_transfer);
                         resp_size = sizeof(bh_pm_spawn_response_v1_t);
                     } else {
                         dispatch_status = BHARAT_IPC_STATUS_ERR_LENGTH;
@@ -760,6 +824,19 @@ void process_manager_loop(bharat_ipc_endpoint_t endpoint) {
                         bh_pm_reap_response_v1_t *resp = (bh_pm_reap_response_v1_t *)resp_payload_buf;
                         dispatch_status = bh_pm_handle_reap_v1(req, resp);
                         resp_size = sizeof(bh_pm_reap_response_v1_t);
+                    } else {
+                        dispatch_status = BHARAT_IPC_STATUS_ERR_LENGTH;
+                    }
+                    break;
+                }
+                case BH_PM_OP_REGISTER_EXECUTABLE_V1: {
+                    if (req_header.payload_size == sizeof(bh_pm_register_executable_request_v1_t)) {
+                        const bh_pm_register_executable_request_v1_t *req =
+                            (const bh_pm_register_executable_request_v1_t *)payload_buf;
+                        bh_pm_register_executable_response_v1_t *resp =
+                            (bh_pm_register_executable_response_v1_t *)resp_payload_buf;
+                        dispatch_status = bh_pm_handle_register_executable_v1(req, resp);
+                        resp_size = sizeof(bh_pm_register_executable_response_v1_t);
                     } else {
                         dispatch_status = BHARAT_IPC_STATUS_ERR_LENGTH;
                     }

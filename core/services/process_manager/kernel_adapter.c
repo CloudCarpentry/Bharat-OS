@@ -20,7 +20,12 @@ static bharat_status_t native_create(void *ctx, const bh_pm_kernel_create_req_t 
     for (size_t i = 0; i < sizeof(request.name) - 1; ++i) request.name[i] = req->name[i];
     bh_process_image_result_t result = {0};
     int status = invoke(bharat_runtime_get_bootstrap_cap(), BH_BOOTSTRAP_OP_CREATE_IMAGE, &request, &result);
-    if (status == 0) { out->pid = result.process_id; out->cap = result.process_cap; }
+    if (status == 0) {
+        out->pid = result.process_id;
+        out->cap = result.process_cap;
+        out->event_send_cap = req->event_send_cap;
+        out->service_id = req->service_id;
+    }
     return status;
 }
 
@@ -49,7 +54,10 @@ static bharat_status_t native_image(void *ctx, bh_pm_kernel_process_t *proc,
 }
 
 static bharat_status_t native_start(void *ctx, bh_pm_kernel_process_t *proc) {
-    (void)ctx; return invoke(proc->cap, BH_PROCESS_OP_START, NULL, NULL);
+    (void)ctx;
+    return invoke(proc->cap, BH_PROCESS_OP_START,
+                  (const void *)(uintptr_t)proc->event_send_cap,
+                  (void *)(uintptr_t)proc->service_id);
 }
 static bharat_status_t native_terminate(void *ctx, bh_pm_kernel_process_t *proc) {
     (void)ctx; return invoke(proc->cap, BH_PROCESS_OP_TERMINATE, NULL, NULL);
@@ -58,10 +66,31 @@ static bharat_status_t native_reap(void *ctx, bh_pm_kernel_process_t *proc) {
     (void)ctx; return invoke(proc->cap, BH_PROCESS_OP_REAP, NULL, NULL);
 }
 
+static bharat_status_t native_acquire_boot_module(void *ctx, const char *module_name,
+                                                 const uint8_t **out_bytes, size_t *out_size) {
+    (void)ctx;
+    if (!module_name || !out_bytes || !out_size) return BHARAT_IPC_STATUS_ERR_INVALID;
+    bh_bootstrap_module_request_t req = {.version = BH_BOOTSTRAP_SERVICE_ABI};
+    size_t i = 0;
+    for (; i < sizeof(req.module_name) - 1 && module_name[i]; ++i) {
+        req.module_name[i] = module_name[i];
+    }
+    req.module_name[i] = '\0';
+    bh_bootstrap_module_result_t res = {0};
+    int status = invoke(bharat_runtime_get_bootstrap_cap(), BH_BOOTSTRAP_OP_GET_MODULE, &req, &res);
+    if (status != 0 || res.image_address == 0 || res.image_size == 0) {
+        return BHARAT_IPC_STATUS_ERR_NOT_FOUND;
+    }
+    *out_bytes = (const uint8_t *)(uintptr_t)res.image_address;
+    *out_size = (size_t)res.image_size;
+    return BHARAT_IPC_STATUS_OK;
+}
+
 bharat_status_t bh_pm_install_native_kernel_ops(void) {
     if (bharat_bootstrap_probe() != 0) return BHARAT_IPC_STATUS_ERR_PERM;
     const bh_pm_kernel_ops_t ops = {.create_process = native_create, .create_vm_space = native_space,
         .realize_image = native_image, .start_process = native_start,
-        .request_terminate = native_terminate, .reap_process = native_reap};
+        .request_terminate = native_terminate, .reap_process = native_reap,
+        .acquire_boot_module = native_acquire_boot_module};
     return bh_pm_set_kernel_ops(&ops);
 }

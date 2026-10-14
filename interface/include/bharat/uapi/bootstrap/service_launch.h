@@ -11,6 +11,7 @@
 #define BH_PROCESS_OP_QUERY 5U
 #define BH_PROCESS_OP_REAP 6U
 #define BH_PROCESS_OP_TERMINATE 7U
+#define BH_BOOTSTRAP_OP_GET_MODULE 8U
 #define BH_BOOTSTRAP_IMAGE_MAX (1024U * 1024U)
 #define BH_BOOTSTRAP_SERVICE_ABI 1U
 #define BH_BOOTSTRAP_EVENT_BOUND 1U
@@ -55,8 +56,24 @@ typedef struct {
     uint32_t process_cap;
     uint32_t reserved;
 } bh_process_image_result_t;
+
+typedef struct {
+    uint32_t version;
+    uint32_t reserved;
+    char module_name[32];
+} bh_bootstrap_module_request_t;
+
+typedef struct {
+    uint64_t image_address;
+    uint64_t image_size;
+    uint32_t module_id;
+    uint32_t reserved;
+} bh_bootstrap_module_result_t;
+
 _Static_assert(sizeof(bh_process_image_request_t) == 56, "image request ABI");
 _Static_assert(sizeof(bh_process_image_result_t) == 32, "image result ABI");
+_Static_assert(sizeof(bh_bootstrap_module_request_t) == 40, "module request ABI size");
+_Static_assert(sizeof(bh_bootstrap_module_result_t) == 24, "module result ABI size");
 
 _Static_assert(sizeof(bh_bootstrap_launch_request_t) == 48, "launch ABI size");
 _Static_assert(sizeof(bh_bootstrap_launch_result_t) == 24, "result ABI size");

@@ -4,17 +4,6 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "../../include/spinlock.h"
-#include "../../include/mm.h"
-
-// Forward declare phys_addr_t or include mm.h early
-#ifndef BHARAT_MM_H
-typedef uint64_t phys_addr_t;
-typedef uint64_t virt_addr_t;
-#endif
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 typedef enum {
     VM_OBJECT_ANON = 0,
@@ -33,6 +22,18 @@ typedef enum {
 struct vm_region; // Forward declaration
 
 typedef struct vm_object vm_object_t;
+
+#include "../../include/mm.h"
+
+// Forward declare phys_addr_t or include mm.h early
+#ifndef BHARAT_MM_H
+typedef uint64_t phys_addr_t;
+typedef uint64_t virt_addr_t;
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef struct {
     uint64_t page_offset;

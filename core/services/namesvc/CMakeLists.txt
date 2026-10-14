@@ -33,4 +33,9 @@ target_link_libraries(namesvc PUBLIC runtime ipc cap bharat_version_api)
 # Keep the build freestanding and warning-clean
 
 bharat_configure_userspace_binary(namesvc)
-add_subdirectory(tests)
+if(CMAKE_CROSSCOMPILING)
+    message(STATUS "Skipping namesvc tests during cross-compilation")
+else()
+    add_subdirectory(tests)
+endif()
+

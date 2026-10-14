@@ -213,7 +213,104 @@ void test_spawn_rollback_failures(void) {
     printf("test_spawn_rollback_failures passed!\n");
 }
 
+static uint8_t s_boot_elf[1024];
+
+static bharat_status_t mock_acquire_boot_module(void *ctx, const char *module_name, const uint8_t **out_elf_buf, size_t *out_elf_size) {
+    (void)ctx;
+    if (strcmp(module_name, "test_boot_mod") == 0) {
+        setup_test_elf(s_boot_elf, sizeof(s_boot_elf));
+        *out_elf_buf = s_boot_elf;
+        *out_elf_size = sizeof(s_boot_elf);
+        return BHARAT_IPC_STATUS_OK;
+    }
+    return BHARAT_IPC_STATUS_ERR_NOT_FOUND;
+}
+
+void test_register_executable_v1(void) {
+    process_manager_init();
+
+    bh_pm_register_executable_request_v1_t req;
+    bh_pm_register_executable_response_v1_t resp;
+
+    // NULL checks
+    assert(bh_pm_handle_register_executable_v1(NULL, &resp) == BHARAT_IPC_STATUS_ERR_INVALID);
+    assert(bh_pm_handle_register_executable_v1(&req, NULL) == BHARAT_IPC_STATUS_ERR_INVALID);
+
+    // Invalid ABI / size / handle / module
+    memset(&req, 0, sizeof(req));
+    req.abi_version = BH_PM_INTERFACE_VERSION_V1 + 1;
+    req.struct_size = sizeof(req);
+    req.executable_handle = 0x1234;
+    strncpy(req.module_name, "test_boot_mod", sizeof(req.module_name));
+    assert(bh_pm_handle_register_executable_v1(&req, &resp) == BHARAT_IPC_STATUS_ERR_INVALID);
+
+    req.abi_version = BH_PM_INTERFACE_VERSION_V1;
+    req.struct_size = sizeof(req) - 1;
+    assert(bh_pm_handle_register_executable_v1(&req, &resp) == BHARAT_IPC_STATUS_ERR_INVALID);
+
+    req.struct_size = sizeof(req);
+    req.executable_handle = 0;
+    assert(bh_pm_handle_register_executable_v1(&req, &resp) == BHARAT_IPC_STATUS_ERR_INVALID);
+
+    req.executable_handle = 0x1234;
+    req.module_name[0] = '\0';
+    assert(bh_pm_handle_register_executable_v1(&req, &resp) == BHARAT_IPC_STATUS_ERR_INVALID);
+
+    strncpy(req.module_name, "test_boot_mod", sizeof(req.module_name));
+
+    // Without acquire_boot_module installed, must fail with UNSUPPORTED
+    assert(bh_pm_handle_register_executable_v1(&req, &resp) == BHARAT_IPC_STATUS_ERR_UNSUPPORTED);
+    assert(resp.status == BHARAT_IPC_STATUS_ERR_UNSUPPORTED);
+
+    // Install ops with mock_acquire_boot_module
+    bh_pm_kernel_ops_t ops = {
+        .ctx = NULL,
+        .acquire_boot_module = mock_acquire_boot_module,
+        .create_process = track_create_process,
+        .create_vm_space = track_create_vm_space,
+        .realize_image = track_realize_image,
+        .start_process = track_start_process,
+        .request_terminate = track_request_terminate,
+        .reap_process = track_reap_process
+    };
+    assert(bh_pm_set_kernel_ops(&ops) == BHARAT_IPC_STATUS_OK);
+
+    // Non-existent module
+    strncpy(req.module_name, "non_existent", sizeof(req.module_name));
+    assert(bh_pm_handle_register_executable_v1(&req, &resp) == BHARAT_IPC_STATUS_ERR_NOT_FOUND);
+    assert(resp.status == BHARAT_IPC_STATUS_ERR_NOT_FOUND);
+
+    // Existing module
+    strncpy(req.module_name, "test_boot_mod", sizeof(req.module_name));
+    assert(bh_pm_handle_register_executable_v1(&req, &resp) == BHARAT_IPC_STATUS_OK);
+    assert(resp.status == BHARAT_IPC_STATUS_OK);
+    assert(resp.image_size == sizeof(s_boot_elf));
+    assert(resp.executable_handle == 0x1234);
+
+    // Idempotent re-registration
+    memset(&resp, 0, sizeof(resp));
+    assert(bh_pm_handle_register_executable_v1(&req, &resp) == BHARAT_IPC_STATUS_OK);
+    assert(resp.status == BHARAT_IPC_STATUS_OK);
+    assert(resp.image_size == sizeof(s_boot_elf));
+
+    // Now spawn with registered executable handle 0x1234
+    bh_pm_spawn_request_v1_t spawn_req = {
+        .abi_version = BH_PM_INTERFACE_VERSION_V1,
+        .struct_size = sizeof(spawn_req),
+        .executable_handle = 0x1234,
+    };
+    strncpy(spawn_req.process_name, "boot_child", sizeof(spawn_req.process_name));
+    bh_pm_spawn_response_v1_t spawn_resp;
+    assert(bh_pm_handle_spawn_v1(&spawn_req, &spawn_resp) == BHARAT_IPC_STATUS_OK);
+    assert(spawn_resp.status == BHARAT_IPC_STATUS_OK);
+    assert(spawn_resp.process_handle != 0);
+
+    printf("test_register_executable_v1 passed!\n");
+}
+
 int main(void) {
     test_spawn_rollback_failures();
+    test_register_executable_v1();
     return 0;
 }
+

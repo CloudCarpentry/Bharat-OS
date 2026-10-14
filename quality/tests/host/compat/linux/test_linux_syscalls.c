@@ -36,6 +36,7 @@ bh_thread_t *thread_create_detached(bh_process_t *parent, void (*entry_point)(vo
 kstatus_t sched_enqueue(bh_thread_t *thread, uint32_t core) { (void)thread; (void)core; return K_OK; }
 void sched_sleep(uint64_t ms) { (void)ms; }
 void sched_wakeup(bh_thread_t *th) { (void)th; }
+void sched_block(void) {}
 void bh_thread_yield(void) {}
 bh_operation_result_t bh_sys_read(bh_syscall_ctx_t *ctx) { (void)ctx; return bh_op_result_value(-38); }
 bh_operation_result_t bh_sys_write(bh_syscall_ctx_t *ctx) { return bh_op_result_value((long)ctx->regs.arg[2]); }

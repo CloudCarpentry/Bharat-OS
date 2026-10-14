@@ -121,11 +121,20 @@ void init_profile_get_context(init_boot_context_t *ctx) {
     ctx->profile = INIT_PROFILE_DESKTOP;
 #endif
 
-    // Placeholder: populate capabilities based on environment
-    // For now we assume all capabilities are present if not tiny
-    if (ctx->profile != INIT_PROFILE_TINY) {
+    // Populate capabilities based on profile and hardware memory protection model
+    if (ctx->profile == INIT_PROFILE_TINY) {
+        ctx->capability_mask = BHARAT_INIT_CAP_NONE;
+    } else if (ctx->profile == INIT_PROFILE_SMALL || ctx->profile == INIT_PROFILE_RT) {
+        ctx->capability_mask = BHARAT_INIT_CAP_STORAGE | BHARAT_INIT_CAP_SENSORS;
+#if defined(BHARAT_PROFILE_MMU_FULL)
+        ctx->capability_mask |= BHARAT_INIT_CAP_MMU;
+#endif
+    } else {
         ctx->capability_mask = BHARAT_INIT_CAP_NETWORK | BHARAT_INIT_CAP_STORAGE |
-                        BHARAT_INIT_CAP_DISPLAY | BHARAT_INIT_CAP_SENSORS |
-                        BHARAT_INIT_CAP_MMU;
+                        BHARAT_INIT_CAP_DISPLAY | BHARAT_INIT_CAP_SENSORS;
+#if defined(BHARAT_PROFILE_MMU_FULL) || (!defined(BHARAT_PROFILE_MMU_LITE) && !defined(BHARAT_PROFILE_MPU_ONLY) && !defined(__arm__) && (!defined(__riscv_xlen) || __riscv_xlen == 64))
+        ctx->capability_mask |= BHARAT_INIT_CAP_MMU;
+#endif
     }
 }
+

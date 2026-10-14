@@ -9,11 +9,17 @@ set(TF_PSA_CRYPTO_MAKE_DEFS OFF CACHE BOOL "Disable automatic generation via mak
 # Setup path to our custom config
 set(TF_PSA_CRYPTO_CONFIG_FILE "${CMAKE_CURRENT_SOURCE_DIR}/config/bharat_crypto_config.h" CACHE STRING "Configuration file" FORCE)
 
+set(TF_PSA_CRYPTO_SRC_DIR "${CMAKE_SOURCE_DIR}/third_party/tf-psa-crypto/upstream")
+if(NOT EXISTS "${TF_PSA_CRYPTO_SRC_DIR}/scripts/generate_driver_wrappers.py")
+    message(STATUS "TF-PSA-Crypto generator scripts not found; skipping tfpsacrypto build")
+    add_library(tfpsacrypto INTERFACE)
+    add_library(bharat_libcrypto ALIAS tfpsacrypto)
+    return()
+endif()
+
 # We will build TF-PSA-Crypto ourselves rather than relying on its CMake to configure the library target properly.
 add_library(tfpsacrypto STATIC)
 
-# Generate PSA Driver Wrappers and config
-set(TF_PSA_CRYPTO_SRC_DIR "${CMAKE_SOURCE_DIR}/third_party/tf-psa-crypto/upstream")
 set(TF_PSA_CRYPTO_GEN_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated/tf_psa_crypto")
 
 add_custom_command(

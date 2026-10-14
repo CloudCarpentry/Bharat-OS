@@ -98,6 +98,11 @@ typedef struct {
     int status_code;
 } init_launch_result_t;
 
+typedef struct {
+    uint64_t executable_handle;
+    const char *module_name;
+} bh_boot_executable_desc_t;
+
 typedef struct init_service_desc_s {
     init_service_id_t id;
     const char *name;
@@ -117,6 +122,7 @@ typedef struct init_service_desc_s {
     bharat_init_board_mask_t board_mask;
     bharat_init_personality_mask_t personality_mask;
     bharat_init_cap_mask_t required_caps;
+    bh_boot_executable_desc_t executable_desc;
 } init_service_desc_t;
 
 // Generic manifest declaration

@@ -142,6 +142,9 @@ add_library(bharat_user_buildopts INTERFACE)
 target_link_libraries(bharat_user_buildopts INTERFACE bharat_freestanding)
 target_compile_definitions(bharat_user_buildopts INTERFACE
     __USER__=1
+    $<$<BOOL:${BHARAT_PROFILE_MMU_FULL}>:BHARAT_PROFILE_MMU_FULL=1>
+    $<$<BOOL:${BHARAT_PROFILE_MMU_LITE}>:BHARAT_PROFILE_MMU_LITE=1>
+    $<$<BOOL:${BHARAT_PROFILE_MPU_ONLY}>:BHARAT_PROFILE_MPU_ONLY=1>
 )
 
 # Implements per-target userspace PIE policy to avoid conflicting compiler/linker flags

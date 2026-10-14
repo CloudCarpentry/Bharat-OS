@@ -20,6 +20,7 @@ bh_thread_t *sched_current_thread(void) { return &g_test_thread; }
 uint64_t bh_ktime_now(void) { return g_mock_time_ns++; }
 void sched_sleep(uint64_t ms) { (void)ms; }
 void sched_wakeup(bh_thread_t *th) { (void)th; }
+void sched_block(void) {}
 void bh_thread_yield(void) {}
 
 long bh_syscall_gate(trap_frame_t *frame, const trap_info_t *info) { (void)frame; (void)info; return 0; }

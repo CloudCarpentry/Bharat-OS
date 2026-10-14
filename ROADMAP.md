@@ -32,6 +32,7 @@ Milestones require the **Three-Part Truth Standard** defined in [`bharat-os-runt
 | **`BH-RUNTIME-P0-002`** | P0 | Service Runtime | **Boot Lifecycle Gate**: Init -> namesvc -> processmgr -> vmmgr -> servicemgr E2E boot proof emitting all readiness markers. | QUEUED |
 | **`BH-SCHED-P0-003`** | P0 | Scheduler / Time | **Monotonic Bounded Waits**: Replace iteration-counter loop `sched_wait_remote_cmd_ack(..., timeout_loops)` with monotonic HAL time (`bh_ktime_now()`). | QUEUED |
 | **`BH-CAP-P0-004`** | P0 | Capabilities | **IPC Authorization Coverage**: Implement static/runtime coverage linter verifying every IPC dispatch operation enforces capability authority. | QUEUED |
+| **`BH-PERF-P0-001`** | P0 | Performance / IPC | **Multikernel Concurrency & Latency Proof**: Measure local fast path vs shared-memory fast path vs cross-core control path costs under multi-core load. Eliminate synchronization bottlenecks and verify ADR-039 three-tier concurrency model. | PLANNED |
 
 ---
 

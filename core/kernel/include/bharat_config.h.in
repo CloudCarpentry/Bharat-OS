@@ -65,6 +65,11 @@
 /* Hardware Accelerators (Dynamic based on CMake lists) */
 /* For example: -DBHARAT_ACCEL_GPU=1 */
 
+/* Protection Models */
+#cmakedefine BHARAT_PROFILE_MMU_FULL 1
+#cmakedefine BHARAT_PROFILE_MMU_LITE 1
+#cmakedefine BHARAT_PROFILE_MPU_ONLY 1
+
 /* Memory Capabilities */
 #cmakedefine BHARAT_ENABLE_MMU 1
 #cmakedefine BHARAT_ENABLE_MPU 1

@@ -27,11 +27,15 @@ typedef struct {
     uint32_t priority;
     const uint8_t *image_bytes; /* Service-local adapter input, never an IPC field. */
     size_t image_size;
+    uint32_t event_send_cap;
+    uint32_t service_id;
 } bh_pm_kernel_create_req_t;
 
 typedef struct {
     uint64_t pid;
     uint32_t cap;
+    uint32_t event_send_cap;
+    uint32_t service_id;
 } bh_pm_kernel_process_t;
 
 typedef struct {
@@ -63,6 +67,9 @@ typedef struct {
     bharat_status_t (*request_terminate)(void *ctx, bh_pm_kernel_process_t *proc);
 
     bharat_status_t (*reap_process)(void *ctx, bh_pm_kernel_process_t *proc);
+
+    bharat_status_t (*acquire_boot_module)(void *ctx, const char *module_name,
+                                           const uint8_t **out_bytes, size_t *out_size);
 } bh_pm_kernel_ops_t;
 
 // v1 Process Entry
@@ -83,6 +90,8 @@ typedef struct {
     uint32_t priority;
     uint32_t affinity_mask;
     uint32_t memory_profile;
+    uint32_t event_send_cap;
+    uint32_t service_id;
 
 } bh_pm_process_v1_t;
 
@@ -113,7 +122,9 @@ bharat_status_t bh_pm_register_executable(uint64_t handle, const uint8_t *bytes,
 int bh_pm_get_active_count(void);
 
 // Event receivers/handlers for v1 (exposed for direct transaction host testing)
+bharat_status_t bh_pm_handle_register_executable_v1(const bh_pm_register_executable_request_v1_t *req, bh_pm_register_executable_response_v1_t *resp);
 bharat_status_t bh_pm_handle_spawn_v1(const bh_pm_spawn_request_v1_t *req, bh_pm_spawn_response_v1_t *resp);
+bharat_status_t bh_pm_handle_spawn_with_cap_v1(const bh_pm_spawn_request_v1_t *req, bh_pm_spawn_response_v1_t *resp, uint32_t capability_transfer);
 bharat_status_t bh_pm_handle_query_v1(const bh_pm_query_request_v1_t *req, bh_pm_query_response_v1_t *resp);
 bharat_status_t bh_pm_handle_terminate_v1(const bh_pm_terminate_request_v1_t *req, bh_pm_terminate_response_v1_t *resp);
 bharat_status_t bh_pm_handle_wait_v1(const bh_pm_wait_request_v1_t *req, bh_pm_wait_response_v1_t *resp);

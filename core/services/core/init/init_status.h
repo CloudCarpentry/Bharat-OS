@@ -82,6 +82,7 @@ typedef struct {
     bh_bootstrap_launch_result_t launch;
     uint64_t ready_deadline_ns;
     uint32_t namesvc_cap;
+    uint32_t pm_cap;
 } init_service_runtime_t;
 
 void init_status_report(const init_service_runtime_t *runtimes, size_t count);

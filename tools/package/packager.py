@@ -184,7 +184,8 @@ def execute_package(plan: PackagePlan, repo_root: Path) -> PackageOutputs:
         for service_name, svc_data in resolved_graph.items():
             if service_name == "_metadata":
                 continue
-            if svc_data["info"].get("boot_class") == "CORE":
+            boot_cls = svc_data["info"].get("boot_class")
+            if boot_cls == "CORE":
                 try:
                     service_path = _find_required_root_binary(plan.build_outputs.build_dir, service_name)
                     service_bytes = service_path.read_bytes()
@@ -198,9 +199,9 @@ def execute_package(plan: PackagePlan, repo_root: Path) -> PackageOutputs:
                     bundle.extend(service_bytes)
                     print(f"[Package] Added real bootstrap executable {service_name}: {len(service_bytes)} bytes")
                 except RuntimeError as e:
-                    if svc_data["state"] == "required":
+                    if svc_data["state"] == "required" and service_name in ("namesvc", "process_manager"):
                          raise RuntimeError(f"Required bootstrap executable '{service_name}' is missing: {e}")
-                    print(f"[Package] Warning: Optional bootstrap executable {service_name} not found, skipping.")
+                    print(f"[Package] Warning: Bootstrap executable {service_name} not found, skipping: {e}")
 
     init_module_path.write_bytes(bundle)
     print(f"[Package] Packaged and wrote Bharat boot-module container to {init_module_path}")

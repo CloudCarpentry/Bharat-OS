@@ -15,9 +15,9 @@ static bool is_required_boot_class(init_boot_class_t cls) {
 
 static bool filter_service(const init_service_desc_t *desc, const init_boot_context_t *ctx) {
 #ifdef BHARAT_INIT_CORE_BOOTSTRAP_ONLY
-    /* The target declares the P0 package/graph: both real bootstrap services.
-     * This is an explicit target policy, not a runtime skip of required nodes. */
-    if (desc->id != INIT_SVC_NAMESVC && desc->id != INIT_SVC_PROCESS_MANAGER) return false;
+    /* The target declares the P0 package/graph: real bootstrap and core services. */
+    if (desc->id != INIT_SVC_NAMESVC && desc->id != INIT_SVC_PROCESS_MANAGER &&
+        desc->id != INIT_SVC_VM_MANAGER) return false;
 #endif
     if (!(desc->profile_mask & (uint64_t)ctx->profile)) {
         return false;
@@ -85,6 +85,8 @@ static void try_launch_services(init_runtime_t *rt, init_boot_class_t target_cla
         sr->state = INIT_SERVICE_STATE_SPAWN_REQUESTED;
         sr->namesvc_cap = sr->desc->id == INIT_SVC_NAMESVC ? 0 :
             rt->services[INIT_SVC_NAMESVC].launch.service_send_cap;
+        sr->pm_cap = (sr->desc->id == INIT_SVC_NAMESVC || sr->desc->id == INIT_SVC_PROCESS_MANAGER) ? 0 :
+            rt->services[INIT_SVC_PROCESS_MANAGER].launch.service_send_cap;
 
         int err = -1;
         if (sr->desc->probe_fn) {
@@ -295,7 +297,11 @@ int init_runtime_run(init_boot_context_t *ctx) {
             rt.services[id].attempts = 0;
             rt.services[id].last_error = 0;
 
-            if (g_init_manifest[i].policy == INIT_SERVICE_REQUIRED || is_required_boot_class(g_init_manifest[i].boot_class)) {
+            if (g_init_manifest[i].policy == INIT_SERVICE_REQUIRED) {
+                rt.services[id].required_for_boot = true;
+            } else if (g_init_manifest[i].policy == INIT_SERVICE_OPTIONAL) {
+                rt.services[id].required_for_boot = false;
+            } else if (is_required_boot_class(g_init_manifest[i].boot_class)) {
                 rt.services[id].required_for_boot = true;
             }
             rt.manifest_count++;

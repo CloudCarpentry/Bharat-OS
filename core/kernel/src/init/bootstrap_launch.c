@@ -9,6 +9,9 @@
 #include "trap/syscall_status.h"
 #include "boot/boot_info.h"
 #include "mm/physmap.h"
+#include "mm/aspace.h"
+#include "mm/prot_domain.h"
+#include "mm/vm_mapping.h"
 #include "lib/base/string.h"
 #include "slab.h"
 #include <bharat/uapi/init/bootstrap.h>
@@ -63,6 +66,22 @@ int cap_invoke(uintptr_t cap_id, uintptr_t opcode, uintptr_t arg0, uintptr_t arg
         if (opcode == BH_PROCESS_OP_START) {
             if (!child->main_thread || child->main_thread->owner_state != THREAD_OWNER_NONE)
                 return K_ERR_BAD_STATE;
+            if (arg0 != 0) {
+                uint32_t child_cap = 0;
+                if (grant_endpoint(parent_table, (uint32_t)arg0, CAP_RIGHT_ENDPOINT_SEND,
+                    child->security_sandbox_ctx, CAP_RIGHT_ENDPOINT_SEND, &child_cap) == K_OK) {
+                    uintptr_t startup_phys = 0;
+                    uint32_t prot = 0;
+                    if (prot_domain_query_region(child->addr_space->prot_domain,
+                        child->main_thread->first_user_entry.arg0, &startup_phys, &prot) == K_OK) {
+                        bharat_user_startup_t *startup = physmap_phys_to_virt(startup_phys);
+                        if (startup) {
+                            startup->bootstrap.system_control_endpoint = child_cap;
+                            if (arg1 != 0) startup->bootstrap.flags = (uint32_t)arg1;
+                        }
+                    }
+                }
+            }
             return sched_enqueue(child->main_thread, hal_cpu_get_id());
         }
         if (opcode == BH_PROCESS_OP_TERMINATE) {
@@ -86,6 +105,90 @@ int cap_invoke(uintptr_t cap_id, uintptr_t opcode, uintptr_t arg0, uintptr_t arg
     if (authority.object_ref != (uint64_t)(uintptr_t)parent ||
         parent->owner_core_id != hal_cpu_get_id()) return K_ERR_CAP_OWNERSHIP;
     if (opcode == BH_BOOTSTRAP_OP_PROBE) return K_OK;
+    if (opcode == BH_BOOTSTRAP_OP_GET_MODULE) {
+        bh_bootstrap_module_request_t req;
+        bh_status_t copy = bh_copy_from_user(&req, (const void *)arg0, sizeof(req));
+        if (copy != BH_OK) return bh_status_to_kstatus(copy);
+        copy = bh_user_range_validate((void *)arg1, sizeof(bh_bootstrap_module_result_t), BH_USER_ACCESS_WRITE);
+        if (copy != BH_OK) return bh_status_to_kstatus(copy);
+
+        if (req.version != BH_BOOTSTRAP_SERVICE_ABI || req.module_name[0] == 0 || req.module_name[31] != 0) {
+            return K_ERR_INVALID_ARG;
+        }
+
+        const boot_module_t *module = NULL;
+        uint32_t module_idx = 0;
+        if (g_boot_info) {
+            for (uint32_t i = 0; i < g_boot_info->module_count; ++i) {
+                if (same_name(g_boot_info->modules[i].name, req.module_name)) {
+                    module = &g_boot_info->modules[i];
+                    module_idx = i;
+                    break;
+                }
+            }
+        }
+
+        if (!module || module->phys_start == g_boot_info->init_payload_phys || module->size == 0) {
+            return K_ERR_NOT_FOUND;
+        }
+
+        address_space_t *aspace = parent->addr_space;
+        if (!aspace || !aspace->prot_domain) {
+            return K_ERR_BAD_STATE;
+        }
+
+        phys_addr_t paddr_start = module->phys_start & ~(PAGE_SIZE - 1U);
+        size_t offset_in_page = module->phys_start & (PAGE_SIZE - 1U);
+        size_t aligned_len = ((module->size + offset_in_page) + PAGE_SIZE - 1U) & ~(PAGE_SIZE - 1U);
+
+        uintptr_t cand_va = 0x20000000ULL;
+        spin_lock(&aspace->lock);
+        vm_region_t *r = aspace->regions;
+        while (r != NULL) {
+            if (cand_va + aligned_len <= r->base) {
+                break;
+            }
+            if (cand_va < r->base + r->length) {
+                cand_va = (r->base + r->length + PAGE_SIZE - 1U) & ~(PAGE_SIZE - 1U);
+            }
+            r = r->next;
+        }
+        if (aspace->user_limit != 0 && cand_va + aligned_len > aspace->user_limit) {
+            spin_unlock(&aspace->lock);
+            return K_ERR_NO_MEMORY;
+        }
+        spin_unlock(&aspace->lock);
+
+        for (size_t off = 0; off < aligned_len; off += PAGE_SIZE) {
+            int mret = prot_domain_map_region(aspace->prot_domain,
+                                              cand_va + off,
+                                              paddr_start + off,
+                                              PAGE_SIZE,
+                                              VM_PROT_READ | VM_PROT_USER);
+            if (mret != 0) {
+                if (off > 0) {
+                    prot_domain_unmap_region(aspace->prot_domain, cand_va, off);
+                }
+                return K_ERR_NO_MEMORY;
+            }
+        }
+
+        int astatus = aspace_region_reserve(aspace, cand_va, aligned_len,
+                                            VM_PROT_READ | VM_PROT_USER, 0, VM_INHERIT_NONE, NULL);
+        if (astatus != K_OK) {
+            prot_domain_unmap_region(aspace->prot_domain, cand_va, aligned_len);
+            return astatus;
+        }
+
+        bh_bootstrap_module_result_t result = {
+            .image_address = cand_va + offset_in_page,
+            .image_size = module->size,
+            .module_id = module_idx,
+            .reserved = 0,
+        };
+
+        return bh_status_to_kstatus(bh_copy_to_user((void *)arg1, &result, sizeof(result)));
+    }
     if (opcode == BH_BOOTSTRAP_OP_CREATE_IMAGE) {
         bh_process_image_request_t req;
         bh_status_t copy = bh_copy_from_user(&req, (const void *)arg0, sizeof(req));
@@ -131,6 +234,21 @@ int cap_invoke(uintptr_t cap_id, uintptr_t opcode, uintptr_t arg0, uintptr_t arg
         if (status == K_OK) {
             child->main_thread = thread;
             thread->priority = req.priority;
+
+            uintptr_t startup_phys = 0;
+            uint32_t prot = 0;
+            if (prot_domain_query_region(child->addr_space->prot_domain, loaded.startup_va, &startup_phys, &prot) == K_OK) {
+                bharat_user_startup_t *startup = physmap_phys_to_virt(startup_phys);
+                if (startup) {
+                    uint32_t event_send = 0;
+                    uint32_t event_recv = 0;
+                    if (ipc_endpoint_create(child->security_sandbox_ctx, &event_send, &event_recv) == IPC_OK) {
+                        startup->bootstrap.system_control_endpoint = event_send;
+                        startup->bootstrap.flags = child->process_id;
+                    }
+                }
+            }
+
             bh_process_image_result_t result = {.process_id = child->process_id,
                 .thread_id = thread->thread_id, .entry_point = loaded.entry_point, .process_cap = process_cap};
             status = bh_status_to_kstatus(bh_copy_to_user((void *)arg1, &result, sizeof(result)));

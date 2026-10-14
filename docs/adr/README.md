@@ -70,6 +70,10 @@ Use this minimum structure for all new ADRs:
 | ADR-014 | Library Layering and Data Structures | [`ADR-014-library-layering-and-data-structures.md`](ADR-014-library-layering-and-data-structures.md) |
 | ADR-015 | Documentation Information Architecture | [`ADR-015-documentation-information-architecture.md`](ADR-015-documentation-information-architecture.md) |
 | ADR-025 | Portable-First Crypto Dispatch and Kernel Boundary | [`ADR-025-portable-crypto-dispatch-boundary.md`](ADR-025-portable-crypto-dispatch-boundary.md) |
+| ADR-036 | Real Bootstrap Launch and Readiness | [`ADR-036-bootstrap-service-readiness.md`](ADR-036-bootstrap-service-readiness.md) |
+| ADR-037 | Integer Boot UI Progress | [`ADR-037-integer-boot-ui-progress.md`](ADR-037-integer-boot-ui-progress.md) |
+| ADR-038 | Boot Payload Reservation and Topology Authority | [`ADR-038-boot-payload-and-topology-authority.md`](ADR-038-boot-payload-and-topology-authority.md) |
+| ADR-039 | Hybrid Shared-Memory and Multikernel Concurrency Model with Profile-Aware Boot Handoff | [`ADR-039-hybrid-shared-memory-multikernel-concurrency.md`](ADR-039-hybrid-shared-memory-multikernel-concurrency.md) |
 
 ### Functional ADR Extensions
 

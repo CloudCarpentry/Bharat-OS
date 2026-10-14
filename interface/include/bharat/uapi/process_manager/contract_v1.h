@@ -17,6 +17,7 @@ typedef enum {
     BH_PM_OP_REQUEST_TERMINATE_V1  = 0x12,
     BH_PM_OP_WAIT_V1              = 0x13,
     BH_PM_OP_REAP_V1              = 0x14,
+    BH_PM_OP_REGISTER_EXECUTABLE_V1 = 0x15,
 } bh_pm_opcode_v1_t;
 
 typedef enum {
@@ -42,26 +43,23 @@ typedef bh_object_handle_t bh_vm_region_handle_t;
 #define BH_PM_WAIT_NONBLOCK       (1U << 0)
 #define BH_PM_WAIT_UNTIL_DEADLINE (1U << 1)
 
-// bh_pm_spawn_request_v1_t matches recommended spawn request
+// bh_pm_spawn_request_v1_t matches recommended spawn request (64 bytes, fits in 128-byte endpoint wire message)
 typedef struct {
     uint32_t abi_version;
     uint32_t struct_size;
 
-    uint64_t request_id;
     uint64_t executable_handle;
 
-    bh_pm_handle_t parent_process;
     uint32_t priority;
     uint32_t affinity_mask;
 
     uint32_t memory_profile;
-    uint32_t personality;
-    uint32_t flags;
     uint32_t reserved;
 
-    uint64_t stack_size;
     char process_name[32];
 } bh_pm_spawn_request_v1_t;
+
+_Static_assert(sizeof(bh_pm_spawn_request_v1_t) == 64, "bh_pm_spawn_request_v1_t size mismatch");
 
 typedef struct {
     uint32_t abi_version;
@@ -77,6 +75,8 @@ typedef struct {
     uint64_t main_thread_id;
     uint64_t incarnation_id;
 } bh_pm_spawn_response_v1_t;
+
+_Static_assert(sizeof(bh_pm_spawn_response_v1_t) == 56, "bh_pm_spawn_response_v1_t size mismatch");
 
 // PM_OP_QUERY_V1 Request & Response
 typedef struct {
@@ -138,6 +138,26 @@ typedef struct {
     uint32_t struct_size;
     int32_t status;
 } bh_pm_reap_response_v1_t;
+
+// REGISTER_EXECUTABLE Request & Response
+typedef struct {
+    uint32_t abi_version;
+    uint32_t struct_size;
+    uint64_t executable_handle;
+    char module_name[32];
+} bh_pm_register_executable_request_v1_t;
+
+typedef struct {
+    uint32_t abi_version;
+    uint32_t struct_size;
+    int32_t status;
+    uint32_t reserved;
+    uint64_t executable_handle;
+    uint64_t image_size;
+} bh_pm_register_executable_response_v1_t;
+
+_Static_assert(sizeof(bh_pm_register_executable_request_v1_t) == 48, "bh_pm_register_executable_request_v1_t size mismatch");
+_Static_assert(sizeof(bh_pm_register_executable_response_v1_t) == 32, "bh_pm_register_executable_response_v1_t size mismatch");
 
 #ifdef __cplusplus
 }
