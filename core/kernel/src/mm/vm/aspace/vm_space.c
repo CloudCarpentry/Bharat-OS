@@ -176,7 +176,7 @@ int vm_activate_local(vm_space_t *space) {
     }
 
     if (space->aspace && space->aspace->prot_domain) {
-        prot_domain_activate(space->aspace->prot_domain);
+        if (prot_domain_activate(space->aspace->prot_domain) != K_OK) return -1;
 
         // Strictly ordered update to software active_aspace before hardware switch
         address_space_t *prev = g_cpu_locals[core_id].current_as;
