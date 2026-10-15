@@ -4,6 +4,7 @@ add_library(k_sched OBJECT
     sched_policy.c
     sched_diag.c
     sched_core.c
+    sched_completion_protocol.c
     sched_runqueue.c
     sched_thread.c
     sched_wait.c

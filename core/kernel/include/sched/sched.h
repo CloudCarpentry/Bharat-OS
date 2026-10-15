@@ -19,6 +19,7 @@
 #include "bharat/kernel/ds/bh_mpsc_queue.h"
 #include "sched/cpu_context.h"
 #include "trap/syscall_regs.h"
+#include "time/ktime.h"
 
 #define BH_TID_SLOT_BITS       16U
 #define BH_TID_CORE_BITS       16U
@@ -359,7 +360,7 @@ typedef struct sched_remote_cmd {
     int32_t result;
 
     uint64_t submit_tick;
-    uint64_t deadline_tick;
+    bh_kdeadline_t deadline_ns;
 
     uint32_t flags;
     uint32_t priority;
