@@ -11,6 +11,10 @@ implementation_maturity:
   profile: DEVELOPMENT
   allow: [STUB]
 
+userspace:
+  runtime_model: direct
+  root_component: ecu_cooling_fan
+
 build:
   cmake_preset: arm64-edge
   cmake_defs:

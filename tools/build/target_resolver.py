@@ -108,9 +108,10 @@ def resolve_yaml_target(path: Path) -> ResolvedTarget:
     # Map raw -> ResolvedTarget
     userspace_raw = raw.get("userspace", {})
     runtime_model = userspace_raw.get("runtime_model", "full")
+    root_component = userspace_raw.get("root_component") or RUNTIME_ROOT_COMPONENTS[runtime_model]
     userspace_cfg = UserspaceConfig(
         runtime_model=runtime_model,
-        root_component=RUNTIME_ROOT_COMPONENTS[runtime_model],
+        root_component=root_component,
     )
 
     build_raw = raw.get("build", {})

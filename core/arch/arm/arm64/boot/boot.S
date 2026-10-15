@@ -86,8 +86,10 @@ _start:
     msr cptr_el3, xzr
     isb
 
-    /* SCR_EL3: RW=1 (bit 10, AArch64 for lower EL), NS=1 (bit 0, Non-secure) */
-    mov x2, #((1 << 10) | (1 << 0))
+    /* SCR_EL3: RW=1 (bit 10), NS=0 (Secure EL1 - avoids illegal drop when EL2 present) */
+    mrs x2, scr_el3
+    orr x2, x2, #(1 << 10)
+    bic x2, x2, #(1 << 0)
     msr scr_el3, x2
     isb
 
@@ -106,6 +108,7 @@ _start:
     /* HCR_EL2.RW = 1 so EL1 runs AArch64 */
     mov x2, #(1 << 31)
     msr hcr_el2, x2
+    isb
 
     /* Safe SCTLR_EL1 reset value */
     msr sctlr_el1, xzr

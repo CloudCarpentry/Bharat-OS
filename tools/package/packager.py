@@ -73,6 +73,12 @@ def _candidate_root_binary_paths(build_dir: Path, binary_name: str) -> list[Path
             build_dir / "bharat_user" / "apps" / "user_smoke" / binary_name,
             build_dir / "experience" / "user" / "apps" / "user_smoke" / binary_name,
         ] + paths
+    elif binary_name == "ecu_cooling_fan":
+        paths = [
+            build_dir / "bharat_user" / "apps" / "ecu_cooling_fan_build" / binary_name,
+            build_dir / "experience" / "user" / "apps" / "ecu_cooling_fan_build" / binary_name,
+            build_dir / "apps" / binary_name / binary_name,
+        ] + paths
     return paths
 
 
@@ -162,7 +168,7 @@ def execute_package(plan: PackagePlan, repo_root: Path) -> PackageOutputs:
     target_arch = 0
     elf_class = 0
     flags = 0
-    name = (f"apps/{binary_name}" if binary_name == "user_smoke"
+    name = (f"apps/{binary_name}" if binary_name in ("user_smoke", "ecu_cooling_fan")
             else f"services/{binary_name}")
     name_len = len(name)
     digest_algo = 0

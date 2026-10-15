@@ -66,6 +66,8 @@ properties:
         - static
         - light
         - full
+      root_component:
+        type: string
   build:
     type: object
     required:
