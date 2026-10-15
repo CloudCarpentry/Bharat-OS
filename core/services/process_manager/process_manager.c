@@ -426,10 +426,27 @@ bharat_status_t bh_pm_handle_spawn_with_cap_v1(const bh_pm_spawn_request_v1_t *r
 
     // Phase 2: Generate ELF load plan
     bh_user_image_plan_v1_t load_plan;
-    // Canonical default user ranges: base 0x1000, limit 0x00007FFFFFFFF000
+#if defined(BHARAT_ARCH_32BIT) || defined(__arm__) || (defined(__riscv) && __riscv_xlen == 32)
     uint64_t user_base = 0x1000;
-    uint64_t user_limit = 0x00007FFFFFFFF000;
-    int plan_res = bh_elf_generate_load_plan(img_bytes, img_size, user_base, user_limit, &load_plan);
+    uint64_t user_limit = 0xFFFFF000ULL;
+#else
+    uint64_t user_base = 0x1000;
+    uint64_t user_limit = 0x00007FFFFFFFF000ULL;
+#endif
+
+#if (defined(BHARAT_ARCH_ARM) && defined(BHARAT_ARCH_32BIT)) || defined(__arm__)
+    bh_elf_machine_t expected_machine = BH_ELF_MACHINE_ARM32;
+#elif (defined(BHARAT_ARCH_ARM) && defined(BHARAT_ARCH_64BIT)) || defined(__aarch64__)
+    bh_elf_machine_t expected_machine = BH_ELF_MACHINE_AARCH64;
+#elif (defined(BHARAT_ARCH_RISCV) && defined(BHARAT_ARCH_32BIT)) || (defined(__riscv) && __riscv_xlen == 32)
+    bh_elf_machine_t expected_machine = BH_ELF_MACHINE_RISCV32;
+#elif (defined(BHARAT_ARCH_RISCV) && defined(BHARAT_ARCH_64BIT)) || (defined(__riscv) && __riscv_xlen == 64)
+    bh_elf_machine_t expected_machine = BH_ELF_MACHINE_RISCV64;
+#else
+    bh_elf_machine_t expected_machine = BH_ELF_MACHINE_X86_64;
+#endif
+
+    int plan_res = bh_elf_generate_load_plan_for_machine(img_bytes, img_size, user_base, user_limit, expected_machine, &load_plan);
     if (plan_res != BH_ELF_PLAN_SUCCESS) {
         // Rollback Phase 1
         bh_user_handle_revoke(&g_pm_handle_table, proc_handle);

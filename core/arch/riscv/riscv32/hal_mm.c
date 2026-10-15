@@ -1,4 +1,5 @@
 #include <stdbool.h>
+#include "bharat_config.h"
 #include "hal/hal_capabilities.h"
 #include "hal/hal_mm.h"
 #include "hal/hal_mmu.h"
@@ -8,6 +9,32 @@ int hal_mem_get_caps(hal_mem_caps_t *caps) {
 
     *caps = (hal_mem_caps_t){0};
 
+#if defined(BHARAT_PROFILE_MPU_ONLY) || (defined(BHARAT_ENABLE_MPU) && !defined(BHARAT_ENABLE_MMU))
+    caps->model = HAL_MEMORY_MODEL_MPU;
+    caps->va_bits = 32;
+    caps->pa_bits = 34;
+    caps->page_sizes_mask = 0;
+    caps->max_mpu_regions = 16;
+    caps->page_table_levels = 0;
+
+    caps->supports_nx = true;
+    caps->supports_execute_never = true;
+    caps->supports_user_no_exec = false;
+    caps->supports_asid = false;
+    caps->supports_global = false;
+    caps->supports_user_mode = true;
+    caps->supports_user_kernel_isolation = true;
+    caps->supports_write_protect = true;
+
+    caps->supports_hugepages = false;
+    caps->supports_dirty_accessed = false;
+    caps->supports_iommu = false;
+    caps->supports_tlb_shootdown = false;
+    caps->supports_range_invalidate = false;
+    caps->supports_dma_mapping = false;
+    caps->supports_guard_pages = false;
+    caps->supports_copy_user_validation = false;
+#else
     caps->model = HAL_MEMORY_MODEL_MMU_LITE;
     caps->va_bits = 32; // Sv32
     caps->pa_bits = 34;
@@ -32,6 +59,7 @@ int hal_mem_get_caps(hal_mem_caps_t *caps) {
     caps->supports_copy_user_validation = false;
 
     caps->page_table_levels = 2;
+#endif
 
     return 0;
 }
@@ -52,18 +80,39 @@ void hal_mm_get_zone_limits(hal_mm_zone_limits_t *out) {
 // Required by prot_domain.c (prot_domain_init)
 void hal_mm_backend_caps(hal_mm_backend_caps_t *out) {
     if (!out) return;
+#if defined(BHARAT_PROFILE_MPU_ONLY) || (defined(BHARAT_ENABLE_MPU) && !defined(BHARAT_ENABLE_MMU))
+    out->kind           = HAL_MM_BACKEND_MPU_ONLY;
+    out->map_granule    = 4;
+    out->protect_granule= 4;
+    out->alloc_granule  = 4;
+    out->max_regions    = 16;
+    out->flags          = 1;
+#else
     out->kind           = HAL_MM_BACKEND_MMU_LITE;
     out->map_granule    = 4096;
     out->protect_granule= 4096;
     out->alloc_granule  = 4096;
     out->max_regions    = 0;
     out->flags          = 1;
+#endif
 }
 
 static const hal_arch_capabilities_t g_riscv32_caps = {
     .arch_name     = "riscv32",
     .arch_bits     = 32,
     .support_level = BH_ARCH_SUPPORT_BOOT_SUPPORTED,
+#if defined(BHARAT_PROFILE_MPU_ONLY) || (defined(BHARAT_ENABLE_MPU) && !defined(BHARAT_ENABLE_MMU))
+    .memory_model  = BH_MEMORY_MODEL_MPU,
+    .has_smp       = false,
+    .has_irq_controller   = true,
+    .has_monotonic_timer  = true,
+    .has_cycle_counter    = true,
+    .has_dma       = false,
+    .has_iommu     = false,
+    .has_cache_ops = false,
+    .has_tlb_ops   = false,
+    .max_supported_cores  = 1
+#else
     .memory_model  = BH_MEMORY_MODEL_MMU_LITE,
     .has_smp       = false,
     .has_irq_controller   = true,
@@ -74,6 +123,7 @@ static const hal_arch_capabilities_t g_riscv32_caps = {
     .has_cache_ops = true,
     .has_tlb_ops   = true,
     .max_supported_cores  = 1
+#endif
 };
 
 const hal_arch_capabilities_t *hal_get_arch_capabilities_riscv32(void) {
@@ -81,6 +131,18 @@ const hal_arch_capabilities_t *hal_get_arch_capabilities_riscv32(void) {
 }
 
 static const hal_memory_caps_t riscv32_memory_caps = {
+#if defined(BHARAT_PROFILE_MPU_ONLY) || (defined(BHARAT_ENABLE_MPU) && !defined(BHARAT_ENABLE_MMU))
+    .supports_mmu_full  = false,
+    .supports_mmu_lite  = false,
+    .supports_mpu_only  = true,
+    .supports_user_kernel_split = true,
+    .supports_page_protection   = true,
+    .supports_execute_disable   = true,
+    .supports_asid              = false,
+    .supports_range_tlb_flush   = false,
+    .min_page_size  = 4,
+    .max_address_bits = 32
+#else
     .supports_mmu_full  = false,
     .supports_mmu_lite  = true,
     .supports_mpu_only  = false,
@@ -91,6 +153,7 @@ static const hal_memory_caps_t riscv32_memory_caps = {
     .supports_range_tlb_flush   = true,
     .min_page_size  = 4096,
     .max_address_bits = 32
+#endif
 };
 
 const hal_memory_caps_t *hal_memory_caps(void) {

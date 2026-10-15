@@ -2,12 +2,25 @@
 #include <hal/hal_pt.h>
 #include <hal/hal_mpu.h>
 #include <hal/hal_mm.h>
+#include <hal/hal_mpa.h>
 #include <kernel/status.h>
-#include <mm/vm_mapping.h>
+#define VM_MAP_EXEC_OK (1ULL << 4)
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+static int mock_set_root_calls = 0;
+static void mock_set_root(phys_addr_t root) {
+    (void)root;
+    mock_set_root_calls++;
+}
+static mem_protect_ops_t mock_mem_protect = {
+    .cpu_ops = {
+        .set_root = mock_set_root
+    }
+};
+mem_protect_ops_t *active_mem_protect = NULL;
 
 // Mock memory management
 void* kmalloc(size_t s) {
@@ -265,21 +278,26 @@ void test_mpu_truth(void) {
     assert(domain != NULL);
     assert(domain->mode == PROT_MODE_MPU_ONLY);
 
-    // Test map region
+    // Test map region (records region in domain state)
     ret = prot_domain_map_region(domain, 0x1000, 0x1000, 4096, 0);
     assert(ret == K_OK);
-    assert(mpu_program_calls == 1);
     assert(pt_map_calls == 0); // No PT operations invoked for MPU
+
+    // Test activate: programs active regions to hardware MPU
+    ret = prot_domain_activate(domain);
+    assert(ret == K_OK);
+    assert(mpu_program_calls == 1); // 1 active region programmed
 
     // Test overlap rejection
     ret = prot_domain_map_region(domain, 0x1000, 0x1000, 4096, 0);
     assert(ret == K_ERR_VM_ALREADY_MAPPED);
-    assert(mpu_program_calls == 1); // Not called since rejected early
 
     // Test protect region
     ret = prot_domain_protect_region(domain, 0x1000, 4096, 1);
     assert(ret == K_OK);
-    assert(mpu_program_calls == 2);
+    ret = prot_domain_activate(domain);
+    assert(ret == K_OK);
+    assert(mpu_program_calls == 2); // Reprogrammed with new flags
 
     // Test query region
     uintptr_t pa = 0;
@@ -292,13 +310,11 @@ void test_mpu_truth(void) {
     // Test unmap region
     ret = prot_domain_unmap_region(domain, 0x1000, 4096);
     assert(ret == K_OK);
-    assert(mpu_disable_calls == 1);
 
     // Test fail-closed when active_hal_mpu is removed
     active_hal_mpu = NULL;
-    ret = prot_domain_map_region(domain, 0x1000, 0x1000, 4096, 0);
+    ret = prot_domain_map_region(domain, 0x2000, 0x2000, 4096, 0);
     assert(ret == K_ERR_UNSUPPORTED);
-    assert(mpu_program_calls == 2); // No new program call
 
     active_hal_mpu = &mock_hal_mpu_ops;
     prot_domain_destroy(domain);
@@ -336,11 +352,93 @@ void test_dispatch_invariance(void) {
     printf("test_dispatch_invariance passed!\n");
 }
 
+void test_prot_domain_fail_closed(void) {
+    printf("Running test_prot_domain_fail_closed...\n");
+
+    // 1. prot_domain_activate(NULL) must fail closed with K_ERR_INVALID_ARG
+    int ret = prot_domain_activate(NULL);
+    assert(ret == K_ERR_INVALID_ARG);
+
+    // 2. Domain with NULL ops or NULL activate pointer must fail closed with K_ERR_UNSUPPORTED
+    prot_domain_t dummy_no_ops = { .mode = PROT_MODE_NONE, .ops = NULL, .backend_state = NULL };
+    assert(prot_domain_activate(&dummy_no_ops) == K_ERR_UNSUPPORTED);
+
+    prot_domain_ops_t dummy_ops = { .activate = NULL };
+    prot_domain_t dummy_null_act = { .mode = PROT_MODE_NONE, .ops = &dummy_ops, .backend_state = NULL };
+    assert(prot_domain_activate(&dummy_null_act) == K_ERR_UNSUPPORTED);
+
+    // 3. MPU domain creation and activation without active_hal_mpu must fail closed
+    mock_backend_kind = HAL_MM_BACKEND_MPU_ONLY;
+    hal_mpu_register_ops(NULL);
+    prot_domain_init();
+
+    prot_domain_t* mpu_dom = NULL;
+    ret = prot_domain_create(&mpu_dom);
+    assert(ret == K_ERR_UNSUPPORTED); // Creation fails closed without hardware ops
+    assert(mpu_dom == NULL);
+
+    // Now register ops, create domain, then simulate hardware unregistration/absence
+    hal_mpu_register_ops(&mock_hal_mpu_ops);
+    ret = prot_domain_create(&mpu_dom);
+    assert(ret == K_OK);
+    assert(mpu_dom != NULL);
+
+    // Remove hardware ops before activation
+    hal_mpu_register_ops(NULL);
+    ret = prot_domain_activate(mpu_dom);
+    assert(ret == K_ERR_UNSUPPORTED); // Activation fails closed without backend
+
+    // Restore hardware ops, test successful activation
+    hal_mpu_register_ops(&mock_hal_mpu_ops);
+    ret = prot_domain_activate(mpu_dom);
+    assert(ret == K_OK);
+    prot_domain_destroy(mpu_dom);
+
+    // 4. MMU_FULL activation fail closed when active_mem_protect is missing
+    mock_backend_kind = HAL_MM_BACKEND_MMU_FULL;
+    prot_domain_init();
+    prot_domain_t* full_dom = NULL;
+    ret = prot_domain_create(&full_dom);
+    assert(ret == K_OK);
+
+    active_mem_protect = NULL;
+    ret = prot_domain_activate(full_dom);
+    assert(ret == K_ERR_UNSUPPORTED); // Fails closed!
+
+    active_mem_protect = &mock_mem_protect;
+    mock_set_root_calls = 0;
+    ret = prot_domain_activate(full_dom);
+    assert(ret == K_OK);
+    assert(mock_set_root_calls == 1);
+    prot_domain_destroy(full_dom);
+
+    // 5. MMU_LITE activation fail closed when active_mem_protect is missing
+    mock_backend_kind = HAL_MM_BACKEND_MMU_LITE;
+    prot_domain_init();
+    prot_domain_t* lite_dom = NULL;
+    ret = prot_domain_create(&lite_dom);
+    assert(ret == K_OK);
+
+    active_mem_protect = NULL;
+    ret = prot_domain_activate(lite_dom);
+    assert(ret == K_ERR_UNSUPPORTED); // Fails closed!
+
+    active_mem_protect = &mock_mem_protect;
+    mock_set_root_calls = 0;
+    ret = prot_domain_activate(lite_dom);
+    assert(ret == K_OK);
+    assert(mock_set_root_calls == 1);
+    prot_domain_destroy(lite_dom);
+
+    printf("test_prot_domain_fail_closed passed!\n");
+}
+
 int main(void) {
     test_mmu_full_truth();
     test_mmu_lite_truth();
     test_mpu_truth();
     test_dispatch_invariance();
+    test_prot_domain_fail_closed();
     printf("All backend-truth protection domain tests passed successfully!\n");
     return 0;
 }

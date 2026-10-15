@@ -205,5 +205,15 @@ int bh_elf_generate_load_plan_for_machine(const uint8_t *bytes, size_t size, uin
 }
 
 int bh_elf_generate_load_plan(const uint8_t *bytes, size_t size, uint64_t user_base, uint64_t user_limit, bh_user_image_plan_v1_t *out_plan) {
+#if (defined(BHARAT_ARCH_ARM) && defined(BHARAT_ARCH_32BIT)) || defined(__arm__)
+    return bh_elf_generate_load_plan_for_machine(bytes, size, user_base, user_limit, BH_ELF_MACHINE_ARM32, out_plan);
+#elif (defined(BHARAT_ARCH_ARM) && defined(BHARAT_ARCH_64BIT)) || defined(__aarch64__)
+    return bh_elf_generate_load_plan_for_machine(bytes, size, user_base, user_limit, BH_ELF_MACHINE_AARCH64, out_plan);
+#elif (defined(BHARAT_ARCH_RISCV) && defined(BHARAT_ARCH_32BIT)) || (defined(__riscv) && __riscv_xlen == 32)
+    return bh_elf_generate_load_plan_for_machine(bytes, size, user_base, user_limit, BH_ELF_MACHINE_RISCV32, out_plan);
+#elif (defined(BHARAT_ARCH_RISCV) && defined(BHARAT_ARCH_64BIT)) || (defined(__riscv) && __riscv_xlen == 64)
+    return bh_elf_generate_load_plan_for_machine(bytes, size, user_base, user_limit, BH_ELF_MACHINE_RISCV64, out_plan);
+#else
     return bh_elf_generate_load_plan_for_machine(bytes, size, user_base, user_limit, BH_ELF_MACHINE_X86_64, out_plan);
+#endif
 }

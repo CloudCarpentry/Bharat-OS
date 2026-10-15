@@ -64,8 +64,9 @@ static int mmu_full_activate(prot_domain_t* domain) {
     }
     if (active_mem_protect && active_mem_protect->cpu_ops.set_root) {
         active_mem_protect->cpu_ops.set_root((phys_addr_t)(uintptr_t)domain->backend_state);
+        return K_OK;
     }
-    return K_OK;
+    return K_ERR_UNSUPPORTED;
 }
 
 static int mmu_full_map_region(prot_domain_t* domain, uintptr_t vaddr, uintptr_t paddr, size_t size, uint32_t flags) {
@@ -148,8 +149,9 @@ static int mmu_lite_activate(prot_domain_t* domain) {
     }
     if (active_mem_protect && active_mem_protect->cpu_ops.set_root) {
         active_mem_protect->cpu_ops.set_root((phys_addr_t)(uintptr_t)domain->backend_state);
+        return K_OK;
     }
-    return K_OK;
+    return K_ERR_UNSUPPORTED;
 }
 
 static int mmu_lite_map_region(prot_domain_t* domain, uintptr_t vaddr, uintptr_t paddr, size_t size, uint32_t flags) {
@@ -228,7 +230,7 @@ typedef struct {
 } mpu_domain_state_t;
 
 static int mpu_create(prot_domain_t** out_domain) {
-    if (!active_hal_mpu || !active_hal_mpu->program_region) {
+    if (!active_hal_mpu || !active_hal_mpu->program_region || !active_hal_mpu->disable_region) {
         return K_ERR_UNSUPPORTED;
     }
     prot_domain_t* domain = (prot_domain_t*)kmalloc(sizeof(prot_domain_t));
@@ -270,16 +272,17 @@ static void mpu_destroy(prot_domain_t* domain) {
 
 static int mpu_activate(prot_domain_t* domain) {
     if (!domain || !domain->backend_state) return K_ERR_BAD_STATE;
-    if (active_hal_mpu && active_hal_mpu->program_region && active_hal_mpu->disable_region) {
-        mpu_domain_state_t* state = (mpu_domain_state_t*)domain->backend_state;
-        for (int i = 0; i < MAX_MPU_DOMAINS_REGIONS; i++) {
-            if (state->regions[i].active) {
-                int ret = active_hal_mpu->program_region(state->regions[i].region_id, state->regions[i].paddr, state->regions[i].size, state->regions[i].flags);
-                if (ret != K_OK) return ret;
-            } else {
-                int ret = active_hal_mpu->disable_region(i);
-                if (ret != K_OK) return ret;
-            }
+    if (!active_hal_mpu || !active_hal_mpu->program_region || !active_hal_mpu->disable_region) {
+        return K_ERR_UNSUPPORTED;
+    }
+    mpu_domain_state_t* state = (mpu_domain_state_t*)domain->backend_state;
+    for (int i = 0; i < MAX_MPU_DOMAINS_REGIONS; i++) {
+        if (state->regions[i].active) {
+            int ret = active_hal_mpu->program_region(state->regions[i].region_id, state->regions[i].paddr, state->regions[i].size, state->regions[i].flags);
+            if (ret != K_OK) return ret;
+        } else {
+            int ret = active_hal_mpu->disable_region(i);
+            if (ret != K_OK) return ret;
         }
     }
     return K_OK;
@@ -456,10 +459,13 @@ void prot_domain_destroy(prot_domain_t* domain) {
 }
 
 int prot_domain_activate(prot_domain_t* domain) {
-    if (domain && domain->ops && domain->ops->activate) {
-        return domain->ops->activate(domain);
+    if (!domain) {
+        return K_ERR_INVALID_ARG;
     }
-    return K_OK;
+    if (!domain->ops || !domain->ops->activate) {
+        return K_ERR_UNSUPPORTED;
+    }
+    return domain->ops->activate(domain);
 }
 
 int prot_domain_map_region(prot_domain_t* domain, uintptr_t vaddr, uintptr_t paddr, size_t size, uint32_t flags) {
