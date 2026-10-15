@@ -16,5 +16,7 @@ Key requirements:
 - **Timing**: No spin-count waits. Use monotonic HAL deadlines (`bh_ktime_now()`).
 - **Memory**: Support MMU, MMU-Lite, and MPU paths; fail closed when unsupported.
 - **Config**: Never edit or commit generated `bharat_config.h`; modify `core/kernel/include/bharat_config.h.in`.
+- **Tooling**: Strongly prefer `nirmaan` (`.\nirmaan.ps1` on Windows, `./nirmaan` on Linux, or `python tools/nirmaan/cli.py`) for all builds, smoke tests (`build <target> --smoke`), runs, board verifications (`verify --all-boards`), and demos (`demo <target>`).
 - **Validation**: Ensure QEMU system emulators (`x86_64`, `aarch64`, `riscv64`, `arm`, `riscv32`) are installed for all 5 target architectures. Run `python3 tools/agents/verify.py` and `python3 tools/run_qemu_matrix.py --headless --smoke --all-arch`.
 - **Honesty**: Report unavailable targets or missing toolchains as BLOCKED, never as PASS.
+

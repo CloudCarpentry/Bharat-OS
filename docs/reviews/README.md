@@ -21,6 +21,7 @@ The following reviews represent identified defects or architectural milestones t
 | [`SMP-P1-001-URPC-Memory-Ordering-Audit.md`](SMP-P1-001-URPC-Memory-Ordering-Audit.md) | Loose `volatile` compiler barriers causing race conditions on ARM64/RV64 | **COMPLETED / HARDENED**. Implemented C11 `<stdatomic.h>` with explicit acquire-release semantics for all single-producer/single-consumer (SPSC) channels. |
 | [`boot-flow-p0-001-recovery.md`](boot-flow-p0-001-recovery.md) | Misleading init success output without actual process creation | **COMPLETED / HARDENED**. Restored genuine ELF loading, capability bootstrap handoff, and userspace process creation via `process_manager`. |
 | [`boot/BOOT-P0-001-runtime-truth.md`](boot/BOOT-P0-001-runtime-truth.md) | Deceptive `STABLE` log reporting on failed service initialization | **COMPLETED / HARDENED**. Segregated init lifecycle states (`DECLARED`, `SPAWNED`, `ENDPOINT_BOUND`, `READY`). Services spawn via genuine `bharat.process_manager` IPC. |
+| [`embedded-board-linker-and-renode-review-2026-10.md`](embedded-board-linker-and-renode-review-2026-10.md) | Hardcoded `0x40010000` STM32 APB2 MMIO clash, RV32 OpenSBI S-mode vs bare-metal M-mode clash, missing compiler-rt division | **COMPLETED / HARDENED** (`BH-EMBED-LINK-P0-001`). Implemented declarative board manifests, parameterized linker generator, 10-point qualification CLI (`tools/board/validate.py`), compiler-rt division, and Nirmaan integration. |
 
 ---
 

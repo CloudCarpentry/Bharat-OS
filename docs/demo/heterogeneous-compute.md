@@ -64,10 +64,15 @@ This demonstration models a **Tensor ReLU operation** dispatched dynamically to 
 
 ## Execution and Verification
 
-The demonstration is fully verified using host-side isolated unit and contract tests:
+The demonstration is verified either via end-to-end Nirmaan demos or host-side contract tests:
 
 ```bash
-# Build and run the host-side verification test suite
+# Using Nirmaan Developer CLI (End-to-End QEMU Demo):
+.\nirmaan.ps1 demo x86_64_hmem_demo
+.\nirmaan.ps1 demo arm64_hmem_demo
+.\nirmaan.ps1 demo riscv64_hmem_demo
+
+# Host-side isolated contract test suite:
 gcc -o test_accel_dispatch quality/tests/host/accel/test_accel_dispatch.c \
     core/lib/runtime/backend_dispatch/backend_registry.c \
     core/lib/runtime/accel/tensor_dispatch.c \

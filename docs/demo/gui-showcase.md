@@ -46,9 +46,14 @@ navigation group.
 
 ## QEMU demo target
 
-Build, package, and run the dedicated 512 MiB x86_64 graphical target:
+Build, package, and run the dedicated 512 MiB x86_64 graphical target using the Nirmaan Developer CLI:
 
 ```bash
+# Using Nirmaan (Recommended):
+.\nirmaan.ps1 build --target-yaml delivery/targets/qemu/x86_64_showcase_gui.yaml --smoke
+.\nirmaan.ps1 run --target-yaml delivery/targets/qemu/x86_64_showcase_gui.yaml --interactive
+
+# Or using tools/build directly:
 ./tools/build.sh all --target-yaml delivery/targets/qemu/x86_64_showcase_gui.yaml --smoke
 python3 tools/build.py run --target-yaml delivery/targets/qemu/x86_64_showcase_gui.yaml
 ```

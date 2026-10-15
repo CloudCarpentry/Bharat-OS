@@ -28,6 +28,8 @@ Milestones require the **Three-Part Truth Standard** defined in [`bharat-os-runt
 |---|---|---|---|---|
 | **`BH-AGENT-P0-005`** | P0 | Tooling / Agents | Consolidate agent skills into canonical `.agents/skills/`, mirror to `.claude/skills` & `.github/skills`, streamline `AGENTS.md` into 4 pillars. | **DONE** |
 | **`BH-TRUTH-P0-006`** | P0 | Tooling / Truth | Build `tools/agents/context_pack.py`, `context_map.yaml`, `verify.py`, and `check_agent_config.py`. | **DONE** |
+| **`BH-EMBED-LINK-P0-001`** | P0 | Platform / BSP | **Unified Embedded Board Support & Linker Framework**: Declarative board manifests (`platform/boards/`), templated linker scripts, pre-execution MMIO collision avoidance, and automated qualification (`tools/board/validate.py`). Eliminates `0x40010000` STM32 MMIO clash and `0x80200000` RV32 OpenSBI clash. | **DONE** |
+| **`BH-EMBED-BOOT-P0-002`** | P0 | Arch / Boot | **Bare-Metal Thumb-2 & RV32 MCU Startup & Traps**: Implement native Cortex-M reset handler, vector table wiring, and RV32 M-mode trap dispatch. | QUEUED |
 | **`BH-VM-P0-001`** | P0 | `vm_manager` | **Native VM Authority Adapter**: Implement `core/services/vm_manager/kernel_adapter.c`. Bind `vm_manager` to canonical kernel VM mechanisms (`aspace -> region -> vm_object`). Must emit `VM_MANAGER_AUTHORITY_READY` in QEMU. | **IN PROGRESS** |
 | **`BH-RUNTIME-P0-002`** | P0 | Service Runtime | **Boot Lifecycle Gate**: Init -> namesvc -> processmgr -> vmmgr -> servicemgr E2E boot proof emitting all readiness markers. | QUEUED |
 | **`BH-SCHED-P0-003`** | P0 | Scheduler / Time | **Monotonic Bounded Waits**: Replace iteration-counter loop `sched_wait_remote_cmd_ack(..., timeout_loops)` with monotonic HAL time (`bh_ktime_now()`). | QUEUED |

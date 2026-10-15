@@ -400,3 +400,56 @@ drone-edge-profile:
   protection_models:
     - MPU
     - MMU_LITE
+
+embedded-bsp:
+  name: "Embedded Board Support & Linker Framework"
+  layer: platform
+  policy: false
+  sources:
+    - platform/boards/
+    - delivery/linker/
+    - tools/board/
+  contracts:
+    - tools/schemas/board.schema.yaml
+  architecture:
+    - docs/architecture/CONTRACTS.md
+  skills:
+    - bharat-os-embedded-bsp
+    - bharat-os-kernel-config
+    - bharat-os-memory-model
+  tests:
+    - test_board_manifest
+    - test_linker_generator
+    - test_board_validate
+  runtime_markers:
+    - BOARD_MANIFEST_LOADED
+    - BOARD_QUALIFICATION_PASS
+  protection_models:
+    - MPU
+    - MMU_LITE
+
+nirmaan-tooling:
+  name: "Nirmaan Developer CLI & Workflow Automation"
+  layer: tools
+  policy: false
+  sources:
+    - tools/nirmaan/
+  contracts:
+    - BUILD.md
+  architecture:
+    - docs/architecture/CONTRACTS.md
+  skills:
+    - bharat-os-nirmaan
+    - bharat-os-kernel-config
+    - bharat-os-validation
+  tests:
+    - nirmaan doctor
+    - nirmaan targets
+    - nirmaan verify --all-boards
+    - nirmaan test board
+  runtime_markers:
+    - READY
+  protection_models:
+    - ALL
+
+

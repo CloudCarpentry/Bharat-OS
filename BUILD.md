@@ -161,6 +161,33 @@ python tools/agents/verify.py --profile-smoke rtos
 python tools/agents/verify.py --all
 ```
 
+### 6) 32-Bit Embedded Board Support & Renode Simulation Gate
+Bharat-OS includes a unified embedded board support framework (`platform/boards/`) with memory manifests, templated linker script generation, compile-time stack overflow assertions, and automated link-time MMIO collision detection:
+
+```powershell
+# 1. Qualify all embedded board memory manifests (10-point qualification suite)
+.\nirmaan.ps1 verify --all-boards
+# Or using the direct tool:
+python tools/board/validate.py --all
+
+# 2. Qualify a specific board (e.g., STM32F407 Discovery Cortex-M4 or HiFive1 Rev B RV32)
+python tools/board/validate.py --board stm32f407_discovery
+python tools/board/validate.py --board hifive1_rev_b
+
+# 3. Run embedded board unit & integration tests
+.\nirmaan.ps1 test board
+# Or with pytest:
+pytest quality/tests/board/
+
+# 4. Build embedded target with static runtime for Renode simulation
+.\nirmaan.ps1 build stm32f4-renode
+# Or using explicit target YAML:
+python tools/build.py build --target-yaml delivery/targets/renode/stm32f4_discovery.yaml
+
+# 5. Generate board-aware linker script from template
+python tools/board/linker_generator.py --board stm32f407_discovery
+```
+
 ---
 
 ## Nirmaan command cookbook
@@ -177,6 +204,10 @@ python tools/agents/verify.py --all
 .\nirmaan.ps1 run --target-yaml delivery/targets/qemu/riscv64_desktop_gui.yaml --interactive
 .\nirmaan.ps1 build --target-yaml delivery/targets/qemu/arm32_mmu_lite_headless.yaml --smoke
 .\nirmaan.ps1 build --target-yaml delivery/targets/qemu/riscv32_mmu_lite_headless.yaml --smoke
+# 32-Bit Microcontroller & Renode Simulation Targets
+.\nirmaan.ps1 build stm32f4-renode
+.\nirmaan.ps1 verify --all-boards
+.\nirmaan.ps1 test board
 # MPU-Only Headless (RTOS Profile)
 .\nirmaan.ps1 build --target-yaml delivery/targets/qemu/arm32_rtos_mpu_headless.yaml --smoke
 .\nirmaan.ps1 build --target-yaml delivery/targets/qemu/riscv32_rtos_mpu_headless.yaml --smoke

@@ -1,0 +1,77 @@
+board: hifive1_rev_b
+soc: fe310_g002
+architecture: rv32-mcu
+cpu: sifive-e31
+fpu_abi: soft
+
+memory:
+  flash:
+    origin: 0x20000000
+    length: 4M
+    executable: true
+    writable: false
+    type: flash
+  dtim:
+    origin: 0x80000000
+    length: 16K
+    executable: false
+    writable: true
+    type: sram
+
+mmio:
+  - name: debug_module
+    origin: 0x00000000
+    length: 0x1000
+    description: "RISC-V Debug Module"
+  - name: mrom
+    origin: 0x00001000
+    length: 0x1000
+    description: "Mask ROM"
+  - name: clint
+    origin: 0x02000000
+    length: 0x10000
+    description: "Core-Local Interruptor (mtime, mtimecmp, msip)"
+  - name: plic
+    origin: 0x0C000000
+    length: 0x4000000
+    description: "Platform-Level Interrupt Controller"
+  - name: aon
+    origin: 0x10000000
+    length: 0x1000
+    description: "Always-On Domain (WDT, RTC, PMU)"
+  - name: prci
+    origin: 0x10008000
+    length: 0x1000
+    description: "Power, Reset, Clock, Interrupt"
+  - name: otp
+    origin: 0x10010000
+    length: 0x1000
+    description: "One-Time Programmable Memory"
+  - name: gpio
+    origin: 0x10012000
+    length: 0x1000
+    description: "GPIO Controller"
+  - name: uart0
+    origin: 0x10013000
+    length: 0x1000
+    description: "UART0 Controller"
+
+runtime:
+  kernel_stack: 4K
+  application_stack: 2K
+  heap: 0K
+  mode: static
+
+protection:
+  model: PMP_ONLY
+
+boot:
+  entry: _start
+  vector_location: flash
+  vector_alignment: 4
+
+devices:
+  console: uart0
+  timer: clint
+  interrupt_controller: plic
+  uart_base: 0x10013000

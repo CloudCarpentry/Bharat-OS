@@ -1,0 +1,50 @@
+board: qemu_virt_arm32
+soc: qemu_arm_virt
+architecture: armv7-a
+cpu: cortex-a15
+fpu_abi: hard
+
+memory:
+  ram:
+    origin: 0x40000000
+    length: 512M
+    executable: true
+    writable: true
+    type: sram
+
+mmio:
+  - name: flash
+    origin: 0x00000000
+    length: 0x08000000
+  - name: gic_distributor
+    origin: 0x08000000
+    length: 0x1000
+  - name: gic_cpu_interface
+    origin: 0x08010000
+    length: 0x1000
+  - name: pl011_uart
+    origin: 0x09000000
+    length: 0x1000
+  - name: rtc
+    origin: 0x09010000
+    length: 0x1000
+
+runtime:
+  kernel_stack: 32K
+  application_stack: 16K
+  heap: 2M
+  mode: full
+
+protection:
+  model: MMU_LITE
+
+boot:
+  entry: _start
+  vector_location: ram
+  vector_alignment: 32
+
+devices:
+  console: pl011
+  timer: arch_timer
+  interrupt_controller: gicv2
+  uart_base: 0x09000000

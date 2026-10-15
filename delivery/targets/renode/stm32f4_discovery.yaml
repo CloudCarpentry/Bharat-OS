@@ -11,6 +11,9 @@ implementation_maturity:
   profile: DEVELOPMENT
   allow: [STUB]
 
+userspace:
+  runtime_model: static
+
 build:
   cmake_preset: arm32-iot-debug
   cmake_defs:
@@ -19,6 +22,15 @@ build:
     BHARAT_PERSONALITY_PROFILE: NATIVE
     BHARAT_TARGET_BOARD: stm32f4
     BHARAT_BOOT_GUI: OFF
+    BHARAT_PROFILE_MMU_FULL: OFF
+    BHARAT_PROFILE_MMU_LITE: OFF
+    BHARAT_PROFILE_MPU_ONLY: ON
+    BHARAT_ENABLE_MMU: OFF
+    BHARAT_ENABLE_MPU: ON
+    BHARAT_ENABLE_ADVANCED_VM: OFF
+    BHARAT_ENABLE_SERVICE_BOOT_DISPLAYD: OFF
+    BHARAT_BUILD_SVC_NAMESVC: OFF
+    BHARAT_BUILD_SVC_PROCESS_MANAGER: OFF
 
 kernel:
   canonical_artifacts:

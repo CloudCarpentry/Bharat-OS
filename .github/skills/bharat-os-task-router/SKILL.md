@@ -61,6 +61,8 @@ Load only the skills matching the classified area:
 - Verification / smoke / five-target gates -> `bharat-os-validation`
 - Status / milestone / maturity audit -> `bharat-os-runtime-truth`
 - PR review / architectural audit -> `bharat-os-review`
+- Board BSPs / memory manifests / linkers -> `bharat-os-embedded-bsp`
+- Nirmaan CLI / builds / smoke / runs / demos -> `bharat-os-nirmaan`
 
 ### Step 6: Produce Execution Manifest
 Before writing code, produce a concise manifest:

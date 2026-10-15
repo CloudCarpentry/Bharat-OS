@@ -75,6 +75,8 @@ Do NOT load or scan the entire repository context. Use `tools/agents/context_pac
 | **Status, roadmap, gap analysis** | [`bharat-os-runtime-truth`](file:///.agents/skills/bharat-os-runtime-truth/SKILL.md) | `implementation_maturity.json` machine-readable ground truth |
 | **Architecture docs, ADRs, contracts**| [`bharat-os-architecture-docs`](file:///.agents/skills/bharat-os-architecture-docs/SKILL.md) | ADR lifecycle, documentation hierarchy, CONTRACTS.md sync |
 | **PR review, architectural audit** | [`bharat-os-review`](file:///.agents/skills/bharat-os-review/SKILL.md) | Pre-merge security, boundary, and diff-hygiene audit |
+| **Board BSPs, manifests, linkers, MCUs** | [`bharat-os-embedded-bsp`](file:///.agents/skills/bharat-os-embedded-bsp/SKILL.md) | Board memory manifests, templated linkers, MMIO collision validation |
+| **Nirmaan CLI, builds, tests, demos** | [`bharat-os-nirmaan`](file:///.agents/skills/bharat-os-nirmaan/SKILL.md) | Recommended developer CLI for builds, smoke tests, interactive runs, demos |
 
 ### Quick Context Pack Command
 ```bash
@@ -99,7 +101,16 @@ All agents must verify changes against the five canonical hardware targets:
 | **RISC-V 32** | `delivery/targets/qemu/riscv32_mmu_lite_headless.yaml` | MMU_LITE |
 
 ### Required Verification Commands
+Agents are strongly encouraged to use `nirmaan` (`./nirmaan`, `.\nirmaan.ps1`, `nirmaan.bat`, or `python tools/nirmaan/cli.py`) for all building, testing, and target verification:
+
 ```bash
+# 0. High-Productivity Agent & Developer Workflow (Recommended)
+.\nirmaan.ps1 doctor                          # Environment doctor check
+.\nirmaan.ps1 verify --all-boards             # Embedded board memory qualification
+.\nirmaan.ps1 test board                      # Embedded board unit & qualification tests
+.\nirmaan.ps1 build desktop-x86_64 --smoke    # Smoke build & test execution
+.\nirmaan.ps1 build stm32f4-renode            # Renode embedded target build
+
 # 1. Agent configuration and layer reference linters
 python3 tools/agents/verify.py --changed-files <changed_files>
 

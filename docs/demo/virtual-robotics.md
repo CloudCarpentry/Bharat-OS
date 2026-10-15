@@ -29,9 +29,14 @@ virtual sensor / motor drivers
 QEMU robot platform instance
 ```
 
-Run the focused hosted data-path test with:
+Run the focused hosted data-path test with Nirmaan or CMake:
 
 ```bash
+# Using Nirmaan Developer CLI:
+.\nirmaan.ps1 build drone-arm64 --smoke
+.\nirmaan.ps1 build robot-riscv64 --smoke
+
+# Or host CTest target directly:
 cmake -S . -B build/robotics-demo -DBHARAT_BUILD_HOST_TESTS=ON
 cmake --build build/robotics-demo --target host_test_robotics_demo
 ctest --test-dir build/robotics-demo -R host_test_robotics_demo --output-on-failure

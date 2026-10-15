@@ -1,0 +1,146 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+title: "Bharat-OS Embedded Board Manifest Schema"
+type: object
+required:
+  - board
+  - soc
+  - architecture
+  - cpu
+  - memory
+  - runtime
+  - protection
+  - boot
+  - devices
+
+properties:
+  board:
+    type: string
+    pattern: "^[a-z0-9_]+$"
+
+  soc:
+    type: string
+
+  architecture:
+    type: string
+    enum:
+      - armv7e-m
+      - armv7-a
+      - rv32-mcu
+      - rv32-sv32
+
+  cpu:
+    type: string
+
+  fpu_abi:
+    type: string
+    enum: [soft, softfp, hard]
+
+  memory:
+    type: object
+    additionalProperties:
+      type: object
+      required:
+        - origin
+        - length
+      properties:
+        origin:
+          oneOf:
+            - type: integer
+            - type: string
+        length:
+          oneOf:
+            - type: integer
+            - type: string
+        executable:
+          type: boolean
+        writable:
+          type: boolean
+        type:
+          type: string
+
+  mmio:
+    type: array
+    items:
+      type: object
+      required:
+        - name
+        - origin
+        - length
+      properties:
+        name:
+          type: string
+        origin:
+          oneOf:
+            - type: integer
+            - type: string
+        length:
+          oneOf:
+            - type: integer
+            - type: string
+        description:
+          type: string
+
+  runtime:
+    type: object
+    required:
+      - kernel_stack
+      - application_stack
+      - mode
+    properties:
+      kernel_stack:
+        oneOf:
+          - type: integer
+          - type: string
+      application_stack:
+        oneOf:
+          - type: integer
+          - type: string
+      heap:
+        oneOf:
+          - type: integer
+          - type: string
+      mode:
+        type: string
+        enum: [static, full, minimal]
+
+  protection:
+    type: object
+    required:
+      - model
+    properties:
+      model:
+        type: string
+        enum: [MPU_ONLY, PMP_ONLY, MMU_LITE, MMU_FULL, NONE]
+
+  boot:
+    type: object
+    required:
+      - entry
+      - vector_location
+    properties:
+      entry:
+        type: string
+      vector_location:
+        type: string
+      vector_alignment:
+        type: integer
+
+  devices:
+    type: object
+    required:
+      - console
+      - timer
+      - interrupt_controller
+    properties:
+      console:
+        type: string
+      timer:
+        type: string
+      interrupt_controller:
+        type: string
+      uart_base:
+        oneOf:
+          - type: integer
+          - type: string
+
+additionalProperties: false

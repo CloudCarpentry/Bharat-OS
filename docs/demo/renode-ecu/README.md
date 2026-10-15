@@ -118,29 +118,37 @@ Attempting to run the existing ARM32 kernel directly on STM32F4 fails closed due
 1. **Architecture Port**: Create `core/arch/arm/cortex_m/` with Thumb-2 vector table (`_vector_table` with initial SP at `0x08000000` and Reset_Handler at `0x08000004`).
 2. **NVIC Driver**: Implement `core/drivers/intc/nvic.c` implementing the HAL IRQ contract.
 3. **STM32 UART Driver**: Implement `core/drivers/serial/stm32_uart.c` for `USART1`/`USART2`.
-4. **Memory Footprint**: Provide `core/kernel/linker_stm32f4.ld` fitting kernel and static userspace within 128 KB SRAM.
+4. **Memory Footprint & Linker**: **COMPLETED (`BH-EMBED-LINK-P0-001`)**. Delivered declarative memory manifest (`platform/boards/stm32f407_discovery/board.yaml`), templated Cortex-M linker generator (`delivery/linker/templates/cortex_m.ld.in`), and link-time MMIO collision detector (`tools/board/validate.py`).
 
 ---
 
 ## 4. How to Run & Verify
 
-### Build and Package Target
-```bash
-python tools/build.py package --target-yaml delivery/targets/renode/arm64_renode_ecu_fan.yaml
-```
+### Using the Nirmaan Developer CLI (Recommended)
 
-### Run under Renode
-```bash
-python tools/build.py run --target-yaml delivery/targets/renode/arm64_renode_ecu_fan.yaml --smoke
-```
+```powershell
+# 1. Qualify the STM32F407 Discovery board memory manifest and layout
+.\nirmaan.ps1 verify --board stm32f407_discovery
 
-### Run Unit and Integration Tests
-```bash
-# 1. Renode runner unit tests
-pytest quality/tests/tools/test_runner_renode.py -v
+# 2. Build the embedded target with static userspace runtime
+.\nirmaan.ps1 build stm32f4-renode
 
-# 2. Renode ECU integration tests
+# 3. Run the automated ARM64 ECU Cooling Fan simulation under Renode
+.\nirmaan.ps1 run --target-yaml delivery/targets/renode/arm64_renode_ecu_fan.yaml --smoke
+
+# 4. Run Renode and board test suites
+.\nirmaan.ps1 test board
 pytest quality/tests/renode/test_renode_ecu.py -v
+pytest quality/tests/tools/test_runner_renode.py -v
+```
+
+### Direct Tool Invocations
+```bash
+# Direct build and packaging
+python tools/build.py package --target-yaml delivery/targets/renode/arm64_renode_ecu_fan.yaml
+
+# Direct execution under Renode
+python tools/build.py run --target-yaml delivery/targets/renode/arm64_renode_ecu_fan.yaml --smoke
 ```
 
 ---

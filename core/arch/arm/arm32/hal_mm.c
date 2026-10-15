@@ -102,7 +102,7 @@ static const hal_arch_capabilities_t g_arm32_caps = {
     .arch_bits = 32,
     .support_level = BH_ARCH_SUPPORT_BOOT_SUPPORTED,
 #if defined(BHARAT_PROFILE_MPU_ONLY) || (defined(BHARAT_ENABLE_MPU) && !defined(BHARAT_ENABLE_MMU))
-    .memory_model = BH_MEMORY_MODEL_MPU,
+    .memory_model = BH_MEMORY_MODEL_MPU_ONLY,
     .has_smp = false,
     .has_irq_controller = true,
     .has_monotonic_timer = true,

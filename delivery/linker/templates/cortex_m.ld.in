@@ -1,0 +1,115 @@
+/* Generated Bharat-OS Linker Script for Cortex-M
+ * Target Board: {{ board.board }}
+ * SoC: {{ board.soc }} ({{ board.architecture }} / {{ board.cpu }})
+ */
+
+OUTPUT_FORMAT("elf32-littlearm")
+OUTPUT_ARCH(arm)
+ENTRY({{ board.boot.entry }})
+
+MEMORY
+{
+{% for name, region in board.memory.items() %}
+  {{ name | upper }} ({% if region.executable and region.writable %}rwx{% elif region.executable %}rx{% elif region.writable %}rwx{% else %}r{% endif %}) : ORIGIN = 0x{{ "%08X" % region.origin }}, LENGTH = {{ region.length // 1024 }}K
+{% endfor %}
+}
+
+__stack_size = {{ board.runtime.kernel_stack }};
+__stack_top = ORIGIN({{ ram_region_name | upper }}) + LENGTH({{ ram_region_name | upper }});
+__stack_limit = __stack_top - __stack_size;
+
+SECTIONS
+{
+  /* ── Cortex-M Interrupt Vector Table ───────────────────────────── */
+  .isr_vector : ALIGN({{ board.boot.vector_alignment }})
+  {
+    KEEP(*(.isr_vector))
+    KEEP(*(.text.boot))
+  } > {{ flash_region_name | upper }}
+
+  /* ── Read-only code & data (Flash) ─────────────────────────────── */
+  .text : ALIGN(4)
+  {
+    *(.text)
+    *(.text.*)
+    *(.fixup)
+    *(.gnu.linkonce.t.*)
+  } > {{ flash_region_name | upper }}
+
+  .rodata : ALIGN(4)
+  {
+    *(.rodata)
+    *(.rodata.*)
+    *(.gnu.linkonce.r.*)
+
+    . = ALIGN(8);
+    __ex_table_start = .;
+    KEEP(*(__ex_table))
+    __ex_table_end = .;
+
+    . = ALIGN(8);
+    __start_bharat_services = .;
+    KEEP(*(bharat_services))
+    __stop_bharat_services = .;
+
+    . = ALIGN(8);
+    __kern_tests_start = .;
+    KEEP(*(.kern_tests))
+    __kern_tests_end = .;
+
+    . = ALIGN(8);
+    __subsys_tests_start = .;
+    KEEP(*(.subsys_tests))
+    __subsys_tests_end = .;
+  } > {{ flash_region_name | upper }}
+
+  /* ── Initialized data (Runtime in SRAM, LMA in Flash) ──────────── */
+  .data : ALIGN(4)
+  {
+    __data_start = .;
+    *(.data)
+    *(.data.*)
+    *(.gnu.linkonce.d.*)
+    . = ALIGN(4);
+    __data_end = .;
+  } > {{ ram_region_name | upper }} AT > {{ flash_region_name | upper }}
+
+  __data_load = LOADADDR(.data);
+
+  /* ── Zero-initialized data (BSS in SRAM) ────────────────────────── */
+  .bss (NOLOAD) : ALIGN(4)
+  {
+    bss_start = .;
+    __bss_start = .;
+    *(.bss)
+    *(.bss.*)
+    *(COMMON)
+    . = ALIGN(4);
+    bss_end = .;
+    __bss_end = .;
+  } > {{ ram_region_name | upper }}
+
+  /* Persistent store region */
+  .pstore (NOLOAD) : ALIGN(4)
+  {
+    _pstore_start = .;
+    *(.pstore)
+    . = . + 256;
+    _pstore_end = .;
+  } > {{ ram_region_name | upper }}
+
+  . = ALIGN(8);
+  __static_end = .;
+  kernel_end = .;
+  _end = .;
+
+  /* ── Link-time Verification Assertions ─────────────────────────── */
+  ASSERT(__static_end <= __stack_limit,
+         "ERROR: Bharat-OS SRAM overflow: .data + .bss exceeds available SRAM reserve")
+
+  /DISCARD/ :
+  {
+    *(.comment)
+    *(.eh_frame)
+  }
+}

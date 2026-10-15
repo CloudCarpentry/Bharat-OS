@@ -74,6 +74,7 @@ Use this minimum structure for all new ADRs:
 | ADR-037 | Integer Boot UI Progress | [`ADR-037-integer-boot-ui-progress.md`](ADR-037-integer-boot-ui-progress.md) |
 | ADR-038 | Boot Payload Reservation and Topology Authority | [`ADR-038-boot-payload-and-topology-authority.md`](ADR-038-boot-payload-and-topology-authority.md) |
 | ADR-039 | Hybrid Shared-Memory and Multikernel Concurrency Model with Profile-Aware Boot Handoff | [`ADR-039-hybrid-shared-memory-multikernel-concurrency.md`](ADR-039-hybrid-shared-memory-multikernel-concurrency.md) |
+| ADR-040 | Unified Embedded Board Support and Memory-Aware Linker Framework | [`ADR-040-unified-embedded-board-and-linker-framework.md`](ADR-040-unified-embedded-board-and-linker-framework.md) |
 
 ### Functional ADR Extensions
 

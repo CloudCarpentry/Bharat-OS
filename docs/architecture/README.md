@@ -44,6 +44,7 @@ This index maps Bharat-OS architecture documentation to the current repository s
 - **Security & crypto:** `security/`
 - **Network:** `network/`
 - **Personalities & compat layers:** `core/personalities/`
+- **Embedded Board Support & Linkers:** [`embedded-board-support-framework.md`](embedded-board-support-framework.md)
 - **Hardware capability packs:** [`hardware-capability-packs.md`](hardware-capability-packs.md)
 - **Formal contracts/specs:** `contracts/`
 

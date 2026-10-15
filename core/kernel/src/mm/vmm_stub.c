@@ -136,6 +136,10 @@ void mm_switch_active_aspace(uint32_t core_id, address_space_t *prev_as, address
     (void)next_as;
 }
 
+void vm_debug_validate_active_tracking(void) {
+    /* No active tracking in stub/MPU memory model */
+}
+
 int aspace_region_reserve(address_space_t *aspace,
                           uintptr_t base,
                           size_t length,

@@ -1,0 +1,50 @@
+board: rv32_virt
+soc: qemu_riscv_virt
+architecture: rv32-sv32
+cpu: rv32
+fpu_abi: soft
+
+memory:
+  ram:
+    origin: 0x80000000
+    length: 256M
+    executable: true
+    writable: true
+    type: sram
+
+mmio:
+  - name: test_device
+    origin: 0x00100000
+    length: 0x1000
+  - name: rtc
+    origin: 0x00101000
+    length: 0x1000
+  - name: clint
+    origin: 0x02000000
+    length: 0x10000
+  - name: plic
+    origin: 0x0C000000
+    length: 0x4000000
+  - name: uart0
+    origin: 0x10000000
+    length: 0x100
+
+runtime:
+  kernel_stack: 16K
+  application_stack: 8K
+  heap: 1M
+  mode: full
+
+protection:
+  model: MMU_LITE
+
+boot:
+  entry: _start
+  vector_location: ram
+  vector_alignment: 4
+
+devices:
+  console: ns16550
+  timer: sbi
+  interrupt_controller: plic
+  uart_base: 0x10000000

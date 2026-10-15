@@ -1,0 +1,63 @@
+board: stm32f407_discovery
+soc: stm32f407vg
+architecture: armv7e-m
+cpu: cortex-m4
+fpu_abi: soft
+
+memory:
+  flash:
+    origin: 0x08000000
+    length: 1M
+    executable: true
+    writable: false
+    type: flash
+  sram:
+    origin: 0x20000000
+    length: 128K
+    executable: false
+    writable: true
+    type: sram
+  ccm:
+    origin: 0x10000000
+    length: 64K
+    executable: false
+    writable: true
+    type: ccm
+
+mmio:
+  - name: apb1_peripherals
+    origin: 0x40000000
+    length: 0x8000
+    description: "TIM2-7, USART2-5, I2C1-3, SPI2-3, CAN1-2, PWR, DAC"
+  - name: apb2_peripherals
+    origin: 0x40010000
+    length: 0x5000
+    description: "TIM1, TIM8, USART1, USART6, ADC1-3, SPI1, SYSCFG"
+  - name: ahb1_peripherals
+    origin: 0x40020000
+    length: 0x60000
+    description: "GPIOA-I, CRC, RCC, Flash Interface, BKPSRAM, DMA1-2"
+  - name: cortex_m_internal
+    origin: 0xE0000000
+    length: 0x100000
+    description: "SysTick, NVIC, SCB, MPU registers"
+
+runtime:
+  kernel_stack: 8K
+  application_stack: 4K
+  heap: 0K
+  mode: static
+
+protection:
+  model: MPU_ONLY
+
+boot:
+  entry: _start
+  vector_location: flash
+  vector_alignment: 4
+
+devices:
+  console: usart2
+  timer: systick
+  interrupt_controller: nvic
+  uart_base: 0x40004400

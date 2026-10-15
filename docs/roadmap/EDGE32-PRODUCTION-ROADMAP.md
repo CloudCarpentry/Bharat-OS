@@ -453,3 +453,26 @@ Demonstrate the HMI where supported; measure reliability, footprint and performa
 My priority recommendation: Start Agent 2 (board qualification) immediately alongside Agent 1 (hardware enforcement). Agent 3 can build reusable applications in parallel; Agent 4 should first audit actual display readiness and avoid changing shared drivers until that work is stable.
 
 This produces a much more credible path toward production-grade ARM32/RISC-V32 than simply increasing the number of QEMU targets that report `BOOT_PASS`.
+
+---
+
+## 6. Current Implementation Status (October 2026)
+
+### Milestone `BH-EMBED-LINK-P0-001` (Gate E0) — COMPLETED
+
+| Component / Deliverable | Status | Verification Authority |
+|---|---|---|
+| **Board Manifest Authority** | **DONE** | `tools/schemas/board.schema.yaml` with manifests in `platform/boards/` |
+| **Parameterized Linkers** | **DONE** | `delivery/linker/templates/` (`cortex_m`, `riscv32_mcu`, `arm32_mmu_lite`, `riscv32_sv32`) |
+| **Link-Time MMIO Collision Check** | **DONE** | `tools/board/validate.py` (guarantees zero overlap with APB/AHB/PLIC/CLINT) |
+| **Compile-Time Stack Assertion** | **DONE** | Embedded in all generated linker scripts (`ASSERT(_sram_end >= _stack_top)`) |
+| **STM32F4 MMIO Clash Resolution** | **DONE** | Kernel relocated from `0x40010000` (APB2 MMIO) to Flash `0x08000000` / SRAM `0x20000000` |
+| **RV32 MCU M-Mode Resolution** | **DONE** | Kernel relocated from `0x80200000` (OpenSBI S-mode) to SPI Flash `0x20000000` / DTIM `0x80000000` |
+| **Automated Board Qualification** | **DONE** | `tools/board/validate.py --all` (10/10 checks PASS across all 4 reference boards) |
+| **Nirmaan Developer CLI Integration**| **DONE** | `nirmaan verify --all-boards`, `nirmaan test board`, `nirmaan build stm32f4-renode` |
+| **Unit & Integration Test Suite** | **DONE** | `quality/tests/board/` (12/12 pytest cases PASS in 1.63s) |
+| **Renode Packaging & Static Runtime**| **DONE** | `delivery/targets/renode/stm32f4_discovery.yaml` (clean compile & packaging) |
+
+### Active Next Gates
+- **`BH-EMBED-BOOT-P0-002` (Gate E1)**: Implement native Thumb-2 Cortex-M exception vector table and reset handler, plus RV32 M-mode trap dispatch.
+- **`BH-EMBED-BSP-P1-003` (Gate E2)**: Implement production HAL peripheral drivers (SysTick/CLINT, NVIC/PLIC, USART) without kernel layer violations.

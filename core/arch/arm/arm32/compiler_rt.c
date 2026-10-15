@@ -25,6 +25,29 @@ unsigned int __aeabi_uidiv(unsigned int n, unsigned int d) {
     return (unsigned int)__aeabi_uidivmod(n, d);
 }
 
+int __aeabi_idiv(int n, int d) {
+    if (d == 0) return 0;
+    int neg = (n < 0) ^ (d < 0);
+    unsigned int un = (n < 0) ? -(unsigned int)n : (unsigned int)n;
+    unsigned int ud = (d < 0) ? -(unsigned int)d : (unsigned int)d;
+    unsigned int q = __aeabi_uidiv(un, ud);
+    return neg ? -(int)q : (int)q;
+}
+
+int64_t __aeabi_idivmod(int n, int d) {
+    if (d == 0) return 0;
+    int neg_q = (n < 0) ^ (d < 0);
+    int neg_r = (n < 0);
+    unsigned int un = (n < 0) ? -(unsigned int)n : (unsigned int)n;
+    unsigned int ud = (d < 0) ? -(unsigned int)d : (unsigned int)d;
+    uint64_t res = __aeabi_uidivmod(un, ud);
+    unsigned int q = (unsigned int)res;
+    unsigned int r = (unsigned int)(res >> 32);
+    int sq = neg_q ? -(int)q : (int)q;
+    int sr = neg_r ? -(int)r : (int)r;
+    return ((int64_t)sr << 32) | (uint32_t)sq;
+}
+
 
 uint64_t __udivdi3(uint64_t n, uint64_t d) {
     if (d == 0) return 0;

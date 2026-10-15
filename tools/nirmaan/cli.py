@@ -41,7 +41,7 @@ def main():
     }
 
     for cmd, desc in commands.items():
-        subparser = subparsers.add_parser(cmd, help=desc)
+        subparser = subparsers.add_parser(cmd, help=desc, add_help=False)
         # We use parse_known_args in the main cli and pass the rest to the command
         # So we don't strictly define arguments here except a help workaround if needed.
 
