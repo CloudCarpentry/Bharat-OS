@@ -36,6 +36,31 @@ void kernel_main(uintptr_t fdt_ptr) {
     extern void arm_fdt_parse_common(boot_info_t *boot, const void *fdt_ptr);
     arm_fdt_parse_common(&boot, (const void*)fdt_ptr);
 
+    if (boot.module_count == 0) {
+        /*
+         * Fallback for direct simulator / bare-metal boot:
+         * Check if an init module container (magic 0xB4A2D1A5) is staged
+         * at standard RAM offset 0x48000000.
+         */
+        const volatile uint32_t *staged = (const volatile uint32_t *)0x48000000ULL;
+        if (*staged == 0xB4A2D1A5) {
+            uint64_t total_size = 0;
+            const uint8_t *curr = (const uint8_t *)0x48000000ULL;
+            while (total_size < 32 * 1024 * 1024) {
+                const uint32_t *hdr = (const uint32_t *)curr;
+                if (hdr[0] != 0xB4A2D1A5) break; // magic
+                uint32_t payload_size = hdr[5]; // offset 20 (5 * 4) = payload_size
+                if (payload_size == 0) break;
+                uint64_t mod_len = 128ULL + payload_size;
+                total_size += mod_len;
+                curr += mod_len;
+            }
+            if (total_size > 0) {
+                boot_info_add_module(&boot, 0x48000000ULL, total_size, "initrd");
+            }
+        }
+    }
+
     boot.source = BOOT_SOURCE_LEGACY_LOADER;
     boot.arch = BOOT_ARCH_ARM64;
 

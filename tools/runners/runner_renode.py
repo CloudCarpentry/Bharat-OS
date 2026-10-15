@@ -96,6 +96,103 @@ def resolve_platform_description(machine: str, repo_root: Path) -> str:
     return f"@platforms/boards/{machine}.repl"
 
 
+import struct
+
+
+def build_minimal_dtb(
+    initrd_start: int,
+    initrd_size: int,
+    ram_base: int = 0x40000000,
+    ram_size: int = 0x40000000,
+) -> bytes:
+    """Generate a minimal valid FDT (Device Tree Blob) for ARM64 emulator booting."""
+    strings = bytearray()
+
+    def add_string(s: str) -> int:
+        offset = len(strings)
+        strings.extend(s.encode("ascii") + b"\x00")
+        return offset
+
+    off_compat = add_string("compatible")
+    off_addr_cells = add_string("#address-cells")
+    off_size_cells = add_string("#size-cells")
+    off_device_type = add_string("device_type")
+    off_reg = add_string("reg")
+    off_bootargs = add_string("bootargs")
+    off_initrd_start = add_string("linux,initrd-start")
+    off_initrd_end = add_string("linux,initrd-end")
+
+    FDT_BEGIN_NODE = 1
+    FDT_END_NODE = 2
+    FDT_PROP = 3
+    FDT_END = 9
+
+    dt_struct = bytearray()
+
+    def begin_node(name: str):
+        dt_struct.extend(struct.pack(">I", FDT_BEGIN_NODE))
+        raw = name.encode("ascii") + b"\x00"
+        dt_struct.extend(raw)
+        pad = (4 - (len(raw) % 4)) % 4
+        dt_struct.extend(b"\x00" * pad)
+
+    def end_node():
+        dt_struct.extend(struct.pack(">I", FDT_END_NODE))
+
+    def add_prop(name_off: int, data: bytes):
+        dt_struct.extend(struct.pack(">III", FDT_PROP, len(data), name_off))
+        dt_struct.extend(data)
+        pad = (4 - (len(data) % 4)) % 4
+        dt_struct.extend(b"\x00" * pad)
+
+    # Root node ""
+    begin_node("")
+    add_prop(off_compat, b"linux,dummy-virt\x00")
+    add_prop(off_addr_cells, struct.pack(">I", 2))
+    add_prop(off_size_cells, struct.pack(">I", 2))
+
+    # memory node
+    begin_node("memory@40000000")
+    add_prop(off_device_type, b"memory\x00")
+    add_prop(off_reg, struct.pack(">QQ", ram_base, ram_size))
+    end_node()
+
+    # chosen node
+    begin_node("chosen")
+    add_prop(off_bootargs, b"console=uart0\x00")
+    if initrd_start and initrd_size:
+        add_prop(off_initrd_start, struct.pack(">Q", initrd_start))
+        add_prop(off_initrd_end, struct.pack(">Q", initrd_start + initrd_size))
+    end_node()
+
+    end_node()  # end root node
+    dt_struct.extend(struct.pack(">I", FDT_END))
+
+    mem_rsvmap = struct.pack(">QQ", 0, 0)
+
+    header_size = 40
+    off_mem_rsvmap = header_size
+    off_dt_struct = off_mem_rsvmap + len(mem_rsvmap)
+    off_dt_strings = off_dt_struct + len(dt_struct)
+    total_size = off_dt_strings + len(strings)
+
+    header = struct.pack(
+        ">IIIIIIIIII",
+        0xD00DFEED,      # magic
+        total_size,      # totalsize
+        off_dt_struct,   # off_dt_struct
+        off_dt_strings,  # off_dt_strings
+        off_mem_rsvmap,  # off_mem_rsvmap
+        17,              # version
+        16,              # last_comp_version
+        0,               # boot_cpuid_phys
+        len(strings),    # size_dt_strings
+        len(dt_struct),  # size_dt_struct
+    )
+
+    return header + mem_rsvmap + dt_struct + strings
+
+
 def build_resc_script(
     manifest: Dict[str, Any],
     port: int,
@@ -117,12 +214,22 @@ def build_resc_script(
     boot_artifact_path = Path(boot_artifact).resolve()
     boot_artifact_str = str(boot_artifact_path).replace("\\", "/")
 
+    init_artifact = artifacts.get("init_module")
+    init_path_str = ""
+    init_size = 0
+    if init_artifact:
+        ip = Path(init_artifact).resolve()
+        if ip.is_file():
+            init_path_str = str(ip).replace("\\", "/")
+            init_size = ip.stat().st_size
+
     dtb_path_str = ""
     dtb_artifact = artifacts.get("dtb_artifact") or artifacts.get("dtb_path")
     if dtb_artifact:
         p = Path(dtb_artifact).resolve()
         if p.is_file():
             dtb_path_str = str(p).replace("\\", "/")
+
 
     # Determine primary serial UART peripheral in Renode
     serial_list = run_cfg.get("serial", [])
@@ -139,7 +246,11 @@ def build_resc_script(
         f"machine LoadPlatformDescription {platform_desc}",
     ]
 
-    # If DTB is required and exists, load binary at standard RAM offset 0x40000000
+    # Load init_module binary into RAM at 0x48000000 if present
+    if init_path_str and "stm32" not in machine:
+        lines.append(f"sysbus LoadBinary @{init_path_str} 0x48000000")
+
+    # If DTB is required or auto-generated, load binary at standard RAM offset 0x40000000
     if dtb_path_str and "stm32" not in machine:
         lines.append(f"sysbus LoadBinary @{dtb_path_str} 0x40000000")
 

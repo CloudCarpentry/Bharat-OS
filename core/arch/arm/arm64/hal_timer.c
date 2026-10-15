@@ -49,8 +49,12 @@ uint64_t hal_timer_read_counter(void) {
 }
 
 uint64_t hal_timer_read_freq(void) {
-    uint64_t frq;
+    uint64_t frq = 0;
     __asm__ volatile("mrs %0, cntfrq_el0" : "=r" (frq));
+    if (frq == 0) {
+        frq = 62500000ULL;
+        __asm__ volatile("msr cntfrq_el0, %0" : : "r" (frq));
+    }
     return frq;
 }
 

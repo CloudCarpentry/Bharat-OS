@@ -68,19 +68,37 @@ _start:
 2:
 
     /* -------------------------------------------------------
-     * EL2 -> EL1 transition
-     * QEMU virt starts primary CPU at EL2.  By default
-     * CPTR_EL2.TFP (bit 10) = 1, which traps all FP/SIMD
-     * instructions to EL2.  Since we have no EL2 handler the
-     * CPU crashes silently on the first SIMD instruction.
-     * We must either stay at EL2 and clear TFP, or drop to EL1.
-     * We drop to EL1 (matches Linux boot protocol).
+     * EL3 / EL2 -> EL1 transition
+     * Renode starts at EL3 when supportsTwoSecurityStates is true.
+     * QEMU virt starts primary CPU at EL2.
+     * We drop cleanly to EL1 (matches Linux boot protocol).
      * ------------------------------------------------------- */
     mrs x2, CurrentEL
     lsr x2, x2, #2
+    cmp x2, #3
+    b.eq .drop_from_el3
     cmp x2, #2
-    b.ne .at_el1
+    b.eq .drop_from_el2
+    b .at_el1
 
+.drop_from_el3:
+    /* Allow FP/SIMD from lower levels */
+    msr cptr_el3, xzr
+    isb
+
+    /* SCR_EL3: RW=1 (bit 10, AArch64 for lower EL), NS=1 (bit 0, Non-secure) */
+    mov x2, #((1 << 10) | (1 << 0))
+    msr scr_el3, x2
+    isb
+
+    /* Return to EL1h with DAIF masked */
+    mov x2, #0x3c5             /* DAIF=1111, M[3:0]=0101 -> EL1h */
+    msr spsr_el3, x2
+    adr x2, .at_el1
+    msr elr_el3, x2
+    eret
+
+.drop_from_el2:
     /* Running at EL2: allow all FP/SIMD and CPACR accesses from EL1 (clear CPTR_EL2) */
     msr cptr_el2, xzr
     isb
