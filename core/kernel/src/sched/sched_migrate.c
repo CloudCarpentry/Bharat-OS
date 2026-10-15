@@ -219,16 +219,7 @@ int sched_sys_set_affinity(uint64_t tid, uint32_t affinity_mask) {
   return sched_set_affinity(tid, affinity_mask);
 }
 
-kstatus_t sched_wait_remote_cmd_ack(sched_remote_cmd_t *cmd, uint32_t timeout_loops) {
-    if (!cmd) return K_ERR_INVALID_ARG;
-    for (uint32_t i = 0; i < timeout_loops; ++i) {
-        if (cmd->state == SCHED_REMOTE_CMD_ACKED) return K_OK;
-        if (cmd->state == SCHED_REMOTE_CMD_FAILED) return K_ERR_BAD_STATE;
-        if (cmd->state == SCHED_REMOTE_CMD_TIMEOUT) return K_ERR_TIMEOUT;
-        arch_cpu_relax();
-    }
-    return K_ERR_TIMEOUT;
-}
+
 
 int sched_quarantine_thread(bh_thread_t *thread, uint32_t reason) {
   if (!thread) return -1;

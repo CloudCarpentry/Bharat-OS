@@ -14,6 +14,7 @@ set(TLB_HOST_INCLUDES
     ${CMAKE_SOURCE_DIR}/core/lib/include
     ${CMAKE_SOURCE_DIR}/core/boot/include
     ${CMAKE_SOURCE_DIR}/core/personalities/runtime/include
+    ${CMAKE_BINARY_DIR}/generated/include
     ${CMAKE_SOURCE_DIR}/interface/include
     ${CMAKE_SOURCE_DIR}/interface
     ${CMAKE_BINARY_DIR}/generated/include
@@ -203,6 +204,7 @@ target_include_directories(host_test_sched_selection PRIVATE
     ${CMAKE_SOURCE_DIR}/core/lib/include
     ${CMAKE_SOURCE_DIR}/core/boot/include
     ${CMAKE_SOURCE_DIR}/core/personalities/runtime/include
+    ${CMAKE_BINARY_DIR}/generated/include
     ${CMAKE_SOURCE_DIR}/interface/include
     ${CMAKE_BINARY_DIR}/generated/include)
 target_compile_definitions(host_test_sched_selection PRIVATE TESTING=1)
@@ -339,6 +341,7 @@ target_include_directories(host_test_syscall_return_x86_64 PRIVATE
     ${CMAKE_SOURCE_DIR}/core/kernel/include
     ${CMAKE_SOURCE_DIR}/core/arch/x86/x86_64/include
     ${CMAKE_SOURCE_DIR}/core/personalities/runtime/include
+    ${CMAKE_BINARY_DIR}/generated/include
     ${CMAKE_BINARY_DIR}/generated/include
     ${CMAKE_SOURCE_DIR}/interface/include)
 add_test(NAME host_test_syscall_return_x86_64 COMMAND host_test_syscall_return_x86_64)
@@ -710,6 +713,7 @@ if(BHARAT_BUILD_HOST_TESTS)
         ${CMAKE_SOURCE_DIR}/core/personalities/compat/linux
         ${CMAKE_SOURCE_DIR}/core/personalities/compat/linux/include
         ${CMAKE_SOURCE_DIR}/core/personalities/runtime/include
+    ${CMAKE_BINARY_DIR}/generated/include
         ${CMAKE_SOURCE_DIR}/core/personalities/abi/linux/include
         ${CMAKE_SOURCE_DIR}/core/personalities/abi/posix/include
         ${CMAKE_SOURCE_DIR}/core/services/core/subsysmgr/include
@@ -739,6 +743,7 @@ if(BHARAT_BUILD_HOST_TESTS)
         ${CMAKE_SOURCE_DIR}/core/personalities/compat/linux
         ${CMAKE_SOURCE_DIR}/core/personalities/compat/linux/include
         ${CMAKE_SOURCE_DIR}/core/personalities/runtime/include
+    ${CMAKE_BINARY_DIR}/generated/include
         ${CMAKE_SOURCE_DIR}/core/personalities/abi/linux/include
         ${CMAKE_SOURCE_DIR}/core/personalities/abi/posix/include
         ${CMAKE_SOURCE_DIR}/core/services/core/subsysmgr/include
@@ -763,6 +768,7 @@ if(BHARAT_BUILD_HOST_TESTS)
         ${CMAKE_SOURCE_DIR}/core/personalities/compat/android
         ${CMAKE_SOURCE_DIR}/core/personalities/compat/android/include
         ${CMAKE_SOURCE_DIR}/core/personalities/runtime/include
+    ${CMAKE_BINARY_DIR}/generated/include
         ${CMAKE_SOURCE_DIR}/core/kernel/include
         ${CMAKE_SOURCE_DIR}/core/lib/include
         ${CMAKE_SOURCE_DIR}/interface/include
@@ -800,6 +806,7 @@ if(BHARAT_BUILD_HOST_TESTS)
         ${CMAKE_SOURCE_DIR}/core/personalities/compat/android
         ${CMAKE_SOURCE_DIR}/core/personalities/compat/android/include
         ${CMAKE_SOURCE_DIR}/core/personalities/runtime/include
+    ${CMAKE_BINARY_DIR}/generated/include
         ${CMAKE_SOURCE_DIR}/core/kernel/include
         ${CMAKE_SOURCE_DIR}/core/lib/include
         ${CMAKE_SOURCE_DIR}/interface/include
@@ -1108,6 +1115,7 @@ target_include_directories(host_test_prot_domain_truth PRIVATE
     ${CMAKE_SOURCE_DIR}/core/lib/include
     ${CMAKE_SOURCE_DIR}/core/personalities/runtime/include
     ${CMAKE_BINARY_DIR}/generated/include
+    ${CMAKE_BINARY_DIR}/generated/include
 )
 target_compile_definitions(host_test_prot_domain_truth PRIVATE BHARAT_HOST_TEST=1)
 add_test(NAME host_test_prot_domain_truth COMMAND host_test_prot_domain_truth)
@@ -1115,3 +1123,22 @@ set_tests_properties(host_test_prot_domain_truth PROPERTIES LABELS "mm;protectio
 
 
 
+
+add_executable(host_test_sched_deadline_protocol
+    sched/test_sched_deadline_protocol.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/sched/sched_completion_protocol.c
+)
+target_include_directories(host_test_sched_deadline_protocol PRIVATE
+    ${CMAKE_SOURCE_DIR}/core/kernel/include
+    ${CMAKE_SOURCE_DIR}/interface/include
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/sched
+    ${CMAKE_SOURCE_DIR}/core/lib/include
+    ${CMAKE_SOURCE_DIR}/core/hal/include
+    ${CMAKE_SOURCE_DIR}/core/lib/rbtree/include
+    ${CMAKE_SOURCE_DIR}/core/boot/include
+    ${CMAKE_SOURCE_DIR}/core/personalities/runtime/include
+    ${CMAKE_BINARY_DIR}/generated/include
+)
+target_compile_definitions(host_test_sched_deadline_protocol PRIVATE BHARAT_HOST_TEST=1)
+add_test(NAME host_test_sched_deadline_protocol COMMAND host_test_sched_deadline_protocol)
+set_tests_properties(host_test_sched_deadline_protocol PROPERTIES LABELS "scheduler")

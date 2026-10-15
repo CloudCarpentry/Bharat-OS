@@ -1,5 +1,6 @@
 #include "sched/sched.h"
 #include "sched_internal.h"
+#include "sched_completion_protocol.h"
 #include "panic.h"
 
 void arch_post_switch(void) {
@@ -650,7 +651,7 @@ sched_remote_cmd_t *sched_allocate_outbound_cmd(void) {
   cmd->migration_epoch = 0;
   cmd->result = 0;
   cmd->submit_tick = 0;
-  cmd->deadline_tick = 0;
+  cmd->deadline_ns = BH_KDEADLINE_INFINITE;
   cmd->target_entity_slot = 0;
   cmd->target_entity_generation = 0;
   cmd->vruntime = 0;
@@ -695,7 +696,7 @@ kstatus_t sched_remote_submit(uint32_t target_cpu, const sched_remote_cmd_t *cmd
   sched_remote_cmd_t *mutable_cmd = (sched_remote_cmd_t *)cmd;
 
   mutable_cmd->submit_tick = rq->total_ticks;
-  mutable_cmd->deadline_tick = rq->total_ticks + 10U; // 10 ticks deadline
+  mutable_cmd->deadline_ns = bh_deadline_after_ns(10ULL * BH_KTIME_NS_PER_MS);
   __atomic_store_n(&mutable_cmd->state, SCHED_REMOTE_CMD_PENDING, __ATOMIC_RELEASE);
 
   sched_remote_cmd_envelope_t envelope;
@@ -781,40 +782,10 @@ kstatus_t sched_migration_transition(bh_thread_t *thread, sched_migration_state_
 void sched_remote_cmd_poll_timeouts(void) {
   uint32_t core = sched_current_core_or_panic();
   sched_rq_t *rq = &g_cpu_locals[core].runqueue;
-  uint64_t current_ticks = rq->total_ticks;
 
-  // 1. Drain completions from the completions cells
-  for (uint32_t i = 0; i < SCHED_REMOTE_CMD_CAPACITY; ++i) {
-    sched_remote_cmd_t *cmd = &rq->outbound_cmds[i];
-    uint32_t cmd_state = __atomic_load_n(&cmd->state, __ATOMIC_ACQUIRE);
+  sched_protocol_drain_completions(rq);
+  sched_protocol_process_deadlines(rq, bh_ktime_now());
 
-    if (cmd_state == SCHED_REMOTE_CMD_PENDING) {
-      sched_completion_cell_t *cell = &rq->completions[i];
-      uint32_t cell_state = __atomic_load_n(&cell->state, __ATOMIC_ACQUIRE);
-
-      if (cell_state != SCHED_REMOTE_CMD_EMPTY) {
-        if (cell->generation == cmd->handle.generation) {
-          uint32_t next_state = cell_state;
-          cmd->result = cell->result;
-
-          __atomic_store_n(&cell->state, SCHED_REMOTE_CMD_EMPTY, __ATOMIC_RELEASE);
-          __atomic_store_n(&cmd->state, next_state, __ATOMIC_RELEASE);
-        }
-      }
-    }
-  }
-
-  // 2. Process deadlines and transition to TIMEOUT
-  for (uint32_t i = 0; i < SCHED_REMOTE_CMD_CAPACITY; ++i) {
-    sched_remote_cmd_t *cmd = &rq->outbound_cmds[i];
-    uint32_t state = __atomic_load_n(&cmd->state, __ATOMIC_ACQUIRE);
-
-    if (state == SCHED_REMOTE_CMD_PENDING) {
-      if (cmd->deadline_tick > 0 && current_ticks >= cmd->deadline_tick) {
-        __atomic_store_n(&cmd->state, SCHED_REMOTE_CMD_TIMEOUT, __ATOMIC_RELEASE);
-      }
-    }
-  }
 
   // 3. Process actions on finalized/terminal commands
   for (uint32_t i = 0; i < SCHED_REMOTE_CMD_CAPACITY; ++i) {
