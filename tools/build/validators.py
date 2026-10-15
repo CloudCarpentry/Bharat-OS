@@ -15,7 +15,7 @@ def validate_resolved_target(target: ResolvedTarget, repo_root: Path | None = No
             print(f"Validation Error: {exc}")
             sys.exit(1)
 
-    if target.kind == "qemu_target":
+    if target.kind in ("qemu_target", "renode_target"):
         validate_run_contract(target)
     elif target.kind == "board_target":
         validate_flash_contract(target)
@@ -51,13 +51,13 @@ def validate_boot_contract(target: ResolvedTarget) -> None:
 
 def validate_run_contract(target: ResolvedTarget) -> None:
     if not target.run:
-        print(f"Validation Error: Target '{target.name}' is of kind 'qemu_target' but has no 'run' config.")
+        print(f"Validation Error: Target '{target.name}' is of kind '{target.kind}' but has no 'run' config.")
         sys.exit(1)
 
     run = target.run
-    if run.backend == "qemu":
+    if run.backend in ("qemu", "renode"):
         if not run.machine:
-            print(f"Validation Error: Run backend 'qemu' requires 'machine' config for target '{target.name}'.")
+            print(f"Validation Error: Run backend '{run.backend}' requires 'machine' config for target '{target.name}'.")
             sys.exit(1)
 
     if not run.boot_artifact:

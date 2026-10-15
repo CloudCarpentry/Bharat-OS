@@ -100,6 +100,10 @@ def main() -> int:
         mode_override = "smoke" if getattr(args, "smoke", False) else "interactive" if getattr(args, "interactive", False) else None
         display_override = "gui" if getattr(args, "gui", False) else "headless" if getattr(args, "headless", False) else None
 
+        if target.run.backend == "renode":
+            from tools.runners.runner_renode import run_renode
+            return run_renode(package_outputs.manifest_paths["run"], mode_override=mode_override, display_override=display_override)
+
         return run_qemu(package_outputs.manifest_paths["run"], mode_override=mode_override, display_override=display_override)
 
     if args.command == "flash":

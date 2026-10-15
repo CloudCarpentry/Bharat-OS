@@ -21,6 +21,7 @@ properties:
     enum:
     - qemu_target
     - board_target
+    - renode_target
   arch:
     type: string
   board:

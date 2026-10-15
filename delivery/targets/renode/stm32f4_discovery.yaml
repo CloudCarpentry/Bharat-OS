@@ -1,0 +1,46 @@
+name: stm32f4_discovery
+kind: renode_target
+
+arch: arm32
+board: stm32f4_discovery
+device_profile: iot
+personality_profile: native
+execution_profile: rt
+
+implementation_maturity:
+  profile: DEVELOPMENT
+  allow: [STUB]
+
+build:
+  cmake_preset: arm32-iot-debug
+  cmake_defs:
+    BHARAT_ARCH_FAMILY: ARM32
+    BHARAT_DEVICE_PROFILE: IOT
+    BHARAT_PERSONALITY_PROFILE: NATIVE
+    BHARAT_TARGET_BOARD: stm32f4
+    BHARAT_BOOT_GUI: OFF
+
+kernel:
+  canonical_artifacts:
+    elf: kernel/kernel.elf
+    map: kernel/kernel.map
+
+boot:
+  protocol: elf_direct
+  artifact_format: elf
+  dtb:
+    mode: embedded
+    required: false
+
+package:
+  transforms: []
+
+run:
+  backend: renode
+  machine: stm32f4_discovery
+  cpu: cortex-m4
+  memory: 128K
+  nographic: true
+  boot_artifact: kernel/kernel.elf
+  serial:
+    - usart2

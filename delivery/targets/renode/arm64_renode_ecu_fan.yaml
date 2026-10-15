@@ -1,0 +1,48 @@
+name: arm64_renode_ecu_fan
+kind: renode_target
+
+arch: arm64
+board: renode-cortex-a53
+device_profile: edge
+personality_profile: native
+execution_profile: rt
+
+implementation_maturity:
+  profile: DEVELOPMENT
+  allow: [STUB]
+
+build:
+  cmake_preset: arm64-edge
+  cmake_defs:
+    BHARAT_INIT_CORE_BOOTSTRAP_ONLY: ON
+    BHARAT_ARCH_FAMILY: ARM64
+    BHARAT_DEVICE_PROFILE: EDGE
+    BHARAT_PERSONALITY_PROFILE: NATIVE
+    BHARAT_TARGET_BOARD: virt
+    BHARAT_BOOT_GUI: OFF
+    BHARAT_ENABLE_ADVANCED_VM: ON
+
+kernel:
+  canonical_artifacts:
+    elf: kernel/kernel.elf
+    map: kernel/kernel.map
+
+boot:
+  protocol: elf_direct
+  artifact_format: elf
+  dtb:
+    mode: embedded
+    required: false
+
+package:
+  transforms: []
+
+run:
+  backend: renode
+  machine: cortex-a53-gicv2
+  cpu: cortex-a53
+  memory: 1024M
+  nographic: true
+  boot_artifact: kernel/kernel.elf
+  serial:
+    - uart0
