@@ -21,6 +21,7 @@ int main(int argc, char** argv) {
     if (bharat_bootstrap_report(BH_BOOTSTRAP_EVENT_BOUND, 0) != 0) return 1;
 
     if (!bh_vm_authority_ops_installed()) {
+        bharat_runtime_log("VM_MANAGER_BLOCKED: KERNEL_VM_UAPI_MISSING\n");
         (void)bharat_bootstrap_report(BH_BOOTSTRAP_EVENT_FAILED, BHARAT_IPC_STATUS_ERR_UNSUPPORTED);
         return BHARAT_IPC_STATUS_ERR_UNSUPPORTED;
     }
