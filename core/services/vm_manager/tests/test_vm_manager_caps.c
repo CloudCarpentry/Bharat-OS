@@ -91,6 +91,18 @@ int main(void) {
     bh_vm_create_space_response_v1_t create_resp = {0};
     // Should fail closed with unsupported when ops are not valid
     assert(bh_vm_handle_create_space_v1(&create_req, &create_resp) == BHARAT_IPC_STATUS_ERR_UNSUPPORTED);
+    assert(bh_vm_get_active_spaces_count() == 0);
+
+    // Test incomplete backend registration is rejected
+    bh_vm_authority_ops_t bad_ops = {0};
+    assert(bh_vm_set_authority_ops(&bad_ops) == BHARAT_IPC_STATUS_ERR_UNSUPPORTED);
+    assert(bh_vm_authority_ops_installed() == false);
+
+    // Test missing kernel authority fails gracefully for mapping operations
+    bh_vm_map_response_v1_t map_resp_v1 = {0};
+    // Need to create a fake space to test map rollback, but we can't because create_space fails closed!
+    // So map_v1 will fail with NOT_FOUND for the space handle first
+    assert(bh_vm_handle_map_v1(&map_req_v1, &map_resp_v1) == BHARAT_IPC_STATUS_ERR_NOT_FOUND);
 
     puts("vm_manager capability negative tests passed");
     return 0;
