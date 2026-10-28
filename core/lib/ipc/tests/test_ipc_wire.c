@@ -59,6 +59,7 @@ static void queue_rx(const void* data, uint32_t len) {
 }
 
 long bh_syscall(long sysno, long arg1, long arg2, long arg3, long arg4, long arg5, long arg6) {
+    fprintf(stderr, "bh_syscall(sysno=%ld, arg1=%ld, arg2=%ld, arg3=%ld, arg4=%ld, arg5=%ld, arg6=%ld)\n", sysno, arg1, arg2, arg3, arg4, arg5, arg6);
     (void)sysno; (void)arg1; (void)arg2; (void)arg3; (void)arg4; (void)arg5; (void)arg6;
     return 0;
 }
