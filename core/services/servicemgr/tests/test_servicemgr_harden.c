@@ -1,121 +1,53 @@
-#include "../servicemgr.h"
-#include <assert.h>
+#include "test_support.h"
 #include <stdio.h>
-#include <string.h>
-#include <bharat/uapi/ipc/status.h>
-
-// Mock IPC
-int32_t bharat_ipc_send(bharat_ipc_endpoint_t endpoint, const bharat_ipc_msg_header_t *header, const void *payload) { (void)endpoint; (void)header; (void)payload; return 0; }
-int32_t bharat_ipc_recv(bharat_ipc_endpoint_t endpoint, bharat_ipc_msg_header_t *header, void *payload_buf, uint32_t max_size) { (void)endpoint; (void)header; (void)payload_buf; (void)max_size; return -1; }
-
-void test_backoff(void) {
-    printf("--- test_backoff ---\n");
-    bh_servicemgr_dependencies_t deps_struct = {0};
-    servicemgr_init(&deps_struct);
-
-    bh_service_manifest_entry_t manifest[] = {
-        {
-            .name = "service1",
-            .service_id = 1,
-            .restart_policy = SM_RESTART_POLICY_ALWAYS
-        }
-    };
-
-    servicemgr_load_manifest(manifest, 1);
-    servicemgr_start_all();
-
-    sm_req_heartbeat_t hb_req = {.service_id = 1, .incarnation_id = 1, .timestamp_ticks = 100};
-    sm_resp_heartbeat_t hb_resp;
-    servicemgr_handle_signal_ready(&hb_req, &hb_resp);
-    servicemgr_handle_heartbeat(&hb_req, &hb_resp);
-
-    // Fail 1: Backoff should be 100ms
-    servicemgr_check_health(100 + HEARTBEAT_TIMEOUT_MS + 1);
-    sm_req_query_t query_req = {.service_id = 1};
-    sm_resp_query_t query_resp;
-    servicemgr_handle_query(&query_req, &query_resp);
-    assert(query_resp.state == SM_STATE_RESTART_BACKOFF);
-
-    // 50ms later, still backoff
-    servicemgr_check_health(100 + HEARTBEAT_TIMEOUT_MS + 51);
-    servicemgr_handle_query(&query_req, &query_resp);
-    assert(query_resp.state == SM_STATE_RESTART_BACKOFF);
-
-    // 101ms later, should be STARTING
-    servicemgr_check_health(100 + HEARTBEAT_TIMEOUT_MS + 101);
-    servicemgr_handle_query(&query_req, &query_resp);
-    assert(query_resp.state == SM_STATE_STARTING);
-
-    // Signal ready
-    servicemgr_handle_signal_ready(&(sm_req_heartbeat_t){.service_id = 1, .incarnation_id = 2}, &hb_resp);
-    servicemgr_handle_query(&query_req, &query_resp);
-    assert(query_resp.state == SM_STATE_RUNNING);
-    assert(query_resp.incarnation_id == 2);
-
-    // Fail 2: Backoff should be 200ms
-    servicemgr_handle_heartbeat(&(sm_req_heartbeat_t){.service_id = 1, .incarnation_id = 2, .timestamp_ticks = 10000}, &hb_resp);
-    servicemgr_check_health(10000 + HEARTBEAT_TIMEOUT_MS + 1);
-    servicemgr_handle_query(&query_req, &query_resp);
-    assert(query_resp.state == SM_STATE_RESTART_BACKOFF);
-
-    servicemgr_check_health(10000 + HEARTBEAT_TIMEOUT_MS + 150);
-    servicemgr_handle_query(&query_req, &query_resp);
-    assert(query_resp.state == SM_STATE_RESTART_BACKOFF);
-
-    servicemgr_check_health(10000 + HEARTBEAT_TIMEOUT_MS + 201);
-    servicemgr_handle_query(&query_req, &query_resp);
-    assert(query_resp.state == SM_STATE_STARTING);
-
-    servicemgr_handle_signal_ready(&(sm_req_heartbeat_t){.service_id = 1, .incarnation_id = 3}, &hb_resp);
-    servicemgr_handle_query(&query_req, &query_resp);
-    assert(query_resp.state == SM_STATE_RUNNING);
-    assert(query_resp.incarnation_id == 3);
-
-    printf("test_backoff passed\n");
+static void test_failures(void) {
+    bh_servicemgr_t *mgr=test_setup(); test_add_service(true,0);
+    mgr->deps.launcher=NULL;
+    assert(servicemgr_start_all()==BHARAT_IPC_STATUS_ERR_PERM);
+    assert(mgr->service_instances[0].state==SM_STATE_FAILED);
+    mgr=test_setup(); test_add_service(true,0); test_spawn_status=BHARAT_IPC_STATUS_ERR_INTERNAL;
+    assert(servicemgr_start_all()==test_spawn_status);
+    assert(mgr->service_instances[0].state==SM_STATE_FAILED);
+    mgr=test_setup();
+    const char *deps[]={"absent"};
+    bh_service_manifest_entry_t manifest={.name="a",.service_id=1,.hard_deps=deps,.hard_deps_count=1};
+    assert(servicemgr_load_manifest(&manifest,1)==0);
+    assert(servicemgr_validate_dependencies()==BHARAT_IPC_STATUS_ERR_NOT_FOUND);
+    assert(servicemgr_start_all()==BHARAT_IPC_STATUS_ERR_NOT_FOUND && test_spawn_count==0);
 }
-
-void test_dependencies(void) {
-    printf("--- test_dependencies ---\n");
-    bh_servicemgr_dependencies_t deps_struct = {0};
-    servicemgr_init(&deps_struct);
-
-    const char *deps1[] = {"nonexistent"};
-    const char *deps2[] = {"service1"};
-    bh_service_manifest_entry_t manifest[] = {
-        { .name = "service1", .service_id = 1, .hard_deps = deps1, .hard_deps_count = 1 },
-        { .name = "service2", .service_id = 2, .hard_deps = deps2, .hard_deps_count = 1 }
-    };
-
-    servicemgr_load_manifest(manifest, 2);
-    assert(servicemgr_validate_dependencies() == BHARAT_IPC_STATUS_ERR_NOT_FOUND);
-
-    servicemgr_init(&deps_struct);
-    bh_service_manifest_entry_t manifest2[] = {
-        { .name = "service1", .service_id = 1 },
-        { .name = "service2", .service_id = 2, .hard_deps = deps2, .hard_deps_count = 1 }
-    };
-    servicemgr_load_manifest(manifest2, 2);
-    assert(servicemgr_validate_dependencies() == BHARAT_IPC_STATUS_OK);
-
-    servicemgr_start_all();
-    sm_resp_query_t query_resp;
-    servicemgr_handle_query(&(sm_req_query_t){.service_id = 1}, &query_resp);
-    assert(query_resp.state == SM_STATE_STARTING);
-    servicemgr_handle_query(&(sm_req_query_t){.service_id = 2}, &query_resp);
-    assert(query_resp.state == SM_STATE_CREATED); // service2 can't start because service1 is not RUNNING
-
-    // Make service1 RUNNING
-    servicemgr_handle_signal_ready(&(sm_req_heartbeat_t){.service_id = 1, .incarnation_id = 1}, &(sm_resp_heartbeat_t){0});
-    servicemgr_start_all();
-    servicemgr_handle_query(&(sm_req_query_t){.service_id = 2}, &query_resp);
-    assert(query_resp.state == SM_STATE_STARTING);
-
-    printf("test_dependencies passed\n");
+static void test_stability_reset(void) {
+    bh_servicemgr_t *mgr=test_setup(); test_add_service(true,0); assert(servicemgr_start_all()==0);
+    bh_service_instance_t *inst=&mgr->service_instances[0]; test_ready(inst); mgr->handoff_committed=true;
+    servicemgr_check_health(test_now); uint64_t start=test_now;
+    test_now+=BH_NS_PER_MS; assert(test_health(inst,SM_HEALTH_STATE_DEGRADED)==0);
+    assert(!mgr->stable_window_active && !mgr->stable_reached);
+    servicemgr_check_health(test_now);
+    assert(test_health(inst,SM_HEALTH_STATE_READY)==0);
+    servicemgr_check_health(test_now);
+    assert(mgr->stable_started_ns>start);
+    for (unsigned i=0;i<11;++i) {
+        test_now+=1000*BH_NS_PER_MS;
+        assert(test_health(inst,SM_HEALTH_STATE_READY)==0);
+        servicemgr_check_health(test_now);
+    }
+    assert(mgr->stable_reached);
+    assert(test_health(inst,SM_HEALTH_STATE_FAILED)==0);
+    assert(!mgr->stable_reached && !mgr->stable_window_active);
+    assert(servicemgr_init(NULL)==0 && !mgr->stable_window_active);
 }
-
-int main(void) {
-
-    test_backoff();
-    test_dependencies();
-    return 0;
+static void test_bounded_backoff(void) {
+    bh_servicemgr_t *mgr=test_setup(); test_add_service(false,SM_RESTART_POLICY_BOUNDED_RETRY);
+    bh_service_instance_t *inst=&mgr->service_instances[0];
+    for (unsigned i=0;i<MAX_RESTART_COUNT;++i) {
+        inst->state=SM_STATE_FAILED; inst->process_id=0;
+        uint32_t delay=DEFAULT_INITIAL_BACKOFF_MS*(1U<<i);
+        servicemgr_check_health(test_now);
+        assert(inst->state==SM_STATE_RESTART_BACKOFF && inst->next_retry_ns==test_now+delay*BH_NS_PER_MS);
+        test_now=inst->next_retry_ns; servicemgr_check_health(test_now);
+        assert(inst->state==SM_STATE_STARTING);
+    }
+    inst->state=SM_STATE_FAILED; inst->process_id=0;
+    servicemgr_check_health(test_now);
+    assert(inst->state==SM_STATE_FAILED && inst->restart_count==MAX_RESTART_COUNT);
 }
+int main(void) { test_failures(); test_stability_reset(); test_bounded_backoff(); puts("servicemgr hardening passed"); }

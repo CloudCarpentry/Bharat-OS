@@ -47,9 +47,14 @@ kstatus_t vm_space_cap_invoke(uintptr_t cap_id, uintptr_t opcode,
         return K_ERR_INVALID_ARG;
     if ((req.protection & (BH_VM_PROT_WRITE | BH_VM_PROT_EXEC)) ==
         (BH_VM_PROT_WRITE | BH_VM_PROT_EXEC)) return K_ERR_VM_PROT;
-    if (req.address > UINTPTR_MAX || req.length > SIZE_MAX ||
+    if (req.address > UINTPTR_MAX || req.length > (uint64_t)(size_t)-1 ||
         req.length > UINTPTR_MAX - req.address ||
         req.length > UINT64_MAX - req.backing_offset) return K_ERR_OVERFLOW;
+    if (opcode == BH_VM_OP_MAP || opcode == BH_VM_OP_UNMAP || opcode == BH_VM_OP_PROTECT) {
+        if (!req.length) return K_ERR_INVALID_ARG;
+        if ((req.address | req.length | req.backing_offset) & (PAGE_SIZE - 1U))
+            return K_ERR_ALIGNMENT;
+    }
 
     /* cap_validate_ex returns a snapshot, not a pinned object. Never dereference
      * object_ref or mutate VM state until a revoke-safe lifetime protocol exists.
