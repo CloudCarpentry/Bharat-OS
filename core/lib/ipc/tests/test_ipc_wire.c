@@ -4,6 +4,8 @@
 #include <string.h>
 
 #include "bharat/ipc/ipc.h"
+#include <bharat/uapi/syscall_args.h>
+#include <bharat/uapi/syscall_nr.h>
 
 // Mock state
 typedef struct {
@@ -59,9 +61,30 @@ static void queue_rx(const void* data, uint32_t len) {
 }
 
 long bh_syscall(long sysno, long arg1, long arg2, long arg3, long arg4, long arg5, long arg6) {
-    fprintf(stderr, "bh_syscall(sysno=%ld, arg1=%ld, arg2=%ld, arg3=%ld, arg4=%ld, arg5=%ld, arg6=%ld)\n", sysno, arg1, arg2, arg3, arg4, arg5, arg6);
-    (void)sysno; (void)arg1; (void)arg2; (void)arg3; (void)arg4; (void)arg5; (void)arg6;
-    return 0;
+    (void)arg2; (void)arg3; (void)arg4; (void)arg5; (void)arg6;
+    if (!arg1) return -1;
+    if (sysno == SYSCALL_ENDPOINT_CREATE) {
+        const bharat_sys_endpoint_create_args_t *args = (void *)(uintptr_t)arg1;
+        if (!args->out_send_cap_ptr || !args->out_recv_cap_ptr) return -1;
+        *(uint32_t *)(uintptr_t)args->out_send_cap_ptr = 2;
+        *(uint32_t *)(uintptr_t)args->out_recv_cap_ptr = 3;
+        return 0;
+    }
+    if (sysno == SYSCALL_ENDPOINT_SEND) {
+        const bharat_sys_endpoint_send_args_t *args = (void *)(uintptr_t)arg1;
+        if (!args->send_cap || !args->payload_ptr || args->payload_len > 128 || args->reserved0) return -1;
+        return bharat_ipc_transport_send(args->send_cap, (void *)(uintptr_t)args->payload_ptr,
+                                        args->payload_len, args->timeout_ticks);
+    }
+    if (sysno == SYSCALL_ENDPOINT_RECEIVE) {
+        const bharat_sys_endpoint_receive_args_t *args = (void *)(uintptr_t)arg1;
+        if (!args->recv_cap || !args->out_payload_ptr || !args->out_len_ptr) return -1;
+        *(uint32_t *)(uintptr_t)args->out_len_ptr = 0;
+        if (args->out_received_cap_ptr) *(uint32_t *)(uintptr_t)args->out_received_cap_ptr = 0;
+        return bharat_ipc_transport_receive(args->recv_cap, (void *)(uintptr_t)args->out_payload_ptr,
+            args->out_payload_capacity, (uint32_t *)(uintptr_t)args->out_len_ptr, args->timeout_ticks);
+    }
+    return -1;
 }
 
 static bharat_ipc_msg_header_t mk_hdr(uint64_t msg_id, uint32_t payload_size) {

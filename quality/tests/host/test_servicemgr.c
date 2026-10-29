@@ -1,6 +1,21 @@
 #include "../../../core/services/servicemgr/tests/test_support.h"
 #include <string.h>
 #include <stdio.h>
+#include <ipc_user.h>
+
+static void test_syscall_fixture(void) {
+    test_setup();
+    uint8_t bytes[4] = {1,2,3,4}, result[4] = {0};
+    uint32_t length = 99, cap = 99;
+    assert(ipc_endpoint_receive(9,result,sizeof(result),&length,0,&cap)==-8);
+    assert(length==0 && cap==0);
+    assert(ipc_endpoint_send(9,bytes,sizeof(bytes),0,0,0)==0);
+    assert(ipc_endpoint_receive(9,result,1,&length,0,&cap)==-2);
+    assert(ipc_endpoint_receive(9,result,sizeof(result),&length,0,&cap)==0);
+    assert(length==4 && memcmp(result,bytes,4)==0 && cap==0);
+    assert(ipc_endpoint_receive(9,NULL,4,&length,0,&cap)==-1);
+    assert(bh_syscall(-1,1,0,0,0,0,0)==-1);
+}
 
 static void test_handoff_validation(void) {
     bh_servicemgr_t *mgr = test_setup();
@@ -68,6 +83,6 @@ static void test_duplicate_cycle_and_missing_dependencies(void) {
     assert(mgr->instance_count==1);
 }
 int main(void) {
-    test_handoff_validation(); test_staging_rollback_and_adoption(); test_duplicate_cycle_and_missing_dependencies();
+    test_syscall_fixture(); test_handoff_validation(); test_staging_rollback_and_adoption(); test_duplicate_cycle_and_missing_dependencies();
     puts("servicemgr: wire validation, forged authority, staging rollback/adoption/duplicates/cycles passed");
 }

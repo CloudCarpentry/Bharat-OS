@@ -14,6 +14,11 @@ static void test_lifecycle(void) {
         .incarnation_id=1,.boot_session_id=42,.health_state=SM_HEALTH_STATE_READY,.heartbeat_sequence=inst->heartbeat_sequence+1};
     sm_resp_health_update_t resp;
     assert(servicemgr_handle_health_update(&req,&resp,102)==BHARAT_IPC_STATUS_ERR_PERM);
+    req.boot_session_id=43;
+    assert(servicemgr_handle_health_update(&req,&resp,101)==BHARAT_IPC_STATUS_ERR_PERM);
+    req.boot_session_id=42; req.struct_size--;
+    assert(servicemgr_handle_health_update(&req,&resp,101)==BHARAT_IPC_STATUS_ERR_INVALID);
+    req.struct_size++;
     req.incarnation_id=0;
     assert(servicemgr_handle_health_update(&req,&resp,101)==BHARAT_IPC_STATUS_ERR_PERM);
     req.incarnation_id=1; req.heartbeat_sequence=inst->heartbeat_sequence;
