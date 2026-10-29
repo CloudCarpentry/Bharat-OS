@@ -42,6 +42,7 @@ This index maps Bharat-OS architecture documentation to the current repository s
 - **Memory:** `memory/`
 - **Storage:** `storage/`
 - **Security & crypto:** `security/`
+- **IPC & Capability Verification:** [`ipc-receive-envelope-architecture.md`](ipc-receive-envelope-architecture.md), [`p0-ipc-envelope-proposal.md`](p0-ipc-envelope-proposal.md)
 - **Network:** `network/`
 - **Personalities & compat layers:** `core/personalities/`
 - **Embedded Board Support & Linkers:** [`embedded-board-support-framework.md`](embedded-board-support-framework.md)
