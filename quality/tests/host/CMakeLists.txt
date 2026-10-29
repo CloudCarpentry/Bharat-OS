@@ -358,7 +358,7 @@ add_test(NAME host_test_vmm_fault COMMAND host_test_vmm_fault)
 set_tests_properties(host_test_vmm_fault PROPERTIES LABELS "vm")
 
 add_executable(test_uapi_abi test_uapi_abi.c)
-target_include_directories(test_uapi_abi PRIVATE ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/interface/uapi)
+target_include_directories(test_uapi_abi PRIVATE ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/interface/uapi ${CMAKE_BINARY_DIR}/generated/include)
 
 add_executable(host_test_syscall_return_x86_64
     syscall/test_syscall_extract_x86_64.c

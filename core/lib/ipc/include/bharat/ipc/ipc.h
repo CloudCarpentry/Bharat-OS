@@ -47,6 +47,17 @@ int32_t bharat_ipc_recv_ex(bharat_ipc_endpoint_t endpoint,
                            void *payload_buf,
                            uint32_t max_size,
                            uint64_t timeout_ticks);
+int32_t bharat_ipc_recv_envelope(bharat_ipc_endpoint_t endpoint,
+                                 bharat_ipc_msg_header_t *header,
+                                 void *payload_buf,
+                                 uint32_t max_size,
+                                 bh_ipc_receive_envelope_v1_t *out_envelope);
+int32_t bharat_ipc_recv_envelope_ex(bharat_ipc_endpoint_t endpoint,
+                                    bharat_ipc_msg_header_t *header,
+                                    void *payload_buf,
+                                    uint32_t max_size,
+                                    uint64_t timeout_ticks,
+                                    bh_ipc_receive_envelope_v1_t *out_envelope);
 int32_t bharat_ipc_call_ex(bharat_ipc_endpoint_t endpoint,
                            const bharat_ipc_msg_header_t *req_header,
                            const void *req_payload,

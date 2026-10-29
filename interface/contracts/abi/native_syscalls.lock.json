@@ -4,7 +4,7 @@
   "generated_sha256": {
     "numbers": "635432de692cc6c5895d33822f26130a10ef6bac69842288a4acd022870b5f9e",
     "table_def": "d75d3cac63dad239b98338dacbfd3316dddc852c860ad6f781df5aaef2ff042f",
-    "metadata_table": "27ec0395030a6c6df2c2151f502fcf8346dff48363aa052189f549dbf31ec8cf"
+    "metadata_table": "78d57cd0cbe7007b648ed0f9f6691620cf7b705eba2b52408d5b5c07b0fbc09e"
   },
   "syscalls": [
     {
@@ -229,6 +229,12 @@
           "kind": "user_struct",
           "type": "bh_endpoint_recv_args_t",
           "direction": "out"
+        },
+        {
+          "name": "selector",
+          "kind": "scalar",
+          "type": "uint32_t",
+          "direction": "in"
         }
       ],
       "capability": {

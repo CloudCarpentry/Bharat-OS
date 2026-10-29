@@ -45,6 +45,11 @@ long bharat_ipc_transport_receive(uint32_t recv_cap, void *out_payload, uint32_t
     return ipc_endpoint_receive(recv_cap, out_payload, out_capacity, out_len, timeout_ticks, NULL);
 }
 
+__attribute__((weak))
+long bharat_ipc_transport_receive_envelope(uint32_t recv_cap, void *out_payload, uint32_t out_capacity, uint32_t *out_len, uint64_t timeout_ticks, bh_ipc_receive_envelope_v1_t *out_envelope) {
+    return ipc_endpoint_receive_envelope(recv_cap, out_payload, out_capacity, out_len, timeout_ticks, out_envelope);
+}
+
 static int32_t ipc_status_from_kernel(long status) {
     /* Endpoint syscalls return the native bh_status_t namespace, after the
      * kernel translates its internal IPC result. Never decode raw IPC enums. */
@@ -80,6 +85,14 @@ int32_t bharat_ipc_send(bharat_ipc_endpoint_t endpoint, const bharat_ipc_msg_hea
 
 int32_t bharat_ipc_recv(bharat_ipc_endpoint_t endpoint, bharat_ipc_msg_header_t *header, void *payload_buf, uint32_t max_size) {
     return bharat_ipc_recv_ex(endpoint, header, payload_buf, max_size, UINT64_MAX);
+}
+
+int32_t bharat_ipc_recv_envelope(bharat_ipc_endpoint_t endpoint,
+                                 bharat_ipc_msg_header_t *header,
+                                 void *payload_buf,
+                                 uint32_t max_size,
+                                 bh_ipc_receive_envelope_v1_t *out_envelope) {
+    return bharat_ipc_recv_envelope_ex(endpoint, header, payload_buf, max_size, UINT64_MAX, out_envelope);
 }
 
 int32_t bharat_ipc_call(bharat_ipc_endpoint_t endpoint, const bharat_ipc_msg_header_t *req_header, const void *req_payload,
@@ -156,6 +169,50 @@ int32_t bharat_ipc_recv_ex(bharat_ipc_endpoint_t endpoint,
 
     /* These wire integers are attacker controlled, even if a cap was sent.
      * Only a future versioned kernel envelope may supply local authority. */
+    msg.header.capability_transfer = 0U;
+    msg.header.reply_endpoint = 0U;
+    *header = msg.header;
+
+    if (msg.header.payload_size > 0U) {
+        memcpy(payload_buf, msg.payload, msg.header.payload_size);
+    }
+    return BHARAT_IPC_STATUS_OK;
+}
+
+int32_t bharat_ipc_recv_envelope_ex(bharat_ipc_endpoint_t endpoint,
+                                    bharat_ipc_msg_header_t *header,
+                                    void *payload_buf,
+                                    uint32_t max_size,
+                                    uint64_t timeout_ticks,
+                                    bh_ipc_receive_envelope_v1_t *out_envelope) {
+    bharat_ipc_wire_msg_t msg = {0};
+    uint32_t recv_len = 0;
+    long st;
+
+    if (!header || (!payload_buf && max_size > 0U) || !out_envelope) {
+        return BHARAT_IPC_STATUS_ERR_DECODE;
+    }
+
+    st = bharat_ipc_transport_receive_envelope(endpoint, &msg, sizeof(msg), &recv_len, timeout_ticks, out_envelope);
+    if (st != 0) {
+        return ipc_status_from_kernel(st);
+    }
+    if (recv_len < sizeof(bharat_ipc_msg_header_t)) {
+        return BHARAT_IPC_STATUS_ERR_DECODE;
+    }
+    int32_t header_st = ipc_check_header(&msg.header);
+    if (header_st != BHARAT_IPC_STATUS_OK) {
+        return header_st;
+    }
+    if ((sizeof(msg.header) + msg.header.payload_size) != recv_len) {
+        return BHARAT_IPC_STATUS_ERR_LENGTH;
+    }
+    if (msg.header.payload_size > max_size) {
+        return BHARAT_IPC_STATUS_ERR_TRUNCATED;
+    }
+
+    /* Wire integers are untrusted payload metadata. Real transferred handles
+     * and provenance reside in out_envelope. */
     msg.header.capability_transfer = 0U;
     msg.header.reply_endpoint = 0U;
     *header = msg.header;

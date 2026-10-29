@@ -9,6 +9,7 @@
 #include <bharat/uapi/sys_errno.h>
 #include <bharat/uapi/service_status.h>
 #include <bharat/memory/hmem.h>
+#include <bharat/uapi/ipc/envelope.h>
 
 #if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L)
 #define STATIC_ASSERT _Static_assert
@@ -55,6 +56,38 @@ STATIC_ASSERT(offsetof(bh_hmem_create_args_t, resource_cap) == 104, "hmem_create
 STATIC_ASSERT(offsetof(bharat_sys_endpoint_send_args_t, payload_ptr) == 8, "endpoint_send layout drift");
 STATIC_ASSERT(offsetof(bharat_sys_endpoint_receive_args_t, out_len_ptr) == 16, "endpoint_receive layout drift");
 STATIC_ASSERT(offsetof(bharat_sys_cap_delegate_args_t, out_cap_ptr) == 16, "cap_delegate layout drift");
+
+STATIC_ASSERT(sizeof(bharat_sys_endpoint_receive_v1_args_t) == 64, "endpoint_receive_v1 abi drift");
+STATIC_ASSERT(offsetof(bharat_sys_endpoint_receive_v1_args_t, version) == 0, "endpoint_receive_v1 layout drift");
+STATIC_ASSERT(offsetof(bharat_sys_endpoint_receive_v1_args_t, struct_size) == 4, "endpoint_receive_v1 layout drift");
+STATIC_ASSERT(offsetof(bharat_sys_endpoint_receive_v1_args_t, flags) == 8, "endpoint_receive_v1 layout drift");
+STATIC_ASSERT(offsetof(bharat_sys_endpoint_receive_v1_args_t, recv_cap) == 12, "endpoint_receive_v1 layout drift");
+STATIC_ASSERT(offsetof(bharat_sys_endpoint_receive_v1_args_t, out_payload_capacity) == 16, "endpoint_receive_v1 layout drift");
+STATIC_ASSERT(offsetof(bharat_sys_endpoint_receive_v1_args_t, out_envelope_capacity) == 20, "endpoint_receive_v1 layout drift");
+STATIC_ASSERT(offsetof(bharat_sys_endpoint_receive_v1_args_t, out_payload_ptr) == 24, "endpoint_receive_v1 layout drift");
+STATIC_ASSERT(offsetof(bharat_sys_endpoint_receive_v1_args_t, out_len_ptr) == 32, "endpoint_receive_v1 layout drift");
+STATIC_ASSERT(offsetof(bharat_sys_endpoint_receive_v1_args_t, timeout_ticks) == 40, "endpoint_receive_v1 layout drift");
+STATIC_ASSERT(offsetof(bharat_sys_endpoint_receive_v1_args_t, out_envelope_ptr) == 48, "endpoint_receive_v1 layout drift");
+STATIC_ASSERT(offsetof(bharat_sys_endpoint_receive_v1_args_t, reserved0) == 56, "endpoint_receive_v1 layout drift");
+
+STATIC_ASSERT(sizeof(bh_ipc_receive_envelope_v1_t) == 96, "receive envelope v1 abi drift");
+STATIC_ASSERT(offsetof(bh_ipc_receive_envelope_v1_t, version) == 0, "receive envelope layout drift");
+STATIC_ASSERT(offsetof(bh_ipc_receive_envelope_v1_t, struct_size) == 4, "receive envelope layout drift");
+STATIC_ASSERT(offsetof(bh_ipc_receive_envelope_v1_t, valid_fields) == 8, "receive envelope layout drift");
+STATIC_ASSERT(offsetof(bh_ipc_receive_envelope_v1_t, sender_pid) == 16, "receive envelope layout drift");
+STATIC_ASSERT(offsetof(bh_ipc_receive_envelope_v1_t, sender_process_object_id) == 24, "receive envelope layout drift");
+STATIC_ASSERT(offsetof(bh_ipc_receive_envelope_v1_t, boot_session_id) == 32, "receive envelope layout drift");
+STATIC_ASSERT(offsetof(bh_ipc_receive_envelope_v1_t, service_incarnation_id) == 40, "receive envelope layout drift");
+STATIC_ASSERT(offsetof(bh_ipc_receive_envelope_v1_t, sender_cspace_id) == 48, "receive envelope layout drift");
+STATIC_ASSERT(offsetof(bh_ipc_receive_envelope_v1_t, sender_owner_core) == 52, "receive envelope layout drift");
+STATIC_ASSERT(offsetof(bh_ipc_receive_envelope_v1_t, authority_cap) == 56, "receive envelope layout drift");
+STATIC_ASSERT(offsetof(bh_ipc_receive_envelope_v1_t, reply_send_cap) == 60, "receive envelope layout drift");
+STATIC_ASSERT(offsetof(bh_ipc_receive_envelope_v1_t, authority_object_type) == 64, "receive envelope layout drift");
+STATIC_ASSERT(offsetof(bh_ipc_receive_envelope_v1_t, reserved0) == 68, "receive envelope layout drift");
+STATIC_ASSERT(offsetof(bh_ipc_receive_envelope_v1_t, authority_rights) == 72, "receive envelope layout drift");
+STATIC_ASSERT(offsetof(bh_ipc_receive_envelope_v1_t, message_id) == 80, "receive envelope layout drift");
+STATIC_ASSERT(offsetof(bh_ipc_receive_envelope_v1_t, delivery_generation) == 88, "receive envelope layout drift");
+
 
 STATIC_ASSERT(SYS_EINVAL == 22, "sys errno drift");
 STATIC_ASSERT(SYS_ENOSYS == 38, "sys errno drift");
