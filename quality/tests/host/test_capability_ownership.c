@@ -272,7 +272,7 @@ void test_level2_service_authorization(void) {
     };
 
     uint32_t vm_cap = 0;
-    cap_table_grant(table, CAP_TYPE_MEMORY, 42, CAP_RIGHT_MEMORY_UNMAP, &vm_cap);
+    assert(cap_table_grant(table, CAP_TYPE_VM_SPACE, 42, CAP_RIGHT_VMM_MANAGE, &vm_cap) == 0);
 
     int32_t status = bharat_service_dispatch_authorize(
         0x00010001, VM_OP_MAP, vm_manager_authz_descs, 1, vm_cap, 42

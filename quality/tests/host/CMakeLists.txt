@@ -153,11 +153,10 @@ add_executable(test_capability_ownership
     ${CMAKE_SOURCE_DIR}/core/kernel/src/ds/bh_id_allocator.c
     ${CMAKE_SOURCE_DIR}/core/lib/cap/src/cap_validate.c
     ${CMAKE_SOURCE_DIR}/core/lib/cap/src/cap_authz.c
-    ${CMAKE_SOURCE_DIR}/core/kernel/src/lib/base/string.c
-    ${CMAKE_SOURCE_DIR}/core/kernel/src/time/ktime.c
 )
 
 target_include_directories(test_capability_ownership PRIVATE
+    ${CMAKE_SOURCE_DIR}/core/personalities/runtime/include
     ${CMAKE_SOURCE_DIR}/core/kernel/include
     ${CMAKE_SOURCE_DIR}/core/hal/include
     ${CMAKE_SOURCE_DIR}/core/lib/include
