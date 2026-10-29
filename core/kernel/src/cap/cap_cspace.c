@@ -6,6 +6,11 @@ bh_cap_cspace_registry_entry_t
 capability_table_t g_cap_bootstrap_cspaces[MAX_CPUS];
 bool g_cap_bootstrap_cspaces_used[MAX_CPUS];
 
+/* Owner-local registry lifetime serialization. Lock order is registry -> CSpace
+ * locks in cap_lock_two_tables order. Never enter remote delegation while held.
+ * IRQ masking prevents an owner-core teardown from preempting a local install. */
+static spinlock_t g_cap_registry_lifetime_lock[MAX_CPUS];
+
 bh_cap_tx_entry_t g_cap_tx_table[MAX_CPUS][BH_CAP_TX_PER_CORE];
 spinlock_t g_cap_tx_lock[MAX_CPUS];
 
@@ -103,53 +108,69 @@ capability_table_t* cap_table_create(void) {
         return NULL;
     }
 
-    for (size_t i = 0; i < BH_CAP_CSPACES_PER_CORE; ++i) {
-        bh_cap_cspace_registry_entry_t *registered =
+    /* Reserve before allocation, which may be preempted or re-enter CSpace
+     * creation. No allocator operation occurs while holding the registry lock. */
+    uint32_t slot = BH_CAP_CSPACES_PER_CORE;
+    uint32_t generation = 0U;
+    hal_irq_state_t irq_state;
+    spin_lock_irqsave(&g_cap_registry_lifetime_lock[owner_core], &irq_state);
+    for (uint32_t i = 0U; i < BH_CAP_CSPACES_PER_CORE; ++i) {
+        bh_cap_cspace_registry_entry_t *entry =
             &g_cap_cspace_registry[owner_core][i];
-        if (registered->table == NULL) {
-            capability_table_t *t = kmalloc(sizeof(*t));
-            if (t == NULL) {
-                if (g_cap_bootstrap_cspaces_used[owner_core]) {
-                    return NULL;
-                }
-                t = &g_cap_bootstrap_cspaces[owner_core];
-                g_cap_bootstrap_cspaces_used[owner_core] = true;
-                registered->uses_bootstrap_storage = true;
-            } else {
-                registered->uses_bootstrap_storage = false;
-            }
-            memset(t, 0, sizeof(*t));
-            registered->generation++;
-            if (registered->generation == 0U) {
-                registered->generation = 1U;
-            }
-            spin_lock_init(&t->lock);
-            bh_id_allocator_init(&t->id_allocator, t->id_bitmap, BHARAT_ARRAY_SIZE(t->entries));
-            t->numa_node = 0U; // Placeholder, would be set to actual node in full implementation
-            t->cspace_id = cap_cspace_id_make(owner_core, (uint32_t)i,
-                                               registered->generation);
-            t->owner_core = (uint16_t)owner_core;
-            t->registry_slot = (uint16_t)i;
-            t->owner_pid = 0U;
-            /*@
-              loop invariant 0 <= j <= BHARAT_ARRAY_SIZE(t->entries);
-              loop assigns j, t->entries[0..BHARAT_ARRAY_SIZE(t->entries)-1].in_use;
-              loop variant BHARAT_ARRAY_SIZE(t->entries) - j;
-            */
-            for (size_t j = 0; j < BHARAT_ARRAY_SIZE(t->entries); ++j) {
-                t->entries[j].in_use = 0U;
-                t->entries[j].parent = cap_locator_null();
-                t->entries[j].first_child = cap_locator_null();
-                t->entries[j].next_sibling = cap_locator_null();
-            }
-            /* Publish only after the complete CSpace has been initialized. */
-            registered->table = t;
-            bharat_cap_register_authority_resolver(kernel_cap_authority_resolver);
-            return t;
+        /* Retire slots rather than wrap identity while old locators survive. */
+        if (entry->table == NULL && !entry->reserved &&
+            entry->generation < BH_CAP_CSPACE_GENERATION_MAX) {
+            entry->reserved = true;
+            generation = ++entry->generation;
+            slot = i;
+            break;
+        }
+    }
+    spin_unlock_irqrestore(&g_cap_registry_lifetime_lock[owner_core], irq_state);
+    if (slot == BH_CAP_CSPACES_PER_CORE) {
+        return NULL;
+    }
+
+    capability_table_t *table = kmalloc(sizeof(*table));
+    bool bootstrap_storage = false;
+    if (table == NULL) {
+        spin_lock_irqsave(&g_cap_registry_lifetime_lock[owner_core], &irq_state);
+        if (!g_cap_bootstrap_cspaces_used[owner_core]) {
+            g_cap_bootstrap_cspaces_used[owner_core] = true;
+            bootstrap_storage = true;
+            table = &g_cap_bootstrap_cspaces[owner_core];
+        }
+        spin_unlock_irqrestore(&g_cap_registry_lifetime_lock[owner_core], irq_state);
+        if (table == NULL) {
+            spin_lock_irqsave(&g_cap_registry_lifetime_lock[owner_core], &irq_state);
+            g_cap_cspace_registry[owner_core][slot].reserved = false;
+            spin_unlock_irqrestore(&g_cap_registry_lifetime_lock[owner_core], irq_state);
+            return NULL;
         }
     }
 
-    return NULL;
+    memset(table, 0, sizeof(*table));
+    spin_lock_init(&table->lock);
+    bh_id_allocator_init(&table->id_allocator, table->id_bitmap,
+                          BHARAT_ARRAY_SIZE(table->entries));
+    table->cspace_id = cap_cspace_id_make(owner_core, slot, generation);
+    table->owner_core = (uint16_t)owner_core;
+    table->registry_slot = (uint16_t)slot;
+    for (size_t i = 0U; i < BHARAT_ARRAY_SIZE(table->entries); ++i) {
+        table->entries[i].parent = cap_locator_null();
+        table->entries[i].first_child = cap_locator_null();
+        table->entries[i].next_sibling = cap_locator_null();
+    }
+
+    spin_lock_irqsave(&g_cap_registry_lifetime_lock[owner_core], &irq_state);
+    bh_cap_cspace_registry_entry_t *entry =
+        &g_cap_cspace_registry[owner_core][slot];
+    entry->uses_bootstrap_storage = bootstrap_storage;
+    entry->table = table;
+    entry->reserved = false;
+    spin_unlock_irqrestore(&g_cap_registry_lifetime_lock[owner_core], irq_state);
+    bharat_cap_register_authority_resolver(kernel_cap_authority_resolver);
+    return table;
 }
 
 int cap_table_init_for_process(bh_process_t* proc) {
@@ -171,18 +192,30 @@ void cap_table_destroy(capability_table_t* table) {
     if (!table) return;
     uint32_t owner_core = table->owner_core;
     uint32_t slot = table->registry_slot;
-    if (owner_core >= MAX_CPUS || slot >= BH_CAP_CSPACES_PER_CORE ||
-        g_cap_cspace_registry[owner_core][slot].table != table) {
+    if (owner_core >= MAX_CPUS || slot >= BH_CAP_CSPACES_PER_CORE) {
         return;
     }
-    /* Owner-local unpublish makes all old locators fail before storage release. */
+    if (owner_core != hal_cpu_get_id()) {
+        return; /* CSpace teardown is an owner-core operation. */
+    }
+    hal_irq_state_t irq_state;
+    spin_lock_irqsave(&g_cap_registry_lifetime_lock[owner_core], &irq_state);
     bh_cap_cspace_registry_entry_t *registered =
         &g_cap_cspace_registry[owner_core][slot];
+    if (registered->table != table) {
+        spin_unlock_irqrestore(&g_cap_registry_lifetime_lock[owner_core], irq_state);
+        return;
+    }
+    /* No pending IPC locator can resolve after this unpublish. Local transfer
+     * installation holds this lock until it has finished using source storage. */
     registered->table = NULL;
-    if (registered->uses_bootstrap_storage) {
+    bool bootstrap_storage = registered->uses_bootstrap_storage;
+    if (bootstrap_storage) {
         g_cap_bootstrap_cspaces_used[owner_core] = false;
         registered->uses_bootstrap_storage = false;
-    } else {
+    }
+    spin_unlock_irqrestore(&g_cap_registry_lifetime_lock[owner_core], irq_state);
+    if (!bootstrap_storage) {
         kfree(table);
     }
 }
@@ -309,7 +342,8 @@ static int cap_table_delegate_local(capability_table_t* src,
                                     capability_table_t* dst,
                                     uint32_t cap_id,
                                     uint64_t delegated_rights,
-                                    uint32_t* out_new_cap_id) {
+                                    uint32_t* out_new_cap_id,
+                                    const bh_cap_locator_t *expected) {
     cap_lock_two_tables(src, dst);
 
     int ret = -2;
@@ -333,7 +367,10 @@ static int cap_table_delegate_local(capability_table_t* src,
         }
     }
 
-    if (!src_entry) {
+    if (!src_entry || (expected != NULL &&
+        (src_slot_idx != expected->slot ||
+         src_entry->generation != expected->generation ||
+         src_entry->revocation_epoch != expected->revocation_epoch))) {
         ret = -51;
     } else if ((src_entry->rights & CAP_RIGHT_DELEGATE) == 0U) {
         ret = -52;
@@ -415,7 +452,7 @@ int cap_table_delegate(capability_table_t* src,
         return -6;
     }
     if (target_core == current_core) {
-        return cap_table_delegate_local(src, dst, cap_id, delegated_rights, out_new_cap_id);
+        return cap_table_delegate_local(src, dst, cap_id, delegated_rights, out_new_cap_id, NULL);
     }
     if (urpc_channel_get_state(target_core) != URPC_CHANNEL_BOUND) {
         return -6;
@@ -556,4 +593,76 @@ int cap_table_delegate(capability_table_t* src,
 
     cap_tx_release(current_core, tx_slot);
     return ret;
+}
+
+/* These helpers intentionally do not use the distributed delegation path: a
+ * receiver cannot dereference a foreign owner's CSpace, and pending messages
+ * must not pin an arbitrary sender process indefinitely. */
+kstatus_t bh_cap_transfer_capture(capability_table_t *table, uint32_t cap_id,
+                                   cap_rights_mask_t rights,
+                                   bh_cap_locator_t *out_locator) {
+    if (table == NULL || out_locator == NULL || rights == CAP_RIGHT_NONE) {
+        return K_ERR_INVALID_ARG;
+    }
+    *out_locator = cap_locator_null();
+    uint32_t core = hal_cpu_get_id();
+    if (core >= MAX_CPUS || table->owner_core != core ||
+        table->registry_slot >= BH_CAP_CSPACES_PER_CORE) {
+        return K_ERR_CAP_OWNERSHIP;
+    }
+    hal_irq_state_t irq_state;
+    spin_lock_irqsave(&g_cap_registry_lifetime_lock[core], &irq_state);
+    kstatus_t result = K_ERR_CAP_STALE;
+    if (g_cap_cspace_registry[core][table->registry_slot].table == table &&
+        table->cspace_id != 0U) {
+        spin_lock(&table->lock);
+        for (uint32_t i = 0; i < BHARAT_ARRAY_SIZE(table->entries); ++i) {
+            capability_entry_t *entry = &table->entries[i];
+            if (entry->in_use != 0U && entry->id == bh_cap_index(cap_id) &&
+                bh_cap_generation_matches(entry->generation, bh_cap_generation(cap_id)) &&
+                entry->state == CAP_STATE_LIVE &&
+                (entry->rights & CAP_RIGHT_DELEGATE) != 0U &&
+                cap_can_transfer(entry->type, entry->rights, rights)) {
+                *out_locator = cap_locator_make(table, i, entry->generation,
+                                                (uint32_t)entry->revocation_epoch);
+                result = K_OK;
+                break;
+            }
+        }
+        spin_unlock(&table->lock);
+    }
+    spin_unlock_irqrestore(&g_cap_registry_lifetime_lock[core], irq_state);
+    return result;
+}
+
+kstatus_t bh_cap_transfer_install(const bh_cap_locator_t *locator,
+                                   capability_table_t *destination,
+                                   cap_rights_mask_t rights,
+                                   uint32_t *out_cap_id) {
+    if (locator == NULL || destination == NULL || out_cap_id == NULL ||
+        rights == CAP_RIGHT_NONE) {
+        return K_ERR_INVALID_ARG;
+    }
+    *out_cap_id = 0U;
+    uint32_t core = hal_cpu_get_id();
+    if (core >= MAX_CPUS || locator->owner_core != core ||
+        destination->owner_core != core) {
+        return K_ERR_IPC_CROSS_CORE;
+    }
+    hal_irq_state_t irq_state;
+    spin_lock_irqsave(&g_cap_registry_lifetime_lock[core], &irq_state);
+    capability_table_t *source = cap_locator_resolve_table(locator);
+    kstatus_t result = K_ERR_CAP_STALE;
+    if (source != NULL && locator->slot < BHARAT_ARRAY_SIZE(source->entries) &&
+        destination->registry_slot < BH_CAP_CSPACES_PER_CORE &&
+        g_cap_cspace_registry[core][destination->registry_slot].table == destination) {
+        uint32_t cap_id = (uint32_t)(locator->slot + 1U) |
+                          (locator->generation << BH_CAP_GEN_SHIFT);
+        int delegated = cap_table_delegate_local(source, destination, cap_id,
+                                                 rights, out_cap_id, locator);
+        result = delegated == 0 ? K_OK :
+                 delegated == -2 ? K_ERR_NO_RESOURCES : K_ERR_CAP_STALE;
+    }
+    spin_unlock_irqrestore(&g_cap_registry_lifetime_lock[core], irq_state);
+    return result;
 }

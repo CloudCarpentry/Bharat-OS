@@ -27,14 +27,17 @@ typedef bharat_ipc_contract_header_t bharat_ipc_msg_header_t;
 /* IPC Send Request Stub */
 int32_t bharat_ipc_send(bharat_ipc_endpoint_t endpoint, const bharat_ipc_msg_header_t *header, const void *payload);
 
-/* IPC Receive Request Stub */
+/* V1 data receive: wire authority/reply integers are cleared. Capability
+ * transfers are discarded by the kernel and rejected as unsupported. */
 int32_t bharat_ipc_recv(bharat_ipc_endpoint_t endpoint, bharat_ipc_msg_header_t *header, void *payload_buf, uint32_t max_size);
 
-/* IPC Request-Reply Stub */
+/* V1 RPC is unsupported until authenticated reply provenance and capability/
+ * endpoint release exist. It allocates no resources and leaves outputs intact. */
 int32_t bharat_ipc_call(bharat_ipc_endpoint_t endpoint, const bharat_ipc_msg_header_t *req_header, const void *req_payload,
                         bharat_ipc_msg_header_t *rep_header, void *rep_payload_buf, uint32_t rep_max_size);
 
-/* Extended timeout-aware APIs (ticks, UINT64_MAX means wait forever). */
+/* Extended timeout-aware APIs (scheduler ticks, UINT64_MAX waits forever,
+ * zero polls). These units are not TIME_GET monotonic nanoseconds. */
 int32_t bharat_ipc_send_ex(bharat_ipc_endpoint_t endpoint,
                            const bharat_ipc_msg_header_t *header,
                            const void *payload,

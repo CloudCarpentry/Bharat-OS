@@ -727,249 +727,53 @@ bharat_status_t bh_vm_handle_query_v1(const bh_vm_query_request_v1_t *req, bh_vm
 // IPC Dispatch Loop for versioned UAPI
 // -----------------------------------------------------------------------------
 
+/* The V1 transport has no authenticated sender or independent authority/reply
+ * envelope. Keep the wire boundary closed, even if a local test adapter has
+ * installed working VM operations. Internal handlers are not RPC entrypoints. */
+bharat_status_t bh_vm_manager_poll_once(bharat_ipc_endpoint_t endpoint) {
+    bharat_ipc_msg_header_t header = {0};
+    uint8_t payload[512] = {0};
+    int32_t status = bharat_ipc_recv(endpoint, &header, payload, sizeof(payload));
+    if (status != BHARAT_IPC_STATUS_OK) return status;
+    if (header.header_version != BHARAT_IPC_HEADER_VERSION_V1)
+        return BHARAT_IPC_STATUS_ERR_VERSION;
+    if (header.service_id != VM_MANAGER_SERVICE_ID ||
+        header.flags & ~BHARAT_IPC_FLAG_NONBLOCK)
+        return BHARAT_IPC_STATUS_ERR_INVALID;
+
+    size_t expected = 0;
+    if (header.interface_version == BH_VM_INTERFACE_VERSION_V1) {
+        switch (header.opcode) {
+        case BH_VM_OP_CREATE_SPACE_V1: expected = sizeof(bh_vm_create_space_request_v1_t); break;
+        case BH_VM_OP_DESTROY_SPACE_V1: expected = sizeof(bh_vm_destroy_space_request_v1_t); break;
+        case BH_VM_OP_MAP_V1: expected = sizeof(bh_vm_map_request_v1_t); break;
+        case BH_VM_OP_UNMAP_V1: expected = sizeof(bh_vm_unmap_request_v1_t); break;
+        case BH_VM_OP_PROTECT_V1: expected = sizeof(bh_vm_protect_request_v1_t); break;
+        case BH_VM_OP_QUERY_V1: expected = sizeof(bh_vm_query_request_v1_t); break;
+        default: return BHARAT_IPC_STATUS_ERR_OPCODE;
+        }
+    } else if (header.interface_version == 0U) {
+        switch (header.opcode) {
+        case VM_OP_MAP: expected = sizeof(vm_req_map_t); break;
+        case VM_OP_UNMAP: expected = sizeof(vm_req_unmap_t); break;
+        case VM_OP_PROTECT: expected = sizeof(vm_req_protect_t); break;
+        case VM_OP_QUERY: expected = sizeof(vm_req_query_t); break;
+        case VM_OP_FAULT: expected = sizeof(vm_req_fault_t); break;
+        default: return BHARAT_IPC_STATUS_ERR_OPCODE;
+        }
+    } else {
+        return BHARAT_IPC_STATUS_ERR_VERSION;
+    }
+    if (header.payload_size != expected) return BHARAT_IPC_STATUS_ERR_LENGTH;
+
+    /* Neither serialized integer is authority. Do not call authorize(), mutate
+     * VM state, or send any response until the kernel delivers a separate,
+     * revoke-safe authority and receiver-local reply SEND capability. */
+    return BHARAT_IPC_STATUS_ERR_PERM;
+}
+
 void vm_manager_loop(bharat_ipc_endpoint_t endpoint) {
-    bharat_ipc_msg_header_t req_header;
-    bharat_ipc_msg_header_t resp_header;
-    uint8_t payload_buf[512];
-    uint8_t resp_payload_buf[512];
-
     while (true) {
-        int32_t recv_status = bharat_ipc_recv(endpoint, &req_header, payload_buf, sizeof(payload_buf));
-        if (recv_status < 0) {
-            continue;
-        }
-
-        if (req_header.service_id != VM_MANAGER_SERVICE_ID) {
-            continue;
-        }
-
-        resp_header.service_id = req_header.service_id;
-        resp_header.interface_id = req_header.interface_id;
-        resp_header.interface_version = req_header.interface_version;
-        resp_header.opcode = req_header.opcode;
-        resp_header.message_id = req_header.message_id;
-
-        int32_t dispatch_status = BHARAT_IPC_STATUS_ERR_OPCODE;
-        uint32_t resp_size = 0;
-
-        // Route between legacy v0 and modern v1 interface versions
-        if (req_header.interface_version == BH_VM_INTERFACE_VERSION_V1) {
-            switch (req_header.opcode) {
-                case BH_VM_OP_CREATE_SPACE_V1: {
-                    if (req_header.payload_size >= sizeof(bh_vm_create_space_request_v1_t)) {
-                        const bh_vm_create_space_request_v1_t *req = (const bh_vm_create_space_request_v1_t *)payload_buf;
-                        bh_vm_create_space_response_v1_t *resp = (bh_vm_create_space_response_v1_t *)resp_payload_buf;
-                        int32_t auth_status = vm_manager_authorize(req_header.opcode, req, req_header.capability_transfer);
-                        if (auth_status != BHARAT_IPC_STATUS_OK) {
-                            resp->status = auth_status;
-                            dispatch_status = auth_status;
-                            resp_size = sizeof(bh_vm_create_space_response_v1_t);
-                            break;
-                        }
-                        dispatch_status = bh_vm_handle_create_space_v1(req, resp);
-                        resp_size = sizeof(bh_vm_create_space_response_v1_t);
-                    } else {
-                        dispatch_status = BHARAT_IPC_STATUS_ERR_LENGTH;
-                    }
-                    break;
-                }
-                case BH_VM_OP_DESTROY_SPACE_V1: {
-                    if (req_header.payload_size >= sizeof(bh_vm_destroy_space_request_v1_t)) {
-                        const bh_vm_destroy_space_request_v1_t *req = (const bh_vm_destroy_space_request_v1_t *)payload_buf;
-                        bh_vm_destroy_space_response_v1_t *resp = (bh_vm_destroy_space_response_v1_t *)resp_payload_buf;
-                        int32_t auth_status = vm_manager_authorize(req_header.opcode, req, req_header.capability_transfer);
-                        if (auth_status != BHARAT_IPC_STATUS_OK) {
-                            resp->status = auth_status;
-                            dispatch_status = auth_status;
-                            resp_size = sizeof(bh_vm_destroy_space_response_v1_t);
-                            break;
-                        }
-                        dispatch_status = bh_vm_handle_destroy_space_v1(req, resp);
-                        resp_size = sizeof(bh_vm_destroy_space_response_v1_t);
-                    } else {
-                        dispatch_status = BHARAT_IPC_STATUS_ERR_LENGTH;
-                    }
-                    break;
-                }
-                case BH_VM_OP_MAP_V1: {
-                    if (req_header.payload_size >= sizeof(bh_vm_map_request_v1_t)) {
-                        const bh_vm_map_request_v1_t *req = (const bh_vm_map_request_v1_t *)payload_buf;
-                        bh_vm_map_response_v1_t *resp = (bh_vm_map_response_v1_t *)resp_payload_buf;
-                        int32_t auth_status = vm_manager_authorize(req_header.opcode, req, req_header.capability_transfer);
-                        if (auth_status != BHARAT_IPC_STATUS_OK) {
-                            resp->status = auth_status;
-                            dispatch_status = auth_status;
-                            resp_size = sizeof(bh_vm_map_response_v1_t);
-                            break;
-                        }
-                        dispatch_status = bh_vm_handle_map_v1(req, resp);
-                        resp_size = sizeof(bh_vm_map_response_v1_t);
-                    } else {
-                        dispatch_status = BHARAT_IPC_STATUS_ERR_LENGTH;
-                    }
-                    break;
-                }
-                case BH_VM_OP_UNMAP_V1: {
-                    if (req_header.payload_size >= sizeof(bh_vm_unmap_request_v1_t)) {
-                        const bh_vm_unmap_request_v1_t *req = (const bh_vm_unmap_request_v1_t *)payload_buf;
-                        bh_vm_unmap_response_v1_t *resp = (bh_vm_unmap_response_v1_t *)resp_payload_buf;
-                        int32_t auth_status = vm_manager_authorize(req_header.opcode, req, req_header.capability_transfer);
-                        if (auth_status != BHARAT_IPC_STATUS_OK) {
-                            resp->status = auth_status;
-                            dispatch_status = auth_status;
-                            resp_size = sizeof(bh_vm_unmap_response_v1_t);
-                            break;
-                        }
-                        dispatch_status = bh_vm_handle_unmap_v1(req, resp);
-                        resp_size = sizeof(bh_vm_unmap_response_v1_t);
-                    } else {
-                        dispatch_status = BHARAT_IPC_STATUS_ERR_LENGTH;
-                    }
-                    break;
-                }
-                case BH_VM_OP_PROTECT_V1: {
-                    if (req_header.payload_size >= sizeof(bh_vm_protect_request_v1_t)) {
-                        const bh_vm_protect_request_v1_t *req = (const bh_vm_protect_request_v1_t *)payload_buf;
-                        bh_vm_protect_response_v1_t *resp = (bh_vm_protect_response_v1_t *)resp_payload_buf;
-                        int32_t auth_status = vm_manager_authorize(req_header.opcode, req, req_header.capability_transfer);
-                        if (auth_status != BHARAT_IPC_STATUS_OK) {
-                            resp->status = auth_status;
-                            dispatch_status = auth_status;
-                            resp_size = sizeof(bh_vm_protect_response_v1_t);
-                            break;
-                        }
-                        dispatch_status = bh_vm_handle_protect_v1(req, resp);
-                        resp_size = sizeof(bh_vm_protect_response_v1_t);
-                    } else {
-                        dispatch_status = BHARAT_IPC_STATUS_ERR_LENGTH;
-                    }
-                    break;
-                }
-                case BH_VM_OP_QUERY_V1: {
-                    if (req_header.payload_size >= sizeof(bh_vm_query_request_v1_t)) {
-                        const bh_vm_query_request_v1_t *req = (const bh_vm_query_request_v1_t *)payload_buf;
-                        bh_vm_query_response_v1_t *resp = (bh_vm_query_response_v1_t *)resp_payload_buf;
-                        int32_t auth_status = vm_manager_authorize(req_header.opcode, req, req_header.capability_transfer);
-                        if (auth_status != BHARAT_IPC_STATUS_OK) {
-                            resp->status = auth_status;
-                            dispatch_status = auth_status;
-                            resp_size = sizeof(bh_vm_query_response_v1_t);
-                            break;
-                        }
-                        dispatch_status = bh_vm_handle_query_v1(req, resp);
-                        resp_size = sizeof(bh_vm_query_response_v1_t);
-                    } else {
-                        dispatch_status = BHARAT_IPC_STATUS_ERR_LENGTH;
-                    }
-                    break;
-                }
-                default:
-                    break;
-            }
-        } else {
-            // Legacy v0 interface
-            switch (req_header.opcode) {
-                case VM_OP_MAP: {
-                    if (req_header.payload_size >= sizeof(vm_req_map_t)) {
-                        vm_req_map_t *req = (vm_req_map_t*)payload_buf;
-                        vm_resp_map_t *resp = (vm_resp_map_t*)resp_payload_buf;
-                        int32_t auth_status = vm_manager_authorize(req_header.opcode, req, req_header.capability_transfer);
-                        if (auth_status != BHARAT_IPC_STATUS_OK) {
-                            resp->status = auth_status;
-                            dispatch_status = auth_status;
-                            resp_size = sizeof(vm_resp_map_t);
-                            break;
-                        }
-                        dispatch_status = vm_manager_handle_map(req, resp);
-                        resp_size = sizeof(vm_resp_map_t);
-                    } else {
-                        dispatch_status = BHARAT_IPC_STATUS_ERR_LENGTH;
-                    }
-                    break;
-                }
-                case VM_OP_UNMAP: {
-                    if (req_header.payload_size >= sizeof(vm_req_unmap_t)) {
-                        vm_req_unmap_t *req = (vm_req_unmap_t*)payload_buf;
-                        vm_resp_unmap_t *resp = (vm_resp_unmap_t*)resp_payload_buf;
-                        int32_t auth_status = vm_manager_authorize(req_header.opcode, req, req_header.capability_transfer);
-                        if (auth_status != BHARAT_IPC_STATUS_OK) {
-                            resp->status = auth_status;
-                            dispatch_status = auth_status;
-                            resp_size = sizeof(vm_resp_unmap_t);
-                            break;
-                        }
-                        dispatch_status = vm_manager_handle_unmap(req, resp);
-                        resp_size = sizeof(vm_resp_unmap_t);
-                    } else {
-                        dispatch_status = BHARAT_IPC_STATUS_ERR_LENGTH;
-                    }
-                    break;
-                }
-                case VM_OP_PROTECT: {
-                    if (req_header.payload_size >= sizeof(vm_req_protect_t)) {
-                        vm_req_protect_t *req = (vm_req_protect_t*)payload_buf;
-                        vm_resp_protect_t *resp = (vm_resp_protect_t*)resp_payload_buf;
-                        int32_t auth_status = vm_manager_authorize(req_header.opcode, req, req_header.capability_transfer);
-                        if (auth_status != BHARAT_IPC_STATUS_OK) {
-                            resp->status = auth_status;
-                            dispatch_status = auth_status;
-                            resp_size = sizeof(vm_resp_protect_t);
-                            break;
-                        }
-                        dispatch_status = vm_manager_handle_protect(req, resp);
-                        resp_size = sizeof(vm_resp_protect_t);
-                    } else {
-                        dispatch_status = BHARAT_IPC_STATUS_ERR_LENGTH;
-                    }
-                    break;
-                }
-                case VM_OP_QUERY: {
-                    if (req_header.payload_size >= sizeof(vm_req_query_t)) {
-                        vm_req_query_t *req = (vm_req_query_t*)payload_buf;
-                        vm_resp_query_t *resp = (vm_resp_query_t*)resp_payload_buf;
-                        int32_t auth_status = vm_manager_authorize(req_header.opcode, req, req_header.capability_transfer);
-                        if (auth_status != BHARAT_IPC_STATUS_OK) {
-                            resp->status = auth_status;
-                            dispatch_status = auth_status;
-                            resp_size = sizeof(vm_resp_query_t);
-                            break;
-                        }
-                        dispatch_status = vm_manager_handle_query(req, resp);
-                        resp_size = sizeof(vm_resp_query_t);
-                    } else {
-                        dispatch_status = BHARAT_IPC_STATUS_ERR_LENGTH;
-                    }
-                    break;
-                }
-                case VM_OP_FAULT: {
-                    if (req_header.payload_size >= sizeof(vm_req_fault_t)) {
-                        vm_req_fault_t *req = (vm_req_fault_t*)payload_buf;
-                        vm_resp_fault_t *resp = (vm_resp_fault_t*)resp_payload_buf;
-                        int32_t auth_status = vm_manager_authorize(req_header.opcode, req, req_header.capability_transfer);
-                        if (auth_status != BHARAT_IPC_STATUS_OK) {
-                            resp->action = -1;
-                            dispatch_status = auth_status;
-                            resp_size = sizeof(vm_resp_fault_t);
-                            break;
-                        }
-                        dispatch_status = vm_manager_handle_fault(req, resp);
-                        resp_size = sizeof(vm_resp_fault_t);
-                    } else {
-                        dispatch_status = BHARAT_IPC_STATUS_ERR_LENGTH;
-                    }
-                    break;
-                }
-                default:
-                    break;
-            }
-        }
-
-        resp_header.payload_size = resp_size;
-        resp_header.flags = dispatch_status;
-
-        if (req_header.reply_endpoint != 0) {
-            bharat_ipc_endpoint_t rep_ep = req_header.reply_endpoint;
-            bharat_ipc_send(rep_ep, &resp_header, resp_payload_buf);
-        }
+        (void)bh_vm_manager_poll_once(endpoint);
     }
 }

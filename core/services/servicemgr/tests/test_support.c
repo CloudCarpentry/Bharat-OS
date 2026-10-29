@@ -1,4 +1,5 @@
 #include "test_support.h"
+#include <ipc_user.h>
 #include <string.h>
 #include <stdlib.h>
 uint64_t test_now;
@@ -65,7 +66,18 @@ bh_servicemgr_t *test_setup(void) {
     return mgr;
 }
 void test_enqueue(uint32_t endpoint, const bharat_ipc_msg_header_t *header, const void *payload) {
-    assert(bharat_ipc_send(endpoint, header, payload) == 0);
+    /* Adversarial wire injection intentionally bypasses libipc's rejection of
+     * serialized authority/reply claims. Keep testing receiver denial, rather
+     * than requiring a production sender to construct an unsafe request. */
+    unsigned char wire[128] = {0};
+    assert(header != NULL && sizeof(*header) + header->payload_size <= sizeof(wire));
+    memcpy(wire, header, sizeof(*header));
+    if (header->payload_size != 0U) {
+        assert(payload != NULL);
+        memcpy(wire + sizeof(*header), payload, header->payload_size);
+    }
+    assert(ipc_endpoint_send(endpoint, wire, sizeof(*header) + header->payload_size,
+                             0, 0, 0) == 0);
 }
 void test_add_service(bool critical, uint32_t policy) {
     sm_req_register_t req = {.service_name="service1", .critical=critical, .restart_policy=policy};

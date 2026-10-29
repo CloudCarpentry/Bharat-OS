@@ -461,6 +461,25 @@ add_executable(test_process_manager test_process_manager.c ${CMAKE_SOURCE_DIR}/c
 target_include_directories(test_process_manager PRIVATE ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/lib/ipc/include ${CMAKE_SOURCE_DIR}/core/lib/cap/include ${CMAKE_SOURCE_DIR}/core/kernel/include)
 add_test(NAME host_test_process_manager COMMAND test_process_manager)
 
+# Denial-path coverage uses real service dispatch; transport is an adversarial fixture.
+add_executable(test_vm_ipc_boundary
+    test_vm_ipc_boundary.c
+    ${CMAKE_SOURCE_DIR}/core/services/vm_manager/vm_manager.c
+    ${CMAKE_SOURCE_DIR}/core/lib/handle/handle_table.c
+    ${CMAKE_SOURCE_DIR}/core/lib/cap/src/cap_validate.c
+    ${CMAKE_SOURCE_DIR}/core/lib/cap/src/cap_authz.c
+)
+target_include_directories(test_vm_ipc_boundary PRIVATE
+    ${CMAKE_SOURCE_DIR}/core/services/vm_manager
+    ${CMAKE_SOURCE_DIR}/interface/include
+    ${CMAKE_SOURCE_DIR}/interface
+    ${CMAKE_SOURCE_DIR}/core/lib/ipc/include
+    ${CMAKE_SOURCE_DIR}/core/lib/cap/include
+    ${CMAKE_SOURCE_DIR}/core/lib/handle
+)
+add_test(NAME host_test_vm_ipc_boundary COMMAND test_vm_ipc_boundary)
+set_tests_properties(host_test_vm_ipc_boundary PROPERTIES LABELS "ipc;security;p0;vm")
+
 add_executable(test_vm_manager test_vm_manager.c ${CMAKE_SOURCE_DIR}/core/services/vm_manager/vm_manager.c ${CMAKE_SOURCE_DIR}/core/lib/ipc/src/ipc.c)
 target_include_directories(test_vm_manager PRIVATE ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/lib/ipc/include ${CMAKE_SOURCE_DIR}/core/lib/cap/include ${CMAKE_SOURCE_DIR}/core/kernel/include)
 add_test(NAME host_test_vm_manager COMMAND test_vm_manager)
@@ -1165,3 +1184,32 @@ target_include_directories(host_test_sched_deadline_protocol PRIVATE
 target_compile_definitions(host_test_sched_deadline_protocol PRIVATE BHARAT_HOST_TEST=1)
 add_test(NAME host_test_sched_deadline_protocol COMMAND host_test_sched_deadline_protocol)
 set_tests_properties(host_test_sched_deadline_protocol PROPERTIES LABELS "scheduler")
+
+# Pending endpoint transfers exercise the actual CSpace/revocation boundary.
+add_executable(test_ipc_transfer_lifetime
+    test_ipc_transfer_lifetime.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/ipc/endpoint_ipc.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/cap/cap_cspace.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/cap/cap_dispatch.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/cap/cap_revoke.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/cap/cap_policy.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/ds/bh_id_allocator.c
+    ${CMAKE_SOURCE_DIR}/core/lib/cap/src/cap_validate.c
+)
+target_include_directories(test_ipc_transfer_lifetime PRIVATE
+    ${TLB_HOST_INCLUDES}
+    ${CMAKE_SOURCE_DIR}/core/lib/cap/include
+)
+target_compile_definitions(test_ipc_transfer_lifetime PRIVATE BHARAT_HOST_TEST=1)
+add_test(NAME host_test_ipc_transfer_lifetime COMMAND test_ipc_transfer_lifetime)
+set_tests_properties(host_test_ipc_transfer_lifetime PROPERTIES LABELS "ipc;capability;p0-security")
+option(BHARAT_IPC_TRANSFER_SANITIZERS "Instrument pending IPC transfer regression with ASan/UBSan" OFF)
+if(BHARAT_IPC_TRANSFER_SANITIZERS)
+    if(NOT CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+        message(FATAL_ERROR "BHARAT_IPC_TRANSFER_SANITIZERS requires GCC or Clang")
+    endif()
+    target_compile_options(test_ipc_transfer_lifetime PRIVATE
+        -fsanitize=address,undefined -fno-omit-frame-pointer)
+    target_link_options(test_ipc_transfer_lifetime PRIVATE
+        -fsanitize=address,undefined)
+endif()

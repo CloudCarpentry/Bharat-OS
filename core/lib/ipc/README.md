@@ -21,4 +21,24 @@ Higher-level IPC wrapper above raw syscall/URPC. Reduces boilerplate across ever
 - Add richer capability-transfer envelope fields for public API.
 
 ## Status
-Basic request/response contract implemented on top of existing endpoint syscall path.
+V1 supports data-only send/receive over the existing endpoint syscall path.
+Receive clears serialized `capability_transfer` and `reply_endpoint` integers:
+these are untrusted wire data and do not establish authority. The wrapper declines
+incoming capabilities through the kernel's NULL cap sink and rejects the transfer
+flag. Unknown flags are rejected; decoded outputs publish only after validation.
+
+`bharat_ipc_call[_ex]` returns `BHARAT_IPC_STATUS_ERR_UNSUPPORTED` before allocating
+an endpoint, sending work, or changing outputs. The current ABI lacks authenticated
+reply-role provenance and capability/endpoint release, so a fresh endpoint per RPC
+would leak on success, send failure, or timeout. A versioned kernel receive envelope,
+verified reply SEND authority, explicit cleanup, and safe endpoint destruction are
+required before enabling RPC. Plain send/receive timeouts remain scheduler ticks;
+`TIME_GET` returns nanoseconds and cannot supply their conversion implicitly.
+Transport status decoding uses public native `BH_ERR_*` values, after the
+kernel's IPC-to-native translation, rather than the distinct internal IPC enum.
+Service status aliases currently coalesce timeout/interruption into internal
+error; no more precise public service status is invented here.
+
+The wire unit tests verify refusal, serialized-handle stripping, NULL cap sink,
+unchanged outputs on failure, and 10,000 resource-free RPC rejections. They mock
+transport and do not qualify authenticated IPC or guest service integration.

@@ -60,6 +60,9 @@ void kernel_panic(const char* m) {
     g_panic_message = m;
 }
 
+hal_irq_state_t hal_irq_save_disable(void) { return 0U; }
+void hal_irq_restore(hal_irq_state_t state) { (void)state; }
+
 uint32_t hal_cpu_get_id(void) {
     return g_current_cpu_id;
 }

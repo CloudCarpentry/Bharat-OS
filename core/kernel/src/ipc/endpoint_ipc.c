@@ -18,13 +18,25 @@ typedef struct {
 
     ipc_message_t msg;
     uint8_t has_msg;
-    capability_table_t* cap_transfer_src_table; // Store the source table for cross-table delegation
+    /* Pointer-free pending transfer; has_msg is 0 empty, 1 queued, 2 claimed.
+     * Endpoint lock protects message/claim state. CSpace installation runs only
+     * after releasing it; no endpoint lock spans a capability operation. */
+    bh_cap_locator_t cap_transfer_source;
     spinlock_t lock;
     wait_queue_t senders;
     wait_queue_t receivers;
 } ipc_endpoint_t;
 
+/* Transitional lock-protected shared pool. Allocation is not yet serialized
+ * across cores and no endpoint close/reclamation mechanism exists. This patch
+ * secures pending transfer storage, not the complete endpoint object lifetime. */
 static ipc_endpoint_t g_endpoints[BHARAT_IPC_MAX_ENDPOINTS];
+
+static uint64_t ipc_wait_deadline(uint64_t timeout_ticks) {
+    if (timeout_ticks == 0U || timeout_ticks == UINT64_MAX) return 0U;
+    uint64_t now = sched_get_ticks();
+    return timeout_ticks > UINT64_MAX - now ? UINT64_MAX : now + timeout_ticks;
+}
 
 static ipc_endpoint_t* endpoint_by_ref(uint64_t ref) {
     uint32_t idx = ref & 0xFFFFFFFF;
@@ -103,26 +115,30 @@ int ipc_endpoint_send(capability_table_t* table, uint32_t send_cap, const void* 
         return IPC_ERR_INVALID;
     }
 
-    // Capability transfer validation
-    capability_entry_t transfer_e = {0};
+    // Only a checked locator is retained across send/receive or sender exit.
+    bh_cap_locator_t transfer_source = {0};
     if (cap_to_send != 0U) {
-        // Validate that sender has the capability they want to transfer and it has the rights they want to grant
-        if (cap_table_lookup(table, cap_to_send, CAP_TYPE_NONE, cap_send_rights, &transfer_e) != 0) {
-            return IPC_ERR_CAP_TRANSFER_NOT_ALLOWED;
-        }
-
-        // Validate policy: Can this type be transferred, are rights valid, and are they a subset?
-        if (!cap_can_transfer(transfer_e.type, transfer_e.rights, cap_send_rights)) {
-            return IPC_ERR_CAP_TRANSFER_NOT_ALLOWED;
-        }
-
-        // Require that the sender's capability itself has the DELEGATE right to transfer it
-        if ((transfer_e.rights & CAP_RIGHT_DELEGATE) == 0U) {
+        if (bh_cap_transfer_capture(table, cap_to_send, cap_send_rights,
+                                    &transfer_source) != K_OK) {
             return IPC_ERR_CAP_TRANSFER_NOT_ALLOWED;
         }
     }
 
+    const uint64_t deadline = ipc_wait_deadline(timeout_ticks);
     for (;;) {
+        /* Blocking never preserves authorization: recheck the caller's current
+         * generation/rights after every wake before touching the endpoint. */
+        capability_entry_t current_endpoint = {0};
+        if (cap_table_lookup(table, send_cap, CAP_TYPE_ENDPOINT,
+                             CAP_RIGHT_ENDPOINT_SEND, &current_endpoint) != 0 ||
+            current_endpoint.object_ref != e.object_ref) {
+            return IPC_ERR_PERM;
+        }
+        if (cap_to_send != 0U &&
+            bh_cap_transfer_capture(table, cap_to_send, cap_send_rights,
+                                    &transfer_source) != K_OK) {
+            return IPC_ERR_CAP_TRANSFER_NOT_ALLOWED;
+        }
         spin_lock(&ep->lock);
 
         if (ep->state != IPC_ENDPOINT_STATE_READY) {
@@ -139,6 +155,11 @@ int ipc_endpoint_send(capability_table_t* table, uint32_t send_cap, const void* 
             return IPC_ERR_WOULD_BLOCK;
         }
 
+        if (timeout_ticks != UINT64_MAX && sched_get_ticks() >= deadline) {
+            ep->timeouts++;
+            spin_unlock(&ep->lock);
+            return IPC_ERR_TIMEOUT;
+        }
         bh_thread_t* cur = sched_current_thread();
         if (!cur) {
             spin_unlock(&ep->lock);
@@ -146,7 +167,7 @@ int ipc_endpoint_send(capability_table_t* table, uint32_t send_cap, const void* 
         }
         cur->ipc_wakeup_reason = IPC_OK;
         if (timeout_ticks != UINT64_MAX) {
-            cur->ipc_deadline_ticks = sched_get_ticks() + timeout_ticks;
+            cur->ipc_deadline_ticks = deadline;
         } else {
             cur->ipc_deadline_ticks = 0;
         }
@@ -180,11 +201,11 @@ int ipc_endpoint_send(capability_table_t* table, uint32_t send_cap, const void* 
     if (cap_to_send != 0U) {
         ep->msg.cap_transfer_id = cap_to_send;
         ep->msg.cap_transfer_rights = cap_send_rights;
-        ep->cap_transfer_src_table = table;
+        ep->cap_transfer_source = transfer_source;
     } else {
         ep->msg.cap_transfer_id = 0U;
         ep->msg.cap_transfer_rights = 0U;
-        ep->cap_transfer_src_table = NULL;
+        ep->cap_transfer_source = (bh_cap_locator_t){0};
     }
 
     ep->has_msg = 1U;
@@ -206,6 +227,10 @@ int ipc_endpoint_receive(capability_table_t* table, uint32_t recv_cap, void* out
         return IPC_ERR_INVALID;
     }
 
+    *out_received_len = 0U;
+    if (out_received_cap != NULL) {
+        *out_received_cap = 0U;
+    }
     capability_entry_t e = {0};
     if (cap_table_lookup(table, recv_cap, CAP_TYPE_ENDPOINT, CAP_RIGHT_ENDPOINT_RECEIVE, &e) != 0) {
         return IPC_ERR_PERM;
@@ -216,7 +241,14 @@ int ipc_endpoint_receive(capability_table_t* table, uint32_t recv_cap, void* out
         return IPC_ERR_INVALID;
     }
 
+    const uint64_t deadline = ipc_wait_deadline(timeout_ticks);
     for (;;) {
+        capability_entry_t current_endpoint = {0};
+        if (cap_table_lookup(table, recv_cap, CAP_TYPE_ENDPOINT,
+                             CAP_RIGHT_ENDPOINT_RECEIVE, &current_endpoint) != 0 ||
+            current_endpoint.object_ref != e.object_ref) {
+            return IPC_ERR_PERM;
+        }
         spin_lock(&ep->lock);
 
         if (ep->state != IPC_ENDPOINT_STATE_READY) {
@@ -224,7 +256,7 @@ int ipc_endpoint_receive(capability_table_t* table, uint32_t recv_cap, void* out
             return IPC_ERR_CLOSED;
         }
 
-        if (ep->has_msg != 0U) {
+        if (ep->has_msg == 1U) {
             break;
         }
         if (timeout_ticks == 0) {
@@ -232,6 +264,11 @@ int ipc_endpoint_receive(capability_table_t* table, uint32_t recv_cap, void* out
             return IPC_ERR_WOULD_BLOCK;
         }
 
+        if (timeout_ticks != UINT64_MAX && sched_get_ticks() >= deadline) {
+            ep->timeouts++;
+            spin_unlock(&ep->lock);
+            return IPC_ERR_TIMEOUT;
+        }
         bh_thread_t* cur = sched_current_thread();
         if (!cur) {
             spin_unlock(&ep->lock);
@@ -239,7 +276,7 @@ int ipc_endpoint_receive(capability_table_t* table, uint32_t recv_cap, void* out
         }
         cur->ipc_wakeup_reason = IPC_OK;
         if (timeout_ticks != UINT64_MAX) {
-            cur->ipc_deadline_ticks = sched_get_ticks() + timeout_ticks;
+            cur->ipc_deadline_ticks = deadline;
         } else {
             cur->ipc_deadline_ticks = 0;
         }
@@ -268,24 +305,53 @@ int ipc_endpoint_receive(capability_table_t* table, uint32_t recv_cap, void* out
         return IPC_ERR_NO_SPACE;
     }
 
-    // Phase 1: Validate and stage capability installation
-    uint32_t newly_installed_cap_id = 0U;
-    if (ep->msg.cap_transfer_id != 0U && ep->cap_transfer_src_table != NULL) {
-        int install_ret = cap_table_delegate(
-            ep->cap_transfer_src_table,
-            table,
-            ep->msg.cap_transfer_id,
-            ep->msg.cap_transfer_rights,
-            &newly_installed_cap_id
-        );
+    // Claim exactly one message, then leave the endpoint lock before entering
+    // CSpace code. Other receivers see a busy slot until reconciliation below.
+    ep->has_msg = 2U;
+    bh_cap_locator_t source = ep->cap_transfer_source;
+    uint64_t transfer_rights = ep->msg.cap_transfer_rights;
+    uint32_t transfer_id = ep->msg.cap_transfer_id;
+    spin_unlock(&ep->lock);
 
-        if (install_ret != 0) {
-            // Failed to install capability. Roll back!
-            // Do NOT consume the message or wake up the sender. Return failure to the receiver immediately.
-            // The sender remains blocked, and the message stays pending.
-            spin_unlock(&ep->lock);
-            return IPC_ERR_CAP_INSTALL_FAILED;
+    uint32_t newly_installed_cap_id = 0U;
+    kstatus_t install_ret = K_OK;
+    if (transfer_id != 0U && out_received_cap != NULL) {
+        install_ret = bh_cap_transfer_install(&source, table, transfer_rights,
+                                              &newly_installed_cap_id);
+    }
+
+    /* The pool has no destroy/rebind path today, so a claimed endpoint cannot
+     * disappear while unlocked. A future close operation must fence this claim
+     * and compensate any installed capability before reusing its generation. */
+    spin_lock(&ep->lock);
+    if (install_ret == K_ERR_NO_RESOURCES) {
+        // Receiver table saturation is retryable; preserve the pending message.
+        ep->has_msg = 1U;
+        bh_thread_t *receiver = sched_wait_queue_dequeue(&ep->receivers);
+        spin_unlock(&ep->lock);
+        if (receiver != NULL) {
+            receiver->ipc_wakeup_reason = IPC_OK;
+            receiver->ipc_deadline_ticks = 0U;
+            sched_wakeup(receiver);
         }
+        return IPC_ERR_CAP_INSTALL_FAILED;
+    }
+    if (install_ret != K_OK) {
+        // Stale/revoked/destroyed/foreign sources can never become valid again.
+        // Discard rather than permanently wedging the one-message endpoint.
+        ep->msg.msg_len = 0U;
+        ep->msg.cap_transfer_id = 0U;
+        ep->msg.cap_transfer_rights = 0U;
+        ep->cap_transfer_source = (bh_cap_locator_t){0};
+        ep->has_msg = 0U;
+        bh_thread_t *sender = sched_wait_queue_dequeue(&ep->senders);
+        spin_unlock(&ep->lock);
+        if (sender != NULL) {
+            sender->ipc_wakeup_reason = IPC_OK;
+            sender->ipc_deadline_ticks = 0;
+            sched_wakeup(sender);
+        }
+        return IPC_ERR_CAP_INSTALL_FAILED;
     }
 
     // Phase 2: Commit message consumption
@@ -297,19 +363,12 @@ int ipc_endpoint_receive(capability_table_t* table, uint32_t recv_cap, void* out
     *out_received_len = ep->msg.msg_len;
     if (out_received_cap) {
         *out_received_cap = newly_installed_cap_id;
-    } else if (newly_installed_cap_id != 0U) {
-        // The receiver provided a NULL pointer for out_received_cap, but a capability was transferred.
-        // The capability has already been installed into their table, but they don't know the ID!
-        // This is arguably a receiver error or leak, but for ABI simplicity we could revoke it here.
-        // Or we just allow it (they can look it up if they have another way).
-        // Let's revoke it immediately to avoid leaks since they didn't ask for it.
-        cap_table_revoke(table, newly_installed_cap_id);
     }
 
     ep->msg.msg_len = 0U;
     ep->msg.cap_transfer_id = 0U;
     ep->msg.cap_transfer_rights = 0U;
-    ep->cap_transfer_src_table = NULL;
+    ep->cap_transfer_source = (bh_cap_locator_t){0};
     ep->has_msg = 0U;
 
     bh_thread_t* sender = sched_wait_queue_dequeue(&ep->senders);

@@ -83,6 +83,8 @@ typedef struct {
 // Global interfaces
 void vm_manager_init(void);
 void vm_manager_loop(bharat_ipc_endpoint_t endpoint);
+/* Consumes one legacy unauthenticated request; never authorizes or replies. */
+bharat_status_t bh_vm_manager_poll_once(bharat_ipc_endpoint_t endpoint);
 bharat_status_t vm_manager_handle_map(const vm_req_map_t *req, vm_resp_map_t *resp);
 bharat_status_t vm_manager_handle_unmap(const vm_req_unmap_t *req, vm_resp_unmap_t *resp);
 bharat_status_t vm_manager_handle_protect(const vm_req_protect_t *req, vm_resp_protect_t *resp);

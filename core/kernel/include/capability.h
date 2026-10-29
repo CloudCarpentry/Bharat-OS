@@ -396,6 +396,17 @@ int cap_table_delegate(capability_table_t* src,
                        cap_rights_mask_t delegated_rights,
                        uint32_t* out_new_cap_id);
 
+/* Pending IPC transfers retain only this locator, never CSpace storage.
+ * Capture/install are owner-core operations. Foreign-owner installation fails
+ * closed until an owner-routed, lifetime-safe transfer protocol is available. */
+kstatus_t bh_cap_transfer_capture(capability_table_t *table, uint32_t cap_id,
+                                   cap_rights_mask_t rights,
+                                   bh_cap_locator_t *out_locator);
+kstatus_t bh_cap_transfer_install(const bh_cap_locator_t *locator,
+                                   capability_table_t *destination,
+                                   cap_rights_mask_t rights,
+                                   uint32_t *out_cap_id);
+
 int cap_table_revoke(capability_table_t* table, uint32_t cap_id);
 
 void cap_handle_delegate_req(uint64_t payload, uint32_t source_core);

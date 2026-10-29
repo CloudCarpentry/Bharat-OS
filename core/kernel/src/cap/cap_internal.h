@@ -18,9 +18,11 @@
 #include <bharat/cap/cap_validate.h>
 
 #define BH_CAP_CSPACES_PER_CORE 64U
-#define BH_CAP_CSPACE_SLOT_BITS 6U
+#define BH_CAP_CSPACE_SLOT_BITS 7U
 #define BH_CAP_CSPACE_OWNER_BITS 5U
 #define BH_CAP_CSPACE_SLOT_MASK ((UINT32_C(1) << BH_CAP_CSPACE_SLOT_BITS) - 1U)
+#define BH_CAP_CSPACE_GENERATION_MAX \
+    (UINT32_MAX >> BH_CAP_CSPACE_GENERATION_SHIFT)
 #define BH_CAP_CSPACE_OWNER_SHIFT BH_CAP_CSPACE_SLOT_BITS
 #define BH_CAP_CSPACE_GENERATION_SHIFT \
     (BH_CAP_CSPACE_SLOT_BITS + BH_CAP_CSPACE_OWNER_BITS)
@@ -32,6 +34,8 @@ typedef struct {
     capability_table_t *table;
     uint32_t generation;
     bool uses_bootstrap_storage;
+    /* Protected by the owner registry lifetime lock during create reservation. */
+    bool reserved;
 } bh_cap_cspace_registry_entry_t;
 
 extern bh_cap_cspace_registry_entry_t g_cap_cspace_registry[MAX_CPUS][BH_CAP_CSPACES_PER_CORE];

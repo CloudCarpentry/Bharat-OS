@@ -2,6 +2,7 @@
 #define BHARAT_UAPI_IPC_CONTRACT_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -23,9 +24,23 @@ typedef struct {
     uint32_t payload_size;
     int32_t status;
     uint64_t message_id;
-    uint64_t capability_transfer; // Optional capability transfer token
-    uint64_t reply_endpoint;      // Optional reply capability/endpoint
+    /* Legacy serialized claims, never authenticated handles or authority.
+     * Kernel-delivered transfer metadata must be separate from this header. */
+    uint64_t capability_transfer;
+    uint64_t reply_endpoint;
 } bharat_ipc_contract_header_t;
+
+#ifdef __cplusplus
+static_assert(sizeof(bharat_ipc_contract_header_t) == 56U, "IPC V1 header size");
+static_assert(offsetof(bharat_ipc_contract_header_t, message_id) == 32U, "IPC V1 message ID offset");
+static_assert(offsetof(bharat_ipc_contract_header_t, capability_transfer) == 40U, "IPC V1 legacy transfer offset");
+static_assert(offsetof(bharat_ipc_contract_header_t, reply_endpoint) == 48U, "IPC V1 legacy reply offset");
+#else
+_Static_assert(sizeof(bharat_ipc_contract_header_t) == 56U, "IPC V1 header size");
+_Static_assert(offsetof(bharat_ipc_contract_header_t, message_id) == 32U, "IPC V1 message ID offset");
+_Static_assert(offsetof(bharat_ipc_contract_header_t, capability_transfer) == 40U, "IPC V1 legacy transfer offset");
+_Static_assert(offsetof(bharat_ipc_contract_header_t, reply_endpoint) == 48U, "IPC V1 legacy reply offset");
+#endif
 
 enum {
     BHARAT_IPC_HEADER_VERSION_V1 = 1u,
