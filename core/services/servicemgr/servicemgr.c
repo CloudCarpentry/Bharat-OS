@@ -389,6 +389,7 @@ int32_t servicemgr_stage_service(const sm_handoff_service_t *req) {
     bh_service_graph_record_t *rec = &inst->graph_rec;
     strcpy(rec->service_name, req->service_name);
     rec->service_id = req->service_id; rec->executable_id = req->executable_id;
+    rec->process_id = req->process_id; rec->incarnation_id = req->incarnation_id;
     rec->priority = req->priority; rec->boot_class = req->boot_class;
     rec->restart_policy = req->restart_policy; rec->start_deadline_ms = req->start_deadline_ms;
     rec->ready_deadline_ms = req->ready_deadline_ms; rec->retry_limit = req->retry_limit;
