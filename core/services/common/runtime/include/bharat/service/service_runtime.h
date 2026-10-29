@@ -17,6 +17,9 @@ extern "C" {
 typedef struct {
     bharat_service_id_t service_id;
     uint64_t incarnation_id;
+    uint64_t process_id;
+    uint64_t boot_session_id;
+    uint64_t heartbeat_sequence;
     bharat_ipc_endpoint_t endpoint;
     void *user_data;
     bool should_exit;
@@ -25,6 +28,10 @@ typedef struct {
 typedef struct {
     bharat_service_id_t service_id;
     const char *service_name;
+    /* Must be supplied by the trusted startup adapter; zero fails closed. */
+    uint64_t process_id;
+    uint64_t boot_session_id;
+    uint64_t incarnation_id;
     bharat_ipc_endpoint_t endpoint;
     void *user_data;
 } bh_service_start_info_t;

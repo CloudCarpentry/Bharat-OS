@@ -5,6 +5,7 @@
 #include <bharat/namesvc/client.h>
 #include <bharat/uapi/ipc/status.h>
 #include "servicemgr.h"
+#include <ipc_user.h>
 
 static int32_t prod_now_ns(void *ctx, uint64_t *out_now_ns) {
     (void)ctx;
@@ -26,8 +27,8 @@ int main(int argc, char** argv) {
     (void)argv;
 
     // Create a dynamic endpoint instead of hardcoded 0x3000 placeholder
-    bharat_ipc_endpoint_t my_endpoint = service_runtime_create_endpoint(SERVICEMGR_SERVICE_ID, 0);
-    if (my_endpoint == BHARAT_CAP_INVALID_HANDLE) {
+    uint32_t send_cap = 0, receive_cap = 0;
+    if (ipc_endpoint_create(&send_cap, &receive_cap) != 0 || !send_cap || !receive_cap) {
         return -1;
     }
 
@@ -48,8 +49,10 @@ int main(int argc, char** argv) {
     };
 
     servicemgr_init(&deps);
-
-    servicemgr_loop(my_endpoint);
+    if (prod_register_endpoint(NULL, "bharat.servicemgr", SERVICEMGR_SERVICE_ID, send_cap) != NAMESVC_STATUS_OK)
+        return -1;
+    /* Publication alone does not establish authenticated handoff readiness. */
+    servicemgr_loop(receive_cap);
 
     return 0;
 }

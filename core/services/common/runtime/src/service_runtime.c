@@ -26,29 +26,28 @@ static bharat_ipc_endpoint_t get_servicemgr_endpoint(void) {
 }
 
 int bh_service_main(const bh_service_start_info_t *info) {
-    if (!info) return BHARAT_STATUS_ERR_INTERNAL;
+    if (!info || !info->process_id || !info->boot_session_id || !info->incarnation_id)
+        return BHARAT_STATUS_ERR_INTERNAL;
 
     bh_service_ctx_t ctx = {
         .service_id = info->service_id,
-        .incarnation_id = 1, // In a real system, this would be passed in or negotiated
+        .incarnation_id = info->incarnation_id,
+        .process_id = info->process_id,
+        .boot_session_id = info->boot_session_id,
         .endpoint = info->endpoint,
         .user_data = info->user_data,
         .should_exit = false
     };
 
     // Signal we are spawned
-    bh_service_send_health_update(&ctx, SM_HEALTH_STATE_SPAWNED, 0, 0);
-
-    // Specific services should call bh_service_send_health_update with SM_HEALTH_STATE_READY when truly ready.
-    // For the generic main, we'll wait for the event loop to start.
-    bh_service_send_health_update(&ctx, SM_HEALTH_STATE_READY, 0, 0);
+    if (bh_service_send_health_update(&ctx, SM_HEALTH_STATE_SPAWNED, 0, 0) != BHARAT_STATUS_OK)
+        return BHARAT_STATUS_ERR_INTERNAL;
 
     while (!ctx.should_exit) {
-        bh_service_poll_once(&ctx);
+        if (bh_service_poll_once(&ctx) != BHARAT_STATUS_OK) return BHARAT_STATUS_ERR_INTERNAL;
     }
 
-    bh_service_send_health_update(&ctx, SM_HEALTH_STATE_STOPPED, 0, 0);
-    return BHARAT_STATUS_OK;
+    return bh_service_send_health_update(&ctx, SM_HEALTH_STATE_STOPPED, 0, 0);
 }
 
 bharat_status_t bh_service_poll_once(bh_service_ctx_t *ctx) {
@@ -75,32 +74,35 @@ bharat_status_t bh_service_request_shutdown(bh_service_ctx_t *ctx) {
 }
 
 bharat_status_t bh_service_send_health_update(bh_service_ctx_t *ctx, sm_health_state_t state, int32_t status_code, uint64_t deadline_ticks) {
-    static uint64_t sequence = 0;
+    if (!ctx || !ctx->process_id || !ctx->boot_session_id || !ctx->incarnation_id ||
+        ctx->heartbeat_sequence == UINT64_MAX || state > SM_HEALTH_STATE_STOPPED)
+        return BHARAT_STATUS_ERR_INTERNAL;
 
     sm_req_health_update_t req = {
         .struct_size = sizeof(sm_req_health_update_t),
         .service_id = ctx->service_id,
-        .process_id = 0, // In a real system, passed by PM
-        .boot_session_id = 0, // Managed externally
+        .process_id = ctx->process_id,
+        .boot_session_id = ctx->boot_session_id,
         .incarnation_id = ctx->incarnation_id,
         .health_state = (uint32_t)state,
         .padding = 0,
         .timestamp_ticks = 0,
-        .heartbeat_sequence = ++sequence,
+        .heartbeat_sequence = ctx->heartbeat_sequence + 1,
         .deadline_ticks = deadline_ticks,
         .status_code = status_code
     };
 
     bharat_ipc_msg_header_t header = {
+        .header_version = BHARAT_IPC_HEADER_VERSION_V1,
         .service_id = SERVICEMGR_SERVICE_ID,
         .opcode = SM_OP_HEALTH_UPDATE,
         .payload_size = sizeof(sm_req_health_update_t)
     };
 
     bharat_ipc_endpoint_t ep = get_servicemgr_endpoint();
-    if (ep != BHARAT_CAP_INVALID_HANDLE) {
-        bharat_ipc_send(ep, &header, &req);
-    }
+    if (ep == BHARAT_CAP_INVALID_HANDLE || bharat_ipc_send(ep, &header, &req) != BHARAT_IPC_STATUS_OK)
+        return BHARAT_STATUS_ERR_INTERNAL;
+    ctx->heartbeat_sequence = req.heartbeat_sequence;
     return BHARAT_STATUS_OK;
 }
 
