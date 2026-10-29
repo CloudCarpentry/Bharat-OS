@@ -55,6 +55,9 @@ typedef struct {
     uint32_t restart_count;
     uint64_t last_start_ns;
     uint64_t last_heartbeat_ns;
+    uint64_t heartbeat_sequence;
+    uint32_t health_state;
+    bool stop_requested;
     uint64_t next_retry_ns;
     uint32_t current_backoff_ms;
 
@@ -124,6 +127,12 @@ typedef struct {
     uint32_t expected_record_count;
     bharat_ipc_endpoint_t my_endpoint;
     bool stable_reached;
+    uint64_t stable_started_ns;
+    bool stable_window_active;
+    /* Event-loop local staging; active graph is untouched until COMMIT. */
+    bh_service_instance_t staged_instances[MAX_SERVICES];
+    uint64_t staged_boot_session_id;
+    uint32_t staged_profile;
 } bh_servicemgr_t;
 
 int32_t servicemgr_init(const bh_servicemgr_dependencies_t *deps);
@@ -140,8 +149,14 @@ int32_t servicemgr_handle_register(const sm_req_register_t *req, sm_resp_registe
 int32_t servicemgr_handle_start(const sm_req_start_t *req, sm_resp_start_t *resp);
 int32_t servicemgr_handle_stop(const sm_req_stop_t *req, sm_resp_stop_t *resp);
 int32_t servicemgr_handle_query(const sm_req_query_t *req, sm_resp_query_t *resp);
-int32_t servicemgr_handle_heartbeat(const sm_req_heartbeat_t *req, sm_resp_heartbeat_t *resp);
-int32_t servicemgr_handle_signal_ready(const sm_req_heartbeat_t *req, sm_resp_heartbeat_t *resp);
+/* Internal handlers: authenticated_pid must come from trusted transport, never
+ * the request. Current IPC transport cannot supply it, so RPC fails closed. */
+int32_t servicemgr_handle_health_update(const sm_req_health_update_t *req,
+                                       sm_resp_health_update_t *resp,
+                                       uint64_t authenticated_pid);
+int32_t servicemgr_stage_begin(const sm_handoff_begin_t *req);
+int32_t servicemgr_stage_service(const sm_handoff_service_t *req);
+int32_t servicemgr_stage_commit(const sm_handoff_commit_t *req);
 
 void servicemgr_check_health(uint64_t current_ticks);
 int32_t servicemgr_authorize(uint32_t opcode, const void *req, bharat_cap_handle_t caller_cap);

@@ -391,7 +391,7 @@ static cap_type_t map_bharat_type_to_kernel(bharat_cap_object_type_t type) {
         case BHARAT_CAP_OBJ_ROUTE_TABLE: return CAP_TYPE_NONE;
         case BHARAT_CAP_OBJ_ENDPOINT:    return CAP_TYPE_ENDPOINT;
         case BHARAT_CAP_OBJ_PROCESS:     return CAP_TYPE_PROCESS;
-        case BHARAT_CAP_OBJ_VM_SPACE:    return CAP_TYPE_MEMORY;
+        case BHARAT_CAP_OBJ_VM_SPACE:    return CAP_TYPE_VM_SPACE;
         case BHARAT_CAP_OBJ_DEVICE:      return CAP_TYPE_ACCEL_DEVICE;
         case BHARAT_CAP_OBJ_DMA_DOMAIN:  return CAP_TYPE_DMA_DOMAIN;
         default:                         return CAP_TYPE_NONE;
@@ -400,7 +400,12 @@ static cap_type_t map_bharat_type_to_kernel(bharat_cap_object_type_t type) {
 
 static cap_rights_mask_t map_bharat_rights_to_kernel(cap_type_t type, uint64_t rights) {
     cap_rights_mask_t r = 0;
-    if (type == CAP_TYPE_MEMORY || type == CAP_TYPE_NET_BUFFER) {
+    if (type == CAP_TYPE_VM_SPACE) {
+        if (rights & BHARAT_CAP_RIGHT_READ)    r |= CAP_RIGHT_QUERY;
+        if (rights & BHARAT_CAP_RIGHT_WRITE)   r |= CAP_RIGHT_VMM_MANAGE;
+        if (rights & BHARAT_CAP_RIGHT_EXECUTE) r |= CAP_RIGHT_MEMORY_MAP;
+        if (rights & BHARAT_CAP_RIGHT_GRANT)   r |= CAP_RIGHT_DELEGATE;
+    } else if (type == CAP_TYPE_MEMORY || type == CAP_TYPE_NET_BUFFER) {
         if (rights & BHARAT_CAP_RIGHT_READ)    r |= CAP_RIGHT_MEMORY_MAP;
         if (rights & BHARAT_CAP_RIGHT_WRITE)   r |= CAP_RIGHT_MEMORY_UNMAP;
         if (rights & BHARAT_CAP_RIGHT_EXECUTE) r |= CAP_RIGHT_MEMORY_SHARE;

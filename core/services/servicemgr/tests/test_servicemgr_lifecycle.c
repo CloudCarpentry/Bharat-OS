@@ -1,100 +1,47 @@
-#include "../servicemgr.h"
-#include <assert.h>
+#include "test_support.h"
 #include <stdio.h>
-#include <string.h>
-#include <bharat/uapi/ipc/status.h>
-
-// Mock IPC
-int32_t bharat_ipc_send(bharat_ipc_endpoint_t endpoint, const bharat_ipc_msg_header_t *header, const void *payload) { (void)endpoint; (void)header; (void)payload; return 0; }
-int32_t bharat_ipc_recv(bharat_ipc_endpoint_t endpoint, bharat_ipc_msg_header_t *header, void *payload_buf, uint32_t max_size) { (void)endpoint; (void)header; (void)payload_buf; (void)max_size; return -1; }
-
-void test_lifecycle(void) {
-    bh_servicemgr_dependencies_t deps_struct = {0};
-    servicemgr_init(&deps_struct);
-
-    const char *deps[] = {"service1"};
-    bh_service_manifest_entry_t manifest[] = {
-        {
-            .name = "service1",
-            .service_id = 1,
-            .hard_deps_count = 0,
-            .restart_policy = SM_RESTART_POLICY_ALWAYS,
-            .critical = true
-        },
-        {
-            .name = "service2",
-            .service_id = 2,
-            .hard_deps = deps,
-            .hard_deps_count = 1,
-            .restart_policy = SM_RESTART_POLICY_ALWAYS,
-            .critical = false
-        }
-    };
-
-    assert(servicemgr_load_manifest(manifest, 2) == BHARAT_IPC_STATUS_OK);
-    assert(servicemgr_validate_dependencies() == BHARAT_IPC_STATUS_OK);
-
-    sm_req_query_t query_req = {.service_id = 1};
-    sm_resp_query_t query_resp;
-
-    servicemgr_handle_query(&query_req, &query_resp);
-    assert(query_resp.state == SM_STATE_CREATED);
-
-    servicemgr_start_all();
-
-    servicemgr_handle_query(&query_req, &query_resp);
-    printf("State: %d, SM_STATE_STARTING: %d, incarnation_id: %lu\n", (int)query_resp.state, (int)SM_STATE_STARTING, (unsigned long)query_resp.incarnation_id);
-    assert((int)query_resp.state == (int)SM_STATE_STARTING);
-    assert(query_resp.incarnation_id == 1);
-
-    // Signal ready
-    sm_req_heartbeat_t ready_req = {.service_id = 1, .incarnation_id = 1};
-    sm_resp_heartbeat_t ready_resp;
-    assert(servicemgr_handle_signal_ready(&ready_req, &ready_resp) == BHARAT_IPC_STATUS_OK);
-    servicemgr_handle_query(&query_req, &query_resp);
-    assert(query_resp.state == SM_STATE_RUNNING);
-
-    // Test Heartbeat and Timeout
-    sm_req_heartbeat_t hb_req = {
-        .service_id = 1,
-        .incarnation_id = 1,
-        .timestamp_ticks = 1000
-    };
-    sm_resp_heartbeat_t hb_resp;
-    assert(servicemgr_handle_heartbeat(&hb_req, &hb_resp) == BHARAT_IPC_STATUS_OK);
-
-    // Advance time beyond timeout
-    servicemgr_check_health(1000 + HEARTBEAT_TIMEOUT_MS + 1);
-
-    servicemgr_handle_query(&query_req, &query_resp);
-    printf("State after timeout: %d\n", (int)query_resp.state);
-    // Should be RESTART_BACKOFF because policy is ALWAYS
-    assert(query_resp.state == SM_STATE_RESTART_BACKOFF);
-    assert(query_resp.restart_count == 1);
-
-    // Advance time beyond backoff
-    servicemgr_check_health(1000 + HEARTBEAT_TIMEOUT_MS + 1 + DEFAULT_INITIAL_BACKOFF_MS + 1);
-
-    servicemgr_handle_query(&query_req, &query_resp);
-    printf("State after backoff: %d\n", (int)query_resp.state);
-    assert(query_resp.state == SM_STATE_STARTING);
-
-    // Signal ready for second incarnation
-    hb_req.incarnation_id = 2;
-    assert(servicemgr_handle_signal_ready(&hb_req, &ready_resp) == BHARAT_IPC_STATUS_OK);
-    servicemgr_handle_query(&query_req, &query_resp);
-    assert(query_resp.state == SM_STATE_RUNNING);
-    assert(query_resp.incarnation_id == 2);
-
-    // Stale incarnation heartbeat
-    hb_req.incarnation_id = 1;
-    assert(servicemgr_handle_heartbeat(&hb_req, &hb_resp) == BHARAT_IPC_STATUS_ERR_PERM);
-
-    printf("test_lifecycle passed\n");
+static void test_lifecycle(void) {
+    bh_servicemgr_t *mgr=test_setup(); test_add_service(true,SM_RESTART_POLICY_BOUNDED_RETRY);
+    assert(servicemgr_start_all()==0);
+    bh_service_instance_t *inst=&mgr->service_instances[0];
+    assert(inst->state==SM_STATE_STARTING && inst->process_id==101);
+    assert(test_health(inst,SM_HEALTH_STATE_SPAWNED)==0);
+    assert(inst->state==SM_STATE_STARTING);
+    assert(test_health(inst,SM_HEALTH_STATE_READY)==BHARAT_IPC_STATUS_ERR_PERM);
+    test_ready(inst);
+    assert(inst->last_heartbeat_ns==test_now);
+    sm_req_health_update_t req={.struct_size=sizeof(req),.service_id=1,.process_id=101,
+        .incarnation_id=1,.boot_session_id=42,.health_state=SM_HEALTH_STATE_READY,.heartbeat_sequence=inst->heartbeat_sequence+1};
+    sm_resp_health_update_t resp;
+    assert(servicemgr_handle_health_update(&req,&resp,102)==BHARAT_IPC_STATUS_ERR_PERM);
+    req.boot_session_id=43;
+    assert(servicemgr_handle_health_update(&req,&resp,101)==BHARAT_IPC_STATUS_ERR_PERM);
+    req.boot_session_id=42; req.struct_size--;
+    assert(servicemgr_handle_health_update(&req,&resp,101)==BHARAT_IPC_STATUS_ERR_INVALID);
+    req.struct_size++;
+    req.incarnation_id=0;
+    assert(servicemgr_handle_health_update(&req,&resp,101)==BHARAT_IPC_STATUS_ERR_PERM);
+    req.incarnation_id=1; req.heartbeat_sequence=inst->heartbeat_sequence;
+    assert(servicemgr_handle_health_update(&req,&resp,101)==BHARAT_IPC_STATUS_ERR_PERM);
+    test_now+=(uint64_t)HEARTBEAT_TIMEOUT_MS*BH_NS_PER_MS+1;
+    servicemgr_check_health(test_now);
+    assert(inst->state==SM_STATE_FAILED && inst->stop_requested);
+    assert(test_spawn_count==1);
+    sm_req_start_t duplicate={.service_id=1}; sm_resp_start_t duplicate_resp;
+    assert(servicemgr_handle_start(&duplicate,&duplicate_resp)==BHARAT_IPC_STATUS_ERR_PERM);
+    assert(test_spawn_count==1);
+    test_process_state=PM_STATE_EXITED;
+    servicemgr_check_health(test_now);
+    assert(inst->state==SM_STATE_RESTART_BACKOFF && inst->restart_count==1);
+    test_now=inst->next_retry_ns; servicemgr_check_health(test_now);
+    assert(inst->state==SM_STATE_STARTING && inst->incarnation_id==2 && test_spawn_count==2);
+    test_ready(inst);
+    sm_req_stop_t stop={.service_id=1}; sm_resp_stop_t stopped;
+    test_stop_status=BHARAT_IPC_STATUS_ERR_INTERNAL;
+    assert(servicemgr_handle_stop(&stop,&stopped)==test_stop_status && inst->state==SM_STATE_RUNNING);
+    test_stop_status=0;
+    assert(servicemgr_handle_stop(&stop,&stopped)==0 && inst->state==SM_STATE_STOPPING);
+    test_process_state=PM_STATE_EXITED; servicemgr_check_health(test_now);
+    assert(inst->state==SM_STATE_STOPPED);
 }
-
-int main(void) {
-
-    test_lifecycle();
-    return 0;
-}
+int main(void) { test_lifecycle(); puts("servicemgr lifecycle passed"); }

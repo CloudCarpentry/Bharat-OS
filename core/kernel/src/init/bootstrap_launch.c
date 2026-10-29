@@ -12,6 +12,8 @@
 #include "mm/aspace.h"
 #include "mm/prot_domain.h"
 #include "mm/vm_mapping.h"
+#include "mm/vm_cap_dispatch.h"
+#include <bharat/uapi/system/vmm.h>
 #include "lib/base/string.h"
 #include "slab.h"
 #include <bharat/uapi/init/bootstrap.h>
@@ -48,7 +50,19 @@ int cap_invoke(uintptr_t cap_id, uintptr_t opcode, uintptr_t arg0, uintptr_t arg
     if (!parent || !parent->security_sandbox_ctx || cap_id > UINT32_MAX)
         return K_ERR_CAP_INVALID;
     capability_table_t *parent_table = parent->security_sandbox_ctx;
-    if (opcode >= BH_PROCESS_OP_START && opcode <= BH_PROCESS_OP_TERMINATE) {
+    capability_entry_t dispatch_cap;
+    cap_validation_request_t dispatch_req = {
+        .cap_id = (uint32_t)cap_id, .expected_object_type = CAP_TYPE_NONE,
+        .requester_pid = parent->process_id,
+        .expected_generation = bh_cap_generation((uint32_t)cap_id)
+    };
+    kstatus_t dispatch_status = cap_validate_ex(parent_table, &dispatch_req, &dispatch_cap);
+    if (dispatch_status != K_OK) return dispatch_status;
+    if (dispatch_cap.type == CAP_TYPE_VM_SPACE ||
+        (dispatch_cap.type == CAP_TYPE_PROCESS && opcode == BH_VM_OP_CREATE))
+        return vm_space_cap_invoke(cap_id, opcode, arg0, arg1);
+    if (dispatch_cap.type == CAP_TYPE_PROCESS &&
+        opcode >= BH_PROCESS_OP_START && opcode <= BH_PROCESS_OP_TERMINATE) {
         bh_process_object_t object;
         kstatus_t status = cap_lookup_process(parent_table, cap_id, CAP_RIGHT_PROCESS_MANAGE, &object);
         if (status != K_OK) return status;

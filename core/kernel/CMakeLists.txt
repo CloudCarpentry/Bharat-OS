@@ -402,6 +402,7 @@ if(BHARAT_ENABLE_ADVANCED_VM OR BHARAT_PROFILE_MMU_LITE)
     target_compile_options(bharat_mm_tlb PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
 
     add_library(bharat_mm_vmm OBJECT
+        src/mm/vm/vm_cap_dispatch.c
         src/mm/vmm.c
         src/mm/vm/distributed/vm_mapping.c
         ${BHARAT_HAL_ROOT}/prot/none/prot_none_backend.c
@@ -413,6 +414,7 @@ if(BHARAT_ENABLE_ADVANCED_VM OR BHARAT_PROFILE_MMU_LITE)
     target_compile_options(bharat_mm_vmm PRIVATE $<$<COMPILE_LANGUAGE:C>:-ffreestanding> $<$<COMPILE_LANGUAGE:C>:-fno-builtin> $<$<COMPILE_LANGUAGE:C>:-fno-pic>)
 else()
     add_library(bharat_mm_vmm OBJECT
+        src/mm/vm/vm_cap_dispatch.c
         src/mm/vmm_stub.c
     )
     target_link_libraries(bharat_mm_vmm PRIVATE bharat_kernel_includes bharat_kernel_buildopts)

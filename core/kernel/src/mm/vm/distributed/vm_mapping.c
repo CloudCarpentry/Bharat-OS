@@ -262,7 +262,8 @@ int vm_space_destroy_distributed(vm_space_t *space) {
         uint32_t my_core = hal_cpu_get_id();
         mon_vm_core_state_t *state = &g_mon_vm_core_states[my_core];
 
-        mon_vm_tx_handle_t handle;
+        mon_vm_tx_handle_t handle = {0};
+        bool allocated = false;
         // Allocate pending txn manually
         spin_lock(&state->lock);
         for (int i = 0; i < MAX_PENDING_TXNS; i++) {
@@ -281,10 +282,20 @@ int vm_space_destroy_distributed(vm_space_t *space) {
                 state->pending_txns[i].phase = MON_VM_TX_PHASE_PREPARED;
 
                 handle = state->pending_txns[i].handle;
+                allocated = true;
                 break;
             }
         }
         spin_unlock(&state->lock);
+
+        if (!allocated) {
+            /* DYING remains quarantined: no remote completion was established. */
+            spinlock_acquire(&space->lock);
+            space->aspace->state = ASPACE_STATE_POISONED;
+            space->mutation_kind = VM_MUTATION_NONE;
+            spinlock_release(&space->lock);
+            return MON_VM_STATUS_BUSY;
+        }
 
         mon_vm_pending_txn_t *txn = &state->pending_txns[handle.slot];
 

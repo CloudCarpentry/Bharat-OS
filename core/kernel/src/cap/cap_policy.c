@@ -66,6 +66,9 @@ static cap_rights_mask_t cap_valid_rights_for_type(cap_type_t type) {
         return k_cap_valid_rights_process;
     case CAP_TYPE_HMEM:
         return k_cap_valid_rights_hmem;
+    case CAP_TYPE_VM_SPACE:
+        return CAP_RIGHT_MEMORY_MAP | CAP_RIGHT_MEMORY_UNMAP |
+               CAP_RIGHT_VMM_MANAGE | CAP_RIGHT_QUERY;
     case CAP_TYPE_NONE:
     case CAP_TYPE_IMPORTED_PROXY:
     default:

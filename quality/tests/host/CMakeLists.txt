@@ -153,11 +153,10 @@ add_executable(test_capability_ownership
     ${CMAKE_SOURCE_DIR}/core/kernel/src/ds/bh_id_allocator.c
     ${CMAKE_SOURCE_DIR}/core/lib/cap/src/cap_validate.c
     ${CMAKE_SOURCE_DIR}/core/lib/cap/src/cap_authz.c
-    ${CMAKE_SOURCE_DIR}/core/kernel/src/lib/base/string.c
-    ${CMAKE_SOURCE_DIR}/core/kernel/src/time/ktime.c
 )
 
 target_include_directories(test_capability_ownership PRIVATE
+    ${CMAKE_SOURCE_DIR}/core/personalities/runtime/include
     ${CMAKE_SOURCE_DIR}/core/kernel/include
     ${CMAKE_SOURCE_DIR}/core/hal/include
     ${CMAKE_SOURCE_DIR}/core/lib/include
@@ -173,6 +172,7 @@ set_tests_properties(host_test_capability_ownership PROPERTIES LABELS "capabilit
 
 add_executable(test_servicemgr
     "${CMAKE_CURRENT_SOURCE_DIR}/test_servicemgr.c"
+    "${CMAKE_SOURCE_DIR}/core/services/servicemgr/tests/test_support.c"
     "${CMAKE_SOURCE_DIR}/core/services/servicemgr/servicemgr.c"
     "${CMAKE_SOURCE_DIR}/core/lib/ipc/src/ipc.c"
 )
@@ -193,6 +193,32 @@ target_include_directories(test_servicemgr PRIVATE
 target_compile_definitions(test_servicemgr PRIVATE BHARAT_HOST_TEST)
 
 add_test(NAME host_test_servicemgr COMMAND test_servicemgr)
+
+add_executable(test_vm_capability test_vm_capability.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/mm/vm/vm_cap_dispatch.c
+    ${CMAKE_SOURCE_DIR}/core/kernel/src/cap/cap_policy.c)
+target_include_directories(test_vm_capability PRIVATE
+    ${CMAKE_SOURCE_DIR}/core/personalities/runtime/include
+    ${CMAKE_SOURCE_DIR}/core/kernel/include
+    ${CMAKE_SOURCE_DIR}/core/hal/include
+    ${CMAKE_SOURCE_DIR}/core/lib/include
+    ${CMAKE_SOURCE_DIR}/interface/include
+    ${CMAKE_SOURCE_DIR}/interface
+    ${CMAKE_BINARY_DIR}/generated/include)
+target_compile_definitions(test_vm_capability PRIVATE BHARAT_HOST_TEST=1)
+add_test(NAME host_test_vm_capability COMMAND test_vm_capability)
+
+foreach(sm_test lifecycle harden)
+    add_executable(host_test_servicemgr_${sm_test}
+        "${CMAKE_SOURCE_DIR}/core/services/servicemgr/tests/test_servicemgr_${sm_test}.c"
+        "${CMAKE_SOURCE_DIR}/core/services/servicemgr/tests/test_support.c"
+        "${CMAKE_SOURCE_DIR}/core/services/servicemgr/servicemgr.c"
+        "${CMAKE_SOURCE_DIR}/core/lib/ipc/src/ipc.c")
+    get_target_property(sm_test_includes test_servicemgr INCLUDE_DIRECTORIES)
+    target_include_directories(host_test_servicemgr_${sm_test} PRIVATE ${sm_test_includes})
+    target_compile_definitions(host_test_servicemgr_${sm_test} PRIVATE BHARAT_HOST_TEST)
+    add_test(NAME host_test_servicemgr_${sm_test} COMMAND host_test_servicemgr_${sm_test})
+endforeach()
 
 add_executable(host_test_sched_selection
     sched/test_sched_selection.c
@@ -569,9 +595,6 @@ target_link_libraries(test_procvm_stress PRIVATE bharat_freestanding)
 add_test(NAME host_test_procvm_stress COMMAND test_procvm_stress)
 set_tests_properties(host_test_procvm_stress PROPERTIES LABELS "vm")
 
-add_executable(test_servicemgr_dup test_servicemgr.c ${CMAKE_SOURCE_DIR}/core/services/servicemgr/servicemgr.c ${CMAKE_SOURCE_DIR}/core/lib/ipc/src/ipc.c)
-target_include_directories(test_servicemgr_dup PRIVATE ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/lib/ipc/include ${CMAKE_SOURCE_DIR}/core/lib/cap/include ${CMAKE_SOURCE_DIR}/core/kernel/include)
-add_test(NAME host_test_servicemgr_dup COMMAND test_servicemgr_dup)
 
 add_executable(test_init test_init.c ${CMAKE_SOURCE_DIR}/core/services/core/init/init_runtime.c ${CMAKE_SOURCE_DIR}/core/services/core/init/init_status.c ${CMAKE_SOURCE_DIR}/core/services/core/init/init_handoff.c ${CMAKE_SOURCE_DIR}/core/services/core/init/init_rollback.c)
 target_include_directories(test_init PRIVATE ${CMAKE_SOURCE_DIR}/interface/include ${CMAKE_SOURCE_DIR}/core/kernel/include ${CMAKE_SOURCE_DIR}/core/lib/runtime/include ${CMAKE_SOURCE_DIR}/core/lib/cap/include ${CMAKE_SOURCE_DIR}/core/lib/ipc/include)
