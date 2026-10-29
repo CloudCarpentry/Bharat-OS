@@ -105,6 +105,76 @@ The bootstrap launch diff is limited to includes and type-first routing; existin
 `arch_user_entry_t entry` declarations/initializations are untouched. The VM
 source appears once in each mutually exclusive `bharat_mm_vmm` selection.
 
-Detailed file/commit inventories and raw verification logs accompany the chat
-artifact bundle. The PR must stay draft and must not claim the P0 acceptance
-criteria have been met.
+Raw verification logs remain in the execution workspace under `/workspace/work`;
+the projectless output directory is not writable from this cloud executor.
+The PR must stay draft and must not claim the P0 acceptance criteria have been met.
+
+Draft PR: https://github.com/CloudCarpentry/Bharat-OS/pull/1104
+
+## Implementation and qualification commits
+
+```text
+8bccce2d7399b3701f014f6cd3cdec8aaa034cee docs: record verified P0 VM and supervisor baseline
+6560ad5c06dd1613651b0d84ebd97e0e78c81faa feat(vm): define fail-closed capability UAPI and type-first native routing
+87ccd6a518b9a403540d218013b8ca63c73e8e7f fix(servicemgr): validate health identity and stage handoff without publishing untrusted state
+dce1a9ee367f85bcfeb5ef633ab87dc96d6ffb12 fix(services): fail closed on missing handoff identity and propagate runtime failures
+8805ba4cf64ca7cacaa2ceea82c6c459fb7f6cf6 test: cover VM denial contracts and supervisor lifecycle at syscall boundary
+1c11f03ceba4fc05874729ae9def043c1c36254c test(ipc): deliver canonical endpoint syscall arguments in regression fixtures
+6f92aa65da4604d2046364d2f4375969e12b8072 fix(cap): align VM authority resolver and make ownership regression linkable
+33e18905a3dc5f1887a7e8c692bf35b348e5ed1c fix(servicemgr): prevent duplicate restart while prior process remains live
+41e2cbc45ff61136b4254ddb5a49bd4dddbfe8a6 docs: record P0 qualification evidence and outstanding activation blockers
+```
+
+The final documentation inventory commit is the PR branch HEAD.
+
+## Complete changed-file inventory (27 files)
+
+```text
+M	core/kernel/CMakeLists.txt
+M	core/kernel/include/capability.h
+A	core/kernel/include/mm/vm_cap_dispatch.h
+M	core/kernel/src/cap/cap_dispatch.c
+M	core/kernel/src/cap/cap_policy.c
+M	core/kernel/src/init/bootstrap_launch.c
+M	core/kernel/src/mm/vm/distributed/vm_mapping.c
+A	core/kernel/src/mm/vm/vm_cap_dispatch.c
+M	core/lib/ipc/tests/test_ipc_wire.c
+M	core/services/common/runtime/include/bharat/service/service_runtime.h
+M	core/services/common/runtime/src/service_runtime.c
+M	core/services/core/init/init_handoff.c
+M	core/services/servicemgr/main.c
+M	core/services/servicemgr/servicemgr.c
+M	core/services/servicemgr/servicemgr.h
+M	core/services/servicemgr/tests/test_servicemgr_harden.c
+M	core/services/servicemgr/tests/test_servicemgr_lifecycle.c
+A	core/services/servicemgr/tests/test_support.c
+A	core/services/servicemgr/tests/test_support.h
+A	docs/adr/ADR-039-p0-vm-supervisor-fail-closed.md
+A	docs/architecture/p0-vm-sm-baseline.md
+A	docs/architecture/p0-vm-sm-verification.md
+A	interface/include/bharat/uapi/system/vmm.h
+M	quality/tests/host/CMakeLists.txt
+M	quality/tests/host/test_capability_ownership.c
+M	quality/tests/host/test_servicemgr.c
+A	quality/tests/host/test_vm_capability.c
+```
+
+## Final checks after matrix setup
+
+The following individual repository-required commands also completed with exit 0
+and all 17 CORE boot markers, independently of the matrix runner:
+
+```bash
+./tools/build.sh all --target-yaml delivery/targets/qemu/x86_64_desktop_headless.yaml --smoke
+./tools/build.sh all --target-yaml delivery/targets/qemu/arm64_desktop_headless.yaml --smoke
+./tools/build.sh all --target-yaml delivery/targets/qemu/riscv64_desktop_headless.yaml --smoke
+./tools/build.sh all --target-yaml delivery/targets/qemu/arm32_mmu_lite_headless.yaml --smoke
+./tools/build.sh all --target-yaml delivery/targets/qemu/riscv32_mmu_lite_headless.yaml --smoke
+```
+
+Final metadata consistency commit:
+`3e2147dc44400fd577bf8720d8d70bb3c49ab5bf` preserves adopted process/incarnation
+identity in both the instance and graph record. The focused/related seven tests
+were rebuilt and passed after that change. Service runtime and manager main also
+passed Clang syntax checks with the generated-header include path. Supervisor is
+not selected in the CORE smoke graph, so its runtime execution remains unqualified.
