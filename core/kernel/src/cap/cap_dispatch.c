@@ -391,7 +391,7 @@ static cap_type_t map_bharat_type_to_kernel(bharat_cap_object_type_t type) {
         case BHARAT_CAP_OBJ_ROUTE_TABLE: return CAP_TYPE_NONE;
         case BHARAT_CAP_OBJ_ENDPOINT:    return CAP_TYPE_ENDPOINT;
         case BHARAT_CAP_OBJ_PROCESS:     return CAP_TYPE_PROCESS;
-        case BHARAT_CAP_OBJ_VM_SPACE:    return CAP_TYPE_MEMORY;
+        case BHARAT_CAP_OBJ_VM_SPACE:    return CAP_TYPE_VM_SPACE;
         case BHARAT_CAP_OBJ_DEVICE:      return CAP_TYPE_ACCEL_DEVICE;
         case BHARAT_CAP_OBJ_DMA_DOMAIN:  return CAP_TYPE_DMA_DOMAIN;
         default:                         return CAP_TYPE_NONE;
