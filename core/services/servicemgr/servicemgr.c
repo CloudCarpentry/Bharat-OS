@@ -120,6 +120,7 @@ static int32_t start_service(bh_service_instance_t *inst) {
     if (inst->state != SM_STATE_CREATED && inst->state != SM_STATE_STOPPED &&
         inst->state != SM_STATE_RESTART_BACKOFF && inst->state != SM_STATE_FAILED)
         return BHARAT_IPC_STATUS_ERR_PERM;
+    if (inst->process_id) return BHARAT_IPC_STATUS_ERR_PERM;
     for (uint32_t d = 0; d < inst->graph_rec.dependency_count; ++d) {
         bh_service_instance_t *dep = find_instance(inst->graph_rec.dependencies[d]);
         if (!dep || dep->state != SM_STATE_RUNNING) return BHARAT_IPC_STATUS_ERR_PERM;

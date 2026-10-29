@@ -27,6 +27,9 @@ static void test_lifecycle(void) {
     servicemgr_check_health(test_now);
     assert(inst->state==SM_STATE_FAILED && inst->stop_requested);
     assert(test_spawn_count==1);
+    sm_req_start_t duplicate={.service_id=1}; sm_resp_start_t duplicate_resp;
+    assert(servicemgr_handle_start(&duplicate,&duplicate_resp)==BHARAT_IPC_STATUS_ERR_PERM);
+    assert(test_spawn_count==1);
     test_process_state=PM_STATE_EXITED;
     servicemgr_check_health(test_now);
     assert(inst->state==SM_STATE_RESTART_BACKOFF && inst->restart_count==1);
