@@ -42,6 +42,9 @@ typedef struct bharat_sys_endpoint_send_args {
     uint64_t reserved0;
 } bharat_sys_endpoint_send_args_t;
 
+#define BH_IPC_RECEIVE_SELECTOR_LEGACY 0U
+#define BH_IPC_RECEIVE_SELECTOR_V1     1U
+
 typedef struct bharat_sys_endpoint_receive_args {
     uint32_t recv_cap;
     uint32_t out_payload_capacity;
@@ -50,6 +53,20 @@ typedef struct bharat_sys_endpoint_receive_args {
     uint64_t timeout_ticks;
     uint64_t out_received_cap_ptr;
 } bharat_sys_endpoint_receive_args_t;
+
+typedef struct bharat_sys_endpoint_receive_v1_args {
+    uint32_t version;
+    uint32_t struct_size;
+    uint32_t flags;
+    uint32_t recv_cap;
+    uint32_t out_payload_capacity;
+    uint32_t out_envelope_capacity;
+    uint64_t out_payload_ptr;
+    uint64_t out_len_ptr;
+    uint64_t timeout_ticks;
+    uint64_t out_envelope_ptr;
+    uint64_t reserved0;
+} bharat_sys_endpoint_receive_v1_args_t;
 
 typedef struct bharat_sys_cap_delegate_args {
     uint32_t src_cap;

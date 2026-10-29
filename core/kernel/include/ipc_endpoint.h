@@ -5,6 +5,7 @@
 
 #include "capability.h"
 #include "profile/profile.h"
+#include <bharat/uapi/ipc/envelope.h>
 
 #if defined(Profile_RTOS)
 #define BHARAT_IPC_ENDPOINT_PAYLOAD_MAX 64U
@@ -61,8 +62,21 @@ typedef enum {
     IPC_ERR_TIMEOUT = -8,
 } ipc_status_t;
 
+typedef struct {
+    uint64_t sender_pid;
+    uint64_t sender_process_object_id;
+    uint32_t sender_cspace_id;
+    uint32_t sender_owner_core;
+    uint64_t delivery_generation;
+    cap_type_t cap_type;
+    uint64_t cap_rights;
+    uint8_t has_provenance;
+} ipc_provenance_t;
+
 int ipc_endpoint_create(capability_table_t* table, uint32_t* out_send_cap, uint32_t* out_recv_cap);
 int ipc_endpoint_send(capability_table_t* table, uint32_t send_cap, const void* payload, uint32_t payload_len, uint64_t timeout_ticks, uint32_t cap_to_send, uint64_t cap_send_rights);
+int ipc_endpoint_send_ex(capability_table_t* table, uint32_t send_cap, const void* payload, uint32_t payload_len, uint64_t timeout_ticks, uint32_t cap_to_send, uint64_t cap_send_rights, const ipc_provenance_t* provenance);
 int ipc_endpoint_receive(capability_table_t* table, uint32_t recv_cap, void* out_payload, uint32_t out_payload_capacity, uint32_t* out_received_len, uint64_t timeout_ticks, uint32_t* out_received_cap);
+int ipc_endpoint_receive_envelope(capability_table_t* table, uint32_t recv_cap, void* out_payload, uint32_t out_payload_capacity, uint32_t* out_received_len, uint64_t timeout_ticks, bh_ipc_receive_envelope_v1_t* out_envelope);
 
 #endif // BHARAT_IPC_ENDPOINT_H

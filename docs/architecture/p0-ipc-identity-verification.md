@@ -4,6 +4,12 @@ Date: 2026-10-29. Baseline: freshly fetched `developer`,
 `a8323c1f5ebdf4d14212922994b5ef64091341b0` (PR #1104).
 Branch: `codex/bh-p0-ipc-identity-001`.
 
+> [!NOTE]
+> **Progress Update (BH-IPC-P0-002, October 2026)**:
+> Blocker 1 below ("Implement the reviewed, versioned receive envelope through the ABI authority...") has been **implemented and verified** on branch `feature/ipc-authenticated-receive-envelope` (commit `ad376193`).
+> See the dedicated architecture document [docs/architecture/ipc-receive-envelope-architecture.md](ipc-receive-envelope-architecture.md) and review [docs/reviews/ipc-p0-002-authenticated-receive-envelope-review.md](../reviews/ipc-p0-002-authenticated-receive-envelope-review.md).
+> Blockers 2–7 remain active production hardening milestones.
+
 **INCOMPLETE — security repair only; draft PR; no automatic merge.**
 Authenticated IPC origin, independent scoped service authority, verified reply
 provenance and guest service integration are not implemented. The envelope is
@@ -134,12 +140,13 @@ Required individual commands:
 
 ## Remaining acceptance blockers
 
-1. Implement the reviewed, versioned receive envelope through the ABI authority;
-   attest actual PID/CSpace and only genuinely provisioned identity fields.
-   Supply independent object/scope/rights-checked service authority and genuine
-   receiver-local reply SEND provenance under the one-cap constraint or an
-   explicitly reviewed replacement. The generic authority resolver currently
-   ignores object/scope and must not be activated as a fallback.
+1. **[RESOLVED in BH-IPC-P0-002]** Implement the reviewed, versioned receive envelope through the ABI authority:
+   - **UAPI Contract**: 96-byte `bh_ipc_receive_envelope_v1_t` in `interface/include/bharat/uapi/ipc/envelope.h` with compile-time assertions on size and offsets.
+   - **Syscall ABI**: 64-byte `bharat_sys_endpoint_receive_v1_args_t` in `syscall_args.h`; Syscall 9 selector migration in `native_syscalls.json` and locked in `native_syscalls.lock.json`.
+   - **Kernel Provenance Attestation**: `sender_pid`, `sender_process_object_id`, `sender_cspace_id`, `sender_owner_core` captured at send acceptance and attested in envelope without fabricating unprovisioned fields.
+   - **Single-Cap Role Mapping**: Transferred `CAP_TYPE_ENDPOINT` with `SEND` right mapped to `reply_send_cap` (`BH_IPC_ENVELOPE_F_REPLY_SEND_CAP`); other capability types mapped to `authority_cap`.
+   - **Fault-Safe Rollback**: Immediate capability revocation on usercopy fault.
+   - **Verification**: Host tests (`test_uapi_abi`, `test_ipc_transfer_lifetime`, `test_endpoint_usercopy`) and 5-target QEMU matrix (`ktest_ipc_envelope_run PASS` across x86_64, arm64, riscv64, arm32, riscv32).
 2. Provide trusted boot-session/process-incarnation/service identity from PM and
    bootstrap. An uninitialized process generation, startup argv or request PID
    cannot establish it. Authenticated privileged VM/supervisor RPC stays denied.

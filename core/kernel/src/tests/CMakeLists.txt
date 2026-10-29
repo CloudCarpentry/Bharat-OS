@@ -18,6 +18,7 @@ add_library(k_test_support OBJECT
     ktest_smp_runtime.c
     ktest_bootauth.c
     ktest_boot_security.c
+    ktest_ipc_envelope.c
 )
 
 target_link_libraries(k_test_support PRIVATE

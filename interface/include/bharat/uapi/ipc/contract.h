@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <bharat/uapi/ipc/envelope.h>
 
 #ifdef __cplusplus
 extern "C" {

@@ -22,6 +22,7 @@ typedef struct {
      * Endpoint lock protects message/claim state. CSpace installation runs only
      * after releasing it; no endpoint lock spans a capability operation. */
     bh_cap_locator_t cap_transfer_source;
+    ipc_provenance_t provenance;
     spinlock_t lock;
     wait_queue_t senders;
     wait_queue_t receivers;
@@ -69,6 +70,8 @@ int ipc_endpoint_create(capability_table_t* table, uint32_t* out_send_cap, uint3
             g_endpoints[i].timeouts = 0U;
             g_endpoints[i].has_msg = 0U;
             g_endpoints[i].msg.msg_len = 0U;
+            g_endpoints[i].cap_transfer_source = (bh_cap_locator_t){0};
+            g_endpoints[i].provenance = (ipc_provenance_t){0};
             spin_lock_init(&g_endpoints[i].lock);
             sched_wait_queue_init(&g_endpoints[i].senders);
             sched_wait_queue_init(&g_endpoints[i].receivers);
@@ -96,7 +99,7 @@ int ipc_endpoint_create(capability_table_t* table, uint32_t* out_send_cap, uint3
     return IPC_ERR_NO_SPACE;
 }
 
-int ipc_endpoint_send(capability_table_t* table, uint32_t send_cap, const void* payload, uint32_t payload_len, uint64_t timeout_ticks, uint32_t cap_to_send, uint64_t cap_send_rights) {
+int ipc_endpoint_send_ex(capability_table_t* table, uint32_t send_cap, const void* payload, uint32_t payload_len, uint64_t timeout_ticks, uint32_t cap_to_send, uint64_t cap_send_rights, const ipc_provenance_t* provenance) {
     if (!table || !payload || payload_len == 0U) {
         return IPC_ERR_INVALID;
     }
@@ -117,7 +120,12 @@ int ipc_endpoint_send(capability_table_t* table, uint32_t send_cap, const void* 
 
     // Only a checked locator is retained across send/receive or sender exit.
     bh_cap_locator_t transfer_source = {0};
+    cap_type_t transferred_type = CAP_TYPE_NONE;
     if (cap_to_send != 0U) {
+        capability_entry_t sent_entry = {0};
+        if (cap_table_lookup(table, cap_to_send, CAP_TYPE_NONE, cap_send_rights, &sent_entry) == 0) {
+            transferred_type = sent_entry.type;
+        }
         if (bh_cap_transfer_capture(table, cap_to_send, cap_send_rights,
                                     &transfer_source) != K_OK) {
             return IPC_ERR_CAP_TRANSFER_NOT_ALLOWED;
@@ -208,6 +216,22 @@ int ipc_endpoint_send(capability_table_t* table, uint32_t send_cap, const void* 
         ep->cap_transfer_source = (bh_cap_locator_t){0};
     }
 
+    // Capture and bind immutable kernel-owned provenance
+    if (provenance != NULL && provenance->has_provenance) {
+        ep->provenance = *provenance;
+        ep->provenance.delivery_generation = ep->generation;
+        ep->provenance.cap_type = transferred_type;
+        ep->provenance.cap_rights = cap_send_rights;
+        ep->provenance.has_provenance = 1U;
+    } else {
+        ep->provenance = (ipc_provenance_t){
+            .delivery_generation = ep->generation,
+            .cap_type = transferred_type,
+            .cap_rights = cap_send_rights,
+            .has_provenance = 0U,
+        };
+    }
+
     ep->has_msg = 1U;
 
     bh_thread_t* recv = sched_wait_queue_dequeue(&ep->receivers);
@@ -220,6 +244,10 @@ int ipc_endpoint_send(capability_table_t* table, uint32_t send_cap, const void* 
     }
 
     return IPC_OK;
+}
+
+int ipc_endpoint_send(capability_table_t* table, uint32_t send_cap, const void* payload, uint32_t payload_len, uint64_t timeout_ticks, uint32_t cap_to_send, uint64_t cap_send_rights) {
+    return ipc_endpoint_send_ex(table, send_cap, payload, payload_len, timeout_ticks, cap_to_send, cap_send_rights, NULL);
 }
 
 int ipc_endpoint_receive(capability_table_t* table, uint32_t recv_cap, void* out_payload, uint32_t out_payload_capacity, uint32_t* out_received_len, uint64_t timeout_ticks, uint32_t* out_received_cap) {
@@ -343,6 +371,7 @@ int ipc_endpoint_receive(capability_table_t* table, uint32_t recv_cap, void* out
         ep->msg.cap_transfer_id = 0U;
         ep->msg.cap_transfer_rights = 0U;
         ep->cap_transfer_source = (bh_cap_locator_t){0};
+        ep->provenance = (ipc_provenance_t){0};
         ep->has_msg = 0U;
         bh_thread_t *sender = sched_wait_queue_dequeue(&ep->senders);
         spin_unlock(&ep->lock);
@@ -369,6 +398,213 @@ int ipc_endpoint_receive(capability_table_t* table, uint32_t recv_cap, void* out
     ep->msg.cap_transfer_id = 0U;
     ep->msg.cap_transfer_rights = 0U;
     ep->cap_transfer_source = (bh_cap_locator_t){0};
+    ep->provenance = (ipc_provenance_t){0};
+    ep->has_msg = 0U;
+
+    bh_thread_t* sender = sched_wait_queue_dequeue(&ep->senders);
+    spin_unlock(&ep->lock);
+
+    if (sender != NULL) {
+        sender->ipc_wakeup_reason = IPC_OK;
+        sender->ipc_deadline_ticks = 0;
+        sched_wakeup(sender);
+    }
+
+    return IPC_OK;
+}
+
+int ipc_endpoint_receive_envelope(capability_table_t* table, uint32_t recv_cap, void* out_payload, uint32_t out_payload_capacity, uint32_t* out_received_len, uint64_t timeout_ticks, bh_ipc_receive_envelope_v1_t* out_envelope) {
+    if (!table || !out_payload || out_payload_capacity == 0U || !out_received_len || !out_envelope) {
+        return IPC_ERR_INVALID;
+    }
+
+    *out_received_len = 0U;
+    for (size_t b = 0; b < sizeof(*out_envelope); ++b) {
+        ((uint8_t*)out_envelope)[b] = 0U;
+    }
+    out_envelope->version = BH_IPC_RECEIVE_ENVELOPE_VERSION_V1;
+    out_envelope->struct_size = (uint32_t)sizeof(bh_ipc_receive_envelope_v1_t);
+
+    capability_entry_t e = {0};
+    if (cap_table_lookup(table, recv_cap, CAP_TYPE_ENDPOINT, CAP_RIGHT_ENDPOINT_RECEIVE, &e) != 0) {
+        return IPC_ERR_PERM;
+    }
+
+    ipc_endpoint_t* ep = endpoint_by_ref(e.object_ref);
+    if (!ep) {
+        return IPC_ERR_INVALID;
+    }
+
+    const uint64_t deadline = ipc_wait_deadline(timeout_ticks);
+    for (;;) {
+        capability_entry_t current_endpoint = {0};
+        if (cap_table_lookup(table, recv_cap, CAP_TYPE_ENDPOINT,
+                             CAP_RIGHT_ENDPOINT_RECEIVE, &current_endpoint) != 0 ||
+            current_endpoint.object_ref != e.object_ref) {
+            return IPC_ERR_PERM;
+        }
+        spin_lock(&ep->lock);
+
+        if (ep->state != IPC_ENDPOINT_STATE_READY) {
+            spin_unlock(&ep->lock);
+            return IPC_ERR_CLOSED;
+        }
+
+        if (ep->has_msg == 1U) {
+            break;
+        }
+        if (timeout_ticks == 0) {
+            spin_unlock(&ep->lock);
+            return IPC_ERR_WOULD_BLOCK;
+        }
+
+        if (timeout_ticks != UINT64_MAX && sched_get_ticks() >= deadline) {
+            ep->timeouts++;
+            spin_unlock(&ep->lock);
+            return IPC_ERR_TIMEOUT;
+        }
+        bh_thread_t* cur = sched_current_thread();
+        if (!cur) {
+            spin_unlock(&ep->lock);
+            return IPC_ERR_WOULD_BLOCK;
+        }
+        cur->ipc_wakeup_reason = IPC_OK;
+        if (timeout_ticks != UINT64_MAX) {
+            cur->ipc_deadline_ticks = deadline;
+        } else {
+            cur->ipc_deadline_ticks = 0;
+        }
+        sched_wait_queue_enqueue(&ep->receivers, cur);
+        ep->queued_msgs++;
+        spin_unlock(&ep->lock);
+        sched_block();
+
+        if (cur->ipc_wakeup_reason != IPC_OK) {
+            if (cur->ipc_wakeup_reason == IPC_ERR_TIMEOUT) {
+                spin_lock(&ep->lock);
+                ep->timeouts++;
+                ep->queued_msgs--;
+                spin_unlock(&ep->lock);
+            }
+            return cur->ipc_wakeup_reason;
+        } else {
+            spin_lock(&ep->lock);
+            ep->queued_msgs--;
+            spin_unlock(&ep->lock);
+        }
+    }
+
+    if (out_payload_capacity < ep->msg.msg_len) {
+        spin_unlock(&ep->lock);
+        return IPC_ERR_NO_SPACE;
+    }
+
+    // Claim message
+    ep->has_msg = 2U;
+    bh_cap_locator_t source = ep->cap_transfer_source;
+    uint64_t transfer_rights = ep->msg.cap_transfer_rights;
+    uint32_t transfer_id = ep->msg.cap_transfer_id;
+    ipc_provenance_t prov = ep->provenance;
+    spin_unlock(&ep->lock);
+
+    uint32_t newly_installed_cap_id = 0U;
+    kstatus_t install_ret = K_OK;
+    if (transfer_id != 0U) {
+        install_ret = bh_cap_transfer_install(&source, table, transfer_rights,
+                                              &newly_installed_cap_id);
+    }
+
+    spin_lock(&ep->lock);
+    if (install_ret == K_ERR_NO_RESOURCES) {
+        ep->has_msg = 1U;
+        bh_thread_t *receiver = sched_wait_queue_dequeue(&ep->receivers);
+        spin_unlock(&ep->lock);
+        if (receiver != NULL) {
+            receiver->ipc_wakeup_reason = IPC_OK;
+            receiver->ipc_deadline_ticks = 0U;
+            sched_wakeup(receiver);
+        }
+        return IPC_ERR_CAP_INSTALL_FAILED;
+    }
+    if (install_ret != K_OK) {
+        ep->msg.msg_len = 0U;
+        ep->msg.cap_transfer_id = 0U;
+        ep->msg.cap_transfer_rights = 0U;
+        ep->cap_transfer_source = (bh_cap_locator_t){0};
+        ep->provenance = (ipc_provenance_t){0};
+        ep->has_msg = 0U;
+        bh_thread_t *sender = sched_wait_queue_dequeue(&ep->senders);
+        spin_unlock(&ep->lock);
+        if (sender != NULL) {
+            sender->ipc_wakeup_reason = IPC_OK;
+            sender->ipc_deadline_ticks = 0;
+            sched_wakeup(sender);
+        }
+        return IPC_ERR_CAP_INSTALL_FAILED;
+    }
+
+    // Phase 2: Commit message consumption
+    uint8_t* dst = (uint8_t*)out_payload;
+    for (uint32_t i = 0; i < ep->msg.msg_len; ++i) {
+        dst[i] = ep->msg.payload[i];
+    }
+    *out_received_len = ep->msg.msg_len;
+
+    // Fill authenticated envelope
+    out_envelope->version = BH_IPC_RECEIVE_ENVELOPE_VERSION_V1;
+    out_envelope->struct_size = (uint32_t)sizeof(bh_ipc_receive_envelope_v1_t);
+    out_envelope->valid_fields = 0U;
+
+    if (prov.sender_pid != 0U) {
+        out_envelope->sender_pid = prov.sender_pid;
+        out_envelope->valid_fields |= BH_IPC_ENVELOPE_F_SENDER_PID;
+    }
+    if (prov.sender_process_object_id != 0U) {
+        out_envelope->sender_process_object_id = prov.sender_process_object_id;
+        out_envelope->valid_fields |= BH_IPC_ENVELOPE_F_SENDER_PROCESS_OBJECT;
+    }
+    if (prov.sender_cspace_id != 0U) {
+        out_envelope->sender_cspace_id = prov.sender_cspace_id;
+        out_envelope->valid_fields |= BH_IPC_ENVELOPE_F_SENDER_CSPACE;
+    }
+    out_envelope->sender_owner_core = prov.sender_owner_core;
+    out_envelope->valid_fields |= BH_IPC_ENVELOPE_F_SENDER_OWNER_CORE;
+
+    out_envelope->delivery_generation = prov.delivery_generation;
+    out_envelope->valid_fields |= BH_IPC_ENVELOPE_F_DELIVERY_GENERATION;
+
+    // Never fabricate boot session or incarnation
+    out_envelope->boot_session_id = 0U;
+    out_envelope->service_incarnation_id = 0U;
+
+    if (newly_installed_cap_id != 0U) {
+        if (prov.cap_type == CAP_TYPE_ENDPOINT && (prov.cap_rights & CAP_RIGHT_ENDPOINT_SEND) != 0U) {
+            out_envelope->reply_send_cap = newly_installed_cap_id;
+            out_envelope->authority_cap = 0U;
+            out_envelope->authority_object_type = 0U;
+            out_envelope->authority_rights = 0U;
+            out_envelope->valid_fields |= BH_IPC_ENVELOPE_F_REPLY_SEND_CAP;
+        } else {
+            out_envelope->reply_send_cap = 0U;
+            out_envelope->authority_cap = newly_installed_cap_id;
+            out_envelope->authority_object_type = (uint32_t)prov.cap_type;
+            out_envelope->authority_rights = transfer_rights;
+            out_envelope->valid_fields |= BH_IPC_ENVELOPE_F_AUTHORITY_CAP;
+        }
+    } else {
+        out_envelope->authority_cap = 0U;
+        out_envelope->reply_send_cap = 0U;
+        out_envelope->authority_object_type = 0U;
+        out_envelope->authority_rights = 0U;
+    }
+    out_envelope->reserved0 = 0U;
+    out_envelope->message_id = 0U;
+
+    ep->msg.msg_len = 0U;
+    ep->msg.cap_transfer_id = 0U;
+    ep->msg.cap_transfer_rights = 0U;
+    ep->cap_transfer_source = (bh_cap_locator_t){0};
+    ep->provenance = (ipc_provenance_t){0};
     ep->has_msg = 0U;
 
     bh_thread_t* sender = sched_wait_queue_dequeue(&ep->senders);

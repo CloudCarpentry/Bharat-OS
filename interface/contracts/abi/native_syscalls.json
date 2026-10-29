@@ -263,6 +263,12 @@
           "kind": "user_struct",
           "type": "bh_endpoint_recv_args_t",
           "direction": "out"
+        },
+        {
+          "name": "selector",
+          "kind": "scalar",
+          "type": "uint32_t",
+          "direction": "in"
         }
       ],
       "capability": {

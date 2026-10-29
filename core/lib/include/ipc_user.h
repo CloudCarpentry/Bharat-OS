@@ -50,7 +50,29 @@ static inline long ipc_endpoint_receive(uint32_t recv_cap,
         .timeout_ticks = timeout_ticks,
         .out_received_cap_ptr = (uint64_t)(uintptr_t)out_received_cap,
     };
-    return bh_syscall(SYSCALL_ENDPOINT_RECEIVE, (long)(uintptr_t)&args, 0, 0, 0, 0, 0);
+    return bh_syscall(SYSCALL_ENDPOINT_RECEIVE, (long)(uintptr_t)&args, (long)BH_IPC_RECEIVE_SELECTOR_LEGACY, 0, 0, 0, 0);
+}
+
+static inline long ipc_endpoint_receive_envelope(uint32_t recv_cap,
+                                                 void* out_payload,
+                                                 uint32_t out_capacity,
+                                                 uint32_t* out_len,
+                                                 uint64_t timeout_ticks,
+                                                 bh_ipc_receive_envelope_v1_t* out_envelope) {
+    bharat_sys_endpoint_receive_v1_args_t args = {
+        .version = BH_IPC_RECEIVE_ENVELOPE_VERSION_V1,
+        .struct_size = (uint32_t)sizeof(bharat_sys_endpoint_receive_v1_args_t),
+        .flags = 0,
+        .recv_cap = recv_cap,
+        .out_payload_capacity = out_capacity,
+        .out_envelope_capacity = (uint32_t)sizeof(bh_ipc_receive_envelope_v1_t),
+        .out_payload_ptr = (uint64_t)(uintptr_t)out_payload,
+        .out_len_ptr = (uint64_t)(uintptr_t)out_len,
+        .out_envelope_ptr = (uint64_t)(uintptr_t)out_envelope,
+        .timeout_ticks = timeout_ticks,
+        .reserved0 = 0,
+    };
+    return bh_syscall(SYSCALL_ENDPOINT_RECEIVE, (long)(uintptr_t)&args, (long)BH_IPC_RECEIVE_SELECTOR_V1, 0, 0, 0, 0);
 }
 
 #endif // BHARAT_USER_IPC_H
