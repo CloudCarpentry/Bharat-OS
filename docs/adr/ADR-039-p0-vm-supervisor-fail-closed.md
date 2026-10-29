@@ -100,3 +100,54 @@ Remaining blockers: authenticated IPC identity/authority and reply provenance,
 trusted launch/incarnation startup data, stage launch-state/timing verification,
 full VM lifetime/backing mechanisms, guest native VM lifecycle tests and secure
 handoff/recovery execution. Host tests cannot satisfy those gates.
+
+
+## Task 01 follow-up: pending-transfer and legacy IPC quarantine
+
+BH-P0-IPC-IDENTITY-001 remains incomplete. The follow-up security repair does
+not implement authenticated receive metadata or enable service RPC. See
+[pending-transfer verification](../architecture/p0-ipc-identity-verification.md)
+and the [unimplemented envelope proposal](../architecture/p0-ipc-envelope-proposal.md).
+
+Queued endpoint messages retain a fixed-width capability locator and requested
+rights instead of a sender CSpace pointer. Local capture/install revalidate LIVE,
+generation, revocation epoch, DELEGATE, type policy and rights. Both CSpaces must
+belong to the executing core. Cross-owner installation fails closed; no remote
+CSpace is dereferenced and no endpoint lock spans capability installation.
+
+The owner-local registry lifetime lock excludes interrupts while resolving and
+using source storage. Lock order is registry then the existing ordered CSpace
+locks. Creation reserves a slot/generation before allocation, publishes only
+initialized storage and rolls back reservation on failure. Teardown unpublishes
+before free. Seven slot bits encode all 64 nonzero slot IDs without aliasing the
+owner bits. Finite encoded generations retire a registry slot before identity
+wrap. This is an internal locator-encoding fix, not a syscall-number or public
+carrier-layout change.
+
+Endpoint state is EMPTY -> QUEUED -> CLAIMED -> EMPTY. Installation runs outside
+the endpoint lock. Receiver saturation restores QUEUED and wakes a receiver;
+stale/revoked/unpublished sources discard the message and wake a sender. Fixed
+scheduler-tick deadlines saturate on addition overflow and are not reset by
+spurious wakeups; endpoint and transfer rights are checked again after wake.
+
+The legacy data-only IPC wrapper declines received capabilities through the
+kernel NULL output sink and strips serialized authority/reply tokens. Unknown
+flags and unsupported transfer claims fail. Native syscall errors are decoded
+using the public BH_ERR_* constants. High-level call returns UNSUPPORTED before
+allocating an unreclaimable reply endpoint, sending work or modifying outputs;
+its invalid nanosecond/tick arithmetic is removed. This intentionally disables
+legacy RPC clients, including namesvc lookup/register helpers. Plain raw endpoint
+IPC and CORE bootstrap remain separate paths.
+
+VM wire dispatch consumes and rejects unauthenticated requests without invoking
+its internal metadata handlers, generic authority resolver or numeric reply
+routing. Exact request sizes and known header/interface versions are checked.
+Supervisor wire authorization remains denied. No false VM success or READY marker
+is introduced. The V1 header remains 56 bytes with compile-time size/offset checks.
+
+This repair does not establish endpoint allocation concurrency or reclamation,
+full installed-descendant teardown, generic capability object pinning, trusted
+launch/session/incarnation, independent scoped service authority, cross-owner IPC
+or authenticated guest RPC. The global endpoint pool still has no close path.
+The transfer regression reuses endpoint objects; its balanced CSpace/transferred
+slot counters are not evidence of endpoint-pool reclamation.

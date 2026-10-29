@@ -178,3 +178,12 @@ identity in both the instance and graph record. The focused/related seven tests
 were rebuilt and passed after that change. Service runtime and manager main also
 passed Clang syntax checks with the generated-header include path. Supervisor is
 not selected in the CORE smoke graph, so its runtime execution remains unqualified.
+
+
+## Subsequent Task 01 security repair
+
+The partial IPC repair and its separately executed evidence are recorded in
+[p0-ipc-identity-verification.md](p0-ipc-identity-verification.md). It does not
+supersede this report's runtime blockers. In particular, high-level allocating
+RPC is now explicitly unsupported; VM wire requests cannot authorize or reply
+using serialized integers. The receive-envelope document is a proposal only.
